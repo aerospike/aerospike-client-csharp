@@ -1,9 +1,9 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 11.00
 # Visual Studio 2010
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AerospikeClient", "AerospikeClient\AerospikeClient.csproj", "{21FEB257-1454-4A21-81D6-BDB6FE865E97}"
-EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AerospikeDemo", "AerospikeDemo\AerospikeDemo.csproj", "{D7C021D5-01AF-4DDB-86E7-801F26D17C6C}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AerospikeClient", "AerospikeClient\AerospikeClient.csproj", "{21FEB257-1454-4A21-81D6-BDB6FE865E97}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
