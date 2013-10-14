@@ -1,0 +1,211 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProductVersion>8.0.30703</ProductVersion>
+    <SchemaVersion>2.0</SchemaVersion>
+    <ProjectGuid>{21FEB257-1454-4A21-81D6-BDB6FE865E97}</ProjectGuid>
+    <OutputType>Library</OutputType>
+    <AppDesignerFolder>Properties</AppDesignerFolder>
+    <RootNamespace>Aerospike.Client</RootNamespace>
+    <AssemblyName>AerospikeClient</AssemblyName>
+    <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
+    <FileAlignment>512</FileAlignment>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>bin\Debug\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>bin\Release\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|x64'">
+    <DebugSymbols>true</DebugSymbols>
+    <OutputPath>bin\x64\Debug\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <DebugType>full</DebugType>
+    <PlatformTarget>x64</PlatformTarget>
+    <ErrorReport>prompt</ErrorReport>
+    <CodeAnalysisIgnoreBuiltInRuleSets>false</CodeAnalysisIgnoreBuiltInRuleSets>
+    <CodeAnalysisIgnoreBuiltInRules>false</CodeAnalysisIgnoreBuiltInRules>
+    <DocumentationFile>bin\x64\Debug\AerospikeClient.XML</DocumentationFile>
+    <NoWarn>1591</NoWarn>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Release|x64'">
+    <OutputPath>bin\x64\Release\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <Optimize>true</Optimize>
+    <DebugType>pdbonly</DebugType>
+    <PlatformTarget>x64</PlatformTarget>
+    <ErrorReport>prompt</ErrorReport>
+    <CodeAnalysisIgnoreBuiltInRuleSets>false</CodeAnalysisIgnoreBuiltInRuleSets>
+    <CodeAnalysisIgnoreBuiltInRules>false</CodeAnalysisIgnoreBuiltInRules>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="LuaInterface">
+      <HintPath>lib\LuaInterface.dll</HintPath>
+    </Reference>
+    <Reference Include="MsgPack">
+      <HintPath>lib\MsgPack.dll</HintPath>
+    </Reference>
+    <Reference Include="System" />
+    <Reference Include="System.Core" />
+    <Reference Include="System.Numerics" />
+    <Reference Include="System.Xml.Linq" />
+    <Reference Include="System.Data.DataSetExtensions" />
+    <Reference Include="Microsoft.CSharp" />
+    <Reference Include="System.Data" />
+    <Reference Include="System.Xml" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="Main\AerospikeClient.cs" />
+    <Compile Include="Main\AerospikeException.cs" />
+    <Compile Include="Async\AsyncBatchExecutor.cs" />
+    <Compile Include="Async\AsyncBatchExistsArray.cs" />
+    <Compile Include="Async\AsyncBatchExistsArrayExecutor.cs" />
+    <Compile Include="Async\AsyncBatchExistsSequence.cs" />
+    <Compile Include="Async\AsyncBatchExistsSequenceExecutor.cs" />
+    <Compile Include="Async\AsyncBatchGetArray.cs" />
+    <Compile Include="Async\AsyncBatchGetArrayExecutor.cs" />
+    <Compile Include="Async\AsyncBatchGetSequence.cs" />
+    <Compile Include="Async\AsyncBatchGetSequenceExecutor.cs" />
+    <Compile Include="Async\AsyncClient.cs" />
+    <Compile Include="Async\AsyncClientPolicy.cs" />
+    <Compile Include="Async\AsyncCluster.cs" />
+    <Compile Include="Async\AsyncCommand.cs" />
+    <Compile Include="Async\AsyncConnection.cs" />
+    <Compile Include="Async\AsyncDelete.cs" />
+    <Compile Include="Async\AsyncExists.cs" />
+    <Compile Include="Async\AsyncMultiCommand.cs" />
+    <Compile Include="Async\AsyncMultiExecutor.cs" />
+    <Compile Include="Async\AsyncNode.cs" />
+    <Compile Include="Async\AsyncRead.cs" />
+    <Compile Include="Async\AsyncScan.cs" />
+    <Compile Include="Async\AsyncScanExecutor.cs" />
+    <Compile Include="Async\AsyncSingleCommand.cs" />
+    <Compile Include="Async\AsyncWrite.cs" />
+    <Compile Include="Async\AsyncTimeoutQueue.cs" />
+    <Compile Include="Async\MaxCommandAction.cs" />
+    <Compile Include="Main\Bin.cs" />
+    <Compile Include="Cluster\Cluster.cs" />
+    <Compile Include="Cluster\Connection.cs" />
+    <Compile Include="Cluster\Node.cs" />
+    <Compile Include="Cluster\NodeValidator.cs" />
+    <Compile Include="Cluster\Partition.cs" />
+    <Compile Include="Cluster\PartitionTokenizerNew.cs" />
+    <Compile Include="Cluster\PartitionTokenizerOld.cs" />
+    <Compile Include="Command\BatchCommandExists.cs" />
+    <Compile Include="Command\BatchCommandGet.cs" />
+    <Compile Include="Command\BatchExecutor.cs" />
+    <Compile Include="Command\BatchItem.cs" />
+    <Compile Include="Command\BatchNode.cs" />
+    <Compile Include="Command\ByteUtil.cs" />
+    <Compile Include="Command\Command.cs" />
+    <Compile Include="Command\DeleteCommand.cs" />
+    <Compile Include="Command\FieldType.cs" />
+    <Compile Include="Command\Formatter.cs" />
+    <Compile Include="Command\MultiCommand.cs" />
+    <Compile Include="Command\ParticleType.cs" />
+    <Compile Include="Command\ReadCommand.cs" />
+    <Compile Include="Command\ScanCommand.cs" />
+    <Compile Include="Command\ScanExecutor.cs" />
+    <Compile Include="Command\SingleCommand.cs" />
+    <Compile Include="Command\SyncCommand.cs" />
+    <Compile Include="Command\WriteCommand.cs" />
+    <Compile Include="Main\Host.cs" />
+    <Compile Include="Main\Info.cs" />
+    <Compile Include="Main\Key.cs" />
+    <Compile Include="Main\Language.cs" />
+    <Compile Include="Large\LargeMap.cs" />
+    <Compile Include="Large\LargeSet.cs" />
+    <Compile Include="Large\LargeStack.cs" />
+    <Compile Include="Large\LargeList.cs" />
+    <Compile Include="Listener\DeleteListener.cs" />
+    <Compile Include="Listener\ExistsArrayListener.cs" />
+    <Compile Include="Listener\ExistsListener.cs" />
+    <Compile Include="Listener\ExistsSequenceListener.cs" />
+    <Compile Include="Listener\RecordArrayListener.cs" />
+    <Compile Include="Listener\RecordListener.cs" />
+    <Compile Include="Listener\RecordSequenceListener.cs" />
+    <Compile Include="Listener\WriteListener.cs" />
+    <Compile Include="Main\Log.cs" />
+    <Compile Include="Lua\LuaAerospike.cs" />
+    <Compile Include="Lua\LuaData.cs" />
+    <Compile Include="Lua\LuaBytes.cs" />
+    <Compile Include="Lua\LuaCache.cs" />
+    <Compile Include="Lua\LuaConfig.cs" />
+    <Compile Include="Lua\LuaInstance.cs" />
+    <Compile Include="Lua\LuaList.cs" />
+    <Compile Include="Lua\LuaMap.cs" />
+    <Compile Include="Lua\LuaStream.cs" />
+    <Compile Include="Main\Operation.cs" />
+    <Compile Include="Policy\ClientPolicy.cs" />
+    <Compile Include="Policy\Policy.cs" />
+    <Compile Include="Policy\Priority.cs" />
+    <Compile Include="Policy\QueryPolicy.cs" />
+    <Compile Include="Policy\RecordExistsAction.cs" />
+    <Compile Include="Policy\ScanPolicy.cs" />
+    <Compile Include="Policy\WritePolicy.cs" />
+    <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Properties\Resources.Designer.cs">
+      <AutoGen>True</AutoGen>
+      <DesignTime>True</DesignTime>
+      <DependentUpon>Resources.resx</DependentUpon>
+    </Compile>
+    <Compile Include="Query\Filter.cs" />
+    <Compile Include="Query\IndexType.cs" />
+    <Compile Include="Query\KeyRecord.cs" />
+    <Compile Include="Query\QueryAggregateCommand.cs" />
+    <Compile Include="Query\QueryAggregateExecutor.cs" />
+    <Compile Include="Query\QueryCommand.cs" />
+    <Compile Include="Query\QueryExecutor.cs" />
+    <Compile Include="Query\QueryRecordCommand.cs" />
+    <Compile Include="Query\QueryRecordExecutor.cs" />
+    <Compile Include="Query\RecordSet.cs" />
+    <Compile Include="Query\ResultSet.cs" />
+    <Compile Include="Query\ServerCommand.cs" />
+    <Compile Include="Query\ServerExecutor.cs" />
+    <Compile Include="Query\Statement.cs" />
+    <Compile Include="Main\Record.cs" />
+    <Compile Include="Main\ResultCode.cs" />
+    <Compile Include="Query\ScanCallback.cs" />
+    <Compile Include="Util\MsgUnpacker.cs" />
+    <Compile Include="Util\Hash.cs" />
+    <Compile Include="Util\MsgPacker.cs" />
+    <Compile Include="Util\ThreadLocalData1.cs" />
+    <Compile Include="Util\ThreadLocalData2.cs" />
+    <Compile Include="Util\Util.cs" />
+    <Compile Include="Main\Value.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Properties\Resources.resx">
+      <Generator>ResXFileCodeGenerator</Generator>
+      <LastGenOutput>Resources.Designer.cs</LastGenOutput>
+    </EmbeddedResource>
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Resources\aerospike.lua" />
+    <EmbeddedResource Include="Resources\as.lua" />
+    <EmbeddedResource Include="Resources\aslib.lua" />
+    <EmbeddedResource Include="Resources\stream_ops.lua" />
+  </ItemGroup>
+  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+  <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
+       Other similar extension points exist, see Microsoft.Common.targets.
+  <Target Name="BeforeBuild">
+  </Target>
+  <Target Name="AfterBuild">
+  </Target>
+  -->
+</Project>

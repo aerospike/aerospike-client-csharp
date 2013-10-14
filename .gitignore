@@ -1,4 +1,6 @@
 Debug
 Release
+bin
 obj
 *.user
+*.suo
