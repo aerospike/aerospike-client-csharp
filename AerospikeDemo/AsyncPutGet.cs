@@ -30,9 +30,6 @@ namespace Aerospike.Demo
 			console.Info("Put: namespace={0} set={1} key={2} value={3}", 
 				key.ns, key.setName, key.userKey, bin.value);
 			
-			// TODO: Test timeout.
-			//args.writePolicy.timeout = 50;
-
 			client.Put(args.writePolicy, new WriteHandler(this, client, args, key, bin), key, bin);
 		}
 
