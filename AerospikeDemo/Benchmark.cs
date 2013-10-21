@@ -19,6 +19,7 @@ namespace Aerospike.Demo
 		protected string ns;
 		protected string setName;
 		protected string binName;
+		private bool debug;
 
 		private Thread[] threads;
 		private Thread tickerThread;
@@ -51,6 +52,7 @@ namespace Aerospike.Demo
 			this.ns = args.ns;
 			this.setName = args.set;
 			this.binName = args.singleBin ? "" : "demobin";  // Single bin servers don't need a bin name.
+			this.debug = args.debug;
 
 			int objectSize = 5000000;
 			values = new int[objectSize];
@@ -260,15 +262,21 @@ namespace Aerospike.Demo
 					}
 					else
 					{
-						console.Error("Failed to set: ns={0} set={1} key={2} bin={3} value={4} exception={5}",
-							ns, setName, key, binName, value, e.Message);
+						if (debug)
+						{
+							console.Error("Failed to set: ns={0} set={1} key={2} bin={3} value={4} exception={5}",
+								ns, setName, key, binName, value, e.Message);
+						}
 					}
 				}
 			}
 			else
 			{
-				console.Error("Failed to set: ns={0} set={1} key={2} bin={3} value={4} exception={5}",
-					ns, setName, key, binName, value, e.Message);
+				if (debug)
+				{
+					console.Error("Failed to set: ns={0} set={1} key={2} bin={3} value={4} exception={5}",
+						ns, setName, key, binName, value, e.Message);
+				}
 			}
 			SetValue(key, UNSET);
 		}
@@ -280,15 +288,12 @@ namespace Aerospike.Demo
 				if (record == null)
 				{
 					// Success, deleted record not found.
-					CreateNextDeleteAction(key);
+					CreateNextDeleteAction(key, expected);
 				}
 				else
 				{
 					// Failure. deleted record still exists.
-					Interlocked.Increment(ref readFailCount);
-					console.Warn("Read deleted record: ns={0} set={1} key={2} bin={3}",
-						ns, setName, key, binName);
-					SetValue(key, UNSET);
+					OnReadFailure(key, "Read deleted record");
 				}
 			}
 			else
@@ -305,15 +310,11 @@ namespace Aerospike.Demo
 
 					if (value == expected)
 					{
-						SetValue(key, expected);
-						CreateNextAction(key);
+						CreateNextAction(key, expected);
 					}
 					else
 					{
-						Interlocked.Increment(ref readFailCount);
-						console.Error("Value mismatch: Expected {0}. Received {1}.",
-							expected, value);
-						SetValue(key, UNSET);
+						OnReadFailure(key, "Value mismatch: Expected " + expected + " Received " + value);
 					}
 				}
 			}
@@ -327,8 +328,11 @@ namespace Aerospike.Demo
 		protected void OnReadFailure(int key, string message)
 		{
 			Interlocked.Increment(ref readFailCount);
-			console.Warn("Read error: ns={0} set={1} key={2} bin={3} exception={4}",
-				ns, setName, key, binName, message);
+			if (debug)
+			{
+				console.Error("Read error: ns={0} set={1} key={2} bin={3} exception={4}",
+					ns, setName, key, binName, message);
+			}
 			SetValue(key, UNSET);
 		}
 
@@ -341,12 +345,15 @@ namespace Aerospike.Demo
 		protected void OnDeleteFailure(int key, AerospikeException e)
 		{
 			Interlocked.Increment(ref deleteFailCount);
-			console.Error("Failed to delete: ns={0} set={1} key={2} exception={3}",
-				ns, setName, key, e.Message);
+			if (debug)
+			{
+				console.Error("Failed to delete: ns={0} set={1} key={2} exception={3}",
+					ns, setName, key, e.Message);
+			}
 			SetValue(key, UNSET);
 		}
 
-		private void CreateNextAction(int key)
+		private void CreateNextAction(int key, int value)
 		{
 			Interlocked.Increment(ref readCount);
 
@@ -361,18 +368,21 @@ namespace Aerospike.Demo
 			if (die == 0)
 			{
 				Delete(key);
+				return;
 			}
 
 			// Update record 50% of the time.
 			if (die <= 2)
 			{
 				Write(key);
+				return;
 			}
 
 			// Leave record alone 25% of the time.
+			SetValue(key, value);
 		}
 
-		private void CreateNextDeleteAction(int key)
+		private void CreateNextDeleteAction(int key, int value)
 		{
 			Interlocked.Increment(ref readCount);
 
@@ -387,9 +397,11 @@ namespace Aerospike.Demo
 			if (die <= 1)
 			{
 				Write(key);
+				return;
 			}
 
 			// Leave record alone 33% of the time.
+			SetValue(key, value);
 		}
 
 		private void SetValue(int key, int value)
