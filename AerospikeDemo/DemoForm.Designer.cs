@@ -31,6 +31,12 @@
 			this.splitContainer1 = new System.Windows.Forms.SplitContainer();
 			this.codeBox = new System.Windows.Forms.RichTextBox();
 			this.examplesView = new System.Windows.Forms.TreeView();
+			this.maxCommandPanel = new System.Windows.Forms.Panel();
+			this.maxCommandBox = new System.Windows.Forms.TextBox();
+			this.label6 = new System.Windows.Forms.Label();
+			this.threadPanel = new System.Windows.Forms.Panel();
+			this.threadBox = new System.Windows.Forms.TextBox();
+			this.label5 = new System.Windows.Forms.Label();
 			this.consoleBox = new System.Windows.Forms.TextBox();
 			this.stopButton = new System.Windows.Forms.Button();
 			this.runButton = new System.Windows.Forms.Button();
@@ -46,6 +52,8 @@
 			this.splitContainer1.Panel1.SuspendLayout();
 			this.splitContainer1.Panel2.SuspendLayout();
 			this.splitContainer1.SuspendLayout();
+			this.maxCommandPanel.SuspendLayout();
+			this.threadPanel.SuspendLayout();
 			this.SuspendLayout();
 			// 
 			// splitContainer1
@@ -64,11 +72,13 @@
 			// 
 			// splitContainer1.Panel2
 			// 
+			this.splitContainer1.Panel2.Controls.Add(this.maxCommandPanel);
+			this.splitContainer1.Panel2.Controls.Add(this.threadPanel);
 			this.splitContainer1.Panel2.Controls.Add(this.consoleBox);
 			this.splitContainer1.Panel2.Controls.Add(this.stopButton);
 			this.splitContainer1.Panel2.Controls.Add(this.runButton);
-			this.splitContainer1.Size = new System.Drawing.Size(1031, 728);
-			this.splitContainer1.SplitterDistance = 480;
+			this.splitContainer1.Size = new System.Drawing.Size(1031, 753);
+			this.splitContainer1.SplitterDistance = 496;
 			this.splitContainer1.TabIndex = 0;
 			// 
 			// codeBox
@@ -77,10 +87,10 @@
             | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
 			this.codeBox.BackColor = System.Drawing.SystemColors.Window;
-			this.codeBox.Location = new System.Drawing.Point(137, 3);
+			this.codeBox.Location = new System.Drawing.Point(153, 3);
 			this.codeBox.Name = "codeBox";
 			this.codeBox.ReadOnly = true;
-			this.codeBox.Size = new System.Drawing.Size(891, 474);
+			this.codeBox.Size = new System.Drawing.Size(875, 490);
 			this.codeBox.TabIndex = 8;
 			this.codeBox.Text = "";
 			// 
@@ -94,9 +104,63 @@
 			this.examplesView.Location = new System.Drawing.Point(3, 3);
 			this.examplesView.Name = "examplesView";
 			this.examplesView.ShowLines = false;
-			this.examplesView.Size = new System.Drawing.Size(128, 474);
+			this.examplesView.Size = new System.Drawing.Size(144, 490);
 			this.examplesView.TabIndex = 7;
 			this.examplesView.AfterSelect += new System.Windows.Forms.TreeViewEventHandler(this.ExampleSelected);
+			// 
+			// maxCommandPanel
+			// 
+			this.maxCommandPanel.Controls.Add(this.maxCommandBox);
+			this.maxCommandPanel.Controls.Add(this.label6);
+			this.maxCommandPanel.Location = new System.Drawing.Point(177, 4);
+			this.maxCommandPanel.Name = "maxCommandPanel";
+			this.maxCommandPanel.Size = new System.Drawing.Size(213, 26);
+			this.maxCommandPanel.TabIndex = 17;
+			this.maxCommandPanel.Visible = false;
+			// 
+			// maxCommandBox
+			// 
+			this.maxCommandBox.Location = new System.Drawing.Point(147, 3);
+			this.maxCommandBox.Name = "maxCommandBox";
+			this.maxCommandBox.Size = new System.Drawing.Size(50, 20);
+			this.maxCommandBox.TabIndex = 14;
+			this.maxCommandBox.Text = "40";
+			// 
+			// label6
+			// 
+			this.label6.AutoSize = true;
+			this.label6.Location = new System.Drawing.Point(4, 6);
+			this.label6.Name = "label6";
+			this.label6.Size = new System.Drawing.Size(137, 13);
+			this.label6.TabIndex = 15;
+			this.label6.Text = "Max Concurrent Commands";
+			// 
+			// threadPanel
+			// 
+			this.threadPanel.Controls.Add(this.threadBox);
+			this.threadPanel.Controls.Add(this.label5);
+			this.threadPanel.Location = new System.Drawing.Point(177, 4);
+			this.threadPanel.Name = "threadPanel";
+			this.threadPanel.Size = new System.Drawing.Size(115, 26);
+			this.threadPanel.TabIndex = 16;
+			this.threadPanel.Visible = false;
+			// 
+			// threadBox
+			// 
+			this.threadBox.Location = new System.Drawing.Point(52, 3);
+			this.threadBox.Name = "threadBox";
+			this.threadBox.Size = new System.Drawing.Size(50, 20);
+			this.threadBox.TabIndex = 14;
+			this.threadBox.Text = "8";
+			// 
+			// label5
+			// 
+			this.label5.AutoSize = true;
+			this.label5.Location = new System.Drawing.Point(4, 6);
+			this.label5.Name = "label5";
+			this.label5.Size = new System.Drawing.Size(46, 13);
+			this.label5.TabIndex = 15;
+			this.label5.Text = "Threads";
 			// 
 			// consoleBox
 			// 
@@ -107,7 +171,7 @@
 			this.consoleBox.Multiline = true;
 			this.consoleBox.Name = "consoleBox";
 			this.consoleBox.ScrollBars = System.Windows.Forms.ScrollBars.Vertical;
-			this.consoleBox.Size = new System.Drawing.Size(1025, 207);
+			this.consoleBox.Size = new System.Drawing.Size(1025, 216);
 			this.consoleBox.TabIndex = 11;
 			// 
 			// stopButton
@@ -202,7 +266,7 @@
 			// 
 			this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
 			this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-			this.ClientSize = new System.Drawing.Size(1037, 764);
+			this.ClientSize = new System.Drawing.Size(1037, 789);
 			this.Controls.Add(this.setBox);
 			this.Controls.Add(this.label4);
 			this.Controls.Add(this.nsBox);
@@ -220,6 +284,10 @@
 			this.splitContainer1.Panel2.PerformLayout();
 			((System.ComponentModel.ISupportInitialize)(this.splitContainer1)).EndInit();
 			this.splitContainer1.ResumeLayout(false);
+			this.maxCommandPanel.ResumeLayout(false);
+			this.maxCommandPanel.PerformLayout();
+			this.threadPanel.ResumeLayout(false);
+			this.threadPanel.PerformLayout();
 			this.ResumeLayout(false);
 			this.PerformLayout();
 
@@ -241,5 +309,11 @@
         private System.Windows.Forms.TextBox setBox;
         private System.Windows.Forms.Label label4;
 		private System.Windows.Forms.TextBox consoleBox;
+		private System.Windows.Forms.Panel threadPanel;
+		private System.Windows.Forms.TextBox threadBox;
+		private System.Windows.Forms.Label label5;
+		private System.Windows.Forms.Panel maxCommandPanel;
+		private System.Windows.Forms.TextBox maxCommandBox;
+		private System.Windows.Forms.Label label6;
     }
 }

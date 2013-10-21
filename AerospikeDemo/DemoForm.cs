@@ -73,7 +73,8 @@ namespace Aerospike.Demo
                 });
                 TreeNode benchmarks = new TreeNode("Benchmarks", new TreeNode[] {
                     new ExampleTreeNode("Linear Put/Get", new LinearPutGet(console)),
-                    new ExampleTreeNode("Multi-Threaded Load", new MultiThreadedLoad(console))
+                    new ExampleTreeNode("Synchronous Load", new BenchmarkSync(console)),
+                    new ExampleTreeNode("Asynchronous Load", new BenchmarkAsync(console))
                 });
 
                 examplesView.Nodes.Add(examples);
@@ -132,6 +133,8 @@ namespace Aerospike.Demo
                 int port = int.Parse(portBox.Text);
 				Arguments args = new Arguments(hostBox.Text.Trim(), port, nsBox.Text.Trim(), setBox.Text.Trim());
 				args.SetServerSpecific();
+				args.threadMax = int.Parse(threadBox.Text);
+				args.commandMax = int.Parse(maxCommandBox.Text);
 				currentExample.Run(args);
             }
             catch (Exception ex)
@@ -171,6 +174,23 @@ namespace Aerospike.Demo
 
                 codeBox.Clear();
                 ExampleTreeNode example = (ExampleTreeNode)node;
+
+				if (example.Text.Equals("Synchronous Load"))
+				{
+					threadPanel.Visible = true;
+					maxCommandPanel.Visible = false;
+				}
+				else if (example.Text.Equals("Asynchronous Load"))
+				{
+					threadPanel.Visible = false;
+					maxCommandPanel.Visible = true;				
+				}
+				else
+				{
+					threadPanel.Visible = false;
+					maxCommandPanel.Visible = false;
+				}
+
                 codeBox.Text = example.Read();
                 HighlightSourceCode();
             }
@@ -243,6 +263,7 @@ namespace Aerospike.Demo
 
         public void Stop()
         {
+			Log.Info("Stop requested. Waiting for thread to end.");
             example.Stop();
         }
     }

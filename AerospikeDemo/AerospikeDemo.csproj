@@ -86,6 +86,9 @@
     <Compile Include="AsyncPutGet.cs" />
     <Compile Include="AsyncScan.cs" />
     <Compile Include="Batch.cs" />
+    <Compile Include="Benchmark.cs" />
+    <Compile Include="BenchmarkAsync.cs" />
+    <Compile Include="BenchmarkSync.cs" />
     <Compile Include="Console.cs" />
     <Compile Include="DeleteBin.cs" />
     <Compile Include="DemoForm.cs">
@@ -102,7 +105,6 @@
     <Compile Include="ListMap.cs" />
     <Compile Include="LuaExample.cs" />
     <Compile Include="LuaMapIterator.cs" />
-    <Compile Include="MultiThreadedLoad.cs" />
     <Compile Include="Prepend.cs" />
     <Compile Include="QueryAverage.cs" />
     <Compile Include="QueryExecute.cs" />

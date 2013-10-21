@@ -18,6 +18,9 @@ namespace Aerospike.Demo
 		internal bool singleBin;
 		internal bool hasUdf;
 
+		internal int threadMax;
+		internal int commandMax;
+
 		protected internal Arguments(string host, int port, string ns, string set)
 		{
 			this.host = host;

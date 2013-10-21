@@ -15,7 +15,7 @@ namespace Aerospike.Demo
 		public override void RunExample(Arguments args)
 		{
 			AsyncClientPolicy policy = new AsyncClientPolicy();
-			policy.asyncMaxCommands = 300;
+			policy.asyncMaxCommands = args.commandMax;
 
 			AsyncClient client = new AsyncClient(policy, args.host, args.port);
 

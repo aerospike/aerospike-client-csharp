@@ -8,7 +8,7 @@ namespace Aerospike.Demo
 	public abstract class Example
 	{
 		protected internal Console console;
-		protected volatile bool valid;
+		public volatile bool valid;
 
 		public Example(Console console)
 		{
