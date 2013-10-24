@@ -29,23 +29,23 @@ namespace Aerospike.Demo
 		{
 			console.Info("Put: namespace={0} set={1} key={2} value={3}", 
 				key.ns, key.setName, key.userKey, bin.value);
-			
-			client.Put(args.writePolicy, new WriteHandler(this, client, args, key, bin), key, bin);
+
+			client.Put(args.writePolicy, new WriteHandler(this, client, args.writePolicy, key, bin), key, bin);
 		}
 
 		private class WriteHandler : WriteListener
 		{
 			private readonly AsyncPutGet parent;
 			private AsyncClient client;
-			private Arguments args;
+			private WritePolicy policy;
 			private Key key;
 			private Bin bin;
 
-			public WriteHandler(AsyncPutGet parent, AsyncClient client, Arguments args, Key key, Bin bin)
+			public WriteHandler(AsyncPutGet parent, AsyncClient client, WritePolicy policy, Key key, Bin bin)
 			{
 				this.parent = parent;
 				this.client = client;
-				this.args = args;
+				this.policy = policy;
 				this.key = key;
 				this.bin = bin;
 			}
@@ -58,7 +58,7 @@ namespace Aerospike.Demo
 					parent.console.Info("Get: namespace={0} set={1} key={2}", 
 						key.ns, key.setName, key.userKey);
 
-					client.Get(args.policy, new RecordHandler(parent, key, bin), key);
+					client.Get(policy, new RecordHandler(parent, key, bin), key);
 				}
 				catch (Exception e)
 				{
