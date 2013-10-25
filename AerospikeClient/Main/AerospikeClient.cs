@@ -655,19 +655,29 @@ namespace Aerospike.Client
 			// Send UDF to one node. That node will distribute the UDF to other nodes.
 			string command = sb.ToString();
 			Node node = cluster.GetRandomNode();
-			int timeout = (policy == null)? 0 : policy.timeout;
+			int timeout = (policy == null) ? 0 : policy.timeout;
+			Connection conn = node.GetConnection(timeout);
 
-			Info info = new Info(node.GetConnection(timeout), command);
-			Info.NameValueParser parser = info.GetNameValueParser();
-
-			while (parser.Next())
+			try
 			{
-				string name = parser.GetName();
+				Info info = new Info(conn, command);
+				Info.NameValueParser parser = info.GetNameValueParser();
 
-				if (name.Equals("error"))
+				while (parser.Next())
 				{
-					throw new AerospikeException(serverPath + " registration failed: " + parser.GetValue());
+					string name = parser.GetName();
+
+					if (name.Equals("error"))
+					{
+						throw new AerospikeException(serverPath + " registration failed: " + parser.GetValue());
+					}
 				}
+				node.PutConnection(conn);
+			}
+			catch (Exception e)
+			{
+				conn.Close();
+				throw;
 			}
 		}
 
@@ -832,12 +842,7 @@ namespace Aerospike.Client
 			sb.Append(";priority=normal");
 
 			// Send index command to one node. That node will distribute the command to other nodes.
-			string command = sb.ToString();
-			Node node = cluster.GetRandomNode();
-			int timeout = (policy == null)? 0 : policy.timeout;
-
-			Info info = new Info(node.GetConnection(timeout), command);
-			string response = info.GetValue();
+			String response = SendInfoCommand(policy, sb.ToString());
 
 			// Command is successful if OK or index already exists.
 			if (!response.Equals("OK", StringComparison.CurrentCultureIgnoreCase) && !response.Equals("FAIL:208:ERR FOUND"))
@@ -871,13 +876,8 @@ namespace Aerospike.Client
 			sb.Append(";indexname=");
 			sb.Append(indexName);
 
-			// Send drop index command to one node. That node will distribute the command to other nodes.
-			string command = sb.ToString();
-			Node node = cluster.GetRandomNode();
-			int timeout = (policy == null)? 0 : policy.timeout;
-
-			Info info = new Info(node.GetConnection(timeout), command);
-			string response = info.GetValue();
+			// Send index command to one node. That node will distribute the command to other nodes.
+			String response = SendInfoCommand(policy, sb.ToString());
 
 			// Command is successful if ok or index did not previously exist.
 			if (!response.Equals("ok", StringComparison.CurrentCultureIgnoreCase) && !response.Equals("FAIL:202:NO INDEX"))
@@ -900,6 +900,26 @@ namespace Aerospike.Client
 				names.Add(binName);
 			}
 			return names;
+		}
+
+		private string SendInfoCommand(Policy policy, string command)
+		{
+			Node node = cluster.GetRandomNode();
+			int timeout = (policy == null) ? 0 : policy.timeout;
+			Connection conn = node.GetConnection(timeout);
+			Info info;
+
+			try
+			{
+				info = new Info(conn, command);
+				node.PutConnection(conn);
+			}
+			catch (Exception)
+			{
+				conn.Close();
+				throw;
+			}
+			return info.GetValue();
 		}
 	}
 }

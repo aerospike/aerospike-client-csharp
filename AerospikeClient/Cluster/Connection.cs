@@ -54,7 +54,7 @@ namespace Aerospike.Client
 					else
 					{
 						socket.Close();
-						throw new SocketException();
+						throw new SocketException((int)SocketError.TimedOut);
 					}
 				}
 				finally
