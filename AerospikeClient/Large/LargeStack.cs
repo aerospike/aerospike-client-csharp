@@ -56,7 +56,7 @@ namespace Aerospike.Client
 		/// <param name="values">values to push</param>
 		public void Push(params Value[] values)
 		{
-			client.Execute(policy, key, PackageName, "push", binName, Value.Get(values), userModule);
+			client.Execute(policy, key, PackageName, "push_all", binName, Value.Get(values), userModule);
 		}
 
 		/// <summary>
@@ -84,7 +84,7 @@ namespace Aerospike.Client
 		/// <param name="filterArgs">arguments to Lua function name</param>
 		public List<object> Filter(int peekCount, string filterName, params Value[] filterArgs)
 		{
-			return (List<object>)client.Execute(policy, key, PackageName, "filter", binName, Value.Get(peekCount), Value.Get(filterName), Value.Get(filterArgs));
+			return (List<object>)client.Execute(policy, key, PackageName, "filter", binName, Value.Get(peekCount), userModule, Value.Get(filterName), Value.Get(filterArgs));
 		}
 
 		/// <summary>
