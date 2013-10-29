@@ -4,7 +4,7 @@ using Aerospike.Client;
 
 namespace Aerospike.Demo
 {
-	public class ScanSeries : SyncExample, ScanCallback
+	public class ScanSeries : SyncExample
 	{
 		private Dictionary<string, Metrics> setMap = new Dictionary<string, Metrics>();
 
@@ -32,7 +32,7 @@ namespace Aerospike.Demo
 			foreach (Node node in nodes)
 			{
 				console.Info("Scan node " + node.Name);
-				client.ScanNode(policy, node, args.ns, args.set, this);
+				client.ScanNode(policy, node, args.ns, args.set, ScanCallback);
 
 				foreach (KeyValuePair<string, Metrics> entry in setMap)
 				{

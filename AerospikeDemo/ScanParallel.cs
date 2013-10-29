@@ -3,7 +3,7 @@ using Aerospike.Client;
 
 namespace Aerospike.Demo
 {
-	public class ScanParallel : SyncExample, ScanCallback
+	public class ScanParallel : SyncExample
 	{
 		private int recordCount = 0;
 
@@ -20,7 +20,7 @@ namespace Aerospike.Demo
 			recordCount = 0;
 			DateTime begin = DateTime.Now;
 			ScanPolicy policy = new ScanPolicy();
-			client.ScanAll(policy, args.ns, args.set, this);
+			client.ScanAll(policy, args.ns, args.set, ScanCallback);
 
 			DateTime end = DateTime.Now;
 			double seconds = end.Subtract(begin).TotalSeconds;

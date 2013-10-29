@@ -86,7 +86,7 @@ namespace Aerospike.Client
 				}
 
 				// Call the callback function.
-				callback.ScanCallback(key, new Record(bins, generation, expiration));
+				callback(key, new Record(bins, generation, expiration));
 			}
 			return true;
 		}
