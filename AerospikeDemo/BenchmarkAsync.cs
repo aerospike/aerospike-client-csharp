@@ -37,16 +37,34 @@ namespace Aerospike.Demo
 
 		protected override void WriteRecord(int key, int value)
 		{
+			// If an error occurred, yield thread to back off throttle.
+			// Fail counters are reset every second.
+			if (writeFailCount > 0)
+			{
+				Thread.Yield();
+			}
 			client.Put(policy, new WriteHandler(this, key, value), new Key(ns, setName, key), new Bin(binName, value));
 		}
 
 		protected override void ReadRecord(int key, int expected, bool deleted)
 		{
+			// If an error occurred, yield thread to back off throttle.
+			// Fail counters are reset every second.
+			if (readFailCount > 0)
+			{
+				Thread.Yield();
+			}
 			client.Get(policy, new ReadHandler(this, key, expected, deleted), new Key(ns, setName, key), binName);
 		}
 
 		protected override void DeleteRecord(int key)
 		{
+			// If an error occurred, yield thread to back off throttle.
+			// Fail counters are reset every second.
+			if (deleteFailCount > 0)
+			{
+				Thread.Yield();
+			}
 			client.Delete(policy, new DeleteHandler(this, key), new Key(ns, setName, key));
 		}
 

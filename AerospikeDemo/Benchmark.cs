@@ -31,11 +31,11 @@ namespace Aerospike.Demo
 		// These counters are available across all threads.
 		// Use with Interlocked.increment
 		private int writeCount;
-		private int writeFailCount;
+		protected int writeFailCount;
 		private int deleteCount;
-		private int deleteFailCount;
+		protected int deleteFailCount;
 		private int readCount;
-		private int readFailCount;
+		protected int readFailCount;
 
 		public Benchmark(Console console)
 		{
