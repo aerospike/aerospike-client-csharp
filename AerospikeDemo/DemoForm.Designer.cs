@@ -167,9 +167,11 @@
 			this.consoleBox.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
             | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
+			this.consoleBox.BackColor = System.Drawing.SystemColors.Window;
 			this.consoleBox.Location = new System.Drawing.Point(3, 34);
 			this.consoleBox.Multiline = true;
 			this.consoleBox.Name = "consoleBox";
+			this.consoleBox.ReadOnly = true;
 			this.consoleBox.ScrollBars = System.Windows.Forms.ScrollBars.Vertical;
 			this.consoleBox.Size = new System.Drawing.Size(1025, 216);
 			this.consoleBox.TabIndex = 11;
