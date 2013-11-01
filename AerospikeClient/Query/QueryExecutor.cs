@@ -18,7 +18,7 @@ namespace Aerospike.Client
 		protected internal readonly Statement statement;
 		private QueryThread[] threads;
 		private volatile int nextThread;
-		private volatile Exception exception;
+		protected volatile Exception exception;
 
 		public QueryExecutor(QueryPolicy policy, Statement statement)
 		{
@@ -84,7 +84,7 @@ namespace Aerospike.Client
 			}
 		}
 
-		private void StopThreads(Exception cause)
+		protected void StopThreads(Exception cause)
 		{
 			// Exception may be null, so can't synchronize on it.
 			// Use statement instead.
@@ -108,6 +108,7 @@ namespace Aerospike.Client
 				{
 				}
 			}
+			SendCompleted();
 		}
 
 		protected internal void CheckForException()
@@ -160,7 +161,11 @@ namespace Aerospike.Client
 					parent.StopThreads(e);
 				}
 				complete = true;
-				parent.ThreadCompleted();
+
+				if (parent.exception == null)
+				{
+					parent.ThreadCompleted();
+				}
 			}
 
 			public void Join()

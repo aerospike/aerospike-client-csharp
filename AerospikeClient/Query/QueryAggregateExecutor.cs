@@ -42,7 +42,7 @@ namespace Aerospike.Client
 			}
 			catch (Exception e)
 			{
-				Log.Error("Lua error: " + Util.GetErrorMessage(e));
+				StopThreads(e);
 			}
 		}
 
@@ -89,7 +89,10 @@ namespace Aerospike.Client
 				inputQueue.Add(null);
 
 				// Ensure lua thread completes before sending end command to result set.
-				luaThread.Join(1000);
+				if (exception == null)
+				{
+					luaThread.Join(1000);
+				}
 			}
 			catch (ThreadInterruptedException)
 			{
