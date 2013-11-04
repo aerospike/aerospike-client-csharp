@@ -175,6 +175,7 @@
 			this.consoleBox.ScrollBars = System.Windows.Forms.ScrollBars.Vertical;
 			this.consoleBox.Size = new System.Drawing.Size(1025, 216);
 			this.consoleBox.TabIndex = 11;
+			this.consoleBox.KeyDown += new System.Windows.Forms.KeyEventHandler(this.ConsoleKeyDown);
 			// 
 			// stopButton
 			// 

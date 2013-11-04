@@ -238,6 +238,15 @@ namespace Aerospike.Demo
 		{
 			console.Write(level, message);
 		}
+
+		private void ConsoleKeyDown(object sender, KeyEventArgs e)
+		{
+			if (e.Control && e.KeyCode == Keys.A)
+			{
+				consoleBox.SelectAll();
+				e.Handled = true;
+			}
+		}
 	}
 
     class ExampleTreeNode : TreeNode
