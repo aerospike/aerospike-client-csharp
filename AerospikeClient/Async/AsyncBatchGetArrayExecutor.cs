@@ -22,6 +22,11 @@ namespace Aerospike.Client
 			this.recordArray = new Record[keys.Length];
 			this.listener = listener;
 
+			if (policy == null)
+			{
+				policy = new Policy();
+			}
+
 			Dictionary<Key, BatchItem> keyMap = BatchItem.GenerateMap(keys);
 
 			// Dispatch asynchronous commands to nodes.
@@ -29,11 +34,8 @@ namespace Aerospike.Client
 			{
 				foreach (BatchNode.BatchNamespace batchNamespace in batchNode.batchNamespaces)
 				{
-					Command command = new Command();
-					command.SetBatchGet(batchNamespace, binNames, readAttr);
-
-					AsyncBatchGetArray async = new AsyncBatchGetArray(this, cluster, (AsyncNode)batchNode.node, keyMap, binNames, recordArray);
-					async.Execute(policy, command);
+					AsyncBatchGetArray async = new AsyncBatchGetArray(this, cluster, (AsyncNode)batchNode.node, batchNamespace, policy, keyMap, binNames, recordArray, readAttr);
+					async.Execute();
 				}
 			}
 		}

@@ -13,20 +13,25 @@ namespace Aerospike.Client
 	{
 		private readonly RecordSequenceListener listener;
 
-		public AsyncScanExecutor(AsyncCluster cluster, ScanPolicy policy, RecordSequenceListener listener, string ns, string setName, string[] binNames)
+		public AsyncScanExecutor
+		(
+			AsyncCluster cluster,
+			ScanPolicy policy,
+			RecordSequenceListener listener,
+			string ns,
+			string setName,
+			string[] binNames
+		)
 		{
 			this.listener = listener;
-
-			Command command = new Command();
-			command.SetScan(policy, ns, setName, binNames);
 
 			Node[] nodes = cluster.Nodes;
 			completedSize = nodes.Length;
 
 			foreach (Node node in nodes)
 			{
-				AsyncScan async = new AsyncScan(this, cluster, (AsyncNode)node, listener);
-				async.Execute(policy, command);
+				AsyncScan async = new AsyncScan(this, cluster, (AsyncNode)node, policy, listener, ns, setName, binNames);
+				async.Execute();
 			}
 		}
 

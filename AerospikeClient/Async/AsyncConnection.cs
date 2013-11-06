@@ -102,6 +102,7 @@ namespace Aerospike.Client
 			{
 			}
 			socket.Close();
+			args.Dispose();
 		}
 	}
 }

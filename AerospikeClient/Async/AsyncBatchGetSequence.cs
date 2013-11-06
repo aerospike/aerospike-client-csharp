@@ -13,12 +13,39 @@ namespace Aerospike.Client
 {
 	public sealed class AsyncBatchGetSequence : AsyncMultiCommand
 	{
+		private readonly BatchNode.BatchNamespace batchNamespace;
+		private readonly Policy policy;
+		private readonly HashSet<string> binNames;
 		private readonly RecordSequenceListener listener;
+		private readonly int readAttr;
 
-		public AsyncBatchGetSequence(AsyncMultiExecutor parent, AsyncCluster cluster, AsyncNode node, HashSet<string> binNames, RecordSequenceListener listener) 
-			: base(parent, cluster, node, false, binNames)
+		public AsyncBatchGetSequence
+		(
+			AsyncMultiExecutor parent,
+			AsyncCluster cluster,
+			AsyncNode node,
+			BatchNode.BatchNamespace batchNamespace,
+			Policy policy,
+			HashSet<string> binNames,
+			RecordSequenceListener listener,
+			int readAttr
+		) : base(parent, cluster, node, false)
 		{
+			this.batchNamespace = batchNamespace;
+			this.policy = policy;
+			this.binNames = binNames;
 			this.listener = listener;
+			this.readAttr = readAttr;
+		}
+
+		protected internal override Policy GetPolicy()
+		{
+			return policy;
+		}
+
+		protected internal override void WriteBuffer()
+		{
+			SetBatchGet(batchNamespace, binNames, readAttr);
 		}
 
 		protected internal override void ParseRow(Key key)

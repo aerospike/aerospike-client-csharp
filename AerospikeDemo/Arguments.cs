@@ -17,7 +17,7 @@ namespace Aerospike.Demo
 		internal Policy policy;
 		internal bool singleBin;
 		internal bool hasUdf;
-		internal bool debug;
+		internal bool debug = false;
 
 		internal int threadMax;
 		internal int commandMax;

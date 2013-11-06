@@ -17,7 +17,6 @@ namespace Aerospike.Client
 	{
 		private readonly AsyncMultiExecutor parent;
 		private readonly new AsyncNode node;
-		private readonly HashSet<string> binNames;
 		protected internal int resultCode;
 		protected internal int generation;
 		protected internal int expiration;
@@ -32,16 +31,6 @@ namespace Aerospike.Client
 			this.parent = parent;
 			this.node = node;
 			this.stopOnNotFound = stopOnNotFound;
-			this.binNames = null;
-		}
-
-		public AsyncMultiCommand(AsyncMultiExecutor parent, AsyncCluster cluster, AsyncNode node, bool stopOnNotFound, HashSet<string> binNames) 
-			: base(cluster)
-		{
-			this.parent = parent;
-			this.node = node;
-			this.stopOnNotFound = stopOnNotFound;
-			this.binNames = binNames;
 		}
 
 		protected internal sealed override AsyncNode GetNode()
@@ -51,36 +40,36 @@ namespace Aerospike.Client
 
 		protected internal sealed override void ReceiveEvent(SocketAsyncEventArgs args)
 		{
-			byteOffset += args.BytesTransferred;
+			dataOffset += args.BytesTransferred;
 			//Log.Info("Receive Event: " + args.BytesTransferred + "," + byteOffset + "," + byteLength + "," + inHeader);
 
-			if (byteOffset < byteLength)
+			if (dataOffset < dataLength)
 			{
-				args.SetBuffer(byteOffset, byteLength - byteOffset);
+				args.SetBuffer(dataOffset, dataLength - dataOffset);
 				Receive(args);
 				return;
 			}
-			byteOffset = 0;
+			dataOffset = 0;
 
 			if (inHeader)
 			{
-				byteLength = (int)(ByteUtil.BytesToLong(byteBuffer, 0) & 0xFFFFFFFFFFFFL);
+				dataLength = (int)(ByteUtil.BytesToLong(dataBuffer, 0) & 0xFFFFFFFFFFFFL);
 
-				if (byteLength <= 0)
+				if (dataLength <= 0)
 				{
 					Finish();
 					return;
 				}
 				inHeader = false;
 
-				if (byteLength > byteBuffer.Length)
+				if (dataLength > dataBuffer.Length)
 				{
-					byteBuffer = new byte[byteLength];
-					args.SetBuffer(byteBuffer, byteOffset, byteLength);
+					dataBuffer = new byte[dataLength];
+					args.SetBuffer(dataBuffer, dataOffset, dataLength);
 				}
 				else
 				{
-					args.SetBuffer(byteOffset, byteLength);
+					args.SetBuffer(dataOffset, dataLength);
 				}
 				Receive(args);
 			}
@@ -100,11 +89,11 @@ namespace Aerospike.Client
 		private bool ParseGroup()
 		{
 			// Parse each message response and add it to the result array
-			byteOffset = 0;
+			dataOffset = 0;
 
-			while (byteOffset < byteLength)
+			while (dataOffset < dataLength)
 			{
-				resultCode = byteBuffer[byteOffset + 5];
+				resultCode = dataBuffer[dataOffset + 5];
 
 				if (resultCode != 0)
 				{
@@ -122,16 +111,16 @@ namespace Aerospike.Client
 				}
 
 				// If this is the end marker of the response, do not proceed further
-				if ((byteBuffer[byteOffset + 3] & Command.INFO3_LAST) != 0)
+				if ((dataBuffer[dataOffset + 3] & Command.INFO3_LAST) != 0)
 				{
 					return true;
 				}
-				generation = ByteUtil.BytesToInt(byteBuffer, byteOffset + 6);
-				expiration = ByteUtil.BytesToInt(byteBuffer, byteOffset + 10);
-				fieldCount = ByteUtil.BytesToShort(byteBuffer, byteOffset + 18);
-				opCount = ByteUtil.BytesToShort(byteBuffer, byteOffset + 20);
+				generation = ByteUtil.BytesToInt(dataBuffer, dataOffset + 6);
+				expiration = ByteUtil.BytesToInt(dataBuffer, dataOffset + 10);
+				fieldCount = ByteUtil.BytesToShort(dataBuffer, dataOffset + 18);
+				opCount = ByteUtil.BytesToShort(dataBuffer, dataOffset + 20);
 
-				byteOffset += Command.MSG_REMAINING_HEADER_SIZE;
+				dataOffset += Command.MSG_REMAINING_HEADER_SIZE;
 
 				Key key = ParseKey();
 				ParseRow(key);
@@ -147,27 +136,27 @@ namespace Aerospike.Client
 
 			for (int i = 0; i < fieldCount; i++)
 			{
-				int fieldlen = ByteUtil.BytesToInt(byteBuffer, byteOffset);
-				byteOffset += 4;
+				int fieldlen = ByteUtil.BytesToInt(dataBuffer, dataOffset);
+				dataOffset += 4;
 
-				int fieldtype = byteBuffer[byteOffset++];
+				int fieldtype = dataBuffer[dataOffset++];
 				int size = fieldlen - 1;
 
 				if (fieldtype == FieldType.DIGEST_RIPE)
 				{
 					digest = new byte[size];
-					Array.Copy(byteBuffer, byteOffset, digest, 0, size);
-					byteOffset += size;
+					Array.Copy(dataBuffer, dataOffset, digest, 0, size);
+					dataOffset += size;
 				}
 				else if (fieldtype == FieldType.NAMESPACE)
 				{
-					ns = ByteUtil.Utf8ToString(byteBuffer, byteOffset, size);
-					byteOffset += size;
+					ns = ByteUtil.Utf8ToString(dataBuffer, dataOffset, size);
+					dataOffset += size;
 				}
 				else if (fieldtype == FieldType.TABLE)
 				{
-					setName = ByteUtil.Utf8ToString(byteBuffer, byteOffset, size);
-					byteOffset += size;
+					setName = ByteUtil.Utf8ToString(dataBuffer, dataOffset, size);
+					dataOffset += size;
 				}
 			}
 			return new Key(ns, digest, setName);
@@ -179,15 +168,15 @@ namespace Aerospike.Client
 
 			for (int i = 0 ; i < opCount; i++)
 			{
-				int opSize = ByteUtil.BytesToInt(byteBuffer, byteOffset);
-				byte particleType = byteBuffer[byteOffset + 5];
-				byte nameSize = byteBuffer[byteOffset + 7];
-				string name = ByteUtil.Utf8ToString(byteBuffer, byteOffset + 8, nameSize);
-				byteOffset += 4 + 4 + nameSize;
+				int opSize = ByteUtil.BytesToInt(dataBuffer, dataOffset);
+				byte particleType = dataBuffer[dataOffset + 5];
+				byte nameSize = dataBuffer[dataOffset + 7];
+				string name = ByteUtil.Utf8ToString(dataBuffer, dataOffset + 8, nameSize);
+				dataOffset += 4 + 4 + nameSize;
 
 				int particleBytesSize = (int)(opSize - (4 + nameSize));
-				object value = ByteUtil.BytesToParticle(particleType, byteBuffer, byteOffset, particleBytesSize);
-				byteOffset += particleBytesSize;
+				object value = ByteUtil.BytesToParticle(particleType, dataBuffer, dataOffset, particleBytesSize);
+				dataOffset += particleBytesSize;
 
 				if (bins == null)
 				{

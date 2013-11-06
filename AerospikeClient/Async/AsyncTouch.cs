@@ -9,16 +9,15 @@
  */
 namespace Aerospike.Client
 {
-	public sealed class AsyncExists : AsyncSingleCommand
+	public sealed class AsyncTouch : AsyncSingleCommand
 	{
-		private readonly Policy policy;
-		private readonly ExistsListener listener;
-		private bool exists;
+		private readonly WritePolicy policy;
+		private readonly WriteListener listener;
 
-		public AsyncExists(AsyncCluster cluster, Policy policy, Key key, ExistsListener listener) 
+		public AsyncTouch(AsyncCluster cluster, WritePolicy policy, WriteListener listener, Key key) 
 			: base(cluster, key)
 		{
-			this.policy = (policy == null) ? new Policy() : policy;
+			this.policy = (policy == null)? new WritePolicy() : policy;
 			this.listener = listener;
 		}
 
@@ -29,27 +28,16 @@ namespace Aerospike.Client
 
 		protected internal override void WriteBuffer()
 		{
-			SetExists(key);
+			SetTouch(policy, key);
 		}
 
 		protected internal override void ParseResult()
 		{
 			int resultCode = dataBuffer[5];
 
-			if (resultCode == 0)
+			if (resultCode != 0)
 			{
-				exists = true;
-			}
-			else
-			{
-				if (resultCode == ResultCode.KEY_NOT_FOUND_ERROR)
-				{
-					exists = false;
-				}
-				else
-				{
-					throw new AerospikeException(resultCode);
-				}
+				throw new AerospikeException(resultCode);
 			}
 		}
 
@@ -57,7 +45,7 @@ namespace Aerospike.Client
 		{
 			if (listener != null)
 			{
-				listener.OnSuccess(key, exists);
+				listener.OnSuccess(key);
 			}
 		}
 

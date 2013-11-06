@@ -26,66 +26,66 @@ namespace Aerospike.Client
 
 			if (statement.ns != null)
 			{
-				sendOffset += ByteUtil.EstimateSizeUtf8(statement.ns) + FIELD_HEADER_SIZE;
+				dataOffset += ByteUtil.EstimateSizeUtf8(statement.ns) + FIELD_HEADER_SIZE;
 				fieldCount++;
 			}
 
 			if (statement.indexName != null)
 			{
-				sendOffset += ByteUtil.EstimateSizeUtf8(statement.indexName) + FIELD_HEADER_SIZE;
+				dataOffset += ByteUtil.EstimateSizeUtf8(statement.indexName) + FIELD_HEADER_SIZE;
 				fieldCount++;
 			}
 
 			if (statement.setName != null)
 			{
-				sendOffset += ByteUtil.EstimateSizeUtf8(statement.setName) + FIELD_HEADER_SIZE;
+				dataOffset += ByteUtil.EstimateSizeUtf8(statement.setName) + FIELD_HEADER_SIZE;
 				fieldCount++;
 			}
 
 			if (statement.filters != null)
 			{
-				sendOffset += FIELD_HEADER_SIZE;
+				dataOffset += FIELD_HEADER_SIZE;
 				filterSize++; // num filters
 
 				foreach (Filter filter in statement.filters)
 				{
 					filterSize += filter.EstimateSize();
 				}
-				sendOffset += filterSize;
+				dataOffset += filterSize;
 				fieldCount++;
 			}
 			else
 			{
 				// Calling query with no filters is more efficiently handled by a primary index scan. 
 				// Estimate scan options size.
-				sendOffset += 2 + FIELD_HEADER_SIZE;
+				dataOffset += 2 + FIELD_HEADER_SIZE;
 				fieldCount++;
 			}
 
 			if (statement.binNames != null)
 			{
-				sendOffset += FIELD_HEADER_SIZE;
+				dataOffset += FIELD_HEADER_SIZE;
 				binNameSize++; // num bin names
 
 				foreach (string binName in statement.binNames)
 				{
 					binNameSize += ByteUtil.EstimateSizeUtf8(binName) + 1;
 				}
-				sendOffset += binNameSize;
+				dataOffset += binNameSize;
 				fieldCount++;
 			}
 
 			if (statement.taskId > 0)
 			{
-				sendOffset += 8 + FIELD_HEADER_SIZE;
+				dataOffset += 8 + FIELD_HEADER_SIZE;
 				fieldCount++;
 			}
 
 			if (statement.functionName != null)
 			{
-				sendOffset += FIELD_HEADER_SIZE + 1; // udf type
-				sendOffset += ByteUtil.EstimateSizeUtf8(statement.packageName) + FIELD_HEADER_SIZE;
-				sendOffset += ByteUtil.EstimateSizeUtf8(statement.functionName) + FIELD_HEADER_SIZE;
+				dataOffset += FIELD_HEADER_SIZE + 1; // udf type
+				dataOffset += ByteUtil.EstimateSizeUtf8(statement.packageName) + FIELD_HEADER_SIZE;
+				dataOffset += ByteUtil.EstimateSizeUtf8(statement.functionName) + FIELD_HEADER_SIZE;
 
 				if (statement.functionArgs.Length > 0)
 				{
@@ -95,11 +95,11 @@ namespace Aerospike.Client
 				{
 					functionArgBuffer = new byte[0];
 				}
-				sendOffset += FIELD_HEADER_SIZE + functionArgBuffer.Length;
+				dataOffset += FIELD_HEADER_SIZE + functionArgBuffer.Length;
 				fieldCount += 4;
 			}
 
-			Begin();
+			SizeBuffer();
 			byte readAttr = (byte)Command.INFO1_READ;
 			WriteHeader(readAttr, fieldCount, 0);
 
@@ -121,11 +121,11 @@ namespace Aerospike.Client
 			if (statement.filters != null)
 			{
 				WriteFieldHeader(filterSize, FieldType.INDEX_RANGE);
-				sendBuffer[sendOffset++] = (byte)statement.filters.Length;
+				dataBuffer[dataOffset++] = (byte)statement.filters.Length;
 
 				foreach (Filter filter in statement.filters)
 				{
-					sendOffset = filter.Write(sendBuffer, sendOffset);
+					dataOffset = filter.Write(dataBuffer, dataOffset);
 				}
 			}
 			else
@@ -134,34 +134,34 @@ namespace Aerospike.Client
 				WriteFieldHeader(2, FieldType.SCAN_OPTIONS);
 				byte priority = (byte)policy.priority;
 				priority <<= 4;
-				sendBuffer[sendOffset++] = priority;
-				sendBuffer[sendOffset++] = (byte)100;
+				dataBuffer[dataOffset++] = priority;
+				dataBuffer[dataOffset++] = (byte)100;
 			}
 
 			if (statement.binNames != null)
 			{
 				WriteFieldHeader(binNameSize, FieldType.QUERY_BINLIST);
-				sendBuffer[sendOffset++] = (byte)statement.binNames.Length;
+				dataBuffer[dataOffset++] = (byte)statement.binNames.Length;
 
 				foreach (string binName in statement.binNames)
 				{
-					int len = ByteUtil.StringToUtf8(binName, sendBuffer, sendOffset + 1);
-					sendBuffer[sendOffset] = (byte)len;
-					sendOffset += len + 1;
+					int len = ByteUtil.StringToUtf8(binName, dataBuffer, dataOffset + 1);
+					dataBuffer[dataOffset] = (byte)len;
+					dataOffset += len + 1;
 				}
 			}
 
 			if (statement.taskId > 0)
 			{
 				WriteFieldHeader(8, FieldType.TRAN_ID);
-				ByteUtil.LongToBytes((ulong)statement.taskId, sendBuffer, sendOffset);
-				sendOffset += 8;
+				ByteUtil.LongToBytes((ulong)statement.taskId, dataBuffer, dataOffset);
+				dataOffset += 8;
 			}
 
 			if (statement.functionName != null)
 			{
 				WriteFieldHeader(1, FieldType.UDF_OP);
-				sendBuffer[sendOffset++] = (statement.returnData) ? (byte)1 : (byte)2;
+				dataBuffer[dataOffset++] = (statement.returnData) ? (byte)1 : (byte)2;
 				WriteField(statement.packageName, FieldType.UDF_PACKAGE_NAME);
 				WriteField(statement.functionName, FieldType.UDF_FUNCTION);
 				WriteField(functionArgBuffer, FieldType.UDF_ARGLIST);

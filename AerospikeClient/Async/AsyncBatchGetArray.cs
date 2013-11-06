@@ -13,14 +13,42 @@ namespace Aerospike.Client
 {
 	public sealed class AsyncBatchGetArray : AsyncMultiCommand
 	{
+		private readonly BatchNode.BatchNamespace batchNamespace;
+		private readonly Policy policy;
 		private readonly Dictionary<Key, BatchItem> keyMap;
+		private readonly HashSet<string> binNames;
 		private readonly Record[] records;
+		private readonly int readAttr;
 
-		public AsyncBatchGetArray(AsyncMultiExecutor parent, AsyncCluster cluster, AsyncNode node, Dictionary<Key, BatchItem> keyMap, HashSet<string> binNames, Record[] records) 
-			: base(parent, cluster, node, false, binNames)
+		public AsyncBatchGetArray
+		(
+			AsyncMultiExecutor parent,
+			AsyncCluster cluster,
+			AsyncNode node,
+			BatchNode.BatchNamespace batchNamespace,
+			Policy policy,
+			Dictionary<Key, BatchItem> keyMap,
+			HashSet<string> binNames,
+			Record[] records,
+			int readAttr
+		) : base(parent, cluster, node, false)
 		{
+			this.batchNamespace = batchNamespace;
+			this.policy = policy;
 			this.keyMap = keyMap;
+			this.binNames = binNames;
 			this.records = records;
+			this.readAttr = readAttr;
+		}
+
+		protected internal override Policy GetPolicy()
+		{
+			return policy;
+		}
+
+		protected internal override void WriteBuffer()
+		{
+			SetBatchGet(batchNamespace, binNames, readAttr);
 		}
 
 		protected internal override void ParseRow(Key key)

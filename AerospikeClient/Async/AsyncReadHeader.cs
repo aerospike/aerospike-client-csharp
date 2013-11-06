@@ -7,15 +7,17 @@
  * redistribution rights covered by individual contract. Please check your
  * contract for exact rights and responsibilities.
  */
+using System.Collections.Generic;
+
 namespace Aerospike.Client
 {
-	public sealed class AsyncExists : AsyncSingleCommand
+	public sealed class AsyncReadHeader : AsyncSingleCommand
 	{
 		private readonly Policy policy;
-		private readonly ExistsListener listener;
-		private bool exists;
+		private readonly RecordListener listener;
+		private Record record;
 
-		public AsyncExists(AsyncCluster cluster, Policy policy, Key key, ExistsListener listener) 
+		public AsyncReadHeader(AsyncCluster cluster, Policy policy, RecordListener listener, Key key) 
 			: base(cluster, key)
 		{
 			this.policy = (policy == null) ? new Policy() : policy;
@@ -29,7 +31,7 @@ namespace Aerospike.Client
 
 		protected internal override void WriteBuffer()
 		{
-			SetExists(key);
+			SetReadHeader(key);
 		}
 
 		protected internal override void ParseResult()
@@ -38,13 +40,16 @@ namespace Aerospike.Client
 
 			if (resultCode == 0)
 			{
-				exists = true;
+				int generation = ByteUtil.BytesToInt(dataBuffer, 6);
+				int expiration = ByteUtil.BytesToInt(dataBuffer, 10);
+
+				record = new Record(null, generation, expiration);
 			}
 			else
 			{
 				if (resultCode == ResultCode.KEY_NOT_FOUND_ERROR)
 				{
-					exists = false;
+					record = null;
 				}
 				else
 				{
@@ -57,7 +62,7 @@ namespace Aerospike.Client
 		{
 			if (listener != null)
 			{
-				listener.OnSuccess(key, exists);
+				listener.OnSuccess(key, record);
 			}
 		}
 

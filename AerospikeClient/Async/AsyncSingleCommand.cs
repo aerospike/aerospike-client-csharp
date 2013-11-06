@@ -32,22 +32,22 @@ namespace Aerospike.Client
 
 		protected internal sealed override void ReceiveEvent(SocketAsyncEventArgs args)
 		{
-			byteOffset += args.BytesTransferred;
+			dataOffset += args.BytesTransferred;
 			//Log.Info("Receive Event: " + args.BytesTransferred + "," + byteOffset + "," + byteLength + "," + inHeader);
 
-			if (byteOffset < byteLength)
+			if (dataOffset < dataLength)
 			{
-				args.SetBuffer(byteOffset, byteLength - byteOffset);
+				args.SetBuffer(dataOffset, dataLength - dataOffset);
 				Receive(args);
 				return;
 			}
-			byteOffset = 0;
+			dataOffset = 0;
 
 			if (inHeader)
 			{
-				byteLength = (int)(ByteUtil.BytesToLong(byteBuffer, 0) & 0xFFFFFFFFFFFFL);
+				dataLength = (int)(ByteUtil.BytesToLong(dataBuffer, 0) & 0xFFFFFFFFFFFFL);
 
-				if (byteLength <= 0)
+				if (dataLength <= 0)
 				{
 					Finish();
 					return;
@@ -55,14 +55,14 @@ namespace Aerospike.Client
 
 				inHeader = false;
 
-				if (byteLength > byteBuffer.Length)
+				if (dataLength > dataBuffer.Length)
 				{
-					byteBuffer = new byte[byteLength];
-					args.SetBuffer(byteBuffer, byteOffset, byteLength);
+					dataBuffer = new byte[dataLength];
+					args.SetBuffer(dataBuffer, dataOffset, dataLength);
 				}
 				else
 				{
-					args.SetBuffer(byteOffset, byteLength);
+					args.SetBuffer(dataOffset, dataLength);
 				}
 				Receive(args);
 			}

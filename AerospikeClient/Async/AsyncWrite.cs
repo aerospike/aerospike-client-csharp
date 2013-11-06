@@ -11,17 +11,33 @@ namespace Aerospike.Client
 {
 	public sealed class AsyncWrite : AsyncSingleCommand
 	{
+		private readonly WritePolicy policy;
 		private readonly WriteListener listener;
+		private readonly Bin[] bins;
+		private readonly Operation.Type operation;
 
-		public AsyncWrite(AsyncCluster cluster, Key key, WriteListener listener) 
+		public AsyncWrite(AsyncCluster cluster, WritePolicy policy, WriteListener listener, Key key, Bin[] bins, Operation.Type operation) 
 			: base(cluster, key)
 		{
+			this.policy = (policy == null)? new WritePolicy() : policy;
 			this.listener = listener;
+			this.bins = bins;
+			this.operation = operation;
+		}
+
+		protected internal override Policy GetPolicy()
+		{
+			return policy;
+		}
+
+		protected internal override void WriteBuffer()
+		{
+			SetWrite(policy, operation, key, bins);
 		}
 
 		protected internal override void ParseResult()
 		{
-			int resultCode = byteBuffer[5];
+			int resultCode = dataBuffer[5];
 
 			if (resultCode != 0)
 			{

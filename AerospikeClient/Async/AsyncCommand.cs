@@ -15,7 +15,7 @@ namespace Aerospike.Client
 	/// <summary>
 	/// Asynchronous command handler.
 	/// </summary>
-	public abstract class AsyncCommand
+	public abstract class AsyncCommand : Command
 	{
 		private static readonly EventHandler<SocketAsyncEventArgs> SocketListener = new EventHandler<SocketAsyncEventArgs>(SocketHandler);
 
@@ -23,9 +23,7 @@ namespace Aerospike.Client
 		protected internal readonly AsyncCluster cluster;
 		protected internal AsyncNode node;
 		private DateTime limit;
-		protected internal byte[] byteBuffer;
-		protected internal int byteLength;
-		protected internal int byteOffset;
+		protected internal int dataLength;
 		protected internal int timeout;
 		private bool complete;
 
@@ -34,13 +32,9 @@ namespace Aerospike.Client
 			this.cluster = cluster;
 		}
 
-		public virtual void Execute(Policy policy, Command command)
+		public virtual void Execute()
 		{
-			if (policy == null)
-			{
-				policy = new Policy();
-			}
-
+			Policy policy = GetPolicy();
 			timeout = policy.timeout;
 
 			if (timeout > 0)
@@ -49,14 +43,8 @@ namespace Aerospike.Client
 				AsyncTimeoutQueue.Instance.Add(this);
 			}
 
-			byteBuffer = cluster.GetByteBuffer();
-			byteLength = command.sendOffset;
-
-			if (byteLength > byteBuffer.Length)
-			{
-				byteBuffer = new byte[byteLength];
-			}
-			Array.Copy(command.sendBuffer, byteBuffer, byteLength);
+			dataBuffer = cluster.GetByteBuffer();
+			WriteBuffer();
 
 			try
 			{
@@ -80,14 +68,14 @@ namespace Aerospike.Client
 			}
 			catch (AerospikeException.InvalidNode ain)
 			{
-				cluster.PutByteBuffer(byteBuffer);
+				cluster.PutByteBuffer(dataBuffer);
 				throw ain;
 			}
 			catch (AerospikeException.Connection ce)
 			{
 				// Socket connection error has occurred.
 				node.DecreaseHealth();
-				cluster.PutByteBuffer(byteBuffer);
+				cluster.PutByteBuffer(dataBuffer);
 				throw ce;
 			}
 			catch (Exception e)
@@ -96,8 +84,18 @@ namespace Aerospike.Client
 				{
 					node.PutAsyncConnection(conn);
 				}
-				cluster.PutByteBuffer(byteBuffer);
+				cluster.PutByteBuffer(dataBuffer);
 				throw new AerospikeException(e);
+			}
+		}
+
+		protected internal sealed override void SizeBuffer()
+		{
+			dataLength = dataOffset;
+
+			if (dataLength > dataBuffer.Length)
+			{
+				dataBuffer = new byte[dataLength];
 			}
 		}
 
@@ -149,8 +147,8 @@ namespace Aerospike.Client
 
 		private void ConnectEvent(SocketAsyncEventArgs args)
 		{
-			byteOffset = 0;
-			args.SetBuffer(byteBuffer, byteOffset, byteLength);
+			dataOffset = 0;
+			args.SetBuffer(dataBuffer, dataOffset, dataLength);
 			Send(args);
 		}
 
@@ -164,10 +162,11 @@ namespace Aerospike.Client
 
 		private void SendEvent(SocketAsyncEventArgs args)
 		{
-			byteOffset += args.BytesTransferred;
+			dataOffset += args.BytesTransferred;
 
-			if (byteOffset < byteLength)
+			if (dataOffset < dataLength)
 			{
+				args.SetBuffer(dataOffset, dataLength - dataOffset);
 				Send(args);
 			}
 			else
@@ -178,9 +177,9 @@ namespace Aerospike.Client
 
 		public void ReceiveBegin(SocketAsyncEventArgs args)
 		{
-			byteOffset = 0;
-			byteLength = 8;
-			args.SetBuffer(byteOffset, byteLength);
+			dataOffset = 0;
+			dataLength = 8;
+			args.SetBuffer(dataOffset, dataLength);
 			Receive(args);
 		}
 
@@ -221,7 +220,7 @@ namespace Aerospike.Client
 			conn.UpdateLastUsed();
 			node.PutAsyncConnection(conn);
 			node.RestoreHealth();
-			cluster.PutByteBuffer(byteBuffer);
+			cluster.PutByteBuffer(dataBuffer);
 			OnSuccess();
 		}
 
@@ -264,11 +263,13 @@ namespace Aerospike.Client
 			{
 				conn.Close();
 			}
-			cluster.PutByteBuffer(byteBuffer);
+			cluster.PutByteBuffer(dataBuffer);
 			OnFailure(ae);
 		}
 
+		protected internal abstract Policy GetPolicy();
 		protected internal abstract AsyncNode GetNode();
+		protected internal abstract void WriteBuffer();
 		protected internal abstract void ReceiveEvent(SocketAsyncEventArgs args);
 		protected internal abstract void OnSuccess();
 		protected internal abstract void OnFailure(AerospikeException ae);

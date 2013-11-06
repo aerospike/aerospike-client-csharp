@@ -18,16 +18,18 @@ namespace Aerospike.Client
 		{
 			this.listener = listener;
 
+			if (policy == null)
+			{
+				policy = new Policy();
+			}
+
 			// Dispatch asynchronous commands to nodes.
 			foreach (BatchNode batchNode in batchNodes)
 			{
 				foreach (BatchNode.BatchNamespace batchNamespace in batchNode.batchNamespaces)
 				{
-					Command command = new Command();
-					command.SetBatchExists(batchNamespace);
-
-					AsyncBatchExistsSequence async = new AsyncBatchExistsSequence(this, cluster, (AsyncNode)batchNode.node, listener);
-					async.Execute(policy, command);
+					AsyncBatchExistsSequence async = new AsyncBatchExistsSequence(this, cluster, (AsyncNode)batchNode.node, batchNamespace, policy, listener);
+					async.Execute();
 				}
 			}
 		}

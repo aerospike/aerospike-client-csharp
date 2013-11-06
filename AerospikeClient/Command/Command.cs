@@ -12,7 +12,7 @@ using System.Collections.Generic;
 
 namespace Aerospike.Client
 {
-	public class Command
+	public abstract class Command
 	{
 		// Flags commented out are not supported by this client.
 		public static readonly int INFO1_READ = (1 << 0); // Contains a read operation.
@@ -36,14 +36,8 @@ namespace Aerospike.Client
 		public const ulong CL_MSG_VERSION = 2L;
 		public const ulong AS_MSG_TYPE = 3;
 
-		protected internal byte[] sendBuffer;
-		protected internal int sendOffset;
-
-		public Command()
-		{
-			this.sendBuffer = ThreadLocalData1.GetBuffer();
-			this.sendOffset = MSG_TOTAL_HEADER_SIZE;
-		}
+		protected internal byte[] dataBuffer;
+		protected internal int dataOffset = MSG_TOTAL_HEADER_SIZE;
 
 		public void SetWrite(WritePolicy policy, Operation.Type operation, Key key, Bin[] bins)
 		{
@@ -53,7 +47,7 @@ namespace Aerospike.Client
 			{
 				EstimateOperationSize(bin);
 			}
-			Begin();
+			SizeBuffer();
 			WriteHeader(policy, 0, Command.INFO2_WRITE, fieldCount, bins.Length);
 			WriteKey(key);
 
@@ -64,10 +58,10 @@ namespace Aerospike.Client
 			End();
 		}
 
-		public virtual void SetDelete(WritePolicy policy, Key key)
+		public void SetDelete(WritePolicy policy, Key key)
 		{
 			int fieldCount = EstimateKeySize(key);
-			Begin();
+			SizeBuffer();
 			WriteHeader(policy, 0, Command.INFO2_WRITE | Command.INFO2_DELETE, fieldCount, 0);
 			WriteKey(key);
 			End();
@@ -77,7 +71,7 @@ namespace Aerospike.Client
 		{
 			int fieldCount = EstimateKeySize(key);
 			EstimateOperationSize();
-			Begin();
+			SizeBuffer();
 			WriteHeader(policy, 0, Command.INFO2_WRITE, fieldCount, 1);
 			WriteKey(key);
 			WriteOperation(Operation.Type.TOUCH);
@@ -87,7 +81,7 @@ namespace Aerospike.Client
 		public void SetExists(Key key)
 		{
 			int fieldCount = EstimateKeySize(key);
-			Begin();
+			SizeBuffer();
 			WriteHeader(Command.INFO1_READ | Command.INFO1_NOBINDATA, 0, fieldCount, 0);
 			WriteKey(key);
 			End();
@@ -96,7 +90,7 @@ namespace Aerospike.Client
 		public void SetRead(Key key)
 		{
 			int fieldCount = EstimateKeySize(key);
-			Begin();
+			SizeBuffer();
 			WriteHeader(Command.INFO1_READ | Command.INFO1_GET_ALL, 0, fieldCount, 0);
 			WriteKey(key);
 			End();
@@ -104,28 +98,35 @@ namespace Aerospike.Client
 
 		public void SetRead(Key key, string[] binNames)
 		{
-			int fieldCount = EstimateKeySize(key);
-
-			foreach (string binName in binNames)
+			if (binNames != null)
 			{
-				EstimateOperationSize(binName);
-			}
-			Begin();
-			WriteHeader(Command.INFO1_READ, 0, fieldCount, binNames.Length);
-			WriteKey(key);
+				int fieldCount = EstimateKeySize(key);
 
-			foreach (string binName in binNames)
-			{
-				WriteOperation(binName, Operation.Type.READ);
+				foreach (string binName in binNames)
+				{
+					EstimateOperationSize(binName);
+				}
+				SizeBuffer();
+				WriteHeader(Command.INFO1_READ, 0, fieldCount, binNames.Length);
+				WriteKey(key);
+
+				foreach (string binName in binNames)
+				{
+					WriteOperation(binName, Operation.Type.READ);
+				}
+				End();
 			}
-			End();
+			else
+			{
+				SetRead(key);
+			}
 		}
 
 		public void SetReadHeader(Key key)
 		{
 			int fieldCount = EstimateKeySize(key);
 			EstimateOperationSize((string)null);
-			Begin();
+			SizeBuffer();
     
 			// The server does not currently return record header data with INFO1_NOBINDATA attribute set.
 			// The workaround is to request a non-existent bin.
@@ -174,7 +175,7 @@ namespace Aerospike.Client
 				}
 				EstimateOperationSize(operation);
 			}
-			Begin();
+			SizeBuffer();
 
 			if (writeAttr != 0)
 			{
@@ -204,7 +205,7 @@ namespace Aerospike.Client
 			byte[] argBytes = MsgPacker.Pack(args);
 			fieldCount += EstimateUdfSize(packageName, functionName, argBytes);
 
-			Begin();
+			SizeBuffer();
 			WriteHeader(0, Command.INFO2_WRITE, fieldCount, 0);
 			WriteKey(key);
 			WriteField(packageName, FieldType.UDF_PACKAGE_NAME);
@@ -219,9 +220,9 @@ namespace Aerospike.Client
 			List<Key> keys = batchNamespace.keys;
 			int byteSize = keys.Count * Command.DIGEST_SIZE;
 
-			sendOffset = MSG_TOTAL_HEADER_SIZE + ByteUtil.EstimateSizeUtf8(batchNamespace.ns) + FIELD_HEADER_SIZE + byteSize + FIELD_HEADER_SIZE;
+			dataOffset = MSG_TOTAL_HEADER_SIZE + ByteUtil.EstimateSizeUtf8(batchNamespace.ns) + FIELD_HEADER_SIZE + byteSize + FIELD_HEADER_SIZE;
     
-			Begin();
+			SizeBuffer();
     
 			WriteHeader(Command.INFO1_READ | Command.INFO1_NOBINDATA, 0, 2, 0);
 			WriteField(batchNamespace.ns, FieldType.NAMESPACE);
@@ -230,8 +231,8 @@ namespace Aerospike.Client
 			foreach (Key key in keys)
 			{
 				byte[] digest = key.digest;
-				Array.Copy(digest, 0, sendBuffer, sendOffset, digest.Length);
-				sendOffset += digest.Length;
+				Array.Copy(digest, 0, dataBuffer, dataOffset, digest.Length);
+				dataOffset += digest.Length;
 			}
 			End();
 		}
@@ -242,7 +243,7 @@ namespace Aerospike.Client
 			List<Key> keys = batchNamespace.keys;
 			int byteSize = keys.Count * SyncCommand.DIGEST_SIZE;
 
-			sendOffset = MSG_TOTAL_HEADER_SIZE + ByteUtil.EstimateSizeUtf8(batchNamespace.ns) + FIELD_HEADER_SIZE + byteSize + FIELD_HEADER_SIZE;
+			dataOffset = MSG_TOTAL_HEADER_SIZE + ByteUtil.EstimateSizeUtf8(batchNamespace.ns) + FIELD_HEADER_SIZE + byteSize + FIELD_HEADER_SIZE;
 
 			if (binNames != null)
 			{
@@ -252,7 +253,7 @@ namespace Aerospike.Client
 				}
 			}
 
-			Begin();
+			SizeBuffer();
 
 			int operationCount = (binNames == null)? 0 : binNames.Count;
 			WriteHeader(readAttr, 0, 2, operationCount);
@@ -262,8 +263,8 @@ namespace Aerospike.Client
 			foreach (Key key in keys)
 			{
 				byte[] digest = key.digest;
-				Array.Copy(digest, 0, sendBuffer, sendOffset, digest.Length);
-				sendOffset += digest.Length;
+				Array.Copy(digest, 0, dataBuffer, dataOffset, digest.Length);
+				dataOffset += digest.Length;
 			}
 
 			if (binNames != null)
@@ -282,18 +283,18 @@ namespace Aerospike.Client
 
 			if (ns != null)
 			{
-				sendOffset += ByteUtil.EstimateSizeUtf8(ns) + FIELD_HEADER_SIZE;
+				dataOffset += ByteUtil.EstimateSizeUtf8(ns) + FIELD_HEADER_SIZE;
 				fieldCount++;
 			}
 
 			if (setName != null)
 			{
-				sendOffset += ByteUtil.EstimateSizeUtf8(setName) + FIELD_HEADER_SIZE;
+				dataOffset += ByteUtil.EstimateSizeUtf8(setName) + FIELD_HEADER_SIZE;
 				fieldCount++;
 			}
 
 			// Estimate scan options size.
-			sendOffset += 2 + FIELD_HEADER_SIZE;
+			dataOffset += 2 + FIELD_HEADER_SIZE;
 			fieldCount++;
 
 			if (binNames != null)
@@ -304,7 +305,7 @@ namespace Aerospike.Client
 				}
 			}
 
-			Begin();
+			SizeBuffer();
 			byte readAttr = (byte)Command.INFO1_READ;
 
 			if (!policy.includeBinData)
@@ -333,8 +334,8 @@ namespace Aerospike.Client
 			{
 				priority |= 0x08;
 			}
-			sendBuffer[sendOffset++] = priority;
-			sendBuffer[sendOffset++] = (byte)policy.scanPercent;
+			dataBuffer[dataOffset++] = priority;
+			dataBuffer[dataOffset++] = (byte)policy.scanPercent;
 
 			if (binNames != null)
 			{
@@ -352,17 +353,17 @@ namespace Aerospike.Client
 
 			if (key.ns != null)
 			{
-				sendOffset += ByteUtil.EstimateSizeUtf8(key.ns) + FIELD_HEADER_SIZE;
+				dataOffset += ByteUtil.EstimateSizeUtf8(key.ns) + FIELD_HEADER_SIZE;
 				fieldCount++;
 			}
 
 			if (key.setName != null)
 			{
-				sendOffset += ByteUtil.EstimateSizeUtf8(key.setName) + FIELD_HEADER_SIZE;
+				dataOffset += ByteUtil.EstimateSizeUtf8(key.setName) + FIELD_HEADER_SIZE;
 				fieldCount++;
 			}
 
-			sendOffset += key.digest.Length + FIELD_HEADER_SIZE;
+			dataOffset += key.digest.Length + FIELD_HEADER_SIZE;
 			fieldCount++;
 
 			return fieldCount;
@@ -370,40 +371,32 @@ namespace Aerospike.Client
 
 		public int EstimateUdfSize(string packageName, string functionName, byte[] bytes)
 		{
-			sendOffset += ByteUtil.EstimateSizeUtf8(packageName) + FIELD_HEADER_SIZE;
-			sendOffset += ByteUtil.EstimateSizeUtf8(functionName) + FIELD_HEADER_SIZE;
-			sendOffset += bytes.Length;
+			dataOffset += ByteUtil.EstimateSizeUtf8(packageName) + FIELD_HEADER_SIZE;
+			dataOffset += ByteUtil.EstimateSizeUtf8(functionName) + FIELD_HEADER_SIZE;
+			dataOffset += bytes.Length;
 			return 3;
 		}
 
 		public void EstimateOperationSize(Bin bin)
 		{
-			sendOffset += ByteUtil.EstimateSizeUtf8(bin.name) + OPERATION_HEADER_SIZE;
-			sendOffset += bin.value.EstimateSize();
+			dataOffset += ByteUtil.EstimateSizeUtf8(bin.name) + OPERATION_HEADER_SIZE;
+			dataOffset += bin.value.EstimateSize();
 		}
 
 		public void EstimateOperationSize(Operation operation)
 		{
-			sendOffset += ByteUtil.EstimateSizeUtf8(operation.binName) + OPERATION_HEADER_SIZE;
-			sendOffset += operation.binValue.EstimateSize();
+			dataOffset += ByteUtil.EstimateSizeUtf8(operation.binName) + OPERATION_HEADER_SIZE;
+			dataOffset += operation.binValue.EstimateSize();
 		}
 
 		public void EstimateOperationSize(string binName)
 		{
-			sendOffset += ByteUtil.EstimateSizeUtf8(binName) + OPERATION_HEADER_SIZE;
+			dataOffset += ByteUtil.EstimateSizeUtf8(binName) + OPERATION_HEADER_SIZE;
 		}
 
 		public void EstimateOperationSize()
 		{
-			sendOffset += OPERATION_HEADER_SIZE;
-		}
-
-		public void Begin()
-		{
-			if (sendOffset > sendBuffer.Length)
-			{
-				sendBuffer = ThreadLocalData1.ResizeBuffer(sendOffset);
-			}
+			dataOffset += OPERATION_HEADER_SIZE;
 		}
 
 		/// <summary>
@@ -436,24 +429,24 @@ namespace Aerospike.Client
 				expiration = policy.expiration;
 			}
 			// Write all header data except total size which must be written last. 
-			sendBuffer[8] = MSG_REMAINING_HEADER_SIZE; // Message header length.
-			sendBuffer[9] = (byte)readAttr;
-			sendBuffer[10] = (byte)writeAttr;
-			sendBuffer[11] = 0; // info3
-			sendBuffer[12] = 0; // unused
-			sendBuffer[13] = 0; // clear the result code
-			ByteUtil.IntToBytes((uint)generation, sendBuffer, 14);
-			ByteUtil.IntToBytes((uint)expiration, sendBuffer, 18);
+			dataBuffer[8] = MSG_REMAINING_HEADER_SIZE; // Message header length.
+			dataBuffer[9] = (byte)readAttr;
+			dataBuffer[10] = (byte)writeAttr;
+			dataBuffer[11] = 0; // info3
+			dataBuffer[12] = 0; // unused
+			dataBuffer[13] = 0; // clear the result code
+			ByteUtil.IntToBytes((uint)generation, dataBuffer, 14);
+			ByteUtil.IntToBytes((uint)expiration, dataBuffer, 18);
 
 			// Initialize timeout. It will be written later.
-			sendBuffer[22] = 0;
-			sendBuffer[23] = 0;
-			sendBuffer[24] = 0;
-			sendBuffer[25] = 0;
+			dataBuffer[22] = 0;
+			dataBuffer[23] = 0;
+			dataBuffer[24] = 0;
+			dataBuffer[25] = 0;
 
-			ByteUtil.ShortToBytes((ushort)fieldCount, sendBuffer, 26);
-			ByteUtil.ShortToBytes((ushort)operationCount, sendBuffer, 28);
-			sendOffset = MSG_TOTAL_HEADER_SIZE;
+			ByteUtil.ShortToBytes((ushort)fieldCount, dataBuffer, 26);
+			ByteUtil.ShortToBytes((ushort)operationCount, dataBuffer, 28);
+			dataOffset = MSG_TOTAL_HEADER_SIZE;
 		}
 
 		/// <summary>
@@ -462,17 +455,17 @@ namespace Aerospike.Client
 		public void WriteHeader(int readAttr, int writeAttr, int fieldCount, int operationCount)
 		{
 			// Write all header data except total size which must be written last. 
-			sendBuffer[8] = MSG_REMAINING_HEADER_SIZE; // Message header length.
-			sendBuffer[9] = (byte)readAttr;
-			sendBuffer[10] = (byte)writeAttr;
+			dataBuffer[8] = MSG_REMAINING_HEADER_SIZE; // Message header length.
+			dataBuffer[9] = (byte)readAttr;
+			dataBuffer[10] = (byte)writeAttr;
 
 			for (int i = 11; i < 26; i++)
 			{
-				sendBuffer[i] = 0;
+				dataBuffer[i] = 0;
 			}
-			ByteUtil.ShortToBytes((ushort)fieldCount, sendBuffer, 26);
-			ByteUtil.ShortToBytes((ushort)operationCount, sendBuffer, 28);
-			sendOffset = MSG_TOTAL_HEADER_SIZE;
+			ByteUtil.ShortToBytes((ushort)fieldCount, dataBuffer, 26);
+			ByteUtil.ShortToBytes((ushort)operationCount, dataBuffer, 28);
+			dataOffset = MSG_TOTAL_HEADER_SIZE;
 		}
 
 		public void WriteKey(Key key)
@@ -493,81 +486,83 @@ namespace Aerospike.Client
 
 		public void WriteOperation(Bin bin, Operation.Type operationType)
 		{
-			int nameLength = ByteUtil.StringToUtf8(bin.name, sendBuffer, sendOffset + OPERATION_HEADER_SIZE);
-			int valueLength = bin.value.Write(sendBuffer, sendOffset + OPERATION_HEADER_SIZE + nameLength);
+			int nameLength = ByteUtil.StringToUtf8(bin.name, dataBuffer, dataOffset + OPERATION_HEADER_SIZE);
+			int valueLength = bin.value.Write(dataBuffer, dataOffset + OPERATION_HEADER_SIZE + nameLength);
 
-			ByteUtil.IntToBytes((uint)(nameLength + valueLength + 4), sendBuffer, sendOffset);
-			sendOffset += 4;
-			sendBuffer[sendOffset++] = Operation.GetProtocolType(operationType);
-			sendBuffer[sendOffset++] = (byte) bin.value.Type;
-			sendBuffer[sendOffset++] = (byte) 0;
-			sendBuffer[sendOffset++] = (byte) nameLength;
-			sendOffset += nameLength + valueLength;
+			ByteUtil.IntToBytes((uint)(nameLength + valueLength + 4), dataBuffer, dataOffset);
+			dataOffset += 4;
+			dataBuffer[dataOffset++] = Operation.GetProtocolType(operationType);
+			dataBuffer[dataOffset++] = (byte) bin.value.Type;
+			dataBuffer[dataOffset++] = (byte) 0;
+			dataBuffer[dataOffset++] = (byte) nameLength;
+			dataOffset += nameLength + valueLength;
 		}
 
 		public void WriteOperation(Operation operation)
 		{
-			int nameLength = ByteUtil.StringToUtf8(operation.binName, sendBuffer, sendOffset + OPERATION_HEADER_SIZE);
-			int valueLength = operation.binValue.Write(sendBuffer, sendOffset + OPERATION_HEADER_SIZE + nameLength);
+			int nameLength = ByteUtil.StringToUtf8(operation.binName, dataBuffer, dataOffset + OPERATION_HEADER_SIZE);
+			int valueLength = operation.binValue.Write(dataBuffer, dataOffset + OPERATION_HEADER_SIZE + nameLength);
 
-			ByteUtil.IntToBytes((uint)(nameLength + valueLength + 4), sendBuffer, sendOffset);
-			sendOffset += 4;
-			sendBuffer[sendOffset++] = Operation.GetProtocolType(operation.type);
-			sendBuffer[sendOffset++] = (byte) operation.binValue.Type;
-			sendBuffer[sendOffset++] = (byte) 0;
-			sendBuffer[sendOffset++] = (byte) nameLength;
-			sendOffset += nameLength + valueLength;
+			ByteUtil.IntToBytes((uint)(nameLength + valueLength + 4), dataBuffer, dataOffset);
+			dataOffset += 4;
+			dataBuffer[dataOffset++] = Operation.GetProtocolType(operation.type);
+			dataBuffer[dataOffset++] = (byte) operation.binValue.Type;
+			dataBuffer[dataOffset++] = (byte) 0;
+			dataBuffer[dataOffset++] = (byte) nameLength;
+			dataOffset += nameLength + valueLength;
 		}
 
 		public void WriteOperation(string name, Operation.Type operationType)
 		{
-			int nameLength = ByteUtil.StringToUtf8(name, sendBuffer, sendOffset + OPERATION_HEADER_SIZE);
+			int nameLength = ByteUtil.StringToUtf8(name, dataBuffer, dataOffset + OPERATION_HEADER_SIZE);
 
-			ByteUtil.IntToBytes((uint)(nameLength + 4), sendBuffer, sendOffset);
-			sendOffset += 4;
-			sendBuffer[sendOffset++] = Operation.GetProtocolType(operationType);
-			sendBuffer[sendOffset++] = (byte) 0;
-			sendBuffer[sendOffset++] = (byte) 0;
-			sendBuffer[sendOffset++] = (byte) nameLength;
-			sendOffset += nameLength;
+			ByteUtil.IntToBytes((uint)(nameLength + 4), dataBuffer, dataOffset);
+			dataOffset += 4;
+			dataBuffer[dataOffset++] = Operation.GetProtocolType(operationType);
+			dataBuffer[dataOffset++] = (byte) 0;
+			dataBuffer[dataOffset++] = (byte) 0;
+			dataBuffer[dataOffset++] = (byte) nameLength;
+			dataOffset += nameLength;
 		}
 
 		public void WriteOperation(Operation.Type operationType)
 		{
-			ByteUtil.IntToBytes(4, sendBuffer, sendOffset);
-			sendOffset += 4;
-			sendBuffer[sendOffset++] = Operation.GetProtocolType(operationType);
-			sendBuffer[sendOffset++] = 0;
-			sendBuffer[sendOffset++] = 0;
-			sendBuffer[sendOffset++] = 0;
+			ByteUtil.IntToBytes(4, dataBuffer, dataOffset);
+			dataOffset += 4;
+			dataBuffer[dataOffset++] = Operation.GetProtocolType(operationType);
+			dataBuffer[dataOffset++] = 0;
+			dataBuffer[dataOffset++] = 0;
+			dataBuffer[dataOffset++] = 0;
 		}
 
 		public void WriteField(string str, int type)
 		{
-			int len = ByteUtil.StringToUtf8(str, sendBuffer, sendOffset + FIELD_HEADER_SIZE);
+			int len = ByteUtil.StringToUtf8(str, dataBuffer, dataOffset + FIELD_HEADER_SIZE);
 			WriteFieldHeader(len, type);
-			sendOffset += len;
+			dataOffset += len;
 		}
 
 		public void WriteField(byte[] bytes, int type)
 		{
-			Array.Copy(bytes, 0, sendBuffer, sendOffset + FIELD_HEADER_SIZE, bytes.Length);
+			Array.Copy(bytes, 0, dataBuffer, dataOffset + FIELD_HEADER_SIZE, bytes.Length);
 			WriteFieldHeader(bytes.Length, type);
-			sendOffset += bytes.Length;
+			dataOffset += bytes.Length;
 		}
 
 		public void WriteFieldHeader(int size, int type)
 		{
-			ByteUtil.IntToBytes((uint)size+1, sendBuffer, sendOffset);
-			sendOffset += 4;
-			sendBuffer[sendOffset++] = (byte)type;
+			ByteUtil.IntToBytes((uint)size+1, dataBuffer, dataOffset);
+			dataOffset += 4;
+			dataBuffer[dataOffset++] = (byte)type;
 		}
 
 		public void End()
 		{
 			// Write total size of message which is the current offset.
-			ulong size = ((ulong)sendOffset - 8) | (CL_MSG_VERSION << 56) | (AS_MSG_TYPE << 48);
-			ByteUtil.LongToBytes(size, sendBuffer, 0);
+			ulong size = ((ulong)dataOffset - 8) | (CL_MSG_VERSION << 56) | (AS_MSG_TYPE << 48);
+			ByteUtil.LongToBytes(size, dataBuffer, 0);
 		}
+
+		protected internal abstract void SizeBuffer();
 	}
 }

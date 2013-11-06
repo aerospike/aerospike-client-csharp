@@ -146,11 +146,8 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if queue is full</exception>
 		public void Put(WritePolicy policy, WriteListener listener, Key key, params Bin[] bins)
 		{
-			Command command = new Command();
-			command.SetWrite(policy, Operation.Type.WRITE, key, bins);
-
-			AsyncWrite async = new AsyncWrite(cluster, key, listener);
-			async.Execute(policy, command);
+			AsyncWrite async = new AsyncWrite(cluster, policy, listener, key, bins, Operation.Type.WRITE);
+			async.Execute();
 		}
 
 		//-------------------------------------------------------
@@ -174,11 +171,8 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if queue is full</exception>
 		public void Append(WritePolicy policy, WriteListener listener, Key key, params Bin[] bins)
 		{
-			Command command = new Command();
-			command.SetWrite(policy, Operation.Type.APPEND, key, bins);
-
-			AsyncWrite async = new AsyncWrite(cluster, key, listener);
-			async.Execute(policy, command);
+			AsyncWrite async = new AsyncWrite(cluster, policy, listener, key, bins, Operation.Type.APPEND);
+			async.Execute();
 		}
 
 		/// <summary>
@@ -198,11 +192,8 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if queue is full</exception>
 		public void Prepend(WritePolicy policy, WriteListener listener, Key key, params Bin[] bins)
 		{
-			Command command = new Command();
-			command.SetWrite(policy, Operation.Type.PREPEND, key, bins);
-
-			AsyncWrite async = new AsyncWrite(cluster, key, listener);
-			async.Execute(policy, command);
+			AsyncWrite async = new AsyncWrite(cluster, policy, listener, key, bins, Operation.Type.PREPEND);
+			async.Execute();
 		}
 
 		//-------------------------------------------------------
@@ -226,11 +217,8 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if queue is full</exception>
 		public void Add(WritePolicy policy, WriteListener listener, Key key, params Bin[] bins)
 		{
-			Command command = new Command();
-			command.SetWrite(policy, Operation.Type.ADD, key, bins);
-
-			AsyncWrite async = new AsyncWrite(cluster, key, listener);
-			async.Execute(policy, command);
+			AsyncWrite async = new AsyncWrite(cluster, policy, listener, key, bins, Operation.Type.ADD);
+			async.Execute();
 		}
 
 		//-------------------------------------------------------
@@ -251,11 +239,8 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if queue is full</exception>
 		public void Delete(WritePolicy policy, DeleteListener listener, Key key)
 		{
-			Command command = new Command();
-			command.SetDelete(policy, key);
-
-			AsyncDelete async = new AsyncDelete(cluster, key, listener);
-			async.Execute(policy, command);
+			AsyncDelete async = new AsyncDelete(cluster, policy, key, listener);
+			async.Execute();
 		}
 
 		//-------------------------------------------------------
@@ -276,11 +261,8 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if queue is full</exception>
 		public void Touch(WritePolicy policy, WriteListener listener, Key key)
 		{
-			Command command = new Command();
-			command.SetTouch(policy, key);
-
-			AsyncWrite async = new AsyncWrite(cluster, key, listener);
-			async.Execute(policy, command);
+			AsyncTouch async = new AsyncTouch(cluster, policy, listener, key);
+			async.Execute();
 		}
 
 		//-------------------------------------------------------
@@ -301,11 +283,8 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if queue is full</exception>
 		public void Exists(Policy policy, ExistsListener listener, Key key)
 		{
-			Command command = new Command();
-			command.SetExists(key);
-
-			AsyncExists async = new AsyncExists(cluster, key, listener);
-			async.Execute(policy, command);
+			AsyncExists async = new AsyncExists(cluster, policy, key, listener);
+			async.Execute();
 		}
 
 		/// <summary>
@@ -360,11 +339,8 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if queue is full</exception>
 		public void Get(Policy policy, RecordListener listener, Key key)
 		{
-			Command command = new Command();
-			command.SetRead(key);
-
-			AsyncRead async = new AsyncRead(cluster, key, listener);
-			async.Execute(policy, command);
+			AsyncRead async = new AsyncRead(cluster, policy, listener, key, null);
+			async.Execute();
 		}
 
 		/// <summary>
@@ -382,11 +358,8 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if queue is full</exception>
 		public void Get(Policy policy, RecordListener listener, Key key, params string[] binNames)
 		{
-			Command command = new Command();
-			command.SetRead(key, binNames);
-
-			AsyncRead async = new AsyncRead(cluster, key, listener);
-			async.Execute(policy, command);
+			AsyncRead async = new AsyncRead(cluster, policy, listener, key, binNames);
+			async.Execute();
 		}
 
 		/// <summary>
@@ -403,11 +376,8 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if queue is full</exception>
 		public void GetHeader(Policy policy, RecordListener listener, Key key)
 		{
-			Command command = new Command();
-			command.SetReadHeader(key);
-
-			AsyncRead async = new AsyncRead(cluster, key, listener);
-			async.Execute(policy, command);
+			AsyncReadHeader async = new AsyncReadHeader(cluster, policy, listener, key);
+			async.Execute();
 		}
 
 		//-------------------------------------------------------
@@ -546,11 +516,8 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if queue is full</exception>
 		public void Operate(WritePolicy policy, RecordListener listener, Key key, params Operation[] operations)
 		{
-			Command command = new Command();
-			command.SetOperate(policy, key, operations);
-
-			AsyncRead async = new AsyncRead(cluster, key, listener);
-			async.Execute(policy, command);
+			AsyncOperate async = new AsyncOperate(cluster, policy, listener, key, operations);
+			async.Execute();
 		}
 
 		//-------------------------------------------------------

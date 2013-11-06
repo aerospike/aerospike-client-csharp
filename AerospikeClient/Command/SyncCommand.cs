@@ -43,10 +43,10 @@ namespace Aerospike.Client
 					try
 					{
 						// Reset timeout in send buffer (destined for server) and socket.
-						ByteUtil.IntToBytes((uint)remainingMillis, sendBuffer, 22);
+						ByteUtil.IntToBytes((uint)remainingMillis, dataBuffer, 22);
 
 						// Send command.
-						conn.Write(sendBuffer, sendOffset);
+						conn.Write(dataBuffer, dataOffset);
 
 						// Parse results.
 						ParseResult(conn);
@@ -125,6 +125,16 @@ namespace Aerospike.Client
 				Log.Debug("Client timeout: timeout=" + policy.timeout + " iterations=" + i + " failedNodes=" + failedNodes + " failedConns=" + failedConns);
 			}
 			throw new AerospikeException.Timeout();
+		}
+
+		protected internal sealed override void SizeBuffer()
+		{
+			this.dataBuffer = ThreadLocalData1.GetBuffer();
+
+			if (dataOffset > dataBuffer.Length)
+			{
+				dataBuffer = ThreadLocalData1.ResizeBuffer(dataOffset);
+			}
 		}
 
 		protected internal abstract Node GetNode();

@@ -11,18 +11,30 @@ namespace Aerospike.Client
 {
 	public sealed class AsyncDelete : AsyncSingleCommand
 	{
+		private readonly WritePolicy policy;
 		private readonly DeleteListener listener;
 		private bool existed;
 
-		public AsyncDelete(AsyncCluster cluster, Key key, DeleteListener listener) 
+		public AsyncDelete(AsyncCluster cluster, WritePolicy policy, Key key, DeleteListener listener) 
 			: base(cluster, key)
 		{
+			this.policy = (policy == null) ? new WritePolicy() : policy;
 			this.listener = listener;
+		}
+
+		protected internal override Policy GetPolicy()
+		{
+			return policy;
+		}
+
+		protected internal override void WriteBuffer()
+		{
+			SetDelete(policy, key);
 		}
 
 		protected internal override void ParseResult()
 		{
-			int resultCode = byteBuffer[5];
+			int resultCode = dataBuffer[5];
 
 			if (resultCode == 0)
 			{

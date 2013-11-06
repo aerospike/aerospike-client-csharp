@@ -11,12 +11,33 @@ namespace Aerospike.Client
 {
 	public sealed class AsyncBatchExistsSequence : AsyncMultiCommand
 	{
+		private readonly BatchNode.BatchNamespace batchNamespace;
+		private readonly Policy policy;
 		private readonly ExistsSequenceListener listener;
 
-		public AsyncBatchExistsSequence(AsyncMultiExecutor parent, AsyncCluster cluster, AsyncNode node, ExistsSequenceListener listener) 
-			: base(parent, cluster, node, false)
+		public AsyncBatchExistsSequence
+		(
+			AsyncMultiExecutor parent,
+			AsyncCluster cluster,
+			AsyncNode node,
+			BatchNode.BatchNamespace batchNamespace,
+			Policy policy,
+			ExistsSequenceListener listener
+		) : base(parent, cluster, node, false)
 		{
+			this.batchNamespace = batchNamespace;
+			this.policy = policy;
 			this.listener = listener;
+		}
+
+		protected internal override Policy GetPolicy()
+		{
+			return policy;
+		}
+
+		protected internal override void WriteBuffer()
+		{
+			SetBatchExists(batchNamespace);
 		}
 
 		protected internal override void ParseRow(Key key)

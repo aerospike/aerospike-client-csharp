@@ -36,16 +36,16 @@ namespace Aerospike.Client
 		protected internal void WriteHeader(int readAttr, int fieldCount, int operationCount)
 		{
 			// Write all header data except total size which must be written last. 
-			sendBuffer[8] = MSG_REMAINING_HEADER_SIZE; // Message header length.
-			sendBuffer[9] = (byte)readAttr;
+			dataBuffer[8] = MSG_REMAINING_HEADER_SIZE; // Message header length.
+			dataBuffer[9] = (byte)readAttr;
 
 			for (int i = 10; i < 26; i++)
 			{
-				sendBuffer[i] = 0;
+				dataBuffer[i] = 0;
 			}
-			ByteUtil.ShortToBytes((ushort)fieldCount, sendBuffer, 26);
-			ByteUtil.ShortToBytes((ushort)operationCount, sendBuffer, 28);
-			sendOffset = MSG_TOTAL_HEADER_SIZE;
+			ByteUtil.ShortToBytes((ushort)fieldCount, dataBuffer, 26);
+			ByteUtil.ShortToBytes((ushort)operationCount, dataBuffer, 28);
+			dataOffset = MSG_TOTAL_HEADER_SIZE;
 		}
 
 		protected internal sealed override void ParseResult(Connection conn)

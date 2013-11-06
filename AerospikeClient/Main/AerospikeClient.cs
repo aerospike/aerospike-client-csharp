@@ -674,7 +674,7 @@ namespace Aerospike.Client
 				}
 				node.PutConnection(conn);
 			}
-			catch (Exception e)
+			catch (Exception)
 			{
 				conn.Close();
 				throw;

@@ -49,6 +49,8 @@ namespace Aerospike.Demo
 		/// </summary>
 		public void RunExample(Arguments args, int threadMax)
 		{
+			this.host = args.host;
+			this.port = args.port;
 			this.ns = args.ns;
 			this.setName = args.set;
 			this.binName = args.singleBin ? "" : "demobin";  // Single bin servers don't need a bin name.

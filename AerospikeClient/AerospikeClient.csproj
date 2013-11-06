@@ -69,6 +69,9 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Async\AsyncReadHeader.cs" />
+    <Compile Include="Async\AsyncOperate.cs" />
+    <Compile Include="Async\AsyncTouch.cs" />
     <Compile Include="Main\AerospikeClient.cs" />
     <Compile Include="Main\AerospikeException.cs" />
     <Compile Include="Async\AsyncBatchExecutor.cs" />
