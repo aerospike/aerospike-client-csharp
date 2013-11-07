@@ -15,24 +15,38 @@ namespace Aerospike.Client
 	public sealed class Filter
 	{
 		/// <summary>
-		/// Create single filter for query.
+		/// Create long equality filter for query.
 		/// </summary>
 		/// <param name="name">bin name</param>
 		/// <param name="value">filter value</param>
-		public static Filter Equal(string name, Value value)
+		public static Filter Equal(string name, long value)
 		{
-			return new Filter(name, value, value);
+			Value val = Value.Get(value);
+			return new Filter(name, val, val);
+		}
+
+		/// <summary>
+		/// Create string equality filter for query.
+		/// </summary>
+		/// <param name="name">bin name</param>
+		/// <param name="value">filter value</param>
+		public static Filter Equal(string name, string value)
+		{
+			Value val = Value.Get(value);
+			return new Filter(name, val, val);
 		}
 
 		/// <summary>
 		/// Create range filter for query.
+		/// Range arguments must be longs or integers which can be cast to longs.
+		/// String ranges are not supported.
 		/// </summary>
 		/// <param name="name">bin name</param>
 		/// <param name="begin">filter begin value</param>
 		/// <param name="end">filter end value</param>
-		public static Filter Range(string name, Value begin, Value end)
+		public static Filter Range(string name, long begin, long end)
 		{
-			return new Filter(name, begin, end);
+			return new Filter(name, Value.Get(begin), Value.Get(end));
 		}
 
 		private readonly string name;

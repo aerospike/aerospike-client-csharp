@@ -63,7 +63,7 @@ namespace Aerospike.Demo
 
 		private void RunQuery(AerospikeClient client, Arguments args, string indexName, string binName, string valuePrefix)
 		{
-			Value filter = Value.Get(valuePrefix + 3);
+			string filter = valuePrefix + 3;
 
 			console.Info("Query for: ns={0} set={1} index={2} bin={3} filter={4}", 
 				args.ns, args.set, indexName, binName, filter);
@@ -86,7 +86,7 @@ namespace Aerospike.Demo
 					Record record = rs.Record;
 					string result = (string)record.GetValue(binName);
 
-					if (result.Equals(filter.Object))
+					if (result.Equals(filter))
 					{
 						console.Info("Record found: namespace={0} set={1} digest={2} bin={3} value={4}", 
 							key.ns, key.setName, ByteUtil.BytesToHexString(key.digest), binName, result);

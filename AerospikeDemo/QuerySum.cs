@@ -70,8 +70,8 @@ namespace Aerospike.Demo
 
 		private void RunQuery(AerospikeClient client, Arguments args, string indexName, string binName)
 		{
-			Value begin = Value.Get(4);
-			Value end = Value.Get(7);
+			int begin = 4;
+			int end = 7;
 
 			console.Info("Query for:ns={0} set={1} index={2} bin={3} >= {4} <= {5}", 
 				args.ns, args.set, indexName, binName, begin, end);

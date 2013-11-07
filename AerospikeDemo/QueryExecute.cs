@@ -69,8 +69,8 @@ namespace Aerospike.Demo
 
 		private void RunQueryExecute(AerospikeClient client, Arguments args, string indexName, string binName1, string binName2)
 		{
-			Value begin = Value.Get(3);
-			Value end = Value.Get(9);
+			int begin = 3;
+			int end = 9;
 
 			console.Info("For ns={0} set={1} index={2} bin={3} >= {4} <= {5}", args.ns, args.set, indexName, binName1, begin, end);
 			console.Info("Even integers: add 100 to existing " + binName1);
@@ -87,8 +87,8 @@ namespace Aerospike.Demo
 
 		private void ValidateRecords(AerospikeClient client, Arguments args, string indexName, string binName1, string binName2, int size)
 		{
-			Value begin = Value.Get(1);
-			Value end = Value.Get(size + 100);
+			int begin = 1;
+			int end = size + 100;
 
 			console.Info("Validate records");
 
