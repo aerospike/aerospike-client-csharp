@@ -128,6 +128,11 @@ namespace Aerospike.Client
 		public const int SCAN_ABORT = 15;
 
 		/// <summary>
+		/// Client operation not supported on connected server.
+		/// </summary>
+		public const int UNSUPPORTED_FEATURE = 16;
+
+		/// <summary>
 		/// Database command data is invalid.
 		/// </summary>
 		public const int INVALID_DATA = 99;
@@ -254,6 +259,9 @@ namespace Aerospike.Client
 
 			case SCAN_ABORT:
 				return "Scan aborted";
+
+			case UNSUPPORTED_FEATURE:
+				return "Unsupported server feature";
 
 			case INVALID_DATA:
 				return "Invalid command data";
