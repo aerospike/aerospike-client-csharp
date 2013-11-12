@@ -130,6 +130,13 @@ namespace Aerospike.Client
 			{
 				string[] friendInfo = friend.Split(':');
 				string host = friendInfo[0];
+				string alternativeHost;
+
+				if (cluster.ipMap != null && cluster.ipMap.TryGetValue(host, out alternativeHost))
+				{
+					host = alternativeHost;
+				}
+
 				int port = Convert.ToInt32(friendInfo[1]);
 				Host alias = new Host(host, port);
 				Node node;

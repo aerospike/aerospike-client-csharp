@@ -7,6 +7,8 @@
  * redistribution rights covered by individual contract. Please check your
  * contract for exact rights and responsibilities.
  */
+using System.Collections.Generic;
+
 namespace Aerospike.Client
 {
 	/// <summary>
@@ -36,5 +38,15 @@ namespace Aerospike.Client
 		/// Throw exception if host connection fails during addHost().
 		/// </summary>
 		public bool failIfNotConnected;
+
+		/// <summary>
+		/// A IP translation table is used in cases where different clients use different server 
+		/// IP addresses.  This may be necessary when using clients from both inside and outside 
+		/// a local area network.  Default is no translation.
+		/// 
+		/// The key is the IP address returned from friend info requests to other servers.  The 
+		/// value is the real IP address used to connect to the server.
+		/// </summary>
+		public Dictionary<string, string> ipMap;
 	}
 }

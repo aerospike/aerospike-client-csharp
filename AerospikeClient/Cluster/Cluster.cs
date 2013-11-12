@@ -28,6 +28,9 @@ namespace Aerospike.Client
 		// Hints for best node for a partition
 		private volatile Dictionary<string, Node[]> partitionWriteMap;
 
+		// IP translations.
+		protected internal readonly Dictionary<string, string> ipMap;
+
 		// Random node index.
 		private int nodeIndex;
 
@@ -50,6 +53,7 @@ namespace Aerospike.Client
 			connectionQueueSize = policy.maxThreads + 1; // Add one connection for tend thread.
 			connectionTimeout = policy.timeout;
 			maxSocketIdle = policy.maxSocketIdle;
+			ipMap = policy.ipMap;
 			aliases = new Dictionary<Host, Node>();
 			nodes = new Node[0];
 			partitionWriteMap = new Dictionary<string, Node[]>();
