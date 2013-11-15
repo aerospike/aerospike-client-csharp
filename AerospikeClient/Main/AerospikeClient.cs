@@ -733,7 +733,9 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Apply user defined function on records that match the statement filter.
 		/// Records are not returned to the client.
-		/// This call will block until the command is complete.
+		/// This asynchronous server call will return before command is complete.  
+		/// The user can optionally wait for command completion by using the returned 
+		/// ExecuteTask instance.
 		/// <para>
 		/// This method is only supported by Aerospike 3 servers.
 		/// </para>
@@ -744,10 +746,11 @@ namespace Aerospike.Client
 		/// <param name="functionName">function name</param>
 		/// <param name="functionArgs">to pass to function name, if any</param>
 		/// <exception cref="AerospikeException">if command fails</exception>
-		public void Execute(Policy policy, Statement statement, string packageName, string functionName, params Value[] functionArgs)
+		public ExecuteTask Execute(Policy policy, Statement statement, string packageName, string functionName, params Value[] functionArgs)
 		{
 			ServerExecutor executor = new ServerExecutor(policy, statement, packageName, functionName, functionArgs);
 			executor.Execute(cluster.Nodes);
+			return new ExecuteTask(cluster, statement);
 		}
 
 		//--------------------------------------------------------

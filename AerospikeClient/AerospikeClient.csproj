@@ -166,6 +166,7 @@
       <DesignTime>True</DesignTime>
       <DependentUpon>Resources.resx</DependentUpon>
     </Compile>
+    <Compile Include="Query\ExecuteTask.cs" />
     <Compile Include="Query\Filter.cs" />
     <Compile Include="Query\IndexType.cs" />
     <Compile Include="Query\KeyRecord.cs" />

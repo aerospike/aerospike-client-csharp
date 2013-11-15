@@ -82,7 +82,8 @@ namespace Aerospike.Demo
 			stmt.SetSetName(args.set);
 			stmt.SetFilters(Filter.Range(binName1, begin, end));
 
-			client.Execute(args.policy, stmt, "record_example", "processRecord", Value.Get(binName1), Value.Get(binName2), Value.Get(100));
+			ExecuteTask task = client.Execute(args.policy, stmt, "record_example", "processRecord", Value.Get(binName1), Value.Get(binName2), Value.Get(100));
+			task.Wait();
 		}
 
 		private void ValidateRecords(AerospikeClient client, Arguments args, string indexName, string binName1, string binName2, int size)

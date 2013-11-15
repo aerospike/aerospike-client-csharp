@@ -24,6 +24,12 @@ namespace Aerospike.Client
 			this.policy = policy;
 			this.statement = statement;
 			this.statement.SetAggregateFunction(packageName, functionName, functionArgs, false);
+
+			if (this.statement.taskId == 0)
+			{
+				Random r = new Random();
+				this.statement.taskId = r.Next();
+			}
 		}
 
 		public void Execute(Node[] nodes)
