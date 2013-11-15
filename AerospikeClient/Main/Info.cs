@@ -7,6 +7,7 @@
  * redistribution rights covered by individual contract. Please check your
  * contract for exact rights and responsibilities.
  */
+using System;
 using System.Text;
 using System.Net;
 using System.Net.Sockets;
@@ -274,7 +275,33 @@ namespace Aerospike.Client
 		}
 
 		//-------------------------------------------------------
-		// Get Info via Socket Address
+		// Get Info via Node
+		//-------------------------------------------------------
+
+		/// <summary>
+		/// Get one info value by name from the specified database server node.
+		/// </summary>
+		/// <param name="node">server node</param>
+		/// <param name="name">name of value to retrieve</param>
+		public static string Request(Node node, string name)
+		{
+			Connection conn = node.GetConnection(DEFAULT_TIMEOUT);
+
+			try
+			{
+				string response = Info.Request(conn, name);
+				node.PutConnection(conn);
+				return response;
+			}
+			catch (Exception)
+			{
+				conn.Close();
+				throw;
+			}
+		}
+
+		//-------------------------------------------------------
+		// Get Info via Connection
 		//-------------------------------------------------------
 
 		/// <summary>

@@ -61,8 +61,7 @@ namespace Aerospike.Client
 
 			foreach (Node node in nodes)
 			{
-				Connection conn = node.GetConnection(1000);
-				string response = Info.Request(conn, command);
+				string response = Info.Request(node, command);
 				string find = "job_id=" + taskId + ':';
 				int index = response.IndexOf(find);
 
