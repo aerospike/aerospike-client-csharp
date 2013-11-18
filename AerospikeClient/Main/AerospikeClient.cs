@@ -630,14 +630,19 @@ namespace Aerospike.Client
 
 		/// <summary>
 		/// Register package containing user defined functions with server.
+		/// This asynchronous server call will return before command is complete.
+		/// The user can optionally wait for command completion by using the returned
+		/// RegisterTask instance.
+		/// <para>
 		/// This method is only supported by Aerospike 3 servers.
+		/// </para>
 		/// </summary>
 		/// <param name="policy">generic configuration parameters, pass in null for defaults</param>
 		/// <param name="clientPath">path of client file containing user defined functions, relative to current directory</param>
 		/// <param name="serverPath">path to store user defined functions on the server, relative to configured script directory.</param>
 		/// <param name="language">language of user defined functions</param>
 		/// <exception cref="AerospikeException">if register fails</exception>
-		public void Register(Policy policy, string clientPath, string serverPath, Language language)
+		public RegisterTask Register(Policy policy, string clientPath, string serverPath, Language language)
 		{
 			string content = Util.ReadFileEncodeBase64(clientPath);
 
@@ -673,6 +678,7 @@ namespace Aerospike.Client
 					}
 				}
 				node.PutConnection(conn);
+				return new RegisterTask(cluster, serverPath);
 			}
 			catch (Exception)
 			{
@@ -812,6 +818,9 @@ namespace Aerospike.Client
 
 		/// <summary>
 		/// Create secondary index.
+		/// This asynchronous server call will return before command is complete.
+		/// The user can optionally wait for command completion by using the returned
+		/// IndexTask instance.
 		/// <para>
 		/// This method is only supported by Aerospike 3 servers.
 		/// </para>
@@ -823,7 +832,7 @@ namespace Aerospike.Client
 		/// <param name="binName">bin name that data is indexed on</param>
 		/// <param name="indexType">type of secondary index</param>
 		/// <exception cref="AerospikeException">if index create fails</exception>
-		public void CreateIndex(Policy policy, string ns, string setName, string indexName, string binName, IndexType indexType)
+		public IndexTask CreateIndex(Policy policy, string ns, string setName, string indexName, string binName, IndexType indexType)
 		{
 			StringBuilder sb = new StringBuilder(500);
 			sb.Append("sindex-create:ns=");
@@ -847,11 +856,19 @@ namespace Aerospike.Client
 			// Send index command to one node. That node will distribute the command to other nodes.
 			String response = SendInfoCommand(policy, sb.ToString());
 
-			// Command is successful if OK or index already exists.
-			if (!response.Equals("OK", StringComparison.CurrentCultureIgnoreCase) && !response.Equals("FAIL:208:ERR FOUND"))
+			if (response.Equals("OK", StringComparison.CurrentCultureIgnoreCase))
 			{
-				throw new AerospikeException("Create index failed: " + response);
+				// Return task that could optionally be polled for completion.
+				return new IndexTask(cluster, ns, indexName);
 			}
+
+			if (response.Equals("FAIL:208:ERR FOUND"))
+			{
+				// Index has already been created.  Do not need to poll for completion.
+				return new IndexTask();
+			}
+
+			throw new AerospikeException("Create index failed: " + response);
 		}
 
 		/// <summary>

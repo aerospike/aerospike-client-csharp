@@ -37,13 +37,8 @@ namespace Aerospike.Demo
 
 			Policy policy = new Policy();
 			policy.timeout = 0; // Do not timeout on index create.
-			client.CreateIndex(policy, args.ns, args.set, indexName, binName, IndexType.NUMERIC);
-
-			// The server index command distribution to other nodes is done asynchronously.  
-			// Therefore, the server may return before the index is available on all nodes.  
-			// Hard code sleep for now.
-			// TODO: Fix server so control is only returned when index is available on all nodes.
-			Util.Sleep(1000);
+			IndexTask task = client.CreateIndex(policy, args.ns, args.set, indexName, binName, IndexType.NUMERIC);
+			task.Wait();
 		}
 
 		private void WriteRecords(AerospikeClient client, Arguments args, string keyPrefix, string binName, int size)

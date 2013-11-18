@@ -12,48 +12,25 @@ namespace Aerospike.Client
 	/// <summary>
 	/// Task used to poll for long running execute job completion.
 	/// </summary>
-	public sealed class ExecuteTask
+	public sealed class ExecuteTask : Task
 	{
-		private Cluster cluster;
-		private int taskId;
-		private bool scan;
+		private readonly int taskId;
+		private readonly bool scan;
 
 		/// <summary>
-		/// Initialize task with fields needed to query server nodes for query status.
+		/// Initialize task with fields needed to query server nodes.
 		/// </summary>
 		public ExecuteTask(Cluster cluster, Statement statement)
+			: base(cluster, false)
 		{
-			this.cluster = cluster;
 			this.taskId = statement.taskId;
 			this.scan = statement.filters == null;
 		}
 
 		/// <summary>
-		/// Wait for asynchronous task to complete using default sleep interval.
+		/// Query all nodes for task completion status.
 		/// </summary>
-		public void Wait()
-		{
-			Wait(1000);
-		}
-
-		/// <summary>
-		/// Wait for asynchronous task to complete using given sleep interval..
-		/// </summary>
-		public void Wait(int sleepInterval)
-		{
-			bool done = false;
-			
-			while (! done)
-			{
-				Util.Sleep(sleepInterval);
-				done = RequestStatus();
-			}
-		}
-
-		/// <summary>
-		/// Query all nodes for task status.
-		/// </summary>
-		private bool RequestStatus()
+		public override bool IsDone()
 		{
 			string command = (scan) ? "scan-list" : "query-list";
 			Node[] nodes = cluster.Nodes;
