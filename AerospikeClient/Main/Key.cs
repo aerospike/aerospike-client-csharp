@@ -103,6 +103,27 @@ namespace Aerospike.Client
 		/// <param name="ns">namespace</param>
 		/// <param name="setName">optional set name, enter null when set does not exist</param>
 		/// <param name="key">user defined unique identifier within set.</param>
+		/// <param name="offset">byte array segment offset</param>
+		/// <param name="length">byte array segment length</param>
+		/// <exception cref="AerospikeException">if digest computation fails</exception>
+		public Key(string ns, string setName, byte[] key, int offset, int length)
+		{
+			this.ns = ns;
+			this.setName = setName;
+			Value value = new Value.ByteSegmentValue(key, offset, length);
+			this.userKey = value;
+			digest = ComputeDigest(setName, value);
+		}
+
+		/// <summary>
+		/// Initialize key from namespace, optional set name and user key.
+		/// The set name and user defined key are converted to a digest before sending to the server.
+		/// The server handles record identifiers by digest only.
+		/// If the user key needs to be stored on the server, the key should be stored in a bin.
+		/// </summary>
+		/// <param name="ns">namespace</param>
+		/// <param name="setName">optional set name, enter null when set does not exist</param>
+		/// <param name="key">user defined unique identifier within set.</param>
 		/// <exception cref="AerospikeException">if digest computation fails</exception>
 		public Key(string ns, string setName, long key)
 		{

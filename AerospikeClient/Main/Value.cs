@@ -51,6 +51,21 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
+		/// Get byte array segment or null value instance.
+		/// </summary>
+		public static Value Get(byte[] value, int offset, int length)
+		{
+			if (value == null)
+			{
+				return new NullValue();
+			}
+			else
+			{
+				return new ByteSegmentValue(value, offset, length);
+			}
+		}
+
+		/// <summary>
 		/// Get long value instance.
 		/// </summary>
 		public static Value Get(long value)
@@ -426,6 +441,85 @@ namespace Aerospike.Client
 			public override string ToString()
 			{
 				return ByteUtil.BytesToHexString(bytes);
+			}
+		}
+
+		/// <summary>
+		/// Byte segment value.
+		/// </summary>
+		public sealed class ByteSegmentValue : Value
+		{
+			private readonly byte[] bytes;
+			private readonly int offset;
+			private readonly int length;
+
+			public ByteSegmentValue(byte[] bytes, int offset, int length)
+			{
+				this.bytes = bytes;
+				this.offset = offset;
+				this.length = length;
+			}
+
+			public override int EstimateSize()
+			{
+				return length;
+
+			}
+
+			public override int Write(byte[] buffer, int targetOffset)
+			{
+				Array.Copy(bytes, offset, buffer, targetOffset, length);
+				return length;
+			}
+
+			public override void Pack(Packer packer)
+			{
+				MsgPacker.PackBytes(packer, bytes, offset, length);
+			}
+
+			public override int Type
+			{
+				get
+				{
+					return ParticleType.BLOB;
+				}
+			}
+
+			public override object Object
+			{
+				get
+				{
+					return this;
+				}
+			}
+
+			public override string ToString()
+			{
+				return ByteUtil.BytesToHexString(bytes, offset, length);
+			}
+
+			public byte[] Bytes
+			{
+				get
+				{
+					return bytes;
+				}
+			}
+
+			public int Offset
+			{
+				get
+				{
+					return offset;
+				}
+			}
+
+			public int Length
+			{
+				get
+				{
+					return length;
+				}
 			}
 		}
 

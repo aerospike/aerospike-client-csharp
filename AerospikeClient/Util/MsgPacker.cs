@@ -59,6 +59,14 @@ namespace Aerospike.Client
 			packer.PackRaw(buf);
 		}
 
+		public static void PackBytes(Packer packer, byte[] val, int offset, int length)
+		{
+			byte[] buf = new byte[length + 1];
+			buf[0] = ParticleType.BLOB;
+			Array.Copy(val, offset, buf, 1, length);
+			packer.PackRaw(buf);
+		}
+
 		public static void PackString(Packer packer, string val)
 		{
 			int size = ByteUtil.EstimateSizeUtf8(val);

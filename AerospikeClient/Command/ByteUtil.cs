@@ -119,6 +119,17 @@ namespace Aerospike.Client
 			return sb.ToString();
 		}
 
+		public static string BytesToHexString(byte[] buf, int offset, int len)
+		{
+			StringBuilder sb = new StringBuilder(len * 2);
+
+			for (int i = offset; i < len; i++)
+			{
+				sb.Append(string.Format("{0:x2}", buf[i]));
+			}
+			return sb.ToString();
+		}
+
 		public static object BytesToObject(byte[] buf, int offset, int len)
 		{
 			if (len <= 0)

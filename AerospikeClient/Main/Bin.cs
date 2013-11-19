@@ -63,6 +63,20 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
+		/// Constructor, specifying bin name and byte array segment value.
+		/// For servers configured as "single-bin", enter a null or empty name.
+		/// </summary>
+		/// <param name="name">bin name, current limit is 14 characters</param>
+		/// <param name="value">byte array value</param>
+		/// <param name="offset">byte array segment offset</param>
+		/// <param name="length">byte array segment length</param>
+		public Bin(string name, byte[] value, int offset, int length)
+		{
+			this.name = name;
+			this.value = Value.Get(value, offset, length);
+		}
+
+		/// <summary>
 		/// Constructor, specifying bin name and long value.
 		/// For servers configured as "single-bin", enter a null or empty name.
 		/// </summary>
