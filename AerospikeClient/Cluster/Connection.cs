@@ -39,14 +39,26 @@ namespace Aerospike.Client
 			{
 				socket = new Socket(address.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
 				socket.NoDelay = true;
-				socket.SendTimeout = timeoutMillis;
-				socket.ReceiveTimeout = timeoutMillis;
+
+				if (timeoutMillis > 0)
+				{
+					socket.SendTimeout = timeoutMillis;
+					socket.ReceiveTimeout = timeoutMillis;
+				}
+				else
+				{
+					// Do not wait indefinitely on connection if no timeout is specified.
+					// Retry functionality will attempt to reconnect later.
+					timeoutMillis = 2000;
+				}
 
 				IAsyncResult result = socket.BeginConnect(address, null, null);
 				WaitHandle wait = result.AsyncWaitHandle;
 
 				try
 				{
+					// Never allow timeoutMillis of zero here because WaitOne returns 
+					// immediately when that happens!
 					if (wait.WaitOne(timeoutMillis))
 					{
 						socket.EndConnect(result);
