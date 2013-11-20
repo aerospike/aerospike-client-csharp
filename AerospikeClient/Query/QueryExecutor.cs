@@ -97,15 +97,18 @@ namespace Aerospike.Client
 				exception = cause;
 			}
 
-			foreach (QueryThread thread in threads)
+			if (threads != null)
 			{
-				try
+				foreach (QueryThread thread in threads)
 				{
-					thread.StopThread();
-					thread.Interrupt();
-				}
-				catch (Exception)
-				{
+					try
+					{
+						thread.StopThread();
+						thread.Interrupt();
+					}
+					catch (Exception)
+					{
+					}
 				}
 			}
 			SendCompleted();
