@@ -78,7 +78,7 @@ namespace Aerospike.Client
 
 		protected internal override QueryCommand CreateCommand(Node node)
 		{
-			return new QueryAggregateCommand(node, inputQueue);
+			return new QueryAggregateCommand(node, policy, statement, inputQueue);
 		}
 
 		protected internal override void SendCompleted()

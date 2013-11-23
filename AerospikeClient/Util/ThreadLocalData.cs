@@ -12,21 +12,21 @@ using System.Threading;
 
 namespace Aerospike.Client
 {
-	public sealed class ThreadLocalData2
+	public sealed class ThreadLocalData
 	{
 		//private static final int MAX_BUFFER_SIZE = 1024 * 1024;  // 1 MB
 		private const int THREAD_LOCAL_CUTOFF = 1024 * 128; // 128 KB
 
 		[ThreadStatic]
-		private static byte[] BufferThreadLocal2;
+		private static byte[] BufferThreadLocal;
 
 		public static byte[] GetBuffer()
 		{
-			if (BufferThreadLocal2 == null)
+			if (BufferThreadLocal == null)
 			{
-				BufferThreadLocal2 = new byte[8192];
+				BufferThreadLocal = new byte[8192];
 			}
-			return BufferThreadLocal2;
+			return BufferThreadLocal;
 		}
 
 		public static byte[] ResizeBuffer(int size)
@@ -36,17 +36,17 @@ namespace Aerospike.Client
 			{
 				if (Log.DebugEnabled())
 				{
-					Log.Debug("Thread " + Thread.CurrentThread.ManagedThreadId + " allocate buffer2 on heap " + size);
+					Log.Debug("Thread " + Thread.CurrentThread.ManagedThreadId + " allocate buffer on heap " + size);
 				}
 				return new byte[size];
 			}
 
 			if (Log.DebugEnabled())
 			{
-				Log.Debug("Thread " + Thread.CurrentThread.ManagedThreadId + " resize buffer2 to " + size);
+				Log.Debug("Thread " + Thread.CurrentThread.ManagedThreadId + " resize buffer to " + size);
 			}
-			BufferThreadLocal2 = new byte[size];
-			return BufferThreadLocal2;
+			BufferThreadLocal = new byte[size];
+			return BufferThreadLocal;
 		}
 	}
 }

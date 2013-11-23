@@ -38,7 +38,7 @@ namespace Aerospike.Client
 
 			foreach (Node node in nodes)
 			{
-				ScanCommand command = new ScanCommand(node, callback);
+				ScanCommand command = new ScanCommand(node, policy, ns, setName, callback, binNames);
 				ScanThread thread = new ScanThread(this, command);
 				threads[count++] = thread;
 				thread.Start();
@@ -96,11 +96,8 @@ namespace Aerospike.Client
 		private sealed class ScanThread
 		{
 			private readonly ScanExecutor parent;
+			private readonly ScanCommand command;
 			private readonly Thread thread;
-
-			// It's ok to construct ScanCommand in another thread,
-			// because ScanCommand no longer uses thread local data.
-			internal readonly ScanCommand command;
 
 			public ScanThread(ScanExecutor parent, ScanCommand command)
 			{
@@ -118,8 +115,7 @@ namespace Aerospike.Client
 			{
 				try
 				{
-					command.SetScan(parent.policy, parent.ns, parent.setName, parent.binNames);
-					command.Execute(parent.policy);
+					command.Execute();
 				}
 				catch (Exception e)
 				{

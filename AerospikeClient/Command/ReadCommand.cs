@@ -12,61 +12,48 @@ using System.Collections.Generic;
 
 namespace Aerospike.Client
 {
-	public sealed class ReadCommand : SingleCommand
+	public class ReadCommand : SingleCommand
 	{
+		private readonly Policy policy;
+		private readonly string[] binNames;
 		private Record record;
-		private int resultCode;
 
-		public ReadCommand(Cluster cluster, Key key) : base(cluster, key)
+		public ReadCommand(Cluster cluster, Policy policy, Key key, string[] binNames) 
+			: base(cluster, key)
 		{
+			this.policy = (policy == null) ? new Policy() : policy;
+			this.binNames = binNames;
+		}
+
+		protected internal sealed override Policy GetPolicy()
+		{
+			return policy;
+		}
+
+		protected internal override void WriteBuffer()
+		{
+			SetRead(key, binNames);
 		}
 
 		protected internal override void ParseResult(Connection conn)
 		{
 			// Read header.		
-			conn.ReadFully(receiveBuffer, MSG_TOTAL_HEADER_SIZE);
+			conn.ReadFully(dataBuffer, MSG_TOTAL_HEADER_SIZE);
 
-			// A number of these are commented out because we just don't care enough to read
-			// that section of the header. If we do care, uncomment and check!        
-			long sz = ByteUtil.BytesToLong(receiveBuffer, 0);
-			byte headerLength = receiveBuffer[8];
-	//		byte info1 = header[9];
-	//		byte info2 = header[10];
-	//      byte info3 = header[11];
-	//      byte unused = header[12];
-			resultCode = receiveBuffer[13];
-			int generation = ByteUtil.BytesToInt(receiveBuffer, 14);
-			int expiration = ByteUtil.BytesToInt(receiveBuffer, 18);
-	//		int transactionTtl = get_ntohl(header, 22);
-			int fieldCount = ByteUtil.BytesToShort(receiveBuffer, 26); // almost certainly 0
-			int opCount = ByteUtil.BytesToShort(receiveBuffer, 28);
+			long sz = ByteUtil.BytesToLong(dataBuffer, 0);
+			byte headerLength = dataBuffer[8];
+			int resultCode = dataBuffer[13];
+			int generation = ByteUtil.BytesToInt(dataBuffer, 14);
+			int expiration = ByteUtil.BytesToInt(dataBuffer, 18);
+			int fieldCount = ByteUtil.BytesToShort(dataBuffer, 26); // almost certainly 0
+			int opCount = ByteUtil.BytesToShort(dataBuffer, 28);
 			int receiveSize = ((int)(sz & 0xFFFFFFFFFFFFL)) - headerLength;
-			/*
-			byte version = (byte) (((int)(sz >> 56)) & 0xff);
-			if (version != MSG_VERSION) {
-				if (Log.debugEnabled()) {
-					Log.debug("read header: incorrect version.");
-				}
-			}
-			
-			byte type = (byte) (((int)(sz >> 48)) & 0xff);
-			if (type != MSG_TYPE) {
-				if (Log.debugEnabled()) {
-					Log.debug("read header: incorrect message type, aborting receive");
-				}
-			}
-			
-			if (headerLength != MSG_REMAINING_HEADER_SIZE) {
-				if (Log.debugEnabled()) {
-					Log.debug("read header: unexpected header size, aborting");
-				}
-			}*/
 
 			// Read remaining message bytes.
 			if (receiveSize > 0)
 			{
-				ResizeReceiveBuffer(receiveSize);
-				conn.ReadFully(receiveBuffer, receiveSize);
+				SizeBuffer(receiveSize);
+				conn.ReadFully(dataBuffer, receiveSize);
 			}
 
 			if (resultCode != 0)
@@ -79,7 +66,7 @@ namespace Aerospike.Client
 				if (resultCode == ResultCode.UDF_BAD_RESPONSE)
 				{
 					record = ParseRecord(opCount, fieldCount, generation, expiration);
-					HandleUdfError();
+					HandleUdfError(resultCode);
 				}
 				throw new AerospikeException(resultCode);
 			}
@@ -93,7 +80,7 @@ namespace Aerospike.Client
 			record = ParseRecord(opCount, fieldCount, generation, expiration);
 		}
 
-		private void HandleUdfError()
+		private void HandleUdfError(int resultCode)
 		{
 			object obj;
 
@@ -132,21 +119,21 @@ namespace Aerospike.Client
 				// Just skip over all the fields
 				for (int i = 0; i < fieldCount; i++)
 				{
-					int fieldSize = ByteUtil.BytesToInt(receiveBuffer, receiveOffset);
+					int fieldSize = ByteUtil.BytesToInt(dataBuffer, receiveOffset);
 					receiveOffset += 4 + fieldSize;
 				}
 			}
 
 			for (int i = 0 ; i < opCount; i++)
 			{
-				int opSize = ByteUtil.BytesToInt(receiveBuffer, receiveOffset);
-				byte particleType = receiveBuffer[receiveOffset + 5];
-				byte nameSize = receiveBuffer[receiveOffset + 7];
-				string name = ByteUtil.Utf8ToString(receiveBuffer, receiveOffset + 8, nameSize);
+				int opSize = ByteUtil.BytesToInt(dataBuffer, receiveOffset);
+				byte particleType = dataBuffer[receiveOffset + 5];
+				byte nameSize = dataBuffer[receiveOffset + 7];
+				string name = ByteUtil.Utf8ToString(dataBuffer, receiveOffset + 8, nameSize);
 				receiveOffset += 4 + 4 + nameSize;
 
 				int particleBytesSize = (int)(opSize - (4 + nameSize));
-				object value = ByteUtil.BytesToParticle(particleType, receiveBuffer, receiveOffset, particleBytesSize);
+				object value = ByteUtil.BytesToParticle(particleType, dataBuffer, receiveOffset, particleBytesSize);
 				receiveOffset += particleBytesSize;
 
 				if (bins == null)
@@ -164,11 +151,6 @@ namespace Aerospike.Client
 			{
 				return record;
 			}
-		}
-
-		public int GetResultCode()
-		{
-			return resultCode;
 		}
 	}
 }

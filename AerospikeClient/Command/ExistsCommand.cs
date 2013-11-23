@@ -7,17 +7,20 @@
  * redistribution rights covered by individual contract. Please check your
  * contract for exact rights and responsibilities.
  */
+using System;
+using System.Collections.Generic;
+
 namespace Aerospike.Client
 {
-	public sealed class DeleteCommand : SingleCommand
+	public sealed class ExistsCommand : SingleCommand
 	{
-		private readonly WritePolicy policy;
-		private bool existed;
+		private readonly Policy policy;
+		private bool exists;
 
-		public DeleteCommand(Cluster cluster, WritePolicy policy, Key key) 
+		public ExistsCommand(Cluster cluster, Policy policy, Key key)
 			: base(cluster, key)
 		{
-			this.policy = (policy == null) ? new WritePolicy() : policy;
+			this.policy = (policy == null) ? new Policy() : policy;
 		}
 
 		protected internal override Policy GetPolicy()
@@ -27,7 +30,7 @@ namespace Aerospike.Client
 
 		protected internal override void WriteBuffer()
 		{
-			SetDelete(policy, key);
+			SetExists(key);
 		}
 
 		protected internal override void ParseResult(Connection conn)
@@ -41,13 +44,13 @@ namespace Aerospike.Client
 			{
 				throw new AerospikeException(resultCode);
 			}
-			existed = resultCode == 0;
+			exists = resultCode == 0;
 			EmptySocket(conn);
 		}
 
-		public bool Existed()
+		public bool Exists()
 		{
-			return existed;
+			return exists;
 		}
 	}
 }

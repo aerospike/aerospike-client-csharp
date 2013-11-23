@@ -11,31 +11,40 @@ namespace Aerospike.Client
 {
 	public sealed class WriteCommand : SingleCommand
 	{
-		public WriteCommand(Cluster cluster, Key key) : base(cluster, key)
+		private readonly WritePolicy policy;
+		private readonly Bin[] bins;
+		private readonly Operation.Type operation;
+
+		public WriteCommand(Cluster cluster, WritePolicy policy, Key key, Bin[] bins, Operation.Type operation) 
+			: base(cluster, key)
 		{
+			this.policy = (policy == null) ? new WritePolicy() : policy;
+			this.bins = bins;
+			this.operation = operation;
+		}
+
+		protected internal override Policy GetPolicy()
+		{
+			return policy;
+		}
+
+		protected internal override void WriteBuffer()
+		{
+			SetWrite(policy, operation, key, bins);
 		}
 
 		protected internal override void ParseResult(Connection conn)
 		{
 			// Read header.		
-			conn.ReadFully(receiveBuffer, MSG_TOTAL_HEADER_SIZE);
+			conn.ReadFully(dataBuffer, MSG_TOTAL_HEADER_SIZE);
 
-			long sz = ByteUtil.BytesToLong(receiveBuffer, 0);
-			byte headerLength = receiveBuffer[8];
-			int resultCode = receiveBuffer[13];
-			int receiveSize = ((int)(sz & 0xFFFFFFFFFFFFL)) - headerLength;
-
-			// Read remaining message bytes.
-			if (receiveSize > 0)
-			{
-				ResizeReceiveBuffer(receiveSize);
-				conn.ReadFully(receiveBuffer, receiveSize);
-			}
+			int resultCode = dataBuffer[13];
 
 			if (resultCode != 0)
 			{
 				throw new AerospikeException(resultCode);
 			}
+			EmptySocket(conn);
 		}
 	}
 }

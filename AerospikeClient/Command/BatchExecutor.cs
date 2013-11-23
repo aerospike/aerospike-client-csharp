@@ -55,15 +55,13 @@ namespace Aerospike.Client
 				{
 					if (records != null)
 					{
-						BatchCommandGet command = new BatchCommandGet(batchNode.node, keyMap, binNames, records);
-						command.SetBatchGet(batchNamespace, binNames, readAttr);
-						command.Execute(policy);
+						BatchCommandGet command = new BatchCommandGet(batchNode.node, batchNamespace, policy, keyMap, binNames, records, readAttr);
+						command.Execute();
 					}
 					else
 					{
-						BatchCommandExists command = new BatchCommandExists(batchNode.node, keyMap, existsArray);
-						command.SetBatchExists(batchNamespace);
-						command.Execute(policy);
+						BatchCommandExists command = new BatchCommandExists(batchNode.node, batchNamespace, policy, keyMap, existsArray);
+						command.Execute();
 					}
 				}
 			}

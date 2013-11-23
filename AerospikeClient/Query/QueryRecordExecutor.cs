@@ -21,7 +21,7 @@ namespace Aerospike.Client
 
 		protected internal override QueryCommand CreateCommand(Node node)
 		{
-			return new QueryRecordCommand(node, recordSet);
+			return new QueryRecordCommand(node, policy, statement, recordSet);
 		}
 
 		protected internal override void SendCompleted()

@@ -39,7 +39,7 @@ namespace Aerospike.Client
 
 			foreach (Node node in nodes)
 			{
-				ServerCommand command = new ServerCommand(node);
+				ServerCommand command = new ServerCommand(node, policy, statement);
 				ServerThread thread = new ServerThread(this, command);
 				threads[count++] = thread;
 				thread.Start();
@@ -116,7 +116,7 @@ namespace Aerospike.Client
 			{
 				try
 				{
-					command.Query(parent.policy, parent.statement);
+					command.Execute();
 				}
 				catch (Exception e)
 				{

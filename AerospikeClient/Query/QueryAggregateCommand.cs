@@ -17,8 +17,8 @@ namespace Aerospike.Client
 	{
 		private readonly BlockingCollection<object> inputQueue;
 
-		public QueryAggregateCommand(Node node, BlockingCollection<object> inputQueue)
-			: base(node)
+		public QueryAggregateCommand(Node node, Policy policy, Statement statement, BlockingCollection<object> inputQueue)
+			: base(node, policy, statement)
 		{
 			this.inputQueue = inputQueue;
 		}
@@ -26,12 +26,12 @@ namespace Aerospike.Client
 		protected internal override bool ParseRecordResults(int receiveSize)
 		{
 			// Read/parse remaining message bytes one record at a time.
-			receiveOffset = 0;
+			dataOffset = 0;
 
-			while (receiveOffset < receiveSize)
+			while (dataOffset < receiveSize)
 			{
 				ReadBytes(MSG_REMAINING_HEADER_SIZE);
-				int resultCode = receiveBuffer[5];
+				int resultCode = dataBuffer[5];
 
 				if (resultCode != 0)
 				{
@@ -42,7 +42,7 @@ namespace Aerospike.Client
 					throw new AerospikeException(resultCode);
 				}
 
-				byte info3 = receiveBuffer[3];
+				byte info3 = dataBuffer[3];
 
 				// If this is the end marker of the response, do not proceed further
 				if ((info3 & Command.INFO3_LAST) == Command.INFO3_LAST)
@@ -50,8 +50,8 @@ namespace Aerospike.Client
 					return false;
 				}
 
-				int fieldCount = ByteUtil.BytesToShort(receiveBuffer, 18);
-				int opCount = ByteUtil.BytesToShort(receiveBuffer, 20);
+				int fieldCount = ByteUtil.BytesToShort(dataBuffer, 18);
+				int opCount = ByteUtil.BytesToShort(dataBuffer, 20);
 
 				ParseKey(fieldCount);
 
@@ -62,16 +62,16 @@ namespace Aerospike.Client
 
 				// Parse aggregateValue.
 				ReadBytes(8);
-				int opSize = ByteUtil.BytesToInt(receiveBuffer, 0);
-				byte particleType = receiveBuffer[5];
-				byte nameSize = receiveBuffer[7];
+				int opSize = ByteUtil.BytesToInt(dataBuffer, 0);
+				byte particleType = dataBuffer[5];
+				byte nameSize = dataBuffer[7];
 
 				ReadBytes(nameSize);
-				string name = ByteUtil.Utf8ToString(receiveBuffer, 0, nameSize);
+				string name = ByteUtil.Utf8ToString(dataBuffer, 0, nameSize);
 
 				int particleBytesSize = (int)(opSize - (4 + nameSize));
 				ReadBytes(particleBytesSize);
-				object aggregateValue = LuaInstance.BytesToLua(particleType, receiveBuffer, 0, particleBytesSize);
+				object aggregateValue = LuaInstance.BytesToLua(particleType, dataBuffer, 0, particleBytesSize);
 
 				if (!name.Equals("SUCCESS"))
 				{

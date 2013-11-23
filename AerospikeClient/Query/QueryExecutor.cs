@@ -14,7 +14,7 @@ namespace Aerospike.Client
 {
 	public abstract class QueryExecutor
 	{
-		private readonly QueryPolicy policy;
+		protected internal readonly QueryPolicy policy;
 		protected internal readonly Statement statement;
 		private QueryThread[] threads;
 		private volatile int nextThread;
@@ -156,7 +156,7 @@ namespace Aerospike.Client
 			{
 				try
 				{
-					command.Query(parent.policy, parent.statement);
+					command.Execute();
 				}
 				catch (Exception e)
 				{

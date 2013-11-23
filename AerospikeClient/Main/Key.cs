@@ -343,7 +343,7 @@ namespace Aerospike.Client
 				throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Invalid key: null");
 			}
 
-			byte[] buffer = ThreadLocalData1.GetBuffer();
+			byte[] buffer = ThreadLocalData.GetBuffer();
 			int offset = ByteUtil.StringToUtf8(setName, buffer, 0);
 			buffer[offset++] = (byte)keyType;
 			offset += key.Write(buffer, offset);

@@ -187,9 +187,8 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if write fails</exception>
 		public void Put(WritePolicy policy, Key key, params Bin[] bins)
 		{
-			WriteCommand command = new WriteCommand(cluster, key);
-			command.SetWrite(policy, Operation.Type.WRITE, key, bins);
-			command.Execute(policy);
+			WriteCommand command = new WriteCommand(cluster, policy, key, bins, Operation.Type.WRITE);
+			command.Execute();
 		}
 
 		//-------------------------------------------------------
@@ -208,9 +207,8 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if append fails</exception>
 		public void Append(WritePolicy policy, Key key, params Bin[] bins)
 		{
-			WriteCommand command = new WriteCommand(cluster, key);
-			command.SetWrite(policy, Operation.Type.APPEND, key, bins);
-			command.Execute(policy);
+			WriteCommand command = new WriteCommand(cluster, policy, key, bins, Operation.Type.APPEND);
+			command.Execute();
 		}
 
 		/// <summary>
@@ -225,9 +223,8 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if prepend fails</exception>
 		public void Prepend(WritePolicy policy, Key key, params Bin[] bins)
 		{
-			WriteCommand command = new WriteCommand(cluster, key);
-			command.SetWrite(policy, Operation.Type.PREPEND, key, bins);
-			command.Execute(policy);
+			WriteCommand command = new WriteCommand(cluster, policy, key, bins, Operation.Type.PREPEND);
+			command.Execute();
 		}
 
 		//-------------------------------------------------------
@@ -246,9 +243,8 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if add fails</exception>
 		public void Add(WritePolicy policy, Key key, params Bin[] bins)
 		{
-			WriteCommand command = new WriteCommand(cluster, key);
-			command.SetWrite(policy, Operation.Type.ADD, key, bins);
-			command.Execute(policy);
+			WriteCommand command = new WriteCommand(cluster, policy, key, bins, Operation.Type.ADD);
+			command.Execute();
 		}
 
 		//-------------------------------------------------------
@@ -265,10 +261,9 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if delete fails</exception>
 		public bool Delete(WritePolicy policy, Key key)
 		{
-			DeleteCommand command = new DeleteCommand(cluster, key);
-			command.SetDelete(policy, key);
-			command.Execute(policy);
-			return command.GetResultCode() == ResultCode.OK;
+			DeleteCommand command = new DeleteCommand(cluster, policy, key);
+			command.Execute();
+			return command.Existed();
 		}
 
 		//-------------------------------------------------------
@@ -284,9 +279,8 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if touch fails</exception>
 		public void Touch(WritePolicy policy, Key key)
 		{
-			WriteCommand command = new WriteCommand(cluster, key);
-			command.SetTouch(policy, key);
-			command.Execute(policy);
+			TouchCommand command = new TouchCommand(cluster, policy, key);
+			command.Execute();
 		}
 
 		//-------------------------------------------------------
@@ -303,10 +297,9 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if command fails</exception>
 		public bool Exists(Policy policy, Key key)
 		{
-			ReadCommand command = new ReadCommand(cluster, key);
-			command.SetExists(key);
-			command.Execute(policy);
-			return command.GetResultCode() == ResultCode.OK;
+			ExistsCommand command = new ExistsCommand(cluster, policy, key);
+			command.Execute();
+			return command.Exists();
 		}
 
 		/// <summary>
@@ -338,9 +331,8 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if read fails</exception>
 		public Record Get(Policy policy, Key key)
 		{
-			ReadCommand command = new ReadCommand(cluster, key);
-			command.SetRead(key);
-			command.Execute(policy);
+			ReadCommand command = new ReadCommand(cluster, policy, key, null);
+			command.Execute();
 			return command.Record;
 		}
 
@@ -355,9 +347,8 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if read fails</exception>
 		public Record Get(Policy policy, Key key, params string[] binNames)
 		{
-			ReadCommand command = new ReadCommand(cluster, key);
-			command.SetRead(key, binNames);
-			command.Execute(policy);
+			ReadCommand command = new ReadCommand(cluster, policy, key, binNames);
+			command.Execute();
 			return command.Record;
 		}
 
@@ -371,9 +362,8 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if read fails</exception>
 		public Record GetHeader(Policy policy, Key key)
 		{
-			ReadCommand command = new ReadCommand(cluster, key);
-			command.SetReadHeader(key);
-			command.Execute(policy);
+			ReadHeaderCommand command = new ReadHeaderCommand(cluster, policy, key);
+			command.Execute();
 			return command.Record;
 		}
 
@@ -447,9 +437,8 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if command fails</exception>
 		public Record Operate(WritePolicy policy, Key key, params Operation[] operations)
 		{
-			ReadCommand command = new ReadCommand(cluster, key);
-			command.SetOperate(policy, key, operations);
-			command.Execute(policy);
+			OperateCommand command = new OperateCommand(cluster, policy, key, operations);
+			command.Execute();
 			return command.Record;
 		}
 
@@ -551,9 +540,8 @@ namespace Aerospike.Client
 			// Retry policy must be one-shot for scans.
 			policy.maxRetries = 0;
 
-			ScanCommand command = new ScanCommand(node, callback);
-			command.SetScan(policy, ns, setName, binNames);
-			command.Execute(policy);
+			ScanCommand command = new ScanCommand(node, policy, ns, setName, callback, binNames);
+			command.Execute();
 		}
 
 		//-------------------------------------------------------------------
@@ -706,9 +694,8 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if transaction fails</exception>
 		public object Execute(Policy policy, Key key, string packageName, string functionName, params Value[] args)
 		{
-			ReadCommand command = new ReadCommand(cluster, key);
-			command.SetUdf(key, packageName, functionName, args);
-			command.Execute(policy);
+			ExecuteCommand command = new ExecuteCommand(cluster, policy, key, packageName, functionName, args);
+			command.Execute();
 
 			Record record = command.Record;
 

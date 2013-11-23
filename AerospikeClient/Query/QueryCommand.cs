@@ -11,18 +11,30 @@ namespace Aerospike.Client
 {
 	public abstract class QueryCommand : MultiCommand
 	{
+		private readonly Policy policy;
+		private readonly Statement statement;
 		protected internal volatile bool valid = true;
 
-		public QueryCommand(Node node) : base(node)
+		public QueryCommand(Node node, Policy policy, Statement statement)
+			: base(node)
 		{
+			this.policy = policy;
+			this.statement = statement;
 		}
 
-		public virtual void Query(Policy policy, Statement statement)
+		protected internal override Policy GetPolicy()
+		{
+			return policy;
+		}
+
+		protected internal override void WriteBuffer()
 		{
 			byte[] functionArgBuffer = null;
 			int fieldCount = 0;
 			int filterSize = 0;
 			int binNameSize = 0;
+
+			Begin();
 
 			if (statement.ns != null)
 			{
@@ -101,7 +113,7 @@ namespace Aerospike.Client
 
 			SizeBuffer();
 			byte readAttr = (byte)Command.INFO1_READ;
-			WriteHeader(readAttr, fieldCount, 0);
+			WriteHeader(readAttr, 0, fieldCount, 0);
 
 			if (statement.ns != null)
 			{
@@ -167,7 +179,6 @@ namespace Aerospike.Client
 				WriteField(functionArgBuffer, FieldType.UDF_ARGLIST);
 			}
 			End();
-			Execute(policy);
 		}
 
 		public void Stop()

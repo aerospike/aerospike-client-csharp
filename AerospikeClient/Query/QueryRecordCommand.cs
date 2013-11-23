@@ -15,7 +15,8 @@ namespace Aerospike.Client
 	{
 		private readonly RecordSet recordSet;
 
-		public QueryRecordCommand(Node node, RecordSet recordSet) : base(node)
+		public QueryRecordCommand(Node node, Policy policy, Statement statement, RecordSet recordSet) 
+			: base(node, policy, statement)
 		{
 			this.recordSet = recordSet;
 		}
@@ -23,12 +24,12 @@ namespace Aerospike.Client
 		protected internal override bool ParseRecordResults(int receiveSize)
 		{
 			// Read/parse remaining message bytes one record at a time.
-			receiveOffset = 0;
+			dataOffset = 0;
 
-			while (receiveOffset < receiveSize)
+			while (dataOffset < receiveSize)
 			{
 				ReadBytes(MSG_REMAINING_HEADER_SIZE);
-				int resultCode = receiveBuffer[5];
+				int resultCode = dataBuffer[5];
 
 				if (resultCode != 0)
 				{
@@ -39,7 +40,7 @@ namespace Aerospike.Client
 					throw new AerospikeException(resultCode);
 				}
 
-				byte info3 = receiveBuffer[3];
+				byte info3 = dataBuffer[3];
 
 				// If this is the end marker of the response, do not proceed further
 				if ((info3 & Command.INFO3_LAST) == Command.INFO3_LAST)
@@ -47,10 +48,10 @@ namespace Aerospike.Client
 					return false;
 				}
 
-				int generation = ByteUtil.BytesToInt(receiveBuffer, 6);
-				int expiration = ByteUtil.BytesToInt(receiveBuffer, 10);
-				int fieldCount = ByteUtil.BytesToShort(receiveBuffer, 18);
-				int opCount = ByteUtil.BytesToShort(receiveBuffer, 20);
+				int generation = ByteUtil.BytesToInt(dataBuffer, 6);
+				int expiration = ByteUtil.BytesToInt(dataBuffer, 10);
+				int fieldCount = ByteUtil.BytesToShort(dataBuffer, 18);
+				int opCount = ByteUtil.BytesToShort(dataBuffer, 20);
 
 				Key key = ParseKey(fieldCount);
 
@@ -60,16 +61,16 @@ namespace Aerospike.Client
 				for (int i = 0 ; i < opCount; i++)
 				{
 					ReadBytes(8);
-					int opSize = ByteUtil.BytesToInt(receiveBuffer, 0);
-					byte particleType = receiveBuffer[5];
-					byte nameSize = receiveBuffer[7];
+					int opSize = ByteUtil.BytesToInt(dataBuffer, 0);
+					byte particleType = dataBuffer[5];
+					byte nameSize = dataBuffer[7];
 
 					ReadBytes(nameSize);
-					string name = ByteUtil.Utf8ToString(receiveBuffer, 0, nameSize);
+					string name = ByteUtil.Utf8ToString(dataBuffer, 0, nameSize);
 
 					int particleBytesSize = (int)(opSize - (4 + nameSize));
 					ReadBytes(particleBytesSize);
-					object value = ByteUtil.BytesToParticle(particleType, receiveBuffer, 0, particleBytesSize);
+					object value = ByteUtil.BytesToParticle(particleType, dataBuffer, 0, particleBytesSize);
 
 					if (bins == null)
 					{

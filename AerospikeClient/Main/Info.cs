@@ -55,7 +55,7 @@ namespace Aerospike.Client
 		/// <param name="command">command sent to server</param>
 		public Info(Connection conn, string command)
 		{
-			buffer = ThreadLocalData1.GetBuffer();
+			buffer = ThreadLocalData.GetBuffer();
 
 			// If conservative estimate may be exceeded, get exact estimate
 			// to preserve memory and resize buffer.
@@ -82,7 +82,7 @@ namespace Aerospike.Client
 		/// <param name="commands">commands sent to server</param>
 		public Info(Connection conn, params string[] commands)
 		{
-			buffer = ThreadLocalData1.GetBuffer();
+			buffer = ThreadLocalData.GetBuffer();
 
 			// First, do quick conservative buffer size estimate.
 			offset = 8;
@@ -123,7 +123,7 @@ namespace Aerospike.Client
 		/// <param name="conn">connection to server node</param>
 		public Info(Connection conn)
 		{
-			buffer = ThreadLocalData1.GetBuffer();
+			buffer = ThreadLocalData.GetBuffer();
 			offset = 8; // Skip size field.
 			SendCommand(conn);
 		}
@@ -392,7 +392,7 @@ namespace Aerospike.Client
 		{
 			if (size > buffer.Length)
 			{
-				buffer = ThreadLocalData1.ResizeBuffer(size);
+				buffer = ThreadLocalData.ResizeBuffer(size);
 			}
 		}
 

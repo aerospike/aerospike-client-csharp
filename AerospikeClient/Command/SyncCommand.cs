@@ -15,21 +15,17 @@ namespace Aerospike.Client
 {
 	public abstract class SyncCommand : Command
 	{
-		protected internal byte[] receiveBuffer;
-
-		public void Execute(Policy policy)
+		public void Execute()
 		{
-			if (policy == null)
-			{
-				policy = new Policy();
-			}
-
+			Policy policy = GetPolicy();
 			int maxIterations = policy.maxRetries + 1;
 			int remainingMillis = policy.timeout;
 			DateTime limit = DateTime.Now.AddMilliseconds(remainingMillis);
 			int failedNodes = 0;
 			int failedConns = 0;
 			int i;
+
+			dataBuffer = ThreadLocalData.GetBuffer();
 
 			// Execute command until successful, timed out or maximum iterations have been reached.
 			for (i = 0; i < maxIterations; i++)
@@ -42,6 +38,9 @@ namespace Aerospike.Client
 
 					try
 					{
+						// Set command buffer.
+						WriteBuffer();
+
 						// Reset timeout in send buffer (destined for server) and socket.
 						ByteUtil.IntToBytes((uint)remainingMillis, dataBuffer, 22);
 
@@ -129,11 +128,17 @@ namespace Aerospike.Client
 
 		protected internal sealed override void SizeBuffer()
 		{
-			this.dataBuffer = ThreadLocalData1.GetBuffer();
-
 			if (dataOffset > dataBuffer.Length)
 			{
-				dataBuffer = ThreadLocalData1.ResizeBuffer(dataOffset);
+				dataBuffer = ThreadLocalData.ResizeBuffer(dataOffset);
+			}
+		}
+
+		protected internal void SizeBuffer(int size)
+		{
+			if (size > dataBuffer.Length)
+			{
+				dataBuffer = ThreadLocalData.ResizeBuffer(size);
 			}
 		}
 

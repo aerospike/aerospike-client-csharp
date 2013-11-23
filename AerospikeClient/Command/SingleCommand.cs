@@ -12,26 +12,35 @@ namespace Aerospike.Client
 	public abstract class SingleCommand : SyncCommand
 	{
 		private readonly Cluster cluster;
+		protected internal readonly Key key;
 		private readonly Partition partition;
 
 		public SingleCommand(Cluster cluster, Key key)
 		{
 			this.cluster = cluster;
+			this.key = key;
 			this.partition = new Partition(key);
-			this.receiveBuffer = ThreadLocalData2.GetBuffer();
-		}
-
-		public void ResizeReceiveBuffer(int size)
-		{
-			if (size > receiveBuffer.Length)
-			{
-				receiveBuffer = ThreadLocalData2.ResizeBuffer(size);
-			}
 		}
 
 		protected internal sealed override Node GetNode()
 		{
 			return cluster.GetNode(partition);
+		}
+
+		protected internal void EmptySocket(Connection conn)
+		{
+			// There should not be any more bytes.
+			// Empty the socket to be safe.
+			long sz = ByteUtil.BytesToLong(dataBuffer, 0);
+			int headerLength = dataBuffer[8];
+			int receiveSize = ((int)(sz & 0xFFFFFFFFFFFFL)) - headerLength;
+
+			// Read remaining message bytes.
+			if (receiveSize > 0)
+			{
+				SizeBuffer(receiveSize);
+				conn.ReadFully(dataBuffer, receiveSize);
+			}
 		}
 	}
 }

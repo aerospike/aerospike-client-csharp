@@ -9,12 +9,11 @@
  */
 namespace Aerospike.Client
 {
-	public sealed class DeleteCommand : SingleCommand
+	public sealed class TouchCommand : SingleCommand
 	{
 		private readonly WritePolicy policy;
-		private bool existed;
 
-		public DeleteCommand(Cluster cluster, WritePolicy policy, Key key) 
+		public TouchCommand(Cluster cluster, WritePolicy policy, Key key) 
 			: base(cluster, key)
 		{
 			this.policy = (policy == null) ? new WritePolicy() : policy;
@@ -27,27 +26,21 @@ namespace Aerospike.Client
 
 		protected internal override void WriteBuffer()
 		{
-			SetDelete(policy, key);
+			SetTouch(policy, key);
 		}
 
 		protected internal override void ParseResult(Connection conn)
 		{
-			// Read header.
+			// Read header.		
 			conn.ReadFully(dataBuffer, MSG_TOTAL_HEADER_SIZE);
 
 			int resultCode = dataBuffer[13];
 
-			if (resultCode != 0 && resultCode != ResultCode.KEY_NOT_FOUND_ERROR)
+			if (resultCode != 0)
 			{
 				throw new AerospikeException(resultCode);
 			}
-			existed = resultCode == 0;
 			EmptySocket(conn);
-		}
-
-		public bool Existed()
-		{
-			return existed;
 		}
 	}
 }

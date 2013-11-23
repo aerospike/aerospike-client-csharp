@@ -20,32 +20,15 @@ namespace Aerospike.Client
 
 		private BufferedStream bis;
 		protected internal readonly Node node;
-		protected internal int receiveOffset;
 
 		protected internal MultiCommand(Node node)
 		{
 			this.node = node;
-			this.receiveBuffer = new byte[2048];
 		}
 
 		protected internal sealed override Node GetNode()
 		{
 			return node;
-		}
-
-		protected internal void WriteHeader(int readAttr, int fieldCount, int operationCount)
-		{
-			// Write all header data except total size which must be written last. 
-			dataBuffer[8] = MSG_REMAINING_HEADER_SIZE; // Message header length.
-			dataBuffer[9] = (byte)readAttr;
-
-			for (int i = 10; i < 26; i++)
-			{
-				dataBuffer[i] = 0;
-			}
-			ByteUtil.ShortToBytes((ushort)fieldCount, dataBuffer, 26);
-			ByteUtil.ShortToBytes((ushort)operationCount, dataBuffer, 28);
-			dataOffset = MSG_TOTAL_HEADER_SIZE;
 		}
 
 		protected internal sealed override void ParseResult(Connection conn)
@@ -62,7 +45,7 @@ namespace Aerospike.Client
 				// Read header.
 				ReadBytes(8);
 
-				long size = ByteUtil.BytesToLong(receiveBuffer, 0);
+				long size = ByteUtil.BytesToLong(dataBuffer, 0);
 				int receiveSize = ((int)(size & 0xFFFFFFFFFFFFL));
 
 				if (receiveSize > 0)
@@ -85,23 +68,23 @@ namespace Aerospike.Client
 			for (int i = 0; i < fieldCount; i++)
 			{
 				ReadBytes(4);
-				int fieldlen = ByteUtil.BytesToInt(receiveBuffer, 0);
+				int fieldlen = ByteUtil.BytesToInt(dataBuffer, 0);
 				ReadBytes(fieldlen);
-				int fieldtype = receiveBuffer[0];
+				int fieldtype = dataBuffer[0];
 				int size = fieldlen - 1;
 
 				if (fieldtype == FieldType.DIGEST_RIPE)
 				{
 					digest = new byte[size];
-					Array.Copy(receiveBuffer, 1, digest, 0, size);
+					Array.Copy(dataBuffer, 1, digest, 0, size);
 				}
 				else if (fieldtype == FieldType.NAMESPACE)
 				{
-					ns = ByteUtil.Utf8ToString(receiveBuffer, 1, size);
+					ns = ByteUtil.Utf8ToString(dataBuffer, 1, size);
 				}
 				else if (fieldtype == FieldType.TABLE)
 				{
-					setName = ByteUtil.Utf8ToString(receiveBuffer, 1, size);
+					setName = ByteUtil.Utf8ToString(dataBuffer, 1, size);
 				}
 			}
 			return new Key(ns, digest, setName);
@@ -109,7 +92,7 @@ namespace Aerospike.Client
 
 		protected internal void ReadBytes(int length)
 		{
-			if (length > receiveBuffer.Length)
+			if (length > dataBuffer.Length)
 			{
 				// Corrupted data streams can result in a huge length.
 				// Do a sanity check here.
@@ -117,14 +100,14 @@ namespace Aerospike.Client
 				{
 					throw new System.ArgumentException("Invalid readBytes length: " + length);
 				}
-				receiveBuffer = new byte[length];
+				dataBuffer = new byte[length];
 			}
 
 			int pos = 0;
 
 			while (pos < length)
 			{
-				int count = bis.Read(receiveBuffer, pos, length - pos);
+				int count = bis.Read(dataBuffer, pos, length - pos);
 
 				if (count < 0)
 				{
@@ -132,7 +115,7 @@ namespace Aerospike.Client
 				}
 				pos += count;
 			}
-			receiveOffset += length;
+			dataOffset += length;
 		}
 
 		protected internal abstract bool ParseRecordResults(int receiveSize);

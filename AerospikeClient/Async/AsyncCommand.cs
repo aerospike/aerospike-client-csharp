@@ -267,9 +267,7 @@ namespace Aerospike.Client
 			OnFailure(ae);
 		}
 
-		protected internal abstract Policy GetPolicy();
 		protected internal abstract AsyncNode GetNode();
-		protected internal abstract void WriteBuffer();
 		protected internal abstract void ReceiveEvent(SocketAsyncEventArgs args);
 		protected internal abstract void OnSuccess();
 		protected internal abstract void OnFailure(AerospikeException ae);

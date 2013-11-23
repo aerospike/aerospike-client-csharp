@@ -13,13 +13,34 @@ namespace Aerospike.Client
 {
 	public sealed class BatchCommandExists : MultiCommand
 	{
+		private readonly BatchNode.BatchNamespace batchNamespace;
+		private readonly Policy policy;
 		private readonly Dictionary<Key, BatchItem> keyMap;
 		private readonly bool[] existsArray;
 
-		public BatchCommandExists(Node node, Dictionary<Key, BatchItem> keyMap, bool[] existsArray) : base(node)
+		public BatchCommandExists
+		(
+			Node node,
+			BatchNode.BatchNamespace batchNamespace,
+			Policy policy,
+			Dictionary<Key, BatchItem> keyMap,
+			bool[] existsArray
+		) : base(node)
 		{
+			this.batchNamespace = batchNamespace;
+			this.policy = policy;
 			this.keyMap = keyMap;
 			this.existsArray = existsArray;
+		}
+
+		protected internal override Policy GetPolicy()
+		{
+			return policy;
+		}
+
+		protected internal override void WriteBuffer()
+		{
+			SetBatchExists(batchNamespace);
 		}
 
 		/// <summary>
@@ -29,12 +50,12 @@ namespace Aerospike.Client
 		protected internal override bool ParseRecordResults(int receiveSize)
 		{
 			//Parse each message response and add it to the result array
-			receiveOffset = 0;
+			dataOffset = 0;
 
-			while (receiveOffset < receiveSize)
+			while (dataOffset < receiveSize)
 			{
 				ReadBytes(MSG_REMAINING_HEADER_SIZE);
-				int resultCode = receiveBuffer[5];
+				int resultCode = dataBuffer[5];
 
 				// The only valid server return codes are "ok" and "not found".
 				// If other return codes are received, then abort the batch.
@@ -43,7 +64,7 @@ namespace Aerospike.Client
 					throw new AerospikeException(resultCode);
 				}
 
-				byte info3 = receiveBuffer[3];
+				byte info3 = dataBuffer[3];
 
 				// If this is the end marker of the response, do not proceed further
 				if ((info3 & Command.INFO3_LAST) == Command.INFO3_LAST)
@@ -51,8 +72,8 @@ namespace Aerospike.Client
 					return false;
 				}
 
-				int fieldCount = ByteUtil.BytesToShort(receiveBuffer, 18);
-				int opCount = ByteUtil.BytesToShort(receiveBuffer, 20);
+				int fieldCount = ByteUtil.BytesToShort(dataBuffer, 18);
+				int opCount = ByteUtil.BytesToShort(dataBuffer, 20);
 
 				if (opCount > 0)
 				{
