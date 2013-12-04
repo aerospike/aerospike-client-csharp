@@ -23,7 +23,6 @@ namespace Aerospike.Client
 		protected internal int fieldCount;
 		protected internal int opCount;
 		private readonly bool stopOnNotFound;
-		private bool inHeader = true;
 
 		public AsyncMultiCommand(AsyncMultiExecutor parent, AsyncCluster cluster, AsyncNode node, bool stopOnNotFound) 
 			: base(cluster)
@@ -38,52 +37,16 @@ namespace Aerospike.Client
 			return node;
 		}
 
-		protected internal sealed override void ReceiveEvent(SocketAsyncEventArgs args)
+		protected internal sealed override void ParseCommand(SocketAsyncEventArgs args)
 		{
-			dataOffset += args.BytesTransferred;
-			//Log.Info("Receive Event: " + args.BytesTransferred + "," + byteOffset + "," + byteLength + "," + inHeader);
-
-			if (dataOffset < dataLength)
+			if (ParseGroup())
 			{
-				args.SetBuffer(dataOffset, dataLength - dataOffset);
-				Receive(args);
+				Finish();
 				return;
 			}
-			dataOffset = 0;
-
-			if (inHeader)
-			{
-				dataLength = (int)(ByteUtil.BytesToLong(dataBuffer, 0) & 0xFFFFFFFFFFFFL);
-
-				if (dataLength <= 0)
-				{
-					Finish();
-					return;
-				}
-				inHeader = false;
-
-				if (dataLength > dataBuffer.Length)
-				{
-					dataBuffer = new byte[dataLength];
-					args.SetBuffer(dataBuffer, dataOffset, dataLength);
-				}
-				else
-				{
-					args.SetBuffer(dataOffset, dataLength);
-				}
-				Receive(args);
-			}
-			else
-			{
-				if (ParseGroup())
-				{
-					Finish();
-					return;
-				}
-				// Prepare for next group.
-				inHeader = true;
-				ReceiveBegin(args);
-			}
+			// Prepare for next group.
+			inHeader = true;
+			ReceiveBegin(args);
 		}
 
 		private bool ParseGroup()

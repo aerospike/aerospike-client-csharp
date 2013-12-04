@@ -32,6 +32,7 @@ namespace Aerospike.Client
 			{
 				socket = new Socket(address.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
 				socket.NoDelay = true;
+				socket.Blocking = false;
 
 				args = new SocketAsyncEventArgs();
 				args.Completed += handler;

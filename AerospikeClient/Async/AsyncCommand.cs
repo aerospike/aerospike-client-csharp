@@ -9,6 +9,8 @@
  */
 using System;
 using System.Net.Sockets;
+using System.Threading;
+using System.Diagnostics;
 
 namespace Aerospike.Client
 {
@@ -22,29 +24,40 @@ namespace Aerospike.Client
 		protected internal AsyncConnection conn;
 		protected internal readonly AsyncCluster cluster;
 		protected internal AsyncNode node;
-		private DateTime limit;
+		private Stopwatch watch;
 		protected internal int dataLength;
-		protected internal int timeout;
-		private bool complete;
+		private int timeout;
+		private int iteration;
+		private int complete;
+		protected internal bool inHeader = true;
 
 		public AsyncCommand(AsyncCluster cluster)
 		{
 			this.cluster = cluster;
 		}
 
-		public virtual void Execute()
+		public void Execute()
 		{
 			Policy policy = GetPolicy();
 			timeout = policy.timeout;
 
 			if (timeout > 0)
 			{
-				limit = DateTime.Now.AddMilliseconds(timeout);
-				AsyncTimeoutQueue.Instance.Add(this);
+				watch = Stopwatch.StartNew();
+				AsyncTimeoutQueue.Instance.Add(this, timeout);
 			}
 
 			dataBuffer = cluster.GetByteBuffer();
-			WriteBuffer();
+			ExecuteCommand();
+		}
+
+		private void ExecuteCommand()
+		{
+			if (complete != 0)
+			{
+				FailOnClientTimeout();
+				return;
+			}
 
 			try
 			{
@@ -66,37 +79,67 @@ namespace Aerospike.Client
 					ConnectEvent(args);
 				}
 			}
-			catch (AerospikeException.InvalidNode ain)
+			catch (AerospikeException.InvalidNode)
 			{
-				cluster.PutByteBuffer(dataBuffer);
-				throw ain;
+				if (!RetryOnInit())
+				{
+					throw;
+				}
 			}
-			catch (AerospikeException.Connection ce)
+			catch (AerospikeException.Connection)
 			{
-				// Socket connection error has occurred.
-				node.DecreaseHealth();
-				cluster.PutByteBuffer(dataBuffer);
-				throw ce;
+				if (!RetryOnInit())
+				{
+					throw;
+				}
+			}
+			catch (SocketException se)
+			{
+				if (!RetryOnInit())
+				{
+					throw GetAerospikeException(se.SocketErrorCode);
+				}
 			}
 			catch (Exception e)
 			{
-				if (conn != null)
+				if (!FailOnApplicationInit())
 				{
-					node.PutAsyncConnection(conn);
+					throw new AerospikeException(e);
 				}
-				cluster.PutByteBuffer(dataBuffer);
-				throw new AerospikeException(e);
 			}
 		}
 
-		protected internal sealed override void SizeBuffer()
+		private bool RetryOnInit()
 		{
-			dataLength = dataOffset;
-
-			if (dataLength > dataBuffer.Length)
+			if (complete != 0)
 			{
-				dataBuffer = new byte[dataLength];
+				FailOnClientTimeout();
+				return true;
 			}
+
+			Policy policy = GetPolicy();
+			
+			if (++iteration > policy.maxRetries)
+			{
+				return FailOnNetworkInit();
+			}
+
+			if (watch != null && (watch.ElapsedMilliseconds + policy.sleepBetweenRetries) > timeout)
+			{
+				// Might as well stop here because the transaction will
+				// timeout after sleep completed.
+				return FailOnNetworkInit();
+			}
+
+			// Prepare for retry.
+			ResetConnection();
+
+			// A zero sleepBetweenRetries results in a thread yield (not infinite sleep).
+			Util.Sleep(policy.sleepBetweenRetries);
+
+			// Retry command recursively.
+			ExecuteCommand();
+			return true;
 		}
 
 		static void SocketHandler(object sender, SocketAsyncEventArgs args)
@@ -105,7 +148,7 @@ namespace Aerospike.Client
 
 			if (args.SocketError != SocketError.Success)
 			{
-				command.FailConnection(new AerospikeException.Connection("Socket error: " + args.SocketError));
+				command.RetryAfterInit(GetAerospikeException(args.SocketError));
 				return;
 			}
 
@@ -123,33 +166,51 @@ namespace Aerospike.Client
 						command.ConnectEvent(args);
 						break;
 					default:
-						command.FailConnection(new AerospikeException.Connection("Invalid socket operation: " + args.LastOperation));
+						command.FailOnApplicationError(new AerospikeException("Invalid socket operation: " + args.LastOperation));
 						break;
 				}
 			}
 			catch (AerospikeException.Connection ac)
 			{
-				command.FailConnection(ac);
+				command.RetryAfterInit(ac);
 			}
 			catch (AerospikeException e)
 			{
-				command.FailCommand(e);
+				// Fail without retry on non-network errors.
+				command.FailOnApplicationError(e);
 			}
 			catch (SocketException se)
 			{
-				command.FailConnection(se);
+				command.RetryAfterInit(GetAerospikeException(se.SocketErrorCode));
 			}
 			catch (Exception e)
 			{
-				command.FailCommand(new AerospikeException(e));
+				// Fail without retry on unknown errors.
+				command.FailOnApplicationError(new AerospikeException(e));
 			}
 		}
 
 		private void ConnectEvent(SocketAsyncEventArgs args)
 		{
+			if (complete != 0)
+			{
+				FailOnClientTimeout();
+				return;
+			}
+			WriteBuffer();
 			dataOffset = 0;
 			args.SetBuffer(dataBuffer, dataOffset, dataLength);
 			Send(args);
+		}
+
+		protected internal sealed override void SizeBuffer()
+		{
+			dataLength = dataOffset;
+
+			if (dataLength > dataBuffer.Length)
+			{
+				dataBuffer = new byte[dataLength];
+			}
 		}
 
 		private void Send(SocketAsyncEventArgs args)
@@ -175,7 +236,7 @@ namespace Aerospike.Client
 			}
 		}
 
-		public void ReceiveBegin(SocketAsyncEventArgs args)
+		protected internal void ReceiveBegin(SocketAsyncEventArgs args)
 		{
 			dataOffset = 0;
 			dataLength = 8;
@@ -183,7 +244,7 @@ namespace Aerospike.Client
 			Receive(args);
 		}
 
-		public void Receive(SocketAsyncEventArgs args)
+		private void Receive(SocketAsyncEventArgs args)
 		{
 			if (! conn.ReceiveAsync(args))
 			{
@@ -191,84 +252,271 @@ namespace Aerospike.Client
 			}
 		}
 
+		private void ReceiveEvent(SocketAsyncEventArgs args)
+		{
+			//Log.Info("Receive Event: " + args.BytesTransferred + "," + dataOffset + "," + dataLength + "," + inHeader);
+
+			if (args.BytesTransferred <= 0)
+			{
+				FailOnNetworkError(new AerospikeException.Connection("Connection closed"));
+				return;
+			}
+
+			dataOffset += args.BytesTransferred;
+
+			if (dataOffset < dataLength)
+			{
+				args.SetBuffer(dataOffset, dataLength - dataOffset);
+				Receive(args);
+				return;
+			}
+			dataOffset = 0;
+
+			if (inHeader)
+			{
+				dataLength = (int)(ByteUtil.BytesToLong(dataBuffer, 0) & 0xFFFFFFFFFFFFL);
+
+				if (dataLength <= 0)
+				{
+					Finish();
+					return;
+				}
+
+				inHeader = false;
+
+				if (dataLength > dataBuffer.Length)
+				{
+					dataBuffer = new byte[dataLength];
+					args.SetBuffer(dataBuffer, dataOffset, dataLength);
+				}
+				else
+				{
+					args.SetBuffer(dataOffset, dataLength);
+				}
+				Receive(args);
+			}
+			else
+			{
+				ParseCommand(args);
+			}
+		}
+
+		private void RetryAfterInit(AerospikeException ae)
+		{
+			if (complete != 0)
+			{
+				FailOnClientTimeout();
+				return;
+			}
+
+			Policy policy = GetPolicy();
+
+			if (++iteration > policy.maxRetries)
+			{
+				FailOnNetworkError(ae);
+				return;
+			}
+
+			if (watch != null && (watch.ElapsedMilliseconds + policy.sleepBetweenRetries) > timeout)
+			{
+				// Might as well stop here because the transaction will
+				// timeout after sleep completed.
+				FailOnNetworkError(ae);
+				return;
+			}
+
+			// Prepare for retry.
+			ResetConnection();
+
+			// A zero sleepBetweenRetries results in a thread yield (not infinite sleep).
+			Util.Sleep(policy.sleepBetweenRetries);
+
+			try
+			{
+				// Retry command recursively.
+				ExecuteCommand();
+			}
+			catch (Exception)
+			{
+				// Command has already been cleaned up.
+				// Notify user of original exception.
+				OnFailure(ae);
+			}
+		}
+
+		private void ResetConnection()
+		{
+			if (node != null)
+			{
+				node.DecreaseHealth();
+			}
+
+			if (watch != null)
+			{
+				// A lock on reset is required when a client timeout is specified.
+				lock (this)
+				{
+					if (conn != null)
+					{
+						conn.Close();
+						conn = null;
+					}
+				}
+			}
+			else
+			{
+				if (conn != null)
+				{
+					conn.Close();
+					conn = null;
+				}
+			}
+		}
+
+		/// <summary>
+		/// Check for timeout from timeout queue thread.
+		/// </summary>
 		protected internal bool CheckTimeout()
 		{
-			if (complete)
+			if (complete != 0)
 			{
 				return false;
 			}
 
-			if (limit != null && DateTime.Now > limit)
+			if (watch.ElapsedMilliseconds > timeout)
 			{
-				// Command has timed out.
-				/*
-				if (Log.debugEnabled()) {
-					int elapsed = ((int)(current - limit)) + timeout;
-					Log.debug("Client timeout: timeout=" + timeout + " elapsed=" + elapsed);
+				// Command has timed out in timeout queue thread.
+				// Ensure that command succeeds or fails, but not both.
+				if (Interlocked.Exchange(ref complete, 1) == 0)
+				{
+					// Timeout thread may contend with retry thread.
+					// Lock before closing.
+					lock (this)
+					{
+						if (conn != null)
+						{
+							conn.Close();
+						}
+					}
 				}
-				*/
-				node.DecreaseHealth();
-				Fail(new AerospikeException.Timeout());
-				return false;
+				return false;  // Do not put back on timeout queue.
 			}
-			return true;
+			return true;  // Put back on timeout queue.
 		}
 
 		protected internal void Finish()
 		{
-			complete = true;
-			conn.UpdateLastUsed();
-			node.PutAsyncConnection(conn);
-			node.RestoreHealth();
-			cluster.PutByteBuffer(dataBuffer);
-			OnSuccess();
-		}
-
-		protected internal void FailConnection(AerospikeException ae)
-		{
-			if (Log.DebugEnabled())
+			// Ensure that command succeeds or fails, but not both.
+			if (Interlocked.Exchange(ref complete, 1) == 0)
 			{
-				Log.Debug("Node " + node + ": " + Util.GetErrorMessage(ae));
+				conn.UpdateLastUsed();
+				node.PutAsyncConnection(conn);
+				node.RestoreHealth();
+				cluster.PutByteBuffer(dataBuffer);
+				OnSuccess();
 			}
-			node.DecreaseHealth();
-			Fail(ae);
-		}
-
-		protected internal void FailConnection(SocketException se)
-		{
-			if (Log.DebugEnabled())
+			else
 			{
-				Log.Debug("Node " + node + ": " + Util.GetErrorMessage(se));
+				FailOnClientTimeout();
 			}
-			// IO error means connection to server node is unhealthy.
-			// Reflect this status.
-			node.DecreaseHealth();
-			Fail(new AerospikeException(se));
 		}
 
-		protected internal void FailCommand(AerospikeException ae)
+		private bool FailOnNetworkInit()
 		{
-			if (Log.DebugEnabled())
+			// Ensure that command succeeds or fails, but not both.
+			if (Interlocked.Exchange(ref complete, 1) == 0)
 			{
-				Log.Debug("Node " + node + ": " + Util.GetErrorMessage(ae));
+				CloseOnNetworkError();
+				return false;
 			}
-			Fail(ae);
+			else
+			{
+				FailOnClientTimeout();
+				return true;
+			}
 		}
 
-		private void Fail(AerospikeException ae)
+		private bool FailOnApplicationInit()
 		{
-			complete = true;
+			// Ensure that command succeeds or fails, but not both.
+			if (Interlocked.Exchange(ref complete, 1) == 0)
+			{
+				Close();
+				return false;
+			}
+			else
+			{
+				FailOnClientTimeout();
+				return true;
+			}
+		}
 
-			if (conn != null)
+		private void FailOnNetworkError(AerospikeException ae)
+		{
+			// Ensure that command succeeds or fails, but not both.
+			if (Interlocked.Exchange(ref complete, 1) == 0)
+			{
+				CloseOnNetworkError();
+				OnFailure(ae);
+			}
+			else
+			{
+				FailOnClientTimeout();
+			}
+		}
+
+		private void FailOnApplicationError(AerospikeException ae)
+		{
+			// Ensure that command succeeds or fails, but not both.
+			if (Interlocked.Exchange(ref complete, 1) == 0)
+			{
+				Close();
+				OnFailure(ae);
+			}
+			else
+			{
+				FailOnClientTimeout();
+			}
+		}
+
+		private void FailOnClientTimeout()
+		{
+			// Free up resources and notify.
+			CloseOnNetworkError();
+			OnFailure(new AerospikeException.Timeout());
+		}
+
+		private void CloseOnNetworkError()
+		{
+			if (node != null)
+			{
+				node.DecreaseHealth();
+			}
+			Close();
+		}
+
+		private void Close()
+		{
+			// Connection was probably already closed by timeout thread.
+			// Check connected status before closing again.
+			if (conn != null && conn.IsConnected())
 			{
 				conn.Close();
 			}
 			cluster.PutByteBuffer(dataBuffer);
-			OnFailure(ae);
+		}
+
+		private static AerospikeException GetAerospikeException(SocketError se)
+		{
+			if (se == SocketError.TimedOut)
+			{
+				return new AerospikeException.Timeout();
+			}
+			return new AerospikeException.Connection("Socket error: " + se);
 		}
 
 		protected internal abstract AsyncNode GetNode();
-		protected internal abstract void ReceiveEvent(SocketAsyncEventArgs args);
+		protected internal abstract void ParseCommand(SocketAsyncEventArgs args);
 		protected internal abstract void OnSuccess();
 		protected internal abstract void OnFailure(AerospikeException ae);
 	}

@@ -22,7 +22,7 @@ namespace Aerospike.Client
 		private ConcurrentQueue<AsyncCommand> queue = new ConcurrentQueue<AsyncCommand>();
 		private LinkedList<AsyncCommand> list = new LinkedList<AsyncCommand>();
 		private Thread thread;
-		private volatile int timeout = int.MaxValue;
+		private volatile int sleepInterval = int.MaxValue;
 		private volatile bool valid;
 
 		public AsyncTimeoutQueue()
@@ -38,13 +38,13 @@ namespace Aerospike.Client
 			thread.Start();
 		}
 
-		public void Add(AsyncCommand command)
+		public void Add(AsyncCommand command, int timeout)
 		{
 			queue.Enqueue(command);
 
-			if (command.timeout < timeout)
+			if (timeout < sleepInterval)
 			{
-				timeout = command.timeout;
+				sleepInterval = timeout;
 				thread.Interrupt();
 			}
 		}
@@ -55,7 +55,7 @@ namespace Aerospike.Client
 			{
 				try
 				{
-					int t = (timeout == int.MaxValue) ? Timeout.Infinite : timeout + 1;
+					int t = (sleepInterval == int.MaxValue) ? Timeout.Infinite : sleepInterval + 1;
 					Thread.Sleep(t);
 				}
 				catch (ThreadInterruptedException)
@@ -85,7 +85,7 @@ namespace Aerospike.Client
 			if (node == null)
 			{
 				// Queue is empty.  Sleep until a new item is received.
-				timeout = int.MaxValue;
+				sleepInterval = int.MaxValue;
 				return;
 			}
 

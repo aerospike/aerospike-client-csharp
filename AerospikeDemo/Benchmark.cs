@@ -41,7 +41,7 @@ namespace Aerospike.Demo
 		{
 			this.console = console;
 			policy = new WritePolicy();
-			policy.timeout = 2000;
+			policy.timeout = 0;
 		}
 
 		/// <summary>
@@ -136,6 +136,18 @@ namespace Aerospike.Demo
 						writeTps + readTps + deleteTps, writeFailCurrent + readFailCurrent + deleteFailCurrent);
         
 					prevTime = time;
+				}
+
+				if (writeFailCurrent > 10)
+				{
+					if (GetIsStopWrites(host, port, ns))
+					{
+						if (IsValid())
+						{
+							console.Error("Server is currently in readonly mode. Shutting down...");
+							SetValid(false);
+						}
+					}
 				}
 				Thread.Sleep(1000);
 			}
@@ -245,40 +257,10 @@ namespace Aerospike.Demo
 		protected void OnWriteFailure(int key, int value, Exception e)
 		{
 			Interlocked.Increment(ref writeFailCount);
-
-			if (e is AerospikeException)
+			if (debug)
 			{
-				AerospikeException ae = e as AerospikeException;
-
-				if (ae.Result != ResultCode.TIMEOUT)
-				{
-					bool stopWrites = GetIsStopWrites(host, port, ns);
-
-					if (stopWrites)
-					{
-						if (IsValid())
-						{
-							console.Error("Server is currently in readonly mode. Shutting down...");
-							SetValid(false);
-						}
-					}
-					else
-					{
-						if (debug)
-						{
-							console.Error("Failed to set: ns={0} set={1} key={2} bin={3} value={4} exception={5}",
-								ns, setName, key, binName, value, e.Message);
-						}
-					}
-				}
-			}
-			else
-			{
-				if (debug)
-				{
-					console.Error("Failed to set: ns={0} set={1} key={2} bin={3} value={4} exception={5}",
-						ns, setName, key, binName, value, e.Message);
-				}
+				console.Error("Write error: ns={0} set={1} key={2} bin={3} value={4} exception={5}",
+					ns, setName, key, binName, value, e.Message);
 			}
 			SetValue(key, UNSET);
 		}
@@ -349,7 +331,7 @@ namespace Aerospike.Demo
 			Interlocked.Increment(ref deleteFailCount);
 			if (debug)
 			{
-				console.Error("Failed to delete: ns={0} set={1} key={2} exception={3}",
+				console.Error("Delete error: ns={0} set={1} key={2} exception={3}",
 					ns, setName, key, e.Message);
 			}
 			SetValue(key, UNSET);
@@ -417,7 +399,16 @@ namespace Aerospike.Demo
 		public bool GetIsStopWrites(string host, int port, string ns)
 		{
 			string filter = "namespace/" + ns;
-			string tokens = Info.Request(host, port, filter);
+			string tokens;
+
+			try
+			{
+				tokens = Info.Request(host, port, filter);
+			}
+			catch (Exception)
+			{
+				return true;
+			}
 
 			if (tokens == null)
 			{

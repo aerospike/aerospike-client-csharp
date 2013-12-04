@@ -16,7 +16,6 @@ namespace Aerospike.Client
 	{
 		protected internal readonly Key key;
 		private readonly Partition partition;
-		private bool inHeader = true;
 
 		public AsyncSingleCommand(AsyncCluster cluster, Key key) 
 			: base(cluster)
@@ -30,47 +29,10 @@ namespace Aerospike.Client
 			return (AsyncNode)cluster.GetNode(partition);
 		}
 
-		protected internal sealed override void ReceiveEvent(SocketAsyncEventArgs args)
+		protected internal sealed override void ParseCommand(SocketAsyncEventArgs args)
 		{
-			dataOffset += args.BytesTransferred;
-			//Log.Info("Receive Event: " + args.BytesTransferred + "," + byteOffset + "," + byteLength + "," + inHeader);
-
-			if (dataOffset < dataLength)
-			{
-				args.SetBuffer(dataOffset, dataLength - dataOffset);
-				Receive(args);
-				return;
-			}
-			dataOffset = 0;
-
-			if (inHeader)
-			{
-				dataLength = (int)(ByteUtil.BytesToLong(dataBuffer, 0) & 0xFFFFFFFFFFFFL);
-
-				if (dataLength <= 0)
-				{
-					Finish();
-					return;
-				}
-
-				inHeader = false;
-
-				if (dataLength > dataBuffer.Length)
-				{
-					dataBuffer = new byte[dataLength];
-					args.SetBuffer(dataBuffer, dataOffset, dataLength);
-				}
-				else
-				{
-					args.SetBuffer(dataOffset, dataLength);
-				}
-				Receive(args);
-			}
-			else
-			{
-				ParseResult();
-				Finish();
-			}
+			ParseResult();
+			Finish();
 		}
 
 		protected internal abstract void ParseResult();
