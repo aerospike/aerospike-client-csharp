@@ -20,7 +20,7 @@ namespace Aerospike.Client
 			Policy policy = GetPolicy();
 			int maxIterations = policy.maxRetries + 1;
 			int remainingMillis = policy.timeout;
-			DateTime limit = DateTime.Now.AddMilliseconds(remainingMillis);
+			DateTime limit = DateTime.UtcNow.AddMilliseconds(remainingMillis);
 			int failedNodes = 0;
 			int failedConns = 0;
 			int i;
@@ -108,7 +108,7 @@ namespace Aerospike.Client
 				// Check for client timeout.
 				if (policy.timeout > 0)
 				{
-					remainingMillis = (int)limit.Subtract(DateTime.Now).TotalMilliseconds;
+					remainingMillis = (int)limit.Subtract(DateTime.UtcNow).TotalMilliseconds;
 
 					if (remainingMillis <= 0)
 					{

@@ -145,7 +145,7 @@ namespace Aerospike.Client
 		/// </summary>
 		private void WaitTillStabilized()
 		{
-			DateTime limit = DateTime.Now.AddMilliseconds(connectionTimeout);
+			DateTime limit = DateTime.UtcNow.AddMilliseconds(connectionTimeout);
 			int count = -1;
 
 			do
@@ -161,7 +161,7 @@ namespace Aerospike.Client
 
 				Util.Sleep(1);
 				count = nodes.Length;
-			} while (DateTime.Now < limit);
+			} while (DateTime.UtcNow < limit);
 		}
 
 		public void Run()

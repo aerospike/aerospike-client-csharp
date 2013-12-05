@@ -73,7 +73,7 @@ namespace Aerospike.Client
 				{
 					wait.Close();
 				}
-				timestamp = DateTime.Now;
+				timestamp = DateTime.UtcNow;
 			}
 			catch (Exception e)
 			{
@@ -140,12 +140,12 @@ namespace Aerospike.Client
 		/// </summary>
 		public bool IsValid()
 		{
-			return socket.Connected && ((DateTime.Now - timestamp).TotalMilliseconds <= maxSocketIdleMillis);
+			return socket.Connected && (DateTime.UtcNow.Subtract(timestamp).TotalMilliseconds <= maxSocketIdleMillis);
 		}
 
 		public void UpdateLastUsed()
 		{
-			this.timestamp = DateTime.Now;
+			this.timestamp = DateTime.UtcNow;
 		}
 
 		/// <summary>
