@@ -32,7 +32,14 @@ namespace Aerospike.Client
 			{
 				socket = new Socket(address.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
 				socket.NoDelay = true;
-				socket.Blocking = false;
+
+				// Docs say Blocking flag is ignored for async operations.
+				// socket.Blocking = false;
+
+				// Avoid internal TCP send/receive buffers.
+				// Use application buffers directly.
+				socket.SendBufferSize = 0;
+				socket.ReceiveBufferSize = 0;
 
 				args = new SocketAsyncEventArgs();
 				args.Completed += handler;
