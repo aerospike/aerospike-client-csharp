@@ -16,7 +16,7 @@ namespace Aerospike.Client
 	public abstract class AsyncMultiCommand : AsyncCommand
 	{
 		private readonly AsyncMultiExecutor parent;
-		private readonly new AsyncNode node;
+		private readonly AsyncNode fixedNode;
 		protected internal int resultCode;
 		protected internal int generation;
 		protected internal int expiration;
@@ -28,16 +28,16 @@ namespace Aerospike.Client
 			: base(cluster)
 		{
 			this.parent = parent;
-			this.node = node;
+			this.fixedNode = node;
 			this.stopOnNotFound = stopOnNotFound;
 		}
 
 		protected internal sealed override AsyncNode GetNode()
 		{
-			return node;
+			return fixedNode;
 		}
 
-		protected internal sealed override void ParseCommand(SocketAsyncEventArgs args)
+		protected internal sealed override void ParseCommand()
 		{
 			if (ParseGroup())
 			{
@@ -46,7 +46,7 @@ namespace Aerospike.Client
 			}
 			// Prepare for next group.
 			inHeader = true;
-			ReceiveBegin(args);
+			ReceiveBegin();
 		}
 
 		private bool ParseGroup()

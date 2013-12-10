@@ -29,7 +29,7 @@ namespace Aerospike.Client
 			return (AsyncNode)cluster.GetNode(partition);
 		}
 
-		protected internal sealed override void ParseCommand(SocketAsyncEventArgs args)
+		protected internal sealed override void ParseCommand()
 		{
 			ParseResult();
 			Finish();

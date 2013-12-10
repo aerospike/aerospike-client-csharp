@@ -9,13 +9,14 @@
  */
 using System.Collections.Concurrent;
 using System.Threading;
+using System.Net.Sockets;
 
 namespace Aerospike.Client
 {
 	public sealed class AsyncCluster : Cluster
 	{
-		// ByteBuffer pool used in asynchronous SocketChannel communications.
-		private readonly BlockingCollection<byte[]> bufferQueue;
+		// Pool used in asynchronous SocketChannel communications.
+		private readonly BlockingCollection<SocketAsyncEventArgs> argsQueue;
 
 		// How to handle cases when the asynchronous maximum number of concurrent database commands 
 		// have been exceeded.  
@@ -31,7 +32,7 @@ namespace Aerospike.Client
 		{
 			maxCommandAction = policy.asyncMaxCommandAction;
 			maxCommands = policy.asyncMaxCommands;
-			bufferQueue = new BlockingCollection<byte[]>(policy.asyncMaxCommands);
+			argsQueue = new BlockingCollection<SocketAsyncEventArgs>(policy.asyncMaxCommands);
 			InitTendThread();
 		}
 
@@ -40,19 +41,14 @@ namespace Aerospike.Client
 			return new AsyncNode(this, nv);
 		}
 
-		public byte[] GetByteBuffer()
+		public SocketAsyncEventArgs GetEventArgs()
 		{
 			// If buffers available or always accept command, use standard non-blocking poll().
 			if (Interlocked.Increment(ref commandsUsed) <= maxCommands || maxCommandAction == MaxCommandAction.ACCEPT)
 			{
-				byte[] byteBuffer;
-				bufferQueue.TryTake(out byteBuffer);
-    
-				if (byteBuffer != null)
-				{
-					return byteBuffer;
-				}
-				return new byte[8192];
+				SocketAsyncEventArgs args = null;
+				argsQueue.TryTake(out args);
+				return args;
 			}
     
 			// Max buffers exceeded.  Reject command if specified.
@@ -65,7 +61,7 @@ namespace Aerospike.Client
 			// Block until buffer becomes available.
 			try
 			{
-				return bufferQueue.Take();
+				return argsQueue.Take();
 			}
 			catch (ThreadInterruptedException)
 			{
@@ -74,10 +70,13 @@ namespace Aerospike.Client
 			}
 		}
 
-		public void PutByteBuffer(byte[] byteBuffer)
+		public void PutEventArgs(SocketAsyncEventArgs args)
 		{
 			Interlocked.Decrement(ref commandsUsed);
-			bufferQueue.TryAdd(byteBuffer);
+			if (!argsQueue.TryAdd(args))
+			{
+				args.Dispose();
+			}
 		}
 
 		public int MaxCommands

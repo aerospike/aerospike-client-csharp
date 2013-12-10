@@ -21,9 +21,10 @@ namespace Aerospike.Client
 	{
 		private static readonly EventHandler<SocketAsyncEventArgs> SocketListener = new EventHandler<SocketAsyncEventArgs>(SocketHandler);
 
-		protected internal AsyncConnection conn;
 		protected internal readonly AsyncCluster cluster;
-		protected internal AsyncNode node;
+		private AsyncConnection conn;
+		private AsyncNode node;
+		private SocketAsyncEventArgs eventArgs;
 		private Stopwatch watch;
 		protected internal int dataLength;
 		private int timeout;
@@ -38,6 +39,22 @@ namespace Aerospike.Client
 
 		public void Execute()
 		{
+			eventArgs = cluster.GetEventArgs();
+
+			if (eventArgs == null)
+			{
+				dataBuffer = new byte[8192];
+				eventArgs = new SocketAsyncEventArgs();
+				eventArgs.UserToken = this;
+				eventArgs.Completed += SocketListener;
+				eventArgs.SetBuffer(dataBuffer, 0, 0);
+			}
+			else
+			{
+				dataBuffer = eventArgs.Buffer;
+				eventArgs.UserToken = this;
+			}
+
 			Policy policy = GetPolicy();
 			timeout = policy.timeout;
 
@@ -47,7 +64,6 @@ namespace Aerospike.Client
 				AsyncTimeoutQueue.Instance.Add(this, timeout);
 			}
 
-			dataBuffer = cluster.GetByteBuffer();
 			ExecuteCommand();
 		}
 
@@ -62,21 +78,23 @@ namespace Aerospike.Client
 			try
 			{
 				node = GetNode();
+				eventArgs.RemoteEndPoint = node.address;
+
 				conn = node.GetAsyncConnection();
 
 				if (conn == null)
 				{
-					conn = new AsyncConnection(node.address, cluster, this, SocketListener);
+					conn = new AsyncConnection(node.address, cluster);
+					eventArgs.SetBuffer(0, 0);
 
-					if (!conn.ConnectAsync())
+					if (!conn.ConnectAsync(eventArgs))
 					{
-						ConnectEvent(conn.Args);
+						ConnectEvent();
 					}
 				}
 				else
 				{
-					SocketAsyncEventArgs args = conn.SetCommand(this);
-					ConnectEvent(args);
+					ConnectEvent();
 				}
 			}
 			catch (AerospikeException.InvalidNode)
@@ -157,13 +175,13 @@ namespace Aerospike.Client
 				switch (args.LastOperation)
 				{
 					case SocketAsyncOperation.Receive:
-						command.ReceiveEvent(args);
+						command.ReceiveEvent();
 						break;
 					case SocketAsyncOperation.Send:
-						command.SendEvent(args);
+						command.SendEvent();
 						break;
 					case SocketAsyncOperation.Connect:
-						command.ConnectEvent(args);
+						command.ConnectEvent();
 						break;
 					default:
 						command.FailOnApplicationError(new AerospikeException("Invalid socket operation: " + args.LastOperation));
@@ -190,7 +208,7 @@ namespace Aerospike.Client
 			}
 		}
 
-		private void ConnectEvent(SocketAsyncEventArgs args)
+		private void ConnectEvent()
 		{
 			if (complete != 0)
 			{
@@ -199,8 +217,8 @@ namespace Aerospike.Client
 			}
 			WriteBuffer();
 			dataOffset = 0;
-			args.SetBuffer(dataBuffer, dataOffset, dataLength);
-			Send(args);
+			eventArgs.SetBuffer(dataOffset, dataLength);
+			Send();
 		}
 
 		protected internal sealed override void SizeBuffer()
@@ -210,64 +228,65 @@ namespace Aerospike.Client
 			if (dataLength > dataBuffer.Length)
 			{
 				dataBuffer = new byte[dataLength];
+				eventArgs.SetBuffer(dataBuffer, 0, 0);
 			}
 		}
 
-		private void Send(SocketAsyncEventArgs args)
+		private void Send()
 		{
-			if (! conn.SendAsync(args))
+			if (! conn.SendAsync(eventArgs))
 			{
-				SendEvent(args);
+				SendEvent();
 			}
 		}
 
-		private void SendEvent(SocketAsyncEventArgs args)
+		private void SendEvent()
 		{
-			dataOffset += args.BytesTransferred;
+			dataOffset += eventArgs.BytesTransferred;
 
 			if (dataOffset < dataLength)
 			{
-				args.SetBuffer(dataOffset, dataLength - dataOffset);
-				Send(args);
+				eventArgs.SetBuffer(dataOffset, dataLength - dataOffset);
+				Send();
 			}
 			else
 			{
-				ReceiveBegin(args);
+				ReceiveBegin();
 			}
 		}
 
-		protected internal void ReceiveBegin(SocketAsyncEventArgs args)
+		protected internal void ReceiveBegin()
 		{
 			dataOffset = 0;
 			dataLength = 8;
-			args.SetBuffer(dataOffset, dataLength);
-			Receive(args);
+			eventArgs.SetBuffer(dataOffset, dataLength);
+			Receive();
 		}
 
-		private void Receive(SocketAsyncEventArgs args)
+		private void Receive()
 		{
-			if (! conn.ReceiveAsync(args))
+			if (! conn.ReceiveAsync(eventArgs))
 			{
-				ReceiveEvent(args);
+				ReceiveEvent();
 			}
 		}
 
-		private void ReceiveEvent(SocketAsyncEventArgs args)
+		private void ReceiveEvent()
 		{
-			//Log.Info("Receive Event: " + args.BytesTransferred + "," + dataOffset + "," + dataLength + "," + inHeader);
+			//Log.Info("Receive Event: " + eventArgs.BytesTransferred + "," + dataOffset + "," + dataLength + "," + inHeader);
 
-			if (args.BytesTransferred <= 0)
+			if (eventArgs.BytesTransferred <= 0)
 			{
 				FailOnNetworkError(new AerospikeException.Connection("Connection closed"));
 				return;
 			}
 
-			dataOffset += args.BytesTransferred;
+			dataOffset += eventArgs.BytesTransferred;
 
 			if (dataOffset < dataLength)
 			{
-				args.SetBuffer(dataOffset, dataLength - dataOffset);
-				Receive(args);
+				eventArgs.SetBuffer(dataOffset, dataLength - dataOffset);
+				Receive();
 				return;
 			}
 			dataOffset = 0;
@@ -287,17 +306,17 @@ namespace Aerospike.Client
 				if (dataLength > dataBuffer.Length)
 				{
 					dataBuffer = new byte[dataLength];
-					args.SetBuffer(dataBuffer, dataOffset, dataLength);
+					eventArgs.SetBuffer(dataBuffer, dataOffset, dataLength);
 				}
 				else
 				{
-					args.SetBuffer(dataOffset, dataLength);
+					eventArgs.SetBuffer(dataOffset, dataLength);
 				}
-				Receive(args);
+				Receive();
 			}
 			else
 			{
-				ParseCommand(args);
+				ParseCommand();
 			}
 		}
 
@@ -412,7 +431,7 @@ namespace Aerospike.Client
 				conn.UpdateLastUsed();
 				node.PutAsyncConnection(conn);
 				node.RestoreHealth();
-				cluster.PutByteBuffer(dataBuffer);
+				cluster.PutEventArgs(eventArgs);
 				OnSuccess();
 			}
 			else
@@ -503,7 +522,7 @@ namespace Aerospike.Client
 			{
 				conn.Close();
 			}
-			cluster.PutByteBuffer(dataBuffer);
+			cluster.PutEventArgs(eventArgs);
 		}
 
 		private static AerospikeException GetAerospikeException(SocketError se)
@@ -516,7 +535,7 @@ namespace Aerospike.Client
 		}
 
 		protected internal abstract AsyncNode GetNode();
-		protected internal abstract void ParseCommand(SocketAsyncEventArgs args);
+		protected internal abstract void ParseCommand();
 		protected internal abstract void OnSuccess();
 		protected internal abstract void OnFailure(AerospikeException ae);
 	}

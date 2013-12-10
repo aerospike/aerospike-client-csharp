@@ -20,11 +20,10 @@ namespace Aerospike.Client
 	public sealed class AsyncConnection
 	{
 		private readonly Socket socket;
-		private readonly SocketAsyncEventArgs args;
 		private readonly double maxSocketIdleMillis;
 		private DateTime timestamp;
 
-		public AsyncConnection(IPEndPoint address, AsyncCluster cluster, AsyncCommand command, EventHandler<SocketAsyncEventArgs> handler)
+		public AsyncConnection(IPEndPoint address, AsyncCluster cluster)
 		{
 			this.maxSocketIdleMillis = (double)(cluster.maxSocketIdle * 1000);
 
@@ -41,10 +40,6 @@ namespace Aerospike.Client
 				socket.SendBufferSize = 0;
 				socket.ReceiveBufferSize = 0;
 
-				args = new SocketAsyncEventArgs();
-				args.Completed += handler;
-				args.RemoteEndPoint = address;
-				args.UserToken = command;
 				timestamp = DateTime.UtcNow;
 			}
 			catch (Exception e)
@@ -53,13 +48,7 @@ namespace Aerospike.Client
 			}
 		}
 
-		public SocketAsyncEventArgs SetCommand(AsyncCommand command)
-		{
-			args.UserToken = command;
-			return args;
-		}
-
-		public bool ConnectAsync()
+		public bool ConnectAsync(SocketAsyncEventArgs args)
 		{
 			return socket.ConnectAsync(args);
 		}
@@ -92,11 +81,6 @@ namespace Aerospike.Client
 			this.timestamp = DateTime.UtcNow;
 		}
 
-		public SocketAsyncEventArgs Args
-		{
-			get { return args; }
-		}
-
 		/// <summary>
 		/// Shutdown and close socket.
 		/// </summary>
@@ -110,7 +94,6 @@ namespace Aerospike.Client
 			{
 			}
 			socket.Close();
-			args.Dispose();
 		}
 	}
 }
