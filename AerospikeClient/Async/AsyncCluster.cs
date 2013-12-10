@@ -73,6 +73,8 @@ namespace Aerospike.Client
 		public void PutEventArgs(SocketAsyncEventArgs args)
 		{
 			Interlocked.Decrement(ref commandsUsed);
+			args.SetBuffer(0, 0);
+
 			if (!argsQueue.TryAdd(args))
 			{
 				args.Dispose();
