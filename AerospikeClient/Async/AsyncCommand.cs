@@ -19,7 +19,7 @@ namespace Aerospike.Client
 	/// </summary>
 	public abstract class AsyncCommand : Command
 	{
-		private static readonly EventHandler<SocketAsyncEventArgs> SocketListener = new EventHandler<SocketAsyncEventArgs>(SocketHandler);
+		public static readonly EventHandler<SocketAsyncEventArgs> SocketListener = new EventHandler<SocketAsyncEventArgs>(SocketHandler);
 
 		protected internal readonly AsyncCluster cluster;
 		private AsyncConnection conn;
@@ -41,23 +41,13 @@ namespace Aerospike.Client
 		public void Execute()
 		{
 			eventArgs = cluster.GetEventArgs();
+			eventArgs.UserToken = this;
+			dataBuffer = eventArgs.Buffer;
 
-			if (eventArgs == null)
+			if (dataBuffer != null && cluster.HasBufferChanged(dataBuffer))
 			{
-				eventArgs = new SocketAsyncEventArgs();
-				eventArgs.UserToken = this;
-				eventArgs.Completed += SocketListener;
-			}
-			else
-			{
-				eventArgs.UserToken = this;
-				dataBuffer = eventArgs.Buffer;
-
-				if (dataBuffer != null && cluster.HasBufferChanged(dataBuffer))
-				{
-					// Reset dataBuffer in SizeBuffer().
-					dataBuffer = null;
-				}
+				// Reset dataBuffer in SizeBuffer().
+				dataBuffer = null;
 			}
 
 			Policy policy = GetPolicy();

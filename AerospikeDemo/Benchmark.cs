@@ -134,7 +134,16 @@ namespace Aerospike.Demo
 					console.Info("write(tps={0} fail={1}) read(tps={2} fail={3}) delete(tps={4} fail={5}) total(tps={6} fail={7})",
 						writeTps, writeFailCurrent, readTps, readFailCurrent, deleteTps, deleteFailCurrent,
 						writeTps + readTps + deleteTps, writeFailCurrent + readFailCurrent + deleteFailCurrent);
-        
+
+					/*
+					int minw, minp, maxw, maxp, aw, ap;
+					ThreadPool.GetMinThreads(out minw, out minp);
+					ThreadPool.GetMaxThreads(out maxw, out maxp);
+					ThreadPool.GetAvailableThreads(out aw, out ap);
+					int t = Process.GetCurrentProcess().Threads.Count;
+					console.Info("threads=" + t + ",minw=" + minw + ",minp=" + minp + ",maxw=" + maxw + ",maxp=" + maxp + ",aw=" + aw + ",ap=" + ap);
+					*/
+
 					prevTime = time;
 				}
 

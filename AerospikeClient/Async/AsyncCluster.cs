@@ -21,21 +21,26 @@ namespace Aerospike.Client
 		// Contiguous pool of byte buffers.
 		private BufferPool bufferPool;
 
-		// How to handle cases when the asynchronous maximum number of concurrent database commands 
-		// have been exceeded.  
-		private readonly MaxCommandAction maxCommandAction;
-
-		// Commands currently used.
-		private int commandsUsed;
-
 		// Maximum number of concurrent asynchronous commands.
 		private readonly int maxCommands;
 
+		// How to handle cases when the asynchronous maximum number of concurrent database commands 
+		// have been exceeded.  
+		private readonly bool block;
+
 		public AsyncCluster(AsyncClientPolicy policy, Host[] hosts) : base(policy, hosts)
 		{
-			maxCommandAction = policy.asyncMaxCommandAction;
 			maxCommands = policy.asyncMaxCommands;
+			block = policy.asyncMaxCommandAction == MaxCommandAction.BLOCK;
 			argsQueue = new BlockingCollection<SocketAsyncEventArgs>(policy.asyncMaxCommands);
+
+			for (int i = 0; i < maxCommands; i++)
+			{
+				SocketAsyncEventArgs eventArgs = new SocketAsyncEventArgs();
+				eventArgs.Completed += AsyncCommand.SocketListener;
+				argsQueue.Add(eventArgs);
+			}
+
 			bufferPool = new BufferPool();
 			InitTendThread();
 		}
@@ -47,43 +52,26 @@ namespace Aerospike.Client
 
 		public SocketAsyncEventArgs GetEventArgs()
 		{
-			// If buffers available or always accept command, use standard non-blocking poll().
-			if (Interlocked.Increment(ref commandsUsed) <= maxCommands || maxCommandAction == MaxCommandAction.ACCEPT)
+			if (block)
 			{
-				SocketAsyncEventArgs args = null;
-				argsQueue.TryTake(out args);
-				return args;
-			}
-    
-			// Max buffers exceeded.  Reject command if specified.
-			if (maxCommandAction == MaxCommandAction.REJECT)
-			{
-				Interlocked.Decrement(ref commandsUsed);
-				throw new AerospikeException.CommandRejected();
-			}
-    
-			// Block until buffer becomes available.
-			try
-			{
+				// Use blocking retrieve from queue.
+				// If queue is empty, wait till an item is available.
 				return argsQueue.Take();
 			}
-			catch (ThreadInterruptedException)
+
+			// Use non-blocking retrieve from queue.
+			SocketAsyncEventArgs args;
+			if (argsQueue.TryTake(out args))
 			{
-				Interlocked.Decrement(ref commandsUsed);
-				throw new AerospikeException("Buffer pool take interrupted.");
+				return args;
 			}
+			// Queue is empty. Reject command.
+			throw new AerospikeException.CommandRejected();
 		}
 
 		public void PutEventArgs(SocketAsyncEventArgs args)
 		{
-			if (!argsQueue.TryAdd(args))
-			{
-				// Add failed.  Must free resources.
-				args.Dispose();
-			}
-
-			// Free up slot after add completed.
-			Interlocked.Decrement(ref commandsUsed);
+			argsQueue.Add(args);
 		}
 
 		public byte[] GetNextBuffer(int size)

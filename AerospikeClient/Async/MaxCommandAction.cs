@@ -15,11 +15,6 @@ namespace Aerospike.Client
 	public enum MaxCommandAction
 	{
 		/// <summary>
-		/// Accept and process command.  This implies the user is responsible for throttling asynchronous load. 
-		/// </summary>
-		ACCEPT,
-
-		/// <summary>
 		/// Reject database command.
 		/// </summary>
 		REJECT,
@@ -27,6 +22,6 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Block until a previous command completes. 
 		/// </summary>
-		BLOCK,
+		BLOCK
 	}
 }
