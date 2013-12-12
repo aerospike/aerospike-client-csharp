@@ -18,6 +18,9 @@ namespace Aerospike.Client
 		// Pool used in asynchronous SocketChannel communications.
 		private readonly BlockingCollection<SocketAsyncEventArgs> argsQueue;
 
+		// Contiguous pool of byte buffers.
+		private BufferPool bufferPool;
+
 		// How to handle cases when the asynchronous maximum number of concurrent database commands 
 		// have been exceeded.  
 		private readonly MaxCommandAction maxCommandAction;
@@ -33,6 +36,7 @@ namespace Aerospike.Client
 			maxCommandAction = policy.asyncMaxCommandAction;
 			maxCommands = policy.asyncMaxCommands;
 			argsQueue = new BlockingCollection<SocketAsyncEventArgs>(policy.asyncMaxCommands);
+			bufferPool = new BufferPool();
 			InitTendThread();
 		}
 
@@ -72,13 +76,33 @@ namespace Aerospike.Client
 
 		public void PutEventArgs(SocketAsyncEventArgs args)
 		{
-			Interlocked.Decrement(ref commandsUsed);
-			args.SetBuffer(0, 0);
-
 			if (!argsQueue.TryAdd(args))
 			{
+				// Add failed.  Must free resources.
 				args.Dispose();
 			}
+
+			// Free up slot after add completed.
+			Interlocked.Decrement(ref commandsUsed);
+		}
+
+		public byte[] GetNextBuffer(int size)
+		{
+			lock (bufferPool)
+			{
+				if (size > bufferPool.bufferSize)
+				{
+					bufferPool = new BufferPool(maxCommands, size);
+				}
+				return bufferPool.GetNextBuffer();
+			}
+		}
+
+		public bool HasBufferChanged(byte[] dataBuffer)
+		{
+			// Make reference copy because lock is not applied.
+			BufferPool temp = bufferPool;
+			return dataBuffer.Length != temp.bufferSize;
 		}
 
 		public int MaxCommands

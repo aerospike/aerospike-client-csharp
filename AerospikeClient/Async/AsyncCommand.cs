@@ -26,6 +26,7 @@ namespace Aerospike.Client
 		private AsyncNode node;
 		private SocketAsyncEventArgs eventArgs;
 		private Stopwatch watch;
+		private byte[] oldDataBuffer;
 		protected internal int dataLength;
 		private int timeout;
 		private int iteration;
@@ -43,16 +44,20 @@ namespace Aerospike.Client
 
 			if (eventArgs == null)
 			{
-				dataBuffer = new byte[8192];
 				eventArgs = new SocketAsyncEventArgs();
 				eventArgs.UserToken = this;
 				eventArgs.Completed += SocketListener;
-				eventArgs.SetBuffer(dataBuffer, 0, 0);
 			}
 			else
 			{
-				dataBuffer = eventArgs.Buffer;
 				eventArgs.UserToken = this;
+				dataBuffer = eventArgs.Buffer;
+
+				if (dataBuffer != null && cluster.HasBufferChanged(dataBuffer))
+				{
+					// Reset dataBuffer in SizeBuffer().
+					dataBuffer = null;
+				}
 			}
 
 			Policy policy = GetPolicy();
@@ -217,7 +222,7 @@ namespace Aerospike.Client
 			}
 			WriteBuffer();
 			dataOffset = 0;
-			eventArgs.SetBuffer(dataOffset, dataLength);
+			eventArgs.SetBuffer(dataBuffer, dataOffset, dataLength);
 			Send();
 		}
 
@@ -225,10 +230,25 @@ namespace Aerospike.Client
 		{
 			dataLength = dataOffset;
 
-			if (dataLength > dataBuffer.Length)
+			if (dataBuffer == null || dataLength > dataBuffer.Length)
 			{
+				ResizeBuffer();
+			}
+		}
+
+		private void ResizeBuffer()
+		{
+			if (dataLength <= BufferPool.BUFFER_CUTOFF)
+			{
+				// Checkout buffer from cache.
+				dataBuffer = cluster.GetNextBuffer(dataLength);
+			}
+			else
+			{
+				// Large buffers should not be cached.
+				// Allocate, but do not put back into pool.
+				oldDataBuffer = dataBuffer;
 				dataBuffer = new byte[dataLength];
-				eventArgs.SetBuffer(dataBuffer, 0, 0);
 			}
 		}
 
@@ -305,13 +325,9 @@ namespace Aerospike.Client
 
 				if (dataLength > dataBuffer.Length)
 				{
-					dataBuffer = new byte[dataLength];
-					eventArgs.SetBuffer(dataBuffer, dataOffset, dataLength);
+					ResizeBuffer();
 				}
-				else
-				{
-					eventArgs.SetBuffer(dataOffset, dataLength);
-				}
+				eventArgs.SetBuffer(dataBuffer, dataOffset, dataLength);
 				Receive();
 			}
 			else
@@ -431,6 +447,14 @@ namespace Aerospike.Client
 				conn.UpdateLastUsed();
 				node.PutAsyncConnection(conn);
 				node.RestoreHealth();
+
+				// Do not put large buffers back into pool.
+				if (dataBuffer.Length > BufferPool.BUFFER_CUTOFF)
+				{
+					// Put back original buffer instead.
+					eventArgs.SetBuffer(oldDataBuffer, 0, 0);
+				}
+
 				cluster.PutEventArgs(eventArgs);
 				OnSuccess();
 			}
@@ -522,6 +546,20 @@ namespace Aerospike.Client
 			{
 				conn.Close();
 			}
+
+			// Do not put large buffers back into pool.
+			if (dataBuffer != null && dataBuffer.Length > BufferPool.BUFFER_CUTOFF)
+			{
+				// Put back original buffer instead.
+				eventArgs.SetBuffer(oldDataBuffer, 0, 0);
+			}
+			else
+			{
+				// There may be rare error cases where dataBuffer and eventArgs.Buffer
+				// are different.  Make sure they are in sync.
+				eventArgs.SetBuffer(dataBuffer, 0, 0);
+			}
+
 			cluster.PutEventArgs(eventArgs);
 		}
 
