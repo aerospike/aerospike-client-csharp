@@ -90,6 +90,7 @@
     <Compile Include="BenchmarkAsync.cs" />
     <Compile Include="BenchmarkSync.cs" />
     <Compile Include="Console.cs" />
+    <Compile Include="Operate.cs" />
     <Compile Include="DeleteBin.cs" />
     <Compile Include="DemoForm.cs">
       <SubType>Form</SubType>
