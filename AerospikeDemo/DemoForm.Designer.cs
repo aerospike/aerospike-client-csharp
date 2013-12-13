@@ -30,7 +30,6 @@
         {
 			this.splitContainer1 = new System.Windows.Forms.SplitContainer();
 			this.codeBox = new System.Windows.Forms.RichTextBox();
-			this.examplesView = new System.Windows.Forms.TreeView();
 			this.maxCommandPanel = new System.Windows.Forms.Panel();
 			this.maxCommandBox = new System.Windows.Forms.TextBox();
 			this.label6 = new System.Windows.Forms.Label();
@@ -48,6 +47,7 @@
 			this.hostBox = new System.Windows.Forms.TextBox();
 			this.setBox = new System.Windows.Forms.TextBox();
 			this.label4 = new System.Windows.Forms.Label();
+			this.examplesView = new System.Windows.Forms.TreeView();
 			((System.ComponentModel.ISupportInitialize)(this.splitContainer1)).BeginInit();
 			this.splitContainer1.Panel1.SuspendLayout();
 			this.splitContainer1.Panel2.SuspendLayout();
@@ -61,14 +61,13 @@
 			this.splitContainer1.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
             | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
-			this.splitContainer1.Location = new System.Drawing.Point(3, 32);
+			this.splitContainer1.Location = new System.Drawing.Point(155, 32);
 			this.splitContainer1.Name = "splitContainer1";
 			this.splitContainer1.Orientation = System.Windows.Forms.Orientation.Horizontal;
 			// 
 			// splitContainer1.Panel1
 			// 
 			this.splitContainer1.Panel1.Controls.Add(this.codeBox);
-			this.splitContainer1.Panel1.Controls.Add(this.examplesView);
 			// 
 			// splitContainer1.Panel2
 			// 
@@ -77,7 +76,7 @@
 			this.splitContainer1.Panel2.Controls.Add(this.consoleBox);
 			this.splitContainer1.Panel2.Controls.Add(this.stopButton);
 			this.splitContainer1.Panel2.Controls.Add(this.runButton);
-			this.splitContainer1.Size = new System.Drawing.Size(1031, 753);
+			this.splitContainer1.Size = new System.Drawing.Size(879, 753);
 			this.splitContainer1.SplitterDistance = 496;
 			this.splitContainer1.TabIndex = 0;
 			// 
@@ -87,26 +86,12 @@
             | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
 			this.codeBox.BackColor = System.Drawing.SystemColors.Window;
-			this.codeBox.Location = new System.Drawing.Point(153, 3);
+			this.codeBox.Location = new System.Drawing.Point(0, 0);
 			this.codeBox.Name = "codeBox";
 			this.codeBox.ReadOnly = true;
-			this.codeBox.Size = new System.Drawing.Size(875, 490);
+			this.codeBox.Size = new System.Drawing.Size(876, 501);
 			this.codeBox.TabIndex = 8;
 			this.codeBox.Text = "";
-			// 
-			// examplesView
-			// 
-			this.examplesView.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
-            | System.Windows.Forms.AnchorStyles.Left)));
-			this.examplesView.FullRowSelect = true;
-			this.examplesView.HideSelection = false;
-			this.examplesView.Indent = 5;
-			this.examplesView.Location = new System.Drawing.Point(3, 3);
-			this.examplesView.Name = "examplesView";
-			this.examplesView.ShowLines = false;
-			this.examplesView.Size = new System.Drawing.Size(144, 490);
-			this.examplesView.TabIndex = 7;
-			this.examplesView.AfterSelect += new System.Windows.Forms.TreeViewEventHandler(this.ExampleSelected);
 			// 
 			// maxCommandPanel
 			// 
@@ -168,18 +153,18 @@
             | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
 			this.consoleBox.BackColor = System.Drawing.SystemColors.Window;
-			this.consoleBox.Location = new System.Drawing.Point(3, 34);
+			this.consoleBox.Location = new System.Drawing.Point(0, 34);
 			this.consoleBox.Multiline = true;
 			this.consoleBox.Name = "consoleBox";
 			this.consoleBox.ReadOnly = true;
 			this.consoleBox.ScrollBars = System.Windows.Forms.ScrollBars.Vertical;
-			this.consoleBox.Size = new System.Drawing.Size(1025, 216);
+			this.consoleBox.Size = new System.Drawing.Size(876, 216);
 			this.consoleBox.TabIndex = 11;
 			this.consoleBox.KeyDown += new System.Windows.Forms.KeyEventHandler(this.ConsoleKeyDown);
 			// 
 			// stopButton
 			// 
-			this.stopButton.Location = new System.Drawing.Point(86, 5);
+			this.stopButton.Location = new System.Drawing.Point(82, 5);
 			this.stopButton.Name = "stopButton";
 			this.stopButton.Size = new System.Drawing.Size(75, 23);
 			this.stopButton.TabIndex = 10;
@@ -189,7 +174,7 @@
 			// 
 			// runButton
 			// 
-			this.runButton.Location = new System.Drawing.Point(5, 5);
+			this.runButton.Location = new System.Drawing.Point(1, 5);
 			this.runButton.Name = "runButton";
 			this.runButton.Size = new System.Drawing.Size(75, 23);
 			this.runButton.TabIndex = 9;
@@ -265,11 +250,27 @@
 			this.label4.TabIndex = 13;
 			this.label4.Text = "Set";
 			// 
+			// examplesView
+			// 
+			this.examplesView.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
+            | System.Windows.Forms.AnchorStyles.Left)));
+			this.examplesView.BackColor = System.Drawing.SystemColors.ControlLight;
+			this.examplesView.FullRowSelect = true;
+			this.examplesView.HideSelection = false;
+			this.examplesView.Indent = 5;
+			this.examplesView.Location = new System.Drawing.Point(5, 32);
+			this.examplesView.Name = "examplesView";
+			this.examplesView.ShowLines = false;
+			this.examplesView.Size = new System.Drawing.Size(144, 753);
+			this.examplesView.TabIndex = 14;
+			this.examplesView.AfterSelect += new System.Windows.Forms.TreeViewEventHandler(this.ExampleSelected);
+			// 
 			// DemoForm
 			// 
 			this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
 			this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
 			this.ClientSize = new System.Drawing.Size(1037, 789);
+			this.Controls.Add(this.examplesView);
 			this.Controls.Add(this.setBox);
 			this.Controls.Add(this.label4);
 			this.Controls.Add(this.nsBox);
@@ -299,7 +300,6 @@
         #endregion
 
 		private System.Windows.Forms.SplitContainer splitContainer1;
-        private System.Windows.Forms.TreeView examplesView;
         private System.Windows.Forms.RichTextBox codeBox;
         private System.Windows.Forms.TextBox nsBox;
         private System.Windows.Forms.Label label3;
@@ -318,5 +318,6 @@
 		private System.Windows.Forms.Panel maxCommandPanel;
 		private System.Windows.Forms.TextBox maxCommandBox;
 		private System.Windows.Forms.Label label6;
+		private System.Windows.Forms.TreeView examplesView;
     }
 }
