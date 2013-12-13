@@ -237,7 +237,10 @@ namespace Aerospike.Client
 			{
 				// Large buffers should not be cached.
 				// Allocate, but do not put back into pool.
-				oldDataBuffer = dataBuffer;
+				if (dataBuffer != null && dataBuffer.Length <= BufferPool.BUFFER_CUTOFF)
+				{
+					oldDataBuffer = dataBuffer;
+				}
 				dataBuffer = new byte[dataLength];
 			}
 		}
