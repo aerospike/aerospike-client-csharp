@@ -51,7 +51,7 @@ namespace Aerospike.Demo
 			}
 			else
 			{
-				console.Error("Put/Get mismatch: Expected {0}. Received {1}.", expected, received);
+				console.Error("Bin mismatch: Expected {0}. Received {1}.", expected, received);
 			}
 		}
 	}

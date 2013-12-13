@@ -430,6 +430,10 @@ namespace Aerospike.Client
 		/// A record will be returned if there is a read in the operations list.
 		/// An example would be to add an integer value to an existing record and then
 		/// read the result, all in one database call.
+		/// <para>
+		/// Write operations are always performed first, regardless of operation order
+		/// relative to read operations.
+		/// </para>
 		/// </summary>
 		/// <param name="policy">write configuration parameters, pass in null for defaults</param>
 		/// <param name="key">unique record identifier</param>
