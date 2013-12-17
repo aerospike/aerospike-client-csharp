@@ -112,8 +112,37 @@ namespace Aerospike.Client
 		/// </summary>
 		public sealed class Timeout : AerospikeException
 		{
-			public Timeout() : base(ResultCode.TIMEOUT)
+			public int timeout;
+			public int iterations;
+			public int failedNodes;
+			public int failedConns;
+
+			public Timeout()
+				: base(ResultCode.TIMEOUT)
 			{
+				this.timeout = -1;
+			}
+
+			public Timeout(int timeout, int iterations, int failedNodes, int failedConns)
+				: base(ResultCode.TIMEOUT)
+			{
+				this.timeout = timeout;
+				this.iterations = iterations;
+				this.failedNodes = failedNodes;
+				this.failedConns = failedConns;
+			}
+
+			public override string Message
+			{
+				get
+				{
+					if (timeout == -1)
+					{
+						return base.Message;
+					}
+					return "Client timeout: timeout=" + timeout + " iterations=" + iterations + 
+						" failedNodes=" + failedNodes + " failedConns=" + failedConns;
+				}
 			}
 		}
 
@@ -125,6 +154,7 @@ namespace Aerospike.Client
 			public Serialize(Exception e) : base(ResultCode.SERIALIZE_ERROR, e)
 			{
 			}
+
 			public Serialize(string message) : base(ResultCode.SERIALIZE_ERROR, message)
 			{
 			}

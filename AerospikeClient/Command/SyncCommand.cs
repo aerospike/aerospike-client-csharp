@@ -18,17 +18,16 @@ namespace Aerospike.Client
 		public void Execute()
 		{
 			Policy policy = GetPolicy();
-			int maxIterations = policy.maxRetries + 1;
 			int remainingMillis = policy.timeout;
 			DateTime limit = DateTime.UtcNow.AddMilliseconds(remainingMillis);
 			int failedNodes = 0;
 			int failedConns = 0;
-			int i;
+			int iterations = 0;
 
 			dataBuffer = ThreadLocalData.GetBuffer();
 
 			// Execute command until successful, timed out or maximum iterations have been reached.
-			for (i = 0; i < maxIterations; i++)
+			while (true)
 			{
 				Node node = null;
 				try
@@ -105,25 +104,30 @@ namespace Aerospike.Client
 					failedConns++;
 				}
 
+				if (++iterations > policy.maxRetries)
+				{
+					break;
+				}
+
 				// Check for client timeout.
 				if (policy.timeout > 0)
 				{
-					remainingMillis = (int)limit.Subtract(DateTime.UtcNow).TotalMilliseconds;
+					remainingMillis = (int)limit.Subtract(DateTime.UtcNow).TotalMilliseconds - policy.sleepBetweenRetries;
 
 					if (remainingMillis <= 0)
 					{
 						break;
 					}
 				}
-				// Sleep before trying again.
-				Util.Sleep(policy.sleepBetweenRetries);
+
+				if (policy.sleepBetweenRetries > 0)
+				{
+					// Sleep before trying again.
+					Util.Sleep(policy.sleepBetweenRetries);
+				}
 			}
 
-			if (Log.DebugEnabled())
-			{
-				Log.Debug("Client timeout: timeout=" + policy.timeout + " iterations=" + i + " failedNodes=" + failedNodes + " failedConns=" + failedConns);
-			}
-			throw new AerospikeException.Timeout();
+			throw new AerospikeException.Timeout(policy.timeout, iterations, failedNodes, failedConns);
 		}
 
 		protected internal sealed override void SizeBuffer()
