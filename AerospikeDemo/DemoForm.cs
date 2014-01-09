@@ -29,16 +29,17 @@ namespace Aerospike.Demo
         {
             try
             {
-                hostBox.Text = Properties.Settings.Default.Host;
-                portBox.Text = Properties.Settings.Default.Port.ToString();
-                nsBox.Text = Properties.Settings.Default.Namespace;
-                setBox.Text = Properties.Settings.Default.Set;
-
                 codeBox.Font = new Font("Consolas", 10.0f);
 				codeBox.SelectionTabs = new int[] { 25, 50, 75, 100, 125 };
 
-                console = new ConsoleBox(consoleBox);
+                binTypeBox.Items.Add(BinType.Integer);
+                binTypeBox.Items.Add(BinType.String);
+                binTypeBox.Items.Add(BinType.Byte);
+                binTypeBox.SelectedItem = BinType.Integer;
 
+                ReadDefaults();
+
+                console = new ConsoleBox(consoleBox);
 				Log.SetLevel(Log.Level.INFO);
 				Log.SetCallback(LogCallback);
 
@@ -73,9 +74,8 @@ namespace Aerospike.Demo
                     new ExampleTreeNode("Query Execute", new QueryExecute(console))
                 });
                 TreeNode benchmarks = new TreeNode("Benchmarks", new TreeNode[] {
-                    new ExampleTreeNode("Linear Put/Get", new LinearPutGet(console)),
-                    new ExampleTreeNode("Synchronous Load", new BenchmarkSync(console)),
-                    new ExampleTreeNode("Asynchronous Load", new BenchmarkAsync(console))
+                    new ExampleTreeNode("Initialize", new BenchmarkInitialize(console)),
+                    new ExampleTreeNode("Read/Write", new BenchmarkReadWrite(console))
                 });
 
                 examplesView.Nodes.Add(examples);
@@ -93,16 +93,68 @@ namespace Aerospike.Demo
         {
             try
             {
-                Properties.Settings.Default.Host = hostBox.Text.Trim();
-                Properties.Settings.Default.Port = int.Parse(portBox.Text);
-                Properties.Settings.Default.Namespace = nsBox.Text.Trim();
-                Properties.Settings.Default.Set = setBox.Text.Trim();
-                Properties.Settings.Default.Save();
+                WriteDefaults();
             }
             catch (Exception ex)
             {
                 MessageBox.Show(ex.Message);
             }
+        }
+
+        private void ReadDefaults()
+        {
+            hostBox.Text = Properties.Settings.Default.Host;
+            portBox.Text = Properties.Settings.Default.Port.ToString();
+            nsBox.Text = Properties.Settings.Default.Namespace;
+            setBox.Text = Properties.Settings.Default.Set;
+            syncButton.Checked = Properties.Settings.Default.Sync;
+            asyncButton.Checked = !syncButton.Checked;
+            syncThreadBox.Text = Properties.Settings.Default.SyncThreads.ToString();
+            asyncThreadBox.Text = Properties.Settings.Default.AsyncThreads.ToString();
+            maxCommandBox.Text = Properties.Settings.Default.AsyncMaxCommands.ToString();
+            recordsBox.Text = Properties.Settings.Default.Records.ToString();
+            binTypeBox.SelectedIndex = Properties.Settings.Default.BinType;
+            binSizeBox.Text = Properties.Settings.Default.BinSize.ToString();
+            fixedValueButton.Checked = Properties.Settings.Default.FixedValue;
+            dynamicValueButton.Checked = !fixedValueButton.Checked;
+            initPctBox.Text = Properties.Settings.Default.InitPct.ToString();
+            readBox.Text = Properties.Settings.Default.ReadPct.ToString();
+            writeBox.Text = Properties.Settings.Default.WritePct.ToString();
+            timeoutBox.Text = Properties.Settings.Default.Timeout.ToString();
+            maxRetriesBox.Text = Properties.Settings.Default.MaxRetries.ToString();
+            sleepBox.Text = Properties.Settings.Default.SleepBetweenRetries.ToString();
+            latencyBox.Checked = Properties.Settings.Default.Latency;
+            latencyColumnsBox.Text = Properties.Settings.Default.LatencyColumns.ToString();
+            latencyShiftBox.Text = Properties.Settings.Default.LatencyShift.ToString();
+            debugBox.Checked = Properties.Settings.Default.Debug;
+        }
+
+        private void WriteDefaults()
+        {
+            Properties.Settings.Default.Host = hostBox.Text.Trim();
+            Properties.Settings.Default.Port = int.Parse(portBox.Text);
+            Properties.Settings.Default.Namespace = nsBox.Text.Trim();
+            Properties.Settings.Default.Set = setBox.Text.Trim();
+            Properties.Settings.Default.Sync = syncButton.Checked;
+            Properties.Settings.Default.SyncThreads = int.Parse(syncThreadBox.Text);
+            Properties.Settings.Default.AsyncThreads = int.Parse(asyncThreadBox.Text);
+            Properties.Settings.Default.AsyncMaxCommands = int.Parse(maxCommandBox.Text);
+            Properties.Settings.Default.Records = int.Parse(recordsBox.Text);
+            Properties.Settings.Default.BinType = binTypeBox.SelectedIndex;
+            Properties.Settings.Default.BinSize = int.Parse(binSizeBox.Text);
+            Properties.Settings.Default.FixedValue = fixedValueButton.Checked;
+            Properties.Settings.Default.InitPct = int.Parse(initPctBox.Text);
+            Properties.Settings.Default.ReadPct = int.Parse(readBox.Text);
+            Properties.Settings.Default.WritePct = int.Parse(writeBox.Text);
+            Properties.Settings.Default.Timeout = int.Parse(timeoutBox.Text);
+            Properties.Settings.Default.MaxRetries = int.Parse(maxRetriesBox.Text);
+            Properties.Settings.Default.SleepBetweenRetries = int.Parse(sleepBox.Text);
+            Properties.Settings.Default.Latency = latencyBox.Checked;
+            Properties.Settings.Default.LatencyColumns = int.Parse(latencyColumnsBox.Text);
+            Properties.Settings.Default.LatencyShift = int.Parse(latencyShiftBox.Text);
+            Properties.Settings.Default.Debug = debugBox.Checked;
+
+            Properties.Settings.Default.Save();
         }
 
         private void RunExample(object sender, MouseEventArgs e)
@@ -118,25 +170,110 @@ namespace Aerospike.Demo
                     throw new Exception("Stop the current example before running a new example.");
 
                 currentExample = (ExampleTreeNode)node;
+                Arguments args = ParseArguments();
                 thread = new Thread(RunExampleThread);
-                thread.Start();
+                thread.Start(args);
             }
             catch (Exception ex)
             {
+                currentExample = null;
                 MessageBox.Show(ex.Message);
             }
         }
 
-        private void RunExampleThread()
+        private Arguments ParseArguments()
+        {
+            Arguments args;
+
+            if (currentExample.IsBenchmark())
+            {
+                BenchmarkArguments bargs = new BenchmarkArguments();
+                bargs.sync = syncButton.Checked;
+
+                if (bargs.sync)
+                {
+                    bargs.threadMax = int.Parse(syncThreadBox.Text);
+                }
+                else
+                {
+                    bargs.threadMax = int.Parse(asyncThreadBox.Text);
+                }
+                bargs.commandMax = int.Parse(maxCommandBox.Text);
+                
+                bargs.records = int.Parse(recordsBox.Text);
+                bargs.binType = (BinType)binTypeBox.SelectedItem;
+                bargs.binSize = int.Parse(binSizeBox.Text);
+
+                bargs.readPct = int.Parse(readBox.Text);
+                int writePct = int.Parse(writeBox.Text);
+
+                if (!(bargs.readPct > 0 && bargs.readPct <= 100 &&
+                    writePct > 0 && writePct <= 100 &&
+                    bargs.readPct + writePct == 100))
+                {
+                    throw new Exception("Read + Write percentage must equal 100");
+                }
+
+                int recordsInitPct = int.Parse(initPctBox.Text);
+                bargs.recordsInit = bargs.records / 100 * recordsInitPct;
+
+                if (fixedValueButton.Checked)
+                {
+                    bargs.SetFixedValue();
+                }
+
+                int timeout = int.Parse(timeoutBox.Text);
+                int maxRetries = int.Parse(maxRetriesBox.Text);
+                int sleepBetweenRetries = int.Parse(sleepBox.Text);
+
+                bargs.policy.timeout = timeout;
+                bargs.policy.maxRetries = maxRetries;
+                bargs.policy.sleepBetweenRetries = sleepBetweenRetries;
+
+                bargs.writePolicy.timeout = timeout;
+                bargs.writePolicy.maxRetries = maxRetries;
+                bargs.writePolicy.sleepBetweenRetries = sleepBetweenRetries;
+
+                bargs.debug = debugBox.Checked;
+                bargs.latency = latencyBox.Checked;
+
+                if (latencyBox.Checked)
+                {
+                    bargs.latencyColumns = int.Parse(latencyColumnsBox.Text);
+                    bargs.latencyShift = int.Parse(latencyShiftBox.Text);
+
+                    if (!(bargs.latencyColumns >= 2 && bargs.latencyColumns <= 10))
+                    {
+                        throw new Exception("Latency columns must be between 2 and 10 inclusive.");
+                    }
+
+                    if (!(bargs.latencyShift >= 1 && bargs.latencyShift <= 5))
+                    {
+                        throw new Exception("Latency exponent shift must be between 1 and 5 inclusive.");
+                    }
+                }
+
+                args = bargs;
+            }
+            else
+            {
+                args = new Arguments();
+                args.commandMax = 40;
+            }
+
+            args.host = hostBox.Text.Trim();
+            args.port = int.Parse(portBox.Text);
+            args.ns = nsBox.Text.Trim();
+            args.set = setBox.Text.Trim();
+            args.SetServerSpecific();
+            return args;
+        }
+
+        private void RunExampleThread(object data)
         {
             try
             {
-                int port = int.Parse(portBox.Text);
-				Arguments args = new Arguments(hostBox.Text.Trim(), port, nsBox.Text.Trim(), setBox.Text.Trim());
-				args.SetServerSpecific();
-				args.threadMax = int.Parse(threadBox.Text);
-				args.commandMax = int.Parse(maxCommandBox.Text);
-				currentExample.Run(args);
+                currentExample.Run((Arguments)data);
             }
             catch (Exception ex)
             {
@@ -176,24 +313,28 @@ namespace Aerospike.Demo
                 codeBox.Clear();
                 ExampleTreeNode example = (ExampleTreeNode)node;
 
-				if (example.Text.Equals("Synchronous Load"))
+				if (example.IsBenchmark())
 				{
-					threadPanel.Visible = true;
-					maxCommandPanel.Visible = false;
-				}
-				else if (example.Text.Equals("Asynchronous Load"))
-				{
-					threadPanel.Visible = false;
-					maxCommandPanel.Visible = true;				
+                    if (example.IsBenchmarkInitialize())
+                    {
+                        initializePanel.Visible = true;
+                        workloadPanel.Visible = false;
+                    }
+                    else
+                    {
+                        initializePanel.Visible = false;
+                        workloadPanel.Visible = true;
+                    }
+                    benchmarkPanel.Visible = true;
+                    codeBox.Visible = false;
 				}
 				else
 				{
-					threadPanel.Visible = false;
-					maxCommandPanel.Visible = false;
-				}
-
-                codeBox.Text = example.Read();
-                HighlightSourceCode();
+                    codeBox.Visible = true;
+                    benchmarkPanel.Visible = false;
+                    codeBox.Text = example.Read();
+                    HighlightSourceCode();
+                }
             }
             catch (Exception ex)
             {
@@ -248,6 +389,113 @@ namespace Aerospike.Demo
 				e.Handled = true;
 			}
 		}
+
+        private void SyncCheckChanged(object sender, EventArgs e)
+        {
+            if (syncButton.Checked)
+            {
+                threadPanel.Visible = true;
+                maxCommandPanel.Visible = false;
+            }
+            else
+            {
+                maxCommandPanel.Visible = true;
+                threadPanel.Visible = false;
+            }
+        }
+
+        private void BinTypeChanged(object sender, EventArgs e)
+        {
+            if (binTypeBox.SelectedIndex == 0)
+            {
+                binSizeBox.Visible = false;
+                binSizeLabel.Visible = false;
+            }
+            else
+            {
+                binSizeBox.Visible = true;
+                binSizeLabel.Visible = true;
+            }
+        }
+
+        private void LatencyChanged(object sender, EventArgs e)
+        {
+            if (latencyBox.Checked)
+            {
+                latencyGroup.Visible = true;
+            }
+            else
+            {
+                latencyGroup.Visible = false;
+            }
+        }
+
+        private void LatencyValueChanged(object sender, EventArgs e)
+        {
+            try
+            {
+                if (latencyColumnsBox.Text.Length > 0 && latencyShiftBox.Text.Length > 0)
+                {
+                    int columns = int.Parse(latencyColumnsBox.Text);
+                    int bitShift = int.Parse(latencyShiftBox.Text);
+                    latencyDisplayLabel.Text = printLatencyLayout(columns, bitShift);
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(ex.Message);
+            }
+        }
+
+        private static string printLatencyLayout(int columns, int bitShift)
+        {
+            StringBuilder sb = new StringBuilder(200);
+            int limit = 1;
+            sb.Append("<=1ms >1ms");
+            int i;
+            int max = columns;
+
+            for (i = 2; i < columns; i++)
+            {
+                limit <<= bitShift;
+                String s = " >" + limit + "ms";
+                sb.Append(s);
+
+                if (sb.Length >= 65)
+                {
+                    max = i + 1;
+                    break;
+                }
+            }
+            sb.AppendLine();
+
+            sb.Append("   x%   x%");
+            String val = "x%";
+            int size = val.Length;
+            limit = 1;
+
+            for (i = 2; i < max; i++)
+            {
+                limit <<= bitShift;
+                int spaces = limit.ToString().Length + 4 - size;
+
+                for (int j = 0; j < spaces; j++)
+                {
+                    sb.Append(' ');
+                }
+                sb.Append(val);
+            }
+            sb.AppendLine();
+
+            return sb.ToString();
+        }
+
+        private void PercentKeyDown(object sender, KeyEventArgs e)
+        {
+            // Allow digits and arrow keys only
+            e.SuppressKeyPress = !((e.KeyValue >= 48 && e.KeyValue <= 57)
+                || e.KeyValue == 127 || e.KeyValue == 8 || e.KeyValue == 37 || e.KeyValue == 39);
+        }
 	}
 
     class ExampleTreeNode : TreeNode
@@ -258,6 +506,16 @@ namespace Aerospike.Demo
             : base(text)
         {
 			this.example = example;
+        }
+
+        public bool IsBenchmark()
+        {
+            return example is BenchmarkExample;
+        }
+
+        public bool IsBenchmarkInitialize()
+        {
+            return example is BenchmarkInitialize;
         }
 
         public string Read()

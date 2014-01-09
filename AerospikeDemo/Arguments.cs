@@ -13,21 +13,15 @@ namespace Aerospike.Demo
 		internal int port;
 		internal string ns;
 		internal string set;
-		internal WritePolicy writePolicy;
+        internal string binName;
+        internal WritePolicy writePolicy;
 		internal Policy policy;
-		internal bool singleBin;
+        internal int commandMax;
+        internal bool singleBin;
 		internal bool hasUdf;
-		internal bool debug = false;
 
-		internal int threadMax;
-		internal int commandMax;
-
-		protected internal Arguments(string host, int port, string ns, string set)
+		protected internal Arguments()
 		{
-			this.host = host;
-			this.port = port;
-			this.ns = ns;
-			this.set = set;
 			this.writePolicy = new WritePolicy();
 			this.policy = new Policy();
 		}
@@ -84,6 +78,8 @@ namespace Aerospike.Demo
 
 			string value = namespaceTokens.Substring(begin, end - begin);
 			singleBin = Convert.ToBoolean(value);
+
+            binName = singleBin ? "" : "demobin";  // Single bin servers don't need a bin name.
 		}
 
 		public override string ToString()
