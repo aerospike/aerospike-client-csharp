@@ -60,6 +60,10 @@ namespace Aerospike.Client
 
 		/// <summary>
 		/// Set optional query filters.
+		/// Currently, only one filter is allowed by the server on a secondary index lookup.
+		/// If multiple filters are necessary, see QueryFilter example for a workaround.
+		/// QueryFilter demonstrates how to add additional filters in an user-defined 
+		/// aggregation function. 
 		/// </summary>
 		public void SetFilters(params Filter[] filters)
 		{

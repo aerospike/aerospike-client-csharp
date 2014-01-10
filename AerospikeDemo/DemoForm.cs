@@ -69,6 +69,7 @@ namespace Aerospike.Demo
                     new ExampleTreeNode("Large Stack", new LargeStack(console)),
                     new ExampleTreeNode("Query Integer", new QueryInteger(console)),
                     new ExampleTreeNode("Query String", new QueryString(console)),
+                    new ExampleTreeNode("Query Filter", new QueryFilter(console)),
                     new ExampleTreeNode("Query Sum", new QuerySum(console)),
                     new ExampleTreeNode("Query Average", new QueryAverage(console)),
                     new ExampleTreeNode("Query Execute", new QueryExecute(console))
