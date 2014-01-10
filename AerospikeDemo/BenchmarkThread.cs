@@ -157,8 +157,8 @@ namespace Aerospike.Demo
 
 				if (args.debug)
 				{
-					console.Error("Write error: ns={0} set={1} key={2} bin={3} value={4} exception={5}",
-						key.ns, key.setName, key.userKey, bin.name, bin.value, ae.Message);
+					console.Error("Write error: ns={0} set={1} key={2} bin={3} exception={4}",
+						key.ns, key.setName, key.userKey, bin.name, ae.Message);
 				}
 			}
 	    }
@@ -169,8 +169,8 @@ namespace Aerospike.Demo
 			
             if (args.debug)
 			{
-				console.Error("Write error: ns={0} set={1} key={2} bin={3} value={4} exception={5}",
-                    key.ns, key.setName, key.userKey, bin.name, bin.value, e.Message);
+				console.Error("Write error: ns={0} set={1} key={2} bin={3} exception={4}",
+                    key.ns, key.setName, key.userKey, bin.name, e.Message);
 			}
 	    }
 
