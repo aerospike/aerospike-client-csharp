@@ -33,8 +33,9 @@ namespace Aerospike.Demo
 			while (valid)
 			{
 				int writeCurrent = Interlocked.Exchange(ref shared.writeCount, 0);
-				int writeFailCurrent = Interlocked.Exchange(ref shared.writeFailCount, 0);
-                int totalCount = shared.currentKey;
+				int writeTimeoutCurrent = Interlocked.Exchange(ref shared.writeTimeoutCount, 0);
+				int writeErrorCurrent = Interlocked.Exchange(ref shared.writeErrorCount, 0);
+				int totalCount = shared.currentKey;
 				
 				DateTime time = DateTime.Now;
 				double seconds = (double)time.Subtract(prevTime).TotalSeconds;
@@ -44,8 +45,8 @@ namespace Aerospike.Demo
 				{
 					double writeTps = Math.Round((double)writeCurrent / seconds, 0);
 
-					console.Info("write(tps={0} fail={1} total={2}))",
-						writeTps, writeFailCurrent, totalCount
+					console.Info("write(tps={0} timeouts={1} errors={2} total={3}))",
+						writeTps, writeTimeoutCurrent, writeErrorCurrent, totalCount
 					);
 
                     if (latencyHeader != null)
@@ -56,7 +57,7 @@ namespace Aerospike.Demo
                     prevTime = time;
 				}
 
-				if (writeFailCurrent > 10)
+				if (writeTimeoutCurrent + writeErrorCurrent > 10)
 				{
                     if (GetIsStopWrites())
 					{

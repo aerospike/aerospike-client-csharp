@@ -66,8 +66,8 @@ namespace Aerospike.Demo
                 {
                     if (key == args.recordsInit)
                     {
-                        console.Info("write(tps={0} fail={1} total={2}))",
-                            shared.writeCount, shared.writeFailCount, args.recordsInit
+                        console.Info("write(tps={0} timeouts={1} errors={2} total={3}))",
+                            shared.writeCount, shared.writeTimeoutCount, shared.writeErrorCount, args.recordsInit
                         );
                     }
                     break;
@@ -104,7 +104,11 @@ namespace Aerospike.Demo
 
 			try
 			{
-                WriteRecord(args.writePolicy, key, bin);
+				WriteRecord(args.writePolicy, key, bin);
+			}
+			catch (AerospikeException ae)
+			{
+				OnWriteFailure(key, bin, ae);
 			}
 			catch (Exception e)
 			{
@@ -119,6 +123,10 @@ namespace Aerospike.Demo
             try
 			{
                 ReadRecord(args.writePolicy, key, args.binName);
+			}
+			catch (AerospikeException ae)
+			{
+				OnReadFailure(key, ae);
 			}
 			catch (Exception e)
 			{
@@ -137,9 +145,27 @@ namespace Aerospike.Demo
             shared.writeLatency.Add(elapsed);
         }
         
-        protected void OnWriteFailure(Key key, Bin bin, Exception e)
+        protected void OnWriteFailure(Key key, Bin bin, AerospikeException ae)
 		{
-			Interlocked.Increment(ref shared.writeFailCount);
+			if (ae.Result == ResultCode.TIMEOUT)
+			{
+				Interlocked.Increment(ref shared.writeTimeoutCount);
+			}
+			else
+			{
+				Interlocked.Increment(ref shared.writeErrorCount);
+
+				if (args.debug)
+				{
+					console.Error("Write error: ns={0} set={1} key={2} bin={3} value={4} exception={5}",
+						key.ns, key.setName, key.userKey, bin.name, bin.value, ae.Message);
+				}
+			}
+	    }
+
+		protected void OnWriteFailure(Key key, Bin bin, Exception e)
+		{
+			Interlocked.Increment(ref shared.writeErrorCount);
 			
             if (args.debug)
 			{
@@ -159,19 +185,32 @@ namespace Aerospike.Demo
             shared.readLatency.Add(elapsed);
         }
 
-        protected void OnReadFailure(Key key, Exception e)
+		protected void OnReadFailure(Key key, AerospikeException ae)
 		{
-			OnReadFailure(key, e.Message);
+			if (ae.Result == ResultCode.TIMEOUT)
+			{
+				Interlocked.Increment(ref shared.readTimeoutCount);
+			}
+			else
+			{
+				Interlocked.Increment(ref shared.readErrorCount);
+
+				if (args.debug)
+				{
+					console.Error("Read error: ns={0} set={1} key={2} exception={3}",
+						key.ns, key.setName, key.userKey, ae.Message);
+				}
+			}
 		}
-
-		protected void OnReadFailure(Key key, string message)
+		
+		protected void OnReadFailure(Key key, Exception e)
 		{
-			Interlocked.Increment(ref shared.readFailCount);
+			Interlocked.Increment(ref shared.readErrorCount);
 
-            if (args.debug)
+			if (args.debug)
 			{
 				console.Error("Read error: ns={0} set={1} key={2} exception={3}",
-                    key.ns, key.setName, key.userKey, message);
+					key.ns, key.setName, key.userKey, e.Message);
 			}
 		}
 

@@ -34,9 +34,11 @@ namespace Aerospike.Demo
 			while (valid)
 			{
 				int writeCurrent = Interlocked.Exchange(ref shared.writeCount, 0);
-				int writeFailCurrent = Interlocked.Exchange(ref shared.writeFailCount, 0);
+				int writeTimeoutCurrent = Interlocked.Exchange(ref shared.writeTimeoutCount, 0);
+				int writeErrorCurrent = Interlocked.Exchange(ref shared.writeErrorCount, 0);
 				int readCurrent = Interlocked.Exchange(ref shared.readCount, 0);
-                int readFailCurrent = Interlocked.Exchange(ref shared.readFailCount, 0);
+				int readTimeoutCurrent = Interlocked.Exchange(ref shared.readTimeoutCount, 0);
+				int readErrorCurrent = Interlocked.Exchange(ref shared.readErrorCount, 0);
 				
 				DateTime time = DateTime.Now;
 				double seconds = (double)time.Subtract(prevTime).TotalSeconds;
@@ -47,9 +49,10 @@ namespace Aerospike.Demo
 					double writeTps = Math.Round((double)writeCurrent / seconds, 0);
 					double readTps = Math.Round((double)readCurrent / seconds, 0);
 
-					console.Info("write(tps={0} fail={1}) read(tps={2} fail={3}) total(tps={4} fail={5})",
-						writeTps, writeFailCurrent, readTps, readFailCurrent,
-						writeTps + readTps, writeFailCurrent + readFailCurrent);
+					console.Info("write(tps={0} timeouts={1} errors={2}) read(tps={3} timeouts={4} errors={5}) total(tps={6} timeouts={7} errors={8})",
+						writeTps, writeTimeoutCurrent, writeErrorCurrent, 
+						readTps, readTimeoutCurrent, readErrorCurrent,
+						writeTps + readTps, writeTimeoutCurrent + readTimeoutCurrent, writeErrorCurrent + readErrorCurrent);
 
                     if (latencyHeader != null)
                     {
@@ -70,7 +73,7 @@ namespace Aerospike.Demo
 					prevTime = time;
 				}
 
-				if (writeFailCurrent > 10)
+				if (writeTimeoutCurrent + writeErrorCurrent > 10)
 				{
                     if (GetIsStopWrites())
 					{

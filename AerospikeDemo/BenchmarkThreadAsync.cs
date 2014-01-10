@@ -24,9 +24,9 @@ namespace Aerospike.Demo
 
         protected override void WriteRecord(WritePolicy policy, Key key, Bin bin)
 		{
-			// If an error occurred, yield thread to back off throttle.
+			// If timeout occurred, yield thread to back off throttle.
 			// Fail counters are reset every second.
-			if (shared.writeFailCount > 0)
+			if (shared.writeTimeoutCount > 0)
 			{
 				Thread.Yield();
 			}
@@ -43,9 +43,9 @@ namespace Aerospike.Demo
 
         protected override void ReadRecord(Policy policy, Key key, string binName)
 		{
-			// If an error occurred, yield thread to back off throttle.
+			// If timeout occurred, yield thread to back off throttle.
 			// Fail counters are reset every second.
-			if (shared.readFailCount > 0)
+			if (shared.readTimeoutCount > 0)
 			{
 				Thread.Yield();
 			}
