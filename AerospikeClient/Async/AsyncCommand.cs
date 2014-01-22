@@ -147,8 +147,10 @@ namespace Aerospike.Client
 			// Prepare for retry.
 			ResetConnection();
 
-			// A zero sleepBetweenRetries results in a thread yield (not infinite sleep).
-			Util.Sleep(policy.sleepBetweenRetries);
+			if (policy.sleepBetweenRetries > 0)
+			{
+				Util.Sleep(policy.sleepBetweenRetries);
+			}
 
 			// Retry command recursively.
 			ExecuteCommand();
@@ -356,8 +358,10 @@ namespace Aerospike.Client
 			// Prepare for retry.
 			ResetConnection();
 
-			// A zero sleepBetweenRetries results in a thread yield (not infinite sleep).
-			Util.Sleep(policy.sleepBetweenRetries);
+			if (policy.sleepBetweenRetries > 0)
+			{
+				Util.Sleep(policy.sleepBetweenRetries);
+			}
 
 			try
 			{

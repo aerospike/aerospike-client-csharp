@@ -109,7 +109,7 @@ namespace Aerospike.Client
 			{
 				int count = bis.Read(dataBuffer, pos, length - pos);
 
-				if (count < 0)
+				if (count <= 0)
 				{
 					throw new SocketException((int)SocketError.ConnectionReset);
 				}

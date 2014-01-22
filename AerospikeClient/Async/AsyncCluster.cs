@@ -32,7 +32,7 @@ namespace Aerospike.Client
 		{
 			maxCommands = policy.asyncMaxCommands;
 			block = policy.asyncMaxCommandAction == MaxCommandAction.BLOCK;
-			argsQueue = new BlockingCollection<SocketAsyncEventArgs>(policy.asyncMaxCommands);
+			argsQueue = new BlockingCollection<SocketAsyncEventArgs>(maxCommands);
 
 			for (int i = 0; i < maxCommands; i++)
 			{
