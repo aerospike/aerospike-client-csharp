@@ -477,8 +477,12 @@ namespace Aerospike.Client
 
 			// Retry policy must be one-shot for scans.
 			policy.maxRetries = 0;
-
 			Node[] nodes = cluster.Nodes;
+
+			if (nodes.Length == 0)
+			{
+				throw new AerospikeException(ResultCode.SERVER_NOT_AVAILABLE, "Scan failed because cluster is empty.");
+			}
 
 			if (policy.concurrentNodes)
 			{
@@ -745,8 +749,15 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if command fails</exception>
 		public ExecuteTask Execute(Policy policy, Statement statement, string packageName, string functionName, params Value[] functionArgs)
 		{
+			Node[] nodes = cluster.Nodes;
+	
+			if (nodes.Length == 0)
+			{
+				throw new AerospikeException(ResultCode.SERVER_NOT_AVAILABLE, "Command failed because cluster is empty.");
+			}
+
 			ServerExecutor executor = new ServerExecutor(policy, statement, packageName, functionName, functionArgs);
-			executor.Execute(cluster.Nodes);
+			executor.Execute(nodes);
 			return new ExecuteTask(cluster, statement);
 		}
 
@@ -771,7 +782,15 @@ namespace Aerospike.Client
 			{
 				policy = new QueryPolicy();
 			}
-			QueryRecordExecutor executor = new QueryRecordExecutor(policy, statement, cluster.Nodes);
+
+			Node[] nodes = cluster.Nodes;
+
+			if (nodes.Length == 0)
+			{
+				throw new AerospikeException(ResultCode.SERVER_NOT_AVAILABLE, "Query failed because cluster is empty.");
+			}
+
+			QueryRecordExecutor executor = new QueryRecordExecutor(policy, statement, nodes);
 			return executor.RecordSet;
 		}
 
@@ -803,7 +822,15 @@ namespace Aerospike.Client
 			{
 				policy = new QueryPolicy();
 			}
-			QueryAggregateExecutor executor = new QueryAggregateExecutor(policy, statement, cluster.Nodes, packageName, functionName, functionArgs);
+
+			Node[] nodes = cluster.Nodes;
+
+			if (nodes.Length == 0)
+			{
+				throw new AerospikeException(ResultCode.SERVER_NOT_AVAILABLE, "Query failed because cluster is empty.");
+			}
+			
+			QueryAggregateExecutor executor = new QueryAggregateExecutor(policy, statement, nodes, packageName, functionName, functionArgs);
 			return executor.ResultSet;
 		}
 

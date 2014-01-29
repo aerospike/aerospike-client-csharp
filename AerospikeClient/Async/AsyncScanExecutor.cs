@@ -26,6 +26,12 @@ namespace Aerospike.Client
 			this.listener = listener;
 
 			Node[] nodes = cluster.Nodes;
+
+			if (nodes.Length == 0)
+			{
+				throw new AerospikeException(ResultCode.SERVER_NOT_AVAILABLE, "Scan failed because cluster is empty.");
+			}
+			
 			completedSize = nodes.Length;
 
 			foreach (Node node in nodes)
