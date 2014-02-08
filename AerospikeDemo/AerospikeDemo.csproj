@@ -95,6 +95,7 @@
     <Compile Include="BenchmarkThreadAsync.cs" />
     <Compile Include="BenchmarkInitialize.cs" />
     <Compile Include="BenchmarkReadWrite.cs" />
+    <Compile Include="Replace.cs" />
     <Compile Include="QueryFilter.cs" />
     <Compile Include="LatencyManager.cs" />
     <Compile Include="Operate.cs" />

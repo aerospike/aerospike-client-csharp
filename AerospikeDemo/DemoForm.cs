@@ -48,6 +48,7 @@ namespace Aerospike.Demo
                 TreeNode examples = new TreeNode("Examples", new TreeNode[] {
                     info,
                     new ExampleTreeNode("Put/Get", new PutGet(console)),
+                    new ExampleTreeNode("Replace", new Replace(console)),
                     new ExampleTreeNode("Add", new Add(console)),
                     new ExampleTreeNode("Append", new Append(console)),
                     new ExampleTreeNode("Prepend", new Prepend(console)),

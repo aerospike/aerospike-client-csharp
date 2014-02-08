@@ -47,7 +47,14 @@ namespace Aerospike.Client
 		/// </summary>
 		public object GetValue(string name)
 		{
-			return (bins == null)? null : bins[name];
+			if (bins == null)
+			{
+				return null;
+			}
+
+			object obj;
+			bins.TryGetValue(name, out obj);
+			return obj;
 		}
 	}
 }
