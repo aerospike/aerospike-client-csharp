@@ -326,6 +326,11 @@ namespace Aerospike.Client
 			return ns.Equals(other.ns);
 		}
 
+		public override string ToString()
+		{
+			return this.ns + ":" + this.setName + ":" + this.userKey + ":" + this.digest;
+		}
+	
 		/// <summary>
 		/// Generate unique server hash value from set name, key type and user defined key.  
 		/// The hash function is RIPEMD-160 (a 160 bit hash).
