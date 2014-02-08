@@ -880,7 +880,7 @@ namespace Aerospike.Client
 				return new IndexTask(cluster, ns, indexName);
 			}
 
-			if (response.Equals("FAIL:208:ERR FOUND"))
+			if (response.StartsWith("FAIL:200"))
 			{
 				// Index has already been created.  Do not need to poll for completion.
 				return new IndexTask();
@@ -917,11 +917,18 @@ namespace Aerospike.Client
 			// Send index command to one node. That node will distribute the command to other nodes.
 			String response = SendInfoCommand(policy, sb.ToString());
 
-			// Command is successful if ok or index did not previously exist.
-			if (!response.Equals("ok", StringComparison.CurrentCultureIgnoreCase) && !response.Equals("FAIL:202:NO INDEX"))
+			if (response.Equals("OK", StringComparison.CurrentCultureIgnoreCase))
 			{
-				throw new AerospikeException("Drop index failed: " + response);
+				return;
 			}
+
+			if (response.StartsWith("FAIL:201"))
+			{
+				// Index did not previously exist. Return without error.
+				return;
+			}
+
+			throw new AerospikeException("Drop index failed: " + response);
 		}
 
 		//-------------------------------------------------------
