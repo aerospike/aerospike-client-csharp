@@ -124,10 +124,17 @@ namespace Aerospike.Demo
 			client.Delete(args.writePolicy, key);
 
 			byte[] blob = new byte[] {3, 52, 125};
+			List<int> list = new List<int>();
+			list.Add(100034);
+			list.Add(12384955);
+			list.Add(3);
+			list.Add(512);
+
 			Dictionary<object, object> map = new Dictionary<object, object>();
 			map["key1"] = "string1";
 			map["key2"] = 2;
 			map["key3"] = blob;
+			map["key4"] = list;
 
 			Bin bin = Bin.AsMap(args.GetBinName("mapbin2"), map);
 			client.Put(args.writePolicy, key, bin);
@@ -135,11 +142,18 @@ namespace Aerospike.Demo
 			Record record = client.Get(args.policy, key, bin.name);
 			Dictionary<object, object> receivedMap = (Dictionary<object, object>)record.GetValue(bin.name);
 
-			ValidateSize(3, receivedMap.Count);
+			ValidateSize(4, receivedMap.Count);
 			Validate("string1", receivedMap["key1"]);
 			// Server convert numbers to long, so must expect long.
 			Validate((byte)2, receivedMap["key2"]);
 			Validate(blob, (byte[])receivedMap["key3"]);
+
+			List<int> receivedInner = (List<int>)receivedMap["key4"];
+			ValidateSize(4, receivedInner.Count);
+			Validate(100034, receivedInner[0]);
+			Validate(12384955, receivedInner[1]);
+			Validate(3, receivedInner[2]);
+			Validate(512, receivedInner[3]);
 
 			console.Info("Read/Write HashMap<Object,Object> successful");
 		}

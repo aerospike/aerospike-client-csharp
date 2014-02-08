@@ -160,6 +160,7 @@
     <Compile Include="Lua\LuaStream.cs" />
     <Compile Include="Main\Operation.cs" />
     <Compile Include="Policy\ClientPolicy.cs" />
+    <Compile Include="Policy\GenerationPolicy.cs" />
     <Compile Include="Policy\Policy.cs" />
     <Compile Include="Policy\Priority.cs" />
     <Compile Include="Policy\QueryPolicy.cs" />
