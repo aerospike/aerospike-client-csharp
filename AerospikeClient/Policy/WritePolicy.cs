@@ -21,6 +21,12 @@ namespace Aerospike.Client
 		public RecordExistsAction recordExistsAction = RecordExistsAction.UPDATE;
 
 		/// <summary>
+		/// Qualify how to handle record writes based on record generation. The default (NONE)
+		/// indicates that the generation is not used to restrict writes.
+		/// </summary>
+		public GenerationPolicy generationPolicy = GenerationPolicy.NONE;
+	
+		/// <summary>
 		/// Expected generation. Generation is the number of times a record has been modified
 		/// (including creation) on the server. If a write operation is creating a record, 
 		/// the expected generation would be 0.  

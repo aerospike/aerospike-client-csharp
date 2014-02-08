@@ -61,7 +61,7 @@ namespace Aerospike.Demo
 				key.ns, key.setName, key.userKey, bin.name, bin.value, record.generation);
 
 			WritePolicy writePolicy = new WritePolicy();
-			writePolicy.recordExistsAction = RecordExistsAction.EXPECT_GEN_EQUAL;
+			writePolicy.generationPolicy = GenerationPolicy.EXPECT_GEN_EQUAL;
 			writePolicy.generation = record.generation;
 			client.Put(writePolicy, key, bin);
 

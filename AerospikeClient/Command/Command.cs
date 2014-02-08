@@ -15,18 +15,21 @@ namespace Aerospike.Client
 	public abstract class Command
 	{
 		// Flags commented out are not supported by this client.
-		public static readonly int INFO1_READ = (1 << 0); // Contains a read operation.
-		public static readonly int INFO1_GET_ALL = (1 << 1); // Get all bins.
+		public static readonly int INFO1_READ      = (1 << 0); // Contains a read operation.
+		public static readonly int INFO1_GET_ALL   = (1 << 1); // Get all bins.
 		public static readonly int INFO1_NOBINDATA = (1 << 5); // Do not read the bins
 
-		public static readonly int INFO2_WRITE = (1 << 0); // Create or update record
-		public static readonly int INFO2_DELETE = (1 << 1); // Fling a record into the belly of Moloch.
-		public static readonly int INFO2_GENERATION = (1 << 2); // Update if expected generation == old.
-		public static readonly int INFO2_GENERATION_GT = (1 << 3); // Update if new generation >= old, good for restore.
+		public static readonly int INFO2_WRITE          = (1 << 0); // Create or update record
+		public static readonly int INFO2_DELETE         = (1 << 1); // Fling a record into the belly of Moloch.
+		public static readonly int INFO2_GENERATION     = (1 << 2); // Update if expected generation == old.
+		public static readonly int INFO2_GENERATION_GT  = (1 << 3); // Update if new generation >= old, good for restore.
 		public static readonly int INFO2_GENERATION_DUP = (1 << 4); // Create a duplicate on a generation collision.
-		public static readonly int INFO2_WRITE_UNIQUE = (1 << 5); // Fail if record already exists.
+		public static readonly int INFO2_CREATE_ONLY    = (1 << 5); // Create only. Fail if record already exists.
 
-		public static readonly int INFO3_LAST = (1 << 0); // this is the last of a multi-part message
+		public static readonly int INFO3_LAST              = (1 << 0); // This is the last of a multi-part message.
+		public static readonly int INFO3_UPDATE_ONLY       = (1 << 3); // Update only. Merge bins.
+		public static readonly int INFO3_CREATE_OR_REPLACE = (1 << 4); // Create or completely replace record.
+		public static readonly int INFO3_REPLACE_ONLY      = (1 << 5); // Completely replace existing record only.
 
 		public const int MSG_TOTAL_HEADER_SIZE = 30;
 		public const int FIELD_HEADER_SIZE = 5;
@@ -34,7 +37,7 @@ namespace Aerospike.Client
 		public const int MSG_REMAINING_HEADER_SIZE = 22;
 		public const int DIGEST_SIZE = 20;
 		public const ulong CL_MSG_VERSION = 2L;
-		public const ulong AS_MSG_TYPE = 3;
+		public const ulong AS_MSG_TYPE = 3L;
 
 		protected internal byte[] dataBuffer;
 		protected internal int dataOffset;
@@ -418,37 +421,61 @@ namespace Aerospike.Client
 		{
 			// Set flags.
 			int generation = 0;
-			int expiration = 0;
+			int infoAttr = 0;
 
-			if (policy != null)
+			switch (policy.recordExistsAction)
 			{
-				switch (policy.recordExistsAction)
-				{
-				case RecordExistsAction.UPDATE:
-					break;
-				case RecordExistsAction.EXPECT_GEN_EQUAL:
-					generation = policy.generation;
-					writeAttr |= Command.INFO2_GENERATION;
-					break;
-				case RecordExistsAction.EXPECT_GEN_GT:
-					generation = policy.generation;
-					writeAttr |= Command.INFO2_GENERATION_GT;
-					break;
-				case RecordExistsAction.FAIL:
-					writeAttr |= Command.INFO2_WRITE_UNIQUE;
-					break;
-				}
-				expiration = policy.expiration;
+			case RecordExistsAction.UPDATE:
+				break;
+			case RecordExistsAction.UPDATE_ONLY:
+				infoAttr |= Command.INFO3_UPDATE_ONLY;
+				break;
+			case RecordExistsAction.REPLACE:
+				infoAttr |= Command.INFO3_CREATE_OR_REPLACE;
+				break;
+			case RecordExistsAction.REPLACE_ONLY:
+				infoAttr |= Command.INFO3_REPLACE_ONLY;
+				break;
+			case RecordExistsAction.CREATE_ONLY:
+			case RecordExistsAction.FAIL:
+				writeAttr |= Command.INFO2_CREATE_ONLY;
+				break;
+			// The remaining enums are replaced by "policy.generationPolicy".
+			// These enums will eventually be removed.
+			// They are handled here for legacy compatibility only.
+			case RecordExistsAction.EXPECT_GEN_EQUAL:
+				generation = policy.generation;
+				writeAttr |= Command.INFO2_GENERATION;
+				break;
+			case RecordExistsAction.EXPECT_GEN_GT:
+				generation = policy.generation;
+				writeAttr |= Command.INFO2_GENERATION_GT;
+				break;
 			}
+
+			switch (policy.generationPolicy)
+			{
+			case GenerationPolicy.NONE:
+				break;
+			case GenerationPolicy.EXPECT_GEN_EQUAL:
+				generation = policy.generation;
+				writeAttr |= Command.INFO2_GENERATION;
+				break;
+			case GenerationPolicy.EXPECT_GEN_GT:
+				generation = policy.generation;
+				writeAttr |= Command.INFO2_GENERATION_GT;
+				break;
+			}
+
 			// Write all header data except total size which must be written last. 
 			dataBuffer[8] = MSG_REMAINING_HEADER_SIZE; // Message header length.
 			dataBuffer[9] = (byte)readAttr;
 			dataBuffer[10] = (byte)writeAttr;
-			dataBuffer[11] = 0; // info3
+			dataBuffer[11] = (byte)infoAttr;
 			dataBuffer[12] = 0; // unused
 			dataBuffer[13] = 0; // clear the result code
 			ByteUtil.IntToBytes((uint)generation, dataBuffer, 14);
-			ByteUtil.IntToBytes((uint)expiration, dataBuffer, 18);
+			ByteUtil.IntToBytes((uint)policy.expiration, dataBuffer, 18);
 
 			// Initialize timeout. It will be written later.
 			dataBuffer[22] = 0;
