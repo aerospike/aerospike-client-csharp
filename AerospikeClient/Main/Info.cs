@@ -580,6 +580,22 @@ namespace Aerospike.Client
 				}
 				return ByteUtil.Utf8ToString(parent.buffer, valueBegin, len);
 			}
+
+			/// <summary>
+			/// Get Base64 string value.
+			/// </summary>
+			public string GetStringBase64()
+			{
+				int len = valueEnd - valueBegin;
+
+				if (len <= 0)
+				{
+					return null;
+				}
+				char[] chars = Encoding.ASCII.GetChars(parent.buffer, valueBegin, len);
+				byte[] bytes = Convert.FromBase64CharArray(chars, 0, chars.Length);
+				return ByteUtil.Utf8ToString(bytes, 0, bytes.Length);
+			}
 		}
 	}
 }

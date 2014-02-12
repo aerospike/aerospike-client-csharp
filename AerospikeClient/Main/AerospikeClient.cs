@@ -663,6 +663,10 @@ namespace Aerospike.Client
 			{
 				Info info = new Info(conn, command);
 				Info.NameValueParser parser = info.GetNameValueParser();
+				string error = null;
+				string file = null;
+				string line = null;
+				string message = null;
 
 				while (parser.Next())
 				{
@@ -670,8 +674,29 @@ namespace Aerospike.Client
 
 					if (name.Equals("error"))
 					{
-						throw new AerospikeException(serverPath + " registration failed: " + parser.GetValue());
+						error = parser.GetValue();
 					}
+					else if (name.Equals("file"))
+					{
+						file = parser.GetValue();
+					}
+					else if (name.Equals("line"))
+					{
+						line = parser.GetValue();
+					}
+					else if (name.Equals("message"))
+					{
+						message = parser.GetStringBase64();
+					}
+				}
+
+				if (error != null)
+				{
+					throw new AerospikeException("Registration failed: " + error + Environment.NewLine +
+						"File: " + file + Environment.NewLine +
+						"Line: " + line + Environment.NewLine +
+						"Message: " + message
+						);
 				}
 				node.PutConnection(conn);
 				return new RegisterTask(cluster, serverPath);
