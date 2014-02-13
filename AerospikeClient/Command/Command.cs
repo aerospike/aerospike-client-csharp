@@ -226,7 +226,7 @@ namespace Aerospike.Client
 		{
 			Begin();
 			int fieldCount = EstimateKeySize(key);
-			byte[] argBytes = MsgPacker.Pack(args);
+			byte[] argBytes = Packer.Pack(args);
 			fieldCount += EstimateUdfSize(packageName, functionName, argBytes);
 
 			SizeBuffer();

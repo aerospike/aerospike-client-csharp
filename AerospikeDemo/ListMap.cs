@@ -20,6 +20,7 @@
  * IN THE SOFTWARE.
  ******************************************************************************/
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using Aerospike.Client;
 
@@ -101,7 +102,7 @@ namespace Aerospike.Demo
 			ValidateSize(3, receivedList.Count);
 			Validate("string1", receivedList[0]);
 			// Server convert numbers to long, so must expect long.
-			Validate((byte)2, receivedList[1]);
+			Validate(2L, receivedList[1]);
 			Validate(blob, (byte[])receivedList[2]);
 
 			console.Info("Read/Write ArrayList<Object> successful.");
@@ -166,15 +167,15 @@ namespace Aerospike.Demo
 			ValidateSize(4, receivedMap.Count);
 			Validate("string1", receivedMap["key1"]);
 			// Server convert numbers to long, so must expect long.
-			Validate((byte)2, receivedMap["key2"]);
+			Validate(2L, receivedMap["key2"]);
 			Validate(blob, (byte[])receivedMap["key3"]);
 
-			List<int> receivedInner = (List<int>)receivedMap["key4"];
+			IList receivedInner = (IList)receivedMap["key4"];
 			ValidateSize(4, receivedInner.Count);
-			Validate(100034, receivedInner[0]);
-			Validate(12384955, receivedInner[1]);
-			Validate(3, receivedInner[2]);
-			Validate(512, receivedInner[3]);
+			Validate(100034L, receivedInner[0]);
+			Validate(12384955L, receivedInner[1]);
+			Validate(3L, receivedInner[2]);
+			Validate(512L, receivedInner[3]);
 
 			console.Info("Read/Write HashMap<Object,Object> successful");
 		}
@@ -214,23 +215,23 @@ namespace Aerospike.Demo
 			ValidateSize(4, received.Count);
 			Validate("string1", received[0]);
 			// Server convert numbers to long, so must expect long.
-			Validate((byte)8, received[1]);
+			Validate(8L, received[1]);
 
 			List<object> receivedInner = (List<object>)received[2];
 			ValidateSize(2, receivedInner.Count);
 			Validate("string2", receivedInner[0]);
-			Validate((byte)5, receivedInner[1]);
+			Validate(5L, receivedInner[1]);
 
 			Dictionary<object, object> receivedMap = (Dictionary<object, object>)received[3];
 			ValidateSize(4, receivedMap.Count);
-			Validate((byte)1, receivedMap["a"]);
-			Validate("b", receivedMap[(byte)2]);
-			Validate(blob, (byte[])receivedMap[(byte)3]);
+			Validate(1L, receivedMap["a"]);
+			Validate("b", receivedMap[2L]);
+			Validate(blob, (byte[])receivedMap[3L]);
 
 			List<object> receivedInner2 = (List<object>)receivedMap["list"];
 			ValidateSize(2, receivedInner2.Count);
 			Validate("string2", receivedInner2[0]);
-			Validate((byte)5, receivedInner2[1]);
+			Validate(5L, receivedInner2[1]);
 
 			console.Info("Read/Write List/HashMap successful");
 		}

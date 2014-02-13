@@ -113,7 +113,7 @@ namespace Aerospike.Client
 
 				if (statement.functionArgs.Length > 0)
 				{
-					functionArgBuffer = MsgPacker.Pack(statement.functionArgs);
+					functionArgBuffer = Packer.Pack(statement.functionArgs);
 				}
 				else
 				{

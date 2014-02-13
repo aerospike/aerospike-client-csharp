@@ -105,14 +105,14 @@ namespace Aerospike.Client
 			
 			case ParticleType.LIST:
 			{
-				MsgUnpacker unpacker = new MsgUnpacker(true);
-				return unpacker.ParseList(buf, offset, len);
+				Unpacker unpacker = new Unpacker(buf, offset, len, true);
+				return unpacker.UnpackList();
 			}
 
 			case ParticleType.MAP: 
 			{
-				MsgUnpacker unpacker = new MsgUnpacker(true);
-				return unpacker.ParseMap(buf, offset, len);
+				Unpacker unpacker = new Unpacker(buf, offset, len, true);
+				return unpacker.UnpackMap();
 			}
 		
 			default:

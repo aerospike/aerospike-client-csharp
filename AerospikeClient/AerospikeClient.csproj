@@ -56,9 +56,6 @@
     <Reference Include="LuaInterface">
       <HintPath>lib\LuaInterface.dll</HintPath>
     </Reference>
-    <Reference Include="MsgPack">
-      <HintPath>lib\MsgPack.dll</HintPath>
-    </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
     <Reference Include="System.Numerics" />
@@ -194,9 +191,9 @@
     <Compile Include="Main\Record.cs" />
     <Compile Include="Main\ResultCode.cs" />
     <Compile Include="Query\ScanCallback.cs" />
-    <Compile Include="Util\MsgUnpacker.cs" />
+    <Compile Include="Util\Unpacker.cs" />
     <Compile Include="Util\Hash.cs" />
-    <Compile Include="Util\MsgPacker.cs" />
+    <Compile Include="Util\Packer.cs" />
     <Compile Include="Util\ThreadLocalData.cs" />
     <Compile Include="Util\Util.cs" />
     <Compile Include="Main\Value.cs" />

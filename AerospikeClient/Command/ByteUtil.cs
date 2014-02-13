@@ -49,13 +49,14 @@ namespace Aerospike.Client
 
 				case ParticleType.LIST:
 				{
-					MsgUnpacker unpacker = new MsgUnpacker(false);
-					return unpacker.ParseList(buf, offset, len);
+					Unpacker unpacker = new Unpacker(buf, offset, len, false);
+					return unpacker.UnpackList();
 				}
+
 				case ParticleType.MAP:
 				{
-					MsgUnpacker unpacker = new MsgUnpacker(false);
-					return unpacker.ParseMap(buf, offset, len);
+					Unpacker unpacker = new Unpacker(buf, offset, len, false);
+					return unpacker.UnpackMap();
 				}
 
 				default:
@@ -246,6 +247,24 @@ namespace Aerospike.Client
 			return 8;
 		}
 
+		public static double BytesToDouble(byte[] buf, int offset)
+		{
+			long val = BytesToLong(buf, offset);
+			return System.BitConverter.Int64BitsToDouble(val);
+		}
+
+		public static float BytesToFloat(byte[] buf, int offset)
+		{
+			byte[] bytes = new byte[4];
+
+			bytes[0] = buf[offset + 3];
+			bytes[1] = buf[offset + 2];
+			bytes[2] = buf[offset + 1];
+			bytes[3] = buf[offset];
+
+			return System.BitConverter.ToSingle(bytes, 0);
+		}
+
 		public static long BytesToLong(byte[] buf, int offset)
 		{
 			// Benchmarks show that BitConverter.ToInt64() conversion is slightly faster than a custom implementation.
@@ -262,7 +281,7 @@ namespace Aerospike.Client
 			bytes[6] = buf[offset + 1];
 			bytes[7] = buf[offset];
 
-			return System.BitConverter.ToInt64(bytes, offset);
+			return System.BitConverter.ToInt64(bytes, 0);
 		}
 
 		public static int IntToBytes(uint v, byte[] buf, int offset)

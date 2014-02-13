@@ -23,7 +23,6 @@ using System;
 using System.IO;
 using System.Text;
 using System.Collections.Generic;
-using MsgPack;
 
 namespace Aerospike.Client
 {
@@ -331,7 +330,7 @@ namespace Aerospike.Client
 
 			public override void Pack(Packer packer)
 			{
-				packer.PackNull();
+				packer.PackNil();
 			}
 
 			public override int Type
@@ -380,7 +379,7 @@ namespace Aerospike.Client
 
 			public override void Pack(Packer packer)
 			{
-				MsgPacker.PackString(packer, value);
+				packer.PackString(value);
 			}
 
 			public override int Type
@@ -431,7 +430,7 @@ namespace Aerospike.Client
 
 			public override void Pack(Packer packer)
 			{
-				MsgPacker.PackBytes(packer, bytes);
+				packer.PackBytes(bytes);
 			}
 
 			public override int Type
@@ -486,7 +485,7 @@ namespace Aerospike.Client
 
 			public override void Pack(Packer packer)
 			{
-				MsgPacker.PackBytes(packer, bytes, offset, length);
+				packer.PackBytes(bytes, offset, length);
 			}
 
 			public override int Type
@@ -559,7 +558,7 @@ namespace Aerospike.Client
 
 			public override void Pack(Packer packer)
 			{
-				packer.Pack(value);
+				packer.PackNumber(value);
 			}
 
 			public override int Type
@@ -608,7 +607,7 @@ namespace Aerospike.Client
 
 			public override void Pack(Packer packer)
 			{
-				packer.Pack(value);
+				packer.PackNumber(value);
 			}
 
 			public override int Type
@@ -657,7 +656,7 @@ namespace Aerospike.Client
 
 			public override void Pack(Packer packer)
 			{
-				packer.Pack(value);
+				packer.PackNumber(value);
 			}
 
 			public override int Type
@@ -706,7 +705,7 @@ namespace Aerospike.Client
 
 			public override void Pack(Packer packer)
 			{
-				packer.Pack(value);
+				packer.PackNumber(value);
 			}
 
 			public override int Type
@@ -755,7 +754,7 @@ namespace Aerospike.Client
 
 			public override void Pack(Packer packer)
 			{
-				packer.Pack(value);
+				packer.PackNumber(value);
 			}
 
 			public override int Type
@@ -804,7 +803,7 @@ namespace Aerospike.Client
 
 			public override void Pack(Packer packer)
 			{
-				packer.Pack(value);
+				packer.PackNumber(value);
 			}
 
 			public override int Type
@@ -854,7 +853,7 @@ namespace Aerospike.Client
 
 			public override void Pack(Packer packer)
 			{
-				packer.Pack(value);
+				packer.PackBoolean(value);
 			}
 
 			public override int Type
@@ -904,7 +903,7 @@ namespace Aerospike.Client
 
 			public override void Pack(Packer packer)
 			{
-				packer.Pack(value);
+				packer.PackNumber(value);
 			}
 
 			public override int Type
@@ -954,7 +953,7 @@ namespace Aerospike.Client
 
 			public override void Pack(Packer packer)
 			{
-				packer.Pack(value);
+				packer.PackNumber(value);
 			}
 
 			public override int Type
@@ -1010,7 +1009,7 @@ namespace Aerospike.Client
 
 			public override void Pack(Packer packer)
 			{
-				MsgPacker.PackBytes(packer, bytes);
+				packer.PackBlob(bytes);
 			}
 
 			public override int Type
@@ -1051,7 +1050,7 @@ namespace Aerospike.Client
 
 			public override int EstimateSize()
 			{
-				bytes = MsgPacker.Pack(array);
+				bytes = Packer.Pack(array);
 				return bytes.Length;
 			}
 
@@ -1063,7 +1062,7 @@ namespace Aerospike.Client
 
 			public override void Pack(Packer packer)
 			{
-				MsgPacker.PackValueArray(packer, array);
+				packer.PackValueArray(array);
 			}
 
 			public override int Type
@@ -1104,7 +1103,7 @@ namespace Aerospike.Client
 
 			public override int EstimateSize()
 			{
-				bytes = MsgPacker.Pack(list);
+				bytes = Packer.Pack(list);
 				return bytes.Length;
 			}
 
@@ -1116,7 +1115,7 @@ namespace Aerospike.Client
 
 			public override void Pack(Packer packer)
 			{
-				MsgPacker.PackList(packer, list);
+				packer.PackList(list);
 			}
 
 			public override int Type
@@ -1157,7 +1156,7 @@ namespace Aerospike.Client
 
 			public override int EstimateSize()
 			{
-				bytes = MsgPacker.Pack(map);
+				bytes = Packer.Pack(map);
 				return bytes.Length;
 			}
 
@@ -1169,7 +1168,7 @@ namespace Aerospike.Client
 
 			public override void Pack(Packer packer)
 			{
-				MsgPacker.PackMap(packer, map);
+				packer.PackMap(map);
 			}
 
 			public override int Type
