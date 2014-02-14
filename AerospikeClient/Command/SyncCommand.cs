@@ -73,8 +73,18 @@ namespace Aerospike.Client
 					}
 					catch (AerospikeException ae)
 					{
-						// Close socket to flush out possible garbage.  Do not put back in pool.
-						conn.Close();
+						if (ae.KeepConnection())
+						{
+							// Put connection back in pool.
+							conn.UpdateLastUsed();
+							node.RestoreHealth();
+							node.PutConnection(conn);
+						}
+						else
+						{
+							// Close socket to flush out possible garbage.  Do not put back in pool.
+							conn.Close();
+						}
 						throw ae;
 					}
 					catch (SocketException ioe)

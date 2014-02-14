@@ -109,6 +109,15 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
+		/// Should connection be put back into pool.
+		/// </summary>
+		public bool KeepConnection()
+		{
+			return (resultCode >= ResultCode.KEY_NOT_FOUND_ERROR && resultCode <= ResultCode.BIN_EXISTS_ERROR) ||
+				   (resultCode == ResultCode.KEY_BUSY);
+		}
+
+		/// <summary>
 		/// Get integer result code.
 		/// </summary>
 		public int Result

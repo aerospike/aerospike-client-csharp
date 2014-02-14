@@ -522,7 +522,19 @@ namespace Aerospike.Client
 			// Ensure that command succeeds or fails, but not both.
 			if (Interlocked.Exchange(ref complete, 1) == 0)
 			{
-				Close();
+				if (ae.KeepConnection())
+				{
+					// Put connection back in pool.
+					conn.UpdateLastUsed();
+					node.PutAsyncConnection(conn);
+					node.RestoreHealth();
+					PutBackArgsOnError();
+				}
+				else
+				{
+					// Close socket to flush out possible garbage.
+					Close();
+				}
 				OnFailure(ae);
 			}
 			else
@@ -556,6 +568,11 @@ namespace Aerospike.Client
 				conn.Close();
 			}
 
+			PutBackArgsOnError();
+		}
+
+		private void PutBackArgsOnError()
+		{
 			// Do not put large buffers back into pool.
 			if (dataBuffer != null && dataBuffer.Length > BufferPool.BUFFER_CUTOFF)
 			{
