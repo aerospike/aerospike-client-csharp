@@ -27,8 +27,14 @@ namespace Aerospike.Client
 	{
 		public static List<BatchNode> GenerateList(Cluster cluster, Key[] keys)
 		{
+			Node[] nodes = cluster.Nodes;
 
-			int nodeCount = cluster.Nodes.Length;
+			if (nodes.Length == 0)
+			{
+				throw new AerospikeException(ResultCode.SERVER_NOT_AVAILABLE, "Command failed because cluster is empty.");
+			}
+
+			int nodeCount = nodes.Length;
 			int keysPerNode = keys.Length / nodeCount + 10;
 
 			// Split keys by server node.

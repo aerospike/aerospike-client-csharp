@@ -126,6 +126,11 @@ namespace Aerospike.Client
 
 			for (int i = 0 ; i < opCount; i++)
 			{
+				if (!valid)
+				{
+					throw new AerospikeException.QueryTerminated();
+				}
+
 				ReadBytes(8);
 				int opSize = ByteUtil.BytesToInt(dataBuffer, 0);
 				byte particleType = dataBuffer[5];

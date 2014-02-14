@@ -26,46 +26,45 @@ namespace Aerospike.Client
 {
 	public sealed class ScanExecutor
 	{
-		private readonly ScanPolicy policy;
-		private readonly string ns;
-		private readonly string setName;
-		private readonly ScanCallback callback;
-		private readonly string[] binNames;
-		private ScanThread[] threads;
-		private Exception exception;
+		private readonly ScanThread[] threads;
+		private volatile Exception exception;
+		private int nextThread;
+		private bool completed;
 
-		public ScanExecutor(ScanPolicy policy, string ns, string setName, ScanCallback callback, string[] binNames)
+		public ScanExecutor
+		(
+			Cluster cluster,
+			Node[] nodes,
+			ScanPolicy policy,
+			string ns,
+			string setName,
+			ScanCallback callback,
+			string[] binNames
+		)
 		{
-			this.policy = policy;
-			this.ns = ns;
-			this.setName = setName;
-			this.callback = callback;
-			this.binNames = binNames;
+			// Initialize threads.		
+			threads = new ScanThread[nodes.Length];
+
+			for (int i = 0; i < nodes.Length; i++)
+			{
+				ScanCommand command = new ScanCommand(nodes[i], policy, ns, setName, callback, binNames);
+				threads[i] = new ScanThread(this, command);
+			}
+
+			// Initialize maximum number of nodes to query in parallel.
+			nextThread = (policy.maxConcurrentNodes == 0 || policy.maxConcurrentNodes >= threads.Length) ? threads.Length : policy.maxConcurrentNodes;
 		}
 
-		public void ScanParallel(Node[] nodes)
+		public void ScanParallel()
 		{
-			threads = new ScanThread[nodes.Length];
-			int count = 0;
+			// Start threads. Use separate max because threadCompleted() may modify nextThread in parallel.
+			int max = nextThread;
 
-			foreach (Node node in nodes)
+			for (int i = 0; i < max; i++)
 			{
-				ScanCommand command = new ScanCommand(node, policy, ns, setName, callback, binNames);
-				ScanThread thread = new ScanThread(this, command);
-				threads[count++] = thread;
-				thread.Start();
+				ThreadPool.QueueUserWorkItem(threads[i].Run);
 			}
-
-			foreach (ScanThread thread in threads)
-			{
-				try
-				{
-					thread.Join();
-				}
-				catch (Exception)
-				{
-				}
-			}
+			WaitTillComplete();
 
 			// Throw an exception if an error occurred.
 			if (exception != null)
@@ -78,6 +77,40 @@ namespace Aerospike.Client
 				{
 					throw new AerospikeException(exception);
 				}
+			}
+		}
+
+		private void ThreadCompleted()
+		{
+			int index = -1;
+
+			// Determine if a new thread needs to be started.
+			lock (threads)
+			{
+				if (nextThread < threads.Length)
+				{
+					index = nextThread++;
+				}
+			}
+
+			if (index >= 0)
+			{
+				// Start new thread.
+				ThreadPool.QueueUserWorkItem(threads[index].Run);
+			}
+			else
+			{
+				// All threads have been started. Check status.
+				foreach (ScanThread thread in threads)
+				{
+					if (!thread.complete)
+					{
+						// Some threads have not finished. Do nothing.
+						return;
+					}
+				}
+				// All threads complete.
+				NotifyCompleted();
 			}
 		}
 
@@ -96,12 +129,32 @@ namespace Aerospike.Client
 			{
 				try
 				{
-					thread.StopThread();
-					thread.Interrupt();
+					thread.Stop();
 				}
 				catch (Exception)
 				{
 				}
+			}
+			NotifyCompleted();
+		}
+
+		private void WaitTillComplete()
+		{
+			lock (this)
+			{
+				while (!completed)
+				{
+					Monitor.Wait(this);
+				}
+			}
+		}
+
+		private void NotifyCompleted()
+		{
+			lock (this)
+			{
+				completed = true;
+				Monitor.Pulse(this);
 			}
 		}
 
@@ -109,46 +162,47 @@ namespace Aerospike.Client
 		{
 			private readonly ScanExecutor parent;
 			private readonly ScanCommand command;
-			private readonly Thread thread;
+			private Thread thread;
+			internal bool complete;
 
 			public ScanThread(ScanExecutor parent, ScanCommand command)
 			{
 				this.parent = parent;
 				this.command = command;
-				this.thread = new Thread(new ThreadStart(this.Run)); 
 			}
 
-			public void Start()
+			public void Run(object obj)
 			{
-				thread.Start();
-			}
+				thread = Thread.CurrentThread;
 
-			public void Run()
-			{
 				try
 				{
-					command.Execute();
+					if (command.IsValid())
+					{
+						command.Execute();
+					}
 				}
 				catch (Exception e)
 				{
 					// Terminate other scan threads.
 					parent.StopThreads(e);
 				}
+				complete = true;
+
+				if (parent.exception == null)
+				{
+					parent.ThreadCompleted();
+				}
 			}
 
-			public void Join()
-			{
-				thread.Join();
-			}
-
-			public void Interrupt()
-			{
-				thread.Interrupt();
-			}
-
-			public void StopThread()
+			public void Stop()
 			{
 				command.Stop();
+
+				if (thread != null)
+				{
+					thread.Interrupt();
+				}
 			}
 		}
 	}

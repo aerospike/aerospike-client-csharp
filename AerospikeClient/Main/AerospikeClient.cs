@@ -325,7 +325,7 @@ namespace Aerospike.Client
 		public bool[] Exists(Policy policy, Key[] keys)
 		{
 			bool[] existsArray = new bool[keys.Length];
-			BatchExecutor.ExecuteBatch(cluster, policy, keys, existsArray, null, null, Command.INFO1_READ | Command.INFO1_NOBINDATA);
+			new BatchExecutor(cluster, policy, keys, existsArray, null, null, Command.INFO1_READ | Command.INFO1_NOBINDATA);
 			return existsArray;
 		}
 
@@ -395,7 +395,7 @@ namespace Aerospike.Client
 		public Record[] Get(Policy policy, Key[] keys)
 		{
 			Record[] records = new Record[keys.Length];
-			BatchExecutor.ExecuteBatch(cluster, policy, keys, null, records, null, Command.INFO1_READ | Command.INFO1_GET_ALL);
+			new BatchExecutor(cluster, policy, keys, null, records, null, Command.INFO1_READ | Command.INFO1_GET_ALL);
 			return records;
 		}
 
@@ -413,7 +413,7 @@ namespace Aerospike.Client
 		{
 			Record[] records = new Record[keys.Length];
 			HashSet<string> names = BinNamesToHashSet(binNames);
-			BatchExecutor.ExecuteBatch(cluster, policy, keys, null, records, names, Command.INFO1_READ);
+			new BatchExecutor(cluster, policy, keys, null, records, names, Command.INFO1_READ);
 			return records;
 		}
 
@@ -429,7 +429,7 @@ namespace Aerospike.Client
 		public Record[] GetHeader(Policy policy, Key[] keys)
 		{
 			Record[] records = new Record[keys.Length];
-			BatchExecutor.ExecuteBatch(cluster, policy, keys, null, records, null, Command.INFO1_READ | Command.INFO1_NOBINDATA);
+			new BatchExecutor(cluster, policy, keys, null, records, null, Command.INFO1_READ | Command.INFO1_NOBINDATA);
 			return records;
 		}
 
@@ -498,8 +498,8 @@ namespace Aerospike.Client
 
 			if (policy.concurrentNodes)
 			{
-				ScanExecutor executor = new ScanExecutor(policy, ns, setName, callback, binNames);
-				executor.ScanParallel(nodes);
+				ScanExecutor executor = new ScanExecutor(cluster, nodes, policy, ns, setName, callback, binNames);
+				executor.ScanParallel();
 			}
 			else
 			{
@@ -786,15 +786,11 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if command fails</exception>
 		public ExecuteTask Execute(Policy policy, Statement statement, string packageName, string functionName, params Value[] functionArgs)
 		{
-			Node[] nodes = cluster.Nodes;
-	
-			if (nodes.Length == 0)
+			if (policy == null)
 			{
-				throw new AerospikeException(ResultCode.SERVER_NOT_AVAILABLE, "Command failed because cluster is empty.");
+				policy = new Policy();
 			}
-
-			ServerExecutor executor = new ServerExecutor(policy, statement, packageName, functionName, functionArgs);
-			executor.Execute(nodes);
+			new ServerExecutor(cluster, policy, statement, packageName, functionName, functionArgs);
 			return new ExecuteTask(cluster, statement);
 		}
 
@@ -819,15 +815,8 @@ namespace Aerospike.Client
 			{
 				policy = new QueryPolicy();
 			}
-
-			Node[] nodes = cluster.Nodes;
-
-			if (nodes.Length == 0)
-			{
-				throw new AerospikeException(ResultCode.SERVER_NOT_AVAILABLE, "Query failed because cluster is empty.");
-			}
-
-			QueryRecordExecutor executor = new QueryRecordExecutor(policy, statement, nodes);
+			QueryRecordExecutor executor = new QueryRecordExecutor(cluster, policy, statement);
+			executor.Execute();
 			return executor.RecordSet;
 		}
 
@@ -858,16 +847,9 @@ namespace Aerospike.Client
 			if (policy == null)
 			{
 				policy = new QueryPolicy();
-			}
-
-			Node[] nodes = cluster.Nodes;
-
-			if (nodes.Length == 0)
-			{
-				throw new AerospikeException(ResultCode.SERVER_NOT_AVAILABLE, "Query failed because cluster is empty.");
-			}
-			
-			QueryAggregateExecutor executor = new QueryAggregateExecutor(policy, statement, nodes, packageName, functionName, functionArgs);
+			}			
+			QueryAggregateExecutor executor = new QueryAggregateExecutor(cluster, policy, statement, packageName, functionName, functionArgs);
+			executor.Execute();
 			return executor.ResultSet;
 		}
 

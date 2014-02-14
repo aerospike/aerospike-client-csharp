@@ -66,6 +66,11 @@ namespace Aerospike.Client
 
 			while (dataOffset < receiveSize)
 			{
+				if (!valid)
+				{
+					throw new AerospikeException.QueryTerminated();
+				}
+
 				ReadBytes(MSG_REMAINING_HEADER_SIZE);
 				int resultCode = dataBuffer[5];
 

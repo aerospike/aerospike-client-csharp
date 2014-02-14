@@ -32,6 +32,7 @@ namespace Aerospike.Client
 
 		private BufferedStream bis;
 		protected internal readonly Node node;
+		protected internal volatile bool valid = true;
 
 		protected internal MultiCommand(Node node)
 		{
@@ -128,6 +129,16 @@ namespace Aerospike.Client
 				pos += count;
 			}
 			dataOffset += length;
+		}
+
+		public void Stop()
+		{
+			valid = false;
+		}
+
+		public bool IsValid()
+		{
+			return valid;
 		}
 
 		protected internal abstract bool ParseRecordResults(int receiveSize);

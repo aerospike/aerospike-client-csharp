@@ -31,7 +31,6 @@ namespace Aerospike.Client
 		private readonly string setName;
 		private readonly ScanCallback callback;
 		private readonly string[] binNames;
-		private volatile bool valid = true;
 
 		public ScanCommand
 		(
@@ -127,11 +126,6 @@ namespace Aerospike.Client
 				callback(key, new Record(bins, generation, expiration));
 			}
 			return true;
-		}
-
-		public void Stop()
-		{
-			valid = false;
 		}
 	}
 }

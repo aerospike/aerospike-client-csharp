@@ -25,10 +25,15 @@ namespace Aerospike.Client
 	{
 		private readonly RecordSet recordSet;
 
-		public QueryRecordExecutor(QueryPolicy policy, Statement statement, Node[] nodes) : base(policy, statement)
+		public QueryRecordExecutor(Cluster cluster, QueryPolicy policy, Statement statement) 
+			: base(cluster, policy, statement)
 		{
 			this.recordSet = new RecordSet(this, policy.recordQueueSize);
-			StartThreads(nodes);
+		}
+
+		public void Execute()
+		{
+			StartThreads();
 		}
 
 		protected internal override QueryCommand CreateCommand(Node node)

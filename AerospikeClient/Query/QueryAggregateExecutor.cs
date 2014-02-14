@@ -27,26 +27,34 @@ namespace Aerospike.Client
 {
 	public sealed class QueryAggregateExecutor : QueryExecutor
 	{
-		private readonly Node[] nodes;
 		private readonly BlockingCollection<object> inputQueue;
 		private readonly ResultSet resultSet;
-		private readonly Thread luaThread;
+		private readonly ManualResetEvent resetEvent;
 
-		public QueryAggregateExecutor(QueryPolicy policy, Statement statement, Node[] nodes, string packageName, string functionName, Value[] functionArgs) 
-			: base(policy, statement)
+		public QueryAggregateExecutor
+		(
+			Cluster cluster,
+			QueryPolicy policy,
+			Statement statement,
+			string packageName,
+			string functionName,
+			Value[] functionArgs
+		) : base(cluster, policy, statement)
 		{
-			this.nodes = nodes;
 			inputQueue = new BlockingCollection<object>(500);
 			resultSet = new ResultSet(this, policy.recordQueueSize);
 			statement.SetAggregateFunction(packageName, functionName, functionArgs, true);
-
-			// Start Lua thread which reads from a queue, applies aggregate function and 
-			// writes to a result set. 
-			luaThread = new Thread(new ThreadStart(Run));
-			luaThread.Start();
+			resetEvent = new ManualResetEvent(false);
 		}
 
-		public void Run()
+		public void Execute()
+		{
+			// Start Lua thread which reads from a queue, applies aggregate function and 
+			// writes to a result set.
+			ThreadPool.QueueUserWorkItem(this.Run);
+		}
+
+		public void Run(object obj)
 		{
 			try
 			{
@@ -56,6 +64,7 @@ namespace Aerospike.Client
 			{
 				StopThreads(e);
 			}
+			resetEvent.Set();
 		}
 
 		public void RunThreads()
@@ -63,7 +72,7 @@ namespace Aerospike.Client
 			LuaInstance lua = LuaCache.GetInstance();
 
 			// Start thread queries to each node.
-			StartThreads(nodes);
+			StartThreads();
 
 			try
 			{
@@ -103,7 +112,7 @@ namespace Aerospike.Client
 				// Ensure lua thread completes before sending end command to result set.
 				if (exception == null)
 				{
-					luaThread.Join(1000);
+					resetEvent.WaitOne(1000);
 				}
 			}
 			catch (ThreadInterruptedException)

@@ -28,22 +28,30 @@ namespace Aerospike.Client
 	{
 		protected internal readonly QueryPolicy policy;
 		protected internal readonly Statement statement;
-		private QueryThread[] threads;
-		private volatile int nextThread;
+		private readonly Node[] nodes;
+		private readonly QueryThread[] threads;
 		protected volatile Exception exception;
+		private int nextThread;
 
-		public QueryExecutor(QueryPolicy policy, Statement statement)
+		public QueryExecutor(Cluster cluster, QueryPolicy policy, Statement statement)
 		{
 			this.policy = policy;
 			this.policy.maxRetries = 0; // Retry policy must be one-shot for queries.
 			this.statement = statement;
+
+			this.nodes = cluster.Nodes;
+
+			if (this.nodes.Length == 0)
+			{
+				throw new AerospikeException(ResultCode.SERVER_NOT_AVAILABLE, "Query failed because cluster is empty.");
+			}
+
+			this.threads = new QueryThread[nodes.Length];
 		}
 
-		protected internal void StartThreads(Node[] nodes)
+		protected internal void StartThreads()
 		{
 			// Initialize threads.
-			threads = new QueryThread[nodes.Length];
-
 			for (int i = 0; i < nodes.Length; i++)
 			{
 				QueryCommand command = CreateCommand(nodes[i]);
@@ -58,7 +66,7 @@ namespace Aerospike.Client
 
 			for (int i = 0; i < max; i++)
 			{
-				threads[i].Start();
+				ThreadPool.QueueUserWorkItem(threads[i].Run);
 			}
 		}
 
@@ -78,7 +86,7 @@ namespace Aerospike.Client
 			if (index >= 0)
 			{
 				// Start new thread.
-				threads[index].Start();
+				ThreadPool.QueueUserWorkItem(threads[index].Run);
 			}
 			else
 			{
@@ -109,18 +117,14 @@ namespace Aerospike.Client
 				exception = cause;
 			}
 
-			if (threads != null)
+			foreach (QueryThread thread in threads)
 			{
-				foreach (QueryThread thread in threads)
+				try
 				{
-					try
-					{
-						thread.StopThread();
-						thread.Interrupt();
-					}
-					catch (Exception)
-					{
-					}
+					thread.Stop();
+				}
+				catch (Exception)
+				{
 				}
 			}
 			SendCompleted();
@@ -145,30 +149,26 @@ namespace Aerospike.Client
 		private sealed class QueryThread
 		{
 			private readonly QueryExecutor parent;
-			private readonly Thread thread;
-
-			// It's ok to construct QueryCommand in another thread,
-			// because QueryCommand no longer uses thread local data.
-			internal readonly QueryCommand command;
+			private readonly QueryCommand command;
+			private Thread thread;
 			internal bool complete;
 
 			public QueryThread(QueryExecutor parent, QueryCommand command)
 			{
 				this.parent = parent;
 				this.command = command;
-				this.thread = new Thread(new ThreadStart(this.Run));
 			}
 
-			public void Start()
+			public void Run(object obj)
 			{
-				thread.Start();
-			}
+				thread = Thread.CurrentThread;
 
-			public void Run()
-			{
 				try
 				{
-					command.Execute();
+					if (command.IsValid())
+					{
+						command.Execute();
+					}
 				}
 				catch (Exception e)
 				{
@@ -183,19 +183,14 @@ namespace Aerospike.Client
 				}
 			}
 
-			public void Join()
-			{
-				thread.Join();
-			}
-
-			public void Interrupt()
-			{
-				thread.Interrupt();
-			}
-
-			public void StopThread()
+			public void Stop()
 			{
 				command.Stop();
+
+				if (thread != null)
+				{
+					thread.Interrupt();
+				}
 			}
 		}
 

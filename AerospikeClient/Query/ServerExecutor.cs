@@ -26,47 +26,48 @@ namespace Aerospike.Client
 {
 	public sealed class ServerExecutor
 	{
-		private readonly Policy policy;
-		private readonly Statement statement;
 		private ServerThread[] threads;
 		private Exception exception;
+		private bool completed;
 
-		public ServerExecutor(Policy policy, Statement statement, string packageName, string functionName, Value[] functionArgs)
+		public ServerExecutor
+		(
+			Cluster cluster,
+			Policy policy,
+			Statement statement,
+			string packageName,
+			string functionName,
+			Value[] functionArgs
+		)
 		{
-			this.policy = policy;
-			this.statement = statement;
-			this.statement.SetAggregateFunction(packageName, functionName, functionArgs, false);
+			statement.SetAggregateFunction(packageName, functionName, functionArgs, false);
 
-			if (this.statement.taskId == 0)
+			if (statement.taskId == 0)
 			{
 				Random r = new Random();
-				this.statement.taskId = r.Next();
+				statement.taskId = r.Next();
 			}
-		}
 
-		public void Execute(Node[] nodes)
-		{
+			Node[] nodes = cluster.Nodes;
+			if (nodes.Length == 0)
+			{
+				throw new AerospikeException(ResultCode.SERVER_NOT_AVAILABLE, "Command failed because cluster is empty.");
+			}
+
 			threads = new ServerThread[nodes.Length];
-			int count = 0;
 
-			foreach (Node node in nodes)
+			for (int i = 0; i < nodes.Length; i++)
 			{
-				ServerCommand command = new ServerCommand(node, policy, statement);
-				ServerThread thread = new ServerThread(this, command);
-				threads[count++] = thread;
-				thread.Start();
+				ServerCommand command = new ServerCommand(nodes[i], policy, statement);
+				threads[i] = new ServerThread(this, command);
 			}
 
-			foreach (ServerThread thread in threads)
+			for (int i = 0; i < nodes.Length; i++)
 			{
-				try
-				{
-					thread.Join();
-				}
-				catch (Exception)
-				{
-				}
+				ThreadPool.QueueUserWorkItem(threads[i].Run);
 			}
+
+			WaitTillComplete();
 
 			// Throw an exception if an error occurred.
 			if (exception != null)
@@ -80,6 +81,20 @@ namespace Aerospike.Client
 					throw new AerospikeException(exception);
 				}
 			}
+		}
+
+		private void ThreadCompleted()
+		{
+			// Check status of other threads.
+			foreach (ServerThread thread in threads) 
+			{
+				if (! thread.complete) {
+					// Some threads have not finished. Do nothing.
+					return;
+				}
+			}
+			// All threads complete.
+			NotifyCompleted();
 		}
 
 		private void StopThreads(Exception cause)
@@ -97,59 +112,80 @@ namespace Aerospike.Client
 			{
 				try
 				{
-					thread.StopThread();
-					thread.Interrupt();
+					thread.Stop();
 				}
 				catch (Exception)
 				{
 				}
+			}
+			NotifyCompleted();
+		}
+
+		private void WaitTillComplete()
+		{
+			lock (this)
+			{
+				while (!completed)
+				{
+					Monitor.Wait(this);
+				}
+			}
+		}
+
+		private void NotifyCompleted()
+		{
+			lock (this)
+			{
+				completed = true;
+				Monitor.Pulse(this);
 			}
 		}
 
 		private sealed class ServerThread
 		{
 			private readonly ServerExecutor parent;
-			private readonly Thread thread;
 			private readonly ServerCommand command;
+			private Thread thread;
+			internal bool complete;
 
 			public ServerThread(ServerExecutor parent, ServerCommand command)
 			{
 				this.parent = parent;
 				this.command = command;
-				this.thread = new Thread(new ThreadStart(this.Run));
 			}
 
-			public void Start()
+			public void Run(object obj)
 			{
-				thread.Start();
-			}
+				thread = Thread.CurrentThread;
 
-			public void Run()
-			{
 				try
 				{
-					command.Execute();
+					if (command.IsValid())
+					{
+						command.Execute();
+					}
 				}
 				catch (Exception e)
 				{
 					// Terminate other threads.
 					parent.StopThreads(e);
 				}
+				complete = true;
+
+				if (parent.exception == null)
+				{
+					parent.ThreadCompleted();
+				}
 			}
 
-			public void Join()
-			{
-				thread.Join();
-			}
-
-			public void Interrupt()
-			{
-				thread.Interrupt();
-			}
-
-			public void StopThread()
+			public void Stop()
 			{
 				command.Stop();
+
+				if (thread != null)
+				{
+					thread.Interrupt();
+				}
 			}
 		}
 	}

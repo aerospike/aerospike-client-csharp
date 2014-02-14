@@ -25,7 +25,6 @@ namespace Aerospike.Client
 	{
 		private readonly Policy policy;
 		private readonly Statement statement;
-		protected internal volatile bool valid = true;
 
 		public QueryCommand(Node node, Policy policy, Statement statement)
 			: base(node)
@@ -191,11 +190,6 @@ namespace Aerospike.Client
 				WriteField(functionArgBuffer, FieldType.UDF_ARGLIST);
 			}
 			End();
-		}
-
-		public void Stop()
-		{
-			valid = false;
 		}
 	}
 }

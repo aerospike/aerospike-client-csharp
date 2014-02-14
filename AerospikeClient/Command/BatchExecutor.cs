@@ -27,112 +27,170 @@ namespace Aerospike.Client
 {
 	public sealed class BatchExecutor
 	{
-		private readonly Thread thread;
-		private readonly Policy policy;
-		private readonly BatchNode batchNode;
-		private readonly HashSet<string> binNames;
-		private readonly Dictionary<Key, BatchItem> keyMap;
-		private readonly Record[] records;
-		private readonly bool[] existsArray;
-		private readonly int readAttr;
-		private Exception exception;
+		private readonly List<BatchThread> threads;
+		private volatile Exception exception;
+		private bool completed;
 
-		public BatchExecutor(Policy policy, BatchNode batchNode, Dictionary<Key, BatchItem> keyMap, HashSet<string> binNames, Record[] records, bool[] existsArray, int readAttr)
+		public BatchExecutor
+		(
+			Cluster cluster,
+			Policy policy,
+			Key[] keys,
+			bool[] existsArray,
+			Record[] records,
+			HashSet<string> binNames,
+			int readAttr
+		)
 		{
-			this.policy = policy;
-			this.batchNode = batchNode;
-			this.keyMap = keyMap;
-			this.binNames = binNames;
-			this.records = records;
-			this.existsArray = existsArray;
-			this.readAttr = readAttr;
-			this.thread = new Thread(new ThreadStart(this.Run));
-		}
+			List<BatchNode> batchNodes = BatchNode.GenerateList(cluster, keys);
+			Dictionary<Key, BatchItem> keyMap = BatchItem.GenerateMap(keys);
 
-		public void Start()
-		{
-			thread.Start();
-		}
+			// Initialize threads.  There may be multiple threads for a single node because the
+			// wire protocol only allows one namespace per command.  Multiple namespaces 
+			// require multiple threads per node.
+			threads = new List<BatchThread>(batchNodes.Count * 2);
+			MultiCommand command = null;
 
-		public void Join()
-		{
-			thread.Join();
-		}
-
-		public void Run()
-		{
-			try
+			foreach (BatchNode batchNode in batchNodes)
 			{
 				foreach (BatchNode.BatchNamespace batchNamespace in batchNode.batchNamespaces)
 				{
 					if (records != null)
 					{
-						BatchCommandGet command = new BatchCommandGet(batchNode.node, batchNamespace, policy, keyMap, binNames, records, readAttr);
-						command.Execute();
+						command = new BatchCommandGet(batchNode.node, batchNamespace, policy, keyMap, binNames, records, readAttr);
 					}
 					else
 					{
-						BatchCommandExists command = new BatchCommandExists(batchNode.node, batchNamespace, policy, keyMap, existsArray);
-						command.Execute();
+						command = new BatchCommandExists(batchNode.node, batchNamespace, policy, keyMap, existsArray);
 					}
+					threads.Add(new BatchThread(this, command));
 				}
 			}
-			catch (Exception e)
+
+			foreach (BatchThread thread in threads)
 			{
-				exception = e;
+				ThreadPool.QueueUserWorkItem(thread.Run);
+			}
+
+			WaitTillComplete();
+
+			// Throw an exception if an error occurred.
+			if (exception != null)
+			{
+				if (exception is AerospikeException)
+				{
+					throw (AerospikeException)exception;
+				}
+				else
+				{
+					throw new AerospikeException(exception);
+				}
 			}
 		}
 
-		public Exception Exception
+		private void ThreadCompleted()
 		{
-			get
+			// Check status of other threads.
+			foreach (BatchThread thread in threads)
 			{
-				return exception;
+				if (!thread.complete)
+				{
+					// Some threads have not finished. Do nothing.
+					return;
+				}
 			}
+			// All threads complete.
+			NotifyCompleted();
 		}
 
-		public static void ExecuteBatch(Cluster cluster, Policy policy, Key[] keys, bool[] existsArray, Record[] records, HashSet<string> binNames, int readAttr)
+		private void StopThreads(Exception cause)
 		{
-			Dictionary<Key, BatchItem> keyMap = BatchItem.GenerateMap(keys);
-			List<BatchNode> batchNodes = BatchNode.GenerateList(cluster, keys);
-
-			// Dispatch the work to each node on a different thread.
-			List<BatchExecutor> threads = new List<BatchExecutor>(batchNodes.Count);
-
-			foreach (BatchNode batchNode in batchNodes)
+			lock (this)
 			{
-				BatchExecutor thread = new BatchExecutor(policy, batchNode, keyMap, binNames, records, existsArray, readAttr);
-				threads.Add(thread);
-				thread.Start();
+				if (exception != null)
+				{
+					return;
+				}
+				exception = cause;
 			}
 
-			// Wait for all the threads to finish their work and return results.
-			foreach (BatchExecutor thread in threads)
+			foreach (BatchThread thread in threads)
 			{
 				try
 				{
-					thread.Join();
+					thread.Stop();
 				}
 				catch (Exception)
 				{
 				}
 			}
+			NotifyCompleted();
+		}
 
-			// Throw an exception if an error occurred.
-			foreach (BatchExecutor thread in threads)
+		private void WaitTillComplete()
+		{
+			lock (this)
 			{
-				Exception e = thread.Exception;
-
-				if (e != null)
+				while (!completed)
 				{
-					if (e is AerospikeException)
+					Monitor.Wait(this);
+				}
+			}
+		}
+
+		private void NotifyCompleted()
+		{
+			lock (this)
+			{
+				completed = true;
+				Monitor.Pulse(this);
+			}
+		}
+
+		private sealed class BatchThread
+		{
+			private readonly BatchExecutor parent;
+			private readonly MultiCommand command;
+			private Thread thread;
+			internal bool complete;
+
+			public BatchThread(BatchExecutor parent, MultiCommand command)
+			{
+				this.parent = parent;
+				this.command = command;
+			}
+
+			public void Run(object obj)
+			{
+				thread = Thread.CurrentThread;
+
+				try
+				{
+					if (command.IsValid())
 					{
-						throw (AerospikeException)e;
+						command.Execute();
 					}
-					else
-					{
-						throw new AerospikeException(e);
-					}
+				}
+				catch (Exception e)
+				{
+					// Terminate other threads.
+					parent.StopThreads(e);
+				}
+				complete = true;
+
+				if (parent.exception == null)
+				{
+					parent.ThreadCompleted();
+				}
+			}
+
+			public void Stop()
+			{
+				command.Stop();
+
+				if (thread != null)
+				{
+					thread.Interrupt();
 				}
 			}
 		}
