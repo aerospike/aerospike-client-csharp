@@ -66,7 +66,7 @@ namespace Aerospike.Demo
 				{
 					double writeTps = Math.Round((double)writeCurrent / seconds, 0);
 
-					console.Info("write(tps={0} timeouts={1} errors={2} total={3}))",
+					console.Info("write(tps={0} timeouts={1} errors={2} total={3})",
 						writeTps, writeTimeoutCurrent, writeErrorCurrent, totalCount
 					);
 
@@ -75,7 +75,6 @@ namespace Aerospike.Demo
                         console.Write(latencyHeader);
                         console.Write(shared.writeLatency.PrintResults(latencyBuilder, "write"));
                     }
-                    prevTime = time;
 				}
 
 				if (writeTimeoutCurrent + writeErrorCurrent > 10)
