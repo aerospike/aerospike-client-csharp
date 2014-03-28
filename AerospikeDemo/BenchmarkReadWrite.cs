@@ -90,8 +90,6 @@ namespace Aerospike.Demo
 					int t = Process.GetCurrentProcess().Threads.Count;
 					console.Info("threads=" + t + ",minw=" + minw + ",minp=" + minp + ",maxw=" + maxw + ",maxp=" + maxp + ",aw=" + aw + ",ap=" + ap);
 					*/
-
-					prevTime = time;
 				}
 
 				if (writeTimeoutCurrent + writeErrorCurrent > 10)
