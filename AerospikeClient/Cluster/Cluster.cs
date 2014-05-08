@@ -85,7 +85,7 @@ namespace Aerospike.Client
 			}
 
 			// Add other nodes as seeds, if they don't already exist.
-			List<Host> seedsToAdd = new List<Host>(nodes.Length + 1);
+			List<Host> seedsToAdd = new List<Host>(nodes.Length);
 			foreach (Node node in nodes)
 			{
 				Host host = node.Host;
@@ -495,7 +495,7 @@ namespace Aerospike.Client
 				nodeArray[count++] = node;
 			}
 
-			// Add new Nodes
+			// Add new nodes
 			foreach (Node node in nodesToAdd)
 			{
 				if (Log.InfoEnabled())

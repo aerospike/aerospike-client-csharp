@@ -152,7 +152,7 @@ namespace Aerospike.Client
 			private readonly BatchExecutor parent;
 			private readonly MultiCommand command;
 			private Thread thread;
-			internal bool complete;
+			internal volatile bool complete;
 
 			public BatchThread(BatchExecutor parent, MultiCommand command)
 			{

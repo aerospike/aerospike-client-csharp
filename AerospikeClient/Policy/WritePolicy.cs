@@ -47,16 +47,16 @@ namespace Aerospike.Client
 
 		/// <summary>
 		/// Record expiration.  Also known as ttl (time to live). 
-        /// Seconds record will live before being removed by the server.
-        /// <para>
-        /// Expiration values:
-        /// <list type="bullet">
-        /// <item>-1: Never expire for Aerospike 2 server versions >= 2.7.2 and Aerospike 3 server
-        /// versions >= 3.1.4.  For older servers, -1 means a very long (max integer) expiration.</item>
-        /// <item>0:  Default to namespace's "default-ttl" on the server.</item>
-        /// <item>> 0: Actual expiration in seconds.</item>
-        /// </list>
-        /// </para>
+		/// Seconds record will live before being removed by the server.
+		/// <para>
+		/// Expiration values:
+		/// <list type="bullet">
+		/// <item>-1: Never expire for Aerospike 2 server versions >= 2.7.2 and Aerospike 3 server
+		/// versions >= 3.1.4.  Do not use -1 for older servers.</item>
+		/// <item>0:  Default to namespace's "default-ttl" on the server.</item>
+		/// <item>> 0: Actual expiration in seconds.</item>
+		/// </list>
+		/// </para>
 		/// </summary>
 		public int expiration;
 	}

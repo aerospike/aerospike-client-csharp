@@ -151,7 +151,7 @@ namespace Aerospike.Client
 			private readonly QueryExecutor parent;
 			private readonly QueryCommand command;
 			private Thread thread;
-			internal bool complete;
+			internal volatile bool complete;
 
 			public QueryThread(QueryExecutor parent, QueryCommand command)
 			{

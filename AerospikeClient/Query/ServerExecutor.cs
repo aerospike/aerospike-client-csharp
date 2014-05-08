@@ -146,7 +146,7 @@ namespace Aerospike.Client
 			private readonly ServerExecutor parent;
 			private readonly ServerCommand command;
 			private Thread thread;
-			internal bool complete;
+			internal volatile bool complete;
 
 			public ServerThread(ServerExecutor parent, ServerCommand command)
 			{

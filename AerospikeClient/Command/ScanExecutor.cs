@@ -163,7 +163,7 @@ namespace Aerospike.Client
 			private readonly ScanExecutor parent;
 			private readonly ScanCommand command;
 			private Thread thread;
-			internal bool complete;
+			internal volatile bool complete;
 
 			public ScanThread(ScanExecutor parent, ScanCommand command)
 			{
