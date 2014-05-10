@@ -113,8 +113,7 @@ namespace Aerospike.Client
 		/// </summary>
 		public bool KeepConnection()
 		{
-			return (resultCode >= ResultCode.KEY_NOT_FOUND_ERROR && resultCode <= ResultCode.BIN_EXISTS_ERROR) ||
-				   (resultCode == ResultCode.KEY_BUSY);
+			return ResultCode.KeepConnection(resultCode);
 		}
 
 		/// <summary>

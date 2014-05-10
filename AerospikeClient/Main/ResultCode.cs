@@ -47,7 +47,7 @@ namespace Aerospike.Client
 		public const int INVALID_NODE_ERROR = -3;
 
 		/// <summary>
-		/// Client serialization error.
+		/// Client parse error.
 		/// </summary>
 		public const int PARSE_ERROR = -2;
 
@@ -145,9 +145,19 @@ namespace Aerospike.Client
 		public const int UNSUPPORTED_FEATURE = 16;
 
 		/// <summary>
-		/// Database command data is invalid.
+		/// Specified bin name does not exist in record.
 		/// </summary>
-		public const int INVALID_DATA = 99;
+		public const int BIN_NOT_FOUND = 17;
+
+		/// <summary>
+		/// Specified bin name does not exist in record.
+		/// </summary>
+		public const int DEVICE_OVERLOAD = 18;
+
+		/// <summary>
+		/// Key type mismatch.
+		/// </summary>
+		public const int KEY_MISMATCH = 19;
 
 		/// <summary>
 		/// A user defined function returned an error code.
@@ -180,6 +190,16 @@ namespace Aerospike.Client
 		public const int INDEX_GENERIC = 204;
 
 		/// <summary>
+		/// Index name maximum length exceeded.
+		/// </summary>
+		public const int INDEX_NAME_MAXLEN = 205;
+
+		/// <summary>
+		/// Maximum number of indicies exceeded.
+		/// </summary>
+		public const int INDEX_MAXCOUNT = 206;
+	
+		/// <summary>
 		/// Secondary index query aborted.
 		/// </summary>
 		public const int QUERY_ABORTED = 210;
@@ -199,6 +219,32 @@ namespace Aerospike.Client
 		/// </summary>
 		public const int QUERY_GENERIC = 213;
 
+		/// <summary>
+		/// Should connection be put back into pool.
+		/// </summary>
+		public static bool KeepConnection(int resultCode)
+		{
+			switch (resultCode)
+			{
+				case QUERY_TERMINATED:
+				case SCAN_TERMINATED:
+				case INVALID_NODE_ERROR:
+				case PARSE_ERROR:
+				case SERIALIZE_ERROR:
+				case SERVER_MEM_ERROR:
+				case TIMEOUT:
+				case SERVER_NOT_AVAILABLE:
+				case SCAN_ABORT:
+				case INDEX_OOM:
+				case QUERY_ABORTED:
+				case QUERY_TIMEOUT:
+					return false;
+
+				default:
+					return true;
+			}
+		}
+	
 		/// <summary>
 		/// Return result code as a string.
 		/// </summary>
@@ -275,8 +321,14 @@ namespace Aerospike.Client
 			case UNSUPPORTED_FEATURE:
 				return "Unsupported server feature";
 
-			case INVALID_DATA:
-				return "Invalid command data";
+			case BIN_NOT_FOUND:
+				return "Bin not found";
+
+			case DEVICE_OVERLOAD:
+				return "Device overload";
+
+			case KEY_MISMATCH:
+				return "Key mismatch";
 
 			case UDF_BAD_RESPONSE:
 				return "UDF returned error";
@@ -296,6 +348,12 @@ namespace Aerospike.Client
 			case INDEX_GENERIC:
 				return "Index error";
 
+			case INDEX_NAME_MAXLEN:
+				return "Index name max length exceeded";
+
+			case INDEX_MAXCOUNT:
+				return "Index count exceeds max";
+			
 			case QUERY_ABORTED:
 				return "Query aborted";
 
