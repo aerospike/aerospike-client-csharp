@@ -226,6 +226,7 @@ namespace Aerospike.Client
 		{
 			switch (resultCode)
 			{
+				case 0: // Exception did not originate on server.
 				case QUERY_TERMINATED:
 				case SCAN_TERMINATED:
 				case INVALID_NODE_ERROR:
