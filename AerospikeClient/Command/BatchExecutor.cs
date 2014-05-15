@@ -29,6 +29,7 @@ namespace Aerospike.Client
 	{
 		private readonly List<BatchThread> threads;
 		private volatile Exception exception;
+		private int completedCount;
 		private bool completed;
 
 		public BatchExecutor
@@ -90,17 +91,11 @@ namespace Aerospike.Client
 
 		private void ThreadCompleted()
 		{
-			// Check status of other threads.
-			foreach (BatchThread thread in threads)
+			// Check if all threads completed.
+			if (Interlocked.Increment(ref completedCount) >= threads.Count)
 			{
-				if (!thread.complete)
-				{
-					// Some threads have not finished. Do nothing.
-					return;
-				}
+				NotifyCompleted();
 			}
-			// All threads complete.
-			NotifyCompleted();
 		}
 
 		private void StopThreads(Exception cause)
@@ -152,7 +147,6 @@ namespace Aerospike.Client
 			private readonly BatchExecutor parent;
 			private readonly MultiCommand command;
 			private Thread thread;
-			internal volatile bool complete;
 
 			public BatchThread(BatchExecutor parent, MultiCommand command)
 			{
@@ -176,7 +170,6 @@ namespace Aerospike.Client
 					// Terminate other threads.
 					parent.StopThreads(e);
 				}
-				complete = true;
 
 				if (parent.exception == null)
 				{

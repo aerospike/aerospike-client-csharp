@@ -28,6 +28,7 @@ namespace Aerospike.Client
 	{
 		private ServerThread[] threads;
 		private Exception exception;
+		private int completedCount;
 		private bool completed;
 
 		public ServerExecutor
@@ -85,16 +86,11 @@ namespace Aerospike.Client
 
 		private void ThreadCompleted()
 		{
-			// Check status of other threads.
-			foreach (ServerThread thread in threads) 
+			// Check if all threads completed.
+			if (Interlocked.Increment(ref completedCount) >= threads.Length)
 			{
-				if (! thread.complete) {
-					// Some threads have not finished. Do nothing.
-					return;
-				}
+				NotifyCompleted();
 			}
-			// All threads complete.
-			NotifyCompleted();
 		}
 
 		private void StopThreads(Exception cause)
@@ -146,7 +142,6 @@ namespace Aerospike.Client
 			private readonly ServerExecutor parent;
 			private readonly ServerCommand command;
 			private Thread thread;
-			internal volatile bool complete;
 
 			public ServerThread(ServerExecutor parent, ServerCommand command)
 			{
@@ -170,7 +165,6 @@ namespace Aerospike.Client
 					// Terminate other threads.
 					parent.StopThreads(e);
 				}
-				complete = true;
 
 				if (parent.exception == null)
 				{

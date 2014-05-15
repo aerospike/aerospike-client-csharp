@@ -28,7 +28,8 @@ namespace Aerospike.Client
 	{
 		private readonly ScanThread[] threads;
 		private volatile Exception exception;
-		private int nextThread;
+		private readonly int maxConcurrentNodes;
+		private int completedCount;
 		private bool completed;
 
 		public ScanExecutor
@@ -52,15 +53,13 @@ namespace Aerospike.Client
 			}
 
 			// Initialize maximum number of nodes to query in parallel.
-			nextThread = (policy.maxConcurrentNodes == 0 || policy.maxConcurrentNodes >= threads.Length) ? threads.Length : policy.maxConcurrentNodes;
+			maxConcurrentNodes = (policy.maxConcurrentNodes == 0 || policy.maxConcurrentNodes >= threads.Length) ? threads.Length : policy.maxConcurrentNodes;
 		}
 
 		public void ScanParallel()
 		{
-			// Start threads. Use separate max because threadCompleted() may modify nextThread in parallel.
-			int max = nextThread;
-
-			for (int i = 0; i < max; i++)
+			// Start threads.
+			for (int i = 0; i < maxConcurrentNodes; i++)
 			{
 				ThreadPool.QueueUserWorkItem(threads[i].Run);
 			}
@@ -82,34 +81,21 @@ namespace Aerospike.Client
 
 		private void ThreadCompleted()
 		{
-			int index = -1;
+			int finished = Interlocked.Increment(ref completedCount);
 
-			// Determine if a new thread needs to be started.
-			lock (threads)
+			if (finished < threads.Length)
 			{
+				int nextThread = finished + maxConcurrentNodes - 1;
+
+				// Determine if a new thread needs to be started.
 				if (nextThread < threads.Length)
 				{
-					index = nextThread++;
+					// Start new thread.
+					ThreadPool.QueueUserWorkItem(threads[nextThread].Run);
 				}
-			}
-
-			if (index >= 0)
-			{
-				// Start new thread.
-				ThreadPool.QueueUserWorkItem(threads[index].Run);
 			}
 			else
 			{
-				// All threads have been started. Check status.
-				foreach (ScanThread thread in threads)
-				{
-					if (!thread.complete)
-					{
-						// Some threads have not finished. Do nothing.
-						return;
-					}
-				}
-				// All threads complete.
 				NotifyCompleted();
 			}
 		}
@@ -163,7 +149,6 @@ namespace Aerospike.Client
 			private readonly ScanExecutor parent;
 			private readonly ScanCommand command;
 			private Thread thread;
-			internal volatile bool complete;
 
 			public ScanThread(ScanExecutor parent, ScanCommand command)
 			{
@@ -187,7 +172,6 @@ namespace Aerospike.Client
 					// Terminate other scan threads.
 					parent.StopThreads(e);
 				}
-				complete = true;
 
 				if (parent.exception == null)
 				{
