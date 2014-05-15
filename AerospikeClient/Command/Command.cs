@@ -238,6 +238,30 @@ namespace Aerospike.Client
 			End();
 		}
 
+		public void SetBatchExists(Key[] keys)
+		{
+			// Estimate buffer size
+			string ns = keys[0].ns;
+			Begin();
+			int byteSize = keys.Length * Command.DIGEST_SIZE;
+
+			dataOffset += ByteUtil.EstimateSizeUtf8(ns) + FIELD_HEADER_SIZE + byteSize + FIELD_HEADER_SIZE;
+
+			SizeBuffer();
+
+			WriteHeader(Command.INFO1_READ | Command.INFO1_NOBINDATA, 0, 2, 0);
+			WriteField(ns, FieldType.NAMESPACE);
+			WriteFieldHeader(byteSize, FieldType.DIGEST_RIPE_ARRAY);
+
+			foreach (Key key in keys)
+			{
+				byte[] digest = key.digest;
+				Array.Copy(digest, 0, dataBuffer, dataOffset, digest.Length);
+				dataOffset += digest.Length;
+			}
+			End();
+		}
+		
 		public void SetBatchExists(BatchNode.BatchNamespace batchNamespace)
 		{
 			// Estimate buffer size
@@ -262,6 +286,47 @@ namespace Aerospike.Client
 			End();
 		}
 
+		public void SetBatchGet(Key[] keys, HashSet<string> binNames, int readAttr)
+		{
+			// Estimate buffer size
+			string ns = keys[0].ns;
+			Begin();
+			int byteSize = keys.Length * SyncCommand.DIGEST_SIZE;
+
+			dataOffset += ByteUtil.EstimateSizeUtf8(ns) + FIELD_HEADER_SIZE + byteSize + FIELD_HEADER_SIZE;
+
+			if (binNames != null)
+			{
+				foreach (string binName in binNames)
+				{
+					EstimateOperationSize(binName);
+				}
+			}
+
+			SizeBuffer();
+
+			int operationCount = (binNames == null) ? 0 : binNames.Count;
+			WriteHeader(readAttr, 0, 2, operationCount);
+			WriteField(ns, FieldType.NAMESPACE);
+			WriteFieldHeader(byteSize, FieldType.DIGEST_RIPE_ARRAY);
+
+			foreach (Key key in keys)
+			{
+				byte[] digest = key.digest;
+				Array.Copy(digest, 0, dataBuffer, dataOffset, digest.Length);
+				dataOffset += digest.Length;
+			}
+
+			if (binNames != null)
+			{
+				foreach (string binName in binNames)
+				{
+					WriteOperation(binName, Operation.Type.READ);
+				}
+			}
+			End();
+		}
+		
 		public void SetBatchGet(BatchNode.BatchNamespace batchNamespace, HashSet<string> binNames, int readAttr)
 		{
 			// Estimate buffer size

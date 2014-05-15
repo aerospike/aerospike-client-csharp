@@ -324,8 +324,24 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if command fails</exception>
 		public bool[] Exists(Policy policy, Key[] keys)
 		{
+			if (policy == null)
+			{
+				policy = new Policy();
+			}
 			bool[] existsArray = new bool[keys.Length];
-			new BatchExecutor(cluster, policy, keys, existsArray, null, null, Command.INFO1_READ | Command.INFO1_NOBINDATA);
+
+			if (policy.allowProleReads)
+			{
+				// Send all requests to a single node chosen in round-robin fashion in this transaction thread.
+				Node node = cluster.GetRandomNode();
+				BatchCommandNodeExists command = new BatchCommandNodeExists(node, policy, keys, existsArray);
+				command.Execute();
+			}
+			else
+			{
+				// Send requests to each key's master partition in multiple threads.
+				new BatchExecutor(cluster, policy, keys, existsArray, null, null, Command.INFO1_READ | Command.INFO1_NOBINDATA);
+			}		
 			return existsArray;
 		}
 
@@ -394,8 +410,24 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if read fails</exception>
 		public Record[] Get(Policy policy, Key[] keys)
 		{
+			if (policy == null)
+			{
+				policy = new Policy();
+			}
 			Record[] records = new Record[keys.Length];
-			new BatchExecutor(cluster, policy, keys, null, records, null, Command.INFO1_READ | Command.INFO1_GET_ALL);
+
+			if (policy.allowProleReads)
+			{
+				// Send all requests to a single node chosen in round-robin fashion in this transaction thread.
+				Node node = cluster.GetRandomNode();
+				BatchCommandNodeGet command = new BatchCommandNodeGet(node, policy, keys, records, null, Command.INFO1_READ | Command.INFO1_GET_ALL);
+				command.Execute();
+			}
+			else
+			{
+				// Send requests to each key's master partition in multiple threads.
+				new BatchExecutor(cluster, policy, keys, null, records, null, Command.INFO1_READ | Command.INFO1_GET_ALL);
+			}
 			return records;
 		}
 
@@ -411,9 +443,25 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if read fails</exception>
 		public Record[] Get(Policy policy, Key[] keys, params string[] binNames)
 		{
+			if (policy == null)
+			{
+				policy = new Policy();
+			}
 			Record[] records = new Record[keys.Length];
 			HashSet<string> names = BinNamesToHashSet(binNames);
-			new BatchExecutor(cluster, policy, keys, null, records, names, Command.INFO1_READ);
+
+			if (policy.allowProleReads)
+			{
+				// Send all requests to a single node chosen in round-robin fashion.
+				Node node = cluster.GetRandomNode();
+				BatchCommandNodeGet command = new BatchCommandNodeGet(node, policy, keys, records, names, Command.INFO1_READ);
+				command.Execute();
+			}
+			else
+			{
+				// Send requests to each key's master partition in multiple threads.
+				new BatchExecutor(cluster, policy, keys, null, records, names, Command.INFO1_READ);
+			}
 			return records;
 		}
 
@@ -428,8 +476,24 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if read fails</exception>
 		public Record[] GetHeader(Policy policy, Key[] keys)
 		{
+			if (policy == null)
+			{
+				policy = new Policy();
+			}
 			Record[] records = new Record[keys.Length];
-			new BatchExecutor(cluster, policy, keys, null, records, null, Command.INFO1_READ | Command.INFO1_NOBINDATA);
+
+			if (policy.allowProleReads)
+			{
+				// Send all requests to a single node chosen in round-robin fashion.
+				Node node = cluster.GetRandomNode();
+				BatchCommandNodeGet command = new BatchCommandNodeGet(node, policy, keys, records, null, Command.INFO1_READ | Command.INFO1_NOBINDATA);
+				command.Execute();
+			}
+			else
+			{
+				// Send requests to each key's master partition in multiple threads.
+				new BatchExecutor(cluster, policy, keys, null, records, null, Command.INFO1_READ | Command.INFO1_NOBINDATA);
+			}
 			return records;
 		}
 

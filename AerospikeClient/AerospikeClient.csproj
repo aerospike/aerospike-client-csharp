@@ -70,6 +70,8 @@
     <Compile Include="Async\AsyncOperate.cs" />
     <Compile Include="Async\AsyncTouch.cs" />
     <Compile Include="Async\BufferPool.cs" />
+    <Compile Include="Command\BatchCommandNodeGet.cs" />
+    <Compile Include="Command\BatchCommandNodeExists.cs" />
     <Compile Include="Command\ExecuteCommand.cs" />
     <Compile Include="Command\OperateCommand.cs" />
     <Compile Include="Command\ReadHeaderCommand.cs" />
