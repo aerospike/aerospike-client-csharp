@@ -27,7 +27,8 @@ namespace Aerospike.Client
 	public sealed class ScanPolicy : Policy
 	{
 		/// <summary>
-		/// Fraction of data to scan - not yet supported.
+		/// Percent of data to scan.  Valid integer range is 1 to 100.
+		/// Default is 100.
 		/// </summary>
 		public int scanPercent = 100;
 
