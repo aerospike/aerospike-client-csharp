@@ -89,7 +89,7 @@ namespace Aerospike.Client
 		/// </summary>
 		public static bool WarnEnabled()
 		{
-			return Level.WARN <= LogLevel;
+			return LogCallback != null && Level.WARN <= LogLevel;
 		}
 
 		/// <summary>
@@ -97,7 +97,7 @@ namespace Aerospike.Client
 		/// </summary>
 		public static bool InfoEnabled()
 		{
-			return Level.INFO <= LogLevel;
+			return LogCallback != null && Level.INFO <= LogLevel;
 		}
 
 		/// <summary>
@@ -105,7 +105,7 @@ namespace Aerospike.Client
 		/// </summary>
 		public static bool DebugEnabled()
 		{
-			return Level.DEBUG <= LogLevel;
+			return LogCallback != null && Level.DEBUG <= LogLevel;
 		}
 
 		/// <summary>
