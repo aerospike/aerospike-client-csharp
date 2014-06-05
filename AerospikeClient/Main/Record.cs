@@ -20,6 +20,7 @@
  * IN THE SOFTWARE.
  ******************************************************************************/
 using System.Collections.Generic;
+using System.Text;
 
 namespace Aerospike.Client
 {
@@ -67,6 +68,53 @@ namespace Aerospike.Client
 			object obj;
 			bins.TryGetValue(name, out obj);
 			return obj;
+		}
+
+		/// <summary>
+		/// Return string representation of record.
+		/// </summary>
+		public override string ToString()
+		{
+			StringBuilder sb = new StringBuilder(500);
+			sb.Append("(gen:");
+			sb.Append(generation);
+			sb.Append("),(exp:");
+			sb.Append(expiration);
+			sb.Append("),(bins:");
+
+			if (bins != null)
+			{
+				bool sep = false;
+
+				foreach (KeyValuePair<string, object> entry in bins)
+				{
+					if (sep)
+					{
+						sb.Append(',');
+					}
+					else
+					{
+						sep = true;
+					}
+					sb.Append('(');
+					sb.Append(entry.Key);
+					sb.Append(':');
+					sb.Append(entry.Value);
+					sb.Append(')');
+
+					if (sb.Length > 1000)
+					{
+						sb.Append("...");
+						break;
+					}
+				}
+			}
+			else
+			{
+				sb.Append("null");
+			}
+			sb.Append(')');
+			return sb.ToString();
 		}
 	}
 }
