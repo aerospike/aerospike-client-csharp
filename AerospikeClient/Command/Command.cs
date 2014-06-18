@@ -465,7 +465,7 @@ namespace Aerospike.Client
 		{
 			dataOffset += ByteUtil.EstimateSizeUtf8(packageName) + FIELD_HEADER_SIZE;
 			dataOffset += ByteUtil.EstimateSizeUtf8(functionName) + FIELD_HEADER_SIZE;
-			dataOffset += bytes.Length;
+			dataOffset += bytes.Length + FIELD_HEADER_SIZE;
 			return 3;
 		}
 
