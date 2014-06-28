@@ -70,8 +70,10 @@
     <Compile Include="Async\AsyncOperate.cs" />
     <Compile Include="Async\AsyncTouch.cs" />
     <Compile Include="Async\BufferPool.cs" />
+    <Compile Include="BCrypt\SaltParseException.cs" />
     <Compile Include="Command\BatchCommandNodeGet.cs" />
     <Compile Include="Command\BatchCommandNodeExists.cs" />
+    <Compile Include="Command\AdminCommand.cs" />
     <Compile Include="Command\ExecuteCommand.cs" />
     <Compile Include="Command\OperateCommand.cs" />
     <Compile Include="Command\ReadHeaderCommand.cs" />
@@ -131,6 +133,9 @@
     <Compile Include="Command\SingleCommand.cs" />
     <Compile Include="Command\SyncCommand.cs" />
     <Compile Include="Command\WriteCommand.cs" />
+    <Compile Include="Main\Join.cs" />
+    <Compile Include="Main\Role.cs" />
+    <Compile Include="Main\UserRoles.cs" />
     <Compile Include="Main\Host.cs" />
     <Compile Include="Main\Info.cs" />
     <Compile Include="Main\Key.cs" />
@@ -159,6 +164,8 @@
     <Compile Include="Lua\LuaStream.cs" />
     <Compile Include="Main\Operation.cs" />
     <Compile Include="Policy\ClientPolicy.cs" />
+    <Compile Include="Policy\AdminPolicy.cs" />
+    <Compile Include="Policy\InfoPolicy.cs" />
     <Compile Include="Policy\GenerationPolicy.cs" />
     <Compile Include="Policy\Policy.cs" />
     <Compile Include="Policy\Priority.cs" />
@@ -193,6 +200,7 @@
     <Compile Include="Main\Record.cs" />
     <Compile Include="Main\ResultCode.cs" />
     <Compile Include="Query\ScanCallback.cs" />
+    <Compile Include="BCrypt\BCrypt.cs" />
     <Compile Include="Util\Unpacker.cs" />
     <Compile Include="Util\Hash.cs" />
     <Compile Include="Util\Packer.cs" />

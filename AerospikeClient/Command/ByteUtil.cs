@@ -78,6 +78,18 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
+		/// Convert input string to UTF-8 and return corresponding byte array.
+		/// </summary>
+		public static byte[] StringToUtf8(string s)
+		{
+			if (s == null || s.Length == 0)
+			{
+				return new byte[0];
+			}
+			return Encoding.UTF8.GetBytes(s);
+		}
+		
+		/// <summary>
 		/// Convert input string to UTF-8, copies into buffer (at given offset).
 		/// Returns number of bytes in the string.
 		/// </summary>

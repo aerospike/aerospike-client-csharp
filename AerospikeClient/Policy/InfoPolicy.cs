@@ -19,41 +19,17 @@
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
  * IN THE SOFTWARE.
  ******************************************************************************/
-using System;
-using System.Collections.Generic;
-using System.Reflection;
-using Aerospike.Client;
-
-namespace Aerospike.Demo
+namespace Aerospike.Client
 {
-	public abstract class AsyncExample : Example
+	/// <summary>
+	/// Policy attributes used for info commands.
+	/// </summary>
+	public class InfoPolicy
 	{
-		public AsyncExample(Console console)
-			: base(console)
-		{
-		}
-
-		public override void RunExample(Arguments args)
-		{
-			AsyncClientPolicy policy = new AsyncClientPolicy();
-			policy.user = args.user;
-			policy.password = args.password;
-			policy.asyncMaxCommands = args.commandMax;
-			policy.failIfNotConnected = true;
-
-			AsyncClient client = new AsyncClient(policy, args.host, args.port);
-
-			try
-			{
-				args.SetServerSpecific(client);
-				RunExample(client, args);
-			}
-			finally
-			{
-				client.Close();
-			}
-		}
-
-		public abstract void RunExample(AsyncClient client, Arguments args);
+		/// <summary>
+		/// Info command socket timeout in milliseconds.
+		/// Default is one second timeout.
+		/// </summary>
+		public int timeout = 1000;
 	}
 }

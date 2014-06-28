@@ -91,6 +91,10 @@
 			this.setBox = new System.Windows.Forms.TextBox();
 			this.label4 = new System.Windows.Forms.Label();
 			this.examplesView = new System.Windows.Forms.TreeView();
+			this.passwordBox = new System.Windows.Forms.TextBox();
+			this.label12 = new System.Windows.Forms.Label();
+			this.userBox = new System.Windows.Forms.TextBox();
+			this.label13 = new System.Windows.Forms.Label();
 			((System.ComponentModel.ISupportInitialize)(this.splitContainer1)).BeginInit();
 			this.splitContainer1.Panel1.SuspendLayout();
 			this.splitContainer1.Panel2.SuspendLayout();
@@ -656,7 +660,7 @@
 			this.consoleBox.Name = "consoleBox";
 			this.consoleBox.ReadOnly = true;
 			this.consoleBox.ScrollBars = System.Windows.Forms.ScrollBars.Vertical;
-			this.consoleBox.Size = new System.Drawing.Size(1019, 303);
+			this.consoleBox.Size = new System.Drawing.Size(1019, 299);
 			this.consoleBox.TabIndex = 11;
 			this.consoleBox.KeyDown += new System.Windows.Forms.KeyEventHandler(this.ConsoleKeyDown);
 			// 
@@ -682,7 +686,7 @@
 			// 
 			// nsBox
 			// 
-			this.nsBox.Location = new System.Drawing.Point(329, 6);
+			this.nsBox.Location = new System.Drawing.Point(621, 6);
 			this.nsBox.Name = "nsBox";
 			this.nsBox.Size = new System.Drawing.Size(100, 20);
 			this.nsBox.TabIndex = 3;
@@ -691,7 +695,7 @@
 			// label3
 			// 
 			this.label3.AutoSize = true;
-			this.label3.Location = new System.Drawing.Point(265, 9);
+			this.label3.Location = new System.Drawing.Point(558, 9);
 			this.label3.Name = "label3";
 			this.label3.Size = new System.Drawing.Size(64, 13);
 			this.label3.TabIndex = 11;
@@ -733,7 +737,7 @@
 			// 
 			// setBox
 			// 
-			this.setBox.Location = new System.Drawing.Point(469, 6);
+			this.setBox.Location = new System.Drawing.Point(754, 6);
 			this.setBox.Name = "setBox";
 			this.setBox.Size = new System.Drawing.Size(100, 20);
 			this.setBox.TabIndex = 4;
@@ -742,7 +746,7 @@
 			// label4
 			// 
 			this.label4.AutoSize = true;
-			this.label4.Location = new System.Drawing.Point(445, 9);
+			this.label4.Location = new System.Drawing.Point(731, 9);
 			this.label4.Name = "label4";
 			this.label4.Size = new System.Drawing.Size(23, 13);
 			this.label4.TabIndex = 13;
@@ -763,11 +767,47 @@
 			this.examplesView.TabIndex = 14;
 			this.examplesView.AfterSelect += new System.Windows.Forms.TreeViewEventHandler(this.ExampleSelected);
 			// 
+			// passwordBox
+			// 
+			this.passwordBox.Location = new System.Drawing.Point(450, 6);
+			this.passwordBox.Name = "passwordBox";
+			this.passwordBox.Size = new System.Drawing.Size(100, 20);
+			this.passwordBox.TabIndex = 16;
+			this.passwordBox.UseSystemPasswordChar = true;
+			// 
+			// label12
+			// 
+			this.label12.AutoSize = true;
+			this.label12.Location = new System.Drawing.Point(397, 9);
+			this.label12.Name = "label12";
+			this.label12.Size = new System.Drawing.Size(53, 13);
+			this.label12.TabIndex = 18;
+			this.label12.Text = "Password";
+			// 
+			// userBox
+			// 
+			this.userBox.Location = new System.Drawing.Point(288, 6);
+			this.userBox.Name = "userBox";
+			this.userBox.Size = new System.Drawing.Size(100, 20);
+			this.userBox.TabIndex = 15;
+			// 
+			// label13
+			// 
+			this.label13.AutoSize = true;
+			this.label13.Location = new System.Drawing.Point(257, 9);
+			this.label13.Name = "label13";
+			this.label13.Size = new System.Drawing.Size(29, 13);
+			this.label13.TabIndex = 17;
+			this.label13.Text = "User";
+			// 
 			// DemoForm
 			// 
 			this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
 			this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
 			this.ClientSize = new System.Drawing.Size(1184, 789);
+			this.Controls.Add(this.label12);
+			this.Controls.Add(this.userBox);
+			this.Controls.Add(this.label13);
 			this.Controls.Add(this.examplesView);
 			this.Controls.Add(this.setBox);
 			this.Controls.Add(this.label4);
@@ -778,6 +818,7 @@
 			this.Controls.Add(this.label1);
 			this.Controls.Add(this.hostBox);
 			this.Controls.Add(this.splitContainer1);
+			this.Controls.Add(this.passwordBox);
 			this.Name = "DemoForm";
 			this.Text = "Aerospike Database Client Demo";
 			this.FormClosing += new System.Windows.Forms.FormClosingEventHandler(this.FormClose);
@@ -872,5 +913,9 @@
         private System.Windows.Forms.Label initPctLabel;
         private System.Windows.Forms.TextBox initPctBox;
         private System.Windows.Forms.Label label5;
+		private System.Windows.Forms.TextBox passwordBox;
+		private System.Windows.Forms.Label label12;
+		private System.Windows.Forms.TextBox userBox;
+		private System.Windows.Forms.Label label13;
     }
 }

@@ -5,6 +5,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AerospikeDemo", "AerospikeD
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AerospikeClient", "AerospikeClient\AerospikeClient.csproj", "{21FEB257-1454-4A21-81D6-BDB6FE865E97}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AerospikeAdmin", "AerospikeAdmin\AerospikeAdmin.csproj", "{5181AF59-E59C-4DA6-9589-8038A8A16E23}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -13,22 +15,30 @@ Global
 		Release|x64 = Release|x64
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{D7C021D5-01AF-4DDB-86E7-801F26D17C6C}.Debug|Any CPU.ActiveCfg = Debug|x64
-		{D7C021D5-01AF-4DDB-86E7-801F26D17C6C}.Debug|Any CPU.Build.0 = Debug|x64
+		{D7C021D5-01AF-4DDB-86E7-801F26D17C6C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D7C021D5-01AF-4DDB-86E7-801F26D17C6C}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{D7C021D5-01AF-4DDB-86E7-801F26D17C6C}.Debug|x64.ActiveCfg = Debug|x64
 		{D7C021D5-01AF-4DDB-86E7-801F26D17C6C}.Debug|x64.Build.0 = Debug|x64
-		{D7C021D5-01AF-4DDB-86E7-801F26D17C6C}.Release|Any CPU.ActiveCfg = Release|x64
-		{D7C021D5-01AF-4DDB-86E7-801F26D17C6C}.Release|Any CPU.Build.0 = Release|x64
+		{D7C021D5-01AF-4DDB-86E7-801F26D17C6C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D7C021D5-01AF-4DDB-86E7-801F26D17C6C}.Release|Any CPU.Build.0 = Release|Any CPU
 		{D7C021D5-01AF-4DDB-86E7-801F26D17C6C}.Release|x64.ActiveCfg = Release|x64
 		{D7C021D5-01AF-4DDB-86E7-801F26D17C6C}.Release|x64.Build.0 = Release|x64
-		{21FEB257-1454-4A21-81D6-BDB6FE865E97}.Debug|Any CPU.ActiveCfg = Debug|x64
-		{21FEB257-1454-4A21-81D6-BDB6FE865E97}.Debug|Any CPU.Build.0 = Debug|x64
+		{21FEB257-1454-4A21-81D6-BDB6FE865E97}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{21FEB257-1454-4A21-81D6-BDB6FE865E97}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{21FEB257-1454-4A21-81D6-BDB6FE865E97}.Debug|x64.ActiveCfg = Debug|x64
 		{21FEB257-1454-4A21-81D6-BDB6FE865E97}.Debug|x64.Build.0 = Debug|x64
-		{21FEB257-1454-4A21-81D6-BDB6FE865E97}.Release|Any CPU.ActiveCfg = Release|x64
-		{21FEB257-1454-4A21-81D6-BDB6FE865E97}.Release|Any CPU.Build.0 = Release|x64
+		{21FEB257-1454-4A21-81D6-BDB6FE865E97}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{21FEB257-1454-4A21-81D6-BDB6FE865E97}.Release|Any CPU.Build.0 = Release|Any CPU
 		{21FEB257-1454-4A21-81D6-BDB6FE865E97}.Release|x64.ActiveCfg = Release|x64
 		{21FEB257-1454-4A21-81D6-BDB6FE865E97}.Release|x64.Build.0 = Release|x64
+		{5181AF59-E59C-4DA6-9589-8038A8A16E23}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5181AF59-E59C-4DA6-9589-8038A8A16E23}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{5181AF59-E59C-4DA6-9589-8038A8A16E23}.Debug|x64.ActiveCfg = Debug|x64
+		{5181AF59-E59C-4DA6-9589-8038A8A16E23}.Debug|x64.Build.0 = Debug|x64
+		{5181AF59-E59C-4DA6-9589-8038A8A16E23}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{5181AF59-E59C-4DA6-9589-8038A8A16E23}.Release|Any CPU.Build.0 = Release|Any CPU
+		{5181AF59-E59C-4DA6-9589-8038A8A16E23}.Release|x64.ActiveCfg = Release|x64
+		{5181AF59-E59C-4DA6-9589-8038A8A16E23}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

@@ -36,23 +36,23 @@ namespace Aerospike.Demo
 		/// </summary>
 		public override void RunExample(AerospikeClient client, Arguments args)
 		{
-			GetServerConfig(args);
+			Node node = client.Nodes[0];
+			GetServerConfig(node, args);
 			console.Write("");
-			GetNamespaceConfig(args);
+			GetNamespaceConfig(node, args);
 		}
 
 		/// <summary>
 		/// Query server configuration and cluster status.
 		/// </summary>
-		private void GetServerConfig(Arguments args)
+		private void GetServerConfig(Node node, Arguments args)
 		{
 			console.Write("Server Configuration");
-			Dictionary<string, string> map = Info.Request(args.host, args.port);
+			Dictionary<string, string> map = Info.Request(null, node);
 
 			if (map == null)
 			{
-				throw new Exception(string.Format("Failed to get server info: host={0} port={1:D}", 
-					args.host, args.port));
+				throw new Exception("Failed to get server info: host=" + node);
 			}
 
 			foreach (KeyValuePair<string, string> entry in map)
@@ -73,16 +73,16 @@ namespace Aerospike.Demo
 		/// <summary>
 		/// Query namespace configuration.
 		/// </summary>
-		private void GetNamespaceConfig(Arguments args)
+		private void GetNamespaceConfig(Node node, Arguments args)
 		{
 			console.Write("Namespace Configuration");
 			string filter = "namespace/" + args.ns;
-			string tokens = Info.Request(args.host, args.port, filter);
+			string tokens = Info.Request(node, filter);
 
 			if (tokens == null)
 			{
-				throw new Exception(string.Format("Failed to get namespace info: host={0} port={1:D} namespace={2}", 
-					args.host, args.port, args.ns));
+				throw new Exception(string.Format("Failed to get namespace info: host={0} namespace={1}", 
+					node, args.ns));
 			}
 
 			LogNameValueTokens(tokens);

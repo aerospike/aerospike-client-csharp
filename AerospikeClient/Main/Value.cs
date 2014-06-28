@@ -22,6 +22,7 @@
 using System;
 using System.IO;
 using System.Text;
+using System.Collections;
 using System.Collections.Generic;
 
 namespace Aerospike.Client
@@ -182,7 +183,7 @@ namespace Aerospike.Client
 		/// Get list or null value instance.
 		/// Support by Aerospike 3 servers only.
 		/// </summary>
-		public static Value GetAsList(List<object> value)
+		public static Value GetAsList(IList value)
 		{
 			if (value == null)
 			{
@@ -198,7 +199,7 @@ namespace Aerospike.Client
 		/// Get map or null value instance.
 		/// Support by Aerospike 3 servers only.
 		/// </summary>
-		public static Value GetAsMap(Dictionary<object,object> value)
+		public static Value GetAsMap(IDictionary value)
 		{
 			if (value == null)
 			{
@@ -209,7 +210,7 @@ namespace Aerospike.Client
 				return new MapValue(value);
 			}
 		}
-
+		
 		/// <summary>
 		/// Get null value instance.
 		/// </summary>
@@ -1093,10 +1094,10 @@ namespace Aerospike.Client
 		/// </summary>
 		public sealed class ListValue : Value
 		{
-			internal readonly List<object> list;
+			internal readonly IList list;
 			internal byte[] bytes;
 
-			public ListValue(List<object> list)
+			public ListValue(IList list)
 			{
 				this.list = list;
 			}
@@ -1146,10 +1147,10 @@ namespace Aerospike.Client
 		/// </summary>
 		public sealed class MapValue : Value
 		{
-			internal readonly Dictionary<object,object> map;
+			internal readonly IDictionary map;
 			internal byte[] bytes;
 
-			public MapValue(Dictionary<object,object> map)
+			public MapValue(IDictionary map)
 			{
 				this.map = map;
 			}

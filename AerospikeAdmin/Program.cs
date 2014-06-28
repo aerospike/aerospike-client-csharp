@@ -1,4 +1,4 @@
-/*******************************************************************************
+﻿/*******************************************************************************
  * Copyright 2012-2014 by Aerospike.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -21,39 +21,22 @@
  ******************************************************************************/
 using System;
 using System.Collections.Generic;
-using System.Reflection;
-using Aerospike.Client;
+using System.Linq;
+using System.Windows.Forms;
 
-namespace Aerospike.Demo
+namespace Aerospike.Admin
 {
-	public abstract class AsyncExample : Example
+	static class Program
 	{
-		public AsyncExample(Console console)
-			: base(console)
+		/// <summary>
+		/// The main entry point for the application.
+		/// </summary>
+		[STAThread]
+		static void Main()
 		{
+			Application.EnableVisualStyles();
+			Application.SetCompatibleTextRenderingDefault(false);
+			Application.Run(new LoginForm());
 		}
-
-		public override void RunExample(Arguments args)
-		{
-			AsyncClientPolicy policy = new AsyncClientPolicy();
-			policy.user = args.user;
-			policy.password = args.password;
-			policy.asyncMaxCommands = args.commandMax;
-			policy.failIfNotConnected = true;
-
-			AsyncClient client = new AsyncClient(policy, args.host, args.port);
-
-			try
-			{
-				args.SetServerSpecific(client);
-				RunExample(client, args);
-			}
-			finally
-			{
-				client.Close();
-			}
-		}
-
-		public abstract void RunExample(AsyncClient client, Arguments args);
 	}
 }

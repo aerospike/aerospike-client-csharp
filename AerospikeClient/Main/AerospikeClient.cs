@@ -138,6 +138,7 @@ namespace Aerospike.Client
 
 			if (policy.failIfNotConnected && !cluster.Connected)
 			{
+				cluster.Close();
 				throw new AerospikeException.Connection("Failed to connect to host(s): " + Util.ArrayToString(hosts));
 			}
 		}
@@ -495,6 +496,55 @@ namespace Aerospike.Client
 				new BatchExecutor(cluster, policy, keys, null, records, null, Command.INFO1_READ | Command.INFO1_NOBINDATA);
 			}
 			return records;
+		}
+
+		//-------------------------------------------------------
+		// Join methods
+		//-------------------------------------------------------
+
+		/// <summary>
+		/// Read specified bins in left record and then join with right records.  Each join bin name
+		/// (Join.leftKeysBinName) must exist in the left record.  The join bin must contain a list of 
+		/// keys. Those key are used to retrieve other records using a separate batch get.
+		/// </summary>
+		/// <param name="policy">generic configuration parameters, pass in null for defaults</param>
+		/// <param name="key">unique main record identifier</param>
+		/// <param name="binNames">array of bins to retrieve</param>
+		/// <param name="joins">array of join definitions</param>
+		/// <exception cref="AerospikeException">if main read or join reads fail</exception>
+		public Record Join(Policy policy, Key key, string[] binNames, params Join[] joins)
+		{
+			string[] names = new string[binNames.Length + joins.Length];
+			int count = 0;
+
+			foreach (string binName in binNames)
+			{
+				names[count++] = binName;
+			}
+
+			foreach (Join join in joins)
+			{
+				names[count++] = join.leftKeysBinName;
+			}
+			Record record = Get(policy, key, names);
+			JoinRecords(policy, record, joins);
+			return record;
+		}
+
+		/// <summary>
+		/// Read all bins in left record and then join with right records.  Each join bin name
+		/// (Join.binNameKeys) must exist in the left record.  The join bin must contain a list of 
+		/// keys. Those key are used to retrieve other records using a separate batch get.
+		/// </summary>
+		/// <param name="policy">generic configuration parameters, pass in null for defaults</param>
+		/// <param name="key">unique main record identifier</param>
+		/// <param name="joins">array of join definitions</param>
+		/// <exception cref="AerospikeException">if main read or join reads fail</exception>
+		public Record Join(Policy policy, Key key, params Join[] joins)
+		{
+			Record record = Get(policy, key);
+			JoinRecords(policy, record, joins);
+			return record;
 		}
 
 		//-------------------------------------------------------
@@ -1015,6 +1065,108 @@ namespace Aerospike.Client
 		}
 
 		//-------------------------------------------------------
+		// User administration
+		//-------------------------------------------------------
+
+		/// <summary>
+		/// Create user with password and roles.  Clear-text password will be hashed using bcrypt 
+		/// before sending to server.
+		/// </summary>
+		/// <param name="policy">admin configuration parameters, pass in null for defaults</param>
+		/// <param name="user">user name</param>
+		/// <param name="password">user password in clear-text format</param>
+		/// <param name="roles">variable arguments array of role names.  Valid roles are listed in Role.cs</param>		
+		public void CreateUser(AdminPolicy policy, string user, string password, List<string> roles)
+		{
+			AdminCommand command = new AdminCommand();
+			command.CreateUser(cluster, policy, user, password, roles);
+		}
+
+		/// <summary>
+		/// Remove user from cluster.
+		/// </summary>
+		/// <param name="policy">admin configuration parameters, pass in null for defaults</param>
+		/// <param name="user">user name</param>
+		public void DropUser(AdminPolicy policy, string user)
+		{
+			AdminCommand command = new AdminCommand();
+			command.DropUser(cluster, policy, user);
+		}
+
+		/// <summary>
+		/// Change user's password.  Clear-text password will be hashed using bcrypt 
+		/// before sending to server.
+		/// </summary>
+		/// <param name="policy">admin configuration parameters, pass in null for defaults</param>
+		/// <param name="user">user name</param>
+		/// <param name="password">user password in clear-text format</param>
+		public void ChangePassword(AdminPolicy policy, string user, string password)
+		{
+			string hash = AdminCommand.HashPassword(password);
+
+			AdminCommand command = new AdminCommand();
+			command.ChangePassword(cluster, policy, user, hash);
+			cluster.ChangePassword(user, hash);
+		}
+
+		/// <summary>
+		/// Add roles to user's list of roles.
+		/// </summary>
+		/// <param name="policy">admin configuration parameters, pass in null for defaults</param>
+		/// <param name="user">user name</param>
+		/// <param name="roles">role names.  Valid roles are listed in Role.cs</param>
+		public void GrantRoles(AdminPolicy policy, string user, List<string> roles)
+		{
+			AdminCommand command = new AdminCommand();
+			command.GrantRoles(cluster, policy, user, roles);
+		}
+
+		/// <summary>
+		/// Remove roles from user's list of roles.
+		/// </summary>
+		/// <param name="policy">admin configuration parameters, pass in null for defaults</param>
+		/// <param name="user">user name</param>
+		/// <param name="roles">role names.  Valid roles are listed in Role.cs</param>
+		public void RevokeRoles(AdminPolicy policy, string user, List<string> roles)
+		{
+			AdminCommand command = new AdminCommand();
+			command.RevokeRoles(cluster, policy, user, roles);
+		}
+
+		/// <summary>
+		/// Replace user's list of roles.
+		/// </summary>
+		/// <param name="policy">admin configuration parameters, pass in null for defaults</param>
+		/// <param name="user">user name</param>
+		/// <param name="roles">role names.  Valid roles are listed in Role.cs</param>
+		public void ReplaceRoles(AdminPolicy policy, string user, List<string> roles)
+		{
+			AdminCommand command = new AdminCommand();
+			command.ReplaceRoles(cluster, policy, user, roles);
+		}
+
+		/// <summary>
+		/// Retrieve roles for a given user.
+		/// </summary>
+		/// <param name="policy">admin configuration parameters, pass in null for defaults</param>
+		/// <param name="user">user name filter</param>
+		public UserRoles QueryUser(AdminPolicy policy, string user)
+		{
+			AdminCommand command = new AdminCommand();
+			return command.QueryUser(cluster, policy, user);
+		}
+
+		/// <summary>
+		/// Retrieve all users and their roles.
+		/// </summary>
+		/// <param name="policy">admin configuration parameters, pass in null for defaults</param>
+		public List<UserRoles> QueryUsers(AdminPolicy policy)
+		{
+			AdminCommand command = new AdminCommand();
+			return command.QueryUsers(cluster, policy);
+		}
+
+		//-------------------------------------------------------
 		// Internal Methods
 		//-------------------------------------------------------
 
@@ -1048,6 +1200,37 @@ namespace Aerospike.Client
 				throw;
 			}
 			return info.GetValue();
+		}
+
+		private void JoinRecords(Policy policy, Record record, Join[] joins)
+		{
+			foreach (Join join in joins)
+			{
+				List<object> keyList = (List<object>)record.GetValue(join.leftKeysBinName);
+
+				if (keyList != null)
+				{
+					Key[] keyArray = new Key[keyList.Count];
+					int count = 0;
+
+					foreach (object obj in keyList)
+					{
+						Value value = Value.Get(obj);
+						keyArray[count++] = new Key(join.rightNamespace, join.rightSetName, value);
+					}
+
+					Record[] records;
+					if (join.rightBinNames == null || join.rightBinNames.Length == 0)
+					{
+						records = Get(policy, keyArray);
+					}
+					else
+					{
+						records = Get(policy, keyArray, join.rightBinNames);
+					}
+					record.bins[join.leftKeysBinName] = records;
+				}
+			}
 		}
 	}
 }

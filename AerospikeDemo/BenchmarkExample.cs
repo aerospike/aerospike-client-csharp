@@ -32,6 +32,7 @@ namespace Aerospike.Demo
         protected BenchmarkShared shared;
         private BenchmarkThread[] threads;
         private Thread tickerThread;
+        private AerospikeClient client;
 
         public BenchmarkExample(Console console)
 			: base(console)
@@ -46,10 +47,12 @@ namespace Aerospike.Demo
             if (args.sync)
             {
                 ClientPolicy policy = new ClientPolicy();
-                AerospikeClient client = new AerospikeClient(policy, args.host, args.port);
+				policy.failIfNotConnected = true;
+				client = new AerospikeClient(policy, args.host, args.port);
 
                 try
                 {
+                    args.SetServerSpecific(client);
                     threads = new BenchmarkThreadSync[args.threadMax];
                     for (int i = 0; i < args.threadMax; i++)
                     {
@@ -67,12 +70,15 @@ namespace Aerospike.Demo
                 console.Info("Maximum concurrent commands: " + args.commandMax);
 
                 AsyncClientPolicy policy = new AsyncClientPolicy();
-                policy.asyncMaxCommands = args.commandMax;
+				policy.failIfNotConnected = true;
+				policy.asyncMaxCommands = args.commandMax;
 
                 AsyncClient client = new AsyncClient(policy, args.host, args.port);
+                this.client = client;
 
                 try
                 {
+                    args.SetServerSpecific(client);
                     threads = new BenchmarkThreadAsync[args.threadMax];
                     for (int i = 0; i < args.threadMax; i++)
                     {
@@ -129,7 +135,7 @@ namespace Aerospike.Demo
 
 			try
 			{
-                tokens = Info.Request(args.host, args.port, filter);
+                tokens = Info.Request(client.Nodes[0], filter);
 			}
 			catch (Exception)
 			{

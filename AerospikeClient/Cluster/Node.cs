@@ -228,7 +228,23 @@ namespace Aerospike.Client
 				}
 				conn.Close();
 			}
-			return new Connection(address, timeoutMillis, cluster.maxSocketIdle);
+			conn = new Connection(address, timeoutMillis, cluster.maxSocketIdle);
+
+			if (cluster.user.Length > 0)
+			{
+				try
+				{
+					AdminCommand command = new AdminCommand();
+					command.Authenticate(conn, cluster.user, cluster.password);
+				}
+				catch (Exception)
+				{
+					// Socket not authenticated.  Do not put back into pool.
+					conn.Close();
+					throw;
+				}
+			}
+			return conn;
 		}
 
 		/// <summary>

@@ -43,6 +43,12 @@ namespace Aerospike.Client
 		// IP translations.
 		protected internal readonly Dictionary<string, string> ipMap;
 
+		// User name in UTF-8 encoded bytes.
+		protected internal byte[] user;
+
+		// Password in hashed format in bytes.
+		protected internal byte[] password;
+
 		// Random node index.
 		private int nodeIndex;
 
@@ -50,7 +56,7 @@ namespace Aerospike.Client
 		protected internal readonly int connectionQueueSize;
 
 		// Initial connection timeout.
-		private readonly int connectionTimeout;
+		protected internal readonly int connectionTimeout;
 
 		// Maximum socket idle in seconds.
 		protected internal readonly int maxSocketIdle;
@@ -62,6 +68,21 @@ namespace Aerospike.Client
 		public Cluster(ClientPolicy policy, Host[] hosts)
 		{
 			this.seeds = hosts;
+			
+			user = ByteUtil.StringToUtf8(policy.user);
+			string pass;
+
+			if (policy.password.Length == 60 && policy.password.StartsWith("$2a$"))
+			{
+				// Password is already hashed.  Store as-is.
+				pass = policy.password;
+			}
+			else
+			{
+				pass = AdminCommand.HashPassword(policy.password);
+			}
+			password = ByteUtil.StringToUtf8(pass);
+
 			connectionQueueSize = policy.maxThreads + 1; // Add one connection for tend thread.
 			connectionTimeout = policy.timeout;
 			maxSocketIdle = policy.maxSocketIdle;
@@ -291,7 +312,7 @@ namespace Aerospike.Client
 			{
 				try
 				{
-					NodeValidator seedNodeValidator = new NodeValidator(seed, connectionTimeout);
+					NodeValidator seedNodeValidator = new NodeValidator(this, seed);
 
 					// Seed host may have multiple aliases in the case of round-robin dns configurations.
 					foreach (Host alias in seedNodeValidator.aliases)
@@ -304,7 +325,7 @@ namespace Aerospike.Client
 						}
 						else
 						{
-							nv = new NodeValidator(alias, connectionTimeout);
+							nv = new NodeValidator(this, alias);
 						}
 
 						if (!FindNodeName(list, nv.name))
@@ -351,7 +372,7 @@ namespace Aerospike.Client
 			{
 				try
 				{
-					NodeValidator nv = new NodeValidator(host, connectionTimeout);
+					NodeValidator nv = new NodeValidator(this, host);
 					Node node = FindNode(nv.name);
 
 					if (node != null)
@@ -684,6 +705,16 @@ namespace Aerospike.Client
 				}
 			}
 			return null;
+		}
+
+		protected internal void ChangePassword(string user, string password)
+		{
+			byte[] userBytes = ByteUtil.StringToUtf8(user);
+
+			if (Util.ByteArrayEquals(userBytes, this.user))
+			{
+				this.password = ByteUtil.StringToUtf8(password);
+			}
 		}
 
 		public void Close()

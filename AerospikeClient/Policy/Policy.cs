@@ -66,5 +66,24 @@ namespace Aerospike.Client
 		/// </para>
 		/// </summary>
 		public bool allowProleReads;
+
+		/// <summary>
+		/// Copy constructor.
+		/// </summary>
+		public Policy(Policy other)
+		{
+			this.priority = other.priority;
+			this.timeout = other.timeout;
+			this.maxRetries = other.maxRetries;
+			this.sleepBetweenRetries = other.sleepBetweenRetries;
+			this.allowProleReads = other.allowProleReads;
+		}
+
+		/// <summary>
+		/// Default constructor.
+		/// </summary>
+		public Policy()
+		{
+		}
 	}
 }

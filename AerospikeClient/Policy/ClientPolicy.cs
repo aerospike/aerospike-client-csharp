@@ -24,10 +24,21 @@ using System.Collections.Generic;
 namespace Aerospike.Client
 {
 	/// <summary>
-	/// Container object for client policy Command.
+	/// Client initialization arguments.
 	/// </summary>
 	public class ClientPolicy
 	{
+		/// <summary>
+		/// User authentication to cluster.  Leave null for clusters running without restricted access.
+		/// </summary>
+		public string user;
+
+		/// <summary>
+		/// Password authentication to cluster.  The password will be stored by the client and sent to server
+		/// in hashed format.  Leave null for clusters running without restricted access.
+		/// </summary>
+		public string password;
+
 		/// <summary>
 		/// Initial host connection timeout in milliseconds.  The timeout when opening a connection 
 		/// to the server host for the first time.

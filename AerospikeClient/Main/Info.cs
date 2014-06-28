@@ -44,7 +44,7 @@ namespace Aerospike.Client
 		// Static variables.
 		//-------------------------------------------------------
 
-		private const int DEFAULT_TIMEOUT = 2000;
+		private const int DEFAULT_TIMEOUT = 1000;
 
 		//-------------------------------------------------------
 		// Member variables.
@@ -183,12 +183,117 @@ namespace Aerospike.Client
 		}
 
 		//-------------------------------------------------------
+		// Get Info via Node
+		//-------------------------------------------------------
+
+		/// <summary>
+		/// Get one info value by name from the specified database server node.
+		/// This method supports user authentication.
+		/// </summary>
+		/// <param name="node">server node</param>
+		/// <param name="name">name of variable to retrieve</param>
+		public static string Request(Node node, string name)
+		{
+			Connection conn = node.GetConnection(DEFAULT_TIMEOUT);
+
+			try
+			{
+				string response = Info.Request(conn, name);
+				node.PutConnection(conn);
+				return response;
+			}
+			catch (Exception)
+			{
+				conn.Close();
+				throw;
+			}
+		}
+		
+		/// <summary>
+		/// Get one info value by name from the specified database server node.
+		/// This method supports user authentication.
+		/// </summary>
+		/// <param name="policy">info command configuration parameters, pass in null for defaults</param>
+		/// <param name="node">server node</param>
+		/// <param name="name">name of variable to retrieve</param>
+		public static string Request(InfoPolicy policy, Node node, string name)
+		{
+			int timeout = (policy == null) ? DEFAULT_TIMEOUT : policy.timeout;
+			Connection conn = node.GetConnection(timeout);
+
+			try
+			{
+				string result = Request(conn, name);
+				node.PutConnection(conn);
+				return result;
+			}
+			catch (Exception)
+			{
+				// Garbage may be in socket.  Do not put back into pool.
+				conn.Close();
+				throw;
+			}
+		}
+
+		/// <summary>
+		/// Get many info values by name from the specified database server node.
+		/// This method supports user authentication.
+		/// </summary>
+		/// <param name="policy">info command configuration parameters, pass in null for defaults</param>
+		/// <param name="node">server node</param>
+		/// <param name="names">names of variables to retrieve</param>
+		public static Dictionary<string, string> Request(InfoPolicy policy, Node node, params string[] names)
+		{
+			int timeout = (policy == null) ? DEFAULT_TIMEOUT : policy.timeout;
+			Connection conn = node.GetConnection(timeout);
+
+			try
+			{
+				Dictionary<string, string> result = Request(conn, names);
+				node.PutConnection(conn);
+				return result;
+			}
+			catch (Exception)
+			{
+				// Garbage may be in socket.  Do not put back into pool.
+				conn.Close();
+				throw;
+			}
+		}
+
+		/// <summary>
+		/// Get default info values from the specified database server node.
+		/// This method supports user authentication.
+		/// </summary>
+		/// <param name="policy">info command configuration parameters, pass in null for defaults</param>
+		/// <param name="node">server node</param>
+		public static Dictionary<string, string> Request(InfoPolicy policy, Node node)
+		{
+			int timeout = (policy == null) ? DEFAULT_TIMEOUT : policy.timeout;
+			Connection conn = node.GetConnection(timeout);
+
+			try
+			{
+				Dictionary<string, string> result = Request(conn);
+				node.PutConnection(conn);
+				return result;
+			}
+			catch (Exception)
+			{
+				// Garbage may be in socket.  Do not put back into pool.
+				conn.Close();
+				throw;
+			}
+		}
+		
+		//-------------------------------------------------------
 		// Get Info via Host Name and Port
 		//-------------------------------------------------------
 
 		/// <summary>
 		/// Get one info value by name from the specified database server node, using
 		/// host name and port.
+		/// This method does not support user authentication.
 		/// </summary>
 		/// <param name="hostname">host name</param>
 		/// <param name="port">host port</param>
@@ -203,6 +308,7 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Get many info values by name from the specified database server node,
 		/// using host name and port.
+		/// This method does not support user authentication.
 		/// </summary>
 		/// <param name="hostname">host name</param>
 		/// <param name="port">host port</param>
@@ -216,6 +322,7 @@ namespace Aerospike.Client
 
 		/// <summary>
 		/// Get default info from the specified database server node, using host name and port.
+		/// This method does not support user authentication.
 		/// </summary>
 		/// <param name="hostname">host name</param>
 		/// <param name="port">host port</param>
@@ -232,6 +339,7 @@ namespace Aerospike.Client
 
 		/// <summary>
 		/// Get one info value by name from the specified database server node.
+		/// This method does not support user authentication.
 		/// </summary>
 		/// <param name="socketAddress">InetSocketAddress of server node</param>
 		/// <param name="name">name of value to retrieve</param>
@@ -251,6 +359,7 @@ namespace Aerospike.Client
 
 		/// <summary>
 		/// Get many info values by name from the specified database server node.
+		/// This method does not support user authentication.
 		/// </summary>
 		/// <param name="socketAddress">InetSocketAddress of server node</param>
 		/// <param name="names">names of values to retrieve</param>
@@ -270,6 +379,7 @@ namespace Aerospike.Client
 
 		/// <summary>
 		/// Get all the default info from the specified database server node.
+		/// This method does not support user authentication.
 		/// </summary>
 		/// <param name="socketAddress">InetSocketAddress of server node</param>
 		public static Dictionary<string, string> Request(IPEndPoint socketAddress)
@@ -283,32 +393,6 @@ namespace Aerospike.Client
 			finally
 			{
 				conn.Close();
-			}
-		}
-
-		//-------------------------------------------------------
-		// Get Info via Node
-		//-------------------------------------------------------
-
-		/// <summary>
-		/// Get one info value by name from the specified database server node.
-		/// </summary>
-		/// <param name="node">server node</param>
-		/// <param name="name">name of value to retrieve</param>
-		public static string Request(Node node, string name)
-		{
-			Connection conn = node.GetConnection(DEFAULT_TIMEOUT);
-
-			try
-			{
-				string response = Info.Request(conn, name);
-				node.PutConnection(conn);
-				return response;
-			}
-			catch (Exception)
-			{
-				conn.Close();
-				throw;
 			}
 		}
 

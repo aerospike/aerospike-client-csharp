@@ -35,7 +35,7 @@ namespace Aerospike.Client
 		internal IPEndPoint address;
 		internal bool useNewInfo = true;
 
-		public NodeValidator(Host host, int timeoutMillis)
+		public NodeValidator(Cluster cluster, Host host)
 		{
 			IPAddress[] addresses = Connection.GetHostAddresses(host.name, DEFAULT_TIMEOUT);
 			int count = 0;
@@ -51,10 +51,15 @@ namespace Aerospike.Client
 				try
 				{
 					IPEndPoint address = new IPEndPoint(alias, host.port);
-					Connection conn = new Connection(address, timeoutMillis);
+					Connection conn = new Connection(address, cluster.connectionTimeout);
     
 					try
 					{
+						if (cluster.user.Length > 0)
+						{
+							AdminCommand command = new AdminCommand();
+							command.Authenticate(conn, cluster.user, cluster.password);
+						}
 						Dictionary<string, string> map = Info.Request(conn, "node", "build");
 						string nodeName;
 

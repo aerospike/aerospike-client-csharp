@@ -160,6 +160,64 @@ namespace Aerospike.Client
 		public const int KEY_MISMATCH = 19;
 
 		/// <summary>
+		/// There are no more records left for query.
+		/// </summary>
+		public const int QUERY_END = 50;
+
+		public const int SECURITY_NOT_SUPPORTED = 51;
+		public const int SECURITY_NOT_ENABLED = 52;
+		public const int SECURITY_SCHEME_NOT_SUPPORTED = 53;
+		
+		/// <summary>
+		/// Administration command is invalid.
+		/// </summary>
+		public const int INVALID_COMMAND = 54;
+
+		/// <summary>
+		/// Administration field is invalid.
+		/// </summary>
+		public const int INVALID_FIELD = 55;
+
+		public const int ILLEGAL_STATE = 56;
+
+		/// <summary>
+		/// User name is invalid.
+		/// </summary>
+		public const int INVALID_USER = 60;
+		
+		/// <summary>
+		/// User was previously created.
+		/// </summary>
+		public const int USER_ALREADY_EXISTS = 61;
+
+		/// <summary>
+		/// Password is invalid.
+		/// </summary>
+		public const int INVALID_PASSWORD = 62;
+
+		/// <summary>
+		/// Security credential is invalid.
+		/// </summary>
+		public const int INVALID_CREDENTIAL = 63;
+
+		/// <summary>
+		/// Role name is invalid.
+		/// </summary>
+		public const int INVALID_ROLE = 70;
+
+		public const int INVALID_PRIVILEGE = 71;
+		
+		/// <summary>
+		/// User must be authentication before performing database operations.
+		/// </summary>
+		public const int NOT_AUTHENTICATED = 80;
+
+		/// <summary>
+		/// User does not posses the required role to perform the database operation.
+		/// </summary>
+		public const int ROLE_VIOLATION = 81;
+
+		/// <summary>
 		/// A user defined function returned an error code.
 		/// </summary>
 		public const int UDF_BAD_RESPONSE = 100;
@@ -330,6 +388,51 @@ namespace Aerospike.Client
 
 			case KEY_MISMATCH:
 				return "Key mismatch";
+
+			case QUERY_END:
+				return "Query end";
+
+			case SECURITY_NOT_SUPPORTED:
+				return "Security not supported";
+
+			case SECURITY_NOT_ENABLED:
+				return "Security not enabled";
+
+			case SECURITY_SCHEME_NOT_SUPPORTED:
+				return "Security scheme not supported";
+
+			case INVALID_COMMAND:
+				return "Invalid command";
+
+			case INVALID_FIELD:
+				return "Invalid field";
+
+			case ILLEGAL_STATE:
+				return "Illegal state";
+
+			case INVALID_USER:
+				return "Invalid user";
+
+			case USER_ALREADY_EXISTS:
+				return "User already exists";
+
+			case INVALID_PASSWORD:
+				return "Invalid password";
+
+			case INVALID_CREDENTIAL:
+				return "Invalid credential";
+
+			case INVALID_ROLE:
+				return "Invalid role";
+
+			case INVALID_PRIVILEGE:
+				return "Invalid privilege";
+				
+			case NOT_AUTHENTICATED:
+				return "Not authenticated";
+
+			case ROLE_VIOLATION:
+				return "Role violation";
 
 			case UDF_BAD_RESPONSE:
 				return "UDF returned error";

@@ -5,6 +5,7 @@ Aerospike C# client.  This package contains full source code for two Visual Stud
 
 * AerospikeClient:  C# client library.
 * AerospikeDemo:    C# demonstration program for examples and benchmarks.
+* AerospikeAdmin:   Aerospike user administration.  This application is only valid for enterprise servers that are configured to require user authentication.
 
 Prerequisites:
 

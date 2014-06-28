@@ -80,6 +80,7 @@ namespace Aerospike.Demo
                     new ExampleTreeNode("Touch", new Touch(console)),
                     new ExampleTreeNode("Operate", new Operate(console)),
                     new ExampleTreeNode("Delete Bin", new DeleteBin(console)),
+                    new ExampleTreeNode("Join", new GetAndJoin(console)),
                     new ExampleTreeNode("Scan Parallel", new ScanParallel(console)),
                     new ExampleTreeNode("Scan Series", new ScanSeries(console)),
                     new ExampleTreeNode("Async PutGet", new AsyncPutGet(console)),
@@ -87,6 +88,7 @@ namespace Aerospike.Demo
                     new ExampleTreeNode("Async Scan", new AsyncScan(console)),
                     new ExampleTreeNode("List/Map", new ListMap(console)),
                     new ExampleTreeNode("User Defined Function", new UserDefinedFunction(console)),
+                    new ExampleTreeNode("Large List", new LargeList(console)),
                     new ExampleTreeNode("Large Set", new LargeSet(console)),
                     new ExampleTreeNode("Large Stack", new LargeStack(console)),
                     new ExampleTreeNode("Query Integer", new QueryInteger(console)),
@@ -286,9 +288,10 @@ namespace Aerospike.Demo
 
             args.host = hostBox.Text.Trim();
             args.port = int.Parse(portBox.Text);
+			args.user = userBox.Text.Trim();
+			args.password = passwordBox.Text;
             args.ns = nsBox.Text.Trim();
             args.set = setBox.Text.Trim();
-            args.SetServerSpecific();
             return args;
         }
 
@@ -543,8 +546,9 @@ namespace Aerospike.Demo
 
         public string Read()
         {
-			string path = @"..\..\..\" + example.GetType().Name + ".cs";
-            return File.ReadAllText(path);
+			//string path = @"..\..\..\" + example.GetType().Name + ".cs";
+			string path = @"..\..\" + example.GetType().Name + ".cs";
+			return File.ReadAllText(path);
         }
 
         public void Run(Arguments args)

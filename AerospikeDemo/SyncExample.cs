@@ -36,10 +36,15 @@ namespace Aerospike.Demo
 		public override void RunExample(Arguments args)
 		{
 			ClientPolicy policy = new ClientPolicy();
+			policy.user = args.user;
+			policy.password = args.password;
+			policy.failIfNotConnected = true;
+
 			AerospikeClient client = new AerospikeClient(policy, args.host, args.port);
 
 			try
 			{
+				args.SetServerSpecific(client);
 				RunExample(client, args);
 			}
 			finally

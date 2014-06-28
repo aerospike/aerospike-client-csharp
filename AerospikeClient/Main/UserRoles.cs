@@ -19,41 +19,23 @@
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
  * IN THE SOFTWARE.
  ******************************************************************************/
-using System;
 using System.Collections.Generic;
-using System.Reflection;
-using Aerospike.Client;
 
-namespace Aerospike.Demo
+namespace Aerospike.Client
 {
-	public abstract class AsyncExample : Example
+	/// <summary>
+	/// User and assigned roles.
+	/// </summary>
+	public sealed class UserRoles
 	{
-		public AsyncExample(Console console)
-			: base(console)
-		{
-		}
+		/// <summary>
+		/// User name.
+		/// </summary>
+		public string user;
 
-		public override void RunExample(Arguments args)
-		{
-			AsyncClientPolicy policy = new AsyncClientPolicy();
-			policy.user = args.user;
-			policy.password = args.password;
-			policy.asyncMaxCommands = args.commandMax;
-			policy.failIfNotConnected = true;
-
-			AsyncClient client = new AsyncClient(policy, args.host, args.port);
-
-			try
-			{
-				args.SetServerSpecific(client);
-				RunExample(client, args);
-			}
-			finally
-			{
-				client.Close();
-			}
-		}
-
-		public abstract void RunExample(AsyncClient client, Arguments args);
+		/// <summary>
+		/// List of assigned roles.
+		/// </summary>
+		public List<string> roles;
 	}
 }

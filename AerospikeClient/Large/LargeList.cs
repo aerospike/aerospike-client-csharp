@@ -90,6 +90,16 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
+		/// Select range of values from list.
+		/// </summary>
+		/// <param name="begin">begin value inclusive</param>
+		/// <param name="end">end value inclusive</param>
+		public List<object> Range(Value begin, Value end)
+		{
+			return (List<object>)client.Execute(policy, key, PackageName, "range", binName, begin, end);
+		}
+		
+		/// <summary>
 		/// Select values from list and apply specified Lua filter.
 		/// </summary>
 		/// <param name="value">value to select</param>

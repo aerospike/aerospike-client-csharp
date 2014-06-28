@@ -32,6 +32,8 @@ namespace Aerospike.Demo
 	{
 		internal string host;
 		internal int port;
+		internal string user;
+		internal string password;
 		internal string ns;
 		internal string set;
         internal string binName;
@@ -50,11 +52,12 @@ namespace Aerospike.Demo
 		/// <summary>
 		/// Some database calls need to know how the server is configured.
 		/// </summary>
-		protected internal virtual void SetServerSpecific()
+		protected internal void SetServerSpecific(AerospikeClient client)
 		{
+			Node node = client.Nodes[0];
 			string featuresFilter = "features";
 			string namespaceFilter = "namespace/" + ns;
-			Dictionary<string, string> tokens = Info.Request(host, port, featuresFilter, namespaceFilter);
+			Dictionary<string, string> tokens = Info.Request(null, node, featuresFilter, namespaceFilter);
 
 			string features = tokens[featuresFilter];
 			hasUdf = false;
@@ -77,7 +80,7 @@ namespace Aerospike.Demo
 
 			if (namespaceTokens == null)
 			{
-				throw new Exception(string.Format("Failed to get namespace info: host={0} port={1:D} namespace={2}", host, port, ns));
+				throw new Exception(string.Format("Failed to get namespace info: host={0} namespace={1}", node, ns));
 			}
 
 			string name = "single-bin";
@@ -86,7 +89,7 @@ namespace Aerospike.Demo
 
 			if (begin < 0)
 			{
-				throw new Exception(string.Format("Failed to find namespace attribute: host={0} port={1:D} namespace={2} attribute={3}", host, port, ns, name));
+				throw new Exception(string.Format("Failed to find namespace attribute: host={0} namespace={1} attribute={2}", node, ns, name));
 			}
 
 			begin += search.Length;

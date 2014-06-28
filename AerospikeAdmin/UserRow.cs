@@ -1,4 +1,4 @@
-/*******************************************************************************
+﻿/*******************************************************************************
  * Copyright 2012-2014 by Aerospike.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -21,39 +21,38 @@
  ******************************************************************************/
 using System;
 using System.Collections.Generic;
-using System.Reflection;
+using System.Linq;
+using System.Text;
 using Aerospike.Client;
 
-namespace Aerospike.Demo
+namespace Aerospike.Admin
 {
-	public abstract class AsyncExample : Example
+	public class UserRow
 	{
-		public AsyncExample(Console console)
-			: base(console)
+		public string user;
+		public List<string> roles;
+		public string rolesString;
+
+		public UserRow(UserRoles userRoles)
 		{
+			this.user = userRoles.user;
+			this.roles = userRoles.roles;
+
+			StringBuilder sb = new StringBuilder(100);
+			List<string> roleList = userRoles.roles;
+
+			for (int i = 0; i < roleList.Count; i++)
+			{
+				if (i > 0)
+				{
+					sb.Append(", ");
+				}
+				sb.Append(roleList[i]);
+			}
+			this.rolesString = sb.ToString(); 
 		}
 
-		public override void RunExample(Arguments args)
-		{
-			AsyncClientPolicy policy = new AsyncClientPolicy();
-			policy.user = args.user;
-			policy.password = args.password;
-			policy.asyncMaxCommands = args.commandMax;
-			policy.failIfNotConnected = true;
-
-			AsyncClient client = new AsyncClient(policy, args.host, args.port);
-
-			try
-			{
-				args.SetServerSpecific(client);
-				RunExample(client, args);
-			}
-			finally
-			{
-				client.Close();
-			}
-		}
-
-		public abstract void RunExample(AsyncClient client, Arguments args);
+		public string User { get { return user; } }
+		public string Roles { get { return rolesString; } }
 	}
 }
