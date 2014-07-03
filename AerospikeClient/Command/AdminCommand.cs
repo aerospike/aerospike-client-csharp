@@ -81,11 +81,9 @@ namespace Aerospike.Client
 
 		public void CreateUser(Cluster cluster, AdminPolicy policy, string user, string password, List<string> roles)
 		{
-			string hash = HashPassword(password);
-
 			WriteHeader(CREATE_USER, 3);
 			WriteField(USER, user);
-			WriteField(PASSWORD, hash);
+			WriteField(PASSWORD, password);
 			WriteRoles(roles);
 			ExecuteCommand(cluster, policy);
 		}

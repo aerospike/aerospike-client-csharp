@@ -38,21 +38,22 @@ namespace Aerospike.Client
 		public NodeValidator(Cluster cluster, Host host)
 		{
 			IPAddress[] addresses = Connection.GetHostAddresses(host.name, DEFAULT_TIMEOUT);
-			int count = 0;
 			aliases = new Host[addresses.Length];
 
-			foreach (IPAddress address in addresses)
+			for (int i = 0; i < addresses.Length; i++)
 			{
-				aliases[count++] = new Host(address.ToString(), host.port);
+				aliases[i] = new Host(addresses[i].ToString(), host.port);
 			}
 
-			foreach (IPAddress alias in addresses)
-			{
+			Exception exception = null;
+
+			for (int i = 0; i < addresses.Length; i++)
+			{			
 				try
 				{
-					IPEndPoint address = new IPEndPoint(alias, host.port);
+					IPEndPoint address = new IPEndPoint(addresses[i], host.port);
 					Connection conn = new Connection(address, cluster.connectionTimeout);
-    
+
 					try
 					{
 						if (cluster.user.Length > 0)
@@ -100,11 +101,21 @@ namespace Aerospike.Client
 					// Try next address.
 					if (Log.DebugEnabled())
 					{
-						Log.Debug("Alias " + alias + " failed: " + Util.GetErrorMessage(e));
+						Log.Debug("Alias " + addresses[i] + " failed: " + Util.GetErrorMessage(e));
+					}
+
+					if (exception == null)
+					{
+						exception = e;
 					}
 				}
 			}
-			throw new AerospikeException.Connection("Failed to connect to host aliases: " + Util.ArrayToString(addresses));
+
+			if (exception == null)
+			{
+				throw new AerospikeException.Connection("Failed to find addresses for " + host);
+			}
+			throw exception;
 		}
 	}
 }

@@ -104,6 +104,7 @@ namespace Aerospike.Admin
 			policy.user = user;
 			policy.password = password;
 			policy.failIfNotConnected = true;
+			policy.timeout = 600000;
 
 			AerospikeClient client = new AerospikeClient(policy, server, port);
 

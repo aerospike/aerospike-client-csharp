@@ -20,6 +20,7 @@
  * IN THE SOFTWARE.
  ******************************************************************************/
 using System;
+using System.Text;
 using System.Threading;
 using System.Collections.Generic;
 using System.Collections.Concurrent;
@@ -92,10 +93,10 @@ namespace Aerospike.Client
 			partitionWriteMap = new Dictionary<string, Node[]>();
 		}
 
-		public virtual void InitTendThread()
+		public virtual void InitTendThread(bool failIfNotConnected)
 		{
 			// Tend cluster until all nodes identified.
-			WaitTillStabilized();
+			WaitTillStabilized(failIfNotConnected);
 
 			if (Log.DebugEnabled())
 			{
@@ -176,14 +177,14 @@ namespace Aerospike.Client
 		/// control as well.  Do not return an error since future 
 		/// database requests may still succeed.
 		/// </summary>
-		private void WaitTillStabilized()
+		private void WaitTillStabilized(bool failIfNotConnected)
 		{
 			DateTime limit = DateTime.UtcNow.AddMilliseconds(connectionTimeout);
 			int count = -1;
 
 			do
 			{
-				Tend();
+				Tend(failIfNotConnected);
 
 				// Check to see if cluster has changed since the last Tend().
 				// If not, assume cluster has stabilized and return.
@@ -204,7 +205,7 @@ namespace Aerospike.Client
 				// Tend cluster.
 				try
 				{
-					Tend();
+					Tend(false);
 				}
 				catch (ThreadInterruptedException)
 				{
@@ -223,13 +224,13 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Check health of all nodes in the cluster.
 		/// </summary>
-		private void Tend()
+		private void Tend(bool failIfNotConnected)
 		{
 			// All node additions/deletions are performed in tend thread.		
 			// If active nodes don't exist, seed cluster.
 			if (nodes.Length == 0)
 			{
-				SeedNodes();
+				SeedNodes(failIfNotConnected);
 			}
 
 			// Clear node reference counts.
@@ -300,16 +301,19 @@ namespace Aerospike.Client
 			}
 		}
 
-		private void SeedNodes()
+		private void SeedNodes(bool failIfNotConnected)
 		{
 			// Must copy array reference for copy on write semantics to work.
 			Host[] seedArray = seeds;
+			Exception[] exceptions = null;
 
 			// Add all nodes at once to avoid copying entire array multiple times.
 			List<Node> list = new List<Node>();
 
-			foreach (Host seed in seedArray)
+			for (int i = 0; i < seedArray.Length; i++)
 			{
+				Host seed = seedArray[i];
+				
 				try
 				{
 					NodeValidator seedNodeValidator = new NodeValidator(this, seed);
@@ -338,10 +342,19 @@ namespace Aerospike.Client
 				}
 				catch (Exception e)
 				{
-					// Try next host
 					if (Log.DebugEnabled())
 					{
 						Log.Debug("Seed " + seed + " failed: " + Util.GetErrorMessage(e));
+					}
+					
+					// Store exception and try next host
+					if (failIfNotConnected)
+					{
+						if (exceptions == null)
+						{
+							exceptions = new Exception[seedArray.Length];
+						}
+						exceptions[i] = e;
 					}
 				}
 			}
@@ -349,6 +362,25 @@ namespace Aerospike.Client
 			if (list.Count > 0)
 			{
 				AddNodesCopy(list);
+			}
+			else if (failIfNotConnected)
+			{
+				StringBuilder sb = new StringBuilder(500);
+				sb.AppendLine("Failed to connect to host(s): ");
+
+				for (int i = 0; i < seedArray.Length; i++)
+				{
+					sb.Append(seedArray[i]);
+					sb.Append(' ');
+
+					Exception ex = exceptions[i];
+
+					if (ex != null)
+					{
+						sb.AppendLine(ex.Message);
+					}
+				}
+				throw new AerospikeException.Connection(sb.ToString());
 			}
 		}
 

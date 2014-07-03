@@ -54,7 +54,7 @@ namespace Aerospike.Client
 			}
 
 			bufferPool = new BufferPool();
-			InitTendThread();
+			InitTendThread(policy.failIfNotConnected);
 		}
 
 		protected internal override Node CreateNode(NodeValidator nv)

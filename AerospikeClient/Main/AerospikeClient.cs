@@ -134,13 +134,7 @@ namespace Aerospike.Client
 				policy = new ClientPolicy();
 			}
 			cluster = new Cluster(policy, hosts);
-			cluster.InitTendThread();
-
-			if (policy.failIfNotConnected && !cluster.Connected)
-			{
-				cluster.Close();
-				throw new AerospikeException.Connection("Failed to connect to host(s): " + Util.ArrayToString(hosts));
-			}
+			cluster.InitTendThread(policy.failIfNotConnected);
 		}
 
 		/// <summary>
@@ -1078,8 +1072,9 @@ namespace Aerospike.Client
 		/// <param name="roles">variable arguments array of role names.  Valid roles are listed in Role.cs</param>		
 		public void CreateUser(AdminPolicy policy, string user, string password, List<string> roles)
 		{
+			string hash = AdminCommand.HashPassword(password);
 			AdminCommand command = new AdminCommand();
-			command.CreateUser(cluster, policy, user, password, roles);
+			command.CreateUser(cluster, policy, user, hash, roles);
 		}
 
 		/// <summary>
@@ -1103,7 +1098,6 @@ namespace Aerospike.Client
 		public void ChangePassword(AdminPolicy policy, string user, string password)
 		{
 			string hash = AdminCommand.HashPassword(password);
-
 			AdminCommand command = new AdminCommand();
 			command.ChangePassword(cluster, policy, user, hash);
 			cluster.ChangePassword(user, hash);

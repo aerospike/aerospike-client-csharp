@@ -34,7 +34,7 @@ namespace Aerospike.Admin
 	public partial class UsersForm : Form
 	{
 		private AerospikeClient client;
-		private IList<UserRow> list;
+		private SortableBindingList<UserRow> users;
 		private ContextMenu rightClickMenu;
 		private readonly string userName;
 
@@ -43,7 +43,7 @@ namespace Aerospike.Admin
 			this.client = client;
 			InitializeComponent();
 
-			bool admin = user.roles.Contains("admin");
+			bool admin = user.roles.Contains("user-admin");
 			FormInit(admin);
 
 			if (! admin)
@@ -82,6 +82,8 @@ namespace Aerospike.Admin
 
 		private void ReadUsers(UserRoles user)
 		{
+			List<UserRow> list;
+
 			if (userName == null)
 			{
 				// Query all users
@@ -110,8 +112,10 @@ namespace Aerospike.Admin
 				}
 			}
 
-			SortableBindingList<UserRow> users = new SortableBindingList<UserRow>(list); 
+			users = new SortableBindingList<UserRow>(list);
 			grid.DataSource = users;
+			grid.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
+			grid.AutoSizeRowsMode = DataGridViewAutoSizeRowsMode.AllCells;
 			grid.Invalidate();
 		}
 
@@ -137,12 +141,12 @@ namespace Aerospike.Admin
 
 				if (row >= 0)
 				{
-					string username = list[row].user;
+					string username = users[row].user;
 					DialogResult result = MessageBox.Show("Delete user " + username + "?", "Confirm Delete", MessageBoxButtons.YesNo);
 
 					if (result == DialogResult.Yes)
 					{
-						client.DropUser(null, list[row].user);
+						client.DropUser(null, users[row].user);
 						ReadUsers(null);
 					}
 				}
@@ -161,7 +165,7 @@ namespace Aerospike.Admin
 
 				if (row >= 0)
 				{
-					Form form = new PasswordForm(client, list[row].user);
+					Form form = new PasswordForm(client, users[row].user);
 					ShowUserEditForm(form);
 				}
 			}
@@ -179,7 +183,7 @@ namespace Aerospike.Admin
 
 				if (row >= 0)
 				{
-					UserEditForm form = new UserEditForm(client, UserEditType.EDIT_ROLES, list[row]);
+					UserEditForm form = new UserEditForm(client, UserEditType.EDIT_ROLES, users[row]);
 					ShowUserEditForm(form);
 				}
 			}

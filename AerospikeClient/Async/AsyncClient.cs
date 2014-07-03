@@ -131,11 +131,6 @@ namespace Aerospike.Client
 			}
 			this.cluster = new AsyncCluster(policy, hosts);
 			base.cluster = this.cluster;
-
-			if (policy.failIfNotConnected && !this.cluster.Connected)
-			{
-				throw new AerospikeException.Connection("Failed to connect to host(s): " + Util.ArrayToString(hosts));
-			}
 		}
 
 		//-------------------------------------------------------
