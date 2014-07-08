@@ -30,18 +30,20 @@ namespace Aerospike.Client
 		private const byte AUTHENTICATE = 0;
 		private const byte CREATE_USER = 1;
 		private const byte DROP_USER = 2;
-		private const byte CHANGE_PASSWORD = 3;
-		private const byte GRANT_ROLES = 4;
-		private const byte REVOKE_ROLES = 5;
-		private const byte REPLACE_ROLES = 6;
-		private const byte CREATE_ROLE = 7;
-		private const byte QUERY_USERS = 8;
-		private const byte QUERY_ROLES = 9;
+		private const byte SET_PASSWORD = 3;
+		private const byte CHANGE_PASSWORD = 4;
+		private const byte GRANT_ROLES = 5;
+		private const byte REVOKE_ROLES = 6;
+		private const byte REPLACE_ROLES = 7;
+		private const byte CREATE_ROLE = 8;
+		private const byte QUERY_USERS = 9;
+		private const byte QUERY_ROLES = 10;
 
-		// Field Types
+		// Field IDs
 		private const byte USER = 0;
 		private const byte PASSWORD = 1;
-		private const byte CREDENTIAL = 2;
+		private const byte OLD_PASSWORD = 2;
+		private const byte CREDENTIAL = 3;
 		private const byte ROLES = 10;
 		private const byte PRIVILEGES = 11;
 
@@ -95,10 +97,19 @@ namespace Aerospike.Client
 			ExecuteCommand(cluster, policy);
 		}
 
-		public void ChangePassword(Cluster cluster, AdminPolicy policy, string user, string password)
+		public void SetPassword(Cluster cluster, AdminPolicy policy, byte[] user, string password)
 		{
-			WriteHeader(CHANGE_PASSWORD, 2);
+			WriteHeader(SET_PASSWORD, 2);
 			WriteField(USER, user);
+			WriteField(PASSWORD, password);
+			ExecuteCommand(cluster, policy);
+		}
+
+		public void ChangePassword(Cluster cluster, AdminPolicy policy, byte[] user, string password)
+		{
+			WriteHeader(CHANGE_PASSWORD, 3);
+			WriteField(USER, user);
+			WriteField(OLD_PASSWORD, cluster.password);
 			WriteField(PASSWORD, password);
 			ExecuteCommand(cluster, policy);
 		}

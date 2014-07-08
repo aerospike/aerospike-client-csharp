@@ -739,11 +739,9 @@ namespace Aerospike.Client
 			return null;
 		}
 
-		protected internal void ChangePassword(string user, string password)
+		protected internal void ChangePassword(byte[] user, string password)
 		{
-			byte[] userBytes = ByteUtil.StringToUtf8(user);
-
-			if (Util.ByteArrayEquals(userBytes, this.user))
+			if (Util.ByteArrayEquals(user, this.user))
 			{
 				this.password = ByteUtil.StringToUtf8(password);
 			}

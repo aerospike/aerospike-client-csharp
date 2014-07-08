@@ -1099,8 +1099,19 @@ namespace Aerospike.Client
 		{
 			string hash = AdminCommand.HashPassword(password);
 			AdminCommand command = new AdminCommand();
-			command.ChangePassword(cluster, policy, user, hash);
-			cluster.ChangePassword(user, hash);
+			byte[] userBytes = ByteUtil.StringToUtf8(user);
+
+			if (Util.ByteArrayEquals(userBytes, cluster.user))
+			{
+				// Change own password.
+				command.ChangePassword(cluster, policy, userBytes, hash);
+			}
+			else
+			{
+				// Change other user's password by user admin.
+				command.SetPassword(cluster, policy, userBytes, hash);
+			}
+			cluster.ChangePassword(userBytes, hash);
 		}
 
 		/// <summary>
