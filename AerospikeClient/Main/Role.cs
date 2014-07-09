@@ -28,8 +28,9 @@ namespace Aerospike.Client
 	/// </summary>
 	public sealed class Role
 	{
-		public const string Admin = "Admin";
+		public const string UserAdmin = "user-admin";
+		public const string SysAdmin = "sys-admin";
+		public const string ReadWrite = "read-write";
 		public const string Read = "Read";
-		public const string ReadWrite = "ReadWrite";
 	}
 }
