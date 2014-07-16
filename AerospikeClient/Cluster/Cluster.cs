@@ -80,7 +80,8 @@ namespace Aerospike.Client
 				{
 					pass = "";
 				}
-				else if (! (pass.Length == 60 && pass.StartsWith("$2a$")))
+
+				if (! (pass.Length == 60 && pass.StartsWith("$2a$")))
 				{
 					pass = AdminCommand.HashPassword(pass);
 				}
