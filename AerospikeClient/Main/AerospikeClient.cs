@@ -1097,6 +1097,11 @@ namespace Aerospike.Client
 		/// <param name="password">user password in clear-text format</param>
 		public void ChangePassword(AdminPolicy policy, string user, string password)
 		{
+			if (cluster.user == null)
+			{
+				throw new AerospikeException("Invalid user");
+			}
+
 			string hash = AdminCommand.HashPassword(password);
 			AdminCommand command = new AdminCommand();
 			byte[] userBytes = ByteUtil.StringToUtf8(user);

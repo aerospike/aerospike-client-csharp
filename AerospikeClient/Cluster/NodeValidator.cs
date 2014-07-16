@@ -56,7 +56,7 @@ namespace Aerospike.Client
 
 					try
 					{
-						if (cluster.user.Length > 0)
+						if (cluster.user != null)
 						{
 							AdminCommand command = new AdminCommand();
 							command.Authenticate(conn, cluster.user, cluster.password);

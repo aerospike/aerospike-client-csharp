@@ -230,7 +230,7 @@ namespace Aerospike.Client
 			}
 			conn = new Connection(address, timeoutMillis, cluster.maxSocketIdle);
 
-			if (cluster.user.Length > 0)
+			if (cluster.user != null)
 			{
 				try
 				{

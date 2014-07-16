@@ -69,21 +69,24 @@ namespace Aerospike.Client
 		public Cluster(ClientPolicy policy, Host[] hosts)
 		{
 			this.seeds = hosts;
+
+			if (policy.user != null && policy.user.Length > 0)
+			{
+				this.user = ByteUtil.StringToUtf8(policy.user);
+
+				string pass = policy.password;
+
+				if (pass == null)
+				{
+					pass = "";
+				}
+				else if (! (pass.Length == 60 && pass.StartsWith("$2a$")))
+				{
+					pass = AdminCommand.HashPassword(pass);
+				}
+				this.password = ByteUtil.StringToUtf8(pass);
+			}
 			
-			user = ByteUtil.StringToUtf8(policy.user);
-			string pass;
-
-			if (policy.password.Length == 60 && policy.password.StartsWith("$2a$"))
-			{
-				// Password is already hashed.  Store as-is.
-				pass = policy.password;
-			}
-			else
-			{
-				pass = AdminCommand.HashPassword(policy.password);
-			}
-			password = ByteUtil.StringToUtf8(pass);
-
 			connectionQueueSize = policy.maxThreads + 1; // Add one connection for tend thread.
 			connectionTimeout = policy.timeout;
 			maxSocketIdle = policy.maxSocketIdle;
@@ -741,7 +744,7 @@ namespace Aerospike.Client
 
 		protected internal void ChangePassword(byte[] user, string password)
 		{
-			if (Util.ByteArrayEquals(user, this.user))
+			if (this.user != null && Util.ByteArrayEquals(user, this.user))
 			{
 				this.password = ByteUtil.StringToUtf8(password);
 			}
