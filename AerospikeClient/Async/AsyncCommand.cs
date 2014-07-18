@@ -43,6 +43,7 @@ namespace Aerospike.Client
 		private int timeout;
 		private int iteration;
 		private int complete;
+		private bool inAuthenticate;
 		protected internal bool inHeader = true;
 
 		public AsyncCommand(AsyncCluster cluster)
@@ -96,12 +97,12 @@ namespace Aerospike.Client
 
 					if (!conn.ConnectAsync(eventArgs))
 					{
-						ConnectEvent();
+						ConnectionCreated();
 					}
 				}
 				else
 				{
-					ConnectEvent();
+					ConnectionReady();
 				}
 			}
 			catch (AerospikeException.InvalidNode)
@@ -190,7 +191,7 @@ namespace Aerospike.Client
 						command.SendEvent();
 						break;
 					case SocketAsyncOperation.Connect:
-						command.ConnectEvent();
+						command.ConnectionCreated();
 						break;
 					default:
 						command.FailOnApplicationError(new AerospikeException("Invalid socket operation: " + args.LastOperation));
@@ -217,7 +218,32 @@ namespace Aerospike.Client
 			}
 		}
 
-		private void ConnectEvent()
+		private void ConnectionCreated()
+		{
+			if (complete != 0)
+			{
+				FailOnClientTimeout();
+				return;
+			}
+
+			if (cluster.user != null)
+			{
+				inAuthenticate = true;
+				// Authentication messages are small.  Set a reasonable upper bound.
+				dataOffset = 200;
+				SizeBuffer();
+
+				AdminCommand command = new AdminCommand(dataBuffer);
+				dataLength = command.SetAuthenticate(cluster.user, cluster.password);		 
+				dataOffset = 0;
+				eventArgs.SetBuffer(dataBuffer, dataOffset, dataLength);
+				Send();
+				return;
+			}
+			ConnectionReady();
+		}
+
+		private void ConnectionReady()
 		{
 			if (complete != 0)
 			{
@@ -339,6 +365,20 @@ namespace Aerospike.Client
 			}
 			else
 			{
+				if (inAuthenticate)
+				{
+					inAuthenticate = false;
+					inHeader = true;
+
+					int resultCode = dataBuffer[1];
+
+					if (resultCode != 0)
+					{
+						throw new AerospikeException(resultCode);
+					}
+					ConnectionReady();
+					return;
+				}
 				ParseCommand();
 			}
 		}

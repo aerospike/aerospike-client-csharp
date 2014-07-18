@@ -47,6 +47,8 @@ namespace Aerospike.Demo
             if (args.sync)
             {
                 ClientPolicy policy = new ClientPolicy();
+				policy.user = args.user;
+				policy.password = args.password;
 				policy.failIfNotConnected = true;
 				client = new AerospikeClient(policy, args.host, args.port);
 
@@ -70,6 +72,8 @@ namespace Aerospike.Demo
                 console.Info("Maximum concurrent commands: " + args.commandMax);
 
                 AsyncClientPolicy policy = new AsyncClientPolicy();
+				policy.user = args.user;
+				policy.password = args.password;
 				policy.failIfNotConnected = true;
 				policy.asyncMaxCommands = args.commandMax;
 

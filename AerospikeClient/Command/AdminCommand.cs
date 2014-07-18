@@ -65,20 +65,32 @@ namespace Aerospike.Client
 			dataOffset = 8;
 		}
 
+		public AdminCommand(byte[] dataBuffer)
+		{
+			this.dataBuffer = dataBuffer;
+			dataOffset = 8;
+		}
+
 		public void Authenticate(Connection conn, byte[] user, byte[] password)
 		{
-			WriteHeader(AUTHENTICATE, 2);
-			WriteField(USER, user);
-			WriteField(CREDENTIAL, password);
-
-			Send(conn);
+			SetAuthenticate(user, password);
+			conn.Write(dataBuffer, dataOffset);
 			conn.ReadFully(dataBuffer, HEADER_SIZE);
-			
+
 			int result = dataBuffer[RESULT_CODE];
 			if (result != 0)
 			{
 				throw new AerospikeException(result, "Authentication failed");
 			}
+		}
+
+		public int SetAuthenticate(byte[] user, byte[] password)
+		{
+			WriteHeader(AUTHENTICATE, 2);
+			WriteField(USER, user);
+			WriteField(CREDENTIAL, password);
+			WriteSize();
+			return dataOffset;
 		}
 
 		public void CreateUser(Cluster cluster, AdminPolicy policy, string user, string password, List<string> roles)
@@ -172,6 +184,13 @@ namespace Aerospike.Client
 			dataOffset = offset;
 		}
 
+		private void WriteSize()
+		{
+			// Write total size of message which is the current offset.
+			ulong size = ((ulong)dataOffset - 8) | (MSG_VERSION << 56) | (MSG_TYPE << 48);
+			ByteUtil.LongToBytes(size, dataBuffer, 0);
+		}
+
 		private void WriteHeader(byte command, byte fieldCount)
 		{
 			// Authenticate header is almost all zeros
@@ -204,13 +223,14 @@ namespace Aerospike.Client
 
 		private void ExecuteCommand(Cluster cluster, AdminPolicy policy)
 		{
+			WriteSize();
 			Node node = cluster.GetRandomNode();
 			int timeout = (policy == null) ? 1000 : policy.timeout;
 			Connection conn = node.GetConnection(timeout);
 
 			try
 			{
-				Send(conn);
+				conn.Write(dataBuffer, dataOffset);
 				conn.ReadFully(dataBuffer, HEADER_SIZE);
 				node.PutConnection(conn);
 			}
@@ -229,16 +249,9 @@ namespace Aerospike.Client
 			}
 		}
 
-		private void Send(Connection conn)
-		{
-			// Write total size of message which is the current offset.
-			ulong size = ((ulong)dataOffset - 8) | (MSG_VERSION << 56) | (MSG_TYPE << 48);
-			ByteUtil.LongToBytes(size, dataBuffer, 0);
-			conn.Write(dataBuffer, dataOffset);
-		}
-
 		public void ReadUsers(Cluster cluster, AdminPolicy policy, List<UserRoles> list)
 		{
+			WriteSize();
 			Node node = cluster.GetRandomNode();
 			int timeout = (policy == null) ? 1000 : policy.timeout;
 			int status = 0;
@@ -246,7 +259,7 @@ namespace Aerospike.Client
 
 			try
 			{
-				Send(conn);
+				conn.Write(dataBuffer, dataOffset);
 				status = ReadUserBlocks(conn, list);
 				node.PutConnection(conn);
 			}
