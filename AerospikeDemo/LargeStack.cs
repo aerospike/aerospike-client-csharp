@@ -20,6 +20,7 @@
  * IN THE SOFTWARE.
  ******************************************************************************/
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using Aerospike.Client;
 
@@ -56,9 +57,9 @@ namespace Aerospike.Demo
 			stack.Push(Value.Get("stackvalue2"));
 
 			// Verify large stack was created with default configuration.
-			Dictionary<object,object> map = stack.GetConfig();
+			IDictionary map = stack.GetConfig();
 
-			foreach (KeyValuePair<object,object> entry in map)
+			foreach (DictionaryEntry entry in map)
 			{
 				console.Info(entry.Key.ToString() + ',' + entry.Value);
 			}
@@ -70,7 +71,7 @@ namespace Aerospike.Demo
 				throw new Exception("Size mismatch. Expected 2 Received " + size);
 			}
 
-			List<object> list = stack.Peek(1);
+			IList list = stack.Peek(1);
 			string received = (string)list[0];
 			string expected = "stackvalue2";
 

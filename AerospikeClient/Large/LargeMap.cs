@@ -19,6 +19,7 @@
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
  * IN THE SOFTWARE.
  ******************************************************************************/
+using System.Collections;
 using System.Collections.Generic;
 
 namespace Aerospike.Client
@@ -76,17 +77,17 @@ namespace Aerospike.Client
 		/// Get value from map given name key.
 		/// </summary>
 		/// <param name="name">key</param>
-		public Dictionary<object,object> Get(Value name)
+		public IDictionary Get(Value name)
 		{
-			return (Dictionary<object,object>)client.Execute(policy, key, PackageName, "get", binName, name);
+			return (IDictionary)client.Execute(policy, key, PackageName, "get", binName, name);
 		}
 
 		/// <summary>
 		/// Return all objects in the map.
 		/// </summary>
-		public Dictionary<object,object> Scan()
+		public IDictionary Scan()
 		{
-			return (Dictionary<object,object>)client.Execute(policy, key, PackageName, "scan", binName);
+			return (IDictionary)client.Execute(policy, key, PackageName, "scan", binName);
 		}
 
 		/// <summary>
@@ -94,9 +95,9 @@ namespace Aerospike.Client
 		/// </summary>
 		/// <param name="filterName">Lua function name which applies filter to returned list</param>
 		/// <param name="filterArgs">arguments to Lua function name</param>
-		public Dictionary<object,object> Filter(string filterName, params Value[] filterArgs)
+		public IDictionary Filter(string filterName, params Value[] filterArgs)
 		{
-			return (Dictionary<object,object>)client.Execute(policy, key, PackageName, "filter", binName, userModule, Value.Get(filterName), Value.Get(filterArgs));
+			return (IDictionary)client.Execute(policy, key, PackageName, "filter", binName, userModule, Value.Get(filterName), Value.Get(filterArgs));
 		}
 
 		/// <summary>
@@ -118,9 +119,9 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Return map configuration parameters.
 		/// </summary>
-		public Dictionary<object,object> GetConfig()
+		public IDictionary GetConfig()
 		{
-			return (Dictionary<object,object>)client.Execute(policy, key, PackageName, "config", binName);
+			return (IDictionary)client.Execute(policy, key, PackageName, "config", binName);
 		}
 
 		/// <summary>

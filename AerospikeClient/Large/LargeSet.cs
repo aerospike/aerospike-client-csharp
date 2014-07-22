@@ -19,6 +19,7 @@
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
  * IN THE SOFTWARE.
  ******************************************************************************/
+using System.Collections;
 using System.Collections.Generic;
 
 namespace Aerospike.Client
@@ -102,9 +103,9 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Return list of all objects in the set.
 		/// </summary>
-		public List<object> Scan()
+		public IList Scan()
 		{
-			return (List<object>)client.Execute(policy, key, PackageName, "scan", binName);
+			return (IList)client.Execute(policy, key, PackageName, "scan", binName);
 		}
 
 		/// <summary>
@@ -112,9 +113,9 @@ namespace Aerospike.Client
 		/// </summary>
 		/// <param name="filterName">Lua function name which applies filter to returned list</param>
 		/// <param name="filterArgs">arguments to Lua function name</param>
-		public List<object> Filter(string filterName, params Value[] filterArgs)
+		public IList Filter(string filterName, params Value[] filterArgs)
 		{
-			return (List<object>)client.Execute(policy, key, PackageName, "filter", binName, userModule, Value.Get(filterName), Value.Get(filterArgs));
+			return (IList)client.Execute(policy, key, PackageName, "filter", binName, userModule, Value.Get(filterName), Value.Get(filterArgs));
 		}
 
 		/// <summary>
@@ -136,9 +137,9 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Return map of set configuration parameters.
 		/// </summary>
-		public Dictionary<object,object> GetConfig()
+		public IDictionary GetConfig()
 		{
-			return (Dictionary<object,object>)client.Execute(policy, key, PackageName, "get_config", binName);
+			return (IDictionary)client.Execute(policy, key, PackageName, "get_config", binName);
 		}
 
 		/// <summary>

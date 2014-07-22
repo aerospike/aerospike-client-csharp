@@ -20,6 +20,7 @@
  * IN THE SOFTWARE.
  ******************************************************************************/
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using Aerospike.Client;
 
@@ -56,9 +57,9 @@ namespace Aerospike.Demo
 			set.Add(Value.Get("setvalue2"));
 
 			// Verify large set was created with default configuration.
-			Dictionary<object,object> map = set.GetConfig();
+			IDictionary map = set.GetConfig();
 
-			foreach (KeyValuePair<object,object> entry in map)
+			foreach (DictionaryEntry entry in map)
 			{
 				console.Info(entry.Key.ToString() + ',' + entry.Value);
 			}

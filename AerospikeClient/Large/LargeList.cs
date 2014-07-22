@@ -19,6 +19,7 @@
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
  * IN THE SOFTWARE.
  ******************************************************************************/
+using System.Collections;
 using System.Collections.Generic;
 
 namespace Aerospike.Client
@@ -84,9 +85,9 @@ namespace Aerospike.Client
 		/// Select values from list.
 		/// </summary>
 		/// <param name="value">value to select</param>
-		public List<object> Find(Value value)
+		public IList Find(Value value)
 		{
-			return (List<object>)client.Execute(policy, key, PackageName, "find", binName, value);
+			return (IList)client.Execute(policy, key, PackageName, "find", binName, value);
 		}
 
 		/// <summary>
@@ -94,9 +95,9 @@ namespace Aerospike.Client
 		/// </summary>
 		/// <param name="begin">begin value inclusive</param>
 		/// <param name="end">end value inclusive</param>
-		public List<object> Range(Value begin, Value end)
+		public IList Range(Value begin, Value end)
 		{
-			return (List<object>)client.Execute(policy, key, PackageName, "range", binName, begin, end);
+			return (IList)client.Execute(policy, key, PackageName, "range", binName, begin, end);
 		}
 		
 		/// <summary>
@@ -105,17 +106,17 @@ namespace Aerospike.Client
 		/// <param name="value">value to select</param>
 		/// <param name="filterName">Lua function name which applies filter to returned list</param>
 		/// <param name="filterArgs">arguments to Lua function name</param>
-		public List<object> FindThenFilter(Value value, string filterName, params Value[] filterArgs)
+		public IList FindThenFilter(Value value, string filterName, params Value[] filterArgs)
 		{
-			return (List<object>)client.Execute(policy, key, PackageName, "find_then_filter", binName, value, userModule, Value.Get(filterName), Value.Get(filterArgs));
+			return (IList)client.Execute(policy, key, PackageName, "find_then_filter", binName, value, userModule, Value.Get(filterName), Value.Get(filterArgs));
 		}
 
 		/// <summary>
 		/// Return all objects in the list.
 		/// </summary>
-		public List<object> Scan()
+		public IList Scan()
 		{
-			return (List<object>)client.Execute(policy, key, PackageName, "scan", binName);
+			return (IList)client.Execute(policy, key, PackageName, "scan", binName);
 		}
 
 		/// <summary>
@@ -123,9 +124,9 @@ namespace Aerospike.Client
 		/// </summary>
 		/// <param name="filterName">Lua function name which applies filter to returned list</param>
 		/// <param name="filterArgs">arguments to Lua function name</param>
-		public List<object> Filter(string filterName, params Value[] filterArgs)
+		public IList Filter(string filterName, params Value[] filterArgs)
 		{
-			return (List<object>)client.Execute(policy, key, PackageName, "filter", binName, userModule, Value.Get(filterName), Value.Get(filterArgs));
+			return (IList)client.Execute(policy, key, PackageName, "filter", binName, userModule, Value.Get(filterName), Value.Get(filterArgs));
 		}
 
 		/// <summary>
@@ -147,9 +148,9 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Return map of list configuration parameters.
 		/// </summary>
-		public Dictionary<object,object> GetConfig()
+		public IDictionary GetConfig()
 		{
-			return (Dictionary<object, object>)client.Execute(policy, key, PackageName, "config", binName);
+			return (IDictionary)client.Execute(policy, key, PackageName, "config", binName);
 		}
 
 		/// <summary>

@@ -108,6 +108,18 @@ namespace Aerospike.Demo
 			ValidateWithDistinctBins(results, 1, timestamp3, "AAPL", 75, 91.85);
 			
 			console.Info("Data matched.");
+
+			console.Info("Run large list scan.");
+			IList rows = list.Scan();
+			foreach (IDictionary row in rows)
+			{
+				foreach (DictionaryEntry entry in row)
+				{
+					//console.Info(entry.Key.ToString());
+					//console.Info(entry.Value.ToString());
+				}
+			}
+			console.Info("Large list scan complete.");
 		}
 
 		private void ValidateWithDistinctBins(IList list, int index, DateTime expectedTime, string expectedTicker, int expectedQty, double expectedPrice)

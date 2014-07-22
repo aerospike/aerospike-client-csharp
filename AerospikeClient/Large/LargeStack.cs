@@ -19,6 +19,7 @@
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
  * IN THE SOFTWARE.
  ******************************************************************************/
+using System.Collections;
 using System.Collections.Generic;
 
 namespace Aerospike.Client
@@ -75,17 +76,17 @@ namespace Aerospike.Client
 		/// Select items from top of stack.
 		/// </summary>
 		/// <param name="peekCount">number of items to select</param>
-		public List<object> Peek(int peekCount)
+		public IList Peek(int peekCount)
 		{
-			return (List<object>)client.Execute(policy, key, PackageName, "peek", binName, Value.Get(peekCount));
+			return (IList)client.Execute(policy, key, PackageName, "peek", binName, Value.Get(peekCount));
 		}
 
 		/// <summary>
 		/// Return list of all objects on the stack.
 		/// </summary>
-		public List<object> Scan()
+		public IList Scan()
 		{
-			return (List<object>)client.Execute(policy, key, PackageName, "scan", binName);
+			return (IList)client.Execute(policy, key, PackageName, "scan", binName);
 		}
 
 		/// <summary>
@@ -94,9 +95,9 @@ namespace Aerospike.Client
 		/// <param name="peekCount">number of items to select.</param>
 		/// <param name="filterName">Lua function name which applies filter to returned list</param>
 		/// <param name="filterArgs">arguments to Lua function name</param>
-		public List<object> Filter(int peekCount, string filterName, params Value[] filterArgs)
+		public IList Filter(int peekCount, string filterName, params Value[] filterArgs)
 		{
-			return (List<object>)client.Execute(policy, key, PackageName, "filter", binName, Value.Get(peekCount), userModule, Value.Get(filterName), Value.Get(filterArgs));
+			return (IList)client.Execute(policy, key, PackageName, "filter", binName, Value.Get(peekCount), userModule, Value.Get(filterName), Value.Get(filterArgs));
 		}
 
 		/// <summary>
@@ -118,9 +119,9 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Return map of stack configuration parameters.
 		/// </summary>
-		public Dictionary<object,object> GetConfig()
+		public IDictionary GetConfig()
 		{
-			return (Dictionary<object,object>)client.Execute(policy, key, PackageName, "get_config", binName);
+			return (IDictionary)client.Execute(policy, key, PackageName, "get_config", binName);
 		}
 
 		/// <summary>
