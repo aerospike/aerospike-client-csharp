@@ -928,6 +928,7 @@ namespace Aerospike.Client
 			return executor.RecordSet;
 		}
 
+		#if (! LITE)
 		/// <summary>
 		/// Execute query, apply statement's aggregation function, and return result iterator. The query 
 		/// executor puts results on a queue in separate threads.  The calling thread concurrently pops 
@@ -960,6 +961,7 @@ namespace Aerospike.Client
 			executor.Execute();
 			return executor.ResultSet;
 		}
+		#endif
 
 		/// <summary>
 		/// Create secondary index.

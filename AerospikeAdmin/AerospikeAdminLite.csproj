@@ -5,29 +5,14 @@
     <Platform Condition=" '$(Platform)' == '' ">x86</Platform>
     <ProductVersion>8.0.30703</ProductVersion>
     <SchemaVersion>2.0</SchemaVersion>
-    <ProjectGuid>{D7C021D5-01AF-4DDB-86E7-801F26D17C6C}</ProjectGuid>
+    <ProjectGuid>{5181AF59-E59C-4DA6-9589-8038A8A16E23}</ProjectGuid>
     <OutputType>WinExe</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>Aerospike.Demo</RootNamespace>
-    <AssemblyName>AerospikeDemo</AssemblyName>
+    <RootNamespace>Aerospike.Admin</RootNamespace>
+    <AssemblyName>AerospikeAdmin</AssemblyName>
     <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
     <TargetFrameworkProfile>Client</TargetFrameworkProfile>
     <FileAlignment>512</FileAlignment>
-    <IsWebBootstrapper>false</IsWebBootstrapper>
-    <PublishUrl>publish\</PublishUrl>
-    <Install>true</Install>
-    <InstallFrom>Disk</InstallFrom>
-    <UpdateEnabled>false</UpdateEnabled>
-    <UpdateMode>Foreground</UpdateMode>
-    <UpdateInterval>7</UpdateInterval>
-    <UpdateIntervalUnits>Days</UpdateIntervalUnits>
-    <UpdatePeriodically>false</UpdatePeriodically>
-    <UpdateRequired>false</UpdateRequired>
-    <MapFileExtensions>true</MapFileExtensions>
-    <ApplicationRevision>0</ApplicationRevision>
-    <ApplicationVersion>1.0.0.%2a</ApplicationVersion>
-    <UseApplicationTrust>false</UseApplicationTrust>
-    <BootstrapperEnabled>true</BootstrapperEnabled>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|x64'">
     <DebugSymbols>true</DebugSymbols>
@@ -38,6 +23,7 @@
     <ErrorReport>prompt</ErrorReport>
     <CodeAnalysisIgnoreBuiltInRuleSets>true</CodeAnalysisIgnoreBuiltInRuleSets>
     <CodeAnalysisIgnoreBuiltInRules>true</CodeAnalysisIgnoreBuiltInRules>
+    <CodeAnalysisFailOnMissingRules>false</CodeAnalysisFailOnMissingRules>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Release|x64'">
     <OutputPath>bin\x64\Release\</OutputPath>
@@ -45,6 +31,22 @@
     <Optimize>true</Optimize>
     <DebugType>pdbonly</DebugType>
     <PlatformTarget>x64</PlatformTarget>
+    <ErrorReport>prompt</ErrorReport>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|AnyCPU'">
+    <DebugSymbols>true</DebugSymbols>
+    <OutputPath>bin\Debug\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <DebugType>full</DebugType>
+    <PlatformTarget>AnyCPU</PlatformTarget>
+    <ErrorReport>prompt</ErrorReport>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Release|AnyCPU'">
+    <OutputPath>bin\Release\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <Optimize>true</Optimize>
+    <DebugType>pdbonly</DebugType>
+    <PlatformTarget>AnyCPU</PlatformTarget>
     <ErrorReport>prompt</ErrorReport>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|x86'">
@@ -56,7 +58,6 @@
     <ErrorReport>prompt</ErrorReport>
     <CodeAnalysisIgnoreBuiltInRuleSets>true</CodeAnalysisIgnoreBuiltInRuleSets>
     <CodeAnalysisIgnoreBuiltInRules>true</CodeAnalysisIgnoreBuiltInRules>
-    <CodeAnalysisFailOnMissingRules>false</CodeAnalysisFailOnMissingRules>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Release|x86'">
     <OutputPath>bin\x86\Release\</OutputPath>
@@ -79,62 +80,42 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Add.cs" />
-    <Compile Include="Append.cs" />
-    <Compile Include="AsyncBatch.cs" />
-    <Compile Include="AsyncExample.cs" />
-    <Compile Include="AsyncPutGet.cs" />
-    <Compile Include="AsyncScan.cs" />
-    <Compile Include="Batch.cs" />
-    <Compile Include="BenchmarkShared.cs" />
-    <Compile Include="Console.cs" />
-    <Compile Include="BenchmarkExample.cs" />
-    <Compile Include="BenchmarkArguments.cs" />
-    <Compile Include="BenchmarkThread.cs" />
-    <Compile Include="BenchmarkThreadSync.cs" />
-    <Compile Include="BenchmarkThreadAsync.cs" />
-    <Compile Include="BenchmarkInitialize.cs" />
-    <Compile Include="BenchmarkReadWrite.cs" />
-    <Compile Include="LargeList.cs" />
-    <Compile Include="GetAndJoin.cs" />
-    <Compile Include="Replace.cs" />
-    <Compile Include="QueryFilter.cs" />
-    <Compile Include="LatencyManager.cs" />
-    <Compile Include="Operate.cs" />
-    <Compile Include="DeleteBin.cs" />
-    <Compile Include="DemoForm.cs">
+    <Compile Include="SortableBindingList.cs" />
+    <Compile Include="PasswordForm.cs">
       <SubType>Form</SubType>
     </Compile>
-    <Compile Include="DemoForm.Designer.cs">
-      <DependentUpon>DemoForm.cs</DependentUpon>
+    <Compile Include="PasswordForm.Designer.cs">
+      <DependentUpon>PasswordForm.cs</DependentUpon>
     </Compile>
-    <Compile Include="Expire.cs" />
-    <Compile Include="Generation.cs" />
-    <Compile Include="LargeSet.cs" />
-    <Compile Include="LargeStack.cs" />
-    <Compile Include="ListMap.cs" />
-    <Compile Include="LuaExample.cs" />
-    <Compile Include="LuaMapIterator.cs" />
-    <Compile Include="Prepend.cs" />
-    <Compile Include="QueryAverage.cs" />
-    <Compile Include="QueryExecute.cs" />
-    <Compile Include="QueryInteger.cs" />
-    <Compile Include="QueryString.cs" />
-    <Compile Include="QuerySum.cs" />
-    <Compile Include="ScanParallel.cs" />
-    <Compile Include="ScanSeries.cs" />
-    <Compile Include="Serialize.cs" />
-    <Compile Include="ServerInfo.cs" />
-    <Compile Include="SyncExample.cs" />
-    <Compile Include="Example.cs" />
-    <Compile Include="Arguments.cs" />
+    <Compile Include="UserEditForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="UserEditForm.Designer.cs">
+      <DependentUpon>UserEditForm.cs</DependentUpon>
+    </Compile>
+    <Compile Include="LoginForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="LoginForm.Designer.cs">
+      <DependentUpon>LoginForm.cs</DependentUpon>
+    </Compile>
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="PutGet.cs" />
-    <Compile Include="Touch.cs" />
-    <Compile Include="UserDefinedFunction.cs" />
-    <EmbeddedResource Include="DemoForm.resx">
-      <DependentUpon>DemoForm.cs</DependentUpon>
+    <Compile Include="UserRow.cs" />
+    <Compile Include="UsersForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="UsersForm.Designer.cs">
+      <DependentUpon>UsersForm.cs</DependentUpon>
+    </Compile>
+    <EmbeddedResource Include="PasswordForm.resx">
+      <DependentUpon>PasswordForm.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="UserEditForm.resx">
+      <DependentUpon>UserEditForm.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="LoginForm.resx">
+      <DependentUpon>LoginForm.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="Properties\Resources.resx">
       <Generator>ResXFileCodeGenerator</Generator>
@@ -146,6 +127,9 @@
       <DependentUpon>Resources.resx</DependentUpon>
       <DesignTime>True</DesignTime>
     </Compile>
+    <EmbeddedResource Include="UsersForm.resx">
+      <DependentUpon>UsersForm.cs</DependentUpon>
+    </EmbeddedResource>
     <None Include="app.config" />
     <None Include="Properties\Settings.settings">
       <Generator>SettingsSingleFileGenerator</Generator>
@@ -158,31 +142,9 @@
     </Compile>
   </ItemGroup>
   <ItemGroup>
-    <BootstrapperPackage Include=".NETFramework,Version=v4.0,Profile=Client">
-      <Visible>False</Visible>
-      <ProductName>Microsoft .NET Framework 4 Client Profile %28x86 and x64%29</ProductName>
-      <Install>true</Install>
-    </BootstrapperPackage>
-    <BootstrapperPackage Include="Microsoft.Net.Client.3.5">
-      <Visible>False</Visible>
-      <ProductName>.NET Framework 3.5 SP1 Client Profile</ProductName>
-      <Install>false</Install>
-    </BootstrapperPackage>
-    <BootstrapperPackage Include="Microsoft.Net.Framework.3.5.SP1">
-      <Visible>False</Visible>
-      <ProductName>.NET Framework 3.5 SP1</ProductName>
-      <Install>false</Install>
-    </BootstrapperPackage>
-    <BootstrapperPackage Include="Microsoft.Windows.Installer.3.1">
-      <Visible>False</Visible>
-      <ProductName>Windows Installer 3.1</ProductName>
-      <Install>true</Install>
-    </BootstrapperPackage>
-  </ItemGroup>
-  <ItemGroup>
-    <ProjectReference Include="..\AerospikeClient\AerospikeClient.csproj">
+    <ProjectReference Include="..\AerospikeClient\AerospikeClientLite.csproj">
       <Project>{21FEB257-1454-4A21-81D6-BDB6FE865E97}</Project>
-      <Name>AerospikeClient</Name>
+      <Name>AerospikeClientLite</Name>
     </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />

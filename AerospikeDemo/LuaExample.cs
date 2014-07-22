@@ -25,20 +25,31 @@ using Aerospike.Client;
 
 namespace Aerospike.Demo
 {
-	public class LuaExample
-	{
-		private const string LuaDirectory = @"..\..\udf";
+    public class LuaExample
+    {
+        private static string LuaDirectory = @"..\..\udf";
 
-		static LuaExample()
-		{
- 			LuaConfig.PackagePath = LuaDirectory + @"\?.lua";
-		}
+        static LuaExample()
+        {
+            // Adjust path for whether using x64/x86 or AnyCPU compile target.
+            string dir = @"..\..\..\udf";
 
-		public static void Register(AerospikeClient client, Policy policy, string packageName)
-		{
-			string path = LuaDirectory + Path.DirectorySeparatorChar + packageName;
-			RegisterTask task = client.Register(policy, path, packageName, Language.LUA);
-			task.Wait();
-		}
-	}
+            if (! Directory.Exists(dir))
+            {
+                dir = @"..\..\udf";
+            }
+            LuaDirectory = dir;
+
+            #if (! LITE)
+            LuaConfig.PackagePath = LuaDirectory + @"\?.lua";
+            #endif
+        }
+
+        public static void Register(AerospikeClient client, Policy policy, string packageName)
+        {
+            string path = LuaDirectory + Path.DirectorySeparatorChar + packageName;
+            RegisterTask task = client.Register(policy, path, packageName, Language.LUA);
+            task.Wait();
+        }
+    }
 }

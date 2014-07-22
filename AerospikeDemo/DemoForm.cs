@@ -38,7 +38,7 @@ namespace Aerospike.Demo
     {
         private Thread thread;
         private volatile ExampleTreeNode currentExample;
-		private Console console;
+        private Console console;
 
         public DemoForm()
         {
@@ -51,7 +51,7 @@ namespace Aerospike.Demo
             try
             {
                 codeBox.Font = new Font("Consolas", 10.0f);
-				codeBox.SelectionTabs = new int[] { 25, 50, 75, 100, 125 };
+                codeBox.SelectionTabs = new int[] { 25, 50, 75, 100, 125 };
 
                 binTypeBox.Items.Add(BinType.Integer);
                 binTypeBox.Items.Add(BinType.String);
@@ -61,8 +61,8 @@ namespace Aerospike.Demo
                 ReadDefaults();
 
                 console = new ConsoleBox(consoleBox);
-				Log.SetLevel(Log.Level.INFO);
-				Log.SetCallback(LogCallback);
+                Log.SetLevel(Log.Level.INFO);
+                Log.SetCallback(LogCallback);
 
                 TreeNode info = new ExampleTreeNode("Server Info", new ServerInfo(console));
 
@@ -93,9 +93,11 @@ namespace Aerospike.Demo
                     new ExampleTreeNode("Large Stack", new LargeStack(console)),
                     new ExampleTreeNode("Query Integer", new QueryInteger(console)),
                     new ExampleTreeNode("Query String", new QueryString(console)),
+                    #if (! LITE)
                     new ExampleTreeNode("Query Filter", new QueryFilter(console)),
                     new ExampleTreeNode("Query Sum", new QuerySum(console)),
                     new ExampleTreeNode("Query Average", new QueryAverage(console)),
+                    #endif
                     new ExampleTreeNode("Query Execute", new QueryExecute(console))
                 });
                 TreeNode benchmarks = new TreeNode("Benchmarks", new TreeNode[] {
@@ -288,8 +290,8 @@ namespace Aerospike.Demo
 
             args.host = hostBox.Text.Trim();
             args.port = int.Parse(portBox.Text);
-			args.user = userBox.Text.Trim();
-			args.password = passwordBox.Text;
+            args.user = userBox.Text.Trim();
+            args.password = passwordBox.Text;
             args.ns = nsBox.Text.Trim();
             args.set = setBox.Text.Trim();
             return args;
@@ -303,7 +305,7 @@ namespace Aerospike.Demo
             }
             catch (Exception ex)
             {
-				console.Error(Util.GetErrorMessage(ex));
+                console.Error(Util.GetErrorMessage(ex));
                 MessageBox.Show(ex.Message);
             }
             finally
@@ -339,8 +341,8 @@ namespace Aerospike.Demo
                 codeBox.Clear();
                 ExampleTreeNode example = (ExampleTreeNode)node;
 
-				if (example.IsBenchmark())
-				{
+                if (example.IsBenchmark())
+                {
                     if (example.IsBenchmarkInitialize())
                     {
                         initializePanel.Visible = true;
@@ -353,9 +355,9 @@ namespace Aerospike.Demo
                     }
                     benchmarkPanel.Visible = true;
                     codeBox.Visible = false;
-				}
-				else
-				{
+                }
+                else
+                {
                     codeBox.Visible = true;
                     benchmarkPanel.Visible = false;
                     codeBox.Text = example.Read();
@@ -402,19 +404,19 @@ namespace Aerospike.Demo
             }
         }
 
-		private void LogCallback(Log.Level level, string message)
-		{
-			console.Write(level, message);
-		}
+        private void LogCallback(Log.Level level, string message)
+        {
+            console.Write(level, message);
+        }
 
-		private void ConsoleKeyDown(object sender, KeyEventArgs e)
-		{
-			if (e.Control && e.KeyCode == Keys.A)
-			{
-				consoleBox.SelectAll();
-				e.Handled = true;
-			}
-		}
+        private void ConsoleKeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.Control && e.KeyCode == Keys.A)
+            {
+                consoleBox.SelectAll();
+                e.Handled = true;
+            }
+        }
 
         private void SyncCheckChanged(object sender, EventArgs e)
         {
@@ -522,7 +524,7 @@ namespace Aerospike.Demo
             e.SuppressKeyPress = !((e.KeyValue >= 48 && e.KeyValue <= 57)
                 || e.KeyValue == 127 || e.KeyValue == 8 || e.KeyValue == 37 || e.KeyValue == 39);
         }
-	}
+    }
 
     class ExampleTreeNode : TreeNode
     {
@@ -531,7 +533,7 @@ namespace Aerospike.Demo
         public ExampleTreeNode(String text, Example example)
             : base(text)
         {
-			this.example = example;
+            this.example = example;
         }
 
         public bool IsBenchmark()
@@ -546,19 +548,25 @@ namespace Aerospike.Demo
 
         public string Read()
         {
-			//string path = @"..\..\..\" + example.GetType().Name + ".cs";
-			string path = @"..\..\" + example.GetType().Name + ".cs";
-			return File.ReadAllText(path);
+            // Adjust path for whether using x64/x86 or AnyCPU compile target.
+            string filename = example.GetType().Name + ".cs";
+            string path = @"..\..\..\" + filename;
+
+            if (! File.Exists(path))
+            {
+                path = @"..\..\" + filename;
+            }
+            return File.ReadAllText(path);
         }
 
         public void Run(Arguments args)
         {
-			example.Run(args);
+            example.Run(args);
         }
 
         public void Stop()
         {
-			Log.Info("Stop requested. Waiting for thread to end.");
+            Log.Info("Stop requested. Waiting for thread to end.");
             example.Stop();
         }
     }

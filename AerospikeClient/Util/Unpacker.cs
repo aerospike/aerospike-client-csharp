@@ -85,10 +85,12 @@ namespace Aerospike.Client
 				list.Add(UnpackObject());
 			}
 
+			#if (! LITE)
 			if (lua)
 			{
 				return new LuaList(list);
 			}
+			#endif
 			return list;
 		}
 
@@ -134,10 +136,12 @@ namespace Aerospike.Client
 				dict[key] = val;
 			}
 
+			#if (! LITE)
 			if (lua)
 			{
 				return new LuaMap(dict);
 			}
+			#endif
 			return dict;
 		}
 
@@ -161,6 +165,7 @@ namespace Aerospike.Client
 					byte[] dest = new byte[count];
 					Array.Copy(buffer, offset, dest, 0, count);
 
+					#if (! LITE)
 					if (lua)
 					{
 						val = new LuaBytes(dest);
@@ -169,6 +174,9 @@ namespace Aerospike.Client
 					{
 						val = dest;
 					}
+					#else
+						val = dest;
+					#endif
 					break;
 			}
 			offset += count;
