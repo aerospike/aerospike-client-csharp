@@ -27,7 +27,7 @@ namespace Aerospike.Demo
 {
     public class LuaExample
     {
-        private static string LuaDirectory = @"..\..\udf";
+        private static readonly string LuaDirectory;
 
         static LuaExample()
         {
