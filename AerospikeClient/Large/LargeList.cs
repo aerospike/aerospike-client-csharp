@@ -73,6 +73,15 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
+		/// Add values to the list.  If the list does not exist, create it using specified userModule configuration.
+		/// </summary>
+		/// <param name="values">values to add</param>
+		public void Add(IList values)
+		{
+			client.Execute(policy, key, PackageName, "add_all", binName, Value.GetAsList(values), userModule);
+		}
+		
+		/// <summary>
 		/// Delete value from list.
 		/// </summary>
 		/// <param name="value">value to delete</param>

@@ -73,6 +73,15 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
+		/// Push values onto stack.  If the stack does not exist, create it using specified userModule configuration.
+		/// </summary>
+		/// <param name="values">values to push</param>
+		public void Push(IList values)
+		{
+			client.Execute(policy, key, PackageName, "push_all", binName, Value.GetAsList(values), userModule);
+		}
+		
+		/// <summary>
 		/// Select items from top of stack.
 		/// </summary>
 		/// <param name="peekCount">number of items to select</param>
