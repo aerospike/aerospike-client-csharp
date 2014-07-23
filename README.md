@@ -4,7 +4,7 @@ Aerospike C# Client Package
 Aerospike C# client.  This package contains full source code for two Visual Studio solutions:
 
 * **Aerospike.sln**    
-	C# library and demonstration programs with full functionality including "query with user-defined aggregation".  Aggregations require a Lua interpreter (written in C) on the client side.  This results in a dependency on an unmanaged DLL.  The projects are:
+	C# library and demonstration programs with full functionality including "AerospikeClient.QueryAggregate()" (secondary index query with user-defined aggregation).  Aggregations require a Lua interpreter (written in C) on the client side.  This results in a dependency on an unmanaged DLL.  Supported compile targets are x64 (64-bit) and x86 (32-bit).  The projects are:
 	
 	* **AerospikeClient**    
 		C# client library.
@@ -14,7 +14,7 @@ Aerospike C# client.  This package contains full source code for two Visual Stud
 		Aerospike user administration.  This application is only valid for enterprise servers that are configured to require user authentication.
 
 * **AerospikeLite.sln**    
-	C# library and demonstration programs without "query with user-defined aggregation" functionality.  This solution is fully managed.  This solution contains similar projects with the "Lite" suffix. 
+	C# library and demonstration programs without "AerospikeClient.QueryAggregate()" (secondary index query with user-defined aggregation).  This solution is fully managed.  Supported compile targets are AnyCPU, x64 (64-bit) and x86 (32-bit).  The included projects are appended with the "Lite" suffix. 
 
 	* **AerospikeClientLite**    
 	* **AerospikeDemoLite**    
