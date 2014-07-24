@@ -164,8 +164,19 @@ namespace Aerospike.Client
 		/// </summary>
 		public const int QUERY_END = 50;
 
+		/// <summary>
+		/// Security functionality not supported by connected server.
+		/// </summary>
 		public const int SECURITY_NOT_SUPPORTED = 51;
+
+		/// <summary>
+		/// Security functionality supported, but not enabled by connected server.
+		/// </summary>
 		public const int SECURITY_NOT_ENABLED = 52;
+
+		/// <summary>
+		/// Security configuration not supported.
+		/// </summary>
 		public const int SECURITY_SCHEME_NOT_SUPPORTED = 53;
 		
 		/// <summary>
@@ -178,6 +189,9 @@ namespace Aerospike.Client
 		/// </summary>
 		public const int INVALID_FIELD = 55;
 
+		/// <summary>
+		/// Server is in illegal stage.
+		/// </summary>
 		public const int ILLEGAL_STATE = 56;
 
 		/// <summary>
@@ -205,6 +219,9 @@ namespace Aerospike.Client
 		/// </summary>
 		public const int INVALID_ROLE = 70;
 
+		/// <summary>
+		/// Specified Privilege is not valid.
+		/// </summary>
 		public const int INVALID_PRIVILEGE = 71;
 		
 		/// <summary>

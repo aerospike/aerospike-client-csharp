@@ -47,11 +47,17 @@ namespace Aerospike.Client
 			this.port = port;
 		}
 
+		/// <summary>
+		/// Convert host name and port to string.
+		/// </summary>
 		public override string ToString()
 		{
 			return name + ':' + port;
 		}
 
+		/// <summary>
+		/// Return host address hash code.
+		/// </summary>
 		public override int GetHashCode()
 		{
 			const int prime = 31;
@@ -59,6 +65,9 @@ namespace Aerospike.Client
 			return prime * result + port;
 		}
 
+		/// <summary>
+		/// Return if hosts are equal.
+		/// </summary>
 		public override bool Equals(object obj)
 		{
 			Host other = (Host) obj;

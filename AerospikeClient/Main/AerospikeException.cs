@@ -71,6 +71,9 @@ namespace Aerospike.Client
 		{
 		}
 
+		/// <summary>
+		/// Return error message string.
+		/// </summary>
 		public override string Message
 		{
 			get
@@ -132,17 +135,38 @@ namespace Aerospike.Client
 		/// </summary>
 		public sealed class Timeout : AerospikeException
 		{
+			/// <summary>
+			/// Specified timeout in milliseconds.
+			/// </summary>
 			public int timeout;
+
+			/// <summary>
+			/// Number of attempts before failing.
+			/// </summary>
 			public int iterations;
+
+			/// <summary>
+			/// Number of times when no nodes could be accessed.
+			/// </summary>
 			public int failedNodes;
+
+			/// <summary>
+			/// Number of times a connection could not be retrieved from a connection pool.
+			/// </summary>
 			public int failedConns;
 
+			/// <summary>
+			/// Create timeout exception.
+			/// </summary>
 			public Timeout()
 				: base(ResultCode.TIMEOUT)
 			{
 				this.timeout = -1;
 			}
 
+			/// <summary>
+			/// Create timeout exception with statistics.
+			/// </summary>
 			public Timeout(int timeout, int iterations, int failedNodes, int failedConns)
 				: base(ResultCode.TIMEOUT)
 			{
@@ -152,6 +176,9 @@ namespace Aerospike.Client
 				this.failedConns = failedConns;
 			}
 
+			/// <summary>
+			/// Get timeout message with statistics.
+			/// </summary>
 			public override string Message
 			{
 				get
@@ -171,11 +198,18 @@ namespace Aerospike.Client
 		/// </summary>
 		public sealed class Serialize : AerospikeException
 		{
+			/// <summary>
+			/// Create serialize exception.
+			/// </summary>
 			public Serialize(Exception e) : base(ResultCode.SERIALIZE_ERROR, e)
 			{
 			}
 
-			public Serialize(string message) : base(ResultCode.SERIALIZE_ERROR, message)
+			/// <summary>
+			/// Create serialize exception with additional string message.
+			/// </summary>
+			public Serialize(string message)
+				: base(ResultCode.SERIALIZE_ERROR, message)
 			{
 			}
 		}
@@ -185,6 +219,9 @@ namespace Aerospike.Client
 		/// </summary>
 		public sealed class Parse : AerospikeException
 		{
+			/// <summary>
+			/// Create parse exception.
+			/// </summary>
 			public Parse(string message) : base(ResultCode.PARSE_ERROR, message)
 			{
 			}
@@ -195,11 +232,19 @@ namespace Aerospike.Client
 		/// </summary>
 		public sealed class Connection : AerospikeException
 		{
-			public Connection(string message) : base(ResultCode.SERVER_NOT_AVAILABLE, message)
+			/// <summary>
+			/// Create connection exception with string message.
+			/// </summary>
+			public Connection(string message)
+				: base(ResultCode.SERVER_NOT_AVAILABLE, message)
 			{
 			}
 
-			public Connection(Exception e) : base(ResultCode.SERVER_NOT_AVAILABLE, e)
+			/// <summary>
+			/// Create connection exception with underlying exception.
+			/// </summary>
+			public Connection(Exception e)
+				: base(ResultCode.SERVER_NOT_AVAILABLE, e)
 			{
 			}
 		}
@@ -209,6 +254,9 @@ namespace Aerospike.Client
 		/// </summary>
 		public sealed class InvalidNode : AerospikeException
 		{
+			/// <summary>
+			/// Create invalid node exception.
+			/// </summary>
 			public InvalidNode() : base(ResultCode.INVALID_NODE_ERROR)
 			{
 			}
@@ -219,11 +267,19 @@ namespace Aerospike.Client
 		/// </summary>
 		public sealed class ScanTerminated : AerospikeException
 		{
-			public ScanTerminated() : base(ResultCode.SCAN_TERMINATED)
+			/// <summary>
+			/// Create scan terminated exception.
+			/// </summary>
+			public ScanTerminated()
+				: base(ResultCode.SCAN_TERMINATED)
 			{
 			}
 
-			public ScanTerminated(Exception e) : base(ResultCode.SCAN_TERMINATED, e)
+			/// <summary>
+			/// Create scan terminated exception with underlying exception.
+			/// </summary>
+			public ScanTerminated(Exception e)
+				: base(ResultCode.SCAN_TERMINATED, e)
 			{
 			}
 		}
@@ -233,11 +289,19 @@ namespace Aerospike.Client
 		/// </summary>
 		public sealed class QueryTerminated : AerospikeException
 		{
-			public QueryTerminated() : base(ResultCode.QUERY_TERMINATED)
+			/// <summary>
+			/// Create query terminated exception.
+			/// </summary>
+			public QueryTerminated()
+				: base(ResultCode.QUERY_TERMINATED)
 			{
 			}
 
-			public QueryTerminated(Exception e) : base(ResultCode.QUERY_TERMINATED, e)
+			/// <summary>
+			/// Create query terminated exception with underlying exception.
+			/// </summary>
+			public QueryTerminated(Exception e)
+				: base(ResultCode.QUERY_TERMINATED, e)
 			{
 			}
 		}
@@ -248,6 +312,9 @@ namespace Aerospike.Client
 		/// </summary>
 		public sealed class CommandRejected : AerospikeException
 		{
+			/// <summary>
+			/// Create command rejected exception.
+			/// </summary>
 			public CommandRejected() : base(ResultCode.COMMAND_REJECTED)
 			{
 			}

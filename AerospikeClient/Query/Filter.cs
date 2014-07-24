@@ -72,13 +72,13 @@ namespace Aerospike.Client
 			this.end = end;
 		}
 
-		public int EstimateSize()
+		internal int EstimateSize()
 		{
 			// bin name size(1) + particle type size(1) + begin particle size(4) + end particle size(4) = 10
 			return ByteUtil.EstimateSizeUtf8(name) + begin.EstimateSize() + end.EstimateSize() + 10;
 		}
 
-		public int Write(byte[] buf, int offset)
+		internal int Write(byte[] buf, int offset)
 		{
 			// Write name.
 			int len = ByteUtil.StringToUtf8(name, buf, offset + 1);

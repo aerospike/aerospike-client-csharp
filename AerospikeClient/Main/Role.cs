@@ -28,9 +28,24 @@ namespace Aerospike.Client
 	/// </summary>
 	public sealed class Role
 	{
+		/// <summary>
+		/// Manage users their roles.
+		/// </summary>
 		public const string UserAdmin = "user-admin";
+
+		/// <summary>
+		/// Manage indicies, user defined functions and server configuration. 
+		/// </summary>
 		public const string SysAdmin = "sys-admin";
+
+		/// <summary>
+		/// Allow read and write transactions with the database.
+		/// </summary>
 		public const string ReadWrite = "read-write";
+
+		/// <summary>
+		/// Allow read transactions with the database.
+		/// </summary>
 		public const string Read = "Read";
 	}
 }

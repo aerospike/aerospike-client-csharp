@@ -30,10 +30,10 @@ namespace Aerospike.Client
 	/// </summary>
 	public sealed class Join
 	{
-		public string leftKeysBinName;
-		public string rightNamespace;
-		public string rightSetName;
-		public string[] rightBinNames;
+		internal string leftKeysBinName;
+		internal string rightNamespace;
+		internal string rightSetName;
+		internal string[] rightBinNames;
 
 		/// <summary>
 		/// Create join definition to read all joined bins.

@@ -350,16 +350,25 @@ namespace Aerospike.Client
 			aliases = tmpAliases;
 		}
 
+		/// <summary>
+		/// Return node name and host address in string format.
+		/// </summary>
 		public override sealed string ToString()
 		{
 			return name + ' ' + host;
 		}
 
+		/// <summary>
+		/// Get node name hash code.
+		/// </summary>
 		public override sealed int GetHashCode()
 		{
 			return name.GetHashCode();
 		}
 
+		/// <summary>
+		/// Return if node names are equal.
+		/// </summary>
 		public override sealed bool Equals(object obj)
 		{
 			Node other = (Node) obj;

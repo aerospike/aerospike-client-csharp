@@ -338,6 +338,9 @@ namespace Aerospike.Client
 			return ns.Equals(other.ns);
 		}
 
+		/// <summary>
+		/// Return key elements in string format.
+		/// </summary>
 		public override string ToString()
 		{
 			return this.ns + ":" + this.setName + ":" + this.userKey + ":" + this.digest;
