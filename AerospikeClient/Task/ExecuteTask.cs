@@ -37,7 +37,7 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Query all nodes for task completion status.
 		/// </summary>
-		public override bool IsDone()
+		public override bool QueryIfDone()
 		{
 			string command = (scan) ? "scan-list" : "query-list";
 			Node[] nodes = cluster.Nodes;

@@ -37,7 +37,7 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Query all nodes for task completion status.
 		/// </summary>
-		public override bool IsDone()
+		public override bool QueryIfDone()
 		{
 			string command = "udf-list";
 			Node[] nodes = cluster.Nodes;

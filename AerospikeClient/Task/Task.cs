@@ -50,13 +50,26 @@ namespace Aerospike.Client
 			while (!done)
 			{
 				Util.Sleep(sleepInterval);
-				done = IsDone();
+				done = QueryIfDone();
 			}
 		}
 
 		/// <summary>
+		/// Has task completed.
+		/// </summary>
+		public bool IsDone()
+		{
+			if (done)
+			{
+				return true;
+			}
+			done = QueryIfDone();
+			return done;
+		}
+	
+		/// <summary>
 		/// Query all nodes for task completion status.
 		/// </summary>
-		public abstract bool IsDone();
+		public abstract bool QueryIfDone();
 	}
 }
