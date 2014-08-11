@@ -44,6 +44,7 @@ namespace Aerospike.Demo
 			WriteWithValidation(client, args);
 			//WriteListMapUsingUdf(client, args);
 			WriteBlobUsingUdf(client, args);
+			ServerSideExists(client, args);
 		}
 
 		private void Register(AerospikeClient client, Arguments args)
@@ -228,6 +229,42 @@ namespace Aerospike.Demo
 			{
 				throw new Exception(string.Format("Mismatch: expected={0} received={1}", expectedString, receivedString));
 			}
+		}
+
+		private void ServerSideExists(AerospikeClient client, Arguments args)
+		{
+			console.Info("Write list.");
+			List<int> list = new List<int>();
+			list.Add(64);
+			list.Add(3702);
+			list.Add(-5);
+
+			Key key = new Key(args.ns, args.set, "udfkey7");
+			Bin bin = Bin.AsList("udfbin7", list);
+			client.Put(args.writePolicy, key, bin);
+
+			ServerSideExists(client, args.writePolicy, key, bin, 3702, true);
+			ServerSideExists(client, args.writePolicy, key, bin, 65, false);
+		}
+
+		private void ServerSideExists(AerospikeClient client, WritePolicy policy, Key key, Bin bin, int search, bool expected)
+		{
+			long lexists = (long)client.Execute(policy, key, "record_example", "valueExists", Value.Get(bin.name), Value.Get(search));
+			bool exists = (lexists != 0);
+
+			if (expected && exists)
+			{
+				console.Info("Value found as expected.");
+				return;
+			}
+
+			if (!expected && !exists)
+			{
+				console.Info("Value not found as expected.");
+				return;
+			}
+
+			console.Error("Data mismatch. Expected " + expected + " Received " + exists);
 		}
 	}
 }

@@ -76,3 +76,20 @@ end
 --        aerospike:update(r)
 --    end
 -- end
+
+-- Determine if integer value exists in a list of integers.
+function valueExists(r,name,search)
+	-- Check if record exists
+	if not aerospike:exists(r) then
+		return 0
+	end
+
+	-- Search for value in list bin.
+	for v in list.iterator(r[name]) do
+		if v == search then
+			return 1
+		end
+	end
+
+	return 0
+end

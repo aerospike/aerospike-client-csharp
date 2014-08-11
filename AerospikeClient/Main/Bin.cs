@@ -14,6 +14,7 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
+using System.Collections;
 using System.Collections.Generic;
 
 namespace Aerospike.Client
@@ -214,7 +215,7 @@ namespace Aerospike.Client
 		/// </summary>
 		/// <param name="name">bin name, current limit is 14 characters</param>
 		/// <param name="value">bin value</param>
-		public static Bin AsList(string name, List<object> value)
+		public static Bin AsList(string name, IList value)
 		{
 			return new Bin(name, Value.GetAsList(value));
 		}
@@ -226,7 +227,7 @@ namespace Aerospike.Client
 		/// </summary>
 		/// <param name="name">bin name, current limit is 14 characters</param>
 		/// <param name="value">bin value</param>
-		public static Bin AsMap(string name, Dictionary<object,object> value)
+		public static Bin AsMap(string name, IDictionary value)
 		{
 			return new Bin(name, Value.GetAsMap(value));
 		}
