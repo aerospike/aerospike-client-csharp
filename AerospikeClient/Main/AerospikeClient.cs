@@ -273,8 +273,8 @@ namespace Aerospike.Client
 		//-------------------------------------------------------
 
 		/// <summary>
-		/// Create record if it does not already exist.  If the record exists, the record's 
-		/// time to expiration will be reset to the policy's expiration. 
+		/// Reset record's time to expiration using the policy's expiration.
+		/// Fail if the record does not exist.
 		/// </summary>
 		/// <param name="policy">write configuration parameters, pass in null for defaults</param>
 		/// <param name="key">unique record identifier</param>
