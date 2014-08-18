@@ -50,6 +50,7 @@ namespace Aerospike.Demo
 			// Write values.
 			set.Add(Value.Get("setvalue1"));
 			set.Add(Value.Get("setvalue2"));
+			set.Add(Value.Get("setvalue3"));
 
 			// Verify large set was created with default configuration.
 			IDictionary map = set.GetConfig();
@@ -58,6 +59,9 @@ namespace Aerospike.Demo
 			{
 				console.Info(entry.Key.ToString() + ',' + entry.Value);
 			}
+
+			// Remove last value.
+			set.Remove(Value.Get("setvalue3"));
 
 			int size = set.Size();
 
