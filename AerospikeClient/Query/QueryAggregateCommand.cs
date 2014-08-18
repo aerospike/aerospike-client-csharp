@@ -78,12 +78,21 @@ namespace Aerospike.Client
 
 				int particleBytesSize = (int)(opSize - (4 + nameSize));
 				ReadBytes(particleBytesSize);
-				object aggregateValue = LuaInstance.BytesToLua(particleType, dataBuffer, 0, particleBytesSize);
 
-				if (!name.Equals("SUCCESS"))
+				if (! name.Equals("SUCCESS"))
 				{
-					throw new AerospikeException("Query aggregate expected bin name SUCCESS.  Received " + name);
+					if (name.Equals("FAILURE"))
+					{
+						object value = ByteUtil.BytesToParticle(particleType, dataBuffer, 0, particleBytesSize);
+						throw new AerospikeException(ResultCode.QUERY_GENERIC, value.ToString());
+					}
+					else
+					{
+						throw new AerospikeException(ResultCode.QUERY_GENERIC, "Query aggregate expected bin name SUCCESS.  Received " + name);
+					}
 				}
+
+				object aggregateValue = LuaInstance.BytesToLua(particleType, dataBuffer, 0, particleBytesSize);
 
 				if (!valid)
 				{
