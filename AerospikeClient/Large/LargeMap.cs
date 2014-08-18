@@ -96,6 +96,14 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
+		/// Remove entry from map.
+		/// </summary>
+		public void Remove(Value name)
+		{
+			client.Execute(policy, key, PackageName, "remove", binName, name, userModule);
+		}
+
+		/// <summary>
 		/// Delete bin containing the map.
 		/// </summary>
 		public void Destroy()
