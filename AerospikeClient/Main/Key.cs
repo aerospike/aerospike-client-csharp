@@ -43,16 +43,26 @@ namespace Aerospike.Client
 
 		/// <summary>
 		/// Original user key. This key is immediately converted to a hash digest.
-		/// This key is not used or returned by the server.  If the user key needs 
-		/// to persist on the server, the key should be explicitly stored in a bin.
+		/// This key is not used or returned by the server by default. If the user key needs 
+		/// to persist on the server, use one of the following methods: 
+		/// <list type="bullet">
+		/// <item>Set "WritePolicy.sendKey" to true. In this case, the key will be sent to the server for storage on writes
+		/// and retrieved on multi-record scans and queries.</item>
+		/// <item>Explicitly store and retrieve the key in a bin.</item>
+		/// </list>
 		/// </summary>
-		public readonly object userKey;
-
+		public readonly Value userKey;
+	
 		/// <summary>
 		/// Initialize key from namespace, optional set name and user key.
 		/// The set name and user defined key are converted to a digest before sending to the server.
-		/// The server handles record identifiers by digest only.
-		/// If the user key needs to be stored on the server, the key should be stored in a bin.
+		/// The user key is not used or returned by the server by default. If the user key needs 
+		/// to persist on the server, use one of the following methods: 
+		/// <list type="bullet">
+		/// <item>Set "WritePolicy.sendKey" to true. In this case, the key will be sent to the server for storage on writes
+		/// and retrieved on multi-record scans and queries.</item>
+		/// <item>Explicitly store and retrieve the key in a bin.</item>
+		/// </list>
 		/// </summary>
 		/// <param name="ns">namespace</param>
 		/// <param name="setName">optional set name, enter null when set does not exist</param>
@@ -69,7 +79,13 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Initialize key from namespace, optional set name and user key.
 		/// The set name and user defined key are converted to a digest before sending to the server.
-		/// The server handles record identifiers by digest only.
+		/// The user key is not used or returned by the server by default. If the user key needs 
+		/// to persist on the server, use one of the following methods: 
+		/// <list type="bullet">
+		/// <item>Set "WritePolicy.sendKey" to true. In this case, the key will be sent to the server for storage on writes
+		/// and retrieved on multi-record scans and queries.</item>
+		/// <item>Explicitly store and retrieve the key in a bin.</item>
+		/// </list>
 		/// </summary>
 		/// <param name="ns">namespace</param>
 		/// <param name="setName">optional set name, enter null when set does not exist</param>
@@ -79,15 +95,20 @@ namespace Aerospike.Client
 		{
 			this.ns = ns;
 			this.setName = setName;
-			this.userKey = key;
-			digest = ComputeDigest(setName, new Value.StringValue(key));
+			this.userKey = new Value.StringValue(key);
+			digest = ComputeDigest(setName, this.userKey);
 		}
 
 		/// <summary>
 		/// Initialize key from namespace, optional set name and user key.
 		/// The set name and user defined key are converted to a digest before sending to the server.
-		/// The server handles record identifiers by digest only.
-		/// If the user key needs to be stored on the server, the key should be stored in a bin.
+		/// The user key is not used or returned by the server by default. If the user key needs 
+		/// to persist on the server, use one of the following methods: 
+		/// <list type="bullet">
+		/// <item>Set "WritePolicy.sendKey" to true. In this case, the key will be sent to the server for storage on writes
+		/// and retrieved on multi-record scans and queries.</item>
+		/// <item>Explicitly store and retrieve the key in a bin.</item>
+		/// </list>
 		/// </summary>
 		/// <param name="ns">namespace</param>
 		/// <param name="setName">optional set name, enter null when set does not exist</param>
@@ -97,15 +118,20 @@ namespace Aerospike.Client
 		{
 			this.ns = ns;
 			this.setName = setName;
-			this.userKey = key;
-			digest = ComputeDigest(setName, new Value.BytesValue(key));
+			this.userKey = new Value.BytesValue(key);
+			digest = ComputeDigest(setName, this.userKey);
 		}
 
 		/// <summary>
 		/// Initialize key from namespace, optional set name and user key.
 		/// The set name and user defined key are converted to a digest before sending to the server.
-		/// The server handles record identifiers by digest only.
-		/// If the user key needs to be stored on the server, the key should be stored in a bin.
+		/// The user key is not used or returned by the server by default. If the user key needs 
+		/// to persist on the server, use one of the following methods: 
+		/// <list type="bullet">
+		/// <item>Set "WritePolicy.sendKey" to true. In this case, the key will be sent to the server for storage on writes
+		/// and retrieved on multi-record scans and queries.</item>
+		/// <item>Explicitly store and retrieve the key in a bin.</item>
+		/// </list>
 		/// </summary>
 		/// <param name="ns">namespace</param>
 		/// <param name="setName">optional set name, enter null when set does not exist</param>
@@ -117,16 +143,20 @@ namespace Aerospike.Client
 		{
 			this.ns = ns;
 			this.setName = setName;
-			Value value = new Value.ByteSegmentValue(key, offset, length);
-			this.userKey = value;
-			digest = ComputeDigest(setName, value);
+			this.userKey = new Value.ByteSegmentValue(key, offset, length);
+			digest = ComputeDigest(setName, this.userKey);
 		}
 
 		/// <summary>
 		/// Initialize key from namespace, optional set name and user key.
 		/// The set name and user defined key are converted to a digest before sending to the server.
-		/// The server handles record identifiers by digest only.
-		/// If the user key needs to be stored on the server, the key should be stored in a bin.
+		/// The user key is not used or returned by the server by default. If the user key needs 
+		/// to persist on the server, use one of the following methods: 
+		/// <list type="bullet">
+		/// <item>Set "WritePolicy.sendKey" to true. In this case, the key will be sent to the server for storage on writes
+		/// and retrieved on multi-record scans and queries.</item>
+		/// <item>Explicitly store and retrieve the key in a bin.</item>
+		/// </list>
 		/// </summary>
 		/// <param name="ns">namespace</param>
 		/// <param name="setName">optional set name, enter null when set does not exist</param>
@@ -136,15 +166,20 @@ namespace Aerospike.Client
 		{
 			this.ns = ns;
 			this.setName = setName;
-			this.userKey = key;
-			digest = ComputeDigest(setName, new Value.LongValue(key));
+			this.userKey = new Value.LongValue(key);
+			digest = ComputeDigest(setName, this.userKey);
 		}
 
 		/// <summary>
 		/// Initialize key from namespace, optional set name and user key.
 		/// The set name and user defined key are converted to a digest before sending to the server.
-		/// The server handles record identifiers by digest only.
-		/// If the user key needs to be stored on the server, the key should be stored in a bin.
+		/// The user key is not used or returned by the server by default. If the user key needs 
+		/// to persist on the server, use one of the following methods: 
+		/// <list type="bullet">
+		/// <item>Set "WritePolicy.sendKey" to true. In this case, the key will be sent to the server for storage on writes
+		/// and retrieved on multi-record scans and queries.</item>
+		/// <item>Explicitly store and retrieve the key in a bin.</item>
+		/// </list>
 		/// </summary>
 		/// <param name="ns">namespace</param>
 		/// <param name="setName">optional set name, enter null when set does not exist</param>
@@ -154,15 +189,20 @@ namespace Aerospike.Client
 		{
 			this.ns = ns;
 			this.setName = setName;
-			this.userKey = key;
-			digest = ComputeDigest(setName, new Value.UnsignedLongValue(key));
+			this.userKey = new Value.UnsignedLongValue(key);
+			digest = ComputeDigest(setName, this.userKey);
 		}
 
 		/// <summary>
 		/// Initialize key from namespace, optional set name and user key.
 		/// The set name and user defined key are converted to a digest before sending to the server.
-		/// The server handles record identifiers by digest only.
-		/// If the user key needs to be stored on the server, the key should be stored in a bin.
+		/// The user key is not used or returned by the server by default. If the user key needs 
+		/// to persist on the server, use one of the following methods: 
+		/// <list type="bullet">
+		/// <item>Set "WritePolicy.sendKey" to true. In this case, the key will be sent to the server for storage on writes
+		/// and retrieved on multi-record scans and queries.</item>
+		/// <item>Explicitly store and retrieve the key in a bin.</item>
+		/// </list>
 		/// </summary>
 		/// <param name="ns">namespace</param>
 		/// <param name="setName">optional set name, enter null when set does not exist</param>
@@ -172,15 +212,20 @@ namespace Aerospike.Client
 		{
 			this.ns = ns;
 			this.setName = setName;
-			this.userKey = key;
-			digest = ComputeDigest(setName, new Value.IntegerValue(key));
+			this.userKey = new Value.IntegerValue(key);
+			digest = ComputeDigest(setName, this.userKey);
 		}
 
 		/// <summary>
 		/// Initialize key from namespace, optional set name and user key.
 		/// The set name and user defined key are converted to a digest before sending to the server.
-		/// The server handles record identifiers by digest only.
-		/// If the user key needs to be stored on the server, the key should be stored in a bin.
+		/// The user key is not used or returned by the server by default. If the user key needs 
+		/// to persist on the server, use one of the following methods: 
+		/// <list type="bullet">
+		/// <item>Set "WritePolicy.sendKey" to true. In this case, the key will be sent to the server for storage on writes
+		/// and retrieved on multi-record scans and queries.</item>
+		/// <item>Explicitly store and retrieve the key in a bin.</item>
+		/// </list>
 		/// </summary>
 		/// <param name="ns">namespace</param>
 		/// <param name="setName">optional set name, enter null when set does not exist</param>
@@ -190,15 +235,20 @@ namespace Aerospike.Client
 		{
 			this.ns = ns;
 			this.setName = setName;
-			this.userKey = key;
-			digest = ComputeDigest(setName, new Value.UnsignedIntegerValue(key));
+			this.userKey = new Value.UnsignedIntegerValue(key);
+			digest = ComputeDigest(setName, this.userKey);
 		}
 
 		/// <summary>
 		/// Initialize key from namespace, optional set name and user key.
 		/// The set name and user defined key are converted to a digest before sending to the server.
-		/// The server handles record identifiers by digest only.
-		/// If the user key needs to be stored on the server, the key should be stored in a bin.
+		/// The user key is not used or returned by the server by default. If the user key needs 
+		/// to persist on the server, use one of the following methods: 
+		/// <list type="bullet">
+		/// <item>Set "WritePolicy.sendKey" to true. In this case, the key will be sent to the server for storage on writes
+		/// and retrieved on multi-record scans and queries.</item>
+		/// <item>Explicitly store and retrieve the key in a bin.</item>
+		/// </list>
 		/// </summary>
 		/// <param name="ns">namespace</param>
 		/// <param name="setName">optional set name, enter null when set does not exist</param>
@@ -208,15 +258,20 @@ namespace Aerospike.Client
 		{
 			this.ns = ns;
 			this.setName = setName;
-			this.userKey = key;
-			digest = ComputeDigest(setName, new Value.ShortValue(key));
+			this.userKey = new Value.ShortValue(key);
+			digest = ComputeDigest(setName, this.userKey);
 		}
 
 		/// <summary>
 		/// Initialize key from namespace, optional set name and user key.
 		/// The set name and user defined key are converted to a digest before sending to the server.
-		/// The server handles record identifiers by digest only.
-		/// If the user key needs to be stored on the server, the key should be stored in a bin.
+		/// The user key is not used or returned by the server by default. If the user key needs 
+		/// to persist on the server, use one of the following methods: 
+		/// <list type="bullet">
+		/// <item>Set "WritePolicy.sendKey" to true. In this case, the key will be sent to the server for storage on writes
+		/// and retrieved on multi-record scans and queries.</item>
+		/// <item>Explicitly store and retrieve the key in a bin.</item>
+		/// </list>
 		/// </summary>
 		/// <param name="ns">namespace</param>
 		/// <param name="setName">optional set name, enter null when set does not exist</param>
@@ -226,15 +281,20 @@ namespace Aerospike.Client
 		{
 			this.ns = ns;
 			this.setName = setName;
-			this.userKey = key;
-			digest = ComputeDigest(setName, new Value.UnsignedShortValue(key));
+			this.userKey = new Value.UnsignedShortValue(key);
+			digest = ComputeDigest(setName, this.userKey);
 		}
 
 		/// <summary>
 		/// Initialize key from namespace, optional set name and user key.
 		/// The set name and user defined key are converted to a digest before sending to the server.
-		/// The server handles record identifiers by digest only.
-		/// If the user key needs to be stored on the server, the key should be stored in a bin.
+		/// The user key is not used or returned by the server by default. If the user key needs 
+		/// to persist on the server, use one of the following methods: 
+		/// <list type="bullet">
+		/// <item>Set "WritePolicy.sendKey" to true. In this case, the key will be sent to the server for storage on writes
+		/// and retrieved on multi-record scans and queries.</item>
+		/// <item>Explicitly store and retrieve the key in a bin.</item>
+		/// </list>
 		/// </summary>
 		/// <param name="ns">namespace</param>
 		/// <param name="setName">optional set name, enter null when set does not exist</param>
@@ -244,15 +304,20 @@ namespace Aerospike.Client
 		{
 			this.ns = ns;
 			this.setName = setName;
-			this.userKey = key;
-			digest = ComputeDigest(setName, new Value.BooleanValue(key));
+			this.userKey = new Value.BooleanValue(key);
+			digest = ComputeDigest(setName, this.userKey);
 		}
 
 		/// <summary>
 		/// Initialize key from namespace, optional set name and user key.
 		/// The set name and user defined key are converted to a digest before sending to the server.
-		/// The server handles record identifiers by digest only.
-		/// If the user key needs to be stored on the server, the key should be stored in a bin.
+		/// The user key is not used or returned by the server by default. If the user key needs 
+		/// to persist on the server, use one of the following methods: 
+		/// <list type="bullet">
+		/// <item>Set "WritePolicy.sendKey" to true. In this case, the key will be sent to the server for storage on writes
+		/// and retrieved on multi-record scans and queries.</item>
+		/// <item>Explicitly store and retrieve the key in a bin.</item>
+		/// </list>
 		/// </summary>
 		/// <param name="ns">namespace</param>
 		/// <param name="setName">optional set name, enter null when set does not exist</param>
@@ -262,15 +327,20 @@ namespace Aerospike.Client
 		{
 			this.ns = ns;
 			this.setName = setName;
-			this.userKey = key;
-			digest = ComputeDigest(setName, new Value.ByteValue(key));
+			this.userKey = new Value.ByteValue(key);
+			digest = ComputeDigest(setName, this.userKey);
 		}
 
 		/// <summary>
 		/// Initialize key from namespace, optional set name and user key.
 		/// The set name and user defined key are converted to a digest before sending to the server.
-		/// The server handles record identifiers by digest only.
-		/// If the user key needs to be stored on the server, the key should be stored in a bin.
+		/// The user key is not used or returned by the server by default. If the user key needs 
+		/// to persist on the server, use one of the following methods: 
+		/// <list type="bullet">
+		/// <item>Set "WritePolicy.sendKey" to true. In this case, the key will be sent to the server for storage on writes
+		/// and retrieved on multi-record scans and queries.</item>
+		/// <item>Explicitly store and retrieve the key in a bin.</item>
+		/// </list>
 		/// </summary>
 		/// <param name="ns">namespace</param>
 		/// <param name="setName">optional set name, enter null when set does not exist</param>
@@ -280,22 +350,23 @@ namespace Aerospike.Client
 		{
 			this.ns = ns;
 			this.setName = setName;
-			this.userKey = key;
-			digest = ComputeDigest(setName, new Value.SignedByteValue(key));
+			this.userKey = new Value.SignedByteValue(key);
+			digest = ComputeDigest(setName, this.userKey);
 		}
 
 		/// <summary>
-		/// Initialize key from namespace, digest and optional set name.
+		/// Initialize key from namespace, digest, optional set name and optional userKey.
 		/// </summary>
 		/// <param name="ns">namespace</param>
 		/// <param name="digest">unique server hash value</param>
 		/// <param name="setName">optional set name, enter null when set does not exist</param>
-		public Key(string ns, byte[] digest, string setName)
+		/// <param name="userKey">optional original user key (not hash digest)</param>
+		public Key(string ns, byte[] digest, string setName, Value userKey)
 		{
 			this.ns = ns;
 			this.digest = digest;
 			this.setName = setName;
-			this.userKey = null;
+			this.userKey = userKey;
 		}
 
 		/// <summary>
@@ -338,7 +409,7 @@ namespace Aerospike.Client
 		/// </summary>
 		public override string ToString()
 		{
-			return this.ns + ":" + this.setName + ":" + this.userKey + ":" + this.digest;
+			return this.ns + ":" + this.setName + ":" + this.userKey + ":" + ByteUtil.BytesToHexString(this.digest);
 		}
 	
 		/// <summary>

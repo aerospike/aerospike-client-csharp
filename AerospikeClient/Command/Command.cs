@@ -54,6 +54,11 @@ namespace Aerospike.Client
 			Begin();
 			int fieldCount = EstimateKeySize(key);
 
+			if (policy.sendKey)
+			{
+				fieldCount++;
+			} 
+			
 			foreach (Bin bin in bins)
 			{
 				EstimateOperationSize(bin);
@@ -61,6 +66,11 @@ namespace Aerospike.Client
 			SizeBuffer();
 			WriteHeader(policy, 0, Command.INFO2_WRITE, fieldCount, bins.Length);
 			WriteKey(key);
+
+			if (policy.sendKey)
+			{
+				WriteField(key.userKey, FieldType.KEY);
+			}
 
 			foreach (Bin bin in bins)
 			{
@@ -646,6 +656,15 @@ namespace Aerospike.Client
 			dataBuffer[dataOffset++] = 0;
 		}
 
+		public void WriteField(Value value, int type)
+		{
+			int offset = dataOffset + FIELD_HEADER_SIZE;
+			dataBuffer[offset++] = (byte)value.Type;
+			int len = value.Write(dataBuffer, offset) + 1;
+			WriteFieldHeader(len, type);
+			dataOffset += len;
+		}
+		
 		public void WriteField(string str, int type)
 		{
 			int len = ByteUtil.StringToUtf8(str, dataBuffer, dataOffset + FIELD_HEADER_SIZE);

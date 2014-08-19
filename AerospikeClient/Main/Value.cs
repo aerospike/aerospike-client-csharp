@@ -310,6 +310,38 @@ namespace Aerospike.Client
 		public abstract object Object {get;}
 
 		/// <summary>
+		/// Return value as an integer.
+		/// </summary>
+		public virtual int ToInteger()
+		{
+			return 0;
+		}
+
+		/// <summary>
+		/// Return value as an unsigned integer.
+		/// </summary>
+		public virtual uint ToUnsignedInteger()
+		{
+			return 0;
+		}
+
+		/// <summary>
+		/// Return value as a long.
+		/// </summary>
+		public virtual long ToLong()
+		{
+			return 0;
+		}
+
+		/// <summary>
+		/// Return value as an unsigned long.
+		/// </summary>
+		public virtual ulong ToUnsignedLong()
+		{
+			return 0;
+		}
+		
+		/// <summary>
 		/// Empty value.
 		/// </summary>
 		public sealed class NullValue : Value
@@ -577,6 +609,26 @@ namespace Aerospike.Client
 			{
 				return Convert.ToString(value);
 			}
+
+			public override int ToInteger()
+			{
+				return (int)value;
+			}
+
+			public override uint ToUnsignedInteger()
+			{
+				return (uint)value;
+			}
+
+			public override long ToLong()
+			{
+				return value;
+			}
+
+			public override ulong ToUnsignedLong()
+			{
+				return (ulong)value;
+			}
 		}
 
 		/// <summary>
@@ -625,6 +677,26 @@ namespace Aerospike.Client
 			public override string ToString()
 			{
 				return Convert.ToString(value);
+			}
+
+			public override int ToInteger()
+			{
+				return (int)value;
+			}
+
+			public override uint ToUnsignedInteger()
+			{
+				return (uint)value;
+			}
+
+			public override long ToLong()
+			{
+				return (long)value;
+			}
+
+			public override ulong ToUnsignedLong()
+			{
+				return value;
 			}
 		}
 
@@ -675,6 +747,26 @@ namespace Aerospike.Client
 			{
 				return Convert.ToString(value);
 			}
+		
+			public override int ToInteger()
+			{
+				return value;
+			}
+
+			public override uint ToUnsignedInteger()
+			{
+				return (uint)value;
+			}
+
+			public override long ToLong()
+			{
+				return value;
+			}
+
+			public override ulong ToUnsignedLong()
+			{
+				return (ulong)value;
+			}
 		}
 
 		/// <summary>
@@ -723,6 +815,26 @@ namespace Aerospike.Client
 			public override string ToString()
 			{
 				return Convert.ToString(value);
+			}
+
+			public override int ToInteger()
+			{
+				return (int)value;
+			}
+
+			public override uint ToUnsignedInteger()
+			{
+				return value;
+			}
+
+			public override long ToLong()
+			{
+				return value;
+			}
+
+			public override ulong ToUnsignedLong()
+			{
+				return value;
 			}
 		}
 
@@ -773,6 +885,26 @@ namespace Aerospike.Client
 			{
 				return Convert.ToString(value);
 			}
+
+			public override int ToInteger()
+			{
+				return value;
+			}
+
+			public override uint ToUnsignedInteger()
+			{
+				return (uint)value;
+			}
+
+			public override long ToLong()
+			{
+				return value;
+			}
+
+			public override ulong ToUnsignedLong()
+			{
+				return (ulong)value;
+			}
 		}
 
 		/// <summary>
@@ -821,6 +953,26 @@ namespace Aerospike.Client
 			public override string ToString()
 			{
 				return Convert.ToString(value);
+			}
+
+			public override int ToInteger()
+			{
+				return value;
+			}
+
+			public override uint ToUnsignedInteger()
+			{
+				return value;
+			}
+
+			public override long ToLong()
+			{
+				return value;
+			}
+
+			public override ulong ToUnsignedLong()
+			{
+				return value;
 			}
 		}
 
@@ -872,6 +1024,26 @@ namespace Aerospike.Client
 			{
 				return Convert.ToString(value);
 			}
+
+			public override int ToInteger()
+			{
+				return value? 1 : 0;
+			}
+
+			public override uint ToUnsignedInteger()
+			{
+				return value ? (uint)1 : (uint)0;
+			}
+
+			public override long ToLong()
+			{
+				return value ? 1 : 0;
+			}
+
+			public override ulong ToUnsignedLong()
+			{
+				return value ? (ulong)1 : (ulong)0;
+			}
 		}
 
 		/// <summary>
@@ -922,6 +1094,26 @@ namespace Aerospike.Client
 			{
 				return Convert.ToString(value);
 			}
+
+			public override int ToInteger()
+			{
+				return value;
+			}
+
+			public override uint ToUnsignedInteger()
+			{
+				return value;
+			}
+
+			public override long ToLong()
+			{
+				return value;
+			}
+
+			public override ulong ToUnsignedLong()
+			{
+				return value;
+			}
 		}
 
 		/// <summary>
@@ -971,6 +1163,26 @@ namespace Aerospike.Client
 			public override string ToString()
 			{
 				return Convert.ToString(value);
+			}
+
+			public override int ToInteger()
+			{
+				return value;
+			}
+
+			public override uint ToUnsignedInteger()
+			{
+				return (uint)value;
+			}
+
+			public override long ToLong()
+			{
+				return value;
+			}
+
+			public override ulong ToUnsignedLong()
+			{
+				return (ulong)value;
 			}
 		}
 

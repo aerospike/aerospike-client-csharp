@@ -72,6 +72,7 @@ namespace Aerospike.Client
 			byte[] digest = null;
 			string ns = null;
 			string setName = null;
+			Value userKey = null;
 
 			for (int i = 0; i < fieldCount; i++)
 			{
@@ -81,21 +82,27 @@ namespace Aerospike.Client
 				int fieldtype = dataBuffer[0];
 				int size = fieldlen - 1;
 
-				if (fieldtype == FieldType.DIGEST_RIPE)
+				switch (fieldtype) 
 				{
+				case FieldType.DIGEST_RIPE:
 					digest = new byte[size];
 					Array.Copy(dataBuffer, 1, digest, 0, size);
-				}
-				else if (fieldtype == FieldType.NAMESPACE)
-				{
+					break;
+			
+				case FieldType.NAMESPACE:
 					ns = ByteUtil.Utf8ToString(dataBuffer, 1, size);
-				}
-				else if (fieldtype == FieldType.TABLE)
-				{
+					break;
+				
+				case FieldType.TABLE:
 					setName = ByteUtil.Utf8ToString(dataBuffer, 1, size);
+					break;
+
+				case FieldType.KEY:
+					userKey = ByteUtil.BytesToKeyValue(dataBuffer[1], dataBuffer, 2, size-1);
+					break;
 				}
 			}
-			return new Key(ns, digest, setName);
+			return new Key(ns, digest, setName, userKey);
 		}
 
 		protected internal void ReadBytes(int length)

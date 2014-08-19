@@ -103,6 +103,7 @@ namespace Aerospike.Client
 			byte[] digest = null;
 			string ns = null;
 			string setName = null;
+			Value userKey = null;
 
 			for (int i = 0; i < fieldCount; i++)
 			{
@@ -112,24 +113,33 @@ namespace Aerospike.Client
 				int fieldtype = dataBuffer[dataOffset++];
 				int size = fieldlen - 1;
 
-				if (fieldtype == FieldType.DIGEST_RIPE)
+				switch (fieldtype)
 				{
-					digest = new byte[size];
-					Array.Copy(dataBuffer, dataOffset, digest, 0, size);
-					dataOffset += size;
-				}
-				else if (fieldtype == FieldType.NAMESPACE)
-				{
-					ns = ByteUtil.Utf8ToString(dataBuffer, dataOffset, size);
-					dataOffset += size;
-				}
-				else if (fieldtype == FieldType.TABLE)
-				{
-					setName = ByteUtil.Utf8ToString(dataBuffer, dataOffset, size);
-					dataOffset += size;
-				}
+					case FieldType.DIGEST_RIPE:
+						digest = new byte[size];
+						Array.Copy(dataBuffer, dataOffset, digest, 0, size);
+						dataOffset += size;
+						break;
+
+					case FieldType.NAMESPACE:
+						ns = ByteUtil.Utf8ToString(dataBuffer, dataOffset, size);
+						dataOffset += size;
+						break;
+
+					case FieldType.TABLE:
+						setName = ByteUtil.Utf8ToString(dataBuffer, dataOffset, size);
+						dataOffset += size;
+						break;
+
+					case FieldType.KEY:
+						int type = dataBuffer[dataOffset++];
+						size--;
+						userKey = ByteUtil.BytesToKeyValue(type, dataBuffer, dataOffset, size);
+						dataOffset += size;
+						break;
+				} 
 			}
-			return new Key(ns, digest, setName);
+			return new Key(ns, digest, setName, userKey);		
 		}
 
 		protected internal virtual Record ParseRecord()

@@ -54,5 +54,11 @@ namespace Aerospike.Client
 		/// </para>
 		/// </summary>
 		public int expiration;
+
+		/// <summary>
+		/// Send user defined key in addition to hash digest on a record put.  
+		/// The default is to not send the user defined key.
+		/// </summary>
+		public bool sendKey;
 	}
 }
