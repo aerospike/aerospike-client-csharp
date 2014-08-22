@@ -524,6 +524,7 @@ namespace Aerospike.Client
 				if (b == '\t')
 				{
 					string name = ByteUtil.Utf8ToString(buffer, begin, offset - begin);
+					CheckError(name);
 					begin = ++offset;
 
 					// Parse field value.
@@ -552,6 +553,7 @@ namespace Aerospike.Client
 					if (offset > begin)
 					{
 						string name = ByteUtil.Utf8ToString(buffer, begin, offset - begin);
+						CheckError(name);
 						responses[name] = null;
 					}
 					begin = ++offset;
@@ -565,9 +567,36 @@ namespace Aerospike.Client
 			if (offset > begin)
 			{
 				string name = ByteUtil.Utf8ToString(buffer, begin, offset - begin);
+				CheckError(name);
 				responses[name] = null;
 			}
 			return responses;
+		}
+
+		private void CheckError(string str)
+		{
+			if (str.StartsWith("ERROR:"))
+			{
+				int begin = 6;
+				int end = str.IndexOf(':', begin);
+				int code = -1;
+				string message = "";
+
+				if (end >= 0)
+				{
+					code = int.Parse(str.Substring(begin, end - begin));
+
+					if (str[str.Length-1] == '\n')
+					{
+						message = str.Substring(end + 1, str.Length - 2);
+					}
+					else
+					{
+						message = str.Substring(end + 1);
+					}
+				}
+				throw new AerospikeException(code, message);
+			}
 		}
 
 		/// <summary>
