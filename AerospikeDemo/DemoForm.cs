@@ -229,8 +229,8 @@ namespace Aerospike.Demo
                 bargs.readPct = int.Parse(readBox.Text);
                 int writePct = int.Parse(writeBox.Text);
 
-                if (!(bargs.readPct > 0 && bargs.readPct <= 100 &&
-                    writePct > 0 && writePct <= 100 &&
+                if (!(bargs.readPct >= 0 && bargs.readPct <= 100 &&
+                    writePct >= 0 && writePct <= 100 &&
                     bargs.readPct + writePct == 100))
                 {
                     throw new Exception("Read + Write percentage must equal 100");
