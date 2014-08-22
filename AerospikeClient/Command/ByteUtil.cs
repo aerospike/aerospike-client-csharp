@@ -414,5 +414,50 @@ namespace Aerospike.Client
 			// Assume little endian machine and reverse/convert in one pass. 
 			return (buf[offset] & 0xFF) + ((buf[offset + 1] & 0xFF) << 8);
 		}
+	
+		/// <summary>
+		/// Encode an integer in variable 7-bit format.
+		/// The high bit indicates if more bytes are used.
+		/// Return byte size of integer. 
+		/// </summary>
+		public static int IntToVarBytes(uint v, byte[] buf, int offset)
+		{
+			int i = offset;
+
+			while (i < buf.Length && v >= 0x80)
+			{
+				buf[i++] = (byte)(v | 0x80);
+				v >>= 7;
+			}
+
+			if (i < buf.Length)
+			{
+				buf[i++] = (byte)v;
+				return i - offset;
+			}
+			return 0;
+		}
+
+		/// <summary>
+		/// Decode an integer in variable 7-bit format.
+		/// The high bit indicates if more bytes are used.
+		/// Return value and byte size in array.
+		/// </summary>
+		public static int[] VarBytesToInt(byte[] buf, int offset)
+		{
+			int i = offset;
+			int val = 0;
+			int shift = 0;
+			byte b;
+
+			do
+			{
+				b = buf[i++];
+				val |= (b & 0x7F) << shift;
+				shift += 7;
+			} while ((b & 0x80) != 0);
+
+			return new int[] { val, i - offset };
+		}
 	}
 }
