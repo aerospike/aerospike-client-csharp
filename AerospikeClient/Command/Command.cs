@@ -486,7 +486,7 @@ namespace Aerospike.Client
 			dataOffset += operation.binValue.EstimateSize();
 		}
 
-		private void EstimateOperationSize(string binName)
+		protected void EstimateOperationSize(string binName)
 		{
 			dataOffset += ByteUtil.EstimateSizeUtf8(binName) + OPERATION_HEADER_SIZE;
 		}
@@ -633,7 +633,7 @@ namespace Aerospike.Client
 			dataOffset += nameLength + valueLength;
 		}
 
-		private void WriteOperation(string name, Operation.Type operationType)
+		protected void WriteOperation(string name, Operation.Type operationType)
 		{
 			int nameLength = ByteUtil.StringToUtf8(name, dataBuffer, dataOffset + OPERATION_HEADER_SIZE);
 

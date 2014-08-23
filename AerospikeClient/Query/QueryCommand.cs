@@ -71,25 +71,26 @@ namespace Aerospike.Client
 				}
 				dataOffset += filterSize;
 				fieldCount++;
+
+				// Query bin names are specified as a field (Scan bin names are specified later as operations)
+				if (statement.binNames != null)
+				{
+					dataOffset += FIELD_HEADER_SIZE;
+					binNameSize++; // num bin names
+
+					foreach (string binName in statement.binNames)
+					{
+						binNameSize += ByteUtil.EstimateSizeUtf8(binName) + 1;
+					}
+					dataOffset += binNameSize;
+					fieldCount++;
+				}
 			}
 			else
 			{
 				// Calling query with no filters is more efficiently handled by a primary index scan. 
 				// Estimate scan options size.
 				dataOffset += 2 + FIELD_HEADER_SIZE;
-				fieldCount++;
-			}
-
-			if (statement.binNames != null)
-			{
-				dataOffset += FIELD_HEADER_SIZE;
-				binNameSize++; // num bin names
-
-				foreach (string binName in statement.binNames)
-				{
-					binNameSize += ByteUtil.EstimateSizeUtf8(binName) + 1;
-				}
-				dataOffset += binNameSize;
 				fieldCount++;
 			}
 
@@ -117,9 +118,21 @@ namespace Aerospike.Client
 				fieldCount += 4;
 			}
 
+			if (statement.filters == null)
+			{
+				if (statement.binNames != null)
+				{
+					foreach (string binName in statement.binNames)
+					{
+						EstimateOperationSize(binName);
+					}
+				}
+			}
+			
 			SizeBuffer();
 			byte readAttr = (byte)Command.INFO1_READ;
-			WriteHeader(readAttr, 0, fieldCount, 0);
+			int operationCount = (statement.filters == null && statement.binNames != null) ? statement.binNames.Length : 0;
+			WriteHeader(readAttr, 0, fieldCount, operationCount);
 
 			if (statement.ns != null)
 			{
@@ -145,6 +158,20 @@ namespace Aerospike.Client
 				{
 					dataOffset = filter.Write(dataBuffer, dataOffset);
 				}
+
+				// Query bin names are specified as a field (Scan bin names are specified later as operations)
+				if (statement.binNames != null)
+				{
+					WriteFieldHeader(binNameSize, FieldType.QUERY_BINLIST);
+					dataBuffer[dataOffset++] = (byte)statement.binNames.Length;
+
+					foreach (string binName in statement.binNames)
+					{
+						int len = ByteUtil.StringToUtf8(binName, dataBuffer, dataOffset + 1);
+						dataBuffer[dataOffset] = (byte)len;
+						dataOffset += len + 1;
+					}
+				}
 			}
 			else
 			{
@@ -154,19 +181,6 @@ namespace Aerospike.Client
 				priority <<= 4;
 				dataBuffer[dataOffset++] = priority;
 				dataBuffer[dataOffset++] = (byte)100;
-			}
-
-			if (statement.binNames != null)
-			{
-				WriteFieldHeader(binNameSize, FieldType.QUERY_BINLIST);
-				dataBuffer[dataOffset++] = (byte)statement.binNames.Length;
-
-				foreach (string binName in statement.binNames)
-				{
-					int len = ByteUtil.StringToUtf8(binName, dataBuffer, dataOffset + 1);
-					dataBuffer[dataOffset] = (byte)len;
-					dataOffset += len + 1;
-				}
 			}
 
 			if (statement.taskId > 0)
@@ -183,6 +197,18 @@ namespace Aerospike.Client
 				WriteField(statement.packageName, FieldType.UDF_PACKAGE_NAME);
 				WriteField(statement.functionName, FieldType.UDF_FUNCTION);
 				WriteField(functionArgBuffer, FieldType.UDF_ARGLIST);
+			}
+
+			// Scan bin names are specified after all fields.
+			if (statement.filters == null) 
+			{
+				if (statement.binNames != null)
+				{
+					foreach (string binName in statement.binNames)
+					{
+						WriteOperation(binName, Operation.Type.READ);
+					}
+				}
 			}
 			End();
 		}
