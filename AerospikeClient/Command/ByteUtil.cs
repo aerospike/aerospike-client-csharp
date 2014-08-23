@@ -443,7 +443,7 @@ namespace Aerospike.Client
 		/// The high bit indicates if more bytes are used.
 		/// Return value and byte size in array.
 		/// </summary>
-		public static int[] VarBytesToInt(byte[] buf, int offset)
+		public static int VarBytesToInt(byte[] buf, int offset, out int size)
 		{
 			int i = offset;
 			int val = 0;
@@ -457,7 +457,8 @@ namespace Aerospike.Client
 				shift += 7;
 			} while ((b & 0x80) != 0);
 
-			return new int[] { val, i - offset };
+			size = i - offset;
+			return val;
 		}
 	}
 }

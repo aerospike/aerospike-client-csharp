@@ -211,9 +211,9 @@ namespace Aerospike.Client
 			return ByteUtil.LittleBytesToLong(bytes, offset);
 		}
 
-		public int[] GetVarInt(int offset)
+		public int GetVarInt(int offset, out int size)
 		{
-			return ByteUtil.VarBytesToInt(bytes, offset);
+			return ByteUtil.VarBytesToInt(bytes, offset, out size);
 		}
 
 		public string GetString(int offset, int length)
@@ -275,12 +275,12 @@ namespace Aerospike.Client
 			return bytes;
 		}
 
-		public int GetType()
+		public int GetEncodingType()
 		{
 			return type;
 		}
 
-		public void SetType(int type)
+		public void SetEncodingType(int type)
 		{
 			this.type = type;
 		}
@@ -307,12 +307,12 @@ namespace Aerospike.Client
 
 		public static int get_type(LuaBytes bytes)
 		{
-			return bytes.GetType();
+			return bytes.GetEncodingType();
 		}
 
 		public static void set_type(LuaBytes bytes, int type)
 		{
-			bytes.SetType(type);
+			bytes.SetEncodingType(type);
 		}
 		
 		public static string get_string(LuaBytes bytes, int offset, int length)
@@ -361,11 +361,9 @@ namespace Aerospike.Client
 			return bytes.GetLittleInt64(offset - 1);
 		}
 
-		public static int get_var_int(LuaBytes bytes, int offset)
+		public static int get_var_int(LuaBytes bytes, int offset, out int size)
 		{
-			// TODO: return both results.
-			int[] results = bytes.GetVarInt(offset - 1);
-			return results[0];
+			return bytes.GetVarInt(offset - 1, out size);
 		}
 
 		public static int set_string(LuaBytes bytes, int offset, string value)
@@ -477,6 +475,7 @@ namespace Aerospike.Client
 		public static void LoadLibrary(Lua lua)
 		{
 			Type type = typeof(LuaBytes);
+
 			lua.RegisterFunction("bytes.create", null, type.GetConstructor(Type.EmptyTypes));
 			lua.RegisterFunction("bytes.create_set", null, type.GetConstructor(new Type[] { typeof(int) }));
 			lua.RegisterFunction("bytes.size", null, type.GetMethod("get_size", new Type[] { type }));
@@ -496,7 +495,7 @@ namespace Aerospike.Client
 			lua.RegisterFunction("bytes.get_int64", null, type.GetMethod("get_int64_be", new Type[] { type, typeof(int) }));
 			lua.RegisterFunction("bytes.get_int64_be", null, type.GetMethod("get_int64_be", new Type[] { type, typeof(int) }));
 			lua.RegisterFunction("bytes.get_int64_le", null, type.GetMethod("get_int64_le", new Type[] { type, typeof(int) }));
-			lua.RegisterFunction("bytes.get_var_int", null, type.GetMethod("get_var_int", new Type[] { type, typeof(int) }));
+			lua.RegisterFunction("bytes.get_var_int", null, type.GetMethod("get_var_int", new Type[] { type, typeof(int), typeof(int).MakeByRefType() }));
 
 			lua.RegisterFunction("bytes.set_string", null, type.GetMethod("set_string", new Type[] { type, typeof(int), typeof(string) }));
 			lua.RegisterFunction("bytes.set_bytes", null, type.GetMethod("set_bytes", new Type[] { type, typeof(int), type, typeof(int) }));
