@@ -53,6 +53,11 @@ namespace Aerospike.Client
 		public int maxSocketIdle = 14;
 
 		/// <summary>
+		/// Interval in milliseconds between cluster tends by maintenance thread.  Default: 1 second
+		/// </summary>
+		public int tendInterval = 1000;
+	
+		/// <summary>
 		/// Throw exception if host connection fails during addHost().
 		/// </summary>
 		public bool failIfNotConnected;

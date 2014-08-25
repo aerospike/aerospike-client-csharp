@@ -57,6 +57,9 @@ namespace Aerospike.Client
 		// Maximum socket idle in seconds.
 		protected internal readonly int maxSocketIdle;
 
+		// Interval in milliseconds between cluster tends.
+		private readonly int tendInterval;
+
 		// Tend thread variables.
 		private Thread tendThread;
 		private volatile bool tendValid;
@@ -86,6 +89,7 @@ namespace Aerospike.Client
 			connectionQueueSize = policy.maxThreads + 1; // Add one connection for tend thread.
 			connectionTimeout = policy.timeout;
 			maxSocketIdle = policy.maxSocketIdle;
+			tendInterval = policy.tendInterval;
 			ipMap = policy.ipMap;
 			aliases = new Dictionary<Host, Node>();
 			nodes = new Node[0];
@@ -216,7 +220,7 @@ namespace Aerospike.Client
 						Log.Warn("Cluster tend failed: " + Util.GetErrorMessage(e));
 					}
 				}
-				Util.Sleep(2000);
+				Util.Sleep(tendInterval);
 			}
 		}
 
