@@ -25,7 +25,7 @@ namespace Aerospike.Client
 		public AsyncDelete(AsyncCluster cluster, WritePolicy policy, Key key, DeleteListener listener) 
 			: base(cluster, key)
 		{
-			this.policy = (policy == null) ? new WritePolicy() : policy;
+			this.policy = policy;
 			this.listener = listener;
 		}
 

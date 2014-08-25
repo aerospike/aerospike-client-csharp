@@ -27,7 +27,7 @@ namespace Aerospike.Client
 		public ExistsCommand(Cluster cluster, Policy policy, Key key)
 			: base(cluster, key)
 		{
-			this.policy = (policy == null) ? new Policy() : policy;
+			this.policy = policy;
 		}
 
 		protected internal override Policy GetPolicy()

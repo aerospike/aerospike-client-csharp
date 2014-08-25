@@ -27,7 +27,7 @@ namespace Aerospike.Client
 		public AsyncReadHeader(AsyncCluster cluster, Policy policy, RecordListener listener, Key key) 
 			: base(cluster, key)
 		{
-			this.policy = (policy == null) ? new Policy() : policy;
+			this.policy = policy;
 			this.listener = listener;
 		}
 

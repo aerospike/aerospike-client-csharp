@@ -25,7 +25,7 @@ namespace Aerospike.Client
 		public WriteCommand(Cluster cluster, WritePolicy policy, Key key, Bin[] bins, Operation.Type operation) 
 			: base(cluster, key)
 		{
-			this.policy = (policy == null) ? new WritePolicy() : policy;
+			this.policy = policy;
 			this.bins = bins;
 			this.operation = operation;
 		}

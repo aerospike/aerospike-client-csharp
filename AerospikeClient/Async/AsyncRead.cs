@@ -28,7 +28,7 @@ namespace Aerospike.Client
 		public AsyncRead(AsyncCluster cluster, Policy policy, RecordListener listener, Key key, string[] binNames) 
 			: base(cluster, key)
 		{
-			this.policy = (policy == null) ? new Policy() : policy;
+			this.policy = policy;
 			this.listener = listener;
 			this.binNames = binNames;
 		}

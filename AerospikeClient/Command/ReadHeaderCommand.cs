@@ -27,7 +27,7 @@ namespace Aerospike.Client
 		public ReadHeaderCommand(Cluster cluster, Policy policy, Key key) 
 			: base(cluster, key)
 		{
-			this.policy = (policy == null) ? new Policy() : policy;
+			this.policy = policy;
 		}
 
 		protected internal sealed override Policy GetPolicy()

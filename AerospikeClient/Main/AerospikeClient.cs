@@ -48,6 +48,26 @@ namespace Aerospike.Client
 
 		protected internal Cluster cluster;
 
+		/// <summary>
+		/// Default read policy that is used when read command policy is null.
+		/// </summary>
+		public readonly Policy readPolicyDefault;
+
+		/// <summary>
+		/// Default write policy that is used when write command policy is null.
+		/// </summary>
+		public readonly WritePolicy writePolicyDefault;
+
+		/// <summary>
+		/// Default scan policy that is used when scan command policy is null.
+		/// </summary>
+		public readonly ScanPolicy scanPolicyDefault;
+
+		/// <summary>
+		/// Default query policy that is used when query command policy is null.
+		/// </summary>
+		public readonly QueryPolicy queryPolicyDefault;
+		
 		//-------------------------------------------------------
 		// Constructors
 		//-------------------------------------------------------
@@ -128,6 +148,11 @@ namespace Aerospike.Client
 			{
 				policy = new ClientPolicy();
 			}
+			this.readPolicyDefault = policy.readPolicyDefault;
+			this.writePolicyDefault = policy.writePolicyDefault;
+			this.scanPolicyDefault = policy.scanPolicyDefault;
+			this.queryPolicyDefault = policy.queryPolicyDefault;
+
 			cluster = new Cluster(policy, hosts);
 			cluster.InitTendThread(policy.failIfNotConnected);
 		}
@@ -136,8 +161,22 @@ namespace Aerospike.Client
 		/// Construct client without initialization.
 		/// Should only be used by classes inheriting from this client.
 		/// </summary>
-		protected internal AerospikeClient()
+		protected internal AerospikeClient(ClientPolicy policy)
 		{
+			if (policy != null)
+			{
+				this.readPolicyDefault = policy.readPolicyDefault;
+				this.writePolicyDefault = policy.writePolicyDefault;
+				this.scanPolicyDefault = policy.scanPolicyDefault;
+				this.queryPolicyDefault = policy.queryPolicyDefault;
+			}
+			else
+			{
+				this.readPolicyDefault = new Policy();
+				this.writePolicyDefault = new WritePolicy();
+				this.scanPolicyDefault = new ScanPolicy();
+				this.queryPolicyDefault = new QueryPolicy();
+			}
 		}
 
 		//-------------------------------------------------------
@@ -189,6 +228,10 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if write fails</exception>
 		public void Put(WritePolicy policy, Key key, params Bin[] bins)
 		{
+			if (policy == null)
+			{
+				policy = writePolicyDefault;
+			}
 			WriteCommand command = new WriteCommand(cluster, policy, key, bins, Operation.Type.WRITE);
 			command.Execute();
 		}
@@ -209,6 +252,10 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if append fails</exception>
 		public void Append(WritePolicy policy, Key key, params Bin[] bins)
 		{
+			if (policy == null)
+			{
+				policy = writePolicyDefault;
+			}
 			WriteCommand command = new WriteCommand(cluster, policy, key, bins, Operation.Type.APPEND);
 			command.Execute();
 		}
@@ -225,6 +272,10 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if prepend fails</exception>
 		public void Prepend(WritePolicy policy, Key key, params Bin[] bins)
 		{
+			if (policy == null)
+			{
+				policy = writePolicyDefault;
+			}
 			WriteCommand command = new WriteCommand(cluster, policy, key, bins, Operation.Type.PREPEND);
 			command.Execute();
 		}
@@ -245,6 +296,10 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if add fails</exception>
 		public void Add(WritePolicy policy, Key key, params Bin[] bins)
 		{
+			if (policy == null)
+			{
+				policy = writePolicyDefault;
+			}
 			WriteCommand command = new WriteCommand(cluster, policy, key, bins, Operation.Type.ADD);
 			command.Execute();
 		}
@@ -263,6 +318,10 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if delete fails</exception>
 		public bool Delete(WritePolicy policy, Key key)
 		{
+			if (policy == null)
+			{
+				policy = writePolicyDefault;
+			}
 			DeleteCommand command = new DeleteCommand(cluster, policy, key);
 			command.Execute();
 			return command.Existed();
@@ -281,6 +340,10 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if touch fails</exception>
 		public void Touch(WritePolicy policy, Key key)
 		{
+			if (policy == null)
+			{
+				policy = writePolicyDefault;
+			}
 			TouchCommand command = new TouchCommand(cluster, policy, key);
 			command.Execute();
 		}
@@ -299,6 +362,10 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if command fails</exception>
 		public bool Exists(Policy policy, Key key)
 		{
+			if (policy == null)
+			{
+				policy = readPolicyDefault;
+			}
 			ExistsCommand command = new ExistsCommand(cluster, policy, key);
 			command.Execute();
 			return command.Exists();
@@ -316,7 +383,7 @@ namespace Aerospike.Client
 		{
 			if (policy == null)
 			{
-				policy = new Policy();
+				policy = readPolicyDefault;
 			}
 			bool[] existsArray = new bool[keys.Length];
 
@@ -349,6 +416,10 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if read fails</exception>
 		public Record Get(Policy policy, Key key)
 		{
+			if (policy == null)
+			{
+				policy = readPolicyDefault;
+			}
 			ReadCommand command = new ReadCommand(cluster, policy, key, null);
 			command.Execute();
 			return command.Record;
@@ -365,6 +436,10 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if read fails</exception>
 		public Record Get(Policy policy, Key key, params string[] binNames)
 		{
+			if (policy == null)
+			{
+				policy = readPolicyDefault;
+			}
 			ReadCommand command = new ReadCommand(cluster, policy, key, binNames);
 			command.Execute();
 			return command.Record;
@@ -380,6 +455,10 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if read fails</exception>
 		public Record GetHeader(Policy policy, Key key)
 		{
+			if (policy == null)
+			{
+				policy = readPolicyDefault;
+			}
 			ReadHeaderCommand command = new ReadHeaderCommand(cluster, policy, key);
 			command.Execute();
 			return command.Record;
@@ -402,7 +481,7 @@ namespace Aerospike.Client
 		{
 			if (policy == null)
 			{
-				policy = new Policy();
+				policy = readPolicyDefault;
 			}
 			Record[] records = new Record[keys.Length];
 
@@ -435,7 +514,7 @@ namespace Aerospike.Client
 		{
 			if (policy == null)
 			{
-				policy = new Policy();
+				policy = readPolicyDefault;
 			}
 			Record[] records = new Record[keys.Length];
 			HashSet<string> names = BinNamesToHashSet(binNames);
@@ -468,7 +547,7 @@ namespace Aerospike.Client
 		{
 			if (policy == null)
 			{
-				policy = new Policy();
+				policy = readPolicyDefault;
 			}
 			Record[] records = new Record[keys.Length];
 
@@ -556,6 +635,10 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if command fails</exception>
 		public Record Operate(WritePolicy policy, Key key, params Operation[] operations)
 		{
+			if (policy == null)
+			{
+				policy = writePolicyDefault;
+			}
 			OperateCommand command = new OperateCommand(cluster, policy, key, operations);
 			command.Execute();
 			return command.Record;
@@ -587,7 +670,7 @@ namespace Aerospike.Client
 		{
 			if (policy == null)
 			{
-				policy = new ScanPolicy();
+				policy = scanPolicyDefault;
 			}
 
 			// Retry policy must be one-shot for scans.
@@ -658,7 +741,7 @@ namespace Aerospike.Client
 		{
 			if (policy == null)
 			{
-				policy = new ScanPolicy();
+				policy = scanPolicyDefault;
 			}
 			// Retry policy must be one-shot for scans.
 			policy.maxRetries = 0;
@@ -842,6 +925,10 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if transaction fails</exception>
 		public object Execute(Policy policy, Key key, string packageName, string functionName, params Value[] args)
 		{
+			if (policy == null)
+			{
+				policy = readPolicyDefault;
+			}
 			ExecuteCommand command = new ExecuteCommand(cluster, policy, key, packageName, functionName, args);
 			command.Execute();
 
@@ -891,7 +978,7 @@ namespace Aerospike.Client
 		{
 			if (policy == null)
 			{
-				policy = new Policy();
+				policy = readPolicyDefault;
 			}
 			new ServerExecutor(cluster, policy, statement, packageName, functionName, functionArgs);
 			return new ExecuteTask(cluster, statement);
@@ -916,7 +1003,7 @@ namespace Aerospike.Client
 		{
 			if (policy == null)
 			{
-				policy = new QueryPolicy();
+				policy = queryPolicyDefault;
 			}
 			QueryRecordExecutor executor = new QueryRecordExecutor(cluster, policy, statement);
 			executor.Execute();
@@ -950,8 +1037,8 @@ namespace Aerospike.Client
 		{
 			if (policy == null)
 			{
-				policy = new QueryPolicy();
-			}			
+				policy = queryPolicyDefault;
+			}
 			QueryAggregateExecutor executor = new QueryAggregateExecutor(cluster, policy, statement, packageName, functionName, functionArgs);
 			executor.Execute();
 			return executor.ResultSet;

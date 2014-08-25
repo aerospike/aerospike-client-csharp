@@ -58,6 +58,26 @@ namespace Aerospike.Client
 		public bool failIfNotConnected;
 
 		/// <summary>
+		/// Default read policy that is used when read command's policy is null.
+		/// </summary>
+		public Policy readPolicyDefault = new Policy();
+
+		/// <summary>
+		/// Default write policy that is used when write command's policy is null.
+		/// </summary>
+		public WritePolicy writePolicyDefault = new WritePolicy();
+
+		/// <summary>
+		/// Default scan policy that is used when scan command's policy is null.
+		/// </summary>
+		public ScanPolicy scanPolicyDefault = new ScanPolicy();
+
+		/// <summary>
+		/// Default query policy that is used when query command's policy is null.
+		/// </summary>
+		public QueryPolicy queryPolicyDefault = new QueryPolicy();
+	
+		/// <summary>
 		/// A IP translation table is used in cases where different clients use different server 
 		/// IP addresses.  This may be necessary when using clients from both inside and outside 
 		/// a local area network.  Default is no translation.

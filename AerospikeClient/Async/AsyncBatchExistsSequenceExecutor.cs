@@ -25,11 +25,6 @@ namespace Aerospike.Client
 		{
 			this.listener = listener;
 
-			if (policy == null)
-			{
-				policy = new Policy();
-			}
-
 			// Dispatch asynchronous commands to nodes.
 			foreach (BatchNode batchNode in batchNodes)
 			{

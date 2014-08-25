@@ -29,11 +29,6 @@ namespace Aerospike.Client
 			this.existsArray = new bool[keys.Length];
 			this.listener = listener;
 
-			if (policy == null)
-			{
-				policy = new Policy();
-			}
-
 			Dictionary<Key, BatchItem> keyMap = BatchItem.GenerateMap(keys);
 
 			// Dispatch asynchronous commands to nodes.

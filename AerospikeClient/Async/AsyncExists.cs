@@ -25,7 +25,7 @@ namespace Aerospike.Client
 		public AsyncExists(AsyncCluster cluster, Policy policy, Key key, ExistsListener listener) 
 			: base(cluster, key)
 		{
-			this.policy = (policy == null) ? new Policy() : policy;
+			this.policy = policy;
 			this.listener = listener;
 		}
 

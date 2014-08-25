@@ -23,7 +23,7 @@ namespace Aerospike.Client
 		public TouchCommand(Cluster cluster, WritePolicy policy, Key key) 
 			: base(cluster, key)
 		{
-			this.policy = (policy == null) ? new WritePolicy() : policy;
+			this.policy = policy;
 		}
 
 		protected internal override Policy GetPolicy()

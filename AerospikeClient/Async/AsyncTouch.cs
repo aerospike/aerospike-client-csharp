@@ -24,7 +24,7 @@ namespace Aerospike.Client
 		public AsyncTouch(AsyncCluster cluster, WritePolicy policy, WriteListener listener, Key key) 
 			: base(cluster, key)
 		{
-			this.policy = (policy == null)? new WritePolicy() : policy;
+			this.policy = policy;
 			this.listener = listener;
 		}
 

@@ -119,6 +119,7 @@ namespace Aerospike.Client
 		/// <param name="hosts">array of potential hosts to seed the cluster</param>
 		/// <exception cref="AerospikeException">if all host connections fail</exception>
 		public AsyncClient(AsyncClientPolicy policy, params Host[] hosts)
+			: base (policy)
 		{
 			if (policy == null)
 			{
@@ -148,6 +149,10 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if queue is full</exception>
 		public void Put(WritePolicy policy, WriteListener listener, Key key, params Bin[] bins)
 		{
+			if (policy == null)
+			{
+				policy = writePolicyDefault;
+			}
 			AsyncWrite async = new AsyncWrite(cluster, policy, listener, key, bins, Operation.Type.WRITE);
 			async.Execute();
 		}
@@ -173,6 +178,10 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if queue is full</exception>
 		public void Append(WritePolicy policy, WriteListener listener, Key key, params Bin[] bins)
 		{
+			if (policy == null)
+			{
+				policy = writePolicyDefault;
+			}
 			AsyncWrite async = new AsyncWrite(cluster, policy, listener, key, bins, Operation.Type.APPEND);
 			async.Execute();
 		}
@@ -194,6 +203,10 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if queue is full</exception>
 		public void Prepend(WritePolicy policy, WriteListener listener, Key key, params Bin[] bins)
 		{
+			if (policy == null)
+			{
+				policy = writePolicyDefault;
+			}
 			AsyncWrite async = new AsyncWrite(cluster, policy, listener, key, bins, Operation.Type.PREPEND);
 			async.Execute();
 		}
@@ -219,6 +232,10 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if queue is full</exception>
 		public void Add(WritePolicy policy, WriteListener listener, Key key, params Bin[] bins)
 		{
+			if (policy == null)
+			{
+				policy = writePolicyDefault;
+			}
 			AsyncWrite async = new AsyncWrite(cluster, policy, listener, key, bins, Operation.Type.ADD);
 			async.Execute();
 		}
@@ -241,6 +258,10 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if queue is full</exception>
 		public void Delete(WritePolicy policy, DeleteListener listener, Key key)
 		{
+			if (policy == null)
+			{
+				policy = writePolicyDefault;
+			}
 			AsyncDelete async = new AsyncDelete(cluster, policy, key, listener);
 			async.Execute();
 		}
@@ -263,6 +284,10 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if queue is full</exception>
 		public void Touch(WritePolicy policy, WriteListener listener, Key key)
 		{
+			if (policy == null)
+			{
+				policy = writePolicyDefault;
+			}
 			AsyncTouch async = new AsyncTouch(cluster, policy, listener, key);
 			async.Execute();
 		}
@@ -285,6 +310,10 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if queue is full</exception>
 		public void Exists(Policy policy, ExistsListener listener, Key key)
 		{
+			if (policy == null)
+			{
+				policy = readPolicyDefault;
+			}
 			AsyncExists async = new AsyncExists(cluster, policy, key, listener);
 			async.Execute();
 		}
@@ -303,6 +332,10 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if queue is full</exception>
 		public void Exists(Policy policy, ExistsArrayListener listener, Key[] keys)
 		{
+			if (policy == null)
+			{
+				policy = readPolicyDefault;
+			} 
 			new AsyncBatchExistsArrayExecutor(cluster, policy, keys, listener);
 		}
 
@@ -320,6 +353,10 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if queue is full</exception>
 		public void Exists(Policy policy, ExistsSequenceListener listener, Key[] keys)
 		{
+			if (policy == null)
+			{
+				policy = readPolicyDefault;
+			}
 			new AsyncBatchExistsSequenceExecutor(cluster, policy, keys, listener);
 		}
 
@@ -341,6 +378,10 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if queue is full</exception>
 		public void Get(Policy policy, RecordListener listener, Key key)
 		{
+			if (policy == null)
+			{
+				policy = readPolicyDefault;
+			}
 			AsyncRead async = new AsyncRead(cluster, policy, listener, key, null);
 			async.Execute();
 		}
@@ -360,6 +401,10 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if queue is full</exception>
 		public void Get(Policy policy, RecordListener listener, Key key, params string[] binNames)
 		{
+			if (policy == null)
+			{
+				policy = readPolicyDefault;
+			}
 			AsyncRead async = new AsyncRead(cluster, policy, listener, key, binNames);
 			async.Execute();
 		}
@@ -378,6 +423,10 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if queue is full</exception>
 		public void GetHeader(Policy policy, RecordListener listener, Key key)
 		{
+			if (policy == null)
+			{
+				policy = readPolicyDefault;
+			}
 			AsyncReadHeader async = new AsyncReadHeader(cluster, policy, listener, key);
 			async.Execute();
 		}
@@ -401,6 +450,10 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if queue is full</exception>
 		public void Get(Policy policy, RecordArrayListener listener, Key[] keys)
 		{
+			if (policy == null)
+			{
+				policy = readPolicyDefault;
+			}
 			new AsyncBatchGetArrayExecutor(cluster, policy, listener, keys, null, Command.INFO1_READ | Command.INFO1_GET_ALL);
 		}
 
@@ -419,6 +472,10 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if queue is full</exception>
 		public void Get(Policy policy, RecordSequenceListener listener, Key[] keys)
 		{
+			if (policy == null)
+			{
+				policy = readPolicyDefault;
+			}
 			new AsyncBatchGetSequenceExecutor(cluster, policy, listener, keys, null, Command.INFO1_READ | Command.INFO1_GET_ALL);
 		}
 
@@ -438,6 +495,10 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if queue is full</exception>
 		public void Get(Policy policy, RecordArrayListener listener, Key[] keys, params string[] binNames)
 		{
+			if (policy == null)
+			{
+				policy = readPolicyDefault;
+			}
 			HashSet<string> names = BinNamesToHashSet(binNames);
 			new AsyncBatchGetArrayExecutor(cluster, policy, listener, keys, names, Command.INFO1_READ);
 		}
@@ -458,6 +519,10 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if queue is full</exception>
 		public void Get(Policy policy, RecordSequenceListener listener, Key[] keys, params string[] binNames)
 		{
+			if (policy == null)
+			{
+				policy = readPolicyDefault;
+			}
 			HashSet<string> names = BinNamesToHashSet(binNames);
 			new AsyncBatchGetSequenceExecutor(cluster, policy, listener, keys, names, Command.INFO1_READ);
 		}
@@ -477,6 +542,10 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if queue is full</exception>
 		public void GetHeader(Policy policy, RecordArrayListener listener, Key[] keys)
 		{
+			if (policy == null)
+			{
+				policy = readPolicyDefault;
+			}
 			new AsyncBatchGetArrayExecutor(cluster, policy, listener, keys, null, Command.INFO1_READ | Command.INFO1_NOBINDATA);
 		}
 
@@ -495,6 +564,10 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if queue is full</exception>
 		public void GetHeader(Policy policy, RecordSequenceListener listener, Key[] keys)
 		{
+			if (policy == null)
+			{
+				policy = readPolicyDefault;
+			}
 			new AsyncBatchGetSequenceExecutor(cluster, policy, listener, keys, null, Command.INFO1_READ | Command.INFO1_NOBINDATA);
 		}
 
@@ -518,6 +591,10 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if queue is full</exception>
 		public void Operate(WritePolicy policy, RecordListener listener, Key key, params Operation[] operations)
 		{
+			if (policy == null)
+			{
+				policy = writePolicyDefault;
+			}
 			AsyncOperate async = new AsyncOperate(cluster, policy, listener, key, operations);
 			async.Execute();
 		}
@@ -548,7 +625,7 @@ namespace Aerospike.Client
 		{
 			if (policy == null)
 			{
-				policy = new ScanPolicy();
+				policy = scanPolicyDefault;
 			}
 
 			// Retry policy must be one-shot for scans.

@@ -28,7 +28,7 @@ namespace Aerospike.Client
 		public ReadCommand(Cluster cluster, Policy policy, Key key, string[] binNames) 
 			: base(cluster, key)
 		{
-			this.policy = (policy == null) ? new Policy() : policy;
+			this.policy = policy;
 			this.binNames = binNames;
 		}
 

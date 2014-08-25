@@ -26,7 +26,7 @@ namespace Aerospike.Client
 		public AsyncOperate(AsyncCluster cluster, WritePolicy policy, RecordListener listener, Key key, Operation[] operations) 
 			: base(cluster, policy, listener, key, null)
 		{
-			this.policy = (policy == null) ? new WritePolicy() : policy;
+			this.policy = policy;
 			this.operations = operations;
 		}
 
