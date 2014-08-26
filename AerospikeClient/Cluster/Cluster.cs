@@ -40,7 +40,7 @@ namespace Aerospike.Client
 		protected internal readonly Dictionary<string, string> ipMap;
 
 		// User name in UTF-8 encoded bytes.
-		protected internal byte[] user;
+		protected internal readonly byte[] user;
 
 		// Password in hashed format in bytes.
 		protected internal byte[] password;
