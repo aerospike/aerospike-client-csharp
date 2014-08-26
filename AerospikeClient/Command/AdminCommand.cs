@@ -250,7 +250,7 @@ namespace Aerospike.Client
 			Node node = cluster.GetRandomNode();
 			int timeout = (policy == null) ? 1000 : policy.timeout;
 			int status = 0;
-			Connection conn = node.GetConnection(0);
+			Connection conn = node.GetConnection(timeout);
 
 			try
 			{
