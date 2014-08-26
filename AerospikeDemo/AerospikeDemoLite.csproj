@@ -134,7 +134,6 @@
     <Compile Include="LargeStack.cs" />
     <Compile Include="ListMap.cs" />
     <Compile Include="LuaExample.cs" />
-    <Compile Include="LuaMapIterator.cs" />
     <Compile Include="Prepend.cs" />
     <Compile Include="QueryExecute.cs" />
     <Compile Include="QueryInteger.cs" />
