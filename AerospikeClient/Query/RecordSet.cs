@@ -79,6 +79,12 @@ namespace Aerospike.Client
 		public void Close()
 		{
 			valid = false;
+
+			if (record != END)
+			{
+				// Some query threads may still be running. Stop these threads.
+				executor.StopThreads(new AerospikeException.QueryTerminated());
+			}
 		}
 
 		//-------------------------------------------------------
@@ -120,11 +126,16 @@ namespace Aerospike.Client
 			{
 				try
 				{
+					// This put will block if queue capacity is reached.
 					queue.Add(record);
 				}
 				catch (ThreadInterruptedException)
 				{
-					Abort();
+					// Valid may have changed.  Check again.
+					if (valid)
+					{
+						Abort();
+					}
 				}
 			}
 			return valid;

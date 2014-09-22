@@ -86,7 +86,7 @@ namespace Aerospike.Client
 			}
 		}
 
-		protected void StopThreads(Exception cause)
+		protected internal void StopThreads(Exception cause)
 		{
 			// Exception may be null, so can't synchronize on it.
 			// Use statement instead.
