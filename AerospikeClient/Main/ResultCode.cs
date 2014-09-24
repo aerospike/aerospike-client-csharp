@@ -155,6 +155,16 @@ namespace Aerospike.Client
 		public const int KEY_MISMATCH = 19;
 
 		/// <summary>
+		/// Invalid namespace.
+		/// </summary>
+		public const int INVALID_NAMESPACE = 20;
+
+		/// <summary>
+		/// Bin name length greater than 14 characters.
+		/// </summary>
+		public const int BIN_NAME_TOO_LONG = 21;
+	
+		/// <summary>
 		/// There are no more records left for query.
 		/// </summary>
 		public const int QUERY_END = 50;
@@ -234,6 +244,11 @@ namespace Aerospike.Client
 		/// </summary>
 		public const int UDF_BAD_RESPONSE = 100;
 
+		/// <summary>
+		/// The requested item in a large collection was not found.
+		/// </summary>
+		public const int LARGE_ITEM_NOT_FOUND = 125;
+	
 		/// <summary>
 		/// Secondary index already exists.
 		/// </summary>
@@ -401,6 +416,12 @@ namespace Aerospike.Client
 			case KEY_MISMATCH:
 				return "Key mismatch";
 
+			case INVALID_NAMESPACE:
+				return "Namespace not found";
+
+			case BIN_NAME_TOO_LONG:
+				return "Bin name length greater than 14 characters";
+
 			case QUERY_END:
 				return "Query end";
 
@@ -448,6 +469,9 @@ namespace Aerospike.Client
 
 			case UDF_BAD_RESPONSE:
 				return "UDF returned error";
+
+			case LARGE_ITEM_NOT_FOUND:
+				return "Large collection item not found";
 
 			case INDEX_FOUND:
 				return "Index already exists";
