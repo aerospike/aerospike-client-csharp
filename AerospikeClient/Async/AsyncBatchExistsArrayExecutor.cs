@@ -29,14 +29,12 @@ namespace Aerospike.Client
 			this.existsArray = new bool[keys.Length];
 			this.listener = listener;
 
-			Dictionary<Key, BatchItem> keyMap = BatchItem.GenerateMap(keys);
-
 			// Dispatch asynchronous commands to nodes.
 			foreach (BatchNode batchNode in batchNodes)
 			{
 				foreach (BatchNode.BatchNamespace batchNamespace in batchNode.batchNamespaces)
 				{
-					AsyncBatchExistsArray async = new AsyncBatchExistsArray(this, cluster, (AsyncNode)batchNode.node, batchNamespace, policy, keyMap, existsArray);
+					AsyncBatchExistsArray async = new AsyncBatchExistsArray(this, cluster, (AsyncNode)batchNode.node, batchNamespace, policy, keys, existsArray);
 					async.Execute();
 				}
 			}

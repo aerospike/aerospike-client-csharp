@@ -146,7 +146,6 @@
     <Compile Include="Command\BatchCommandExists.cs" />
     <Compile Include="Command\BatchCommandGet.cs" />
     <Compile Include="Command\BatchExecutor.cs" />
-    <Compile Include="Command\BatchItem.cs" />
     <Compile Include="Command\BatchNode.cs" />
     <Compile Include="Command\ByteUtil.cs" />
     <Compile Include="Command\Command.cs" />
@@ -182,6 +181,7 @@
     <Compile Include="Listener\WriteListener.cs" />
     <Compile Include="Main\Log.cs" />
     <Compile Include="Main\Operation.cs" />
+    <Compile Include="Policy\BatchPolicy.cs" />
     <Compile Include="Policy\ClientPolicy.cs" />
     <Compile Include="Policy\AdminPolicy.cs" />
     <Compile Include="Policy\InfoPolicy.cs" />

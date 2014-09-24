@@ -67,6 +67,11 @@ namespace Aerospike.Client
 		/// Default query policy that is used when query command policy is null.
 		/// </summary>
 		public readonly QueryPolicy queryPolicyDefault;
+
+		/// <summary>
+		/// Default batch policy that is used when batch command policy is null.
+		/// </summary>
+		public readonly BatchPolicy batchPolicyDefault;
 		
 		//-------------------------------------------------------
 		// Constructors
@@ -152,6 +157,7 @@ namespace Aerospike.Client
 			this.writePolicyDefault = policy.writePolicyDefault;
 			this.scanPolicyDefault = policy.scanPolicyDefault;
 			this.queryPolicyDefault = policy.queryPolicyDefault;
+			this.batchPolicyDefault = policy.batchPolicyDefault;
 
 			cluster = new Cluster(policy, hosts);
 			cluster.InitTendThread(policy.failIfNotConnected);
@@ -169,6 +175,7 @@ namespace Aerospike.Client
 				this.writePolicyDefault = policy.writePolicyDefault;
 				this.scanPolicyDefault = policy.scanPolicyDefault;
 				this.queryPolicyDefault = policy.queryPolicyDefault;
+				this.batchPolicyDefault = policy.batchPolicyDefault;
 			}
 			else
 			{
@@ -176,6 +183,7 @@ namespace Aerospike.Client
 				this.writePolicyDefault = new WritePolicy();
 				this.scanPolicyDefault = new ScanPolicy();
 				this.queryPolicyDefault = new QueryPolicy();
+				this.batchPolicyDefault = new BatchPolicy();
 			}
 		}
 
@@ -379,29 +387,32 @@ namespace Aerospike.Client
 		/// <param name="policy">generic configuration parameters, pass in null for defaults</param>
 		/// <param name="keys">array of unique record identifiers</param>
 		/// <exception cref="AerospikeException">if command fails</exception>
+		[System.Obsolete("Use Exists(BatchPolicy, Key[]) instead.")]
 		public bool[] Exists(Policy policy, Key[] keys)
+		{
+			BatchPolicy batchPolicy = (policy == null) ? batchPolicyDefault : new BatchPolicy(policy);
+			return Exists(batchPolicy, keys);
+		}
+
+		/// <summary>
+		/// Check if multiple record keys exist in one batch call.
+		/// The returned boolean array is in positional order with the original key array order.
+		/// The policy can be used to specify timeouts and maximum concurrent threads.
+		/// </summary>
+		/// <param name="policy">batch configuration parameters, pass in null for defaults</param>
+		/// <param name="keys">array of unique record identifiers</param>
+		/// <exception cref="AerospikeException">if command fails</exception>
+		public bool[] Exists(BatchPolicy policy, Key[] keys)
 		{
 			if (policy == null)
 			{
-				policy = readPolicyDefault;
+				policy = batchPolicyDefault;
 			}
 			bool[] existsArray = new bool[keys.Length];
-
-			if (policy.allowProleReads)
-			{
-				// Send all requests to a single node chosen in round-robin fashion in this transaction thread.
-				Node node = cluster.GetRandomNode();
-				BatchCommandNodeExists command = new BatchCommandNodeExists(node, policy, keys, existsArray);
-				command.Execute();
-			}
-			else
-			{
-				// Send requests to each key's master partition in multiple threads.
-				new BatchExecutor(cluster, policy, keys, existsArray, null, null, Command.INFO1_READ | Command.INFO1_NOBINDATA);
-			}		
+			BatchExecutor.Execute(cluster, policy, keys, existsArray, null, null, Command.INFO1_READ | Command.INFO1_NOBINDATA);
 			return existsArray;
 		}
-
+		
 		//-------------------------------------------------------
 		// Read Record Operations
 		//-------------------------------------------------------
@@ -477,29 +488,33 @@ namespace Aerospike.Client
 		/// <param name="policy">generic configuration parameters, pass in null for defaults</param>
 		/// <param name="keys">array of unique record identifiers</param>
 		/// <exception cref="AerospikeException">if read fails</exception>
+		[System.Obsolete("Use Get(BatchPolicy, Key[]) instead.")]
 		public Record[] Get(Policy policy, Key[] keys)
+		{
+			BatchPolicy batchPolicy = (policy == null) ? batchPolicyDefault : new BatchPolicy(policy);
+			return Get(batchPolicy, keys);
+		}
+
+		/// <summary>
+		/// Read multiple records for specified keys in one batch call.
+		/// The returned records are in positional order with the original key array order.
+		/// If a key is not found, the positional record will be null.
+		/// The policy can be used to specify timeouts and maximum concurrent threads.
+		/// </summary>
+		/// <param name="policy">batch configuration parameters, pass in null for defaults</param>
+		/// <param name="keys">array of unique record identifiers</param>
+		/// <exception cref="AerospikeException">if read fails</exception>
+		public Record[] Get(BatchPolicy policy, Key[] keys)
 		{
 			if (policy == null)
 			{
-				policy = readPolicyDefault;
+				policy = batchPolicyDefault;
 			}
 			Record[] records = new Record[keys.Length];
-
-			if (policy.allowProleReads)
-			{
-				// Send all requests to a single node chosen in round-robin fashion in this transaction thread.
-				Node node = cluster.GetRandomNode();
-				BatchCommandNodeGet command = new BatchCommandNodeGet(node, policy, keys, records, null, Command.INFO1_READ | Command.INFO1_GET_ALL);
-				command.Execute();
-			}
-			else
-			{
-				// Send requests to each key's master partition in multiple threads.
-				new BatchExecutor(cluster, policy, keys, null, records, null, Command.INFO1_READ | Command.INFO1_GET_ALL);
-			}
+			BatchExecutor.Execute(cluster, policy, keys, null, records, null, Command.INFO1_READ | Command.INFO1_GET_ALL);
 			return records;
 		}
-
+		
 		/// <summary>
 		/// Read multiple record headers and bins for specified keys in one batch call.
 		/// The returned records are in positional order with the original key array order.
@@ -510,30 +525,35 @@ namespace Aerospike.Client
 		/// <param name="keys">array of unique record identifiers</param>
 		/// <param name="binNames">array of bins to retrieve</param>
 		/// <exception cref="AerospikeException">if read fails</exception>
+		[System.Obsolete("Use Get(BatchPolicy, Key[], params string[]) instead.")]
 		public Record[] Get(Policy policy, Key[] keys, params string[] binNames)
+		{
+			BatchPolicy batchPolicy = (policy == null) ? batchPolicyDefault : new BatchPolicy(policy);
+			return Get(batchPolicy, keys, binNames);
+		}
+
+		/// <summary>
+		/// Read multiple record headers and bins for specified keys in one batch call.
+		/// The returned records are in positional order with the original key array order.
+		/// If a key is not found, the positional record will be null.
+		/// The policy can be used to specify timeouts and maximum concurrent threads.
+		/// </summary>
+		/// <param name="policy">batch configuration parameters, pass in null for defaults</param>
+		/// <param name="keys">array of unique record identifiers</param>
+		/// <param name="binNames">array of bins to retrieve</param>
+		/// <exception cref="AerospikeException">if read fails</exception>
+		public Record[] Get(BatchPolicy policy, Key[] keys, params string[] binNames)
 		{
 			if (policy == null)
 			{
-				policy = readPolicyDefault;
+				policy = batchPolicyDefault;
 			}
 			Record[] records = new Record[keys.Length];
 			HashSet<string> names = BinNamesToHashSet(binNames);
-
-			if (policy.allowProleReads)
-			{
-				// Send all requests to a single node chosen in round-robin fashion.
-				Node node = cluster.GetRandomNode();
-				BatchCommandNodeGet command = new BatchCommandNodeGet(node, policy, keys, records, names, Command.INFO1_READ);
-				command.Execute();
-			}
-			else
-			{
-				// Send requests to each key's master partition in multiple threads.
-				new BatchExecutor(cluster, policy, keys, null, records, names, Command.INFO1_READ);
-			}
+			BatchExecutor.Execute(cluster, policy, keys, null, records, names, Command.INFO1_READ);
 			return records;
 		}
-
+		
 		/// <summary>
 		/// Read multiple record header data for specified keys in one batch call.
 		/// The returned records are in positional order with the original key array order.
@@ -543,26 +563,30 @@ namespace Aerospike.Client
 		/// <param name="policy">generic configuration parameters, pass in null for defaults</param>
 		/// <param name="keys">array of unique record identifiers</param>
 		/// <exception cref="AerospikeException">if read fails</exception>
+		[System.Obsolete("Use GetHeader(BatchPolicy, Key[]) instead.")]
 		public Record[] GetHeader(Policy policy, Key[] keys)
+		{
+			BatchPolicy batchPolicy = (policy == null) ? batchPolicyDefault : new BatchPolicy(policy);
+			return GetHeader(batchPolicy, keys);
+		}
+
+		/// <summary>
+		/// Read multiple record header data for specified keys in one batch call.
+		/// The returned records are in positional order with the original key array order.
+		/// If a key is not found, the positional record will be null.
+		/// The policy can be used to specify timeouts and maximum concurrent threads.
+		/// </summary>
+		/// <param name="policy">batch configuration parameters, pass in null for defaults</param>
+		/// <param name="keys">array of unique record identifiers</param>
+		/// <exception cref="AerospikeException">if read fails</exception>
+		public Record[] GetHeader(BatchPolicy policy, Key[] keys)
 		{
 			if (policy == null)
 			{
-				policy = readPolicyDefault;
+				policy = batchPolicyDefault;
 			}
 			Record[] records = new Record[keys.Length];
-
-			if (policy.allowProleReads)
-			{
-				// Send all requests to a single node chosen in round-robin fashion.
-				Node node = cluster.GetRandomNode();
-				BatchCommandNodeGet command = new BatchCommandNodeGet(node, policy, keys, records, null, Command.INFO1_READ | Command.INFO1_NOBINDATA);
-				command.Execute();
-			}
-			else
-			{
-				// Send requests to each key's master partition in multiple threads.
-				new BatchExecutor(cluster, policy, keys, null, records, null, Command.INFO1_READ | Command.INFO1_NOBINDATA);
-			}
+			BatchExecutor.Execute(cluster, policy, keys, null, records, null, Command.INFO1_READ | Command.INFO1_NOBINDATA);
 			return records;
 		}
 
@@ -580,7 +604,7 @@ namespace Aerospike.Client
 		/// <param name="binNames">array of bins to retrieve</param>
 		/// <param name="joins">array of join definitions</param>
 		/// <exception cref="AerospikeException">if main read or join reads fail</exception>
-		public Record Join(Policy policy, Key key, string[] binNames, params Join[] joins)
+		public Record Join(BatchPolicy policy, Key key, string[] binNames, params Join[] joins)
 		{
 			string[] names = new string[binNames.Length + joins.Length];
 			int count = 0;
@@ -608,7 +632,7 @@ namespace Aerospike.Client
 		/// <param name="key">unique main record identifier</param>
 		/// <param name="joins">array of join definitions</param>
 		/// <exception cref="AerospikeException">if main read or join reads fail</exception>
-		public Record Join(Policy policy, Key key, params Join[] joins)
+		public Record Join(BatchPolicy policy, Key key, params Join[] joins)
 		{
 			Record record = Get(policy, key);
 			JoinRecords(policy, record, joins);
@@ -1296,7 +1320,7 @@ namespace Aerospike.Client
 			return info.GetValue();
 		}
 
-		private void JoinRecords(Policy policy, Record record, Join[] joins)
+		private void JoinRecords(BatchPolicy policy, Record record, Join[] joins)
 		{
 			foreach (Join join in joins)
 			{

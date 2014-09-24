@@ -30,7 +30,7 @@ namespace Aerospike.Client
 			{
 				foreach (BatchNode.BatchNamespace batchNamespace in batchNode.batchNamespaces)
 				{
-					AsyncBatchExistsSequence async = new AsyncBatchExistsSequence(this, cluster, (AsyncNode)batchNode.node, batchNamespace, policy, listener);
+					AsyncBatchExistsSequence async = new AsyncBatchExistsSequence(this, cluster, (AsyncNode)batchNode.node, batchNamespace, policy, keys, listener);
 					async.Execute();
 				}
 			}

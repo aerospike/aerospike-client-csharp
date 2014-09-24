@@ -22,52 +22,90 @@ namespace Aerospike.Client
 {
 	public sealed class BatchExecutor
 	{
+		public static void Execute(Cluster cluster, BatchPolicy policy, Key[] keys, bool[] existsArray, Record[] records, HashSet<string> binNames, int readAttr)
+		{
+			if (policy.allowProleReads)
+			{
+				// Send all requests to a single node chosen in round-robin fashion in this transaction thread.
+				Node node = cluster.GetRandomNode();
+				BatchCommandNodeExists command = new BatchCommandNodeExists(node, policy, keys, existsArray);
+				command.Execute();
+				return;
+			}
+
+			List<BatchNode> batchNodes = BatchNode.GenerateList(cluster, keys);
+
+			if (policy.maxConcurrentThreads == 1)
+			{
+				// Run batch requests sequentially in same thread.
+				foreach (BatchNode batchNode in batchNodes)
+				{
+					foreach (BatchNode.BatchNamespace batchNamespace in batchNode.batchNamespaces)
+					{
+						if (records != null)
+						{
+							BatchCommandGet command = new BatchCommandGet(batchNode.node, batchNamespace, policy, keys, binNames, records, readAttr);
+							command.Execute();
+						}
+						else
+						{
+							BatchCommandExists command = new BatchCommandExists(batchNode.node, batchNamespace, policy, keys, existsArray);
+							command.Execute();
+						}
+					}
+				}
+			}
+			else
+			{
+				// Run batch requests in parallel in separate threads.
+				BatchExecutor executor = new BatchExecutor(cluster, batchNodes.Count * 2);
+
+				// Initialize threads.  There may be multiple threads for a single node because the
+				// wire protocol only allows one namespace per command.  Multiple namespaces 
+				// require multiple threads per node.
+				foreach (BatchNode batchNode in batchNodes)
+				{
+					foreach (BatchNode.BatchNamespace batchNamespace in batchNode.batchNamespaces)
+					{
+						if (records != null)
+						{
+							executor.Add(new BatchCommandGet(batchNode.node, batchNamespace, policy, keys, binNames, records, readAttr));
+						}
+						else
+						{
+							executor.Add(new BatchCommandExists(batchNode.node, batchNamespace, policy, keys, existsArray));
+						}
+					}
+				}
+				executor.Execute(policy);
+			}
+		}
+
 		private readonly List<BatchThread> threads;
 		private volatile Exception exception;
 		private int completedCount;
+		private int maxConcurrentThreads;
 		private bool completed;
 
-		public BatchExecutor
-		(
-			Cluster cluster,
-			Policy policy,
-			Key[] keys,
-			bool[] existsArray,
-			Record[] records,
-			HashSet<string> binNames,
-			int readAttr
-		)
+		public BatchExecutor(Cluster cluster, int capacity)
 		{
-			List<BatchNode> batchNodes = BatchNode.GenerateList(cluster, keys);
-			Dictionary<Key, BatchItem> keyMap = BatchItem.GenerateMap(keys);
+			this.threads = new List<BatchThread>(capacity);
+		}
 
-			// Initialize threads.  There may be multiple threads for a single node because the
-			// wire protocol only allows one namespace per command.  Multiple namespaces 
-			// require multiple threads per node.
-			threads = new List<BatchThread>(batchNodes.Count * 2);
-			MultiCommand command = null;
+		public void Add(MultiCommand command)
+		{
+			threads.Add(new BatchThread(this, command));
+		}
 
-			foreach (BatchNode batchNode in batchNodes)
+		public void Execute(BatchPolicy policy)
+		{
+			this.maxConcurrentThreads = (policy.maxConcurrentThreads == 0 || policy.maxConcurrentThreads >= threads.Count) ? threads.Count : policy.maxConcurrentThreads;
+
+			// Start threads.
+			for (int i = 0; i < maxConcurrentThreads; i++)
 			{
-				foreach (BatchNode.BatchNamespace batchNamespace in batchNode.batchNamespaces)
-				{
-					if (records != null)
-					{
-						command = new BatchCommandGet(batchNode.node, batchNamespace, policy, keyMap, binNames, records, readAttr);
-					}
-					else
-					{
-						command = new BatchCommandExists(batchNode.node, batchNamespace, policy, keyMap, existsArray);
-					}
-					threads.Add(new BatchThread(this, command));
-				}
+				ThreadPool.QueueUserWorkItem(threads[i].Run);
 			}
-
-			foreach (BatchThread thread in threads)
-			{
-				ThreadPool.QueueUserWorkItem(thread.Run);
-			}
-
 			WaitTillComplete();
 
 			// Throw an exception if an error occurred.
@@ -83,16 +121,29 @@ namespace Aerospike.Client
 				}
 			}
 		}
-
+		
 		private void ThreadCompleted()
 		{
+			int finished = Interlocked.Increment(ref completedCount);
+
 			// Check if all threads completed.
-			if (Interlocked.Increment(ref completedCount) >= threads.Count)
+			if (finished < threads.Count)
+			{
+				int nextThread = finished + maxConcurrentThreads - 1;
+
+				// Determine if a new thread needs to be started.
+				if (nextThread < threads.Count)
+				{
+					// Start new thread.
+					ThreadPool.QueueUserWorkItem(threads[nextThread].Run);
+				}
+			}
+			else
 			{
 				NotifyCompleted();
 			}
 		}
-
+		
 		private void StopThreads(Exception cause)
 		{
 			lock (this)

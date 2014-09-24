@@ -14,6 +14,7 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
+using System;
 using System.Collections.Generic;
 
 namespace Aerospike.Client
@@ -46,11 +47,11 @@ namespace Aerospike.Client
 
 				if (batchNode == null)
 				{
-					batchNodes.Add(new BatchNode(node, keysPerNode, key));
+					batchNodes.Add(new BatchNode(node, keysPerNode, key.ns, i));
 				}
 				else
 				{
-					batchNode.AddKey(key);
+					batchNode.AddKey(key.ns, i);
 				}
 			}
 			return batchNodes;
@@ -60,25 +61,25 @@ namespace Aerospike.Client
 		public readonly List<BatchNamespace> batchNamespaces;
 		public readonly int keyCapacity;
 
-		public BatchNode(Node node, int keyCapacity, Key key)
+		public BatchNode(Node node, int keyCapacity, string ns, int offset)
 		{
 			this.node = node;
 			this.keyCapacity = keyCapacity;
 			batchNamespaces = new List<BatchNamespace>(4);
-			batchNamespaces.Add(new BatchNamespace(key.ns, keyCapacity, key));
+			batchNamespaces.Add(new BatchNamespace(ns, keyCapacity, offset));
 		}
 
-		public void AddKey(Key key)
+		public void AddKey(string ns, int offset)
 		{
-			BatchNamespace batchNamespace = FindNamespace(key.ns);
+			BatchNamespace batchNamespace = FindNamespace(ns);
 
 			if (batchNamespace == null)
 			{
-				batchNamespaces.Add(new BatchNamespace(key.ns, keyCapacity, key));
+				batchNamespaces.Add(new BatchNamespace(ns, keyCapacity, offset));
 			}
 			else
 			{
-				batchNamespace.keys.Add(key);
+				batchNamespace.Add(offset);
 			}
 		}
 
@@ -111,13 +112,26 @@ namespace Aerospike.Client
 		public sealed class BatchNamespace
 		{
 			public readonly string ns;
-			public readonly List<Key> keys;
+			public int[] offsets;
+			public int offsetsSize;
 
-			public BatchNamespace(string ns, int capacity, Key key)
+			public BatchNamespace(string ns, int capacity, int offset)
 			{
 				this.ns = ns;
-				keys = new List<Key>(capacity);
-				keys.Add(key);
+				this.offsets = new int[capacity];
+				this.offsets[0] = offset;
+				this.offsetsSize = 1;
+			}
+
+			public void Add(int offset)
+			{
+				if (offsetsSize >= offsets.Length)
+				{
+					int[] copy = new int[offsetsSize * 2];
+					Array.Copy(offsets, 0, copy, 0, offsetsSize);
+					offsets = copy;
+				}
+				offsets[offsetsSize++] = offset;
 			}
 		}
 	}

@@ -81,7 +81,12 @@ namespace Aerospike.Client
 		/// Default query policy that is used when query command's policy is null.
 		/// </summary>
 		public QueryPolicy queryPolicyDefault = new QueryPolicy();
-	
+
+		/// <summary>
+		/// Default batch policy that is used when batch command's policy is null.
+		/// </summary>
+		public BatchPolicy batchPolicyDefault = new BatchPolicy();
+		
 		/// <summary>
 		/// A IP translation table is used in cases where different clients use different server 
 		/// IP addresses.  This may be necessary when using clients from both inside and outside 

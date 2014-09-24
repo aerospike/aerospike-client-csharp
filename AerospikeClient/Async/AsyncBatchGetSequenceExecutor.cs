@@ -32,7 +32,7 @@ namespace Aerospike.Client
 			{
 				foreach (BatchNode.BatchNamespace batchNamespace in batchNode.batchNamespaces)
 				{
-					AsyncBatchGetSequence async = new AsyncBatchGetSequence(this, cluster, (AsyncNode)batchNode.node, batchNamespace, policy, binNames, listener, readAttr);
+					AsyncBatchGetSequence async = new AsyncBatchGetSequence(this, cluster, (AsyncNode)batchNode.node, batchNamespace, policy, keys, binNames, listener, readAttr);
 					async.Execute();
 				}
 			}

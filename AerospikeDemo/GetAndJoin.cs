@@ -58,7 +58,7 @@ namespace Aerospike.Demo
 			// Read account/positions and join with securities.
 			console.Info("Read accounts, positions and securities");
 			Account accountRead = new Account();
-			accountRead.Read(client, args.writePolicy, args.ns, args.set, "123456");
+			accountRead.Read(client, null, args.ns, args.set, "123456");
 
 			// Validate data
 			accountWrite.Validate(accountRead);
@@ -103,7 +103,7 @@ namespace Aerospike.Demo
 			client.Put(policy, key, binPositions, binTickers);
 		}
 
-		public void Read(AerospikeClient client, Policy policy, string ns, string set, string accountId)
+		public void Read(AerospikeClient client, BatchPolicy policy, string ns, string set, string accountId)
 		{
 			Record record = client.Join(policy,
 				new Key(ns, set, accountId),

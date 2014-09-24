@@ -268,23 +268,26 @@ namespace Aerospike.Client
 			End();
 		}
 		
-		public void SetBatchExists(BatchNode.BatchNamespace batchNamespace)
+		public void SetBatchExists(Key[] keys, BatchNode.BatchNamespace batch)
 		{
 			// Estimate buffer size
 			Begin();
-			List<Key> keys = batchNamespace.keys;
-			int byteSize = keys.Count * Command.DIGEST_SIZE;
+			int byteSize = batch.offsetsSize * SyncCommand.DIGEST_SIZE;
 
-			dataOffset +=  ByteUtil.EstimateSizeUtf8(batchNamespace.ns) + FIELD_HEADER_SIZE + byteSize + FIELD_HEADER_SIZE;
+			dataOffset +=  ByteUtil.EstimateSizeUtf8(batch.ns) + FIELD_HEADER_SIZE + byteSize + FIELD_HEADER_SIZE;
     
 			SizeBuffer();
     
 			WriteHeader(Command.INFO1_READ | Command.INFO1_NOBINDATA, 0, 2, 0);
-			WriteField(batchNamespace.ns, FieldType.NAMESPACE);
+			WriteField(batch.ns, FieldType.NAMESPACE);
 			WriteFieldHeader(byteSize, FieldType.DIGEST_RIPE_ARRAY);
-    
-			foreach (Key key in keys)
+
+			int[] offsets = batch.offsets;
+			int max = batch.offsetsSize;
+
+			for (int i = 0; i < max; i++)
 			{
+				Key key = keys[offsets[i]];
 				byte[] digest = key.digest;
 				Array.Copy(digest, 0, dataBuffer, dataOffset, digest.Length);
 				dataOffset += digest.Length;
@@ -332,15 +335,14 @@ namespace Aerospike.Client
 			}
 			End();
 		}
-		
-		public void SetBatchGet(BatchNode.BatchNamespace batchNamespace, HashSet<string> binNames, int readAttr)
+
+		public void SetBatchGet(Key[] keys, BatchNode.BatchNamespace batch, HashSet<string> binNames, int readAttr)
 		{
 			// Estimate buffer size
 			Begin();
-			List<Key> keys = batchNamespace.keys;
-			int byteSize = keys.Count * SyncCommand.DIGEST_SIZE;
+			int byteSize = batch.offsetsSize * SyncCommand.DIGEST_SIZE;
 
-			dataOffset +=  ByteUtil.EstimateSizeUtf8(batchNamespace.ns) + FIELD_HEADER_SIZE + byteSize + FIELD_HEADER_SIZE;
+			dataOffset +=  ByteUtil.EstimateSizeUtf8(batch.ns) + FIELD_HEADER_SIZE + byteSize + FIELD_HEADER_SIZE;
 
 			if (binNames != null)
 			{
@@ -354,11 +356,15 @@ namespace Aerospike.Client
 
 			int operationCount = (binNames == null)? 0 : binNames.Count;
 			WriteHeader(readAttr, 0, 2, operationCount);
-			WriteField(batchNamespace.ns, FieldType.NAMESPACE);
+			WriteField(batch.ns, FieldType.NAMESPACE);
 			WriteFieldHeader(byteSize, FieldType.DIGEST_RIPE_ARRAY);
 
-			foreach (Key key in keys)
+			int[] offsets = batch.offsets;
+			int max = batch.offsetsSize;
+
+			for (int i = 0; i < max; i++)
 			{
+				Key key = keys[offsets[i]];
 				byte[] digest = key.digest;
 				Array.Copy(digest, 0, dataBuffer, dataOffset, digest.Length);
 				dataOffset += digest.Length;

@@ -20,6 +20,7 @@ namespace Aerospike.Client
 	{
 		private readonly BatchNode.BatchNamespace batchNamespace;
 		private readonly Policy policy;
+		private readonly Key[] keys;
 		private readonly ExistsSequenceListener listener;
 
 		public AsyncBatchExistsSequence
@@ -29,11 +30,13 @@ namespace Aerospike.Client
 			AsyncNode node,
 			BatchNode.BatchNamespace batchNamespace,
 			Policy policy,
+			Key[] keys,
 			ExistsSequenceListener listener
 		) : base(parent, cluster, node, false)
 		{
 			this.batchNamespace = batchNamespace;
 			this.policy = policy;
+			this.keys = keys;
 			this.listener = listener;
 		}
 
@@ -44,7 +47,7 @@ namespace Aerospike.Client
 
 		protected internal override void WriteBuffer()
 		{
-			SetBatchExists(batchNamespace);
+			SetBatchExists(keys, batchNamespace);
 		}
 
 		protected internal override void ParseRow(Key key)

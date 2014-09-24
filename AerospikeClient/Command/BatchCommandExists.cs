@@ -20,23 +20,24 @@ namespace Aerospike.Client
 {
 	public sealed class BatchCommandExists : MultiCommand
 	{
-		private readonly BatchNode.BatchNamespace batchNamespace;
+		private readonly BatchNode.BatchNamespace batch;
 		private readonly Policy policy;
-		private readonly Dictionary<Key, BatchItem> keyMap;
+		private readonly Key[] keys;
 		private readonly bool[] existsArray;
+		private int index;
 
 		public BatchCommandExists
 		(
 			Node node,
-			BatchNode.BatchNamespace batchNamespace,
+			BatchNode.BatchNamespace batch,
 			Policy policy,
-			Dictionary<Key, BatchItem> keyMap,
+			Key[] keys,
 			bool[] existsArray
 		) : base(node)
 		{
-			this.batchNamespace = batchNamespace;
+			this.batch = batch;
 			this.policy = policy;
-			this.keyMap = keyMap;
+			this.keys = keys;
 			this.existsArray = existsArray;
 		}
 
@@ -47,7 +48,7 @@ namespace Aerospike.Client
 
 		protected internal override void WriteBuffer()
 		{
-			SetBatchExists(batchNamespace);
+			SetBatchExists(keys, batch);
 		}
 
 		/// <summary>
@@ -93,18 +94,17 @@ namespace Aerospike.Client
 				}
 
 				Key key = ParseKey(fieldCount);
-				BatchItem item = keyMap[key];
+				int offset = batch.offsets[index++];
 
-				if (item != null)
+				if (Util.ByteArrayEquals(key.digest, keys[offset].digest))
 				{
-					int index = item.Index;
-					existsArray[index] = resultCode == 0;
+					existsArray[offset] = resultCode == 0;
 				}
 				else
 				{
-					if (Log.DebugEnabled())
+					if (Log.WarnEnabled())
 					{
-						Log.Debug("Unexpected batch key returned: " + key.ns + ',' + ByteUtil.BytesToHexString(key.digest));
+						Log.Warn("Unexpected batch key returned: " + key.ns + ',' + ByteUtil.BytesToHexString(key.digest) + ',' + index + ',' + offset);
 					}
 				}
 			}

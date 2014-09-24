@@ -69,7 +69,7 @@ namespace Aerospike.Demo
 				keys[i] = new Key(args.ns, args.set, keyPrefix + (i + 1));
 			}
 
-			bool[] existsArray = client.Exists(args.policy, keys);
+			bool[] existsArray = client.Exists(null, keys);
 
 			for (int i = 0; i < existsArray.Length; i++)
 			{
@@ -92,7 +92,7 @@ namespace Aerospike.Demo
 				keys[i] = new Key(args.ns, args.set, keyPrefix + (i + 1));
 			}
 
-			Record[] records = client.Get(args.policy, keys, binName);
+			Record[] records = client.Get(null, keys, binName);
 
 			for (int i = 0; i < records.Length; i++)
 			{
@@ -128,7 +128,7 @@ namespace Aerospike.Demo
 				keys[i] = new Key(args.ns, args.set, keyPrefix + (i + 1));
 			}
 
-			Record[] records = client.GetHeader(args.policy, keys);
+			Record[] records = client.GetHeader(null, keys);
 
 			for (int i = 0; i < records.Length; i++)
 			{

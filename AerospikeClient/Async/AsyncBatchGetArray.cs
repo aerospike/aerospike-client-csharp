@@ -20,29 +20,30 @@ namespace Aerospike.Client
 {
 	public sealed class AsyncBatchGetArray : AsyncMultiCommand
 	{
-		private readonly BatchNode.BatchNamespace batchNamespace;
+		private readonly BatchNode.BatchNamespace batch;
 		private readonly Policy policy;
-		private readonly Dictionary<Key, BatchItem> keyMap;
+		private readonly Key[] keys;
 		private readonly HashSet<string> binNames;
 		private readonly Record[] records;
 		private readonly int readAttr;
+		private int index;
 
 		public AsyncBatchGetArray
 		(
 			AsyncMultiExecutor parent,
 			AsyncCluster cluster,
 			AsyncNode node,
-			BatchNode.BatchNamespace batchNamespace,
+			BatchNode.BatchNamespace batch,
 			Policy policy,
-			Dictionary<Key, BatchItem> keyMap,
+			Key[] keys,
 			HashSet<string> binNames,
 			Record[] records,
 			int readAttr
 		) : base(parent, cluster, node, false)
 		{
-			this.batchNamespace = batchNamespace;
+			this.batch = batch;
 			this.policy = policy;
-			this.keyMap = keyMap;
+			this.keys = keys;
 			this.binNames = binNames;
 			this.records = records;
 			this.readAttr = readAttr;
@@ -55,28 +56,27 @@ namespace Aerospike.Client
 
 		protected internal override void WriteBuffer()
 		{
-			SetBatchGet(batchNamespace, binNames, readAttr);
+			SetBatchGet(keys, batch, binNames, readAttr);
 		}
 
 		protected internal override void ParseRow(Key key)
 		{
-			BatchItem item = keyMap[key];
+			int offset = batch.offsets[index++];
 
-			if (item != null)
+			if (Util.ByteArrayEquals(key.digest, keys[offset].digest))
 			{
 				if (resultCode == 0)
 				{
-					int index = item.Index;
-					records[index] = ParseRecord();
+					records[offset] = ParseRecord();
 				}
 			}
 			else
 			{
-				if (Log.DebugEnabled())
+				if (Log.WarnEnabled())
 				{
-					Log.Debug("Unexpected batch key returned: " + key.ns + ',' + ByteUtil.BytesToHexString(key.digest));
+					Log.Warn("Unexpected batch key returned: " + key.ns + ',' + ByteUtil.BytesToHexString(key.digest) + ',' + index + ',' + offset);
 				}
-			}
+			}	
 		}
 	}
 }
