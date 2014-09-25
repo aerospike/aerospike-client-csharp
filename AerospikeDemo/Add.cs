@@ -55,8 +55,7 @@ namespace Aerospike.Demo
 
 			// The value received from the server is an unsigned byte stream.
 			// Convert to an integer before comparing with expected.
-			object obj = record.GetValue(bin.name);
-			int received = (int)(long)obj;		
+			int received = record.GetInt(bin.name);	
 			int expected = 15;
 
 			if (received == expected)
@@ -75,7 +74,7 @@ namespace Aerospike.Demo
 			record = client.Operate(args.writePolicy, key, Operation.Add(bin), Operation.Get(bin.name));
 
 			expected = 45;
-			received = (int)(long)record.GetValue(bin.name);
+			received = record.GetInt(bin.name);
 
 			if (received == expected)
 			{

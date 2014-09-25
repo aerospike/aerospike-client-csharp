@@ -93,7 +93,7 @@ namespace Aerospike.Demo
 				{
 					Key key = rs.Key;
 					Record record = rs.Record;
-					long result = (long)record.GetValue(binName);
+					long result = record.GetLong(binName);
 
 					console.Info("Record found: namespace={0} set={1} digest={2} bin={3} value={4}",
 						key.ns, key.setName, ByteUtil.BytesToHexString(key.digest), binName, result);
