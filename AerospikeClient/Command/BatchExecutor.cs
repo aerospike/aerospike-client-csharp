@@ -24,6 +24,11 @@ namespace Aerospike.Client
 	{
 		public static void Execute(Cluster cluster, BatchPolicy policy, Key[] keys, bool[] existsArray, Record[] records, HashSet<string> binNames, int readAttr)
 		{
+			if (keys.Length == 0)
+			{
+				return;
+			}
+
 			if (policy.allowProleReads)
 			{
 				// Send all requests to a single node chosen in round-robin fashion in this transaction thread.
