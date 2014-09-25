@@ -66,6 +66,79 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
+		/// Get bin value as long.
+		/// </summary>
+		public long GetLong(string name)
+		{
+			return (long)GetValue(name);
+		}
+
+		/// <summary>
+		/// Get bin value as ulong.
+		/// </summary>
+		public ulong GetULong(string name)
+		{
+			return (ulong)GetValue(name);
+		}
+
+		/// <summary>
+		/// Get bin value as int.
+		/// </summary>
+		public int GetInt(string name)
+		{
+			return (int)(long)GetValue(name);
+		}
+
+		/// <summary>
+		/// Get bin value as uint.
+		/// </summary>
+		public uint GetUInt(string name)
+		{
+			return (uint)(long)GetValue(name);
+		}
+
+		/// <summary>
+		/// Get bin value as short.
+		/// </summary>
+		public short GetShort(string name)
+		{
+			return (short)(long)GetValue(name);
+		}
+
+		/// <summary>
+		/// Get bin value as ushort.
+		/// </summary>
+		public ushort GetUShort(string name)
+		{
+			return (ushort)(long)GetValue(name);
+		}
+
+		/// <summary>
+		/// Get bin value as byte.
+		/// </summary>
+		public byte GetByte(string name)
+		{
+			return (byte)(long)GetValue(name);
+		}
+
+		/// <summary>
+		/// Get bin value as sbyte.
+		/// </summary>
+		public sbyte GetSBytes(string name)
+		{
+			return (sbyte)(long)GetValue(name);
+		}
+
+		/// <summary>
+		/// Get bin value as bool.
+		/// </summary>
+		public bool GetBool(string name)
+		{
+			long v = (long)GetValue(name);
+			return (v != 0) ? true : false;
+		}
+
+		/// <summary>
 		/// Return string representation of record.
 		/// </summary>
 		public override string ToString()

@@ -110,6 +110,7 @@ namespace Aerospike.Client
 
 		/// <summary>
 		/// Constructor, specifying bin name and integer value.
+		/// The server will convert all integers to longs.
 		/// For servers configured as "single-bin", enter a null or empty name.
 		/// </summary>
 		/// <param name="name">bin name, current limit is 14 characters</param>
@@ -122,6 +123,7 @@ namespace Aerospike.Client
 
 		/// <summary>
 		/// Constructor, specifying bin name and unsigned integer value.
+		/// The server will convert all integers to longs.
 		/// For servers configured as "single-bin", enter a null or empty name.
 		/// </summary>
 		/// <param name="name">bin name, current limit is 14 characters</param>
@@ -134,6 +136,7 @@ namespace Aerospike.Client
 
 		/// <summary>
 		/// Constructor, specifying bin name and short value.
+		/// The server will convert all shorts to longs.
 		/// For servers configured as "single-bin", enter a null or empty name.
 		/// </summary>
 		/// <param name="name">bin name, current limit is 14 characters</param>
@@ -146,6 +149,7 @@ namespace Aerospike.Client
 
 		/// <summary>
 		/// Constructor, specifying bin name and unsigned short value.
+		/// The server will convert all shorts to longs.
 		/// For servers configured as "single-bin", enter a null or empty name.
 		/// </summary>
 		/// <param name="name">bin name, current limit is 14 characters</param>
@@ -158,6 +162,7 @@ namespace Aerospike.Client
 
 		/// <summary>
 		/// Constructor, specifying bin name and boolean value.
+		/// The server will convert all bools to longs.
 		/// For servers configured as "single-bin", enter a null or empty name.
 		/// </summary>
 		/// <param name="name">bin name, current limit is 14 characters</param>
@@ -170,6 +175,7 @@ namespace Aerospike.Client
 
 		/// <summary>
 		/// Constructor, specifying bin name and byte value.
+		/// The server will convert all byte integers to longs.
 		/// For servers configured as "single-bin", enter a null or empty name.
 		/// </summary>
 		/// <param name="name">bin name, current limit is 14 characters</param>
@@ -182,6 +188,7 @@ namespace Aerospike.Client
 
 		/// <summary>
 		/// Constructor, specifying bin name and signed byte value.
+		/// The server will convert all byte integers to longs.
 		/// For servers configured as "single-bin", enter a null or empty name.
 		/// </summary>
 		/// <param name="name">bin name, current limit is 14 characters</param>
