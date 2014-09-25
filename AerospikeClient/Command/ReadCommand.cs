@@ -65,7 +65,7 @@ namespace Aerospike.Client
 
 			if (resultCode != 0)
 			{
-				if (resultCode == ResultCode.KEY_NOT_FOUND_ERROR)
+				if (resultCode == ResultCode.KEY_NOT_FOUND_ERROR || resultCode == ResultCode.LARGE_ITEM_NOT_FOUND)
 				{
 					return;
 				}
@@ -74,6 +74,7 @@ namespace Aerospike.Client
 				{
 					record = ParseRecord(opCount, fieldCount, generation, expiration);
 					HandleUdfError(resultCode);
+					return;
 				}
 				throw new AerospikeException(resultCode);
 			}
@@ -91,27 +92,34 @@ namespace Aerospike.Client
 		{
 			object obj;
 
-			if (record.bins.TryGetValue("FAILURE", out obj))
+			if (!record.bins.TryGetValue("FAILURE", out obj))
 			{
-				string ret = (string)obj;
-				string[] list;
-				string message;
-				int code;
-
-				try
-				{
-					list = ret.Split(':');
-					code = Convert.ToInt32(list[2].Trim());
-					message = list[0] + ':' + list[1] + ' ' + list[3];
-				}
-				catch (Exception)
-				{
-					// Use generic exception if parse error occurs.
-					throw new AerospikeException(resultCode, ret);
-				}
-
-				throw new AerospikeException(code, message);
+				throw new AerospikeException(resultCode);
 			}
+
+			string ret = (string)obj;
+			string message;
+			int code;
+
+			try
+			{
+				string[] list = ret.Split(':');
+				code = Convert.ToInt32(list[2].Trim());
+
+				if (code == ResultCode.LARGE_ITEM_NOT_FOUND)
+				{
+					record = null;
+					return;
+				}
+				message = list[0] + ':' + list[1] + ' ' + list[3];
+			}
+			catch (Exception)
+			{
+				// Use generic exception if parse error occurs.
+				throw new AerospikeException(resultCode, ret);
+			}
+
+			throw new AerospikeException(code, message);
 		}
 
 		private Record ParseRecord(int opCount, int fieldCount, int generation, int expiration)

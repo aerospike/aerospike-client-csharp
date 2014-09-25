@@ -50,7 +50,9 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
-		/// Add a value to the list.  If the list does not exist, create it using specified userModule configuration.
+		/// Add value to list.  Fail if value's key exists and list is configured for unique keys.
+		/// If value is a map, the key is identified by "key" entry.  Otherwise, the value is the key.
+		/// If large list does not exist, create it using specified userModule configuration.
 		/// </summary>
 		/// <param name="value">value to add</param>
 		public void Add(Value value)
@@ -59,7 +61,9 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
-		/// Add values to the list.  If the list does not exist, create it using specified userModule configuration.
+		/// Add values to list.  Fail if a value's key exists and list is configured for unique keys.
+		/// If value is a map, the key is identified by "key" entry.  Otherwise, the value is the key.
+		/// If large list does not exist, create it using specified userModule configuration.
 		/// </summary>
 		/// <param name="values">values to add</param>
 		public void Add(params Value[] values)
@@ -68,7 +72,9 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
-		/// Add values to the list.  If the list does not exist, create it using specified userModule configuration.
+		/// Add values to list.  Fail if a value's key exists and list is configured for unique keys.
+		/// If value is a map, the key is identified by "key" entry.  Otherwise, the value is the key.
+		/// If large list does not exist, create it using specified userModule configuration.
 		/// </summary>
 		/// <param name="values">values to add</param>
 		public void Add(IList values)
@@ -76,6 +82,39 @@ namespace Aerospike.Client
 			client.Execute(policy, key, PackageName, "add_all", binName, Value.GetAsList(values), userModule);
 		}
 		
+		/// <summary>
+		/// Update value in list if key exists.  Add value to list if key does not exist.
+		/// If value is a map, the key is identified by "key" entry.  Otherwise, the value is the key.
+		/// If large list does not exist, create it using specified userModule configuration.
+		/// </summary>
+		/// <param name="value">value to update</param>
+		public void Update(Value value)
+		{
+			client.Execute(policy, key, PackageName, "update", binName, value, userModule);
+		}
+
+		/// <summary>
+		/// Update/Add each value in array depending if key exists or not.
+		/// If value is a map, the key is identified by "key" entry.  Otherwise, the value is the key.
+		/// If large list does not exist, create it using specified userModule configuration.
+		/// </summary>
+		/// <param name="values">values to update</param>
+		public void Update(params Value[] values)
+		{
+			client.Execute(policy, key, PackageName, "update_all", binName, Value.Get(values), userModule);
+		}
+
+		/// <summary>
+		/// Update/Add each value in values list depending if key exists or not.
+		/// If value is a map, the key is identified by "key" entry.  Otherwise, the value is the key.
+		/// If large list does not exist, create it using specified userModule configuration.
+		/// </summary>
+		/// <param name="values">values to update</param>
+		public void Update(IList values)
+		{
+			client.Execute(policy, key, PackageName, "update_all", binName, Value.GetAsList(values), userModule);
+		}
+
 		/// <summary>
 		/// Delete value from list.
 		/// </summary>

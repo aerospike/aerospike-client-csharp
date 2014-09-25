@@ -39,8 +39,94 @@ namespace Aerospike.Demo
 				return;
 			}
 
+			RunSimpleExample(client, args);
 			RunWithDistinctBins(client, args);
 			RunWithSerializedBin(client, args);
+		}
+
+		/// <summary>
+		/// Simple examples of large list functionality.
+		/// </summary>
+		public void RunSimpleExample(AerospikeClient client, Arguments args)
+		{
+			Key key = new Key(args.ns, args.set, "setkey");
+			string binName = args.GetBinName("ListBin");
+
+			// Delete record if it already exists.
+			client.Delete(args.writePolicy, key);
+
+			// Initialize large set operator.
+			Aerospike.Client.LargeList llist = client.GetLargeList(args.policy, key, binName, null);
+			string orig1 = "llistValue1";
+			string orig2 = "llistValue2";
+			string orig3 = "llistValue3";
+
+			// Write values.
+			llist.Add(Value.Get(orig1));
+			llist.Add(Value.Get(orig2));
+			llist.Add(Value.Get(orig3));
+
+			IDictionary map = llist.GetConfig();
+
+			foreach (DictionaryEntry entry in map)
+			{
+				console.Info(entry.Key.ToString() + ',' + entry.Value);
+			}
+
+			IList rangeList = llist.Range(Value.Get(orig2), Value.Get(orig3));
+
+			if (rangeList == null)
+			{
+				throw new Exception("Range returned null.");
+			}
+
+			if (rangeList.Count != 2)
+			{
+				throw new Exception("Range Size mismatch. Expected 2 Received " + rangeList.Count);
+			}
+			string v2 = (string) rangeList[0];
+			string v3 = (string) rangeList[1];
+
+			if (v2.Equals(orig2) && v3.Equals(orig3))
+			{
+				console.Info("Range Query matched: v2=" + orig2 + " v3=" + orig3);
+			}
+			else
+			{
+				throw new Exception("Range Content mismatch. Expected (" + orig2 + ":" + orig3 +
+					") Received (" + v2 + ":" + v3 + ")");
+			}
+
+			// Remove last value.
+			llist.Remove(Value.Get(orig3));
+
+			int size = llist.Size();
+
+			if (size != 2)
+			{
+				throw new Exception("Size mismatch. Expected 2 Received " + size);
+			}
+
+			IList listReceived = llist.Find(Value.Get(orig2));
+			string expected = orig2;
+
+			if (listReceived == null)
+			{
+				console.Error("Data mismatch: Expected " + expected + " Received null");
+				return;
+			}
+
+			string stringReceived = (string) listReceived[0];
+
+			if (stringReceived != null && stringReceived.Equals(expected))
+			{
+				console.Info("Data matched: namespace=" + key.ns + " set=" + key.setName + " key=" + key.userKey +
+					" value=" + stringReceived);
+			}
+			else
+			{
+				console.Error("Data mismatch: Expected " + expected + " Received " + stringReceived);
+			}
 		}
 
 		/// <summary>
