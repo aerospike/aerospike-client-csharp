@@ -99,6 +99,7 @@
     <Compile Include="Async\AsyncTouch.cs" />
     <Compile Include="Async\BufferPool.cs" />
     <Compile Include="BCrypt\SaltParseException.cs" />
+    <Compile Include="Cluster\PartitionInfo.cs" />
     <Compile Include="Command\BatchCommandNodeGet.cs" />
     <Compile Include="Command\BatchCommandNodeExists.cs" />
     <Compile Include="Command\AdminCommand.cs" />
@@ -141,8 +142,6 @@
     <Compile Include="Cluster\Node.cs" />
     <Compile Include="Cluster\NodeValidator.cs" />
     <Compile Include="Cluster\Partition.cs" />
-    <Compile Include="Cluster\PartitionTokenizerNew.cs" />
-    <Compile Include="Cluster\PartitionTokenizerOld.cs" />
     <Compile Include="Command\BatchCommandExists.cs" />
     <Compile Include="Command\BatchCommandGet.cs" />
     <Compile Include="Command\BatchExecutor.cs" />

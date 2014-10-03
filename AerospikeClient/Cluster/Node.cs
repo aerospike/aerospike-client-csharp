@@ -43,7 +43,6 @@ namespace Aerospike.Client
 		private int partitionGeneration = -1;
 		protected internal int referenceCount;
 		protected internal bool responded;
-		protected internal readonly bool useNewInfo;
 		protected internal volatile bool active = true;
 
 		/// <summary>
@@ -57,7 +56,6 @@ namespace Aerospike.Client
 			this.name = nv.name;
 			this.aliases = nv.aliases;
 			this.address = nv.address;
-			this.useNewInfo = nv.useNewInfo;
 
 			// Assign host to first IP alias because the server identifies nodes 
 			// by IP address (not hostname). 
@@ -208,8 +206,7 @@ namespace Aerospike.Client
 				{
 					Log.Debug("Node " + this + " partition generation " + generation + " changed.");
 				}
-				cluster.UpdatePartitions(conn, this);
-				partitionGeneration = generation;
+				partitionGeneration = cluster.UpdatePartitions(conn, this);
 			}
 		}
 

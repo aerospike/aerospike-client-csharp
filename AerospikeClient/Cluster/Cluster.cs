@@ -283,25 +283,17 @@ namespace Aerospike.Client
 			}
 		}
 
-		protected internal void UpdatePartitions(Connection conn, Node node)
+		protected internal int UpdatePartitions(Connection conn, Node node)
 		{
-			Dictionary<string, Node[]> map;
-
-			if (node.useNewInfo)
-			{
-				PartitionTokenizerNew tokens = new PartitionTokenizerNew(conn);
-				map = tokens.UpdatePartition(partitionWriteMap, node);
-			}
-			else
-			{
-				PartitionTokenizerOld tokens = new PartitionTokenizerOld(conn);
-				map = tokens.UpdatePartition(partitionWriteMap, node);
-			}
+			PartitionInfo info = new PartitionInfo(conn, "partition-generation", "replicas-master");
+			int generation = info.ParseGeneration();
+			Dictionary<String, Node[]> map = info.ParsePartitions(partitionWriteMap, node);
 
 			if (map != null)
 			{
 				partitionWriteMap = map;
 			}
+			return generation;
 		}
 
 		private void SeedNodes(bool failIfNotConnected)

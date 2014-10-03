@@ -28,7 +28,6 @@ namespace Aerospike.Client
 		internal string name;
 		internal Host[] aliases;
 		internal IPEndPoint address;
-		internal bool useNewInfo = true;
 
 		public NodeValidator(Cluster cluster, Host host)
 		{
@@ -63,26 +62,6 @@ namespace Aerospike.Client
 						{
 							this.name = nodeName;
 							this.address = address;
-
-							// Check new info protocol support for >= 2.6.6 build
-							string buildVersion;
-
-							if (map.TryGetValue("build", out buildVersion))
-							{
-								try
-								{
-									string[] vNumber = buildVersion.Split('.');
-									int v1 = Convert.ToInt32(vNumber[0]);
-									int v2 = Convert.ToInt32(vNumber[1]);
-									int v3 = Convert.ToInt32(vNumber[2]);
-
-									this.useNewInfo = v1 > 2 || (v1 == 2 && (v2 > 6 || (v2 == 6 && v3 >= 6)));
-								}
-								catch (Exception)
-								{
-									// Unexpected exception. Use default info protocol.
-								}
-							}
 							return;
 						}
 					}

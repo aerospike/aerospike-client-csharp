@@ -24,32 +24,50 @@ namespace Aerospike.Client
 	/// Parse node partitions using new protocol. This is more code than a String.split() implementation, 
 	/// but it's faster because there are much fewer interim strings.
 	/// </summary>
-	public sealed class PartitionTokenizerNew
+	public sealed class PartitionInfo
 	{
-		private const string ReplicasName = "replicas-master";
-
 		private readonly byte[] buffer;
 		private int length;
 		private int offset;
 
-		public PartitionTokenizerNew(Connection conn)
+		public PartitionInfo(Connection conn, params string[] names)
 		{
 			// Use low-level info methods and parse byte array directly for maximum performance.
-			// Send format:	   replicas-master\n
-			// Receive format: replicas-master\t<ns1>:<base 64 encoded bitmap>;<ns2>:<base 64 encoded bitmap>... \n
-			Info info = new Info(conn, ReplicasName);
+			// Send format:    partition-generation\nreplicas-master\n
+			// Receive format: partition-generation\t<gen>\nreplicas-master\t<ns1>:<base 64 encoded bitmap>;<ns2>:<base 64 encoded bitmap>... \n
+			Info info = new Info(conn, names);
 			this.length = info.GetLength();
 
 			if (length == 0)
 			{
-				throw new AerospikeException.Parse(ReplicasName + " is empty");
+				throw new AerospikeException.Parse("Partition info is empty");
 			}
 			this.buffer = info.GetBuffer();
-			this.offset = ReplicasName.Length + 1; // Skip past name and tab
 		}
 
-		public Dictionary<string, Node[]> UpdatePartition(Dictionary<string, Node[]> map, Node node)
+		public int ParseGeneration()
 		{
+			ExpectName("partition-generation");
+
+			int begin = offset;
+
+			while (offset < length)
+			{
+				if (buffer[offset] == '\n')
+				{
+					string s = ByteUtil.Utf8ToString(buffer, begin, offset - begin).Trim();
+					offset++;
+					return Convert.ToInt32(s);
+				}
+				offset++;
+			}
+			throw new AerospikeException.Parse("Failed to find partition-generation value");
+		}
+
+		public Dictionary<string, Node[]> ParsePartitions(Dictionary<string, Node[]> map, Node node)
+		{
+			ExpectName("replicas-master");
+			
 			int begin = offset;
 			bool copied = false;
 
@@ -120,6 +138,28 @@ namespace Aerospike.Client
 			return (copied)? map : null;
 		}
 
+		private void ExpectName(string name)
+		{
+			int begin = offset;
+
+			while (offset < length)
+			{
+				if (buffer[offset] == '\t')
+				{
+					string s = ByteUtil.Utf8ToString(buffer, begin, offset - begin).Trim();
+
+					if (name.Equals(s))
+					{
+						offset++;
+						return;
+					}
+					break;
+				}
+				offset++;
+			}
+			throw new AerospikeException.Parse("Failed to find " + name);
+		}
+		
 		private string GetTruncatedResponse()
 		{
 			int max = (length > 200) ? 200 : length;
