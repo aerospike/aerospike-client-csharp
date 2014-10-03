@@ -58,7 +58,6 @@ namespace Aerospike.Client
 
 						// Reflect healthy status.
 						conn.UpdateLastUsed();
-						node.RestoreHealth();
 
 						// Put connection back in pool.
 						node.PutConnection(conn);
@@ -72,7 +71,6 @@ namespace Aerospike.Client
 						{
 							// Put connection back in pool.
 							conn.UpdateLastUsed();
-							node.RestoreHealth();
 							node.PutConnection(conn);
 						}
 						else
@@ -92,9 +90,6 @@ namespace Aerospike.Client
 						{
 							Log.Debug("Node " + node + ": " + Util.GetErrorMessage(ioe));
 						}
-						// IO error means connection to server node is unhealthy.
-						// Reflect this status.
-						node.DecreaseHealth();
 					}
 					catch (Exception)
 					{
@@ -111,9 +106,7 @@ namespace Aerospike.Client
 				}
 				catch (AerospikeException.Connection ce)
 				{
-					// Socket connection error has occurred. Decrease health and retry.
-					node.DecreaseHealth();
-
+					// Socket connection error has occurred. Retry.
 					if (Log.DebugEnabled())
 					{
 						Log.Debug("Node " + node + ": " + Util.GetErrorMessage(ce));

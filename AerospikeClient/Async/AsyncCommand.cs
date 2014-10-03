@@ -425,11 +425,6 @@ namespace Aerospike.Client
 
 		private void ResetConnection()
 		{
-			if (node != null)
-			{
-				node.DecreaseHealth();
-			}
-
 			if (watch != null)
 			{
 				// A lock on reset is required when a client timeout is specified.
@@ -490,7 +485,6 @@ namespace Aerospike.Client
 			{
 				conn.UpdateLastUsed();
 				node.PutAsyncConnection(conn);
-				node.RestoreHealth();
 
 				// Do not put large buffers back into pool.
 				if (dataBuffer.Length > BufferPool.BUFFER_CUTOFF)
@@ -562,7 +556,6 @@ namespace Aerospike.Client
 					// Put connection back in pool.
 					conn.UpdateLastUsed();
 					node.PutAsyncConnection(conn);
-					node.RestoreHealth();
 					PutBackArgsOnError();
 				}
 				else
@@ -587,10 +580,6 @@ namespace Aerospike.Client
 
 		private void CloseOnNetworkError()
 		{
-			if (node != null)
-			{
-				node.DecreaseHealth();
-			}
 			Close();
 		}
 

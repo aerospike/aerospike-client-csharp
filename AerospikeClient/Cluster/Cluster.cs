@@ -240,7 +240,6 @@ namespace Aerospike.Client
 			foreach (Node node in nodes)
 			{
 				node.referenceCount = 0;
-				node.responded = false;
 			}
 
 			// Refresh all known nodes.
@@ -254,11 +253,14 @@ namespace Aerospike.Client
 					if (node.Active)
 					{
 						node.Refresh(friendList);
+						node.failures = 0;
 						refreshCount++;
 					}
 				}
 				catch (Exception e)
 				{
+					node.failures++;
+
 					if (tendValid && Log.InfoEnabled())
 					{
 						Log.Info("Node " + node + " refresh failed: " + Util.GetErrorMessage(e));
@@ -296,7 +298,7 @@ namespace Aerospike.Client
 			return generation;
 		}
 
-		private void SeedNodes(bool failIfNotConnected)
+		private bool SeedNodes(bool failIfNotConnected)
 		{
 			// Must copy array reference for copy on write semantics to work.
 			Host[] seedArray = seeds;
@@ -308,9 +310,16 @@ namespace Aerospike.Client
 			for (int i = 0; i < seedArray.Length; i++)
 			{
 				Host seed = seedArray[i];
-				
+
+				// Check if seed already exists in cluster.
+				if (aliases.ContainsKey(seed))
+				{
+					continue;
+				}
+
 				try
 				{
+					// Try to communicate with seed.
 					NodeValidator seedNodeValidator = new NodeValidator(this, seed);
 
 					// Seed host may have multiple aliases in the case of round-robin dns configurations.
@@ -357,6 +366,7 @@ namespace Aerospike.Client
 			if (list.Count > 0)
 			{
 				AddNodesCopy(list);
+				return true;
 			}
 			else if (failIfNotConnected)
 			{
@@ -377,6 +387,7 @@ namespace Aerospike.Client
 				}
 				throw new AerospikeException.Connection(sb.ToString());
 			}
+			return false;
 		}
 
 		private static bool FindNodeName(List<Node> list, string name)
@@ -448,16 +459,20 @@ namespace Aerospike.Client
 				switch (nodes.Length)
 				{
 				case 1:
-					// Single node clusters rely solely on node health.
-					if (node.Unhealthy)
+					// Single node clusters rely on whether it responded to info requests.
+					if (node.failures >= 5)
 					{
-						removeList.Add(node);
+						// 5 consecutive info requests failed. Try seeds.
+						if (SeedNodes(false))
+						{
+							removeList.Add(node);
+						}
 					}
 					break;
 
 				case 2:
 					// Two node clusters require at least one successful refresh before removing.
-					if (refreshCount == 1 && node.referenceCount == 0 && !node.responded)
+					if (refreshCount == 1 && node.referenceCount == 0 && node.failures > 0)
 					{
 						// Node is not referenced nor did it respond.
 						removeList.Add(node);
@@ -470,13 +485,13 @@ namespace Aerospike.Client
 					{
 						// Node is not referenced by other nodes.
 						// Check if node responded to info request.
-						if (node.responded)
+						if (node.failures == 0)
 						{
 							// Node is alive, but not referenced by other nodes.  Check if mapped.
 							if (!FindNodeInPartitionMap(node))
 							{
 								// Node doesn't have any partitions mapped to it.
-								// There is not point in keeping it in the cluster.
+								// There is no point in keeping it in the cluster.
 								removeList.Add(node);
 							}
 						}

@@ -31,7 +31,6 @@ namespace Aerospike.Client
 		/// Number of partitions for each namespace.
 		/// </summary>
 		public const int PARTITIONS = 4096;
-		private const int FULL_HEALTH = 100;
 
 		protected internal readonly Cluster cluster;
 		private readonly string name;
@@ -39,10 +38,9 @@ namespace Aerospike.Client
 		private Host[] aliases;
 		protected internal readonly IPEndPoint address;
 		private readonly BlockingCollection<Connection> connectionQueue;
-		private int health = FULL_HEALTH;
 		private int partitionGeneration = -1;
 		protected internal int referenceCount;
-		protected internal bool responded;
+		protected internal int failures;
 		protected internal volatile bool active = true;
 
 		/// <summary>
@@ -83,8 +81,6 @@ namespace Aerospike.Client
 			{
 				Dictionary<string, string> infoMap = Info.Request(conn, "node", "partition-generation", "services");
 				VerifyNodeName(infoMap);
-				RestoreHealth();
-				responded = true;
 
 				if (AddFriends(infoMap, friends))
 				{
@@ -95,7 +91,6 @@ namespace Aerospike.Client
 			catch (Exception)
 			{
 				conn.Close();
-				DecreaseHealth();
 				throw;
 			}
 		}
@@ -109,7 +104,6 @@ namespace Aerospike.Client
 
 			if (infoName == null || infoName.Length == 0)
 			{
-				DecreaseHealth();
 				throw new AerospikeException.Parse("Node name is empty");
 			}
 
@@ -265,35 +259,6 @@ namespace Aerospike.Client
 			if (!active || !connectionQueue.TryAdd(conn))
 			{
 				conn.Close();
-			}
-		}
-
-		/// <summary>
-		/// Set node status as healthy after successful database operation.
-		/// </summary>
-		public void RestoreHealth()
-		{
-			// There can be cases where health is full, but active is false.
-			// Once a node has been marked inactive, it stays inactive.
-			health = FULL_HEALTH;
-		}
-
-		/// <summary>
-		/// Decrease server health status after a connection failure.
-		/// </summary>
-		public void DecreaseHealth()
-		{
-			Interlocked.Decrement(ref health);
-		}
-
-		/// <summary>
-		/// Has consecutive node connection errors become critical. 
-		/// </summary>
-		public bool Unhealthy
-		{
-			get
-			{
-				return health <= 0;
 			}
 		}
 
