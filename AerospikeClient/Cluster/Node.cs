@@ -87,8 +87,11 @@ namespace Aerospike.Client
 				VerifyNodeName(infoMap);
 				RestoreHealth();
 				responded = true;
-				AddFriends(infoMap, friends);
-				UpdatePartitions(conn, infoMap);
+
+				if (AddFriends(infoMap, friends))
+				{
+					UpdatePartitions(conn, infoMap);
+				}
 				PutConnection(conn);
 			}
 			catch (Exception)
@@ -121,14 +124,27 @@ namespace Aerospike.Client
 			}
 		}
 
-		private void AddFriends(Dictionary<string, string> infoMap, List<Host> friends)
+		private bool AddFriends(Dictionary<string, string> infoMap, List<Host> friends)
 		{
 			// Parse the service addresses and add the friends to the list.
 			string friendString = infoMap["services"];
 
 			if (friendString == null || friendString.Length == 0)
 			{
-				return;
+				// Detect "split cluster" case where this node thinks it's a 1-node cluster.
+				// Unchecked, such a node can dominate the partition map and cause all other
+				// nodes to be dropped.
+				int nodeCount = cluster.Nodes.Length;
+
+				if (nodeCount > 2)
+				{
+					if (Log.WarnEnabled())
+					{
+						Log.Warn("Node " + this + " thinks it owns cluster, but client sees " + nodeCount + " nodes.");
+					}
+					return false;
+				}
+				return true;
 			}
 
 			string[] friendNames = friendString.Split(';');
@@ -160,6 +176,7 @@ namespace Aerospike.Client
 					}
 				}
 			}
+			return true;
 		}
 
 		private static bool FindAlias(List<Host> friends, Host alias)
