@@ -215,10 +215,20 @@ namespace Aerospike.Client
 		public const int INVALID_PASSWORD = 62;
 
 		/// <summary>
+		/// Password has expired.
+		/// </summary>
+		public const int EXPIRED_PASSWORD = 63;
+
+		/// <summary>
+		/// Forbidden password (e.g. recently used)
+		/// </summary>
+		public const int FORBIDDEN_PASSWORD = 64;
+
+		/// <summary>
 		/// Security credential is invalid.
 		/// </summary>
-		public const int INVALID_CREDENTIAL = 63;
-
+		public const int INVALID_CREDENTIAL = 65;
+	
 		/// <summary>
 		/// Role name is invalid.
 		/// </summary>
@@ -451,6 +461,12 @@ namespace Aerospike.Client
 
 			case INVALID_PASSWORD:
 				return "Invalid password";
+
+			case EXPIRED_PASSWORD:
+				return "Password expired";
+
+			case FORBIDDEN_PASSWORD:
+				return "Password can't be reused";
 
 			case INVALID_CREDENTIAL:
 				return "Invalid credential";
