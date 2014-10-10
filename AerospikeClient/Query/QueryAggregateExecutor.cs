@@ -39,6 +39,7 @@ namespace Aerospike.Client
 			inputQueue = new BlockingCollection<object>(500);
 			resultSet = new ResultSet(this, policy.recordQueueSize);
 			statement.SetAggregateFunction(packageName, functionName, functionArgs, true);
+			statement.Prepare();
 			resetEvent = new ManualResetEvent(false);
 		}
 

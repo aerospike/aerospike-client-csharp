@@ -37,12 +37,7 @@ namespace Aerospike.Client
 		)
 		{
 			statement.SetAggregateFunction(packageName, functionName, functionArgs, false);
-
-			if (statement.taskId == 0)
-			{
-				Random r = new Random();
-				statement.taskId = r.Next();
-			}
+			statement.Prepare();
 
 			Node[] nodes = cluster.Nodes;
 			if (nodes.Length == 0)

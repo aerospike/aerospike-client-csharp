@@ -24,6 +24,7 @@ namespace Aerospike.Client
 			: base(cluster, policy, statement)
 		{
 			this.recordSet = new RecordSet(this, policy.recordQueueSize);
+			statement.Prepare();
 		}
 
 		public void Execute()

@@ -14,6 +14,8 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
+using System;
+
 namespace Aerospike.Client
 {
 	/// <summary>
@@ -29,7 +31,7 @@ namespace Aerospike.Client
 		internal string packageName;
 		internal string functionName;
 		internal Value[] functionArgs;
-		internal int taskId;
+		internal long taskId;
 		internal bool returnData;
 
 		/// <summary>
@@ -80,7 +82,7 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Set optional query task id.
 		/// </summary>
-		public void TaskId(int taskId)
+		public void SetTaskId(long taskId)
 		{
 			this.taskId = taskId;
 		}
@@ -99,6 +101,17 @@ namespace Aerospike.Client
 			this.functionName = functionName;
 			this.functionArgs = functionArgs;
 			this.returnData = returnData;
+		}
+
+		/// <summary>
+		/// Prepare statement just prior to execution.
+		/// </summary>
+		internal void Prepare()
+		{
+			if (taskId == 0)
+			{
+				taskId = Environment.TickCount;
+			}
 		}
 	}
 }
