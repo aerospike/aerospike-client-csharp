@@ -382,6 +382,8 @@ namespace Aerospike.Client
 
 		public void SetScan(ScanPolicy policy, string ns, string setName, string[] binNames)
 		{
+			long taskId = Environment.TickCount;
+
 			Begin();
 			int fieldCount = 0;
 
@@ -399,6 +401,10 @@ namespace Aerospike.Client
 
 			// Estimate scan options size.
 			dataOffset += 2 + FIELD_HEADER_SIZE;
+			fieldCount++;
+
+			// Estimate taskId size.
+			dataOffset += 8 + FIELD_HEADER_SIZE;
 			fieldCount++;
 
 			if (binNames != null)
@@ -440,6 +446,11 @@ namespace Aerospike.Client
 			}
 			dataBuffer[dataOffset++] = priority;
 			dataBuffer[dataOffset++] = (byte)policy.scanPercent;
+
+			// Write taskId field
+			WriteFieldHeader(8, FieldType.TRAN_ID);
+			ByteUtil.LongToBytes((ulong)taskId, dataBuffer, dataOffset);
+			dataOffset += 8;
 
 			if (binNames != null)
 			{

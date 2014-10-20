@@ -94,11 +94,9 @@ namespace Aerospike.Client
 				fieldCount++;
 			}
 
-			if (statement.taskId > 0)
-			{
-				dataOffset += 8 + FIELD_HEADER_SIZE;
-				fieldCount++;
-			}
+			// Allocate space for TaskId field.
+			dataOffset += 8 + FIELD_HEADER_SIZE;
+			fieldCount++;
 
 			if (statement.functionName != null)
 			{
@@ -183,12 +181,10 @@ namespace Aerospike.Client
 				dataBuffer[dataOffset++] = (byte)100;
 			}
 
-			if (statement.taskId > 0)
-			{
-				WriteFieldHeader(8, FieldType.TRAN_ID);
-				ByteUtil.LongToBytes((ulong)statement.taskId, dataBuffer, dataOffset);
-				dataOffset += 8;
-			}
+			// Write taskId field
+			WriteFieldHeader(8, FieldType.TRAN_ID);
+			ByteUtil.LongToBytes((ulong)statement.taskId, dataBuffer, dataOffset);
+			dataOffset += 8;
 
 			if (statement.functionName != null)
 			{
