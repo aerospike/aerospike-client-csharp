@@ -135,7 +135,8 @@ namespace Aerospike.Client
 		/// </summary>
 		public int Size()
 		{
-			return (int)(long)client.Execute(policy, key, PackageName, "size", binName);
+			object result = client.Execute(policy, key, PackageName, "size", binName);
+			return (result != null) ? (int)(long)result : 0;
 		}
 
 		/// <summary>
@@ -160,7 +161,8 @@ namespace Aerospike.Client
 		/// </summary>
 		public int GetCapacity()
 		{
-			return (int)(long)client.Execute(policy, key, PackageName, "get_capacity", binName);
+			object result = client.Execute(policy, key, PackageName, "get_capacity", binName);
+			return (result != null) ? (int)(long)result : 0;
 		}
 	}
 }
