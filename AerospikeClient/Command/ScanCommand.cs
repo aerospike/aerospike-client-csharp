@@ -26,6 +26,7 @@ namespace Aerospike.Client
 		private readonly string setName;
 		private readonly ScanCallback callback;
 		private readonly string[] binNames;
+		private readonly long taskId;
 
 		public ScanCommand
 		(
@@ -34,7 +35,8 @@ namespace Aerospike.Client
 			string ns,
 			string setName,
 			ScanCallback callback,
-			string[] binNames
+			string[] binNames,
+			long taskId
 		) : base(node)
 		{
 			this.policy = policy;
@@ -42,6 +44,7 @@ namespace Aerospike.Client
 			this.setName = setName;
 			this.callback = callback;
 			this.binNames = binNames;
+			this.taskId = taskId;
 		}
 
 		protected internal override Policy GetPolicy()
@@ -51,7 +54,7 @@ namespace Aerospike.Client
 
 		protected internal override void WriteBuffer()
 		{
-			SetScan(policy, ns, setName, binNames);
+			SetScan(policy, ns, setName, binNames, taskId);
 		}
 
 		protected internal override bool ParseRecordResults(int receiveSize)

@@ -769,8 +769,9 @@ namespace Aerospike.Client
 			}
 			// Retry policy must be one-shot for scans.
 			policy.maxRetries = 0;
+			long taskId = Environment.TickCount;
 
-			ScanCommand command = new ScanCommand(node, policy, ns, setName, callback, binNames);
+			ScanCommand command = new ScanCommand(node, policy, ns, setName, callback, binNames, taskId);
 			command.Execute();
 		}
 

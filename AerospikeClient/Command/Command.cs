@@ -380,10 +380,8 @@ namespace Aerospike.Client
 			End();
 		}
 
-		public void SetScan(ScanPolicy policy, string ns, string setName, string[] binNames)
+		public void SetScan(ScanPolicy policy, string ns, string setName, string[] binNames, long taskId)
 		{
-			long taskId = Environment.TickCount;
-
 			Begin();
 			int fieldCount = 0;
 

@@ -40,10 +40,11 @@ namespace Aerospike.Client
 		{
 			// Initialize threads.		
 			threads = new ScanThread[nodes.Length];
+			long taskId = Environment.TickCount;
 
 			for (int i = 0; i < nodes.Length; i++)
 			{
-				ScanCommand command = new ScanCommand(nodes[i], policy, ns, setName, callback, binNames);
+				ScanCommand command = new ScanCommand(nodes[i], policy, ns, setName, callback, binNames, taskId);
 				threads[i] = new ScanThread(this, command);
 			}
 

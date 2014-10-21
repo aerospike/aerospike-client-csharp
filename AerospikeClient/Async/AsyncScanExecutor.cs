@@ -14,6 +14,8 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
+using System;
+
 namespace Aerospike.Client
 {
 	public sealed class AsyncScanExecutor : AsyncMultiExecutor
@@ -40,10 +42,11 @@ namespace Aerospike.Client
 			}
 			
 			completedSize = nodes.Length;
+			long taskId = Environment.TickCount;
 
 			foreach (Node node in nodes)
 			{
-				AsyncScan async = new AsyncScan(this, cluster, (AsyncNode)node, policy, listener, ns, setName, binNames);
+				AsyncScan async = new AsyncScan(this, cluster, (AsyncNode)node, policy, listener, ns, setName, binNames, taskId);
 				async.Execute();
 			}
 		}
