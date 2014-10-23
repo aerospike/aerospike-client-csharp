@@ -42,12 +42,13 @@ namespace Aerospike.Demo
 			RunSimpleExample(client, args);
 			RunWithDistinctBins(client, args);
 			RunWithSerializedBin(client, args);
+			RunWithDefaultSerializedBin(client, args);
 		}
 
 		/// <summary>
 		/// Simple examples of large list functionality.
 		/// </summary>
-		public void RunSimpleExample(AerospikeClient client, Arguments args)
+		private void RunSimpleExample(AerospikeClient client, Arguments args)
 		{
 			Key key = new Key(args.ns, args.set, "setkey");
 			string binName = args.GetBinName("ListBin");
@@ -132,7 +133,7 @@ namespace Aerospike.Demo
 		/// <summary>
 		/// Use distinct sub-bins for row in largelist bin. 
 		/// </summary>
-		public void RunWithDistinctBins(AerospikeClient client, Arguments args)
+		private void RunWithDistinctBins(AerospikeClient client, Arguments args)
 		{
 			Key key = new Key(args.ns, args.set, "accountId");
 
@@ -238,7 +239,7 @@ namespace Aerospike.Demo
 		/// <summary>
 		/// Use serialized bin for row in largelist bin. 
 		/// </summary>
-		public void RunWithSerializedBin(AerospikeClient client, Arguments args)
+		private void RunWithSerializedBin(AerospikeClient client, Arguments args)
 		{
 			Key key = new Key(args.ns, args.set, "accountId");
 
@@ -338,6 +339,83 @@ namespace Aerospike.Demo
 			if (expectedPrice != receivedPrice)
 			{
 				throw new Exception("Price mismatch: Expected " + expectedPrice + ". Received " + receivedPrice);
+			}
+		}
+
+		/// <summary>
+		/// Use default serialized bin for row in largelist bin. 
+		/// </summary>
+		private void RunWithDefaultSerializedBin(AerospikeClient client, Arguments args)
+		{
+			Key key = new Key(args.ns, args.set, "accountId");
+			object value1 = new CompoundObject("IBM", 100);
+			object value2 = new CompoundObject("GE", 500);
+			object value3 = new CompoundObject("AAPL", 75);
+
+			// Delete record if it already exists.
+			client.Delete(args.writePolicy, key);
+
+			// Initialize large list operator.
+			Aerospike.Client.LargeList list = client.GetLargeList(args.policy, key, "trades", null);
+
+			// Write trades
+			Dictionary<string, Value> dict = new Dictionary<string, Value>();
+
+			DateTime timestamp1 = new DateTime(2014, 6, 25, 12, 18, 43);
+			dict["key"] = Value.Get(timestamp1.Ticks);
+			dict["value"] = Value.Get(value1);
+			list.Add(Value.GetAsMap(dict));
+
+			DateTime timestamp2 = new DateTime(2014, 6, 26, 9, 33, 17);
+			dict["key"] = Value.Get(timestamp2.Ticks);
+			dict["value"] = Value.Get(value2);
+			list.Add(Value.GetAsMap(dict));
+
+			DateTime timestamp3 = new DateTime(2014, 6, 27, 14, 40, 19);
+			dict["key"] = Value.Get(timestamp3.Ticks);
+			dict["value"] = Value.Get(value3);
+			list.Add(Value.GetAsMap(dict));
+
+			// Verify list size
+			int size = list.Size();
+
+			if (size != 3)
+			{
+				throw new Exception("List size mismatch. Expected 3 Received " + size);
+			}
+
+			// Filter on range of timestamps
+			DateTime begin = new DateTime(2014, 6, 26);
+			DateTime end = new DateTime(2014, 6, 28);
+			IList results = list.Range(Value.Get(begin.Ticks), Value.Get(end.Ticks));
+
+			if (results.Count != 2)
+			{
+				throw new Exception("Query results size mismatch. Expected 2 Received " + results.Count);
+			}
+
+			// Verify data.
+			ValidateDefault(results, 0, timestamp2, value2);
+			ValidateDefault(results, 1, timestamp3, value3);
+
+			console.Info("Data matched.");
+		}
+
+		private static void ValidateDefault(IList list, int index, DateTime expectedTime, object expectedValue)
+		{
+			IDictionary dict = (IDictionary)list[index];
+			DateTime receivedTime = new DateTime((long)dict["key"]);
+
+			if (expectedTime != receivedTime)
+			{
+				throw new Exception("Time mismatch: Expected " + expectedTime + ". Received " + receivedTime);
+			}
+
+			object receivedValue = dict["value"];
+
+			if (!receivedValue.Equals(expectedValue))
+			{
+				throw new Exception(string.Format("Mismatch: expected={0} received={1}", expectedValue, receivedValue));
 			}
 		}
 	}

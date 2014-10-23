@@ -28,7 +28,7 @@ namespace Aerospike.Demo
 		}
 
 		/// <summary>
-		/// Write List and Map objects directly instead of relying on C# serializer.
+		/// Write List and Map objects.
 		/// This functionality is only supported in Aerospike 3.0 servers.
 		/// </summary>
 		public override void RunExample(AerospikeClient client, Arguments args)
@@ -43,10 +43,12 @@ namespace Aerospike.Demo
 			TestMapStrings(client, args);
 			TestMapComplex(client, args);
 			TestListMapCombined(client, args);
+			TestListCompoundBlob(client, args);
+			TestListCompoundList(client, args);
 		}
 
 		/// <summary>
-		/// Write/Read ArrayList<String> directly instead of relying on java serializer.
+		/// Write/Read ArrayList<String> directly instead of relying on default serializer.
 		/// </summary>
 		private void TestListStrings(AerospikeClient client, Arguments args)
 		{
@@ -74,7 +76,7 @@ namespace Aerospike.Demo
 		}
 
 		/// <summary>
-		/// Write/Read ArrayList<Object> directly instead of relying on C# serializer.
+		/// Write/Read ArrayList<Object> directly instead of relying on default serializer.
 		/// </summary>
 		private void TestListComplex(AerospikeClient client, Arguments args)
 		{
@@ -104,7 +106,7 @@ namespace Aerospike.Demo
 		}
 
 		/// <summary>
-		/// Write/Read HashMap<String,String> directly instead of relying on java serializer.
+		/// Write/Read HashMap<String,String> directly instead of relying on default serializer.
 		/// </summary>
 		private void TestMapStrings(AerospikeClient client, Arguments args)
 		{
@@ -132,7 +134,7 @@ namespace Aerospike.Demo
 		}
 
 		/// <summary>
-		/// Write/Read HashMap<Object,Object> directly instead of relying on java serializer.
+		/// Write/Read HashMap<Object,Object> directly instead of relying on default serializer.
 		/// </summary>
 		private void TestMapComplex(AerospikeClient client, Arguments args)
 		{
@@ -176,7 +178,7 @@ namespace Aerospike.Demo
 		}
 
 		/// <summary>
-		/// Write/Read List/HashMap combination directly instead of relying on java serializer.
+		/// Write/Read List/HashMap combination directly instead of relying on default serializer.
 		/// </summary>
 		private void TestListMapCombined(AerospikeClient client, Arguments args)
 		{
@@ -231,6 +233,63 @@ namespace Aerospike.Demo
 			console.Info("Read/Write List/HashMap successful");
 		}
 
+		/// <summary>
+		/// Write/Read list of compound objects using blob for entire list 
+		/// which is slow becauses it uses the default serializer.
+		/// </summary>
+		private void TestListCompoundBlob(AerospikeClient client, Arguments args)
+		{
+			console.Info("Read/Write ArrayList<CompoundObject> using blob");
+			Key key = new Key(args.ns, args.set, "listkey4");
+			client.Delete(args.writePolicy, key);
+
+			List<CompoundObject> list = new List<CompoundObject>();
+			list.Add(new CompoundObject("string1", 7));
+			list.Add(new CompoundObject("string2", 9));
+			list.Add(new CompoundObject("string3", 54));
+
+			Bin bin = new Bin("listbin", list);
+			client.Put(args.writePolicy, key, bin);
+
+			Record record = client.Get(args.policy, key, bin.name);
+			IList receivedList = (IList)record.GetValue(bin.name);
+
+			ValidateSize(3, receivedList.Count);
+			Validate(list[0], receivedList[0]);
+			Validate(list[1], receivedList[1]);
+			Validate(list[2], receivedList[2]);
+
+			console.Info("Read/Write ArrayList<CompoundObject> successful.");
+		}
+
+		/// <summary>
+		/// Write/Read list of compound objects using Aerospike list type with blob entries (Bin.AsList()).
+		/// </summary>
+		private void TestListCompoundList(AerospikeClient client, Arguments args)
+		{
+			console.Info("Read/Write ArrayList<CompoundObject> using list with blob entries");
+			Key key = new Key(args.ns, args.set, "listkey5");
+			client.Delete(args.writePolicy, key);
+
+			List<CompoundObject> list = new List<CompoundObject>();
+			list.Add(new CompoundObject("string1", 7));
+			list.Add(new CompoundObject("string2", 9));
+			list.Add(new CompoundObject("string3", 54));
+
+			Bin bin = Bin.AsList("listbin", list);
+			client.Put(args.writePolicy, key, bin);
+
+			Record record = client.Get(args.policy, key, bin.name);
+			IList receivedList = (IList)record.GetValue(bin.name);
+
+			ValidateSize(3, receivedList.Count);
+			Validate(list[0], receivedList[0]);
+			Validate(list[1], receivedList[1]);
+			Validate(list[2], receivedList[2]);
+
+			console.Info("Read/Write ArrayList<CompoundObject> successful.");
+		}
+
 		private static void ValidateSize(int expected, int received)
 		{
 			if (received != expected)
@@ -256,6 +315,30 @@ namespace Aerospike.Demo
 			{
 				throw new Exception(string.Format("Mismatch: expected={0} received={1}", expectedString, receivedString));
 			}
+		}
+	}
+
+	[Serializable]
+	class CompoundObject
+	{
+		public string a;
+		public int b;
+
+		public CompoundObject(string a, int b)
+		{
+			this.a = a;
+			this.b = b;
+		}
+
+		public override bool Equals(object other)
+		{
+			CompoundObject o = (CompoundObject)other;
+			return this.a.Equals(o.a) && this.b == o.b;
+		}
+
+		public override int GetHashCode()
+		{
+			return a.GetHashCode() + b;
 		}
 	}
 }

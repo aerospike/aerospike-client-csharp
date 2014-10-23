@@ -447,7 +447,6 @@ namespace Aerospike.Client
 			public override int EstimateSize()
 			{
 				return bytes.Length;
-
 			}
 
 			public override int Write(byte[] buffer, int offset)
@@ -502,7 +501,6 @@ namespace Aerospike.Client
 			public override int EstimateSize()
 			{
 				return length;
-
 			}
 
 			public override int Write(byte[] buffer, int targetOffset)
@@ -1217,7 +1215,9 @@ namespace Aerospike.Client
 
 			public override void Pack(Packer packer)
 			{
-				packer.PackBlob(bytes);
+				// Do not try to pack bytes field because it will be null
+				// when packing objects in a collection (ie. EstimateSize() not called).
+				packer.PackBlob(obj);
 			}
 
 			public override int Type

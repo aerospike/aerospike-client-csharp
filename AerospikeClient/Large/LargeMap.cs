@@ -63,7 +63,7 @@ namespace Aerospike.Client
 		/// Add map values to map.  If the map does not exist, create it using specified userModule configuration.
 		/// </summary>
 		/// <param name="map">map values to push</param>
-		public void Put(Dictionary<object,object> map)
+		public void Put(IDictionary map)
 		{
 			client.Execute(policy, key, PackageName, "put_all", binName, Value.GetAsMap(map), userModule);
 		}
