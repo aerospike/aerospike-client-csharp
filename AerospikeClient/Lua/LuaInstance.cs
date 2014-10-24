@@ -30,19 +30,33 @@ namespace Aerospike.Client
 		public LuaInstance()
 		{
 			lua = new Lua();
-			lua["package.path"] = LuaConfig.PackagePath;
-			require = lua.GetFunction("require");
 
-			LuaTable packages = (LuaTable)lua["package.loaded"];
-			LoadSystem(packages, "aslib");
-			LuaBytes.LoadLibrary(lua);
-			LuaList.LoadLibrary(lua);
-			LuaMap.LoadLibrary(lua);
-			LuaStream.LoadLibrary(lua);
-			LoadSystem(packages, "as");
-			LoadSystem(packages, "stream_ops");
-			LoadSystem(packages, "aerospike");
-			LuaAerospike.LoadLibrary(lua);
+			try
+			{
+				lua["package.path"] = LuaConfig.PackagePath;
+				require = lua.GetFunction("require");
+
+				LuaTable packages = (LuaTable)lua["package.loaded"];
+				LoadSystem(packages, "aslib");
+				LuaBytes.LoadLibrary(lua);
+				LuaList.LoadLibrary(lua);
+				LuaMap.LoadLibrary(lua);
+				LuaStream.LoadLibrary(lua);
+				LoadSystem(packages, "as");
+				LoadSystem(packages, "stream_ops");
+				LoadSystem(packages, "aerospike");
+				LuaAerospike.LoadLibrary(lua);
+			}
+			catch (Exception)
+			{
+				lua.Close();
+				throw;
+			}
+		}
+
+		public void Close()
+		{
+			lua.Close();
 		}
 
 		public void LoadSystem(LuaTable packages, string packageName)

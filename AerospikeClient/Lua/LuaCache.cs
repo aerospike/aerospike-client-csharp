@@ -36,7 +36,10 @@ namespace Aerospike.Client
 
 		public static void PutInstance(LuaInstance instance)
 		{
-			InstanceQueue.TryAdd(instance);
+			if (!InstanceQueue.TryAdd(instance))
+			{
+				instance.Close();
+			}
 		}
 	}
 }

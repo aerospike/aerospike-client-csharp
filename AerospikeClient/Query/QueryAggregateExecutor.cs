@@ -67,11 +67,11 @@ namespace Aerospike.Client
 		{
 			LuaInstance lua = LuaCache.GetInstance();
 
-			// Start thread queries to each node.
-			StartThreads();
-
 			try
 			{
+				// Start thread queries to each node.
+				StartThreads();
+
 				lua.Load(statement.packageName);
 
 				object[] args = new object[4 + statement.functionArgs.Length];
