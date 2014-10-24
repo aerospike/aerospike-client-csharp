@@ -128,7 +128,11 @@ namespace Aerospike.Client
 			{
 				object key = UnpackObject();
 				object val = UnpackObject();
-				dict[key] = val;
+
+				if (key != null)
+				{
+					dict[key] = val;
+				}
 			}
 
 			#if (! LITE)
