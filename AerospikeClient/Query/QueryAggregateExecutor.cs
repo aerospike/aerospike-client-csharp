@@ -24,7 +24,6 @@ namespace Aerospike.Client
 	{
 		private readonly BlockingCollection<object> inputQueue;
 		private readonly ResultSet resultSet;
-		private readonly ManualResetEvent resetEvent;
 
 		public QueryAggregateExecutor
 		(
@@ -40,7 +39,6 @@ namespace Aerospike.Client
 			resultSet = new ResultSet(this, policy.recordQueueSize);
 			statement.SetAggregateFunction(packageName, functionName, functionArgs, true);
 			statement.Prepare();
-			resetEvent = new ManualResetEvent(false);
 		}
 
 		public void Execute()
@@ -60,7 +58,6 @@ namespace Aerospike.Client
 			{
 				StopThreads(e);
 			}
-			resetEvent.Set();
 		}
 
 		public void RunThreads()
@@ -89,6 +86,8 @@ namespace Aerospike.Client
 			}
 			finally
 			{
+				// Send end command to user's result set.
+				resultSet.Put(ResultSet.END);
 				LuaCache.PutInstance(lua);
 			}
 		}
@@ -98,25 +97,33 @@ namespace Aerospike.Client
 			return new QueryAggregateCommand(node, policy, statement, inputQueue);
 		}
 
+		protected internal override void SendCancel()
+		{
+			// Send end command to lua thread.
+			while (! inputQueue.TryAdd(null))
+			{
+				// Queue must be full. Remove one item to make room.
+				object obj;
+				inputQueue.TryTake(out obj);
+			}
+		}
+
 		protected internal override void SendCompleted()
 		{
-			try
+			// Send end command to lua thread.
+			// It's critical that the end put succeeds.
+			// Loop through all interrupts.
+			while (true)
 			{
-				// Send end command to lua thread.
-				inputQueue.Add(null);
-
-				// Ensure lua thread completes before sending end command to result set.
-				if (exception == null)
+				try
 				{
-					resetEvent.WaitOne(1000);
+					inputQueue.Add(null);
+					break;
+				}
+				catch (ThreadInterruptedException)
+				{
 				}
 			}
-			catch (ThreadInterruptedException)
-			{
-			}
-
-			// Send end command to user's result set.
-			resultSet.Put(ResultSet.END);
 		}
 
 		public ResultSet ResultSet

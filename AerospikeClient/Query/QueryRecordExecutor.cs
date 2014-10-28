@@ -37,6 +37,11 @@ namespace Aerospike.Client
 			return new QueryRecordCommand(node, policy, statement, recordSet);
 		}
 
+		protected internal override void SendCancel()
+		{
+			recordSet.Put(RecordSet.END);
+		}
+		
 		protected internal override void SendCompleted()
 		{
 			recordSet.Put(RecordSet.END);

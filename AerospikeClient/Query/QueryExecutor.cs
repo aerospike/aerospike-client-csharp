@@ -28,6 +28,7 @@ namespace Aerospike.Client
 		protected volatile Exception exception;
 		private readonly int maxConcurrentNodes;
 		private int completedCount;
+		private int done;
 
 		public QueryExecutor(Cluster cluster, QueryPolicy policy, Statement statement)
 		{
@@ -73,7 +74,7 @@ namespace Aerospike.Client
 				int nextThread = finished + maxConcurrentNodes - 1;
 
 				// Determine if a new thread needs to be started.
-				if (nextThread < threads.Length)
+				if (nextThread < threads.Length && done == 0)
 				{
 					// Start new thread.
 					ThreadPool.QueueUserWorkItem(threads[nextThread].Run);
@@ -81,35 +82,34 @@ namespace Aerospike.Client
 			}
 			else
 			{
-				// All threads complete.  Tell RecordSet thread to return complete to user.
-				SendCompleted();
+				// All threads complete.  Tell RecordSet thread to return complete to user
+				// if an exception has not already occurred.
+				if (Interlocked.Exchange(ref done, 1) == 0)
+				{
+					SendCompleted();
+				}
 			}
 		}
 
 		protected internal void StopThreads(Exception cause)
 		{
-			// Exception may be null, so can't synchronize on it.
-			// Use statement instead.
-			lock (statement)
+			// There is no need to stop threads if all threads have already completed.
+			if (Interlocked.Exchange(ref done, 1) == 0)
 			{
-				if (exception != null)
-				{
-					return;
-				}
 				exception = cause;
-			}
 
-			foreach (QueryThread thread in threads)
-			{
-				try
+				foreach (QueryThread thread in threads)
 				{
-					thread.Stop();
+					try
+					{
+						thread.Stop();
+					}
+					catch (Exception)
+					{
+					}
 				}
-				catch (Exception)
-				{
-				}
+				SendCancel();
 			}
-			SendCompleted();
 		}
 
 		protected internal void CheckForException()
@@ -150,16 +150,12 @@ namespace Aerospike.Client
 					{
 						command.Execute();
 					}
+					parent.ThreadCompleted();
 				}
 				catch (Exception e)
 				{
 					// Terminate other query threads.
 					parent.StopThreads(e);
-				}
-
-				if (parent.exception == null)
-				{
-					parent.ThreadCompleted();
 				}
 			}
 
@@ -175,6 +171,7 @@ namespace Aerospike.Client
 		}
 
 		protected internal abstract QueryCommand CreateCommand(Node node);
+		protected internal abstract void SendCancel();
 		protected internal abstract void SendCompleted();
 	}
 }

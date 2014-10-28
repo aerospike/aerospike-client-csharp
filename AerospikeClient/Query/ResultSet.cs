@@ -80,10 +80,14 @@ namespace Aerospike.Client
 		{
 			valid = false;
 
+			// Check if more results are available.
 			if (row != END)
 			{
-				// Some query threads may still be running. Stop these threads.
-				executor.StopThreads(new AerospikeException.QueryTerminated());
+				if (queue.TryTake(out row) && row != END)
+				{
+					// Some query threads may still be running. Stop these threads.
+					executor.StopThreads(new AerospikeException.QueryTerminated());
+				}
 			}
 		}
 
