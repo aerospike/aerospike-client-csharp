@@ -104,6 +104,7 @@
     <Compile Include="Command\BatchCommandNodeExists.cs" />
     <Compile Include="Command\AdminCommand.cs" />
     <Compile Include="Command\ExecuteCommand.cs" />
+    <Compile Include="Command\Executor.cs" />
     <Compile Include="Command\OperateCommand.cs" />
     <Compile Include="Command\ReadHeaderCommand.cs" />
     <Compile Include="Command\ExistsCommand.cs" />
@@ -155,7 +156,6 @@
     <Compile Include="Command\ParticleType.cs" />
     <Compile Include="Command\ReadCommand.cs" />
     <Compile Include="Command\ScanCommand.cs" />
-    <Compile Include="Command\ScanExecutor.cs" />
     <Compile Include="Command\SingleCommand.cs" />
     <Compile Include="Command\SyncCommand.cs" />
     <Compile Include="Command\WriteCommand.cs" />
@@ -210,7 +210,6 @@
     <Compile Include="Query\QueryRecordExecutor.cs" />
     <Compile Include="Query\RecordSet.cs" />
     <Compile Include="Query\ServerCommand.cs" />
-    <Compile Include="Query\ServerExecutor.cs" />
     <Compile Include="Query\Statement.cs" />
     <Compile Include="Main\Record.cs" />
     <Compile Include="Main\ResultCode.cs" />

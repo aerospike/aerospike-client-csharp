@@ -36,7 +36,7 @@ namespace Aerospike.Client
 		) : base(cluster, policy, statement)
 		{
 			inputQueue = new BlockingCollection<object>(500);
-			resultSet = new ResultSet(this, policy.recordQueueSize);
+			resultSet = new ResultSet(this, policy.recordQueueSize, cancel.Token);
 			statement.SetAggregateFunction(packageName, functionName, functionArgs, true);
 			statement.Prepare();
 		}
@@ -74,7 +74,7 @@ namespace Aerospike.Client
 				object[] args = new object[4 + statement.functionArgs.Length];
 				args[0] = lua.GetFunction(statement.functionName);
 				args[1] = 2;
-				args[2] = new LuaInputStream(inputQueue);
+				args[2] = new LuaInputStream(inputQueue, cancel.Token);
 				args[3] = new LuaOutputStream(resultSet);
 				int count = 4;
 
@@ -94,36 +94,30 @@ namespace Aerospike.Client
 
 		protected internal override QueryCommand CreateCommand(Node node)
 		{
-			return new QueryAggregateCommand(node, policy, statement, inputQueue);
+			return new QueryAggregateCommand(node, policy, statement, inputQueue, cancel.Token);
 		}
 
 		protected internal override void SendCancel()
 		{
 			// Send end command to lua thread.
-			while (! inputQueue.TryAdd(null))
+			// It's critical that the end token add succeeds.
+			while (!inputQueue.TryAdd(null))
 			{
 				// Queue must be full. Remove one item to make room.
-				object obj;
-				inputQueue.TryTake(out obj);
+				object tmp;
+				if (!inputQueue.TryTake(out tmp))
+				{
+					// Can't add or take.  Nothing can be done here.
+					break;
+				}
 			}
 		}
 
 		protected internal override void SendCompleted()
 		{
 			// Send end command to lua thread.
-			// It's critical that the end put succeeds.
-			// Loop through all interrupts.
-			while (true)
-			{
-				try
-				{
-					inputQueue.Add(null);
-					break;
-				}
-				catch (ThreadInterruptedException)
-				{
-				}
-			}
+			// It's critical that the end token add succeeds.
+			inputQueue.Add(null, cancel.Token);
 		}
 
 		public ResultSet ResultSet

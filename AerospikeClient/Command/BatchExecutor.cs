@@ -63,7 +63,7 @@ namespace Aerospike.Client
 			else
 			{
 				// Run batch requests in parallel in separate threads.
-				BatchExecutor executor = new BatchExecutor(cluster, batchNodes.Count * 2);
+				Executor executor = new Executor(batchNodes.Count * 2);
 
 				// Initialize threads.  There may be multiple threads for a single node because the
 				// wire protocol only allows one namespace per command.  Multiple namespaces 
@@ -74,168 +74,18 @@ namespace Aerospike.Client
 					{
 						if (records != null)
 						{
-							executor.Add(new BatchCommandGet(batchNode.node, batchNamespace, policy, keys, binNames, records, readAttr));
+							MultiCommand command = new BatchCommandGet(batchNode.node, batchNamespace, policy, keys, binNames, records, readAttr);
+							executor.AddCommand(command);
 						}
 						else
 						{
-							executor.Add(new BatchCommandExists(batchNode.node, batchNamespace, policy, keys, existsArray));
+							MultiCommand command = new BatchCommandExists(batchNode.node, batchNamespace, policy, keys, existsArray);
+							executor.AddCommand(command);
 						}
 					}
 				}
-				executor.Execute(policy);
-			}
-		}
 
-		private readonly List<BatchThread> threads;
-		private volatile Exception exception;
-		private int completedCount;
-		private int maxConcurrentThreads;
-		private bool completed;
-
-		public BatchExecutor(Cluster cluster, int capacity)
-		{
-			this.threads = new List<BatchThread>(capacity);
-		}
-
-		public void Add(MultiCommand command)
-		{
-			threads.Add(new BatchThread(this, command));
-		}
-
-		public void Execute(BatchPolicy policy)
-		{
-			this.maxConcurrentThreads = (policy.maxConcurrentThreads == 0 || policy.maxConcurrentThreads >= threads.Count) ? threads.Count : policy.maxConcurrentThreads;
-
-			// Start threads.
-			for (int i = 0; i < maxConcurrentThreads; i++)
-			{
-				ThreadPool.QueueUserWorkItem(threads[i].Run);
-			}
-			WaitTillComplete();
-
-			// Throw an exception if an error occurred.
-			if (exception != null)
-			{
-				if (exception is AerospikeException)
-				{
-					throw (AerospikeException)exception;
-				}
-				else
-				{
-					throw new AerospikeException(exception);
-				}
-			}
-		}
-		
-		private void ThreadCompleted()
-		{
-			int finished = Interlocked.Increment(ref completedCount);
-
-			// Check if all threads completed.
-			if (finished < threads.Count)
-			{
-				int nextThread = finished + maxConcurrentThreads - 1;
-
-				// Determine if a new thread needs to be started.
-				if (nextThread < threads.Count)
-				{
-					// Start new thread.
-					ThreadPool.QueueUserWorkItem(threads[nextThread].Run);
-				}
-			}
-			else
-			{
-				NotifyCompleted();
-			}
-		}
-		
-		private void StopThreads(Exception cause)
-		{
-			lock (this)
-			{
-				if (exception != null)
-				{
-					return;
-				}
-				exception = cause;
-			}
-
-			foreach (BatchThread thread in threads)
-			{
-				try
-				{
-					thread.Stop();
-				}
-				catch (Exception)
-				{
-				}
-			}
-			NotifyCompleted();
-		}
-
-		private void WaitTillComplete()
-		{
-			lock (this)
-			{
-				while (!completed)
-				{
-					Monitor.Wait(this);
-				}
-			}
-		}
-
-		private void NotifyCompleted()
-		{
-			lock (this)
-			{
-				completed = true;
-				Monitor.Pulse(this);
-			}
-		}
-
-		private sealed class BatchThread
-		{
-			private readonly BatchExecutor parent;
-			private readonly MultiCommand command;
-			private Thread thread;
-
-			public BatchThread(BatchExecutor parent, MultiCommand command)
-			{
-				this.parent = parent;
-				this.command = command;
-			}
-
-			public void Run(object obj)
-			{
-				thread = Thread.CurrentThread;
-
-				try
-				{
-					if (command.IsValid())
-					{
-						command.Execute();
-					}
-				}
-				catch (Exception e)
-				{
-					// Terminate other threads.
-					parent.StopThreads(e);
-				}
-
-				if (parent.exception == null)
-				{
-					parent.ThreadCompleted();
-				}
-			}
-
-			public void Stop()
-			{
-				command.Stop();
-
-				if (thread != null)
-				{
-					thread.Interrupt();
-				}
+				executor.Execute(policy.maxConcurrentThreads);
 			}
 		}
 	}

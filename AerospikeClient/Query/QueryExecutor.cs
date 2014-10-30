@@ -25,6 +25,7 @@ namespace Aerospike.Client
 		protected internal readonly Statement statement;
 		private readonly Node[] nodes;
 		private readonly QueryThread[] threads;
+		protected internal readonly CancellationTokenSource cancel;
 		protected volatile Exception exception;
 		private readonly int maxConcurrentNodes;
 		private int completedCount;
@@ -35,6 +36,7 @@ namespace Aerospike.Client
 			this.policy = policy;
 			this.policy.maxRetries = 0; // Retry policy must be one-shot for queries.
 			this.statement = statement;
+			this.cancel = new CancellationTokenSource();
 
 			this.nodes = cluster.Nodes;
 
@@ -117,14 +119,9 @@ namespace Aerospike.Client
 			// Throw an exception if an error occurred.
 			if (exception != null)
 			{
-				if (exception is AerospikeException)
-				{
-					throw (AerospikeException)exception;
-				}
-				else
-				{
-					throw new AerospikeException(exception);
-				}
+				// Wrap exception because throwing will reset the exception's stack trace.
+				// Wrapped exceptions preserve the stack trace in the inner exception.
+				throw new AerospikeException("Query Failed: " + exception.Message, exception);
 			}
 		}
 
@@ -132,7 +129,6 @@ namespace Aerospike.Client
 		{
 			private readonly QueryExecutor parent;
 			private readonly QueryCommand command;
-			private Thread thread;
 
 			public QueryThread(QueryExecutor parent, QueryCommand command)
 			{
@@ -142,8 +138,6 @@ namespace Aerospike.Client
 
 			public void Run(object obj)
 			{
-				thread = Thread.CurrentThread;
-
 				try
 				{
 					if (command.IsValid())
@@ -162,11 +156,7 @@ namespace Aerospike.Client
 			public void Stop()
 			{
 				command.Stop();
-
-				if (thread != null)
-				{
-					thread.Interrupt();
-				}
+				parent.cancel.Cancel();
 			}
 		}
 

@@ -14,6 +14,7 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
+using System;
 using System.Collections.Concurrent;
 using System.Threading;
 
@@ -30,16 +31,18 @@ namespace Aerospike.Client
 
 		private readonly QueryExecutor executor;
 		private readonly BlockingCollection<KeyRecord> queue;
+		private readonly CancellationToken cancelToken;
 		private KeyRecord record;
 		private volatile bool valid = true;
 
 		/// <summary>
 		/// Initialize record set with underlying producer/consumer queue.
 		/// </summary>
-		public RecordSet(QueryExecutor executor, int capacity)
+		public RecordSet(QueryExecutor executor, int capacity, CancellationToken cancelToken)
 		{
 			this.executor = executor;
 			this.queue = new BlockingCollection<KeyRecord>(capacity);
+			this.cancelToken = cancelToken;
 		}
 
 		//-------------------------------------------------------
@@ -53,24 +56,30 @@ namespace Aerospike.Client
 		/// </summary>
 		public bool Next()
 		{
-			if (valid)
+			if (!valid)
 			{
-				try
-				{
-					record = queue.Take();
-
-					if (record == END)
-					{
-						executor.CheckForException();
-						valid = false;
-					}
-				}
-				catch (ThreadInterruptedException)
-				{
-					valid = false;
-				}
+				executor.CheckForException();
+				return false;
 			}
-			return valid;
+
+			try
+			{
+				record = queue.Take(cancelToken);
+			}
+			catch (OperationCanceledException)
+			{
+				valid = false;
+				return false;
+			}
+
+			if (record == END)
+			{
+				valid = false;
+				executor.CheckForException();
+				return false;
+			}
+
+			return true;
 		}
 
 		/// <summary>
@@ -117,6 +126,17 @@ namespace Aerospike.Client
 			}
 		}
 
+		/// <summary>
+		/// Get CancellationToken associated with this query.
+		/// </summary>
+		public CancellationToken CancelToken
+		{
+			get
+			{
+				return cancelToken;
+			}
+		}
+
 		//-------------------------------------------------------
 		// Methods for internal use only.
 		//-------------------------------------------------------
@@ -126,23 +146,26 @@ namespace Aerospike.Client
 		/// </summary>
 		public bool Put(KeyRecord record)
 		{
-			if (valid)
+			if (!valid)
 			{
-				try
-				{
-					// This put will block if queue capacity is reached.
-					queue.Add(record);
-				}
-				catch (ThreadInterruptedException)
-				{
-					// Valid may have changed.  Check again.
-					if (valid)
-					{
-						Abort();
-					}
-				}
+				return false;
 			}
-			return valid;
+
+			try
+			{
+				// This add will block if queue capacity is reached.
+				queue.Add(record, cancelToken);
+				return true;
+			}
+			catch (OperationCanceledException)
+			{
+				// Valid may have changed.  Check again.
+				if (valid)
+				{
+					Abort();
+				}
+				return false;
+			}
 		}
 
 		/// <summary>
@@ -152,17 +175,16 @@ namespace Aerospike.Client
 		{
 			valid = false;
 
-			// It's critical that the end put succeeds.
-			// Loop through all interrupts.
-			while (true)
+			// Send end command to transaction thread.
+			// It's critical that the end token add succeeds.
+			while (!queue.TryAdd(END))
 			{
-				try
+				// Queue must be full. Remove one item to make room.
+				KeyRecord tmp;
+				if (!queue.TryTake(out tmp))
 				{
-					queue.Add(END);
-					return;
-				}
-				catch (ThreadInterruptedException)
-				{
+					// Can't add or take.  Nothing can be done here.
+					break;
 				}
 			}
 		}

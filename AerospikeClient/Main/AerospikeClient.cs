@@ -708,8 +708,16 @@ namespace Aerospike.Client
 
 			if (policy.concurrentNodes)
 			{
-				ScanExecutor executor = new ScanExecutor(cluster, nodes, policy, ns, setName, callback, binNames);
-				executor.ScanParallel();
+				Executor executor = new Executor(nodes.Length);
+				long taskId = Environment.TickCount;
+
+				foreach (Node node in nodes)
+				{
+					ScanCommand command = new ScanCommand(node, policy, ns, setName, callback, binNames, taskId);
+					executor.AddCommand(command);
+				}
+
+				executor.Execute(policy.maxConcurrentNodes);
 			}
 			else
 			{
@@ -1005,7 +1013,25 @@ namespace Aerospike.Client
 			{
 				policy = readPolicyDefault;
 			}
-			new ServerExecutor(cluster, policy, statement, packageName, functionName, functionArgs);
+
+			statement.SetAggregateFunction(packageName, functionName, functionArgs, false);
+			statement.Prepare();
+
+			Node[] nodes = cluster.Nodes;
+			if (nodes.Length == 0)
+			{
+				throw new AerospikeException(ResultCode.SERVER_NOT_AVAILABLE, "Command failed because cluster is empty.");
+			}
+
+			Executor executor = new Executor(nodes.Length);
+
+			foreach (Node node in nodes)
+			{
+				ServerCommand command = new ServerCommand(node, policy, statement);
+				executor.AddCommand(command);
+			}
+
+			executor.Execute(nodes.Length);
 			return new ExecuteTask(cluster, statement);
 		}
 

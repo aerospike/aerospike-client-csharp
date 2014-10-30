@@ -40,13 +40,26 @@ namespace Aerospike.Client
 		public static string GetErrorMessage(Exception e)
 		{
 			// Connection error messages don't need a stacktrace.
-			Exception cause = e.InnerException;
-			if (e is SocketException || e is AerospikeException.Connection || cause is SocketException)
+			if (e is SocketException || e is AerospikeException.Connection)
 			{
 				return e.Message;
 			}
-			// Unexpected exceptions need a stacktrace.
-			return e.Message + Environment.NewLine + e.StackTrace;
+
+			Exception cause = e.InnerException;
+
+			if (cause == null)
+			{
+				// Unexpected exceptions need a stacktrace.
+				return e.Message + Environment.NewLine + e.StackTrace;
+			}
+		
+			if (cause is SocketException)
+			{
+				return e.Message;
+			}
+
+			// Inner exception stack traces identify the real problem.
+			return e.Message + Environment.NewLine + cause.StackTrace;
 		}
 
 		public static string ReadFileEncodeBase64(string path)

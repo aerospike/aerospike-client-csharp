@@ -14,6 +14,7 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
+using System;
 using System.Threading;
 using System.Collections.Concurrent;
 using LuaInterface;
@@ -23,11 +24,19 @@ namespace Aerospike.Client
 	public sealed class QueryAggregateCommand : QueryCommand
 	{
 		private readonly BlockingCollection<object> inputQueue;
+		private readonly CancellationToken cancelToken;
 
-		public QueryAggregateCommand(Node node, Policy policy, Statement statement, BlockingCollection<object> inputQueue)
-			: base(node, policy, statement)
+		public QueryAggregateCommand
+		(
+			Node node,
+			Policy policy,
+			Statement statement,
+			BlockingCollection<object> inputQueue,
+			CancellationToken cancelToken
+		) : base(node, policy, statement)
 		{
 			this.inputQueue = inputQueue;
+			this.cancelToken = cancelToken;
 		}
 
 		protected internal override bool ParseRecordResults(int receiveSize)
@@ -103,9 +112,9 @@ namespace Aerospike.Client
 				{
 					try
 					{
-						inputQueue.Add(aggregateValue);
+						inputQueue.Add(aggregateValue, cancelToken);
 					}
-					catch (ThreadInterruptedException)
+					catch (OperationCanceledException)
 					{
 					}
 				}

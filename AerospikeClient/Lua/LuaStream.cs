@@ -61,19 +61,21 @@ namespace Aerospike.Client
 	public sealed class LuaInputStream : LuaStream
 	{
 		private readonly BlockingCollection<object> queue;
+		private readonly CancellationToken cancelToken;
 
-		public LuaInputStream(BlockingCollection<object> queue)
+		public LuaInputStream(BlockingCollection<object> queue, CancellationToken cancelToken)
 		{
 			this.queue = queue;
+			this.cancelToken = cancelToken;
 		}
 
 		public override object Read()
 		{
 			try
 			{
-				return queue.Take();
+				return queue.Take(cancelToken);
 			}
-			catch (ThreadInterruptedException)
+			catch (OperationCanceledException)
 			{
 				return null;
 			}

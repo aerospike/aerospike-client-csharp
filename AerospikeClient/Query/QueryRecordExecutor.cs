@@ -23,7 +23,7 @@ namespace Aerospike.Client
 		public QueryRecordExecutor(Cluster cluster, QueryPolicy policy, Statement statement) 
 			: base(cluster, policy, statement)
 		{
-			this.recordSet = new RecordSet(this, policy.recordQueueSize);
+			this.recordSet = new RecordSet(this, policy.recordQueueSize, cancel.Token);
 			statement.Prepare();
 		}
 
