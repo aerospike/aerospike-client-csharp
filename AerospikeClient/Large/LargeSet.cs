@@ -100,8 +100,8 @@ namespace Aerospike.Client
 		/// <param name="value">value to check</param>
 		public bool Exists(Value value)
 		{
-			int ret = (int)client.Execute(policy, key, PackageName, "exists", binName, value);
-			return ret == 1;
+			object result = client.Execute(policy, key, PackageName, "exists", binName, value);
+			return (result != null) ? ((long)result != 0) : false;
 		}
 
 		/// <summary>
