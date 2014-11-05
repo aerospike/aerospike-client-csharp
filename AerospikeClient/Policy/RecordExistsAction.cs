@@ -52,15 +52,6 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Create only.  Fail if record exists. 
 		/// </summary>
-		CREATE_ONLY,
-
-		[System.Obsolete("Use GenerationPolicy.EXPECT_GEN_EQUAL in WritePolicy.generationPolicy instead.")]
-		EXPECT_GEN_EQUAL,
-
-		[System.Obsolete("Use GenerationPolicy.EXPECT_GEN_GT in WritePolicy.generationPolicy instead.")]
-		EXPECT_GEN_GT,
-
-		[System.Obsolete("Use RecordExistsAction.CREATE_ONLY instead.")]
-		FAIL
+		CREATE_ONLY
 	}
 }

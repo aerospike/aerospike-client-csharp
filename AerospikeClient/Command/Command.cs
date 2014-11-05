@@ -549,19 +549,7 @@ namespace Aerospike.Client
 				infoAttr |= Command.INFO3_REPLACE_ONLY;
 				break;
 			case RecordExistsAction.CREATE_ONLY:
-			case RecordExistsAction.FAIL:
 				writeAttr |= Command.INFO2_CREATE_ONLY;
-				break;
-			// The remaining enums are replaced by "policy.generationPolicy".
-			// These enums will eventually be removed.
-			// They are handled here for legacy compatibility only.
-			case RecordExistsAction.EXPECT_GEN_EQUAL:
-				generation = policy.generation;
-				writeAttr |= Command.INFO2_GENERATION;
-				break;
-			case RecordExistsAction.EXPECT_GEN_GT:
-				generation = policy.generation;
-				writeAttr |= Command.INFO2_GENERATION_GT;
 				break;
 			}
 
