@@ -20,6 +20,13 @@ Aerospike C# client.  This package contains full source code for two Visual Stud
 	* **AerospikeDemoLite**    
 	* **AerospikeAdminLite**    
 
+All solutions support the following configurations:
+
+* Debug
+* Release
+* Debug IIS : Same as Debug, but store reusable buffers in HttpContext.Current.Items.
+* Release IIS : Same as Release, but store reusable buffers in HttpContext.Current.Items.
+
 **Prerequisites**
 
 * Windows 7/Windows Server 2008 or greater, preferably 64 bit.
