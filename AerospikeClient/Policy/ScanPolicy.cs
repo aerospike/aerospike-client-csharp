@@ -53,5 +53,14 @@ namespace Aerospike.Client
 		/// Terminate scan if cluster in fluctuating state.
 		/// </summary>
 		public bool failOnClusterChange;
+
+		/// <summary>
+		/// Default constructor.
+		/// </summary>
+		public ScanPolicy()
+		{
+			// Scans should not retry.
+			base.maxRetries = 0;
+		}
 	}
 }

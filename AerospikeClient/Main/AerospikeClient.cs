@@ -697,8 +697,6 @@ namespace Aerospike.Client
 				policy = scanPolicyDefault;
 			}
 
-			// Retry policy must be one-shot for scans.
-			policy.maxRetries = 0;
 			Node[] nodes = cluster.Nodes;
 
 			if (nodes.Length == 0)
@@ -775,8 +773,6 @@ namespace Aerospike.Client
 			{
 				policy = scanPolicyDefault;
 			}
-			// Retry policy must be one-shot for scans.
-			policy.maxRetries = 0;
 			long taskId = Environment.TickCount;
 
 			ScanCommand command = new ScanCommand(node, policy, ns, setName, callback, binNames, taskId);

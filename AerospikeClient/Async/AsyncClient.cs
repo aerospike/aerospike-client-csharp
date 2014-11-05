@@ -628,8 +628,6 @@ namespace Aerospike.Client
 				policy = scanPolicyDefault;
 			}
 
-			// Retry policy must be one-shot for scans.
-			policy.maxRetries = 0;
 			new AsyncScanExecutor(cluster, policy, listener, ns, setName, binNames);
 		}
 	}

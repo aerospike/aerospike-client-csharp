@@ -37,5 +37,14 @@ namespace Aerospike.Client
 		/// If the queue is full, the producer threads will block until records are consumed.
 		/// </summary>
 		public int recordQueueSize = 5000;
+
+		/// <summary>
+		/// Default constructor.
+		/// </summary>
+		public QueryPolicy()
+		{
+			// Queries should not retry.
+			base.maxRetries = 0;
+		}
 	}
 }
