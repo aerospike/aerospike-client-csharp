@@ -24,6 +24,7 @@ namespace Aerospike.Client
 	{
 		private readonly AsyncMultiExecutor parent;
 		private readonly AsyncNode fixedNode;
+		protected internal readonly HashSet<string> binNames;
 		protected internal int resultCode;
 		protected internal int generation;
 		protected internal int expiration;
@@ -37,8 +38,18 @@ namespace Aerospike.Client
 			this.parent = parent;
 			this.fixedNode = node;
 			this.stopOnNotFound = stopOnNotFound;
+			this.binNames = null;
 		}
 
+		public AsyncMultiCommand(AsyncMultiExecutor parent, AsyncCluster cluster, AsyncNode node, bool stopOnNotFound, HashSet<string> binNames)
+			: base(cluster)
+		{
+			this.parent = parent;
+			this.fixedNode = node;
+			this.stopOnNotFound = stopOnNotFound;
+			this.binNames = binNames;
+		}
+		
 		protected internal sealed override AsyncNode GetNode()
 		{
 			return fixedNode;
@@ -142,7 +153,38 @@ namespace Aerospike.Client
 			return new Key(ns, digest, setName, userKey);		
 		}
 
-		protected internal virtual Record ParseRecord()
+		protected internal Record ParseRecordBatch()
+		{
+			Dictionary<string, object> bins = null;
+
+			for (int i = 0; i < opCount; i++)
+			{
+				int opSize = ByteUtil.BytesToInt(dataBuffer, dataOffset);
+				byte particleType = dataBuffer[dataOffset + 5];
+				byte nameSize = dataBuffer[dataOffset + 7];
+				string name = ByteUtil.Utf8ToString(dataBuffer, dataOffset + 8, nameSize);
+				dataOffset += 4 + 4 + nameSize;
+
+				int particleBytesSize = (int)(opSize - (4 + nameSize));
+				object value = ByteUtil.BytesToParticle(particleType, dataBuffer, dataOffset, particleBytesSize);
+				dataOffset += particleBytesSize;
+
+				// Currently, the batch command returns all the bins even if a subset of
+				// the bins are requested. We have to filter it on the client side.
+				// TODO: Filter batch bins on server!
+				if (binNames == null || binNames.Contains(name))
+				{
+					if (bins == null)
+					{
+						bins = new Dictionary<string, object>();
+					}
+					bins[name] = value;
+				}
+			}
+			return new Record(bins, generation, expiration);
+		}
+		
+		protected internal Record ParseRecord()
 		{
 			Dictionary<string, object> bins = null;
 
