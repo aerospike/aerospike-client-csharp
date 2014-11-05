@@ -174,6 +174,7 @@ namespace Aerospike.Client
 			int readAttr = 0;
 			int writeAttr = 0;
 			bool readHeader = false;
+		    bool userKeyFieldCalculated = false;
 
 			foreach (Operation operation in operations)
 			{
@@ -199,6 +200,14 @@ namespace Aerospike.Client
 					break;
 
 				default:
+                    // Check if write policy requires saving the user key and calculate the data size.
+                    // This should only be done once for the entire request even with multiple write operations.
+                    if (policy.sendKey && userKeyFieldCalculated == false)
+                    {
+                        dataOffset += key.userKey.EstimateSize() + FIELD_HEADER_SIZE;
+                        fieldCount++;
+                        userKeyFieldCalculated = true;
+                    }
 					writeAttr = Command.INFO2_WRITE;
 					break;
 				}
@@ -215,6 +224,11 @@ namespace Aerospike.Client
 				WriteHeader(readAttr, writeAttr, fieldCount, operations.Length);
 			}
 			WriteKey(key);
+
+            if (policy.sendKey)
+            {
+                WriteField(key.userKey, FieldType.KEY);
+            }
 
 			foreach (Operation operation in operations)
 			{
