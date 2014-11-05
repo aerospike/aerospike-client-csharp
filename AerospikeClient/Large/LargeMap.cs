@@ -78,6 +78,16 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
+		/// Check existence of key in the map.
+		/// </summary>
+		/// <param name="keyValue">key to check</param>
+		public bool Exists(Value keyValue)
+		{
+			object result = client.Execute(policy, key, PackageName, "exists", binName, keyValue);
+			return (result != null) ? ((long)result != 0) : false;
+		}
+	
+		/// <summary>
 		/// Return all objects in the map.
 		/// </summary>
 		public IDictionary Scan()
