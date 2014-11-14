@@ -85,7 +85,7 @@ namespace Aerospike.Demo
 			client.Put(args.writePolicy, key, bin);
 
 			// Get record generation.
-			long gen = (long)client.Execute(args.policy, key, "record_example", "getGeneration");
+			long gen = (long)client.Execute(args.writePolicy, key, "record_example", "getGeneration");
 
 			// Write record if generation has not changed.
 			client.Execute(args.writePolicy, key, "record_example", "writeIfGenerationNotChanged", Value.Get(bin.name), bin.value, Value.Get(gen));
@@ -182,9 +182,9 @@ namespace Aerospike.Demo
 
 			string binName = args.GetBinName("udfbin5");
 
-			client.Execute(args.policy, key, "record_example", "writeBin", Value.Get(binName), Value.GetAsList(list));
+			client.Execute(args.writePolicy, key, "record_example", "writeBin", Value.Get(binName), Value.GetAsList(list));
 
-			object received = client.Execute(args.policy, key, "record_example", "readBin", Value.Get(binName));
+			object received = client.Execute(args.writePolicy, key, "record_example", "readBin", Value.Get(binName));
 			string receivedString = Util.ListToString((List<object>)received);
 			string expectedString = Util.ListToString(list);
 
@@ -215,8 +215,8 @@ namespace Aerospike.Demo
 				blob = ms.ToArray();
 			}
 
-			client.Execute(args.policy, key, "record_example", "writeBin", Value.Get(binName), Value.Get(blob));
-			byte[] received = (byte[])client.Execute(args.policy, key, "record_example", "readBin", Value.Get(binName));
+			client.Execute(args.writePolicy, key, "record_example", "writeBin", Value.Get(binName), Value.Get(blob));
+			byte[] received = (byte[])client.Execute(args.writePolicy, key, "record_example", "readBin", Value.Get(binName));
 			string receivedString = Util.BytesToString(received);
 			string expectedString = Util.BytesToString(blob);
 

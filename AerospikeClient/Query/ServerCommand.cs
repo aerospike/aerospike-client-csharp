@@ -18,9 +18,17 @@ namespace Aerospike.Client
 {
 	public sealed class ServerCommand : QueryCommand
 	{
-		public ServerCommand(Node node, Policy policy, Statement statement) 
+		private readonly WritePolicy writePolicy;
+
+		public ServerCommand(Node node, WritePolicy policy, Statement statement) 
 			: base(node, policy, statement)
 		{
+			this.writePolicy = policy;
+		}
+
+		protected internal override void WriteQueryHeader(int fieldCount, int operationCount)
+		{
+			WriteHeader(writePolicy, Command.INFO1_READ, Command.INFO2_WRITE, fieldCount, operationCount);
 		}
 
 		protected internal override bool ParseRecordResults(int receiveSize)

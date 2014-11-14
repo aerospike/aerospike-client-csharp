@@ -60,5 +60,33 @@ namespace Aerospike.Client
 		/// The default is to not send the user defined key.
 		/// </summary>
 		public bool sendKey;
+
+		/// <summary>
+		/// Copy write policy from another write policy.
+		/// </summary>
+		public WritePolicy(WritePolicy other)
+			: base(other)
+		{
+			this.recordExistsAction = other.recordExistsAction;
+			this.generationPolicy = other.generationPolicy;
+			this.generation = other.generation;
+			this.expiration = other.expiration;
+			this.sendKey = other.sendKey;
+		}
+
+		/// <summary>
+		/// Copy write policy from another policy.
+		/// </summary>
+		public WritePolicy(Policy other)
+			: base(other)
+		{
+		}
+
+		/// <summary>
+		/// Default constructor.
+		/// </summary>
+		public WritePolicy()
+		{
+		}
 	}
 }

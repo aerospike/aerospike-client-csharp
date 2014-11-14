@@ -45,7 +45,7 @@ namespace Aerospike.Demo
 			client.Delete(args.writePolicy, key);
 
 			// Initialize large stack operator.
-			Aerospike.Client.LargeStack stack = client.GetLargeStack(args.policy, key, binName, null);
+			Aerospike.Client.LargeStack stack = client.GetLargeStack(args.writePolicy, key, binName, null);
 
 			// Write values.
 			stack.Push(Value.Get("stackvalue1"));

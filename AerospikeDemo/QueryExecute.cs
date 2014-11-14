@@ -93,7 +93,7 @@ namespace Aerospike.Demo
 			stmt.SetSetName(args.set);
 			stmt.SetFilters(Filter.Range(binName1, begin, end));
 
-			ExecuteTask task = client.Execute(args.policy, stmt, "record_example", "processRecord", Value.Get(binName1), Value.Get(binName2), Value.Get(100));
+			ExecuteTask task = client.Execute(args.writePolicy, stmt, "record_example", "processRecord", Value.Get(binName1), Value.Get(binName2), Value.Get(100));
 			task.Wait();
 		}
 

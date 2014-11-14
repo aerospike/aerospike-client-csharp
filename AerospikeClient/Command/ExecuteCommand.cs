@@ -21,13 +21,15 @@ namespace Aerospike.Client
 {
 	public sealed class ExecuteCommand : ReadCommand
 	{
+		private readonly WritePolicy writePolicy;
 		private readonly string packageName;
 		private readonly string functionName;
 		private readonly Value[] args;
 
-		public ExecuteCommand(Cluster cluster, Policy policy, Key key, string packageName, string functionName, Value[] args) 
-			: base(cluster, policy, key, null)
+		public ExecuteCommand(Cluster cluster, WritePolicy writePolicy, Key key, string packageName, string functionName, Value[] args)
+			: base(cluster, writePolicy, key, null)
 		{
+			this.writePolicy = writePolicy;
 			this.packageName = packageName;
 			this.functionName = functionName;
 			this.args = args;
@@ -35,7 +37,7 @@ namespace Aerospike.Client
 
 		protected internal override void WriteBuffer()
 		{
-			SetUdf(key, packageName, functionName, args);
+			SetUdf(writePolicy, key, packageName, functionName, args);
 		}
 	}
 }

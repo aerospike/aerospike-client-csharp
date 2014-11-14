@@ -128,9 +128,8 @@ namespace Aerospike.Client
 			}
 			
 			SizeBuffer();
-			byte readAttr = (byte)Command.INFO1_READ;
 			int operationCount = (statement.filters == null && statement.binNames != null) ? statement.binNames.Length : 0;
-			WriteHeader(readAttr, 0, fieldCount, operationCount);
+			WriteQueryHeader(fieldCount, operationCount);
 
 			if (statement.ns != null)
 			{
@@ -207,6 +206,11 @@ namespace Aerospike.Client
 				}
 			}
 			End();
+		}
+
+		protected internal virtual void WriteQueryHeader(int fieldCount, int operationCount)
+		{
+			WriteHeader(Command.INFO1_READ, 0, fieldCount, operationCount);
 		}
 	}
 }

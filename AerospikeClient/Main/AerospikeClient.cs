@@ -794,11 +794,29 @@ namespace Aerospike.Client
 		/// <param name="key">unique record identifier</param>
 		/// <param name="binName">bin name</param>
 		/// <param name="userModule">Lua function name that initializes list configuration parameters, pass null for default</param>
+		[System.Obsolete("Use GetLargeList(WritePolicy policy, Key key, string binName, string userModule) instead.")]
 		public LargeList GetLargeList(Policy policy, Key key, string binName, string userModule)
+		{
+			WritePolicy writePolicy = (policy == null) ? writePolicyDefault : new WritePolicy(policy);
+			return new LargeList(this, writePolicy, key, binName, userModule);
+		}
+
+		/// <summary>
+		/// Initialize large list operator.  This operator can be used to create and manage a list 
+		/// within a single bin.
+		/// <para>
+		/// This method is only supported by Aerospike 3 servers.
+		/// </para>
+		/// </summary>
+		/// <param name="policy">write configuration parameters, pass in null for defaults</param>
+		/// <param name="key">unique record identifier</param>
+		/// <param name="binName">bin name</param>
+		/// <param name="userModule">Lua function name that initializes list configuration parameters, pass null for default</param>
+		public LargeList GetLargeList(WritePolicy policy, Key key, string binName, string userModule)
 		{
 			return new LargeList(this, policy, key, binName, userModule);
 		}
-
+		
 		/// <summary>
 		/// Initialize large map operator.  This operator can be used to create and manage a map 
 		/// within a single bin.
@@ -810,11 +828,29 @@ namespace Aerospike.Client
 		/// <param name="key">unique record identifier</param>
 		/// <param name="binName">bin name</param>
 		/// <param name="userModule">Lua function name that initializes list configuration parameters, pass null for default</param>
+		[System.Obsolete("Use GetLargeMap(WritePolicy policy, Key key, string binName, string userModule) instead.")]
 		public LargeMap GetLargeMap(Policy policy, Key key, string binName, string userModule)
+		{
+			WritePolicy writePolicy = (policy == null) ? writePolicyDefault : new WritePolicy(policy);
+			return new LargeMap(this, writePolicy, key, binName, userModule);
+		}
+
+		/// <summary>
+		/// Initialize large map operator.  This operator can be used to create and manage a map 
+		/// within a single bin.
+		/// <para>
+		/// This method is only supported by Aerospike 3 servers.
+		/// </para>
+		/// </summary>
+		/// <param name="policy">write configuration parameters, pass in null for defaults</param>
+		/// <param name="key">unique record identifier</param>
+		/// <param name="binName">bin name</param>
+		/// <param name="userModule">Lua function name that initializes list configuration parameters, pass null for default</param>
+		public LargeMap GetLargeMap(WritePolicy policy, Key key, string binName, string userModule)
 		{
 			return new LargeMap(this, policy, key, binName, userModule);
 		}
-
+		
 		/// <summary>
 		/// Initialize large set operator.  This operator can be used to create and manage a set 
 		/// within a single bin.
@@ -826,11 +862,29 @@ namespace Aerospike.Client
 		/// <param name="key">unique record identifier</param>
 		/// <param name="binName">bin name</param>
 		/// <param name="userModule">Lua function name that initializes list configuration parameters, pass null for default</param>
+		[System.Obsolete("Use GetLargeSet(WritePolicy policy, Key key, string binName, string userModule) instead.")]
 		public LargeSet GetLargeSet(Policy policy, Key key, string binName, string userModule)
+		{
+			WritePolicy writePolicy = (policy == null) ? writePolicyDefault : new WritePolicy(policy);
+			return new LargeSet(this, writePolicy, key, binName, userModule);
+		}
+
+		/// <summary>
+		/// Initialize large set operator.  This operator can be used to create and manage a set 
+		/// within a single bin.
+		/// <para>
+		/// This method is only supported by Aerospike 3 servers.
+		/// </para>
+		/// </summary>
+		/// <param name="policy">write configuration parameters, pass in null for defaults</param>
+		/// <param name="key">unique record identifier</param>
+		/// <param name="binName">bin name</param>
+		/// <param name="userModule">Lua function name that initializes list configuration parameters, pass null for default</param>
+		public LargeSet GetLargeSet(WritePolicy policy, Key key, string binName, string userModule)
 		{
 			return new LargeSet(this, policy, key, binName, userModule);
 		}
-
+		
 		/// <summary>
 		/// Initialize large stack operator.  This operator can be used to create and manage a stack 
 		/// within a single bin.
@@ -842,11 +896,29 @@ namespace Aerospike.Client
 		/// <param name="key">unique record identifier</param>
 		/// <param name="binName">bin name</param>
 		/// <param name="userModule">Lua function name that initializes list configuration parameters, pass null for default</param>
+		[System.Obsolete("Use GetLargeStack(WritePolicy policy, Key key, string binName, string userModule) instead.")]
 		public LargeStack GetLargeStack(Policy policy, Key key, string binName, string userModule)
+		{
+			WritePolicy writePolicy = (policy == null) ? writePolicyDefault : new WritePolicy(policy);
+			return new LargeStack(this, writePolicy, key, binName, userModule);
+		}
+
+		/// <summary>
+		/// Initialize large stack operator.  This operator can be used to create and manage a stack 
+		/// within a single bin.
+		/// <para>
+		/// This method is only supported by Aerospike 3 servers.
+		/// </para>
+		/// </summary>
+		/// <param name="policy">write configuration parameters, pass in null for defaults</param>
+		/// <param name="key">unique record identifier</param>
+		/// <param name="binName">bin name</param>
+		/// <param name="userModule">Lua function name that initializes list configuration parameters, pass null for default</param>
+		public LargeStack GetLargeStack(WritePolicy policy, Key key, string binName, string userModule)
 		{
 			return new LargeStack(this, policy, key, binName, userModule);
 		}
-
+		
 		//---------------------------------------------------------------
 		// User defined functions (Supported by Aerospike 3 servers only)
 		//---------------------------------------------------------------
@@ -952,11 +1024,35 @@ namespace Aerospike.Client
 		/// <param name="functionName">user defined function</param>
 		/// <param name="args">arguments passed in to user defined function</param>
 		/// <exception cref="AerospikeException">if transaction fails</exception>
+		[System.Obsolete("Use Execute(WritePolicy policy, Key key, string packageName, string functionName, params Value[] args) instead.")]
 		public object Execute(Policy policy, Key key, string packageName, string functionName, params Value[] args)
+		{
+			WritePolicy writePolicy = (policy == null) ? writePolicyDefault : new WritePolicy(policy);
+			return Execute(writePolicy, key, packageName, functionName, args);
+		}
+
+		/// <summary>
+		/// Execute user defined function on server and return results.
+		/// The function operates on a single record.
+		/// The package name is used to locate the udf file location:
+		/// <para>
+		/// udf file = &lt;server udf dir&gt;/&lt;package name&gt;.lua
+		/// </para>
+		/// <para>
+		/// This method is only supported by Aerospike 3 servers.
+		/// </para>
+		/// </summary>
+		/// <param name="policy">generic configuration parameters, pass in null for defaults</param>
+		/// <param name="key">unique record identifier</param>
+		/// <param name="packageName">server package name where user defined function resides</param>
+		/// <param name="functionName">user defined function</param>
+		/// <param name="args">arguments passed in to user defined function</param>
+		/// <exception cref="AerospikeException">if transaction fails</exception>
+		public object Execute(WritePolicy policy, Key key, string packageName, string functionName, params Value[] args)
 		{
 			if (policy == null)
 			{
-				policy = readPolicyDefault;
+				policy = writePolicyDefault;
 			}
 			ExecuteCommand command = new ExecuteCommand(cluster, policy, key, packageName, functionName, args);
 			command.Execute();
@@ -982,7 +1078,7 @@ namespace Aerospike.Client
 			}
 			throw new AerospikeException("Invalid UDF return value");
 		}
-
+		
 		//----------------------------------------------------------
 		// Query/Execute UDF (Supported by Aerospike 3 servers only)
 		//----------------------------------------------------------
@@ -1003,11 +1099,34 @@ namespace Aerospike.Client
 		/// <param name="functionName">function name</param>
 		/// <param name="functionArgs">to pass to function name, if any</param>
 		/// <exception cref="AerospikeException">if command fails</exception>
+		[System.Obsolete("Use Execute(WritePolicy policy, Statement statement, string packageName, string functionName, params Value[] functionArgs) instead.")]
 		public ExecuteTask Execute(Policy policy, Statement statement, string packageName, string functionName, params Value[] functionArgs)
+		{
+			WritePolicy writePolicy = (policy == null) ? writePolicyDefault : new WritePolicy(policy);
+			return Execute(writePolicy, statement, packageName, functionName, functionArgs);
+		}
+
+		/// <summary>
+		/// Apply user defined function on records that match the statement filter.
+		/// Records are not returned to the client.
+		/// This asynchronous server call will return before command is complete.  
+		/// The user can optionally wait for command completion by using the returned 
+		/// ExecuteTask instance.
+		/// <para>
+		/// This method is only supported by Aerospike 3 servers.
+		/// </para>
+		/// </summary>
+		/// <param name="policy">configuration parameters, pass in null for defaults</param>
+		/// <param name="statement">record filter</param>
+		/// <param name="packageName">server package where user defined function resides</param>
+		/// <param name="functionName">function name</param>
+		/// <param name="functionArgs">to pass to function name, if any</param>
+		/// <exception cref="AerospikeException">if command fails</exception>
+		public ExecuteTask Execute(WritePolicy policy, Statement statement, string packageName, string functionName, params Value[] functionArgs)
 		{
 			if (policy == null)
 			{
-				policy = readPolicyDefault;
+				policy = writePolicyDefault;
 			}
 
 			statement.SetAggregateFunction(packageName, functionName, functionArgs, false);
@@ -1030,7 +1149,7 @@ namespace Aerospike.Client
 			executor.Execute(nodes.Length);
 			return new ExecuteTask(cluster, statement);
 		}
-
+		
 		//--------------------------------------------------------
 		// Query functions (Supported by Aerospike 3 servers only)
 		//--------------------------------------------------------

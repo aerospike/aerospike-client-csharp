@@ -242,7 +242,7 @@ namespace Aerospike.Client
 			End();
 		}
 
-		public void SetUdf(Key key, string packageName, string functionName, Value[] args)
+		public void SetUdf(WritePolicy policy, Key key, string packageName, string functionName, Value[] args)
 		{
 			Begin();
 			int fieldCount = EstimateKeySize(key);
@@ -250,7 +250,7 @@ namespace Aerospike.Client
 			fieldCount += EstimateUdfSize(packageName, functionName, argBytes);
 
 			SizeBuffer();
-			WriteHeader(0, Command.INFO2_WRITE, fieldCount, 0);
+			WriteHeader(policy, 0, Command.INFO2_WRITE, fieldCount, 0);
 			WriteKey(key);
 			WriteField(packageName, FieldType.UDF_PACKAGE_NAME);
 			WriteField(functionName, FieldType.UDF_FUNCTION);
@@ -529,7 +529,7 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Header write for write operations.
 		/// </summary>
-		private void WriteHeader(WritePolicy policy, int readAttr, int writeAttr, int fieldCount, int operationCount)
+		protected internal void WriteHeader(WritePolicy policy, int readAttr, int writeAttr, int fieldCount, int operationCount)
 		{
 			// Set flags.
 			int generation = 0;

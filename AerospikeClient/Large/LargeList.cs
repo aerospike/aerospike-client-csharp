@@ -27,7 +27,7 @@ namespace Aerospike.Client
 		private const string PackageName = "llist";
 
 		private readonly AerospikeClient client;
-		private readonly Policy policy;
+		private readonly WritePolicy policy;
 		private readonly Key key;
 		private readonly Value binName;
 		private readonly Value userModule;
@@ -40,7 +40,7 @@ namespace Aerospike.Client
 		/// <param name="key">unique record identifier</param>
 		/// <param name="binName">bin name</param>
 		/// <param name="userModule">Lua function name that initializes list configuration parameters, pass null for default list</param>
-		public LargeList(AerospikeClient client, Policy policy, Key key, string binName, string userModule)
+		public LargeList(AerospikeClient client, WritePolicy policy, Key key, string binName, string userModule)
 		{
 			this.client = client;
 			this.policy = policy;

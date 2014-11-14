@@ -45,7 +45,7 @@ namespace Aerospike.Demo
 			client.Delete(args.writePolicy, key);
 
 			// Initialize large set operator.
-			Aerospike.Client.LargeSet set = client.GetLargeSet(args.policy, key, binName, null);
+			Aerospike.Client.LargeSet set = client.GetLargeSet(args.writePolicy, key, binName, null);
 
 			// Write values.
 			set.Add(Value.Get("setvalue1"));
