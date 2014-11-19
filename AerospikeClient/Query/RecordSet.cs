@@ -78,12 +78,11 @@ namespace Aerospike.Client
 				executor.CheckForException();
 				return false;
 			}
-
 			return true;
 		}
 
 		/// <summary>
-		/// Cancel query.
+		/// Close query.
 		/// </summary>
 		public void Close()
 		{
@@ -171,7 +170,7 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Abort retrieval with end token.
 		/// </summary>
-		private void Abort()
+		internal void Abort()
 		{
 			valid = false;
 
@@ -184,6 +183,10 @@ namespace Aerospike.Client
 				if (!queue.TryTake(out tmp))
 				{
 					// Can't add or take.  Nothing can be done here.
+					if (Log.DebugEnabled())
+					{
+						Log.Debug("RecordSet " + executor.statement.taskId + " both add and take failed on abort");
+					}
 					break;
 				}
 			}

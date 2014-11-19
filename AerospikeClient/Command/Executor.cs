@@ -97,16 +97,6 @@ namespace Aerospike.Client
 				{
 					thread.Stop();
 				}
-
-				// Yield this thread so other threads have a chance to exit on their own.
-				Thread.Yield();
-
-				// Interrupt slacker threads.
-				foreach (ExecutorThread thread in threads)
-				{
-					thread.Interrupt();
-				}
-
 				NotifyCompleted();
 			}
 		}
@@ -136,8 +126,6 @@ namespace Aerospike.Client
 	{
 		private readonly Executor parent;
 		private readonly MultiCommand command;
-		private Thread thread;
-		private volatile bool end;
 
 		public ExecutorThread(Executor parent, MultiCommand command)
 		{
@@ -147,20 +135,16 @@ namespace Aerospike.Client
 
 		public void Run(object obj)
 		{
-			thread = Thread.CurrentThread;
-
 			try
 			{
 				if (command.IsValid())
 				{
 					command.Execute();
 				}
-				end = true;
 				parent.ThreadCompleted();
 			}
 			catch (Exception e)
 			{
-				end = true;
 				// Terminate other scan threads.
 				parent.StopThreads(e);
 			}
@@ -172,19 +156,6 @@ namespace Aerospike.Client
 		public void Stop()
 		{
 			command.Stop();
-		}
-
-		/// <summary>
-		/// Terminate slacker threads who are stuck in potentially permanent wait states.
-		/// </summary>
-		public void Interrupt()
-		{
-			// Only interrupt thread when it's stuck in a wait state.  Otherwise, the 
-			// interruption could occur in a different task which happens to reuse this thread.
-			if (thread != null && !end && (thread.ThreadState & ThreadState.WaitSleepJoin) != 0)
-			{
-				thread.Interrupt();
-			}
 		}
 	}
 }

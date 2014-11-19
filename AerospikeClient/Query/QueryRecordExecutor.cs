@@ -39,7 +39,7 @@ namespace Aerospike.Client
 
 		protected internal override void SendCancel()
 		{
-			recordSet.Put(RecordSet.END);
+			recordSet.Abort();
 		}
 		
 		protected internal override void SendCompleted()

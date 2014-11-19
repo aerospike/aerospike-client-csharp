@@ -87,6 +87,7 @@ namespace Aerospike.Client
 			finally
 			{
 				// Send end command to user's result set.
+				// If query was already cancelled, this put will be ignored.
 				resultSet.Put(ResultSet.END);
 				LuaCache.PutInstance(lua);
 			}
@@ -99,6 +100,8 @@ namespace Aerospike.Client
 
 		protected internal override void SendCancel()
 		{
+			resultSet.Abort();
+
 			// Send end command to lua thread.
 			// It's critical that the end token add succeeds.
 			while (!inputQueue.TryAdd(null))
@@ -108,6 +111,10 @@ namespace Aerospike.Client
 				if (!inputQueue.TryTake(out tmp))
 				{
 					// Can't add or take.  Nothing can be done here.
+					if (Log.DebugEnabled())
+					{
+						Log.Debug("Lua input queue " + statement.taskId + " both add and take failed on abort");
+					}
 					break;
 				}
 			}

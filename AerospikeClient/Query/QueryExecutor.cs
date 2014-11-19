@@ -101,14 +101,9 @@ namespace Aerospike.Client
 
 				foreach (QueryThread thread in threads)
 				{
-					try
-					{
-						thread.Stop();
-					}
-					catch (Exception)
-					{
-					}
+					thread.Stop();
 				}
+				cancel.Cancel();
 				SendCancel();
 			}
 		}
@@ -155,7 +150,6 @@ namespace Aerospike.Client
 			public void Stop()
 			{
 				command.Stop();
-				parent.cancel.Cancel();
 			}
 		}
 

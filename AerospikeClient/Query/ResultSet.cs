@@ -21,9 +21,9 @@ using System.Threading;
 namespace Aerospike.Client
 {
 	/// <summary>
-	/// This class manages record retrieval from queries.
-	/// Multiple threads will retrieve records from the server nodes and put these records on the queue.
-	/// The single user thread consumes these records from the queue.
+	/// This class manages result retrieval from queries.
+	/// Multiple threads will retrieve results from the server nodes and put these results on the queue.
+	/// The single user thread consumes these results from the queue.
 	/// </summary>
 	public sealed class ResultSet
 	{
@@ -36,7 +36,7 @@ namespace Aerospike.Client
 		private volatile bool valid = true;
 
 		/// <summary>
-		/// Initialize record set with underlying producer/consumer queue.
+		/// Initialize result set with underlying producer/consumer queue.
 		/// </summary>
 		public ResultSet(QueryAggregateExecutor executor, int capacity, CancellationToken cancelToken)
 		{
@@ -46,13 +46,13 @@ namespace Aerospike.Client
 		}
 
 		//-------------------------------------------------------
-		// Record traversal methods
+		// Result traversal methods
 		//-------------------------------------------------------
 
 		/// <summary>
-		/// Retrieve next record. Returns true if record exists and false if no more 
-		/// records are available.
-		/// This method will block until a record is retrieved or the query is cancelled.
+		/// Retrieve next result. Returns true if result exists and false if no more 
+		/// results are available.
+		/// This method will block until a result is retrieved or the query is cancelled.
 		/// </summary>
 		public bool Next()
 		{
@@ -78,12 +78,11 @@ namespace Aerospike.Client
 				executor.CheckForException();
 				return false;
 			}
-
 			return true;
 		}
 
 		/// <summary>
-		/// Cancel query.
+		/// Close query.
 		/// </summary>
 		public void Close()
 		{
@@ -105,7 +104,7 @@ namespace Aerospike.Client
 		//-------------------------------------------------------
 
 		/// <summary>
-		/// Get record's header and bin data.
+		/// Get result.
 		/// </summary>
 		public object Object
 		{
@@ -160,7 +159,7 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Abort retrieval with end token.
 		/// </summary>
-		private void Abort()
+		internal void Abort()
 		{
 			valid = false;
 
@@ -173,6 +172,10 @@ namespace Aerospike.Client
 				if (!queue.TryTake(out tmp))
 				{
 					// Can't add or take.  Nothing can be done here.
+					if (Log.DebugEnabled())
+					{
+						Log.Debug("ResultSet " + executor.statement.taskId + " both add and take failed on abort");
+					}
 					break;
 				}
 			}
