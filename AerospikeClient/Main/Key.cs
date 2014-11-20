@@ -73,6 +73,10 @@ namespace Aerospike.Client
 			this.ns = ns;
 			this.setName = setName;
 			this.userKey = key;
+
+			// Some value types can't be used as keys (csblob, list, map, null).  Verify key type.
+			key.ValidateKeyType();
+			
 			digest = ComputeDigest(setName, key);
 		}
 
@@ -422,16 +426,9 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if digest computation fails</exception>
 		public static byte[] ComputeDigest(string setName, Value key)
 		{
-			int keyType = key.Type;
-
-			if (keyType == ParticleType.NULL)
-			{
-				throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Invalid key: null");
-			}
-
 			byte[] buffer = ThreadLocalData.GetBuffer();
 			int offset = ByteUtil.StringToUtf8(setName, buffer, 0);
-			buffer[offset++] = (byte)keyType;
+			buffer[offset++] = (byte)key.Type;
 			offset += key.Write(buffer, offset);
 
 			return Hash.Algorithm.ComputeHash(buffer, 0, offset);

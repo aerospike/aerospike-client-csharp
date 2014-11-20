@@ -300,6 +300,14 @@ namespace Aerospike.Client
 		public abstract void Pack(Packer packer);
 
 		/// <summary>
+		/// Validate if value type can be used as a key.
+		/// </summary>
+		/// <exception cref="AerospikeException">if type can't be used as a key.</exception>
+		public virtual void ValidateKeyType()
+		{
+		}
+	
+		/// <summary>
 		/// Get wire protocol value type.
 		/// </summary>
 		public abstract int Type {get;}
@@ -361,6 +369,11 @@ namespace Aerospike.Client
 				packer.PackNil();
 			}
 
+			public override void ValidateKeyType()
+			{
+				throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Invalid key type: null");
+			}
+			
 			public override int Type
 			{
 				get
@@ -1220,6 +1233,11 @@ namespace Aerospike.Client
 				packer.PackBlob(obj);
 			}
 
+			public override void ValidateKeyType()
+			{
+				throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Invalid key type: csblob");
+			}
+
 			public override int Type
 			{
 				get
@@ -1271,6 +1289,11 @@ namespace Aerospike.Client
 			public override void Pack(Packer packer)
 			{
 				packer.PackValueArray(array);
+			}
+
+			public override void ValidateKeyType()
+			{
+				throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Invalid key type: value[]");
 			}
 
 			public override int Type
@@ -1326,6 +1349,11 @@ namespace Aerospike.Client
 				packer.PackList(list);
 			}
 
+			public override void ValidateKeyType()
+			{
+				throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Invalid key type: list");
+			}
+
 			public override int Type
 			{
 				get
@@ -1377,6 +1405,11 @@ namespace Aerospike.Client
 			public override void Pack(Packer packer)
 			{
 				packer.PackMap(map);
+			}
+
+			public override void ValidateKeyType()
+			{
+				throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Invalid key type: map");
 			}
 
 			public override int Type
