@@ -43,11 +43,11 @@ namespace Aerospike.Demo
         {
             // Fixed values are used when the extra random call overhead is not wanted
             // in the benchmark measurement.
-            Random random = new Random();
+			RandomShift random = new RandomShift();
             fixedValue = GetValue(random);
         }
 
-        public Value GetValue(Random random)
+		public Value GetValue(RandomShift random)
         {
             if (fixedValue != null)
             {

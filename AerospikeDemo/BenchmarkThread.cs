@@ -23,13 +23,11 @@ namespace Aerospike.Demo
 {
 	abstract class BenchmarkThread
 	{
-        private static int seed = Environment.TickCount;
-
 		protected readonly Console console;
         protected readonly BenchmarkArguments args;
         protected readonly BenchmarkShared shared;
         private readonly Example example;
-        private readonly Random random;
+        private readonly RandomShift random;
         private Thread thread;
 
         public BenchmarkThread(Console console, BenchmarkArguments args, BenchmarkShared shared, Example example)
@@ -38,7 +36,7 @@ namespace Aerospike.Demo
             this.args = args;
             this.shared = shared;
             this.example = example;
-            random = new Random(Interlocked.Increment(ref seed));
+			random = new RandomShift();
 		}
 
         public void Start()

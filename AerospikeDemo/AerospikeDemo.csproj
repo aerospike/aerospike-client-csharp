@@ -131,6 +131,7 @@
     <Compile Include="BenchmarkReadWrite.cs" />
     <Compile Include="LargeList.cs" />
     <Compile Include="GetAndJoin.cs" />
+    <Compile Include="RandomShift.cs" />
     <Compile Include="Replace.cs" />
     <Compile Include="QueryFilter.cs" />
     <Compile Include="LatencyManager.cs" />
