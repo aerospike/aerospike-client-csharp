@@ -14,6 +14,7 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
+using System;
 using System.Collections.Generic;
 using System.Text;
 
@@ -63,6 +64,22 @@ namespace Aerospike.Client
 			object obj;
 			bins.TryGetValue(name, out obj);
 			return obj;
+		}
+
+		/// <summary>
+		/// Get bin value as double.
+		/// </summary>
+		public double GetDouble(string name)
+		{
+			return BitConverter.Int64BitsToDouble((long)GetValue(name));
+		}
+
+		/// <summary>
+		/// Get bin value as float.
+		/// </summary>
+		public float GetFloat(string name)
+		{
+			return (float)BitConverter.Int64BitsToDouble((long)GetValue(name));
 		}
 
 		/// <summary>

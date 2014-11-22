@@ -24,7 +24,7 @@ namespace Aerospike.Client
 	/// <summary>
 	/// Serialize collection objects using MessagePack format specification:
 	/// 
-	/// http://wiki.msgpack.org/display/MSGPACK/Format+specification#Formatspecification-int32
+	/// https://github.com/msgpack/msgpack/blob/master/spec.md
 	/// </summary>
 	public sealed class Packer
 	{
@@ -199,6 +199,18 @@ namespace Aerospike.Client
 				return;
 			}
 
+			if (obj is double)
+			{
+				PackDouble((double)obj);
+				return;
+			}
+
+			if (obj is float)
+			{
+				PackFloat((float)obj);
+				return;
+			}
+
 			if (obj is IList)
 			{
 				PackList((IList) obj);
@@ -335,6 +347,26 @@ namespace Aerospike.Client
 			offset += srcLength;
 		}
 
+		public void PackDouble(double val)
+		{
+			if (offset + 9 > buffer.Length)
+			{
+				Resize(9);
+			}
+			buffer[offset++] = (byte)0xcb;
+			offset += ByteUtil.DoubleToBytes(val, buffer, offset);
+		}
+
+		public void PackFloat(float val)
+		{
+			if (offset + 5 > buffer.Length)
+			{
+				Resize(5);
+			}
+			buffer[offset++] = (byte)0xca;
+			offset += ByteUtil.FloatToBytes(val, buffer, offset);
+		}
+		
 		private void PackLong(int type, ulong val)
 		{
 			if (offset + 9 > buffer.Length)

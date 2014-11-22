@@ -297,11 +297,27 @@ namespace Aerospike.Client
 			}
 			return 8;
 		}
+
+		public static int DoubleToBytes(double v, byte[] buf, int offset)
+		{
+			return ByteUtil.LongToBytes((ulong)BitConverter.DoubleToInt64Bits(v), buf, offset);
+		}
 		
 		public static double BytesToDouble(byte[] buf, int offset)
 		{
-			long val = BytesToLong(buf, offset);
-			return System.BitConverter.Int64BitsToDouble(val);
+			return BitConverter.Int64BitsToDouble(BytesToLong(buf, offset));
+		}
+
+		public static int FloatToBytes(float v, byte[] buf, int offset)
+		{
+			byte[] bytes = BitConverter.GetBytes(v);
+
+			buf[offset++] = bytes[3];
+			buf[offset++] = bytes[2];
+			buf[offset++] = bytes[1];
+			buf[offset++] = bytes[0];
+
+			return 4;
 		}
 
 		public static float BytesToFloat(byte[] buf, int offset)
@@ -313,7 +329,7 @@ namespace Aerospike.Client
 			bytes[2] = buf[offset + 1];
 			bytes[3] = buf[offset];
 
-			return System.BitConverter.ToSingle(bytes, 0);
+			return BitConverter.ToSingle(bytes, 0);
 		}
 
 		public static long BytesToLong(byte[] buf, int offset)

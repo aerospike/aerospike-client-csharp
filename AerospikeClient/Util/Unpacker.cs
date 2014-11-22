@@ -23,7 +23,7 @@ namespace Aerospike.Client
 	/// <summary>
 	/// De-serialize collection objects using MessagePack format specification:
 	/// 
-	/// http://wiki.msgpack.org/display/MSGPACK/Format+specification#Formatspecification-int32
+	/// https://github.com/msgpack/msgpack/blob/master/spec.md
 	/// </summary>
 	public sealed class Unpacker
 	{

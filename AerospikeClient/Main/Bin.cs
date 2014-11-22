@@ -85,6 +85,30 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
+		/// Constructor, specifying bin name and double value.
+		/// For servers configured as "single-bin", enter a null or empty name.
+		/// </summary>
+		/// <param name="name">bin name, current limit is 14 characters</param>
+		/// <param name="value">bin value</param>
+		public Bin(string name, double value)
+		{
+			this.name = name;
+			this.value = Value.Get(value);
+		}
+
+		/// <summary>
+		/// Constructor, specifying bin name and float value.
+		/// For servers configured as "single-bin", enter a null or empty name.
+		/// </summary>
+		/// <param name="name">bin name, current limit is 14 characters</param>
+		/// <param name="value">bin value</param>
+		public Bin(string name, float value)
+		{
+			this.name = name;
+			this.value = Value.Get(value);
+		}
+
+		/// <summary>
 		/// Constructor, specifying bin name and long value.
 		/// For servers configured as "single-bin", enter a null or empty name.
 		/// </summary>
