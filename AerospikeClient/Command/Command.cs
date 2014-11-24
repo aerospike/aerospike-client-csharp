@@ -22,9 +22,10 @@ namespace Aerospike.Client
 	public abstract class Command
 	{
 		// Flags commented out are not supported by this client.
-		public static readonly int INFO1_READ      = (1 << 0); // Contains a read operation.
-		public static readonly int INFO1_GET_ALL   = (1 << 1); // Get all bins.
-		public static readonly int INFO1_NOBINDATA = (1 << 5); // Do not read the bins
+		public static readonly int INFO1_READ            = (1 << 0); // Contains a read operation.
+		public static readonly int INFO1_GET_ALL         = (1 << 1); // Get all bins.
+		public static readonly int INFO1_NOBINDATA       = (1 << 5); // Do not read the bins.
+		public static readonly int INFO1_CONSISTENCY_ALL = (1 << 6); // Involve all replicas in read operation.
 
 		public static readonly int INFO2_WRITE          = (1 << 0); // Create or update record
 		public static readonly int INFO2_DELETE         = (1 << 1); // Fling a record into the belly of Moloch.
@@ -103,27 +104,27 @@ namespace Aerospike.Client
 			End();
 		}
 
-		public void SetExists(Key key)
+		public void SetExists(Policy policy, Key key)
 		{
 			Begin();
 			int fieldCount = EstimateKeySize(key);
 			SizeBuffer();
-			WriteHeader(Command.INFO1_READ | Command.INFO1_NOBINDATA, 0, fieldCount, 0);
+			WriteHeader(policy, Command.INFO1_READ | Command.INFO1_NOBINDATA, 0, fieldCount, 0);
 			WriteKey(key);
 			End();
 		}
 
-		public void SetRead(Key key)
+		public void SetRead(Policy policy, Key key)
 		{
 			Begin();
 			int fieldCount = EstimateKeySize(key);
 			SizeBuffer();
-			WriteHeader(Command.INFO1_READ | Command.INFO1_GET_ALL, 0, fieldCount, 0);
+			WriteHeader(policy, Command.INFO1_READ | Command.INFO1_GET_ALL, 0, fieldCount, 0);
 			WriteKey(key);
 			End();
 		}
 
-		public void SetRead(Key key, string[] binNames)
+		public void SetRead(Policy policy, Key key, string[] binNames)
 		{
 			if (binNames != null)
 			{
@@ -135,7 +136,7 @@ namespace Aerospike.Client
 					EstimateOperationSize(binName);
 				}
 				SizeBuffer();
-				WriteHeader(Command.INFO1_READ, 0, fieldCount, binNames.Length);
+				WriteHeader(policy, Command.INFO1_READ, 0, fieldCount, binNames.Length);
 				WriteKey(key);
 
 				foreach (string binName in binNames)
@@ -146,11 +147,11 @@ namespace Aerospike.Client
 			}
 			else
 			{
-				SetRead(key);
+				SetRead(policy, key);
 			}
 		}
 
-		public void SetReadHeader(Key key)
+		public void SetReadHeader(Policy policy, Key key)
 		{
 			Begin();
 			int fieldCount = EstimateKeySize(key);
@@ -161,7 +162,7 @@ namespace Aerospike.Client
 			// The workaround is to request a non-existent bin.
 			// TODO: Fix this on server.
 			//command.setRead(Command.INFO1_READ | Command.INFO1_NOBINDATA);
-			WriteHeader(Command.INFO1_READ, 0, fieldCount, 1);
+			WriteHeader(policy, Command.INFO1_READ, 0, fieldCount, 1);
     
 			WriteKey(key);
 			WriteOperation((string)null, Operation.Type.READ);
@@ -216,14 +217,7 @@ namespace Aerospike.Client
 			}
 			SizeBuffer();
 
-			if (writeAttr != 0)
-			{
-				WriteHeader(policy, readAttr, writeAttr, fieldCount, operations.Length);
-			}
-			else
-			{
-				WriteHeader(readAttr, writeAttr, fieldCount, operations.Length);
-			}
+			WriteHeader(policy, readAttr, writeAttr, fieldCount, operations.Length);
 			WriteKey(key);
 
 			if (policy.sendKey)
@@ -259,7 +253,7 @@ namespace Aerospike.Client
 			End();
 		}
 
-		public void SetBatchExists(Key[] keys)
+		public void SetBatchExists(Policy policy, Key[] keys)
 		{
 			// Estimate buffer size
 			string ns = keys[0].ns;
@@ -270,7 +264,7 @@ namespace Aerospike.Client
 
 			SizeBuffer();
 
-			WriteHeader(Command.INFO1_READ | Command.INFO1_NOBINDATA, 0, 2, 0);
+			WriteHeader(policy, Command.INFO1_READ | Command.INFO1_NOBINDATA, 0, 2, 0);
 			WriteField(ns, FieldType.NAMESPACE);
 			WriteFieldHeader(byteSize, FieldType.DIGEST_RIPE_ARRAY);
 
@@ -282,8 +276,8 @@ namespace Aerospike.Client
 			}
 			End();
 		}
-		
-		public void SetBatchExists(Key[] keys, BatchNode.BatchNamespace batch)
+
+		public void SetBatchExists(Policy policy, Key[] keys, BatchNode.BatchNamespace batch)
 		{
 			// Estimate buffer size
 			Begin();
@@ -293,7 +287,7 @@ namespace Aerospike.Client
     
 			SizeBuffer();
     
-			WriteHeader(Command.INFO1_READ | Command.INFO1_NOBINDATA, 0, 2, 0);
+			WriteHeader(policy, Command.INFO1_READ | Command.INFO1_NOBINDATA, 0, 2, 0);
 			WriteField(batch.ns, FieldType.NAMESPACE);
 			WriteFieldHeader(byteSize, FieldType.DIGEST_RIPE_ARRAY);
 
@@ -310,7 +304,7 @@ namespace Aerospike.Client
 			End();
 		}
 
-		public void SetBatchGet(Key[] keys, HashSet<string> binNames, int readAttr)
+		public void SetBatchGet(Policy policy, Key[] keys, HashSet<string> binNames, int readAttr)
 		{
 			// Estimate buffer size
 			string ns = keys[0].ns;
@@ -330,7 +324,7 @@ namespace Aerospike.Client
 			SizeBuffer();
 
 			int operationCount = (binNames == null) ? 0 : binNames.Count;
-			WriteHeader(readAttr, 0, 2, operationCount);
+			WriteHeader(policy, readAttr, 0, 2, operationCount);
 			WriteField(ns, FieldType.NAMESPACE);
 			WriteFieldHeader(byteSize, FieldType.DIGEST_RIPE_ARRAY);
 
@@ -351,7 +345,7 @@ namespace Aerospike.Client
 			End();
 		}
 
-		public void SetBatchGet(Key[] keys, BatchNode.BatchNamespace batch, HashSet<string> binNames, int readAttr)
+		public void SetBatchGet(Policy policy, Key[] keys, BatchNode.BatchNamespace batch, HashSet<string> binNames, int readAttr)
 		{
 			// Estimate buffer size
 			Begin();
@@ -370,7 +364,7 @@ namespace Aerospike.Client
 			SizeBuffer();
 
 			int operationCount = (binNames == null)? 0 : binNames.Count;
-			WriteHeader(readAttr, 0, 2, operationCount);
+			WriteHeader(policy, readAttr, 0, 2, operationCount);
 			WriteField(batch.ns, FieldType.NAMESPACE);
 			WriteFieldHeader(byteSize, FieldType.DIGEST_RIPE_ARRAY);
 
@@ -437,7 +431,7 @@ namespace Aerospike.Client
 			}
 
 			int operationCount = (binNames == null) ? 0 : binNames.Length;
-			WriteHeader(readAttr, 0, fieldCount, operationCount);
+			WriteHeader(policy, readAttr, 0, fieldCount, operationCount);
 
 			if (ns != null)
 			{
@@ -573,6 +567,11 @@ namespace Aerospike.Client
 				infoAttr |= Command.INFO3_COMMIT_MASTER;
 			}
 
+			if (policy.consistencyLevel == ConsistencyLevel.CONSISTENCY_ALL)
+			{
+				readAttr |= Command.INFO1_CONSISTENCY_ALL;
+			}
+
 			// Write all header data except total size which must be written last. 
 			dataBuffer[8] = MSG_REMAINING_HEADER_SIZE; // Message header length.
 			dataBuffer[9] = (byte)readAttr;
@@ -597,8 +596,13 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Generic header write.
 		/// </summary>
-		protected internal void WriteHeader(int readAttr, int writeAttr, int fieldCount, int operationCount)
+		protected internal void WriteHeader(Policy policy, int readAttr, int writeAttr, int fieldCount, int operationCount)
 		{
+			if (policy.consistencyLevel == ConsistencyLevel.CONSISTENCY_ALL)
+			{
+				readAttr |= Command.INFO1_CONSISTENCY_ALL;
+			}
+
 			// Write all header data except total size which must be written last. 
 			dataBuffer[8] = MSG_REMAINING_HEADER_SIZE; // Message header length.
 			dataBuffer[9] = (byte)readAttr;

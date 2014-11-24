@@ -210,7 +210,7 @@ namespace Aerospike.Client
 
 		protected internal virtual void WriteQueryHeader(int fieldCount, int operationCount)
 		{
-			WriteHeader(Command.INFO1_READ, 0, fieldCount, operationCount);
+			WriteHeader(policy, Command.INFO1_READ, 0, fieldCount, operationCount);
 		}
 	}
 }

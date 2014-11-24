@@ -54,7 +54,7 @@ namespace Aerospike.Client
 
 		protected internal override void WriteBuffer()
 		{
-			SetBatchGet(keys, batch, binNames, readAttr);
+			SetBatchGet(policy, keys, batch, binNames, readAttr);
 		}
 
 		/// <summary>

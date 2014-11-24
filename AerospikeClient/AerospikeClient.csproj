@@ -223,7 +223,7 @@
     <Compile Include="Policy\AdminPolicy.cs" />
     <Compile Include="Policy\BatchPolicy.cs" />
     <Compile Include="Policy\CommitLevel.cs" />
-    <Compile Include="Policy\ConsistencyPolicy.cs" />
+    <Compile Include="Policy\ConsistencyLevel.cs" />
     <Compile Include="Policy\InfoPolicy.cs" />
     <Compile Include="Policy\GenerationPolicy.cs" />
     <Compile Include="Policy\Policy.cs" />

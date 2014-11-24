@@ -47,7 +47,7 @@ namespace Aerospike.Client
 
 		protected internal override void WriteBuffer()
 		{
-			SetBatchExists(keys, batchNamespace);
+			SetBatchExists(policy, keys, batchNamespace);
 		}
 
 		protected internal override void ParseRow(Key key)

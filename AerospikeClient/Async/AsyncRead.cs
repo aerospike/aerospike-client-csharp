@@ -40,7 +40,7 @@ namespace Aerospike.Client
 
 		protected internal override void WriteBuffer()
 		{
-			SetRead(key, binNames);
+			SetRead(policy, key, binNames);
 		}
 
 		protected internal sealed override void ParseResult()

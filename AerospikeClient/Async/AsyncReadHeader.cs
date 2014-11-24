@@ -38,7 +38,7 @@ namespace Aerospike.Client
 
 		protected internal override void WriteBuffer()
 		{
-			SetReadHeader(key);
+			SetReadHeader(policy, key);
 		}
 
 		protected internal override void ParseResult()

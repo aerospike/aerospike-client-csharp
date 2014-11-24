@@ -45,7 +45,7 @@ namespace Aerospike.Client
 
 		protected internal override void WriteBuffer()
 		{
-			SetBatchExists(keys);
+			SetBatchExists(policy, keys);
 		}
 
 		/// <summary>
