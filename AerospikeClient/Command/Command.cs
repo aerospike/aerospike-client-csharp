@@ -34,6 +34,7 @@ namespace Aerospike.Client
 		public static readonly int INFO2_CREATE_ONLY    = (1 << 5); // Create only. Fail if record already exists.
 
 		public static readonly int INFO3_LAST              = (1 << 0); // This is the last of a multi-part message.
+		public static readonly int INFO3_COMMIT_MASTER     = (1 << 1); // Commit to master only before declaring success.
 		public static readonly int INFO3_UPDATE_ONLY       = (1 << 3); // Update only. Merge bins.
 		public static readonly int INFO3_CREATE_OR_REPLACE = (1 << 4); // Create or completely replace record.
 		public static readonly int INFO3_REPLACE_ONLY      = (1 << 5); // Completely replace existing record only.
@@ -565,6 +566,11 @@ namespace Aerospike.Client
 				generation = policy.generation;
 				writeAttr |= Command.INFO2_GENERATION_GT;
 				break;
+			}
+
+			if (policy.commitLevel == CommitLevel.COMMIT_MASTER)
+			{
+				infoAttr |= Command.INFO3_COMMIT_MASTER;
 			}
 
 			// Write all header data except total size which must be written last. 

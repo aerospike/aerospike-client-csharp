@@ -32,7 +32,14 @@ namespace Aerospike.Client
 		/// indicates that the generation is not used to restrict writes.
 		/// </summary>
 		public GenerationPolicy generationPolicy = GenerationPolicy.NONE;
-	
+
+		/// <summary>
+		/// Desired consistency guarantee when committing a transaction on the server. The default 
+		/// (COMMIT_ALL) indicates that the server should wait for master and all replica commits to 
+		/// be successful before returning success to the client.
+		/// </summary>
+		public CommitLevel commitLevel = CommitLevel.COMMIT_ALL;
+
 		/// <summary>
 		/// Expected generation. Generation is the number of times a record has been modified
 		/// (including creation) on the server. If a write operation is creating a record, 
@@ -69,6 +76,7 @@ namespace Aerospike.Client
 		{
 			this.recordExistsAction = other.recordExistsAction;
 			this.generationPolicy = other.generationPolicy;
+			this.commitLevel = other.commitLevel;
 			this.generation = other.generation;
 			this.expiration = other.expiration;
 			this.sendKey = other.sendKey;
