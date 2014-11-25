@@ -125,6 +125,26 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
+		/// Delete values from list.
+		/// </summary>
+		/// <param name="values">values to delete</param>
+		public void Remove(IList values)
+		{
+			client.Execute(policy, key, PackageName, "remove_all", binName, Value.GetAsList(values));
+		}
+
+		/// <summary>
+		/// Delete values from list between range.  Return count of entries removed.
+		/// </summary>
+		/// <param name="begin">low value of the range (inclusive)</param>
+		/// <param name="end">high value of the range (inclusive)</param>
+		public int Remove(Value begin, Value end)
+		{
+			object result = client.Execute(policy, key, PackageName, "remove_range", binName, begin, end);
+			return (result != null) ? (int)(long)result : 0;
+		}
+	
+		/// <summary>
 		/// Select values from list.
 		/// </summary>
 		/// <param name="value">value to select</param>
