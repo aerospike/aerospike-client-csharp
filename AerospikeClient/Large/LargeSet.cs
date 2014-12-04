@@ -30,7 +30,7 @@ namespace Aerospike.Client
 		private readonly WritePolicy policy;
 		private readonly Key key;
 		private readonly Value binName;
-		private readonly Value userModule;
+		private readonly Value createModule;
 
 		/// <summary>
 		/// Initialize large set operator.
@@ -39,14 +39,14 @@ namespace Aerospike.Client
 		/// <param name="policy">generic configuration parameters, pass in null for defaults</param>
 		/// <param name="key">unique record identifier</param>
 		/// <param name="binName">bin name</param>
-		/// <param name="userModule">Lua function name that initializes list configuration parameters, pass null for default set</param>
-		public LargeSet(AerospikeClient client, WritePolicy policy, Key key, string binName, string userModule)
+		/// <param name="createModule">Lua function name that initializes list configuration parameters, pass null for default set</param>
+		public LargeSet(AerospikeClient client, WritePolicy policy, Key key, string binName, string createModule)
 		{
 			this.client = client;
 			this.policy = policy;
 			this.key = key;
 			this.binName = Value.Get(binName);
-			this.userModule = Value.Get(userModule);
+			this.createModule = Value.Get(createModule);
 		}
 
 		/// <summary>
@@ -55,7 +55,7 @@ namespace Aerospike.Client
 		/// <param name="value">value to add</param>
 		public void Add(Value value)
 		{
-			client.Execute(policy, key, PackageName, "add", binName, value, userModule);
+			client.Execute(policy, key, PackageName, "add", binName, value, createModule);
 		}
 
 		/// <summary>
@@ -64,7 +64,7 @@ namespace Aerospike.Client
 		/// <param name="values">values to add</param>
 		public void Add(params Value[] values)
 		{
-			client.Execute(policy, key, PackageName, "add_all", binName, Value.Get(values), userModule);
+			client.Execute(policy, key, PackageName, "add_all", binName, Value.Get(values), createModule);
 		}
 
 		/// <summary>
@@ -73,7 +73,7 @@ namespace Aerospike.Client
 		/// <param name="values">values to add</param>
 		public void Add(IList values)
 		{
-			client.Execute(policy, key, PackageName, "add_all", binName, Value.GetAsList(values), userModule);
+			client.Execute(policy, key, PackageName, "add_all", binName, Value.GetAsList(values), createModule);
 		}
 
 		/// <summary>
@@ -115,11 +115,12 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Select values from set and apply specified Lua filter.
 		/// </summary>
+		/// <param name="filterModule">Lua module name which contains filter function</param>
 		/// <param name="filterName">Lua function name which applies filter to returned list</param>
 		/// <param name="filterArgs">arguments to Lua function name</param>
-		public IList Filter(string filterName, params Value[] filterArgs)
+		public IList Filter(string filterModule, string filterName, params Value[] filterArgs)
 		{
-			return (IList)client.Execute(policy, key, PackageName, "filter", binName, userModule, Value.Get(filterName), Value.Get(filterArgs));
+			return (IList)client.Execute(policy, key, PackageName, "filter", binName, Value.Get(filterModule), Value.Get(filterName), Value.Get(filterArgs));
 		}
 
 		/// <summary>
