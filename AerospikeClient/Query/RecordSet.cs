@@ -25,7 +25,7 @@ namespace Aerospike.Client
 	/// Multiple threads will retrieve records from the server nodes and put these records on the queue.
 	/// The single user thread consumes these records from the queue.
 	/// </summary>
-	public sealed class RecordSet
+	public sealed class RecordSet : IDisposable
 	{
 		public static readonly KeyRecord END = new KeyRecord(null, null);
 
@@ -79,6 +79,14 @@ namespace Aerospike.Client
 				return false;
 			}
 			return true;
+		}
+
+		/// <summary>
+		/// Close query.
+		/// </summary>
+		public void Dispose()
+		{
+			Close();
 		}
 
 		/// <summary>

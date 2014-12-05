@@ -40,7 +40,7 @@ namespace Aerospike.Client
 	/// written or read by specifying the relevant subset of bins.
 	/// </para>
 	/// </summary>
-	public class AerospikeClient
+	public class AerospikeClient : IDisposable
 	{
 		//-------------------------------------------------------
 		// Member variables.
@@ -190,6 +190,14 @@ namespace Aerospike.Client
 		//-------------------------------------------------------
 		// Cluster Connection Management
 		//-------------------------------------------------------
+
+		/// <summary>
+		/// Close all client connections to database server nodes.
+		/// </summary>
+		public void Dispose()
+		{
+			Close();
+		}
 
 		/// <summary>
 		/// Close all client connections to database server nodes.

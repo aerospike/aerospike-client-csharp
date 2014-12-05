@@ -25,7 +25,7 @@ namespace Aerospike.Client
 	/// Multiple threads will retrieve results from the server nodes and put these results on the queue.
 	/// The single user thread consumes these results from the queue.
 	/// </summary>
-	public sealed class ResultSet
+	public sealed class ResultSet : IDisposable
 	{
 		public static readonly object END = new object();
 
@@ -79,6 +79,14 @@ namespace Aerospike.Client
 				return false;
 			}
 			return true;
+		}
+
+		/// <summary>
+		/// Close query.
+		/// </summary>
+		public void Dispose()
+		{
+			Close();
 		}
 
 		/// <summary>
