@@ -157,15 +157,8 @@ namespace Aerospike.Client
 			int fieldCount = EstimateKeySize(key);
 			EstimateOperationSize((string)null);
 			SizeBuffer();
-    
-			// The server does not currently return record header data with INFO1_NOBINDATA attribute set.
-			// The workaround is to request a non-existent bin.
-			// TODO: Fix this on server.
-			//command.setRead(Command.INFO1_READ | Command.INFO1_NOBINDATA);
-			WriteHeader(policy, Command.INFO1_READ, 0, fieldCount, 1);
-    
+			WriteHeader(policy, Command.INFO1_READ | Command.INFO1_NOBINDATA, 0, fieldCount, 0);    
 			WriteKey(key);
-			WriteOperation((string)null, Operation.Type.READ);
 			End();
 		}
 
@@ -175,6 +168,7 @@ namespace Aerospike.Client
 			int fieldCount = EstimateKeySize(key);
 			int readAttr = 0;
 			int writeAttr = 0;
+			bool readBin = false;
 			bool readHeader = false;
 			bool userKeyFieldCalculated = false;
 
@@ -190,13 +184,10 @@ namespace Aerospike.Client
 					{
 						readAttr |= Command.INFO1_GET_ALL;
 					}
+					readBin = true;
 					break;
 
 				case Operation.Type.READ_HEADER:
-					// The server does not currently return record header data with INFO1_NOBINDATA attribute set.
-					// The workaround is to request a non-existent bin.
-					// TODO: Fix this on server.
-					//readAttr |= Command.INFO1_READ | Command.INFO1_NOBINDATA;
 					readAttr |= Command.INFO1_READ;
 					readHeader = true;
 					break;
@@ -217,6 +208,11 @@ namespace Aerospike.Client
 			}
 			SizeBuffer();
 
+			if (readHeader && !readBin)
+			{
+				readAttr |= Command.INFO1_NOBINDATA;
+			}
+
 			WriteHeader(policy, readAttr, writeAttr, fieldCount, operations.Length);
 			WriteKey(key);
 
@@ -228,11 +224,6 @@ namespace Aerospike.Client
 			foreach (Operation operation in operations)
 			{
 				WriteOperation(operation);
-			}
-
-			if (readHeader)
-			{
-				WriteOperation((string)null, Operation.Type.READ);
 			}
 			End();
 		}
