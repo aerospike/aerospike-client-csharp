@@ -37,6 +37,7 @@ namespace Aerospike.Demo
         internal int commandMax;
         internal bool singleBin;
 		internal bool hasUdf;
+		internal bool hasLargeDataTypes;
 
 		protected internal Arguments()
 		{
@@ -78,13 +79,20 @@ namespace Aerospike.Demo
 				throw new Exception(string.Format("Failed to get namespace info: host={0} namespace={1}", node, ns));
 			}
 
-			string name = "single-bin";
+			singleBin = parseBoolean(namespaceTokens, "single-bin");
+			hasLargeDataTypes = parseBoolean(namespaceTokens, "ldt-enabled");
+
+			binName = singleBin ? "" : "demobin";  // Single bin servers don't need a bin name.
+		}
+
+		private static bool parseBoolean(String namespaceTokens, String name)
+		{
 			string search = name + '=';
 			int begin = namespaceTokens.IndexOf(search);
 
 			if (begin < 0)
 			{
-				throw new Exception(string.Format("Failed to find namespace attribute: host={0} namespace={1} attribute={2}", node, ns, name));
+				return false;
 			}
 
 			begin += search.Length;
@@ -96,9 +104,7 @@ namespace Aerospike.Demo
 			}
 
 			string value = namespaceTokens.Substring(begin, end - begin);
-			singleBin = Convert.ToBoolean(value);
-
-            binName = singleBin ? "" : "demobin";  // Single bin servers don't need a bin name.
+			return Convert.ToBoolean(value);
 		}
 
 		public override string ToString()

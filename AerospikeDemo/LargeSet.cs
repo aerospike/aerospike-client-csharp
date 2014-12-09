@@ -32,7 +32,7 @@ namespace Aerospike.Demo
 		/// </summary>
 		public override void RunExample(AerospikeClient client, Arguments args)
 		{
-			if (!args.hasUdf)
+			if (!args.hasLargeDataTypes)
 			{
 				console.Info("Large set functions are not supported by the connected Aerospike server.");
 				return;
