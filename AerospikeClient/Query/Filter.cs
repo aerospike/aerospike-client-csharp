@@ -29,7 +29,7 @@ namespace Aerospike.Client
 		public static Filter Equal(string name, long value)
 		{
 			Value val = Value.Get(value);
-			return new Filter(name, val, val);
+			return new Filter(name, IndexCollectionType.DEFAULT, val, val);
 		}
 
 		/// <summary>
@@ -40,9 +40,33 @@ namespace Aerospike.Client
 		public static Filter Equal(string name, string value)
 		{
 			Value val = Value.Get(value);
-			return new Filter(name, val, val);
+			return new Filter(name, IndexCollectionType.DEFAULT, val, val);
 		}
 
+		/// <summary>
+		/// Create contains number filter for query on collection index.
+		/// </summary>
+		/// <param name="name">bin name</param>
+		/// <param name="type">index collection type</param>
+		/// <param name="value">filter value</param>
+		public static Filter Contains(string name, IndexCollectionType type, long value)
+		{
+			Value val = Value.Get(value);
+			return new Filter(name, type, val, val);
+		}
+
+		/// <summary>
+		/// Create contains string filter for query on collection index.
+		/// </summary>
+		/// <param name="name">bin name</param>
+		/// <param name="type">index collection type</param>
+		/// <param name="value">filter value</param>
+		public static Filter Contains(string name, IndexCollectionType type, string value)
+		{
+			Value val = Value.Get(value);
+			return new Filter(name, type, val, val);
+		}
+		
 		/// <summary>
 		/// Create range filter for query.
 		/// Range arguments must be longs or integers which can be cast to longs.
@@ -53,16 +77,32 @@ namespace Aerospike.Client
 		/// <param name="end">filter end value</param>
 		public static Filter Range(string name, long begin, long end)
 		{
-			return new Filter(name, Value.Get(begin), Value.Get(end));
+			return new Filter(name, IndexCollectionType.DEFAULT, Value.Get(begin), Value.Get(end));
 		}
 
+		/// <summary>
+		/// Create range filter for query on collection index.
+		/// Range arguments must be longs or integers which can be cast to longs.
+		/// String ranges are not supported.
+		/// </summary>
+		/// <param name="name">bin name</param>
+		/// <param name="type">index collection type</param>
+		/// <param name="begin">filter begin value</param>
+		/// <param name="end">filter end value</param>
+		public static Filter Range(string name, IndexCollectionType type, long begin, long end)
+		{
+			return new Filter(name, type, Value.Get(begin), Value.Get(end));
+		}
+		
 		private readonly string name;
+		private readonly IndexCollectionType type;
 		private readonly Value begin;
 		private readonly Value end;
 
-		private Filter(string name, Value begin, Value end)
+		private Filter(string name, IndexCollectionType type, Value begin, Value end)
 		{
 			this.name = name;
+			this.type = type;
 			this.begin = begin;
 			this.end = end;
 		}
@@ -94,6 +134,11 @@ namespace Aerospike.Client
 			offset += len + 4;
 
 			return offset;
+		}
+
+		internal IndexCollectionType CollectionType
+		{
+			get {return type;}
 		}
 	}
 }

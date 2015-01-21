@@ -60,8 +60,23 @@ namespace Aerospike.Client
 				fieldCount++;
 			}
 
+			// Allocate space for TaskId field.
+			dataOffset += 8 + FIELD_HEADER_SIZE;
+			fieldCount++;
+
 			if (statement.filters != null)
 			{
+				if (statement.filters.Length >= 1)
+				{
+					IndexCollectionType type = statement.filters[0].CollectionType;
+
+					if (type != IndexCollectionType.DEFAULT)
+					{
+						dataOffset += FIELD_HEADER_SIZE + 1;
+						fieldCount++;
+					}
+				}
+				
 				dataOffset += FIELD_HEADER_SIZE;
 				filterSize++; // num filters
 
@@ -93,10 +108,6 @@ namespace Aerospike.Client
 				dataOffset += 2 + FIELD_HEADER_SIZE;
 				fieldCount++;
 			}
-
-			// Allocate space for TaskId field.
-			dataOffset += 8 + FIELD_HEADER_SIZE;
-			fieldCount++;
 
 			if (statement.functionName != null)
 			{
@@ -146,8 +157,24 @@ namespace Aerospike.Client
 				WriteField(statement.setName, FieldType.TABLE);
 			}
 
+			// Write taskId field
+			WriteFieldHeader(8, FieldType.TRAN_ID);
+			ByteUtil.LongToBytes((ulong)statement.taskId, dataBuffer, dataOffset);
+			dataOffset += 8;
+
 			if (statement.filters != null)
 			{
+				if (statement.filters.Length >= 1)
+				{
+					IndexCollectionType type = statement.filters[0].CollectionType;
+
+					if (type != IndexCollectionType.DEFAULT)
+					{
+						WriteFieldHeader(1, FieldType.INDEX_TYPE);
+						dataBuffer[dataOffset++] = (byte)type;
+					}
+				}
+				
 				WriteFieldHeader(filterSize, FieldType.INDEX_RANGE);
 				dataBuffer[dataOffset++] = (byte)statement.filters.Length;
 
@@ -179,11 +206,6 @@ namespace Aerospike.Client
 				dataBuffer[dataOffset++] = priority;
 				dataBuffer[dataOffset++] = (byte)100;
 			}
-
-			// Write taskId field
-			WriteFieldHeader(8, FieldType.TRAN_ID);
-			ByteUtil.LongToBytes((ulong)statement.taskId, dataBuffer, dataOffset);
-			dataOffset += 8;
 
 			if (statement.functionName != null)
 			{

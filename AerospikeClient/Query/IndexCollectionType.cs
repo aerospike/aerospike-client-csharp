@@ -17,18 +17,28 @@
 namespace Aerospike.Client
 {
 	/// <summary>
-	/// Underlying data type of secondary index.
+	/// Secondary index collection type.
 	/// </summary>
-	public enum IndexType
+	public enum IndexCollectionType
 	{
 		/// <summary>
-		/// Number index.
+		/// Normal scalar index.
 		/// </summary>
-		NUMERIC,
+		DEFAULT,
 
 		/// <summary>
-		/// String index.
+		/// Index list elements.
 		/// </summary>
-		STRING
+		LIST,
+
+		/// <summary>
+		/// Index map keys.
+		/// </summary>
+		MAPKEYS,
+
+		/// <summary>
+		/// Index map values.
+		/// </summary>
+		MAPVALUES
 	}
 }

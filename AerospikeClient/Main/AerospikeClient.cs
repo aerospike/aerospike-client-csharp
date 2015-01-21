@@ -1220,7 +1220,7 @@ namespace Aerospike.Client
 		#endif
 
 		/// <summary>
-		/// Create secondary index.
+		/// Create scalar secondary index.
 		/// This asynchronous server call will return before command is complete.
 		/// The user can optionally wait for command completion by using the returned
 		/// IndexTask instance.
@@ -1233,9 +1233,31 @@ namespace Aerospike.Client
 		/// <param name="setName">optional set name - equivalent to database table</param>
 		/// <param name="indexName">name of secondary index</param>
 		/// <param name="binName">bin name that data is indexed on</param>
-		/// <param name="indexType">type of secondary index</param>
+		/// <param name="indexType">underlying data type of secondary index</param>
 		/// <exception cref="AerospikeException">if index create fails</exception>
 		public IndexTask CreateIndex(Policy policy, string ns, string setName, string indexName, string binName, IndexType indexType)
+		{
+			return CreateIndex(policy, ns, setName, indexName, binName, indexType, IndexCollectionType.DEFAULT);	
+		}
+
+		/// <summary>
+		/// Create complex secondary index on bins containing collections.
+		/// This asynchronous server call will return before command is complete.
+		/// The user can optionally wait for command completion by using the returned
+		/// IndexTask instance.
+		/// <para>
+		/// This method is only supported by Aerospike 3 servers.
+		/// </para>
+		/// </summary>
+		/// <param name="policy">generic configuration parameters, pass in null for defaults</param>
+		/// <param name="ns">namespace - equivalent to database name</param>
+		/// <param name="setName">optional set name - equivalent to database table</param>
+		/// <param name="indexName">name of secondary index</param>
+		/// <param name="binName">bin name that data is indexed on</param>
+		/// <param name="indexType">underlying data type of secondary index</param>
+		/// <param name="indexCollectionType">index collection type</param>
+		/// <exception cref="AerospikeException">if index create fails</exception>
+		public IndexTask CreateIndex(Policy policy, string ns, string setName, string indexName, string binName, IndexType indexType, IndexCollectionType indexCollectionType)
 		{
 			StringBuilder sb = new StringBuilder(500);
 			sb.Append("sindex-create:ns=");
@@ -1250,6 +1272,13 @@ namespace Aerospike.Client
 			sb.Append(";indexname=");
 			sb.Append(indexName);
 			sb.Append(";numbins=1");
+
+			if (indexCollectionType != IndexCollectionType.DEFAULT)
+			{
+				sb.Append(";indextype=");
+				sb.Append(indexCollectionType);
+			}
+
 			sb.Append(";indexdata=");
 			sb.Append(binName);
 			sb.Append(",");
@@ -1273,7 +1302,7 @@ namespace Aerospike.Client
 
 			throw new AerospikeException("Create index failed: " + response);
 		}
-
+		
 		/// <summary>
 		/// Delete secondary index.
 		/// <para>

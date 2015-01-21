@@ -238,6 +238,7 @@
       <DesignTime>True</DesignTime>
       <DependentUpon>Resources.resx</DependentUpon>
     </Compile>
+    <Compile Include="Query\IndexCollectionType.cs" />
     <Compile Include="Task\RegisterTask.cs" />
     <Compile Include="Task\IndexTask.cs" />
     <Compile Include="Task\Task.cs" />

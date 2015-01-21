@@ -30,6 +30,7 @@ namespace Aerospike.Client
 		public const int INDEX_FILTER = 23;
 		public const int INDEX_LIMIT = 24;
 		public const int INDEX_ORDER_BY = 25;
+		public const int INDEX_TYPE = 26;
 		public const int UDF_PACKAGE_NAME = 30;
 		public const int UDF_FUNCTION = 31;
 		public const int UDF_ARGLIST = 32;
