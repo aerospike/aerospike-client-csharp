@@ -62,7 +62,7 @@ namespace Aerospike.Client
 				}
 				else
 				{
-					status = false;
+					throw new AerospikeException.Parse("Received zero sized data packet from server.");
 				}
 			}
 		}
