@@ -163,6 +163,11 @@ namespace Aerospike.Client
 		/// Bin name length greater than 14 characters.
 		/// </summary>
 		public const int BIN_NAME_TOO_LONG = 21;
+
+		/// <summary>
+		/// Operation not allowed at this time.
+		/// </summary>
+		public const int FAIL_FORBIDDEN = 22;
 	
 		/// <summary>
 		/// There are no more records left for query.
@@ -431,6 +436,9 @@ namespace Aerospike.Client
 
 			case BIN_NAME_TOO_LONG:
 				return "Bin name length greater than 14 characters";
+
+			case FAIL_FORBIDDEN:
+				return "Operation not allowed at this time";
 
 			case QUERY_END:
 				return "Query end";
