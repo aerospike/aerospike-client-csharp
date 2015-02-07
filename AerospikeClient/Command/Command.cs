@@ -456,7 +456,7 @@ namespace Aerospike.Client
 
 			if (policy.sendKey)
 			{
-				dataOffset += key.userKey.EstimateSize() + FIELD_HEADER_SIZE;
+				dataOffset += key.userKey.EstimateSize() + FIELD_HEADER_SIZE + 1;
 				fieldCount++;
 			}
 			return fieldCount;
