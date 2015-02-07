@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2014 Aerospike, Inc.
+ * Copyright 2012-2015 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -54,13 +54,7 @@ namespace Aerospike.Client
 		public void SetWrite(WritePolicy policy, Operation.Type operation, Key key, Bin[] bins)
 		{
 			Begin();
-			int fieldCount = EstimateKeySize(key);
-
-			if (policy.sendKey)
-			{
-				dataOffset += key.userKey.EstimateSize() + FIELD_HEADER_SIZE;
-				fieldCount++;
-			} 
+			int fieldCount = EstimateKeySize(policy, key);
 			
 			foreach (Bin bin in bins)
 			{
@@ -68,12 +62,7 @@ namespace Aerospike.Client
 			}
 			SizeBuffer();
 			WriteHeader(policy, 0, Command.INFO2_WRITE, fieldCount, bins.Length);
-			WriteKey(key);
-
-			if (policy.sendKey)
-			{
-				WriteField(key.userKey, FieldType.KEY);
-			}
+			WriteKey(policy, key);
 
 			foreach (Bin bin in bins)
 			{
@@ -85,21 +74,21 @@ namespace Aerospike.Client
 		public void SetDelete(WritePolicy policy, Key key)
 		{
 			Begin();
-			int fieldCount = EstimateKeySize(key);
+			int fieldCount = EstimateKeySize(policy, key);			
 			SizeBuffer();
 			WriteHeader(policy, 0, Command.INFO2_WRITE | Command.INFO2_DELETE, fieldCount, 0);
-			WriteKey(key);
+			WriteKey(policy, key);
 			End();
 		}
 
 		public void SetTouch(WritePolicy policy, Key key)
 		{
 			Begin();
-			int fieldCount = EstimateKeySize(key);
+			int fieldCount = EstimateKeySize(policy, key);
 			EstimateOperationSize();
 			SizeBuffer();
 			WriteHeader(policy, 0, Command.INFO2_WRITE, fieldCount, 1);
-			WriteKey(key);
+			WriteKey(policy, key);
 			WriteOperation(Operation.Type.TOUCH);
 			End();
 		}
@@ -107,20 +96,20 @@ namespace Aerospike.Client
 		public void SetExists(Policy policy, Key key)
 		{
 			Begin();
-			int fieldCount = EstimateKeySize(key);
+			int fieldCount = EstimateKeySize(policy, key);
 			SizeBuffer();
 			WriteHeader(policy, Command.INFO1_READ | Command.INFO1_NOBINDATA, 0, fieldCount, 0);
-			WriteKey(key);
+			WriteKey(policy, key);
 			End();
 		}
 
 		public void SetRead(Policy policy, Key key)
 		{
 			Begin();
-			int fieldCount = EstimateKeySize(key);
+			int fieldCount = EstimateKeySize(policy, key);
 			SizeBuffer();
 			WriteHeader(policy, Command.INFO1_READ | Command.INFO1_GET_ALL, 0, fieldCount, 0);
-			WriteKey(key);
+			WriteKey(policy, key);
 			End();
 		}
 
@@ -129,7 +118,7 @@ namespace Aerospike.Client
 			if (binNames != null)
 			{
 				Begin();
-				int fieldCount = EstimateKeySize(key);
+				int fieldCount = EstimateKeySize(policy, key);
 
 				foreach (string binName in binNames)
 				{
@@ -137,7 +126,7 @@ namespace Aerospike.Client
 				}
 				SizeBuffer();
 				WriteHeader(policy, Command.INFO1_READ, 0, fieldCount, binNames.Length);
-				WriteKey(key);
+				WriteKey(policy, key);
 
 				foreach (string binName in binNames)
 				{
@@ -154,23 +143,22 @@ namespace Aerospike.Client
 		public void SetReadHeader(Policy policy, Key key)
 		{
 			Begin();
-			int fieldCount = EstimateKeySize(key);
+			int fieldCount = EstimateKeySize(policy, key);
 			EstimateOperationSize((string)null);
 			SizeBuffer();
-			WriteHeader(policy, Command.INFO1_READ | Command.INFO1_NOBINDATA, 0, fieldCount, 0);    
-			WriteKey(key);
+			WriteHeader(policy, Command.INFO1_READ | Command.INFO1_NOBINDATA, 0, fieldCount, 0);
+			WriteKey(policy, key);
 			End();
 		}
 
 		public void SetOperate(WritePolicy policy, Key key, Operation[] operations)
 		{
 			Begin();
-			int fieldCount = EstimateKeySize(key);
+			int fieldCount = EstimateKeySize(policy, key);
 			int readAttr = 0;
 			int writeAttr = 0;
 			bool readBin = false;
 			bool readHeader = false;
-			bool userKeyFieldCalculated = false;
 
 			foreach (Operation operation in operations)
 			{
@@ -193,14 +181,6 @@ namespace Aerospike.Client
 					break;
 
 				default:
-					// Check if write policy requires saving the user key and calculate the data size.
-					// This should only be done once for the entire request even with multiple write operations.
-					if (policy.sendKey && userKeyFieldCalculated == false)
-					{
-						dataOffset += key.userKey.EstimateSize() + FIELD_HEADER_SIZE;
-						fieldCount++;
-						userKeyFieldCalculated = true;
-					}
 					writeAttr = Command.INFO2_WRITE;
 					break;
 				}
@@ -214,12 +194,7 @@ namespace Aerospike.Client
 			}
 
 			WriteHeader(policy, readAttr, writeAttr, fieldCount, operations.Length);
-			WriteKey(key);
-
-			if (policy.sendKey)
-			{
-				WriteField(key.userKey, FieldType.KEY);
-			}
+			WriteKey(policy, key);
 
 			foreach (Operation operation in operations)
 			{
@@ -231,13 +206,13 @@ namespace Aerospike.Client
 		public void SetUdf(WritePolicy policy, Key key, string packageName, string functionName, Value[] args)
 		{
 			Begin();
-			int fieldCount = EstimateKeySize(key);
+			int fieldCount = EstimateKeySize(policy, key);
 			byte[] argBytes = Packer.Pack(args);
 			fieldCount += EstimateUdfSize(packageName, functionName, argBytes);
 
 			SizeBuffer();
 			WriteHeader(policy, 0, Command.INFO2_WRITE, fieldCount, 0);
-			WriteKey(key);
+			WriteKey(policy, key);
 			WriteField(packageName, FieldType.UDF_PACKAGE_NAME);
 			WriteField(functionName, FieldType.UDF_FUNCTION);
 			WriteField(argBytes, FieldType.UDF_ARGLIST);
@@ -460,7 +435,7 @@ namespace Aerospike.Client
 			End();
 		}
 
-		private int EstimateKeySize(Key key)
+		private int EstimateKeySize(Policy policy, Key key)
 		{
 			int fieldCount = 0;
 
@@ -479,6 +454,11 @@ namespace Aerospike.Client
 			dataOffset += key.digest.Length + FIELD_HEADER_SIZE;
 			fieldCount++;
 
+			if (policy.sendKey)
+			{
+				dataOffset += key.userKey.EstimateSize() + FIELD_HEADER_SIZE;
+				fieldCount++;
+			}
 			return fieldCount;
 		}
 
@@ -608,7 +588,7 @@ namespace Aerospike.Client
 			dataOffset = MSG_TOTAL_HEADER_SIZE;
 		}
 
-		private void WriteKey(Key key)
+		private void WriteKey(Policy policy, Key key)
 		{
 			// Write key into buffer.
 			if (key.ns != null)
@@ -622,6 +602,11 @@ namespace Aerospike.Client
 			}
 
 			WriteField(key.digest, FieldType.DIGEST_RIPE);
+
+			if (policy.sendKey)
+			{
+				WriteField(key.userKey, FieldType.KEY);
+			}
 		}
 
 		private void WriteOperation(Bin bin, Operation.Type operationType)

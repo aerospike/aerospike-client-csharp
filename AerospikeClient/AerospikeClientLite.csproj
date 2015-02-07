@@ -164,9 +164,13 @@
     <Compile Include="Async\BufferPool.cs" />
     <Compile Include="BCrypt\SaltParseException.cs" />
     <Compile Include="Cluster\PartitionInfo.cs" />
+    <Compile Include="Admin\AdminCommand.cs" />
+    <Compile Include="Admin\PrivilegeCode.cs" />
+    <Compile Include="Admin\Privilege.cs" />
+    <Compile Include="Admin\Role.cs" />
+    <Compile Include="Admin\User.cs" />
     <Compile Include="Command\BatchCommandNodeGet.cs" />
     <Compile Include="Command\BatchCommandNodeExists.cs" />
-    <Compile Include="Command\AdminCommand.cs" />
     <Compile Include="Command\ExecuteCommand.cs" />
     <Compile Include="Command\Executor.cs" />
     <Compile Include="Command\OperateCommand.cs" />
@@ -224,8 +228,6 @@
     <Compile Include="Command\SyncCommand.cs" />
     <Compile Include="Command\WriteCommand.cs" />
     <Compile Include="Main\Join.cs" />
-    <Compile Include="Main\Role.cs" />
-    <Compile Include="Main\UserRoles.cs" />
     <Compile Include="Main\Host.cs" />
     <Compile Include="Main\Info.cs" />
     <Compile Include="Main\Key.cs" />
@@ -263,6 +265,7 @@
       <DesignTime>True</DesignTime>
       <DependentUpon>Resources.resx</DependentUpon>
     </Compile>
+    <Compile Include="Query\IndexCollectionType.cs" />
     <Compile Include="Task\RegisterTask.cs" />
     <Compile Include="Task\IndexTask.cs" />
     <Compile Include="Task\Task.cs" />

@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2014 Aerospike, Inc.
+ * Copyright 2012-2015 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -14,33 +14,38 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using System.Collections.Generic;
 
 namespace Aerospike.Client
 {
 	/// <summary>
-	/// Pre-defined user roles.
+	/// Permission codes define the type of permission granted for a user's role.
 	/// </summary>
-	public sealed class Role
+	public enum PrivilegeCode
 	{
 		/// <summary>
-		/// Manage users their roles.
+		/// User can edit/remove other users.  Global scope only.
 		/// </summary>
-		public const string UserAdmin = "user-admin";
+		USER_ADMIN = 0,
 
 		/// <summary>
-		/// Manage indicies, user defined functions and server configuration. 
+		/// User can perform systems administration functions on a database that do not involve user
+		/// administration.  Global scope only.
 		/// </summary>
-		public const string SysAdmin = "sys-admin";
+		SYS_ADMIN = 1,
 
 		/// <summary>
-		/// Allow read and write transactions with the database.
+		/// User can read data only.
 		/// </summary>
-		public const string ReadWrite = "read-write";
+		READ = 10,
 
 		/// <summary>
-		/// Allow read transactions with the database.
+		/// User can read and write data.
 		/// </summary>
-		public const string Read = "Read";
+		READ_WRITE = 11,
+
+		/// <summary>
+		/// User can read and write data through user defined functions.
+		/// </summary>
+		READ_WRITE_UDF = 12
 	}
 }

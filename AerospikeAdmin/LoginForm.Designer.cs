@@ -140,7 +140,7 @@
 			this.Controls.Add(this.label2);
 			this.Controls.Add(this.label1);
 			this.Name = "LoginForm";
-			this.Text = "Aerospike User Administration";
+			this.Text = "Aerospike Login";
 			this.FormClosing += new System.Windows.Forms.FormClosingEventHandler(this.FormClose);
 			this.ResumeLayout(false);
 			this.PerformLayout();

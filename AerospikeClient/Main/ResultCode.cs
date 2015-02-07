@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2014 Aerospike, Inc.
+ * Copyright 2012-2015 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -240,9 +240,14 @@ namespace Aerospike.Client
 		public const int INVALID_ROLE = 70;
 
 		/// <summary>
+		/// Role already exists.
+		/// </summary>
+		public const int ROLE_ALREADY_EXISTS = 71;
+	
+		/// <summary>
 		/// Specified Privilege is not valid.
 		/// </summary>
-		public const int INVALID_PRIVILEGE = 71;
+		public const int INVALID_PRIVILEGE = 72;
 		
 		/// <summary>
 		/// User must be authentication before performing database operations.
@@ -481,6 +486,9 @@ namespace Aerospike.Client
 
 			case INVALID_ROLE:
 				return "Invalid role";
+
+			case ROLE_ALREADY_EXISTS:
+				return "Role already exists";
 
 			case INVALID_PRIVILEGE:
 				return "Invalid privilege";

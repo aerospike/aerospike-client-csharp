@@ -14,31 +14,23 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using System;
 using System.Collections.Generic;
-using System.ComponentModel;
-using Aerospike.Client;
 
-namespace Aerospike.Admin
+namespace Aerospike.Client
 {
-	public class UserRow
+	/// <summary>
+	/// User and assigned roles.
+	/// </summary>
+	public sealed class User
 	{
+		/// <summary>
+		/// User name.
+		/// </summary>
 		public string name;
+
+		/// <summary>
+		/// List of assigned roles.
+		/// </summary>
 		public List<string> roles;
-		public BindingList<RoleRow> roleRows;
-
-		public UserRow(User user)
-		{
-			this.name = user.name;
-			this.roles = user.roles;
-			roleRows = new BindingList<RoleRow>();
-
-			foreach (string roleName in user.roles)
-			{
-				roleRows.Add(new RoleRow(roleName));
-			}
-		}
-
-		public string UserName { get { return name; } }
 	}
 }

@@ -15,30 +15,12 @@
  * the License.
  */
 using System;
-using System.Collections.Generic;
-using System.ComponentModel;
-using Aerospike.Client;
 
 namespace Aerospike.Admin
 {
-	public class UserRow
+	public enum EditType
 	{
-		public string name;
-		public List<string> roles;
-		public BindingList<RoleRow> roleRows;
-
-		public UserRow(User user)
-		{
-			this.name = user.name;
-			this.roles = user.roles;
-			roleRows = new BindingList<RoleRow>();
-
-			foreach (string roleName in user.roles)
-			{
-				roleRows.Add(new RoleRow(roleName));
-			}
-		}
-
-		public string UserName { get { return name; } }
+		CREATE,
+		EDIT
 	}
 }

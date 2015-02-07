@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2014 Aerospike, Inc.
+ * Copyright 2012-2015 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -91,11 +91,11 @@ namespace Aerospike.Admin
 		{
 			string server = hostBox.Text.Trim();
 			int port = int.Parse(portBox.Text.Trim());
-			string user = userBox.Text.Trim();
+			string userName = userBox.Text.Trim();
 			string password = passwordBox.Text.Trim();
 
 			ClientPolicy policy = new ClientPolicy();
-			policy.user = user;
+			policy.user = userName;
 			policy.password = password;
 			policy.failIfNotConnected = true;
 			policy.timeout = 600000;
@@ -104,23 +104,28 @@ namespace Aerospike.Admin
 
 			try
 			{
-				if (user.Equals("admin") && password.Equals("admin"))
+				if (userName.Equals("admin") && password.Equals("admin"))
 				{
-					Form form = new PasswordForm(client, user);
+					Form form = new PasswordForm(client, userName);
 					form.ShowDialog();
 				}
 
 				// Query own user.
-				UserRoles userRoles = client.QueryUser(null, user);
+				User user = client.QueryUser(null, userName);				
 
-				if (userRoles != null)
+				if (user != null)
 				{
-					Form form = new UsersForm(client, userRoles);
+					bool admin = user.roles.Contains("user-admin");
+
+					// Initialize Global Data
+					Globals.RefreshRoles(client, user, admin);
+					
+					Form form = new AdminForm(client, user, admin);
 					form.Show();
 				}
 				else
 				{
-					throw new Exception("Failed to find user: " + user);
+					throw new Exception("Failed to find user: " + userName);
 				}
 			}
 			catch (Exception)

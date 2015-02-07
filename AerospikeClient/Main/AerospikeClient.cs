@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2014 Aerospike, Inc.
+ * Copyright 2012-2015 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -1356,8 +1356,8 @@ namespace Aerospike.Client
 		/// <param name="policy">admin configuration parameters, pass in null for defaults</param>
 		/// <param name="user">user name</param>
 		/// <param name="password">user password in clear-text format</param>
-		/// <param name="roles">variable arguments array of role names.  Valid roles are listed in Role.cs</param>		
-		public void CreateUser(AdminPolicy policy, string user, string password, List<string> roles)
+		/// <param name="roles">variable arguments array of role names.  Predefined roles are listed in Role.cs</param>		
+		public void CreateUser(AdminPolicy policy, string user, string password, IList<string> roles)
 		{
 			string hash = AdminCommand.HashPassword(password);
 			AdminCommand command = new AdminCommand();
@@ -1411,8 +1411,8 @@ namespace Aerospike.Client
 		/// </summary>
 		/// <param name="policy">admin configuration parameters, pass in null for defaults</param>
 		/// <param name="user">user name</param>
-		/// <param name="roles">role names.  Valid roles are listed in Role.cs</param>
-		public void GrantRoles(AdminPolicy policy, string user, List<string> roles)
+		/// <param name="roles">role names.  Predefined roles are listed in Role.cs</param>
+		public void GrantRoles(AdminPolicy policy, string user, IList<string> roles)
 		{
 			AdminCommand command = new AdminCommand();
 			command.GrantRoles(cluster, policy, user, roles);
@@ -1423,33 +1423,72 @@ namespace Aerospike.Client
 		/// </summary>
 		/// <param name="policy">admin configuration parameters, pass in null for defaults</param>
 		/// <param name="user">user name</param>
-		/// <param name="roles">role names.  Valid roles are listed in Role.cs</param>
-		public void RevokeRoles(AdminPolicy policy, string user, List<string> roles)
+		/// <param name="roles">role names.  Predefined roles are listed in Role.cs</param>
+		public void RevokeRoles(AdminPolicy policy, string user, IList<string> roles)
 		{
 			AdminCommand command = new AdminCommand();
 			command.RevokeRoles(cluster, policy, user, roles);
 		}
 
 		/// <summary>
-		/// Replace user's list of roles.
+		/// Create user defined role.
 		/// </summary>
 		/// <param name="policy">admin configuration parameters, pass in null for defaults</param>
-		/// <param name="user">user name</param>
-		/// <param name="roles">role names.  Valid roles are listed in Role.cs</param>
-		public void ReplaceRoles(AdminPolicy policy, string user, List<string> roles)
+		/// <param name="roleName">role name</param>
+		/// <param name="privileges">privileges assigned to the role.</param>
+		/// <exception cref="AerospikeException">if command fails </exception>
+		public void CreateRole(AdminPolicy policy, string roleName, IList<Privilege> privileges)
 		{
 			AdminCommand command = new AdminCommand();
-			command.ReplaceRoles(cluster, policy, user, roles);
+			command.CreateRole(cluster, policy, roleName, privileges);
 		}
 
+		/// <summary>
+		/// Drop user defined role.
+		/// </summary>
+		/// <param name="policy">admin configuration parameters, pass in null for defaults</param>
+		/// <param name="roleName">role name</param>
+		/// <exception cref="AerospikeException">if command fails</exception>
+		public void DropRole(AdminPolicy policy, string roleName)
+		{
+			AdminCommand command = new AdminCommand();
+			command.DropRole(cluster, policy, roleName);
+		}
+
+		/// <summary>
+		/// Grant privileges to an user defined role.
+		/// </summary>
+		/// <param name="policy">admin configuration parameters, pass in null for defaults</param>
+		/// <param name="roleName">role name</param>
+		/// <param name="privileges">privileges assigned to the role.</param>
+		/// <exception cref="AerospikeException">if command fails</exception>
+		public void GrantPrivileges(AdminPolicy policy, string roleName, IList<Privilege> privileges)
+		{
+			AdminCommand command = new AdminCommand();
+			command.GrantPrivileges(cluster, policy, roleName, privileges);
+		}
+
+		/// <summary>
+		/// Revoke privileges from an user defined role.
+		/// </summary>
+		/// <param name="policy">admin configuration parameters, pass in null for defaults</param>
+		/// <param name="roleName">role name</param>
+		/// <param name="privileges">privileges assigned to the role.</param>
+		/// <exception cref="AerospikeException">if command fails</exception>
+		public void RevokePrivileges(AdminPolicy policy, string roleName, IList<Privilege> privileges)
+		{
+			AdminCommand command = new AdminCommand();
+			command.RevokePrivileges(cluster, policy, roleName, privileges);
+		}
+	
 		/// <summary>
 		/// Retrieve roles for a given user.
 		/// </summary>
 		/// <param name="policy">admin configuration parameters, pass in null for defaults</param>
 		/// <param name="user">user name filter</param>
-		public UserRoles QueryUser(AdminPolicy policy, string user)
+		public User QueryUser(AdminPolicy policy, string user)
 		{
-			AdminCommand command = new AdminCommand();
+			AdminCommand.UserCommand command = new AdminCommand.UserCommand(1);
 			return command.QueryUser(cluster, policy, user);
 		}
 
@@ -1457,10 +1496,33 @@ namespace Aerospike.Client
 		/// Retrieve all users and their roles.
 		/// </summary>
 		/// <param name="policy">admin configuration parameters, pass in null for defaults</param>
-		public List<UserRoles> QueryUsers(AdminPolicy policy)
+		public List<User> QueryUsers(AdminPolicy policy)
 		{
-			AdminCommand command = new AdminCommand();
+			AdminCommand.UserCommand command = new AdminCommand.UserCommand(100);
 			return command.QueryUsers(cluster, policy);
+		}
+
+		/// <summary>
+		/// Retrieve role definition.
+		/// </summary>
+		/// <param name="policy">admin configuration parameters, pass in null for defaults</param>
+		/// <param name="roleName">role name filter</param>
+		/// <exception cref="AerospikeException">if command fails</exception>
+		public Role QueryRole(AdminPolicy policy, string roleName)
+		{
+			AdminCommand.RoleCommand command = new AdminCommand.RoleCommand(1);
+			return command.QueryRole(cluster, policy, roleName);
+		}
+
+		/// <summary>
+		/// Retrieve all roles.
+		/// </summary>
+		/// <param name="policy">admin configuration parameters, pass in null for defaults</param>
+		/// <exception cref="AerospikeException">if command fails</exception>
+		public List<Role> QueryRoles(AdminPolicy policy)
+		{
+			AdminCommand.RoleCommand command = new AdminCommand.RoleCommand(100);
+			return command.QueryRoles(cluster, policy);
 		}
 
 		//-------------------------------------------------------

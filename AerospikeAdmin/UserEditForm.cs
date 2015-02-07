@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2014 Aerospike, Inc.
+ * Copyright 2012-2015 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -25,18 +25,13 @@ using Aerospike.Client;
 
 namespace Aerospike.Admin
 {
-	public enum UserEditType
-	{
-		CREATE,
-		EDIT_ROLES
-	}
-
 	public partial class UserEditForm : Form
 	{
-		private AerospikeClient client;
-		private UserEditType editType;
+		private readonly AerospikeClient client;
+		private readonly EditType editType;
+		private readonly List<string> oldRoles;
 
-		public UserEditForm(AerospikeClient client, UserEditType editType, UserRow row)
+		public UserEditForm(AerospikeClient client, EditType editType, UserRow user)
 		{
 			this.client = client;
 			this.editType = editType;
@@ -45,16 +40,18 @@ namespace Aerospike.Admin
 
 			switch (editType)
 			{
-				case UserEditType.CREATE:
+				case EditType.CREATE:
+					SetRoles(null);
 					break;
 
-				case UserEditType.EDIT_ROLES:
-					this.Text = "Edit Roles";
+				case EditType.EDIT:
+					this.Text = "Edit User Roles";
 					userBox.Enabled = false;
-					userBox.Text = row.user;
+					userBox.Text = user.name;
 					passwordBox.Enabled = false;
 					passwordVerifyBox.Enabled = false;
-					SetRoles(row.roles);
+					SetRoles(user.roles);
+					oldRoles = user.roles;
 					break;
 			}
 		}
@@ -87,17 +84,17 @@ namespace Aerospike.Admin
 
 			switch (editType)
 			{
-				case UserEditType.CREATE:
+				case EditType.CREATE:
 					user = userBox.Text.Trim();
 					password = VerifyPassword();
 					roles = GetRoles();
 					client.CreateUser(null, user, password, roles);
 					break;
 
-				case UserEditType.EDIT_ROLES:
+				case EditType.EDIT:
 					user = userBox.Text.Trim();
 					roles = GetRoles();
-					client.ReplaceRoles(null, user, roles);
+					ReplaceRoles(user, roles);
 					break;
 			}
 		}
@@ -119,23 +116,34 @@ namespace Aerospike.Admin
 			return password;
 		}
 
-		private void SetRoles(List<string> roles)
+		private void SetRoles(List<string> rolesUser)
 		{
-			int max = rolesBox.Items.Count;
+			List<Role> rolesAll = Globals.GetAllRoles();
 
-			foreach (string role in roles)
+			if (rolesUser != null)
 			{
-				for (int i = 0; i < max; i++)
+				foreach (Role role in rolesAll)
 				{
-					string text = rolesBox.GetItemText(rolesBox.Items[i]);
-
-					if (text.Equals(role))
-					{
-						rolesBox.SetItemChecked(i, true);
-						break;
-					}
+					bool found = FindRole(rolesUser, role.name);
+					rolesBox.Items.Add(role.name, found);
 				}
 			}
+			else
+			{
+				foreach (Role role in rolesAll)
+				{
+					rolesBox.Items.Add(role.name, false);
+				}
+			}
+
+			int height = rolesBox.GetItemRectangle(0).Height * rolesBox.Items.Count;
+
+			if (height > 600)
+			{
+				height = 600;
+			}
+			this.Height += height - rolesBox.ClientSize.Height;
+			//rolesBox.ClientSize = new Size(rolesBox.ClientSize.Width, height);
 		}
 
 		private List<string> GetRoles()
@@ -153,5 +161,54 @@ namespace Aerospike.Admin
 			}
 			return list;
 		}
+
+		private void ReplaceRoles(string user, List<string> roles)
+		{
+			// Find grants.
+			List<string> grantRoles = new List<string>();
+
+			foreach (string role in roles)
+			{
+				if (!FindRole(oldRoles, role))
+				{
+					grantRoles.Add(role);
+				}
+			}
+
+			// Find revokes.
+			List<string> revokeRoles = new List<string>();
+
+			foreach (string oldRole in oldRoles)
+			{
+				if (!FindRole(roles, oldRole))
+				{
+					revokeRoles.Add(oldRole);
+				}
+			}
+
+			if (grantRoles.Count > 0)
+			{
+				client.GrantRoles(null, user, grantRoles);
+			}
+
+			if (revokeRoles.Count > 0)
+			{
+				client.RevokeRoles(null, user, revokeRoles);
+			}
+		}
+
+		private static bool FindRole(List<string> roles, string search)
+		{
+			foreach (string role in roles)
+			{
+				if (role.Equals(search))
+				{
+					return true;
+				}
+			}
+			return false;
+		}
+
+		public string UserName { get { return userBox.Text.Trim(); } }
 	}
 }

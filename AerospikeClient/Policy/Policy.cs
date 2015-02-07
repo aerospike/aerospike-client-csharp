@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2014 Aerospike, Inc.
+ * Copyright 2012-2015 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -70,6 +70,12 @@ namespace Aerospike.Client
 		public bool allowProleReads;
 
 		/// <summary>
+		/// Send user defined key in addition to hash digest on both reads and writes.
+		/// The default is to not send the user defined key.
+		/// </summary>
+		public bool sendKey;
+
+		/// <summary>
 		/// Copy constructor.
 		/// </summary>
 		public Policy(Policy other)
@@ -80,6 +86,7 @@ namespace Aerospike.Client
 			this.maxRetries = other.maxRetries;
 			this.sleepBetweenRetries = other.sleepBetweenRetries;
 			this.allowProleReads = other.allowProleReads;
+			this.sendKey = other.sendKey;
 		}
 
 		/// <summary>

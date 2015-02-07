@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2014 Aerospike, Inc.
+ * Copyright 2012-2015 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -14,23 +14,31 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
+using System;
 using System.Collections.Generic;
+using System.ComponentModel;
+using Aerospike.Client;
 
-namespace Aerospike.Client
+namespace Aerospike.Admin
 {
-	/// <summary>
-	/// User and assigned roles.
-	/// </summary>
-	public sealed class UserRoles
+	public class RoleRow
 	{
-		/// <summary>
-		/// User name.
-		/// </summary>
-		public string user;
+		public string name;
+		public List<Privilege> privileges;
+		public BindingList<Privilege> privilegeRows;
 
-		/// <summary>
-		/// List of assigned roles.
-		/// </summary>
-		public List<string> roles;
+		public RoleRow(string roleName)
+		{
+			this.name = roleName;
+		}
+
+		public RoleRow(Role role)
+		{
+			this.name = role.name;
+			this.privileges = role.privileges;
+			this.privilegeRows = new BindingList<Privilege>(role.privileges);
+		}
+
+		public string RoleName { get { return name; } }
 	}
 }
