@@ -1563,6 +1563,11 @@ namespace Aerospike.Client
 
 		private void JoinRecords(BatchPolicy policy, Record record, Join[] joins)
 		{
+			if (record == null)
+			{
+				return;
+			}
+
 			foreach (Join join in joins)
 			{
 				List<object> keyList = (List<object>)record.GetValue(join.leftKeysBinName);
