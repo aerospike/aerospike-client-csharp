@@ -194,51 +194,28 @@ namespace Aerospike.Client
 
 		public static object BytesToNumber(byte[] buf, int offset, int len)
 		{
-			switch (len)
+			// Server always returns 8 for integer length.
+			if (len == 8)
 			{
-				case 0:
-					return 0;
-
-				case 1:
-					return buf[offset];
-
-				case 2:
-				case 3:
-				case 4:
-					return BytesToIntegerObject(buf, offset, len);
-
-				case 5:
-				case 6:
-				case 7:
-				case 8:
-					return BytesToLongObject(buf, offset, len);
-
-				default:
-					return BytesToBigInteger(buf, offset, len);
+				return BytesToLong(buf, offset);
 			}
-		}
 
-		public static object BytesToIntegerObject(byte[] buf, int offset, int len)
-		{
-			int val = 0;
-
-			for (int i = 0; i < len; i++)
+			// Handle other lengths just in case server changes.
+			if (len < 8)
 			{
-				val <<= 8;
-				val |= buf[offset + i];
-			}
-			return val;
-		}
+				// Handle variable length long. 
+				long val = 0;
 
-		public static object BytesToLongObject(byte[] buf, int offset, int len)
-		{
-			long val = 0;
-		
-			for (int i = 0; i < len; i++) {
-				val <<= 8;
-				val |= buf[offset+i];
+				for (int i = 0; i < len; i++)
+				{
+					val <<= 8;
+					val |= buf[offset + i];
+				}
+				return val;
 			}
-			return val;
+
+			// Handle huge numbers.
+			return BytesToBigInteger(buf, offset, len);
 		}
 
 		public static Value BytesToLongValue(byte[] buf, int offset, int len)
@@ -278,11 +255,14 @@ namespace Aerospike.Client
 		{
 			// Benchmarks show that custom conversion is faster than System.BitConverter.GetBytes().
 			// Assume little endian machine and reverse/convert in one pass. 
-			for (int i = 7; i >= 0; i--)
-			{
-				buf[offset + i] = (byte)(v & 0xff);
-				v >>= 8;
-			}
+			buf[offset++] = (byte)(v >> 56);
+			buf[offset++] = (byte)(v >> 48);
+			buf[offset++] = (byte)(v >> 40);
+			buf[offset++] = (byte)(v >> 32);
+			buf[offset++] = (byte)(v >> 24);
+			buf[offset++] = (byte)(v >> 16);
+			buf[offset++] = (byte)(v >>  8);
+			buf[offset]   = (byte)(v >>  0);
 			return 8;
 		}
 
@@ -290,11 +270,14 @@ namespace Aerospike.Client
 		{
 			// Benchmarks show that custom conversion is faster than System.BitConverter.GetBytes().
 			// Assume little endian machine. 
-			for (int i = 0; i < 8; i++)
-			{
-				buf[offset + i] = (byte)(v & 0xff);
-				v >>= 8;
-			}
+			buf[offset++] = (byte)(v >> 0);
+			buf[offset++] = (byte)(v >> 8);
+			buf[offset++] = (byte)(v >> 16);
+			buf[offset++] = (byte)(v >> 24);
+			buf[offset++] = (byte)(v >> 32);
+			buf[offset++] = (byte)(v >> 40);
+			buf[offset++] = (byte)(v >> 48);
+			buf[offset]   = (byte)(v >> 56);		
 			return 8;
 		}
 
@@ -334,50 +317,53 @@ namespace Aerospike.Client
 
 		public static long BytesToLong(byte[] buf, int offset)
 		{
-			// Benchmarks show that BitConverter.ToInt64() conversion is slightly faster than a custom implementation.
-			// This contradicts all other number conversion benchmarks.
-			// Assume little endian machine and reverse contents.
-			byte[] bytes = new byte[8];
-
-			bytes[0] = buf[offset + 7];
-			bytes[1] = buf[offset + 6];
-			bytes[2] = buf[offset + 5];
-			bytes[3] = buf[offset + 4];
-			bytes[4] = buf[offset + 3];
-			bytes[5] = buf[offset + 2];
-			bytes[6] = buf[offset + 1];
-			bytes[7] = buf[offset];
-
-			return System.BitConverter.ToInt64(bytes, 0);
+			// Benchmarks show that custom conversion is slightly faster than System.BitConverter.ToInt64().
+			// Assume little endian machine and reverse/convert in one pass. 
+			return (long)(
+				((ulong)(buf[offset]) << 56) |
+				((ulong)(buf[offset + 1]) << 48) |
+				((ulong)(buf[offset + 2]) << 40) |
+				((ulong)(buf[offset + 3]) << 32) |
+				((ulong)(buf[offset + 4]) << 24) |
+				((ulong)(buf[offset + 5]) << 16) |
+				((ulong)(buf[offset + 6]) << 8) |
+				((ulong)(buf[offset + 7]) << 0)
+				);
 		}
 
 		public static long LittleBytesToLong(byte[] buf, int offset)
 		{
-			// Benchmarks show that BitConverter.ToInt64() conversion is slightly faster than a custom implementation.
-			// This contradicts all other number conversion benchmarks.
+			// Benchmarks show that custom conversion is slightly faster than System.BitConverter.ToInt64().
 			// Assume little endian machine.
-			return System.BitConverter.ToInt64(buf, offset);
+			return (long)(
+			   ((ulong)(buf[offset]) << 0) |
+			   ((ulong)(buf[offset + 1]) << 8) |
+			   ((ulong)(buf[offset + 2]) << 16) |
+			   ((ulong)(buf[offset + 3]) << 24) |
+			   ((ulong)(buf[offset + 4]) << 32) |
+			   ((ulong)(buf[offset + 5]) << 40) |
+			   ((ulong)(buf[offset + 6]) << 48) |
+			   ((ulong)(buf[offset + 7]) << 56)
+			   );
 		}
 		
 		public static int IntToBytes(uint v, byte[] buf, int offset)
 		{
 			// Benchmarks show that custom conversion is faster than System.BitConverter.GetBytes().
 			// Assume little endian machine and reverse/convert in one pass. 
-			for (int i = 3; i >= 0; i--)
-			{
-				buf[offset + i] = (byte)(v & 0xff);
-				v >>= 8;
-			}
+			buf[offset++] = (byte)(v >> 24);
+			buf[offset++] = (byte)(v >> 16);
+			buf[offset++] = (byte)(v >> 8);
+			buf[offset]   = (byte)(v >> 0);
 			return 4;
 		}
 
 		public static int IntToLittleBytes(uint v, byte[] buf, int offset)
 		{
-			for (int i = 0; i < 4; i++)
-			{
-				buf[offset + i] = (byte)(v & 0xff);
-				v >>= 8;
-			}
+			buf[offset++] = (byte)(v >> 0);
+			buf[offset++] = (byte)(v >> 8);
+			buf[offset++] = (byte)(v >> 16);
+			buf[offset]   = (byte)(v >> 24);
 			return 4;
 		}
 		
@@ -385,26 +371,26 @@ namespace Aerospike.Client
 		{
 			// Benchmarks show that custom conversion is faster than System.BitConverter.ToInt32().
 			// Assume little endian machine and reverse/convert in one pass. 
-			return (((buf[offset] & 0xFF) << 24) | 
-				    ((buf[offset + 1] & 0xFF) << 16) | 
-					((buf[offset + 2] & 0xFF) << 8) | 
-					 (buf[offset + 3] & 0xFF));
+			return (((buf[offset]) << 24) | 
+				    ((buf[offset + 1]) << 16) | 
+					((buf[offset + 2]) << 8) | 
+					 (buf[offset + 3]));
 		}
 
 		public static int LittleBytesToInt(byte[] buf, int offset)
 		{
-			return ((buf[offset] & 0xFF) |
-					((buf[offset + 1] & 0xFF) << 8) |
-					((buf[offset + 2] & 0xFF) << 16) |
-					((buf[offset + 3] & 0xFF) << 24));
+			return ((buf[offset]) |
+					((buf[offset + 1]) << 8) |
+					((buf[offset + 2]) << 16) |
+					((buf[offset + 3]) << 24));
 		}
 		
 		public static int ShortToBytes(ushort v, byte[] buf, int offset)
 		{
 			// Benchmarks show that custom conversion is faster than System.BitConverter.GetBytes().
 			// Assume little endian machine and reverse/convert in one pass. 
-			buf[offset] = (byte)(v >> 8);
-			buf[offset + 1] = (byte)(v & 0xFF);
+			buf[offset++] = (byte)(v >> 8);
+			buf[offset] = (byte)(v >> 0);
 			return 2;
 		}
 
@@ -412,8 +398,8 @@ namespace Aerospike.Client
 		{
 			// Benchmarks show that custom conversion is faster than System.BitConverter.GetBytes().
 			// Assume little endian machine and reverse/convert in one pass. 
-			buf[offset] = (byte)(v & 0xFF);
-			buf[offset + 1] = (byte)(v >> 8);
+			buf[offset++] = (byte)(v >> 0);
+			buf[offset]   = (byte)(v >> 8);
 			return 2;
 		}
 		
@@ -421,14 +407,20 @@ namespace Aerospike.Client
 		{
 			// Benchmarks show that custom conversion is faster than System.BitConverter.ToInt16().
 			// Assume little endian machine and reverse/convert in one pass. 
-			return ((buf[offset] & 0xFF) << 8) + (buf[offset + 1] & 0xFF);
+			return (short)(
+				((buf[offset]) << 8) |
+				((buf[offset + 1]) << 0)
+				);
 		}
 
 		public static int LittleBytesToShort(byte[] buf, int offset)
 		{
 			// Benchmarks show that custom conversion is faster than System.BitConverter.ToInt16().
 			// Assume little endian machine and reverse/convert in one pass. 
-			return (buf[offset] & 0xFF) + ((buf[offset + 1] & 0xFF) << 8);
+			return (short)(
+				((buf[offset]) << 0) |
+				((buf[offset + 1]) << 8)
+				);
 		}
 	
 		/// <summary>
