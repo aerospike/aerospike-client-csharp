@@ -50,7 +50,7 @@ namespace Aerospike.Client
 			this.maxConcurrentNodes = (policy.maxConcurrentNodes == 0 || policy.maxConcurrentNodes >= threads.Length) ? threads.Length : policy.maxConcurrentNodes;
 		}
 
-		protected internal void StartThreads()
+		protected internal void InitializeThreads()
 		{
 			// Initialize threads.
 			for (int i = 0; i < nodes.Length; i++)
@@ -58,7 +58,10 @@ namespace Aerospike.Client
 				QueryCommand command = CreateCommand(nodes[i]);
 				threads[i] = new QueryThread(this, command);
 			}
+		}
 
+		protected internal void StartThreads()
+		{
 			// Start threads.
 			for (int i = 0; i < maxConcurrentNodes; i++)
 			{

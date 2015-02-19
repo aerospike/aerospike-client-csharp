@@ -39,6 +39,7 @@ namespace Aerospike.Client
 			resultSet = new ResultSet(this, policy.recordQueueSize, cancel.Token);
 			statement.SetAggregateFunction(packageName, functionName, functionArgs, true);
 			statement.Prepare();
+			InitializeThreads();
 		}
 
 		public void Execute()

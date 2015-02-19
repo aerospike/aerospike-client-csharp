@@ -25,6 +25,7 @@ namespace Aerospike.Client
 		{
 			this.recordSet = new RecordSet(this, policy.recordQueueSize, cancel.Token);
 			statement.Prepare();
+			InitializeThreads();
 		}
 
 		public void Execute()
