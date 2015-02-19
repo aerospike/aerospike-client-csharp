@@ -341,10 +341,6 @@ namespace Aerospike.Client
 					conn.ReadFully(dataBuffer, receiveSize);
 					status = ParseBlock(receiveSize);
 				}
-				else
-				{
-					break;
-				}
 			}
 			return status;
 		}

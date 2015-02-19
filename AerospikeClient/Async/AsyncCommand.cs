@@ -345,7 +345,8 @@ namespace Aerospike.Client
 
 				if (dataLength <= 0)
 				{
-					throw new AerospikeException.Parse("Received zero sized data packet from server.");
+					ReceiveBegin();
+					return;
 				}
 
 				inHeader = false;

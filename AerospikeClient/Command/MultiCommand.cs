@@ -60,10 +60,6 @@ namespace Aerospike.Client
 				{
 					status = ParseRecordResults(receiveSize);
 				}
-				else
-				{
-					throw new AerospikeException.Parse("Received zero sized data packet from server.");
-				}
 			}
 		}
 
