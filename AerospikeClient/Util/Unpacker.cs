@@ -47,7 +47,7 @@ namespace Aerospike.Client
 				return new List<object>(0);
 			}
 
-			int type = buffer[offset++] & 0xff;
+			int type = buffer[offset++];
 			int count;
 
 			if ((type & 0xf0) == 0x90)
@@ -96,7 +96,7 @@ namespace Aerospike.Client
 				return new Dictionary<object, object>(0);
 			}
 
-			int type = buffer[offset++] & 0xff;
+			int type = buffer[offset++];
 			int count;
 
 			if ((type & 0xf0) == 0x80)
@@ -146,7 +146,7 @@ namespace Aerospike.Client
 
 		private object UnpackBlob(int count)
 		{
-			int type = buffer[offset++] & 0xff;
+			int type = buffer[offset++];
 			count--;
 			object val;
 
@@ -184,128 +184,131 @@ namespace Aerospike.Client
 
 		private object UnpackObject()
 		{
-			int type = buffer[offset++] & 0xff;
+			int type = buffer[offset++];
 
 			switch (type)
 			{
-				case 0xc0:
+				case 0xc0: // nil
 				{
 					return null;
 				}
 
-				case 0xc3:
+				case 0xc3: // boolean true
 				{
 					return true;
 				}
 
-				case 0xc2:
+				case 0xc2: // boolean false
 				{
 					return false;
 				}
 
-				case 0xca:
+				case 0xca: // float
 				{
 					float val = ByteUtil.BytesToFloat(buffer, offset);
 					offset += 4;
 					return val;
 				}
 
-				case 0xcb:
+				case 0xcb: // double
 				{
 					double val = ByteUtil.BytesToDouble(buffer, offset);
 					offset += 8;
 					return val;
 				}
 
-				case 0xcc:
+				case 0xd0: // signed 8 bit integer
 				{
-					return (long)(buffer[offset++] & 0xff);
+					return (long)(sbyte)(buffer[offset++]);
 				}
-
-				case 0xcd:
-				{
-					int val = ByteUtil.BytesToShort(buffer, offset);
-					offset += 2;
-					return (long)val;
-				}
-
-				case 0xce:
-				{
-					int val = ByteUtil.BytesToInt(buffer, offset);
-					offset += 4;
-					return (long)val;
-				}
-
-				case 0xcf:
-				{
-					long val = ByteUtil.BytesToLong(buffer, offset);
-					offset += 8;
-					return val;
-				}
-
-				case 0xd0:
+				
+				case 0xcc: // unsigned 8 bit integer
 				{
 					return (long)(buffer[offset++]);
 				}
 
-				case 0xd1:
+				case 0xd1: // signed 16 bit integer
+				{
+					int val = ByteUtil.BytesToShort(buffer, offset);
+					offset += 2;
+					return (long)(short)val;
+				}
+
+				case 0xcd: // unsigned 16 bit integer
 				{
 					int val = ByteUtil.BytesToShort(buffer, offset);
 					offset += 2;
 					return (long)val;
 				}
 
-				case 0xd2:
+				case 0xd2: // signed 32 bit integer
 				{
 					int val = ByteUtil.BytesToInt(buffer, offset);
 					offset += 4;
 					return (long)val;
 				}
 
-				case 0xd3:
+				case 0xce: // unsigned 32 bit integer
+				{
+					uint val = ByteUtil.BytesToUInt(buffer, offset);
+					offset += 4;
+					return (long)val;
+				}
+
+				case 0xd3: // signed 64 bit integer
 				{
 					long val = ByteUtil.BytesToLong(buffer, offset);
 					offset += 8;
 					return val;
 				}
 
-				case 0xda:
+				case 0xcf: // unsigned 64 bit integer
+				{
+					ulong val = ByteUtil.BytesToULong(buffer, offset);
+					offset += 8;
+					return val;
+				}
+
+				case 0xda: // raw bytes with 16 bit header
 				{
 					int count = ByteUtil.BytesToShort(buffer, offset);
 					offset += 2;
 					return UnpackBlob(count);
 				}
 
-				case 0xdb:
+				case 0xdb: // raw bytes with 32 bit header
 				{
+					// Array length is restricted to positive int values (0 - int.MAX_VALUE).
 					int count = ByteUtil.BytesToInt(buffer, offset);
 					offset += 4;
 					return UnpackBlob(count);
 				}
 
-				case 0xdc:
+				case 0xdc: // list with 16 bit header
 				{
 					int count = ByteUtil.BytesToShort(buffer, offset);
 					offset += 2;
 					return UnpackList(count);
 				}
 
-				case 0xdd:
+				case 0xdd: // list with 32 bit header
 				{
+					// List size is restricted to positive int values (0 - int.MAX_VALUE).
 					int count = ByteUtil.BytesToInt(buffer, offset);
 					offset += 4;
 					return UnpackList(count);
 				}
 
-				case 0xde:
+				case 0xde: // map with 16 bit header
 				{
 					int count = ByteUtil.BytesToShort(buffer, offset);
 					offset += 2;
 					return UnpackMap(count);
 				}
 
-				case 0xdf:
+				case 0xdf: // map with 32 bit header
 				{
+					// Map size is restricted to positive int values (0 - int.MAX_VALUE).
 					int count = ByteUtil.BytesToInt(buffer, offset);
 					offset += 4;
 					return UnpackMap(count);
@@ -313,27 +316,27 @@ namespace Aerospike.Client
 
 				default:
 				{
-					if ((type & 0xe0) == 0xa0)
+					if ((type & 0xe0) == 0xa0) // raw bytes with 8 bit combined header
 					{
 						return UnpackBlob(type & 0x1f);
 					}
 
-					if ((type & 0xf0) == 0x80)
+					if ((type & 0xf0) == 0x80) // map with 8 bit combined header
 					{
 						return UnpackMap(type & 0x0f);
 					}
 
-					if ((type & 0xf0) == 0x90)
+					if ((type & 0xf0) == 0x90) // list with 8 bit combined header
 					{
 						return UnpackList(type & 0x0f);
 					}
 
-					if (type < 0x80)
+					if (type < 0x80) // 8 bit combined unsigned integer
 					{
 						return (long)type;
 					}
 
-					if (type >= 0xe0)
+					if (type >= 0xe0) // 8 bit combined signed integer
 					{
 						return (long)(type - 0xe0 - 32);
 					}
