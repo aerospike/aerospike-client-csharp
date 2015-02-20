@@ -351,25 +351,6 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
-		/// Convert big endian unsigned 64 bits to ulong.
-		/// </summary>
-		public static ulong BytesToULong(byte[] buf, int offset)
-		{
-			// Benchmarks show that custom conversion is slightly faster than System.BitConverter.ToUInt64().
-			// Assume little endian machine and reverse/convert in one pass. 
-			return (
-				((ulong)(buf[offset]) << 56) |
-				((ulong)(buf[offset + 1]) << 48) |
-				((ulong)(buf[offset + 2]) << 40) |
-				((ulong)(buf[offset + 3]) << 32) |
-				((ulong)(buf[offset + 4]) << 24) |
-				((ulong)(buf[offset + 5]) << 16) |
-				((ulong)(buf[offset + 6]) << 8) |
-				((ulong)(buf[offset + 7]) << 0)
-				);
-		}
-
-		/// <summary>
 		/// Convert little endian signed 64 bits to long.
 		/// </summary>
 		public static long LittleBytesToLong(byte[] buf, int offset)

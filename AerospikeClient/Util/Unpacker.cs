@@ -264,7 +264,9 @@ namespace Aerospike.Client
 
 				case 0xcf: // unsigned 64 bit integer
 				{
-					ulong val = ByteUtil.BytesToULong(buffer, offset);
+					// The contract is to always return long.  
+					// The caller can always cast back to ulong.
+					long val = ByteUtil.BytesToLong(buffer, offset);
 					offset += 8;
 					return val;
 				}

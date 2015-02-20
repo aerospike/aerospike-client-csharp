@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2014 Aerospike, Inc.
+ * Copyright 2012-2015 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -33,8 +33,17 @@ namespace Aerospike.Client
 			{
 				// Send all requests to a single node chosen in round-robin fashion in this transaction thread.
 				Node node = cluster.GetRandomNode();
-				BatchCommandNodeExists command = new BatchCommandNodeExists(node, policy, keys, existsArray);
-				command.Execute();
+
+				if (records != null)
+				{
+					BatchCommandNodeGet command = new BatchCommandNodeGet(node, policy, keys, records, binNames, readAttr);
+					command.Execute();
+				}
+				else
+				{
+					BatchCommandNodeExists command = new BatchCommandNodeExists(node, policy, keys, existsArray);
+					command.Execute();
+				}
 				return;
 			}
 

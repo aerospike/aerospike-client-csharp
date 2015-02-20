@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2014 Aerospike, Inc.
+ * Copyright 2012-2015 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -78,7 +78,7 @@ namespace Aerospike.Client
 							// Close socket to flush out possible garbage.  Do not put back in pool.
 							conn.Close();
 						}
-						throw ae;
+						throw;
 					}
 					catch (SocketException ioe)
 					{
