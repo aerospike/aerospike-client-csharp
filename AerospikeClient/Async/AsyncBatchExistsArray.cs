@@ -68,10 +68,7 @@ namespace Aerospike.Client
 			}
 			else
 			{
-				if (Log.WarnEnabled())
-				{
-					Log.Warn("Unexpected batch key returned: " + key.ns + ',' + ByteUtil.BytesToHexString(key.digest) + ',' + index + ',' + offset);
-				}
+				throw new AerospikeException.Parse("Unexpected batch key returned: " + key.ns + ',' + ByteUtil.BytesToHexString(key.digest) + ',' + index + ',' + offset);
 			}
 		}
 	}
