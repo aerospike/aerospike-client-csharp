@@ -543,15 +543,20 @@ namespace Aerospike.Demo
         {
             // Adjust path for whether using x64/x86 or AnyCPU compile target.
             string filename = example.GetType().Name + ".cs";
-            string path = @"..\..\..\" + filename;
 
-            if (! File.Exists(path))
+            //  Look for source files up directory tree
+            string path = ".." + Path.DirectorySeparatorChar + ".." + Path.DirectorySeparatorChar;
+            int i=8;
+            do 
             {
-                path = @"..\..\" + filename;
-            }
-            return File.ReadAllText(path);
-        }
+                if (File.Exists(path+filename)) break;
+                path += ".." + Path.DirectorySeparatorChar;
+                i--;
+            } while (i > 0);
 
+            return File.ReadAllText(path+filename);
+        }
+            
         public void Run(Arguments args)
         {
             example.Run(args);
