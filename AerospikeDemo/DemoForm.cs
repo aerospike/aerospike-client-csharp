@@ -541,13 +541,15 @@ namespace Aerospike.Demo
 
         public string Read()
         {
-            // Adjust path for whether using x64/x86 or AnyCPU compile target.
+			// Adjust path for whether using AnyCPU or x64/x86 compile target.
             string filename = example.GetType().Name + ".cs";
-            string path = @"..\..\..\" + filename;
+            string dir = ".." + Path.DirectorySeparatorChar + ".." + Path.DirectorySeparatorChar;
+			string path = dir + filename;
 
-            if (! File.Exists(path))
+			if (!File.Exists(path))
             {
-                path = @"..\..\" + filename;
+				// x64/x86 executables are located down an extra level.
+				path = dir + ".." + Path.DirectorySeparatorChar + filename;
             }
             return File.ReadAllText(path);
         }

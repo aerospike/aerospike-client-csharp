@@ -27,13 +27,16 @@ namespace Aerospike.Demo
         static LuaExample()
         {
 			// Adjust path for whether using AnyCPU or x64/x86 compile target.
-			string dir = @"..\..\udf";
+			string dirname = "udf";
+			string dir = ".." + Path.DirectorySeparatorChar + ".." + Path.DirectorySeparatorChar;
+			string path = dir + dirname;
 
-            if (! Directory.Exists(dir))
+			if (! Directory.Exists(path))
             {
-				dir = @"..\..\..\udf";
-            }
-            LuaDirectory = dir;
+				// x64/x86 executables are located down an extra level.
+				path = dir + ".." + Path.DirectorySeparatorChar + dirname;
+           }
+            LuaDirectory = path;
 
             #if (! LITE)
             LuaConfig.PackagePath = LuaDirectory + @"\?.lua";
