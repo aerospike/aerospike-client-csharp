@@ -106,17 +106,54 @@
     <CodeAnalysisIgnoreBuiltInRules>true</CodeAnalysisIgnoreBuiltInRules>
     <CodeAnalysisFailOnMissingRules>true</CodeAnalysisFailOnMissingRules>
   </PropertyGroup>
-  <ItemGroup Condition="'$(Platform)' == 'x64'">
-    <Reference Include="LuaInterface">
-      <HintPath>lib\x64\LuaInterface.dll</HintPath>
-    </Reference>
-  </ItemGroup>
-  <ItemGroup Condition="'$(Platform)' == 'x86'">
-    <Reference Include="LuaInterface">
-      <HintPath>lib\x86\LuaInterface.dll</HintPath>
-    </Reference>
-  </ItemGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|AnyCPU'">
+    <DebugSymbols>true</DebugSymbols>
+    <OutputPath>bin\Debug\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <DocumentationFile>bin\Debug\AerospikeClient.XML</DocumentationFile>
+    <NoWarn>1591</NoWarn>
+    <DebugType>full</DebugType>
+    <PlatformTarget>AnyCPU</PlatformTarget>
+    <ErrorReport>prompt</ErrorReport>
+    <CodeAnalysisIgnoreBuiltInRuleSets>true</CodeAnalysisIgnoreBuiltInRuleSets>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Release|AnyCPU'">
+    <OutputPath>bin\Release\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <DocumentationFile>bin\Release\AerospikeClient.XML</DocumentationFile>
+    <Optimize>true</Optimize>
+    <NoWarn>1591</NoWarn>
+    <DebugType>pdbonly</DebugType>
+    <PlatformTarget>AnyCPU</PlatformTarget>
+    <ErrorReport>prompt</ErrorReport>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Release IIS|AnyCPU'">
+    <OutputPath>bin\Release IIS\</OutputPath>
+    <DefineConstants>TRACE;IIS</DefineConstants>
+    <DocumentationFile>bin\Release\AerospikeClient.XML</DocumentationFile>
+    <Optimize>true</Optimize>
+    <NoWarn>1591</NoWarn>
+    <DebugType>pdbonly</DebugType>
+    <PlatformTarget>AnyCPU</PlatformTarget>
+    <ErrorReport>prompt</ErrorReport>
+    <CodeAnalysisIgnoreBuiltInRuleSets>true</CodeAnalysisIgnoreBuiltInRuleSets>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug IIS|AnyCPU'">
+    <DebugSymbols>true</DebugSymbols>
+    <OutputPath>bin\Debug IIS\</OutputPath>
+    <DefineConstants>TRACE;DEBUG;IIS</DefineConstants>
+    <DocumentationFile>bin\Debug\AerospikeClient.XML</DocumentationFile>
+    <NoWarn>1591</NoWarn>
+    <DebugType>full</DebugType>
+    <PlatformTarget>AnyCPU</PlatformTarget>
+    <ErrorReport>prompt</ErrorReport>
+    <CodeAnalysisIgnoreBuiltInRuleSets>true</CodeAnalysisIgnoreBuiltInRuleSets>
+  </PropertyGroup>
   <ItemGroup>
+    <Reference Include="Neo.Lua, Version=5.3.0.0, Culture=neutral, PublicKeyToken=fdb0cd4fe8a6e3b2, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>lib\Neo.Lua.dll</HintPath>
+    </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
     <Reference Include="System.Numerics" />
@@ -134,12 +171,22 @@
     <Compile Include="Command\BatchCommandNodeGet.cs" />
     <Compile Include="Command\BatchCommandNodeExists.cs" />
     <Compile Include="Admin\AdminCommand.cs" />
+    <Compile Include="Command\RegisterCommand.cs" />
     <Compile Include="Command\Executor.cs" />
     <Compile Include="Command\ExecuteCommand.cs" />
     <Compile Include="Command\OperateCommand.cs" />
     <Compile Include="Command\ReadHeaderCommand.cs" />
     <Compile Include="Command\ExistsCommand.cs" />
     <Compile Include="Command\TouchCommand.cs" />
+    <Compile Include="Lua\LuaAerospike.cs" />
+    <Compile Include="Lua\LuaBytes.cs" />
+    <Compile Include="Lua\LuaCache.cs" />
+    <Compile Include="Lua\LuaConfig.cs" />
+    <Compile Include="Lua\LuaData.cs" />
+    <Compile Include="Lua\LuaInstance.cs" />
+    <Compile Include="Lua\LuaList.cs" />
+    <Compile Include="Lua\LuaMap.cs" />
+    <Compile Include="Lua\LuaStream.cs" />
     <Compile Include="Main\AerospikeClient.cs" />
     <Compile Include="Main\AerospikeException.cs" />
     <Compile Include="Async\AsyncBatchExecutor.cs" />
@@ -211,15 +258,6 @@
     <Compile Include="Listener\RecordSequenceListener.cs" />
     <Compile Include="Listener\WriteListener.cs" />
     <Compile Include="Main\Log.cs" />
-    <Compile Include="Lua\LuaAerospike.cs" />
-    <Compile Include="Lua\LuaData.cs" />
-    <Compile Include="Lua\LuaBytes.cs" />
-    <Compile Include="Lua\LuaCache.cs" />
-    <Compile Include="Lua\LuaConfig.cs" />
-    <Compile Include="Lua\LuaInstance.cs" />
-    <Compile Include="Lua\LuaList.cs" />
-    <Compile Include="Lua\LuaMap.cs" />
-    <Compile Include="Lua\LuaStream.cs" />
     <Compile Include="Main\Operation.cs" />
     <Compile Include="Policy\ClientPolicy.cs" />
     <Compile Include="Policy\AdminPolicy.cs" />
@@ -277,7 +315,6 @@
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="Resources\aerospike.lua" />
-    <EmbeddedResource Include="Resources\as.lua" />
     <EmbeddedResource Include="Resources\aslib.lua" />
     <EmbeddedResource Include="Resources\stream_ops.lua" />
   </ItemGroup>

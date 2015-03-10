@@ -18,6 +18,8 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 using System.Threading;
+using System.Reflection;
+using System.IO;
 
 namespace Aerospike.Client
 {
@@ -932,7 +934,7 @@ namespace Aerospike.Client
 		//---------------------------------------------------------------
 
 		/// <summary>
-		/// Register package containing user defined functions with server.
+		/// Register package located in a file containing user defined functions with server.
 		/// This asynchronous server call will return before command is complete.
 		/// The user can optionally wait for command completion by using the returned
 		/// RegisterTask instance.
@@ -948,71 +950,34 @@ namespace Aerospike.Client
 		public RegisterTask Register(Policy policy, string clientPath, string serverPath, Language language)
 		{
 			string content = Util.ReadFileEncodeBase64(clientPath);
+			return RegisterCommand.Register(cluster, policy, content, serverPath, language);
+		}
 
-			StringBuilder sb = new StringBuilder(serverPath.Length + content.Length + 100);
-			sb.Append("udf-put:filename=");
-			sb.Append(serverPath);
-			sb.Append(";content=");
-			sb.Append(content);
-			sb.Append(";content-len=");
-			sb.Append(content.Length);
-			sb.Append(";udf-type=");
-			sb.Append(language);
-			sb.Append(";");
-
-			// Send UDF to one node. That node will distribute the UDF to other nodes.
-			string command = sb.ToString();
-			Node node = cluster.GetRandomNode();
-			int timeout = (policy == null) ? 0 : policy.timeout;
-			Connection conn = node.GetConnection(timeout);
-
-			try
+		/// <summary>
+		/// Register package located in a resource containing user defined functions with server.
+		/// This asynchronous server call will return before command is complete.
+		/// The user can optionally wait for command completion by using the returned
+		/// RegisterTask instance.
+		/// <para>
+		/// This method is only supported by Aerospike 3 servers.
+		/// </para>
+		/// </summary>
+		/// <param name="policy">generic configuration parameters, pass in null for defaults</param>
+		/// <param name="resourceAssembly">assembly where resource is located.  Current assembly can be obtained by: Assembly.GetExecutingAssembly()</param>
+		/// <param name="resourcePath">namespace path where Lua resource is located.  Example: Aerospike.Client.Resources.mypackage.lua</param>
+		/// <param name="serverPath">path to store user defined functions on the server, relative to configured script directory.</param>
+		/// <param name="language">language of user defined functions</param>
+		/// <exception cref="AerospikeException">if register fails</exception>
+		public RegisterTask Register(Policy policy, Assembly resourceAssembly, string resourcePath, string serverPath, Language language)
+		{
+			string content;
+			using (Stream stream = resourceAssembly.GetManifestResourceStream(resourcePath))
 			{
-				Info info = new Info(conn, command);
-				Info.NameValueParser parser = info.GetNameValueParser();
-				string error = null;
-				string file = null;
-				string line = null;
-				string message = null;
-
-				while (parser.Next())
-				{
-					string name = parser.GetName();
-
-					if (name.Equals("error"))
-					{
-						error = parser.GetValue();
-					}
-					else if (name.Equals("file"))
-					{
-						file = parser.GetValue();
-					}
-					else if (name.Equals("line"))
-					{
-						line = parser.GetValue();
-					}
-					else if (name.Equals("message"))
-					{
-						message = parser.GetStringBase64();
-					}
-				}
-
-				if (error != null)
-				{
-					throw new AerospikeException("Registration failed: " + error + Environment.NewLine +
-						"File: " + file + Environment.NewLine +
-						"Line: " + line + Environment.NewLine +
-						"Message: " + message
-						);
-				}
-				node.PutConnection(conn);
-				return new RegisterTask(cluster, serverPath);
+				byte[] bytes = new byte[stream.Length];
+				stream.Read(bytes, 0, bytes.Length);
+				content = Convert.ToBase64String(bytes);
 			}
-			catch (Exception)
-			{
-				conn.Close();
-				throw;
-			}
+			return RegisterCommand.Register(cluster, policy, content, serverPath, language);
 		}
 
 		/// <summary>
@@ -1186,16 +1151,15 @@ namespace Aerospike.Client
 
 		#if (! LITE)
 		/// <summary>
-		/// Execute query, apply statement's aggregation function, and return result iterator. The query 
-		/// executor puts results on a queue in separate threads.  The calling thread concurrently pops 
-		/// results off the queue through the result iterator.
+		/// Execute query, apply statement's aggregation function, and return result iterator. 
+		/// The aggregation function should be located in a Lua script file that can be found from the 
+		/// "LuaConfig.PackagePath" paths static variable.  The default package path is "udf/?.lua"
+		/// where "?" is the packageName.
 		/// <para>
-		/// The aggregation function is called on both server and client (final reduce).  Therefore,
-		/// the Lua script files must also reside on both server and client.
-		/// The package name is used to locate the udf file location:
-		/// </para>
-		/// <para>
-		/// udf file = &lt;udf dir&gt;/&lt;package name&gt;.lua
+		/// The query executor puts results on a queue in separate threads.  The calling thread 
+		/// concurrently pops results off the queue through the ResultSet iterator.
+		/// The aggregation function is called on both server and client (final reduce).
+		/// Therefore, the Lua script file must also reside on both server and client.
 		/// </para>
 		/// <para>
 		/// This method is only supported by Aerospike 3 servers.
@@ -1213,11 +1177,49 @@ namespace Aerospike.Client
 			{
 				policy = queryPolicyDefault;
 			}
-			QueryAggregateExecutor executor = new QueryAggregateExecutor(cluster, policy, statement, packageName, functionName, functionArgs);
+			statement.SetAggregateFunction(packageName, functionName, functionArgs, true);
+			statement.Prepare();
+
+			QueryAggregateExecutor executor = new QueryAggregateExecutor(cluster, policy, statement);
 			executor.Execute();
 			return executor.ResultSet;
 		}
-		#endif
+
+		/// <summary>
+		/// Execute query, apply statement's aggregation function, and return result iterator. 
+		/// The aggregation function should be located in a Lua resource file located in an assembly.
+		/// <para>
+		/// The query executor puts results on a queue in separate threads.  The calling thread 
+		/// concurrently pops results off the queue through the ResultSet iterator.
+		/// The aggregation function is called on both server and client (final reduce).
+		/// Therefore, the Lua script file must also reside on both server and client.
+		/// </para>
+		/// <para>
+		/// This method is only supported by Aerospike 3 servers.
+		/// </para>
+		/// </summary>
+		/// <param name="policy">generic configuration parameters, pass in null for defaults</param>
+		/// <param name="statement">database query command</param>
+		/// <param name="resourceAssembly">assembly where resource is located.  Current assembly can be obtained by: Assembly.GetExecutingAssembly()</param>
+		/// <param name="resourcePath">namespace path where Lua resource is located.  Example: Aerospike.Client.Resources.mypackage.lua</param>
+		/// <param name="packageName">server package where user defined function resides</param>
+		/// <param name="functionName">aggregation function name</param>
+		/// <param name="functionArgs">arguments to pass to function name, if any</param>
+		/// <exception cref="AerospikeException">if query fails</exception>
+		public ResultSet QueryAggregate(QueryPolicy policy, Statement statement, Assembly resourceAssembly, string resourcePath, string packageName, string functionName, params Value[] functionArgs)
+		{
+			if (policy == null)
+			{
+				policy = queryPolicyDefault;
+			}
+			statement.SetAggregateFunction(resourceAssembly, resourcePath, packageName, functionName, functionArgs, true);
+			statement.Prepare();
+
+			QueryAggregateExecutor executor = new QueryAggregateExecutor(cluster, policy, statement);
+			executor.Execute();
+			return executor.ResultSet;
+		}
+#endif
 
 		/// <summary>
 		/// Create scalar secondary index.

@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2014 Aerospike, Inc.
+ * Copyright 2012-2015 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -14,12 +14,13 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using LuaInterface;
+using System;
 
 namespace Aerospike.Client
 {
 	/// <summary>
-	/// Lua static configuration variables.
+	/// Lua static configuration variables. These variables apply to all AerospikeClient instances
+	/// in a single process.
 	/// </summary>
 	public sealed class LuaConfig
 	{

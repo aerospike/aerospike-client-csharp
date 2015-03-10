@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2014 Aerospike, Inc.
+ * Copyright 2012-2015 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -95,7 +95,7 @@ namespace Aerospike.Client
 			}
 		}
 
-		protected internal void StopThreads(Exception cause)
+		protected internal bool StopThreads(Exception cause)
 		{
 			// There is no need to stop threads if all threads have already completed.
 			if (Interlocked.Exchange(ref done, 1) == 0)
@@ -108,7 +108,9 @@ namespace Aerospike.Client
 				}
 				cancel.Cancel();
 				SendCancel();
+				return true;
 			}
+			return false;
 		}
 
 		protected internal void CheckForException()

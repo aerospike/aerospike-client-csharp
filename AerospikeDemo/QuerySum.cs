@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2014 Aerospike, Inc.
+ * Copyright 2012-2015 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -103,25 +103,24 @@ namespace Aerospike.Demo
 				while (rs.Next())
 				{
 					object obj = rs.Object;
-					double sum;
 
-					if (obj is double)
+					if (obj is long)
 					{
-						sum = (double)rs.Object;
+						long sum = (long)rs.Object;
+
+						if (expected == (int)sum)
+						{
+							console.Info("Sum matched: value=" + expected);
+						}
+						else
+						{
+							console.Error("Sum mismatch: Expected {0}. Received {1}.", expected, sum);
+						}
 					}
 					else
 					{
-						console.Error("Return value not a double: " + obj);
+						console.Error("Unexpected return value: " + obj);
 						continue;
-					}
-
-					if (expected == (int)sum)
-					{
-						console.Info("Sum matched: value=" + expected);
-					}
-					else
-					{
-						console.Error("Sum mismatch: Expected {0}. Received {1}.", expected, sum);
 					}
 					count++;
 				}

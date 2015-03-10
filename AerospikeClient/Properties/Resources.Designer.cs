@@ -63,16 +63,6 @@ namespace Aerospike.Client.Properties {
         /// <summary>
         ///   Looks up a localized resource of type System.Byte[].
         /// </summary>
-        internal static byte[] _as {
-            get {
-                object obj = ResourceManager.GetObject("_as", resourceCulture);
-                return ((byte[])(obj));
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized resource of type System.Byte[].
-        /// </summary>
         internal static byte[] aerospike {
             get {
                 object obj = ResourceManager.GetObject("aerospike", resourceCulture);

@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2014 Aerospike, Inc.
+ * Copyright 2012-2015 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -17,19 +17,21 @@
 using System;
 using System.Collections.Concurrent;
 using System.Threading;
-using LuaInterface;
+using Neo.IronLua;
 
 namespace Aerospike.Client
 {
 	public abstract class LuaStream
 	{
-		public static void LoadLibrary(Lua lua)
+		public static void LoadLibrary(LuaInstance lua)
 		{
-			Type type = typeof(LuaStream);
-			lua.RegisterFunction("stream.read", null, type.GetMethod("read", new Type[] { type }));
-			lua.RegisterFunction("stream.write", null, type.GetMethod("write", new Type[] { type, typeof(object) }));
-			lua.RegisterFunction("stream.readable", null, type.GetMethod("readable", new Type[] { type }));
-			lua.RegisterFunction("stream.writeable", null, type.GetMethod("writeable", new Type[] { type }));
+			LuaTable table = new LuaTable();
+			table["read"] = new Func<LuaStream, object>(read);
+			table["write"] = new Action<LuaStream, object>(write);
+			table["readable"] = new Func<LuaStream, bool>(readable);
+			table["writeable"] = new Func<LuaStream, bool>(writeable);
+
+			lua.Register("stream", table);
 		}
 
 		public static object read(LuaStream stream)

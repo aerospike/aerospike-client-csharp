@@ -69,6 +69,7 @@ namespace Aerospike.Client
 			catch (OperationCanceledException)
 			{
 				valid = false;
+				executor.CheckForException();
 				return false;
 			}
 

@@ -1,10 +1,10 @@
 Aerospike C# Client Package
 ===========================
 
-Aerospike C# client.  This package contains full source code for two Visual Studio solutions:
+Aerospike C# client.  This package contains full source code for:
 
 * **Aerospike.sln**    
-	C# library and demonstration programs with full functionality including "AerospikeClient.QueryAggregate()" (secondary index query with user-defined aggregation).  Aggregations require a Lua interpreter (written in C) on the client side.  This results in a dependency on an unmanaged DLL.  Supported compile targets are x64 (64-bit) and x86 (32-bit).  The projects are:
+	C# library and demonstration programs with full functionality.  Supported compile targets are AnyCPU, x64 (64-bit) and x86 (32-bit).  The projects are:
 	
 	* **AerospikeClient**    
 		C# client library.
@@ -13,14 +13,11 @@ Aerospike C# client.  This package contains full source code for two Visual Stud
 	* **AerospikeAdmin**    
 		Aerospike user administration.  This application is only valid for enterprise servers that are configured to require user authentication.
 
-* **AerospikeLite.sln**    
-	C# library and demonstration programs without "AerospikeClient.QueryAggregate()" (secondary index query with user-defined aggregation).  This solution is fully managed.  Supported compile targets are AnyCPU, x64 (64-bit) and x86 (32-bit).  The included projects are appended with the "Lite" suffix. 
+	Note: The old unmanaged LuaInterface Lua interpreter (written in C) has been replaced with a fully managed NeoLua Lua interpreter (written in C#) in the client's aggregation engine.  
 
-	* **AerospikeClientLite**    
-	* **AerospikeDemoLite**    
-	* **AerospikeAdminLite**    
-
-All solutions support the following configurations:
+	All compile targets are now supported.  Therefore, the AerospikeLite solution has been deleted because it is no longer necessary.
+	
+The solution supports the following configurations:
 
 * Debug
 * Release
@@ -36,7 +33,10 @@ All solutions support the following configurations:
 **Build Instructions**
 
 * Double click on Aerospike.sln.  The solution will be opened in Visual Studio.
-* Click menu Build -> BuildSolution.  The target platform is 64 bit by default.
+* Click menu Build -> Configuration Manager.
+* Click desired solution configuration and platform.
+* Click Close.
+* Click Build -> Build Solution
 
 **Demonstration Instructions**
 

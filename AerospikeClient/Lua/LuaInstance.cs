@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2014 Aerospike, Inc.
+ * Copyright 2012-2015 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -18,77 +18,159 @@ using System;
 using System.Collections.Generic;
 using System.Reflection;
 using System.IO;
-using LuaInterface;
+using System.Text;
+using Neo.IronLua;
 
 namespace Aerospike.Client
 {
 	public sealed class LuaInstance
 	{
 		private readonly Lua lua;
-		private readonly LuaFunction require;
+		private readonly LuaGlobal global;
+		private readonly HashSet<string> packages;
+		public bool debug;
 
 		public LuaInstance()
 		{
 			lua = new Lua();
+			packages = new HashSet<string>();
 
 			try
 			{
-				lua["package.path"] = LuaConfig.PackagePath;
-				require = lua.GetFunction("require");
+				global = lua.CreateEnvironment();
+				global["package.path"] = LuaConfig.PackagePath;
 
-				LuaTable packages = (LuaTable)lua["package.loaded"];
-				LoadSystem(packages, "aslib");
-				LuaBytes.LoadLibrary(lua);
-				LuaList.LoadLibrary(lua);
-				LuaMap.LoadLibrary(lua);
-				LuaStream.LoadLibrary(lua);
-				LoadSystem(packages, "as");
-				LoadSystem(packages, "stream_ops");
-				LoadSystem(packages, "aerospike");
-				LuaAerospike.LoadLibrary(lua);
+				LuaAerospike.LoadLibrary(this);
+				LuaStream.LoadLibrary(this);
+
+				Assembly assembly = Assembly.GetExecutingAssembly();
+				LoadSystemPackage(assembly, "aslib");
+				LoadSystemPackage(assembly, "stream_ops");
+				LoadSystemPackage(assembly, "aerospike");
 			}
 			catch (Exception)
 			{
-				lua.Close();
+				lua.Dispose();
 				throw;
 			}
 		}
 
 		public void Close()
 		{
-			lua.Close();
+			lua.Dispose();
 		}
 
-		public void LoadSystem(LuaTable packages, string packageName)
+		public void LoadPackage(Statement statement)
 		{
-			Assembly assembly = Assembly.GetExecutingAssembly();
-			string resourcePath = "Aerospike.Client.Resources." + packageName + ".lua";
+			if (!packages.Contains(statement.packageName))
+			{
+				if (statement.resourceAssembly == null || statement.resourcePath == null)
+				{
+					LoadPackageFromFile(statement.packageName);
+				}
+				else
+				{
+					LoadPackageFromResource(statement.resourceAssembly, statement.resourcePath, statement.packageName);
+				}
+				packages.Add(statement.packageName);
+			}
+		}
 
+		private void LoadSystemPackage(Assembly assembly, string packageName)
+		{
+			string resourcePath = "Aerospike.Client.Resources." + packageName + ".lua";
+			LoadPackageFromResource(assembly, resourcePath, packageName);
+		}
+
+		private void LoadPackageFromResource(Assembly assembly, string resourcePath, string packageName)
+		{
 			using (Stream stream = assembly.GetManifestResourceStream(resourcePath))
 			{
 				using (StreamReader reader = new StreamReader(stream))
 				{
-					string chunk = reader.ReadToEnd();
-					lua.DoString(chunk, packageName);
-					packages[packageName] = true;
+					if (debug)
+					{
+						global.DoChunk(lua.CompileChunk(reader, packageName, Lua.DefaultDebugEngine));
+					}
+					else
+					{
+						global.DoChunk(reader, packageName);
+					}
 				}
 			}
 		}
 
-		public void Load(string packageName)
+		private void LoadPackageFromFile(string packageName)
 		{
-			require.Call(packageName);
+			string path = FindFile(packageName);
+
+			if (debug)
+			{
+				global.DoChunk(lua.CompileChunk(path, Lua.DefaultDebugEngine));
+			}
+			else
+			{
+				global.DoChunk(path);
+			}
+		}
+
+		private string FindFile(string packageName)
+		{
+			StringBuilder sb = new StringBuilder(256);
+			string paths = LuaConfig.PackagePath;
+
+			foreach (char c in paths)
+			{
+				if (c == '?')
+				{
+					sb.Append(packageName);
+				}
+				else if (c == ';')
+				{
+					string path = sb.ToString();
+
+					if (File.Exists(path))
+					{
+						return path;
+					}
+					sb.Length = 0;
+				}
+				else
+				{
+					sb.Append(c);
+				}
+			}
+
+			if (sb.Length > 0)
+			{
+				string path = sb.ToString();
+
+				if (File.Exists(path))
+				{
+					return path;
+				}
+			}
+			throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Failed to find '" + packageName + "' in '" + paths + "'");
+		}
+
+		public void ClearPackages()
+		{
+			packages.Clear();
 		}
 
 		public void Call(string functionName, params object[] args)
 		{
-			LuaFunction function = (LuaFunction)lua[functionName];
-			function.Call(args);
+			global.CallMember(functionName, args);
 		}
 
-		public LuaFunction GetFunction(string functionName)
+		public object GetFunction(string functionName)
 		{
-			return (LuaFunction)lua[functionName];
+			return global[functionName];
+		}
+
+		public void Register(string name, object value)
+		{
+			global[name] = value;
 		}
 
 		public static object BytesToLua(int type, byte[] buf, int offset, int len) 

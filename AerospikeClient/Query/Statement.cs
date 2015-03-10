@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2014 Aerospike, Inc.
+ * Copyright 2012-2015 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -15,6 +15,7 @@
  * the License.
  */
 using System;
+using System.Reflection;
 
 namespace Aerospike.Client
 {
@@ -28,6 +29,8 @@ namespace Aerospike.Client
 		internal string indexName;
 		internal string[] binNames;
 		internal Filter[] filters;
+		internal Assembly resourceAssembly;
+		internal string resourcePath;
 		internal string packageName;
 		internal string functionName;
 		internal Value[] functionArgs;
@@ -88,8 +91,8 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
-		/// Set Lua aggregation function parameters.  This function will be called on both the server 
-		/// and client for each selected item.
+		/// Set Lua aggregation function parameters for a Lua package located on the filesystem.  
+		/// This function will be called on both the server and client for each selected item.
 		/// </summary>
 		/// <param name="packageName">server package where user defined function resides</param>
 		/// <param name="functionName">aggregation function name</param>
@@ -97,6 +100,26 @@ namespace Aerospike.Client
 		/// <param name="returnData">whether to return data back to the client or not</param>
 		internal void SetAggregateFunction(string packageName, string functionName, Value[] functionArgs, bool returnData)
 		{
+			this.packageName = packageName;
+			this.functionName = functionName;
+			this.functionArgs = functionArgs;
+			this.returnData = returnData;
+		}
+
+		/// <summary>
+		/// Set Lua aggregation function parameters for a Lua package located in an assembly resource.  
+		/// This function will be called on both the server and client for each selected item.
+		/// </summary>
+		/// <param name="resourceAssembly">assembly where resource is located.  Current assembly can be obtained by: Assembly.GetExecutingAssembly()"</param>
+		/// <param name="resourcePath">namespace path where Lua resource is located.  Example: Aerospike.Client.Resources.mypackage.lua</param>
+		/// <param name="packageName">server package where user defined function resides</param>
+		/// <param name="functionName">aggregation function name</param>
+		/// <param name="functionArgs">arguments to pass to function name, if any</param>
+		/// <param name="returnData">whether to return data back to the client or not</param>
+		internal void SetAggregateFunction(Assembly resourceAssembly, string resourcePath, string packageName, string functionName, Value[] functionArgs, bool returnData)
+		{
+			this.resourceAssembly = resourceAssembly;
+			this.resourcePath = resourcePath;
 			this.packageName = packageName;
 			this.functionName = functionName;
 			this.functionArgs = functionArgs;

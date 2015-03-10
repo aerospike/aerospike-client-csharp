@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2014 Aerospike, Inc.
+ * Copyright 2012-2015 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -17,13 +17,13 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using LuaInterface;
+using Neo.IronLua;
 
 namespace Aerospike.Client
 {
-	public class LuaMap : LuaData
+	public class LuaMap : LuaTable, LuaData
 	{
-		protected internal readonly Dictionary<object, object> map;
+		protected internal readonly Dictionary<object,object> map;
 
 		public LuaMap(Dictionary<object, object> map)
 		{
@@ -32,13 +32,7 @@ namespace Aerospike.Client
 
 		public LuaMap(LuaTable table)
 		{
-			map = new Dictionary<object, object>(table.Keys.Count);
-			IDictionaryEnumerator iter = table.GetEnumerator();
-
-			while (iter.MoveNext())
-			{
-				map[iter.Key] = iter.Value;
-			}
+			map = new Dictionary<object, object>(table.Values);
 		}
 
 		public LuaMap()
@@ -46,57 +40,105 @@ namespace Aerospike.Client
 			map = new Dictionary<object, object>();
 		}
 
+		public static LuaMap create(int capacity)
+		{
+			return new LuaMap(new Dictionary<object, object>(capacity));
+		}
+
 		public static int size(LuaMap map)
 		{
 			return map.map.Count;
 		}
 
-		public static LuaMapIterator create_iterator(LuaMap map)
+		public static bool remove(LuaMap map, object key)
 		{
-			return new LuaMapIterator(map.map.GetEnumerator());
-		}
-
-		public static object next_key(LuaMapIterator iter)
-		{
-			return iter.NextKey();
-		}
-
-		public static object next_value(LuaMapIterator iter)
-		{
-			return iter.NextValue();
-		}
-
-		public static bool next(LuaMapIterator iter)
-		{
-			return iter.iter.MoveNext();
-		}
-
-		public static object key(LuaMapIterator iter)
-		{
-			return iter.iter.Current.Key;
-		}
-
-		public static object value(LuaMapIterator iter)
-		{
-			return iter.iter.Current.Value;
-		}
-
-		public object this[object key]
-		{
-			get 
+			if (key != null)
 			{
-				object obj;
+				return map.map.Remove(key);
+			}
+			return false;
+		}
 
-				if (map.TryGetValue(key, out obj))
+		public static LuaMap clone(LuaMap map)
+		{
+			return new LuaMap(new Dictionary<object,object>(map.map));
+		}
+
+		public static LuaMap merge(LuaMap map1, LuaMap map2, Func<object, object, LuaResult> func)
+		{
+			Dictionary<object, object> map = new Dictionary<object, object>(map1.map);
+			foreach (KeyValuePair<object, object> entry in map2.map)
+			{
+				if (func != null)
 				{
-					return obj;
+					object value;
+					if (map.TryGetValue(entry.Key, out value))
+					{
+						LuaResult res = func(value, entry.Value);
+						map[entry.Key] = res[0];
+						continue;
+					}
 				}
-				return null; 
+				map[entry.Key] = entry.Value;
 			}
-			set 
+			return new LuaMap(map);
+		}
+
+		public static LuaMap diff(LuaMap map1, LuaMap map2)
+		{
+			Dictionary<object, object> map = new Dictionary<object, object>(map1.map.Count + map2.map.Count);
+
+			foreach (KeyValuePair<object, object> entry in map1.map)
 			{
-				map[key] = value;
+				if (!map2.map.ContainsKey(entry.Key))
+				{
+					map[entry.Key] = entry.Value;
+				}
 			}
+
+			foreach (KeyValuePair<object, object> entry in map2.map)
+			{
+				if (!map1.map.ContainsKey(entry.Key))
+				{
+					map[entry.Key] = entry.Value;
+				}
+			}
+			return new LuaMap(map);
+		}
+		
+		public static Func<object[]> pairs(LuaMap map)
+		{
+			LuaMapIterator iter = new LuaMapIterator(map.map.GetEnumerator());
+			return new Func<object[]>(iter.NextPair);
+		}
+
+		public static Func<object> keys(LuaMap map)
+		{
+			LuaMapIterator iter = new LuaMapIterator(map.map.GetEnumerator());
+			return new Func<object>(iter.NextKey);
+		}
+
+		public static Func<object> values(LuaMap map)
+		{
+			LuaMapIterator iter = new LuaMapIterator(map.map.GetEnumerator());
+			return new Func<object>(iter.NextValue);
+		}
+
+		protected override object OnIndex(object key)
+		{
+			object obj;
+
+			if (map.TryGetValue(key, out obj))
+			{
+				return obj;
+			}
+			return null;
+		}
+
+		protected override bool OnNewIndex(object key, object value)
+		{
+			map[key] = value;
+			return true;
 		}
 
 		public override string ToString()
@@ -116,36 +158,31 @@ namespace Aerospike.Client
 			}
 			return target;
 		}
-
-		public static void LoadLibrary(Lua lua)
-		{
-			Type type = typeof(LuaMap);
-			lua.RegisterFunction("map.create", null, type.GetConstructor(Type.EmptyTypes));
-			lua.RegisterFunction("map.create_set", null, type.GetConstructor(new Type[] { typeof(LuaTable) }));
-			lua.RegisterFunction("map.size", null, type.GetMethod("size", new Type[] { type }));
-			lua.RegisterFunction("map.create_iterator", null, type.GetMethod("create_iterator", new Type[] { type }));
-			lua.RegisterFunction("map.next_key", null, type.GetMethod("next_key", new Type[] { typeof(LuaMapIterator) }));
-			lua.RegisterFunction("map.next_value", null, type.GetMethod("next_value", new Type[] { typeof(LuaMapIterator) }));
-			lua.RegisterFunction("map.next", null, type.GetMethod("next", new Type[] { typeof(LuaMapIterator) }));
-			lua.RegisterFunction("map.key", null, type.GetMethod("key", new Type[] { typeof(LuaMapIterator) }));
-			lua.RegisterFunction("map.value", null, type.GetMethod("value", new Type[] { typeof(LuaMapIterator) }));
-		}
 	}
 
 	public class LuaMapIterator
 	{
-		protected internal Dictionary<object, object>.Enumerator iter;
+		protected internal IDictionaryEnumerator iter;
 
-		public LuaMapIterator(Dictionary<object, object>.Enumerator iter)
+		public LuaMapIterator(IDictionaryEnumerator iter)
 		{
 			this.iter = iter;
+		}
+
+		public object[] NextPair()
+		{
+			if (iter.MoveNext())
+			{
+				return new object[] { iter.Key, iter.Value };
+			}
+			return null;
 		}
 
 		public object NextKey()
 		{
 			if (iter.MoveNext())
 			{
-				return iter.Current.Key;
+				return iter.Key;
 			}
 			return null;
 		}
@@ -154,7 +191,7 @@ namespace Aerospike.Client
 		{
 			if (iter.MoveNext())
 			{
-				return iter.Current.Value;
+				return iter.Value;
 			}
 			return null;
 		}

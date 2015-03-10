@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2014 Aerospike, Inc.
+ * Copyright 2012-2015 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -39,21 +39,15 @@ namespace Aerospike.Client
 
 		public static string GetErrorMessage(Exception e)
 		{
+			// Find initial cause of exception
+			Exception cause = e;
+			while (cause.InnerException != null)
+			{
+				cause = e.InnerException;
+			}
+
 			// Connection error messages don't need a stacktrace.
-			if (e is SocketException || e is AerospikeException.Connection)
-			{
-				return e.Message;
-			}
-
-			Exception cause = e.InnerException;
-
-			if (cause == null)
-			{
-				// Unexpected exceptions need a stacktrace.
-				return e.Message + Environment.NewLine + e.StackTrace;
-			}
-		
-			if (cause is SocketException)
+			if (cause is SocketException || cause is AerospikeException.Connection)
 			{
 				return e.Message;
 			}

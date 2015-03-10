@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2014 Aerospike, Inc.
+ * Copyright 2012-2015 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -17,7 +17,6 @@
 using System;
 using System.Threading;
 using System.Collections.Concurrent;
-using LuaInterface;
 
 namespace Aerospike.Client
 {

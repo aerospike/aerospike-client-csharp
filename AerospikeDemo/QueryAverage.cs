@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2014 Aerospike, Inc.
+ * Copyright 2012-2015 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -103,8 +103,8 @@ namespace Aerospike.Demo
 						Dictionary<object, object> map = (Dictionary<object, object>)obj;
 						object objsum = map["sum"];
 						object objcount = map["count"];
-						double sum = (double)objsum;
-						double count = (double)objcount;
+						double sum = (double)(long)objsum;
+						double count = (double)(long)objcount;
 						double avg = sum / count;
 						console.Info("Sum=" + sum + " Count=" + count + " Average=" + avg);
 

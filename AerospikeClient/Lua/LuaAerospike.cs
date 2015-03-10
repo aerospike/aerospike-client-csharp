@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2014 Aerospike, Inc.
+ * Copyright 2012-2015 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -16,7 +16,7 @@
  */
 using System;
 using System.Collections.Generic;
-using LuaInterface;
+using Neo.IronLua;
 
 namespace Aerospike.Client
 {
@@ -39,10 +39,12 @@ namespace Aerospike.Client
 			}
 		}
 
-		public static void LoadLibrary(Lua lua)
+		public static void LoadLibrary(LuaInstance lua)
 		{
-			Type type = typeof(LuaAerospike);
-			lua.RegisterFunction("aero.log", null, type.GetMethod("log", new Type[] { typeof(int), typeof(string) }));
+			LuaTable table = new LuaTable();
+			table["log"] = new Action<int, string>(log);
+
+			lua.Register("aero", table);
 		}
 	}
 }

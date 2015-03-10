@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2014 Aerospike, Inc.
+ * Copyright 2012-2015 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -17,6 +17,7 @@
 using System;
 using System.Collections.Concurrent;
 using System.Threading;
+using Neo.IronLua;
 
 namespace Aerospike.Client
 {
@@ -25,20 +26,11 @@ namespace Aerospike.Client
 		private readonly BlockingCollection<object> inputQueue;
 		private readonly ResultSet resultSet;
 
-		public QueryAggregateExecutor
-		(
-			Cluster cluster,
-			QueryPolicy policy,
-			Statement statement,
-			string packageName,
-			string functionName,
-			Value[] functionArgs
-		) : base(cluster, policy, statement)
+		public QueryAggregateExecutor(Cluster cluster, QueryPolicy policy, Statement statement) 
+			: base(cluster, policy, statement)
 		{
 			inputQueue = new BlockingCollection<object>(500);
 			resultSet = new ResultSet(this, policy.recordQueueSize, cancel.Token);
-			statement.SetAggregateFunction(packageName, functionName, functionArgs, true);
-			statement.Prepare();
 			InitializeThreads();
 		}
 
@@ -51,26 +43,16 @@ namespace Aerospike.Client
 
 		public void Run(object obj)
 		{
-			try
-			{
-				RunThreads();
-			}
-			catch (Exception e)
-			{
-				StopThreads(e);
-			}
-		}
-
-		public void RunThreads()
-		{
-			LuaInstance lua = LuaCache.GetInstance();
+			LuaInstance lua = null;
 
 			try
 			{
+				lua = LuaCache.GetInstance();
+
 				// Start thread queries to each node.
 				StartThreads();
 
-				lua.Load(statement.packageName);
+				lua.LoadPackage(statement);
 
 				object[] args = new object[4 + statement.functionArgs.Length];
 				args[0] = lua.GetFunction(statement.functionName);
@@ -85,12 +67,44 @@ namespace Aerospike.Client
 				}
 				lua.Call("apply_stream", args);
 			}
+			catch (LuaRuntimeException lre)
+			{
+				// Try to get that elusive lua stack trace.
+				HandleException(new Exception(lre.Message + lre.StackTrace));
+			}
+			catch (Exception e)
+			{
+				if (e.InnerException is LuaRuntimeException)
+				{
+					// Try to get that elusive lua stack trace.
+					LuaRuntimeException lre = e.InnerException as LuaRuntimeException;
+					HandleException(new Exception(lre.Message + lre.StackTrace));
+				}
+				else
+				{
+					HandleException(e);
+				}
+			}
 			finally
 			{
 				// Send end command to user's result set.
 				// If query was already cancelled, this put will be ignored.
 				resultSet.Put(ResultSet.END);
-				LuaCache.PutInstance(lua);
+
+				if (lua != null)
+				{
+					LuaCache.PutInstance(lua);
+				}
+			}
+		}
+
+		private void HandleException(Exception e)
+		{
+			// Stop query threads before END is put on result set.
+			if (!StopThreads(e))
+			{
+				// Override exception if a query thread already called StopThreads.
+				base.exception = e;
 			}
 		}
 

@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2014 Aerospike, Inc.
+ * Copyright 2012-2015 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -17,7 +17,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using LuaInterface;
+using Neo.IronLua;
 
 namespace Aerospike.Client
 {
@@ -32,13 +32,7 @@ namespace Aerospike.Client
 
 		public LuaList(LuaTable table)
 		{
-			ICollection values = table.Values;
-			list = new List<object>(values.Count);
-
-			foreach (object value in values)
-			{
-				list.Add(value);
-			}
+			list = new List<object>(table.ArrayList);
 		}
 
 		public LuaList()
@@ -46,9 +40,25 @@ namespace Aerospike.Client
 			list = new List<object>();
 		}
 
+		public static LuaList create(int capacity)
+		{
+			return new LuaList(new List<object>(capacity));
+		}
+
 		public static int size(LuaList list)
 		{
 			return list.list.Count;
+		}
+
+		public static Func<object> iterator(LuaList list)
+		{
+			LuaListIterator iter = new LuaListIterator(list.list.GetEnumerator());
+			return new Func<object>(iter.next);
+		}
+
+		public static void insert(LuaList list, int index, object obj)
+		{
+			list.list.Insert(index - 1, obj);
 		}
 
 		public static void append(LuaList list, object obj)
@@ -72,6 +82,11 @@ namespace Aerospike.Client
 			return new LuaList(src.GetRange(0, count));
 		}
 
+		public static void remove(LuaList list, int index)
+		{
+			list.list.RemoveAt(index - 1);
+		}
+
 		public static LuaList drop(LuaList list, int count)
 		{
 			List<object> src = list.list;
@@ -83,14 +98,26 @@ namespace Aerospike.Client
 			return new LuaList(src.GetRange(count, src.Count - count));
 		}
 
-		public static LuaListIterator create_iterator(LuaList list)
+		public static void trim(LuaList list, int index)
 		{
-			return new LuaListIterator(list.list.GetEnumerator());
+			list.list.RemoveRange(index-1, list.list.Count - index + 1);
+		}
+		
+		public static LuaList clone(LuaList list)
+		{
+			return new LuaList(new List<object>(list.list));
 		}
 
-		public static object next(LuaListIterator iter)
+		public static void concat(LuaList list1, LuaList list2)
 		{
-			return iter.next();
+			list1.list.AddRange(list2.list);
+		}
+
+		public static LuaList merge(LuaList list1, LuaList list2)
+		{
+			List<object> list = new List<object>(list1.list);
+			list.AddRange(list2.list);
+			return new LuaList(list);
 		}
 
 		public object this[int index]
@@ -114,20 +141,6 @@ namespace Aerospike.Client
 				target.Add(obj);
 			}
 			return target;
-		}
-
-		public static void LoadLibrary(Lua lua)
-		{
-			Type type = typeof(LuaList);
-			lua.RegisterFunction("list.create", null, type.GetConstructor(Type.EmptyTypes));
-			lua.RegisterFunction("list.create_set", null, type.GetConstructor(new Type[] { typeof(LuaTable) }));
-			lua.RegisterFunction("list.size", null, type.GetMethod("size", new Type[] { type }));
-			lua.RegisterFunction("list.append", null, type.GetMethod("append", new Type[] { type, typeof(object) }));
-			lua.RegisterFunction("list.prepend", null, type.GetMethod("prepend", new Type[] { type, typeof(object) }));
-			lua.RegisterFunction("list.take", null, type.GetMethod("take", new Type[] { type, typeof(int) }));
-			lua.RegisterFunction("list.drop", null, type.GetMethod("drop", new Type[] { type, typeof(int) }));
-			lua.RegisterFunction("list.create_iterator", null, type.GetMethod("create_iterator", new Type[] { type }));
-			lua.RegisterFunction("list.next", null, type.GetMethod("next", new Type[] { typeof(LuaListIterator) }));
 		}
 	}
 
