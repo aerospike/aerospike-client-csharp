@@ -15,6 +15,7 @@
  * the License.
  */
 using System;
+using System.IO;
 
 namespace Aerospike.Client
 {
@@ -27,7 +28,7 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Directory location which contains user defined Lua source files.
 		/// </summary>
-		public static string PackagePath = "udf/?.lua";
+		public static string PackagePath = "udf" + Path.DirectorySeparatorChar + "?.lua";
 
 		/// <summary>
 		/// Maximum number of Lua runtime instances to cache at any point in time.
