@@ -97,13 +97,11 @@ namespace Aerospike.Client
 		/// <param name="packageName">server package where user defined function resides</param>
 		/// <param name="functionName">aggregation function name</param>
 		/// <param name="functionArgs">arguments to pass to function name, if any</param>
-		/// <param name="returnData">whether to return data back to the client or not</param>
-		internal void SetAggregateFunction(string packageName, string functionName, Value[] functionArgs, bool returnData)
+		public void SetAggregateFunction(string packageName, string functionName, params Value[] functionArgs)
 		{
 			this.packageName = packageName;
 			this.functionName = functionName;
 			this.functionArgs = functionArgs;
-			this.returnData = returnData;
 		}
 
 		/// <summary>
@@ -115,22 +113,22 @@ namespace Aerospike.Client
 		/// <param name="packageName">server package where user defined function resides</param>
 		/// <param name="functionName">aggregation function name</param>
 		/// <param name="functionArgs">arguments to pass to function name, if any</param>
-		/// <param name="returnData">whether to return data back to the client or not</param>
-		internal void SetAggregateFunction(Assembly resourceAssembly, string resourcePath, string packageName, string functionName, Value[] functionArgs, bool returnData)
+		public void SetAggregateFunction(Assembly resourceAssembly, string resourcePath, string packageName, string functionName, params Value[] functionArgs)
 		{
 			this.resourceAssembly = resourceAssembly;
 			this.resourcePath = resourcePath;
 			this.packageName = packageName;
 			this.functionName = functionName;
 			this.functionArgs = functionArgs;
-			this.returnData = returnData;
 		}
 
 		/// <summary>
 		/// Prepare statement just prior to execution.
 		/// </summary>
-		internal void Prepare()
+		internal void Prepare(bool returnData)
 		{
+			this.returnData = returnData;
+
 			if (taskId == 0)
 			{
 				taskId = Environment.TickCount;

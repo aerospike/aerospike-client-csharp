@@ -1102,8 +1102,8 @@ namespace Aerospike.Client
 				policy = writePolicyDefault;
 			}
 
-			statement.SetAggregateFunction(packageName, functionName, functionArgs, false);
-			statement.Prepare();
+			statement.SetAggregateFunction(packageName, functionName, functionArgs);
+			statement.Prepare(false);
 
 			Node[] nodes = cluster.Nodes;
 			if (nodes.Length == 0)
@@ -1128,6 +1128,24 @@ namespace Aerospike.Client
 		//--------------------------------------------------------
 
 		/// <summary>
+		/// Execute query and call action for each record returned from server.
+		/// </summary>
+		/// <param name="policy">generic configuration parameters, pass in null for defaults</param>
+		/// <param name="statement">database query command</param>
+		/// <param name="action">action methods to be called for each record</param>
+		/// <exception cref="AerospikeException">if query fails</exception>
+		public void Query(QueryPolicy policy, Statement statement, Action<Key, Record> action)
+		{
+			using (RecordSet rs = Query(policy, statement))
+			{
+				while (rs.Next())
+				{
+					action(rs.Key, rs.Record);
+				}
+			}
+		}
+
+		/// <summary>
 		/// Execute query and return record iterator.  The query executor puts records on a queue in 
 		/// separate threads.  The calling thread concurrently pops records off the queue through the 
 		/// record iterator.
@@ -1149,7 +1167,7 @@ namespace Aerospike.Client
 			return executor.RecordSet;
 		}
 
-		#if (! LITE)
+#if (! LITE)
 		/// <summary>
 		/// Execute query, apply statement's aggregation function, and return result iterator. 
 		/// The aggregation function should be located in a Lua script file that can be found from the 
@@ -1173,21 +1191,33 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if query fails</exception>
 		public ResultSet QueryAggregate(QueryPolicy policy, Statement statement, string packageName, string functionName, params Value[] functionArgs)
 		{
-			if (policy == null)
-			{
-				policy = queryPolicyDefault;
-			}
-			statement.SetAggregateFunction(packageName, functionName, functionArgs, true);
-			statement.Prepare();
+			statement.SetAggregateFunction(packageName, functionName, functionArgs);
+			return QueryAggregate(policy, statement);
+		}
 
-			QueryAggregateExecutor executor = new QueryAggregateExecutor(cluster, policy, statement);
-			executor.Execute();
-			return executor.ResultSet;
+		/// <summary>
+		/// Execute query, apply statement's aggregation function, call action for each aggregation
+		/// object returned from server. 
+		/// </summary>
+		/// <param name="policy">generic configuration parameters, pass in null for defaults</param>
+		/// <param name="statement">database query command with aggregate functions already initialized by SetAggregateFunction()</param>
+		/// <param name="action">action methods to be called for each aggregation object</param>
+		/// <exception cref="AerospikeException">if query fails</exception>
+		public void QueryAggregate(QueryPolicy policy, Statement statement, Action<Object> action)
+		{
+			using (ResultSet rs = QueryAggregate(policy, statement))
+			{
+				while (rs.Next())
+				{
+					action(rs.Object);
+				}
+			}
 		}
 
 		/// <summary>
 		/// Execute query, apply statement's aggregation function, and return result iterator. 
-		/// The aggregation function should be located in a Lua resource file located in an assembly.
+		/// The aggregation function should be initialized via the statement's SetAggregateFunction()
+		/// and should be located in a Lua resource file located in an assembly.
 		/// <para>
 		/// The query executor puts results on a queue in separate threads.  The calling thread 
 		/// concurrently pops results off the queue through the ResultSet iterator.
@@ -1199,21 +1229,15 @@ namespace Aerospike.Client
 		/// </para>
 		/// </summary>
 		/// <param name="policy">generic configuration parameters, pass in null for defaults</param>
-		/// <param name="statement">database query command</param>
-		/// <param name="resourceAssembly">assembly where resource is located.  Current assembly can be obtained by: Assembly.GetExecutingAssembly()</param>
-		/// <param name="resourcePath">namespace path where Lua resource is located.  Example: Aerospike.Client.Resources.mypackage.lua</param>
-		/// <param name="packageName">server package where user defined function resides</param>
-		/// <param name="functionName">aggregation function name</param>
-		/// <param name="functionArgs">arguments to pass to function name, if any</param>
+		/// <param name="statement">database query command with aggregate functions already initialized by SetAggregateFunction()</param>
 		/// <exception cref="AerospikeException">if query fails</exception>
-		public ResultSet QueryAggregate(QueryPolicy policy, Statement statement, Assembly resourceAssembly, string resourcePath, string packageName, string functionName, params Value[] functionArgs)
+		public ResultSet QueryAggregate(QueryPolicy policy, Statement statement)
 		{
 			if (policy == null)
 			{
 				policy = queryPolicyDefault;
 			}
-			statement.SetAggregateFunction(resourceAssembly, resourcePath, packageName, functionName, functionArgs, true);
-			statement.Prepare();
+			statement.Prepare(true);
 
 			QueryAggregateExecutor executor = new QueryAggregateExecutor(cluster, policy, statement);
 			executor.Execute();

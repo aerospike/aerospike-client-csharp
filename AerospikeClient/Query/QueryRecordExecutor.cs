@@ -24,7 +24,7 @@ namespace Aerospike.Client
 			: base(cluster, policy, statement)
 		{
 			this.recordSet = new RecordSet(this, policy.recordQueueSize, cancel.Token);
-			statement.Prepare();
+			statement.Prepare(true);
 			InitializeThreads();
 		}
 
