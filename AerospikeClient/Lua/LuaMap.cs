@@ -37,7 +37,7 @@ namespace Aerospike.Client
 
 		public LuaMap()
 		{
-			map = new Dictionary<object, object>();
+			map = new Dictionary<object, object>(32);
 		}
 
 		public static LuaMap create(int capacity)

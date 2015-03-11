@@ -37,7 +37,7 @@ namespace Aerospike.Client
 
 		public LuaList()
 		{
-			list = new List<object>();
+			list = new List<object>(32);
 		}
 
 		public static LuaList create(int capacity)
