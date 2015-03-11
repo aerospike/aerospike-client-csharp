@@ -29,6 +29,8 @@ namespace Aerospike.Demo
 {
     public partial class DemoForm : Form
     {
+		public static readonly string RelativeDirectory = FindRelativeDirectory();
+
         private Thread thread;
         private volatile ExampleTreeNode currentExample;
         private Console console;
@@ -517,6 +519,31 @@ namespace Aerospike.Demo
             e.SuppressKeyPress = !((e.KeyValue >= 48 && e.KeyValue <= 57)
                 || e.KeyValue == 127 || e.KeyValue == 8 || e.KeyValue == 37 || e.KeyValue == 39);
         }
+
+		private static string FindRelativeDirectory()
+		{
+			// Look for "udf" directory as relative path from executable.
+			// First try relative path from AnyCPU executable default location.
+			string dirname = "udf";
+			string orig = ".." + Path.DirectorySeparatorChar + ".." + Path.DirectorySeparatorChar;
+			string path = orig;
+
+			for (int i = 0; i < 8; i++)
+			{
+				if (Directory.Exists(path + dirname))
+				{
+					// udf directory found.  Use corresponding directory path. 
+					return path;
+				}
+
+				// Try next level up.
+				path += ".." + Path.DirectorySeparatorChar;
+			}
+
+			// Failed to find path.  Just return original directory which means source code and lua files
+			// can't be accessed.  Program can still run though.
+			return orig;
+		}
     }
 
     class ExampleTreeNode : TreeNode
@@ -541,16 +568,7 @@ namespace Aerospike.Demo
 
         public string Read()
         {
-			// Adjust path for whether using AnyCPU or x64/x86 compile target.
-            string filename = example.GetType().Name + ".cs";
-            string dir = ".." + Path.DirectorySeparatorChar + ".." + Path.DirectorySeparatorChar;
-			string path = dir + filename;
-
-			if (!File.Exists(path))
-            {
-				// x64/x86 executables are located down an extra level.
-				path = dir + ".." + Path.DirectorySeparatorChar + filename;
-            }
+            string path = DemoForm.RelativeDirectory + example.GetType().Name + ".cs";
             return File.ReadAllText(path);
         }
 

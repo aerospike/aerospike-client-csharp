@@ -22,30 +22,18 @@ namespace Aerospike.Demo
 {
     public class LuaExample
     {
-        public static readonly string LuaDirectory;
+		private static readonly string LuaDirectory = DemoForm.RelativeDirectory + "udf" + Path.DirectorySeparatorChar;
 
         static LuaExample()
         {
-			// Adjust path for whether using AnyCPU or x64/x86 compile target.
-			string dirname = "udf";
-			string dir = ".." + Path.DirectorySeparatorChar + ".." + Path.DirectorySeparatorChar;
-			string path = dir + dirname;
-
-			if (! Directory.Exists(path))
-            {
-				// x64/x86 executables are located down an extra level.
-				path = dir + ".." + Path.DirectorySeparatorChar + dirname;
-           }
-            LuaDirectory = path;
-
             #if (! LITE)
-            LuaConfig.PackagePath = LuaDirectory + @"\?.lua";
+            LuaConfig.PackagePath = LuaDirectory + "?.lua";
             #endif
         }
 
         public static void Register(AerospikeClient client, Policy policy, string packageName)
         {
-            string path = LuaDirectory + Path.DirectorySeparatorChar + packageName;
+            string path = LuaDirectory + packageName;
             RegisterTask task = client.Register(policy, path, packageName, Language.LUA);
             task.Wait();
         }
