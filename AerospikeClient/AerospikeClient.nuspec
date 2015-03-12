@@ -1,9 +1,9 @@
 <?xml version="1.0"?>
 <package >
   <metadata>
-    <id>AerospikeClient</id>
+    <id>Aerospike.Client</id>
     <version>$version$</version>
-    <title>Aerospike Client</title>
+    <title>Official Aerospike C# Client</title>
     <authors>Aerospike</authors>
     <owners>Aerospike</owners>
     <licenseUrl>https://github.com/aerospike/aerospike-client-csharp/blob/master/LICENSE.md</licenseUrl>
