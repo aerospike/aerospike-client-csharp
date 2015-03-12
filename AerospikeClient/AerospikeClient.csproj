@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Release</Configuration>
@@ -215,6 +215,14 @@
     <Compile Include="Async\AsyncWrite.cs" />
     <Compile Include="Async\AsyncTimeoutQueue.cs" />
     <Compile Include="Async\MaxCommandAction.cs" />
+    <Compile Include="AsyncTask\AsyncClientExtensions.cs" />
+    <Compile Include="AsyncTask\DeleteListenerAdapter.cs" />
+    <Compile Include="AsyncTask\ExistsArrayListenerAdapter.cs" />
+    <Compile Include="AsyncTask\ExistsListenerAdapter.cs" />
+    <Compile Include="AsyncTask\ListenerAdapter.cs" />
+    <Compile Include="AsyncTask\RecordArrayListenerAdapter.cs" />
+    <Compile Include="AsyncTask\RecordListenerAdapter.cs" />
+    <Compile Include="AsyncTask\WriteListenerAdapter.cs" />
     <Compile Include="Main\Bin.cs" />
     <Compile Include="Cluster\Cluster.cs" />
     <Compile Include="Cluster\Connection.cs" />
