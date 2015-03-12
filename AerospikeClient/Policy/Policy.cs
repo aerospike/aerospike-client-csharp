@@ -36,10 +36,16 @@ namespace Aerospike.Client
 		public ConsistencyLevel consistencyLevel = ConsistencyLevel.CONSISTENCY_ONE;
 
 		/// <summary>
-		/// Transaction timeout in milliseconds.
-		/// This timeout is used to set the socket timeout and is also sent to the 
-		/// server along with the transaction in the wire protocol.
+		/// Total transaction timeout in milliseconds for both client and server.
+		/// The timeout is tracked on the client and also sent to the server along 
+		/// with the transaction in the wire protocol.  The client will most likely
+		/// timeout first, but the server has the capability to timeout the transaction
+		/// as well.
+		/// <para>
+		/// The timeout is also used as a socket timeout.  Retries will not occur
+		/// if the timeout limit has been reached.
 		/// Default to no timeout (0).
+		/// </para>
 		/// </summary>
 		public int timeout;
 
