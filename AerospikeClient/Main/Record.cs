@@ -67,6 +67,14 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
+		/// Get bin value as string.
+		/// </summary>
+		public string GetString(string name)
+		{
+			return (string)GetValue(name);
+		}
+
+		/// <summary>
 		/// Get bin value as double.
 		/// </summary>
 		public double GetDouble(string name)
