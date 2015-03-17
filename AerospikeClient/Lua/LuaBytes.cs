@@ -41,52 +41,100 @@ namespace Aerospike.Client
 			bytes = new byte[0];
 		}
 
-		public void SetBigInt16(ushort value, int offset)
+		public bool SetBigInt16(ushort value, int offset)
 		{
-			int capacity = offset + 2;
-			EnsureCapacity(capacity);
-			ByteUtil.ShortToBytes(value, bytes, offset);
-			ResetSize(capacity);
+			try
+			{
+				int capacity = offset + 2;
+				EnsureCapacity(capacity);
+				ByteUtil.ShortToBytes(value, bytes, offset);
+				ResetSize(capacity);
+				return true;
+			}
+			catch (Exception)
+			{
+				return false;
+			}
 		}
 
-		public void SetLittleInt16(ushort value, int offset)
+		public bool SetLittleInt16(ushort value, int offset)
 		{
-			int capacity = offset + 2;
-			EnsureCapacity(capacity);
-			ByteUtil.ShortToLittleBytes(value, bytes, offset);
-			ResetSize(capacity);
+			try
+			{
+				int capacity = offset + 2;
+				EnsureCapacity(capacity);
+				ByteUtil.ShortToLittleBytes(value, bytes, offset);
+				ResetSize(capacity);
+				return true;
+			}
+			catch (Exception)
+			{
+				return false;
+			}
 		}
 
-		public void SetBigInt32(uint value, int offset)
+		public bool SetBigInt32(uint value, int offset)
 		{
-			int capacity = offset + 4;
-			EnsureCapacity(capacity);
-			ByteUtil.IntToBytes(value, bytes, offset);
-			ResetSize(capacity);
+			try
+			{
+				int capacity = offset + 4;
+				EnsureCapacity(capacity);
+				ByteUtil.IntToBytes(value, bytes, offset);
+				ResetSize(capacity);
+				return true;
+			}
+			catch (Exception)
+			{
+				return false;
+			}
 		}
 
-		public void SetLittleInt32(uint value, int offset)
+		public bool SetLittleInt32(uint value, int offset)
 		{
-			int capacity = offset + 4;
-			EnsureCapacity(capacity);
-			ByteUtil.IntToLittleBytes(value, bytes, offset);
-			ResetSize(capacity);
+			try
+			{
+				int capacity = offset + 4;
+				EnsureCapacity(capacity);
+				ByteUtil.IntToLittleBytes(value, bytes, offset);
+				ResetSize(capacity);
+				return true;
+			}
+			catch (Exception)
+			{
+				return false;
+			}
 		}
 
-		public void SetBigInt64(ulong value, int offset)
+		public bool SetBigInt64(ulong value, int offset)
 		{
-			int capacity = offset + 8;
-			EnsureCapacity(capacity);
-			ByteUtil.LongToBytes(value, bytes, offset);
-			ResetSize(capacity);
+			try
+			{
+				int capacity = offset + 8;
+				EnsureCapacity(capacity);
+				ByteUtil.LongToBytes(value, bytes, offset);
+				ResetSize(capacity);
+				return true;
+			}
+			catch (Exception)
+			{
+				return false;
+			}
 		}
 
-		public void SetLittleInt64(ulong value, int offset)
+		public bool SetLittleInt64(ulong value, int offset)
 		{
-			int capacity = offset + 8;
-			EnsureCapacity(capacity);
-			ByteUtil.LongToLittleBytes(value, bytes, offset);
-			ResetSize(capacity);
+			try
+			{
+				int capacity = offset + 8;
+				EnsureCapacity(capacity);
+				ByteUtil.LongToLittleBytes(value, bytes, offset);
+				ResetSize(capacity);
+				return true;
+			}
+			catch (Exception)
+			{
+				return false;
+			}
 		}
 
 		public int SetVarInt(uint value, int offset)
@@ -97,33 +145,56 @@ namespace Aerospike.Client
 			return len;
 		}
 
-		public int SetString(string value, int offset)
+		public bool SetString(string value, int offset)
 		{
-			int len = ByteUtil.EstimateSizeUtf8(value);
-			EnsureCapacity(offset + len);
-			len = ByteUtil.StringToUtf8(value, bytes, offset);
-			ResetSize(offset + len);
-			return len;
-		}
-
-		public void SetBytes(LuaBytes value, int offset, int len)
-		{
-			if (len == 0 || len > value.length)
+			try
 			{
-				len = value.length;
+				int len = ByteUtil.EstimateSizeUtf8(value);
+				EnsureCapacity(offset + len);
+				len = ByteUtil.StringToUtf8(value, bytes, offset);
+				ResetSize(offset + len);
+				return true;
 			}
-			int capacity = offset + len;
-			EnsureCapacity(capacity);
-			Array.Copy(value.bytes, 0, bytes, offset, len);
-			ResetSize(capacity);
+			catch (Exception)
+			{
+				return false;
+			}
 		}
 
-		public void SetByte(byte value, int offset)
+		public bool SetBytes(LuaBytes value, int offset, int len)
 		{
-			int capacity = offset + 1;
-			EnsureCapacity(capacity);
-			bytes[offset] = value;
-			ResetSize(capacity);
+			try
+			{
+				if (len == 0 || len > value.length)
+				{
+					len = value.length;
+				}
+				int capacity = offset + len;
+				EnsureCapacity(capacity);
+				Array.Copy(value.bytes, 0, bytes, offset, len);
+				ResetSize(capacity);
+				return true;
+			}
+			catch (Exception)
+			{
+				return false;
+			}
+		}
+
+		public bool SetByte(byte value, int offset)
+		{
+			try
+			{
+				int capacity = offset + 1;
+				EnsureCapacity(capacity);
+				bytes[offset] = value;
+				ResetSize(capacity);
+				return true;
+			}
+			catch (Exception)
+			{
+				return false;
+			}
 		}
 
 		public string GetString(int offset, int len)
@@ -278,9 +349,17 @@ namespace Aerospike.Client
 			return bytes.length;
 		}
 
-		public static void set_size(LuaBytes bytes, int capacity)
+		public static bool set_size(LuaBytes bytes, int capacity)
 		{
-			bytes.SetCapacity(capacity);
+			try
+			{
+				bytes.SetCapacity(capacity);
+				return true;
+			}
+			catch (Exception)
+			{
+				return false;
+			}
 		}
 
 		public static int get_type(LuaBytes bytes)
@@ -288,9 +367,10 @@ namespace Aerospike.Client
 			return bytes.type;
 		}
 
-		public static void set_type(LuaBytes bytes, int type)
+		public static bool set_type(LuaBytes bytes, int type)
 		{
 			bytes.type = type;
+			return true;
 		}
 		
 		public static string get_string(LuaBytes bytes, int offset, int len)
@@ -366,64 +446,64 @@ namespace Aerospike.Client
 			return ByteUtil.VarBytesToInt(bytes.bytes, offset, out size);
 		}
 
-		public static int set_string(LuaBytes bytes, int offset, string value)
+		public static bool set_string(LuaBytes bytes, int offset, string value)
 		{
 			return bytes.SetString(value, offset - 1);
 		}
 
-		public static void set_bytes(LuaBytes bytes, int offset, LuaBytes src, int length)
+		public static bool set_bytes(LuaBytes bytes, int offset, LuaBytes src, int length)
 		{
-			bytes.SetBytes(src, offset - 1, length);
+			return bytes.SetBytes(src, offset - 1, length);
 		}
 
-		public static void set_byte(LuaBytes bytes, int offset, byte value)
+		public static bool set_byte(LuaBytes bytes, int offset, byte value)
 		{
-			bytes.SetByte(value, offset - 1);
+			return bytes.SetByte(value, offset - 1);
 		}
 
-		public static void set_int16(LuaBytes bytes, int offset, ushort value)
+		public static bool set_int16(LuaBytes bytes, int offset, ushort value)
 		{
-			bytes.SetBigInt16(value, offset - 1);
+			return bytes.SetBigInt16(value, offset - 1);
 		}
 
-		public static void set_int16_be(LuaBytes bytes, int offset, ushort value)
+		public static bool set_int16_be(LuaBytes bytes, int offset, ushort value)
 		{
-			bytes.SetBigInt16(value, offset - 1);
+			return bytes.SetBigInt16(value, offset - 1);
 		}
 
-		public static void set_int16_le(LuaBytes bytes, int offset, ushort value)
+		public static bool set_int16_le(LuaBytes bytes, int offset, ushort value)
 		{
-			bytes.SetLittleInt16(value, offset - 1);
+			return bytes.SetLittleInt16(value, offset - 1);
 		}
 
-		public static void set_int32(LuaBytes bytes, int offset, uint value)
+		public static bool set_int32(LuaBytes bytes, int offset, uint value)
 		{
-			bytes.SetBigInt32(value, offset - 1);
+			return bytes.SetBigInt32(value, offset - 1);
 		}
 
-		public static void set_int32_be(LuaBytes bytes, int offset, uint value)
+		public static bool set_int32_be(LuaBytes bytes, int offset, uint value)
 		{
-			bytes.SetBigInt32(value, offset - 1);
+			return bytes.SetBigInt32(value, offset - 1);
 		}
 
-		public static void set_int32_le(LuaBytes bytes, int offset, uint value)
+		public static bool set_int32_le(LuaBytes bytes, int offset, uint value)
 		{
-			bytes.SetLittleInt32(value, offset - 1);
+			return bytes.SetLittleInt32(value, offset - 1);
 		}
 
-		public static void set_int64(LuaBytes bytes, int offset, ulong value)
+		public static bool set_int64(LuaBytes bytes, int offset, ulong value)
 		{
-			bytes.SetBigInt64(value, offset - 1);
+			return bytes.SetBigInt64(value, offset - 1);
 		}
 
-		public static void set_int64_be(LuaBytes bytes, int offset, ulong value)
+		public static bool set_int64_be(LuaBytes bytes, int offset, ulong value)
 		{
-			bytes.SetBigInt64(value, offset - 1);
+			return bytes.SetBigInt64(value, offset - 1);
 		}
 
-		public static void set_int64_le(LuaBytes bytes, int offset, ulong value)
+		public static bool set_int64_le(LuaBytes bytes, int offset, ulong value)
 		{
-			bytes.SetLittleInt64(value, offset - 1);
+			return bytes.SetLittleInt64(value, offset - 1);
 		}
 
 		public static int set_var_int(LuaBytes bytes, int offset, uint value)
@@ -431,64 +511,64 @@ namespace Aerospike.Client
 			return bytes.SetVarInt(value, offset - 1);
 		}
 
-		public static void append_string(LuaBytes bytes, string value)
+		public static bool append_string(LuaBytes bytes, string value)
 		{
-			bytes.SetString(value, bytes.length);
+			return bytes.SetString(value, bytes.length);
 		}
 
-		public static void append_bytes(LuaBytes bytes, LuaBytes src, int length)
+		public static bool append_bytes(LuaBytes bytes, LuaBytes src, int length)
 		{
-			bytes.SetBytes(src, bytes.length, length);
+			return bytes.SetBytes(src, bytes.length, length);
 		}
 
-		public static void append_byte(LuaBytes bytes, byte value)
+		public static bool append_byte(LuaBytes bytes, byte value)
 		{
-			bytes.SetByte(value, bytes.length);
+			return bytes.SetByte(value, bytes.length);
 		}
 
-		public static void append_int16(LuaBytes bytes, ushort value)
+		public static bool append_int16(LuaBytes bytes, ushort value)
 		{
-			bytes.SetBigInt16(value, bytes.length);
+			return bytes.SetBigInt16(value, bytes.length);
 		}
 
-		public static void append_int16_be(LuaBytes bytes, ushort value)
+		public static bool append_int16_be(LuaBytes bytes, ushort value)
 		{
-			bytes.SetBigInt16(value, bytes.length);
+			return bytes.SetBigInt16(value, bytes.length);
 		}
 
-		public static void append_int16_le(LuaBytes bytes, ushort value)
+		public static bool append_int16_le(LuaBytes bytes, ushort value)
 		{
-			bytes.SetLittleInt16(value, bytes.length);
+			return bytes.SetLittleInt16(value, bytes.length);
 		}
 
-		public static void append_int32(LuaBytes bytes, uint value)
+		public static bool append_int32(LuaBytes bytes, uint value)
 		{
-			bytes.SetBigInt32(value, bytes.length);
+			return bytes.SetBigInt32(value, bytes.length);
 		}
 
-		public static void append_int32_be(LuaBytes bytes, uint value)
+		public static bool append_int32_be(LuaBytes bytes, uint value)
 		{
-			bytes.SetBigInt32(value, bytes.length);
+			return bytes.SetBigInt32(value, bytes.length);
 		}
 
-		public static void append_int32_le(LuaBytes bytes, uint value)
+		public static bool append_int32_le(LuaBytes bytes, uint value)
 		{
-			bytes.SetLittleInt32(value, bytes.length);
+			return bytes.SetLittleInt32(value, bytes.length);
 		}
 
-		public static void append_int64(LuaBytes bytes, ulong value)
+		public static bool append_int64(LuaBytes bytes, ulong value)
 		{
-			bytes.SetBigInt64(value, bytes.length);
+			return bytes.SetBigInt64(value, bytes.length);
 		}
 
-		public static void append_int64_be(LuaBytes bytes, ulong value)
+		public static bool append_int64_be(LuaBytes bytes, ulong value)
 		{
-			bytes.SetBigInt64(value, bytes.length);
+			return bytes.SetBigInt64(value, bytes.length);
 		}
 
-		public static void append_int64_le(LuaBytes bytes, ulong value)
+		public static bool append_int64_le(LuaBytes bytes, ulong value)
 		{
-			bytes.SetLittleInt64(value, bytes.length);
+			return bytes.SetLittleInt64(value, bytes.length);
 		}
 
 		public static int append_var_int(LuaBytes bytes, uint value)
