@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2014 Aerospike, Inc.
+ * Copyright 2012-2015 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -61,7 +61,7 @@ namespace Aerospike.Demo
 			list.Add("string2");
 			list.Add("string3");
 
-			Bin bin = Bin.AsList(args.GetBinName("listbin1"), list);
+			Bin bin = new Bin(args.GetBinName("listbin1"), list);
 			client.Put(args.writePolicy, key, bin);
 
 			Record record = client.Get(args.policy, key, bin.name);
@@ -90,7 +90,7 @@ namespace Aerospike.Demo
 			list.Add(2);
 			list.Add(blob);
 
-			Bin bin = Bin.AsList(args.GetBinName("listbin2"), list);
+			Bin bin = new Bin(args.GetBinName("listbin2"), list);
 			client.Put(args.writePolicy, key, bin);
 
 			Record record = client.Get(args.policy, key, bin.name);
@@ -119,7 +119,7 @@ namespace Aerospike.Demo
 			map["key2"] = "string2";
 			map["key3"] = "string3";
 
-			Bin bin = Bin.AsMap(args.GetBinName("mapbin1"), map);
+			Bin bin = new Bin(args.GetBinName("mapbin1"), map);
 			client.Put(args.writePolicy, key, bin);
 
 			Record record = client.Get(args.policy, key, bin.name);
@@ -155,7 +155,7 @@ namespace Aerospike.Demo
 			map["key3"] = blob;
 			map["key4"] = list;
 
-			Bin bin = Bin.AsMap(args.GetBinName("mapbin2"), map);
+			Bin bin = new Bin(args.GetBinName("mapbin2"), map);
 			client.Put(args.writePolicy, key, bin);
 
 			Record record = client.Get(args.policy, key, bin.name);
@@ -203,7 +203,7 @@ namespace Aerospike.Demo
 			list.Add(inner);
 			list.Add(innerMap);
 
-			Bin bin = Bin.AsList(args.GetBinName("listmapbin"), list);
+			Bin bin = new Bin(args.GetBinName("listmapbin"), list);
 			client.Put(args.writePolicy, key, bin);
 
 			Record record = client.Get(args.policy, key, bin.name);
@@ -276,7 +276,7 @@ namespace Aerospike.Demo
 			list.Add(new CompoundObject("string2", 9));
 			list.Add(new CompoundObject("string3", 54));
 
-			Bin bin = Bin.AsList("listbin", list);
+			Bin bin = new Bin("listbin", list);
 			client.Put(args.writePolicy, key, bin);
 
 			Record record = client.Get(args.policy, key, bin.name);

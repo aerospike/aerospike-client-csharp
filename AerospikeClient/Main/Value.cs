@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2014 Aerospike, Inc.
+ * Copyright 2012-2015 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -161,6 +161,38 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
+		/// Get list or null value instance.
+		/// Support by Aerospike 3 servers only.
+		/// </summary>
+		public static Value Get(IList value)
+		{
+			if (value == null)
+			{
+				return new NullValue();
+			}
+			else
+			{
+				return new ListValue(value);
+			}
+		}
+
+		/// <summary>
+		/// Get map or null value instance.
+		/// Support by Aerospike 3 servers only.
+		/// </summary>
+		public static Value Get(IDictionary value)
+		{
+			if (value == null)
+			{
+				return new NullValue();
+			}
+			else
+			{
+				return new MapValue(value);
+			}
+		}
+
+		/// <summary>
 		/// Get value array instance.
 		/// </summary>
 		public static Value Get(Value[] value)
@@ -194,6 +226,7 @@ namespace Aerospike.Client
 		/// Get list or null value instance.
 		/// Support by Aerospike 3 servers only.
 		/// </summary>
+		[System.Obsolete("Use Value.Get(IList value) instead.")]
 		public static Value GetAsList(IList value)
 		{
 			if (value == null)
@@ -210,6 +243,7 @@ namespace Aerospike.Client
 		/// Get map or null value instance.
 		/// Support by Aerospike 3 servers only.
 		/// </summary>
+		[System.Obsolete("Use Value.Get(IDictionary value) instead.")]
 		public static Value GetAsMap(IDictionary value)
 		{
 			if (value == null)
@@ -297,7 +331,7 @@ namespace Aerospike.Client
                 case TypeCode.SByte:
 					return new SignedByteValue((sbyte)value);
 
-                case TypeCode.Char:
+				case TypeCode.Char:
                 case TypeCode.DateTime:
                 default:
 					return new BlobValue(value);

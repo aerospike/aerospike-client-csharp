@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2014 Aerospike, Inc.
+ * Copyright 2012-2015 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -224,6 +224,48 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
+		/// Create bin with a list value.  The list value will be serialized as a Aerospike 3 server list type.
+		/// Supported by Aerospike 3 servers only. 
+		/// <para>
+		/// If connecting to Aerospike 2 servers, use the following instead:
+		/// </para>
+		/// <code>
+		/// Bin bin = new Bin(name, (Object)list);
+		/// </code>
+		/// <para>
+		/// For servers configured as "single-bin", enter a null or empty name.
+		/// </para>
+		/// </summary>
+		/// <param name="name">bin name, current limit is 14 characters</param>
+		/// <param name="value">bin value</param>
+		public Bin(string name, IList value)
+		{
+			this.name = name;
+			this.value = Value.Get(value);
+		}
+
+		/// <summary>
+		/// Create bin with a map value.  The map value will be serialized as a Aerospike 3 server map type.
+		/// Supported by Aerospike 3 servers only. 
+		/// <para>
+		/// If connecting to Aerospike 2 servers, use the following instead:
+		/// </para>
+		/// <code>
+		/// Bin bin = new Bin(name, (Object)map);
+		/// </code>
+		/// <para>
+		/// For servers configured as "single-bin", enter a null or empty name.
+		/// </para>
+		/// </summary>
+		/// <param name="name">bin name, current limit is 14 characters</param>
+		/// <param name="value">bin value</param>
+		public Bin(string name, IDictionary value)
+		{
+			this.name = name;
+			this.value = Value.Get(value);
+		}
+
+		/// <summary>
 		/// Constructor, specifying bin name and object value.
 		/// This is the slowest of the Bin constructors because the type
 		/// must be determined using multiple "instanceof" checks.
@@ -246,9 +288,10 @@ namespace Aerospike.Client
 		/// </summary>
 		/// <param name="name">bin name, current limit is 14 characters</param>
 		/// <param name="value">bin value</param>
+		[System.Obsolete("Use Bin(string name, IList value) instead.")]
 		public static Bin AsList(string name, IList value)
 		{
-			return new Bin(name, Value.GetAsList(value));
+			return new Bin(name, Value.Get(value));
 		}
 
 		/// <summary>
@@ -258,9 +301,10 @@ namespace Aerospike.Client
 		/// </summary>
 		/// <param name="name">bin name, current limit is 14 characters</param>
 		/// <param name="value">bin value</param>
+		[System.Obsolete("Use Bin(string name, IDictionary value) instead.")]
 		public static Bin AsMap(string name, IDictionary value)
 		{
-			return new Bin(name, Value.GetAsMap(value));
+			return new Bin(name, Value.Get(value));
 		}
 
 		/// <summary>

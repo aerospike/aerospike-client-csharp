@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2014 Aerospike, Inc.
+ * Copyright 2012-2015 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -73,7 +73,7 @@ namespace Aerospike.Client
 		/// <param name="values">values to push</param>
 		public void Push(IList values)
 		{
-			client.Execute(policy, key, PackageName, "push_all", binName, Value.GetAsList(values), createModule);
+			client.Execute(policy, key, PackageName, "push_all", binName, Value.Get(values), createModule);
 		}
 		
 		/// <summary>

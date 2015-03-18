@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2014 Aerospike, Inc.
+ * Copyright 2012-2015 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -79,7 +79,7 @@ namespace Aerospike.Client
 		/// <param name="values">values to add</param>
 		public void Add(IList values)
 		{
-			client.Execute(policy, key, PackageName, "add_all", binName, Value.GetAsList(values), createModule);
+			client.Execute(policy, key, PackageName, "add_all", binName, Value.Get(values), createModule);
 		}
 		
 		/// <summary>
@@ -112,7 +112,7 @@ namespace Aerospike.Client
 		/// <param name="values">values to update</param>
 		public void Update(IList values)
 		{
-			client.Execute(policy, key, PackageName, "update_all", binName, Value.GetAsList(values), createModule);
+			client.Execute(policy, key, PackageName, "update_all", binName, Value.Get(values), createModule);
 		}
 
 		/// <summary>
@@ -130,7 +130,7 @@ namespace Aerospike.Client
 		/// <param name="values">values to delete</param>
 		public void Remove(IList values)
 		{
-			client.Execute(policy, key, PackageName, "remove_all", binName, Value.GetAsList(values));
+			client.Execute(policy, key, PackageName, "remove_all", binName, Value.Get(values));
 		}
 
 		/// <summary>

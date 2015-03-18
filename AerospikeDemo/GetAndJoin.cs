@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2014 Aerospike, Inc.
+ * Copyright 2012-2015 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -98,7 +98,7 @@ namespace Aerospike.Demo
 			byte[] positionsBytes = ms.ToArray();
 
 			Bin binPositions = new Bin("positions", positionsBytes);
-			Bin binTickers = Bin.AsList("tickers", tickers);
+			Bin binTickers = new Bin("tickers", tickers);
 
 			client.Put(policy, key, binPositions, binTickers);
 		}

@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2014 Aerospike, Inc.
+ * Copyright 2012-2015 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -182,7 +182,7 @@ namespace Aerospike.Demo
 
 			string binName = args.GetBinName("udfbin5");
 
-			client.Execute(args.writePolicy, key, "record_example", "writeBin", Value.Get(binName), Value.GetAsList(list));
+			client.Execute(args.writePolicy, key, "record_example", "writeBin", Value.Get(binName), Value.Get(list));
 
 			object received = client.Execute(args.writePolicy, key, "record_example", "readBin", Value.Get(binName));
 			string receivedString = Util.ListToString((List<object>)received);
@@ -240,7 +240,7 @@ namespace Aerospike.Demo
 			list.Add(-5);
 
 			Key key = new Key(args.ns, args.set, "udfkey7");
-			Bin bin = Bin.AsList("udfbin7", list);
+			Bin bin = new Bin("udfbin7", list);
 			client.Put(args.writePolicy, key, bin);
 
 			ServerSideExists(client, args.writePolicy, key, bin, 3702, true);

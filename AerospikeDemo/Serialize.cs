@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2014 Aerospike, Inc.
+ * Copyright 2012-2015 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -27,7 +27,7 @@ namespace Aerospike.Demo
 		}
 
 		/// <summary>
-		/// Write complex objects using serializer.
+		/// Write complex objects using standard C# serializer.
 		/// </summary>
 		public override void RunExample(AerospikeClient client, Arguments args)
 		{
@@ -37,7 +37,7 @@ namespace Aerospike.Demo
 		}
 
 		/// <summary>
-		/// Write array of integers using serializer.
+		/// Write array of integers using standard C# serializer.
 		/// </summary>
 		public virtual void TestArray(AerospikeClient client, Arguments args)
 		{
@@ -55,7 +55,7 @@ namespace Aerospike.Demo
 				array[i] = i * i;
 			}
 
-			Bin bin = new Bin(args.GetBinName("serialbin"), array);
+			Bin bin = new Bin(args.GetBinName("serialbin"), (object)array);
 
 			// Do a test that pushes this complex object through the serializer
 			console.Info("Write array using serializer.");
@@ -101,7 +101,7 @@ namespace Aerospike.Demo
 		}
 
 		/// <summary>
-		/// Write list object using serializer.
+		/// Write list object using standard C# serializer.
 		/// </summary>
 		public virtual void TestList(AerospikeClient client, Arguments args)
 		{
@@ -117,7 +117,7 @@ namespace Aerospike.Demo
 			list.Add("string2");
 			list.Add("string3");
 
-			Bin bin = new Bin(args.GetBinName("serialbin"), list);
+			Bin bin = new Bin(args.GetBinName("serialbin"), (object)list);
 
 			console.Info("Write list using serializer.");
 			client.Put(args.writePolicy, key, bin);
@@ -164,7 +164,7 @@ namespace Aerospike.Demo
 		}
 
 		/// <summary>
-		/// Write complex object using serializer.
+		/// Write complex object using standard C# serializer.
 		/// </summary>
 		public virtual void TestComplex(AerospikeClient client, Arguments args)
 		{
@@ -190,7 +190,7 @@ namespace Aerospike.Demo
 			list.Add(inner);
 			list.Add(innerMap);
 
-			Bin bin = new Bin(args.GetBinName("complexbin"), list);
+			Bin bin = new Bin(args.GetBinName("complexbin"), (object)list);
 
 			console.Info("Write complex object using serializer.");
 			client.Put(args.writePolicy, key, bin);
