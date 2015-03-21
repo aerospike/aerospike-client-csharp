@@ -19,7 +19,7 @@ namespace Aerospike.Client
 	/// <summary>
 	/// Task used to poll for server task completion.
 	/// </summary>
-	public abstract class Task
+	public abstract class BaseTask
 	{
 		protected internal readonly Cluster cluster;
 		private bool done;
@@ -27,12 +27,11 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Initialize task with fields needed to query server nodes.
 		/// </summary>
-		public Task(Cluster cluster, bool done)
+		public BaseTask(Cluster cluster, bool done)
 		{
 			this.cluster = cluster;
 			this.done = done;
 		}
-
 
 		/// <summary>
 		/// Wait for asynchronous task to complete using default sleep interval.

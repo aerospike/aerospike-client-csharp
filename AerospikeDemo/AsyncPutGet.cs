@@ -16,6 +16,7 @@
  */
 using System;
 using System.Threading;
+using System.Threading.Tasks;
 using Aerospike.Client;
 
 namespace Aerospike.Demo
@@ -39,6 +40,8 @@ namespace Aerospike.Demo
 
 			RunPutGet(client, args, key, bin);
 			WaitTillComplete();
+
+			RunPutGetWithTask(client, args, key, bin);
 		}
 
 		private void RunPutGet(AsyncClient client, Arguments args, Key key, Bin bin)
@@ -154,6 +157,24 @@ namespace Aerospike.Demo
 				completed = true;
 				Monitor.Pulse(this);
 			}
+		}
+
+		private void RunPutGetWithTask(AsyncClient client, Arguments args, Key key, Bin bin)
+		{
+			console.Info("Put with task: namespace={0} set={1} key={2} value={3}",
+				key.ns, key.setName, key.userKey, bin.value);
+
+			CancellationTokenSource cancel = new CancellationTokenSource();
+			Task taskput = client.Put(args.writePolicy, cancel.Token, key, bin);
+			taskput.Wait();
+
+			console.Info("Get with task: namespace={0} set={1} key={2}",
+				key.ns, key.setName, key.userKey);
+
+			Task<Record> taskget = client.Get(args.policy, cancel.Token, key);
+			taskget.Wait();
+
+			ValidateBin(key, bin, taskget.Result);
 		}
 	}
 }

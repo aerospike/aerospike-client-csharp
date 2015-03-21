@@ -21,7 +21,7 @@ namespace Aerospike.Client
 	/// <summary>
 	/// Task used to poll for UDF registration completion.
 	/// </summary>
-	public sealed class RegisterTask : Task
+	public sealed class RegisterTask : BaseTask
 	{
 		private readonly string packageName;
 

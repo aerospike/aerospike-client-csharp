@@ -19,7 +19,7 @@ namespace Aerospike.Client
 	/// <summary>
 	/// Task used to poll for long running execute job completion.
 	/// </summary>
-	public sealed class ExecuteTask : Task
+	public sealed class ExecuteTask : BaseTask
 	{
 		private readonly long taskId;
 		private readonly bool scan;

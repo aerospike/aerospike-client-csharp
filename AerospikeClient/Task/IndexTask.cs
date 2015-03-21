@@ -21,7 +21,7 @@ namespace Aerospike.Client
 	/// <summary>
 	/// Task used to poll for long running create index completion.
 	/// </summary>
-	public sealed class IndexTask : Task
+	public sealed class IndexTask : BaseTask
 	{
 		private readonly string ns;
 		private readonly string indexName;
