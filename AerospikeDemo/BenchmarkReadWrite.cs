@@ -93,7 +93,7 @@ namespace Aerospike.Demo
 					{
 						if (valid)
 						{
-							console.Error("Server is currently in readonly mode. Shutting down...");
+							console.Error("Cluster is either in readonly mode or no nodes responded. Shutting down...");
                             valid = false;
 						}
 					}

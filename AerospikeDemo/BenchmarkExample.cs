@@ -130,20 +130,32 @@ namespace Aerospike.Demo
         protected bool GetIsStopWrites()
 		{
 			string filter = "namespace/" + args.ns;
-			string tokens;
+			string tokens = null;
 
-			try
+			Node[] nodes = client.Nodes;
+
+			foreach (Node node in nodes)
 			{
-                tokens = Info.Request(client.Nodes[0], filter);
-			}
-			catch (Exception)
-			{
-				return true;
+				try
+				{
+					console.Info("Try " + node.Name);
+					tokens = Info.Request(node, filter);
+
+					if (tokens != null)
+					{
+						break;
+					}
+				}
+				catch (Exception)
+				{
+					// Try next node.
+				}
 			}
 
 			if (tokens == null)
 			{
-				return false;
+				// None of the nodes responded.  Shutdown.
+				return true;
 			}
 
 			string name = "stop-writes";
