@@ -191,6 +191,7 @@ namespace Aerospike.Client
 			sb.Append(obj);
 		}
 
+#if (AS_OPTIMIZE_WINDOWS)
 		[DllImport("msvcrt.dll", CallingConvention = CallingConvention.Cdecl)]
 		static extern int memcmp(byte[] b1, byte[] b2, long count);
 
@@ -198,5 +199,23 @@ namespace Aerospike.Client
 		{
 			return b1.Length == b2.Length && memcmp(b1, b2, b1.Length) == 0;
 		}
+#else
+		public static bool ByteArrayEquals(byte[] b1, byte[] b2)
+		{
+			if (b1.Length != b2.Length)
+			{
+				return false;
+			}
+
+			for (int i = 0; i < b1.Length; i++)
+			{
+				if (b1[i] != b2[i])
+				{
+					return false;
+				}
+			}
+			return true;
+		}
+#endif	
 	}
 }
