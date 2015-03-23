@@ -1167,7 +1167,6 @@ namespace Aerospike.Client
 			return executor.RecordSet;
 		}
 
-#if (! LITE)
 		/// <summary>
 		/// Execute query, apply statement's aggregation function, and return result iterator. 
 		/// The aggregation function should be located in a Lua script file that can be found from the 
@@ -1243,7 +1242,6 @@ namespace Aerospike.Client
 			executor.Execute();
 			return executor.ResultSet;
 		}
-#endif
 
 		/// <summary>
 		/// Create scalar secondary index.

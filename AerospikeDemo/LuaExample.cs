@@ -26,9 +26,7 @@ namespace Aerospike.Demo
 
         static LuaExample()
         {
-            #if (! LITE)
             LuaConfig.PackagePath = LuaDirectory + "?.lua";
-            #endif
         }
 
         public static void Register(AerospikeClient client, Policy policy, string packageName)
