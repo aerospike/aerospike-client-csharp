@@ -138,7 +138,6 @@ namespace Aerospike.Demo
 			{
 				try
 				{
-					console.Info("Try " + node.Name);
 					tokens = Info.Request(node, filter);
 
 					if (tokens != null)

@@ -27,6 +27,12 @@ namespace Aerospike.Client
 	public abstract class AsyncCommand : Command
 	{
 		public static readonly EventHandler<SocketAsyncEventArgs> SocketListener = new EventHandler<SocketAsyncEventArgs>(SocketHandler);
+		private const int SUCCESS = 1;
+		private const int FAIL_TIMEOUT = 2;
+		private const int FAIL_NETWORK_INIT = 3;
+		private const int FAIL_NETWORK_ERROR = 4;
+		private const int FAIL_APPLICATION_INIT = 5;
+		private const int FAIL_APPLICATION_ERROR = 6;
 
 		protected internal readonly AsyncCluster cluster;
 		private AsyncConnection conn;
@@ -74,7 +80,7 @@ namespace Aerospike.Client
 		{
 			if (complete != 0)
 			{
-				FailOnClientTimeout();
+				AlreadyCompleted(complete);
 				return;
 			}
 
@@ -134,7 +140,7 @@ namespace Aerospike.Client
 		{
 			if (complete != 0)
 			{
-				FailOnClientTimeout();
+				AlreadyCompleted(complete);
 				return true;
 			}
 
@@ -217,7 +223,7 @@ namespace Aerospike.Client
 		{
 			if (complete != 0)
 			{
-				FailOnClientTimeout();
+				AlreadyCompleted(complete);
 				return;
 			}
 
@@ -242,7 +248,7 @@ namespace Aerospike.Client
 		{
 			if (complete != 0)
 			{
-				FailOnClientTimeout();
+				AlreadyCompleted(complete);
 				return;
 			}
 			WriteBuffer();
@@ -382,7 +388,7 @@ namespace Aerospike.Client
 		{
 			if (complete != 0)
 			{
-				FailOnClientTimeout();
+				AlreadyCompleted(complete);
 				return;
 			}
 
@@ -461,7 +467,7 @@ namespace Aerospike.Client
 			{
 				// Command has timed out in timeout queue thread.
 				// Ensure that command succeeds or fails, but not both.
-				if (Interlocked.Exchange(ref complete, 1) == 0)
+				if (Interlocked.CompareExchange(ref complete, FAIL_TIMEOUT, 0) == 0)
 				{
 					// Timeout thread may contend with retry thread.
 					// Lock before closing.
@@ -481,7 +487,9 @@ namespace Aerospike.Client
 		protected internal void Finish()
 		{
 			// Ensure that command succeeds or fails, but not both.
-			if (Interlocked.Exchange(ref complete, 1) == 0)
+			int status = Interlocked.CompareExchange(ref complete, SUCCESS, 0);
+
+			if (status == 0)
 			{
 				conn.UpdateLastUsed();
 				node.PutAsyncConnection(conn);
@@ -498,21 +506,23 @@ namespace Aerospike.Client
 			}
 			else
 			{
-				FailOnClientTimeout();
+				AlreadyCompleted(status);
 			}
 		}
 
 		private bool FailOnNetworkInit()
 		{
 			// Ensure that command succeeds or fails, but not both.
-			if (Interlocked.Exchange(ref complete, 1) == 0)
+			int status = Interlocked.CompareExchange(ref complete, FAIL_NETWORK_INIT, 0);
+
+			if (status == 0)
 			{
-				CloseOnNetworkError();
+				CloseOnError();
 				return false;
 			}
 			else
 			{
-				FailOnClientTimeout();
+				AlreadyCompleted(status);
 				return true;
 			}
 		}
@@ -520,14 +530,16 @@ namespace Aerospike.Client
 		private bool FailOnApplicationInit()
 		{
 			// Ensure that command succeeds or fails, but not both.
-			if (Interlocked.Exchange(ref complete, 1) == 0)
+			int status = Interlocked.CompareExchange(ref complete, FAIL_APPLICATION_INIT, 0);
+
+			if (status == 0)
 			{
-				Close();
+				CloseOnError();
 				return false;
 			}
 			else
 			{
-				FailOnClientTimeout();
+				AlreadyCompleted(status);
 				return true;
 			}
 		}
@@ -535,21 +547,25 @@ namespace Aerospike.Client
 		private void FailOnNetworkError(AerospikeException ae)
 		{
 			// Ensure that command succeeds or fails, but not both.
-			if (Interlocked.Exchange(ref complete, 1) == 0)
+			int status = Interlocked.CompareExchange(ref complete, FAIL_NETWORK_ERROR, 0);
+
+			if (status == 0)
 			{
-				CloseOnNetworkError();
+				CloseOnError();
 				OnFailure(ae);
 			}
 			else
 			{
-				FailOnClientTimeout();
+				AlreadyCompleted(status);
 			}
 		}
 
 		private void FailOnApplicationError(AerospikeException ae)
 		{
 			// Ensure that command succeeds or fails, but not both.
-			if (Interlocked.Exchange(ref complete, 1) == 0)
+			int status = Interlocked.CompareExchange(ref complete, FAIL_APPLICATION_ERROR, 0);
+
+			if (status == 0)
 			{
 				if (ae.KeepConnection())
 				{
@@ -561,37 +577,44 @@ namespace Aerospike.Client
 				else
 				{
 					// Close socket to flush out possible garbage.
-					Close();
+					CloseOnError();
 				}
 				OnFailure(ae);
 			}
 			else
 			{
-				FailOnClientTimeout();
+				AlreadyCompleted(status);
 			}
 		}
 
-		private void FailOnClientTimeout()
+		private void AlreadyCompleted(int status)
 		{
-			// Free up resources and notify.
-			CloseOnNetworkError();
-			OnFailure(new AerospikeException.Timeout());
+			// Only need to release resources from AsyncTimeoutQueue timeout.
+			// Otherwise, resources have already been released.
+			if (status == FAIL_TIMEOUT)
+			{
+				// Free up resources and notify user on timeout.
+				// Connection should have already been closed on AsyncTimeoutQueue timeout.
+				PutBackArgsOnError();
+				OnFailure(new AerospikeException.Timeout());
+			}
+			else
+			{
+				if (Log.WarnEnabled())
+				{
+					Log.Warn("AsyncCommand unexpected return status: " + status);
+				}
+			}
 		}
 
-		private void CloseOnNetworkError()
+		private void CloseOnError()
 		{
-			Close();
-		}
-
-		private void Close()
-		{
-			// Connection was probably already closed by timeout thread.
-			// Check connected status before closing again.
-			if (conn != null && conn.IsConnected())
+			// Connection may be null because never obtained connection or connection
+			// was reset in preparation for retry.
+			if (conn != null)
 			{
 				conn.Close();
 			}
-
 			PutBackArgsOnError();
 		}
 
