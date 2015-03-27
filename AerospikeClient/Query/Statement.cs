@@ -67,6 +67,13 @@ namespace Aerospike.Client
 		/// </summary>
 		public void SetBinNames(params string[] binNames)
 		{
+			foreach (string binName in binNames)
+			{
+				if (binName.Length > 14)
+				{
+					throw new AerospikeException(ResultCode.BIN_NAME_TOO_LONG, "Bin name length greater than 14 characters");
+				}
+			}
 			this.binNames = binNames;
 		}
 
