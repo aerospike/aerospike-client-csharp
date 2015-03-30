@@ -62,24 +62,18 @@ namespace Aerospike.Client
 				IAsyncResult result = socket.BeginConnect(address, null, null);
 				WaitHandle wait = result.AsyncWaitHandle;
 
-				try
+				// Never allow timeoutMillis of zero here because WaitOne returns 
+				// immediately when that happens!
+				if (wait.WaitOne(timeoutMillis))
 				{
-					// Never allow timeoutMillis of zero here because WaitOne returns 
-					// immediately when that happens!
-					if (wait.WaitOne(timeoutMillis))
-					{
-						socket.EndConnect(result);
-					}
-					else
-					{
-						socket.Close();
-						throw new SocketException((int)SocketError.TimedOut);
-					}
+					socket.EndConnect(result);
 				}
-				finally
+				else
 				{
-					wait.Close();
+					socket.Close();
+					throw new SocketException((int)SocketError.TimedOut);
 				}
+
 				timestamp = DateTime.UtcNow;
 			}
 			catch (Exception e)
