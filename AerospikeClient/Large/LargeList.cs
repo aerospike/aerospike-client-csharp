@@ -164,6 +164,7 @@ namespace Aerospike.Client
 		
 		/// <summary>
 		/// Select values from the beginning of list up to a maximum count.
+		/// Supported by server versions >= 3.5.8.
 		/// </summary>
 		/// <param name="count">maximum number of values to return</param>
 		public IList FindFirst(int count)
@@ -173,6 +174,7 @@ namespace Aerospike.Client
 
 		/// <summary>
 		/// Select values from the beginning of list up to a maximum count after applying Lua filter.
+		/// Supported by server versions >= 3.5.8.
 		/// </summary>
 		/// <param name="count">maximum number of values to return after applying Lua filter</param>
 		/// <param name="filterModule">Lua module name which contains filter function</param>
@@ -185,6 +187,7 @@ namespace Aerospike.Client
 
 		/// <summary>
 		/// Select values from the end of list up to a maximum count.
+		/// Supported by server versions >= 3.5.8.
 		/// </summary>
 		/// <param name="count">maximum number of values to return</param>
 		public IList FindLast(int count)
@@ -194,6 +197,7 @@ namespace Aerospike.Client
 
 		/// <summary>
 		/// Select values from the end of list up to a maximum count after applying Lua filter.
+		/// Supported by server versions >= 3.5.8.
 		/// </summary>
 		/// <param name="count">maximum number of values to return after applying Lua filter</param>
 		/// <param name="filterModule">Lua module name which contains filter function</param>
@@ -206,6 +210,7 @@ namespace Aerospike.Client
 
 		/// <summary>
 		/// Select values from the begin key up to a maximum count.
+		/// Supported by server versions >= 3.5.8.
 		/// </summary>
 		/// <param name="begin">start value (inclusive)</param>
 		/// <param name="count">maximum number of values to return</param>
@@ -216,6 +221,7 @@ namespace Aerospike.Client
 
 		/// <summary>
 		/// Select values from the begin key up to a maximum count after applying Lua filter.
+		/// Supported by server versions >= 3.5.8.
 		/// </summary>
 		/// <param name="begin">start value (inclusive)</param>
 		/// <param name="count">maximum number of values to return after applying Lua filter</param>
@@ -239,6 +245,7 @@ namespace Aerospike.Client
 		
 		/// <summary>
 		/// Select range of values from list.
+		/// Supported by server versions >= 3.5.8.
 		/// </summary>
 		/// <param name="begin">low value of the range (inclusive)</param>
 		/// <param name="end">high value of the range (inclusive)</param>
@@ -263,6 +270,7 @@ namespace Aerospike.Client
 
 		/// <summary>
 		/// Select range of values from the large list up to a maximum count after applying lua filter.
+		/// Supported by server versions >= 3.5.8.
 		/// </summary>
 		/// <param name="begin">low value of the range (inclusive)</param>
 		/// <param name="end">high value of the range (inclusive)</param>
@@ -321,6 +329,7 @@ namespace Aerospike.Client
 
 		/// <summary>
 		/// Set LDT page size. 
+		/// Supported by server versions >= 3.5.8.
 		/// </summary>
 		/// <param name="pageSize">page size in bytes</param>
 		public void SetPageSize(int pageSize)
