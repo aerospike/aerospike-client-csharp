@@ -57,7 +57,7 @@ namespace Aerospike.Demo
 			client.Delete(args.writePolicy, key);
 
 			// Initialize large set operator.
-			Aerospike.Client.LargeList llist = client.GetLargeList(args.writePolicy, key, binName, null);
+			Aerospike.Client.LargeList llist = client.GetLargeList(args.writePolicy, key, binName);
 			string orig1 = "llistValue1";
 			string orig2 = "llistValue2";
 			string orig3 = "llistValue3";
@@ -141,7 +141,7 @@ namespace Aerospike.Demo
 			client.Delete(args.writePolicy, key);	
 
 			// Initialize large list operator.
-			Aerospike.Client.LargeList list = client.GetLargeList(args.writePolicy, key, "trades", null);
+			Aerospike.Client.LargeList list = client.GetLargeList(args.writePolicy, key, "trades");
 
 			// Write trades
 			Dictionary<string,Value> dict = new Dictionary<string,Value>();
@@ -247,7 +247,7 @@ namespace Aerospike.Demo
 			client.Delete(args.writePolicy, key);
 
 			// Initialize large list operator.
-			Aerospike.Client.LargeList list = client.GetLargeList(args.writePolicy, key, "trades", null);
+			Aerospike.Client.LargeList list = client.GetLargeList(args.writePolicy, key, "trades");
 
 			// Write trades
 			Dictionary<string, Value> dict = new Dictionary<string, Value>();
@@ -356,7 +356,7 @@ namespace Aerospike.Demo
 			client.Delete(args.writePolicy, key);
 
 			// Initialize large list operator.
-			Aerospike.Client.LargeList list = client.GetLargeList(args.writePolicy, key, "trades", null);
+			Aerospike.Client.LargeList list = client.GetLargeList(args.writePolicy, key, "trades");
 
 			// Write trades
 			Dictionary<string, Value> dict = new Dictionary<string, Value>();

@@ -803,12 +803,12 @@ namespace Aerospike.Client
 		/// <param name="policy">generic configuration parameters, pass in null for defaults</param>
 		/// <param name="key">unique record identifier</param>
 		/// <param name="binName">bin name</param>
-		/// <param name="userModule">Lua function name that initializes list configuration parameters, pass null for default</param>
-		[System.Obsolete("Use GetLargeList(WritePolicy policy, Key key, string binName, string userModule) instead.")]
+		/// <param name="userModule">no longer used, pass in null</param>
+		[System.Obsolete("Use GetLargeList(WritePolicy policy, Key key, string binName) instead.")]
 		public LargeList GetLargeList(Policy policy, Key key, string binName, string userModule)
 		{
 			WritePolicy writePolicy = (policy == null) ? writePolicyDefault : new WritePolicy(policy);
-			return new LargeList(this, writePolicy, key, binName, userModule);
+			return new LargeList(this, writePolicy, key, binName);
 		}
 
 		/// <summary>
@@ -821,12 +821,28 @@ namespace Aerospike.Client
 		/// <param name="policy">write configuration parameters, pass in null for defaults</param>
 		/// <param name="key">unique record identifier</param>
 		/// <param name="binName">bin name</param>
-		/// <param name="userModule">Lua function name that initializes list configuration parameters, pass null for default</param>
+		/// <param name="userModule">no longer used, pass in null</param>
+		[System.Obsolete("Use GetLargeList(WritePolicy policy, Key key, string binName) instead.")]
 		public LargeList GetLargeList(WritePolicy policy, Key key, string binName, string userModule)
 		{
-			return new LargeList(this, policy, key, binName, userModule);
+			return new LargeList(this, policy, key, binName);
 		}
-		
+
+		/// <summary>
+		/// Initialize large list operator.  This operator can be used to create and manage a list 
+		/// within a single bin.
+		/// <para>
+		/// This method is only supported by Aerospike 3 servers.
+		/// </para>
+		/// </summary>
+		/// <param name="policy">write configuration parameters, pass in null for defaults</param>
+		/// <param name="key">unique record identifier</param>
+		/// <param name="binName">bin name</param>
+		public LargeList GetLargeList(WritePolicy policy, Key key, string binName)
+		{
+			return new LargeList(this, policy, key, binName);
+		}
+
 		/// <summary>
 		/// Initialize large map operator.  This operator can be used to create and manage a map 
 		/// within a single bin.
