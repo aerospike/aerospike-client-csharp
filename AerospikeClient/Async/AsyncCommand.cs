@@ -502,7 +502,24 @@ namespace Aerospike.Client
 				}
 
 				cluster.PutEventArgs(eventArgs);
-				OnSuccess();
+
+				try
+				{
+					OnSuccess();
+				}
+				catch (AerospikeException ae)
+				{
+					// The user's OnSuccess() may have already been called which in turn generates this
+					// exception.  It's important to call OnFailure() anyhow because the user's code 
+					// may be waiting for completion notification which wasn't yet called in
+					// OnSuccess().  This is the only case where both OnSuccess() and OnFailure()
+					// gets called for the same command.
+					OnFailure(ae);
+				}
+				catch (Exception e)
+				{
+					OnFailure(new AerospikeException(e));
+				}
 			}
 			else
 			{
