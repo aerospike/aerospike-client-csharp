@@ -302,7 +302,7 @@ namespace Aerospike.Client
 				{
 					// Node owns this partition.
 					// Log.info("Map: " + i);
-					if (node != nodeOld)
+					if (nodeOld != null && nodeOld != node)
 					{
 						// Force previously mapped node to refresh it's partition map on next cluster tend.
 						nodeOld.partitionGeneration = -1;
