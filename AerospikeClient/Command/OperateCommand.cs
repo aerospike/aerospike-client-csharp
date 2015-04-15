@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2014 Aerospike, Inc.
+ * Copyright 2012-2015 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -21,19 +21,24 @@ namespace Aerospike.Client
 {
 	public sealed class OperateCommand : ReadCommand
 	{
-		private readonly WritePolicy policy;
+		private readonly WritePolicy writePolicy;
 		private readonly Operation[] operations;
 
 		public OperateCommand(Cluster cluster, WritePolicy policy, Key key, Operation[] operations) 
 			: base(cluster, policy, key, null)
 		{
-			this.policy = policy;
+			this.writePolicy = policy;
 			this.operations = operations;
 		}
 
 		protected internal override void WriteBuffer()
 		{
-			SetOperate(policy, key, operations);
+			SetOperate(writePolicy, key, operations);
+		}
+
+		protected internal override Node GetNode()
+		{
+			return cluster.GetMasterNode(partition);
 		}
 	}
 }

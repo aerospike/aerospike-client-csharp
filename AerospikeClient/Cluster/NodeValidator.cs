@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2014 Aerospike, Inc.
+ * Copyright 2012-2015 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -28,6 +28,7 @@ namespace Aerospike.Client
 		internal string name;
 		internal Host[] aliases;
 		internal IPEndPoint address;
+		internal bool hasReplicasAll;
 
 		public NodeValidator(Cluster cluster, Host host)
 		{
@@ -55,13 +56,14 @@ namespace Aerospike.Client
 							AdminCommand command = new AdminCommand();
 							command.Authenticate(conn, cluster.user, cluster.password);
 						}
-						Dictionary<string, string> map = Info.Request(conn, "node", "build");
+						Dictionary<string, string> map = Info.Request(conn, "node", "features");
 						string nodeName;
 
 						if (map.TryGetValue("node", out nodeName))
 						{
 							this.name = nodeName;
 							this.address = address;
+							SetFeatures(map);
 							return;
 						}
 					}
@@ -90,6 +92,28 @@ namespace Aerospike.Client
 				throw new AerospikeException.Connection("Failed to find addresses for " + host);
 			}
 			throw exception;
+		}
+
+		private void SetFeatures(Dictionary<string, string> map)
+		{
+			try
+			{
+				string features = map["features"];
+				string[] list = features.Split(';');
+
+				foreach (string feature in list)
+				{
+					if (feature.Equals("replicas-all"))
+					{
+						this.hasReplicasAll = true;
+						break;
+					}
+				}
+			}
+			catch (Exception)
+			{
+				// Unexpected exception. Use defaults.
+			}
 		}
 	}
 }

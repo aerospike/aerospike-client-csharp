@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2014 Aerospike, Inc.
+ * Copyright 2012-2015 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -20,8 +20,8 @@ namespace Aerospike.Client
 	{
 		private readonly ExistsSequenceListener listener;
 
-		public AsyncBatchExistsSequenceExecutor(AsyncCluster cluster, Policy policy, Key[] keys, ExistsSequenceListener listener) 
-			: base(cluster, keys)
+		public AsyncBatchExistsSequenceExecutor(AsyncCluster cluster, BatchPolicy policy, Key[] keys, ExistsSequenceListener listener) 
+			: base(cluster, policy, keys)
 		{
 			this.listener = listener;
 

@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2014 Aerospike, Inc.
+ * Copyright 2012-2015 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -34,7 +34,7 @@ namespace Aerospike.Client
 		private volatile Node[] nodes;
 
 		// Hints for best node for a partition
-		private volatile Dictionary<string, Node[]> partitionWriteMap;
+		private volatile Dictionary<string, Node[][]> partitionMap;
 
 		// IP translations.
 		protected internal readonly Dictionary<string, string> ipMap;
@@ -47,6 +47,9 @@ namespace Aerospike.Client
 
 		// Random node index.
 		private int nodeIndex;
+
+		// Random partition replica index. 
+		private int replicaIndex;
 
 		// Size of node's synchronous connection pool.
 		protected internal readonly int connectionQueueSize;
@@ -63,6 +66,9 @@ namespace Aerospike.Client
 		// Tend thread variables.
 		private Thread tendThread;
 		private volatile bool tendValid;
+
+		// Request prole replicas in addition to master replicas?
+		private bool requestProleReplicas;
 
 		public Cluster(ClientPolicy policy, Host[] hosts)
 		{
@@ -91,9 +97,11 @@ namespace Aerospike.Client
 			maxSocketIdle = policy.maxSocketIdle;
 			tendInterval = policy.tendInterval;
 			ipMap = policy.ipMap;
+			requestProleReplicas = policy.requestProleReplicas;
+
 			aliases = new Dictionary<Host, Node>();
 			nodes = new Node[0];
-			partitionWriteMap = new Dictionary<string, Node[]>();
+			partitionMap = new Dictionary<string, Node[][]>();
 		}
 
 		public virtual void InitTendThread(bool failIfNotConnected)
@@ -117,6 +125,16 @@ namespace Aerospike.Client
 				if (!FindSeed(host))
 				{
 					seedsToAdd.Add(host);
+				}
+
+				// Disable prole requests if some nodes don't support it.
+				if (requestProleReplicas && !node.hasReplicasAll)
+				{
+					if (Log.WarnEnabled())
+					{
+						Log.Warn("Some nodes don't support 'replicas-all'.  Use 'replicas-master' for all nodes.");
+					}
+					requestProleReplicas = false;
 				}
 			}
 
@@ -287,15 +305,13 @@ namespace Aerospike.Client
 
 		protected internal int UpdatePartitions(Connection conn, Node node)
 		{
-			PartitionInfo info = new PartitionInfo(conn, "partition-generation", "replicas-master");
-			int generation = info.ParseGeneration();
-			Dictionary<String, Node[]> map = info.ParsePartitions(partitionWriteMap, node);
+			PartitionParser parser = new PartitionParser(conn, node, partitionMap, Node.PARTITIONS, requestProleReplicas);
 
-			if (map != null)
+			if (parser.IsPartitionMapCopied)
 			{
-				partitionWriteMap = map;
+				partitionMap = parser.PartitionMap;
 			}
-			return generation;
+			return parser.Generation;
 		}
 
 		private bool SeedNodes(bool failIfNotConnected)
@@ -509,14 +525,17 @@ namespace Aerospike.Client
 
 		private bool FindNodeInPartitionMap(Node filter)
 		{
-			foreach (Node[] nodeArray in partitionWriteMap.Values)
+			foreach (Node[][] replicaArray in partitionMap.Values)
 			{
-				foreach (Node node in nodeArray)
+				foreach (Node[] nodeArray in replicaArray)
 				{
-					// Use reference equality for performance.
-					if (node == filter)
+					foreach (Node node in nodeArray)
 					{
-						return true;
+						// Use reference equality for performance.
+						if (node == filter)
+						{
+							return true;
+						}
 					}
 				}
 			}
@@ -670,15 +689,31 @@ namespace Aerospike.Client
 			}
 		}
 
-		public Node GetNode(Partition partition)
+		public Node GetReadNode(Partition partition, Replica replica)
+		{
+			switch (replica)
+			{
+				case Replica.MASTER:
+					return GetMasterNode(partition);
+
+				case Replica.MASTER_PROLES:
+					return GetMasterProlesNode(partition);
+
+				default:
+				case Replica.RANDOM:
+					return GetRandomNode();
+			}
+		}
+		
+		public Node GetMasterNode(Partition partition)
 		{
 			// Must copy hashmap reference for copy on write semantics to work.
-			Dictionary<string, Node[]> map = partitionWriteMap;
-			Node[] nodeArray;
+			Dictionary<string, Node[][]> map = partitionMap;
+			Node[][] replicaArray;
 
-			if (map.TryGetValue(partition.ns, out nodeArray))
+			if (map.TryGetValue(partition.ns, out replicaArray))
 			{
-				Node node = nodeArray[partition.partitionId];
+				Node node = replicaArray[0][partition.partitionId];
 
 				if (node != null && node.Active)
 				{
@@ -693,6 +728,34 @@ namespace Aerospike.Client
 			return GetRandomNode();
 		}
 
+		public Node GetMasterProlesNode(Partition partition)
+		{
+			// Must copy hashmap reference for copy on write semantics to work.
+			Dictionary<string, Node[][]> map = partitionMap;
+			Node[][] replicaArray;
+
+			if (map.TryGetValue(partition.ns, out replicaArray))
+			{
+				for (int i = 0; i < replicaArray.Length; i++)
+				{
+					int index = Math.Abs(replicaIndex % replicaArray.Length);
+					Interlocked.Increment(ref replicaIndex);
+					Node node = replicaArray[index][partition.partitionId];
+
+					if (node != null && node.Active)
+					{
+						return node;
+					}
+				}
+			}
+			/*
+			if (Log.debugEnabled()) {
+				Log.debug("Choose random node for " + partition);
+			}
+			*/
+			return GetRandomNode();
+		}
+		
 		public Node GetRandomNode()
 		{
 			// Must copy array reference for copy on write semantics to work.
@@ -749,6 +812,31 @@ namespace Aerospike.Client
 			return null;
 		}
 
+		public void PrintPartitionMap()
+		{
+			foreach (KeyValuePair<String,Node[][]> entry in partitionMap)
+			{
+				String ns = entry.Key;
+				Node[][] replicaArray = entry.Value;
+
+				for (int i = 0; i < replicaArray.Length; i++)
+				{
+					Node[] nodeArray = replicaArray[i];
+					int max = nodeArray.Length;
+
+					for (int j = 0; j < max; j++)
+					{
+						Node node = nodeArray[j];
+
+						if (node != null)
+						{
+							Log.Info(ns + ',' + i + ',' + j + ',' + node);
+						}
+					}
+				}
+			}
+		}
+		
 		protected internal void ChangePassword(byte[] user, string password)
 		{
 			if (this.user != null && Util.ByteArrayEquals(user, this.user))

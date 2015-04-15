@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2014 Aerospike, Inc.
+ * Copyright 2012-2015 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -23,8 +23,8 @@ namespace Aerospike.Client
 		private readonly ExistsArrayListener listener;
 		private readonly bool[] existsArray;
 
-		public AsyncBatchExistsArrayExecutor(AsyncCluster cluster, Policy policy, Key[] keys, ExistsArrayListener listener) 
-			: base(cluster, keys)
+		public AsyncBatchExistsArrayExecutor(AsyncCluster cluster, BatchPolicy policy, Key[] keys, ExistsArrayListener listener) 
+			: base(cluster, policy, keys)
 		{
 			this.existsArray = new bool[keys.Length];
 			this.listener = listener;

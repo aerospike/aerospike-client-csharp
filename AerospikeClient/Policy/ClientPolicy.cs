@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2014 Aerospike, Inc.
+ * Copyright 2012-2015 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -91,10 +91,25 @@ namespace Aerospike.Client
 		/// A IP translation table is used in cases where different clients use different server 
 		/// IP addresses.  This may be necessary when using clients from both inside and outside 
 		/// a local area network.  Default is no translation.
-		/// 
+		/// <para>
 		/// The key is the IP address returned from friend info requests to other servers.  The 
 		/// value is the real IP address used to connect to the server.
+		/// </para>
 		/// </summary>
 		public Dictionary<string, string> ipMap;
+
+		/// <summary>
+		/// Should prole replicas be requested from each server node in the cluster tend thread.
+		/// This option is required if there is a need to distribute reads across proles.
+		/// (<seealso cref="Aerospike.Client.Policy.replica"/> == <seealso cref="Aerospike.Client.Replica.MASTER_PROLES"/>).
+		/// <para> 
+		/// If requestProleReplicas is enabled, all prole partition maps will be cached on the client which results in 
+		/// extra storage multiplied by the replication factor.
+		/// </para>
+		/// <para>
+		/// The default is false (only request master replicas and never prole replicas).
+		/// </para>
+		/// </summary>
+		public bool requestProleReplicas;
 	}
 }

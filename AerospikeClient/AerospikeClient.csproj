@@ -168,6 +168,7 @@
     <Compile Include="Async\AsyncTouch.cs" />
     <Compile Include="Async\BufferPool.cs" />
     <Compile Include="BCrypt\SaltParseException.cs" />
+    <Compile Include="Cluster\PartitionParser.cs" />
     <Compile Include="Command\BatchCommandNodeGet.cs" />
     <Compile Include="Command\BatchCommandNodeExists.cs" />
     <Compile Include="Admin\AdminCommand.cs" />
@@ -228,7 +229,6 @@
     <Compile Include="Cluster\Node.cs" />
     <Compile Include="Cluster\NodeValidator.cs" />
     <Compile Include="Cluster\Partition.cs" />
-    <Compile Include="Cluster\PartitionInfo.cs" />
     <Compile Include="Command\BatchCommandExists.cs" />
     <Compile Include="Command\BatchCommandGet.cs" />
     <Compile Include="Command\BatchExecutor.cs" />
@@ -242,7 +242,6 @@
     <Compile Include="Command\ParticleType.cs" />
     <Compile Include="Command\ReadCommand.cs" />
     <Compile Include="Command\ScanCommand.cs" />
-    <Compile Include="Command\SingleCommand.cs" />
     <Compile Include="Command\SyncCommand.cs" />
     <Compile Include="Command\WriteCommand.cs" />
     <Compile Include="Main\Join.cs" />
@@ -277,6 +276,7 @@
     <Compile Include="Policy\Priority.cs" />
     <Compile Include="Policy\QueryPolicy.cs" />
     <Compile Include="Policy\RecordExistsAction.cs" />
+    <Compile Include="Policy\Replica.cs" />
     <Compile Include="Policy\ScanPolicy.cs" />
     <Compile Include="Policy\WritePolicy.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

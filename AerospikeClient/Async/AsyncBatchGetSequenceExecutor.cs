@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2014 Aerospike, Inc.
+ * Copyright 2012-2015 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -22,8 +22,8 @@ namespace Aerospike.Client
 	{
 		private readonly RecordSequenceListener listener;
 
-		public AsyncBatchGetSequenceExecutor(AsyncCluster cluster, Policy policy, RecordSequenceListener listener, Key[] keys, HashSet<string> binNames, int readAttr) 
-			: base(cluster, keys)
+		public AsyncBatchGetSequenceExecutor(AsyncCluster cluster, BatchPolicy policy, RecordSequenceListener listener, Key[] keys, HashSet<string> binNames, int readAttr) 
+			: base(cluster, policy, keys)
 		{
 			this.listener = listener;
 

@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2014 Aerospike, Inc.
+ * Copyright 2012-2015 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -132,7 +132,7 @@ namespace Aerospike.Demo
 		/// </summary>
 		private void BatchExistsArray()
 		{
-			client.Exists(args.policy, new ExistsArrayHandler(this), sendKeys);
+			client.Exists(null, new ExistsArrayHandler(this), sendKeys);
 		}
 
 		private class ExistsArrayHandler : ExistsArrayListener
@@ -168,7 +168,7 @@ namespace Aerospike.Demo
 		/// </summary>
 		private void BatchExistsSequence()
 		{
-			client.Exists(args.policy, new ExistsSequenceHandler(this), sendKeys);
+			client.Exists(null, new ExistsSequenceHandler(this), sendKeys);
 		}
 
 		private class ExistsSequenceHandler : ExistsSequenceListener
@@ -203,7 +203,7 @@ namespace Aerospike.Demo
 		/// </summary>
 		private void BatchGetArray()
 		{
-			client.Get(args.policy, new RecordArrayHandler(this), sendKeys);
+			client.Get(null, new RecordArrayHandler(this), sendKeys);
 		}
 
 		private class RecordArrayHandler : RecordArrayListener
@@ -253,7 +253,7 @@ namespace Aerospike.Demo
 		/// </summary>
 		private void BatchGetSequence()
 		{
-			client.Get(args.policy, new RecordSequenceHandler(this), sendKeys);
+			client.Get(null, new RecordSequenceHandler(this), sendKeys);
 		}
 
 		private class RecordSequenceHandler : RecordSequenceListener
@@ -296,7 +296,7 @@ namespace Aerospike.Demo
 		/// </summary>
 		private void BatchGetHeaders()
 		{
-			client.GetHeader(args.policy, new RecordHeaderArrayHandler(this), sendKeys);
+			client.GetHeader(null, new RecordHeaderArrayHandler(this), sendKeys);
 		}
 
 		private class RecordHeaderArrayHandler: RecordArrayListener

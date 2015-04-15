@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2014 Aerospike, Inc.
+ * Copyright 2012-2015 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -23,8 +23,8 @@ namespace Aerospike.Client
 		private readonly RecordArrayListener listener;
 		private readonly Record[] recordArray;
 
-		public AsyncBatchGetArrayExecutor(AsyncCluster cluster, Policy policy, RecordArrayListener listener, Key[] keys, HashSet<string> binNames, int readAttr) 
-			: base(cluster, keys)
+		public AsyncBatchGetArrayExecutor(AsyncCluster cluster, BatchPolicy policy, RecordArrayListener listener, Key[] keys, HashSet<string> binNames, int readAttr) 
+			: base(cluster, policy, keys)
 		{
 			this.recordArray = new Record[keys.Length];
 			this.listener = listener;

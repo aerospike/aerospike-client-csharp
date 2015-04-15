@@ -36,6 +36,16 @@ namespace Aerospike.Client
 		public ConsistencyLevel consistencyLevel = ConsistencyLevel.CONSISTENCY_ONE;
 
 		/// <summary>
+		/// Send read commands to the node containing the key's partition replica type.
+		/// Write commands are not affected by this setting, because all writes are directed 
+		/// to the node containing the key's master partition.
+		/// <para>
+		/// Default to sending read commands to the node containing the key's master partition.
+		/// </para>
+		/// </summary>
+		public Replica replica = Replica.MASTER;
+
+		/// <summary>
 		/// Total transaction timeout in milliseconds for both client and server.
 		/// The timeout is tracked on the client and also sent to the server along 
 		/// with the transaction in the wire protocol.  The client will most likely
@@ -88,6 +98,7 @@ namespace Aerospike.Client
 		{
 			this.priority = other.priority;
 			this.consistencyLevel = other.consistencyLevel;
+			this.replica = other.replica;
 			this.timeout = other.timeout;
 			this.maxRetries = other.maxRetries;
 			this.sleepBetweenRetries = other.sleepBetweenRetries;

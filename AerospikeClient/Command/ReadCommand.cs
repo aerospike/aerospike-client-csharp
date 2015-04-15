@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2014 Aerospike, Inc.
+ * Copyright 2012-2015 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -19,16 +19,21 @@ using System.Collections.Generic;
 
 namespace Aerospike.Client
 {
-	public class ReadCommand : SingleCommand
+	public class ReadCommand : SyncCommand
 	{
+		protected internal readonly Cluster cluster;
 		private readonly Policy policy;
+		protected internal readonly Key key;
+		protected internal readonly Partition partition;
 		private readonly string[] binNames;
 		private Record record;
 
 		public ReadCommand(Cluster cluster, Policy policy, Key key, string[] binNames) 
-			: base(cluster, key)
 		{
+			this.cluster = cluster;
 			this.policy = policy;
+			this.key = key;
+			this.partition = new Partition(key);
 			this.binNames = binNames;
 		}
 
@@ -40,6 +45,11 @@ namespace Aerospike.Client
 		protected internal override void WriteBuffer()
 		{
 			SetRead(policy, key, binNames);
+		}
+
+		protected internal override Node GetNode()
+		{
+			return cluster.GetReadNode(partition, policy.replica);
 		}
 
 		protected internal override void ParseResult(Connection conn)

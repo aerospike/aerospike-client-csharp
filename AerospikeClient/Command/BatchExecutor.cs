@@ -47,7 +47,7 @@ namespace Aerospike.Client
 				return;
 			}
 
-			List<BatchNode> batchNodes = BatchNode.GenerateList(cluster, keys);
+			List<BatchNode> batchNodes = BatchNode.GenerateList(cluster, policy, keys);
 
 			if (policy.maxConcurrentThreads == 1)
 			{

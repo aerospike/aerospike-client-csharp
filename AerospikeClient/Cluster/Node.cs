@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2014 Aerospike, Inc.
+ * Copyright 2012-2015 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -38,9 +38,10 @@ namespace Aerospike.Client
 		private Host[] aliases;
 		protected internal readonly IPEndPoint address;
 		private readonly BlockingCollection<Connection> connectionQueue;
-		private int partitionGeneration = -1;
+		protected internal int partitionGeneration = -1;
 		protected internal int referenceCount;
 		protected internal int failures;
+		protected internal readonly bool hasReplicasAll;
 		protected internal volatile bool active = true;
 
 		/// <summary>
@@ -54,6 +55,7 @@ namespace Aerospike.Client
 			this.name = nv.name;
 			this.aliases = nv.aliases;
 			this.address = nv.address;
+			this.hasReplicasAll = nv.hasReplicasAll;
 
 			// Assign host to first IP alias because the server identifies nodes 
 			// by IP address (not hostname). 

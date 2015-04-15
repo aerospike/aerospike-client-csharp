@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2014 Aerospike, Inc.
+ * Copyright 2012-2015 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -23,10 +23,10 @@ namespace Aerospike.Client
 		protected internal readonly Key[] keys;
 		protected internal readonly List<BatchNode> batchNodes;
 
-		public AsyncBatchExecutor(Cluster cluster, Key[] keys)
+		public AsyncBatchExecutor(Cluster cluster, BatchPolicy policy, Key[] keys)
 		{
 			this.keys = keys;
-			this.batchNodes = BatchNode.GenerateList(cluster, keys);
+			this.batchNodes = BatchNode.GenerateList(cluster, policy, keys);
 
 			// Count number of asynchronous commands needed.
 			int size = 0;

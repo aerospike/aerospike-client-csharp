@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2014 Aerospike, Inc.
+ * Copyright 2012-2015 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -21,7 +21,7 @@ namespace Aerospike.Client
 {
 	public sealed class BatchNode
 	{
-		public static List<BatchNode> GenerateList(Cluster cluster, Key[] keys)
+		public static List<BatchNode> GenerateList(Cluster cluster, BatchPolicy policy, Key[] keys)
 		{
 			Node[] nodes = cluster.Nodes;
 
@@ -42,7 +42,7 @@ namespace Aerospike.Client
 				Partition partition = new Partition(key);
 				BatchNode batchNode;
 
-				Node node = cluster.GetNode(partition);
+				Node node = cluster.GetReadNode(partition, policy.replica);
 				batchNode = FindBatchNode(batchNodes, node);
 
 				if (batchNode == null)

@@ -156,6 +156,22 @@ namespace Aerospike.Client
 			}
 		}
 
+		protected internal void EmptySocket(Connection conn)
+		{
+			// There should not be any more bytes.
+			// Empty the socket to be safe.
+			long sz = ByteUtil.BytesToLong(dataBuffer, 0);
+			int headerLength = dataBuffer[8];
+			int receiveSize = ((int)(sz & 0xFFFFFFFFFFFFL)) - headerLength;
+
+			// Read remaining message bytes.
+			if (receiveSize > 0)
+			{
+				SizeBuffer(receiveSize);
+				conn.ReadFully(dataBuffer, receiveSize);
+			}
+		}
+	
 		protected internal abstract Node GetNode();
 		protected internal abstract void ParseResult(Connection conn);
 	}

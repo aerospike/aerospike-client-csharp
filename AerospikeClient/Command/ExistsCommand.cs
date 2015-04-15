@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2014 Aerospike, Inc.
+ * Copyright 2012-2015 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -19,15 +19,20 @@ using System.Collections.Generic;
 
 namespace Aerospike.Client
 {
-	public sealed class ExistsCommand : SingleCommand
+	public sealed class ExistsCommand : SyncCommand
 	{
+		private readonly Cluster cluster;
 		private readonly Policy policy;
+		private readonly Key key;
+		private readonly Partition partition;
 		private bool exists;
 
 		public ExistsCommand(Cluster cluster, Policy policy, Key key)
-			: base(cluster, key)
 		{
+			this.cluster = cluster;
 			this.policy = policy;
+			this.key = key;
+			this.partition = new Partition(key);
 		}
 
 		protected internal override Policy GetPolicy()
@@ -38,6 +43,11 @@ namespace Aerospike.Client
 		protected internal override void WriteBuffer()
 		{
 			SetExists(policy, key);
+		}
+
+		protected internal override Node GetNode()
+		{
+			return cluster.GetReadNode(partition, policy.replica);
 		}
 
 		protected internal override void ParseResult(Connection conn)

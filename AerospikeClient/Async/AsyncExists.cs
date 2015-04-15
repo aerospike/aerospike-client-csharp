@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2014 Aerospike, Inc.
+ * Copyright 2012-2015 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -20,13 +20,17 @@ namespace Aerospike.Client
 	{
 		private readonly Policy policy;
 		private readonly ExistsListener listener;
+		private readonly Key key;
+		private readonly Partition partition;
 		private bool exists;
 
 		public AsyncExists(AsyncCluster cluster, Policy policy, Key key, ExistsListener listener) 
-			: base(cluster, key)
+			: base(cluster)
 		{
 			this.policy = policy;
 			this.listener = listener;
+			this.key = key;
+			this.partition = new Partition(key);
 		}
 
 		protected internal override Policy GetPolicy()
@@ -37,6 +41,11 @@ namespace Aerospike.Client
 		protected internal override void WriteBuffer()
 		{
 			SetExists(policy, key);
+		}
+
+		protected internal override AsyncNode GetNode()
+		{
+			return (AsyncNode)cluster.GetReadNode(partition, policy.replica);
 		}
 
 		protected internal override void ParseResult()

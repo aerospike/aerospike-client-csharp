@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2014 Aerospike, Inc.
+ * Copyright 2012-2015 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -22,14 +22,18 @@ namespace Aerospike.Client
 	{
 		private readonly Policy policy;
 		private readonly RecordListener listener;
+		protected internal readonly Key key;
+		protected internal readonly Partition partition;
 		private readonly string[] binNames;
 		private Record record;
 
 		public AsyncRead(AsyncCluster cluster, Policy policy, RecordListener listener, Key key, string[] binNames) 
-			: base(cluster, key)
+			: base(cluster)
 		{
 			this.policy = policy;
 			this.listener = listener;
+			this.key = key;
+			this.partition = new Partition(key);
 			this.binNames = binNames;
 		}
 
@@ -41,6 +45,11 @@ namespace Aerospike.Client
 		protected internal override void WriteBuffer()
 		{
 			SetRead(policy, key, binNames);
+		}
+
+		protected internal override AsyncNode GetNode()
+		{
+			return (AsyncNode)cluster.GetReadNode(partition, policy.replica);
 		}
 
 		protected internal sealed override void ParseResult()
