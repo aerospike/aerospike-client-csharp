@@ -610,6 +610,7 @@ namespace Aerospike.Client
 
 				if (tendValid)
 				{
+					RemoveNodeInPartitionMap(node);
 					node.Close();
 				}
 				else
@@ -622,6 +623,25 @@ namespace Aerospike.Client
 			RemoveNodesCopy(nodesToRemove);
 		}
 
+		private void RemoveNodeInPartitionMap(Node nodeToRemove)
+		{
+			foreach (Node[][] replicaArray in partitionMap.Values)
+			{
+				foreach (Node[] nodeArray in replicaArray)
+				{
+					for (int i = 0; i < nodeArray.Length; i++)
+					{
+						// Use reference equality for performance.
+						if (nodeArray[i] == nodeToRemove)
+						{
+							// Remove node from partition map.
+							nodeArray[i] = null;
+						}
+					}
+				}
+			}
+		}
+	
 		/// <summary>
 		/// Remove nodes using copy on write semantics.
 		/// </summary>

@@ -305,7 +305,7 @@ namespace Aerospike.Client
 					if (node != nodeOld)
 					{
 						// Force previously mapped node to refresh it's partition map on next cluster tend.
-						node.partitionGeneration = -1;
+						nodeOld.partitionGeneration = -1;
 					}
 					nodeArray[i] = node;
 				}
