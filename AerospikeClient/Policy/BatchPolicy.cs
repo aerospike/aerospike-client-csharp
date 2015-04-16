@@ -52,12 +52,25 @@ namespace Aerospike.Client
 		public int maxConcurrentThreads = 1;
 
 		/// <summary>
+		/// Allow read operations to use replicated data partitions instead of master
+		/// partition. By default, both read and write operations are directed to the
+		/// master partition.
+		/// <para>
+		/// This variable is currently only used in batch read/exists operations. For 
+		/// batch, this variable should only be set to true when the replication factor
+		/// is greater than or equal to the number of nodes in the cluster.
+		/// </para>
+		/// </summary>
+		public bool allowProleReads;
+
+		/// <summary>
 		/// Copy batch policy from another batch policy.
 		/// </summary>
 		public BatchPolicy(BatchPolicy other)
 			: base(other)
 		{
 			this.maxConcurrentThreads = other.maxConcurrentThreads;
+			this.allowProleReads = other.allowProleReads;
 		}
 
 		/// <summary>

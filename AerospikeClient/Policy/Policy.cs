@@ -74,18 +74,6 @@ namespace Aerospike.Client
 		public int sleepBetweenRetries = 500;
 
 		/// <summary>
-		/// Allow read operations to use replicated data partitions instead of master
-		/// partition. By default, both read and write operations are directed to the
-		/// master partition.
-		/// <para>
-		/// This variable is currently only used in batch read/exists operations. For 
-		/// batch, this variable should only be set to true when the replication factor
-		/// is greater than or equal to the number of nodes in the cluster.
-		/// </para>
-		/// </summary>
-		public bool allowProleReads;
-
-		/// <summary>
 		/// Send user defined key in addition to hash digest on both reads and writes.
 		/// The default is to not send the user defined key.
 		/// </summary>
@@ -102,7 +90,6 @@ namespace Aerospike.Client
 			this.timeout = other.timeout;
 			this.maxRetries = other.maxRetries;
 			this.sleepBetweenRetries = other.sleepBetweenRetries;
-			this.allowProleReads = other.allowProleReads;
 			this.sendKey = other.sendKey;
 		}
 
