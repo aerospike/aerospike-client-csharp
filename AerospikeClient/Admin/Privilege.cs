@@ -186,6 +186,9 @@ namespace Aerospike.Client
 				case PrivilegeCode.USER_ADMIN:
 					return Role.UserAdmin;
 
+				case PrivilegeCode.DATA_ADMIN:
+					return Role.DataAdmin;
+
 				case PrivilegeCode.READ:
 					return Role.Read;
 

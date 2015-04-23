@@ -29,9 +29,14 @@ namespace Aerospike.Client
 		public const string UserAdmin = "user-admin";
 
 		/// <summary>
-		/// Manage indicies, user defined functions and server configuration. 
+		/// Manage server configuration.
 		/// </summary>
 		public const string SysAdmin = "sys-admin";
+
+		/// <summary>
+		/// Manage indicies and user defined functions.
+		/// </summary>
+		public const string DataAdmin = "data-admin";
 
 		/// <summary>
 		/// Allow read transactions.
@@ -64,7 +69,7 @@ namespace Aerospike.Client
 		public bool isPredefined()
 		{
 			return name.Equals(ReadWrite) || name.Equals(ReadWriteUdf) || name.Equals(Read)
-				|| name.Equals(SysAdmin) || name.Equals(UserAdmin);
+				|| name.Equals(SysAdmin) || name.Equals(UserAdmin) || name.Equals(DataAdmin);
 		}
 	}
 }

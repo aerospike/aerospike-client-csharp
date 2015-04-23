@@ -72,6 +72,7 @@ namespace Aerospike.Admin
 			bindingList.Add(new PrivilegeType(PrivilegeCode.READ_WRITE_UDF, "read-write-udf"));
 			bindingList.Add(new PrivilegeType(PrivilegeCode.SYS_ADMIN, "sys-admin"));
 			bindingList.Add(new PrivilegeType(PrivilegeCode.USER_ADMIN, "user-admin"));
+			bindingList.Add(new PrivilegeType(PrivilegeCode.DATA_ADMIN, "data-admin"));
 			return bindingList;
 		}
 
