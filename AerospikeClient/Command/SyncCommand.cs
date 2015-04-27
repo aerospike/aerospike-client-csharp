@@ -27,6 +27,7 @@ namespace Aerospike.Client
 			Policy policy = GetPolicy();
 			int remainingMillis = policy.timeout;
 			DateTime limit = DateTime.UtcNow.AddMilliseconds(remainingMillis);
+			Node node = null;
 			int failedNodes = 0;
 			int failedConns = 0;
 			int iterations = 0;
@@ -36,7 +37,6 @@ namespace Aerospike.Client
 			// Execute command until successful, timed out or maximum iterations have been reached.
 			while (true)
 			{
-				Node node = null;
 				try
 				{
 					node = GetNode();
@@ -135,9 +135,12 @@ namespace Aerospike.Client
 					// Sleep before trying again.
 					Util.Sleep(policy.sleepBetweenRetries);
 				}
+
+				// Reset node reference and try again.
+				node = null;
 			}
 
-			throw new AerospikeException.Timeout(policy.timeout, iterations, failedNodes, failedConns);
+			throw new AerospikeException.Timeout(node, policy.timeout, iterations, failedNodes, failedConns);
 		}
 
 		protected internal sealed override void SizeBuffer()
