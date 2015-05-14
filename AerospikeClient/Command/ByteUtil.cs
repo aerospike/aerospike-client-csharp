@@ -150,6 +150,10 @@ namespace Aerospike.Client
 
 		public static string BytesToHexString(byte[] buf)
 		{
+			if (buf == null || buf.Length == 0)
+			{
+				return "";
+			}
 			StringBuilder sb = new StringBuilder(buf.Length * 2);
 
 			for (int i = 0; i < buf.Length; i++)
