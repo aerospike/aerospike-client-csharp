@@ -524,6 +524,11 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if queue is full</exception>
 		public void Exists(BatchPolicy policy, ExistsArrayListener listener, Key[] keys)
 		{
+			if (keys.Length == 0)
+			{
+				listener.OnSuccess(keys, new bool[0]);
+				return;
+			}
 			if (policy == null)
 			{
 				policy = batchPolicyDefault;
@@ -564,6 +569,11 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if queue is full</exception>
 		public void Exists(BatchPolicy policy, ExistsSequenceListener listener, Key[] keys)
 		{
+			if (keys.Length == 0)
+			{
+				listener.OnSuccess();
+				return;
+			}
 			if (policy == null)
 			{
 				policy = batchPolicyDefault;
@@ -774,6 +784,11 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if queue is full</exception>
 		public void Get(BatchPolicy policy, RecordArrayListener listener, Key[] keys)
 		{
+			if (keys.Length == 0)
+			{
+				listener.OnSuccess(keys, new Record[0]);
+				return;
+			}
 			if (policy == null)
 			{
 				policy = batchPolicyDefault;
@@ -816,6 +831,11 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if queue is full</exception>
 		public void Get(BatchPolicy policy, RecordSequenceListener listener, Key[] keys)
 		{
+			if (keys.Length == 0)
+			{
+				listener.OnSuccess();
+				return;
+			}
 			if (policy == null)
 			{
 				policy = batchPolicyDefault;
@@ -900,6 +920,11 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if queue is full</exception>
 		public void Get(BatchPolicy policy, RecordArrayListener listener, Key[] keys, params string[] binNames)
 		{
+			if (keys.Length == 0)
+			{
+				listener.OnSuccess(keys, new Record[0]);
+				return;
+			}
 			if (policy == null)
 			{
 				policy = batchPolicyDefault;
@@ -945,6 +970,11 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if queue is full</exception>
 		public void Get(BatchPolicy policy, RecordSequenceListener listener, Key[] keys, params string[] binNames)
 		{
+			if (keys.Length == 0)
+			{
+				listener.OnSuccess();
+				return;
+			}
 			if (policy == null)
 			{
 				policy = batchPolicyDefault;
@@ -1026,6 +1056,11 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if queue is full</exception>
 		public void GetHeader(BatchPolicy policy, RecordArrayListener listener, Key[] keys)
 		{
+			if (keys.Length == 0)
+			{
+				listener.OnSuccess(keys, new Record[0]);
+				return;
+			}
 			if (policy == null)
 			{
 				policy = batchPolicyDefault;
@@ -1068,6 +1103,11 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if queue is full</exception>
 		public void GetHeader(BatchPolicy policy, RecordSequenceListener listener, Key[] keys)
 		{
+			if (keys.Length == 0)
+			{
+				listener.OnSuccess();
+				return;
+			}
 			if (policy == null)
 			{
 				policy = batchPolicyDefault;
