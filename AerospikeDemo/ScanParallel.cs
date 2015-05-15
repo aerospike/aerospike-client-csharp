@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2014 Aerospike, Inc.
+ * Copyright 2012-2015 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -15,6 +15,7 @@
  * the License.
  */
 using System;
+using System.Threading;
 using Aerospike.Client;
 
 namespace Aerospike.Demo
@@ -48,11 +49,11 @@ namespace Aerospike.Demo
 
 		public void ScanCallback(Key key, Record record)
 		{
-			recordCount++;
+			int count = Interlocked.Increment(ref recordCount);
 
-			if ((recordCount % 10000) == 0)
+			if ((count % 10000) == 0)
 			{
-				console.Info("Records " + recordCount);
+				console.Info("Records " + count);
 			}
 		}
 	}
