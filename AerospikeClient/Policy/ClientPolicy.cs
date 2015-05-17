@@ -58,9 +58,9 @@ namespace Aerospike.Client
 		public int tendInterval = 1000;
 	
 		/// <summary>
-		/// Throw exception if host connection fails during addHost().
+		/// Throw exception if all seed connections fail on cluster instantiation.  Default: true
 		/// </summary>
-		public bool failIfNotConnected;
+		public bool failIfNotConnected = true;
 
 		/// <summary>
 		/// Default read policy that is used when read command's policy is null.

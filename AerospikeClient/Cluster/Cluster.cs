@@ -362,9 +362,9 @@ namespace Aerospike.Client
 				}
 				catch (Exception e)
 				{
-					if (Log.DebugEnabled())
+					if (Log.WarnEnabled())
 					{
-						Log.Debug("Seed " + seed + " failed: " + Util.GetErrorMessage(e));
+						Log.Warn("Seed " + seed + " failed: " + Util.GetErrorMessage(e));
 					}
 					
 					// Store exception and try next host
