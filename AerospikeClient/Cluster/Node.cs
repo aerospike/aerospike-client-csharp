@@ -233,7 +233,7 @@ namespace Aerospike.Client
 				}
 				conn.Close();
 			}
-			conn = new Connection(address, timeoutMillis, cluster.maxSocketIdle);
+			conn = new Connection(address, timeoutMillis, cluster.maxSocketIdleMillis);
 
 			if (cluster.user != null)
 			{

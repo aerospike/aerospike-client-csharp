@@ -37,18 +37,21 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Initial host connection timeout in milliseconds.  The timeout when opening a connection 
 		/// to the server host for the first time.
+		/// Default: 1000ms
 		/// </summary>
 		public int timeout = 1000;
 
 		/// <summary>
 		/// Estimate of incoming threads concurrently using synchronous methods in the client instance.
 		/// This field is used to size the synchronous connection pool for each server node.
+		/// Default: 300
 		/// </summary>
 		public int maxThreads = 300;
 
 		/// <summary>
 		/// Maximum socket idle in seconds.  Socket connection pools will discard sockets
-		/// that have been idle longer than the maximum.
+		/// that have been idle longer than the maximum.  The value is limited to 24 hours (86400).
+		/// Default: 14 seconds
 		/// </summary>
 		public int maxSocketIdle = 14;
 

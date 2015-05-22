@@ -31,16 +31,16 @@ namespace Aerospike.Client
 		private DateTime timestamp;
 
 		public Connection(IPEndPoint address, int timeoutMillis)
-			: this(address, timeoutMillis, 14)
+			: this(address, timeoutMillis, 14000)
 		{
 		}
 
 		/// <summary>
 		/// Create socket with connection timeout.
 		/// </summary>
-		public Connection(IPEndPoint address, int timeoutMillis, int maxSocketIdleSeconds)
+		public Connection(IPEndPoint address, int timeoutMillis, int maxSocketIdleMillis)
 		{
-			this.maxSocketIdleMillis = (double)(maxSocketIdleSeconds * 1000);
+			this.maxSocketIdleMillis = (double)(maxSocketIdleMillis);
 
 			try
 			{
@@ -133,11 +133,6 @@ namespace Aerospike.Client
 				}
 				pos += count;
 			}
-		}
-
-		public bool IsConnected()
-		{
-			return socket.Connected;
 		}
 
 		/// <summary>

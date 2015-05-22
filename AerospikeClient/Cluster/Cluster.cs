@@ -24,6 +24,8 @@ namespace Aerospike.Client
 {
 	public class Cluster
 	{
+		private const int MaxSocketIdleSecondLimit = 60 * 60 * 24; // Limit maxSocketIdle to 24 hours
+	
 		// Initial host nodes specified by user.
 		private volatile Host[] seeds;
 
@@ -57,8 +59,8 @@ namespace Aerospike.Client
 		// Initial connection timeout.
 		protected internal readonly int connectionTimeout;
 
-		// Maximum socket idle in seconds.
-		protected internal readonly int maxSocketIdle;
+		// Maximum socket idle in milliseconds.
+		protected internal readonly int maxSocketIdleMillis;
 
 		// Interval in milliseconds between cluster tends.
 		private readonly int tendInterval;
@@ -94,7 +96,7 @@ namespace Aerospike.Client
 			
 			connectionQueueSize = policy.maxThreads + 1; // Add one connection for tend thread.
 			connectionTimeout = policy.timeout;
-			maxSocketIdle = policy.maxSocketIdle;
+			maxSocketIdleMillis = 1000 * ((policy.maxSocketIdle <= MaxSocketIdleSecondLimit) ? policy.maxSocketIdle : MaxSocketIdleSecondLimit);
 			tendInterval = policy.tendInterval;
 			ipMap = policy.ipMap;
 			requestProleReplicas = policy.requestProleReplicas;

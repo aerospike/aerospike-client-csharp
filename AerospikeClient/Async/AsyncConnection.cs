@@ -32,7 +32,7 @@ namespace Aerospike.Client
 
 		public AsyncConnection(IPEndPoint address, AsyncCluster cluster)
 		{
-			this.maxSocketIdleMillis = (double)(cluster.maxSocketIdle * 1000);
+			this.maxSocketIdleMillis = (double)(cluster.maxSocketIdleMillis);
 
 			try
 			{
