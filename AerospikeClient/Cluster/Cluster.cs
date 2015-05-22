@@ -427,7 +427,7 @@ namespace Aerospike.Client
 				try
 				{
 					NodeValidator nv = new NodeValidator(this, host);
-					Node node = FindNode(nv.name);
+					Node node = FindNode(nv.name, list);
 
 					if (node != null)
 					{
@@ -452,6 +452,29 @@ namespace Aerospike.Client
 				}
 			}
 			return list;
+		}
+
+		private Node FindNode(string nodeName, List<Node> localList)
+		{
+			foreach (Node node in localList)
+			{
+				if (node.Name.Equals(nodeName))
+				{
+					return node;
+				}
+			}
+
+			// Must copy array reference for copy on write semantics to work.
+			Node[] nodeArray = nodes;
+
+			foreach (Node node in nodeArray)
+			{
+				if (node.Name.Equals(nodeName))
+				{
+					return node;
+				}
+			}
+			return null;
 		}
 
 		protected internal virtual Node CreateNode(NodeValidator nv)
