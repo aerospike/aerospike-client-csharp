@@ -151,7 +151,9 @@ namespace Aerospike.Client
 				return FailOnNetworkInit();
 			}
 
-			if (watch != null && (watch.ElapsedMilliseconds + policy.sleepBetweenRetries) > timeout)
+			// Disable sleep between retries.  Sleeping in asynchronous mode makes no sense.
+			//if (watch != null && (watch.ElapsedMilliseconds + policy.sleepBetweenRetries) > timeout)
+			if (watch != null && watch.ElapsedMilliseconds > timeout)
 			{
 				// Might as well stop here because the transaction will
 				// timeout after sleep completed.
@@ -161,10 +163,11 @@ namespace Aerospike.Client
 			// Prepare for retry.
 			ResetConnection();
 
-			if (policy.sleepBetweenRetries > 0)
-			{
-				Util.Sleep(policy.sleepBetweenRetries);
-			}
+			// Disable sleep between retries.  Sleeping in asynchronous mode makes no sense.
+			//if (policy.sleepBetweenRetries > 0)
+			//{
+			//	Util.Sleep(policy.sleepBetweenRetries);
+			//}
 
 			// Retry command recursively.
 			ExecuteCommand();
@@ -400,7 +403,9 @@ namespace Aerospike.Client
 				return;
 			}
 
-			if (watch != null && (watch.ElapsedMilliseconds + policy.sleepBetweenRetries) > timeout)
+			// Disable sleep between retries.  Sleeping in asynchronous mode makes no sense.
+			//if (watch != null && (watch.ElapsedMilliseconds + policy.sleepBetweenRetries) > timeout)
+			if (watch != null && watch.ElapsedMilliseconds > timeout)
 			{
 				// Might as well stop here because the transaction will
 				// timeout after sleep completed.
@@ -411,10 +416,11 @@ namespace Aerospike.Client
 			// Prepare for retry.
 			ResetConnection();
 
-			if (policy.sleepBetweenRetries > 0)
-			{
-				Util.Sleep(policy.sleepBetweenRetries);
-			}
+			// Disable sleep between retries.  Sleeping in asynchronous mode makes no sense.
+			//if (policy.sleepBetweenRetries > 0)
+			//{
+			//	Util.Sleep(policy.sleepBetweenRetries);
+			//}
 
 			try
 			{
