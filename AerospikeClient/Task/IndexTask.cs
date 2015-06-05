@@ -29,19 +29,20 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Initialize task with fields needed to query server nodes.
 		/// </summary>
-		public IndexTask(Cluster cluster, string ns, string indexName) 
-			: base(cluster, false)
+		public IndexTask(Cluster cluster, Policy policy, string ns, string indexName)
+			: base(cluster, policy)
 		{
 			this.ns = ns;
 			this.indexName = indexName;
 		}
 
 		/// <summary>
-		/// Initialize task with fields needed to query server nodes.
+		/// Initialize task that has already completed.
 		/// </summary>
 		public IndexTask() 
-			: base(null, true)
 		{
+			ns = null;
+			indexName = null;
 		}
 
 		/// <summary>
@@ -57,7 +58,7 @@ namespace Aerospike.Client
 			{
 				try
 				{
-					string response = Info.Request(node, command);
+					string response = Info.Request(policy, node, command);
 					string find = "load_pct=";
 					int index = response.IndexOf(find);
     

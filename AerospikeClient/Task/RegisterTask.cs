@@ -28,8 +28,8 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Initialize task with fields needed to query server nodes.
 		/// </summary>
-		public RegisterTask(Cluster cluster, string packageName)
-			: base(cluster, false)
+		public RegisterTask(Cluster cluster, Policy policy, string packageName)
+			: base(cluster, policy)
 		{
 			this.packageName = packageName;
 		}
@@ -45,7 +45,7 @@ namespace Aerospike.Client
 
 			foreach (Node node in nodes)
 			{
-				string response = Info.Request(node, command);
+				string response = Info.Request(policy,  node, command);
 				string find = "filename=" + packageName;
 				int index = response.IndexOf(find);
 

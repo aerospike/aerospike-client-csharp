@@ -27,8 +27,8 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Initialize task with fields needed to query server nodes.
 		/// </summary>
-		public ExecuteTask(Cluster cluster, Statement statement)
-			: base(cluster, false)
+		public ExecuteTask(Cluster cluster, Policy policy, Statement statement)
+			: base(cluster, policy)
 		{
 			this.taskId = statement.taskId;
 			this.scan = statement.filters == null;
@@ -45,7 +45,7 @@ namespace Aerospike.Client
 
 			foreach (Node node in nodes)
 			{
-				string response = Info.Request(node, command);
+				string response = Info.Request(policy, node, command);
 				string find = "job_id=" + taskId + ':';
 				int index = response.IndexOf(find);
 

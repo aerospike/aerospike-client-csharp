@@ -22,17 +22,29 @@ namespace Aerospike.Client
 	public abstract class BaseTask
 	{
 		protected internal readonly Cluster cluster;
+		protected internal readonly InfoPolicy policy;
 		private bool done;
 
 		/// <summary>
 		/// Initialize task with fields needed to query server nodes.
 		/// </summary>
-		public BaseTask(Cluster cluster, bool done)
+		public BaseTask(Cluster cluster, Policy policy)
 		{
 			this.cluster = cluster;
-			this.done = done;
+			this.policy = new InfoPolicy(policy);
+			this.done = false;
 		}
 
+		/// <summary>
+		/// Initialize task that has already completed.
+		/// </summary>
+		public BaseTask()
+		{
+			this.cluster = null;
+			this.policy = null;
+			this.done = true;
+		}
+		
 		/// <summary>
 		/// Wait for asynchronous task to complete using default sleep interval.
 		/// </summary>

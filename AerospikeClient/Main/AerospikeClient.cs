@@ -965,6 +965,10 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if register fails</exception>
 		public RegisterTask Register(Policy policy, string clientPath, string serverPath, Language language)
 		{
+			if (policy == null)
+			{
+				policy = writePolicyDefault;
+			}
 			string content = Util.ReadFileEncodeBase64(clientPath);
 			return RegisterCommand.Register(cluster, policy, content, serverPath, language);
 		}
@@ -986,6 +990,10 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if register fails</exception>
 		public RegisterTask Register(Policy policy, Assembly resourceAssembly, string resourcePath, string serverPath, Language language)
 		{
+			if (policy == null)
+			{
+				policy = writePolicyDefault;
+			}
 			string content;
 			using (Stream stream = resourceAssembly.GetManifestResourceStream(resourcePath))
 			{
@@ -1136,7 +1144,7 @@ namespace Aerospike.Client
 			}
 
 			executor.Execute(nodes.Length);
-			return new ExecuteTask(cluster, statement);
+			return new ExecuteTask(cluster, policy, statement);
 		}
 		
 		//--------------------------------------------------------
@@ -1299,6 +1307,10 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if index create fails</exception>
 		public IndexTask CreateIndex(Policy policy, string ns, string setName, string indexName, string binName, IndexType indexType, IndexCollectionType indexCollectionType)
 		{
+			if (policy == null)
+			{
+				policy = writePolicyDefault;
+			}
 			StringBuilder sb = new StringBuilder(500);
 			sb.Append("sindex-create:ns=");
 			sb.Append(ns);
@@ -1331,7 +1343,7 @@ namespace Aerospike.Client
 			if (response.Equals("OK", StringComparison.CurrentCultureIgnoreCase))
 			{
 				// Return task that could optionally be polled for completion.
-				return new IndexTask(cluster, ns, indexName);
+				return new IndexTask(cluster, policy, ns, indexName);
 			}
 
 			if (response.StartsWith("FAIL:200"))
@@ -1356,6 +1368,10 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if index create fails</exception>
 		public void DropIndex(Policy policy, string ns, string setName, string indexName)
 		{
+			if (policy == null)
+			{
+				policy = writePolicyDefault;
+			}
 			StringBuilder sb = new StringBuilder(500);
 			sb.Append("sindex-delete:ns=");
 			sb.Append(ns);
@@ -1584,8 +1600,7 @@ namespace Aerospike.Client
 		private string SendInfoCommand(Policy policy, string command)
 		{
 			Node node = cluster.GetRandomNode();
-			int timeout = (policy == null) ? 0 : policy.timeout;
-			Connection conn = node.GetConnection(timeout);
+			Connection conn = node.GetConnection(policy.timeout);
 			Info info;
 
 			try

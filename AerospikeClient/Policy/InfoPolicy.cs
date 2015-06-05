@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2014 Aerospike, Inc.
+ * Copyright 2012-2015 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -19,12 +19,36 @@ namespace Aerospike.Client
 	/// <summary>
 	/// Policy attributes used for info commands.
 	/// </summary>
-	public class InfoPolicy
+	public sealed class InfoPolicy
 	{
 		/// <summary>
 		/// Info command socket timeout in milliseconds.
 		/// Default is one second timeout.
 		/// </summary>
-		public int timeout = 1000;
+		public int timeout;
+
+		/// <summary>
+		/// Copy timeout from other InfoPolicy.
+		/// </summary>
+		public InfoPolicy(InfoPolicy other)
+		{
+			this.timeout = other.timeout;
+		}
+
+		/// <summary>
+		/// Copy timeout from generic Policy to InfoPolicy.
+		/// </summary>
+		public InfoPolicy(Policy other)
+		{
+			this.timeout = other.timeout;
+		}
+
+		/// <summary>
+		/// Default constructor.  Default is one second timeout.
+		/// </summary>
+		public InfoPolicy()
+		{
+			timeout = 1000;
+		}
 	}
 }
