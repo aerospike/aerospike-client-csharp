@@ -448,6 +448,20 @@ namespace Aerospike.Client
 			{
 				return null;
 			}
+
+			public override bool Equals(object other)
+			{
+				if (other == null)
+				{
+					return true;
+				}
+				return this.GetType().Equals(other.GetType());
+			}
+
+			public override int GetHashCode()
+			{
+				return 0;
+			}
 		}
 
 		/// <summary>
@@ -496,6 +510,18 @@ namespace Aerospike.Client
 			public override string ToString()
 			{
 				return value;
+			}
+
+			public override bool Equals(object other)
+			{
+				return (other != null && 
+					this.GetType().Equals(other.GetType()) && 
+					this.value.Equals(((StringValue)other).value));
+			}
+
+			public override int GetHashCode()
+			{
+				return value.GetHashCode();
 			}
 		}
 
@@ -546,6 +572,23 @@ namespace Aerospike.Client
 			public override string ToString()
 			{
 				return ByteUtil.BytesToHexString(bytes);
+			}
+
+			public override bool Equals(object other)
+			{
+				return (other != null &&
+					this.GetType().Equals(other.GetType()) &&
+					Util.ByteArrayEquals(this.bytes, ((BytesValue)other).bytes));
+			}
+
+			public override int GetHashCode()
+			{
+				int result = 1;
+				foreach (byte b in bytes)
+				{
+					result = 31 * result + b;
+				}
+				return result;
 			}
 		}
 
@@ -600,6 +643,44 @@ namespace Aerospike.Client
 			public override string ToString()
 			{
 				return ByteUtil.BytesToHexString(bytes, offset, length);
+			}
+
+			public override bool Equals(object obj)
+			{
+				if (obj == null)
+				{
+					return false;
+				}
+
+				if (!this.GetType().Equals(obj.GetType()))
+				{
+					return false;
+				}
+				ByteSegmentValue other = (ByteSegmentValue)obj;
+
+				if (this.length != other.length)
+				{
+					return false;
+				}
+
+				for (int i = 0; i < length; i++)
+				{
+					if (this.bytes[this.offset + i] != other.bytes[other.offset + i])
+					{
+						return false;
+					}
+				}
+				return true;
+			}
+
+			public override int GetHashCode()
+			{
+				int result = 1;
+				for (int i = 0; i < length; i++)
+				{
+					result = 31 * result + bytes[offset + i];
+				}
+				return result;
 			}
 
 			public byte[] Bytes
@@ -676,6 +757,19 @@ namespace Aerospike.Client
 				return Convert.ToString(value);
 			}
 
+			public override bool Equals(object other)
+			{
+				return (other != null &&
+					this.GetType().Equals(other.GetType()) && 
+					this.value == ((DoubleValue)other).value);
+			}
+
+			public override int GetHashCode()
+			{
+				ulong bits = (ulong)BitConverter.DoubleToInt64Bits(value);
+				return (int)(bits ^ (bits >> 32));
+			}
+
 			public override int ToInteger()
 			{
 				return (int)value;
@@ -744,6 +838,19 @@ namespace Aerospike.Client
 			public override string ToString()
 			{
 				return Convert.ToString(value);
+			}
+
+			public override bool Equals(object other)
+			{
+				return (other != null &&
+					this.GetType().Equals(other.GetType()) &&
+					this.value == ((FloatValue)other).value);
+			}
+
+			public override int GetHashCode()
+			{
+				ulong bits = (ulong)BitConverter.DoubleToInt64Bits(value);
+				return (int)(bits ^ (bits >> 32));
 			}
 
 			public override int ToInteger()
@@ -815,6 +922,18 @@ namespace Aerospike.Client
 				return Convert.ToString(value);
 			}
 
+			public override bool Equals(object other)
+			{
+				return (other != null &&
+					this.GetType().Equals(other.GetType()) &&
+					this.value == ((LongValue)other).value);
+			}
+
+			public override int GetHashCode()
+			{
+				return (int)((ulong)value ^ ((ulong)value >> 32));
+			}
+
 			public override int ToInteger()
 			{
 				return (int)value;
@@ -882,6 +1001,18 @@ namespace Aerospike.Client
 			public override string ToString()
 			{
 				return Convert.ToString(value);
+			}
+
+			public override bool Equals(object other)
+			{
+				return (other != null &&
+					this.GetType().Equals(other.GetType()) &&
+					this.value == ((UnsignedLongValue)other).value);
+			}
+
+			public override int GetHashCode()
+			{
+				return (int)(value ^ (value >> 32));
 			}
 
 			public override int ToInteger()
@@ -952,7 +1083,19 @@ namespace Aerospike.Client
 			{
 				return Convert.ToString(value);
 			}
-		
+
+			public override bool Equals(object other)
+			{
+				return (other != null &&
+					this.GetType().Equals(other.GetType()) &&
+					this.value == ((IntegerValue)other).value);
+			}
+
+			public override int GetHashCode()
+			{
+				return value;
+			}
+
 			public override int ToInteger()
 			{
 				return value;
@@ -1020,6 +1163,18 @@ namespace Aerospike.Client
 			public override string ToString()
 			{
 				return Convert.ToString(value);
+			}
+
+			public override bool Equals(object other)
+			{
+				return (other != null &&
+					this.GetType().Equals(other.GetType()) &&
+					this.value == ((UnsignedIntegerValue)other).value);
+			}
+
+			public override int GetHashCode()
+			{
+				return (int)value;
 			}
 
 			public override int ToInteger()
@@ -1091,6 +1246,18 @@ namespace Aerospike.Client
 				return Convert.ToString(value);
 			}
 
+			public override bool Equals(object other)
+			{
+				return (other != null &&
+					this.GetType().Equals(other.GetType()) &&
+					this.value == ((ShortValue)other).value);
+			}
+
+			public override int GetHashCode()
+			{
+				return (int)value;
+			}
+
 			public override int ToInteger()
 			{
 				return value;
@@ -1158,6 +1325,18 @@ namespace Aerospike.Client
 			public override string ToString()
 			{
 				return Convert.ToString(value);
+			}
+
+			public override bool Equals(object other)
+			{
+				return (other != null &&
+					this.GetType().Equals(other.GetType()) &&
+					this.value == ((UnsignedShortValue)other).value);
+			}
+
+			public override int GetHashCode()
+			{
+				return (int)value;
 			}
 
 			public override int ToInteger()
@@ -1230,6 +1409,18 @@ namespace Aerospike.Client
 				return Convert.ToString(value);
 			}
 
+			public override bool Equals(object other)
+			{
+				return (other != null &&
+					this.GetType().Equals(other.GetType()) &&
+					this.value == ((BooleanValue)other).value);
+			}
+
+			public override int GetHashCode()
+			{
+				return value ? 1231 : 1237;
+			}
+
 			public override int ToInteger()
 			{
 				return value? 1 : 0;
@@ -1300,6 +1491,18 @@ namespace Aerospike.Client
 				return Convert.ToString(value);
 			}
 
+			public override bool Equals(object other)
+			{
+				return (other != null &&
+					this.GetType().Equals(other.GetType()) &&
+					this.value == ((ByteValue)other).value);
+			}
+
+			public override int GetHashCode()
+			{
+				return (int)value;
+			}
+
 			public override int ToInteger()
 			{
 				return value;
@@ -1368,6 +1571,18 @@ namespace Aerospike.Client
 			public override string ToString()
 			{
 				return Convert.ToString(value);
+			}
+
+			public override bool Equals(object other)
+			{
+				return (other != null &&
+					this.GetType().Equals(other.GetType()) &&
+					this.value == ((SignedByteValue)other).value);
+			}
+
+			public override int GetHashCode()
+			{
+				return (int)value;
 			}
 
 			public override int ToInteger()
@@ -1452,6 +1667,18 @@ namespace Aerospike.Client
 			{
 				return ByteUtil.BytesToHexString(bytes);
 			}
+
+			public override bool Equals(object other)
+			{
+				return (other != null &&
+					this.GetType().Equals(other.GetType()) &&
+					this.obj.Equals(((BlobValue)other).obj));
+			}
+
+			public override int GetHashCode()
+			{
+				return obj.GetHashCode();
+			}
 		}
 
 		/// <summary>
@@ -1509,6 +1736,56 @@ namespace Aerospike.Client
 			public override string ToString()
 			{
 				return Util.ArrayToString(array);
+			}
+
+			public override bool Equals(object obj)
+			{
+				if (obj == null)
+				{
+					return false;
+				}
+
+				if (!this.GetType().Equals(obj.GetType()))
+				{
+					return false;
+				}
+				ValueArray other = (ValueArray)obj;
+
+				if (this.array.Length != other.array.Length)
+				{
+					return false;
+				}
+
+				for (int i = 0; i < this.array.Length; i++)
+				{
+					Value v1 = this.array[i];
+					Value v2 = other.array[i];
+
+					if (v1 == null)
+					{
+						if (v2 == null)
+						{
+							continue;
+						}
+						return false;
+					}
+
+					if (!v1.Equals(v2))
+					{
+						return false;
+					}
+				}
+				return true;
+			}
+
+			public override int GetHashCode()
+			{
+				int result = 1;
+				foreach (Value value in array)
+				{
+					result = 31 * result + (value == null ? 0 : value.GetHashCode());
+				}
+				return result;
 			}
 		}
 
@@ -1568,6 +1845,56 @@ namespace Aerospike.Client
 			{
 				return list.ToString();
 			}
+
+			public override bool Equals(object obj)
+			{
+				if (obj == null)
+				{
+					return false;
+				}
+
+				if (!this.GetType().Equals(obj.GetType()))
+				{
+					return false;
+				}
+				ListValue other = (ListValue)obj;
+
+				if (this.list.Count != other.list.Count)
+				{
+					return false;
+				}
+
+				for (int i = 0; i < this.list.Count; i++)
+				{
+					object v1 = this.list[i];
+					object v2 = other.list[i];
+
+					if (v1 == null)
+					{
+						if (v2 == null)
+						{
+							continue;
+						}
+						return false;
+					}
+
+					if (!v1.Equals(v2))
+					{
+						return false;
+					}
+				}
+				return true;
+			}
+
+			public override int GetHashCode()
+			{
+				int result = 1;
+				foreach (object value in list)
+				{
+					result = 31 * result + (value == null ? 0 : value.GetHashCode());
+				}
+				return result;
+			}
 		}
 
 		/// <summary>
@@ -1625,6 +1952,64 @@ namespace Aerospike.Client
 			public override string ToString()
 			{
 				return map.ToString();
+			}
+
+			public override bool Equals(object obj)
+			{
+				if (obj == null)
+				{
+					return false;
+				}
+
+				if (!this.GetType().Equals(obj.GetType()))
+				{
+					return false;
+				}
+				MapValue other = (MapValue)obj;
+
+				if (this.map.Count != other.map.Count)
+				{
+					return false;
+				}
+
+				try
+				{
+					foreach (DictionaryEntry entry in this.map)
+					{
+						object v1 = entry.Value;
+						object v2 = other.map[entry.Key];
+
+						if (v1 == null)
+						{
+							if (v2 == null)
+							{
+								continue;
+							}
+							return false;
+						}
+
+						if (!v1.Equals(v2))
+						{
+							return false;
+						}
+					}
+					return true;
+				}
+				catch (Exception)
+				{
+					return false;
+				}
+			}
+
+			public override int GetHashCode()
+			{
+				int result = 1;
+				foreach (DictionaryEntry entry in map)
+				{
+					result = 31 * result + (entry.Key == null ? 0 : entry.Key.GetHashCode());
+					result = 31 * result + (entry.Value == null ? 0 : entry.Value.GetHashCode());
+				}
+				return result;
 			}
 		}
 	}
