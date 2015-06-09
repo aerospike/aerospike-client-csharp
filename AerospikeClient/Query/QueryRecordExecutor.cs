@@ -33,7 +33,7 @@ namespace Aerospike.Client
 			StartThreads();
 		}
 
-		protected internal override QueryCommand CreateCommand(Node node)
+		protected internal override MultiCommand CreateCommand(Node node)
 		{
 			return new QueryRecordCommand(node, policy, statement, recordSet);
 		}

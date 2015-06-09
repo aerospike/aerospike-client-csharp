@@ -24,6 +24,7 @@ namespace Aerospike.Client
 		// Flags commented out are not supported by this client.
 		public static readonly int INFO1_READ            = (1 << 0); // Contains a read operation.
 		public static readonly int INFO1_GET_ALL         = (1 << 1); // Get all bins.
+		public static readonly int INFO1_BATCH           = (1 << 3); // Batch read or exists.
 		public static readonly int INFO1_NOBINDATA       = (1 << 5); // Do not read the bins.
 		public static readonly int INFO1_CONSISTENCY_ALL = (1 << 6); // Involve all replicas in read operation.
 
@@ -219,99 +220,215 @@ namespace Aerospike.Client
 			End();
 		}
 
-		public void SetBatchExists(Policy policy, Key[] keys)
+		public void SetBatchRead(Policy policy, List<BatchRecord> records, BatchNode batch)
 		{
-			// Estimate buffer size
-			string ns = keys[0].ns;
+			// Estimate full row size
+			int[] offsets = batch.offsets;
+			int max = batch.offsetsSize;
+			BatchRecord prev = null;
+
 			Begin();
-			int byteSize = keys.Length * Command.DIGEST_SIZE;
+			dataOffset += FIELD_HEADER_SIZE + 4;
 
-			dataOffset += ByteUtil.EstimateSizeUtf8(ns) + FIELD_HEADER_SIZE + byteSize + FIELD_HEADER_SIZE;
+			for (int i = 0; i < max; i++)
+			{
+				BatchRecord record = records[offsets[i]];
+				Key key = record.key;
+				string[] binNames = record.binNames;
 
+				dataOffset += key.digest.Length + 4;
+
+				// Avoid relatively expensive full equality checks for performance reasons.
+				// Use reference equality only in hope that common namespaces/bin names are set from 
+				// fixed variables.  It's fine if equality not determined correctly because it just 
+				// results in more space used. The batch will still be correct.
+				if (prev != null && prev.key.ns == key.ns && prev.binNames == binNames && prev.readAllBins == record.readAllBins)
+				{
+					// Can set repeat previous namespace/bin names to save space.
+					dataOffset++;
+				}
+				else
+				{
+					// Estimate full header, namespace and bin names.
+					dataOffset += ByteUtil.EstimateSizeUtf8(key.ns) + FIELD_HEADER_SIZE + 6;
+
+					if (binNames != null)
+					{
+						foreach (string binName in binNames)
+						{
+							EstimateOperationSize(binName);
+						}
+					}
+					prev = record;
+				}
+			}
 			SizeBuffer();
 
-			WriteHeader(policy, Command.INFO1_READ | Command.INFO1_NOBINDATA, 0, 2, 0);
-			WriteField(ns, FieldType.NAMESPACE);
-			WriteFieldHeader(byteSize, FieldType.DIGEST_RIPE_ARRAY);
+			WriteHeader(policy, Command.INFO1_READ | Command.INFO1_BATCH, 0, 1, 0);
+			int fieldSizeOffset = dataOffset;
+			WriteFieldHeader(0, FieldType.BATCH_INDEX); // Need to update size at end
 
-			foreach (Key key in keys)
+			ByteUtil.IntToBytes((uint)max, dataBuffer, dataOffset);
+			dataOffset += 4;
+			prev = null;
+
+			for (int i = 0; i < max; i++)
 			{
+				int index = offsets[i];
+				ByteUtil.IntToBytes((uint)index, dataBuffer, dataOffset);
+				dataOffset += 4;
+
+				BatchRecord record = records[index];
+				Key key = record.key;
+				string[] binNames = record.binNames;
 				byte[] digest = key.digest;
 				Array.Copy(digest, 0, dataBuffer, dataOffset, digest.Length);
 				dataOffset += digest.Length;
+
+				// Avoid relatively expensive full equality checks for performance reasons.
+				// Use reference equality only in hope that common namespaces/bin names are set from 
+				// fixed variables.  It's fine if equality not determined correctly because it just 
+				// results in more space used. The batch will still be correct.		
+				if (prev != null && prev.key.ns == key.ns && prev.binNames == binNames && prev.readAllBins == record.readAllBins)
+				{
+					// Can set repeat previous namespace/bin names to save space.
+					dataBuffer[dataOffset++] = 1; // repeat
+				}
+				else
+				{
+					// Write full header, namespace and bin names.
+					dataBuffer[dataOffset++] = 0; // do not repeat
+
+					if (binNames != null && binNames.Length != 0)
+					{
+						dataBuffer[dataOffset++] = (byte)Command.INFO1_READ;
+						dataBuffer[dataOffset++] = 0; // pad
+						dataBuffer[dataOffset++] = 0; // pad
+						ByteUtil.ShortToBytes((ushort)binNames.Length, dataBuffer, dataOffset);
+						dataOffset += 2;
+						WriteField(key.ns, FieldType.NAMESPACE);
+
+						foreach (string binName in binNames)
+						{
+							WriteOperation(binName, Operation.Type.READ);
+						}
+					}
+					else
+					{
+						dataBuffer[dataOffset++] = (byte)(Command.INFO1_READ | (record.readAllBins ? Command.INFO1_GET_ALL : Command.INFO1_NOBINDATA));
+						dataBuffer[dataOffset++] = 0; // pad
+						dataBuffer[dataOffset++] = 0; // pad
+						ByteUtil.ShortToBytes(0, dataBuffer, dataOffset);
+						dataOffset += 2;
+						WriteField(key.ns, FieldType.NAMESPACE);
+					}
+					prev = record;
+				}
 			}
+
+			// Write real field size.
+			ByteUtil.IntToBytes((uint)(dataOffset - MSG_TOTAL_HEADER_SIZE - 4), dataBuffer, fieldSizeOffset);
 			End();
 		}
 
-		public void SetBatchExists(Policy policy, Key[] keys, BatchNode.BatchNamespace batch)
+		public void SetBatchRead(Policy policy, Key[] keys, BatchNode batch, string[] binNames, int readAttr)
 		{
-			// Estimate buffer size
-			Begin();
-			int byteSize = batch.offsetsSize * SyncCommand.DIGEST_SIZE;
-
-			dataOffset +=  ByteUtil.EstimateSizeUtf8(batch.ns) + FIELD_HEADER_SIZE + byteSize + FIELD_HEADER_SIZE;
-    
-			SizeBuffer();
-    
-			WriteHeader(policy, Command.INFO1_READ | Command.INFO1_NOBINDATA, 0, 2, 0);
-			WriteField(batch.ns, FieldType.NAMESPACE);
-			WriteFieldHeader(byteSize, FieldType.DIGEST_RIPE_ARRAY);
-
+			// Estimate full row size
 			int[] offsets = batch.offsets;
 			int max = batch.offsetsSize;
+			int rowSize = 30 + FIELD_HEADER_SIZE + 31; // Row's header(30) + max namespace(31).
+			int operationCount = 0;
+
+			if (binNames != null)
+			{
+				foreach (string binName in binNames)
+				{
+					EstimateOperationSize(binName);
+				}
+				rowSize += dataOffset;
+				operationCount = binNames.Length;
+			}
+
+			// Estimate buffer size.
+			Begin();
+			dataOffset += FIELD_HEADER_SIZE + 4;
+
+			string prevNamespace = null;
 
 			for (int i = 0; i < max; i++)
 			{
 				Key key = keys[offsets[i]];
-				byte[] digest = key.digest;
-				Array.Copy(digest, 0, dataBuffer, dataOffset, digest.Length);
-				dataOffset += digest.Length;
-			}
-			End();
-		}
 
-		public void SetBatchGet(Policy policy, Key[] keys, HashSet<string> binNames, int readAttr)
-		{
-			// Estimate buffer size
-			string ns = keys[0].ns;
-			Begin();
-			int byteSize = keys.Length * SyncCommand.DIGEST_SIZE;
-
-			dataOffset += ByteUtil.EstimateSizeUtf8(ns) + FIELD_HEADER_SIZE + byteSize + FIELD_HEADER_SIZE;
-
-			if (binNames != null)
-			{
-				foreach (string binName in binNames)
+				// Try reference equality in hope that namespace for all keys is set from a fixed variable.
+				if (key.ns == prevNamespace || (prevNamespace != null && prevNamespace.Equals(key.ns)))
 				{
-					EstimateOperationSize(binName);
+					// Can set repeat previous namespace/bin names to save space.
+					dataOffset += 25;
+				}
+				else
+				{
+					// Must write full header and namespace/bin names.
+					dataOffset += rowSize;
+					prevNamespace = key.ns;
 				}
 			}
 
 			SizeBuffer();
 
-			int operationCount = (binNames == null) ? 0 : binNames.Count;
-			WriteHeader(policy, readAttr, 0, 2, operationCount);
-			WriteField(ns, FieldType.NAMESPACE);
-			WriteFieldHeader(byteSize, FieldType.DIGEST_RIPE_ARRAY);
+			WriteHeader(policy, readAttr | Command.INFO1_BATCH, 0, 1, 0);
+			int fieldSizeOffset = dataOffset;
+			WriteFieldHeader(0, FieldType.BATCH_INDEX); // Need to update size at end
 
-			foreach (Key key in keys)
+			ByteUtil.IntToBytes((uint)max, dataBuffer, dataOffset);
+			dataOffset += 4;
+
+			prevNamespace = null;
+
+			for (int i = 0; i < max; i++)
 			{
+				int index = offsets[i];
+				ByteUtil.IntToBytes((uint)index, dataBuffer, dataOffset);
+				dataOffset += 4;
+
+				Key key = keys[index];
 				byte[] digest = key.digest;
 				Array.Copy(digest, 0, dataBuffer, dataOffset, digest.Length);
 				dataOffset += digest.Length;
-			}
 
-			if (binNames != null)
-			{
-				foreach (string binName in binNames)
+				// Try reference equality in hope that namespace for all keys is set from a fixed variable.
+				if (key.ns == prevNamespace || (prevNamespace != null && prevNamespace.Equals(key.ns)))
 				{
-					WriteOperation(binName, Operation.Type.READ);
+					// Can set repeat previous namespace/bin names to save space.
+					dataBuffer[dataOffset++] = 1; // repeat
+				}
+				else
+				{
+					// Write full header, namespace and bin names.
+					dataBuffer[dataOffset++] = 0; // do not repeat
+					dataBuffer[dataOffset++] = (byte)readAttr;
+					dataBuffer[dataOffset++] = 0; // pad
+					dataBuffer[dataOffset++] = 0; // pad
+					ByteUtil.ShortToBytes((ushort)operationCount, dataBuffer, dataOffset);
+					dataOffset += 2;
+					WriteField(key.ns, FieldType.NAMESPACE);
+
+					if (binNames != null)
+					{
+						foreach (string binName in binNames)
+						{
+							WriteOperation(binName, Operation.Type.READ);
+						}
+					}
+					prevNamespace = key.ns;
 				}
 			}
+
+			// Write real field size.
+			ByteUtil.IntToBytes((uint)(dataOffset - MSG_TOTAL_HEADER_SIZE - 4), dataBuffer, fieldSizeOffset);
 			End();
 		}
 
-		public void SetBatchGet(Policy policy, Key[] keys, BatchNode.BatchNamespace batch, HashSet<string> binNames, int readAttr)
+		public void SetBatchReadDirect(Policy policy, Key[] keys, BatchNode.BatchNamespace batch, string[] binNames, int readAttr)
 		{
 			// Estimate buffer size
 			Begin();
@@ -329,7 +446,7 @@ namespace Aerospike.Client
 
 			SizeBuffer();
 
-			int operationCount = (binNames == null)? 0 : binNames.Count;
+			int operationCount = (binNames == null)? 0 : binNames.Length;
 			WriteHeader(policy, readAttr, 0, 2, operationCount);
 			WriteField(batch.ns, FieldType.NAMESPACE);
 			WriteFieldHeader(byteSize, FieldType.DIGEST_RIPE_ARRAY);
@@ -430,6 +547,211 @@ namespace Aerospike.Client
 				foreach (String binName in binNames)
 				{
 					WriteOperation(binName, Operation.Type.READ);
+				}
+			}
+			End();
+		}
+
+		protected internal void SetQuery(Policy policy, Statement statement, bool write)
+		{
+			byte[] functionArgBuffer = null;
+			int fieldCount = 0;
+			int filterSize = 0;
+			int binNameSize = 0;
+
+			Begin();
+
+			if (statement.ns != null)
+			{
+				dataOffset += ByteUtil.EstimateSizeUtf8(statement.ns) + FIELD_HEADER_SIZE;
+				fieldCount++;
+			}
+
+			if (statement.indexName != null)
+			{
+				dataOffset += ByteUtil.EstimateSizeUtf8(statement.indexName) + FIELD_HEADER_SIZE;
+				fieldCount++;
+			}
+
+			if (statement.setName != null)
+			{
+				dataOffset += ByteUtil.EstimateSizeUtf8(statement.setName) + FIELD_HEADER_SIZE;
+				fieldCount++;
+			}
+
+			// Allocate space for TaskId field.
+			dataOffset += 8 + FIELD_HEADER_SIZE;
+			fieldCount++;
+
+			if (statement.filters != null)
+			{
+				if (statement.filters.Length >= 1)
+				{
+					IndexCollectionType type = statement.filters[0].CollectionType;
+
+					if (type != IndexCollectionType.DEFAULT)
+					{
+						dataOffset += FIELD_HEADER_SIZE + 1;
+						fieldCount++;
+					}
+				}
+
+				dataOffset += FIELD_HEADER_SIZE;
+				filterSize++; // num filters
+
+				foreach (Filter filter in statement.filters)
+				{
+					filterSize += filter.EstimateSize();
+				}
+				dataOffset += filterSize;
+				fieldCount++;
+
+				// Query bin names are specified as a field (Scan bin names are specified later as operations)
+				if (statement.binNames != null)
+				{
+					dataOffset += FIELD_HEADER_SIZE;
+					binNameSize++; // num bin names
+
+					foreach (string binName in statement.binNames)
+					{
+						binNameSize += ByteUtil.EstimateSizeUtf8(binName) + 1;
+					}
+					dataOffset += binNameSize;
+					fieldCount++;
+				}
+			}
+			else
+			{
+				// Calling query with no filters is more efficiently handled by a primary index scan. 
+				// Estimate scan options size.
+				dataOffset += 2 + FIELD_HEADER_SIZE;
+				fieldCount++;
+			}
+
+			if (statement.functionName != null)
+			{
+				dataOffset += FIELD_HEADER_SIZE + 1; // udf type
+				dataOffset += ByteUtil.EstimateSizeUtf8(statement.packageName) + FIELD_HEADER_SIZE;
+				dataOffset += ByteUtil.EstimateSizeUtf8(statement.functionName) + FIELD_HEADER_SIZE;
+
+				if (statement.functionArgs.Length > 0)
+				{
+					functionArgBuffer = Packer.Pack(statement.functionArgs);
+				}
+				else
+				{
+					functionArgBuffer = new byte[0];
+				}
+				dataOffset += FIELD_HEADER_SIZE + functionArgBuffer.Length;
+				fieldCount += 4;
+			}
+
+			if (statement.filters == null)
+			{
+				if (statement.binNames != null)
+				{
+					foreach (string binName in statement.binNames)
+					{
+						EstimateOperationSize(binName);
+					}
+				}
+			}
+
+			SizeBuffer();
+			int operationCount = (statement.filters == null && statement.binNames != null) ? statement.binNames.Length : 0;
+
+			if (write)
+			{
+				WriteHeader((WritePolicy)policy, Command.INFO1_READ, Command.INFO2_WRITE, fieldCount, operationCount);
+			}
+			else
+			{
+				WriteHeader(policy, Command.INFO1_READ, 0, fieldCount, operationCount);
+			}
+
+			if (statement.ns != null)
+			{
+				WriteField(statement.ns, FieldType.NAMESPACE);
+			}
+
+			if (statement.indexName != null)
+			{
+				WriteField(statement.indexName, FieldType.INDEX_NAME);
+			}
+
+			if (statement.setName != null)
+			{
+				WriteField(statement.setName, FieldType.TABLE);
+			}
+
+			// Write taskId field
+			WriteFieldHeader(8, FieldType.TRAN_ID);
+			ByteUtil.LongToBytes((ulong)statement.taskId, dataBuffer, dataOffset);
+			dataOffset += 8;
+
+			if (statement.filters != null)
+			{
+				if (statement.filters.Length >= 1)
+				{
+					IndexCollectionType type = statement.filters[0].CollectionType;
+
+					if (type != IndexCollectionType.DEFAULT)
+					{
+						WriteFieldHeader(1, FieldType.INDEX_TYPE);
+						dataBuffer[dataOffset++] = (byte)type;
+					}
+				}
+
+				WriteFieldHeader(filterSize, FieldType.INDEX_RANGE);
+				dataBuffer[dataOffset++] = (byte)statement.filters.Length;
+
+				foreach (Filter filter in statement.filters)
+				{
+					dataOffset = filter.Write(dataBuffer, dataOffset);
+				}
+
+				// Query bin names are specified as a field (Scan bin names are specified later as operations)
+				if (statement.binNames != null)
+				{
+					WriteFieldHeader(binNameSize, FieldType.QUERY_BINLIST);
+					dataBuffer[dataOffset++] = (byte)statement.binNames.Length;
+
+					foreach (string binName in statement.binNames)
+					{
+						int len = ByteUtil.StringToUtf8(binName, dataBuffer, dataOffset + 1);
+						dataBuffer[dataOffset] = (byte)len;
+						dataOffset += len + 1;
+					}
+				}
+			}
+			else
+			{
+				// Calling query with no filters is more efficiently handled by a primary index scan. 
+				WriteFieldHeader(2, FieldType.SCAN_OPTIONS);
+				byte priority = (byte)policy.priority;
+				priority <<= 4;
+				dataBuffer[dataOffset++] = priority;
+				dataBuffer[dataOffset++] = (byte)100;
+			}
+
+			if (statement.functionName != null)
+			{
+				WriteFieldHeader(1, FieldType.UDF_OP);
+				dataBuffer[dataOffset++] = (statement.returnData) ? (byte)1 : (byte)2;
+				WriteField(statement.packageName, FieldType.UDF_PACKAGE_NAME);
+				WriteField(statement.functionName, FieldType.UDF_FUNCTION);
+				WriteField(functionArgBuffer, FieldType.UDF_ARGLIST);
+			}
+
+			// Scan bin names are specified after all fields.
+			if (statement.filters == null)
+			{
+				if (statement.binNames != null)
+				{
+					foreach (string binName in statement.binNames)
+					{
+						WriteOperation(binName, Operation.Type.READ);
+					}
 				}
 			}
 			End();

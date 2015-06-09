@@ -41,14 +41,18 @@ namespace Aerospike.Client
 				throw new AerospikeException(ResultCode.SERVER_NOT_AVAILABLE, "Scan failed because cluster is empty.");
 			}
 			
-			completedSize = nodes.Length;
 			long taskId = Environment.TickCount;
+
+			// Create commands.
+			AsyncScan[] tasks = new AsyncScan[nodes.Length];
+			int count = 0;
 
 			foreach (Node node in nodes)
 			{
-				AsyncScan async = new AsyncScan(this, cluster, (AsyncNode)node, policy, listener, ns, setName, binNames, taskId);
-				async.Execute();
+				tasks[count++] = new AsyncScan(this, cluster, (AsyncNode)node, policy, listener, ns, setName, binNames, taskId);
 			}
+			// Dispatch commands to nodes.
+			Execute(tasks, policy.maxConcurrentNodes);
 		}
 
 		protected internal override void OnSuccess()

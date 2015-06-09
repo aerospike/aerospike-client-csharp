@@ -15,6 +15,7 @@
  * the License.
  */
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Net;
 using System.Net.Sockets;
@@ -27,11 +28,19 @@ namespace Aerospike.Client
 
 		private BufferedStream bis;
 		protected internal readonly Node node;
+		protected internal int resultCode;
+		protected internal int generation;
+		protected internal int expiration;
+		protected internal int batchIndex;
+		protected internal int fieldCount;
+		protected internal int opCount;
+		private readonly bool stopOnNotFound;
 		protected internal volatile bool valid = true;
 
-		protected internal MultiCommand(Node node)
+		protected internal MultiCommand(Node node, bool stopOnNotFound)
 		{
 			this.node = node;
+			this.stopOnNotFound = stopOnNotFound;
 		}
 
 		protected internal sealed override Node GetNode()
@@ -58,11 +67,58 @@ namespace Aerospike.Client
 
 				if (receiveSize > 0)
 				{
-					status = ParseRecordResults(receiveSize);
+					status = ParseGroup(receiveSize);
 				}
 			}
 		}
 
+		private bool ParseGroup(int receiveSize)
+		{
+			//Parse each message response and add it to the result array
+			dataOffset = 0;
+
+			while (dataOffset < receiveSize)
+			{
+				ReadBytes(MSG_REMAINING_HEADER_SIZE);
+				resultCode = dataBuffer[5] & 0xFF;
+
+				// The only valid server return codes are "ok" and "not found".
+				// If other return codes are received, then abort the batch.
+				if (resultCode != 0)
+				{
+					if (resultCode == ResultCode.KEY_NOT_FOUND_ERROR)
+					{
+						if (stopOnNotFound)
+						{
+							return false;
+						}
+					}
+					else
+					{
+						throw new AerospikeException(resultCode);
+					}
+				}
+
+				byte info3 = dataBuffer[3];
+
+				// If this is the end marker of the response, do not proceed further
+				if ((info3 & Command.INFO3_LAST) == Command.INFO3_LAST)
+				{
+					return false;
+				}
+
+				generation = ByteUtil.BytesToInt(dataBuffer, 6);
+				expiration = ByteUtil.BytesToInt(dataBuffer, 10);
+				batchIndex = ByteUtil.BytesToInt(dataBuffer, 14);
+				fieldCount = ByteUtil.BytesToShort(dataBuffer, 18);
+				opCount = ByteUtil.BytesToShort(dataBuffer, 20);
+
+				Key key = ParseKey(fieldCount);
+				ParseRow(key);
+			}
+			return true;
+		}
+		
 		protected internal Key ParseKey(int fieldCount)
 		{
 			byte[] digest = null;
@@ -101,6 +157,33 @@ namespace Aerospike.Client
 			return new Key(ns, digest, setName, userKey);
 		}
 
+		protected internal Record ParseRecord()
+		{
+			Dictionary<string, object> bins = null;
+
+			for (int i = 0; i < opCount; i++)
+			{
+				ReadBytes(8);
+				int opSize = ByteUtil.BytesToInt(dataBuffer, 0);
+				byte particleType = dataBuffer[5];
+				byte nameSize = dataBuffer[7];
+
+				ReadBytes(nameSize);
+				string name = ByteUtil.Utf8ToString(dataBuffer, 0, nameSize);
+
+				int particleBytesSize = (int)(opSize - (4 + nameSize));
+				ReadBytes(particleBytesSize);
+				object value = ByteUtil.BytesToParticle(particleType, dataBuffer, 0, particleBytesSize);
+
+				if (bins == null)
+				{
+					bins = new Dictionary<string, object>();
+				}
+				bins[name] = value;
+			}
+			return new Record(bins, generation, expiration);
+		}
+		
 		protected internal void ReadBytes(int length)
 		{
 			if (length > dataBuffer.Length)
@@ -139,6 +222,6 @@ namespace Aerospike.Client
 			return valid;
 		}
 
-		protected internal abstract bool ParseRecordResults(int receiveSize);
+		protected internal abstract void ParseRow(Key key);
 	}
 }

@@ -14,6 +14,8 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
+using System;
+using System.Collections.Generic;
 using Aerospike.Client;
 
 namespace Aerospike.Demo
@@ -38,6 +40,26 @@ namespace Aerospike.Demo
 			BatchExists(client, args, keyPrefix, size);
 			BatchReads(client, args, keyPrefix, binName, size);
 			BatchReadHeaders(client, args, keyPrefix, size);
+
+			try
+			{
+				BatchReadComplex(client, args, keyPrefix, binName);
+			}
+			catch (Exception ex)
+			{
+				// Server version may not yet support new batch protocol.
+				Node[] nodes = client.Nodes;
+
+				foreach (Node node in nodes)
+				{
+					if (!node.HasBatchIndex)
+					{
+						Log.Warn("Server does not support new batch protocol");
+						return;
+					}
+				}
+				throw ex;
+			}
 		}
 
 		/// <summary>
@@ -151,6 +173,59 @@ namespace Aerospike.Demo
 			if (records.Length != size)
 			{
 				console.Error("Record size mismatch. Expected %d. Received %d.", size, records.Length);
+			}
+		}
+
+		/// <summary>
+		/// Read records with varying namespaces, bin names and read types in one batch.
+		/// This requires Aerospike Server version >= 3.5.14.
+		/// </summary>
+		private void BatchReadComplex(AerospikeClient client, Arguments args, string keyPrefix, string binName)
+		{
+			// Batch gets into one call.
+			// Batch allows multiple namespaces in one call, but example test environment may only have one namespace.
+			string[] bins = new string[] {binName};
+			List<BatchRecord> records = new List<BatchRecord>();
+			records.Add(new BatchRecord(new Key(args.ns, args.set, keyPrefix + 1), bins));
+			records.Add(new BatchRecord(new Key(args.ns, args.set, keyPrefix + 2), true));
+			records.Add(new BatchRecord(new Key(args.ns, args.set, keyPrefix + 3), true));
+			records.Add(new BatchRecord(new Key(args.ns, args.set, keyPrefix + 4), false));
+			records.Add(new BatchRecord(new Key(args.ns, args.set, keyPrefix + 5), true));
+			records.Add(new BatchRecord(new Key(args.ns, args.set, keyPrefix + 6), true));
+			records.Add(new BatchRecord(new Key(args.ns, args.set, keyPrefix + 7), bins));
+
+			// This record should be found, but the requested bin will not be found.
+			records.Add(new BatchRecord(new Key(args.ns, args.set, keyPrefix + 8), new string[] { "binnotfound" }));
+
+			// This record should not be found.
+			records.Add(new BatchRecord(new Key(args.ns, args.set, "keynotfound"), bins));
+
+			// Execute batch.
+			client.Get(null, records);
+
+			// Show results.
+			int found = 0;
+			foreach (BatchRecord record in records)
+			{
+				Key key = record.key;
+				Record rec = record.record;
+
+				if (rec != null)
+				{
+					found++;
+					console.Info("Record: ns={0} set={1} key={2} bin={3} value={4}", 
+						key.ns, key.setName, key.userKey, binName, rec.GetValue(binName));
+				}
+				else
+				{
+					console.Info("Record not found: ns={0} set={1} key={2} bin={3}",
+						key.ns, key.setName, key.userKey, binName);
+				}
+			}
+
+			if (found != 8)
+			{
+				console.Error("Records found mismatch. Expected %d. Received %d.", 8, found);
 			}
 		}
 	}

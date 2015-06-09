@@ -36,5 +36,6 @@ namespace Aerospike.Client
 		public const int UDF_ARGLIST = 32;
 		public const int UDF_OP = 33;
 		public const int QUERY_BINLIST = 40;
+		public const int BATCH_INDEX = 41;
 	}
 }

@@ -20,8 +20,10 @@ using System.Collections.Concurrent;
 
 namespace Aerospike.Client
 {
-	public sealed class QueryAggregateCommand : QueryCommand
+	public sealed class QueryAggregateCommand : MultiCommand
 	{
+		private readonly Policy policy;
+		private readonly Statement statement;
 		private readonly BlockingCollection<object> inputQueue;
 		private readonly CancellationToken cancelToken;
 
@@ -32,93 +34,73 @@ namespace Aerospike.Client
 			Statement statement,
 			BlockingCollection<object> inputQueue,
 			CancellationToken cancelToken
-		) : base(node, policy, statement)
+		) : base(node, true)
 		{
+			this.policy = policy;
+			this.statement = statement;
 			this.inputQueue = inputQueue;
 			this.cancelToken = cancelToken;
 		}
 
-		protected internal override bool ParseRecordResults(int receiveSize)
+		protected internal override Policy GetPolicy()
 		{
-			// Read/parse remaining message bytes one record at a time.
-			dataOffset = 0;
+			return policy;
+		}
 
-			while (dataOffset < receiveSize)
+		protected internal override void WriteBuffer()
+		{
+			SetQuery(policy, statement, false);
+		}
+
+		protected internal override void ParseRow(Key key)
+		{
+			if (opCount != 1)
 			{
-				ReadBytes(MSG_REMAINING_HEADER_SIZE);
-				int resultCode = dataBuffer[5];
+				throw new AerospikeException("Query aggregate expected exactly one bin.  Received " + opCount);
+			}
 
-				if (resultCode != 0)
+			// Parse aggregateValue.
+			ReadBytes(8);
+			int opSize = ByteUtil.BytesToInt(dataBuffer, 0);
+			byte particleType = dataBuffer[5];
+			byte nameSize = dataBuffer[7];
+
+			ReadBytes(nameSize);
+			string name = ByteUtil.Utf8ToString(dataBuffer, 0, nameSize);
+
+			int particleBytesSize = (int)(opSize - (4 + nameSize));
+			ReadBytes(particleBytesSize);
+
+			if (! name.Equals("SUCCESS"))
+			{
+				if (name.Equals("FAILURE"))
 				{
-					if (resultCode == ResultCode.KEY_NOT_FOUND_ERROR)
-					{
-						return false;
-					}
-					throw new AerospikeException(resultCode);
+					object value = ByteUtil.BytesToParticle(particleType, dataBuffer, 0, particleBytesSize);
+					throw new AerospikeException(ResultCode.QUERY_GENERIC, value.ToString());
 				}
-
-				byte info3 = dataBuffer[3];
-
-				// If this is the end marker of the response, do not proceed further
-				if ((info3 & Command.INFO3_LAST) == Command.INFO3_LAST)
+				else
 				{
-					return false;
-				}
-
-				int fieldCount = ByteUtil.BytesToShort(dataBuffer, 18);
-				int opCount = ByteUtil.BytesToShort(dataBuffer, 20);
-
-				ParseKey(fieldCount);
-
-				if (opCount != 1)
-				{
-					throw new AerospikeException("Query aggregate expected exactly one bin.  Received " + opCount);
-				}
-
-				// Parse aggregateValue.
-				ReadBytes(8);
-				int opSize = ByteUtil.BytesToInt(dataBuffer, 0);
-				byte particleType = dataBuffer[5];
-				byte nameSize = dataBuffer[7];
-
-				ReadBytes(nameSize);
-				string name = ByteUtil.Utf8ToString(dataBuffer, 0, nameSize);
-
-				int particleBytesSize = (int)(opSize - (4 + nameSize));
-				ReadBytes(particleBytesSize);
-
-				if (! name.Equals("SUCCESS"))
-				{
-					if (name.Equals("FAILURE"))
-					{
-						object value = ByteUtil.BytesToParticle(particleType, dataBuffer, 0, particleBytesSize);
-						throw new AerospikeException(ResultCode.QUERY_GENERIC, value.ToString());
-					}
-					else
-					{
-						throw new AerospikeException(ResultCode.QUERY_GENERIC, "Query aggregate expected bin name SUCCESS.  Received " + name);
-					}
-				}
-
-				object aggregateValue = LuaInstance.BytesToLua(particleType, dataBuffer, 0, particleBytesSize);
-
-				if (!valid)
-				{
-					throw new AerospikeException.QueryTerminated();
-				}
-
-				if (aggregateValue != null)
-				{
-					try
-					{
-						inputQueue.Add(aggregateValue, cancelToken);
-					}
-					catch (OperationCanceledException)
-					{
-					}
+					throw new AerospikeException(ResultCode.QUERY_GENERIC, "Query aggregate expected bin name SUCCESS.  Received " + name);
 				}
 			}
-			return true;
+
+			object aggregateValue = LuaInstance.BytesToLua(particleType, dataBuffer, 0, particleBytesSize);
+
+			if (!valid)
+			{
+				throw new AerospikeException.QueryTerminated();
+			}
+
+			if (aggregateValue != null)
+			{
+				try
+				{
+					inputQueue.Add(aggregateValue, cancelToken);
+				}
+				catch (OperationCanceledException)
+				{
+				}
+			}
 		}
 	}
 }

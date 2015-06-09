@@ -18,23 +18,25 @@ using System.Collections.Generic;
 
 namespace Aerospike.Client
 {
-	public abstract class AsyncBatchExecutor : AsyncMultiExecutor
+	/// <summary>
+	/// Asynchronous result notifications for batch get commands with variable bins per key.
+	/// The result is sent in a single list.
+	/// </summary>
+	public interface BatchListListener
 	{
-		protected internal readonly Key[] keys;
-		protected internal readonly List<BatchNode> batchNodes;
+		/// <summary>
+		/// This method is called when an asynchronous batch get command completes successfully.
+		/// </summary>
+		/// <param name="records">
+		/// record instances, <seealso cref="Aerospike.Client.BatchRecord.record"/>
+		///	will be null if the key is not found.
+		///	</param>
+		void OnSuccess(List<BatchRecord> records);
 
-		public AsyncBatchExecutor(Cluster cluster, BatchPolicy policy, Key[] keys)
-		{
-			this.keys = keys;
-			this.batchNodes = BatchNode.GenerateList(cluster, policy, keys);
-
-			// Count number of asynchronous commands needed.
-			int size = 0;
-			foreach (BatchNode batchNode in batchNodes)
-			{
-				size += batchNode.batchNamespaces.Count;
-			}
-			completedSize = size;
-		}
+		/// <summary>
+		/// This method is called when an asynchronous batch get command fails.
+		/// </summary>
+		/// <param name="exception">error that occurred</param>
+		void OnFailure(AerospikeException exception);
 	}
 }

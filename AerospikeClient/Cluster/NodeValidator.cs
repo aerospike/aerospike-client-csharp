@@ -28,6 +28,7 @@ namespace Aerospike.Client
 		internal string name;
 		internal Host[] aliases;
 		internal IPEndPoint address;
+		internal bool hasBatchIndex;
 		internal bool hasReplicasAll;
 
 		public NodeValidator(Cluster cluster, Host host)
@@ -103,9 +104,18 @@ namespace Aerospike.Client
 
 				foreach (string feature in list)
 				{
+					if (feature.Equals("batch-index"))
+					{
+						this.hasBatchIndex = true;
+					}
+
 					if (feature.Equals("replicas-all"))
 					{
 						this.hasReplicasAll = true;
+					}
+
+					if (this.hasBatchIndex && this.hasReplicasAll)
+					{
 						break;
 					}
 				}

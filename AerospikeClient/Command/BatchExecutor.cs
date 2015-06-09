@@ -22,7 +22,7 @@ namespace Aerospike.Client
 {
 	public sealed class BatchExecutor
 	{
-		public static void Execute(Cluster cluster, BatchPolicy policy, Key[] keys, bool[] existsArray, Record[] records, HashSet<string> binNames, int readAttr)
+		public static void Execute(Cluster cluster, BatchPolicy policy, Key[] keys, bool[] existsArray, Record[] records, string[] binNames, int readAttr)
 		{
 			if (keys.Length == 0)
 			{
@@ -33,17 +33,8 @@ namespace Aerospike.Client
 			{
 				// Send all requests to a single node chosen in round-robin fashion in this transaction thread.
 				Node node = cluster.GetRandomNode();
-
-				if (records != null)
-				{
-					BatchCommandNodeGet command = new BatchCommandNodeGet(node, policy, keys, records, binNames, readAttr);
-					command.Execute();
-				}
-				else
-				{
-					BatchCommandNodeExists command = new BatchCommandNodeExists(node, policy, keys, existsArray);
-					command.Execute();
-				}
+				BatchNode batchNode = new BatchNode(node, keys);
+				ExecuteNode(batchNode, policy, keys, existsArray, records, binNames, readAttr);
 				return;
 			}
 
@@ -54,19 +45,7 @@ namespace Aerospike.Client
 				// Run batch requests sequentially in same thread.
 				foreach (BatchNode batchNode in batchNodes)
 				{
-					foreach (BatchNode.BatchNamespace batchNamespace in batchNode.batchNamespaces)
-					{
-						if (records != null)
-						{
-							BatchCommandGet command = new BatchCommandGet(batchNode.node, batchNamespace, policy, keys, binNames, records, readAttr);
-							command.Execute();
-						}
-						else
-						{
-							BatchCommandExists command = new BatchCommandExists(batchNode.node, batchNamespace, policy, keys, existsArray);
-							command.Execute();
-						}
-					}
+					ExecuteNode(batchNode, policy, keys, existsArray, records, binNames, readAttr);
 				}
 			}
 			else
@@ -74,27 +53,83 @@ namespace Aerospike.Client
 				// Run batch requests in parallel in separate threads.
 				Executor executor = new Executor(batchNodes.Count * 2);
 
-				// Initialize threads.  There may be multiple threads for a single node because the
-				// wire protocol only allows one namespace per command.  Multiple namespaces 
-				// require multiple threads per node.
+				// Initialize threads.  
 				foreach (BatchNode batchNode in batchNodes)
 				{
-					foreach (BatchNode.BatchNamespace batchNamespace in batchNode.batchNamespaces)
+					if (batchNode.node.UseNewBatch(policy))
 					{
+						// New batch
 						if (records != null)
 						{
-							MultiCommand command = new BatchCommandGet(batchNode.node, batchNamespace, policy, keys, binNames, records, readAttr);
+							MultiCommand command = new BatchGetArrayCommand(batchNode, policy, keys, binNames, records, readAttr);
 							executor.AddCommand(command);
 						}
 						else
 						{
-							MultiCommand command = new BatchCommandExists(batchNode.node, batchNamespace, policy, keys, existsArray);
+							MultiCommand command = new BatchExistsArrayCommand(batchNode, policy, keys, existsArray);
 							executor.AddCommand(command);
 						}
 					}
-				}
+					else
+					{
+						// There may be multiple threads for a single node because the
+						// wire protocol only allows one namespace per command.  Multiple namespaces 
+						// require multiple threads per node.
+						batchNode.SplitByNamespace(keys);
 
+						foreach (BatchNode.BatchNamespace batchNamespace in batchNode.batchNamespaces)
+						{
+							if (records != null)
+							{
+								MultiCommand command = new BatchGetArrayDirect(batchNode.node, batchNamespace, policy, keys, binNames, records, readAttr);
+								executor.AddCommand(command);
+							}
+							else
+							{
+								MultiCommand command = new BatchExistsArrayDirect(batchNode.node, batchNamespace, policy, keys, existsArray);
+								executor.AddCommand(command);
+							}
+						}
+					}
+				}
 				executor.Execute(policy.maxConcurrentThreads);
+			}
+		}
+
+		private static void ExecuteNode(BatchNode batchNode, BatchPolicy policy, Key[] keys, bool[] existsArray, Record[] records, string[] binNames, int readAttr)
+		{
+			if (batchNode.node.UseNewBatch(policy))
+			{
+				// New batch
+				if (records != null)
+				{
+					MultiCommand command = new BatchGetArrayCommand(batchNode, policy, keys, binNames, records, readAttr);
+					command.Execute();
+				}
+				else
+				{
+					MultiCommand command = new BatchExistsArrayCommand(batchNode, policy, keys, existsArray);
+					command.Execute();
+				}
+			}
+			else
+			{
+				// Old batch only allows one namespace per call.
+				batchNode.SplitByNamespace(keys);
+
+				foreach (BatchNode.BatchNamespace batchNamespace in batchNode.batchNamespaces)
+				{
+					if (records != null)
+					{
+						MultiCommand command = new BatchGetArrayDirect(batchNode.node, batchNamespace, policy, keys, binNames, records, readAttr);
+						command.Execute();
+					}
+					else
+					{
+						MultiCommand command = new BatchExistsArrayDirect(batchNode.node, batchNamespace, policy, keys, existsArray);
+						command.Execute();
+					}
+				}
 			}
 		}
 	}

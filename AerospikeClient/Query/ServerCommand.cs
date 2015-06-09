@@ -16,73 +16,49 @@
  */
 namespace Aerospike.Client
 {
-	public sealed class ServerCommand : QueryCommand
+	public sealed class ServerCommand : MultiCommand
 	{
 		private readonly WritePolicy writePolicy;
+		private readonly Statement statement;
 
 		public ServerCommand(Node node, WritePolicy policy, Statement statement) 
-			: base(node, policy, statement)
+			: base(node, true)
 		{
 			this.writePolicy = policy;
+			this.statement = statement;
 		}
 
-		protected internal override void WriteQueryHeader(int fieldCount, int operationCount)
+		protected internal override Policy GetPolicy()
 		{
-			WriteHeader(writePolicy, Command.INFO1_READ, Command.INFO2_WRITE, fieldCount, operationCount);
+			return writePolicy;
 		}
 
-		protected internal override bool ParseRecordResults(int receiveSize)
+		protected internal override void WriteBuffer()
+		{
+			SetQuery(writePolicy, statement, true);
+		}
+
+		protected internal override void ParseRow(Key key)
 		{
 			// Server commands (Query/Execute UDF) should only send back a return code.
 			// Keep parsing logic to empty socket buffer just in case server does
 			// send records back.
-			dataOffset = 0;
-
-			while (dataOffset < receiveSize)
+			for (int i = 0 ; i < opCount; i++)
 			{
-				ReadBytes(MSG_REMAINING_HEADER_SIZE);
-				int resultCode = dataBuffer[5];
+				ReadBytes(8);
+				int opSize = ByteUtil.BytesToInt(dataBuffer, 0);
+				byte nameSize = dataBuffer[7];
 
-				if (resultCode != 0)
-				{
-					if (resultCode == ResultCode.KEY_NOT_FOUND_ERROR)
-					{
-						return false;
-					}
-					throw new AerospikeException(resultCode);
-				}
+				ReadBytes(nameSize);
 
-				byte info3 = dataBuffer[3];
-
-				// If this is the end marker of the response, do not proceed further
-				if ((info3 & Command.INFO3_LAST) == Command.INFO3_LAST)
-				{
-					return false;
-				}
-
-				int fieldCount = ByteUtil.BytesToShort(dataBuffer, 18);
-				int opCount = ByteUtil.BytesToShort(dataBuffer, 20);
-
-				ParseKey(fieldCount);
-
-				for (int i = 0 ; i < opCount; i++)
-				{
-					ReadBytes(8);
-					int opSize = ByteUtil.BytesToInt(dataBuffer, 0);
-					byte nameSize = dataBuffer[7];
-
-					ReadBytes(nameSize);
-
-					int particleBytesSize = (int)(opSize - (4 + nameSize));
-					ReadBytes(particleBytesSize);
-				}
-
-				if (!valid)
-				{
-					throw new AerospikeException.QueryTerminated();
-				}
+				int particleBytesSize = (int)(opSize - (4 + nameSize));
+				ReadBytes(particleBytesSize);
 			}
-			return true;
-		}
+
+			if (!valid)
+			{
+				throw new AerospikeException.QueryTerminated();
+			}
+		}		
 	}
 }

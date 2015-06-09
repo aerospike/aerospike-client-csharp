@@ -55,7 +55,7 @@ namespace Aerospike.Client
 			// Initialize threads.
 			for (int i = 0; i < nodes.Length; i++)
 			{
-				QueryCommand command = CreateCommand(nodes[i]);
+				MultiCommand command = CreateCommand(nodes[i]);
 				threads[i] = new QueryThread(this, command);
 			}
 		}
@@ -127,9 +127,9 @@ namespace Aerospike.Client
 		private sealed class QueryThread
 		{
 			private readonly QueryExecutor parent;
-			private readonly QueryCommand command;
+			private readonly MultiCommand command;
 
-			public QueryThread(QueryExecutor parent, QueryCommand command)
+			public QueryThread(QueryExecutor parent, MultiCommand command)
 			{
 				this.parent = parent;
 				this.command = command;
@@ -158,7 +158,7 @@ namespace Aerospike.Client
 			}
 		}
 
-		protected internal abstract QueryCommand CreateCommand(Node node);
+		protected internal abstract MultiCommand CreateCommand(Node node);
 		protected internal abstract void SendCancel();
 		protected internal abstract void SendCompleted();
 	}

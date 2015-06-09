@@ -163,15 +163,16 @@
   <ItemGroup>
     <Compile Include="Admin\PrivilegeCode.cs" />
     <Compile Include="Admin\Privilege.cs" />
+    <Compile Include="AsyncTask\BatchListListenerAdapter.cs" />
     <Compile Include="Async\AsyncReadHeader.cs" />
     <Compile Include="Async\AsyncOperate.cs" />
     <Compile Include="Async\AsyncTouch.cs" />
     <Compile Include="Async\BufferPool.cs" />
+    <Compile Include="Async\AsyncBatch.cs" />
     <Compile Include="BCrypt\SaltParseException.cs" />
     <Compile Include="Cluster\PartitionParser.cs" />
-    <Compile Include="Command\BatchCommandNodeGet.cs" />
-    <Compile Include="Command\BatchCommandNodeExists.cs" />
     <Compile Include="Admin\AdminCommand.cs" />
+    <Compile Include="Command\Batch.cs" />
     <Compile Include="Command\RegisterCommand.cs" />
     <Compile Include="Command\Executor.cs" />
     <Compile Include="Command\ExecuteCommand.cs" />
@@ -179,6 +180,8 @@
     <Compile Include="Command\ReadHeaderCommand.cs" />
     <Compile Include="Command\ExistsCommand.cs" />
     <Compile Include="Command\TouchCommand.cs" />
+    <Compile Include="Listener\BatchListListener.cs" />
+    <Compile Include="Listener\BatchSequenceListener.cs" />
     <Compile Include="Lua\LuaAerospike.cs" />
     <Compile Include="Lua\LuaBytes.cs" />
     <Compile Include="Lua\LuaCache.cs" />
@@ -190,15 +193,6 @@
     <Compile Include="Lua\LuaStream.cs" />
     <Compile Include="Main\AerospikeClient.cs" />
     <Compile Include="Main\AerospikeException.cs" />
-    <Compile Include="Async\AsyncBatchExecutor.cs" />
-    <Compile Include="Async\AsyncBatchExistsArray.cs" />
-    <Compile Include="Async\AsyncBatchExistsArrayExecutor.cs" />
-    <Compile Include="Async\AsyncBatchExistsSequence.cs" />
-    <Compile Include="Async\AsyncBatchExistsSequenceExecutor.cs" />
-    <Compile Include="Async\AsyncBatchGetArray.cs" />
-    <Compile Include="Async\AsyncBatchGetArrayExecutor.cs" />
-    <Compile Include="Async\AsyncBatchGetSequence.cs" />
-    <Compile Include="Async\AsyncBatchGetSequenceExecutor.cs" />
     <Compile Include="Async\AsyncClient.cs" />
     <Compile Include="Async\AsyncClientPolicy.cs" />
     <Compile Include="Async\AsyncCluster.cs" />
@@ -229,8 +223,6 @@
     <Compile Include="Cluster\Node.cs" />
     <Compile Include="Cluster\NodeValidator.cs" />
     <Compile Include="Cluster\Partition.cs" />
-    <Compile Include="Command\BatchCommandExists.cs" />
-    <Compile Include="Command\BatchCommandGet.cs" />
     <Compile Include="Command\BatchExecutor.cs" />
     <Compile Include="Command\BatchNode.cs" />
     <Compile Include="Command\ByteUtil.cs" />
@@ -244,6 +236,7 @@
     <Compile Include="Command\ScanCommand.cs" />
     <Compile Include="Command\SyncCommand.cs" />
     <Compile Include="Command\WriteCommand.cs" />
+    <Compile Include="Main\BatchRecord.cs" />
     <Compile Include="Main\Join.cs" />
     <Compile Include="Admin\Role.cs" />
     <Compile Include="Admin\User.cs" />
@@ -295,7 +288,6 @@
     <Compile Include="Query\KeyRecord.cs" />
     <Compile Include="Query\QueryAggregateCommand.cs" />
     <Compile Include="Query\QueryAggregateExecutor.cs" />
-    <Compile Include="Query\QueryCommand.cs" />
     <Compile Include="Query\QueryExecutor.cs" />
     <Compile Include="Query\QueryRecordCommand.cs" />
     <Compile Include="Query\QueryRecordExecutor.cs" />

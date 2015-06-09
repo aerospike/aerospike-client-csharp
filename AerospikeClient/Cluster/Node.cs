@@ -41,6 +41,7 @@ namespace Aerospike.Client
 		protected internal int partitionGeneration = -1;
 		protected internal int referenceCount;
 		protected internal int failures;
+		protected internal readonly bool hasBatchIndex;
 		protected internal readonly bool hasReplicasAll;
 		protected internal volatile bool active = true;
 
@@ -55,6 +56,7 @@ namespace Aerospike.Client
 			this.name = nv.name;
 			this.aliases = nv.aliases;
 			this.address = nv.address;
+			this.hasBatchIndex = nv.hasBatchIndex;
 			this.hasReplicasAll = nv.hasReplicasAll;
 
 			// Assign host to first IP alias because the server identifies nodes 
@@ -326,6 +328,16 @@ namespace Aerospike.Client
 			aliases = tmpAliases;
 		}
 
+		/// <summary>
+		/// Use new batch protocol if server supports it and useBatchDirect is not set.
+		/// </summary>
+		public bool UseNewBatch(BatchPolicy policy)
+		{
+			return !policy.useBatchDirect && hasBatchIndex;
+		}
+
+		public bool HasBatchIndex {get{return hasBatchIndex;}}
+	
 		/// <summary>
 		/// Return node name and host address in string format.
 		/// </summary>

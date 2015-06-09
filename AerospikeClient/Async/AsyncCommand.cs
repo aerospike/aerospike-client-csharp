@@ -255,6 +255,7 @@ namespace Aerospike.Client
 				return;
 			}
 			WriteBuffer();
+			dataLength = dataOffset;
 			dataOffset = 0;
 			eventArgs.SetBuffer(dataBuffer, dataOffset, dataLength);
 			Send();
@@ -262,20 +263,20 @@ namespace Aerospike.Client
 
 		protected internal sealed override void SizeBuffer()
 		{
-			dataLength = dataOffset;
-
-			if (dataBuffer == null || dataLength > dataBuffer.Length)
+			// dataOffset is currently the estimate, which may be greater than the actual size.
+			// dataLength is not set yet.
+			if (dataBuffer == null || dataOffset > dataBuffer.Length)
 			{
-				ResizeBuffer();
+				ResizeBuffer(dataOffset);
 			}
 		}
 
-		private void ResizeBuffer()
+		private void ResizeBuffer(int size)
 		{
-			if (dataLength <= BufferPool.BUFFER_CUTOFF)
+			if (size <= BufferPool.BUFFER_CUTOFF)
 			{
 				// Checkout buffer from cache.
-				dataBuffer = cluster.GetNextBuffer(dataLength);
+				dataBuffer = cluster.GetNextBuffer(size);
 			}
 			else
 			{
@@ -285,7 +286,7 @@ namespace Aerospike.Client
 				{
 					oldDataBuffer = dataBuffer;
 				}
-				dataBuffer = new byte[dataLength];
+				dataBuffer = new byte[size];
 			}
 		}
 
@@ -362,7 +363,7 @@ namespace Aerospike.Client
 
 				if (dataLength > dataBuffer.Length)
 				{
-					ResizeBuffer();
+					ResizeBuffer(dataLength);
 				}
 				eventArgs.SetBuffer(dataBuffer, dataOffset, dataLength);
 				Receive();

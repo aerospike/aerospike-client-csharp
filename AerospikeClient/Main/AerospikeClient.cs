@@ -490,6 +490,63 @@ namespace Aerospike.Client
 		//-------------------------------------------------------
 
 		/// <summary>
+		/// Read multiple records for specified batch keys in one batch call.
+		/// This method allows different bins to be requested for each key in the batch.
+		/// The returned records are located in the same list.
+		/// If the BatchRecord key field is not found, the corresponding record field will be null.
+		/// The policy can be used to specify timeouts and maximum concurrent threads.
+		/// This method requires Aerospike Server version >= 3.5.14.
+		/// </summary>
+		/// <param name="policy">batch configuration parameters, pass in null for defaults</param>
+		/// <param name="records">list of unique record identifiers and the bins to retrieve.
+		/// The returned records are located in the same list.</param>
+		/// <exception cref="AerospikeException">if read fails</exception>
+		public void Get(BatchPolicy policy, List<BatchRecord> records)
+		{
+			if (records.Count == 0)
+			{
+				return;
+			}
+
+			if (policy == null)
+			{
+				policy = batchPolicyDefault;
+			}
+
+			List<BatchNode> batchNodes = BatchNode.GenerateList(cluster, policy, records);
+
+			if (policy.maxConcurrentThreads == 1)
+			{
+				// Run batch requests sequentially in same thread.
+				foreach (BatchNode batchNode in batchNodes)
+				{
+					if (!batchNode.node.hasBatchIndex)
+					{
+						throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Requested command requires a server that supports new batch index protocol.");
+					}
+					MultiCommand command = new BatchReadListCommand(batchNode, policy, records);
+					command.Execute();
+				}
+			}
+			else
+			{
+				// Run batch requests in parallel in separate threads.
+				Executor executor = new Executor(batchNodes.Count);
+
+				foreach (BatchNode batchNode in batchNodes)
+				{
+					if (!batchNode.node.hasBatchIndex)
+					{
+						throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Requested command requires a server that supports new batch index protocol.");
+					}
+					MultiCommand command = new BatchReadListCommand(batchNode, policy, records);
+					executor.AddCommand(command);
+				}
+				executor.Execute(policy.maxConcurrentThreads);
+			}
+		}
+
+		/// <summary>
 		/// Read multiple records for specified keys in one batch call.
 		/// The returned records are in positional order with the original key array order.
 		/// If a key is not found, the positional record will be null.
@@ -559,8 +616,7 @@ namespace Aerospike.Client
 				policy = batchPolicyDefault;
 			}
 			Record[] records = new Record[keys.Length];
-			HashSet<string> names = BinNamesToHashSet(binNames);
-			BatchExecutor.Execute(cluster, policy, keys, null, records, names, Command.INFO1_READ);
+			BatchExecutor.Execute(cluster, policy, keys, null, records, binNames, Command.INFO1_READ);
 			return records;
 		}
 		
@@ -1584,18 +1640,6 @@ namespace Aerospike.Client
 		//-------------------------------------------------------
 		// Internal Methods
 		//-------------------------------------------------------
-
-		protected internal static HashSet<string> BinNamesToHashSet(string[] binNames)
-		{
-			// Create lookup table for bin name filtering.
-			HashSet<string> names = new HashSet<string>();
-
-			foreach (string binName in binNames)
-			{
-				names.Add(binName);
-			}
-			return names;
-		}
 
 		private string SendInfoCommand(Policy policy, string command)
 		{

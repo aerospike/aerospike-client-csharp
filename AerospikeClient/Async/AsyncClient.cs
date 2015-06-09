@@ -712,6 +712,84 @@ namespace Aerospike.Client
 		//-------------------------------------------------------
 
 		/// <summary>
+		/// Asynchronously read multiple records for specified batch keys in one batch call.
+		/// This method allows different bins to be requested for each key in the batch.
+		/// The returned records are located in the same list.
+		/// <para>
+		/// Create listener, call asynchronous batch get and return task monitor.
+		/// This method requires Aerospike Server version >= 3.5.14.
+		/// </para>
+		/// </summary>
+		/// <param name="policy">batch configuration parameters, pass in null for defaults</param>
+		/// <param name="token">cancellation token</param>
+		/// <param name="records">list of unique record identifiers and the bins to retrieve.</param>
+		/// <exception cref="AerospikeException">if read fails</exception>
+		public Task<List<BatchRecord>> Get(BatchPolicy policy, CancellationToken token, List<BatchRecord> records)
+		{
+			BatchListListenerAdapter listener = new BatchListListenerAdapter(token);
+			Get(policy, listener, records);
+			return listener.Task;
+		}
+
+		/// <summary>
+		/// Asynchronously read multiple records for specified batch keys in one batch call.
+		/// This method allows different bins to be requested for each key in the batch.
+		/// The returned records are located in the same list.
+		/// If the BatchRecord key field is not found, the corresponding record field will be null.
+		/// <para>
+		/// This method schedules the get command with a channel selector and returns.
+		/// Another thread will process the command and send the results to the listener in a single call.
+		/// This method requires Aerospike Server version >= 3.5.14.
+		/// </para>
+		/// </summary>
+		/// <param name="policy">batch configuration parameters, pass in null for defaults</param>
+		/// <param name="listener">where to send results</param>
+		/// <param name="records">list of unique record identifiers and the bins to retrieve.</param>
+		/// <exception cref="AerospikeException">if read fails</exception>
+		public void Get(BatchPolicy policy, BatchListListener listener, List<BatchRecord> records)
+		{
+			if (records.Count == 0)
+			{
+				listener.OnSuccess(records);
+				return;
+			}
+			if (policy == null)
+			{
+				policy = batchPolicyDefault;
+			}
+			new AsyncBatchReadListExecutor(cluster, policy, listener, records);
+		}
+
+		/// <summary>
+		/// Asynchronously read multiple records for specified batch keys in one batch call.
+		/// This method allows different bins to be requested for each key in the batch.
+		/// The returned records are located in the same list.
+		/// If the BatchRecord key field is not found, the corresponding record field will be null.
+		/// <para>
+		/// This method schedules the get command with a channel selector and returns.
+		/// Another thread will process the command and send the results to the listener in a single call.
+		/// This method requires Aerospike Server version >= 3.5.14.
+		/// </para>
+		/// </summary>
+		/// <param name="policy">batch configuration parameters, pass in null for defaults</param>
+		/// <param name="listener">where to send results</param>
+		/// <param name="records">list of unique record identifiers and the bins to retrieve.</param>
+		/// <exception cref="AerospikeException">if read fails</exception>
+		public void Get(BatchPolicy policy, BatchSequenceListener listener, List<BatchRecord> records)
+		{
+			if (records.Count == 0)
+			{
+				listener.OnSuccess();
+				return;
+			}
+			if (policy == null)
+			{
+				policy = batchPolicyDefault;
+			}
+			new AsyncBatchReadSequenceExecutor(cluster, policy, listener, records);
+		}
+	
+		/// <summary>
 		/// Asynchronously read multiple records for specified keys in one batch call.
 		/// Create listener, call asynchronous batch get and return task monitor.
 		/// <para>
@@ -929,8 +1007,7 @@ namespace Aerospike.Client
 			{
 				policy = batchPolicyDefault;
 			}
-			HashSet<string> names = BinNamesToHashSet(binNames);
-			new AsyncBatchGetArrayExecutor(cluster, policy, listener, keys, names, Command.INFO1_READ);
+			new AsyncBatchGetArrayExecutor(cluster, policy, listener, keys, binNames, Command.INFO1_READ);
 		}
 		
 		/// <summary>
@@ -979,8 +1056,7 @@ namespace Aerospike.Client
 			{
 				policy = batchPolicyDefault;
 			}
-			HashSet<string> names = BinNamesToHashSet(binNames);
-			new AsyncBatchGetSequenceExecutor(cluster, policy, listener, keys, names, Command.INFO1_READ);
+			new AsyncBatchGetSequenceExecutor(cluster, policy, listener, keys, binNames, Command.INFO1_READ);
 		}
 
 		/// <summary>

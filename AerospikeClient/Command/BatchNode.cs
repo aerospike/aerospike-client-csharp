@@ -30,73 +30,79 @@ namespace Aerospike.Client
 				throw new AerospikeException(ResultCode.SERVER_NOT_AVAILABLE, "Command failed because cluster is empty.");
 			}
 
-			int nodeCount = nodes.Length;
-			int keysPerNode = keys.Length / nodeCount + 10;
+			// Create initial key capacity for each node as average + 25%.
+			int keysPerNode = keys.Length / nodes.Length;
+			keysPerNode += (int)((uint)keysPerNode >> 2);
+
+			// The minimum key capacity is 10.
+			if (keysPerNode < 10)
+			{
+				keysPerNode = 10;
+			}
 
 			// Split keys by server node.
-			List<BatchNode> batchNodes = new List<BatchNode>(nodeCount + 1);
+			List<BatchNode> batchNodes = new List<BatchNode>(nodes.Length);
 
 			for (int i = 0; i < keys.Length; i++)
 			{
-				Key key = keys[i];
-				Partition partition = new Partition(key);
-				BatchNode batchNode;
-
+				Partition partition = new Partition(keys[i]);
 				Node node = cluster.GetReadNode(partition, policy.replica);
-				batchNode = FindBatchNode(batchNodes, node);
+				BatchNode batchNode = FindBatchNode(batchNodes, node);
 
 				if (batchNode == null)
 				{
-					batchNodes.Add(new BatchNode(node, keysPerNode, key.ns, i));
+					batchNodes.Add(new BatchNode(node, keysPerNode, i));
 				}
 				else
 				{
-					batchNode.AddKey(key.ns, i);
+					batchNode.AddKey(i);
 				}
 			}
 			return batchNodes;
 		}
 
-		public readonly Node node;
-		public readonly List<BatchNamespace> batchNamespaces;
-		public readonly int keyCapacity;
-
-		public BatchNode(Node node, int keyCapacity, string ns, int offset)
+		public static List<BatchNode> GenerateList(Cluster cluster, BatchPolicy policy, List<BatchRecord> records)
 		{
-			this.node = node;
-			this.keyCapacity = keyCapacity;
-			batchNamespaces = new List<BatchNamespace>(4);
-			batchNamespaces.Add(new BatchNamespace(ns, keyCapacity, offset));
-		}
+			Node[] nodes = cluster.Nodes;
 
-		public void AddKey(string ns, int offset)
-		{
-			BatchNamespace batchNamespace = FindNamespace(ns);
-
-			if (batchNamespace == null)
+			if (nodes.Length == 0)
 			{
-				batchNamespaces.Add(new BatchNamespace(ns, keyCapacity, offset));
+				throw new AerospikeException(ResultCode.SERVER_NOT_AVAILABLE, "Command failed because cluster is empty.");
 			}
-			else
-			{
-				batchNamespace.Add(offset);
-			}
-		}
 
-		private BatchNamespace FindNamespace(string ns)
-		{
-			foreach (BatchNamespace batchNamespace in batchNamespaces)
+			// Create initial key capacity for each node as average + 25%.
+			int max = records.Count;
+			int keysPerNode = max / nodes.Length;
+			keysPerNode += (int)((uint)keysPerNode >> 2);
+
+			// The minimum key capacity is 10.
+			if (keysPerNode < 10)
 			{
-				// Note: use both pointer equality and equals.
-				if (batchNamespace.ns == ns || batchNamespace.ns.Equals(ns))
+				keysPerNode = 10;
+			}
+
+			// Split keys by server node.
+			List<BatchNode> batchNodes = new List<BatchNode>(nodes.Length);
+
+			for (int i = 0; i < max; i++)
+			{
+				Partition partition = new Partition(records[i].key);
+				Node node = cluster.GetReadNode(partition, policy.replica);
+				BatchNode batchNode = FindBatchNode(batchNodes, node);
+
+				if (batchNode == null)
 				{
-					return batchNamespace;
+					batchNodes.Add(new BatchNode(node, keysPerNode, i));
+				}
+				else
+				{
+					batchNode.AddKey(i);
 				}
 			}
-			return null;
+			return batchNodes;
 		}
 
-		private static BatchNode FindBatchNode(List<BatchNode> nodes, Node node)
+		private static BatchNode FindBatchNode(IList<BatchNode> nodes, Node node)
 		{
 			foreach (BatchNode batchNode in nodes)
 			{
@@ -104,6 +110,101 @@ namespace Aerospike.Client
 				if (batchNode.node == node)
 				{
 					return batchNode;
+				}
+			}
+			return null;
+		}
+
+		public readonly Node node;
+		public int[] offsets;
+		public int offsetsSize;
+		public List<BatchNamespace> batchNamespaces; // used by old batch only
+
+		public BatchNode(Node node, int capacity, int offset)
+		{
+			this.node = node;
+			this.offsets = new int[capacity];
+			this.offsets[0] = offset;
+			this.offsetsSize = 1;
+		}
+
+		public BatchNode(Node node, Key[] keys)
+		{
+			this.node = node;
+			this.offsets = new int[keys.Length];
+			this.offsetsSize = keys.Length;
+
+			for (int i = 0; i < offsetsSize; i++)
+			{
+				offsets[i] = i;
+			}
+		}
+
+		public void AddKey(int offset)
+		{
+			if (offsetsSize >= offsets.Length)
+			{
+				int[] copy = new int[offsetsSize * 2];
+				Array.Copy(offsets, 0, copy, 0, offsetsSize);
+				offsets = copy;
+			}
+			offsets[offsetsSize++] = offset;
+		}
+
+		public void SplitByNamespace(Key[] keys)
+		{
+			string first = keys[offsets[0]].ns;
+
+			// Optimize for single namespace.
+			if (IsSingleNamespace(keys, first))
+			{
+				batchNamespaces = new List<BatchNamespace>(1);
+				batchNamespaces.Add(new BatchNamespace(first, offsets, offsetsSize));
+				return;
+			}
+
+			// Process multiple namespaces.
+			batchNamespaces = new List<BatchNamespace>(4);
+
+			for (int i = 0; i < offsetsSize; i++)
+			{
+				int offset = offsets[i];
+				string ns = keys[offset].ns;
+				BatchNamespace batchNamespace = FindNamespace(batchNamespaces, ns);
+
+				if (batchNamespace == null)
+				{
+					batchNamespaces.Add(new BatchNamespace(ns, offsetsSize, offset));
+				}
+				else
+				{
+					batchNamespace.Add(offset);
+				}
+			}
+		}
+
+		private bool IsSingleNamespace(Key[] keys, string first)
+		{
+			for (int i = 1; i < offsetsSize; i++)
+			{
+				string ns = keys[offsets[i]].ns;
+
+				if (!(ns == first || ns.Equals(first)))
+				{
+					return false;
+				}
+			}
+			return true;
+		}
+
+		private BatchNamespace FindNamespace(List<BatchNamespace> batchNamespaces, string ns)
+		{
+			foreach (BatchNamespace batchNamespace in batchNamespaces)
+			{
+				// Note: use both pointer equality and equals.
+				if (batchNamespace.ns == ns || batchNamespace.ns.Equals(ns))
+				{
+					return batchNamespace;
 				}
 			}
 			return null;
@@ -123,14 +224,15 @@ namespace Aerospike.Client
 				this.offsetsSize = 1;
 			}
 
+			public BatchNamespace(string ns, int[] offsets, int offsetsSize)
+			{
+				this.ns = ns;
+				this.offsets = offsets;
+				this.offsetsSize = offsetsSize;
+			}
+
 			public void Add(int offset)
 			{
-				if (offsetsSize >= offsets.Length)
-				{
-					int[] copy = new int[offsetsSize * 2];
-					Array.Copy(offsets, 0, copy, 0, offsetsSize);
-					offsets = copy;
-				}
 				offsets[offsetsSize++] = offset;
 			}
 		}

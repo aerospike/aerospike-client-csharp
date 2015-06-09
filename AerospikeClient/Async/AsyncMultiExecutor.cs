@@ -21,24 +21,62 @@ namespace Aerospike.Client
 	public abstract class AsyncMultiExecutor
 	{
 		private int completedCount;
-		protected internal int completedSize;
-		private bool failed;
+		private int done;
+		private AsyncMultiCommand[] commands;
+		private int maxConcurrent;
+
+		public void Execute(AsyncMultiCommand[] commands, int maxConcurrent)
+		{
+			this.commands = commands;
+			this.maxConcurrent = (maxConcurrent == 0 || maxConcurrent >= commands.Length) ? commands.Length : maxConcurrent;
+
+			for (int i = 0; i < this.maxConcurrent; i++)
+			{
+				commands[i].Execute();
+			}
+		}
 
 		protected internal void ChildSuccess()
 		{
-			int count = Interlocked.Increment(ref completedCount);
+			int finished = Interlocked.Increment(ref completedCount);
 
-			if (!failed && count >= completedSize)
+			if (finished < commands.Length)
 			{
-				OnSuccess();
+				int nextThread = finished + maxConcurrent - 1;
+
+				// Determine if a new command needs to be started.
+				if (nextThread < commands.Length && done == 0)
+				{
+					// Start new command.
+					commands[nextThread].Execute();
+				}
+			}
+			else
+			{
+				// All commands complete. Notify success if an exception has not already occurred.
+				int status = Interlocked.CompareExchange(ref done, 1, 0);
+
+				if (status == 0)
+				{
+					OnSuccess();
+				}
 			}
 		}
 
 		protected internal void ChildFailure(AerospikeException ae)
 		{
-			failed = true;
-			Interlocked.Increment(ref completedCount);
-			OnFailure(ae);
+			// There is no need to stop commands if all commands have already completed.
+			int status = Interlocked.CompareExchange(ref done, 1, 0);
+
+			if (status == 0)
+			{    	
+				// Send stop signal to all commands.
+				foreach (AsyncMultiCommand command in commands)
+				{
+					command.Stop();
+				}
+				OnFailure(ae);
+			}
 		}
 
 		protected internal abstract void OnSuccess();
