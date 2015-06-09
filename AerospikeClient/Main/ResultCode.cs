@@ -268,6 +268,21 @@ namespace Aerospike.Client
 		/// The requested item in a large collection was not found.
 		/// </summary>
 		public const int LARGE_ITEM_NOT_FOUND = 125;
+
+		/// <summary>
+		/// Batch functionality has been disabled.
+		/// </summary>
+		public const int BATCH_DISABLED = 150;
+
+		/// <summary>
+		/// Batch max requests have been exceeded.
+		/// </summary>
+		public const int BATCH_MAX_REQUESTS_EXCEEDED = 151;
+
+		/// <summary>
+		/// All batch queues are full.
+		/// </summary>
+		public const int BATCH_QUEUES_FULL = 152;
 	
 		/// <summary>
 		/// Secondary index already exists.
@@ -504,6 +519,15 @@ namespace Aerospike.Client
 
 			case LARGE_ITEM_NOT_FOUND:
 				return "Large collection item not found";
+
+			case BATCH_DISABLED:
+				return "Batch functionality has been disabled";
+
+			case BATCH_MAX_REQUESTS_EXCEEDED:
+				return "Batch max requests have been exceeded";
+
+			case BATCH_QUEUES_FULL:
+				return "All batch queues are full";
 
 			case INDEX_FOUND:
 				return "Index already exists";
