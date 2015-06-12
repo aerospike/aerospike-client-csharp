@@ -25,6 +25,8 @@ namespace Aerospike.Client
 	/// </summary>
 	public sealed class Record
 	{
+		private static DateTime Epoch = new DateTime(2010, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc);
+
 		/// <summary>
 		/// Map of requested name/value bins.
 		/// </summary>
@@ -161,6 +163,31 @@ namespace Aerospike.Client
 		{
 			long v = (long)GetValue(name);
 			return (v != 0) ? true : false;
+		}
+
+		/**
+		 * Convert record expiration (seconds from Jan 01 2010 00:00:00 GMT) to
+		 * ttl (seconds from now).
+		 */
+		public int TimeToLive
+		{
+			get
+			{
+				// This is the server's flag indicating the record never expires.
+				if (expiration == 0)
+				{
+					// Convert to client-side convention for "never expires".
+					return -1;
+				}
+
+				// Subtract epoch from current time.
+				int now = (int)DateTime.UtcNow.Subtract(Epoch).TotalSeconds;
+
+				// Record may not have expired on server, but delay or clock differences may
+				// cause it to look expired on client. Floor at 1, not 0, to avoid old
+				// "never expires" interpretation.
+				return (expiration < 0 || expiration > now) ? expiration - now : 1;
+			}
 		}
 
 		/// <summary>

@@ -40,7 +40,7 @@ namespace Aerospike.Client
 
 			List<BatchNode> batchNodes = BatchNode.GenerateList(cluster, policy, keys);
 
-			if (policy.maxConcurrentThreads == 1)
+			if (policy.maxConcurrentThreads == 1 || batchNodes.Count <= 1)
 			{
 				// Run batch requests sequentially in same thread.
 				foreach (BatchNode batchNode in batchNodes)
