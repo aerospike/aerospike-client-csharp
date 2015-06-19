@@ -27,10 +27,10 @@ namespace Aerospike.Client
 	public sealed class BatchReadListCommand : MultiCommand
 	{
 		private readonly BatchNode batch;
-		private readonly Policy policy;
+		private readonly BatchPolicy policy;
 		private readonly List<BatchRecord> records;
 
-		public BatchReadListCommand(BatchNode batch, Policy policy, List<BatchRecord> records)
+		public BatchReadListCommand(BatchNode batch, BatchPolicy policy, List<BatchRecord> records)
 			: base(batch.node, false)
 		{
 			this.batch = batch;
@@ -73,7 +73,7 @@ namespace Aerospike.Client
 	public sealed class BatchGetArrayCommand : MultiCommand
 	{
 		private readonly BatchNode batch;
-		private readonly Policy policy;
+		private readonly BatchPolicy policy;
 		private readonly Key[] keys;
 		private readonly string[] binNames;
 		private readonly Record[] records;
@@ -82,7 +82,7 @@ namespace Aerospike.Client
 		public BatchGetArrayCommand
 		(
 			BatchNode batch,
-			Policy policy,
+			BatchPolicy policy,
 			Key[] keys,
 			string[] binNames,
 			Record[] records,
@@ -188,14 +188,14 @@ namespace Aerospike.Client
 	public sealed class BatchExistsArrayCommand : MultiCommand
 	{
 		private readonly BatchNode batch;
-		private readonly Policy policy;
+		private readonly BatchPolicy policy;
 		private readonly Key[] keys;
 		private readonly bool[] existsArray;
 
 		public BatchExistsArrayCommand
 		(
 			BatchNode batch,
-			Policy policy,
+			BatchPolicy policy,
 			Key[] keys,
 			bool[] existsArray
 		) : base(batch.node, false)

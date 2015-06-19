@@ -67,6 +67,23 @@ namespace Aerospike.Client
 		/// </para>
 		/// </summary>
 		public bool useBatchDirect;
+
+		/// <summary>
+		/// Allow batch to be processed immediately in the server's receiving thread when the server
+		/// deems it to be appropriate.  If false, the batch will always be processed in separate
+		/// transaction threads.  This field is only relevant for the new batch index protocol.
+		/// <para>
+		/// For batch exists or batch reads of smaller sized records (less than 1K per record),
+		/// inline processing will be significantly faster on "in memory" namespaces.  The server
+		/// disables inline processing on disk based namespaces regardless of this policy field.
+		/// </para>
+		/// <para>
+		/// Inline processing can introduce the possibility of unfairness because the server
+		/// can process the entire batch before moving onto the next command.
+		/// Default: true
+		/// </para>
+		/// </summary>
+		public bool allowInline = true;
 	
 		/// <summary>
 		/// Allow read operations to use replicated data partitions instead of master
@@ -88,6 +105,7 @@ namespace Aerospike.Client
 		{
 			this.maxConcurrentThreads = other.maxConcurrentThreads;
 			this.useBatchDirect = other.useBatchDirect;
+			this.allowInline = other.allowInline;
 			this.allowProleReads = other.allowProleReads;
 		}
 
