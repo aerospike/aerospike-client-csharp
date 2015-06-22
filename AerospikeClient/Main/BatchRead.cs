@@ -21,7 +21,7 @@ namespace Aerospike.Client
 	/// <summary>
 	/// Key and bin names used in batch commands where variables bins are needed for each key.
 	/// </summary>
-	public sealed class BatchRecord
+	public sealed class BatchRead
 	{
 		/// <summary>
 		/// Key.
@@ -50,7 +50,7 @@ namespace Aerospike.Client
 		/// </summary>
 		/// <param name="key">record key</param>
 		/// <param name="binNames">array of bins to retrieve.</param>
-		public BatchRecord(Key key, string[] binNames)
+		public BatchRead(Key key, string[] binNames)
 		{
 			this.key = key;
 			this.binNames = binNames;
@@ -62,7 +62,7 @@ namespace Aerospike.Client
 		/// </summary>
 		/// <param name="key">record key</param>
 		/// <param name="readAllBins">should all bins in record be retrieved.</param>
-		public BatchRecord(Key key, bool readAllBins)
+		public BatchRead(Key key, bool readAllBins)
 		{
 			this.key = key;
 			this.binNames = null;

@@ -236,7 +236,7 @@
     <Compile Include="Command\ScanCommand.cs" />
     <Compile Include="Command\SyncCommand.cs" />
     <Compile Include="Command\WriteCommand.cs" />
-    <Compile Include="Main\BatchRecord.cs" />
+    <Compile Include="Main\BatchRead.cs" />
     <Compile Include="Main\Join.cs" />
     <Compile Include="Admin\Role.cs" />
     <Compile Include="Admin\User.cs" />

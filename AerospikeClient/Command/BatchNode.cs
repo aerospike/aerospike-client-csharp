@@ -61,7 +61,7 @@ namespace Aerospike.Client
 			return batchNodes;
 		}
 
-		public static List<BatchNode> GenerateList(Cluster cluster, BatchPolicy policy, List<BatchRecord> records)
+		public static List<BatchNode> GenerateList(Cluster cluster, BatchPolicy policy, List<BatchRead> records)
 		{
 			Node[] nodes = cluster.Nodes;
 

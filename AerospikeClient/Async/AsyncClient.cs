@@ -724,7 +724,7 @@ namespace Aerospike.Client
 		/// <param name="token">cancellation token</param>
 		/// <param name="records">list of unique record identifiers and the bins to retrieve.</param>
 		/// <exception cref="AerospikeException">if read fails</exception>
-		public Task<List<BatchRecord>> Get(BatchPolicy policy, CancellationToken token, List<BatchRecord> records)
+		public Task<List<BatchRead>> Get(BatchPolicy policy, CancellationToken token, List<BatchRead> records)
 		{
 			BatchListListenerAdapter listener = new BatchListListenerAdapter(token);
 			Get(policy, listener, records);
@@ -746,7 +746,7 @@ namespace Aerospike.Client
 		/// <param name="listener">where to send results</param>
 		/// <param name="records">list of unique record identifiers and the bins to retrieve.</param>
 		/// <exception cref="AerospikeException">if read fails</exception>
-		public void Get(BatchPolicy policy, BatchListListener listener, List<BatchRecord> records)
+		public void Get(BatchPolicy policy, BatchListListener listener, List<BatchRead> records)
 		{
 			if (records.Count == 0)
 			{
@@ -775,7 +775,7 @@ namespace Aerospike.Client
 		/// <param name="listener">where to send results</param>
 		/// <param name="records">list of unique record identifiers and the bins to retrieve.</param>
 		/// <exception cref="AerospikeException">if read fails</exception>
-		public void Get(BatchPolicy policy, BatchSequenceListener listener, List<BatchRecord> records)
+		public void Get(BatchPolicy policy, BatchSequenceListener listener, List<BatchRead> records)
 		{
 			if (records.Count == 0)
 			{

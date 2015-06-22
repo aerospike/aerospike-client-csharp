@@ -25,14 +25,14 @@ namespace Aerospike.Client
 	public sealed class AsyncBatchReadListExecutor : AsyncMultiExecutor
 	{
 		private readonly BatchListListener listener;
-		private readonly List<BatchRecord> records;
+		private readonly List<BatchRead> records;
 
 		public AsyncBatchReadListExecutor
 		(
 			AsyncCluster cluster,
 			BatchPolicy policy,
 			BatchListListener listener,
-			List<BatchRecord> records
+			List<BatchRead> records
 		)
 		{
 			this.listener = listener;
@@ -70,7 +70,7 @@ namespace Aerospike.Client
 	{
 		private readonly BatchNode batch;
 		private readonly BatchPolicy policy;
-		private readonly List<BatchRecord> records;
+		private readonly List<BatchRead> records;
 
 		public AsyncBatchReadListCommand
 		(
@@ -78,7 +78,7 @@ namespace Aerospike.Client
 			AsyncCluster cluster,
 			BatchNode batch,
 			BatchPolicy policy,
-			List<BatchRecord> records
+			List<BatchRead> records
 		) : base(parent, cluster, (AsyncNode)batch.node, false)
 		{
 			this.batch = batch;
@@ -98,7 +98,7 @@ namespace Aerospike.Client
 
 		protected internal override void ParseRow(Key key)
 		{
-			BatchRecord record = records[batchIndex];
+			BatchRead record = records[batchIndex];
 
 			if (Util.ByteArrayEquals(key.digest, record.key.digest))
 			{
@@ -127,7 +127,7 @@ namespace Aerospike.Client
 			AsyncCluster cluster,
 			BatchPolicy policy,
 			BatchSequenceListener listener,
-			List<BatchRecord> records
+			List<BatchRead> records
 		)
 		{
 			this.listener = listener;
@@ -165,7 +165,7 @@ namespace Aerospike.Client
 		private readonly BatchNode batch;
 		private readonly BatchPolicy policy;
 		private readonly BatchSequenceListener listener;
-		private readonly List<BatchRecord> records;
+		private readonly List<BatchRead> records;
 
 		public AsyncBatchReadSequenceCommand
 		(
@@ -174,7 +174,7 @@ namespace Aerospike.Client
 			BatchNode batch,
 			BatchPolicy policy,
 			BatchSequenceListener listener,
-			List<BatchRecord> records
+			List<BatchRead> records
 		) : base(parent, cluster, (AsyncNode)batch.node, false)
 		{
 			this.batch = batch;
@@ -195,7 +195,7 @@ namespace Aerospike.Client
 
 		protected internal override void ParseRow(Key key)
 		{
-			BatchRecord record = records[batchIndex];
+			BatchRead record = records[batchIndex];
 
 			if (Util.ByteArrayEquals(key.digest, record.key.digest))
 			{

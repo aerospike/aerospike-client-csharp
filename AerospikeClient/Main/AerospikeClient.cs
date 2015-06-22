@@ -501,7 +501,7 @@ namespace Aerospike.Client
 		/// <param name="records">list of unique record identifiers and the bins to retrieve.
 		/// The returned records are located in the same list.</param>
 		/// <exception cref="AerospikeException">if read fails</exception>
-		public void Get(BatchPolicy policy, List<BatchRecord> records)
+		public void Get(BatchPolicy policy, List<BatchRead> records)
 		{
 			if (records.Count == 0)
 			{
@@ -531,6 +531,12 @@ namespace Aerospike.Client
 			else
 			{
 				// Run batch requests in parallel in separate threads.
+				//			
+				// Multiple threads write to the record list, so one might think that
+				// volatile or memory barriers are needed on the write threads and this read thread.
+				// This should not be necessary here because it happens in Executor which does a 
+				// volatile write (Interlocked.Increment(ref completedCount)) at the end of write threads
+				// and a synchronized WaitTillComplete() in this thread.
 				Executor executor = new Executor(batchNodes.Count);
 
 				foreach (BatchNode batchNode in batchNodes)

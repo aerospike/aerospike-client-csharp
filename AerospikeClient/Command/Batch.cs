@@ -28,9 +28,9 @@ namespace Aerospike.Client
 	{
 		private readonly BatchNode batch;
 		private readonly BatchPolicy policy;
-		private readonly List<BatchRecord> records;
+		private readonly List<BatchRead> records;
 
-		public BatchReadListCommand(BatchNode batch, BatchPolicy policy, List<BatchRecord> records)
+		public BatchReadListCommand(BatchNode batch, BatchPolicy policy, List<BatchRead> records)
 			: base(batch.node, false)
 		{
 			this.batch = batch;
@@ -50,7 +50,7 @@ namespace Aerospike.Client
 
 		protected internal override void ParseRow(Key key)
 		{
-			BatchRecord record = records[batchIndex];
+			BatchRead record = records[batchIndex];
 
 			if (Util.ByteArrayEquals(key.digest, record.key.digest))
 			{

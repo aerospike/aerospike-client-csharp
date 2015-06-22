@@ -36,11 +36,11 @@ namespace Aerospike.Client
 		/// </para>
 		/// </summary>
 		/// <param name="record">
-		/// record instances, <seealso cref="Aerospike.Client.BatchRecord.record"/>
+		/// record instances, <seealso cref="Aerospike.Client.BatchRead.record"/>
 		///	will be null if the key is not found.
 		///	</param>
 		/// <exception cref="AerospikeException">if error occurs or batch should be terminated.</exception>
-		void OnRecord(BatchRecord record);
+		void OnRecord(BatchRead record);
 
 		/// <summary>
 		/// This method is called when the asynchronous batch get command completes.

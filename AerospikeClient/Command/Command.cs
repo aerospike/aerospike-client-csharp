@@ -220,19 +220,19 @@ namespace Aerospike.Client
 			End();
 		}
 
-		public void SetBatchRead(BatchPolicy policy, List<BatchRecord> records, BatchNode batch)
+		public void SetBatchRead(BatchPolicy policy, List<BatchRead> records, BatchNode batch)
 		{
 			// Estimate full row size
 			int[] offsets = batch.offsets;
 			int max = batch.offsetsSize;
-			BatchRecord prev = null;
+			BatchRead prev = null;
 
 			Begin();
 			dataOffset += FIELD_HEADER_SIZE + 5;
 
 			for (int i = 0; i < max; i++)
 			{
-				BatchRecord record = records[offsets[i]];
+				BatchRead record = records[offsets[i]];
 				Key key = record.key;
 				string[] binNames = record.binNames;
 
@@ -279,7 +279,7 @@ namespace Aerospike.Client
 				ByteUtil.IntToBytes((uint)index, dataBuffer, dataOffset);
 				dataOffset += 4;
 
-				BatchRecord record = records[index];
+				BatchRead record = records[index];
 				Key key = record.key;
 				string[] binNames = record.binNames;
 				byte[] digest = key.digest;

@@ -51,6 +51,12 @@ namespace Aerospike.Client
 			else
 			{
 				// Run batch requests in parallel in separate threads.
+				//
+				// Multiple threads write to the record/exists array, so one might think that
+				// volatile or memory barriers are needed on the write threads and this read thread.
+				// This should not be necessary here because it happens in Executor which does a 
+				// volatile write (Interlocked.Increment(ref completedCount)) at the end of write threads
+				// and a synchronized WaitTillComplete() in this thread.
 				Executor executor = new Executor(batchNodes.Count * 2);
 
 				// Initialize threads.  

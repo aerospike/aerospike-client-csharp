@@ -20,14 +20,14 @@ using System.Threading;
 
 namespace Aerospike.Client
 {
-	internal sealed class BatchListListenerAdapter : ListenerAdapter<List<BatchRecord>>, BatchListListener
+	internal sealed class BatchListListenerAdapter : ListenerAdapter<List<BatchRead>>, BatchListListener
 	{
 		public BatchListListenerAdapter(CancellationToken token)
 			: base(token)
 		{
 		}
 
-		public void OnSuccess(List<BatchRecord> records)
+		public void OnSuccess(List<BatchRead> records)
 		{
 			SetResult(records);
 		}

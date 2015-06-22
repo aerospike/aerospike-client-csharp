@@ -349,20 +349,20 @@ namespace Aerospike.Demo
 			// Batch gets into one call.
 			// Batch allows multiple namespaces in one call, but example test environment may only have one namespace.
 			string[] bins = new string[] { binName };
-			List<BatchRecord> records = new List<BatchRecord>();
-			records.Add(new BatchRecord(new Key(args.ns, args.set, KeyPrefix + 1), bins));
-			records.Add(new BatchRecord(new Key(args.ns, args.set, KeyPrefix + 2), true));
-			records.Add(new BatchRecord(new Key(args.ns, args.set, KeyPrefix + 3), true));
-			records.Add(new BatchRecord(new Key(args.ns, args.set, KeyPrefix + 4), false));
-			records.Add(new BatchRecord(new Key(args.ns, args.set, KeyPrefix + 5), true));
-			records.Add(new BatchRecord(new Key(args.ns, args.set, KeyPrefix + 6), true));
-			records.Add(new BatchRecord(new Key(args.ns, args.set, KeyPrefix + 7), bins));
+			List<BatchRead> records = new List<BatchRead>();
+			records.Add(new BatchRead(new Key(args.ns, args.set, KeyPrefix + 1), bins));
+			records.Add(new BatchRead(new Key(args.ns, args.set, KeyPrefix + 2), true));
+			records.Add(new BatchRead(new Key(args.ns, args.set, KeyPrefix + 3), true));
+			records.Add(new BatchRead(new Key(args.ns, args.set, KeyPrefix + 4), false));
+			records.Add(new BatchRead(new Key(args.ns, args.set, KeyPrefix + 5), true));
+			records.Add(new BatchRead(new Key(args.ns, args.set, KeyPrefix + 6), true));
+			records.Add(new BatchRead(new Key(args.ns, args.set, KeyPrefix + 7), bins));
 
 			// This record should be found, but the requested bin will not be found.
-			records.Add(new BatchRecord(new Key(args.ns, args.set, KeyPrefix + 8), new string[] { "binnotfound" }));
+			records.Add(new BatchRead(new Key(args.ns, args.set, KeyPrefix + 8), new string[] { "binnotfound" }));
 
 			// This record should not be found.
-			records.Add(new BatchRecord(new Key(args.ns, args.set, "keynotfound"), bins));
+			records.Add(new BatchRead(new Key(args.ns, args.set, "keynotfound"), bins));
 
 			// Execute batch.
 			client.Get(null, new BatchListHandler(this), records);
@@ -377,11 +377,11 @@ namespace Aerospike.Demo
 				this.parent = parent;
 			}
 
-			public virtual void OnSuccess(List<BatchRecord> records)
+			public virtual void OnSuccess(List<BatchRead> records)
 			{
 				// Show results.
 				int found = 0;
-				foreach (BatchRecord record in records)
+				foreach (BatchRead record in records)
 				{
 					Key key = record.key;
 					Record rec = record.record;
