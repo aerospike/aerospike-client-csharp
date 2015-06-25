@@ -89,7 +89,12 @@ namespace Aerospike.Client
 		/// Default batch policy that is used when batch command's policy is null.
 		/// </summary>
 		public BatchPolicy batchPolicyDefault = new BatchPolicy();
-		
+
+		/// <summary>
+		/// Default info policy that is used when info command's policy is null.
+		/// </summary>
+		public InfoPolicy infoPolicyDefault = new InfoPolicy();
+
 		/// <summary>
 		/// A IP translation table is used in cases where different clients use different server 
 		/// IP addresses.  This may be necessary when using clients from both inside and outside 

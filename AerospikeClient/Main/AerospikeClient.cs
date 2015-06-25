@@ -74,7 +74,12 @@ namespace Aerospike.Client
 		/// Default batch policy that is used when batch command policy is null.
 		/// </summary>
 		public readonly BatchPolicy batchPolicyDefault;
-		
+
+		/// <summary>
+		/// Default info policy that is used when info command policy is null.
+		/// </summary>
+		public readonly InfoPolicy infoPolicyDefault;
+
 		//-------------------------------------------------------
 		// Constructors
 		//-------------------------------------------------------
@@ -160,6 +165,7 @@ namespace Aerospike.Client
 			this.scanPolicyDefault = policy.scanPolicyDefault;
 			this.queryPolicyDefault = policy.queryPolicyDefault;
 			this.batchPolicyDefault = policy.batchPolicyDefault;
+			this.infoPolicyDefault = policy.infoPolicyDefault;
 
 			cluster = new Cluster(policy, hosts);
 			cluster.InitTendThread(policy.failIfNotConnected);
@@ -178,6 +184,7 @@ namespace Aerospike.Client
 				this.scanPolicyDefault = policy.scanPolicyDefault;
 				this.queryPolicyDefault = policy.queryPolicyDefault;
 				this.batchPolicyDefault = policy.batchPolicyDefault;
+				this.infoPolicyDefault = policy.infoPolicyDefault;
 			}
 			else
 			{
@@ -186,6 +193,7 @@ namespace Aerospike.Client
 				this.scanPolicyDefault = new ScanPolicy();
 				this.queryPolicyDefault = new QueryPolicy();
 				this.batchPolicyDefault = new BatchPolicy();
+				this.infoPolicyDefault = new InfoPolicy();
 			}
 		}
 
@@ -1066,6 +1074,36 @@ namespace Aerospike.Client
 			return RegisterCommand.Register(cluster, policy, content, serverPath, language);
 		}
 
+		/// <summary>
+		/// Remove user defined function from server nodes.
+		/// </summary>
+		/// <param name="policy">info configuration parameters, pass in null for defaults</param>
+		/// <param name="serverPath">location of UDF on server nodes.  Example: mylua.lua </param>
+		/// <exception cref="AerospikeException">if remove fails</exception>
+		public void RemoveUdf(InfoPolicy policy, string serverPath)
+		{
+			if (policy == null)
+			{
+				policy = infoPolicyDefault;
+			}
+			// Send UDF command to one node. That node will distribute the UDF command to other nodes.
+			string command = "udf-remove:filename=" + serverPath;
+			Node node = cluster.GetRandomNode();
+			string response = Info.Request(policy, node, command);
+
+			if (response.Equals("ok", StringComparison.CurrentCultureIgnoreCase))
+			{
+				return;
+			}
+
+			if (response.StartsWith("error=file_not_found"))
+			{
+				// UDF has already been removed.
+				return;
+			}
+			throw new AerospikeException("Remove UDF failed: " + response);
+		}
+	
 		/// <summary>
 		/// Execute user defined function on server and return results.
 		/// The function operates on a single record.
