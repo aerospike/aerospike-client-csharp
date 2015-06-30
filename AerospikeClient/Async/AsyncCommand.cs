@@ -44,6 +44,8 @@ namespace Aerospike.Client
 		private int timeout;
 		private int iteration;
 		private int complete;
+		private int failedNodes;
+		private int failedConns;
 		private bool inAuthenticate;
 		protected internal bool inHeader = true;
 
@@ -108,6 +110,7 @@ namespace Aerospike.Client
 			}
 			catch (AerospikeException.InvalidNode)
 			{
+				failedNodes++;
 				if (!RetryOnInit())
 				{
 					throw;
@@ -115,6 +118,7 @@ namespace Aerospike.Client
 			}
 			catch (AerospikeException.Connection)
 			{
+				failedConns++;
 				if (!RetryOnInit())
 				{
 					throw;
@@ -180,7 +184,7 @@ namespace Aerospike.Client
 
 			if (args.SocketError != SocketError.Success)
 			{
-				command.RetryAfterInit(GetAerospikeException(args.SocketError));
+				command.RetryAfterInit(command.GetAerospikeException(args.SocketError));
 				return;
 			}
 
@@ -213,7 +217,7 @@ namespace Aerospike.Client
 			}
 			catch (SocketException se)
 			{
-				command.RetryAfterInit(GetAerospikeException(se.SocketErrorCode));
+				command.RetryAfterInit(command.GetAerospikeException(se.SocketErrorCode));
 			}
 			catch (Exception e)
 			{
@@ -620,7 +624,7 @@ namespace Aerospike.Client
 				// Free up resources and notify user on timeout.
 				// Connection should have already been closed on AsyncTimeoutQueue timeout.
 				PutBackArgsOnError();
-				OnFailure(new AerospikeException.Timeout());
+				OnFailure(new AerospikeException.Timeout(node, timeout, iteration, failedNodes, failedConns));
 			}
 			else
 			{
@@ -660,11 +664,11 @@ namespace Aerospike.Client
 			cluster.PutEventArgs(eventArgs);
 		}
 
-		private static AerospikeException GetAerospikeException(SocketError se)
+		private AerospikeException GetAerospikeException(SocketError se)
 		{
 			if (se == SocketError.TimedOut)
 			{
-				return new AerospikeException.Timeout();
+				return new AerospikeException.Timeout(node, timeout, iteration, failedNodes, failedConns);
 			}
 			return new AerospikeException.Connection("Socket error: " + se);
 		}
