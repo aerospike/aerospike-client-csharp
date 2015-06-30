@@ -81,7 +81,10 @@ namespace Aerospike.Client
 		/// </summary>
 		public double GetDouble(string name)
 		{
-			return BitConverter.Int64BitsToDouble((long)GetValue(name));
+			// The server may return number as double or long.
+			// Convert bits if returned as long.
+			object result = GetValue(name);
+			return (result is double) ? (double)result : (result != null) ? BitConverter.Int64BitsToDouble((long)result) : 0.0; 
 		}
 
 		/// <summary>
@@ -89,7 +92,7 @@ namespace Aerospike.Client
 		/// </summary>
 		public float GetFloat(string name)
 		{
-			return (float)BitConverter.Int64BitsToDouble((long)GetValue(name));
+			return (float)GetDouble(name);
 		}
 
 		/// <summary>

@@ -298,11 +298,15 @@ namespace Aerospike.Client
                 case TypeCode.String:
 					return new StringValue((string)value);
 
+				/* Store double/float values as a C# serialized blob when an object argument is used
+				 * instead of the direct double argument (Value.Get(double value)).
+				 * Therefore, disable this code block.
 				case TypeCode.Double:
 					return new DoubleValue((double)value);
 
 				case TypeCode.Single:
 					return new FloatValue((float)value);
+				*/
 
 				case TypeCode.Int64:
 					return new LongValue((long)value);

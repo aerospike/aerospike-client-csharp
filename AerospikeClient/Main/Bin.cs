@@ -86,7 +86,26 @@ namespace Aerospike.Client
 
 		/// <summary>
 		/// Constructor, specifying bin name and double value.
+		/// The server does not support double, so the value is converted to long bits. On reads,
+		/// it's important to call <see cref="Aerospike.Client.Record.GetDouble(string)"/> to
+		/// indicate that the long returned by the server should be converted back to a double.
+		/// <para>
+		/// If the same bin name holds different types for different records, then this constructor
+		/// should not be used because there is no way to know when reading if the long should be
+		/// converted to a double.  Instead, use <see cref="Aerospike.Client.Bin(string, object)"/> 
+		/// which converts the double to a C# serialized blob.
+		/// </para>
+		/// <code>
+		/// double value = 22.7;
+		/// Bin bin = new Bin("mybin", (Object) value);
+		/// </code>
+		/// <para>
+		/// This is slower and not portable to other languages, but the double type is preserved, so a
+		/// double will be returned without knowing if a conversion should be made.
+		/// </para>
+		/// <para>
 		/// For servers configured as "single-bin", enter a null or empty name.
+		/// </para>
 		/// </summary>
 		/// <param name="name">bin name, current limit is 14 characters</param>
 		/// <param name="value">bin value</param>
@@ -98,7 +117,26 @@ namespace Aerospike.Client
 
 		/// <summary>
 		/// Constructor, specifying bin name and float value.
+		/// The server does not support float, so the value is converted to long bits. On reads,
+		/// it's important to call <see cref="Aerospike.Client.Record.GetFloat(string)"/> to
+		/// indicate that the long returned by the server should be converted back to a float.
+		/// <para>
+		/// If the same bin name holds different types for different records, then this constructor
+		/// should not be used because there is no way to know when reading if the long should be
+		/// converted to a float.  Instead, use <see cref="Aerospike.Client.Bin(string, object)"/> 
+		/// which converts the float to a C# serialized blob.
+		/// </para>
+		/// <code>
+		/// float value = 22.7;
+		/// Bin bin = new Bin("mybin", (Object) value);
+		/// </code>
+		/// <para>
+		/// This is slower and not portable to other languages, but the float type is preserved, so a
+		/// float will be returned without knowing if a conversion should be made.
+		/// </para>
+		/// <para>
 		/// For servers configured as "single-bin", enter a null or empty name.
+		/// </para>
 		/// </summary>
 		/// <param name="name">bin name, current limit is 14 characters</param>
 		/// <param name="value">bin value</param>
