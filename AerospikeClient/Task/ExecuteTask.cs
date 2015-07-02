@@ -39,44 +39,38 @@ namespace Aerospike.Client
 		/// </summary>
 		public override bool QueryIfDone()
 		{
-			string command = (scan) ? "scan-list" : "query-list";
+			string module = (scan) ? "scan" : "query";
+			string command = "jobs:module=" + module + ";cmd=get-job;trid=" + taskId;
 			Node[] nodes = cluster.Nodes;
 			bool done = false;
 
 			foreach (Node node in nodes)
 			{
 				string response = Info.Request(policy, node, command);
-				string find = "job_id=" + taskId + ':';
-				int index = response.IndexOf(find);
 
-				if (index < 0)
+				if (response.StartsWith("ERROR:"))
 				{
 					done = true;
 					continue;
 				}
 
-				int begin = index + find.Length;
-				find = "job_status=";
-				index = response.IndexOf(find, begin);
+				string find = "status=";
+				int index = response.IndexOf(find);
 
 				if (index < 0)
 				{
 					continue;
 				}
 
-				begin = index + find.Length;
+				int begin = index + find.Length;
 				int end = response.IndexOf(':', begin);
 				string status = response.Substring(begin, end - begin);
-				
-				if (status.Equals("ABORTED"))
-				{
-					throw new AerospikeException.QueryTerminated();
-				}
-				else if (status.Equals("IN PROGRESS"))
+
+				if (status.Equals("active"))
 				{
 					return false;
 				}
-				else if (status.Equals("DONE"))
+				else if (status.StartsWith("done"))
 				{
 					done = true;
 				}
