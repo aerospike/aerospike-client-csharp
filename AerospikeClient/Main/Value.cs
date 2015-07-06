@@ -28,6 +28,19 @@ namespace Aerospike.Client
 	public abstract class Value
 	{
 		/// <summary>
+		/// Should the client use the new double floating point particle type supported by Aerospike
+		/// server versions >= 3.5.15.  It's important that all server nodes and XDR be upgraded before
+		/// enabling this feature.
+		/// <para>
+		/// If false, the old method using an long particle type is used instead.
+		/// </para>
+		/// <para>
+		/// The current default is false.  Eventually, this default will be changed to true in a future client version.
+		/// </para>
+		/// </summary>
+		public static bool UseDoubleType = false;
+	
+		/// <summary>
 		/// Get string or null value instance.
 		/// </summary>
 		public static Value Get(string value)
@@ -743,8 +756,7 @@ namespace Aerospike.Client
 			{
 				get
 				{
-					// The server does not natively handle doubles, so store as long (8 byte integer).
-					return ParticleType.INTEGER;
+					return UseDoubleType ? ParticleType.DOUBLE : ParticleType.INTEGER;
 				}
 			}
 
@@ -826,8 +838,7 @@ namespace Aerospike.Client
 			{
 				get
 				{
-					// The server does not natively handle doubles, so store as long (8 byte integer).
-					return ParticleType.INTEGER;
+					return UseDoubleType ? ParticleType.DOUBLE : ParticleType.INTEGER;
 				}
 			}
 

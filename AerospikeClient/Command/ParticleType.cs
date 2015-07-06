@@ -21,6 +21,7 @@ namespace Aerospike.Client
 		// Server particle types.
 		public const int NULL = 0;
 		public const int INTEGER = 1;
+		public const int DOUBLE = 2;
 		public const int STRING = 3;
 		public const int BLOB = 4;
 		public const int CSHARP_BLOB = 8;

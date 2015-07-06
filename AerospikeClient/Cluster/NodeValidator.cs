@@ -30,6 +30,7 @@ namespace Aerospike.Client
 		internal IPEndPoint address;
 		internal bool hasBatchIndex;
 		internal bool hasReplicasAll;
+		internal bool hasDouble;
 
 		public NodeValidator(Cluster cluster, Host host)
 		{
@@ -104,6 +105,11 @@ namespace Aerospike.Client
 
 				foreach (string feature in list)
 				{
+					if (feature.Equals("float"))
+					{
+						this.hasDouble = true;
+					}
+
 					if (feature.Equals("batch-index"))
 					{
 						this.hasBatchIndex = true;
@@ -114,7 +120,7 @@ namespace Aerospike.Client
 						this.hasReplicasAll = true;
 					}
 
-					if (this.hasBatchIndex && this.hasReplicasAll)
+					if (this.hasDouble && this.hasBatchIndex && this.hasReplicasAll)
 					{
 						break;
 					}

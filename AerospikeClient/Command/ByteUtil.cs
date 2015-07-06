@@ -34,6 +34,9 @@ namespace Aerospike.Client
 				case ParticleType.INTEGER:
 					return BytesToLongValue(buf, offset, len);
 
+				case ParticleType.DOUBLE:
+					return new Value.DoubleValue(BytesToDouble(buf, offset));
+
 				case ParticleType.BLOB:
 					byte[] dest = new byte[len];
 					Array.Copy(buf, offset, dest, 0, len);
@@ -54,6 +57,9 @@ namespace Aerospike.Client
 				case ParticleType.INTEGER:
 					return BytesToNumber(buf, offset, len);
 
+				case ParticleType.DOUBLE:
+					return BytesToDouble(buf, offset);
+				
 				case ParticleType.BLOB:
 					byte[] dest = new byte[len];
 					Array.Copy(buf, offset, dest, 0, len);

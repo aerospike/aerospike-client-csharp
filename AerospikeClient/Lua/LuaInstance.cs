@@ -185,7 +185,10 @@ namespace Aerospike.Client
 			
 			case ParticleType.INTEGER:
 				return ByteUtil.BytesToNumber(buf, offset, len);
-		
+
+			case ParticleType.DOUBLE:
+				return ByteUtil.BytesToDouble(buf, offset);
+
 			case ParticleType.BLOB:
 				byte[] dest = new byte[len];
 				Array.Copy(buf, offset, dest, 0, len);

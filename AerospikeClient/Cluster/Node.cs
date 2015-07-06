@@ -41,6 +41,7 @@ namespace Aerospike.Client
 		protected internal int partitionGeneration = -1;
 		protected internal int referenceCount;
 		protected internal int failures;
+		protected internal readonly bool hasDouble;
 		protected internal readonly bool hasBatchIndex;
 		protected internal readonly bool hasReplicasAll;
 		protected internal volatile bool active = true;
@@ -56,6 +57,7 @@ namespace Aerospike.Client
 			this.name = nv.name;
 			this.aliases = nv.aliases;
 			this.address = nv.address;
+			this.hasDouble = nv.hasDouble;
 			this.hasBatchIndex = nv.hasBatchIndex;
 			this.hasReplicasAll = nv.hasReplicasAll;
 
