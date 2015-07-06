@@ -145,7 +145,7 @@ namespace Aerospike.Client
 		public const int BIN_NOT_FOUND = 17;
 
 		/// <summary>
-		/// Specified bin name does not exist in record.
+		/// Device not keeping up with writes.
 		/// </summary>
 		public const int DEVICE_OVERLOAD = 18;
 
