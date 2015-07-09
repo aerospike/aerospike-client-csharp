@@ -86,10 +86,13 @@ namespace Aerospike.Client
 
 		/// <summary>
 		/// Constructor, specifying bin name and double value.
-		/// The server does not support double, so the value is converted to long bits. On reads,
-		/// it's important to call <see cref="Aerospike.Client.Record.GetDouble(string)"/> to
-		/// indicate that the long returned by the server should be converted back to a double.
+		/// Aerospike server versions >= 3.5.15 natively support floating point values.  If your cluster
+		/// supports floating point values, then this is always the correct constructor for double.
+		/// Remember to also set <see cref="Aerospike.Client.Value.UseDoubleType"/> to true;
 		/// <para>
+		/// If your cluster does not support floating point, the value is converted to long bits.
+		/// On reads, it's important to call <see cref="Aerospike.Client.Record.GetDouble(string)"/>
+		/// to indicate that the long returned by the server should be converted back to a double.
 		/// If the same bin name holds different types for different records, then this constructor
 		/// should not be used because there is no way to know when reading if the long should be
 		/// converted to a double.  Instead, use <see cref="Aerospike.Client.Bin(string, object)"/> 
@@ -117,10 +120,13 @@ namespace Aerospike.Client
 
 		/// <summary>
 		/// Constructor, specifying bin name and float value.
-		/// The server does not support float, so the value is converted to long bits. On reads,
-		/// it's important to call <see cref="Aerospike.Client.Record.GetFloat(string)"/> to
-		/// indicate that the long returned by the server should be converted back to a float.
+		/// Aerospike server versions >= 3.5.15 natively support floating point values.  If your cluster
+		/// supports floating point values, then this is always the correct constructor for float.
+		/// Remember to also set <see cref="Aerospike.Client.Value.UseDoubleType"/> to true;
 		/// <para>
+		/// If your cluster does not support floating point, the value is converted to long bits.
+		/// On reads, it's important to call <see cref="Aerospike.Client.Record.GetFloat(string)"/>
+		/// to indicate that the long returned by the server should be converted back to a float.
 		/// If the same bin name holds different types for different records, then this constructor
 		/// should not be used because there is no way to know when reading if the long should be
 		/// converted to a float.  Instead, use <see cref="Aerospike.Client.Bin(string, object)"/> 
