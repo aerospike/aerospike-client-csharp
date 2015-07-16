@@ -356,6 +356,88 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
+		/// Get value from Record object. Useful when copying records from one cluster to another.
+		/// Since map/list are converted, this method should only be called when using
+		/// Aerospike 3 servers.
+		/// </summary>
+		public static Value GetFromRecordObject(object value)
+		{
+			if (value == null)
+			{
+				return new NullValue();
+			}
+
+			if (value is byte[])
+			{
+				return new BytesValue((byte[])value);
+			}
+
+			if (value is Value)
+			{
+				return (Value)value;
+			}
+
+			if (value is IList)
+			{
+				return new ListValue((IList)value);
+			}
+
+			if (value is IDictionary)
+			{
+				return new MapValue((IDictionary)value);
+			}
+
+			TypeCode code = System.Type.GetTypeCode(value.GetType());
+
+			switch (code)
+			{
+				case TypeCode.Empty:
+					return new NullValue();
+
+				case TypeCode.String:
+					return new StringValue((string)value);
+
+				case TypeCode.Double:
+					return new DoubleValue((double)value);
+
+				case TypeCode.Single:
+					return new FloatValue((float)value);
+
+				case TypeCode.Int64:
+					return new LongValue((long)value);
+
+				case TypeCode.Int32:
+					return new IntegerValue((int)value);
+
+				case TypeCode.Int16:
+					return new ShortValue((short)value);
+
+				case TypeCode.UInt64:
+					return new UnsignedLongValue((ulong)value);
+
+				case TypeCode.UInt32:
+					return new UnsignedIntegerValue((uint)value);
+
+				case TypeCode.UInt16:
+					return new UnsignedShortValue((ushort)value);
+
+				case TypeCode.Boolean:
+					return new BooleanValue((bool)value);
+
+				case TypeCode.Byte:
+					return new ByteValue((byte)value);
+
+				case TypeCode.SByte:
+					return new SignedByteValue((sbyte)value);
+
+				case TypeCode.Char:
+				case TypeCode.DateTime:
+				default:
+					return new BlobValue(value);
+			}
+		}
+
+		/// <summary>
 		/// Calculate number of bytes necessary to serialize the value in the wire protocol.
 		/// </summary>
 		public abstract int EstimateSize();
