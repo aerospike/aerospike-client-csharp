@@ -479,14 +479,23 @@ namespace Aerospike.Client
 
 		protected internal override void ParseRow(Key key)
 		{
-			if (resultCode == 0)
+			Key keyOrig = keys[batchIndex];
+
+			if (Util.ByteArrayEquals(key.digest, keyOrig.digest))
 			{
-				Record record = ParseRecord();
-				listener.OnRecord(key, record);
+				if (resultCode == 0)
+				{
+					Record record = ParseRecord();
+					listener.OnRecord(keyOrig, record);
+				}
+				else
+				{
+					listener.OnRecord(keyOrig, null);
+				}
 			}
 			else
 			{
-				listener.OnRecord(key, null);
+				throw new AerospikeException.Parse("Unexpected batch key returned: " + key.ns + ',' + ByteUtil.BytesToHexString(key.digest) + ',' + batchIndex);
 			}
 		}
 	}
@@ -499,6 +508,7 @@ namespace Aerospike.Client
 		private readonly string[] binNames;
 		private readonly RecordSequenceListener listener;
 		private readonly int readAttr;
+		private int index;
 
 		public AsyncBatchGetSequenceDirect
 		(
@@ -533,14 +543,24 @@ namespace Aerospike.Client
 
 		protected internal override void ParseRow(Key key)
 		{
-			if (resultCode == 0)
+			int offset = batch.offsets[index++];
+			Key keyOrig = keys[offset];
+
+			if (Util.ByteArrayEquals(key.digest, keyOrig.digest))
 			{
-				Record record = ParseRecord();
-				listener.OnRecord(key, record);
+				if (resultCode == 0)
+				{
+					Record record = ParseRecord();
+					listener.OnRecord(keyOrig, record);
+				}
+				else
+				{
+					listener.OnRecord(keyOrig, null);
+				}
 			}
 			else
 			{
-				listener.OnRecord(key, null);
+				throw new AerospikeException.Parse("Unexpected batch key returned: " + key.ns + ',' + ByteUtil.BytesToHexString(key.digest) + ',' + index + ',' + offset);
 			}
 		}
 	}
@@ -798,7 +818,17 @@ namespace Aerospike.Client
 			{
 				throw new AerospikeException.Parse("Received bins that were not requested!");
 			}
-			listener.OnExists(key, resultCode == 0);
+
+			Key keyOrig = keys[batchIndex];
+
+			if (Util.ByteArrayEquals(key.digest, keyOrig.digest))
+			{
+				listener.OnExists(keyOrig, resultCode == 0);
+			}
+			else
+			{
+				throw new AerospikeException.Parse("Unexpected batch key returned: " + key.ns + ',' + ByteUtil.BytesToHexString(key.digest) + ',' + batchIndex);
+			}
 		}
 	}
 
@@ -808,6 +838,7 @@ namespace Aerospike.Client
 		private readonly Policy policy;
 		private readonly Key[] keys;
 		private readonly ExistsSequenceListener listener;
+		private int index;
 
 		public AsyncBatchExistsSequenceDirect
 		(
@@ -842,7 +873,18 @@ namespace Aerospike.Client
 			{
 				throw new AerospikeException.Parse("Received bins that were not requested!");
 			}
-			listener.OnExists(key, resultCode == 0);
+
+			int offset = batch.offsets[index++];
+			Key keyOrig = keys[offset];
+
+			if (Util.ByteArrayEquals(key.digest, keyOrig.digest))
+			{
+				listener.OnExists(keyOrig, resultCode == 0);
+			}
+			else
+			{
+				throw new AerospikeException.Parse("Unexpected batch key returned: " + key.ns + ',' + ByteUtil.BytesToHexString(key.digest) + ',' + index + ',' + offset);
+			}
 		}
 	}
 
