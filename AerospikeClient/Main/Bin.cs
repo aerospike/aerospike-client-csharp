@@ -86,7 +86,7 @@ namespace Aerospike.Client
 
 		/// <summary>
 		/// Constructor, specifying bin name and double value.
-		/// Aerospike server versions >= 3.5.15 natively support floating point values.  If your cluster
+		/// Aerospike server versions >= 3.6.0 natively support floating point values.  If your cluster
 		/// supports floating point values, then this is always the correct constructor for double.
 		/// Remember to also set <see cref="Aerospike.Client.Value.UseDoubleType"/> to true;
 		/// <para>
@@ -120,7 +120,7 @@ namespace Aerospike.Client
 
 		/// <summary>
 		/// Constructor, specifying bin name and float value.
-		/// Aerospike server versions >= 3.5.15 natively support floating point values.  If your cluster
+		/// Aerospike server versions >= 3.6.0 natively support floating point values.  If your cluster
 		/// supports floating point values, then this is always the correct constructor for float.
 		/// Remember to also set <see cref="Aerospike.Client.Value.UseDoubleType"/> to true;
 		/// <para>
