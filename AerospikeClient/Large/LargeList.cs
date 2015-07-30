@@ -299,7 +299,7 @@ namespace Aerospike.Client
 		/// <param name="filterArgs">arguments to Lua function name</param>
 		public IList Filter(string filterModule, string filterName, params Value[] filterArgs)
 		{
-			return (IList)client.Execute(policy, key, PackageName, "filter", binName, Value.Get(filterModule), Value.Get(filterName), Value.Get(filterArgs));
+			return (IList)client.Execute(policy, key, PackageName, "filter", binName, Value.AsNull, Value.Get(filterModule), Value.Get(filterName), Value.Get(filterArgs));
 		}
 
 		/// <summary>

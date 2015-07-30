@@ -63,7 +63,7 @@ namespace Aerospike.Client
 				return null;
 			}
 
-			object obj;
+			object obj = null;
 			bins.TryGetValue(name, out obj);
 			return obj;
 		}
@@ -100,7 +100,10 @@ namespace Aerospike.Client
 		/// </summary>
 		public long GetLong(string name)
 		{
-			return (long)GetValue(name);
+			// The server always returns numbers as longs if bin found.
+			// If bin not found, the result will be null.  Convert null to zero.
+			object result = GetValue(name);
+			return (result != null) ? (long)result : 0;
 		}
 
 		/// <summary>
@@ -108,7 +111,7 @@ namespace Aerospike.Client
 		/// </summary>
 		public ulong GetULong(string name)
 		{
-			return (ulong)GetValue(name);
+			return (ulong)GetLong(name);
 		}
 
 		/// <summary>
@@ -116,7 +119,8 @@ namespace Aerospike.Client
 		/// </summary>
 		public int GetInt(string name)
 		{
-			return (int)(long)GetValue(name);
+			// The server always returns numbers as longs, so get long and cast.
+			return (int)GetLong(name);
 		}
 
 		/// <summary>
@@ -124,7 +128,8 @@ namespace Aerospike.Client
 		/// </summary>
 		public uint GetUInt(string name)
 		{
-			return (uint)(long)GetValue(name);
+			// The server always returns numbers as longs, so get long and cast.
+			return (uint)GetLong(name);
 		}
 
 		/// <summary>
@@ -132,7 +137,8 @@ namespace Aerospike.Client
 		/// </summary>
 		public short GetShort(string name)
 		{
-			return (short)(long)GetValue(name);
+			// The server always returns numbers as longs, so get long and cast.
+			return (short)GetLong(name);
 		}
 
 		/// <summary>
@@ -140,7 +146,8 @@ namespace Aerospike.Client
 		/// </summary>
 		public ushort GetUShort(string name)
 		{
-			return (ushort)(long)GetValue(name);
+			// The server always returns numbers as longs, so get long and cast.
+			return (ushort)GetLong(name);
 		}
 
 		/// <summary>
@@ -148,7 +155,8 @@ namespace Aerospike.Client
 		/// </summary>
 		public byte GetByte(string name)
 		{
-			return (byte)(long)GetValue(name);
+			// The server always returns numbers as longs, so get long and cast.
+			return (byte)GetLong(name);
 		}
 
 		/// <summary>
@@ -156,7 +164,8 @@ namespace Aerospike.Client
 		/// </summary>
 		public sbyte GetSBytes(string name)
 		{
-			return (sbyte)(long)GetValue(name);
+			// The server always returns numbers as longs, so get long and cast.
+			return (sbyte)GetLong(name);
 		}
 
 		/// <summary>
@@ -164,8 +173,8 @@ namespace Aerospike.Client
 		/// </summary>
 		public bool GetBool(string name)
 		{
-			long v = (long)GetValue(name);
-			return (v != 0) ? true : false;
+			// The server always returns booleans as longs, so get long and convert.
+			return (GetLong(name) != 0) ? true : false;
 		}
 
 		/**

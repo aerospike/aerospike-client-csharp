@@ -7,6 +7,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AerospikeClient", "Aerospik
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AerospikeAdmin", "AerospikeAdmin\AerospikeAdmin.csproj", "{5181AF59-E59C-4DA6-9589-8038A8A16E23}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AerospikeTest", "AerospikeTest\AerospikeTest.csproj", "{C76109A1-1A6C-4F78-848B-DB049D5509E3}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug IIS|Any CPU = Debug IIS|Any CPU
@@ -39,6 +41,14 @@ Global
 		{5181AF59-E59C-4DA6-9589-8038A8A16E23}.Release IIS|Any CPU.Build.0 = Release IIS|Any CPU
 		{5181AF59-E59C-4DA6-9589-8038A8A16E23}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{5181AF59-E59C-4DA6-9589-8038A8A16E23}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C76109A1-1A6C-4F78-848B-DB049D5509E3}.Debug IIS|Any CPU.ActiveCfg = Debug|Any CPU
+		{C76109A1-1A6C-4F78-848B-DB049D5509E3}.Debug IIS|Any CPU.Build.0 = Debug|Any CPU
+		{C76109A1-1A6C-4F78-848B-DB049D5509E3}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C76109A1-1A6C-4F78-848B-DB049D5509E3}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C76109A1-1A6C-4F78-848B-DB049D5509E3}.Release IIS|Any CPU.ActiveCfg = Release|Any CPU
+		{C76109A1-1A6C-4F78-848B-DB049D5509E3}.Release IIS|Any CPU.Build.0 = Release|Any CPU
+		{C76109A1-1A6C-4F78-848B-DB049D5509E3}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C76109A1-1A6C-4F78-848B-DB049D5509E3}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
