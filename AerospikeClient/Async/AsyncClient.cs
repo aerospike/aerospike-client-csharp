@@ -717,7 +717,7 @@ namespace Aerospike.Client
 		/// The returned records are located in the same list.
 		/// <para>
 		/// Create listener, call asynchronous batch get and return task monitor.
-		/// This method requires Aerospike Server version >= 3.5.15.
+		/// This method requires Aerospike Server version >= 3.6.0.
 		/// </para>
 		/// </summary>
 		/// <param name="policy">batch configuration parameters, pass in null for defaults</param>
@@ -739,7 +739,7 @@ namespace Aerospike.Client
 		/// <para>
 		/// This method schedules the get command with a channel selector and returns.
 		/// Another thread will process the command and send the results to the listener in a single call.
-		/// This method requires Aerospike Server version >= 3.5.15.
+		/// This method requires Aerospike Server version >= 3.6.0.
 		/// </para>
 		/// </summary>
 		/// <param name="policy">batch configuration parameters, pass in null for defaults</param>
@@ -768,7 +768,7 @@ namespace Aerospike.Client
 		/// <para>
 		/// This method schedules the get command with a channel selector and returns.
 		/// Another thread will process the command and send the results to the listener in a single call.
-		/// This method requires Aerospike Server version >= 3.5.15.
+		/// This method requires Aerospike Server version >= 3.6.0.
 		/// </para>
 		/// </summary>
 		/// <param name="policy">batch configuration parameters, pass in null for defaults</param>

@@ -29,7 +29,7 @@ namespace Aerospike.Client
 	{
 		/// <summary>
 		/// Should the client use the new double floating point particle type supported by Aerospike
-		/// server versions >= 3.5.15.  It's important that all server nodes and XDR be upgraded before
+		/// server versions >= 3.6.0.  It's important that all server nodes and XDR be upgraded before
 		/// enabling this feature.
 		/// <para>
 		/// If false, the old method using an long particle type is used instead.
