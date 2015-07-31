@@ -60,6 +60,7 @@
 			this.userBox.Name = "userBox";
 			this.userBox.Size = new System.Drawing.Size(138, 20);
 			this.userBox.TabIndex = 27;
+			this.userBox.KeyDown += new System.Windows.Forms.KeyEventHandler(this.KeyDownClick);
 			// 
 			// label13
 			// 
@@ -79,6 +80,7 @@
 			this.setBox.Size = new System.Drawing.Size(138, 20);
 			this.setBox.TabIndex = 22;
 			this.setBox.Text = "test";
+			this.setBox.KeyDown += new System.Windows.Forms.KeyEventHandler(this.KeyDownClick);
 			// 
 			// label4
 			// 
@@ -98,6 +100,7 @@
 			this.nsBox.Size = new System.Drawing.Size(138, 20);
 			this.nsBox.TabIndex = 21;
 			this.nsBox.Text = "test";
+			this.nsBox.KeyDown += new System.Windows.Forms.KeyEventHandler(this.KeyDownClick);
 			// 
 			// label3
 			// 
@@ -117,6 +120,7 @@
 			this.portBox.Size = new System.Drawing.Size(138, 20);
 			this.portBox.TabIndex = 20;
 			this.portBox.Text = "3000";
+			this.portBox.KeyDown += new System.Windows.Forms.KeyEventHandler(this.KeyDownClick);
 			// 
 			// label2
 			// 
@@ -145,6 +149,7 @@
 			this.hostBox.Size = new System.Drawing.Size(138, 20);
 			this.hostBox.TabIndex = 19;
 			this.hostBox.Text = "localhost";
+			this.hostBox.KeyDown += new System.Windows.Forms.KeyEventHandler(this.KeyDownClick);
 			// 
 			// passwordBox
 			// 
@@ -155,6 +160,7 @@
 			this.passwordBox.Size = new System.Drawing.Size(138, 20);
 			this.passwordBox.TabIndex = 28;
 			this.passwordBox.UseSystemPasswordChar = true;
+			this.passwordBox.KeyDown += new System.Windows.Forms.KeyEventHandler(this.KeyDownClick);
 			// 
 			// runButton
 			// 

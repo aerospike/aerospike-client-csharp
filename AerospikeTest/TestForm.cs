@@ -83,5 +83,15 @@ namespace Aerospike.Test
 			args.Save();
 			args.Connect();
 		}
+
+		private void KeyDownClick(object sender, KeyEventArgs e)
+		{
+			if (e.KeyCode == Keys.Enter)
+			{
+				runButton.PerformClick();
+				e.SuppressKeyPress = true;
+				e.Handled = true;
+			}
+		}
 	}
 }
