@@ -169,6 +169,8 @@
     <Compile Include="BenchmarkThreadAsync.cs" />
     <Compile Include="BenchmarkInitialize.cs" />
     <Compile Include="BenchmarkReadWrite.cs" />
+    <Compile Include="AsyncUserDefinedFunction.cs" />
+    <Compile Include="AsyncQuery.cs" />
     <Compile Include="LargeList.cs" />
     <Compile Include="GetAndJoin.cs" />
     <Compile Include="RandomShift.cs" />

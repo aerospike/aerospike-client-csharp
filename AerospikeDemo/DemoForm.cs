@@ -81,6 +81,8 @@ namespace Aerospike.Demo
                     new ExampleTreeNode("Async PutGet", new AsyncPutGet(console)),
                     new ExampleTreeNode("Async Batch", new AsyncBatch(console)),
                     new ExampleTreeNode("Async Scan", new AsyncScan(console)),
+                    new ExampleTreeNode("Async Query", new AsyncQuery(console)),
+                    new ExampleTreeNode("Async UDF", new AsyncUserDefinedFunction(console)),
                     new ExampleTreeNode("List/Map", new ListMap(console)),
                     new ExampleTreeNode("User Defined Function", new UserDefinedFunction(console)),
                     new ExampleTreeNode("Large List", new LargeList(console)),

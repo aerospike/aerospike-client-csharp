@@ -25,7 +25,7 @@ namespace Aerospike.Client
 		protected internal readonly Key key;
 		protected internal readonly Partition partition;
 		private readonly string[] binNames;
-		private Record record;
+		protected Record record;
 
 		public AsyncRead(AsyncCluster cluster, Policy policy, RecordListener listener, Key key, string[] binNames) 
 			: base(cluster)
@@ -123,7 +123,7 @@ namespace Aerospike.Client
 			return new Record(bins, generation, expiration);
 		}
 
-		protected internal sealed override void OnSuccess()
+		protected internal override void OnSuccess()
 		{
 			if (listener != null)
 			{
@@ -131,7 +131,7 @@ namespace Aerospike.Client
 			}
 		}
 
-		protected internal sealed override void OnFailure(AerospikeException e)
+		protected internal override void OnFailure(AerospikeException e)
 		{
 			if (listener != null)
 			{

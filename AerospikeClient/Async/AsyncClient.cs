@@ -1270,7 +1270,84 @@ namespace Aerospike.Client
 
 			new AsyncScanExecutor(cluster, policy, listener, ns, setName, binNames);
 		}
-	
+
+		//---------------------------------------------------------------
+		// User defined functions
+		//---------------------------------------------------------------
+
+		/// <summary>
+		/// Asynchronously execute user defined function on server for a single record and return result.
+		/// Create listener, call asynchronous execute and return task monitor.
+		/// </summary>
+		/// <param name="policy">write configuration parameters, pass in null for defaults</param>
+		/// <param name="token">cancellation token</param>
+		/// <param name="key">unique record identifier</param>
+		/// <param name="packageName">server package name where user defined function resides</param>
+		/// <param name="functionName">user defined function</param>
+		/// <param name="functionArgs">arguments passed in to user defined function</param>
+		/// <returns>task monitor</returns>
+		public Task<object> Execute(WritePolicy policy, CancellationToken token, Key key, string packageName, string functionName, params Value[] functionArgs)
+		{
+			ExecuteListenerAdapter listener = new ExecuteListenerAdapter(token);
+			Execute(policy, listener, key, packageName, functionName, functionArgs);
+			return listener.Task;
+		}
+
+		/// <summary>
+		/// Asynchronously execute user defined function on server and return result.
+		/// The function operates on a single record.
+		/// The package name is used to locate the udf file location on the server:
+		/// <para>
+		/// udf file = &lt;server udf dir&gt;/&lt;package name&gt;.lua
+		/// </para>
+		/// <para>
+		/// This method schedules the execute command with a channel selector and returns.
+		/// Another thread will process the command and send the results to the listener.
+		/// </para>
+		/// </summary>
+		/// <param name="policy">write configuration parameters, pass in null for defaults</param>
+		/// <param name="listener">where to send results</param>
+		/// <param name="key">unique record identifier</param>
+		/// <param name="packageName">server package name where user defined function resides</param>
+		/// <param name="functionName">user defined function</param>
+		/// <param name="functionArgs">arguments passed in to user defined function</param>
+		/// <exception cref="AerospikeException">if transaction fails</exception>
+		public void Execute(WritePolicy policy, ExecuteListener listener, Key key, string packageName, string functionName, params Value[] functionArgs)
+		{
+			if (policy == null)
+			{
+				policy = writePolicyDefault;
+			}
+			AsyncExecute command = new AsyncExecute(cluster, policy, listener, key, packageName, functionName, functionArgs);
+			command.Execute();
+		}
+
+		//-------------------------------------------------------
+		// Query Operations
+		//-------------------------------------------------------
+
+		/// <summary>
+		/// Asynchronously execute query on all server nodes.  The query policy's 
+		/// <code>maxConcurrentNodes</code> dictate how many nodes can be queried in parallel.
+		/// The default is to query all nodes in parallel.
+		/// <para>
+		/// This method schedules the node's query commands with channel selectors and returns.
+		/// Selector threads will process the commands and send the results to the listener.
+		/// </para>
+		/// </summary>
+		/// <param name="policy">query configuration parameters, pass in null for defaults</param>
+		/// <param name="listener">where to send results</param>
+		/// <param name="statement">database query command parameters</param>
+		/// <exception cref="AerospikeException">if query fails</exception>
+		public void Query(QueryPolicy policy, RecordSequenceListener listener, Statement statement)
+		{
+			if (policy == null)
+			{
+				policy = queryPolicyDefault;
+			}
+			new AsyncQueryExecutor(cluster, policy, listener, statement);
+		}
+
 		//-------------------------------------------------------
 		// Internal Methods
 		//-------------------------------------------------------

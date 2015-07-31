@@ -54,6 +54,8 @@
   <ItemGroup>
     <Compile Include="Args.cs" />
     <Compile Include="Async\AsyncMonitor.cs" />
+    <Compile Include="Async\TestAsyncUDF.cs" />
+    <Compile Include="Async\TestAsyncQuery.cs" />
     <Compile Include="Async\TestAsyncScan.cs" />
     <Compile Include="Async\TestAsyncBatch.cs" />
     <Compile Include="Async\TestAsyncPutGet.cs" />

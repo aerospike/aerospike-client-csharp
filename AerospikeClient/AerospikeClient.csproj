@@ -164,11 +164,15 @@
     <Compile Include="Admin\PrivilegeCode.cs" />
     <Compile Include="Admin\Privilege.cs" />
     <Compile Include="AsyncTask\BatchListListenerAdapter.cs" />
+    <Compile Include="AsyncTask\ExecuteListenerAdapter.cs" />
     <Compile Include="Async\AsyncReadHeader.cs" />
     <Compile Include="Async\AsyncOperate.cs" />
     <Compile Include="Async\AsyncTouch.cs" />
     <Compile Include="Async\BufferPool.cs" />
     <Compile Include="Async\AsyncBatch.cs" />
+    <Compile Include="Async\AsyncExecute.cs" />
+    <Compile Include="Async\AsyncQueryExecutor.cs" />
+    <Compile Include="Async\AsyncQuery.cs" />
     <Compile Include="BCrypt\SaltParseException.cs" />
     <Compile Include="Cluster\PartitionParser.cs" />
     <Compile Include="Admin\AdminCommand.cs" />
@@ -182,6 +186,7 @@
     <Compile Include="Command\TouchCommand.cs" />
     <Compile Include="Listener\BatchListListener.cs" />
     <Compile Include="Listener\BatchSequenceListener.cs" />
+    <Compile Include="Listener\ExecuteListener.cs" />
     <Compile Include="Lua\LuaAerospike.cs" />
     <Compile Include="Lua\LuaBytes.cs" />
     <Compile Include="Lua\LuaCache.cs" />
