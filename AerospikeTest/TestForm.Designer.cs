@@ -59,7 +59,7 @@
 			this.userBox.Location = new System.Drawing.Point(90, 58);
 			this.userBox.Name = "userBox";
 			this.userBox.Size = new System.Drawing.Size(138, 20);
-			this.userBox.TabIndex = 27;
+			this.userBox.TabIndex = 3;
 			this.userBox.KeyDown += new System.Windows.Forms.KeyEventHandler(this.KeyDownClick);
 			// 
 			// label13
@@ -78,7 +78,7 @@
 			this.setBox.Location = new System.Drawing.Point(90, 136);
 			this.setBox.Name = "setBox";
 			this.setBox.Size = new System.Drawing.Size(138, 20);
-			this.setBox.TabIndex = 22;
+			this.setBox.TabIndex = 6;
 			this.setBox.Text = "test";
 			this.setBox.KeyDown += new System.Windows.Forms.KeyEventHandler(this.KeyDownClick);
 			// 
@@ -98,7 +98,7 @@
 			this.nsBox.Location = new System.Drawing.Point(90, 110);
 			this.nsBox.Name = "nsBox";
 			this.nsBox.Size = new System.Drawing.Size(138, 20);
-			this.nsBox.TabIndex = 21;
+			this.nsBox.TabIndex = 5;
 			this.nsBox.Text = "test";
 			this.nsBox.KeyDown += new System.Windows.Forms.KeyEventHandler(this.KeyDownClick);
 			// 
@@ -118,7 +118,7 @@
 			this.portBox.Location = new System.Drawing.Point(90, 32);
 			this.portBox.Name = "portBox";
 			this.portBox.Size = new System.Drawing.Size(138, 20);
-			this.portBox.TabIndex = 20;
+			this.portBox.TabIndex = 2;
 			this.portBox.Text = "3000";
 			this.portBox.KeyDown += new System.Windows.Forms.KeyEventHandler(this.KeyDownClick);
 			// 
@@ -147,7 +147,7 @@
 			this.hostBox.Location = new System.Drawing.Point(90, 6);
 			this.hostBox.Name = "hostBox";
 			this.hostBox.Size = new System.Drawing.Size(138, 20);
-			this.hostBox.TabIndex = 19;
+			this.hostBox.TabIndex = 1;
 			this.hostBox.Text = "localhost";
 			this.hostBox.KeyDown += new System.Windows.Forms.KeyEventHandler(this.KeyDownClick);
 			// 
@@ -158,14 +158,14 @@
 			this.passwordBox.Location = new System.Drawing.Point(90, 84);
 			this.passwordBox.Name = "passwordBox";
 			this.passwordBox.Size = new System.Drawing.Size(138, 20);
-			this.passwordBox.TabIndex = 28;
+			this.passwordBox.TabIndex = 4;
 			this.passwordBox.UseSystemPasswordChar = true;
 			this.passwordBox.KeyDown += new System.Windows.Forms.KeyEventHandler(this.KeyDownClick);
 			// 
 			// runButton
 			// 
 			this.runButton.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
-			this.runButton.Location = new System.Drawing.Point(153, 169);
+			this.runButton.Location = new System.Drawing.Point(153, 168);
 			this.runButton.Name = "runButton";
 			this.runButton.Size = new System.Drawing.Size(75, 23);
 			this.runButton.TabIndex = 31;
@@ -177,7 +177,7 @@
 			// 
 			this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
 			this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-			this.ClientSize = new System.Drawing.Size(241, 204);
+			this.ClientSize = new System.Drawing.Size(241, 200);
 			this.Controls.Add(this.runButton);
 			this.Controls.Add(this.label12);
 			this.Controls.Add(this.userBox);

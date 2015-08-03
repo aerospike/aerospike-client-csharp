@@ -82,5 +82,17 @@ namespace Aerospike.Test.Properties {
                 this["User"] = value;
             }
         }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("True")]
+        public bool Prompt {
+            get {
+                return ((bool)(this["Prompt"]));
+            }
+            set {
+                this["Prompt"] = value;
+            }
+        }
     }
 }

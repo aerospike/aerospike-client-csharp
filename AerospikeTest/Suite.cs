@@ -26,11 +26,20 @@ namespace Aerospike.Test
 		[AssemblyInitialize()]
 		public static void AssemblyInit(TestContext context)
 		{
-			TestForm form = new TestForm();
+			Args args = Args.Instance;
 
-			if (form.ShowDialog() != DialogResult.OK)
+			if (args.prompt)
 			{
-				Application.Exit();
+				TestForm form = new TestForm();
+
+				if (form.ShowDialog() != DialogResult.OK)
+				{
+					Application.Exit();
+				}
+			}
+			else
+			{
+				args.Connect();
 			}
 		}
 

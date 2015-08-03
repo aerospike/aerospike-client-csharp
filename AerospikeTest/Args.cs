@@ -35,6 +35,7 @@ namespace Aerospike.Test
 		public string password;
 		public string ns;
 		public string set;
+		public bool prompt;
 		public bool hasUdf;
 		public bool singleBin;
 		public bool hasLargeDataTypes;
@@ -46,6 +47,7 @@ namespace Aerospike.Test
 			user = Properties.Settings.Default.User;
 			ns = Properties.Settings.Default.Namespace;
 			set = Properties.Settings.Default.Set;
+			prompt = Properties.Settings.Default.Prompt;
 		}
 
 		public void Save()
@@ -57,6 +59,7 @@ namespace Aerospike.Test
 			Properties.Settings.Default.User = user;
 			Properties.Settings.Default.Namespace = ns;
 			Properties.Settings.Default.Set = set;
+			Properties.Settings.Default.Prompt = prompt;
 
 			Properties.Settings.Default.Save();
 		}
