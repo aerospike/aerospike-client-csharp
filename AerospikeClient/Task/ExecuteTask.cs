@@ -66,11 +66,13 @@ namespace Aerospike.Client
 				int end = response.IndexOf(':', begin);
 				string status = response.Substring(begin, end - begin);
 
-				if (status.Equals("active"))
+				// Newer servers use "active(ok)" while older servers use "IN_PROGRESS"
+				if (status.StartsWith("active") || status.StartsWith("IN_PROGRESS"))
 				{
 					return false;
 				}
-				else if (status.StartsWith("done"))
+				// Newer servers use "done" while older servers use "DONE"
+				else if (status.StartsWith("done", System.StringComparison.OrdinalIgnoreCase))
 				{
 					done = true;
 				}
