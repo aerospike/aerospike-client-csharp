@@ -53,8 +53,7 @@ namespace Aerospike.Client
 		/// <para>
 		/// Expiration values:
 		/// <list type="bullet">
-		/// <item>-1: Never expire for Aerospike 2 server versions >= 2.7.2 and Aerospike 3 server
-		/// versions >= 3.1.4.  Do not use -1 for older servers.</item>
+		/// <item>-1: Never expire. Supported by Aerospike 2 server versions >= 2.7.2 and Aerospike 3 server versions >= 3.1.4.</item>
 		/// <item>0:  Default to namespace's "default-ttl" on the server.</item>
 		/// <item>> 0: Actual expiration in seconds.</item>
 		/// </list>
