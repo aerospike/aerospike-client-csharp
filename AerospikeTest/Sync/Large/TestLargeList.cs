@@ -56,6 +56,22 @@ namespace Aerospike.Test
 			llist.Add(Value.Get(orig2));
 			llist.Add(Value.Get(orig3));
 
+			// Perform exists.
+			bool b = llist.Exists(Value.Get(orig2));
+			Assert.IsTrue(b);
+
+			b = llist.Exists(Value.Get("notfound"));
+			Assert.IsFalse(b);
+
+			IList klist = new List<Value>();
+			klist.Add(Value.Get(orig2));
+			klist.Add(Value.Get(orig1));
+			klist.Add(Value.Get("notfound"));
+			IList<bool> blist = llist.Exists(klist);
+			Assert.IsTrue(blist[0]);
+			Assert.IsTrue(blist[1]);
+			Assert.IsFalse(blist[2]);
+	
 			// Perform a Range Query -- look for "llistValue2" to "llistValue3"
 			IList rangeList = llist.Range(Value.Get(orig2), Value.Get(orig3));
 			Assert.IsNotNull(rangeList);

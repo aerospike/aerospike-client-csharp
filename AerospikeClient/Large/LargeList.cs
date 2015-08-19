@@ -140,6 +140,32 @@ namespace Aerospike.Client
 			object result = client.Execute(policy, key, PackageName, "remove_range", binName, begin, end);
 			return (result != null) ? (int)(long)result : 0;
 		}
+
+		/// <summary>
+		/// Does key value exist?
+		/// </summary>
+		/// <param name="keyValue">key value to lookup</param>
+		public bool Exists(Value keyValue)
+		{
+			IList list = (IList)client.Execute(policy, key, PackageName, "exists", binName, keyValue);
+			return Util.ToBool(list[0]);
+		}
+
+		/// <summary>
+		/// Do key values exist?  Return list of results in one batch call.
+		/// </summary>
+		/// <param name="keyValues">key values to lookup</param>
+		public IList<bool> Exists(IList keyValues)
+		{
+			IList list = (IList)client.Execute(policy, key, PackageName, "exists", binName, Value.Get(keyValues));
+			IList<bool> target = new List<bool>(list.Count);
+
+			foreach (object obj in list)
+			{
+				target.Add(Util.ToBool(obj));
+			}
+			return target;
+		}
 	
 		/// <summary>
 		/// Select values from list.

@@ -101,7 +101,7 @@ namespace Aerospike.Client
 		public bool Exists(Value value)
 		{
 			object result = client.Execute(policy, key, PackageName, "exists", binName, value);
-			return (result != null) ? ((long)result != 0) : false;
+			return Util.ToBool(result);
 		}
 
 		/// <summary>

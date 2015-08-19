@@ -191,6 +191,11 @@ namespace Aerospike.Client
 			sb.Append(obj);
 		}
 
+		public static bool ToBool(object result)
+		{
+			return (result != null) ? ((long)result != 0) : false;
+		}
+
 #if (AS_OPTIMIZE_WINDOWS)
 		[DllImport("msvcrt.dll", CallingConvention = CallingConvention.Cdecl)]
 		static extern int memcmp(byte[] b1, byte[] b2, long count);
