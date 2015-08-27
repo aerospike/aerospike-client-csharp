@@ -45,11 +45,14 @@ namespace Aerospike.Test
 			AsyncMonitor monitor = new AsyncMonitor();
 			WriteHandler handler = new WriteHandler(monitor, size);
 
+			WritePolicy policy = new WritePolicy();
+			policy.expiration = 2592000;
+
 			for (int i = 1; i <= size; i++)
 			{
 				Key key = sendKeys[i - 1];
 				Bin bin = new Bin(binName, valuePrefix + i);
-				client.Put(null, handler, key, bin);
+				client.Put(policy, handler, key, bin);
 			}
 			monitor.WaitTillComplete();
 		}

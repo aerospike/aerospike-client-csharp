@@ -144,20 +144,43 @@ namespace Aerospike.Client
 			}
 		}
 
-		private void PackByteArrayBegin(int len)
+		private void PackByteArrayBegin(int size)
 		{
-			if (len < 32)
+			// Continue to pack byte arrays as strings until all servers/clients
+			// have been upgraded to handle new message pack binary type.
+			if (size < 32)
 			{
-				PackByte((byte)(0xa0 | len));
+				PackByte((byte)(0xa0 | size));
 			}
-			else if (len < 65536)
+			else if (size < 65536)
 			{
-				PackShort(0xda, (ushort)len);
+				PackShort(0xda, (ushort)size);
 			}
 			else
 			{
-				PackInt(0xdb, (uint)len);
+				PackInt(0xdb, (uint)size);
 			}
+
+			// TODO: Replace with this code after all servers/clients
+			// have been upgraded to handle new message pack binary type.
+			/*
+			if (size < 32)
+			{
+				PackByte((byte)(0xa0 | size));
+			}
+			else if (size < 256)
+			{
+				PackByte(0xc4, (byte)size);
+			}
+			else if (size < 65536)
+			{
+				PackShort(0xc5, (ushort)size);
+			}
+			else
+			{
+				PackInt(0xc6, (uint)size);
+			}
+			*/
 		}
 
 		private void PackObject(object obj)
@@ -327,7 +350,27 @@ namespace Aerospike.Client
 		public void PackString(string val)
 		{
 			int size = ByteUtil.EstimateSizeUtf8(val) + 1;
-			PackByteArrayBegin(size);
+
+			if (size < 32)
+			{
+				PackByte((byte)(0xa0 | size));
+			}
+			// TODO: Enable this code after all servers/clients
+			// have been upgraded to handle 8 bit string length format.
+			/*
+			else if (size < 256)
+			{
+				PackByte(0xd9, (byte)size);
+			}
+			*/
+			else if (size < 65536)
+			{
+				PackShort(0xda, (ushort)size);
+			}
+			else
+			{
+				PackInt(0xdb, (uint)size);
+			} 
 
 			if (offset + size > buffer.Length)
 			{

@@ -263,6 +263,14 @@ namespace Aerospike.Client
 					return val;
 				}
 
+				case 0xc4:
+				case 0xd9: // string raw bytes with 8 bit header
+				{
+					int count = buffer[offset++];
+					return UnpackBlob(count);
+				}
+
+				case 0xc5:
 				case 0xda: // raw bytes with 16 bit header
 				{
 					int count = ByteUtil.BytesToShort(buffer, offset);
@@ -270,6 +278,7 @@ namespace Aerospike.Client
 					return UnpackBlob(count);
 				}
 
+				case 0xc6:
 				case 0xdb: // raw bytes with 32 bit header
 				{
 					// Array length is restricted to positive int values (0 - int.MAX_VALUE).

@@ -81,7 +81,7 @@ namespace Aerospike.Test
 
 			Dictionary<string, string> map = new Dictionary<string, string>();
 			map["key1"] = "string1";
-			map["key2"] = "string2";
+			map["key2"] = "loooooooooooooooooooooooooongerstring2";
 			map["key3"] = "string3";
 
 			Bin bin = new Bin(args.GetBinName("mapbin1"), map);
@@ -92,7 +92,7 @@ namespace Aerospike.Test
 
 			Assert.AreEqual(3, receivedMap.Count);
 			Assert.AreEqual("string1", receivedMap["key1"]);
-			Assert.AreEqual("string2", receivedMap["key2"]);
+			Assert.AreEqual("loooooooooooooooooooooooooongerstring2", receivedMap["key2"]);
 			Assert.AreEqual("string3", receivedMap["key3"]);
 		}
 

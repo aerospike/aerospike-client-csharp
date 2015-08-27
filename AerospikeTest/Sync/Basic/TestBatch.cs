@@ -32,12 +32,15 @@ namespace Aerospike.Test
 		[ClassInitialize()]
 		public static void WriteRecords(TestContext testContext)
 		{
+			WritePolicy policy = new WritePolicy();
+			policy.expiration = 2592000;
+
 			for (int i = 1; i <= size; i++)
 			{
 				Key key = new Key(args.ns, args.set, keyPrefix + i);
 				Bin bin = new Bin(binName, valuePrefix + i);
 
-				client.Put(null, key, bin);
+				client.Put(policy, key, bin);
 			}
 		}
 
