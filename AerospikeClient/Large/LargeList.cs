@@ -148,7 +148,7 @@ namespace Aerospike.Client
 		public bool Exists(Value keyValue)
 		{
 			IList list = (IList)client.Execute(policy, key, PackageName, "exists", binName, keyValue);
-			return Util.ToBool(list[0]);
+			return (list != null)? Util.ToBool(list[0]) : false;
 		}
 
 		/// <summary>
@@ -158,13 +158,28 @@ namespace Aerospike.Client
 		public IList<bool> Exists(IList keyValues)
 		{
 			IList list = (IList)client.Execute(policy, key, PackageName, "exists", binName, Value.Get(keyValues));
-			IList<bool> target = new List<bool>(list.Count);
 
-			foreach (object obj in list)
+			if (list != null)
 			{
-				target.Add(Util.ToBool(obj));
+				IList<bool> target = new List<bool>(list.Count);
+
+				foreach (object obj in list)
+				{
+					target.Add(Util.ToBool(obj));
+				}
+				return target;
 			}
-			return target;
+			else
+			{
+				int max = keyValues.Count;
+				IList<bool> target = new List<bool>(max);
+
+				for (int i = 0; i < max; i++)
+				{
+					target.Add(false);
+				}
+				return target;
+			}
 		}
 	
 		/// <summary>

@@ -60,10 +60,10 @@
     <Compile Include="Async\TestAsyncBatch.cs" />
     <Compile Include="Async\TestAsyncPutGet.cs" />
     <Compile Include="Async\TestAsync.cs" />
-    <Compile Include="Properties\Resource1.Designer.cs">
+    <Compile Include="Properties\Resources.Designer.cs">
       <AutoGen>True</AutoGen>
       <DesignTime>True</DesignTime>
-      <DependentUpon>Resource1.resx</DependentUpon>
+      <DependentUpon>Resources.resx</DependentUpon>
     </Compile>
     <Compile Include="Properties\Settings.Designer.cs">
       <AutoGen>True</AutoGen>
@@ -126,9 +126,9 @@
     <EmbeddedResource Include="Resources\largelist_example.lua" />
   </ItemGroup>
   <ItemGroup>
-    <EmbeddedResource Include="Properties\Resource1.resx">
+    <EmbeddedResource Include="Properties\Resources.resx">
       <Generator>ResXFileCodeGenerator</Generator>
-      <LastGenOutput>Resource1.Designer.cs</LastGenOutput>
+      <LastGenOutput>Resources.Designer.cs</LastGenOutput>
     </EmbeddedResource>
     <EmbeddedResource Include="TestForm.resx">
       <DependentUpon>TestForm.cs</DependentUpon>
