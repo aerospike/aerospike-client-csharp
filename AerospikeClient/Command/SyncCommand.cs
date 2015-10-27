@@ -90,6 +90,7 @@ namespace Aerospike.Client
 						{
 							Log.Debug("Node " + node + ": " + Util.GetErrorMessage(ioe));
 						}
+                        throw;
 					}
 					catch (Exception)
 					{
