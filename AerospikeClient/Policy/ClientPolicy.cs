@@ -51,9 +51,14 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Maximum socket idle in seconds.  Socket connection pools will discard sockets
 		/// that have been idle longer than the maximum.  The value is limited to 24 hours (86400).
-		/// Default: 14 seconds
+		/// <para>
+		/// It's important to set this value to a few seconds less than the server's proto-fd-idle-ms
+		/// (default 60000 milliseconds or 1 minute), so the client does not attempt to use a socket 
+		/// that has already been reaped by the server.
+		/// Default: 55 seconds
+		/// </para>
 		/// </summary>
-		public int maxSocketIdle = 14;
+		public int maxSocketIdle = 55;
 
 		/// <summary>
 		/// Interval in milliseconds between cluster tends by maintenance thread.  Default: 1 second
