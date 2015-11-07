@@ -23,23 +23,26 @@ namespace Aerospike.Client
 {
 	internal abstract class ListenerAdapter<T>
 	{
+		private readonly TaskCompletionSource<T> tcs = new TaskCompletionSource<T>();
+		private readonly CancellationTokenRegistration ctr;
+
 		public ListenerAdapter(CancellationToken token)
 		{
-			token.Register(() => tcs.TrySetCanceled(), useSynchronizationContext: false);
+			ctr = token.Register(() => tcs.TrySetCanceled(), useSynchronizationContext: false);
 		}
 
 		protected void SetResult(T result)
 		{
 			tcs.TrySetResult(result);
+			ctr.Dispose();
 		}
 
 		public void OnFailure(AerospikeException exception)
 		{
 			tcs.SetException(exception);
+			ctr.Dispose();
 		}
 
 		public System.Threading.Tasks.Task<T> Task { get { return tcs.Task; } }
-
-		private readonly TaskCompletionSource<T> tcs = new TaskCompletionSource<T>();
 	}
 }

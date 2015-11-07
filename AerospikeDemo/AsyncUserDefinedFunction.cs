@@ -58,15 +58,45 @@ namespace Aerospike.Demo
 			Bin bin = new Bin(args.GetBinName("audfbin1"), "string value");
 
 			console.Info("Write with udf: namespace=" + key.ns + " set=" + key.setName + " key=" + key.userKey + " value=" + bin.value);
-			client.Execute(args.writePolicy, new ExecuteHandler(this, key) , key, "record_example", "readBin", Value.Get(bin.name));
+			client.Execute(null, new WriteHandler(this, client, key, bin.name), key, "record_example", "writeBin", Value.Get(bin.name), bin.value);
 		}
 
-		private class ExecuteHandler : ExecuteListener
+		private class WriteHandler : ExecuteListener
+		{
+			private readonly AsyncUserDefinedFunction parent;
+			private readonly AsyncClient client;
+			private readonly Key key;
+			private readonly string binName;
+
+			public WriteHandler(AsyncUserDefinedFunction parent, AsyncClient client, Key key, string binName)
+			{
+				this.parent = parent;
+				this.client = client;
+				this.key = key;
+				this.binName = binName;
+			}
+
+			public void OnSuccess(Key key, object obj)
+			{
+				// Write succeeded.  Now call read using udf.
+				parent.console.Info("Read with udf: namespace=" + key.ns + " set=" + key.setName + " key=" + key.userKey);
+				client.Execute(null, new ReadHandler(parent, key), key, "record_example", "readBin", Value.Get(binName));
+			}
+
+			public void OnFailure(AerospikeException e)
+			{
+				parent.console.Error("Failed to put: namespace={0} set={1} key={2} exception={3}",
+					key.ns, key.setName, key.userKey, e.Message);
+				parent.NotifyCompleted();
+			}
+		}
+
+		private class ReadHandler : ExecuteListener
 		{
 			private readonly AsyncUserDefinedFunction parent;
 			private Key key;
 
-			public ExecuteHandler(AsyncUserDefinedFunction parent, Key key)
+			public ReadHandler(AsyncUserDefinedFunction parent, Key key)
 			{
 				this.parent = parent;
 				this.key = key;
@@ -80,7 +110,7 @@ namespace Aerospike.Demo
 
 			public void OnFailure(AerospikeException e)
 			{
-				parent.console.Error("Failed to put: namespace={0} set={1} key={2} exception={3}",
+				parent.console.Error("Failed to get: namespace={0} set={1} key={2} exception={3}",
 					key.ns, key.setName, key.userKey, e.Message);
 
 				parent.NotifyCompleted();
