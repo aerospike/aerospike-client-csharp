@@ -27,5 +27,6 @@ namespace Aerospike.Client
 		public const int CSHARP_BLOB = 8;
 		public const int MAP = 19;
 		public const int LIST = 20;
+		public const int LDT = 21;
 	}
 }

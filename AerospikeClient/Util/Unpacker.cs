@@ -174,7 +174,7 @@ namespace Aerospike.Client
 			return val;
 		}
 
-		private object UnpackObject()
+		public object UnpackObject()
 		{
 			int type = buffer[offset++];
 

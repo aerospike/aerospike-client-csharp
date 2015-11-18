@@ -80,6 +80,17 @@ namespace Aerospike.Client
 					return unpacker.UnpackMap();
 				}
 
+				case ParticleType.LDT:
+				{
+					if (len <= 0)
+					{
+						return null;
+					}
+
+					Unpacker unpacker = new Unpacker(buf, offset, len, false);
+					return unpacker.UnpackObject();
+				}
+				
 				default:
 					return null;
 			}
