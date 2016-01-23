@@ -38,8 +38,9 @@ namespace Aerospike.Client
 		private AsyncConnection conn;
 		private AsyncNode node;
 		private SocketAsyncEventArgs eventArgs;
+		private BufferSegment segmentOrig;
+		private BufferSegment segment;
 		private Stopwatch watch;
-		private byte[] oldDataBuffer;
 		protected internal int dataLength;
 		private int timeout;
 		private int iteration;
@@ -57,13 +58,15 @@ namespace Aerospike.Client
 		public void Execute()
 		{
 			eventArgs = cluster.GetEventArgs();
+			segment = segmentOrig = eventArgs.UserToken as BufferSegment;
 			eventArgs.UserToken = this;
-			dataBuffer = eventArgs.Buffer;
 
-			if (dataBuffer != null && cluster.HasBufferChanged(dataBuffer))
+			if (cluster.HasBufferChanged(segment))
 			{
-				// Reset dataBuffer in SizeBuffer().
-				dataBuffer = null;
+				// Reset buffer in SizeBuffer().
+				segment.buffer = null;
+				segment.offset = 0;
+				segment.size = 0;
 			}
 
 			Policy policy = GetPolicy();
@@ -96,7 +99,7 @@ namespace Aerospike.Client
 				if (conn == null)
 				{
 					conn = new AsyncConnection(node.address, cluster);
-					eventArgs.SetBuffer(0, 0);
+					eventArgs.SetBuffer(segment.buffer, segment.offset, 0);
 
 					if (!conn.ConnectAsync(eventArgs))
 					{
@@ -241,10 +244,10 @@ namespace Aerospike.Client
 				dataOffset = 200;
 				SizeBuffer();
 
-				AdminCommand command = new AdminCommand(dataBuffer);
-				dataLength = command.SetAuthenticate(cluster.user, cluster.password);		 
-				dataOffset = 0;
-				eventArgs.SetBuffer(dataBuffer, dataOffset, dataLength);
+				AdminCommand command = new AdminCommand(dataBuffer, dataOffset);
+				int length = command.SetAuthenticate(cluster.user, cluster.password);
+				dataLength = segment.offset + length;
+				eventArgs.SetBuffer(dataBuffer, dataOffset, length);
 				Send();
 				return;
 			}
@@ -259,20 +262,21 @@ namespace Aerospike.Client
 				return;
 			}
 			WriteBuffer();
-			dataLength = dataOffset;
-			dataOffset = 0;
-			eventArgs.SetBuffer(dataBuffer, dataOffset, dataLength);
+			eventArgs.SetBuffer(dataBuffer, dataOffset, dataLength - dataOffset);
 			Send();
 		}
 
 		protected internal sealed override void SizeBuffer()
 		{
 			// dataOffset is currently the estimate, which may be greater than the actual size.
-			// dataLength is not set yet.
-			if (dataBuffer == null || dataOffset > dataBuffer.Length)
+			dataLength = dataOffset;
+
+			if (dataLength > segment.size)
 			{
-				ResizeBuffer(dataOffset);
+				ResizeBuffer(dataLength);
 			}
+			dataBuffer = segment.buffer;
+			dataOffset = segment.offset;
 		}
 
 		private void ResizeBuffer(int size)
@@ -280,18 +284,35 @@ namespace Aerospike.Client
 			if (size <= BufferPool.BUFFER_CUTOFF)
 			{
 				// Checkout buffer from cache.
-				dataBuffer = cluster.GetNextBuffer(size);
+				cluster.GetNextBuffer(size, segment);
 			}
 			else
 			{
 				// Large buffers should not be cached.
 				// Allocate, but do not put back into pool.
-				if (dataBuffer != null && dataBuffer.Length <= BufferPool.BUFFER_CUTOFF)
-				{
-					oldDataBuffer = dataBuffer;
-				}
-				dataBuffer = new byte[size];
+				segment = new BufferSegment();
+				segment.buffer = new byte[size];
+				segment.offset = 0;
+				segment.size = size;
 			}
+		}
+
+		protected internal sealed override void End()
+		{
+			// Write total size of message.
+			int length = dataOffset - segment.offset;
+
+			if (length > dataLength)
+			{
+				throw new AerospikeException("Actual buffer length " + length + " is greater than estimated length " + dataLength);
+			}
+
+			// Switch dataLength from length to buffer end offset.
+			dataLength = dataOffset;
+			dataOffset = segment.offset;
+
+			ulong size = ((ulong)length - 8) | (CL_MSG_VERSION << 56) | (AS_MSG_TYPE << 48);
+			ByteUtil.LongToBytes(size, dataBuffer, segment.offset);
 		}
 
 		private void Send()
@@ -319,9 +340,9 @@ namespace Aerospike.Client
 
 		protected internal void ReceiveBegin()
 		{
-			dataOffset = 0;
-			dataLength = 8;
-			eventArgs.SetBuffer(dataOffset, dataLength);
+			dataOffset = segment.offset;
+			dataLength = dataOffset + 8;
+			eventArgs.SetBuffer(dataOffset, 8);
 			Receive();
 		}
 
@@ -351,13 +372,13 @@ namespace Aerospike.Client
 				Receive();
 				return;
 			}
-			dataOffset = 0;
+			dataOffset = segment.offset;
 
 			if (inHeader)
 			{
-				dataLength = (int)(ByteUtil.BytesToLong(dataBuffer, 0) & 0xFFFFFFFFFFFFL);
+				int length = (int)(ByteUtil.BytesToLong(dataBuffer, dataOffset) & 0xFFFFFFFFFFFFL);
 
-				if (dataLength <= 0)
+				if (length <= 0)
 				{
 					ReceiveBegin();
 					return;
@@ -365,11 +386,14 @@ namespace Aerospike.Client
 
 				inHeader = false;
 
-				if (dataLength > dataBuffer.Length)
+				if (length > segment.size)
 				{
-					ResizeBuffer(dataLength);
+					ResizeBuffer(length);
+					dataBuffer = segment.buffer;
+					dataOffset = segment.offset;
 				}
-				eventArgs.SetBuffer(dataBuffer, dataOffset, dataLength);
+				eventArgs.SetBuffer(dataBuffer, dataOffset, length);
+				dataLength = dataOffset + length;
 				Receive();
 			}
 			else
@@ -379,7 +403,7 @@ namespace Aerospike.Client
 					inAuthenticate = false;
 					inHeader = true;
 
-					int resultCode = dataBuffer[1];
+					int resultCode = dataBuffer[dataOffset + 1];
 
 					if (resultCode != 0)
 					{
@@ -506,12 +530,14 @@ namespace Aerospike.Client
 				node.PutAsyncConnection(conn);
 
 				// Do not put large buffers back into pool.
-				if (dataBuffer.Length > BufferPool.BUFFER_CUTOFF)
+				if (segment.size > BufferPool.BUFFER_CUTOFF)
 				{
 					// Put back original buffer instead.
-					eventArgs.SetBuffer(oldDataBuffer, 0, 0);
+					segment = segmentOrig;
+					eventArgs.SetBuffer(segment.buffer, segment.offset, 0);
 				}
 
+				eventArgs.UserToken = segment;
 				cluster.PutEventArgs(eventArgs);
 
 				try
@@ -649,18 +675,22 @@ namespace Aerospike.Client
 		private void PutBackArgsOnError()
 		{
 			// Do not put large buffers back into pool.
-			if (dataBuffer != null && dataBuffer.Length > BufferPool.BUFFER_CUTOFF)
+			if (segment.size > BufferPool.BUFFER_CUTOFF)
 			{
 				// Put back original buffer instead.
-				eventArgs.SetBuffer(oldDataBuffer, 0, 0);
+				segment = segmentOrig;
+				eventArgs.SetBuffer(segment.buffer, segment.offset, 0);
 			}
 			else
 			{
 				// There may be rare error cases where dataBuffer and eventArgs.Buffer
 				// are different.  Make sure they are in sync.
-				eventArgs.SetBuffer(dataBuffer, 0, 0);
+				if (eventArgs.Buffer != segment.buffer)
+				{
+					eventArgs.SetBuffer(segment.buffer, segment.offset, 0);
+				}
 			}
-
+			eventArgs.UserToken = segment;
 			cluster.PutEventArgs(eventArgs);
 		}
 

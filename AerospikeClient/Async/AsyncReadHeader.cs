@@ -52,12 +52,12 @@ namespace Aerospike.Client
 
 		protected internal override void ParseResult()
 		{
-			int resultCode = dataBuffer[5];
+			int resultCode = dataBuffer[dataOffset + 5];
 
 			if (resultCode == 0)
 			{
-				int generation = ByteUtil.BytesToInt(dataBuffer, 6);
-				int expiration = ByteUtil.BytesToInt(dataBuffer, 10);
+				int generation = ByteUtil.BytesToInt(dataBuffer, dataOffset + 6);
+				int expiration = ByteUtil.BytesToInt(dataBuffer, dataOffset + 10);
 
 				record = new Record(null, generation, expiration);
 			}

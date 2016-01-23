@@ -56,17 +56,20 @@ namespace Aerospike.Client
 
 		private byte[] dataBuffer;
 		private int dataOffset;
+		private readonly int dataBegin;
 
 		public AdminCommand()
 		{
 			dataBuffer = ThreadLocalData.GetBuffer();
+			dataBegin = 0;
 			dataOffset = 8;
 		}
 
-		public AdminCommand(byte[] dataBuffer)
+		public AdminCommand(byte[] dataBuffer, int dataOffset)
 		{
 			this.dataBuffer = dataBuffer;
-			dataOffset = 8;
+			this.dataBegin = dataOffset;
+			this.dataOffset = dataOffset + 8;
 		}
 
 		public void Authenticate(Connection conn, byte[] user, byte[] password)
@@ -233,8 +236,8 @@ namespace Aerospike.Client
 		private void WriteSize()
 		{
 			// Write total size of message which is the current offset.
-			ulong size = ((ulong)dataOffset - 8) | (MSG_VERSION << 56) | (MSG_TYPE << 48);
-			ByteUtil.LongToBytes(size, dataBuffer, 0);
+			ulong size = (ulong)(dataOffset - dataBegin - 8) | (MSG_VERSION << 56) | (MSG_TYPE << 48);
+			ByteUtil.LongToBytes(size, dataBuffer, dataBegin);
 		}
 
 		void WriteHeader(byte command, byte fieldCount)

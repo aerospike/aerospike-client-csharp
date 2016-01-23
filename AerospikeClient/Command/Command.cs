@@ -811,7 +811,7 @@ namespace Aerospike.Client
 			dataOffset += operation.binValue.EstimateSize();
 		}
 
-		protected void EstimateOperationSize(string binName)
+		private void EstimateOperationSize(string binName)
 		{
 			dataOffset += ByteUtil.EstimateSizeUtf8(binName) + OPERATION_HEADER_SIZE;
 		}
@@ -824,7 +824,7 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Header write for write operations.
 		/// </summary>
-		protected internal void WriteHeader(WritePolicy policy, int readAttr, int writeAttr, int fieldCount, int operationCount)
+		private void WriteHeader(WritePolicy policy, int readAttr, int writeAttr, int fieldCount, int operationCount)
 		{
 			// Set flags.
 			int generation = 0;
@@ -872,49 +872,51 @@ namespace Aerospike.Client
 				readAttr |= Command.INFO1_CONSISTENCY_ALL;
 			}
 
+			dataOffset += 8;
+
 			// Write all header data except total size which must be written last. 
-			dataBuffer[8] = MSG_REMAINING_HEADER_SIZE; // Message header length.
-			dataBuffer[9] = (byte)readAttr;
-			dataBuffer[10] = (byte)writeAttr;
-			dataBuffer[11] = (byte)infoAttr;
-			dataBuffer[12] = 0; // unused
-			dataBuffer[13] = 0; // clear the result code
-			ByteUtil.IntToBytes((uint)generation, dataBuffer, 14);
-			ByteUtil.IntToBytes((uint)policy.expiration, dataBuffer, 18);
+			dataBuffer[dataOffset++] = MSG_REMAINING_HEADER_SIZE; // Message header length.
+			dataBuffer[dataOffset++] = (byte)readAttr;
+			dataBuffer[dataOffset++] = (byte)writeAttr;
+			dataBuffer[dataOffset++] = (byte)infoAttr;
+			dataBuffer[dataOffset++] = 0; // unused
+			dataBuffer[dataOffset++] = 0; // clear the result code
+			dataOffset += ByteUtil.IntToBytes((uint)generation, dataBuffer, dataOffset);
+			dataOffset += ByteUtil.IntToBytes((uint)policy.expiration, dataBuffer, dataOffset);
 
 			// Initialize timeout. It will be written later.
-			dataBuffer[22] = 0;
-			dataBuffer[23] = 0;
-			dataBuffer[24] = 0;
-			dataBuffer[25] = 0;
+			dataBuffer[dataOffset++] = 0;
+			dataBuffer[dataOffset++] = 0;
+			dataBuffer[dataOffset++] = 0;
+			dataBuffer[dataOffset++] = 0;
 
-			ByteUtil.ShortToBytes((ushort)fieldCount, dataBuffer, 26);
-			ByteUtil.ShortToBytes((ushort)operationCount, dataBuffer, 28);
-			dataOffset = MSG_TOTAL_HEADER_SIZE;
+			dataOffset += ByteUtil.ShortToBytes((ushort)fieldCount, dataBuffer, dataOffset);
+			dataOffset += ByteUtil.ShortToBytes((ushort)operationCount, dataBuffer, dataOffset);
 		}
 
 		/// <summary>
 		/// Generic header write.
 		/// </summary>
-		protected internal void WriteHeader(Policy policy, int readAttr, int writeAttr, int fieldCount, int operationCount)
+		private void WriteHeader(Policy policy, int readAttr, int writeAttr, int fieldCount, int operationCount)
 		{
 			if (policy.consistencyLevel == ConsistencyLevel.CONSISTENCY_ALL)
 			{
 				readAttr |= Command.INFO1_CONSISTENCY_ALL;
 			}
 
-			// Write all header data except total size which must be written last. 
-			dataBuffer[8] = MSG_REMAINING_HEADER_SIZE; // Message header length.
-			dataBuffer[9] = (byte)readAttr;
-			dataBuffer[10] = (byte)writeAttr;
+			dataOffset += 8;
 
-			for (int i = 11; i < 26; i++)
+			// Write all header data except total size which must be written last. 
+			dataBuffer[dataOffset++] = MSG_REMAINING_HEADER_SIZE; // Message header length.
+			dataBuffer[dataOffset++] = (byte)readAttr;
+			dataBuffer[dataOffset++] = (byte)writeAttr;
+
+			for (int i = 0; i < 15; i++)
 			{
-				dataBuffer[i] = 0;
+				dataBuffer[dataOffset++] = 0;
 			}
-			ByteUtil.ShortToBytes((ushort)fieldCount, dataBuffer, 26);
-			ByteUtil.ShortToBytes((ushort)operationCount, dataBuffer, 28);
-			dataOffset = MSG_TOTAL_HEADER_SIZE;
+			dataOffset += ByteUtil.ShortToBytes((ushort)fieldCount, dataBuffer, dataOffset);
+			dataOffset += ByteUtil.ShortToBytes((ushort)operationCount, dataBuffer, dataOffset);
 		}
 
 		private void WriteKey(Policy policy, Key key)
@@ -966,7 +968,7 @@ namespace Aerospike.Client
 			dataOffset += nameLength + valueLength;
 		}
 
-		protected void WriteOperation(string name, Operation.Type operationType)
+		private void WriteOperation(string name, Operation.Type operationType)
 		{
 			int nameLength = ByteUtil.StringToUtf8(name, dataBuffer, dataOffset + OPERATION_HEADER_SIZE);
 
@@ -989,7 +991,7 @@ namespace Aerospike.Client
 			dataBuffer[dataOffset++] = 0;
 		}
 
-		public void WriteField(Value value, int type)
+		private void WriteField(Value value, int type)
 		{
 			int offset = dataOffset + FIELD_HEADER_SIZE;
 			dataBuffer[offset++] = (byte)value.Type;
@@ -997,42 +999,36 @@ namespace Aerospike.Client
 			WriteFieldHeader(len, type);
 			dataOffset += len;
 		}
-		
-		public void WriteField(string str, int type)
+
+		private void WriteField(string str, int type)
 		{
 			int len = ByteUtil.StringToUtf8(str, dataBuffer, dataOffset + FIELD_HEADER_SIZE);
 			WriteFieldHeader(len, type);
 			dataOffset += len;
 		}
 
-		public void WriteField(byte[] bytes, int type)
+		private void WriteField(byte[] bytes, int type)
 		{
 			Array.Copy(bytes, 0, dataBuffer, dataOffset + FIELD_HEADER_SIZE, bytes.Length);
 			WriteFieldHeader(bytes.Length, type);
 			dataOffset += bytes.Length;
 		}
 
-		public void WriteFieldHeader(int size, int type)
+		private void WriteFieldHeader(int size, int type)
 		{
 			ByteUtil.IntToBytes((uint)size+1, dataBuffer, dataOffset);
 			dataOffset += 4;
 			dataBuffer[dataOffset++] = (byte)type;
 		}
 
-		protected internal void Begin()
+		private void Begin()
 		{
 			dataOffset = MSG_TOTAL_HEADER_SIZE;
-		}
-
-		protected internal void End()
-		{
-			// Write total size of message which is the current offset.
-			ulong size = ((ulong)dataOffset - 8) | (CL_MSG_VERSION << 56) | (AS_MSG_TYPE << 48);
-			ByteUtil.LongToBytes(size, dataBuffer, 0);
 		}
 
 		protected internal abstract Policy GetPolicy();
 		protected internal abstract void WriteBuffer();
 		protected internal abstract void SizeBuffer();
+		protected internal abstract void End();
 	}
 }

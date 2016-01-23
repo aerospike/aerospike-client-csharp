@@ -49,7 +49,7 @@ namespace Aerospike.Client
 
 		protected internal override void ParseResult()
 		{
-			int resultCode = dataBuffer[5];
+			int resultCode = dataBuffer[dataOffset + 5];
 
 			if (resultCode != 0)
 			{

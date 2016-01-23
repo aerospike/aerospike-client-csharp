@@ -61,8 +61,6 @@ namespace Aerospike.Client
 		private bool ParseGroup()
 		{
 			// Parse each message response and add it to the result array
-			dataOffset = 0;
-
 			while (dataOffset < dataLength)
 			{
 				resultCode = dataBuffer[dataOffset + 5];

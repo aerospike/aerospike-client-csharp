@@ -54,12 +54,12 @@ namespace Aerospike.Client
 
 		protected internal sealed override void ParseResult()
 		{
-			int resultCode = dataBuffer[5];
-			int generation = ByteUtil.BytesToInt(dataBuffer, 6);
-			int expiration = ByteUtil.BytesToInt(dataBuffer, 10);
-			int fieldCount = ByteUtil.BytesToShort(dataBuffer, 18);
-			int opCount = ByteUtil.BytesToShort(dataBuffer, 20);
-			dataOffset = Command.MSG_REMAINING_HEADER_SIZE;
+			int resultCode = dataBuffer[dataOffset + 5];
+			int generation = ByteUtil.BytesToInt(dataBuffer, dataOffset + 6);
+			int expiration = ByteUtil.BytesToInt(dataBuffer, dataOffset + 10);
+			int fieldCount = ByteUtil.BytesToShort(dataBuffer, dataOffset + 18);
+			int opCount = ByteUtil.BytesToShort(dataBuffer, dataOffset + 20);
+			dataOffset += Command.MSG_REMAINING_HEADER_SIZE;
 
 			if (resultCode == 0)
 			{

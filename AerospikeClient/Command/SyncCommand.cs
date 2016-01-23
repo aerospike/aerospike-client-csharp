@@ -149,6 +149,7 @@ namespace Aerospike.Client
 			{
 				dataBuffer = ThreadLocalData.ResizeBuffer(dataOffset);
 			}
+			dataOffset = 0;
 		}
 
 		protected internal void SizeBuffer(int size)
@@ -157,6 +158,13 @@ namespace Aerospike.Client
 			{
 				dataBuffer = ThreadLocalData.ResizeBuffer(size);
 			}
+		}
+
+		protected internal sealed override void End()
+		{
+			// Write total size of message.
+			ulong size = ((ulong)dataOffset - 8) | (CL_MSG_VERSION << 56) | (AS_MSG_TYPE << 48);
+			ByteUtil.LongToBytes(size, dataBuffer, 0);
 		}
 
 		protected internal void EmptySocket(Connection conn)

@@ -20,15 +20,13 @@ namespace Aerospike.Client
 	{
 		public const int BUFFER_CUTOFF = 1024 * 128; // 128 KB
 
-		public readonly byte[][] buffers;
+		public readonly byte[] buffer;
 		public readonly int bufferSize;
 		public int bufferOffset;
 
 		/// <summary>
-		/// Construct near contiguous cached buffers that will be pinned 
-		/// (like by asynchronous socket commands).
-		/// Since the buffers are closely located and long lived,
-		/// memory fragmentation will be greatly reduced.
+		/// Construct one large contiguous cached buffer for use in asynchronous socket commands.
+		/// Each command will use a segment of this large buffer.
 		/// </summary>
 		public BufferPool(int maxCommands, int size)
 		{
@@ -39,22 +37,32 @@ namespace Aerospike.Client
 			{
 				size += 8192 - rem;
 			}
-			this.bufferSize = size;
-			this.buffers = new byte[maxCommands][];
+			bufferSize = size;
+			bufferOffset = 0;
 
-			for (int i = 0; i < maxCommands; i++)
-			{
-				this.buffers[i] = new byte[bufferSize];
-			}
+			// Allocate one large buffer which will likely be placed on LOH (large object heap).
+			// This heap is not usually compacted, so pinning and fragmentation becomes less of 
+			// an issue.
+			buffer = new byte[maxCommands * bufferSize];
 		}
 
 		public BufferPool()
 		{
 		}
 
-		public byte[] GetNextBuffer()
+		public void GetNextBuffer(BufferSegment segment)
 		{
-			return buffers[bufferOffset++];
+			segment.buffer = buffer;
+			segment.offset = bufferOffset;
+			segment.size = bufferSize;
+			bufferOffset += bufferSize;
 		}
+	}
+
+	public sealed class BufferSegment
+	{
+		public byte[] buffer;
+		public int offset;
+		public int size;
 	}
 }

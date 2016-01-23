@@ -14,6 +14,8 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
+using System;
+using System.Collections.Generic;
 using System.Collections.Concurrent;
 using System.Threading;
 using System.Net.Sockets;
@@ -44,6 +46,7 @@ namespace Aerospike.Client
 			for (int i = 0; i < maxCommands; i++)
 			{
 				SocketAsyncEventArgs eventArgs = new SocketAsyncEventArgs();
+				eventArgs.UserToken = new BufferSegment();
 				eventArgs.Completed += AsyncCommand.SocketListener;
 				argsQueue.Add(eventArgs);
 			}
@@ -81,23 +84,21 @@ namespace Aerospike.Client
 			argsQueue.Add(args);
 		}
 
-		public byte[] GetNextBuffer(int size)
+		public void GetNextBuffer(int size, BufferSegment segment)
 		{
-			lock (bufferPool)
+			lock (this)
 			{
 				if (size > bufferPool.bufferSize)
 				{
 					bufferPool = new BufferPool(maxCommands, size);
 				}
-				return bufferPool.GetNextBuffer();
+				bufferPool.GetNextBuffer(segment);
 			}
 		}
 
-		public bool HasBufferChanged(byte[] dataBuffer)
+		public bool HasBufferChanged(BufferSegment segment)
 		{
-			// Make reference copy because lock is not applied.
-			BufferPool temp = bufferPool;
-			return dataBuffer.Length != temp.bufferSize;
+			return bufferPool.bufferSize != segment.size;
 		}
 
 		public int MaxCommands
