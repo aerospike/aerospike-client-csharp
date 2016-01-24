@@ -245,9 +245,8 @@ namespace Aerospike.Client
 				SizeBuffer();
 
 				AdminCommand command = new AdminCommand(dataBuffer, dataOffset);
-				int length = command.SetAuthenticate(cluster.user, cluster.password);
-				dataLength = segment.offset + length;
-				eventArgs.SetBuffer(dataBuffer, dataOffset, length);
+				dataLength = command.SetAuthenticate(cluster.user, cluster.password);
+				eventArgs.SetBuffer(dataBuffer, dataOffset, dataLength - dataOffset);
 				Send();
 				return;
 			}
