@@ -177,6 +177,14 @@ namespace Aerospike.Client
 			return (GetLong(name) != 0) ? true : false;
 		}
 
+		/// <summary>
+		/// Get bin value as GeoJSON.
+		/// </summary>
+		public string GetGeoJSON(string name)
+		{
+			return (string)GetValue(name);
+		}
+	
 		/**
 		 * Convert record expiration (seconds from Jan 01 2010 00:00:00 GMT) to
 		 * ttl (seconds from now).

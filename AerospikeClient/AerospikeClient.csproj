@@ -187,6 +187,7 @@
     <Compile Include="Listener\BatchListListener.cs" />
     <Compile Include="Listener\BatchSequenceListener.cs" />
     <Compile Include="Listener\ExecuteListener.cs" />
+    <Compile Include="Lua\LuaGeoJSON.cs" />
     <Compile Include="Lua\LuaAerospike.cs" />
     <Compile Include="Lua\LuaBytes.cs" />
     <Compile Include="Lua\LuaCache.cs" />

@@ -236,6 +236,21 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
+		/// Get GeoJSON or null value instance.
+		/// </summary>
+		public static Value GetAsGeoJSON(string value)
+		{
+			if (value == null)
+			{
+				return new NullValue();
+			}
+			else
+			{
+				return new GeoJSONValue(value);
+			}
+		}
+
+		/// <summary>
 		/// Get list or null value instance.
 		/// Support by Aerospike 3 servers only.
 		/// </summary>
@@ -1775,6 +1790,75 @@ namespace Aerospike.Client
 			public override int GetHashCode()
 			{
 				return obj.GetHashCode();
+			}
+		}
+
+		/// <summary>
+		/// GeoJSON value.
+		/// </summary>
+		public sealed class GeoJSONValue : Value
+		{
+			private readonly string value;
+
+			public GeoJSONValue(string value)
+			{
+				this.value = value;
+			}
+
+			public override int EstimateSize()
+			{
+				// flags + ncells + jsonstr
+				return 1 + 2 + ByteUtil.EstimateSizeUtf8(value);
+			}
+
+			public override int Write(byte[] buffer, int offset)
+			{
+				buffer[offset] = 0; // flags
+				ByteUtil.ShortToBytes(0, buffer, offset + 1); // ncells
+				return 1 + 2 + ByteUtil.StringToUtf8(value, buffer, offset + 3); // jsonstr
+			}
+
+			public override void Pack(Packer packer)
+			{
+				throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Can't pack GeoJSON");
+			}
+
+			public override void ValidateKeyType()
+			{
+				throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Invalid key type: GeoJSON");
+			}
+
+			public override int Type
+			{
+				get
+				{
+					return ParticleType.GEOJSON;
+				}
+			}
+
+			public override object Object
+			{
+				get
+				{
+					return value;
+				}
+			}
+
+			public override string ToString()
+			{
+				return value;
+			}
+
+			public override bool Equals(object other)
+			{
+				return (other != null &&
+					this.GetType().Equals(other.GetType()) &&
+					this.value.Equals(((GeoJSONValue)other).value));
+			}
+
+			public override int GetHashCode()
+			{
+				return value.GetHashCode();
 			}
 		}
 

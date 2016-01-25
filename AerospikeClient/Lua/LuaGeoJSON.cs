@@ -14,26 +14,38 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
+using System;
+using Neo.IronLua;
+
 namespace Aerospike.Client
 {
-	/// <summary>
-	/// Underlying data type of secondary index.
-	/// </summary>
-	public enum IndexType
+	public class LuaGeoJSON : LuaData
 	{
-		/// <summary>
-		/// Number index.
-		/// </summary>
-		NUMERIC,
+		private string value;
 
-		/// <summary>
-		/// String index.
-		/// </summary>
-		STRING,
+		public LuaGeoJSON(string value)
+		{
+			this.value = value;
+		}
 
-		/// <summary>
-		/// 2-dimensional spherical geospatial index.
-		/// </summary>
-		GEO2DSPHERE
+		public LuaGeoJSON()
+		{
+			value = "";
+		}
+
+		public object LuaToObject()
+		{
+			return value;
+		}
+
+		public override string ToString()
+		{
+			return value;
+		}
+
+		public static int size(LuaGeoJSON value)
+		{
+			return value.value.Length;
+		}
 	}
 }

@@ -377,6 +377,16 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
+		/// Create bin with a GeoJSON value.
+		/// </summary>
+		/// <param name="name">bin name, current limit is 14 characters</param>
+		/// <param name="value">bin value</param>
+		public static Bin AsGeoJSON(string name, string value)
+		{
+			return new Bin(name, Value.GetAsGeoJSON(value));
+		}
+	
+		/// <summary>
 		/// Return string representation of bin.
 		/// </summary>
 		public override string ToString()

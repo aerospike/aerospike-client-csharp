@@ -31,6 +31,7 @@ namespace Aerospike.Client
 		internal bool hasBatchIndex;
 		internal bool hasReplicasAll;
 		internal bool hasDouble;
+		internal bool hasGeo;
 
 		public NodeValidator(Cluster cluster, Host host)
 		{
@@ -105,6 +106,11 @@ namespace Aerospike.Client
 
 				foreach (string feature in list)
 				{
+					if (feature.Equals("geo"))
+					{
+						this.hasGeo = true;
+					}
+
 					if (feature.Equals("float"))
 					{
 						this.hasDouble = true;

@@ -208,7 +208,15 @@ namespace Aerospike.Client
 				Unpacker unpacker = new Unpacker(buf, offset, len, true);
 				return unpacker.UnpackMap();
 			}
-		
+
+			case ParticleType.GEOJSON:
+			{
+				// skip the flags
+				int ncells = ByteUtil.BytesToShort(buf, offset + 1);
+				int hdrsz = 1 + 2 + (ncells * 8);
+				return new LuaGeoJSON(ByteUtil.Utf8ToString(buf, offset + hdrsz, len - hdrsz));
+			}
+
 			default:
 				return null;
 			}

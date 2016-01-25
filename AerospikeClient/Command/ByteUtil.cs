@@ -68,6 +68,9 @@ namespace Aerospike.Client
 				case ParticleType.CSHARP_BLOB:
 					return BytesToObject(buf, offset, len);
 
+				case ParticleType.GEOJSON:
+					return BytesToGeoJSON(buf, offset, len);
+				
 				case ParticleType.LIST:
 				{
 					Unpacker unpacker = new Unpacker(buf, offset, len, false);
@@ -213,6 +216,14 @@ namespace Aerospike.Client
 			}
 		}
 
+		public static object BytesToGeoJSON(byte[] buf, int offset, int len)
+		{
+			// Ignore the flags for now
+			int ncells = BytesToShort(buf, offset + 1);
+			int hdrsz = 1 + 2 + (ncells * 8);
+			return Utf8ToString(buf, offset + hdrsz, len - hdrsz);
+		}
+		
 		public static object BytesToNumber(byte[] buf, int offset, int len)
 		{
 			// Server always returns 8 for integer length.
