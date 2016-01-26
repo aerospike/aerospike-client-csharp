@@ -38,6 +38,15 @@ namespace Aerospike.Client
 		internal bool returnData;
 
 		/// <summary>
+		/// Query namespace.
+		/// </summary>
+		public string Namespace
+		{
+			set { ns = value; }
+			get { return ns; }
+		}
+
+		/// <summary>
 		/// Set query namespace.
 		/// </summary>
 		public void SetNamespace(string ns)
@@ -46,11 +55,30 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
-		/// Set optional query setname.
+		/// Optional query set name.
+		/// </summary>
+		public string SetName
+		{
+			set { setName = value; }
+			get { return setName; }
+		}
+
+		/// <summary>
+		/// Set optional query set name.
 		/// </summary>
 		public void SetSetName(string setName)
 		{
 			this.setName = setName;
+		}
+
+		/// <summary>
+		/// Optional query index name.  If not set, the server
+		/// will determine the index from the filter's bin name.
+		/// </summary>
+		public string IndexName
+		{
+			set { indexName = value; }
+			get { return indexName; }
 		}
 
 		/// <summary>
@@ -60,6 +88,15 @@ namespace Aerospike.Client
 		public void SetIndexName(string indexName)
 		{
 			this.indexName = indexName;
+		}
+
+		/// <summary>
+		/// Query bin names.
+		/// </summary>
+		public string[] BinNames
+		{
+			set { SetBinNames(value); }
+			get { return binNames; }
 		}
 
 		/// <summary>
@@ -78,6 +115,19 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
+		/// Optional query filters.
+		/// Currently, only one filter is allowed by the server on a secondary index lookup.
+		/// If multiple filters are necessary, see QueryFilter example for a workaround.
+		/// QueryFilter demonstrates how to add additional filters in an user-defined 
+		/// aggregation function. 
+		/// </summary>
+		public Filter[] Filters
+		{
+			set { filters = value; }
+			get { return filters; }
+		}
+
+		/// <summary>
 		/// Set optional query filters.
 		/// Currently, only one filter is allowed by the server on a secondary index lookup.
 		/// If multiple filters are necessary, see QueryFilter example for a workaround.
@@ -87,6 +137,15 @@ namespace Aerospike.Client
 		public void SetFilters(params Filter[] filters)
 		{
 			this.filters = filters;
+		}
+
+		/// <summary>
+		/// Optional query task id.
+		/// </summary>
+		public long TaskId
+		{
+			set { taskId = value; }
+			get { return taskId; }
 		}
 
 		/// <summary>
@@ -127,6 +186,56 @@ namespace Aerospike.Client
 			this.packageName = packageName;
 			this.functionName = functionName;
 			this.functionArgs = functionArgs;
+		}
+
+		/// <summary>
+		/// Assembly where resource is located.  Current assembly can be obtained by: Assembly.GetExecutingAssembly().
+		/// Used by aggregate queries only.
+		/// </summary>
+		public Assembly ResourceAssembly
+		{
+			set { resourceAssembly = value; }
+			get { return resourceAssembly; }
+		}
+
+		/// <summary>
+		/// Namespace path where Lua resource is located.  Example: Aerospike.Client.Resources.mypackage.lua
+		/// Used by aggregate queries only.
+		/// </summary>
+		public string ResourcePath
+		{
+			set { resourcePath = value; }
+			get { return resourcePath; }
+		}
+
+		/// <summary>
+		/// Server package where user defined function resides.
+		/// Used by aggregate queries only.
+		/// </summary>
+		public string PackageName
+		{
+			set { packageName = value; }
+			get { return packageName; }
+		}
+
+		/// <summary>
+		/// Aggregation function name.
+		/// Used by aggregate queries only.
+		/// </summary>
+		public string FunctionName
+		{
+			set { functionName = value; }
+			get { return functionName; }
+		}
+
+		/// <summary>
+		/// Arguments to pass to function name, if any.
+		/// Used by aggregate queries only.
+		/// </summary>
+		public Value[] FunctionArgs
+		{
+			set { functionArgs = value; }
+			get { return functionArgs; }
 		}
 
 		/// <summary>
