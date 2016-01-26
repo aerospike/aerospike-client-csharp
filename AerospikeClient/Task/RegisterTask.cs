@@ -39,9 +39,15 @@ namespace Aerospike.Client
 		/// </summary>
 		public override bool QueryIfDone()
 		{
-			string command = "udf-list";
+			// All nodes must respond with complete to be considered done.
 			Node[] nodes = cluster.Nodes;
-			bool done = false;
+
+			if (nodes.Length == 0)
+			{
+				return false;
+			}
+
+			string command = "udf-list";
 
 			foreach (Node node in nodes)
 			{
@@ -53,9 +59,8 @@ namespace Aerospike.Client
 				{
 					return false;
 				}
-				done = true;
 			}
-			return done;
+			return true;
 		}
 	}
 }

@@ -39,19 +39,33 @@ namespace Aerospike.Client
 		/// </summary>
 		public override bool QueryIfDone()
 		{
+			// All nodes must respond with complete to be considered done.
+			Node[] nodes = cluster.Nodes;
+
+			if (nodes.Length == 0)
+			{
+				return false;
+			}
+			
 			string module = (scan) ? "scan" : "query";
 			string command = "jobs:module=" + module + ";cmd=get-job;trid=" + taskId;
-			Node[] nodes = cluster.Nodes;
-			bool done = false;
 
 			foreach (Node node in nodes)
 			{
 				string response = Info.Request(policy, node, command);
 
+				if (response.StartsWith("ERROR:2"))
+				{
+					// Task not found. This could mean task already completed or
+					// task not started yet.  We are going to have to assume that
+					// the task already completed...
+					continue;
+				}
+
 				if (response.StartsWith("ERROR:"))
 				{
-					done = true;
-					continue;
+					// Mark done and quit immediately.
+					throw new DoneException(command + " failed: " + response);
 				}
 
 				string find = "status=";
@@ -59,25 +73,21 @@ namespace Aerospike.Client
 
 				if (index < 0)
 				{
-					continue;
+					// Store exception and keep waiting.
+					throw new AerospikeException(command + " failed: " + response);
 				}
 
 				int begin = index + find.Length;
 				int end = response.IndexOf(':', begin);
 				string status = response.Substring(begin, end - begin);
 
-				// Newer servers use "active(ok)" while older servers use "IN_PROGRESS"
-				if (status.StartsWith("active") || status.StartsWith("IN_PROGRESS"))
+				// Newer servers use "done" while older servers use "DONE"
+				if (!status.StartsWith("done", System.StringComparison.OrdinalIgnoreCase))
 				{
 					return false;
 				}
-				// Newer servers use "done" while older servers use "DONE"
-				else if (status.StartsWith("done", System.StringComparison.OrdinalIgnoreCase))
-				{
-					done = true;
-				}
 			}
-			return done;
+			return true;
 		}
 	}
 }
