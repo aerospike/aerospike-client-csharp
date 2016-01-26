@@ -28,12 +28,13 @@ namespace Aerospike.Client
 		public static readonly int INFO1_NOBINDATA       = (1 << 5); // Do not read the bins.
 		public static readonly int INFO1_CONSISTENCY_ALL = (1 << 6); // Involve all replicas in read operation.
 
-		public static readonly int INFO2_WRITE          = (1 << 0); // Create or update record
-		public static readonly int INFO2_DELETE         = (1 << 1); // Fling a record into the belly of Moloch.
-		public static readonly int INFO2_GENERATION     = (1 << 2); // Update if expected generation == old.
-		public static readonly int INFO2_GENERATION_GT  = (1 << 3); // Update if new generation >= old, good for restore.
-		public static readonly int INFO2_GENERATION_DUP = (1 << 4); // Create a duplicate on a generation collision.
-		public static readonly int INFO2_CREATE_ONLY    = (1 << 5); // Create only. Fail if record already exists.
+		public static readonly int INFO2_WRITE           = (1 << 0); // Create or update record
+		public static readonly int INFO2_DELETE          = (1 << 1); // Fling a record into the belly of Moloch.
+		public static readonly int INFO2_GENERATION      = (1 << 2); // Update if expected generation == old.
+		public static readonly int INFO2_GENERATION_GT   = (1 << 3); // Update if new generation >= old, good for restore.
+		public static readonly int INFO2_GENERATION_DUP  = (1 << 4); // Create a duplicate on a generation collision.
+		public static readonly int INFO2_CREATE_ONLY     = (1 << 5); // Create only. Fail if record already exists.
+		public static readonly int INFO2_RESPOND_ALL_OPS = (1 << 7); // Return a result for every operation.
 
 		public static readonly int INFO3_LAST              = (1 << 0); // This is the last of a multi-part message.
 		public static readonly int INFO3_COMMIT_MASTER     = (1 << 1); // Commit to master only before declaring success.
@@ -165,7 +166,8 @@ namespace Aerospike.Client
 			{
 				switch (operation.type)
 				{
-				case Operation.Type.READ:
+					case Operation.Type.CDT_READ:
+					case Operation.Type.READ:
 					readAttr |= Command.INFO1_READ;
 
 					// Read all bins if no bin is specified.
@@ -192,6 +194,11 @@ namespace Aerospike.Client
 			if (readHeader && !readBin)
 			{
 				readAttr |= Command.INFO1_NOBINDATA;
+			}
+
+			if (writeAttr != 0 && policy.respondAllOps)
+			{
+				writeAttr |= Command.INFO2_RESPOND_ALL_OPS;
 			}
 
 			WriteHeader(policy, readAttr, writeAttr, fieldCount, operations.Length);
@@ -808,7 +815,7 @@ namespace Aerospike.Client
 		private void EstimateOperationSize(Operation operation)
 		{
 			dataOffset += ByteUtil.EstimateSizeUtf8(operation.binName) + OPERATION_HEADER_SIZE;
-			dataOffset += operation.binValue.EstimateSize();
+			dataOffset += operation.value.EstimateSize();
 		}
 
 		private void EstimateOperationSize(string binName)
@@ -957,12 +964,12 @@ namespace Aerospike.Client
 		private void WriteOperation(Operation operation)
 		{
 			int nameLength = ByteUtil.StringToUtf8(operation.binName, dataBuffer, dataOffset + OPERATION_HEADER_SIZE);
-			int valueLength = operation.binValue.Write(dataBuffer, dataOffset + OPERATION_HEADER_SIZE + nameLength);
+			int valueLength = operation.value.Write(dataBuffer, dataOffset + OPERATION_HEADER_SIZE + nameLength);
 
 			ByteUtil.IntToBytes((uint)(nameLength + valueLength + 4), dataBuffer, dataOffset);
 			dataOffset += 4;
 			dataBuffer[dataOffset++] = Operation.GetProtocolType(operation.type);
-			dataBuffer[dataOffset++] = (byte) operation.binValue.Type;
+			dataBuffer[dataOffset++] = (byte) operation.value.Type;
 			dataBuffer[dataOffset++] = (byte) 0;
 			dataBuffer[dataOffset++] = (byte) nameLength;
 			dataOffset += nameLength + valueLength;

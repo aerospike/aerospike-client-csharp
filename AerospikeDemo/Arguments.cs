@@ -36,8 +36,10 @@ namespace Aerospike.Demo
 		internal Policy policy;
         internal int commandMax;
         internal bool singleBin;
+		internal bool hasGeo;
 		internal bool hasUdf;
 		internal bool hasLargeDataTypes;
+		internal bool hasCDTList;
 
 		protected internal Arguments()
 		{
@@ -56,7 +58,9 @@ namespace Aerospike.Demo
 			Dictionary<string, string> tokens = Info.Request(null, node, featuresFilter, namespaceFilter);
 
 			string features = tokens[featuresFilter];
+			hasGeo = false;
 			hasUdf = false;
+			hasCDTList = false;
 
 			if (features != null)
 			{
@@ -64,10 +68,17 @@ namespace Aerospike.Demo
 
 				foreach (string s in list)
 				{
-					if (s.Equals("udf"))
+					if (s.Equals("geo"))
+					{
+						hasGeo = true;
+					}
+					else if (s.Equals("udf"))
 					{
 						hasUdf = true;
-						break;
+					}
+					else if (s.Equals("cdt-list"))
+					{
+						hasCDTList = true;
 					}
 				}
 			}

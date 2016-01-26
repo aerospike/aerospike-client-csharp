@@ -39,5 +39,33 @@ namespace Aerospike.Client
 		{
 			return (AsyncNode)cluster.GetMasterNode(partition);
 		}
+
+		protected internal override void AddBin(Dictionary<string, object> bins, string name, object value)
+		{
+			object prev;
+
+			if (bins.TryGetValue(name, out prev))
+			{
+				// Multiple values returned for the same bin. 
+				if (prev is OpResults)
+				{
+					// List already exists.  Add to it.
+					OpResults list = (OpResults)prev;
+					list.Add(value);
+				}
+				else
+				{
+					// Make a list to store all values.
+					OpResults list = new OpResults();
+					list.Add(prev);
+					list.Add(value);
+					bins[name] = list;
+				}
+			}
+			else
+			{
+				bins[name] = value;
+			}
+		}
 	}
 }

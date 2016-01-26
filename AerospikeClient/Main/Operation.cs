@@ -52,7 +52,7 @@ namespace Aerospike.Client
 		/// </summary>
 		public static Operation Put(Bin bin)
 		{
-			return new Operation(Type.WRITE, bin);
+			return new Operation(Type.WRITE, bin.name, bin.value);
 		}
 
 		/// <summary>
@@ -60,7 +60,7 @@ namespace Aerospike.Client
 		/// </summary>
 		public static Operation Append(Bin bin)
 		{
-			return new Operation(Type.APPEND, bin);
+			return new Operation(Type.APPEND, bin.name, bin.value);
 		}
 
 		/// <summary>
@@ -68,7 +68,7 @@ namespace Aerospike.Client
 		/// </summary>
 		public static Operation Prepend(Bin bin)
 		{
-			return new Operation(Type.PREPEND, bin);
+			return new Operation(Type.PREPEND, bin.name, bin.value);
 		}
 
 		/// <summary>
@@ -76,7 +76,7 @@ namespace Aerospike.Client
 		/// </summary>
 		public static Operation Add(Bin bin)
 		{
-			return new Operation(Type.ADD, bin);
+			return new Operation(Type.ADD, bin.name, bin.value);
 		}
 
 		/// <summary>
@@ -92,13 +92,15 @@ namespace Aerospike.Client
 			READ,
 			READ_HEADER,
 			WRITE,
+			CDT_READ,
+			CDT_MODIFY,
 			ADD,
 			APPEND,
 			PREPEND,
 			TOUCH
 		}
 
-		private static byte[] ProtocolTypes = new byte[] { 1, 1, 2, 5, 9, 10, 11 };
+		private static byte[] ProtocolTypes = new byte[] { 1, 1, 2, 3, 4, 5, 9, 10, 11 };
 
 		public static byte GetProtocolType(Type type)
 		{
@@ -116,29 +118,29 @@ namespace Aerospike.Client
 		public readonly string binName;
 
 		/// <summary>
-		/// Optional bin value used in operation.
+		/// Optional argument to operation.
 		/// </summary>
-		public readonly Value binValue;
+		public readonly Value value;
 
-		private Operation(Type type, Bin bin)
+		public Operation(Type type, string binName, Value value)
 		{
 			this.type = type;
-			this.binName = bin.name;
-			this.binValue = bin.value;
+			this.binName = binName;
+			this.value = value;
 		}
 
 		private Operation(Type type, string binName)
 		{
 			this.type = type;
 			this.binName = binName;
-			this.binValue = Value.AsNull;
+			this.value = Value.AsNull;
 		}
 
 		private Operation(Type type)
 		{
 			this.type = type;
 			this.binName = null;
-			this.binValue = Value.AsNull;
+			this.value = Value.AsNull;
 		}
 	}
 }

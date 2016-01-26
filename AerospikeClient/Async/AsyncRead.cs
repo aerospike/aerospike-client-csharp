@@ -118,9 +118,14 @@ namespace Aerospike.Client
 				{
 					bins = new Dictionary<string, object>();
 				}
-				bins[name] = value;
+				AddBin(bins, name, value);
 			}
 			return new Record(bins, generation, expiration);
+		}
+
+		protected internal virtual void AddBin(Dictionary<string, object> bins, string name, object value)
+		{
+			bins[name] = value;
 		}
 
 		protected internal override void OnSuccess()

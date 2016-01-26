@@ -15,6 +15,7 @@
  * the License.
  */
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Text;
 
@@ -175,6 +176,14 @@ namespace Aerospike.Client
 		{
 			// The server always returns booleans as longs, so get long and convert.
 			return (GetLong(name) != 0) ? true : false;
+		}
+
+		/// <summary>
+		/// Get bin value as list.
+		/// </summary>
+		public IList GetList(string name)
+		{
+			return (IList)GetValue(name);
 		}
 
 		/// <summary>

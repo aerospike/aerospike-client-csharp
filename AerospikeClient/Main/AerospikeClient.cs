@@ -732,6 +732,10 @@ namespace Aerospike.Client
 		/// Write operations are always performed first, regardless of operation order
 		/// relative to read operations.
 		/// </para>
+		/// <para>
+		/// Both scalar bin operations (Operation) and list bin operations (ListOperation)
+		/// can be performed in same call.
+		/// </para>
 		/// </summary>
 		/// <param name="policy">write configuration parameters, pass in null for defaults</param>
 		/// <param name="key">unique record identifier</param>

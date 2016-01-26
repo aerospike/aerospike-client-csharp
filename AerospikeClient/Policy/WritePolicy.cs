@@ -62,6 +62,25 @@ namespace Aerospike.Client
 		public int expiration;
 
 		/// <summary>
+		/// For client operate(), return a result for every operation.
+		/// <para>
+		/// Some list operations do not return results by default (ListOperation.clear() for example).
+		/// This can sometimes make it difficult to determine the desired result offset in the returned
+		/// bin's result list.
+		/// </para>
+		/// <para>
+		/// Setting respondAllOps to true makes it easier to identify the desired result offset 
+		/// (result offset equals bin's operate sequence). This only makes sense when multiple list
+		/// operations are used in one operate call and some of those operations do not return results
+		/// by default.
+		/// </para>
+		/// <para>
+		/// Default: false
+		/// </para>
+		/// </summary>
+		public bool respondAllOps;
+	
+		/// <summary>
 		/// Copy write policy from another write policy.
 		/// </summary>
 		public WritePolicy(WritePolicy other)
@@ -72,6 +91,7 @@ namespace Aerospike.Client
 			this.commitLevel = other.commitLevel;
 			this.generation = other.generation;
 			this.expiration = other.expiration;
+			this.respondAllOps = other.respondAllOps;
 		}
 
 		/// <summary>

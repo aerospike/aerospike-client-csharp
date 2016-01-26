@@ -76,7 +76,7 @@ namespace Aerospike.Client
 			}
 		}
 
-		private void PackArrayBegin(int size)
+		public void PackArrayBegin(int size)
 		{
 			if (size < 16)
 			{
@@ -421,7 +421,7 @@ namespace Aerospike.Client
 			offset += 8;
 		}
 
-		private void PackInt(int type, uint val)
+		public void PackInt(int type, uint val)
 		{
 			if (offset + 5 > buffer.Length)
 			{
@@ -440,6 +440,17 @@ namespace Aerospike.Client
 			}
 			buffer[offset++] = (byte)type;
 			ByteUtil.ShortToBytes(val, buffer, offset);
+			offset += 2;
+		}
+
+		public void PackRawShort(int val)
+		{
+			// WARNING. This method is not compatible with message pack standard.
+			if (offset + 2 > buffer.Length)
+			{
+				Resize(2);
+			}
+			ByteUtil.ShortToBytes((ushort)val, buffer, offset);
 			offset += 2;
 		}
 

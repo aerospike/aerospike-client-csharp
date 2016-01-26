@@ -1202,6 +1202,10 @@ namespace Aerospike.Client
 		/// An example would be to add an integer value to an existing record and then
 		/// read the result, all in one database call.
 		/// </para>
+		/// <para>
+		/// Both scalar bin operations (Operation) and list bin operations (ListOperation)
+		/// can be performed in same call.
+		/// </para>
 		/// </summary>
 		/// <param name="policy">write configuration parameters, pass in null for defaults</param>
 		/// <param name="token">cancellation token</param>
