@@ -87,7 +87,11 @@ namespace Aerospike.Client
 
 			try
 			{
-				Dictionary<string, string> infoMap = Info.Request(conn, "node", "partition-generation", "services");
+				string[] commands = cluster.useServicesAlternate ? 
+					new string[] {"node", "partition-generation", "services-alternate"} : 
+					new string[] {"node", "partition-generation", "services"}; 
+
+				Dictionary<string, string> infoMap = Info.Request(conn, commands);
 				VerifyNodeName(infoMap);
 
 				if (AddFriends(infoMap, friends))
@@ -127,7 +131,8 @@ namespace Aerospike.Client
 		private bool AddFriends(Dictionary<string, string> infoMap, List<Host> friends)
 		{
 			// Parse the service addresses and add the friends to the list.
-			string friendString = infoMap["services"];
+			String command = cluster.useServicesAlternate ? "services-alternate" : "services";
+			string friendString = infoMap[command];
 
 			if (friendString == null || friendString.Length == 0)
 			{

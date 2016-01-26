@@ -124,5 +124,16 @@ namespace Aerospike.Client
 		/// </para>
 		/// </summary>
 		public bool requestProleReplicas;
+
+		/// <summary>
+		/// Should use "services-alternate" instead of "services" in info request during cluster
+		/// tending.  "services-alternate" returns server configured external IP addresses that client
+		/// uses to talk to nodes.  "services-alternate" can be used in place of providing a client "ipMap".
+		/// Default: false (use original "services" info request).
+		/// <para>
+		/// "services-alternate" is available with Aerospike Server versions >= 3.7.1.
+		/// </para>
+		/// </summary>
+		public bool useServicesAlternate;
 	}
 }

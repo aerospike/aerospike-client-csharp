@@ -72,6 +72,9 @@ namespace Aerospike.Client
 		// Request prole replicas in addition to master replicas?
 		private bool requestProleReplicas;
 
+		// Should use "services-alternate" instead of "services" in info request?
+		protected internal readonly bool useServicesAlternate;
+		
 		public Cluster(ClientPolicy policy, Host[] hosts)
 		{
 			this.seeds = hosts;
@@ -100,6 +103,7 @@ namespace Aerospike.Client
 			tendInterval = policy.tendInterval;
 			ipMap = policy.ipMap;
 			requestProleReplicas = policy.requestProleReplicas;
+			useServicesAlternate = policy.useServicesAlternate;
 
 			aliases = new Dictionary<Host, Node>();
 			nodes = new Node[0];
