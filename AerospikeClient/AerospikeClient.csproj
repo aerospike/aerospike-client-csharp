@@ -306,6 +306,7 @@
     <Compile Include="Main\ResultCode.cs" />
     <Compile Include="Query\ScanCallback.cs" />
     <Compile Include="BCrypt\BCrypt.cs" />
+    <Compile Include="Util\RandomShift.cs" />
     <Compile Include="Util\Unpacker.cs" />
     <Compile Include="Util\Hash.cs" />
     <Compile Include="Util\Packer.cs" />

@@ -480,7 +480,7 @@ namespace Aerospike.Client
 			End();
 		}
 
-		public void SetScan(ScanPolicy policy, string ns, string setName, string[] binNames, long taskId)
+		public void SetScan(ScanPolicy policy, string ns, string setName, string[] binNames, ulong taskId)
 		{
 			Begin();
 			int fieldCount = 0;
@@ -553,7 +553,7 @@ namespace Aerospike.Client
 
 			// Write taskId field
 			WriteFieldHeader(8, FieldType.TRAN_ID);
-			ByteUtil.LongToBytes((ulong)taskId, dataBuffer, dataOffset);
+			ByteUtil.LongToBytes(taskId, dataBuffer, dataOffset);
 			dataOffset += 8;
 
 			if (binNames != null)
@@ -700,7 +700,7 @@ namespace Aerospike.Client
 
 			// Write taskId field
 			WriteFieldHeader(8, FieldType.TRAN_ID);
-			ByteUtil.LongToBytes((ulong)statement.taskId, dataBuffer, dataOffset);
+			ByteUtil.LongToBytes(statement.taskId, dataBuffer, dataOffset);
 			dataOffset += 8;
 
 			if (statement.filters != null)

@@ -17,16 +17,35 @@
 using System;
 using System.Threading;
 
-namespace Aerospike.Demo
+namespace Aerospike.Client
 {
 	/// <summary>
-	/// Generate random numbers using xorshift128plus algorithm.
+	/// Generate pseudo random numbers using xorshift128plus algorithm.
 	/// This class is not thread-safe and should be instantiated once per thread.
 	/// </summary>
 	public sealed class RandomShift
 	{
-		private static int seed = Environment.TickCount;
-		
+		[ThreadStatic]
+		private static RandomShift RandomShiftLocal;
+
+		/// <summary>
+		/// Get thread local instance of RandomShift.  The instance does not need
+		/// to be placed in IIS HttpContext because it will only be used immediately
+		/// in the same thread as it was retrieved.  IIS will not have a chance
+		/// to switch threads on this instance.
+		/// </summary>
+		public static RandomShift ThreadLocalInstance
+		{
+			get
+			{
+				if (RandomShiftLocal == null)
+				{
+					RandomShiftLocal = new RandomShift();
+				}
+				return RandomShiftLocal;
+			}
+		}
+
 		private ulong seed0;
 		private ulong seed1;
 
@@ -35,14 +54,13 @@ namespace Aerospike.Demo
 		/// </summary>
 		public RandomShift()
 		{
-			Random random = new Random(Interlocked.Increment(ref seed));
-			byte[] bytes = new byte[8];
-
-			random.NextBytes(bytes);
-			seed0 = BitConverter.ToUInt64(bytes, 0);
-			
-			random.NextBytes(bytes);
-			seed1 = BitConverter.ToUInt64(bytes, 0);
+			// Do not use Environment.TickCount for seed because it is often
+			// the same across concurrent threads, thus causing duplicate values.
+			Random random = new Random(Guid.NewGuid().GetHashCode());
+			byte[] buffer = new byte[sizeof(UInt64) * 2];
+			random.NextBytes(buffer);
+			seed0 = BitConverter.ToUInt64(buffer, 0);
+			seed1 = BitConverter.ToUInt64(buffer, sizeof(UInt64));
 		}
 
 		/// <summary>

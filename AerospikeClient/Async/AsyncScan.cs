@@ -23,7 +23,7 @@ namespace Aerospike.Client
 		private readonly string ns;
 		private readonly string setName;
 		private readonly string[] binNamesScan;
-		private readonly long taskId;
+		private readonly ulong taskId;
 
 		public AsyncScan
 		(
@@ -35,7 +35,7 @@ namespace Aerospike.Client
 			string ns,
 			string setName,
 			string[] binNames,
-			long taskId
+			ulong taskId
 		) : base(parent, cluster, node, true)
 		{
 			this.policy = policy;

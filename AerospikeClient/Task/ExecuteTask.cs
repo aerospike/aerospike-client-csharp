@@ -21,7 +21,7 @@ namespace Aerospike.Client
 	/// </summary>
 	public sealed class ExecuteTask : BaseTask
 	{
-		private readonly long taskId;
+		private readonly ulong taskId;
 		private readonly bool scan;
 
 		/// <summary>

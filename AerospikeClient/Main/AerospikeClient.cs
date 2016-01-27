@@ -791,7 +791,7 @@ namespace Aerospike.Client
 			if (policy.concurrentNodes)
 			{
 				Executor executor = new Executor(nodes.Length);
-				long taskId = Environment.TickCount;
+				ulong taskId = RandomShift.ThreadLocalInstance.NextLong();
 
 				foreach (Node node in nodes)
 				{
@@ -857,7 +857,7 @@ namespace Aerospike.Client
 			{
 				policy = scanPolicyDefault;
 			}
-			long taskId = Environment.TickCount;
+			ulong taskId = RandomShift.ThreadLocalInstance.NextLong();
 
 			ScanCommand command = new ScanCommand(node, policy, ns, setName, callback, binNames, taskId);
 			command.Execute();

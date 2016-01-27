@@ -34,7 +34,7 @@ namespace Aerospike.Client
 		internal string packageName;
 		internal string functionName;
 		internal Value[] functionArgs;
-		internal long taskId;
+		internal ulong taskId;
 		internal bool returnData;
 
 		/// <summary>
@@ -142,7 +142,7 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Optional query task id.
 		/// </summary>
-		public long TaskId
+		public ulong TaskId
 		{
 			set { taskId = value; }
 			get { return taskId; }
@@ -153,7 +153,7 @@ namespace Aerospike.Client
 		/// </summary>
 		public void SetTaskId(long taskId)
 		{
-			this.taskId = taskId;
+			this.taskId = (ulong)taskId;
 		}
 
 		/// <summary>
@@ -247,7 +247,7 @@ namespace Aerospike.Client
 
 			if (taskId == 0)
 			{
-				taskId = Environment.TickCount;
+				taskId = RandomShift.ThreadLocalInstance.NextLong();
 			}
 		}
 	}

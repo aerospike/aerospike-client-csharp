@@ -40,8 +40,8 @@ namespace Aerospike.Client
 			{
 				throw new AerospikeException(ResultCode.SERVER_NOT_AVAILABLE, "Scan failed because cluster is empty.");
 			}
-			
-			long taskId = Environment.TickCount;
+
+			ulong taskId = RandomShift.ThreadLocalInstance.NextLong();
 
 			// Create commands.
 			AsyncScan[] tasks = new AsyncScan[nodes.Length];

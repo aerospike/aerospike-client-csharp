@@ -26,7 +26,7 @@ namespace Aerospike.Client
 		private readonly string setName;
 		private readonly ScanCallback callback;
 		private readonly string[] binNames;
-		private readonly long taskId;
+		private readonly ulong taskId;
 
 		public ScanCommand
 		(
@@ -36,7 +36,7 @@ namespace Aerospike.Client
 			string setName,
 			ScanCallback callback,
 			string[] binNames,
-			long taskId
+			ulong taskId
 		) : base(node, true)
 		{
 			this.policy = policy;
