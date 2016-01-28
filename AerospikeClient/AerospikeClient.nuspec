@@ -11,7 +11,7 @@
     <iconUrl>http://wordpress-www.s3-us-west-1.amazonaws.com/wp-content/uploads/2015/03/bryan-as.png</iconUrl>
     <requireLicenseAcceptance>false</requireLicenseAcceptance>
     <description>Aerospike C# Client Library</description>
-    <copyright>Copyright 2012-2015 Aerospike, Inc.</copyright>
+    <copyright>Copyright 2012-2016 Aerospike, Inc.</copyright>
     <tags>Aerospike database C# client</tags>
     <frameworkAssemblies>
       <frameworkAssembly assemblyName="System" />
