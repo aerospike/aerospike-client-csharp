@@ -98,6 +98,14 @@ namespace Aerospike.Client
 		public bool allowProleReads;
 
 		/// <summary>
+		/// Send set name field to server for every key in the batch for batch index protocol. 
+		/// This is only necessary when authentication is enabled and security roles are defined
+		/// on a per set basis.
+		/// Default: false
+		/// </summary>
+		public bool sendSetName;
+
+		/// <summary>
 		/// Copy batch policy from another batch policy.
 		/// </summary>
 		public BatchPolicy(BatchPolicy other)
@@ -107,6 +115,7 @@ namespace Aerospike.Client
 			this.useBatchDirect = other.useBatchDirect;
 			this.allowInline = other.allowInline;
 			this.allowProleReads = other.allowProleReads;
+			this.sendSetName = other.sendSetName;
 		}
 
 		/// <summary>
