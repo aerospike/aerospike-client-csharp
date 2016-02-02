@@ -123,7 +123,7 @@ namespace Aerospike.Client
 		/// </summary>
 		public Filter[] Filters
 		{
-			set { filters = value; }
+			set { SetFilters(value); }
 			get { return filters; }
 		}
 
@@ -136,6 +136,10 @@ namespace Aerospike.Client
 		/// </summary>
 		public void SetFilters(params Filter[] filters)
 		{
+			if (filters.Length > 1)
+			{
+				throw new AerospikeException(ResultCode.PARAMETER_ERROR, "The server currently restricts queries to a single filter");
+			}
 			this.filters = filters;
 		}
 
