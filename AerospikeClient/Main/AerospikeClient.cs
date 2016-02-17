@@ -400,21 +400,6 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Check if multiple record keys exist in one batch call.
 		/// The returned boolean array is in positional order with the original key array order.
-		/// The policy can be used to specify timeouts.
-		/// </summary>
-		/// <param name="policy">generic configuration parameters, pass in null for defaults</param>
-		/// <param name="keys">array of unique record identifiers</param>
-		/// <exception cref="AerospikeException">if command fails</exception>
-		[System.Obsolete("Use Exists(BatchPolicy, Key[]) instead.")]
-		public bool[] Exists(Policy policy, Key[] keys)
-		{
-			BatchPolicy batchPolicy = (policy == null) ? batchPolicyDefault : new BatchPolicy(policy);
-			return Exists(batchPolicy, keys);
-		}
-
-		/// <summary>
-		/// Check if multiple record keys exist in one batch call.
-		/// The returned boolean array is in positional order with the original key array order.
 		/// The policy can be used to specify timeouts and maximum concurrent threads.
 		/// </summary>
 		/// <param name="policy">batch configuration parameters, pass in null for defaults</param>
@@ -564,22 +549,6 @@ namespace Aerospike.Client
 		/// Read multiple records for specified keys in one batch call.
 		/// The returned records are in positional order with the original key array order.
 		/// If a key is not found, the positional record will be null.
-		/// The policy can be used to specify timeouts.
-		/// </summary>
-		/// <param name="policy">generic configuration parameters, pass in null for defaults</param>
-		/// <param name="keys">array of unique record identifiers</param>
-		/// <exception cref="AerospikeException">if read fails</exception>
-		[System.Obsolete("Use Get(BatchPolicy, Key[]) instead.")]
-		public Record[] Get(Policy policy, Key[] keys)
-		{
-			BatchPolicy batchPolicy = (policy == null) ? batchPolicyDefault : new BatchPolicy(policy);
-			return Get(batchPolicy, keys);
-		}
-
-		/// <summary>
-		/// Read multiple records for specified keys in one batch call.
-		/// The returned records are in positional order with the original key array order.
-		/// If a key is not found, the positional record will be null.
 		/// The policy can be used to specify timeouts and maximum concurrent threads.
 		/// </summary>
 		/// <param name="policy">batch configuration parameters, pass in null for defaults</param>
@@ -594,23 +563,6 @@ namespace Aerospike.Client
 			Record[] records = new Record[keys.Length];
 			BatchExecutor.Execute(cluster, policy, keys, null, records, null, Command.INFO1_READ | Command.INFO1_GET_ALL);
 			return records;
-		}
-		
-		/// <summary>
-		/// Read multiple record headers and bins for specified keys in one batch call.
-		/// The returned records are in positional order with the original key array order.
-		/// If a key is not found, the positional record will be null.
-		/// The policy can be used to specify timeouts.
-		/// </summary>
-		/// <param name="policy">generic configuration parameters, pass in null for defaults</param>
-		/// <param name="keys">array of unique record identifiers</param>
-		/// <param name="binNames">array of bins to retrieve</param>
-		/// <exception cref="AerospikeException">if read fails</exception>
-		[System.Obsolete("Use Get(BatchPolicy, Key[], params string[]) instead.")]
-		public Record[] Get(Policy policy, Key[] keys, params string[] binNames)
-		{
-			BatchPolicy batchPolicy = (policy == null) ? batchPolicyDefault : new BatchPolicy(policy);
-			return Get(batchPolicy, keys, binNames);
 		}
 
 		/// <summary>
@@ -632,22 +584,6 @@ namespace Aerospike.Client
 			Record[] records = new Record[keys.Length];
 			BatchExecutor.Execute(cluster, policy, keys, null, records, binNames, Command.INFO1_READ);
 			return records;
-		}
-		
-		/// <summary>
-		/// Read multiple record header data for specified keys in one batch call.
-		/// The returned records are in positional order with the original key array order.
-		/// If a key is not found, the positional record will be null.
-		/// The policy can be used to specify timeouts.
-		/// </summary>
-		/// <param name="policy">generic configuration parameters, pass in null for defaults</param>
-		/// <param name="keys">array of unique record identifiers</param>
-		/// <exception cref="AerospikeException">if read fails</exception>
-		[System.Obsolete("Use GetHeader(BatchPolicy, Key[]) instead.")]
-		public Record[] GetHeader(Policy policy, Key[] keys)
-		{
-			BatchPolicy batchPolicy = (policy == null) ? batchPolicyDefault : new BatchPolicy(policy);
-			return GetHeader(batchPolicy, keys);
 		}
 
 		/// <summary>
@@ -1107,30 +1043,6 @@ namespace Aerospike.Client
 			}
 			throw new AerospikeException("Remove UDF failed: " + response);
 		}
-	
-		/// <summary>
-		/// Execute user defined function on server and return results.
-		/// The function operates on a single record.
-		/// The package name is used to locate the udf file location:
-		/// <para>
-		/// udf file = &lt;server udf dir&gt;/&lt;package name&gt;.lua
-		/// </para>
-		/// <para>
-		/// This method is only supported by Aerospike 3 servers.
-		/// </para>
-		/// </summary>
-		/// <param name="policy">generic configuration parameters, pass in null for defaults</param>
-		/// <param name="key">unique record identifier</param>
-		/// <param name="packageName">server package name where user defined function resides</param>
-		/// <param name="functionName">user defined function</param>
-		/// <param name="args">arguments passed in to user defined function</param>
-		/// <exception cref="AerospikeException">if transaction fails</exception>
-		[System.Obsolete("Use Execute(WritePolicy policy, Key key, string packageName, string functionName, params Value[] args) instead.")]
-		public object Execute(Policy policy, Key key, string packageName, string functionName, params Value[] args)
-		{
-			WritePolicy writePolicy = (policy == null) ? writePolicyDefault : new WritePolicy(policy);
-			return Execute(writePolicy, key, packageName, functionName, args);
-		}
 
 		/// <summary>
 		/// Execute user defined function on server and return results.
@@ -1183,29 +1095,6 @@ namespace Aerospike.Client
 		//----------------------------------------------------------
 		// Query/Execute UDF (Supported by Aerospike 3 servers only)
 		//----------------------------------------------------------
-
-		/// <summary>
-		/// Apply user defined function on records that match the statement filter.
-		/// Records are not returned to the client.
-		/// This asynchronous server call will return before command is complete.  
-		/// The user can optionally wait for command completion by using the returned 
-		/// ExecuteTask instance.
-		/// <para>
-		/// This method is only supported by Aerospike 3 servers.
-		/// </para>
-		/// </summary>
-		/// <param name="policy">configuration parameters, pass in null for defaults</param>
-		/// <param name="statement">record filter</param>
-		/// <param name="packageName">server package where user defined function resides</param>
-		/// <param name="functionName">function name</param>
-		/// <param name="functionArgs">to pass to function name, if any</param>
-		/// <exception cref="AerospikeException">if command fails</exception>
-		[System.Obsolete("Use Execute(WritePolicy policy, Statement statement, string packageName, string functionName, params Value[] functionArgs) instead.")]
-		public ExecuteTask Execute(Policy policy, Statement statement, string packageName, string functionName, params Value[] functionArgs)
-		{
-			WritePolicy writePolicy = (policy == null) ? writePolicyDefault : new WritePolicy(policy);
-			return Execute(writePolicy, statement, packageName, functionName, functionArgs);
-		}
 
 		/// <summary>
 		/// Apply user defined function on records that match the statement filter.

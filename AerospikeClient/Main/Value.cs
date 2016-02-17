@@ -249,40 +249,6 @@ namespace Aerospike.Client
 				return new GeoJSONValue(value);
 			}
 		}
-
-		/// <summary>
-		/// Get list or null value instance.
-		/// Support by Aerospike 3 servers only.
-		/// </summary>
-		[System.Obsolete("Use Value.Get(IList value) instead.")]
-		public static Value GetAsList(IList value)
-		{
-			if (value == null)
-			{
-				return new NullValue();
-			}
-			else
-			{
-				return new ListValue(value);
-			}
-		}
-
-		/// <summary>
-		/// Get map or null value instance.
-		/// Support by Aerospike 3 servers only.
-		/// </summary>
-		[System.Obsolete("Use Value.Get(IDictionary value) instead.")]
-		public static Value GetAsMap(IDictionary value)
-		{
-			if (value == null)
-			{
-				return new NullValue();
-			}
-			else
-			{
-				return new MapValue(value);
-			}
-		}
 		
 		/// <summary>
 		/// Get null value instance.

@@ -466,48 +466,11 @@ namespace Aerospike.Client
 		/// <param name="token">cancellation token</param>
 		/// <param name="keys">array of unique record identifiers</param>
 		/// <exception cref="AerospikeException">if queue is full</exception>
-		[System.Obsolete("Use Exists(BatchPolicy policy, CancellationToken token, Key[] keys) instead.")]
-		public Task<bool[]> Exists(Policy policy, CancellationToken token, Key[] keys)
-		{
-			BatchPolicy batchPolicy = GetAsyncBatchPolicy(policy);
-			return Exists(batchPolicy, token, keys);
-		}
-
-		/// <summary>
-		/// Asynchronously check if multiple record keys exist in one batch call.
-		/// Create listener, call asynchronous array exists and return task monitor.
-		/// <para>
-		/// The policy can be used to specify timeouts.
-		/// </para>
-		/// </summary>
-		/// <param name="policy">generic configuration parameters, pass in null for defaults</param>
-		/// <param name="token">cancellation token</param>
-		/// <param name="keys">array of unique record identifiers</param>
-		/// <exception cref="AerospikeException">if queue is full</exception>
 		public Task<bool[]> Exists(BatchPolicy policy, CancellationToken token, Key[] keys)
 		{
 			ExistsArrayListenerAdapter listener = new ExistsArrayListenerAdapter(token);
 			Exists(policy, listener, keys);
 			return listener.Task;
-		}
-
-		/// <summary>
-		/// Asynchronously check if multiple record keys exist in one batch call.
-		/// Schedule the array exists command with a channel selector and return.
-		/// Another thread will process the command and send the results to the listener in a single call.
-		/// <para>
-		/// The policy can be used to specify timeouts.
-		/// </para>
-		/// </summary>
-		/// <param name="policy">generic configuration parameters, pass in null for defaults</param>
-		/// <param name="listener">where to send results</param>
-		/// <param name="keys">array of unique record identifiers</param>
-		/// <exception cref="AerospikeException">if queue is full</exception>
-		[System.Obsolete("Use Exists(BatchPolicy policy, ExistsArrayListener listener, Key[] keys) instead.")]
-		public void Exists(Policy policy, ExistsArrayListener listener, Key[] keys)
-		{
-			BatchPolicy batchPolicy = GetAsyncBatchPolicy(policy);
-			Exists(batchPolicy, listener, keys);
 		}
 
 		/// <summary>
@@ -534,25 +497,6 @@ namespace Aerospike.Client
 				policy = batchPolicyDefault;
 			}
 			new AsyncBatchExistsArrayExecutor(cluster, policy, keys, listener);
-		}
-
-		/// <summary>
-		/// Asynchronously check if multiple record keys exist in one batch call.
-		/// Schedule the exists command with a channel selector and return.
-		/// Another thread will process the command and send the results to the listener in multiple unordered calls.
-		/// <para>
-		/// The policy can be used to specify timeouts.
-		/// </para>
-		/// </summary>
-		/// <param name="policy">generic configuration parameters, pass in null for defaults</param>
-		/// <param name="listener">where to send results</param>
-		/// <param name="keys">array of unique record identifiers</param>
-		/// <exception cref="AerospikeException">if queue is full</exception>
-		[System.Obsolete("Use Exists(BatchPolicy policy, ExistsSequenceListener listener, Key[] keys) instead.")]
-		public void Exists(Policy policy, ExistsSequenceListener listener, Key[] keys)
-		{
-			BatchPolicy batchPolicy = GetAsyncBatchPolicy(policy);
-			Exists(batchPolicy, listener, keys);
 		}
 
 		/// <summary>
@@ -788,25 +732,6 @@ namespace Aerospike.Client
 			}
 			new AsyncBatchReadSequenceExecutor(cluster, policy, listener, records);
 		}
-	
-		/// <summary>
-		/// Asynchronously read multiple records for specified keys in one batch call.
-		/// Create listener, call asynchronous batch get and return task monitor.
-		/// <para>
-		/// If a key is not found, the record will be null.
-		/// The policy can be used to specify timeouts.
-		/// </para>
-		/// </summary>
-		/// <param name="policy">generic configuration parameters, pass in null for defaults</param>
-		/// <param name="token">cancellation token</param>
-		/// <param name="keys">array of unique record identifiers</param>
-		/// <exception cref="AerospikeException">if queue is full</exception>
-		[System.Obsolete("Use Get(BatchPolicy policy, CancellationToken token, Key[] keys) instead.")]
-		public Task<Record[]> Get(Policy policy, CancellationToken token, Key[] keys)
-		{
-			BatchPolicy batchPolicy = GetAsyncBatchPolicy(policy);
-			return Get(batchPolicy, token, keys);
-		}
 
 		/// <summary>
 		/// Asynchronously read multiple records for specified keys in one batch call.
@@ -840,26 +765,6 @@ namespace Aerospike.Client
 		/// <param name="listener">where to send results</param>
 		/// <param name="keys">array of unique record identifiers</param>
 		/// <exception cref="AerospikeException">if queue is full</exception>
-		[System.Obsolete("Use Get(BatchPolicy policy, RecordArrayListener listener, Key[] keys) instead.")]
-		public void Get(Policy policy, RecordArrayListener listener, Key[] keys)
-		{
-			BatchPolicy batchPolicy = GetAsyncBatchPolicy(policy);
-			Get(batchPolicy, listener, keys);
-		}
-
-		/// <summary>
-		/// Asynchronously read multiple records for specified keys in one batch call.
-		/// Schedule the batch get command with a channel selector and return.
-		/// Another thread will process the command and send the results to the listener in a single call.
-		/// <para>
-		/// If a key is not found, the record will be null.
-		/// The policy can be used to specify timeouts.
-		/// </para>
-		/// </summary>
-		/// <param name="policy">generic configuration parameters, pass in null for defaults</param>
-		/// <param name="listener">where to send results</param>
-		/// <param name="keys">array of unique record identifiers</param>
-		/// <exception cref="AerospikeException">if queue is full</exception>
 		public void Get(BatchPolicy policy, RecordArrayListener listener, Key[] keys)
 		{
 			if (keys.Length == 0)
@@ -872,26 +777,6 @@ namespace Aerospike.Client
 				policy = batchPolicyDefault;
 			}
 			new AsyncBatchGetArrayExecutor(cluster, policy, listener, keys, null, Command.INFO1_READ | Command.INFO1_GET_ALL);
-		}
-		
-		/// <summary>
-		/// Asynchronously read multiple records for specified keys in one batch call.
-		/// Schedule the get command with a channel selector and return.
-		/// Another thread will process the command and send the results to the listener in multiple unordered calls.
-		/// <para>
-		/// If a key is not found, the record will be null.
-		/// The policy can be used to specify timeouts.
-		/// </para>
-		/// </summary>
-		/// <param name="policy">generic configuration parameters, pass in null for defaults</param>
-		/// <param name="listener">where to send results</param>
-		/// <param name="keys">array of unique record identifiers</param>
-		/// <exception cref="AerospikeException">if queue is full</exception>
-		[System.Obsolete("Use Get(BatchPolicy policy, RecordSequenceListener listener, Key[] keys) instead.")]
-		public void Get(Policy policy, RecordSequenceListener listener, Key[] keys)
-		{
-			BatchPolicy batchPolicy = GetAsyncBatchPolicy(policy);
-			Get(batchPolicy, listener, keys);
 		}
 
 		/// <summary>
@@ -934,52 +819,11 @@ namespace Aerospike.Client
 		/// <param name="keys">array of unique record identifiers</param>
 		/// <param name="binNames">array of bins to retrieve</param>
 		/// <exception cref="AerospikeException">if queue is full</exception>
-		[System.Obsolete("Use Get(BatchPolicy policy, CancellationToken token, Key[] keys, params string[] binNames) instead.")]
-		public Task<Record[]> Get(Policy policy, CancellationToken token, Key[] keys, params string[] binNames)
-		{
-			BatchPolicy batchPolicy = GetAsyncBatchPolicy(policy);
-			return Get(batchPolicy, token, keys, binNames);
-		}
-
-		/// <summary>
-		/// Asynchronously read multiple record headers and bins for specified keys in one batch call.
-		/// Create listener, call asynchronous batch get and return task monitor.
-		/// <para>
-		/// If a key is not found, the record will be null.
-		/// The policy can be used to specify timeouts.
-		/// </para>
-		/// </summary>
-		/// <param name="policy">generic configuration parameters, pass in null for defaults</param>
-		/// <param name="token">cancellation token</param>
-		/// <param name="keys">array of unique record identifiers</param>
-		/// <param name="binNames">array of bins to retrieve</param>
-		/// <exception cref="AerospikeException">if queue is full</exception>
 		public Task<Record[]> Get(BatchPolicy policy, CancellationToken token, Key[] keys, params string[] binNames)
 		{
 			RecordArrayListenerAdapter listener = new RecordArrayListenerAdapter(token);
 			Get(policy, listener, keys, binNames);
 			return listener.Task;
-		}
-
-		/// <summary>
-		/// Asynchronously read multiple record headers and bins for specified keys in one batch call.
-		/// Schedule the batch get command with a channel selector and return.
-		/// Another thread will process the command and send the results to the listener in a single call.
-		/// <para>
-		/// If a key is not found, the record will be null.
-		/// The policy can be used to specify timeouts.
-		/// </para>
-		/// </summary>
-		/// <param name="policy">generic configuration parameters, pass in null for defaults</param>
-		/// <param name="listener">where to send results</param>
-		/// <param name="keys">array of unique record identifiers</param>
-		/// <param name="binNames">array of bins to retrieve</param>
-		/// <exception cref="AerospikeException">if queue is full</exception>
-		[System.Obsolete("Use Get(BatchPolicy policy, RecordArrayListener listener, Key[] keys, params string[] binNames) instead.")]
-		public void Get(Policy policy, RecordArrayListener listener, Key[] keys, params string[] binNames)
-		{
-			BatchPolicy batchPolicy = GetAsyncBatchPolicy(policy);
-			Get(batchPolicy, listener, keys, binNames);
 		}
 
 		/// <summary>
@@ -1008,27 +852,6 @@ namespace Aerospike.Client
 				policy = batchPolicyDefault;
 			}
 			new AsyncBatchGetArrayExecutor(cluster, policy, listener, keys, binNames, Command.INFO1_READ);
-		}
-		
-		/// <summary>
-		/// Asynchronously read multiple record headers and bins for specified keys in one batch call.
-		/// Schedule the batch get command with a channel selector and return.
-		/// Another thread will process the command and send the results to the listener in multiple unordered calls.
-		/// <para>
-		/// If a key is not found, the record will be null.
-		/// The policy can be used to specify timeouts.
-		/// </para>
-		/// </summary>
-		/// <param name="policy">generic configuration parameters, pass in null for defaults</param>
-		/// <param name="listener">where to send results</param>
-		/// <param name="keys">array of unique record identifiers</param>
-		/// <param name="binNames">array of bins to retrieve</param>
-		/// <exception cref="AerospikeException">if queue is full</exception>
-		[System.Obsolete("Use Get(BatchPolicy policy, RecordSequenceListener listener, Key[] keys, params string[] binNames) instead.")]
-		public void Get(Policy policy, RecordSequenceListener listener, Key[] keys, params string[] binNames)
-		{
-			BatchPolicy batchPolicy = GetAsyncBatchPolicy(policy);
-			Get(batchPolicy, listener, keys, binNames);
 		}
 
 		/// <summary>
@@ -1071,50 +894,11 @@ namespace Aerospike.Client
 		/// <param name="token">cancellation token</param>
 		/// <param name="keys">array of unique record identifiers</param>
 		/// <exception cref="AerospikeException">if queue is full</exception>
-		[System.Obsolete("Use GetHeader(BatchPolicy policy, CancellationToken token, Key[] keys) instead.")]
-		public Task<Record[]> GetHeader(Policy policy, CancellationToken token, Key[] keys)
-		{
-			BatchPolicy batchPolicy = GetAsyncBatchPolicy(policy);
-			return GetHeader(batchPolicy, token, keys);
-		}
-
-		/// <summary>
-		/// Asynchronously read multiple record header data for specified keys in one batch call.
-		/// Create listener, call asynchronous batch header get and return task monitor.
-		/// <para>
-		/// If a key is not found, the record will be null.
-		/// The policy can be used to specify timeouts.
-		/// </para>
-		/// </summary>
-		/// <param name="policy">generic configuration parameters, pass in null for defaults</param>
-		/// <param name="token">cancellation token</param>
-		/// <param name="keys">array of unique record identifiers</param>
-		/// <exception cref="AerospikeException">if queue is full</exception>
 		public Task<Record[]> GetHeader(BatchPolicy policy, CancellationToken token, Key[] keys)
 		{
 			RecordArrayListenerAdapter listener = new RecordArrayListenerAdapter(token);
 			GetHeader(policy, listener, keys);
 			return listener.Task;
-		}
-
-		/// <summary>
-		/// Asynchronously read multiple record header data for specified keys in one batch call.
-		/// Schedule the batch get header command with a channel selector and return.
-		/// Another thread will process the command and send the results to the listener in a single call.
-		/// <para>
-		/// If a key is not found, the record will be null.
-		/// The policy can be used to specify timeouts.
-		/// </para>
-		/// </summary>
-		/// <param name="policy">generic configuration parameters, pass in null for defaults</param>
-		/// <param name="listener">where to send results</param>
-		/// <param name="keys">array of unique record identifiers</param>
-		/// <exception cref="AerospikeException">if queue is full</exception>
-		[System.Obsolete("Use GetHeader(BatchPolicy policy, RecordArrayListener listener, Key[] keys) instead.")]
-		public void GetHeader(Policy policy, RecordArrayListener listener, Key[] keys)
-		{
-			BatchPolicy batchPolicy = GetAsyncBatchPolicy(policy);
-			GetHeader(batchPolicy, listener, keys);
 		}
 
 		/// <summary>
@@ -1144,26 +928,6 @@ namespace Aerospike.Client
 			new AsyncBatchGetArrayExecutor(cluster, policy, listener, keys, null, Command.INFO1_READ | Command.INFO1_NOBINDATA);
 		}
 		
-		/// <summary>
-		/// Asynchronously read multiple record header data for specified keys in one batch call.
-		/// Schedule the batch get header command with a channel selector and return.
-		/// Another thread will process the command and send the results to the listener in multiple unordered calls.
-		/// <para>
-		/// If a key is not found, the record will be null.
-		/// The policy can be used to specify timeouts.
-		/// </para>
-		/// </summary>
-		/// <param name="policy">generic configuration parameters, pass in null for defaults</param>
-		/// <param name="listener">where to send results</param>
-		/// <param name="keys">array of unique record identifiers</param>
-		/// <exception cref="AerospikeException">if queue is full</exception>
-		[System.Obsolete("Use GetHeader(BatchPolicy policy, RecordSequenceListener listener, Key[] keys) instead.")]
-		public void GetHeader(Policy policy, RecordSequenceListener listener, Key[] keys)
-		{
-			BatchPolicy batchPolicy = GetAsyncBatchPolicy(policy);
-			GetHeader(batchPolicy, listener, keys);
-		}
-
 		/// <summary>
 		/// Asynchronously read multiple record header data for specified keys in one batch call.
 		/// Schedule the batch get header command with a channel selector and return.
@@ -1350,22 +1114,6 @@ namespace Aerospike.Client
 				policy = queryPolicyDefault;
 			}
 			new AsyncQueryExecutor(cluster, policy, listener, statement);
-		}
-
-		//-------------------------------------------------------
-		// Internal Methods
-		//-------------------------------------------------------
-
-		private BatchPolicy GetAsyncBatchPolicy(Policy policy)
-		{
-			if (policy == null)
-			{
-				return batchPolicyDefault;
-			}
-			else
-			{
-				return new BatchPolicy(policy);
-			}
 		}
 	}
 }

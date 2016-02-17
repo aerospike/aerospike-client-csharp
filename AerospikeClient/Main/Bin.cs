@@ -326,32 +326,6 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
-		/// Create bin with a list value.  The list value will be serialized as a Aerospike 3 server list type.
-		/// Supported by Aerospike 3 servers only.
-		/// For servers configured as "single-bin", enter a null or empty name.
-		/// </summary>
-		/// <param name="name">bin name, current limit is 14 characters</param>
-		/// <param name="value">bin value</param>
-		[System.Obsolete("Use Bin(string name, IList value) instead.")]
-		public static Bin AsList(string name, IList value)
-		{
-			return new Bin(name, Value.Get(value));
-		}
-
-		/// <summary>
-		/// Create bin with a map value.  The map value will be serialized as a Aerospike 3 server map type.
-		/// Supported by Aerospike 3 servers only.
-		/// For servers configured as "single-bin", enter a null or empty name.
-		/// </summary>
-		/// <param name="name">bin name, current limit is 14 characters</param>
-		/// <param name="value">bin value</param>
-		[System.Obsolete("Use Bin(string name, IDictionary value) instead.")]
-		public static Bin AsMap(string name, IDictionary value)
-		{
-			return new Bin(name, Value.Get(value));
-		}
-
-		/// <summary>
 		/// Create bin with a blob value.  The value will be java serialized.
 		/// This method is faster than the bin Object constructor because the blob is converted 
 		/// directly instead of using multiple "instanceof" type checks with a blob default.
