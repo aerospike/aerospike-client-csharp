@@ -28,6 +28,7 @@ namespace Aerospike.Client
 		internal string name;
 		internal Host[] aliases;
 		internal IPEndPoint address;
+		internal Connection conn;
 		internal bool hasBatchIndex;
 		internal bool hasReplicasAll;
 		internal bool hasDouble;
@@ -66,13 +67,19 @@ namespace Aerospike.Client
 						{
 							this.name = nodeName;
 							this.address = address;
+							this.conn = conn;
 							SetFeatures(map);
 							return;
 						}
+						else
+						{
+							conn.Close();
+						}
 					}
-					finally
+					catch (Exception)
 					{
 						conn.Close();
+						throw;
 					}
 				}
 				catch (Exception e)

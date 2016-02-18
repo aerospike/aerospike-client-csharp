@@ -97,7 +97,7 @@ namespace Aerospike.Client
 				this.password = ByteUtil.StringToUtf8(pass);
 			}
 			
-			connectionQueueSize = policy.maxThreads + 1; // Add one connection for tend thread.
+			connectionQueueSize = policy.maxConnsPerNode;
 			connectionTimeout = policy.timeout;
 			maxSocketIdleMillis = 1000 * ((policy.maxSocketIdle <= MaxSocketIdleSecondLimit) ? policy.maxSocketIdle : MaxSocketIdleSecondLimit);
 			tendInterval = policy.tendInterval;

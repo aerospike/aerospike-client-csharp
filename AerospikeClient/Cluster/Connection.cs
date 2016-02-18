@@ -143,6 +143,14 @@ namespace Aerospike.Client
 			return socket.Connected && (DateTime.UtcNow.Subtract(timestamp).TotalMilliseconds <= maxSocketIdleMillis);
 		}
 
+		/// <summary>
+		/// Is socket closed from client perspective only.
+		/// </summary>
+		public bool IsClosed()
+		{
+			return ! socket.Connected;
+		}
+		
 		public void UpdateLastUsed()
 		{
 			this.timestamp = DateTime.UtcNow;

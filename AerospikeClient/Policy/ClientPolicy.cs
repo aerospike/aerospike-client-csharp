@@ -42,11 +42,24 @@ namespace Aerospike.Client
 		public int timeout = 1000;
 
 		/// <summary>
-		/// Estimate of incoming threads concurrently using synchronous methods in the client instance.
-		/// This field is used to size the synchronous connection pool for each server node.
+		/// Maximum number of connections allowed per server node.  Synchronous transactions
+		/// will go through retry logic and potentially fail with "ResultCode.NO_MORE_CONNECTIONS"
+		/// if the maximum number of connections would be exceeded.
+		/// <para>
+		/// The number of connections used per node depends on how many concurrent threads issue
+		/// database commands plus sub-threads used for parallel multi-node commands (batch, scan,
+		/// and query). One connection will be used for each thread.
+		/// </para>
+		/// <para>
+		/// This field is ignored by asynchronous transactions since these transactions are already
+		/// bound by asyncMaxCommands by default. Each async command has a one-to-one relationship with
+		/// connections.
+		/// </para>
+		/// <para>
 		/// Default: 300
+		/// </para>
 		/// </summary>
-		public int maxThreads = 300;
+		public int maxConnsPerNode = 300;
 
 		/// <summary>
 		/// Maximum socket idle in seconds.  Socket connection pools will discard sockets
@@ -55,6 +68,12 @@ namespace Aerospike.Client
 		/// It's important to set this value to a few seconds less than the server's proto-fd-idle-ms
 		/// (default 60000 milliseconds or 1 minute), so the client does not attempt to use a socket 
 		/// that has already been reaped by the server.
+		/// </para>
+		/// <para>
+		/// This field is ignored by asynchronous transactions since these transactions use a 
+		/// non-blocking read to determine if the socket is active and empty.
+		/// </para>
+		/// <para>
 		/// Default: 55 seconds
 		/// </para>
 		/// </summary>

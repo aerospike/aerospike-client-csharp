@@ -22,6 +22,11 @@ namespace Aerospike.Client
 	public sealed class ResultCode
 	{
 		/// <summary>
+		/// Max connections would be exceeded.  There are no more available connections.
+		/// </summary>
+		public const int NO_MORE_CONNECTIONS = -7;
+
+		/// <summary>
 		/// Asynchronous max concurrent database commands have been exceeded and therefore rejected.
 		/// </summary>
 		public const int COMMAND_REJECTED = -6;
@@ -344,21 +349,18 @@ namespace Aerospike.Client
 		/// </summary>
 		public static bool KeepConnection(int resultCode)
 		{
+			// Keep connection on TIMEOUT because it can be server response which does not 
+			// close socket.  Also, client timeout code path does not call this method. 
 			switch (resultCode)
 			{
 				case 0: // Exception did not originate on server.
 				case QUERY_TERMINATED:
 				case SCAN_TERMINATED:
-				case INVALID_NODE_ERROR:
 				case PARSE_ERROR:
 				case SERIALIZE_ERROR:
-				case SERVER_MEM_ERROR:
-				case TIMEOUT:
 				case SERVER_NOT_AVAILABLE:
 				case SCAN_ABORT:
-				case INDEX_OOM:
 				case QUERY_ABORTED:
-				case QUERY_TIMEOUT:
 					return false;
 
 				default:
@@ -373,6 +375,9 @@ namespace Aerospike.Client
 		{
 			switch (resultCode)
 			{
+			case NO_MORE_CONNECTIONS:
+				return "No more available connections";
+
 			case COMMAND_REJECTED:
 				return "Command rejected";
 

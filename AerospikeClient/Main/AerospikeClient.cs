@@ -1591,7 +1591,7 @@ namespace Aerospike.Client
 			}
 			catch (Exception)
 			{
-				conn.Close();
+				node.CloseConnection(conn);
 				throw;
 			}
 			return info.GetValue();

@@ -37,7 +37,9 @@ namespace Aerospike.Client
 		private readonly Host host;
 		private Host[] aliases;
 		protected internal readonly IPEndPoint address;
+		private Connection tendConnection;
 		private readonly BlockingCollection<Connection> connectionQueue;
+		private int connectionCount;
 		protected internal int partitionGeneration = -1;
 		protected internal int referenceCount;
 		protected internal int failures;
@@ -58,6 +60,7 @@ namespace Aerospike.Client
 			this.name = nv.name;
 			this.aliases = nv.aliases;
 			this.address = nv.address;
+			this.tendConnection = nv.conn;
 			this.hasGeo = nv.hasGeo;
 			this.hasDouble = nv.hasDouble;
 			this.hasBatchIndex = nv.hasBatchIndex;
@@ -83,27 +86,33 @@ namespace Aerospike.Client
 		/// <exception cref="Exception">if status request fails</exception>
 		public void Refresh(List<Host> friends)
 		{
-			Connection conn = GetConnection(1000);
+			if (tendConnection.IsClosed())
+			{
+				tendConnection = new Connection(address, 1000);
+			}
 
 			try
 			{
 				string[] commands = cluster.useServicesAlternate ? 
 					new string[] {"node", "partition-generation", "services-alternate"} : 
-					new string[] {"node", "partition-generation", "services"}; 
+					new string[] {"node", "partition-generation", "services"};
 
-				Dictionary<string, string> infoMap = Info.Request(conn, commands);
+				Dictionary<string, string> infoMap = Info.Request(tendConnection, commands);
 				VerifyNodeName(infoMap);
 
 				if (AddFriends(infoMap, friends))
 				{
-					UpdatePartitions(conn, infoMap);
+					UpdatePartitions(tendConnection, infoMap);
 				}
-				PutConnection(conn);
 			}
 			catch (Exception)
 			{
-				conn.Close();
-				throw;
+				// Swallow exception if node was closed in another thread.
+				if (! tendConnection.IsClosed())
+				{
+					tendConnection.Close();
+					throw;
+				}
 			}
 		}
 
@@ -238,29 +247,39 @@ namespace Aerospike.Client
 					{
 						// Set timeout failed. Something is probably wrong with timeout
 						// value itself, so don't empty queue retrying.  Just get out.
-						conn.Close();
+						CloseConnection(conn);
 						throw new AerospikeException.Connection(e);
 					}
 				}
-				conn.Close();
+				CloseConnection(conn);
 			}
-			conn = new Connection(address, timeoutMillis, cluster.maxSocketIdleMillis);
 
-			if (cluster.user != null)
+			if (Interlocked.Increment(ref connectionCount) <= cluster.connectionQueueSize)
 			{
-				try
+				conn = new Connection(address, timeoutMillis, cluster.maxSocketIdleMillis);
+
+				if (cluster.user != null)
 				{
-					AdminCommand command = new AdminCommand();
-					command.Authenticate(conn, cluster.user, cluster.password);
+					try
+					{
+						AdminCommand command = new AdminCommand();
+						command.Authenticate(conn, cluster.user, cluster.password);
+					}
+					catch (Exception)
+					{
+						// Socket not authenticated.  Do not put back into pool.
+						CloseConnection(conn);
+						throw;
+					}
 				}
-				catch (Exception)
-				{
-					// Socket not authenticated.  Do not put back into pool.
-					conn.Close();
-					throw;
-				}
+				return conn;
 			}
-			return conn;
+			else
+			{
+				Interlocked.Decrement(ref connectionCount);
+				throw new AerospikeException.Connection(ResultCode.NO_MORE_CONNECTIONS,
+					"Node " + this + " max connections " + cluster.connectionQueueSize + " would be exceeded.");
+			}
 		}
 
 		/// <summary>
@@ -271,8 +290,17 @@ namespace Aerospike.Client
 		{
 			if (!active || !connectionQueue.TryAdd(conn))
 			{
-				conn.Close();
+				CloseConnection(conn);
 			}
+		}
+
+		/// <summary>
+		/// Close connection and decrement connection count.
+		/// </summary>
+		public void CloseConnection(Connection conn)
+		{
+			Interlocked.Decrement(ref connectionCount);
+			conn.Close();
 		}
 
 		/// <summary>
@@ -384,8 +412,11 @@ namespace Aerospike.Client
 
 		protected internal virtual void CloseConnections()
 		{
+			// Close tend connection after making reference copy.
+			Connection conn = tendConnection;
+			conn.Close();
+
 			// Empty connection pool.
-			Connection conn;
 			while (connectionQueue.TryTake(out conn))
 			{
 				conn.Close();

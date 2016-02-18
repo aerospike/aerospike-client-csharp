@@ -246,6 +246,14 @@ namespace Aerospike.Client
 				: base(ResultCode.SERVER_NOT_AVAILABLE, e)
 			{
 			}
+
+			/// <summary>
+			/// Create connection exception with result code and message.
+			/// </summary>
+			public Connection(int resultCode, string message)
+				: base(resultCode, message)
+			{
+			}
 		}
 
 		/// <summary>
