@@ -156,6 +156,10 @@ namespace Aerospike.Client
 					val = ByteUtil.BytesToObject(buffer, offset, count);
 					break;
 
+				case ParticleType.GEOJSON:
+					val = new Value.GeoJSONValue(ByteUtil.Utf8ToString(buffer, offset, count));
+					break;
+				
 				default:
 					byte[] dest = new byte[count];
 					Array.Copy(buffer, offset, dest, 0, count);

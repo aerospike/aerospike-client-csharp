@@ -1786,7 +1786,7 @@ namespace Aerospike.Client
 
 			public override void Pack(Packer packer)
 			{
-				throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Can't pack GeoJSON");
+				packer.PackGeoJSON(value);
 			}
 
 			public override void ValidateKeyType()

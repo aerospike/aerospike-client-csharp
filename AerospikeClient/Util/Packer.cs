@@ -144,6 +144,14 @@ namespace Aerospike.Client
 			}
 		}
 
+		public void PackGeoJSON(string val)
+		{
+			byte[] buffer = ByteUtil.StringToUtf8(val);
+			PackByteArrayBegin(buffer.Length + 1);
+			PackByte(ParticleType.GEOJSON);
+			PackByteArray(buffer, 0, buffer.Length);
+		}
+		
 		private void PackByteArrayBegin(int size)
 		{
 			// Continue to pack byte arrays as strings until all servers/clients

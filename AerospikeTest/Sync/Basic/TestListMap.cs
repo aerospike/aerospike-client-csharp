@@ -54,11 +54,14 @@ namespace Aerospike.Test
 			Key key = new Key(args.ns, args.set, "listkey2");
 			client.Delete(null, key);
 
+			string geopoint = "{ \"type\": \"Point\", \"coordinates\": [0.00, 0.00] }";
+
 			byte[] blob = new byte[] {3, 52, 125};
 			List<object> list = new List<object>();
 			list.Add("string1");
 			list.Add(2);
 			list.Add(blob);
+			list.Add(Value.GetAsGeoJSON(geopoint));
 
 			Bin bin = new Bin(args.GetBinName("listbin2"), list);
 			client.Put(null, key, bin);
@@ -66,11 +69,12 @@ namespace Aerospike.Test
 			Record record = client.Get(null, key, bin.name);
 			IList receivedList = (IList)record.GetValue(bin.name);
 
-			Assert.AreEqual(3, receivedList.Count);
+			Assert.AreEqual(4, receivedList.Count);
 			Assert.AreEqual("string1", receivedList[0]);
 			// Server convert numbers to long, so must expect long.
 			Assert.AreEqual(2L, receivedList[1]);
 			CollectionAssert.AreEqual(blob, (byte[])receivedList[2]);
+			Assert.AreEqual(Value.GetAsGeoJSON(geopoint), (Value)receivedList[3]);
 		}
 
 		[TestMethod]
