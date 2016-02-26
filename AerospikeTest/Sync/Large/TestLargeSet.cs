@@ -28,6 +28,10 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void LargeStack()
 		{
+			if (!args.ValidateLDT())
+			{
+				return;
+			}
 			Key key = new Key(args.ns, args.set, "stackkey");
 			string binName = args.GetBinName("stackbin");
 

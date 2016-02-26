@@ -40,6 +40,10 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void SimpleLargeList()
 		{
+			if (!args.ValidateLDT())
+			{
+				return;
+			}
 			Key key = new Key(args.ns, args.set, "setkey");
 
 			// Delete record if it already exists.
@@ -112,6 +116,10 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void FilterLargeList()
 		{
+			if (!args.ValidateLDT())
+			{
+				return;
+			}
 			Key key = new Key(args.ns, args.set, "setkey");
 
 			// Delete record if it already exists.
@@ -139,6 +147,10 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void DistinctBinsLargeList()
 		{
+			if (!args.ValidateLDT())
+			{
+				return;
+			}
 			Key key = new Key(args.ns, args.set, "accountId");
 
 			// Delete record if it already exists.
@@ -211,6 +223,10 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void RunWithSerializedBin()
 		{
+			if (!args.ValidateLDT())
+			{
+				return;
+			}
 			Key key = new Key(args.ns, args.set, "accountId");
 
 			// Delete record if it already exists.
@@ -290,6 +306,10 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void RunVolumeInsert()
 		{
+			if (!args.ValidateLDT())
+			{
+				return;
+			}
 			// This key has already been created in runSimpleExample().
 			Key key = new Key(args.ns, args.set, "setkey");
 

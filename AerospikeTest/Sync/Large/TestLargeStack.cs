@@ -28,6 +28,10 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void LargeSet()
 		{
+			if (!args.ValidateLDT())
+			{
+				return;
+			}
 			Key key = new Key(args.ns, args.set, "setkey");
 			string binName = args.GetBinName("setbin");
 

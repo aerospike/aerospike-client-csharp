@@ -173,6 +173,11 @@ namespace Aerospike.Test
 			return singleBin ? "" : name;
 		}
 
+		public bool ValidateLDT()
+		{
+			return hasLargeDataTypes;
+		}
+
 		public void Close()
 		{
 			if (client != null)
