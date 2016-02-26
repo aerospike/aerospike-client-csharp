@@ -88,7 +88,7 @@ namespace Aerospike.Client
 		{
 			if (tendConnection.IsClosed())
 			{
-				tendConnection = new Connection(address, 1000);
+				tendConnection = new Connection(address, cluster.connectionTimeout);
 			}
 
 			try
