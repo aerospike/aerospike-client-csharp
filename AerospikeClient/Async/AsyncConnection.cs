@@ -81,6 +81,23 @@ namespace Aerospike.Client
 		public bool IsValid()
 		{
 			return socket.Connected && (DateTime.UtcNow.Subtract(timestamp).TotalMilliseconds <= maxSocketIdleMillis);
+			
+			// Poll is much more accurate because sockets reaped by the server or sockets
+			// that have unread data are identified. The problem is Poll decreases overall
+			// benchmark performance by 10%.  Therefore, we will have to relay on retry 
+			// mechanism to handle invalid sockets instead.
+			//
+			// Return true if socket is connected and has no data in it's buffer.
+			// Return false, if not connected, socket read error or has data in it's buffer.
+			/*
+			try
+			{
+				return !socket.Poll(0, SelectMode.SelectRead);
+			}
+			catch (Exception)
+			{
+				return false;
+			}*/
 		}
 
 		public void UpdateLastUsed()

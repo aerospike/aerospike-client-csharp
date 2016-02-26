@@ -70,10 +70,6 @@ namespace Aerospike.Client
 		/// that has already been reaped by the server.
 		/// </para>
 		/// <para>
-		/// This field is ignored by asynchronous transactions since these transactions use a 
-		/// non-blocking read to determine if the socket is active and empty.
-		/// </para>
-		/// <para>
 		/// Default: 55 seconds
 		/// </para>
 		/// </summary>
