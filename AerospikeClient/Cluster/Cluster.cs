@@ -349,10 +349,13 @@ namespace Aerospike.Client
 					continue;
 				}
 
+				Connection conn = null;
+
 				try
 				{
 					// Try to communicate with seed.
 					NodeValidator seedNodeValidator = new NodeValidator(this, seed);
+					conn = seedNodeValidator.conn;
 
 					// Seed host may have multiple aliases in the case of round-robin dns configurations.
 					foreach (Host alias in seedNodeValidator.aliases)
@@ -362,6 +365,7 @@ namespace Aerospike.Client
 						if (alias.Equals(seed))
 						{
 							nv = seedNodeValidator;
+							conn = null;  // conn will be handled using nv.conn.
 						}
 						else
 						{
@@ -374,6 +378,10 @@ namespace Aerospike.Client
 							AddAliases(node);
 							list.Add(node);
 						}
+						else
+						{
+							nv.conn.Close();
+						}
 					}
 				}
 				catch (Exception e)
@@ -382,7 +390,7 @@ namespace Aerospike.Client
 					{
 						Log.Warn("Seed " + seed + " failed: " + Util.GetErrorMessage(e));
 					}
-					
+
 					// Store exception and try next host
 					if (failIfNotConnected)
 					{
@@ -391,6 +399,14 @@ namespace Aerospike.Client
 							exceptions = new Exception[seedArray.Length];
 						}
 						exceptions[i] = e;
+					}
+				}
+				finally
+				{
+					// Check if original seedNodeValidator connection needs to be closed.
+					if (conn != null)
+					{
+						conn.Close();
 					}
 				}
 			}
@@ -451,6 +467,7 @@ namespace Aerospike.Client
 						// services list contains both internal and external IP addresses 
 						// for the same node.  Add new host to list of alias filters
 						// and do not add new node.
+						nv.conn.Close();
 						node.referenceCount++;
 						node.AddAlias(host);
 						aliases[host] = node;
