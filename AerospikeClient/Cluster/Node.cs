@@ -256,7 +256,15 @@ namespace Aerospike.Client
 
 			if (Interlocked.Increment(ref connectionCount) <= cluster.connectionQueueSize)
 			{
-				conn = new Connection(address, timeoutMillis, cluster.maxSocketIdleMillis);
+				try
+				{
+					conn = new Connection(address, timeoutMillis, cluster.maxSocketIdleMillis);
+				}
+				catch (Exception)
+				{
+					Interlocked.Decrement(ref connectionCount);
+					throw;
+				}
 
 				if (cluster.user != null)
 				{
