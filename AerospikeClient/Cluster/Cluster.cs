@@ -349,40 +349,10 @@ namespace Aerospike.Client
 					continue;
 				}
 
-				Connection conn = null;
-
 				try
 				{
-					// Try to communicate with seed.
-					NodeValidator seedNodeValidator = new NodeValidator(this, seed);
-					conn = seedNodeValidator.conn;
-
-					// Seed host may have multiple aliases in the case of round-robin dns configurations.
-					foreach (Host alias in seedNodeValidator.aliases)
-					{
-						NodeValidator nv;
-
-						if (alias.Equals(seed))
-						{
-							nv = seedNodeValidator;
-							conn = null;  // conn will be handled using nv.conn.
-						}
-						else
-						{
-							nv = new NodeValidator(this, alias);
-						}
-
-						if (!FindNodeName(list, nv.name))
-						{
-							Node node = CreateNode(nv);
-							AddAliases(node);
-							list.Add(node);
-						}
-						else
-						{
-							nv.conn.Close();
-						}
-					}
+					NodeValidator nv = new NodeValidator();
+					nv.SeedNodes(this, seed, list);
 				}
 				catch (Exception e)
 				{
@@ -399,14 +369,6 @@ namespace Aerospike.Client
 							exceptions = new Exception[seedArray.Length];
 						}
 						exceptions[i] = e;
-					}
-				}
-				finally
-				{
-					// Check if original seedNodeValidator connection needs to be closed.
-					if (conn != null)
-					{
-						conn.Close();
 					}
 				}
 			}
@@ -438,18 +400,6 @@ namespace Aerospike.Client
 			return false;
 		}
 
-		private static bool FindNodeName(List<Node> list, string name)
-		{
-			foreach (Node node in list)
-			{
-				if (node.Name.Equals(name))
-				{
-					return true;
-				}
-			}
-			return false;
-		}
-
 		private List<Node> FindNodesToAdd(List<Host> hosts)
 		{
 			List<Node> list = new List<Node>(hosts.Count);
@@ -458,7 +408,9 @@ namespace Aerospike.Client
 			{
 				try
 				{
-					NodeValidator nv = new NodeValidator(this, host);
+					NodeValidator nv = new NodeValidator();
+					nv.ValidateNode(this, host);
+
 					Node node = FindNode(nv.name, list);
 
 					if (node != null)
@@ -608,7 +560,7 @@ namespace Aerospike.Client
 			AddNodesCopy(nodesToAdd);
 		}
 
-		private void AddAliases(Node node)
+		protected internal void AddAliases(Node node)
 		{
 			// Add node's aliases to global alias set.
 			// Aliases are only used in tend thread, so synchronization is not necessary.

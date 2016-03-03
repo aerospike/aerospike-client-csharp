@@ -23,8 +23,6 @@ namespace Aerospike.Client
 {
 	public sealed class NodeValidator
 	{
-		private const int DEFAULT_TIMEOUT = 2000;
-
 		internal string name;
 		internal Host[] aliases;
 		internal IPEndPoint address;
@@ -34,60 +32,43 @@ namespace Aerospike.Client
 		internal bool hasDouble;
 		internal bool hasGeo;
 
-		public NodeValidator(Cluster cluster, Host host)
+		/// <summary>
+		/// Add node(s) referenced by seed host aliases. In most cases, aliases reference
+		/// a single node.  If round robin DNS configuration is used, the seed host may have
+		/// several aliases that reference different nodes in the cluster.
+		/// </summary>
+		public void SeedNodes(Cluster cluster, Host host, List<Node> list)
 		{
-			IPAddress[] addresses = Connection.GetHostAddresses(host.name, DEFAULT_TIMEOUT);
-			aliases = new Host[addresses.Length];
-
-			for (int i = 0; i < addresses.Length; i++)
-			{
-				aliases[i] = new Host(addresses[i].ToString(), host.port);
-			}
-
+			IPAddress[] addresses = SetAliases(cluster, host);
 			Exception exception = null;
+			bool found = false;
 
-			for (int i = 0; i < addresses.Length; i++)
-			{			
+			foreach (IPAddress address in addresses)
+			{
 				try
 				{
-					IPEndPoint address = new IPEndPoint(addresses[i], host.port);
-					Connection conn = new Connection(address, cluster.connectionTimeout);
+					ValidateAlias(cluster, address, host.port);
+					found = true;
 
-					try
+					if (!FindNodeName(list, name))
 					{
-						if (cluster.user != null)
-						{
-							AdminCommand command = new AdminCommand();
-							command.Authenticate(conn, cluster.user, cluster.password);
-						}
-						Dictionary<string, string> map = Info.Request(conn, "node", "features");
-						string nodeName;
-
-						if (map.TryGetValue("node", out nodeName))
-						{
-							this.name = nodeName;
-							this.address = address;
-							this.conn = conn;
-							SetFeatures(map);
-							return;
-						}
-						else
-						{
-							conn.Close();
-						}
+						// New node found.
+						Node node = cluster.CreateNode(this);
+						cluster.AddAliases(node);
+						list.Add(node);
 					}
-					catch (Exception)
+					else
 					{
+						// Node already referenced. Close connection.
 						conn.Close();
-						throw;
 					}
 				}
 				catch (Exception e)
 				{
-					// Try next address.
+					// Log and continue to next address.
 					if (Log.DebugEnabled())
 					{
-						Log.Debug("Alias " + addresses[i] + " failed: " + Util.GetErrorMessage(e));
+						Log.Debug("Alias " + address + " failed: " + Util.GetErrorMessage(e));
 					}
 
 					if (exception == null)
@@ -97,11 +78,94 @@ namespace Aerospike.Client
 				}
 			}
 
-			if (exception == null)
+			if (!found)
 			{
-				throw new AerospikeException.Connection("Failed to find addresses for " + host);
+				// Exception can't be null here because SetAliases()/Connection.GetHostAddresses()
+				// will throw exception if aliases length is zero.
+				throw exception;
 			}
+		}
+
+		/// <summary>
+		/// Verify that a host alias references a valid node.
+		/// </summary>
+		public void ValidateNode(Cluster cluster, Host host)
+		{
+			IPAddress[] addresses = SetAliases(cluster, host);
+			Exception exception = null;
+
+			foreach (IPAddress address in addresses)
+			{
+				try
+				{
+					ValidateAlias(cluster, address, host.port);
+					return;
+				}
+				catch (Exception e)
+				{
+					// Log and continue to next address.
+					if (Log.DebugEnabled())
+					{
+						Log.Debug("Alias " + address + " failed: " + Util.GetErrorMessage(e));
+					}
+
+					if (exception == null)
+					{
+						exception = e;
+					}
+				}
+			}
+
+			// Exception can't be null here because SetAliases()/Connection.GetHostAddresses()
+			// will throw exception if aliases length is zero.
 			throw exception;
+		}
+
+		private IPAddress[] SetAliases(Cluster cluster, Host host)
+		{
+			IPAddress[] addresses = Connection.GetHostAddresses(host.name, cluster.connectionTimeout);
+			aliases = new Host[addresses.Length];
+
+			for (int i = 0; i < addresses.Length; i++)
+			{
+				aliases[i] = new Host(addresses[i].ToString(), host.port);
+			}
+			return addresses;
+		}
+
+		private void ValidateAlias(Cluster cluster, IPAddress ipAddress, int port)
+		{
+			IPEndPoint address = new IPEndPoint(ipAddress, port);
+			Connection conn = new Connection(address, cluster.connectionTimeout);
+
+			try
+			{
+				if (cluster.user != null)
+				{
+					AdminCommand command = new AdminCommand();
+					command.Authenticate(conn, cluster.user, cluster.password);
+				}
+				Dictionary<string, string> map = Info.Request(conn, "node", "features");
+				string nodeName;
+
+				if (map.TryGetValue("node", out nodeName))
+				{
+					this.name = nodeName;
+					this.address = address;
+					this.conn = conn;
+					SetFeatures(map);
+					return;
+				}
+				else
+				{
+					throw new AerospikeException.InvalidNode();
+				}
+			}
+			catch (Exception)
+			{
+				conn.Close();
+				throw;
+			}
 		}
 
 		private void SetFeatures(Dictionary<string, string> map)
@@ -143,6 +207,18 @@ namespace Aerospike.Client
 			{
 				// Unexpected exception. Use defaults.
 			}
+		}
+
+		private static bool FindNodeName(List<Node> list, string name)
+		{
+			foreach (Node node in list)
+			{
+				if (node.Name.Equals(name))
+				{
+					return true;
+				}
+			}
+			return false;
 		}
 	}
 }
