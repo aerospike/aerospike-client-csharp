@@ -96,18 +96,27 @@ namespace Aerospike.Client
 
 		/// <summary>
 		/// Create geospatial "within region" filter for query.
-		/// Argument must be a valid GeoJSON region.
 		/// </summary>
 		/// <param name="name">bin name</param>
-		/// <param name="region">filter region</param>
+		/// <param name="region">GeoJSON region</param>
 		public static Filter GeoWithinRegion(string name, string region)
 		{
 			return new Filter(name, IndexCollectionType.DEFAULT, ParticleType.GEOJSON, Value.Get(region), Value.Get(region));
 		}
 
 		/// <summary>
+		/// Create geospatial "within region" filter for query on collection index.
+		/// </summary>
+		/// <param name="name">bin name</param>
+		/// <param name="type">index collection type</param>
+		/// <param name="region">GeoJSON region</param>
+		public static Filter GeoWithinRegion(string name, IndexCollectionType type, string region)
+		{
+			return new Filter(name, type, ParticleType.GEOJSON, Value.Get(region), Value.Get(region));
+		}
+
+		/// <summary>
 		/// Create geospatial "within radius" filter for query.
-		/// Argument must be a valid lon/lat/radius(meters).
 		/// </summary>
 		/// <param name="name">bin name</param>
 		/// <param name="lng">longitude</param>
@@ -120,14 +129,38 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
-		/// Create geospatial "containing point" filter for query.
-		/// Argument must be a valid GeoJSON point.
+		/// Create geospatial "within radius" filter for query on collection index.
 		/// </summary>
 		/// <param name="name">bin name</param>
-		/// <param name="point">filter point</param>
+		/// <param name="type">index collection type</param>
+		/// <param name="lng">longitude</param>
+		/// <param name="lat">latitude</param>
+		/// <param name="radius">radius (meters)</param>
+		public static Filter GeoWithinRadius(string name, IndexCollectionType type, double lng, double lat, double radius)
+		{
+			string rgnstr = string.Format("{{ \"type\": \"AeroCircle\", " + "\"coordinates\": [[{0:F8}, {1:F8}], {2:F}] }}", lng, lat, radius);
+			return new Filter(name, type, ParticleType.GEOJSON, Value.Get(rgnstr), Value.Get(rgnstr));
+		}
+
+		/// <summary>
+		/// Create geospatial "containing point" filter for query.
+		/// </summary>
+		/// <param name="name">bin name</param>
+		/// <param name="point">GeoJSON point</param>
 		public static Filter GeoContains(string name, string point)
 		{
 			return new Filter(name, IndexCollectionType.DEFAULT, ParticleType.GEOJSON, Value.Get(point), Value.Get(point));
+		}
+
+		/// <summary>
+		/// Create geospatial "containing point" filter for query on collection index.
+		/// </summary>
+		/// <param name="name">bin name</param>
+		/// <param name="type">index collection type</param>
+		/// <param name="point">GeoJSON point</param>
+		public static Filter GeoContains(string name, IndexCollectionType type, string point)
+		{
+			return new Filter(name, type, ParticleType.GEOJSON, Value.Get(point), Value.Get(point));
 		}
 
 		private readonly string name;
