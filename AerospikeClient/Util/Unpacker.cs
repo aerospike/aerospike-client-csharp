@@ -321,6 +321,57 @@ namespace Aerospike.Client
 					return UnpackMap(count);
 				}
 
+				case 0xd4: // Skip over type extension with 1 byte
+				{
+					offset += 1 + 1;
+					return null;
+				}
+
+				case 0xd5: // Skip over type extension with 2 bytes
+				{
+					offset += 1 + 2;
+					return null;
+				}
+
+				case 0xd6: // Skip over type extension with 4 bytes
+				{
+					offset += 1 + 4;
+					return null;
+				}
+
+				case 0xd7: // Skip over type extension with 8 bytes
+				{
+					offset += 1 + 8;
+					return null;
+				}
+
+				case 0xd8: // Skip over type extension with 16 bytes
+				{
+					offset += 1 + 16;
+					return null;
+				}
+
+				case 0xc7: // Skip over type extension with 8 bit header and bytes
+				{
+					int count = buffer[offset];
+					offset += count + 1 + 1;
+					return null;
+				}
+
+				case 0xc8: // Skip over type extension with 16 bit header and bytes
+				{
+					int count = ByteUtil.BytesToShort(buffer, offset);
+					offset += count + 1 + 2;
+					return null;
+				}
+
+				case 0xc9: // Skip over type extension with 32 bit header and bytes
+				{
+					int count = ByteUtil.BytesToInt(buffer, offset);
+					offset += count + 1 + 4;
+					return null;
+				}
+				
 				default:
 				{
 					if ((type & 0xe0) == 0xa0) // raw bytes with 8 bit combined header
