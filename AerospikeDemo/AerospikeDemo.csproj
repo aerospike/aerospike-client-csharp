@@ -171,6 +171,7 @@
     <Compile Include="BenchmarkReadWrite.cs" />
     <Compile Include="AsyncUserDefinedFunction.cs" />
     <Compile Include="AsyncQuery.cs" />
+    <Compile Include="QueryGeoCollection.cs" />
     <Compile Include="OperateList.cs" />
     <Compile Include="QueryRegionFilter.cs" />
     <Compile Include="QueryRegion.cs" />

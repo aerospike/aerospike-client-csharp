@@ -96,7 +96,8 @@ namespace Aerospike.Demo
                     new ExampleTreeNode("Query Filter", new QueryFilter(console)),
                     new ExampleTreeNode("Query Sum", new QuerySum(console)),
                     new ExampleTreeNode("Query Average", new QueryAverage(console)),
-                    new ExampleTreeNode("Query Execute", new QueryExecute(console))
+                    new ExampleTreeNode("Query Execute", new QueryExecute(console)),
+                    new ExampleTreeNode("Query Geo Collection", new QueryGeoCollection(console))
                 });
                 TreeNode benchmarks = new TreeNode("Benchmarks", new TreeNode[] {
                     new ExampleTreeNode("Initialize", new BenchmarkInitialize(console)),
