@@ -86,7 +86,7 @@ namespace Aerospike.Client
 		/// </summary>
 		private void TaskWait(int sleepInterval)
 		{
-			DateTime deadline = DateTime.UtcNow.AddMilliseconds(policy.timeout);
+			DateTime deadline = DateTime.UtcNow;
 			Exception exception = null;
 			bool firstTime = true;
 
@@ -95,6 +95,7 @@ namespace Aerospike.Client
 				// Only check for timeout on successive iterations.
 				if (firstTime)
 				{
+					deadline = deadline.AddMilliseconds(policy.timeout);
 					firstTime = false;
 				}
 				else
