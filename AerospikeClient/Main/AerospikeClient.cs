@@ -1015,6 +1015,46 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
+		/// Register UDF functions located in a code string with server. Example:
+		/// <code>
+		/// String code = @"
+		/// local function reducer(val1,val2)
+		///	  return val1 + val2
+		/// end
+		///
+		/// function sum_single_bin(stream,name)
+		///   local function mapper(rec)
+		///     return rec[name]
+		///   end
+		///   return stream : map(mapper) : reduce(reducer)
+		/// end
+		///";
+		///
+		///	client.RegisterUdfString(null, code, "mysum.lua", Language.LUA);
+		/// </code>
+		/// <para>
+		/// This asynchronous server call will return before command is complete.
+		/// The user can optionally wait for command completion by using the returned
+		/// RegisterTask instance.
+		/// </para>
+		/// </summary>
+		/// <param name="policy">generic configuration parameters, pass in null for defaults</param>
+		/// <param name="code">code string containing user defined functions</param>
+		/// <param name="serverPath">path to store user defined functions on the server, relative to configured script directory.</param>
+		/// <param name="language">language of user defined functions</param>
+		/// <exception cref="AerospikeException">if register fails</exception>
+		public RegisterTask RegisterUdfString(Policy policy, string code, string serverPath, Language language)
+		{
+			if (policy == null)
+			{
+				policy = writePolicyDefault;
+			}
+			byte[] bytes = ByteUtil.StringToUtf8(code);
+			string content = Convert.ToBase64String(bytes);
+			return RegisterCommand.Register(cluster, policy, content, serverPath, language);
+		}
+
+		/// <summary>
 		/// Remove user defined function from server nodes.
 		/// </summary>
 		/// <param name="policy">info configuration parameters, pass in null for defaults</param>
