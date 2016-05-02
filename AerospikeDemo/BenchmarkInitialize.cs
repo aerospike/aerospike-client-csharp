@@ -72,6 +72,7 @@ namespace Aerospike.Demo
                     }
 				}
 
+				/* Keep going so node add/remove tests can be run.
 				if (writeTimeoutCurrent + writeErrorCurrent > 10)
 				{
                     if (GetIsStopWrites())
@@ -83,6 +84,7 @@ namespace Aerospike.Demo
 						}
 					}
 				}
+				*/
 				Thread.Sleep(1000);
 			}
         }
