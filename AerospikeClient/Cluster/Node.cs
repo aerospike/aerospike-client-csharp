@@ -270,7 +270,7 @@ namespace Aerospike.Client
 				{
 					try
 					{
-						AdminCommand command = new AdminCommand();
+						AdminCommand command = new AdminCommand(ThreadLocalData.GetBuffer(), 0);
 						command.Authenticate(conn, cluster.user, cluster.password);
 					}
 					catch (Exception)

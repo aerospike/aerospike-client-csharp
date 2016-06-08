@@ -60,7 +60,7 @@ namespace Aerospike.Client
 
 		public AdminCommand()
 		{
-			dataBuffer = ThreadLocalData.GetBuffer();
+			dataBuffer = new byte[8096];
 			dataBegin = 0;
 			dataOffset = 8;
 		}

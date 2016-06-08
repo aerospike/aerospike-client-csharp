@@ -142,7 +142,7 @@ namespace Aerospike.Client
 			{
 				if (cluster.user != null)
 				{
-					AdminCommand command = new AdminCommand();
+					AdminCommand command = new AdminCommand(ThreadLocalData.GetBuffer(), 0);
 					command.Authenticate(conn, cluster.user, cluster.password);
 				}
 				Dictionary<string, string> map = Info.Request(conn, "node", "features");
