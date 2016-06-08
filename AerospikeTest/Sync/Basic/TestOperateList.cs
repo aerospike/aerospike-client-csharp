@@ -89,7 +89,6 @@ namespace Aerospike.Test
 				);
 
 			AssertRecordFound(key, record);
-			//System.out.println("Record: " + record);
 
 			string val = record.GetString("otherbin");
 			Assert.AreEqual("hellogoodbye", val);
@@ -148,7 +147,6 @@ namespace Aerospike.Test
 				);
 
 			AssertRecordFound(key, record);
-			//System.out.println("Record: " + record);
 
 			IList list = record.GetList(binName);
 
@@ -220,7 +218,6 @@ namespace Aerospike.Test
 				);
 
 			AssertRecordFound(key, record);
-			//System.out.println("Record: " + record);
 
 			IList list = record.GetList(binName);
 
@@ -291,7 +288,6 @@ namespace Aerospike.Test
 				);
 
 			AssertRecordFound(key, record);
-			//System.out.println("Record: " + record);
 
 			IList list = record.GetList(binName);
 
@@ -335,7 +331,6 @@ namespace Aerospike.Test
 				);
 
 			AssertRecordFound(key, record);
-			//System.out.println("Record: " + record);
 
 			IList list = record.GetList("otherbin");
 			Assert.AreEqual(2, list.Count);
@@ -352,6 +347,47 @@ namespace Aerospike.Test
 
 			size = (long)list[2];
 			Assert.AreEqual(0, size);
+		}
+
+		[TestMethod]
+		public void OperateList7()
+		{
+			// Test null values.
+			Key key = new Key(args.ns, args.set, "oplkey7");
+
+			client.Delete(null, key);
+
+			WritePolicy policy = new WritePolicy();
+			policy.respondAllOps = true;
+
+			IList itemList = new List<Value>();
+			itemList.Add(Value.Get("s11"));
+			itemList.Add(Value.AsNull);
+			itemList.Add(Value.Get("s3333333"));
+
+			Record record = client.Operate(null, key,
+				ListOperation.AppendItems(binName, itemList),
+				ListOperation.Get(binName, 0),
+				ListOperation.Get(binName, 1),
+				ListOperation.Get(binName, 2)
+				);
+
+			AssertRecordFound(key, record);
+
+			IList results = record.GetList(binName);
+			int i = 0;
+
+			long size = (long)results[i++];
+			Assert.AreEqual(3, size);
+
+			string str = (string)results[i++];
+			Assert.AreEqual("s11", str);
+
+			str = (string)results[i++];
+			Assert.IsNull(str);
+
+			str = (string)results[i++];
+			Assert.AreEqual("s3333333", str);
 		}
 	}
 }

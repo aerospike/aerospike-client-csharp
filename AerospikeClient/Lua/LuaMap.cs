@@ -23,9 +23,9 @@ namespace Aerospike.Client
 {
 	public class LuaMap : LuaTable, LuaData
 	{
-		protected internal readonly Dictionary<object,object> map;
+		protected internal readonly IDictionary<object,object> map;
 
-		public LuaMap(Dictionary<object, object> map)
+		public LuaMap(IDictionary<object,object> map)
 		{
 			this.map = map;
 		}
@@ -162,9 +162,9 @@ namespace Aerospike.Client
 
 	public class LuaMapIterator
 	{
-		protected internal IDictionaryEnumerator iter;
+		protected internal IEnumerator iter;
 
-		public LuaMapIterator(IDictionaryEnumerator iter)
+		public LuaMapIterator(IEnumerator iter)
 		{
 			this.iter = iter;
 		}
@@ -173,7 +173,8 @@ namespace Aerospike.Client
 		{
 			if (iter.MoveNext())
 			{
-				return new object[] { iter.Key, iter.Value };
+				KeyValuePair<object,object> pair = (KeyValuePair<object,object>)iter.Current;
+				return new object[] { pair.Key, pair.Value };
 			}
 			return null;
 		}
@@ -182,7 +183,8 @@ namespace Aerospike.Client
 		{
 			if (iter.MoveNext())
 			{
-				return iter.Key;
+				KeyValuePair<object, object> pair = (KeyValuePair<object, object>)iter.Current;
+				return pair.Key;
 			}
 			return null;
 		}
@@ -191,7 +193,8 @@ namespace Aerospike.Client
 		{
 			if (iter.MoveNext())
 			{
-				return iter.Value;
+				KeyValuePair<object, object> pair = (KeyValuePair<object, object>)iter.Current;
+				return pair.Value;
 			}
 			return null;
 		}

@@ -94,13 +94,15 @@ namespace Aerospike.Client
 			WRITE,
 			CDT_READ,
 			CDT_MODIFY,
+			MAP_READ,
+			MAP_MODIFY,
 			ADD,
 			APPEND,
 			PREPEND,
 			TOUCH
 		}
 
-		private static byte[] ProtocolTypes = new byte[] { 1, 1, 2, 3, 4, 5, 9, 10, 11 };
+		private static byte[] ProtocolTypes = new byte[] { 1, 1, 2, 3, 4, 3, 4, 5, 9, 10, 11 };
 
 		public static byte GetProtocolType(Type type)
 		{

@@ -161,13 +161,27 @@ namespace Aerospike.Client
 			int writeAttr = 0;
 			bool readBin = false;
 			bool readHeader = false;
+			bool respondAllOps = policy.respondAllOps;
 
 			foreach (Operation operation in operations)
 			{
 				switch (operation.type)
 				{
-					case Operation.Type.CDT_READ:
-					case Operation.Type.READ:
+				case Operation.Type.MAP_READ:
+					// Map operations require respondAllOps to be true.
+					respondAllOps = true;
+					readAttr |= Command.INFO1_READ;
+
+					// Read all bins if no bin is specified.
+					if (operation.binName == null)
+					{
+						readAttr |= Command.INFO1_GET_ALL;
+					}
+					readBin = true;
+					break;
+
+				case Operation.Type.CDT_READ:
+				case Operation.Type.READ:
 					readAttr |= Command.INFO1_READ;
 
 					// Read all bins if no bin is specified.
@@ -183,6 +197,12 @@ namespace Aerospike.Client
 					readHeader = true;
 					break;
 
+				case Operation.Type.MAP_MODIFY:
+					// Map operations require respondAllOps to be true.
+					respondAllOps = true;
+					writeAttr = Command.INFO2_WRITE;
+					break;
+
 				default:
 					writeAttr = Command.INFO2_WRITE;
 					break;
@@ -196,7 +216,7 @@ namespace Aerospike.Client
 				readAttr |= Command.INFO1_NOBINDATA;
 			}
 
-			if (writeAttr != 0 && policy.respondAllOps)
+			if (respondAllOps)
 			{
 				writeAttr |= Command.INFO2_RESPOND_ALL_OPS;
 			}

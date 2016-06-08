@@ -34,16 +34,16 @@ namespace Aerospike.Test
 		public void AsyncOperateList()
 		{
 			Key key = new Key(args.ns, args.set, "aoplkey1");
-			client.Delete(null, new DeleteHandler(this, key), key);
+			client.Delete(null, new DeleteHandlerList(this, key), key);
 			WaitTillComplete();
 		}
 
-		private class DeleteHandler : DeleteListener
+		private class DeleteHandlerList : DeleteListener
 		{
 			private readonly TestAsyncOperate parent;
 			private Key key;
 
-			public DeleteHandler(TestAsyncOperate parent, Key key)
+			public DeleteHandlerList(TestAsyncOperate parent, Key key)
 			{
 				this.parent = parent;
 				this.key = key;
@@ -107,6 +107,86 @@ namespace Aerospike.Test
 				parent.NotifyCompleted();
 			}
 
+			public void OnFailure(AerospikeException e)
+			{
+				parent.SetError(e);
+				parent.NotifyCompleted();
+			}
+		}
+
+		[TestMethod]
+		public void AsyncOperateMap()
+		{
+			if (!args.ValidateMap())
+			{
+				return;
+			}
+
+			Key key = new Key(args.ns, args.set, "aopmkey1");
+			client.Delete(null, new DeleteHandlerMap(this, key), key);
+			WaitTillComplete();
+		}
+
+		private class DeleteHandlerMap : DeleteListener
+		{
+			private readonly TestAsyncOperate parent;
+			private Key key;
+
+			public DeleteHandlerMap(TestAsyncOperate parent, Key key)
+			{
+				this.parent = parent;
+				this.key = key;
+			}
+
+			public void OnSuccess(Key key, bool existed)
+			{
+				Dictionary<Value, Value> map = new Dictionary<Value, Value>();
+				map[Value.Get("a")] = Value.Get(1);
+				map[Value.Get("b")] = Value.Get(2);
+				map[Value.Get("c")] = Value.Get(3);
+
+				client.Operate(null, new MapHandler(parent), key,
+						MapOperation.PutItems(MapPolicy.Default, binName, map),
+						MapOperation.GetByRankRange(binName, -1, 1, MapReturnType.KEY_VALUE)
+						);
+			}
+
+			public void OnFailure(AerospikeException e)
+			{
+				parent.SetError(e);
+				parent.NotifyCompleted();
+			}
+		}
+
+		private class MapHandler : RecordListener
+		{
+			private readonly TestAsyncOperate parent;
+
+			public MapHandler(TestAsyncOperate parent)
+			{
+				this.parent = parent;
+			}
+
+			public void OnSuccess(Key key, Record record)
+			{
+				if (!parent.AssertRecordFound(key, record))
+				{
+					parent.NotifyCompleted();
+					return;
+				}
+
+				IList results = record.GetList(binName);		
+				long size = (long)results[0];
+				parent.AssertEquals(3, size);
+			
+				IList list = (IList)results[1];
+				KeyValuePair<object,object> entry = (KeyValuePair<object,object>)list[0];
+				parent.AssertEquals("c", entry.Key);
+				parent.AssertEquals(3L, entry.Value);
+			
+				parent.NotifyCompleted();
+			}
+			
 			public void OnFailure(AerospikeException e)
 			{
 				parent.SetError(e);

@@ -174,6 +174,12 @@
     <Compile Include="Async\AsyncQueryExecutor.cs" />
     <Compile Include="Async\AsyncQuery.cs" />
     <Compile Include="BCrypt\SaltParseException.cs" />
+    <Compile Include="CDT\MapOperation.cs" />
+    <Compile Include="CDT\MapBase.cs" />
+    <Compile Include="CDT\MapPolicy.cs" />
+    <Compile Include="CDT\MapWriteMode.cs" />
+    <Compile Include="CDT\MapReturnType.cs" />
+    <Compile Include="CDT\MapOrder.cs" />
     <Compile Include="CDT\ListOperation.cs" />
     <Compile Include="Cluster\PartitionParser.cs" />
     <Compile Include="Admin\AdminCommand.cs" />

@@ -40,6 +40,7 @@ namespace Aerospike.Demo
 		internal bool hasUdf;
 		internal bool hasLargeDataTypes;
 		internal bool hasCDTList;
+		internal bool hasCDTMap;
 
 		protected internal Arguments()
 		{
@@ -61,6 +62,7 @@ namespace Aerospike.Demo
 			hasGeo = false;
 			hasUdf = false;
 			hasCDTList = false;
+			hasCDTMap = false;
 
 			if (features != null)
 			{
@@ -79,6 +81,10 @@ namespace Aerospike.Demo
 					else if (s.Equals("cdt-list"))
 					{
 						hasCDTList = true;
+					}
+					else if (s.Equals("cdt-map"))
+					{
+						hasCDTMap = true;
 					}
 				}
 			}

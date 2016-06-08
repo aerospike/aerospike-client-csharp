@@ -187,6 +187,14 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
+		/// Get bin value as dictionary map.
+		/// </summary>
+		public IDictionary GetMap(string name)
+		{
+			return (IDictionary)GetValue(name);
+		}
+
+		/// <summary>
 		/// Get bin value as GeoJSON.
 		/// </summary>
 		public string GetGeoJSON(string name)

@@ -19,6 +19,7 @@ using System.IO;
 using System.Text;
 using System.Threading;
 using System.Net.Sockets;
+using System.Collections;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
 
@@ -69,14 +70,14 @@ namespace Aerospike.Client
 			}
 		}
 
-		public static string MapToString(Dictionary<object,object> map)
+		public static string MapToString(IDictionary<object,object> map)
 		{
 			StringBuilder sb = new StringBuilder(200);
 			MapToString(sb, map);
 			return sb.ToString();
 		}
 
-		private static void MapToString(StringBuilder sb, Dictionary<object, object> map)
+		private static void MapToString(StringBuilder sb, IDictionary<object, object> map)
 		{
 			sb.Append('[');
 			int i = 0;

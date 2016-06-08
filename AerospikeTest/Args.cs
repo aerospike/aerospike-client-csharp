@@ -37,6 +37,7 @@ namespace Aerospike.Test
 		public string set;
 		public bool prompt;
 		public bool hasUdf;
+		public bool hasMap;
 		public bool singleBin;
 		public bool hasLargeDataTypes;
 
@@ -119,6 +120,7 @@ namespace Aerospike.Test
 
 			string features = tokens[featuresFilter];
 			hasUdf = false;
+			hasMap = false;
 
 			if (features != null)
 			{
@@ -129,6 +131,11 @@ namespace Aerospike.Test
 					if (s.Equals("udf"))
 					{
 						hasUdf = true;
+						break;
+					}
+					else if (s.Equals("cdt-map"))
+					{
+						hasMap = true;
 						break;
 					}
 				}
@@ -176,6 +183,11 @@ namespace Aerospike.Test
 		public bool ValidateLDT()
 		{
 			return hasLargeDataTypes;
+		}
+
+		public bool ValidateMap() 
+		{
+			return hasMap;
 		}
 
 		public void Close()

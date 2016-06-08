@@ -64,15 +64,14 @@ namespace Aerospike.Client
 		/// <summary>
 		/// For client operate(), return a result for every operation.
 		/// <para>
-		/// Some list operations do not return results by default (ListOperation.clear() for example).
-		/// This can sometimes make it difficult to determine the desired result offset in the returned
+		/// Some operations do not return results by default (ListOperation.clear() for example).
+		/// This can make it difficult to determine the desired result offset in the returned
 		/// bin's result list.
 		/// </para>
 		/// <para>
 		/// Setting respondAllOps to true makes it easier to identify the desired result offset 
-		/// (result offset equals bin's operate sequence). This only makes sense when multiple list
-		/// operations are used in one operate call and some of those operations do not return results
-		/// by default.
+		/// (result offset equals bin's operate sequence).  If there is a map operation in operate(),
+		/// respondAllOps will be forced to true for that operate() call.
 		/// </para>
 		/// <para>
 		/// Default: false

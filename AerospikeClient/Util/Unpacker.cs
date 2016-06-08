@@ -15,6 +15,7 @@
  * the License.
  */
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 
@@ -73,7 +74,7 @@ namespace Aerospike.Client
 
 		private object UnpackList(int count)
 		{
-			List<object> list = new List<object>();
+			List<object> list = new List<object>(count);
 
 			for (int i = 0; i < count; i++)
 			{
@@ -120,26 +121,82 @@ namespace Aerospike.Client
 
 		private object UnpackMap(int count)
 		{
-			Dictionary<object, object> dict = new Dictionary<object, object>();
+			IDictionary<object,object> map = CreateMap(count);
 
-			for (int i = 0; i < count; i++)
+			if (map != null)
 			{
-				object key = UnpackObject();
-				object val = UnpackObject();
-
-				if (key != null)
+				// Dictionary or SortedDictionary			
+				for (int i = 0; i < count; i++)
 				{
-					dict[key] = val;
-				}
-			}
+					object key = UnpackObject();
+					object val = UnpackObject();
 
-			if (lua)
-			{
-				return new LuaMap(dict);
+					if (key != null)
+					{
+						map[key] = val;
+					}
+				}
+
+				if (lua)
+				{
+					return new LuaMap(map);
+				}
+				return map;
 			}
-			return dict;
+			else
+			{
+				// Store in list to preserve order.
+				List<object> list = new List<object>(count - 1);
+
+				for (int i = 0; i < count; i++)
+				{
+					object key = UnpackObject();
+					object val = UnpackObject();
+
+					if (key != null)
+					{
+						list.Add(new KeyValuePair<object, object>(key, val));
+					}
+				}
+
+				if (lua)
+				{
+					return new LuaList(list);
+				}
+				return list;
+			}
 		}
 
+		private IDictionary<object,object> CreateMap(int count)
+		{
+			// Peek at buffer to determine map type, but do not advance.
+			int type = buffer[offset] & 0xff;
+
+			// Check for extension that the server uses.
+			if (type == 0xc7)
+			{
+				int extensionType = buffer[offset + 1] & 0xff;
+
+				if (extensionType == 0)
+				{
+					int mapBits = buffer[offset + 2] & 0xff;
+
+					// Extension is a map type.  Determine which one.
+					if ((mapBits & (0x04 | 0x08)) != 0)
+					{
+						// Index/rank range result where order needs to be preserved.
+						return null;
+					}
+					else if ((mapBits & 0x01) != 0)
+					{
+						// Sorted map
+						return new SortedDictionary<object, object>();
+					}
+				}
+			}
+			return new Dictionary<object, object>(count);
+		}
+		
 		private object UnpackBlob(int count)
 		{
 			int type = buffer[offset++];

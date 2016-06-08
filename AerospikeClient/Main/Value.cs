@@ -34,11 +34,8 @@ namespace Aerospike.Client
 		/// <para>
 		/// If false, the old method using an long particle type is used instead.
 		/// </para>
-		/// <para>
-		/// The current default is false.  Eventually, this default will be changed to true in a future client version.
-		/// </para>
 		/// </summary>
-		public static bool UseDoubleType = false;
+		public static bool UseDoubleType = true;
 	
 		/// <summary>
 		/// Get string or null value instance.
@@ -264,6 +261,9 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Determine value given generic object.
 		/// This is the slowest of the Value get() methods.
+		/// Useful when copying records from one cluster to another.
+		/// Since map/list are converted, this method should only be called when using
+		/// Aerospike 3 servers.
 		/// </summary>
 		public static Value Get(object value)
 		{
@@ -282,6 +282,16 @@ namespace Aerospike.Client
 				return (Value)value;
 			}
 
+			if (value is IList)
+			{
+				return new ListValue((IList)value);
+			}
+
+			if (value is IDictionary)
+			{
+				return new MapValue((IDictionary)value);
+			}
+
 			TypeCode code = System.Type.GetTypeCode(value.GetType());
 
 			switch (code)
@@ -292,15 +302,11 @@ namespace Aerospike.Client
                 case TypeCode.String:
 					return new StringValue((string)value);
 
-				/* Store double/float values as a C# serialized blob when an object argument is used
-				 * instead of the direct double argument (Value.Get(double value)).
-				 * Therefore, disable this code block.
 				case TypeCode.Double:
 					return new DoubleValue((double)value);
 
 				case TypeCode.Single:
 					return new FloatValue((float)value);
-				*/
 
 				case TypeCode.Int64:
 					return new LongValue((long)value);
@@ -343,79 +349,7 @@ namespace Aerospike.Client
 		/// </summary>
 		public static Value GetFromRecordObject(object value)
 		{
-			if (value == null)
-			{
-				return new NullValue();
-			}
-
-			if (value is byte[])
-			{
-				return new BytesValue((byte[])value);
-			}
-
-			if (value is Value)
-			{
-				return (Value)value;
-			}
-
-			if (value is IList)
-			{
-				return new ListValue((IList)value);
-			}
-
-			if (value is IDictionary)
-			{
-				return new MapValue((IDictionary)value);
-			}
-
-			TypeCode code = System.Type.GetTypeCode(value.GetType());
-
-			switch (code)
-			{
-				case TypeCode.Empty:
-					return new NullValue();
-
-				case TypeCode.String:
-					return new StringValue((string)value);
-
-				case TypeCode.Double:
-					return new DoubleValue((double)value);
-
-				case TypeCode.Single:
-					return new FloatValue((float)value);
-
-				case TypeCode.Int64:
-					return new LongValue((long)value);
-
-				case TypeCode.Int32:
-					return new IntegerValue((int)value);
-
-				case TypeCode.Int16:
-					return new ShortValue((short)value);
-
-				case TypeCode.UInt64:
-					return new UnsignedLongValue((ulong)value);
-
-				case TypeCode.UInt32:
-					return new UnsignedIntegerValue((uint)value);
-
-				case TypeCode.UInt16:
-					return new UnsignedShortValue((ushort)value);
-
-				case TypeCode.Boolean:
-					return new BooleanValue((bool)value);
-
-				case TypeCode.Byte:
-					return new ByteValue((byte)value);
-
-				case TypeCode.SByte:
-					return new SignedByteValue((sbyte)value);
-
-				case TypeCode.Char:
-				case TypeCode.DateTime:
-				default:
-					return new BlobValue(value);
-			}
+			return Value.Get(value);
 		}
 
 		/// <summary>
