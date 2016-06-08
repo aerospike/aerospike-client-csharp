@@ -43,7 +43,7 @@ namespace Aerospike.Test
 				array[i] = i * i;
 			}
 
-			Bin bin = new Bin(binName, (object)array);
+			Bin bin = new Bin(binName, new Value.BlobValue(array));
 
 			// Do a test that pushes this complex object through the serializer
 			client.Put(null, key, bin);
@@ -143,7 +143,7 @@ namespace Aerospike.Test
 			list.Add(inner);
 			list.Add(innerMap);
 
-			Bin bin = new Bin(args.GetBinName("complexbin"), (object)list);
+			Bin bin = new Bin(args.GetBinName("complexbin"), new Value.BlobValue(list));
 
 			client.Put(null, key, bin);
 

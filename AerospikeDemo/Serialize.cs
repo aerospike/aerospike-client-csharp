@@ -55,7 +55,7 @@ namespace Aerospike.Demo
 				array[i] = i * i;
 			}
 
-			Bin bin = new Bin(args.GetBinName("serialbin"), (object)array);
+			Bin bin = new Bin(args.GetBinName("serialbin"), new Value.BlobValue(array));
 
 			// Do a test that pushes this complex object through the serializer
 			console.Info("Write array using serializer.");
@@ -117,7 +117,7 @@ namespace Aerospike.Demo
 			list.Add("string2");
 			list.Add("string3");
 
-			Bin bin = new Bin(args.GetBinName("serialbin"), (object)list);
+			Bin bin = new Bin(args.GetBinName("serialbin"), new Value.BlobValue(list));
 
 			console.Info("Write list using serializer.");
 			client.Put(args.writePolicy, key, bin);
