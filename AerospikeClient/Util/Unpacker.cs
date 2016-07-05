@@ -121,6 +121,11 @@ namespace Aerospike.Client
 
 		private object UnpackMap(int count)
 		{
+			if (count <= 0)
+			{
+				new Dictionary<object, object>(0);
+			}
+
 			IDictionary<object,object> map = CreateMap(count);
 
 			if (map != null)
