@@ -57,9 +57,6 @@ namespace Aerospike.Client
 						// Parse results.
 						ParseResult(conn);
 
-						// Reflect healthy status.
-						conn.UpdateLastUsed();
-
 						// Put connection back in pool.
 						node.PutConnection(conn);
 
@@ -71,7 +68,6 @@ namespace Aerospike.Client
 						if (ae.KeepConnection())
 						{
 							// Put connection back in pool.
-							conn.UpdateLastUsed();
 							node.PutConnection(conn);
 						}
 						else
