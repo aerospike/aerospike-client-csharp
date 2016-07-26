@@ -39,5 +39,10 @@ namespace Aerospike.Client
 		{
 			SetUdf(writePolicy, key, packageName, functionName, args);
 		}
+
+		protected internal override Node GetNode()
+		{
+			return cluster.GetMasterNode(partition);
+		}
 	}
 }
