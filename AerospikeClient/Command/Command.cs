@@ -32,7 +32,7 @@ namespace Aerospike.Client
 		public static readonly int INFO2_DELETE          = (1 << 1); // Fling a record into the belly of Moloch.
 		public static readonly int INFO2_GENERATION      = (1 << 2); // Update if expected generation == old.
 		public static readonly int INFO2_GENERATION_GT   = (1 << 3); // Update if new generation >= old, good for restore.
-		public static readonly int INFO2_GENERATION_DUP  = (1 << 4); // Create a duplicate on a generation collision.
+		public static readonly int INFO2_DURABLE_DELETE  = (1 << 4); // Transaction resulting in record deletion leaves tombstone (Enterprise only).
 		public static readonly int INFO2_CREATE_ONLY     = (1 << 5); // Create only. Fail if record already exists.
 		public static readonly int INFO2_RESPOND_ALL_OPS = (1 << 7); // Return a result for every operation.
 
@@ -926,6 +926,11 @@ namespace Aerospike.Client
 			if (policy.consistencyLevel == ConsistencyLevel.CONSISTENCY_ALL)
 			{
 				readAttr |= Command.INFO1_CONSISTENCY_ALL;
+			}
+
+			if (policy.durableDelete)
+			{
+				writeAttr |= Command.INFO2_DURABLE_DELETE;
 			}
 
 			dataOffset += 8;

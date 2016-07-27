@@ -78,6 +78,16 @@ namespace Aerospike.Client
 		/// </para>
 		/// </summary>
 		public bool respondAllOps;
+
+		/// <summary>
+		/// If the transaction results in a record deletion, leave a tombstone for the record.
+		/// This prevents deleted records from reappearing after node failures.
+		/// Valid for Aerospike Server Enterprise Edition 4+ only.
+		/// <para>
+		/// Default: false (do not tombstone deleted records).
+		/// </para>
+		/// </summary>
+		public bool durableDelete;
 	
 		/// <summary>
 		/// Copy write policy from another write policy.
@@ -91,6 +101,7 @@ namespace Aerospike.Client
 			this.generation = other.generation;
 			this.expiration = other.expiration;
 			this.respondAllOps = other.respondAllOps;
+			this.durableDelete = other.durableDelete;
 		}
 
 		/// <summary>
