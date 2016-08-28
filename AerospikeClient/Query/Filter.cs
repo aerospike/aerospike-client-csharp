@@ -153,6 +153,18 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
+		/// Create geospatial "containing point" filter for query.
+		/// </summary>
+		/// <param name="name">bin name</param>
+		/// <param name="lon">longitude</param>
+		/// <param name="lat">latitude</param>
+		public static Filter GeoContains(string name, double lon, double lat)
+		{
+			string point = GeneratePoint(lat, lon);
+			return new Filter(name, IndexCollectionType.DEFAULT, ParticleType.GEOJSON, Value.Get(point), Value.Get(point));
+		}
+
+		/// <summary>
 		/// Create geospatial "containing point" filter for query on collection index.
 		/// </summary>
 		/// <param name="name">bin name</param>
@@ -162,6 +174,25 @@ namespace Aerospike.Client
 		{
 			return new Filter(name, type, ParticleType.GEOJSON, Value.Get(point), Value.Get(point));
 		}
+
+		/// <summary>
+		/// Create geospatial "containing point" filter for query on collection index.
+		/// </summary>
+		/// <param name="name">bin name</param>
+		/// <param name="type">index collection type</param>
+		/// <param name="lon">longitude</param>
+		/// <param name="lat">latitude</param>
+		public static Filter GeoContains(string name, IndexCollectionType type, double lon, double lat)
+		{
+			string point = GeneratePoint(lat, lon);
+			return new Filter(name, type, ParticleType.GEOJSON, Value.Get(point), Value.Get(point));
+		}
+
+		private static string GeneratePoint(double plat, double plng)
+		{
+			return string.Format("{{ \"type\": \"Point\", \"coordinates\": [{0:F8}, {1:F8}] }}", plng, plat);
+		}
+
 
 		private readonly string name;
 		private readonly IndexCollectionType colType;

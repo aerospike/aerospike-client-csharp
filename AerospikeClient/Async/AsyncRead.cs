@@ -66,7 +66,7 @@ namespace Aerospike.Client
 				if (opCount == 0)
 				{
 					// Bin data was not returned.
-					record = new Record(null, generation, expiration);
+					record = new Record(null, null, generation, expiration);
 				}
 				else
 				{
@@ -101,6 +101,7 @@ namespace Aerospike.Client
 			}
 
 			Dictionary<string, object> bins = null;
+			Dictionary<string, int> schema = null;
 
 			for (int i = 0; i < opCount; i++)
 			{
@@ -119,8 +120,15 @@ namespace Aerospike.Client
 					bins = new Dictionary<string, object>();
 				}
 				AddBin(bins, name, value);
+
+				if (schema == null)
+				{
+					schema = new Dictionary<string, int>();
+				}
+				int particle = particleType;
+				schema[name] = particle;
 			}
-			return new Record(bins, generation, expiration);
+			return new Record(bins, schema, generation, expiration);
 		}
 
 		protected internal virtual void AddBin(Dictionary<string, object> bins, string name, object value)
