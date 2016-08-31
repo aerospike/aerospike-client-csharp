@@ -123,7 +123,7 @@ namespace Aerospike.Client
 		{
 			if (count <= 0)
 			{
-				new Dictionary<object, object>(0);
+				return new Dictionary<object, object>(0);
 			}
 
 			IDictionary<object,object> map = CreateMap(count);
