@@ -39,7 +39,7 @@ namespace Aerospike.Client
 
 		public void OnFailure(AerospikeException exception)
 		{
-			tcs.SetException(exception);
+			tcs.TrySetException(exception);
 			ctr.Dispose();
 		}
 
