@@ -46,13 +46,13 @@ namespace Aerospike.Client
 
 			string command = (requestProleReplicas) ? ReplicasAll : ReplicasMaster;
 			Info info = new Info(conn, PartitionGeneration, command);
-			this.length = info.GetLength();
+			this.length = info.length;
 
 			if (length == 0)
 			{
 				throw new AerospikeException.Parse("Partition info is empty");
 			}
-			this.buffer = info.GetBuffer();
+			this.buffer = info.buffer;
 
 			generation = ParseGeneration();
 

@@ -36,7 +36,7 @@ namespace Aerospike.Demo
 			policy.asyncMaxCommands = args.commandMax;
 			policy.failIfNotConnected = true;
 
-			AsyncClient client = new AsyncClient(policy, args.host, args.port);
+			AsyncClient client = new AsyncClient(policy, args.hosts);
 
 			try
 			{

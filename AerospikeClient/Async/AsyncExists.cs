@@ -43,9 +43,9 @@ namespace Aerospike.Client
 			SetExists(policy, key);
 		}
 
-		protected internal override AsyncNode GetNode()
+		protected internal override Node GetNode()
 		{
-			return (AsyncNode)cluster.GetReadNode(partition, policy.replica);
+			return GetReadNode(cluster, partition, policy.replica);
 		}
 
 		protected internal override void ParseResult()

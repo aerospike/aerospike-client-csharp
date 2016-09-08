@@ -43,9 +43,9 @@ namespace Aerospike.Client
 			SetDelete(policy, key);
 		}
 
-		protected internal override AsyncNode GetNode()
+		protected internal override Node GetNode()
 		{
-			return (AsyncNode)cluster.GetMasterNode(partition);
+			return cluster.GetMasterNode(partition);
 		}
 
 		protected internal override void ParseResult()

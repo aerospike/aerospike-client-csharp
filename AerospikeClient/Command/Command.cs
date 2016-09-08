@@ -52,6 +52,7 @@ namespace Aerospike.Client
 
 		protected internal byte[] dataBuffer;
 		protected internal int dataOffset;
+		protected internal int sequence;
 
 		public void SetWrite(WritePolicy policy, Operation.Type operation, Key key, Bin[] bins)
 		{
@@ -944,13 +945,7 @@ namespace Aerospike.Client
 			dataBuffer[dataOffset++] = 0; // clear the result code
 			dataOffset += ByteUtil.IntToBytes((uint)generation, dataBuffer, dataOffset);
 			dataOffset += ByteUtil.IntToBytes((uint)policy.expiration, dataBuffer, dataOffset);
-
-			// Initialize timeout. It will be written later.
-			dataBuffer[dataOffset++] = 0;
-			dataBuffer[dataOffset++] = 0;
-			dataBuffer[dataOffset++] = 0;
-			dataBuffer[dataOffset++] = 0;
-
+			dataOffset += ByteUtil.IntToBytes((uint)policy.timeout, dataBuffer, dataOffset);
 			dataOffset += ByteUtil.ShortToBytes((ushort)fieldCount, dataBuffer, dataOffset);
 			dataOffset += ByteUtil.ShortToBytes((ushort)operationCount, dataBuffer, dataOffset);
 		}
@@ -972,10 +967,11 @@ namespace Aerospike.Client
 			dataBuffer[dataOffset++] = (byte)readAttr;
 			dataBuffer[dataOffset++] = (byte)writeAttr;
 
-			for (int i = 0; i < 15; i++)
+			for (int i = 0; i < 11; i++)
 			{
 				dataBuffer[dataOffset++] = 0;
 			}
+			dataOffset += ByteUtil.IntToBytes((uint)policy.timeout, dataBuffer, dataOffset);
 			dataOffset += ByteUtil.ShortToBytes((ushort)fieldCount, dataBuffer, dataOffset);
 			dataOffset += ByteUtil.ShortToBytes((ushort)operationCount, dataBuffer, dataOffset);
 		}
@@ -1087,7 +1083,55 @@ namespace Aerospike.Client
 			dataOffset = MSG_TOTAL_HEADER_SIZE;
 		}
 
+		public Node GetReadNode(Cluster cluster, Partition partition, Replica replica)
+		{
+			switch (replica)
+			{
+				case Replica.MASTER:
+					return cluster.GetMasterNode(partition);
+
+				case Replica.MASTER_PROLES:
+					return cluster.GetMasterProlesNode(partition);
+
+				case Replica.SEQUENCE:
+					return GetSequenceNode(cluster, partition);
+
+				default:
+				case Replica.RANDOM:
+					return cluster.GetRandomNode();
+			}
+		}
+
+		public Node GetSequenceNode(Cluster cluster, Partition partition)
+		{
+			// Must copy hashmap reference for copy on write semantics to work.
+			Dictionary<string, Node[][]> map = cluster.partitionMap;
+			Node[][] replicaArray;
+
+			if (map.TryGetValue(partition.ns, out replicaArray))
+			{
+				for (int i = 0; i < replicaArray.Length; i++)
+				{
+					int index = Math.Abs(sequence % replicaArray.Length);
+					sequence++;
+					Node node = replicaArray[index][partition.partitionId];
+
+					if (node != null && node.Active)
+					{
+						return node;
+					}
+				}
+			}
+			/*
+			if (Log.debugEnabled()) {
+				Log.debug("Choose random node for " + partition);
+			}
+			*/
+			return cluster.GetRandomNode();
+		}
+
 		protected internal abstract Policy GetPolicy();
+		protected internal abstract Node GetNode();
 		protected internal abstract void WriteBuffer();
 		protected internal abstract void SizeBuffer();
 		protected internal abstract void End();

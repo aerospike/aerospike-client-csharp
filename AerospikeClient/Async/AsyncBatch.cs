@@ -45,7 +45,7 @@ namespace Aerospike.Client
 
 			foreach (BatchNode batchNode in batchNodes)
 			{
-				if (!batchNode.node.hasBatchIndex)
+				if (!batchNode.node.HasBatchIndex)
 				{
 					throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Requested command requires a server that supports new batch index protocol.");
 				}
@@ -139,7 +139,7 @@ namespace Aerospike.Client
 
 			foreach (BatchNode batchNode in batchNodes)
 			{
-				if (!batchNode.node.hasBatchIndex)
+				if (!batchNode.node.HasBatchIndex)
 				{
 					throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Requested command requires a server that supports new batch index protocol.");
 				}

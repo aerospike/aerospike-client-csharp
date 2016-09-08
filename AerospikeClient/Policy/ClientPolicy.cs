@@ -35,6 +35,13 @@ namespace Aerospike.Client
 		public string password;
 
 		/// <summary>
+		/// Expected cluster ID.  If populated, server nodes must return this cluster ID in order to
+		/// join the client's view of the cluster. Should only be set when connecting to servers that
+		/// support the "cluster-id" info command.
+		/// </summary>
+		public string clusterId;
+	
+		/// <summary>
 		/// Initial host connection timeout in milliseconds.  The timeout when opening a connection 
 		/// to the server host for the first time.
 		/// Default: 1000ms
@@ -114,6 +121,18 @@ namespace Aerospike.Client
 		/// Default info policy that is used when info command's policy is null.
 		/// </summary>
 		public InfoPolicy infoPolicyDefault = new InfoPolicy();
+
+		/// <summary>
+		/// Secure connection policy for servers that require TLS connections.
+		/// Secure connections are only supported for AerospikeClient synchronous commands.
+		/// <para>
+		/// Secure connections are not supported for asynchronous commands because AsyncClient 
+		/// uses the best performing SocketAsyncEventArgs.  Unfortunately, SocketAsyncEventArgs is
+		/// not supported by the provided SslStream.
+		/// </para>
+		/// Default: null (Use normal sockets)
+		/// </summary>
+		public TlsPolicy tlsPolicy;
 
 		/// <summary>
 		/// A IP translation table is used in cases where different clients use different server 

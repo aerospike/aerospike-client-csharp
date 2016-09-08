@@ -48,8 +48,12 @@ namespace Aerospike.Client
 						// Set command buffer.
 						WriteBuffer();
 
-						// Reset timeout in send buffer (destined for server) and socket.
-						ByteUtil.IntToBytes((uint)remainingMillis, dataBuffer, 22);
+						// Check if timeout needs to be changed in send buffer.
+						if (remainingMillis != policy.timeout)
+						{
+							// Reset timeout in send buffer (destined for server) and socket.
+							ByteUtil.IntToBytes((uint)remainingMillis, dataBuffer, 22);
+						}
 
 						// Send command.
 						conn.Write(dataBuffer, dataOffset);
@@ -77,26 +81,16 @@ namespace Aerospike.Client
 						}
 						throw;
 					}
-					catch (SocketException ioe)
+					catch (SocketException se)
 					{
+						// Socket errors are considered temporary anomalies.
+						// Retry after closing connection.
 						node.CloseConnection(conn);
-
-						if (ioe.ErrorCode == (int)SocketError.TimedOut)
-						{
-							// Full timeout has been reached.  Do not retry.
-							// Close socket to flush out possible garbage.  Do not put back in pool.
-							throw new AerospikeException.Timeout(node, policy.timeout, ++iterations, failedNodes, failedConns);
-						}
-						else
-						{
-							// IO errors are considered temporary anomalies.  Retry.
-							// Close socket to flush out possible garbage.  Do not put back in pool.
-							exception = ioe;
-						}
+						exception = se;
 					}
 					catch (Exception)
 					{
-						// All runtime exceptions are considered fatal.  Do not retry.
+						// All other exceptions are considered fatal.  Do not retry.
 						// Close socket to flush out possible garbage.  Do not put back in pool.
 						node.CloseConnection(conn);
 						throw;
@@ -121,8 +115,9 @@ namespace Aerospike.Client
 				}
 
 				// Check for client timeout.
-				if (policy.timeout > 0)
+				if (policy.timeout > 0 && ! policy.retryOnTimeout)
 				{
+					// Timeout is absolute.  Stop if timeout has been reached.
 					remainingMillis = (int)limit.Subtract(DateTime.UtcNow).TotalMilliseconds - policy.sleepBetweenRetries;
 
 					if (remainingMillis <= 0)
@@ -142,6 +137,10 @@ namespace Aerospike.Client
 			}
 
 			// Retries have been exhausted.  Throw last exception.
+			if (exception is SocketException && ((SocketException)exception).ErrorCode == (int)SocketError.TimedOut)
+			{
+				throw new AerospikeException.Timeout(node, policy.timeout, iterations, failedNodes, failedConns);
+			}
 			throw exception;
 		}
 
@@ -184,8 +183,7 @@ namespace Aerospike.Client
 				conn.ReadFully(dataBuffer, receiveSize);
 			}
 		}
-	
-		protected internal abstract Node GetNode();
+
 		protected internal abstract void ParseResult(Connection conn);
 	}
 }

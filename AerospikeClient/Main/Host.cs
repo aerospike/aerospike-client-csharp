@@ -14,6 +14,8 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
+using System;
+using System.Collections.Generic;
 using System.Text;
 
 namespace Aerospike.Client
@@ -27,6 +29,13 @@ namespace Aerospike.Client
 		/// Host name or IP address of database server.
 		/// </summary>
 		public readonly string name;
+
+		/// <summary>
+		/// TLS certificate name used for secure connections.
+		/// The certificate must exist in your Trusted Root Certification repository.
+		/// See: <see href="https://technet.microsoft.com/en-us/library/cc754841%28v=ws.11%29.aspx#BKMK_adddomain">Trusted Root Certification</see>
+		/// </summary>
+		public readonly string tlsName;
 
 		/// <summary>
 		/// Port of database server.
@@ -43,10 +52,21 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
+		/// Initialize host.
+		/// </summary>
+		public Host(string name, string tlsName, int port)
+		{
+			this.name = name;
+			this.tlsName = tlsName;
+			this.port = port;
+		}
+
+		/// <summary>
 		/// Convert host name and port to string.
 		/// </summary>
 		public override string ToString()
 		{
+			// Ignore tlsName in string representation.
 			return name + ':' + port;
 		}
 
@@ -55,6 +75,7 @@ namespace Aerospike.Client
 		/// </summary>
 		public override int GetHashCode()
 		{
+			// Ignore tlsName in default hash code.
 			const int prime = 31;
 			int result = prime + name.GetHashCode();
 			return prime * result + port;
@@ -65,8 +86,147 @@ namespace Aerospike.Client
 		/// </summary>
 		public override bool Equals(object obj)
 		{
-			Host other = (Host) obj;
+			// Ignore tlsName in default equality comparison.
+			Host other = (Host)obj;
 			return this.name.Equals(other.name) && this.port == other.port;
+		}
+
+		/// <summary>
+		/// Parse hosts from string format: hostname1[:tlsname1][:port1],...
+		/// <para>
+		/// Hostname may also be an IP address in the following formats.
+		/// </para>
+		/// <ul>
+		/// <li>IPv4: xxx.xxx.xxx.xxx</li>
+		/// <li>IPv6: [xxxx:xxxx:xxxx:xxxx:xxxx:xxxx:xxxx:xxxx]</li>
+		/// <li>IPv6: [xxxx::xxxx]</li>
+		/// </ul>
+		/// <para>
+		/// IPv6 addresses must be enclosed by brackets.
+		/// tlsname and port are optional.
+		/// </para>
+		/// </summary>
+		public static Host[] ParseHosts(string str, int defaultPort)
+		{
+			try
+			{
+				return (new HostParser(str, defaultPort)).hosts;
+			}
+			catch (Exception)
+			{
+				throw new AerospikeException("Invalid hosts string: " + str);
+			}
+		}
+
+		internal class HostParser
+		{
+			internal Host[] hosts;
+			private string str;
+			private int offset;
+			private int length;
+			private char c;
+
+			internal HostParser(string str, int defaultPort)
+			{
+				this.str = str;
+				this.length = str.Length;
+				this.offset = 0;
+				this.c = ',';
+
+				List<Host> list = new List<Host>();
+				string hostname;
+				string tlsname;
+				int port;
+
+				while (offset < length)
+				{
+					if (c != ',')
+					{
+						throw new Exception();
+					}
+					hostname = ParseHost();
+					tlsname = null;
+					port = defaultPort;
+
+					if (offset < length && c == ':')
+					{
+						string s = ParseString();
+
+						if (s.Length > 0)
+						{
+							if (char.IsDigit(s[0]))
+							{
+								// Found port.
+								port = Convert.ToInt32(s);
+							}
+							else
+							{
+								// Found tls name.
+								tlsname = s;
+
+								// Parse port.
+								s = ParseString();
+
+								if (s.Length > 0)
+								{
+									port = Convert.ToInt32(s);
+								}
+							}
+						}
+					}
+					list.Add(new Host(hostname, tlsname, port));
+				}
+				hosts = list.ToArray();
+			}
+
+			private string ParseHost()
+			{
+				c = str[offset];
+
+				if (c == '[')
+				{
+					// IPv6 addresses are enclosed by brackets.
+					int begin = ++offset;
+
+					while (offset < length)
+					{
+						c = str[offset];
+
+						if (c == ']')
+						{
+							string s = str.Substring(begin, offset - begin);
+							offset++;
+							c = str[offset++];
+							return s;
+						}
+						offset++;
+					}
+					throw new Exception("Unterminated bracket");
+				}
+				else
+				{
+					return ParseString();
+				}
+			}
+
+			private string ParseString()
+			{
+				int begin = offset;
+
+				while (offset < length)
+				{
+					c = str[offset];
+
+					if (c == ':' || c == ',')
+					{
+						string s = str.Substring(begin, offset - begin);
+						offset++;
+						return s;
+					}
+					offset++;
+				}
+				return str.Substring(begin, offset - begin);
+			}
 		}
 	}
 }

@@ -25,14 +25,16 @@ namespace Aerospike.Demo
 	/// </summary>
 	public class Arguments
 	{
-		internal string host;
+		internal Host[] hosts;
 		internal int port;
 		internal string user;
 		internal string password;
+		internal string clusterId;
 		internal string ns;
 		internal string set;
         internal string binName;
-        internal WritePolicy writePolicy;
+		internal TlsPolicy tlsPolicy;
+		internal WritePolicy writePolicy;
 		internal Policy policy;
         internal int commandMax;
         internal bool singleBin;
@@ -126,7 +128,7 @@ namespace Aerospike.Demo
 
 		public override string ToString()
 		{
-			return "Parameters: host=" + host + " port=" + port + " ns=" + ns + " set=" + set + " single-bin=" + singleBin;
+			return "Parameters: hosts=" + Util.ArrayToString(hosts) + " port=" + port + " ns=" + ns + " set=" + set + " single-bin=" + singleBin;
 		}
 
 		public virtual string GetBinName(string name)

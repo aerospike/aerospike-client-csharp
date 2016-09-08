@@ -47,9 +47,9 @@ namespace Aerospike.Client
 			SetRead(policy, key, binNames);
 		}
 
-		protected internal override AsyncNode GetNode()
+		protected internal override Node GetNode()
 		{
-			return (AsyncNode)cluster.GetReadNode(partition, policy.replica);
+			return GetReadNode(cluster, partition, policy.replica);
 		}
 
 		protected internal sealed override void ParseResult()

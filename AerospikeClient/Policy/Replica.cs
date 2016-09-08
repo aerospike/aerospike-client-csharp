@@ -34,6 +34,14 @@ namespace Aerospike.Client
 		MASTER_PROLES,
 
 		/// <summary>
+		/// Always try node containing master partition first. If connection fails and
+		/// <seealso cref="Aerospike.Client.Policy.retryOnTimeout"/> is true, try nodes
+		/// containing prole partition.  This option requires <seealso cref="Aerospike.Client.ClientPolicy.requestProleReplicas"/>
+		/// to be enabled in order to function properly.
+		/// </summary>
+		SEQUENCE,
+
+		/// <summary>
 		/// Distribute reads across all nodes in cluster in round-robin fashion.
 		/// This option is useful when the replication factor equals the number
 		/// of nodes in the cluster and the overhead of requesting proles is not desired.

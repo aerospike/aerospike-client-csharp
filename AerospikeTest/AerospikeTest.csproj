@@ -102,12 +102,6 @@
     <Compile Include="Sync\Query\TestQueryCollection.cs" />
     <Compile Include="Sync\Query\TestQueryAverage.cs" />
     <Compile Include="Sync\TestSync.cs" />
-    <Compile Include="TestForm.cs">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="TestForm.Designer.cs">
-      <DependentUpon>TestForm.cs</DependentUpon>
-    </Compile>
     <Compile Include="Sync\Basic\TestPutGet.cs" />
   </ItemGroup>
   <ItemGroup>
@@ -132,9 +126,6 @@
     <EmbeddedResource Include="Properties\Resources.resx">
       <Generator>ResXFileCodeGenerator</Generator>
       <LastGenOutput>Resources.Designer.cs</LastGenOutput>
-    </EmbeddedResource>
-    <EmbeddedResource Include="TestForm.resx">
-      <DependentUpon>TestForm.cs</DependentUpon>
     </EmbeddedResource>
   </ItemGroup>
   <ItemGroup />

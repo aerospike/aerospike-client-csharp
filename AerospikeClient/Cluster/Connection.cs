@@ -15,6 +15,7 @@
  * the License.
  */
 using System;
+using System.IO;
 using System.Net;
 using System.Net.Sockets;
 using System.Threading;
@@ -24,14 +25,14 @@ namespace Aerospike.Client
 	/// <summary>
 	/// Socket connection wrapper.
 	/// </summary>
-	public sealed class Connection
+	public class Connection
 	{
-		private readonly Socket socket;
+		protected internal readonly Socket socket;
 		private readonly double maxSocketIdleMillis;
 		private DateTime timestamp;
 
 		public Connection(IPEndPoint address, int timeoutMillis)
-			: this(address, timeoutMillis, 14000)
+			: this(address, timeoutMillis, 55000)
 		{
 		}
 
@@ -45,6 +46,14 @@ namespace Aerospike.Client
 			try
 			{
 				socket = new Socket(address.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
+			}
+			catch (Exception e)
+			{
+				throw new AerospikeException.Connection(e);
+			}
+
+			try
+			{
 				socket.NoDelay = true;
 
 				if (timeoutMillis > 0)
@@ -66,22 +75,24 @@ namespace Aerospike.Client
 				// immediately when that happens!
 				if (wait.WaitOne(timeoutMillis))
 				{
+					// Connection succeeded.
 					// EndConnect will automatically close AsyncWaitHandle.
 					socket.EndConnect(result);
 				}
 				else
 				{
-					// Close socket, but do not close AsyncWaitHandle. If AsyncWaitHandle is closed,
+					// Connection timed out.
+					// Do not close AsyncWaitHandle. If AsyncWaitHandle is closed,
 					// the disposed handle can be referenced after the timeout exception is thrown.
 					// The handle will eventually get closed by the garbage collector.
 					// See: https://social.msdn.microsoft.com/Forums/en-US/313cf28c-2a6d-498e-8188-7a0639dbd552/tcpclientbeginconnect-issue?forum=netfxnetcom
-					socket.Close();
 					throw new SocketException((int)SocketError.TimedOut);
 				}
 				timestamp = DateTime.UtcNow;
 			}
 			catch (Exception e)
 			{
+				socket.Close();
 				throw new AerospikeException.Connection(e);
 			}
 		}
@@ -92,7 +103,7 @@ namespace Aerospike.Client
 			socket.ReceiveTimeout = timeoutMillis;
 		}
 
-		public void Write(byte[] buffer, int length)
+		public virtual void Write(byte[] buffer, int length)
 		{
 			int pos = 0;
 
@@ -108,7 +119,7 @@ namespace Aerospike.Client
 			}
 		}
 
-		public void ReadFully(byte[] buffer, int length)
+		public virtual void ReadFully(byte[] buffer, int length)
 		{
 			if (socket.ReceiveTimeout > 0)
 			{
@@ -133,6 +144,11 @@ namespace Aerospike.Client
 				}
 				pos += count;
 			}
+		}
+
+		public virtual Stream GetStream()
+		{
+			return new NetworkStream(socket);
 		}
 
 		/// <summary>
@@ -199,11 +215,6 @@ namespace Aerospike.Client
 				// See: https://social.msdn.microsoft.com/Forums/en-US/313cf28c-2a6d-498e-8188-7a0639dbd552/tcpclientbeginconnect-issue?forum=netfxnetcom
 				throw new AerospikeException.Connection("Failed to resolve " + host);
 			}
-		}
-
-		public Socket Socket
-		{
-			get { return socket; }
 		}
 	}
 }

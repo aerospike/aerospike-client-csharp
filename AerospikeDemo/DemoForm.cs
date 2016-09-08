@@ -21,6 +21,7 @@ using System.Drawing;
 using System.Text;
 using System.Windows.Forms;
 using System.IO;
+using System.Security.Authentication;
 using System.Text.RegularExpressions;
 using System.Threading;
 using Aerospike.Client;
@@ -34,6 +35,8 @@ namespace Aerospike.Demo
         private Thread thread;
         private volatile ExampleTreeNode currentExample;
         private Console console;
+		private string clusterId;
+		private SslProtocols tlsProtocols;
 
         public DemoForm()
         {
@@ -52,6 +55,12 @@ namespace Aerospike.Demo
                 binTypeBox.Items.Add(BinType.String);
                 binTypeBox.Items.Add(BinType.Byte);
                 binTypeBox.SelectedItem = BinType.Integer;
+
+				replicaBox.Items.Add(Replica.MASTER);
+				replicaBox.Items.Add(Replica.MASTER_PROLES);
+				replicaBox.Items.Add(Replica.SEQUENCE);
+				replicaBox.Items.Add(Replica.RANDOM);
+				replicaBox.SelectedItem = Replica.MASTER;
 
                 ReadDefaults();
 
@@ -154,7 +163,12 @@ namespace Aerospike.Demo
             latencyColumnsBox.Text = Properties.Settings.Default.LatencyColumns.ToString();
             latencyShiftBox.Text = Properties.Settings.Default.LatencyShift.ToString();
             debugBox.Checked = Properties.Settings.Default.Debug;
-        }
+			tlsBox.Checked = Properties.Settings.Default.UseTls;
+			clusterId = Properties.Settings.Default.ClusterId.Trim();
+			tlsProtocols = Util.ParseSslProtocols(Properties.Settings.Default.TlsProtocols);
+			retryOnTimeoutBox.Checked = Properties.Settings.Default.RetryOnTimeout;
+			replicaBox.SelectedIndex = Properties.Settings.Default.ReadReplica;
+		}
 
         private void WriteDefaults()
         {
@@ -180,8 +194,10 @@ namespace Aerospike.Demo
             Properties.Settings.Default.LatencyColumns = int.Parse(latencyColumnsBox.Text);
             Properties.Settings.Default.LatencyShift = int.Parse(latencyShiftBox.Text);
             Properties.Settings.Default.Debug = debugBox.Checked;
-
-            Properties.Settings.Default.Save();
+			Properties.Settings.Default.UseTls = tlsBox.Checked;
+			Properties.Settings.Default.RetryOnTimeout = retryOnTimeoutBox.Checked;
+			Properties.Settings.Default.ReadReplica = replicaBox.SelectedIndex;
+			Properties.Settings.Default.Save();
         }
 
         private void RunExample(object sender, MouseEventArgs e)
@@ -252,14 +268,31 @@ namespace Aerospike.Demo
                 int timeout = int.Parse(timeoutBox.Text);
                 int maxRetries = int.Parse(maxRetriesBox.Text);
                 int sleepBetweenRetries = int.Parse(sleepBox.Text);
+				Replica replica = (Replica)replicaBox.SelectedItem;
+				bool retryOnTimeout = retryOnTimeoutBox.Checked;
 
-                bargs.policy.timeout = timeout;
+				if (replica == Replica.SEQUENCE)
+				{
+					retryOnTimeout = true;
+					bargs.requestProleReplicas = true;
+				}
+
+				if (replica == Replica.MASTER_PROLES)
+				{
+					bargs.requestProleReplicas = true;
+				}
+
+				bargs.policy.timeout = timeout;
                 bargs.policy.maxRetries = maxRetries;
                 bargs.policy.sleepBetweenRetries = sleepBetweenRetries;
+				bargs.policy.retryOnTimeout = retryOnTimeout;
+				bargs.policy.replica = replica;
 
                 bargs.writePolicy.timeout = timeout;
                 bargs.writePolicy.maxRetries = maxRetries;
                 bargs.writePolicy.sleepBetweenRetries = sleepBetweenRetries;
+				bargs.writePolicy.retryOnTimeout = retryOnTimeout;
+				bargs.writePolicy.replica = replica;
 
                 bargs.debug = debugBox.Checked;
                 bargs.latency = latencyBox.Checked;
@@ -288,13 +321,21 @@ namespace Aerospike.Demo
                 args.commandMax = 40;
             }
 
-            args.host = hostBox.Text.Trim();
-            args.port = int.Parse(portBox.Text);
+			args.port = int.Parse(portBox.Text);
+			args.hosts = Host.ParseHosts(hostBox.Text.Trim(), args.port);
             args.user = userBox.Text.Trim();
             args.password = passwordBox.Text;
+			args.clusterId = clusterId;
             args.ns = nsBox.Text.Trim();
             args.set = setBox.Text.Trim();
-            return args;
+			args.tlsPolicy = null;
+
+			if (tlsBox.Checked)
+			{
+				args.tlsPolicy = new TlsPolicy();
+				args.tlsPolicy.protocols = tlsProtocols;
+			}
+			return args;
         }
 
         private void RunExampleThread(object data)

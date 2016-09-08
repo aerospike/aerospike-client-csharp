@@ -30,11 +30,14 @@
         {
 			this.splitContainer1 = new System.Windows.Forms.SplitContainer();
 			this.benchmarkPanel = new System.Windows.Forms.Panel();
+			this.retryOnTimeoutBox = new System.Windows.Forms.CheckBox();
 			this.initializePanel = new System.Windows.Forms.Panel();
 			this.initPctLabel = new System.Windows.Forms.Label();
 			this.initPctBox = new System.Windows.Forms.TextBox();
 			this.label5 = new System.Windows.Forms.Label();
 			this.workloadPanel = new System.Windows.Forms.Panel();
+			this.label18 = new System.Windows.Forms.Label();
+			this.replicaBox = new System.Windows.Forms.ComboBox();
 			this.label10 = new System.Windows.Forms.Label();
 			this.writeBox = new System.Windows.Forms.TextBox();
 			this.label11 = new System.Windows.Forms.Label();
@@ -95,6 +98,7 @@
 			this.label12 = new System.Windows.Forms.Label();
 			this.userBox = new System.Windows.Forms.TextBox();
 			this.label13 = new System.Windows.Forms.Label();
+			this.tlsBox = new System.Windows.Forms.CheckBox();
 			((System.ComponentModel.ISupportInitialize)(this.splitContainer1)).BeginInit();
 			this.splitContainer1.Panel1.SuspendLayout();
 			this.splitContainer1.Panel2.SuspendLayout();
@@ -136,6 +140,7 @@
 			// 
 			// benchmarkPanel
 			// 
+			this.benchmarkPanel.Controls.Add(this.retryOnTimeoutBox);
 			this.benchmarkPanel.Controls.Add(this.initializePanel);
 			this.benchmarkPanel.Controls.Add(this.workloadPanel);
 			this.benchmarkPanel.Controls.Add(this.panel1);
@@ -159,9 +164,19 @@
 			this.benchmarkPanel.Controls.Add(this.label24);
 			this.benchmarkPanel.Location = new System.Drawing.Point(0, 0);
 			this.benchmarkPanel.Name = "benchmarkPanel";
-			this.benchmarkPanel.Size = new System.Drawing.Size(540, 501);
+			this.benchmarkPanel.Size = new System.Drawing.Size(540, 390);
 			this.benchmarkPanel.TabIndex = 9;
 			this.benchmarkPanel.Visible = false;
+			// 
+			// retryOnTimeoutBox
+			// 
+			this.retryOnTimeoutBox.AutoSize = true;
+			this.retryOnTimeoutBox.Location = new System.Drawing.Point(176, 226);
+			this.retryOnTimeoutBox.Name = "retryOnTimeoutBox";
+			this.retryOnTimeoutBox.Size = new System.Drawing.Size(109, 17);
+			this.retryOnTimeoutBox.TabIndex = 111;
+			this.retryOnTimeoutBox.Text = "Retry On Timeout";
+			this.retryOnTimeoutBox.UseVisualStyleBackColor = true;
 			// 
 			// initializePanel
 			// 
@@ -202,6 +217,8 @@
 			// 
 			// workloadPanel
 			// 
+			this.workloadPanel.Controls.Add(this.label18);
+			this.workloadPanel.Controls.Add(this.replicaBox);
 			this.workloadPanel.Controls.Add(this.label10);
 			this.workloadPanel.Controls.Add(this.writeBox);
 			this.workloadPanel.Controls.Add(this.label11);
@@ -211,8 +228,26 @@
 			this.workloadPanel.Controls.Add(this.label7);
 			this.workloadPanel.Location = new System.Drawing.Point(14, 165);
 			this.workloadPanel.Name = "workloadPanel";
-			this.workloadPanel.Size = new System.Drawing.Size(246, 28);
+			this.workloadPanel.Size = new System.Drawing.Size(478, 28);
 			this.workloadPanel.TabIndex = 108;
+			// 
+			// label18
+			// 
+			this.label18.AutoSize = true;
+			this.label18.Location = new System.Drawing.Point(255, 7);
+			this.label18.Name = "label18";
+			this.label18.Size = new System.Drawing.Size(72, 13);
+			this.label18.TabIndex = 115;
+			this.label18.Text = "Read Replica";
+			// 
+			// replicaBox
+			// 
+			this.replicaBox.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+			this.replicaBox.FormattingEnabled = true;
+			this.replicaBox.Location = new System.Drawing.Point(333, 2);
+			this.replicaBox.Name = "replicaBox";
+			this.replicaBox.Size = new System.Drawing.Size(118, 21);
+			this.replicaBox.TabIndex = 114;
 			// 
 			// label10
 			// 
@@ -426,7 +461,7 @@
 			this.latencyGroup.Controls.Add(this.latencyColumnsBox);
 			this.latencyGroup.Controls.Add(this.latencyShiftLabel);
 			this.latencyGroup.Controls.Add(this.latencyShiftBox);
-			this.latencyGroup.Location = new System.Drawing.Point(15, 247);
+			this.latencyGroup.Location = new System.Drawing.Point(15, 249);
 			this.latencyGroup.Name = "latencyGroup";
 			this.latencyGroup.Size = new System.Drawing.Size(504, 104);
 			this.latencyGroup.TabIndex = 102;
@@ -487,7 +522,7 @@
 			// label20
 			// 
 			this.label20.AutoSize = true;
-			this.label20.Location = new System.Drawing.Point(483, 198);
+			this.label20.Location = new System.Drawing.Point(472, 198);
 			this.label20.Name = "label20";
 			this.label20.Size = new System.Drawing.Size(20, 13);
 			this.label20.TabIndex = 94;
@@ -496,9 +531,9 @@
 			// debugBox
 			// 
 			this.debugBox.AutoSize = true;
-			this.debugBox.Location = new System.Drawing.Point(204, 224);
+			this.debugBox.Location = new System.Drawing.Point(306, 226);
 			this.debugBox.Name = "debugBox";
-			this.debugBox.RightToLeft = System.Windows.Forms.RightToLeft.Yes;
+			this.debugBox.RightToLeft = System.Windows.Forms.RightToLeft.No;
 			this.debugBox.Size = new System.Drawing.Size(88, 17);
 			this.debugBox.TabIndex = 3;
 			this.debugBox.Text = "Debug Mode";
@@ -507,7 +542,7 @@
 			// latencyBox
 			// 
 			this.latencyBox.AutoSize = true;
-			this.latencyBox.Location = new System.Drawing.Point(21, 224);
+			this.latencyBox.Location = new System.Drawing.Point(21, 226);
 			this.latencyBox.Name = "latencyBox";
 			this.latencyBox.Size = new System.Drawing.Size(145, 17);
 			this.latencyBox.TabIndex = 95;
@@ -517,7 +552,7 @@
 			// 
 			// sleepBox
 			// 
-			this.sleepBox.Location = new System.Drawing.Point(430, 195);
+			this.sleepBox.Location = new System.Drawing.Point(419, 195);
 			this.sleepBox.Name = "sleepBox";
 			this.sleepBox.Size = new System.Drawing.Size(52, 20);
 			this.sleepBox.TabIndex = 89;
@@ -527,7 +562,7 @@
 			// label17
 			// 
 			this.label17.AutoSize = true;
-			this.label17.Location = new System.Drawing.Point(313, 198);
+			this.label17.Location = new System.Drawing.Point(302, 198);
 			this.label17.Name = "label17";
 			this.label17.Size = new System.Drawing.Size(115, 13);
 			this.label17.TabIndex = 93;
@@ -660,7 +695,7 @@
 			this.consoleBox.Name = "consoleBox";
 			this.consoleBox.ReadOnly = true;
 			this.consoleBox.ScrollBars = System.Windows.Forms.ScrollBars.Vertical;
-			this.consoleBox.Size = new System.Drawing.Size(1019, 299);
+			this.consoleBox.Size = new System.Drawing.Size(1019, 291);
 			this.consoleBox.TabIndex = 11;
 			this.consoleBox.KeyDown += new System.Windows.Forms.KeyEventHandler(this.ConsoleKeyDown);
 			// 
@@ -800,11 +835,23 @@
 			this.label13.TabIndex = 17;
 			this.label13.Text = "User";
 			// 
+			// tlsBox
+			// 
+			this.tlsBox.AutoSize = true;
+			this.tlsBox.Location = new System.Drawing.Point(869, 8);
+			this.tlsBox.Name = "tlsBox";
+			this.tlsBox.RightToLeft = System.Windows.Forms.RightToLeft.Yes;
+			this.tlsBox.Size = new System.Drawing.Size(46, 17);
+			this.tlsBox.TabIndex = 19;
+			this.tlsBox.Text = "TLS";
+			this.tlsBox.UseVisualStyleBackColor = true;
+			// 
 			// DemoForm
 			// 
 			this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
 			this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
 			this.ClientSize = new System.Drawing.Size(1184, 789);
+			this.Controls.Add(this.tlsBox);
 			this.Controls.Add(this.label12);
 			this.Controls.Add(this.userBox);
 			this.Controls.Add(this.label13);
@@ -917,5 +964,9 @@
 		private System.Windows.Forms.Label label12;
 		private System.Windows.Forms.TextBox userBox;
 		private System.Windows.Forms.Label label13;
+		private System.Windows.Forms.CheckBox tlsBox;
+		private System.Windows.Forms.CheckBox retryOnTimeoutBox;
+		private System.Windows.Forms.Label label18;
+		private System.Windows.Forms.ComboBox replicaBox;
     }
 }

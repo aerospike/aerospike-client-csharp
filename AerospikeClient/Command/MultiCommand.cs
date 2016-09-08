@@ -53,8 +53,8 @@ namespace Aerospike.Client
 			// Read socket into receive buffer one record at a time.  Do not read entire receive size
 			// because the thread local receive buffer would be too big.  Also, scan callbacks can nest 
 			// further database commands which contend with the receive buffer.
-			Stream nis = new NetworkStream(conn.Socket);
-			bis = new BufferedStream(nis, 8192);
+			Stream stream = conn.GetStream();
+			bis = new BufferedStream(stream, 8192);
 			bool status = true;
 
 			while (status)

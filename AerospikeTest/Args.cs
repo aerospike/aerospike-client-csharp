@@ -17,6 +17,7 @@
 using System;
 using System.Text;
 using System.Collections.Generic;
+using System.Security.Authentication;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Aerospike.Client;
 
@@ -29,13 +30,14 @@ namespace Aerospike.Test
 
 		public AerospikeClient client;
 		public AsyncClient asyncClient;
-		public string host;
+		public Host[] hosts;
 		public int port;
 		public string user;
 		public string password;
+		public string clusterId;
 		public string ns;
 		public string set;
-		public bool prompt;
+		public TlsPolicy tlsPolicy;
 		public bool hasUdf;
 		public bool hasMap;
 		public bool singleBin;
@@ -43,38 +45,38 @@ namespace Aerospike.Test
 
 		public Args()
 		{
-			host = Properties.Settings.Default.Host;
 			port = Properties.Settings.Default.Port;
-			user = Properties.Settings.Default.User;
-			ns = Properties.Settings.Default.Namespace;
-			set = Properties.Settings.Default.Set;
-			prompt = Properties.Settings.Default.Prompt;
-		}
+			hosts = Host.ParseHosts(Properties.Settings.Default.Host, port);
+			user = Properties.Settings.Default.User.Trim();
+			password = Properties.Settings.Default.Password.Trim();
+			clusterId = Properties.Settings.Default.ClusterId.Trim();
+			ns = Properties.Settings.Default.Namespace.Trim();
+			set = Properties.Settings.Default.Set.Trim();
+			bool useTls = Properties.Settings.Default.UseTls;
 
-		public void Save()
-		{
-			// This doesn't actually work because the test project is a library
-			// (not an application) and app.config is only saved for applications.
-			Properties.Settings.Default.Host = host;
-			Properties.Settings.Default.Port = port;
-			Properties.Settings.Default.User = user;
-			Properties.Settings.Default.Namespace = ns;
-			Properties.Settings.Default.Set = set;
-			Properties.Settings.Default.Prompt = prompt;
-
-			Properties.Settings.Default.Save();
+			if (useTls)
+			{
+				tlsPolicy = new TlsPolicy();
+				tlsPolicy.protocols = Util.ParseSslProtocols(Properties.Settings.Default.TlsProtocols);
+			}
 		}
 
 		public void Connect()
 		{
 			ConnectSync();
-			ConnectAsync();
+
+			// SSL only works with synchronous commands.
+			if (tlsPolicy == null)
+			{
+				ConnectAsync();
+			}
 		}
 
 		private void ConnectSync()
 		{
 			ClientPolicy policy = new ClientPolicy();
-			policy.failIfNotConnected = true;
+			policy.clusterId = clusterId;
+			policy.tlsPolicy = tlsPolicy;
 
 			if (!user.Equals(""))
 			{
@@ -82,7 +84,7 @@ namespace Aerospike.Test
 				policy.password = password;
 			}
 
-			client = new AerospikeClient(policy, host, port);
+			client = new AerospikeClient(policy, hosts);
 
 			try
 			{
@@ -100,7 +102,6 @@ namespace Aerospike.Test
 		{
 			AsyncClientPolicy policy = new AsyncClientPolicy();
 			policy.asyncMaxCommands = 300;
-			policy.failIfNotConnected = true;
 
 			if (!user.Equals(""))
 			{
@@ -108,7 +109,7 @@ namespace Aerospike.Test
 				policy.password = password;
 			}
 
-			asyncClient = new AsyncClient(policy, host, port);
+			asyncClient = new AsyncClient(policy, hosts);
 		}
 
 		private void SetServerSpecific()

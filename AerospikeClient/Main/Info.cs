@@ -45,9 +45,9 @@ namespace Aerospike.Client
 		// Member variables.
 		//-------------------------------------------------------
 
-		private byte[] buffer;
-		private int length;
-		private int offset;
+		public byte[] buffer;
+		public int length;
+		public int offset;
 
 		//-------------------------------------------------------
 		// Constructor
@@ -156,7 +156,7 @@ namespace Aerospike.Client
 			return ByteUtil.Utf8ToString(buffer, offset, length - offset - 1);
 		}
 
-		private void SkipToValue()
+		public void SkipToValue()
 		{
 			// Skip past command.
 			while (offset < length)
@@ -175,6 +175,84 @@ namespace Aerospike.Client
 				}
 				offset++;
 			}
+		}
+
+		/// <summary>
+		/// Convert UTF8 numeric digits to an integer.  Negative integers are not supported.
+		/// Input format: 1234
+		/// </summary>
+		public int ParseInt()
+		{
+			int begin = offset;
+			int end = offset;
+			byte b;
+
+			// Skip to end of integer.
+			while (offset < length)
+			{
+				b = buffer[offset];
+
+				if (b < 48 || b > 57)
+				{
+					end = offset;
+					break;
+				}
+				offset++;
+			}
+
+			// Convert digits into an integer.
+			return (int)ByteUtil.Utf8DigitsToInt(buffer, begin, end);
+		}
+
+		public string ParseString(char stop)
+		{
+			int begin = offset;
+			byte b;
+
+			while (offset < length)
+			{
+				b = buffer[offset];
+
+				if (b == stop)
+				{
+					break;
+				}
+				offset++;
+			}
+			return ByteUtil.Utf8ToString(buffer, begin, offset - begin);
+		}
+
+		public string ParseString(char stop1, char stop2, char stop3)
+		{
+			int begin = offset;
+			byte b;
+
+			while (offset < length)
+			{
+				b = buffer[offset];
+
+				if (b == stop1 || b == stop2 || b == stop3)
+				{
+					break;
+				}
+				offset++;
+			}
+			return ByteUtil.Utf8ToString(buffer, begin, offset - begin);
+		}
+
+		public void Expect(char expected)
+		{
+			if (expected != buffer[offset])
+			{
+				throw new AerospikeException.Parse("Expected " + expected + " Received: " + (char)buffer[offset]);
+			}
+			offset++;
+		}
+
+		public string GetTruncatedResponse()
+		{
+			int max = (length > 200) ? 200 : length;
+			return ByteUtil.Utf8ToString(buffer, 0, max);
 		}
 
 		//-------------------------------------------------------
@@ -334,7 +412,7 @@ namespace Aerospike.Client
 
 		/// <summary>
 		/// Get one info value by name from the specified database server node.
-		/// This method does not support user authentication.
+		/// This method does not support secure connections nor user authentication.
 		/// </summary>
 		/// <param name="socketAddress">InetSocketAddress of server node</param>
 		/// <param name="name">name of value to retrieve</param>
@@ -354,7 +432,7 @@ namespace Aerospike.Client
 
 		/// <summary>
 		/// Get many info values by name from the specified database server node.
-		/// This method does not support user authentication.
+		/// This method does not support secure connections nor user authentication.
 		/// </summary>
 		/// <param name="socketAddress">InetSocketAddress of server node</param>
 		/// <param name="names">names of values to retrieve</param>
@@ -374,7 +452,7 @@ namespace Aerospike.Client
 
 		/// <summary>
 		/// Get all the default info from the specified database server node.
-		/// This method does not support user authentication.
+		/// This method does not support secure connections nor user authentication.
 		/// </summary>
 		/// <param name="socketAddress">InetSocketAddress of server node</param>
 		public static Dictionary<string, string> Request(IPEndPoint socketAddress)
@@ -425,22 +503,6 @@ namespace Aerospike.Client
 		{
 			Info info = new Info(conn);
 			return info.ParseMultiResponse();
-		}
-
-		/// <summary>
-		/// Get response buffer. For internal use only.
-		/// </summary>
-		public byte[] GetBuffer()
-		{
-			return buffer;
-		}
-
-		/// <summary>
-		/// Get response length. For internal use only.
-		/// </summary>
-		public int GetLength()
-		{
-			return length;
 		}
 
 		//-------------------------------------------------------

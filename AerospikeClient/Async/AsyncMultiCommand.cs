@@ -41,7 +41,7 @@ namespace Aerospike.Client
 			this.stopOnNotFound = stopOnNotFound;
 		}
 		
-		protected internal sealed override AsyncNode GetNode()
+		protected internal sealed override Node GetNode()
 		{
 			return fixedNode;
 		}

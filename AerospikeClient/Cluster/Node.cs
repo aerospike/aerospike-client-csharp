@@ -32,21 +32,26 @@ namespace Aerospike.Client
 		/// </summary>
 		public const int PARTITIONS = 4096;
 
+		public const int HAS_GEO = (1 << 0);
+		public const int HAS_DOUBLE = (1 << 1);
+		public const int HAS_BATCH_INDEX = (1 << 2);
+		public const int HAS_REPLICAS_ALL = (1 << 3);
+		public const int HAS_PEERS = (1 << 4); 
+		
 		protected internal readonly Cluster cluster;
 		private readonly string name;
 		private readonly Host host;
-		private Host[] aliases;
+		protected internal readonly List<Host> aliases;
 		protected internal readonly IPEndPoint address;
 		private Connection tendConnection;
 		private readonly BlockingCollection<Connection> connectionQueue;
 		private int connectionCount;
 		protected internal int partitionGeneration = -1;
+		protected internal int peersGeneration = -1;
 		protected internal int referenceCount;
 		protected internal int failures;
-		protected internal readonly bool hasGeo;
-		protected internal readonly bool hasDouble;
-		protected internal readonly bool hasBatchIndex;
-		protected internal readonly bool hasReplicasAll;
+		protected internal readonly uint features;
+		protected internal bool partitionChanged;
 		protected internal volatile bool active = true;
 
 		/// <summary>
@@ -59,16 +64,10 @@ namespace Aerospike.Client
 			this.cluster = cluster;
 			this.name = nv.name;
 			this.aliases = nv.aliases;
-			this.address = nv.address;
+			this.host = nv.primaryHost;
+			this.address = nv.primaryAddress;
 			this.tendConnection = nv.conn;
-			this.hasGeo = nv.hasGeo;
-			this.hasDouble = nv.hasDouble;
-			this.hasBatchIndex = nv.hasBatchIndex;
-			this.hasReplicasAll = nv.hasReplicasAll;
-
-			// Assign host to first IP alias because the server identifies nodes 
-			// by IP address (not hostname). 
-			this.host = aliases[0];
+			this.features = nv.features;
 
 			connectionQueue = new BlockingCollection<Connection>(cluster.connectionQueueSize);
 		}
@@ -82,40 +81,47 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Request current status from server node.
 		/// </summary>
-		/// <param name="friends">other nodes in the cluster, populated by this method</param>
-		/// <exception cref="Exception">if status request fails</exception>
-		public void Refresh(List<Host> friends)
+		public void Refresh(Peers peers)
 		{
-			if (tendConnection.IsClosed())
+			if (!active)
 			{
-				tendConnection = new Connection(address, cluster.connectionTimeout);
+				return;
 			}
 
 			try
 			{
-				string[] commands = cluster.useServicesAlternate ? 
-					new string[] {"node", "partition-generation", "services-alternate"} : 
-					new string[] {"node", "partition-generation", "services"};
-
-				Dictionary<string, string> infoMap = Info.Request(tendConnection, commands);
-				VerifyNodeName(infoMap);
-
-				if (AddFriends(infoMap, friends))
+				if (tendConnection.IsClosed())
 				{
-					UpdatePartitions(tendConnection, infoMap);
+					tendConnection = cluster.CreateConnection(host.tlsName, address, cluster.connectionTimeout);
 				}
+
+				if (peers.usePeers)
+				{
+					Dictionary<string, string> infoMap = Info.Request(tendConnection, "node", "peers-generation", "partition-generation");
+					VerifyNodeName(infoMap);
+					VerifyPeersGeneration(infoMap, peers);
+					VerifyPartitionGeneration(infoMap);
+				}
+				else
+				{
+					string[] commands = cluster.useServicesAlternate ?
+						new string[] { "node", "partition-generation", "services-alternate" } :
+						new string[] { "node", "partition-generation", "services" };
+
+					Dictionary<string, string> infoMap = Info.Request(tendConnection, commands);
+					VerifyNodeName(infoMap);
+					VerifyPartitionGeneration(infoMap);
+					AddFriends(infoMap, peers);
+				}
+				peers.refreshCount++;
+				failures = 0;
 			}
-			catch (Exception)
+			catch (Exception e)
 			{
-				// Swallow exception if node was closed in another thread.
-				if (! tendConnection.IsClosed())
-				{
-					tendConnection.Close();
-					throw;
-				}
+				RefreshFailed(e);
 			}
 		}
-
+	
 		private void VerifyNodeName(Dictionary<string, string> infoMap)
 		{
 			// If the node name has changed, remove node from cluster and hope one of the other host
@@ -131,13 +137,46 @@ namespace Aerospike.Client
 			if (!name.Equals(infoName))
 			{
 				// Set node to inactive immediately.
-				Log.Info("NAME ERROR");
 				active = false;
 				throw new AerospikeException("Node name has changed. Old=" + name + " New=" + infoName);
 			}
 		}
 
-		private bool AddFriends(Dictionary<string, string> infoMap, List<Host> friends)
+		private void VerifyPeersGeneration(Dictionary<string, string> infoMap, Peers peers)
+		{
+			string genString = infoMap["peers-generation"];
+
+			if (genString == null || genString.Length == 0)
+			{
+				throw new AerospikeException.Parse("peers-generation is empty");
+			}
+
+			int gen = Convert.ToInt32(genString);
+
+			if (peersGeneration != gen)
+			{
+				peers.genChanged = true;
+			}
+		}
+
+		private void VerifyPartitionGeneration(Dictionary<string, string> infoMap)
+		{
+			string genString = infoMap["partition-generation"];
+
+			if (genString == null || genString.Length == 0)
+			{
+				throw new AerospikeException.Parse("partition-generation is empty");
+			}
+
+			int gen = Convert.ToInt32(genString);
+
+			if (partitionGeneration != gen)
+			{
+				this.partitionChanged = true;
+			}
+		}
+
+		private void AddFriends(Dictionary<string, string> infoMap, Peers peers)
 		{
 			// Parse the service addresses and add the friends to the list.
 			String command = cluster.useServicesAlternate ? "services-alternate" : "services";
@@ -148,17 +187,11 @@ namespace Aerospike.Client
 				// Detect "split cluster" case where this node thinks it's a 1-node cluster.
 				// Unchecked, such a node can dominate the partition map and cause all other
 				// nodes to be dropped.
-				int nodeCount = cluster.Nodes.Length;
-
-				if (nodeCount > 2)
+				if (cluster.Nodes.Length > 2)
 				{
-					if (Log.WarnEnabled())
-					{
-						Log.Warn("Node " + this + " thinks it owns cluster, but client sees " + nodeCount + " nodes.");
-					}
-					return false;
+					throw new AerospikeException("Node " + this + " thinks it owns cluster, but client sees " + cluster.Nodes.Length + " nodes.");
 				}
-				return true;
+				return;
 			}
 
 			string[] friendNames = friendString.Split(';');
@@ -166,63 +199,221 @@ namespace Aerospike.Client
 			foreach (string friend in friendNames)
 			{
 				string[] friendInfo = friend.Split(':');
-				string host = friendInfo[0];
+				string hostname = friendInfo[0];
 				string alternativeHost;
 
-				if (cluster.ipMap != null && cluster.ipMap.TryGetValue(host, out alternativeHost))
+				if (cluster.ipMap != null && cluster.ipMap.TryGetValue(hostname, out alternativeHost))
 				{
-					host = alternativeHost;
+					hostname = alternativeHost;
 				}
 
 				int port = Convert.ToInt32(friendInfo[1]);
-				Host alias = new Host(host, port);
+				Host host = new Host(hostname, port);
 				Node node;
 
-				if (cluster.aliases.TryGetValue(alias, out node))
+				// Check global aliases for existing cluster.
+				if (!cluster.aliases.TryGetValue(host, out node))
 				{
-					node.referenceCount++;
+					// Check local aliases for this tend iteration.	
+					if (!peers.hosts.Contains(host))
+					{
+						PrepareFriend(host, peers);
+					}
 				}
 				else
 				{
-					if (!FindAlias(friends, alias))
-					{
-						friends.Add(alias);
-					}
+					node.referenceCount++;
 				}
 			}
-			return true;
 		}
 
-		private static bool FindAlias(List<Host> friends, Host alias)
+		private bool PrepareFriend(Host host, Peers peers)
 		{
-			foreach (Host host in friends)
+			try
 			{
-				if (host.Equals(alias))
+				NodeValidator nv = new NodeValidator();
+				nv.ValidateNode(cluster, host);
+
+				// Check for duplicate nodes in nodes slated to be added.
+				Node node;
+				if (peers.nodes.TryGetValue(nv.name, out node))
 				{
+					// Duplicate node name found.  This usually occurs when the server 
+					// services list contains both internal and external IP addresses 
+					// for the same node.
+					nv.conn.Close();
+					peers.hosts.Add(host);
+					node.aliases.Add(host);
 					return true;
 				}
+
+				// Check for duplicate nodes in cluster.
+				if (cluster.nodesMap.TryGetValue(nv.name, out node))
+				{
+					nv.conn.Close();
+					peers.hosts.Add(host);
+					node.aliases.Add(host);
+					node.referenceCount++;
+					cluster.aliases[host] = node;
+					return true;
+				}
+
+				node = cluster.CreateNode(nv);
+				peers.hosts.Add(host);
+				peers.nodes[nv.name] = node;
+				return true;
+			}
+			catch (Exception e)
+			{
+				if (Log.WarnEnabled())
+				{
+					Log.Warn("Add node " + host + " failed: " + Util.GetErrorMessage(e));
+				}
+				return false;
+			}
+		}
+
+		protected internal void RefreshPeers(Peers peers)
+		{
+			// Do not refresh peers when node connection has already failed during this cluster tend iteration.
+			if (failures > 0 || !active)
+			{
+				return;
+			}
+
+			try
+			{
+				if (Log.DebugEnabled())
+				{
+					Log.Debug("Update peers for node " + this);
+				}
+
+				PeerParser parser = new PeerParser(cluster, tendConnection, peers.peers);
+				peersGeneration = parser.generation;
+
+				// Detect "split cluster" case where this node thinks it's a 1-node cluster.
+				// Unchecked, such a node can dominate the partition map and cause all other
+				// nodes to be dropped.
+				if (peers.peers.Count == 0 && cluster.Nodes.Length > 2)
+				{
+					throw new AerospikeException("Node " + this + " thinks it owns cluster, but client sees " + cluster.Nodes.Length + " nodes.");
+				}
+
+				foreach (Peer peer in peers.peers)
+				{
+					if (FindPeerNode(cluster, peers, peer.nodeName))
+					{
+						// Node already exists. Do not even try to connect to hosts.				
+						continue;
+					}
+
+					// Find first host that connects.
+					foreach (Host host in peer.hosts)
+					{
+						try
+						{
+							// Attempt connection to host.
+							NodeValidator nv = new NodeValidator();
+							nv.ValidateNode(cluster, host);
+
+							if (!peer.nodeName.Equals(nv.name))
+							{
+								// Must look for new node name in the unlikely event that node names do not agree. 
+								if (Log.WarnEnabled())
+								{
+									Log.Warn("Peer node " + peer.nodeName + " is different than actual node " + nv.name + " for host " + host);
+								}
+
+								if (FindPeerNode(cluster, peers, nv.name))
+								{
+									// Node already exists. Do not even try to connect to hosts.				
+									nv.conn.Close();
+									break;
+								}
+							}
+
+							// Create new node.
+							Node node = cluster.CreateNode(nv);
+							peers.nodes[nv.name] = node;
+							break;
+						}
+						catch (Exception e)
+						{
+							if (Log.WarnEnabled())
+							{
+								Log.Warn("Add node " + host + " failed: " + Util.GetErrorMessage(e));
+							}
+						}
+					}
+				}
+				peers.refreshCount++;
+			}
+			catch (Exception e)
+			{
+				RefreshFailed(e);
+			}
+		}
+
+		private static bool FindPeerNode(Cluster cluster, Peers peers, string nodeName)
+		{
+			// Check global node map for existing cluster.
+			Node node;
+			if (cluster.nodesMap.TryGetValue(nodeName, out node))
+			{
+				node.referenceCount++;
+				return true;
+			}
+
+			// Check local node map for this tend iteration.
+			if (peers.nodes.TryGetValue(nodeName, out node))
+			{
+				node.referenceCount++;
+				return true;
 			}
 			return false;
 		}
 
-		private void UpdatePartitions(Connection conn, Dictionary<string, string> infoMap)
+		protected internal void RefreshPartitions(Peers peers)
 		{
-			string genString = infoMap["partition-generation"];
-
-			if (genString == null || genString.Length == 0)
+			// Do not refresh partitions when node connection has already failed during this cluster tend iteration.
+			if (failures > 0 || !active)
 			{
-				throw new AerospikeException.Parse("partition-generation is empty");
+				return;
 			}
 
-			int generation = Convert.ToInt32(genString);
-
-			if (partitionGeneration != generation)
+			try
 			{
 				if (Log.DebugEnabled())
 				{
-					Log.Debug("Node " + this + " partition generation " + generation + " changed.");
+					Log.Debug("Update partition map for node " + this);
 				}
-				partitionGeneration = cluster.UpdatePartitions(conn, this);
+				PartitionParser parser = new PartitionParser(tendConnection, this, cluster.partitionMap, Node.PARTITIONS, cluster.requestProleReplicas);
+
+				if (parser.IsPartitionMapCopied)
+				{
+					cluster.partitionMap = parser.PartitionMap;
+				}
+				partitionGeneration = parser.Generation;
+			}
+			catch (Exception e)
+			{
+				RefreshFailed(e);
+			}
+		}
+
+		private void RefreshFailed(Exception e)
+		{
+			failures++;
+
+			if (!tendConnection.IsClosed())
+			{
+				tendConnection.Close();
+			}
+
+			// Only log message if cluster is still active.
+			if (cluster.tendValid && Log.WarnEnabled())
+			{
+				Log.Warn("Node " + this + " refresh failed: " + Util.GetErrorMessage(e));
 			}
 		}
 
@@ -258,7 +449,7 @@ namespace Aerospike.Client
 			{
 				try
 				{
-					conn = new Connection(address, timeoutMillis, cluster.maxSocketIdleMillis);
+					conn = cluster.CreateConnection(host.tlsName, address, timeoutMillis);
 				}
 				catch (Exception)
 				{
@@ -297,7 +488,7 @@ namespace Aerospike.Client
 		public void PutConnection(Connection conn)
 		{
 			conn.UpdateLastUsed();
-			
+
 			if (!active || !connectionQueue.TryAdd(conn))
 			{
 				CloseConnection(conn);
@@ -347,43 +538,44 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
-		/// Return server node IP address aliases.
-		/// </summary>
-		public Host[] Aliases
-		{
-			get
-			{
-				return aliases;
-			}
-		}
-
-		/// <summary>
-		/// Add node alias to list.
-		/// </summary>
-		public void AddAlias(Host aliasToAdd)
-		{
-			// Aliases are only referenced in the cluster tend thread,
-			// so synchronization is not necessary.
-			Host[] tmpAliases = new Host[aliases.Length + 1];
-			int count = 0;
-
-			foreach (Host host in aliases)
-			{
-				tmpAliases[count++] = host;
-			}
-			tmpAliases[count] = aliasToAdd;
-			aliases = tmpAliases;
-		}
-
-		/// <summary>
 		/// Use new batch protocol if server supports it and useBatchDirect is not set.
 		/// </summary>
 		public bool UseNewBatch(BatchPolicy policy)
 		{
-			return !policy.useBatchDirect && hasBatchIndex;
+			return !policy.useBatchDirect && HasBatchIndex;
 		}
 
-		public bool HasBatchIndex {get{return hasBatchIndex;}}
+		/// <summary>
+		/// Does server support batch index protocol.
+		/// </summary>
+		public bool HasBatchIndex
+		{
+			get { return (features & HAS_BATCH_INDEX) != 0; }
+		}
+
+		/// <summary>
+		/// Does server support double particle types.
+		/// </summary>
+		public bool HasDouble
+		{
+			get { return (features & HAS_DOUBLE) != 0; }
+		}
+
+		/// <summary>
+		/// Does server support replicas-all info command.
+		/// </summary>
+		public bool HasReplicasAll
+		{
+			get { return (features & HAS_REPLICAS_ALL) != 0; }
+		}
+
+		/// <summary>
+		/// Does server support peers info command.
+		/// </summary>
+		public bool HasPeers
+		{
+			get { return (features & HAS_PEERS) != 0; }
+		}
 	
 		/// <summary>
 		/// Return node name and host address in string format.

@@ -15,13 +15,14 @@
  * the License.
  */
 using System;
-using System.IO;
-using System.Text;
-using System.Threading;
-using System.Net.Sockets;
 using System.Collections;
 using System.Collections.Generic;
+using System.IO;
+using System.Net.Sockets;
 using System.Runtime.InteropServices;
+using System.Security.Authentication;
+using System.Text;
+using System.Threading;
 
 namespace Aerospike.Client
 {
@@ -223,5 +224,32 @@ namespace Aerospike.Client
 			return true;
 		}
 #endif	
+
+		public static SslProtocols ParseSslProtocols(string protocolString)
+		{
+			string str = protocolString.Trim();
+			SslProtocols protocols;
+
+			if (protocolString.Length > 0)
+			{
+				protocols = SslProtocols.None;
+				string[] list = str.Split(',');
+
+				foreach (string item in list)
+				{
+					string s = item.Trim();
+
+					if (s.Length > 0)
+					{
+						protocols |= (SslProtocols)Enum.Parse(typeof(SslProtocols), s);
+					}
+				}
+			}
+			else
+			{
+				protocols = SslProtocols.Default;
+			}
+			return protocols;
+		}
 	}
 }

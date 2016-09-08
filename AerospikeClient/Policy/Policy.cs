@@ -17,8 +17,7 @@
 namespace Aerospike.Client
 {
 	/// <summary>
-	/// Container object for transaction policy attributes used in all database
-	/// operation calls.
+	/// Transaction policy attributes used in all database commands.
 	/// </summary>
 	public class Policy
 	{
@@ -30,8 +29,10 @@ namespace Aerospike.Client
 
 		/// <summary>
 		/// How replicas should be consulted in a read operation to provide the desired
-		/// consistency guarantee. Default to allowing one replica to be used in the
-		/// read operation.
+		/// consistency guarantee.
+		/// <para>
+		/// Default:  <see cref="Aerospike.Client.ConsistencyLevel.CONSISTENCY_ONE"/>
+		/// </para>
 		/// </summary>
 		public ConsistencyLevel consistencyLevel = ConsistencyLevel.CONSISTENCY_ONE;
 
@@ -40,7 +41,7 @@ namespace Aerospike.Client
 		/// Write commands are not affected by this setting, because all writes are directed 
 		/// to the node containing the key's master partition.
 		/// <para>
-		/// Default to sending read commands to the node containing the key's master partition.
+		/// Default:  <see cref="Aerospike.Client.Replica.MASTER"/>
 		/// </para>
 		/// </summary>
 		public Replica replica = Replica.MASTER;
@@ -52,30 +53,52 @@ namespace Aerospike.Client
 		/// timeout first, but the server has the capability to timeout the transaction
 		/// as well.
 		/// <para>
-		/// The timeout is also used as a socket timeout.  Retries will not occur
-		/// if the timeout limit has been reached.
-		/// Default to no timeout (0).
+		/// The timeout is also used as a socket timeout.
+		/// Default: 0 (no timeout).
 		/// </para>
 		/// </summary>
 		public int timeout;
 
 		/// <summary>
 		/// Maximum number of retries before aborting the current transaction.
-		/// A retry is attempted when there is a network error other than timeout.  
+		/// A retry may be attempted when there is a network error.  
 		/// If maxRetries is exceeded, the abort will occur even if the timeout 
-		/// has not yet been exceeded. The default number of retries is 1.
+		/// has not yet been exceeded.
+		/// <para>
+		/// Default: 1
+		/// </para>
 		/// </summary>
 		public int maxRetries = 1;
 
 		/// <summary>
-		/// Milliseconds to sleep between retries if a transaction fails and the 
-		/// timeout was not exceeded. The default sleep between retries is 500 ms.
+		/// Milliseconds to sleep between retries.  Do not sleep at all if zero.
+		/// Used by synchronous commands only.
+		/// <para>
+		/// Default: 500ms
+		/// </para>
 		/// </summary>
 		public int sleepBetweenRetries = 500;
 
 		/// <summary>
+		/// Should the client retry a command if the timeout is reached.
+		/// <para>
+		/// If false, throw timeout exception when the timeout has been reached.  Note that
+		/// retries can still occur if a command fails on a network error before the timeout
+		/// has been reached.
+		/// </para>
+		/// <para>
+		/// If true, retry command with same timeout when the timeout has been reached.
+		/// The maximum number of retries is defined by maxRetries.
+		/// </para>
+		/// Default: false
+		/// </summary>
+		public bool retryOnTimeout;
+
+		/// <summary>
 		/// Send user defined key in addition to hash digest on both reads and writes.
-		/// The default is to not send the user defined key.
+		/// <para>
+		/// Default: false (do not send the user defined key)
+		/// </para>
 		/// </summary>
 		public bool sendKey;
 
@@ -90,6 +113,7 @@ namespace Aerospike.Client
 			this.timeout = other.timeout;
 			this.maxRetries = other.maxRetries;
 			this.sleepBetweenRetries = other.sleepBetweenRetries;
+			this.retryOnTimeout = other.retryOnTimeout;
 			this.sendKey = other.sendKey;
 		}
 

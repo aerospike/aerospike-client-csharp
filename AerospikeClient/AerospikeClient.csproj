@@ -181,6 +181,9 @@
     <Compile Include="CDT\MapReturnType.cs" />
     <Compile Include="CDT\MapOrder.cs" />
     <Compile Include="CDT\ListOperation.cs" />
+    <Compile Include="Cluster\PeerParser.cs" />
+    <Compile Include="Cluster\Peers.cs" />
+    <Compile Include="Cluster\TlsConnection.cs" />
     <Compile Include="Cluster\PartitionParser.cs" />
     <Compile Include="Admin\AdminCommand.cs" />
     <Compile Include="Command\Batch.cs" />
@@ -285,6 +288,7 @@
     <Compile Include="Policy\RecordExistsAction.cs" />
     <Compile Include="Policy\Replica.cs" />
     <Compile Include="Policy\ScanPolicy.cs" />
+    <Compile Include="Policy\TlsPolicy.cs" />
     <Compile Include="Policy\WritePolicy.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Properties\Resources.Designer.cs">

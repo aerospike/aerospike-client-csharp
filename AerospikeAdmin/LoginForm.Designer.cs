@@ -37,6 +37,7 @@
 			this.userBox = new System.Windows.Forms.TextBox();
 			this.passwordBox = new System.Windows.Forms.TextBox();
 			this.loginButton = new System.Windows.Forms.Button();
+			this.tlsBox = new System.Windows.Forms.CheckBox();
 			this.SuspendLayout();
 			// 
 			// label1
@@ -82,7 +83,7 @@
             | System.Windows.Forms.AnchorStyles.Right)));
 			this.hostBox.Location = new System.Drawing.Point(84, 11);
 			this.hostBox.Name = "hostBox";
-			this.hostBox.Size = new System.Drawing.Size(201, 20);
+			this.hostBox.Size = new System.Drawing.Size(186, 20);
 			this.hostBox.TabIndex = 4;
 			// 
 			// portBox
@@ -91,7 +92,7 @@
             | System.Windows.Forms.AnchorStyles.Right)));
 			this.portBox.Location = new System.Drawing.Point(84, 37);
 			this.portBox.Name = "portBox";
-			this.portBox.Size = new System.Drawing.Size(201, 20);
+			this.portBox.Size = new System.Drawing.Size(186, 20);
 			this.portBox.TabIndex = 5;
 			// 
 			// userBox
@@ -100,7 +101,7 @@
             | System.Windows.Forms.AnchorStyles.Right)));
 			this.userBox.Location = new System.Drawing.Point(84, 63);
 			this.userBox.Name = "userBox";
-			this.userBox.Size = new System.Drawing.Size(201, 20);
+			this.userBox.Size = new System.Drawing.Size(186, 20);
 			this.userBox.TabIndex = 6;
 			// 
 			// passwordBox
@@ -109,15 +110,15 @@
             | System.Windows.Forms.AnchorStyles.Right)));
 			this.passwordBox.Location = new System.Drawing.Point(84, 89);
 			this.passwordBox.Name = "passwordBox";
-			this.passwordBox.Size = new System.Drawing.Size(201, 20);
+			this.passwordBox.Size = new System.Drawing.Size(186, 20);
 			this.passwordBox.TabIndex = 7;
 			this.passwordBox.UseSystemPasswordChar = true;
 			this.passwordBox.KeyDown += new System.Windows.Forms.KeyEventHandler(this.KeyDownClicked);
 			// 
 			// loginButton
 			// 
-			this.loginButton.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
-			this.loginButton.Location = new System.Drawing.Point(210, 118);
+			this.loginButton.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
+			this.loginButton.Location = new System.Drawing.Point(195, 120);
 			this.loginButton.Name = "loginButton";
 			this.loginButton.Size = new System.Drawing.Size(75, 23);
 			this.loginButton.TabIndex = 8;
@@ -125,11 +126,23 @@
 			this.loginButton.UseVisualStyleBackColor = true;
 			this.loginButton.Click += new System.EventHandler(this.LoginClicked);
 			// 
+			// tlsBox
+			// 
+			this.tlsBox.Location = new System.Drawing.Point(12, 117);
+			this.tlsBox.Name = "tlsBox";
+			this.tlsBox.RightToLeft = System.Windows.Forms.RightToLeft.Yes;
+			this.tlsBox.Size = new System.Drawing.Size(87, 24);
+			this.tlsBox.TabIndex = 9;
+			this.tlsBox.Text = "TLS";
+			this.tlsBox.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
+			this.tlsBox.UseVisualStyleBackColor = true;
+			// 
 			// LoginForm
 			// 
 			this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
 			this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-			this.ClientSize = new System.Drawing.Size(293, 150);
+			this.ClientSize = new System.Drawing.Size(278, 152);
+			this.Controls.Add(this.tlsBox);
 			this.Controls.Add(this.loginButton);
 			this.Controls.Add(this.passwordBox);
 			this.Controls.Add(this.userBox);
@@ -158,6 +171,7 @@
 		private System.Windows.Forms.TextBox userBox;
 		private System.Windows.Forms.TextBox passwordBox;
 		private System.Windows.Forms.Button loginButton;
+		private System.Windows.Forms.CheckBox tlsBox;
 	}
 }
 

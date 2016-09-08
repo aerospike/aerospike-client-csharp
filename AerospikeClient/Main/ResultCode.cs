@@ -173,6 +173,16 @@ namespace Aerospike.Client
 		/// Operation not allowed at this time.
 		/// </summary>
 		public const int FAIL_FORBIDDEN = 22;
+
+		/// <summary>
+		/// Map element not found in UPDATE_ONLY write mode.
+		/// </summary>
+		public const int ELEMENT_NOT_FOUND = 23;
+
+		/// <summary>
+		/// Map element exists in CREATE_ONLY write mode.
+		/// </summary>
+		public const int ELEMENT_EXISTS = 24;
 	
 		/// <summary>
 		/// There are no more records left for query.
@@ -464,6 +474,12 @@ namespace Aerospike.Client
 
 			case FAIL_FORBIDDEN:
 				return "Operation not allowed at this time";
+
+			case ELEMENT_NOT_FOUND:
+				return "Map key not found";
+
+			case ELEMENT_EXISTS:
+				return "Map key exists";
 
 			case QUERY_END:
 				return "Query end";

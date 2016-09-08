@@ -24,20 +24,18 @@ namespace Aerospike.Client
 	public sealed class NodeValidator
 	{
 		internal string name;
-		internal Host[] aliases;
-		internal IPEndPoint address;
+		internal List<Host> aliases;
+		internal Host primaryHost;
+		internal IPEndPoint primaryAddress;
 		internal Connection conn;
-		internal bool hasBatchIndex;
-		internal bool hasReplicasAll;
-		internal bool hasDouble;
-		internal bool hasGeo;
+		internal uint features;
 
 		/// <summary>
 		/// Add node(s) referenced by seed host aliases. In most cases, aliases reference
 		/// a single node.  If round robin DNS configuration is used, the seed host may have
 		/// several aliases that reference different nodes in the cluster.
 		/// </summary>
-		public void SeedNodes(Cluster cluster, Host host, List<Node> list)
+		public void SeedNodes(Cluster cluster, Host host, Dictionary<string, Node> nodesToAdd)
 		{
 			IPAddress[] addresses = SetAliases(cluster, host);
 			Exception exception = null;
@@ -47,15 +45,14 @@ namespace Aerospike.Client
 			{
 				try
 				{
-					ValidateAlias(cluster, address, host.port);
+					ValidateAlias(cluster, address, host);
 					found = true;
 
-					if (!FindNodeName(list, name))
+					if (! nodesToAdd.ContainsKey(name))
 					{
 						// New node found.
 						Node node = cluster.CreateNode(this);
-						cluster.AddAliases(node);
-						list.Add(node);
+						nodesToAdd[name] = node;
 					}
 					else
 					{
@@ -98,7 +95,7 @@ namespace Aerospike.Client
 			{
 				try
 				{
-					ValidateAlias(cluster, address, host.port);
+					ValidateAlias(cluster, address, host);
 					return;
 				}
 				catch (Exception e)
@@ -124,19 +121,21 @@ namespace Aerospike.Client
 		private IPAddress[] SetAliases(Cluster cluster, Host host)
 		{
 			IPAddress[] addresses = Connection.GetHostAddresses(host.name, cluster.connectionTimeout);
-			aliases = new Host[addresses.Length];
 
-			for (int i = 0; i < addresses.Length; i++)
+			// Add capacity for current address aliases plus IPV6 address and hostname.
+			aliases = new List<Host>(addresses.Length + 2);
+
+			foreach (IPAddress address in addresses)
 			{
-				aliases[i] = new Host(addresses[i].ToString(), host.port);
+				aliases.Add(new Host(address.ToString(), host.tlsName, host.port));
 			}
 			return addresses;
 		}
 
-		private void ValidateAlias(Cluster cluster, IPAddress ipAddress, int port)
+		private void ValidateAlias(Cluster cluster, IPAddress ipAddress, Host alias)
 		{
-			IPEndPoint address = new IPEndPoint(ipAddress, port);
-			Connection conn = new Connection(address, cluster.connectionTimeout);
+			IPEndPoint address = new IPEndPoint(ipAddress, alias.port);
+			Connection conn = cluster.CreateConnection(alias.tlsName, address, cluster.connectionTimeout);
 
 			try
 			{
@@ -145,21 +144,40 @@ namespace Aerospike.Client
 					AdminCommand command = new AdminCommand(ThreadLocalData.GetBuffer(), 0);
 					command.Authenticate(conn, cluster.user, cluster.password);
 				}
-				Dictionary<string, string> map = Info.Request(conn, "node", "features");
-				string nodeName;
+				Dictionary<string, string> map;
+				bool hasClusterId = cluster.HasClusterId;
 
-				if (map.TryGetValue("node", out nodeName))
+				if (hasClusterId)
 				{
-					this.name = nodeName;
-					this.address = address;
-					this.conn = conn;
-					SetFeatures(map);
-					return;
+					map = Info.Request(conn, "node", "features", "cluster-id");
 				}
 				else
 				{
+					map = Info.Request(conn, "node", "features");
+				}
+				
+				string nodeName;
+
+				if (! map.TryGetValue("node", out nodeName))
+				{
 					throw new AerospikeException.InvalidNode();
 				}
+
+				if (hasClusterId)
+				{
+					string id;
+
+					if (! map.TryGetValue("cluster-id", out id) || ! cluster.clusterId.Equals(id))
+					{
+						throw new AerospikeException.InvalidNode("Node " + nodeName + ' ' + alias + ' ' + " expected cluster ID '" + cluster.clusterId + "' received '" + id + "'");
+					}
+				}
+
+				this.name = nodeName;
+				this.primaryHost = alias;
+				this.primaryAddress = address;
+				this.conn = conn;
+				SetFeatures(map);
 			}
 			catch (Exception)
 			{
@@ -172,34 +190,30 @@ namespace Aerospike.Client
 		{
 			try
 			{
-				string features = map["features"];
-				string[] list = features.Split(';');
+				string featuresString = map["features"];
+				string[] list = featuresString.Split(';');
 
 				foreach (string feature in list)
 				{
 					if (feature.Equals("geo"))
 					{
-						this.hasGeo = true;
+						this.features |= Node.HAS_GEO;
 					}
-
-					if (feature.Equals("float"))
+					else if (feature.Equals("float"))
 					{
-						this.hasDouble = true;
+						this.features |= Node.HAS_DOUBLE;
 					}
-
-					if (feature.Equals("batch-index"))
+					else if (feature.Equals("batch-index"))
 					{
-						this.hasBatchIndex = true;
+						this.features |= Node.HAS_BATCH_INDEX;
 					}
-
-					if (feature.Equals("replicas-all"))
+					else if (feature.Equals("replicas-all"))
 					{
-						this.hasReplicasAll = true;
+						this.features |= Node.HAS_REPLICAS_ALL;
 					}
-
-					if (this.hasDouble && this.hasBatchIndex && this.hasReplicasAll)
+					else if (feature.Equals("peers"))
 					{
-						break;
+						this.features |= Node.HAS_PEERS;
 					}
 				}
 			}
@@ -207,18 +221,6 @@ namespace Aerospike.Client
 			{
 				// Unexpected exception. Use defaults.
 			}
-		}
-
-		private static bool FindNodeName(List<Node> list, string name)
-		{
-			foreach (Node node in list)
-			{
-				if (node.Name.Equals(name))
-				{
-					return true;
-				}
-			}
-			return false;
 		}
 	}
 }

@@ -35,9 +35,9 @@ namespace Aerospike.Client
 			SetOperate(writePolicy, key, operations);
 		}
 
-		protected internal override AsyncNode GetNode()
+		protected internal override Node GetNode()
 		{
-			return (AsyncNode)cluster.GetMasterNode(partition);
+			return cluster.GetMasterNode(partition);
 		}
 
 		protected internal override void AddBin(Dictionary<string, object> bins, string name, object value)

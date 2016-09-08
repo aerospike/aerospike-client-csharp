@@ -35,9 +35,10 @@ namespace Aerospike.Demo
         internal int latencyColumns;
         internal int latencyShift;
 		internal bool sync;
-        internal bool latency;
+		internal bool requestProleReplicas;
+		internal bool latency;
 		internal bool debug;
-        internal Value fixedValue;
+		internal Value fixedValue;
 
         public void SetFixedValue()
         {

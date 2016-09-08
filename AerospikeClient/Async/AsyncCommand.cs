@@ -91,7 +91,7 @@ namespace Aerospike.Client
 
 			try
 			{
-				node = GetNode();
+				node = (AsyncNode)GetNode();
 				eventArgs.RemoteEndPoint = node.address;
 
 				conn = node.GetAsyncConnection();
@@ -158,24 +158,19 @@ namespace Aerospike.Client
 				return FailOnNetworkInit();
 			}
 
-			// Disable sleep between retries.  Sleeping in asynchronous mode makes no sense.
-			//if (watch != null && (watch.ElapsedMilliseconds + policy.sleepBetweenRetries) > timeout)
-			if (watch != null && watch.ElapsedMilliseconds > timeout)
+			if (watch != null && ! policy.retryOnTimeout && watch.ElapsedMilliseconds > timeout)
 			{
-				// Might as well stop here because the transaction will
-				// timeout after sleep completed.
 				return FailOnNetworkInit();
 			}
 
 			// Prepare for retry.
 			ResetConnection();
 
-			// Disable sleep between retries.  Sleeping in asynchronous mode makes no sense.
-			//if (policy.sleepBetweenRetries > 0)
-			//{
-			//	Util.Sleep(policy.sleepBetweenRetries);
-			//}
-
+			if (policy.retryOnTimeout)
+			{
+				watch.Restart();
+			}
+	
 			// Retry command recursively.
 			ExecuteCommand();
 			return true;
@@ -213,14 +208,20 @@ namespace Aerospike.Client
 			{
 				command.RetryAfterInit(ac);
 			}
-			catch (AerospikeException e)
+			catch (AerospikeException ae)
 			{
 				// Fail without retry on non-network errors.
-				command.FailOnApplicationError(e);
+				command.FailOnApplicationError(ae);
 			}
 			catch (SocketException se)
 			{
 				command.RetryAfterInit(command.GetAerospikeException(se.SocketErrorCode));
+			}
+			catch (ObjectDisposedException ode)
+			{
+				// This exception occurs because socket is being used after timeout thread closes socket.
+				// Retry when this happens.
+				command.RetryAfterInit(new AerospikeException(ode));
 			}
 			catch (Exception e)
 			{
@@ -431,9 +432,7 @@ namespace Aerospike.Client
 				return;
 			}
 
-			// Disable sleep between retries.  Sleeping in asynchronous mode makes no sense.
-			//if (watch != null && (watch.ElapsedMilliseconds + policy.sleepBetweenRetries) > timeout)
-			if (watch != null && watch.ElapsedMilliseconds > timeout)
+			if (watch != null && ! policy.retryOnTimeout && watch.ElapsedMilliseconds > timeout)
 			{
 				// Might as well stop here because the transaction will
 				// timeout after sleep completed.
@@ -444,15 +443,13 @@ namespace Aerospike.Client
 			// Prepare for retry.
 			ResetConnection();
 
-			// Disable sleep between retries.  Sleeping in asynchronous mode makes no sense.
-			//if (policy.sleepBetweenRetries > 0)
-			//{
-			//	Util.Sleep(policy.sleepBetweenRetries);
-			//}
-
 			try
 			{
 				// Retry command recursively.
+				if (policy.retryOnTimeout)
+				{
+					watch.Restart();
+				}
 				ExecuteCommand();
 			}
 			catch (Exception)
@@ -500,8 +497,10 @@ namespace Aerospike.Client
 			if (watch.ElapsedMilliseconds > timeout)
 			{
 				// Command has timed out in timeout queue thread.
-				// Ensure that command succeeds or fails, but not both.
-				if (Interlocked.CompareExchange(ref complete, FAIL_TIMEOUT, 0) == 0)
+				Policy policy = GetPolicy();
+
+				// Only try setting final FAIL_TIMEOUT if retryOnTimeout is false. 
+				if (policy.retryOnTimeout || Interlocked.CompareExchange(ref complete, FAIL_TIMEOUT, 0) == 0)
 				{
 					// Timeout thread may contend with retry thread.
 					// Lock before closing.
@@ -702,7 +701,6 @@ namespace Aerospike.Client
 			return new AerospikeException.Connection("Socket error: " + se);
 		}
 
-		protected internal abstract AsyncNode GetNode();
 		protected internal abstract void ParseCommand();
 		protected internal abstract void OnSuccess();
 		protected internal abstract void OnFailure(AerospikeException ae);

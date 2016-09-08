@@ -264,7 +264,16 @@ namespace Aerospike.Client
 			/// <summary>
 			/// Create invalid node exception.
 			/// </summary>
-			public InvalidNode() : base(ResultCode.INVALID_NODE_ERROR)
+			public InvalidNode()
+				: base(ResultCode.INVALID_NODE_ERROR)
+			{
+			}
+
+			/// <summary>
+			/// Create invalid node exception.
+			/// </summary>
+			public InvalidNode(String message)
+				: base(ResultCode.INVALID_NODE_ERROR, message)
 			{
 			}
 		}

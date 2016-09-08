@@ -1,4 +1,4 @@
-﻿/* 
+/* 
  * Copyright 2012-2016 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
@@ -15,25 +15,32 @@
  * the License.
  */
 using System;
-using System.Windows.Forms;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
+using System.Collections.Generic;
 
-namespace Aerospike.Test
+namespace Aerospike.Client
 {
-	[TestClass]
-	public class Suite
+	public sealed class Peers
 	{
-		[AssemblyInitialize()]
-		public static void AssemblyInit(TestContext context)
-		{
-			Args args = Args.Instance;
-			args.Connect();
-		}
+		public readonly List<Peer> peers;
+		public readonly HashSet<Host> hosts;
+		public readonly Dictionary<string, Node> nodes;
+		public int refreshCount;
+		public bool usePeers;
+		public bool genChanged;
 
-		[AssemblyCleanup()]
-		public static void AssemblyCleanup()
+		public Peers(int peerCapacity)
 		{
-			Args.Instance.Close();
+			peers = new List<Peer>(peerCapacity);
+			hosts = new HashSet<Host>();
+			nodes = new Dictionary<string, Node>();
+			usePeers = true;
 		}
+	}
+
+	public sealed class Peer
+	{
+		internal String nodeName;
+		internal String tlsName;
+		internal List<Host> hosts;
 	}
 }

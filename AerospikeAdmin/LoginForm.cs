@@ -18,7 +18,7 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Drawing;
-using System.Linq;
+using System.Security.Authentication;
 using System.Text;
 using System.Windows.Forms;
 using Aerospike.Client;
@@ -27,6 +27,9 @@ namespace Aerospike.Admin
 {
 	public partial class LoginForm : Form
 	{
+		private string clusterId;
+		private SslProtocols tlsProtocols;
+
 		public LoginForm()
 		{
 			InitializeComponent();
@@ -64,6 +67,9 @@ namespace Aerospike.Admin
 			hostBox.Text = Properties.Settings.Default.Host;
 			portBox.Text = Properties.Settings.Default.Port.ToString();
 			userBox.Text = Properties.Settings.Default.User;
+			tlsBox.Checked = Properties.Settings.Default.UseTls;
+			clusterId = Properties.Settings.Default.ClusterId.Trim();
+			tlsProtocols = Util.ParseSslProtocols(Properties.Settings.Default.TlsProtocols);
 		}
 
 		private void WriteDefaults()
@@ -71,7 +77,7 @@ namespace Aerospike.Admin
 			Properties.Settings.Default.Host = hostBox.Text.Trim();
 			Properties.Settings.Default.Port = int.Parse(portBox.Text);
 			Properties.Settings.Default.User = userBox.Text.Trim();
-
+			Properties.Settings.Default.UseTls = tlsBox.Checked;
 			Properties.Settings.Default.Save();
 		}
 
@@ -89,18 +95,25 @@ namespace Aerospike.Admin
 
 		private void Login()
 		{
-			string server = hostBox.Text.Trim();
 			int port = int.Parse(portBox.Text.Trim());
+			Host[] hosts = Host.ParseHosts(hostBox.Text.Trim(), port);
 			string userName = userBox.Text.Trim();
 			string password = passwordBox.Text.Trim();
 
 			ClientPolicy policy = new ClientPolicy();
 			policy.user = userName;
 			policy.password = password;
+			policy.clusterId = clusterId;
 			policy.failIfNotConnected = true;
 			policy.timeout = 600000;
 
-			AerospikeClient client = new AerospikeClient(policy, server, port);
+			if (tlsBox.Checked)
+			{
+				policy.tlsPolicy = new TlsPolicy();
+				policy.tlsPolicy.protocols = tlsProtocols;
+			}
+
+			AerospikeClient client = new AerospikeClient(policy, hosts);
 
 			try
 			{

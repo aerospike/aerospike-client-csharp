@@ -52,7 +52,7 @@ namespace Aerospike.Test
 					MapOperation.Put(addMode, binName, Value.Get(15), Value.Get(1000)),
 					// Ordered type should be ignored since map has already been created in first put().
 					MapOperation.Put(orderedUpdateMode, binName, Value.Get(10), Value.Get(1)),
-					MapOperation.Put(updateMode, binName, Value.Get(77), Value.Get(5))
+					MapOperation.Put(updateMode, binName, Value.Get(15), Value.Get(5))
 					);
 		
 			AssertRecordFound(key, record);
@@ -107,7 +107,6 @@ namespace Aerospike.Test
 
 			Dictionary<Value, Value> updateMap = new Dictionary<Value, Value>();
 			updateMap[Value.Get(13)] = Value.Get("myval2");
-			updateMap[Value.Get(14)] = Value.Get("str14");
 
 			Dictionary<Value, Value> replaceMap = new Dictionary<Value, Value>();
 			replaceMap[Value.Get(12)] = Value.Get(23);

@@ -33,9 +33,10 @@ namespace Aerospike.Demo
 			ClientPolicy policy = new ClientPolicy();
 			policy.user = args.user;
 			policy.password = args.password;
-			policy.failIfNotConnected = true;
+			policy.clusterId = args.clusterId;
+			policy.tlsPolicy = args.tlsPolicy;
 
-			AerospikeClient client = new AerospikeClient(policy, args.host, args.port);
+			AerospikeClient client = new AerospikeClient(policy, args.hosts);
 
 			try
 			{

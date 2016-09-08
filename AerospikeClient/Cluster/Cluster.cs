@@ -15,10 +15,11 @@
  * the License.
  */
 using System;
+using System.Collections.Generic;
+using System.Net;
+using System.Security.Authentication;
 using System.Text;
 using System.Threading;
-using System.Collections.Generic;
-using System.Collections.Concurrent;
 
 namespace Aerospike.Client
 {
@@ -26,23 +27,34 @@ namespace Aerospike.Client
 	{
 		private const int MaxSocketIdleSecondLimit = 60 * 60 * 24; // Limit maxSocketIdle to 24 hours
 	
+		// Expected cluster ID.
+		protected internal readonly String clusterId;
+
 		// Initial host nodes specified by user.
 		private volatile Host[] seeds;
 
-		// All aliases for all nodes in cluster.
+		// All host aliases for all nodes in cluster.
+		// Only accessed within cluster tend thread.
 		protected internal readonly Dictionary<Host, Node> aliases;
 
+		// Map of active nodes in cluster.
+		// Only accessed within cluster tend thread.
+		protected internal readonly Dictionary<string, Node> nodesMap;
+	
 		// Active nodes in cluster.
 		private volatile Node[] nodes;
 
 		// Hints for best node for a partition
-		private volatile Dictionary<string, Node[][]> partitionMap;
+		protected internal volatile Dictionary<string, Node[][]> partitionMap;
 
 		// IP translations.
 		protected internal readonly Dictionary<string, string> ipMap;
 
-		// User name in UTF-8 encoded bytes.
-		protected internal readonly byte[] user;
+        // TLS connection policy.
+		protected internal readonly TlsPolicy tlsPolicy;
+            
+        // User name in UTF-8 encoded bytes.
+        protected internal readonly byte[] user;
 
 		// Password in hashed format in bytes.
 		protected internal byte[] password;
@@ -67,16 +79,34 @@ namespace Aerospike.Client
 
 		// Tend thread variables.
 		private Thread tendThread;
-		private volatile bool tendValid;
+		protected internal volatile bool tendValid;
 
 		// Request prole replicas in addition to master replicas?
-		private bool requestProleReplicas;
+		protected internal bool requestProleReplicas;
 
 		// Should use "services-alternate" instead of "services" in info request?
 		protected internal readonly bool useServicesAlternate;
-		
+
 		public Cluster(ClientPolicy policy, Host[] hosts)
 		{
+			this.clusterId = policy.clusterId;
+
+			// Default TLS names when TLS enabled.
+			if (policy.tlsPolicy != null && !policy.tlsPolicy.encryptOnly)
+			{
+				bool useClusterId = HasClusterId;
+
+				for (int i = 0; i < hosts.Length; i++)
+				{
+					Host host = hosts[i];
+
+					if (host.tlsName == null)
+					{
+						string tlsName = useClusterId ? clusterId : host.name;
+						hosts[i] = new Host(host.name, tlsName, host.port);
+					}
+				}
+			}
 			this.seeds = hosts;
 
 			if (policy.user != null && policy.user.Length > 0)
@@ -96,7 +126,8 @@ namespace Aerospike.Client
 				}
 				this.password = ByteUtil.StringToUtf8(pass);
 			}
-			
+
+			tlsPolicy = policy.tlsPolicy;
 			connectionQueueSize = policy.maxConnsPerNode;
 			connectionTimeout = policy.timeout;
 			maxSocketIdleMillis = 1000 * ((policy.maxSocketIdle <= MaxSocketIdleSecondLimit) ? policy.maxSocketIdle : MaxSocketIdleSecondLimit);
@@ -106,6 +137,7 @@ namespace Aerospike.Client
 			useServicesAlternate = policy.useServicesAlternate;
 
 			aliases = new Dictionary<Host, Node>();
+			nodesMap = new Dictionary<string, Node>();
 			nodes = new Node[0];
 			partitionMap = new Dictionary<string, Node[][]>();
 		}
@@ -134,7 +166,7 @@ namespace Aerospike.Client
 				}
 
 				// Disable double type support if some nodes don't support it.
-				if (Value.UseDoubleType && !node.hasDouble)
+				if (Value.UseDoubleType && !node.HasDouble)
 				{
 					if (Log.WarnEnabled())
 					{
@@ -144,7 +176,7 @@ namespace Aerospike.Client
 				}
 	
 				// Disable prole requests if some nodes don't support it.
-				if (requestProleReplicas && !node.hasReplicasAll)
+				if (requestProleReplicas && !node.HasReplicasAll)
 				{
 					if (Log.WarnEnabled())
 					{
@@ -270,64 +302,65 @@ namespace Aerospike.Client
 				SeedNodes(failIfNotConnected);
 			}
 
+			// Initialize tend iteration node statistics.
+			Peers peers = new Peers(nodes.Length + 16);
+
 			// Clear node reference counts.
 			foreach (Node node in nodes)
 			{
 				node.referenceCount = 0;
+				node.partitionChanged = false;
+
+				if (!node.HasPeers)
+				{
+					peers.usePeers = false;
+				}
 			}
 
 			// Refresh all known nodes.
-			List<Host> friendList = new List<Host>();
-			int refreshCount = 0;
-
 			foreach (Node node in nodes)
 			{
-				try
-				{
-					if (node.Active)
-					{
-						node.Refresh(friendList);
-						node.failures = 0;
-						refreshCount++;
-					}
-				}
-				catch (Exception e)
-				{
-					node.failures++;
-
-					if (tendValid && Log.InfoEnabled())
-					{
-						Log.Info("Node " + node + " refresh failed: " + Util.GetErrorMessage(e));
-					}
-				}
+				node.Refresh(peers);
 			}
 
-			// Handle nodes changes determined from refreshes.
-			List<Node> addList = FindNodesToAdd(friendList);
-			List<Node> removeList = FindNodesToRemove(refreshCount);
-
-			// Remove nodes in a batch.
-			if (removeList.Count > 0)
+			// Refresh peers when necessary.
+			if (peers.genChanged)
 			{
-				RemoveNodes(removeList);
+				// Refresh peers for all nodes that responded the first time even if only one node's peers changed.
+				peers.refreshCount = 0;
+
+				foreach (Node node in nodes)
+				{
+					node.RefreshPeers(peers);
+				}
 			}
 
+			// Refresh partition map when necessary.
+			foreach (Node node in nodes)
+			{
+				if (node.partitionChanged)
+				{
+					node.RefreshPartitions(peers);
+				}
+			}
+
+			if (peers.genChanged || !peers.usePeers)
+			{
+				// Handle nodes changes determined from refreshes.
+				List<Node> removeList = FindNodesToRemove(peers.refreshCount);
+
+				// Remove nodes in a batch.
+				if (removeList.Count > 0)
+				{
+					RemoveNodes(removeList);
+				}
+			}
+	
 			// Add nodes in a batch.
-			if (addList.Count > 0)
+			if (peers.nodes.Count > 0)
 			{
-				AddNodes(addList);
+				AddNodes(peers.nodes);
 			}
-		}
-
-		protected internal int UpdatePartitions(Connection conn, Node node)
-		{
-			PartitionParser parser = new PartitionParser(conn, node, partitionMap, Node.PARTITIONS, requestProleReplicas);
-
-			if (parser.IsPartitionMapCopied)
-			{
-				partitionMap = parser.PartitionMap;
-			}
-			return parser.Generation;
 		}
 
 		private bool SeedNodes(bool failIfNotConnected)
@@ -337,30 +370,19 @@ namespace Aerospike.Client
 			Exception[] exceptions = null;
 
 			// Add all nodes at once to avoid copying entire array multiple times.
-			List<Node> list = new List<Node>();
+			Dictionary<String, Node> nodesToAdd = new Dictionary<String, Node>(seedArray.Length + 16);
 
 			for (int i = 0; i < seedArray.Length; i++)
 			{
 				Host seed = seedArray[i];
 
-				// Check if seed already exists in cluster.
-				if (aliases.ContainsKey(seed))
-				{
-					continue;
-				}
-
 				try
 				{
 					NodeValidator nv = new NodeValidator();
-					nv.SeedNodes(this, seed, list);
+					nv.SeedNodes(this, seed, nodesToAdd);
 				}
 				catch (Exception e)
 				{
-					if (Log.WarnEnabled())
-					{
-						Log.Warn("Seed " + seed + " failed: " + Util.GetErrorMessage(e));
-					}
-
 					// Store exception and try next host
 					if (failIfNotConnected)
 					{
@@ -370,12 +392,20 @@ namespace Aerospike.Client
 						}
 						exceptions[i] = e;
 					}
+					else
+					{
+						if (Log.WarnEnabled())
+						{
+							Log.Warn("Seed " + seed + " failed: " + Util.GetErrorMessage(e));
+						}
+
+					}
 				}
 			}
 
-			if (list.Count > 0)
+			if (nodesToAdd.Count > 0)
 			{
-				AddNodesCopy(list);
+				AddNodes(nodesToAdd);
 				return true;
 			}
 			else if (failIfNotConnected)
@@ -398,68 +428,6 @@ namespace Aerospike.Client
 				throw new AerospikeException.Connection(sb.ToString());
 			}
 			return false;
-		}
-
-		private List<Node> FindNodesToAdd(List<Host> hosts)
-		{
-			List<Node> list = new List<Node>(hosts.Count);
-
-			foreach (Host host in hosts)
-			{
-				try
-				{
-					NodeValidator nv = new NodeValidator();
-					nv.ValidateNode(this, host);
-
-					Node node = FindNode(nv.name, list);
-
-					if (node != null)
-					{
-						// Duplicate node name found.  This usually occurs when the server 
-						// services list contains both internal and external IP addresses 
-						// for the same node.  Add new host to list of alias filters
-						// and do not add new node.
-						nv.conn.Close();
-						node.referenceCount++;
-						node.AddAlias(host);
-						aliases[host] = node;
-						continue;
-					}
-					node = CreateNode(nv);
-					list.Add(node);
-				}
-				catch (Exception e)
-				{
-					if (Log.WarnEnabled())
-					{
-						Log.Warn("Add node " + host + " failed: " + Util.GetErrorMessage(e));
-					}
-				}
-			}
-			return list;
-		}
-
-		private Node FindNode(string nodeName, List<Node> localList)
-		{
-			foreach (Node node in localList)
-			{
-				if (node.Name.Equals(nodeName))
-				{
-					return node;
-				}
-			}
-
-			// Must copy array reference for copy on write semantics to work.
-			Node[] nodeArray = nodes;
-
-			foreach (Node node in nodeArray)
-			{
-				if (node.Name.Equals(nodeName))
-				{
-					return node;
-				}
-			}
-			return null;
 		}
 
 		protected internal virtual Node CreateNode(NodeValidator nv)
@@ -548,31 +516,12 @@ namespace Aerospike.Client
 			return false;
 		}
 
-		private void AddNodes(List<Node> nodesToAdd)
-		{
-			// Add all nodes at once to avoid copying entire array multiple times.		
-			foreach (Node node in nodesToAdd)
-			{
-				AddAliases(node);
-			}
-			AddNodesCopy(nodesToAdd);
-		}
-
-		protected internal void AddAliases(Node node)
-		{
-			// Add node's aliases to global alias set.
-			// Aliases are only used in tend thread, so synchronization is not necessary.
-			foreach (Host alias in node.Aliases)
-			{
-				aliases[alias] = node;
-			}
-		}
-
 		/// <summary>
 		/// Add nodes using copy on write semantics.
 		/// </summary>
-		private void AddNodesCopy(List<Node> nodesToAdd)
+		private void AddNodes(Dictionary<string,Node> nodesToAdd)
 		{
+			// Add all nodes at once to avoid copying entire array multiple times.		
 			// Create temporary nodes array.
 			Node[] nodeArray = new Node[nodes.Length + nodesToAdd.Count];
 			int count = 0;
@@ -584,13 +533,22 @@ namespace Aerospike.Client
 			}
 
 			// Add new nodes
-			foreach (Node node in nodesToAdd)
+			foreach (Node node in nodesToAdd.Values)
 			{
 				if (Log.InfoEnabled())
 				{
 					Log.Info("Add node " + node);
 				}
+
 				nodeArray[count++] = node;
+				nodesMap[node.Name] = node;
+
+				// Add node's aliases to global alias set.
+				// Aliases are only used in tend thread, so synchronization is not necessary.
+				foreach (Host alias in node.aliases)
+				{
+					aliases[alias] = node;
+				}
 			}
 
 			// Replace nodes with copy.
@@ -606,9 +564,12 @@ namespace Aerospike.Client
 			// Cleanup node resources.
 			foreach (Node node in nodesToRemove)
 			{
+				// Remove node from map.
+				nodesMap.Remove(node.Name);
+
 				// Remove node's aliases from cluster alias set.
 				// Aliases are only used in tend thread, so synchronization is not necessary.
-				foreach (Host alias in node.Aliases)
+				foreach (Host alias in node.aliases)
 				{
 					// Log.debug("Remove alias " + alias);
 					aliases.Remove(alias);
@@ -709,22 +670,29 @@ namespace Aerospike.Client
 			}
 		}
 
+		public bool HasClusterId
+		{
+			get { return clusterId != null && clusterId.Length > 0; }
+		}
+
 		public Node GetReadNode(Partition partition, Replica replica)
 		{
+			// This method should only be called by batch.
 			switch (replica)
 			{
+				default:
+				case Replica.SEQUENCE:  // Use Command.GetReadNode() to really use sequence mode.
 				case Replica.MASTER:
 					return GetMasterNode(partition);
 
 				case Replica.MASTER_PROLES:
 					return GetMasterProlesNode(partition);
 
-				default:
 				case Replica.RANDOM:
 					return GetRandomNode();
 			}
 		}
-		
+
 		public Node GetMasterNode(Partition partition)
 		{
 			// Must copy hashmap reference for copy on write semantics to work.
@@ -775,7 +743,7 @@ namespace Aerospike.Client
 			*/
 			return GetRandomNode();
 		}
-		
+
 		public Node GetRandomNode()
 		{
 			// Must copy array reference for copy on write semantics to work.
@@ -855,6 +823,13 @@ namespace Aerospike.Client
 					}
 				}
 			}
+		}
+
+		protected internal Connection CreateConnection(string tlsName, IPEndPoint address, int timeout)
+		{
+			return tlsPolicy != null ? 
+				new TlsConnection(tlsPolicy, tlsName, address, timeout, maxSocketIdleMillis) : 
+				new Connection(address, timeout, maxSocketIdleMillis);
 		}
 		
 		protected internal void ChangePassword(byte[] user, string password)

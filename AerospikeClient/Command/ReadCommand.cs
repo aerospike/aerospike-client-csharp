@@ -49,7 +49,7 @@ namespace Aerospike.Client
 
 		protected internal override Node GetNode()
 		{
-			return cluster.GetReadNode(partition, policy.replica);
+			return GetReadNode(cluster, partition, policy.replica);
 		}
 
 		protected internal override void ParseResult(Connection conn)

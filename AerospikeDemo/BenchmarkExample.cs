@@ -44,8 +44,9 @@ namespace Aerospike.Demo
                 ClientPolicy policy = new ClientPolicy();
 				policy.user = args.user;
 				policy.password = args.password;
-				policy.failIfNotConnected = true;
-				client = new AerospikeClient(policy, args.host, args.port);
+				policy.tlsPolicy = args.tlsPolicy;
+				policy.requestProleReplicas = args.requestProleReplicas;
+				client = new AerospikeClient(policy, args.hosts);
 
                 try
                 {
@@ -69,10 +70,11 @@ namespace Aerospike.Demo
                 AsyncClientPolicy policy = new AsyncClientPolicy();
 				policy.user = args.user;
 				policy.password = args.password;
-				policy.failIfNotConnected = true;
+				policy.tlsPolicy = args.tlsPolicy;
+				policy.requestProleReplicas = args.requestProleReplicas;
 				policy.asyncMaxCommands = args.commandMax;
 
-                AsyncClient client = new AsyncClient(policy, args.host, args.port);
+                AsyncClient client = new AsyncClient(policy, args.hosts);
                 this.client = client;
 
                 try
