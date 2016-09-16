@@ -27,8 +27,8 @@ namespace Aerospike.Client
 	{
 		private const int MaxSocketIdleSecondLimit = 60 * 60 * 24; // Limit maxSocketIdle to 24 hours
 	
-		// Expected cluster ID.
-		protected internal readonly String clusterId;
+		// Expected cluster name.
+		protected internal readonly String clusterName;
 
 		// Initial host nodes specified by user.
 		private volatile Host[] seeds;
@@ -89,12 +89,12 @@ namespace Aerospike.Client
 
 		public Cluster(ClientPolicy policy, Host[] hosts)
 		{
-			this.clusterId = policy.clusterId;
+			this.clusterName = policy.clusterName;
 
 			// Default TLS names when TLS enabled.
 			if (policy.tlsPolicy != null && !policy.tlsPolicy.encryptOnly)
 			{
-				bool useClusterId = HasClusterId;
+				bool useClusterName = HasClusterName;
 
 				for (int i = 0; i < hosts.Length; i++)
 				{
@@ -102,7 +102,7 @@ namespace Aerospike.Client
 
 					if (host.tlsName == null)
 					{
-						string tlsName = useClusterId ? clusterId : host.name;
+						string tlsName = useClusterName ? clusterName : host.name;
 						hosts[i] = new Host(host.name, tlsName, host.port);
 					}
 				}
@@ -670,9 +670,9 @@ namespace Aerospike.Client
 			}
 		}
 
-		public bool HasClusterId
+		public bool HasClusterName
 		{
-			get { return clusterId != null && clusterId.Length > 0; }
+			get { return clusterName != null && clusterName.Length > 0; }
 		}
 
 		public Node GetReadNode(Partition partition, Replica replica)

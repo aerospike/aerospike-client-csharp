@@ -145,11 +145,11 @@ namespace Aerospike.Client
 					command.Authenticate(conn, cluster.user, cluster.password);
 				}
 				Dictionary<string, string> map;
-				bool hasClusterId = cluster.HasClusterId;
+				bool hasClusterName = cluster.HasClusterName;
 
-				if (hasClusterId)
+				if (hasClusterName)
 				{
-					map = Info.Request(conn, "node", "features", "cluster-id");
+					map = Info.Request(conn, "node", "features", "cluster-name");
 				}
 				else
 				{
@@ -163,13 +163,13 @@ namespace Aerospike.Client
 					throw new AerospikeException.InvalidNode();
 				}
 
-				if (hasClusterId)
+				if (hasClusterName)
 				{
 					string id;
 
-					if (! map.TryGetValue("cluster-id", out id) || ! cluster.clusterId.Equals(id))
+					if (! map.TryGetValue("cluster-name", out id) || ! cluster.clusterName.Equals(id))
 					{
-						throw new AerospikeException.InvalidNode("Node " + nodeName + ' ' + alias + ' ' + " expected cluster ID '" + cluster.clusterId + "' received '" + id + "'");
+						throw new AerospikeException.InvalidNode("Node " + nodeName + ' ' + alias + ' ' + " expected cluster name '" + cluster.clusterName + "' received '" + id + "'");
 					}
 				}
 

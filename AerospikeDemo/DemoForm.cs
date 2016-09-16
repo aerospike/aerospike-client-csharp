@@ -35,7 +35,7 @@ namespace Aerospike.Demo
         private Thread thread;
         private volatile ExampleTreeNode currentExample;
         private Console console;
-		private string clusterId;
+		private string clusterName;
 		private SslProtocols tlsProtocols;
 
         public DemoForm()
@@ -164,7 +164,7 @@ namespace Aerospike.Demo
             latencyShiftBox.Text = Properties.Settings.Default.LatencyShift.ToString();
             debugBox.Checked = Properties.Settings.Default.Debug;
 			tlsBox.Checked = Properties.Settings.Default.UseTls;
-			clusterId = Properties.Settings.Default.ClusterId.Trim();
+			clusterName = Properties.Settings.Default.ClusterName.Trim();
 			tlsProtocols = Util.ParseSslProtocols(Properties.Settings.Default.TlsProtocols);
 			retryOnTimeoutBox.Checked = Properties.Settings.Default.RetryOnTimeout;
 			replicaBox.SelectedIndex = Properties.Settings.Default.ReadReplica;
@@ -325,7 +325,7 @@ namespace Aerospike.Demo
 			args.hosts = Host.ParseHosts(hostBox.Text.Trim(), args.port);
             args.user = userBox.Text.Trim();
             args.password = passwordBox.Text;
-			args.clusterId = clusterId;
+			args.clusterName = clusterName;
             args.ns = nsBox.Text.Trim();
             args.set = setBox.Text.Trim();
 			args.tlsPolicy = null;

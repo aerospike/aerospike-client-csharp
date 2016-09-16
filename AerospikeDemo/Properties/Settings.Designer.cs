@@ -302,12 +302,12 @@ namespace Aerospike.Demo.Properties {
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
         [global::System.Configuration.DefaultSettingValueAttribute("")]
-        public string ClusterId {
+        public string ClusterName {
             get {
-                return ((string)(this["ClusterId"]));
+                return ((string)(this["ClusterName"]));
             }
             set {
-                this["ClusterId"] = value;
+                this["ClusterName"] = value;
             }
         }
         

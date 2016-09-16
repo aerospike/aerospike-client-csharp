@@ -27,7 +27,7 @@ namespace Aerospike.Admin
 {
 	public partial class LoginForm : Form
 	{
-		private string clusterId;
+		private string clusterName;
 		private SslProtocols tlsProtocols;
 
 		public LoginForm()
@@ -68,7 +68,7 @@ namespace Aerospike.Admin
 			portBox.Text = Properties.Settings.Default.Port.ToString();
 			userBox.Text = Properties.Settings.Default.User;
 			tlsBox.Checked = Properties.Settings.Default.UseTls;
-			clusterId = Properties.Settings.Default.ClusterId.Trim();
+			clusterName = Properties.Settings.Default.ClusterName.Trim();
 			tlsProtocols = Util.ParseSslProtocols(Properties.Settings.Default.TlsProtocols);
 		}
 
@@ -103,7 +103,7 @@ namespace Aerospike.Admin
 			ClientPolicy policy = new ClientPolicy();
 			policy.user = userName;
 			policy.password = password;
-			policy.clusterId = clusterId;
+			policy.clusterName = clusterName;
 			policy.failIfNotConnected = true;
 			policy.timeout = 600000;
 

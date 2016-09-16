@@ -94,7 +94,7 @@ namespace Aerospike.Client
 		public const int BIN_EXISTS_ERROR = 6;
 
 		/// <summary>
-		/// Expected cluster ID was not received.
+		/// Expected cluster was not received.
 		/// </summary>
 		public const int CLUSTER_KEY_MISMATCH = 7;
 

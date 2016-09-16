@@ -34,7 +34,7 @@ namespace Aerospike.Test
 		public int port;
 		public string user;
 		public string password;
-		public string clusterId;
+		public string clusterName;
 		public string ns;
 		public string set;
 		public TlsPolicy tlsPolicy;
@@ -49,7 +49,7 @@ namespace Aerospike.Test
 			hosts = Host.ParseHosts(Properties.Settings.Default.Host, port);
 			user = Properties.Settings.Default.User.Trim();
 			password = Properties.Settings.Default.Password.Trim();
-			clusterId = Properties.Settings.Default.ClusterId.Trim();
+			clusterName = Properties.Settings.Default.ClusterName.Trim();
 			ns = Properties.Settings.Default.Namespace.Trim();
 			set = Properties.Settings.Default.Set.Trim();
 			bool useTls = Properties.Settings.Default.UseTls;
@@ -75,7 +75,7 @@ namespace Aerospike.Test
 		private void ConnectSync()
 		{
 			ClientPolicy policy = new ClientPolicy();
-			policy.clusterId = clusterId;
+			policy.clusterName = clusterName;
 			policy.tlsPolicy = tlsPolicy;
 
 			if (!user.Equals(""))

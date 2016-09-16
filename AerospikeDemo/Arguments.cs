@@ -29,7 +29,7 @@ namespace Aerospike.Demo
 		internal int port;
 		internal string user;
 		internal string password;
-		internal string clusterId;
+		internal string clusterName;
 		internal string ns;
 		internal string set;
         internal string binName;

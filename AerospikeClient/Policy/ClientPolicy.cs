@@ -35,11 +35,11 @@ namespace Aerospike.Client
 		public string password;
 
 		/// <summary>
-		/// Expected cluster ID.  If populated, server nodes must return this cluster ID in order to
+		/// Expected cluster name.  If populated, server nodes must return this cluster name in order to
 		/// join the client's view of the cluster. Should only be set when connecting to servers that
-		/// support the "cluster-id" info command.
+		/// support the "cluster-name" info command.
 		/// </summary>
-		public string clusterId;
+		public string clusterName;
 	
 		/// <summary>
 		/// Initial host connection timeout in milliseconds.  The timeout when opening a connection 
