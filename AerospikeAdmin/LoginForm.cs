@@ -66,9 +66,9 @@ namespace Aerospike.Admin
 		{
 			hostBox.Text = Properties.Settings.Default.Host;
 			portBox.Text = Properties.Settings.Default.Port.ToString();
+			clusterName = Properties.Settings.Default.ClusterName.Trim();
 			userBox.Text = Properties.Settings.Default.User;
 			tlsBox.Checked = Properties.Settings.Default.UseTls;
-			clusterName = Properties.Settings.Default.ClusterName.Trim();
 			tlsProtocols = Util.ParseSslProtocols(Properties.Settings.Default.TlsProtocols);
 		}
 

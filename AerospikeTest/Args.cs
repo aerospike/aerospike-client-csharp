@@ -47,9 +47,9 @@ namespace Aerospike.Test
 		{
 			port = Properties.Settings.Default.Port;
 			hosts = Host.ParseHosts(Properties.Settings.Default.Host, port);
+			clusterName = Properties.Settings.Default.ClusterName.Trim();
 			user = Properties.Settings.Default.User.Trim();
 			password = Properties.Settings.Default.Password.Trim();
-			clusterName = Properties.Settings.Default.ClusterName.Trim();
 			ns = Properties.Settings.Default.Namespace.Trim();
 			set = Properties.Settings.Default.Set.Trim();
 			bool useTls = Properties.Settings.Default.UseTls;

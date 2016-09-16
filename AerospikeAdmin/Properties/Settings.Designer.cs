@@ -49,6 +49,18 @@ namespace Aerospike.Admin.Properties {
         
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("")]
+        public string ClusterName {
+            get {
+                return ((string)(this["ClusterName"]));
+            }
+            set {
+                this["ClusterName"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
         [global::System.Configuration.DefaultSettingValueAttribute("admin")]
         public string User {
             get {
@@ -68,18 +80,6 @@ namespace Aerospike.Admin.Properties {
             }
             set {
                 this["UseTls"] = value;
-            }
-        }
-        
-        [global::System.Configuration.UserScopedSettingAttribute()]
-        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("")]
-        public string ClusterName {
-            get {
-                return ((string)(this["ClusterName"]));
-            }
-            set {
-                this["ClusterName"] = value;
             }
         }
         

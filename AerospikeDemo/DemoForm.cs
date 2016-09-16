@@ -141,7 +141,8 @@ namespace Aerospike.Demo
         {
             hostBox.Text = Properties.Settings.Default.Host;
             portBox.Text = Properties.Settings.Default.Port.ToString();
-            nsBox.Text = Properties.Settings.Default.Namespace;
+			clusterName = Properties.Settings.Default.ClusterName.Trim();
+			nsBox.Text = Properties.Settings.Default.Namespace;
             setBox.Text = Properties.Settings.Default.Set;
             syncButton.Checked = Properties.Settings.Default.Sync;
             asyncButton.Checked = !syncButton.Checked;
@@ -159,15 +160,14 @@ namespace Aerospike.Demo
             timeoutBox.Text = Properties.Settings.Default.Timeout.ToString();
             maxRetriesBox.Text = Properties.Settings.Default.MaxRetries.ToString();
             sleepBox.Text = Properties.Settings.Default.SleepBetweenRetries.ToString();
-            latencyBox.Checked = Properties.Settings.Default.Latency;
+			retryOnTimeoutBox.Checked = Properties.Settings.Default.RetryOnTimeout;
+			replicaBox.SelectedIndex = Properties.Settings.Default.ReadReplica;
+			latencyBox.Checked = Properties.Settings.Default.Latency;
             latencyColumnsBox.Text = Properties.Settings.Default.LatencyColumns.ToString();
             latencyShiftBox.Text = Properties.Settings.Default.LatencyShift.ToString();
             debugBox.Checked = Properties.Settings.Default.Debug;
 			tlsBox.Checked = Properties.Settings.Default.UseTls;
-			clusterName = Properties.Settings.Default.ClusterName.Trim();
 			tlsProtocols = Util.ParseSslProtocols(Properties.Settings.Default.TlsProtocols);
-			retryOnTimeoutBox.Checked = Properties.Settings.Default.RetryOnTimeout;
-			replicaBox.SelectedIndex = Properties.Settings.Default.ReadReplica;
 		}
 
         private void WriteDefaults()
@@ -190,13 +190,13 @@ namespace Aerospike.Demo
             Properties.Settings.Default.Timeout = int.Parse(timeoutBox.Text);
             Properties.Settings.Default.MaxRetries = int.Parse(maxRetriesBox.Text);
             Properties.Settings.Default.SleepBetweenRetries = int.Parse(sleepBox.Text);
-            Properties.Settings.Default.Latency = latencyBox.Checked;
+			Properties.Settings.Default.RetryOnTimeout = retryOnTimeoutBox.Checked;
+			Properties.Settings.Default.ReadReplica = replicaBox.SelectedIndex;
+			Properties.Settings.Default.Latency = latencyBox.Checked;
             Properties.Settings.Default.LatencyColumns = int.Parse(latencyColumnsBox.Text);
             Properties.Settings.Default.LatencyShift = int.Parse(latencyShiftBox.Text);
             Properties.Settings.Default.Debug = debugBox.Checked;
 			Properties.Settings.Default.UseTls = tlsBox.Checked;
-			Properties.Settings.Default.RetryOnTimeout = retryOnTimeoutBox.Checked;
-			Properties.Settings.Default.ReadReplica = replicaBox.SelectedIndex;
 			Properties.Settings.Default.Save();
         }
 

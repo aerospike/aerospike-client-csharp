@@ -49,6 +49,18 @@ namespace Aerospike.Demo.Properties {
         
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("")]
+        public string ClusterName {
+            get {
+                return ((string)(this["ClusterName"]));
+            }
+            set {
+                this["ClusterName"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
         [global::System.Configuration.DefaultSettingValueAttribute("test")]
         public string Namespace {
             get {
@@ -242,6 +254,30 @@ namespace Aerospike.Demo.Properties {
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
         [global::System.Configuration.DefaultSettingValueAttribute("False")]
+        public bool RetryOnTimeout {
+            get {
+                return ((bool)(this["RetryOnTimeout"]));
+            }
+            set {
+                this["RetryOnTimeout"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("0")]
+        public int ReadReplica {
+            get {
+                return ((int)(this["ReadReplica"]));
+            }
+            set {
+                this["ReadReplica"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("False")]
         public bool Latency {
             get {
                 return ((bool)(this["Latency"]));
@@ -302,48 +338,12 @@ namespace Aerospike.Demo.Properties {
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
         [global::System.Configuration.DefaultSettingValueAttribute("")]
-        public string ClusterName {
-            get {
-                return ((string)(this["ClusterName"]));
-            }
-            set {
-                this["ClusterName"] = value;
-            }
-        }
-        
-        [global::System.Configuration.UserScopedSettingAttribute()]
-        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("")]
         public string TlsProtocols {
             get {
                 return ((string)(this["TlsProtocols"]));
             }
             set {
                 this["TlsProtocols"] = value;
-            }
-        }
-        
-        [global::System.Configuration.UserScopedSettingAttribute()]
-        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("False")]
-        public bool RetryOnTimeout {
-            get {
-                return ((bool)(this["RetryOnTimeout"]));
-            }
-            set {
-                this["RetryOnTimeout"] = value;
-            }
-        }
-        
-        [global::System.Configuration.UserScopedSettingAttribute()]
-        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("0")]
-        public int ReadReplica {
-            get {
-                return ((int)(this["ReadReplica"]));
-            }
-            set {
-                this["ReadReplica"] = value;
             }
         }
     }
