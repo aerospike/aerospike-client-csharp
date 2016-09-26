@@ -470,8 +470,8 @@ namespace Aerospike.Client
 					break;
 
 				default:
-					// Multi-node clusters require two successful node refreshes before removing.
-					if (refreshCount >= 2 && node.referenceCount == 0)
+					// Multi-node clusters require at least one successful refresh before removing.
+					if (refreshCount >= 1 && node.referenceCount == 0)
 					{
 						// Node is not referenced by other nodes.
 						// Check if node responded to info request.

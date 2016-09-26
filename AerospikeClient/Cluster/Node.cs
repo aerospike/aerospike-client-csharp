@@ -48,6 +48,7 @@ namespace Aerospike.Client
 		private int connectionCount;
 		protected internal int partitionGeneration = -1;
 		protected internal int peersGeneration = -1;
+		protected internal int peersCount;
 		protected internal int referenceCount;
 		protected internal int failures;
 		protected internal readonly uint features;
@@ -184,17 +185,12 @@ namespace Aerospike.Client
 
 			if (friendString == null || friendString.Length == 0)
 			{
-				// Detect "split cluster" case where this node thinks it's a 1-node cluster.
-				// Unchecked, such a node can dominate the partition map and cause all other
-				// nodes to be dropped.
-				if (cluster.Nodes.Length > 2)
-				{
-					throw new AerospikeException("Node " + this + " thinks it owns cluster, but client sees " + cluster.Nodes.Length + " nodes.");
-				}
+				peersCount = 0;
 				return;
 			}
 
 			string[] friendNames = friendString.Split(';');
+			peersCount = friendNames.Length;
 
 			foreach (string friend in friendNames)
 			{
@@ -290,14 +286,7 @@ namespace Aerospike.Client
 
 				PeerParser parser = new PeerParser(cluster, tendConnection, peers.peers);
 				peersGeneration = parser.generation;
-
-				// Detect "split cluster" case where this node thinks it's a 1-node cluster.
-				// Unchecked, such a node can dominate the partition map and cause all other
-				// nodes to be dropped.
-				if (peers.peers.Count == 0 && cluster.Nodes.Length > 2)
-				{
-					throw new AerospikeException("Node " + this + " thinks it owns cluster, but client sees " + cluster.Nodes.Length + " nodes.");
-				}
+				peersCount = peers.peers.Count;
 
 				foreach (Peer peer in peers.peers)
 				{
@@ -376,7 +365,10 @@ namespace Aerospike.Client
 		protected internal void RefreshPartitions(Peers peers)
 		{
 			// Do not refresh partitions when node connection has already failed during this cluster tend iteration.
-			if (failures > 0 || !active)
+			// Also, avoid "split cluster" case where this node thinks it's a 1-node cluster.
+			// Unchecked, such a node can dominate the partition map and cause all other
+			// nodes to be dropped.
+			if (failures > 0 || ! active || (peersCount == 0 && peers.refreshCount > 1))
 			{
 				return;
 			}
