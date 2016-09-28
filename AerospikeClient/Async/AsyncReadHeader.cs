@@ -20,24 +20,17 @@ namespace Aerospike.Client
 {
 	public sealed class AsyncReadHeader : AsyncSingleCommand
 	{
-		private readonly Policy policy;
 		private readonly RecordListener listener;
 		private readonly Key key;
 		private readonly Partition partition;
 		private Record record;
 
 		public AsyncReadHeader(AsyncCluster cluster, Policy policy, RecordListener listener, Key key) 
-			: base(cluster)
+			: base(cluster, policy)
 		{
-			this.policy = policy;
 			this.listener = listener;
 			this.key = key;
 			this.partition = new Partition(key);
-		}
-
-		protected internal override Policy GetPolicy()
-		{
-			return policy;
 		}
 
 		protected internal override void WriteBuffer()

@@ -23,10 +23,10 @@ namespace Aerospike.Client
 		private readonly WritePolicy writePolicy;
 		private readonly Operation[] operations;
 
-		public AsyncOperate(AsyncCluster cluster, WritePolicy policy, RecordListener listener, Key key, Operation[] operations) 
-			: base(cluster, policy, listener, key, null)
+		public AsyncOperate(AsyncCluster cluster, WritePolicy writePolicy, RecordListener listener, Key key, Operation[] operations)
+			: base(cluster, writePolicy, listener, key, null)
 		{
-			this.writePolicy = policy;
+			this.writePolicy = writePolicy;
 			this.operations = operations;
 		}
 

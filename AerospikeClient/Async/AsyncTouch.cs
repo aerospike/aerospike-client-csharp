@@ -18,28 +18,23 @@ namespace Aerospike.Client
 {
 	public sealed class AsyncTouch : AsyncSingleCommand
 	{
-		private readonly WritePolicy policy;
+		private readonly WritePolicy writePolicy;
 		private readonly WriteListener listener;
 		private readonly Key key;
 		private readonly Partition partition;
 
-		public AsyncTouch(AsyncCluster cluster, WritePolicy policy, WriteListener listener, Key key) 
-			: base(cluster)
+		public AsyncTouch(AsyncCluster cluster, WritePolicy writePolicy, WriteListener listener, Key key)
+			: base(cluster, writePolicy)
 		{
-			this.policy = policy;
+			this.writePolicy = writePolicy;
 			this.listener = listener;
 			this.key = key;
 			this.partition = new Partition(key);
 		}
 
-		protected internal override Policy GetPolicy()
-		{
-			return policy;
-		}
-
 		protected internal override void WriteBuffer()
 		{
-			SetTouch(policy, key);
+			SetTouch(writePolicy, key);
 		}
 
 		protected internal override Node GetNode()

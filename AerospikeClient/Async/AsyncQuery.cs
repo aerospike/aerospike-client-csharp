@@ -18,7 +18,7 @@ namespace Aerospike.Client
 {
 	public sealed class AsyncQuery : AsyncMultiCommand
 	{
-		private readonly QueryPolicy policy;
+		private readonly QueryPolicy queryPolicy;
 		private readonly RecordSequenceListener listener;
 		private readonly Statement statement;
 
@@ -27,24 +27,19 @@ namespace Aerospike.Client
 			AsyncMultiExecutor parent,
 			AsyncCluster cluster,
 			AsyncNode node,
-			QueryPolicy policy,
+			QueryPolicy queryPolicy,
 			RecordSequenceListener listener,
 			Statement statement
-		) : base(parent, cluster, node, true)
+		) : base(parent, cluster, queryPolicy, node, true)
 		{
-			this.policy = policy;
+			this.queryPolicy = queryPolicy;
 			this.listener = listener;
 			this.statement = statement;
 		}
 
-		protected internal override Policy GetPolicy()
-		{
-			return policy;
-		}
-
 		protected internal override void WriteBuffer()
 		{
-			SetQuery(policy, statement, false);
+			SetQuery(queryPolicy, statement, false);
 		}
 
 		protected internal override void ParseRow(Key key)

@@ -69,7 +69,7 @@ namespace Aerospike.Client
 	sealed class AsyncBatchReadListCommand : AsyncMultiCommand
 	{
 		private readonly BatchNode batch;
-		private readonly BatchPolicy policy;
+		private readonly BatchPolicy batchPolicy;
 		private readonly List<BatchRead> records;
 
 		public AsyncBatchReadListCommand
@@ -77,23 +77,18 @@ namespace Aerospike.Client
 			AsyncMultiExecutor parent,
 			AsyncCluster cluster,
 			BatchNode batch,
-			BatchPolicy policy,
+			BatchPolicy batchPolicy,
 			List<BatchRead> records
-		) : base(parent, cluster, (AsyncNode)batch.node, false)
+		) : base(parent, cluster, batchPolicy, (AsyncNode)batch.node, false)
 		{
 			this.batch = batch;
-			this.policy = policy;
+			this.batchPolicy = batchPolicy;
 			this.records = records;
-		}
-
-		protected internal override Policy GetPolicy()
-		{
-			return policy;
 		}
 
 		protected internal override void WriteBuffer()
 		{
-			SetBatchRead(policy, records, batch);
+			SetBatchRead(batchPolicy, records, batch);
 		}
 
 		protected internal override void ParseRow(Key key)
@@ -163,7 +158,7 @@ namespace Aerospike.Client
 	sealed class AsyncBatchReadSequenceCommand : AsyncMultiCommand
 	{
 		private readonly BatchNode batch;
-		private readonly BatchPolicy policy;
+		private readonly BatchPolicy batchPolicy;
 		private readonly BatchSequenceListener listener;
 		private readonly List<BatchRead> records;
 
@@ -172,25 +167,20 @@ namespace Aerospike.Client
 			AsyncMultiExecutor parent,
 			AsyncCluster cluster,
 			BatchNode batch,
-			BatchPolicy policy,
+			BatchPolicy batchPolicy,
 			BatchSequenceListener listener,
 			List<BatchRead> records
-		) : base(parent, cluster, (AsyncNode)batch.node, false)
+		) : base(parent, cluster, batchPolicy, (AsyncNode)batch.node, false)
 		{
 			this.batch = batch;
-			this.policy = policy;
+			this.batchPolicy = batchPolicy;
 			this.listener = listener;
 			this.records = records;
 		}
 
-		protected internal override Policy GetPolicy()
-		{
-			return policy;
-		}
-
 		protected internal override void WriteBuffer()
 		{
-			SetBatchRead(policy, records, batch);
+			SetBatchRead(batchPolicy, records, batch);
 		}
 
 		protected internal override void ParseRow(Key key)
@@ -272,7 +262,7 @@ namespace Aerospike.Client
 	sealed class AsyncBatchGetArrayCommand : AsyncMultiCommand
 	{
 		private readonly BatchNode batch;
-		private readonly BatchPolicy policy;
+		private readonly BatchPolicy batchPolicy;
 		private readonly Key[] keys;
 		private readonly string[] binNames;
 		private readonly Record[] records;
@@ -283,29 +273,24 @@ namespace Aerospike.Client
 			AsyncMultiExecutor parent,
 			AsyncCluster cluster,
 			BatchNode batch,
-			BatchPolicy policy,
+			BatchPolicy batchPolicy,
 			Key[] keys,
 			string[] binNames,
 			Record[] records,
 			int readAttr
-		) : base(parent, cluster, (AsyncNode)batch.node, false)
+		) : base(parent, cluster, batchPolicy, (AsyncNode)batch.node, false)
 		{
 			this.batch = batch;
-			this.policy = policy;
+			this.batchPolicy = batchPolicy;
 			this.keys = keys;
 			this.binNames = binNames;
 			this.records = records;
 			this.readAttr = readAttr;
 		}
 
-		protected internal override Policy GetPolicy()
-		{
-			return policy;
-		}
-
 		protected internal override void WriteBuffer()
 		{
-			SetBatchRead(policy, keys, batch, binNames, readAttr);
+			SetBatchRead(batchPolicy, keys, batch, binNames, readAttr);
 		}
 
 		protected internal override void ParseRow(Key key)
@@ -327,7 +312,6 @@ namespace Aerospike.Client
 	sealed class AsyncBatchGetArrayDirect : AsyncMultiCommand
 	{
 		private readonly BatchNode.BatchNamespace batch;
-		private readonly Policy policy;
 		private readonly Key[] keys;
 		private readonly string[] binNames;
 		private readonly Record[] records;
@@ -345,19 +329,13 @@ namespace Aerospike.Client
 			string[] binNames,
 			Record[] records,
 			int readAttr
-		) : base(parent, cluster, node, false)
+		) : base(parent, cluster, policy, node, false)
 		{
 			this.batch = batch;
-			this.policy = policy;
 			this.keys = keys;
 			this.binNames = binNames;
 			this.records = records;
 			this.readAttr = readAttr;
-		}
-
-		protected internal override Policy GetPolicy()
-		{
-			return policy;
 		}
 
 		protected internal override void WriteBuffer()
@@ -441,7 +419,7 @@ namespace Aerospike.Client
 	sealed class AsyncBatchGetSequenceCommand : AsyncMultiCommand
 	{
 		private readonly BatchNode batch;
-		private readonly BatchPolicy policy;
+		private readonly BatchPolicy batchPolicy;
 		private readonly Key[] keys;
 		private readonly string[] binNames;
 		private readonly RecordSequenceListener listener;
@@ -452,29 +430,24 @@ namespace Aerospike.Client
 			AsyncMultiExecutor parent,
 			AsyncCluster cluster,
 			BatchNode batch,
-			BatchPolicy policy,
+			BatchPolicy batchPolicy,
 			Key[] keys,
 			string[] binNames,
 			RecordSequenceListener listener,
 			int readAttr
-		) : base(parent, cluster, (AsyncNode)batch.node, false)
+		) : base(parent, cluster, batchPolicy, (AsyncNode)batch.node, false)
 		{
 			this.batch = batch;
-			this.policy = policy;
+			this.batchPolicy = batchPolicy;
 			this.keys = keys;
 			this.binNames = binNames;
 			this.listener = listener;
 			this.readAttr = readAttr;
 		}
 
-		protected internal override Policy GetPolicy()
-		{
-			return policy;
-		}
-
 		protected internal override void WriteBuffer()
 		{
-			SetBatchRead(policy, keys, batch, binNames, readAttr);
+			SetBatchRead(batchPolicy, keys, batch, binNames, readAttr);
 		}
 
 		protected internal override void ParseRow(Key key)
@@ -503,7 +476,6 @@ namespace Aerospike.Client
 	sealed class AsyncBatchGetSequenceDirect : AsyncMultiCommand
 	{
 		private readonly BatchNode.BatchNamespace batch;
-		private readonly Policy policy;
 		private readonly Key[] keys;
 		private readonly string[] binNames;
 		private readonly RecordSequenceListener listener;
@@ -521,19 +493,13 @@ namespace Aerospike.Client
 			string[] binNames,
 			RecordSequenceListener listener,
 			int readAttr
-		) : base(parent, cluster, node, false)
+		) : base(parent, cluster, policy, node, false)
 		{
 			this.batch = batch;
-			this.policy = policy;
 			this.keys = keys;
 			this.binNames = binNames;
 			this.listener = listener;
 			this.readAttr = readAttr;
-		}
-
-		protected internal override Policy GetPolicy()
-		{
-			return policy;
 		}
 
 		protected internal override void WriteBuffer()
@@ -623,7 +589,7 @@ namespace Aerospike.Client
 	sealed class AsyncBatchExistsArrayCommand : AsyncMultiCommand
 	{
 		private readonly BatchNode batch;
-		private readonly BatchPolicy policy;
+		private readonly BatchPolicy batchPolicy;
 		private readonly Key[] keys;
 		private readonly bool[] existsArray;
 
@@ -632,25 +598,20 @@ namespace Aerospike.Client
 			AsyncMultiExecutor parent,
 			AsyncCluster cluster,
 			BatchNode batch,
-			BatchPolicy policy,
+			BatchPolicy batchPolicy,
 			Key[] keys,
 			bool[] existsArray
-		) : base(parent, cluster, (AsyncNode)batch.node, false)
+		) : base(parent, cluster, batchPolicy, (AsyncNode)batch.node, false)
 		{
 			this.batch = batch;
-			this.policy = policy;
+			this.batchPolicy = batchPolicy;
 			this.keys = keys;
 			this.existsArray = existsArray;
 		}
 
-		protected internal override Policy GetPolicy()
-		{
-			return policy;
-		}
-
 		protected internal override void WriteBuffer()
 		{
-			SetBatchRead(policy, keys, batch, null, Command.INFO1_READ | Command.INFO1_NOBINDATA);
+			SetBatchRead(batchPolicy, keys, batch, null, Command.INFO1_READ | Command.INFO1_NOBINDATA);
 		}
 
 		protected internal override void ParseRow(Key key)
@@ -674,7 +635,6 @@ namespace Aerospike.Client
 	sealed class AsyncBatchExistsArrayDirect : AsyncMultiCommand
 	{
 		private readonly BatchNode.BatchNamespace batch;
-		private readonly Policy policy;
 		private readonly Key[] keys;
 		private readonly bool[] existsArray;
 		private int index;
@@ -688,17 +648,11 @@ namespace Aerospike.Client
 			Policy policy,
 			Key[] keys,
 			bool[] existsArray
-		) : base(parent, cluster, node, false)
+		) : base(parent, cluster, policy, node, false)
 		{
 			this.batch = batch;
-			this.policy = policy;
 			this.keys = keys;
 			this.existsArray = existsArray;
-		}
-
-		protected internal override Policy GetPolicy()
-		{
-			return policy;
 		}
 
 		protected internal override void WriteBuffer()
@@ -782,7 +736,7 @@ namespace Aerospike.Client
 	sealed class AsyncBatchExistsSequenceCommand : AsyncMultiCommand
 	{
 		private readonly BatchNode batch;
-		private readonly BatchPolicy policy;
+		private readonly BatchPolicy batchPolicy;
 		private readonly Key[] keys;
 		private readonly ExistsSequenceListener listener;
 
@@ -791,25 +745,20 @@ namespace Aerospike.Client
 			AsyncMultiExecutor parent,
 			AsyncCluster cluster,
 			BatchNode batch,
-			BatchPolicy policy,
+			BatchPolicy batchPolicy,
 			Key[] keys,
 			ExistsSequenceListener listener
-		) : base(parent, cluster, (AsyncNode)batch.node, false)
+		) : base(parent, cluster, batchPolicy, (AsyncNode)batch.node, false)
 		{
 			this.batch = batch;
-			this.policy = policy;
+			this.batchPolicy = batchPolicy;
 			this.keys = keys;
 			this.listener = listener;
 		}
 
-		protected internal override Policy GetPolicy()
-		{
-			return policy;
-		}
-
 		protected internal override void WriteBuffer()
 		{
-			SetBatchRead(policy, keys, batch, null, Command.INFO1_READ | Command.INFO1_NOBINDATA);
+			SetBatchRead(batchPolicy, keys, batch, null, Command.INFO1_READ | Command.INFO1_NOBINDATA);
 		}
 
 		protected internal override void ParseRow(Key key)
@@ -835,7 +784,6 @@ namespace Aerospike.Client
 	sealed class AsyncBatchExistsSequenceDirect : AsyncMultiCommand
 	{
 		private readonly BatchNode.BatchNamespace batch;
-		private readonly Policy policy;
 		private readonly Key[] keys;
 		private readonly ExistsSequenceListener listener;
 		private int index;
@@ -849,17 +797,11 @@ namespace Aerospike.Client
 			Policy policy,
 			Key[] keys,
 			ExistsSequenceListener listener
-		) : base(parent, cluster, node, false)
+		) : base(parent, cluster, policy, node, false)
 		{
 			this.batch = batch;
-			this.policy = policy;
 			this.keys = keys;
 			this.listener = listener;
-		}
-
-		protected internal override Policy GetPolicy()
-		{
-			return policy;
 		}
 
 		protected internal override void WriteBuffer()

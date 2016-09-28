@@ -184,6 +184,7 @@ namespace Aerospike.Client
 			}
 		}
 
+		protected internal abstract Policy GetPolicy();
 		protected internal abstract void ParseResult(Connection conn);
 	}
 }

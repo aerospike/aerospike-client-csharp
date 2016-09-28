@@ -35,6 +35,7 @@ namespace Aerospike.Client
 		private const int FAIL_APPLICATION_ERROR = 6;
 
 		protected internal readonly AsyncCluster cluster;
+		protected internal readonly Policy policy;
 		private AsyncConnection conn;
 		private AsyncNode node;
 		private SocketAsyncEventArgs eventArgs;
@@ -42,7 +43,6 @@ namespace Aerospike.Client
 		private BufferSegment segment;
 		private Stopwatch watch;
 		protected internal int dataLength;
-		private int timeout;
 		private int iteration;
 		private int complete;
 		private int failedNodes;
@@ -50,9 +50,10 @@ namespace Aerospike.Client
 		private bool inAuthenticate;
 		protected internal bool inHeader = true;
 
-		public AsyncCommand(AsyncCluster cluster)
+		public AsyncCommand(AsyncCluster cluster, Policy policy)
 		{
 			this.cluster = cluster;
+			this.policy = policy;
 		}
 
 		public void Execute()
@@ -69,13 +70,10 @@ namespace Aerospike.Client
 				segment.size = 0;
 			}
 
-			Policy policy = GetPolicy();
-			timeout = policy.timeout;
-
-			if (timeout > 0)
+			if (policy.timeout > 0)
 			{
 				watch = Stopwatch.StartNew();
-				AsyncTimeoutQueue.Instance.Add(this, timeout);
+				AsyncTimeoutQueue.Instance.Add(this, policy.timeout);
 			}
 
 			ExecuteCommand();
@@ -151,14 +149,12 @@ namespace Aerospike.Client
 				return true;
 			}
 
-			Policy policy = GetPolicy();
-			
 			if (++iteration > policy.maxRetries)
 			{
 				return FailOnNetworkInit();
 			}
 
-			if (watch != null && ! policy.retryOnTimeout && watch.ElapsedMilliseconds > timeout)
+			if (watch != null && ! policy.retryOnTimeout && watch.ElapsedMilliseconds > policy.timeout)
 			{
 				return FailOnNetworkInit();
 			}
@@ -424,15 +420,13 @@ namespace Aerospike.Client
 				return;
 			}
 
-			Policy policy = GetPolicy();
-
 			if (++iteration > policy.maxRetries)
 			{
 				FailOnNetworkError(ae);
 				return;
 			}
 
-			if (watch != null && ! policy.retryOnTimeout && watch.ElapsedMilliseconds > timeout)
+			if (watch != null && ! policy.retryOnTimeout && watch.ElapsedMilliseconds > policy.timeout)
 			{
 				// Might as well stop here because the transaction will
 				// timeout after sleep completed.
@@ -494,11 +488,9 @@ namespace Aerospike.Client
 				return false;
 			}
 
-			if (watch.ElapsedMilliseconds > timeout)
+			if (watch.ElapsedMilliseconds > policy.timeout)
 			{
 				// Command has timed out in timeout queue thread.
-				Policy policy = GetPolicy();
-
 				// Only try setting final FAIL_TIMEOUT if retryOnTimeout is false. 
 				if (policy.retryOnTimeout || Interlocked.CompareExchange(ref complete, FAIL_TIMEOUT, 0) == 0)
 				{
@@ -648,7 +640,7 @@ namespace Aerospike.Client
 				// Free up resources and notify user on timeout.
 				// Connection should have already been closed on AsyncTimeoutQueue timeout.
 				PutBackArgsOnError();
-				OnFailure(new AerospikeException.Timeout(node, timeout, iteration, failedNodes, failedConns));
+				OnFailure(new AerospikeException.Timeout(node, policy.timeout, iteration, failedNodes, failedConns));
 			}
 			else
 			{
@@ -696,7 +688,7 @@ namespace Aerospike.Client
 		{
 			if (se == SocketError.TimedOut)
 			{
-				return new AerospikeException.Timeout(node, timeout, iteration, failedNodes, failedConns);
+				return new AerospikeException.Timeout(node, policy.timeout, iteration, failedNodes, failedConns);
 			}
 			return new AerospikeException.Connection("Socket error: " + se);
 		}

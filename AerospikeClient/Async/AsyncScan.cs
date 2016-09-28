@@ -18,7 +18,7 @@ namespace Aerospike.Client
 {
 	public sealed class AsyncScan : AsyncMultiCommand
 	{
-		private readonly ScanPolicy policy;
+		private readonly ScanPolicy scanPolicy;
 		private readonly RecordSequenceListener listener;
 		private readonly string ns;
 		private readonly string setName;
@@ -30,15 +30,15 @@ namespace Aerospike.Client
 			AsyncMultiExecutor parent,
 			AsyncCluster cluster,
 			AsyncNode node,
-			ScanPolicy policy,
+			ScanPolicy scanPolicy,
 			RecordSequenceListener listener,
 			string ns,
 			string setName,
 			string[] binNames,
 			ulong taskId
-		) : base(parent, cluster, node, true)
+		) : base(parent, cluster, scanPolicy, node, true)
 		{
-			this.policy = policy;
+			this.scanPolicy = scanPolicy;
 			this.listener = listener;
 			this.ns = ns;
 			this.setName = setName;
@@ -46,14 +46,9 @@ namespace Aerospike.Client
 			this.taskId = taskId;
 		}
 
-		protected internal override Policy GetPolicy()
-		{
-			return policy;
-		}
-
 		protected internal override void WriteBuffer()
 		{
-			SetScan(policy, ns, setName, binNamesScan, taskId);
+			SetScan(scanPolicy, ns, setName, binNamesScan, taskId);
 		}
 
 		protected internal override void ParseRow(Key key)

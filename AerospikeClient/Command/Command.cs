@@ -1130,7 +1130,6 @@ namespace Aerospike.Client
 			return cluster.GetRandomNode();
 		}
 
-		protected internal abstract Policy GetPolicy();
 		protected internal abstract Node GetNode();
 		protected internal abstract void WriteBuffer();
 		protected internal abstract void SizeBuffer();

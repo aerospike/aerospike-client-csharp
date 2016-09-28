@@ -33,8 +33,8 @@ namespace Aerospike.Client
 		private readonly bool stopOnNotFound;
 		protected internal volatile bool valid = true;
 
-		public AsyncMultiCommand(AsyncMultiExecutor parent, AsyncCluster cluster, AsyncNode node, bool stopOnNotFound) 
-			: base(cluster)
+		public AsyncMultiCommand(AsyncMultiExecutor parent, AsyncCluster cluster, Policy policy, AsyncNode node, bool stopOnNotFound) 
+			: base(cluster, policy)
 		{
 			this.parent = parent;
 			this.fixedNode = node;
