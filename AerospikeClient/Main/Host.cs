@@ -195,8 +195,11 @@ namespace Aerospike.Client
 						if (c == ']')
 						{
 							string s = str.Substring(begin, offset - begin);
-							offset++;
-							c = str[offset++];
+
+							if (++offset < length)
+							{
+								c = str[offset++];
+							}
 							return s;
 						}
 						offset++;
