@@ -64,15 +64,21 @@ namespace Aerospike.Client
 				{
 					int t = (sleepInterval == int.MaxValue) ? Timeout.Infinite : sleepInterval + 1;
 					Thread.Sleep(t);
+
+					RegisterCommands();
+					CheckTimeouts();
 				}
 				catch (ThreadInterruptedException)
 				{
 					// Sleep interrupted.  Sleep again with new timeout value.
-					continue;
 				}
-
-				RegisterCommands();
-				CheckTimeouts();
+				catch (Exception e)
+				{
+					if (valid && Log.WarnEnabled())
+					{
+						Log.Warn("AsyncTimeoutQueue error: " + e.Message);
+					}
+				}
 			}
 		}
 

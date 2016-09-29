@@ -40,7 +40,12 @@ namespace Aerospike.Client
 			this.fixedNode = node;
 			this.stopOnNotFound = stopOnNotFound;
 		}
-		
+
+		protected internal sealed override AsyncCommand CloneCommand()
+		{
+			return null;
+		}
+
 		protected internal sealed override Node GetNode()
 		{
 			return fixedNode;

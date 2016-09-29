@@ -31,6 +31,19 @@ namespace Aerospike.Client
 			this.partition = new Partition(key);
 		}
 
+		public AsyncExists(AsyncExists other)
+			: base(other)
+		{
+			this.listener = other.listener;
+			this.key = other.key;
+			this.partition = other.partition;
+		}
+
+		protected internal override AsyncCommand CloneCommand()
+		{
+			return new AsyncExists(this);
+		}
+
 		protected internal override void WriteBuffer()
 		{
 			SetExists(policy, key);

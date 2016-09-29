@@ -33,6 +33,19 @@ namespace Aerospike.Client
 			this.partition = new Partition(key);
 		}
 
+		public AsyncReadHeader(AsyncReadHeader other)
+			: base(other)
+		{
+			this.listener = other.listener;
+			this.key = other.key;
+			this.partition = other.partition;
+		}
+
+		protected internal override AsyncCommand CloneCommand()
+		{
+			return new AsyncReadHeader(this);
+		}
+
 		protected internal override void WriteBuffer()
 		{
 			SetReadHeader(policy, key);

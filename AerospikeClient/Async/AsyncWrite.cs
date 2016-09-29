@@ -36,6 +36,22 @@ namespace Aerospike.Client
 			this.operation = operation;
 		}
 
+		public AsyncWrite(AsyncWrite other)
+			: base(other)
+		{
+			this.writePolicy = other.writePolicy;
+			this.listener = other.listener;
+			this.key = other.key;
+			this.partition = other.partition;
+			this.bins = other.bins;
+			this.operation = other.operation;
+		}
+
+		protected internal override AsyncCommand CloneCommand()
+		{
+			return new AsyncWrite(this);
+		}
+
 		protected internal override void WriteBuffer()
 		{
 			SetWrite(writePolicy, operation, key, bins);

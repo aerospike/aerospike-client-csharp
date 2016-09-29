@@ -32,6 +32,20 @@ namespace Aerospike.Client
 			this.partition = new Partition(key);
 		}
 
+		public AsyncTouch(AsyncTouch other)
+			: base(other)
+		{
+			this.writePolicy = other.writePolicy;
+			this.listener = other.listener;
+			this.key = other.key;
+			this.partition = other.partition;
+		}
+
+		protected internal override AsyncCommand CloneCommand()
+		{
+			return new AsyncTouch(this);
+		}
+
 		protected internal override void WriteBuffer()
 		{
 			SetTouch(writePolicy, key);

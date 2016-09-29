@@ -36,6 +36,21 @@ namespace Aerospike.Client
 			this.args = args;
 		}
 
+		public AsyncExecute(AsyncExecute other)
+			: base(other)
+		{
+			this.writePolicy = other.writePolicy;
+			this.executeListener = other.executeListener;
+			this.packageName = other.packageName;
+			this.functionName = other.functionName;
+			this.args = other.args;
+		}
+
+		protected internal override AsyncCommand CloneCommand()
+		{
+			return new AsyncExecute(this);
+		}
+
 		protected internal override void WriteBuffer()
 		{
 			SetUdf(writePolicy, key, packageName, functionName, args);

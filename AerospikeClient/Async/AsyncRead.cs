@@ -35,6 +35,20 @@ namespace Aerospike.Client
 			this.binNames = binNames;
 		}
 
+		public AsyncRead(AsyncRead other)
+			: base(other)
+		{
+			this.listener = other.listener;
+			this.key = other.key;
+			this.partition = other.partition;
+			this.binNames = other.binNames;
+		}
+
+		protected internal override AsyncCommand CloneCommand()
+		{
+			return new AsyncRead(this);
+		}
+
 		protected internal override void WriteBuffer()
 		{
 			SetRead(policy, key, binNames);

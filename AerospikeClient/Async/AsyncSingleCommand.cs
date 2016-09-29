@@ -26,6 +26,11 @@ namespace Aerospike.Client
 		{
 		}
 
+		public AsyncSingleCommand(AsyncSingleCommand other)
+			: base(other)
+		{
+		}
+		
 		protected internal sealed override void ParseCommand()
 		{
 			ParseResult();
