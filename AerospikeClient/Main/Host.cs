@@ -67,7 +67,8 @@ namespace Aerospike.Client
 		public override string ToString()
 		{
 			// Ignore tlsName in string representation.
-			return name + ':' + port;
+			// Use space separator to avoid confusion with IPv6 addresses that contain colons.
+			return name + ' ' + port;
 		}
 
 		/// <summary>
