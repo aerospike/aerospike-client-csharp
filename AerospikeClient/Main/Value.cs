@@ -172,7 +172,6 @@ namespace Aerospike.Client
 
 		/// <summary>
 		/// Get list or null value instance.
-		/// Support by Aerospike 3 servers only.
 		/// </summary>
 		public static Value Get(IList value)
 		{
@@ -188,7 +187,6 @@ namespace Aerospike.Client
 
 		/// <summary>
 		/// Get map or null value instance.
-		/// Support by Aerospike 3 servers only.
 		/// </summary>
 		public static Value Get(IDictionary value)
 		{
@@ -262,8 +260,6 @@ namespace Aerospike.Client
 		/// Determine value given generic object.
 		/// This is the slowest of the Value get() methods.
 		/// Useful when copying records from one cluster to another.
-		/// Since map/list are converted, this method should only be called when using
-		/// Aerospike 3 servers.
 		/// </summary>
 		public static Value Get(object value)
 		{
@@ -344,8 +340,6 @@ namespace Aerospike.Client
 
 		/// <summary>
 		/// Get value from Record object. Useful when copying records from one cluster to another.
-		/// Since map/list are converted, this method should only be called when using
-		/// Aerospike 3 servers.
 		/// </summary>
 		public static Value GetFromRecordObject(object value)
 		{
@@ -1764,7 +1758,6 @@ namespace Aerospike.Client
 
 		/// <summary>
 		/// Value array.
-		/// Supported by Aerospike 3 servers only.
 		/// </summary>
 		public sealed class ValueArray : Value
 		{
@@ -1872,7 +1865,6 @@ namespace Aerospike.Client
 
 		/// <summary>
 		/// List value.
-		/// Supported by Aerospike 3 servers only.
 		/// </summary>
 		public sealed class ListValue : Value
 		{
@@ -1980,7 +1972,6 @@ namespace Aerospike.Client
 
 		/// <summary>
 		/// Map value.
-		/// Supported by Aerospike 3 servers only.
 		/// </summary>
 		public sealed class MapValue : Value
 		{

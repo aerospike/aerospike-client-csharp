@@ -53,7 +53,7 @@ namespace Aerospike.Client
 		/// <para>
 		/// Expiration values:
 		/// <list type="bullet">
-		/// <item>-1: Never expire. Supported by Aerospike 2 server versions >= 2.7.2 and Aerospike 3 server versions >= 3.1.4.</item>
+		/// <item>-1: Never expire. Supported by Aerospike server versions >= 3.1.4.</item>
 		/// <item>0:  Default to namespace's "default-ttl" on the server.</item>
 		/// <item>> 0: Actual expiration in seconds.</item>
 		/// </list>
@@ -82,7 +82,7 @@ namespace Aerospike.Client
 		/// <summary>
 		/// If the transaction results in a record deletion, leave a tombstone for the record.
 		/// This prevents deleted records from reappearing after node failures.
-		/// Valid for Aerospike Server Enterprise Edition 4+ only.
+		/// Valid for Aerospike Server Enterprise Edition 3.10+ only.
 		/// <para>
 		/// Default: false (do not tombstone deleted records).
 		/// </para>

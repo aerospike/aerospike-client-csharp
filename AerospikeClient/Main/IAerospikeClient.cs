@@ -307,35 +307,6 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Initialize large list operator.  This operator can be used to create and manage a list 
 		/// within a single bin.
-		/// <para>
-		/// This method is only supported by Aerospike 3 servers.
-		/// </para>
-		/// </summary>
-		/// <param name="policy">generic configuration parameters, pass in null for defaults</param>
-		/// <param name="key">unique record identifier</param>
-		/// <param name="binName">bin name</param>
-		/// <param name="userModule">no longer used, pass in null</param>
-		LargeList GetLargeList(Policy policy, Key key, string binName, string userModule);
-
-		/// <summary>
-		/// Initialize large list operator.  This operator can be used to create and manage a list 
-		/// within a single bin.
-		/// <para>
-		/// This method is only supported by Aerospike 3 servers.
-		/// </para>
-		/// </summary>
-		/// <param name="policy">write configuration parameters, pass in null for defaults</param>
-		/// <param name="key">unique record identifier</param>
-		/// <param name="binName">bin name</param>
-		/// <param name="userModule">no longer used, pass in null</param>
-		LargeList GetLargeList(WritePolicy policy, Key key, string binName, string userModule);
-
-		/// <summary>
-		/// Initialize large list operator.  This operator can be used to create and manage a list 
-		/// within a single bin.
-		/// <para>
-		/// This method is only supported by Aerospike 3 servers.
-		/// </para>
 		/// </summary>
 		/// <param name="policy">write configuration parameters, pass in null for defaults</param>
 		/// <param name="key">unique record identifier</param>
@@ -345,22 +316,6 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Initialize large map operator.  This operator can be used to create and manage a map 
 		/// within a single bin.
-		/// <para>
-		/// This method is only supported by Aerospike 3 servers.
-		/// </para>
-		/// </summary>
-		/// <param name="policy">generic configuration parameters, pass in null for defaults</param>
-		/// <param name="key">unique record identifier</param>
-		/// <param name="binName">bin name</param>
-		/// <param name="userModule">Lua function name that initializes list configuration parameters, pass null for default</param>
-		LargeMap GetLargeMap(Policy policy, Key key, string binName, string userModule);
-
-		/// <summary>
-		/// Initialize large map operator.  This operator can be used to create and manage a map 
-		/// within a single bin.
-		/// <para>
-		/// This method is only supported by Aerospike 3 servers.
-		/// </para>
 		/// </summary>
 		/// <param name="policy">write configuration parameters, pass in null for defaults</param>
 		/// <param name="key">unique record identifier</param>
@@ -371,22 +326,6 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Initialize large set operator.  This operator can be used to create and manage a set 
 		/// within a single bin.
-		/// <para>
-		/// This method is only supported by Aerospike 3 servers.
-		/// </para>
-		/// </summary>
-		/// <param name="policy">generic configuration parameters, pass in null for defaults</param>
-		/// <param name="key">unique record identifier</param>
-		/// <param name="binName">bin name</param>
-		/// <param name="userModule">Lua function name that initializes list configuration parameters, pass null for default</param>
-		LargeSet GetLargeSet(Policy policy, Key key, string binName, string userModule);
-
-		/// <summary>
-		/// Initialize large set operator.  This operator can be used to create and manage a set 
-		/// within a single bin.
-		/// <para>
-		/// This method is only supported by Aerospike 3 servers.
-		/// </para>
 		/// </summary>
 		/// <param name="policy">write configuration parameters, pass in null for defaults</param>
 		/// <param name="key">unique record identifier</param>
@@ -397,22 +336,6 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Initialize large stack operator.  This operator can be used to create and manage a stack 
 		/// within a single bin.
-		/// <para>
-		/// This method is only supported by Aerospike 3 servers.
-		/// </para>
-		/// </summary>
-		/// <param name="policy">generic configuration parameters, pass in null for defaults</param>
-		/// <param name="key">unique record identifier</param>
-		/// <param name="binName">bin name</param>
-		/// <param name="userModule">Lua function name that initializes list configuration parameters, pass null for default</param>
-		LargeStack GetLargeStack(Policy policy, Key key, string binName, string userModule);
-
-		/// <summary>
-		/// Initialize large stack operator.  This operator can be used to create and manage a stack 
-		/// within a single bin.
-		/// <para>
-		/// This method is only supported by Aerospike 3 servers.
-		/// </para>
 		/// </summary>
 		/// <param name="policy">write configuration parameters, pass in null for defaults</param>
 		/// <param name="key">unique record identifier</param>
@@ -425,9 +348,6 @@ namespace Aerospike.Client
 		/// This asynchronous server call will return before command is complete.
 		/// The user can optionally wait for command completion by using the returned
 		/// RegisterTask instance.
-		/// <para>
-		/// This method is only supported by Aerospike 3 servers.
-		/// </para>
 		/// </summary>
 		/// <param name="policy">generic configuration parameters, pass in null for defaults</param>
 		/// <param name="clientPath">path of client file containing user defined functions, relative to current directory</param>
@@ -441,9 +361,6 @@ namespace Aerospike.Client
 		/// This asynchronous server call will return before command is complete.
 		/// The user can optionally wait for command completion by using the returned
 		/// RegisterTask instance.
-		/// <para>
-		/// This method is only supported by Aerospike 3 servers.
-		/// </para>
 		/// </summary>
 		/// <param name="policy">generic configuration parameters, pass in null for defaults</param>
 		/// <param name="resourceAssembly">assembly where resource is located.  Current assembly can be obtained by: Assembly.GetExecutingAssembly()</param>
@@ -499,9 +416,6 @@ namespace Aerospike.Client
 		/// <para>
 		/// udf file = &lt;server udf dir&gt;/&lt;package name&gt;.lua
 		/// </para>
-		/// <para>
-		/// This method is only supported by Aerospike 3 servers.
-		/// </para>
 		/// </summary>
 		/// <param name="policy">generic configuration parameters, pass in null for defaults</param>
 		/// <param name="key">unique record identifier</param>
@@ -517,9 +431,6 @@ namespace Aerospike.Client
 		/// This asynchronous server call will return before command is complete.  
 		/// The user can optionally wait for command completion by using the returned 
 		/// ExecuteTask instance.
-		/// <para>
-		/// This method is only supported by Aerospike 3 servers.
-		/// </para>
 		/// </summary>
 		/// <param name="policy">configuration parameters, pass in null for defaults</param>
 		/// <param name="statement">record filter</param>
@@ -542,9 +453,6 @@ namespace Aerospike.Client
 		/// Execute query and return record iterator.  The query executor puts records on a queue in 
 		/// separate threads.  The calling thread concurrently pops records off the queue through the 
 		/// record iterator.
-		/// <para>
-		/// This method is only supported by Aerospike 3 servers.
-		/// </para>
 		/// </summary>
 		/// <param name="policy">generic configuration parameters, pass in null for defaults</param>
 		/// <param name="statement">database query command</param>
@@ -561,9 +469,6 @@ namespace Aerospike.Client
 		/// concurrently pops results off the queue through the ResultSet iterator.
 		/// The aggregation function is called on both server and client (final reduce).
 		/// Therefore, the Lua script file must also reside on both server and client.
-		/// </para>
-		/// <para>
-		/// This method is only supported by Aerospike 3 servers.
 		/// </para>
 		/// </summary>
 		/// <param name="policy">generic configuration parameters, pass in null for defaults</param>
@@ -594,9 +499,6 @@ namespace Aerospike.Client
 		/// The aggregation function is called on both server and client (final reduce).
 		/// Therefore, the Lua script file must also reside on both server and client.
 		/// </para>
-		/// <para>
-		/// This method is only supported by Aerospike 3 servers.
-		/// </para>
 		/// </summary>
 		/// <param name="policy">generic configuration parameters, pass in null for defaults</param>
 		/// <param name="statement">database query command with aggregate functions already initialized by SetAggregateFunction()</param>
@@ -608,9 +510,6 @@ namespace Aerospike.Client
 		/// This asynchronous server call will return before command is complete.
 		/// The user can optionally wait for command completion by using the returned
 		/// IndexTask instance.
-		/// <para>
-		/// This method is only supported by Aerospike 3 servers.
-		/// </para>
 		/// </summary>
 		/// <param name="policy">generic configuration parameters, pass in null for defaults</param>
 		/// <param name="ns">namespace - equivalent to database name</param>
@@ -626,9 +525,6 @@ namespace Aerospike.Client
 		/// This asynchronous server call will return before command is complete.
 		/// The user can optionally wait for command completion by using the returned
 		/// IndexTask instance.
-		/// <para>
-		/// This method is only supported by Aerospike 3 servers.
-		/// </para>
 		/// </summary>
 		/// <param name="policy">generic configuration parameters, pass in null for defaults</param>
 		/// <param name="ns">namespace - equivalent to database name</param>
@@ -642,9 +538,6 @@ namespace Aerospike.Client
 
 		/// <summary>
 		/// Delete secondary index.
-		/// <para>
-		/// This method is only supported by Aerospike 3 servers.
-		/// </para>
 		/// </summary>
 		/// <param name="policy">generic configuration parameters, pass in null for defaults</param>
 		/// <param name="ns">namespace - equivalent to database name</param>

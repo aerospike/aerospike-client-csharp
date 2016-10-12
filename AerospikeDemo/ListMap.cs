@@ -29,7 +29,6 @@ namespace Aerospike.Demo
 
 		/// <summary>
 		/// Write List and Map objects.
-		/// This functionality is only supported in Aerospike 3.0 servers.
 		/// </summary>
 		public override void RunExample(AerospikeClient client, Arguments args)
 		{
