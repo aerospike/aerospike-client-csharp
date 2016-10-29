@@ -41,6 +41,12 @@ namespace Aerospike.Client
 		public SslProtocols protocols = SslProtocols.Default;
 
 		/// <summary>
+		/// Reject certificates whose serial numbers match a serial number in this array.
+		/// Default: null (Do not exclude by certificate serial number)
+		/// </summary>
+		public byte[][] revokeCertificates;
+	
+		/// <summary>
 		/// Encrypt data on TLS socket only.  Do not authenticate server certificate.
 		/// Default: false
 		/// </summary>

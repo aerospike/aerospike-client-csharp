@@ -37,6 +37,7 @@ namespace Aerospike.Demo
         private Console console;
 		private string clusterName;
 		private SslProtocols tlsProtocols;
+		private byte[][] tlsRevoke;
 
         public DemoForm()
         {
@@ -168,6 +169,7 @@ namespace Aerospike.Demo
             debugBox.Checked = Properties.Settings.Default.Debug;
 			tlsBox.Checked = Properties.Settings.Default.UseTls;
 			tlsProtocols = Util.ParseSslProtocols(Properties.Settings.Default.TlsProtocols);
+			tlsRevoke = Util.HexStringToByteArrays(Properties.Settings.Default.TlsRevoke);
 		}
 
         private void WriteDefaults()
@@ -334,6 +336,7 @@ namespace Aerospike.Demo
 			{
 				args.tlsPolicy = new TlsPolicy();
 				args.tlsPolicy.protocols = tlsProtocols;
+				args.tlsPolicy.revokeCertificates = tlsRevoke;
 			}
 			return args;
         }

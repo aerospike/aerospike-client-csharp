@@ -58,6 +58,7 @@ namespace Aerospike.Test
 			{
 				tlsPolicy = new TlsPolicy();
 				tlsPolicy.protocols = Util.ParseSslProtocols(Properties.Settings.Default.TlsProtocols);
+				tlsPolicy.revokeCertificates = Util.HexStringToByteArrays(Properties.Settings.Default.TlsRevoke);
 			}
 		}
 

@@ -58,7 +58,7 @@ namespace Aerospike.Client
 			}
 		}
 
-		private bool ValidateServerCertificate(object sender, X509Certificate certificate, X509Chain chain, SslPolicyErrors sslPolicyErrors)
+		private bool ValidateServerCertificate(object sender, X509Certificate cert, X509Chain chain, SslPolicyErrors sslPolicyErrors)
 		{
 			if (sslPolicyErrors != SslPolicyErrors.None)
 			{
@@ -76,7 +76,24 @@ namespace Aerospike.Client
 				return false;
 			}
 
-			// Perform extra checks here.
+
+			// Exclude certificate serial numbers.
+			if (policy.revokeCertificates != null)
+			{
+				byte[] serialNumber = cert.GetSerialNumber();
+
+				foreach (byte[] sn in policy.revokeCertificates)
+				{
+					if (Util.ByteArrayEquals(serialNumber, sn))
+					{
+						if (Log.DebugEnabled())
+						{
+							Log.Debug("Invalid certificate serial number: " + cert.GetSerialNumberString());
+						}
+						return false;
+					}
+				}
+			}
 			return true;
 		}
 

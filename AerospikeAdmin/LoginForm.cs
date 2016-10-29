@@ -29,6 +29,7 @@ namespace Aerospike.Admin
 	{
 		private string clusterName;
 		private SslProtocols tlsProtocols;
+		private byte[][] tlsRevoke;
 
 		public LoginForm()
 		{
@@ -70,6 +71,7 @@ namespace Aerospike.Admin
 			userBox.Text = Properties.Settings.Default.User;
 			tlsBox.Checked = Properties.Settings.Default.UseTls;
 			tlsProtocols = Util.ParseSslProtocols(Properties.Settings.Default.TlsProtocols);
+			tlsRevoke = Util.HexStringToByteArrays(Properties.Settings.Default.TlsRevoke);
 		}
 
 		private void WriteDefaults()
@@ -111,6 +113,7 @@ namespace Aerospike.Admin
 			{
 				policy.tlsPolicy = new TlsPolicy();
 				policy.tlsPolicy.protocols = tlsProtocols;
+				policy.tlsPolicy.revokeCertificates = tlsRevoke;
 			}
 
 			AerospikeClient client = new AerospikeClient(policy, hosts);

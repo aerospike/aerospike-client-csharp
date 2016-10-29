@@ -251,5 +251,56 @@ namespace Aerospike.Client
 			}
 			return protocols;
 		}
+
+		public static byte[][] HexStringToByteArrays(string str)
+		{
+			if (str == null || str.Length == 0)
+			{
+				return null;
+			}
+			string[] strArray = str.Split(',');
+			byte[][] byteArrays = new byte[strArray.Length][];
+			int count = 0;
+
+			foreach (string s in strArray)
+			{
+				byteArrays[count++] = HexStringToBytes(s);
+			}
+			return byteArrays;
+		}
+
+		public static byte[] HexStringToBytes(string str)
+		{
+			int byteLength = str.Length / 2;
+			bool uneven = false;
+
+			if ((str.Length - (byteLength * 2)) == 1)
+			{
+				uneven = true;
+				byteLength++;
+			}
+
+			byte[] bytes = new byte[byteLength];
+			int byteOffset = byteLength - 1;
+			int strOffset = 0;
+
+			if (uneven)
+			{
+				bytes[byteOffset--] = (byte)HexVal(str[strOffset++]);
+			}
+
+			while (byteOffset >= 0)
+			{
+				bytes[byteOffset--] = (byte)((HexVal(str[strOffset]) << 4) + (HexVal(str[strOffset + 1])));
+				strOffset += 2;
+			}
+			return bytes;
+		}
+	
+		public static int HexVal(char hex)
+		{
+			int val = (int)hex;
+			return val - (val < 58 ? 48 : (val < 97 ? 55 : 87));
+		}
 	}
 }

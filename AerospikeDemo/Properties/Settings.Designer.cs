@@ -337,13 +337,25 @@ namespace Aerospike.Demo.Properties {
         
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("")]
+        [global::System.Configuration.DefaultSettingValueAttribute("Ssl3")]
         public string TlsProtocols {
             get {
                 return ((string)(this["TlsProtocols"]));
             }
             set {
                 this["TlsProtocols"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("")]
+        public string TlsRevoke {
+            get {
+                return ((string)(this["TlsRevoke"]));
+            }
+            set {
+                this["TlsRevoke"] = value;
             }
         }
     }
