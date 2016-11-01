@@ -110,18 +110,18 @@ namespace Aerospike.Test.Properties {
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
         [global::System.Configuration.DefaultSettingValueAttribute("False")]
-        public bool UseTls {
+        public bool TlsEnable {
             get {
-                return ((bool)(this["UseTls"]));
+                return ((bool)(this["TlsEnable"]));
             }
             set {
-                this["UseTls"] = value;
+                this["TlsEnable"] = value;
             }
         }
         
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("Ssl3")]
+        [global::System.Configuration.DefaultSettingValueAttribute("")]
         public string TlsProtocols {
             get {
                 return ((string)(this["TlsProtocols"]));
@@ -140,6 +140,30 @@ namespace Aerospike.Test.Properties {
             }
             set {
                 this["TlsRevoke"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("")]
+        public string TlsName {
+            get {
+                return ((string)(this["TlsName"]));
+            }
+            set {
+                this["TlsName"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("False")]
+        public bool TlsEncryptOnly {
+            get {
+                return ((bool)(this["TlsEncryptOnly"]));
+            }
+            set {
+                this["TlsEncryptOnly"] = value;
             }
         }
     }

@@ -37,6 +37,7 @@ namespace Aerospike.Test
 		public string clusterName;
 		public string ns;
 		public string set;
+		public string tlsName;
 		public TlsPolicy tlsPolicy;
 		public bool hasUdf;
 		public bool hasMap;
@@ -46,20 +47,22 @@ namespace Aerospike.Test
 		public Args()
 		{
 			port = Properties.Settings.Default.Port;
-			hosts = Host.ParseHosts(Properties.Settings.Default.Host, port);
 			clusterName = Properties.Settings.Default.ClusterName.Trim();
 			user = Properties.Settings.Default.User.Trim();
 			password = Properties.Settings.Default.Password.Trim();
 			ns = Properties.Settings.Default.Namespace.Trim();
 			set = Properties.Settings.Default.Set.Trim();
-			bool useTls = Properties.Settings.Default.UseTls;
 
-			if (useTls)
+			if (Properties.Settings.Default.TlsEnable)
 			{
+				tlsName = Properties.Settings.Default.TlsName.Trim();
 				tlsPolicy = new TlsPolicy();
 				tlsPolicy.protocols = Util.ParseSslProtocols(Properties.Settings.Default.TlsProtocols);
 				tlsPolicy.revokeCertificates = Util.HexStringToByteArrays(Properties.Settings.Default.TlsRevoke);
+				tlsPolicy.encryptOnly = Properties.Settings.Default.TlsEncryptOnly;
 			}
+
+			hosts = Host.ParseHosts(Properties.Settings.Default.Host, tlsName, port);
 		}
 
 		public void Connect()

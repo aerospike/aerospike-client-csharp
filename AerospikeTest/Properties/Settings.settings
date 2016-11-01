@@ -23,14 +23,20 @@
     <Setting Name="Password" Type="System.String" Scope="User">
       <Value Profile="(Default)" />
     </Setting>
-    <Setting Name="UseTls" Type="System.Boolean" Scope="User">
+    <Setting Name="TlsEnable" Type="System.Boolean" Scope="User">
       <Value Profile="(Default)">False</Value>
     </Setting>
+    <Setting Name="TlsName" Type="System.String" Scope="User">
+      <Value Profile="(Default)" />
+    </Setting>
     <Setting Name="TlsProtocols" Type="System.String" Scope="User">
-      <Value Profile="(Default)">Ssl3</Value>
+      <Value Profile="(Default)" />
     </Setting>
     <Setting Name="TlsRevoke" Type="System.String" Scope="User">
       <Value Profile="(Default)" />
+    </Setting>
+    <Setting Name="TlsEncryptOnly" Type="System.Boolean" Scope="User">
+      <Value Profile="(Default)">False</Value>
     </Setting>
   </Settings>
 </SettingsFile>

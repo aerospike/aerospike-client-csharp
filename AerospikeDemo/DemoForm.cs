@@ -36,8 +36,8 @@ namespace Aerospike.Demo
         private volatile ExampleTreeNode currentExample;
         private Console console;
 		private string clusterName;
-		private SslProtocols tlsProtocols;
-		private byte[][] tlsRevoke;
+		private string tlsName;
+		private TlsPolicy tlsPolicy;
 
         public DemoForm()
         {
@@ -167,9 +167,15 @@ namespace Aerospike.Demo
             latencyColumnsBox.Text = Properties.Settings.Default.LatencyColumns.ToString();
             latencyShiftBox.Text = Properties.Settings.Default.LatencyShift.ToString();
             debugBox.Checked = Properties.Settings.Default.Debug;
-			tlsBox.Checked = Properties.Settings.Default.UseTls;
-			tlsProtocols = Util.ParseSslProtocols(Properties.Settings.Default.TlsProtocols);
-			tlsRevoke = Util.HexStringToByteArrays(Properties.Settings.Default.TlsRevoke);
+
+			if (Properties.Settings.Default.TlsEnable)
+			{
+				tlsName = Properties.Settings.Default.TlsName.Trim();
+				tlsPolicy = new TlsPolicy();
+				tlsPolicy.protocols = Util.ParseSslProtocols(Properties.Settings.Default.TlsProtocols);
+				tlsPolicy.revokeCertificates = Util.HexStringToByteArrays(Properties.Settings.Default.TlsRevoke);
+				tlsPolicy.encryptOnly = Properties.Settings.Default.TlsEncryptOnly;
+			}
 		}
 
         private void WriteDefaults()
@@ -198,7 +204,6 @@ namespace Aerospike.Demo
             Properties.Settings.Default.LatencyColumns = int.Parse(latencyColumnsBox.Text);
             Properties.Settings.Default.LatencyShift = int.Parse(latencyShiftBox.Text);
             Properties.Settings.Default.Debug = debugBox.Checked;
-			Properties.Settings.Default.UseTls = tlsBox.Checked;
 			Properties.Settings.Default.Save();
         }
 
@@ -324,20 +329,13 @@ namespace Aerospike.Demo
             }
 
 			args.port = int.Parse(portBox.Text);
-			args.hosts = Host.ParseHosts(hostBox.Text.Trim(), args.port);
+			args.hosts = Host.ParseHosts(hostBox.Text.Trim(), tlsName, args.port);
             args.user = userBox.Text.Trim();
             args.password = passwordBox.Text;
 			args.clusterName = clusterName;
             args.ns = nsBox.Text.Trim();
             args.set = setBox.Text.Trim();
-			args.tlsPolicy = null;
-
-			if (tlsBox.Checked)
-			{
-				args.tlsPolicy = new TlsPolicy();
-				args.tlsPolicy.protocols = tlsProtocols;
-				args.tlsPolicy.revokeCertificates = tlsRevoke;
-			}
+			args.tlsPolicy = tlsPolicy;
 			return args;
         }
 

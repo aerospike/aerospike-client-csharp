@@ -107,11 +107,11 @@ namespace Aerospike.Client
 		/// tlsname and port are optional.
 		/// </para>
 		/// </summary>
-		public static Host[] ParseHosts(string str, int defaultPort)
+		public static Host[] ParseHosts(string str, string defaultTlsName, int defaultPort)
 		{
 			try
 			{
-				return (new HostParser(str, defaultPort)).hosts;
+				return (new HostParser(str, defaultTlsName, defaultPort)).hosts;
 			}
 			catch (Exception)
 			{
@@ -127,7 +127,7 @@ namespace Aerospike.Client
 			private int length;
 			private char c;
 
-			internal HostParser(string str, int defaultPort)
+			internal HostParser(string str, string defaultTlsName, int defaultPort)
 			{
 				this.str = str;
 				this.length = str.Length;
@@ -146,7 +146,7 @@ namespace Aerospike.Client
 						throw new Exception();
 					}
 					hostname = ParseHost();
-					tlsname = null;
+					tlsname = defaultTlsName;
 					port = defaultPort;
 
 					if (offset < length && c == ':')

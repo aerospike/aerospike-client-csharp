@@ -37,7 +37,6 @@
 			this.userBox = new System.Windows.Forms.TextBox();
 			this.passwordBox = new System.Windows.Forms.TextBox();
 			this.loginButton = new System.Windows.Forms.Button();
-			this.tlsBox = new System.Windows.Forms.CheckBox();
 			this.SuspendLayout();
 			// 
 			// label1
@@ -126,23 +125,11 @@
 			this.loginButton.UseVisualStyleBackColor = true;
 			this.loginButton.Click += new System.EventHandler(this.LoginClicked);
 			// 
-			// tlsBox
-			// 
-			this.tlsBox.Location = new System.Drawing.Point(12, 117);
-			this.tlsBox.Name = "tlsBox";
-			this.tlsBox.RightToLeft = System.Windows.Forms.RightToLeft.Yes;
-			this.tlsBox.Size = new System.Drawing.Size(87, 24);
-			this.tlsBox.TabIndex = 9;
-			this.tlsBox.Text = "TLS";
-			this.tlsBox.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
-			this.tlsBox.UseVisualStyleBackColor = true;
-			// 
 			// LoginForm
 			// 
 			this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
 			this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
 			this.ClientSize = new System.Drawing.Size(278, 152);
-			this.Controls.Add(this.tlsBox);
 			this.Controls.Add(this.loginButton);
 			this.Controls.Add(this.passwordBox);
 			this.Controls.Add(this.userBox);
@@ -171,7 +158,6 @@
 		private System.Windows.Forms.TextBox userBox;
 		private System.Windows.Forms.TextBox passwordBox;
 		private System.Windows.Forms.Button loginButton;
-		private System.Windows.Forms.CheckBox tlsBox;
 	}
 }
 

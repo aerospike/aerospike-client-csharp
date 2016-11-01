@@ -28,8 +28,8 @@ namespace Aerospike.Admin
 	public partial class LoginForm : Form
 	{
 		private string clusterName;
-		private SslProtocols tlsProtocols;
-		private byte[][] tlsRevoke;
+		private string tlsName;
+		private TlsPolicy tlsPolicy;
 
 		public LoginForm()
 		{
@@ -69,9 +69,15 @@ namespace Aerospike.Admin
 			portBox.Text = Properties.Settings.Default.Port.ToString();
 			clusterName = Properties.Settings.Default.ClusterName.Trim();
 			userBox.Text = Properties.Settings.Default.User;
-			tlsBox.Checked = Properties.Settings.Default.UseTls;
-			tlsProtocols = Util.ParseSslProtocols(Properties.Settings.Default.TlsProtocols);
-			tlsRevoke = Util.HexStringToByteArrays(Properties.Settings.Default.TlsRevoke);
+
+			if (Properties.Settings.Default.TlsEnable)
+			{
+				tlsName = Properties.Settings.Default.TlsName.Trim();
+				tlsPolicy = new TlsPolicy();
+				tlsPolicy.protocols = Util.ParseSslProtocols(Properties.Settings.Default.TlsProtocols);
+				tlsPolicy.revokeCertificates = Util.HexStringToByteArrays(Properties.Settings.Default.TlsRevoke);
+				tlsPolicy.encryptOnly = Properties.Settings.Default.TlsEncryptOnly;
+			}
 		}
 
 		private void WriteDefaults()
@@ -79,7 +85,6 @@ namespace Aerospike.Admin
 			Properties.Settings.Default.Host = hostBox.Text.Trim();
 			Properties.Settings.Default.Port = int.Parse(portBox.Text);
 			Properties.Settings.Default.User = userBox.Text.Trim();
-			Properties.Settings.Default.UseTls = tlsBox.Checked;
 			Properties.Settings.Default.Save();
 		}
 
@@ -98,7 +103,7 @@ namespace Aerospike.Admin
 		private void Login()
 		{
 			int port = int.Parse(portBox.Text.Trim());
-			Host[] hosts = Host.ParseHosts(hostBox.Text.Trim(), port);
+			Host[] hosts = Host.ParseHosts(hostBox.Text.Trim(), tlsName, port);
 			string userName = userBox.Text.Trim();
 			string password = passwordBox.Text.Trim();
 
@@ -108,13 +113,7 @@ namespace Aerospike.Admin
 			policy.clusterName = clusterName;
 			policy.failIfNotConnected = true;
 			policy.timeout = 600000;
-
-			if (tlsBox.Checked)
-			{
-				policy.tlsPolicy = new TlsPolicy();
-				policy.tlsPolicy.protocols = tlsProtocols;
-				policy.tlsPolicy.revokeCertificates = tlsRevoke;
-			}
+			policy.tlsPolicy = tlsPolicy;
 
 			AerospikeClient client = new AerospikeClient(policy, hosts);
 

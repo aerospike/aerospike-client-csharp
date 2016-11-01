@@ -98,7 +98,6 @@
 			this.label12 = new System.Windows.Forms.Label();
 			this.userBox = new System.Windows.Forms.TextBox();
 			this.label13 = new System.Windows.Forms.Label();
-			this.tlsBox = new System.Windows.Forms.CheckBox();
 			((System.ComponentModel.ISupportInitialize)(this.splitContainer1)).BeginInit();
 			this.splitContainer1.Panel1.SuspendLayout();
 			this.splitContainer1.Panel2.SuspendLayout();
@@ -695,7 +694,7 @@
 			this.consoleBox.Name = "consoleBox";
 			this.consoleBox.ReadOnly = true;
 			this.consoleBox.ScrollBars = System.Windows.Forms.ScrollBars.Vertical;
-			this.consoleBox.Size = new System.Drawing.Size(1019, 291);
+			this.consoleBox.Size = new System.Drawing.Size(1019, 289);
 			this.consoleBox.TabIndex = 11;
 			this.consoleBox.KeyDown += new System.Windows.Forms.KeyEventHandler(this.ConsoleKeyDown);
 			// 
@@ -835,23 +834,11 @@
 			this.label13.TabIndex = 17;
 			this.label13.Text = "User";
 			// 
-			// tlsBox
-			// 
-			this.tlsBox.AutoSize = true;
-			this.tlsBox.Location = new System.Drawing.Point(869, 8);
-			this.tlsBox.Name = "tlsBox";
-			this.tlsBox.RightToLeft = System.Windows.Forms.RightToLeft.Yes;
-			this.tlsBox.Size = new System.Drawing.Size(46, 17);
-			this.tlsBox.TabIndex = 19;
-			this.tlsBox.Text = "TLS";
-			this.tlsBox.UseVisualStyleBackColor = true;
-			// 
 			// DemoForm
 			// 
 			this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
 			this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
 			this.ClientSize = new System.Drawing.Size(1184, 789);
-			this.Controls.Add(this.tlsBox);
 			this.Controls.Add(this.label12);
 			this.Controls.Add(this.userBox);
 			this.Controls.Add(this.label13);
@@ -964,7 +951,6 @@
 		private System.Windows.Forms.Label label12;
 		private System.Windows.Forms.TextBox userBox;
 		private System.Windows.Forms.Label label13;
-		private System.Windows.Forms.CheckBox tlsBox;
 		private System.Windows.Forms.CheckBox retryOnTimeoutBox;
 		private System.Windows.Forms.Label label18;
 		private System.Windows.Forms.ComboBox replicaBox;
