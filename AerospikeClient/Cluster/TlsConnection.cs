@@ -20,6 +20,7 @@ using System.Net;
 using System.Net.Sockets;
 using System.Net.Security;
 using System.Security.Authentication;
+using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 
 namespace Aerospike.Client
@@ -31,6 +32,7 @@ namespace Aerospike.Client
 	{
 		private readonly SslStream sslStream;
 		private readonly TlsPolicy policy;
+		private readonly string tlsName;
 
 		/// <summary>
 		/// Create TLS socket.
@@ -44,6 +46,7 @@ namespace Aerospike.Client
 			{
 				tlsName = "";
 			}
+			this.tlsName = tlsName;
 
 			try
 			{
@@ -67,6 +70,47 @@ namespace Aerospike.Client
 					// User has chosen to encrypt data only and not validate server certificate.
 					// Return success.
 					return true;
+				}
+
+				// Search subject alternative names.
+				var cert2 = (X509Certificate2)cert;
+				foreach (X509Extension ext in cert2.Extensions)
+				{
+					if (ext.Oid.Value.Equals("2.5.29.17")) // Subject Alternative Name
+					{
+						const string filter = "DNS Name=";
+						string sans = ext.Format(false);
+						string san;
+						int begin = 0;
+						int end;
+
+						while ((begin = sans.IndexOf(filter, begin)) >= 0)
+						{
+							begin += filter.Length;
+							end = sans.IndexOf(',', begin);
+
+							if (end >= 0)
+							{
+								san = sans.Substring(begin, end - begin);
+							}
+							else
+							{
+								san = sans.Substring(begin);
+							}
+
+							if (san.Equals(tlsName))
+							{
+								return true;
+							}
+
+							if (end < 0)
+							{
+								break;
+							}
+
+							begin = end + 1;
+						}
+					}
 				}
 
 				if (Log.DebugEnabled())
