@@ -225,33 +225,6 @@ namespace Aerospike.Client
 		}
 #endif	
 
-		public static SslProtocols ParseSslProtocols(string protocolString)
-		{
-			string str = protocolString.Trim();
-			SslProtocols protocols;
-
-			if (protocolString.Length > 0)
-			{
-				protocols = SslProtocols.None;
-				string[] list = str.Split(',');
-
-				foreach (string item in list)
-				{
-					string s = item.Trim();
-
-					if (s.Length > 0)
-					{
-						protocols |= (SslProtocols)Enum.Parse(typeof(SslProtocols), s);
-					}
-				}
-			}
-			else
-			{
-				protocols = SslProtocols.Default;
-			}
-			return protocols;
-		}
-
 		public static byte[][] HexStringToByteArrays(string str)
 		{
 			if (str == null || str.Length == 0)

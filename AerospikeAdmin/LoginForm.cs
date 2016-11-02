@@ -73,10 +73,7 @@ namespace Aerospike.Admin
 			if (Properties.Settings.Default.TlsEnable)
 			{
 				tlsName = Properties.Settings.Default.TlsName.Trim();
-				tlsPolicy = new TlsPolicy();
-				tlsPolicy.protocols = Util.ParseSslProtocols(Properties.Settings.Default.TlsProtocols);
-				tlsPolicy.revokeCertificates = Util.HexStringToByteArrays(Properties.Settings.Default.TlsRevoke);
-				tlsPolicy.encryptOnly = Properties.Settings.Default.TlsEncryptOnly;
+				tlsPolicy = new TlsPolicy(Properties.Settings.Default.TlsProtocols, Properties.Settings.Default.TlsRevoke);
 			}
 		}
 

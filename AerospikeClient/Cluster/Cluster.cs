@@ -92,7 +92,7 @@ namespace Aerospike.Client
 			this.clusterName = policy.clusterName;
 
 			// Default TLS names when TLS enabled.
-			if (policy.tlsPolicy != null && !policy.tlsPolicy.encryptOnly)
+			if (policy.tlsPolicy != null)
 			{
 				bool useClusterName = HasClusterName;
 

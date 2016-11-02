@@ -118,17 +118,5 @@ namespace Aerospike.Admin.Properties {
                 this["TlsRevoke"] = value;
             }
         }
-        
-        [global::System.Configuration.UserScopedSettingAttribute()]
-        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("False")]
-        public bool TlsEncryptOnly {
-            get {
-                return ((bool)(this["TlsEncryptOnly"]));
-            }
-            set {
-                this["TlsEncryptOnly"] = value;
-            }
-        }
     }
 }

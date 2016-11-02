@@ -65,13 +65,6 @@ namespace Aerospike.Client
 		{
 			if (sslPolicyErrors != SslPolicyErrors.None)
 			{
-				if (policy.encryptOnly)
-				{
-					// User has chosen to encrypt data only and not validate server certificate.
-					// Return success.
-					return true;
-				}
-
 				// Search subject alternative names.
 				var cert2 = (X509Certificate2)cert;
 				foreach (X509Extension ext in cert2.Extensions)

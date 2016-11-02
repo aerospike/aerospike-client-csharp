@@ -14,6 +14,7 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
+using System;
 using System.Security.Authentication;
 
 namespace Aerospike.Client
@@ -45,11 +46,66 @@ namespace Aerospike.Client
 		/// Default: null (Do not exclude by certificate serial number)
 		/// </summary>
 		public byte[][] revokeCertificates;
-	
+
 		/// <summary>
-		/// Encrypt data on TLS socket only.  Do not authenticate server certificate.
-		/// Default: false
+		/// Default constructor.
 		/// </summary>
-		public bool encryptOnly;
+		public TlsPolicy()
+		{
+		}
+
+		/// <summary>
+		/// Constructor for TLS properties.
+		/// </summary>
+		public TlsPolicy(string protocolString, string revokeString)
+		{
+			ParseSslProtocols(protocolString);
+			ParseRevokeString(revokeString);
+		}
+
+		private void ParseSslProtocols(string protocolString)
+		{
+			if (protocolString == null)
+			{
+				return;
+			}
+
+			protocolString = protocolString.Trim();
+
+			if (protocolString.Length == 0)
+			{
+				return;
+			}
+
+			protocols = SslProtocols.None;
+			string[] list = protocolString.Split(',');
+
+			foreach (string item in list)
+			{
+				string s = item.Trim();
+
+				if (s.Length > 0)
+				{
+					protocols |= (SslProtocols)Enum.Parse(typeof(SslProtocols), s);
+				}
+			}
+		}
+
+		private void ParseRevokeString(string revokeString)
+		{
+			if (revokeString == null)
+			{
+				return;
+			}
+
+			revokeString = revokeString.Trim();
+
+			if (revokeString.Length == 0)
+			{
+				return;
+			}
+
+			revokeCertificates = Util.HexStringToByteArrays(revokeString);
+		}
 	}
 }
