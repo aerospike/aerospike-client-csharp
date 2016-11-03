@@ -171,7 +171,11 @@ namespace Aerospike.Demo
 			if (Properties.Settings.Default.TlsEnable)
 			{
 				tlsName = Properties.Settings.Default.TlsName.Trim();
-				tlsPolicy = new TlsPolicy(Properties.Settings.Default.TlsProtocols, Properties.Settings.Default.TlsRevoke);
+				tlsPolicy = new TlsPolicy(
+					Properties.Settings.Default.TlsProtocols,
+					Properties.Settings.Default.TlsRevoke,
+					Properties.Settings.Default.TlsClientCertFile
+					);
 			}
 		}
 

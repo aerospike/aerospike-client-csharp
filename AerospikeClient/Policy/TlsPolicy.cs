@@ -15,7 +15,10 @@
  * the License.
  */
 using System;
+using System.IO;
 using System.Security.Authentication;
+using System.Security.Cryptography;
+using System.Security.Cryptography.X509Certificates;
 
 namespace Aerospike.Client
 {
@@ -42,10 +45,16 @@ namespace Aerospike.Client
 		public SslProtocols protocols = SslProtocols.Default;
 
 		/// <summary>
-		/// Reject certificates whose serial numbers match a serial number in this array.
+		/// Reject server certificates whose serial numbers match a serial number in this array.
 		/// Default: null (Do not exclude by certificate serial number)
 		/// </summary>
 		public byte[][] revokeCertificates;
+
+		/// <summary>
+		/// Client certificates to pass to server when server requires mutual authentication.
+		/// Default: null (Client authenticates server, but server does not authenticate client)
+		/// </summary>
+		public X509CertificateCollection clientCertificates;
 
 		/// <summary>
 		/// Default constructor.
@@ -55,12 +64,23 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
+		/// Copy constructor.
+		/// </summary>
+		public TlsPolicy(TlsPolicy other)
+		{
+			this.protocols = other.protocols;
+			this.revokeCertificates = other.revokeCertificates;
+			this.clientCertificates = other.clientCertificates;
+		}
+
+		/// <summary>
 		/// Constructor for TLS properties.
 		/// </summary>
-		public TlsPolicy(string protocolString, string revokeString)
+		public TlsPolicy(string protocolString, string revokeString, string clientCertificateFile)
 		{
 			ParseSslProtocols(protocolString);
 			ParseRevokeString(revokeString);
+			ParseClientCertificateFile(clientCertificateFile);
 		}
 
 		private void ParseSslProtocols(string protocolString)
@@ -106,6 +126,25 @@ namespace Aerospike.Client
 			}
 
 			revokeCertificates = Util.HexStringToByteArrays(revokeString);
+		}
+
+		private void ParseClientCertificateFile(string clientCertificateFile)
+		{
+			if (clientCertificateFile == null)
+			{
+				return;
+			}
+
+			clientCertificateFile = clientCertificateFile.Trim();
+
+			if (clientCertificateFile.Length == 0)
+			{
+				return;
+			}
+
+			X509Certificate2 cert = new X509Certificate2(clientCertificateFile);
+			clientCertificates = new X509CertificateCollection();
+			clientCertificates.Add(cert);
 		}
 	}
 }

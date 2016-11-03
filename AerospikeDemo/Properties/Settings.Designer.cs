@@ -370,5 +370,17 @@ namespace Aerospike.Demo.Properties {
                 this["TlsRevoke"] = value;
             }
         }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("")]
+        public string TlsClientCertFile {
+            get {
+                return ((string)(this["TlsClientCertFile"]));
+            }
+            set {
+                this["TlsClientCertFile"] = value;
+            }
+        }
     }
 }

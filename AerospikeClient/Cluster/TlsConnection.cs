@@ -52,8 +52,8 @@ namespace Aerospike.Client
 			{
 				RemoteCertificateValidationCallback remoteCallback = new RemoteCertificateValidationCallback(ValidateServerCertificate);
 				sslStream = new SslStream(new NetworkStream(socket, true), false, remoteCallback);
-				sslStream.AuthenticateAsClient(tlsName, null, policy.protocols, false);
-            }
+				sslStream.AuthenticateAsClient(tlsName, policy.clientCertificates, policy.protocols, false);
+			}
             catch (Exception)
 			{
 				base.Close();
@@ -63,57 +63,6 @@ namespace Aerospike.Client
 
 		private bool ValidateServerCertificate(object sender, X509Certificate cert, X509Chain chain, SslPolicyErrors sslPolicyErrors)
 		{
-			if (sslPolicyErrors != SslPolicyErrors.None)
-			{
-				// Search subject alternative names.
-				var cert2 = (X509Certificate2)cert;
-				foreach (X509Extension ext in cert2.Extensions)
-				{
-					if (ext.Oid.Value.Equals("2.5.29.17")) // Subject Alternative Name
-					{
-						const string filter = "DNS Name=";
-						string sans = ext.Format(false);
-						string san;
-						int begin = 0;
-						int end;
-
-						while ((begin = sans.IndexOf(filter, begin)) >= 0)
-						{
-							begin += filter.Length;
-							end = sans.IndexOf(',', begin);
-
-							if (end >= 0)
-							{
-								san = sans.Substring(begin, end - begin);
-							}
-							else
-							{
-								san = sans.Substring(begin);
-							}
-
-							if (san.Equals(tlsName))
-							{
-								return true;
-							}
-
-							if (end < 0)
-							{
-								break;
-							}
-
-							begin = end + 1;
-						}
-					}
-				}
-
-				if (Log.DebugEnabled())
-				{
-					Log.Debug("TLS connection error: " + sslPolicyErrors);
-				}
-				return false;
-			}
-
-
 			// Exclude certificate serial numbers.
 			if (policy.revokeCertificates != null)
 			{
@@ -131,7 +80,58 @@ namespace Aerospike.Client
 					}
 				}
 			}
-			return true;
+
+			if (sslPolicyErrors == SslPolicyErrors.None)
+			{
+				return true;
+			}
+			
+			// Search subject alternative names.
+			var cert2 = (X509Certificate2)cert;
+			foreach (X509Extension ext in cert2.Extensions)
+			{
+				if (ext.Oid.Value.Equals("2.5.29.17")) // Subject Alternative Name
+				{
+					const string filter = "DNS Name=";
+					string sans = ext.Format(false);
+					string san;
+					int begin = 0;
+					int end;
+
+					while ((begin = sans.IndexOf(filter, begin)) >= 0)
+					{
+						begin += filter.Length;
+						end = sans.IndexOf(',', begin);
+
+						if (end >= 0)
+						{
+							san = sans.Substring(begin, end - begin);
+						}
+						else
+						{
+							san = sans.Substring(begin);
+						}
+
+						if (san.Equals(tlsName))
+						{
+							return true;
+						}
+
+						if (end < 0)
+						{
+							break;
+						}
+
+						begin = end + 1;
+					}
+				}
+			}
+
+			if (Log.DebugEnabled())
+			{
+				Log.Debug("TLS connection error: " + sslPolicyErrors);
+			}
+			return false;
 		}
 
 		public override void Write(byte[] buffer, int length)
