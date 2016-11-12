@@ -53,9 +53,10 @@ namespace Aerospike.Client
 		/// <para>
 		/// Expiration values:
 		/// <list type="bullet">
+		/// <item>-2: Do not change ttl when record is written. Supported by Aerospike server versions >= 3.10.1.</item>
 		/// <item>-1: Never expire. Supported by Aerospike server versions >= 3.1.4.</item>
 		/// <item>0:  Default to namespace's "default-ttl" on the server.</item>
-		/// <item>> 0: Actual expiration in seconds.</item>
+		/// <item>> 0: Actual ttl in seconds.</item>
 		/// </list>
 		/// </para>
 		/// </summary>
