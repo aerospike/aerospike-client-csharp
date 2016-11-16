@@ -44,7 +44,7 @@ namespace Aerospike.Client
 		{
 			if (value == null)
 			{
-				return new NullValue();
+				return NullValue.Instance;
 			}
 			else
 			{
@@ -59,7 +59,7 @@ namespace Aerospike.Client
 		{
 			if (value == null)
 			{
-				return new NullValue();
+				return NullValue.Instance;
 			}
 			else
 			{
@@ -74,7 +74,7 @@ namespace Aerospike.Client
 		{
 			if (value == null)
 			{
-				return new NullValue();
+				return NullValue.Instance;
 			}
 			else
 			{
@@ -177,7 +177,7 @@ namespace Aerospike.Client
 		{
 			if (value == null)
 			{
-				return new NullValue();
+				return NullValue.Instance;
 			}
 			else
 			{
@@ -192,7 +192,7 @@ namespace Aerospike.Client
 		{
 			if (value == null)
 			{
-				return new NullValue();
+				return NullValue.Instance;
 			}
 			else
 			{
@@ -207,7 +207,7 @@ namespace Aerospike.Client
 		{
 			if (value == null)
 			{
-				return new NullValue();
+				return NullValue.Instance;
 			}
 			else
 			{
@@ -222,7 +222,7 @@ namespace Aerospike.Client
 		{
 			if (value == null)
 			{
-				return new NullValue();
+				return NullValue.Instance;
 			}
 			else
 			{
@@ -237,7 +237,7 @@ namespace Aerospike.Client
 		{
 			if (value == null)
 			{
-				return new NullValue();
+				return NullValue.Instance;
 			}
 			else
 			{
@@ -252,7 +252,7 @@ namespace Aerospike.Client
 		{
 			get
 			{
-				return new NullValue();
+				return NullValue.Instance;
 			}
 		}
 
@@ -265,7 +265,7 @@ namespace Aerospike.Client
 		{
 			if (value == null)
 			{
-				return new NullValue();
+				return NullValue.Instance;
 			}
 
 			if (value is byte[])
@@ -293,7 +293,7 @@ namespace Aerospike.Client
 			switch (code)
 			{
                 case TypeCode.Empty:
-					return new NullValue();
+					return NullValue.Instance;
 
                 case TypeCode.String:
 					return new StringValue((string)value);
@@ -416,6 +416,8 @@ namespace Aerospike.Client
 		/// </summary>
 		public sealed class NullValue : Value
 		{
+			public static readonly NullValue Instance = new NullValue();
+			
 			public override int EstimateSize()
 			{
 				return 0;
