@@ -92,7 +92,7 @@ namespace Aerospike.Client
 			if (opCount == 0)
 			{
 				// Bin data was not returned.
-				record = new Record(null, generation, expiration);
+				record = new Record(null, null, generation, expiration);
 				return;
 			}
 			record = ParseRecord(opCount, fieldCount, generation, expiration);
@@ -135,6 +135,7 @@ namespace Aerospike.Client
 		private Record ParseRecord(int opCount, int fieldCount, int generation, int expiration)
 		{
 			Dictionary<string, object> bins = null;
+			Dictionary<string, int> schema = null;
 			int receiveOffset = 0;
 
 			// There can be fields in the response (setname etc).
@@ -166,8 +167,15 @@ namespace Aerospike.Client
 					bins = new Dictionary<string, object>();
 				}
 				AddBin(bins, name, value);
+
+				if (schema == null)
+				{
+					schema = new Dictionary<string, int>();
+				}
+				int particle = particleType;
+				schema[name] = particle;
 			}
-			return new Record(bins, generation, expiration);
+			return new Record(bins, schema, generation, expiration);
 		}
 
 		protected internal virtual void AddBin(Dictionary<string, object> bins, string name, object value)

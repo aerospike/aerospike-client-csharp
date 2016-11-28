@@ -34,6 +34,11 @@ namespace Aerospike.Client
 		public readonly Dictionary<string,object> bins;
 
 		/// <summary>
+		/// Schema of Bins as a map of Particle types
+		/// </summary>
+		public readonly Dictionary<string, int> schema;
+
+		/// <summary>
 		/// Record modification count.
 		/// </summary>
 		public readonly int generation;
@@ -46,9 +51,10 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Initialize record.
 		/// </summary>
-		public Record(Dictionary<string,object> bins, int generation, int expiration)
+		public Record(Dictionary<string,object> bins, Dictionary<string, int> schema, int generation, int expiration)
 		{
 			this.bins = bins;
+			this.schema = schema;
 			this.generation = generation;
 			this.expiration = expiration;
 		}

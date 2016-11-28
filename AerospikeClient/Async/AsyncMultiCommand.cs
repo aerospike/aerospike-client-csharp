@@ -156,6 +156,7 @@ namespace Aerospike.Client
 		protected internal Record ParseRecord()
 		{
 			Dictionary<string, object> bins = null;
+			Dictionary<string, int> schema = null;
 
 			for (int i = 0 ; i < opCount; i++)
 			{
@@ -174,8 +175,15 @@ namespace Aerospike.Client
 					bins = new Dictionary<string, object>();
 				}
 				bins[name] = value;
+
+				if (schema == null)
+				{
+					schema = new Dictionary<string, int>();
+				}
+				int particle = particleType;
+				schema[name] = particle;
 			}
-			return new Record(bins, generation, expiration);
+			return new Record(bins, schema, generation, expiration);
 		}
 
 		protected internal void Stop()
