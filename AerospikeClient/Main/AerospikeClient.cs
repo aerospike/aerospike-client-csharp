@@ -806,6 +806,9 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Initialize large list operator.  This operator can be used to create and manage a list 
 		/// within a single bin.
+		/// <para>
+		/// Deprecated: LDT functionality has been deprecated.
+		/// </para>
 		/// </summary>
 		/// <param name="policy">write configuration parameters, pass in null for defaults</param>
 		/// <param name="key">unique record identifier</param>
@@ -818,6 +821,9 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Initialize large map operator.  This operator can be used to create and manage a map 
 		/// within a single bin.
+		/// <para>
+		/// Deprecated: LDT functionality has been deprecated.
+		/// </para>
 		/// </summary>
 		/// <param name="policy">write configuration parameters, pass in null for defaults</param>
 		/// <param name="key">unique record identifier</param>
@@ -831,6 +837,9 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Initialize large set operator.  This operator can be used to create and manage a set 
 		/// within a single bin.
+		/// <para>
+		/// Deprecated: LDT functionality has been deprecated.
+		/// </para>
 		/// </summary>
 		/// <param name="policy">write configuration parameters, pass in null for defaults</param>
 		/// <param name="key">unique record identifier</param>
@@ -844,6 +853,9 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Initialize large stack operator.  This operator can be used to create and manage a stack 
 		/// within a single bin.
+		/// <para>
+		/// Deprecated: LDT functionality has been deprecated.
+		/// </para>
 		/// </summary>
 		/// <param name="policy">write configuration parameters, pass in null for defaults</param>
 		/// <param name="key">unique record identifier</param>

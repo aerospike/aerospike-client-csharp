@@ -21,6 +21,9 @@ namespace Aerospike.Client
 {
 	/// <summary>
 	/// Create and manage a stack within a single bin. A stack is last in/first out (LIFO).
+	/// <para>
+	/// Deprecated: LDT functionality has been deprecated.
+	/// </para>
 	/// </summary>
 	public sealed class LargeStack
 	{

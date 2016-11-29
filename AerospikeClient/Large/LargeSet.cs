@@ -21,6 +21,9 @@ namespace Aerospike.Client
 {
 	/// <summary>
 	/// Create and manage a list within a single bin.
+	/// <para>
+	/// Deprecated: LDT functionality has been deprecated.
+	/// </para>
 	/// </summary>
 	public sealed class LargeSet
 	{
