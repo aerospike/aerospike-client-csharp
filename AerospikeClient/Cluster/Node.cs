@@ -94,6 +94,20 @@ namespace Aerospike.Client
 				if (tendConnection.IsClosed())
 				{
 					tendConnection = cluster.CreateConnection(host.tlsName, address, cluster.connectionTimeout);
+
+					if (cluster.user != null)
+					{
+						try
+						{
+							AdminCommand command = new AdminCommand(ThreadLocalData.GetBuffer(), 0);
+							command.Authenticate(tendConnection, cluster.user, cluster.password);
+						}
+						catch (Exception)
+						{
+							tendConnection.Close();
+							throw;
+						}
+					}
 				}
 
 				if (peers.usePeers)
