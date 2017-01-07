@@ -717,6 +717,11 @@ namespace Aerospike.Client
 				policy = scanPolicyDefault;
 			}
 
+			if (policy.scanPercent <= 0 || policy.scanPercent > 100)
+			{
+				throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Invalid scan percent: " + policy.scanPercent);
+			}
+
 			Node[] nodes = cluster.Nodes;
 
 			if (nodes.Length == 0)
@@ -793,6 +798,12 @@ namespace Aerospike.Client
 			{
 				policy = scanPolicyDefault;
 			}
+
+			if (policy.scanPercent <= 0 || policy.scanPercent > 100)
+			{
+				throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Invalid scan percent: " + policy.scanPercent);
+			}
+
 			ulong taskId = RandomShift.ThreadLocalInstance.NextLong();
 
 			ScanCommand command = new ScanCommand(node, policy, ns, setName, callback, binNames, taskId);
