@@ -16,7 +16,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Runtime.Serialization;
 
 namespace BCrypt.Net
 {
@@ -40,14 +39,6 @@ namespace BCrypt.Net
         /// <param name="innerException">The inner exception.</param>
         public SaltParseException(string message, Exception innerException)
             : base(message, innerException)
-        {
-        }
-
-        /// <summary>Initializes a new instance of <see cref="SaltParseException"/>.</summary>
-        /// <param name="info">   The information.</param>
-        /// <param name="context">The context.</param>
-        protected SaltParseException(SerializationInfo info, StreamingContext context)
-            : base(info, context)
         {
         }
     }
