@@ -1,0 +1,32 @@
+﻿{
+  "version": "3.4.0-*",
+
+  "testRunner": "xunit",
+
+  "buildOptions": {
+    "embed": [ "record_example.lua" ],
+    "copyToOutput": {
+      "include": [ "settings.json" ]
+    }
+  },
+
+  "dependencies": {
+    "AerospikeClient": "3.4.0-*",
+    "dotnet-test-xunit": "2.2.0-preview2-build1029",
+    "Microsoft.Extensions.Configuration": "1.1.0",
+    "Microsoft.Extensions.Configuration.Abstractions": "1.1.0",
+    "Microsoft.Extensions.Configuration.Json": "1.1.0",
+    "xunit": "2.2.0-beta2-build3300"
+  },
+
+  "frameworks": {
+    "netcoreapp1.0": {
+      "dependencies": {
+        "Microsoft.NETCore.App": {
+          "type": "platform",
+          "version": "1.1.0"
+        }
+      }
+    }
+  }
+}

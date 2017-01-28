@@ -1,0 +1,31 @@
+<?xml version="1.0"?>
+<package >
+  <metadata>
+    <id>Aerospike.Client</id>
+    <version>3.4.0</version>
+    <title>Official Aerospike C# Client</title>
+    <authors>Aerospike</authors>
+    <owners>Aerospike</owners>
+    <licenseUrl>https://github.com/aerospike/aerospike-client-csharp/blob/master/LICENSE.md</licenseUrl>
+    <projectUrl>http://www.aerospike.com/download/client/csharp</projectUrl>
+    <iconUrl>http://wordpress-www.s3-us-west-1.amazonaws.com/wp-content/uploads/2015/03/bryan-as.png</iconUrl>
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <description>Aerospike C# Client Library</description>
+    <copyright>Copyright 2012-2017 Aerospike, Inc.</copyright>
+    <tags>Aerospike database C# client</tags>
+    <frameworkAssemblies>
+      <frameworkAssembly assemblyName="System" targetFramework="net" />
+      <frameworkAssembly assemblyName="System.Core" targetFramework="net" />
+      <frameworkAssembly assemblyName="System.Numerics" targetFramework="net" />
+    </frameworkAssemblies>
+    <dependencies>
+      <group targetFramework="net">
+        <dependency id="NeoLua" version="0.9.14" />
+      </group>
+    </dependencies>
+  </metadata>
+  <files>
+    <file src="Framework\AerospikeClient\bin\Release\AerospikeClient.dll" target="lib\net" />
+    <file src="Core\AerospikeClient\bin\Release\netstandard1.6\AerospikeClient.dll" target="lib\netcore" />
+  </files>
+</package>
