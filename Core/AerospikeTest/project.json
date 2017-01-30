@@ -4,6 +4,7 @@
   "testRunner": "xunit",
 
   "buildOptions": {
+    "define": ["NETCORE"],
     "embed": [ "record_example.lua" ],
     "copyToOutput": {
       "include": [ "settings.json" ]

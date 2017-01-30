@@ -1,6 +1,10 @@
 ﻿{
   "version": "3.4.0-*",
 
+  "buildOptions": {
+    "define": ["NETCORE"]
+  },
+  
   "dependencies": {
     "NETStandard.Library": "1.6.0",
     "System.Net.NameResolution": "4.3.0",
@@ -11,10 +15,7 @@
 
   "frameworks": {
     "netstandard1.6": {
-      "imports": "dnxcore50",
-      "buildOptions": {
-        "define": ["NETCORE"]
-      }
+      "imports": "dnxcore50"
     }
   }
 }
