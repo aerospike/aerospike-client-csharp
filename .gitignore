@@ -2,6 +2,7 @@ Debug
 Release
 bin
 obj
+project.lock.json
 .vs
 *.user
 *.suo
