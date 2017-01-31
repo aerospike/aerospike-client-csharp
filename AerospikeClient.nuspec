@@ -26,6 +26,6 @@
   </metadata>
   <files>
     <file src="Framework\AerospikeClient\bin\Release\AerospikeClient.dll" target="lib\net" />
-    <file src="Core\AerospikeClient\bin\Release\netstandard1.6\AerospikeClient.dll" target="lib\netcore" />
+    <file src="Core\AerospikeClient\bin\Release\netstandard1.6\AerospikeClient.dll" target="lib\netstandard" />
   </files>
 </package>
