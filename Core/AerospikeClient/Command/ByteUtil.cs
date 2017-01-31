@@ -195,12 +195,12 @@ namespace Aerospike.Client
 
 		public static object BytesToObject(byte[] buf, int offset, int len)
 		{
+#if NETFRAMEWORK
 			if (len <= 0)
 			{
 				return null;
 			}
 
-#if NETFRAMEWORK
 			try
 			{
 				using (MemoryStream ms = new MemoryStream())
@@ -215,7 +215,15 @@ namespace Aerospike.Client
 				throw new AerospikeException.Serialize(se);
 			}
 #else
-			throw new AerospikeException.Serialize("Binary deserialize not supported in .NET core");
+			// Binary deserialize not supported in .NET core.
+			// Return null instead of throwing exception because
+			// we don't want full scan failing just because 1 record contains
+			// binary serialization.
+			if (Log.InfoEnabled())
+			{
+				Log.Info("Binary deserialize not supported in .NET core");
+			}
+			return null;
 #endif
 		}
 
