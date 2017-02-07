@@ -27,7 +27,7 @@ Aerospike C# Client for NET Core
 	$ cd Core/AerospikeTest
 	$ dotnet restore
 	$ dotnet build --configuration Release 
-	$ dotnet test
+	$ dotnet test --configuration Release
 
 **Functionality**
 
