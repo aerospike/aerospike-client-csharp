@@ -204,7 +204,7 @@ namespace Aerospike.Demo
 			Statement stmt = new Statement();
 			stmt.SetNamespace(args.ns);
 			stmt.SetSetName(args.set);
-			stmt.SetFilters(Filter.GeoWithinRegion(binName, indexType, rgnsb.ToString()));
+			stmt.SetFilter(Filter.GeoWithinRegion(binName, indexType, rgnsb.ToString()));
 
 			RecordSet rs = client.Query(null, stmt);
 

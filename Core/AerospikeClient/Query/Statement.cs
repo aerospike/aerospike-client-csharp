@@ -28,7 +28,7 @@ namespace Aerospike.Client
 		internal string setName;
 		internal string indexName;
 		internal string[] binNames;
-		internal Filter[] filters;
+		internal Filter filter;
 		internal Assembly resourceAssembly;
 		internal string resourcePath;
 		internal string packageName;
@@ -120,19 +120,25 @@ namespace Aerospike.Client
 		/// If multiple filters are necessary, see QueryFilter example for a workaround.
 		/// QueryFilter demonstrates how to add additional filters in an user-defined 
 		/// aggregation function. 
+		/// <para>
+		/// This property is obsolete. Use <see cref="Aerospike.Client.Statement.Filter"/> instead.
+		/// </para>
 		/// </summary>
 		public Filter[] Filters
 		{
 			set { SetFilters(value); }
-			get { return filters; }
+			get { return new Filter[] {filter}; }
 		}
 
 		/// <summary>
-		/// Set optional query filters.
+		/// Set optional query index filters.
 		/// Currently, only one filter is allowed by the server on a secondary index lookup.
 		/// If multiple filters are necessary, see QueryFilter example for a workaround.
 		/// QueryFilter demonstrates how to add additional filters in an user-defined 
-		/// aggregation function. 
+		/// aggregation function.
+		/// <para>
+		/// This method is obsolete. Use <see cref="Aerospike.Client.Statement.SetFilter(Aerospike.Client.Filter)"/> instead.
+		/// </para>
 		/// </summary>
 		public void SetFilters(params Filter[] filters)
 		{
@@ -140,9 +146,26 @@ namespace Aerospike.Client
 			{
 				throw new AerospikeException(ResultCode.PARAMETER_ERROR, "The server currently restricts queries to a single filter");
 			}
-			this.filters = filters;
+			this.filter = filters[0];
 		}
 
+		/// <summary>
+		/// Optional query filter.  This filter is applied to the secondary index.
+		/// </summary>
+		public Filter Filter
+		{
+			set { SetFilter(value); }
+			get { return filter; }
+		}
+
+		/// <summary>
+		/// Set optional query index filter.  This filter is applied to the secondary index.
+		/// </summary>
+		public void SetFilter(Filter filter)
+		{
+			this.filter = filter;
+		}
+	
 		/// <summary>
 		/// Optional query task id.
 		/// </summary>

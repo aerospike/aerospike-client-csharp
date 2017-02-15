@@ -94,7 +94,7 @@ namespace Aerospike.Demo
 			Statement stmt = new Statement();
 			stmt.SetNamespace(args.ns);
 			stmt.SetSetName(args.set);
-			stmt.SetFilters(Filter.Equal(binName, nameFilter));
+			stmt.SetFilter(Filter.Equal(binName, nameFilter));
 			stmt.SetAggregateFunction("filter_example", "profile_filter", Value.Get(passFilter));
 
 			// passFilter will be applied in filter_example.lua.

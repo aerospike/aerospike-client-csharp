@@ -81,7 +81,7 @@ namespace Aerospike.Demo
 			stmt.SetNamespace(args.ns);
 			stmt.SetSetName(args.set);
 			stmt.SetBinNames(binName);
-			stmt.SetFilters(Filter.Range(binName, begin, end));
+			stmt.SetFilter(Filter.Range(binName, begin, end));
 
 			RecordSet rs = client.Query(null, stmt);
 

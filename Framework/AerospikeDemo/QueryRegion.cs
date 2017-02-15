@@ -98,7 +98,7 @@ namespace Aerospike.Demo
 			stmt.SetNamespace(args.ns);
 			stmt.SetSetName(args.set);
 			stmt.SetBinNames(binName);
-			stmt.SetFilters(Filter.GeoWithinRegion(binName, rgnsb.ToString()));
+			stmt.SetFilter(Filter.GeoWithinRegion(binName, rgnsb.ToString()));
 
 			RecordSet rs = client.Query(null, stmt);
 
@@ -138,7 +138,7 @@ namespace Aerospike.Demo
 			stmt.SetNamespace(args.ns);
 			stmt.SetSetName(args.set);
 			stmt.SetBinNames(binName);
-			stmt.SetFilters(Filter.GeoWithinRadius(binName, lon, lat, radius));
+			stmt.SetFilter(Filter.GeoWithinRadius(binName, lon, lat, radius));
 
 			RecordSet rs = client.Query(null, stmt);
 

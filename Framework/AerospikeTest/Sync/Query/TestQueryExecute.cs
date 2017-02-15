@@ -66,7 +66,7 @@ namespace Aerospike.Test
 			Statement stmt = new Statement();
 			stmt.SetNamespace(args.ns);
 			stmt.SetSetName(args.set);
-			stmt.SetFilters(Filter.Range(binName1, begin, end));
+			stmt.SetFilter(Filter.Range(binName1, begin, end));
 
 			ExecuteTask task = client.Execute(null, stmt, "record_example", "processRecord", Value.Get(binName1), Value.Get(binName2), Value.Get(100));
 			task.Wait();
@@ -81,7 +81,7 @@ namespace Aerospike.Test
 			Statement stmt = new Statement();
 			stmt.SetNamespace(args.ns);
 			stmt.SetSetName(args.set);
-			stmt.SetFilters(Filter.Range(binName1, begin, end));
+			stmt.SetFilter(Filter.Range(binName1, begin, end));
 
 			RecordSet rs = client.Query(null, stmt);
 

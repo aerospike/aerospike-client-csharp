@@ -647,26 +647,19 @@ namespace Aerospike.Client
 			dataOffset += 8 + FIELD_HEADER_SIZE;
 			fieldCount++;
 
-			if (statement.filters != null)
+			if (statement.filter != null)
 			{
-				if (statement.filters.Length >= 1)
-				{
-					IndexCollectionType type = statement.filters[0].CollectionType;
+				IndexCollectionType type = statement.filter.CollectionType;
 
-					if (type != IndexCollectionType.DEFAULT)
-					{
-						dataOffset += FIELD_HEADER_SIZE + 1;
-						fieldCount++;
-					}
+				if (type != IndexCollectionType.DEFAULT)
+				{
+					dataOffset += FIELD_HEADER_SIZE + 1;
+					fieldCount++;
 				}
 
 				dataOffset += FIELD_HEADER_SIZE;
 				filterSize++; // num filters
-
-				foreach (Filter filter in statement.filters)
-				{
-					filterSize += filter.EstimateSize();
-				}
+				filterSize += statement.filter.EstimateSize();
 				dataOffset += filterSize;
 				fieldCount++;
 
@@ -710,7 +703,7 @@ namespace Aerospike.Client
 				fieldCount += 4;
 			}
 
-			if (statement.filters == null)
+			if (statement.filter == null)
 			{
 				if (statement.binNames != null)
 				{
@@ -722,7 +715,7 @@ namespace Aerospike.Client
 			}
 
 			SizeBuffer();
-			int operationCount = (statement.filters == null && statement.binNames != null) ? statement.binNames.Length : 0;
+			int operationCount = (statement.filter == null && statement.binNames != null) ? statement.binNames.Length : 0;
 
 			if (write)
 			{
@@ -753,26 +746,19 @@ namespace Aerospike.Client
 			ByteUtil.LongToBytes(statement.taskId, dataBuffer, dataOffset);
 			dataOffset += 8;
 
-			if (statement.filters != null)
+			if (statement.filter != null)
 			{
-				if (statement.filters.Length >= 1)
-				{
-					IndexCollectionType type = statement.filters[0].CollectionType;
+				IndexCollectionType type = statement.filter.CollectionType;
 
-					if (type != IndexCollectionType.DEFAULT)
-					{
-						WriteFieldHeader(1, FieldType.INDEX_TYPE);
-						dataBuffer[dataOffset++] = (byte)type;
-					}
+				if (type != IndexCollectionType.DEFAULT)
+				{
+					WriteFieldHeader(1, FieldType.INDEX_TYPE);
+					dataBuffer[dataOffset++] = (byte)type;
 				}
 
 				WriteFieldHeader(filterSize, FieldType.INDEX_RANGE);
-				dataBuffer[dataOffset++] = (byte)statement.filters.Length;
-
-				foreach (Filter filter in statement.filters)
-				{
-					dataOffset = filter.Write(dataBuffer, dataOffset);
-				}
+				dataBuffer[dataOffset++] = (byte)1;
+				dataOffset = statement.filter.Write(dataBuffer, dataOffset);
 
 				// Query bin names are specified as a field (Scan bin names are specified later as operations)
 				if (statement.binNames != null)
@@ -808,7 +794,7 @@ namespace Aerospike.Client
 			}
 
 			// Scan bin names are specified after all fields.
-			if (statement.filters == null)
+			if (statement.filter == null)
 			{
 				if (statement.binNames != null)
 				{

@@ -121,7 +121,7 @@ namespace Aerospike.Demo
 			Statement stmt = new Statement();
 			stmt.SetNamespace(args.ns);
 			stmt.SetSetName(args.set);
-			stmt.SetFilters(Filter.GeoWithinRegion(binName1, rgnsb.ToString()));
+			stmt.SetFilter(Filter.GeoWithinRegion(binName1, rgnsb.ToString()));
 			stmt.SetAggregateFunction("geo_filter_example", "match_amenity", Value.Get(amenStr));
 
 			ResultSet rs = client.QueryAggregate(null, stmt);

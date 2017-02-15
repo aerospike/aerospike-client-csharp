@@ -63,7 +63,7 @@ namespace Aerospike.Test
 			Statement stmt = new Statement();
 			stmt.SetNamespace(args.ns);
 			stmt.SetSetName(args.set);
-			stmt.SetFilters(Filter.Range(binName, 0, 1000));
+			stmt.SetFilter(Filter.Range(binName, 0, 1000));
 			stmt.SetAggregateFunction(Assembly.GetExecutingAssembly(), "Aerospike.Test.Resources.average_example.lua", "average_example", "average");
 
 			ResultSet rs = client.QueryAggregate(null, stmt);

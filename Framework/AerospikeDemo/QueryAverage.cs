@@ -88,7 +88,7 @@ namespace Aerospike.Demo
 			Statement stmt = new Statement();
 			stmt.SetNamespace(args.ns);
 			stmt.SetSetName(args.set);
-			stmt.SetFilters(Filter.Equal(binName, 1));
+			stmt.SetFilter(Filter.Equal(binName, 1));
 
 			ResultSet rs = client.QueryAggregate(null, stmt, "average_example", "average");
 

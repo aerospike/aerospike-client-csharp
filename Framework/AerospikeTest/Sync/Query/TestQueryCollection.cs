@@ -79,7 +79,7 @@ namespace Aerospike.Test
 			stmt.SetNamespace(args.ns);
 			stmt.SetSetName(args.set);
 			stmt.SetBinNames(binName);
-			stmt.SetFilters(Filter.Contains(binName, IndexCollectionType.MAPKEYS, queryMapKey));
+			stmt.SetFilter(Filter.Contains(binName, IndexCollectionType.MAPKEYS, queryMapKey));
 
 			RecordSet rs = client.Query(null, stmt);
 

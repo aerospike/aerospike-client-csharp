@@ -67,7 +67,7 @@ namespace Aerospike.Test
 			stmt.SetNamespace(args.ns);
 			stmt.SetSetName(args.set);
 			stmt.SetBinNames(binName);
-			stmt.SetFilters(Filter.Range(binName, begin, end));
+			stmt.SetFilter(Filter.Range(binName, begin, end));
 			stmt.SetAggregateFunction(Assembly.GetExecutingAssembly(), "Aerospike.Test.Resources.sum_example.lua", "sum_example", "sum_single_bin", Value.Get(binName));
 
 			ResultSet rs = client.QueryAggregate(null, stmt);

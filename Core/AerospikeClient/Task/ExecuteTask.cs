@@ -31,7 +31,7 @@ namespace Aerospike.Client
 			: base(cluster, policy)
 		{
 			this.taskId = statement.taskId;
-			this.scan = statement.filters == null;
+			this.scan = statement.filter == null;
 		}
 
 		/// <summary>
