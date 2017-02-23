@@ -150,7 +150,8 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
-		/// Optional query filter.  This filter is applied to the secondary index.
+		/// Optional query filter.  This filter is applied to the secondary index on query.
+		/// Query index filters must reference a bin which has a secondary index defined.
 		/// </summary>
 		public Filter Filter
 		{
@@ -159,7 +160,8 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
-		/// Set optional query index filter.  This filter is applied to the secondary index.
+		/// Set optional query index filter.  This filter is applied to the secondary index on query.
+		/// Query index filters must reference a bin which has a secondary index defined.
 		/// </summary>
 		public void SetFilter(Filter filter)
 		{
