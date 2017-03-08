@@ -44,6 +44,8 @@ namespace Aerospike.Client
 	/// </summary>
 	public class AerospikeClient : IDisposable, IAerospikeClient
 	{
+		private readonly DateTime UnixEpoch = new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+
 		//-------------------------------------------------------
 		// Member variables.
 		//-------------------------------------------------------
@@ -351,6 +353,56 @@ namespace Aerospike.Client
 			DeleteCommand command = new DeleteCommand(cluster, policy, key);
 			command.Execute();
 			return command.Existed();
+		}
+
+		/// <summary>
+		/// Remove records in specified namespace/set efficiently.  This method is many orders of magnitude 
+		/// faster than deleting records one at a time.  Works with Aerospike Server versions >= 3.12.
+		/// <para>
+		/// This asynchronous server call may return before the truncation is complete.  The user can still
+		/// write new records after the server returns because new records will have last update times
+		/// greater than the truncate cutoff (set at the time of truncate call).
+		/// </para>
+		/// </summary>
+		/// <param name="policy">info command configuration parameters, pass in null for defaults</param>
+		/// <param name="ns">required namespace</param>
+		/// <param name="set">optional set name.  Pass in null to delete all sets in namespace.</param>
+		/// <param name="beforeLastUpdate">
+		/// optionally delete records before record last update time.
+		/// If specified, value must be before the current time.
+		/// Pass in null to delete all records in namespace/set regardless of last update time.
+		/// </param>
+		public void Truncate(InfoPolicy policy, string ns, string set, DateTime? beforeLastUpdate)
+		{
+			if (policy == null)
+			{
+				policy = infoPolicyDefault;
+			}
+			StringBuilder sb = new StringBuilder(200);
+			sb.Append("truncate:namespace=");
+			sb.Append(ns);
+
+			if (set != null && set.Length > 0)
+			{
+				sb.Append(";set=");
+				sb.Append(set);
+			}
+
+			if (beforeLastUpdate.HasValue)
+			{
+				sb.Append(";lut=");
+				// Convert to nanoseconds since unix epoch.
+				sb.Append(((long)beforeLastUpdate.Value.Subtract(UnixEpoch).TotalMilliseconds) * 1000000L);
+			}
+
+			// Send truncate command to one node. That node will distribute the command to other nodes.
+			Node node = cluster.GetRandomNode();
+			string response = Info.Request(policy, node, sb.ToString());
+
+			if (!response.Equals("ok", StringComparison.CurrentCultureIgnoreCase))
+			{
+				throw new AerospikeException("Truncate failed: " + response);
+			}
 		}
 
 		//-------------------------------------------------------

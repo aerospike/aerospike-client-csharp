@@ -95,6 +95,25 @@ namespace Aerospike.Client
 		bool Delete(WritePolicy policy, Key key);
 
 		/// <summary>
+		/// Remove records in specified namespace/set efficiently.  This method is many orders of magnitude 
+		/// faster than deleting records one at a time.  Works with Aerospike Server versions >= 3.12.
+		/// <para>
+		/// This asynchronous server call may return before the truncation is complete.  The user can still
+		/// write new records after the server returns because new records will have last update times
+		/// greater than the truncate cutoff (set at the time of truncate call).
+		/// </para>
+		/// </summary>
+		/// <param name="policy">info command configuration parameters, pass in null for defaults</param>
+		/// <param name="ns">required namespace</param>
+		/// <param name="set">optional set name.  Pass in null to delete all sets in namespace.</param>
+		/// <param name="beforeLastUpdate">
+		/// optionally delete records before record last update time.
+		/// If specified, value must be before the current time.
+		/// Pass in null to delete all records in namespace/set regardless of last update time.
+		/// </param>
+		void Truncate(InfoPolicy policy, string ns, string set, DateTime? beforeLastUpdate);
+
+		/// <summary>
 		/// Reset record's time to expiration using the policy's expiration.
 		/// Fail if the record does not exist.
 		/// </summary>
