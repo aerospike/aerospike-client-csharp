@@ -69,6 +69,18 @@ namespace Aerospike.Client
 		public int maxConnsPerNode = 300;
 
 		/// <summary>
+		/// Number of synchronous connection pools used for each node.  Machines with 8 cpu cores or
+		/// less usually need just one connection pool per node.  Machines with a large number of cpu
+		/// cores may have their synchronous performance limited by contention for pooled connections.
+		/// Contention for pooled connections can be reduced by creating multiple mini connection pools
+		/// per node.
+		/// <para>
+		/// Default: 1
+		/// </para>
+		/// </summary>
+		public int connPoolsPerNode = 1;
+
+		/// <summary>
 		/// Maximum socket idle in seconds.  Socket connection pools will discard sockets
 		/// that have been idle longer than the maximum.  The value is limited to 24 hours (86400).
 		/// <para>

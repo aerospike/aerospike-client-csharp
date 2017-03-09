@@ -135,7 +135,7 @@ namespace Aerospike.Client
 		private void ValidateAlias(Cluster cluster, IPAddress ipAddress, Host alias)
 		{
 			IPEndPoint address = new IPEndPoint(ipAddress, alias.port);
-			Connection conn = cluster.CreateConnection(alias.tlsName, address, cluster.connectionTimeout);
+			Connection conn = cluster.CreateConnection(alias.tlsName, address, cluster.connectionTimeout, null);
 
 			try
 			{

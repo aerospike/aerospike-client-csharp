@@ -68,6 +68,9 @@ namespace Aerospike.Client
 		// Size of node's synchronous connection pool.
 		protected internal readonly int connectionQueueSize;
 
+		// Sync connection pools per node. 
+		protected internal readonly int connPoolsPerNode;
+
 		// Initial connection timeout.
 		protected internal readonly int connectionTimeout;
 
@@ -130,6 +133,7 @@ namespace Aerospike.Client
 
 			tlsPolicy = policy.tlsPolicy;
 			connectionQueueSize = policy.maxConnsPerNode;
+			connPoolsPerNode = policy.connPoolsPerNode;
 			connectionTimeout = policy.timeout;
 			maxSocketIdleMillis = 1000 * ((policy.maxSocketIdle <= MaxSocketIdleSecondLimit) ? policy.maxSocketIdle : MaxSocketIdleSecondLimit);
 			tendInterval = policy.tendInterval;
@@ -828,11 +832,11 @@ namespace Aerospike.Client
 			}
 		}
 
-		protected internal Connection CreateConnection(string tlsName, IPEndPoint address, int timeout)
+		protected internal Connection CreateConnection(string tlsName, IPEndPoint address, int timeout, Pool pool)
 		{
 			return tlsPolicy != null ? 
-				new TlsConnection(tlsPolicy, tlsName, address, timeout, maxSocketIdleMillis) : 
-				new Connection(address, timeout, maxSocketIdleMillis);
+				new TlsConnection(tlsPolicy, tlsName, address, timeout, maxSocketIdleMillis, pool) : 
+				new Connection(address, timeout, maxSocketIdleMillis, pool);
 		}
 		
 		protected internal void ChangePassword(byte[] user, string password)

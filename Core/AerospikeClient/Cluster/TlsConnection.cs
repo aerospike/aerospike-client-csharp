@@ -37,8 +37,8 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Create TLS socket.
 		/// </summary>
-		public TlsConnection(TlsPolicy policy, string tlsName, IPEndPoint address, int timeoutMillis, int maxSocketIdleMillis)
-			: base(address, timeoutMillis, maxSocketIdleMillis)
+		public TlsConnection(TlsPolicy policy, string tlsName, IPEndPoint address, int timeoutMillis, int maxSocketIdleMillis, Pool pool)
+			: base(address, timeoutMillis, maxSocketIdleMillis, pool)
 		{
 			this.policy = policy;
 

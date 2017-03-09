@@ -28,20 +28,22 @@ namespace Aerospike.Client
 	public class Connection
 	{
 		protected internal readonly Socket socket;
+		protected internal readonly Pool pool;
 		private readonly double maxSocketIdleMillis;
 		private DateTime timestamp;
 
 		public Connection(IPEndPoint address, int timeoutMillis)
-			: this(address, timeoutMillis, 55000)
+			: this(address, timeoutMillis, 55000, null)
 		{
 		}
 
 		/// <summary>
 		/// Create socket with connection timeout.
 		/// </summary>
-		public Connection(IPEndPoint address, int timeoutMillis, int maxSocketIdleMillis)
+		public Connection(IPEndPoint address, int timeoutMillis, int maxSocketIdleMillis, Pool pool)
 		{
 			this.maxSocketIdleMillis = (double)(maxSocketIdleMillis);
+			this.pool = pool;
 
 			try
 			{

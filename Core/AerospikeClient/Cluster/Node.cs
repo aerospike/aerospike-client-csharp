@@ -44,8 +44,8 @@ namespace Aerospike.Client
 		protected internal readonly List<Host> aliases;
 		protected internal readonly IPEndPoint address;
 		private Connection tendConnection;
-		private readonly BlockingCollection<Connection> connectionQueue;
-		private int connectionCount;
+		private readonly Pool[] connectionPools;
+		protected uint connectionIter;
 		protected internal int partitionGeneration = -1;
 		protected internal int peersGeneration = -1;
 		protected internal int peersCount;
@@ -70,7 +70,15 @@ namespace Aerospike.Client
 			this.tendConnection = nv.conn;
 			this.features = nv.features;
 
-			connectionQueue = new BlockingCollection<Connection>(cluster.connectionQueueSize);
+			connectionPools = new Pool[cluster.connPoolsPerNode];
+			int max = cluster.connectionQueueSize / cluster.connPoolsPerNode;
+			int rem = cluster.connectionQueueSize - (max * cluster.connPoolsPerNode);
+
+			for (int i = 0; i < connectionPools.Length; i++)
+			{
+				int capacity = i < rem ? max + 1 : max;
+				connectionPools[i] = new Pool(capacity);
+			}
 		}
 
 		~Node()
@@ -93,7 +101,7 @@ namespace Aerospike.Client
 			{
 				if (tendConnection.IsClosed())
 				{
-					tendConnection = cluster.CreateConnection(host.tlsName, address, cluster.connectionTimeout);
+					tendConnection = cluster.CreateConnection(host.tlsName, address, cluster.connectionTimeout, null);
 
 					if (cluster.user != null)
 					{
@@ -430,61 +438,110 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if a connection could not be provided</exception>
 		public Connection GetConnection(int timeoutMillis)
 		{
-			Connection conn;
-			while (connectionQueue.TryTake(out conn))
-			{
-				if (conn.IsValid())
-				{
-					try
-					{
-						conn.SetTimeout(timeoutMillis);
-						return conn;
-					}
-					catch (Exception e)
-					{
-						// Set timeout failed. Something is probably wrong with timeout
-						// value itself, so don't empty queue retrying.  Just get out.
-						CloseConnection(conn);
-						throw new AerospikeException.Connection(e);
-					}
-				}
-				CloseConnection(conn);
-			}
+			uint max = (uint)cluster.connPoolsPerNode;
+			uint initialIndex;
+			bool backward;
 
-			if (Interlocked.Increment(ref connectionCount) <= cluster.connectionQueueSize)
+			if (max == 1)
 			{
-				try
-				{
-					conn = cluster.CreateConnection(host.tlsName, address, timeoutMillis);
-				}
-				catch (Exception)
-				{
-					Interlocked.Decrement(ref connectionCount);
-					throw;
-				}
-
-				if (cluster.user != null)
-				{
-					try
-					{
-						AdminCommand command = new AdminCommand(ThreadLocalData.GetBuffer(), 0);
-						command.Authenticate(conn, cluster.user, cluster.password);
-					}
-					catch (Exception)
-					{
-						// Socket not authenticated.  Do not put back into pool.
-						CloseConnection(conn);
-						throw;
-					}
-				}
-				return conn;
+				initialIndex = 0;
+				backward = false;
 			}
 			else
 			{
-				Interlocked.Decrement(ref connectionCount);
-				throw new AerospikeException.Connection(ResultCode.NO_MORE_CONNECTIONS,
-					"Node " + this + " max connections " + cluster.connectionQueueSize + " would be exceeded.");
+				uint iter = connectionIter++; // not atomic by design
+				initialIndex = iter % max;
+				backward = true;
 			}
+
+			Pool pool = connectionPools[initialIndex];
+			uint queueIndex = initialIndex;
+			Connection conn;
+
+			while (true)
+			{
+				if (pool.queue.TryTake(out conn))
+				{
+					// Found socket.
+					// Verify that socket is active and receive buffer is empty.
+					if (conn.IsValid())
+					{
+						try
+						{
+							conn.SetTimeout(timeoutMillis);
+							return conn;
+						}
+						catch (Exception e)
+						{
+							// Set timeout failed. Something is probably wrong with timeout
+							// value itself, so don't empty queue retrying.  Just get out.
+							CloseConnection(conn);
+							throw new AerospikeException.Connection(e);
+						}
+					}
+					CloseConnection(conn);
+				}
+				else if (Interlocked.Increment(ref pool.total) <= pool.capacity)
+				{
+					// Socket not found and queue has available slot.
+					// Create new connection.
+					try
+					{
+						conn = cluster.CreateConnection(host.tlsName, address, timeoutMillis, pool);
+					}
+					catch (Exception)
+					{
+						Interlocked.Decrement(ref pool.total);
+						throw;
+					}
+
+					if (cluster.user != null)
+					{
+						try
+						{
+							AdminCommand command = new AdminCommand(ThreadLocalData.GetBuffer(), 0);
+							command.Authenticate(conn, cluster.user, cluster.password);
+						}
+						catch (Exception)
+						{
+							// Socket not authenticated.  Do not put back into pool.
+							CloseConnection(conn);
+							throw;
+						}
+					}
+					return conn;
+				}
+				else
+				{
+					// Socket not found and queue is full.  Try another queue.
+					Interlocked.Decrement(ref pool.total);
+
+					if (backward)
+					{
+						if (queueIndex > 0)
+						{
+							queueIndex--;
+						}
+						else
+						{
+							queueIndex = initialIndex;
+
+							if (++queueIndex >= max)
+							{
+								break;
+							}
+							backward = false;
+						}
+					}
+					else if (++queueIndex >= max)
+					{
+						break;
+					}
+					pool = connectionPools[queueIndex];
+				}
+			}
+			throw new AerospikeException.Connection(ResultCode.NO_MORE_CONNECTIONS,
+				"Node " + this + " max connections " + cluster.connectionQueueSize + " would be exceeded.");
 		}
 
 		/// <summary>
@@ -495,7 +552,7 @@ namespace Aerospike.Client
 		{
 			conn.UpdateLastUsed();
 
-			if (!active || !connectionQueue.TryAdd(conn))
+			if (!active || !conn.pool.queue.TryAdd(conn))
 			{
 				CloseConnection(conn);
 			}
@@ -506,7 +563,7 @@ namespace Aerospike.Client
 		/// </summary>
 		public void CloseConnection(Connection conn)
 		{
-			Interlocked.Decrement(ref connectionCount);
+			Interlocked.Decrement(ref conn.pool.total);
 			conn.Close();
 		}
 
@@ -624,11 +681,27 @@ namespace Aerospike.Client
 			Connection conn = tendConnection;
 			conn.Close();
 
-			// Empty connection pool.
-			while (connectionQueue.TryTake(out conn))
+			// Empty connection pools.
+			foreach (Pool pool in connectionPools)
 			{
-				conn.Close();
+				//Log.Debug("Close node " + this + " connection pool count " + pool.total);
+				while (pool.queue.TryTake(out conn))
+				{
+					conn.Close();
+				}
 			}
+		}
+	}
+
+	public class Pool
+	{
+		internal readonly BlockingCollection<Connection> queue;
+		internal readonly int capacity;
+		internal int total;
+	
+		internal Pool(int capacity) {
+			this.capacity = capacity;
+			queue = new BlockingCollection<Connection>(capacity);
 		}
 	}
 }
