@@ -28,6 +28,13 @@ namespace Aerospike.Client
 {
 	public sealed class Util
 	{
+		private static readonly DateTime UnixEpoch = new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+
+		public static long NanosFromEpoch(DateTime dt)
+		{
+			return (long)dt.ToUniversalTime().Subtract(UnixEpoch).TotalMilliseconds * 1000000L;
+		}
+
 		public static void Sleep(int millis)
 		{
 #if NETFRAMEWORK

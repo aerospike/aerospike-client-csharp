@@ -685,6 +685,17 @@ namespace Aerospike.Client
 				fieldCount++;
 			}
 
+			PredExp[] predExp = statement.PredExp;
+			int predSize = 0;
+
+			if (predExp != null)
+			{
+				dataOffset += FIELD_HEADER_SIZE;
+				predSize = PredExp.EstimateSize(predExp);
+				dataOffset += predSize;
+				fieldCount++;
+			}
+
 			if (statement.functionName != null)
 			{
 				dataOffset += FIELD_HEADER_SIZE + 1; // udf type
@@ -782,6 +793,12 @@ namespace Aerospike.Client
 				priority <<= 4;
 				dataBuffer[dataOffset++] = priority;
 				dataBuffer[dataOffset++] = (byte)100;
+			}
+
+			if (predExp != null)
+			{
+				WriteFieldHeader(predSize, FieldType.PREDEXP);
+				dataOffset = PredExp.Write(predExp, dataBuffer, dataOffset);
 			}
 
 			if (statement.functionName != null)

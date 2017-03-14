@@ -29,6 +29,7 @@ namespace Aerospike.Client
 		internal string indexName;
 		internal string[] binNames;
 		internal Filter filter;
+		internal PredExp[] predExp;
 		internal Assembly resourceAssembly;
 		internal string resourcePath;
 		internal string packageName;
@@ -167,7 +168,60 @@ namespace Aerospike.Client
 		{
 			this.filter = filter;
 		}
-	
+
+		/// <summary>
+		/// Optional predicate expression filters in postfix notation.
+		/// </summary>
+		public PredExp[] PredExp
+		{
+			set { SetPredExp(value); }
+			get { return predExp; }
+		}
+
+		/// <summary>
+		/// Set optional predicate expression filters in postfix notation.
+		/// Predicate expression filters are applied on the query results on the server.
+		/// Predicate expression filters may occur on any bin in the record.
+		/// <para>
+		/// Postfix notation is described here:
+		/// <a href="http://wiki.c2.com/?PostfixNotation">http://wiki.c2.com/?PostfixNotation</a>
+		/// </para>
+		/// <para>
+		/// Example:
+		/// <pre>
+		/// // (c >= 11 and c &lt;= 20) or (d > 3 and (d &lt; 5)
+		/// stmt.SetPredExp(
+		///   PredExp.IntegerBin("c"),
+		///   PredExp.IntegerValue(11),
+		///   PredExp.IntegerGreaterEq(),
+		///   PredExp.IntegerBin("c"),
+		///   PredExp.IntegerValue(20),
+		///   PredExp.IntegerLessEq(),
+		///   PredExp.And(2),
+		///   PredExp.IntegerBin("d"),
+		///   PredExp.IntegerValue(3),
+		///   PredExp.IntegerGreater(),
+		///   PredExp.IntegerBin("d"),
+		///   PredExp.IntegerValue(5),
+		///   PredExp.IntegerLess(),
+		///   PredExp.And(2),
+		///   PredExp.Or(2)
+		/// );
+		/// 
+		/// // Record last update time > 2017-01-15
+		/// stmt.SetPredExp(
+		///   PredExp.RecLastUpdate(),
+		///   PredExp.IntegerValue(new DateTime(2017, 0, 15)),
+		///   PredExp.IntegerGreater(),
+		/// ); 
+		/// </pre>
+		/// </para>
+		/// </summary>
+		public void SetPredExp(params PredExp[] predExp)
+		{
+			this.predExp = predExp;
+		}
+
 		/// <summary>
 		/// Optional query task id.
 		/// </summary>

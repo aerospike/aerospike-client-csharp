@@ -38,5 +38,6 @@ namespace Aerospike.Client
 		public const int QUERY_BINLIST = 40;
 		public const int BATCH_INDEX = 41;
 		public const int BATCH_INDEX_WITH_SET = 42;
+		public const int PREDEXP = 43;
 	}
 }

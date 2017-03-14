@@ -44,8 +44,6 @@ namespace Aerospike.Client
 	/// </summary>
 	public class AerospikeClient : IDisposable, IAerospikeClient
 	{
-		private readonly DateTime UnixEpoch = new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc);
-
 		//-------------------------------------------------------
 		// Member variables.
 		//-------------------------------------------------------
@@ -392,7 +390,7 @@ namespace Aerospike.Client
 			{
 				sb.Append(";lut=");
 				// Convert to nanoseconds since unix epoch.
-				sb.Append(((long)beforeLastUpdate.Value.Subtract(UnixEpoch).TotalMilliseconds) * 1000000L);
+				sb.Append(Util.NanosFromEpoch(beforeLastUpdate.Value));
 			}
 
 			// Send truncate command to one node. That node will distribute the command to other nodes.

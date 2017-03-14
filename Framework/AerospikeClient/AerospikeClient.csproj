@@ -539,6 +539,9 @@
     <Compile Include="..\..\Core\AerospikeClient\Query\KeyRecord.cs">
       <Link>Query\KeyRecord.cs</Link>
     </Compile>
+    <Compile Include="..\..\Core\AerospikeClient\Query\PredExp.cs">
+      <Link>Query\PredExp.cs</Link>
+    </Compile>
     <Compile Include="..\..\Core\AerospikeClient\Query\QueryAggregateCommand.cs">
       <Link>Query\QueryAggregateCommand.cs</Link>
     </Compile>
@@ -556,6 +559,9 @@
     </Compile>
     <Compile Include="..\..\Core\AerospikeClient\Query\RecordSet.cs">
       <Link>Query\RecordSet.cs</Link>
+    </Compile>
+    <Compile Include="..\..\Core\AerospikeClient\Query\RegexFlag.cs">
+      <Link>Query\RegexFlag.cs</Link>
     </Compile>
     <Compile Include="..\..\Core\AerospikeClient\Query\ResultSet.cs">
       <Link>Query\ResultSet.cs</Link>
