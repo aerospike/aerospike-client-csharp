@@ -22,6 +22,9 @@ namespace Aerospike.Client
 	/// Predicate expression filter.
 	/// Predicate expression filters are applied on the query results on the server.
 	/// Predicate expression filters may occur on any bin in the record.
+	/// <para>
+	/// This is an experimental API and subject to change.
+	/// </para>
 	/// </summary>
 	public abstract class PredExp
 	{

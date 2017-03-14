@@ -171,6 +171,9 @@ namespace Aerospike.Client
 
 		/// <summary>
 		/// Optional predicate expression filters in postfix notation.
+		/// <para>
+		/// This is an experimental property and subject to change.
+		/// </para>
 		/// </summary>
 		public PredExp[] PredExp
 		{
@@ -215,6 +218,9 @@ namespace Aerospike.Client
 		///   PredExp.IntegerGreater(),
 		/// ); 
 		/// </pre>
+		/// </para>
+		/// <para>
+		/// This is an experimental method and subject to change.
 		/// </para>
 		/// </summary>
 		public void SetPredExp(params PredExp[] predExp)
