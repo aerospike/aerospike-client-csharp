@@ -26,12 +26,12 @@ namespace Aerospike.Test
 		{
 			Policy policy = new Policy();
 			policy.timeout = 0; // Do not timeout on index create.
-			IndexTask itask = client.CreateIndex(policy, args.ns, args.set, TestQueryPredExp.indexName, TestQueryPredExp.binName, IndexType.NUMERIC);
+			IndexTask itask = client.CreateIndex(policy, args.ns, TestQueryPredExp.setName, TestQueryPredExp.indexName, TestQueryPredExp.binName, IndexType.NUMERIC);
 			itask.Wait();
 
 			for (int i = 1; i <= TestQueryPredExp.size; i++)
 			{
-				Key key = new Key(args.ns, args.set, TestQueryPredExp.keyPrefix + i);
+				Key key = new Key(args.ns, TestQueryPredExp.setName, TestQueryPredExp.keyPrefix + i);
 				List<int> list = null;
 				Dictionary<string, string> map = null;
 
@@ -72,15 +72,16 @@ namespace Aerospike.Test
 
 		public void Dispose()
 		{
-			client.DropIndex(null, args.ns, args.set, TestQueryPredExp.indexName);
+			client.DropIndex(null, args.ns, TestQueryPredExp.setName, TestQueryPredExp.indexName);
 		}
 	}
 
 	public class TestQueryPredExp : TestSync, Xunit.IClassFixture<QueryPredExpInit>
 	{
+		public static readonly string setName = args.set + "p";
 		public const string indexName = "pred";
 		public const string keyPrefix = "pred";
-		public static readonly string binName = args.GetBinName("predint");
+		public const string binName = "predint";
 		public const int size = 50;
 
 		QueryPredExpInit fixture;
@@ -98,7 +99,7 @@ namespace Aerospike.Test
 
 			Statement stmt = new Statement();
 			stmt.SetNamespace(args.ns);
-			stmt.SetSetName(args.set);
+			stmt.SetSetName(setName);
 			stmt.SetFilter(Filter.Range(binName, begin, end));
 			stmt.SetPredExp(
 				PredExp.IntegerBin("bin2"),
@@ -149,7 +150,7 @@ namespace Aerospike.Test
 
 			Statement stmt = new Statement();
 			stmt.SetNamespace(args.ns);
-			stmt.SetSetName(args.set);
+			stmt.SetSetName(setName);
 			stmt.SetFilter(Filter.Range(binName, begin, end));
 			stmt.SetPredExp(
 				PredExp.IntegerBin("bin2"),
@@ -190,7 +191,7 @@ namespace Aerospike.Test
 
 			Statement stmt = new Statement();
 			stmt.SetNamespace(args.ns);
-			stmt.SetSetName(args.set);
+			stmt.SetSetName(setName);
 			stmt.SetFilter(Filter.Range(binName, begin, end));
 			stmt.SetPredExp(
 				PredExp.RecLastUpdate(),
@@ -202,15 +203,16 @@ namespace Aerospike.Test
 
 			try
 			{
-				int count = 0;
+				//int count = 0;
 
 				while (rs.Next())
 				{
 					//Record record = rs.Record;
 					//Console.WriteLine(record.GetValue(binName).ToString() + ' ' + record.expiration);
-					count++;
+					//count++;
 				}
-				Xunit.Assert.Equal(0, count);
+				// Do not asset count since some tests can run after this one.
+				//Xunit.Assert.Equal(0, count);
 			}
 			finally
 			{
@@ -226,7 +228,7 @@ namespace Aerospike.Test
 
 			Statement stmt = new Statement();
 			stmt.SetNamespace(args.ns);
-			stmt.SetSetName(args.set);
+			stmt.SetSetName(setName);
 			stmt.SetFilter(Filter.Range(binName, begin, end));
 			stmt.SetPredExp(
 				PredExp.IntegerVar("x"),
@@ -263,7 +265,7 @@ namespace Aerospike.Test
 
 			Statement stmt = new Statement();
 			stmt.SetNamespace(args.ns);
-			stmt.SetSetName(args.set);
+			stmt.SetSetName(setName);
 			stmt.SetFilter(Filter.Range(binName, begin, end));
 			stmt.SetPredExp(
 				PredExp.IntegerVar("x"),
@@ -300,7 +302,7 @@ namespace Aerospike.Test
 
 			Statement stmt = new Statement();
 			stmt.SetNamespace(args.ns);
-			stmt.SetSetName(args.set);
+			stmt.SetSetName(setName);
 			stmt.SetFilter(Filter.Range(binName, begin, end));
 			stmt.SetPredExp(
 				PredExp.StringVar("x"),
@@ -337,7 +339,7 @@ namespace Aerospike.Test
 
 			Statement stmt = new Statement();
 			stmt.SetNamespace(args.ns);
-			stmt.SetSetName(args.set);
+			stmt.SetSetName(setName);
 			stmt.SetFilter(Filter.Range(binName, begin, end));
 			stmt.SetPredExp(
 				PredExp.StringVar("x"),
@@ -374,7 +376,7 @@ namespace Aerospike.Test
 
 			Statement stmt = new Statement();
 			stmt.SetNamespace(args.ns);
-			stmt.SetSetName(args.set);
+			stmt.SetSetName(setName);
 			stmt.SetFilter(Filter.Range(binName, begin, end));
 			stmt.SetPredExp(
 				PredExp.StringVar("x"),
@@ -411,7 +413,7 @@ namespace Aerospike.Test
 
 			Statement stmt = new Statement();
 			stmt.SetNamespace(args.ns);
-			stmt.SetSetName(args.set);
+			stmt.SetSetName(setName);
 			stmt.SetFilter(Filter.Range(binName, begin, end));
 			stmt.SetPredExp(
 				PredExp.StringVar("x"),
@@ -433,6 +435,41 @@ namespace Aerospike.Test
 					count++;
 				}
 				Xunit.Assert.Equal(7, count);
+			}
+			finally
+			{
+				rs.Close();
+			}
+		}
+
+		[Xunit.Fact]
+		public void QueryPredicate10()
+		{
+			int begin = 1;
+			int end = 10;
+
+			Statement stmt = new Statement();
+			stmt.SetNamespace(args.ns);
+			stmt.SetSetName(setName);
+			stmt.SetFilter(Filter.Range(binName, begin, end));
+			stmt.SetPredExp(
+				PredExp.RecDigestModulo(3),
+				PredExp.IntegerValue(1),
+				PredExp.IntegerEqual()
+				);
+
+			RecordSet rs = client.Query(null, stmt);
+
+			try
+			{
+				int count = 0;
+
+				while (rs.Next())
+				{
+					//Console.WriteLine(rs.Record.ToString());
+					count++;
+				}
+				Xunit.Assert.Equal(2, count);
 			}
 			finally
 			{

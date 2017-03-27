@@ -193,6 +193,25 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
+		/// Create a digest modulo record metadata value predicate expression.
+		/// The digest modulo expression assumes the value of 4 bytes of the
+		/// record's key digest modulo it's argument.
+		/// <para>
+		/// For example, the following sequence of predicate expressions
+		/// selects records that have digest(key) % 3 == 1):
+		/// <pre>
+		/// PredExp.RecDigestModulo(3)
+		/// PredExp.IntegerValue(1)
+		/// PredExp.IntegerEqual()
+		/// </pre>
+		/// </para>
+		/// </summary>
+		public static PredExp RecDigestModulo(int mod)
+		{
+			return new OpInt(DIGEST_MODULO, (uint)mod);
+		}
+	
+		/// <summary>
 		/// Create 64 bit integer "=" operation predicate.
 		/// </summary>
 		public static PredExp IntegerEqual()
@@ -265,7 +284,7 @@ namespace Aerospike.Client
 		/// <param name="flags">regular expression bit flags. See <see cref="RegexFlag"/></param>
 		public static PredExp StringRegex(uint flags)
 		{
-			return new Regex(STRING_REGEX, flags);
+			return new OpInt(STRING_REGEX, flags);
 		}
 
 		/// <summary>
@@ -402,6 +421,7 @@ namespace Aerospike.Client
 		private const ushort RECSIZE = 150;
 		private const ushort LAST_UPDATE = 151;
 		private const ushort VOID_TIME = 152;
+		private const ushort DIGEST_MODULO = 153;
 		private const ushort INTEGER_EQUAL = 200;
 		private const ushort INTEGER_UNEQUAL = 201;
 		private const ushort INTEGER_GREATER = 202;
@@ -585,12 +605,12 @@ namespace Aerospike.Client
 			}
 		}
 
-		private class Regex : PredExp
+		private class OpInt : PredExp
 		{
 			internal readonly uint flags;
 			internal readonly ushort op;
 
-			internal Regex(ushort op, uint flags)
+			internal OpInt(ushort op, uint flags)
 			{
 				this.op = op;
 				this.flags = flags;
