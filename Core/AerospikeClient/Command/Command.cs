@@ -551,6 +551,10 @@ namespace Aerospike.Client
 			dataOffset += 2 + FIELD_HEADER_SIZE;
 			fieldCount++;
 
+			// Estimate scan timeout size.
+			dataOffset += 4 + FIELD_HEADER_SIZE;
+			fieldCount++;
+
 			// Estimate taskId size.
 			dataOffset += 8 + FIELD_HEADER_SIZE;
 			fieldCount++;
@@ -601,10 +605,13 @@ namespace Aerospike.Client
 			dataBuffer[dataOffset++] = priority;
 			dataBuffer[dataOffset++] = (byte)policy.scanPercent;
 
+			// Write scan timeout
+			WriteFieldHeader(4, FieldType.SCAN_TIMEOUT);
+			dataOffset += ByteUtil.IntToBytes((uint)policy.socketTimeout, dataBuffer, dataOffset);
+
 			// Write taskId field
 			WriteFieldHeader(8, FieldType.TRAN_ID);
-			ByteUtil.LongToBytes(taskId, dataBuffer, dataOffset);
-			dataOffset += 8;
+			dataOffset += ByteUtil.LongToBytes(taskId, dataBuffer, dataOffset);
 
 			if (binNames != null)
 			{

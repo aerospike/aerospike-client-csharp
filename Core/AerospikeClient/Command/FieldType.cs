@@ -25,6 +25,7 @@ namespace Aerospike.Client
 		public const int DIGEST_RIPE_ARRAY = 6;
 		public const int TRAN_ID = 7; // user supplied transaction id, which is simply passed back
 		public const int SCAN_OPTIONS = 8;
+		public const int SCAN_TIMEOUT = 9;
 		public const int INDEX_NAME = 21;
 		public const int INDEX_RANGE = 22;
 		public const int INDEX_FILTER = 23;
