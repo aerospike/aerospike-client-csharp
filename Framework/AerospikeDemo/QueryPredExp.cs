@@ -42,20 +42,12 @@ namespace Aerospike.Demo
 			string binName = "idxbin";
 			int size = 50;
 
-			Register(client, args);
 			CreateIndex(client, args, indexName, binName);
 			WriteRecords(client, args, binName, size);
 			RunQuery1(client, args, binName);
 			RunQuery2(client, args, binName);
 			RunQuery3(client, args, binName);
 			client.DropIndex(args.policy, args.ns, args.set, indexName);
-		}
-
-		private void Register(AerospikeClient client, Arguments args)
-		{
-			string packageName = "filter_example.lua";
-			console.Info("Register: " + packageName);
-			LuaExample.Register(client, args.policy, packageName);
 		}
 
 		private void CreateIndex(AerospikeClient client, Arguments args, string indexName, string binName)
