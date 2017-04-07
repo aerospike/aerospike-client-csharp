@@ -22,7 +22,7 @@ namespace Aerospike.Client
 	public sealed class BatchPolicy : Policy
 	{
 		/// <summary>
-		/// Maximum number of concurrent batch request threads to server nodes at any point in time.
+		/// Maximum number of concurrent synchronous batch request threads to server nodes at any point in time.
 		/// If there are 16 node/namespace combinations requested and maxConcurrentThreads is 8, 
 		/// then batch requests will be made for 8 node/namespace combinations in parallel threads.
 		/// When a request completes, a new request will be issued until all 16 threads are complete.
@@ -48,6 +48,7 @@ namespace Aerospike.Client
 		/// </item>
 		/// </list>
 		/// </para>
+		///	Asynchronous batch requests ignore this field and always issue all node requests in parallel.
 		/// </summary>		
 		public int maxConcurrentThreads = 1;
 

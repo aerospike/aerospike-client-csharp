@@ -52,7 +52,7 @@ namespace Aerospike.Client
 				tasks[count++] = new AsyncBatchReadListCommand(this, cluster, batchNode, policy, records);
 			}
 			// Dispatch commands to nodes.
-			Execute(tasks, policy.maxConcurrentThreads);
+			Execute(tasks, 0);
 		}
 
 		protected internal override void OnSuccess()
@@ -141,7 +141,7 @@ namespace Aerospike.Client
 				tasks[count++] = new AsyncBatchReadSequenceCommand(this, cluster, batchNode, policy, listener, records);
 			}
 			// Dispatch commands to nodes.
-			Execute(tasks, policy.maxConcurrentThreads);
+			Execute(tasks, 0);
 		}
 
 		protected internal override void OnSuccess()
@@ -245,7 +245,7 @@ namespace Aerospike.Client
 				}
 			}
 			// Dispatch commands to nodes.
-			Execute(tasks, policy.maxConcurrentThreads);
+			Execute(tasks, 0);
 		}
 
 		protected internal override void OnSuccess()
@@ -402,7 +402,7 @@ namespace Aerospike.Client
 				}
 			}
 			// Dispatch commands to nodes.
-			Execute(tasks, policy.maxConcurrentThreads);
+			Execute(tasks, 0);
 		}
 
 		protected internal override void OnSuccess()
@@ -572,7 +572,7 @@ namespace Aerospike.Client
 				}
 			}
 			// Dispatch commands to nodes.
-			Execute(tasks, policy.maxConcurrentThreads);
+			Execute(tasks, 0);
 		}
 
 		protected internal override void OnSuccess()
@@ -719,7 +719,7 @@ namespace Aerospike.Client
 				}
 			}
 			// Dispatch commands to nodes.
-			Execute(tasks, policy.maxConcurrentThreads);
+			Execute(tasks, 0);
 		}
 
 		protected internal override void OnSuccess()
