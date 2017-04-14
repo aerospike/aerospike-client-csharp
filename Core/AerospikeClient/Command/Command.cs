@@ -154,12 +154,13 @@ namespace Aerospike.Client
 			End();
 		}
 
-		public void SetOperate(WritePolicy policy, Key key, Operation[] operations)
+		public bool SetOperate(WritePolicy policy, Key key, Operation[] operations)
 		{
 			Begin();
 			int fieldCount = EstimateKeySize(policy, key);
 			int readAttr = 0;
 			int writeAttr = 0;
+			bool hasWrite = false;
 			bool readBin = false;
 			bool readHeader = false;
 			bool respondAllOps = policy.respondAllOps;
@@ -206,6 +207,7 @@ namespace Aerospike.Client
 
 				default:
 					writeAttr = Command.INFO2_WRITE;
+					hasWrite = true;
 					break;
 				}
 				EstimateOperationSize(operation);
@@ -230,6 +232,7 @@ namespace Aerospike.Client
 				WriteOperation(operation);
 			}
 			End();
+			return hasWrite;
 		}
 
 		public void SetUdf(WritePolicy policy, Key key, string packageName, string functionName, Value[] args)

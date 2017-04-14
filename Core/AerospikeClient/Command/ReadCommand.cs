@@ -77,6 +77,7 @@ namespace Aerospike.Client
 			{
 				if (resultCode == ResultCode.KEY_NOT_FOUND_ERROR || resultCode == ResultCode.LARGE_ITEM_NOT_FOUND)
 				{
+					HandleNotFound(resultCode);
 					return;
 				}
 
@@ -96,6 +97,11 @@ namespace Aerospike.Client
 				return;
 			}
 			record = ParseRecord(opCount, fieldCount, generation, expiration);
+		}
+
+		protected internal virtual void HandleNotFound(int resultCode)
+		{
+			// Do nothing in default case. Record will be null.
 		}
 
 		private void HandleUdfError(int resultCode)
