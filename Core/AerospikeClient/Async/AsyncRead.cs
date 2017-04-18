@@ -84,13 +84,18 @@ namespace Aerospike.Client
 			{
 				if (resultCode == ResultCode.KEY_NOT_FOUND_ERROR)
 				{
-					record = null;
+					HandleNotFound(resultCode);
 				}
 				else
 				{
 					throw new AerospikeException(resultCode);
 				}
 			}
+		}
+
+		protected internal virtual void HandleNotFound(int resultCode)
+		{
+			// Do nothing in default case. Record will be null.
 		}
 
 		private Record ParseRecord(int opCount, int fieldCount, int generation, int expiration)

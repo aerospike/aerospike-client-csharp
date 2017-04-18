@@ -61,6 +61,11 @@ namespace Aerospike.Client
 			return cluster.GetMasterNode(partition);
 		}
 
+		protected internal override void HandleNotFound(int resultCode)
+		{
+			throw new AerospikeException(resultCode);
+		}
+
 		protected internal override void OnSuccess()
 		{
 			if (executeListener != null)

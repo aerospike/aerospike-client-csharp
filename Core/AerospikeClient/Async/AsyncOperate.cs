@@ -22,6 +22,7 @@ namespace Aerospike.Client
 	{
 		private readonly WritePolicy writePolicy;
 		private readonly Operation[] operations;
+		private bool hasWrite;
 
 		public AsyncOperate(AsyncCluster cluster, WritePolicy writePolicy, RecordListener listener, Key key, Operation[] operations)
 			: base(cluster, writePolicy, listener, key, null)
@@ -44,12 +45,22 @@ namespace Aerospike.Client
 
 		protected internal override void WriteBuffer()
 		{
-			SetOperate(writePolicy, key, operations);
+			hasWrite = SetOperate(writePolicy, key, operations);
 		}
 
 		protected internal override Node GetNode()
 		{
 			return cluster.GetMasterNode(partition);
+		}
+
+		protected internal override void HandleNotFound(int resultCode)
+		{
+			// Only throw not found exception for command with write operations.
+			// Read-only command operations return a null record.
+			if (hasWrite)
+			{
+				throw new AerospikeException(resultCode);
+			}
 		}
 
 		protected internal override void AddBin(Dictionary<string, object> bins, string name, object value)
