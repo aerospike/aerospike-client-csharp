@@ -308,8 +308,9 @@ namespace Aerospike.Client
 				}
 
 				PeerParser parser = new PeerParser(cluster, tendConnection, peers.peers);
-				peersGeneration = parser.generation;
 				peersCount = peers.peers.Count;
+
+				bool peersValidated = true;
 
 				foreach (Peer peer in peers.peers)
 				{
@@ -318,6 +319,8 @@ namespace Aerospike.Client
 						// Node already exists. Do not even try to connect to hosts.				
 						continue;
 					}
+
+					bool nodeValidated = false;
 
 					// Find first host that connects.
 					foreach (Host host in peer.hosts)
@@ -340,6 +343,7 @@ namespace Aerospike.Client
 								{
 									// Node already exists. Do not even try to connect to hosts.				
 									nv.conn.Close();
+									nodeValidated = true;
 									break;
 								}
 							}
@@ -347,6 +351,7 @@ namespace Aerospike.Client
 							// Create new node.
 							Node node = cluster.CreateNode(nv);
 							peers.nodes[nv.name] = node;
+							nodeValidated = true;
 							break;
 						}
 						catch (Exception e)
@@ -357,6 +362,17 @@ namespace Aerospike.Client
 							}
 						}
 					}
+
+					if (! nodeValidated)
+					{
+						peersValidated = false;
+					}
+				}
+
+				// Only set new peers generation if all referenced peers are added to the cluster.
+				if (peersValidated)
+				{
+					peersGeneration = parser.generation;
 				}
 				peers.refreshCount++;
 			}
