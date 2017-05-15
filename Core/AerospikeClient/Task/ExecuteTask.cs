@@ -56,10 +56,10 @@ namespace Aerospike.Client
 
 				if (response.StartsWith("ERROR:2"))
 				{
-					// Task not found. This could mean task already completed or
-					// task not started yet.  We are going to have to assume that
-					// the task already completed...
-					continue;
+					// Task not found. This could mean task already completed and
+					// the listing was removed or the task has not started yet.
+					// We are going to have to assume that the task has not started yet...
+					return false;
 				}
 
 				if (response.StartsWith("ERROR:"))
