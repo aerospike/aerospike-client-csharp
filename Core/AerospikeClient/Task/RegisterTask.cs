@@ -37,14 +37,14 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Query all nodes for task completion status.
 		/// </summary>
-		public override bool QueryIfDone()
+		public override int QueryStatus()
 		{
 			// All nodes must respond with complete to be considered done.
 			Node[] nodes = cluster.Nodes;
 
 			if (nodes.Length == 0)
 			{
-				return false;
+				throw new AerospikeException("Cluster is empty");
 			}
 
 			string command = "udf-list";
@@ -57,10 +57,10 @@ namespace Aerospike.Client
 
 				if (index < 0)
 				{
-					return false;
+					return BaseTask.IN_PROGRESS;
 				}
 			}
-			return true;
+			return BaseTask.COMPLETE;
 		}
 	}
 }

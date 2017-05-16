@@ -48,14 +48,14 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Query all nodes for task completion status.
 		/// </summary>
-		public override bool QueryIfDone()
+		public override int QueryStatus()
 		{
 			// All nodes must respond with complete to be considered done.
 			Node[] nodes = cluster.Nodes;
 
 			if (nodes.Length == 0)
 			{
-				return false;
+				throw new AerospikeException("Cluster is empty");
 			}
 
 			string command = "sindex/" + ns + '/' + indexName;
@@ -70,14 +70,13 @@ namespace Aerospike.Client
 				{
 					if (response.IndexOf("FAIL:201") >= 0 || response.IndexOf("FAIL:203") >= 0)
 					{
-						// Index not found or not readable.  Keep waiting because create index may not
-						// have been started yet.
-						throw new AerospikeException(command + " failed: " + response);
+						// Index not found or not readable.
+						return BaseTask.NOT_FOUND;
 					}
 					else
 					{
-						// Mark done and throw exception immediately.
-						throw new DoneException(command + " failed: " + response);
+						// Throw exception immediately.
+						throw new AerospikeException(command + " failed: " + response);
 					}
 				}
     
@@ -88,10 +87,10 @@ namespace Aerospike.Client
     
 				if (pct != 100)
 				{
-					return false;
+					return BaseTask.IN_PROGRESS;
 				}
 			}
-			return true;
+			return BaseTask.COMPLETE;
 		}
 	}
 }

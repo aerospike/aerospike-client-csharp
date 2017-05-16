@@ -23,6 +23,10 @@ namespace Aerospike.Client
 	/// </summary>
 	public abstract class BaseTask
 	{
+		public const int NOT_FOUND = 0;
+		public const int IN_PROGRESS = 1;
+		public const int COMPLETE = 2; 
+
 		protected internal readonly Cluster cluster;
 		protected internal InfoPolicy policy;
 		private bool done;
@@ -86,51 +90,38 @@ namespace Aerospike.Client
 		/// </summary>
 		private void TaskWait(int sleepInterval)
 		{
-			DateTime deadline = DateTime.UtcNow;
-			Exception exception = null;
-			bool firstTime = true;
-
-			while (!done)
+			if (done)
 			{
-				// Only check for timeout on successive iterations.
-				if (firstTime)
-				{
-					deadline = deadline.AddMilliseconds(policy.timeout);
-					firstTime = false;
-				}
-				else
-				{
-					if (policy.timeout != 0 && DateTime.UtcNow.AddMilliseconds(sleepInterval) > deadline)
-					{
-						if (exception != null)
-						{
-							// Use last exception received from queryIfDone().
-							throw exception;
-						}
-						else
-						{
-							throw new AerospikeException.Timeout();
-						}
-					}
-				}
+				return;
+			}
+
+			DateTime deadline = DateTime.UtcNow.AddMilliseconds(policy.timeout);
+
+			do
+			{
+				// Sleep first to give task a chance to complete and help avoid case
+				// where task hasn't started yet.
 				Util.Sleep(sleepInterval);
 
-				try
+				int status = QueryStatus();
+
+				// The server can remove task listings immediately after completion
+				// (especially for background query execute), so "NOT_FOUND" can 
+				// really mean complete. If not found and timeout not defined,
+				// consider task complete.
+				if (status == COMPLETE || (status == NOT_FOUND && policy.timeout == 0))
 				{
-					done = QueryIfDone();
+					done = true;
+					return;
 				}
-				catch (DoneException)
+
+				// Check for timeout.
+				if (policy.timeout > 0 && DateTime.UtcNow.AddMilliseconds(sleepInterval) > deadline)
 				{
-					// Throw exception immediately.
-					throw;
+					// Timeout has been reached or will be reached after next sleep.
+					throw new AerospikeException.Timeout();
 				}
-				catch (Exception re)
-				{
-					// Some tasks may initially give errors and then eventually succeed.
-					// Store exception and continue till timeout. 
-					exception = re;
-				}
-			}
+			} while (true);
 		}
 
 		/// <summary>
@@ -142,20 +133,26 @@ namespace Aerospike.Client
 			{
 				return true;
 			}
-			done = QueryIfDone();
-			return done;
+
+			int status = QueryStatus();
+
+			if (status == NOT_FOUND)
+			{
+				// The task may have not started yet.  Re-request status after a delay.
+				Util.Sleep(1000);
+				status = QueryStatus();
+			}
+
+			// The server can remove task listings immediately after completion
+			// (especially for background query execute), so we must assume a 
+			// "not found" status means the task is complete.
+			done = status != IN_PROGRESS;
+			return done; 			
 		}
 
 		/// <summary>
 		/// Query all nodes for task completion status.
 		/// </summary>
-		public abstract bool QueryIfDone();
-
-		public class DoneException : AerospikeException
-		{
-			public DoneException(string message) : base(message)
-			{
-			}
-		}
+		public abstract int QueryStatus();
 	}
 }

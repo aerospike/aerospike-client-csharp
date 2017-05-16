@@ -37,14 +37,14 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Query all nodes for task completion status.
 		/// </summary>
-		public override bool QueryIfDone()
+		public override int QueryStatus()
 		{
 			// All nodes must respond with complete to be considered done.
 			Node[] nodes = cluster.Nodes;
 
 			if (nodes.Length == 0)
 			{
-				return false;
+				throw new AerospikeException("Cluster is empty");
 			}
 			
 			string module = (scan) ? "scan" : "query";
@@ -56,16 +56,13 @@ namespace Aerospike.Client
 
 				if (response.StartsWith("ERROR:2"))
 				{
-					// Task not found. This could mean task already completed and
-					// the listing was removed or the task has not started yet.
-					// We are going to have to assume that the task has not started yet...
-					return false;
+					return BaseTask.NOT_FOUND;
 				}
 
 				if (response.StartsWith("ERROR:"))
 				{
-					// Mark done and quit immediately.
-					throw new DoneException(command + " failed: " + response);
+					// Throw exception immediately.
+					throw new AerospikeException(command + " failed: " + response);
 				}
 
 				string find = "status=";
@@ -84,10 +81,10 @@ namespace Aerospike.Client
 				// Newer servers use "done" while older servers use "DONE"
 				if (!status.StartsWith("done", System.StringComparison.OrdinalIgnoreCase))
 				{
-					return false;
+					return BaseTask.IN_PROGRESS;
 				}
 			}
-			return true;
+			return BaseTask.COMPLETE;
 		}
 	}
 }
