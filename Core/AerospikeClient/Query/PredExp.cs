@@ -83,7 +83,7 @@ namespace Aerospike.Client
 		/// </summary>
 		public static PredExp GeoJSONValue(string val)
 		{
-			return new StringVal(val, GEOJSON_VALUE);
+			return new GeoJSONVal(val, GEOJSON_VALUE);
 		}
 
 		/// <summary>
@@ -545,6 +545,45 @@ namespace Aerospike.Client
 			}
 		}
 
+		private class GeoJSONVal : PredExp
+		{
+			private readonly string value;
+			private readonly ushort type;
+
+			public GeoJSONVal(string value, ushort type)
+			{
+				this.value = value;
+				this.type = type;
+			}
+
+			public override int EstimateSize()
+			{
+				// type + len + flags + ncells + jsonstr
+				return 2 + 4 + 1 + 2 + ByteUtil.EstimateSizeUtf8(this.value);
+			}
+
+			public override int Write(byte[] buf, int offset)
+			{
+				// Write value type
+				ByteUtil.ShortToBytes(type, buf, offset);
+				offset += 2;
+
+				// Write value
+				int len = ByteUtil.StringToUtf8(value, buf, offset + 4 + 1 + 2);
+				ByteUtil.IntToBytes((uint)(len + 1 + 2), buf, offset);
+				offset += 4;
+
+				buf[offset] = 0; // flags
+				offset += 1;
+
+				ByteUtil.ShortToBytes(0, buf, offset); // ncells
+				offset += 2;
+
+				offset += len;
+				return offset;
+			}
+		}
+		
 		private class AndOr : PredExp
 		{
 			internal readonly ushort op;
