@@ -303,7 +303,14 @@ namespace Aerospike.Client
 			}
 			SizeBuffer();
 
-			WriteHeader(policy, Command.INFO1_READ | Command.INFO1_BATCH, 0, 1, 0);
+			int readAttr = Command.INFO1_READ;
+
+			if (policy.consistencyLevel == ConsistencyLevel.CONSISTENCY_ALL)
+			{
+				readAttr |= Command.INFO1_CONSISTENCY_ALL;
+			}
+
+			WriteHeader(policy, readAttr | Command.INFO1_BATCH, 0, 1, 0);
 			int fieldSizeOffset = dataOffset;
 			WriteFieldHeader(0, policy.sendSetName ? FieldType.BATCH_INDEX_WITH_SET : FieldType.BATCH_INDEX); // Need to update size at end
 
@@ -343,7 +350,7 @@ namespace Aerospike.Client
 
 					if (binNames != null && binNames.Length != 0)
 					{
-						dataBuffer[dataOffset++] = (byte)Command.INFO1_READ;
+						dataBuffer[dataOffset++] = (byte)readAttr;
 						dataOffset += ByteUtil.ShortToBytes(fieldCount, dataBuffer, dataOffset);
 						dataOffset += ByteUtil.ShortToBytes((ushort)binNames.Length, dataBuffer, dataOffset);
 						WriteField(key.ns, FieldType.NAMESPACE);
@@ -360,7 +367,7 @@ namespace Aerospike.Client
 					}
 					else
 					{
-						dataBuffer[dataOffset++] = (byte)(Command.INFO1_READ | (record.readAllBins ? Command.INFO1_GET_ALL : Command.INFO1_NOBINDATA));
+						dataBuffer[dataOffset++] = (byte)(readAttr | (record.readAllBins ? Command.INFO1_GET_ALL : Command.INFO1_NOBINDATA));
 						dataOffset += ByteUtil.ShortToBytes(fieldCount, dataBuffer, dataOffset);
 						dataOffset += ByteUtil.ShortToBytes(0, dataBuffer, dataOffset);
 						WriteField(key.ns, FieldType.NAMESPACE);
@@ -432,6 +439,11 @@ namespace Aerospike.Client
 			}
 
 			SizeBuffer();
+
+			if (policy.consistencyLevel == ConsistencyLevel.CONSISTENCY_ALL)
+			{
+				readAttr |= Command.INFO1_CONSISTENCY_ALL;
+			}
 
 			WriteHeader(policy, readAttr | Command.INFO1_BATCH, 0, 1, 0);
 			int fieldSizeOffset = dataOffset;
