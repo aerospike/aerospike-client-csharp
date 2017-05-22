@@ -2,15 +2,28 @@
   "version": "3.4.2-*",
 
   "buildOptions": {
-    "define": ["NETCORE"]
+    "define": [ "NETCORE" ]
   },
-  
+
   "dependencies": {
     "NETStandard.Library": "1.6.0",
     "System.Net.NameResolution": "4.3.0",
     "System.Net.Security": "4.3.0",
     "System.Threading.Thread": "4.3.0",
     "System.Threading.ThreadPool": "4.3.0"
+  },
+  "runtimeOptions": {
+    "configProperties": {
+      "System.GC.Concurrent": true,
+      "System.GC.Server": true,
+    },
+  },
+  "configurations": {
+    "Release": {
+      "buildOptions": {
+        "optimize": true
+      }
+    }
   },
 
   "frameworks": {
