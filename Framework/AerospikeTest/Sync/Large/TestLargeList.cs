@@ -69,8 +69,15 @@ namespace Aerospike.Test
 
 			// Test record not found.
 			LargeList nflist = client.GetLargeList(null, new Key(args.ns, args.set, "sfdfdqw"), binName);
-			b = nflist.Exists(Value.Get(orig2));
-			Assert.IsFalse(b);
+			try
+			{
+				b = nflist.Exists(Value.Get(orig2));
+				Assert.IsFalse(b);
+			}
+			catch (AerospikeException ae)
+			{
+				Assert.AreEqual(ResultCode.KEY_NOT_FOUND_ERROR, ae.Result);
+			}
 
 			IList klist = new List<Value>();
 			klist.Add(Value.Get(orig2));
@@ -82,10 +89,17 @@ namespace Aerospike.Test
 			Assert.IsFalse(blist[2]);
 
 			// Test record not found.
-			IList<bool> blist2 = nflist.Exists(klist);
-			Assert.IsFalse(blist2[0]);
-			Assert.IsFalse(blist2[1]);
-			Assert.IsFalse(blist2[2]);
+			try
+			{
+				IList<bool> blist2 = nflist.Exists(klist);
+				Assert.IsFalse(blist2[0]);
+				Assert.IsFalse(blist2[1]);
+				Assert.IsFalse(blist2[2]);
+			}
+			catch (AerospikeException ae)
+			{
+				Assert.AreEqual(ResultCode.KEY_NOT_FOUND_ERROR, ae.Result);
+			}
 
 			// Perform a Range Query -- look for "llistValue2" to "llistValue3"
 			IList rangeList = llist.Range(Value.Get(orig2), Value.Get(orig3));
