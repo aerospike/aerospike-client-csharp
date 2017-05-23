@@ -616,8 +616,17 @@ namespace Aerospike.Client
 			{
 				// Free up resources and notify user on timeout.
 				// Connection should have already been closed on AsyncTimeoutQueue timeout.
-				PutBackArgsOnError();
-				OnFailure(new AerospikeException.Timeout(node, policy.timeout, iterations + 1, 0, 0));
+				AerospikeException.Timeout timeoutException = new AerospikeException.Timeout(node, policy.timeout, iterations + 1, 0, 0);
+				if (iterations >= policy.maxRetries)
+				{
+					PutBackArgsOnError();
+					OnFailure(timeoutException);
+				}
+				else
+				{
+					Interlocked.CompareExchange(ref state, IN_PROGRESS, FAIL_TIMEOUT);
+					RetryAfterInit(timeoutException);
+				}
 			}
 			else
 			{
