@@ -116,85 +116,17 @@ namespace Aerospike.Client
 					ConnectionReady();
 				}
 			}
-			catch (AerospikeException.Connection)
+			catch (AerospikeException.Connection aec)
 			{
-				if (!RetryOnInit())
-				{
-					throw;
-				}
+				ConnectionFailed(aec);
 			}
 			catch (SocketException se)
 			{
-				if (!RetryOnInit())
-				{
-					throw GetAerospikeException(se.SocketErrorCode);
-				}
+				ConnectionFailed(GetAerospikeException(se.SocketErrorCode));
 			}
 			catch (Exception e)
 			{
-				if (!FailOnApplicationInit())
-				{
-					throw new AerospikeException(e);
-				}
-			}
-		}
-
-		private bool RetryOnInit()
-		{
-			if (iterations < policy.maxRetries && (policy.retryOnTimeout || watch == null || watch.ElapsedMilliseconds < policy.timeout))
-			{
-				int status = Interlocked.CompareExchange(ref state, RETRY, IN_PROGRESS);
-
-				if (status == IN_PROGRESS)
-				{
-					// Prepare for retry.
-					AsyncCommand command = CloneCommand();
-
-					if (command != null)
-					{
-						CloseConnection();
-
-						if (policy.timeout > 0)
-						{
-							if (policy.retryOnTimeout)
-							{
-								command.watch = Stopwatch.StartNew();
-							}
-							else
-							{
-								command.watch = this.watch;
-							}
-							AsyncTimeoutQueue.Instance.Add(command, policy.timeout);
-						}
-						command.ExecuteCommand();
-						return true;
-					}
-					else
-					{
-						CloseOnError();
-						return false;
-					}
-				}
-				else
-				{
-					AlreadyCompleted(status);
-					return true;
-				}
-			}
-			else
-			{
-				int status = Interlocked.CompareExchange(ref state, FAIL_NETWORK_INIT, IN_PROGRESS);
-
-				if (status == IN_PROGRESS)
-				{
-					CloseOnError();
-					return false;
-				}
-				else
-				{
-					AlreadyCompleted(status);
-					return true;
-				}
+				FailOnApplicationError(new AerospikeException(e));
 			}
 		}
 
@@ -204,7 +136,7 @@ namespace Aerospike.Client
 
 			if (args.SocketError != SocketError.Success)
 			{
-				command.RetryAfterInit(command.GetAerospikeException(args.SocketError));
+				command.ConnectionFailed(command.GetAerospikeException(args.SocketError));
 				return;
 			}
 
@@ -228,7 +160,7 @@ namespace Aerospike.Client
 			}
 			catch (AerospikeException.Connection ac)
 			{
-				command.RetryAfterInit(ac);
+				command.ConnectionFailed(ac);
 			}
 			catch (AerospikeException ae)
 			{
@@ -237,13 +169,13 @@ namespace Aerospike.Client
 			}
 			catch (SocketException se)
 			{
-				command.RetryAfterInit(command.GetAerospikeException(se.SocketErrorCode));
+				command.ConnectionFailed(command.GetAerospikeException(se.SocketErrorCode));
 			}
 			catch (ObjectDisposedException ode)
 			{
 				// This exception occurs because socket is being used after timeout thread closes socket.
 				// Retry when this happens.
-				command.RetryAfterInit(new AerospikeException(ode));
+				command.ConnectionFailed(new AerospikeException(ode));
 			}
 			catch (Exception e)
 			{
@@ -371,7 +303,7 @@ namespace Aerospike.Client
 
 			if (eventArgs.BytesTransferred <= 0)
 			{
-				RetryAfterInit(new AerospikeException.Connection("Connection closed"));
+				ConnectionFailed(new AerospikeException.Connection("Connection closed"));
 				return;
 			}
 
@@ -427,50 +359,16 @@ namespace Aerospike.Client
 			}
 		}
 
-		private void RetryAfterInit(AerospikeException ae)
+		private void ConnectionFailed(AerospikeException ae)
 		{
-			if (iterations < policy.maxRetries && (policy.retryOnTimeout || watch == null || watch.ElapsedMilliseconds < policy.timeout))
+			if (ShouldRetry())
 			{
 				int status = Interlocked.CompareExchange(ref state, RETRY, IN_PROGRESS);
 
 				if (status == IN_PROGRESS)
 				{
-					// Prepare for retry.
-					AsyncCommand command = CloneCommand();
-
-					if (command != null)
-					{
-						CloseConnection();
-
-						if (policy.timeout > 0)
-						{
-							if (policy.retryOnTimeout)
-							{
-								command.watch = Stopwatch.StartNew();
-							}
-							else
-							{
-								command.watch = this.watch;
-							}
-							AsyncTimeoutQueue.Instance.Add(command, policy.timeout);
-						}
-
-						try
-						{
-							command.ExecuteCommand();
-						}
-						catch (Exception)
-						{
-							// Command has already been cleaned up.
-							// Notify user of original exception.
-							OnFailure(ae);
-						}
-					}
-					else
-					{
-						CloseOnError();
-						OnFailure(ae);
-					}
+					CloseConnection();
+					Retry(ae);
 				}
 				else
 				{
@@ -484,12 +382,45 @@ namespace Aerospike.Client
 				if (status == IN_PROGRESS)
 				{
 					CloseOnError();
-					OnFailure(ae);
+					NotifyFailure(ae);
 				}
 				else
 				{
 					AlreadyCompleted(status);
 				}
+			}
+		}
+
+		private bool ShouldRetry()
+		{
+			return iterations < policy.maxRetries && (policy.retryOnTimeout || watch == null || watch.ElapsedMilliseconds < policy.timeout);
+		}
+
+		private void Retry(AerospikeException ae)
+		{
+			// Prepare for retry.
+			AsyncCommand command = CloneCommand();
+
+			if (command != null)
+			{
+				if (policy.timeout > 0)
+				{
+					if (policy.retryOnTimeout)
+					{
+						command.watch = Stopwatch.StartNew();
+					}
+					else
+					{
+						command.watch = this.watch;
+					}
+					AsyncTimeoutQueue.Instance.Add(command, policy.timeout);
+				}
+				command.ExecuteCommand();
+			}
+			else
+			{
+				PutBackArgsOnError();
+				NotifyFailure(ae);
 			}
 		}
 
@@ -526,6 +457,8 @@ namespace Aerospike.Client
 
 			if (status == IN_PROGRESS)
 			{
+				// Command finished successfully.
+				// Put connection back into pool.
 				conn.UpdateLastUsed();
 				node.PutAsyncConnection(conn);
 
@@ -539,45 +472,32 @@ namespace Aerospike.Client
 
 				eventArgs.UserToken = segment;
 				cluster.PutEventArgs(eventArgs);
-
-				try
-				{
-					OnSuccess();
-				}
-				catch (AerospikeException ae)
-				{
-					// The user's OnSuccess() may have already been called which in turn generates this
-					// exception.  It's important to call OnFailure() anyhow because the user's code 
-					// may be waiting for completion notification which wasn't yet called in
-					// OnSuccess().  This is the only case where both OnSuccess() and OnFailure()
-					// gets called for the same command.
-					OnFailure(ae);
-				}
-				catch (Exception e)
-				{
-					OnFailure(new AerospikeException(e));
-				}
+			}
+			else if (status == FAIL_TIMEOUT)
+			{
+				// Timeout thread closed connection, but transaction still completed. 
+				// Do not connection put back into pool.
+				PutBackArgsOnError();
 			}
 			else
 			{
-				AlreadyCompleted(status);
+				// Should never get here.
+				if (Log.WarnEnabled())
+				{
+					Log.Warn("AsyncCommand finished with unexpected return status: " + status);
+				}
 			}
-		}
 
-		private bool FailOnApplicationInit()
-		{
-			// Ensure that command succeeds or fails, but not both.
-			int status = Interlocked.CompareExchange(ref state, FAIL_APPLICATION_INIT, IN_PROGRESS);
-
-			if (status == IN_PROGRESS)
+			try
 			{
-				CloseOnError();
-				return false;
+				OnSuccess();
 			}
-			else
+			catch (Exception e)
 			{
-				AlreadyCompleted(status);
-				return true;
+				if (Log.WarnEnabled())
+				{
+					Log.Warn("OnSuccess() error: " + Util.GetErrorMessage(e));
+				}
 			}
 		}
 
@@ -600,7 +520,7 @@ namespace Aerospike.Client
 					// Close socket to flush out possible garbage.
 					CloseOnError();
 				}
-				OnFailure(ae);
+				NotifyFailure(ae);
 			}
 			else
 			{
@@ -617,15 +537,15 @@ namespace Aerospike.Client
 				// Free up resources and notify user on timeout.
 				// Connection should have already been closed on AsyncTimeoutQueue timeout.
 				AerospikeException.Timeout timeoutException = new AerospikeException.Timeout(node, policy.timeout, iterations + 1, 0, 0);
-				if (iterations >= policy.maxRetries)
+
+				if (ShouldRetry())
 				{
-					PutBackArgsOnError();
-					OnFailure(timeoutException);
+					Retry(timeoutException);
 				}
 				else
 				{
-					Interlocked.CompareExchange(ref state, IN_PROGRESS, FAIL_TIMEOUT);
-					RetryAfterInit(timeoutException);
+					PutBackArgsOnError();
+					NotifyFailure(timeoutException);
 				}
 			}
 			else
@@ -633,6 +553,21 @@ namespace Aerospike.Client
 				if (Log.WarnEnabled())
 				{
 					Log.Warn("AsyncCommand unexpected return status: " + status);
+				}
+			}
+		}
+
+		private void NotifyFailure(AerospikeException ae)
+		{
+			try
+			{
+				OnFailure(ae);
+			}
+			catch (Exception e) 
+			{
+				if (Log.WarnEnabled())
+				{
+					Log.Warn("OnFailure() error: " + Util.GetErrorMessage(e));
 				}
 			}
 		}
