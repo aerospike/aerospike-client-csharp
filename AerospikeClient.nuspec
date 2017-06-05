@@ -2,7 +2,7 @@
 <package >
   <metadata>
     <id>Aerospike.Client</id>
-    <version>3.4.3</version>
+    <version>3.4.4</version>
     <title>Official Aerospike C# Client</title>
     <authors>Aerospike</authors>
     <owners>Aerospike</owners>
@@ -22,10 +22,13 @@
       <group targetFramework="net">
         <dependency id="NeoLua" version="0.9.14" />
       </group>
+	  <group targetFramework="netstandard1.5">
+        <dependency id="NETStandard.Library" version="[1.6.0, )" />
+      </group>
     </dependencies>
   </metadata>
   <files>
     <file src="Framework\AerospikeClient\bin\Release\AerospikeClient.dll" target="lib\net" />
-    <file src="Core\AerospikeClient\bin\Release\netstandard1.6\AerospikeClient.dll" target="lib\netstandard" />
+    <file src="Core\AerospikeClient\bin\Release\netstandard1.5\AerospikeClient.dll" target="lib\netstandard" />
   </files>
 </package>
