@@ -86,6 +86,13 @@ namespace Aerospike.Client
 			this.records = records;
 		}
 
+		public AsyncBatchReadListCommand(AsyncBatchReadListCommand other) : base(other)
+		{
+			this.batch = other.batch;
+			this.batchPolicy = other.batchPolicy;
+			this.records = other.records;
+		}
+
 		protected internal override void WriteBuffer()
 		{
 			SetBatchRead(batchPolicy, records, batch);
@@ -106,6 +113,11 @@ namespace Aerospike.Client
 			{
 				throw new AerospikeException.Parse("Unexpected batch key returned: " + key.ns + ',' + ByteUtil.BytesToHexString(key.digest) + ',' + batchIndex);
 			}
+		}
+
+		protected internal override AsyncCommand CloneCommand()
+		{
+			return new AsyncBatchReadListCommand(this);
 		}
 	}
 
@@ -178,6 +190,14 @@ namespace Aerospike.Client
 			this.records = records;
 		}
 
+		public AsyncBatchReadSequenceCommand(AsyncBatchReadSequenceCommand other) : base(other)
+		{
+			this.batch = other.batch;
+			this.batchPolicy = other.batchPolicy;
+			this.listener = other.listener;
+			this.records = other.records;
+		}
+
 		protected internal override void WriteBuffer()
 		{
 			SetBatchRead(batchPolicy, records, batch);
@@ -200,6 +220,12 @@ namespace Aerospike.Client
 				throw new AerospikeException.Parse("Unexpected batch key returned: " + key.ns + ',' + ByteUtil.BytesToHexString(key.digest) + ',' + batchIndex);
 			}
 		}
+
+		protected internal override AsyncCommand CloneCommand()
+		{
+			return new AsyncBatchReadSequenceCommand(this);
+		}
+
 	}
 
 	//-------------------------------------------------------
@@ -288,6 +314,16 @@ namespace Aerospike.Client
 			this.readAttr = readAttr;
 		}
 
+		public AsyncBatchGetArrayCommand(AsyncBatchGetArrayCommand other) : base(other)
+		{
+			this.batch = other.batch;
+			this.batchPolicy = other.batchPolicy;
+			this.keys = other.keys;
+			this.binNames = other.binNames;
+			this.records = other.records;
+			this.readAttr = other.readAttr;
+		}
+
 		protected internal override void WriteBuffer()
 		{
 			SetBatchRead(batchPolicy, keys, batch, binNames, readAttr);
@@ -307,6 +343,12 @@ namespace Aerospike.Client
 				throw new AerospikeException.Parse("Unexpected batch key returned: " + key.ns + ',' + ByteUtil.BytesToHexString(key.digest) + ',' + batchIndex);
 			}
 		}
+
+		protected internal override AsyncCommand CloneCommand()
+		{
+			return new AsyncBatchGetArrayCommand(this);
+		}
+
 	}
 
 	sealed class AsyncBatchGetArrayDirect : AsyncMultiCommand
@@ -338,6 +380,15 @@ namespace Aerospike.Client
 			this.readAttr = readAttr;
 		}
 
+		public AsyncBatchGetArrayDirect(AsyncBatchGetArrayDirect other) : base(other)
+		{
+			this.batch = other.batch;
+			this.keys = other.keys;
+			this.binNames = other.binNames;
+			this.records = other.records;
+			this.readAttr = other.readAttr;
+		}
+
 		protected internal override void WriteBuffer()
 		{
 			SetBatchReadDirect(policy, keys, batch, binNames, readAttr);
@@ -358,6 +409,11 @@ namespace Aerospike.Client
 			{
 				throw new AerospikeException.Parse("Unexpected batch key returned: " + key.ns + ',' + ByteUtil.BytesToHexString(key.digest) + ',' + index + ',' + offset);
 			}
+		}
+
+		protected internal override AsyncCommand CloneCommand()
+		{
+			return new AsyncBatchGetArrayDirect(this);
 		}
 	}
 
@@ -445,6 +501,16 @@ namespace Aerospike.Client
 			this.readAttr = readAttr;
 		}
 
+		public AsyncBatchGetSequenceCommand(AsyncBatchGetSequenceCommand other) : base(other)
+		{
+			this.batch = other.batch;
+			this.batchPolicy = other.batchPolicy;
+			this.keys = other.keys;
+			this.binNames = other.binNames;
+			this.listener = other.listener;
+			this.readAttr = other.readAttr;
+		}
+
 		protected internal override void WriteBuffer()
 		{
 			SetBatchRead(batchPolicy, keys, batch, binNames, readAttr);
@@ -471,8 +537,14 @@ namespace Aerospike.Client
 				throw new AerospikeException.Parse("Unexpected batch key returned: " + key.ns + ',' + ByteUtil.BytesToHexString(key.digest) + ',' + batchIndex);
 			}
 		}
+
+		protected internal override AsyncCommand CloneCommand()
+		{
+			return new AsyncBatchGetSequenceCommand(this);
+		}
+
 	}
-	
+
 	sealed class AsyncBatchGetSequenceDirect : AsyncMultiCommand
 	{
 		private readonly BatchNode.BatchNamespace batch;
@@ -502,6 +574,15 @@ namespace Aerospike.Client
 			this.readAttr = readAttr;
 		}
 
+		public AsyncBatchGetSequenceDirect(AsyncBatchGetSequenceDirect other) : base(other)
+		{
+			this.batch = other.batch;
+			this.keys = other.keys;
+			this.binNames = other.binNames;
+			this.listener = other.listener;
+			this.readAttr = other.readAttr;
+		}
+
 		protected internal override void WriteBuffer()
 		{
 			SetBatchReadDirect(policy, keys, batch, binNames, readAttr);
@@ -528,6 +609,11 @@ namespace Aerospike.Client
 			{
 				throw new AerospikeException.Parse("Unexpected batch key returned: " + key.ns + ',' + ByteUtil.BytesToHexString(key.digest) + ',' + index + ',' + offset);
 			}
+		}
+
+		protected internal override AsyncCommand CloneCommand()
+		{
+			return new AsyncBatchGetSequenceDirect(this);
 		}
 	}
 
@@ -609,6 +695,14 @@ namespace Aerospike.Client
 			this.existsArray = existsArray;
 		}
 
+		public AsyncBatchExistsArrayCommand(AsyncBatchExistsArrayCommand other) : base(other)
+		{
+			this.batch = other.batch;
+			this.batchPolicy = other.batchPolicy;
+			this.keys = other.keys;
+			this.existsArray = other.existsArray;
+		}
+
 		protected internal override void WriteBuffer()
 		{
 			SetBatchRead(batchPolicy, keys, batch, null, Command.INFO1_READ | Command.INFO1_NOBINDATA);
@@ -629,6 +723,11 @@ namespace Aerospike.Client
 			{
 				throw new AerospikeException.Parse("Unexpected batch key returned: " + key.ns + ',' + ByteUtil.BytesToHexString(key.digest) + ',' + batchIndex);
 			}
+		}
+
+		protected internal override AsyncCommand CloneCommand()
+		{
+			return new AsyncBatchExistsArrayCommand(this);
 		}
 	}
 
@@ -655,6 +754,13 @@ namespace Aerospike.Client
 			this.existsArray = existsArray;
 		}
 
+		public AsyncBatchExistsArrayDirect(AsyncBatchExistsArrayDirect other) : base(other)
+		{
+			this.batch = other.batch;
+			this.keys = other.keys;
+			this.existsArray = other.existsArray;
+		}
+
 		protected internal override void WriteBuffer()
 		{
 			SetBatchReadDirect(policy, keys, batch, null, Command.INFO1_READ | Command.INFO1_NOBINDATA);
@@ -677,6 +783,11 @@ namespace Aerospike.Client
 			{
 				throw new AerospikeException.Parse("Unexpected batch key returned: " + key.ns + ',' + ByteUtil.BytesToHexString(key.digest) + ',' + index + ',' + offset);
 			}
+		}
+
+		protected internal override AsyncCommand CloneCommand()
+		{
+			return new AsyncBatchExistsArrayDirect(this);
 		}
 	}
 
@@ -731,6 +842,7 @@ namespace Aerospike.Client
 		{
 			listener.OnFailure(ae);
 		}
+
 	}
 
 	sealed class AsyncBatchExistsSequenceCommand : AsyncMultiCommand
@@ -756,6 +868,14 @@ namespace Aerospike.Client
 			this.listener = listener;
 		}
 
+		public AsyncBatchExistsSequenceCommand(AsyncBatchExistsSequenceCommand other) : base(other)
+		{
+			this.batch = other.batch;
+			this.batchPolicy = other.batchPolicy;
+			this.keys = other.keys;
+			this.listener = other.listener;
+		}
+
 		protected internal override void WriteBuffer()
 		{
 			SetBatchRead(batchPolicy, keys, batch, null, Command.INFO1_READ | Command.INFO1_NOBINDATA);
@@ -778,6 +898,11 @@ namespace Aerospike.Client
 			{
 				throw new AerospikeException.Parse("Unexpected batch key returned: " + key.ns + ',' + ByteUtil.BytesToHexString(key.digest) + ',' + batchIndex);
 			}
+		}
+
+		protected internal override AsyncCommand CloneCommand()
+		{
+			return new AsyncBatchExistsSequenceCommand(this);
 		}
 	}
 
@@ -804,6 +929,13 @@ namespace Aerospike.Client
 			this.listener = listener;
 		}
 
+		public AsyncBatchExistsSequenceDirect(AsyncBatchExistsSequenceDirect other): base(other)
+		{
+			this.batch = other.batch;
+			this.keys = other.keys;
+			this.listener = other.listener;
+		}
+
 		protected internal override void WriteBuffer()
 		{
 			SetBatchReadDirect(policy, keys, batch, null, Command.INFO1_READ | Command.INFO1_NOBINDATA);
@@ -827,6 +959,11 @@ namespace Aerospike.Client
 			{
 				throw new AerospikeException.Parse("Unexpected batch key returned: " + key.ns + ',' + ByteUtil.BytesToHexString(key.digest) + ',' + index + ',' + offset);
 			}
+		}
+
+		protected internal override AsyncCommand CloneCommand()
+		{
+			return new AsyncBatchExistsSequenceDirect(this);
 		}
 	}
 

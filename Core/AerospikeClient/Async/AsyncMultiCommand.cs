@@ -41,9 +41,11 @@ namespace Aerospike.Client
 			this.stopOnNotFound = stopOnNotFound;
 		}
 
-		protected internal sealed override AsyncCommand CloneCommand()
+		public AsyncMultiCommand(AsyncMultiCommand other) : base(other)
 		{
-			return null;
+			this.parent = other.parent;
+			this.fixedNode = other.fixedNode;
+			this.stopOnNotFound = other.stopOnNotFound;
 		}
 
 		protected internal sealed override Node GetNode()

@@ -56,5 +56,10 @@ namespace Aerospike.Client
 			Record record = ParseRecord();
 			listener.OnRecord(key, record);
 		}
+
+		protected internal override AsyncCommand CloneCommand()
+		{
+			return null;
+		}
 	}
 }
