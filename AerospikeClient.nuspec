@@ -22,7 +22,7 @@
       <group targetFramework="net">
         <dependency id="NeoLua" version="0.9.14" />
       </group>
-	  <group targetFramework="netstandard1.5">
+      <group targetFramework="netstandard1.5">
         <dependency id="NETStandard.Library" version="[1.6.0, )" />
       </group>
     </dependencies>
