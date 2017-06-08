@@ -141,7 +141,10 @@ namespace Aerospike.Client
 			}
 			catch (Exception e)
 			{
-				peers.genChanged = true;
+				if (peers.usePeers)
+				{
+					peers.genChanged = true;
+				}
 				RefreshFailed(e);
 			}
 		}
