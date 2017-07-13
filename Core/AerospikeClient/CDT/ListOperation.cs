@@ -230,8 +230,8 @@ namespace Aerospike.Client
 
 		/// <summary>
 		/// Create list trim operation.
-		/// Server removes "count" items in list bin that do not fall into range specified
-		/// by index and count range.  If the range is out of bounds, then all items will be removed.
+		/// Server removes items in list bin that do not fall into range specified by index
+		/// and count range.  If the range is out of bounds, then all items will be removed.
 		/// Server returns list size after trim.
 		/// </summary>
 		public static Operation Trim(string binName, int index, int count)
