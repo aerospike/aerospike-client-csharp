@@ -756,7 +756,9 @@ namespace Aerospike.Client
 			}
 			else
 			{
-				WriteHeader(policy, Command.INFO1_READ, 0, fieldCount, operationCount);
+				QueryPolicy qp = (QueryPolicy)policy;
+				int readAttr = qp.includeBinData ? Command.INFO1_READ : Command.INFO1_READ | Command.INFO1_NOBINDATA;
+				WriteHeader(policy, readAttr, 0, fieldCount, operationCount);
 			}
 
 			if (statement.ns != null)

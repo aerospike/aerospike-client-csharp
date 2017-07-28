@@ -55,7 +55,8 @@ namespace Aerospike.Client
 		public bool concurrentNodes = true;
 
 		/// <summary>
-		/// Indicates if bin data is retrieved. If false, only record digests are retrieved.
+		/// Indicates if bin data is retrieved. If false, only record digests (and user keys
+		/// if stored on the server) are retrieved.
 		/// </summary>
 		public bool includeBinData = true;
 

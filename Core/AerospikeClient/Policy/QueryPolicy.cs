@@ -39,6 +39,12 @@ namespace Aerospike.Client
 		public int recordQueueSize = 5000;
 
 		/// <summary>
+		/// Indicates if bin data is retrieved. If false, only record digests (and user keys
+		/// if stored on the server) are retrieved.
+		/// </summary>
+		public bool includeBinData = true;
+
+		/// <summary>
 		/// Default constructor.
 		/// </summary>
 		public QueryPolicy()
