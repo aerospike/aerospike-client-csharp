@@ -18,26 +18,17 @@ namespace Aerospike.Client
 {
 	public sealed class WriteCommand : SyncCommand
 	{
-		private readonly Cluster cluster;
 		private readonly WritePolicy policy;
 		private readonly Key key;
-		private readonly Partition partition;
 		private readonly Bin[] bins;
 		private readonly Operation.Type operation;
 
-		public WriteCommand(Cluster cluster, WritePolicy policy, Key key, Bin[] bins, Operation.Type operation) 
+		public WriteCommand(WritePolicy policy, Key key, Bin[] bins, Operation.Type operation) 
 		{
-			this.cluster = cluster;
 			this.policy = policy;
 			this.key = key;
-			this.partition = new Partition(key);
 			this.bins = bins;
 			this.operation = operation;
-		}
-
-		protected internal override Policy GetPolicy()
-		{
-			return policy;
 		}
 
 		protected internal override void WriteBuffer()
@@ -45,11 +36,6 @@ namespace Aerospike.Client
 			SetWrite(policy, operation, key, bins);
 		}
 
-		protected internal override Node GetNode()
-		{
-			return cluster.GetMasterNode(partition);
-		}
-		
 		protected internal override void ParseResult(Connection conn)
 		{
 			// Read header.		

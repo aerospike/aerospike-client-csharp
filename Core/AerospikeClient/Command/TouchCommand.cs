@@ -18,32 +18,18 @@ namespace Aerospike.Client
 {
 	public sealed class TouchCommand : SyncCommand
 	{
-		private readonly Cluster cluster;
 		private readonly WritePolicy policy;
 		private readonly Key key;
-		private readonly Partition partition;
 
-		public TouchCommand(Cluster cluster, WritePolicy policy, Key key) 
+		public TouchCommand(WritePolicy policy, Key key) 
 		{
-			this.cluster = cluster;
 			this.policy = policy;
 			this.key = key;
-			this.partition = new Partition(key);
-		}
-
-		protected internal override Policy GetPolicy()
-		{
-			return policy;
 		}
 
 		protected internal override void WriteBuffer()
 		{
 			SetTouch(policy, key);
-		}
-
-		protected internal override Node GetNode()
-		{
-			return cluster.GetMasterNode(partition);
 		}
 
 		protected internal override void ParseResult(Connection conn)

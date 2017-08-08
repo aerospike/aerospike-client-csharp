@@ -22,26 +22,38 @@ namespace Aerospike.Client
 {
 	public abstract class SyncCommand : Command
 	{
-		public void Execute()
+		public void Execute(Cluster cluster, Policy policy, Key key, Node node, bool isRead)
 		{
-			Policy policy = GetPolicy();
-			int remainingMillis = policy.timeout;
-			DateTime limit = DateTime.UtcNow.AddMilliseconds(remainingMillis);
-			Node node = null;
+			Partition partition = (key != null)? new Partition(key) : null;
 			Exception exception = null;
-			int failedNodes = 0;
-			int failedConns = 0;
-			int iterations = 0;
+			DateTime deadline = DateTime.MinValue;
+			int socketTimeout = policy.socketTimeout;
+			int totalTimeout = policy.totalTimeout;
+			int iteration = 0;
+			bool isClientTimeout;
 
-			dataBuffer = ThreadLocalData.GetBuffer();
+			if (totalTimeout > 0)
+			{
+				deadline = DateTime.UtcNow.AddMilliseconds(totalTimeout);
+
+				if (socketTimeout > totalTimeout)
+				{
+					socketTimeout = totalTimeout;
+				}
+			}
 
 			// Execute command until successful, timed out or maximum iterations have been reached.
 			while (true)
 			{
 				try
 				{
-					node = GetNode();
-					Connection conn = node.GetConnection(remainingMillis);
+					if (partition != null)
+					{
+						// Single record command node retrieval.
+						node = GetNode(cluster, partition, policy.replica, isRead);
+					}
+
+					Connection conn = node.GetConnection(socketTimeout);
 
 					try
 					{
@@ -49,10 +61,10 @@ namespace Aerospike.Client
 						WriteBuffer();
 
 						// Check if timeout needs to be changed in send buffer.
-						if (remainingMillis != policy.timeout)
+						if (totalTimeout != policy.totalTimeout)
 						{
 							// Reset timeout in send buffer (destined for server) and socket.
-							ByteUtil.IntToBytes((uint)remainingMillis, dataBuffer, 22);
+							ByteUtil.IntToBytes((uint)totalTimeout, dataBuffer, 22);
 						}
 
 						// Send command.
@@ -79,14 +91,45 @@ namespace Aerospike.Client
 							// Close socket to flush out possible garbage.  Do not put back in pool.
 							node.CloseConnection(conn);
 						}
-						throw;
+
+						if (ae.Result == ResultCode.TIMEOUT)
+						{
+							// Go through retry logic on server timeout.
+							exception = new AerospikeException.Timeout(node, policy, iteration + 1, false);
+							isClientTimeout = false;
+
+							if (isRead)
+							{
+								base.sequence++;
+							}
+						}
+						else
+						{
+							throw;
+						}
 					}
 					catch (SocketException se)
 					{
 						// Socket errors are considered temporary anomalies.
 						// Retry after closing connection.
 						node.CloseConnection(conn);
-						exception = se;
+
+						if (se.SocketErrorCode == SocketError.TimedOut)
+						{
+							exception = se;
+							isClientTimeout = true;
+
+							if (isRead)
+							{
+								base.sequence++;
+							}
+						}
+						else
+						{
+							exception = new AerospikeException(se);
+							isClientTimeout = false;
+							base.sequence++;
+						}
 					}
 					catch (Exception)
 					{
@@ -96,56 +139,60 @@ namespace Aerospike.Client
 						throw;
 					}
 				}
-				catch (AerospikeException.InvalidNode ine)
-				{
-					// Node is currently inactive.  Retry.
-					exception = ine;
-					failedNodes++;
-				}
 				catch (AerospikeException.Connection ce)
 				{
 					// Socket connection error has occurred. Retry.
 					exception = ce;
-					failedConns++;
+					isClientTimeout = false;
+					base.sequence++;
 				}
 
-				if (++iterations > policy.maxRetries)
+				// Check maxRetries.
+				if (++iteration > policy.maxRetries)
 				{
 					break;
 				}
 
-				// Check for client timeout.
-				if (policy.timeout > 0 && ! policy.retryOnTimeout)
+				if (policy.totalTimeout > 0)
 				{
-					// Timeout is absolute.  Stop if timeout has been reached.
-					remainingMillis = (int)limit.Subtract(DateTime.UtcNow).TotalMilliseconds - policy.sleepBetweenRetries;
+					// Check for total timeout.
+					long remaining = (long)deadline.Subtract(DateTime.UtcNow).TotalMilliseconds - policy.sleepBetweenRetries;
 
-					if (remainingMillis <= 0)
+					if (remaining <= 0)
 					{
 						break;
 					}
+
+					if (remaining < totalTimeout)
+					{
+						totalTimeout = (int)remaining;
+
+						if (socketTimeout > totalTimeout)
+						{
+							socketTimeout = totalTimeout;
+						}
+					}
 				}
 
-				if (policy.sleepBetweenRetries > 0)
+				if (!isClientTimeout && policy.sleepBetweenRetries > 0)
 				{
 					// Sleep before trying again.
 					Util.Sleep(policy.sleepBetweenRetries);
 				}
-
-				// Reset node reference and try again.
-				node = null;
 			}
 
 			// Retries have been exhausted.  Throw last exception.
-			if (exception is SocketException && ((SocketException)exception).SocketErrorCode == SocketError.TimedOut)
+			if (isClientTimeout)
 			{
-				throw new AerospikeException.Timeout(node, policy.timeout, iterations, failedNodes, failedConns);
+				throw new AerospikeException.Timeout(node, policy, iteration, true);
 			}
 			throw exception;
 		}
 
 		protected internal sealed override void SizeBuffer()
 		{
+			dataBuffer = ThreadLocalData.GetBuffer();
+
 			if (dataOffset > dataBuffer.Length)
 			{
 				dataBuffer = ThreadLocalData.ResizeBuffer(dataOffset);
@@ -184,7 +231,7 @@ namespace Aerospike.Client
 			}
 		}
 
-		protected internal abstract Policy GetPolicy();
+		protected internal abstract void WriteBuffer();
 		protected internal abstract void ParseResult(Connection conn);
 	}
 }

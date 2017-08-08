@@ -35,7 +35,7 @@ namespace Aerospike.Test
 		public static void Prepare(TestContext testContext)
 		{
 			Policy policy = new Policy();
-			policy.timeout = 0; // Do not timeout on index create.
+			policy.totalTimeout = 0; // Do not timeout on index create.
 			IndexTask task = client.CreateIndex(policy, args.ns, args.set, indexName, binName, IndexType.NUMERIC);
 			task.Wait();
 

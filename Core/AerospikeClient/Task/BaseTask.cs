@@ -131,7 +131,7 @@ namespace Aerospike.Client
 					}
 					else
 					{
-						throw new AerospikeException.Timeout();
+						throw new AerospikeException.Timeout(policy.timeout);
 					}
 				}
 			} while (true);

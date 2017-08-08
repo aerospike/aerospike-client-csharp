@@ -160,16 +160,18 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Should prole replicas be requested from each server node in the cluster tend thread.
 		/// This option is required if there is a need to distribute reads across proles.
-		/// (<seealso cref="Aerospike.Client.Policy.replica"/> == <seealso cref="Aerospike.Client.Replica.MASTER_PROLES"/>).
+		/// (<see cref="Aerospike.Client.Policy.replica"/> ==
+		/// <see cref="Aerospike.Client.Replica.MASTER_PROLES"/> or
+		/// <see cref="Aerospike.Client.Replica.SEQUENCE"/>).
 		/// <para> 
 		/// If requestProleReplicas is enabled, all prole partition maps will be cached on the client which results in 
 		/// extra storage multiplied by the replication factor.
 		/// </para>
 		/// <para>
-		/// The default is false (only request master replicas and never prole replicas).
+		/// Default: true (request all master and prole replicas).
 		/// </para>
 		/// </summary>
-		public bool requestProleReplicas;
+		public bool requestProleReplicas = true;
 
 		/// <summary>
 		/// Should use "services-alternate" instead of "services" in info request during cluster
@@ -181,5 +183,20 @@ namespace Aerospike.Client
 		/// </para>
 		/// </summary>
 		public bool useServicesAlternate;
+
+		/// <summary>
+		/// Default constructor.
+		/// </summary>
+		public ClientPolicy()
+		{
+			// Writes need to wait for the cluster to reform when a node goes down.
+			// Immediate write retries have been shown to result in the same error.
+			// 
+			// Reads do not have to sleep because the cluster does not shut out reads
+			// during cluster reformation.
+			//
+			// This is just a default which can be overridden.
+			writePolicyDefault.sleepBetweenRetries = 500;
+		}
 	}
 }

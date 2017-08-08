@@ -25,7 +25,7 @@ namespace Aerospike.Test
 		public QueryPredExpInit()
 		{
 			Policy policy = new Policy();
-			policy.timeout = 0; // Do not timeout on index create.
+			policy.totalTimeout = 0; // Do not timeout on index create.
 			IndexTask itask = client.CreateIndex(policy, args.ns, TestQueryPredExp.setName, TestQueryPredExp.indexName, TestQueryPredExp.binName, IndexType.NUMERIC);
 			itask.Wait();
 

@@ -21,35 +21,21 @@ namespace Aerospike.Client
 {
 	public class ReadCommand : SyncCommand
 	{
-		protected internal readonly Cluster cluster;
 		private readonly Policy policy;
 		protected internal readonly Key key;
-		protected internal readonly Partition partition;
 		private readonly string[] binNames;
 		private Record record;
 
-		public ReadCommand(Cluster cluster, Policy policy, Key key, string[] binNames) 
+		public ReadCommand(Policy policy, Key key, string[] binNames) 
 		{
-			this.cluster = cluster;
 			this.policy = policy;
 			this.key = key;
-			this.partition = new Partition(key);
 			this.binNames = binNames;
-		}
-
-		protected internal sealed override Policy GetPolicy()
-		{
-			return policy;
 		}
 
 		protected internal override void WriteBuffer()
 		{
 			SetRead(policy, key, binNames);
-		}
-
-		protected internal override Node GetNode()
-		{
-			return GetReadNode(cluster, partition, policy.replica);
 		}
 
 		protected internal override void ParseResult(Connection conn)

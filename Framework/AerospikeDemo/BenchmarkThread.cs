@@ -72,10 +72,10 @@ namespace Aerospike.Demo
 
         private void InitRecords()
         {
+			int key = shared.currentKey;
+
             while (example.valid)
             {
-                int key = Interlocked.Increment(ref shared.currentKey);
-
                 if (key >= args.recordsInit)
                 {
                     if (key == args.recordsInit)
@@ -87,7 +87,8 @@ namespace Aerospike.Demo
                     break;
                 }
                 Write(key);
-            }
+				key = Interlocked.Increment(ref shared.currentKey);
+			}
         }
         
 		private void RunWorker()

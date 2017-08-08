@@ -40,16 +40,6 @@ namespace Aerospike.Client
 		public int maxConcurrentNodes;
 
 		/// <summary>
-		/// Maximum time in milliseconds to wait when polling socket for availability prior to
-		/// performing an operation on the socket on the server side.  Zero means there is no
-		/// socket timeout. 
-		/// <para>
-		/// Default: 10000 ms
-		/// </para>
-		/// </summary>
-		public int socketTimeout = 10000;
-	
-		/// <summary>
 		/// Issue scan requests in parallel or serially. 
 		/// </summary>
 		public bool concurrentNodes = true;
@@ -81,6 +71,7 @@ namespace Aerospike.Client
 		{
 			// Scans should not retry.
 			base.maxRetries = 0;
+			base.socketTimeout = 10000;
 		}
 	}
 }

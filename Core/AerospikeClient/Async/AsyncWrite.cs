@@ -21,17 +21,15 @@ namespace Aerospike.Client
 		private readonly WritePolicy writePolicy;
 		private readonly WriteListener listener;
 		private readonly Key key;
-		private readonly Partition partition;
 		private readonly Bin[] bins;
 		private readonly Operation.Type operation;
 
 		public AsyncWrite(AsyncCluster cluster, WritePolicy writePolicy, WriteListener listener, Key key, Bin[] bins, Operation.Type operation)
-			: base(cluster, writePolicy)
+			: base(cluster, writePolicy, new Partition(key), false)
 		{
 			this.writePolicy = writePolicy;
 			this.listener = listener;
 			this.key = key;
-			this.partition = new Partition(key);
 			this.bins = bins;
 			this.operation = operation;
 		}
@@ -42,7 +40,6 @@ namespace Aerospike.Client
 			this.writePolicy = other.writePolicy;
 			this.listener = other.listener;
 			this.key = other.key;
-			this.partition = other.partition;
 			this.bins = other.bins;
 			this.operation = other.operation;
 		}
@@ -55,11 +52,6 @@ namespace Aerospike.Client
 		protected internal override void WriteBuffer()
 		{
 			SetWrite(writePolicy, operation, key, bins);
-		}
-
-		protected internal override Node GetNode()
-		{
-			return cluster.GetMasterNode(partition);
 		}
 
 		protected internal override void ParseResult()

@@ -253,18 +253,6 @@ namespace Aerospike.Demo.Properties {
         
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("False")]
-        public bool RetryOnTimeout {
-            get {
-                return ((bool)(this["RetryOnTimeout"]));
-            }
-            set {
-                this["RetryOnTimeout"] = value;
-            }
-        }
-        
-        [global::System.Configuration.UserScopedSettingAttribute()]
-        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
         [global::System.Configuration.DefaultSettingValueAttribute("0")]
         public int ReadReplica {
             get {

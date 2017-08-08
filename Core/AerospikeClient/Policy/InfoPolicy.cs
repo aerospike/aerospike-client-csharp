@@ -40,7 +40,7 @@ namespace Aerospike.Client
 		/// </summary>
 		public InfoPolicy(Policy other)
 		{
-			this.timeout = other.timeout;
+			this.timeout = other.socketTimeout;
 		}
 
 		/// <summary>

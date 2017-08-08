@@ -26,8 +26,8 @@ namespace Aerospike.Client
 		private readonly string functionName;
 		private readonly Value[] args;
 
-		public ExecuteCommand(Cluster cluster, WritePolicy writePolicy, Key key, string packageName, string functionName, Value[] args)
-			: base(cluster, writePolicy, key, null)
+		public ExecuteCommand(WritePolicy writePolicy, Key key, string packageName, string functionName, Value[] args)
+			: base(writePolicy, key, null)
 		{
 			this.writePolicy = writePolicy;
 			this.packageName = packageName;
@@ -38,11 +38,6 @@ namespace Aerospike.Client
 		protected internal override void WriteBuffer()
 		{
 			SetUdf(writePolicy, key, packageName, functionName, args);
-		}
-
-		protected internal override Node GetNode()
-		{
-			return cluster.GetMasterNode(partition);
 		}
 
 		protected internal override void HandleNotFound(int resultCode)

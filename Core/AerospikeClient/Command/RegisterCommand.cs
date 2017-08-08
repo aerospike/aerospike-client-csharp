@@ -38,7 +38,7 @@ namespace Aerospike.Client
 			// Send UDF to one node. That node will distribute the UDF to other nodes.
 			string command = sb.ToString();
 			Node node = cluster.GetRandomNode();
-			Connection conn = node.GetConnection(policy.timeout);
+			Connection conn = node.GetConnection(policy.socketTimeout);
 
 			try
 			{

@@ -52,7 +52,7 @@ namespace Aerospike.Client
 
 		protected internal byte[] dataBuffer;
 		protected internal int dataOffset;
-		protected internal int sequence;
+		protected internal uint sequence;
 
 		public void SetWrite(WritePolicy policy, Operation.Type operation, Key key, Bin[] bins)
 		{
@@ -972,7 +972,7 @@ namespace Aerospike.Client
 			dataBuffer[dataOffset++] = 0; // clear the result code
 			dataOffset += ByteUtil.IntToBytes((uint)generation, dataBuffer, dataOffset);
 			dataOffset += ByteUtil.IntToBytes((uint)policy.expiration, dataBuffer, dataOffset);
-			dataOffset += ByteUtil.IntToBytes((uint)policy.timeout, dataBuffer, dataOffset);
+			dataOffset += ByteUtil.IntToBytes((uint)policy.totalTimeout, dataBuffer, dataOffset);
 			dataOffset += ByteUtil.ShortToBytes((ushort)fieldCount, dataBuffer, dataOffset);
 			dataOffset += ByteUtil.ShortToBytes((ushort)operationCount, dataBuffer, dataOffset);
 		}
@@ -998,7 +998,7 @@ namespace Aerospike.Client
 			{
 				dataBuffer[dataOffset++] = 0;
 			}
-			dataOffset += ByteUtil.IntToBytes((uint)policy.timeout, dataBuffer, dataOffset);
+			dataOffset += ByteUtil.IntToBytes((uint)policy.totalTimeout, dataBuffer, dataOffset);
 			dataOffset += ByteUtil.ShortToBytes((ushort)fieldCount, dataBuffer, dataOffset);
 			dataOffset += ByteUtil.ShortToBytes((ushort)operationCount, dataBuffer, dataOffset);
 		}
@@ -1110,23 +1110,24 @@ namespace Aerospike.Client
 			dataOffset = MSG_TOTAL_HEADER_SIZE;
 		}
 
-		public Node GetReadNode(Cluster cluster, Partition partition, Replica replica)
+		public Node GetNode(Cluster cluster, Partition partition, Replica replica, bool isRead)
 		{
-			switch (replica)
+			// Handle default case first.
+			if (replica == Replica.SEQUENCE)
 			{
-				case Replica.MASTER:
-					return cluster.GetMasterNode(partition);
-
-				case Replica.MASTER_PROLES:
-					return cluster.GetMasterProlesNode(partition);
-
-				case Replica.SEQUENCE:
-					return GetSequenceNode(cluster, partition);
-
-				default:
-				case Replica.RANDOM:
-					return cluster.GetRandomNode();
+				return GetSequenceNode(cluster, partition);
 			}
+
+			if (replica == Replica.MASTER || !isRead)
+			{
+				return cluster.GetMasterNode(partition);
+			}
+
+			if (replica == Replica.MASTER_PROLES)
+			{
+				return cluster.GetMasterProlesNode(partition);
+			}
+			return cluster.GetRandomNode();
 		}
 
 		public Node GetSequenceNode(Cluster cluster, Partition partition)
@@ -1139,26 +1140,19 @@ namespace Aerospike.Client
 			{
 				for (int i = 0; i < replicaArray.Length; i++)
 				{
-					int index = Math.Abs(sequence % replicaArray.Length);
-					sequence++;
+					uint index = sequence % (uint)replicaArray.Length;
 					Node node = replicaArray[index][partition.partitionId];
 
 					if (node != null && node.Active)
 					{
 						return node;
 					}
+					sequence++;
 				}
 			}
-			/*
-			if (Log.debugEnabled()) {
-				Log.debug("Choose random node for " + partition);
-			}
-			*/
 			return cluster.GetRandomNode();
 		}
 
-		protected internal abstract Node GetNode();
-		protected internal abstract void WriteBuffer();
 		protected internal abstract void SizeBuffer();
 		protected internal abstract void End();
 	}

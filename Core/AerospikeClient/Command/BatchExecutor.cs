@@ -22,7 +22,16 @@ namespace Aerospike.Client
 {
 	public sealed class BatchExecutor
 	{
-		public static void Execute(Cluster cluster, BatchPolicy policy, Key[] keys, bool[] existsArray, Record[] records, string[] binNames, int readAttr)
+		public static void Execute
+		(
+			Cluster cluster,
+			BatchPolicy policy,
+			Key[] keys,
+			bool[] existsArray,
+			Record[] records,
+			string[] binNames,
+			int readAttr
+		)
 		{
 			if (keys.Length == 0)
 			{
@@ -34,7 +43,7 @@ namespace Aerospike.Client
 				// Send all requests to a single node chosen in round-robin fashion in this transaction thread.
 				Node node = cluster.GetRandomNode();
 				BatchNode batchNode = new BatchNode(node, keys);
-				ExecuteNode(batchNode, policy, keys, existsArray, records, binNames, readAttr);
+				ExecuteNode(cluster, batchNode, policy, keys, existsArray, records, binNames, readAttr);
 				return;
 			}
 
@@ -45,7 +54,7 @@ namespace Aerospike.Client
 				// Run batch requests sequentially in same thread.
 				foreach (BatchNode batchNode in batchNodes)
 				{
-					ExecuteNode(batchNode, policy, keys, existsArray, records, binNames, readAttr);
+					ExecuteNode(cluster, batchNode, policy, keys, existsArray, records, binNames, readAttr);
 				}
 			}
 			else
@@ -57,7 +66,7 @@ namespace Aerospike.Client
 				// This should not be necessary here because it happens in Executor which does a 
 				// volatile write (Interlocked.Increment(ref completedCount)) at the end of write threads
 				// and a synchronized WaitTillComplete() in this thread.
-				Executor executor = new Executor(batchNodes.Count * 2);
+				Executor executor = new Executor(cluster, policy, batchNodes.Count * 2);
 
 				// Initialize threads.  
 				foreach (BatchNode batchNode in batchNodes)
@@ -68,12 +77,12 @@ namespace Aerospike.Client
 						if (records != null)
 						{
 							MultiCommand command = new BatchGetArrayCommand(batchNode, policy, keys, binNames, records, readAttr);
-							executor.AddCommand(command);
+							executor.AddCommand(batchNode.node, command);
 						}
 						else
 						{
 							MultiCommand command = new BatchExistsArrayCommand(batchNode, policy, keys, existsArray);
-							executor.AddCommand(command);
+							executor.AddCommand(batchNode.node, command);
 						}
 					}
 					else
@@ -87,13 +96,13 @@ namespace Aerospike.Client
 						{
 							if (records != null)
 							{
-								MultiCommand command = new BatchGetArrayDirect(batchNode.node, batchNamespace, policy, keys, binNames, records, readAttr);
-								executor.AddCommand(command);
+								MultiCommand command = new BatchGetArrayDirect(batchNamespace, policy, keys, binNames, records, readAttr);
+								executor.AddCommand(batchNode.node, command);
 							}
 							else
 							{
-								MultiCommand command = new BatchExistsArrayDirect(batchNode.node, batchNamespace, policy, keys, existsArray);
-								executor.AddCommand(command);
+								MultiCommand command = new BatchExistsArrayDirect(batchNamespace, policy, keys, existsArray);
+								executor.AddCommand(batchNode.node, command);
 							}
 						}
 					}
@@ -102,7 +111,7 @@ namespace Aerospike.Client
 			}
 		}
 
-		private static void ExecuteNode(BatchNode batchNode, BatchPolicy policy, Key[] keys, bool[] existsArray, Record[] records, string[] binNames, int readAttr)
+		private static void ExecuteNode(Cluster cluster, BatchNode batchNode, BatchPolicy policy, Key[] keys, bool[] existsArray, Record[] records, string[] binNames, int readAttr)
 		{
 			if (batchNode.node.UseNewBatch(policy))
 			{
@@ -110,12 +119,12 @@ namespace Aerospike.Client
 				if (records != null)
 				{
 					MultiCommand command = new BatchGetArrayCommand(batchNode, policy, keys, binNames, records, readAttr);
-					command.Execute();
+					command.Execute(cluster, policy, null, batchNode.node, true);
 				}
 				else
 				{
 					MultiCommand command = new BatchExistsArrayCommand(batchNode, policy, keys, existsArray);
-					command.Execute();
+					command.Execute(cluster, policy, null, batchNode.node, true);
 				}
 			}
 			else
@@ -127,13 +136,13 @@ namespace Aerospike.Client
 				{
 					if (records != null)
 					{
-						MultiCommand command = new BatchGetArrayDirect(batchNode.node, batchNamespace, policy, keys, binNames, records, readAttr);
-						command.Execute();
+						MultiCommand command = new BatchGetArrayDirect(batchNamespace, policy, keys, binNames, records, readAttr);
+						command.Execute(cluster, policy, null, batchNode.node, true);
 					}
 					else
 					{
-						MultiCommand command = new BatchExistsArrayDirect(batchNode.node, batchNamespace, policy, keys, existsArray);
-						command.Execute();
+						MultiCommand command = new BatchExistsArrayDirect(batchNamespace, policy, keys, existsArray);
+						command.Execute(cluster, policy, null, batchNode.node, true);
 					}
 				}
 			}

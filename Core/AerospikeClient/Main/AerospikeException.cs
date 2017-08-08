@@ -130,12 +130,20 @@ namespace Aerospike.Client
 		/// </summary>
 		public sealed class Timeout : AerospikeException
 		{
+			/// <summary>
+			/// Last node used before timeout.
+			/// </summary>
 			public Node node;
 
 			/// <summary>
-			/// Specified timeout in milliseconds.
+			/// Socket idle timeout in milliseconds.
 			/// </summary>
-			public int timeout;
+			public int socketTimeout;
+
+			/// <summary>
+			/// Total timeout in milliseconds.
+			/// </summary>
+			public int totalTimeout;
 
 			/// <summary>
 			/// Number of attempts before failing.
@@ -143,35 +151,32 @@ namespace Aerospike.Client
 			public int iterations;
 
 			/// <summary>
-			/// Number of times when no nodes could be accessed.
+			/// If true, client initiated timeout.  If false, server initiated the timeout.
 			/// </summary>
-			public int failedNodes;
-
-			/// <summary>
-			/// Number of times a connection could not be retrieved from a connection pool.
-			/// </summary>
-			public int failedConns;
+			public bool client;
 
 			/// <summary>
 			/// Create timeout exception.
 			/// </summary>
-			public Timeout()
+			public Timeout(int totalTimeout)
 				: base(ResultCode.TIMEOUT)
 			{
-				this.timeout = -1;
+				this.totalTimeout = totalTimeout;
+				this.iterations = -1;
+				this.client = true;
 			}
 
 			/// <summary>
 			/// Create timeout exception with statistics.
 			/// </summary>
-			public Timeout(Node node, int timeout, int iterations, int failedNodes, int failedConns)
+			public Timeout(Node node, Policy policy, int iterations, bool client)
 				: base(ResultCode.TIMEOUT)
 			{
 				this.node = node;
-				this.timeout = timeout;
+				this.socketTimeout = policy.socketTimeout;
+				this.totalTimeout = policy.totalTimeout;
 				this.iterations = iterations;
-				this.failedNodes = failedNodes;
-				this.failedConns = failedConns;
+				this.client = client;
 			}
 
 			/// <summary>
@@ -181,13 +186,13 @@ namespace Aerospike.Client
 			{
 				get
 				{
-					if (timeout == -1)
+					if (iterations == -1)
 					{
-						return base.Message;
+						return "Client timeout: " + totalTimeout;
 					}
-					return "Client timeout: timeout=" + timeout + " iterations=" + iterations + 
-						" failedNodes=" + failedNodes + " failedConns=" + failedConns +
-						" lastNode=" + node;
+					String type = client ? "Client" : "Server";
+					return type + " timeout: socket=" + socketTimeout + " total=" + totalTimeout + 
+						" iterations=" + iterations + " lastNode=" + node;
 				}
 			}
 		}

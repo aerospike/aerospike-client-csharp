@@ -20,15 +20,13 @@ namespace Aerospike.Client
 	{
 		private readonly ExistsListener listener;
 		private readonly Key key;
-		private readonly Partition partition;
 		private bool exists;
 
 		public AsyncExists(AsyncCluster cluster, Policy policy, Key key, ExistsListener listener) 
-			: base(cluster, policy)
+			: base(cluster, policy, new Partition(key), true)
 		{
 			this.listener = listener;
 			this.key = key;
-			this.partition = new Partition(key);
 		}
 
 		public AsyncExists(AsyncExists other)
@@ -36,7 +34,6 @@ namespace Aerospike.Client
 		{
 			this.listener = other.listener;
 			this.key = other.key;
-			this.partition = other.partition;
 		}
 
 		protected internal override AsyncCommand CloneCommand()
@@ -47,11 +44,6 @@ namespace Aerospike.Client
 		protected internal override void WriteBuffer()
 		{
 			SetExists(policy, key);
-		}
-
-		protected internal override Node GetNode()
-		{
-			return GetReadNode(cluster, partition, policy.replica);
 		}
 
 		protected internal override void ParseResult()

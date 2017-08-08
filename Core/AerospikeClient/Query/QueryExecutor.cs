@@ -21,6 +21,7 @@ namespace Aerospike.Client
 {
 	public abstract class QueryExecutor
 	{
+		protected internal readonly Cluster cluster;
 		protected internal readonly QueryPolicy policy;
 		protected internal readonly Statement statement;
 		private readonly Node[] nodes;
@@ -33,6 +34,7 @@ namespace Aerospike.Client
 
 		public QueryExecutor(Cluster cluster, QueryPolicy policy, Statement statement)
 		{
+			this.cluster = cluster;
 			this.policy = policy;
 			this.statement = statement;
 			this.cancel = new CancellationTokenSource();
@@ -55,8 +57,8 @@ namespace Aerospike.Client
 			// Initialize threads.
 			for (int i = 0; i < nodes.Length; i++)
 			{
-				MultiCommand command = CreateCommand(nodes[i]);
-				threads[i] = new QueryThread(this, command);
+				MultiCommand command = CreateCommand();
+				threads[i] = new QueryThread(this, nodes[i], command);
 			}
 		}
 
@@ -127,11 +129,13 @@ namespace Aerospike.Client
 		private sealed class QueryThread
 		{
 			private readonly QueryExecutor parent;
+			private readonly Node node;
 			private readonly MultiCommand command;
 
-			public QueryThread(QueryExecutor parent, MultiCommand command)
+			public QueryThread(QueryExecutor parent, Node node, MultiCommand command)
 			{
 				this.parent = parent;
+				this.node = node;
 				this.command = command;
 			}
 
@@ -141,7 +145,7 @@ namespace Aerospike.Client
 				{
 					if (command.IsValid())
 					{
-						command.Execute();
+						command.Execute(parent.cluster, parent.policy, null, node, true);
 					}
 					parent.ThreadCompleted();
 				}
@@ -158,7 +162,7 @@ namespace Aerospike.Client
 			}
 		}
 
-		protected internal abstract MultiCommand CreateCommand(Node node);
+		protected internal abstract MultiCommand CreateCommand();
 		protected internal abstract void SendCancel();
 		protected internal abstract void SendCompleted();
 	}

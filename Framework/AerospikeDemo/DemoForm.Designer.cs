@@ -30,7 +30,6 @@
         {
 			this.splitContainer1 = new System.Windows.Forms.SplitContainer();
 			this.benchmarkPanel = new System.Windows.Forms.Panel();
-			this.retryOnTimeoutBox = new System.Windows.Forms.CheckBox();
 			this.initializePanel = new System.Windows.Forms.Panel();
 			this.initPctLabel = new System.Windows.Forms.Label();
 			this.initPctBox = new System.Windows.Forms.TextBox();
@@ -139,7 +138,6 @@
 			// 
 			// benchmarkPanel
 			// 
-			this.benchmarkPanel.Controls.Add(this.retryOnTimeoutBox);
 			this.benchmarkPanel.Controls.Add(this.initializePanel);
 			this.benchmarkPanel.Controls.Add(this.workloadPanel);
 			this.benchmarkPanel.Controls.Add(this.panel1);
@@ -166,16 +164,6 @@
 			this.benchmarkPanel.Size = new System.Drawing.Size(540, 390);
 			this.benchmarkPanel.TabIndex = 9;
 			this.benchmarkPanel.Visible = false;
-			// 
-			// retryOnTimeoutBox
-			// 
-			this.retryOnTimeoutBox.AutoSize = true;
-			this.retryOnTimeoutBox.Location = new System.Drawing.Point(176, 226);
-			this.retryOnTimeoutBox.Name = "retryOnTimeoutBox";
-			this.retryOnTimeoutBox.Size = new System.Drawing.Size(109, 17);
-			this.retryOnTimeoutBox.TabIndex = 111;
-			this.retryOnTimeoutBox.Text = "Retry On Timeout";
-			this.retryOnTimeoutBox.UseVisualStyleBackColor = true;
 			// 
 			// initializePanel
 			// 
@@ -530,7 +518,7 @@
 			// debugBox
 			// 
 			this.debugBox.AutoSize = true;
-			this.debugBox.Location = new System.Drawing.Point(306, 226);
+			this.debugBox.Location = new System.Drawing.Point(177, 226);
 			this.debugBox.Name = "debugBox";
 			this.debugBox.RightToLeft = System.Windows.Forms.RightToLeft.No;
 			this.debugBox.Size = new System.Drawing.Size(88, 17);
@@ -694,7 +682,7 @@
 			this.consoleBox.Name = "consoleBox";
 			this.consoleBox.ReadOnly = true;
 			this.consoleBox.ScrollBars = System.Windows.Forms.ScrollBars.Vertical;
-			this.consoleBox.Size = new System.Drawing.Size(1019, 289);
+			this.consoleBox.Size = new System.Drawing.Size(1019, 287);
 			this.consoleBox.TabIndex = 11;
 			this.consoleBox.KeyDown += new System.Windows.Forms.KeyEventHandler(this.ConsoleKeyDown);
 			// 
@@ -951,7 +939,6 @@
 		private System.Windows.Forms.Label label12;
 		private System.Windows.Forms.TextBox userBox;
 		private System.Windows.Forms.Label label13;
-		private System.Windows.Forms.CheckBox retryOnTimeoutBox;
 		private System.Windows.Forms.Label label18;
 		private System.Windows.Forms.ComboBox replicaBox;
     }

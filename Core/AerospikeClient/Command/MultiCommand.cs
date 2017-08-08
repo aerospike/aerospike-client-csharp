@@ -27,7 +27,6 @@ namespace Aerospike.Client
 		private const int MAX_BUFFER_SIZE = 1024 * 1024 * 10; // 10 MB
 
 		private BufferedStream bis;
-		protected internal readonly Node node;
 		protected internal int resultCode;
 		protected internal int generation;
 		protected internal int expiration;
@@ -37,15 +36,9 @@ namespace Aerospike.Client
 		private readonly bool stopOnNotFound;
 		protected internal volatile bool valid = true;
 
-		protected internal MultiCommand(Node node, bool stopOnNotFound)
+		protected internal MultiCommand(bool stopOnNotFound)
 		{
-			this.node = node;
 			this.stopOnNotFound = stopOnNotFound;
-		}
-
-		protected internal sealed override Node GetNode()
-		{
-			return node;
 		}
 
 		protected internal sealed override void ParseResult(Connection conn)
@@ -80,7 +73,7 @@ namespace Aerospike.Client
 			while (dataOffset < receiveSize)
 			{
 				ReadBytes(MSG_REMAINING_HEADER_SIZE);
-				resultCode = dataBuffer[5] & 0xFF;
+				resultCode = dataBuffer[5];
 
 				// The only valid server return codes are "ok" and "not found".
 				// If other return codes are received, then abort the batch.

@@ -111,9 +111,9 @@ namespace Aerospike.Client
 			}
 		}
 
-		protected internal override MultiCommand CreateCommand(Node node)
+		protected internal override MultiCommand CreateCommand()
 		{
-			return new QueryAggregateCommand(node, policy, statement, inputQueue, cancel.Token);
+			return new QueryAggregateCommand(policy, statement, inputQueue, cancel.Token);
 		}
 
 		protected internal override void SendCancel()

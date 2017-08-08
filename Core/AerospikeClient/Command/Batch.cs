@@ -31,16 +31,11 @@ namespace Aerospike.Client
 		private readonly List<BatchRead> records;
 
 		public BatchReadListCommand(BatchNode batch, BatchPolicy policy, List<BatchRead> records)
-			: base(batch.node, false)
+			: base(false)
 		{
 			this.batch = batch;
 			this.policy = policy;
 			this.records = records;
-		}
-
-		protected internal override Policy GetPolicy()
-		{
-			return policy;
 		}
 
 		protected internal override void WriteBuffer()
@@ -87,7 +82,7 @@ namespace Aerospike.Client
 			string[] binNames,
 			Record[] records,
 			int readAttr
-		) : base(batch.node, false)
+		) : base(false)
 		{
 			this.batch = batch;
 			this.policy = policy;
@@ -95,11 +90,6 @@ namespace Aerospike.Client
 			this.binNames = binNames;
 			this.records = records;
 			this.readAttr = readAttr;
-		}
-
-		protected internal override Policy GetPolicy()
-		{
-			return policy;
 		}
 
 		protected internal override void WriteBuffer()
@@ -135,15 +125,13 @@ namespace Aerospike.Client
 
 		public BatchGetArrayDirect
 		(
-			Node node,
 			BatchNode.BatchNamespace batch,
 			Policy policy,
 			Key[] keys,
 			string[] binNames,
 			Record[] records,
 			int readAttr
-		)
-			: base(node, false)
+		) : base(false)
 		{
 			this.batch = batch;
 			this.policy = policy;
@@ -151,11 +139,6 @@ namespace Aerospike.Client
 			this.binNames = binNames;
 			this.records = records;
 			this.readAttr = readAttr;
-		}
-
-		protected internal override Policy GetPolicy()
-		{
-			return policy;
 		}
 
 		protected internal override void WriteBuffer()
@@ -198,17 +181,12 @@ namespace Aerospike.Client
 			BatchPolicy policy,
 			Key[] keys,
 			bool[] existsArray
-		) : base(batch.node, false)
+		) : base(false)
 		{
 			this.batch = batch;
 			this.policy = policy;
 			this.keys = keys;
 			this.existsArray = existsArray;
-		}
-
-		protected internal override Policy GetPolicy()
-		{
-			return policy;
 		}
 
 		protected internal override void WriteBuffer()
@@ -244,22 +222,16 @@ namespace Aerospike.Client
 
 		public BatchExistsArrayDirect
 		(
-			Node node,
 			BatchNode.BatchNamespace batch,
 			Policy policy,
 			Key[] keys,
 			bool[] existsArray
-		) : base(node, false)
+		) : base(false)
 		{
 			this.batch = batch;
 			this.policy = policy;
 			this.keys = keys;
 			this.existsArray = existsArray;
-		}
-
-		protected internal override Policy GetPolicy()
-		{
-			return policy;
 		}
 
 		protected internal override void WriteBuffer()

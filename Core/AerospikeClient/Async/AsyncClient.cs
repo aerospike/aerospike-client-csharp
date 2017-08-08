@@ -565,7 +565,7 @@ namespace Aerospike.Client
 			{
 				policy = readPolicyDefault;
 			}
-			AsyncRead async = new AsyncRead(cluster, policy, listener, key, null);
+			AsyncRead async = new AsyncRead(cluster, policy, listener, key, null, true);
 			async.Execute();
 		}
 
@@ -607,7 +607,7 @@ namespace Aerospike.Client
 			{
 				policy = readPolicyDefault;
 			}
-			AsyncRead async = new AsyncRead(cluster, policy, listener, key, binNames);
+			AsyncRead async = new AsyncRead(cluster, policy, listener, key, binNames, true);
 			async.Execute();
 		}
 

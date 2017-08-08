@@ -94,7 +94,7 @@ namespace Aerospike.Demo
 			console.Info("Create GeoJSON {0} index: ns={1} set={2} index={3} bin={4}", indexType, args.ns, args.set, indexName, binName);
 
 			Policy policy = new Policy();
-			policy.timeout = 0; // Do not timeout on index create.
+			policy.totalTimeout = 0; // Do not timeout on index create.
 			IndexTask task = client.CreateIndex(policy, args.ns, args.set, indexName, binName, IndexType.GEO2DSPHERE, indexType);
 			task.Wait();
 		}

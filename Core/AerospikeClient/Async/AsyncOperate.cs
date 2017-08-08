@@ -25,7 +25,7 @@ namespace Aerospike.Client
 		private bool hasWrite;
 
 		public AsyncOperate(AsyncCluster cluster, WritePolicy writePolicy, RecordListener listener, Key key, Operation[] operations)
-			: base(cluster, writePolicy, listener, key, null)
+			: base(cluster, writePolicy, listener, key, null, false)
 		{
 			this.writePolicy = writePolicy;
 			this.operations = operations;
@@ -46,11 +46,6 @@ namespace Aerospike.Client
 		protected internal override void WriteBuffer()
 		{
 			hasWrite = SetOperate(writePolicy, key, operations);
-		}
-
-		protected internal override Node GetNode()
-		{
-			return cluster.GetMasterNode(partition);
 		}
 
 		protected internal override void HandleNotFound(int resultCode)

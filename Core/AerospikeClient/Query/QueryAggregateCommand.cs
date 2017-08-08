@@ -29,22 +29,16 @@ namespace Aerospike.Client
 
 		public QueryAggregateCommand
 		(
-			Node node,
 			Policy policy,
 			Statement statement,
 			BlockingCollection<object> inputQueue,
 			CancellationToken cancelToken
-		) : base(node, true)
+		) : base(true)
 		{
 			this.policy = policy;
 			this.statement = statement;
 			this.inputQueue = inputQueue;
 			this.cancelToken = cancelToken;
-		}
-
-		protected internal override Policy GetPolicy()
-		{
-			return policy;
 		}
 
 		protected internal override void WriteBuffer()

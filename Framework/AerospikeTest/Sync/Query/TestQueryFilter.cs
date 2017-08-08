@@ -38,7 +38,7 @@ namespace Aerospike.Test
 			rtask.Wait();
 
 			Policy policy = new Policy();
-			policy.timeout = 0; // Do not timeout on index create.
+			policy.totalTimeout = 0; // Do not timeout on index create.
 			IndexTask itask = client.CreateIndex(policy, args.ns, args.set, indexName, binName, IndexType.STRING);
 			itask.Wait();
 

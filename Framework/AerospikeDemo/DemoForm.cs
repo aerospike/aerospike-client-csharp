@@ -57,11 +57,11 @@ namespace Aerospike.Demo
                 binTypeBox.Items.Add(BinType.Byte);
                 binTypeBox.SelectedItem = BinType.Integer;
 
+				replicaBox.Items.Add(Replica.SEQUENCE);
 				replicaBox.Items.Add(Replica.MASTER);
 				replicaBox.Items.Add(Replica.MASTER_PROLES);
-				replicaBox.Items.Add(Replica.SEQUENCE);
 				replicaBox.Items.Add(Replica.RANDOM);
-				replicaBox.SelectedItem = Replica.MASTER;
+				replicaBox.SelectedItem = Replica.SEQUENCE;
 
                 ReadDefaults();
 
@@ -162,7 +162,6 @@ namespace Aerospike.Demo
             timeoutBox.Text = Properties.Settings.Default.Timeout.ToString();
             maxRetriesBox.Text = Properties.Settings.Default.MaxRetries.ToString();
             sleepBox.Text = Properties.Settings.Default.SleepBetweenRetries.ToString();
-			retryOnTimeoutBox.Checked = Properties.Settings.Default.RetryOnTimeout;
 			replicaBox.SelectedIndex = Properties.Settings.Default.ReadReplica;
 			latencyBox.Checked = Properties.Settings.Default.Latency;
             latencyColumnsBox.Text = Properties.Settings.Default.LatencyColumns.ToString();
@@ -200,7 +199,6 @@ namespace Aerospike.Demo
             Properties.Settings.Default.Timeout = int.Parse(timeoutBox.Text);
             Properties.Settings.Default.MaxRetries = int.Parse(maxRetriesBox.Text);
             Properties.Settings.Default.SleepBetweenRetries = int.Parse(sleepBox.Text);
-			Properties.Settings.Default.RetryOnTimeout = retryOnTimeoutBox.Checked;
 			Properties.Settings.Default.ReadReplica = replicaBox.SelectedIndex;
 			Properties.Settings.Default.Latency = latencyBox.Checked;
             Properties.Settings.Default.LatencyColumns = int.Parse(latencyColumnsBox.Text);
@@ -278,11 +276,9 @@ namespace Aerospike.Demo
                 int maxRetries = int.Parse(maxRetriesBox.Text);
                 int sleepBetweenRetries = int.Parse(sleepBox.Text);
 				Replica replica = (Replica)replicaBox.SelectedItem;
-				bool retryOnTimeout = retryOnTimeoutBox.Checked;
 
 				if (replica == Replica.SEQUENCE)
 				{
-					retryOnTimeout = true;
 					bargs.requestProleReplicas = true;
 				}
 
@@ -291,16 +287,14 @@ namespace Aerospike.Demo
 					bargs.requestProleReplicas = true;
 				}
 
-				bargs.policy.timeout = timeout;
+				bargs.policy.totalTimeout = timeout;
                 bargs.policy.maxRetries = maxRetries;
                 bargs.policy.sleepBetweenRetries = sleepBetweenRetries;
-				bargs.policy.retryOnTimeout = retryOnTimeout;
 				bargs.policy.replica = replica;
 
-                bargs.writePolicy.timeout = timeout;
+				bargs.writePolicy.totalTimeout = timeout;
                 bargs.writePolicy.maxRetries = maxRetries;
                 bargs.writePolicy.sleepBetweenRetries = sleepBetweenRetries;
-				bargs.writePolicy.retryOnTimeout = retryOnTimeout;
 				bargs.writePolicy.replica = replica;
 
                 bargs.debug = debugBox.Checked;

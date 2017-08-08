@@ -21,16 +21,11 @@ namespace Aerospike.Client
 		private readonly WritePolicy writePolicy;
 		private readonly Statement statement;
 
-		public ServerCommand(Node node, WritePolicy policy, Statement statement) 
-			: base(node, true)
+		public ServerCommand(WritePolicy policy, Statement statement) 
+			: base(true)
 		{
 			this.writePolicy = policy;
 			this.statement = statement;
-		}
-
-		protected internal override Policy GetPolicy()
-		{
-			return writePolicy;
 		}
 
 		protected internal override void WriteBuffer()

@@ -37,62 +37,103 @@ namespace Aerospike.Client
 		public ConsistencyLevel consistencyLevel = ConsistencyLevel.CONSISTENCY_ONE;
 
 		/// <summary>
-		/// Send read commands to the node containing the key's partition replica type.
-		/// Write commands are not affected by this setting, because all writes are directed 
-		/// to the node containing the key's master partition.
+		/// Replica algorithm used to determine the target node for a single record command.
+		/// Batch, scan and query are not affected by replica algorithms.
 		/// <para>
-		/// Default:  <see cref="Aerospike.Client.Replica.MASTER"/>
+		/// Default:  <see cref="Aerospike.Client.Replica.SEQUENCE"/>
 		/// </para>
 		/// </summary>
-		public Replica replica = Replica.MASTER;
+		public Replica replica = Replica.SEQUENCE;
 
 		/// <summary>
-		/// Total transaction timeout in milliseconds for both client and server.
-		/// The timeout is tracked on the client and also sent to the server along 
-		/// with the transaction in the wire protocol.  The client will most likely
-		/// timeout first, but the server has the capability to timeout the transaction
-		/// as well.
+		/// Socket idle timeout in milliseconds when processing a database command.
 		/// <para>
-		/// The timeout is also used as a socket timeout.
-		/// Default: 0 (no timeout).
+		/// If socketTimeout is not zero and the socket has been idle for at least socketTimeout,
+		/// both maxRetries and totalTimeout are checked.  If maxRetries and totalTimeout are not
+		/// exceeded, the transaction is retried.
+		/// </para>
+		/// <para>
+		/// If both socketTimeout and totalTimeout are non-zero and socketTimeout > totalTimeout,
+		/// then socketTimeout will be set to totalTimeout. 
+		/// </para>
+		/// <para>
+		/// If socketTimeout is zero, there will be no socket idle limit.
+		/// </para>
+		/// <para>
+		/// For synchronous methods, socketTimeout is the socket SendTimeout and ReceiveTimeout.
+		/// For asynchronous methods, the socketTimeout is implemented using an AsyncTimeoutQueue
+		/// and socketTimeout is only used if totalTimeout is not defined.
+		/// </para>
+		/// <para>
+		/// Default: 0 (no socket idle time limit).
 		/// </para>
 		/// </summary>
-		public int timeout;
+		public int socketTimeout;
+
+		/// <summary>
+		/// Total transaction timeout in milliseconds.
+		/// <para>
+		/// The totalTimeout is tracked on the client and sent to the server along with 
+		/// the transaction in the wire protocol.  The client will most likely timeout
+		/// first, but the server also has the capability to timeout the transaction.
+		/// </para>
+		/// <para>
+		/// If totalTimeout is not zero and totalTimeout is reached before the transaction
+		/// completes, the transaction will abort with
+		/// <see cref="Aerospike.Client.AerospikeException.Timeout"/>.
+		/// </para>
+		/// <para>
+		/// If totalTimeout is zero, there will be no total time limit.
+		/// </para>
+		/// <para>
+		/// Default: 0 (no time limit).
+		/// </para>
+		/// </summary>
+		public int totalTimeout;
 
 		/// <summary>
 		/// Maximum number of retries before aborting the current transaction.
-		/// A retry may be attempted when there is a network error.  
-		/// If maxRetries is exceeded, the abort will occur even if the timeout 
-		/// has not yet been exceeded.
+		/// The initial attempt is not counted as a retry.
 		/// <para>
-		/// Default: 1
+		/// If maxRetries is exceeded, the transaction will abort with
+		/// <see cref="Aerospike.Client.AerospikeException.Timeout"/>.
+		/// </para>
+		/// <para>
+		/// WARNING: Database writes that are not idempotent (such as Add()) 
+		/// should not be retried because the write operation may be performed 
+		/// multiple times if the client timed out previous transaction attempts.
+		/// It's important to use a distinct WritePolicy for non-idempotent 
+		/// writes which sets maxRetries = 0;
+		/// </para>
+		/// <para>
+		/// Default: 2 (initial attempt + 2 retries = 3 attempts)
 		/// </para>
 		/// </summary>
-		public int maxRetries = 1;
+		public int maxRetries = 2;
 
 		/// <summary>
-		/// Milliseconds to sleep between retries.  Do not sleep at all if zero.
-		/// Used by synchronous commands only.
+		/// Milliseconds to sleep between retries.  Enter zero to skip sleep.
 		/// <para>
-		/// Default: 500ms
+		/// The sleep only occurs on connection errors and server timeouts
+		/// which suggest a node is down and the cluster is reforming.
+		/// The sleep does not occur when the client's socketTimeout expires.
+		/// </para>
+		/// <para>
+		/// This field is ignored in async mode.
+		/// </para>
+		/// <para>
+		/// Reads do not have to sleep when a node goes down because the cluster
+		/// does not shut out reads during cluster reformation.  The default for 
+		/// reads is zero.
+		/// </para>
+		/// <para>
+		/// Writes need to wait for the cluster to reform when a node goes down.
+		/// Immediate write retries on node failure have been shown to consistently
+		/// result in errors. The default for writes is 500ms.  This default is 
+		/// implemented in <see cref="Aerospike.Client.ClientPolicy.ClientPolicy()"/>
 		/// </para>
 		/// </summary>
-		public int sleepBetweenRetries = 500;
-
-		/// <summary>
-		/// Should the client retry a command if the timeout is reached.
-		/// <para>
-		/// If false, throw timeout exception when the timeout has been reached.  Note that
-		/// retries can still occur if a command fails on a network error before the timeout
-		/// has been reached.
-		/// </para>
-		/// <para>
-		/// If true, retry command with same timeout when the timeout has been reached.
-		/// The maximum number of retries is defined by maxRetries.
-		/// </para>
-		/// Default: false
-		/// </summary>
-		public bool retryOnTimeout;
+		public int sleepBetweenRetries;
 
 		/// <summary>
 		/// Send user defined key in addition to hash digest on both reads and writes.
@@ -112,10 +153,10 @@ namespace Aerospike.Client
 			this.priority = other.priority;
 			this.consistencyLevel = other.consistencyLevel;
 			this.replica = other.replica;
-			this.timeout = other.timeout;
+			this.socketTimeout = other.socketTimeout;
+			this.totalTimeout = other.totalTimeout;
 			this.maxRetries = other.maxRetries;
 			this.sleepBetweenRetries = other.sleepBetweenRetries;
-			this.retryOnTimeout = other.retryOnTimeout;
 			this.sendKey = other.sendKey;
 		}
 
@@ -124,6 +165,32 @@ namespace Aerospike.Client
 		/// </summary>
 		public Policy()
 		{
+		}
+
+		/// <summary>
+		/// Create a single timeout by setting socketTimeout and totalTimeout
+		/// to the same value.
+		/// </summary>
+		public void SetTimeout(int timeout)
+		{
+			this.socketTimeout = timeout;
+			this.totalTimeout = timeout;
+		}
+
+		/// <summary>
+		/// Set socketTimeout and totalTimeout.  If totalTimeout defined and
+		/// socketTimeout greater than totalTimeout, set socketTimeout to
+		/// totalTimeout.
+		/// </summary>
+		public void SetTimeouts(int socketTimeout, int totalTimeout)
+		{
+			this.socketTimeout = socketTimeout;
+			this.totalTimeout = totalTimeout;
+
+			if (totalTimeout > 0 && (socketTimeout == 0 || socketTimeout > totalTimeout))
+			{
+				this.socketTimeout = totalTimeout;
+			}
 		}
 	}
 }

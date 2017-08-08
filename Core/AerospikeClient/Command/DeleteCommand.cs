@@ -18,33 +18,19 @@ namespace Aerospike.Client
 {
 	public sealed class DeleteCommand : SyncCommand
 	{
-		private readonly Cluster cluster;
 		private readonly WritePolicy policy;
 		private readonly Key key;
-		private readonly Partition partition;
 		private bool existed;
 
-		public DeleteCommand(Cluster cluster, WritePolicy policy, Key key) 
+		public DeleteCommand(WritePolicy policy, Key key) 
 		{
-			this.cluster = cluster;
 			this.policy = policy;
 			this.key = key;
-			this.partition = new Partition(key);
-		}
-
-		protected internal override Policy GetPolicy()
-		{
-			return policy;
 		}
 
 		protected internal override void WriteBuffer()
 		{
 			SetDelete(policy, key);
-		}
-
-		protected internal override Node GetNode()
-		{
-			return cluster.GetMasterNode(partition);
 		}
 
 		protected internal override void ParseResult(Connection conn)

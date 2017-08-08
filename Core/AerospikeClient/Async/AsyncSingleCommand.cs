@@ -21,8 +21,8 @@ namespace Aerospike.Client
 {
 	public abstract class AsyncSingleCommand : AsyncCommand
 	{
-		public AsyncSingleCommand(AsyncCluster cluster, Policy policy) 
-			: base(cluster, policy)
+		public AsyncSingleCommand(AsyncCluster cluster, Policy policy, Partition partition, bool isRead) 
+			: base(cluster, policy, partition, null, isRead)
 		{
 		}
 

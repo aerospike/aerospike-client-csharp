@@ -33,9 +33,9 @@ namespace Aerospike.Client
 			StartThreads();
 		}
 
-		protected internal override MultiCommand CreateCommand(Node node)
+		protected internal override MultiCommand CreateCommand()
 		{
-			return new QueryRecordCommand(node, policy, statement, recordSet);
+			return new QueryRecordCommand(policy, statement, recordSet);
 		}
 
 		protected internal override void SendCancel()

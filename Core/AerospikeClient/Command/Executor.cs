@@ -22,6 +22,8 @@ namespace Aerospike.Client
 {
 	public sealed class Executor
 	{
+		internal readonly Cluster cluster;
+		internal readonly Policy policy;
 		private readonly List<ExecutorThread> threads;
 		private volatile Exception exception;
 		private int maxConcurrentThreads;
@@ -29,14 +31,16 @@ namespace Aerospike.Client
 		private int done;
 		private bool completed;
 
-		public Executor(int capacity)
+		public Executor(Cluster cluster, Policy policy, int capacity)
 		{
+			this.cluster = cluster;
+			this.policy = policy;
 			threads = new List<ExecutorThread>(capacity);
 		}
 
-		public void AddCommand(MultiCommand command)
+		public void AddCommand(Node node, MultiCommand command)
 		{
-			threads.Add(new ExecutorThread(this, command));
+			threads.Add(new ExecutorThread(this, node, command));
 		}
 
 		public void Execute(int maxConcurrent)
@@ -125,11 +129,13 @@ namespace Aerospike.Client
 	public sealed class ExecutorThread
 	{
 		private readonly Executor parent;
+		private readonly Node node;
 		private readonly MultiCommand command;
 
-		public ExecutorThread(Executor parent, MultiCommand command)
+		public ExecutorThread(Executor parent, Node node, MultiCommand command)
 		{
 			this.parent = parent;
+			this.node = node;
 			this.command = command;
 		}
 
@@ -139,7 +145,7 @@ namespace Aerospike.Client
 			{
 				if (command.IsValid())
 				{
-					command.Execute();
+					command.Execute(parent.cluster, parent.policy, null, node, true);
 				}
 				parent.ThreadCompleted();
 			}

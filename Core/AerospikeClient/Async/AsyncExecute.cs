@@ -27,7 +27,7 @@ namespace Aerospike.Client
 		private readonly Value[] args;
 
 		public AsyncExecute(AsyncCluster cluster, WritePolicy writePolicy, ExecuteListener listener, Key key, string packageName, string functionName, Value[] args)
-			: base(cluster, writePolicy, null, key, null)
+			: base(cluster, writePolicy, null, key, null, false)
 		{
 			this.writePolicy = writePolicy;
 			this.executeListener = listener;
@@ -54,11 +54,6 @@ namespace Aerospike.Client
 		protected internal override void WriteBuffer()
 		{
 			SetUdf(writePolicy, key, packageName, functionName, args);
-		}
-
-		protected internal override Node GetNode()
-		{
-			return cluster.GetMasterNode(partition);
 		}
 
 		protected internal override void HandleNotFound(int resultCode)

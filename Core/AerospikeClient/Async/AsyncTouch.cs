@@ -21,15 +21,13 @@ namespace Aerospike.Client
 		private readonly WritePolicy writePolicy;
 		private readonly WriteListener listener;
 		private readonly Key key;
-		private readonly Partition partition;
 
 		public AsyncTouch(AsyncCluster cluster, WritePolicy writePolicy, WriteListener listener, Key key)
-			: base(cluster, writePolicy)
+			: base(cluster, writePolicy, new Partition(key), false)
 		{
 			this.writePolicy = writePolicy;
 			this.listener = listener;
 			this.key = key;
-			this.partition = new Partition(key);
 		}
 
 		public AsyncTouch(AsyncTouch other)
@@ -38,7 +36,6 @@ namespace Aerospike.Client
 			this.writePolicy = other.writePolicy;
 			this.listener = other.listener;
 			this.key = other.key;
-			this.partition = other.partition;
 		}
 
 		protected internal override AsyncCommand CloneCommand()
@@ -49,11 +46,6 @@ namespace Aerospike.Client
 		protected internal override void WriteBuffer()
 		{
 			SetTouch(writePolicy, key);
-		}
-
-		protected internal override Node GetNode()
-		{
-			return cluster.GetMasterNode(partition);
 		}
 
 		protected internal override void ParseResult()

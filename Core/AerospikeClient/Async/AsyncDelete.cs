@@ -21,16 +21,14 @@ namespace Aerospike.Client
 		private readonly WritePolicy writePolicy;
 		private readonly DeleteListener listener;
 		private readonly Key key;
-		private readonly Partition partition;
 		private bool existed;
 
 		public AsyncDelete(AsyncCluster cluster, WritePolicy writePolicy, Key key, DeleteListener listener)
-			: base(cluster, writePolicy)
+			: base(cluster, writePolicy, new Partition(key), false)
 		{
 			this.writePolicy = writePolicy;
 			this.listener = listener;
 			this.key = key;
-			this.partition = new Partition(key);
 		}
 
 		public AsyncDelete(AsyncDelete other)
@@ -39,7 +37,6 @@ namespace Aerospike.Client
 			this.writePolicy = other.writePolicy;
 			this.listener = other.listener;
 			this.key = other.key;
-			this.partition = other.partition;
 		}
 
 		protected internal override AsyncCommand CloneCommand()
@@ -50,11 +47,6 @@ namespace Aerospike.Client
 		protected internal override void WriteBuffer()
 		{
 			SetDelete(writePolicy, key);
-		}
-
-		protected internal override Node GetNode()
-		{
-			return cluster.GetMasterNode(partition);
 		}
 
 		protected internal override void ParseResult()

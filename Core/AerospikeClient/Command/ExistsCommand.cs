@@ -21,33 +21,19 @@ namespace Aerospike.Client
 {
 	public sealed class ExistsCommand : SyncCommand
 	{
-		private readonly Cluster cluster;
 		private readonly Policy policy;
 		private readonly Key key;
-		private readonly Partition partition;
 		private bool exists;
 
-		public ExistsCommand(Cluster cluster, Policy policy, Key key)
+		public ExistsCommand(Policy policy, Key key)
 		{
-			this.cluster = cluster;
 			this.policy = policy;
 			this.key = key;
-			this.partition = new Partition(key);
-		}
-
-		protected internal override Policy GetPolicy()
-		{
-			return policy;
 		}
 
 		protected internal override void WriteBuffer()
 		{
 			SetExists(policy, key);
-		}
-
-		protected internal override Node GetNode()
-		{
-			return GetReadNode(cluster, partition, policy.replica);
 		}
 
 		protected internal override void ParseResult(Connection conn)

@@ -25,7 +25,7 @@ namespace Aerospike.Test
 		public AsyncQueryInit()
 		{
 			Policy policy = new Policy();
-			policy.timeout = 0; // Do not timeout on index create.
+			policy.totalTimeout = 0; // Do not timeout on index create.
 			IndexTask task = client.CreateIndex(policy, args.ns, args.set, TestAsyncQuery.indexName, TestAsyncQuery.binName, IndexType.NUMERIC);
 			task.Wait();
 		}

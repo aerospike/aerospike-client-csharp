@@ -22,16 +22,14 @@ namespace Aerospike.Client
 	{
 		private readonly RecordListener listener;
 		protected internal readonly Key key;
-		protected internal readonly Partition partition;
 		private readonly string[] binNames;
 		protected Record record;
 
-		public AsyncRead(AsyncCluster cluster, Policy policy, RecordListener listener, Key key, string[] binNames) 
-			: base(cluster, policy)
+		public AsyncRead(AsyncCluster cluster, Policy policy, RecordListener listener, Key key, string[] binNames, bool isRead) 
+			: base(cluster, policy, new Partition(key), isRead)
 		{
 			this.listener = listener;
 			this.key = key;
-			this.partition = new Partition(key);
 			this.binNames = binNames;
 		}
 
@@ -40,7 +38,6 @@ namespace Aerospike.Client
 		{
 			this.listener = other.listener;
 			this.key = other.key;
-			this.partition = other.partition;
 			this.binNames = other.binNames;
 		}
 
@@ -52,11 +49,6 @@ namespace Aerospike.Client
 		protected internal override void WriteBuffer()
 		{
 			SetRead(policy, key, binNames);
-		}
-
-		protected internal override Node GetNode()
-		{
-			return GetReadNode(cluster, partition, policy.replica);
 		}
 
 		protected internal sealed override void ParseResult()

@@ -24,17 +24,12 @@ namespace Aerospike.Client
 		private readonly Statement statement;
 		private readonly RecordSet recordSet;
 
-		public QueryRecordCommand(Node node, Policy policy, Statement statement, RecordSet recordSet) 
-			: base(node, true)
+		public QueryRecordCommand(Policy policy, Statement statement, RecordSet recordSet) 
+			: base(true)
 		{
 			this.policy = policy;
 			this.statement = statement;
 			this.recordSet = recordSet;
-		}
-
-		protected internal override Policy GetPolicy()
-		{
-			return policy;
 		}
 
 		protected internal override void WriteBuffer()

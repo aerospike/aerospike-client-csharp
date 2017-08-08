@@ -23,7 +23,6 @@ namespace Aerospike.Client
 	public abstract class AsyncMultiCommand : AsyncCommand
 	{
 		private readonly AsyncMultiExecutor parent;
-		private readonly AsyncNode fixedNode;
 		protected internal int resultCode;
 		protected internal int generation;
 		protected internal int expiration;
@@ -34,23 +33,16 @@ namespace Aerospike.Client
 		protected internal volatile bool valid = true;
 
 		public AsyncMultiCommand(AsyncMultiExecutor parent, AsyncCluster cluster, Policy policy, AsyncNode node, bool stopOnNotFound) 
-			: base(cluster, policy)
+			: base(cluster, policy, null, node, true)
 		{
 			this.parent = parent;
-			this.fixedNode = node;
 			this.stopOnNotFound = stopOnNotFound;
 		}
 
 		public AsyncMultiCommand(AsyncMultiCommand other) : base(other)
 		{
 			this.parent = other.parent;
-			this.fixedNode = other.fixedNode;
 			this.stopOnNotFound = other.stopOnNotFound;
-		}
-
-		protected internal sealed override Node GetNode()
-		{
-			return fixedNode;
 		}
 
 		protected internal sealed override void ParseCommand()

@@ -30,14 +30,13 @@ namespace Aerospike.Client
 
 		public ScanCommand
 		(
-			Node node, 
 			ScanPolicy policy,
 			string ns,
 			string setName,
 			ScanCallback callback,
 			string[] binNames,
 			ulong taskId
-		) : base(node, true)
+		) : base(true)
 		{
 			this.policy = policy;
 			this.ns = ns;
@@ -45,11 +44,6 @@ namespace Aerospike.Client
 			this.callback = callback;
 			this.binNames = binNames;
 			this.taskId = taskId;
-		}
-
-		protected internal override Policy GetPolicy()
-		{
-			return policy;
 		}
 
 		protected internal override void WriteBuffer()
