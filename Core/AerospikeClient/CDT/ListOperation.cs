@@ -56,6 +56,7 @@ namespace Aerospike.Client
 		private const int SET = 9;
 		private const int TRIM = 10;
 		private const int CLEAR = 11;
+		private const int INCREMENT = 12;
 		private const int SIZE = 16;
 		private const int GET = 17;
 		private const int GET_RANGE = 18;
@@ -255,6 +256,38 @@ namespace Aerospike.Client
 			Packer packer = new Packer();
 			packer.PackRawShort(CLEAR);
 			//packer.PackArrayBegin(0);
+			byte[] bytes = packer.ToByteArray();
+			return new Operation(Operation.Type.CDT_MODIFY, binName, Value.Get(bytes));
+		}
+
+		/// <summary>
+		/// Create list increment operation.
+		/// Server increments list[index] by 1.
+		/// Server returns list[index] after incrementing.
+		/// </summary>
+		public static Operation Increment(string binName, int index)
+		{
+			Packer packer = new Packer();
+			packer.PackRawShort(INCREMENT);
+			packer.PackArrayBegin(1);
+			packer.PackNumber(index);
+			byte[] bytes = packer.ToByteArray();
+			return new Operation(Operation.Type.CDT_MODIFY, binName, Value.Get(bytes));
+		}
+
+		/// <summary>
+		/// Create list increment operation.
+		/// Server increments list[index] by value.
+		/// Value should be integer(IntegerValue, LongValue) or double(DoubleValue, FloatValue).
+		/// Server returns list[index] after incrementing.
+		/// </summary>
+		public static Operation Increment(string binName, int index, Value value)
+		{
+			Packer packer = new Packer();
+			packer.PackRawShort(INCREMENT);
+			packer.PackArrayBegin(2);
+			packer.PackNumber(index);
+			value.Pack(packer);
 			byte[] bytes = packer.ToByteArray();
 			return new Operation(Operation.Type.CDT_MODIFY, binName, Value.Get(bytes));
 		}

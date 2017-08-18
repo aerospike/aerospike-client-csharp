@@ -389,5 +389,46 @@ namespace Aerospike.Test
 			str = (string)results[i++];
 			Assert.AreEqual("s3333333", str);
 		}
+
+		[TestMethod]
+		public void OperateList8()
+		{
+			// Test null values.
+			Key key = new Key(args.ns, args.set, "oplkey8");
+
+			client.Delete(null, key);
+
+			WritePolicy policy = new WritePolicy();
+			policy.respondAllOps = true;
+
+			IList itemList = new List<Value>();
+			itemList.Add(Value.Get(1));
+			itemList.Add(Value.Get(2));
+			itemList.Add(Value.Get(3));
+
+			Record record = client.Operate(null, key,
+				ListOperation.AppendItems(binName, itemList),
+				ListOperation.Increment(binName, 2),
+				ListOperation.Increment(binName, 1, Value.Get(7)),
+				ListOperation.Get(binName, 0)
+				);
+
+			AssertRecordFound(key, record);
+
+			IList results = record.GetList(binName);
+			int i = 0;
+
+			long size = (long)results[i++];
+			Assert.AreEqual(3, size);
+
+			long val = (long)results[i++];
+			Assert.AreEqual(4, val);
+
+			val = (long)results[i++];
+			Assert.AreEqual(9, val);
+
+			val = (long)results[i++];
+			Assert.AreEqual(1, val);
+		}
 	}
 }
