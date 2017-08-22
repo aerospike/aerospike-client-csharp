@@ -455,50 +455,34 @@ namespace Aerospike.Client
 					continue;
 				}
 
-				switch (nodes.Length)
+				if (refreshCount == 0 && node.failures >= 5)
 				{
-				case 1:
-					// Single node clusters rely on whether it responded to info requests.
-					if (node.failures >= 5)
-					{
-						// 5 consecutive info requests failed.
-						// Remove node.  Seeds will be tried in next cluster tend iteration.
-						removeList.Add(node);
-					}
-					break;
+					// All node info requests failed and this node had 5 consecutive failures.
+					// Remove node.  If no nodes are left, seeds will be tried in next cluster
+					// tend iteration.
+					removeList.Add(node);
+					continue;
+				}
 
-				case 2:
-					// Two node clusters require at least one successful refresh before removing.
-					if (refreshCount == 1 && node.referenceCount == 0 && node.failures > 0)
+				if (refreshCount >= 1 && node.referenceCount == 0)
+				{
+					// Node is not referenced by other nodes.
+					// Check if node responded to info request.
+					if (node.failures == 0)
 					{
-						// Node is not referenced nor did it respond.
-						removeList.Add(node);
-					}
-					break;
-
-				default:
-					// Multi-node clusters require at least one successful refresh before removing.
-					if (refreshCount >= 1 && node.referenceCount == 0)
-					{
-						// Node is not referenced by other nodes.
-						// Check if node responded to info request.
-						if (node.failures == 0)
+						// Node is alive, but not referenced by other nodes.  Check if mapped.
+						if (! FindNodeInPartitionMap(node))
 						{
-							// Node is alive, but not referenced by other nodes.  Check if mapped.
-							if (!FindNodeInPartitionMap(node))
-							{
-								// Node doesn't have any partitions mapped to it.
-								// There is no point in keeping it in the cluster.
-								removeList.Add(node);
-							}
-						}
-						else
-						{
-							// Node not responding. Remove it.
+							// Node doesn't have any partitions mapped to it.
+							// There is no point in keeping it in the cluster.
 							removeList.Add(node);
 						}
 					}
-					break;
+					else
+					{
+						// Node not responding. Remove it.
+						removeList.Add(node);
+					}
 				}
 			}
 			return removeList;
