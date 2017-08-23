@@ -17,7 +17,7 @@
 namespace Aerospike.Client
 {
 	/// <summary>
-	/// Container object for client policy Command.
+	/// Asynchronous client policy configuration.
 	/// </summary>
 	public sealed class AsyncClientPolicy : ClientPolicy
 	{
@@ -46,5 +46,21 @@ namespace Aerospike.Client
 		/// </para>
 		/// </summary>
 		public int asyncMaxCommands = 200;
+
+		/// <summary>
+		/// Copy async client policy from another async client policy.
+		/// </summary>
+		public AsyncClientPolicy(AsyncClientPolicy other) : base(other)
+		{
+			this.asyncMaxCommandAction = other.asyncMaxCommandAction;
+			this.asyncMaxCommands = other.asyncMaxCommands;
+		}
+
+		/// <summary>
+		/// Default constructor.
+		/// </summary>
+		public AsyncClientPolicy()
+		{
+		}
 	}
 }

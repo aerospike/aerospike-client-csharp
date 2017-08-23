@@ -45,6 +45,16 @@ namespace Aerospike.Client
 		public bool includeBinData = true;
 
 		/// <summary>
+		/// Copy query policy from another query policy.
+		/// </summary>
+		public QueryPolicy(QueryPolicy other) : base(other)
+		{
+			this.maxConcurrentNodes = other.maxConcurrentNodes;
+			this.recordQueueSize = other.recordQueueSize;
+			this.includeBinData = other.includeBinData;
+		}
+
+		/// <summary>
 		/// Default constructor.
 		/// </summary>
 		public QueryPolicy()

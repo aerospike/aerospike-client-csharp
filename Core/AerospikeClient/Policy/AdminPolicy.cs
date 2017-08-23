@@ -23,8 +23,22 @@ namespace Aerospike.Client
 	{
 		/// <summary>
 		/// User administration command socket timeout in milliseconds.
-		/// Default is one second timeout.
 		/// </summary>
-		public int timeout = 0;
+		public int timeout;
+
+		/// <summary>
+		/// Copy admin policy from another admin policy.
+		/// </summary>
+		public AdminPolicy(AdminPolicy other)
+		{
+			this.timeout = other.timeout;
+		}
+
+		/// <summary>
+		/// Default constructor.
+		/// </summary>
+		public AdminPolicy()
+		{
+		}
 	}
 }

@@ -65,6 +65,19 @@ namespace Aerospike.Client
 		public bool failOnClusterChange;
 
 		/// <summary>
+		/// Copy scan policy from another scan policy.
+		/// </summary>
+		public ScanPolicy(ScanPolicy other) : base(other)
+		{
+			this.scanPercent = other.scanPercent;
+			this.maxConcurrentNodes = other.maxConcurrentNodes;
+			this.concurrentNodes = other.concurrentNodes;
+			this.includeBinData = other.includeBinData;
+			this.includeLDT = other.includeLDT;
+			this.failOnClusterChange = other.failOnClusterChange;
+		}
+
+		/// <summary>
 		/// Default constructor.
 		/// </summary>
 		public ScanPolicy()

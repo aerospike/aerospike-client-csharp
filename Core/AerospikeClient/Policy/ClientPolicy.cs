@@ -185,6 +185,32 @@ namespace Aerospike.Client
 		public bool useServicesAlternate;
 
 		/// <summary>
+		/// Copy client policy from another client policy.
+		/// </summary>
+		public ClientPolicy(ClientPolicy other)
+		{
+			this.user = other.user;
+			this.password = other.password;
+			this.clusterName = other.clusterName;
+			this.timeout = other.timeout;
+			this.maxConnsPerNode = other.maxConnsPerNode;
+			this.connPoolsPerNode = other.connPoolsPerNode;
+			this.maxSocketIdle = other.maxSocketIdle;
+			this.tendInterval = other.tendInterval;
+			this.failIfNotConnected = other.failIfNotConnected;
+			this.readPolicyDefault = new Policy(other.readPolicyDefault);
+			this.writePolicyDefault = new WritePolicy(other.writePolicyDefault);
+			this.scanPolicyDefault = new ScanPolicy(other.scanPolicyDefault);
+			this.queryPolicyDefault = new QueryPolicy(other.queryPolicyDefault);
+			this.batchPolicyDefault = new BatchPolicy(other.batchPolicyDefault);
+			this.infoPolicyDefault = new InfoPolicy(other.infoPolicyDefault);
+			this.tlsPolicy = (other.tlsPolicy != null) ? new TlsPolicy(other.tlsPolicy) : null;
+			this.ipMap = other.ipMap;
+			this.requestProleReplicas = other.requestProleReplicas;
+			this.useServicesAlternate = other.useServicesAlternate;
+		}
+
+		/// <summary>
 		/// Default constructor.
 		/// </summary>
 		public ClientPolicy()
