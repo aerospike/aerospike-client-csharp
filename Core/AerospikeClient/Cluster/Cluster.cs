@@ -464,7 +464,7 @@ namespace Aerospike.Client
 					continue;
 				}
 
-				if (refreshCount >= 1 && node.referenceCount == 0)
+				if (nodes.Length > 1 && refreshCount >= 1 && node.referenceCount == 0)
 				{
 					// Node is not referenced by other nodes.
 					// Check if node responded to info request.
