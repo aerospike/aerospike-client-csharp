@@ -64,8 +64,19 @@ namespace Aerospike.Demo
 
 			Policy policy = new Policy();
 			policy.totalTimeout = 0; // Do not timeout on index create.
-			IndexTask task = client.CreateIndex(policy, args.ns, args.set, indexName, binName, IndexType.GEO2DSPHERE);
-			task.Wait();
+
+			try
+			{
+				IndexTask task = client.CreateIndex(policy, args.ns, args.set, indexName, binName, IndexType.GEO2DSPHERE);
+				task.Wait();
+			}
+			catch (AerospikeException ae)
+			{
+				if (ae.Result != ResultCode.INDEX_ALREADY_EXISTS)
+				{
+					throw;
+				}
+			}
 		}
 
 		private void WriteRecords(AerospikeClient client, Arguments args, string keyPrefix, string binName1, string binName2, int size)

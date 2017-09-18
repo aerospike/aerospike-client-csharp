@@ -1326,13 +1326,8 @@ namespace Aerospike.Client
 				return new IndexTask(cluster, policy, ns, indexName);
 			}
 
-			if (response.StartsWith("FAIL:200"))
-			{
-				// Index has already been created.  Do not need to poll for completion.
-				return new IndexTask();
-			}
-
-			throw new AerospikeException("Create index failed: " + response);
+			ParseInfoError("Create index failed", response);
+			return null;
 		}
 		
 		/// <summary>
@@ -1369,13 +1364,7 @@ namespace Aerospike.Client
 				return;
 			}
 
-			if (response.StartsWith("FAIL:201"))
-			{
-				// Index did not previously exist. Return without error.
-				return;
-			}
-
-			throw new AerospikeException("Drop index failed: " + response);
+			ParseInfoError("Drop index failed", response);
 		}
 
 		//-------------------------------------------------------
@@ -1579,6 +1568,27 @@ namespace Aerospike.Client
 				throw;
 			}
 			return info.GetValue();
+		}
+
+		private void ParseInfoError(string prefix, string response)
+		{
+			string message = prefix + ": " + response;
+			string[] list = response.Split(':');
+
+			if (list.Length >= 2 && list[0].Equals("FAIL"))
+			{
+				int code = 0;
+
+				try
+				{
+					code = Convert.ToInt32(list[1]);
+				}
+				catch (Exception)
+				{
+				}
+				throw new AerospikeException(code, message);
+			}
+			throw new AerospikeException(message);
 		}
 
 		private void JoinRecords(BatchPolicy policy, Record record, Join[] joins)

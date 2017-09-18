@@ -25,8 +25,19 @@ namespace Aerospike.Test
 		{
 			Policy policy = new Policy();
 			policy.totalTimeout = 0; // Do not timeout on index create.
-			IndexTask task = client.CreateIndex(policy, args.ns, args.set, TestQueryInteger.indexName, TestQueryInteger.binName, IndexType.NUMERIC);
-			task.Wait();
+
+			try
+			{
+				IndexTask task = client.CreateIndex(policy, args.ns, args.set, TestQueryInteger.indexName, TestQueryInteger.binName, IndexType.NUMERIC);
+				task.Wait();
+			}
+			catch (AerospikeException ae)
+			{
+				if (ae.Result != ResultCode.INDEX_ALREADY_EXISTS)
+				{
+					throw;
+				}
+			}
 
 			for (int i = 1; i <= TestQueryInteger.size; i++)
 			{
