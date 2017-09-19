@@ -1133,22 +1133,31 @@ namespace Aerospike.Client
 		public Node GetSequenceNode(Cluster cluster, Partition partition)
 		{
 			// Must copy hashmap reference for copy on write semantics to work.
-			Dictionary<string, Node[][]> map = cluster.partitionMap;
-			Node[][] replicaArray;
+			Dictionary<string, Partitions> map = cluster.partitionMap;
+			Partitions partitions;
 
-			if (map.TryGetValue(partition.ns, out replicaArray))
+			if (!map.TryGetValue(partition.ns, out partitions))
 			{
-				for (int i = 0; i < replicaArray.Length; i++)
-				{
-					uint index = sequence % (uint)replicaArray.Length;
-					Node node = replicaArray[index][partition.partitionId];
+				throw new AerospikeException("Invalid namespace: " + partition.ns);
+			}
 
-					if (node != null && node.Active)
-					{
-						return node;
-					}
-					sequence++;
+			Node[][] replicas = partitions.replicas;
+
+			for (int i = 0; i < replicas.Length; i++)
+			{
+				uint index = sequence % (uint)replicas.Length;
+				Node node = replicas[index][partition.partitionId];
+
+				if (node != null && node.Active)
+				{
+					return node;
 				}
+				sequence++;
+			}
+
+			if (partitions.cpMode)
+			{
+				throw new AerospikeException.InvalidNode();
 			}
 			return cluster.GetRandomNode();
 		}

@@ -28,8 +28,9 @@ namespace Aerospike.Client
 		internal const string PartitionGeneration = "partition-generation";
 		internal const string ReplicasMaster = "replicas-master";
 		internal const string ReplicasAll = "replicas-all";
+		internal const string Replicas = "replicas";
 
-		private Dictionary<string, Node[][]> map;
+		private Dictionary<string, Partitions> map;
 		private readonly byte[] buffer;
 		private readonly int partitionCount;
 		private readonly int generation;
@@ -37,14 +38,28 @@ namespace Aerospike.Client
 		private int offset;
 		private bool copied;
 
-		public PartitionParser(Connection conn, Node node, Dictionary<string, Node[][]> map, int partitionCount, bool requestProleReplicas)
+		public PartitionParser(Connection conn, Node node, Dictionary<string, Partitions> map, int partitionCount, bool requestProleReplicas)
 		{
-			// Send format 1:  partition-generation\nreplicas-master\n
+			// Send format 1:  partition-generation\nreplicas\n
 			// Send format 2:  partition-generation\nreplicas-all\n
+			// Send format 3:  partition-generation\nreplicas-master\n
 			this.partitionCount = partitionCount;
 			this.map = map;
 
-			string command = (requestProleReplicas) ? ReplicasAll : ReplicasMaster;
+			string command;
+			if (node.HasReplicas)
+			{
+				command = Replicas;
+			}
+			else if (requestProleReplicas)
+			{
+				command = ReplicasAll;
+			}
+			else
+			{
+				command = ReplicasMaster;
+			}
+
 			Info info = new Info(conn, PartitionGeneration, command);
 			this.length = info.length;
 
@@ -56,9 +71,13 @@ namespace Aerospike.Client
 
 			generation = ParseGeneration();
 
-			if (requestProleReplicas)
+			if (node.HasReplicas)
 			{
-				ParseReplicasAll(node);
+				ParseReplicasAll(node, command);
+			}
+			else if (requestProleReplicas)
+			{
+				ParseReplicasAll(node, command);
 			}
 			else
 			{
@@ -76,7 +95,7 @@ namespace Aerospike.Client
 			get {return copied;}
 		}
 
-		public Dictionary<string, Node[][]> PartitionMap
+		public Dictionary<string, Partitions> PartitionMap
 		{
 			get {return map;}
 		}
@@ -140,18 +159,17 @@ namespace Aerospike.Client
 						throw new AerospikeException.Parse("Empty partition id for namespace " + ns + ". Response=" + response);
 					}
 
-					Node[][] replicaArray;
+					Partitions partitions;
 
-					if (!map.TryGetValue(ns, out replicaArray))
+					if (!map.TryGetValue(ns, out partitions))
 					{
-						replicaArray = new Node[1][];
-						replicaArray[0] = new Node[partitionCount];
+						partitions = new Partitions(partitionCount, 1, false);
 						CopyPartitionMap();
-						map[ns] = replicaArray;
+						map[ns] = partitions;
 					}
 
 					// Log.info("Map: " + namespace + "[0] " + node);
-					DecodeBitmap(node, replicaArray[0], begin);
+					DecodeBitmap(node, partitions, 0, 0, begin);
 					begin = ++offset;
 				}
 				else
@@ -161,15 +179,16 @@ namespace Aerospike.Client
 			}
 		}
 
-		private void ParseReplicasAll(Node node)
+		private void ParseReplicasAll(Node node, string command)
 		{
 			// Use low-level info methods and parse byte array directly for maximum performance.
 			// Receive format: replicas-all\t
-			//                 <ns1>:<count>,<base 64 encoded bitmap1>,<base 64 encoded bitmap2>...;
-			//                 <ns2>:<count>,<base 64 encoded bitmap1>,<base 64 encoded bitmap2>...;\n
-			ExpectName(ReplicasAll);
+			//                 <ns1>:[regime],<count>,<base 64 encoded bitmap1>,<base 64 encoded bitmap2>...;
+			//                 <ns2>:[regime],<count>,<base 64 encoded bitmap1>,<base 64 encoded bitmap2>...;\n
+			ExpectName(command);
 
 			int begin = offset;
+			int regime = 0;
 
 			while (offset < length)
 			{
@@ -185,6 +204,23 @@ namespace Aerospike.Client
 					}
 					begin = ++offset;
 
+					// Parse regime.
+					if (command == Replicas)
+					{
+						while (offset < length)
+						{
+							byte b = buffer[offset];
+
+							if (b == ',')
+							{
+								break;
+							}
+							offset++;
+						}
+						regime = Convert.ToInt32(Encoding.UTF8.GetString(buffer, begin, offset - begin));
+						begin = ++offset;
+					}
+
 					// Parse replica count.
 					while (offset < length)
 					{
@@ -198,60 +234,29 @@ namespace Aerospike.Client
 					}
 					int replicaCount = Convert.ToInt32(Encoding.UTF8.GetString(buffer, begin, offset - begin));
 
-					// Ensure replicaArray is correct size.
-					Node[][] replicaArray;
+					// Ensure replicaCount is uniform.
+					Partitions partitions;
 
-					if (!map.TryGetValue(ns, out replicaArray))
+					if (!map.TryGetValue(ns, out partitions))
 					{
 						// Create new replica array. 
-						replicaArray = new Node[replicaCount][];
-
-						for (int i = 0; i < replicaCount; i++)
-						{
-							replicaArray[i] = new Node[partitionCount];
-						}
-
+						partitions = new Partitions(partitionCount, replicaCount, regime != 0);
 						CopyPartitionMap();
-						map[ns] = replicaArray;
+						map[ns] = partitions;
 					}
-					else if (replicaArray.Length != replicaCount)
+					else if (partitions.replicas.Length != replicaCount)
 					{
 						if (Log.InfoEnabled())
 						{
-							Log.Info("Namespace " + ns + " replication factor changed from " + replicaArray.Length + " to " + replicaCount);
+							Log.Info("Namespace " + ns + " replication factor changed from " + partitions.replicas.Length + " to " + replicaCount);
 						}
 
-						// Resize replica array. 
-						Node[][] replicaTarget = new Node[replicaCount][];
-
-						if (replicaArray.Length < replicaCount)
-						{
-							int i = 0;
-
-							// Copy existing entries.
-							for (; i < replicaArray.Length; i++)
-							{
-								replicaTarget[i] = replicaArray[i];
-							}
-
-							// Create new entries.
-							for (; i < replicaCount; i++)
-							{
-								replicaTarget[i] = new Node[partitionCount];
-							}
-						}
-						else
-						{
-							// Copy existing entries.
-							for (int i = 0; i < replicaCount; i++)
-							{
-								replicaTarget[i] = replicaArray[i];
-							}
-						}
+						// Resize partition map. 
+						Partitions tmp = new Partitions(partitions, replicaCount);
 
 						CopyPartitionMap();
-						replicaArray = replicaTarget;
-						map[ns] = replicaArray;
+						partitions = tmp;
+						map[ns] = partitions;
 					}
 
 					// Parse partition bitmaps.
@@ -278,7 +283,7 @@ namespace Aerospike.Client
 						}
 
 						// Log.info("Map: " + namespace + '[' + i + "] " + node);
-						DecodeBitmap(node, replicaArray[i], begin);
+						DecodeBitmap(node, partitions, i, regime, begin);
 					}
 					begin = ++offset;
 				}
@@ -289,8 +294,10 @@ namespace Aerospike.Client
 			}
 		}
 
-		private void DecodeBitmap(Node node, Node[] nodeArray, int begin)
+		private void DecodeBitmap(Node node, Partitions partitions, int index, int regime, int begin)
 		{
+			Node[] nodeArray = partitions.replicas[index];
+			int[] regimes = partitions.regimes;
 			char[] chars = Encoding.ASCII.GetChars(buffer, begin, offset - begin);
 			byte[] restoreBuffer = Convert.FromBase64CharArray(chars, 0, chars.Length);
 
@@ -301,13 +308,23 @@ namespace Aerospike.Client
 				if ((restoreBuffer[i >> 3] & (0x80 >> (i & 7))) != 0)
 				{
 					// Node owns this partition.
-					// Log.info("Map: " + i);
-					if (nodeOld != null && nodeOld != node)
+					int regimeOld = regimes[i];
+
+					if (regime == 0 || regime >= regimeOld)
 					{
-						// Force previously mapped node to refresh it's partition map on next cluster tend.
-						nodeOld.partitionGeneration = -1;
+						// Log.info("Map: " + i);
+						if (regime > regimeOld)
+						{
+							regimes[i] = regime;
+						}
+
+						if (nodeOld != null && nodeOld != node)
+						{
+							// Force previously mapped node to refresh it's partition map on next cluster tend.
+							nodeOld.partitionGeneration = -1;
+						}
+						nodeArray[i] = node;
 					}
-					nodeArray[i] = node;
 				}
 				else
 				{
@@ -326,7 +343,7 @@ namespace Aerospike.Client
 			if (!copied)
 			{
 				// Make shallow copy of map.
-				map = new Dictionary<string, Node[][]>(map);
+				map = new Dictionary<string, Partitions>(map);
 				copied = true;
 			}
 		}

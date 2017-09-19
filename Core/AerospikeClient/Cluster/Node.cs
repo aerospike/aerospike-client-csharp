@@ -36,7 +36,8 @@ namespace Aerospike.Client
 		public const int HAS_DOUBLE = (1 << 1);
 		public const int HAS_BATCH_INDEX = (1 << 2);
 		public const int HAS_REPLICAS_ALL = (1 << 3);
-		public const int HAS_PEERS = (1 << 4); 
+		public const int HAS_PEERS = (1 << 4);
+		public const int HAS_REPLICAS = (1 << 5);
 		
 		protected internal readonly Cluster cluster;
 		private readonly string name;
@@ -642,6 +643,14 @@ namespace Aerospike.Client
 		public bool HasDouble
 		{
 			get { return (features & HAS_DOUBLE) != 0; }
+		}
+
+		/// <summary>
+		/// Does server support replicas info command.
+		/// </summary>
+		public bool HasReplicas
+		{
+			get { return (features & HAS_REPLICAS) != 0; }
 		}
 
 		/// <summary>

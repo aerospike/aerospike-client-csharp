@@ -149,11 +149,11 @@ namespace Aerospike.Client
 
 				if (hasClusterName)
 				{
-					map = Info.Request(conn, "node", "features", "cluster-name");
+					map = Info.Request(conn, "node", "partition-generation", "features", "cluster-name");
 				}
 				else
 				{
-					map = Info.Request(conn, "node", "features");
+					map = Info.Request(conn, "node", "partition-generation", "features");
 				}
 				
 				string nodeName;
@@ -163,6 +163,28 @@ namespace Aerospike.Client
 					throw new AerospikeException.InvalidNode();
 				}
 
+				string genString;
+				int gen;
+
+				if (!map.TryGetValue("partition-generation", out genString))
+				{
+					throw new AerospikeException.InvalidNode();
+				}
+
+				try
+				{
+					gen = Convert.ToInt32(genString);
+				}
+				catch (Exception)
+				{
+					throw new AerospikeException.InvalidNode("Invalid partition-generation: " + genString);
+				}
+
+				if (gen == -1)
+				{
+					throw new AerospikeException.InvalidNode("Node " + nodeName + ' ' + alias + " is not yet fully initialized");
+				} 
+				
 				if (hasClusterName)
 				{
 					string id;
@@ -206,6 +228,10 @@ namespace Aerospike.Client
 					else if (feature.Equals("batch-index"))
 					{
 						this.features |= Node.HAS_BATCH_INDEX;
+					}
+					else if (feature.Equals("replicas"))
+					{
+						this.features |= Node.HAS_REPLICAS;
 					}
 					else if (feature.Equals("replicas-all"))
 					{

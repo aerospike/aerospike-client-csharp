@@ -45,7 +45,7 @@ namespace Aerospike.Client
 		private volatile Node[] nodes;
 
 		// Hints for best node for a partition
-		protected internal volatile Dictionary<string, Node[][]> partitionMap;
+		protected internal volatile Dictionary<string, Partitions> partitionMap;
 
 		// IP translations.
 		protected internal readonly Dictionary<string, string> ipMap;
@@ -144,7 +144,7 @@ namespace Aerospike.Client
 			aliases = new Dictionary<Host, Node>();
 			nodesMap = new Dictionary<string, Node>();
 			nodes = new Node[0];
-			partitionMap = new Dictionary<string, Node[][]>();
+			partitionMap = new Dictionary<string, Partitions>();
 			cancel = new CancellationTokenSource();
 			cancelToken = cancel.Token;
 		}
@@ -490,9 +490,9 @@ namespace Aerospike.Client
 
 		private bool FindNodeInPartitionMap(Node filter)
 		{
-			foreach (Node[][] replicaArray in partitionMap.Values)
+			foreach (Partitions partitions in partitionMap.Values)
 			{
-				foreach (Node[] nodeArray in replicaArray)
+				foreach (Node[] nodeArray in partitions.replicas)
 				{
 					foreach (Node node in nodeArray)
 					{
@@ -687,51 +687,57 @@ namespace Aerospike.Client
 		public Node GetMasterNode(Partition partition)
 		{
 			// Must copy hashmap reference for copy on write semantics to work.
-			Dictionary<string, Node[][]> map = partitionMap;
-			Node[][] replicaArray;
+			Dictionary<string, Partitions> map = partitionMap;
+			Partitions partitions;
 
-			if (map.TryGetValue(partition.ns, out replicaArray))
+			if (!map.TryGetValue(partition.ns, out partitions))
 			{
-				Node node = replicaArray[0][partition.partitionId];
+				throw new AerospikeException("Invalid namespace: " + partition.ns);
+			}
 
-				if (node != null && node.Active)
-				{
-					return node;
-				}
+			Node node = partitions.replicas[0][partition.partitionId];
+
+			if (node != null && node.Active)
+			{
+				return node;
 			}
-			/*
-			if (Log.debugEnabled()) {
-				Log.debug("Choose random node for " + partition);
+
+			if (partitions.cpMode)
+			{
+				throw new AerospikeException.InvalidNode();
 			}
-			*/
 			return GetRandomNode();
 		}
 
 		public Node GetMasterProlesNode(Partition partition)
 		{
 			// Must copy hashmap reference for copy on write semantics to work.
-			Dictionary<string, Node[][]> map = partitionMap;
-			Node[][] replicaArray;
+			Dictionary<string, Partitions> map = partitionMap;
+			Partitions partitions;
 
-			if (map.TryGetValue(partition.ns, out replicaArray))
+			if (!map.TryGetValue(partition.ns, out partitions))
 			{
-				for (int i = 0; i < replicaArray.Length; i++)
-				{
-					int index = Math.Abs(replicaIndex % replicaArray.Length);
-					Interlocked.Increment(ref replicaIndex);
-					Node node = replicaArray[index][partition.partitionId];
+				throw new AerospikeException("Invalid namespace: " + partition.ns);
+			}
 
-					if (node != null && node.Active)
-					{
-						return node;
-					}
+			Node[][] replicas = partitions.replicas;
+
+			for (int i = 0; i < replicas.Length; i++)
+			{
+				int index = Math.Abs(replicaIndex % replicas.Length);
+				Interlocked.Increment(ref replicaIndex);
+				Node node = replicas[index][partition.partitionId];
+
+				if (node != null && node.Active)
+				{
+					return node;
 				}
 			}
-			/*
-			if (Log.debugEnabled()) {
-				Log.debug("Choose random node for " + partition);
+
+			if (partitions.cpMode)
+			{
+				throw new AerospikeException.InvalidNode();
 			}
-			*/
 			return GetRandomNode();
 		}
 
@@ -793,14 +799,15 @@ namespace Aerospike.Client
 
 		public void PrintPartitionMap()
 		{
-			foreach (KeyValuePair<String,Node[][]> entry in partitionMap)
+			foreach (KeyValuePair<String, Partitions> entry in partitionMap)
 			{
 				String ns = entry.Key;
-				Node[][] replicaArray = entry.Value;
+				Partitions partitions = entry.Value;
+				Node[][] replicas = partitions.replicas;
 
-				for (int i = 0; i < replicaArray.Length; i++)
+				for (int i = 0; i < replicas.Length; i++)
 				{
-					Node[] nodeArray = replicaArray[i];
+					Node[] nodeArray = replicas[i];
 					int max = nodeArray.Length;
 
 					for (int j = 0; j < max; j++)

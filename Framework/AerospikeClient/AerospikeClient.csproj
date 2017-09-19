@@ -323,6 +323,9 @@
     <Compile Include="..\..\Core\AerospikeClient\Cluster\PartitionParser.cs">
       <Link>Cluster\PartitionParser.cs</Link>
     </Compile>
+    <Compile Include="..\..\Core\AerospikeClient\Cluster\Partitions.cs">
+      <Link>Cluster\Partitions.cs</Link>
+    </Compile>
     <Compile Include="..\..\Core\AerospikeClient\Cluster\PeerParser.cs">
       <Link>Cluster\PeerParser.cs</Link>
     </Compile>
