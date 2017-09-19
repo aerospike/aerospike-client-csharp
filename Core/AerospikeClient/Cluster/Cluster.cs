@@ -248,16 +248,20 @@ namespace Aerospike.Client
 		/// This helps avoid initial database request timeout issues when
 		/// a large number of threads are initiated at client startup.
 		/// 
-		/// If the cluster has not stabilized by the timeout, return
-		/// control as well.  Do not return an error since future 
-		/// database requests may still succeed.
+		/// At least two cluster tends are necessary. The first cluster
+		/// tend finds a seed node and obtains the seed's partition maps 
+		/// and peer nodes.  The second cluster tend requests partition 
+		/// maps for the peer nodes.
+		/// 
+		/// A third cluster tend is allowed if some peers nodes can't
+		/// be contacted.  If peer nodes are still unreachable, an
+		/// exception is thrown.
 		/// </summary>
 		private void WaitTillStabilized(bool failIfNotConnected)
 		{
-			DateTime limit = DateTime.UtcNow.AddMilliseconds(connectionTimeout);
 			int count = -1;
 
-			do
+			for (int i = 0; i < 3; i++)
 			{
 				Tend(failIfNotConnected);
 
@@ -269,7 +273,18 @@ namespace Aerospike.Client
 				}
 
 				count = nodes.Length;
-			} while (DateTime.UtcNow < limit);
+			}
+
+			string message = "Cluster not stabilized after multiple tend attempts";
+
+			if (failIfNotConnected)
+			{
+				throw new AerospikeException(message);
+			}
+			else
+			{
+				Log.Warn(message);
+			}
 		}
 
 		public void Run()
