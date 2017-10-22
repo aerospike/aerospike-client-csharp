@@ -11,7 +11,7 @@ Aerospike C# Client for NET Framework
 **Contents**
 
 * **Aerospike.sln**    
-	C# library and demonstration programs with full functionality.  Supported compile targets are AnyCPU, x64 (64-bit) and x86 (32-bit).  The projects are:
+	C# library and demonstration programs with full functionality.  The projects are:
 	
 	* **AerospikeClient**    
 		C# client library.
