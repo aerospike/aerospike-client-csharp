@@ -6,11 +6,12 @@ Aerospike C# Client for NET Framework
 * Windows 7/Windows Server 2008 or greater, preferably 64 bit.
 * Visual Studio 2010 or greater, preferably 64 bit.  Visual C# 2010 Express or greater will also work.
 * .NET 4.0 or greater.  Visual Studio 2010 will install .NET 4.0 by default.
+* NeoLua 0.9.14 (if using aggregation queries).  Neo.Lua.dll is bundled with this repo.  The version must be 0.9.14.  Other Neo.Lua.dll versions will not work. 
 
 **Contents**
 
 * **Aerospike.sln**    
-	C# library and demonstration programs with full functionality.  Supported compile targets are AnyCPU, x64 (64-bit) and x86 (32-bit).  The projects are:
+	C# library and demonstration programs with full functionality.  The projects are:
 	
 	* **AerospikeClient**    
 		C# client library.

@@ -1,8 +1,8 @@
 <?xml version="1.0"?>
-<package >
+<package>
   <metadata>
     <id>Aerospike.Client</id>
-    <version>3.4.4</version>
+    <version>3.4.5</version>
     <title>Official Aerospike C# Client</title>
     <authors>Aerospike</authors>
     <owners>Aerospike</owners>
@@ -20,7 +20,7 @@
     </frameworkAssemblies>
     <dependencies>
       <group targetFramework="net">
-        <dependency id="NeoLua" version="0.9.14" />
+        <dependency id="NeoLua" version="[0.9.14]" />
       </group>
       <group targetFramework="netstandard1.5">
         <dependency id="NETStandard.Library" version="[1.6.0, )" />
