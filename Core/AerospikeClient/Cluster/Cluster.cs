@@ -681,24 +681,6 @@ namespace Aerospike.Client
 			get { return clusterName != null && clusterName.Length > 0; }
 		}
 
-		public Node GetReadNode(Partition partition, Replica replica)
-		{
-			// This method should only be called by batch.
-			switch (replica)
-			{
-				default:
-				case Replica.SEQUENCE:  // Use Command.GetReadNode() to really use sequence mode.
-				case Replica.MASTER:
-					return GetMasterNode(partition);
-
-				case Replica.MASTER_PROLES:
-					return GetMasterProlesNode(partition);
-
-				case Replica.RANDOM:
-					return GetRandomNode();
-			}
-		}
-
 		public Node GetMasterNode(Partition partition)
 		{
 			// Must copy hashmap reference for copy on write semantics to work.
@@ -717,11 +699,8 @@ namespace Aerospike.Client
 				return node;
 			}
 
-			if (partitions.cpMode)
-			{
-				throw new AerospikeException.InvalidNode();
-			}
-			return GetRandomNode();
+			// When master only specified, both AP and CP modes should never get random nodes.
+			throw new AerospikeException.InvalidNode();
 		}
 
 		public Node GetMasterProlesNode(Partition partition)

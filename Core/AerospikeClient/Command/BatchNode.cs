@@ -46,7 +46,7 @@ namespace Aerospike.Client
 			for (int i = 0; i < keys.Length; i++)
 			{
 				Partition partition = new Partition(keys[i]);
-				Node node = cluster.GetReadNode(partition, policy.replica);
+				Node node = cluster.GetMasterNode(partition);
 				BatchNode batchNode = FindBatchNode(batchNodes, node);
 
 				if (batchNode == null)
@@ -87,7 +87,7 @@ namespace Aerospike.Client
 			for (int i = 0; i < max; i++)
 			{
 				Partition partition = new Partition(records[i].key);
-				Node node = cluster.GetReadNode(partition, policy.replica);
+				Node node = cluster.GetMasterNode(partition);
 				BatchNode batchNode = FindBatchNode(batchNodes, node);
 
 				if (batchNode == null)

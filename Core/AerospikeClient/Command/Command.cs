@@ -41,6 +41,7 @@ namespace Aerospike.Client
 		public static readonly int INFO3_UPDATE_ONLY       = (1 << 3); // Update only. Merge bins.
 		public static readonly int INFO3_CREATE_OR_REPLACE = (1 << 4); // Create or completely replace record.
 		public static readonly int INFO3_REPLACE_ONLY      = (1 << 5); // Completely replace existing record only.
+		public static readonly int INFO3_LINEARIZE_READ    = (1 << 6); // Linearize read when in CP mode.
 
 		public const int MSG_TOTAL_HEADER_SIZE = 30;
 		public const int FIELD_HEADER_SIZE = 5;
@@ -946,6 +947,11 @@ namespace Aerospike.Client
 				infoAttr |= Command.INFO3_COMMIT_MASTER;
 			}
 
+			if (policy.linearizeRead)
+			{
+				infoAttr |= Command.INFO3_LINEARIZE_READ;
+			}
+
 			if (policy.consistencyLevel == ConsistencyLevel.CONSISTENCY_ALL)
 			{
 				readAttr |= Command.INFO1_CONSISTENCY_ALL;
@@ -977,6 +983,13 @@ namespace Aerospike.Client
 		/// </summary>
 		private void WriteHeader(Policy policy, int readAttr, int writeAttr, int fieldCount, int operationCount)
 		{
+			int infoAttr = 0;
+
+			if (policy.linearizeRead)
+			{
+				infoAttr |= Command.INFO3_LINEARIZE_READ;
+			}
+
 			if (policy.consistencyLevel == ConsistencyLevel.CONSISTENCY_ALL)
 			{
 				readAttr |= Command.INFO1_CONSISTENCY_ALL;
@@ -988,8 +1001,9 @@ namespace Aerospike.Client
 			dataBuffer[dataOffset++] = MSG_REMAINING_HEADER_SIZE; // Message header length.
 			dataBuffer[dataOffset++] = (byte)readAttr;
 			dataBuffer[dataOffset++] = (byte)writeAttr;
+			dataBuffer[dataOffset++] = (byte)infoAttr;
 
-			for (int i = 0; i < 11; i++)
+			for (int i = 0; i < 10; i++)
 			{
 				dataBuffer[dataOffset++] = 0;
 			}

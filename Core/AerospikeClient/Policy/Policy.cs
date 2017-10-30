@@ -146,6 +146,14 @@ namespace Aerospike.Client
 		public bool sendKey;
 
 		/// <summary>
+		/// Force reads to be linearized for server namespaces that support CP mode.
+		/// <para>
+		/// Default: false
+		/// </para>
+		/// </summary>
+		public bool linearizeRead;
+
+		/// <summary>
 		/// Copy constructor.
 		/// </summary>
 		public Policy(Policy other)
@@ -158,6 +166,7 @@ namespace Aerospike.Client
 			this.maxRetries = other.maxRetries;
 			this.sleepBetweenRetries = other.sleepBetweenRetries;
 			this.sendKey = other.sendKey;
+			this.linearizeRead = other.linearizeRead;
 		}
 
 		/// <summary>
