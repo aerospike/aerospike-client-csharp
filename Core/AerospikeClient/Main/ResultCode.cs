@@ -109,9 +109,9 @@ namespace Aerospike.Client
 		public const int TIMEOUT = 9;
 
 		/// <summary>
-		/// XDS product is not available.
+		/// Operation not allowed in current configuration.
 		/// </summary>
-		public const int NO_XDS = 10;
+		public const int ALWAYS_FORBIDDEN = 10;
 
 		/// <summary>
 		/// Server is not accepting requests.
@@ -437,8 +437,8 @@ namespace Aerospike.Client
 			case TIMEOUT:
 				return "Timeout";
 
-			case NO_XDS:
-				return "XDS not available";
+			case ALWAYS_FORBIDDEN:
+				return "Operation not allowed";
 
 			case SERVER_NOT_AVAILABLE:
 				return "Server not available";
