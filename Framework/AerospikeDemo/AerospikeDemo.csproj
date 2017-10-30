@@ -177,7 +177,6 @@
     <Compile Include="OperateList.cs" />
     <Compile Include="QueryRegionFilter.cs" />
     <Compile Include="QueryRegion.cs" />
-    <Compile Include="LargeList.cs" />
     <Compile Include="GetAndJoin.cs" />
     <Compile Include="Replace.cs" />
     <Compile Include="QueryFilter.cs" />
@@ -192,8 +191,6 @@
     </Compile>
     <Compile Include="Expire.cs" />
     <Compile Include="Generation.cs" />
-    <Compile Include="LargeSet.cs" />
-    <Compile Include="LargeStack.cs" />
     <Compile Include="ListMap.cs" />
     <Compile Include="LuaExample.cs" />
     <Compile Include="Prepend.cs" />

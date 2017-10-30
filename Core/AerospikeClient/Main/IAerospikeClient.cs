@@ -324,45 +324,6 @@ namespace Aerospike.Client
 		void ScanNode(ScanPolicy policy, Node node, string ns, string setName, ScanCallback callback, params string[] binNames);
 
 		/// <summary>
-		/// Initialize large list operator.  This operator can be used to create and manage a list 
-		/// within a single bin.
-		/// </summary>
-		/// <param name="policy">write configuration parameters, pass in null for defaults</param>
-		/// <param name="key">unique record identifier</param>
-		/// <param name="binName">bin name</param>
-		LargeList GetLargeList(WritePolicy policy, Key key, string binName);
-
-		/// <summary>
-		/// Initialize large map operator.  This operator can be used to create and manage a map 
-		/// within a single bin.
-		/// </summary>
-		/// <param name="policy">write configuration parameters, pass in null for defaults</param>
-		/// <param name="key">unique record identifier</param>
-		/// <param name="binName">bin name</param>
-		/// <param name="userModule">Lua function name that initializes list configuration parameters, pass null for default</param>
-		LargeMap GetLargeMap(WritePolicy policy, Key key, string binName, string userModule);
-
-		/// <summary>
-		/// Initialize large set operator.  This operator can be used to create and manage a set 
-		/// within a single bin.
-		/// </summary>
-		/// <param name="policy">write configuration parameters, pass in null for defaults</param>
-		/// <param name="key">unique record identifier</param>
-		/// <param name="binName">bin name</param>
-		/// <param name="userModule">Lua function name that initializes list configuration parameters, pass null for default</param>
-		LargeSet GetLargeSet(WritePolicy policy, Key key, string binName, string userModule);
-
-		/// <summary>
-		/// Initialize large stack operator.  This operator can be used to create and manage a stack 
-		/// within a single bin.
-		/// </summary>
-		/// <param name="policy">write configuration parameters, pass in null for defaults</param>
-		/// <param name="key">unique record identifier</param>
-		/// <param name="binName">bin name</param>
-		/// <param name="userModule">Lua function name that initializes list configuration parameters, pass null for default</param>
-		LargeStack GetLargeStack(WritePolicy policy, Key key, string binName, string userModule);
-
-		/// <summary>
 		/// Register package located in a file containing user defined functions with server.
 		/// This asynchronous server call will return before command is complete.
 		/// The user can optionally wait for command completion by using the returned

@@ -40,7 +40,6 @@ namespace Aerospike.Demo
         internal bool singleBin;
 		internal bool hasGeo;
 		internal bool hasUdf;
-		internal bool hasLargeDataTypes;
 		internal bool hasCDTList;
 		internal bool hasCDTMap;
 
@@ -99,7 +98,6 @@ namespace Aerospike.Demo
 			}
 
 			singleBin = parseBoolean(namespaceTokens, "single-bin");
-			hasLargeDataTypes = parseBoolean(namespaceTokens, "ldt-enabled");
 
 			binName = singleBin ? "" : "demobin";  // Single bin servers don't need a bin name.
 		}

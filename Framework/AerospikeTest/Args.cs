@@ -42,7 +42,6 @@ namespace Aerospike.Test
 		public bool hasUdf;
 		public bool hasMap;
 		public bool singleBin;
-		public bool hasLargeDataTypes;
 
 		public Args()
 		{
@@ -155,7 +154,6 @@ namespace Aerospike.Test
 			}
 
 			singleBin = ParseBoolean(namespaceTokens, "single-bin");
-			hasLargeDataTypes = ParseBoolean(namespaceTokens, "ldt-enabled");
 		}
 
 		private static bool ParseBoolean(String namespaceTokens, String name)
@@ -184,11 +182,6 @@ namespace Aerospike.Test
 		{
 			// Single bin servers don't need a bin name.
 			return singleBin ? "" : name;
-		}
-
-		public bool ValidateLDT()
-		{
-			return hasLargeDataTypes;
 		}
 
 		public bool ValidateMap() 

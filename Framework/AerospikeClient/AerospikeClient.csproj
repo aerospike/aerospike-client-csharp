@@ -395,18 +395,6 @@
     <Compile Include="..\..\Core\AerospikeClient\Command\WriteCommand.cs">
       <Link>Command\WriteCommand.cs</Link>
     </Compile>
-    <Compile Include="..\..\Core\AerospikeClient\Large\LargeList.cs">
-      <Link>Large\LargeList.cs</Link>
-    </Compile>
-    <Compile Include="..\..\Core\AerospikeClient\Large\LargeMap.cs">
-      <Link>Large\LargeMap.cs</Link>
-    </Compile>
-    <Compile Include="..\..\Core\AerospikeClient\Large\LargeSet.cs">
-      <Link>Large\LargeSet.cs</Link>
-    </Compile>
-    <Compile Include="..\..\Core\AerospikeClient\Large\LargeStack.cs">
-      <Link>Large\LargeStack.cs</Link>
-    </Compile>
     <Compile Include="..\..\Core\AerospikeClient\Listener\BatchListListener.cs">
       <Link>Listener\BatchListListener.cs</Link>
     </Compile>
