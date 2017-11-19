@@ -118,6 +118,8 @@ namespace Aerospike.Client
 		/// </summary>
 		public WritePolicy()
 		{
+			// Writes are not retried by default.
+			base.maxRetries = 0;
 		}
 	}
 }

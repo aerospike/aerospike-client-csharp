@@ -215,14 +215,6 @@ namespace Aerospike.Client
 		/// </summary>
 		public ClientPolicy()
 		{
-			// Writes need to wait for the cluster to reform when a node goes down.
-			// Immediate write retries have been shown to result in the same error.
-			// 
-			// Reads do not have to sleep because the cluster does not shut out reads
-			// during cluster reformation.
-			//
-			// This is just a default which can be overridden.
-			writePolicyDefault.sleepBetweenRetries = 500;
 		}
 	}
 }

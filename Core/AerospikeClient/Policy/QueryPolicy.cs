@@ -61,6 +61,7 @@ namespace Aerospike.Client
 		{
 			// Queries should not retry.
 			base.maxRetries = 0;
+			base.socketTimeout = 10000;
 		}
 	}
 }
