@@ -20,14 +20,13 @@ namespace Aerospike.Client
 {
 	public sealed class AsyncOperate : AsyncRead
 	{
-		private readonly WritePolicy writePolicy;
 		private readonly Operation[] operations;
-		private bool hasWrite;
+		private WritePolicy writePolicy;
+		private OperateArgs args;
 
-		public AsyncOperate(AsyncCluster cluster, WritePolicy writePolicy, RecordListener listener, Key key, Operation[] operations)
-			: base(cluster, writePolicy, listener, key, null, false)
+		public AsyncOperate(AsyncCluster cluster, RecordListener listener, Key key, Operation[] operations)
+			: base(cluster, null, listener, key, null, false)
 		{
-			this.writePolicy = writePolicy;
 			this.operations = operations;
 		}
 
@@ -38,6 +37,13 @@ namespace Aerospike.Client
 			this.operations = other.operations;
 		}
 
+		public void SetArgs(WritePolicy writePolicy, OperateArgs args)
+		{
+			base.policy = writePolicy;
+			this.writePolicy = writePolicy;
+			this.args = args;
+		}
+
 		protected internal override AsyncCommand CloneCommand()
 		{
 			return new AsyncOperate(this);
@@ -45,14 +51,14 @@ namespace Aerospike.Client
 
 		protected internal override void WriteBuffer()
 		{
-			hasWrite = SetOperate(writePolicy, key, operations);
+			SetOperate(writePolicy, key, operations, args);
 		}
 
 		protected internal override void HandleNotFound(int resultCode)
 		{
 			// Only throw not found exception for command with write operations.
 			// Read-only command operations return a null record.
-			if (hasWrite)
+			if (args.hasWrite)
 			{
 				throw new AerospikeException(resultCode);
 			}

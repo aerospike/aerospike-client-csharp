@@ -155,77 +155,80 @@ namespace Aerospike.Client
 			End();
 		}
 
-		public bool SetOperate(WritePolicy policy, Key key, Operation[] operations)
+		public void EstimateOperate(Operation[] operations, OperateArgs args)
 		{
-			Begin();
-			int fieldCount = EstimateKeySize(policy, key);
-			int readAttr = 0;
-			int writeAttr = 0;
-			bool hasWrite = false;
 			bool readBin = false;
 			bool readHeader = false;
-			bool respondAllOps = policy.respondAllOps;
+			bool respondAllOps = false;
 
 			foreach (Operation operation in operations)
 			{
 				switch (operation.type)
 				{
-				case Operation.Type.MAP_READ:
-					// Map operations require respondAllOps to be true.
-					respondAllOps = true;
-					readAttr |= Command.INFO1_READ;
+					case Operation.Type.MAP_READ:
+						// Map operations require respondAllOps to be true.
+						respondAllOps = true;
+						args.readAttr |= Command.INFO1_READ;
 
-					// Read all bins if no bin is specified.
-					if (operation.binName == null)
-					{
-						readAttr |= Command.INFO1_GET_ALL;
-					}
-					readBin = true;
-					break;
+						// Read all bins if no bin is specified.
+						if (operation.binName == null)
+						{
+							args.readAttr |= Command.INFO1_GET_ALL;
+						}
+						readBin = true;
+						break;
 
-				case Operation.Type.CDT_READ:
-				case Operation.Type.READ:
-					readAttr |= Command.INFO1_READ;
+					case Operation.Type.CDT_READ:
+					case Operation.Type.READ:
+						args.readAttr |= Command.INFO1_READ;
 
-					// Read all bins if no bin is specified.
-					if (operation.binName == null)
-					{
-						readAttr |= Command.INFO1_GET_ALL;
-					}
-					readBin = true;
-					break;
+						// Read all bins if no bin is specified.
+						if (operation.binName == null)
+						{
+							args.readAttr |= Command.INFO1_GET_ALL;
+						}
+						readBin = true;
+						break;
 
-				case Operation.Type.READ_HEADER:
-					readAttr |= Command.INFO1_READ;
-					readHeader = true;
-					break;
+					case Operation.Type.READ_HEADER:
+						args.readAttr |= Command.INFO1_READ;
+						readHeader = true;
+						break;
 
-				case Operation.Type.MAP_MODIFY:
-					// Map operations require respondAllOps to be true.
-					respondAllOps = true;
-					writeAttr = Command.INFO2_WRITE;
-					break;
+					case Operation.Type.MAP_MODIFY:
+						// Map operations require respondAllOps to be true.
+						respondAllOps = true;
+						args.writeAttr = Command.INFO2_WRITE;
+						break;
 
-				default:
-					writeAttr = Command.INFO2_WRITE;
-					hasWrite = true;
-					break;
+					default:
+						args.writeAttr = Command.INFO2_WRITE;
+						args.hasWrite = true;
+						break;
 				}
 				EstimateOperationSize(operation);
 			}
-			SizeBuffer();
+			args.size = dataOffset;
 
 			if (readHeader && !readBin)
 			{
-				readAttr |= Command.INFO1_NOBINDATA;
+				args.readAttr |= Command.INFO1_NOBINDATA;
 			}
 
 			if (respondAllOps)
 			{
-				writeAttr |= Command.INFO2_RESPOND_ALL_OPS;
+				args.writeAttr |= Command.INFO2_RESPOND_ALL_OPS;
 			}
+		}
 
-			WriteHeader(policy, readAttr, writeAttr, fieldCount, operations.Length);
+		public void SetOperate(WritePolicy policy, Key key, Operation[] operations, OperateArgs args)
+		{
+			Begin();
+			int fieldCount = EstimateKeySize(policy, key);
+			dataOffset += args.size;
+			SizeBuffer();
+
+			WriteHeader(policy, args.readAttr, args.writeAttr, fieldCount, operations.Length);
 			WriteKey(policy, key);
 
 			foreach (Operation operation in operations)
@@ -233,7 +236,6 @@ namespace Aerospike.Client
 				WriteOperation(operation);
 			}
 			End();
-			return hasWrite;
 		}
 
 		public void SetUdf(WritePolicy policy, Key key, string packageName, string functionName, Value[] args)

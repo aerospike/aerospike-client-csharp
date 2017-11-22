@@ -368,6 +368,9 @@
     <Compile Include="..\..\Core\AerospikeClient\Command\MultiCommand.cs">
       <Link>Command\MultiCommand.cs</Link>
     </Compile>
+    <Compile Include="..\..\Core\AerospikeClient\Command\OperateArgs.cs">
+      <Link>Command\OperateArgs.cs</Link>
+    </Compile>
     <Compile Include="..\..\Core\AerospikeClient\Command\OperateCommand.cs">
       <Link>Command\OperateCommand.cs</Link>
     </Compile>

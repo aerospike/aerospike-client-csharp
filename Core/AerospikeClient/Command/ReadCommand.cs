@@ -33,6 +33,13 @@ namespace Aerospike.Client
 			this.binNames = binNames;
 		}
 
+		public ReadCommand(Key key)
+		{
+			this.policy = null;
+			this.key = key;
+			this.binNames = null;
+		}
+
 		protected internal override void WriteBuffer()
 		{
 			SetRead(policy, key, binNames);

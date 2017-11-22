@@ -27,7 +27,7 @@ namespace Aerospike.Client
 		private readonly Value[] args;
 
 		public ExecuteCommand(WritePolicy writePolicy, Key key, string packageName, string functionName, Value[] args)
-			: base(writePolicy, key, null)
+			: base(key)
 		{
 			this.writePolicy = writePolicy;
 			this.packageName = packageName;

@@ -999,11 +999,27 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if queue is full</exception>
 		public void Operate(WritePolicy policy, RecordListener listener, Key key, params Operation[] operations)
 		{
+			OperateArgs args = new OperateArgs();
+			AsyncOperate async = new AsyncOperate(cluster, listener, key, operations);
+			async.EstimateOperate(operations, args);
+
 			if (policy == null)
 			{
-				policy = writePolicyDefault;
+				if (args.hasWrite)
+				{
+					policy = writePolicyDefault;
+				}
+				else
+				{
+					policy = operatePolicyReadDefault;
+				}
 			}
-			AsyncOperate async = new AsyncOperate(cluster, policy, listener, key, operations);
+
+			if (policy.respondAllOps)
+			{
+				args.writeAttr |= Command.INFO2_RESPOND_ALL_OPS;
+			}
+			async.SetArgs(policy, args);
 			async.Execute();
 		}
 

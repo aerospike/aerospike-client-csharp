@@ -21,27 +21,32 @@ namespace Aerospike.Client
 {
 	public sealed class OperateCommand : ReadCommand
 	{
-		private readonly WritePolicy writePolicy;
 		private readonly Operation[] operations;
-		private bool hasWrite;
+		private WritePolicy writePolicy;
+		private OperateArgs args;
 
-		public OperateCommand(WritePolicy policy, Key key, Operation[] operations) 
-			: base(policy, key, null)
+		public OperateCommand(Key key, Operation[] operations) 
+			: base(key)
 		{
-			this.writePolicy = policy;
 			this.operations = operations;
+		}
+
+		public void SetArgs(WritePolicy writePolicy, OperateArgs args)
+		{
+			this.writePolicy = writePolicy;
+			this.args = args;
 		}
 
 		protected internal override void WriteBuffer()
 		{
-			hasWrite = SetOperate(writePolicy, key, operations);
+			SetOperate(writePolicy, key, operations, args);
 		}
 
 		protected internal override void HandleNotFound(int resultCode)
 		{
 			// Only throw not found exception for command with write operations.
 			// Read-only command operations return a null record.
-			if (hasWrite)
+			if (args.hasWrite)
 			{
 				throw new AerospikeException(resultCode);
 			}

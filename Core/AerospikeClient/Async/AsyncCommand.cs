@@ -38,7 +38,7 @@ namespace Aerospike.Client
 		private const int FAIL_SOCKET_TIMEOUT = 8;
 
 		protected internal readonly AsyncCluster cluster;
-		protected internal readonly Policy policy;
+		protected internal Policy policy;
 		private readonly Partition partition;
 		private AsyncConnection conn;
 		private AsyncNode node;

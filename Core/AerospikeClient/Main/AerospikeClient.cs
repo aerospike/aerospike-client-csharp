@@ -80,6 +80,8 @@ namespace Aerospike.Client
 		/// </summary>
 		public readonly InfoPolicy infoPolicyDefault;
 
+		protected readonly WritePolicy operatePolicyReadDefault;
+
 		//-------------------------------------------------------
 		// Constructors
 		//-------------------------------------------------------
@@ -166,6 +168,7 @@ namespace Aerospike.Client
 			this.queryPolicyDefault = policy.queryPolicyDefault;
 			this.batchPolicyDefault = policy.batchPolicyDefault;
 			this.infoPolicyDefault = policy.infoPolicyDefault;
+			this.operatePolicyReadDefault = new WritePolicy(this.readPolicyDefault);
 
 			cluster = new Cluster(policy, hosts);
 			cluster.InitTendThread(policy.failIfNotConnected);
@@ -195,6 +198,7 @@ namespace Aerospike.Client
 				this.batchPolicyDefault = new BatchPolicy();
 				this.infoPolicyDefault = new InfoPolicy();
 			}
+			this.operatePolicyReadDefault = new WritePolicy(this.readPolicyDefault);
 		}
 
 		//-------------------------------------------------------
@@ -730,11 +734,27 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if command fails</exception>
 		public Record Operate(WritePolicy policy, Key key, params Operation[] operations)
 		{
+			OperateArgs args = new OperateArgs();
+			OperateCommand command = new OperateCommand(key, operations);
+			command.EstimateOperate(operations, args);
+
 			if (policy == null)
 			{
-				policy = writePolicyDefault;
+				if (args.hasWrite)
+				{
+					policy = writePolicyDefault;
+				}
+				else
+				{
+					policy = operatePolicyReadDefault;
+				}
 			}
-			OperateCommand command = new OperateCommand(policy, key, operations);
+
+			if (policy.respondAllOps)
+			{
+				args.writeAttr |= Command.INFO2_RESPOND_ALL_OPS;
+			}
+			command.SetArgs(policy, args);
 			command.Execute(cluster, policy, key, null, false);
 			return command.Record;
 		}
