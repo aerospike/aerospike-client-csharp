@@ -481,7 +481,7 @@ namespace Aerospike.Client
 
 			while (true)
 			{
-				if (pool.queue.TryTake(out conn))
+				if (pool.queue.TryDequeue(out conn))
 				{
 					// Found socket.
 					// Verify that socket is active and receive buffer is empty.
@@ -573,7 +573,11 @@ namespace Aerospike.Client
 		{
 			conn.UpdateLastUsed();
 
-			if (!active || !conn.pool.queue.TryAdd(conn))
+			if (active)
+			{
+				conn.pool.queue.Enqueue(conn);
+			}
+			else
 			{
 				CloseConnection(conn);
 			}
@@ -714,7 +718,7 @@ namespace Aerospike.Client
 			foreach (Pool pool in connectionPools)
 			{
 				//Log.Debug("Close node " + this + " connection pool count " + pool.total);
-				while (pool.queue.TryTake(out conn))
+				while (pool.queue.TryDequeue(out conn))
 				{
 					conn.Close();
 				}
@@ -724,13 +728,13 @@ namespace Aerospike.Client
 
 	public class Pool
 	{
-		internal readonly BlockingCollection<Connection> queue;
+		internal readonly ConcurrentQueue<Connection> queue;
 		internal readonly int capacity;
 		internal int total;
 	
 		internal Pool(int capacity) {
 			this.capacity = capacity;
-			queue = new BlockingCollection<Connection>(capacity);
+			queue = new ConcurrentQueue<Connection>();
 		}
 	}
 }

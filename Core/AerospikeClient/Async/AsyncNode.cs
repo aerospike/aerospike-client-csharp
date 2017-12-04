@@ -23,7 +23,7 @@ namespace Aerospike.Client
 	/// </summary>
 	public sealed class AsyncNode : Node
 	{
-		private readonly BlockingCollection<AsyncConnection> asyncConnQueue;
+		private readonly ConcurrentQueue<AsyncConnection> asyncConnQueue;
 		private readonly new AsyncCluster cluster;
 
 		/// <summary>
@@ -35,7 +35,7 @@ namespace Aerospike.Client
 			: base(cluster, nv)
 		{
 			this.cluster = cluster;
-			asyncConnQueue = new BlockingCollection<AsyncConnection>(cluster.MaxCommands);
+			asyncConnQueue = new ConcurrentQueue<AsyncConnection>();
 		}
 
 		/// <summary>
@@ -46,7 +46,7 @@ namespace Aerospike.Client
 			// Try to find connection in pool.
 			AsyncConnection conn = null;
 
-			while (asyncConnQueue.TryTake(out conn))
+			while (asyncConnQueue.TryDequeue(out conn))
 			{
 				if (conn.IsValid())
 				{
@@ -63,7 +63,11 @@ namespace Aerospike.Client
 		/// <param name="conn">socket connection</param>
 		public void PutAsyncConnection(AsyncConnection conn)
 		{
-			if (!active || !asyncConnQueue.TryAdd(conn))
+			if (active)
+			{
+				asyncConnQueue.Enqueue(conn);
+			}
+			else
 			{
 				conn.Close();
 			}
@@ -77,7 +81,7 @@ namespace Aerospike.Client
 			base.CloseConnections();
 
 			AsyncConnection conn;
-			while (asyncConnQueue.TryTake(out conn))
+			while (asyncConnQueue.TryDequeue(out conn))
 			{
 				conn.Close();
 			}

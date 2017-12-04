@@ -24,8 +24,8 @@ namespace Aerospike.Client
 {
 	public sealed class AsyncCluster : Cluster
 	{
-		// Pool used in asynchronous SocketChannel communications.
-		private readonly BlockingCollection<SocketAsyncEventArgs> argsQueue;
+		// EventArgs Pool used in asynchronous SocketChannel communications.
+		private readonly ArgsQueue argsQueue;
 
 		// Contiguous pool of byte buffers.
 		private BufferPool bufferPool;
@@ -33,22 +33,19 @@ namespace Aerospike.Client
 		// Maximum number of concurrent asynchronous commands.
 		private readonly int maxCommands;
 
-		// How to handle cases when the asynchronous maximum number of concurrent database commands 
-		// have been exceeded.  
-		private readonly bool block;
-
 		public AsyncCluster(AsyncClientPolicy policy, Host[] hosts) : base(policy, hosts)
 		{
 			maxCommands = policy.asyncMaxCommands;
-			block = policy.asyncMaxCommandAction == MaxCommandAction.BLOCK;
-			argsQueue = new BlockingCollection<SocketAsyncEventArgs>(maxCommands);
 
-			for (int i = 0; i < maxCommands; i++)
+			// How to handle cases when the asynchronous maximum number of concurrent database commands 
+			// have been exceeded.  
+			if (policy.asyncMaxCommandAction == MaxCommandAction.BLOCK)
 			{
-				SocketAsyncEventArgs eventArgs = new SocketAsyncEventArgs();
-				eventArgs.UserToken = new BufferSegment();
-				eventArgs.Completed += AsyncCommand.SocketListener;
-				argsQueue.Add(eventArgs);
+				argsQueue = new BlockArgsQueue(maxCommands);
+			}
+			else
+			{
+				argsQueue = new RejectArgsQueue(maxCommands);
 			}
 
 			bufferPool = new BufferPool();
@@ -62,26 +59,12 @@ namespace Aerospike.Client
 
 		public SocketAsyncEventArgs GetEventArgs()
 		{
-			if (block)
-			{
-				// Use blocking retrieve from queue.
-				// If queue is empty, wait till an item is available.
-				return argsQueue.Take();
-			}
-
-			// Use non-blocking retrieve from queue.
-			SocketAsyncEventArgs args;
-			if (argsQueue.TryTake(out args))
-			{
-				return args;
-			}
-			// Queue is empty. Reject command.
-			throw new AerospikeException.CommandRejected();
+			return argsQueue.GetEventArgs();
 		}
 
 		public void PutEventArgs(SocketAsyncEventArgs args)
 		{
-			argsQueue.Add(args);
+			argsQueue.PutEventArgs(args);
 		}
 
 		public void GetNextBuffer(int size, BufferSegment segment)
@@ -101,11 +84,76 @@ namespace Aerospike.Client
 			return bufferPool.bufferSize != segment.size;
 		}
 
-		public int MaxCommands
+		private interface ArgsQueue
 		{
-			get
+			SocketAsyncEventArgs GetEventArgs();
+			void PutEventArgs(SocketAsyncEventArgs args);
+		}
+
+		private class BlockArgsQueue : ArgsQueue
+		{
+			// Block until EventArgs becomes available.
+			private readonly BlockingCollection<SocketAsyncEventArgs> argsQueue;
+
+			public BlockArgsQueue(int maxCommands)
 			{
-				return maxCommands;
+				argsQueue = new BlockingCollection<SocketAsyncEventArgs>(maxCommands);
+
+				for (int i = 0; i < maxCommands; i++)
+				{
+					SocketAsyncEventArgs eventArgs = new SocketAsyncEventArgs();
+					eventArgs.UserToken = new BufferSegment();
+					eventArgs.Completed += AsyncCommand.SocketListener;
+					argsQueue.Add(eventArgs);
+				}
+			}
+
+			public SocketAsyncEventArgs GetEventArgs()
+			{
+				// Use blocking retrieve from queue.
+				// If queue is empty, wait till an item is available.
+				return argsQueue.Take();
+			}
+
+			public void PutEventArgs(SocketAsyncEventArgs args)
+			{
+				argsQueue.Add(args);
+			}
+		}
+
+		private class RejectArgsQueue : ArgsQueue
+		{
+			// Reject command if EventArgs not available.
+			private readonly ConcurrentQueue<SocketAsyncEventArgs> argsQueue;
+
+			public RejectArgsQueue(int maxCommands)
+			{
+				argsQueue = new ConcurrentQueue<SocketAsyncEventArgs>();
+
+				for (int i = 0; i < maxCommands; i++)
+				{
+					SocketAsyncEventArgs eventArgs = new SocketAsyncEventArgs();
+					eventArgs.UserToken = new BufferSegment();
+					eventArgs.Completed += AsyncCommand.SocketListener;
+					argsQueue.Enqueue(eventArgs);
+				}
+			}
+
+			public SocketAsyncEventArgs GetEventArgs()
+			{
+				// Use non-blocking retrieve from queue.
+				SocketAsyncEventArgs args;
+				if (argsQueue.TryDequeue(out args))
+				{
+					return args;
+				}
+				// Queue is empty. Reject command.
+				throw new AerospikeException.CommandRejected();
+			}
+
+			public void PutEventArgs(SocketAsyncEventArgs args)
+			{
+				argsQueue.Enqueue(args);
 			}
 		}
 	}

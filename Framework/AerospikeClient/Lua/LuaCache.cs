@@ -16,28 +16,38 @@
  */
 using System.Collections.Concurrent;
 using System.IO;
+using System.Threading;
 
 namespace Aerospike.Client
 {
 	public sealed class LuaCache
 	{
-		private static readonly BlockingCollection<LuaInstance> InstanceQueue = new BlockingCollection<LuaInstance>(LuaConfig.InstancePoolSize);
+		private static readonly ConcurrentQueue<LuaInstance> InstanceQueue = new ConcurrentQueue<LuaInstance>();
+		private static int InstanceCount = 0;
 
 		public static LuaInstance GetInstance()
 		{
 			LuaInstance instance;
 				
-			if (InstanceQueue.TryTake(out instance))
+			if (InstanceQueue.TryDequeue(out instance))
 			{
 				return instance;
 			}
+			Interlocked.Increment(ref InstanceCount);
 			return new LuaInstance();
 		}
 
 		public static void PutInstance(LuaInstance instance)
 		{
-			if (!InstanceQueue.TryAdd(instance))
+			int count = Interlocked.CompareExchange(ref InstanceCount, 0, 0);
+
+			if (count <= LuaConfig.InstancePoolSize)
 			{
+				InstanceQueue.Enqueue(instance);
+			}
+			else
+			{
+				Interlocked.Decrement(ref InstanceCount);
 				instance.Close();
 			}
 		}
