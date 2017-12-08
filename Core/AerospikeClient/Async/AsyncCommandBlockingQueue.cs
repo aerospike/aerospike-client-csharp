@@ -21,21 +21,19 @@ namespace Aerospike.Client
 {
 	internal sealed class AsyncCommandBlockingQueue : AsyncCommandQueueBase
 	{
-		private readonly BlockingCollection<SocketAsyncEventArgs> _argsQueue = new BlockingCollection<SocketAsyncEventArgs>();
-
-		public AsyncCommandBlockingQueue() { }
+		private readonly BlockingCollection<SocketAsyncEventArgs> argsQueue = new BlockingCollection<SocketAsyncEventArgs>();
 
 		// Releases a SocketEventArgs object to the pool.
 		public override void ReleaseArgs(SocketAsyncEventArgs e)
 		{
-			_argsQueue.Add(e);
+			argsQueue.Add(e);
 		}
 
 		// Schedules a command for later execution.
-		public override bool ScheduleCommand(AsyncCommand command)
+		public override void ScheduleCommand(AsyncCommand command)
 		{
-			command.ExecuteInline(_argsQueue.Take());
-			return true;
+			// Block until EventArgs becomes available.
+			command.ExecuteInline(argsQueue.Take());
 		}
 	}
 }

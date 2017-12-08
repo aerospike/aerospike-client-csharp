@@ -49,7 +49,7 @@ namespace Aerospike.Client
 		}
 
 		// Schedules a command for later execution.
-		public override bool ScheduleCommand(AsyncCommand command)
+		public override void ScheduleCommand(AsyncCommand command)
 		{
 			SocketAsyncEventArgs e;
 
@@ -60,7 +60,7 @@ namespace Aerospike.Client
 				if (_commandQueue.IsEmpty) // NB: We could make the choice to always execute the command synchronously in this case. Might be better for performance.
 				{
 					command.ExecuteInline(e);
-					return true;
+					return;
 				}
 				else
 				{
@@ -74,7 +74,6 @@ namespace Aerospike.Client
 			}
 
 			TriggerCommandScheduling();
-			return true;
 		}
 
 		// Schedule exactly once the job that will execute queued commands.

@@ -23,7 +23,8 @@ namespace Aerospike.Client
 		// Releases a SocketEventArgs object to the pool.
 		public abstract void ReleaseArgs(SocketAsyncEventArgs e);
 
-		// Schedules a command for later execution, and returns a boolean indicating if the command has been executed or is actually going be executed.
-		public abstract bool ScheduleCommand(AsyncCommand command);
+		// Schedules a command for later execution.
+		// Throws <see cref="AerospikeException.CommandRejected"/> if command is rejected.
+		public abstract void ScheduleCommand(AsyncCommand command);
 	}
 }

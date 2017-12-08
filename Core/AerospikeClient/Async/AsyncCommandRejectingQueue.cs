@@ -21,30 +21,29 @@ namespace Aerospike.Client
 {
 	internal sealed class AsyncCommandRejectingQueue : AsyncCommandQueueBase
 	{
-		private readonly ConcurrentQueue<SocketAsyncEventArgs> _argsQueue = new ConcurrentQueue<SocketAsyncEventArgs>();
-
-		public AsyncCommandRejectingQueue() { }
+		private readonly ConcurrentQueue<SocketAsyncEventArgs> argsQueue = new ConcurrentQueue<SocketAsyncEventArgs>();
 
 		// Releases a SocketEventArgs object to the pool.
 		public override void ReleaseArgs(SocketAsyncEventArgs e)
 		{
-			_argsQueue.Enqueue(e);
+			argsQueue.Enqueue(e);
 		}
 
 		// Schedules a command for later execution.
-		public override bool ScheduleCommand(AsyncCommand command)
+		// Throws <see cref="AerospikeException.CommandRejected"/> if command is rejected.
+		public override void ScheduleCommand(AsyncCommand command)
 		{
 			SocketAsyncEventArgs e;
 			
 			// Try to dequeue one SocketAsyncEventArgs object from the queue and execute the command.
-			if (_argsQueue.TryDequeue(out e))
+			if (argsQueue.TryDequeue(out e))
 			{
 				command.ExecuteInline(e);
-				return true;
 			}
 			else
 			{
-				return false;
+				// Queue is empty. Reject command.
+				throw new AerospikeException.CommandRejected();
 			}
 		}
 	}

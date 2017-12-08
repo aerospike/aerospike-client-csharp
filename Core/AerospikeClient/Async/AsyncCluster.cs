@@ -64,11 +64,7 @@ namespace Aerospike.Client
 
 		public void ScheduleCommandExecution(AsyncCommand command)
 		{
-			if (!commandQueue.ScheduleCommand(command))
-			{
-				// Queue is empty. Reject command.
-				throw new AerospikeException.CommandRejected();
-			}
+			commandQueue.ScheduleCommand(command);
 		}
 
 		public void PutEventArgs(SocketAsyncEventArgs args)
@@ -91,14 +87,6 @@ namespace Aerospike.Client
 		public bool HasBufferChanged(BufferSegment segment)
 		{
 			return bufferPool.bufferSize != segment.size;
-		}
-
-		public int MaxCommands
-		{
-			get
-			{
-				return maxCommands;
-			}
 		}
 	}
 }
