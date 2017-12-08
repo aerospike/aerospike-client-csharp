@@ -14,27 +14,16 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
+using System.Net.Sockets;
+
 namespace Aerospike.Client
 {
-	/// <summary>
-	/// How to handle cases when the asynchronous maximum number of concurrent database commands have been exceeded.
-	/// </summary>
-	public enum MaxCommandAction
+	internal abstract class AsyncCommandQueueBase
 	{
-		/// <summary>
-		/// Reject database command.
-		/// </summary>
-		REJECT,
+		// Releases a SocketEventArgs object to the pool.
+		public abstract void ReleaseArgs(SocketAsyncEventArgs e);
 
-		/// <summary>
-		/// Block until a previous command completes. 
-		/// </summary>
-		BLOCK,
-
-		/// <summary>
-		/// Delay until a previous command completes.
-		/// </summary>
-		/// <remarks>This is the asynchronous equivalent of <see cref="BLOCK"/>.</remarks>
-		DELAY,
+		// Schedules a command for later execution, and returns a boolean indicating if the command has been executed or is actually going be executed.
+		public abstract bool ScheduleCommand(AsyncCommand command);
 	}
 }

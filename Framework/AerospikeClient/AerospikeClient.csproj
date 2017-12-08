@@ -218,6 +218,18 @@
     <Compile Include="..\..\Core\AerospikeClient\Async\AsyncCommand.cs">
       <Link>Async\AsyncCommand.cs</Link>
     </Compile>
+    <Compile Include="..\..\Core\AerospikeClient\Async\AsyncCommandBlockingQueue.cs">
+      <Link>Async\AsyncCommandBlockingQueue.cs</Link>
+    </Compile>
+    <Compile Include="..\..\Core\AerospikeClient\Async\AsyncCommandDelayingQueue.cs">
+      <Link>Async\AsyncCommandDelayingQueue.cs</Link>
+    </Compile>
+    <Compile Include="..\..\Core\AerospikeClient\Async\AsyncCommandQueueBase.cs">
+      <Link>Async\AsyncCommandQueueBase.cs</Link>
+    </Compile>
+    <Compile Include="..\..\Core\AerospikeClient\Async\AsyncCommandRejectingQueue.cs">
+      <Link>Async\AsyncCommandRejectingQueue.cs</Link>
+    </Compile>
     <Compile Include="..\..\Core\AerospikeClient\Async\AsyncConnection.cs">
       <Link>Async\AsyncConnection.cs</Link>
     </Compile>

@@ -26,7 +26,7 @@ namespace Aerospike.Client
 	/// </summary>
 	public abstract class AsyncCommand : Command
 	{
-		public static readonly EventHandler<SocketAsyncEventArgs> SocketListener = new EventHandler<SocketAsyncEventArgs>(SocketHandler);
+		public static EventHandler<SocketAsyncEventArgs> SocketListener { get { return EventHandlers.SocketHandler; } }
 		private const int IN_PROGRESS = 0;
 		private const int SUCCESS = 1;
 		private const int RETRY = 2;
@@ -82,9 +82,36 @@ namespace Aerospike.Client
 			this.usingSocketTimeout = other.usingSocketTimeout;
 		}
 
-		public void Execute()
+        // Simply ask the cluster objet to schedule the command for execution.
+        // It may or may not be immediate, depending on the number of executing commands.
+        // If immediate, the command will start its execution on the current thread.
+        // Otherwise, the command will start its execution from the thread pool.
+        public void Execute()
+        {
+            cluster.ScheduleCommandExecution(this);
+        }
+
+		// Executes the command from the thread pool, using the specified SocketAsyncEventArgs object.
+		internal void ExecuteAsync(SocketAsyncEventArgs e)
 		{
-			eventArgs = cluster.GetEventArgs();
+			eventArgs = e;
+#if NETCORE && !NETSTANDARD2_0
+			ThreadPool.QueueUserWorkItem(EventHandlers.AsyncExecuteHandler, this);
+#else
+			ThreadPool.UnsafeQueueUserWorkItem(EventHandlers.AsyncExecuteHandler, this);
+#endif
+		}
+
+		// Executes the command on the current thread, using the specified SocketAsyncEventArgs object.
+		internal void ExecuteInline(SocketAsyncEventArgs e)
+		{
+			eventArgs = e;
+			ExecuteCore();
+		}
+
+		// Actually executes the command, once the event args and the thread issues have all been sorted out.
+		private void ExecuteCore()
+		{
 			segment = segmentOrig = eventArgs.UserToken as BufferSegment;
 			eventArgs.UserToken = this;
 
@@ -155,62 +182,79 @@ namespace Aerospike.Client
 			}
 		}
 
-		static void SocketHandler(object sender, SocketAsyncEventArgs args)
+		// Wrap the stateless event handlers in an instance, in order to avoid static delegate performance penalty.
+		private sealed class EventHandlers
 		{
-			AsyncCommand command = args.UserToken as AsyncCommand;
+			private static readonly EventHandlers Instance = new EventHandlers();
 
-			if (args.SocketError != SocketError.Success)
+			public static readonly WaitCallback AsyncExecuteHandler = Instance.HandleExecution;
+
+			public static readonly EventHandler<SocketAsyncEventArgs> SocketHandler = Instance.HandleSocketEvent;
+
+			private EventHandlers() { }
+
+			private void HandleExecution(object state)
 			{
-				command.ConnectionFailed(command.GetAerospikeException(args.SocketError));
-				return;
+				((AsyncCommand)state).ExecuteCore();
 			}
 
-			try
+			private void HandleSocketEvent(object sender, SocketAsyncEventArgs args)
 			{
-				switch (args.LastOperation)
+				AsyncCommand command = args.UserToken as AsyncCommand;
+
+				if (args.SocketError != SocketError.Success)
 				{
-					case SocketAsyncOperation.Receive:
-						command.ReceiveEvent();
-						break;
-					case SocketAsyncOperation.Send:
-						command.SendEvent();
-						break;
-					case SocketAsyncOperation.Connect:
-						command.ConnectionCreated();
-						break;
-					default:
-						command.FailOnApplicationError(new AerospikeException("Invalid socket operation: " + args.LastOperation));
-						break;
+					command.ConnectionFailed(command.GetAerospikeException(args.SocketError));
+					return;
 				}
-			}
-			catch (AerospikeException.Connection ac)
-			{
-				command.ConnectionFailed(ac);
-			}
-			catch (AerospikeException ae)
-			{
-				// Fail without retry on non-network errors.
-				if (ae.Result == ResultCode.TIMEOUT)
+
+				try
 				{
-					// Create server timeout exception.
-					ae = new AerospikeException.Timeout(command.node, command.policy, command.iteration + 1, false);
+					switch (args.LastOperation)
+					{
+						case SocketAsyncOperation.Receive:
+							command.ReceiveEvent();
+							break;
+						case SocketAsyncOperation.Send:
+							command.SendEvent();
+							break;
+						case SocketAsyncOperation.Connect:
+							command.ConnectionCreated();
+							break;
+						default:
+							command.FailOnApplicationError(new AerospikeException("Invalid socket operation: " + args.LastOperation));
+							break;
+					}
 				}
-				command.FailOnApplicationError(ae);
-			}
-			catch (SocketException se)
-			{
-				command.ConnectionFailed(command.GetAerospikeException(se.SocketErrorCode));
-			}
-			catch (ObjectDisposedException ode)
-			{
-				// This exception occurs because socket is being used after timeout thread closes socket.
-				// Retry when this happens.
-				command.ConnectionFailed(new AerospikeException(ode));
-			}
-			catch (Exception e)
-			{
-				// Fail without retry on unknown errors.
-				command.FailOnApplicationError(new AerospikeException(e));
+				catch (AerospikeException.Connection ac)
+				{
+					command.ConnectionFailed(ac);
+				}
+				catch (AerospikeException ae)
+				{
+					// Fail without retry on non-network errors.
+					if (ae.Result == ResultCode.TIMEOUT)
+					{
+						// Create server timeout exception.
+						ae = new AerospikeException.Timeout(command.node, command.policy, command.iteration + 1, false);
+					}
+					command.FailOnApplicationError(ae);
+				}
+				catch (SocketException se)
+				{
+					command.ConnectionFailed(command.GetAerospikeException(se.SocketErrorCode));
+				}
+				catch (ObjectDisposedException ode)
+				{
+					// This exception occurs because socket is being used after timeout thread closes socket.
+					// Retry when this happens.
+					command.ConnectionFailed(new AerospikeException(ode));
+				}
+				catch (Exception e)
+				{
+					// Fail without retry on unknown errors.
+					command.FailOnApplicationError(new AerospikeException(e));
+				}
 			}
 		}
 
