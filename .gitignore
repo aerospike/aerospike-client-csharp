@@ -8,3 +8,6 @@ project.lock.json
 *.suo
 *.nupkg
 TestResults/
+
+# Runtime configuration files
+Core/AerospikeClient/runtimeconfig.template.json
