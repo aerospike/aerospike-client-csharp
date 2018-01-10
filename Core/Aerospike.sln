@@ -3,9 +3,9 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 14
 VisualStudioVersion = 14.0.25420.1
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{8BB2217D-0F2D-49D1-97BC-3654ED321F3B}") = "AerospikeClient", "AerospikeClient\AerospikeClient.xproj", "{C91F58EB-01B5-4511-B8BE-E441CAF6CDA9}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AerospikeClient", "AerospikeClient\AerospikeClient.csproj", "{C91F58EB-01B5-4511-B8BE-E441CAF6CDA9}"
 EndProject
-Project("{8BB2217D-0F2D-49D1-97BC-3654ED321F3B}") = "AerospikeTest", "AerospikeTest\AerospikeTest.xproj", "{320F7013-EDB4-4A49-89C1-33A995116931}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AerospikeTest", "AerospikeTest\AerospikeTest.csproj", "{320F7013-EDB4-4A49-89C1-33A995116931}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -24,5 +24,8 @@ Global
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {6529C6EC-C422-4FA7-AA3A-C966898383B5}
 	EndGlobalSection
 EndGlobal
