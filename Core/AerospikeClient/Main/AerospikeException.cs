@@ -27,6 +27,7 @@ namespace Aerospike.Client
 		private const long serialVersionUID = 1L;
 
 		private int resultCode;
+		private bool inDoubt;
 
         public AerospikeException(int resultCode, string message) 
             : base(message)
@@ -44,6 +45,13 @@ namespace Aerospike.Client
             : base("")
 		{
             this.resultCode = resultCode;
+		}
+
+		public AerospikeException(int resultCode, bool inDoubt)
+			: base("")
+		{
+			this.resultCode = resultCode;
+			this.inDoubt = inDoubt;
 		}
 
 		public AerospikeException(string message, Exception e) 
@@ -80,6 +88,11 @@ namespace Aerospike.Client
 				{
 					sb.Append("Error Code ");
 					sb.Append(resultCode);
+
+					if (inDoubt)
+					{
+						sb.Append("(inDoubt)");
+					}
 					sb.Append(": ");
     
 					if (message != null && message.Length > 0)
@@ -126,6 +139,30 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
+		/// Is it possible that write transaction may have completed.
+		/// </summary>
+		public bool InDoubt
+		{
+			get
+			{
+				return inDoubt;
+			}
+		}
+
+		/// <summary>
+		/// Set whether it is possible that the write transaction may have completed
+		/// even though this exception was generated.  This may be the case when a 
+		/// client error occurs (like timeout) after the command was sent to the server.
+		/// </summary>
+		public void SetInDoubt(bool isRead, int commandSentCounter)
+		{
+			if (!isRead && (commandSentCounter > 1 || (commandSentCounter == 1 && (resultCode == ResultCode.TIMEOUT || resultCode <= 0))))
+			{
+				this.inDoubt = true;
+			}
+		}
+
+		/// <summary>
 		/// Exception thrown when database request expires before completing.
 		/// </summary>
 		public sealed class Timeout : AerospikeException
@@ -158,8 +195,8 @@ namespace Aerospike.Client
 			/// <summary>
 			/// Create timeout exception.
 			/// </summary>
-			public Timeout(int totalTimeout)
-				: base(ResultCode.TIMEOUT)
+			public Timeout(int totalTimeout, bool inDoubt)
+				: base(ResultCode.TIMEOUT, inDoubt)
 			{
 				this.totalTimeout = totalTimeout;
 				this.iterations = -1;
@@ -191,8 +228,8 @@ namespace Aerospike.Client
 						return "Client timeout: " + totalTimeout;
 					}
 					String type = client ? "Client" : "Server";
-					return type + " timeout: socket=" + socketTimeout + " total=" + totalTimeout + 
-						" iterations=" + iterations + " lastNode=" + node;
+					return type + " timeout: socket=" + socketTimeout + " total=" + totalTimeout +
+						" iterations=" + iterations + " lastNode=" + node + " inDoubt=" + InDoubt;
 				}
 			}
 		}

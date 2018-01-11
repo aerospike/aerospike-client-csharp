@@ -25,11 +25,12 @@ namespace Aerospike.Client
 		public void Execute(Cluster cluster, Policy policy, Key key, Node node, bool isRead)
 		{
 			Partition partition = (key != null)? new Partition(key) : null;
-			Exception exception = null;
+			AerospikeException exception = null;
 			DateTime deadline = DateTime.MinValue;
 			int socketTimeout = policy.socketTimeout;
 			int totalTimeout = policy.totalTimeout;
 			int iteration = 0;
+			int commandSentCounter = 0;
 			bool isClientTimeout;
 
 			if (totalTimeout > 0)
@@ -69,6 +70,7 @@ namespace Aerospike.Client
 
 						// Send command.
 						conn.Write(dataBuffer, dataOffset);
+						commandSentCounter++;
 
 						// Parse results.
 						ParseResult(conn);
@@ -105,6 +107,7 @@ namespace Aerospike.Client
 						}
 						else
 						{
+							ae.SetInDoubt(isRead, commandSentCounter);
 							throw;
 						}
 					}
@@ -116,7 +119,6 @@ namespace Aerospike.Client
 
 						if (se.SocketErrorCode == SocketError.TimedOut)
 						{
-							exception = se;
 							isClientTimeout = true;
 
 							if (isRead)
@@ -184,8 +186,9 @@ namespace Aerospike.Client
 			// Retries have been exhausted.  Throw last exception.
 			if (isClientTimeout)
 			{
-				throw new AerospikeException.Timeout(node, policy, iteration, true);
+				exception = new AerospikeException.Timeout(node, policy, iteration, true);
 			}
+			exception.SetInDoubt(isRead, commandSentCounter);
 			throw exception;
 		}
 

@@ -49,6 +49,7 @@ namespace Aerospike.Client
 		protected internal int dataLength;
 		private int iteration;
 		private int state;
+		private int commandSentCounter;
 		private readonly bool isRead;
 		private bool usingSocketTimeout;
 		private bool inAuthenticate;
@@ -78,6 +79,7 @@ namespace Aerospike.Client
 			this.segment = other.segment;
 			this.watch = other.watch;
 			this.iteration = other.iteration + 1;
+			this.commandSentCounter = other.commandSentCounter;
 			this.isRead = other.isRead;
 			this.usingSocketTimeout = other.usingSocketTimeout;
 		}
@@ -351,6 +353,8 @@ namespace Aerospike.Client
 			}
 			else
 			{
+				commandSentCounter++;
+
 				if (usingSocketTimeout)
 				{
 					eventReceived = false;
@@ -681,6 +685,7 @@ namespace Aerospike.Client
 		{
 			try
 			{
+				ae.SetInDoubt(isRead, commandSentCounter);
 				OnFailure(ae);
 			}
 			catch (Exception e) 
