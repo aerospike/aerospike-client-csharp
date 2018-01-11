@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2017 Aerospike, Inc.
+ * Copyright 2012-2018 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -16,6 +16,7 @@
  */
 using System;
 using System.Collections.Generic;
+using System.Text;
 
 namespace Aerospike.Client
 {
@@ -1149,7 +1150,18 @@ namespace Aerospike.Client
 
 			if (!map.TryGetValue(partition.ns, out partitions))
 			{
-				throw new AerospikeException("Invalid namespace: " + partition.ns);
+				// Add these lines
+				StringBuilder sb = new StringBuilder(1000);
+				sb.Append("Invalid namespace: ");
+				sb.Append(partition.ns);
+				sb.Append(" current namespaces: ");
+
+				foreach (string key in map.Keys)
+				{
+					sb.Append(key);
+					sb.Append(' ');
+				}				
+				throw new AerospikeException(sb.ToString());
 			}
 
 			Node[][] replicas = partitions.replicas;
