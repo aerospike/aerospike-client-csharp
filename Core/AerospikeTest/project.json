@@ -1,5 +1,5 @@
 {
-  "version": "3.5.2-*",
+  "version": "3.5.3-*",
 
   "testRunner": "xunit",
 
@@ -12,7 +12,7 @@
   },
 
   "dependencies": {
-    "AerospikeClient": "3.5.2-*",
+    "AerospikeClient": "3.5.3-*",
     "dotnet-test-xunit": "2.2.0-preview2-build1029",
     "Microsoft.Extensions.Configuration": "1.1.0",
     "Microsoft.Extensions.Configuration.Abstractions": "1.1.0",
