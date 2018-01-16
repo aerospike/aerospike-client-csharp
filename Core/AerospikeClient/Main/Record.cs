@@ -18,6 +18,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Text;
+using AerospikeClient.Pooled_Objects;
 
 namespace Aerospike.Client
 {
@@ -27,7 +28,7 @@ namespace Aerospike.Client
 	public sealed class Record
 	{
 		private static DateTime Epoch = new DateTime(2010, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc);
-
+        private static readonly StringBuilderPool _pool = new StringBuilderPool(() => new StringBuilder());
 		/// <summary>
 		/// Map of requested name/value bins.
 		/// </summary>
@@ -232,7 +233,7 @@ namespace Aerospike.Client
 		/// </summary>
 		public override string ToString()
 		{
-			StringBuilder sb = new StringBuilder(500);
+			var sb = _pool.Allocate();
 			sb.Append("(gen:");
 			sb.Append(generation);
 			sb.Append("),(exp:");
@@ -271,7 +272,7 @@ namespace Aerospike.Client
 				sb.Append("null");
 			}
 			sb.Append(')');
-			return sb.ToString();
+			return _pool.ReturnStringAndFree(sb);
 		}
 	}
 }

@@ -18,11 +18,14 @@ using System;
 using System.IO;
 using System.Text;
 using System.Numerics;
+using AerospikeClient.Pooled_Objects;
 
 namespace Aerospike.Client
 {
 	public sealed class ByteUtil
 	{
+        private static readonly StringBuilderPool _pool = new StringBuilderPool(() => new StringBuilder());
+
 		public static Value BytesToKeyValue(int type, byte[] buf, int offset, int len)
 		{
 			switch (type)
@@ -105,7 +108,7 @@ namespace Aerospike.Client
 		/// </summary>
 		public static byte[] StringToUtf8(string s)
 		{
-			if (s == null || s.Length == 0)
+			if (string.IsNullOrEmpty(s))
 			{
 				return new byte[0];
 			}
@@ -162,24 +165,24 @@ namespace Aerospike.Client
 			{
 				return "";
 			}
-			StringBuilder sb = new StringBuilder(buf.Length * 2);
+			var sb = _pool.Allocate();
 
 			for (int i = 0; i < buf.Length; i++)
 			{
 				sb.Append(string.Format("{0:x2}", buf[i]));
 			}
-			return sb.ToString();
+			return _pool.ReturnStringAndFree(sb);
 		}
 
 		public static string BytesToHexString(byte[] buf, int offset, int len)
 		{
-			StringBuilder sb = new StringBuilder(len * 2);
+			var sb = _pool.Allocate();
 
 			for (int i = offset; i < len; i++)
 			{
 				sb.Append(string.Format("{0:x2}", buf[i]));
 			}
-			return sb.ToString();
+			return _pool.ReturnStringAndFree(sb);
 		}
 
 		public static object BytesToObject(byte[] buf, int offset, int len)
