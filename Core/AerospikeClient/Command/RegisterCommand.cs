@@ -17,14 +17,16 @@
 using System;
 using System.Collections.Generic;
 using System.Text;
+using AerospikeClient.Pooled_Objects;
 
 namespace Aerospike.Client
 {
 	public sealed class RegisterCommand
 	{
+        private static readonly StringBuilderPool _pool = new StringBuilderPool(() => new StringBuilder());
 		public static RegisterTask Register(Cluster cluster, Policy policy, string content, string serverPath, Language language)
 		{
-			StringBuilder sb = new StringBuilder(serverPath.Length + content.Length + 100);
+			var sb = _pool.Allocate();
 			sb.Append("udf-put:filename=");
 			sb.Append(serverPath);
 			sb.Append(";content=");
@@ -37,6 +39,8 @@ namespace Aerospike.Client
 
 			// Send UDF to one node. That node will distribute the UDF to other nodes.
 			string command = sb.ToString();
+            _pool.Free(sb);
+
 			Node node = cluster.GetRandomNode();
 			Connection conn = node.GetConnection(policy.socketTimeout);
 

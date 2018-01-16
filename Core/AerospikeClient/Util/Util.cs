@@ -23,12 +23,14 @@ using System.Runtime.InteropServices;
 using System.Security.Authentication;
 using System.Text;
 using System.Threading;
+using AerospikeClient.Pooled_Objects;
 
 namespace Aerospike.Client
 {
 	public sealed class Util
 	{
 		private static readonly DateTime UnixEpoch = new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+        private static readonly StringBuilderPool _pool = new StringBuilderPool(() => new StringBuilder());
 
 		public static long NanosFromEpoch(DateTime dt)
 		{
@@ -84,9 +86,9 @@ namespace Aerospike.Client
 
 		public static string MapToString(IDictionary<object,object> map)
 		{
-			StringBuilder sb = new StringBuilder(200);
+			var sb = _pool.Allocate();
 			MapToString(sb, map);
-			return sb.ToString();
+			return _pool.ReturnStringAndFree(sb);
 		}
 
 		private static void MapToString(StringBuilder sb, IDictionary<object, object> map)
@@ -112,9 +114,9 @@ namespace Aerospike.Client
 
 		public static string ListToString(List<object> list)
 		{
-			StringBuilder sb = new StringBuilder(200);
+			var sb = _pool.Allocate();
 			ListToString(sb, list);
-			return sb.ToString();
+			return _pool.ReturnStringAndFree(sb);
 		}
 
 		private static void ListToString(StringBuilder sb, List<object> list)
@@ -134,9 +136,9 @@ namespace Aerospike.Client
 
 		public static string ArrayToString(object[] list)
 		{
-			StringBuilder sb = new StringBuilder(200);
+			var sb = _pool.Allocate();
 			ArrayToString(sb, list);
-			return sb.ToString();
+			return _pool.ReturnStringAndFree(sb);
 		}
 
 		private static void ArrayToString(StringBuilder sb, object[] list)
@@ -156,7 +158,7 @@ namespace Aerospike.Client
 
 		public static string BytesToString(byte[] bytes)
 		{
-			StringBuilder sb = new StringBuilder(200);
+			var sb = _pool.Allocate();
 			sb.Append('[');
 
 			for (int i = 0; i < bytes.Length; i++)
@@ -168,14 +170,14 @@ namespace Aerospike.Client
 				sb.Append(bytes[i]);
 			}
 			sb.Append(']');
-			return sb.ToString();
+			return _pool.ReturnStringAndFree(sb);
 		}
 
 		public static string ObjectToString(object obj)
 		{
-			StringBuilder sb = new StringBuilder(200);
+			var sb = _pool.Allocate();
 			ObjectToString(sb, obj);
-			return sb.ToString();
+			return _pool.ReturnStringAndFree(sb);
 		}
 
 		/// <summary>
@@ -238,7 +240,7 @@ namespace Aerospike.Client
 
 		public static byte[][] HexStringToByteArrays(string str)
 		{
-			if (str == null || str.Length == 0)
+			if (string.IsNullOrEmpty(str))
 			{
 				return null;
 			}

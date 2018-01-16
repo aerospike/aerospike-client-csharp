@@ -16,6 +16,7 @@
  */
 using System;
 using System.Text;
+using AerospikeClient.Pooled_Objects;
 
 namespace Aerospike.Client
 {
@@ -83,6 +84,8 @@ namespace Aerospike.Client
 			get { return setName; }
 			set { setName = value; }
 		}
+
+        private static readonly StringBuilderPool _pool = new StringBuilderPool(() => new StringBuilder());
 
 		/// <summary>
 		/// Return privilege shallow clone.
@@ -156,21 +159,21 @@ namespace Aerospike.Client
 		/// </summary>
 		public override string ToString()
 		{
-			StringBuilder sb = new StringBuilder(100);
+			var sb = _pool.Allocate();
 			sb.Append(PrivilegeCodeToString());
 
-			if (ns != null && ns.Length > 0)
+			if (!string.IsNullOrEmpty(ns))
 			{
 				sb.Append('.');
 				sb.Append(ns);
 			}
 
-			if (setName != null && setName.Length > 0)
+			if (!string.IsNullOrEmpty(setName))
 			{
 				sb.Append('.');
 				sb.Append(setName);
 			}
-			return sb.ToString();
+			return _pool.ReturnStringAndFree(sb);
 		}
 
 		/// <summary>

@@ -16,6 +16,7 @@
  */
 using System;
 using System.Text;
+using AerospikeClient.Pooled_Objects;
 
 namespace Aerospike.Client
 {
@@ -28,6 +29,8 @@ namespace Aerospike.Client
 
 		private int resultCode;
 		private bool inDoubt;
+
+        private static readonly StringBuilderPool _pool = new StringBuilderPool(() => new StringBuilder());
 
         public AerospikeException(int resultCode, string message) 
             : base(message)
@@ -81,7 +84,7 @@ namespace Aerospike.Client
 		{
 			get
 			{
-				StringBuilder sb = new StringBuilder();
+				var sb = _pool.Allocate();
 				string message = base.Message;
     
 				if (resultCode != 0)
@@ -95,7 +98,7 @@ namespace Aerospike.Client
 					}
 					sb.Append(": ");
     
-					if (message != null && message.Length > 0)
+					if (!string.IsNullOrEmpty(message))
 					{
 						sb.Append(message);
 					}
@@ -115,7 +118,7 @@ namespace Aerospike.Client
 						sb.Append(this.GetType().FullName);
 					}
 				}
-				return sb.ToString();
+				return _pool.ReturnStringAndFree(sb);
 			}
 		}
 

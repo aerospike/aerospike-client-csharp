@@ -25,7 +25,7 @@ namespace Aerospike.Test
 	{
 		public static Args Instance = new Args();
 
-		public AerospikeClient client;
+		public Client.AerospikeClient client;
 		public AsyncClient asyncClient;
 		public Host[] hosts;
 		public int port;
@@ -92,7 +92,7 @@ namespace Aerospike.Test
 				policy.password = password;
 			}
 
-			client = new AerospikeClient(policy, hosts);
+			client = new Client.AerospikeClient(policy, hosts);
 
 			try
 			{

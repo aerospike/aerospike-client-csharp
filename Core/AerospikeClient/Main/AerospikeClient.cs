@@ -20,6 +20,7 @@ using System.Text;
 using System.Threading;
 using System.Reflection;
 using System.IO;
+using AerospikeClient.Pooled_Objects;
 
 namespace Aerospike.Client
 {
@@ -81,6 +82,8 @@ namespace Aerospike.Client
 		public readonly InfoPolicy infoPolicyDefault;
 
 		protected readonly WritePolicy operatePolicyReadDefault;
+
+        private static readonly StringBuilderPool _pool = new StringBuilderPool(() => new StringBuilder());
 
 		//-------------------------------------------------------
 		// Constructors
@@ -381,11 +384,11 @@ namespace Aerospike.Client
 			{
 				policy = infoPolicyDefault;
 			}
-			StringBuilder sb = new StringBuilder(200);
+			var sb = _pool.Allocate();
 			sb.Append("truncate:namespace=");
 			sb.Append(ns);
 
-			if (set != null && set.Length > 0)
+			if (!string.IsNullOrEmpty(set))
 			{
 				sb.Append(";set=");
 				sb.Append(set);
@@ -401,7 +404,7 @@ namespace Aerospike.Client
 			// Send truncate command to one node. That node will distribute the command to other nodes.
 			Node node = cluster.GetRandomNode();
 			string response = Info.Request(policy, node, sb.ToString());
-
+            _pool.Free(sb);
 			if (!response.Equals("ok", StringComparison.CurrentCultureIgnoreCase))
 			{
 				throw new AerospikeException("Truncate failed: " + response);
@@ -1245,11 +1248,11 @@ namespace Aerospike.Client
 			{
 				policy = writePolicyDefault;
 			}
-			StringBuilder sb = new StringBuilder(500);
+			var sb = _pool.Allocate();
 			sb.Append("sindex-create:ns=");
 			sb.Append(ns);
 
-			if (setName != null && setName.Length > 0)
+			if (!string.IsNullOrEmpty(setName))
 			{
 				sb.Append(";set=");
 				sb.Append(setName);
@@ -1273,7 +1276,7 @@ namespace Aerospike.Client
 
 			// Send index command to one node. That node will distribute the command to other nodes.
 			String response = SendInfoCommand(policy, sb.ToString());
-
+            _pool.Free(sb);
 			if (response.Equals("OK", StringComparison.CurrentCultureIgnoreCase))
 			{
 				// Return task that could optionally be polled for completion.
@@ -1298,11 +1301,11 @@ namespace Aerospike.Client
 			{
 				policy = writePolicyDefault;
 			}
-			StringBuilder sb = new StringBuilder(500);
+			var sb = _pool.Allocate();
 			sb.Append("sindex-delete:ns=");
 			sb.Append(ns);
 
-			if (setName != null && setName.Length > 0)
+			if (!string.IsNullOrEmpty(setName))
 			{
 				sb.Append(";set=");
 				sb.Append(setName);
@@ -1312,7 +1315,7 @@ namespace Aerospike.Client
 
 			// Send index command to one node. That node will distribute the command to other nodes.
 			String response = SendInfoCommand(policy, sb.ToString());
-
+            _pool.Free(sb);
 			if (response.Equals("OK", StringComparison.CurrentCultureIgnoreCase))
 			{
 				return;

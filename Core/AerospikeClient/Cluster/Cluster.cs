@@ -20,6 +20,7 @@ using System.Net;
 using System.Security.Authentication;
 using System.Text;
 using System.Threading;
+using AerospikeClient.Pooled_Objects;
 
 namespace Aerospike.Client
 {
@@ -84,6 +85,7 @@ namespace Aerospike.Client
 		private Thread tendThread;
 		private readonly CancellationTokenSource cancel;
 		private readonly CancellationToken cancelToken;
+        private static readonly StringBuilderPool _pool = new StringBuilderPool(() => new StringBuilder());
 
 		// Request prole replicas in addition to master replicas?
 		protected internal bool requestProleReplicas;
@@ -113,7 +115,7 @@ namespace Aerospike.Client
 			}
 			this.seeds = hosts;
 
-			if (policy.user != null && policy.user.Length > 0)
+			if (!string.IsNullOrEmpty(policy.user))
 			{
 				this.user = ByteUtil.StringToUtf8(policy.user);
 
@@ -432,7 +434,7 @@ namespace Aerospike.Client
 			}
 			else if (failIfNotConnected)
 			{
-				StringBuilder sb = new StringBuilder(500);
+				var sb = _pool.Allocate();
 				sb.AppendLine("Failed to connect to host(s): ");
 
 				for (int i = 0; i < seedArray.Length; i++)
@@ -447,7 +449,7 @@ namespace Aerospike.Client
 						sb.AppendLine(ex.Message);
 					}
 				}
-				throw new AerospikeException.Connection(sb.ToString());
+				throw new AerospikeException.Connection(_pool.ReturnStringAndFree(sb));
 			}
 			return false;
 		}
@@ -678,7 +680,7 @@ namespace Aerospike.Client
 
 		public bool HasClusterName
 		{
-			get { return clusterName != null && clusterName.Length > 0; }
+			get { return !string.IsNullOrEmpty(clusterName); }
 		}
 
 		public Node GetMasterNode(Partition partition)
