@@ -1,0 +1,99 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netcoreapp2.0</TargetFramework>
+
+    <IsPackable>false</IsPackable>
+
+    <RootNamespace>Aerospike.Test</RootNamespace>
+
+    <Version>3.5.3</Version>
+
+    <Company>Aerospike</Company>
+
+    <Authors>Aerospike</Authors>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Remove="Resources\record_example.lua" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="settings.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Include="..\..\Framework\AerospikeTest\Args.cs" Link="Args.cs" />
+    <Compile Include="..\..\Framework\AerospikeTest\Async\AsyncMonitor.cs" Link="Async\AsyncMonitor.cs" />
+    <Compile Include="..\..\Framework\AerospikeTest\Async\TestAsync.cs" Link="Async\TestAsync.cs" />
+    <Compile Include="..\..\Framework\AerospikeTest\Async\TestAsyncBatch.cs" Link="Async\TestAsyncBatch.cs" />
+    <Compile Include="..\..\Framework\AerospikeTest\Async\TestAsyncOperate.cs" Link="Async\TestAsyncOperate.cs" />
+    <Compile Include="..\..\Framework\AerospikeTest\Async\TestAsyncPutGet.cs" Link="Async\TestAsyncPutGet.cs" />
+    <Compile Include="..\..\Framework\AerospikeTest\Async\TestAsyncQuery.cs" Link="Async\TestAsyncQuery.cs" />
+    <Compile Include="..\..\Framework\AerospikeTest\Async\TestAsyncScan.cs" Link="Async\TestAsyncScan.cs" />
+    <Compile Include="..\..\Framework\AerospikeTest\Async\TestAsyncUDF.cs" Link="Async\TestAsyncUDF.cs" />
+    <Compile Include="..\..\Framework\AerospikeTest\Suite.cs" Link="Suite.cs" />
+    <Compile Include="..\..\Framework\AerospikeTest\Sync\Basic\TestAdd.cs" Link="Sync\TestAdd.cs" />
+    <Compile Include="..\..\Framework\AerospikeTest\Sync\Basic\TestAppend.cs" Link="Sync\TestAppend.cs" />
+    <Compile Include="..\..\Framework\AerospikeTest\Sync\Basic\TestBatch.cs" Link="Sync\TestBatch.cs" />
+    <Compile Include="..\..\Framework\AerospikeTest\Sync\Basic\TestDeleteBin.cs" Link="Sync\TestDeleteBin.cs" />
+    <Compile Include="..\..\Framework\AerospikeTest\Sync\Basic\TestExpire.cs" Link="Sync\TestExpire.cs" />
+    <Compile Include="..\..\Framework\AerospikeTest\Sync\Basic\TestGeneration.cs" Link="Sync\TestGeneration.cs" />
+    <Compile Include="..\..\Framework\AerospikeTest\Sync\Basic\TestListMap.cs" Link="Sync\TestListMap.cs" />
+    <Compile Include="..\..\Framework\AerospikeTest\Sync\Basic\TestOperate.cs" Link="Sync\TestOperate.cs" />
+    <Compile Include="..\..\Framework\AerospikeTest\Sync\Basic\TestOperateList.cs" Link="Sync\TestOperateList.cs" />
+    <Compile Include="..\..\Framework\AerospikeTest\Sync\Basic\TestOperateMap.cs" Link="Sync\TestOperateMap.cs" />
+    <Compile Include="..\..\Framework\AerospikeTest\Sync\Basic\TestPutGet.cs" Link="Sync\TestPutGet.cs" />
+    <Compile Include="..\..\Framework\AerospikeTest\Sync\Basic\TestReplace.cs" Link="Sync\TestReplace.cs" />
+    <Compile Include="..\..\Framework\AerospikeTest\Sync\Basic\TestScan.cs" Link="Sync\TestScan.cs" />
+    <Compile Include="..\..\Framework\AerospikeTest\Sync\Basic\TestServerInfo.cs" Link="Sync\TestServerInfo.cs" />
+    <Compile Include="..\..\Framework\AerospikeTest\Sync\Basic\TestTouch.cs" Link="Sync\TestTouch.cs" />
+    <Compile Include="..\..\Framework\AerospikeTest\Sync\Basic\TestUDF.cs" Link="Sync\TestUDF.cs" />
+    <Compile Include="..\..\Framework\AerospikeTest\Sync\Query\TestQueryCollection.cs" Link="Sync\TestQueryCollection.cs" />
+    <Compile Include="..\..\Framework\AerospikeTest\Sync\Query\TestQueryExecute.cs" Link="Sync\TestQueryExecute.cs" />
+    <Compile Include="..\..\Framework\AerospikeTest\Sync\Query\TestQueryInteger.cs" Link="Sync\TestQueryInteger.cs" />
+    <Compile Include="..\..\Framework\AerospikeTest\Sync\Query\TestQueryKey.cs" Link="Sync\TestQueryKey.cs" />
+    <Compile Include="..\..\Framework\AerospikeTest\Sync\Query\TestQueryPredExp.cs" Link="Sync\TestQueryPredExp.cs" />
+    <Compile Include="..\..\Framework\AerospikeTest\Sync\Query\TestQueryString.cs" Link="Sync\TestQueryString.cs" />
+    <Compile Include="..\..\Framework\AerospikeTest\Sync\TestSync.cs" Link="Sync\TestSync.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="Resources\record_example.lua" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Configuration" Version="2.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="2.0.0" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="15.5.0" />
+    <PackageReference Include="MSTest.TestAdapter" Version="1.2.0" />
+    <PackageReference Include="MSTest.TestFramework" Version="1.2.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\AerospikeClient\AerospikeClient.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Async\" />
+    <Folder Include="Sync\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Update="Properties\Resources.Designer.cs">
+      <DesignTime>True</DesignTime>
+      <AutoGen>True</AutoGen>
+      <DependentUpon>Resources.resx</DependentUpon>
+    </Compile>
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Update="Properties\Resources.resx">
+      <Generator>ResXFileCodeGenerator</Generator>
+      <LastGenOutput>Resources.Designer.cs</LastGenOutput>
+    </EmbeddedResource>
+  </ItemGroup>
+  
+</Project>

@@ -190,6 +190,7 @@ namespace Aerospike.Test
 			Assert.AreEqual(value, (string)obj);
 		}
 
+#if NETFRAMEWORK
 		[TestMethod]
 		public void WriteBlobUsingUdf()
 		{
@@ -209,5 +210,6 @@ namespace Aerospike.Test
 			byte[] received = (byte[])client.Execute(null, key, "record_example", "readBin", Value.Get(binName));
 			CollectionAssert.AreEqual(blob, received);
 		}
-	}
+#endif
+    }
 }

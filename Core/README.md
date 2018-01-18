@@ -3,8 +3,8 @@ Aerospike C# Client for NET Core
 
 **Prerequisites**
 
-* NET Core 1.1 or greater.
-* [Optional]Visual Studio 2015 Update 3 or greater.
+* NET Core 2.0 or greater.
+* [Optional]Visual Studio 2017 or greater.
 
 **Contents**
 

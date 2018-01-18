@@ -118,17 +118,21 @@ namespace Aerospike.Test
 			map["key2"] = 2;
 			map["key3"] = blob;
 			map["key4"] = list; // map.put("key4", Value.getAsList(list)) works too
+#if NETFRAMEWORK
 			map["key5"] = true;
 			map["key6"] = false;
+#endif
 
-			Bin bin = new Bin(args.GetBinName("mapbin2"), map);
+            Bin bin = new Bin(args.GetBinName("mapbin2"), map);
 			client.Put(null, key, bin);
 
 			Record record = client.Get(null, key, bin.name);
 			IDictionary receivedMap = (IDictionary) record.GetValue(bin.name);
 
+#if NETFRAMEWORK
 			Assert.AreEqual(6, receivedMap.Count);
-			Assert.AreEqual("string1", receivedMap["key1"]);
+#endif
+            Assert.AreEqual("string1", receivedMap["key1"]);
 			// Server convert numbers to long, so must expect long.
 			Assert.AreEqual(2L, receivedMap["key2"]);
 			CollectionAssert.AreEqual(blob, (byte[])receivedMap["key3"]);
@@ -140,9 +144,11 @@ namespace Aerospike.Test
 			Assert.AreEqual(3L, receivedInner[2]);
 			Assert.AreEqual(512L, receivedInner[3]);
 
+#if NETFRAMEWORK
 			Assert.AreEqual(true, receivedMap["key5"]);
 			Assert.AreEqual(false, receivedMap["key6"]);
-		}
+#endif
+        }
 
 		[TestMethod]
 		public void ListMapCombined()

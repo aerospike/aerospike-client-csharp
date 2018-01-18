@@ -15,11 +15,13 @@
  * the License.
  */
 using System;
-using System.Text;
 using System.Collections.Generic;
-using System.Security.Authentication;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Aerospike.Client;
+
+#if !NETFRAMEWORK
+using Microsoft.Extensions.Configuration;
+#endif
 
 namespace Aerospike.Test
 {
@@ -45,7 +47,8 @@ namespace Aerospike.Test
 
 		public Args()
 		{
-			port = Properties.Settings.Default.Port;
+#if NETFRAMEWORK
+            port = Properties.Settings.Default.Port;
 			clusterName = Properties.Settings.Default.ClusterName.Trim();
 			user = Properties.Settings.Default.User.Trim();
 			password = Properties.Settings.Default.Password.Trim();
@@ -63,9 +66,35 @@ namespace Aerospike.Test
 			}
 
 			hosts = Host.ParseHosts(Properties.Settings.Default.Host, tlsName, port);
-		}
+#else
+            var builder = new ConfigurationBuilder()
+                .AddJsonFile("settings.json", optional: true, reloadOnChange: true);
+            IConfigurationRoot section = builder.Build();
 
-		public void Connect()
+            port = int.Parse(section.GetSection("Port").Value);
+            clusterName = section.GetSection("ClusterName").Value;
+            user = section.GetSection("User").Value;
+            password = section.GetSection("Password").Value;
+            ns = section.GetSection("Namespace").Value;
+            set = section.GetSection("Set").Value;
+
+            bool tlsEnable = bool.Parse(section.GetSection("TlsEnable").Value);
+
+            if (tlsEnable)
+            {
+                tlsName = section.GetSection("TlsName").Value;
+                tlsPolicy = new TlsPolicy(
+                    section.GetSection("TlsProtocols").Value,
+                    section.GetSection("TlsRevoke").Value,
+                    section.GetSection("TlsClientCertFile").Value
+                    );
+            }
+
+            hosts = Host.ParseHosts(section.GetSection("Host").Value, tlsName, port);
+#endif
+        }
+
+        public void Connect()
 		{
 			ConnectSync();
 

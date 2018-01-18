@@ -15,7 +15,6 @@
  * the License.
  */
 using System;
-using System.Windows.Forms;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace Aerospike.Test
