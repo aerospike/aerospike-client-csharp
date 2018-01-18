@@ -16,10 +16,180 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Include="..\..\Framework\AerospikeClient\Admin\AdminCommand.cs" Link="Admin\AdminCommand.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Admin\Privilege.cs" Link="Admin\Privilege.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Admin\PrivilegeCode.cs" Link="Admin\PrivilegeCode.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Admin\Role.cs" Link="Admin\Role.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Admin\User.cs" Link="Admin\User.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\AsyncTask\BatchListListenerAdapter.cs" Link="AsyncTask\BatchListListenerAdapter.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\AsyncTask\DeleteListenerAdapter.cs" Link="AsyncTask\DeleteListenerAdapter.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\AsyncTask\ExecuteListenerAdapter.cs" Link="AsyncTask\ExecuteListenerAdapter.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\AsyncTask\ExistsArrayListenerAdapter.cs" Link="AsyncTask\ExistsArrayListenerAdapter.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\AsyncTask\ExistsListenerAdapter.cs" Link="AsyncTask\ExistsListenerAdapter.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\AsyncTask\ListenerAdapter.cs" Link="AsyncTask\ListenerAdapter.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\AsyncTask\RecordArrayListenerAdapter.cs" Link="AsyncTask\RecordArrayListenerAdapter.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\AsyncTask\RecordListenerAdapter.cs" Link="AsyncTask\RecordListenerAdapter.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\AsyncTask\WriteListenerAdapter.cs" Link="AsyncTask\WriteListenerAdapter.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Async\AsyncBatch.cs" Link="Async\AsyncBatch.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Async\AsyncClient.cs" Link="Async\AsyncClient.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Async\AsyncClientPolicy.cs" Link="Async\AsyncClientPolicy.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Async\AsyncCluster.cs" Link="Async\AsyncCluster.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Async\AsyncCommand.cs" Link="Async\AsyncCommand.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Async\AsyncCommandBlockingQueue.cs" Link="Async\AsyncCommandBlockingQueue.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Async\AsyncCommandDelayingQueue.cs" Link="Async\AsyncCommandDelayingQueue.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Async\AsyncCommandQueueBase.cs" Link="Async\AsyncCommandQueueBase.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Async\AsyncCommandRejectingQueue.cs" Link="Async\AsyncCommandRejectingQueue.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Async\AsyncConnection.cs" Link="Async\AsyncConnection.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Async\AsyncDelete.cs" Link="Async\AsyncDelete.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Async\AsyncExecute.cs" Link="Async\AsyncExecute.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Async\AsyncExists.cs" Link="Async\AsyncExists.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Async\AsyncMultiCommand.cs" Link="Async\AsyncMultiCommand.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Async\AsyncMultiExecutor.cs" Link="Async\AsyncMultiExecutor.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Async\AsyncNode.cs" Link="Async\AsyncNode.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Async\AsyncOperate.cs" Link="Async\AsyncOperate.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Async\AsyncQuery.cs" Link="Async\AsyncQuery.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Async\AsyncQueryExecutor.cs" Link="Async\AsyncQueryExecutor.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Async\AsyncRead.cs" Link="Async\AsyncRead.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Async\AsyncReadHeader.cs" Link="Async\AsyncReadHeader.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Async\AsyncScan.cs" Link="Async\AsyncScan.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Async\AsyncScanExecutor.cs" Link="Async\AsyncScanExecutor.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Async\AsyncSingleCommand.cs" Link="Async\AsyncSingleCommand.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Async\AsyncTimeoutQueue.cs" Link="Async\AsyncTimeoutQueue.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Async\AsyncTouch.cs" Link="Async\AsyncTouch.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Async\AsyncWrite.cs" Link="Async\AsyncWrite.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Async\BufferPool.cs" Link="Async\BufferPool.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Async\MaxCommandAction.cs" Link="Async\MaxCommandAction.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\BCrypt\BCrypt.cs" Link="BCrypt\BCrypt.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\BCrypt\SaltParseException.cs" Link="BCrypt\SaltParseException.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\CDT\ListOperation.cs" Link="CDT\ListOperation.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\CDT\MapBase.cs" Link="CDT\MapBase.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\CDT\MapOperation.cs" Link="CDT\MapOperation.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\CDT\MapOrder.cs" Link="CDT\MapOrder.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\CDT\MapPolicy.cs" Link="CDT\MapPolicy.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\CDT\MapReturnType.cs" Link="CDT\MapReturnType.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\CDT\MapWriteMode.cs" Link="CDT\MapWriteMode.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Cluster\Cluster.cs" Link="Cluster\Cluster.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Cluster\Connection.cs" Link="Cluster\Connection.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Cluster\Node.cs" Link="Cluster\Node.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Cluster\NodeValidator.cs" Link="Cluster\NodeValidator.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Cluster\Partition.cs" Link="Cluster\Partition.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Cluster\PartitionParser.cs" Link="Cluster\PartitionParser.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Cluster\Partitions.cs" Link="Cluster\Partitions.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Cluster\PeerParser.cs" Link="Cluster\PeerParser.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Cluster\Peers.cs" Link="Cluster\Peers.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Cluster\TlsConnection.cs" Link="Cluster\TlsConnection.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Command\Batch.cs" Link="Command\Batch.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Command\BatchExecutor.cs" Link="Command\BatchExecutor.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Command\BatchNode.cs" Link="Command\BatchNode.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Command\ByteUtil.cs" Link="Command\ByteUtil.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Command\Command.cs" Link="Command\Command.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Command\DeleteCommand.cs" Link="Command\DeleteCommand.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Command\ExecuteCommand.cs" Link="Command\ExecuteCommand.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Command\Executor.cs" Link="Command\Executor.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Command\ExistsCommand.cs" Link="Command\ExistsCommand.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Command\FieldType.cs" Link="Command\FieldType.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Command\MultiCommand.cs" Link="Command\MultiCommand.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Command\OperateArgs.cs" Link="Command\OperateArgs.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Command\OperateCommand.cs" Link="Command\OperateCommand.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Command\ParticleType.cs" Link="Command\ParticleType.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Command\ReadCommand.cs" Link="Command\ReadCommand.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Command\ReadHeaderCommand.cs" Link="Command\ReadHeaderCommand.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Command\RegisterCommand.cs" Link="Command\RegisterCommand.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Command\ScanCommand.cs" Link="Command\ScanCommand.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Command\SyncCommand.cs" Link="Command\SyncCommand.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Command\TouchCommand.cs" Link="Command\TouchCommand.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Command\WriteCommand.cs" Link="Command\WriteCommand.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Listener\BatchListListener.cs" Link="Listener\BatchListListener.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Listener\BatchSequenceListener.cs" Link="Listener\BatchSequenceListener.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Listener\DeleteListener.cs" Link="Listener\DeleteListener.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Listener\ExecuteListener.cs" Link="Listener\ExecuteListener.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Listener\ExistsArrayListener.cs" Link="Listener\ExistsArrayListener.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Listener\ExistsListener.cs" Link="Listener\ExistsListener.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Listener\ExistsSequenceListener.cs" Link="Listener\ExistsSequenceListener.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Listener\RecordArrayListener.cs" Link="Listener\RecordArrayListener.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Listener\RecordListener.cs" Link="Listener\RecordListener.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Listener\RecordSequenceListener.cs" Link="Listener\RecordSequenceListener.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Listener\WriteListener.cs" Link="Listener\WriteListener.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Main\AerospikeClient.cs" Link="Main\AerospikeClient.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Main\AerospikeException.cs" Link="Main\AerospikeException.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Main\BatchRead.cs" Link="Main\BatchRead.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Main\Bin.cs" Link="Main\Bin.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Main\Host.cs" Link="Main\Host.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Main\IAerospikeClient.cs" Link="Main\IAerospikeClient.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Main\Info.cs" Link="Main\Info.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Main\Join.cs" Link="Main\Join.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Main\Key.cs" Link="Main\Key.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Main\Language.cs" Link="Main\Language.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Main\Log.cs" Link="Main\Log.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Main\Operation.cs" Link="Main\Operation.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Main\Record.cs" Link="Main\Record.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Main\ResultCode.cs" Link="Main\ResultCode.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Main\Value.cs" Link="Main\Value.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Policy\AdminPolicy.cs" Link="Policy\AdminPolicy.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Policy\BatchPolicy.cs" Link="Policy\BatchPolicy.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Policy\ClientPolicy.cs" Link="Policy\ClientPolicy.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Policy\CommitLevel.cs" Link="Policy\CommitLevel.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Policy\ConsistencyLevel.cs" Link="Policy\ConsistencyLevel.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Policy\GenerationPolicy.cs" Link="Policy\GenerationPolicy.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Policy\InfoPolicy.cs" Link="Policy\InfoPolicy.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Policy\Policy.cs" Link="Policy\Policy.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Policy\Priority.cs" Link="Policy\Priority.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Policy\QueryPolicy.cs" Link="Policy\QueryPolicy.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Policy\RecordExistsAction.cs" Link="Policy\RecordExistsAction.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Policy\Replica.cs" Link="Policy\Replica.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Policy\ScanPolicy.cs" Link="Policy\ScanPolicy.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Policy\TlsPolicy.cs" Link="Policy\TlsPolicy.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Policy\WritePolicy.cs" Link="Policy\WritePolicy.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Query\Filter.cs" Link="Query\Filter.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Query\IndexCollectionType.cs" Link="Query\IndexCollectionType.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Query\IndexType.cs" Link="Query\IndexType.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Query\KeyRecord.cs" Link="Query\KeyRecord.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Query\PredExp.cs" Link="Query\PredExp.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Query\QueryAggregateCommand.cs" Link="Query\QueryAggregateCommand.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Query\QueryAggregateExecutor.cs" Link="Query\QueryAggregateExecutor.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Query\QueryExecutor.cs" Link="Query\QueryExecutor.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Query\QueryRecordCommand.cs" Link="Query\QueryRecordCommand.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Query\QueryRecordExecutor.cs" Link="Query\QueryRecordExecutor.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Query\RecordSet.cs" Link="Query\RecordSet.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Query\RegexFlag.cs" Link="Query\RegexFlag.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Query\ResultSet.cs" Link="Query\ResultSet.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Query\ScanCallback.cs" Link="Query\ScanCallback.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Query\ServerCommand.cs" Link="Query\ServerCommand.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Query\Statement.cs" Link="Query\Statement.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Task\BaseTask.cs" Link="Task\BaseTask.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Task\ExecuteTask.cs" Link="Task\ExecuteTask.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Task\IndexTask.cs" Link="Task\IndexTask.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Task\RegisterTask.cs" Link="Task\RegisterTask.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Util\Hash.cs" Link="Util\Hash.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Util\Packer.cs" Link="Util\Packer.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Util\RandomShift.cs" Link="Util\RandomShift.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Util\Ripemd160.cs" Link="Util\Ripemd160.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Util\ThreadLocalData.cs" Link="Util\ThreadLocalData.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Util\Unpacker.cs" Link="Util\Unpacker.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Util\Util.cs" Link="Util\Util.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="System.Net.NameResolution" Version="4.3.0" />
     <PackageReference Include="System.Net.Security" Version="4.3.0" />
     <PackageReference Include="System.Threading.Thread" Version="4.3.0" />
     <PackageReference Include="System.Threading.ThreadPool" Version="4.3.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Admin\" />
+    <Folder Include="AsyncTask\" />
+    <Folder Include="Async\" />
+    <Folder Include="CDT\" />
+    <Folder Include="Cluster\" />
+    <Folder Include="Command\" />
+    <Folder Include="Listener\" />
+    <Folder Include="Main\" />
+    <Folder Include="BCrypt\" />
+    <Folder Include="Policy\" />
+    <Folder Include="Query\" />
+    <Folder Include="Task\" />
+    <Folder Include="Util\" />
   </ItemGroup>
 
 </Project>

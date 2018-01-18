@@ -161,456 +161,100 @@
     <Reference Include="System.Web" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="..\..\Core\AerospikeClient\Admin\AdminCommand.cs">
-      <Link>Admin\AdminCommand.cs</Link>
-    </Compile>
-    <Compile Include="..\..\Core\AerospikeClient\Admin\Privilege.cs">
-      <Link>Admin\Privilege.cs</Link>
-    </Compile>
-    <Compile Include="..\..\Core\AerospikeClient\Admin\PrivilegeCode.cs">
-      <Link>Admin\PrivilegeCode.cs</Link>
-    </Compile>
-    <Compile Include="..\..\Core\AerospikeClient\Admin\Role.cs">
-      <Link>Admin\Role.cs</Link>
-    </Compile>
-    <Compile Include="..\..\Core\AerospikeClient\Admin\User.cs">
-      <Link>Admin\User.cs</Link>
-    </Compile>
-    <Compile Include="..\..\Core\AerospikeClient\AsyncTask\BatchListListenerAdapter.cs">
-      <Link>AsyncTask\BatchListListenerAdapter.cs</Link>
-    </Compile>
-    <Compile Include="..\..\Core\AerospikeClient\AsyncTask\DeleteListenerAdapter.cs">
-      <Link>AsyncTask\DeleteListenerAdapter.cs</Link>
-    </Compile>
-    <Compile Include="..\..\Core\AerospikeClient\AsyncTask\ExecuteListenerAdapter.cs">
-      <Link>AsyncTask\ExecuteListenerAdapter.cs</Link>
-    </Compile>
-    <Compile Include="..\..\Core\AerospikeClient\AsyncTask\ExistsArrayListenerAdapter.cs">
-      <Link>AsyncTask\ExistsArrayListenerAdapter.cs</Link>
-    </Compile>
-    <Compile Include="..\..\Core\AerospikeClient\AsyncTask\ExistsListenerAdapter.cs">
-      <Link>AsyncTask\ExistsListenerAdapter.cs</Link>
-    </Compile>
-    <Compile Include="..\..\Core\AerospikeClient\AsyncTask\ListenerAdapter.cs">
-      <Link>AsyncTask\ListenerAdapter.cs</Link>
-    </Compile>
-    <Compile Include="..\..\Core\AerospikeClient\AsyncTask\RecordArrayListenerAdapter.cs">
-      <Link>AsyncTask\RecordArrayListenerAdapter.cs</Link>
-    </Compile>
-    <Compile Include="..\..\Core\AerospikeClient\AsyncTask\RecordListenerAdapter.cs">
-      <Link>AsyncTask\RecordListenerAdapter.cs</Link>
-    </Compile>
-    <Compile Include="..\..\Core\AerospikeClient\AsyncTask\WriteListenerAdapter.cs">
-      <Link>AsyncTask\WriteListenerAdapter.cs</Link>
-    </Compile>
-    <Compile Include="..\..\Core\AerospikeClient\Async\AsyncBatch.cs">
-      <Link>Async\AsyncBatch.cs</Link>
-    </Compile>
-    <Compile Include="..\..\Core\AerospikeClient\Async\AsyncClient.cs">
-      <Link>Async\AsyncClient.cs</Link>
-    </Compile>
-    <Compile Include="..\..\Core\AerospikeClient\Async\AsyncClientPolicy.cs">
-      <Link>Async\AsyncClientPolicy.cs</Link>
-    </Compile>
-    <Compile Include="..\..\Core\AerospikeClient\Async\AsyncCluster.cs">
-      <Link>Async\AsyncCluster.cs</Link>
-    </Compile>
-    <Compile Include="..\..\Core\AerospikeClient\Async\AsyncCommand.cs">
-      <Link>Async\AsyncCommand.cs</Link>
-    </Compile>
-    <Compile Include="..\..\Core\AerospikeClient\Async\AsyncCommandBlockingQueue.cs">
-      <Link>Async\AsyncCommandBlockingQueue.cs</Link>
-    </Compile>
-    <Compile Include="..\..\Core\AerospikeClient\Async\AsyncCommandDelayingQueue.cs">
-      <Link>Async\AsyncCommandDelayingQueue.cs</Link>
-    </Compile>
-    <Compile Include="..\..\Core\AerospikeClient\Async\AsyncCommandQueueBase.cs">
-      <Link>Async\AsyncCommandQueueBase.cs</Link>
-    </Compile>
-    <Compile Include="..\..\Core\AerospikeClient\Async\AsyncCommandRejectingQueue.cs">
-      <Link>Async\AsyncCommandRejectingQueue.cs</Link>
-    </Compile>
-    <Compile Include="..\..\Core\AerospikeClient\Async\AsyncConnection.cs">
-      <Link>Async\AsyncConnection.cs</Link>
-    </Compile>
-    <Compile Include="..\..\Core\AerospikeClient\Async\AsyncDelete.cs">
-      <Link>Async\AsyncDelete.cs</Link>
-    </Compile>
-    <Compile Include="..\..\Core\AerospikeClient\Async\AsyncExecute.cs">
-      <Link>Async\AsyncExecute.cs</Link>
-    </Compile>
-    <Compile Include="..\..\Core\AerospikeClient\Async\AsyncExists.cs">
-      <Link>Async\AsyncExists.cs</Link>
-    </Compile>
-    <Compile Include="..\..\Core\AerospikeClient\Async\AsyncMultiCommand.cs">
-      <Link>Async\AsyncMultiCommand.cs</Link>
-    </Compile>
-    <Compile Include="..\..\Core\AerospikeClient\Async\AsyncMultiExecutor.cs">
-      <Link>Async\AsyncMultiExecutor.cs</Link>
-    </Compile>
-    <Compile Include="..\..\Core\AerospikeClient\Async\AsyncNode.cs">
-      <Link>Async\AsyncNode.cs</Link>
-    </Compile>
-    <Compile Include="..\..\Core\AerospikeClient\Async\AsyncOperate.cs">
-      <Link>Async\AsyncOperate.cs</Link>
-    </Compile>
-    <Compile Include="..\..\Core\AerospikeClient\Async\AsyncQuery.cs">
-      <Link>Async\AsyncQuery.cs</Link>
-    </Compile>
-    <Compile Include="..\..\Core\AerospikeClient\Async\AsyncQueryExecutor.cs">
-      <Link>Async\AsyncQueryExecutor.cs</Link>
-    </Compile>
-    <Compile Include="..\..\Core\AerospikeClient\Async\AsyncRead.cs">
-      <Link>Async\AsyncRead.cs</Link>
-    </Compile>
-    <Compile Include="..\..\Core\AerospikeClient\Async\AsyncReadHeader.cs">
-      <Link>Async\AsyncReadHeader.cs</Link>
-    </Compile>
-    <Compile Include="..\..\Core\AerospikeClient\Async\AsyncScan.cs">
-      <Link>Async\AsyncScan.cs</Link>
-    </Compile>
-    <Compile Include="..\..\Core\AerospikeClient\Async\AsyncScanExecutor.cs">
-      <Link>Async\AsyncScanExecutor.cs</Link>
-    </Compile>
-    <Compile Include="..\..\Core\AerospikeClient\Async\AsyncSingleCommand.cs">
-      <Link>Async\AsyncSingleCommand.cs</Link>
-    </Compile>
-    <Compile Include="..\..\Core\AerospikeClient\Async\AsyncTimeoutQueue.cs">
-      <Link>Async\AsyncTimeoutQueue.cs</Link>
-    </Compile>
-    <Compile Include="..\..\Core\AerospikeClient\Async\AsyncTouch.cs">
-      <Link>Async\AsyncTouch.cs</Link>
-    </Compile>
-    <Compile Include="..\..\Core\AerospikeClient\Async\AsyncWrite.cs">
-      <Link>Async\AsyncWrite.cs</Link>
-    </Compile>
-    <Compile Include="..\..\Core\AerospikeClient\Async\BufferPool.cs">
-      <Link>Async\BufferPool.cs</Link>
-    </Compile>
-    <Compile Include="..\..\Core\AerospikeClient\Async\MaxCommandAction.cs">
-      <Link>Async\MaxCommandAction.cs</Link>
-    </Compile>
-    <Compile Include="..\..\Core\AerospikeClient\BCrypt\BCrypt.cs">
-      <Link>BCrypt\BCrypt.cs</Link>
-    </Compile>
-    <Compile Include="..\..\Core\AerospikeClient\BCrypt\SaltParseException.cs">
-      <Link>BCrypt\SaltParseException.cs</Link>
-    </Compile>
-    <Compile Include="..\..\Core\AerospikeClient\CDT\ListOperation.cs">
-      <Link>CDT\ListOperation.cs</Link>
-    </Compile>
-    <Compile Include="..\..\Core\AerospikeClient\CDT\MapBase.cs">
-      <Link>CDT\MapBase.cs</Link>
-    </Compile>
-    <Compile Include="..\..\Core\AerospikeClient\CDT\MapOperation.cs">
-      <Link>CDT\MapOperation.cs</Link>
-    </Compile>
-    <Compile Include="..\..\Core\AerospikeClient\CDT\MapOrder.cs">
-      <Link>CDT\MapOrder.cs</Link>
-    </Compile>
-    <Compile Include="..\..\Core\AerospikeClient\CDT\MapPolicy.cs">
-      <Link>CDT\MapPolicy.cs</Link>
-    </Compile>
-    <Compile Include="..\..\Core\AerospikeClient\CDT\MapReturnType.cs">
-      <Link>CDT\MapReturnType.cs</Link>
-    </Compile>
-    <Compile Include="..\..\Core\AerospikeClient\CDT\MapWriteMode.cs">
-      <Link>CDT\MapWriteMode.cs</Link>
-    </Compile>
-    <Compile Include="..\..\Core\AerospikeClient\Cluster\Cluster.cs">
-      <Link>Cluster\Cluster.cs</Link>
-    </Compile>
-    <Compile Include="..\..\Core\AerospikeClient\Cluster\Connection.cs">
-      <Link>Cluster\Connection.cs</Link>
-    </Compile>
-    <Compile Include="..\..\Core\AerospikeClient\Cluster\Node.cs">
-      <Link>Cluster\Node.cs</Link>
-    </Compile>
-    <Compile Include="..\..\Core\AerospikeClient\Cluster\NodeValidator.cs">
-      <Link>Cluster\NodeValidator.cs</Link>
-    </Compile>
-    <Compile Include="..\..\Core\AerospikeClient\Cluster\Partition.cs">
-      <Link>Cluster\Partition.cs</Link>
-    </Compile>
-    <Compile Include="..\..\Core\AerospikeClient\Cluster\PartitionParser.cs">
-      <Link>Cluster\PartitionParser.cs</Link>
-    </Compile>
-    <Compile Include="..\..\Core\AerospikeClient\Cluster\Partitions.cs">
-      <Link>Cluster\Partitions.cs</Link>
-    </Compile>
-    <Compile Include="..\..\Core\AerospikeClient\Cluster\PeerParser.cs">
-      <Link>Cluster\PeerParser.cs</Link>
-    </Compile>
-    <Compile Include="..\..\Core\AerospikeClient\Cluster\Peers.cs">
-      <Link>Cluster\Peers.cs</Link>
-    </Compile>
-    <Compile Include="..\..\Core\AerospikeClient\Cluster\TlsConnection.cs">
-      <Link>Cluster\TlsConnection.cs</Link>
-    </Compile>
-    <Compile Include="..\..\Core\AerospikeClient\Command\Batch.cs">
-      <Link>Command\Batch.cs</Link>
-    </Compile>
-    <Compile Include="..\..\Core\AerospikeClient\Command\BatchExecutor.cs">
-      <Link>Command\BatchExecutor.cs</Link>
-    </Compile>
-    <Compile Include="..\..\Core\AerospikeClient\Command\BatchNode.cs">
-      <Link>Command\BatchNode.cs</Link>
-    </Compile>
-    <Compile Include="..\..\Core\AerospikeClient\Command\ByteUtil.cs">
-      <Link>Command\ByteUtil.cs</Link>
-    </Compile>
-    <Compile Include="..\..\Core\AerospikeClient\Command\Command.cs">
-      <Link>Command\Command.cs</Link>
-    </Compile>
-    <Compile Include="..\..\Core\AerospikeClient\Command\DeleteCommand.cs">
-      <Link>Command\DeleteCommand.cs</Link>
-    </Compile>
-    <Compile Include="..\..\Core\AerospikeClient\Command\ExecuteCommand.cs">
-      <Link>Command\ExecuteCommand.cs</Link>
-    </Compile>
-    <Compile Include="..\..\Core\AerospikeClient\Command\Executor.cs">
-      <Link>Command\Executor.cs</Link>
-    </Compile>
-    <Compile Include="..\..\Core\AerospikeClient\Command\ExistsCommand.cs">
-      <Link>Command\ExistsCommand.cs</Link>
-    </Compile>
-    <Compile Include="..\..\Core\AerospikeClient\Command\FieldType.cs">
-      <Link>Command\FieldType.cs</Link>
-    </Compile>
-    <Compile Include="..\..\Core\AerospikeClient\Command\MultiCommand.cs">
-      <Link>Command\MultiCommand.cs</Link>
-    </Compile>
-    <Compile Include="..\..\Core\AerospikeClient\Command\OperateArgs.cs">
-      <Link>Command\OperateArgs.cs</Link>
-    </Compile>
-    <Compile Include="..\..\Core\AerospikeClient\Command\OperateCommand.cs">
-      <Link>Command\OperateCommand.cs</Link>
-    </Compile>
-    <Compile Include="..\..\Core\AerospikeClient\Command\ParticleType.cs">
-      <Link>Command\ParticleType.cs</Link>
-    </Compile>
-    <Compile Include="..\..\Core\AerospikeClient\Command\ReadCommand.cs">
-      <Link>Command\ReadCommand.cs</Link>
-    </Compile>
-    <Compile Include="..\..\Core\AerospikeClient\Command\ReadHeaderCommand.cs">
-      <Link>Command\ReadHeaderCommand.cs</Link>
-    </Compile>
-    <Compile Include="..\..\Core\AerospikeClient\Command\RegisterCommand.cs">
-      <Link>Command\RegisterCommand.cs</Link>
-    </Compile>
-    <Compile Include="..\..\Core\AerospikeClient\Command\ScanCommand.cs">
-      <Link>Command\ScanCommand.cs</Link>
-    </Compile>
-    <Compile Include="..\..\Core\AerospikeClient\Command\SyncCommand.cs">
-      <Link>Command\SyncCommand.cs</Link>
-    </Compile>
-    <Compile Include="..\..\Core\AerospikeClient\Command\TouchCommand.cs">
-      <Link>Command\TouchCommand.cs</Link>
-    </Compile>
-    <Compile Include="..\..\Core\AerospikeClient\Command\WriteCommand.cs">
-      <Link>Command\WriteCommand.cs</Link>
-    </Compile>
-    <Compile Include="..\..\Core\AerospikeClient\Listener\BatchListListener.cs">
-      <Link>Listener\BatchListListener.cs</Link>
-    </Compile>
-    <Compile Include="..\..\Core\AerospikeClient\Listener\BatchSequenceListener.cs">
-      <Link>Listener\BatchSequenceListener.cs</Link>
-    </Compile>
-    <Compile Include="..\..\Core\AerospikeClient\Listener\DeleteListener.cs">
-      <Link>Listener\DeleteListener.cs</Link>
-    </Compile>
-    <Compile Include="..\..\Core\AerospikeClient\Listener\ExecuteListener.cs">
-      <Link>Listener\ExecuteListener.cs</Link>
-    </Compile>
-    <Compile Include="..\..\Core\AerospikeClient\Listener\ExistsArrayListener.cs">
-      <Link>Listener\ExistsArrayListener.cs</Link>
-    </Compile>
-    <Compile Include="..\..\Core\AerospikeClient\Listener\ExistsListener.cs">
-      <Link>Listener\ExistsListener.cs</Link>
-    </Compile>
-    <Compile Include="..\..\Core\AerospikeClient\Listener\ExistsSequenceListener.cs">
-      <Link>Listener\ExistsSequenceListener.cs</Link>
-    </Compile>
-    <Compile Include="..\..\Core\AerospikeClient\Listener\RecordArrayListener.cs">
-      <Link>Listener\RecordArrayListener.cs</Link>
-    </Compile>
-    <Compile Include="..\..\Core\AerospikeClient\Listener\RecordListener.cs">
-      <Link>Listener\RecordListener.cs</Link>
-    </Compile>
-    <Compile Include="..\..\Core\AerospikeClient\Listener\RecordSequenceListener.cs">
-      <Link>Listener\RecordSequenceListener.cs</Link>
-    </Compile>
-    <Compile Include="..\..\Core\AerospikeClient\Listener\WriteListener.cs">
-      <Link>Listener\WriteListener.cs</Link>
-    </Compile>
-    <Compile Include="..\..\Core\AerospikeClient\Main\AerospikeClient.cs">
-      <Link>Main\AerospikeClient.cs</Link>
-    </Compile>
-    <Compile Include="..\..\Core\AerospikeClient\Main\AerospikeException.cs">
-      <Link>Main\AerospikeException.cs</Link>
-    </Compile>
-    <Compile Include="..\..\Core\AerospikeClient\Main\BatchRead.cs">
-      <Link>Main\BatchRead.cs</Link>
-    </Compile>
-    <Compile Include="..\..\Core\AerospikeClient\Main\Bin.cs">
-      <Link>Main\Bin.cs</Link>
-    </Compile>
-    <Compile Include="..\..\Core\AerospikeClient\Main\Host.cs">
-      <Link>Main\Host.cs</Link>
-    </Compile>
-    <Compile Include="..\..\Core\AerospikeClient\Main\IAerospikeClient.cs">
-      <Link>Main\IAerospikeClient.cs</Link>
-    </Compile>
-    <Compile Include="..\..\Core\AerospikeClient\Main\Info.cs">
-      <Link>Main\Info.cs</Link>
-    </Compile>
-    <Compile Include="..\..\Core\AerospikeClient\Main\Join.cs">
-      <Link>Main\Join.cs</Link>
-    </Compile>
-    <Compile Include="..\..\Core\AerospikeClient\Main\Key.cs">
-      <Link>Main\Key.cs</Link>
-    </Compile>
-    <Compile Include="..\..\Core\AerospikeClient\Main\Language.cs">
-      <Link>Main\Language.cs</Link>
-    </Compile>
-    <Compile Include="..\..\Core\AerospikeClient\Main\Log.cs">
-      <Link>Main\Log.cs</Link>
-    </Compile>
-    <Compile Include="..\..\Core\AerospikeClient\Main\Operation.cs">
-      <Link>Main\Operation.cs</Link>
-    </Compile>
-    <Compile Include="..\..\Core\AerospikeClient\Main\Record.cs">
-      <Link>Main\Record.cs</Link>
-    </Compile>
-    <Compile Include="..\..\Core\AerospikeClient\Main\ResultCode.cs">
-      <Link>Main\ResultCode.cs</Link>
-    </Compile>
-    <Compile Include="..\..\Core\AerospikeClient\Main\Value.cs">
-      <Link>Main\Value.cs</Link>
-    </Compile>
-    <Compile Include="..\..\Core\AerospikeClient\Policy\AdminPolicy.cs">
-      <Link>Policy\AdminPolicy.cs</Link>
-    </Compile>
-    <Compile Include="..\..\Core\AerospikeClient\Policy\BatchPolicy.cs">
-      <Link>Policy\BatchPolicy.cs</Link>
-    </Compile>
-    <Compile Include="..\..\Core\AerospikeClient\Policy\ClientPolicy.cs">
-      <Link>Policy\ClientPolicy.cs</Link>
-    </Compile>
-    <Compile Include="..\..\Core\AerospikeClient\Policy\CommitLevel.cs">
-      <Link>Policy\CommitLevel.cs</Link>
-    </Compile>
-    <Compile Include="..\..\Core\AerospikeClient\Policy\ConsistencyLevel.cs">
-      <Link>Policy\ConsistencyLevel.cs</Link>
-    </Compile>
-    <Compile Include="..\..\Core\AerospikeClient\Policy\GenerationPolicy.cs">
-      <Link>Policy\GenerationPolicy.cs</Link>
-    </Compile>
-    <Compile Include="..\..\Core\AerospikeClient\Policy\InfoPolicy.cs">
-      <Link>Policy\InfoPolicy.cs</Link>
-    </Compile>
-    <Compile Include="..\..\Core\AerospikeClient\Policy\Policy.cs">
-      <Link>Policy\Policy.cs</Link>
-    </Compile>
-    <Compile Include="..\..\Core\AerospikeClient\Policy\Priority.cs">
-      <Link>Policy\Priority.cs</Link>
-    </Compile>
-    <Compile Include="..\..\Core\AerospikeClient\Policy\QueryPolicy.cs">
-      <Link>Policy\QueryPolicy.cs</Link>
-    </Compile>
-    <Compile Include="..\..\Core\AerospikeClient\Policy\RecordExistsAction.cs">
-      <Link>Policy\RecordExistsAction.cs</Link>
-    </Compile>
-    <Compile Include="..\..\Core\AerospikeClient\Policy\Replica.cs">
-      <Link>Policy\Replica.cs</Link>
-    </Compile>
-    <Compile Include="..\..\Core\AerospikeClient\Policy\ScanPolicy.cs">
-      <Link>Policy\ScanPolicy.cs</Link>
-    </Compile>
-    <Compile Include="..\..\Core\AerospikeClient\Policy\TlsPolicy.cs">
-      <Link>Policy\TlsPolicy.cs</Link>
-    </Compile>
-    <Compile Include="..\..\Core\AerospikeClient\Policy\WritePolicy.cs">
-      <Link>Policy\WritePolicy.cs</Link>
-    </Compile>
-    <Compile Include="..\..\Core\AerospikeClient\Query\Filter.cs">
-      <Link>Query\Filter.cs</Link>
-    </Compile>
-    <Compile Include="..\..\Core\AerospikeClient\Query\IndexCollectionType.cs">
-      <Link>Query\IndexCollectionType.cs</Link>
-    </Compile>
-    <Compile Include="..\..\Core\AerospikeClient\Query\IndexType.cs">
-      <Link>Query\IndexType.cs</Link>
-    </Compile>
-    <Compile Include="..\..\Core\AerospikeClient\Query\KeyRecord.cs">
-      <Link>Query\KeyRecord.cs</Link>
-    </Compile>
-    <Compile Include="..\..\Core\AerospikeClient\Query\PredExp.cs">
-      <Link>Query\PredExp.cs</Link>
-    </Compile>
-    <Compile Include="..\..\Core\AerospikeClient\Query\QueryAggregateCommand.cs">
-      <Link>Query\QueryAggregateCommand.cs</Link>
-    </Compile>
-    <Compile Include="..\..\Core\AerospikeClient\Query\QueryAggregateExecutor.cs">
-      <Link>Query\QueryAggregateExecutor.cs</Link>
-    </Compile>
-    <Compile Include="..\..\Core\AerospikeClient\Query\QueryExecutor.cs">
-      <Link>Query\QueryExecutor.cs</Link>
-    </Compile>
-    <Compile Include="..\..\Core\AerospikeClient\Query\QueryRecordCommand.cs">
-      <Link>Query\QueryRecordCommand.cs</Link>
-    </Compile>
-    <Compile Include="..\..\Core\AerospikeClient\Query\QueryRecordExecutor.cs">
-      <Link>Query\QueryRecordExecutor.cs</Link>
-    </Compile>
-    <Compile Include="..\..\Core\AerospikeClient\Query\RecordSet.cs">
-      <Link>Query\RecordSet.cs</Link>
-    </Compile>
-    <Compile Include="..\..\Core\AerospikeClient\Query\RegexFlag.cs">
-      <Link>Query\RegexFlag.cs</Link>
-    </Compile>
-    <Compile Include="..\..\Core\AerospikeClient\Query\ResultSet.cs">
-      <Link>Query\ResultSet.cs</Link>
-    </Compile>
-    <Compile Include="..\..\Core\AerospikeClient\Query\ScanCallback.cs">
-      <Link>Query\ScanCallback.cs</Link>
-    </Compile>
-    <Compile Include="..\..\Core\AerospikeClient\Query\ServerCommand.cs">
-      <Link>Query\ServerCommand.cs</Link>
-    </Compile>
-    <Compile Include="..\..\Core\AerospikeClient\Query\Statement.cs">
-      <Link>Query\Statement.cs</Link>
-    </Compile>
-    <Compile Include="..\..\Core\AerospikeClient\Task\BaseTask.cs">
-      <Link>Task\BaseTask.cs</Link>
-    </Compile>
-    <Compile Include="..\..\Core\AerospikeClient\Task\ExecuteTask.cs">
-      <Link>Task\ExecuteTask.cs</Link>
-    </Compile>
-    <Compile Include="..\..\Core\AerospikeClient\Task\IndexTask.cs">
-      <Link>Task\IndexTask.cs</Link>
-    </Compile>
-    <Compile Include="..\..\Core\AerospikeClient\Task\RegisterTask.cs">
-      <Link>Task\RegisterTask.cs</Link>
-    </Compile>
-    <Compile Include="..\..\Core\AerospikeClient\Util\Hash.cs">
-      <Link>Util\Hash.cs</Link>
-    </Compile>
-    <Compile Include="..\..\Core\AerospikeClient\Util\Packer.cs">
-      <Link>Util\Packer.cs</Link>
-    </Compile>
-    <Compile Include="..\..\Core\AerospikeClient\Util\RandomShift.cs">
-      <Link>Util\RandomShift.cs</Link>
-    </Compile>
-    <Compile Include="..\..\Core\AerospikeClient\Util\ThreadLocalData.cs">
-      <Link>Util\ThreadLocalData.cs</Link>
-    </Compile>
-    <Compile Include="..\..\Core\AerospikeClient\Util\Unpacker.cs">
-      <Link>Util\Unpacker.cs</Link>
-    </Compile>
-    <Compile Include="..\..\Core\AerospikeClient\Util\Util.cs">
-      <Link>Util\Util.cs</Link>
-    </Compile>
+    <Compile Include="Admin\AdminCommand.cs" />
+    <Compile Include="Admin\Privilege.cs" />
+    <Compile Include="Admin\PrivilegeCode.cs" />
+    <Compile Include="Admin\Role.cs" />
+    <Compile Include="Admin\User.cs" />
+    <Compile Include="AsyncTask\BatchListListenerAdapter.cs" />
+    <Compile Include="AsyncTask\DeleteListenerAdapter.cs" />
+    <Compile Include="AsyncTask\ExecuteListenerAdapter.cs" />
+    <Compile Include="AsyncTask\ExistsArrayListenerAdapter.cs" />
+    <Compile Include="AsyncTask\ExistsListenerAdapter.cs" />
+    <Compile Include="AsyncTask\ListenerAdapter.cs" />
+    <Compile Include="AsyncTask\RecordArrayListenerAdapter.cs" />
+    <Compile Include="AsyncTask\RecordListenerAdapter.cs" />
+    <Compile Include="AsyncTask\WriteListenerAdapter.cs" />
+    <Compile Include="Async\AsyncBatch.cs" />
+    <Compile Include="Async\AsyncClient.cs" />
+    <Compile Include="Async\AsyncClientPolicy.cs" />
+    <Compile Include="Async\AsyncCluster.cs" />
+    <Compile Include="Async\AsyncCommand.cs" />
+    <Compile Include="Async\AsyncCommandBlockingQueue.cs" />
+    <Compile Include="Async\AsyncCommandDelayingQueue.cs" />
+    <Compile Include="Async\AsyncCommandQueueBase.cs" />
+    <Compile Include="Async\AsyncCommandRejectingQueue.cs" />
+    <Compile Include="Async\AsyncConnection.cs" />
+    <Compile Include="Async\AsyncDelete.cs" />
+    <Compile Include="Async\AsyncExecute.cs" />
+    <Compile Include="Async\AsyncExists.cs" />
+    <Compile Include="Async\AsyncMultiCommand.cs" />
+    <Compile Include="Async\AsyncMultiExecutor.cs" />
+    <Compile Include="Async\AsyncNode.cs" />
+    <Compile Include="Async\AsyncOperate.cs" />
+    <Compile Include="Async\AsyncQuery.cs" />
+    <Compile Include="Async\AsyncQueryExecutor.cs" />
+    <Compile Include="Async\AsyncRead.cs" />
+    <Compile Include="Async\AsyncReadHeader.cs" />
+    <Compile Include="Async\AsyncScan.cs" />
+    <Compile Include="Async\AsyncScanExecutor.cs" />
+    <Compile Include="Async\AsyncSingleCommand.cs" />
+    <Compile Include="Async\AsyncTimeoutQueue.cs" />
+    <Compile Include="Async\AsyncTouch.cs" />
+    <Compile Include="Async\AsyncWrite.cs" />
+    <Compile Include="Async\BufferPool.cs" />
+    <Compile Include="Async\MaxCommandAction.cs" />
+    <Compile Include="BCrypt\BCrypt.cs" />
+    <Compile Include="BCrypt\SaltParseException.cs" />
+    <Compile Include="CDT\ListOperation.cs" />
+    <Compile Include="CDT\MapBase.cs" />
+    <Compile Include="CDT\MapOperation.cs" />
+    <Compile Include="CDT\MapOrder.cs" />
+    <Compile Include="CDT\MapPolicy.cs" />
+    <Compile Include="CDT\MapReturnType.cs" />
+    <Compile Include="CDT\MapWriteMode.cs" />
+    <Compile Include="Cluster\Cluster.cs" />
+    <Compile Include="Cluster\Connection.cs" />
+    <Compile Include="Cluster\Node.cs" />
+    <Compile Include="Cluster\NodeValidator.cs" />
+    <Compile Include="Cluster\Partition.cs" />
+    <Compile Include="Cluster\PartitionParser.cs" />
+    <Compile Include="Cluster\Partitions.cs" />
+    <Compile Include="Cluster\PeerParser.cs" />
+    <Compile Include="Cluster\Peers.cs" />
+    <Compile Include="Cluster\TlsConnection.cs" />
+    <Compile Include="Command\Batch.cs" />
+    <Compile Include="Command\BatchExecutor.cs" />
+    <Compile Include="Command\BatchNode.cs" />
+    <Compile Include="Command\ByteUtil.cs" />
+    <Compile Include="Command\Command.cs" />
+    <Compile Include="Command\DeleteCommand.cs" />
+    <Compile Include="Command\ExecuteCommand.cs" />
+    <Compile Include="Command\Executor.cs" />
+    <Compile Include="Command\ExistsCommand.cs" />
+    <Compile Include="Command\FieldType.cs" />
+    <Compile Include="Command\MultiCommand.cs" />
+    <Compile Include="Command\OperateArgs.cs" />
+    <Compile Include="Command\OperateCommand.cs" />
+    <Compile Include="Command\ParticleType.cs" />
+    <Compile Include="Command\ReadCommand.cs" />
+    <Compile Include="Command\ReadHeaderCommand.cs" />
+    <Compile Include="Command\RegisterCommand.cs" />
+    <Compile Include="Command\ScanCommand.cs" />
+    <Compile Include="Command\SyncCommand.cs" />
+    <Compile Include="Command\TouchCommand.cs" />
+    <Compile Include="Command\WriteCommand.cs" />
+    <Compile Include="Listener\BatchListListener.cs" />
+    <Compile Include="Listener\BatchSequenceListener.cs" />
+    <Compile Include="Listener\DeleteListener.cs" />
+    <Compile Include="Listener\ExecuteListener.cs" />
+    <Compile Include="Listener\ExistsArrayListener.cs" />
+    <Compile Include="Listener\ExistsListener.cs" />
+    <Compile Include="Listener\ExistsSequenceListener.cs" />
+    <Compile Include="Listener\RecordArrayListener.cs" />
+    <Compile Include="Listener\RecordListener.cs" />
+    <Compile Include="Listener\RecordSequenceListener.cs" />
+    <Compile Include="Listener\WriteListener.cs" />
     <Compile Include="Lua\LuaGeoJSON.cs" />
     <Compile Include="Lua\LuaAerospike.cs" />
     <Compile Include="Lua\LuaBytes.cs" />
@@ -622,12 +266,69 @@
     <Compile Include="Lua\LuaMap.cs" />
     <Compile Include="Lua\LuaStream.cs" />
     <Compile Include="Command\Formatter.cs" />
+    <Compile Include="Main\AerospikeClient.cs" />
+    <Compile Include="Main\AerospikeException.cs" />
+    <Compile Include="Main\BatchRead.cs" />
+    <Compile Include="Main\Bin.cs" />
+    <Compile Include="Main\Host.cs" />
+    <Compile Include="Main\IAerospikeClient.cs" />
+    <Compile Include="Main\Info.cs" />
+    <Compile Include="Main\Join.cs" />
+    <Compile Include="Main\Key.cs" />
+    <Compile Include="Main\Language.cs" />
+    <Compile Include="Main\Log.cs" />
+    <Compile Include="Main\Operation.cs" />
+    <Compile Include="Main\Record.cs" />
+    <Compile Include="Main\ResultCode.cs" />
+    <Compile Include="Main\Value.cs" />
+    <Compile Include="Policy\AdminPolicy.cs" />
+    <Compile Include="Policy\BatchPolicy.cs" />
+    <Compile Include="Policy\ClientPolicy.cs" />
+    <Compile Include="Policy\CommitLevel.cs" />
+    <Compile Include="Policy\ConsistencyLevel.cs" />
+    <Compile Include="Policy\GenerationPolicy.cs" />
+    <Compile Include="Policy\InfoPolicy.cs" />
+    <Compile Include="Policy\Policy.cs" />
+    <Compile Include="Policy\Priority.cs" />
+    <Compile Include="Policy\QueryPolicy.cs" />
+    <Compile Include="Policy\RecordExistsAction.cs" />
+    <Compile Include="Policy\Replica.cs" />
+    <Compile Include="Policy\ScanPolicy.cs" />
+    <Compile Include="Policy\TlsPolicy.cs" />
+    <Compile Include="Policy\WritePolicy.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Properties\Resources.Designer.cs">
       <AutoGen>True</AutoGen>
       <DesignTime>True</DesignTime>
       <DependentUpon>Resources.resx</DependentUpon>
     </Compile>
+    <Compile Include="Query\Filter.cs" />
+    <Compile Include="Query\IndexCollectionType.cs" />
+    <Compile Include="Query\IndexType.cs" />
+    <Compile Include="Query\KeyRecord.cs" />
+    <Compile Include="Query\PredExp.cs" />
+    <Compile Include="Query\QueryAggregateCommand.cs" />
+    <Compile Include="Query\QueryAggregateExecutor.cs" />
+    <Compile Include="Query\QueryExecutor.cs" />
+    <Compile Include="Query\QueryRecordCommand.cs" />
+    <Compile Include="Query\QueryRecordExecutor.cs" />
+    <Compile Include="Query\RecordSet.cs" />
+    <Compile Include="Query\RegexFlag.cs" />
+    <Compile Include="Query\ResultSet.cs" />
+    <Compile Include="Query\ScanCallback.cs" />
+    <Compile Include="Query\ServerCommand.cs" />
+    <Compile Include="Query\Statement.cs" />
+    <Compile Include="Task\BaseTask.cs" />
+    <Compile Include="Task\ExecuteTask.cs" />
+    <Compile Include="Task\IndexTask.cs" />
+    <Compile Include="Task\RegisterTask.cs" />
+    <Compile Include="Util\Hash.cs" />
+    <Compile Include="Util\Packer.cs" />
+    <Compile Include="Util\RandomShift.cs" />
+    <Compile Include="Util\Ripemd160.cs" />
+    <Compile Include="Util\ThreadLocalData.cs" />
+    <Compile Include="Util\Unpacker.cs" />
+    <Compile Include="Util\Util.cs" />
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="Properties\Resources.resx">
