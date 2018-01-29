@@ -25,24 +25,17 @@ namespace Aerospike.Client
 	{
 		private readonly string ns;
 		private readonly string indexName;
+		private readonly bool isCreate;
 
 		/// <summary>
 		/// Initialize task with fields needed to query server nodes.
 		/// </summary>
-		public IndexTask(Cluster cluster, Policy policy, string ns, string indexName)
+		public IndexTask(Cluster cluster, Policy policy, string ns, string indexName, bool isCreate)
 			: base(cluster, policy)
 		{
 			this.ns = ns;
 			this.indexName = indexName;
-		}
-
-		/// <summary>
-		/// Initialize task that has already completed.
-		/// </summary>
-		public IndexTask() 
-		{
-			ns = null;
-			indexName = null;
+			this.isCreate = isCreate;
 		}
 
 		/// <summary>
@@ -63,31 +56,45 @@ namespace Aerospike.Client
 			foreach (Node node in nodes)
 			{
 				string response = Info.Request(policy, node, command);
-				string find = "load_pct=";
-				int index = response.IndexOf(find);
-    
-				if (index < 0)
+
+				if (isCreate)
 				{
-					if (response.IndexOf("FAIL:201") >= 0 || response.IndexOf("FAIL:203") >= 0)
+					// Check if index has been created.
+					string find = "load_pct=";
+					int index = response.IndexOf(find);
+
+					if (index < 0)
 					{
-						// Index not found or not readable.
-						return BaseTask.NOT_FOUND;
+						if (response.IndexOf("FAIL:201") >= 0 || response.IndexOf("FAIL:203") >= 0)
+						{
+							// Index not found or not readable.
+							return BaseTask.NOT_FOUND;
+						}
+						else
+						{
+							// Throw exception immediately.
+							throw new AerospikeException(command + " failed: " + response);
+						}
 					}
-					else
+
+					int begin = index + find.Length;
+					int end = response.IndexOf(';', begin);
+					string str = response.Substring(begin, end - begin);
+					int pct = Convert.ToInt32(str);
+
+					if (pct != 100)
 					{
-						// Throw exception immediately.
-						throw new AerospikeException(command + " failed: " + response);
+						return BaseTask.IN_PROGRESS;
 					}
 				}
-    
-				int begin = index + find.Length;
-				int end = response.IndexOf(';', begin);
-				string str = response.Substring(begin, end - begin);
-				int pct = Convert.ToInt32(str);
-    
-				if (pct != 100)
+				else
 				{
-					return BaseTask.IN_PROGRESS;
+					// Check if index has been dropped.
+					if (response.IndexOf("FAIL:201") < 0)
+					{
+						// Index still exists.
+						return BaseTask.IN_PROGRESS;
+					}
 				}
 			}
 			return BaseTask.COMPLETE;

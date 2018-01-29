@@ -1279,7 +1279,7 @@ namespace Aerospike.Client
 			if (response.Equals("OK", StringComparison.CurrentCultureIgnoreCase))
 			{
 				// Return task that could optionally be polled for completion.
-				return new IndexTask(cluster, policy, ns, indexName);
+				return new IndexTask(cluster, policy, ns, indexName, true);
 			}
 
 			ParseInfoError("Create index failed", response);
@@ -1288,13 +1288,16 @@ namespace Aerospike.Client
 		
 		/// <summary>
 		/// Delete secondary index.
+		/// This asynchronous server call will return before command is complete.
+		/// The user can optionally wait for command completion by using the returned
+		/// IndexTask instance.
 		/// </summary>
 		/// <param name="policy">generic configuration parameters, pass in null for defaults</param>
 		/// <param name="ns">namespace - equivalent to database name</param>
 		/// <param name="setName">optional set name - equivalent to database table</param>
 		/// <param name="indexName">name of secondary index</param>
 		/// <exception cref="AerospikeException">if index create fails</exception>
-		public void DropIndex(Policy policy, string ns, string setName, string indexName)
+		public IndexTask DropIndex(Policy policy, string ns, string setName, string indexName)
 		{
 			if (policy == null)
 			{
@@ -1317,10 +1320,11 @@ namespace Aerospike.Client
 
 			if (response.Equals("OK", StringComparison.CurrentCultureIgnoreCase))
 			{
-				return;
+				return new IndexTask(cluster, policy, ns, indexName, false);
 			}
 
 			ParseInfoError("Drop index failed", response);
+			return null;
 		}
 
 		//-------------------------------------------------------

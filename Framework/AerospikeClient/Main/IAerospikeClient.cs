@@ -520,13 +520,16 @@ namespace Aerospike.Client
 
 		/// <summary>
 		/// Delete secondary index.
+		/// This asynchronous server call will return before command is complete.
+		/// The user can optionally wait for command completion by using the returned
+		/// IndexTask instance.
 		/// </summary>
 		/// <param name="policy">generic configuration parameters, pass in null for defaults</param>
 		/// <param name="ns">namespace - equivalent to database name</param>
 		/// <param name="setName">optional set name - equivalent to database table</param>
 		/// <param name="indexName">name of secondary index</param>
 		/// <exception cref="AerospikeException">if index create fails</exception>
-		void DropIndex(Policy policy, string ns, string setName, string indexName);
+		IndexTask DropIndex(Policy policy, string ns, string setName, string indexName);
 
 		/// <summary>
 		/// Create user with password and roles.  Clear-text password will be hashed using bcrypt 
