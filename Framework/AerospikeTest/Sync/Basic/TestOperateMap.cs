@@ -227,14 +227,10 @@ namespace Aerospike.Test
 			Assert.AreEqual(4, size);
 
 			IList list = (IList)results[i++];
-			KeyValuePair<object,object> entry = (KeyValuePair<object,object>)list[0];
-			Assert.AreEqual(3L, entry.Key);
-			Assert.AreEqual(3L, entry.Value);
+			Assert.AreEqual(1, list.Count);
 
 			list = (IList)results[i++];
 			Assert.AreEqual(4, list.Count);
-			entry = (KeyValuePair<object,object>)list[1];
-			Assert.AreEqual(2L, entry.Key);
 
 			record = client.Operate(null, key,
 				MapOperation.SetMapPolicy(new MapPolicy(MapOrder.KEY_ORDERED, MapWriteMode.UPDATE), binName),
@@ -255,7 +251,7 @@ namespace Aerospike.Test
 
 			list = (IList)results[i++];
 			Assert.AreEqual(1, list.Count);
-			entry = (KeyValuePair<object,object>)list[0];
+			KeyValuePair<object, object> entry = (KeyValuePair<object, object>)list[0];
 			Assert.AreEqual(1L, entry.Value);
 
 			list = (IList)results[i++];
