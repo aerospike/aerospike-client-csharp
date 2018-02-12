@@ -53,6 +53,38 @@ namespace Aerospike.Client
 	/// </summary>
 	public class MapOperation
 	{
+		private const int SET_TYPE = 64;
+		protected internal const int ADD = 65;
+		protected internal const int ADD_ITEMS = 66;
+		protected internal const int PUT = 67;
+		protected internal const int PUT_ITEMS = 68;
+		protected internal const int REPLACE = 69;
+		protected internal const int REPLACE_ITEMS = 70;
+		private const int INCREMENT = 73;
+		private const int DECREMENT = 74;
+		private const int CLEAR = 75;
+		private const int REMOVE_BY_KEY = 76;
+		private const int REMOVE_BY_INDEX = 77;
+		private const int REMOVE_BY_RANK = 79;
+		private const int REMOVE_BY_KEY_LIST = 81;
+		private const int REMOVE_BY_VALUE = 82;
+		private const int REMOVE_BY_VALUE_LIST = 83;
+		private const int REMOVE_BY_KEY_INTERVAL = 84;
+		private const int REMOVE_BY_INDEX_RANGE = 85;
+		private const int REMOVE_BY_VALUE_INTERVAL = 86;
+		private const int REMOVE_BY_RANK_RANGE = 87;
+		private const int SIZE = 96;
+		private const int GET_BY_KEY = 97;
+		private const int GET_BY_INDEX = 98;
+		private const int GET_BY_RANK = 100;
+		private const int GET_BY_VALUE = 102;  // GET_ALL_BY_VALUE on server.
+		private const int GET_BY_KEY_INTERVAL = 103;
+		private const int GET_BY_INDEX_RANGE = 104;
+		private const int GET_BY_VALUE_INTERVAL = 105;
+		private const int GET_BY_RANK_RANGE = 106;
+		private const int GET_BY_KEY_LIST = 107;
+		private const int GET_BY_VALUE_LIST = 108;
+
 		/// <summary>
 		/// Create set map policy operation.
 		/// Server sets map policy attributes.  Server returns null.
@@ -62,7 +94,7 @@ namespace Aerospike.Client
 		/// </summary>
 		public static Operation SetMapPolicy(MapPolicy policy, string binName)
 		{
-			return MapBase.SetMapPolicy(binName, policy.attributes);
+			return CDT.CreateOperation(SET_TYPE, Operation.Type.MAP_MODIFY, binName, policy.attributes);
 		}
 
 		/// <summary>
@@ -77,7 +109,24 @@ namespace Aerospike.Client
 		/// </summary>
 		public static Operation Put(MapPolicy policy, string binName, Value key, Value value)
 		{
-			return MapBase.CreatePut(policy.itemCommand, policy.attributes, binName, key, value);
+			Packer packer = new Packer();
+			packer.PackRawShort(policy.itemCommand);
+
+			if (policy.itemCommand == REPLACE)
+			{
+				// Replace doesn't allow map attributes because it does not create on non-existing key.
+				packer.PackArrayBegin(2);
+				key.Pack(packer);
+				value.Pack(packer);
+			}
+			else
+			{
+				packer.PackArrayBegin(3);
+				key.Pack(packer);
+				value.Pack(packer);
+				packer.PackNumber(policy.attributes);
+			}
+			return new Operation(Operation.Type.MAP_MODIFY, binName, Value.Get(packer.ToByteArray()));
 		}
 
 		/// <summary>
@@ -95,7 +144,7 @@ namespace Aerospike.Client
 			Packer packer = new Packer();
 			packer.PackRawShort(policy.itemsCommand);
 
-			if (policy.itemsCommand == MapBase.REPLACE_ITEMS)
+			if (policy.itemsCommand == REPLACE_ITEMS)
 			{
 				// Replace doesn't allow map attributes because it does not create on non-existing key.
 				packer.PackArrayBegin(1);
@@ -123,7 +172,7 @@ namespace Aerospike.Client
 		/// </summary>
 		public static Operation Increment(MapPolicy policy, string binName, Value key, Value incr)
 		{
-			return MapBase.CreateOperation(MapBase.INCREMENT, policy.attributes, binName, key, incr);
+			return CDT.CreateOperation(INCREMENT, Operation.Type.MAP_MODIFY, binName, key, incr, policy.attributes);
 		}
 
 		/// <summary>
@@ -139,7 +188,7 @@ namespace Aerospike.Client
 		/// </summary>
 		public static Operation Decrement(MapPolicy policy, string binName, Value key, Value decr)
 		{
-			return MapBase.CreateOperation(MapBase.DECREMENT, policy.attributes, binName, key, decr);
+			return CDT.CreateOperation(DECREMENT, Operation.Type.MAP_MODIFY, binName, key, decr, policy.attributes);
 		}
 
 		/// <summary>
@@ -148,7 +197,7 @@ namespace Aerospike.Client
 		/// </summary>
 		public static Operation Clear(string binName)
 		{
-			return MapBase.CreateOperation(MapBase.CLEAR, Operation.Type.MAP_MODIFY, binName);
+			return CDT.CreateOperation(CLEAR, Operation.Type.MAP_MODIFY, binName);
 		}
 
 		/// <summary>
@@ -157,7 +206,7 @@ namespace Aerospike.Client
 		/// </summary>
 		public static Operation RemoveByKey(string binName, Value key, MapReturnType returnType)
 		{
-			return MapBase.CreateOperation(MapBase.REMOVE_BY_KEY, Operation.Type.MAP_MODIFY, binName, key, returnType);
+			return CDT.CreateOperation(REMOVE_BY_KEY, Operation.Type.MAP_MODIFY, binName, (int)returnType, key);
 		}
 
 		/// <summary>
@@ -166,7 +215,7 @@ namespace Aerospike.Client
 		/// </summary>
 		public static Operation RemoveByKeyList(string binName, IList keys, MapReturnType returnType)
 		{
-			return MapBase.CreateOperation(MapBase.REMOVE_BY_KEY_LIST, Operation.Type.MAP_MODIFY, binName, keys, returnType);
+			return CDT.CreateOperation(REMOVE_BY_KEY_LIST, Operation.Type.MAP_MODIFY, binName, (int)returnType, keys);
 		}
 
 		/// <summary>
@@ -180,7 +229,7 @@ namespace Aerospike.Client
 		/// </summary>
 		public static Operation RemoveByKeyRange(string binName, Value keyBegin, Value keyEnd, MapReturnType returnType)
 		{
-			return MapBase.CreateRangeOperation(MapBase.REMOVE_BY_KEY_INTERVAL, Operation.Type.MAP_MODIFY, binName, keyBegin, keyEnd, returnType);
+			return CDT.CreateRangeOperation(REMOVE_BY_KEY_INTERVAL, Operation.Type.MAP_MODIFY, binName, keyBegin, keyEnd, (int)returnType);
 		}
 
 		/// <summary>
@@ -189,7 +238,7 @@ namespace Aerospike.Client
 		/// </summary>
 		public static Operation RemoveByValue(string binName, Value value, MapReturnType returnType)
 		{
-			return MapBase.CreateOperation(MapBase.REMOVE_BY_VALUE, Operation.Type.MAP_MODIFY, binName, value, returnType);
+			return CDT.CreateOperation(REMOVE_BY_VALUE, Operation.Type.MAP_MODIFY, binName, (int)returnType, value);
 		}
 
 		/// <summary>
@@ -198,7 +247,7 @@ namespace Aerospike.Client
 		/// </summary>
 		public static Operation RemoveByValueList(string binName, IList values, MapReturnType returnType)
 		{
-			return MapBase.CreateOperation(MapBase.REMOVE_BY_VALUE_LIST, Operation.Type.MAP_MODIFY, binName, values, returnType);
+			return CDT.CreateOperation(REMOVE_BY_VALUE_LIST, Operation.Type.MAP_MODIFY, binName, (int)returnType, values);
 		}
 
 		/// <summary>
@@ -212,7 +261,7 @@ namespace Aerospike.Client
 		/// </summary>
 		public static Operation RemoveByValueRange(string binName, Value valueBegin, Value valueEnd, MapReturnType returnType)
 		{
-			return MapBase.CreateRangeOperation(MapBase.REMOVE_BY_VALUE_INTERVAL, Operation.Type.MAP_MODIFY, binName, valueBegin, valueEnd, returnType);
+			return CDT.CreateRangeOperation(REMOVE_BY_VALUE_INTERVAL, Operation.Type.MAP_MODIFY, binName, valueBegin, valueEnd, (int)returnType);
 		}
 
 		/// <summary>
@@ -221,7 +270,7 @@ namespace Aerospike.Client
 		/// </summary>
 		public static Operation RemoveByIndex(string binName, int index, MapReturnType returnType)
 		{
-			return MapBase.CreateOperation(MapBase.REMOVE_BY_INDEX, Operation.Type.MAP_MODIFY, binName, index, returnType);
+			return CDT.CreateOperation(REMOVE_BY_INDEX, Operation.Type.MAP_MODIFY, binName, (int)returnType, index);
 		}
 
 		/// <summary>
@@ -231,7 +280,7 @@ namespace Aerospike.Client
 		/// </summary>
 		public static Operation RemoveByIndexRange(string binName, int index, MapReturnType returnType)
 		{
-			return MapBase.CreateOperation(MapBase.REMOVE_BY_INDEX_RANGE, Operation.Type.MAP_MODIFY, binName, index, returnType);
+			return CDT.CreateOperation(REMOVE_BY_INDEX_RANGE, Operation.Type.MAP_MODIFY, binName, (int)returnType, index);
 		}
 
 		/// <summary>
@@ -240,7 +289,7 @@ namespace Aerospike.Client
 		/// </summary>
 		public static Operation RemoveByIndexRange(string binName, int index, int count, MapReturnType returnType)
 		{
-			return MapBase.CreateOperation(MapBase.REMOVE_BY_INDEX_RANGE, Operation.Type.MAP_MODIFY, binName, index, count, returnType);
+			return CDT.CreateOperation(REMOVE_BY_INDEX_RANGE, Operation.Type.MAP_MODIFY, binName, (int)returnType, index, count);
 		}
 
 		/// <summary>
@@ -249,7 +298,7 @@ namespace Aerospike.Client
 		/// </summary>
 		public static Operation RemoveByRank(string binName, int rank, MapReturnType returnType)
 		{
-			return MapBase.CreateOperation(MapBase.REMOVE_BY_RANK, Operation.Type.MAP_MODIFY, binName, rank, returnType);
+			return CDT.CreateOperation(REMOVE_BY_RANK, Operation.Type.MAP_MODIFY, binName, (int)returnType, rank);
 		}
 
 		/// <summary>
@@ -259,7 +308,7 @@ namespace Aerospike.Client
 		/// </summary>
 		public static Operation RemoveByRankRange(string binName, int rank, MapReturnType returnType)
 		{
-			return MapBase.CreateOperation(MapBase.REMOVE_BY_RANK_RANGE, Operation.Type.MAP_MODIFY, binName, rank, returnType);
+			return CDT.CreateOperation(REMOVE_BY_RANK_RANGE, Operation.Type.MAP_MODIFY, binName, (int)returnType, rank);
 		}
 
 		/// <summary>
@@ -268,7 +317,7 @@ namespace Aerospike.Client
 		/// </summary>
 		public static Operation RemoveByRankRange(string binName, int rank, int count, MapReturnType returnType)
 		{
-			return MapBase.CreateOperation(MapBase.REMOVE_BY_RANK_RANGE, Operation.Type.MAP_MODIFY, binName, rank, count, returnType);
+			return CDT.CreateOperation(REMOVE_BY_RANK_RANGE, Operation.Type.MAP_MODIFY, binName, (int)returnType, rank, count);
 		}
 
 		/// <summary>
@@ -277,7 +326,7 @@ namespace Aerospike.Client
 		/// </summary>
 		public static Operation Size(string binName)
 		{
-			return MapBase.CreateOperation(MapBase.SIZE, Operation.Type.MAP_READ, binName);
+			return CDT.CreateOperation(SIZE, Operation.Type.MAP_READ, binName);
 		}
 
 		/// <summary>
@@ -286,7 +335,7 @@ namespace Aerospike.Client
 		/// </summary>
 		public static Operation GetByKey(string binName, Value key, MapReturnType returnType)
 		{
-			return MapBase.CreateOperation(MapBase.GET_BY_KEY, Operation.Type.MAP_READ, binName, key, returnType);
+			return CDT.CreateOperation(GET_BY_KEY, Operation.Type.MAP_READ, binName, (int)returnType, key);
 		}
 
 		/// <summary>
@@ -300,7 +349,16 @@ namespace Aerospike.Client
 		/// </summary>
 		public static Operation GetByKeyRange(string binName, Value keyBegin, Value keyEnd, MapReturnType returnType)
 		{
-			return MapBase.CreateRangeOperation(MapBase.GET_BY_KEY_INTERVAL, Operation.Type.MAP_READ, binName, keyBegin, keyEnd, returnType);
+			return CDT.CreateRangeOperation(GET_BY_KEY_INTERVAL, Operation.Type.MAP_READ, binName, keyBegin, keyEnd, (int)returnType);
+		}
+
+		/// <summary>
+		/// Create map get by key list operation.
+		/// Server selects map items identified by keys and returns selected data specified by returnType.
+		/// </summary>
+		public static Operation GetByKeyList(string binName, IList keys, MapReturnType returnType)
+		{
+			return CDT.CreateOperation(GET_BY_KEY_LIST, Operation.Type.MAP_READ, binName, (int)returnType, keys);
 		}
 
 		/// <summary>
@@ -309,7 +367,7 @@ namespace Aerospike.Client
 		/// </summary>
 		public static Operation GetByValue(string binName, Value value, MapReturnType returnType)
 		{
-			return MapBase.CreateOperation(MapBase.GET_BY_VALUE, Operation.Type.MAP_READ, binName, value, returnType);
+			return CDT.CreateOperation(GET_BY_VALUE, Operation.Type.MAP_READ, binName, (int)returnType, value);
 		}
 
 		/// <summary>
@@ -323,7 +381,16 @@ namespace Aerospike.Client
 		/// </summary>
 		public static Operation GetByValueRange(string binName, Value valueBegin, Value valueEnd, MapReturnType returnType)
 		{
-			return MapBase.CreateRangeOperation(MapBase.GET_BY_VALUE_INTERVAL, Operation.Type.MAP_READ, binName, valueBegin, valueEnd, returnType);
+			return CDT.CreateRangeOperation(GET_BY_VALUE_INTERVAL, Operation.Type.MAP_READ, binName, valueBegin, valueEnd, (int)returnType);
+		}
+
+		/// <summary>
+		/// Create map get by value list operation.
+		/// Server selects map items identified by values and returns selected data specified by returnType.
+		/// </summary>
+		public static Operation GetByValueList(string binName, IList values, MapReturnType returnType)
+		{
+			return CDT.CreateOperation(GET_BY_VALUE_LIST, Operation.Type.MAP_READ, binName, (int)returnType, values);
 		}
 
 		/// <summary>
@@ -332,7 +399,7 @@ namespace Aerospike.Client
 		/// </summary>
 		public static Operation GetByIndex(string binName, int index, MapReturnType returnType)
 		{
-			return MapBase.CreateOperation(MapBase.GET_BY_INDEX, Operation.Type.MAP_READ, binName, index, returnType);
+			return CDT.CreateOperation(GET_BY_INDEX, Operation.Type.MAP_READ, binName, (int)returnType, index);
 		}
 
 		/// <summary>
@@ -342,7 +409,7 @@ namespace Aerospike.Client
 		/// </summary>
 		public static Operation GetByIndexRange(string binName, int index, MapReturnType returnType)
 		{
-			return MapBase.CreateOperation(MapBase.GET_BY_INDEX_RANGE, Operation.Type.MAP_READ, binName, index, returnType);
+			return CDT.CreateOperation(GET_BY_INDEX_RANGE, Operation.Type.MAP_READ, binName, (int)returnType, index);
 		}
 
 		/// <summary>
@@ -351,7 +418,7 @@ namespace Aerospike.Client
 		/// </summary>
 		public static Operation GetByIndexRange(string binName, int index, int count, MapReturnType returnType)
 		{
-			return MapBase.CreateOperation(MapBase.GET_BY_INDEX_RANGE, Operation.Type.MAP_READ, binName, index, count, returnType);
+			return CDT.CreateOperation(GET_BY_INDEX_RANGE, Operation.Type.MAP_READ, binName, (int)returnType, index, count);
 		}
 
 		/// <summary>
@@ -360,7 +427,7 @@ namespace Aerospike.Client
 		/// </summary>
 		public static Operation GetByRank(string binName, int rank, MapReturnType returnType)
 		{
-			return MapBase.CreateOperation(MapBase.GET_BY_RANK, Operation.Type.MAP_READ, binName, rank, returnType);
+			return CDT.CreateOperation(GET_BY_RANK, Operation.Type.MAP_READ, binName, (int)returnType, rank);
 		}
 
 		/// <summary>
@@ -370,7 +437,7 @@ namespace Aerospike.Client
 		/// </summary>
 		public static Operation GetByRankRange(string binName, int rank, MapReturnType returnType)
 		{
-			return MapBase.CreateOperation(MapBase.GET_BY_RANK_RANGE, Operation.Type.MAP_READ, binName, rank, returnType);
+			return CDT.CreateOperation(GET_BY_RANK_RANGE, Operation.Type.MAP_READ, binName, (int)returnType, rank);
 		}
 
 		/// <summary>
@@ -379,7 +446,7 @@ namespace Aerospike.Client
 		/// </summary>
 		public static Operation GetByRankRange(string binName, int rank, int count, MapReturnType returnType)
 		{
-			return MapBase.CreateOperation(MapBase.GET_BY_RANK_RANGE, Operation.Type.MAP_READ, binName, rank, count, returnType);
+			return CDT.CreateOperation(GET_BY_RANK_RANGE, Operation.Type.MAP_READ, binName, (int)returnType, rank, count);
 		}
 	}
 }

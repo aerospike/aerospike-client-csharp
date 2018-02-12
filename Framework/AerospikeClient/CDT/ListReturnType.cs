@@ -17,9 +17,9 @@
 namespace Aerospike.Client
 {
 	/// <summary>
-	/// Map return type. Type of data to return when selecting or removing items from the map.
+	/// List return type. Type of data to return when selecting or removing items from the list.
 	/// </summary>
-	public enum MapReturnType
+	public enum ListReturnType
 	{
 		/// <summary>
 		/// Do not return a result.
@@ -71,31 +71,16 @@ namespace Aerospike.Client
 		COUNT = 5,
 
 		/// <summary>
-		/// Return key for single key read and key list for range read.
-		/// </summary>
-		KEY = 6,
-
-		/// <summary>
 		/// Return value for single key read and value list for range read.
 		/// </summary>
 		VALUE = 7,
 
 		/// <summary>
-		/// Return key/value items. The possible return types are:
-		/// <ul>
-		/// <li>HashMap : Returned for unordered maps</li>
-		/// <li>TreeMap : Returned for key ordered maps</li>
-		/// <li>List&lt;Entry&gt; : Returned for range results where range order needs to be preserved.</li>
-		/// </ul>
-		/// </summary>
-		KEY_VALUE = 8,
-
-		/// <summary>
-		/// Invert meaning of map command and return values.  For example:
+		/// Invert meaning of list command and return values.  For example:
 		/// <code>
-		/// MapOperation.RemoveByKeyRange(binName, keyBegin, keyEnd, MapReturnType.KEY | MapReturnType.INVERTED);
+		/// ListOperation.RemoveByIndexRange(binName, index, count, ListReturnType.KEY | ListReturnType.INVERTED);
 		/// </code>
-		/// With the INVERTED flag enabled, the keys outside of the specified key range will be removed and returned.
+		/// With the INVERTED flag enabled, the keys outside of the specified index range will be removed and returned.
 		/// </summary>
 		INVERTED = 0x10000
 	}

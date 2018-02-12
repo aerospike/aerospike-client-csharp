@@ -430,5 +430,249 @@ namespace Aerospike.Test
 			val = (long)results[i++];
 			Assert.AreEqual(1, val);
 		}
+
+		[TestMethod]
+		public void OperateListSwitchSort()
+		{
+			Key key = new Key(args.ns, args.set, "oplkey9");
+
+			client.Delete(null, key);
+
+			IList itemList = new List<Value>();
+			itemList.Add(Value.Get(4));
+			itemList.Add(Value.Get(3));
+			itemList.Add(Value.Get(1));
+			itemList.Add(Value.Get(5));
+			itemList.Add(Value.Get(2));
+
+			Record record = client.Operate(null, key,
+				ListOperation.AppendItems(ListPolicy.Default, binName, itemList),
+				ListOperation.GetByIndex(binName, 3, ListReturnType.VALUE)
+				);
+
+			AssertRecordFound(key, record);
+
+			IList results = record.GetList(binName);
+			int i = 0;
+
+			long size = (long)results[i++];
+			Assert.AreEqual(5L, size);
+
+			long val = (long)results[i++];
+			Assert.AreEqual(5L, val);
+
+			IList valueList = new List<Value>();
+			valueList.Add(Value.Get(4));
+			valueList.Add(Value.Get(2));
+
+			// Sort list.
+			record = client.Operate(null, key,
+				ListOperation.SetOrder(binName, ListOrder.ORDERED),
+				ListOperation.GetByValue(binName, Value.Get(3), ListReturnType.INDEX),
+				ListOperation.GetByValueRange(binName, Value.Get(-1), Value.Get(3), ListReturnType.COUNT),
+				ListOperation.GetByValueList(binName, valueList, ListReturnType.RANK),
+				ListOperation.GetByIndex(binName, 3, ListReturnType.VALUE),
+				ListOperation.GetByIndexRange(binName, -2, 2, ListReturnType.VALUE),
+				ListOperation.GetByRank(binName, 0, ListReturnType.VALUE),
+				ListOperation.GetByRankRange(binName, 2, 3, ListReturnType.VALUE)
+				);
+
+			AssertRecordFound(key, record);
+
+			results = record.GetList(binName);
+			i = 0;
+
+			IList list = (IList)results[i++];
+			Assert.AreEqual(2L, list[0]);
+
+			val = (long)results[i++];
+			Assert.AreEqual(2L, val);
+
+			list = (IList)results[i++];
+			Assert.AreEqual(2L, list.Count);
+			Assert.AreEqual(3L, list[0]);
+			Assert.AreEqual(1L, list[1]);
+
+			val = (long)results[i++];
+			Assert.AreEqual(4L, val);
+
+			list = (IList)results[i++];
+			Assert.AreEqual(2L, list.Count);
+			Assert.AreEqual(4L, list[0]);
+			Assert.AreEqual(5L, list[1]);
+
+			val = (long)results[i++];
+			Assert.AreEqual(1L, val);
+
+			list = (IList)results[i++];
+			Assert.AreEqual(3L, list.Count);
+			Assert.AreEqual(3L, list[0]);
+			Assert.AreEqual(4L, list[1]);
+			Assert.AreEqual(5L, list[2]);
+		}
+
+		[TestMethod]
+		public void OperateListSort()
+		{
+			Key key = new Key(args.ns, args.set, "oplkey10");
+
+			client.Delete(null, key);
+
+			IList itemList = new List<Value>();
+			itemList.Add(Value.Get(-44));
+			itemList.Add(Value.Get(33));
+			itemList.Add(Value.Get(-1));
+			itemList.Add(Value.Get(33));
+			itemList.Add(Value.Get(-2));
+
+			Record record = client.Operate(null, key,
+				ListOperation.AppendItems(ListPolicy.Default, binName, itemList),
+				ListOperation.Sort(binName, ListSortFlags.DROP_DUPLICATES),
+				ListOperation.Size(binName)
+				);
+
+			AssertRecordFound(key, record);
+
+			IList results = record.GetList(binName);
+			int i = 0;
+
+			long size = (long)results[i++];
+			Assert.AreEqual(5L, size);
+
+			long val = (long)results[i++];
+			Assert.AreEqual(4L, val);
+		}
+
+		[TestMethod]
+		public void OperateListRemove()
+		{
+			Key key = new Key(args.ns, args.set, "oplkey11");
+
+			client.Delete(null, key);
+
+			IList itemList = new List<Value>();
+			itemList.Add(Value.Get(-44));
+			itemList.Add(Value.Get(33));
+			itemList.Add(Value.Get(-1));
+			itemList.Add(Value.Get(33));
+			itemList.Add(Value.Get(-2));
+			itemList.Add(Value.Get(0));
+			itemList.Add(Value.Get(22));
+			itemList.Add(Value.Get(11));
+			itemList.Add(Value.Get(14));
+			itemList.Add(Value.Get(6));
+
+			IList valueList = new List<Value>();
+			valueList.Add(Value.Get(-45));
+			valueList.Add(Value.Get(14));
+
+			Record record = client.Operate(null, key,
+				ListOperation.AppendItems(ListPolicy.Default, binName, itemList),
+				ListOperation.RemoveByValue(binName, Value.Get(0), ListReturnType.INDEX),
+				ListOperation.RemoveByValueList(binName, valueList, ListReturnType.VALUE),
+				ListOperation.RemoveByValueRange(binName, Value.Get(33), Value.Get(100), ListReturnType.VALUE),
+				ListOperation.RemoveByIndex(binName, 1, ListReturnType.VALUE),
+				ListOperation.RemoveByIndexRange(binName, 100, 101, ListReturnType.VALUE),
+				ListOperation.RemoveByRank(binName, 0, ListReturnType.VALUE),
+				ListOperation.RemoveByRankRange(binName, 3, 1, ListReturnType.VALUE)
+				);
+
+			AssertRecordFound(key, record);
+
+			IList results = record.GetList(binName);
+			int i = 0;
+
+			long size = (long)results[i++];
+			Assert.AreEqual(10L, size);
+
+			IList list = (IList)results[i++];
+			Assert.AreEqual(1L, list.Count);
+			Assert.AreEqual(5L, list[0]);
+
+			list = (IList)results[i++];
+			Assert.AreEqual(1L, list.Count);
+			Assert.AreEqual(14L, list[0]);
+
+			list = (IList)results[i++];
+			Assert.AreEqual(2L, list.Count);
+			Assert.AreEqual(33L, list[0]);
+			Assert.AreEqual(33L, list[1]);
+
+			long val = (long)results[i++];
+			Assert.AreEqual(-1L, val);
+
+			list = (IList)results[i++];
+			Assert.AreEqual(0L, list.Count);
+
+			val = (long)results[i++];
+			Assert.AreEqual(-44L, val);
+
+			list = (IList)results[i++];
+			Assert.AreEqual(1L, list.Count);
+			Assert.AreEqual(22L, list[0]);
+		}
+
+		[TestMethod]
+		public virtual void OperateListInverted()
+		{
+			Key key = new Key(args.ns, args.set, "oplkey12");
+
+			client.Delete(null, key);
+
+			IList itemList = new List<Value>();
+			itemList.Add(Value.Get(4));
+			itemList.Add(Value.Get(3));
+			itemList.Add(Value.Get(1));
+			itemList.Add(Value.Get(5));
+			itemList.Add(Value.Get(2));
+
+			IList valueList = new List<Value>();
+			valueList.Add(Value.Get(4));
+			valueList.Add(Value.Get(2));
+
+			Record record = client.Operate(null, key,
+				ListOperation.AppendItems(ListPolicy.Default, binName, itemList),
+				ListOperation.GetByValue(binName, Value.Get(3), ListReturnType.INDEX | ListReturnType.INVERTED),
+				ListOperation.GetByValueRange(binName, Value.Get(-1), Value.Get(3), ListReturnType.COUNT | ListReturnType.INVERTED),
+				ListOperation.GetByValueList(binName, valueList, ListReturnType.RANK | ListReturnType.INVERTED),
+				ListOperation.GetByIndexRange(binName, -2, 2, ListReturnType.VALUE | ListReturnType.INVERTED),
+				ListOperation.GetByRankRange(binName, 2, 3, ListReturnType.VALUE | ListReturnType.INVERTED)
+				);
+
+			AssertRecordFound(key, record);
+
+			IList results = record.GetList(binName);
+			int i = 0;
+
+			long size = (long)results[i++];
+			Assert.AreEqual(5L, size);
+
+			IList list = (IList)results[i++];
+			Assert.AreEqual(4L, list.Count);
+			Assert.AreEqual(0L, list[0]);
+			Assert.AreEqual(2L, list[1]);
+			Assert.AreEqual(3L, list[2]);
+			Assert.AreEqual(4L, list[3]);
+
+			long val = (long)results[i++];
+			Assert.AreEqual(3L, val);
+
+			list = (IList)results[i++];
+			Assert.AreEqual(3L, list.Count);
+			Assert.AreEqual(0L, list[0]);
+			Assert.AreEqual(2L, list[1]);
+			Assert.AreEqual(4L, list[2]);
+
+			list = (IList)results[i++];
+			Assert.AreEqual(3L, list.Count);
+			Assert.AreEqual(4L, list[0]);
+			Assert.AreEqual(3L, list[1]);
+			Assert.AreEqual(1L, list[2]);
+
+			list = (IList)results[i++];
+			Assert.AreEqual(2L, list.Count);
+			Assert.AreEqual(1L, list[0]);
+			Assert.AreEqual(2L, list[1]);
+		}
 	}
 }

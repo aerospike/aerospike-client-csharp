@@ -567,6 +567,141 @@ namespace Aerospike.Test
 			Assert.AreEqual("briann", s);
 			s = (string)list[2];
 			Assert.AreEqual("meher", s);
-		}	
+		}
+
+		[TestMethod]
+		public void OperateMapGetByList()
+		{
+			if (!args.ValidateMap())
+			{
+				return;
+			}
+
+			Key key = new Key(args.ns, args.set, "opmkey11");
+			client.Delete(null, key);
+
+			Dictionary<Value, Value> inputMap = new Dictionary<Value, Value>();
+			inputMap[Value.Get("Charlie")] = Value.Get(55);
+			inputMap[Value.Get("Jim")] = Value.Get(98);
+			inputMap[Value.Get("John")] = Value.Get(76);
+			inputMap[Value.Get("Harry")] = Value.Get(82);
+
+			// Write values to empty map.
+			Record record = client.Operate(null, key, MapOperation.PutItems(MapPolicy.Default, binName, inputMap));
+
+			AssertRecordFound(key, record);
+
+			List<string> keyList = new List<string>();
+			keyList.Add("Harry");
+			keyList.Add("Jim");
+
+			List<int> valueList = new List<int>();
+			valueList.Add(76);
+			valueList.Add(50);
+
+			record = client.Operate(null, key,
+					MapOperation.GetByKeyList(binName, keyList, MapReturnType.KEY_VALUE),
+					MapOperation.GetByValueList(binName, valueList, MapReturnType.KEY_VALUE)
+					);
+
+			AssertRecordFound(key, record);
+
+			IList results = record.GetList(binName);
+		
+			IList list = (IList)results[0];
+			Assert.AreEqual(2, list.Count);
+			KeyValuePair<object, object> entry = (KeyValuePair<object, object>)list[0];
+			Assert.AreEqual("Harry", entry.Key);
+			Assert.AreEqual(82L, entry.Value);
+			entry = (KeyValuePair<object, object>)list[1];
+			Assert.AreEqual("Jim", entry.Key);
+			Assert.AreEqual(98L, entry.Value);
+
+			list = (IList)results[1];
+			Assert.AreEqual(1, list.Count);
+			entry = (KeyValuePair<object, object>)list[0];
+			Assert.AreEqual("John", entry.Key);
+			Assert.AreEqual(76L, entry.Value);
+		}
+
+		[TestMethod]
+		public void OperateMapInverted()
+		{
+			if (!args.ValidateMap())
+			{
+				return;
+			}
+
+			Key key = new Key(args.ns, args.set, "opmkey12");
+			client.Delete(null, key);
+
+			Dictionary<Value, Value> inputMap = new Dictionary<Value, Value>();
+			inputMap[Value.Get("Charlie")] = Value.Get(55);
+			inputMap[Value.Get("Jim")] = Value.Get(98);
+			inputMap[Value.Get("John")] = Value.Get(76);
+			inputMap[Value.Get("Harry")] = Value.Get(82);
+
+			// Write values to empty map.
+			Record record = client.Operate(null, key, MapOperation.PutItems(MapPolicy.Default, binName, inputMap));
+
+			AssertRecordFound(key, record);
+
+			List<string> keyList = new List<string>();
+			keyList.Add("Harry");
+			keyList.Add("Jim");
+
+			List<int> valueList = new List<int>();
+			valueList.Add(76);
+			valueList.Add(55);
+			valueList.Add(98);
+			valueList.Add(50);
+
+			record = client.Operate(null, key,
+					MapOperation.GetByValue(binName, Value.Get(81), MapReturnType.RANK | MapReturnType.INVERTED),
+					MapOperation.GetByValue(binName, Value.Get(82), MapReturnType.RANK | MapReturnType.INVERTED),
+					MapOperation.GetByValueRange(binName, Value.Get(90), Value.Get(95), MapReturnType.RANK | MapReturnType.INVERTED),
+					MapOperation.GetByValueRange(binName, Value.Get(90), Value.Get(100), MapReturnType.RANK | MapReturnType.INVERTED),
+					MapOperation.GetByValueList(binName, valueList, MapReturnType.KEY_VALUE | MapReturnType.INVERTED),
+					MapOperation.GetByRankRange(binName, -2, 2, MapReturnType.KEY | MapReturnType.INVERTED),
+					MapOperation.GetByRankRange(binName, 0, 3, MapReturnType.KEY_VALUE | MapReturnType.INVERTED)
+					);
+
+			AssertRecordFound(key, record);
+
+			IList results = record.GetList(binName);
+			int i = 0;
+
+			IList list = (IList)results[i++];
+			Assert.AreEqual(4, list.Count);
+
+			list = (IList)results[i++];
+			Assert.AreEqual(3, list.Count);
+
+			list = (IList)results[i++];
+			Assert.AreEqual(4, list.Count);
+
+			list = (IList)results[i++];
+			Assert.AreEqual(3, list.Count);
+			Assert.AreEqual(0L, list[0]);
+			Assert.AreEqual(1L, list[1]);
+			Assert.AreEqual(2L, list[2]);
+
+			list = (IList)results[i++];
+			Assert.AreEqual(1, list.Count);		
+			KeyValuePair<object, object> entry = (KeyValuePair<object, object>)list[0];
+			Assert.AreEqual("Harry", entry.Key);
+			Assert.AreEqual(82L, entry.Value);
+
+			list = (IList)results[i++];
+			Assert.AreEqual(2, list.Count);
+			Assert.AreEqual("Charlie", list[0]);
+			Assert.AreEqual("John", list[1]);
+
+			list = (IList)results[i++];
+			Assert.AreEqual(1, list.Count);		
+			entry = (KeyValuePair<object, object>)list[0];
+			Assert.AreEqual("Jim", entry.Key);
+			Assert.AreEqual(98L, entry.Value);
+		}
 	}
 }

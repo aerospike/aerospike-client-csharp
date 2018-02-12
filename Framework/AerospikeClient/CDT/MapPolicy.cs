@@ -53,18 +53,18 @@ namespace Aerospike.Client
 			switch (writeMode)
 			{
 				case MapWriteMode.UPDATE:
-					itemCommand = MapBase.PUT;
-					itemsCommand = MapBase.PUT_ITEMS;
+					itemCommand = MapOperation.PUT;
+					itemsCommand = MapOperation.PUT_ITEMS;
 					break;
 
 				case MapWriteMode.UPDATE_ONLY:
-					itemCommand = MapBase.REPLACE;
-					itemsCommand = MapBase.REPLACE_ITEMS;
+					itemCommand = MapOperation.REPLACE;
+					itemsCommand = MapOperation.REPLACE_ITEMS;
 					break;
 
 				case MapWriteMode.CREATE_ONLY:
-					itemCommand = MapBase.ADD;
-					itemsCommand = MapBase.ADD_ITEMS;
+					itemCommand = MapOperation.ADD;
+					itemsCommand = MapOperation.ADD_ITEMS;
 					break;
 			}
 		}

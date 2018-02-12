@@ -206,8 +206,13 @@
     <Compile Include="Async\MaxCommandAction.cs" />
     <Compile Include="BCrypt\BCrypt.cs" />
     <Compile Include="BCrypt\SaltParseException.cs" />
+    <Compile Include="CDT\CDT.cs" />
+    <Compile Include="CDT\ListPolicy.cs" />
+    <Compile Include="CDT\ListReturnType.cs" />
+    <Compile Include="CDT\ListSortFlags.cs" />
+    <Compile Include="CDT\ListWriteFlags.cs" />
+    <Compile Include="CDT\ListOrder.cs" />
     <Compile Include="CDT\ListOperation.cs" />
-    <Compile Include="CDT\MapBase.cs" />
     <Compile Include="CDT\MapOperation.cs" />
     <Compile Include="CDT\MapOrder.cs" />
     <Compile Include="CDT\MapPolicy.cs" />
