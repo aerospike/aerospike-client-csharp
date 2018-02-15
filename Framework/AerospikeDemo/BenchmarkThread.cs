@@ -78,15 +78,25 @@ namespace Aerospike.Demo
             {
                 if (key >= args.recordsInit)
                 {
-                    if (key == args.recordsInit)
-                    {
-                        console.Info("write(tps={0} timeouts={1} errors={2} total={3}))",
-                            shared.writeCount, shared.writeTimeoutCount, shared.writeErrorCount, args.recordsInit
-                        );
-                    }
                     break;
                 }
                 Write(key);
+
+				// Throttle throughput
+				if (args.sync && args.throughput > 0)
+				{
+					int transactions = shared.writeCount;
+
+					if (transactions > args.throughput)
+					{
+						long millis = 1000L - shared.periodBegin.ElapsedMilliseconds;
+
+						if (millis > 0)
+						{
+							Util.Sleep((int)millis);
+						}
+					}
+				}
 				key = Interlocked.Increment(ref shared.currentKey);
 			}
         }
@@ -95,21 +105,44 @@ namespace Aerospike.Demo
 		{
             while (example.valid)
             {
-                // Choose key at random.
-                int key = random.Next(0, args.records);
-
                 // Roll a percentage die.
                 int die = random.Next(0, 100);
 
                 if (die < args.readPct)
                 {
-                    Read(key);
+					if (args.batchSize <= 1)
+					{
+						int key = random.Next(0, args.records);
+						Read(key);
+					}
+					else
+					{
+						BatchRead();
+					}
                 }
                 else
                 {
-                    Write(key);
+					// Perform Single record write even if in batch mode.
+					int key = random.Next(0, args.records);
+					Write(key);
                 }
-            }
+
+				// Throttle throughput
+				if (args.sync && args.throughput > 0)
+				{
+					int transactions = shared.writeCount + shared.readCount;
+
+					if (transactions > args.throughput)
+					{
+						long millis = 1000L - shared.periodBegin.ElapsedMilliseconds;
+
+						if (millis > 0)
+						{
+							Util.Sleep((int)millis);
+						}
+					}
+				}
+			}
 		}
 
 		private void Write(int userKey)
@@ -146,6 +179,29 @@ namespace Aerospike.Demo
 			catch (Exception e)
 			{
 				OnReadFailure(key, e);
+			}
+		}
+
+		private void BatchRead()
+		{
+			Key[] keys = new Key[args.batchSize];
+		
+			for (int i = 0; i < keys.Length; i++) {
+				long keyIdx = random.Next(0, args.records);
+				keys[i] = new Key(args.ns, args.set, keyIdx);
+			}
+
+			try
+			{
+				BatchRead(args.batchPolicy, keys, args.binName);
+			}
+			catch (AerospikeException ae)
+			{
+				OnBatchFailure(ae);
+			}
+			catch (Exception e)
+			{
+				OnBatchFailure(e);
 			}
 		}
 
@@ -217,7 +273,7 @@ namespace Aerospike.Demo
 				}
 			}
 		}
-		
+
 		protected void OnReadFailure(Key key, Exception e)
 		{
 			Interlocked.Increment(ref shared.readErrorCount);
@@ -229,7 +285,46 @@ namespace Aerospike.Demo
 			}
 		}
 
+		protected void OnBatchSuccess()
+		{
+			Interlocked.Increment(ref shared.readCount);
+		}
+
+		protected void OnBatchSuccess(double elapsed)
+		{
+			Interlocked.Increment(ref shared.readCount);
+			shared.readLatency.Add(elapsed);
+		}
+
+		protected void OnBatchFailure(AerospikeException ae)
+		{
+			if (ae.Result == ResultCode.TIMEOUT)
+			{
+				Interlocked.Increment(ref shared.readTimeoutCount);
+			}
+			else
+			{
+				Interlocked.Increment(ref shared.readErrorCount);
+
+				if (args.debug)
+				{
+					console.Error("Batch error: " + ae.Message);
+				}
+			}
+		}
+
+		protected void OnBatchFailure(Exception e)
+		{
+			Interlocked.Increment(ref shared.readErrorCount);
+
+			if (args.debug)
+			{
+				console.Error("Batch error: " + e.Message);
+			}
+		}
+
 		protected abstract void WriteRecord(WritePolicy policy, Key key, Bin bin);
 		protected abstract void ReadRecord(Policy policy, Key key, string binName);
+		protected abstract void BatchRead(BatchPolicy policy, Key[] keys, string binName);
 	}
 }

@@ -171,6 +171,8 @@
     <Compile Include="BenchmarkReadWrite.cs" />
     <Compile Include="AsyncUserDefinedFunction.cs" />
     <Compile Include="AsyncQuery.cs" />
+    <Compile Include="LatencyManagerAlt.cs" />
+    <Compile Include="ILatencyManager.cs" />
     <Compile Include="QueryPredExp.cs" />
     <Compile Include="OperateMap.cs" />
     <Compile Include="QueryGeoCollection.cs" />

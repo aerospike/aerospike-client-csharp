@@ -21,13 +21,13 @@ using System.Threading;
 
 namespace Aerospike.Demo
 {
-	public sealed class LatencyManager : ILatencyManager
+	public sealed class LatencyManagerAlt : ILatencyManager
     {
 		private readonly Bucket[] buckets;
         private readonly int lastBucket;
         private readonly int bitShift;
 
-        public LatencyManager(int columns, int bitShift)
+        public LatencyManagerAlt(int columns, int bitShift)
         {
             this.lastBucket = columns - 1;
             this.bitShift = bitShift;
@@ -37,7 +37,24 @@ namespace Aerospike.Demo
 			{
 				buckets[i] = new Bucket();
 			}
-        }
+
+			StringBuilder sb = new StringBuilder(64);
+			string units = "ms";
+
+			buckets[0].header = sb.Append("<=1").Append(units).ToString();
+
+			sb.Length = 0;
+			buckets[1].header = sb.Append(">1").Append(units).ToString();
+
+			int limit = 1;
+
+			for (int i = 2; i < buckets.Length; i++)
+			{
+				limit <<= bitShift;
+				sb.Length = 0;
+				buckets[i].header = sb.Append(">").Append(limit).Append(units).ToString();
+			}
+		}
 
 		public void Add(double elapsed)
         {
@@ -63,17 +80,7 @@ namespace Aerospike.Demo
 
         public string PrintHeader()
         {
-            StringBuilder sb = new StringBuilder(200);
-            int limit = 1;
-            sb.Append("      <=1ms >1ms");
-
-            for (int i = 2; i <= lastBucket; i++)
-            {
-                limit <<= bitShift;
-                String s = " >" + limit + "ms";
-                sb.Append(s);
-            }
-            return sb.ToString();
+			return null;
         }
 
         /// <summary>
@@ -104,8 +111,9 @@ namespace Aerospike.Demo
 
             // Print cumulative results.
             sb.Length = 0;
+			sb.Append("  ");
             sb.Append(prefix);
-            int spaces = 6 - prefix.Length;
+            int spaces = 5 - prefix.Length;
 
             for (int j = 0; j < spaces; j++)
             {
@@ -115,15 +123,18 @@ namespace Aerospike.Demo
             double sumDouble = (double)sum;
             int limit = 1;
 
-            PrintColumn(sb, limit, sumDouble, array[0]);
-            PrintColumn(sb, limit, sumDouble, array[1]);
+			PrintColumn(sb, limit, sumDouble, buckets[0].header, array[0]);
+			PrintColumn(sb, limit, sumDouble, buckets[1].header, array[1]);
 
             for (int i = 2; i < array.Length; i++)
             {
                 limit <<= bitShift;
-                PrintColumn(sb, limit, sumDouble, array[i]);
+				PrintColumn(sb, limit, sumDouble, buckets[i].header, array[i]);
             }
-            return sb.ToString();
+			sb.Append(" total(");
+			sb.Append(sum);
+			sb.Append(')');
+			return sb.ToString();
         }
 
 		public string PrintSummary(StringBuilder sb, string prefix)
@@ -145,8 +156,9 @@ namespace Aerospike.Demo
 
 			// Print cumulative results.
 			sb.Length = 0;
+			sb.Append("  ");
 			sb.Append(prefix);
-			int spaces = 6 - prefix.Length;
+			int spaces = 5 - prefix.Length;
 
 			for (int j = 0; j < spaces; j++)
 			{
@@ -156,39 +168,40 @@ namespace Aerospike.Demo
 			double sumDouble = (double)sum;
 			int limit = 1;
 
-			PrintColumn(sb, limit, sumDouble, array[0]);
-			PrintColumn(sb, limit, sumDouble, array[1]);
+			PrintColumn(sb, limit, sumDouble, buckets[0].header, array[0]);
+			PrintColumn(sb, limit, sumDouble, buckets[1].header, array[1]);
 
 			for (int i = 2; i < array.Length; i++)
 			{
 				limit <<= bitShift;
-				PrintColumn(sb, limit, sumDouble, array[i]);
+				PrintColumn(sb, limit, sumDouble, buckets[i].header, array[i]);
 			}
+			sb.Append(" total(");
+			sb.Append(sum);
+			sb.Append(')');
 			return sb.ToString();
 		}
 
-		private void PrintColumn(StringBuilder sb, int limit, double sum, int value)
+		private void PrintColumn(StringBuilder sb, int limit, double sum, string header, int count)
         {
-            int percent = 0;
+			sb.Append(' ');
+			sb.Append(header);
+			sb.Append('(');
+			sb.Append(count);
+			sb.Append(':');
 
-            if (value > 0)
-            {
-                percent = (int)((double)value * 100.0 / sum + 0.5);
-            }
-            string percentString = Convert.ToString(percent) + "%";
-            int spaces = limit.ToString().Length + 4 - percentString.Length;
+			double percent = (count > 0) ? (double)count * 100.0 / sum : 0.0;
 
-            for (int j = 0; j < spaces; j++)
-            {
-                sb.Append(' ');
-            }
-            sb.Append(percentString);
+			sb.Append(percent.ToString("0.####"));
+			sb.Append('%');
+			sb.Append(')');			
         }
 		
 		private sealed class Bucket
 		{
 			int count = 0;
 			public int sum = 0;
+			public string header;
 
 			public void Increment()
 			{

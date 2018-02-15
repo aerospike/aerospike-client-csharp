@@ -36,7 +36,8 @@ namespace Aerospike.Demo
 		internal TlsPolicy tlsPolicy;
 		internal WritePolicy writePolicy;
 		internal Policy policy;
-        internal int commandMax;
+		internal BatchPolicy batchPolicy;
+		internal int commandMax;
         internal bool singleBin;
 		internal bool hasGeo;
 		internal bool hasUdf;
@@ -47,6 +48,7 @@ namespace Aerospike.Demo
 		{
 			this.writePolicy = new WritePolicy();
 			this.policy = new Policy();
+			this.batchPolicy = new BatchPolicy();
 		}
 
 		/// <summary>

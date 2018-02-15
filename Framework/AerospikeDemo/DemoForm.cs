@@ -149,6 +149,8 @@ namespace Aerospike.Demo
             asyncThreadBox.Text = Properties.Settings.Default.AsyncThreads.ToString();
             maxCommandBox.Text = Properties.Settings.Default.AsyncMaxCommands.ToString();
             recordsBox.Text = Properties.Settings.Default.Records.ToString();
+			batchReadBox.Checked = Properties.Settings.Default.BatchRead;
+			batchSizeBox.Text = Properties.Settings.Default.BatchSize.ToString();
             binTypeBox.SelectedIndex = Properties.Settings.Default.BinType;
             binSizeBox.Text = Properties.Settings.Default.BinSize.ToString();
             fixedValueButton.Checked = Properties.Settings.Default.FixedValue;
@@ -161,9 +163,12 @@ namespace Aerospike.Demo
             sleepBox.Text = Properties.Settings.Default.SleepBetweenRetries.ToString();
 			replicaBox.SelectedIndex = Properties.Settings.Default.ReadReplica;
 			latencyBox.Checked = Properties.Settings.Default.Latency;
-            latencyColumnsBox.Text = Properties.Settings.Default.LatencyColumns.ToString();
+			latencyAltFormatBox.Checked = Properties.Settings.Default.LatencyAltFormat;
+			latencyColumnsBox.Text = Properties.Settings.Default.LatencyColumns.ToString();
             latencyShiftBox.Text = Properties.Settings.Default.LatencyShift.ToString();
             debugBox.Checked = Properties.Settings.Default.Debug;
+			limitTpsBox.Checked = Properties.Settings.Default.LimitTPS;
+			throughputBox.Text = Properties.Settings.Default.Throughput.ToString();
 
 			if (Properties.Settings.Default.TlsEnable)
 			{
@@ -187,7 +192,9 @@ namespace Aerospike.Demo
             Properties.Settings.Default.AsyncThreads = int.Parse(asyncThreadBox.Text);
             Properties.Settings.Default.AsyncMaxCommands = int.Parse(maxCommandBox.Text);
             Properties.Settings.Default.Records = int.Parse(recordsBox.Text);
-            Properties.Settings.Default.BinType = binTypeBox.SelectedIndex;
+			Properties.Settings.Default.BatchRead = batchReadBox.Checked;
+			Properties.Settings.Default.BatchSize = int.Parse(batchSizeBox.Text);
+			Properties.Settings.Default.BinType = binTypeBox.SelectedIndex;
             Properties.Settings.Default.BinSize = int.Parse(binSizeBox.Text);
             Properties.Settings.Default.FixedValue = fixedValueButton.Checked;
             Properties.Settings.Default.InitPct = int.Parse(initPctBox.Text);
@@ -198,15 +205,18 @@ namespace Aerospike.Demo
             Properties.Settings.Default.SleepBetweenRetries = int.Parse(sleepBox.Text);
 			Properties.Settings.Default.ReadReplica = replicaBox.SelectedIndex;
 			Properties.Settings.Default.Latency = latencyBox.Checked;
-            Properties.Settings.Default.LatencyColumns = int.Parse(latencyColumnsBox.Text);
+			Properties.Settings.Default.LatencyAltFormat = latencyAltFormatBox.Checked;
+			Properties.Settings.Default.LatencyColumns = int.Parse(latencyColumnsBox.Text);
             Properties.Settings.Default.LatencyShift = int.Parse(latencyShiftBox.Text);
             Properties.Settings.Default.Debug = debugBox.Checked;
+			Properties.Settings.Default.LimitTPS = limitTpsBox.Checked;
+			Properties.Settings.Default.Throughput = int.Parse(throughputBox.Text);
 			Properties.Settings.Default.Save();
         }
 
         private void RunExample(object sender, MouseEventArgs e)
-        {          
-            try
+        {
+			try
             {
                 TreeNode node = examplesView.SelectedNode;
 
@@ -223,7 +233,6 @@ namespace Aerospike.Demo
             }
             catch (Exception ex)
             {
-                currentExample = null;
                 MessageBox.Show(ex.Message);
             }
         }
@@ -248,6 +257,11 @@ namespace Aerospike.Demo
                 bargs.commandMax = int.Parse(maxCommandBox.Text);
                 
                 bargs.records = int.Parse(recordsBox.Text);
+
+				if (batchReadBox.Checked)
+				{
+					bargs.batchSize = int.Parse(batchSizeBox.Text);
+				}
                 bargs.binType = (BinType)binTypeBox.SelectedItem;
                 bargs.binSize = int.Parse(binSizeBox.Text);
 
@@ -294,8 +308,20 @@ namespace Aerospike.Demo
                 bargs.writePolicy.sleepBetweenRetries = sleepBetweenRetries;
 				bargs.writePolicy.replica = replica;
 
-                bargs.debug = debugBox.Checked;
-                bargs.latency = latencyBox.Checked;
+				bargs.batchPolicy.totalTimeout = timeout;
+				bargs.batchPolicy.maxRetries = maxRetries;
+				bargs.batchPolicy.sleepBetweenRetries = sleepBetweenRetries;
+				bargs.batchPolicy.replica = replica;
+				
+				bargs.debug = debugBox.Checked;
+
+				if (limitTpsBox.Checked)
+				{
+					bargs.throughput = int.Parse(throughputBox.Text);
+				}
+                
+				bargs.latency = latencyBox.Checked;
+				bargs.altLatencyFormat = latencyAltFormatBox.Checked;
 
                 if (latencyBox.Checked)
                 {
@@ -467,7 +493,21 @@ namespace Aerospike.Demo
             }
         }
 
-        private void BinTypeChanged(object sender, EventArgs e)
+		private void BatchReadChanged(object sender, EventArgs e)
+		{
+			if (batchReadBox.Checked)
+			{
+				batchSizeBox.Visible = true;
+				batchSizeLabel.Visible = true;
+			}
+			else
+			{
+				batchSizeBox.Visible = false;
+				batchSizeLabel.Visible = false;
+			}
+		}
+		
+		private void BinTypeChanged(object sender, EventArgs e)
         {
             if (binTypeBox.SelectedIndex == 0)
             {
@@ -481,7 +521,19 @@ namespace Aerospike.Demo
             }
         }
 
-        private void LatencyChanged(object sender, EventArgs e)
+		private void LimitTPSChanged(object sender, EventArgs e)
+		{
+			if (limitTpsBox.Checked)
+			{
+				throughputBox.Visible = true;
+			}
+			else
+			{
+				throughputBox.Visible = false;
+			}
+		}
+		
+		private void LatencyChanged(object sender, EventArgs e)
         {
             if (latencyBox.Checked)
             {
@@ -501,7 +553,9 @@ namespace Aerospike.Demo
                 {
                     int columns = int.Parse(latencyColumnsBox.Text);
                     int bitShift = int.Parse(latencyShiftBox.Text);
-                    latencyDisplayLabel.Text = printLatencyLayout(columns, bitShift);
+					latencyDisplayLabel.Text = latencyAltFormatBox.Checked ? 
+						printLatencyLayoutAlt(columns, bitShift) : 
+						printLatencyLayout(columns, bitShift);
                 }
             }
             catch (Exception ex)
@@ -523,12 +577,6 @@ namespace Aerospike.Demo
                 limit <<= bitShift;
                 String s = " >" + limit + "ms";
                 sb.Append(s);
-
-                if (sb.Length >= 65)
-                {
-                    max = i + 1;
-                    break;
-                }
             }
             sb.AppendLine();
 
@@ -553,7 +601,26 @@ namespace Aerospike.Demo
             return sb.ToString();
         }
 
-        private void PercentKeyDown(object sender, KeyEventArgs e)
+		private static string printLatencyLayoutAlt(int columns, int bitShift)
+		{
+			StringBuilder sb = new StringBuilder(200);
+			int limit = 1;
+			sb.Append("<=1ms(count,%) >1ms(count,%)");
+			int i;
+			int max = columns;
+
+			for (i = 2; i < columns; i++)
+			{
+				limit <<= bitShift;
+				String s = " >" + limit + "ms";
+				sb.Append(s);
+				sb.Append("(count,%)");
+			}
+			sb.AppendLine();
+			return sb.ToString();
+		}
+		
+		private void PercentKeyDown(object sender, KeyEventArgs e)
         {
             // Allow digits and arrow keys only
             e.SuppressKeyPress = !((e.KeyValue >= 48 && e.KeyValue <= 57)

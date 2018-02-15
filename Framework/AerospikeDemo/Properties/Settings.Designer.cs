@@ -370,5 +370,65 @@ namespace Aerospike.Demo.Properties {
                 this["TlsClientCertFile"] = value;
             }
         }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("False")]
+        public bool LatencyAltFormat {
+            get {
+                return ((bool)(this["LatencyAltFormat"]));
+            }
+            set {
+                this["LatencyAltFormat"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("False")]
+        public bool BatchRead {
+            get {
+                return ((bool)(this["BatchRead"]));
+            }
+            set {
+                this["BatchRead"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("100")]
+        public int BatchSize {
+            get {
+                return ((int)(this["BatchSize"]));
+            }
+            set {
+                this["BatchSize"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("0")]
+        public int Throughput {
+            get {
+                return ((int)(this["Throughput"]));
+            }
+            set {
+                this["Throughput"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("False")]
+        public bool LimitTPS {
+            get {
+                return ((bool)(this["LimitTPS"]));
+            }
+            set {
+                this["LimitTPS"] = value;
+            }
+        }
     }
 }

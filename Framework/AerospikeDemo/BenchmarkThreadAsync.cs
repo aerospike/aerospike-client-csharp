@@ -76,6 +76,23 @@ namespace Aerospike.Demo
             }
 		}
 
+		protected override void BatchRead(BatchPolicy policy, Key[] keys, string binName)
+		{
+			if (shared.readTimeoutCount > 0)
+			{
+				Thread.Yield();
+			}
+
+			if (shared.readLatency != null)
+			{
+				client.Get(policy, new LatencyBatchHandler(this), keys, binName);
+			}
+			else
+			{
+				client.Get(policy, new BatchHandler(this), keys, binName);
+			}
+		}
+
 		private class WriteHandler : WriteListener
 		{
             BenchmarkThreadAsync parent;
@@ -173,5 +190,48 @@ namespace Aerospike.Demo
                 parent.OnReadFailure(key, e);
             }
         }
-    }
+
+		private class BatchHandler : RecordArrayListener
+		{
+			BenchmarkThreadAsync parent;
+
+			public BatchHandler(BenchmarkThreadAsync parent)
+			{
+				this.parent = parent;
+			}
+
+			public void OnSuccess(Key[] keys, Record[] records)
+			{
+				parent.OnBatchSuccess();
+			}
+
+			public void OnFailure(AerospikeException e)
+			{
+				parent.OnBatchFailure(e);
+			}
+		}
+
+		private class LatencyBatchHandler : RecordArrayListener
+		{
+			BenchmarkThreadAsync parent;
+			Stopwatch watch;
+
+			public LatencyBatchHandler(BenchmarkThreadAsync parent)
+			{
+				this.parent = parent;
+				this.watch = Stopwatch.StartNew();
+			}
+
+			public void OnSuccess(Key[] keys, Record[] records)
+			{
+				double elapsed = watch.Elapsed.TotalMilliseconds;
+				parent.OnBatchSuccess(elapsed);
+			}
+
+			public void OnFailure(AerospikeException e)
+			{
+				parent.OnBatchFailure(e);
+			}
+		}
+	}
 }

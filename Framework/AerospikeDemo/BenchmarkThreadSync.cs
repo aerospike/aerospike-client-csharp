@@ -69,5 +69,21 @@ namespace Aerospike.Demo
                 OnReadSuccess();
             }           
 		}
+
+		protected override void BatchRead(BatchPolicy policy, Key[] keys, string binName)
+		{
+			if (shared.readLatency != null)
+			{
+				Stopwatch watch = Stopwatch.StartNew();
+				Record[] records = client.Get(policy, keys, binName);
+				double elapsed = watch.Elapsed.TotalMilliseconds;
+				OnBatchSuccess(elapsed);
+			}
+			else
+			{
+				Record[] records = client.Get(policy, keys, binName);
+				OnBatchSuccess();
+			}
+		}
 	}
 }

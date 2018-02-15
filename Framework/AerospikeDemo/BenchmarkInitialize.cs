@@ -24,6 +24,9 @@ namespace Aerospike.Demo
 {
     class BenchmarkInitialize : BenchmarkExample
 	{
+		private StringBuilder latencyBuilder;
+		private string latencyHeader;
+
         public BenchmarkInitialize(Console console)
 			: base(console)
 		{
@@ -36,57 +39,57 @@ namespace Aerospike.Demo
 
         protected override void RunTicker()
 		{
-            DateTime prevTime = DateTime.Now;
-            StringBuilder latencyBuilder = null;
-            string latencyHeader = null;
-
             if (shared.writeLatency != null)
             {
                 latencyBuilder = new StringBuilder(200);
                 latencyHeader = shared.writeLatency.PrintHeader();
             }
 
+			shared.periodBegin.Start();
+
 			while (valid)
 			{
-				int writeCurrent = Interlocked.Exchange(ref shared.writeCount, 0);
-				int writeTimeoutCurrent = Interlocked.Exchange(ref shared.writeTimeoutCount, 0);
-				int writeErrorCurrent = Interlocked.Exchange(ref shared.writeErrorCount, 0);
-				int totalCount = shared.currentKey;
-				
-				DateTime time = DateTime.Now;
-				double seconds = (double)time.Subtract(prevTime).TotalSeconds;
-				prevTime = time;
-
-				if (seconds > 0.0)
-				{
-					double writeTps = Math.Round((double)writeCurrent / seconds, 0);
-
-					console.Info("write(tps={0} timeouts={1} errors={2} total={3})",
-						writeTps, writeTimeoutCurrent, writeErrorCurrent, totalCount
-					);
-
-                    if (latencyHeader != null)
-                    {
-                        console.Write(latencyHeader);
-                        console.Write(shared.writeLatency.PrintResults(latencyBuilder, "write"));
-                    }
-				}
-
-				/* Keep going so node add/remove tests can be run.
-				if (writeTimeoutCurrent + writeErrorCurrent > 10)
-				{
-                    if (GetIsStopWrites())
-					{
-						if (valid)
-						{
-							console.Error("Cluster is either in readonly mode or no nodes responded. Shutting down...");
-							valid = false;
-						}
-					}
-				}
-				*/
 				Thread.Sleep(1000);
+				WriteTicker();
+			}
+			WriteTicker();
+
+			if (shared.writeLatency != null)
+			{
+				console.Write("Latency Summary");
+
+				if (latencyHeader != null)
+				{
+					console.Write(latencyHeader);
+				}
+				console.Write(shared.writeLatency.PrintSummary(latencyBuilder, "write"));
 			}
         }
+
+		private void WriteTicker()
+		{
+			int writeCurrent = Interlocked.Exchange(ref shared.writeCount, 0);
+			int writeTimeoutCurrent = Interlocked.Exchange(ref shared.writeTimeoutCount, 0);
+			int writeErrorCurrent = Interlocked.Exchange(ref shared.writeErrorCount, 0);
+			int totalCount = shared.currentKey;
+
+			long elapsed = shared.periodBegin.ElapsedMilliseconds;
+			shared.periodBegin.Restart();
+
+			double writeTps = Math.Round((double)writeCurrent * 1000 / elapsed, 0);
+
+			console.Info("write(tps={0} timeouts={1} errors={2} total={3})",
+				writeTps, writeTimeoutCurrent, writeErrorCurrent, totalCount
+			);
+
+			if (shared.writeLatency != null)
+			{
+				if (latencyHeader != null)
+				{
+					console.Write(latencyHeader);
+				}
+				console.Write(shared.writeLatency.PrintResults(latencyBuilder, "write"));
+			}
+		}
     }
 }

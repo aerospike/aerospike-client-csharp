@@ -15,20 +15,20 @@
  * the License.
  */
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
+using System.Diagnostics;
 
 namespace Aerospike.Demo
 {
     public class BenchmarkShared
     {
-		internal LatencyManager writeLatency;
+		internal Stopwatch periodBegin = new Stopwatch();
+
+		internal ILatencyManager writeLatency;
 		internal int writeCount;
 		internal int writeTimeoutCount;
 		internal int writeErrorCount;
 
-		internal LatencyManager readLatency;
+		internal ILatencyManager readLatency;
 		internal int readCount;
 		internal int readTimeoutCount;
 		internal int readErrorCount;
@@ -39,8 +39,16 @@ namespace Aerospike.Demo
 		{
 			if (args.latency)
 			{
-				writeLatency = new LatencyManager(args.latencyColumns, args.latencyShift);
-				readLatency = new LatencyManager(args.latencyColumns, args.latencyShift);
+				if (args.altLatencyFormat)
+				{
+					writeLatency = new LatencyManagerAlt(args.latencyColumns, args.latencyShift);
+					readLatency = new LatencyManagerAlt(args.latencyColumns, args.latencyShift);
+				}
+				else
+				{
+					writeLatency = new LatencyManager(args.latencyColumns, args.latencyShift);
+					readLatency = new LatencyManager(args.latencyColumns, args.latencyShift);
+				}
 			}
 		}
     }

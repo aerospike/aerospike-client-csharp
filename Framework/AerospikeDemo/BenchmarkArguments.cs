@@ -34,9 +34,12 @@ namespace Aerospike.Demo
         internal int readPct;
         internal int latencyColumns;
         internal int latencyShift;
+		internal int batchSize;
+		internal int throughput;
 		internal bool sync;
 		internal bool requestProleReplicas;
 		internal bool latency;
+		internal bool altLatencyFormat;
 		internal bool debug;
 		internal Value fixedValue;
 

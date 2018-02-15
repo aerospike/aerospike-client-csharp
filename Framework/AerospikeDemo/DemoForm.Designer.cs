@@ -30,6 +30,11 @@
         {
 			this.splitContainer1 = new System.Windows.Forms.SplitContainer();
 			this.benchmarkPanel = new System.Windows.Forms.Panel();
+			this.limitTpsBox = new System.Windows.Forms.CheckBox();
+			this.throughputBox = new System.Windows.Forms.TextBox();
+			this.batchSizeLabel = new System.Windows.Forms.Label();
+			this.batchSizeBox = new System.Windows.Forms.TextBox();
+			this.batchReadBox = new System.Windows.Forms.CheckBox();
 			this.initializePanel = new System.Windows.Forms.Panel();
 			this.initPctLabel = new System.Windows.Forms.Label();
 			this.initPctBox = new System.Windows.Forms.TextBox();
@@ -59,6 +64,7 @@
 			this.maxCommandBox = new System.Windows.Forms.TextBox();
 			this.label27 = new System.Windows.Forms.Label();
 			this.latencyGroup = new System.Windows.Forms.GroupBox();
+			this.latencyAltFormatBox = new System.Windows.Forms.CheckBox();
 			this.latencyDisplayLabel = new System.Windows.Forms.TextBox();
 			this.latencyColumnsLabel = new System.Windows.Forms.Label();
 			this.latencyColumnsBox = new System.Windows.Forms.TextBox();
@@ -138,6 +144,11 @@
 			// 
 			// benchmarkPanel
 			// 
+			this.benchmarkPanel.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
+            | System.Windows.Forms.AnchorStyles.Right)));
+			this.benchmarkPanel.Controls.Add(this.batchSizeLabel);
+			this.benchmarkPanel.Controls.Add(this.batchSizeBox);
+			this.benchmarkPanel.Controls.Add(this.batchReadBox);
 			this.benchmarkPanel.Controls.Add(this.initializePanel);
 			this.benchmarkPanel.Controls.Add(this.workloadPanel);
 			this.benchmarkPanel.Controls.Add(this.panel1);
@@ -161,9 +172,63 @@
 			this.benchmarkPanel.Controls.Add(this.label24);
 			this.benchmarkPanel.Location = new System.Drawing.Point(0, 0);
 			this.benchmarkPanel.Name = "benchmarkPanel";
-			this.benchmarkPanel.Size = new System.Drawing.Size(540, 390);
+			this.benchmarkPanel.Size = new System.Drawing.Size(1024, 390);
 			this.benchmarkPanel.TabIndex = 9;
 			this.benchmarkPanel.Visible = false;
+			// 
+			// limitTpsBox
+			// 
+			this.limitTpsBox.AutoSize = true;
+			this.limitTpsBox.Location = new System.Drawing.Point(190, 5);
+			this.limitTpsBox.Name = "limitTpsBox";
+			this.limitTpsBox.RightToLeft = System.Windows.Forms.RightToLeft.No;
+			this.limitTpsBox.Size = new System.Drawing.Size(71, 17);
+			this.limitTpsBox.TabIndex = 5;
+			this.limitTpsBox.Text = "Limit TPS";
+			this.limitTpsBox.UseVisualStyleBackColor = true;
+			this.limitTpsBox.CheckedChanged += new System.EventHandler(this.LimitTPSChanged);
+			// 
+			// throughputBox
+			// 
+			this.throughputBox.Location = new System.Drawing.Point(263, 3);
+			this.throughputBox.Name = "throughputBox";
+			this.throughputBox.Size = new System.Drawing.Size(52, 20);
+			this.throughputBox.TabIndex = 6;
+			this.throughputBox.Text = "1000";
+			this.throughputBox.TextAlign = System.Windows.Forms.HorizontalAlignment.Right;
+			this.throughputBox.Visible = false;
+			// 
+			// batchSizeLabel
+			// 
+			this.batchSizeLabel.AutoSize = true;
+			this.batchSizeLabel.Location = new System.Drawing.Point(255, 87);
+			this.batchSizeLabel.Name = "batchSizeLabel";
+			this.batchSizeLabel.Size = new System.Drawing.Size(27, 13);
+			this.batchSizeLabel.TabIndex = 113;
+			this.batchSizeLabel.Text = "Size";
+			this.batchSizeLabel.Visible = false;
+			// 
+			// batchSizeBox
+			// 
+			this.batchSizeBox.Location = new System.Drawing.Point(283, 84);
+			this.batchSizeBox.Name = "batchSizeBox";
+			this.batchSizeBox.Size = new System.Drawing.Size(64, 20);
+			this.batchSizeBox.TabIndex = 109;
+			this.batchSizeBox.Text = "100";
+			this.batchSizeBox.TextAlign = System.Windows.Forms.HorizontalAlignment.Right;
+			this.batchSizeBox.Visible = false;
+			// 
+			// batchReadBox
+			// 
+			this.batchReadBox.AutoSize = true;
+			this.batchReadBox.Location = new System.Drawing.Point(178, 86);
+			this.batchReadBox.Name = "batchReadBox";
+			this.batchReadBox.RightToLeft = System.Windows.Forms.RightToLeft.No;
+			this.batchReadBox.Size = new System.Drawing.Size(83, 17);
+			this.batchReadBox.TabIndex = 108;
+			this.batchReadBox.Text = "Batch Read";
+			this.batchReadBox.UseVisualStyleBackColor = true;
+			this.batchReadBox.CheckedChanged += new System.EventHandler(this.BatchReadChanged);
 			// 
 			// initializePanel
 			// 
@@ -173,7 +238,7 @@
 			this.initializePanel.Location = new System.Drawing.Point(14, 165);
 			this.initializePanel.Name = "initializePanel";
 			this.initializePanel.Size = new System.Drawing.Size(161, 28);
-			this.initializePanel.TabIndex = 110;
+			this.initializePanel.TabIndex = 125;
 			// 
 			// initPctLabel
 			// 
@@ -189,7 +254,7 @@
 			this.initPctBox.Location = new System.Drawing.Point(89, 3);
 			this.initPctBox.Name = "initPctBox";
 			this.initPctBox.Size = new System.Drawing.Size(45, 20);
-			this.initPctBox.TabIndex = 106;
+			this.initPctBox.TabIndex = 131;
 			this.initPctBox.Text = "100";
 			this.initPctBox.TextAlign = System.Windows.Forms.HorizontalAlignment.Right;
 			// 
@@ -216,7 +281,7 @@
 			this.workloadPanel.Location = new System.Drawing.Point(14, 165);
 			this.workloadPanel.Name = "workloadPanel";
 			this.workloadPanel.Size = new System.Drawing.Size(478, 28);
-			this.workloadPanel.TabIndex = 108;
+			this.workloadPanel.TabIndex = 130;
 			// 
 			// label18
 			// 
@@ -234,7 +299,7 @@
 			this.replicaBox.Location = new System.Drawing.Point(333, 2);
 			this.replicaBox.Name = "replicaBox";
 			this.replicaBox.Size = new System.Drawing.Size(118, 21);
-			this.replicaBox.TabIndex = 114;
+			this.replicaBox.TabIndex = 133;
 			// 
 			// label10
 			// 
@@ -250,7 +315,7 @@
 			this.writeBox.Location = new System.Drawing.Point(191, 3);
 			this.writeBox.Name = "writeBox";
 			this.writeBox.Size = new System.Drawing.Size(35, 20);
-			this.writeBox.TabIndex = 86;
+			this.writeBox.TabIndex = 132;
 			this.writeBox.Text = "50";
 			this.writeBox.TextAlign = System.Windows.Forms.HorizontalAlignment.Right;
 			// 
@@ -306,7 +371,7 @@
 			this.panel1.Location = new System.Drawing.Point(15, 136);
 			this.panel1.Name = "panel1";
 			this.panel1.Size = new System.Drawing.Size(246, 29);
-			this.panel1.TabIndex = 107;
+			this.panel1.TabIndex = 120;
 			// 
 			// dynamicValueButton
 			// 
@@ -314,7 +379,7 @@
 			this.dynamicValueButton.Location = new System.Drawing.Point(94, 6);
 			this.dynamicValueButton.Name = "dynamicValueButton";
 			this.dynamicValueButton.Size = new System.Drawing.Size(144, 17);
-			this.dynamicValueButton.TabIndex = 4;
+			this.dynamicValueButton.TabIndex = 41;
 			this.dynamicValueButton.Text = "Dynamic Random Values";
 			this.dynamicValueButton.UseVisualStyleBackColor = true;
 			// 
@@ -325,7 +390,7 @@
 			this.fixedValueButton.Location = new System.Drawing.Point(5, 6);
 			this.fixedValueButton.Name = "fixedValueButton";
 			this.fixedValueButton.Size = new System.Drawing.Size(80, 17);
-			this.fixedValueButton.TabIndex = 3;
+			this.fixedValueButton.TabIndex = 40;
 			this.fixedValueButton.TabStop = true;
 			this.fixedValueButton.Text = "Fixed Value";
 			this.fixedValueButton.UseVisualStyleBackColor = true;
@@ -345,11 +410,13 @@
 			// 
 			// threadPanel
 			// 
+			this.threadPanel.Controls.Add(this.limitTpsBox);
+			this.threadPanel.Controls.Add(this.throughputBox);
 			this.threadPanel.Controls.Add(this.syncThreadBox);
 			this.threadPanel.Controls.Add(this.label25);
 			this.threadPanel.Location = new System.Drawing.Point(3, 42);
 			this.threadPanel.Name = "threadPanel";
-			this.threadPanel.Size = new System.Drawing.Size(160, 26);
+			this.threadPanel.Size = new System.Drawing.Size(358, 26);
 			this.threadPanel.TabIndex = 66;
 			// 
 			// syncThreadBox
@@ -411,7 +478,7 @@
 			this.asyncThreadBox.Name = "asyncThreadBox";
 			this.asyncThreadBox.Size = new System.Drawing.Size(50, 20);
 			this.asyncThreadBox.TabIndex = 9;
-			this.asyncThreadBox.Text = "1";
+			this.asyncThreadBox.Text = "16";
 			this.asyncThreadBox.TextAlign = System.Windows.Forms.HorizontalAlignment.Right;
 			// 
 			// label26
@@ -429,7 +496,7 @@
 			this.maxCommandBox.Name = "maxCommandBox";
 			this.maxCommandBox.Size = new System.Drawing.Size(50, 20);
 			this.maxCommandBox.TabIndex = 7;
-			this.maxCommandBox.Text = "40";
+			this.maxCommandBox.Text = "12";
 			this.maxCommandBox.TextAlign = System.Windows.Forms.HorizontalAlignment.Right;
 			// 
 			// label27
@@ -443,6 +510,9 @@
 			// 
 			// latencyGroup
 			// 
+			this.latencyGroup.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
+            | System.Windows.Forms.AnchorStyles.Right)));
+			this.latencyGroup.Controls.Add(this.latencyAltFormatBox);
 			this.latencyGroup.Controls.Add(this.latencyDisplayLabel);
 			this.latencyGroup.Controls.Add(this.latencyColumnsLabel);
 			this.latencyGroup.Controls.Add(this.latencyColumnsBox);
@@ -450,22 +520,35 @@
 			this.latencyGroup.Controls.Add(this.latencyShiftBox);
 			this.latencyGroup.Location = new System.Drawing.Point(15, 249);
 			this.latencyGroup.Name = "latencyGroup";
-			this.latencyGroup.Size = new System.Drawing.Size(504, 104);
-			this.latencyGroup.TabIndex = 102;
+			this.latencyGroup.Size = new System.Drawing.Size(1006, 104);
+			this.latencyGroup.TabIndex = 150;
 			this.latencyGroup.TabStop = false;
 			this.latencyGroup.Text = "Latency Format";
 			this.latencyGroup.Visible = false;
 			// 
+			// latencyAltFormatBox
+			// 
+			this.latencyAltFormatBox.AutoSize = true;
+			this.latencyAltFormatBox.Location = new System.Drawing.Point(290, 24);
+			this.latencyAltFormatBox.Name = "latencyAltFormatBox";
+			this.latencyAltFormatBox.Size = new System.Drawing.Size(103, 17);
+			this.latencyAltFormatBox.TabIndex = 153;
+			this.latencyAltFormatBox.Text = "Alternate Format";
+			this.latencyAltFormatBox.UseVisualStyleBackColor = true;
+			this.latencyAltFormatBox.CheckedChanged += new System.EventHandler(this.LatencyValueChanged);
+			// 
 			// latencyDisplayLabel
 			// 
+			this.latencyDisplayLabel.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
+            | System.Windows.Forms.AnchorStyles.Right)));
 			this.latencyDisplayLabel.BackColor = System.Drawing.SystemColors.Control;
 			this.latencyDisplayLabel.Font = new System.Drawing.Font("Courier New", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
 			this.latencyDisplayLabel.Location = new System.Drawing.Point(3, 60);
 			this.latencyDisplayLabel.Multiline = true;
 			this.latencyDisplayLabel.Name = "latencyDisplayLabel";
 			this.latencyDisplayLabel.ReadOnly = true;
-			this.latencyDisplayLabel.Size = new System.Drawing.Size(483, 40);
-			this.latencyDisplayLabel.TabIndex = 100;
+			this.latencyDisplayLabel.Size = new System.Drawing.Size(997, 40);
+			this.latencyDisplayLabel.TabIndex = 154;
 			this.latencyDisplayLabel.Text = "<=1ms >1ms >8ms >64ms\r\n   x%   x%   x%    x%";
 			// 
 			// latencyColumnsLabel
@@ -482,7 +565,7 @@
 			this.latencyColumnsBox.Location = new System.Drawing.Point(56, 24);
 			this.latencyColumnsBox.Name = "latencyColumnsBox";
 			this.latencyColumnsBox.Size = new System.Drawing.Size(52, 20);
-			this.latencyColumnsBox.TabIndex = 97;
+			this.latencyColumnsBox.TabIndex = 151;
 			this.latencyColumnsBox.Text = "4";
 			this.latencyColumnsBox.TextAlign = System.Windows.Forms.HorizontalAlignment.Right;
 			this.latencyColumnsBox.TextChanged += new System.EventHandler(this.LatencyValueChanged);
@@ -501,7 +584,7 @@
 			this.latencyShiftBox.Location = new System.Drawing.Point(212, 24);
 			this.latencyShiftBox.Name = "latencyShiftBox";
 			this.latencyShiftBox.Size = new System.Drawing.Size(52, 20);
-			this.latencyShiftBox.TabIndex = 99;
+			this.latencyShiftBox.TabIndex = 152;
 			this.latencyShiftBox.Text = "3";
 			this.latencyShiftBox.TextAlign = System.Windows.Forms.HorizontalAlignment.Right;
 			this.latencyShiftBox.TextChanged += new System.EventHandler(this.LatencyValueChanged);
@@ -518,11 +601,11 @@
 			// debugBox
 			// 
 			this.debugBox.AutoSize = true;
-			this.debugBox.Location = new System.Drawing.Point(177, 226);
+			this.debugBox.Location = new System.Drawing.Point(178, 226);
 			this.debugBox.Name = "debugBox";
 			this.debugBox.RightToLeft = System.Windows.Forms.RightToLeft.No;
 			this.debugBox.Size = new System.Drawing.Size(88, 17);
-			this.debugBox.TabIndex = 3;
+			this.debugBox.TabIndex = 144;
 			this.debugBox.Text = "Debug Mode";
 			this.debugBox.UseVisualStyleBackColor = true;
 			// 
@@ -532,7 +615,7 @@
 			this.latencyBox.Location = new System.Drawing.Point(21, 226);
 			this.latencyBox.Name = "latencyBox";
 			this.latencyBox.Size = new System.Drawing.Size(145, 17);
-			this.latencyBox.TabIndex = 95;
+			this.latencyBox.TabIndex = 143;
 			this.latencyBox.Text = "Enable Latency Tracking";
 			this.latencyBox.UseVisualStyleBackColor = true;
 			this.latencyBox.CheckedChanged += new System.EventHandler(this.LatencyChanged);
@@ -542,7 +625,7 @@
 			this.sleepBox.Location = new System.Drawing.Point(419, 195);
 			this.sleepBox.Name = "sleepBox";
 			this.sleepBox.Size = new System.Drawing.Size(52, 20);
-			this.sleepBox.TabIndex = 89;
+			this.sleepBox.TabIndex = 142;
 			this.sleepBox.Text = "0";
 			this.sleepBox.TextAlign = System.Windows.Forms.HorizontalAlignment.Right;
 			// 
@@ -560,7 +643,7 @@
 			this.maxRetriesBox.Location = new System.Drawing.Point(240, 195);
 			this.maxRetriesBox.Name = "maxRetriesBox";
 			this.maxRetriesBox.Size = new System.Drawing.Size(52, 20);
-			this.maxRetriesBox.TabIndex = 88;
+			this.maxRetriesBox.TabIndex = 141;
 			this.maxRetriesBox.Text = "0";
 			this.maxRetriesBox.TextAlign = System.Windows.Forms.HorizontalAlignment.Right;
 			// 
@@ -587,7 +670,7 @@
 			this.timeoutBox.Location = new System.Drawing.Point(82, 195);
 			this.timeoutBox.Name = "timeoutBox";
 			this.timeoutBox.Size = new System.Drawing.Size(66, 20);
-			this.timeoutBox.TabIndex = 87;
+			this.timeoutBox.TabIndex = 140;
 			this.timeoutBox.Text = "0";
 			this.timeoutBox.TextAlign = System.Windows.Forms.HorizontalAlignment.Right;
 			// 
@@ -605,7 +688,7 @@
 			this.binSizeBox.Location = new System.Drawing.Point(219, 112);
 			this.binSizeBox.Name = "binSizeBox";
 			this.binSizeBox.Size = new System.Drawing.Size(64, 20);
-			this.binSizeBox.TabIndex = 72;
+			this.binSizeBox.TabIndex = 111;
 			this.binSizeBox.Text = "50";
 			this.binSizeBox.TextAlign = System.Windows.Forms.HorizontalAlignment.Right;
 			// 
@@ -625,7 +708,7 @@
 			this.binTypeBox.Location = new System.Drawing.Point(82, 111);
 			this.binTypeBox.Name = "binTypeBox";
 			this.binTypeBox.Size = new System.Drawing.Size(81, 21);
-			this.binTypeBox.TabIndex = 71;
+			this.binTypeBox.TabIndex = 110;
 			this.binTypeBox.SelectedIndexChanged += new System.EventHandler(this.BinTypeChanged);
 			// 
 			// label6
@@ -642,7 +725,7 @@
 			this.recordsBox.Location = new System.Drawing.Point(82, 84);
 			this.recordsBox.Name = "recordsBox";
 			this.recordsBox.Size = new System.Drawing.Size(80, 20);
-			this.recordsBox.TabIndex = 66;
+			this.recordsBox.TabIndex = 107;
 			this.recordsBox.Text = "1000000";
 			this.recordsBox.TextAlign = System.Windows.Forms.HorizontalAlignment.Right;
 			// 
@@ -682,7 +765,7 @@
 			this.consoleBox.Name = "consoleBox";
 			this.consoleBox.ReadOnly = true;
 			this.consoleBox.ScrollBars = System.Windows.Forms.ScrollBars.Vertical;
-			this.consoleBox.Size = new System.Drawing.Size(1019, 287);
+			this.consoleBox.Size = new System.Drawing.Size(1019, 263);
 			this.consoleBox.TabIndex = 11;
 			this.consoleBox.KeyDown += new System.Windows.Forms.KeyEventHandler(this.ConsoleKeyDown);
 			// 
@@ -941,5 +1024,11 @@
 		private System.Windows.Forms.Label label13;
 		private System.Windows.Forms.Label label18;
 		private System.Windows.Forms.ComboBox replicaBox;
+		private System.Windows.Forms.CheckBox latencyAltFormatBox;
+		private System.Windows.Forms.Label batchSizeLabel;
+		private System.Windows.Forms.TextBox batchSizeBox;
+		private System.Windows.Forms.CheckBox batchReadBox;
+		private System.Windows.Forms.TextBox throughputBox;
+		private System.Windows.Forms.CheckBox limitTpsBox;
     }
 }
