@@ -1,7 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <VersionPrefix>3.5.3</VersionPrefix>
     <TargetFramework>netstandard1.5</TargetFramework>
     <DefineConstants>$(DefineConstants);NETCORE</DefineConstants>
     <AssemblyName>AerospikeClient</AssemblyName>
@@ -13,6 +12,7 @@
     <GenerateAssemblyCompanyAttribute>false</GenerateAssemblyCompanyAttribute>
     <GenerateAssemblyProductAttribute>false</GenerateAssemblyProductAttribute>
     <Authors>Aerospike</Authors>
+    <Version>3.6.0</Version>
   </PropertyGroup>
 
   <ItemGroup>
