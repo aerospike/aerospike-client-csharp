@@ -56,8 +56,11 @@ namespace Aerospike.Client
         // User name in UTF-8 encoded bytes.
         protected internal readonly byte[] user;
 
-		// Password in hashed format in bytes.
+		// Password in UTF-8 encoded bytes.
 		protected internal byte[] password;
+
+		// Password in hashed format in bytes.
+		protected internal byte[] passwordHash;
 
 		// Random node index.
 		private int nodeIndex;
@@ -116,6 +119,7 @@ namespace Aerospike.Client
 			if (policy.user != null && policy.user.Length > 0)
 			{
 				this.user = ByteUtil.StringToUtf8(policy.user);
+				this.password = ByteUtil.StringToUtf8(policy.password);
 
 				string pass = policy.password;
 
@@ -128,7 +132,7 @@ namespace Aerospike.Client
 				{
 					pass = AdminCommand.HashPassword(pass);
 				}
-				this.password = ByteUtil.StringToUtf8(pass);
+				this.passwordHash = ByteUtil.StringToUtf8(pass);
 			}
 
 			tlsPolicy = policy.tlsPolicy;
@@ -823,12 +827,13 @@ namespace Aerospike.Client
 				new TlsConnection(tlsPolicy, tlsName, address, timeout, maxSocketIdleMillis, pool) : 
 				new Connection(address, timeout, maxSocketIdleMillis, pool);
 		}
-		
-		protected internal void ChangePassword(byte[] user, string password)
+
+		protected internal void ChangePassword(byte[] user, byte[] password, byte[] passwordHash)
 		{
 			if (this.user != null && Util.ByteArrayEquals(user, this.user))
 			{
-				this.password = ByteUtil.StringToUtf8(password);
+				this.password = password;
+				this.passwordHash = passwordHash;
 			}
 		}
 

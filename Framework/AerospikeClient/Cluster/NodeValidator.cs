@@ -28,6 +28,7 @@ namespace Aerospike.Client
 		internal Host primaryHost;
 		internal IPEndPoint primaryAddress;
 		internal Connection conn;
+		internal byte[] sessionToken;
 		internal uint features;
 
 		/// <summary>
@@ -142,7 +143,7 @@ namespace Aerospike.Client
 				if (cluster.user != null)
 				{
 					AdminCommand command = new AdminCommand(ThreadLocalData.GetBuffer(), 0);
-					command.Authenticate(conn, cluster.user, cluster.password);
+					sessionToken = command.Login(cluster, conn, alias);
 				}
 				Dictionary<string, string> map;
 				bool hasClusterName = cluster.HasClusterName;

@@ -35,12 +35,15 @@ namespace Aerospike.Client
 		private const byte GRANT_PRIVILEGES = 12;
 		private const byte REVOKE_PRIVILEGES = 13; 
 		private const byte QUERY_ROLES = 16;
+		private const byte LOGIN = 20;
 
 		// Field IDs
 		private const byte USER = 0;
 		private const byte PASSWORD = 1;
 		private const byte OLD_PASSWORD = 2;
 		private const byte CREDENTIAL = 3;
+		private const byte CLEAR_PASSWORD = 4;
+		private const byte SESSION_TOKEN = 5;
 		private const byte ROLES = 10;
 		private const byte ROLE = 11;
 		private const byte PRIVILEGES = 12;
@@ -53,6 +56,9 @@ namespace Aerospike.Client
 		private const int HEADER_REMAINING = 16;
 		private const int RESULT_CODE = 9;
 		private const int QUERY_END = 50;
+
+		// Result Codes
+		private const int INVALID_COMMAND = 54;
 
 		private byte[] dataBuffer;
 		private int dataOffset;
@@ -72,9 +78,68 @@ namespace Aerospike.Client
 			this.dataOffset = dataOffset + 8;
 		}
 
-		public void Authenticate(Connection conn, byte[] user, byte[] password)
+		public byte[] Login(Cluster cluster, Connection conn, Host host)
 		{
-			SetAuthenticate(user, password);
+			WriteHeader(LOGIN, 3);
+			WriteField(USER, cluster.user);
+			WriteField(CREDENTIAL, cluster.passwordHash);
+			WriteField(CLEAR_PASSWORD, cluster.password);
+			WriteSize();
+			conn.Write(dataBuffer, dataOffset);
+			conn.ReadFully(dataBuffer, HEADER_SIZE);
+
+			int result = dataBuffer[RESULT_CODE];
+
+			if (result != 0)
+			{
+				if (result == INVALID_COMMAND)
+				{
+					// New login not supported.  Try old authentication.
+					AuthenticateOld(cluster, conn);
+					return null;
+				}
+
+				// login failed.
+				throw new AerospikeException(result, "Node " + host + " login failed");
+			}
+
+			// Read session token.
+			long size = ByteUtil.BytesToLong(dataBuffer, 0);
+			int receiveSize = ((int)(size & 0xFFFFFFFFFFFFL)) - HEADER_REMAINING;
+			int fieldCount = dataBuffer[11];
+
+			if (receiveSize <= 0 || receiveSize > dataBuffer.Length || fieldCount <= 0)
+			{
+				throw new AerospikeException(result, "Node " + host + " failed to retrieve session token");
+			}
+
+			conn.ReadFully(dataBuffer, receiveSize);
+			dataOffset = 0;
+
+			for (int i = 0; i < fieldCount; i++)
+			{
+				int len = ByteUtil.BytesToInt(dataBuffer, dataOffset);
+				dataOffset += 4;
+				int id = dataBuffer[dataOffset++];
+				len--;
+
+				if (id == SESSION_TOKEN)
+				{
+					byte[] sessionToken = new byte[len];
+					Array.Copy(dataBuffer, dataOffset, sessionToken, 0, len);
+					return sessionToken;
+				}
+				else
+				{
+					dataOffset += len;
+				}
+			}
+			throw new AerospikeException(result, "Node " + host + " failed to retrieve session token");
+		}
+
+		public void Authenticate(Cluster cluster, Node node, Connection conn)
+		{
+			SetAuthenticate(cluster, node);
 			conn.Write(dataBuffer, dataOffset);
 			conn.ReadFully(dataBuffer, HEADER_SIZE);
 
@@ -85,13 +150,41 @@ namespace Aerospike.Client
 			}
 		}
 
-		public int SetAuthenticate(byte[] user, byte[] password)
+		public int SetAuthenticate(Cluster cluster, Node node)
 		{
 			WriteHeader(AUTHENTICATE, 2);
-			WriteField(USER, user);
-			WriteField(CREDENTIAL, password);
+			WriteField(USER, cluster.user);
+
+			if (node.sessionToken != null)
+			{
+				// New authentication.
+				WriteField(SESSION_TOKEN, node.sessionToken);
+			}
+			else
+			{
+				// Old authentication.
+				WriteField(CREDENTIAL, cluster.passwordHash);
+			}
 			WriteSize();
 			return dataOffset;
+		}
+
+		public void AuthenticateOld(Cluster cluster, Connection conn)
+		{
+			dataOffset = 8;
+			WriteHeader(AUTHENTICATE, 2);
+			WriteField(USER, cluster.user);
+			WriteField(CREDENTIAL, cluster.passwordHash);
+			WriteSize();
+
+			conn.Write(dataBuffer, dataOffset);
+			conn.ReadFully(dataBuffer, HEADER_SIZE);
+
+			int result = dataBuffer[RESULT_CODE];
+			if (result != 0)
+			{
+				throw new AerospikeException(result, "Authentication failed");
+			}
 		}
 
 		public void CreateUser(Cluster cluster, AdminPolicy policy, string user, string password, IList<string> roles)
@@ -122,7 +215,7 @@ namespace Aerospike.Client
 		{
 			WriteHeader(CHANGE_PASSWORD, 3);
 			WriteField(USER, user);
-			WriteField(OLD_PASSWORD, cluster.password);
+			WriteField(OLD_PASSWORD, cluster.passwordHash);
 			WriteField(PASSWORD, password);
 			ExecuteCommand(cluster, policy);
 		}

@@ -552,8 +552,7 @@ namespace Aerospike.Client
 		void DropUser(AdminPolicy policy, string user);
 
 		/// <summary>
-		/// Change user's password.  Clear-text password will be hashed using bcrypt 
-		/// before sending to server.
+		/// Change user's password.
 		/// </summary>
 		/// <param name="policy">admin configuration parameters, pass in null for defaults</param>
 		/// <param name="user">user name</param>

@@ -1358,8 +1358,7 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
-		/// Change user's password.  Clear-text password will be hashed using bcrypt 
-		/// before sending to server.
+		/// Change user's password.
 		/// </summary>
 		/// <param name="policy">admin configuration parameters, pass in null for defaults</param>
 		/// <param name="user">user name</param>
@@ -1371,9 +1370,13 @@ namespace Aerospike.Client
 				throw new AerospikeException("Invalid user");
 			}
 
-			string hash = AdminCommand.HashPassword(password);
-			AdminCommand command = new AdminCommand();
 			byte[] userBytes = ByteUtil.StringToUtf8(user);
+			byte[] passwordBytes = ByteUtil.StringToUtf8(password);
+
+			string hash = AdminCommand.HashPassword(password);
+			byte[] hashBytes = ByteUtil.StringToUtf8(hash);
+
+			AdminCommand command = new AdminCommand();
 
 			if (Util.ByteArrayEquals(userBytes, cluster.user))
 			{
@@ -1385,7 +1388,7 @@ namespace Aerospike.Client
 				// Change other user's password by user admin.
 				command.SetPassword(cluster, policy, userBytes, hash);
 			}
-			cluster.ChangePassword(userBytes, hash);
+			cluster.ChangePassword(userBytes, passwordBytes, hashBytes);
 		}
 
 		/// <summary>

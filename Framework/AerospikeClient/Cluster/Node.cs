@@ -45,6 +45,7 @@ namespace Aerospike.Client
 		protected internal readonly List<Host> aliases;
 		protected internal readonly IPEndPoint address;
 		private Connection tendConnection;
+		protected internal readonly byte[] sessionToken;
 		private readonly Pool[] connectionPools;
 		protected uint connectionIter;
 		protected internal int partitionGeneration = -1;
@@ -69,6 +70,7 @@ namespace Aerospike.Client
 			this.host = nv.primaryHost;
 			this.address = nv.primaryAddress;
 			this.tendConnection = nv.conn;
+			this.sessionToken = nv.sessionToken;
 			this.features = nv.features;
 
 			connectionPools = new Pool[cluster.connPoolsPerNode];
@@ -109,7 +111,7 @@ namespace Aerospike.Client
 						try
 						{
 							AdminCommand command = new AdminCommand(ThreadLocalData.GetBuffer(), 0);
-							command.Authenticate(tendConnection, cluster.user, cluster.password);
+							command.Authenticate(cluster, this, tendConnection);
 						}
 						catch (Exception)
 						{
@@ -521,7 +523,7 @@ namespace Aerospike.Client
 						try
 						{
 							AdminCommand command = new AdminCommand(ThreadLocalData.GetBuffer(), 0);
-							command.Authenticate(conn, cluster.user, cluster.password);
+							command.Authenticate(cluster, this, conn);
 						}
 						catch (Exception)
 						{
