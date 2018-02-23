@@ -163,7 +163,7 @@ namespace Aerospike.Client
 		/// </summary>
 		public static Operation Insert(ListPolicy policy, string binName, int index, Value value)
 		{
-			return CDT.CreateOperation(INSERT, Operation.Type.CDT_MODIFY, binName, index, value, policy.attributes, policy.flags);
+			return CDT.CreateOperation(INSERT, Operation.Type.CDT_MODIFY, binName, index, value, policy.flags);
 		}
 
 		/// <summary>
@@ -190,10 +190,9 @@ namespace Aerospike.Client
 		{
 			Packer packer = new Packer();
 			packer.PackRawShort(INSERT_ITEMS);
-			packer.PackArrayBegin(4);
+			packer.PackArrayBegin(3);
 			packer.PackNumber(index);
 			packer.PackList(list);
-			packer.PackNumber(policy.attributes);
 			packer.PackNumber(policy.flags);
 			return new Operation(Operation.Type.CDT_MODIFY, binName, Value.Get(packer.ToByteArray()));
 		}
@@ -215,7 +214,7 @@ namespace Aerospike.Client
 		/// </summary>
 		public static Operation Increment(ListPolicy policy, string binName, int index)
 		{
-			return CDT.CreateOperation(INCREMENT, Operation.Type.CDT_MODIFY, binName, index, policy.attributes, policy.flags);
+			return CDT.CreateOperation(INCREMENT, Operation.Type.CDT_MODIFY, binName, index, policy.flags);
 		}
 
 		/// <summary>
@@ -237,7 +236,7 @@ namespace Aerospike.Client
 		/// </summary>
 		public static Operation Increment(ListPolicy policy, string binName, int index, Value value)
 		{
-			return CDT.CreateOperation(INCREMENT, Operation.Type.CDT_MODIFY, binName, index, value, policy.attributes, policy.flags);
+			return CDT.CreateOperation(INCREMENT, Operation.Type.CDT_MODIFY, binName, index, value, policy.flags);
 		}
 
 		/// <summary>
@@ -306,6 +305,16 @@ namespace Aerospike.Client
 		public static Operation Set(string binName, int index, Value value)
 		{
 			return CDT.CreateOperation(SET, Operation.Type.CDT_MODIFY, binName, index, value);
+		}
+
+		/// <summary>
+		/// Create list set operation with policy.
+		/// Server sets item value at specified index in list bin.
+		/// Server does not return a result by default.
+		/// </summary>
+		public static Operation Set(ListPolicy policy, string binName, int index, Value value)
+		{
+			return CDT.CreateOperation(SET, Operation.Type.CDT_MODIFY, binName, index, value, policy.flags);
 		}
 
 		/// <summary>
