@@ -80,6 +80,18 @@ namespace Aerospike.Client
 			return new Operation(type, binName, Value.Get(packer.ToByteArray()));
 		}
 
+		protected internal static Operation CreateOperation(int command, Operation.Type type, string binName, int v1, Value v2, int v3, int v4)
+		{
+			Packer packer = new Packer();
+			packer.PackRawShort(command);
+			packer.PackArrayBegin(4);
+			packer.PackNumber(v1);
+			v2.Pack(packer);
+			packer.PackNumber(v3);
+			packer.PackNumber(v4);
+			return new Operation(type, binName, Value.Get(packer.ToByteArray()));
+		}
+
 		protected internal static Operation CreateOperation(int command, Operation.Type type, string binName, int v1, IList v2)
 		{
 			Packer packer = new Packer();

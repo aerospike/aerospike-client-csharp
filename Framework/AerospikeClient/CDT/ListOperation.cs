@@ -214,7 +214,7 @@ namespace Aerospike.Client
 		/// </summary>
 		public static Operation Increment(ListPolicy policy, string binName, int index)
 		{
-			return CDT.CreateOperation(INCREMENT, Operation.Type.CDT_MODIFY, binName, index, policy.flags);
+			return CDT.CreateOperation(INCREMENT, Operation.Type.CDT_MODIFY, binName, index, Value.Get(1), policy.attributes, policy.flags);
 		}
 
 		/// <summary>
@@ -236,7 +236,7 @@ namespace Aerospike.Client
 		/// </summary>
 		public static Operation Increment(ListPolicy policy, string binName, int index, Value value)
 		{
-			return CDT.CreateOperation(INCREMENT, Operation.Type.CDT_MODIFY, binName, index, value, policy.flags);
+			return CDT.CreateOperation(INCREMENT, Operation.Type.CDT_MODIFY, binName, index, value, policy.attributes, policy.flags);
 		}
 
 		/// <summary>

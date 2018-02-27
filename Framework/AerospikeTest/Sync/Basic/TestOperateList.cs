@@ -409,7 +409,9 @@ namespace Aerospike.Test
 			Record record = client.Operate(null, key,
 				ListOperation.AppendItems(binName, itemList),
 				ListOperation.Increment(binName, 2),
+				ListOperation.Increment(ListPolicy.Default, binName, 2),
 				ListOperation.Increment(binName, 1, Value.Get(7)),
+				ListOperation.Increment(ListPolicy.Default, binName, 1, Value.Get(7)),
 				ListOperation.Get(binName, 0)
 				);
 
@@ -425,7 +427,13 @@ namespace Aerospike.Test
 			Assert.AreEqual(4, val);
 
 			val = (long)results[i++];
+			Assert.AreEqual(5, val);
+
+			val = (long)results[i++];
 			Assert.AreEqual(9, val);
+
+			val = (long)results[i++];
+			Assert.AreEqual(16, val);
 
 			val = (long)results[i++];
 			Assert.AreEqual(1, val);
