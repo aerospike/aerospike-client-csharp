@@ -57,21 +57,25 @@ namespace Aerospike.Client
 		public AerospikeException(string message, Exception e) 
             : base(message, e)
 		{
+			this.resultCode = ResultCode.CLIENT_ERROR;
 		}
 
 		public AerospikeException(string message) 
             : base(message)
 		{
+			this.resultCode = ResultCode.CLIENT_ERROR;
 		}
 
         public AerospikeException(Exception e)
             : base(e.Message, e)
 		{
+			this.resultCode = ResultCode.CLIENT_ERROR;
 		}
 
 		public AerospikeException()
 			: base("")
 		{
+			this.resultCode = ResultCode.CLIENT_ERROR;
 		}
 
 		/// <summary>

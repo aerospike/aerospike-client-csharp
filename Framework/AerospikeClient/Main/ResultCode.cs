@@ -22,6 +22,11 @@ namespace Aerospike.Client
 	public sealed class ResultCode
 	{
 		/// <summary>
+		/// Client serialization error.
+		/// </summary>
+		public const int SERIALIZE_ERROR = -10;
+
+		/// <summary>
 		/// Server is not accepting requests.
 		/// </summary>
 		public const int SERVER_NOT_AVAILABLE = -8;
@@ -57,9 +62,9 @@ namespace Aerospike.Client
 		public const int PARSE_ERROR = -2;
 
 		/// <summary>
-		/// Client serialization error.
+		/// Client generic error.
 		/// </summary>
-		public const int SERIALIZE_ERROR = -1;
+		public const int CLIENT_ERROR = -1;
 
 		/// <summary>
 		/// Operation was successful.
@@ -370,6 +375,7 @@ namespace Aerospike.Client
 			switch (resultCode)
 			{
 				case 0: // Exception did not originate on server.
+				case CLIENT_ERROR:
 				case QUERY_TERMINATED:
 				case SCAN_TERMINATED:
 				case PARSE_ERROR:
@@ -391,6 +397,9 @@ namespace Aerospike.Client
 		{
 			switch (resultCode)
 			{
+			case SERIALIZE_ERROR:
+				return "Serialize error";
+
 			case SERVER_NOT_AVAILABLE:
 				return "Server not available";
 
@@ -412,8 +421,8 @@ namespace Aerospike.Client
 			case PARSE_ERROR:
 				return "Parse error";
 
-			case SERIALIZE_ERROR:
-				return "Serialize error";
+			case CLIENT_ERROR:
+				return "Client error";
 
 			case OK:
 				return "ok";
