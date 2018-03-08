@@ -703,7 +703,7 @@ namespace Aerospike.Client
 				return node;
 			}
 
-			// When master only specified, both AP and CP modes should never get random nodes.
+			// When master only specified, should never get random nodes.
 			throw new AerospikeException.InvalidNode();
 		}
 

@@ -42,7 +42,7 @@ namespace Aerospike.Client
 		public static readonly int INFO3_UPDATE_ONLY       = (1 << 3); // Update only. Merge bins.
 		public static readonly int INFO3_CREATE_OR_REPLACE = (1 << 4); // Create or completely replace record.
 		public static readonly int INFO3_REPLACE_ONLY      = (1 << 5); // Completely replace existing record only.
-		public static readonly int INFO3_LINEARIZE_READ    = (1 << 6); // Linearize read when in CP mode.
+		public static readonly int INFO3_LINEARIZE_READ    = (1 << 6); // Linearize read when in strong consistency mode.
 
 		public const int MSG_TOTAL_HEADER_SIZE = 30;
 		public const int FIELD_HEADER_SIZE = 5;

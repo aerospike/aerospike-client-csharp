@@ -153,7 +153,7 @@ namespace Aerospike.Client
 		public bool sendKey;
 
 		/// <summary>
-		/// Force reads to be linearized for server namespaces that support CP mode.
+		/// Force reads to be linearized for server namespaces that support strong consistency mode.
 		/// <para>
 		/// Default: false
 		/// </para>
