@@ -45,7 +45,7 @@ namespace Aerospike.Client
 		{
 			if (length <= 0)
 			{
-				return new List<object>(0);
+				return GetList(new List<object>(0));
 			}
 
 			int type = buffer[offset++];
@@ -67,20 +67,51 @@ namespace Aerospike.Client
 			}
 			else
 			{
-				return new List<object>(0);
+				return GetList(new List<object>(0));
 			}
 			return UnpackList(count);
 		}
 
 		private object UnpackList(int count)
 		{
-			List<object> list = new List<object>(count);
+			if (count <= 0)
+			{
+				return GetList(new List<object>(0));
+			}
 
-			for (int i = 0; i < count; i++)
+			// Extract first object.
+			int mark = offset;
+			int size = count;
+			object val = UnpackObject();
+		
+			if (val == null)
+			{
+				// Determine if null value is because of an extension type.
+				int type = buffer[mark];
+
+				if (type != 0xc0) // not nil type
+				{ 
+					// Ignore extension type.
+					size--;
+				}
+			}
+		
+			List<object> list = new List<object>(size);
+
+			if (size == count)
+			{
+				list.Add(val);
+			}
+			
+			for (int i = 1; i < count; i++)
 			{
 				list.Add(UnpackObject());
 			}
+			return GetList(list);
+		}
 
+		private object GetList(List<object> list)
+		{
 			if (lua)
 			{
 #if NETFRAMEWORK
@@ -96,7 +127,7 @@ namespace Aerospike.Client
 		{
 			if (length <= 0)
 			{
-				return new Dictionary<object, object>(0);
+				return GetMap(new Dictionary<object, object>(0));
 			}
 
 			int type = buffer[offset++];
@@ -118,7 +149,7 @@ namespace Aerospike.Client
 			}
 			else
 			{
-				return new Dictionary<object, object>(0);
+				return GetMap(new Dictionary<object, object>(0));
 			}
 			return UnpackMap(count);
 		}
@@ -127,7 +158,7 @@ namespace Aerospike.Client
 		{
 			if (count <= 0)
 			{
-				return new Dictionary<object, object>(0);
+				return GetMap(new Dictionary<object, object>(0));
 			}
 
 			IDictionary<object,object> map = CreateMap(count);
@@ -145,16 +176,7 @@ namespace Aerospike.Client
 						map[key] = val;
 					}
 				}
-
-				if (lua)
-				{
-#if NETFRAMEWORK
-					return new LuaMap(map);
-#else
-					throw new AerospikeException("Lua not supported in .NET core");
-#endif
-				}
-				return map;
+				return GetMap(map);
 			}
 			else
 			{
@@ -171,32 +193,23 @@ namespace Aerospike.Client
 						list.Add(new KeyValuePair<object, object>(key, val));
 					}
 				}
-
-				if (lua)
-				{
-#if NETFRAMEWORK
-					return new LuaList(list);
-#else
-					throw new AerospikeException("Lua not supported in .NET core");
-#endif
-				}
-				return list;
+				return GetList(list);
 			}
 		}
 
-		private IDictionary<object,object> CreateMap(int count)
+		private IDictionary<object, object> CreateMap(int count)
 		{
 			// Peek at buffer to determine map type, but do not advance.
-			int type = buffer[offset] & 0xff;
+			int type = buffer[offset];
 
 			// Check for extension that the server uses.
 			if (type == 0xc7)
 			{
-				int extensionType = buffer[offset + 1] & 0xff;
+				int extensionType = buffer[offset + 1];
 
 				if (extensionType == 0)
 				{
-					int mapBits = buffer[offset + 2] & 0xff;
+					int mapBits = buffer[offset + 2];
 
 					// Extension is a map type.  Determine which one.
 					if ((mapBits & (0x04 | 0x08)) != 0)
@@ -213,7 +226,20 @@ namespace Aerospike.Client
 			}
 			return new Dictionary<object, object>(count);
 		}
-		
+
+		private object GetMap(IDictionary<object, object> map)
+		{
+			if (lua)
+			{
+#if NETFRAMEWORK
+				return new LuaMap(map);
+#else
+				throw new AerospikeException("Lua not supported in .NET core");
+#endif
+			}
+			return map;
+		}
+
 		private object UnpackBlob(int count)
 		{
 			int type = buffer[offset++];
