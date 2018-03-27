@@ -374,10 +374,9 @@ namespace Aerospike.Client
 		//-------------------------------------------------------
 
 		/// <summary>
-		/// Asynchronously create record if it does not already exist.
+		/// Asynchronously reset record's time to expiration using the policy's expiration.
 		/// Create listener, call asynchronous touch and return task monitor.
-		/// If the record exists, the record's time to expiration will be reset to the policy's 
-		/// expiration.
+		/// Fail if the record does not exist.
 		/// </summary>
 		/// <param name="policy">write configuration parameters, pass in null for defaults</param>
 		/// <param name="token">cancellation token</param>
@@ -391,11 +390,10 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
-		/// Asynchronously create record if it does not already exist.
+		/// Asynchronously reset record's time to expiration using the policy's expiration.
 		/// Schedule the touch command with a channel selector and return.
 		/// Another thread will process the command and send the results to the listener.
-		/// If the record exists, the record's time to expiration will be reset to the policy's 
-		/// expiration.
+		/// Fail if the record does not exist.
 		/// </summary>
 		/// <param name="policy">write configuration parameters, pass in null for defaults</param>
 		/// <param name="listener">where to send results, pass in null for fire and forget</param>
