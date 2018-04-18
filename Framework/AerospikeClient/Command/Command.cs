@@ -704,6 +704,10 @@ namespace Aerospike.Client
 				// Estimate scan options size.
 				dataOffset += 2 + FIELD_HEADER_SIZE;
 				fieldCount++;
+
+				// Estimate scan timeout size.
+				dataOffset += 4 + FIELD_HEADER_SIZE;
+				fieldCount++;
 			}
 
 			PredExp[] predExp = statement.PredExp;
@@ -816,6 +820,10 @@ namespace Aerospike.Client
 				priority <<= 4;
 				dataBuffer[dataOffset++] = priority;
 				dataBuffer[dataOffset++] = (byte)100;
+
+				// Write scan timeout
+				WriteFieldHeader(4, FieldType.SCAN_TIMEOUT);
+				dataOffset += ByteUtil.IntToBytes((uint)policy.socketTimeout, dataBuffer, dataOffset);
 			}
 
 			if (predExp != null)
