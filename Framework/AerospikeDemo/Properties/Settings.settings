@@ -104,5 +104,11 @@
     <Setting Name="LimitTPS" Type="System.Boolean" Scope="User">
       <Value Profile="(Default)">False</Value>
     </Setting>
+    <Setting Name="TlsLoginOnly" Type="System.Boolean" Scope="User">
+      <Value Profile="(Default)">False</Value>
+    </Setting>
+    <Setting Name="AuthMode" Type="System.String" Scope="User">
+      <Value Profile="(Default)">INTERNAL</Value>
+    </Setting>
   </Settings>
 </SettingsFile>

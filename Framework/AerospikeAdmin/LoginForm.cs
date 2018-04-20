@@ -30,6 +30,7 @@ namespace Aerospike.Admin
 		private string clusterName;
 		private string tlsName;
 		private TlsPolicy tlsPolicy;
+		private AuthMode authMode;
 
 		public LoginForm()
 		{
@@ -69,6 +70,7 @@ namespace Aerospike.Admin
 			portBox.Text = Properties.Settings.Default.Port.ToString();
 			clusterName = Properties.Settings.Default.ClusterName.Trim();
 			userBox.Text = Properties.Settings.Default.User;
+			authMode = (AuthMode)Enum.Parse(typeof(AuthMode), Properties.Settings.Default.AuthMode.Trim());
 
 			if (Properties.Settings.Default.TlsEnable)
 			{
@@ -76,7 +78,8 @@ namespace Aerospike.Admin
 				tlsPolicy = new TlsPolicy(
 					Properties.Settings.Default.TlsProtocols,
 					Properties.Settings.Default.TlsRevoke,
-					Properties.Settings.Default.TlsClientCertFile
+					Properties.Settings.Default.TlsClientCertFile,
+					Properties.Settings.Default.TlsLoginOnly
 					);
 			}
 		}
@@ -115,6 +118,7 @@ namespace Aerospike.Admin
 			policy.failIfNotConnected = true;
 			policy.timeout = 600000;
 			policy.tlsPolicy = tlsPolicy;
+			policy.authMode = authMode;
 
 			AerospikeClient client = new AerospikeClient(policy, hosts);
 

@@ -34,6 +34,7 @@ namespace Aerospike.Demo
 		internal string set;
         internal string binName;
 		internal TlsPolicy tlsPolicy;
+		internal AuthMode authMode;
 		internal WritePolicy writePolicy;
 		internal Policy policy;
 		internal BatchPolicy batchPolicy;

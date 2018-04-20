@@ -40,13 +40,32 @@ namespace Aerospike.Client
 		/// support the "cluster-name" info command.
 		/// </summary>
 		public string clusterName;
-	
+
+		/// <summary>
+		/// Authentication mode used when user/password is defined.
+		/// <para>
+		/// Default: INTERNAL
+		/// </para>
+		/// </summary>
+		public AuthMode authMode = AuthMode.INTERNAL;
+
 		/// <summary>
 		/// Initial host connection timeout in milliseconds.  The timeout when opening a connection 
 		/// to the server host for the first time.
+		/// <para>
 		/// Default: 1000ms
+		/// </para>
 		/// </summary>
 		public int timeout = 1000;
+
+		/// <summary>
+		/// Login timeout in milliseconds.  The timeout used when user authentication is enabled and
+		/// a node login is being performed.
+		/// <para>
+		/// Default: 5000ms
+		/// </para>
+		/// </summary>
+		public int loginTimeout = 5000;
 
 		/// <summary>
 		/// Maximum number of connections allowed per server node.  Synchronous transactions
@@ -192,7 +211,9 @@ namespace Aerospike.Client
 			this.user = other.user;
 			this.password = other.password;
 			this.clusterName = other.clusterName;
+			this.authMode = other.authMode;
 			this.timeout = other.timeout;
+			this.loginTimeout = other.loginTimeout;
 			this.maxConnsPerNode = other.maxConnsPerNode;
 			this.connPoolsPerNode = other.connPoolsPerNode;
 			this.maxSocketIdle = other.maxSocketIdle;

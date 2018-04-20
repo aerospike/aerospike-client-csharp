@@ -131,6 +131,7 @@
     <Compile Include="..\..\Framework\AerospikeClient\Main\ResultCode.cs" Link="Main\ResultCode.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Main\Value.cs" Link="Main\Value.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Policy\AdminPolicy.cs" Link="Policy\AdminPolicy.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Policy\AuthMode.cs" Link="Policy\AuthMode.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Policy\BatchPolicy.cs" Link="Policy\BatchPolicy.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Policy\ClientPolicy.cs" Link="Policy\ClientPolicy.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Policy\CommitLevel.cs" Link="Policy\CommitLevel.cs" />

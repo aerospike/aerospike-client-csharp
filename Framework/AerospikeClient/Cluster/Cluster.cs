@@ -53,7 +53,10 @@ namespace Aerospike.Client
         // TLS connection policy.
 		protected internal readonly TlsPolicy tlsPolicy;
             
-        // User name in UTF-8 encoded bytes.
+		// Authentication mode.
+		protected internal readonly AuthMode authMode;
+
+		// User name in UTF-8 encoded bytes.
         protected internal readonly byte[] user;
 
 		// Password in UTF-8 encoded bytes.
@@ -77,6 +80,9 @@ namespace Aerospike.Client
 		// Initial connection timeout.
 		protected internal readonly int connectionTimeout;
 
+		// Login timeout.
+		protected internal readonly int loginTimeout;
+
 		// Maximum socket idle in milliseconds.
 		protected internal readonly int maxSocketIdleMillis;
 
@@ -85,8 +91,9 @@ namespace Aerospike.Client
 
 		// Tend thread variables.
 		private Thread tendThread;
-		private readonly CancellationTokenSource cancel;
-		private readonly CancellationToken cancelToken;
+		private CancellationTokenSource cancel;
+		private CancellationToken cancelToken;
+		internal volatile bool tendValid;
 
 		// Request prole replicas in addition to master replicas?
 		protected internal bool requestProleReplicas;
@@ -97,9 +104,11 @@ namespace Aerospike.Client
 		public Cluster(ClientPolicy policy, Host[] hosts)
 		{
 			this.clusterName = policy.clusterName;
+			tlsPolicy = policy.tlsPolicy;
+			this.authMode = policy.authMode;
 
 			// Default TLS names when TLS enabled.
-			if (policy.tlsPolicy != null)
+			if (tlsPolicy != null)
 			{
 				bool useClusterName = HasClusterName;
 
@@ -114,12 +123,25 @@ namespace Aerospike.Client
 					}
 				}
 			}
+			else
+			{
+				if (authMode == AuthMode.EXTERNAL)
+				{
+					throw new AerospikeException("TLS is required for authentication mode: " + authMode);
+				}
+			}
+
 			this.seeds = hosts;
 
 			if (policy.user != null && policy.user.Length > 0)
 			{
 				this.user = ByteUtil.StringToUtf8(policy.user);
-				this.password = ByteUtil.StringToUtf8(policy.password);
+
+				// Only store clear text password if external authentication is used.
+				if (authMode != AuthMode.INTERNAL)
+				{
+					this.password = ByteUtil.StringToUtf8(policy.password);
+				}
 
 				string pass = policy.password;
 
@@ -128,17 +150,17 @@ namespace Aerospike.Client
 					pass = "";
 				}
 
-				if (! (pass.Length == 60 && pass.StartsWith("$2a$")))
+				if (!(pass.Length == 60 && pass.StartsWith("$2a$")))
 				{
 					pass = AdminCommand.HashPassword(pass);
 				}
 				this.passwordHash = ByteUtil.StringToUtf8(pass);
 			}
 
-			tlsPolicy = policy.tlsPolicy;
 			connectionQueueSize = policy.maxConnsPerNode;
 			connPoolsPerNode = policy.connPoolsPerNode;
 			connectionTimeout = policy.timeout;
+			loginTimeout = policy.loginTimeout;
 			maxSocketIdleMillis = 1000 * ((policy.maxSocketIdle <= MaxSocketIdleSecondLimit) ? policy.maxSocketIdle : MaxSocketIdleSecondLimit);
 			tendInterval = policy.tendInterval;
 			ipMap = policy.ipMap;
@@ -203,6 +225,7 @@ namespace Aerospike.Client
 			}
 
 			// Run cluster tend thread.
+			tendValid = true;
 			tendThread = new Thread(new ThreadStart(this.Run));
 			tendThread.Name = "tend";
 			tendThread.IsBackground = true;
@@ -293,7 +316,7 @@ namespace Aerospike.Client
 
 		public void Run()
 		{
-			while (TendValid)
+			while (tendValid)
 			{
 				// Tend cluster.
 				try
@@ -308,10 +331,19 @@ namespace Aerospike.Client
 					}
 				}
 
-				if (TendValid)
+				if (tendValid)
 				{
 					// Sleep for tend interval.
-					cancelToken.WaitHandle.WaitOne(tendInterval);
+					if (cancelToken.WaitHandle.WaitOne(tendInterval))
+					{
+						// Cancel signal received.
+						if (tendValid)
+						{
+							// Reset cancel token.
+							cancel = new CancellationTokenSource();
+							cancelToken = cancel.Token;
+						}
+					}
 				}
 			}
 		}
@@ -585,7 +617,7 @@ namespace Aerospike.Client
 					aliases.Remove(alias);
 				}
 
-				if (TendValid)
+				if (tendValid)
 				{
 					node.Close();
 				}
@@ -616,7 +648,7 @@ namespace Aerospike.Client
 			{
 				if (FindNode(node, nodesToRemove))
 				{
-					if (TendValid && Log.InfoEnabled())
+					if (tendValid && Log.InfoEnabled())
 					{
 						Log.Info("Remove node " + node);
 					}
@@ -663,7 +695,7 @@ namespace Aerospike.Client
 				// Must copy array reference for copy on write semantics to work.
 				Node[] nodeArray = nodes;
 
-				if (nodeArray.Length > 0 && TendValid)
+				if (nodeArray.Length > 0 && tendValid)
 				{
 					// Even though nodes exist, they may not be currently responding.  Check further.
 					foreach (Node node in nodeArray)
@@ -823,7 +855,7 @@ namespace Aerospike.Client
 
 		protected internal Connection CreateConnection(string tlsName, IPEndPoint address, int timeout, Pool pool)
 		{
-			return tlsPolicy != null ? 
+			return (tlsPolicy != null && ! tlsPolicy.forLoginOnly) ? 
 				new TlsConnection(tlsPolicy, tlsName, address, timeout, maxSocketIdleMillis, pool) : 
 				new Connection(address, timeout, maxSocketIdleMillis, pool);
 		}
@@ -832,18 +864,25 @@ namespace Aerospike.Client
 		{
 			if (this.user != null && Util.ByteArrayEquals(user, this.user))
 			{
-				this.password = password;
 				this.passwordHash = passwordHash;
+
+				// Only store clear text password if external authentication is used.
+				if (authMode != AuthMode.INTERNAL)
+				{
+					this.password = password;
+				}
 			}
 		}
 
-		public bool TendValid
+		public void InterruptTendSleep()
 		{
-			get { return !cancelToken.IsCancellationRequested; }
+			// Interrupt tendThread's sleep(), so node refreshes will be performed sooner.
+			cancel.Cancel();
 		}
 
 		public void Close()
 		{
+			tendValid = false;
 			cancel.Cancel();
 
 			// Must copy array reference for copy on write semantics to work.

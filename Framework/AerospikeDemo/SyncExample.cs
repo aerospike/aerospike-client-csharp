@@ -35,6 +35,7 @@ namespace Aerospike.Demo
 			policy.password = args.password;
 			policy.clusterName = args.clusterName;
 			policy.tlsPolicy = args.tlsPolicy;
+			policy.authMode = args.authMode;
 
 			AerospikeClient client = new AerospikeClient(policy, args.hosts);
 

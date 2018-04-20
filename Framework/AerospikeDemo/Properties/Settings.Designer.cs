@@ -430,5 +430,29 @@ namespace Aerospike.Demo.Properties {
                 this["LimitTPS"] = value;
             }
         }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("False")]
+        public bool TlsLoginOnly {
+            get {
+                return ((bool)(this["TlsLoginOnly"]));
+            }
+            set {
+                this["TlsLoginOnly"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("INTERNAL")]
+        public string AuthMode {
+            get {
+                return ((string)(this["AuthMode"]));
+            }
+            set {
+                this["AuthMode"] = value;
+            }
+        }
     }
 }

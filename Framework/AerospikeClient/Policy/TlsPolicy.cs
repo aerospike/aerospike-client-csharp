@@ -61,6 +61,13 @@ namespace Aerospike.Client
 		public X509CertificateCollection clientCertificates;
 
 		/// <summary>
+		/// Use TLS connections only for login authentication.  All other communication with
+		/// the server will be done with non-TLS connections. 
+		/// Default: false (Use TLS connections for all communication with server.)
+		/// </summary>
+		public bool forLoginOnly;
+
+		/// <summary>
 		/// Default constructor.
 		/// </summary>
 		public TlsPolicy()
@@ -75,16 +82,18 @@ namespace Aerospike.Client
 			this.protocols = other.protocols;
 			this.revokeCertificates = other.revokeCertificates;
 			this.clientCertificates = other.clientCertificates;
+			this.forLoginOnly = other.forLoginOnly;
 		}
 
 		/// <summary>
 		/// Constructor for TLS properties.
 		/// </summary>
-		public TlsPolicy(string protocolString, string revokeString, string clientCertificateFile)
+		public TlsPolicy(string protocolString, string revokeString, string clientCertificateFile, bool forLoginOnly)
 		{
 			ParseSslProtocols(protocolString);
 			ParseRevokeString(revokeString);
 			ParseClientCertificateFile(clientCertificateFile);
+			this.forLoginOnly = forLoginOnly;
 		}
 
 		private void ParseSslProtocols(string protocolString)

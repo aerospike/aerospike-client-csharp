@@ -45,6 +45,7 @@ namespace Aerospike.Demo
 				policy.user = args.user;
 				policy.password = args.password;
 				policy.tlsPolicy = args.tlsPolicy;
+				policy.authMode = args.authMode;
 				policy.requestProleReplicas = args.requestProleReplicas;
 				client = new AerospikeClient(policy, args.hosts);
 
@@ -71,6 +72,7 @@ namespace Aerospike.Demo
 				policy.user = args.user;
 				policy.password = args.password;
 				policy.tlsPolicy = args.tlsPolicy;
+				policy.authMode = args.authMode;
 				policy.requestProleReplicas = args.requestProleReplicas;
 				policy.asyncMaxCommands = args.commandMax;
 

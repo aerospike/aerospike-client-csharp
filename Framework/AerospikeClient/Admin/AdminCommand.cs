@@ -44,6 +44,7 @@ namespace Aerospike.Client
 		private const byte CREDENTIAL = 3;
 		private const byte CLEAR_PASSWORD = 4;
 		private const byte SESSION_TOKEN = 5;
+		private const byte SESSION_TTL = 6;
 		private const byte ROLES = 10;
 		private const byte ROLE = 11;
 		private const byte PRIVILEGES = 12;
@@ -78,87 +79,125 @@ namespace Aerospike.Client
 			this.dataOffset = dataOffset + 8;
 		}
 
-		public byte[] Login(Cluster cluster, Connection conn, Host host)
+		public void Login(Cluster cluster, Connection conn, Host host, out byte[] sessionToken, out DateTime? sessionExpiration)
 		{
-			WriteHeader(LOGIN, 3);
-			WriteField(USER, cluster.user);
-			WriteField(CREDENTIAL, cluster.passwordHash);
-			WriteField(CLEAR_PASSWORD, cluster.password);
-			WriteSize();
-			conn.Write(dataBuffer, dataOffset);
-			conn.ReadFully(dataBuffer, HEADER_SIZE);
-
-			int result = dataBuffer[RESULT_CODE];
-
-			if (result != 0)
+			if (Log.DebugEnabled())
 			{
-				if (result == INVALID_COMMAND)
-				{
-					// New login not supported.  Try old authentication.
-					AuthenticateOld(cluster, conn);
-					return null;
-				}
-
-				// login failed.
-				throw new AerospikeException(result, "Node " + host + " login failed");
+				Log.Debug("Login " + host);
 			}
 
-			// Read session token.
-			long size = ByteUtil.BytesToLong(dataBuffer, 0);
-			int receiveSize = ((int)(size & 0xFFFFFFFFFFFFL)) - HEADER_REMAINING;
-			int fieldCount = dataBuffer[11];
+			sessionToken = null;
+			sessionExpiration = null;
+			dataOffset = 8;
 
-			if (receiveSize <= 0 || receiveSize > dataBuffer.Length || fieldCount <= 0)
+			conn.SetTimeout(cluster.loginTimeout);
+
+			try
 			{
-				throw new AerospikeException(result, "Node " + host + " failed to retrieve session token");
-			}
-
-			conn.ReadFully(dataBuffer, receiveSize);
-			dataOffset = 0;
-
-			for (int i = 0; i < fieldCount; i++)
-			{
-				int len = ByteUtil.BytesToInt(dataBuffer, dataOffset);
-				dataOffset += 4;
-				int id = dataBuffer[dataOffset++];
-				len--;
-
-				if (id == SESSION_TOKEN)
+				if (cluster.authMode == AuthMode.INTERNAL)
 				{
-					byte[] sessionToken = new byte[len];
-					Array.Copy(dataBuffer, dataOffset, sessionToken, 0, len);
-					return sessionToken;
+					WriteHeader(LOGIN, 2);
+					WriteField(USER, cluster.user);
+					WriteField(CREDENTIAL, cluster.passwordHash);
 				}
 				else
 				{
+					WriteHeader(LOGIN, 3);
+					WriteField(USER, cluster.user);
+					WriteField(CREDENTIAL, cluster.passwordHash);
+					WriteField(CLEAR_PASSWORD, cluster.password);
+				}
+				WriteSize();
+				conn.Write(dataBuffer, dataOffset);
+				conn.ReadFully(dataBuffer, HEADER_SIZE);
+
+				int result = dataBuffer[RESULT_CODE];
+
+				if (result != 0)
+				{
+					if (result == INVALID_COMMAND)
+					{
+						// New login not supported.  Try old authentication.
+						AuthenticateOld(cluster, conn);
+						return;
+					}
+
+					// login failed.
+					throw new AerospikeException(result, "Node " + host + " login failed");
+				}
+
+				// Read session token.
+				long size = ByteUtil.BytesToLong(dataBuffer, 0);
+				int receiveSize = ((int)(size & 0xFFFFFFFFFFFFL)) - HEADER_REMAINING;
+				int fieldCount = dataBuffer[11];
+
+				if (receiveSize <= 0 || receiveSize > dataBuffer.Length || fieldCount <= 0)
+				{
+					throw new AerospikeException(result, "Node " + host + " failed to retrieve session token");
+				}
+
+				conn.ReadFully(dataBuffer, receiveSize);
+				dataOffset = 0;
+
+				for (int i = 0; i < fieldCount; i++)
+				{
+					int len = ByteUtil.BytesToInt(dataBuffer, dataOffset);
+					dataOffset += 4;
+					int id = dataBuffer[dataOffset++];
+					len--;
+
+					if (id == SESSION_TOKEN)
+					{
+						sessionToken = new byte[len];
+						Array.Copy(dataBuffer, dataOffset, sessionToken, 0, len);
+					}
+					else if (id == SESSION_TTL)
+					{
+						// Subtract 60 seconds from ttl so client session expires before server session.
+						long seconds = ByteUtil.BytesToUInt(dataBuffer, dataOffset) - 60;
+
+						if (seconds > 0)
+						{
+							sessionExpiration = DateTime.UtcNow.AddSeconds(seconds);
+						}
+						else
+						{
+							Log.Warn("Invalid session TTL: " + seconds);
+						}
+					}
 					dataOffset += len;
 				}
+
+				if (sessionToken == null)
+				{
+					throw new AerospikeException(result, "Node " + host + " failed to retrieve session token");
+				}
 			}
-			throw new AerospikeException(result, "Node " + host + " failed to retrieve session token");
+			finally
+			{
+				conn.SetTimeout(cluster.connectionTimeout);
+			}
 		}
 
-		public void Authenticate(Cluster cluster, Node node, Connection conn)
+		public bool Authenticate(Cluster cluster, Connection conn, byte[] sessionToken)
 		{
-			SetAuthenticate(cluster, node);
+			dataOffset = 8;
+			SetAuthenticate(cluster, sessionToken);
 			conn.Write(dataBuffer, dataOffset);
 			conn.ReadFully(dataBuffer, HEADER_SIZE);
 
-			int result = dataBuffer[RESULT_CODE];
-			if (result != 0)
-			{
-				throw new AerospikeException(result, "Authentication failed");
-			}
+			return dataBuffer[RESULT_CODE] == 0;
 		}
 
-		public int SetAuthenticate(Cluster cluster, Node node)
+		public int SetAuthenticate(Cluster cluster, byte[] sessionToken)
 		{
 			WriteHeader(AUTHENTICATE, 2);
 			WriteField(USER, cluster.user);
 
-			if (node.sessionToken != null)
+			if (sessionToken != null)
 			{
 				// New authentication.
-				WriteField(SESSION_TOKEN, node.sessionToken);
+				WriteField(SESSION_TOKEN, sessionToken);
 			}
 			else
 			{

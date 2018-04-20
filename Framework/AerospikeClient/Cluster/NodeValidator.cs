@@ -27,8 +27,9 @@ namespace Aerospike.Client
 		internal List<Host> aliases;
 		internal Host primaryHost;
 		internal IPEndPoint primaryAddress;
-		internal Connection conn;
+		internal Connection primaryConn;
 		internal byte[] sessionToken;
+		internal DateTime? sessionExpiration;
 		internal uint features;
 
 		/// <summary>
@@ -58,7 +59,7 @@ namespace Aerospike.Client
 					else
 					{
 						// Node already referenced. Close connection.
-						conn.Close();
+						primaryConn.Close();
 					}
 				}
 				catch (Exception e)
@@ -136,15 +137,29 @@ namespace Aerospike.Client
 		private void ValidateAlias(Cluster cluster, IPAddress ipAddress, Host alias)
 		{
 			IPEndPoint address = new IPEndPoint(ipAddress, alias.port);
-			Connection conn = cluster.CreateConnection(alias.tlsName, address, cluster.connectionTimeout, null);
+			Connection conn = (cluster.tlsPolicy != null) ?
+				new TlsConnection(cluster.tlsPolicy, alias.tlsName, address, cluster.connectionTimeout, cluster.maxSocketIdleMillis, null) :
+				new Connection(address, cluster.connectionTimeout, cluster.maxSocketIdleMillis, null);
 
 			try
 			{
 				if (cluster.user != null)
 				{
-					AdminCommand command = new AdminCommand(ThreadLocalData.GetBuffer(), 0);
-					sessionToken = command.Login(cluster, conn, alias);
+					// Login
+					AdminCommand admin = new AdminCommand(ThreadLocalData.GetBuffer(), 0);
+					admin.Login(cluster, conn, alias, out sessionToken, out sessionExpiration);
+
+					if (cluster.tlsPolicy != null && cluster.tlsPolicy.forLoginOnly)
+					{
+						// Switch to using non-TLS socket.
+						SwitchClear sc = new SwitchClear(cluster, conn, sessionToken);
+						conn.Close();
+						alias = sc.clearHost;
+						address = sc.clearAddress;
+						conn = sc.clearConn;
+					}
 				}
+
 				Dictionary<string, string> map;
 				bool hasClusterName = cluster.HasClusterName;
 
@@ -199,7 +214,7 @@ namespace Aerospike.Client
 				this.name = nodeName;
 				this.primaryHost = alias;
 				this.primaryAddress = address;
-				this.conn = conn;
+				this.primaryConn = conn;
 				SetFeatures(map);
 			}
 			catch (Exception)
@@ -248,6 +263,72 @@ namespace Aerospike.Client
 			{
 				// Unexpected exception. Use defaults.
 			}
+		}
+	}
+
+	sealed class SwitchClear
+	{
+		internal Host clearHost;
+		internal IPEndPoint clearAddress;
+		internal Connection clearConn;
+
+		// Switch from TLS connection to non-TLS connection.
+		internal SwitchClear(Cluster cluster, Connection conn, byte[] sessionToken)
+		{
+			// Obtain non-TLS addresses.
+			string command = cluster.useServicesAlternate ? "service-clear-alt" : "service-clear-std";
+			string result = Info.Request(conn, command);
+			List<Host> hosts = Host.ParseServiceHosts(result);
+
+			// Find first valid non-TLS host.
+			foreach (Host host in hosts)
+			{
+				try
+				{
+					clearHost = host;
+
+					String alternativeHost;
+					if (cluster.ipMap != null && cluster.ipMap.TryGetValue(clearHost.name, out alternativeHost))
+					{
+						clearHost = new Host(alternativeHost, clearHost.port);
+					}
+
+					IPAddress[] addresses = Connection.GetHostAddresses(clearHost.name, cluster.connectionTimeout);
+
+					foreach (IPAddress ia in addresses)
+					{
+						try
+						{
+							clearAddress = new IPEndPoint(ia, clearHost.port);
+							clearConn = new Connection(clearAddress, cluster.connectionTimeout, cluster.maxSocketIdleMillis, null);
+
+							try
+							{
+								AdminCommand admin = new AdminCommand(ThreadLocalData.GetBuffer(), 0);
+
+								if (! admin.Authenticate(cluster, clearConn, sessionToken))
+								{
+									throw new AerospikeException("Authentication failed");
+								}
+								return; // Authenticated clear connection.
+							}
+							catch (Exception)
+							{
+								clearConn.Close();
+							}
+						}
+						catch (Exception)
+						{
+							// Try next address.
+						}
+					}
+				}
+				catch (Exception)
+				{
+					// Try next host.
+				}
+			}
+			throw new AerospikeException("Invalid non-TLS address: " + result);
 		}
 	}
 }

@@ -33,6 +33,7 @@ namespace Aerospike.Demo
 			AsyncClientPolicy policy = new AsyncClientPolicy();
 			policy.user = args.user;
 			policy.password = args.password;
+			policy.authMode = args.authMode;
 			policy.asyncMaxCommands = args.commandMax;
 			policy.failIfNotConnected = true;
 

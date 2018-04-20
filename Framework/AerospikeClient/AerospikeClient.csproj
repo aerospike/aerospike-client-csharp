@@ -291,6 +291,7 @@
     <Compile Include="Policy\ClientPolicy.cs" />
     <Compile Include="Policy\CommitLevel.cs" />
     <Compile Include="Policy\ConsistencyLevel.cs" />
+    <Compile Include="Policy\AuthMode.cs" />
     <Compile Include="Policy\GenerationPolicy.cs" />
     <Compile Include="Policy\InfoPolicy.cs" />
     <Compile Include="Policy\Policy.cs" />

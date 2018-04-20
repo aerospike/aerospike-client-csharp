@@ -1,14 +1,16 @@
 ﻿{
-	"Host": "localhost",
-	"Port": 3000,
-	"ClusterName": "",
-	"Namespace": "test",
-	"Set": "test",
-	"User": "",
-	"Password": "",
-	"TlsEnable": false,
-	"TlsName": "",
-	"TlsProtocols": "",
-	"TlsRevoke": "",
-	"TlsClientCertFile": ""
+  "Host": "localhost",
+  "Port": 3000,
+  "ClusterName": "",
+  "Namespace": "test",
+  "Set": "test",
+  "User": "",
+  "Password": "",
+  "TlsEnable": false,
+  "TlsName": "",
+  "TlsProtocols": "",
+  "TlsRevoke": "",
+  "TlsClientCertFile": "",
+  "TlsLoginOnly": false,
+  "AuthMode":  "INTERNAL"
 }

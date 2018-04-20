@@ -41,6 +41,7 @@ namespace Aerospike.Test
 		public string set;
 		public string tlsName;
 		public TlsPolicy tlsPolicy;
+		public AuthMode authMode;
 		public bool hasUdf;
 		public bool hasMap;
 		public bool singleBin;
@@ -54,6 +55,7 @@ namespace Aerospike.Test
 			password = Properties.Settings.Default.Password.Trim();
 			ns = Properties.Settings.Default.Namespace.Trim();
 			set = Properties.Settings.Default.Set.Trim();
+			authMode = (AuthMode)Enum.Parse(typeof(AuthMode), Properties.Settings.Default.AuthMode.Trim());
 
 			if (Properties.Settings.Default.TlsEnable)
 			{
@@ -61,7 +63,8 @@ namespace Aerospike.Test
 				tlsPolicy = new TlsPolicy(
 					Properties.Settings.Default.TlsProtocols,
 					Properties.Settings.Default.TlsRevoke,
-					Properties.Settings.Default.TlsClientCertFile
+					Properties.Settings.Default.TlsClientCertFile,
+					Properties.Settings.Default.TlsLoginOnly
 					);
 			}
 
@@ -77,6 +80,7 @@ namespace Aerospike.Test
             password = section.GetSection("Password").Value;
             ns = section.GetSection("Namespace").Value;
             set = section.GetSection("Set").Value;
+            authMode = (AuthMode)Enum.Parse(typeof(AuthMode), section.GetSection("AuthMode").Value);
 
             bool tlsEnable = bool.Parse(section.GetSection("TlsEnable").Value);
 
@@ -86,7 +90,8 @@ namespace Aerospike.Test
                 tlsPolicy = new TlsPolicy(
                     section.GetSection("TlsProtocols").Value,
                     section.GetSection("TlsRevoke").Value,
-                    section.GetSection("TlsClientCertFile").Value
+                    section.GetSection("TlsClientCertFile").Value,
+                    bool.Parse(section.GetSection("TlsLoginOnly").Value)
                     );
             }
 
@@ -110,6 +115,7 @@ namespace Aerospike.Test
 			ClientPolicy policy = new ClientPolicy();
 			policy.clusterName = clusterName;
 			policy.tlsPolicy = tlsPolicy;
+			policy.authMode = authMode;
 
 			if (!user.Equals(""))
 			{
@@ -135,6 +141,7 @@ namespace Aerospike.Test
 		{
 			AsyncClientPolicy policy = new AsyncClientPolicy();
 			policy.asyncMaxCommands = 300;
+			policy.authMode = authMode;
 
 			if (!user.Equals(""))
 			{

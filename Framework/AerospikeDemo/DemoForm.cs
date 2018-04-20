@@ -38,6 +38,7 @@ namespace Aerospike.Demo
 		private string clusterName;
 		private string tlsName;
 		private TlsPolicy tlsPolicy;
+		private AuthMode authMode;
 
         public DemoForm()
         {
@@ -169,6 +170,7 @@ namespace Aerospike.Demo
             debugBox.Checked = Properties.Settings.Default.Debug;
 			limitTpsBox.Checked = Properties.Settings.Default.LimitTPS;
 			throughputBox.Text = Properties.Settings.Default.Throughput.ToString();
+			authMode = (AuthMode)Enum.Parse(typeof(AuthMode), Properties.Settings.Default.AuthMode.Trim());
 
 			if (Properties.Settings.Default.TlsEnable)
 			{
@@ -176,7 +178,8 @@ namespace Aerospike.Demo
 				tlsPolicy = new TlsPolicy(
 					Properties.Settings.Default.TlsProtocols,
 					Properties.Settings.Default.TlsRevoke,
-					Properties.Settings.Default.TlsClientCertFile
+					Properties.Settings.Default.TlsClientCertFile,
+					Properties.Settings.Default.TlsLoginOnly
 					);
 			}
 		}
@@ -355,6 +358,7 @@ namespace Aerospike.Demo
             args.ns = nsBox.Text.Trim();
             args.set = setBox.Text.Trim();
 			args.tlsPolicy = tlsPolicy;
+			args.authMode = authMode;
 			return args;
         }
 

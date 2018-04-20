@@ -270,7 +270,7 @@ namespace Aerospike.Client
 				SizeBuffer();
 
 				AdminCommand command = new AdminCommand(dataBuffer, dataOffset);
-				dataLength = command.SetAuthenticate(cluster, node);
+				dataLength = command.SetAuthenticate(cluster, node.sessionToken);
 				eventArgs.SetBuffer(dataBuffer, dataOffset, dataLength - dataOffset);
 				Send();
 				return;
@@ -436,6 +436,16 @@ namespace Aerospike.Client
 
 					if (resultCode != 0)
 					{
+						// Authentication failed. Session token probably expired.
+						// Signal tend thread to perform node login, so future 
+						// transactions do not fail.
+						node.SignalLogin();
+
+						// This is a rare event because the client tracks session
+						// expiration and will relogin before session expiration.
+						// Do not try to login on same socket because login can take
+						// a long time and thousands of simultaneous logins could
+						// overwhelm server.
 						throw new AerospikeException(resultCode);
 					}
 					ConnectionReady();

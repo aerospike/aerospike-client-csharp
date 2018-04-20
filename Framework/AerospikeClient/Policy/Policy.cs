@@ -65,7 +65,10 @@ namespace Aerospike.Client
 		/// and socketTimeout is only used if totalTimeout is not defined.
 		/// </para>
 		/// <para>
-		/// Default: 0 (no socket idle time limit).
+		/// Default for everything but scan/query: 0 (no socket idle time limit)
+		/// </para>
+		/// <para>
+		/// Default for scan/query: 10000ms
 		/// </para>
 		/// </summary>
 		public int socketTimeout;
@@ -86,7 +89,7 @@ namespace Aerospike.Client
 		/// If totalTimeout is zero, there will be no total time limit.
 		/// </para>
 		/// <para>
-		/// Default: 0 (no time limit).
+		/// Default: 0 (no time limit)
 		/// </para>
 		/// </summary>
 		public int totalTimeout;
@@ -137,7 +140,7 @@ namespace Aerospike.Client
 		/// reform (>= 500ms).
 		/// </para>
 		/// <para>
-		/// Default: 0 (do not sleep between retries).
+		/// Default: 0 (do not sleep between retries)
 		/// </para>
 		/// </summary>
 		public int sleepBetweenRetries;

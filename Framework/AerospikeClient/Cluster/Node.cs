@@ -45,7 +45,8 @@ namespace Aerospike.Client
 		protected internal readonly List<Host> aliases;
 		protected internal readonly IPEndPoint address;
 		private Connection tendConnection;
-		protected internal readonly byte[] sessionToken;
+		protected internal byte[] sessionToken;
+		protected internal DateTime? sessionExpiration;
 		private readonly Pool[] connectionPools;
 		protected uint connectionIter;
 		protected internal int partitionGeneration = -1;
@@ -54,6 +55,7 @@ namespace Aerospike.Client
 		protected internal int referenceCount;
 		protected internal int failures;
 		protected internal readonly uint features;
+		private volatile int performLogin;
 		protected internal bool partitionChanged;
 		protected internal volatile bool active = true;
 
@@ -69,8 +71,9 @@ namespace Aerospike.Client
 			this.aliases = nv.aliases;
 			this.host = nv.primaryHost;
 			this.address = nv.primaryAddress;
-			this.tendConnection = nv.conn;
+			this.tendConnection = nv.primaryConn;
 			this.sessionToken = nv.sessionToken;
+			this.sessionExpiration = nv.sessionExpiration;
 			this.features = nv.features;
 
 			connectionPools = new Pool[cluster.connPoolsPerNode];
@@ -110,14 +113,30 @@ namespace Aerospike.Client
 					{
 						try
 						{
-							AdminCommand command = new AdminCommand(ThreadLocalData.GetBuffer(), 0);
-							command.Authenticate(cluster, this, tendConnection);
+							if (!EnsureLogin())
+							{
+								AdminCommand command = new AdminCommand(ThreadLocalData.GetBuffer(), 0);
+
+								if (!command.Authenticate(cluster, tendConnection, sessionToken))
+								{
+									// Authentication failed.  Session token probably expired.
+									// Must login again to get new session token.
+									command.Login(cluster, tendConnection, host, out sessionToken, out sessionExpiration);
+								}								
+							}
 						}
 						catch (Exception)
 						{
 							tendConnection.Close();
 							throw;
 						}
+					}
+				}
+				else
+				{
+					if (cluster.user != null)
+					{
+						EnsureLogin();
 					}
 				}
 
@@ -152,6 +171,28 @@ namespace Aerospike.Client
 			}
 		}
 	
+		private bool EnsureLogin()
+		{
+			if (performLogin > 0 || (sessionExpiration.HasValue && DateTime.Compare(DateTime.UtcNow, sessionExpiration.Value) >= 0))
+			{
+				AdminCommand admin = new AdminCommand(ThreadLocalData.GetBuffer(), 0);
+				admin.Login(cluster, tendConnection, host, out sessionToken, out sessionExpiration);
+				performLogin = 0;
+				return true;
+			}
+			return false;
+		}
+	
+		public void SignalLogin()
+		{
+			// Only login when sessionToken is supported
+			// and login not already been requested.
+			if (Interlocked.CompareExchange(ref performLogin, 1, 0) == 0)
+			{
+				cluster.InterruptTendSleep();
+			}
+		}
+
 		private void VerifyNodeName(Dictionary<string, string> infoMap)
 		{
 			// If the node name has changed, remove node from cluster and hope one of the other host
@@ -266,7 +307,7 @@ namespace Aerospike.Client
 					// Duplicate node name found.  This usually occurs when the server 
 					// services list contains both internal and external IP addresses 
 					// for the same node.
-					nv.conn.Close();
+					nv.primaryConn.Close();
 					peers.hosts.Add(host);
 					node.aliases.Add(host);
 					return true;
@@ -275,7 +316,7 @@ namespace Aerospike.Client
 				// Check for duplicate nodes in cluster.
 				if (cluster.nodesMap.TryGetValue(nv.name, out node))
 				{
-					nv.conn.Close();
+					nv.primaryConn.Close();
 					peers.hosts.Add(host);
 					node.aliases.Add(host);
 					node.referenceCount++;
@@ -348,7 +389,7 @@ namespace Aerospike.Client
 								if (FindPeerNode(cluster, peers, nv.name))
 								{
 									// Node already exists. Do not even try to connect to hosts.				
-									nv.conn.Close();
+									nv.primaryConn.Close();
 									nodeValidated = true;
 									break;
 								}
@@ -448,7 +489,7 @@ namespace Aerospike.Client
 			}
 
 			// Only log message if cluster is still active.
-			if (cluster.TendValid && Log.WarnEnabled())
+			if (cluster.tendValid && Log.WarnEnabled())
 			{
 				Log.Warn("Node " + this + " refresh failed: " + Util.GetErrorMessage(e));
 			}
@@ -523,7 +564,12 @@ namespace Aerospike.Client
 						try
 						{
 							AdminCommand command = new AdminCommand(ThreadLocalData.GetBuffer(), 0);
-							command.Authenticate(cluster, this, conn);
+
+							if (!command.Authenticate(cluster, conn, sessionToken))
+							{
+								SignalLogin();
+								throw new AerospikeException("Authentication failed");
+							}
 						}
 						catch (Exception)
 						{

@@ -111,7 +111,7 @@ namespace Aerospike.Client
 		{
 			try
 			{
-				return (new HostParser(str, defaultTlsName, defaultPort)).hosts;
+				return new HostParser(str).ParseHosts(defaultTlsName, defaultPort);
 			}
 			catch (Exception)
 			{
@@ -119,21 +119,47 @@ namespace Aerospike.Client
 			}
 		}
 
+		/// <summary>
+		/// Parse server service hosts from string format: hostname1:port1,...
+		/// <para>
+		/// Hostname may also be an IP address in the following formats.
+		/// <ul>
+		/// <li>IPv4: xxx.xxx.xxx.xxx</li>
+		/// <li>IPv6: [xxxx:xxxx:xxxx:xxxx:xxxx:xxxx:xxxx:xxxx]</li>
+		/// <li>IPv6: [xxxx::xxxx]</li>
+		/// </ul>
+		/// IPv6 addresses must be enclosed by brackets.
+		/// </para>
+		/// </summary>
+		public static List<Host> ParseServiceHosts(string str)
+		{
+			try
+			{
+				return new HostParser(str).ParseServiceHosts();
+			}
+			catch (Exception)
+			{
+				throw new AerospikeException("Invalid service hosts string: " + str);
+			}
+		}
+		
 		internal class HostParser
 		{
-			internal Host[] hosts;
-			private string str;
+			private readonly string str;
 			private int offset;
 			private int length;
 			private char c;
 
-			internal HostParser(string str, string defaultTlsName, int defaultPort)
+			internal HostParser(string str)
 			{
 				this.str = str;
 				this.length = str.Length;
 				this.offset = 0;
 				this.c = ',';
+			}
 
+			internal Host[] ParseHosts(string defaultTlsName, int defaultPort)
+			{
 				List<Host> list = new List<Host>();
 				string hostname;
 				string tlsname;
@@ -177,7 +203,34 @@ namespace Aerospike.Client
 					}
 					list.Add(new Host(hostname, tlsname, port));
 				}
-				hosts = list.ToArray();
+				return list.ToArray();
+			}
+
+			internal List<Host> ParseServiceHosts()
+			{
+				List<Host> list = new List<Host>();
+				String hostname;
+				int port;
+
+				while (offset < length)
+				{
+					if (c != ',')
+					{
+						throw new Exception();
+					}
+					hostname = ParseHost();
+
+					if (c != ':')
+					{
+						throw new Exception();
+					}
+
+					String s = ParseString();
+					port = Convert.ToInt32(s);
+
+					list.Add(new Host(hostname, port));
+				}
+				return list;
 			}
 
 			private string ParseHost()
