@@ -170,7 +170,7 @@ namespace Aerospike.Demo
             debugBox.Checked = Properties.Settings.Default.Debug;
 			limitTpsBox.Checked = Properties.Settings.Default.LimitTPS;
 			throughputBox.Text = Properties.Settings.Default.Throughput.ToString();
-			authMode = (AuthMode)Enum.Parse(typeof(AuthMode), Properties.Settings.Default.AuthMode.Trim());
+			authMode = (AuthMode)Enum.Parse(typeof(AuthMode), Properties.Settings.Default.AuthMode.Trim(), true);
 
 			if (Properties.Settings.Default.TlsEnable)
 			{

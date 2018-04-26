@@ -70,7 +70,7 @@ namespace Aerospike.Admin
 			portBox.Text = Properties.Settings.Default.Port.ToString();
 			clusterName = Properties.Settings.Default.ClusterName.Trim();
 			userBox.Text = Properties.Settings.Default.User;
-			authMode = (AuthMode)Enum.Parse(typeof(AuthMode), Properties.Settings.Default.AuthMode.Trim());
+			authMode = (AuthMode)Enum.Parse(typeof(AuthMode), Properties.Settings.Default.AuthMode.Trim(), true);
 
 			if (Properties.Settings.Default.TlsEnable)
 			{

@@ -55,7 +55,7 @@ namespace Aerospike.Test
 			password = Properties.Settings.Default.Password.Trim();
 			ns = Properties.Settings.Default.Namespace.Trim();
 			set = Properties.Settings.Default.Set.Trim();
-			authMode = (AuthMode)Enum.Parse(typeof(AuthMode), Properties.Settings.Default.AuthMode.Trim());
+			authMode = (AuthMode)Enum.Parse(typeof(AuthMode), Properties.Settings.Default.AuthMode.Trim(), true);
 
 			if (Properties.Settings.Default.TlsEnable)
 			{
@@ -80,7 +80,7 @@ namespace Aerospike.Test
             password = section.GetSection("Password").Value;
             ns = section.GetSection("Namespace").Value;
             set = section.GetSection("Set").Value;
-            authMode = (AuthMode)Enum.Parse(typeof(AuthMode), section.GetSection("AuthMode").Value);
+            authMode = (AuthMode)Enum.Parse(typeof(AuthMode), section.GetSection("AuthMode").Value, true);
 
             bool tlsEnable = bool.Parse(section.GetSection("TlsEnable").Value);
 
