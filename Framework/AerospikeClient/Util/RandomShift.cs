@@ -64,6 +64,37 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
+		/// Generate a random string of given size.
+		/// </summary>
+		public string NextString(int size)
+		{
+			char[] chars = new char[size];
+			int r;
+
+			for (int i = 0; i < size; i++)
+			{
+				r = Next(0, 62); // Lower alpha + Upper alpha + digit
+
+				if (r < 26)
+				{
+					// Lower case
+					chars[i] = (char)(r + 97);
+				}
+				else if (r < 52)
+				{
+					// Upper case
+					chars[i] = (char)(r - 26 + 65);
+				}
+				else
+				{
+					// Digit
+					chars[i] = (char)(r - 52 + 48);
+				}
+			}
+			return new string(chars);
+		}
+
+		/// <summary>
 		/// Generate random bytes.
 		/// </summary>
 		public void NextBytes(byte[] bytes)
