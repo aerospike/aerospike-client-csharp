@@ -74,7 +74,7 @@ namespace Aerospike.Client
 		{
 			// Scans should not retry.
 			base.maxRetries = 0;
-			base.socketTimeout = 10000;
+			base.socketTimeout = 30000;
 		}
 	}
 }
