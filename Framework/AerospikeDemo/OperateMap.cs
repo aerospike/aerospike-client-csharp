@@ -41,6 +41,7 @@ namespace Aerospike.Demo
 			}	
 			RunSimpleExample(client, args);
 			RunScoreExample(client, args);
+			RunListRangeExample(client, args);
 		}
 
 		public void RunSimpleExample(AerospikeClient client, Arguments args)
@@ -119,6 +120,66 @@ namespace Aerospike.Demo
 			{
 				console.Info("Received: " + value);
 			}
+		}
+
+		/// <summary>
+		/// Value list range example.
+		/// </summary>
+		public void RunListRangeExample(AerospikeClient client, Arguments args)
+		{
+			Key key = new Key(args.ns, args.set, "mapkey");
+			string binName = args.GetBinName("mapbin");
+
+			// Delete record if it already exists.
+			client.Delete(args.writePolicy, key);
+
+			List<Value> l1 = new List<Value>();
+			l1.Add(MillisSinceEpoch(new DateTime(2018, 1, 1)));
+			l1.Add(Value.Get(1));
+
+			List<Value> l2 = new List<Value>();
+			l2.Add(MillisSinceEpoch(new DateTime(2018, 1, 2)));
+			l2.Add(Value.Get(2));
+
+			List<Value> l3 = new List<Value>();
+			l3.Add(MillisSinceEpoch(new DateTime(2018, 2, 1)));
+			l3.Add(Value.Get(3));
+
+			List<Value> l4 = new List<Value>();
+			l4.Add(MillisSinceEpoch(new DateTime(2018, 2, 2)));
+			l4.Add(Value.Get(4));
+
+			List<Value> l5 = new List<Value>();
+			l5.Add(MillisSinceEpoch(new DateTime(2018, 2, 5)));
+			l5.Add(Value.Get(5));
+
+			IDictionary inputMap = new Dictionary<Value, Value>();
+			inputMap[Value.Get("Charlie")] = Value.Get(l1);
+			inputMap[Value.Get("Jim")] = Value.Get(l2);
+			inputMap[Value.Get("John")] = Value.Get(l3);
+			inputMap[Value.Get("Harry")] = Value.Get(l4);
+			inputMap[Value.Get("Bill")] = Value.Get(l5);
+
+			// Write values to empty map.
+			Record record = client.Operate(args.writePolicy, key, MapOperation.PutItems(MapPolicy.Default, binName, inputMap));
+
+			console.Info("Record: " + record);
+
+			List<Value> end = new List<Value>();
+			end.Add(MillisSinceEpoch(new DateTime(2018, 2, 2)));
+			end.Add(Value.AsNull);
+
+			// Delete values < end.
+			record = client.Operate(args.writePolicy, key, MapOperation.RemoveByValueRange(binName, null, Value.Get(end), MapReturnType.COUNT));
+
+			console.Info("Record: " + record);
+		}
+
+		private static readonly DateTime Epoch = new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+		
+		private static Value MillisSinceEpoch(DateTime dt)
+		{
+			return Value.Get((long)(dt.ToUniversalTime() - Epoch).TotalMilliseconds);
 		}
 	}
 }
