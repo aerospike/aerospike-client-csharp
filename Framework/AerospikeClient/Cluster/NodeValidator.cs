@@ -35,24 +35,30 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Add node(s) referenced by seed host aliases. In most cases, aliases reference
 		/// a single node.  If round robin DNS configuration is used, the seed host may have
-		/// several aliases that reference different nodes in the cluster.
+		/// several addresses that reference different nodes in the cluster.
 		/// </summary>
 		public void SeedNodes(Cluster cluster, Host host, Dictionary<string, Node> nodesToAdd)
 		{
-			IPAddress[] addresses = SetAliases(cluster, host);
+			IPAddress[] addresses = Connection.GetHostAddresses(host.name, cluster.connectionTimeout);
 			Exception exception = null;
 			bool found = false;
 
+			// Try all addresses because they might point to different nodes.
 			foreach (IPAddress address in addresses)
 			{
 				try
 				{
-					ValidateAlias(cluster, address, host);
+					ValidateAddress(cluster, address, host.tlsName, host.port, true);
 					found = true;
 
 					if (! nodesToAdd.ContainsKey(name))
 					{
 						// New node found.
+						// Only set aliases when they were not set by load balancer detection logic.
+						if (this.aliases == null)
+						{
+							SetAliases(addresses, host.tlsName, host.port);
+						}
 						Node node = cluster.CreateNode(this);
 						nodesToAdd[name] = node;
 					}
@@ -67,7 +73,7 @@ namespace Aerospike.Client
 					// Log and continue to next address.
 					if (Log.DebugEnabled())
 					{
-						Log.Debug("Alias " + address + " failed: " + Util.GetErrorMessage(e));
+						Log.Debug("Address " + address + ' ' + host.port + " failed: " + Util.GetErrorMessage(e));
 					}
 
 					if (exception == null)
@@ -79,7 +85,7 @@ namespace Aerospike.Client
 
 			if (!found)
 			{
-				// Exception can't be null here because SetAliases()/Connection.GetHostAddresses()
+				// Exception can't be null here because Connection.GetHostAddresses()
 				// will throw exception if aliases length is zero.
 				throw exception;
 			}
@@ -90,14 +96,15 @@ namespace Aerospike.Client
 		/// </summary>
 		public void ValidateNode(Cluster cluster, Host host)
 		{
-			IPAddress[] addresses = SetAliases(cluster, host);
+			IPAddress[] addresses = Connection.GetHostAddresses(host.name, cluster.connectionTimeout);
 			Exception exception = null;
 
 			foreach (IPAddress address in addresses)
 			{
 				try
 				{
-					ValidateAlias(cluster, address, host);
+					ValidateAddress(cluster, address, host.tlsName, host.port, false);
+					SetAliases(addresses, host.tlsName, host.port);
 					return;
 				}
 				catch (Exception e)
@@ -105,7 +112,7 @@ namespace Aerospike.Client
 					// Log and continue to next address.
 					if (Log.DebugEnabled())
 					{
-						Log.Debug("Alias " + address + " failed: " + Util.GetErrorMessage(e));
+						Log.Debug("Address " + address + ' ' + host.port + " failed: " + Util.GetErrorMessage(e));
 					}
 
 					if (exception == null)
@@ -115,31 +122,17 @@ namespace Aerospike.Client
 				}
 			}
 
-			// Exception can't be null here because SetAliases()/Connection.GetHostAddresses()
+			// Exception can't be null here because Connection.GetHostAddresses()
 			// will throw exception if aliases length is zero.
 			throw exception;
 		}
 
-		private IPAddress[] SetAliases(Cluster cluster, Host host)
+		private void ValidateAddress(Cluster cluster, IPAddress address, string tlsName, int port, bool detectLoadBalancer)
 		{
-			IPAddress[] addresses = Connection.GetHostAddresses(host.name, cluster.connectionTimeout);
-
-			// Add capacity for current address aliases plus IPV6 address and hostname.
-			aliases = new List<Host>(addresses.Length + 2);
-
-			foreach (IPAddress address in addresses)
-			{
-				aliases.Add(new Host(address.ToString(), host.tlsName, host.port));
-			}
-			return addresses;
-		}
-
-		private void ValidateAlias(Cluster cluster, IPAddress ipAddress, Host alias)
-		{
-			IPEndPoint address = new IPEndPoint(ipAddress, alias.port);
+			IPEndPoint socketAddress = new IPEndPoint(address, port);
 			Connection conn = (cluster.tlsPolicy != null) ?
-				new TlsConnection(cluster.tlsPolicy, alias.tlsName, address, cluster.connectionTimeout, cluster.maxSocketIdleMillis, null) :
-				new Connection(address, cluster.connectionTimeout, cluster.maxSocketIdleMillis, null);
+				new TlsConnection(cluster.tlsPolicy, tlsName, socketAddress, cluster.connectionTimeout, cluster.maxSocketIdleMillis, null) :
+				new Connection(socketAddress, cluster.connectionTimeout, cluster.maxSocketIdleMillis, null);
 
 			try
 			{
@@ -147,75 +140,68 @@ namespace Aerospike.Client
 				{
 					// Login
 					AdminCommand admin = new AdminCommand(ThreadLocalData.GetBuffer(), 0);
-					admin.Login(cluster, conn, alias, out sessionToken, out sessionExpiration);
+					admin.Login(cluster, conn, out sessionToken, out sessionExpiration);
 
 					if (cluster.tlsPolicy != null && cluster.tlsPolicy.forLoginOnly)
 					{
 						// Switch to using non-TLS socket.
 						SwitchClear sc = new SwitchClear(cluster, conn, sessionToken);
 						conn.Close();
-						alias = sc.clearHost;
 						address = sc.clearAddress;
+						socketAddress = sc.clearSocketAddress;
 						conn = sc.clearConn;
+
+						// Disable load balancer detection since non-TLS address has already
+						// been retrieved via service info command.
+						detectLoadBalancer = false;
 					}
 				}
 
-				Dictionary<string, string> map;
+				List<string> commands = new List<string>(5);
+				commands.Add("node");
+				commands.Add("partition-generation");
+				commands.Add("features");
+
 				bool hasClusterName = cluster.HasClusterName;
 
 				if (hasClusterName)
 				{
-					map = Info.Request(conn, "node", "partition-generation", "features", "cluster-name");
-				}
-				else
-				{
-					map = Info.Request(conn, "node", "partition-generation", "features");
-				}
-				
-				string nodeName;
-
-				if (! map.TryGetValue("node", out nodeName))
-				{
-					throw new AerospikeException.InvalidNode();
+					commands.Add("cluster-name");
 				}
 
-				string genString;
-				int gen;
+				string addressCommand = null;
 
-				if (!map.TryGetValue("partition-generation", out genString))
+				if (detectLoadBalancer)
 				{
-					throw new AerospikeException.InvalidNode();
+					// Seed may be load balancer with changing address. Determine real address.
+					addressCommand = (cluster.tlsPolicy != null) ?
+						cluster.useServicesAlternate ? "service-tls-alt" : "service-tls-std" :
+						cluster.useServicesAlternate ? "service-clear-alt" : "service-clear-std";
+
+					commands.Add(addressCommand);
 				}
 
-				try
-				{
-					gen = Convert.ToInt32(genString);
-				}
-				catch (Exception)
-				{
-					throw new AerospikeException.InvalidNode("Invalid partition-generation: " + genString);
-				}
+				// Issue commands.
+				Dictionary<string, string> map = Info.Request(conn, commands);
 
-				if (gen == -1)
-				{
-					throw new AerospikeException.InvalidNode("Node " + nodeName + ' ' + alias + " is not yet fully initialized");
-				} 
-				
+				// Node returned results.
+				this.primaryHost = new Host(address.ToString(), tlsName, port);
+				this.primaryAddress = socketAddress;
+				this.primaryConn = conn;
+
+				ValidateNode(map);
+				ValidatePartitionGeneration(map);
+				SetFeatures(map);
+
 				if (hasClusterName)
 				{
-					string id;
-
-					if (! map.TryGetValue("cluster-name", out id) || ! cluster.clusterName.Equals(id))
-					{
-						throw new AerospikeException.InvalidNode("Node " + nodeName + ' ' + alias + ' ' + " expected cluster name '" + cluster.clusterName + "' received '" + id + "'");
-					}
+					ValidateClusterName(cluster, map);
 				}
 
-				this.name = nodeName;
-				this.primaryHost = alias;
-				this.primaryAddress = address;
-				this.primaryConn = conn;
-				SetFeatures(map);
+				if (addressCommand != null)
+				{
+					SetAddress(cluster, map, addressCommand, tlsName);
+				}
 			}
 			catch (Exception)
 			{
@@ -224,6 +210,39 @@ namespace Aerospike.Client
 			}
 		}
 
+		private void ValidateNode(Dictionary<string, string> map)
+		{
+			if (! map.TryGetValue("node", out this.name))
+			{
+				throw new AerospikeException.InvalidNode();
+			}
+		}				
+
+		private void ValidatePartitionGeneration(Dictionary<string, string> map)
+		{
+			string genString;
+			int gen;
+
+			if (!map.TryGetValue("partition-generation", out genString))
+			{
+				throw new AerospikeException.InvalidNode();
+			}
+
+			try
+			{
+				gen = Convert.ToInt32(genString);
+			}
+			catch (Exception)
+			{
+				throw new AerospikeException.InvalidNode("Invalid partition-generation: " + genString);
+			}
+
+			if (gen == -1)
+			{
+				throw new AerospikeException.InvalidNode("Node " + this.name + ' ' + this.primaryHost + " is not yet fully initialized");
+			}
+		}
+				
 		private void SetFeatures(Dictionary<string, string> map)
 		{
 			try
@@ -264,12 +283,124 @@ namespace Aerospike.Client
 				// Unexpected exception. Use defaults.
 			}
 		}
+
+		private void ValidateClusterName(Cluster cluster, Dictionary<string, string> map)
+		{
+			string id;
+
+			if (!map.TryGetValue("cluster-name", out id) || !cluster.clusterName.Equals(id))
+			{
+				throw new AerospikeException.InvalidNode("Node " + this.name + ' ' + this.primaryHost + ' ' +
+						" expected cluster name '" + cluster.clusterName + "' received '" + id + "'");
+			}
+		}
+
+		private void SetAddress(Cluster cluster, Dictionary<string, string> map, string addressCommand, string tlsName)
+		{
+			string result = map[addressCommand];
+			List<Host> hosts = Host.ParseServiceHosts(result);
+			Host h;
+
+			// Search real hosts for seed.
+			foreach (Host host in hosts)
+			{
+				h = host;
+
+				string alt;
+				if (cluster.ipMap != null && cluster.ipMap.TryGetValue(h.name, out alt))
+				{
+					h = new Host(alt, h.port);
+				}
+
+				if (h.Equals(this.primaryHost))
+				{
+					// Found seed which is not a load balancer.
+					return;
+				}
+			}
+
+			// Seed not found, so seed is probably a load balancer.
+			// Find first valid real host.
+			foreach (Host host in hosts)
+			{
+				try
+				{
+					h = host;
+
+					string alt;
+					if (cluster.ipMap != null && cluster.ipMap.TryGetValue(h.name, out alt))
+					{
+						h = new Host(alt, h.port);
+					}
+
+					IPAddress[] addresses = Connection.GetHostAddresses(h.name, cluster.connectionTimeout);
+
+					foreach (IPAddress address in addresses)
+					{
+						try
+						{
+							IPEndPoint socketAddress = new IPEndPoint(address, h.port);
+							Connection conn = (cluster.tlsPolicy != null) ?
+								new TlsConnection(cluster.tlsPolicy, tlsName, socketAddress, cluster.connectionTimeout, cluster.maxSocketIdleMillis, null) :
+								new Connection(socketAddress, cluster.connectionTimeout, cluster.maxSocketIdleMillis, null);
+
+							try
+							{
+								if (cluster.user != null)
+								{
+									AdminCommand admin = new AdminCommand(ThreadLocalData.GetBuffer(), 0);
+
+									if (!admin.Authenticate(cluster, conn, this.sessionToken))
+									{
+										throw new AerospikeException("Authentication failed");
+									}
+								}
+
+								// Authenticated connection.  Set real host.
+								SetAliases(addresses, tlsName, h.port);
+								this.primaryHost = new Host(address.ToString(), tlsName, h.port);
+								this.primaryAddress = socketAddress;
+								this.primaryConn.Close();
+								this.primaryConn = conn;
+								return;
+							}
+							catch (Exception)
+							{
+								conn.Close();
+							}
+						}
+						catch (Exception)
+						{
+							// Try next address.
+						}
+					}
+				}
+				catch (Exception)
+				{
+					// Try next host.
+				}
+			}
+
+			// Failed to find a valid host.
+			throw new AerospikeException("Invalid address: " + result);
+		}
+		
+		private void SetAliases(IPAddress[] addresses, string tlsName, int port)
+		{
+			// Add capacity for current address aliases plus IPV6 address and hostname.
+			this.aliases = new List<Host>(addresses.Length + 2);
+
+			foreach (IPAddress address in addresses)
+			{
+				this.aliases.Add(new Host(address.ToString(), tlsName, port));
+			}
+		}
 	}
 
 	sealed class SwitchClear
 	{
-		internal Host clearHost;
-		internal IPEndPoint clearAddress;
+		internal IPAddress clearAddress;
+		internal IPEndPoint clearSocketAddress;
 		internal Connection clearConn;
 
 		// Switch from TLS connection to non-TLS connection.
@@ -279,6 +410,7 @@ namespace Aerospike.Client
 			string command = cluster.useServicesAlternate ? "service-clear-alt" : "service-clear-std";
 			string result = Info.Request(conn, command);
 			List<Host> hosts = Host.ParseServiceHosts(result);
+			Host clearHost;
 
 			// Find first valid non-TLS host.
 			foreach (Host host in hosts)
@@ -287,7 +419,7 @@ namespace Aerospike.Client
 				{
 					clearHost = host;
 
-					String alternativeHost;
+					string alternativeHost;
 					if (cluster.ipMap != null && cluster.ipMap.TryGetValue(clearHost.name, out alternativeHost))
 					{
 						clearHost = new Host(alternativeHost, clearHost.port);
@@ -299,8 +431,9 @@ namespace Aerospike.Client
 					{
 						try
 						{
-							clearAddress = new IPEndPoint(ia, clearHost.port);
-							clearConn = new Connection(clearAddress, cluster.connectionTimeout, cluster.maxSocketIdleMillis, null);
+							clearAddress = ia;
+							clearSocketAddress = new IPEndPoint(ia, clearHost.port);
+							clearConn = new Connection(clearSocketAddress, cluster.connectionTimeout, cluster.maxSocketIdleMillis, null);
 
 							try
 							{

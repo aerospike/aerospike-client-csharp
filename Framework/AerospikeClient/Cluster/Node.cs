@@ -121,7 +121,7 @@ namespace Aerospike.Client
 								{
 									// Authentication failed.  Session token probably expired.
 									// Must login again to get new session token.
-									command.Login(cluster, tendConnection, host, out sessionToken, out sessionExpiration);
+									command.Login(cluster, tendConnection, out sessionToken, out sessionExpiration);
 								}								
 							}
 						}
@@ -176,7 +176,7 @@ namespace Aerospike.Client
 			if (performLogin > 0 || (sessionExpiration.HasValue && DateTime.Compare(DateTime.UtcNow, sessionExpiration.Value) >= 0))
 			{
 				AdminCommand admin = new AdminCommand(ThreadLocalData.GetBuffer(), 0);
-				admin.Login(cluster, tendConnection, host, out sessionToken, out sessionExpiration);
+				admin.Login(cluster, tendConnection, out sessionToken, out sessionExpiration);
 				performLogin = 0;
 				return true;
 			}

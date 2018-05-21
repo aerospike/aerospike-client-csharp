@@ -123,6 +123,48 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
+		/// Send multiple commands to server and store results. 
+		/// This constructor is used internally.
+		/// The static request methods should be used instead.
+		/// </summary>
+		/// <param name="conn">connection to server node</param>
+		/// <param name="commands">commands sent to server</param>
+		public Info(Connection conn, List<String> commands)
+		{
+			buffer = ThreadLocalData.GetBuffer();
+
+			// First, do quick conservative buffer size estimate.
+			offset = 8;
+
+			foreach (string command in commands)
+			{
+				offset += command.Length * 2 + 1;
+			}
+
+			// If conservative estimate may be exceeded, get exact estimate
+			// to preserve memory and resize buffer.
+			if (offset > buffer.Length)
+			{
+				offset = 8;
+
+				foreach (string command in commands)
+				{
+					offset += ByteUtil.EstimateSizeUtf8(command) + 1;
+				}
+				ResizeBuffer(offset);
+			}
+			offset = 8; // Skip size field.
+
+			// The command format is: <name1>\n<name2>\n...
+			foreach (string command in commands)
+			{
+				offset += ByteUtil.StringToUtf8(command, buffer, offset);
+				buffer[offset++] = (byte)'\n';
+			}
+			SendCommand(conn);
+		}
+
+		/// <summary>
 		/// Send default empty command to server and store results. 
 		/// This constructor is used internally.
 		/// The static request methods should be used instead.
@@ -490,6 +532,17 @@ namespace Aerospike.Client
 		/// <param name="conn">socket connection to server node</param>
 		/// <param name="names">names of values to retrieve</param>
 		public static Dictionary<string,string> Request(Connection conn, params string[] names)
+		{
+			Info info = new Info(conn, names);
+			return info.ParseMultiResponse();
+		}
+
+		/// <summary>
+		/// Get many info values by name from the specified database server node.
+		/// </summary>
+		/// <param name="conn">socket connection to server node</param>
+		/// <param name="names">names of values to retrieve</param>
+		public static Dictionary<string, string> Request(Connection conn, List<String> names)
 		{
 			Info info = new Info(conn, names);
 			return info.ParseMultiResponse();

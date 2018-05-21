@@ -79,13 +79,8 @@ namespace Aerospike.Client
 			this.dataOffset = dataOffset + 8;
 		}
 
-		public void Login(Cluster cluster, Connection conn, Host host, out byte[] sessionToken, out DateTime? sessionExpiration)
+		public void Login(Cluster cluster, Connection conn, out byte[] sessionToken, out DateTime? sessionExpiration)
 		{
-			if (Log.DebugEnabled())
-			{
-				Log.Debug("Login " + host);
-			}
-
 			sessionToken = null;
 			sessionExpiration = null;
 			dataOffset = 8;
@@ -123,7 +118,7 @@ namespace Aerospike.Client
 					}
 
 					// login failed.
-					throw new AerospikeException(result, "Node " + host + " login failed");
+					throw new AerospikeException(result, "Login failed");
 				}
 
 				// Read session token.
@@ -133,7 +128,7 @@ namespace Aerospike.Client
 
 				if (receiveSize <= 0 || receiveSize > dataBuffer.Length || fieldCount <= 0)
 				{
-					throw new AerospikeException(result, "Node " + host + " failed to retrieve session token");
+					throw new AerospikeException(result, "Failed to retrieve session token");
 				}
 
 				conn.ReadFully(dataBuffer, receiveSize);
@@ -170,7 +165,7 @@ namespace Aerospike.Client
 
 				if (sessionToken == null)
 				{
-					throw new AerospikeException(result, "Node " + host + " failed to retrieve session token");
+					throw new AerospikeException(result, "Failed to retrieve session token");
 				}
 			}
 			finally
