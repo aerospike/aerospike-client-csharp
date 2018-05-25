@@ -389,8 +389,13 @@ namespace Aerospike.Client
 				}
 			}
 
-			// Failed to find a valid host.
-			throw new AerospikeException("Invalid address: " + result);
+			// Failed to find a valid address. IP Address is probably internal on the cloud
+			// because the server access-address is not configured.  Log warning and continue
+			// with original seed.
+			if (Log.InfoEnabled())
+			{
+				Log.Info("Invalid address " + result + ". access-address is probably not configured on server.");
+			}
 		}
 		
 		private void SetAliases(IPAddress[] addresses, string tlsName, int port)
