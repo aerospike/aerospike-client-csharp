@@ -298,6 +298,14 @@ namespace Aerospike.Client
 		private void SetAddress(Cluster cluster, Dictionary<string, string> map, string addressCommand, string tlsName)
 		{
 			string result = map[addressCommand];
+
+			if (result == null || result.Length == 0)
+			{
+				// Server does not support service level call (service-clear-std, ...).
+				// Load balancer detection is not possible.
+				return;
+			}
+
 			List<Host> hosts = Host.ParseServiceHosts(result);
 			Host h;
 
