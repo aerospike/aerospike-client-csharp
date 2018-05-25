@@ -685,7 +685,7 @@ namespace Aerospike.Client
 				fieldCount++;
 
 				// Query bin names are specified as a field (Scan bin names are specified later as operations)
-				if (statement.binNames != null)
+				if (statement.binNames != null && statement.binNames.Length > 0)
 				{
 					dataOffset += FIELD_HEADER_SIZE;
 					binNameSize++; // num bin names
@@ -799,7 +799,7 @@ namespace Aerospike.Client
 				dataOffset = statement.filter.Write(dataBuffer, dataOffset);
 
 				// Query bin names are specified as a field (Scan bin names are specified later as operations)
-				if (statement.binNames != null)
+				if (statement.binNames != null && statement.binNames.Length > 0)
 				{
 					WriteFieldHeader(binNameSize, FieldType.QUERY_BINLIST);
 					dataBuffer[dataOffset++] = (byte)statement.binNames.Length;
