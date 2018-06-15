@@ -703,5 +703,183 @@ namespace Aerospike.Test
 			Assert.AreEqual("Jim", entry.Key);
 			Assert.AreEqual(98L, entry.Value);
 		}
+
+		[TestMethod]
+		public void OperateMapGetRelative()
+		{
+			if (!args.ValidateMap())
+			{
+				return;
+			}
+
+			Key key = new Key(args.ns, args.set, "opmkey14");
+			client.Delete(null, key);
+
+			Dictionary<Value, Value> inputMap = new Dictionary<Value, Value>();
+			inputMap[Value.Get(0)] = Value.Get(17);
+			inputMap[Value.Get(4)] = Value.Get(2);
+			inputMap[Value.Get(5)] = Value.Get(15);
+			inputMap[Value.Get(9)] = Value.Get(10);
+
+			// Write values to empty map.
+			Record record = client.Operate(null, key, MapOperation.PutItems(MapPolicy.Default, binName, inputMap));
+
+			AssertRecordFound(key, record);
+
+			record = client.Operate(null, key, MapOperation.GetByKeyRelativeIndexRange(binName, Value.Get(5), 0, MapReturnType.KEY),
+				MapOperation.GetByKeyRelativeIndexRange(binName, Value.Get(5), 1, MapReturnType.KEY),
+				MapOperation.GetByKeyRelativeIndexRange(binName, Value.Get(5), -1, MapReturnType.KEY),
+				MapOperation.GetByKeyRelativeIndexRange(binName, Value.Get(3), 2, MapReturnType.KEY),
+				MapOperation.GetByKeyRelativeIndexRange(binName, Value.Get(3), -2, MapReturnType.KEY),
+				MapOperation.GetByKeyRelativeIndexRange(binName, Value.Get(5), 0, 1, MapReturnType.KEY),
+				MapOperation.GetByKeyRelativeIndexRange(binName, Value.Get(5), 1, 2, MapReturnType.KEY),
+				MapOperation.GetByKeyRelativeIndexRange(binName, Value.Get(5), -1, 1, MapReturnType.KEY),
+				MapOperation.GetByKeyRelativeIndexRange(binName, Value.Get(3), 2, 1, MapReturnType.KEY),
+				MapOperation.GetByKeyRelativeIndexRange(binName, Value.Get(3), -2, 2, MapReturnType.KEY),
+				MapOperation.GetByValueRelativeRankRange(binName, Value.Get(11), 1, MapReturnType.VALUE),
+				MapOperation.GetByValueRelativeRankRange(binName, Value.Get(11), -1, MapReturnType.VALUE),
+				MapOperation.GetByValueRelativeRankRange(binName, Value.Get(11), 1, 1, MapReturnType.VALUE),
+				MapOperation.GetByValueRelativeRankRange(binName, Value.Get(11), -1, 1, MapReturnType.VALUE));
+
+			AssertRecordFound(key, record);
+
+			IList results = record.GetList(binName);
+			int i = 0;
+
+			IList list = (IList)results[i++];
+			Assert.AreEqual(2L, list.Count);
+			Assert.AreEqual(5L, list[0]);
+			Assert.AreEqual(9L, list[1]);
+
+			list = (IList)results[i++];
+			Assert.AreEqual(1L, list.Count);
+			Assert.AreEqual(9L, list[0]);
+
+			list = (IList)results[i++];
+			Assert.AreEqual(3L, list.Count);
+			Assert.AreEqual(4L, list[0]);
+			Assert.AreEqual(5L, list[1]);
+			Assert.AreEqual(9L, list[2]);
+
+			list = (IList)results[i++];
+			Assert.AreEqual(1L, list.Count);
+			Assert.AreEqual(9L, list[0]);
+
+			list = (IList)results[i++];
+			Assert.AreEqual(4L, list.Count);
+			Assert.AreEqual(0L, list[0]);
+			Assert.AreEqual(4L, list[1]);
+			Assert.AreEqual(5L, list[2]);
+			Assert.AreEqual(9L, list[3]);
+
+			list = (IList)results[i++];
+			Assert.AreEqual(1L, list.Count);
+			Assert.AreEqual(5L, list[0]);
+
+			list = (IList)results[i++];
+			Assert.AreEqual(1L, list.Count);
+			Assert.AreEqual(9L, list[0]);
+
+			list = (IList)results[i++];
+			Assert.AreEqual(1L, list.Count);
+			Assert.AreEqual(4L, list[0]);
+
+			list = (IList)results[i++];
+			Assert.AreEqual(1L, list.Count);
+			Assert.AreEqual(9L, list[0]);
+
+			list = (IList)results[i++];
+			Assert.AreEqual(1L, list.Count);
+			Assert.AreEqual(0L, list[0]);
+
+			list = (IList)results[i++];
+			Assert.AreEqual(1L, list.Count);
+			Assert.AreEqual(17L, list[0]);
+
+			list = (IList)results[i++];
+			Assert.AreEqual(3L, list.Count);
+			Assert.AreEqual(10L, list[0]);
+			Assert.AreEqual(15L, list[1]);
+			Assert.AreEqual(17L, list[2]);
+
+			list = (IList)results[i++];
+			Assert.AreEqual(1L, list.Count);
+			Assert.AreEqual(17L, list[0]);
+
+			list = (IList)results[i++];
+			Assert.AreEqual(1L, list.Count);
+			Assert.AreEqual(10L, list[0]);
+		}
+
+		[TestMethod]
+		public void OperateMapRemoveRelative()
+		{
+			if (!args.ValidateMap())
+			{
+				return;
+			}
+
+			Key key = new Key(args.ns, args.set, "opmkey15");
+			client.Delete(null, key);
+
+			Dictionary<Value, Value> inputMap = new Dictionary<Value, Value>();
+			inputMap[Value.Get(0)] = Value.Get(17);
+			inputMap[Value.Get(4)] = Value.Get(2);
+			inputMap[Value.Get(5)] = Value.Get(15);
+			inputMap[Value.Get(9)] = Value.Get(10);
+
+			// Write values to empty map.
+			Record record = client.Operate(null, key, MapOperation.PutItems(MapPolicy.Default, binName, inputMap));
+
+			AssertRecordFound(key, record);
+
+			record = client.Operate(null, key,
+				MapOperation.RemoveByKeyRelativeIndexRange(binName, Value.Get(5), 0, MapReturnType.VALUE),
+				MapOperation.RemoveByKeyRelativeIndexRange(binName, Value.Get(5), 1, MapReturnType.VALUE),
+				MapOperation.RemoveByKeyRelativeIndexRange(binName, Value.Get(5), -1, 1, MapReturnType.VALUE)
+				);
+
+			AssertRecordFound(key, record);
+
+			IList results = record.GetList(binName);
+			int i = 0;
+
+			IList list = (IList)results[i++];
+			Assert.AreEqual(2L, list.Count);
+			Assert.AreEqual(15L, list[0]);
+			Assert.AreEqual(10L, list[1]);
+
+			list = (IList)results[i++];
+			Assert.AreEqual(0L, list.Count);
+
+			list = (IList)results[i++];
+			Assert.AreEqual(1L, list.Count);
+			Assert.AreEqual(2L, list[0]);
+
+			// Write values to empty map.
+			client.Delete(null, key);
+
+			record = client.Operate(null, key, MapOperation.PutItems(MapPolicy.Default, binName, inputMap));
+
+			AssertRecordFound(key, record);
+
+			record = client.Operate(null, key,
+				MapOperation.RemoveByValueRelativeRankRange(binName, Value.Get(11), 1, MapReturnType.VALUE),
+				MapOperation.RemoveByValueRelativeRankRange(binName, Value.Get(11), -1, 1, MapReturnType.VALUE)
+				);
+
+			AssertRecordFound(key, record);
+
+			results = record.GetList(binName);
+			i = 0;
+
+			list = (IList)results[i++];
+			Assert.AreEqual(1L, list.Count);
+			Assert.AreEqual(17L, list[0]);
+
+			list = (IList)results[i++];
+			Assert.AreEqual(1L, list.Count);
+			Assert.AreEqual(10L, list[0]);
+		}
 	}
 }

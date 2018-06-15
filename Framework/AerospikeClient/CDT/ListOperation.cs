@@ -69,6 +69,7 @@ namespace Aerospike.Client
 		private const int GET_BY_INDEX_RANGE = 24;
 		private const int GET_BY_VALUE_INTERVAL = 25;
 		private const int GET_BY_RANK_RANGE = 26;
+		private const int GET_BY_VALUE_REL_RANK_RANGE = 27;
 		private const int REMOVE_BY_INDEX = 32;
 		private const int REMOVE_BY_RANK = 34;
 		private const int REMOVE_BY_VALUE = 35;
@@ -76,6 +77,7 @@ namespace Aerospike.Client
 		private const int REMOVE_BY_INDEX_RANGE = 37;
 		private const int REMOVE_BY_VALUE_INTERVAL = 38;
 		private const int REMOVE_BY_RANK_RANGE = 39;
+		private const int REMOVE_BY_VALUE_REL_RANK_RANGE = 40;
 
 		/// <summary>
 		/// Create set list order operation.
@@ -383,6 +385,50 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
+		/// Create list remove by value relative to rank range operation.
+		/// Server removes list items nearest to value and greater by relative rank.
+		/// Server returns removed data specified by returnType. 
+		/// <para>
+		/// Examples for ordered list [0,4,5,9,11,15]:
+		/// <ul>
+		/// <li>(value,rank) = [removed items]</li>
+		/// <li>(5,0) = [5,9,11,15]</li>
+		/// <li>(5,1) = [9,11,15]</li>
+		/// <li>(5,-1) = [4,5,9,11,15]</li>
+		/// <li>(3,0) = [4,5,9,11,15]</li>
+		/// <li>(3,3) = [11,15]</li>
+		/// <li>(3,-3) = [0,4,5,9,11,15]</li>
+		/// </ul>
+		/// </para>
+		/// </summary>
+		public static Operation RemoveByValueRelativeRankRange(string binName, Value value, int rank, ListReturnType returnType)
+		{
+			return CDT.CreateOperation(REMOVE_BY_VALUE_REL_RANK_RANGE, Operation.Type.CDT_MODIFY, binName, (int)returnType, value, rank);
+		}
+
+		/// <summary>
+		/// Create list remove by value relative to rank range operation.
+		/// Server removes list items nearest to value and greater by relative rank with a count limit.
+		/// Server returns removed data specified by returnType. 
+		/// <para>
+		/// Examples for ordered list [0,4,5,9,11,15]:
+		/// <ul>
+		/// <li>(value,rank,count) = [removed items]</li>
+		/// <li>(5,0,2) = [5,9]</li>
+		/// <li>(5,1,1) = [9]</li>
+		/// <li>(5,-1,2) = [4,5]</li>
+		/// <li>(3,0,1) = [4]</li>
+		/// <li>(3,3,7) = [11,15]</li>
+		/// <li>(3,-3,2) = []</li>
+		/// </ul>
+		/// </para>
+		/// </summary>
+		public static Operation RemoveByValueRelativeRankRange(string binName, Value value, int rank, int count, ListReturnType returnType)
+		{
+			return CDT.CreateOperation(REMOVE_BY_VALUE_REL_RANK_RANGE, Operation.Type.CDT_MODIFY, binName, (int)returnType, value, rank, count);
+		}
+
+		/// <summary>
 		/// Create list remove operation.
 		/// Server removes list item identified by index and returns removed data specified by returnType. 
 		/// </summary>
@@ -504,6 +550,50 @@ namespace Aerospike.Client
 		public static Operation GetByValueList(string binName, IList values, ListReturnType returnType)
 		{
 			return CDT.CreateOperation(GET_BY_VALUE_LIST, Operation.Type.CDT_READ, binName, (int)returnType, values);
+		}
+
+		/// <summary>
+		/// Create list get by value relative to rank range operation.
+		/// Server selects list items nearest to value and greater by relative rank.
+		/// Server returns selected data specified by returnType.
+		/// <para>
+		/// Examples for ordered list [0,4,5,9,11,15]:
+		/// <ul>
+		/// <li>(value,rank) = [selected items]</li>
+		/// <li>(5,0) = [5,9,11,15]</li>
+		/// <li>(5,1) = [9,11,15]</li>
+		/// <li>(5,-1) = [4,5,9,11,15]</li>
+		/// <li>(3,0) = [4,5,9,11,15]</li>
+		/// <li>(3,3) = [11,15]</li>
+		/// <li>(3,-3) = [0,4,5,9,11,15]</li>
+		/// </ul>
+		/// </para>
+		/// </summary>
+		public static Operation GetByValueRelativeRankRange(string binName, Value value, int rank, ListReturnType returnType)
+		{
+			return CDT.CreateOperation(GET_BY_VALUE_REL_RANK_RANGE, Operation.Type.CDT_READ, binName, (int)returnType, value, rank);
+		}
+
+		/// <summary>
+		/// Create list get by value relative to rank range operation.
+		/// Server selects list items nearest to value and greater by relative rank with a count limit.
+		/// Server returns selected data specified by returnType.
+		/// <para>
+		/// Examples for ordered list [0,4,5,9,11,15]:
+		/// <ul>
+		/// <li>(value,rank,count) = [selected items]</li>
+		/// <li>(5,0,2) = [5,9]</li>
+		/// <li>(5,1,1) = [9]</li>
+		/// <li>(5,-1,2) = [4,5]</li>
+		/// <li>(3,0,1) = [4]</li>
+		/// <li>(3,3,7) = [11,15]</li>
+		/// <li>(3,-3,2) = []</li>
+		/// </ul>
+		/// </para>
+		/// </summary>
+		public static Operation GetByValueRelativeRankRange(string binName, Value value, int rank, int count, ListReturnType returnType)
+		{
+			return CDT.CreateOperation(GET_BY_VALUE_REL_RANK_RANGE, Operation.Type.CDT_READ, binName, (int)returnType, value, rank, count);
 		}
 
 		/// <summary>

@@ -73,6 +73,8 @@ namespace Aerospike.Client
 		private const int REMOVE_BY_INDEX_RANGE = 85;
 		private const int REMOVE_BY_VALUE_INTERVAL = 86;
 		private const int REMOVE_BY_RANK_RANGE = 87;
+		private const int REMOVE_BY_KEY_REL_INDEX_RANGE = 88;
+		private const int REMOVE_BY_VALUE_REL_RANK_RANGE = 89;
 		private const int SIZE = 96;
 		private const int GET_BY_KEY = 97;
 		private const int GET_BY_INDEX = 98;
@@ -84,6 +86,8 @@ namespace Aerospike.Client
 		private const int GET_BY_RANK_RANGE = 106;
 		private const int GET_BY_KEY_LIST = 107;
 		private const int GET_BY_VALUE_LIST = 108;
+		private const int GET_BY_KEY_REL_INDEX_RANGE = 109;
+		private const int GET_BY_VALUE_REL_RANK_RANGE = 110;
 
 		/// <summary>
 		/// Create set map policy operation.
@@ -233,6 +237,48 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
+		/// Create map remove by key relative to index range operation.
+		/// Server removes map items nearest to key and greater by index.
+		/// Server returns removed data specified by returnType.
+		/// <para>
+		/// Examples for map [{0=17},{4=2},{5=15},{9=10}]:
+		/// <ul>
+		/// <li>(value,index) = [removed items]</li>
+		/// <li>(5,0) = [{5=15},{9=10}]</li>
+		/// <li>(5,1) = [{9=10}]</li>
+		/// <li>(5,-1) = [{4=2},{5=15},{9=10}]</li>
+		/// <li>(3,2) = [{9=10}]</li>
+		/// <li>(3,-2) = [{0=17},{4=2},{5=15},{9=10}]</li>
+		/// </ul>
+		/// </para>
+		/// </summary>
+		public static Operation RemoveByKeyRelativeIndexRange(string binName, Value key, int index, MapReturnType returnType)
+		{
+			return CDT.CreateOperation(REMOVE_BY_KEY_REL_INDEX_RANGE, Operation.Type.MAP_MODIFY, binName, (int)returnType, key, index);
+		}
+
+		/// <summary>
+		/// Create map remove by key relative to index range operation.
+		/// Server removes map items nearest to key and greater by index with a count limit.
+		/// Server returns removed data specified by returnType.
+		/// <para>
+		/// Examples for map [{0=17},{4=2},{5=15},{9=10}]:
+		/// <ul>
+		/// <li>(value,index,count) = [removed items]</li>
+		/// <li>(5,0,1) = [{5=15}]</li>
+		/// <li>(5,1,2) = [{9=10}]</li>
+		/// <li>(5,-1,1) = [{4=2}]</li>
+		/// <li>(3,2,1) = [{9=10}]</li>
+		/// <li>(3,-2,2) = [{0=17}]</li>
+		/// </ul>
+		/// </para>
+		/// </summary>
+		public static Operation RemoveByKeyRelativeIndexRange(string binName, Value key, int index, int count, MapReturnType returnType)
+		{
+			return CDT.CreateOperation(REMOVE_BY_KEY_REL_INDEX_RANGE, Operation.Type.MAP_MODIFY, binName, (int)returnType, key, index, count);
+		}
+
+		/// <summary>
 		/// Create map remove operation.
 		/// Server removes map items identified by value and returns removed data specified by returnType.
 		/// </summary>
@@ -262,6 +308,42 @@ namespace Aerospike.Client
 		public static Operation RemoveByValueRange(string binName, Value valueBegin, Value valueEnd, MapReturnType returnType)
 		{
 			return CDT.CreateRangeOperation(REMOVE_BY_VALUE_INTERVAL, Operation.Type.MAP_MODIFY, binName, valueBegin, valueEnd, (int)returnType);
+		}
+
+		/// <summary>
+		/// Create map remove by value relative to rank range operation.
+		/// Server removes map items nearest to value and greater by relative rank.
+		/// Server returns removed data specified by returnType.
+		/// <para>
+		/// Examples for map [{4=2},{9=10},{5=15},{0=17}]:
+		/// <ul>
+		/// <li>(value,rank) = [removed items]</li>
+		/// <li>(11,1) = [{0=17}]</li>
+		/// <li>(11,-1) = [{9=10},{5=15},{0=17}]</li>
+		/// </ul>
+		/// </para>
+		/// </summary>
+		public static Operation RemoveByValueRelativeRankRange(string binName, Value value, int rank, MapReturnType returnType)
+		{
+			return CDT.CreateOperation(REMOVE_BY_VALUE_REL_RANK_RANGE, Operation.Type.MAP_MODIFY, binName, (int)returnType, value, rank);
+		}
+
+		/// <summary>
+		/// Create map remove by value relative to rank range operation.
+		/// Server removes map items nearest to value and greater by relative rank with a count limit.
+		/// Server returns removed data specified by returnType.
+		/// <para>
+		/// Examples for map [{4=2},{9=10},{5=15},{0=17}]:
+		/// <ul>
+		/// <li>(value,rank,count) = [removed items]</li>
+		/// <li>(11,1,1) = [{0=17}]</li>
+		/// <li>(11,-1,1) = [{9=10}]</li>
+		/// </ul>
+		/// </para>
+		/// </summary>
+		public static Operation RemoveByValueRelativeRankRange(string binName, Value value, int rank, int count, MapReturnType returnType)
+		{
+			return CDT.CreateOperation(REMOVE_BY_VALUE_REL_RANK_RANGE, Operation.Type.MAP_MODIFY, binName, (int)returnType, value, rank, count);
 		}
 
 		/// <summary>
@@ -362,6 +444,48 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
+		/// Create map get by key relative to index range operation.
+		/// Server selects map items nearest to key and greater by index.
+		/// Server returns selected data specified by returnType.
+		/// <para>
+		/// Examples for ordered map [{0=17},{4=2},{5=15},{9=10}]:
+		/// <ul>
+		/// <li>(value,index) = [selected items]</li>
+		/// <li>(5,0) = [{5=15},{9=10}]</li>
+		/// <li>(5,1) = [{9=10}]</li>
+		/// <li>(5,-1) = [{4=2},{5=15},{9=10}]</li>
+		/// <li>(3,2) = [{9=10}]</li>
+		/// <li>(3,-2) = [{0=17},{4=2},{5=15},{9=10}]</li>
+		/// </ul>
+		/// </para>
+		/// </summary>
+		public static Operation GetByKeyRelativeIndexRange(string binName, Value key, int index, MapReturnType returnType)
+		{
+			return CDT.CreateOperation(GET_BY_KEY_REL_INDEX_RANGE, Operation.Type.MAP_READ, binName, (int)returnType, key, index);
+		}
+
+		/// <summary>
+		/// Create map get by key relative to index range operation.
+		/// Server selects map items nearest to key and greater by index with a count limit.
+		/// Server returns selected data specified by returnType.
+		/// <para>
+		/// Examples for ordered map [{0=17},{4=2},{5=15},{9=10}]:
+		/// <ul>
+		/// <li>(value,index,count) = [selected items]</li>
+		/// <li>(5,0,1) = [{5=15}]</li>
+		/// <li>(5,1,2) = [{9=10}]</li>
+		/// <li>(5,-1,1) = [{4=2}]</li>
+		/// <li>(3,2,1) = [{9=10}]</li>
+		/// <li>(3,-2,2) = [{0=17}]</li>
+		/// </ul>
+		/// </para>
+		/// </summary>
+		public static Operation GetByKeyRelativeIndexRange(string binName, Value key, int index, int count, MapReturnType returnType)
+		{
+			return CDT.CreateOperation(GET_BY_KEY_REL_INDEX_RANGE, Operation.Type.MAP_READ, binName, (int)returnType, key, index, count);
+		}
+
+		/// <summary>
 		/// Create map get by value operation.
 		/// Server selects map items identified by value and returns selected data specified by returnType.
 		/// </summary>
@@ -391,6 +515,42 @@ namespace Aerospike.Client
 		public static Operation GetByValueList(string binName, IList values, MapReturnType returnType)
 		{
 			return CDT.CreateOperation(GET_BY_VALUE_LIST, Operation.Type.MAP_READ, binName, (int)returnType, values);
+		}
+
+		/// <summary>
+		/// Create map get by value relative to rank range operation.
+		/// Server selects map items nearest to value and greater by relative rank.
+		/// Server returns selected data specified by returnType.
+		/// <para>
+		/// Examples for map [{4=2},{9=10},{5=15},{0=17}]:
+		/// <ul>
+		/// <li>(value,rank) = [selected items]</li>
+		/// <li>(11,1) = [{0=17}]</li>
+		/// <li>(11,-1) = [{9=10},{5=15},{0=17}]</li>
+		/// </ul>
+		/// </para>
+		/// </summary>
+		public static Operation GetByValueRelativeRankRange(string binName, Value value, int rank, MapReturnType returnType)
+		{
+			return CDT.CreateOperation(GET_BY_VALUE_REL_RANK_RANGE, Operation.Type.MAP_READ, binName, (int)returnType, value, rank);
+		}
+
+		/// <summary>
+		/// Create map get by value relative to rank range operation.
+		/// Server selects map items nearest to value and greater by relative rank with a count limit.
+		/// Server returns selected data specified by returnType.
+		/// <para>
+		/// Examples for map [{4=2},{9=10},{5=15},{0=17}]:
+		/// <ul>
+		/// <li>(value,rank,count) = [selected items]</li>
+		/// <li>(11,1,1) = [{0=17}]</li>
+		/// <li>(11,-1,1) = [{9=10}]</li>
+		/// </ul>
+		/// </para>
+		/// </summary>
+		public static Operation GetByValueRelativeRankRange(string binName, Value value, int rank, int count, MapReturnType returnType)
+		{
+			return CDT.CreateOperation(GET_BY_VALUE_REL_RANK_RANGE, Operation.Type.MAP_READ, binName, (int)returnType, value, rank, count);
 		}
 
 		/// <summary>

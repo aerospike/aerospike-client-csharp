@@ -621,7 +621,7 @@ namespace Aerospike.Test
 		}
 
 		[TestMethod]
-		public virtual void OperateListInverted()
+		public void OperateListInverted()
 		{
 			Key key = new Key(args.ns, args.set, "oplkey12");
 
@@ -681,6 +681,173 @@ namespace Aerospike.Test
 			Assert.AreEqual(2L, list.Count);
 			Assert.AreEqual(1L, list[0]);
 			Assert.AreEqual(2L, list[1]);
+		}
+
+		[TestMethod]
+		public void OperateListGetRelative()
+		{
+			Key key = new Key(args.ns, args.set, "oplkey13");
+
+			client.Delete(null, key);
+
+			List<Value> itemList = new List<Value>();
+			itemList.Add(Value.Get(0));
+			itemList.Add(Value.Get(4));
+			itemList.Add(Value.Get(5));
+			itemList.Add(Value.Get(9));
+			itemList.Add(Value.Get(11));
+			itemList.Add(Value.Get(15));
+
+			Record record = client.Operate(null, key,
+				ListOperation.AppendItems(new ListPolicy(ListOrder.ORDERED, ListWriteFlags.DEFAULT), binName, itemList),
+				ListOperation.GetByValueRelativeRankRange(binName, Value.Get(5), 0, ListReturnType.VALUE),
+				ListOperation.GetByValueRelativeRankRange(binName, Value.Get(5), 1, ListReturnType.VALUE),
+				ListOperation.GetByValueRelativeRankRange(binName, Value.Get(5), -1, ListReturnType.VALUE),
+				ListOperation.GetByValueRelativeRankRange(binName, Value.Get(3), 0, ListReturnType.VALUE),
+				ListOperation.GetByValueRelativeRankRange(binName, Value.Get(3), 3, ListReturnType.VALUE),
+				ListOperation.GetByValueRelativeRankRange(binName, Value.Get(3), -3, ListReturnType.VALUE),
+				ListOperation.GetByValueRelativeRankRange(binName, Value.Get(5), 0, 2, ListReturnType.VALUE),
+				ListOperation.GetByValueRelativeRankRange(binName, Value.Get(5), 1, 1, ListReturnType.VALUE),
+				ListOperation.GetByValueRelativeRankRange(binName, Value.Get(5), -1, 2, ListReturnType.VALUE),
+				ListOperation.GetByValueRelativeRankRange(binName, Value.Get(3), 0, 1, ListReturnType.VALUE),
+				ListOperation.GetByValueRelativeRankRange(binName, Value.Get(3), 3, 7, ListReturnType.VALUE),
+				ListOperation.GetByValueRelativeRankRange(binName, Value.Get(3), -3, 2, ListReturnType.VALUE)
+				);
+
+			AssertRecordFound(key, record);
+
+			IList results = record.GetList(binName);
+			int i = 0;
+
+			long size = (long)results[i++];
+			Assert.AreEqual(6L, size);
+
+			IList list = (IList)results[i++];
+			Assert.AreEqual(4L, list.Count);
+			Assert.AreEqual(5L, list[0]);
+			Assert.AreEqual(9L, list[1]);
+			Assert.AreEqual(11L, list[2]);
+			Assert.AreEqual(15L, list[3]);
+
+			list = (IList)results[i++];
+			Assert.AreEqual(3L, list.Count);
+			Assert.AreEqual(9L, list[0]);
+			Assert.AreEqual(11L, list[1]);
+			Assert.AreEqual(15L, list[2]);
+
+			list = (IList)results[i++];
+			Assert.AreEqual(5L, list.Count);
+			Assert.AreEqual(4L, list[0]);
+			Assert.AreEqual(5L, list[1]);
+			Assert.AreEqual(9L, list[2]);
+			Assert.AreEqual(11L, list[3]);
+			Assert.AreEqual(15L, list[4]);
+
+			list = (IList)results[i++];
+			Assert.AreEqual(5L, list.Count);
+			Assert.AreEqual(4L, list[0]);
+			Assert.AreEqual(5L, list[1]);
+			Assert.AreEqual(9L, list[2]);
+			Assert.AreEqual(11L, list[3]);
+			Assert.AreEqual(15L, list[4]);
+
+			list = (IList)results[i++];
+			Assert.AreEqual(2L, list.Count);
+			Assert.AreEqual(11L, list[0]);
+			Assert.AreEqual(15L, list[1]);
+
+			list = (IList)results[i++];
+			Assert.AreEqual(6L, list.Count);
+			Assert.AreEqual(0L, list[0]);
+			Assert.AreEqual(4L, list[1]);
+			Assert.AreEqual(5L, list[2]);
+			Assert.AreEqual(9L, list[3]);
+			Assert.AreEqual(11L, list[4]);
+			Assert.AreEqual(15L, list[5]);
+
+			list = (IList)results[i++];
+			Assert.AreEqual(2L, list.Count);
+			Assert.AreEqual(5L, list[0]);
+			Assert.AreEqual(9L, list[1]);
+
+			list = (IList)results[i++];
+			Assert.AreEqual(1L, list.Count);
+			Assert.AreEqual(9L, list[0]);
+
+			list = (IList)results[i++];
+			Assert.AreEqual(2L, list.Count);
+			Assert.AreEqual(4L, list[0]);
+			Assert.AreEqual(5L, list[1]);
+
+			list = (IList)results[i++];
+			Assert.AreEqual(1L, list.Count);
+			Assert.AreEqual(4L, list[0]);
+
+			list = (IList)results[i++];
+			Assert.AreEqual(2L, list.Count);
+			Assert.AreEqual(11L, list[0]);
+			Assert.AreEqual(15L, list[1]);
+
+			list = (IList)results[i++];
+			Assert.AreEqual(0L, list.Count);
+		}
+
+		[TestMethod]
+		public void OperateListRemoveRelative()
+		{
+			Key key = new Key(args.ns, args.set, "oplkey14");
+
+			client.Delete(null, key);
+
+			List<Value> itemList = new List<Value>();
+			itemList.Add(Value.Get(0));
+			itemList.Add(Value.Get(4));
+			itemList.Add(Value.Get(5));
+			itemList.Add(Value.Get(9));
+			itemList.Add(Value.Get(11));
+			itemList.Add(Value.Get(15));
+
+			Record record = client.Operate(null, key,
+				ListOperation.AppendItems(new ListPolicy(ListOrder.ORDERED, ListWriteFlags.DEFAULT), binName, itemList),
+				ListOperation.RemoveByValueRelativeRankRange(binName, Value.Get(5), 0, ListReturnType.VALUE),
+				ListOperation.RemoveByValueRelativeRankRange(binName, Value.Get(5), 1, ListReturnType.VALUE),
+				ListOperation.RemoveByValueRelativeRankRange(binName, Value.Get(5), -1, ListReturnType.VALUE),
+				ListOperation.RemoveByValueRelativeRankRange(binName, Value.Get(3), -3, 1, ListReturnType.VALUE),
+				ListOperation.RemoveByValueRelativeRankRange(binName, Value.Get(3), -3, 2, ListReturnType.VALUE),
+				ListOperation.RemoveByValueRelativeRankRange(binName, Value.Get(3), -3, 3, ListReturnType.VALUE)
+				);
+
+			AssertRecordFound(key, record);
+
+			IList results = record.GetList(binName);
+			int i = 0;
+
+			long size = (long)results[i++];
+			Assert.AreEqual(6L, size);
+
+			IList list = (IList)results[i++];
+			Assert.AreEqual(4L, list.Count);
+			Assert.AreEqual(5L, list[0]);
+			Assert.AreEqual(9L, list[1]);
+			Assert.AreEqual(11L, list[2]);
+			Assert.AreEqual(15L, list[3]);
+
+			list = (IList)results[i++];
+			Assert.AreEqual(0L, list.Count);
+
+			list = (IList)results[i++];
+			Assert.AreEqual(1L, list.Count);
+			Assert.AreEqual(4L, list[0]);
+
+			list = (IList)results[i++];
+			Assert.AreEqual(0L, list.Count);
+
+			list = (IList)results[i++];
+			Assert.AreEqual(0L, list.Count);
+
+			list = (IList)results[i++];
+			Assert.AreEqual(1L, list.Count);
+			Assert.AreEqual(0L, list[0]);
 		}
 	}
 }
