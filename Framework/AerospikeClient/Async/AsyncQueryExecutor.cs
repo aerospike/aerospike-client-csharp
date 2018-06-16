@@ -36,13 +36,26 @@ namespace Aerospike.Client
 			// Create commands.
 			AsyncQuery[] tasks = new AsyncQuery[nodes.Length];
 			int count = 0;
+			bool hasClusterStable = true;
 
 			foreach (Node node in nodes)
 			{
+				if (!node.HasClusterStable)
+				{
+					hasClusterStable = false;
+				}
 				tasks[count++] = new AsyncQuery(this, cluster, (AsyncNode)node, policy, listener, statement);
 			}
+
 			// Dispatch commands to nodes.
-			Execute(tasks, policy.maxConcurrentNodes);
+			if (policy.failOnClusterChange && hasClusterStable)
+			{
+				ExecuteValidate(cluster, tasks, policy.maxConcurrentNodes, statement.ns);
+			}
+			else
+			{
+				Execute(tasks, policy.maxConcurrentNodes);
+			}
 		}
 
 		protected internal override void OnSuccess()

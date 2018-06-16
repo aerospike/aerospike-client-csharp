@@ -111,9 +111,9 @@ namespace Aerospike.Client
 			}
 		}
 
-		protected internal override MultiCommand CreateCommand()
+		protected internal override MultiCommand CreateCommand(ulong clusterKey, bool first)
 		{
-			return new QueryAggregateCommand(policy, statement, inputQueue, cancel.Token);
+			return new QueryAggregateCommand(policy, statement, inputQueue, cancel.Token, clusterKey, first);
 		}
 
 		protected internal override void SendCancel()

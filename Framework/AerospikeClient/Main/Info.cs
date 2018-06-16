@@ -178,6 +178,16 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
+		/// Internal constructor.  Do not use. 
+		/// </summary>
+		public Info(byte[] buffer, int length, int offset)
+		{
+			this.buffer = buffer;
+			this.length = length;
+			this.offset = offset;
+		}
+
+		/// <summary>
 		/// Parse response in name/value pair format:
 		/// <para>
 		/// &lt;command&gt;\t&lt;name1&gt;=&lt;value1&gt;;&lt;name2&gt;=&lt;value2&gt;;...\n
@@ -626,11 +636,10 @@ namespace Aerospike.Client
 			}
 		}
 
-		private Dictionary<string, string> ParseMultiResponse()
+		public Dictionary<string, string> ParseMultiResponse()
 		{
 			Dictionary<string, string> responses = new Dictionary<string, string>();
-			int offset = 0;
-			int begin = 0;
+			int begin = offset;
 
 			while (offset < length)
 			{

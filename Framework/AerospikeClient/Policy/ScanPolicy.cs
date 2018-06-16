@@ -51,7 +51,7 @@ namespace Aerospike.Client
 		public bool includeBinData = true;
 	
 		/// <summary>
-		/// Terminate scan if cluster in fluctuating state.
+		/// Terminate scan if cluster in migration state.
 		/// </summary>
 		public bool failOnClusterChange;
 

@@ -27,6 +27,8 @@ namespace Aerospike.Client
 		private const int MAX_BUFFER_SIZE = 1024 * 1024 * 10; // 10 MB
 
 		private BufferedStream bis;
+		protected internal readonly String ns;
+		private readonly ulong clusterKey;
 		protected internal int resultCode;
 		protected internal int generation;
 		protected internal int expiration;
@@ -34,13 +36,42 @@ namespace Aerospike.Client
 		protected internal int fieldCount;
 		protected internal int opCount;
 		private readonly bool stopOnNotFound;
+		private readonly bool first;
 		protected internal volatile bool valid = true;
 
 		protected internal MultiCommand(bool stopOnNotFound)
 		{
 			this.stopOnNotFound = stopOnNotFound;
+			this.ns = null;
+			this.clusterKey = 0;
+			this.first = false;
 		}
 
+		protected internal MultiCommand(String ns, ulong clusterKey, bool first)
+		{
+			this.stopOnNotFound = true;
+			this.ns = ns;
+			this.clusterKey = clusterKey;
+			this.first = first;
+		}
+
+		public void Execute(Cluster cluster, Policy policy, Node node)
+		{
+			if (clusterKey != 0)
+			{
+				if (!first)
+				{
+					QueryValidate.Validate(node, ns, clusterKey);
+				}
+				base.Execute(cluster, policy, null, node, true);
+				QueryValidate.Validate(node, ns, clusterKey);
+			}
+			else
+			{
+				base.Execute(cluster, policy, null, node, true);
+			}
+		}
+		
 		protected internal sealed override void ParseResult(Connection conn)
 		{
 			// Read socket into receive buffer one record at a time.  Do not read entire receive size

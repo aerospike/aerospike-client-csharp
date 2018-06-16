@@ -54,11 +54,16 @@ namespace Aerospike.Client
 
 		protected internal void InitializeThreads()
 		{
+			// Detect cluster migrations when performing scan.
+			ulong clusterKey = policy.failOnClusterChange ? QueryValidate.ValidateBegin(nodes[0], statement.ns) : 0;	
+			bool first = true;
+
 			// Initialize threads.
 			for (int i = 0; i < nodes.Length; i++)
 			{
-				MultiCommand command = CreateCommand();
+				MultiCommand command = CreateCommand(clusterKey, first);
 				threads[i] = new QueryThread(this, nodes[i], command);
+				first = false;
 			}
 		}
 
@@ -145,7 +150,7 @@ namespace Aerospike.Client
 				{
 					if (command.IsValid())
 					{
-						command.Execute(parent.cluster, parent.policy, null, node, true);
+						command.Execute(parent.cluster, parent.policy, node);
 					}
 					parent.ThreadCompleted();
 				}
@@ -162,7 +167,7 @@ namespace Aerospike.Client
 			}
 		}
 
-		protected internal abstract MultiCommand CreateCommand();
+		protected internal abstract MultiCommand CreateCommand(ulong clusterKey, bool first);
 		protected internal abstract void SendCancel();
 		protected internal abstract void SendCompleted();
 	}

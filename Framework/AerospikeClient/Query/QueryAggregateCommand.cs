@@ -22,18 +22,20 @@ namespace Aerospike.Client
 {
 	public sealed class QueryAggregateCommand : MultiCommand
 	{
-		private readonly Policy policy;
+		private readonly QueryPolicy policy;
 		private readonly Statement statement;
 		private readonly BlockingCollection<object> inputQueue;
 		private readonly CancellationToken cancelToken;
 
 		public QueryAggregateCommand
 		(
-			Policy policy,
+			QueryPolicy policy,
 			Statement statement,
 			BlockingCollection<object> inputQueue,
-			CancellationToken cancelToken
-		) : base(true)
+			CancellationToken cancelToken,
+			ulong clusterKey,
+			bool first
+		) : base(statement.ns, clusterKey, first)
 		{
 			this.policy = policy;
 			this.statement = statement;

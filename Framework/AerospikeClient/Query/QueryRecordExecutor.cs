@@ -33,9 +33,9 @@ namespace Aerospike.Client
 			StartThreads();
 		}
 
-		protected internal override MultiCommand CreateCommand()
+		protected internal override MultiCommand CreateCommand(ulong clusterKey, bool first)
 		{
-			return new QueryRecordCommand(policy, statement, recordSet);
+			return new QueryRecordCommand(policy, statement, recordSet, clusterKey, first);
 		}
 
 		protected internal override void SendCancel()

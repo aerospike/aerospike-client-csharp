@@ -20,12 +20,12 @@ namespace Aerospike.Client
 {
 	public sealed class QueryRecordCommand : MultiCommand
 	{
-		private readonly Policy policy;
+		private readonly QueryPolicy policy;
 		private readonly Statement statement;
 		private readonly RecordSet recordSet;
 
-		public QueryRecordCommand(Policy policy, Statement statement, RecordSet recordSet) 
-			: base(true)
+		public QueryRecordCommand(QueryPolicy policy, Statement statement, RecordSet recordSet, ulong clusterKey, bool first) 
+			: base(statement.ns, clusterKey, first)
 		{
 			this.policy = policy;
 			this.statement = statement;

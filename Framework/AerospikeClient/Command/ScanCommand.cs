@@ -22,7 +22,6 @@ namespace Aerospike.Client
 	public sealed class ScanCommand : MultiCommand
 	{
 		private readonly ScanPolicy policy;
-		private readonly string ns;
 		private readonly string setName;
 		private readonly ScanCallback callback;
 		private readonly string[] binNames;
@@ -35,11 +34,12 @@ namespace Aerospike.Client
 			string setName,
 			ScanCallback callback,
 			string[] binNames,
-			ulong taskId
-		) : base(true)
+			ulong taskId,
+			ulong clusterKey,
+			bool first
+		) : base(ns, clusterKey, first)
 		{
 			this.policy = policy;
-			this.ns = ns;
 			this.setName = setName;
 			this.callback = callback;
 			this.binNames = binNames;

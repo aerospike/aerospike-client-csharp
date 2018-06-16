@@ -23,6 +23,9 @@ namespace Aerospike.Client
 		private int completedCount;
 		private int done;
 		private AsyncMultiCommand[] commands;
+		private AsyncCluster cluster;
+		private string ns;
+		private ulong clusterKey;
 		private int maxConcurrent;
 
 		public void Execute(AsyncMultiCommand[] commands, int maxConcurrent)
@@ -36,7 +39,107 @@ namespace Aerospike.Client
 			}
 		}
 
-		protected internal void ChildSuccess()
+		public void ExecuteValidate(AsyncCluster cluster, AsyncMultiCommand[] commands, int maxConcurrent, string ns)
+		{
+			this.cluster = cluster;
+			this.commands = commands;
+			this.maxConcurrent = (maxConcurrent == 0 || maxConcurrent >= commands.Length) ? commands.Length : maxConcurrent;
+			this.ns = ns;
+
+			AsyncQueryValidate.ValidateBegin(cluster, new BeginHandler(this, commands, this.maxConcurrent), commands[0].node, ns);
+		}
+
+		private class BeginHandler : AsyncQueryValidate.BeginListener
+		{
+			private readonly AsyncMultiExecutor parent;
+			private AsyncMultiCommand[] commands;
+			private int max;
+
+			public BeginHandler(AsyncMultiExecutor parent, AsyncMultiCommand[] commands, int max)
+			{
+				this.parent = parent;
+				this.commands = commands;
+				this.max = max;
+			}
+
+			public void OnSuccess(ulong key)
+			{
+				parent.clusterKey = key;
+				commands[0].Execute();
+
+				for (int i = 1; i < max; i++)
+				{
+					parent.ExecuteValidateCommand(commands[i]);
+				}
+			}
+
+			public void OnFailure(AerospikeException ae)
+			{
+				parent.OnFailure(ae);
+			}
+		}
+
+		private void ExecuteValidateCommand(AsyncMultiCommand command)
+		{
+			AsyncQueryValidate.Validate(cluster, new NextHandler(this, command), command.node, ns, clusterKey);
+		}
+
+		private class NextHandler : AsyncQueryValidate.Listener
+		{
+			private readonly AsyncMultiExecutor parent;
+
+			private AsyncMultiCommand command;
+
+			public NextHandler(AsyncMultiExecutor parent, AsyncMultiCommand command)
+			{
+				this.parent = parent;
+				this.command = command;
+			}
+
+			public void OnSuccess()
+			{
+				command.Execute();
+			}
+
+			public void OnFailure(AerospikeException ae)
+			{
+				parent.ChildFailure(ae);
+			}
+		}
+
+		protected internal void ChildSuccess(AsyncNode node)
+		{
+			if (clusterKey == 0)
+			{
+				QueryComplete();
+			}
+			else
+			{
+				AsyncQueryValidate.Validate(cluster, new EndHandler(this), node, ns, clusterKey);
+			}
+		}
+
+		private class EndHandler : AsyncQueryValidate.Listener
+		{
+			private readonly AsyncMultiExecutor parent;
+
+			public EndHandler(AsyncMultiExecutor parent)
+			{
+				this.parent = parent;
+			}
+
+			public void OnSuccess()
+			{
+				parent.QueryComplete();
+			}
+
+			public void OnFailure(AerospikeException ae)
+			{
+				parent.ChildFailure(ae);
+			}
+		}
+		
+		private void QueryComplete()
 		{
 			int finished = Interlocked.Increment(ref completedCount);
 
@@ -48,7 +151,14 @@ namespace Aerospike.Client
 				if (nextThread < commands.Length && done == 0)
 				{
 					// Start new command.
-					commands[nextThread].Execute();
+					if (clusterKey == 0)
+					{
+						commands[nextThread].Execute();
+					}
+					else
+					{
+						ExecuteValidateCommand(commands[nextThread]);
+					}
 				}
 			}
 			else

@@ -145,7 +145,7 @@ namespace Aerospike.Client
 			{
 				if (command.IsValid())
 				{
-					command.Execute(parent.cluster, parent.policy, null, node, true);
+					command.Execute(parent.cluster, parent.policy, node);
 				}
 				parent.ThreadCompleted();
 			}

@@ -203,6 +203,8 @@
     <Compile Include="Async\AsyncTouch.cs" />
     <Compile Include="Async\AsyncWrite.cs" />
     <Compile Include="Async\BufferPool.cs" />
+    <Compile Include="Async\AsyncInfo.cs" />
+    <Compile Include="Async\AsyncQueryValidate.cs" />
     <Compile Include="Async\MaxCommandAction.cs" />
     <Compile Include="BCrypt\BCrypt.cs" />
     <Compile Include="BCrypt\SaltParseException.cs" />
@@ -251,6 +253,7 @@
     <Compile Include="Command\WriteCommand.cs" />
     <Compile Include="Listener\BatchListListener.cs" />
     <Compile Include="Listener\BatchSequenceListener.cs" />
+    <Compile Include="Listener\InfoListener.cs" />
     <Compile Include="Listener\DeleteListener.cs" />
     <Compile Include="Listener\ExecuteListener.cs" />
     <Compile Include="Listener\ExistsArrayListener.cs" />
@@ -308,6 +311,7 @@
       <DesignTime>True</DesignTime>
       <DependentUpon>Resources.resx</DependentUpon>
     </Compile>
+    <Compile Include="Query\QueryValidate.cs" />
     <Compile Include="Query\Filter.cs" />
     <Compile Include="Query\IndexCollectionType.cs" />
     <Compile Include="Query\IndexType.cs" />

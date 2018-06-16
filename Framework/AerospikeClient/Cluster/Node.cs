@@ -38,6 +38,7 @@ namespace Aerospike.Client
 		public const int HAS_REPLICAS_ALL = (1 << 3);
 		public const int HAS_PEERS = (1 << 4);
 		public const int HAS_REPLICAS = (1 << 5);
+		public const int HAS_CLUSTER_STABLE = (1 << 6);
 		
 		protected internal readonly Cluster cluster;
 		private readonly string name;
@@ -720,7 +721,15 @@ namespace Aerospike.Client
 		{
 			get { return (features & HAS_PEERS) != 0; }
 		}
-	
+
+		/// <summary>
+		/// Does server support cluster-stable info command.
+		/// </summary>
+		public bool HasClusterStable
+		{
+			get { return (features & HAS_CLUSTER_STABLE) != 0; }
+		}
+
 		/// <summary>
 		/// Return node name and host address in string format.
 		/// </summary>

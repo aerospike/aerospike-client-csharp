@@ -41,7 +41,7 @@ namespace Aerospike.Client
 		protected internal Policy policy;
 		private readonly Partition partition;
 		private AsyncConnection conn;
-		private AsyncNode node;
+		protected internal AsyncNode node;
 		private SocketAsyncEventArgs eventArgs;
 		private BufferSegment segmentOrig;
 		private BufferSegment segment;
@@ -331,6 +331,24 @@ namespace Aerospike.Client
 			dataOffset = segment.offset;
 
 			ulong size = ((ulong)length - 8) | (CL_MSG_VERSION << 56) | (AS_MSG_TYPE << 48);
+			ByteUtil.LongToBytes(size, dataBuffer, segment.offset);
+		}
+
+		protected internal void EndInfo()
+		{
+			// Write total size of message.
+			int length = dataOffset - segment.offset;
+
+			if (length > dataLength)
+			{
+				throw new AerospikeException("Actual buffer length " + length + " is greater than estimated length " + dataLength);
+			}
+
+			// Switch dataLength from length to buffer end offset.
+			dataLength = dataOffset;
+			dataOffset = segment.offset;
+
+			ulong size = ((ulong)length - 8) | (2UL << 56) | (1UL << 48);
 			ByteUtil.LongToBytes(size, dataBuffer, segment.offset);
 		}
 

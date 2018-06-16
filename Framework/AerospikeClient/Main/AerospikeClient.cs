@@ -802,15 +802,20 @@ namespace Aerospike.Client
 				throw new AerospikeException(ResultCode.SERVER_NOT_AVAILABLE, "Scan failed because cluster is empty.");
 			}
 
+			// Detect cluster migrations when performing scan.
+			ulong clusterKey = policy.failOnClusterChange ? QueryValidate.ValidateBegin(nodes[0], ns) : 0;
+			ulong taskId = RandomShift.ThreadLocalInstance.NextLong();
+			bool first = true;
+
 			if (policy.concurrentNodes)
 			{
 				Executor executor = new Executor(cluster, policy, nodes.Length);
-				ulong taskId = RandomShift.ThreadLocalInstance.NextLong();
 
 				foreach (Node node in nodes)
 				{
-					ScanCommand command = new ScanCommand(policy, ns, setName, callback, binNames, taskId);
+					ScanCommand command = new ScanCommand(policy, ns, setName, callback, binNames, taskId, clusterKey, first);
 					executor.AddCommand(node, command);
+					first = false;
 				}
 
 				executor.Execute(policy.maxConcurrentNodes);
@@ -819,7 +824,9 @@ namespace Aerospike.Client
 			{
 				foreach (Node node in nodes)
 				{
-					ScanNode(policy, node, ns, setName, callback, binNames);
+					ScanCommand command = new ScanCommand(policy, ns, setName, callback, binNames, taskId, clusterKey, first);
+					command.Execute(cluster, policy, node);
+					first = false;
 				}
 			}
 		}
@@ -877,10 +884,12 @@ namespace Aerospike.Client
 				throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Invalid scan percent: " + policy.scanPercent);
 			}
 
+			// Detect cluster migrations when performing scan.
+			ulong clusterKey = policy.failOnClusterChange ? QueryValidate.ValidateBegin(node, ns) : 0;
 			ulong taskId = RandomShift.ThreadLocalInstance.NextLong();
 
-			ScanCommand command = new ScanCommand(policy, ns, setName, callback, binNames, taskId);
-			command.Execute(cluster, policy, null, node, true);
+			ScanCommand command = new ScanCommand(policy, ns, setName, callback, binNames, taskId, clusterKey, true);
+			command.Execute(cluster, policy, node);
 		}
 		
 		//---------------------------------------------------------------

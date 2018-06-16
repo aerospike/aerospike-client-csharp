@@ -45,6 +45,11 @@ namespace Aerospike.Client
 		public bool includeBinData = true;
 
 		/// <summary>
+		/// Terminate query if cluster is in migration state.
+		/// </summary>
+		public bool failOnClusterChange;
+
+		/// <summary>
 		/// Copy query policy from another query policy.
 		/// </summary>
 		public QueryPolicy(QueryPolicy other) : base(other)
@@ -52,6 +57,7 @@ namespace Aerospike.Client
 			this.maxConcurrentNodes = other.maxConcurrentNodes;
 			this.recordQueueSize = other.recordQueueSize;
 			this.includeBinData = other.includeBinData;
+			this.failOnClusterChange = other.failOnClusterChange;
 		}
 
 		/// <summary>

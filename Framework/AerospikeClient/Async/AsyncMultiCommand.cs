@@ -179,7 +179,7 @@ namespace Aerospike.Client
 
 		protected internal override void OnSuccess()
 		{
-			parent.ChildSuccess();
+			parent.ChildSuccess(node);
 		}
 
 		protected internal override void OnFailure(AerospikeException e)

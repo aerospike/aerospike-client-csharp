@@ -276,6 +276,10 @@ namespace Aerospike.Client
 					{
 						this.features |= Node.HAS_PEERS;
 					}
+					else if (feature.Equals("cluster-stable"))
+					{
+						this.features |= Node.HAS_CLUSTER_STABLE;
+					}
 				}
 			}
 			catch (Exception)
