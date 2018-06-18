@@ -43,12 +43,14 @@
     <Compile Include="..\..\Framework\AerospikeClient\Async\AsyncDelete.cs" Link="Async\AsyncDelete.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Async\AsyncExecute.cs" Link="Async\AsyncExecute.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Async\AsyncExists.cs" Link="Async\AsyncExists.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Async\AsyncInfo.cs" Link="Async\AsyncInfo.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Async\AsyncMultiCommand.cs" Link="Async\AsyncMultiCommand.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Async\AsyncMultiExecutor.cs" Link="Async\AsyncMultiExecutor.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Async\AsyncNode.cs" Link="Async\AsyncNode.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Async\AsyncOperate.cs" Link="Async\AsyncOperate.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Async\AsyncQuery.cs" Link="Async\AsyncQuery.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Async\AsyncQueryExecutor.cs" Link="Async\AsyncQueryExecutor.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Async\AsyncQueryValidate.cs" Link="Async\AsyncQueryValidate.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Async\AsyncRead.cs" Link="Async\AsyncRead.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Async\AsyncReadHeader.cs" Link="Async\AsyncReadHeader.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Async\AsyncScan.cs" Link="Async\AsyncScan.cs" />
@@ -111,6 +113,7 @@
     <Compile Include="..\..\Framework\AerospikeClient\Listener\ExistsArrayListener.cs" Link="Listener\ExistsArrayListener.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Listener\ExistsListener.cs" Link="Listener\ExistsListener.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Listener\ExistsSequenceListener.cs" Link="Listener\ExistsSequenceListener.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Listener\InfoListener.cs" Link="Listener\InfoListener.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Listener\RecordArrayListener.cs" Link="Listener\RecordArrayListener.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Listener\RecordListener.cs" Link="Listener\RecordListener.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Listener\RecordSequenceListener.cs" Link="Listener\RecordSequenceListener.cs" />
@@ -156,6 +159,7 @@
     <Compile Include="..\..\Framework\AerospikeClient\Query\QueryExecutor.cs" Link="Query\QueryExecutor.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Query\QueryRecordCommand.cs" Link="Query\QueryRecordCommand.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Query\QueryRecordExecutor.cs" Link="Query\QueryRecordExecutor.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Query\QueryValidate.cs" Link="Query\QueryValidate.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Query\RecordSet.cs" Link="Query\RecordSet.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Query\RegexFlag.cs" Link="Query\RegexFlag.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Query\ResultSet.cs" Link="Query\ResultSet.cs" />
