@@ -14,33 +14,40 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using System;
-
 namespace Aerospike.Client
 {
 	/// <summary>
-	/// Unique key map write type.
-	/// This enum should only be used for server versions &lt; 4.3.
-	/// <seealso cref="MapWriteFlags"/> are recommended for server versions >= 4.3.
+	/// Map write bit flags. 
+	/// Requires server versions >= 4.3.
 	/// </summary>
-	public enum MapWriteMode
+	public enum MapWriteFlags
 	{
 		/// <summary>
-		/// If the key already exists, the item will be overwritten.
+		/// Default.  Allow create or update.
+		/// </summary>
+		DEFAULT = 0,
+
+		/// <summary>
+		/// If the key already exists, the item will be denied.
 		/// If the key does not exist, a new item will be created.
 		/// </summary>
-		UPDATE,
+		CREATE_ONLY = 1,
 
 		/// <summary>
 		/// If the key already exists, the item will be overwritten.
-		/// If the key does not exist, the write will fail.
+		/// If the key does not exist, the item will be denied.
 		/// </summary>
-		UPDATE_ONLY,
+		UPDATE_ONLY = 2,
 
 		/// <summary>
-		/// If the key already exists, the write will fail.
-		/// If the key does not exist, a new item will be created.
+		/// Do not raise error if a map item is denied due to write flag constraints.
 		/// </summary>
-		CREATE_ONLY
+		NO_FAIL = 4,
+
+		/// <summary>
+		/// Allow other valid map items to be committed if a map item is denied due to
+		/// write flag constraints.
+		/// </summary>
+		PARTIAL = 8
 	}
 }

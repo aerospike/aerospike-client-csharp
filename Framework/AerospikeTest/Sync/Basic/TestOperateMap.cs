@@ -881,5 +881,46 @@ namespace Aerospike.Test
 			Assert.AreEqual(1L, list.Count);
 			Assert.AreEqual(10L, list[0]);
 		}
+
+		[TestMethod]
+		public void OperateMapPartial() {
+			if (! args.ValidateMap()) {
+				return;
+			}
+
+			Key key = new Key(args.ns, args.set, "opmkey16");
+			client.Delete(null, key);
+
+			Dictionary<Value, Value> inputMap = new Dictionary<Value, Value>();
+			inputMap[Value.Get(0)] = Value.Get(17);
+			inputMap[Value.Get(4)] = Value.Get(2);
+			inputMap[Value.Get(5)] = Value.Get(15);
+			inputMap[Value.Get(9)] = Value.Get(10);
+		
+			// Write values to empty map.
+			Record record = client.Operate(null, key, 
+					MapOperation.PutItems(MapPolicy.Default, binName, inputMap),
+					MapOperation.PutItems(MapPolicy.Default, "bin2", inputMap)
+					);
+					
+			AssertRecordFound(key, record);
+
+			Dictionary<Value, Value> sourceMap = new Dictionary<Value, Value>();
+			sourceMap[Value.Get(3)] = Value.Get(3);
+			sourceMap[Value.Get(5)] = Value.Get(15);
+
+			record = client.Operate(null, key,
+					MapOperation.PutItems(new MapPolicy(MapOrder.UNORDERED, MapWriteFlags.CREATE_ONLY | MapWriteFlags.PARTIAL | MapWriteFlags.NO_FAIL), binName, sourceMap),
+					MapOperation.PutItems(new MapPolicy(MapOrder.UNORDERED, MapWriteFlags.CREATE_ONLY | MapWriteFlags.NO_FAIL), "bin2", sourceMap)
+					);
+		
+			AssertRecordFound(key, record);
+
+			long size = record.GetLong(binName);
+			Assert.AreEqual(5L, size);
+		
+			size = record.GetLong("bin2");
+			Assert.AreEqual(4L, size);	
+		}
 	}
 }

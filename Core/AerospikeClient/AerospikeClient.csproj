@@ -74,6 +74,7 @@
     <Compile Include="..\..\Framework\AerospikeClient\CDT\MapOrder.cs" Link="CDT\MapOrder.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\CDT\MapPolicy.cs" Link="CDT\MapPolicy.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\CDT\MapReturnType.cs" Link="CDT\MapReturnType.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\CDT\MapWriteFlags.cs" Link="CDT\MapWriteFlags.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\CDT\MapWriteMode.cs" Link="CDT\MapWriteMode.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Cluster\Cluster.cs" Link="Cluster\Cluster.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Cluster\Connection.cs" Link="Cluster\Connection.cs" />

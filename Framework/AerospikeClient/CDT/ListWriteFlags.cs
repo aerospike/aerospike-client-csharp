@@ -17,7 +17,7 @@
 namespace Aerospike.Client
 {
 	/// <summary>
-	/// List write flags
+	/// List write bit flags.
 	/// </summary>
 	public enum ListWriteFlags
 	{
@@ -35,6 +35,17 @@ namespace Aerospike.Client
 		/// Enforce list boundaries when inserting.  Do not allow values to be inserted
 		/// at index outside current list boundaries.
 		/// </summary>
-		INSERT_BOUNDED = 2
+		INSERT_BOUNDED = 2,
+
+		/// <summary>
+		/// Do not raise error if a list item fails due to write flag constraints.
+		/// </summary>
+		NO_FAIL = 4,
+
+		/// <summary>
+		/// Allow other valid list items to be committed if a list item fails due to
+		/// write flag constraints.
+		/// </summary>
+		PARTIAL = 8
 	}
 }

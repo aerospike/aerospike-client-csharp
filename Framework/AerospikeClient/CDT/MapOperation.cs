@@ -106,29 +106,41 @@ namespace Aerospike.Client
 		/// Server writes key/value item to map bin and returns map size.
 		/// <para>
 		/// The required map policy dictates the type of map to create when it does not exist.
-		/// The map policy also specifies the mode used when writing items to the map.
-		/// See policy <seealso cref="Aerospike.Client.MapPolicy"/> and write mode 
-		/// <seealso cref="Aerospike.Client.MapWriteMode"/>.
+		/// The map policy also specifies the flags used when writing items to the map.
+		/// See policy <seealso cref="Aerospike.Client.MapPolicy"/>.
 		/// </para>
 		/// </summary>
 		public static Operation Put(MapPolicy policy, string binName, Value key, Value value)
 		{
 			Packer packer = new Packer();
-			packer.PackRawShort(policy.itemCommand);
 
-			if (policy.itemCommand == REPLACE)
+			if (policy.flags != 0)
 			{
-				// Replace doesn't allow map attributes because it does not create on non-existing key.
-				packer.PackArrayBegin(2);
-				key.Pack(packer);
-				value.Pack(packer);
-			}
-			else
-			{
-				packer.PackArrayBegin(3);
+				packer.PackRawShort(PUT);
+				packer.PackArrayBegin(4);
 				key.Pack(packer);
 				value.Pack(packer);
 				packer.PackNumber(policy.attributes);
+				packer.PackNumber(policy.flags);
+			}
+			else
+			{
+				packer.PackRawShort(policy.itemCommand);
+
+				if (policy.itemCommand == REPLACE)
+				{
+					// Replace doesn't allow map attributes because it does not create on non-existing key.
+					packer.PackArrayBegin(2);
+					key.Pack(packer);
+					value.Pack(packer);
+				}
+				else
+				{
+					packer.PackArrayBegin(3);
+					key.Pack(packer);
+					value.Pack(packer);
+					packer.PackNumber(policy.attributes);
+				}
 			}
 			return new Operation(Operation.Type.MAP_MODIFY, binName, Value.Get(packer.ToByteArray()));
 		}
@@ -138,27 +150,38 @@ namespace Aerospike.Client
 		/// Server writes each map item to map bin and returns map size.
 		/// <para>
 		/// The required map policy dictates the type of map to create when it does not exist.
-		/// The map policy also specifies the mode used when writing items to the map.
-		/// See policy <seealso cref="Aerospike.Client.MapPolicy"/> and write mode 
-		/// <seealso cref="Aerospike.Client.MapWriteMode"/>.
+		/// The map policy also specifies the flags used when writing items to the map.
+		/// See policy <seealso cref="Aerospike.Client.MapPolicy"/>.
 		/// </para>
 		/// </summary>
 		public static Operation PutItems(MapPolicy policy, string binName, IDictionary map)
 		{
 			Packer packer = new Packer();
-			packer.PackRawShort(policy.itemsCommand);
 
-			if (policy.itemsCommand == REPLACE_ITEMS)
+			if (policy.flags != 0)
 			{
-				// Replace doesn't allow map attributes because it does not create on non-existing key.
-				packer.PackArrayBegin(1);
+				packer.PackRawShort(PUT_ITEMS);
+				packer.PackArrayBegin(3);
 				packer.PackMap(map);
+				packer.PackNumber(policy.attributes);
+				packer.PackNumber(policy.flags);
 			}
 			else
 			{
-				packer.PackArrayBegin(2);
-				packer.PackMap(map);
-				packer.PackNumber(policy.attributes);
+				packer.PackRawShort(policy.itemsCommand);
+
+				if (policy.itemsCommand == REPLACE_ITEMS)
+				{
+					// Replace doesn't allow map attributes because it does not create on non-existing key.
+					packer.PackArrayBegin(1);
+					packer.PackMap(map);
+				}
+				else
+				{
+					packer.PackArrayBegin(2);
+					packer.PackMap(map);
+					packer.PackNumber(policy.attributes);
+				}
 			}
 			return new Operation(Operation.Type.MAP_MODIFY, binName, Value.Get(packer.ToByteArray()));
 		}

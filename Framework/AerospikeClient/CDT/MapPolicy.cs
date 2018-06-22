@@ -29,6 +29,7 @@ namespace Aerospike.Client
 		public static readonly MapPolicy Default = new MapPolicy();
 
 		internal readonly int attributes;
+		internal readonly int flags;
 		internal readonly int itemCommand;
 		internal readonly int itemsCommand;
 
@@ -45,10 +46,15 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Create unique key map with specified order when map does not exist.
 		/// Use specified write mode when writing map items.
+		/// <para>
+		/// This constructor should only be used for server versions &lt; 4.3.
+		/// <seealso cref="MapPolicy(MapOrder,MapWriteFlags)"/> is recommended for server versions >= 4.3.
+		/// </para>
 		/// </summary>
 		public MapPolicy(MapOrder order, MapWriteMode writeMode)
 		{
 			this.attributes = (int)order;
+			this.flags = (int)MapWriteFlags.DEFAULT;
 
 			switch (writeMode)
 			{
@@ -67,6 +73,18 @@ namespace Aerospike.Client
 					itemsCommand = MapOperation.ADD_ITEMS;
 					break;
 			}
+		}
+
+		/// <summary>
+		/// Create unique key map with specified order when map does not exist.
+		/// Use specified write flags when writing map items.
+		/// </summary>
+		public MapPolicy(MapOrder order, MapWriteFlags flags)
+		{
+			this.attributes = (int)order;
+			this.flags = (int)flags;
+			this.itemCommand = MapOperation.PUT;
+			this.itemsCommand = MapOperation.PUT_ITEMS;
 		}
 	}
 }

@@ -849,5 +849,53 @@ namespace Aerospike.Test
 			Assert.AreEqual(1L, list.Count);
 			Assert.AreEqual(0L, list[0]);
 		}
+
+		[TestMethod]
+		public void OperateListPartial()
+		{
+			Key key = new Key(args.ns, args.set, "oplkey15");
+		
+			client.Delete(null, key);
+		
+			List<Value> itemList = new List<Value>();
+			itemList.Add(Value.Get(0));
+			itemList.Add(Value.Get(4));
+			itemList.Add(Value.Get(5));
+			itemList.Add(Value.Get(9));
+			itemList.Add(Value.Get(9));
+			itemList.Add(Value.Get(11));
+			itemList.Add(Value.Get(15));
+			itemList.Add(Value.Get(0));
+
+			Record record = client.Operate(null, key,
+					ListOperation.AppendItems(new ListPolicy(ListOrder.ORDERED, ListWriteFlags.ADD_UNIQUE | ListWriteFlags.PARTIAL | ListWriteFlags.NO_FAIL), binName, itemList),
+					ListOperation.AppendItems(new ListPolicy(ListOrder.ORDERED, ListWriteFlags.ADD_UNIQUE | ListWriteFlags.NO_FAIL), "bin2", itemList)
+					);
+		
+			AssertRecordFound(key, record);
+		
+			long size = record.GetLong(binName);
+			Assert.AreEqual(6L, size);	
+		
+			size = record.GetLong("bin2");
+			Assert.AreEqual(0L, size);	
+		
+			itemList = new List<Value>();
+			itemList.Add(Value.Get(11));
+			itemList.Add(Value.Get(3));
+
+			record = client.Operate(null, key,
+					ListOperation.AppendItems(new ListPolicy(ListOrder.ORDERED, ListWriteFlags.ADD_UNIQUE | ListWriteFlags.PARTIAL | ListWriteFlags.NO_FAIL), binName, itemList),
+					ListOperation.AppendItems(new ListPolicy(ListOrder.ORDERED, ListWriteFlags.ADD_UNIQUE | ListWriteFlags.NO_FAIL), "bin2", itemList)
+					);
+
+			AssertRecordFound(key, record);
+		
+			size = record.GetLong(binName);
+			Assert.AreEqual(7L, size);	
+		
+			size = record.GetLong("bin2");
+			Assert.AreEqual(2L, size);	
+		}
 	}
 }
