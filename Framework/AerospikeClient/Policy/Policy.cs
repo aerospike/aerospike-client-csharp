@@ -48,20 +48,19 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Socket idle timeout in milliseconds when processing a database command.
 		/// <para>
+		/// If socketTimeout is zero and totalTimeout is non-zero, then socketTimeout will be set
+		/// to totalTimeout.  If both socketTimeout and totalTimeout are non-zero and
+		/// socketTimeout > totalTimeout, then socketTimeout will be set to totalTimeout. If both
+		/// socketTimeout and totalTimeout are zero, then there will be no socket idle limit.
+		/// </para>
+		/// <para>
 		/// If socketTimeout is not zero and the socket has been idle for at least socketTimeout,
 		/// both maxRetries and totalTimeout are checked.  If maxRetries and totalTimeout are not
 		/// exceeded, the transaction is retried.
 		/// </para>
 		/// <para>
-		/// If both socketTimeout and totalTimeout are non-zero and socketTimeout > totalTimeout,
-		/// then socketTimeout will be set to totalTimeout. 
-		/// </para>
-		/// <para>
-		/// If socketTimeout is zero, there will be no socket idle limit.
-		/// </para>
-		/// <para>
 		/// For synchronous methods, socketTimeout is the socket SendTimeout and ReceiveTimeout.
-		/// For asynchronous methods, the socketTimeout is implemented using an AsyncTimeoutQueue
+		/// For asynchronous methods, the socketTimeout is implemented using the AsyncTimeoutQueue
 		/// and socketTimeout is only used if totalTimeout is not defined.
 		/// </para>
 		/// <para>

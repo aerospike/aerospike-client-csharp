@@ -37,7 +37,7 @@ namespace Aerospike.Client
 			{
 				deadline = DateTime.UtcNow.AddMilliseconds(totalTimeout);
 
-				if (socketTimeout > totalTimeout)
+				if (socketTimeout == 0 || socketTimeout > totalTimeout)
 				{
 					socketTimeout = totalTimeout;
 				}
