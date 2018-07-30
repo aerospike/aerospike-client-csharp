@@ -641,6 +641,27 @@ namespace Aerospike.Client
 			conn.Close();
 		}
 
+		public ConnectionStats GetConnectionStats()
+		{
+			int inPool = 0;
+			int inUse = 0;
+
+			foreach (Pool pool in connectionPools)
+			{
+				int tmp = pool.queue.Count;
+				inPool += tmp;
+				tmp = pool.total - tmp;
+
+				// Timing issues may cause values to go negative. Adjust.
+				if (tmp < 0)
+				{
+					tmp = 0;
+				}
+				inUse += tmp;
+			}
+			return new ConnectionStats(inPool, inUse);
+		}
+
 		/// <summary>
 		/// Return server node IP address and port.
 		/// </summary>
@@ -787,7 +808,7 @@ namespace Aerospike.Client
 	{
 		internal readonly ConcurrentQueue<Connection> queue;
 		internal readonly int capacity;
-		internal int total;
+		internal volatile int total;
 	
 		internal Pool(int capacity) {
 			this.capacity = capacity;

@@ -243,6 +243,14 @@ namespace Aerospike.Client
 			}
 		}
 
+		/// <summary>
+		/// Return operating cluster statistics.
+		/// </summary>
+		public ClusterStats GetClusterStats()
+		{
+			return cluster.GetStats();
+		}
+
 		//-------------------------------------------------------
 		// Write Record Operations
 		//-------------------------------------------------------

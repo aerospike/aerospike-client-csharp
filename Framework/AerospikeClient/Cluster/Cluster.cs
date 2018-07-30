@@ -688,6 +688,20 @@ namespace Aerospike.Client
 			return false;
 		}
 
+		public ClusterStats GetStats()
+		{
+			// Must copy array reference for copy on write semantics to work.
+			Node[] nodeArray = nodes;
+			NodeStats[] nodeStats = new NodeStats[nodeArray.Length];
+			int count = 0;
+
+			foreach (Node node in nodeArray)
+			{
+				nodeStats[count++] = new NodeStats(node);
+			}
+			return new ClusterStats(nodeStats);
+		}
+		
 		public bool Connected
 		{
 			get

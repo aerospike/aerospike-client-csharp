@@ -27,12 +27,14 @@ namespace Aerospike.Client
 	public sealed class AsyncConnection
 	{
 		private readonly Socket socket;
+		private readonly AsyncNode node;
 		private readonly double maxSocketIdleMillis;
 		private DateTime timestamp;
 
-		public AsyncConnection(IPEndPoint address, AsyncCluster cluster)
+		public AsyncConnection(IPEndPoint address, AsyncCluster cluster, AsyncNode node)
 		{
 			this.maxSocketIdleMillis = (double)(cluster.maxSocketIdleMillis);
+			this.node = node;
 
 			try
 			{
@@ -48,6 +50,7 @@ namespace Aerospike.Client
 				socket.ReceiveBufferSize = 0;
 
 				timestamp = DateTime.UtcNow;
+				this.node.AddConnection();
 			}
 			catch (Exception e)
 			{
@@ -110,6 +113,8 @@ namespace Aerospike.Client
 		/// </summary>
 		public void Close()
 		{
+			node.DropConnection();
+
 			try
 			{
 				socket.Shutdown(SocketShutdown.Both);

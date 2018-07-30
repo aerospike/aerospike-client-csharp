@@ -223,6 +223,7 @@
     <Compile Include="CDT\MapWriteMode.cs" />
     <Compile Include="Cluster\Cluster.cs" />
     <Compile Include="Cluster\Connection.cs" />
+    <Compile Include="Cluster\ClusterStats.cs" />
     <Compile Include="Cluster\Node.cs" />
     <Compile Include="Cluster\NodeValidator.cs" />
     <Compile Include="Cluster\Partition.cs" />

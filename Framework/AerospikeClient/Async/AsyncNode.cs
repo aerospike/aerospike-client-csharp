@@ -15,6 +15,7 @@
  * the License.
  */
 using System.Collections.Concurrent;
+using System.Threading;
 
 namespace Aerospike.Client
 {
@@ -25,6 +26,7 @@ namespace Aerospike.Client
 	{
 		private readonly ConcurrentQueue<AsyncConnection> asyncConnQueue;
 		private readonly new AsyncCluster cluster;
+		private int connCount;
 
 		/// <summary>
 		/// Initialize server node with connection parameters.
@@ -85,6 +87,29 @@ namespace Aerospike.Client
 			{
 				conn.Close();
 			}
+		}
+
+		internal void AddConnection()
+		{
+			Interlocked.Increment(ref connCount);
+		}
+
+		internal void DropConnection()
+		{
+			Interlocked.Decrement(ref connCount);
+		}
+
+		public ConnectionStats GetAsyncConnectionStats()
+		{
+			int inPool = asyncConnQueue.Count;
+			int inUse = connCount - inPool;
+
+			// Timing issues may cause values to go negative. Adjust.
+			if (inUse < 0)
+			{
+				inUse = 0;
+			}
+			return new ConnectionStats(inPool, inUse);
 		}
 	}
 }
