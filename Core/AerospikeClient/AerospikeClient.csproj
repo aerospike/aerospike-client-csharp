@@ -12,7 +12,7 @@
     <GenerateAssemblyCompanyAttribute>false</GenerateAssemblyCompanyAttribute>
     <GenerateAssemblyProductAttribute>false</GenerateAssemblyProductAttribute>
     <Authors>Aerospike</Authors>
-    <Version>3.6.5</Version>
+    <Version>3.6.6</Version>
   </PropertyGroup>
 
   <ItemGroup>
