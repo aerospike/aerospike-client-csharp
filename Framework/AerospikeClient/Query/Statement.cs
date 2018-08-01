@@ -33,6 +33,7 @@ namespace Aerospike.Client
 		internal Assembly resourceAssembly;
 		internal string resourcePath;
 		internal string packageName;
+		internal string packageContents;
 		internal string functionName;
 		internal Value[] functionArgs;
 		internal ulong taskId;
@@ -279,6 +280,22 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
+		/// Set Lua aggregation function parameters for a Lua package located in a string with lua code.  
+		/// This function will be called on both the server and client for each selected item.
+		/// </summary>
+		/// <param name="packageName">package name for package that contains aggregation function</param>
+		/// <param name="packageContents">lua code associated with aggregation function.</param>
+		/// <param name="functionName">aggregation function name</param>
+		/// <param name="functionArgs">arguments to pass to function name, if any</param>
+		public void SetAggregateFunction(string packageName, string packageContents, string functionName, params Value[] functionArgs)
+		{
+			this.packageName = packageName;
+			this.packageContents = packageContents;
+			this.functionName = functionName;
+			this.functionArgs = functionArgs;
+		}
+
+		/// <summary>
 		/// Assembly where resource is located.  Current assembly can be obtained by: Assembly.GetExecutingAssembly().
 		/// Used by aggregate queries only.
 		/// </summary>
@@ -306,6 +323,16 @@ namespace Aerospike.Client
 		{
 			set { packageName = value; }
 			get { return packageName; }
+		}
+
+		/// <summary>
+		/// String containing lua code that comprises a package.
+		/// Used by aggregate queries only when aggregation function is defined in a string.
+		/// </summary>
+		public string PackageContents
+		{
+			set { packageContents = value; }
+			get { return packageContents; }
 		}
 
 		/// <summary>

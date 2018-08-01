@@ -21,7 +21,8 @@ namespace Aerospike.Demo
 {
 	public class QuerySum : SyncExample
 	{
-		public QuerySum(Console console) : base(console)
+		public QuerySum(Console console)
+			: base(console)
 		{
 		}
 
@@ -35,23 +36,37 @@ namespace Aerospike.Demo
 				console.Info("Query functions are not supported by the connected Aerospike server.");
 				return;
 			}
+			
+			string packageContents = @"
+local function reducer(val1,val2)
+	return val1 + val2
+end
+
+function sum_single_bin(stream,name)
+	local function mapper(rec)
+		return rec[name]
+	end
+	return stream : map(mapper) : reduce(reducer)
+end
+";
 			string indexName = "aggindex";
 			string keyPrefix = "aggkey";
 			string binName = args.GetBinName("aggbin");
 			int size = 10;
 
-			Register(client, args);
+			Register(client, args, packageContents);
 			CreateIndex(client, args, indexName, binName);
 			WriteRecords(client, args, keyPrefix, binName, size);
-			RunQuery(client, args, indexName, binName);
+			RunQuery(client, args, indexName, binName, packageContents);
 			client.DropIndex(args.policy, args.ns, args.set, indexName);
 		}
 
-		private void Register(AerospikeClient client, Arguments args)
+		private void Register(AerospikeClient client, Arguments args, string packageContents)
 		{
 			string packageName = "sum_example.lua";
 			console.Info("Register: " + packageName);
-			LuaExample.Register(client, args.policy, packageName);
+			RegisterTask task = client.RegisterUdfString(null, packageContents, packageName, Language.LUA);
+			task.Wait();
 		}
 
 		private void CreateIndex(AerospikeClient client, Arguments args, string indexName, string binName)
@@ -90,7 +105,7 @@ namespace Aerospike.Demo
 			}
 		}
 
-		private void RunQuery(AerospikeClient client, Arguments args, string indexName, string binName)
+		private void RunQuery(AerospikeClient client, Arguments args, string indexName, string binName, string packageContents)
 		{
 			int begin = 4;
 			int end = 7;
@@ -103,8 +118,9 @@ namespace Aerospike.Demo
 			stmt.SetSetName(args.set);
 			stmt.SetBinNames(binName);
 			stmt.SetFilter(Filter.Range(binName, begin, end));
+			stmt.SetAggregateFunction("sum_example", packageContents, "sum_single_bin", Value.Get(binName));
 
-			ResultSet rs = client.QueryAggregate(null, stmt, "sum_example", "sum_single_bin", Value.Get(binName));
+			ResultSet rs = client.QueryAggregate(null, stmt);
 
 			try
 			{

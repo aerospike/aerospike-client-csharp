@@ -64,7 +64,11 @@ namespace Aerospike.Client
 		{
 			if (!packages.Contains(statement.packageName))
 			{
-				if (statement.resourceAssembly == null || statement.resourcePath == null)
+				if (statement.packageContents != null)
+				{
+					LoadPackageFromString(statement.packageName, statement.packageContents);
+				}
+				else if (statement.resourceAssembly == null || statement.resourcePath == null)
 				{
 					LoadPackageFromFile(statement.packageName);
 				}
@@ -111,6 +115,18 @@ namespace Aerospike.Client
 			else
 			{
 				global.DoChunk(path);
+			}
+		}
+
+		private void LoadPackageFromString(string packageName, string packageContents)
+		{
+			if (debug)
+			{
+				global.DoChunk(lua.CompileChunk(packageContents, packageName, Lua.DefaultDebugEngine));
+			}
+			else
+			{
+				global.DoChunk(packageContents, packageName);
 			}
 		}
 
