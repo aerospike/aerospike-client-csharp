@@ -1191,12 +1191,7 @@ namespace Aerospike.Client
 				}
 				sequence++;
 			}
-
-			if (partitions.cpMode)
-			{
-				throw new AerospikeException.InvalidNode();
-			}
-			return cluster.GetRandomNode();
+			throw new AerospikeException.InvalidNode();
 		}
 
 		protected internal abstract void SizeBuffer();

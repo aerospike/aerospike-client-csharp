@@ -778,11 +778,7 @@ namespace Aerospike.Client
 				}
 			}
 
-			if (partitions.cpMode)
-			{
-				throw new AerospikeException.InvalidNode();
-			}
-			return GetRandomNode();
+			throw new AerospikeException.InvalidNode();
 		}
 
 		public Node GetRandomNode()
