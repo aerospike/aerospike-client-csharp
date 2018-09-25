@@ -749,8 +749,8 @@ namespace Aerospike.Client
 				return node;
 			}
 
-			// When master only specified, should never get random nodes.
-			throw new AerospikeException.InvalidNode();
+			Node[] nodeArray = nodes;
+			throw new AerospikeException.InvalidNode(nodeArray.Length, partition);
 		}
 
 		public Node GetMasterProlesNode(Partition partition)
@@ -778,7 +778,8 @@ namespace Aerospike.Client
 				}
 			}
 
-			throw new AerospikeException.InvalidNode();
+			Node[] nodeArray = nodes;
+			throw new AerospikeException.InvalidNode(nodeArray.Length, partition);
 		}
 
 		public Node GetRandomNode()
@@ -798,7 +799,7 @@ namespace Aerospike.Client
 					return node;
 				}
 			}
-			throw new AerospikeException.InvalidNode();
+			throw new AerospikeException.InvalidNode("Cluster is empty");
 		}
 
 		public Node[] Nodes
@@ -817,7 +818,7 @@ namespace Aerospike.Client
 
 			if (node == null)
 			{
-				throw new AerospikeException.InvalidNode();
+				throw new AerospikeException.InvalidNode("Invalid node name: " + nodeName);
 			}
 			return node;
 		}

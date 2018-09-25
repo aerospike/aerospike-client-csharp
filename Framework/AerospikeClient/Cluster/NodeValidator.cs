@@ -214,7 +214,7 @@ namespace Aerospike.Client
 		{
 			if (! map.TryGetValue("node", out this.name))
 			{
-				throw new AerospikeException.InvalidNode();
+				throw new AerospikeException.InvalidNode("Node name is null");
 			}
 		}				
 
@@ -225,7 +225,7 @@ namespace Aerospike.Client
 
 			if (!map.TryGetValue("partition-generation", out genString))
 			{
-				throw new AerospikeException.InvalidNode();
+				throw new AerospikeException.InvalidNode("Node " + this.name + ' ' + this.primaryHost + " did not return partition-generation");
 			}
 
 			try
@@ -234,7 +234,7 @@ namespace Aerospike.Client
 			}
 			catch (Exception)
 			{
-				throw new AerospikeException.InvalidNode("Invalid partition-generation: " + genString);
+				throw new AerospikeException.InvalidNode("Node " + this.name + ' ' + this.primaryHost + " returned invalid partition-generation: " + genString);
 			}
 
 			if (gen == -1)
@@ -301,7 +301,9 @@ namespace Aerospike.Client
 
 		private void SetAddress(Cluster cluster, Dictionary<string, string> map, string addressCommand, string tlsName)
 		{
-			if (!map.TryGetValue(addressCommand, out var result) || result == null || result.Length == 0)
+			string result;
+
+			if (!map.TryGetValue(addressCommand, out result) || result == null || result.Length == 0)
 			{
 				// Server does not support service level call (service-clear-std, ...).
 				// Load balancer detection is not possible.

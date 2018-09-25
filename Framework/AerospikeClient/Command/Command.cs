@@ -1191,7 +1191,8 @@ namespace Aerospike.Client
 				}
 				sequence++;
 			}
-			throw new AerospikeException.InvalidNode();
+			Node[] nodeArray = cluster.Nodes;
+			throw new AerospikeException.InvalidNode(nodeArray.Length, partition);
 		}
 
 		protected internal abstract void SizeBuffer();

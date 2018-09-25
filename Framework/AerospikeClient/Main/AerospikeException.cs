@@ -310,8 +310,9 @@ namespace Aerospike.Client
 			/// <summary>
 			/// Create invalid node exception.
 			/// </summary>
-			public InvalidNode()
-				: base(ResultCode.INVALID_NODE_ERROR)
+			public InvalidNode(int clusterSize, Partition partition)
+				: base(ResultCode.INVALID_NODE_ERROR,
+					(clusterSize == 0) ? "Cluster is empty" : "Node not found for partition " + partition)
 			{
 			}
 

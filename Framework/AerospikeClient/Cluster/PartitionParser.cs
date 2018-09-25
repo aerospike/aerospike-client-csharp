@@ -37,6 +37,7 @@ namespace Aerospike.Client
 		private int length;
 		private int offset;
 		private bool copied;
+		private bool regimeError;
 
 		public PartitionParser(Connection conn, Node node, Dictionary<string, Partitions> map, int partitionCount, bool requestProleReplicas)
 		{
@@ -324,6 +325,17 @@ namespace Aerospike.Client
 							nodeOld.partitionGeneration = -1;
 						}
 						nodeArray[i] = node;
+					}
+					else
+					{
+						if (!regimeError)
+						{
+							if (Log.InfoEnabled())
+							{
+								Log.Info(node.ToString() + " regime(" + regime + ") < old regime(" + regimeOld + ")");
+							}
+							regimeError = true;
+						}
 					}
 				}
 				else
