@@ -97,7 +97,7 @@ namespace Aerospike.Client
 						if (ae.Result == ResultCode.TIMEOUT)
 						{
 							// Go through retry logic on server timeout.
-							exception = new AerospikeException.Timeout(node, policy, iteration + 1, false);
+							exception = new AerospikeException.Timeout(policy, false);
 							isClientTimeout = false;
 
 							if (isRead)
@@ -107,6 +107,8 @@ namespace Aerospike.Client
 						}
 						else
 						{
+							ae.Node = node;
+							ae.Iteration = iteration + 1;
 							ae.SetInDoubt(isRead, commandSentCounter);
 							throw;
 						}
@@ -186,8 +188,10 @@ namespace Aerospike.Client
 			// Retries have been exhausted.  Throw last exception.
 			if (isClientTimeout)
 			{
-				exception = new AerospikeException.Timeout(node, policy, iteration, true);
+				exception = new AerospikeException.Timeout(policy, true);
 			}
+			exception.Node = node;
+			exception.Iteration = iteration;
 			exception.SetInDoubt(isRead, commandSentCounter);
 			throw exception;
 		}

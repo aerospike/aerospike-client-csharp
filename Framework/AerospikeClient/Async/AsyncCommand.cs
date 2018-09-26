@@ -78,13 +78,13 @@ namespace Aerospike.Client
 			this.segmentOrig = other.segmentOrig;
 			this.segment = other.segment;
 			this.watch = other.watch;
-			this.iteration = other.iteration + 1;
+			this.iteration = other.iteration;
 			this.commandSentCounter = other.commandSentCounter;
 			this.isRead = other.isRead;
 			this.usingSocketTimeout = other.usingSocketTimeout;
 		}
 
-        // Simply ask the cluster objet to schedule the command for execution.
+        // Simply ask the cluster object to schedule the command for execution.
         // It may or may not be immediate, depending on the number of executing commands.
         // If immediate, the command will start its execution on the current thread.
         // Otherwise, the command will start its execution from the thread pool.
@@ -145,6 +145,8 @@ namespace Aerospike.Client
 
 		private void ExecuteCommand()
 		{
+			iteration++;
+
 			try
 			{
 				if (partition != null)
@@ -238,7 +240,7 @@ namespace Aerospike.Client
 					if (ae.Result == ResultCode.TIMEOUT)
 					{
 						// Create server timeout exception.
-						ae = new AerospikeException.Timeout(command.node, command.policy, command.iteration + 1, false);
+						ae = new AerospikeException.Timeout(command.policy, false);
 					}
 					command.FailOnApplicationError(ae);
 				}
@@ -475,7 +477,7 @@ namespace Aerospike.Client
 
 		private void ConnectionFailed(AerospikeException ae)
 		{
-			if (iteration < policy.maxRetries && (policy.totalTimeout == 0 || watch.ElapsedMilliseconds < policy.totalTimeout))
+			if (iteration <= policy.maxRetries && (policy.totalTimeout == 0 || watch.ElapsedMilliseconds < policy.totalTimeout))
 			{
 				int status = Interlocked.CompareExchange(ref state, RETRY, IN_PROGRESS);
 
@@ -678,14 +680,14 @@ namespace Aerospike.Client
 				// Free up resources and notify user on timeout.
 				// Connection should have already been closed on AsyncTimeoutQueue timeout.
 				PutBackArgsOnError();
-				NotifyFailure(new AerospikeException.Timeout(node, policy, iteration + 1, true));
+				NotifyFailure(new AerospikeException.Timeout(policy, true));
 			}
 			else if (status == FAIL_SOCKET_TIMEOUT)
 			{
 				// Connection should have already been closed on AsyncTimeoutQueue timeout.
-				AerospikeException timeoutException = new AerospikeException.Timeout(node, policy, iteration + 1, true);
+				AerospikeException timeoutException = new AerospikeException.Timeout(policy, true);
 
-				if (iteration < policy.maxRetries)
+				if (iteration <= policy.maxRetries)
 				{
 					if (isRead)
 					{
@@ -713,6 +715,8 @@ namespace Aerospike.Client
 		{
 			try
 			{
+				ae.Node = node;
+				ae.Iteration = iteration;
 				ae.SetInDoubt(isRead, commandSentCounter);
 				OnFailure(ae);
 			}
@@ -768,7 +772,7 @@ namespace Aerospike.Client
 		{
 			if (se == SocketError.TimedOut)
 			{
-				return new AerospikeException.Timeout(node, policy, iteration + 1, true);
+				return new AerospikeException.Timeout(policy, true);
 			}
 			return new AerospikeException.Connection("Socket error: " + se);
 		}

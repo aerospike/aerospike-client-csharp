@@ -24,10 +24,10 @@ namespace Aerospike.Client
 	/// </summary>
 	public class AerospikeException : Exception
 	{
-		private const long serialVersionUID = 1L;
-
-		private int resultCode;
-		private bool inDoubt;
+		protected Node node;
+		protected int resultCode = ResultCode.CLIENT_ERROR;
+		protected int iteration = -1;
+		protected bool inDoubt;
 
         public AerospikeException(int resultCode, string message) 
             : base(message)
@@ -57,25 +57,16 @@ namespace Aerospike.Client
 		public AerospikeException(string message, Exception e) 
             : base(message, e)
 		{
-			this.resultCode = ResultCode.CLIENT_ERROR;
 		}
 
 		public AerospikeException(string message) 
             : base(message)
 		{
-			this.resultCode = ResultCode.CLIENT_ERROR;
 		}
 
         public AerospikeException(Exception e)
             : base(e.Message, e)
 		{
-			this.resultCode = ResultCode.CLIENT_ERROR;
-		}
-
-		public AerospikeException()
-			: base("")
-		{
-			this.resultCode = ResultCode.CLIENT_ERROR;
 		}
 
 		/// <summary>
@@ -87,38 +78,37 @@ namespace Aerospike.Client
 			{
 				StringBuilder sb = new StringBuilder();
 				string message = base.Message;
-    
-				if (resultCode != 0)
-				{
-					sb.Append("Error Code ");
-					sb.Append(resultCode);
 
-					if (inDoubt)
-					{
-						sb.Append("(inDoubt)");
-					}
-					sb.Append(": ");
-    
-					if (message != null && message.Length > 0)
-					{
-						sb.Append(message);
-					}
-					else
-					{
-						sb.Append(ResultCode.GetResultString(resultCode));
-					}
+				sb.Append("Error ");
+				sb.Append(resultCode);
+
+				if (inDoubt)
+				{
+					sb.Append("(inDoubt)");
+				}
+
+				if (node != null)
+				{
+					sb.Append(" from ");
+					sb.Append(node.ToString());
+				}
+
+				sb.Append(": ");
+
+				if (message != null && message.Length > 0)
+				{
+					sb.Append(message);
 				}
 				else
 				{
-					if (message != null)
-					{
-						sb.Append(message);
-					}
-					else
-					{
-						sb.Append(this.GetType().FullName);
-					}
+					sb.Append(ResultCode.GetResultString(resultCode));
 				}
+
+				if (iteration > 1)
+				{
+					sb.Append(Environment.NewLine);
+					sb.Append("iteration=" + iteration);
+				}				
 				return sb.ToString();
 			}
 		}
@@ -132,6 +122,21 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
+		/// Last node used.
+		/// </summary>
+		public Node Node
+		{
+			get
+			{
+				return node;
+			}
+			set
+			{
+				node = value;
+			}
+		}
+
+		/// <summary>
 		/// Get integer result code.
 		/// </summary>
 		public int Result
@@ -139,6 +144,21 @@ namespace Aerospike.Client
 			get
 			{
 				return resultCode;
+			}
+		}
+
+		/// <summary>
+		/// Number of attempts before failing.
+		/// </summary>
+		public int Iteration
+		{
+			get
+			{
+				return iteration;
+			}
+			set
+			{
+				iteration = value;
 			}
 		}
 
@@ -172,11 +192,6 @@ namespace Aerospike.Client
 		public sealed class Timeout : AerospikeException
 		{
 			/// <summary>
-			/// Last node used before timeout.
-			/// </summary>
-			public Node node;
-
-			/// <summary>
 			/// Socket idle timeout in milliseconds.
 			/// </summary>
 			public int socketTimeout;
@@ -185,11 +200,6 @@ namespace Aerospike.Client
 			/// Total timeout in milliseconds.
 			/// </summary>
 			public int totalTimeout;
-
-			/// <summary>
-			/// Number of attempts before failing.
-			/// </summary>
-			public int iterations;
 
 			/// <summary>
 			/// If true, client initiated timeout.  If false, server initiated the timeout.
@@ -202,21 +212,19 @@ namespace Aerospike.Client
 			public Timeout(int totalTimeout, bool inDoubt)
 				: base(ResultCode.TIMEOUT, inDoubt)
 			{
+				this.socketTimeout = 0;
 				this.totalTimeout = totalTimeout;
-				this.iterations = -1;
 				this.client = true;
 			}
 
 			/// <summary>
 			/// Create timeout exception with statistics.
 			/// </summary>
-			public Timeout(Node node, Policy policy, int iterations, bool client)
+			public Timeout(Policy policy, bool client)
 				: base(ResultCode.TIMEOUT)
 			{
-				this.node = node;
 				this.socketTimeout = policy.socketTimeout;
 				this.totalTimeout = policy.totalTimeout;
-				this.iterations = iterations;
 				this.client = client;
 			}
 
@@ -227,13 +235,13 @@ namespace Aerospike.Client
 			{
 				get
 				{
-					if (iterations == -1)
+					if (iteration == -1)
 					{
 						return "Client timeout: " + totalTimeout;
 					}
 					String type = client ? "Client" : "Server";
 					return type + " timeout: socket=" + socketTimeout + " total=" + totalTimeout +
-						" iterations=" + iterations + " lastNode=" + node + " inDoubt=" + InDoubt;
+						" iteration=" + iteration + " node=" + node + " inDoubt=" + InDoubt;
 				}
 			}
 		}
