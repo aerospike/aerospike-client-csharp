@@ -922,5 +922,94 @@ namespace Aerospike.Test
 			size = record.GetLong("bin2");
 			Assert.AreEqual(4L, size);	
 		}
+
+		[TestMethod]
+		public void OperateMapInfinity() {
+			if (! args.ValidateMap()) {
+				return;
+			}
+
+			Key key = new Key(args.ns, args.set, "opmkey17");
+			client.Delete(null, key);
+		
+			Dictionary<Value,Value> inputMap = new Dictionary<Value,Value>();
+			inputMap[Value.Get(0)] = Value.Get(17);
+			inputMap[Value.Get(4)] = Value.Get(2);
+			inputMap[Value.Get(5)] = Value.Get(15);
+			inputMap[Value.Get(9)] = Value.Get(10);
+		
+			// Write values to empty map.
+			Record record = client.Operate(null, key, 
+					MapOperation.PutItems(MapPolicy.Default, binName, inputMap)
+					);
+					
+			AssertRecordFound(key, record);
+
+			record = client.Operate(null, key,
+					MapOperation.GetByKeyRange(binName, Value.Get(5), Value.INFINITY, MapReturnType.KEY)
+					);
+		
+			AssertRecordFound(key, record);
+		
+			IList results = record.GetList(binName);
+			int i = 0;
+		
+			long v = (long)results[i++];
+			Assert.AreEqual(5L, v);
+		
+			v = (long)results[i++];
+			Assert.AreEqual(9L, v);
+		}
+
+		[TestMethod]
+		public void OperateMapWildcard() {
+			if (! args.ValidateMap()) {
+				return;
+			}
+
+			Key key = new Key(args.ns, args.set, "opmkey18");
+			client.Delete(null, key);
+		
+			List<Value> i1 = new List<Value>();
+			i1.Add(Value.Get("John"));
+			i1.Add(Value.Get(55));
+
+			List<Value> i2 = new List<Value>();
+			i2.Add(Value.Get("Jim"));
+			i2.Add(Value.Get(95));
+		
+			List<Value> i3 = new List<Value>();
+			i3.Add(Value.Get("Joe"));
+			i3.Add(Value.Get(80));
+
+			Dictionary<Value,Value> inputMap = new Dictionary<Value,Value>();
+			inputMap[Value.Get(4)] = Value.Get(i1);
+			inputMap[Value.Get(5)] = Value.Get(i2);
+			inputMap[Value.Get(9)] = Value.Get(i3);
+		
+			// Write values to empty map.
+			Record record = client.Operate(null, key, 
+					MapOperation.PutItems(MapPolicy.Default, binName, inputMap)
+					);
+					
+			AssertRecordFound(key, record);
+
+			List<Value> filterList = new List<Value>();
+			filterList.Add(Value.Get("Joe"));
+			filterList.Add(Value.WILDCARD);
+
+			record = client.Operate(null, key,
+					MapOperation.GetByValue(binName, Value.Get(filterList), MapReturnType.KEY)
+					);
+		
+			AssertRecordFound(key, record);
+			//System.out.println("Record: " + record);
+		
+			IList results = record.GetList(binName);
+			int i = 0;
+		
+			long v = (long)results[i++];
+			Assert.AreEqual(9L, v);		
+		}
 	}
 }

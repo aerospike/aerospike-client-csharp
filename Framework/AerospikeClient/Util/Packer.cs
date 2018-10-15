@@ -485,6 +485,28 @@ namespace Aerospike.Client
 			buffer[offset++] = unchecked((byte)0xc0);
 		}
 
+		public void PackInfinity()
+		{
+			if (offset + 3 > buffer.Length)
+			{
+				Resize(3);
+			}
+			buffer[offset++] = (byte)0xd4;
+			buffer[offset++] = (byte)0xff;
+			buffer[offset++] = (byte)0x01;
+		}
+
+		public void PackWildcard()
+		{
+			if (offset + 3 > buffer.Length)
+			{
+				Resize(3);
+			}
+			buffer[offset++] = (byte)0xd4;
+			buffer[offset++] = (byte)0xff;
+			buffer[offset++] = (byte)0x00;
+		}
+		
 		private void PackByte(byte val)
 		{
 			if (offset >= buffer.Length)

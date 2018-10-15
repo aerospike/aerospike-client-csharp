@@ -897,5 +897,103 @@ namespace Aerospike.Test
 			size = record.GetLong("bin2");
 			Assert.AreEqual(2L, size);	
 		}
+
+		[TestMethod]
+		public void OperateListInfinity()
+		{
+			Key key = new Key(args.ns, args.set, "oplkey16");
+		
+			client.Delete(null, key);
+		
+			List<Value> itemList = new List<Value>();
+			itemList.Add(Value.Get(0));
+			itemList.Add(Value.Get(4));
+			itemList.Add(Value.Get(5));
+			itemList.Add(Value.Get(9));
+			itemList.Add(Value.Get(11));
+			itemList.Add(Value.Get(15));
+
+			Record record = client.Operate(null, key,
+					ListOperation.AppendItems(new ListPolicy(ListOrder.ORDERED, ListWriteFlags.DEFAULT), binName, itemList)
+					);
+		
+			AssertRecordFound(key, record);
+		
+			long size = record.GetLong(binName);
+			Assert.AreEqual(6L, size);	
+				
+			itemList = new List<Value>();
+			itemList.Add(Value.Get(11));
+			itemList.Add(Value.Get(3));
+
+			record = client.Operate(null, key,
+					ListOperation.GetByValueRange(binName, Value.Get(10), Value.INFINITY, ListReturnType.VALUE)
+					);
+
+			AssertRecordFound(key, record);
+		
+			IList results = record.GetList(binName);
+			int i = 0;
+		
+			long val = (long)results[i++];	
+			Assert.AreEqual(11L, val);
+		
+			val = (long)results[i++];	
+			Assert.AreEqual(15L, val);	
+		}
+
+		[TestMethod]
+		public void OperateListWildcard() {
+			Key key = new Key(args.ns, args.set, "oplkey17");
+		
+			client.Delete(null, key);
+		
+			List<Value> i1 = new List<Value>();
+			i1.Add(Value.Get("John"));
+			i1.Add(Value.Get(55));
+
+			List<Value> i2 = new List<Value>();
+			i2.Add(Value.Get("Jim"));
+			i2.Add(Value.Get(95));
+		
+			List<Value> i3 = new List<Value>();
+			i3.Add(Value.Get("Joe"));
+			i3.Add(Value.Get(80));
+
+			List<Value> itemList = new List<Value>();
+		
+			itemList.Add(Value.Get(i1));
+			itemList.Add(Value.Get(i2));
+			itemList.Add(Value.Get(i3));
+
+			Record record = client.Operate(null, key,
+					ListOperation.AppendItems(binName, itemList)
+					);
+		
+			AssertRecordFound(key, record);
+		
+			long size = record.GetLong(binName);
+			Assert.AreEqual(3L, size);	
+				
+			itemList = new List<Value>();
+			itemList.Add(Value.Get("Jim"));
+			itemList.Add(Value.WILDCARD);
+
+			record = client.Operate(null, key,
+					ListOperation.GetByValue(binName, Value.Get(itemList), ListReturnType.VALUE)
+					);
+
+			AssertRecordFound(key, record);
+		
+			IList results = record.GetList(binName);
+			int i = 0;
+		
+			IList items = (IList)results[i++];
+			String s = (String)items[0];	
+			Assert.AreEqual("Jim", s);
+		
+			long v = (long)items[1];	
+			Assert.AreEqual(95L, v);
+		}
 	}
 }

@@ -28,6 +28,21 @@ namespace Aerospike.Client
 	public abstract class Value
 	{
 		/// <summary>
+		/// Null value.
+		/// </summary>
+		public static readonly Value NULL = NullValue.Instance;
+
+		/// <summary>
+		/// Infinity value to be used in CDT range comparisons only.
+		/// </summary>
+		public static readonly Value INFINITY = new InfinityValue();
+
+		/// <summary>
+		/// Wildcard value to be used in CDT range comparisons only.
+		/// </summary>
+		public static readonly Value WILDCARD = new WildcardValue();
+
+		/// <summary>
 		/// Should the client use the new double floating point particle type supported by Aerospike
 		/// server versions >= 3.6.0.  It's important that all server nodes and XDR be upgraded before
 		/// enabling this feature.
@@ -2092,6 +2107,119 @@ namespace Aerospike.Client
 					result = 31 * result + (entry.Value == null ? 0 : entry.Value.GetHashCode());
 				}
 				return result;
+			}
+		}
+		/// <summary>
+		/// Infinity value.
+		/// </summary>
+		public sealed class InfinityValue : Value
+		{
+			public override int EstimateSize()
+			{
+				return 0;
+			}
+
+			public override int Write(byte[] buffer, int offset)
+			{
+				return 0;
+			}
+
+			public override void Pack(Packer packer)
+			{
+				packer.PackInfinity();
+			}
+
+			public override void ValidateKeyType()
+			{
+				throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Invalid key type: INF");
+			}
+
+			public override int Type
+			{
+				get
+				{
+					throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Invalid particle type: INF");
+				}
+			}
+
+			public override object Object
+			{
+				get
+				{
+					return null;
+				}
+			}
+
+			public override string ToString()
+			{
+				return "INF";
+			}
+
+			public override bool Equals(object other)
+			{
+				return (other != null && this.GetType().Equals(other.GetType()));
+			}
+
+			public override int GetHashCode()
+			{
+				return 0;
+			}
+		}
+
+		/// <summary>
+		/// Wildcard value.
+		/// </summary>
+		public sealed class WildcardValue : Value
+		{
+			public override int EstimateSize()
+			{
+				return 0;
+			}
+
+			public override int Write(byte[] buffer, int offset)
+			{
+				return 0;
+			}
+
+			public override void Pack(Packer packer)
+			{
+				packer.PackWildcard();
+			}
+
+			public override void ValidateKeyType()
+			{
+				throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Invalid key type: wildcard");
+			}
+
+			public override int Type
+			{
+				get
+				{
+					throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Invalid particle type: wildcard");
+				}
+			}
+
+			public override object Object
+			{
+				get
+				{
+					return null;
+				}
+			}
+
+			public override string ToString()
+			{
+				return "*";
+			}
+
+			public override bool Equals(object other)
+			{
+				return (other != null && this.GetType().Equals(other.GetType()));
+			}
+
+			public override int GetHashCode()
+			{
+				return 0;
 			}
 		}
 	}
