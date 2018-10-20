@@ -254,16 +254,12 @@ namespace Aerospike.Client
 
 		/// <summary>
 		/// Perform multiple read/write operations on a single key in one batch call.
-		/// A record will be returned if there is a read in the operations list.
 		/// An example would be to add an integer value to an existing record and then
 		/// read the result, all in one database call.
 		/// <para>
-		/// Write operations are always performed first, regardless of operation order
-		/// relative to read operations.
-		/// </para>
-		/// <para>
-		/// Both scalar bin operations (Operation) and list bin operations (ListOperation)
-		/// can be performed in same call.
+		/// The server executes operations in the same order as the operations array.
+		/// Both scalar bin operations (Operation) and CDT bin operations (ListOperation,
+		/// MapOperation) can be performed in same call.
 		/// </para>
 		/// </summary>
 		/// <param name="policy">write configuration parameters, pass in null for defaults</param>
