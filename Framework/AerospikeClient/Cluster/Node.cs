@@ -39,6 +39,7 @@ namespace Aerospike.Client
 		public const int HAS_PEERS = (1 << 4);
 		public const int HAS_REPLICAS = (1 << 5);
 		public const int HAS_CLUSTER_STABLE = (1 << 6);
+		public const int HAS_LUT_NOW = (1 << 7);
 		
 		protected internal readonly Cluster cluster;
 		private readonly string name;
@@ -717,6 +718,14 @@ namespace Aerospike.Client
 		public bool HasDouble
 		{
 			get { return (features & HAS_DOUBLE) != 0; }
+		}
+
+		/// <summary>
+		/// Does server support lut=now in truncate info command.
+		/// </summary>
+		public bool HasLutNow
+		{
+			get { return (features & HAS_LUT_NOW) != 0; }
 		}
 
 		/// <summary>

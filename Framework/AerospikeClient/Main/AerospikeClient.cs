@@ -391,6 +391,10 @@ namespace Aerospike.Client
 			{
 				policy = infoPolicyDefault;
 			}
+
+			// Send truncate command to one node. That node will distribute the command to other nodes.
+			Node node = cluster.GetRandomNode();
+	
 			StringBuilder sb = new StringBuilder(200);
 			sb.Append("truncate:namespace=");
 			sb.Append(ns);
@@ -407,9 +411,15 @@ namespace Aerospike.Client
 				// Convert to nanoseconds since unix epoch.
 				sb.Append(Util.NanosFromEpoch(beforeLastUpdate.Value));
 			}
+			else
+			{
+				// Servers >= 4.3.1.4 require lut argument.
+				if (node.HasLutNow)
+				{
+					sb.Append(";lut=now");
+				}
+			}
 
-			// Send truncate command to one node. That node will distribute the command to other nodes.
-			Node node = cluster.GetRandomNode();
 			string response = Info.Request(policy, node, sb.ToString());
 
 			if (!response.Equals("ok", StringComparison.CurrentCultureIgnoreCase))

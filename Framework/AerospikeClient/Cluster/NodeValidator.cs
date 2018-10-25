@@ -280,6 +280,10 @@ namespace Aerospike.Client
 					{
 						this.features |= Node.HAS_CLUSTER_STABLE;
 					}
+					else if (feature.Equals("lut-now"))
+					{
+						this.features |= Node.HAS_LUT_NOW;
+					}
 				}
 			}
 			catch (Exception)
