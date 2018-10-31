@@ -53,23 +53,6 @@ namespace Aerospike.Client
 		public int maxConcurrentThreads = 1;
 
 		/// <summary>
-		/// Use old batch direct protocol where batch reads are handled by direct low-level batch server 
-		/// database routines.  The batch direct protocol can be faster when there is a single namespace, 
-		/// but there is one important drawback.  The batch direct protocol will not proxy to a different 
-		/// server node when the mapped node has migrated a record to another node (resulting in not
-		/// found record).  
-		/// <para>
-		/// This can happen after a node has been added/removed from the cluster and there is a lag 
-		/// between records being migrated and client partition map update (once per second).
-		/// </para>
-		/// <para>
-		/// The new batch index protocol will perform this record proxy when necessary.
-		/// Default: false (use new batch index protocol if server supports it)
-		/// </para>
-		/// </summary>
-		public bool useBatchDirect;
-
-		/// <summary>
 		/// Allow batch to be processed immediately in the server's receiving thread when the server
 		/// deems it to be appropriate.  If false, the batch will always be processed in separate
 		/// transaction threads.  This field is only relevant for the new batch index protocol.
@@ -113,7 +96,6 @@ namespace Aerospike.Client
 			: base(other)
 		{
 			this.maxConcurrentThreads = other.maxConcurrentThreads;
-			this.useBatchDirect = other.useBatchDirect;
 			this.allowInline = other.allowInline;
 			this.allowProleReads = other.allowProleReads;
 			this.sendSetName = other.sendSetName;

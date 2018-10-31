@@ -697,11 +697,11 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
-		/// Use new batch protocol if server supports it and useBatchDirect is not set.
+		/// Use new batch protocol if server supports it.
 		/// </summary>
 		public bool UseNewBatch(BatchPolicy policy)
 		{
-			return !policy.useBatchDirect && HasBatchIndex;
+			return HasBatchIndex;
 		}
 
 		/// <summary>
