@@ -1164,18 +1164,7 @@ namespace Aerospike.Client
 
 			if (!map.TryGetValue(partition.ns, out partitions))
 			{
-				// Add these lines
-				StringBuilder sb = new StringBuilder(1000);
-				sb.Append("Invalid namespace: ");
-				sb.Append(partition.ns);
-				sb.Append(" current namespaces: ");
-
-				foreach (string key in map.Keys)
-				{
-					sb.Append(key);
-					sb.Append(' ');
-				}				
-				throw new AerospikeException(sb.ToString());
+				throw new AerospikeException.InvalidNamespace(partition.ns, map.Count);
 			}
 
 			Node[][] replicas = partitions.replicas;

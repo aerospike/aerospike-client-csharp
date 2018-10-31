@@ -334,6 +334,21 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
+		/// Exception thrown when namespace is invalid.
+		/// </summary>
+		public sealed class InvalidNamespace : AerospikeException
+		{
+			/// <summary>
+			/// Create invalid namespace exception.
+			/// </summary>
+			public InvalidNamespace(String ns, int mapSize)
+				: base(ResultCode.INVALID_NAMESPACE,
+					(mapSize == 0) ? "Partition map empty" : "Namespace not found in partition map: " + ns)
+			{
+			}
+		}
+
+		/// <summary>
 		/// Exception thrown when scan was terminated prematurely.
 		/// </summary>
 		public sealed class ScanTerminated : AerospikeException

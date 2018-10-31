@@ -739,7 +739,7 @@ namespace Aerospike.Client
 
 			if (!map.TryGetValue(partition.ns, out partitions))
 			{
-				throw new AerospikeException("Invalid namespace: " + partition.ns);
+				throw new AerospikeException.InvalidNamespace(partition.ns, map.Count);
 			}
 
 			Node node = partitions.replicas[0][partition.partitionId];
@@ -761,7 +761,7 @@ namespace Aerospike.Client
 
 			if (!map.TryGetValue(partition.ns, out partitions))
 			{
-				throw new AerospikeException("Invalid namespace: " + partition.ns);
+				throw new AerospikeException.InvalidNamespace(partition.ns, map.Count);
 			}
 
 			Node[][] replicas = partitions.replicas;
