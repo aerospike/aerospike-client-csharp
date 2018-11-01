@@ -101,6 +101,12 @@ namespace Aerospike.Client
 		// Should use "services-alternate" instead of "services" in info request?
 		protected internal readonly bool useServicesAlternate;
 
+		// Request server rack ids.
+		internal readonly bool rackAware;
+
+		// Rack id.
+		public readonly int rackId;
+		
 		public Cluster(ClientPolicy policy, Host[] hosts)
 		{
 			this.clusterName = policy.clusterName;
@@ -166,6 +172,8 @@ namespace Aerospike.Client
 			ipMap = policy.ipMap;
 			requestProleReplicas = policy.requestProleReplicas;
 			useServicesAlternate = policy.useServicesAlternate;
+			rackAware = policy.rackAware;
+			rackId = policy.rackId;
 
 			aliases = new Dictionary<Host, Node>();
 			nodesMap = new Dictionary<string, Node>();
@@ -368,6 +376,7 @@ namespace Aerospike.Client
 			{
 				node.referenceCount = 0;
 				node.partitionChanged = false;
+				node.rebalanceChanged = false;
 
 				if (!node.HasPeers)
 				{
@@ -399,6 +408,11 @@ namespace Aerospike.Client
 				if (node.partitionChanged)
 				{
 					node.RefreshPartitions(peers);
+				}
+
+				if (node.rebalanceChanged)
+				{
+					node.RefreshRacks();
 				}
 			}
 

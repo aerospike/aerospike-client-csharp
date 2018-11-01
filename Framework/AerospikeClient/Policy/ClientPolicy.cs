@@ -204,6 +204,32 @@ namespace Aerospike.Client
 		public bool useServicesAlternate;
 
 		/// <summary>
+		/// Track server rack data.  This field is useful when directing read commands to the server node
+		/// that contains the key and exists on the same rack as the client.  This serves to lower cloud
+		/// provider costs when nodes are distributed across different racks/data centers.
+		/// <para>
+		/// <see cref="Aerospike.Client.ClientPolicy.rackId"/>, <see cref="Aerospike.Client.Replica.PREFER_RACK"/>
+		/// and server rack configuration must also be set to enable this functionality.
+		/// </para>
+		/// <para>
+		/// Default: false
+		/// </para>
+		/// </summary>
+		public bool rackAware;
+
+		/// <summary>
+		/// Rack where this client instance resides.
+		/// <para>
+		/// <see cref="Aerospike.Client.ClientPolicy.rackAware"/>, <see cref="Aerospike.Client.Replica.PREFER_RACK"/>
+		/// and server rack configuration must also be set to enable this functionality.
+		/// </para>
+		/// <para>
+		/// Default: 0
+		/// </para>
+		/// </summary>
+		public int rackId;
+
+		/// <summary>
 		/// Copy client policy from another client policy.
 		/// </summary>
 		public ClientPolicy(ClientPolicy other)
@@ -229,6 +255,8 @@ namespace Aerospike.Client
 			this.ipMap = other.ipMap;
 			this.requestProleReplicas = other.requestProleReplicas;
 			this.useServicesAlternate = other.useServicesAlternate;
+			this.rackAware = other.rackAware;
+			this.rackId = other.rackId;
 		}
 
 		/// <summary>

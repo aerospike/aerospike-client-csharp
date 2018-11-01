@@ -46,7 +46,7 @@ namespace Aerospike.Client
 			for (int i = 0; i < keys.Length; i++)
 			{
 				Partition partition = new Partition(keys[i]);
-				Node node = cluster.GetMasterNode(partition);
+				Node node = GetNode(cluster, partition, policy.replica);
 				BatchNode batchNode = FindBatchNode(batchNodes, node);
 
 				if (batchNode == null)
@@ -87,7 +87,7 @@ namespace Aerospike.Client
 			for (int i = 0; i < max; i++)
 			{
 				Partition partition = new Partition(records[i].key);
-				Node node = cluster.GetMasterNode(partition);
+				Node node = GetNode(cluster, partition, policy.replica);
 				BatchNode batchNode = FindBatchNode(batchNodes, node);
 
 				if (batchNode == null)
@@ -100,6 +100,72 @@ namespace Aerospike.Client
 				}
 			}
 			return batchNodes;
+		}
+
+		private static Node GetNode(Cluster cluster, Partition partition, Replica replica)
+		{
+			switch (replica)
+			{
+				default:
+				case Replica.MASTER:
+				case Replica.SEQUENCE:
+					// Sequence uses master node because it always starts at master
+					// and keys can't be transferred to other nodes on batch retry.
+					return cluster.GetMasterNode(partition);
+
+				case Replica.PREFER_RACK:
+					return GetRackNode(cluster, partition);
+
+				case Replica.MASTER_PROLES:
+					return cluster.GetMasterProlesNode(partition);
+
+				case Replica.RANDOM:
+					return cluster.GetRandomNode();
+			}
+		}
+
+		private static Node GetRackNode(Cluster cluster, Partition partition)
+		{
+			// Must copy hashmap reference for copy on write semantics to work.
+			Dictionary<string, Partitions> map = cluster.partitionMap;
+			Partitions partitions;
+
+			if (!map.TryGetValue(partition.ns, out partitions))
+			{
+				throw new AerospikeException.InvalidNamespace(partition.ns, map.Count);
+			}
+
+			Node[][] replicas = partitions.replicas;
+			Node fallback = null;
+			uint sequence = 0;
+
+			for (int i = 0; i < replicas.Length; i++)
+			{
+				uint index = sequence % (uint)replicas.Length;
+				Node node = replicas[index][partition.partitionId];
+
+				if (node != null && node.Active)
+				{
+					if (node.HasRack(partition.ns, cluster.rackId))
+					{
+						return node;
+					}
+
+					if (fallback == null)
+					{
+						fallback = node;
+					}
+				}
+				sequence++;
+			}
+
+			if (fallback != null)
+			{
+				return fallback;
+			}
+
+			Node[] nodeArray = cluster.Nodes;
+			throw new AerospikeException.InvalidNode(nodeArray.Length, partition);
 		}
 
 		private static BatchNode FindBatchNode(IList<BatchNode> nodes, Node node)

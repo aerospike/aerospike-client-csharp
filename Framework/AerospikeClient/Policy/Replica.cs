@@ -51,6 +51,16 @@ namespace Aerospike.Client
 		SEQUENCE,
 
 		/// <summary>
+		/// Try node on the same rack as the client first.  If there are no nodes on the
+		/// same rack, use SEQUENCE instead.
+		/// <para>
+		/// <see cref="Aerospike.Client.ClientPolicy.rackAware"/>, <see cref="Aerospike.Client.ClientPolicy.rackId"/>
+		/// and server rack configuration must also be set to enable this functionality.
+		/// </para>
+		/// </summary>
+		PREFER_RACK,
+
+		/// <summary>
 		/// Distribute reads across all nodes in cluster in round-robin fashion.
 		/// Writes always use node containing key's master partition.
 		/// <para>

@@ -40,7 +40,10 @@ namespace Aerospike.Client
 		public const int HAS_REPLICAS = (1 << 5);
 		public const int HAS_CLUSTER_STABLE = (1 << 6);
 		public const int HAS_LUT_NOW = (1 << 7);
-		
+
+		private static readonly string[] INFO_PERIODIC = new string[] { "node", "peers-generation", "partition-generation" };
+		private static readonly string[] INFO_PERIODIC_REB = new string[] { "node", "peers-generation", "partition-generation", "rebalance-generation" }; 
+
 		protected internal readonly Cluster cluster;
 		private readonly string name;
 		private readonly Host host;
@@ -49,16 +52,19 @@ namespace Aerospike.Client
 		private Connection tendConnection;
 		protected internal byte[] sessionToken;
 		protected internal DateTime? sessionExpiration;
+		private volatile Dictionary<string,int> racks;
 		private readonly Pool[] connectionPools;
 		protected uint connectionIter;
-		protected internal int partitionGeneration = -1;
 		protected internal int peersGeneration = -1;
+		protected internal int partitionGeneration = -1;
+		protected internal int rebalanceGeneration = -1;
 		protected internal int peersCount;
 		protected internal int referenceCount;
 		protected internal int failures;
 		protected internal readonly uint features;
 		private volatile int performLogin;
 		protected internal bool partitionChanged;
+		protected internal bool rebalanceChanged;
 		protected internal volatile bool active = true;
 
 		/// <summary>
@@ -86,6 +92,15 @@ namespace Aerospike.Client
 			{
 				int capacity = i < rem ? max + 1 : max;
 				connectionPools[i] = new Pool(capacity);
+			}
+
+			if (cluster.rackAware)
+			{
+				this.racks = new Dictionary<string,int>();
+			}
+			else
+			{
+				this.racks = null;
 			}
 		}
 
@@ -144,10 +159,17 @@ namespace Aerospike.Client
 
 				if (peers.usePeers)
 				{
-					Dictionary<string, string> infoMap = Info.Request(tendConnection, "node", "peers-generation", "partition-generation");
+					string[] commands = cluster.rackAware ? INFO_PERIODIC_REB : INFO_PERIODIC;
+					Dictionary<string, string> infoMap = Info.Request(tendConnection, commands);
+
 					VerifyNodeName(infoMap);
 					VerifyPeersGeneration(infoMap, peers);
 					VerifyPartitionGeneration(infoMap);
+
+					if (cluster.rackAware)
+					{
+						VerifyRebalanceGeneration(infoMap);
+					}
 				}
 				else
 				{
@@ -246,6 +268,23 @@ namespace Aerospike.Client
 			if (partitionGeneration != gen)
 			{
 				this.partitionChanged = true;
+			}
+		}
+
+		private void VerifyRebalanceGeneration(Dictionary<string, string> infoMap)
+		{
+			string genString = infoMap["rebalance-generation"];
+
+			if (genString == null || genString.Length == 0)
+			{
+				throw new AerospikeException.Parse("rebalance-generation is empty");
+			}
+
+			int gen = Convert.ToInt32(genString);
+
+			if (rebalanceGeneration != gen)
+			{
+				this.rebalanceChanged = true;
 			}
 		}
 
@@ -481,6 +520,31 @@ namespace Aerospike.Client
 			}
 		}
 
+		protected internal void RefreshRacks()
+		{
+			// Do not refresh racks when node connection has already failed during this cluster tend iteration.
+			if (failures > 0 || !active)
+			{
+				return;
+			}
+
+			try
+			{
+				if (Log.DebugEnabled())
+				{
+					Log.Debug("Update racks for node " + this);
+				}
+				RackParser parser = new RackParser(tendConnection, this);
+
+				this.rebalanceGeneration = parser.Generation;
+				this.racks = parser.Racks;
+			}
+			catch (Exception e)
+			{
+				RefreshFailed(e);
+			}
+		}
+
 		private void RefreshFailed(Exception e)
 		{
 			failures++;
@@ -661,6 +725,30 @@ namespace Aerospike.Client
 				inUse += tmp;
 			}
 			return new ConnectionStats(inPool, inUse);
+		}
+
+		/// <summary>
+		/// Return if this node has the same rack as the client for the
+		/// given namespace.
+		/// </summary>
+		public bool HasRack(string ns, int rackId)
+		{
+			// Must copy map reference for copy on write semantics to work.
+			Dictionary<string,int> map = this.racks;
+
+			if (map == null)
+			{
+				return false;
+			}
+
+			int r;
+
+			if (! map.TryGetValue(ns, out r))
+			{
+				return false;
+			}
+
+			return r == rackId;
 		}
 
 		/// <summary>

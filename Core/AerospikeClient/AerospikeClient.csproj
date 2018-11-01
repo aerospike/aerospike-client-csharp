@@ -86,6 +86,7 @@
     <Compile Include="..\..\Framework\AerospikeClient\Cluster\Partitions.cs" Link="Cluster\Partitions.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Cluster\PeerParser.cs" Link="Cluster\PeerParser.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Cluster\Peers.cs" Link="Cluster\Peers.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Cluster\RackParser.cs" Link="Cluster\RackParser.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Cluster\TlsConnection.cs" Link="Cluster\TlsConnection.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Command\Batch.cs" Link="Command\Batch.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Command\BatchExecutor.cs" Link="Command\BatchExecutor.cs" />

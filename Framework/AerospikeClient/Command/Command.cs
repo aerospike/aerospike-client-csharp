@@ -1141,19 +1141,31 @@ namespace Aerospike.Client
 			// Handle default case first.
 			if (replica == Replica.SEQUENCE)
 			{
+				// Sequence always starts at master, so writes can go through the same algorithm.
 				return GetSequenceNode(cluster, partition);
 			}
 
-			if (replica == Replica.MASTER || !isRead)
+			if (!isRead)
 			{
-				return cluster.GetMasterNode(partition);
+				// Writes will always proxy to master node.
+				cluster.GetMasterNode(partition);
 			}
 
-			if (replica == Replica.MASTER_PROLES)
+			switch (replica)
 			{
-				return cluster.GetMasterProlesNode(partition);
+				default:
+				case Replica.MASTER:
+					return cluster.GetMasterNode(partition);
+
+				case Replica.PREFER_RACK:
+					return GetRackNode(cluster, partition);
+
+				case Replica.MASTER_PROLES:
+					return cluster.GetMasterProlesNode(partition);
+
+				case Replica.RANDOM:
+					return cluster.GetRandomNode();
 			}
-			return cluster.GetRandomNode();
 		}
 
 		public Node GetSequenceNode(Cluster cluster, Partition partition)
@@ -1180,6 +1192,49 @@ namespace Aerospike.Client
 				}
 				sequence++;
 			}
+			Node[] nodeArray = cluster.Nodes;
+			throw new AerospikeException.InvalidNode(nodeArray.Length, partition);
+		}
+
+		private Node GetRackNode(Cluster cluster, Partition partition)
+		{
+			// Must copy hashmap reference for copy on write semantics to work.
+			Dictionary<string, Partitions> map = cluster.partitionMap;
+			Partitions partitions;
+
+			if (!map.TryGetValue(partition.ns, out partitions))
+			{
+				throw new AerospikeException.InvalidNamespace(partition.ns, map.Count);
+			}
+
+			Node[][] replicas = partitions.replicas;
+			Node fallback = null;
+
+			for (int i = 0; i < replicas.Length; i++)
+			{
+				uint index = sequence % (uint)replicas.Length;
+				Node node = replicas[index][partition.partitionId];
+
+				if (node != null && node.Active)
+				{
+					if (node.HasRack(partition.ns, cluster.rackId))
+					{
+						return node;
+					}
+
+					if (fallback == null)
+					{
+						fallback = node;
+					}
+				}
+				sequence++;
+			}
+
+			if (fallback != null)
+			{
+				return fallback;
+			}
+
 			Node[] nodeArray = cluster.Nodes;
 			throw new AerospikeException.InvalidNode(nodeArray.Length, partition);
 		}
