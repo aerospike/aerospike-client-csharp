@@ -50,7 +50,7 @@ namespace Aerospike.Client
 		private const byte PRIVILEGES = 12;
 
 		// Misc
-		private const ulong MSG_VERSION = 0L;
+		private const ulong MSG_VERSION = 2L;
 		private const ulong MSG_TYPE = 2L;
 		private const int FIELD_HEADER_SIZE = 5;
 		private const int HEADER_SIZE = 24;
