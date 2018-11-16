@@ -50,8 +50,8 @@ namespace Aerospike.Client
 		private const byte PRIVILEGES = 12;
 
 		// Misc
-		private const ulong MSG_VERSION = 2L;
-		private const ulong MSG_TYPE = 2L;
+		private const ulong MSG_VERSION = 2UL;
+		private const ulong MSG_TYPE = 2UL;
 		private const int FIELD_HEADER_SIZE = 5;
 		private const int HEADER_SIZE = 24;
 		private const int HEADER_REMAINING = 16;
@@ -363,7 +363,7 @@ namespace Aerospike.Client
 		private void WriteSize()
 		{
 			// Write total size of message which is the current offset.
-			ulong size = (ulong)(dataOffset - dataBegin - 8) | (MSG_VERSION << 56) | (MSG_TYPE << 48);
+			ulong size = ((ulong)dataOffset - (ulong)dataBegin - 8) | (MSG_VERSION << 56) | (MSG_TYPE << 48);
 			ByteUtil.LongToBytes(size, dataBuffer, dataBegin);
 		}
 

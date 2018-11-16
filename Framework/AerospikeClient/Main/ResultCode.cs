@@ -98,12 +98,6 @@ namespace Aerospike.Client
 		public const int KEY_EXISTS_ERROR = 5;
 
 		/// <summary>
-		/// On create-only (write unique) operations on a bin that already
-		/// exists.
-		/// </summary>
-		public const int BIN_EXISTS_ERROR = 6;
-
-		/// <summary>
 		/// Expected cluster was not received.
 		/// </summary>
 		public const int CLUSTER_KEY_MISMATCH = 7;
@@ -153,11 +147,6 @@ namespace Aerospike.Client
 		/// Client operation not supported on connected server.
 		/// </summary>
 		public const int UNSUPPORTED_FEATURE = 16;
-
-		/// <summary>
-		/// Specified bin name does not exist in record.
-		/// </summary>
-		public const int BIN_NOT_FOUND = 17;
 
 		/// <summary>
 		/// Device not keeping up with writes.
@@ -442,9 +431,6 @@ namespace Aerospike.Client
 			case KEY_EXISTS_ERROR:
 				return "Key already exists";
 
-			case BIN_EXISTS_ERROR:
-				return "Bin already exists";
-
 			case CLUSTER_KEY_MISMATCH:
 				return "Cluster key mismatch";
 
@@ -474,9 +460,6 @@ namespace Aerospike.Client
 
 			case UNSUPPORTED_FEATURE:
 				return "Unsupported server feature";
-
-			case BIN_NOT_FOUND:
-				return "Bin not found";
 
 			case DEVICE_OVERLOAD:
 				return "Device overload";
