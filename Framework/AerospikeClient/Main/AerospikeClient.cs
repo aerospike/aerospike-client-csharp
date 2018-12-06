@@ -588,10 +588,6 @@ namespace Aerospike.Client
 				// Run batch requests sequentially in same thread.
 				foreach (BatchNode batchNode in batchNodes)
 				{
-					if (!batchNode.node.HasBatchIndex)
-					{
-						throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Requested command requires a server that supports new batch index protocol.");
-					}
 					MultiCommand command = new BatchReadListCommand(batchNode, policy, records);
 					command.Execute(cluster, policy, null, batchNode.node, true);
 				}
@@ -609,10 +605,6 @@ namespace Aerospike.Client
 
 				foreach (BatchNode batchNode in batchNodes)
 				{
-					if (!batchNode.node.HasBatchIndex)
-					{
-						throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Requested command requires a server that supports new batch index protocol.");
-					}
 					MultiCommand command = new BatchReadListCommand(batchNode, policy, records);
 					executor.AddCommand(batchNode.node, command);
 				}

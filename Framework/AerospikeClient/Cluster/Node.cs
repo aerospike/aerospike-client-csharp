@@ -34,7 +34,6 @@ namespace Aerospike.Client
 
 		public const int HAS_GEO = (1 << 0);
 		public const int HAS_DOUBLE = (1 << 1);
-		public const int HAS_BATCH_INDEX = (1 << 2);
 		public const int HAS_REPLICAS_ALL = (1 << 3);
 		public const int HAS_PEERS = (1 << 4);
 		public const int HAS_REPLICAS = (1 << 5);
@@ -782,22 +781,6 @@ namespace Aerospike.Client
 			{
 				return name;
 			}
-		}
-
-		/// <summary>
-		/// Use new batch protocol if server supports it.
-		/// </summary>
-		public bool UseNewBatch(BatchPolicy policy)
-		{
-			return HasBatchIndex;
-		}
-
-		/// <summary>
-		/// Does server support batch index protocol.
-		/// </summary>
-		public bool HasBatchIndex
-		{
-			get { return (features & HAS_BATCH_INDEX) != 0; }
 		}
 
 		/// <summary>

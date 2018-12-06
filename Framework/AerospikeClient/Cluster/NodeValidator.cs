@@ -260,10 +260,6 @@ namespace Aerospike.Client
 					{
 						this.features |= Node.HAS_DOUBLE;
 					}
-					else if (feature.Equals("batch-index"))
-					{
-						this.features |= Node.HAS_BATCH_INDEX;
-					}
 					else if (feature.Equals("replicas"))
 					{
 						this.features |= Node.HAS_REPLICAS;

@@ -113,57 +113,6 @@ namespace Aerospike.Client
 		}
 	}
 
-	public sealed class BatchGetArrayDirect : MultiCommand
-	{
-		private readonly BatchNode.BatchNamespace batch;
-		private readonly Policy policy;
-		private readonly Key[] keys;
-		private readonly string[] binNames;
-		private readonly Record[] records;
-		private readonly int readAttr;
-		private int index;
-
-		public BatchGetArrayDirect
-		(
-			BatchNode.BatchNamespace batch,
-			Policy policy,
-			Key[] keys,
-			string[] binNames,
-			Record[] records,
-			int readAttr
-		) : base(false)
-		{
-			this.batch = batch;
-			this.policy = policy;
-			this.keys = keys;
-			this.binNames = binNames;
-			this.records = records;
-			this.readAttr = readAttr;
-		}
-
-		protected internal override void WriteBuffer()
-		{
-			SetBatchReadDirect(policy, keys, batch, binNames, readAttr);
-		}
-
-		protected internal override void ParseRow(Key key)
-		{
-			int offset = batch.offsets[index++];
-
-			if (Util.ByteArrayEquals(key.digest, keys[offset].digest))
-			{
-				if (resultCode == 0)
-				{
-					records[offset] = ParseRecord();
-				}
-			}
-			else
-			{
-				throw new AerospikeException.Parse("Unexpected batch key returned: " + key.ns + ',' + ByteUtil.BytesToHexString(key.digest) + ',' + index + ',' + offset);
-			}
-		}
-	}
-
 	//-------------------------------------------------------
 	// ExistsArray
 	//-------------------------------------------------------
@@ -208,53 +157,6 @@ namespace Aerospike.Client
 			else
 			{
 				throw new AerospikeException.Parse("Unexpected batch key returned: " + key.ns + ',' + ByteUtil.BytesToHexString(key.digest) + ',' + batchIndex);
-			}
-		}
-	}
-
-	public sealed class BatchExistsArrayDirect : MultiCommand
-	{
-		private readonly BatchNode.BatchNamespace batch;
-		private readonly Policy policy;
-		private readonly Key[] keys;
-		private readonly bool[] existsArray;
-		private int index;
-
-		public BatchExistsArrayDirect
-		(
-			BatchNode.BatchNamespace batch,
-			Policy policy,
-			Key[] keys,
-			bool[] existsArray
-		) : base(false)
-		{
-			this.batch = batch;
-			this.policy = policy;
-			this.keys = keys;
-			this.existsArray = existsArray;
-		}
-
-		protected internal override void WriteBuffer()
-		{
-			SetBatchReadDirect(policy, keys, batch, null, Command.INFO1_READ | Command.INFO1_NOBINDATA);
-		}
-
-		protected internal override void ParseRow(Key key)
-		{
-			if (opCount > 0)
-			{
-				throw new AerospikeException.Parse("Received bins that were not requested!");
-			}
-
-			int offset = batch.offsets[index++];
-
-			if (Util.ByteArrayEquals(key.digest, keys[offset].digest))
-			{
-				existsArray[offset] = resultCode == 0;
-			}
-			else
-			{
-				throw new AerospikeException.Parse("Unexpected batch key returned: " + key.ns + ',' + ByteUtil.BytesToHexString(key.digest) + ',' + index + ',' + offset);
 			}
 		}
 	}

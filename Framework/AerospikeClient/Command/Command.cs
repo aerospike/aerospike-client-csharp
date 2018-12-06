@@ -505,50 +505,6 @@ namespace Aerospike.Client
 			End();
 		}
 
-		public void SetBatchReadDirect(Policy policy, Key[] keys, BatchNode.BatchNamespace batch, string[] binNames, int readAttr)
-		{
-			// Estimate buffer size
-			Begin();
-			int byteSize = batch.offsetsSize * SyncCommand.DIGEST_SIZE;
-
-			dataOffset +=  ByteUtil.EstimateSizeUtf8(batch.ns) + FIELD_HEADER_SIZE + byteSize + FIELD_HEADER_SIZE;
-
-			if (binNames != null)
-			{
-				foreach (string binName in binNames)
-				{
-					EstimateOperationSize(binName);
-				}
-			}
-
-			SizeBuffer();
-
-			int operationCount = (binNames == null)? 0 : binNames.Length;
-			WriteHeader(policy, readAttr, 0, 2, operationCount);
-			WriteField(batch.ns, FieldType.NAMESPACE);
-			WriteFieldHeader(byteSize, FieldType.DIGEST_RIPE_ARRAY);
-
-			int[] offsets = batch.offsets;
-			int max = batch.offsetsSize;
-
-			for (int i = 0; i < max; i++)
-			{
-				Key key = keys[offsets[i]];
-				byte[] digest = key.digest;
-				Array.Copy(digest, 0, dataBuffer, dataOffset, digest.Length);
-				dataOffset += digest.Length;
-			}
-
-			if (binNames != null)
-			{
-				foreach (string binName in binNames)
-				{
-					WriteOperation(binName, Operation.Type.READ);
-				}
-			}
-			End();
-		}
-
 		public void SetScan(ScanPolicy policy, string ns, string setName, string[] binNames, ulong taskId)
 		{
 			Begin();

@@ -40,26 +40,7 @@ namespace Aerospike.Demo
 			BatchExists(client, args, keyPrefix, size);
 			BatchReads(client, args, keyPrefix, binName, size);
 			BatchReadHeaders(client, args, keyPrefix, size);
-
-			try
-			{
-				BatchReadComplex(client, args, keyPrefix, binName);
-			}
-			catch (Exception ex)
-			{
-				// Server version may not yet support new batch protocol.
-				Node[] nodes = client.Nodes;
-
-				foreach (Node node in nodes)
-				{
-					if (!node.HasBatchIndex)
-					{
-						Log.Warn("Server does not support new batch protocol");
-						return;
-					}
-				}
-				throw ex;
-			}
+			BatchReadComplex(client, args, keyPrefix, binName);
 		}
 
 		/// <summary>
