@@ -33,7 +33,6 @@ namespace Aerospike.Client
 		public const int PARTITIONS = 4096;
 
 		public const int HAS_GEO = (1 << 0);
-		public const int HAS_DOUBLE = (1 << 1);
 		public const int HAS_REPLICAS_ALL = (1 << 3);
 		public const int HAS_PEERS = (1 << 4);
 		public const int HAS_REPLICAS = (1 << 5);
@@ -781,14 +780,6 @@ namespace Aerospike.Client
 			{
 				return name;
 			}
-		}
-
-		/// <summary>
-		/// Does server support double particle types.
-		/// </summary>
-		public bool HasDouble
-		{
-			get { return (features & HAS_DOUBLE) != 0; }
 		}
 
 		/// <summary>

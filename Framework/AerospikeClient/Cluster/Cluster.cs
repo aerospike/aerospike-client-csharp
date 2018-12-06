@@ -205,16 +205,6 @@ namespace Aerospike.Client
 				{
 					seedsToAdd.Add(host);
 				}
-
-				// Disable double type support if some nodes don't support it.
-				if (Value.UseDoubleType && !node.HasDouble)
-				{
-					if (Log.WarnEnabled())
-					{
-						Log.Warn("Some nodes don't support new double type.  Disabling.");
-					}
-					Value.UseDoubleType = false;
-				}
 	
 				// Disable prole requests if some nodes don't support it.
 				if (requestProleReplicas && !node.HasReplicasAll)

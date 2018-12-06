@@ -256,10 +256,6 @@ namespace Aerospike.Client
 					{
 						this.features |= Node.HAS_GEO;
 					}
-					else if (feature.Equals("float"))
-					{
-						this.features |= Node.HAS_DOUBLE;
-					}
 					else if (feature.Equals("replicas"))
 					{
 						this.features |= Node.HAS_REPLICAS;
