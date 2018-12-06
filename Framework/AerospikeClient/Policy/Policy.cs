@@ -64,13 +64,10 @@ namespace Aerospike.Client
 		/// and socketTimeout is only used if totalTimeout is not defined.
 		/// </para>
 		/// <para>
-		/// Default for everything but scan/query: 0 (no socket idle time limit)
-		/// </para>
-		/// <para>
-		/// Default for scan/query: 30000ms
+		/// Default: 30000ms
 		/// </para>
 		/// </summary>
-		public int socketTimeout;
+		public int socketTimeout = 30000;
 
 		/// <summary>
 		/// Total transaction timeout in milliseconds.
