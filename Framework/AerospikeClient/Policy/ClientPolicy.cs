@@ -177,22 +177,6 @@ namespace Aerospike.Client
 		public Dictionary<string, string> ipMap;
 
 		/// <summary>
-		/// Should prole replicas be requested from each server node in the cluster tend thread.
-		/// This option is required if there is a need to distribute reads across proles.
-		/// (<see cref="Aerospike.Client.Policy.replica"/> ==
-		/// <see cref="Aerospike.Client.Replica.MASTER_PROLES"/> or
-		/// <see cref="Aerospike.Client.Replica.SEQUENCE"/>).
-		/// <para> 
-		/// If requestProleReplicas is enabled, all prole partition maps will be cached on the client which results in 
-		/// extra storage multiplied by the replication factor.
-		/// </para>
-		/// <para>
-		/// Default: true (request all master and prole replicas).
-		/// </para>
-		/// </summary>
-		public bool requestProleReplicas = true;
-
-		/// <summary>
 		/// Should use "services-alternate" instead of "services" in info request during cluster
 		/// tending.  "services-alternate" returns server configured external IP addresses that client
 		/// uses to talk to nodes.  "services-alternate" can be used in place of providing a client "ipMap".
@@ -253,7 +237,6 @@ namespace Aerospike.Client
 			this.infoPolicyDefault = new InfoPolicy(other.infoPolicyDefault);
 			this.tlsPolicy = (other.tlsPolicy != null) ? new TlsPolicy(other.tlsPolicy) : null;
 			this.ipMap = other.ipMap;
-			this.requestProleReplicas = other.requestProleReplicas;
 			this.useServicesAlternate = other.useServicesAlternate;
 			this.rackAware = other.rackAware;
 			this.rackId = other.rackId;

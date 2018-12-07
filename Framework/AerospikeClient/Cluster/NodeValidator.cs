@@ -260,10 +260,6 @@ namespace Aerospike.Client
 					{
 						this.features |= Node.HAS_REPLICAS;
 					}
-					else if (feature.Equals("replicas-all"))
-					{
-						this.features |= Node.HAS_REPLICAS_ALL;
-					}
 					else if (feature.Equals("peers"))
 					{
 						this.features |= Node.HAS_PEERS;

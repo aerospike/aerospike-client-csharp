@@ -292,16 +292,6 @@ namespace Aerospike.Demo
                 int sleepBetweenRetries = int.Parse(sleepBox.Text);
 				Replica replica = (Replica)replicaBox.SelectedItem;
 
-				if (replica == Replica.SEQUENCE)
-				{
-					bargs.requestProleReplicas = true;
-				}
-
-				if (replica == Replica.MASTER_PROLES)
-				{
-					bargs.requestProleReplicas = true;
-				}
-
 				bargs.policy.totalTimeout = timeout;
                 bargs.policy.maxRetries = maxRetries;
                 bargs.policy.sleepBetweenRetries = sleepBetweenRetries;

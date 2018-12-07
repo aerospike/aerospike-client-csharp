@@ -37,7 +37,6 @@ namespace Aerospike.Demo
 		internal int batchSize;
 		internal int throughput;
 		internal bool sync;
-		internal bool requestProleReplicas;
 		internal bool latency;
 		internal bool altLatencyFormat;
 		internal bool debug;

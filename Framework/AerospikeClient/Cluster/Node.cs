@@ -33,7 +33,6 @@ namespace Aerospike.Client
 		public const int PARTITIONS = 4096;
 
 		public const int HAS_GEO = (1 << 0);
-		public const int HAS_REPLICAS_ALL = (1 << 3);
 		public const int HAS_PEERS = (1 << 4);
 		public const int HAS_REPLICAS = (1 << 5);
 		public const int HAS_CLUSTER_STABLE = (1 << 6);
@@ -504,7 +503,7 @@ namespace Aerospike.Client
 				{
 					Log.Debug("Update partition map for node " + this);
 				}
-				PartitionParser parser = new PartitionParser(tendConnection, this, cluster.partitionMap, Node.PARTITIONS, cluster.requestProleReplicas);
+				PartitionParser parser = new PartitionParser(tendConnection, this, cluster.partitionMap, Node.PARTITIONS);
 
 				if (parser.IsPartitionMapCopied)
 				{
@@ -796,14 +795,6 @@ namespace Aerospike.Client
 		public bool HasReplicas
 		{
 			get { return (features & HAS_REPLICAS) != 0; }
-		}
-
-		/// <summary>
-		/// Does server support replicas-all info command.
-		/// </summary>
-		public bool HasReplicasAll
-		{
-			get { return (features & HAS_REPLICAS_ALL) != 0; }
 		}
 
 		/// <summary>

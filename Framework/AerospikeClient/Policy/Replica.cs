@@ -31,10 +31,6 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Distribute reads across nodes containing key's master and replicated partitions
 		/// in round-robin fashion.  Writes always use node containing key's master partition.
-		/// <para>
-		/// This option requires <see cref="Aerospike.Client.ClientPolicy.requestProleReplicas"/>
-		/// to be enabled in order to function properly.
-		/// </para>
 		/// </summary>
 		MASTER_PROLES,
 
@@ -43,10 +39,6 @@ namespace Aerospike.Client
 		/// If connection fails, all commands try nodes containing replicated partitions.
 		/// If socketTimeout is reached, reads also try nodes containing replicated partitions, 
 		/// but writes remain on master node.
-		/// <para>
-		/// This option requires <see cref="Aerospike.Client.ClientPolicy.requestProleReplicas"/>
-		/// to be enabled in order to function properly.
-		/// </para>
 		/// </summary>
 		SEQUENCE,
 

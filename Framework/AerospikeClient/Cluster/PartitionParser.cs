@@ -26,7 +26,6 @@ namespace Aerospike.Client
 	public sealed class PartitionParser
 	{
 		internal const string PartitionGeneration = "partition-generation";
-		internal const string ReplicasMaster = "replicas-master";
 		internal const string ReplicasAll = "replicas-all";
 		internal const string Replicas = "replicas";
 
@@ -39,7 +38,7 @@ namespace Aerospike.Client
 		private bool copied;
 		private bool regimeError;
 
-		public PartitionParser(Connection conn, Node node, Dictionary<string, Partitions> map, int partitionCount, bool requestProleReplicas)
+		public PartitionParser(Connection conn, Node node, Dictionary<string, Partitions> map, int partitionCount)
 		{
 			// Send format 1:  partition-generation\nreplicas\n
 			// Send format 2:  partition-generation\nreplicas-all\n
@@ -52,13 +51,9 @@ namespace Aerospike.Client
 			{
 				command = Replicas;
 			}
-			else if (requestProleReplicas)
-			{
-				command = ReplicasAll;
-			}
 			else
 			{
-				command = ReplicasMaster;
+				command = ReplicasAll;
 			}
 
 			Info info = new Info(conn, PartitionGeneration, command);
@@ -72,18 +67,7 @@ namespace Aerospike.Client
 
 			generation = ParseGeneration();
 
-			if (node.HasReplicas)
-			{
-				ParseReplicasAll(node, command);
-			}
-			else if (requestProleReplicas)
-			{
-				ParseReplicasAll(node, command);
-			}
-			else
-			{
-				ParseReplicasMaster(node);
-			}
+			ParseReplicasAll(node, command);
 		}
 
 		public int Generation
@@ -118,66 +102,6 @@ namespace Aerospike.Client
 				offset++;
 			}
 			throw new AerospikeException.Parse("Failed to find partition-generation value");
-		}
-
-		private void ParseReplicasMaster(Node node)
-		{
-			// Use low-level info methods and parse byte array directly for maximum performance.
-			// Receive format: replicas-master\t<ns1>:<base 64 encoded bitmap1>;<ns2>:<base 64 encoded bitmap2>...\n
-			ExpectName(ReplicasMaster);
-
-			int begin = offset;
-
-			while (offset < length)
-			{
-				if (buffer[offset] == ':')
-				{
-					// Parse namespace.
-					string ns = ByteUtil.Utf8ToString(buffer, begin, offset - begin).Trim();
-
-					if (ns.Length <= 0 || ns.Length >= 32)
-					{
-						string response = GetTruncatedResponse();
-						throw new AerospikeException.Parse("Invalid partition namespace " + ns + ". Response=" + response);
-					}
-					begin = ++offset;
-
-					// Parse partition bitmap.
-					while (offset < length)
-					{
-						byte b = buffer[offset];
-
-						if (b == ';' || b == '\n')
-						{
-							break;
-						}
-						offset++;
-					}
-
-					if (offset == begin)
-					{
-						string response = GetTruncatedResponse();
-						throw new AerospikeException.Parse("Empty partition id for namespace " + ns + ". Response=" + response);
-					}
-
-					Partitions partitions;
-
-					if (!map.TryGetValue(ns, out partitions))
-					{
-						partitions = new Partitions(partitionCount, 1, false);
-						CopyPartitionMap();
-						map[ns] = partitions;
-					}
-
-					// Log.info("Map: " + namespace + "[0] " + node);
-					DecodeBitmap(node, partitions, 0, 0, begin);
-					begin = ++offset;
-				}
-				else
-				{
-					offset++;
-				}
-			}
 		}
 
 		private void ParseReplicasAll(Node node, string command)

@@ -95,9 +95,6 @@ namespace Aerospike.Client
 		private CancellationToken cancelToken;
 		internal volatile bool tendValid;
 
-		// Request prole replicas in addition to master replicas?
-		protected internal bool requestProleReplicas;
-
 		// Should use "services-alternate" instead of "services" in info request?
 		protected internal readonly bool useServicesAlternate;
 
@@ -170,7 +167,6 @@ namespace Aerospike.Client
 			maxSocketIdleMillis = 1000 * ((policy.maxSocketIdle <= MaxSocketIdleSecondLimit) ? policy.maxSocketIdle : MaxSocketIdleSecondLimit);
 			tendInterval = policy.tendInterval;
 			ipMap = policy.ipMap;
-			requestProleReplicas = policy.requestProleReplicas;
 			useServicesAlternate = policy.useServicesAlternate;
 			rackAware = policy.rackAware;
 			rackId = policy.rackId;
@@ -204,17 +200,7 @@ namespace Aerospike.Client
 				if (!FindSeed(host))
 				{
 					seedsToAdd.Add(host);
-				}
-	
-				// Disable prole requests if some nodes don't support it.
-				if (requestProleReplicas && !node.HasReplicasAll)
-				{
-					if (Log.WarnEnabled())
-					{
-						Log.Warn("Some nodes don't support 'replicas-all'.  Use 'replicas-master' for all nodes.");
-					}
-					requestProleReplicas = false;
-				}
+				}	
 			}
 
 			if (seedsToAdd.Count > 0)
