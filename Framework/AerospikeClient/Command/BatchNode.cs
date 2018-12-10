@@ -184,7 +184,6 @@ namespace Aerospike.Client
 		public readonly Node node;
 		public int[] offsets;
 		public int offsetsSize;
-		public List<BatchNamespace> batchNamespaces; // used by old batch only
 
 		public BatchNode(Node node, int capacity, int offset)
 		{
@@ -215,92 +214,6 @@ namespace Aerospike.Client
 				offsets = copy;
 			}
 			offsets[offsetsSize++] = offset;
-		}
-
-		public void SplitByNamespace(Key[] keys)
-		{
-			string first = keys[offsets[0]].ns;
-
-			// Optimize for single namespace.
-			if (IsSingleNamespace(keys, first))
-			{
-				batchNamespaces = new List<BatchNamespace>(1);
-				batchNamespaces.Add(new BatchNamespace(first, offsets, offsetsSize));
-				return;
-			}
-
-			// Process multiple namespaces.
-			batchNamespaces = new List<BatchNamespace>(4);
-
-			for (int i = 0; i < offsetsSize; i++)
-			{
-				int offset = offsets[i];
-				string ns = keys[offset].ns;
-				BatchNamespace batchNamespace = FindNamespace(batchNamespaces, ns);
-
-				if (batchNamespace == null)
-				{
-					batchNamespaces.Add(new BatchNamespace(ns, offsetsSize, offset));
-				}
-				else
-				{
-					batchNamespace.Add(offset);
-				}
-			}
-		}
-
-		private bool IsSingleNamespace(Key[] keys, string first)
-		{
-			for (int i = 1; i < offsetsSize; i++)
-			{
-				string ns = keys[offsets[i]].ns;
-
-				if (!(ns == first || ns.Equals(first)))
-				{
-					return false;
-				}
-			}
-			return true;
-		}
-
-		private BatchNamespace FindNamespace(List<BatchNamespace> batchNamespaces, string ns)
-		{
-			foreach (BatchNamespace batchNamespace in batchNamespaces)
-			{
-				// Note: use both pointer equality and equals.
-				if (batchNamespace.ns == ns || batchNamespace.ns.Equals(ns))
-				{
-					return batchNamespace;
-				}
-			}
-			return null;
-		}
-
-		public sealed class BatchNamespace
-		{
-			public readonly string ns;
-			public int[] offsets;
-			public int offsetsSize;
-
-			public BatchNamespace(string ns, int capacity, int offset)
-			{
-				this.ns = ns;
-				this.offsets = new int[capacity];
-				this.offsets[0] = offset;
-				this.offsetsSize = 1;
-			}
-
-			public BatchNamespace(string ns, int[] offsets, int offsetsSize)
-			{
-				this.ns = ns;
-				this.offsets = offsets;
-				this.offsetsSize = offsetsSize;
-			}
-
-			public void Add(int offset)
-			{
-				offsets[offsetsSize++] = offset;
-			}
 		}
 	}
 }
