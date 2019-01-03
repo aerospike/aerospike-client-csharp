@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -114,41 +114,6 @@ namespace Aerospike.Client
 				}
 			}
 			this.binNames = binNames;
-		}
-
-		/// <summary>
-		/// Optional query filters.
-		/// Currently, only one filter is allowed by the server on a secondary index lookup.
-		/// If multiple filters are necessary, see QueryFilter example for a workaround.
-		/// QueryFilter demonstrates how to add additional filters in an user-defined 
-		/// aggregation function. 
-		/// <para>
-		/// This property is obsolete. Use <see cref="Aerospike.Client.Statement.Filter"/> instead.
-		/// </para>
-		/// </summary>
-		public Filter[] Filters
-		{
-			set { SetFilters(value); }
-			get { return new Filter[] {filter}; }
-		}
-
-		/// <summary>
-		/// Set optional query index filters.
-		/// Currently, only one filter is allowed by the server on a secondary index lookup.
-		/// If multiple filters are necessary, see QueryFilter example for a workaround.
-		/// QueryFilter demonstrates how to add additional filters in an user-defined 
-		/// aggregation function.
-		/// <para>
-		/// This method is obsolete. Use <see cref="Aerospike.Client.Statement.SetFilter(Aerospike.Client.Filter)"/> instead.
-		/// </para>
-		/// </summary>
-		public void SetFilters(params Filter[] filters)
-		{
-			if (filters.Length > 1)
-			{
-				throw new AerospikeException(ResultCode.PARAMETER_ERROR, "The server currently restricts queries to a single filter");
-			}
-			this.filter = filters[0];
 		}
 
 		/// <summary>
