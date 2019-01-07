@@ -262,15 +262,6 @@ namespace Aerospike.Client
 						}
 					}
 				}
-				else
-				{
-					// Node does not own partition.
-					if (node == nodeOld)
-					{
-						// Must erase previous map.
-						nodeArray[i] = null;
-					}
-				}
 			}
 		}
 
