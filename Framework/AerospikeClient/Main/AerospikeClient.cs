@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -588,7 +588,7 @@ namespace Aerospike.Client
 				// Run batch requests sequentially in same thread.
 				foreach (BatchNode batchNode in batchNodes)
 				{
-					MultiCommand command = new BatchReadListCommand(batchNode, policy, records);
+					MultiCommand command = new BatchReadListCommand(null, batchNode, policy, records);
 					command.Execute(cluster, policy, null, batchNode.node, true);
 				}
 			}
@@ -605,7 +605,7 @@ namespace Aerospike.Client
 
 				foreach (BatchNode batchNode in batchNodes)
 				{
-					MultiCommand command = new BatchReadListCommand(batchNode, policy, records);
+					MultiCommand command = new BatchReadListCommand(executor, batchNode, policy, records);
 					executor.AddCommand(batchNode.node, command);
 				}
 				executor.Execute(policy.maxConcurrentThreads);

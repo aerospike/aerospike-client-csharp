@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -21,9 +21,9 @@ namespace Aerospike.Client
 	public abstract class AsyncMultiExecutor
 	{
 		private int completedCount;
-		private int done;
+		private volatile int done;
 		private AsyncMultiCommand[] commands;
-		private AsyncCluster cluster;
+		internal AsyncCluster cluster;
 		private string ns;
 		private ulong clusterKey;
 		private int maxConcurrent;
@@ -39,6 +39,36 @@ namespace Aerospike.Client
 			}
 		}
 
+		public void ExecuteBatchRetry(AsyncMultiCommand[] cmds, AsyncMultiCommand orig)
+		{
+			// Create new commands array.
+			AsyncMultiCommand[] target = new AsyncMultiCommand[commands.Length + cmds.Length - 1];
+			int count = 0;
+
+			foreach (AsyncMultiCommand cmd in commands)
+			{
+				if (cmd != orig)
+				{
+					target[count++] = cmd;
+				}
+			}
+
+			foreach (AsyncMultiCommand cmd in cmds)
+			{
+				target[count++] = cmd;
+			}
+			commands = target;
+
+			// Batch executors always execute all commands at once.
+			// Execute all new commands.
+			maxConcurrent = commands.Length;
+
+			foreach (AsyncMultiCommand cmd in cmds)
+			{
+				cmd.Execute();
+			}
+		}
+
 		public void ExecuteValidate(AsyncCluster cluster, AsyncMultiCommand[] commands, int maxConcurrent, string ns)
 		{
 			this.cluster = cluster;
@@ -47,6 +77,11 @@ namespace Aerospike.Client
 			this.ns = ns;
 
 			AsyncQueryValidate.ValidateBegin(cluster, new BeginHandler(this, commands, this.maxConcurrent), commands[0].node, ns);
+		}
+
+		public bool IsDone()
+		{
+			return done != 0;
 		}
 
 		private class BeginHandler : AsyncQueryValidate.BeginListener

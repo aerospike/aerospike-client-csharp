@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -22,7 +22,7 @@ namespace Aerospike.Client
 {
 	public abstract class AsyncMultiCommand : AsyncCommand
 	{
-		private readonly AsyncMultiExecutor parent;
+		protected internal readonly AsyncMultiExecutor parent;
 		protected internal int resultCode;
 		protected internal int generation;
 		protected internal int expiration;

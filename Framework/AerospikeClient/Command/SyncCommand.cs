@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -24,14 +24,10 @@ namespace Aerospike.Client
 	{
 		public void Execute(Cluster cluster, Policy policy, Key key, Node node, bool isRead)
 		{
-			Partition partition = (key != null)? new Partition(key) : null;
-			AerospikeException exception = null;
+			Partition partition = (key != null) ? new Partition(key) : null;
 			DateTime deadline = DateTime.MinValue;
 			int socketTimeout = policy.socketTimeout;
 			int totalTimeout = policy.totalTimeout;
-			int iteration = 0;
-			int commandSentCounter = 0;
-			bool isClientTimeout;
 
 			if (totalTimeout > 0)
 			{
@@ -42,6 +38,17 @@ namespace Aerospike.Client
 					socketTimeout = totalTimeout;
 				}
 			}
+			Execute(cluster, policy, partition, node, isRead, socketTimeout, totalTimeout, deadline, 0, 0);
+		}
+
+		public void Execute
+		(
+			Cluster cluster, Policy policy, Partition partition, Node node, bool isRead,
+			int socketTimeout, int totalTimeout, DateTime deadline, int iteration, int commandSentCounter
+		)
+		{
+			AerospikeException exception = null;
+			bool isClientTimeout;
 
 			// Execute command until successful, timed out or maximum iterations have been reached.
 			while (true)
@@ -183,6 +190,12 @@ namespace Aerospike.Client
 					// Sleep before trying again.
 					Util.Sleep(policy.sleepBetweenRetries);
 				}
+
+				if (ShouldRetryBatch() && RetryBatch(cluster, socketTimeout, totalTimeout, deadline, iteration, commandSentCounter))
+				{
+					// Batch retried in separate commands.  Complete this command.
+					return;
+				}
 			}
 
 			// Retries have been exhausted.  Throw last exception.
@@ -236,6 +249,18 @@ namespace Aerospike.Client
 				SizeBuffer(receiveSize);
 				conn.ReadFully(dataBuffer, receiveSize);
 			}
+		}
+
+		protected internal virtual bool ShouldRetryBatch()
+		{
+			// Override this method in batch to regenerate node assignments.
+			return false;
+		}
+
+		protected internal virtual bool RetryBatch(Cluster cluster, int socketTimeout, int totalTimeout, DateTime deadline, int iteration, int commandSentCounter)
+		{
+			// Override this method in batch to regenerate node assignments.
+			return false;
 		}
 
 		protected internal abstract void WriteBuffer();

@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -26,7 +26,7 @@ namespace Aerospike.Client
 	{
 		private const int MAX_BUFFER_SIZE = 1024 * 1024 * 10; // 10 MB
 
-		private BufferedStream bis;
+		private BufferedConnection bconn;
 		protected internal readonly String ns;
 		private readonly ulong clusterKey;
 		protected internal int resultCode;
@@ -77,8 +77,7 @@ namespace Aerospike.Client
 			// Read socket into receive buffer one record at a time.  Do not read entire receive size
 			// because the thread local receive buffer would be too big.  Also, scan callbacks can nest 
 			// further database commands which contend with the receive buffer.
-			Stream stream = conn.GetStream();
-			bis = new BufferedStream(stream, 8192);
+			bconn = new BufferedConnection(conn, 8192);
 			bool status = true;
 
 			while (status)
@@ -221,18 +220,7 @@ namespace Aerospike.Client
 				dataBuffer = new byte[length];
 			}
 
-			int pos = 0;
-
-			while (pos < length)
-			{
-				int count = bis.Read(dataBuffer, pos, length - pos);
-
-				if (count <= 0)
-				{
-					throw new SocketException((int)SocketError.ConnectionReset);
-				}
-				pos += count;
-			}
+			bconn.Read(dataBuffer, length);
 			dataOffset += length;
 		}
 
@@ -247,5 +235,65 @@ namespace Aerospike.Client
 		}
 
 		protected internal abstract void ParseRow(Key key);
+	}
+
+	/// <summary>
+	/// Buffer socket reads.  Poll() is called before all socket reads to enfore tight timeouts.
+	/// The runtime BufferedStream class is not used because it does not call Poll() before
+	/// socket reads.
+	/// </summary>
+	sealed class BufferedConnection
+	{
+		private readonly Connection conn;
+		private readonly byte[] buffer;
+		private int len;
+		private int pos;
+
+		public BufferedConnection(Connection conn, int capacity)
+		{
+			this.conn = conn;
+			this.buffer = new byte[capacity];
+		}
+
+		/// <summary>
+		/// Read targetLength bytes into target from buffered connection.
+		/// </summary>
+		public void Read(byte[] target, int targetLength)
+		{
+			int targetOffset = 0;
+
+			do
+			{
+				// Read from buffer.
+				if (this.pos < this.len)
+				{
+					int size = this.len - this.pos;
+
+					if (targetLength <= size)
+					{
+						// Buffer contains enough bytes.  Copy buffer to target and return.
+						Buffer.BlockCopy(this.buffer, this.pos, target, targetOffset, targetLength);
+						this.pos += targetLength;
+						return;
+					}
+
+					// Buffer contains partial bytes.  Copy remaining buffer to target
+					// and fall through to socket read to receive more bytes.
+					Buffer.BlockCopy(this.buffer, this.pos, target, targetOffset, size);
+					targetLength -= size;
+					targetOffset += size;
+				}
+
+				// Read from socket. Try to fill entire buffer.
+				this.len = conn.Read(this.buffer, 0, this.buffer.Length);
+
+				if (this.len <= 0)
+				{
+					throw new SocketException((int)SocketError.ConnectionReset);
+				}
+
+				this.pos = 0;
+			} while (true);
+		}
 	}
 }

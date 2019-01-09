@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -26,13 +26,15 @@ namespace Aerospike.Client
 
 	public sealed class BatchReadListCommand : MultiCommand
 	{
+		private readonly Executor parent;
 		private readonly BatchNode batch;
 		private readonly BatchPolicy policy;
 		private readonly List<BatchRead> records;
 
-		public BatchReadListCommand(BatchNode batch, BatchPolicy policy, List<BatchRead> records)
+		public BatchReadListCommand(Executor parent, BatchNode batch, BatchPolicy policy, List<BatchRead> records)
 			: base(false)
 		{
+			this.parent = parent;
 			this.batch = batch;
 			this.policy = policy;
 			this.records = records;
@@ -59,6 +61,33 @@ namespace Aerospike.Client
 				throw new AerospikeException.Parse("Unexpected batch key returned: " + key.ns + ',' + ByteUtil.BytesToHexString(key.digest) + ',' + batchIndex);
 			}
 		}
+
+		protected internal override bool ShouldRetryBatch()
+		{
+			return (policy.replica == Replica.SEQUENCE || policy.replica == Replica.PREFER_RACK) && (parent == null || ! parent.IsDone());
+		}
+
+		protected internal override bool RetryBatch(Cluster cluster, int socketTimeout, int totalTimeout, DateTime deadline, int iteration, int commandSentCounter)
+		{
+			// Retry requires keys for this node to be split among other nodes.
+			// This is both recursive and exponential.
+			List<BatchNode> batchNodes = BatchNode.GenerateList(cluster, policy, records, sequence, batch);
+
+			if (batchNodes.Count == 1 && batchNodes[0].node == batch.node)
+			{
+				// Batch node is the same.  Go through normal retry.
+				return false;
+			}
+
+			// Run batch requests sequentially in same thread.
+			foreach (BatchNode batchNode in batchNodes)
+			{
+				MultiCommand command = new BatchReadListCommand(parent, batchNode, policy, records);
+				command.sequence = sequence;
+				command.Execute(cluster, policy, null, batchNode.node, true, socketTimeout, totalTimeout, deadline, iteration, commandSentCounter);
+			}
+			return true;
+		}
 	}
 
 	//-------------------------------------------------------
@@ -67,6 +96,7 @@ namespace Aerospike.Client
 	
 	public sealed class BatchGetArrayCommand : MultiCommand
 	{
+		private readonly Executor parent;
 		private readonly BatchNode batch;
 		private readonly BatchPolicy policy;
 		private readonly Key[] keys;
@@ -76,6 +106,7 @@ namespace Aerospike.Client
 
 		public BatchGetArrayCommand
 		(
+			Executor parent,
 			BatchNode batch,
 			BatchPolicy policy,
 			Key[] keys,
@@ -84,6 +115,7 @@ namespace Aerospike.Client
 			int readAttr
 		) : base(false)
 		{
+			this.parent = parent;
 			this.batch = batch;
 			this.policy = policy;
 			this.keys = keys;
@@ -111,6 +143,33 @@ namespace Aerospike.Client
 				throw new AerospikeException.Parse("Unexpected batch key returned: " + key.ns + ',' + ByteUtil.BytesToHexString(key.digest) + ',' + batchIndex);
 			}
 		}
+
+		protected internal override bool ShouldRetryBatch()
+		{
+			return (policy.replica == Replica.SEQUENCE || policy.replica == Replica.PREFER_RACK) && (parent == null || !parent.IsDone());
+		}
+
+		protected internal override bool RetryBatch(Cluster cluster, int socketTimeout, int totalTimeout, DateTime deadline, int iteration, int commandSentCounter)
+		{
+			// Retry requires keys for this node to be split among other nodes.
+			// This is both recursive and exponential.
+			List<BatchNode> batchNodes = BatchNode.GenerateList(cluster, policy, keys, sequence, batch);
+
+			if (batchNodes.Count == 1 && batchNodes[0].node == batch.node)
+			{
+				// Batch node is the same.  Go through normal retry.
+				return false;
+			}
+
+			// Run batch requests sequentially in same thread.
+			foreach (BatchNode batchNode in batchNodes)
+			{
+				MultiCommand command = new BatchGetArrayCommand(parent, batchNode, policy, keys, binNames, records, readAttr);
+				command.sequence = sequence;
+				command.Execute(cluster, policy, null, batchNode.node, true, socketTimeout, totalTimeout, deadline, iteration, commandSentCounter);
+			}
+			return true;
+		}
 	}
 
 	//-------------------------------------------------------
@@ -119,6 +178,7 @@ namespace Aerospike.Client
 	
 	public sealed class BatchExistsArrayCommand : MultiCommand
 	{
+		private readonly Executor parent;
 		private readonly BatchNode batch;
 		private readonly BatchPolicy policy;
 		private readonly Key[] keys;
@@ -126,12 +186,14 @@ namespace Aerospike.Client
 
 		public BatchExistsArrayCommand
 		(
+			Executor parent,
 			BatchNode batch,
 			BatchPolicy policy,
 			Key[] keys,
 			bool[] existsArray
 		) : base(false)
 		{
+			this.parent = parent;
 			this.batch = batch;
 			this.policy = policy;
 			this.keys = keys;
@@ -158,6 +220,33 @@ namespace Aerospike.Client
 			{
 				throw new AerospikeException.Parse("Unexpected batch key returned: " + key.ns + ',' + ByteUtil.BytesToHexString(key.digest) + ',' + batchIndex);
 			}
+		}
+
+		protected internal override bool ShouldRetryBatch()
+		{
+			return (policy.replica == Replica.SEQUENCE || policy.replica == Replica.PREFER_RACK) && (parent == null || !parent.IsDone());
+		}
+
+		protected internal override bool RetryBatch(Cluster cluster, int socketTimeout, int totalTimeout, DateTime deadline, int iteration, int commandSentCounter)
+		{
+			// Retry requires keys for this node to be split among other nodes.
+			// This is both recursive and exponential.
+			List<BatchNode> batchNodes = BatchNode.GenerateList(cluster, policy, keys, sequence, batch);
+
+			if (batchNodes.Count == 1 && batchNodes[0].node == batch.node)
+			{
+				// Batch node is the same.  Go through normal retry.
+				return false;
+			}
+
+			// Run batch requests sequentially in same thread.
+			foreach (BatchNode batchNode in batchNodes)
+			{
+				MultiCommand command = new BatchExistsArrayCommand(parent, batchNode, policy, keys, existsArray);
+				command.sequence = sequence;
+				command.Execute(cluster, policy, null, batchNode.node, true, socketTimeout, totalTimeout, deadline, iteration, commandSentCounter);
+			}
+			return true;
 		}
 	}
 }

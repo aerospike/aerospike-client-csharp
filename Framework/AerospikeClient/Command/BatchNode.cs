@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -46,7 +46,7 @@ namespace Aerospike.Client
 			for (int i = 0; i < keys.Length; i++)
 			{
 				Partition partition = new Partition(keys[i]);
-				Node node = GetNode(cluster, partition, policy.replica);
+				Node node = GetNode(cluster, partition, policy.replica, 0);
 				BatchNode batchNode = FindBatchNode(batchNodes, node);
 
 				if (batchNode == null)
@@ -61,6 +61,47 @@ namespace Aerospike.Client
 			return batchNodes;
 		}
 
+		public static List<BatchNode> GenerateList(Cluster cluster, BatchPolicy policy, Key[] keys, uint sequence, BatchNode batchSeed)
+		{
+			Node[] nodes = cluster.Nodes;
+
+			if (nodes.Length == 0)
+			{
+				throw new AerospikeException(ResultCode.SERVER_NOT_AVAILABLE, "Command failed because cluster is empty.");
+			}
+
+			// Create initial key capacity for each node as average + 25%.
+			int keysPerNode = batchSeed.offsetsSize / nodes.Length;
+			keysPerNode += (int)((uint)keysPerNode >> 2);
+
+			// The minimum key capacity is 10.
+			if (keysPerNode < 10)
+			{
+				keysPerNode = 10;
+			}
+
+			// Split keys by server node.
+			List<BatchNode> batchNodes = new List<BatchNode>(nodes.Length);
+
+			for (int i = 0; i < batchSeed.offsetsSize; i++)
+			{
+				int offset = batchSeed.offsets[i];
+				Partition partition = new Partition(keys[offset]);
+				Node node = GetNode(cluster, partition, policy.replica, sequence);
+				BatchNode batchNode = FindBatchNode(batchNodes, node);
+
+				if (batchNode == null)
+				{
+					batchNodes.Add(new BatchNode(node, keysPerNode, offset));
+				}
+				else
+				{
+					batchNode.AddKey(offset);
+				}
+			}
+			return batchNodes;
+		}
+		
 		public static List<BatchNode> GenerateList(Cluster cluster, BatchPolicy policy, List<BatchRead> records)
 		{
 			Node[] nodes = cluster.Nodes;
@@ -87,7 +128,7 @@ namespace Aerospike.Client
 			for (int i = 0; i < max; i++)
 			{
 				Partition partition = new Partition(records[i].key);
-				Node node = GetNode(cluster, partition, policy.replica);
+				Node node = GetNode(cluster, partition, policy.replica, 0);
 				BatchNode batchNode = FindBatchNode(batchNodes, node);
 
 				if (batchNode == null)
@@ -102,19 +143,60 @@ namespace Aerospike.Client
 			return batchNodes;
 		}
 
-		private static Node GetNode(Cluster cluster, Partition partition, Replica replica)
+		public static List<BatchNode> GenerateList(Cluster cluster, BatchPolicy policy, List<BatchRead> records, uint sequence, BatchNode batchSeed)
+		{
+			Node[] nodes = cluster.Nodes;
+
+			if (nodes.Length == 0)
+			{
+				throw new AerospikeException(ResultCode.SERVER_NOT_AVAILABLE, "Command failed because cluster is empty.");
+			}
+
+			// Create initial key capacity for each node as average + 25%.
+			int keysPerNode = batchSeed.offsetsSize / nodes.Length;
+			keysPerNode += (int)((uint)keysPerNode >> 2);
+
+			// The minimum key capacity is 10.
+			if (keysPerNode < 10)
+			{
+				keysPerNode = 10;
+			}
+
+			// Split keys by server node.
+			List<BatchNode> batchNodes = new List<BatchNode>(nodes.Length);
+
+			for (int i = 0; i < batchSeed.offsetsSize; i++)
+			{
+				int offset = batchSeed.offsets[i];
+				Partition partition = new Partition(records[offset].key);
+				Node node = GetNode(cluster, partition, policy.replica, sequence);
+				BatchNode batchNode = FindBatchNode(batchNodes, node);
+
+				if (batchNode == null)
+				{
+					batchNodes.Add(new BatchNode(node, keysPerNode, offset));
+				}
+				else
+				{
+					batchNode.AddKey(offset);
+				}
+			}
+			return batchNodes;
+		}
+		
+		private static Node GetNode(Cluster cluster, Partition partition, Replica replica, uint sequence)
 		{
 			switch (replica)
 			{
-				default:
-				case Replica.MASTER:
 				case Replica.SEQUENCE:
-					// Sequence uses master node because it always starts at master
-					// and keys can't be transferred to other nodes on batch retry.
-					return cluster.GetMasterNode(partition);
+					return GetSequenceNode(cluster, partition, sequence);
 
 				case Replica.PREFER_RACK:
-					return GetRackNode(cluster, partition);
+					return GetRackNode(cluster, partition, sequence);
+
+				default:
+				case Replica.MASTER:
+					return cluster.GetMasterNode(partition);
 
 				case Replica.MASTER_PROLES:
 					return cluster.GetMasterProlesNode(partition);
@@ -124,7 +206,35 @@ namespace Aerospike.Client
 			}
 		}
 
-		private static Node GetRackNode(Cluster cluster, Partition partition)
+		private static Node GetSequenceNode(Cluster cluster, Partition partition, uint sequence)
+		{
+			// Must copy hashmap reference for copy on write semantics to work.
+			Dictionary<string, Partitions> map = cluster.partitionMap;
+			Partitions partitions;
+
+			if (!map.TryGetValue(partition.ns, out partitions))
+			{
+				throw new AerospikeException.InvalidNamespace(partition.ns, map.Count);
+			}
+
+			Node[][] replicas = partitions.replicas;
+
+			for (int i = 0; i < replicas.Length; i++)
+			{
+				uint index = sequence % (uint)replicas.Length;
+				Node node = replicas[index][partition.partitionId];
+
+				if (node != null && node.Active)
+				{
+					return node;
+				}
+				sequence++;
+			}
+			Node[] nodeArray = cluster.Nodes;
+			throw new AerospikeException.InvalidNode(nodeArray.Length, partition);
+		}
+
+		private static Node GetRackNode(Cluster cluster, Partition partition, uint sequence)
 		{
 			// Must copy hashmap reference for copy on write semantics to work.
 			Dictionary<string, Partitions> map = cluster.partitionMap;
@@ -137,7 +247,6 @@ namespace Aerospike.Client
 
 			Node[][] replicas = partitions.replicas;
 			Node fallback = null;
-			uint sequence = 0;
 
 			for (int i = 0; i < replicas.Length; i++)
 			{

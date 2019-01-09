@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -28,7 +28,7 @@ namespace Aerospike.Client
 		private volatile Exception exception;
 		private int maxConcurrentThreads;
 		private int completedCount;
-		private int done;
+		private volatile int done;
 		private bool completed;
 
 		public Executor(Cluster cluster, Policy policy, int capacity)
@@ -103,6 +103,11 @@ namespace Aerospike.Client
 				}
 				NotifyCompleted();
 			}
+		}
+
+		public bool IsDone()
+		{
+			return done != 0;
 		}
 
 		private void WaitTillComplete()

@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -73,12 +73,12 @@ namespace Aerospike.Client
 				{
 					if (records != null)
 					{
-						MultiCommand command = new BatchGetArrayCommand(batchNode, policy, keys, binNames, records, readAttr);
+						MultiCommand command = new BatchGetArrayCommand(executor, batchNode, policy, keys, binNames, records, readAttr);
 						executor.AddCommand(batchNode.node, command);
 					}
 					else
 					{
-						MultiCommand command = new BatchExistsArrayCommand(batchNode, policy, keys, existsArray);
+						MultiCommand command = new BatchExistsArrayCommand(executor, batchNode, policy, keys, existsArray);
 						executor.AddCommand(batchNode.node, command);
 					}
 				}
@@ -90,12 +90,12 @@ namespace Aerospike.Client
 		{
 			if (records != null)
 			{
-				MultiCommand command = new BatchGetArrayCommand(batchNode, policy, keys, binNames, records, readAttr);
+				MultiCommand command = new BatchGetArrayCommand(null, batchNode, policy, keys, binNames, records, readAttr);
 				command.Execute(cluster, policy, null, batchNode.node, true);
 			}
 			else
 			{
-				MultiCommand command = new BatchExistsArrayCommand(batchNode, policy, keys, existsArray);
+				MultiCommand command = new BatchExistsArrayCommand(null, batchNode, policy, keys, existsArray);
 				command.Execute(cluster, policy, null, batchNode.node, true);
 			}
 		}

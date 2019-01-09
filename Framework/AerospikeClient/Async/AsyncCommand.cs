@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -84,6 +84,24 @@ namespace Aerospike.Client
 			this.usingSocketTimeout = other.usingSocketTimeout;
 		}
 
+		public void SetBatchRetry(AsyncCommand other)
+		{
+			// Batch split retry retains existing deadline. 
+			this.sequence = other.sequence;
+			this.iteration = other.iteration;
+			this.usingSocketTimeout = other.usingSocketTimeout;
+			this.watch = other.watch;
+
+			if (policy.totalTimeout > 0)
+			{
+				AsyncTimeoutQueue.Instance.Add(this, policy.totalTimeout);
+			}
+			else if (policy.socketTimeout > 0)
+			{
+				AsyncTimeoutQueue.Instance.Add(this, policy.socketTimeout);
+			}
+		}
+
         // Simply ask the cluster object to schedule the command for execution.
         // It may or may not be immediate, depending on the number of executing commands.
         // If immediate, the command will start its execution on the current thread.
@@ -125,20 +143,34 @@ namespace Aerospike.Client
 				segment.size = 0;
 			}
 
-			// In async mode, totalTimeout and socketTimeout are mutually exclusive.
-			// If totalTimeout is defined, socketTimeout is ignored.
-			// This is done so we can avoid having to declare usingSocketTimeout as
-			// volatile and because enabling both timeouts together has no real value.
-			if (policy.totalTimeout > 0)
+			if (watch == null)
 			{
-				watch = Stopwatch.StartNew();
-				AsyncTimeoutQueue.Instance.Add(this, policy.totalTimeout);
+				// In async mode, totalTimeout and socketTimeout are mutually exclusive.
+				// If totalTimeout is defined, socketTimeout is ignored.
+				// This is done so we can avoid having to declare usingSocketTimeout as
+				// volatile and because enabling both timeouts together has limited value.
+				if (policy.totalTimeout > 0)
+				{
+					watch = Stopwatch.StartNew();
+					AsyncTimeoutQueue.Instance.Add(this, policy.totalTimeout);
+				}
+				else if (policy.socketTimeout > 0)
+				{
+					usingSocketTimeout = true;
+					watch = Stopwatch.StartNew();
+					AsyncTimeoutQueue.Instance.Add(this, policy.socketTimeout);
+				}
 			}
-			else if (policy.socketTimeout > 0)
+			else
 			{
-				usingSocketTimeout = true;
-				watch = Stopwatch.StartNew();
-				AsyncTimeoutQueue.Instance.Add(this, policy.socketTimeout);
+				// Batch split retry.
+				if (state != IN_PROGRESS)
+				{
+					// Free up resources and notify user on timeout.
+					// Connection should have already been closed on AsyncTimeoutQueue timeout.
+					FailCommand(new AerospikeException.Timeout(policy, true));
+					return;
+				}
 			}
 			ExecuteCommand();
 		}
@@ -498,8 +530,8 @@ namespace Aerospike.Client
 
 				if (status == IN_PROGRESS)
 				{
-					CloseOnError();
-					NotifyFailure(ae);
+					CloseConnection();
+					FailCommand(ae);
 				}
 				else
 				{
@@ -508,7 +540,7 @@ namespace Aerospike.Client
 			}
 		}
 
-		private void Retry(AerospikeException ae)
+		protected internal virtual void Retry(AerospikeException ae)
 		{
 			// Prepare for retry.
 			AsyncCommand command = CloneCommand();
@@ -528,8 +560,7 @@ namespace Aerospike.Client
 			}
 			else
 			{
-				PutBackArgsOnError();
-				NotifyFailure(ae);
+				FailCommand(ae);
 			}
 		}
 
@@ -656,14 +687,13 @@ namespace Aerospike.Client
 					// Put connection back in pool.
 					conn.UpdateLastUsed();
 					node.PutAsyncConnection(conn);
-					PutBackArgsOnError();
 				}
 				else
 				{
 					// Close socket to flush out possible garbage.
-					CloseOnError();
+					CloseConnection();
 				}
-				NotifyFailure(ae);
+				FailCommand(ae);
 			}
 			else
 			{
@@ -679,8 +709,7 @@ namespace Aerospike.Client
 			{
 				// Free up resources and notify user on timeout.
 				// Connection should have already been closed on AsyncTimeoutQueue timeout.
-				PutBackArgsOnError();
-				NotifyFailure(new AerospikeException.Timeout(policy, true));
+				FailCommand(new AerospikeException.Timeout(policy, true));
 			}
 			else if (status == FAIL_SOCKET_TIMEOUT)
 			{
@@ -698,8 +727,7 @@ namespace Aerospike.Client
 				}
 				else
 				{
-					PutBackArgsOnError();
-					NotifyFailure(timeoutException);
+					FailCommand(timeoutException);
 				}
 			}
 			else
@@ -711,8 +739,10 @@ namespace Aerospike.Client
 			}
 		}
 
-		private void NotifyFailure(AerospikeException ae)
+		private void FailCommand(AerospikeException ae)
 		{
+			PutBackArgsOnError();
+			
 			try
 			{
 				ae.Node = node;
@@ -720,21 +750,13 @@ namespace Aerospike.Client
 				ae.SetInDoubt(isRead, commandSentCounter);
 				OnFailure(ae);
 			}
-			catch (Exception e) 
+			catch (Exception e)
 			{
 				if (Log.WarnEnabled())
 				{
 					Log.Warn("OnFailure() error: " + Util.GetErrorMessage(e));
 				}
 			}
-		}
-
-		private void CloseOnError()
-		{
-			// Connection may be null because never obtained connection or connection
-			// was reset in preparation for retry.
-			CloseConnection();
-			PutBackArgsOnError();
 		}
 
 		private void CloseConnection()
@@ -746,7 +768,7 @@ namespace Aerospike.Client
 			}
 		}
 
-		private void PutBackArgsOnError()
+		internal void PutBackArgsOnError()
 		{
 			// Do not put large buffers back into pool.
 			if (segment.size > BufferPool.BUFFER_CUTOFF)

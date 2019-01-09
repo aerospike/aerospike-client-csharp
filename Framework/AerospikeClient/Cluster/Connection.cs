@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -156,6 +156,21 @@ namespace Aerospike.Client
 				}
 				pos += count;
 			}
+		}
+
+		public virtual int Read(byte[] buffer, int offset, int length)
+		{
+			if (socket.ReceiveTimeout > 0)
+			{
+				// Check if data is available for reading.
+				// Poll is used because the timeout value is respected under 500ms.
+				// The Receive method does not timeout until after 500ms.
+				if (!socket.Poll(socket.ReceiveTimeout * 1000, SelectMode.SelectRead))
+				{
+					throw new SocketException((int)SocketError.TimedOut);
+				}
+			}
+			return socket.Receive(buffer, offset, length, SocketFlags.None);
 		}
 
 		public virtual Stream GetStream()

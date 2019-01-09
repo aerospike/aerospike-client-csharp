@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -55,7 +55,8 @@ namespace Aerospike.Client
 
 			if (timeout < sleepInterval)
 			{
-				sleepInterval = timeout;
+				// Minimum sleep interval is 5ms.
+				sleepInterval = (timeout >= 5)? timeout : 5;
 
 				lock (this)
 				{
