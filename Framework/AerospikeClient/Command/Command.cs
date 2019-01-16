@@ -1104,7 +1104,7 @@ namespace Aerospike.Client
 			if (!isRead)
 			{
 				// Writes will always proxy to master node.
-				cluster.GetMasterNode(partition);
+				return cluster.GetMasterNode(partition);
 			}
 
 			switch (replica)
