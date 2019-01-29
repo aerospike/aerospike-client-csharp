@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -1092,39 +1092,7 @@ namespace Aerospike.Client
 			dataOffset = MSG_TOTAL_HEADER_SIZE;
 		}
 
-		public Node GetNode(Cluster cluster, Partition partition, Replica replica, bool isRead)
-		{
-			// Handle default case first.
-			if (replica == Replica.SEQUENCE)
-			{
-				// Sequence always starts at master, so writes can go through the same algorithm.
-				return GetSequenceNode(cluster, partition);
-			}
-
-			if (!isRead)
-			{
-				// Writes will always proxy to master node.
-				return cluster.GetMasterNode(partition);
-			}
-
-			switch (replica)
-			{
-				default:
-				case Replica.MASTER:
-					return cluster.GetMasterNode(partition);
-
-				case Replica.PREFER_RACK:
-					return GetRackNode(cluster, partition);
-
-				case Replica.MASTER_PROLES:
-					return cluster.GetMasterProlesNode(partition);
-
-				case Replica.RANDOM:
-					return cluster.GetRandomNode();
-			}
-		}
-
-		public Node GetSequenceNode(Cluster cluster, Partition partition)
+		public Node GetNode(Cluster cluster, Policy policy, Partition partition, bool isRead)
 		{
 			// Must copy hashmap reference for copy on write semantics to work.
 			Dictionary<string, Partitions> map = cluster.partitionMap;
@@ -1135,6 +1103,44 @@ namespace Aerospike.Client
 				throw new AerospikeException.InvalidNamespace(partition.ns, map.Count);
 			}
 
+			if (partitions.cpMode && isRead && !policy.linearizeRead)
+			{
+				// Strong Consistency namespaces always use master node when read policy is sequential.
+				return cluster.GetMasterNode(partitions, partition);
+			}
+
+			// Handle default case first.
+			if (policy.replica == Replica.SEQUENCE)
+			{
+				// Sequence always starts at master, so writes can go through the same algorithm.
+				return GetSequenceNode(cluster, partitions, partition);
+			}
+
+			if (!isRead)
+			{
+				// Writes will always proxy to master node.
+				return cluster.GetMasterNode(partitions, partition);
+			}
+
+			switch (policy.replica)
+			{
+				default:
+				case Replica.MASTER:
+					return cluster.GetMasterNode(partitions, partition);
+
+				case Replica.PREFER_RACK:
+					return GetRackNode(cluster, partitions, partition);
+
+				case Replica.MASTER_PROLES:
+					return cluster.GetMasterProlesNode(partitions, partition);
+
+				case Replica.RANDOM:
+					return cluster.GetRandomNode();
+			}
+		}
+
+		public Node GetSequenceNode(Cluster cluster, Partitions partitions, Partition partition)
+		{
 			Node[][] replicas = partitions.replicas;
 
 			for (int i = 0; i < replicas.Length; i++)
@@ -1152,17 +1158,8 @@ namespace Aerospike.Client
 			throw new AerospikeException.InvalidNode(nodeArray.Length, partition);
 		}
 
-		private Node GetRackNode(Cluster cluster, Partition partition)
+		private Node GetRackNode(Cluster cluster, Partitions partitions, Partition partition)
 		{
-			// Must copy hashmap reference for copy on write semantics to work.
-			Dictionary<string, Partitions> map = cluster.partitionMap;
-			Partitions partitions;
-
-			if (!map.TryGetValue(partition.ns, out partitions))
-			{
-				throw new AerospikeException.InvalidNamespace(partition.ns, map.Count);
-			}
-
 			Node[][] replicas = partitions.replicas;
 			Node fallback = null;
 
@@ -1193,6 +1190,14 @@ namespace Aerospike.Client
 
 			Node[] nodeArray = cluster.Nodes;
 			throw new AerospikeException.InvalidNode(nodeArray.Length, partition);
+		}
+
+		internal void ShiftSequenceOnRead(Policy policy, bool isRead)
+		{
+			if (isRead && ! policy.linearizeRead)
+			{
+				sequence++;
+			}
 		}
 
 		protected internal abstract void SizeBuffer();

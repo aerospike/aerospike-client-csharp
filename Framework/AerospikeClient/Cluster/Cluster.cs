@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -721,17 +721,8 @@ namespace Aerospike.Client
 			get { return clusterName != null && clusterName.Length > 0; }
 		}
 
-		public Node GetMasterNode(Partition partition)
+		public Node GetMasterNode(Partitions partitions, Partition partition)
 		{
-			// Must copy hashmap reference for copy on write semantics to work.
-			Dictionary<string, Partitions> map = partitionMap;
-			Partitions partitions;
-
-			if (!map.TryGetValue(partition.ns, out partitions))
-			{
-				throw new AerospikeException.InvalidNamespace(partition.ns, map.Count);
-			}
-
 			Node node = partitions.replicas[0][partition.partitionId];
 
 			if (node != null && node.Active)
@@ -743,17 +734,8 @@ namespace Aerospike.Client
 			throw new AerospikeException.InvalidNode(nodeArray.Length, partition);
 		}
 
-		public Node GetMasterProlesNode(Partition partition)
+		public Node GetMasterProlesNode(Partitions partitions, Partition partition)
 		{
-			// Must copy hashmap reference for copy on write semantics to work.
-			Dictionary<string, Partitions> map = partitionMap;
-			Partitions partitions;
-
-			if (!map.TryGetValue(partition.ns, out partitions))
-			{
-				throw new AerospikeException.InvalidNamespace(partition.ns, map.Count);
-			}
-
 			Node[][] replicas = partitions.replicas;
 
 			for (int i = 0; i < replicas.Length; i++)

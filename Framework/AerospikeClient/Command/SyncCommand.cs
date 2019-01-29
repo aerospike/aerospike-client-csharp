@@ -38,7 +38,7 @@ namespace Aerospike.Client
 					socketTimeout = totalTimeout;
 				}
 			}
-			Execute(cluster, policy, partition, node, isRead, socketTimeout, totalTimeout, deadline, 0, 0);
+			Execute(cluster, policy, partition, node, isRead, socketTimeout, totalTimeout, deadline, 1, 0);
 		}
 
 		public void Execute
@@ -53,14 +53,23 @@ namespace Aerospike.Client
 			// Execute command until successful, timed out or maximum iterations have been reached.
 			while (true)
 			{
+				if (partition != null)
+				{
+					// Single record command node retrieval.
+					try
+					{
+						node = GetNode(cluster, policy, partition, isRead);
+					}
+					catch (AerospikeException ae)
+					{
+						ae.Iteration = iteration;
+						ae.SetInDoubt(isRead, commandSentCounter);
+						throw;
+					}
+				}
+
 				try
 				{
-					if (partition != null)
-					{
-						// Single record command node retrieval.
-						node = GetNode(cluster, partition, policy.replica, isRead);
-					}
-
 					Connection conn = node.GetConnection(socketTimeout);
 
 					try
@@ -106,17 +115,10 @@ namespace Aerospike.Client
 							// Go through retry logic on server timeout.
 							exception = new AerospikeException.Timeout(policy, false);
 							isClientTimeout = false;
-
-							if (isRead)
-							{
-								base.sequence++;
-							}
+							ShiftSequenceOnRead(policy, isRead);
 						}
 						else
 						{
-							ae.Node = node;
-							ae.Iteration = iteration + 1;
-							ae.SetInDoubt(isRead, commandSentCounter);
 							throw;
 						}
 					}
@@ -129,11 +131,7 @@ namespace Aerospike.Client
 						if (se.SocketErrorCode == SocketError.TimedOut)
 						{
 							isClientTimeout = true;
-
-							if (isRead)
-							{
-								base.sequence++;
-							}
+							ShiftSequenceOnRead(policy, isRead);
 						}
 						else
 						{
@@ -150,6 +148,22 @@ namespace Aerospike.Client
 						throw;
 					}
 				}
+				catch (SocketException se)
+				{
+					// This exception might happen after initial connection succeeded, but
+					// user login failed with a socket error.  Retry.
+					if (se.SocketErrorCode == SocketError.TimedOut)
+					{
+						isClientTimeout = true;
+						ShiftSequenceOnRead(policy, isRead);
+					}
+					else
+					{
+						exception = new AerospikeException(se);
+						isClientTimeout = false;
+						base.sequence++;
+					}
+				}
 				catch (AerospikeException.Connection ce)
 				{
 					// Socket connection error has occurred. Retry.
@@ -157,9 +171,16 @@ namespace Aerospike.Client
 					isClientTimeout = false;
 					base.sequence++;
 				}
+				catch (AerospikeException ae)
+				{
+					ae.Node = node;
+					ae.Iteration = iteration;
+					ae.SetInDoubt(isRead, commandSentCounter);
+					throw;
+				}
 
 				// Check maxRetries.
-				if (++iteration > policy.maxRetries)
+				if (iteration > policy.maxRetries)
 				{
 					break;
 				}
@@ -190,6 +211,8 @@ namespace Aerospike.Client
 					// Sleep before trying again.
 					Util.Sleep(policy.sleepBetweenRetries);
 				}
+
+				iteration++;
 
 				if (ShouldRetryBatch() && RetryBatch(cluster, socketTimeout, totalTimeout, deadline, iteration, commandSentCounter))
 				{

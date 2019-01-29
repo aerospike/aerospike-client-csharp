@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -82,14 +82,20 @@ namespace Aerospike.Client
 				sb.Append("Error ");
 				sb.Append(resultCode);
 
+				if (iteration >= 0)
+				{
+					sb.Append(',');
+					sb.Append(iteration);
+				}
+
 				if (inDoubt)
 				{
-					sb.Append("(inDoubt)");
+					sb.Append(",inDoubt");
 				}
 
 				if (node != null)
 				{
-					sb.Append(" from ");
+					sb.Append(',');
 					sb.Append(node.ToString());
 				}
 
@@ -103,12 +109,6 @@ namespace Aerospike.Client
 				{
 					sb.Append(ResultCode.GetResultString(resultCode));
 				}
-
-				if (iteration > 1)
-				{
-					sb.Append(Environment.NewLine);
-					sb.Append("iteration=" + iteration);
-				}				
 				return sb.ToString();
 			}
 		}

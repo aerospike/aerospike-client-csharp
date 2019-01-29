@@ -183,7 +183,7 @@ namespace Aerospike.Client
 			{
 				if (partition != null)
 				{
-					node = (AsyncNode)GetNode(cluster, partition, policy.replica, isRead);
+					node = (AsyncNode)GetNode(cluster, policy, partition, isRead);
 				}
 				eventArgs.RemoteEndPoint = node.address;
 
@@ -718,11 +718,7 @@ namespace Aerospike.Client
 
 				if (iteration <= policy.maxRetries)
 				{
-					if (isRead)
-					{
-						// Read commands shift to prole node on socket timeout.
-						sequence++;
-					}
+					ShiftSequenceOnRead(policy, isRead);
 					Retry(timeoutException);
 				}
 				else

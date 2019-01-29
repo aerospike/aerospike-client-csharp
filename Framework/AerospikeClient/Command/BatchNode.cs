@@ -46,7 +46,7 @@ namespace Aerospike.Client
 			for (int i = 0; i < keys.Length; i++)
 			{
 				Partition partition = new Partition(keys[i]);
-				Node node = GetNode(cluster, partition, policy.replica, 0);
+				Node node = GetNode(cluster, policy, partition, 0);
 				BatchNode batchNode = FindBatchNode(batchNodes, node);
 
 				if (batchNode == null)
@@ -87,7 +87,7 @@ namespace Aerospike.Client
 			{
 				int offset = batchSeed.offsets[i];
 				Partition partition = new Partition(keys[offset]);
-				Node node = GetNode(cluster, partition, policy.replica, sequence);
+				Node node = GetNode(cluster, policy, partition, sequence);
 				BatchNode batchNode = FindBatchNode(batchNodes, node);
 
 				if (batchNode == null)
@@ -128,7 +128,7 @@ namespace Aerospike.Client
 			for (int i = 0; i < max; i++)
 			{
 				Partition partition = new Partition(records[i].key);
-				Node node = GetNode(cluster, partition, policy.replica, 0);
+				Node node = GetNode(cluster, policy, partition, 0);
 				BatchNode batchNode = FindBatchNode(batchNodes, node);
 
 				if (batchNode == null)
@@ -169,7 +169,7 @@ namespace Aerospike.Client
 			{
 				int offset = batchSeed.offsets[i];
 				Partition partition = new Partition(records[offset].key);
-				Node node = GetNode(cluster, partition, policy.replica, sequence);
+				Node node = GetNode(cluster, policy, partition, sequence);
 				BatchNode batchNode = FindBatchNode(batchNodes, node);
 
 				if (batchNode == null)
@@ -184,29 +184,7 @@ namespace Aerospike.Client
 			return batchNodes;
 		}
 		
-		private static Node GetNode(Cluster cluster, Partition partition, Replica replica, uint sequence)
-		{
-			switch (replica)
-			{
-				case Replica.SEQUENCE:
-					return GetSequenceNode(cluster, partition, sequence);
-
-				case Replica.PREFER_RACK:
-					return GetRackNode(cluster, partition, sequence);
-
-				default:
-				case Replica.MASTER:
-					return cluster.GetMasterNode(partition);
-
-				case Replica.MASTER_PROLES:
-					return cluster.GetMasterProlesNode(partition);
-
-				case Replica.RANDOM:
-					return cluster.GetRandomNode();
-			}
-		}
-
-		private static Node GetSequenceNode(Cluster cluster, Partition partition, uint sequence)
+		private static Node GetNode(Cluster cluster, Policy policy, Partition partition, uint sequence)
 		{
 			// Must copy hashmap reference for copy on write semantics to work.
 			Dictionary<string, Partitions> map = cluster.partitionMap;
@@ -217,6 +195,34 @@ namespace Aerospike.Client
 				throw new AerospikeException.InvalidNamespace(partition.ns, map.Count);
 			}
 
+			if (partitions.cpMode && !policy.linearizeRead)
+			{
+				// Strong Consistency namespaces always use master node when read policy is sequential.
+				return cluster.GetMasterNode(partitions, partition);
+			}
+
+			switch (policy.replica)
+			{
+				case Replica.SEQUENCE:
+					return GetSequenceNode(cluster, partitions, partition, sequence);
+
+				case Replica.PREFER_RACK:
+					return GetRackNode(cluster, partitions, partition, sequence);
+
+				default:
+				case Replica.MASTER:
+					return cluster.GetMasterNode(partitions, partition);
+
+				case Replica.MASTER_PROLES:
+					return cluster.GetMasterProlesNode(partitions, partition);
+
+				case Replica.RANDOM:
+					return cluster.GetRandomNode();
+			}
+		}
+
+		private static Node GetSequenceNode(Cluster cluster, Partitions partitions, Partition partition, uint sequence)
+		{
 			Node[][] replicas = partitions.replicas;
 
 			for (int i = 0; i < replicas.Length; i++)
@@ -234,17 +240,8 @@ namespace Aerospike.Client
 			throw new AerospikeException.InvalidNode(nodeArray.Length, partition);
 		}
 
-		private static Node GetRackNode(Cluster cluster, Partition partition, uint sequence)
+		private static Node GetRackNode(Cluster cluster, Partitions partitions, Partition partition, uint sequence)
 		{
-			// Must copy hashmap reference for copy on write semantics to work.
-			Dictionary<string, Partitions> map = cluster.partitionMap;
-			Partitions partitions;
-
-			if (!map.TryGetValue(partition.ns, out partitions))
-			{
-				throw new AerospikeException.InvalidNamespace(partition.ns, map.Count);
-			}
-
 			Node[][] replicas = partitions.replicas;
 			Node fallback = null;
 
