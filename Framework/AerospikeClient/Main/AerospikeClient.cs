@@ -397,7 +397,7 @@ namespace Aerospike.Client
 
 			StringBuilder sb = new StringBuilder(200);
 
-			if (set != null && set.Length > 0)
+			if (set != null)
 			{
 				sb.Append("truncate:namespace=");
 				sb.Append(ns);
