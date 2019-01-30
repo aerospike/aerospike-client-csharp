@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -33,6 +33,7 @@ namespace Aerospike.Client
 		public const int PARTITIONS = 4096;
 
 		public const int HAS_GEO = (1 << 0);
+		public const int HAS_TRUNCATE_NS = (1 << 1);
 		public const int HAS_PEERS = (1 << 4);
 		public const int HAS_REPLICAS = (1 << 5);
 		public const int HAS_CLUSTER_STABLE = (1 << 6);
@@ -789,6 +790,14 @@ namespace Aerospike.Client
 			get { return (features & HAS_LUT_NOW) != 0; }
 		}
 
+		/// <summary>
+		/// Does server support truncate-namespace info command.
+		/// </summary>
+		public bool HasTruncateNamespace
+		{
+			get { return (features & HAS_TRUNCATE_NS) != 0; }
+		}
+	
 		/// <summary>
 		/// Does server support replicas info command.
 		/// </summary>

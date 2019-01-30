@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -271,6 +271,10 @@ namespace Aerospike.Client
 					else if (feature.Equals("lut-now"))
 					{
 						this.features |= Node.HAS_LUT_NOW;
+					}
+					else if (feature.Equals("truncate-namespace"))
+					{
+						this.features |= Node.HAS_TRUNCATE_NS;
 					}
 				}
 			}

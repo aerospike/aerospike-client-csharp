@@ -394,15 +394,29 @@ namespace Aerospike.Client
 
 			// Send truncate command to one node. That node will distribute the command to other nodes.
 			Node node = cluster.GetRandomNode();
-	
+
 			StringBuilder sb = new StringBuilder(200);
-			sb.Append("truncate:namespace=");
-			sb.Append(ns);
 
 			if (set != null && set.Length > 0)
 			{
+				sb.Append("truncate:namespace=");
+				sb.Append(ns);
 				sb.Append(";set=");
 				sb.Append(set);
+			}
+			else
+			{
+				// Servers >= 4.5.1.0 support truncate-namespace.
+				if (node.HasTruncateNamespace)
+				{
+					sb.Append("truncate-namespace:namespace=");
+					sb.Append(ns);
+				}
+				else
+				{
+					sb.Append("truncate:namespace=");
+					sb.Append(ns);
+				}
 			}
 
 			if (beforeLastUpdate.HasValue)
@@ -413,7 +427,7 @@ namespace Aerospike.Client
 			}
 			else
 			{
-				// Servers >= 4.3.1.4 require lut argument.
+				// Servers >= 4.3.1.4 and <= 4.5.0.1 require lut argument.
 				if (node.HasLutNow)
 				{
 					sb.Append(";lut=now");
