@@ -64,8 +64,6 @@ namespace Aerospike.Client
 
 	sealed class AsyncBatchReadListCommand : AsyncBatchCommand
 	{
-		private readonly BatchNode batch;
-		private readonly BatchPolicy batchPolicy;
 		private readonly List<BatchRead> records;
 
 		public AsyncBatchReadListCommand
@@ -77,15 +75,11 @@ namespace Aerospike.Client
 			List<BatchRead> records
 		) : base(parent, cluster, batch, batchPolicy)
 		{
-			this.batch = batch;
-			this.batchPolicy = batchPolicy;
 			this.records = records;
 		}
 
 		public AsyncBatchReadListCommand(AsyncBatchReadListCommand other) : base(other)
 		{
-			this.batch = other.batch;
-			this.batchPolicy = other.batchPolicy;
 			this.records = other.records;
 		}
 
@@ -171,8 +165,6 @@ namespace Aerospike.Client
 
 	sealed class AsyncBatchReadSequenceCommand : AsyncBatchCommand
 	{
-		private readonly BatchNode batch;
-		private readonly BatchPolicy batchPolicy;
 		private readonly BatchSequenceListener listener;
 		private readonly List<BatchRead> records;
 
@@ -186,16 +178,12 @@ namespace Aerospike.Client
 			List<BatchRead> records
 		) : base(parent, cluster, batch, batchPolicy)
 		{
-			this.batch = batch;
-			this.batchPolicy = batchPolicy;
 			this.listener = listener;
 			this.records = records;
 		}
 
 		public AsyncBatchReadSequenceCommand(AsyncBatchReadSequenceCommand other) : base(other)
 		{
-			this.batch = other.batch;
-			this.batchPolicy = other.batchPolicy;
 			this.listener = other.listener;
 			this.records = other.records;
 		}
@@ -286,8 +274,6 @@ namespace Aerospike.Client
 
 	sealed class AsyncBatchGetArrayCommand : AsyncBatchCommand
 	{
-		private readonly BatchNode batch;
-		private readonly BatchPolicy batchPolicy;
 		private readonly Key[] keys;
 		private readonly string[] binNames;
 		private readonly Record[] records;
@@ -305,8 +291,6 @@ namespace Aerospike.Client
 			int readAttr
 		) : base(parent, cluster, batch, batchPolicy)
 		{
-			this.batch = batch;
-			this.batchPolicy = batchPolicy;
 			this.keys = keys;
 			this.binNames = binNames;
 			this.records = records;
@@ -315,8 +299,6 @@ namespace Aerospike.Client
 
 		public AsyncBatchGetArrayCommand(AsyncBatchGetArrayCommand other) : base(other)
 		{
-			this.batch = other.batch;
-			this.batchPolicy = other.batchPolicy;
 			this.keys = other.keys;
 			this.binNames = other.binNames;
 			this.records = other.records;
@@ -404,8 +386,6 @@ namespace Aerospike.Client
 
 	sealed class AsyncBatchGetSequenceCommand : AsyncBatchCommand
 	{
-		private readonly BatchNode batch;
-		private readonly BatchPolicy batchPolicy;
 		private readonly Key[] keys;
 		private readonly string[] binNames;
 		private readonly RecordSequenceListener listener;
@@ -423,8 +403,6 @@ namespace Aerospike.Client
 			int readAttr
 		) : base(parent, cluster, batch, batchPolicy)
 		{
-			this.batch = batch;
-			this.batchPolicy = batchPolicy;
 			this.keys = keys;
 			this.binNames = binNames;
 			this.listener = listener;
@@ -433,8 +411,6 @@ namespace Aerospike.Client
 
 		public AsyncBatchGetSequenceCommand(AsyncBatchGetSequenceCommand other) : base(other)
 		{
-			this.batch = other.batch;
-			this.batchPolicy = other.batchPolicy;
 			this.keys = other.keys;
 			this.binNames = other.binNames;
 			this.listener = other.listener;
@@ -529,8 +505,6 @@ namespace Aerospike.Client
 
 	sealed class AsyncBatchExistsArrayCommand : AsyncBatchCommand
 	{
-		private readonly BatchNode batch;
-		private readonly BatchPolicy batchPolicy;
 		private readonly Key[] keys;
 		private readonly bool[] existsArray;
 
@@ -544,16 +518,12 @@ namespace Aerospike.Client
 			bool[] existsArray
 		) : base(parent, cluster, batch, batchPolicy)
 		{
-			this.batch = batch;
-			this.batchPolicy = batchPolicy;
 			this.keys = keys;
 			this.existsArray = existsArray;
 		}
 
 		public AsyncBatchExistsArrayCommand(AsyncBatchExistsArrayCommand other) : base(other)
 		{
-			this.batch = other.batch;
-			this.batchPolicy = other.batchPolicy;
 			this.keys = other.keys;
 			this.existsArray = other.existsArray;
 		}
@@ -640,8 +610,6 @@ namespace Aerospike.Client
 
 	sealed class AsyncBatchExistsSequenceCommand : AsyncBatchCommand
 	{
-		private readonly BatchNode batch;
-		private readonly BatchPolicy batchPolicy;
 		private readonly Key[] keys;
 		private readonly ExistsSequenceListener listener;
 
@@ -655,16 +623,12 @@ namespace Aerospike.Client
 			ExistsSequenceListener listener
 		) : base(parent, cluster, batch, batchPolicy)
 		{
-			this.batch = batch;
-			this.batchPolicy = batchPolicy;
 			this.keys = keys;
 			this.listener = listener;
 		}
 
 		public AsyncBatchExistsSequenceCommand(AsyncBatchExistsSequenceCommand other) : base(other)
 		{
-			this.batch = other.batch;
-			this.batchPolicy = other.batchPolicy;
 			this.keys = other.keys;
 			this.listener = other.listener;
 		}
@@ -733,8 +697,8 @@ namespace Aerospike.Client
 
 	public abstract class AsyncBatchCommand : AsyncMultiCommand
 	{
-		readonly BatchNode batch;
-		readonly BatchPolicy batchPolicy;
+		internal readonly BatchNode batch;
+		internal readonly BatchPolicy batchPolicy;
 
 		public AsyncBatchCommand(AsyncMultiExecutor parent, AsyncCluster cluster, BatchNode batch, BatchPolicy batchPolicy)
 			: base(parent, cluster, batchPolicy, (AsyncNode)batch.node, false)
@@ -745,6 +709,8 @@ namespace Aerospike.Client
 
 		public AsyncBatchCommand(AsyncBatchCommand other) : base(other)
 		{
+			this.batch = other.batch;
+			this.batchPolicy = other.batchPolicy;
 		}
 
 		protected internal override void Retry(AerospikeException ae)
