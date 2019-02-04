@@ -6,7 +6,7 @@
     <title>Official Aerospike C# Client</title>
     <authors>Aerospike</authors>
     <owners>Aerospike</owners>
-    <licenseUrl>https://github.com/aerospike/aerospike-client-csharp/blob/master/LICENSE.md</licenseUrl>
+	<license type="expression">Apache-2.0</license>
     <projectUrl>http://www.aerospike.com/download/client/csharp</projectUrl>
     <iconUrl>http://wordpress-www.s3-us-west-1.amazonaws.com/wp-content/uploads/2015/03/bryan-as.png</iconUrl>
     <requireLicenseAcceptance>false</requireLicenseAcceptance>
