@@ -28,7 +28,7 @@ namespace Aerospike.Client
 	public class Connection
 	{
 		protected internal readonly Socket socket;
-		protected internal readonly Pool pool;
+		protected internal readonly Pool<Connection> pool;
 		private readonly double maxSocketIdleMillis;
 		private DateTime timestamp;
 
@@ -40,7 +40,7 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Create socket with connection timeout.
 		/// </summary>
-		public Connection(IPEndPoint address, int timeoutMillis, int maxSocketIdleMillis, Pool pool)
+		public Connection(IPEndPoint address, int timeoutMillis, int maxSocketIdleMillis, Pool<Connection> pool)
 		{
 			this.maxSocketIdleMillis = (double)(maxSocketIdleMillis);
 			this.pool = pool;
@@ -184,6 +184,14 @@ namespace Aerospike.Client
 		public bool IsValid()
 		{
 			return socket.Connected && (DateTime.UtcNow.Subtract(timestamp).TotalMilliseconds <= maxSocketIdleMillis);
+		}
+
+		/// <summary>
+		/// Is socket used within specified limits.
+		/// </summary>
+		public bool IsCurrent()
+		{
+			return DateTime.UtcNow.Subtract(timestamp).TotalMilliseconds <= maxSocketIdleMillis;
 		}
 
 		/// <summary>

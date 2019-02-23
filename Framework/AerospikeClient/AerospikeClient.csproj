@@ -224,6 +224,7 @@
     <Compile Include="Cluster\Cluster.cs" />
     <Compile Include="Cluster\Connection.cs" />
     <Compile Include="Cluster\ClusterStats.cs" />
+    <Compile Include="Cluster\Pool.cs" />
     <Compile Include="Cluster\RackParser.cs" />
     <Compile Include="Cluster\Node.cs" />
     <Compile Include="Cluster\NodeValidator.cs" />

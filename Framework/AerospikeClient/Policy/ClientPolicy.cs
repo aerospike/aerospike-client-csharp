@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -106,6 +106,11 @@ namespace Aerospike.Client
 		/// It's important to set this value to a few seconds less than the server's proto-fd-idle-ms
 		/// (default 60000 milliseconds or 1 minute), so the client does not attempt to use a socket 
 		/// that has already been reaped by the server.
+		/// </para>
+		/// <para>
+		/// Connection pools are now implemented by a LIFO stack.  Connections at the tail of the
+		/// stack will always be the least used.  These connections are checked for maxSocketIdle
+		/// once every 30 tend iterations (usually 30 seconds).
 		/// </para>
 		/// <para>
 		/// Default: 55 seconds

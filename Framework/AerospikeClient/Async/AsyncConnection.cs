@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -110,6 +110,14 @@ namespace Aerospike.Client
 			{
 				return false;
 			}*/
+		}
+
+		/// <summary>
+		/// Is socket used within specified limits.
+		/// </summary>
+		public bool IsCurrent()
+		{
+			return DateTime.UtcNow.Subtract(timestamp).TotalMilliseconds <= maxSocketIdleMillis;
 		}
 
 		public void UpdateLastUsed()

@@ -51,7 +51,7 @@ namespace Aerospike.Client
 		protected internal byte[] sessionToken;
 		protected internal DateTime? sessionExpiration;
 		private volatile Dictionary<string,int> racks;
-		private readonly Pool[] connectionPools;
+		private readonly Pool<Connection>[] connectionPools;
 		protected uint connectionIter;
 		protected internal int peersGeneration = -1;
 		protected internal int partitionGeneration = -1;
@@ -82,14 +82,14 @@ namespace Aerospike.Client
 			this.sessionExpiration = nv.sessionExpiration;
 			this.features = nv.features;
 
-			connectionPools = new Pool[cluster.connPoolsPerNode];
+			connectionPools = new Pool<Connection>[cluster.connPoolsPerNode];
 			int max = cluster.connectionQueueSize / cluster.connPoolsPerNode;
 			int rem = cluster.connectionQueueSize - (max * cluster.connPoolsPerNode);
 
 			for (int i = 0; i < connectionPools.Length; i++)
 			{
 				int capacity = i < rem ? max + 1 : max;
-				connectionPools[i] = new Pool(capacity);
+				connectionPools[i] = new Pool<Connection>(capacity);
 			}
 
 			if (cluster.rackAware)
@@ -582,13 +582,13 @@ namespace Aerospike.Client
 				backward = true;
 			}
 
-			Pool pool = connectionPools[initialIndex];
+			Pool<Connection> pool = connectionPools[initialIndex];
 			uint queueIndex = initialIndex;
 			Connection conn;
 
 			while (true)
 			{
-				if (pool.queue.TryDequeue(out conn))
+				if (pool.TryDequeue(out conn))
 				{
 					// Found socket.
 					// Verify that socket is active and receive buffer is empty.
@@ -609,7 +609,7 @@ namespace Aerospike.Client
 					}
 					CloseConnection(conn);
 				}
-				else if (Interlocked.Increment(ref pool.total) <= pool.capacity)
+				else if (pool.IncrementTotal() <= pool.Capacity)
 				{
 					// Socket not found and queue has available slot.
 					// Create new connection.
@@ -619,7 +619,7 @@ namespace Aerospike.Client
 					}
 					catch (Exception)
 					{
-						Interlocked.Decrement(ref pool.total);
+						pool.DecrementTotal();
 						throw;
 					}
 
@@ -647,7 +647,7 @@ namespace Aerospike.Client
 				else
 				{
 					// Socket not found and queue is full.  Try another queue.
-					Interlocked.Decrement(ref pool.total);
+					pool.DecrementTotal();
 
 					if (backward)
 					{
@@ -687,7 +687,7 @@ namespace Aerospike.Client
 
 			if (active)
 			{
-				conn.pool.queue.Enqueue(conn);
+				conn.pool.Enqueue(conn);
 			}
 			else
 			{
@@ -700,8 +700,29 @@ namespace Aerospike.Client
 		/// </summary>
 		public void CloseConnection(Connection conn)
 		{
-			Interlocked.Decrement(ref conn.pool.total);
+			conn.pool.DecrementTotal();
 			conn.Close();
+		}
+
+		public virtual void CloseIdleConnections()
+		{
+			foreach (Pool<Connection> pool in connectionPools) 
+			{
+				Connection conn;
+
+				while (pool.TryDequeueLast(out conn))
+				{
+					if (conn.IsCurrent())
+					{
+						if (!pool.EnqueueLast(conn))
+						{
+							CloseConnection(conn);
+						}
+						break;
+					}
+					CloseConnection(conn);
+				}
+			}
 		}
 
 		public ConnectionStats GetConnectionStats()
@@ -709,11 +730,11 @@ namespace Aerospike.Client
 			int inPool = 0;
 			int inUse = 0;
 
-			foreach (Pool pool in connectionPools)
+			foreach (Pool<Connection> pool in connectionPools)
 			{
-				int tmp = pool.queue.Count;
+				int tmp = pool.Count;
 				inPool += tmp;
-				tmp = pool.total - tmp;
+				tmp = pool.Total - tmp;
 
 				// Timing issues may cause values to go negative. Adjust.
 				if (tmp < 0)
@@ -864,26 +885,14 @@ namespace Aerospike.Client
 			conn.Close();
 
 			// Empty connection pools.
-			foreach (Pool pool in connectionPools)
+			foreach (Pool<Connection> pool in connectionPools)
 			{
 				//Log.Debug("Close node " + this + " connection pool count " + pool.total);
-				while (pool.queue.TryDequeue(out conn))
+				while (pool.TryDequeue(out conn))
 				{
 					conn.Close();
 				}
 			}
-		}
-	}
-
-	public class Pool
-	{
-		internal readonly ConcurrentQueue<Connection> queue;
-		internal readonly int capacity;
-		internal volatile int total;
-	
-		internal Pool(int capacity) {
-			this.capacity = capacity;
-			queue = new ConcurrentQueue<Connection>();
 		}
 	}
 }

@@ -89,6 +89,9 @@ namespace Aerospike.Client
 		// Interval in milliseconds between cluster tends.
 		private readonly int tendInterval;
 
+		// Cluster tend counter
+		private int tendCount;
+
 		// Tend thread variables.
 		private Thread tendThread;
 		private CancellationTokenSource cancel;
@@ -408,6 +411,17 @@ namespace Aerospike.Client
 			if (peers.nodes.Count > 0)
 			{
 				AddNodes(peers.nodes);
+			}
+
+			// Close idle connections every 30 tend intervals.
+			if (++tendCount >= 30)
+			{
+				tendCount = 0;
+
+				foreach (Node node in nodes)
+				{
+					node.CloseIdleConnections();
+				}
 			}
 		}
 
@@ -836,7 +850,7 @@ namespace Aerospike.Client
 			}
 		}
 
-		protected internal Connection CreateConnection(string tlsName, IPEndPoint address, int timeout, Pool pool)
+		protected internal Connection CreateConnection(string tlsName, IPEndPoint address, int timeout, Pool<Connection> pool)
 		{
 			return (tlsPolicy != null && ! tlsPolicy.forLoginOnly) ? 
 				new TlsConnection(tlsPolicy, tlsName, address, timeout, maxSocketIdleMillis, pool) : 

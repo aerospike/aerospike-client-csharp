@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -24,7 +24,7 @@ namespace Aerospike.Client
 	/// </summary>
 	public sealed class AsyncNode : Node
 	{
-		private readonly ConcurrentQueue<AsyncConnection> asyncConnQueue;
+		private readonly Pool<AsyncConnection> asyncConnQueue;
 		private readonly new AsyncCluster cluster;
 		private int connCount;
 
@@ -37,7 +37,7 @@ namespace Aerospike.Client
 			: base(cluster, nv)
 		{
 			this.cluster = cluster;
-			asyncConnQueue = new ConcurrentQueue<AsyncConnection>();
+			asyncConnQueue = new Pool<AsyncConnection>(cluster.maxCommands);
 		}
 
 		/// <summary>
@@ -65,12 +65,28 @@ namespace Aerospike.Client
 		/// <param name="conn">socket connection</param>
 		public void PutAsyncConnection(AsyncConnection conn)
 		{
-			if (active)
+			if (! (active && asyncConnQueue.Enqueue(conn)))
 			{
-				asyncConnQueue.Enqueue(conn);
+				conn.Close();
 			}
-			else
+		}
+
+		public override void CloseIdleConnections()
+		{
+			base.CloseIdleConnections();
+
+			AsyncConnection conn;
+
+			while (asyncConnQueue.TryDequeueLast(out conn))
 			{
+				if (conn.IsCurrent())
+				{
+					if (! asyncConnQueue.EnqueueLast(conn))
+					{
+						conn.Close();
+					}
+					break;
+				}
 				conn.Close();
 			}
 		}
