@@ -14,6 +14,7 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
+using System.Text;
 using System.Threading;
 
 namespace Aerospike.Client
@@ -62,7 +63,30 @@ namespace Aerospike.Client
             this.completionPortsInUse = 0;
 #endif
         }
-    }
+
+		/// <summary>
+		/// Convert statistics to string.
+		/// </summary>
+		public override string ToString()
+		{
+			StringBuilder sb = new StringBuilder(1024);
+
+			sb.Append("nodes (inUse,inPool):");
+			sb.Append(System.Environment.NewLine);
+
+			foreach (NodeStats stat in nodes)
+			{
+				sb.Append(stat);
+				sb.Append(System.Environment.NewLine);
+			}
+
+			sb.Append("threadsInUse: " + threadsInUse);
+			sb.Append(System.Environment.NewLine);
+			sb.Append("completionPortsInUse: " + completionPortsInUse);
+			sb.Append(System.Environment.NewLine);
+			return sb.ToString();
+		}
+	}
 
 	/// <summary>
 	/// Node statistics.
@@ -101,6 +125,14 @@ namespace Aerospike.Client
 				this.asyncStats = new ConnectionStats(0, 0);
 			}
 		}
+
+		/// <summary>
+		/// Convert statistics to string.
+		/// </summary>
+		public override string ToString()
+		{
+			return node + " sync(" + syncStats + ") async(" + asyncStats + ')';
+		}
 	}
 
 	/// <summary>
@@ -125,6 +157,14 @@ namespace Aerospike.Client
 		{
 			this.inPool = inPool;
 			this.inUse = inUse;
+		}
+
+		/// <summary>
+		/// Convert statistics to string.
+		/// </summary>
+		public override string ToString()
+		{
+			return "" + inUse + ',' + inPool;
 		}
 	}
 }
