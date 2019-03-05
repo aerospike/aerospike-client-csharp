@@ -30,7 +30,7 @@ namespace Aerospike.Client
 	/// The list of supported names can be found at:
 	/// </para>
 	/// <para>
-	/// <a href="https://docs.aerospike.com/display/AS2/Config+Parameters+Reference">https://docs.aerospike.com/display/AS2/Config+Parameters+Reference</a>
+	/// <a href="https://www.aerospike.com/docs/reference/info/index.html">https://www.aerospike.com/docs/reference/info/index.html</a>
 	/// </para>
 	/// </summary>
 	public sealed class Info
