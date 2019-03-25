@@ -60,6 +60,7 @@
     <Compile Include="..\..\Framework\AerospikeClient\Async\AsyncTouch.cs" Link="Async\AsyncTouch.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Async\AsyncWrite.cs" Link="Async\AsyncWrite.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Async\BufferPool.cs" Link="Async\BufferPool.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Async\IAsyncClient.cs" Link="Async\IAsyncClient.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Async\MaxCommandAction.cs" Link="Async\MaxCommandAction.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\BCrypt\BCrypt.cs" Link="BCrypt\BCrypt.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\BCrypt\SaltParseException.cs" Link="BCrypt\SaltParseException.cs" />

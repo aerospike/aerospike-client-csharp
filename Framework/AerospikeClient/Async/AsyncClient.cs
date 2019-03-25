@@ -38,7 +38,7 @@ namespace Aerospike.Client
 	/// written or read by specifying the relevant subset of bins.
 	/// </para>
 	/// </summary>
-	public class AsyncClient : AerospikeClient
+	public class AsyncClient : AerospikeClient, IAsyncClient
 	{
 		//-------------------------------------------------------
 		// Member variables.

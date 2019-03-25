@@ -205,6 +205,7 @@
     <Compile Include="Async\BufferPool.cs" />
     <Compile Include="Async\AsyncInfo.cs" />
     <Compile Include="Async\AsyncQueryValidate.cs" />
+    <Compile Include="Async\IAsyncClient.cs" />
     <Compile Include="Async\MaxCommandAction.cs" />
     <Compile Include="BCrypt\BCrypt.cs" />
     <Compile Include="BCrypt\SaltParseException.cs" />
