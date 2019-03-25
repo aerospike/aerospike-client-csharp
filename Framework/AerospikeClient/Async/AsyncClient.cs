@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -563,7 +563,7 @@ namespace Aerospike.Client
 			{
 				policy = readPolicyDefault;
 			}
-			AsyncRead async = new AsyncRead(cluster, policy, listener, key, null, true);
+			AsyncRead async = new AsyncRead(cluster, policy, listener, key, null);
 			async.Execute();
 		}
 
@@ -605,7 +605,7 @@ namespace Aerospike.Client
 			{
 				policy = readPolicyDefault;
 			}
-			AsyncRead async = new AsyncRead(cluster, policy, listener, key, binNames, true);
+			AsyncRead async = new AsyncRead(cluster, policy, listener, key, binNames);
 			async.Execute();
 		}
 
@@ -1018,7 +1018,7 @@ namespace Aerospike.Client
 			{
 				args.writeAttr |= Command.INFO2_RESPOND_ALL_OPS;
 			}
-			async.SetArgs(policy, args);
+			async.SetArgs(cluster, policy, args);
 			async.Execute();
 		}
 

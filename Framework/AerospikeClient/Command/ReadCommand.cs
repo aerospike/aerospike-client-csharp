@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -22,22 +22,30 @@ namespace Aerospike.Client
 	public class ReadCommand : SyncCommand
 	{
 		private readonly Policy policy;
-		protected internal readonly Key key;
+		protected readonly Key key;
 		private readonly string[] binNames;
+		protected Partition partition;
 		private Record record;
 
-		public ReadCommand(Policy policy, Key key, string[] binNames) 
+		public ReadCommand(Cluster cluster, Policy policy, Key key, string[] binNames) 
 		{
 			this.policy = policy;
 			this.key = key;
 			this.binNames = binNames;
+			this.partition = Partition.Read(cluster, policy, key);
 		}
 
-		public ReadCommand(Key key)
+		public ReadCommand(Key key, Partition partition)
 		{
 			this.policy = null;
 			this.key = key;
 			this.binNames = null;
+			this.partition = partition;
+		}
+
+		protected internal override Node GetNode(Cluster cluster)
+		{
+			return partition.GetNodeRead(cluster);
 		}
 
 		protected internal override void WriteBuffer()
@@ -90,6 +98,12 @@ namespace Aerospike.Client
 				return;
 			}
 			record = ParseRecord(opCount, fieldCount, generation, expiration);
+		}
+
+		protected internal override bool PrepareRetry(bool timeout)
+		{
+			partition.PrepareRetryRead(timeout);
+			return true;
 		}
 
 		protected internal virtual void HandleNotFound(int resultCode)

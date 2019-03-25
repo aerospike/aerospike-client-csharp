@@ -27,6 +27,7 @@ namespace Aerospike.Client
 		private const int MAX_BUFFER_SIZE = 1024 * 1024 * 10; // 10 MB
 
 		private BufferedConnection bconn;
+		private readonly Node node;
 		protected internal readonly String ns;
 		private readonly ulong clusterKey;
 		protected internal int resultCode;
@@ -39,23 +40,25 @@ namespace Aerospike.Client
 		private readonly bool first;
 		protected internal volatile bool valid = true;
 
-		protected internal MultiCommand(bool stopOnNotFound)
+		protected internal MultiCommand(Node node, bool stopOnNotFound)
 		{
+			this.node = node;
 			this.stopOnNotFound = stopOnNotFound;
 			this.ns = null;
 			this.clusterKey = 0;
 			this.first = false;
 		}
 
-		protected internal MultiCommand(String ns, ulong clusterKey, bool first)
+		protected internal MultiCommand(Node node, String ns, ulong clusterKey, bool first)
 		{
+			this.node = node;
 			this.stopOnNotFound = true;
 			this.ns = ns;
 			this.clusterKey = clusterKey;
 			this.first = first;
 		}
 
-		public void Execute(Cluster cluster, Policy policy, Node node)
+		public void Execute(Cluster cluster, Policy policy)
 		{
 			if (clusterKey != 0)
 			{
@@ -63,15 +66,25 @@ namespace Aerospike.Client
 				{
 					QueryValidate.Validate(node, ns, clusterKey);
 				}
-				base.Execute(cluster, policy, null, node, true);
+				base.Execute(cluster, policy, true);
 				QueryValidate.Validate(node, ns, clusterKey);
 			}
 			else
 			{
-				base.Execute(cluster, policy, null, node, true);
+				base.Execute(cluster, policy, true);
 			}
 		}
-		
+
+		protected internal override Node GetNode(Cluster cluster)
+		{
+			return node;
+		}
+
+		protected internal override bool PrepareRetry(bool timeout)
+		{
+			return true;
+		}
+
 		protected internal sealed override void ParseResult(Connection conn)
 		{
 			// Read socket into receive buffer one record at a time.  Do not read entire receive size

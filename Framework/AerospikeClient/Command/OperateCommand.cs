@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -26,15 +26,29 @@ namespace Aerospike.Client
 		private OperateArgs args;
 
 		public OperateCommand(Key key, Operation[] operations) 
-			: base(key)
+			: base(key, null)
 		{
 			this.operations = operations;
 		}
 
-		public void SetArgs(WritePolicy writePolicy, OperateArgs args)
+		public void SetArgs(Cluster cluster, WritePolicy writePolicy, OperateArgs args)
 		{
 			this.writePolicy = writePolicy;
 			this.args = args;
+
+			if (args.hasWrite)
+			{
+				partition = Partition.Write(cluster, writePolicy, key);
+			}
+			else
+			{
+				partition = Partition.Read(cluster, writePolicy, key);
+			}
+		}
+
+		protected internal override Node GetNode(Cluster cluster)
+		{
+			return args.hasWrite ? partition.GetNodeWrite(cluster) : partition.GetNodeRead(cluster);
 		}
 
 		protected internal override void WriteBuffer()
@@ -78,6 +92,19 @@ namespace Aerospike.Client
 			{
 				bins[name] = value;
 			}
+		}
+
+		protected internal override bool PrepareRetry(bool timeout)
+		{
+			if (args.hasWrite)
+			{
+				partition.PrepareRetryWrite(timeout);
+			}
+			else
+			{
+				partition.PrepareRetryRead(timeout);
+			}
+			return true;
 		}
 	}
 

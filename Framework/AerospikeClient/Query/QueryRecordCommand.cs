@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -24,8 +24,8 @@ namespace Aerospike.Client
 		private readonly Statement statement;
 		private readonly RecordSet recordSet;
 
-		public QueryRecordCommand(QueryPolicy policy, Statement statement, RecordSet recordSet, ulong clusterKey, bool first) 
-			: base(statement.ns, clusterKey, first)
+		public QueryRecordCommand(Node node, QueryPolicy policy, Statement statement, RecordSet recordSet, ulong clusterKey, bool first) 
+			: base(node, statement.ns, clusterKey, first)
 		{
 			this.policy = policy;
 			this.statement = statement;

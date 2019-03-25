@@ -39,7 +39,6 @@ namespace Aerospike.Client
 
 		protected internal readonly AsyncCluster cluster;
 		protected internal Policy policy;
-		private readonly Partition partition;
 		private AsyncConnection conn;
 		protected internal AsyncNode node;
 		private SocketAsyncEventArgs eventArgs;
@@ -50,28 +49,24 @@ namespace Aerospike.Client
 		private int iteration;
 		private int state;
 		private int commandSentCounter;
-		private readonly bool isRead;
+		protected internal bool isRead;
 		private bool usingSocketTimeout;
 		private bool inAuthenticate;
 		protected internal bool inHeader = true;
 		private volatile bool eventReceived;
 
-		public AsyncCommand(AsyncCluster cluster, Policy policy, Partition partition, AsyncNode node, bool isRead)
+		public AsyncCommand(AsyncCluster cluster, Policy policy, bool isRead)
 		{
 			this.cluster = cluster;
 			this.policy = policy;
-			this.partition = partition;
-			this.node = node;
 			this.isRead = isRead;
 		}
 
 		public AsyncCommand(AsyncCommand other)
 		{
 			// Retry constructor.
-			this.sequence = other.sequence;
 			this.cluster = other.cluster;
 			this.policy = other.policy;
-			this.partition = other.partition;
 			this.node = other.node;
 			this.eventArgs = other.eventArgs;
 			this.eventArgs.UserToken = this;
@@ -87,7 +82,6 @@ namespace Aerospike.Client
 		public void SetBatchRetry(AsyncCommand other)
 		{
 			// Batch split retry retains existing deadline. 
-			this.sequence = other.sequence;
 			this.iteration = other.iteration;
 			this.usingSocketTimeout = other.usingSocketTimeout;
 			this.watch = other.watch;
@@ -181,10 +175,7 @@ namespace Aerospike.Client
 
 			try
 			{
-				if (partition != null)
-				{
-					node = (AsyncNode)GetNode(cluster, policy, partition, isRead);
-				}
+				node = (AsyncNode)GetNode(cluster);
 				eventArgs.RemoteEndPoint = node.address;
 
 				conn = node.GetAsyncConnection();
@@ -516,8 +507,7 @@ namespace Aerospike.Client
 				if (status == IN_PROGRESS)
 				{
 					CloseConnection();
-					sequence++;
-					Retry(ae);
+					Retry(ae, false);
 				}
 				else
 				{
@@ -540,9 +530,19 @@ namespace Aerospike.Client
 			}
 		}
 
-		protected internal virtual void Retry(AerospikeException ae)
+		private void Retry(AerospikeException ae, bool timeout)
 		{
 			// Prepare for retry.
+			if (! PrepareRetry(timeout))
+			{
+				// Batch may be retried in separate commands.
+				if (RetryBatch())
+				{
+					// Batch was retried in separate commands.  Complete this command.
+					return;
+				}
+			}
+
 			AsyncCommand command = CloneCommand();
 
 			if (command != null)
@@ -718,8 +718,7 @@ namespace Aerospike.Client
 
 				if (iteration <= policy.maxRetries)
 				{
-					ShiftSequenceOnRead(policy, isRead);
-					Retry(timeoutException);
+					Retry(timeoutException, true);
 				}
 				else
 				{
@@ -795,9 +794,16 @@ namespace Aerospike.Client
 			return new AerospikeException.Connection("Socket error: " + se);
 		}
 
+		protected internal virtual bool RetryBatch()
+		{
+			return false;
+		}
+
+		protected internal abstract Node GetNode(Cluster cluster);
 		protected internal abstract void WriteBuffer();
 		protected internal abstract AsyncCommand CloneCommand();
 		protected internal abstract void ParseCommand();
+		protected internal abstract bool PrepareRetry(bool timeout);
 		protected internal abstract void OnSuccess();
 		protected internal abstract void OnFailure(AerospikeException ae);
 	}

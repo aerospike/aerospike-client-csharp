@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -21,8 +21,8 @@ namespace Aerospike.Client
 {
 	public abstract class AsyncSingleCommand : AsyncCommand
 	{
-		public AsyncSingleCommand(AsyncCluster cluster, Policy policy, Partition partition, bool isRead) 
-			: base(cluster, policy, partition, null, isRead)
+		public AsyncSingleCommand(AsyncCluster cluster, Policy policy, bool isRead) 
+			: base(cluster, policy, isRead)
 		{
 		}
 

@@ -23,11 +23,11 @@ namespace Aerospike.Client
 	public abstract class Command
 	{
 		// Flags commented out are not supported by this client.
-		public static readonly int INFO1_READ            = (1 << 0); // Contains a read operation.
-		public static readonly int INFO1_GET_ALL         = (1 << 1); // Get all bins.
-		public static readonly int INFO1_BATCH           = (1 << 3); // Batch read or exists.
-		public static readonly int INFO1_NOBINDATA       = (1 << 5); // Do not read the bins.
-		public static readonly int INFO1_CONSISTENCY_ALL = (1 << 6); // Involve all replicas in read operation.
+		public static readonly int INFO1_READ             = (1 << 0); // Contains a read operation.
+		public static readonly int INFO1_GET_ALL          = (1 << 1); // Get all bins.
+		public static readonly int INFO1_BATCH            = (1 << 3); // Batch read or exists.
+		public static readonly int INFO1_NOBINDATA        = (1 << 5); // Do not read the bins.
+		public static readonly int INFO1_READ_MODE_AP_ALL = (1 << 6); // Involve all replicas in read operation.
 
 		public static readonly int INFO2_WRITE           = (1 << 0); // Create or update record
 		public static readonly int INFO2_DELETE          = (1 << 1); // Fling a record into the belly of Moloch.
@@ -42,7 +42,21 @@ namespace Aerospike.Client
 		public static readonly int INFO3_UPDATE_ONLY       = (1 << 3); // Update only. Merge bins.
 		public static readonly int INFO3_CREATE_OR_REPLACE = (1 << 4); // Create or completely replace record.
 		public static readonly int INFO3_REPLACE_ONLY      = (1 << 5); // Completely replace existing record only.
-		public static readonly int INFO3_LINEARIZE_READ    = (1 << 6); // Linearize read when in strong consistency mode.
+		public static readonly int INFO3_SC_READ_TYPE      = (1 << 6); // See below.
+		public static readonly int INFO3_SC_READ_RELAX     = (1 << 7); // See below.
+
+		// Interpret SC_READ bits in info3.
+		//
+		// RELAX   TYPE
+		//	              strict
+		//	              ------
+		//   0      0     sequential (default)
+		//   0      1     linearize
+		//
+		//	              relaxed
+		//	              -------
+		//   1      0     allow replica
+		//   1      1     allow unavailable
 
 		public const int MSG_TOTAL_HEADER_SIZE = 30;
 		public const int FIELD_HEADER_SIZE = 5;
@@ -54,7 +68,6 @@ namespace Aerospike.Client
 
 		protected internal byte[] dataBuffer;
 		protected internal int dataOffset;
-		protected internal uint sequence;
 
 		public void SetWrite(WritePolicy policy, Operation.Type operation, Key key, Bin[] bins)
 		{
@@ -309,9 +322,9 @@ namespace Aerospike.Client
 
 			int readAttr = Command.INFO1_READ;
 
-			if (policy.consistencyLevel == ConsistencyLevel.CONSISTENCY_ALL)
+			if (policy.readModeAP == ReadModeAP.ALL)
 			{
-				readAttr |= Command.INFO1_CONSISTENCY_ALL;
+				readAttr |= Command.INFO1_READ_MODE_AP_ALL;
 			}
 
 			WriteHeader(policy, readAttr | Command.INFO1_BATCH, 0, 1, 0);
@@ -444,9 +457,9 @@ namespace Aerospike.Client
 
 			SizeBuffer();
 
-			if (policy.consistencyLevel == ConsistencyLevel.CONSISTENCY_ALL)
+			if (policy.readModeAP == ReadModeAP.ALL)
 			{
-				readAttr |= Command.INFO1_CONSISTENCY_ALL;
+				readAttr |= Command.INFO1_READ_MODE_AP_ALL;
 			}
 
 			WriteHeader(policy, readAttr | Command.INFO1_BATCH, 0, 1, 0);
@@ -920,19 +933,29 @@ namespace Aerospike.Client
 				infoAttr |= Command.INFO3_COMMIT_MASTER;
 			}
 
-			if (policy.linearizeRead)
-			{
-				infoAttr |= Command.INFO3_LINEARIZE_READ;
-			}
-
-			if (policy.consistencyLevel == ConsistencyLevel.CONSISTENCY_ALL)
-			{
-				readAttr |= Command.INFO1_CONSISTENCY_ALL;
-			}
-
 			if (policy.durableDelete)
 			{
 				writeAttr |= Command.INFO2_DURABLE_DELETE;
+			}
+
+			switch (policy.readModeSC)
+			{
+				case ReadModeSC.SESSION:
+					break;
+				case ReadModeSC.LINEARIZE:
+					infoAttr |= Command.INFO3_SC_READ_TYPE;
+					break;
+				case ReadModeSC.ALLOW_REPLICA:
+					infoAttr |= Command.INFO3_SC_READ_RELAX;
+					break;
+				case ReadModeSC.ALLOW_UNAVAILABLE:
+					infoAttr |= Command.INFO3_SC_READ_TYPE | Command.INFO3_SC_READ_RELAX;
+					break;
+			}
+
+			if (policy.readModeAP == ReadModeAP.ALL)
+			{
+				readAttr |= Command.INFO1_READ_MODE_AP_ALL;
 			}
 
 			dataOffset += 8;
@@ -958,14 +981,24 @@ namespace Aerospike.Client
 		{
 			int infoAttr = 0;
 
-			if (policy.linearizeRead)
+			switch (policy.readModeSC)
 			{
-				infoAttr |= Command.INFO3_LINEARIZE_READ;
+				case ReadModeSC.SESSION:
+					break;
+				case ReadModeSC.LINEARIZE:
+					infoAttr |= Command.INFO3_SC_READ_TYPE;
+					break;
+				case ReadModeSC.ALLOW_REPLICA:
+					infoAttr |= Command.INFO3_SC_READ_RELAX;
+					break;
+				case ReadModeSC.ALLOW_UNAVAILABLE:
+					infoAttr |= Command.INFO3_SC_READ_TYPE | Command.INFO3_SC_READ_RELAX;
+					break;
 			}
 
-			if (policy.consistencyLevel == ConsistencyLevel.CONSISTENCY_ALL)
+			if (policy.readModeAP == ReadModeAP.ALL)
 			{
-				readAttr |= Command.INFO1_CONSISTENCY_ALL;
+				readAttr |= Command.INFO1_READ_MODE_AP_ALL;
 			}
 
 			dataOffset += 8;
@@ -1090,114 +1123,6 @@ namespace Aerospike.Client
 		private void Begin()
 		{
 			dataOffset = MSG_TOTAL_HEADER_SIZE;
-		}
-
-		public Node GetNode(Cluster cluster, Policy policy, Partition partition, bool isRead)
-		{
-			// Must copy hashmap reference for copy on write semantics to work.
-			Dictionary<string, Partitions> map = cluster.partitionMap;
-			Partitions partitions;
-
-			if (!map.TryGetValue(partition.ns, out partitions))
-			{
-				throw new AerospikeException.InvalidNamespace(partition.ns, map.Count);
-			}
-
-			if (partitions.cpMode && isRead && !policy.linearizeRead)
-			{
-				// Strong Consistency namespaces always use master node when read policy is sequential.
-				return cluster.GetMasterNode(partitions, partition);
-			}
-
-			// Handle default case first.
-			if (policy.replica == Replica.SEQUENCE)
-			{
-				// Sequence always starts at master, so writes can go through the same algorithm.
-				return GetSequenceNode(cluster, partitions, partition);
-			}
-
-			if (!isRead)
-			{
-				// Writes will always proxy to master node.
-				return cluster.GetMasterNode(partitions, partition);
-			}
-
-			switch (policy.replica)
-			{
-				default:
-				case Replica.MASTER:
-					return cluster.GetMasterNode(partitions, partition);
-
-				case Replica.PREFER_RACK:
-					return GetRackNode(cluster, partitions, partition);
-
-				case Replica.MASTER_PROLES:
-					return cluster.GetMasterProlesNode(partitions, partition);
-
-				case Replica.RANDOM:
-					return cluster.GetRandomNode();
-			}
-		}
-
-		public Node GetSequenceNode(Cluster cluster, Partitions partitions, Partition partition)
-		{
-			Node[][] replicas = partitions.replicas;
-
-			for (int i = 0; i < replicas.Length; i++)
-			{
-				uint index = sequence % (uint)replicas.Length;
-				Node node = replicas[index][partition.partitionId];
-
-				if (node != null && node.Active)
-				{
-					return node;
-				}
-				sequence++;
-			}
-			Node[] nodeArray = cluster.Nodes;
-			throw new AerospikeException.InvalidNode(nodeArray.Length, partition);
-		}
-
-		private Node GetRackNode(Cluster cluster, Partitions partitions, Partition partition)
-		{
-			Node[][] replicas = partitions.replicas;
-			Node fallback = null;
-
-			for (int i = 0; i < replicas.Length; i++)
-			{
-				uint index = sequence % (uint)replicas.Length;
-				Node node = replicas[index][partition.partitionId];
-
-				if (node != null && node.Active)
-				{
-					if (node.HasRack(partition.ns, cluster.rackId))
-					{
-						return node;
-					}
-
-					if (fallback == null)
-					{
-						fallback = node;
-					}
-				}
-				sequence++;
-			}
-
-			if (fallback != null)
-			{
-				return fallback;
-			}
-
-			Node[] nodeArray = cluster.Nodes;
-			throw new AerospikeException.InvalidNode(nodeArray.Length, partition);
-		}
-
-		internal void ShiftSequenceOnRead(Policy policy, bool isRead)
-		{
-			if (isRead && ! policy.linearizeRead)
-			{
-				sequence++;
-			}
 		}
 
 		protected internal abstract void SizeBuffer();

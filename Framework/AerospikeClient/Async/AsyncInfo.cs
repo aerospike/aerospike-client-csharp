@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -21,13 +21,15 @@ namespace Aerospike.Client
 	public sealed class AsyncInfo : AsyncCommand
 	{
 		private readonly InfoListener listener;
+		private readonly Node serverNode;
 		private readonly string[] commands;
 		private Dictionary<string,string> map;
 
 		public AsyncInfo(AsyncCluster cluster, InfoPolicy policy, InfoListener listener, AsyncNode node, params string[] commands)
-			: base(cluster, CreatePolicy(policy), null, node, false)
+			: base(cluster, CreatePolicy(policy), false)
 		{
 			this.listener = listener;
+			this.serverNode = node;
 			this.commands = commands;
 		}
 
@@ -35,6 +37,7 @@ namespace Aerospike.Client
 			: base(other)
 		{
 			this.listener = other.listener;
+			this.serverNode = other.serverNode;
 			this.commands = other.commands;
 		}
 
@@ -54,6 +57,11 @@ namespace Aerospike.Client
 		protected internal override AsyncCommand CloneCommand()
 		{
 			return new AsyncInfo(this);
+		}
+
+		protected internal override Node GetNode(Cluster cluster)
+		{
+			return serverNode;
 		}
 
 		protected internal override void WriteBuffer()
@@ -82,6 +90,11 @@ namespace Aerospike.Client
 			Info info = new Info(dataBuffer, dataLength, dataOffset);
 			map = info.ParseMultiResponse();
 			Finish();
+		}
+
+		protected internal override bool PrepareRetry(bool timeout)
+		{
+			return true;
 		}
 
 		protected internal override void OnSuccess()

@@ -59,7 +59,7 @@
     <Setting Name="SleepBetweenRetries" Type="System.Int32" Scope="User">
       <Value Profile="(Default)">0</Value>
     </Setting>
-    <Setting Name="ReadReplica" Type="System.Int32" Scope="User">
+    <Setting Name="Replica" Type="System.Int32" Scope="User">
       <Value Profile="(Default)">0</Value>
     </Setting>
     <Setting Name="Latency" Type="System.Boolean" Scope="User">
@@ -109,6 +109,12 @@
     </Setting>
     <Setting Name="AuthMode" Type="System.String" Scope="User">
       <Value Profile="(Default)">INTERNAL</Value>
+    </Setting>
+    <Setting Name="ReadModeAP" Type="System.Int32" Scope="User">
+      <Value Profile="(Default)">0</Value>
+    </Setting>
+    <Setting Name="ReadModeSC" Type="System.Int32" Scope="User">
+      <Value Profile="(Default)">0</Value>
     </Setting>
   </Settings>
 </SettingsFile>

@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -22,9 +22,9 @@ namespace Aerospike.Client
 	{
 		internal readonly Node[][] replicas;
 		internal readonly int[] regimes;
-		internal readonly bool cpMode;
+		internal readonly bool scMode;
 
-		public Partitions(int partitionCount, int replicaCount, bool cpMode)
+		public Partitions(int partitionCount, int replicaCount, bool scMode)
 		{
 			this.replicas = new Node[replicaCount][];
 
@@ -33,7 +33,7 @@ namespace Aerospike.Client
 				this.replicas[i] = new Node[partitionCount];
 			}
 			this.regimes = new int[partitionCount];
-			this.cpMode = cpMode;
+			this.scMode = scMode;
 		}
 
 		/// <summary>
@@ -68,7 +68,7 @@ namespace Aerospike.Client
 				}
 			}
 			this.regimes = other.regimes;
-			this.cpMode = other.cpMode;
+			this.scMode = other.scMode;
 		}
 	}
 }

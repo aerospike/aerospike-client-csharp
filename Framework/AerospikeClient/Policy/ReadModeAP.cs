@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -17,19 +17,22 @@
 namespace Aerospike.Client
 {
 	/// <summary>
+	/// Read policy for AP (availability) namespaces.
+	/// <para>
 	/// How duplicates should be consulted in a read operation.
 	/// Only makes a difference during migrations and only applicable in AP mode.
+	/// </para>
 	/// </summary>
-	public enum ConsistencyLevel
+	public enum ReadModeAP
 	{
 		/// <summary>
-		/// Involve master only in the read operation.
+		/// Involve single node in the read operation.
 		/// </summary>
-		CONSISTENCY_ONE,
+		ONE,
 
 		/// <summary>
 		/// Involve all duplicates in the read operation.
 		/// </summary>
-		CONSISTENCY_ALL
+		ALL
 	}
 }

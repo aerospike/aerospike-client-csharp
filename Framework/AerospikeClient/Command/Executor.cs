@@ -38,9 +38,9 @@ namespace Aerospike.Client
 			threads = new List<ExecutorThread>(capacity);
 		}
 
-		public void AddCommand(Node node, MultiCommand command)
+		public void AddCommand(MultiCommand command)
 		{
-			threads.Add(new ExecutorThread(this, node, command));
+			threads.Add(new ExecutorThread(this, command));
 		}
 
 		public void Execute(int maxConcurrent)
@@ -134,13 +134,11 @@ namespace Aerospike.Client
 	public sealed class ExecutorThread
 	{
 		private readonly Executor parent;
-		private readonly Node node;
 		private readonly MultiCommand command;
 
-		public ExecutorThread(Executor parent, Node node, MultiCommand command)
+		public ExecutorThread(Executor parent, MultiCommand command)
 		{
 			this.parent = parent;
-			this.node = node;
 			this.command = command;
 		}
 
@@ -150,7 +148,7 @@ namespace Aerospike.Client
 			{
 				if (command.IsValid())
 				{
-					command.Execute(parent.cluster, parent.policy, node);
+					command.Execute(parent.cluster, parent.policy);
 				}
 				parent.ThreadCompleted();
 			}

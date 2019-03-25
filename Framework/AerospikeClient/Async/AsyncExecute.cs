@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -26,8 +26,16 @@ namespace Aerospike.Client
 		private readonly string functionName;
 		private readonly Value[] args;
 
-		public AsyncExecute(AsyncCluster cluster, WritePolicy writePolicy, ExecuteListener listener, Key key, string packageName, string functionName, Value[] args)
-			: base(cluster, writePolicy, null, key, null, false)
+		public AsyncExecute
+		(
+			AsyncCluster cluster,
+			WritePolicy writePolicy,
+			ExecuteListener listener,
+			Key key,
+			string packageName,
+			string functionName,
+			Value[] args
+		) : base(cluster, writePolicy, key)
 		{
 			this.writePolicy = writePolicy;
 			this.executeListener = listener;
@@ -51,6 +59,11 @@ namespace Aerospike.Client
 			return new AsyncExecute(this);
 		}
 
+		protected internal override Node GetNode(Cluster cluster)
+		{
+			return partition.GetNodeWrite(cluster);
+		}
+
 		protected internal override void WriteBuffer()
 		{
 			SetUdf(writePolicy, key, packageName, functionName, args);
@@ -59,6 +72,12 @@ namespace Aerospike.Client
 		protected internal override void HandleNotFound(int resultCode)
 		{
 			throw new AerospikeException(resultCode);
+		}
+
+		protected internal override bool PrepareRetry(bool timeout)
+		{
+			partition.PrepareRetryWrite(timeout);
+			return true;
 		}
 
 		protected internal override void OnSuccess()

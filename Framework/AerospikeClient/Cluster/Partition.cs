@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -15,24 +15,258 @@
  * the License.
  */
 using System;
+using System.Collections.Generic;
+using System.Threading;
 
 namespace Aerospike.Client
 {
 	public sealed class Partition
 	{
-		public readonly string ns;
-		public readonly uint partitionId;
-
-		public Partition(Key key)
+		public static Partition Write(Cluster cluster, Policy policy, Key key)
 		{
+			// Must copy hashmap reference for copy on write semantics to work.
+			Dictionary<string, Partitions> map = cluster.partitionMap;
+			Partitions partitions;
+
+			if (!map.TryGetValue(key.ns, out partitions))
+			{
+				throw new AerospikeException.InvalidNamespace(key.ns, map.Count);
+			}
+			return new Partition(partitions, key, policy.replica, false);
+		}
+
+		public static Partition Read(Cluster cluster, Policy policy, Key key)
+		{
+			// Must copy hashmap reference for copy on write semantics to work.
+			Dictionary<string, Partitions> map = cluster.partitionMap;
+			Partitions partitions;
+
+			if (!map.TryGetValue(key.ns, out partitions))
+			{
+				throw new AerospikeException.InvalidNamespace(key.ns, map.Count);
+			}
+
+			Replica replica;
+			bool linearize;
+
+			if (partitions.scMode)
+			{
+				switch (policy.readModeSC)
+				{
+					case ReadModeSC.SESSION:
+						replica = Replica.MASTER;
+						linearize = false;
+						break;
+
+					case ReadModeSC.LINEARIZE:
+						replica = policy.replica == Replica.PREFER_RACK ? Replica.SEQUENCE : policy.replica;
+						linearize = true;
+						break;
+
+					default:
+						replica = policy.replica;
+						linearize = false;
+						break;
+				}
+			}
+			else
+			{
+				replica = policy.replica;
+				linearize = false;
+			}
+			return new Partition(partitions, key, replica, linearize);
+		}
+
+		public static Replica GetReplicaSC(Policy policy)
+		{
+			switch (policy.readModeSC)
+			{
+				case ReadModeSC.SESSION:
+					return Replica.MASTER;
+
+				case ReadModeSC.LINEARIZE:
+					return policy.replica == Replica.PREFER_RACK ? Replica.SEQUENCE : policy.replica;
+
+				default:
+					return policy.replica;
+			}
+		}
+
+		public static Node GetNodeBatchRead(Cluster cluster, Key key, Replica replica, Replica replicaSC, uint sequence, uint sequenceSC)
+		{
+			// Must copy hashmap reference for copy on write semantics to work.
+			Dictionary<string, Partitions> map = cluster.partitionMap;
+			Partitions partitions;
+
+			if (!map.TryGetValue(key.ns, out partitions))
+			{
+				throw new AerospikeException.InvalidNamespace(key.ns, map.Count);
+			}
+
+			if (partitions.scMode)
+			{
+				replica = replicaSC;
+				sequence = sequenceSC;
+			}
+
+			Partition p = new Partition(partitions, key, replica, false);
+			p.sequence = sequence;
+			return p.GetNodeRead(cluster);
+		}
+
+		private readonly Partitions partitions;
+		private readonly string ns;
+		private readonly Replica replica;
+		public readonly uint partitionId;
+		private uint sequence;
+		private readonly bool linearize;
+
+		private Partition(Partitions partitions, Key key, Replica replica, bool linearize)
+		{
+			this.partitions = partitions;
 			this.ns = key.ns;
+			this.replica = replica;
+			this.linearize = linearize;
 			this.partitionId = BitConverter.ToUInt32(key.digest, 0) % Node.PARTITIONS;
 		}
 
-		public Partition(string ns, uint partitionId)
+		public Node GetNodeRead(Cluster cluster)
 		{
-			this.ns = ns;
-			this.partitionId = partitionId;
+			switch (replica)
+			{
+				default:
+				case Replica.SEQUENCE:
+					return GetSequenceNode(cluster);
+
+				case Replica.PREFER_RACK:
+					return GetRackNode(cluster);
+
+				case Replica.MASTER:
+					return GetMasterNode(cluster);
+
+				case Replica.MASTER_PROLES:
+					return GetMasterProlesNode(cluster);
+
+				case Replica.RANDOM:
+					return cluster.GetRandomNode();
+			}
+		}
+
+		public Node GetNodeWrite(Cluster cluster)
+		{
+			switch (replica)
+			{
+				default:
+				case Replica.SEQUENCE:
+				case Replica.PREFER_RACK:
+					return GetSequenceNode(cluster);
+
+				case Replica.MASTER:
+				case Replica.MASTER_PROLES:
+				case Replica.RANDOM:
+					return GetMasterNode(cluster);
+			}
+		}
+
+		public void PrepareRetryRead(bool timeout)
+		{
+			if (!timeout || !linearize)
+			{
+				sequence++;
+			}
+		}
+
+		public void PrepareRetryWrite(bool timeout)
+		{
+			if (!timeout)
+			{
+				sequence++;
+			}
+		}
+
+		public Node GetSequenceNode(Cluster cluster)
+		{
+			Node[][] replicas = partitions.replicas;
+
+			for (int i = 0; i < replicas.Length; i++)
+			{
+				uint index = sequence % (uint)replicas.Length;
+				Node node = replicas[index][partitionId];
+
+				if (node != null && node.Active)
+				{
+					return node;
+				}
+				sequence++;
+			}
+			Node[] nodeArray = cluster.Nodes;
+			throw new AerospikeException.InvalidNode(nodeArray.Length, this);
+		}
+
+		private Node GetRackNode(Cluster cluster)
+		{
+			Node[][] replicas = partitions.replicas;
+			Node fallback = null;
+
+			for (int i = 0; i < replicas.Length; i++)
+			{
+				uint index = sequence % (uint)replicas.Length;
+				Node node = replicas[index][partitionId];
+
+				if (node != null && node.Active)
+				{
+					if (node.HasRack(ns, cluster.rackId))
+					{
+						return node;
+					}
+
+					if (fallback == null)
+					{
+						fallback = node;
+					}
+				}
+				sequence++;
+			}
+
+			if (fallback != null)
+			{
+				return fallback;
+			}
+
+			Node[] nodeArray = cluster.Nodes;
+			throw new AerospikeException.InvalidNode(nodeArray.Length, this);
+		}
+
+		public Node GetMasterNode(Cluster cluster)
+		{
+			Node node = partitions.replicas[0][partitionId];
+
+			if (node != null && node.Active)
+			{
+				return node;
+			}
+
+			Node[] nodeArray = cluster.Nodes;
+			throw new AerospikeException.InvalidNode(nodeArray.Length, this);
+		}
+
+		public Node GetMasterProlesNode(Cluster cluster)
+		{
+			Node[][] replicas = partitions.replicas;
+
+			for (int i = 0; i < replicas.Length; i++)
+			{
+				int index = Math.Abs(Interlocked.Increment(ref cluster.replicaIndex) % replicas.Length);
+				Node node = replicas[index][partitionId];
+
+				if (node != null && node.Active)
+				{
+					return node;
+				}
+			}
+
+			Node[] nodeArray = cluster.Nodes;
+			throw new AerospikeException.InvalidNode(nodeArray.Length, this);
 		}
 
 		public override string ToString()
@@ -50,7 +284,7 @@ namespace Aerospike.Client
 
 		public override bool Equals(object obj)
 		{
-			Partition other = (Partition) obj;
+			Partition other = (Partition)obj;
 			return this.ns.Equals(other.ns) && this.partitionId == other.partitionId;
 		}
 	}

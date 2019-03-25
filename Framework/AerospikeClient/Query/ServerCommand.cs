@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -21,8 +21,8 @@ namespace Aerospike.Client
 		private readonly WritePolicy writePolicy;
 		private readonly Statement statement;
 
-		public ServerCommand(WritePolicy policy, Statement statement) 
-			: base(true)
+		public ServerCommand(Node node, WritePolicy policy, Statement statement) 
+			: base(node, true)
 		{
 			this.writePolicy = policy;
 			this.statement = statement;

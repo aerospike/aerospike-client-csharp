@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -21,15 +21,24 @@ namespace Aerospike.Client
 		private readonly WritePolicy writePolicy;
 		private readonly WriteListener listener;
 		private readonly Key key;
+		private readonly Partition partition;
 		private readonly Bin[] bins;
 		private readonly Operation.Type operation;
 
-		public AsyncWrite(AsyncCluster cluster, WritePolicy writePolicy, WriteListener listener, Key key, Bin[] bins, Operation.Type operation)
-			: base(cluster, writePolicy, new Partition(key), false)
+		public AsyncWrite
+		(
+			AsyncCluster cluster,
+			WritePolicy writePolicy,
+			WriteListener listener,
+			Key key,
+			Bin[] bins,
+			Operation.Type operation
+		) : base(cluster, writePolicy, false)
 		{
 			this.writePolicy = writePolicy;
 			this.listener = listener;
 			this.key = key;
+			this.partition = Partition.Write(cluster, policy, key);
 			this.bins = bins;
 			this.operation = operation;
 		}
@@ -40,6 +49,7 @@ namespace Aerospike.Client
 			this.writePolicy = other.writePolicy;
 			this.listener = other.listener;
 			this.key = other.key;
+			this.partition = other.partition;
 			this.bins = other.bins;
 			this.operation = other.operation;
 		}
@@ -47,6 +57,11 @@ namespace Aerospike.Client
 		protected internal override AsyncCommand CloneCommand()
 		{
 			return new AsyncWrite(this);
+		}
+
+		protected internal override Node GetNode(Cluster cluster)
+		{
+			return partition.GetNodeWrite(cluster);
 		}
 
 		protected internal override void WriteBuffer()
@@ -62,6 +77,12 @@ namespace Aerospike.Client
 			{
 				throw new AerospikeException(resultCode);
 			}
+		}
+
+		protected internal override bool PrepareRetry(bool timeout)
+		{
+			partition.PrepareRetryWrite(timeout);
+			return true;
 		}
 
 		protected internal override void OnSuccess()

@@ -24,19 +24,13 @@ namespace Aerospike.Client
 	// ReadList
 	//-------------------------------------------------------
 
-	public sealed class BatchReadListCommand : MultiCommand
+	public sealed class BatchReadListCommand : BatchCommand
 	{
-		private readonly Executor parent;
-		private readonly BatchNode batch;
-		private readonly BatchPolicy policy;
 		private readonly List<BatchRead> records;
 
 		public BatchReadListCommand(Executor parent, BatchNode batch, BatchPolicy policy, List<BatchRead> records)
-			: base(false)
+			: base(parent, batch, policy)
 		{
-			this.parent = parent;
-			this.batch = batch;
-			this.policy = policy;
 			this.records = records;
 		}
 
@@ -62,43 +56,23 @@ namespace Aerospike.Client
 			}
 		}
 
-		protected internal override bool ShouldRetryBatch()
+		protected internal override BatchCommand CreateCommand(BatchNode batchNode)
 		{
-			return (policy.replica == Replica.SEQUENCE || policy.replica == Replica.PREFER_RACK) && (parent == null || ! parent.IsDone());
+			return new BatchReadListCommand(parent, batchNode, policy, records);
 		}
 
-		protected internal override bool RetryBatch(Cluster cluster, int socketTimeout, int totalTimeout, DateTime deadline, int iteration, int commandSentCounter)
+		protected internal override List<BatchNode> GenerateBatchNodes(Cluster cluster)
 		{
-			// Retry requires keys for this node to be split among other nodes.
-			// This is both recursive and exponential.
-			List<BatchNode> batchNodes = BatchNode.GenerateList(cluster, policy, records, sequence, batch);
-
-			if (batchNodes.Count == 1 && batchNodes[0].node == batch.node)
-			{
-				// Batch node is the same.  Go through normal retry.
-				return false;
-			}
-
-			// Run batch requests sequentially in same thread.
-			foreach (BatchNode batchNode in batchNodes)
-			{
-				MultiCommand command = new BatchReadListCommand(parent, batchNode, policy, records);
-				command.sequence = sequence;
-				command.Execute(cluster, policy, null, batchNode.node, true, socketTimeout, totalTimeout, deadline, iteration, commandSentCounter);
-			}
-			return true;
+			return BatchNode.GenerateList(cluster, policy, records, sequenceAP, sequenceSC, batch);
 		}
 	}
 
 	//-------------------------------------------------------
 	// GetArray
 	//-------------------------------------------------------
-	
-	public sealed class BatchGetArrayCommand : MultiCommand
+
+	public sealed class BatchGetArrayCommand : BatchCommand
 	{
-		private readonly Executor parent;
-		private readonly BatchNode batch;
-		private readonly BatchPolicy policy;
 		private readonly Key[] keys;
 		private readonly string[] binNames;
 		private readonly Record[] records;
@@ -113,11 +87,8 @@ namespace Aerospike.Client
 			string[] binNames,
 			Record[] records,
 			int readAttr
-		) : base(false)
+		) : base(parent, batch, policy)
 		{
-			this.parent = parent;
-			this.batch = batch;
-			this.policy = policy;
 			this.keys = keys;
 			this.binNames = binNames;
 			this.records = records;
@@ -144,43 +115,23 @@ namespace Aerospike.Client
 			}
 		}
 
-		protected internal override bool ShouldRetryBatch()
+		protected internal override BatchCommand CreateCommand(BatchNode batchNode)
 		{
-			return (policy.replica == Replica.SEQUENCE || policy.replica == Replica.PREFER_RACK) && (parent == null || !parent.IsDone());
+			return new BatchGetArrayCommand(parent, batchNode, policy, keys, binNames, records, readAttr);
 		}
 
-		protected internal override bool RetryBatch(Cluster cluster, int socketTimeout, int totalTimeout, DateTime deadline, int iteration, int commandSentCounter)
+		protected internal override List<BatchNode> GenerateBatchNodes(Cluster cluster)
 		{
-			// Retry requires keys for this node to be split among other nodes.
-			// This is both recursive and exponential.
-			List<BatchNode> batchNodes = BatchNode.GenerateList(cluster, policy, keys, sequence, batch);
-
-			if (batchNodes.Count == 1 && batchNodes[0].node == batch.node)
-			{
-				// Batch node is the same.  Go through normal retry.
-				return false;
-			}
-
-			// Run batch requests sequentially in same thread.
-			foreach (BatchNode batchNode in batchNodes)
-			{
-				MultiCommand command = new BatchGetArrayCommand(parent, batchNode, policy, keys, binNames, records, readAttr);
-				command.sequence = sequence;
-				command.Execute(cluster, policy, null, batchNode.node, true, socketTimeout, totalTimeout, deadline, iteration, commandSentCounter);
-			}
-			return true;
+			return BatchNode.GenerateList(cluster, policy, keys, sequenceAP, sequenceSC, batch);
 		}
 	}
 
 	//-------------------------------------------------------
 	// ExistsArray
 	//-------------------------------------------------------
-	
-	public sealed class BatchExistsArrayCommand : MultiCommand
+
+	public sealed class BatchExistsArrayCommand : BatchCommand
 	{
-		private readonly Executor parent;
-		private readonly BatchNode batch;
-		private readonly BatchPolicy policy;
 		private readonly Key[] keys;
 		private readonly bool[] existsArray;
 
@@ -191,11 +142,8 @@ namespace Aerospike.Client
 			BatchPolicy policy,
 			Key[] keys,
 			bool[] existsArray
-		) : base(false)
+		) : base(parent, batch, policy)
 		{
-			this.parent = parent;
-			this.batch = batch;
-			this.policy = policy;
 			this.keys = keys;
 			this.existsArray = existsArray;
 		}
@@ -222,16 +170,67 @@ namespace Aerospike.Client
 			}
 		}
 
-		protected internal override bool ShouldRetryBatch()
+		protected internal override BatchCommand CreateCommand(BatchNode batchNode)
 		{
-			return (policy.replica == Replica.SEQUENCE || policy.replica == Replica.PREFER_RACK) && (parent == null || !parent.IsDone());
+			return new BatchExistsArrayCommand(parent, batchNode, policy, keys, existsArray);
 		}
 
-		protected internal override bool RetryBatch(Cluster cluster, int socketTimeout, int totalTimeout, DateTime deadline, int iteration, int commandSentCounter)
+		protected internal override List<BatchNode> GenerateBatchNodes(Cluster cluster)
+		{
+			return BatchNode.GenerateList(cluster, policy, keys, sequenceAP, sequenceSC, batch);
+		}
+	}
+
+	//-------------------------------------------------------
+	// Batch Base Command
+	//-------------------------------------------------------
+
+	public abstract class BatchCommand : MultiCommand
+	{
+		internal readonly Executor parent;
+		internal readonly BatchNode batch;
+		internal readonly BatchPolicy policy;
+		internal uint sequenceAP;
+		internal uint sequenceSC;
+
+		public BatchCommand(Executor parent, BatchNode batch, BatchPolicy policy)
+			: base(batch.node, false)
+		{
+			this.parent = parent;
+			this.batch = batch;
+			this.policy = policy;
+		}
+
+		protected internal override bool PrepareRetry(bool timeout)
+		{
+			if (!((policy.replica == Replica.SEQUENCE || policy.replica == Replica.PREFER_RACK) &&
+				  (parent == null || !parent.IsDone())))
+			{
+				// Perform regular retry to same node.
+				return true;
+			}
+			sequenceAP++;
+
+			if (!timeout || policy.readModeSC != ReadModeSC.LINEARIZE)
+			{
+				sequenceSC++;
+			}
+			return false;
+		}
+
+		protected internal override bool RetryBatch
+		(
+			Cluster cluster,
+			int socketTimeout,
+			int totalTimeout,
+			DateTime deadline,
+			int iteration,
+			int commandSentCounter
+		)
 		{
 			// Retry requires keys for this node to be split among other nodes.
 			// This is both recursive and exponential.
-			List<BatchNode> batchNodes = BatchNode.GenerateList(cluster, policy, keys, sequence, batch);
+			List<BatchNode> batchNodes = GenerateBatchNodes(cluster);
 
 			if (batchNodes.Count == 1 && batchNodes[0].node == batch.node)
 			{
@@ -242,11 +241,15 @@ namespace Aerospike.Client
 			// Run batch requests sequentially in same thread.
 			foreach (BatchNode batchNode in batchNodes)
 			{
-				MultiCommand command = new BatchExistsArrayCommand(parent, batchNode, policy, keys, existsArray);
-				command.sequence = sequence;
-				command.Execute(cluster, policy, null, batchNode.node, true, socketTimeout, totalTimeout, deadline, iteration, commandSentCounter);
+				BatchCommand command = CreateCommand(batchNode);
+				command.sequenceAP = sequenceAP;
+				command.sequenceSC = sequenceSC;
+				command.Execute(cluster, policy, true, socketTimeout, totalTimeout, deadline, iteration, commandSentCounter);
 			}
 			return true;
 		}
+
+		protected internal abstract BatchCommand CreateCommand(BatchNode batchNode);
+		protected internal abstract List<BatchNode> GenerateBatchNodes(Cluster cluster);
 	}
 }

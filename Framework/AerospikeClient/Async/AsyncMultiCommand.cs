@@ -23,6 +23,7 @@ namespace Aerospike.Client
 	public abstract class AsyncMultiCommand : AsyncCommand
 	{
 		protected internal readonly AsyncMultiExecutor parent;
+		protected internal AsyncNode serverNode;
 		protected internal int resultCode;
 		protected internal int generation;
 		protected internal int expiration;
@@ -33,15 +34,17 @@ namespace Aerospike.Client
 		protected internal volatile bool valid = true;
 
 		public AsyncMultiCommand(AsyncMultiExecutor parent, AsyncCluster cluster, Policy policy, AsyncNode node, bool stopOnNotFound) 
-			: base(cluster, policy, null, node, true)
+			: base(cluster, policy, true)
 		{
 			this.parent = parent;
+			this.serverNode = node;
 			this.stopOnNotFound = stopOnNotFound;
 		}
 
 		public AsyncMultiCommand(AsyncMultiCommand other) : base(other)
 		{
 			this.parent = other.parent;
+			this.serverNode = other.serverNode;
 			this.stopOnNotFound = other.stopOnNotFound;
 		}
 
@@ -55,6 +58,16 @@ namespace Aerospike.Client
 			// Prepare for next group.
 			inHeader = true;
 			ReceiveBegin();
+		}
+
+		protected internal override Node GetNode(Cluster cluster)
+		{
+			return serverNode;
+		}
+
+		protected internal override bool PrepareRetry(bool timeout)
+		{
+			return true;
 		}
 
 		private bool ParseGroup()

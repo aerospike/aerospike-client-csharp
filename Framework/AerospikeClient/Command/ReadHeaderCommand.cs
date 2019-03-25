@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -23,12 +23,19 @@ namespace Aerospike.Client
 	{
 		private readonly Policy policy;
 		private readonly Key key;
+		private readonly Partition partition;
 		private Record record;
 
-		public ReadHeaderCommand(Policy policy, Key key) 
+		public ReadHeaderCommand(Cluster cluster, Policy policy, Key key) 
 		{
 			this.policy = policy;
 			this.key = key;
+			this.partition = Partition.Read(cluster, policy, key);
+		}
+
+		protected internal override Node GetNode(Cluster cluster)
+		{
+			return partition.GetNodeRead(cluster);
 		}
 
 		protected internal override void WriteBuffer()
@@ -60,7 +67,12 @@ namespace Aerospike.Client
 					throw new AerospikeException(resultCode);
 				}
 			}
-			EmptySocket(conn);
+		}
+
+		protected internal override bool PrepareRetry(bool timeout)
+		{
+			partition.PrepareRetryRead(timeout);
+			return true;
 		}
 
 		public Record Record

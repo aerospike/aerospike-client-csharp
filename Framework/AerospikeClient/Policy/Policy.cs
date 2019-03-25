@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -28,17 +28,24 @@ namespace Aerospike.Client
 		public Priority priority = Priority.DEFAULT;
 
 		/// <summary>
-		/// How replicas should be consulted in a read operation to provide the desired
-		/// consistency guarantee.
+		/// Read policy for AP (availability) namespaces.
 		/// <para>
-		/// Default:  <see cref="Aerospike.Client.ConsistencyLevel.CONSISTENCY_ONE"/>
+		/// Default: <see cref="Aerospike.Client.ReadModeAP.ONE"/>
 		/// </para>
 		/// </summary>
-		public ConsistencyLevel consistencyLevel = ConsistencyLevel.CONSISTENCY_ONE;
+		public ReadModeAP readModeAP = ReadModeAP.ONE;
 
 		/// <summary>
+		/// Read policy for SC (strong consistency) namespaces.
+		/// <para>
+		/// Default: <see cref="Aerospike.Client.ReadModeSC.SESSION"/>
+		/// </para>
+		/// </summary>
+		public ReadModeSC readModeSC = ReadModeSC.SESSION;
+	
+		/// <summary>
 		/// Replica algorithm used to determine the target node for a single record command.
-		/// Batch, scan and query are not affected by replica algorithms.
+		/// Scan and query are not affected by replica algorithms.
 		/// <para>
 		/// Default:  <see cref="Aerospike.Client.Replica.SEQUENCE"/>
 		/// </para>
@@ -152,27 +159,19 @@ namespace Aerospike.Client
 		public bool sendKey;
 
 		/// <summary>
-		/// Force reads to be linearized for server namespaces that support strong consistency mode.
-		/// <para>
-		/// Default: false
-		/// </para>
-		/// </summary>
-		public bool linearizeRead;
-
-		/// <summary>
 		/// Copy constructor.
 		/// </summary>
 		public Policy(Policy other)
 		{
 			this.priority = other.priority;
-			this.consistencyLevel = other.consistencyLevel;
+			this.readModeAP = other.readModeAP;
+			this.readModeSC = other.readModeSC;
 			this.replica = other.replica;
 			this.socketTimeout = other.socketTimeout;
 			this.totalTimeout = other.totalTimeout;
 			this.maxRetries = other.maxRetries;
 			this.sleepBetweenRetries = other.sleepBetweenRetries;
 			this.sendKey = other.sendKey;
-			this.linearizeRead = other.linearizeRead;
 		}
 
 		/// <summary>

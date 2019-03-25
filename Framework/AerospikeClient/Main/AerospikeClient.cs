@@ -270,8 +270,8 @@ namespace Aerospike.Client
 			{
 				policy = writePolicyDefault;
 			}
-			WriteCommand command = new WriteCommand(policy, key, bins, Operation.Type.WRITE);
-			command.Execute(cluster, policy, key, null, false);
+			WriteCommand command = new WriteCommand(cluster, policy, key, bins, Operation.Type.WRITE);
+			command.Execute(cluster, policy, false);
 		}
 
 		//-------------------------------------------------------
@@ -294,8 +294,8 @@ namespace Aerospike.Client
 			{
 				policy = writePolicyDefault;
 			}
-			WriteCommand command = new WriteCommand(policy, key, bins, Operation.Type.APPEND);
-			command.Execute(cluster, policy, key, null, false);
+			WriteCommand command = new WriteCommand(cluster, policy, key, bins, Operation.Type.APPEND);
+			command.Execute(cluster, policy, false);
 		}
 
 		/// <summary>
@@ -314,8 +314,8 @@ namespace Aerospike.Client
 			{
 				policy = writePolicyDefault;
 			}
-			WriteCommand command = new WriteCommand(policy, key, bins, Operation.Type.PREPEND);
-			command.Execute(cluster, policy, key, null, false);
+			WriteCommand command = new WriteCommand(cluster, policy, key, bins, Operation.Type.PREPEND);
+			command.Execute(cluster, policy, false);
 		}
 
 		//-------------------------------------------------------
@@ -338,8 +338,8 @@ namespace Aerospike.Client
 			{
 				policy = writePolicyDefault;
 			}
-			WriteCommand command = new WriteCommand(policy, key, bins, Operation.Type.ADD);
-			command.Execute(cluster, policy, key, null, false);
+			WriteCommand command = new WriteCommand(cluster, policy, key, bins, Operation.Type.ADD);
+			command.Execute(cluster, policy, false);
 		}
 
 		//-------------------------------------------------------
@@ -360,8 +360,8 @@ namespace Aerospike.Client
 			{
 				policy = writePolicyDefault;
 			}
-			DeleteCommand command = new DeleteCommand(policy, key);
-			command.Execute(cluster, policy, key, null, false);
+			DeleteCommand command = new DeleteCommand(cluster, policy, key);
+			command.Execute(cluster, policy, false);
 			return command.Existed();
 		}
 
@@ -459,8 +459,8 @@ namespace Aerospike.Client
 			{
 				policy = writePolicyDefault;
 			}
-			TouchCommand command = new TouchCommand(policy, key);
-			command.Execute(cluster, policy, key, null, false);
+			TouchCommand command = new TouchCommand(cluster, policy, key);
+			command.Execute(cluster, policy, false);
 		}
 
 		//-------------------------------------------------------
@@ -481,8 +481,8 @@ namespace Aerospike.Client
 			{
 				policy = readPolicyDefault;
 			}
-			ExistsCommand command = new ExistsCommand(policy, key);
-			command.Execute(cluster, policy, key, null, true);
+			ExistsCommand command = new ExistsCommand(cluster, policy, key);
+			command.Execute(cluster, policy, true);
 			return command.Exists();
 		}
 
@@ -523,8 +523,8 @@ namespace Aerospike.Client
 			{
 				policy = readPolicyDefault;
 			}
-			ReadCommand command = new ReadCommand(policy, key, null);
-			command.Execute(cluster, policy, key, null, true);
+			ReadCommand command = new ReadCommand(cluster, policy, key, null);
+			command.Execute(cluster, policy, true);
 			return command.Record;
 		}
 
@@ -543,8 +543,8 @@ namespace Aerospike.Client
 			{
 				policy = readPolicyDefault;
 			}
-			ReadCommand command = new ReadCommand(policy, key, binNames);
-			command.Execute(cluster, policy, key, null, true);
+			ReadCommand command = new ReadCommand(cluster, policy, key, binNames);
+			command.Execute(cluster, policy, true);
 			return command.Record;
 		}
 
@@ -562,8 +562,8 @@ namespace Aerospike.Client
 			{
 				policy = readPolicyDefault;
 			}
-			ReadHeaderCommand command = new ReadHeaderCommand(policy, key);
-			command.Execute(cluster, policy, key, null, true);
+			ReadHeaderCommand command = new ReadHeaderCommand(cluster, policy, key);
+			command.Execute(cluster, policy, true);
 			return command.Record;
 		}
 
@@ -603,7 +603,7 @@ namespace Aerospike.Client
 				foreach (BatchNode batchNode in batchNodes)
 				{
 					MultiCommand command = new BatchReadListCommand(null, batchNode, policy, records);
-					command.Execute(cluster, policy, null, batchNode.node, true);
+					command.Execute(cluster, policy, true);
 				}
 			}
 			else
@@ -620,7 +620,7 @@ namespace Aerospike.Client
 				foreach (BatchNode batchNode in batchNodes)
 				{
 					MultiCommand command = new BatchReadListCommand(executor, batchNode, policy, records);
-					executor.AddCommand(batchNode.node, command);
+					executor.AddCommand(command);
 				}
 				executor.Execute(policy.maxConcurrentThreads);
 			}
@@ -776,8 +776,8 @@ namespace Aerospike.Client
 			{
 				args.writeAttr |= Command.INFO2_RESPOND_ALL_OPS;
 			}
-			command.SetArgs(policy, args);
-			command.Execute(cluster, policy, key, null, false);
+			command.SetArgs(cluster, policy, args);
+			command.Execute(cluster, policy, false);
 			return command.Record;
 		}
 
@@ -833,8 +833,8 @@ namespace Aerospike.Client
 
 				foreach (Node node in nodes)
 				{
-					ScanCommand command = new ScanCommand(policy, ns, setName, callback, binNames, taskId, clusterKey, first);
-					executor.AddCommand(node, command);
+					ScanCommand command = new ScanCommand(node, policy, ns, setName, callback, binNames, taskId, clusterKey, first);
+					executor.AddCommand(command);
 					first = false;
 				}
 
@@ -844,8 +844,8 @@ namespace Aerospike.Client
 			{
 				foreach (Node node in nodes)
 				{
-					ScanCommand command = new ScanCommand(policy, ns, setName, callback, binNames, taskId, clusterKey, first);
-					command.Execute(cluster, policy, node);
+					ScanCommand command = new ScanCommand(node, policy, ns, setName, callback, binNames, taskId, clusterKey, first);
+					command.Execute(cluster, policy);
 					first = false;
 				}
 			}
@@ -908,8 +908,8 @@ namespace Aerospike.Client
 			ulong clusterKey = policy.failOnClusterChange ? QueryValidate.ValidateBegin(node, ns) : 0;
 			ulong taskId = RandomShift.ThreadLocalInstance.NextLong();
 
-			ScanCommand command = new ScanCommand(policy, ns, setName, callback, binNames, taskId, clusterKey, true);
-			command.Execute(cluster, policy, node);
+			ScanCommand command = new ScanCommand(node, policy, ns, setName, callback, binNames, taskId, clusterKey, true);
+			command.Execute(cluster, policy);
 		}
 		
 		//---------------------------------------------------------------
@@ -1055,8 +1055,8 @@ namespace Aerospike.Client
 			{
 				policy = writePolicyDefault;
 			}
-			ExecuteCommand command = new ExecuteCommand(policy, key, packageName, functionName, args);
-			command.Execute(cluster, policy, key, null, false);
+			ExecuteCommand command = new ExecuteCommand(cluster, policy, key, packageName, functionName, args);
+			command.Execute(cluster, policy, false);
 
 			Record record = command.Record;
 
@@ -1117,8 +1117,8 @@ namespace Aerospike.Client
 
 			foreach (Node node in nodes)
 			{
-				ServerCommand command = new ServerCommand(policy, statement);
-				executor.AddCommand(node, command);
+				ServerCommand command = new ServerCommand(node, policy, statement);
+				executor.AddCommand(command);
 			}
 
 			executor.Execute(nodes.Length);

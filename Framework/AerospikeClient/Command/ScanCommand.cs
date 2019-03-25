@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -29,6 +29,7 @@ namespace Aerospike.Client
 
 		public ScanCommand
 		(
+			Node node,
 			ScanPolicy policy,
 			string ns,
 			string setName,
@@ -37,7 +38,7 @@ namespace Aerospike.Client
 			ulong taskId,
 			ulong clusterKey,
 			bool first
-		) : base(ns, clusterKey, first)
+		) : base(node, ns, clusterKey, first)
 		{
 			this.policy = policy;
 			this.setName = setName;

@@ -254,12 +254,12 @@ namespace Aerospike.Demo.Properties {
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
         [global::System.Configuration.DefaultSettingValueAttribute("0")]
-        public int ReadReplica {
+        public int Replica {
             get {
-                return ((int)(this["ReadReplica"]));
+                return ((int)(this["Replica"]));
             }
             set {
-                this["ReadReplica"] = value;
+                this["Replica"] = value;
             }
         }
         
@@ -452,6 +452,30 @@ namespace Aerospike.Demo.Properties {
             }
             set {
                 this["AuthMode"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("0")]
+        public int ReadModeAP {
+            get {
+                return ((int)(this["ReadModeAP"]));
+            }
+            set {
+                this["ReadModeAP"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("0")]
+        public int ReadModeSC {
+            get {
+                return ((int)(this["ReadModeSC"]));
+            }
+            set {
+                this["ReadModeSC"] = value;
             }
         }
     }

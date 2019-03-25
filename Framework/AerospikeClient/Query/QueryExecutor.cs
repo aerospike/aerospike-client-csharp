@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -61,8 +61,8 @@ namespace Aerospike.Client
 			// Initialize threads.
 			for (int i = 0; i < nodes.Length; i++)
 			{
-				MultiCommand command = CreateCommand(clusterKey, first);
-				threads[i] = new QueryThread(this, nodes[i], command);
+				MultiCommand command = CreateCommand(nodes[i], clusterKey, first);
+				threads[i] = new QueryThread(this, command);
 				first = false;
 			}
 		}
@@ -134,13 +134,11 @@ namespace Aerospike.Client
 		private sealed class QueryThread
 		{
 			private readonly QueryExecutor parent;
-			private readonly Node node;
 			private readonly MultiCommand command;
 
-			public QueryThread(QueryExecutor parent, Node node, MultiCommand command)
+			public QueryThread(QueryExecutor parent, MultiCommand command)
 			{
 				this.parent = parent;
-				this.node = node;
 				this.command = command;
 			}
 
@@ -150,7 +148,7 @@ namespace Aerospike.Client
 				{
 					if (command.IsValid())
 					{
-						command.Execute(parent.cluster, parent.policy, node);
+						command.Execute(parent.cluster, parent.policy);
 					}
 					parent.ThreadCompleted();
 				}
@@ -167,7 +165,7 @@ namespace Aerospike.Client
 			}
 		}
 
-		protected internal abstract MultiCommand CreateCommand(ulong clusterKey, bool first);
+		protected internal abstract MultiCommand CreateCommand(Node node, ulong clusterKey, bool first);
 		protected internal abstract void SendCancel();
 		protected internal abstract void SendCompleted();
 	}

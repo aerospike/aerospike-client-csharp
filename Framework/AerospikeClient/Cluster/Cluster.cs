@@ -69,7 +69,7 @@ namespace Aerospike.Client
 		private int nodeIndex;
 
 		// Random partition replica index. 
-		private int replicaIndex;
+		internal int replicaIndex;
 
 		// Size of node's synchronous connection pool.
 		protected internal readonly int connectionQueueSize;
@@ -733,39 +733,6 @@ namespace Aerospike.Client
 		public bool HasClusterName
 		{
 			get { return clusterName != null && clusterName.Length > 0; }
-		}
-
-		public Node GetMasterNode(Partitions partitions, Partition partition)
-		{
-			Node node = partitions.replicas[0][partition.partitionId];
-
-			if (node != null && node.Active)
-			{
-				return node;
-			}
-
-			Node[] nodeArray = nodes;
-			throw new AerospikeException.InvalidNode(nodeArray.Length, partition);
-		}
-
-		public Node GetMasterProlesNode(Partitions partitions, Partition partition)
-		{
-			Node[][] replicas = partitions.replicas;
-
-			for (int i = 0; i < replicas.Length; i++)
-			{
-				int index = Math.Abs(replicaIndex % replicas.Length);
-				Interlocked.Increment(ref replicaIndex);
-				Node node = replicas[index][partition.partitionId];
-
-				if (node != null && node.Active)
-				{
-					return node;
-				}
-			}
-
-			Node[] nodeArray = nodes;
-			throw new AerospikeException.InvalidNode(nodeArray.Length, partition);
 		}
 
 		public Node GetRandomNode()

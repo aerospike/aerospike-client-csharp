@@ -297,7 +297,8 @@
     <Compile Include="Policy\BatchPolicy.cs" />
     <Compile Include="Policy\ClientPolicy.cs" />
     <Compile Include="Policy\CommitLevel.cs" />
-    <Compile Include="Policy\ConsistencyLevel.cs" />
+    <Compile Include="Policy\ReadModeSC.cs" />
+    <Compile Include="Policy\ReadModeAP.cs" />
     <Compile Include="Policy\AuthMode.cs" />
     <Compile Include="Policy\GenerationPolicy.cs" />
     <Compile Include="Policy\InfoPolicy.cs" />

@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -64,7 +64,17 @@ namespace Aerospike.Demo
 				replicaBox.Items.Add(Replica.RANDOM);
 				replicaBox.SelectedItem = Replica.SEQUENCE;
 
-                ReadDefaults();
+				readModeAPBox.Items.Add(ReadModeAP.ONE);
+				readModeAPBox.Items.Add(ReadModeAP.ALL);
+				readModeAPBox.SelectedItem = ReadModeAP.ONE;
+
+				readModeSCBox.Items.Add(ReadModeSC.SESSION);
+				readModeSCBox.Items.Add(ReadModeSC.LINEARIZE);
+				readModeSCBox.Items.Add(ReadModeSC.ALLOW_REPLICA);
+				readModeSCBox.Items.Add(ReadModeSC.ALLOW_UNAVAILABLE);
+				readModeSCBox.SelectedItem = ReadModeSC.SESSION;
+				
+				ReadDefaults();
 
                 console = new ConsoleBox(consoleBox);
                 Log.SetLevel(Log.Level.INFO);
@@ -163,7 +173,7 @@ namespace Aerospike.Demo
             timeoutBox.Text = Properties.Settings.Default.Timeout.ToString();
             maxRetriesBox.Text = Properties.Settings.Default.MaxRetries.ToString();
             sleepBox.Text = Properties.Settings.Default.SleepBetweenRetries.ToString();
-			replicaBox.SelectedIndex = Properties.Settings.Default.ReadReplica;
+			replicaBox.SelectedIndex = Properties.Settings.Default.Replica;
 			latencyBox.Checked = Properties.Settings.Default.Latency;
 			latencyAltFormatBox.Checked = Properties.Settings.Default.LatencyAltFormat;
 			latencyColumnsBox.Text = Properties.Settings.Default.LatencyColumns.ToString();
@@ -172,6 +182,8 @@ namespace Aerospike.Demo
 			limitTpsBox.Checked = Properties.Settings.Default.LimitTPS;
 			throughputBox.Text = Properties.Settings.Default.Throughput.ToString();
 			authMode = (AuthMode)Enum.Parse(typeof(AuthMode), Properties.Settings.Default.AuthMode.Trim(), true);
+			readModeAPBox.SelectedIndex = Properties.Settings.Default.ReadModeAP;
+			readModeSCBox.SelectedIndex = Properties.Settings.Default.ReadModeSC;
 
 			if (Properties.Settings.Default.TlsEnable)
 			{
@@ -207,7 +219,7 @@ namespace Aerospike.Demo
             Properties.Settings.Default.Timeout = int.Parse(timeoutBox.Text);
             Properties.Settings.Default.MaxRetries = int.Parse(maxRetriesBox.Text);
             Properties.Settings.Default.SleepBetweenRetries = int.Parse(sleepBox.Text);
-			Properties.Settings.Default.ReadReplica = replicaBox.SelectedIndex;
+			Properties.Settings.Default.Replica = replicaBox.SelectedIndex;
 			Properties.Settings.Default.Latency = latencyBox.Checked;
 			Properties.Settings.Default.LatencyAltFormat = latencyAltFormatBox.Checked;
 			Properties.Settings.Default.LatencyColumns = int.Parse(latencyColumnsBox.Text);
@@ -215,6 +227,8 @@ namespace Aerospike.Demo
             Properties.Settings.Default.Debug = debugBox.Checked;
 			Properties.Settings.Default.LimitTPS = limitTpsBox.Checked;
 			Properties.Settings.Default.Throughput = int.Parse(throughputBox.Text);
+			Properties.Settings.Default.ReadModeAP = readModeAPBox.SelectedIndex;
+			Properties.Settings.Default.ReadModeSC = readModeSCBox.SelectedIndex;
 			Properties.Settings.Default.Save();
         }
 
@@ -291,11 +305,15 @@ namespace Aerospike.Demo
                 int maxRetries = int.Parse(maxRetriesBox.Text);
                 int sleepBetweenRetries = int.Parse(sleepBox.Text);
 				Replica replica = (Replica)replicaBox.SelectedItem;
+				ReadModeAP readModeAP = (ReadModeAP)readModeAPBox.SelectedItem;
+				ReadModeSC readModeSC = (ReadModeSC)readModeSCBox.SelectedItem;
 
 				bargs.policy.totalTimeout = timeout;
                 bargs.policy.maxRetries = maxRetries;
                 bargs.policy.sleepBetweenRetries = sleepBetweenRetries;
 				bargs.policy.replica = replica;
+				bargs.policy.readModeAP = readModeAP;
+				bargs.policy.readModeSC = readModeSC;
 
 				bargs.writePolicy.totalTimeout = timeout;
                 bargs.writePolicy.maxRetries = maxRetries;
@@ -306,6 +324,8 @@ namespace Aerospike.Demo
 				bargs.batchPolicy.maxRetries = maxRetries;
 				bargs.batchPolicy.sleepBetweenRetries = sleepBetweenRetries;
 				bargs.batchPolicy.replica = replica;
+				bargs.batchPolicy.readModeAP = readModeAP;
+				bargs.batchPolicy.readModeSC = readModeSC;
 				
 				bargs.debug = debugBox.Checked;
 

@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -33,9 +33,9 @@ namespace Aerospike.Client
 			StartThreads();
 		}
 
-		protected internal override MultiCommand CreateCommand(ulong clusterKey, bool first)
+		protected internal override MultiCommand CreateCommand(Node node, ulong clusterKey, bool first)
 		{
-			return new QueryRecordCommand(policy, statement, recordSet, clusterKey, first);
+			return new QueryRecordCommand(node, policy, statement, recordSet, clusterKey, first);
 		}
 
 		protected internal override void SendCancel()

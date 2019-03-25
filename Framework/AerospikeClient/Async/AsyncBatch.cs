@@ -110,14 +110,14 @@ namespace Aerospike.Client
 			return new AsyncBatchReadListCommand(this);
 		}
 
-		internal override AsyncMultiCommand CreateCommand(BatchNode batchNode)
+		internal override AsyncBatchCommand CreateCommand(BatchNode batchNode)
 		{
 			return new AsyncBatchReadListCommand(parent, cluster, batchNode, batchPolicy, records);
 		}
 
 		internal override List<BatchNode> GenerateBatchNodes()
 		{
-			return BatchNode.GenerateList(cluster, batchPolicy, records, sequence, batch);
+			return BatchNode.GenerateList(cluster, batchPolicy, records, sequenceAP, sequenceSC, batch);
 		}
 	}
 
@@ -216,14 +216,14 @@ namespace Aerospike.Client
 			return new AsyncBatchReadSequenceCommand(this);
 		}
 
-		internal override AsyncMultiCommand CreateCommand(BatchNode batchNode)
+		internal override AsyncBatchCommand CreateCommand(BatchNode batchNode)
 		{
 			return new AsyncBatchReadSequenceCommand(parent, cluster, batchNode, batchPolicy, listener, records);
 		}
 
 		internal override List<BatchNode> GenerateBatchNodes()
 		{
-			return BatchNode.GenerateList(cluster, batchPolicy, records, sequence, batch);
+			return BatchNode.GenerateList(cluster, batchPolicy, records, sequenceAP, sequenceSC, batch);
 		}
 	}
 
@@ -330,14 +330,14 @@ namespace Aerospike.Client
 			return new AsyncBatchGetArrayCommand(this);
 		}
 
-		internal override AsyncMultiCommand CreateCommand(BatchNode batchNode)
+		internal override AsyncBatchCommand CreateCommand(BatchNode batchNode)
 		{
 			return new AsyncBatchGetArrayCommand(parent, cluster, batchNode, batchPolicy, keys, binNames, records, readAttr);
 		}
 
 		internal override List<BatchNode> GenerateBatchNodes()
 		{
-			return BatchNode.GenerateList(cluster, batchPolicy, keys, sequence, batch);
+			return BatchNode.GenerateList(cluster, batchPolicy, keys, sequenceAP, sequenceSC, batch);
 		}
 	}
 
@@ -449,14 +449,14 @@ namespace Aerospike.Client
 			return new AsyncBatchGetSequenceCommand(this);
 		}
 
-		internal override AsyncMultiCommand CreateCommand(BatchNode batchNode)
+		internal override AsyncBatchCommand CreateCommand(BatchNode batchNode)
 		{
 			return new AsyncBatchGetSequenceCommand(parent, cluster, batchNode, batchPolicy, keys, binNames, listener, readAttr);
 		}
 
 		internal override List<BatchNode> GenerateBatchNodes()
 		{
-			return BatchNode.GenerateList(cluster, batchPolicy, keys, sequence, batch);
+			return BatchNode.GenerateList(cluster, batchPolicy, keys, sequenceAP, sequenceSC, batch);
 		}
 	}
 
@@ -555,14 +555,14 @@ namespace Aerospike.Client
 			return new AsyncBatchExistsArrayCommand(this);
 		}
 
-		internal override AsyncMultiCommand CreateCommand(BatchNode batchNode)
+		internal override AsyncBatchCommand CreateCommand(BatchNode batchNode)
 		{
 			return new AsyncBatchExistsArrayCommand(parent, cluster, batchNode, batchPolicy, keys, existsArray);
 		}
 
 		internal override List<BatchNode> GenerateBatchNodes()
 		{
-			return BatchNode.GenerateList(cluster, batchPolicy, keys, sequence, batch);
+			return BatchNode.GenerateList(cluster, batchPolicy, keys, sequenceAP, sequenceSC, batch);
 		}
 	}
 
@@ -662,14 +662,14 @@ namespace Aerospike.Client
 			return new AsyncBatchExistsSequenceCommand(this);
 		}
 
-		internal override AsyncMultiCommand CreateCommand(BatchNode batchNode)
+		internal override AsyncBatchCommand CreateCommand(BatchNode batchNode)
 		{
 			return new AsyncBatchExistsSequenceCommand(parent, cluster, batchNode, batchPolicy, keys, listener);
 		}
 
 		internal override List<BatchNode> GenerateBatchNodes()
 		{
-			return BatchNode.GenerateList(cluster, batchPolicy, keys, sequence, batch);
+			return BatchNode.GenerateList(cluster, batchPolicy, keys, sequenceAP, sequenceSC, batch);
 		}
 	}
 
@@ -699,6 +699,8 @@ namespace Aerospike.Client
 	{
 		internal readonly BatchNode batch;
 		internal readonly BatchPolicy batchPolicy;
+		internal uint sequenceAP;
+		internal uint sequenceSC;
 
 		public AsyncBatchCommand(AsyncMultiExecutor parent, AsyncCluster cluster, BatchNode batch, BatchPolicy batchPolicy)
 			: base(parent, cluster, batchPolicy, (AsyncNode)batch.node, false)
@@ -711,16 +713,28 @@ namespace Aerospike.Client
 		{
 			this.batch = other.batch;
 			this.batchPolicy = other.batchPolicy;
+			this.sequenceAP = other.sequenceAP;
+			this.sequenceSC = other.sequenceSC;
 		}
 
-		protected internal override void Retry(AerospikeException ae)
+		protected internal override bool PrepareRetry(bool timeout)
 		{
 			if (!(policy.replica == Replica.SEQUENCE || policy.replica == Replica.PREFER_RACK) || parent.IsDone())
 			{
-				base.Retry(ae);
-				return;
+				// Perform regular retry to same node.
+				return true;
 			}
 
+			sequenceAP++;
+
+			if (! timeout || policy.readModeSC != ReadModeSC.LINEARIZE) {
+				sequenceSC++;
+			}
+			return false;
+		}
+
+		protected internal override bool RetryBatch()
+		{
 			// Retry requires keys for this node to be split among other nodes.
 			// This can cause an exponential number of commands.
 			List<BatchNode> batchNodes = GenerateBatchNodes();
@@ -728,8 +742,7 @@ namespace Aerospike.Client
 			if (batchNodes.Count == 1 && batchNodes[0].node == batch.node)
 			{
 				// Batch node is the same.  Go through normal retry.
-				base.Retry(ae);
-				return;
+				return false;
 			}
 
 			// Close original command.
@@ -741,14 +754,17 @@ namespace Aerospike.Client
 
 			foreach (BatchNode batchNode in batchNodes)
 			{
-				AsyncMultiCommand cmd = CreateCommand(batchNode);
+				AsyncBatchCommand cmd = CreateCommand(batchNode);
+				cmd.sequenceAP = sequenceAP;
+				cmd.sequenceSC = sequenceSC;
 				cmd.SetBatchRetry(this);
 				cmds[count++] = cmd;
 			}
 			parent.ExecuteBatchRetry(cmds, this);
+			return true;
 		}
 
-		internal abstract AsyncMultiCommand CreateCommand(BatchNode batchNode);
+		internal abstract AsyncBatchCommand CreateCommand(BatchNode batchNode);
 		internal abstract List<BatchNode> GenerateBatchNodes();
 	}
 }

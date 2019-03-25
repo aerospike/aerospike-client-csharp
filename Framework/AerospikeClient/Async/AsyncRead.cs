@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -23,14 +23,37 @@ namespace Aerospike.Client
 		private readonly RecordListener listener;
 		protected internal readonly Key key;
 		private readonly string[] binNames;
+		protected Partition partition;
 		protected Record record;
 
-		public AsyncRead(AsyncCluster cluster, Policy policy, RecordListener listener, Key key, string[] binNames, bool isRead) 
-			: base(cluster, policy, new Partition(key), isRead)
+		// Read Constructor.
+		public AsyncRead(AsyncCluster cluster, Policy policy, RecordListener listener, Key key, string[] binNames) 
+			: base(cluster, policy, true)
 		{
 			this.listener = listener;
 			this.key = key;
 			this.binNames = binNames;
+			this.partition = Partition.Read(cluster, policy, key);
+		}
+
+		// UDF Constructor.
+		public AsyncRead(AsyncCluster cluster, WritePolicy policy, Key key)
+			: base(cluster, policy, false)
+		{
+			this.listener = null;
+			this.key = key;
+			this.binNames = null;
+			this.partition = Partition.Write(cluster, policy, key);
+		}
+
+		// Operate constructor.
+		public AsyncRead(AsyncCluster cluster, RecordListener listener, Key key)
+			: base(cluster, null, false)
+		{
+			this.listener = listener;
+			this.key = key;
+			this.binNames = null;
+			this.partition = null;
 		}
 
 		public AsyncRead(AsyncRead other)
@@ -39,11 +62,17 @@ namespace Aerospike.Client
 			this.listener = other.listener;
 			this.key = other.key;
 			this.binNames = other.binNames;
+			this.partition = other.partition;
 		}
 
 		protected internal override AsyncCommand CloneCommand()
 		{
 			return new AsyncRead(this);
+		}
+
+		protected internal override Node GetNode(Cluster cluster)
+		{
+			return partition.GetNodeRead(cluster);
 		}
 
 		protected internal override void WriteBuffer()
@@ -83,6 +112,12 @@ namespace Aerospike.Client
 					throw new AerospikeException(resultCode);
 				}
 			}
+		}
+
+		protected internal override bool PrepareRetry(bool timeout)
+		{
+			partition.PrepareRetryRead(timeout);
+			return true;
 		}
 
 		protected internal virtual void HandleNotFound(int resultCode)

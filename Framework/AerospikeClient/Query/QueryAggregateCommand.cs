@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -29,13 +29,14 @@ namespace Aerospike.Client
 
 		public QueryAggregateCommand
 		(
+			Node node,
 			QueryPolicy policy,
 			Statement statement,
 			BlockingCollection<object> inputQueue,
 			CancellationToken cancelToken,
 			ulong clusterKey,
 			bool first
-		) : base(statement.ns, clusterKey, first)
+		) : base(node, statement.ns, clusterKey, first)
 		{
 			this.policy = policy;
 			this.statement = statement;

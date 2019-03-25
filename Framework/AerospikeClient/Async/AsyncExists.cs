@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -20,13 +20,15 @@ namespace Aerospike.Client
 	{
 		private readonly ExistsListener listener;
 		private readonly Key key;
+		private readonly Partition partition;
 		private bool exists;
 
 		public AsyncExists(AsyncCluster cluster, Policy policy, Key key, ExistsListener listener) 
-			: base(cluster, policy, new Partition(key), true)
+			: base(cluster, policy, true)
 		{
 			this.listener = listener;
 			this.key = key;
+			this.partition = Partition.Read(cluster, policy, key);
 		}
 
 		public AsyncExists(AsyncExists other)
@@ -34,11 +36,17 @@ namespace Aerospike.Client
 		{
 			this.listener = other.listener;
 			this.key = other.key;
+			this.partition = other.partition;
 		}
 
 		protected internal override AsyncCommand CloneCommand()
 		{
 			return new AsyncExists(this);
+		}
+
+		protected internal override Node GetNode(Cluster cluster)
+		{
+			return partition.GetNodeRead(cluster);
 		}
 
 		protected internal override void WriteBuffer()
@@ -65,6 +73,12 @@ namespace Aerospike.Client
 					throw new AerospikeException(resultCode);
 				}
 			}
+		}
+
+		protected internal override bool PrepareRetry(bool timeout)
+		{
+			partition.PrepareRetryRead(timeout);
+			return true;
 		}
 
 		protected internal override void OnSuccess()

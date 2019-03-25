@@ -30,8 +30,8 @@
         {
 			this.splitContainer1 = new System.Windows.Forms.SplitContainer();
 			this.benchmarkPanel = new System.Windows.Forms.Panel();
-			this.limitTpsBox = new System.Windows.Forms.CheckBox();
-			this.throughputBox = new System.Windows.Forms.TextBox();
+			this.replicaBox = new System.Windows.Forms.ComboBox();
+			this.label19 = new System.Windows.Forms.Label();
 			this.batchSizeLabel = new System.Windows.Forms.Label();
 			this.batchSizeBox = new System.Windows.Forms.TextBox();
 			this.batchReadBox = new System.Windows.Forms.CheckBox();
@@ -40,8 +40,10 @@
 			this.initPctBox = new System.Windows.Forms.TextBox();
 			this.label5 = new System.Windows.Forms.Label();
 			this.workloadPanel = new System.Windows.Forms.Panel();
+			this.readModeSCBox = new System.Windows.Forms.ComboBox();
+			this.label21 = new System.Windows.Forms.Label();
+			this.readModeAPBox = new System.Windows.Forms.ComboBox();
 			this.label18 = new System.Windows.Forms.Label();
-			this.replicaBox = new System.Windows.Forms.ComboBox();
 			this.label10 = new System.Windows.Forms.Label();
 			this.writeBox = new System.Windows.Forms.TextBox();
 			this.label11 = new System.Windows.Forms.Label();
@@ -54,6 +56,8 @@
 			this.fixedValueButton = new System.Windows.Forms.RadioButton();
 			this.groupBox1 = new System.Windows.Forms.GroupBox();
 			this.threadPanel = new System.Windows.Forms.Panel();
+			this.limitTpsBox = new System.Windows.Forms.CheckBox();
+			this.throughputBox = new System.Windows.Forms.TextBox();
 			this.syncThreadBox = new System.Windows.Forms.TextBox();
 			this.label25 = new System.Windows.Forms.Label();
 			this.asyncButton = new System.Windows.Forms.RadioButton();
@@ -146,6 +150,8 @@
 			// 
 			this.benchmarkPanel.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
+			this.benchmarkPanel.Controls.Add(this.replicaBox);
+			this.benchmarkPanel.Controls.Add(this.label19);
 			this.benchmarkPanel.Controls.Add(this.batchSizeLabel);
 			this.benchmarkPanel.Controls.Add(this.batchSizeBox);
 			this.benchmarkPanel.Controls.Add(this.batchReadBox);
@@ -176,27 +182,23 @@
 			this.benchmarkPanel.TabIndex = 9;
 			this.benchmarkPanel.Visible = false;
 			// 
-			// limitTpsBox
+			// replicaBox
 			// 
-			this.limitTpsBox.AutoSize = true;
-			this.limitTpsBox.Location = new System.Drawing.Point(190, 5);
-			this.limitTpsBox.Name = "limitTpsBox";
-			this.limitTpsBox.RightToLeft = System.Windows.Forms.RightToLeft.No;
-			this.limitTpsBox.Size = new System.Drawing.Size(71, 17);
-			this.limitTpsBox.TabIndex = 5;
-			this.limitTpsBox.Text = "Limit TPS";
-			this.limitTpsBox.UseVisualStyleBackColor = true;
-			this.limitTpsBox.CheckedChanged += new System.EventHandler(this.LimitTPSChanged);
+			this.replicaBox.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+			this.replicaBox.FormattingEnabled = true;
+			this.replicaBox.Location = new System.Drawing.Point(263, 139);
+			this.replicaBox.Name = "replicaBox";
+			this.replicaBox.Size = new System.Drawing.Size(118, 21);
+			this.replicaBox.TabIndex = 121;
 			// 
-			// throughputBox
+			// label19
 			// 
-			this.throughputBox.Location = new System.Drawing.Point(263, 3);
-			this.throughputBox.Name = "throughputBox";
-			this.throughputBox.Size = new System.Drawing.Size(52, 20);
-			this.throughputBox.TabIndex = 6;
-			this.throughputBox.Text = "1000";
-			this.throughputBox.TextAlign = System.Windows.Forms.HorizontalAlignment.Right;
-			this.throughputBox.Visible = false;
+			this.label19.AutoSize = true;
+			this.label19.Location = new System.Drawing.Point(219, 144);
+			this.label19.Name = "label19";
+			this.label19.Size = new System.Drawing.Size(43, 13);
+			this.label19.TabIndex = 151;
+			this.label19.Text = "Replica";
 			// 
 			// batchSizeLabel
 			// 
@@ -269,8 +271,10 @@
 			// 
 			// workloadPanel
 			// 
+			this.workloadPanel.Controls.Add(this.readModeSCBox);
+			this.workloadPanel.Controls.Add(this.label21);
+			this.workloadPanel.Controls.Add(this.readModeAPBox);
 			this.workloadPanel.Controls.Add(this.label18);
-			this.workloadPanel.Controls.Add(this.replicaBox);
 			this.workloadPanel.Controls.Add(this.label10);
 			this.workloadPanel.Controls.Add(this.writeBox);
 			this.workloadPanel.Controls.Add(this.label11);
@@ -280,26 +284,44 @@
 			this.workloadPanel.Controls.Add(this.label7);
 			this.workloadPanel.Location = new System.Drawing.Point(14, 165);
 			this.workloadPanel.Name = "workloadPanel";
-			this.workloadPanel.Size = new System.Drawing.Size(478, 28);
+			this.workloadPanel.Size = new System.Drawing.Size(683, 28);
 			this.workloadPanel.TabIndex = 130;
+			// 
+			// readModeSCBox
+			// 
+			this.readModeSCBox.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+			this.readModeSCBox.FormattingEnabled = true;
+			this.readModeSCBox.Location = new System.Drawing.Point(474, 1);
+			this.readModeSCBox.Name = "readModeSCBox";
+			this.readModeSCBox.Size = new System.Drawing.Size(157, 21);
+			this.readModeSCBox.TabIndex = 134;
+			// 
+			// label21
+			// 
+			this.label21.AutoSize = true;
+			this.label21.Location = new System.Drawing.Point(393, 6);
+			this.label21.Name = "label21";
+			this.label21.Size = new System.Drawing.Size(80, 13);
+			this.label21.TabIndex = 155;
+			this.label21.Text = "Read Mode SC";
+			// 
+			// readModeAPBox
+			// 
+			this.readModeAPBox.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+			this.readModeAPBox.FormattingEnabled = true;
+			this.readModeAPBox.Location = new System.Drawing.Point(328, 1);
+			this.readModeAPBox.Name = "readModeAPBox";
+			this.readModeAPBox.Size = new System.Drawing.Size(51, 21);
+			this.readModeAPBox.TabIndex = 133;
 			// 
 			// label18
 			// 
 			this.label18.AutoSize = true;
-			this.label18.Location = new System.Drawing.Point(255, 7);
+			this.label18.Location = new System.Drawing.Point(245, 6);
 			this.label18.Name = "label18";
-			this.label18.Size = new System.Drawing.Size(72, 13);
-			this.label18.TabIndex = 115;
-			this.label18.Text = "Read Replica";
-			// 
-			// replicaBox
-			// 
-			this.replicaBox.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
-			this.replicaBox.FormattingEnabled = true;
-			this.replicaBox.Location = new System.Drawing.Point(333, 2);
-			this.replicaBox.Name = "replicaBox";
-			this.replicaBox.Size = new System.Drawing.Size(118, 21);
-			this.replicaBox.TabIndex = 133;
+			this.label18.Size = new System.Drawing.Size(80, 13);
+			this.label18.TabIndex = 153;
+			this.label18.Text = "Read Mode AP";
 			// 
 			// label10
 			// 
@@ -370,7 +392,7 @@
 			this.panel1.Controls.Add(this.fixedValueButton);
 			this.panel1.Location = new System.Drawing.Point(15, 136);
 			this.panel1.Name = "panel1";
-			this.panel1.Size = new System.Drawing.Size(246, 29);
+			this.panel1.Size = new System.Drawing.Size(203, 29);
 			this.panel1.TabIndex = 120;
 			// 
 			// dynamicValueButton
@@ -378,9 +400,9 @@
 			this.dynamicValueButton.AutoSize = true;
 			this.dynamicValueButton.Location = new System.Drawing.Point(94, 6);
 			this.dynamicValueButton.Name = "dynamicValueButton";
-			this.dynamicValueButton.Size = new System.Drawing.Size(144, 17);
+			this.dynamicValueButton.Size = new System.Drawing.Size(100, 17);
 			this.dynamicValueButton.TabIndex = 41;
-			this.dynamicValueButton.Text = "Dynamic Random Values";
+			this.dynamicValueButton.Text = "Random Values";
 			this.dynamicValueButton.UseVisualStyleBackColor = true;
 			// 
 			// fixedValueButton
@@ -418,6 +440,28 @@
 			this.threadPanel.Name = "threadPanel";
 			this.threadPanel.Size = new System.Drawing.Size(358, 26);
 			this.threadPanel.TabIndex = 66;
+			// 
+			// limitTpsBox
+			// 
+			this.limitTpsBox.AutoSize = true;
+			this.limitTpsBox.Location = new System.Drawing.Point(190, 5);
+			this.limitTpsBox.Name = "limitTpsBox";
+			this.limitTpsBox.RightToLeft = System.Windows.Forms.RightToLeft.No;
+			this.limitTpsBox.Size = new System.Drawing.Size(71, 17);
+			this.limitTpsBox.TabIndex = 5;
+			this.limitTpsBox.Text = "Limit TPS";
+			this.limitTpsBox.UseVisualStyleBackColor = true;
+			this.limitTpsBox.CheckedChanged += new System.EventHandler(this.LimitTPSChanged);
+			// 
+			// throughputBox
+			// 
+			this.throughputBox.Location = new System.Drawing.Point(263, 3);
+			this.throughputBox.Name = "throughputBox";
+			this.throughputBox.Size = new System.Drawing.Size(52, 20);
+			this.throughputBox.TabIndex = 6;
+			this.throughputBox.Text = "1000";
+			this.throughputBox.TextAlign = System.Windows.Forms.HorizontalAlignment.Right;
+			this.throughputBox.Visible = false;
 			// 
 			// syncThreadBox
 			// 
@@ -765,7 +809,7 @@
 			this.consoleBox.Name = "consoleBox";
 			this.consoleBox.ReadOnly = true;
 			this.consoleBox.ScrollBars = System.Windows.Forms.ScrollBars.Vertical;
-			this.consoleBox.Size = new System.Drawing.Size(1019, 263);
+			this.consoleBox.Size = new System.Drawing.Size(1019, 257);
 			this.consoleBox.TabIndex = 11;
 			this.consoleBox.KeyDown += new System.Windows.Forms.KeyEventHandler(this.ConsoleKeyDown);
 			// 
@@ -1022,13 +1066,17 @@
 		private System.Windows.Forms.Label label12;
 		private System.Windows.Forms.TextBox userBox;
 		private System.Windows.Forms.Label label13;
-		private System.Windows.Forms.Label label18;
-		private System.Windows.Forms.ComboBox replicaBox;
 		private System.Windows.Forms.CheckBox latencyAltFormatBox;
 		private System.Windows.Forms.Label batchSizeLabel;
 		private System.Windows.Forms.TextBox batchSizeBox;
 		private System.Windows.Forms.CheckBox batchReadBox;
 		private System.Windows.Forms.TextBox throughputBox;
 		private System.Windows.Forms.CheckBox limitTpsBox;
+		private System.Windows.Forms.ComboBox replicaBox;
+		private System.Windows.Forms.Label label19;
+		private System.Windows.Forms.ComboBox readModeAPBox;
+		private System.Windows.Forms.Label label18;
+		private System.Windows.Forms.ComboBox readModeSCBox;
+		private System.Windows.Forms.Label label21;
     }
 }

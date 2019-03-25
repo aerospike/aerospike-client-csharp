@@ -673,7 +673,7 @@ namespace Aerospike.Client
 					pool = connectionPools[queueIndex];
 				}
 			}
-			throw new AerospikeException.Connection(ResultCode.NO_MORE_CONNECTIONS,
+			throw new AerospikeException(ResultCode.NO_MORE_CONNECTIONS,
 				"Node " + this + " max connections " + cluster.connectionQueueSize + " would be exceeded.");
 		}
 

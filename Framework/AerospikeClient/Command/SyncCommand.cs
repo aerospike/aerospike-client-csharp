@@ -22,9 +22,8 @@ namespace Aerospike.Client
 {
 	public abstract class SyncCommand : Command
 	{
-		public void Execute(Cluster cluster, Policy policy, Key key, Node node, bool isRead)
+		public void Execute(Cluster cluster, Policy policy, bool isRead)
 		{
-			Partition partition = (key != null) ? new Partition(key) : null;
 			DateTime deadline = DateTime.MinValue;
 			int socketTimeout = policy.socketTimeout;
 			int totalTimeout = policy.totalTimeout;
@@ -38,34 +37,37 @@ namespace Aerospike.Client
 					socketTimeout = totalTimeout;
 				}
 			}
-			Execute(cluster, policy, partition, node, isRead, socketTimeout, totalTimeout, deadline, 1, 0);
+			Execute(cluster, policy, isRead, socketTimeout, totalTimeout, deadline, 1, 0);
 		}
 
 		public void Execute
 		(
-			Cluster cluster, Policy policy, Partition partition, Node node, bool isRead,
-			int socketTimeout, int totalTimeout, DateTime deadline, int iteration, int commandSentCounter
+			Cluster cluster,
+			Policy policy,
+			bool isRead,
+			int socketTimeout,
+			int totalTimeout,
+			DateTime deadline,
+			int iteration,
+			int commandSentCounter
 		)
 		{
+			Node node;
 			AerospikeException exception = null;
 			bool isClientTimeout;
 
 			// Execute command until successful, timed out or maximum iterations have been reached.
 			while (true)
 			{
-				if (partition != null)
+				try
 				{
-					// Single record command node retrieval.
-					try
-					{
-						node = GetNode(cluster, policy, partition, isRead);
-					}
-					catch (AerospikeException ae)
-					{
-						ae.Iteration = iteration;
-						ae.SetInDoubt(isRead, commandSentCounter);
-						throw;
-					}
+					node = GetNode(cluster);
+				}
+				catch (AerospikeException ae)
+				{
+					ae.Iteration = iteration;
+					ae.SetInDoubt(isRead, commandSentCounter);
+					throw;
 				}
 
 				try
@@ -115,7 +117,6 @@ namespace Aerospike.Client
 							// Go through retry logic on server timeout.
 							exception = new AerospikeException.Timeout(policy, false);
 							isClientTimeout = false;
-							ShiftSequenceOnRead(policy, isRead);
 						}
 						else
 						{
@@ -131,13 +132,11 @@ namespace Aerospike.Client
 						if (se.SocketErrorCode == SocketError.TimedOut)
 						{
 							isClientTimeout = true;
-							ShiftSequenceOnRead(policy, isRead);
 						}
 						else
 						{
 							exception = new AerospikeException(se);
 							isClientTimeout = false;
-							base.sequence++;
 						}
 					}
 					catch (Exception)
@@ -155,13 +154,11 @@ namespace Aerospike.Client
 					if (se.SocketErrorCode == SocketError.TimedOut)
 					{
 						isClientTimeout = true;
-						ShiftSequenceOnRead(policy, isRead);
 					}
 					else
 					{
 						exception = new AerospikeException(se);
 						isClientTimeout = false;
-						base.sequence++;
 					}
 				}
 				catch (AerospikeException.Connection ce)
@@ -169,7 +166,6 @@ namespace Aerospike.Client
 					// Socket connection error has occurred. Retry.
 					exception = ce;
 					isClientTimeout = false;
-					base.sequence++;
 				}
 				catch (AerospikeException ae)
 				{
@@ -214,10 +210,14 @@ namespace Aerospike.Client
 
 				iteration++;
 
-				if (ShouldRetryBatch() && RetryBatch(cluster, socketTimeout, totalTimeout, deadline, iteration, commandSentCounter))
+				if (!PrepareRetry(isClientTimeout || exception.Result == ResultCode.TIMEOUT))
 				{
-					// Batch retried in separate commands.  Complete this command.
-					return;
+					// Batch may be retried in separate commands.
+					if (RetryBatch(cluster, socketTimeout, totalTimeout, deadline, iteration, commandSentCounter))
+					{
+						// Batch was retried in separate commands.  Complete this command.
+						return;
+					}
 				}
 			}
 
@@ -258,35 +258,23 @@ namespace Aerospike.Client
 			ByteUtil.LongToBytes(size, dataBuffer, 0);
 		}
 
-		protected internal void EmptySocket(Connection conn)
-		{
-			// There should not be any more bytes.
-			// Empty the socket to be safe.
-			long sz = ByteUtil.BytesToLong(dataBuffer, 0);
-			int headerLength = dataBuffer[8];
-			int receiveSize = ((int)(sz & 0xFFFFFFFFFFFFL)) - headerLength;
-
-			// Read remaining message bytes.
-			if (receiveSize > 0)
-			{
-				SizeBuffer(receiveSize);
-				conn.ReadFully(dataBuffer, receiveSize);
-			}
-		}
-
-		protected internal virtual bool ShouldRetryBatch()
+		protected internal virtual bool RetryBatch
+		(
+			Cluster cluster,
+			int socketTimeout,
+			int totalTimeout,
+			DateTime deadline,
+			int iteration,
+			int commandSentCounter
+		)
 		{
 			// Override this method in batch to regenerate node assignments.
 			return false;
 		}
 
-		protected internal virtual bool RetryBatch(Cluster cluster, int socketTimeout, int totalTimeout, DateTime deadline, int iteration, int commandSentCounter)
-		{
-			// Override this method in batch to regenerate node assignments.
-			return false;
-		}
-
+		protected internal abstract Node GetNode(Cluster cluster);
 		protected internal abstract void WriteBuffer();
 		protected internal abstract void ParseResult(Connection conn);
+		protected internal abstract bool PrepareRetry(bool timeout);
 	}
 }
