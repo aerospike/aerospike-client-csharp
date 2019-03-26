@@ -17,7 +17,9 @@
 using System;
 using System.Net;
 using System.Net.Sockets;
-using System.Threading;
+#if !NETFRAMEWORK
+using System.Runtime.InteropServices;
+#endif
 
 namespace Aerospike.Client
 {
@@ -46,8 +48,16 @@ namespace Aerospike.Client
 
 				// Avoid internal TCP send/receive buffers.
 				// Use application buffers directly.
+#if !NETFRAMEWORK
+				if (!RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+				{
+					socket.SendBufferSize = 0;
+					socket.ReceiveBufferSize = 0;
+				}
+#else
 				socket.SendBufferSize = 0;
 				socket.ReceiveBufferSize = 0;
+#endif
 
 				timestamp = DateTime.UtcNow;
 				this.node.AddConnection();
