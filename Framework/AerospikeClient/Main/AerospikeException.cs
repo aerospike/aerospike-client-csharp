@@ -25,6 +25,7 @@ namespace Aerospike.Client
 	public class AerospikeException : Exception
 	{
 		protected Node node;
+		protected Policy policy;
 		protected int resultCode = ResultCode.CLIENT_ERROR;
 		protected int iteration = -1;
 		protected bool inDoubt;
@@ -76,7 +77,7 @@ namespace Aerospike.Client
 		{
 			get
 			{
-				StringBuilder sb = new StringBuilder();
+				StringBuilder sb = new StringBuilder(512);
 				string message = base.Message;
 
 				sb.Append("Error ");
@@ -86,6 +87,16 @@ namespace Aerospike.Client
 				{
 					sb.Append(',');
 					sb.Append(iteration);
+				}
+
+				if (policy != null)
+				{
+					sb.Append(',');
+					sb.Append(policy.socketTimeout);
+					sb.Append(',');
+					sb.Append(policy.totalTimeout);
+					sb.Append(',');
+					sb.Append(policy.maxRetries);
 				}
 
 				if (inDoubt)
@@ -133,6 +144,21 @@ namespace Aerospike.Client
 			set
 			{
 				node = value;
+			}
+		}
+
+		/// <summary>
+		/// Transaction policy.
+		/// </summary>
+		public Policy Policy
+		{
+			get
+			{
+				return policy;
+			}
+			set
+			{
+				policy = value;
 			}
 		}
 
@@ -239,9 +265,35 @@ namespace Aerospike.Client
 					{
 						return "Client timeout: " + totalTimeout;
 					}
-					String type = client ? "Client" : "Server";
-					return type + " timeout: socket=" + socketTimeout + " total=" + totalTimeout +
-						" iteration=" + iteration + " node=" + node + " inDoubt=" + InDoubt;
+
+					StringBuilder sb = new StringBuilder(512);
+
+					if (client)
+					{
+						sb.Append("Client");
+					}
+					else
+					{
+						sb.Append("Server");
+					}
+					sb.Append(" timeout:");
+					sb.Append(" iteration=");
+					sb.Append(iteration);
+					sb.Append(" socket=");
+					sb.Append(socketTimeout);
+					sb.Append(" total=");
+					sb.Append(totalTimeout);
+
+					if (policy != null)
+					{
+						sb.Append(" maxRetries=");
+						sb.Append(policy.maxRetries);
+					}
+					sb.Append(" node=");
+					sb.Append(node);
+					sb.Append(" inDoubt=");
+					sb.Append(inDoubt);
+					return sb.ToString();
 				}
 			}
 		}
@@ -298,14 +350,6 @@ namespace Aerospike.Client
 			/// </summary>
 			public Connection(Exception e)
 				: base(ResultCode.SERVER_NOT_AVAILABLE, e)
-			{
-			}
-
-			/// <summary>
-			/// Create connection exception with result code and message.
-			/// </summary>
-			public Connection(int resultCode, string message)
-				: base(resultCode, message)
 			{
 			}
 		}

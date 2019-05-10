@@ -741,6 +741,7 @@ namespace Aerospike.Client
 			try
 			{
 				ae.Node = node;
+				ae.Policy = policy;
 				ae.Iteration = iteration;
 				ae.SetInDoubt(isRead, commandSentCounter);
 				OnFailure(ae);

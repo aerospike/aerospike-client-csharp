@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -40,7 +40,7 @@ namespace Aerospike.Client
 		/// TlsPolicy policy = new TlsPolicy();
 		/// policy.protocols = SslProtocols.Tls | SslProtocols.Tls11 | SslProtocols.Tls12;
 		/// </code>
-		/// Default: SslProtocols.Default (SSL 3.0 or TLS 1.0) 
+		/// Default: SslProtocols.Default 
 		/// </summary>
 #if NETFRAMEWORK
 		public SslProtocols protocols = SslProtocols.Default;

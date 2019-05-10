@@ -65,6 +65,7 @@ namespace Aerospike.Client
 				}
 				catch (AerospikeException ae)
 				{
+					ae.Policy = policy;
 					ae.Iteration = iteration;
 					ae.SetInDoubt(isRead, commandSentCounter);
 					throw;
@@ -170,6 +171,7 @@ namespace Aerospike.Client
 				catch (AerospikeException ae)
 				{
 					ae.Node = node;
+					ae.Policy = policy;
 					ae.Iteration = iteration;
 					ae.SetInDoubt(isRead, commandSentCounter);
 					throw;
@@ -227,6 +229,7 @@ namespace Aerospike.Client
 				exception = new AerospikeException.Timeout(policy, true);
 			}
 			exception.Node = node;
+			exception.Policy = policy;
 			exception.Iteration = iteration;
 			exception.SetInDoubt(isRead, commandSentCounter);
 			throw exception;
