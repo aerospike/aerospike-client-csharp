@@ -507,7 +507,7 @@ namespace Aerospike.Client
 				if (status == IN_PROGRESS)
 				{
 					CloseConnection();
-					Retry(ae, false);
+					Retry(ae);
 				}
 				else
 				{
@@ -530,10 +530,10 @@ namespace Aerospike.Client
 			}
 		}
 
-		private void Retry(AerospikeException ae, bool timeout)
+		private void Retry(AerospikeException ae)
 		{
 			// Prepare for retry.
-			if (! PrepareRetry(timeout))
+			if (!PrepareRetry(ae.Result != ResultCode.SERVER_NOT_AVAILABLE))
 			{
 				// Batch may be retried in separate commands.
 				if (RetryBatch())
@@ -718,7 +718,7 @@ namespace Aerospike.Client
 
 				if (iteration <= policy.maxRetries)
 				{
-					Retry(timeoutException, true);
+					Retry(timeoutException);
 				}
 				else
 				{

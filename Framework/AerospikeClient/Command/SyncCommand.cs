@@ -212,7 +212,7 @@ namespace Aerospike.Client
 
 				iteration++;
 
-				if (!PrepareRetry(isClientTimeout || exception.Result == ResultCode.TIMEOUT))
+				if (!PrepareRetry(isClientTimeout || exception.Result != ResultCode.SERVER_NOT_AVAILABLE))
 				{
 					// Batch may be retried in separate commands.
 					if (RetryBatch(cluster, socketTimeout, totalTimeout, deadline, iteration, commandSentCounter))
