@@ -207,14 +207,22 @@ namespace Aerospike.Client
 		{
 			Node[][] replicas = partitions.replicas;
 			Node fallback = null;
+			bool retry = (sequence > 0);
 
-			for (int i = 0; i < replicas.Length; i++)
+			for (int i = 1; i <= replicas.Length; i++)
 			{
 				uint index = sequence % (uint)replicas.Length;
 				Node node = replicas[index][partitionId];
 
 				if (node != null && node.Active)
 				{
+					// If fallback exists, do not retry on node where command failed,
+					// even if fallback is not on the same rack.
+					if (retry && fallback != null && i == replicas.Length)
+					{
+						return fallback;
+					}
+
 					if (node.HasRack(ns, cluster.rackId))
 					{
 						return node;
