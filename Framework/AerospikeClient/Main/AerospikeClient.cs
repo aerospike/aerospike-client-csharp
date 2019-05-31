@@ -1450,13 +1450,30 @@ namespace Aerospike.Client
 		/// <param name="policy">admin configuration parameters, pass in null for defaults</param>
 		/// <param name="roleName">role name</param>
 		/// <param name="privileges">privileges assigned to the role.</param>
-		/// <exception cref="AerospikeException">if command fails </exception>
+		/// <exception cref="AerospikeException">if command fails</exception>
 		public void CreateRole(AdminPolicy policy, string roleName, IList<Privilege> privileges)
 		{
 			AdminCommand command = new AdminCommand();
 			command.CreateRole(cluster, policy, roleName, privileges);
 		}
 
+		/// <summary>
+		/// Create user defined role with optional privileges and whitelist.
+		/// </summary>
+		/// <param name="policy">admin configuration parameters, pass in null for defaults</param>
+		/// <param name="roleName">role name</param>
+		/// <param name="privileges">optional list of privileges assigned to role.</param>
+		/// <param name="whitelist">
+		/// optional list of allowable IP addresses assigned to role.
+		/// IP addresses can contain wildcards (ie. 10.1.2.0/24).
+		/// </param>
+		/// <exception cref="AerospikeException">if command fails</exception>
+		public void CreateRole(AdminPolicy policy, string roleName, IList<Privilege> privileges, IList<string> whitelist)
+		{
+			AdminCommand command = new AdminCommand();
+			command.CreateRole(cluster, policy, roleName, privileges, whitelist);
+		}
+	
 		/// <summary>
 		/// Drop user defined role.
 		/// </summary>
@@ -1494,7 +1511,23 @@ namespace Aerospike.Client
 			AdminCommand command = new AdminCommand();
 			command.RevokePrivileges(cluster, policy, roleName, privileges);
 		}
-	
+
+		/// <summary>
+		/// Set IP address whitelist for a role.  If whitelist is null or empty, remove existing whitelist from role.
+		/// </summary>
+		/// <param name="policy">admin configuration parameters, pass in null for defaults</param>
+		/// <param name="roleName">role name</param>
+		/// <param name="whitelist">
+		/// list of allowable IP addresses or null.
+		/// IP addresses can contain wildcards (ie. 10.1.2.0/24).
+		/// </param>
+		/// <exception cref="AerospikeException">if command fails</exception>
+		public void SetWhitelist(AdminPolicy policy, string roleName, IList<string> whitelist)
+		{
+			AdminCommand command = new AdminCommand();
+			command.SetWhitelist(cluster, policy, roleName, whitelist);
+		}
+
 		/// <summary>
 		/// Retrieve roles for a given user.
 		/// </summary>

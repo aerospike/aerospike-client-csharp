@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -42,7 +42,7 @@ namespace Aerospike.Client
 		DATA_ADMIN = 2,
 
 		/// <summary>
-		/// User can read data only.
+		/// User can read data.
 		/// </summary>
 		READ = 10,
 
@@ -54,6 +54,11 @@ namespace Aerospike.Client
 		/// <summary>
 		/// User can read and write data through user defined functions.
 		/// </summary>
-		READ_WRITE_UDF = 12
+		READ_WRITE_UDF = 12,
+
+		/// <summary>
+		/// User can write data.
+		/// </summary>
+		WRITE = 13
 	}
 }

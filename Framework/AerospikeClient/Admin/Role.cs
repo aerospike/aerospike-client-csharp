@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -54,6 +54,11 @@ namespace Aerospike.Client
 		public const string ReadWriteUdf = "read-write-udf";
 
 		/// <summary>
+		/// Allow write transactions.
+		/// </summary>
+		public const string Write = "write";
+
+		/// <summary>
 		/// Role name.
 		/// </summary>
 		public string name;
@@ -62,6 +67,11 @@ namespace Aerospike.Client
 		/// List of assigned privileges.
 		/// </summary>
 		public List<Privilege> privileges;
+
+		/// <summary>
+		/// List of allowable IP addresses.
+		/// </summary>
+		public List<string> whitelist;
 
 		/// <summary>
 		/// Is role pre-defined.

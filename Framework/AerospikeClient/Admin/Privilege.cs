@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -197,6 +197,9 @@ namespace Aerospike.Client
 
 				case PrivilegeCode.READ_WRITE_UDF:
 					return Role.ReadWriteUdf;
+
+				case PrivilegeCode.WRITE:
+					return Role.Write;
 
 				default:
 					throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Invalid privilege code: " + code);

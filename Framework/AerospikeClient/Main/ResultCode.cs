@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -247,7 +247,12 @@ namespace Aerospike.Client
 		/// Security credential is invalid.
 		/// </summary>
 		public const int INVALID_CREDENTIAL = 65;
-	
+
+		/// <summary>
+		/// Login session expired.
+		/// </summary>
+		public const int EXPIRED_SESSION = 66;
+
 		/// <summary>
 		/// Role name is invalid.
 		/// </summary>
@@ -262,7 +267,12 @@ namespace Aerospike.Client
 		/// Specified Privilege is not valid.
 		/// </summary>
 		public const int INVALID_PRIVILEGE = 72;
-		
+
+		/// <summary>
+		/// Invalid IP address whitelist.
+		/// </summary>
+		public const int INVALID_WHITELIST = 73;
+
 		/// <summary>
 		/// User must be authentication before performing database operations.
 		/// </summary>
@@ -272,6 +282,11 @@ namespace Aerospike.Client
 		/// User does not posses the required role to perform the database operation.
 		/// </summary>
 		public const int ROLE_VIOLATION = 81;
+
+		/// <summary>
+		/// Command not allowed because sender IP address not whitelisted.
+		/// </summary>
+		public const int NOT_WHITELISTED = 82;
 
 		/// <summary>
 		/// A user defined function returned an error code.
@@ -521,6 +536,9 @@ namespace Aerospike.Client
 			case INVALID_CREDENTIAL:
 				return "Invalid credential";
 
+			case EXPIRED_SESSION:
+				return "Login session expired";
+
 			case INVALID_ROLE:
 				return "Invalid role";
 
@@ -529,12 +547,18 @@ namespace Aerospike.Client
 
 			case INVALID_PRIVILEGE:
 				return "Invalid privilege";
-				
+
+			case INVALID_WHITELIST:
+				return "Invalid whitelist";
+
 			case NOT_AUTHENTICATED:
 				return "Not authenticated";
 
 			case ROLE_VIOLATION:
 				return "Role violation";
+
+			case NOT_WHITELISTED:
+				return "Command not whitelisted";
 
 			case UDF_BAD_RESPONSE:
 				return "UDF returned error";

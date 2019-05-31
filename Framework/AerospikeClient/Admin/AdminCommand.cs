@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -16,6 +16,7 @@
  */
 using System;
 using System.Collections.Generic;
+using System.Text;
 
 namespace Aerospike.Client
 {
@@ -33,7 +34,8 @@ namespace Aerospike.Client
 		private const byte CREATE_ROLE = 10;
 		private const byte DROP_ROLE = 11;
 		private const byte GRANT_PRIVILEGES = 12;
-		private const byte REVOKE_PRIVILEGES = 13; 
+		private const byte REVOKE_PRIVILEGES = 13;
+		private const byte SET_WHITELIST = 14;
 		private const byte QUERY_ROLES = 16;
 		private const byte LOGIN = 20;
 
@@ -48,6 +50,7 @@ namespace Aerospike.Client
 		private const byte ROLES = 10;
 		private const byte ROLE = 11;
 		private const byte PRIVILEGES = 12;
+		private const byte WHITELIST = 13;
 
 		// Misc
 		private const ulong MSG_VERSION = 2UL;
@@ -278,6 +281,35 @@ namespace Aerospike.Client
 			ExecuteCommand(cluster, policy);
 		}
 
+		public void CreateRole(Cluster cluster, AdminPolicy policy, string roleName, IList<Privilege> privileges, IList<string> whitelist)
+		{
+			byte fieldCount = 1;
+
+			if (privileges != null && privileges.Count > 0)
+			{
+				fieldCount++;
+			}
+
+			if (whitelist != null && whitelist.Count > 0)
+			{
+				fieldCount++;
+			}
+
+			WriteHeader(CREATE_ROLE, fieldCount);
+			WriteField(ROLE, roleName);
+
+			if (privileges != null && privileges.Count > 0)
+			{
+				WritePrivileges(privileges);
+			}
+
+			if (whitelist != null && whitelist.Count > 0)
+			{
+				WriteWhitelist(whitelist);
+			}
+			ExecuteCommand(cluster, policy);
+		}
+		
 		public void DropRole(Cluster cluster, AdminPolicy policy, string roleName)
 		{
 			WriteHeader(DROP_ROLE, 1);
@@ -301,6 +333,21 @@ namespace Aerospike.Client
 			ExecuteCommand(cluster, policy);
 		}
 
+		public void SetWhitelist(Cluster cluster, AdminPolicy policy, string roleName, IList<string> whitelist)
+		{
+			byte fieldCount = (whitelist != null && whitelist.Count > 0) ? (byte)2 : (byte)1;
+
+			WriteHeader(SET_WHITELIST, fieldCount);
+			WriteField(ROLE, roleName);
+
+			if (whitelist != null && whitelist.Count > 0)
+			{
+				WriteWhitelist(whitelist);
+			}
+
+			ExecuteCommand(cluster, policy);
+		}
+		
 		private void WriteRoles(IList<string> roles)
 		{
 			int offset = dataOffset + FIELD_HEADER_SIZE;
@@ -360,6 +407,29 @@ namespace Aerospike.Client
 			dataOffset = offset;
 		}
 
+		private void WriteWhitelist(IList<string> whitelist)
+		{
+			int offset = dataOffset + FIELD_HEADER_SIZE;
+			bool comma = false;
+
+			foreach (string address in whitelist)
+			{
+				if (comma)
+				{
+					dataBuffer[offset++] = (byte)',';
+				}
+				else
+				{
+					comma = true;
+				}
+				offset += ByteUtil.StringToUtf8(address, dataBuffer, offset);
+			}
+
+			int size = offset - dataOffset - FIELD_HEADER_SIZE;
+			WriteFieldHeader(WHITELIST, size);
+			dataOffset = offset;
+		}
+		
 		private void WriteSize()
 		{
 			// Write total size of message which is the current offset.
@@ -634,20 +704,29 @@ namespace Aerospike.Client
 						{
 							ParsePrivileges(role);
 						}
+						else if (id == WHITELIST)
+						{
+							role.whitelist = ParseWhitelist(len);
+						}
 						else
 						{
 							base.dataOffset += len;
 						}
 					}
 
-					if (role.name == null && role.privileges == null)
+					if (role.name == null)
 					{
-						continue;
+						throw new AerospikeException(ResultCode.INVALID_ROLE);
 					}
 
 					if (role.privileges == null)
 					{
 						role.privileges = new List<Privilege>(0);
+					}
+
+					if (role.whitelist == null)
+					{
+						role.whitelist = new List<string>(0);
 					}
 					list.Add(role);
 				}
@@ -676,6 +755,41 @@ namespace Aerospike.Client
 					}
 					role.privileges.Add(priv);
 				}
+			}
+
+			private List<string> ParseWhitelist(int len)
+			{
+				List<string> list = new List<string>();
+				int begin = base.dataOffset;
+				int max = base.dataOffset + len;
+				int l;
+
+				while (base.dataOffset < max)
+				{
+					if (base.dataBuffer[base.dataOffset] == ',')
+					{
+						l = base.dataOffset - begin;
+
+						if (l > 0)
+						{
+							string s = ByteUtil.Utf8ToString(base.dataBuffer, begin, l);
+							list.Add(s);
+						}
+						begin = ++base.dataOffset;
+					}
+					else
+					{
+						base.dataOffset++;
+					}
+				}
+				l = base.dataOffset - begin;
+
+				if (l > 0)
+				{
+					string s = ByteUtil.Utf8ToString(base.dataBuffer, begin, l);
+					list.Add(s);
+				}
+				return list;
 			}
 		}
 	}
