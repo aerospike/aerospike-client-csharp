@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -22,6 +22,36 @@ namespace Aerospike.Client
 {
 	public interface IAerospikeClient
 	{
+		/// <summary>
+		/// Default read policy that is used when read command policy is null.
+		/// </summary>
+		Policy ReadPolicyDefault { get; }
+
+		/// <summary>
+		/// Default write policy that is used when write command policy is null.
+		/// </summary>
+		WritePolicy WritePolicyDefault { get; }
+
+		/// <summary>
+		/// Default scan policy that is used when scan command policy is null.
+		/// </summary>
+		ScanPolicy ScanPolicyDefault { get; }
+
+		/// <summary>
+		/// Default query policy that is used when query command policy is null.
+		/// </summary>
+		QueryPolicy QueryPolicyDefault { get; }
+
+		/// <summary>
+		/// Default batch policy that is used when batch command policy is null.
+		/// </summary>
+		BatchPolicy BatchPolicyDefault { get; }
+
+		/// <summary>
+		/// Default info policy that is used when info command policy is null.
+		/// </summary>
+		InfoPolicy InfoPolicyDefault { get; }
+		
 		/// <summary>
 		/// Close all client connections to database server nodes.
 		/// </summary>

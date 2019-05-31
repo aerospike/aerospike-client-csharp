@@ -202,6 +202,76 @@ namespace Aerospike.Client
 		}
 
 		//-------------------------------------------------------
+		// Operations policies
+		//-------------------------------------------------------
+
+		/// <summary>
+		/// Default read policy that is used when read command policy is null.
+		/// </summary>
+		public Policy ReadPolicyDefault
+		{
+			get
+			{
+				return readPolicyDefault;
+			}
+		}
+
+		/// <summary>
+		/// Default write policy that is used when write command policy is null.
+		/// </summary>
+		public WritePolicy WritePolicyDefault
+		{
+			get
+			{
+				return writePolicyDefault;
+			}
+		}
+
+		/// <summary>
+		/// Default scan policy that is used when scan command policy is null.
+		/// </summary>
+		public ScanPolicy ScanPolicyDefault
+		{
+			get
+			{
+				return scanPolicyDefault;
+			}
+		}
+
+		/// <summary>
+		/// Default query policy that is used when query command policy is null.
+		/// </summary>
+		public QueryPolicy QueryPolicyDefault
+		{
+			get
+			{
+				return queryPolicyDefault;
+			}
+		}
+
+		/// <summary>
+		/// Default batch policy that is used when batch command policy is null.
+		/// </summary>
+		public BatchPolicy BatchPolicyDefault
+		{
+			get
+			{
+				return batchPolicyDefault;
+			}
+		}
+
+		/// <summary>
+		/// Default info policy that is used when info command policy is null.
+		/// </summary>
+		public InfoPolicy InfoPolicyDefault
+		{
+			get
+			{
+				return infoPolicyDefault;
+			}
+		}
+
+		//-------------------------------------------------------
 		// Cluster Connection Management
 		//-------------------------------------------------------
 
