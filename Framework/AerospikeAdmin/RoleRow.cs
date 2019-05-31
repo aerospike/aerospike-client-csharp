@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -26,6 +26,7 @@ namespace Aerospike.Admin
 		public string name;
 		public List<Privilege> privileges;
 		public BindingList<Privilege> privilegeRows;
+		public List<string> whitelist;
 
 		public RoleRow(string roleName)
 		{
@@ -37,6 +38,7 @@ namespace Aerospike.Admin
 			this.name = role.name;
 			this.privileges = role.privileges;
 			this.privilegeRows = new BindingList<Privilege>(role.privileges);
+			this.whitelist = role.whitelist;
 		}
 
 		public string RoleName { get { return name; } }

@@ -37,6 +37,8 @@
 			this.PrivilegeCodeColumn = new System.Windows.Forms.DataGridViewComboBoxColumn();
 			this.NamespaceColumn = new System.Windows.Forms.DataGridViewTextBoxColumn();
 			this.SetNameColumn = new System.Windows.Forms.DataGridViewTextBoxColumn();
+			this.whiteListBox = new System.Windows.Forms.TextBox();
+			this.label2 = new System.Windows.Forms.Label();
 			((System.ComponentModel.ISupportInitialize)(this.grid)).BeginInit();
 			this.SuspendLayout();
 			// 
@@ -46,7 +48,7 @@
             | System.Windows.Forms.AnchorStyles.Right)));
 			this.nameBox.Location = new System.Drawing.Point(73, 12);
 			this.nameBox.Name = "nameBox";
-			this.nameBox.Size = new System.Drawing.Size(351, 20);
+			this.nameBox.Size = new System.Drawing.Size(352, 20);
 			this.nameBox.TabIndex = 0;
 			// 
 			// label1
@@ -62,7 +64,7 @@
 			// 
 			this.label3.AutoSize = true;
 			this.label3.Font = new System.Drawing.Font("Microsoft Sans Serif", 9F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-			this.label3.Location = new System.Drawing.Point(7, 45);
+			this.label3.Location = new System.Drawing.Point(7, 73);
 			this.label3.Name = "label3";
 			this.label3.RightToLeft = System.Windows.Forms.RightToLeft.No;
 			this.label3.Size = new System.Drawing.Size(70, 15);
@@ -72,7 +74,7 @@
 			// button1
 			// 
 			this.button1.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
-			this.button1.Location = new System.Drawing.Point(259, 269);
+			this.button1.Location = new System.Drawing.Point(260, 314);
 			this.button1.Name = "button1";
 			this.button1.Size = new System.Drawing.Size(75, 23);
 			this.button1.TabIndex = 4;
@@ -83,7 +85,7 @@
 			// button2
 			// 
 			this.button2.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
-			this.button2.Location = new System.Drawing.Point(345, 269);
+			this.button2.Location = new System.Drawing.Point(346, 314);
 			this.button2.Name = "button2";
 			this.button2.Size = new System.Drawing.Size(75, 23);
 			this.button2.TabIndex = 5;
@@ -101,10 +103,10 @@
             this.PrivilegeCodeColumn,
             this.NamespaceColumn,
             this.SetNameColumn});
-			this.grid.Location = new System.Drawing.Point(10, 67);
+			this.grid.Location = new System.Drawing.Point(10, 95);
 			this.grid.Name = "grid";
-			this.grid.Size = new System.Drawing.Size(414, 196);
-			this.grid.TabIndex = 13;
+			this.grid.Size = new System.Drawing.Size(415, 212);
+			this.grid.TabIndex = 3;
 			// 
 			// PrivilegeCodeColumn
 			// 
@@ -123,11 +125,31 @@
 			this.SetNameColumn.Name = "SetNameColumn";
 			this.SetNameColumn.Width = 135;
 			// 
+			// whiteListBox
+			// 
+			this.whiteListBox.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
+            | System.Windows.Forms.AnchorStyles.Right)));
+			this.whiteListBox.Location = new System.Drawing.Point(73, 38);
+			this.whiteListBox.Name = "whiteListBox";
+			this.whiteListBox.Size = new System.Drawing.Size(352, 20);
+			this.whiteListBox.TabIndex = 1;
+			// 
+			// label2
+			// 
+			this.label2.Location = new System.Drawing.Point(7, 38);
+			this.label2.Name = "label2";
+			this.label2.Size = new System.Drawing.Size(60, 26);
+			this.label2.TabIndex = 15;
+			this.label2.Text = "Whitelist IP Addresses";
+			// 
 			// RoleEditForm
 			// 
 			this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
 			this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-			this.ClientSize = new System.Drawing.Size(433, 298);
+			this.AutoSize = true;
+			this.ClientSize = new System.Drawing.Size(434, 343);
+			this.Controls.Add(this.label2);
+			this.Controls.Add(this.whiteListBox);
 			this.Controls.Add(this.grid);
 			this.Controls.Add(this.button2);
 			this.Controls.Add(this.button1);
@@ -153,5 +175,7 @@
 		private System.Windows.Forms.DataGridViewComboBoxColumn PrivilegeCodeColumn;
 		private System.Windows.Forms.DataGridViewTextBoxColumn NamespaceColumn;
 		private System.Windows.Forms.DataGridViewTextBoxColumn SetNameColumn;
+		private System.Windows.Forms.TextBox whiteListBox;
+		private System.Windows.Forms.Label label2;
 	}
 }

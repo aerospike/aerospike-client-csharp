@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -30,6 +30,7 @@ namespace Aerospike.Admin
 		private readonly AerospikeClient client;
 		private readonly EditType editType;
 		private readonly List<Privilege> oldPrivileges;
+		private readonly List<string> oldWhitelist;
 
 		public RoleEditForm(AerospikeClient client, EditType editType, RoleRow row)
 		{
@@ -59,9 +60,31 @@ namespace Aerospike.Admin
 					nameBox.Text = row.name;
 					bindingSource.DataSource = LoadPrivileges(row.privileges);
 					oldPrivileges = row.privileges;
+					whiteListBox.Text = GetWhitelistString(row.whitelist);
+					oldWhitelist = row.whitelist;
 					break;
 			}
 			grid.DataSource = bindingSource;
+		}
+
+		public static string GetWhitelistString(List<string> list)
+		{
+			StringBuilder sb = new StringBuilder(256);
+			bool comma = false;
+
+			foreach (string wl in list)
+			{
+				if (comma)
+				{
+					sb.Append(',');
+				}
+				else
+				{
+					comma = true;
+				}
+				sb.Append(wl);
+			}
+			return sb.ToString();
 		}
 
 		private static BindingList<PrivilegeType> GetPrivilegeTypeBinding()
@@ -70,6 +93,7 @@ namespace Aerospike.Admin
 			bindingList.Add(new PrivilegeType(PrivilegeCode.READ, "read"));
 			bindingList.Add(new PrivilegeType(PrivilegeCode.READ_WRITE, "read-write"));
 			bindingList.Add(new PrivilegeType(PrivilegeCode.READ_WRITE_UDF, "read-write-udf"));
+			bindingList.Add(new PrivilegeType(PrivilegeCode.WRITE, "write"));
 			bindingList.Add(new PrivilegeType(PrivilegeCode.SYS_ADMIN, "sys-admin"));
 			bindingList.Add(new PrivilegeType(PrivilegeCode.USER_ADMIN, "user-admin"));
 			bindingList.Add(new PrivilegeType(PrivilegeCode.DATA_ADMIN, "data-admin"));
@@ -101,19 +125,32 @@ namespace Aerospike.Admin
 			BindingSource bindingSource = grid.DataSource as BindingSource;
 			BindingList<Privilege> privileges = bindingSource.DataSource as BindingList<Privilege>;
 			string name	= nameBox.Text.Trim();
+			string[] whitelistArray = whiteListBox.Text.Trim().Split(',');
+			List<string> whitelist = new List<string>(whitelistArray.Length);
+
+			foreach (string wl in whitelistArray)
+			{
+				string s = wl.Trim();
+
+				if (s.Length > 0)
+				{
+					whitelist.Add(s);
+				}
+			}
 
 			switch (editType)
 			{
 				case EditType.CREATE:
-					if (privileges.Count == 0)
+					if (privileges.Count == 0 && whitelist.Count == 0)
 					{
-						throw new AerospikeException("No privileges were created.");
+						throw new AerospikeException("Privileges or whitelist is required.");
 					}
-					client.CreateRole(null, name, privileges);
+					client.CreateRole(null, name, privileges, whitelist);
 					break;
 
 				case EditType.EDIT:
 					ReplacePrivileges(name, privileges);
+					ReplaceWhitelist(name, whitelist);
 					break;
 			}
 		}
@@ -174,6 +211,31 @@ namespace Aerospike.Admin
 				}
 			}
 			return false;
+		}
+
+		private void ReplaceWhitelist(string name, IList<string> whitelist)
+		{
+			if (!IsWhiteListEqual(whitelist))
+			{
+				client.SetWhitelist(null, name, whitelist);
+			}
+		}
+
+		private bool IsWhiteListEqual(IList<string> whitelist)
+		{
+			if (whitelist.Count != oldWhitelist.Count)
+			{
+				return false;
+			}
+
+			for (int i = 0; i < whitelist.Count; i++)
+			{
+				if (! whitelist[i].Equals(oldWhitelist[i]))
+				{
+					return false;
+				}
+			}
+			return true;
 		}
 
 		public string RoleName { get { return nameBox.Text.Trim(); } }

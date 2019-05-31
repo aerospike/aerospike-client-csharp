@@ -79,7 +79,8 @@ namespace Aerospike.Client
 		public bool isPredefined()
 		{
 			return name.Equals(ReadWrite) || name.Equals(ReadWriteUdf) || name.Equals(Read)
-				|| name.Equals(SysAdmin) || name.Equals(UserAdmin) || name.Equals(DataAdmin);
+				|| name.Equals(SysAdmin) || name.Equals(UserAdmin) || name.Equals(DataAdmin)
+				|| name.Equals(Write);
 		}
 	}
 }

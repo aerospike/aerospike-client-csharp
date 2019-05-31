@@ -44,6 +44,8 @@
 			this.createMenuItem = new System.Windows.Forms.ToolStripMenuItem();
 			this.dropMenuItem = new System.Windows.Forms.ToolStripMenuItem();
 			this.editMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+			this.label2 = new System.Windows.Forms.Label();
+			this.whitelistBox = new System.Windows.Forms.TextBox();
 			((System.ComponentModel.ISupportInitialize)(this.splitContainer1)).BeginInit();
 			this.splitContainer1.Panel1.SuspendLayout();
 			this.splitContainer1.Panel2.SuspendLayout();
@@ -68,10 +70,12 @@
 			// 
 			// splitContainer1.Panel2
 			// 
+			this.splitContainer1.Panel2.Controls.Add(this.whitelistBox);
+			this.splitContainer1.Panel2.Controls.Add(this.label2);
 			this.splitContainer1.Panel2.Controls.Add(this.titleRole);
 			this.splitContainer1.Panel2.Controls.Add(this.gridPrivs);
-			this.splitContainer1.Size = new System.Drawing.Size(488, 389);
-			this.splitContainer1.SplitterDistance = 141;
+			this.splitContainer1.Size = new System.Drawing.Size(537, 389);
+			this.splitContainer1.SplitterDistance = 155;
 			this.splitContainer1.TabIndex = 10;
 			// 
 			// label1
@@ -97,7 +101,7 @@
 			this.gridRoles.MultiSelect = false;
 			this.gridRoles.Name = "gridRoles";
 			this.gridRoles.RowHeadersVisible = false;
-			this.gridRoles.Size = new System.Drawing.Size(138, 372);
+			this.gridRoles.Size = new System.Drawing.Size(152, 372);
 			this.gridRoles.TabIndex = 10;
 			this.gridRoles.RowEnter += new System.Windows.Forms.DataGridViewCellEventHandler(this.RoleRowEnter);
 			this.gridRoles.MouseClick += new System.Windows.Forms.MouseEventHandler(this.RoleClicked);
@@ -112,7 +116,7 @@
 			// 
 			this.titleRole.AutoSize = true;
 			this.titleRole.Font = new System.Drawing.Font("Microsoft Sans Serif", 9F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-			this.titleRole.Location = new System.Drawing.Point(2, 2);
+			this.titleRole.Location = new System.Drawing.Point(2, 52);
 			this.titleRole.Name = "titleRole";
 			this.titleRole.Size = new System.Drawing.Size(70, 15);
 			this.titleRole.TabIndex = 3;
@@ -130,12 +134,12 @@
             this.PrivilegeCodeColumn,
             this.NamespaceColumn,
             this.SetNameColumn});
-			this.gridPrivs.Location = new System.Drawing.Point(0, 20);
+			this.gridPrivs.Location = new System.Drawing.Point(3, 71);
 			this.gridPrivs.MultiSelect = false;
 			this.gridPrivs.Name = "gridPrivs";
 			this.gridPrivs.ReadOnly = true;
 			this.gridPrivs.RowHeadersVisible = false;
-			this.gridPrivs.Size = new System.Drawing.Size(340, 369);
+			this.gridPrivs.Size = new System.Drawing.Size(375, 318);
 			this.gridPrivs.TabIndex = 11;
 			this.gridPrivs.SelectionChanged += new System.EventHandler(this.PrivSelectionChanged);
 			// 
@@ -164,7 +168,7 @@
 			// button2
 			// 
 			this.button2.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
-			this.button2.Location = new System.Drawing.Point(416, 422);
+			this.button2.Location = new System.Drawing.Point(465, 422);
 			this.button2.Name = "button2";
 			this.button2.Size = new System.Drawing.Size(75, 23);
 			this.button2.TabIndex = 8;
@@ -189,7 +193,7 @@
             this.userToolStripMenuItem});
 			this.menuStrip1.Location = new System.Drawing.Point(0, 0);
 			this.menuStrip1.Name = "menuStrip1";
-			this.menuStrip1.Size = new System.Drawing.Size(494, 24);
+			this.menuStrip1.Size = new System.Drawing.Size(543, 24);
 			this.menuStrip1.TabIndex = 9;
 			this.menuStrip1.Text = "menuStrip1";
 			// 
@@ -206,23 +210,42 @@
 			// createMenuItem
 			// 
 			this.createMenuItem.Name = "createMenuItem";
-			this.createMenuItem.Size = new System.Drawing.Size(152, 22);
+			this.createMenuItem.Size = new System.Drawing.Size(108, 22);
 			this.createMenuItem.Text = "Create";
 			this.createMenuItem.Click += new System.EventHandler(this.CreateRoleClicked);
 			// 
 			// dropMenuItem
 			// 
 			this.dropMenuItem.Name = "dropMenuItem";
-			this.dropMenuItem.Size = new System.Drawing.Size(152, 22);
+			this.dropMenuItem.Size = new System.Drawing.Size(108, 22);
 			this.dropMenuItem.Text = "Drop";
 			this.dropMenuItem.Click += new System.EventHandler(this.DropClicked);
 			// 
 			// editMenuItem
 			// 
 			this.editMenuItem.Name = "editMenuItem";
-			this.editMenuItem.Size = new System.Drawing.Size(152, 22);
+			this.editMenuItem.Size = new System.Drawing.Size(108, 22);
 			this.editMenuItem.Text = "Edit";
 			this.editMenuItem.Click += new System.EventHandler(this.EditClicked);
+			// 
+			// label2
+			// 
+			this.label2.AutoSize = true;
+			this.label2.Location = new System.Drawing.Point(5, 25);
+			this.label2.Name = "label2";
+			this.label2.Size = new System.Drawing.Size(47, 13);
+			this.label2.TabIndex = 12;
+			this.label2.Text = "Whitelist";
+			// 
+			// whitelistBox
+			// 
+			this.whitelistBox.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
+            | System.Windows.Forms.AnchorStyles.Right)));
+			this.whitelistBox.Enabled = false;
+			this.whitelistBox.Location = new System.Drawing.Point(55, 20);
+			this.whitelistBox.Name = "whitelistBox";
+			this.whitelistBox.Size = new System.Drawing.Size(315, 20);
+			this.whitelistBox.TabIndex = 10;
 			// 
 			// RolesControl
 			// 
@@ -233,7 +256,7 @@
 			this.Controls.Add(this.createButton);
 			this.Controls.Add(this.menuStrip1);
 			this.Name = "RolesControl";
-			this.Size = new System.Drawing.Size(494, 448);
+			this.Size = new System.Drawing.Size(543, 448);
 			this.splitContainer1.Panel1.ResumeLayout(false);
 			this.splitContainer1.Panel1.PerformLayout();
 			this.splitContainer1.Panel2.ResumeLayout(false);
@@ -267,5 +290,7 @@
 		private System.Windows.Forms.ToolStripMenuItem createMenuItem;
 		private System.Windows.Forms.ToolStripMenuItem dropMenuItem;
 		private System.Windows.Forms.ToolStripMenuItem editMenuItem;
+		private System.Windows.Forms.TextBox whitelistBox;
+		private System.Windows.Forms.Label label2;
 	}
 }

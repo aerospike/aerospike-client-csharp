@@ -1,5 +1,5 @@
 ﻿/* 
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -80,7 +80,7 @@ namespace Aerospike.Admin
 
 			if (roles.Count > 0)
 			{
-				bindingSourcePrivs.DataSource = roles[0].privilegeRows;
+				SetRoleFields(roles[0]);
 			}
 		}
 
@@ -129,11 +129,7 @@ namespace Aerospike.Admin
 		private void RoleRowEnter(object sender, DataGridViewCellEventArgs e)
 		{
 			RoleRow role = roles[e.RowIndex];
-
-			if (bindingSourcePrivs.DataSource != role.privilegeRows)
-			{
-				bindingSourcePrivs.DataSource = role.privilegeRows;
-			}
+			SetRoleFields(role);
 		}
 
 		private void RoleClicked(object sender, MouseEventArgs e)
@@ -179,10 +175,19 @@ namespace Aerospike.Admin
 					// Found user. Make current.
 					gridRoles.ClearSelection();
 					gridRoles.Rows[mid].Selected = true;
-					bindingSourcePrivs.DataSource = roles[mid].privilegeRows;
+					SetRoleFields(roles[mid]);
 					break;
 				}
 			}
+		}
+
+		private void SetRoleFields(RoleRow row)
+		{
+			if (bindingSourcePrivs.DataSource != row.privilegeRows)
+			{
+				bindingSourcePrivs.DataSource = row.privilegeRows;
+			}
+			whitelistBox.Text = RoleEditForm.GetWhitelistString(row.whitelist);
 		}
 
 		private void DropClicked(object sender, EventArgs e)
