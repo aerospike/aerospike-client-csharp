@@ -894,5 +894,27 @@ namespace Aerospike.Client
 				}
 			}
 		}
+		
+		/// <summary>
+		/// Aerospike cluster which contains this node
+		/// </summary>
+		public Cluster Cluster
+		{
+			get
+			{
+				return cluster;
+			}
+		}
+
+		/// <summary>
+		/// This node's network address
+		/// </summary>
+		public IPEndPoint NodeAddress
+		{
+			get
+			{
+				return address;
+			}
+		}
 	}
 }
