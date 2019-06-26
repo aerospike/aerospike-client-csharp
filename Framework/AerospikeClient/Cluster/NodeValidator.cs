@@ -33,15 +33,14 @@ namespace Aerospike.Client
 		internal uint features;
 
 		/// <summary>
-		/// Add node(s) referenced by seed host aliases. In most cases, aliases reference
-		/// a single node.  If round robin DNS configuration is used, the seed host may have
-		/// several addresses that reference different nodes in the cluster.
+		/// Return first valid node referenced by seed host aliases. In most cases, aliases
+		/// reference a single node.  If round robin DNS configuration is used, the seed host
+		/// may have several addresses that reference different nodes in the cluster.
 		/// </summary>
-		public void SeedNodes(Cluster cluster, Host host, Dictionary<string, Node> nodesToAdd)
+		public Node SeedNode(Cluster cluster, Host host)
 		{
 			IPAddress[] addresses = Connection.GetHostAddresses(host.name, cluster.connectionTimeout);
 			Exception exception = null;
-			bool found = false;
 
 			// Try all addresses because they might point to different nodes.
 			foreach (IPAddress address in addresses)
@@ -49,28 +48,17 @@ namespace Aerospike.Client
 				try
 				{
 					ValidateAddress(cluster, address, host.tlsName, host.port, true);
-					found = true;
 
-					if (! nodesToAdd.ContainsKey(name))
+					// Only set aliases when they were not set by load balancer detection logic.
+					if (this.aliases == null)
 					{
-						// New node found.
-						// Only set aliases when they were not set by load balancer detection logic.
-						if (this.aliases == null)
-						{
-							SetAliases(addresses, host.tlsName, host.port);
-						}
-						Node node = cluster.CreateNode(this);
-						nodesToAdd[name] = node;
+						SetAliases(address, host.tlsName, host.port);
 					}
-					else
-					{
-						// Node already referenced. Close connection.
-						primaryConn.Close();
-					}
+					return cluster.CreateNode(this);
 				}
 				catch (Exception e)
 				{
-					// Log and continue to next address.
+					// Log exception and continue to next alias.
 					if (Log.DebugEnabled())
 					{
 						Log.Debug("Address " + address + ' ' + host.port + " failed: " + Util.GetErrorMessage(e));
@@ -83,12 +71,9 @@ namespace Aerospike.Client
 				}
 			}
 
-			if (!found)
-			{
-				// Exception can't be null here because Connection.GetHostAddresses()
-				// will throw exception if aliases length is zero.
-				throw exception;
-			}
+			// Exception can't be null here because Connection.GetHostAddresses()
+			// will throw exception if aliases length is zero.
+			throw exception;
 		}
 
 		/// <summary>
@@ -104,12 +89,12 @@ namespace Aerospike.Client
 				try
 				{
 					ValidateAddress(cluster, address, host.tlsName, host.port, false);
-					SetAliases(addresses, host.tlsName, host.port);
+					SetAliases(address, host.tlsName, host.port);
 					return;
 				}
 				catch (Exception e)
 				{
-					// Log and continue to next address.
+					// Log exception and continue to next alias.
 					if (Log.DebugEnabled())
 					{
 						Log.Debug("Address " + address + ' ' + host.port + " failed: " + Util.GetErrorMessage(e));
@@ -365,7 +350,7 @@ namespace Aerospike.Client
 								}
 
 								// Authenticated connection.  Set real host.
-								SetAliases(addresses, tlsName, h.port);
+								SetAliases(address, tlsName, h.port);
 								this.primaryHost = new Host(address.ToString(), tlsName, h.port);
 								this.primaryAddress = socketAddress;
 								this.primaryConn.Close();
@@ -398,15 +383,11 @@ namespace Aerospike.Client
 			}
 		}
 		
-		private void SetAliases(IPAddress[] addresses, string tlsName, int port)
+		private void SetAliases(IPAddress address, string tlsName, int port)
 		{
-			// Add capacity for current address aliases plus IPV6 address and hostname.
-			this.aliases = new List<Host>(addresses.Length + 2);
-
-			foreach (IPAddress address in addresses)
-			{
-				this.aliases.Add(new Host(address.ToString(), tlsName, port));
-			}
+			// Add capacity for current address plus IPV6 address and hostname.
+			this.aliases = new List<Host>(3);
+			this.aliases.Add(new Host(address.ToString(), tlsName, port));
 		}
 	}
 

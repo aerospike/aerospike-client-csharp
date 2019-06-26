@@ -344,7 +344,7 @@ namespace Aerospike.Client
 			// If active nodes don't exist, seed cluster.
 			if (nodes.Length == 0)
 			{
-				SeedNodes(failIfNotConnected);
+				SeedNode(failIfNotConnected);
 			}
 
 			// Initialize tend iteration node statistics.
@@ -425,14 +425,11 @@ namespace Aerospike.Client
 			}
 		}
 
-		private bool SeedNodes(bool failIfNotConnected)
+		private bool SeedNode(bool failIfNotConnected)
 		{
 			// Must copy array reference for copy on write semantics to work.
 			Host[] seedArray = seeds;
 			Exception[] exceptions = null;
-
-			// Add all nodes at once to avoid copying entire array multiple times.
-			Dictionary<String, Node> nodesToAdd = new Dictionary<String, Node>(seedArray.Length + 16);
 
 			for (int i = 0; i < seedArray.Length; i++)
 			{
@@ -441,11 +438,16 @@ namespace Aerospike.Client
 				try
 				{
 					NodeValidator nv = new NodeValidator();
-					nv.SeedNodes(this, seed, nodesToAdd);
+					Node node = nv.SeedNode(this, seed);
+					
+					Dictionary<string, Node> nodesToAdd = new Dictionary<string, Node>(1);
+					nodesToAdd[node.Name] = node;
+					AddNodes(nodesToAdd);
+					return true;
 				}
 				catch (Exception e)
 				{
-					// Store exception and try next host
+					// Store exception and try next seed.
 					if (failIfNotConnected)
 					{
 						if (exceptions == null)
@@ -465,12 +467,7 @@ namespace Aerospike.Client
 				}
 			}
 
-			if (nodesToAdd.Count > 0)
-			{
-				AddNodes(nodesToAdd);
-				return true;
-			}
-			else if (failIfNotConnected)
+			if (failIfNotConnected)
 			{
 				StringBuilder sb = new StringBuilder(500);
 				sb.AppendLine("Failed to connect to host(s): ");
