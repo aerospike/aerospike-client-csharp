@@ -136,7 +136,7 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Initialize Aerospike client with suitable hosts to seed the cluster map.
 		/// The client policy is used to set defaults and size internal data structures.
-		/// For each host connection that succeeds, the client will:
+		/// For the first host connection that succeeds, the client will:
 		/// <list type="bullet">
 		/// <item>Add host to the cluster map</item>
 		/// <item>Request host's list of other nodes in cluster</item>
