@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -48,7 +48,10 @@ namespace Aerospike.Client
 		/// </item>
 		/// </list>
 		/// </para>
+		/// <para>
 		///	Asynchronous batch requests ignore this field and always issue all node requests in parallel.
+		///	</para>
+		/// <para>Default: 1</para>
 		/// </summary>		
 		public int maxConcurrentThreads = 1;
 
@@ -64,8 +67,8 @@ namespace Aerospike.Client
 		/// <para>
 		/// Inline processing can introduce the possibility of unfairness because the server
 		/// can process the entire batch before moving onto the next command.
-		/// Default: true
 		/// </para>
+		/// <para>Default: true</para>
 		/// </summary>
 		public bool allowInline = true;
 	
@@ -78,6 +81,7 @@ namespace Aerospike.Client
 		/// batch, this variable should only be set to true when the replication factor
 		/// is greater than or equal to the number of nodes in the cluster.
 		/// </para>
+		/// <para>Default: false</para>
 		/// </summary>
 		public bool allowProleReads;
 
@@ -85,7 +89,7 @@ namespace Aerospike.Client
 		/// Send set name field to server for every key in the batch for batch index protocol. 
 		/// This is only necessary when authentication is enabled and security roles are defined
 		/// on a per set basis.
-		/// Default: false
+		/// <para>Default: false</para>
 		/// </summary>
 		public bool sendSetName;
 

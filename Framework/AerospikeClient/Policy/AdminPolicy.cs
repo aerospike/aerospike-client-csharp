@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -23,6 +23,7 @@ namespace Aerospike.Client
 	{
 		/// <summary>
 		/// User administration command socket timeout in milliseconds.
+		/// <para>Default: 0 (no timeout)</para>
 		/// </summary>
 		public int timeout;
 

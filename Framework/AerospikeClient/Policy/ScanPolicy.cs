@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -23,7 +23,7 @@ namespace Aerospike.Client
 	{
 		/// <summary>
 		/// Percent of data to scan.  Valid integer range is 1 to 100.
-		/// Default is 100.
+		/// <para>Default: 100</para>
 		/// </summary>
 		public int scanPercent = 100;
 
@@ -34,24 +34,27 @@ namespace Aerospike.Client
 		/// be issued until all 16 nodes have been scanned.
 		/// <para>
 		/// This field is only relevant when concurrentNodes is true.
-		/// Default (0) is to issue requests to all server nodes in parallel.
 		/// </para>
+		/// <para>Default: 0 (issue requests to all server nodes in parallel)</para>
 		/// </summary>
 		public int maxConcurrentNodes;
 
 		/// <summary>
-		/// Issue scan requests in parallel or serially. 
+		/// Should scan requests be issued in parallel. 
+		/// <para>Default: true</para>
 		/// </summary>
 		public bool concurrentNodes = true;
 
 		/// <summary>
-		/// Indicates if bin data is retrieved. If false, only record digests (and user keys
+		/// Should bin data be retrieved. If false, only record digests (and user keys
 		/// if stored on the server) are retrieved.
+		/// <para>Default: true</para>
 		/// </summary>
 		public bool includeBinData = true;
-	
+
 		/// <summary>
-		/// Terminate scan if cluster in migration state.
+		/// Terminate scan if cluster is in migration state.
+		/// <para>Default: false</para>
 		/// </summary>
 		public bool failOnClusterChange;
 

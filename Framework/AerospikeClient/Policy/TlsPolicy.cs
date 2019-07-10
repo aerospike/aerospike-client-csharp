@@ -50,20 +50,20 @@ namespace Aerospike.Client
 
 		/// <summary>
 		/// Reject server certificates whose serial numbers match a serial number in this array.
-		/// Default: null (Do not exclude by certificate serial number)
+		/// <para>Default: null (Do not exclude by certificate serial number)</para>
 		/// </summary>
 		public byte[][] revokeCertificates;
 
 		/// <summary>
 		/// Client certificates to pass to server when server requires mutual authentication.
-		/// Default: null (Client authenticates server, but server does not authenticate client)
+		/// <para>Default: null (Client authenticates server, but server does not authenticate client)</para>
 		/// </summary>
 		public X509CertificateCollection clientCertificates;
 
 		/// <summary>
 		/// Use TLS connections only for login authentication.  All other communication with
 		/// the server will be done with non-TLS connections. 
-		/// Default: false (Use TLS connections for all communication with server.)
+		/// <para>Default: false (Use TLS connections for all communication with server)</para>
 		/// </summary>
 		public bool forLoginOnly;
 

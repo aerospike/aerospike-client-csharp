@@ -204,7 +204,7 @@ namespace Aerospike.Client
 		/// even though this exception was generated.  This may be the case when a 
 		/// client error occurs (like timeout) after the command was sent to the server.
 		/// </summary>
-		public void SetInDoubt(bool isRead, int commandSentCounter)
+		internal void SetInDoubt(bool isRead, int commandSentCounter)
 		{
 			if (!isRead && (commandSentCounter > 1 || (commandSentCounter == 1 && (resultCode == ResultCode.TIMEOUT || resultCode <= 0))))
 			{

@@ -25,12 +25,14 @@ namespace Aerospike.Client
 	{
 		/// <summary>
 		/// User authentication to cluster.  Leave null for clusters running without restricted access.
+		/// <para>Default: null</para>
 		/// </summary>
 		public string user;
 
 		/// <summary>
 		/// Password authentication to cluster.  The password will be stored by the client and sent to server
 		/// in hashed format.  Leave null for clusters running without restricted access.
+		/// <para>Default: null</para>
 		/// </summary>
 		public string password;
 
@@ -38,32 +40,27 @@ namespace Aerospike.Client
 		/// Expected cluster name.  If populated, server nodes must return this cluster name in order to
 		/// join the client's view of the cluster. Should only be set when connecting to servers that
 		/// support the "cluster-name" info command.
+		/// <para>Default: null</para>
 		/// </summary>
 		public string clusterName;
 
 		/// <summary>
 		/// Authentication mode used when user/password is defined.
-		/// <para>
-		/// Default: INTERNAL
-		/// </para>
+		/// <para>Default: AuthMode.INTERNAL</para>
 		/// </summary>
 		public AuthMode authMode = AuthMode.INTERNAL;
 
 		/// <summary>
 		/// Initial host connection timeout in milliseconds.  The timeout when opening a connection 
 		/// to the server host for the first time.
-		/// <para>
-		/// Default: 1000ms
-		/// </para>
+		/// <para>Default: 1000</para>
 		/// </summary>
 		public int timeout = 1000;
 
 		/// <summary>
 		/// Login timeout in milliseconds.  The timeout used when user authentication is enabled and
 		/// a node login is being performed.
-		/// <para>
-		/// Default: 5000ms
-		/// </para>
+		/// <para>Default: 5000</para>
 		/// </summary>
 		public int loginTimeout = 5000;
 
@@ -81,9 +78,7 @@ namespace Aerospike.Client
 		/// bound by asyncMaxCommands by default. Each async command has a one-to-one relationship with
 		/// connections.
 		/// </para>
-		/// <para>
-		/// Default: 300
-		/// </para>
+		/// <para>Default: 300</para>
 		/// </summary>
 		public int maxConnsPerNode = 300;
 
@@ -93,9 +88,7 @@ namespace Aerospike.Client
 		/// cores may have their synchronous performance limited by contention for pooled connections.
 		/// Contention for pooled connections can be reduced by creating multiple mini connection pools
 		/// per node.
-		/// <para>
-		/// Default: 1
-		/// </para>
+		/// <para>Default: 1</para>
 		/// </summary>
 		public int connPoolsPerNode = 1;
 
@@ -112,19 +105,19 @@ namespace Aerospike.Client
 		/// stack will always be the least used.  These connections are checked for maxSocketIdle
 		/// once every 30 tend iterations (usually 30 seconds).
 		/// </para>
-		/// <para>
-		/// Default: 55 seconds
-		/// </para>
+		/// <para>Default: 55</para>
 		/// </summary>
 		public int maxSocketIdle = 55;
 
 		/// <summary>
-		/// Interval in milliseconds between cluster tends by maintenance thread.  Default: 1 second
+		/// Interval in milliseconds between cluster tends by maintenance thread.
+		/// <para>Default: 1000</para>
 		/// </summary>
 		public int tendInterval = 1000;
 	
 		/// <summary>
-		/// Throw exception if all seed connections fail on cluster instantiation.  Default: true
+		/// Throw exception if all seed connections fail on cluster instantiation.
+		/// <para>Default: true</para>
 		/// </summary>
 		public bool failIfNotConnected = true;
 
@@ -166,7 +159,7 @@ namespace Aerospike.Client
 		/// uses the best performing SocketAsyncEventArgs.  Unfortunately, SocketAsyncEventArgs is
 		/// not supported by the provided SslStream.
 		/// </para>
-		/// Default: null (Use normal sockets)
+		/// <para>Default: null (Use normal sockets)</para>
 		/// </summary>
 		public TlsPolicy tlsPolicy;
 
@@ -178,6 +171,7 @@ namespace Aerospike.Client
 		/// The key is the IP address returned from friend info requests to other servers.  The 
 		/// value is the real IP address used to connect to the server.
 		/// </para>
+		/// <para>Default: null (no IP address translation)</para>
 		/// </summary>
 		public Dictionary<string, string> ipMap;
 
@@ -185,10 +179,7 @@ namespace Aerospike.Client
 		/// Should use "services-alternate" instead of "services" in info request during cluster
 		/// tending.  "services-alternate" returns server configured external IP addresses that client
 		/// uses to talk to nodes.  "services-alternate" can be used in place of providing a client "ipMap".
-		/// Default: false (use original "services" info request).
-		/// <para>
-		/// "services-alternate" is available with Aerospike Server versions >= 3.7.1.
-		/// </para>
+		/// <para>Default: false (use original "services" info request)</para>
 		/// </summary>
 		public bool useServicesAlternate;
 
@@ -200,9 +191,7 @@ namespace Aerospike.Client
 		/// <see cref="Aerospike.Client.ClientPolicy.rackId"/>, <see cref="Aerospike.Client.Replica.PREFER_RACK"/>
 		/// and server rack configuration must also be set to enable this functionality.
 		/// </para>
-		/// <para>
-		/// Default: false
-		/// </para>
+		/// <para>Default: false</para>
 		/// </summary>
 		public bool rackAware;
 
@@ -212,9 +201,7 @@ namespace Aerospike.Client
 		/// <see cref="Aerospike.Client.ClientPolicy.rackAware"/>, <see cref="Aerospike.Client.Replica.PREFER_RACK"/>
 		/// and server rack configuration must also be set to enable this functionality.
 		/// </para>
-		/// <para>
-		/// Default: 0
-		/// </para>
+		/// <para>Default: 0</para>
 		/// </summary>
 		public int rackId;
 

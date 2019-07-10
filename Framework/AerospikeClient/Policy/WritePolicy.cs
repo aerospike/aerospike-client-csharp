@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -24,26 +24,31 @@ namespace Aerospike.Client
 	{
 		/// <summary>
 		/// Qualify how to handle writes where the record already exists.
+		/// <para>Default: RecordExistsAction.UPDATE</para>
 		/// </summary>
 		public RecordExistsAction recordExistsAction = RecordExistsAction.UPDATE;
 
 		/// <summary>
 		/// Qualify how to handle record writes based on record generation. The default (NONE)
 		/// indicates that the generation is not used to restrict writes.
+		/// <para>Default: GenerationPolicy.NONE</para>
 		/// </summary>
 		public GenerationPolicy generationPolicy = GenerationPolicy.NONE;
 
 		/// <summary>
 		/// Desired consistency guarantee when committing a transaction on the server. The default 
 		/// (COMMIT_ALL) indicates that the server should wait for master and all replica commits to 
-		/// be successful before returning success to the client.
+		/// be successful before returning success to the client. 
+		/// <para>Default: CommitLevel.COMMIT_ALL</para>
 		/// </summary>
 		public CommitLevel commitLevel = CommitLevel.COMMIT_ALL;
 
 		/// <summary>
 		/// Expected generation. Generation is the number of times a record has been modified
 		/// (including creation) on the server. If a write operation is creating a record, 
-		/// the expected generation would be 0.  
+		/// the expected generation would be 0. This field is only relevant when
+		/// generationPolicy is not NONE.
+		/// <para>Default: 0</para>
 		/// </summary>
 		public int generation;
 
@@ -59,6 +64,7 @@ namespace Aerospike.Client
 		/// <item>> 0: Actual ttl in seconds.</item>
 		/// </list>
 		/// </para>
+		/// <para>Default: 0</para>
 		/// </summary>
 		public int expiration;
 
@@ -74,9 +80,7 @@ namespace Aerospike.Client
 		/// (result offset equals bin's operate sequence).  If there is a map operation in operate(),
 		/// respondAllOps will be forced to true for that operate() call.
 		/// </para>
-		/// <para>
-		/// Default: false
-		/// </para>
+		/// <para>Default: false</para>
 		/// </summary>
 		public bool respondAllOps;
 
@@ -84,9 +88,7 @@ namespace Aerospike.Client
 		/// If the transaction results in a record deletion, leave a tombstone for the record.
 		/// This prevents deleted records from reappearing after node failures.
 		/// Valid for Aerospike Server Enterprise Edition 3.10+ only.
-		/// <para>
-		/// Default: false (do not tombstone deleted records).
-		/// </para>
+		/// <para>Default: false (do not tombstone deleted records).</para>
 		/// </summary>
 		public bool durableDelete;
 	
