@@ -261,6 +261,10 @@ namespace Aerospike.Client
 					{
 						this.features |= Node.HAS_TRUNCATE_NS;
 					}
+					else if (feature.Equals("blob-bits"))
+					{
+						this.features |= Node.HAS_BIT_OP;
+					}
 				}
 			}
 			catch (Exception)

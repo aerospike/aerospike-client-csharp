@@ -95,6 +95,7 @@ namespace Aerospike.Demo
                     new ExampleTreeNode("Expire", new Expire(console)),
                     new ExampleTreeNode("Touch", new Touch(console)),
                     new ExampleTreeNode("Operate", new Operate(console)),
+                    new ExampleTreeNode("OperateBit", new OperateBit(console)),
                     new ExampleTreeNode("OperateList", new OperateList(console)),
                     new ExampleTreeNode("OperateMap", new OperateMap(console)),
                     new ExampleTreeNode("Delete Bin", new DeleteBin(console)),

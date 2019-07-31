@@ -117,11 +117,6 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void AsyncOperateMap()
 		{
-			if (!args.ValidateMap())
-			{
-				return;
-			}
-
 			Key key = new Key(args.ns, args.set, "aopmkey1");
 			client.Delete(null, new DeleteHandlerMap(this, key), key);
 			WaitTillComplete();

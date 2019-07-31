@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -99,10 +99,12 @@ namespace Aerospike.Client
 			ADD,
 			APPEND,
 			PREPEND,
-			TOUCH
+			TOUCH,
+			BIT_READ,
+			BIT_MODIFY
 		}
 
-		private static byte[] ProtocolTypes = new byte[] { 1, 1, 2, 3, 4, 3, 4, 5, 9, 10, 11 };
+		private static byte[] ProtocolTypes = new byte[] { 1, 1, 2, 3, 4, 3, 4, 5, 9, 10, 11, 12, 13 };
 
 		public static byte GetProtocolType(Type type)
 		{

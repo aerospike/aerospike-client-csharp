@@ -1,5 +1,5 @@
 ﻿/* 
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -42,8 +42,7 @@ namespace Aerospike.Test
 		public string tlsName;
 		public TlsPolicy tlsPolicy;
 		public AuthMode authMode;
-		public bool hasUdf;
-		public bool hasMap;
+		public bool hasBit;
 		public bool singleBin;
 
 		public Args()
@@ -155,34 +154,9 @@ namespace Aerospike.Test
 		private void SetServerSpecific()
 		{
 			Node node = client.Nodes[0];
-			string featuresFilter = "features";
+			hasBit = node.HasBitOperations;
 			string namespaceFilter = "namespace/" + ns;
-			Dictionary<string, string> tokens = Info.Request(null, node, featuresFilter, namespaceFilter);
-
-			string features = tokens[featuresFilter];
-			hasUdf = false;
-			hasMap = false;
-
-			if (features != null)
-			{
-				string[] list = features.Split(';');
-
-				foreach (string s in list)
-				{
-					if (s.Equals("udf"))
-					{
-						hasUdf = true;
-						break;
-					}
-					else if (s.Equals("cdt-map"))
-					{
-						hasMap = true;
-						break;
-					}
-				}
-			}
-
-			string namespaceTokens = tokens[namespaceFilter];
+			string namespaceTokens = Info.Request(null, node, namespaceFilter);
 
 			if (namespaceTokens == null)
 			{
@@ -220,9 +194,9 @@ namespace Aerospike.Test
 			return singleBin ? "" : name;
 		}
 
-		public bool ValidateMap() 
+		public bool HasBit
 		{
-			return hasMap;
+			get { return hasBit; }
 		}
 
 		public void Close()

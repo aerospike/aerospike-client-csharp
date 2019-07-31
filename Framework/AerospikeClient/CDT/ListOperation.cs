@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -24,10 +24,12 @@ namespace Aerospike.Client
 {
 	/// <summary>
 	/// List bin operations. Create list operations used by client operate command.
-	/// List operations support negative indexing.  If the index is negative, the
-	/// resolved index starts backwards from end of list.
 	/// <para>
-	/// Index/Range examples:
+	/// List operations support negative indexing.  If the index is negative, the
+	/// resolved index starts backwards from end of list. If an index is out of bounds,
+	/// a parameter error will be returned. If a range is partially out of bounds, the
+	/// valid part of the range will be returned. Index/Range examples:
+	/// </para>
 	/// <ul>
 	/// <li>Index 0: First item in list.</li>
 	/// <li>Index 4: Fifth item in list.</li>
@@ -37,11 +39,18 @@ namespace Aerospike.Client
 	/// <li>Index -3 Count 3: Last three items in list.</li>
 	/// <li>Index -5 Count 4: Range between fifth to last item to second to last item inclusive.</li>
 	/// </ul>
-	/// </para>
-	/// <para>
-	/// If an index is out of bounds, a parameter error will be returned. If a range is partially 
-	/// out of bounds, the valid part of the range will be returned.
-	/// </para>
+	/// Nested CDT operations are supported by optional CTX context arguments.  Examples:
+	/// <ul>
+	/// <li>bin = [[7,9,5],[1,2,3],[6,5,4,1]]</li>
+	/// <li>Append 11 to last list.</li>
+	/// <li>ListOperation.append("bin", Value.get(11), CTX.listIndex(-1))</li>
+	/// <li>bin result = [[7,9,5],[1,2,3],[6,5,4,1,11]]</li>
+	/// <li></li>
+	/// <li>bin = {key1=[[7,9,5],[13]], key2=[[9],[2,4],[6,1,9]], key3=[[6,5]]}</li>
+	/// <li>Append 11 to lowest ranked list in map identified by "key2".</li>
+	/// <li>ListOperation.append("bin", Value.get(11), CTX.mapKey(Value.get("key2")), CTX.listRank(0))</li>
+	/// <li>bin result = {key1=[[7,9,5],[13]], key2=[[9],[2,4,11],[6,1,9]], key3=[[6,5]]}</li>
+	/// </ul>
 	/// </summary>
 	public class ListOperation
 	{
@@ -83,9 +92,9 @@ namespace Aerospike.Client
 		/// Create set list order operation.
 		/// Server sets list order.  Server returns null.
 		/// </summary>
-		public static Operation SetOrder(string binName, ListOrder order)
+		public static Operation SetOrder(string binName, ListOrder order, params CTX[] ctx)
 		{
-			return CDT.CreateOperation(SET_TYPE, Operation.Type.CDT_MODIFY, binName, (int)order);
+			return CDT.CreateOperation(SET_TYPE, Operation.Type.CDT_MODIFY, binName, ctx, (int)order);
 		}
 
 		/// <summary>
@@ -93,11 +102,10 @@ namespace Aerospike.Client
 		/// Server appends value to end of list bin.
 		/// Server returns list size.
 		/// </summary>
-		public static Operation Append(string binName, Value value)
+		public static Operation Append(string binName, Value value, params CTX[] ctx)
 		{
 			Packer packer = new Packer();
-			packer.PackRawShort(APPEND);
-			packer.PackArrayBegin(1);
+			CDT.Init(packer, ctx, APPEND, 1);
 			value.Pack(packer);
 			return new Operation(Operation.Type.CDT_MODIFY, binName, Value.Get(packer.ToByteArray()));
 		}
@@ -107,11 +115,10 @@ namespace Aerospike.Client
 		/// Server appends value to list bin.
 		/// Server returns list size.
 		/// </summary>
-		public static Operation Append(ListPolicy policy, string binName, Value value)
+		public static Operation Append(ListPolicy policy, string binName, Value value, params CTX[] ctx)
 		{
 			Packer packer = new Packer();
-			packer.PackRawShort(APPEND);
-			packer.PackArrayBegin(3);
+			CDT.Init(packer, ctx, APPEND, 3);
 			value.Pack(packer);
 			packer.PackNumber(policy.attributes);
 			packer.PackNumber(policy.flags);
@@ -123,11 +130,10 @@ namespace Aerospike.Client
 		/// Server appends each input list item to end of list bin.
 		/// Server returns list size.
 		/// </summary>
-		public static Operation AppendItems(string binName, IList list)
+		public static Operation AppendItems(string binName, IList list, params CTX[] ctx)
 		{
 			Packer packer = new Packer();
-			packer.PackRawShort(APPEND_ITEMS);
-			packer.PackArrayBegin(1);
+			CDT.Init(packer, ctx, APPEND_ITEMS, 1);
 			packer.PackList(list);
 			return new Operation(Operation.Type.CDT_MODIFY, binName, Value.Get(packer.ToByteArray()));
 		}
@@ -137,11 +143,10 @@ namespace Aerospike.Client
 		/// Server appends each input list item to list bin.
 		/// Server returns list size.
 		/// </summary>
-		public static Operation AppendItems(ListPolicy policy, string binName, IList list)
+		public static Operation AppendItems(ListPolicy policy, string binName, IList list, params CTX[] ctx)
 		{
 			Packer packer = new Packer();
-			packer.PackRawShort(APPEND_ITEMS);
-			packer.PackArrayBegin(3);
+			CDT.Init(packer, ctx, APPEND_ITEMS, 3);
 			packer.PackList(list);
 			packer.PackNumber(policy.attributes);
 			packer.PackNumber(policy.flags);
@@ -153,9 +158,9 @@ namespace Aerospike.Client
 		/// Server inserts value to specified index of list bin.
 		/// Server returns list size.
 		/// </summary>
-		public static Operation Insert(string binName, int index, Value value)
+		public static Operation Insert(string binName, int index, Value value, params CTX[] ctx)
 		{
-			return CDT.CreateOperation(INSERT, Operation.Type.CDT_MODIFY, binName, index, value);
+			return CDT.CreateOperation(INSERT, Operation.Type.CDT_MODIFY, binName, ctx, index, value);
 		}
 
 		/// <summary>
@@ -163,9 +168,9 @@ namespace Aerospike.Client
 		/// Server inserts value to specified index of list bin.
 		/// Server returns list size.
 		/// </summary>
-		public static Operation Insert(ListPolicy policy, string binName, int index, Value value)
+		public static Operation Insert(ListPolicy policy, string binName, int index, Value value, params CTX[] ctx)
 		{
-			return CDT.CreateOperation(INSERT, Operation.Type.CDT_MODIFY, binName, index, value, policy.flags);
+			return CDT.CreateOperation(INSERT, Operation.Type.CDT_MODIFY, binName, ctx, index, value, policy.flags);
 		}
 
 		/// <summary>
@@ -173,11 +178,10 @@ namespace Aerospike.Client
 		/// Server inserts each input list item starting at specified index of list bin. 
 		/// Server returns list size.
 		/// </summary>
-		public static Operation InsertItems(string binName, int index, IList list)
+		public static Operation InsertItems(string binName, int index, IList list, params CTX[] ctx)
 		{
 			Packer packer = new Packer();
-			packer.PackRawShort(INSERT_ITEMS);
-			packer.PackArrayBegin(2);
+			CDT.Init(packer, ctx, INSERT_ITEMS, 2);
 			packer.PackNumber(index);
 			packer.PackList(list);
 			return new Operation(Operation.Type.CDT_MODIFY, binName, Value.Get(packer.ToByteArray()));
@@ -188,11 +192,10 @@ namespace Aerospike.Client
 		/// Server inserts each input list item starting at specified index of list bin. 
 		/// Server returns list size.
 		/// </summary>
-		public static Operation InsertItems(ListPolicy policy, string binName, int index, IList list)
+		public static Operation InsertItems(ListPolicy policy, string binName, int index, IList list, params CTX[] ctx)
 		{
 			Packer packer = new Packer();
-			packer.PackRawShort(INSERT_ITEMS);
-			packer.PackArrayBegin(3);
+			CDT.Init(packer, ctx, INSERT_ITEMS, 3);
 			packer.PackNumber(index);
 			packer.PackList(list);
 			packer.PackNumber(policy.flags);
@@ -204,9 +207,9 @@ namespace Aerospike.Client
 		/// Server increments list[index] by 1.
 		/// Server returns list[index] after incrementing.
 		/// </summary>
-		public static Operation Increment(string binName, int index)
+		public static Operation Increment(string binName, int index, params CTX[] ctx)
 		{
-			return CDT.CreateOperation(INCREMENT, Operation.Type.CDT_MODIFY, binName, index);
+			return CDT.CreateOperation(INCREMENT, Operation.Type.CDT_MODIFY, binName, ctx, index);
 		}
 
 		/// <summary>
@@ -214,9 +217,9 @@ namespace Aerospike.Client
 		/// Server increments list[index] by 1.
 		/// Server returns list[index] after incrementing.
 		/// </summary>
-		public static Operation Increment(ListPolicy policy, string binName, int index)
+		public static Operation Increment(ListPolicy policy, string binName, int index, params CTX[] ctx)
 		{
-			return CDT.CreateOperation(INCREMENT, Operation.Type.CDT_MODIFY, binName, index, Value.Get(1), policy.attributes, policy.flags);
+			return CDT.CreateOperation(INCREMENT, Operation.Type.CDT_MODIFY, binName, ctx, index, Value.Get(1), policy.attributes, policy.flags);
 		}
 
 		/// <summary>
@@ -225,9 +228,9 @@ namespace Aerospike.Client
 		/// Value should be integer(IntegerValue, LongValue) or double(DoubleValue, FloatValue).
 		/// Server returns list[index] after incrementing.
 		/// </summary>
-		public static Operation Increment(string binName, int index, Value value)
+		public static Operation Increment(string binName, int index, Value value, params CTX[] ctx)
 		{
-			return CDT.CreateOperation(INCREMENT, Operation.Type.CDT_MODIFY, binName, index, value);
+			return CDT.CreateOperation(INCREMENT, Operation.Type.CDT_MODIFY, binName, ctx, index, value);
 		}
 
 		/// <summary>
@@ -236,27 +239,27 @@ namespace Aerospike.Client
 		/// Value should be integer(IntegerValue, LongValue) or double(DoubleValue, FloatValue).
 		/// Server returns list[index] after incrementing.
 		/// </summary>
-		public static Operation Increment(ListPolicy policy, string binName, int index, Value value)
+		public static Operation Increment(ListPolicy policy, string binName, int index, Value value, params CTX[] ctx)
 		{
-			return CDT.CreateOperation(INCREMENT, Operation.Type.CDT_MODIFY, binName, index, value, policy.attributes, policy.flags);
+			return CDT.CreateOperation(INCREMENT, Operation.Type.CDT_MODIFY, binName, ctx, index, value, policy.attributes, policy.flags);
 		}
 
 		/// <summary>
 		/// Create list pop operation.
 		/// Server returns item at specified index and removes item from list bin.
 		/// </summary>
-		public static Operation Pop(string binName, int index)
+		public static Operation Pop(string binName, int index, params CTX[] ctx)
 		{
-			return CDT.CreateOperation(POP, Operation.Type.CDT_MODIFY, binName, index);
+			return CDT.CreateOperation(POP, Operation.Type.CDT_MODIFY, binName, ctx, index);
 		}
 
 		/// <summary>
 		/// Create list pop range operation.
 		/// Server returns "count" items starting at specified index and removes items from list bin.
 		/// </summary>
-		public static Operation PopRange(string binName, int index, int count)
+		public static Operation PopRange(string binName, int index, int count, params CTX[] ctx)
 		{
-			return CDT.CreateOperation(POP_RANGE, Operation.Type.CDT_MODIFY, binName, index, count);
+			return CDT.CreateOperation(POP_RANGE, Operation.Type.CDT_MODIFY, binName, ctx, index, count);
 		}
 
 		/// <summary>
@@ -264,9 +267,9 @@ namespace Aerospike.Client
 		/// Server returns items starting at specified index to the end of list and removes those items
 		/// from list bin.
 		/// </summary>
-		public static Operation PopRange(string binName, int index)
+		public static Operation PopRange(string binName, int index, params CTX[] ctx)
 		{
-			return CDT.CreateOperation(POP_RANGE, Operation.Type.CDT_MODIFY, binName, index);
+			return CDT.CreateOperation(POP_RANGE, Operation.Type.CDT_MODIFY, binName, ctx, index);
 		}
 
 		/// <summary>
@@ -274,9 +277,9 @@ namespace Aerospike.Client
 		/// Server removes item at specified index from list bin.
 		/// Server returns number of items removed.
 		/// </summary>
-		public static Operation Remove(string binName, int index)
+		public static Operation Remove(string binName, int index, params CTX[] ctx)
 		{
-			return CDT.CreateOperation(REMOVE, Operation.Type.CDT_MODIFY, binName, index);
+			return CDT.CreateOperation(REMOVE, Operation.Type.CDT_MODIFY, binName, ctx, index);
 		}
 
 		/// <summary>
@@ -284,9 +287,9 @@ namespace Aerospike.Client
 		/// Server removes "count" items starting at specified index from list bin.
 		/// Server returns number of items removed.
 		/// </summary>
-		public static Operation RemoveRange(string binName, int index, int count)
+		public static Operation RemoveRange(string binName, int index, int count, params CTX[] ctx)
 		{
-			return CDT.CreateOperation(REMOVE_RANGE, Operation.Type.CDT_MODIFY, binName, index, count);
+			return CDT.CreateOperation(REMOVE_RANGE, Operation.Type.CDT_MODIFY, binName, ctx, index, count);
 		}
 
 		/// <summary>
@@ -294,9 +297,9 @@ namespace Aerospike.Client
 		/// Server removes items starting at specified index to the end of list.
 		/// Server returns number of items removed.
 		/// </summary>
-		public static Operation RemoveRange(string binName, int index)
+		public static Operation RemoveRange(string binName, int index, params CTX[] ctx)
 		{
-			return CDT.CreateOperation(REMOVE_RANGE, Operation.Type.CDT_MODIFY, binName, index);
+			return CDT.CreateOperation(REMOVE_RANGE, Operation.Type.CDT_MODIFY, binName, ctx, index);
 		}
 
 		/// <summary>
@@ -304,9 +307,9 @@ namespace Aerospike.Client
 		/// Server sets item value at specified index in list bin.
 		/// Server does not return a result by default.
 		/// </summary>
-		public static Operation Set(string binName, int index, Value value)
+		public static Operation Set(string binName, int index, Value value, params CTX[] ctx)
 		{
-			return CDT.CreateOperation(SET, Operation.Type.CDT_MODIFY, binName, index, value);
+			return CDT.CreateOperation(SET, Operation.Type.CDT_MODIFY, binName, ctx, index, value);
 		}
 
 		/// <summary>
@@ -314,9 +317,9 @@ namespace Aerospike.Client
 		/// Server sets item value at specified index in list bin.
 		/// Server does not return a result by default.
 		/// </summary>
-		public static Operation Set(ListPolicy policy, string binName, int index, Value value)
+		public static Operation Set(ListPolicy policy, string binName, int index, Value value, params CTX[] ctx)
 		{
-			return CDT.CreateOperation(SET, Operation.Type.CDT_MODIFY, binName, index, value, policy.flags);
+			return CDT.CreateOperation(SET, Operation.Type.CDT_MODIFY, binName, ctx, index, value, policy.flags);
 		}
 
 		/// <summary>
@@ -325,9 +328,9 @@ namespace Aerospike.Client
 		/// and count range.  If the range is out of bounds, then all items will be removed.
 		/// Server returns list size after trim.
 		/// </summary>
-		public static Operation Trim(string binName, int index, int count)
+		public static Operation Trim(string binName, int index, int count, params CTX[] ctx)
 		{
-			return CDT.CreateOperation(TRIM, Operation.Type.CDT_MODIFY, binName, index, count);
+			return CDT.CreateOperation(TRIM, Operation.Type.CDT_MODIFY, binName, ctx, index, count);
 		}
 
 		/// <summary>
@@ -335,9 +338,9 @@ namespace Aerospike.Client
 		/// Server removes all items in list bin.
 		/// Server does not return a result by default.
 		/// </summary>
-		public static Operation Clear(string binName)
+		public static Operation Clear(string binName, params CTX[] ctx)
 		{
-			return CDT.CreateOperation(CLEAR, Operation.Type.CDT_MODIFY, binName);
+			return CDT.CreateOperation(CLEAR, Operation.Type.CDT_MODIFY, binName, ctx);
 		}
 
 		/// <summary>
@@ -345,29 +348,27 @@ namespace Aerospike.Client
 		/// Server sorts list according to sortFlags.
 		/// Server does not return a result by default.
 		/// </summary>
-		/// <param name="binName">server bin name</param>
-		/// <param name="sortFlags">sort flags</param>
-		public static Operation Sort(string binName, ListSortFlags sortFlags)
+		public static Operation Sort(string binName, ListSortFlags sortFlags, params CTX[] ctx)
 		{
-			return CDT.CreateOperation(SORT, Operation.Type.CDT_MODIFY, binName, (int)sortFlags);
+			return CDT.CreateOperation(SORT, Operation.Type.CDT_MODIFY, binName, ctx, (int)sortFlags);
 		}
 
 		/// <summary>
 		/// Create list remove operation.
 		/// Server removes list items identified by value and returns removed data specified by returnType.
 		/// </summary>
-		public static Operation RemoveByValue(string binName, Value value, ListReturnType returnType)
+		public static Operation RemoveByValue(string binName, Value value, ListReturnType returnType, params CTX[] ctx)
 		{
-			return CDT.CreateOperation(REMOVE_BY_VALUE, Operation.Type.CDT_MODIFY, binName, (int)returnType, value);
+			return CDT.CreateOperation(REMOVE_BY_VALUE, Operation.Type.CDT_MODIFY, binName, ctx, (int)returnType, value);
 		}
 
 		/// <summary>
 		/// Create list remove operation.
 		/// Server removes list items identified by values and returns removed data specified by returnType.
 		/// </summary>
-		public static Operation RemoveByValueList(string binName, IList values, ListReturnType returnType)
+		public static Operation RemoveByValueList(string binName, IList values, ListReturnType returnType, params CTX[] ctx)
 		{
-			return CDT.CreateOperation(REMOVE_BY_VALUE_LIST, Operation.Type.CDT_MODIFY, binName, (int)returnType, values);
+			return CDT.CreateOperation(REMOVE_BY_VALUE_LIST, Operation.Type.CDT_MODIFY, binName, ctx, (int)returnType, values);
 		}
 
 		/// <summary>
@@ -379,9 +380,9 @@ namespace Aerospike.Client
 		/// Server returns removed data specified by returnType. 
 		/// </para>
 		/// </summary>
-		public static Operation RemoveByValueRange(string binName, Value valueBegin, Value valueEnd, ListReturnType returnType)
+		public static Operation RemoveByValueRange(string binName, Value valueBegin, Value valueEnd, ListReturnType returnType, params CTX[] ctx)
 		{
-			return CDT.CreateRangeOperation(REMOVE_BY_VALUE_INTERVAL, Operation.Type.CDT_MODIFY, binName, valueBegin, valueEnd, (int)returnType);
+			return CDT.CreateRangeOperation(REMOVE_BY_VALUE_INTERVAL, Operation.Type.CDT_MODIFY, binName, ctx, valueBegin, valueEnd, (int)returnType);
 		}
 
 		/// <summary>
@@ -401,9 +402,9 @@ namespace Aerospike.Client
 		/// </ul>
 		/// </para>
 		/// </summary>
-		public static Operation RemoveByValueRelativeRankRange(string binName, Value value, int rank, ListReturnType returnType)
+		public static Operation RemoveByValueRelativeRankRange(string binName, Value value, int rank, ListReturnType returnType, params CTX[] ctx)
 		{
-			return CDT.CreateOperation(REMOVE_BY_VALUE_REL_RANK_RANGE, Operation.Type.CDT_MODIFY, binName, (int)returnType, value, rank);
+			return CDT.CreateOperation(REMOVE_BY_VALUE_REL_RANK_RANGE, Operation.Type.CDT_MODIFY, binName, ctx, (int)returnType, value, rank);
 		}
 
 		/// <summary>
@@ -423,18 +424,18 @@ namespace Aerospike.Client
 		/// </ul>
 		/// </para>
 		/// </summary>
-		public static Operation RemoveByValueRelativeRankRange(string binName, Value value, int rank, int count, ListReturnType returnType)
+		public static Operation RemoveByValueRelativeRankRange(string binName, Value value, int rank, int count, ListReturnType returnType, params CTX[] ctx)
 		{
-			return CDT.CreateOperation(REMOVE_BY_VALUE_REL_RANK_RANGE, Operation.Type.CDT_MODIFY, binName, (int)returnType, value, rank, count);
+			return CDT.CreateOperation(REMOVE_BY_VALUE_REL_RANK_RANGE, Operation.Type.CDT_MODIFY, binName, ctx, (int)returnType, value, rank, count);
 		}
 
 		/// <summary>
 		/// Create list remove operation.
 		/// Server removes list item identified by index and returns removed data specified by returnType. 
 		/// </summary>
-		public static Operation RemoveByIndex(string binName, int index, ListReturnType returnType)
+		public static Operation RemoveByIndex(string binName, int index, ListReturnType returnType, params CTX[] ctx)
 		{
-			return CDT.CreateOperation(REMOVE_BY_INDEX, Operation.Type.CDT_MODIFY, binName, (int)returnType, index);
+			return CDT.CreateOperation(REMOVE_BY_INDEX, Operation.Type.CDT_MODIFY, binName, ctx, (int)returnType, index);
 		}
 
 		/// <summary>
@@ -442,27 +443,27 @@ namespace Aerospike.Client
 		/// Server removes list items starting at specified index to the end of list and returns removed
 		/// data specified by returnType.
 		/// </summary>
-		public static Operation RemoveByIndexRange(string binName, int index, ListReturnType returnType)
+		public static Operation RemoveByIndexRange(string binName, int index, ListReturnType returnType, params CTX[] ctx)
 		{
-			return CDT.CreateOperation(REMOVE_BY_INDEX_RANGE, Operation.Type.CDT_MODIFY, binName, (int)returnType, index);
+			return CDT.CreateOperation(REMOVE_BY_INDEX_RANGE, Operation.Type.CDT_MODIFY, binName, ctx, (int)returnType, index);
 		}
 
 		/// <summary>
 		/// Create list remove operation.
 		/// Server removes "count" list items starting at specified index and returns removed data specified by returnType.
 		/// </summary>
-		public static Operation RemoveByIndexRange(string binName, int index, int count, ListReturnType returnType)
+		public static Operation RemoveByIndexRange(string binName, int index, int count, ListReturnType returnType, params CTX[] ctx)
 		{
-			return CDT.CreateOperation(REMOVE_BY_INDEX_RANGE, Operation.Type.CDT_MODIFY, binName, (int)returnType, index, count);
+			return CDT.CreateOperation(REMOVE_BY_INDEX_RANGE, Operation.Type.CDT_MODIFY, binName, ctx, (int)returnType, index, count);
 		}
 
 		/// <summary>
 		/// Create list remove operation.
 		/// Server removes list item identified by rank and returns removed data specified by returnType.
 		/// </summary>
-		public static Operation RemoveByRank(string binName, int rank, ListReturnType returnType)
+		public static Operation RemoveByRank(string binName, int rank, ListReturnType returnType, params CTX[] ctx)
 		{
-			return CDT.CreateOperation(REMOVE_BY_RANK, Operation.Type.CDT_MODIFY, binName, (int)returnType, rank);
+			return CDT.CreateOperation(REMOVE_BY_RANK, Operation.Type.CDT_MODIFY, binName, ctx, (int)returnType, rank);
 		}
 
 		/// <summary>
@@ -470,63 +471,63 @@ namespace Aerospike.Client
 		/// Server removes list items starting at specified rank to the last ranked item and returns removed
 		/// data specified by returnType.
 		/// </summary>
-		public static Operation RemoveByRankRange(string binName, int rank, ListReturnType returnType)
+		public static Operation RemoveByRankRange(string binName, int rank, ListReturnType returnType, params CTX[] ctx)
 		{
-			return CDT.CreateOperation(REMOVE_BY_RANK_RANGE, Operation.Type.CDT_MODIFY, binName, (int)returnType, rank);
+			return CDT.CreateOperation(REMOVE_BY_RANK_RANGE, Operation.Type.CDT_MODIFY, binName, ctx, (int)returnType, rank);
 		}
 
 		/// <summary>
 		/// Create list remove operation.
 		/// Server removes "count" list items starting at specified rank and returns removed data specified by returnType.
 		/// </summary>
-		public static Operation RemoveByRankRange(string binName, int rank, int count, ListReturnType returnType)
+		public static Operation RemoveByRankRange(string binName, int rank, int count, ListReturnType returnType, params CTX[] ctx)
 		{
-			return CDT.CreateOperation(REMOVE_BY_RANK_RANGE, Operation.Type.CDT_MODIFY, binName, (int)returnType, rank, count);
+			return CDT.CreateOperation(REMOVE_BY_RANK_RANGE, Operation.Type.CDT_MODIFY, binName, ctx, (int)returnType, rank, count);
 		}
 
 		/// <summary>
 		/// Create list size operation.
 		/// Server returns size of list.
 		/// </summary>
-		public static Operation Size(string binName)
+		public static Operation Size(string binName, params CTX[] ctx)
 		{
-			return CDT.CreateOperation(SIZE, Operation.Type.CDT_READ, binName);
+			return CDT.CreateOperation(SIZE, Operation.Type.CDT_READ, binName, ctx);
 		}
 
 		/// <summary>
 		/// Create list get operation.
 		/// Server returns item at specified index in list bin.
 		/// </summary>
-		public static Operation Get(string binName, int index)
+		public static Operation Get(string binName, int index, params CTX[] ctx)
 		{
-			return CDT.CreateOperation(GET, Operation.Type.CDT_READ, binName, index);
+			return CDT.CreateOperation(GET, Operation.Type.CDT_READ, binName, ctx, index);
 		}
 
 		/// <summary>
 		/// Create list get range operation.
 		/// Server returns "count" items starting at specified index in list bin.
 		/// </summary>
-		public static Operation GetRange(string binName, int index, int count)
+		public static Operation GetRange(string binName, int index, int count, params CTX[] ctx)
 		{
-			return CDT.CreateOperation(GET_RANGE, Operation.Type.CDT_READ, binName, index, count);
+			return CDT.CreateOperation(GET_RANGE, Operation.Type.CDT_READ, binName, ctx, index, count);
 		}
 
 		/// <summary>
 		/// Create list get range operation.
 		/// Server returns items starting at index to the end of list.
 		/// </summary>
-		public static Operation GetRange(string binName, int index)
+		public static Operation GetRange(string binName, int index, params CTX[] ctx)
 		{
-			return CDT.CreateOperation(GET_RANGE, Operation.Type.CDT_READ, binName, index);
+			return CDT.CreateOperation(GET_RANGE, Operation.Type.CDT_READ, binName, ctx, index);
 		}
 
 		/// <summary>
 		/// Create list get by value operation.
 		/// Server selects list items identified by value and returns selected data specified by returnType.
 		/// </summary>
-		public static Operation GetByValue(string binName, Value value, ListReturnType returnType)
+		public static Operation GetByValue(string binName, Value value, ListReturnType returnType, params CTX[] ctx)
 		{
-			return CDT.CreateOperation(GET_BY_VALUE, Operation.Type.CDT_READ, binName, (int)returnType, value);
+			return CDT.CreateOperation(GET_BY_VALUE, Operation.Type.CDT_READ, binName, ctx, (int)returnType, value);
 		}
 
 		/// <summary>
@@ -538,18 +539,18 @@ namespace Aerospike.Client
 		/// Server returns selected data specified by returnType. 
 		/// </para>
 		/// </summary>
-		public static Operation GetByValueRange(string binName, Value valueBegin, Value valueEnd, ListReturnType returnType)
+		public static Operation GetByValueRange(string binName, Value valueBegin, Value valueEnd, ListReturnType returnType, params CTX[] ctx)
 		{
-			return CDT.CreateRangeOperation(GET_BY_VALUE_INTERVAL, Operation.Type.CDT_READ, binName, valueBegin, valueEnd, (int)returnType);
+			return CDT.CreateRangeOperation(GET_BY_VALUE_INTERVAL, Operation.Type.CDT_READ, binName, ctx, valueBegin, valueEnd, (int)returnType);
 		}
 
 		/// <summary>
 		/// Create list get by value list operation.
 		/// Server selects list items identified by values and returns selected data specified by returnType.
 		/// </summary>
-		public static Operation GetByValueList(string binName, IList values, ListReturnType returnType)
+		public static Operation GetByValueList(string binName, IList values, ListReturnType returnType, params CTX[] ctx)
 		{
-			return CDT.CreateOperation(GET_BY_VALUE_LIST, Operation.Type.CDT_READ, binName, (int)returnType, values);
+			return CDT.CreateOperation(GET_BY_VALUE_LIST, Operation.Type.CDT_READ, binName, ctx, (int)returnType, values);
 		}
 
 		/// <summary>
@@ -569,9 +570,9 @@ namespace Aerospike.Client
 		/// </ul>
 		/// </para>
 		/// </summary>
-		public static Operation GetByValueRelativeRankRange(string binName, Value value, int rank, ListReturnType returnType)
+		public static Operation GetByValueRelativeRankRange(string binName, Value value, int rank, ListReturnType returnType, params CTX[] ctx)
 		{
-			return CDT.CreateOperation(GET_BY_VALUE_REL_RANK_RANGE, Operation.Type.CDT_READ, binName, (int)returnType, value, rank);
+			return CDT.CreateOperation(GET_BY_VALUE_REL_RANK_RANGE, Operation.Type.CDT_READ, binName, ctx, (int)returnType, value, rank);
 		}
 
 		/// <summary>
@@ -591,9 +592,9 @@ namespace Aerospike.Client
 		/// </ul>
 		/// </para>
 		/// </summary>
-		public static Operation GetByValueRelativeRankRange(string binName, Value value, int rank, int count, ListReturnType returnType)
+		public static Operation GetByValueRelativeRankRange(string binName, Value value, int rank, int count, ListReturnType returnType, params CTX[] ctx)
 		{
-			return CDT.CreateOperation(GET_BY_VALUE_REL_RANK_RANGE, Operation.Type.CDT_READ, binName, (int)returnType, value, rank, count);
+			return CDT.CreateOperation(GET_BY_VALUE_REL_RANK_RANGE, Operation.Type.CDT_READ, binName, ctx, (int)returnType, value, rank, count);
 		}
 
 		/// <summary>
@@ -601,9 +602,9 @@ namespace Aerospike.Client
 		/// Server selects list item identified by index and returns selected data specified by returnType
 		///. 
 		/// </summary>
-		public static Operation GetByIndex(string binName, int index, ListReturnType returnType)
+		public static Operation GetByIndex(string binName, int index, ListReturnType returnType, params CTX[] ctx)
 		{
-			return CDT.CreateOperation(GET_BY_INDEX, Operation.Type.CDT_READ, binName, (int)returnType, index);
+			return CDT.CreateOperation(GET_BY_INDEX, Operation.Type.CDT_READ, binName, ctx, (int)returnType, index);
 		}
 
 		/// <summary>
@@ -611,9 +612,9 @@ namespace Aerospike.Client
 		/// Server selects list items starting at specified index to the end of list and returns selected
 		/// data specified by returnType.
 		/// </summary>
-		public static Operation GetByIndexRange(string binName, int index, ListReturnType returnType)
+		public static Operation GetByIndexRange(string binName, int index, ListReturnType returnType, params CTX[] ctx)
 		{
-			return CDT.CreateOperation(GET_BY_INDEX_RANGE, Operation.Type.CDT_READ, binName, (int)returnType, index);
+			return CDT.CreateOperation(GET_BY_INDEX_RANGE, Operation.Type.CDT_READ, binName, ctx, (int)returnType, index);
 		}
 
 		/// <summary>
@@ -621,18 +622,18 @@ namespace Aerospike.Client
 		/// Server selects "count" list items starting at specified index and returns selected data specified
 		/// by returnType.
 		/// </summary>
-		public static Operation GetByIndexRange(string binName, int index, int count, ListReturnType returnType)
+		public static Operation GetByIndexRange(string binName, int index, int count, ListReturnType returnType, params CTX[] ctx)
 		{
-			return CDT.CreateOperation(GET_BY_INDEX_RANGE, Operation.Type.CDT_READ, binName, (int)returnType, index, count);
+			return CDT.CreateOperation(GET_BY_INDEX_RANGE, Operation.Type.CDT_READ, binName, ctx, (int)returnType, index, count);
 		}
 
 		/// <summary>
 		/// Create list get by rank operation.
 		/// Server selects list item identified by rank and returns selected data specified by returnType.
 		/// </summary>
-		public static Operation GetByRank(string binName, int rank, ListReturnType returnType)
+		public static Operation GetByRank(string binName, int rank, ListReturnType returnType, params CTX[] ctx)
 		{
-			return CDT.CreateOperation(GET_BY_RANK, Operation.Type.CDT_READ, binName, (int)returnType, rank);
+			return CDT.CreateOperation(GET_BY_RANK, Operation.Type.CDT_READ, binName, ctx, (int)returnType, rank);
 		}
 
 		/// <summary>
@@ -640,18 +641,18 @@ namespace Aerospike.Client
 		/// Server selects list items starting at specified rank to the last ranked item and returns selected
 		/// data specified by returnType.
 		/// </summary>
-		public static Operation GetByRankRange(string binName, int rank, ListReturnType returnType)
+		public static Operation GetByRankRange(string binName, int rank, ListReturnType returnType, params CTX[] ctx)
 		{
-			return CDT.CreateOperation(GET_BY_RANK_RANGE, Operation.Type.CDT_READ, binName, (int)returnType, rank);
+			return CDT.CreateOperation(GET_BY_RANK_RANGE, Operation.Type.CDT_READ, binName, ctx, (int)returnType, rank);
 		}
 
 		/// <summary>
 		/// Create list get by rank range operation.
 		/// Server selects "count" list items starting at specified rank and returns selected data specified by returnType.
 		/// </summary>
-		public static Operation GetByRankRange(string binName, int rank, int count, ListReturnType returnType)
+		public static Operation GetByRankRange(string binName, int rank, int count, ListReturnType returnType, params CTX[] ctx)
 		{
-			return CDT.CreateOperation(GET_BY_RANK_RANGE, Operation.Type.CDT_READ, binName, (int)returnType, rank, count);
+			return CDT.CreateOperation(GET_BY_RANK_RANGE, Operation.Type.CDT_READ, binName, ctx, (int)returnType, rank, count);
 		}
 	}
 }

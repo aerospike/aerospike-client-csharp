@@ -210,6 +210,7 @@
     <Compile Include="BCrypt\BCrypt.cs" />
     <Compile Include="BCrypt\SaltParseException.cs" />
     <Compile Include="CDT\CDT.cs" />
+    <Compile Include="CDT\CTX.cs" />
     <Compile Include="CDT\MapWriteFlags.cs" />
     <Compile Include="CDT\ListPolicy.cs" />
     <Compile Include="CDT\ListReturnType.cs" />
@@ -294,6 +295,11 @@
     <Compile Include="Main\Record.cs" />
     <Compile Include="Main\ResultCode.cs" />
     <Compile Include="Main\Value.cs" />
+    <Compile Include="Operation\BitWriteFlags.cs" />
+    <Compile Include="Operation\BitPolicy.cs" />
+    <Compile Include="Operation\BitOperation.cs" />
+    <Compile Include="Operation\BitResizeFlags.cs" />
+    <Compile Include="Operation\BitOverflowAction.cs" />
     <Compile Include="Policy\AdminPolicy.cs" />
     <Compile Include="Policy\BatchPolicy.cs" />
     <Compile Include="Policy\ClientPolicy.cs" />

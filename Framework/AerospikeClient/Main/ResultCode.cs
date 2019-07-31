@@ -98,6 +98,11 @@ namespace Aerospike.Client
 		public const int KEY_EXISTS_ERROR = 5;
 
 		/// <summary>
+		/// Bin already exists on a create-only operation.
+		/// </summary>
+		public const int BIN_EXISTS_ERROR = 6;
+
+		/// <summary>
 		/// Expected cluster was not received.
 		/// </summary>
 		public const int CLUSTER_KEY_MISMATCH = 7;
@@ -149,6 +154,11 @@ namespace Aerospike.Client
 		public const int UNSUPPORTED_FEATURE = 16;
 
 		/// <summary>
+		/// Bin not found on update-only operation.
+		/// </summary>
+		public const int BIN_NOT_FOUND = 17;
+
+		/// <summary>
 		/// Device not keeping up with writes.
 		/// </summary>
 		public const int DEVICE_OVERLOAD = 18;
@@ -182,7 +192,18 @@ namespace Aerospike.Client
 		/// Map element exists in CREATE_ONLY write mode.
 		/// </summary>
 		public const int ELEMENT_EXISTS = 24;
-	
+
+		/// <summary>
+		/// Attempt to use an Enterprise feature on a Community server or a server
+		/// without the applicable feature key.
+		/// </summary>
+		public const int ENTERPRISE_ONLY = 25;
+
+		/// <summary>
+		/// The operation cannot be applied to the current bin value on the server.
+		/// </summary>
+		public const int OP_NOT_APPLICABLE = 26;
+
 		/// <summary>
 		/// There are no more records left for query.
 		/// </summary>
@@ -446,6 +467,9 @@ namespace Aerospike.Client
 			case KEY_EXISTS_ERROR:
 				return "Key already exists";
 
+			case BIN_EXISTS_ERROR:
+				return "Bin already exists";
+
 			case CLUSTER_KEY_MISMATCH:
 				return "Cluster key mismatch";
 
@@ -476,6 +500,9 @@ namespace Aerospike.Client
 			case UNSUPPORTED_FEATURE:
 				return "Unsupported server feature";
 
+			case BIN_NOT_FOUND:
+				return "Bin not found";
+
 			case DEVICE_OVERLOAD:
 				return "Device overload";
 
@@ -496,6 +523,12 @@ namespace Aerospike.Client
 
 			case ELEMENT_EXISTS:
 				return "Map key exists";
+
+			case ENTERPRISE_ONLY:
+				return "Enterprise only";
+
+			case OP_NOT_APPLICABLE:
+				return "Operation not applicable";
 
 			case QUERY_END:
 				return "Query end";

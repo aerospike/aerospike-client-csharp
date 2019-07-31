@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -40,9 +40,13 @@ namespace Aerospike.Demo
 				return;
 			}	
 			RunSimpleExample(client, args);
+			RunNestedExample(client, args);
 		}
 
-		public void RunSimpleExample(AerospikeClient client, Arguments args)
+		/// <summary>
+		/// Simple example of list functionality.
+		/// </summary>
+		private void RunSimpleExample(AerospikeClient client, Arguments args)
 		{
 			Key key = new Key(args.ns, args.set, "listkey");
 			string binName = args.GetBinName("listbin");
@@ -73,6 +77,51 @@ namespace Aerospike.Demo
 			{
 				console.Info("Received: " + value);
 			}
+		}
+
+		/// <summary>
+		/// Operate on a list of lists.
+		/// </summary>
+		private void RunNestedExample(AerospikeClient client, Arguments args)
+		{
+			Key key = new Key(args.ns, args.set, "listkey2");
+			string binName = args.GetBinName("listbin");
+
+			// Delete record if it already exists.
+			client.Delete(args.writePolicy, key);
+
+			IList<Value> l1 = new List<Value>();
+			l1.Add(Value.Get(7));
+			l1.Add(Value.Get(9));
+			l1.Add(Value.Get(5));
+
+			IList<Value> l2 = new List<Value>();
+			l2.Add(Value.Get(1));
+			l2.Add(Value.Get(2));
+			l2.Add(Value.Get(3));
+
+			IList<Value> l3 = new List<Value>();
+			l3.Add(Value.Get(6));
+			l3.Add(Value.Get(5));
+			l3.Add(Value.Get(4));
+			l3.Add(Value.Get(1));
+
+			IList<Value> inputList = new List<Value>();
+			inputList.Add(Value.Get(l1));
+			inputList.Add(Value.Get(l2));
+			inputList.Add(Value.Get(l3));
+
+			// Create list.
+			client.Put(args.writePolicy, key, new Bin(binName, inputList));
+
+			// Append value to last list and retrieve all lists.
+			Record record = client.Operate(args.writePolicy, key,
+				ListOperation.Append(binName, Value.Get(11), CTX.ListIndex(-1)),
+				Operation.Get(binName)
+				);
+
+			record = client.Get(args.policy, key);
+			console.Info("Record: " + record);
 		}
 	}
 }

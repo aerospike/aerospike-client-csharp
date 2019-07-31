@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -232,7 +232,7 @@ namespace Aerospike.Client
 		/// </summary>
 		public override string ToString()
 		{
-			StringBuilder sb = new StringBuilder(500);
+			StringBuilder sb = new StringBuilder(1024);
 			sb.Append("(gen:");
 			sb.Append(generation);
 			sb.Append("),(exp:");
@@ -256,14 +256,13 @@ namespace Aerospike.Client
 					sb.Append('(');
 					sb.Append(entry.Key);
 					sb.Append(':');
-					sb.Append(entry.Value);
-					sb.Append(')');
 
-					if (sb.Length > 1000)
+					if (!ObjectToString(entry.Value, sb))
 					{
-						sb.Append("...");
 						break;
 					}
+
+					sb.Append(')');
 				}
 			}
 			else
@@ -272,6 +271,78 @@ namespace Aerospike.Client
 			}
 			sb.Append(')');
 			return sb.ToString();
+		}
+
+		private bool ObjectToString(object obj, StringBuilder sb)
+		{
+			if (sb.Length > 1000)
+			{
+				sb.Append("...");
+				return false;
+			}
+
+			if (obj is IList)
+			{
+				IList list = obj as IList;
+				bool comma = false;
+
+				sb.Append('[');
+
+				foreach (object item in list)
+				{
+					if (comma)
+					{
+						sb.Append(',');
+					}
+					else
+					{
+						comma = true;
+					}
+
+					if (!ObjectToString(item, sb))
+					{
+						return false;
+					}
+				}
+				sb.Append(']');
+			}
+			else if (obj is IDictionary)
+			{
+				IDictionary dict = obj as IDictionary;
+				bool comma = false;
+
+				sb.Append('{');
+
+				foreach (DictionaryEntry entry in dict)
+				{
+					if (comma)
+					{
+						sb.Append(',');
+					}
+					else
+					{
+						comma = true;
+					}
+
+					if (!ObjectToString(entry.Key, sb))
+					{
+						return false;
+					}
+
+					sb.Append('=');
+
+					if (!ObjectToString(entry.Value, sb))
+					{
+						return false;
+					}
+				}
+				sb.Append('}');
+			}
+			else
+			{
+				sb.Append(obj);
+			}
+			return true;
 		}
 	}
 }

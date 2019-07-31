@@ -34,6 +34,7 @@ namespace Aerospike.Client
 
 		public const int HAS_GEO = (1 << 0);
 		public const int HAS_TRUNCATE_NS = (1 << 1);
+		public const int HAS_BIT_OP = (1 << 2);
 		public const int HAS_PEERS = (1 << 4);
 		public const int HAS_REPLICAS = (1 << 5);
 		public const int HAS_CLUSTER_STABLE = (1 << 6);
@@ -841,6 +842,14 @@ namespace Aerospike.Client
 		public bool HasClusterStable
 		{
 			get { return (features & HAS_CLUSTER_STABLE) != 0; }
+		}
+
+		/// <summary>
+		/// Does server support bit operations.
+		/// </summary>
+		public bool HasBitOperations
+		{
+			get { return (features & HAS_BIT_OP) != 0; }
 		}
 
 		/// <summary>

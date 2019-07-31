@@ -65,6 +65,7 @@
     <Compile Include="..\..\Framework\AerospikeClient\BCrypt\BCrypt.cs" Link="BCrypt\BCrypt.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\BCrypt\SaltParseException.cs" Link="BCrypt\SaltParseException.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\CDT\CDT.cs" Link="CDT\CDT.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\CDT\CTX.cs" Link="CDT\CTX.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\CDT\ListOperation.cs" Link="CDT\ListOperation.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\CDT\ListOrder.cs" Link="CDT\ListOrder.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\CDT\ListPolicy.cs" Link="CDT\ListPolicy.cs" />
@@ -138,6 +139,11 @@
     <Compile Include="..\..\Framework\AerospikeClient\Main\Record.cs" Link="Main\Record.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Main\ResultCode.cs" Link="Main\ResultCode.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Main\Value.cs" Link="Main\Value.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Operation\BitOperation.cs" Link="Operation\BitOperation.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Operation\BitOverflowAction.cs" Link="Operation\BitOverflowAction.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Operation\BitPolicy.cs" Link="Operation\BitPolicy.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Operation\BitResizeFlags.cs" Link="Operation\BitResizeFlags.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Operation\BitWriteFlags.cs" Link="Operation\BitWriteFlags.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Policy\AdminPolicy.cs" Link="Policy\AdminPolicy.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Policy\AuthMode.cs" Link="Policy\AuthMode.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Policy\BatchPolicy.cs" Link="Policy\BatchPolicy.cs" />
@@ -202,6 +208,7 @@
     <Folder Include="Listener\" />
     <Folder Include="Main\" />
     <Folder Include="BCrypt\" />
+    <Folder Include="Operation\" />
     <Folder Include="Policy\" />
     <Folder Include="Query\" />
     <Folder Include="Task\" />

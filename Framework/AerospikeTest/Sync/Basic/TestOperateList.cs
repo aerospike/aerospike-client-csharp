@@ -1,5 +1,5 @@
 ﻿/* 
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -994,6 +994,135 @@ namespace Aerospike.Test
 		
 			long v = (long)items[1];	
 			Assert.AreEqual(95L, v);
+		}
+
+		[TestMethod]
+		public void OperateNestedList()
+		{
+			Key key = new Key(args.ns, args.set, "oplkey18");
+
+			client.Delete(null, key);
+
+			IList<Value> l1 = new List<Value>();
+			l1.Add(Value.Get(7));
+			l1.Add(Value.Get(9));
+			l1.Add(Value.Get(5));
+
+			IList<Value> l2 = new List<Value>();
+			l2.Add(Value.Get(1));
+			l2.Add(Value.Get(2));
+			l2.Add(Value.Get(3));
+
+			IList<Value> l3 = new List<Value>();
+			l3.Add(Value.Get(6));
+			l3.Add(Value.Get(5));
+			l3.Add(Value.Get(4));
+			l3.Add(Value.Get(1));
+
+			List<Value> inputList = new List<Value>();
+			inputList.Add(Value.Get(l1));
+			inputList.Add(Value.Get(l2));
+			inputList.Add(Value.Get(l3));
+
+			// Create list.
+			client.Put(null, key, new Bin(binName, inputList));
+
+			// Append value to last list and retrieve all lists.
+			Record record = client.Operate(null, key,
+				ListOperation.Append(binName, Value.Get(11), CTX.ListIndex(-1)), 
+				Operation.Get(binName)
+				);
+
+			AssertRecordFound(key, record);
+
+			IList results = record.GetList(binName);
+			int i = 0;
+
+			long count = (long)results[i++];
+			Assert.AreEqual(5, count);
+
+			IList list = (IList)results[i++];
+			Assert.AreEqual(3, list.Count);
+
+			// Test last nested list.
+			list = (IList)list[2];
+			Assert.AreEqual(5, list.Count);
+			Assert.AreEqual(6, (long)(long?)list[0]);
+			Assert.AreEqual(5, (long)(long?)list[1]);
+			Assert.AreEqual(4, (long)(long?)list[2]);
+			Assert.AreEqual(1, (long)(long?)list[3]);
+			Assert.AreEqual(11, (long)(long?)list[4]);
+		}
+
+		[TestMethod]
+		public void OperateNestedListMap()
+		{
+			Key key = new Key(args.ns, args.set, "oplkey19");
+
+			client.Delete(null, key);
+
+			IList<Value> l11 = new List<Value>();
+			l11.Add(Value.Get(7));
+			l11.Add(Value.Get(9));
+			l11.Add(Value.Get(5));
+
+			IList<Value> l12 = new List<Value>();
+			l12.Add(Value.Get(13));
+
+			IList<Value> l1 = new List<Value>();
+			l1.Add(Value.Get(l11));
+			l1.Add(Value.Get(l12));
+
+			IList<Value> l21 = new List<Value>();
+			l21.Add(Value.Get(9));
+
+			IList<Value> l22 = new List<Value>();
+			l22.Add(Value.Get(2));
+			l22.Add(Value.Get(4));
+
+			IList<Value> l23 = new List<Value>();
+			l23.Add(Value.Get(6));
+			l23.Add(Value.Get(1));
+			l23.Add(Value.Get(9));
+
+			IList<Value> l2 = new List<Value>();
+			l2.Add(Value.Get(l21));
+			l2.Add(Value.Get(l22));
+			l2.Add(Value.Get(l23));
+
+			Dictionary<Value, Value> inputMap = new Dictionary<Value, Value>();
+			inputMap[Value.Get("key1")] = Value.Get(l1);
+			inputMap[Value.Get("key2")] = Value.Get(l2);
+
+			// Create list.
+			client.Put(null, key, new Bin(binName, inputMap));
+
+			// Append value to last list and retrieve map.
+			Record record = client.Operate(null, key,
+				ListOperation.Append(binName, Value.Get(11), CTX.MapKey(Value.Get("key2")), CTX.ListRank(0)),
+				Operation.Get(binName)
+				);
+
+			AssertRecordFound(key, record);
+
+			IList results = record.GetList(binName);
+			int i = 0;
+
+			long count = (long)results[i++];
+			Assert.AreEqual(3, count);
+
+			IDictionary map = (IDictionary)results[i++];
+			Assert.AreEqual(2, map.Count);
+
+			// Test affected nested list.
+			IList list = (IList)map["key2"];
+			Assert.AreEqual(3, list.Count);
+
+			list = (IList)list[1];
+			Assert.AreEqual(3, list.Count);
+			Assert.AreEqual(2, (long)(long?)list[0]);
+			Assert.AreEqual(4, (long)(long?)list[1]);
+			Assert.AreEqual(11, (long)(long?)list[2]);		
 		}
 	}
 }

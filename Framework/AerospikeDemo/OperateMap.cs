@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -42,9 +42,10 @@ namespace Aerospike.Demo
 			RunSimpleExample(client, args);
 			RunScoreExample(client, args);
 			RunListRangeExample(client, args);
+			RunNestedExample(client, args);
 		}
 
-		public void RunSimpleExample(AerospikeClient client, Arguments args)
+		private void RunSimpleExample(AerospikeClient client, Arguments args)
 		{
 			Key key = new Key(args.ns, args.set, "mapkey");
 			string binName = args.GetBinName("mapbin");
@@ -77,7 +78,7 @@ namespace Aerospike.Demo
 			}
 		}
 
-		public void RunScoreExample(AerospikeClient client, Arguments args)
+		private void RunScoreExample(AerospikeClient client, Arguments args)
 		{
 			Key key = new Key(args.ns, args.set, "mapkey");
 			string binName = args.GetBinName("mapbin");
@@ -125,7 +126,7 @@ namespace Aerospike.Demo
 		/// <summary>
 		/// Value list range example.
 		/// </summary>
-		public void RunListRangeExample(AerospikeClient client, Arguments args)
+		private void RunListRangeExample(AerospikeClient client, Arguments args)
 		{
 			Key key = new Key(args.ns, args.set, "mapkey");
 			string binName = args.GetBinName("mapbin");
@@ -161,7 +162,9 @@ namespace Aerospike.Demo
 			inputMap[Value.Get("Bill")] = Value.Get(l5);
 
 			// Write values to empty map.
-			Record record = client.Operate(args.writePolicy, key, MapOperation.PutItems(MapPolicy.Default, binName, inputMap));
+			Record record = client.Operate(args.writePolicy, key,
+				MapOperation.PutItems(MapPolicy.Default, binName, inputMap)
+				);
 
 			console.Info("Record: " + record);
 
@@ -170,7 +173,9 @@ namespace Aerospike.Demo
 			end.Add(Value.AsNull);
 
 			// Delete values < end.
-			record = client.Operate(args.writePolicy, key, MapOperation.RemoveByValueRange(binName, null, Value.Get(end), MapReturnType.COUNT));
+			record = client.Operate(args.writePolicy, key,
+				MapOperation.RemoveByValueRange(binName, null, Value.Get(end), MapReturnType.COUNT)
+			);
 
 			console.Info("Record: " + record);
 		}
@@ -180,6 +185,43 @@ namespace Aerospike.Demo
 		private static Value MillisSinceEpoch(DateTime dt)
 		{
 			return Value.Get((long)(dt.ToUniversalTime() - Epoch).TotalMilliseconds);
+		}
+
+		/// <summary>
+		/// Operate on a map of maps.
+		/// </summary>
+		private void RunNestedExample(AerospikeClient client, Arguments args)
+		{
+			Key key = new Key(args.ns, args.set, "mapkey2");
+			string binName = args.GetBinName("mapbin");
+
+			// Delete record if it already exists.
+			client.Delete(args.writePolicy, key);
+
+			IDictionary<Value, Value> m1 = new Dictionary<Value, Value>();
+			m1[Value.Get("key11")] = Value.Get(9);
+			m1[Value.Get("key12")] = Value.Get(4);
+
+			IDictionary<Value, Value> m2 = new Dictionary<Value, Value>();
+			m2[Value.Get("key21")] = Value.Get(3);
+			m2[Value.Get("key22")] = Value.Get(5);
+
+			IDictionary<Value, Value> inputMap = new Dictionary<Value, Value>();
+			inputMap[Value.Get("key1")] = Value.Get(m1);
+			inputMap[Value.Get("key2")] = Value.Get(m2);
+
+			// Create maps.
+			client.Put(args.writePolicy, key, new Bin(binName, inputMap));
+
+			// Set map value to 11 for map key "key21" inside of map key "key2"
+			// and retrieve all maps.
+			Record record = client.Operate(args.writePolicy, key,
+				MapOperation.Put(MapPolicy.Default, binName, Value.Get("key21"), Value.Get(11), CTX.MapKey(Value.Get("key2"))),
+				Operation.Get(binName)
+				);
+
+			record = client.Get(args.policy, key);
+			console.Info("Record: " + record);
 		}
 	}
 }

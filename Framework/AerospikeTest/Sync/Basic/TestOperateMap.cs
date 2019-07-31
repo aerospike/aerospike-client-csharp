@@ -1,5 +1,5 @@
 ﻿/* 
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -30,10 +30,6 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void OperateMapPut()
 		{
-			if (! args.ValidateMap()) {
-				return;
-			}
-
 			Key key = new Key(args.ns, args.set, "opmkey1");		
 			client.Delete(null, key);
 		
@@ -88,11 +84,6 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void OperateMapPutItems()
 		{
-			if (!args.ValidateMap())
-			{
-				return;
-			}
-
 			Key key = new Key(args.ns, args.set, "opmkey2");
 			client.Delete(null, key);
 
@@ -157,11 +148,6 @@ namespace Aerospike.Test
 		public void OperateMapMixed()
 		{
 			// Test normal operations with map operations.
-			if (!args.ValidateMap())
-			{
-				return;
-			}
-
 			Key key = new Key(args.ns, args.set, "opmkey2");
 			client.Delete(null, key);
 
@@ -201,11 +187,6 @@ namespace Aerospike.Test
 		public void OperateMapSwitch()
 		{
 			// Switch from unordered map to a key ordered map.
-			if (!args.ValidateMap())
-			{
-				return;
-			}
-
 			Key key = new Key(args.ns, args.set, "opmkey4");
 			client.Delete(null, key);
 
@@ -263,11 +244,6 @@ namespace Aerospike.Test
 		public void OperateMapRank()
 		{
 			// Test rank.
-			if (!args.ValidateMap())
-			{
-				return;
-			}
-
 			Key key = new Key(args.ns, args.set, "opmkey6");
 			client.Delete(null, key);
 
@@ -368,11 +344,6 @@ namespace Aerospike.Test
 		public void OperateMapRemove()
 		{
 			// Test remove.
-			if (!args.ValidateMap())
-			{
-				return;
-			}
-
 			Key key = new Key(args.ns, args.set, "opmkey7");
 			client.Delete(null, key);
 
@@ -427,11 +398,6 @@ namespace Aerospike.Test
 		public void OperateMapRemoveRange()
 		{
 			// Test remove ranges.
-			if (!args.ValidateMap())
-			{
-				return;
-			}
-
 			Key key = new Key(args.ns, args.set, "opmkey8");
 			client.Delete(null, key);
 
@@ -477,11 +443,6 @@ namespace Aerospike.Test
 		public void OperateMapClear()
 		{
 			// Test clear.
-			if (!args.ValidateMap())
-			{
-				return;
-			}
-
 			Key key = new Key(args.ns, args.set, "opmkey9");
 			client.Delete(null, key);
 
@@ -510,11 +471,6 @@ namespace Aerospike.Test
 		public void OperateMapScore()
 		{
 			// Test score.
-			if (!args.ValidateMap())
-			{
-				return;
-			}
-
 			Key key = new Key(args.ns, args.set, "opmkey10");
 			client.Delete(null, key);
 
@@ -572,11 +528,6 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void OperateMapGetByList()
 		{
-			if (!args.ValidateMap())
-			{
-				return;
-			}
-
 			Key key = new Key(args.ns, args.set, "opmkey11");
 			client.Delete(null, key);
 
@@ -627,11 +578,6 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void OperateMapInverted()
 		{
-			if (!args.ValidateMap())
-			{
-				return;
-			}
-
 			Key key = new Key(args.ns, args.set, "opmkey12");
 			client.Delete(null, key);
 
@@ -707,11 +653,6 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void OperateMapGetRelative()
 		{
-			if (!args.ValidateMap())
-			{
-				return;
-			}
-
 			Key key = new Key(args.ns, args.set, "opmkey14");
 			client.Delete(null, key);
 
@@ -814,11 +755,6 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void OperateMapRemoveRelative()
 		{
-			if (!args.ValidateMap())
-			{
-				return;
-			}
-
 			Key key = new Key(args.ns, args.set, "opmkey15");
 			client.Delete(null, key);
 
@@ -884,10 +820,6 @@ namespace Aerospike.Test
 
 		[TestMethod]
 		public void OperateMapPartial() {
-			if (! args.ValidateMap()) {
-				return;
-			}
-
 			Key key = new Key(args.ns, args.set, "opmkey16");
 			client.Delete(null, key);
 
@@ -925,10 +857,6 @@ namespace Aerospike.Test
 
 		[TestMethod]
 		public void OperateMapInfinity() {
-			if (! args.ValidateMap()) {
-				return;
-			}
-
 			Key key = new Key(args.ns, args.set, "opmkey17");
 			client.Delete(null, key);
 		
@@ -963,10 +891,6 @@ namespace Aerospike.Test
 
 		[TestMethod]
 		public void OperateMapWildcard() {
-			if (! args.ValidateMap()) {
-				return;
-			}
-
 			Key key = new Key(args.ns, args.set, "opmkey18");
 			client.Delete(null, key);
 		
@@ -1010,6 +934,109 @@ namespace Aerospike.Test
 		
 			long v = (long)results[i++];
 			Assert.AreEqual(9L, v);		
+		}
+		
+		[TestMethod]
+		public void OperateNestedMap()
+		{
+			Key key = new Key(args.ns, args.set, "opmkey19");
+			client.Delete(null, key);
+
+			IDictionary<Value, Value> m1 = new Dictionary<Value, Value>();
+			m1[Value.Get("key11")] = Value.Get(9);
+			m1[Value.Get("key12")] = Value.Get(4);
+
+			IDictionary<Value, Value> m2 = new Dictionary<Value, Value>();
+			m2[Value.Get("key21")] = Value.Get(3);
+			m2[Value.Get("key22")] = Value.Get(5);
+
+			Dictionary<Value, Value> inputMap = new Dictionary<Value, Value>();
+			inputMap[Value.Get("key1")] = Value.Get(m1);
+			inputMap[Value.Get("key2")] = Value.Get(m2);
+
+			// Create maps.
+			client.Put(null, key, new Bin(binName, inputMap));
+
+			// Set map value to 11 for map key "key21" inside of map key "key2"
+			// and retrieve all maps.
+			Record record = client.Operate(null, key,
+				MapOperation.Put(MapPolicy.Default, binName, Value.Get("key21"), Value.Get(11), CTX.MapKey(Value.Get("key2"))),
+				Operation.Get(binName)
+				);
+
+			AssertRecordFound(key, record);
+
+			IList results = record.GetList(binName);
+			int i = 0;
+
+			long count = (long)results[i++];
+			Assert.AreEqual(2, count);
+
+			IDictionary map = (IDictionary)results[i++];
+			Assert.AreEqual(2, map.Count);
+
+			map = (IDictionary)map["key2"];
+			long v = (long)map["key21"];
+			Assert.AreEqual(11, v);
+			v = (long)map["key22"];
+			Assert.AreEqual(5, v);			
+		}
+
+		[TestMethod]
+		public void OperateDoubleNestedMap()
+		{
+			Key key = new Key(args.ns, args.set, "opmkey19");
+			client.Delete(null, key);
+
+			IDictionary<Value, Value> m11 = new Dictionary<Value, Value>();
+			m11[Value.Get("key111")] = Value.Get(1);
+
+			IDictionary<Value, Value> m12 = new Dictionary<Value, Value>();
+			m12[Value.Get("key121")] = Value.Get(5);
+
+			IDictionary<Value, Value> m1 = new Dictionary<Value, Value>();
+			m1[Value.Get("key11")] = Value.Get(m11);
+			m1[Value.Get("key12")] = Value.Get(m12);
+
+			IDictionary<Value, Value> m21 = new Dictionary<Value, Value>();
+			m21[Value.Get("key211")] = Value.Get(7);
+
+			IDictionary<Value, Value> m2 = new Dictionary<Value, Value>();
+			m2[Value.Get("key21")] = Value.Get(m21);
+
+			Dictionary<Value, Value> inputMap = new Dictionary<Value, Value>();
+			inputMap[Value.Get("key1")] = Value.Get(m1);
+			inputMap[Value.Get("key2")] = Value.Get(m2);
+
+			// Create maps.
+			client.Put(null, key, new Bin(binName, inputMap));
+
+			// Set map value to 11 for map key "key21" inside of map key "key2"
+			// and retrieve all maps.
+			Record record = client.Operate(null, key,
+				MapOperation.Put(MapPolicy.Default, binName, Value.Get("key121"), Value.Get(11), CTX.MapKey(Value.Get("key1")), CTX.MapRank(-1)),
+				Operation.Get(binName)
+				);
+
+			AssertRecordFound(key, record);
+
+			IList results = record.GetList(binName);
+			int i = 0;
+
+			long count = (long)results[i++];
+			Assert.AreEqual(1, count);
+
+			IDictionary map = (IDictionary)results[i++];
+			Assert.AreEqual(2, map.Count);
+
+			map = (IDictionary)map["key1"];
+			Assert.AreEqual(2, map.Count);
+
+			map = (IDictionary)map["key12"];
+			Assert.AreEqual(1, map.Count);
+
+			long v = (long)map["key121"];
+			Assert.AreEqual(11, v);
 		}
 	}
 }

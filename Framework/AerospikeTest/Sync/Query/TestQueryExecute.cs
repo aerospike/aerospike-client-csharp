@@ -80,7 +80,7 @@ namespace Aerospike.Test
 			stmt.SetFilter(Filter.Range(binName1, begin, end));
 
 			ExecuteTask task = client.Execute(null, stmt, "record_example", "processRecord", Value.Get(binName1), Value.Get(binName2), Value.Get(100));
-			task.Wait();
+			task.Wait(3000, 3000);
 			ValidateRecords();
 		}
 
