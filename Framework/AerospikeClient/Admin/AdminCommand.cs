@@ -61,9 +61,6 @@ namespace Aerospike.Client
 		private const int RESULT_CODE = 9;
 		private const int QUERY_END = 50;
 
-		// Result Codes
-		private const int INVALID_COMMAND = 54;
-
 		private byte[] dataBuffer;
 		private int dataOffset;
 		private readonly int dataBegin;
@@ -113,10 +110,16 @@ namespace Aerospike.Client
 
 				if (result != 0)
 				{
-					if (result == INVALID_COMMAND)
+					if (result == ResultCode.INVALID_COMMAND)
 					{
 						// New login not supported.  Try old authentication.
 						AuthenticateOld(cluster, conn);
+						return;
+					}
+
+					if (result == ResultCode.SECURITY_NOT_ENABLED)
+					{
+						// Server does not require login.
 						return;
 					}
 
@@ -184,7 +187,8 @@ namespace Aerospike.Client
 			conn.Write(dataBuffer, dataOffset);
 			conn.ReadFully(dataBuffer, HEADER_SIZE);
 
-			return dataBuffer[RESULT_CODE] == 0;
+			int result = dataBuffer[RESULT_CODE];
+			return result == 0 || result == ResultCode.SECURITY_NOT_ENABLED;
 		}
 
 		public int SetAuthenticate(Cluster cluster, byte[] sessionToken)

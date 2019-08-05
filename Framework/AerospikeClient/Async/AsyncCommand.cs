@@ -477,7 +477,7 @@ namespace Aerospike.Client
 
 					int resultCode = dataBuffer[dataOffset + 1];
 
-					if (resultCode != 0)
+					if (resultCode != 0 && resultCode != ResultCode.SECURITY_NOT_ENABLED)
 					{
 						// Authentication failed. Session token probably expired.
 						// Signal tend thread to perform node login, so future 

@@ -28,7 +28,6 @@ namespace Aerospike.Client
 	/// <li>Resize first bitmap (in a list of bitmaps) to 3 bytes.</li>
 	/// <li>BitOperation.resize("bin", 3, BitResizeFlags.DEFAULT, CTX.listIndex(0))</li>
 	/// <li>bin result = [[0b00000001, 0b01000010, 0b00000000],[0b01011010]]</li>
-	/// <li></li>
 	/// </ul>
 	/// </para>
 	/// </summary>
