@@ -92,16 +92,9 @@ namespace Aerospike.Client
 		{
 			BatchRead record = records[batchIndex];
 
-			if (Util.ByteArrayEquals(key.digest, record.key.digest))
+			if (resultCode == 0)
 			{
-				if (resultCode == 0)
-				{
-					record.record = ParseRecord();
-				}
-			}
-			else
-			{
-				throw new AerospikeException.Parse("Unexpected batch key returned: " + key.ns + ',' + ByteUtil.BytesToHexString(key.digest) + ',' + batchIndex);
+				record.record = ParseRecord();
 			}
 		}
 
@@ -197,18 +190,11 @@ namespace Aerospike.Client
 		{
 			BatchRead record = records[batchIndex];
 
-			if (Util.ByteArrayEquals(key.digest, record.key.digest))
+			if (resultCode == 0)
 			{
-				if (resultCode == 0)
-				{
-					record.record = ParseRecord();
-				}
-				listener.OnRecord(record);
+				record.record = ParseRecord();
 			}
-			else
-			{
-				throw new AerospikeException.Parse("Unexpected batch key returned: " + key.ns + ',' + ByteUtil.BytesToHexString(key.digest) + ',' + batchIndex);
-			}
+			listener.OnRecord(record);
 		}
 
 		protected internal override AsyncCommand CloneCommand()
@@ -312,16 +298,9 @@ namespace Aerospike.Client
 
 		protected internal override void ParseRow(Key key)
 		{
-			if (Util.ByteArrayEquals(key.digest, keys[batchIndex].digest))
+			if (resultCode == 0)
 			{
-				if (resultCode == 0)
-				{
-					records[batchIndex] = ParseRecord();
-				}
-			}
-			else
-			{
-				throw new AerospikeException.Parse("Unexpected batch key returned: " + key.ns + ',' + ByteUtil.BytesToHexString(key.digest) + ',' + batchIndex);
+				records[batchIndex] = ParseRecord();
 			}
 		}
 
@@ -426,21 +405,14 @@ namespace Aerospike.Client
 		{
 			Key keyOrig = keys[batchIndex];
 
-			if (Util.ByteArrayEquals(key.digest, keyOrig.digest))
+			if (resultCode == 0)
 			{
-				if (resultCode == 0)
-				{
-					Record record = ParseRecord();
-					listener.OnRecord(keyOrig, record);
-				}
-				else
-				{
-					listener.OnRecord(keyOrig, null);
-				}
+				Record record = ParseRecord();
+				listener.OnRecord(keyOrig, record);
 			}
 			else
 			{
-				throw new AerospikeException.Parse("Unexpected batch key returned: " + key.ns + ',' + ByteUtil.BytesToHexString(key.digest) + ',' + batchIndex);
+				listener.OnRecord(keyOrig, null);
 			}
 		}
 
@@ -540,14 +512,7 @@ namespace Aerospike.Client
 				throw new AerospikeException.Parse("Received bins that were not requested!");
 			}
 
-			if (Util.ByteArrayEquals(key.digest, keys[batchIndex].digest))
-			{
-				existsArray[batchIndex] = resultCode == 0;
-			}
-			else
-			{
-				throw new AerospikeException.Parse("Unexpected batch key returned: " + key.ns + ',' + ByteUtil.BytesToHexString(key.digest) + ',' + batchIndex);
-			}
+			existsArray[batchIndex] = resultCode == 0;
 		}
 
 		protected internal override AsyncCommand CloneCommand()
@@ -646,15 +611,7 @@ namespace Aerospike.Client
 			}
 
 			Key keyOrig = keys[batchIndex];
-
-			if (Util.ByteArrayEquals(key.digest, keyOrig.digest))
-			{
-				listener.OnExists(keyOrig, resultCode == 0);
-			}
-			else
-			{
-				throw new AerospikeException.Parse("Unexpected batch key returned: " + key.ns + ',' + ByteUtil.BytesToHexString(key.digest) + ',' + batchIndex);
-			}
+			listener.OnExists(keyOrig, resultCode == 0);
 		}
 
 		protected internal override AsyncCommand CloneCommand()
