@@ -34,7 +34,7 @@ namespace Aerospike.Client
 			string packageName,
 			string functionName,
 			Value[] args
-		) : base(key, Partition.Write(cluster, writePolicy, key))
+		) : base(writePolicy, key, Partition.Write(cluster, writePolicy, key))
 		{
 			this.writePolicy = writePolicy;
 			this.packageName = packageName;

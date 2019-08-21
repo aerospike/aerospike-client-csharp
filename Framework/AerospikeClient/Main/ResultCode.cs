@@ -205,6 +205,11 @@ namespace Aerospike.Client
 		public const int OP_NOT_APPLICABLE = 26;
 
 		/// <summary>
+		/// The transaction was not performed because the predexp was false.
+		/// </summary>
+		public const int FILTERED_OUT = 27;
+
+		/// <summary>
 		/// There are no more records left for query.
 		/// </summary>
 		public const int QUERY_END = 50;
@@ -313,11 +318,6 @@ namespace Aerospike.Client
 		/// A user defined function returned an error code.
 		/// </summary>
 		public const int UDF_BAD_RESPONSE = 100;
-
-		/// <summary>
-		/// The requested item in a large collection was not found.
-		/// </summary>
-		public const int LARGE_ITEM_NOT_FOUND = 125;
 
 		/// <summary>
 		/// Batch functionality has been disabled.
@@ -530,6 +530,9 @@ namespace Aerospike.Client
 			case OP_NOT_APPLICABLE:
 				return "Operation not applicable";
 
+			case FILTERED_OUT:
+				return "Transaction filtered out by predexp";
+
 			case QUERY_END:
 				return "Query end";
 
@@ -595,9 +598,6 @@ namespace Aerospike.Client
 
 			case UDF_BAD_RESPONSE:
 				return "UDF returned error";
-
-			case LARGE_ITEM_NOT_FOUND:
-				return "Large collection item not found";
 
 			case BATCH_DISABLED:
 				return "Batch functionality has been disabled";

@@ -26,13 +26,14 @@ namespace Aerospike.Client
 		private OperateArgs args;
 
 		public OperateCommand(Key key, Operation[] operations) 
-			: base(key, null)
+			: base(null, key, null)
 		{
 			this.operations = operations;
 		}
 
 		public void SetArgs(Cluster cluster, WritePolicy writePolicy, OperateArgs args)
 		{
+			base.policy = writePolicy;
 			this.writePolicy = writePolicy;
 			this.args = args;
 

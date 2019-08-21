@@ -47,11 +47,29 @@ namespace Aerospike.Client
 
 			int resultCode = dataBuffer[13];
 
-			if (resultCode != 0 && resultCode != ResultCode.KEY_NOT_FOUND_ERROR)
+			if (resultCode == 0)
 			{
-				throw new AerospikeException(resultCode);
+				existed = true;
+				return;
 			}
-			existed = resultCode == 0;
+
+			if (resultCode == ResultCode.KEY_NOT_FOUND_ERROR)
+			{
+				existed = false;
+				return;
+			}
+
+			if (resultCode == ResultCode.FILTERED_OUT)
+			{
+				if (policy.failOnFilteredOut)
+				{
+					throw new AerospikeException(resultCode);
+				}
+				existed = true;
+				return;
+			}
+
+			throw new AerospikeException(resultCode);
 		}
 
 		protected internal override bool PrepareRetry(bool timeout)

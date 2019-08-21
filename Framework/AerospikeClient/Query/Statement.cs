@@ -153,6 +153,10 @@ namespace Aerospike.Client
 		/// Predicate expression filters may occur on any bin in the record.
 		/// Requires Aerospike Server versions >= 3.12.
 		/// <para>
+		/// This method is redundant because PredExp can now be set in the base Policy for
+		/// any transaction (including queries).
+		/// </para>
+		/// <para>
 		/// Postfix notation is described here:
 		/// <a href="http://wiki.c2.com/?PostfixNotation">http://wiki.c2.com/?PostfixNotation</a>
 		/// </para>
@@ -182,7 +186,7 @@ namespace Aerospike.Client
 		/// stmt.SetPredExp(
 		///   PredExp.RecLastUpdate(),
 		///   PredExp.IntegerValue(new DateTime(2017, 0, 15)),
-		///   PredExp.IntegerGreater(),
+		///   PredExp.IntegerGreater()
 		/// ); 
 		/// </pre>
 		/// </para>

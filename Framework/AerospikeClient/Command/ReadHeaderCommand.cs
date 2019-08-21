@@ -55,18 +55,24 @@ namespace Aerospike.Client
 				int generation = ByteUtil.BytesToInt(dataBuffer, 14);
 				int expiration = ByteUtil.BytesToInt(dataBuffer, 18);
 				record = new Record(null, generation, expiration);
+				return;
 			}
-			else
+
+			if (resultCode == ResultCode.KEY_NOT_FOUND_ERROR)
 			{
-				if (resultCode == ResultCode.KEY_NOT_FOUND_ERROR)
-				{
-					record = null;
-				}
-				else
+				return;
+			}
+
+			if (resultCode == ResultCode.FILTERED_OUT)
+			{
+				if (policy.failOnFilteredOut)
 				{
 					throw new AerospikeException(resultCode);
 				}
+				return;
 			}
+
+			throw new AerospikeException(resultCode);	
 		}
 
 		protected internal override bool PrepareRetry(bool timeout)

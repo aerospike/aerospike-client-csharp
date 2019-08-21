@@ -73,10 +73,21 @@ namespace Aerospike.Client
 		{
 			int resultCode = dataBuffer[dataOffset + 5];
 
-			if (resultCode != 0)
+			if (resultCode == 0)
 			{
-				throw new AerospikeException(resultCode);
+				return;
 			}
+
+			if (resultCode == ResultCode.FILTERED_OUT)
+			{
+				if (policy.failOnFilteredOut)
+				{
+					throw new AerospikeException(resultCode);
+				}
+				return;
+			}
+
+			throw new AerospikeException(resultCode);
 		}
 
 		protected internal override bool PrepareRetry(bool timeout)

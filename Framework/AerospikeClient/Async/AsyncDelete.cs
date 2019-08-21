@@ -64,18 +64,26 @@ namespace Aerospike.Client
 			if (resultCode == 0)
 			{
 				existed = true;
+				return;
 			}
-			else
+
+			if (resultCode == ResultCode.KEY_NOT_FOUND_ERROR)
 			{
-				if (resultCode == ResultCode.KEY_NOT_FOUND_ERROR)
-				{
-					existed = false;
-				}
-				else
+				existed = false;
+				return;
+			}
+
+			if (resultCode == ResultCode.FILTERED_OUT)
+			{
+				if (policy.failOnFilteredOut)
 				{
 					throw new AerospikeException(resultCode);
 				}
+				existed = true;
+				return;
 			}
+
+			throw new AerospikeException(resultCode); 
 		}
 
 		protected internal override bool PrepareRetry(bool timeout)

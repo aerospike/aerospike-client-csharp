@@ -21,7 +21,7 @@ namespace Aerospike.Client
 {
 	public class ReadCommand : SyncCommand
 	{
-		private readonly Policy policy;
+		protected Policy policy;
 		protected readonly Key key;
 		private readonly string[] binNames;
 		protected Partition partition;
@@ -35,9 +35,9 @@ namespace Aerospike.Client
 			this.partition = Partition.Read(cluster, policy, key);
 		}
 
-		public ReadCommand(Key key, Partition partition)
+		public ReadCommand(Policy policy, Key key, Partition partition)
 		{
-			this.policy = null;
+			this.policy = policy;
 			this.key = key;
 			this.binNames = null;
 			this.partition = partition;
@@ -74,30 +74,41 @@ namespace Aerospike.Client
 				conn.ReadFully(dataBuffer, receiveSize);
 			}
 
-			if (resultCode != 0)
+			if (resultCode == 0)
 			{
-				if (resultCode == ResultCode.KEY_NOT_FOUND_ERROR || resultCode == ResultCode.LARGE_ITEM_NOT_FOUND)
+				if (opCount == 0)
 				{
-					HandleNotFound(resultCode);
+					// Bin data was not returned.
+					record = new Record(null, generation, expiration);
 					return;
 				}
-
-				if (resultCode == ResultCode.UDF_BAD_RESPONSE)
-				{
-					record = ParseRecord(opCount, fieldCount, generation, expiration);
-					HandleUdfError(resultCode);
-					return;
-				}
-				throw new AerospikeException(resultCode);
-			}
-
-			if (opCount == 0)
-			{
-				// Bin data was not returned.
-				record = new Record(null, generation, expiration);
+				record = ParseRecord(opCount, fieldCount, generation, expiration);
 				return;
 			}
-			record = ParseRecord(opCount, fieldCount, generation, expiration);
+
+			if (resultCode == ResultCode.KEY_NOT_FOUND_ERROR)
+			{
+				HandleNotFound(resultCode);
+				return;
+			}
+
+			if (resultCode == ResultCode.FILTERED_OUT)
+			{
+				if (policy.failOnFilteredOut)
+				{
+					throw new AerospikeException(resultCode);
+				}
+				return;
+			}
+
+			if (resultCode == ResultCode.UDF_BAD_RESPONSE)
+			{
+				record = ParseRecord(opCount, fieldCount, generation, expiration);
+				HandleUdfError(resultCode);
+				return;
+			}
+
+			throw new AerospikeException(resultCode);
 		}
 
 		protected internal override bool PrepareRetry(bool timeout)
@@ -128,12 +139,6 @@ namespace Aerospike.Client
 			{
 				string[] list = ret.Split(':');
 				code = Convert.ToInt32(list[2].Trim());
-
-				if (code == ResultCode.LARGE_ITEM_NOT_FOUND)
-				{
-					record = null;
-					return;
-				}
 				message = list[0] + ':' + list[1] + ' ' + list[3];
 			}
 			catch (Exception)

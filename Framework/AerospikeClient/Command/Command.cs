@@ -73,7 +73,14 @@ namespace Aerospike.Client
 		{
 			Begin();
 			int fieldCount = EstimateKeySize(policy, key);
-			
+			int predSize = 0;
+
+			if (policy.predExp != null)
+			{
+				predSize = EstimatePredExp(policy.predExp);
+				fieldCount++;
+			}
+
 			foreach (Bin bin in bins)
 			{
 				EstimateOperationSize(bin);
@@ -81,6 +88,11 @@ namespace Aerospike.Client
 			SizeBuffer();
 			WriteHeader(policy, 0, Command.INFO2_WRITE, fieldCount, bins.Length);
 			WriteKey(policy, key);
+
+			if (policy.predExp != null)
+			{
+				WritePredExp(policy.predExp, predSize);
+			}
 
 			foreach (Bin bin in bins)
 			{
@@ -92,10 +104,22 @@ namespace Aerospike.Client
 		public void SetDelete(WritePolicy policy, Key key)
 		{
 			Begin();
-			int fieldCount = EstimateKeySize(policy, key);			
+			int fieldCount = EstimateKeySize(policy, key);
+			int predSize = 0;
+
+			if (policy.predExp != null)
+			{
+				predSize = EstimatePredExp(policy.predExp);
+				fieldCount++;
+			}
 			SizeBuffer();
 			WriteHeader(policy, 0, Command.INFO2_WRITE | Command.INFO2_DELETE, fieldCount, 0);
 			WriteKey(policy, key);
+
+			if (policy.predExp != null)
+			{
+				WritePredExp(policy.predExp, predSize);
+			}
 			End();
 		}
 
@@ -103,10 +127,22 @@ namespace Aerospike.Client
 		{
 			Begin();
 			int fieldCount = EstimateKeySize(policy, key);
+			int predSize = 0;
+
+			if (policy.predExp != null)
+			{
+				predSize = EstimatePredExp(policy.predExp);
+				fieldCount++;
+			}
 			EstimateOperationSize();
 			SizeBuffer();
 			WriteHeader(policy, 0, Command.INFO2_WRITE, fieldCount, 1);
 			WriteKey(policy, key);
+
+			if (policy.predExp != null)
+			{
+				WritePredExp(policy.predExp, predSize);
+			}
 			WriteOperation(Operation.Type.TOUCH);
 			End();
 		}
@@ -115,9 +151,21 @@ namespace Aerospike.Client
 		{
 			Begin();
 			int fieldCount = EstimateKeySize(policy, key);
+			int predSize = 0;
+
+			if (policy.predExp != null)
+			{
+				predSize = EstimatePredExp(policy.predExp);
+				fieldCount++;
+			}
 			SizeBuffer();
 			WriteHeader(policy, Command.INFO1_READ | Command.INFO1_NOBINDATA, 0, fieldCount, 0);
 			WriteKey(policy, key);
+
+			if (policy.predExp != null)
+			{
+				WritePredExp(policy.predExp, predSize);
+			}
 			End();
 		}
 
@@ -125,9 +173,21 @@ namespace Aerospike.Client
 		{
 			Begin();
 			int fieldCount = EstimateKeySize(policy, key);
+			int predSize = 0;
+
+			if (policy.predExp != null)
+			{
+				predSize = EstimatePredExp(policy.predExp);
+				fieldCount++;
+			}
 			SizeBuffer();
 			WriteHeader(policy, Command.INFO1_READ | Command.INFO1_GET_ALL, 0, fieldCount, 0);
 			WriteKey(policy, key);
+
+			if (policy.predExp != null)
+			{
+				WritePredExp(policy.predExp, predSize);
+			}
 			End();
 		}
 
@@ -137,6 +197,13 @@ namespace Aerospike.Client
 			{
 				Begin();
 				int fieldCount = EstimateKeySize(policy, key);
+				int predSize = 0;
+
+				if (policy.predExp != null)
+				{
+					predSize = EstimatePredExp(policy.predExp);
+					fieldCount++;
+				}
 
 				foreach (string binName in binNames)
 				{
@@ -145,6 +212,11 @@ namespace Aerospike.Client
 				SizeBuffer();
 				WriteHeader(policy, Command.INFO1_READ, 0, fieldCount, binNames.Length);
 				WriteKey(policy, key);
+
+				if (policy.predExp != null)
+				{
+					WritePredExp(policy.predExp, predSize);
+				}
 
 				foreach (string binName in binNames)
 				{
@@ -162,10 +234,22 @@ namespace Aerospike.Client
 		{
 			Begin();
 			int fieldCount = EstimateKeySize(policy, key);
+			int predSize = 0;
+
+			if (policy.predExp != null)
+			{
+				predSize = EstimatePredExp(policy.predExp);
+				fieldCount++;
+			}
 			EstimateOperationSize((string)null);
 			SizeBuffer();
 			WriteHeader(policy, Command.INFO1_READ | Command.INFO1_NOBINDATA, 0, fieldCount, 0);
 			WriteKey(policy, key);
+
+			if (policy.predExp != null)
+			{
+				WritePredExp(policy.predExp, predSize);
+			}
 			End();
 		}
 
@@ -241,11 +325,23 @@ namespace Aerospike.Client
 		{
 			Begin();
 			int fieldCount = EstimateKeySize(policy, key);
+			int predSize = 0;
+
+			if (policy.predExp != null)
+			{
+				predSize = EstimatePredExp(policy.predExp);
+				fieldCount++;
+			}
 			dataOffset += args.size;
 			SizeBuffer();
 
 			WriteHeader(policy, args.readAttr, args.writeAttr, fieldCount, operations.Length);
 			WriteKey(policy, key);
+
+			if (policy.predExp != null)
+			{
+				WritePredExp(policy.predExp, predSize);
+			}
 
 			foreach (Operation operation in operations)
 			{
@@ -258,12 +354,24 @@ namespace Aerospike.Client
 		{
 			Begin();
 			int fieldCount = EstimateKeySize(policy, key);
+			int predSize = 0;
+
+			if (policy.predExp != null)
+			{
+				predSize = EstimatePredExp(policy.predExp);
+				fieldCount++;
+			}
 			byte[] argBytes = Packer.Pack(args);
 			fieldCount += EstimateUdfSize(packageName, functionName, argBytes);
 
 			SizeBuffer();
 			WriteHeader(policy, 0, Command.INFO2_WRITE, fieldCount, 0);
 			WriteKey(policy, key);
+
+			if (policy.predExp != null)
+			{
+				WritePredExp(policy.predExp, predSize);
+			}
 			WriteField(packageName, FieldType.UDF_PACKAGE_NAME);
 			WriteField(functionName, FieldType.UDF_FUNCTION);
 			WriteField(argBytes, FieldType.UDF_ARGLIST);
@@ -275,10 +383,19 @@ namespace Aerospike.Client
 			// Estimate full row size
 			int[] offsets = batch.offsets;
 			int max = batch.offsetsSize;
-			ushort fieldCount = policy.sendSetName ? (ushort)2 : (ushort)1;
+			ushort fieldCountRow = policy.sendSetName ? (ushort)2 : (ushort)1;
 			BatchRead prev = null;
 
 			Begin();
+			int fieldCount = 1;
+			int predSize = 0;
+
+			if (policy.predExp != null)
+			{
+				predSize = EstimatePredExp(policy.predExp);
+				fieldCount++;
+			}
+
 			dataOffset += FIELD_HEADER_SIZE + 5;
 
 			for (int i = 0; i < max; i++)
@@ -329,7 +446,13 @@ namespace Aerospike.Client
 				readAttr |= Command.INFO1_READ_MODE_AP_ALL;
 			}
 
-			WriteHeader(policy, readAttr | Command.INFO1_BATCH, 0, 1, 0);
+			WriteHeader(policy, readAttr | Command.INFO1_BATCH, 0, fieldCount, 0);
+
+			if (policy.predExp != null)
+			{
+				WritePredExp(policy.predExp, predSize);
+			}
+
 			int fieldSizeOffset = dataOffset;
 			WriteFieldHeader(0, policy.sendSetName ? FieldType.BATCH_INDEX_WITH_SET : FieldType.BATCH_INDEX); // Need to update size at end
 
@@ -370,7 +493,7 @@ namespace Aerospike.Client
 					if (binNames != null && binNames.Length != 0)
 					{
 						dataBuffer[dataOffset++] = (byte)readAttr;
-						dataOffset += ByteUtil.ShortToBytes(fieldCount, dataBuffer, dataOffset);
+						dataOffset += ByteUtil.ShortToBytes(fieldCountRow, dataBuffer, dataOffset);
 						dataOffset += ByteUtil.ShortToBytes((ushort)binNames.Length, dataBuffer, dataOffset);
 						WriteField(key.ns, FieldType.NAMESPACE);
 
@@ -387,7 +510,7 @@ namespace Aerospike.Client
 					else
 					{
 						dataBuffer[dataOffset++] = (byte)(readAttr | (record.readAllBins ? Command.INFO1_GET_ALL : Command.INFO1_NOBINDATA));
-						dataOffset += ByteUtil.ShortToBytes(fieldCount, dataBuffer, dataOffset);
+						dataOffset += ByteUtil.ShortToBytes(fieldCountRow, dataBuffer, dataOffset);
 						dataOffset += ByteUtil.ShortToBytes(0, dataBuffer, dataOffset);
 						WriteField(key.ns, FieldType.NAMESPACE);
 
@@ -410,7 +533,7 @@ namespace Aerospike.Client
 			// Estimate full row size
 			int[] offsets = batch.offsets;
 			int max = batch.offsetsSize;
-			ushort fieldCount = policy.sendSetName ? (ushort)2 : (ushort)1;
+			ushort fieldCountRow = policy.sendSetName ? (ushort)2 : (ushort)1;
 
 			// Calculate size of bin names.
 			int binNameSize = 0;
@@ -427,6 +550,14 @@ namespace Aerospike.Client
 
 			// Estimate buffer size.
 			Begin();
+			int fieldCount = 1;
+			int predSize = 0;
+
+			if (policy.predExp != null)
+			{
+				predSize = EstimatePredExp(policy.predExp);
+				fieldCount++;
+			}
 			dataOffset += FIELD_HEADER_SIZE + 5;
 
 			Key prev = null;
@@ -464,7 +595,13 @@ namespace Aerospike.Client
 				readAttr |= Command.INFO1_READ_MODE_AP_ALL;
 			}
 
-			WriteHeader(policy, readAttr | Command.INFO1_BATCH, 0, 1, 0);
+			WriteHeader(policy, readAttr | Command.INFO1_BATCH, 0, fieldCount, 0);
+
+			if (policy.predExp != null)
+			{
+				WritePredExp(policy.predExp, predSize);
+			}
+
 			int fieldSizeOffset = dataOffset;
 			WriteFieldHeader(0, policy.sendSetName ? FieldType.BATCH_INDEX_WITH_SET : FieldType.BATCH_INDEX); // Need to update size at end
 
@@ -495,7 +632,7 @@ namespace Aerospike.Client
 					// Write full header, namespace and bin names.
 					dataBuffer[dataOffset++] = 0; // do not repeat
 					dataBuffer[dataOffset++] = (byte)readAttr;
-					dataOffset += ByteUtil.ShortToBytes(fieldCount, dataBuffer, dataOffset);
+					dataOffset += ByteUtil.ShortToBytes(fieldCountRow, dataBuffer, dataOffset);
 					dataOffset += ByteUtil.ShortToBytes((ushort)operationCount, dataBuffer, dataOffset);
 					WriteField(key.ns, FieldType.NAMESPACE);
 
@@ -534,6 +671,14 @@ namespace Aerospike.Client
 			if (setName != null)
 			{
 				dataOffset += ByteUtil.EstimateSizeUtf8(setName) + FIELD_HEADER_SIZE;
+				fieldCount++;
+			}
+
+			int predSize = 0;
+
+			if (policy.predExp != null)
+			{
+				predSize = EstimatePredExp(policy.predExp);
 				fieldCount++;
 			}
 
@@ -576,6 +721,11 @@ namespace Aerospike.Client
 			if (setName != null)
 			{
 				WriteField(setName, FieldType.TABLE);
+			}
+
+			if (policy.predExp != null)
+			{
+				WritePredExp(policy.predExp, predSize);
 			}
 
 			WriteFieldHeader(2, FieldType.SCAN_OPTIONS);
@@ -684,11 +834,14 @@ namespace Aerospike.Client
 			PredExp[] predExp = statement.PredExp;
 			int predSize = 0;
 
+			if (policy.predExp != null && predExp == null)
+			{
+				predExp = policy.predExp;
+			}
+
 			if (predExp != null)
 			{
-				dataOffset += FIELD_HEADER_SIZE;
-				predSize = PredExp.EstimateSize(predExp);
-				dataOffset += predSize;
+				predSize = EstimatePredExp(predExp);
 				fieldCount++;
 			}
 
@@ -805,8 +958,7 @@ namespace Aerospike.Client
 
 			if (predExp != null)
 			{
-				WriteFieldHeader(predSize, FieldType.PREDEXP);
-				dataOffset = PredExp.Write(predExp, dataBuffer, dataOffset);
+				WritePredExp(predExp, predSize);
 			}
 
 			if (statement.functionName != null)
@@ -865,6 +1017,13 @@ namespace Aerospike.Client
 			dataOffset += ByteUtil.EstimateSizeUtf8(functionName) + FIELD_HEADER_SIZE;
 			dataOffset += bytes.Length + FIELD_HEADER_SIZE;
 			return 3;
+		}
+
+		private int EstimatePredExp(PredExp[] predExp)
+		{
+			int sz = PredExp.EstimateSize(predExp);
+			dataOffset += sz + FIELD_HEADER_SIZE;
+			return sz;
 		}
 
 		private void EstimateOperationSize(Bin bin)
@@ -1041,6 +1200,12 @@ namespace Aerospike.Client
 			}
 		}
 
+		private void WritePredExp(PredExp[] predExp, int predSize)
+		{
+			WriteFieldHeader(predSize, FieldType.PREDEXP);
+			dataOffset = PredExp.Write(predExp, dataBuffer, dataOffset);
+		}
+	
 		private void WriteOperation(Bin bin, Operation.Type operationType)
 		{
 			int nameLength = ByteUtil.StringToUtf8(bin.name, dataBuffer, dataOffset + OPERATION_HEADER_SIZE);

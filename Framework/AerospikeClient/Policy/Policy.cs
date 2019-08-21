@@ -53,6 +53,15 @@ namespace Aerospike.Client
 		public Replica replica = Replica.SEQUENCE;
 
 		/// <summary>
+		/// Optional predicate expression filter in postfix notation. If the predicate
+		/// expression exists and evaluates to false, the transaction is ignored.
+		/// <para>
+		/// Default: null
+		/// </para>
+		/// </summary>
+		public PredExp[] predExp;
+
+		/// <summary>
 		/// Socket idle timeout in milliseconds when processing a database command.
 		/// <para>
 		/// If socketTimeout is zero and totalTimeout is non-zero, then socketTimeout will be set
@@ -159,6 +168,19 @@ namespace Aerospike.Client
 		public bool sendKey;
 
 		/// <summary>
+		/// Throw exception if <see cref="predExp"/> is defined and that filter evaluates
+		/// to false (transaction ignored).  The <see cref="Aerospike.Client.AerospikeException"/>
+		/// will contain result code <seealso cref="Aerospike.Client.ResultCode.FILTERED_OUT"/>.
+		/// <para>
+		/// This field is not applicable to batch, scan or query commands.
+		/// </para>
+		/// <para>
+		/// Default: false
+		/// </para>
+		/// </summary>
+		public bool failOnFilteredOut;
+
+		/// <summary>
 		/// Copy constructor.
 		/// </summary>
 		public Policy(Policy other)
@@ -167,11 +189,13 @@ namespace Aerospike.Client
 			this.readModeAP = other.readModeAP;
 			this.readModeSC = other.readModeSC;
 			this.replica = other.replica;
+			this.predExp = other.predExp;
 			this.socketTimeout = other.socketTimeout;
 			this.totalTimeout = other.totalTimeout;
 			this.maxRetries = other.maxRetries;
 			this.sleepBetweenRetries = other.sleepBetweenRetries;
 			this.sendKey = other.sendKey;
+			this.failOnFilteredOut = other.failOnFilteredOut;
 		}
 
 		/// <summary>
@@ -205,6 +229,30 @@ namespace Aerospike.Client
 			{
 				this.socketTimeout = totalTimeout;
 			}
+		}
+
+		/// <summary>
+		/// Set predicate expression filter in postfix notation. If the predicate
+		/// expression exists and evaluates to false, the transaction is ignored.
+		/// <para>
+		/// Postfix notation is described here:
+		/// <a href="http://wiki.c2.com/?PostfixNotation">http://wiki.c2.com/?PostfixNotation</a>
+		/// </para>
+		/// <para>
+		/// Example:
+		/// <pre>
+		/// // Record last update time > 2017-01-15
+		/// policy.SetPredExp(
+		///   PredExp.RecLastUpdate(),
+		///   PredExp.IntegerValue(new DateTime(2017, 0, 15)),
+		///   PredExp.IntegerGreater(),
+		/// ); 
+		/// </pre>
+		/// </para>
+		/// </summary>
+		public void SetPredExp(params PredExp[] predExp)
+		{
+			this.predExp = predExp;
 		}
 	}
 }

@@ -14,6 +14,7 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
+using System;
 using System.Collections.Generic;
 
 namespace Aerospike.Client
@@ -95,23 +96,35 @@ namespace Aerospike.Client
 				{
 					// Bin data was not returned.
 					record = new Record(null, generation, expiration);
+					return;
 				}
-				else
-				{
-					record = ParseRecord(opCount, fieldCount, generation, expiration);
-				}
+				record = ParseRecord(opCount, fieldCount, generation, expiration);
+				return;
 			}
-			else
+
+			if (resultCode == ResultCode.KEY_NOT_FOUND_ERROR)
 			{
-				if (resultCode == ResultCode.KEY_NOT_FOUND_ERROR)
-				{
-					HandleNotFound(resultCode);
-				}
-				else
+				HandleNotFound(resultCode);
+				return;
+			}
+
+			if (resultCode == ResultCode.FILTERED_OUT)
+			{
+				if (policy.failOnFilteredOut)
 				{
 					throw new AerospikeException(resultCode);
 				}
+				return;
 			}
+
+			if (resultCode == ResultCode.UDF_BAD_RESPONSE)
+			{
+				record = ParseRecord(opCount, fieldCount, generation, expiration);
+				HandleUdfError(resultCode);
+				return;
+			}
+
+			throw new AerospikeException(resultCode);
 		}
 
 		protected internal override bool PrepareRetry(bool timeout)
@@ -123,6 +136,34 @@ namespace Aerospike.Client
 		protected internal virtual void HandleNotFound(int resultCode)
 		{
 			// Do nothing in default case. Record will be null.
+		}
+
+		private void HandleUdfError(int resultCode)
+		{
+			object obj;
+
+			if (!record.bins.TryGetValue("FAILURE", out obj))
+			{
+				throw new AerospikeException(resultCode);
+			}
+
+			string ret = (string)obj;
+			string message;
+			int code;
+
+			try
+			{
+				string[] list = ret.Split(':');
+				code = Convert.ToInt32(list[2].Trim());
+				message = list[0] + ':' + list[1] + ' ' + list[3];
+			}
+			catch (Exception)
+			{
+				// Use generic exception if parse error occurs.
+				throw new AerospikeException(resultCode, ret);
+			}
+
+			throw new AerospikeException(code, message);
 		}
 
 		private Record ParseRecord(int opCount, int fieldCount, int generation, int expiration)

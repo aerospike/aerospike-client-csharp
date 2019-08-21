@@ -122,7 +122,7 @@ namespace Aerospike.Client
 				// If other return codes are received, then abort the batch.
 				if (resultCode != 0)
 				{
-					if (resultCode == ResultCode.KEY_NOT_FOUND_ERROR)
+					if (resultCode == ResultCode.KEY_NOT_FOUND_ERROR || resultCode == ResultCode.FILTERED_OUT)
 					{
 						if (stopOnNotFound)
 						{

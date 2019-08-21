@@ -73,6 +73,7 @@
     </Compile>
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Suite.cs" />
+    <Compile Include="Sync\Basic\TestPredExp.cs" />
     <Compile Include="Sync\Basic\TestOperateBit.cs" />
     <Compile Include="Sync\Basic\TestOperateMap.cs" />
     <Compile Include="Sync\Basic\TestOperateList.cs" />
