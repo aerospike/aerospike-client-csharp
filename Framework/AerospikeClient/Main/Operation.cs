@@ -80,13 +80,21 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
-		/// Create touch database operation.
+		/// Create touch record database operation.
 		/// </summary>
 		public static Operation Touch()
 		{
 			return new Operation(Type.TOUCH);
 		}
 
+		/// <summary>
+		/// Create delete record database operation.
+		/// </summary>
+		public static Operation Delete()
+		{
+			return new Operation(Type.DELETE);
+		}
+		
 		public enum Type
 		{
 			READ,
@@ -101,10 +109,11 @@ namespace Aerospike.Client
 			PREPEND,
 			TOUCH,
 			BIT_READ,
-			BIT_MODIFY
+			BIT_MODIFY,
+			DELETE
 		}
 
-		private static byte[] ProtocolTypes = new byte[] { 1, 1, 2, 3, 4, 3, 4, 5, 9, 10, 11, 12, 13 };
+		private static byte[] ProtocolTypes = new byte[] { 1, 1, 2, 3, 4, 3, 4, 5, 9, 10, 11, 12, 13, 14 };
 
 		public static byte GetProtocolType(Type type)
 		{
