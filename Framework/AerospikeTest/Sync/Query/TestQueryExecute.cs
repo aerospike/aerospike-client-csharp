@@ -1,5 +1,5 @@
 ﻿/* 
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -54,18 +54,22 @@ namespace Aerospike.Test
 					throw;
 				}
 			}
-
-			for (int i = 1; i <= size; i++)
-			{
-				Key key = new Key(args.ns, args.set, keyPrefix + i);
-				client.Put(null, key, new Bin(binName1, i), new Bin(binName2, i));
-			}
 		}
 
 		[ClassCleanup()]
 		public static void Destroy()
 		{
 			client.DropIndex(null, args.ns, args.set, indexName);
+		}
+
+		[TestInitialize()]
+		public void InitializeTest()
+		{
+			for (int i = 1; i <= size; i++)
+			{
+				Key key = new Key(args.ns, args.set, keyPrefix + i);
+				client.Put(null, key, new Bin(binName1, i), new Bin(binName2, i));
+			}
 		}
 
 		[TestMethod]
@@ -129,6 +133,59 @@ namespace Aerospike.Test
 					count++;
 				}
 				Assert.AreEqual(expectedSize, count);
+			}
+			finally
+			{
+				rs.Close();
+			}
+		}
+
+		[TestMethod]
+		public void QueryExecuteOperate()
+		{
+			int begin = 3;
+			int end = 9;
+
+			Statement stmt = new Statement();
+			stmt.SetNamespace(args.ns);
+			stmt.SetSetName(args.set);
+			stmt.SetFilter(Filter.Range(binName1, begin, end));
+
+			Bin bin = new Bin("foo", "bar");
+
+			ExecuteTask task = client.Execute(null, stmt, Operation.Put(bin));
+			task.Wait(3000, 3000);
+
+			string expected = bin.value.ToString();
+
+			stmt = new Statement();
+			stmt.SetNamespace(args.ns);
+			stmt.SetSetName(args.set);
+			stmt.SetFilter(Filter.Range(binName1, begin, end));
+
+			RecordSet rs = client.Query(null, stmt);
+
+			try
+			{
+				int count = 0;
+
+				while (rs.Next())
+				{
+					Record record = rs.Record;
+					string value = record.GetString(bin.name);
+
+					if (value == null)
+					{
+						Assert.Fail("Bin " + bin.name + " not found");
+					}
+
+					if (!value.Equals(expected))
+					{
+						Assert.Fail("Data mismatch. Expected " + expected + ". Received " + value);
+					}
+					count++;
+				}
+				Assert.AreEqual(end - begin + 1, count);
 			}
 			finally
 			{

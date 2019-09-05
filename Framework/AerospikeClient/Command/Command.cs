@@ -674,6 +674,12 @@ namespace Aerospike.Client
 				fieldCount++;
 			}
 
+			if (policy.recordsPerSecond > 0)
+			{
+				dataOffset += 4 + FIELD_HEADER_SIZE;
+				fieldCount++;
+			}
+
 			int predSize = 0;
 
 			if (policy.predExp != null)
@@ -696,7 +702,7 @@ namespace Aerospike.Client
 
 			if (binNames != null)
 			{
-				foreach (String binName in binNames)
+				foreach (string binName in binNames)
 				{
 					EstimateOperationSize(binName);
 				}
@@ -723,6 +729,11 @@ namespace Aerospike.Client
 				WriteField(setName, FieldType.TABLE);
 			}
 
+			if (policy.recordsPerSecond > 0)
+			{
+				WriteField(policy.recordsPerSecond, FieldType.RECORDS_PER_SECOND);
+			}
+
 			if (policy.predExp != null)
 			{
 				WritePredExp(policy.predExp, predSize);
@@ -741,16 +752,14 @@ namespace Aerospike.Client
 			dataBuffer[dataOffset++] = (byte)policy.scanPercent;
 
 			// Write scan timeout
-			WriteFieldHeader(4, FieldType.SCAN_TIMEOUT);
-			dataOffset += ByteUtil.IntToBytes((uint)policy.socketTimeout, dataBuffer, dataOffset);
+			WriteField(policy.socketTimeout, FieldType.SCAN_TIMEOUT);
 
 			// Write taskId field
-			WriteFieldHeader(8, FieldType.TRAN_ID);
-			dataOffset += ByteUtil.LongToBytes(taskId, dataBuffer, dataOffset);
+			WriteField(taskId, FieldType.TRAN_ID);
 
 			if (binNames != null)
 			{
-				foreach (String binName in binNames)
+				foreach (string binName in binNames)
 				{
 					WriteOperation(binName, Operation.Type.READ);
 				}
@@ -764,6 +773,7 @@ namespace Aerospike.Client
 			int fieldCount = 0;
 			int filterSize = 0;
 			int binNameSize = 0;
+			int recordsPerSecond = write ? 0 : ((QueryPolicy)policy).recordsPerSecond;
 
 			Begin();
 
@@ -829,6 +839,13 @@ namespace Aerospike.Client
 				// Estimate scan timeout size.
 				dataOffset += 4 + FIELD_HEADER_SIZE;
 				fieldCount++;
+
+				// Estimate records per second size.
+				if (recordsPerSecond > 0)
+				{
+					dataOffset += 4 + FIELD_HEADER_SIZE;
+					fieldCount++;
+				}
 			}
 
 			PredExp[] predExp = statement.PredExp;
@@ -863,23 +880,31 @@ namespace Aerospike.Client
 				fieldCount += 4;
 			}
 
-			if (statement.filter == null)
+			// Operations (used in query execute) and bin names (used in scan/query) are mutually exclusive.
+			int operationCount = 0;
+
+			if (statement.operations != null)
 			{
-				if (statement.binNames != null)
+				foreach (Operation operation in statement.operations)
 				{
-					foreach (string binName in statement.binNames)
-					{
-						EstimateOperationSize(binName);
-					}
+					EstimateOperationSize(operation);
 				}
+				operationCount = statement.operations.Length;
+			}
+			else if (statement.binNames != null && statement.filter == null)
+			{
+				foreach (string binName in statement.binNames)
+				{
+					EstimateOperationSize(binName);
+				}
+				operationCount = statement.binNames.Length;
 			}
 
 			SizeBuffer();
-			int operationCount = (statement.filter == null && statement.binNames != null) ? statement.binNames.Length : 0;
 
 			if (write)
 			{
-				WriteHeader((WritePolicy)policy, Command.INFO1_READ, Command.INFO2_WRITE, fieldCount, operationCount);
+				WriteHeader((WritePolicy)policy, 0, Command.INFO2_WRITE, fieldCount, operationCount);
 			}
 			else
 			{
@@ -904,9 +929,7 @@ namespace Aerospike.Client
 			}
 
 			// Write taskId field
-			WriteFieldHeader(8, FieldType.TRAN_ID);
-			ByteUtil.LongToBytes(statement.taskId, dataBuffer, dataOffset);
-			dataOffset += 8;
+			WriteField(statement.taskId, FieldType.TRAN_ID);
 
 			if (statement.filter != null)
 			{
@@ -951,9 +974,14 @@ namespace Aerospike.Client
 				dataBuffer[dataOffset++] = priority;
 				dataBuffer[dataOffset++] = (byte)100;
 
-				// Write scan timeout
-				WriteFieldHeader(4, FieldType.SCAN_TIMEOUT);
-				dataOffset += ByteUtil.IntToBytes((uint)policy.socketTimeout, dataBuffer, dataOffset);
+				// Write scan socket idle timeout.
+				WriteField(policy.socketTimeout, FieldType.SCAN_TIMEOUT);
+
+				// Write records per second.
+				if (recordsPerSecond > 0)
+				{
+					WriteField(recordsPerSecond, FieldType.RECORDS_PER_SECOND);
+				}
 			}
 
 			if (predExp != null)
@@ -970,15 +998,19 @@ namespace Aerospike.Client
 				WriteField(functionArgBuffer, FieldType.UDF_ARGLIST);
 			}
 
-			// Scan bin names are specified after all fields.
-			if (statement.filter == null)
+			if (statement.operations != null)
 			{
-				if (statement.binNames != null)
+				foreach (Operation operation in statement.operations)
 				{
-					foreach (string binName in statement.binNames)
-					{
-						WriteOperation(binName, Operation.Type.READ);
-					}
+					WriteOperation(operation);
+				}
+			}
+			else if (statement.binNames != null && statement.filter == null)
+			{
+				// Scan bin names are specified after all fields.
+				foreach (string binName in statement.binNames)
+				{
+					WriteOperation(binName, Operation.Type.READ);
 				}
 			}
 			End();
@@ -1280,10 +1312,21 @@ namespace Aerospike.Client
 			dataOffset += bytes.Length;
 		}
 
+		private void WriteField(int val, int type)
+		{
+			WriteFieldHeader(4, type);
+			dataOffset += ByteUtil.IntToBytes((uint)val, dataBuffer, dataOffset);
+		}
+
+		private void WriteField(ulong val, int type)
+		{
+			WriteFieldHeader(8, type);
+			dataOffset += ByteUtil.LongToBytes(val, dataBuffer, dataOffset);
+		}
+
 		private void WriteFieldHeader(int size, int type)
 		{
-			ByteUtil.IntToBytes((uint)size+1, dataBuffer, dataOffset);
-			dataOffset += 4;
+			dataOffset += ByteUtil.IntToBytes((uint)size + 1, dataBuffer, dataOffset);
 			dataBuffer[dataOffset++] = (byte)type;
 		}
 

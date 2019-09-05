@@ -40,6 +40,16 @@ namespace Aerospike.Client
 		public int recordQueueSize = 5000;
 
 		/// <summary>
+		/// Limit returned records per second (rps) rate for each server.
+		/// Do not apply rps limit if recordsPerSecond is zero.
+		/// Currently only applicable to a query without a defined filter (scan).
+		/// <para>
+		/// Default: 0
+		/// </para>
+		/// </summary>
+		public int recordsPerSecond;
+
+		/// <summary>
 		/// Should bin data be retrieved. If false, only record digests (and user keys
 		/// if stored on the server) are retrieved.
 		/// <para>Default: true</para>
@@ -59,6 +69,7 @@ namespace Aerospike.Client
 		{
 			this.maxConcurrentNodes = other.maxConcurrentNodes;
 			this.recordQueueSize = other.recordQueueSize;
+			this.recordsPerSecond = other.recordsPerSecond;
 			this.includeBinData = other.includeBinData;
 			this.failOnClusterChange = other.failOnClusterChange;
 		}

@@ -442,7 +442,7 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Apply user defined function on records that match the statement filter.
 		/// Records are not returned to the client.
-		/// This asynchronous server call will return before command is complete.  
+		/// This asynchronous server call will return before the command is complete.  
 		/// The user can optionally wait for command completion by using the returned 
 		/// ExecuteTask instance.
 		/// </summary>
@@ -453,6 +453,19 @@ namespace Aerospike.Client
 		/// <param name="functionArgs">to pass to function name, if any</param>
 		/// <exception cref="AerospikeException">if command fails</exception>
 		ExecuteTask Execute(WritePolicy policy, Statement statement, string packageName, string functionName, params Value[] functionArgs);
+
+		/// <summary>
+		/// Apply operations on records that match the statement filter.
+		/// Records are not returned to the client.
+		/// This asynchronous server call will return before the command is complete.
+		/// The user can optionally wait for command completion by using the returned
+		/// ExecuteTask instance.
+		/// </summary>
+		/// <param name="policy">write configuration parameters, pass in null for defaults</param>
+		/// <param name="statement">record filter</param>
+		/// <param name="operations">list of operations to be performed on selected records</param>
+		/// <exception cref="AerospikeException">if command fails</exception>
+		ExecuteTask Execute(WritePolicy policy, Statement statement, params Operation[] operations);
 
 		/// <summary>
 		/// Execute query and call action for each record returned from server.

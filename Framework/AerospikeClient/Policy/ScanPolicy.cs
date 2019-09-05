@@ -28,6 +28,15 @@ namespace Aerospike.Client
 		public int scanPercent = 100;
 
 		/// <summary>
+		/// Limit returned records per second (rps) rate for each server.
+		/// Do not apply rps limit if recordsPerSecond is zero.
+		/// <para>
+		/// Default: 0
+		/// </para>
+		/// </summary>
+		public int recordsPerSecond;
+
+		/// <summary>
 		/// Maximum number of concurrent requests to server nodes at any point in time.
 		/// If there are 16 nodes in the cluster and maxConcurrentNodes is 8, then scan requests
 		/// will be made to 8 nodes in parallel.  When a scan completes, a new scan request will 
@@ -64,6 +73,7 @@ namespace Aerospike.Client
 		public ScanPolicy(ScanPolicy other) : base(other)
 		{
 			this.scanPercent = other.scanPercent;
+			this.recordsPerSecond = other.recordsPerSecond;
 			this.maxConcurrentNodes = other.maxConcurrentNodes;
 			this.concurrentNodes = other.concurrentNodes;
 			this.includeBinData = other.includeBinData;

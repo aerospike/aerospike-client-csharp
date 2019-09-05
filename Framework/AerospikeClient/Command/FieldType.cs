@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -25,6 +25,7 @@ namespace Aerospike.Client
 		public const int TRAN_ID = 7; // user supplied transaction id, which is simply passed back
 		public const int SCAN_OPTIONS = 8;
 		public const int SCAN_TIMEOUT = 9;
+		public const int RECORDS_PER_SECOND = 10;
 		public const int INDEX_NAME = 21;
 		public const int INDEX_RANGE = 22;
 		public const int INDEX_FILTER = 23;

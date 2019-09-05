@@ -36,6 +36,7 @@ namespace Aerospike.Client
 		internal string packageContents;
 		internal string functionName;
 		internal Value[] functionArgs;
+		internal Operation[] operations;
 		internal ulong taskId;
 		internal bool returnData;
 
@@ -322,6 +323,15 @@ namespace Aerospike.Client
 		{
 			set { functionArgs = value; }
 			get { return functionArgs; }
+		}
+
+		/// <summary>
+		/// Operations to be performed on query/execute.
+		/// </summary>
+		public Operation[] Operations
+		{
+			set { operations = value; }
+			get { return operations; }
 		}
 
 		/// <summary>

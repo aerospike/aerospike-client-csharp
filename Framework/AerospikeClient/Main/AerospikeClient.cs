@@ -1151,13 +1151,13 @@ namespace Aerospike.Client
 		}
 		
 		//----------------------------------------------------------
-		// Query/Execute UDF
+		// Query/Execute
 		//----------------------------------------------------------
 
 		/// <summary>
 		/// Apply user defined function on records that match the statement filter.
 		/// Records are not returned to the client.
-		/// This asynchronous server call will return before command is complete.  
+		/// This asynchronous server call will return before the command is complete.  
 		/// The user can optionally wait for command completion by using the returned 
 		/// ExecuteTask instance.
 		/// </summary>
@@ -1194,7 +1194,44 @@ namespace Aerospike.Client
 			executor.Execute(nodes.Length);
 			return new ExecuteTask(cluster, policy, statement);
 		}
-		
+
+		/// <summary>
+		/// Apply operations on records that match the statement filter.
+		/// Records are not returned to the client.
+		/// This asynchronous server call will return before the command is complete.
+		/// The user can optionally wait for command completion by using the returned
+		/// ExecuteTask instance.
+		/// </summary>
+		/// <param name="policy">write configuration parameters, pass in null for defaults</param>
+		/// <param name="statement">record filter</param>
+		/// <param name="operations">list of operations to be performed on selected records</param>
+		/// <exception cref="AerospikeException">if command fails</exception>
+		public ExecuteTask Execute(WritePolicy policy, Statement statement, params Operation[] operations)
+		{
+			if (policy == null)
+			{
+				policy = writePolicyDefault;
+			}
+			statement.Operations = operations;
+			statement.Prepare(false);
+
+			Node[] nodes = cluster.Nodes;
+			if (nodes.Length == 0)
+			{
+				throw new AerospikeException(ResultCode.SERVER_NOT_AVAILABLE, "Command failed because cluster is empty.");
+			}
+
+			Executor executor = new Executor(cluster, policy, nodes.Length);
+
+			foreach (Node node in nodes)
+			{
+				ServerCommand command = new ServerCommand(node, policy, statement);
+				executor.AddCommand(command);
+			}
+			executor.Execute(nodes.Length);
+			return new ExecuteTask(cluster, policy, statement);
+		}
+
 		//--------------------------------------------------------
 		// Query functions
 		//--------------------------------------------------------
