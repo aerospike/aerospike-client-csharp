@@ -328,7 +328,7 @@ namespace Aerospike.Client
 		/// <li>bin = [0b00000001, 0b01000010, 0b00000011, 0b00000100, 0b00000101]</li>
 		/// <li>bitOffset = 9</li>
 		/// <li>bitSize = 5</li>
-		/// <li>returns [0b1000000]</li>
+		/// <li>returns [0b10000000]</li>
 		/// </ul>
 		/// </summary>
 		public static Operation Get(string binName, int bitOffset, int bitSize, params CTX[] ctx)
