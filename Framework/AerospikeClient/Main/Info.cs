@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -701,23 +701,48 @@ namespace Aerospike.Client
 		{
 			if (str.StartsWith("ERROR:"))
 			{
+				// Parse format: ERROR:[<code>][:<message>][\n]
+				int len = str.Length;
+
+				if (str[len - 1] == '\n')
+				{
+					len--;
+				}
+
 				int begin = 6;
 				int end = str.IndexOf(':', begin);
-				int code = -1;
+
+				if (end < 0)
+				{
+					end = len;
+				}
+
+				int code = ResultCode.SERVER_ERROR;
+
+				if (end > begin)
+				{
+					try
+					{
+						code = Convert.ToInt32(str.Substring(begin, end - begin));
+						begin = end + 1;
+					}
+					catch (Exception)
+					{
+						// Show full string after "ERROR:" if code is invalid.
+						// Do not change begin offset.
+					}
+				}
+				else
+				{
+					begin = end + 1;
+				}
+				end = len;
+
 				string message = "";
 
-				if (end >= 0)
+				if (end > begin)
 				{
-					code = int.Parse(str.Substring(begin, end - begin));
-
-					if (str[str.Length-1] == '\n')
-					{
-						message = str.Substring(end + 1, str.Length - 2);
-					}
-					else
-					{
-						message = str.Substring(end + 1);
-					}
+					message = str.Substring(begin, end - begin);
 				}
 				throw new AerospikeException(code, message);
 			}
