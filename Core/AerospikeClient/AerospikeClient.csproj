@@ -1,18 +1,20 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>netstandard1.5</TargetFramework>
+    <TargetFramework>netstandard2.0</TargetFramework>
     <DefineConstants>$(DefineConstants);NETCORE</DefineConstants>
     <AssemblyName>AerospikeClient</AssemblyName>
     <PackageId>AerospikeClient</PackageId>
     <ServerGarbageCollection>true</ServerGarbageCollection>
-    <NetStandardImplicitPackageVersion>1.6.0</NetStandardImplicitPackageVersion>
     <PackageTargetFallback>$(PackageTargetFallback);dnxcore50</PackageTargetFallback>
     <GenerateAssemblyConfigurationAttribute>false</GenerateAssemblyConfigurationAttribute>
     <GenerateAssemblyCompanyAttribute>false</GenerateAssemblyCompanyAttribute>
     <GenerateAssemblyProductAttribute>false</GenerateAssemblyProductAttribute>
     <Authors>Aerospike</Authors>
     <Version>3.8.2</Version>
+    <ApplicationIcon />
+    <OutputType>Library</OutputType>
+    <StartupObject />
   </PropertyGroup>
 
   <ItemGroup>
@@ -189,13 +191,6 @@
     <Compile Include="..\..\Framework\AerospikeClient\Util\ThreadLocalData.cs" Link="Util\ThreadLocalData.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Util\Unpacker.cs" Link="Util\Unpacker.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Util\Util.cs" Link="Util\Util.cs" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <PackageReference Include="System.Net.NameResolution" Version="4.3.0" />
-    <PackageReference Include="System.Net.Security" Version="4.3.0" />
-    <PackageReference Include="System.Threading.Thread" Version="4.3.0" />
-    <PackageReference Include="System.Threading.ThreadPool" Version="4.3.0" />
   </ItemGroup>
 
   <ItemGroup>

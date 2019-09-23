@@ -26,11 +26,7 @@ namespace Aerospike.Client
 	/// </summary>
 	public sealed class AsyncConnection
 	{
-#if NETFRAMEWORK
 		private readonly static bool ZeroBuffers = Environment.OSVersion.Platform != PlatformID.MacOSX;
-#else
-		private readonly static bool ZeroBuffers = ! System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.OSX);
-#endif
 
 		private readonly Socket socket;
 		private readonly AsyncNode node;

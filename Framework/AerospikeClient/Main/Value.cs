@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -16,9 +16,8 @@
  */
 using System;
 using System.IO;
-using System.Text;
 using System.Collections;
-using System.Collections.Generic;
+using System.Runtime.Serialization.Formatters.Binary;
 
 namespace Aerospike.Client
 {
@@ -220,7 +219,6 @@ namespace Aerospike.Client
 			}
 		}
 
-#if NETFRAMEWORK
 		/// <summary>
 		/// Get blob or null value instance.
 		/// </summary>
@@ -235,7 +233,6 @@ namespace Aerospike.Client
 				return new BlobValue(value);
 			}
 		}
-#endif
 
 		/// <summary>
 		/// Get GeoJSON or null value instance.
@@ -340,12 +337,9 @@ namespace Aerospike.Client
 
 				case TypeCode.Char:
                 case TypeCode.DateTime:
+				case TypeCode.Decimal:
                 default:
-#if NETFRAMEWORK
 					return new BlobValue(value);
-#else
-					throw new AerospikeException("Binary serialize not supported in .NET core");
-#endif
 			}
 		}
 
@@ -1625,7 +1619,6 @@ namespace Aerospike.Client
 			}
 		}
 
-#if NETFRAMEWORK
 		/// <summary>
 		/// Blob value.
 		/// </summary>
@@ -1643,7 +1636,8 @@ namespace Aerospike.Client
 			{
 				using (MemoryStream ms = new MemoryStream())
 				{
-					Formatter.Default.Serialize(ms, obj);
+					BinaryFormatter formatter = new BinaryFormatter();
+					formatter.Serialize(ms, obj);
 					bytes = ms.ToArray();
 					return bytes.Length;
 				}
@@ -1700,7 +1694,6 @@ namespace Aerospike.Client
 				return obj.GetHashCode();
 			}
 		}
-#endif
 
 		/// <summary>
 		/// GeoJSON value.

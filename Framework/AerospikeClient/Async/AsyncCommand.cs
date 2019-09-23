@@ -109,11 +109,7 @@ namespace Aerospike.Client
 		internal void ExecuteAsync(SocketAsyncEventArgs e)
 		{
 			eventArgs = e;
-#if NETCORE && !NETSTANDARD2_0
-			ThreadPool.QueueUserWorkItem(EventHandlers.AsyncExecuteHandler, this);
-#else
 			ThreadPool.UnsafeQueueUserWorkItem(EventHandlers.AsyncExecuteHandler, this);
-#endif
 		}
 
 		// Executes the command on the current thread, using the specified SocketAsyncEventArgs object.

@@ -22,13 +22,13 @@
       <group targetFramework="net">
         <dependency id="NeoLua" version="[0.9.14]" />
       </group>
-      <group targetFramework="netstandard1.5">
-        <dependency id="NETStandard.Library" version="[1.6.0, )" />
+      <group targetFramework="netstandard2.0">
+        <dependency id="NETStandard.Library" version="[2.0.0, )" />
       </group>
     </dependencies>
   </metadata>
   <files>
     <file src="Framework\AerospikeClient\bin\Release\AerospikeClient.dll" target="lib\net" />
-    <file src="Core\AerospikeClient\bin\Release\netstandard1.5\AerospikeClient.dll" target="lib\netstandard" />
+    <file src="Core\AerospikeClient\bin\Release\netstandard2.0\AerospikeClient.dll" target="lib\netstandard" />
   </files>
 </package>

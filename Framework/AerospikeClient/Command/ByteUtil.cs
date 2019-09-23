@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -18,6 +18,7 @@ using System;
 using System.IO;
 using System.Text;
 using System.Numerics;
+using System.Runtime.Serialization.Formatters.Binary;
 
 namespace Aerospike.Client
 {
@@ -184,7 +185,6 @@ namespace Aerospike.Client
 
 		public static object BytesToObject(byte[] buf, int offset, int len)
 		{
-#if NETFRAMEWORK
 			if (len <= 0)
 			{
 				return null;
@@ -196,24 +196,14 @@ namespace Aerospike.Client
 				{
 					ms.Write(buf, offset, len);
 					ms.Seek(0, 0);
-					return Formatter.Default.Deserialize(ms);
+					BinaryFormatter formatter = new BinaryFormatter();
+					return formatter.Deserialize(ms);
 				}
 			}
-			catch (System.Runtime.Serialization.SerializationException se)
+			catch (Exception e)
 			{
-				throw new AerospikeException.Serialize(se);
+				throw new AerospikeException.Serialize(e);
 			}
-#else
-			// Binary deserialize not supported in .NET core.
-			// Return null instead of throwing exception because
-			// we don't want full scan failing just because 1 record contains
-			// binary serialization.
-			if (Log.InfoEnabled())
-			{
-				Log.Info("Binary deserialize not supported in .NET core");
-			}
-			return null;
-#endif
 		}
 
 		public static object BytesToGeoJSON(byte[] buf, int offset, int len)

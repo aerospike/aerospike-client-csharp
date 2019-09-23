@@ -38,11 +38,3 @@ This package supports all C# client functionality except:
 		public ResultSet QueryAggregate(QueryPolicy policy, Statement statement, string packageName, string functionName, params Value[] functionArgs)
 		public void QueryAggregate(QueryPolicy policy, Statement statement, Action<Object> action)
 		public ResultSet QueryAggregate(QueryPolicy policy, Statement statement)
-	
-* Automatic serialization of C# objects to binary.  NET Core does not support object serialization.  The following bin constructor is not supported:
-
-		public Bin(string name, object value)
-	
-	Users should serialize these objects to binary using their 3rd party serializer of choice (protobuf, msgpack, etc...) and then use the byte array bin constructor:
-
-		public Bin(string name, byte[] value)

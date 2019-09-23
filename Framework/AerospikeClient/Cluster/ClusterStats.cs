@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -46,7 +46,6 @@ namespace Aerospike.Client
 		{
 			this.nodes = nodes;
 
-#if NETFRAMEWORK
 			int workerThreadsMax;
 			int completionPortThreadsMax;
 			ThreadPool.GetMaxThreads(out workerThreadsMax, out completionPortThreadsMax);
@@ -57,11 +56,6 @@ namespace Aerospike.Client
 
 			this.threadsInUse = workerThreadsMax - workerThreads;
 			this.completionPortsInUse = completionPortThreadsMax - completionPortThreads;
-#else
-            // .NET CORE does not define ThreadPool.GetAvailableThreads().
-            this.threadsInUse = 0;
-            this.completionPortsInUse = 0;
-#endif
         }
 
 		/// <summary>

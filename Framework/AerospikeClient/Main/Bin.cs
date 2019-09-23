@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -251,7 +251,6 @@ namespace Aerospike.Client
 			this.value = Value.Get(value);
 		}
 
-#if NETFRAMEWORK
 		/// <summary>
 		/// Constructor, specifying bin name and object value.
 		/// This is the slowest of the Bin constructors because the type
@@ -282,7 +281,6 @@ namespace Aerospike.Client
 		{
 			return new Bin(name, Value.GetAsBlob(value));
 		}
-#endif
 
 		/// <summary>
 		/// Create bin with a null value. This is useful for bin deletions within a record.
