@@ -6,12 +6,11 @@
     <AssemblyName>AerospikeClient</AssemblyName>
     <PackageId>AerospikeClient</PackageId>
     <ServerGarbageCollection>true</ServerGarbageCollection>
-    <PackageTargetFallback>$(PackageTargetFallback);dnxcore50</PackageTargetFallback>
     <GenerateAssemblyConfigurationAttribute>false</GenerateAssemblyConfigurationAttribute>
     <GenerateAssemblyCompanyAttribute>false</GenerateAssemblyCompanyAttribute>
     <GenerateAssemblyProductAttribute>false</GenerateAssemblyProductAttribute>
     <Authors>Aerospike</Authors>
-    <Version>3.8.2</Version>
+    <Version>3.9.0</Version>
     <ApplicationIcon />
     <OutputType>Library</OutputType>
     <StartupObject />
