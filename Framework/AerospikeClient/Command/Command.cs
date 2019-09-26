@@ -773,7 +773,6 @@ namespace Aerospike.Client
 			int fieldCount = 0;
 			int filterSize = 0;
 			int binNameSize = 0;
-			int recordsPerSecond = write ? 0 : ((QueryPolicy)policy).recordsPerSecond;
 
 			Begin();
 
@@ -841,7 +840,7 @@ namespace Aerospike.Client
 				fieldCount++;
 
 				// Estimate records per second size.
-				if (recordsPerSecond > 0)
+				if (statement.recordsPerSecond > 0)
 				{
 					dataOffset += 4 + FIELD_HEADER_SIZE;
 					fieldCount++;
@@ -978,9 +977,9 @@ namespace Aerospike.Client
 				WriteField(policy.socketTimeout, FieldType.SCAN_TIMEOUT);
 
 				// Write records per second.
-				if (recordsPerSecond > 0)
+				if (statement.recordsPerSecond > 0)
 				{
-					WriteField(recordsPerSecond, FieldType.RECORDS_PER_SECOND);
+					WriteField(statement.recordsPerSecond, FieldType.RECORDS_PER_SECOND);
 				}
 			}
 

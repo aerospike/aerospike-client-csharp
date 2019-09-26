@@ -38,6 +38,7 @@ namespace Aerospike.Client
 		internal Value[] functionArgs;
 		internal Operation[] operations;
 		internal ulong taskId;
+		internal int recordsPerSecond;
 		internal bool returnData;
 
 		/// <summary>
@@ -215,6 +216,25 @@ namespace Aerospike.Client
 		public void SetTaskId(long taskId)
 		{
 			this.taskId = (ulong)taskId;
+		}
+
+		/// <summary>
+		/// Limit returned records per second (rps) rate for each server.
+		/// Do not apply rps limit if recordsPerSecond is zero (default).
+		/// Currently only applicable to a query without a defined filter.
+		/// </summary>
+		public int RecordsPerSecond
+		{
+			set { recordsPerSecond = value; }
+			get { return recordsPerSecond; }
+		}
+
+		/// <summary>
+		/// Set returned records per second (rps) rate for each server.
+		/// </summary>
+		public void SetRecordsPerSecond(int recordsPerSecond)
+		{
+			this.recordsPerSecond = recordsPerSecond;
 		}
 
 		/// <summary>
