@@ -38,6 +38,15 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
+		/// Create socket with connection timeout and update node statistics.
+		/// </summary>
+		public Connection(IPEndPoint address, int timeoutMillis, int maxSocketIdleMillis, Pool<Connection> pool, Node node)
+			: this(address, timeoutMillis, maxSocketIdleMillis, pool)
+		{
+			Interlocked.Increment(ref node.connsOpened);
+		}
+
+		/// <summary>
 		/// Create socket with connection timeout.
 		/// </summary>
 		public Connection(IPEndPoint address, int timeoutMillis, int maxSocketIdleMillis, Pool<Connection> pool)
@@ -205,6 +214,15 @@ namespace Aerospike.Client
 		public void UpdateLastUsed()
 		{
 			this.timestamp = DateTime.UtcNow;
+		}
+
+		/// <summary>
+		/// Shutdown and close socket after updating node statistics.
+		/// </summary>
+		public void Close(Node node)
+		{
+			Interlocked.Increment(ref node.connsClosed);
+			Close();
 		}
 
 		/// <summary>

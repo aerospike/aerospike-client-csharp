@@ -27,6 +27,8 @@ namespace Aerospike.Client
 		private readonly Pool<AsyncConnection> asyncConnQueue;
 		private readonly new AsyncCluster cluster;
 		private int connCount;
+		private int asyncConnsOpened;
+		private int asyncConnsClosed;
 
 		/// <summary>
 		/// Initialize server node with connection parameters.
@@ -108,11 +110,13 @@ namespace Aerospike.Client
 		internal void AddConnection()
 		{
 			Interlocked.Increment(ref connCount);
+			Interlocked.Increment(ref asyncConnsOpened);
 		}
 
 		internal void DropConnection()
 		{
 			Interlocked.Decrement(ref connCount);
+			Interlocked.Increment(ref asyncConnsClosed);
 		}
 
 		public ConnectionStats GetAsyncConnectionStats()
@@ -125,7 +129,7 @@ namespace Aerospike.Client
 			{
 				inUse = 0;
 			}
-			return new ConnectionStats(inPool, inUse);
+			return new ConnectionStats(inPool, inUse, asyncConnsOpened, asyncConnsClosed);
 		}
 	}
 }

@@ -814,13 +814,6 @@ namespace Aerospike.Client
 			}
 		}
 
-		protected internal Connection CreateConnection(string tlsName, IPEndPoint address, int timeout, Pool<Connection> pool)
-		{
-			return (tlsPolicy != null && ! tlsPolicy.forLoginOnly) ? 
-				new TlsConnection(tlsPolicy, tlsName, address, timeout, maxSocketIdleMillis, pool) : 
-				new Connection(address, timeout, maxSocketIdleMillis, pool);
-		}
-
 		protected internal void ChangePassword(byte[] user, byte[] password, byte[] passwordHash)
 		{
 			if (this.user != null && Util.ByteArrayEquals(user, this.user))

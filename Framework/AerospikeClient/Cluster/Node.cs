@@ -54,6 +54,8 @@ namespace Aerospike.Client
 		private volatile Dictionary<string,int> racks;
 		private readonly Pool<Connection>[] connectionPools;
 		protected uint connectionIter;
+		protected internal int connsOpened = 1;
+		protected internal int connsClosed;
 		protected internal int peersGeneration = -1;
 		protected internal int partitionGeneration = -1;
 		protected internal int rebalanceGeneration = -1;
@@ -123,7 +125,7 @@ namespace Aerospike.Client
 			{
 				if (tendConnection.IsClosed())
 				{
-					tendConnection = cluster.CreateConnection(host.tlsName, address, cluster.connectionTimeout, null);
+					tendConnection = CreateConnection(host.tlsName, address, cluster.connectionTimeout, null);
 
 					if (cluster.user != null)
 					{
@@ -143,7 +145,7 @@ namespace Aerospike.Client
 						}
 						catch (Exception)
 						{
-							tendConnection.Close();
+							tendConnection.Close(this);
 							throw;
 						}
 					}
@@ -550,7 +552,7 @@ namespace Aerospike.Client
 
 			if (!tendConnection.IsClosed())
 			{
-				tendConnection.Close();
+				tendConnection.Close(this);
 			}
 
 			// Only log message if cluster is still active.
@@ -616,7 +618,7 @@ namespace Aerospike.Client
 					// Create new connection.
 					try
 					{
-						conn = cluster.CreateConnection(host.tlsName, address, timeoutMillis, pool);
+						conn = CreateConnection(host.tlsName, address, timeoutMillis, pool);
 					}
 					catch (Exception)
 					{
@@ -678,6 +680,13 @@ namespace Aerospike.Client
 				"Node " + this + " max connections " + cluster.connectionQueueSize + " would be exceeded.");
 		}
 
+		private Connection CreateConnection(string tlsName, IPEndPoint address, int timeout, Pool<Connection> pool)
+		{
+			return (cluster.tlsPolicy != null && !cluster.tlsPolicy.forLoginOnly) ?
+				new TlsConnection(cluster.tlsPolicy, tlsName, address, timeout, cluster.maxSocketIdleMillis, pool, this) :
+				new Connection(address, timeout, cluster.maxSocketIdleMillis, pool, this);
+		}
+
 		/// <summary>
 		/// Put connection back into connection pool.
 		/// </summary>
@@ -702,7 +711,7 @@ namespace Aerospike.Client
 		public void CloseConnection(Connection conn)
 		{
 			conn.pool.DecrementTotal();
-			conn.Close();
+			conn.Close(this);
 		}
 
 		public virtual void CloseIdleConnections()
@@ -744,7 +753,7 @@ namespace Aerospike.Client
 				}
 				inUse += tmp;
 			}
-			return new ConnectionStats(inPool, inUse);
+			return new ConnectionStats(inPool, inUse, connsOpened, connsClosed);
 		}
 
 		/// <summary>

@@ -22,6 +22,7 @@ using System.Net.Security;
 using System.Security.Authentication;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
+using System.Threading;
 
 namespace Aerospike.Client
 {
@@ -33,6 +34,15 @@ namespace Aerospike.Client
 		private readonly SslStream sslStream;
 		private readonly TlsPolicy policy;
 		private readonly string tlsName;
+
+		/// <summary>
+		/// Create TLS socket and update node statistics.
+		/// </summary>
+		public TlsConnection(TlsPolicy policy, string tlsName, IPEndPoint address, int timeoutMillis, int maxSocketIdleMillis, Pool<Connection> pool, Node node)
+			: this(policy, tlsName, address, timeoutMillis, maxSocketIdleMillis, pool)
+		{
+			Interlocked.Increment(ref node.connsOpened);
+		}
 
 		/// <summary>
 		/// Create TLS socket.
