@@ -64,8 +64,7 @@ namespace Aerospike.Client
 		public override string ToString()
 		{
 			StringBuilder sb = new StringBuilder(1024);
-
-			sb.Append("nodes (inUse,inPool):");
+			sb.Append("nodes(inUse,inPool,opened,closed):");
 			sb.Append(System.Environment.NewLine);
 
 			foreach (NodeStats stat in nodes)
