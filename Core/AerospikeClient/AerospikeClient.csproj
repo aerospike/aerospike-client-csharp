@@ -165,6 +165,8 @@
     <Compile Include="..\..\Framework\AerospikeClient\Query\Filter.cs" Link="Query\Filter.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Query\IndexCollectionType.cs" Link="Query\IndexCollectionType.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Query\IndexType.cs" Link="Query\IndexType.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Query\IRecordSet.cs" Link="Query\IRecordSet.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Query\IResultSet.cs" Link="Query\IResultSet.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Query\KeyRecord.cs" Link="Query\KeyRecord.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Query\PredExp.cs" Link="Query\PredExp.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Query\QueryAggregateCommand.cs" Link="Query\QueryAggregateCommand.cs" />

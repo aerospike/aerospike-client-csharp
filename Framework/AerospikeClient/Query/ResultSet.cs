@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -25,7 +25,7 @@ namespace Aerospike.Client
 	/// Multiple threads will retrieve results from the server nodes and put these results on the queue.
 	/// The single user thread consumes these results from the queue.
 	/// </summary>
-	public sealed class ResultSet : IDisposable
+	public sealed class ResultSet : IDisposable, IResultSet
 	{
 		public static readonly object END = new object();
 
