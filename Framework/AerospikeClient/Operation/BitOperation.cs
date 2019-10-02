@@ -22,13 +22,8 @@ namespace Aerospike.Client
 	/// If the offset is negative, the offset starts backwards from end of the bitmap.
 	/// If an offset is out of bounds, a parameter error will be returned.
 	/// <para>
-	/// Nested CDT operations are supported by optional CTX context arguments.  Example:
-	/// <ul>
-	/// <li>bin = [[0b00000001, 0b01000010],[0b01011010]]</li>
-	/// <li>Resize first bitmap (in a list of bitmaps) to 3 bytes.</li>
-	/// <li>BitOperation.resize("bin", 3, BitResizeFlags.DEFAULT, CTX.listIndex(0))</li>
-	/// <li>bin result = [[0b00000001, 0b01000010, 0b00000000],[0b01011010]]</li>
-	/// </ul>
+	/// Bit operations on bitmap items nested in lists/maps are not currently
+	/// supported by the server.
 	/// </para>
 	/// </summary>
 	public sealed class BitOperation
@@ -65,9 +60,9 @@ namespace Aerospike.Client
 		/// <li>bin result = [0b00000001, 0b01000010, 0b00000000, 0b00000000]</li>
 		/// </ul>
 		/// </summary>
-		public static Operation Resize(BitPolicy policy, string binName, int byteSize, BitResizeFlags resizeFlags, params CTX[] ctx)
+		public static Operation Resize(BitPolicy policy, string binName, int byteSize, BitResizeFlags resizeFlags)
 		{
-			return CreateOperation(RESIZE, Operation.Type.BIT_MODIFY, binName, ctx, byteSize, policy.flags, (int)resizeFlags);
+			return CreateOperation(RESIZE, Operation.Type.BIT_MODIFY, binName, byteSize, policy.flags, (int)resizeFlags);
 		}
 
 		/// <summary>
@@ -82,10 +77,10 @@ namespace Aerospike.Client
 		/// <li>bin result = [0b00000001, 0b11111111, 0b11000111, 0b01000010, 0b00000011, 0b00000100, 0b00000101]</li>
 		/// </ul>
 		/// </summary>
-		public static Operation Insert(BitPolicy policy, string binName, int byteOffset, byte[] value, params CTX[] ctx)
+		public static Operation Insert(BitPolicy policy, string binName, int byteOffset, byte[] value)
 		{
 			Packer packer = new Packer();
-			Init(packer, ctx, INSERT, 3);
+			Init(packer, INSERT, 3);
 			packer.PackNumber(byteOffset);
 			packer.PackBytes(value);
 			packer.PackNumber(policy.flags);
@@ -104,9 +99,9 @@ namespace Aerospike.Client
 		/// <li>bin result = [0b00000001, 0b01000010]</li>
 		/// </ul>
 		/// </summary>
-		public static Operation Remove(BitPolicy policy, string binName, int byteOffset, int byteSize, params CTX[] ctx)
+		public static Operation Remove(BitPolicy policy, string binName, int byteOffset, int byteSize)
 		{
-			return CreateOperation(REMOVE, Operation.Type.BIT_MODIFY, binName, ctx, byteOffset, byteSize, policy.flags);
+			return CreateOperation(REMOVE, Operation.Type.BIT_MODIFY, binName, byteOffset, byteSize, policy.flags);
 		}
 
 		/// <summary>
@@ -122,9 +117,9 @@ namespace Aerospike.Client
 		/// <li>bin result = [0b00000001, 0b01000111, 0b00000011, 0b00000100, 0b00000101]</li>
 		/// </ul>
 		/// </summary>
-		public static Operation Set(BitPolicy policy, string binName, int bitOffset, int bitSize, byte[] value, params CTX[] ctx)
+		public static Operation Set(BitPolicy policy, string binName, int bitOffset, int bitSize, byte[] value)
 		{
-			return CreateOperation(SET, Operation.Type.BIT_MODIFY, binName, ctx, bitOffset, bitSize, value, policy.flags);
+			return CreateOperation(SET, Operation.Type.BIT_MODIFY, binName, bitOffset, bitSize, value, policy.flags);
 		}
 
 		/// <summary>
@@ -140,9 +135,9 @@ namespace Aerospike.Client
 		/// <li>bin result = [0b00000001, 0b01000010, 0b01010111, 0b00000100, 0b00000101]</li>
 		/// </ul>
 		/// </summary>
-		public static Operation Or(BitPolicy policy, string binName, int bitOffset, int bitSize, byte[] value, params CTX[] ctx)
+		public static Operation Or(BitPolicy policy, string binName, int bitOffset, int bitSize, byte[] value)
 		{
-			return CreateOperation(OR, Operation.Type.BIT_MODIFY, binName, ctx, bitOffset, bitSize, value, policy.flags);
+			return CreateOperation(OR, Operation.Type.BIT_MODIFY, binName, bitOffset, bitSize, value, policy.flags);
 		}
 
 		/// <summary>
@@ -158,9 +153,9 @@ namespace Aerospike.Client
 		/// <li>bin result = [0b00000001, 0b01000010, 0b01010101, 0b00000100, 0b00000101]</li>
 		/// </ul>
 		/// </summary>
-		public static Operation Xor(BitPolicy policy, string binName, int bitOffset, int bitSize, byte[] value, params CTX[] ctx)
+		public static Operation Xor(BitPolicy policy, string binName, int bitOffset, int bitSize, byte[] value)
 		{
-			return CreateOperation(XOR, Operation.Type.BIT_MODIFY, binName, ctx, bitOffset, bitSize, value, policy.flags);
+			return CreateOperation(XOR, Operation.Type.BIT_MODIFY, binName, bitOffset, bitSize, value, policy.flags);
 		}
 
 		/// <summary>
@@ -176,9 +171,9 @@ namespace Aerospike.Client
 		/// <li>bin result = [0b00000001, 0b01000010, 0b00000010, 0b00000000, 0b00000101]</li>
 		/// </ul>
 		/// </summary>
-		public static Operation And(BitPolicy policy, string binName, int bitOffset, int bitSize, byte[] value, params CTX[] ctx)
+		public static Operation And(BitPolicy policy, string binName, int bitOffset, int bitSize, byte[] value)
 		{
-			return CreateOperation(AND, Operation.Type.BIT_MODIFY, binName, ctx, bitOffset, bitSize, value, policy.flags);
+			return CreateOperation(AND, Operation.Type.BIT_MODIFY, binName, bitOffset, bitSize, value, policy.flags);
 		}
 
 		/// <summary>
@@ -193,9 +188,9 @@ namespace Aerospike.Client
 		/// <li>bin result = [0b00000001, 0b01000010, 0b00000011, 0b01111010, 0b00000101]</li>
 		/// </ul>
 		/// </summary>
-		public static Operation Not(BitPolicy policy, string binName, int bitOffset, int bitSize, params CTX[] ctx)
+		public static Operation Not(BitPolicy policy, string binName, int bitOffset, int bitSize)
 		{
-			return CreateOperation(NOT, Operation.Type.BIT_MODIFY, binName, ctx, bitOffset, bitSize, policy.flags);
+			return CreateOperation(NOT, Operation.Type.BIT_MODIFY, binName, bitOffset, bitSize, policy.flags);
 		}
 
 		/// <summary>
@@ -211,9 +206,9 @@ namespace Aerospike.Client
 		/// <li>bin result = [0b00000001, 0b01000010, 0b00000011, 0b00000100, 0b00101000]</li>
 		/// </ul>
 		/// </summary>
-		public static Operation Lshift(BitPolicy policy, string binName, int bitOffset, int bitSize, int shift, params CTX[] ctx)
+		public static Operation Lshift(BitPolicy policy, string binName, int bitOffset, int bitSize, int shift)
 		{
-			return CreateOperation(LSHIFT, Operation.Type.BIT_MODIFY, binName, ctx, bitOffset, bitSize, shift, policy.flags);
+			return CreateOperation(LSHIFT, Operation.Type.BIT_MODIFY, binName, bitOffset, bitSize, shift, policy.flags);
 		}
 
 		/// <summary>
@@ -229,9 +224,9 @@ namespace Aerospike.Client
 		/// <li>bin result = [0b00000000, 0b11000010, 0b00000011, 0b00000100, 0b00000101]</li>
 		/// </ul>
 		/// </summary>
-		public static Operation Rshift(BitPolicy policy, string binName, int bitOffset, int bitSize, int shift, params CTX[] ctx)
+		public static Operation Rshift(BitPolicy policy, string binName, int bitOffset, int bitSize, int shift)
 		{
-			return CreateOperation(RSHIFT, Operation.Type.BIT_MODIFY, binName, ctx, bitOffset, bitSize, shift, policy.flags);
+			return CreateOperation(RSHIFT, Operation.Type.BIT_MODIFY, binName, bitOffset, bitSize, shift, policy.flags);
 		}
 
 		/// <summary>
@@ -258,11 +253,10 @@ namespace Aerospike.Client
 			int bitSize,
 			long value,
 			bool signed,
-			BitOverflowAction action,
-			params CTX[] ctx
+			BitOverflowAction action
 		)
 		{
-			return CreateMathOperation(ADD, policy, binName, ctx, bitOffset, bitSize, value, signed, action);
+			return CreateMathOperation(ADD, policy, binName, bitOffset, bitSize, value, signed, action);
 		}
 
 		/// <summary>
@@ -289,11 +283,10 @@ namespace Aerospike.Client
 			int bitSize,
 			long value,
 			bool signed,
-			BitOverflowAction action,
-			params CTX[] ctx
+			BitOverflowAction action
 		)
 		{
-			return CreateMathOperation(SUBTRACT, policy, binName, ctx, bitOffset, bitSize, value, signed, action);
+			return CreateMathOperation(SUBTRACT, policy, binName, bitOffset, bitSize, value, signed, action);
 		}
 
 		/// <summary>
@@ -309,10 +302,10 @@ namespace Aerospike.Client
 		/// <li>bin result = [0b00111111, 0b11000010, 0b00000011, 0b0000100, 0b00000101]</li>
 		/// </ul>
 		/// </summary>
-		public static Operation SetInt(BitPolicy policy, string binName, int bitOffset, int bitSize, long value, params CTX[] ctx)
+		public static Operation SetInt(BitPolicy policy, string binName, int bitOffset, int bitSize, long value)
 		{
 			Packer packer = new Packer();
-			Init(packer, ctx, SET_INT, 4);
+			Init(packer, SET_INT, 4);
 			packer.PackNumber(bitOffset);
 			packer.PackNumber(bitSize);
 			packer.PackNumber(value);
@@ -331,9 +324,9 @@ namespace Aerospike.Client
 		/// <li>returns [0b10000000]</li>
 		/// </ul>
 		/// </summary>
-		public static Operation Get(string binName, int bitOffset, int bitSize, params CTX[] ctx)
+		public static Operation Get(string binName, int bitOffset, int bitSize)
 		{
-			return CreateOperation(GET, Operation.Type.BIT_READ, binName, ctx, bitOffset, bitSize);
+			return CreateOperation(GET, Operation.Type.BIT_READ, binName, bitOffset, bitSize);
 		}
 
 		/// <summary>
@@ -347,9 +340,9 @@ namespace Aerospike.Client
 		/// <li>returns 2</li>
 		/// </ul>
 		/// </summary>
-		public static Operation Count(string binName, int bitOffset, int bitSize, params CTX[] ctx)
+		public static Operation Count(string binName, int bitOffset, int bitSize)
 		{
-			return CreateOperation(COUNT, Operation.Type.BIT_READ, binName, ctx, bitOffset, bitSize);
+			return CreateOperation(COUNT, Operation.Type.BIT_READ, binName, bitOffset, bitSize);
 		}
 
 		/// <summary>
@@ -365,9 +358,9 @@ namespace Aerospike.Client
 		/// <li>returns 5</li>
 		/// </ul>
 		/// </summary>
-		public static Operation Lscan(string binName, int bitOffset, int bitSize, bool value, params CTX[] ctx)
+		public static Operation Lscan(string binName, int bitOffset, int bitSize, bool value)
 		{
-			return CreateOperation(LSCAN, Operation.Type.BIT_READ, binName, ctx, bitOffset, bitSize, value);
+			return CreateOperation(LSCAN, Operation.Type.BIT_READ, binName, bitOffset, bitSize, value);
 		}
 
 		/// <summary>
@@ -383,9 +376,9 @@ namespace Aerospike.Client
 		/// <li>returns 7</li>
 		/// </ul>
 		/// </summary>
-		public static Operation Rscan(string binName, int bitOffset, int bitSize, bool value, params CTX[] ctx)
+		public static Operation Rscan(string binName, int bitOffset, int bitSize, bool value)
 		{
-			return CreateOperation(RSCAN, Operation.Type.BIT_READ, binName, ctx, bitOffset, bitSize, value);
+			return CreateOperation(RSCAN, Operation.Type.BIT_READ, binName, bitOffset, bitSize, value);
 		}
 
 		/// <summary>
@@ -401,10 +394,10 @@ namespace Aerospike.Client
 		/// <li>returns 16899</li>
 		/// </ul>
 		/// </summary>
-		public static Operation GetInt(string binName, int bitOffset, int bitSize, bool signed, params CTX[] ctx)
+		public static Operation GetInt(string binName, int bitOffset, int bitSize, bool signed)
 		{
 			Packer packer = new Packer();
-			Init(packer, ctx, GET_INT, signed ? 3 : 2);
+			Init(packer, GET_INT, signed ? 3 : 2);
 			packer.PackNumber(bitOffset);
 			packer.PackNumber(bitSize);
 
@@ -420,13 +413,12 @@ namespace Aerospike.Client
 			int command,
 			Operation.Type type,
 			string binName,
-			CTX[] ctx,
 			int v1,
 			int v2
 		)
 		{
 			Packer packer = new Packer();
-			Init(packer, ctx, command, 2);
+			Init(packer, command, 2);
 			packer.PackNumber(v1);
 			packer.PackNumber(v2);
 			return new Operation(type, binName, Value.Get(packer.ToByteArray()));
@@ -437,14 +429,13 @@ namespace Aerospike.Client
 			int command,
 			Operation.Type type,
 			string binName,
-			CTX[] ctx,
 			int v1,
 			int v2,
 			bool v3
 		)
 		{
 			Packer packer = new Packer();
-			Init(packer, ctx, command, 3);
+			Init(packer, command, 3);
 			packer.PackNumber(v1);
 			packer.PackNumber(v2);
 			packer.PackBoolean(v3);
@@ -456,14 +447,13 @@ namespace Aerospike.Client
 			int command,
 			Operation.Type type,
 			string binName,
-			CTX[] ctx,
 			int v1,
 			int v2,
 			int v3
 		)
 		{
 			Packer packer = new Packer();
-			Init(packer, ctx, command, 3);
+			Init(packer, command, 3);
 			packer.PackNumber(v1);
 			packer.PackNumber(v2);
 			packer.PackNumber(v3);
@@ -475,7 +465,6 @@ namespace Aerospike.Client
 			int command,
 			Operation.Type type,
 			string binName,
-			CTX[] ctx,
 			int v1,
 			int v2,
 			int v3,
@@ -483,7 +472,7 @@ namespace Aerospike.Client
 		)
 		{
 			Packer packer = new Packer();
-			Init(packer, ctx, command, 4);
+			Init(packer, command, 4);
 			packer.PackNumber(v1);
 			packer.PackNumber(v2);
 			packer.PackNumber(v3);
@@ -496,7 +485,6 @@ namespace Aerospike.Client
 			int command,
 			Operation.Type type,
 			string binName,
-			CTX[] ctx,
 			int v1,
 			int v2,
 			byte[] v3,
@@ -504,7 +492,7 @@ namespace Aerospike.Client
 		)
 		{
 			Packer packer = new Packer();
-			Init(packer, ctx, command, 4);
+			Init(packer, command, 4);
 			packer.PackNumber(v1);
 			packer.PackNumber(v2);
 			packer.PackBytes(v3);
@@ -517,7 +505,6 @@ namespace Aerospike.Client
 			int command,
 			BitPolicy policy,
 			string binName,
-			CTX[] ctx,
 			int bitOffset,
 			int bitSize,
 			long value,
@@ -526,7 +513,7 @@ namespace Aerospike.Client
 		)
 		{
 			Packer packer = new Packer();
-			Init(packer, ctx, command, 5);
+			Init(packer, command, 5);
 			packer.PackNumber(bitOffset);
 			packer.PackNumber(bitSize);
 			packer.PackNumber(value);
@@ -542,21 +529,8 @@ namespace Aerospike.Client
 			return new Operation(Operation.Type.BIT_MODIFY, binName, Value.Get(packer.ToByteArray()));
 		}
 
-		private static void Init(Packer packer, CTX[] ctx, int command, int count)
+		private static void Init(Packer packer, int command, int count)
 		{
-			if (ctx != null && ctx.Length > 0)
-			{
-				packer.PackArrayBegin(3);
-				packer.PackNumber(0xff);
-				packer.PackArrayBegin(ctx.Length * 2);
-
-				foreach (CTX c in ctx)
-				{
-					packer.PackNumber(c.id);
-					c.value.Pack(packer);
-				}
-			}
-
 			packer.PackArrayBegin(count + 1);
 			packer.PackNumber(command);
 		}
