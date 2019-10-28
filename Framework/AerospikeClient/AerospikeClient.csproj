@@ -323,6 +323,8 @@
       <DesignTime>True</DesignTime>
       <DependentUpon>Resources.resx</DependentUpon>
     </Compile>
+    <Compile Include="Query\IRecordSet.cs" />
+    <Compile Include="Query\IResultSet.cs" />
     <Compile Include="Query\QueryValidate.cs" />
     <Compile Include="Query\Filter.cs" />
     <Compile Include="Query\IndexCollectionType.cs" />

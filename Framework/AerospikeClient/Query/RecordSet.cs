@@ -17,6 +17,7 @@
 using System;
 using System.Collections.Concurrent;
 using System.Threading;
+using Aerospike.Client.Query;
 
 namespace Aerospike.Client
 {
@@ -25,8 +26,8 @@ namespace Aerospike.Client
 	/// Multiple threads will retrieve records from the server nodes and put these records on the queue.
 	/// The single user thread consumes these records from the queue.
 	/// </summary>
-	public sealed class RecordSet : IDisposable
-	{
+	public sealed class RecordSet : IDisposable, IRecordSet
+    {
 		public static readonly KeyRecord END = new KeyRecord(null, null);
 
 		private readonly QueryExecutor executor;
