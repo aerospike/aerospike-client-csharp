@@ -62,11 +62,7 @@ namespace Aerospike.Client
 			{
 				RemoteCertificateValidationCallback remoteCallback = new RemoteCertificateValidationCallback(ValidateServerCertificate);
 				sslStream = new SslStream(new NetworkStream(socket, true), false, remoteCallback);
-#if NETFRAMEWORK
 				sslStream.AuthenticateAsClient(tlsName, policy.clientCertificates, policy.protocols, false);
-#else
-				sslStream.AuthenticateAsClientAsync(tlsName, policy.clientCertificates, policy.protocols, false);
-#endif
 			}
             catch (Exception)
 			{
