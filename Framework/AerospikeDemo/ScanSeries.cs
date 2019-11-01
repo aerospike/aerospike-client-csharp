@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -16,13 +16,15 @@
  */
 using System;
 using System.Collections.Generic;
+using System.Collections.Concurrent;
 using Aerospike.Client;
+using System.Threading;
 
 namespace Aerospike.Demo
 {
 	public class ScanSeries : SyncExample
 	{
-		private Dictionary<string, Metrics> setMap = new Dictionary<string, Metrics>();
+		private ConcurrentDictionary<string, Metrics> setMap = new ConcurrentDictionary<string, Metrics>();
 
 		public ScanSeries(Console console) : base(console)
 		{
@@ -36,11 +38,11 @@ namespace Aerospike.Demo
 			console.Info("Scan series: namespace=" + args.ns + " set=" + args.set);
 			setMap.Clear();
 
-			// Use low scan priority.  This will take more time, but it will reduce
-			// the load on the server.
 			ScanPolicy policy = new ScanPolicy();
-			policy.maxRetries = 1;
-			policy.priority = Priority.LOW;
+			policy.priority = Priority.DEFAULT;
+
+			// Low scan priority will take more time, but it will reduce the load on the server.
+			// policy.priority = Priority.LOW;
 
 			Node[] nodes = client.Nodes;
 			DateTime begin = DateTime.Now;
@@ -53,6 +55,7 @@ namespace Aerospike.Demo
 				foreach (KeyValuePair<string, Metrics> entry in setMap)
 				{
 					console.Info("Node " + node.Name + " set " + entry.Key + " count: " + entry.Value.count);
+					entry.Value.total += entry.Value.count;
 					entry.Value.count = 0;
 				}
 			}
@@ -77,13 +80,26 @@ namespace Aerospike.Demo
 		{
 			Metrics metrics;
 
-			if (! setMap.TryGetValue(key.setName, out metrics))
+			if (setMap.TryGetValue(key.setName, out metrics))
 			{
-				metrics = new Metrics();
+				Interlocked.Increment(ref metrics.count);
+				return;
 			}
-			metrics.count++;
-			metrics.total++;
-			setMap[key.setName] = metrics;
+
+			// Set not found.  Must lock to create metrics entry.
+			lock (setMap)
+			{
+				// Retry lookup under lock.
+				if (setMap.TryGetValue(key.setName, out metrics))
+				{
+					Interlocked.Increment(ref metrics.count);
+					return;
+				}
+
+				metrics = new Metrics();
+				metrics.count = 1;
+				setMap[key.setName] = metrics;
+			}
 		}
 
 		private class Metrics

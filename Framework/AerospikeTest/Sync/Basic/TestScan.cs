@@ -1,5 +1,5 @@
 ﻿/* 
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -14,8 +14,9 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using System;
 using System.Collections.Generic;
+using System.Collections.Concurrent;
+using System.Threading;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Aerospike.Client;
 
@@ -24,7 +25,7 @@ namespace Aerospike.Test
 	[TestClass]
 	public class TestScan : TestSync
 	{
-		private readonly IDictionary<string, Metrics> setMap = new Dictionary<string, Metrics>();
+		private readonly ConcurrentDictionary<string, Metrics> setMap = new ConcurrentDictionary<string, Metrics>();
 
 		[TestMethod]
 		public void ScanParallel()
@@ -36,17 +37,11 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void ScanSeries()
 		{
-			// Use low scan priority.  This will take more time, but it will reduce
-			// the load on the server.
-			ScanPolicy policy = new ScanPolicy();
-			policy.maxRetries = 1;
-			policy.priority = Priority.LOW;
-
 			Node[] nodes = client.Nodes;
 
 			foreach (Node node in nodes)
 			{
-				client.ScanNode(policy, node, args.ns, args.set, ScanCallback);
+				client.ScanNode(null, node, args.ns, args.set, ScanCallback);
 
 				foreach (KeyValuePair<string, Metrics> entry in setMap)
 				{
@@ -59,19 +54,31 @@ namespace Aerospike.Test
 		{
 			Metrics metrics;
 
-			if (!setMap.TryGetValue(key.setName, out metrics))
+			if (setMap.TryGetValue(key.setName, out metrics))
 			{
-				metrics = new Metrics();
+				Interlocked.Increment(ref metrics.count);
+				return;
 			}
-			metrics.count++;
-			metrics.total++;
-			setMap[key.setName] = metrics;
+
+			// Set not found.  Must lock to create metrics entry.
+			lock (setMap)
+			{
+				// Retry lookup under lock.
+				if (setMap.TryGetValue(key.setName, out metrics))
+				{
+					Interlocked.Increment(ref metrics.count);
+					return;
+				}
+
+				metrics = new Metrics();
+				metrics.count = 1;
+				setMap[key.setName] = metrics;
+			}
 		}
 
 		public class Metrics
 		{
 			public long count = 0;
-			public long total = 0;
 		}		
 	}
 }
