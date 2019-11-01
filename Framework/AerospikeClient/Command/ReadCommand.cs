@@ -16,6 +16,8 @@
  */
 using System;
 using System.Collections.Generic;
+using System.IO;
+using System.IO.Compression;
 
 namespace Aerospike.Client
 {
@@ -56,23 +58,49 @@ namespace Aerospike.Client
 		protected internal override void ParseResult(Connection conn)
 		{
 			// Read header.		
-			conn.ReadFully(dataBuffer, MSG_TOTAL_HEADER_SIZE);
+			conn.ReadFully(dataBuffer, 8);
 
 			long sz = ByteUtil.BytesToLong(dataBuffer, 0);
-			byte headerLength = dataBuffer[8];
-			int resultCode = dataBuffer[13];
-			int generation = ByteUtil.BytesToInt(dataBuffer, 14);
-			int expiration = ByteUtil.BytesToInt(dataBuffer, 18);
-			int fieldCount = ByteUtil.BytesToShort(dataBuffer, 26); // almost certainly 0
-			int opCount = ByteUtil.BytesToShort(dataBuffer, 28);
-			int receiveSize = ((int)(sz & 0xFFFFFFFFFFFFL)) - headerLength;
+			int receiveSize = (int)(sz & 0xFFFFFFFFFFFFL);
 
-			// Read remaining message bytes.
-			if (receiveSize > 0)
+			if (receiveSize <= 0)
 			{
-				SizeBuffer(receiveSize);
-				conn.ReadFully(dataBuffer, receiveSize);
+				throw new AerospikeException("Invalid receive size: " + receiveSize);
 			}
+
+			SizeBuffer(receiveSize);
+			conn.ReadFully(dataBuffer, receiveSize);
+
+			ulong type = (ulong)((sz >> 48) & 0xff);
+
+			if (type == Command.AS_MSG_TYPE)
+			{
+				dataOffset = 5;
+			}
+			else if (type == Command.MSG_TYPE_COMPRESSED)
+			{
+				int usize = (int)ByteUtil.BytesToLong(dataBuffer, 0);
+				byte[] ubuf = new byte[usize];
+
+				ByteUtil.Decompress(dataBuffer, 8, receiveSize, ubuf, usize);
+				dataBuffer = ubuf;
+				dataOffset = 13;
+			}
+			else
+			{
+				throw new AerospikeException("Invalid proto type: " + type + " Expected: " + Command.AS_MSG_TYPE);
+			}
+					
+			int resultCode = dataBuffer[dataOffset];
+			dataOffset++;
+			int generation = ByteUtil.BytesToInt(dataBuffer, dataOffset);
+			dataOffset += 4;
+			int expiration = ByteUtil.BytesToInt(dataBuffer, dataOffset);
+			dataOffset += 8;
+			int fieldCount = ByteUtil.BytesToShort(dataBuffer, dataOffset);
+			dataOffset += 2;
+			int opCount = ByteUtil.BytesToShort(dataBuffer, dataOffset);
+			dataOffset += 2;
 
 			if (resultCode == 0)
 			{
@@ -153,7 +181,6 @@ namespace Aerospike.Client
 		private Record ParseRecord(int opCount, int fieldCount, int generation, int expiration)
 		{
 			Dictionary<string, object> bins = null;
-			int receiveOffset = 0;
 
 			// There can be fields in the response (setname etc).
 			// But for now, ignore them. Expose them to the API if needed in the future.
@@ -162,22 +189,24 @@ namespace Aerospike.Client
 				// Just skip over all the fields
 				for (int i = 0; i < fieldCount; i++)
 				{
-					int fieldSize = ByteUtil.BytesToInt(dataBuffer, receiveOffset);
-					receiveOffset += 4 + fieldSize;
+					int fieldSize = ByteUtil.BytesToInt(dataBuffer, dataOffset);
+					dataOffset += 4 + fieldSize;
 				}
 			}
 
 			for (int i = 0 ; i < opCount; i++)
 			{
-				int opSize = ByteUtil.BytesToInt(dataBuffer, receiveOffset);
-				byte particleType = dataBuffer[receiveOffset + 5];
-				byte nameSize = dataBuffer[receiveOffset + 7];
-				string name = ByteUtil.Utf8ToString(dataBuffer, receiveOffset + 8, nameSize);
-				receiveOffset += 4 + 4 + nameSize;
+				int opSize = ByteUtil.BytesToInt(dataBuffer, dataOffset);
+				dataOffset += 5;
+				byte particleType = dataBuffer[dataOffset];
+				dataOffset += 2;
+				byte nameSize = dataBuffer[dataOffset++];
+				string name = ByteUtil.Utf8ToString(dataBuffer, dataOffset, nameSize);
+				dataOffset += nameSize;
 
 				int particleBytesSize = (int)(opSize - (4 + nameSize));
-				object value = ByteUtil.BytesToParticle(particleType, dataBuffer, receiveOffset, particleBytesSize);
-				receiveOffset += particleBytesSize;
+				object value = ByteUtil.BytesToParticle(particleType, dataBuffer, dataOffset, particleBytesSize);
+				dataOffset += particleBytesSize;
 
 				if (bins == null)
 				{

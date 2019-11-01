@@ -18,6 +18,8 @@ using System;
 using System.Net.Sockets;
 using System.Threading;
 using System.Diagnostics;
+using System.IO;
+using System.IO.Compression;
 
 namespace Aerospike.Client
 {
@@ -50,6 +52,7 @@ namespace Aerospike.Client
 		private int state;
 		private int commandSentCounter;
 		protected internal bool isRead;
+		private bool compressed;
 		private bool usingSocketTimeout;
 		private bool inAuthenticate;
 		protected internal bool inHeader = true;
@@ -406,6 +409,7 @@ namespace Aerospike.Client
 		{
 			dataOffset = segment.offset;
 			dataLength = dataOffset + 8;
+			dataBuffer = eventArgs.Buffer;
 			eventArgs.SetBuffer(dataOffset, 8);
 			Receive();
 		}
@@ -444,7 +448,8 @@ namespace Aerospike.Client
 
 			if (inHeader)
 			{
-				int length = (int)(ByteUtil.BytesToLong(dataBuffer, dataOffset) & 0xFFFFFFFFFFFFL);
+				long proto = ByteUtil.BytesToLong(dataBuffer, dataOffset);
+				int length = (int)(proto & 0xFFFFFFFFFFFFL);
 
 				if (length <= 0)
 				{
@@ -452,6 +457,7 @@ namespace Aerospike.Client
 					return;
 				}
 
+				compressed = ((proto >> 48) & 0xFF) == (long)Command.MSG_TYPE_COMPRESSED;
 				inHeader = false;
 
 				if (length > segment.size)
@@ -490,6 +496,19 @@ namespace Aerospike.Client
 					ConnectionReady();
 					return;
 				}
+
+				if (compressed)
+				{
+					int usize = (int)ByteUtil.BytesToLong(dataBuffer, dataOffset);
+					dataOffset += 8;
+					byte[] ubuf = new byte[usize];
+
+					ByteUtil.Decompress(dataBuffer, dataOffset, dataLength, ubuf, usize);
+					dataBuffer = ubuf;
+					dataOffset = 8;
+					dataLength = usize;
+				}
+
 				ParseCommand();
 			}
 		}
@@ -771,7 +790,7 @@ namespace Aerospike.Client
 			}
 			else
 			{
-				// There may be rare error cases where dataBuffer and eventArgs.Buffer
+				// There may be rare error cases where segment.buffer and eventArgs.Buffer
 				// are different.  Make sure they are in sync.
 				if (eventArgs.Buffer != segment.buffer)
 				{

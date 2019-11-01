@@ -40,14 +40,11 @@ namespace Aerospike.Client
 			// send records back.
 			for (int i = 0 ; i < opCount; i++)
 			{
-				ReadBytes(8);
-				int opSize = ByteUtil.BytesToInt(dataBuffer, 0);
-				byte nameSize = dataBuffer[7];
-
-				ReadBytes(nameSize);
-
+				int opSize = ByteUtil.BytesToInt(dataBuffer, dataOffset);
+				dataOffset += 7;
+				byte nameSize = dataBuffer[dataOffset++];
 				int particleBytesSize = (int)(opSize - (4 + nameSize));
-				ReadBytes(particleBytesSize);
+				dataOffset += nameSize + particleBytesSize;
 			}
 
 			if (!valid)

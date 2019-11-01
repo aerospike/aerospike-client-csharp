@@ -58,22 +58,21 @@ namespace Aerospike.Client
 			}
 
 			// Parse aggregateValue.
-			ReadBytes(8);
-			int opSize = ByteUtil.BytesToInt(dataBuffer, 0);
-			byte particleType = dataBuffer[5];
-			byte nameSize = dataBuffer[7];
-
-			ReadBytes(nameSize);
-			string name = ByteUtil.Utf8ToString(dataBuffer, 0, nameSize);
+			int opSize = ByteUtil.BytesToInt(dataBuffer, dataOffset);
+			dataOffset += 5;
+			byte particleType = dataBuffer[dataOffset];
+			dataOffset += 2;
+			byte nameSize = dataBuffer[dataOffset++];
+			string name = ByteUtil.Utf8ToString(dataBuffer, dataOffset, nameSize);
+			dataOffset += nameSize;
 
 			int particleBytesSize = (int)(opSize - (4 + nameSize));
-			ReadBytes(particleBytesSize);
 
 			if (! name.Equals("SUCCESS"))
 			{
 				if (name.Equals("FAILURE"))
 				{
-					object value = ByteUtil.BytesToParticle(particleType, dataBuffer, 0, particleBytesSize);
+					object value = ByteUtil.BytesToParticle(particleType, dataBuffer, dataOffset, particleBytesSize);
 					throw new AerospikeException(ResultCode.QUERY_GENERIC, value.ToString());
 				}
 				else
@@ -82,7 +81,8 @@ namespace Aerospike.Client
 				}
 			}
 
-			object aggregateValue = LuaInstance.BytesToLua(particleType, dataBuffer, 0, particleBytesSize);
+			object aggregateValue = LuaInstance.BytesToLua(particleType, dataBuffer, dataOffset, particleBytesSize);
+			dataOffset += particleBytesSize;
 
 			if (!valid)
 			{

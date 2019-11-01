@@ -22,20 +22,20 @@ namespace Aerospike.Client
 {
 	public abstract class Command
 	{
-		// Flags commented out are not supported by this client.
-		public static readonly int INFO1_READ             = (1 << 0); // Contains a read operation.
-		public static readonly int INFO1_GET_ALL          = (1 << 1); // Get all bins.
-		public static readonly int INFO1_BATCH            = (1 << 3); // Batch read or exists.
-		public static readonly int INFO1_NOBINDATA        = (1 << 5); // Do not read the bins.
-		public static readonly int INFO1_READ_MODE_AP_ALL = (1 << 6); // Involve all replicas in read operation.
+		public static readonly int INFO1_READ              = (1 << 0); // Contains a read operation.
+		public static readonly int INFO1_GET_ALL           = (1 << 1); // Get all bins.
+		public static readonly int INFO1_BATCH             = (1 << 3); // Batch read or exists.
+		public static readonly int INFO1_NOBINDATA         = (1 << 5); // Do not read the bins.
+		public static readonly int INFO1_READ_MODE_AP_ALL  = (1 << 6); // Involve all replicas in read operation.
+		public static readonly int INFO1_COMPRESS_RESPONSE = (1 << 7); // Tell server to compress it's response.
 
-		public static readonly int INFO2_WRITE           = (1 << 0); // Create or update record
-		public static readonly int INFO2_DELETE          = (1 << 1); // Fling a record into the belly of Moloch.
-		public static readonly int INFO2_GENERATION      = (1 << 2); // Update if expected generation == old.
-		public static readonly int INFO2_GENERATION_GT   = (1 << 3); // Update if new generation >= old, good for restore.
-		public static readonly int INFO2_DURABLE_DELETE  = (1 << 4); // Transaction resulting in record deletion leaves tombstone (Enterprise only).
-		public static readonly int INFO2_CREATE_ONLY     = (1 << 5); // Create only. Fail if record already exists.
-		public static readonly int INFO2_RESPOND_ALL_OPS = (1 << 7); // Return a result for every operation.
+		public static readonly int INFO2_WRITE             = (1 << 0); // Create or update record
+		public static readonly int INFO2_DELETE            = (1 << 1); // Fling a record into the belly of Moloch.
+		public static readonly int INFO2_GENERATION        = (1 << 2); // Update if expected generation == old.
+		public static readonly int INFO2_GENERATION_GT     = (1 << 3); // Update if new generation >= old, good for restore.
+		public static readonly int INFO2_DURABLE_DELETE    = (1 << 4); // Transaction resulting in record deletion leaves tombstone (Enterprise only).
+		public static readonly int INFO2_CREATE_ONLY       = (1 << 5); // Create only. Fail if record already exists.
+		public static readonly int INFO2_RESPOND_ALL_OPS   = (1 << 7); // Return a result for every operation.
 
 		public static readonly int INFO3_LAST              = (1 << 0); // This is the last of a multi-part message.
 		public static readonly int INFO3_COMMIT_MASTER     = (1 << 1); // Commit to master only before declaring success.
@@ -63,8 +63,9 @@ namespace Aerospike.Client
 		public const int OPERATION_HEADER_SIZE = 8;
 		public const int MSG_REMAINING_HEADER_SIZE = 22;
 		public const int DIGEST_SIZE = 20;
-		public const ulong CL_MSG_VERSION = 2L;
-		public const ulong AS_MSG_TYPE = 3L;
+		public const ulong CL_MSG_VERSION = 2UL;
+		public const ulong AS_MSG_TYPE = 3UL;
+		public const ulong MSG_TYPE_COMPRESSED = 4UL;
 
 		protected internal byte[] dataBuffer;
 		protected internal int dataOffset;
@@ -86,7 +87,7 @@ namespace Aerospike.Client
 				EstimateOperationSize(bin);
 			}
 			SizeBuffer();
-			WriteHeader(policy, 0, Command.INFO2_WRITE, fieldCount, bins.Length);
+			WriteHeaderWrite(policy, Command.INFO2_WRITE, fieldCount, bins.Length);
 			WriteKey(policy, key);
 
 			if (policy.predExp != null)
@@ -113,7 +114,7 @@ namespace Aerospike.Client
 				fieldCount++;
 			}
 			SizeBuffer();
-			WriteHeader(policy, 0, Command.INFO2_WRITE | Command.INFO2_DELETE, fieldCount, 0);
+			WriteHeaderWrite(policy, Command.INFO2_WRITE | Command.INFO2_DELETE, fieldCount, 0);
 			WriteKey(policy, key);
 
 			if (policy.predExp != null)
@@ -136,7 +137,7 @@ namespace Aerospike.Client
 			}
 			EstimateOperationSize();
 			SizeBuffer();
-			WriteHeader(policy, 0, Command.INFO2_WRITE, fieldCount, 1);
+			WriteHeaderWrite(policy, Command.INFO2_WRITE, fieldCount, 1);
 			WriteKey(policy, key);
 
 			if (policy.predExp != null)
@@ -159,7 +160,7 @@ namespace Aerospike.Client
 				fieldCount++;
 			}
 			SizeBuffer();
-			WriteHeader(policy, Command.INFO1_READ | Command.INFO1_NOBINDATA, 0, fieldCount, 0);
+			WriteHeaderReadHeader(policy, Command.INFO1_READ | Command.INFO1_NOBINDATA, fieldCount, 0);
 			WriteKey(policy, key);
 
 			if (policy.predExp != null)
@@ -181,7 +182,7 @@ namespace Aerospike.Client
 				fieldCount++;
 			}
 			SizeBuffer();
-			WriteHeader(policy, Command.INFO1_READ | Command.INFO1_GET_ALL, 0, fieldCount, 0);
+			WriteHeaderRead(policy, Command.INFO1_READ | Command.INFO1_GET_ALL, fieldCount, 0);
 			WriteKey(policy, key);
 
 			if (policy.predExp != null)
@@ -210,7 +211,7 @@ namespace Aerospike.Client
 					EstimateOperationSize(binName);
 				}
 				SizeBuffer();
-				WriteHeader(policy, Command.INFO1_READ, 0, fieldCount, binNames.Length);
+				WriteHeaderRead(policy, Command.INFO1_READ, fieldCount, binNames.Length);
 				WriteKey(policy, key);
 
 				if (policy.predExp != null)
@@ -243,7 +244,7 @@ namespace Aerospike.Client
 			}
 			EstimateOperationSize((string)null);
 			SizeBuffer();
-			WriteHeader(policy, Command.INFO1_READ | Command.INFO1_NOBINDATA, 0, fieldCount, 0);
+			WriteHeaderReadHeader(policy, Command.INFO1_READ | Command.INFO1_NOBINDATA, fieldCount, 0);
 			WriteKey(policy, key);
 
 			if (policy.predExp != null)
@@ -335,7 +336,7 @@ namespace Aerospike.Client
 			dataOffset += args.size;
 			SizeBuffer();
 
-			WriteHeader(policy, args.readAttr, args.writeAttr, fieldCount, operations.Length);
+			WriteHeaderReadWrite(policy, args.readAttr, args.writeAttr, fieldCount, operations.Length);
 			WriteKey(policy, key);
 
 			if (policy.predExp != null)
@@ -365,7 +366,7 @@ namespace Aerospike.Client
 			fieldCount += EstimateUdfSize(packageName, functionName, argBytes);
 
 			SizeBuffer();
-			WriteHeader(policy, 0, Command.INFO2_WRITE, fieldCount, 0);
+			WriteHeaderWrite(policy, Command.INFO2_WRITE, fieldCount, 0);
 			WriteKey(policy, key);
 
 			if (policy.predExp != null)
@@ -446,7 +447,7 @@ namespace Aerospike.Client
 				readAttr |= Command.INFO1_READ_MODE_AP_ALL;
 			}
 
-			WriteHeader(policy, readAttr | Command.INFO1_BATCH, 0, fieldCount, 0);
+			WriteHeaderRead(policy, readAttr | Command.INFO1_BATCH, fieldCount, 0);
 
 			if (policy.predExp != null)
 			{
@@ -595,7 +596,7 @@ namespace Aerospike.Client
 				readAttr |= Command.INFO1_READ_MODE_AP_ALL;
 			}
 
-			WriteHeader(policy, readAttr | Command.INFO1_BATCH, 0, fieldCount, 0);
+			WriteHeaderRead(policy, readAttr | Command.INFO1_BATCH, fieldCount, 0);
 
 			if (policy.predExp != null)
 			{
@@ -717,7 +718,7 @@ namespace Aerospike.Client
 			}
 
 			int operationCount = (binNames == null) ? 0 : binNames.Length;
-			WriteHeader(policy, readAttr, 0, fieldCount, operationCount);
+			WriteHeaderRead(policy, readAttr, fieldCount, operationCount);
 
 			if (ns != null)
 			{
@@ -903,13 +904,13 @@ namespace Aerospike.Client
 
 			if (write)
 			{
-				WriteHeader((WritePolicy)policy, 0, Command.INFO2_WRITE, fieldCount, operationCount);
+				WriteHeaderWrite((WritePolicy)policy, Command.INFO2_WRITE, fieldCount, operationCount);
 			}
 			else
 			{
 				QueryPolicy qp = (QueryPolicy)policy;
 				int readAttr = qp.includeBinData ? Command.INFO1_READ : Command.INFO1_READ | Command.INFO1_NOBINDATA;
-				WriteHeader(policy, readAttr, 0, fieldCount, operationCount);
+				WriteHeaderRead(policy, readAttr, fieldCount, operationCount);
 			}
 
 			if (statement.ns != null)
@@ -1080,9 +1081,9 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
-		/// Header write for write operations.
+		/// Header write for write commands.
 		/// </summary>
-		private void WriteHeader(WritePolicy policy, int readAttr, int writeAttr, int fieldCount, int operationCount)
+		private void WriteHeaderWrite(WritePolicy policy, int writeAttr, int fieldCount, int operationCount)
 		{
 			// Set flags.
 			int generation = 0;
@@ -1130,6 +1131,73 @@ namespace Aerospike.Client
 				writeAttr |= Command.INFO2_DURABLE_DELETE;
 			}
 
+			dataOffset += 8;
+
+			// Write all header data except total size which must be written last. 
+			dataBuffer[dataOffset++] = MSG_REMAINING_HEADER_SIZE; // Message header length.
+			dataBuffer[dataOffset++] = (byte)0;
+			dataBuffer[dataOffset++] = (byte)writeAttr;
+			dataBuffer[dataOffset++] = (byte)infoAttr;
+			dataBuffer[dataOffset++] = 0; // unused
+			dataBuffer[dataOffset++] = 0; // clear the result code
+			dataOffset += ByteUtil.IntToBytes((uint)generation, dataBuffer, dataOffset);
+			dataOffset += ByteUtil.IntToBytes((uint)policy.expiration, dataBuffer, dataOffset);
+			dataOffset += ByteUtil.IntToBytes((uint)policy.totalTimeout, dataBuffer, dataOffset);
+			dataOffset += ByteUtil.ShortToBytes((ushort)fieldCount, dataBuffer, dataOffset);
+			dataOffset += ByteUtil.ShortToBytes((ushort)operationCount, dataBuffer, dataOffset);
+		}
+
+		/// <summary>
+		/// Header write for operate command.
+		/// </summary>
+		private void WriteHeaderReadWrite(WritePolicy policy, int readAttr, int writeAttr, int fieldCount, int operationCount)
+		{
+			// Set flags.
+			int generation = 0;
+			int infoAttr = 0;
+
+			switch (policy.recordExistsAction)
+			{
+				case RecordExistsAction.UPDATE:
+					break;
+				case RecordExistsAction.UPDATE_ONLY:
+					infoAttr |= Command.INFO3_UPDATE_ONLY;
+					break;
+				case RecordExistsAction.REPLACE:
+					infoAttr |= Command.INFO3_CREATE_OR_REPLACE;
+					break;
+				case RecordExistsAction.REPLACE_ONLY:
+					infoAttr |= Command.INFO3_REPLACE_ONLY;
+					break;
+				case RecordExistsAction.CREATE_ONLY:
+					writeAttr |= Command.INFO2_CREATE_ONLY;
+					break;
+			}
+
+			switch (policy.generationPolicy)
+			{
+				case GenerationPolicy.NONE:
+					break;
+				case GenerationPolicy.EXPECT_GEN_EQUAL:
+					generation = policy.generation;
+					writeAttr |= Command.INFO2_GENERATION;
+					break;
+				case GenerationPolicy.EXPECT_GEN_GT:
+					generation = policy.generation;
+					writeAttr |= Command.INFO2_GENERATION_GT;
+					break;
+			}
+
+			if (policy.commitLevel == CommitLevel.COMMIT_MASTER)
+			{
+				infoAttr |= Command.INFO3_COMMIT_MASTER;
+			}
+
+			if (policy.durableDelete)
+			{
+				writeAttr |= Command.INFO2_DURABLE_DELETE;
+			}
+
 			switch (policy.readModeSC)
 			{
 				case ReadModeSC.SESSION:
@@ -1150,6 +1218,11 @@ namespace Aerospike.Client
 				readAttr |= Command.INFO1_READ_MODE_AP_ALL;
 			}
 
+			if (policy.compressResponse)
+			{
+				readAttr |= Command.INFO1_COMPRESS_RESPONSE;
+			}
+
 			dataOffset += 8;
 
 			// Write all header data except total size which must be written last. 
@@ -1167,9 +1240,58 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
-		/// Generic header write.
+		/// Header write for read commands.
 		/// </summary>
-		private void WriteHeader(Policy policy, int readAttr, int writeAttr, int fieldCount, int operationCount)
+		private void WriteHeaderRead(Policy policy, int readAttr, int fieldCount, int operationCount)
+		{
+			int infoAttr = 0;
+
+			switch (policy.readModeSC)
+			{
+				case ReadModeSC.SESSION:
+					break;
+				case ReadModeSC.LINEARIZE:
+					infoAttr |= Command.INFO3_SC_READ_TYPE;
+					break;
+				case ReadModeSC.ALLOW_REPLICA:
+					infoAttr |= Command.INFO3_SC_READ_RELAX;
+					break;
+				case ReadModeSC.ALLOW_UNAVAILABLE:
+					infoAttr |= Command.INFO3_SC_READ_TYPE | Command.INFO3_SC_READ_RELAX;
+					break;
+			}
+
+			if (policy.readModeAP == ReadModeAP.ALL)
+			{
+				readAttr |= Command.INFO1_READ_MODE_AP_ALL;
+			}
+
+			if (policy.compressResponse)
+			{
+				readAttr |= Command.INFO1_COMPRESS_RESPONSE;
+			}
+
+			dataOffset += 8;
+
+			// Write all header data except total size which must be written last. 
+			dataBuffer[dataOffset++] = MSG_REMAINING_HEADER_SIZE; // Message header length.
+			dataBuffer[dataOffset++] = (byte)readAttr;
+			dataBuffer[dataOffset++] = (byte)0;
+			dataBuffer[dataOffset++] = (byte)infoAttr;
+
+			for (int i = 0; i < 10; i++)
+			{
+				dataBuffer[dataOffset++] = 0;
+			}
+			dataOffset += ByteUtil.IntToBytes((uint)policy.totalTimeout, dataBuffer, dataOffset);
+			dataOffset += ByteUtil.ShortToBytes((ushort)fieldCount, dataBuffer, dataOffset);
+			dataOffset += ByteUtil.ShortToBytes((ushort)operationCount, dataBuffer, dataOffset);
+		}
+
+		/// <summary>
+		/// Header write for read header commands.
+		/// </summary>
+		private void WriteHeaderReadHeader(Policy policy, int readAttr, int fieldCount, int operationCount)
 		{
 			int infoAttr = 0;
 
@@ -1198,7 +1320,7 @@ namespace Aerospike.Client
 			// Write all header data except total size which must be written last. 
 			dataBuffer[dataOffset++] = MSG_REMAINING_HEADER_SIZE; // Message header length.
 			dataBuffer[dataOffset++] = (byte)readAttr;
-			dataBuffer[dataOffset++] = (byte)writeAttr;
+			dataBuffer[dataOffset++] = (byte)0;
 			dataBuffer[dataOffset++] = (byte)infoAttr;
 
 			for (int i = 0; i < 10; i++)
@@ -1332,6 +1454,47 @@ namespace Aerospike.Client
 		private void Begin()
 		{
 			dataOffset = MSG_TOTAL_HEADER_SIZE;
+		}
+
+		internal Key ParseKey(int fieldCount)
+		{
+			byte[] digest = null;
+			string ns = null;
+			string setName = null;
+			Value userKey = null;
+
+			for (int i = 0; i < fieldCount; i++)
+			{
+				int fieldlen = ByteUtil.BytesToInt(dataBuffer, dataOffset);
+				dataOffset += 4;
+				
+				int fieldtype = dataBuffer[dataOffset++];
+				int size = fieldlen - 1;
+
+				switch (fieldtype)
+				{
+					case FieldType.DIGEST_RIPE:
+						digest = new byte[size];
+						Array.Copy(dataBuffer, dataOffset, digest, 0, size);
+						break;
+
+					case FieldType.NAMESPACE:
+						ns = ByteUtil.Utf8ToString(dataBuffer, dataOffset, size);
+						break;
+
+					case FieldType.TABLE:
+						setName = ByteUtil.Utf8ToString(dataBuffer, dataOffset, size);
+						break;
+
+					case FieldType.KEY:
+						int type = dataBuffer[dataOffset++];
+						size--;
+						userKey = ByteUtil.BytesToKeyValue(type, dataBuffer, dataOffset, size);
+						break;
+				}
+				dataOffset += size;
+			}
+			return new Key(ns, digest, setName, userKey);
 		}
 
 		protected internal abstract void SizeBuffer();

@@ -168,6 +168,14 @@ namespace Aerospike.Client
 		public bool sendKey;
 
 		/// <summary>
+		/// Tell the server to compress it's response using zlib.
+		/// <para>
+		/// Default: false
+		/// </para>
+		/// </summary>
+		public bool compressResponse;
+
+		/// <summary>
 		/// Throw exception if <see cref="predExp"/> is defined and that filter evaluates
 		/// to false (transaction ignored).  The <see cref="Aerospike.Client.AerospikeException"/>
 		/// will contain result code <seealso cref="Aerospike.Client.ResultCode.FILTERED_OUT"/>.
@@ -195,6 +203,7 @@ namespace Aerospike.Client
 			this.maxRetries = other.maxRetries;
 			this.sleepBetweenRetries = other.sleepBetweenRetries;
 			this.sendKey = other.sendKey;
+			this.compressResponse = other.compressResponse;
 			this.failOnFilteredOut = other.failOnFilteredOut;
 		}
 

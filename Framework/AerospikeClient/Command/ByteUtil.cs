@@ -16,6 +16,7 @@
  */
 using System;
 using System.IO;
+using System.IO.Compression;
 using System.Text;
 using System.Numerics;
 using System.Runtime.Serialization.Formatters.Binary;
@@ -566,6 +567,29 @@ namespace Aerospike.Client
 
 			size = i - offset;
 			return val;
+		}
+
+		//-------------------------------------------------------
+		// Compression
+		//-------------------------------------------------------
+
+		public static void Decompress(byte[] srcBuf, int srcOffset, int srcSize, byte[] trgBuf, int trgSize)
+		{
+			// Skip past metadata flags which DeflateStream does not handle.
+			srcOffset += 2;
+			
+			MemoryStream input = new MemoryStream(srcBuf, srcOffset, srcSize - srcOffset);
+			MemoryStream output = new MemoryStream(trgBuf);
+
+			using (DeflateStream ds = new DeflateStream(input, CompressionMode.Decompress))
+			{
+				ds.CopyTo(output);
+			}
+
+			if (output.Position != trgSize)
+			{
+				throw new AerospikeException("Decompressed size " + output.Position + " is not expected " + trgSize);
+			}
 		}
 	}
 }

@@ -110,56 +110,12 @@ namespace Aerospike.Client
 					throw new AerospikeException.QueryTerminated();
 				}
 
-				Key key = ParseKey();
+				Key key = ParseKey(fieldCount);
 				ParseRow(key);
 			}
 			return false;
 		}
 
-		protected internal Key ParseKey()
-		{
-			byte[] digest = null;
-			string ns = null;
-			string setName = null;
-			Value userKey = null;
-
-			for (int i = 0; i < fieldCount; i++)
-			{
-				int fieldlen = ByteUtil.BytesToInt(dataBuffer, dataOffset);
-				dataOffset += 4;
-
-				int fieldtype = dataBuffer[dataOffset++];
-				int size = fieldlen - 1;
-
-				switch (fieldtype)
-				{
-					case FieldType.DIGEST_RIPE:
-						digest = new byte[size];
-						Array.Copy(dataBuffer, dataOffset, digest, 0, size);
-						dataOffset += size;
-						break;
-
-					case FieldType.NAMESPACE:
-						ns = ByteUtil.Utf8ToString(dataBuffer, dataOffset, size);
-						dataOffset += size;
-						break;
-
-					case FieldType.TABLE:
-						setName = ByteUtil.Utf8ToString(dataBuffer, dataOffset, size);
-						dataOffset += size;
-						break;
-
-					case FieldType.KEY:
-						int type = dataBuffer[dataOffset++];
-						size--;
-						userKey = ByteUtil.BytesToKeyValue(type, dataBuffer, dataOffset, size);
-						dataOffset += size;
-						break;
-				} 
-			}
-			return new Key(ns, digest, setName, userKey);		
-		}
-		
 		protected internal Record ParseRecord()
 		{
 			Dictionary<string, object> bins = null;
