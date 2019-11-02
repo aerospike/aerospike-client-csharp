@@ -21,6 +21,11 @@ using Aerospike.Client;
 namespace Aerospike.Test
 {
 	[TestClass]
+	// VS 2010 does not allow TestCategory here. Would need to require VS 2017 for
+	// Framework users.  Core already requires VS 2017.
+#if !NETFRAMEWORK
+	[TestCategory("Sync")]
+#endif
 	public class TestSync
 	{
 		public static Args args = Args.Instance;
