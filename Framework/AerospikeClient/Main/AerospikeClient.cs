@@ -53,34 +53,34 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Default read policy that is used when read command policy is null.
 		/// </summary>
-		public readonly Policy readPolicyDefault;
+		public readonly Policy readPolicyDefaultProp;
 
 		/// <summary>
 		/// Default write policy that is used when write command policy is null.
 		/// </summary>
-		public readonly WritePolicy writePolicyDefault;
+		public readonly WritePolicy writePolicyDefaultProp;
 
 		/// <summary>
 		/// Default scan policy that is used when scan command policy is null.
 		/// </summary>
-		public readonly ScanPolicy scanPolicyDefault;
+		public readonly ScanPolicy scanPolicyDefaultProp;
 
 		/// <summary>
 		/// Default query policy that is used when query command policy is null.
 		/// </summary>
-		public readonly QueryPolicy queryPolicyDefault;
+		public readonly QueryPolicy queryPolicyDefaultProp;
 
 		/// <summary>
 		/// Default batch policy that is used when batch command policy is null.
 		/// </summary>
-		public readonly BatchPolicy batchPolicyDefault;
+		public readonly BatchPolicy batchPolicyDefaultProp;
 
 		/// <summary>
 		/// Default info policy that is used when info command policy is null.
 		/// </summary>
-		public readonly InfoPolicy infoPolicyDefault;
+		public readonly InfoPolicy infoPolicyDefaultProp;
 
-		protected readonly WritePolicy operatePolicyReadDefault;
+		protected readonly WritePolicy operatePolicyReadDefaultProp;
 
 		//-------------------------------------------------------
 		// Constructors
@@ -162,13 +162,13 @@ namespace Aerospike.Client
 			{
 				policy = new ClientPolicy();
 			}
-			this.readPolicyDefault = policy.readPolicyDefault;
-			this.writePolicyDefault = policy.writePolicyDefault;
-			this.scanPolicyDefault = policy.scanPolicyDefault;
-			this.queryPolicyDefault = policy.queryPolicyDefault;
-			this.batchPolicyDefault = policy.batchPolicyDefault;
-			this.infoPolicyDefault = policy.infoPolicyDefault;
-			this.operatePolicyReadDefault = new WritePolicy(this.readPolicyDefault);
+			this.readPolicyDefaultProp = policy.readPolicyDefault;
+			this.writePolicyDefaultProp = policy.writePolicyDefault;
+			this.scanPolicyDefaultProp = policy.scanPolicyDefault;
+			this.queryPolicyDefaultProp = policy.queryPolicyDefault;
+			this.batchPolicyDefaultProp = policy.batchPolicyDefault;
+			this.infoPolicyDefaultProp = policy.infoPolicyDefault;
+			this.operatePolicyReadDefaultProp = new WritePolicy(this.readPolicyDefaultProp);
 
 			cluster = new Cluster(policy, hosts);
 			cluster.InitTendThread(policy.failIfNotConnected);
@@ -182,23 +182,23 @@ namespace Aerospike.Client
 		{
 			if (policy != null)
 			{
-				this.readPolicyDefault = policy.readPolicyDefault;
-				this.writePolicyDefault = policy.writePolicyDefault;
-				this.scanPolicyDefault = policy.scanPolicyDefault;
-				this.queryPolicyDefault = policy.queryPolicyDefault;
-				this.batchPolicyDefault = policy.batchPolicyDefault;
-				this.infoPolicyDefault = policy.infoPolicyDefault;
+				this.readPolicyDefaultProp = policy.readPolicyDefault;
+				this.writePolicyDefaultProp = policy.writePolicyDefault;
+				this.scanPolicyDefaultProp = policy.scanPolicyDefault;
+				this.queryPolicyDefaultProp = policy.queryPolicyDefault;
+				this.batchPolicyDefaultProp = policy.batchPolicyDefault;
+				this.infoPolicyDefaultProp = policy.infoPolicyDefault;
 			}
 			else
 			{
-				this.readPolicyDefault = new Policy();
-				this.writePolicyDefault = new WritePolicy();
-				this.scanPolicyDefault = new ScanPolicy();
-				this.queryPolicyDefault = new QueryPolicy();
-				this.batchPolicyDefault = new BatchPolicy();
-				this.infoPolicyDefault = new InfoPolicy();
+				this.readPolicyDefaultProp = new Policy();
+				this.writePolicyDefaultProp = new WritePolicy();
+				this.scanPolicyDefaultProp = new ScanPolicy();
+				this.queryPolicyDefaultProp = new QueryPolicy();
+				this.batchPolicyDefaultProp = new BatchPolicy();
+				this.infoPolicyDefaultProp = new InfoPolicy();
 			}
-			this.operatePolicyReadDefault = new WritePolicy(this.readPolicyDefault);
+			this.operatePolicyReadDefaultProp = new WritePolicy(this.readPolicyDefaultProp);
 		}
 
 		//-------------------------------------------------------
@@ -212,7 +212,7 @@ namespace Aerospike.Client
 		{
 			get
 			{
-				return readPolicyDefault;
+				return readPolicyDefaultProp;
 			}
 		}
 
@@ -223,7 +223,7 @@ namespace Aerospike.Client
 		{
 			get
 			{
-				return writePolicyDefault;
+				return writePolicyDefaultProp;
 			}
 		}
 
@@ -234,7 +234,7 @@ namespace Aerospike.Client
 		{
 			get
 			{
-				return scanPolicyDefault;
+				return scanPolicyDefaultProp;
 			}
 		}
 
@@ -245,7 +245,7 @@ namespace Aerospike.Client
 		{
 			get
 			{
-				return queryPolicyDefault;
+				return queryPolicyDefaultProp;
 			}
 		}
 
@@ -256,7 +256,7 @@ namespace Aerospike.Client
 		{
 			get
 			{
-				return batchPolicyDefault;
+				return batchPolicyDefaultProp;
 			}
 		}
 
@@ -267,7 +267,7 @@ namespace Aerospike.Client
 		{
 			get
 			{
-				return infoPolicyDefault;
+				return infoPolicyDefaultProp;
 			}
 		}
 
@@ -338,7 +338,7 @@ namespace Aerospike.Client
 		{
 			if (policy == null)
 			{
-				policy = writePolicyDefault;
+				policy = writePolicyDefaultProp;
 			}
 			WriteCommand command = new WriteCommand(cluster, policy, key, bins, Operation.Type.WRITE);
 			command.Execute(cluster, policy, false);
@@ -362,7 +362,7 @@ namespace Aerospike.Client
 		{
 			if (policy == null)
 			{
-				policy = writePolicyDefault;
+				policy = writePolicyDefaultProp;
 			}
 			WriteCommand command = new WriteCommand(cluster, policy, key, bins, Operation.Type.APPEND);
 			command.Execute(cluster, policy, false);
@@ -382,7 +382,7 @@ namespace Aerospike.Client
 		{
 			if (policy == null)
 			{
-				policy = writePolicyDefault;
+				policy = writePolicyDefaultProp;
 			}
 			WriteCommand command = new WriteCommand(cluster, policy, key, bins, Operation.Type.PREPEND);
 			command.Execute(cluster, policy, false);
@@ -406,7 +406,7 @@ namespace Aerospike.Client
 		{
 			if (policy == null)
 			{
-				policy = writePolicyDefault;
+				policy = writePolicyDefaultProp;
 			}
 			WriteCommand command = new WriteCommand(cluster, policy, key, bins, Operation.Type.ADD);
 			command.Execute(cluster, policy, false);
@@ -428,7 +428,7 @@ namespace Aerospike.Client
 		{
 			if (policy == null)
 			{
-				policy = writePolicyDefault;
+				policy = writePolicyDefaultProp;
 			}
 			DeleteCommand command = new DeleteCommand(cluster, policy, key);
 			command.Execute(cluster, policy, false);
@@ -459,7 +459,7 @@ namespace Aerospike.Client
 		{
 			if (policy == null)
 			{
-				policy = infoPolicyDefault;
+				policy = infoPolicyDefaultProp;
 			}
 
 			// Send truncate command to one node. That node will distribute the command to other nodes.
@@ -527,7 +527,7 @@ namespace Aerospike.Client
 		{
 			if (policy == null)
 			{
-				policy = writePolicyDefault;
+				policy = writePolicyDefaultProp;
 			}
 			TouchCommand command = new TouchCommand(cluster, policy, key);
 			command.Execute(cluster, policy, false);
@@ -549,7 +549,7 @@ namespace Aerospike.Client
 		{
 			if (policy == null)
 			{
-				policy = readPolicyDefault;
+				policy = readPolicyDefaultProp;
 			}
 			ExistsCommand command = new ExistsCommand(cluster, policy, key);
 			command.Execute(cluster, policy, true);
@@ -568,7 +568,7 @@ namespace Aerospike.Client
 		{
 			if (policy == null)
 			{
-				policy = batchPolicyDefault;
+				policy = batchPolicyDefaultProp;
 			}
 			bool[] existsArray = new bool[keys.Length];
 			BatchExecutor.Execute(cluster, policy, keys, existsArray, null, null, Command.INFO1_READ | Command.INFO1_NOBINDATA);
@@ -591,7 +591,7 @@ namespace Aerospike.Client
 		{
 			if (policy == null)
 			{
-				policy = readPolicyDefault;
+				policy = readPolicyDefaultProp;
 			}
 			ReadCommand command = new ReadCommand(cluster, policy, key, null);
 			command.Execute(cluster, policy, true);
@@ -611,7 +611,7 @@ namespace Aerospike.Client
 		{
 			if (policy == null)
 			{
-				policy = readPolicyDefault;
+				policy = readPolicyDefaultProp;
 			}
 			ReadCommand command = new ReadCommand(cluster, policy, key, binNames);
 			command.Execute(cluster, policy, true);
@@ -630,7 +630,7 @@ namespace Aerospike.Client
 		{
 			if (policy == null)
 			{
-				policy = readPolicyDefault;
+				policy = readPolicyDefaultProp;
 			}
 			ReadHeaderCommand command = new ReadHeaderCommand(cluster, policy, key);
 			command.Execute(cluster, policy, true);
@@ -662,7 +662,7 @@ namespace Aerospike.Client
 
 			if (policy == null)
 			{
-				policy = batchPolicyDefault;
+				policy = batchPolicyDefaultProp;
 			}
 
 			List<BatchNode> batchNodes = BatchNode.GenerateList(cluster, policy, records);
@@ -709,7 +709,7 @@ namespace Aerospike.Client
 		{
 			if (policy == null)
 			{
-				policy = batchPolicyDefault;
+				policy = batchPolicyDefaultProp;
 			}
 			Record[] records = new Record[keys.Length];
 			BatchExecutor.Execute(cluster, policy, keys, null, records, null, Command.INFO1_READ | Command.INFO1_GET_ALL);
@@ -730,7 +730,7 @@ namespace Aerospike.Client
 		{
 			if (policy == null)
 			{
-				policy = batchPolicyDefault;
+				policy = batchPolicyDefaultProp;
 			}
 			Record[] records = new Record[keys.Length];
 			BatchExecutor.Execute(cluster, policy, keys, null, records, binNames, Command.INFO1_READ);
@@ -750,7 +750,7 @@ namespace Aerospike.Client
 		{
 			if (policy == null)
 			{
-				policy = batchPolicyDefault;
+				policy = batchPolicyDefaultProp;
 			}
 			Record[] records = new Record[keys.Length];
 			BatchExecutor.Execute(cluster, policy, keys, null, records, null, Command.INFO1_READ | Command.INFO1_NOBINDATA);
@@ -834,11 +834,11 @@ namespace Aerospike.Client
 			{
 				if (args.hasWrite)
 				{
-					policy = writePolicyDefault;
+					policy = writePolicyDefaultProp;
 				}
 				else
 				{
-					policy = operatePolicyReadDefault;
+					policy = operatePolicyReadDefaultProp;
 				}
 			}
 
@@ -877,7 +877,7 @@ namespace Aerospike.Client
 		{
 			if (policy == null)
 			{
-				policy = scanPolicyDefault;
+				policy = scanPolicyDefaultProp;
 			}
 
 			if (policy.scanPercent <= 0 || policy.scanPercent > 100)
@@ -966,7 +966,7 @@ namespace Aerospike.Client
 		{
 			if (policy == null)
 			{
-				policy = scanPolicyDefault;
+				policy = scanPolicyDefaultProp;
 			}
 
 			if (policy.scanPercent <= 0 || policy.scanPercent > 100)
@@ -1001,7 +1001,7 @@ namespace Aerospike.Client
 		{
 			if (policy == null)
 			{
-				policy = writePolicyDefault;
+				policy = writePolicyDefaultProp;
 			}
 			string content = Util.ReadFileEncodeBase64(clientPath);
 			return RegisterCommand.Register(cluster, policy, content, serverPath, language);
@@ -1023,7 +1023,7 @@ namespace Aerospike.Client
 		{
 			if (policy == null)
 			{
-				policy = writePolicyDefault;
+				policy = writePolicyDefaultProp;
 			}
 			string content;
 			using (Stream stream = resourceAssembly.GetManifestResourceStream(resourcePath))
@@ -1068,7 +1068,7 @@ namespace Aerospike.Client
 		{
 			if (policy == null)
 			{
-				policy = writePolicyDefault;
+				policy = writePolicyDefaultProp;
 			}
 			byte[] bytes = ByteUtil.StringToUtf8(code);
 			string content = Convert.ToBase64String(bytes);
@@ -1085,7 +1085,7 @@ namespace Aerospike.Client
 		{
 			if (policy == null)
 			{
-				policy = infoPolicyDefault;
+				policy = infoPolicyDefaultProp;
 			}
 			// Send UDF command to one node. That node will distribute the UDF command to other nodes.
 			string command = "udf-remove:filename=" + serverPath;
@@ -1123,7 +1123,7 @@ namespace Aerospike.Client
 		{
 			if (policy == null)
 			{
-				policy = writePolicyDefault;
+				policy = writePolicyDefaultProp;
 			}
 			ExecuteCommand command = new ExecuteCommand(cluster, policy, key, packageName, functionName, args);
 			command.Execute(cluster, policy, false);
@@ -1171,7 +1171,7 @@ namespace Aerospike.Client
 		{
 			if (policy == null)
 			{
-				policy = writePolicyDefault;
+				policy = writePolicyDefaultProp;
 			}
 
 			statement.SetAggregateFunction(packageName, functionName, functionArgs);
@@ -1210,7 +1210,7 @@ namespace Aerospike.Client
 		{
 			if (policy == null)
 			{
-				policy = writePolicyDefault;
+				policy = writePolicyDefaultProp;
 			}
 			statement.Operations = operations;
 			statement.Prepare(false);
@@ -1266,7 +1266,7 @@ namespace Aerospike.Client
 		{
 			if (policy == null)
 			{
-				policy = queryPolicyDefault;
+				policy = queryPolicyDefaultProp;
 			}
 			QueryRecordExecutor executor = new QueryRecordExecutor(cluster, policy, statement);
 			executor.Execute();
@@ -1335,7 +1335,7 @@ namespace Aerospike.Client
 		{
 			if (policy == null)
 			{
-				policy = queryPolicyDefault;
+				policy = queryPolicyDefaultProp;
 			}
 			statement.Prepare(true);
 
@@ -1381,7 +1381,7 @@ namespace Aerospike.Client
 		{
 			if (policy == null)
 			{
-				policy = writePolicyDefault;
+				policy = writePolicyDefaultProp;
 			}
 			StringBuilder sb = new StringBuilder(500);
 			sb.Append("sindex-create:ns=");
@@ -1437,7 +1437,7 @@ namespace Aerospike.Client
 		{
 			if (policy == null)
 			{
-				policy = writePolicyDefault;
+				policy = writePolicyDefaultProp;
 			}
 			StringBuilder sb = new StringBuilder(500);
 			sb.Append("sindex-delete:ns=");

@@ -173,7 +173,7 @@ namespace Aerospike.Client
 		{
 			if (policy == null)
 			{
-				policy = writePolicyDefault;
+				policy = writePolicyDefaultProp;
 			}
 			AsyncWrite async = new AsyncWrite(cluster, policy, listener, key, bins, Operation.Type.WRITE);
 			async.Execute();
@@ -223,7 +223,7 @@ namespace Aerospike.Client
 		{
 			if (policy == null)
 			{
-				policy = writePolicyDefault;
+				policy = writePolicyDefaultProp;
 			}
 			AsyncWrite async = new AsyncWrite(cluster, policy, listener, key, bins, Operation.Type.APPEND);
 			async.Execute();
@@ -269,7 +269,7 @@ namespace Aerospike.Client
 		{
 			if (policy == null)
 			{
-				policy = writePolicyDefault;
+				policy = writePolicyDefaultProp;
 			}
 			AsyncWrite async = new AsyncWrite(cluster, policy, listener, key, bins, Operation.Type.PREPEND);
 			async.Execute();
@@ -319,7 +319,7 @@ namespace Aerospike.Client
 		{
 			if (policy == null)
 			{
-				policy = writePolicyDefault;
+				policy = writePolicyDefaultProp;
 			}
 			AsyncWrite async = new AsyncWrite(cluster, policy, listener, key, bins, Operation.Type.ADD);
 			async.Execute();
@@ -363,7 +363,7 @@ namespace Aerospike.Client
 		{
 			if (policy == null)
 			{
-				policy = writePolicyDefault;
+				policy = writePolicyDefaultProp;
 			}
 			AsyncDelete async = new AsyncDelete(cluster, policy, key, listener);
 			async.Execute();
@@ -403,7 +403,7 @@ namespace Aerospike.Client
 		{
 			if (policy == null)
 			{
-				policy = writePolicyDefault;
+				policy = writePolicyDefaultProp;
 			}
 			AsyncTouch async = new AsyncTouch(cluster, policy, listener, key);
 			async.Execute();
@@ -447,7 +447,7 @@ namespace Aerospike.Client
 		{
 			if (policy == null)
 			{
-				policy = readPolicyDefault;
+				policy = readPolicyDefaultProp;
 			}
 			AsyncExists async = new AsyncExists(cluster, policy, key, listener);
 			async.Execute();
@@ -492,7 +492,7 @@ namespace Aerospike.Client
 			}
 			if (policy == null)
 			{
-				policy = batchPolicyDefault;
+				policy = batchPolicyDefaultProp;
 			}
 			new AsyncBatchExistsArrayExecutor(cluster, policy, keys, listener);
 		}
@@ -518,7 +518,7 @@ namespace Aerospike.Client
 			}
 			if (policy == null)
 			{
-				policy = batchPolicyDefault;
+				policy = batchPolicyDefaultProp;
 			}
 			new AsyncBatchExistsSequenceExecutor(cluster, policy, keys, listener);
 		}
@@ -561,7 +561,7 @@ namespace Aerospike.Client
 		{
 			if (policy == null)
 			{
-				policy = readPolicyDefault;
+				policy = readPolicyDefaultProp;
 			}
 			AsyncRead async = new AsyncRead(cluster, policy, listener, key, null);
 			async.Execute();
@@ -603,7 +603,7 @@ namespace Aerospike.Client
 		{
 			if (policy == null)
 			{
-				policy = readPolicyDefault;
+				policy = readPolicyDefaultProp;
 			}
 			AsyncRead async = new AsyncRead(cluster, policy, listener, key, binNames);
 			async.Execute();
@@ -643,7 +643,7 @@ namespace Aerospike.Client
 		{
 			if (policy == null)
 			{
-				policy = readPolicyDefault;
+				policy = readPolicyDefaultProp;
 			}
 			AsyncReadHeader async = new AsyncReadHeader(cluster, policy, listener, key);
 			async.Execute();
@@ -697,7 +697,7 @@ namespace Aerospike.Client
 			}
 			if (policy == null)
 			{
-				policy = batchPolicyDefault;
+				policy = batchPolicyDefaultProp;
 			}
 			new AsyncBatchReadListExecutor(cluster, policy, listener, records);
 		}
@@ -726,7 +726,7 @@ namespace Aerospike.Client
 			}
 			if (policy == null)
 			{
-				policy = batchPolicyDefault;
+				policy = batchPolicyDefaultProp;
 			}
 			new AsyncBatchReadSequenceExecutor(cluster, policy, listener, records);
 		}
@@ -772,7 +772,7 @@ namespace Aerospike.Client
 			}
 			if (policy == null)
 			{
-				policy = batchPolicyDefault;
+				policy = batchPolicyDefaultProp;
 			}
 			new AsyncBatchGetArrayExecutor(cluster, policy, listener, keys, null, Command.INFO1_READ | Command.INFO1_GET_ALL);
 		}
@@ -799,7 +799,7 @@ namespace Aerospike.Client
 			}
 			if (policy == null)
 			{
-				policy = batchPolicyDefault;
+				policy = batchPolicyDefaultProp;
 			}
 			new AsyncBatchGetSequenceExecutor(cluster, policy, listener, keys, null, Command.INFO1_READ | Command.INFO1_GET_ALL);
 		}
@@ -847,7 +847,7 @@ namespace Aerospike.Client
 			}
 			if (policy == null)
 			{
-				policy = batchPolicyDefault;
+				policy = batchPolicyDefaultProp;
 			}
 			new AsyncBatchGetArrayExecutor(cluster, policy, listener, keys, binNames, Command.INFO1_READ);
 		}
@@ -875,7 +875,7 @@ namespace Aerospike.Client
 			}
 			if (policy == null)
 			{
-				policy = batchPolicyDefault;
+				policy = batchPolicyDefaultProp;
 			}
 			new AsyncBatchGetSequenceExecutor(cluster, policy, listener, keys, binNames, Command.INFO1_READ);
 		}
@@ -921,7 +921,7 @@ namespace Aerospike.Client
 			}
 			if (policy == null)
 			{
-				policy = batchPolicyDefault;
+				policy = batchPolicyDefaultProp;
 			}
 			new AsyncBatchGetArrayExecutor(cluster, policy, listener, keys, null, Command.INFO1_READ | Command.INFO1_NOBINDATA);
 		}
@@ -948,7 +948,7 @@ namespace Aerospike.Client
 			}
 			if (policy == null)
 			{
-				policy = batchPolicyDefault;
+				policy = batchPolicyDefaultProp;
 			}
 			new AsyncBatchGetSequenceExecutor(cluster, policy, listener, keys, null, Command.INFO1_READ | Command.INFO1_NOBINDATA);
 		}
@@ -1006,11 +1006,11 @@ namespace Aerospike.Client
 			{
 				if (args.hasWrite)
 				{
-					policy = writePolicyDefault;
+					policy = writePolicyDefaultProp;
 				}
 				else
 				{
-					policy = operatePolicyReadDefault;
+					policy = operatePolicyReadDefaultProp;
 				}
 			}
 
@@ -1048,7 +1048,7 @@ namespace Aerospike.Client
 		{
 			if (policy == null)
 			{
-				policy = scanPolicyDefault;
+				policy = scanPolicyDefaultProp;
 			}
 
 			new AsyncScanExecutor(cluster, policy, listener, ns, setName, binNames);
@@ -1099,7 +1099,7 @@ namespace Aerospike.Client
 		{
 			if (policy == null)
 			{
-				policy = writePolicyDefault;
+				policy = writePolicyDefaultProp;
 			}
 			AsyncExecute command = new AsyncExecute(cluster, policy, listener, key, packageName, functionName, functionArgs);
 			command.Execute();
@@ -1126,7 +1126,7 @@ namespace Aerospike.Client
 		{
 			if (policy == null)
 			{
-				policy = queryPolicyDefault;
+				policy = queryPolicyDefaultProp;
 			}
 			new AsyncQueryExecutor(cluster, policy, listener, statement);
 		}
