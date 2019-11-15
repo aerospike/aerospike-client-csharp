@@ -49,6 +49,9 @@ namespace Aerospike.Demo
 
 		public void ScanCallback(Key key, Record record)
 		{
+			// Callbacks must ensure thread safety when ScanAll() is used with ScanPolicy
+			// concurrentNodes set to true (default).  In this case, parallel
+			// node threads will be sending data to this callback.
 			int count = Interlocked.Increment(ref recordCount);
 
 			if ((count % 10000) == 0)

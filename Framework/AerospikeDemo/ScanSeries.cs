@@ -78,6 +78,11 @@ namespace Aerospike.Demo
 
 		public void ScanCallback(Key key, Record record)
 		{
+			// It's not strictly necessary to make this callback thread-safe when ScanNode()
+			// is used in series because only one node thread is processing results at any
+			// point in time.  The reason it's thread-safe here is because of a previous
+			// .NET Core bug which incorrectly threw an exception error "Operations that 
+			// change non-concurrent collections must have exclusive access".
 			Metrics metrics;
 
 			if (setMap.TryGetValue(key.setName, out metrics))
