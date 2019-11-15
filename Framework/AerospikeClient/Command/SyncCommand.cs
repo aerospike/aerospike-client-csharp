@@ -80,13 +80,6 @@ namespace Aerospike.Client
 						// Set command buffer.
 						WriteBuffer();
 
-						// Check if timeout needs to be changed in send buffer.
-						if (totalTimeout != policy.totalTimeout)
-						{
-							// Reset timeout in send buffer (destined for server) and socket.
-							ByteUtil.IntToBytes((uint)totalTimeout, dataBuffer, 22);
-						}
-
 						// Send command.
 						conn.Write(dataBuffer, dataOffset);
 						commandSentCounter++;
@@ -235,7 +228,7 @@ namespace Aerospike.Client
 			throw exception;
 		}
 
-		protected internal sealed override void SizeBuffer()
+		protected internal sealed override int SizeBuffer()
 		{
 			dataBuffer = ThreadLocalData.GetBuffer();
 
@@ -244,6 +237,7 @@ namespace Aerospike.Client
 				dataBuffer = ThreadLocalData.ResizeBuffer(dataOffset);
 			}
 			dataOffset = 0;
+			return dataBuffer.Length;
 		}
 
 		protected internal void SizeBuffer(int size)
@@ -259,6 +253,11 @@ namespace Aerospike.Client
 			// Write total size of message.
 			ulong size = ((ulong)dataOffset - 8) | (CL_MSG_VERSION << 56) | (AS_MSG_TYPE << 48);
 			ByteUtil.LongToBytes(size, dataBuffer, 0);
+		}
+
+		protected internal sealed override void SetLength(int length)
+		{
+			dataOffset = length;
 		}
 
 		protected internal virtual bool RetryBatch

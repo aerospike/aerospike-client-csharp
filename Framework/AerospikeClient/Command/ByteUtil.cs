@@ -16,10 +16,10 @@
  */
 using System;
 using System.IO;
-using System.IO.Compression;
 using System.Text;
 using System.Numerics;
 using System.Runtime.Serialization.Formatters.Binary;
+using Ionic.Zlib;
 
 namespace Aerospike.Client
 {
@@ -573,17 +573,25 @@ namespace Aerospike.Client
 		// Compression
 		//-------------------------------------------------------
 
-		public static void Decompress(byte[] srcBuf, int srcOffset, int srcSize, byte[] trgBuf, int trgSize)
+		public static int Compress(byte[] srcBuf, int srcSize, byte[] trgBuf, int trgOffset, int trgSize)
 		{
-			// Skip past metadata flags which DeflateStream does not handle.
-			srcOffset += 2;
-			
+			MemoryStream output = new MemoryStream(trgBuf, trgOffset, trgSize);
+
+			using (ZlibStream zs = new ZlibStream(output, CompressionMode.Compress, true))
+			{
+				zs.Write(srcBuf, 0, srcSize);
+			}
+			return (int)output.Position;
+		}
+
+		public static void Decompress(byte[] srcBuf, int srcOffset, int srcSize, byte[] trgBuf, int trgSize)
+		{			
 			MemoryStream input = new MemoryStream(srcBuf, srcOffset, srcSize - srcOffset);
 			MemoryStream output = new MemoryStream(trgBuf);
 
-			using (DeflateStream ds = new DeflateStream(input, CompressionMode.Decompress))
+			using (ZlibStream zs = new ZlibStream(input, CompressionMode.Decompress))
 			{
-				ds.CopyTo(output);
+				zs.CopyTo(output);
 			}
 
 			if (output.Position != trgSize)

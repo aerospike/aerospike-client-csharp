@@ -168,12 +168,18 @@ namespace Aerospike.Client
 		public bool sendKey;
 
 		/// <summary>
-		/// Tell the server to compress it's response using zlib.
+		/// Use zlib compression on write or batch read commands when the command buffer size is greater
+		/// than 128 bytes.  In addition, tell the server to compress it's response on read commands.
+		/// The server response compression threshold is also 128 bytes.
+		/// <para>
+		/// This option will increase cpu and memory usage (for extra compressed buffers), but
+		/// decrease the size of data sent over the network.
+		/// </para>
 		/// <para>
 		/// Default: false
 		/// </para>
 		/// </summary>
-		public bool compressResponse;
+		public bool compress;
 
 		/// <summary>
 		/// Throw exception if <see cref="predExp"/> is defined and that filter evaluates
@@ -203,7 +209,7 @@ namespace Aerospike.Client
 			this.maxRetries = other.maxRetries;
 			this.sleepBetweenRetries = other.sleepBetweenRetries;
 			this.sendKey = other.sendKey;
-			this.compressResponse = other.compressResponse;
+			this.compress = other.compress;
 			this.failOnFilteredOut = other.failOnFilteredOut;
 		}
 

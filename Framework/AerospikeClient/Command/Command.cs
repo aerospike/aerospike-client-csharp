@@ -63,6 +63,7 @@ namespace Aerospike.Client
 		public const int OPERATION_HEADER_SIZE = 8;
 		public const int MSG_REMAINING_HEADER_SIZE = 22;
 		public const int DIGEST_SIZE = 20;
+		public const int COMPRESS_THRESHOLD = 128;
 		public const ulong CL_MSG_VERSION = 2UL;
 		public const ulong AS_MSG_TYPE = 3UL;
 		public const ulong MSG_TYPE_COMPRESSED = 4UL;
@@ -86,7 +87,9 @@ namespace Aerospike.Client
 			{
 				EstimateOperationSize(bin);
 			}
-			SizeBuffer();
+			
+			bool compress = SizeBuffer(policy);
+
 			WriteHeaderWrite(policy, Command.INFO2_WRITE, fieldCount, bins.Length);
 			WriteKey(policy, key);
 
@@ -99,7 +102,7 @@ namespace Aerospike.Client
 			{
 				WriteOperation(bin, operation);
 			}
-			End();
+			End(compress);
 		}
 
 		public void SetDelete(WritePolicy policy, Key key)
@@ -334,7 +337,8 @@ namespace Aerospike.Client
 				fieldCount++;
 			}
 			dataOffset += args.size;
-			SizeBuffer();
+
+			bool compress = SizeBuffer(policy);
 
 			WriteHeaderReadWrite(policy, args.readAttr, args.writeAttr, fieldCount, operations.Length);
 			WriteKey(policy, key);
@@ -348,7 +352,7 @@ namespace Aerospike.Client
 			{
 				WriteOperation(operation);
 			}
-			End();
+			End(compress);
 		}
 
 		public void SetUdf(WritePolicy policy, Key key, string packageName, string functionName, Value[] args)
@@ -365,7 +369,8 @@ namespace Aerospike.Client
 			byte[] argBytes = Packer.Pack(args);
 			fieldCount += EstimateUdfSize(packageName, functionName, argBytes);
 
-			SizeBuffer();
+			bool compress = SizeBuffer(policy);
+
 			WriteHeaderWrite(policy, Command.INFO2_WRITE, fieldCount, 0);
 			WriteKey(policy, key);
 
@@ -376,7 +381,7 @@ namespace Aerospike.Client
 			WriteField(packageName, FieldType.UDF_PACKAGE_NAME);
 			WriteField(functionName, FieldType.UDF_FUNCTION);
 			WriteField(argBytes, FieldType.UDF_ARGLIST);
-			End();
+			End(compress);
 		}
 
 		public void SetBatchRead(BatchPolicy policy, List<BatchRead> records, BatchNode batch)
@@ -438,7 +443,8 @@ namespace Aerospike.Client
 					prev = record;
 				}
 			}
-			SizeBuffer();
+
+			bool compress = SizeBuffer(policy);
 
 			int readAttr = Command.INFO1_READ;
 
@@ -526,7 +532,7 @@ namespace Aerospike.Client
 
 			// Write real field size.
 			ByteUtil.IntToBytes((uint)(dataOffset - MSG_TOTAL_HEADER_SIZE - 4), dataBuffer, fieldSizeOffset);
-			End();
+			End(compress);
 		}
 
 		public void SetBatchRead(BatchPolicy policy, Key[] keys, BatchNode batch, string[] binNames, int readAttr)
@@ -589,7 +595,7 @@ namespace Aerospike.Client
 				}
 			}
 
-			SizeBuffer();
+			bool compress = SizeBuffer(policy);
 
 			if (policy.readModeAP == ReadModeAP.ALL)
 			{
@@ -655,7 +661,7 @@ namespace Aerospike.Client
 
 			// Write real field size.
 			ByteUtil.IntToBytes((uint)(dataOffset - MSG_TOTAL_HEADER_SIZE - 4), dataBuffer, fieldSizeOffset);
-			End();
+			End(compress);
 		}
 
 		public void SetScan(ScanPolicy policy, string ns, string setName, string[] binNames, ulong taskId)
@@ -1218,7 +1224,7 @@ namespace Aerospike.Client
 				readAttr |= Command.INFO1_READ_MODE_AP_ALL;
 			}
 
-			if (policy.compressResponse)
+			if (policy.compress)
 			{
 				readAttr |= Command.INFO1_COMPRESS_RESPONSE;
 			}
@@ -1266,7 +1272,7 @@ namespace Aerospike.Client
 				readAttr |= Command.INFO1_READ_MODE_AP_ALL;
 			}
 
-			if (policy.compressResponse)
+			if (policy.compress)
 			{
 				readAttr |= Command.INFO1_COMPRESS_RESPONSE;
 			}
@@ -1497,7 +1503,60 @@ namespace Aerospike.Client
 			return new Key(ns, digest, setName, userKey);
 		}
 
-		protected internal abstract void SizeBuffer();
+		private bool SizeBuffer(Policy policy)
+		{
+			if (policy.compress && dataOffset > COMPRESS_THRESHOLD)
+			{
+				// Command will be compressed. First, write uncompressed command
+				// into separate buffer. Save normal buffer for compressed command.
+				// Normal buffer in async mode is from buffer pool that is used to
+				// minimize memory pinning during socket operations.
+				dataBuffer = new byte[dataOffset];
+				dataOffset = 0;
+				return true;
+			}
+			else
+			{
+				// Command will be uncompressed.
+				SizeBuffer();
+				return false;
+			}
+		}
+
+		private void End(bool compress)
+		{
+			if (!compress)
+			{
+				End();
+				return;
+			}
+
+			// Write proto header.
+			ulong size = ((ulong)dataOffset - 8) | (CL_MSG_VERSION << 56) | (AS_MSG_TYPE << 48);
+			ByteUtil.LongToBytes(size, dataBuffer, 0);
+
+			byte[] srcBuf = dataBuffer;
+			int srcSize = dataOffset;
+
+			// Increase requested buffer size in case compressed buffer size is
+			// greater than the uncompressed buffer size.
+			dataOffset += 16 + 100;
+
+			// This method finds dataBuffer of requested size, resets dataOffset to segment offset
+			// and returns dataBuffer max size;
+			int trgBufSize = SizeBuffer();
+
+			// Compress to target starting at new dataOffset plus new header.
+			int trgSize = ByteUtil.Compress(srcBuf, srcSize, dataBuffer, dataOffset + 16, trgBufSize - 16) + 16;
+
+			ulong proto = ((ulong)trgSize - 8) | (CL_MSG_VERSION << 56) | (MSG_TYPE_COMPRESSED << 48);
+			ByteUtil.LongToBytes(proto, dataBuffer, dataOffset);
+			ByteUtil.LongToBytes((ulong)srcSize, dataBuffer, dataOffset + 8);
+			SetLength(trgSize);
+		}
+
+		protected internal abstract int SizeBuffer();
 		protected internal abstract void End();
+		protected internal abstract void SetLength(int length);
 	}
 }

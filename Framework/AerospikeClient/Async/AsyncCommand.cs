@@ -309,7 +309,7 @@ namespace Aerospike.Client
 			Send();
 		}
 
-		protected internal sealed override void SizeBuffer()
+		protected internal sealed override int SizeBuffer()
 		{
 			// dataOffset is currently the estimate, which may be greater than the actual size.
 			dataLength = dataOffset;
@@ -320,6 +320,7 @@ namespace Aerospike.Client
 			}
 			dataBuffer = segment.buffer;
 			dataOffset = segment.offset;
+			return segment.size;
 		}
 
 		private void ResizeBuffer(int size)
@@ -356,6 +357,11 @@ namespace Aerospike.Client
 
 			ulong size = ((ulong)length - 8) | (CL_MSG_VERSION << 56) | (AS_MSG_TYPE << 48);
 			ByteUtil.LongToBytes(size, dataBuffer, segment.offset);
+		}
+
+		protected internal sealed override void SetLength(int length)
+		{
+			dataLength = dataOffset + length;
 		}
 
 		protected internal void EndInfo()
