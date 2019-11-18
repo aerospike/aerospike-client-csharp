@@ -447,7 +447,9 @@ namespace Aerospike.Client
 		/// ExecuteTask instance.
 		/// </summary>
 		/// <param name="policy">configuration parameters, pass in null for defaults</param>
-		/// <param name="statement">record filter</param>
+		/// <param name="statement">
+		/// record filter. Statement instance is not suitable for reuse since it's modified in this method.
+		/// </param>
 		/// <param name="packageName">server package where user defined function resides</param>
 		/// <param name="functionName">function name</param>
 		/// <param name="functionArgs">to pass to function name, if any</param>
@@ -462,7 +464,9 @@ namespace Aerospike.Client
 		/// ExecuteTask instance.
 		/// </summary>
 		/// <param name="policy">write configuration parameters, pass in null for defaults</param>
-		/// <param name="statement">record filter</param>
+		/// <param name="statement">
+		/// record filter. Statement instance is not suitable for reuse since it's modified in this method.
+		/// </param>
 		/// <param name="operations">list of operations to be performed on selected records</param>
 		/// <exception cref="AerospikeException">if command fails</exception>
 		ExecuteTask Execute(WritePolicy policy, Statement statement, params Operation[] operations);
@@ -471,7 +475,9 @@ namespace Aerospike.Client
 		/// Execute query and call action for each record returned from server.
 		/// </summary>
 		/// <param name="policy">generic configuration parameters, pass in null for defaults</param>
-		/// <param name="statement">database query command</param>
+		/// <param name="statement">
+		/// query filter. Statement instance is not suitable for reuse since it's modified in this method.
+		/// </param>
 		/// <param name="action">action methods to be called for each record</param>
 		/// <exception cref="AerospikeException">if query fails</exception>
 		void Query(QueryPolicy policy, Statement statement, Action<Key, Record> action);
@@ -482,7 +488,9 @@ namespace Aerospike.Client
 		/// record iterator.
 		/// </summary>
 		/// <param name="policy">generic configuration parameters, pass in null for defaults</param>
-		/// <param name="statement">database query command</param>
+		/// <param name="statement">
+		/// query filter. Statement instance is not suitable for reuse since it's modified in this method.
+		/// </param>
 		/// <exception cref="AerospikeException">if query fails</exception>
 		RecordSet Query(QueryPolicy policy, Statement statement);
 
@@ -500,7 +508,9 @@ namespace Aerospike.Client
 		/// </para>
 		/// </summary>
 		/// <param name="policy">generic configuration parameters, pass in null for defaults</param>
-		/// <param name="statement">database query command</param>
+		/// <param name="statement">
+		/// query filter. Statement instance is not suitable for reuse since it's modified in this method.
+		/// </param>
 		/// <param name="packageName">server package where user defined function resides</param>
 		/// <param name="functionName">aggregation function name</param>
 		/// <param name="functionArgs">arguments to pass to function name, if any</param>
@@ -512,7 +522,10 @@ namespace Aerospike.Client
 		/// object returned from server. 
 		/// </summary>
 		/// <param name="policy">generic configuration parameters, pass in null for defaults</param>
-		/// <param name="statement">database query command with aggregate functions already initialized by SetAggregateFunction()</param>
+		/// <param name="statement">
+		/// query filter with aggregate functions already initialized by SetAggregateFunction().
+		/// Statement instance is not suitable for reuse since it's modified in this method.
+		/// </param>
 		/// <param name="action">action methods to be called for each aggregation object</param>
 		/// <exception cref="AerospikeException">if query fails</exception>
 		void QueryAggregate(QueryPolicy policy, Statement statement, Action<Object> action);
@@ -529,7 +542,10 @@ namespace Aerospike.Client
 		/// </para>
 		/// </summary>
 		/// <param name="policy">generic configuration parameters, pass in null for defaults</param>
-		/// <param name="statement">database query command with aggregate functions already initialized by SetAggregateFunction()</param>
+		/// <param name="statement">
+		/// query filter with aggregate functions already initialized by SetAggregateFunction().
+		/// Statement instance is not suitable for reuse since it's modified in this method.
+		/// </param>
 		/// <exception cref="AerospikeException">if query fails</exception>
 		ResultSet QueryAggregate(QueryPolicy policy, Statement statement);
 #endif
