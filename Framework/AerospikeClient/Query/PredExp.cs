@@ -179,10 +179,10 @@ namespace Aerospike.Client
 		/// <pre>
 		/// // Record expires on 2020-01-01
 		/// PredExp.RecVoidTime()
-		/// PredExp.IntegerValue(new DateTime(2020, 0, 1))
+		/// PredExp.IntegerValue(new DateTime(2020, 1, 1))
 		/// PredExp.IntegerGreaterEq()
 		/// PredExp.RecVoidTime()
-		/// PredExp.IntegerValue(new DateTime(2020, 0, 2))
+		/// PredExp.IntegerValue(new DateTime(2020, 1, 2))
 		/// PredExp.IntegerLess()
 		/// PredExp.And(2)
 		/// </pre>

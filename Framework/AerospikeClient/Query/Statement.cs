@@ -187,7 +187,7 @@ namespace Aerospike.Client
 		/// // Record last update time > 2017-01-15
 		/// stmt.SetPredExp(
 		///   PredExp.RecLastUpdate(),
-		///   PredExp.IntegerValue(new DateTime(2017, 0, 15)),
+		///   PredExp.IntegerValue(new DateTime(2017, 1, 15)),
 		///   PredExp.IntegerGreater()
 		/// ); 
 		/// </pre>
