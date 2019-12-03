@@ -61,6 +61,7 @@
     <Compile Include="..\..\Framework\AerospikeTest\Sync\Basic\TestServerInfo.cs" Link="Sync\TestServerInfo.cs" />
     <Compile Include="..\..\Framework\AerospikeTest\Sync\Basic\TestTouch.cs" Link="Sync\TestTouch.cs" />
     <Compile Include="..\..\Framework\AerospikeTest\Sync\Basic\TestUDF.cs" Link="Sync\TestUDF.cs" />
+    <Compile Include="..\..\Framework\AerospikeTest\Sync\Query\TestIndex.cs" Link="Sync\TestIndex.cs" />
     <Compile Include="..\..\Framework\AerospikeTest\Sync\Query\TestQueryCollection.cs" Link="Sync\TestQueryCollection.cs" />
     <Compile Include="..\..\Framework\AerospikeTest\Sync\Query\TestQueryExecute.cs" Link="Sync\TestQueryExecute.cs" />
     <Compile Include="..\..\Framework\AerospikeTest\Sync\Query\TestQueryInteger.cs" Link="Sync\TestQueryInteger.cs" />

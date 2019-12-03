@@ -91,6 +91,7 @@
     <Compile Include="Sync\Basic\TestAdd.cs" />
     <Compile Include="Sync\Basic\TestBatch.cs" />
     <Compile Include="Sync\Basic\TestAppend.cs" />
+    <Compile Include="Sync\Query\TestIndex.cs" />
     <Compile Include="Sync\Query\TestQueryPredExp.cs" />
     <Compile Include="Sync\Query\TestQuerySum.cs" />
     <Compile Include="Sync\Query\TestQueryString.cs" />

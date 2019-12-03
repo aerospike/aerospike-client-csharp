@@ -1448,7 +1448,7 @@ namespace Aerospike.Client
 		/// <param name="ns">namespace - equivalent to database name</param>
 		/// <param name="setName">optional set name - equivalent to database table</param>
 		/// <param name="indexName">name of secondary index</param>
-		/// <exception cref="AerospikeException">if index create fails</exception>
+		/// <exception cref="AerospikeException">if index drop fails</exception>
 		public IndexTask DropIndex(Policy policy, string ns, string setName, string indexName)
 		{
 			if (policy == null)

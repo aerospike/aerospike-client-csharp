@@ -265,6 +265,10 @@ namespace Aerospike.Client
 					{
 						this.features |= Node.HAS_BIT_OP;
 					}
+					else if (feature.Equals("sindex-exists"))
+					{
+						this.features |= Node.HAS_INDEX_EXISTS;
+					}
 				}
 			}
 			catch (Exception)
