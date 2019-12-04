@@ -47,6 +47,7 @@ namespace Aerospike.Client
 		{
 			// Read header.		
 			conn.ReadFully(dataBuffer, MSG_TOTAL_HEADER_SIZE);
+			conn.UpdateLastUsed();
 
 			int resultCode = dataBuffer[13];
 

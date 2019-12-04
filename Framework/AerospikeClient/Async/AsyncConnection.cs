@@ -92,7 +92,7 @@ namespace Aerospike.Client
 			
 			// Poll is much more accurate because sockets reaped by the server or sockets
 			// that have unread data are identified. The problem is Poll decreases overall
-			// benchmark performance by 10%.  Therefore, we will have to relay on retry 
+			// benchmark performance by 10%.  Therefore, we will have to rely on retry 
 			// mechanism to handle invalid sockets instead.
 			//
 			// Return true if socket is connected and has no data in it's buffer.

@@ -482,6 +482,7 @@ namespace Aerospike.Client
 			{
 				conn.Write(dataBuffer, dataOffset);
 				conn.ReadFully(dataBuffer, HEADER_SIZE);
+				conn.UpdateLastUsed();
 				node.PutConnection(conn);
 			}
 			catch (Exception)
@@ -543,6 +544,7 @@ namespace Aerospike.Client
 						dataBuffer = ThreadLocalData.ResizeBuffer(receiveSize);
 					}
 					conn.ReadFully(dataBuffer, receiveSize);
+					conn.UpdateLastUsed();
 					status = ParseBlock(receiveSize);
 				}
 			}

@@ -125,6 +125,7 @@ namespace Aerospike.Client
 
 				// Read remaining message bytes in group.
 				conn.ReadFully(buf, size);
+				conn.UpdateLastUsed();
 
 				ulong type = (ulong)((proto >> 48) & 0xff);
 

@@ -694,8 +694,6 @@ namespace Aerospike.Client
 		/// <param name="conn">socket connection</param>
 		public void PutConnection(Connection conn)
 		{
-			conn.UpdateLastUsed();
-
 			if (active)
 			{
 				conn.pool.Enqueue(conn);

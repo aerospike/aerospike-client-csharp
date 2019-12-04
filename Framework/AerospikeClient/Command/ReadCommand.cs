@@ -70,6 +70,7 @@ namespace Aerospike.Client
 
 			SizeBuffer(receiveSize);
 			conn.ReadFully(dataBuffer, receiveSize);
+			conn.UpdateLastUsed();
 
 			ulong type = (ulong)((sz >> 48) & 0xff);
 

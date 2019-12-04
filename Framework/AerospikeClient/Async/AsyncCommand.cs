@@ -503,6 +503,8 @@ namespace Aerospike.Client
 					return;
 				}
 
+				conn.UpdateLastUsed();
+
 				if (compressed)
 				{
 					int usize = (int)ByteUtil.BytesToLong(dataBuffer, dataOffset);
@@ -654,7 +656,6 @@ namespace Aerospike.Client
 			{
 				// Command finished successfully.
 				// Put connection back into pool.
-				conn.UpdateLastUsed();
 				node.PutAsyncConnection(conn);
 
 				// Do not put large buffers back into pool.
@@ -706,7 +707,6 @@ namespace Aerospike.Client
 				if (ae.KeepConnection())
 				{
 					// Put connection back in pool.
-					conn.UpdateLastUsed();
 					node.PutAsyncConnection(conn);
 				}
 				else

@@ -596,6 +596,7 @@ namespace Aerospike.Client
 				length = (int)(size & 0xFFFFFFFFFFFFL);
 				ResizeBuffer(length);
 				conn.ReadFully(buffer, length);
+				conn.UpdateLastUsed();
 				offset = 0;
 			}
 			catch (SocketException se)
