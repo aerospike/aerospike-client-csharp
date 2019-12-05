@@ -6,9 +6,9 @@
     <title>Official Aerospike C# Client</title>
     <authors>Aerospike</authors>
     <owners>Aerospike</owners>
-	<license type="expression">Apache-2.0</license>
+    <license type="expression">Apache-2.0</license>
     <projectUrl>http://www.aerospike.com/download/client/csharp</projectUrl>
-    <iconUrl>http://wordpress-www.s3-us-west-1.amazonaws.com/wp-content/uploads/2015/03/bryan-as.png</iconUrl>
+    <icon>icon.png</icon>
     <requireLicenseAcceptance>false</requireLicenseAcceptance>
     <description>Aerospike C# Client Library</description>
     <copyright>Copyright 2012-2019 Aerospike, Inc.</copyright>
@@ -32,5 +32,6 @@
   <files>
     <file src="Framework\AerospikeClient\bin\Release\AerospikeClient.dll" target="lib\net" />
     <file src="Core\AerospikeClient\bin\Release\netstandard2.0\AerospikeClient.dll" target="lib\netstandard" />
+    <file src="icon.png" target="" />
   </files>
 </package>
