@@ -2,7 +2,7 @@
 <package>
   <metadata>
     <id>Aerospike.Client</id>
-    <version>3.9.1</version>
+    <version>3.9.2</version>
     <title>Official Aerospike C# Client</title>
     <authors>Aerospike</authors>
     <owners>Aerospike</owners>

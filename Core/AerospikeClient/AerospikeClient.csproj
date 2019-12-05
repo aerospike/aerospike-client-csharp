@@ -10,7 +10,7 @@
     <GenerateAssemblyCompanyAttribute>false</GenerateAssemblyCompanyAttribute>
     <GenerateAssemblyProductAttribute>false</GenerateAssemblyProductAttribute>
     <Authors>Aerospike</Authors>
-    <Version>3.9.1</Version>
+    <Version>3.9.2</Version>
     <ApplicationIcon />
     <OutputType>Library</OutputType>
     <StartupObject />
