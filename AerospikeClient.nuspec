@@ -13,24 +13,19 @@
     <description>Aerospike C# Client Library</description>
     <copyright>Copyright 2012-2019 Aerospike, Inc.</copyright>
     <tags>Aerospike database C# client</tags>
-    <frameworkAssemblies>
-      <frameworkAssembly assemblyName="System" targetFramework="net" />
-      <frameworkAssembly assemblyName="System.Core" targetFramework="net" />
-      <frameworkAssembly assemblyName="System.Numerics" targetFramework="net" />
-    </frameworkAssemblies>
     <dependencies>
-      <group targetFramework="net">
+      <group targetFramework="net452">
         <dependency id="NeoLua" version="[0.9.14]" />
         <dependency id="Zlib.Portable.Signed" version="[1.11.0, )" />
       </group>
-      <group targetFramework="netstandard2.0">
+      <group targetFramework="netstandard">
         <dependency id="NETStandard.Library" version="[2.0.0, )" />
         <dependency id="Iconic.Zlib.Netstandard" version="[1.0.0, )" />
       </group>
     </dependencies>
   </metadata>
   <files>
-    <file src="Framework\AerospikeClient\bin\Release\AerospikeClient.dll" target="lib\net" />
+    <file src="Framework\AerospikeClient\bin\Release\AerospikeClient.dll" target="lib\net452" />
     <file src="Core\AerospikeClient\bin\Release\netstandard2.0\AerospikeClient.dll" target="lib\netstandard" />
     <file src="icon.png" target="" />
   </files>
