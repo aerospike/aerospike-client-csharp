@@ -26,7 +26,9 @@ namespace Aerospike.Client
 	/// </summary>
 	public sealed class AsyncConnection
 	{
-		private readonly static bool ZeroBuffers = Environment.OSVersion.Platform != PlatformID.MacOSX;
+		private readonly static bool ZeroBuffers = !(
+			Environment.OSVersion.Platform == PlatformID.Unix ||
+			Environment.OSVersion.Platform == PlatformID.MacOSX);
 
 		private readonly Socket socket;
 		private readonly AsyncNode node;
