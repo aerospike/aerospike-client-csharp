@@ -44,6 +44,7 @@ namespace Aerospike.Test
 		public AuthMode authMode;
 		public bool hasBit;
 		public bool singleBin;
+		public bool enterprise;
 
 		public Args()
 		{
@@ -156,7 +157,12 @@ namespace Aerospike.Test
 			Node node = client.Nodes[0];
 			hasBit = node.HasBitOperations;
 			string namespaceFilter = "namespace/" + ns;
-			string namespaceTokens = Info.Request(null, node, namespaceFilter);
+			Dictionary<string, string> map = Info.Request(null, node, "edition", namespaceFilter);
+
+			string edition = map["edition"];
+			enterprise = edition.Equals("Aerospike Enterprise Edition");
+
+			string namespaceTokens = map[namespaceFilter];
 
 			if (namespaceTokens == null)
 			{

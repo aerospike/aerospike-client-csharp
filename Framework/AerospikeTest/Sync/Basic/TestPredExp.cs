@@ -175,6 +175,11 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void PredExpDurableDelete()
 		{
+			if (!args.enterprise)
+			{
+				return;
+			}
+
 			predAEq1WPolicy.durableDelete = true;
 
 			client.Delete(predAEq1WPolicy, keyA);
@@ -191,6 +196,11 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void PredExpDurableDeleteExcept()
 		{
+			if (!args.enterprise)
+			{
+				return;
+			}
+
 			predAEq1WPolicy.failOnFilteredOut = true;
 			predAEq1WPolicy.durableDelete = true;
 
