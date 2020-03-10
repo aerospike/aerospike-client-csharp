@@ -95,7 +95,7 @@ namespace Aerospike.Client
 						break;
 				}
 				dataOffset += ByteUtil.EstimateSizeUtf8(operation.binName) + Command.OPERATION_HEADER_SIZE;
-				dataOffset += operation.value.EstimateSize();
+				dataOffset += operation.value.EstimateSizeVariable();
 			}
 			size = dataOffset;
 			hasWrite = write;

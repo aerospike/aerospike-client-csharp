@@ -1123,13 +1123,13 @@ namespace Aerospike.Client
 		private void EstimateOperationSize(Bin bin)
 		{
 			dataOffset += ByteUtil.EstimateSizeUtf8(bin.name) + OPERATION_HEADER_SIZE;
-			dataOffset += bin.value.EstimateSize();
+			dataOffset += bin.value.EstimateSizeVariable();
 		}
 
 		private void EstimateOperationSize(Operation operation)
 		{
 			dataOffset += ByteUtil.EstimateSizeUtf8(operation.binName) + OPERATION_HEADER_SIZE;
-			dataOffset += operation.value.EstimateSize();
+			dataOffset += operation.value.EstimateSizeVariable();
 		}
 
 		private void EstimateOperationSize(string binName)
@@ -1424,7 +1424,7 @@ namespace Aerospike.Client
 		private void WriteOperation(Bin bin, Operation.Type operationType)
 		{
 			int nameLength = ByteUtil.StringToUtf8(bin.name, dataBuffer, dataOffset + OPERATION_HEADER_SIZE);
-			int valueLength = bin.value.Write(dataBuffer, dataOffset + OPERATION_HEADER_SIZE + nameLength);
+			int valueLength = bin.value.WriteVariable(dataBuffer, dataOffset + OPERATION_HEADER_SIZE + nameLength);
 
 			ByteUtil.IntToBytes((uint)(nameLength + valueLength + 4), dataBuffer, dataOffset);
 			dataOffset += 4;
@@ -1438,7 +1438,7 @@ namespace Aerospike.Client
 		private void WriteOperation(Operation operation)
 		{
 			int nameLength = ByteUtil.StringToUtf8(operation.binName, dataBuffer, dataOffset + OPERATION_HEADER_SIZE);
-			int valueLength = operation.value.Write(dataBuffer, dataOffset + OPERATION_HEADER_SIZE + nameLength);
+			int valueLength = operation.value.WriteVariable(dataBuffer, dataOffset + OPERATION_HEADER_SIZE + nameLength);
 
 			ByteUtil.IntToBytes((uint)(nameLength + valueLength + 4), dataBuffer, dataOffset);
 			dataOffset += 4;

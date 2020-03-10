@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2019 Aerospike, Inc.
+ * Copyright 2012-2020 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -352,14 +352,30 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
-		/// Calculate number of bytes necessary to serialize the value in the wire protocol.
+		/// Calculate number of bytes necessary to serialize the fixed value in the wire protocol.
 		/// </summary>
 		public abstract int EstimateSize();
 
 		/// <summary>
-		/// Serialize the value in the wire protocol.
+		/// Calculate number of bytes necessary to serialize the variable sized value in the wire protocol.
+		/// </summary>
+		public virtual int EstimateSizeVariable()
+		{
+			return EstimateSize();
+		}
+
+		/// <summary>
+		/// Serialize the fixed value in the wire protocol.
 		/// </summary>
 		public abstract int Write(byte[] buffer, int offset);
+
+		/// <summary>
+		/// Serialize the variable value in the wire protocol.
+		/// </summary>
+		public virtual int WriteVariable(byte[] buffer, int offset)
+		{
+			return Write(buffer, offset);
+		}
 
 		/// <summary>
 		/// Serialize the value using MessagePack.
@@ -1066,9 +1082,20 @@ namespace Aerospike.Client
 				return 8;
 			}
 
+			public override int EstimateSizeVariable()
+			{
+				// Optimize integer size when allowed.
+				return 4;
+			}
+
 			public override int Write(byte[] buffer, int offset)
 			{
 				return ByteUtil.LongToBytes((ulong)value, buffer, offset);
+			}
+
+			public override int WriteVariable(byte[] buffer, int offset)
+			{
+				return ByteUtil.IntToBytes((uint)value, buffer, offset);
 			}
 
 			public override void Pack(Packer packer)
@@ -1147,9 +1174,20 @@ namespace Aerospike.Client
 				return 8;
 			}
 
+			public override int EstimateSizeVariable()
+			{
+				// Optimize integer size when allowed.
+				return 4;
+			}
+
 			public override int Write(byte[] buffer, int offset)
 			{
 				return ByteUtil.LongToBytes(value, buffer, offset);
+			}
+
+			public override int WriteVariable(byte[] buffer, int offset)
+			{
+				return ByteUtil.IntToBytes(value, buffer, offset);
 			}
 
 			public override void Pack(Packer packer)
@@ -1228,9 +1266,20 @@ namespace Aerospike.Client
 				return 8;
 			}
 
+			public override int EstimateSizeVariable()
+			{
+				// Optimize integer size when allowed.
+				return 2;
+			}
+
 			public override int Write(byte[] buffer, int offset)
 			{
 				return ByteUtil.LongToBytes((ulong)value, buffer, offset);
+			}
+
+			public override int WriteVariable(byte[] buffer, int offset)
+			{
+				return ByteUtil.ShortToBytes((ushort)value, buffer, offset);
 			}
 
 			public override void Pack(Packer packer)
@@ -1309,9 +1358,20 @@ namespace Aerospike.Client
 				return 8;
 			}
 
+			public override int EstimateSizeVariable()
+			{
+				// Optimize integer size when allowed.
+				return 2;
+			}
+
 			public override int Write(byte[] buffer, int offset)
 			{
 				return ByteUtil.LongToBytes(value, buffer, offset);
+			}
+
+			public override int WriteVariable(byte[] buffer, int offset)
+			{
+				return ByteUtil.ShortToBytes(value, buffer, offset);
 			}
 
 			public override void Pack(Packer packer)
@@ -1387,10 +1447,21 @@ namespace Aerospike.Client
 
 			public override int EstimateSize()
 			{
+				return 8;
+			}
+
+			public override int EstimateSizeVariable()
+			{
+				// Optimize size when allowed.
 				return 1;
 			}
 
 			public override int Write(byte[] buffer, int offset)
+			{
+				return ByteUtil.LongToBytes(value? (ulong)1 : (ulong)0, buffer, offset);
+			}
+
+			public override int WriteVariable(byte[] buffer, int offset)
 			{
 				buffer[offset] = (value)? (byte)1 : (byte)0;
 				return 1;
@@ -1469,10 +1540,21 @@ namespace Aerospike.Client
 
 			public override int EstimateSize()
 			{
+				return 8;
+			}
+
+			public override int EstimateSizeVariable()
+			{
+				// Optimize size when allowed.
 				return 1;
 			}
 
 			public override int Write(byte[] buffer, int offset)
+			{
+				return ByteUtil.LongToBytes((ulong)value, buffer, offset);
+			}
+
+			public override int WriteVariable(byte[] buffer, int offset)
 			{
 				buffer[offset] = value;
 				return 1;
@@ -1551,10 +1633,21 @@ namespace Aerospike.Client
 
 			public override int EstimateSize()
 			{
+				return 8;
+			}
+
+			public override int EstimateSizeVariable()
+			{
+				// Optimize size when allowed.
 				return 1;
 			}
 
 			public override int Write(byte[] buffer, int offset)
+			{
+				return ByteUtil.LongToBytes((ulong)value, buffer, offset);
+			}
+
+			public override int WriteVariable(byte[] buffer, int offset)
 			{
 				buffer[offset] = (byte)value;
 				return 1;
