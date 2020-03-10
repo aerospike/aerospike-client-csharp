@@ -24,9 +24,6 @@ namespace Aerospike.Client
 	{
 		protected readonly Cluster cluster;
 		protected readonly Policy policy;
-		readonly int maxRetries;
-		internal int socketTimeout;
-		internal int totalTimeout;
 		internal int iteration = 1;
 		internal int commandSentCounter;
 		internal DateTime deadline;
@@ -35,12 +32,10 @@ namespace Aerospike.Client
 		/// Default constructor.
 		/// </summary>
 		public SyncCommand(Cluster cluster, Policy policy)
+			: base(policy.socketTimeout, policy.totalTimeout, policy.maxRetries)
 		{
 			this.cluster = cluster;
 			this.policy = policy;
-			this.maxRetries = policy.maxRetries;
-			this.socketTimeout = policy.socketTimeout;
-			this.totalTimeout = policy.totalTimeout;
 			this.deadline = DateTime.MinValue;
 		}
 
@@ -48,12 +43,10 @@ namespace Aerospike.Client
 		/// Scan/Query constructor.
 		/// </summary>
 		public SyncCommand(Cluster cluster, Policy policy, int socketTimeout, int totalTimeout)
+			: base(socketTimeout, totalTimeout, 0)
 		{
 			this.cluster = cluster;
 			this.policy = policy;
-			this.maxRetries = 0;
-			this.socketTimeout = socketTimeout;
-			this.totalTimeout = totalTimeout;
 			this.deadline = DateTime.MinValue;
 		}
 
@@ -62,11 +55,6 @@ namespace Aerospike.Client
 			if (totalTimeout > 0)
 			{
 				deadline = DateTime.UtcNow.AddMilliseconds(totalTimeout);
-
-				if (socketTimeout == 0 || socketTimeout > totalTimeout)
-				{
-					socketTimeout = totalTimeout;
-				}
 			}
 			ExecuteCommand();
 		}

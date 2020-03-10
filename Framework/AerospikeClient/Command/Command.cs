@@ -69,8 +69,29 @@ namespace Aerospike.Client
 		public const ulong AS_MSG_TYPE = 3UL;
 		public const ulong MSG_TYPE_COMPRESSED = 4UL;
 
-		protected internal byte[] dataBuffer;
-		protected internal int dataOffset;
+		internal byte[] dataBuffer;
+		internal int dataOffset;
+		internal readonly int maxRetries;
+		internal readonly int serverTimeout;
+		internal int socketTimeout;
+		internal int totalTimeout;
+
+		public Command(int socketTimeout, int totalTimeout, int maxRetries)
+		{
+			this.maxRetries = maxRetries;
+			this.totalTimeout = totalTimeout;
+
+			if (totalTimeout > 0)
+			{
+				this.socketTimeout = (socketTimeout < totalTimeout && socketTimeout > 0) ? socketTimeout : totalTimeout;
+				this.serverTimeout = this.socketTimeout;
+			}
+			else
+			{
+				this.socketTimeout = socketTimeout;
+				this.serverTimeout = 0;
+			}
+		}
 
 		public void SetWrite(WritePolicy policy, Operation.Type operation, Key key, Bin[] bins)
 		{
@@ -186,7 +207,7 @@ namespace Aerospike.Client
 				fieldCount++;
 			}
 			SizeBuffer();
-			WriteHeaderRead(policy, Command.INFO1_READ | Command.INFO1_GET_ALL, fieldCount, 0);
+			WriteHeaderRead(policy, serverTimeout, Command.INFO1_READ | Command.INFO1_GET_ALL, fieldCount, 0);
 			WriteKey(policy, key);
 
 			if (policy.predExp != null)
@@ -215,7 +236,7 @@ namespace Aerospike.Client
 					EstimateOperationSize(binName);
 				}
 				SizeBuffer();
-				WriteHeaderRead(policy, Command.INFO1_READ, fieldCount, binNames.Length);
+				WriteHeaderRead(policy, serverTimeout, Command.INFO1_READ, fieldCount, binNames.Length);
 				WriteKey(policy, key);
 
 				if (policy.predExp != null)
@@ -386,7 +407,7 @@ namespace Aerospike.Client
 				readAttr |= Command.INFO1_READ_MODE_AP_ALL;
 			}
 
-			WriteHeaderRead(policy, readAttr | Command.INFO1_BATCH, fieldCount, 0);
+			WriteHeaderRead(policy, totalTimeout, readAttr | Command.INFO1_BATCH, fieldCount, 0);
 
 			if (policy.predExp != null)
 			{
@@ -535,7 +556,7 @@ namespace Aerospike.Client
 				readAttr |= Command.INFO1_READ_MODE_AP_ALL;
 			}
 
-			WriteHeaderRead(policy, readAttr | Command.INFO1_BATCH, fieldCount, 0);
+			WriteHeaderRead(policy, totalTimeout, readAttr | Command.INFO1_BATCH, fieldCount, 0);
 
 			if (policy.predExp != null)
 			{
@@ -685,7 +706,7 @@ namespace Aerospike.Client
 			}
 
 			int operationCount = (binNames == null) ? 0 : binNames.Length;
-			WriteHeaderRead(policy, readAttr, fieldCount, operationCount);
+			WriteHeaderRead(policy, totalTimeout, readAttr, fieldCount, operationCount);
 
 			if (ns != null)
 			{
@@ -924,7 +945,7 @@ namespace Aerospike.Client
 			{
 				QueryPolicy qp = (QueryPolicy)policy;
 				int readAttr = qp.includeBinData ? Command.INFO1_READ : Command.INFO1_READ | Command.INFO1_NOBINDATA;
-				WriteHeaderRead(policy, readAttr, fieldCount, operationCount);
+				WriteHeaderRead(policy, totalTimeout, readAttr, fieldCount, operationCount);
 			}
 
 			if (statement.ns != null)
@@ -1183,7 +1204,7 @@ namespace Aerospike.Client
 			dataBuffer[dataOffset++] = 0; // clear the result code
 			dataOffset += ByteUtil.IntToBytes((uint)generation, dataBuffer, dataOffset);
 			dataOffset += ByteUtil.IntToBytes((uint)policy.expiration, dataBuffer, dataOffset);
-			dataOffset += ByteUtil.IntToBytes((uint)policy.totalTimeout, dataBuffer, dataOffset);
+			dataOffset += ByteUtil.IntToBytes((uint)serverTimeout, dataBuffer, dataOffset);
 			dataOffset += ByteUtil.ShortToBytes((ushort)fieldCount, dataBuffer, dataOffset);
 			dataOffset += ByteUtil.ShortToBytes((ushort)operationCount, dataBuffer, dataOffset);
 		}
@@ -1275,7 +1296,7 @@ namespace Aerospike.Client
 			dataBuffer[dataOffset++] = 0; // clear the result code
 			dataOffset += ByteUtil.IntToBytes((uint)generation, dataBuffer, dataOffset);
 			dataOffset += ByteUtil.IntToBytes((uint)policy.expiration, dataBuffer, dataOffset);
-			dataOffset += ByteUtil.IntToBytes((uint)policy.totalTimeout, dataBuffer, dataOffset);
+			dataOffset += ByteUtil.IntToBytes((uint)serverTimeout, dataBuffer, dataOffset);
 			dataOffset += ByteUtil.ShortToBytes((ushort)fieldCount, dataBuffer, dataOffset);
 			dataOffset += ByteUtil.ShortToBytes((ushort)operationCount, dataBuffer, dataOffset);
 		}
@@ -1283,7 +1304,7 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Header write for read commands.
 		/// </summary>
-		private void WriteHeaderRead(Policy policy, int readAttr, int fieldCount, int operationCount)
+		private void WriteHeaderRead(Policy policy, int timeout, int readAttr, int fieldCount, int operationCount)
 		{
 			int infoAttr = 0;
 
@@ -1324,7 +1345,7 @@ namespace Aerospike.Client
 			{
 				dataBuffer[dataOffset++] = 0;
 			}
-			dataOffset += ByteUtil.IntToBytes((uint)policy.totalTimeout, dataBuffer, dataOffset);
+			dataOffset += ByteUtil.IntToBytes((uint)timeout, dataBuffer, dataOffset);
 			dataOffset += ByteUtil.ShortToBytes((ushort)fieldCount, dataBuffer, dataOffset);
 			dataOffset += ByteUtil.ShortToBytes((ushort)operationCount, dataBuffer, dataOffset);
 		}
@@ -1368,7 +1389,7 @@ namespace Aerospike.Client
 			{
 				dataBuffer[dataOffset++] = 0;
 			}
-			dataOffset += ByteUtil.IntToBytes((uint)policy.totalTimeout, dataBuffer, dataOffset);
+			dataOffset += ByteUtil.IntToBytes((uint)serverTimeout, dataBuffer, dataOffset);
 			dataOffset += ByteUtil.ShortToBytes((ushort)fieldCount, dataBuffer, dataOffset);
 			dataOffset += ByteUtil.ShortToBytes((ushort)operationCount, dataBuffer, dataOffset);
 		}

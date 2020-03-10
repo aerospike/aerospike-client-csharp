@@ -47,9 +47,6 @@ namespace Aerospike.Client
 		private BufferSegment segmentOrig;
 		private BufferSegment segment;
 		private Stopwatch watch;
-		private readonly int maxRetries;
-		private readonly int socketTimeout;
-		private readonly int totalTimeout;
 		protected internal int dataLength;
 		private int iteration;
 		private int state;
@@ -64,27 +61,27 @@ namespace Aerospike.Client
 		/// Default Constructor.
 		/// </summary>
 		public AsyncCommand(AsyncCluster cluster, Policy policy)
+			: base(policy.socketTimeout, policy.totalTimeout, policy.maxRetries)
 		{
 			this.cluster = cluster;
 			this.policy = policy;
-			this.maxRetries = policy.maxRetries;
-			this.socketTimeout = policy.socketTimeout;
-			this.totalTimeout = policy.totalTimeout;
 		}
 
 		/// <summary>
 		/// Scan/Query Constructor.
 		/// </summary>
 		public AsyncCommand(AsyncCluster cluster, Policy policy, int socketTimeout, int totalTimeout)
+			: base(socketTimeout, totalTimeout, 0)
 		{
 			this.cluster = cluster;
 			this.policy = policy;
-			this.maxRetries = 0;
-			this.socketTimeout = socketTimeout;
-			this.totalTimeout = totalTimeout;
 		}
 
+		/// <summary>
+		/// Clone constructor.
+		/// </summary>
 		public AsyncCommand(AsyncCommand other)
+			: base(other.socketTimeout, other.totalTimeout, other.maxRetries)
 		{
 			// Retry constructor.
 			this.cluster = other.cluster;
@@ -95,9 +92,6 @@ namespace Aerospike.Client
 			this.segmentOrig = other.segmentOrig;
 			this.segment = other.segment;
 			this.watch = other.watch;
-			this.maxRetries = other.maxRetries;
-			this.socketTimeout = other.socketTimeout;
-			this.totalTimeout = other.totalTimeout;
 			this.iteration = other.iteration;
 			this.commandSentCounter = other.commandSentCounter;
 			this.usingSocketTimeout = other.usingSocketTimeout;
