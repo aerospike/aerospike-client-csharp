@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2019 Aerospike, Inc.
+ * Copyright 2012-2020 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -23,12 +23,7 @@ namespace Aerospike.Client
 	{
 		public static List<BatchNode> GenerateList(Cluster cluster, BatchPolicy policy, Key[] keys)
 		{
-			Node[] nodes = cluster.Nodes;
-
-			if (nodes.Length == 0)
-			{
-				throw new AerospikeException(ResultCode.SERVER_NOT_AVAILABLE, "Command failed because cluster is empty.");
-			}
+			Node[] nodes = cluster.ValidateNodes();
 
 			// Create initial key capacity for each node as average + 25%.
 			int keysPerNode = keys.Length / nodes.Length;
@@ -73,12 +68,7 @@ namespace Aerospike.Client
 			BatchNode batchSeed
 		)
 		{
-			Node[] nodes = cluster.Nodes;
-
-			if (nodes.Length == 0)
-			{
-				throw new AerospikeException(ResultCode.SERVER_NOT_AVAILABLE, "Command failed because cluster is empty.");
-			}
+			Node[] nodes = cluster.ValidateNodes();
 
 			// Create initial key capacity for each node as average + 25%.
 			int keysPerNode = batchSeed.offsetsSize / nodes.Length;
@@ -117,12 +107,7 @@ namespace Aerospike.Client
 		
 		public static List<BatchNode> GenerateList(Cluster cluster, BatchPolicy policy, List<BatchRead> records)
 		{
-			Node[] nodes = cluster.Nodes;
-
-			if (nodes.Length == 0)
-			{
-				throw new AerospikeException(ResultCode.SERVER_NOT_AVAILABLE, "Command failed because cluster is empty.");
-			}
+			Node[] nodes = cluster.ValidateNodes();
 
 			// Create initial key capacity for each node as average + 25%.
 			int max = records.Count;
@@ -168,12 +153,7 @@ namespace Aerospike.Client
 			BatchNode batchSeed
 		)
 		{
-			Node[] nodes = cluster.Nodes;
-
-			if (nodes.Length == 0)
-			{
-				throw new AerospikeException(ResultCode.SERVER_NOT_AVAILABLE, "Command failed because cluster is empty.");
-			}
+			Node[] nodes = cluster.ValidateNodes();
 
 			// Create initial key capacity for each node as average + 25%.
 			int keysPerNode = batchSeed.offsetsSize / nodes.Length;

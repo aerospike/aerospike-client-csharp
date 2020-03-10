@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2019 Aerospike, Inc.
+ * Copyright 2012-2020 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -18,19 +18,22 @@ namespace Aerospike.Client
 {
 	public sealed class ServerCommand : MultiCommand
 	{
-		private readonly WritePolicy writePolicy;
 		private readonly Statement statement;
 
-		public ServerCommand(Node node, WritePolicy policy, Statement statement) 
-			: base(node, true)
+		public ServerCommand(Cluster cluster, Node node, WritePolicy policy, Statement statement) 
+			: base(cluster, policy, node, true)
 		{
-			this.writePolicy = policy;
 			this.statement = statement;
 		}
 
+		protected internal override bool IsWrite()
+		{
+			return true;
+		}
+		
 		protected internal override void WriteBuffer()
 		{
-			SetQuery(writePolicy, statement, true);
+			SetQuery(policy, statement, true, null);
 		}
 
 		protected internal override void ParseRow(Key key)

@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2019 Aerospike, Inc.
+ * Copyright 2012-2020 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -39,6 +39,7 @@ namespace Aerospike.Client
 
 		public static readonly int INFO3_LAST              = (1 << 0); // This is the last of a multi-part message.
 		public static readonly int INFO3_COMMIT_MASTER     = (1 << 1); // Commit to master only before declaring success.
+		public static readonly int INFO3_PARTITION_DONE    = (1 << 2); // Partition is complete response in scan.
 		public static readonly int INFO3_UPDATE_ONLY       = (1 << 3); // Update only. Merge bins.
 		public static readonly int INFO3_CREATE_OR_REPLACE = (1 << 4); // Create or completely replace record.
 		public static readonly int INFO3_REPLACE_ONLY      = (1 << 5); // Completely replace existing record only.
@@ -257,75 +258,7 @@ namespace Aerospike.Client
 			End();
 		}
 
-		public void EstimateOperate(Operation[] operations, OperateArgs args)
-		{
-			bool readBin = false;
-			bool readHeader = false;
-			bool respondAllOps = false;
-
-			foreach (Operation operation in operations)
-			{
-				switch (operation.type)
-				{
-					case Operation.Type.BIT_READ:
-					case Operation.Type.MAP_READ:
-						// Map operations require respondAllOps to be true.
-						respondAllOps = true;
-						args.readAttr |= Command.INFO1_READ;
-
-						// Read all bins if no bin is specified.
-						if (operation.binName == null)
-						{
-							args.readAttr |= Command.INFO1_GET_ALL;
-						}
-						readBin = true;
-						break;
-
-					case Operation.Type.CDT_READ:
-					case Operation.Type.READ:
-						args.readAttr |= Command.INFO1_READ;
-
-						// Read all bins if no bin is specified.
-						if (operation.binName == null)
-						{
-							args.readAttr |= Command.INFO1_GET_ALL;
-						}
-						readBin = true;
-						break;
-
-					case Operation.Type.READ_HEADER:
-						args.readAttr |= Command.INFO1_READ;
-						readHeader = true;
-						break;
-
-					case Operation.Type.BIT_MODIFY:
-					case Operation.Type.MAP_MODIFY:
-						// Map operations require respondAllOps to be true.
-						respondAllOps = true;
-						args.writeAttr = Command.INFO2_WRITE;
-						break;
-
-					default:
-						args.writeAttr = Command.INFO2_WRITE;
-						args.hasWrite = true;
-						break;
-				}
-				EstimateOperationSize(operation);
-			}
-			args.size = dataOffset;
-
-			if (readHeader && !readBin)
-			{
-				args.readAttr |= Command.INFO1_NOBINDATA;
-			}
-
-			if (respondAllOps)
-			{
-				args.writeAttr |= Command.INFO2_RESPOND_ALL_OPS;
-			}
-		}
-
-		public void SetOperate(WritePolicy policy, Key key, Operation[] operations, OperateArgs args)
+		public void SetOperate(WritePolicy policy, Key key, OperateArgs args)
 		{
 			Begin();
 			int fieldCount = EstimateKeySize(policy, key);
@@ -340,7 +273,7 @@ namespace Aerospike.Client
 
 			bool compress = SizeBuffer(policy);
 
-			WriteHeaderReadWrite(policy, args.readAttr, args.writeAttr, fieldCount, operations.Length);
+			WriteHeaderReadWrite(policy, args.readAttr, args.writeAttr, fieldCount, args.operations.Length);
 			WriteKey(policy, key);
 
 			if (policy.predExp != null)
@@ -348,7 +281,7 @@ namespace Aerospike.Client
 				WritePredExp(policy.predExp, predSize);
 			}
 
-			foreach (Operation operation in operations)
+			foreach (Operation operation in args.operations)
 			{
 				WriteOperation(operation);
 			}
@@ -664,10 +597,26 @@ namespace Aerospike.Client
 			End(compress);
 		}
 
-		public void SetScan(ScanPolicy policy, string ns, string setName, string[] binNames, ulong taskId)
+		public void SetScan
+		(
+			ScanPolicy policy,
+			string ns,
+			string setName,
+			string[] binNames,
+			ulong taskId,
+			NodePartitions nodePartitions
+		)
 		{
 			Begin();
 			int fieldCount = 0;
+			int partsFullSize = 0;
+			int partsPartialSize = 0;
+
+			if (nodePartitions != null)
+			{
+				partsFullSize = nodePartitions.partsFull.Count * 2;
+				partsPartialSize = nodePartitions.partsPartial.Count * 20;
+			}
 
 			if (ns != null)
 			{
@@ -678,6 +627,18 @@ namespace Aerospike.Client
 			if (setName != null)
 			{
 				dataOffset += ByteUtil.EstimateSizeUtf8(setName) + FIELD_HEADER_SIZE;
+				fieldCount++;
+			}
+
+			if (partsFullSize > 0)
+			{
+				dataOffset += partsFullSize + FIELD_HEADER_SIZE;
+				fieldCount++;
+			}
+
+			if (partsPartialSize > 0)
+			{
+				dataOffset += partsPartialSize + FIELD_HEADER_SIZE;
 				fieldCount++;
 			}
 
@@ -736,6 +697,27 @@ namespace Aerospike.Client
 				WriteField(setName, FieldType.TABLE);
 			}
 
+			if (partsFullSize > 0)
+			{
+				WriteFieldHeader(partsFullSize, FieldType.PID_ARRAY);
+
+				foreach (PartitionStatus part in nodePartitions.partsFull)
+				{
+					ByteUtil.ShortToLittleBytes((ushort)part.id, dataBuffer, dataOffset);
+					dataOffset += 2;
+				}
+			}
+
+			if (partsPartialSize > 0)
+			{
+				WriteFieldHeader(partsPartialSize, FieldType.DIGEST_ARRAY);
+
+				foreach (PartitionStatus part in nodePartitions.partsPartial) {
+					Array.Copy(part.digest, 0, dataBuffer, dataOffset, 20); 
+					dataOffset += 20;
+				}
+			}
+
 			if (policy.recordsPerSecond > 0)
 			{
 				WriteField(policy.recordsPerSecond, FieldType.RECORDS_PER_SECOND);
@@ -747,14 +729,20 @@ namespace Aerospike.Client
 			}
 
 			WriteFieldHeader(2, FieldType.SCAN_OPTIONS);
-			byte priority = (byte)policy.priority;
-			priority <<= 4;
 
-			if (policy.failOnClusterChange)
+			byte priority = 0;
+
+			// Only set priority/failOnClusterChange for server versions < 4.9.
+			if (nodePartitions == null)
 			{
-				priority |= 0x08;
+				priority = (byte)policy.priority;
+				priority <<= 4;
+
+				if (policy.failOnClusterChange)
+				{
+					priority |= 0x08;
+				}
 			}
-			
 			dataBuffer[dataOffset++] = priority;
 			dataBuffer[dataOffset++] = (byte)policy.scanPercent;
 
@@ -774,12 +762,14 @@ namespace Aerospike.Client
 			End();
 		}
 
-		protected internal void SetQuery(Policy policy, Statement statement, bool write)
+		protected internal void SetQuery(Policy policy, Statement statement, bool write, NodePartitions nodePartitions)
 		{
 			byte[] functionArgBuffer = null;
 			int fieldCount = 0;
 			int filterSize = 0;
 			int binNameSize = 0;
+			int partsFullSize = 0;
+			int partsPartialSize = 0;
 
 			Begin();
 
@@ -838,6 +828,24 @@ namespace Aerospike.Client
 			else
 			{
 				// Calling query with no filters is more efficiently handled by a primary index scan. 
+				if (nodePartitions != null)
+				{
+					partsFullSize = nodePartitions.partsFull.Count * 2;
+					partsPartialSize = nodePartitions.partsPartial.Count * 20;
+				}
+
+				if (partsFullSize > 0)
+				{
+					dataOffset += partsFullSize + FIELD_HEADER_SIZE;
+					fieldCount++;
+				}
+
+				if (partsPartialSize > 0)
+				{
+					dataOffset += partsPartialSize + FIELD_HEADER_SIZE;
+					fieldCount++;
+				}
+
 				// Estimate scan options size.
 				dataOffset += 2 + FIELD_HEADER_SIZE;
 				fieldCount++;
@@ -968,15 +976,42 @@ namespace Aerospike.Client
 			else
 			{
 				// Calling query with no filters is more efficiently handled by a primary index scan. 
-				WriteFieldHeader(2, FieldType.SCAN_OPTIONS);
-				byte priority = (byte)policy.priority;
-				priority <<= 4;
-
-				if (!write && ((QueryPolicy)policy).failOnClusterChange)
+				if (partsFullSize > 0)
 				{
-					priority |= 0x08;
+					WriteFieldHeader(partsFullSize, FieldType.PID_ARRAY);
+
+					foreach (PartitionStatus part in nodePartitions.partsFull)
+					{
+						ByteUtil.ShortToLittleBytes((ushort)part.id, dataBuffer, dataOffset);
+						dataOffset += 2;
+					}
 				}
 
+				if (partsPartialSize > 0)
+				{
+					WriteFieldHeader(partsPartialSize, FieldType.DIGEST_ARRAY);
+
+					foreach (PartitionStatus part in nodePartitions.partsPartial)
+					{
+						Array.Copy(part.digest, 0, dataBuffer, dataOffset, 20);
+						dataOffset += 20;
+					}
+				}
+
+				WriteFieldHeader(2, FieldType.SCAN_OPTIONS);
+				byte priority = 0;
+
+				// Only set priority/failOnClusterChange for server versions < 4.9.
+				if (nodePartitions == null)
+				{
+					priority = (byte)policy.priority;
+					priority <<= 4;
+
+					if (!write && ((QueryPolicy)policy).failOnClusterChange)
+					{
+						priority |= 0x08;
+					}
+				}
 				dataBuffer[dataOffset++] = priority;
 				dataBuffer[dataOffset++] = (byte)100;
 

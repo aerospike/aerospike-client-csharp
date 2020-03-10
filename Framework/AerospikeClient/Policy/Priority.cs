@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2020 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -18,6 +18,7 @@ namespace Aerospike.Client
 {
 	/// <summary>
 	/// Priority of operations on database server.
+	/// This enum is obsolete and will eventually be removed.
 	/// </summary>
 	public enum Priority
 	{

@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2019 Aerospike, Inc.
+ * Copyright 2012-2020 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -24,7 +24,7 @@ namespace Aerospike.Client
 		private bool exists;
 
 		public AsyncExists(AsyncCluster cluster, Policy policy, Key key, ExistsListener listener) 
-			: base(cluster, policy, true)
+			: base(cluster, policy)
 		{
 			this.listener = listener;
 			this.key = key;

@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2019 Aerospike, Inc.
+ * Copyright 2012-2020 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -30,6 +30,7 @@ namespace Aerospike.Client
 		private readonly Node node;
 		protected internal readonly String ns;
 		private readonly ulong clusterKey;
+		protected internal int info3;
 		protected internal int resultCode;
 		protected internal int generation;
 		protected internal int expiration;
@@ -40,7 +41,11 @@ namespace Aerospike.Client
 		private readonly bool first;
 		protected internal volatile bool valid = true;
 
-		protected internal MultiCommand(Node node, bool stopOnNotFound)
+		/// <summary>
+		/// Batch and server execute constructor.
+		/// </summary>
+		protected internal MultiCommand(Cluster cluster, Policy policy, Node node, bool stopOnNotFound)
+			: base(cluster, policy)
 		{
 			this.node = node;
 			this.stopOnNotFound = stopOnNotFound;
@@ -49,7 +54,24 @@ namespace Aerospike.Client
 			this.first = false;
 		}
 
-		protected internal MultiCommand(Node node, String ns, ulong clusterKey, bool first)
+		/// <summary>
+		/// Partition scan/query constructor.
+		/// </summary>
+		protected internal MultiCommand(Cluster cluster, Policy policy, Node node, String ns, int socketTimeout, int totalTimeout)
+			: base(cluster, policy, socketTimeout, totalTimeout)
+		{
+			this.node = node;
+			this.stopOnNotFound = true;
+			this.ns = ns;
+			this.clusterKey = 0;
+			this.first = false;
+		}
+
+		/// <summary>
+		/// Legacy scan/query constructor.
+		/// </summary>
+		protected internal MultiCommand(Cluster cluster, Policy policy, Node node, String ns, ulong clusterKey, bool first)
+			: base(cluster, policy, policy.socketTimeout, policy.totalTimeout)
 		{
 			this.node = node;
 			this.stopOnNotFound = true;
@@ -58,7 +80,7 @@ namespace Aerospike.Client
 			this.first = first;
 		}
 
-		public void Execute(Cluster cluster, Policy policy)
+		public void ExecuteAndValidate()
 		{
 			if (clusterKey != 0)
 			{
@@ -66,16 +88,16 @@ namespace Aerospike.Client
 				{
 					QueryValidate.Validate(node, ns, clusterKey);
 				}
-				base.Execute(cluster, policy, true);
+				base.Execute();
 				QueryValidate.Validate(node, ns, clusterKey);
 			}
 			else
 			{
-				base.Execute(cluster, policy, true);
+				base.Execute();
 			}
 		}
 
-		protected internal override Node GetNode(Cluster cluster)
+		protected internal override Node GetNode()
 		{
 			return node;
 		}
@@ -171,7 +193,10 @@ namespace Aerospike.Client
 		{
 			while (dataOffset < receiveSize)
 			{
-				resultCode = dataBuffer[dataOffset + 5];
+				dataOffset += 3;
+				info3 = dataBuffer[dataOffset];
+				dataOffset += 2;
+				resultCode = dataBuffer[dataOffset];
 
 				// The only valid server return codes are "ok" and "not found".
 				// If other return codes are received, then abort the batch.
@@ -191,18 +216,22 @@ namespace Aerospike.Client
 				}
 
 				// If this is the end marker of the response, do not proceed further
-				if ((dataBuffer[dataOffset + 3] & Command.INFO3_LAST) != 0)
+				if ((info3 & Command.INFO3_LAST) != 0)
 				{
 					return false;
 				}
 
-				generation = ByteUtil.BytesToInt(dataBuffer, dataOffset + 6);
-				expiration = ByteUtil.BytesToInt(dataBuffer, dataOffset + 10);
-				batchIndex = ByteUtil.BytesToInt(dataBuffer, dataOffset + 14);
-				fieldCount = ByteUtil.BytesToShort(dataBuffer, dataOffset + 18);
-				opCount = ByteUtil.BytesToShort(dataBuffer, dataOffset + 20);
-
-				dataOffset += Command.MSG_REMAINING_HEADER_SIZE;
+				dataOffset++;
+				generation = ByteUtil.BytesToInt(dataBuffer, dataOffset);
+				dataOffset += 4;
+				expiration = ByteUtil.BytesToInt(dataBuffer, dataOffset);
+				dataOffset += 4;
+				batchIndex = ByteUtil.BytesToInt(dataBuffer, dataOffset);
+				dataOffset += 4;
+				fieldCount = ByteUtil.BytesToShort(dataBuffer, dataOffset);
+				dataOffset += 2;
+				opCount = ByteUtil.BytesToShort(dataBuffer, dataOffset);
+				dataOffset += 2;
 
 				Key key = ParseKey(fieldCount);
 				ParseRow(key);

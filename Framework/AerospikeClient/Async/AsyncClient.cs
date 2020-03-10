@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2019 Aerospike, Inc.
+ * Copyright 2012-2020 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -563,7 +563,7 @@ namespace Aerospike.Client
 			{
 				policy = readPolicyDefault;
 			}
-			AsyncRead async = new AsyncRead(cluster, policy, listener, key, null);
+			AsyncRead async = new AsyncRead(cluster, policy, listener, key, (string[])null);
 			async.Execute();
 		}
 
@@ -998,27 +998,8 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if queue is full</exception>
 		public void Operate(WritePolicy policy, RecordListener listener, Key key, params Operation[] operations)
 		{
-			OperateArgs args = new OperateArgs();
-			AsyncOperate async = new AsyncOperate(cluster, listener, key, operations);
-			async.EstimateOperate(operations, args);
-
-			if (policy == null)
-			{
-				if (args.hasWrite)
-				{
-					policy = writePolicyDefault;
-				}
-				else
-				{
-					policy = operatePolicyReadDefault;
-				}
-			}
-
-			if (policy.respondAllOps)
-			{
-				args.writeAttr |= Command.INFO2_RESPOND_ALL_OPS;
-			}
-			async.SetArgs(cluster, policy, args);
+			OperateArgs args = new OperateArgs(cluster, policy, writePolicyDefault, operatePolicyReadDefault, key, operations);
+			AsyncOperate async = new AsyncOperate(cluster, listener, key, args);
 			async.Execute();
 		}
 
@@ -1039,10 +1020,7 @@ namespace Aerospike.Client
 		/// <param name="listener">where to send results, pass in null for fire and forget</param>
 		/// <param name="ns">namespace - equivalent to database name</param>
 		/// <param name="setName">optional set name - equivalent to database table</param>
-		/// <param name="binNames">
-		/// optional bin to retrieve. All bins will be returned if not specified.
-		/// Aerospike 2 servers ignore this parameter.
-		/// </param>
+		/// <param name="binNames">optional bin to retrieve. All bins will be returned if not specified.</param>
 		/// <exception cref="AerospikeException">if queue is full</exception>
 		public void ScanAll(ScanPolicy policy, RecordSequenceListener listener, string ns, string setName, params string[] binNames)
 		{
@@ -1051,9 +1029,55 @@ namespace Aerospike.Client
 				policy = scanPolicyDefault;
 			}
 
-			new AsyncScanExecutor(cluster, policy, listener, ns, setName, binNames);
+			Node[] nodes = cluster.ValidateNodes();
+
+			if (cluster.hasPartitionScan)
+			{
+				PartitionTracker tracker = new PartitionTracker(policy, nodes);
+				new AsyncScanPartitionExecutor(cluster, policy, listener, ns, setName, binNames, tracker);
+			}
+			else
+			{
+				new AsyncScanExecutor(cluster, policy, listener, ns, setName, binNames, nodes);
+			}
 		}
 
+		/// <summary>
+		/// Asynchronously read records in specified namespace, set and partition filter.
+		/// If the policy's concurrentNodes is specified, each server node will be read in
+		/// parallel.  Otherwise, server nodes are read in series.
+		/// <para>
+		/// This method schedules the scan command with a channel selector and returns.
+		/// Another thread will process the command and send the results to the listener.
+		/// </para>
+		/// </summary>
+		/// <param name="policy">scan configuration parameters, pass in null for defaults</param>
+		/// <param name="listener">where to send results</param>
+		/// <param name="partitionFilter">filter on a subset of data partitions</param>
+		/// <param name="ns">namespace - equivalent to database name</param>
+		/// <param name="setName">optional set name - equivalent to database table</param>
+		/// <param name="binNames">optional bin to retrieve. All bins will be returned if not specified.</param>
+		/// <exception cref="AerospikeException">if queue is full</exception>
+		public void ScanPartitions(ScanPolicy policy, RecordSequenceListener listener, PartitionFilter partitionFilter, string ns, string setName, params string[] binNames)
+		{
+			if (policy == null)
+			{
+				policy = scanPolicyDefault;
+			}
+
+			Node[] nodes = cluster.ValidateNodes();
+
+			if (cluster.hasPartitionScan)
+			{
+				PartitionTracker tracker = new PartitionTracker(policy, nodes, partitionFilter);
+				new AsyncScanPartitionExecutor(cluster, policy, listener, ns, setName, binNames, tracker);
+			}
+			else
+			{
+				throw new AerospikeException(ResultCode.PARAMETER_ERROR, "ScanPartitions() not supported");
+			}
+		}
+	
 		//---------------------------------------------------------------
 		// User defined functions
 		//---------------------------------------------------------------
@@ -1128,7 +1152,59 @@ namespace Aerospike.Client
 			{
 				policy = queryPolicyDefault;
 			}
-			new AsyncQueryExecutor(cluster, policy, listener, statement);
+
+			Node[] nodes = cluster.ValidateNodes();
+
+			// A scan will be performed if the secondary index filter is null.
+			// Check if scan and partition scan is supported.
+			if (statement.filter == null && cluster.hasPartitionScan)
+			{
+				PartitionTracker tracker = new PartitionTracker(policy, nodes);
+				new AsyncQueryPartitionExecutor(cluster, policy, listener, statement, tracker);
+			}
+			else
+			{
+				new AsyncQueryExecutor(cluster, policy, listener, statement, nodes);
+			}
+		}
+
+		/// <summary>
+		/// Asynchronously execute query for specified partitions. The query policy's 
+		/// <code>maxConcurrentNodes</code> dictate how many nodes can be queried in parallel.
+		/// The default is to query all nodes in parallel.
+		/// <para>
+		/// This method schedules the node's query commands with channel selectors and returns.
+		/// Selector threads will process the commands and send the results to the listener.
+		/// </para>
+		/// <para>
+		/// Each record result is returned in separate OnRecord() calls. 
+		/// </para>
+		/// </summary>
+		/// <param name="policy">query configuration parameters, pass in null for defaults</param>
+		/// <param name="listener">where to send results</param>
+		/// <param name="statement">database query command parameters</param>
+		/// <param name="partitionFilter">filter on a subset of data partitions</param>
+		/// <exception cref="AerospikeException">if query fails</exception>
+		public void QueryPartitions(QueryPolicy policy, RecordSequenceListener listener, Statement statement, PartitionFilter partitionFilter)
+		{
+			if (policy == null)
+			{
+				policy = queryPolicyDefault;
+			}
+
+			Node[] nodes = cluster.ValidateNodes();
+
+			// A scan will be performed if the secondary index filter is null.
+			// Check if scan and partition scan is supported.
+			if (statement.filter == null && cluster.hasPartitionScan)
+			{
+				PartitionTracker tracker = new PartitionTracker(policy, nodes, partitionFilter);
+				new AsyncQueryPartitionExecutor(cluster, policy, listener, statement, tracker);
+			}
+			else
+			{
+				throw new AerospikeException(ResultCode.PARAMETER_ERROR, "QueryPartitions() not supported");
+			}
 		}
 	}
 }

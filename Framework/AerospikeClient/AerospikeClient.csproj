@@ -208,6 +208,10 @@
     <Compile Include="Async\BufferPool.cs" />
     <Compile Include="Async\AsyncInfo.cs" />
     <Compile Include="Async\AsyncQueryValidate.cs" />
+    <Compile Include="Async\AsyncScanPartition.cs" />
+    <Compile Include="Async\AsyncScanPartitionExecutor.cs" />
+    <Compile Include="Async\AsyncQueryPartition.cs" />
+    <Compile Include="Async\AsyncQueryPartitionExecutor.cs" />
     <Compile Include="Async\IAsyncClient.cs" />
     <Compile Include="Async\MaxCommandAction.cs" />
     <Compile Include="BCrypt\BCrypt.cs" />
@@ -244,6 +248,8 @@
     <Compile Include="Command\BatchNode.cs" />
     <Compile Include="Command\ByteUtil.cs" />
     <Compile Include="Command\Command.cs" />
+    <Compile Include="Command\ScanExecutor.cs" />
+    <Compile Include="Command\ScanPartitionCommand.cs" />
     <Compile Include="Command\DeleteCommand.cs" />
     <Compile Include="Command\ExecuteCommand.cs" />
     <Compile Include="Command\Executor.cs" />
@@ -326,6 +332,11 @@
       <DesignTime>True</DesignTime>
       <DependentUpon>Resources.resx</DependentUpon>
     </Compile>
+    <Compile Include="Query\QueryPartitionExecutor.cs" />
+    <Compile Include="Query\QueryPartitionCommand.cs" />
+    <Compile Include="Query\IQueryExecutor.cs" />
+    <Compile Include="Query\PartitionTracker.cs" />
+    <Compile Include="Query\PartitionFilter.cs" />
     <Compile Include="Query\IRecordSet.cs" />
     <Compile Include="Query\IResultSet.cs" />
     <Compile Include="Query\QueryValidate.cs" />

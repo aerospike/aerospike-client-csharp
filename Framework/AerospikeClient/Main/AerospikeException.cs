@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2019 Aerospike, Inc.
+ * Copyright 2012-2020 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -204,9 +204,9 @@ namespace Aerospike.Client
 		/// even though this exception was generated.  This may be the case when a 
 		/// client error occurs (like timeout) after the command was sent to the server.
 		/// </summary>
-		internal void SetInDoubt(bool isRead, int commandSentCounter)
+		internal void SetInDoubt(bool isWrite, int commandSentCounter)
 		{
-			if (!isRead && (commandSentCounter > 1 || (commandSentCounter == 1 && (resultCode == ResultCode.TIMEOUT || resultCode <= 0))))
+			if (isWrite && (commandSentCounter > 1 || (commandSentCounter == 1 && (resultCode == ResultCode.TIMEOUT || resultCode <= 0))))
 			{
 				this.inDoubt = true;
 			}
@@ -252,6 +252,19 @@ namespace Aerospike.Client
 				this.socketTimeout = policy.socketTimeout;
 				this.totalTimeout = policy.totalTimeout;
 				this.client = client;
+			}
+
+			/// <summary>
+			/// Create timeout exception with policy and iteration.
+			/// </summary>
+			public Timeout(Policy policy, int iteration)
+				: base(ResultCode.TIMEOUT)
+			{
+				base.node = node;
+				base.iteration = iteration;
+				this.socketTimeout = policy.socketTimeout;
+				this.totalTimeout = policy.totalTimeout;
+				this.client = true;
 			}
 
 			/// <summary>
@@ -373,6 +386,14 @@ namespace Aerospike.Client
 			public InvalidNode(int clusterSize, Partition partition)
 				: base(ResultCode.INVALID_NODE_ERROR,
 					(clusterSize == 0) ? "Cluster is empty" : "Node not found for partition " + partition)
+			{
+			}
+
+			/// <summary>
+			/// Create invalid node exception from partition id.
+			/// </summary>
+			public InvalidNode(int partitionId)
+				: base(ResultCode.INVALID_NODE_ERROR, "Node not found for partition " + partitionId)
 			{
 			}
 

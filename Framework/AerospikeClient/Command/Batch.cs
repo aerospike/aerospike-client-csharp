@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2019 Aerospike, Inc.
+ * Copyright 2012-2020 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -28,15 +28,21 @@ namespace Aerospike.Client
 	{
 		private readonly List<BatchRead> records;
 
-		public BatchReadListCommand(Executor parent, BatchNode batch, BatchPolicy policy, List<BatchRead> records)
-			: base(parent, batch, policy)
+		public BatchReadListCommand
+		(
+			Cluster cluster,
+			Executor parent,
+			BatchNode batch,
+			BatchPolicy policy,
+			List<BatchRead> records
+		) : base(cluster, parent, batch, policy)
 		{
 			this.records = records;
 		}
 
 		protected internal override void WriteBuffer()
 		{
-			SetBatchRead(policy, records, batch);
+			SetBatchRead(batchPolicy, records, batch);
 		}
 
 		protected internal override void ParseRow(Key key)
@@ -50,12 +56,12 @@ namespace Aerospike.Client
 
 		protected internal override BatchCommand CreateCommand(BatchNode batchNode)
 		{
-			return new BatchReadListCommand(parent, batchNode, policy, records);
+			return new BatchReadListCommand(cluster, parent, batchNode, batchPolicy, records);
 		}
 
-		protected internal override List<BatchNode> GenerateBatchNodes(Cluster cluster)
+		protected internal override List<BatchNode> GenerateBatchNodes()
 		{
-			return BatchNode.GenerateList(cluster, policy, records, sequenceAP, sequenceSC, batch);
+			return BatchNode.GenerateList(cluster, batchPolicy, records, sequenceAP, sequenceSC, batch);
 		}
 	}
 
@@ -72,6 +78,7 @@ namespace Aerospike.Client
 
 		public BatchGetArrayCommand
 		(
+			Cluster cluster,
 			Executor parent,
 			BatchNode batch,
 			BatchPolicy policy,
@@ -79,7 +86,7 @@ namespace Aerospike.Client
 			string[] binNames,
 			Record[] records,
 			int readAttr
-		) : base(parent, batch, policy)
+		) : base(cluster, parent, batch, policy)
 		{
 			this.keys = keys;
 			this.binNames = binNames;
@@ -89,7 +96,7 @@ namespace Aerospike.Client
 
 		protected internal override void WriteBuffer()
 		{
-			SetBatchRead(policy, keys, batch, binNames, readAttr);
+			SetBatchRead(batchPolicy, keys, batch, binNames, readAttr);
 		}
 
 		protected internal override void ParseRow(Key key)
@@ -102,12 +109,12 @@ namespace Aerospike.Client
 
 		protected internal override BatchCommand CreateCommand(BatchNode batchNode)
 		{
-			return new BatchGetArrayCommand(parent, batchNode, policy, keys, binNames, records, readAttr);
+			return new BatchGetArrayCommand(cluster, parent, batchNode, batchPolicy, keys, binNames, records, readAttr);
 		}
 
-		protected internal override List<BatchNode> GenerateBatchNodes(Cluster cluster)
+		protected internal override List<BatchNode> GenerateBatchNodes()
 		{
-			return BatchNode.GenerateList(cluster, policy, keys, sequenceAP, sequenceSC, batch);
+			return BatchNode.GenerateList(cluster, batchPolicy, keys, sequenceAP, sequenceSC, batch);
 		}
 	}
 
@@ -122,12 +129,13 @@ namespace Aerospike.Client
 
 		public BatchExistsArrayCommand
 		(
+			Cluster cluster,
 			Executor parent,
 			BatchNode batch,
 			BatchPolicy policy,
 			Key[] keys,
 			bool[] existsArray
-		) : base(parent, batch, policy)
+		) : base(cluster, parent, batch, policy)
 		{
 			this.keys = keys;
 			this.existsArray = existsArray;
@@ -135,7 +143,7 @@ namespace Aerospike.Client
 
 		protected internal override void WriteBuffer()
 		{
-			SetBatchRead(policy, keys, batch, null, Command.INFO1_READ | Command.INFO1_NOBINDATA);
+			SetBatchRead(batchPolicy, keys, batch, null, Command.INFO1_READ | Command.INFO1_NOBINDATA);
 		}
 
 		protected internal override void ParseRow(Key key)
@@ -150,12 +158,12 @@ namespace Aerospike.Client
 
 		protected internal override BatchCommand CreateCommand(BatchNode batchNode)
 		{
-			return new BatchExistsArrayCommand(parent, batchNode, policy, keys, existsArray);
+			return new BatchExistsArrayCommand(cluster, parent, batchNode, batchPolicy, keys, existsArray);
 		}
 
-		protected internal override List<BatchNode> GenerateBatchNodes(Cluster cluster)
+		protected internal override List<BatchNode> GenerateBatchNodes()
 		{
-			return BatchNode.GenerateList(cluster, policy, keys, sequenceAP, sequenceSC, batch);
+			return BatchNode.GenerateList(cluster, batchPolicy, keys, sequenceAP, sequenceSC, batch);
 		}
 	}
 
@@ -167,21 +175,21 @@ namespace Aerospike.Client
 	{
 		internal readonly Executor parent;
 		internal readonly BatchNode batch;
-		internal readonly BatchPolicy policy;
+		internal readonly BatchPolicy batchPolicy;
 		internal uint sequenceAP;
 		internal uint sequenceSC;
 
-		public BatchCommand(Executor parent, BatchNode batch, BatchPolicy policy)
-			: base(batch.node, false)
+		public BatchCommand(Cluster cluster, Executor parent, BatchNode batch, BatchPolicy batchPolicy)
+			: base(cluster, batchPolicy, batch.node, false)
 		{
 			this.parent = parent;
 			this.batch = batch;
-			this.policy = policy;
+			this.batchPolicy = batchPolicy;
 		}
 
 		protected internal override bool PrepareRetry(bool timeout)
 		{
-			if (!((policy.replica == Replica.SEQUENCE || policy.replica == Replica.PREFER_RACK) &&
+			if (!((batchPolicy.replica == Replica.SEQUENCE || batchPolicy.replica == Replica.PREFER_RACK) &&
 				  (parent == null || !parent.IsDone())))
 			{
 				// Perform regular retry to same node.
@@ -189,7 +197,7 @@ namespace Aerospike.Client
 			}
 			sequenceAP++;
 
-			if (!timeout || policy.readModeSC != ReadModeSC.LINEARIZE)
+			if (!timeout || batchPolicy.readModeSC != ReadModeSC.LINEARIZE)
 			{
 				sequenceSC++;
 			}
@@ -208,7 +216,7 @@ namespace Aerospike.Client
 		{
 			// Retry requires keys for this node to be split among other nodes.
 			// This is both recursive and exponential.
-			List<BatchNode> batchNodes = GenerateBatchNodes(cluster);
+			List<BatchNode> batchNodes = GenerateBatchNodes();
 
 			if (batchNodes.Count == 1 && batchNodes[0].node == batch.node)
 			{
@@ -222,12 +230,17 @@ namespace Aerospike.Client
 				BatchCommand command = CreateCommand(batchNode);
 				command.sequenceAP = sequenceAP;
 				command.sequenceSC = sequenceSC;
-				command.Execute(cluster, policy, true, socketTimeout, totalTimeout, deadline, iteration, commandSentCounter);
+				command.socketTimeout = socketTimeout;
+				command.totalTimeout = totalTimeout;
+				command.iteration = iteration;
+				command.commandSentCounter = commandSentCounter;
+				command.deadline = deadline;
+				command.ExecuteCommand();
 			}
 			return true;
 		}
 
 		protected internal abstract BatchCommand CreateCommand(BatchNode batchNode);
-		protected internal abstract List<BatchNode> GenerateBatchNodes(Cluster cluster);
+		protected internal abstract List<BatchNode> GenerateBatchNodes();
 	}
 }

@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2019 Aerospike, Inc.
+ * Copyright 2012-2020 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -26,6 +26,8 @@ namespace Aerospike.Client
 		public const int SCAN_OPTIONS = 8;
 		public const int SCAN_TIMEOUT = 9;
 		public const int RECORDS_PER_SECOND = 10;
+		public const int PID_ARRAY = 11;
+		public const int DIGEST_ARRAY = 12;
 		public const int INDEX_NAME = 21;
 		public const int INDEX_RANGE = 22;
 		public const int INDEX_FILTER = 23;

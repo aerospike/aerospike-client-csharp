@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2019 Aerospike, Inc.
+ * Copyright 2012-2020 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -86,6 +86,9 @@ namespace Aerospike.Client
 		// Maximum socket idle in milliseconds.
 		protected internal readonly int maxSocketIdleMillis;
 
+		// Rack id.
+		public readonly int rackId;
+
 		// Interval in milliseconds between cluster tends.
 		private readonly int tendInterval;
 
@@ -104,8 +107,8 @@ namespace Aerospike.Client
 		// Request server rack ids.
 		internal readonly bool rackAware;
 
-		// Rack id.
-		public readonly int rackId;
+		// Does cluster support partition scans.
+		internal bool hasPartitionScan;
 		
 		public Cluster(ClientPolicy policy, Host[] hosts)
 		{
@@ -593,6 +596,7 @@ namespace Aerospike.Client
 					aliases[alias] = node;
 				}
 			}
+			hasPartitionScan = Cluster.SupportsPartitionScan(nodeArray);
 
 			// Replace nodes with copy.
 			nodes = nodeArray;
@@ -672,6 +676,7 @@ namespace Aerospike.Client
 				Array.Copy(nodeArray, 0, nodeArray2, 0, count);
 				nodeArray = nodeArray2;
 			}
+			hasPartitionScan = Cluster.SupportsPartitionScan(nodeArray);
 
 			// Replace nodes with copy.
 			nodes = nodeArray;
@@ -762,6 +767,18 @@ namespace Aerospike.Client
 			}
 		}
 
+		public Node[] ValidateNodes()
+		{
+			// Must copy array reference for copy on write semantics to work.
+			Node[] nodeArray = nodes;
+
+			if (nodeArray.Length == 0)
+			{
+				throw new AerospikeException(ResultCode.SERVER_NOT_AVAILABLE, "Cluster is empty");
+			}
+			return nodeArray;
+		}
+		
 		public Node GetNode(string nodeName)
 		{
 			Node node = FindNode(nodeName);
@@ -826,6 +843,22 @@ namespace Aerospike.Client
 					this.password = password;
 				}
 			}
+		}
+
+		private static bool SupportsPartitionScan(Node[] nodes)
+		{
+			if (nodes.Length == 0)
+			{
+				return false;
+			}
+
+			foreach (Node node in nodes)
+			{
+				if (! node.HasPartitionScan) {
+					return false;
+				}
+			}
+			return true;
 		}
 
 		public void InterruptTendSleep()

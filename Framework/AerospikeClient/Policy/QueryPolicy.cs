@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2019 Aerospike, Inc.
+ * Copyright 2012-2020 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -48,6 +48,7 @@ namespace Aerospike.Client
 
 		/// <summary>
 		/// Terminate query if cluster is in migration state.
+		/// Only used for server versions &lt; 4.9.
 		/// <para>Default: false</para>
 		/// </summary>
 		public bool failOnClusterChange;
@@ -65,11 +66,26 @@ namespace Aerospike.Client
 
 		/// <summary>
 		/// Default constructor.
+		/// <para>
+		/// Set maxRetries for non-aggregation queries with a null filter on
+		/// server versions >= 4.9. All other queries are not retried.
+		/// </para>
+		/// <para>
+		/// The latest servers support retries on individual data partitions.
+		/// This feature is useful when a cluster is migrating and partition(s)
+		/// are missed or incomplete on the first query (with null filter) attempt.
+		/// </para>
+		/// <para>
+		/// If the first query attempt misses 2 of 4096 partitions, then only
+		/// those 2 partitions are retried in the next query attempt from the
+		/// last key digest received for each respective partition. A higher
+		/// default maxRetries is used because it's wasteful to invalidate
+		/// all query results because a single partition was missed.
+		/// </para>
 		/// </summary>
 		public QueryPolicy()
 		{
-			// Queries should not retry.
-			base.maxRetries = 0;
+			base.maxRetries = 5;
 		}
 	}
 }

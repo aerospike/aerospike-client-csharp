@@ -18,33 +18,59 @@ using System.Collections.Generic;
 
 namespace Aerospike.Client
 {
-	public sealed class QueryRecordCommand : MultiCommand
+	public sealed class QueryPartitionCommand : MultiCommand
 	{
 		private readonly Statement statement;
 		private readonly RecordSet recordSet;
+		private readonly PartitionTracker tracker;
+		private readonly NodePartitions nodePartitions;
 
-		public QueryRecordCommand
+		public QueryPartitionCommand
 		(
 			Cluster cluster,
 			Node node,
-			QueryPolicy policy,
+			Policy policy,
 			Statement statement,
 			RecordSet recordSet,
-			ulong clusterKey,
-			bool first
-		) : base(cluster, policy, node, statement.ns, clusterKey, first)
+			PartitionTracker tracker,
+			NodePartitions nodePartitions
+		) : base(cluster, policy, nodePartitions.node, statement.ns, tracker.socketTimeout, tracker.totalTimeout)
 		{
 			this.statement = statement;
 			this.recordSet = recordSet;
+			this.tracker = tracker;
+			this.nodePartitions = nodePartitions;
+		}
+
+		public override void Execute()
+		{
+			try
+			{
+				ExecuteCommand();
+			}
+			catch (AerospikeException ae)
+			{
+				if (!tracker.ShouldRetry(ae))
+				{
+					throw ae;
+				}
+			}
 		}
 
 		protected internal override void WriteBuffer()
 		{
-			SetQuery(policy, statement, false, null);
+			SetQuery(policy, statement, false, nodePartitions);
 		}
 
 		protected internal override void ParseRow(Key key)
 		{
+			if ((info3 & Command.INFO3_PARTITION_DONE) != 0)
+			{
+				tracker.PartitionDone(nodePartitions, generation);
+				return;
+			}
+			tracker.SetDigest(key);
+
 			Record record = ParseRecord();
 
 			if (!valid)

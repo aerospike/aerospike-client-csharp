@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2019 Aerospike, Inc.
+ * Copyright 2012-2020 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -24,6 +24,7 @@ namespace Aerospike.Client
 	{
 		protected internal readonly AsyncMultiExecutor parent;
 		protected internal AsyncNode serverNode;
+		protected internal int info3;
 		protected internal int resultCode;
 		protected internal int generation;
 		protected internal int expiration;
@@ -33,12 +34,26 @@ namespace Aerospike.Client
 		private readonly bool stopOnNotFound;
 		protected internal volatile bool valid = true;
 
-		public AsyncMultiCommand(AsyncMultiExecutor parent, AsyncCluster cluster, Policy policy, AsyncNode node, bool stopOnNotFound) 
-			: base(cluster, policy, true)
+		/// <summary>
+		/// Batch constructor.
+		/// </summary>
+		public AsyncMultiCommand(AsyncMultiExecutor parent, AsyncCluster cluster, Policy policy, AsyncNode node)
+			: base(cluster, policy)
 		{
 			this.parent = parent;
 			this.serverNode = node;
-			this.stopOnNotFound = stopOnNotFound;
+			this.stopOnNotFound = false;
+		}
+
+		/// <summary>
+		/// Scan/Query constructor.
+		/// </summary>
+		public AsyncMultiCommand(AsyncMultiExecutor parent, AsyncCluster cluster, Policy policy, AsyncNode node, int socketTimeout, int totalTimeout)
+			: base(cluster, policy, socketTimeout, totalTimeout)
+		{
+			this.parent = parent;
+			this.serverNode = node;
+			this.stopOnNotFound = true;
 		}
 
 		public AsyncMultiCommand(AsyncMultiCommand other) : base(other)
@@ -75,7 +90,10 @@ namespace Aerospike.Client
 			// Parse each message response and add it to the result array
 			while (dataOffset < dataLength)
 			{
-				resultCode = dataBuffer[dataOffset + 5];
+				dataOffset += 3;
+				info3 = dataBuffer[dataOffset];
+				dataOffset += 2;
+				resultCode = dataBuffer[dataOffset];
 
 				if (resultCode != 0)
 				{
@@ -93,17 +111,21 @@ namespace Aerospike.Client
 				}
 
 				// If this is the end marker of the response, do not proceed further
-				if ((dataBuffer[dataOffset + 3] & Command.INFO3_LAST) != 0)
+				if ((info3 & Command.INFO3_LAST) != 0)
 				{
 					return true;
 				}
-				generation = ByteUtil.BytesToInt(dataBuffer, dataOffset + 6);
-				expiration = ByteUtil.BytesToInt(dataBuffer, dataOffset + 10);
-				batchIndex = ByteUtil.BytesToInt(dataBuffer, dataOffset + 14);
-				fieldCount = ByteUtil.BytesToShort(dataBuffer, dataOffset + 18);
-				opCount = ByteUtil.BytesToShort(dataBuffer, dataOffset + 20);
-
-				dataOffset += Command.MSG_REMAINING_HEADER_SIZE;
+				dataOffset++;
+				generation = ByteUtil.BytesToInt(dataBuffer, dataOffset);
+				dataOffset += 4;
+				expiration = ByteUtil.BytesToInt(dataBuffer, dataOffset);
+				dataOffset += 4;
+				batchIndex = ByteUtil.BytesToInt(dataBuffer, dataOffset);
+				dataOffset += 4;
+				fieldCount = ByteUtil.BytesToShort(dataBuffer, dataOffset);
+				dataOffset += 2;
+				opCount = ByteUtil.BytesToShort(dataBuffer, dataOffset);
+				dataOffset += 2;
 
 				if (!valid)
 				{

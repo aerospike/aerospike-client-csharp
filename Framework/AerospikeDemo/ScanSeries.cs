@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2019 Aerospike, Inc.
+ * Copyright 2012-2020 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -39,7 +39,7 @@ namespace Aerospike.Demo
 			setMap.Clear();
 
 			ScanPolicy policy = new ScanPolicy();
-			policy.priority = Priority.DEFAULT;
+			policy.recordsPerSecond = 5000;
 
 			// Low scan priority will take more time, but it will reduce the load on the server.
 			// policy.priority = Priority.LOW;

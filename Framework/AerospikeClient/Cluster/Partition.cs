@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2019 Aerospike, Inc.
+ * Copyright 2012-2020 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -127,7 +127,14 @@ namespace Aerospike.Client
 			this.ns = key.ns;
 			this.replica = replica;
 			this.linearize = linearize;
-			this.partitionId = BitConverter.ToUInt32(key.digest, 0) % Node.PARTITIONS;
+			this.partitionId = GetPartitionId(key.digest);
+		}
+
+		public static uint GetPartitionId(byte[] digest)
+		{
+			// If support for a big endian cpu is added, this code will need to change to 
+			// ByteUtil.LittleBytesToInt() .
+			return BitConverter.ToUInt32(digest, 0) % Node.PARTITIONS;
 		}
 
 		public Node GetNodeRead(Cluster cluster)

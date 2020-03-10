@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2019 Aerospike, Inc.
+ * Copyright 2012-2020 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -21,6 +21,11 @@ namespace Aerospike.Client
 	/// </summary>
 	public sealed class ResultCode
 	{
+		/// <summary>
+		/// Max retries limit reached.
+		/// </summary>
+		public const int MAX_RETRIES_EXCEEDED = -11;
+
 		/// <summary>
 		/// Client serialization error.
 		/// </summary>
@@ -422,6 +427,9 @@ namespace Aerospike.Client
 		{
 			switch (resultCode)
 			{
+			case MAX_RETRIES_EXCEEDED:
+				return "Max retries exceeded";
+				
 			case SERIALIZE_ERROR:
 				return "Serialize error";
 

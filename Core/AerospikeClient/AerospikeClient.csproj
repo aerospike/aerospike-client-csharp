@@ -51,11 +51,15 @@
     <Compile Include="..\..\Framework\AerospikeClient\Async\AsyncOperate.cs" Link="Async\AsyncOperate.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Async\AsyncQuery.cs" Link="Async\AsyncQuery.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Async\AsyncQueryExecutor.cs" Link="Async\AsyncQueryExecutor.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Async\AsyncQueryPartition.cs" Link="Async\AsyncQueryPartition.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Async\AsyncQueryPartitionExecutor.cs" Link="Async\AsyncQueryPartitionExecutor.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Async\AsyncQueryValidate.cs" Link="Async\AsyncQueryValidate.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Async\AsyncRead.cs" Link="Async\AsyncRead.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Async\AsyncReadHeader.cs" Link="Async\AsyncReadHeader.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Async\AsyncScan.cs" Link="Async\AsyncScan.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Async\AsyncScanExecutor.cs" Link="Async\AsyncScanExecutor.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Async\AsyncScanPartition.cs" Link="Async\AsyncScanPartition.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Async\AsyncScanPartitionExecutor.cs" Link="Async\AsyncScanPartitionExecutor.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Async\AsyncSingleCommand.cs" Link="Async\AsyncSingleCommand.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Async\AsyncTimeoutQueue.cs" Link="Async\AsyncTimeoutQueue.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Async\AsyncTouch.cs" Link="Async\AsyncTouch.cs" />
@@ -110,6 +114,8 @@
     <Compile Include="..\..\Framework\AerospikeClient\Command\ReadHeaderCommand.cs" Link="Command\ReadHeaderCommand.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Command\RegisterCommand.cs" Link="Command\RegisterCommand.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Command\ScanCommand.cs" Link="Command\ScanCommand.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Command\ScanExecutor.cs" Link="Command\ScanExecutor.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Command\ScanPartitionCommand.cs" Link="Command\ScanPartitionCommand.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Command\SyncCommand.cs" Link="Command\SyncCommand.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Command\TouchCommand.cs" Link="Command\TouchCommand.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Command\WriteCommand.cs" Link="Command\WriteCommand.cs" />
@@ -165,13 +171,18 @@
     <Compile Include="..\..\Framework\AerospikeClient\Query\Filter.cs" Link="Query\Filter.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Query\IndexCollectionType.cs" Link="Query\IndexCollectionType.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Query\IndexType.cs" Link="Query\IndexType.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Query\IQueryExecutor.cs" Link="Query\IQueryExecutor.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Query\IRecordSet.cs" Link="Query\IRecordSet.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Query\IResultSet.cs" Link="Query\IResultSet.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Query\KeyRecord.cs" Link="Query\KeyRecord.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Query\PartitionFilter.cs" Link="Query\PartitionFilter.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Query\PartitionTracker.cs" Link="Query\PartitionTracker.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Query\PredExp.cs" Link="Query\PredExp.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Query\QueryAggregateCommand.cs" Link="Query\QueryAggregateCommand.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Query\QueryAggregateExecutor.cs" Link="Query\QueryAggregateExecutor.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Query\QueryExecutor.cs" Link="Query\QueryExecutor.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Query\QueryPartitionCommand.cs" Link="Query\QueryPartitionCommand.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Query\QueryPartitionExecutor.cs" Link="Query\QueryPartitionExecutor.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Query\QueryRecordCommand.cs" Link="Query\QueryRecordCommand.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Query\QueryRecordExecutor.cs" Link="Query\QueryRecordExecutor.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Query\QueryValidate.cs" Link="Query\QueryValidate.cs" />

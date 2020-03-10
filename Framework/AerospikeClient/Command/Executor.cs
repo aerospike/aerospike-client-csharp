@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2019 Aerospike, Inc.
+ * Copyright 2012-2020 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -22,8 +22,6 @@ namespace Aerospike.Client
 {
 	public sealed class Executor
 	{
-		internal readonly Cluster cluster;
-		internal readonly Policy policy;
 		private readonly List<ExecutorThread> threads;
 		private volatile Exception exception;
 		private int maxConcurrentThreads;
@@ -31,10 +29,8 @@ namespace Aerospike.Client
 		private volatile int done;
 		private bool completed;
 
-		public Executor(Cluster cluster, Policy policy, int capacity)
+		public Executor(int capacity)
 		{
-			this.cluster = cluster;
-			this.policy = policy;
 			threads = new List<ExecutorThread>(capacity);
 		}
 
@@ -148,7 +144,7 @@ namespace Aerospike.Client
 			{
 				if (command.IsValid())
 				{
-					command.Execute(parent.cluster, parent.policy);
+					command.Execute();
 				}
 				parent.ThreadCompleted();
 			}

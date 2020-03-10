@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2020 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -29,17 +29,12 @@ namespace Aerospike.Client
 			RecordSequenceListener listener,
 			string ns,
 			string setName,
-			string[] binNames
-		)
+			string[] binNames,
+			Node[] nodes
+		) : base(cluster)
 		{
 			this.listener = listener;
-
-			Node[] nodes = cluster.Nodes;
-
-			if (nodes.Length == 0)
-			{
-				throw new AerospikeException(ResultCode.SERVER_NOT_AVAILABLE, "Scan failed because cluster is empty.");
-			}
+			policy.Validate();
 
 			ulong taskId = RandomShift.ThreadLocalInstance.NextLong();
 
@@ -60,7 +55,7 @@ namespace Aerospike.Client
 			// Dispatch commands to nodes.
 			if (policy.failOnClusterChange && hasClusterStable)
 			{
-				ExecuteValidate(cluster, tasks, policy.maxConcurrentNodes, ns);
+				ExecuteValidate(tasks, policy.maxConcurrentNodes, ns);
 			}
 			else
 			{

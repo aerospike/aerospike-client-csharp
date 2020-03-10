@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2019 Aerospike, Inc.
+ * Copyright 2012-2020 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -22,12 +22,43 @@ namespace Aerospike.Client
 {
 	public abstract class SyncCommand : Command
 	{
-		public void Execute(Cluster cluster, Policy policy, bool isRead)
-		{
-			DateTime deadline = DateTime.MinValue;
-			int socketTimeout = policy.socketTimeout;
-			int totalTimeout = policy.totalTimeout;
+		protected readonly Cluster cluster;
+		protected readonly Policy policy;
+		readonly int maxRetries;
+		internal int socketTimeout;
+		internal int totalTimeout;
+		internal int iteration = 1;
+		internal int commandSentCounter;
+		internal DateTime deadline;
 
+		/// <summary>
+		/// Default constructor.
+		/// </summary>
+		public SyncCommand(Cluster cluster, Policy policy)
+		{
+			this.cluster = cluster;
+			this.policy = policy;
+			this.maxRetries = policy.maxRetries;
+			this.socketTimeout = policy.socketTimeout;
+			this.totalTimeout = policy.totalTimeout;
+			this.deadline = DateTime.MinValue;
+		}
+
+		/// <summary>
+		/// Scan/Query constructor.
+		/// </summary>
+		public SyncCommand(Cluster cluster, Policy policy, int socketTimeout, int totalTimeout)
+		{
+			this.cluster = cluster;
+			this.policy = policy;
+			this.maxRetries = 0;
+			this.socketTimeout = socketTimeout;
+			this.totalTimeout = totalTimeout;
+			this.deadline = DateTime.MinValue;
+		}
+
+		public virtual void Execute()
+		{
 			if (totalTimeout > 0)
 			{
 				deadline = DateTime.UtcNow.AddMilliseconds(totalTimeout);
@@ -37,20 +68,10 @@ namespace Aerospike.Client
 					socketTimeout = totalTimeout;
 				}
 			}
-			Execute(cluster, policy, isRead, socketTimeout, totalTimeout, deadline, 1, 0);
+			ExecuteCommand();
 		}
 
-		public void Execute
-		(
-			Cluster cluster,
-			Policy policy,
-			bool isRead,
-			int socketTimeout,
-			int totalTimeout,
-			DateTime deadline,
-			int iteration,
-			int commandSentCounter
-		)
+		public void ExecuteCommand()
 		{
 			Node node;
 			AerospikeException exception = null;
@@ -61,13 +82,13 @@ namespace Aerospike.Client
 			{
 				try
 				{
-					node = GetNode(cluster);
+					node = GetNode();
 				}
 				catch (AerospikeException ae)
 				{
 					ae.Policy = policy;
 					ae.Iteration = iteration;
-					ae.SetInDoubt(isRead, commandSentCounter);
+					ae.SetInDoubt(IsWrite(), commandSentCounter);
 					throw;
 				}
 
@@ -129,7 +150,7 @@ namespace Aerospike.Client
 						}
 						else
 						{
-							exception = new AerospikeException(se);
+							exception = new AerospikeException.Connection(se);
 							isClientTimeout = false;
 						}
 					}
@@ -151,7 +172,7 @@ namespace Aerospike.Client
 					}
 					else
 					{
-						exception = new AerospikeException(se);
+						exception = new AerospikeException.Connection(se);
 						isClientTimeout = false;
 					}
 				}
@@ -166,17 +187,17 @@ namespace Aerospike.Client
 					ae.Node = node;
 					ae.Policy = policy;
 					ae.Iteration = iteration;
-					ae.SetInDoubt(isRead, commandSentCounter);
+					ae.SetInDoubt(IsWrite(), commandSentCounter);
 					throw;
 				}
 
 				// Check maxRetries.
-				if (iteration > policy.maxRetries)
+				if (iteration > maxRetries)
 				{
 					break;
 				}
 
-				if (policy.totalTimeout > 0)
+				if (totalTimeout > 0)
 				{
 					// Check for total timeout.
 					long remaining = (long)deadline.Subtract(DateTime.UtcNow).TotalMilliseconds - policy.sleepBetweenRetries;
@@ -224,7 +245,7 @@ namespace Aerospike.Client
 			exception.Node = node;
 			exception.Policy = policy;
 			exception.Iteration = iteration;
-			exception.SetInDoubt(isRead, commandSentCounter);
+			exception.SetInDoubt(IsWrite(), commandSentCounter);
 			throw exception;
 		}
 
@@ -274,7 +295,12 @@ namespace Aerospike.Client
 			return false;
 		}
 
-		protected internal abstract Node GetNode(Cluster cluster);
+		protected internal virtual bool IsWrite()
+		{
+			return false;
+		}
+
+		protected internal abstract Node GetNode();
 		protected internal abstract void WriteBuffer();
 		protected internal abstract void ParseResult(Connection conn);
 		protected internal abstract bool PrepareRetry(bool timeout);

@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2019 Aerospike, Inc.
+ * Copyright 2012-2020 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -47,22 +47,41 @@ namespace Aerospike.Client
 		private BufferSegment segmentOrig;
 		private BufferSegment segment;
 		private Stopwatch watch;
+		private readonly int maxRetries;
+		private readonly int socketTimeout;
+		private readonly int totalTimeout;
 		protected internal int dataLength;
 		private int iteration;
 		private int state;
 		private int commandSentCounter;
-		protected internal bool isRead;
 		private bool compressed;
 		private bool usingSocketTimeout;
 		private bool inAuthenticate;
 		protected internal bool inHeader = true;
 		private volatile bool eventReceived;
 
-		public AsyncCommand(AsyncCluster cluster, Policy policy, bool isRead)
+		/// <summary>
+		/// Default Constructor.
+		/// </summary>
+		public AsyncCommand(AsyncCluster cluster, Policy policy)
 		{
 			this.cluster = cluster;
 			this.policy = policy;
-			this.isRead = isRead;
+			this.maxRetries = policy.maxRetries;
+			this.socketTimeout = policy.socketTimeout;
+			this.totalTimeout = policy.totalTimeout;
+		}
+
+		/// <summary>
+		/// Scan/Query Constructor.
+		/// </summary>
+		public AsyncCommand(AsyncCluster cluster, Policy policy, int socketTimeout, int totalTimeout)
+		{
+			this.cluster = cluster;
+			this.policy = policy;
+			this.maxRetries = 0;
+			this.socketTimeout = socketTimeout;
+			this.totalTimeout = totalTimeout;
 		}
 
 		public AsyncCommand(AsyncCommand other)
@@ -76,9 +95,11 @@ namespace Aerospike.Client
 			this.segmentOrig = other.segmentOrig;
 			this.segment = other.segment;
 			this.watch = other.watch;
+			this.maxRetries = other.maxRetries;
+			this.socketTimeout = other.socketTimeout;
+			this.totalTimeout = other.totalTimeout;
 			this.iteration = other.iteration;
 			this.commandSentCounter = other.commandSentCounter;
-			this.isRead = other.isRead;
 			this.usingSocketTimeout = other.usingSocketTimeout;
 		}
 
@@ -89,13 +110,13 @@ namespace Aerospike.Client
 			this.usingSocketTimeout = other.usingSocketTimeout;
 			this.watch = other.watch;
 
-			if (policy.totalTimeout > 0)
+			if (totalTimeout > 0)
 			{
-				AsyncTimeoutQueue.Instance.Add(this, policy.totalTimeout);
+				AsyncTimeoutQueue.Instance.Add(this, totalTimeout);
 			}
-			else if (policy.socketTimeout > 0)
+			else if (socketTimeout > 0)
 			{
-				AsyncTimeoutQueue.Instance.Add(this, policy.socketTimeout);
+				AsyncTimeoutQueue.Instance.Add(this, socketTimeout);
 			}
 		}
 
@@ -142,16 +163,16 @@ namespace Aerospike.Client
 				// If totalTimeout is defined, socketTimeout is ignored.
 				// This is done so we can avoid having to declare usingSocketTimeout as
 				// volatile and because enabling both timeouts together has limited value.
-				if (policy.totalTimeout > 0)
+				if (totalTimeout > 0)
 				{
 					watch = Stopwatch.StartNew();
-					AsyncTimeoutQueue.Instance.Add(this, policy.totalTimeout);
+					AsyncTimeoutQueue.Instance.Add(this, totalTimeout);
 				}
-				else if (policy.socketTimeout > 0)
+				else if (socketTimeout > 0)
 				{
 					usingSocketTimeout = true;
 					watch = Stopwatch.StartNew();
-					AsyncTimeoutQueue.Instance.Add(this, policy.socketTimeout);
+					AsyncTimeoutQueue.Instance.Add(this, socketTimeout);
 				}
 			}
 			else
@@ -523,7 +544,7 @@ namespace Aerospike.Client
 
 		private void ConnectionFailed(AerospikeException ae)
 		{
-			if (iteration <= policy.maxRetries && (policy.totalTimeout == 0 || watch.ElapsedMilliseconds < policy.totalTimeout))
+			if (iteration <= maxRetries && (totalTimeout == 0 || watch.ElapsedMilliseconds < totalTimeout))
 			{
 				int status = Interlocked.CompareExchange(ref state, RETRY, IN_PROGRESS);
 
@@ -570,14 +591,14 @@ namespace Aerospike.Client
 
 			if (command != null)
 			{
-				if (policy.totalTimeout > 0)
+				if (totalTimeout > 0)
 				{
-					AsyncTimeoutQueue.Instance.Add(command, policy.totalTimeout);
+					AsyncTimeoutQueue.Instance.Add(command, totalTimeout);
 				}
-				else if (policy.socketTimeout > 0)
+				else if (socketTimeout > 0)
 				{
 					command.watch = Stopwatch.StartNew();
-					AsyncTimeoutQueue.Instance.Add(command, policy.socketTimeout);
+					AsyncTimeoutQueue.Instance.Add(command, socketTimeout);
 				}
 				command.ExecuteCommand();
 			}
@@ -599,10 +620,10 @@ namespace Aerospike.Client
 
 			long elapsed = watch.ElapsedMilliseconds;
 			
-			if (policy.totalTimeout > 0)
+			if (totalTimeout > 0)
 			{
 				// Check total timeout.
-				if (elapsed < policy.totalTimeout)
+				if (elapsed < totalTimeout)
 				{
 					return true; // Timeout not reached.
 				}
@@ -621,7 +642,7 @@ namespace Aerospike.Client
 			else
 			{
 				// Check socket idle timeout.
-				if (elapsed < policy.socketTimeout)
+				if (elapsed < socketTimeout)
 				{
 					return true; // Timeout not reached.
 				}
@@ -737,7 +758,7 @@ namespace Aerospike.Client
 				// Connection should have already been closed on AsyncTimeoutQueue timeout.
 				AerospikeException timeoutException = new AerospikeException.Timeout(policy, true);
 
-				if (iteration <= policy.maxRetries)
+				if (iteration <= maxRetries)
 				{
 					Retry(timeoutException);
 				}
@@ -764,7 +785,7 @@ namespace Aerospike.Client
 				ae.Node = node;
 				ae.Policy = policy;
 				ae.Iteration = iteration;
-				ae.SetInDoubt(isRead, commandSentCounter);
+				ae.SetInDoubt(IsWrite(), commandSentCounter);
 				OnFailure(ae);
 			}
 			catch (Exception e)
@@ -817,6 +838,11 @@ namespace Aerospike.Client
 		}
 
 		protected internal virtual bool RetryBatch()
+		{
+			return false;
+		}
+
+		protected internal virtual bool IsWrite()
 		{
 			return false;
 		}

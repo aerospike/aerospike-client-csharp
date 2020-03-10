@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2019 Aerospike, Inc.
+ * Copyright 2012-2020 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -40,6 +40,7 @@ namespace Aerospike.Client
 		public const int HAS_REPLICAS = (1 << 5);
 		public const int HAS_CLUSTER_STABLE = (1 << 6);
 		public const int HAS_LUT_NOW = (1 << 7);
+		public const int HAS_PARTITION_SCAN = (1 << 8);
 
 		private static readonly string[] INFO_PERIODIC = new string[] { "node", "peers-generation", "partition-generation" };
 		private static readonly string[] INFO_PERIODIC_REB = new string[] { "node", "peers-generation", "partition-generation", "rebalance-generation" }; 
@@ -866,6 +867,14 @@ namespace Aerospike.Client
 		public bool HasIndexExists
 		{
 			get { return (features & HAS_INDEX_EXISTS) != 0; }
+		}
+
+		/// <summary>
+		/// Does server support partition scans.
+		/// </summary>
+		public bool HasPartitionScan
+		{
+			get { return (features & HAS_PARTITION_SCAN) != 0; }
 		}
 
 		/// <summary>

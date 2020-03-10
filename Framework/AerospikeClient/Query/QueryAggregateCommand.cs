@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2019 Aerospike, Inc.
+ * Copyright 2012-2020 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -22,13 +22,13 @@ namespace Aerospike.Client
 {
 	public sealed class QueryAggregateCommand : MultiCommand
 	{
-		private readonly QueryPolicy policy;
 		private readonly Statement statement;
 		private readonly BlockingCollection<object> inputQueue;
 		private readonly CancellationToken cancelToken;
 
 		public QueryAggregateCommand
 		(
+			Cluster cluster,
 			Node node,
 			QueryPolicy policy,
 			Statement statement,
@@ -36,9 +36,8 @@ namespace Aerospike.Client
 			CancellationToken cancelToken,
 			ulong clusterKey,
 			bool first
-		) : base(node, statement.ns, clusterKey, first)
+		) : base(cluster, policy, node, statement.ns, clusterKey, first)
 		{
-			this.policy = policy;
 			this.statement = statement;
 			this.inputQueue = inputQueue;
 			this.cancelToken = cancelToken;
@@ -46,7 +45,7 @@ namespace Aerospike.Client
 
 		protected internal override void WriteBuffer()
 		{
-			SetQuery(policy, statement, false);
+			SetQuery(policy, statement, false, null);
 		}
 
 		protected internal override void ParseRow(Key key)

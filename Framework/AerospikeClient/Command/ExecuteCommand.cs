@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2019 Aerospike, Inc.
+ * Copyright 2012-2020 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -34,7 +34,7 @@ namespace Aerospike.Client
 			string packageName,
 			string functionName,
 			Value[] args
-		) : base(writePolicy, key, Partition.Write(cluster, writePolicy, key))
+		) : base(cluster, writePolicy, key, Partition.Write(cluster, writePolicy, key))
 		{
 			this.writePolicy = writePolicy;
 			this.packageName = packageName;
@@ -42,7 +42,12 @@ namespace Aerospike.Client
 			this.args = args;
 		}
 
-		protected internal override Node GetNode(Cluster cluster)
+		protected internal override bool IsWrite()
+		{
+			return true;
+		}
+
+		protected internal override Node GetNode()
 		{
 			return partition.GetNodeWrite(cluster);
 		}

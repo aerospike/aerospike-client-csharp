@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2019 Aerospike, Inc.
+ * Copyright 2012-2020 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -18,29 +18,35 @@ namespace Aerospike.Client
 {
 	public sealed class WriteCommand : SyncCommand
 	{
-		private readonly WritePolicy policy;
+		private readonly WritePolicy writePolicy;
 		private readonly Key key;
 		private readonly Partition partition;
 		private readonly Bin[] bins;
 		private readonly Operation.Type operation;
 
-		public WriteCommand(Cluster cluster, WritePolicy policy, Key key, Bin[] bins, Operation.Type operation) 
+		public WriteCommand(Cluster cluster, WritePolicy writePolicy, Key key, Bin[] bins, Operation.Type operation)
+			: base(cluster, writePolicy)
 		{
-			this.policy = policy;
+			this.writePolicy = writePolicy;
 			this.key = key;
-			this.partition = Partition.Write(cluster, policy, key);
+			this.partition = Partition.Write(cluster, writePolicy, key);
 			this.bins = bins;
 			this.operation = operation;
 		}
 
-		protected internal override Node GetNode(Cluster cluster)
+		protected internal override bool IsWrite()
+		{
+			return true;
+		}
+
+		protected internal override Node GetNode()
 		{
 			return partition.GetNodeWrite(cluster);
 		}
 
 		protected internal override void WriteBuffer()
 		{
-			SetWrite(policy, operation, key, bins);
+			SetWrite(writePolicy, operation, key, bins);
 		}
 
 		protected internal override void ParseResult(Connection conn)
@@ -58,7 +64,7 @@ namespace Aerospike.Client
 
 			if (resultCode == ResultCode.FILTERED_OUT)
 			{
-				if (policy.failOnFilteredOut)
+				if (writePolicy.failOnFilteredOut)
 				{
 					throw new AerospikeException(resultCode);
 				}

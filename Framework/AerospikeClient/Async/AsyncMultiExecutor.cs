@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2019 Aerospike, Inc.
+ * Copyright 2012-2020 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -20,13 +20,18 @@ namespace Aerospike.Client
 {
 	public abstract class AsyncMultiExecutor
 	{
-		private int completedCount;
-		private volatile int done;
+		internal readonly AsyncCluster cluster; 
 		private AsyncMultiCommand[] commands;
-		internal AsyncCluster cluster;
 		private string ns;
 		private ulong clusterKey;
 		private int maxConcurrent;
+		private int completedCount;
+		private volatile int done;
+
+		public AsyncMultiExecutor(AsyncCluster cluster)
+		{
+			this.cluster = cluster;
+		}
 
 		public void Execute(AsyncMultiCommand[] commands, int maxConcurrent)
 		{
@@ -69,9 +74,8 @@ namespace Aerospike.Client
 			}
 		}
 
-		public void ExecuteValidate(AsyncCluster cluster, AsyncMultiCommand[] commands, int maxConcurrent, string ns)
+		public void ExecuteValidate(AsyncMultiCommand[] commands, int maxConcurrent, string ns)
 		{
-			this.cluster = cluster;
 			this.commands = commands;
 			this.maxConcurrent = (maxConcurrent == 0 || maxConcurrent >= commands.Length) ? commands.Length : maxConcurrent;
 			this.ns = ns;
@@ -224,6 +228,12 @@ namespace Aerospike.Client
 			}
 		}
 
+		internal void Reset()
+		{
+			this.completedCount = 0;
+			this.done = 0;
+		}
+		
 		protected internal abstract void OnSuccess();
 		protected internal abstract void OnFailure(AerospikeException ae);
 	}

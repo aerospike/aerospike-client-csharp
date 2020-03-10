@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2019 Aerospike, Inc.
+ * Copyright 2012-2020 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -25,8 +25,8 @@ namespace Aerospike.Client
 		private readonly BlockingCollection<object> inputQueue;
 		private readonly ResultSet resultSet;
 
-		public QueryAggregateExecutor(Cluster cluster, QueryPolicy policy, Statement statement) 
-			: base(cluster, policy, statement)
+		public QueryAggregateExecutor(Cluster cluster, QueryPolicy policy, Statement statement, Node[] nodes) 
+			: base(cluster, policy, statement, nodes)
 		{
 			inputQueue = new BlockingCollection<object>(500);
 			resultSet = new ResultSet(this, policy.recordQueueSize, cancel.Token);
@@ -113,7 +113,7 @@ namespace Aerospike.Client
 
 		protected internal override MultiCommand CreateCommand(Node node, ulong clusterKey, bool first)
 		{
-			return new QueryAggregateCommand(node, policy, statement, inputQueue, cancel.Token, clusterKey, first);
+			return new QueryAggregateCommand(cluster, node, policy, statement, inputQueue, cancel.Token, clusterKey, first);
 		}
 
 		protected internal override void SendCancel()

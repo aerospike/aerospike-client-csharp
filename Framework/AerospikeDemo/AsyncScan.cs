@@ -58,11 +58,11 @@ namespace Aerospike.Demo
 
 			public void OnRecord(Key key, Record record)
 			{
-				parent.recordCount++;
+				int count = Interlocked.Increment(ref parent.recordCount);
 
-				if ((parent.recordCount % 10000) == 0)
+				if ((count % 10000) == 0)
 				{
-					parent.console.Info("Records " + parent.recordCount);
+					parent.console.Info("Records " + count);
 				}
 			}
 

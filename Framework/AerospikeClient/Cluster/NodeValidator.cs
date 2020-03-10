@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2019 Aerospike, Inc.
+ * Copyright 2012-2020 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -268,6 +268,10 @@ namespace Aerospike.Client
 					else if (feature.Equals("sindex-exists"))
 					{
 						this.features |= Node.HAS_INDEX_EXISTS;
+					}
+					else if (feature.Equals("pscans"))
+					{
+						this.features |= Node.HAS_PARTITION_SCAN;
 					}
 				}
 			}

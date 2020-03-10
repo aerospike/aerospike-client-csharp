@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2019 Aerospike, Inc.
+ * Copyright 2012-2020 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -66,19 +66,19 @@ namespace Aerospike.Client
 				// This should not be necessary here because it happens in Executor which does a 
 				// volatile write (Interlocked.Increment(ref completedCount)) at the end of write threads
 				// and a synchronized WaitTillComplete() in this thread.
-				Executor executor = new Executor(cluster, policy, batchNodes.Count * 2);
+				Executor executor = new Executor(batchNodes.Count * 2);
 
 				// Initialize threads.  
 				foreach (BatchNode batchNode in batchNodes)
 				{
 					if (records != null)
 					{
-						MultiCommand command = new BatchGetArrayCommand(executor, batchNode, policy, keys, binNames, records, readAttr);
+						MultiCommand command = new BatchGetArrayCommand(cluster, executor, batchNode, policy, keys, binNames, records, readAttr);
 						executor.AddCommand(command);
 					}
 					else
 					{
-						MultiCommand command = new BatchExistsArrayCommand(executor, batchNode, policy, keys, existsArray);
+						MultiCommand command = new BatchExistsArrayCommand(cluster, executor, batchNode, policy, keys, existsArray);
 						executor.AddCommand(command);
 					}
 				}
@@ -90,13 +90,13 @@ namespace Aerospike.Client
 		{
 			if (records != null)
 			{
-				MultiCommand command = new BatchGetArrayCommand(null, batchNode, policy, keys, binNames, records, readAttr);
-				command.Execute(cluster, policy, true);
+				MultiCommand command = new BatchGetArrayCommand(cluster, null, batchNode, policy, keys, binNames, records, readAttr);
+				command.Execute();
 			}
 			else
 			{
-				MultiCommand command = new BatchExistsArrayCommand(null, batchNode, policy, keys, existsArray);
-				command.Execute(cluster, policy, true);
+				MultiCommand command = new BatchExistsArrayCommand(cluster, null, batchNode, policy, keys, existsArray);
+				command.Execute();
 			}
 		}
 	}

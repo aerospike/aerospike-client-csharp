@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2019 Aerospike, Inc.
+ * Copyright 2012-2020 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -20,8 +20,8 @@ namespace Aerospike.Client
 	{
 		private readonly RecordSet recordSet;
 
-		public QueryRecordExecutor(Cluster cluster, QueryPolicy policy, Statement statement) 
-			: base(cluster, policy, statement)
+		public QueryRecordExecutor(Cluster cluster, QueryPolicy policy, Statement statement, Node[] nodes) 
+			: base(cluster, policy, statement, nodes)
 		{
 			this.recordSet = new RecordSet(this, policy.recordQueueSize, cancel.Token);
 			statement.Prepare(true);
@@ -35,7 +35,7 @@ namespace Aerospike.Client
 
 		protected internal override MultiCommand CreateCommand(Node node, ulong clusterKey, bool first)
 		{
-			return new QueryRecordCommand(node, policy, statement, recordSet, clusterKey, first);
+			return new QueryRecordCommand(cluster, node, policy, statement, recordSet, clusterKey, first);
 		}
 
 		protected internal override void SendCancel()

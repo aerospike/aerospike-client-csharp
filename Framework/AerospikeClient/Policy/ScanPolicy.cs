@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2019 Aerospike, Inc.
+ * Copyright 2012-2020 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -63,6 +63,7 @@ namespace Aerospike.Client
 
 		/// <summary>
 		/// Terminate scan if cluster is in migration state.
+		/// Only used for server versions &lt; 4.9.
 		/// <para>Default: false</para>
 		/// </summary>
 		public bool failOnClusterChange;
@@ -82,11 +83,37 @@ namespace Aerospike.Client
 
 		/// <summary>
 		/// Default constructor.
+		/// <para>
+		/// Set maxRetries for scans on server versions >= 4.9. All other
+		/// scans are not retried.
+		/// </para>
+		/// <para>
+		/// The latest servers support retries on individual data partitions.
+		/// This feature is useful when a cluster is migrating and partition(s)
+		/// are missed or incomplete on the first scan attempt.
+		/// </para>
+		/// <para>
+		/// If the first scan attempt misses 2 of 4096 partitions, then only
+		/// those 2 partitions are retried in the next scan attempt from the
+		/// last key digest received for each respective partition.  A higher
+		/// default maxRetries is used because it's wasteful to invalidate
+		/// all scan results because a single partition was missed.
+		/// </para>
 		/// </summary>
 		public ScanPolicy()
 		{
-			// Scans should not retry.
-			base.maxRetries = 0;
+			base.maxRetries = 5;
+		}
+
+		/// <summary>
+		/// Verify policies fields are within range.
+		/// </summary>
+		public void Validate()
+		{
+			if (scanPercent <= 0 || scanPercent > 100)
+			{
+				throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Invalid scan percent: " + scanPercent);
+			}
 		}
 	}
 }

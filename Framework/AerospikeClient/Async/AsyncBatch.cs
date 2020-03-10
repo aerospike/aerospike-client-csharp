@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2019 Aerospike, Inc.
+ * Copyright 2012-2020 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -33,7 +33,7 @@ namespace Aerospike.Client
 			BatchPolicy policy,
 			BatchListListener listener,
 			List<BatchRead> records
-		)
+		) : base(cluster)
 		{
 			this.listener = listener;
 			this.records = records;
@@ -128,7 +128,7 @@ namespace Aerospike.Client
 			BatchPolicy policy,
 			BatchSequenceListener listener,
 			List<BatchRead> records
-		)
+		) : base(cluster)
 		{
 			this.listener = listener;
 
@@ -640,7 +640,8 @@ namespace Aerospike.Client
 		protected internal readonly List<BatchNode> batchNodes;
 		protected internal readonly int taskSize;
 
-		public AsyncBatchExecutor(Cluster cluster, BatchPolicy policy, Key[] keys)
+		public AsyncBatchExecutor(AsyncCluster cluster, BatchPolicy policy, Key[] keys)
+			: base(cluster)
 		{
 			this.keys = keys;
 			this.batchNodes = BatchNode.GenerateList(cluster, policy, keys);
@@ -660,7 +661,7 @@ namespace Aerospike.Client
 		internal uint sequenceSC;
 
 		public AsyncBatchCommand(AsyncMultiExecutor parent, AsyncCluster cluster, BatchNode batch, BatchPolicy batchPolicy)
-			: base(parent, cluster, batchPolicy, (AsyncNode)batch.node, false)
+			: base(parent, cluster, batchPolicy, (AsyncNode)batch.node)
 		{
 			this.batch = batch;
 			this.batchPolicy = batchPolicy;

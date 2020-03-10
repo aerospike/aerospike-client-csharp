@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2019 Aerospike, Inc.
+ * Copyright 2012-2020 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -57,6 +57,11 @@ namespace Aerospike.Client
 		protected internal override AsyncCommand CloneCommand()
 		{
 			return new AsyncExecute(this);
+		}
+
+		protected internal override bool IsWrite()
+		{
+			return true;
 		}
 
 		protected internal override Node GetNode(Cluster cluster)

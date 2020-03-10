@@ -14,60 +14,74 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using System;
-using System.Collections.Generic;
-
 namespace Aerospike.Client
 {
-	public sealed class ScanCommand : MultiCommand
+	public sealed class AsyncScanPartition : AsyncMultiCommand
 	{
 		private readonly ScanPolicy scanPolicy;
+		private readonly RecordSequenceListener listener;
+		private readonly string ns;
 		private readonly string setName;
 		private readonly string[] binNames;
-		private readonly ScanCallback callback;
 		private readonly ulong taskId;
+		private readonly PartitionTracker tracker;
+		private readonly NodePartitions nodePartitions;
 
-		public ScanCommand
+		public AsyncScanPartition
 		(
-			Cluster cluster,
-			Node node,
+			AsyncMultiExecutor parent,
+			AsyncCluster cluster,
 			ScanPolicy scanPolicy,
+			RecordSequenceListener listener,
 			string ns,
 			string setName,
 			string[] binNames,
-			ScanCallback callback,
 			ulong taskId,
-			ulong clusterKey,
-			bool first
-		) : base(cluster, scanPolicy, node, ns, clusterKey, first)
+			PartitionTracker tracker,
+			NodePartitions nodePartitions
+		) : base(parent, cluster, scanPolicy, (AsyncNode)nodePartitions.node, tracker.socketTimeout, tracker.totalTimeout)
 		{
 			this.scanPolicy = scanPolicy;
+			this.listener = listener;
+			this.ns = ns;
 			this.setName = setName;
 			this.binNames = binNames;
-			this.callback = callback;
 			this.taskId = taskId;
+			this.tracker = tracker;
+			this.nodePartitions = nodePartitions;
 		}
 
-		public override void Execute()
-		{
-			ExecuteAndValidate();
-		}
-		
 		protected internal override void WriteBuffer()
 		{
-			SetScan(scanPolicy, ns, setName, binNames, taskId, null);
+			SetScan(scanPolicy, ns, setName, binNames, taskId, nodePartitions);
 		}
 
 		protected internal override void ParseRow(Key key)
 		{
-			Record record = ParseRecord();
-
-			if (!valid)
+			if ((info3 & Command.INFO3_PARTITION_DONE) != 0)
 			{
-				throw new AerospikeException.ScanTerminated();
+				tracker.PartitionDone(nodePartitions, generation);
+				return;
 			}
+			tracker.SetDigest(key);
 
-			callback(key, record);
+			Record record = ParseRecord();
+			listener.OnRecord(key, record);
+		}
+
+		protected internal override void OnFailure(AerospikeException ae)
+		{
+			if (tracker.ShouldRetry(ae))
+			{
+				parent.ChildSuccess(node);
+				return;
+			}
+			parent.ChildFailure(ae);
+		}
+
+		protected internal override AsyncCommand CloneCommand()
+		{
+			return null;
 		}
 	}
 }

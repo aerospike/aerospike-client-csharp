@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2020 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -22,16 +22,17 @@ namespace Aerospike.Client
 	{
 		private readonly RecordSequenceListener listener;
 
-		public AsyncQueryExecutor(AsyncCluster cluster, QueryPolicy policy, RecordSequenceListener listener, Statement statement)
+		public AsyncQueryExecutor
+		(
+			AsyncCluster cluster,
+			QueryPolicy policy,
+			RecordSequenceListener listener,
+			Statement statement,
+			Node[] nodes
+		) : base(cluster)
 		{
 			this.listener = listener;
 			statement.Prepare(true);
-
-			Node[] nodes = cluster.Nodes;
-			if (nodes.Length == 0)
-			{
-				throw new AerospikeException(ResultCode.SERVER_NOT_AVAILABLE, "Query failed because cluster is empty.");
-			}
 
 			// Create commands.
 			AsyncQuery[] tasks = new AsyncQuery[nodes.Length];
@@ -50,7 +51,7 @@ namespace Aerospike.Client
 			// Dispatch commands to nodes.
 			if (policy.failOnClusterChange && hasClusterStable)
 			{
-				ExecuteValidate(cluster, tasks, policy.maxConcurrentNodes, statement.ns);
+				ExecuteValidate(tasks, policy.maxConcurrentNodes, statement.ns);
 			}
 			else
 			{

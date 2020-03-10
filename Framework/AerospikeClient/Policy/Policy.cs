@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2019 Aerospike, Inc.
+ * Copyright 2012-2020 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -23,7 +23,11 @@ namespace Aerospike.Client
 	{
 		/// <summary>
 		/// Priority of request relative to other transactions.
-		/// Currently, only used for scans.
+		/// Only used for scans on server versions &lt; 4.9.
+		/// <para>
+		/// Priority is obsolete and will eventually be removed.
+		/// Use <see cref="ScanPolicy.recordsPerSecond"/> instead of priority.
+		/// </para>
 		/// </summary>
 		public Priority priority = Priority.DEFAULT;
 
@@ -124,7 +128,14 @@ namespace Aerospike.Client
 		/// Default for read: 2 (initial attempt + 2 retries = 3 attempts)
 		/// </para>
 		/// <para>
-		/// Default for write/query/scan: 0 (no retries)
+		/// Default for write: 0 (no retries)
+		/// </para>
+		/// <para>
+		/// Default for partition scan or query with null filter: 5
+		/// (6 attempts. See <see cref="Aerospike.Client.ScanPolicy.ScanPolicy()"/>  comments.)
+		/// </para>
+		/// <para>
+		/// No default for legacy scan/query. No retries are allowed for these commands.
 		/// </para>
 		/// </summary>
 		public int maxRetries = 2;

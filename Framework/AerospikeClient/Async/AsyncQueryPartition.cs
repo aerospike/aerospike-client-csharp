@@ -16,34 +16,56 @@
  */
 namespace Aerospike.Client
 {
-	public sealed class AsyncQuery : AsyncMultiCommand
+	public sealed class AsyncQueryPartition : AsyncMultiCommand
 	{
 		private readonly RecordSequenceListener listener;
 		private readonly Statement statement;
+		private readonly PartitionTracker tracker;
+		private readonly NodePartitions nodePartitions;
 
-		public AsyncQuery
+		public AsyncQueryPartition
 		(
 			AsyncMultiExecutor parent,
 			AsyncCluster cluster,
-			AsyncNode node,
 			QueryPolicy policy,
 			RecordSequenceListener listener,
-			Statement statement
-		) : base(parent, cluster, policy, node, policy.socketTimeout, policy.totalTimeout)
+			Statement statement,
+			PartitionTracker tracker,
+			NodePartitions nodePartitions
+		) : base(parent, cluster, policy, (AsyncNode)nodePartitions.node, tracker.socketTimeout, tracker.totalTimeout)
 		{
 			this.listener = listener;
 			this.statement = statement;
+			this.tracker = tracker;
+			this.nodePartitions = nodePartitions;
 		}
 
 		protected internal override void WriteBuffer()
 		{
-			SetQuery(policy, statement, false, null);
+			SetQuery(policy, statement, false, nodePartitions);
 		}
 
 		protected internal override void ParseRow(Key key)
 		{
+			if ((info3 & Command.INFO3_PARTITION_DONE) != 0)
+			{
+				tracker.PartitionDone(nodePartitions, generation);
+				return;
+			}
+			tracker.SetDigest(key);
+
 			Record record = ParseRecord();
 			listener.OnRecord(key, record);
+		}
+
+		protected internal override void OnFailure(AerospikeException ae)
+		{
+			if (tracker.ShouldRetry(ae))
+			{
+				parent.ChildSuccess(node);
+				return;
+			}
+			parent.ChildFailure(ae);
 		}
 
 		protected internal override AsyncCommand CloneCommand()

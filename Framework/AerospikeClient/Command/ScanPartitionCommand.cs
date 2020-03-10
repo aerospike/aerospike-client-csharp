@@ -15,51 +15,70 @@
  * the License.
  */
 using System;
-using System.Collections.Generic;
 
 namespace Aerospike.Client
 {
-	public sealed class ScanCommand : MultiCommand
+	public sealed class ScanPartitionCommand : MultiCommand
 	{
 		private readonly ScanPolicy scanPolicy;
 		private readonly string setName;
 		private readonly string[] binNames;
 		private readonly ScanCallback callback;
 		private readonly ulong taskId;
+		private readonly PartitionTracker tracker;
+		private readonly NodePartitions nodePartitions;
 
-		public ScanCommand
+		public ScanPartitionCommand
 		(
 			Cluster cluster,
-			Node node,
 			ScanPolicy scanPolicy,
 			string ns,
 			string setName,
 			string[] binNames,
 			ScanCallback callback,
 			ulong taskId,
-			ulong clusterKey,
-			bool first
-		) : base(cluster, scanPolicy, node, ns, clusterKey, first)
+			PartitionTracker tracker,
+			NodePartitions nodePartitions
+		) : base(cluster, scanPolicy, nodePartitions.node, ns, tracker.socketTimeout, tracker.totalTimeout)
 		{
 			this.scanPolicy = scanPolicy;
 			this.setName = setName;
 			this.binNames = binNames;
 			this.callback = callback;
 			this.taskId = taskId;
+			this.tracker = tracker;
+			this.nodePartitions = nodePartitions;
 		}
 
 		public override void Execute()
 		{
-			ExecuteAndValidate();
+			try
+			{
+				ExecuteCommand();
+			}
+			catch (AerospikeException ae)
+			{
+				if (!tracker.ShouldRetry(ae))
+				{
+					throw ae;
+				}
+			}
 		}
-		
+
 		protected internal override void WriteBuffer()
 		{
-			SetScan(scanPolicy, ns, setName, binNames, taskId, null);
+			SetScan(scanPolicy, ns, setName, binNames, taskId, nodePartitions);
 		}
 
 		protected internal override void ParseRow(Key key)
 		{
+			if ((info3 & Command.INFO3_PARTITION_DONE) != 0)
+			{
+				tracker.PartitionDone(nodePartitions, generation);
+				return;
+			}
+			tracker.SetDigest(key);
+
 			Record record = ParseRecord();
 
 			if (!valid)

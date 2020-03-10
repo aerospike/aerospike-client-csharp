@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2019 Aerospike, Inc.
+ * Copyright 2012-2020 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -21,40 +21,27 @@ namespace Aerospike.Client
 {
 	public sealed class OperateCommand : ReadCommand
 	{
-		private readonly Operation[] operations;
-		private WritePolicy writePolicy;
-		private OperateArgs args;
+		private readonly OperateArgs args;
 
-		public OperateCommand(Key key, Operation[] operations) 
-			: base(null, key, null)
+		public OperateCommand(Cluster cluster, Key key, OperateArgs args) 
+			: base(cluster, args.writePolicy, key, args.partition)
 		{
-			this.operations = operations;
-		}
-
-		public void SetArgs(Cluster cluster, WritePolicy writePolicy, OperateArgs args)
-		{
-			base.policy = writePolicy;
-			this.writePolicy = writePolicy;
 			this.args = args;
-
-			if (args.hasWrite)
-			{
-				partition = Partition.Write(cluster, writePolicy, key);
-			}
-			else
-			{
-				partition = Partition.Read(cluster, writePolicy, key);
-			}
 		}
 
-		protected internal override Node GetNode(Cluster cluster)
+		protected internal override bool IsWrite()
+		{
+			return args.hasWrite;
+		}
+
+		protected internal override Node GetNode()
 		{
 			return args.hasWrite ? partition.GetNodeWrite(cluster) : partition.GetNodeRead(cluster);
 		}
 
 		protected internal override void WriteBuffer()
 		{
-			SetOperate(writePolicy, key, operations, args);
+			SetOperate(args.writePolicy, key, args);
 		}
 
 		protected internal override void HandleNotFound(int resultCode)

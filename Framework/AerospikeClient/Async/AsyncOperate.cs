@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2019 Aerospike, Inc.
+ * Copyright 2012-2020 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -20,44 +20,28 @@ namespace Aerospike.Client
 {
 	public sealed class AsyncOperate : AsyncRead
 	{
-		private readonly Operation[] operations;
-		private WritePolicy writePolicy;
-		private OperateArgs args;
+		private readonly OperateArgs args;
 
-		public AsyncOperate(AsyncCluster cluster, RecordListener listener, Key key, Operation[] operations)
-			: base(cluster, listener, key)
+		public AsyncOperate(AsyncCluster cluster, RecordListener listener, Key key, OperateArgs args)
+			: base(cluster, args.writePolicy, listener, key, args.partition)
 		{
-			this.operations = operations;
+			this.args = args;
 		}
 
 		public AsyncOperate(AsyncOperate other)
 			: base(other)
 		{
-			this.writePolicy = other.writePolicy;
-			this.operations = other.operations;
 			this.args = other.args;
-		}
-
-		public void SetArgs(AsyncCluster cluster, WritePolicy writePolicy, OperateArgs args)
-		{
-			base.policy = writePolicy;
-			this.writePolicy = writePolicy;
-			this.args = args;
-
-			if (args.hasWrite)
-			{
-				base.partition = Partition.Write(cluster, writePolicy, key);
-			}
-			else
-			{
-				base.isRead = true;
-				base.partition = Partition.Read(cluster, writePolicy, key);
-			}
 		}
 
 		protected internal override AsyncCommand CloneCommand()
 		{
 			return new AsyncOperate(this);
+		}
+
+		protected internal override bool IsWrite()
+		{
+			return args.hasWrite;
 		}
 
 		protected internal override Node GetNode(Cluster cluster)
@@ -67,7 +51,7 @@ namespace Aerospike.Client
 
 		protected internal override void WriteBuffer()
 		{
-			SetOperate(writePolicy, key, operations, args);
+			SetOperate(args.writePolicy, key, args);
 		}
 
 		protected internal override void HandleNotFound(int resultCode)

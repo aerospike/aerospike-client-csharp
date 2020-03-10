@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2019 Aerospike, Inc.
+ * Copyright 2012-2020 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -19,7 +19,7 @@ using System.Threading;
 
 namespace Aerospike.Client
 {
-	public abstract class QueryExecutor
+	public abstract class QueryExecutor : IQueryExecutor
 	{
 		protected internal readonly Cluster cluster;
 		protected internal readonly QueryPolicy policy;
@@ -32,21 +32,14 @@ namespace Aerospike.Client
 		private int completedCount;
 		private int done;
 
-		public QueryExecutor(Cluster cluster, QueryPolicy policy, Statement statement)
+		public QueryExecutor(Cluster cluster, QueryPolicy policy, Statement statement, Node[] nodes)
 		{
 			this.cluster = cluster;
 			this.policy = policy;
 			this.statement = statement;
-			this.cancel = new CancellationTokenSource();
-
-			this.nodes = cluster.Nodes;
-
-			if (this.nodes.Length == 0)
-			{
-				throw new AerospikeException(ResultCode.SERVER_NOT_AVAILABLE, "Query failed because cluster is empty.");
-			}
-
+			this.nodes = nodes;
 			this.threads = new QueryThread[nodes.Length];
+			this.cancel = new CancellationTokenSource();
 
 			// Initialize maximum number of nodes to query in parallel.
 			this.maxConcurrentNodes = (policy.maxConcurrentNodes == 0 || policy.maxConcurrentNodes >= threads.Length) ? threads.Length : policy.maxConcurrentNodes;
@@ -102,7 +95,7 @@ namespace Aerospike.Client
 			}
 		}
 
-		protected internal bool StopThreads(Exception cause)
+		public bool StopThreads(Exception cause)
 		{
 			// There is no need to stop threads if all threads have already completed.
 			if (Interlocked.Exchange(ref done, 1) == 0)
@@ -120,7 +113,7 @@ namespace Aerospike.Client
 			return false;
 		}
 
-		protected internal void CheckForException()
+		public void CheckForException()
 		{
 			// Throw an exception if an error occurred.
 			if (exception != null)
@@ -148,7 +141,7 @@ namespace Aerospike.Client
 				{
 					if (command.IsValid())
 					{
-						command.Execute(parent.cluster, parent.policy);
+						command.ExecuteAndValidate();
 					}
 					parent.ThreadCompleted();
 				}

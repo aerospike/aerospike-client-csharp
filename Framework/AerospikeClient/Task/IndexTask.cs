@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2019 Aerospike, Inc.
+ * Copyright 2012-2020 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -46,12 +46,7 @@ namespace Aerospike.Client
 		public override int QueryStatus()
 		{
 			// All nodes must respond with complete to be considered done.
-			Node[] nodes = cluster.Nodes;
-
-			if (nodes.Length == 0)
-			{
-				throw new AerospikeException("Cluster is empty");
-			}
+			Node[] nodes = cluster.ValidateNodes();
 
 			foreach (Node node in nodes)
 			{

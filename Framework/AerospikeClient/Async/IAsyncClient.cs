@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2019 Aerospike, Inc.
+ * Copyright 2012-2020 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -308,14 +308,29 @@ namespace Aerospike.Client
         /// <param name="listener">where to send results, pass in null for fire and forget</param>
         /// <param name="ns">namespace - equivalent to database name</param>
         /// <param name="setName">optional set name - equivalent to database table</param>
-        /// <param name="binNames">
-        /// optional bin to retrieve. All bins will be returned if not specified.
-        /// Aerospike 2 servers ignore this parameter.
-        /// </param>
+        /// <param name="binNames">optional bin to retrieve. All bins will be returned if not specified.</param>
         /// <exception cref="AerospikeException">if queue is full</exception>
         void ScanAll(ScanPolicy policy, RecordSequenceListener listener, string ns, string setName, params string[] binNames);
         
-        //---------------------------------------------------------------
+		/// <summary>
+		/// Asynchronously read records in specified namespace, set and partition filter.
+		/// If the policy's concurrentNodes is specified, each server node will be read in
+		/// parallel.  Otherwise, server nodes are read in series.
+		/// <para>
+		/// This method schedules the scan command with a channel selector and returns.
+		/// Another thread will process the command and send the results to the listener.
+		/// </para>
+		/// </summary>
+		/// <param name="policy">scan configuration parameters, pass in null for defaults</param>
+		/// <param name="listener">where to send results</param>
+		/// <param name="partitionFilter">filter on a subset of data partitions</param>
+		/// <param name="ns">namespace - equivalent to database name</param>
+		/// <param name="setName">optional set name - equivalent to database table</param>
+		/// <param name="binNames">optional bin to retrieve. All bins will be returned if not specified.</param>
+		/// <exception cref="AerospikeException">if queue is full</exception>
+		void ScanPartitions(ScanPolicy policy, RecordSequenceListener listener, PartitionFilter partitionFilter, string ns, string setName, params string[] binNames);
+
+		//---------------------------------------------------------------
         // User defined functions
         //---------------------------------------------------------------
 
@@ -350,5 +365,24 @@ namespace Aerospike.Client
         /// <param name="statement">database query command parameters</param>
         /// <exception cref="AerospikeException">if query fails</exception>
         void Query(QueryPolicy policy, RecordSequenceListener listener, Statement statement);
-    }
+
+		/// <summary>
+		/// Asynchronously execute query for specified partitions. The query policy's 
+		/// <code>maxConcurrentNodes</code> dictate how many nodes can be queried in parallel.
+		/// The default is to query all nodes in parallel.
+		/// <para>
+		/// This method schedules the node's query commands with channel selectors and returns.
+		/// Selector threads will process the commands and send the results to the listener.
+		/// </para>
+		/// <para>
+		/// Each record result is returned in separate OnRecord() calls. 
+		/// </para>
+		/// </summary>
+		/// <param name="policy">query configuration parameters, pass in null for defaults</param>
+		/// <param name="listener">where to send results</param>
+		/// <param name="statement">database query command parameters</param>
+		/// <param name="partitionFilter">filter on a subset of data partitions</param>
+		/// <exception cref="AerospikeException">if query fails</exception>
+		void QueryPartitions(QueryPolicy policy, RecordSequenceListener listener, Statement statement, PartitionFilter partitionFilter);
+	}
 }

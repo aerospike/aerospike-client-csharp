@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2019 Aerospike, Inc.
+ * Copyright 2012-2020 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -24,7 +24,7 @@ namespace Aerospike.Client
 		private readonly Partition partition;
 
 		public AsyncTouch(AsyncCluster cluster, WritePolicy writePolicy, WriteListener listener, Key key)
-			: base(cluster, writePolicy, false)
+			: base(cluster, writePolicy)
 		{
 			this.writePolicy = writePolicy;
 			this.listener = listener;
@@ -44,6 +44,11 @@ namespace Aerospike.Client
 		protected internal override AsyncCommand CloneCommand()
 		{
 			return new AsyncTouch(this);
+		}
+
+		protected internal override bool IsWrite()
+		{
+			return true;
 		}
 
 		protected internal override Node GetNode(Cluster cluster)

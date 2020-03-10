@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2019 Aerospike, Inc.
+ * Copyright 2012-2020 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -24,12 +24,12 @@ namespace Aerospike.Client
 		private readonly RecordListener listener;
 		protected internal readonly Key key;
 		private readonly string[] binNames;
-		protected Partition partition;
+		protected readonly Partition partition;
 		protected Record record;
 
-		// Read Constructor.
+		// Read constructor.
 		public AsyncRead(AsyncCluster cluster, Policy policy, RecordListener listener, Key key, string[] binNames) 
-			: base(cluster, policy, true)
+			: base(cluster, policy)
 		{
 			this.listener = listener;
 			this.key = key;
@@ -37,9 +37,9 @@ namespace Aerospike.Client
 			this.partition = Partition.Read(cluster, policy, key);
 		}
 
-		// UDF Constructor.
+		// UDF constructor.
 		public AsyncRead(AsyncCluster cluster, WritePolicy policy, Key key)
-			: base(cluster, policy, false)
+			: base(cluster, policy)
 		{
 			this.listener = null;
 			this.key = key;
@@ -48,13 +48,13 @@ namespace Aerospike.Client
 		}
 
 		// Operate constructor.
-		public AsyncRead(AsyncCluster cluster, RecordListener listener, Key key)
-			: base(cluster, null, false)
+		public AsyncRead(AsyncCluster cluster, Policy policy, RecordListener listener, Key key, Partition partition)
+			: base(cluster, policy)
 		{
 			this.listener = listener;
 			this.key = key;
 			this.binNames = null;
-			this.partition = null;
+			this.partition = partition;
 		}
 
 		public AsyncRead(AsyncRead other)

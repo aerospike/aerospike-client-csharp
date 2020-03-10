@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2020 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -36,7 +36,7 @@ namespace Aerospike.Client
 			string setName,
 			string[] binNames,
 			ulong taskId
-		) : base(parent, cluster, scanPolicy, node, true)
+		) : base(parent, cluster, scanPolicy, node, scanPolicy.socketTimeout, scanPolicy.totalTimeout)
 		{
 			this.scanPolicy = scanPolicy;
 			this.listener = listener;
@@ -48,7 +48,7 @@ namespace Aerospike.Client
 
 		protected internal override void WriteBuffer()
 		{
-			SetScan(scanPolicy, ns, setName, binNamesScan, taskId);
+			SetScan(scanPolicy, ns, setName, binNamesScan, taskId, null);
 		}
 
 		protected internal override void ParseRow(Key key)

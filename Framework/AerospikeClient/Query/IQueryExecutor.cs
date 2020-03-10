@@ -14,26 +14,13 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
+using System;
+
 namespace Aerospike.Client
 {
-	public abstract class AsyncSingleCommand : AsyncCommand
+	public interface IQueryExecutor
 	{
-		public AsyncSingleCommand(AsyncCluster cluster, Policy policy) 
-			: base(cluster, policy)
-		{
-		}
-
-		public AsyncSingleCommand(AsyncSingleCommand other)
-			: base(other)
-		{
-		}
-		
-		protected internal sealed override void ParseCommand()
-		{
-			ParseResult();
-			Finish();
-		}
-
-		protected internal abstract void ParseResult();
+		bool StopThreads(Exception cause);
+		void CheckForException();
 	}
 }

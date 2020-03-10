@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2019 Aerospike, Inc.
+ * Copyright 2012-2020 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -341,7 +341,7 @@ namespace Aerospike.Client
 				policy = writePolicyDefault;
 			}
 			WriteCommand command = new WriteCommand(cluster, policy, key, bins, Operation.Type.WRITE);
-			command.Execute(cluster, policy, false);
+			command.Execute();
 		}
 
 		//-------------------------------------------------------
@@ -365,7 +365,7 @@ namespace Aerospike.Client
 				policy = writePolicyDefault;
 			}
 			WriteCommand command = new WriteCommand(cluster, policy, key, bins, Operation.Type.APPEND);
-			command.Execute(cluster, policy, false);
+			command.Execute();
 		}
 
 		/// <summary>
@@ -385,7 +385,7 @@ namespace Aerospike.Client
 				policy = writePolicyDefault;
 			}
 			WriteCommand command = new WriteCommand(cluster, policy, key, bins, Operation.Type.PREPEND);
-			command.Execute(cluster, policy, false);
+			command.Execute();
 		}
 
 		//-------------------------------------------------------
@@ -409,7 +409,7 @@ namespace Aerospike.Client
 				policy = writePolicyDefault;
 			}
 			WriteCommand command = new WriteCommand(cluster, policy, key, bins, Operation.Type.ADD);
-			command.Execute(cluster, policy, false);
+			command.Execute();
 		}
 
 		//-------------------------------------------------------
@@ -431,7 +431,7 @@ namespace Aerospike.Client
 				policy = writePolicyDefault;
 			}
 			DeleteCommand command = new DeleteCommand(cluster, policy, key);
-			command.Execute(cluster, policy, false);
+			command.Execute();
 			return command.Existed();
 		}
 
@@ -530,7 +530,7 @@ namespace Aerospike.Client
 				policy = writePolicyDefault;
 			}
 			TouchCommand command = new TouchCommand(cluster, policy, key);
-			command.Execute(cluster, policy, false);
+			command.Execute();
 		}
 
 		//-------------------------------------------------------
@@ -552,7 +552,7 @@ namespace Aerospike.Client
 				policy = readPolicyDefault;
 			}
 			ExistsCommand command = new ExistsCommand(cluster, policy, key);
-			command.Execute(cluster, policy, true);
+			command.Execute();
 			return command.Exists();
 		}
 
@@ -593,8 +593,8 @@ namespace Aerospike.Client
 			{
 				policy = readPolicyDefault;
 			}
-			ReadCommand command = new ReadCommand(cluster, policy, key, null);
-			command.Execute(cluster, policy, true);
+			ReadCommand command = new ReadCommand(cluster, policy, key);
+			command.Execute();
 			return command.Record;
 		}
 
@@ -614,7 +614,7 @@ namespace Aerospike.Client
 				policy = readPolicyDefault;
 			}
 			ReadCommand command = new ReadCommand(cluster, policy, key, binNames);
-			command.Execute(cluster, policy, true);
+			command.Execute();
 			return command.Record;
 		}
 
@@ -633,7 +633,7 @@ namespace Aerospike.Client
 				policy = readPolicyDefault;
 			}
 			ReadHeaderCommand command = new ReadHeaderCommand(cluster, policy, key);
-			command.Execute(cluster, policy, true);
+			command.Execute();
 			return command.Record;
 		}
 
@@ -672,8 +672,8 @@ namespace Aerospike.Client
 				// Run batch requests sequentially in same thread.
 				foreach (BatchNode batchNode in batchNodes)
 				{
-					MultiCommand command = new BatchReadListCommand(null, batchNode, policy, records);
-					command.Execute(cluster, policy, true);
+					MultiCommand command = new BatchReadListCommand(cluster, null, batchNode, policy, records);
+					command.Execute();
 				}
 			}
 			else
@@ -685,11 +685,11 @@ namespace Aerospike.Client
 				// This should not be necessary here because it happens in Executor which does a 
 				// volatile write (Interlocked.Increment(ref completedCount)) at the end of write threads
 				// and a synchronized WaitTillComplete() in this thread.
-				Executor executor = new Executor(cluster, policy, batchNodes.Count);
+				Executor executor = new Executor(batchNodes.Count);
 
 				foreach (BatchNode batchNode in batchNodes)
 				{
-					MultiCommand command = new BatchReadListCommand(executor, batchNode, policy, records);
+					MultiCommand command = new BatchReadListCommand(cluster, executor, batchNode, policy, records);
 					executor.AddCommand(command);
 				}
 				executor.Execute(policy.maxConcurrentThreads);
@@ -826,28 +826,9 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if command fails</exception>
 		public Record Operate(WritePolicy policy, Key key, params Operation[] operations)
 		{
-			OperateArgs args = new OperateArgs();
-			OperateCommand command = new OperateCommand(key, operations);
-			command.EstimateOperate(operations, args);
-
-			if (policy == null)
-			{
-				if (args.hasWrite)
-				{
-					policy = writePolicyDefault;
-				}
-				else
-				{
-					policy = operatePolicyReadDefault;
-				}
-			}
-
-			if (policy.respondAllOps)
-			{
-				args.writeAttr |= Command.INFO2_RESPOND_ALL_OPS;
-			}
-			command.SetArgs(cluster, policy, args);
-			command.Execute(cluster, policy, false);
+			OperateArgs args = new OperateArgs(cluster, policy, writePolicyDefault, operatePolicyReadDefault, key, operations);
+			OperateCommand command = new OperateCommand(cluster, key, args);
+			command.Execute();
 			return command.Record;
 		}
 
@@ -870,7 +851,6 @@ namespace Aerospike.Client
 		/// <param name="callback">read callback method - called with record data</param>
 		/// <param name="binNames">
 		/// optional bin to retrieve. All bins will be returned if not specified.
-		/// Aerospike 2 servers ignore this parameter.
 		/// </param>
 		/// <exception cref="AerospikeException">if scan fails</exception>
 		public void ScanAll(ScanPolicy policy, string ns, string setName, ScanCallback callback, params string[] binNames)
@@ -880,44 +860,15 @@ namespace Aerospike.Client
 				policy = scanPolicyDefault;
 			}
 
-			if (policy.scanPercent <= 0 || policy.scanPercent > 100)
+			Node[] nodes = cluster.ValidateNodes();
+
+			if (cluster.hasPartitionScan)
 			{
-				throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Invalid scan percent: " + policy.scanPercent);
+				PartitionTracker tracker = new PartitionTracker(policy, nodes);
+				ScanExecutor.ScanPartitions(cluster, policy, ns, setName, binNames, callback, tracker);
 			}
-
-			Node[] nodes = cluster.Nodes;
-
-			if (nodes.Length == 0)
-			{
-				throw new AerospikeException(ResultCode.SERVER_NOT_AVAILABLE, "Scan failed because cluster is empty.");
-			}
-
-			// Detect cluster migrations when performing scan.
-			ulong clusterKey = policy.failOnClusterChange ? QueryValidate.ValidateBegin(nodes[0], ns) : 0;
-			ulong taskId = RandomShift.ThreadLocalInstance.NextLong();
-			bool first = true;
-
-			if (policy.concurrentNodes)
-			{
-				Executor executor = new Executor(cluster, policy, nodes.Length);
-
-				foreach (Node node in nodes)
-				{
-					ScanCommand command = new ScanCommand(node, policy, ns, setName, callback, binNames, taskId, clusterKey, first);
-					executor.AddCommand(command);
-					first = false;
-				}
-
-				executor.Execute(policy.maxConcurrentNodes);
-			}
-			else
-			{
-				foreach (Node node in nodes)
-				{
-					ScanCommand command = new ScanCommand(node, policy, ns, setName, callback, binNames, taskId, clusterKey, first);
-					command.Execute(cluster, policy);
-					first = false;
-				}
+			else {
+				ScanExecutor.ScanNodes(cluster, policy, ns, setName, binNames, callback, nodes);
 			}
 		}
 
@@ -936,7 +887,6 @@ namespace Aerospike.Client
 		/// <param name="callback">read callback method - called with record data</param>
 		/// <param name="binNames">
 		/// optional bin to retrieve. All bins will be returned if not specified.
-		/// Aerospike 2 servers ignore this parameter.
 		/// </param>
 		/// <exception cref="AerospikeException">if scan fails</exception>
 		public void ScanNode(ScanPolicy policy, string nodeName, string ns, string setName, ScanCallback callback, params string[] binNames)
@@ -959,9 +909,8 @@ namespace Aerospike.Client
 		/// <param name="callback">read callback method - called with record data</param>
 		/// <param name="binNames">
 		/// optional bin to retrieve. All bins will be returned if not specified.
-		/// Aerospike 2 servers ignore this parameter.
 		/// </param>
-		/// <exception cref="AerospikeException">if transaction fails</exception>
+		/// <exception cref="AerospikeException">if scan fails</exception>
 		public void ScanNode(ScanPolicy policy, Node node, string ns, string setName, ScanCallback callback, params string[] binNames)
 		{
 			if (policy == null)
@@ -969,19 +918,50 @@ namespace Aerospike.Client
 				policy = scanPolicyDefault;
 			}
 
-			if (policy.scanPercent <= 0 || policy.scanPercent > 100)
+			if (node.HasPartitionScan)
 			{
-				throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Invalid scan percent: " + policy.scanPercent);
+				PartitionTracker tracker = new PartitionTracker(policy, node);
+				ScanExecutor.ScanPartitions(cluster, policy, ns, setName, binNames, callback, tracker);
+			}
+			else {
+				ScanExecutor.ScanNodes(cluster, policy, ns, setName, binNames, callback, new Node[] {node});
+			}
+		}
+
+		/// <summary>
+		/// Read records in specified namespace, set and partition filter.
+		/// <para>
+		/// This call will block until the scan is complete - callbacks are made
+		/// within the scope of this call.
+		/// </para>
+		/// </summary>
+		/// <param name="policy">scan configuration parameters, pass in null for defaults</param>
+		/// <param name="partitionFilter">filter on a subset of data partitions</param>
+		/// <param name="ns">namespace - equivalent to database name</param>
+		/// <param name="setName">optional set name - equivalent to database table</param>
+		/// <param name="callback">read callback method - called with record data</param>
+		/// <param name="binNames">optional bin to retrieve. All bins will be returned if not specified.</param>
+		/// <exception cref="AerospikeException">if scan fails</exception>
+		public void ScanPartitions(ScanPolicy policy, PartitionFilter partitionFilter, string ns, string setName, ScanCallback callback, params string[] binNames)
+		{
+			if (policy == null)
+			{
+				policy = scanPolicyDefault;
 			}
 
-			// Detect cluster migrations when performing scan.
-			ulong clusterKey = policy.failOnClusterChange ? QueryValidate.ValidateBegin(node, ns) : 0;
-			ulong taskId = RandomShift.ThreadLocalInstance.NextLong();
+			Node[] nodes = cluster.ValidateNodes();
 
-			ScanCommand command = new ScanCommand(node, policy, ns, setName, callback, binNames, taskId, clusterKey, true);
-			command.Execute(cluster, policy);
+			if (cluster.hasPartitionScan)
+			{
+				PartitionTracker tracker = new PartitionTracker(policy, nodes, partitionFilter);
+				ScanExecutor.ScanPartitions(cluster, policy, ns, setName, binNames, callback, tracker);
+			}
+			else
+			{
+				throw new AerospikeException(ResultCode.PARAMETER_ERROR, "ScanPartitions() not supported");
+			}
 		}
-		
+
 		//---------------------------------------------------------------
 		// User defined functions
 		//---------------------------------------------------------------
@@ -1126,7 +1106,7 @@ namespace Aerospike.Client
 				policy = writePolicyDefault;
 			}
 			ExecuteCommand command = new ExecuteCommand(cluster, policy, key, packageName, functionName, args);
-			command.Execute(cluster, policy, false);
+			command.Execute();
 
 			Record record = command.Record;
 
@@ -1179,17 +1159,12 @@ namespace Aerospike.Client
 			statement.SetAggregateFunction(packageName, functionName, functionArgs);
 			statement.Prepare(false);
 
-			Node[] nodes = cluster.Nodes;
-			if (nodes.Length == 0)
-			{
-				throw new AerospikeException(ResultCode.SERVER_NOT_AVAILABLE, "Command failed because cluster is empty.");
-			}
-
-			Executor executor = new Executor(cluster, policy, nodes.Length);
+			Node[] nodes = cluster.ValidateNodes();
+			Executor executor = new Executor(nodes.Length);
 
 			foreach (Node node in nodes)
 			{
-				ServerCommand command = new ServerCommand(node, policy, statement);
+				ServerCommand command = new ServerCommand(cluster, node, policy, statement);
 				executor.AddCommand(command);
 			}
 
@@ -1219,17 +1194,12 @@ namespace Aerospike.Client
 			statement.Operations = operations;
 			statement.Prepare(false);
 
-			Node[] nodes = cluster.Nodes;
-			if (nodes.Length == 0)
-			{
-				throw new AerospikeException(ResultCode.SERVER_NOT_AVAILABLE, "Command failed because cluster is empty.");
-			}
-
-			Executor executor = new Executor(cluster, policy, nodes.Length);
+			Node[] nodes = cluster.ValidateNodes();
+			Executor executor = new Executor(nodes.Length);
 
 			foreach (Node node in nodes)
 			{
-				ServerCommand command = new ServerCommand(node, policy, statement);
+				ServerCommand command = new ServerCommand(cluster, node, policy, statement);
 				executor.AddCommand(command);
 			}
 			executor.Execute(nodes.Length);
@@ -1276,9 +1246,55 @@ namespace Aerospike.Client
 			{
 				policy = queryPolicyDefault;
 			}
-			QueryRecordExecutor executor = new QueryRecordExecutor(cluster, policy, statement);
-			executor.Execute();
-			return executor.RecordSet;
+
+			Node[] nodes = cluster.ValidateNodes();
+
+			// A scan will be performed if the secondary index filter is null.
+			// Check if scan and partition scan is supported.
+			if (statement.filter == null && cluster.hasPartitionScan)
+			{
+				PartitionTracker tracker = new PartitionTracker(policy, nodes);
+				QueryPartitionExecutor executor = new QueryPartitionExecutor(cluster, policy, statement, nodes.Length, tracker);
+				return executor.RecordSet;
+			}
+			else
+			{
+				QueryRecordExecutor executor = new QueryRecordExecutor(cluster, policy, statement, nodes);
+				executor.Execute();
+				return executor.RecordSet;
+			}
+		}
+
+		/// <summary>
+		/// Execute query for specified partitions and return record iterator.  The query executor puts
+		/// records on a queue in separate threads.  The calling thread concurrently pops records off
+		/// the queue through the record iterator.
+		/// </summary>
+		/// <param name="policy">query configuration parameters, pass in null for defaults</param>
+		/// <param name="statement">query filter. Statement instance is not suitable for reuse since it's modified in this method.</param>
+		/// <param name="partitionFilter">filter on a subset of data partitions</param>
+		/// <exception cref="AerospikeException">if query fails</exception>
+		public RecordSet QueryPartitions(QueryPolicy policy, Statement statement, PartitionFilter partitionFilter)
+		{
+			if (policy == null)
+			{
+				policy = queryPolicyDefault;
+			}
+
+			Node[] nodes = cluster.ValidateNodes();
+
+			// A scan will be performed if the secondary index filter is null.
+			// Check if scan and partition scan is supported.
+			if (statement.filter == null && cluster.hasPartitionScan)
+			{
+				PartitionTracker tracker = new PartitionTracker(policy, nodes, partitionFilter);
+				QueryPartitionExecutor executor = new QueryPartitionExecutor(cluster, policy, statement, nodes.Length, tracker);
+				return executor.RecordSet;
+			}
+			else
+			{
+				throw new AerospikeException(ResultCode.PARAMETER_ERROR, "QueryPartitions() not supported");
+			}
 		}
 
 #if NETFRAMEWORK
@@ -1294,7 +1310,7 @@ namespace Aerospike.Client
 		/// Therefore, the Lua script file must also reside on both server and client.
 		/// </para>
 		/// </summary>
-		/// <param name="policy">generic configuration parameters, pass in null for defaults</param>
+		/// <param name="policy">query configuration parameters, pass in null for defaults</param>
 		/// <param name="statement">
 		/// query filter. Statement instance is not suitable for reuse since it's modified in this method.
 		/// </param>
@@ -1312,7 +1328,7 @@ namespace Aerospike.Client
 		/// Execute query, apply statement's aggregation function, call action for each aggregation
 		/// object returned from server. 
 		/// </summary>
-		/// <param name="policy">generic configuration parameters, pass in null for defaults</param>
+		/// <param name="policy">query configuration parameters, pass in null for defaults</param>
 		/// <param name="statement">
 		/// query filter with aggregate functions already initialized by SetAggregateFunction().
 		/// Statement instance is not suitable for reuse since it's modified in this method.
@@ -1341,7 +1357,7 @@ namespace Aerospike.Client
 		/// Therefore, the Lua script file must also reside on both server and client.
 		/// </para>
 		/// </summary>
-		/// <param name="policy">generic configuration parameters, pass in null for defaults</param>
+		/// <param name="policy">query configuration parameters, pass in null for defaults</param>
 		/// <param name="statement">
 		/// query filter with aggregate functions already initialized by SetAggregateFunction().
 		/// Statement instance is not suitable for reuse since it's modified in this method.
@@ -1355,7 +1371,8 @@ namespace Aerospike.Client
 			}
 			statement.Prepare(true);
 
-			QueryAggregateExecutor executor = new QueryAggregateExecutor(cluster, policy, statement);
+			Node[] nodes = cluster.ValidateNodes();
+			QueryAggregateExecutor executor = new QueryAggregateExecutor(cluster, policy, statement, nodes);
 			executor.Execute();
 			return executor.ResultSet;
 		}

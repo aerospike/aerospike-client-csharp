@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2019 Aerospike, Inc.
+ * Copyright 2012-2020 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -311,10 +311,7 @@ namespace Aerospike.Client
 		/// <param name="ns">namespace - equivalent to database name</param>
 		/// <param name="setName">optional set name - equivalent to database table</param>
 		/// <param name="callback">read callback method - called with record data</param>
-		/// <param name="binNames">
-		/// optional bin to retrieve. All bins will be returned if not specified.
-		/// Aerospike 2 servers ignore this parameter.
-		/// </param>
+		/// <param name="binNames">optional bin to retrieve. All bins will be returned if not specified.</param>
 		/// <exception cref="AerospikeException">if scan fails</exception>
 		void ScanAll(ScanPolicy policy, string ns, string setName, ScanCallback callback, params string[] binNames);
 
@@ -331,10 +328,7 @@ namespace Aerospike.Client
 		/// <param name="ns">namespace - equivalent to database name</param>
 		/// <param name="setName">optional set name - equivalent to database table</param>
 		/// <param name="callback">read callback method - called with record data</param>
-		/// <param name="binNames">
-		/// optional bin to retrieve. All bins will be returned if not specified.
-		/// Aerospike 2 servers ignore this parameter.
-		/// </param>
+		/// <param name="binNames">optional bin to retrieve. All bins will be returned if not specified.</param>
 		/// <exception cref="AerospikeException">if scan fails</exception>
 		void ScanNode(ScanPolicy policy, string nodeName, string ns, string setName, ScanCallback callback, params string[] binNames);
 
@@ -350,12 +344,25 @@ namespace Aerospike.Client
 		/// <param name="ns">namespace - equivalent to database name</param>
 		/// <param name="setName">optional set name - equivalent to database table</param>
 		/// <param name="callback">read callback method - called with record data</param>
-		/// <param name="binNames">
-		/// optional bin to retrieve. All bins will be returned if not specified.
-		/// Aerospike 2 servers ignore this parameter.
-		/// </param>
-		/// <exception cref="AerospikeException">if transaction fails</exception>
+		/// <param name="binNames">optional bin to retrieve. All bins will be returned if not specified.</param>
+		/// <exception cref="AerospikeException">if scan fails</exception>
 		void ScanNode(ScanPolicy policy, Node node, string ns, string setName, ScanCallback callback, params string[] binNames);
+
+		/// <summary>
+		/// Read records in specified namespace, set and partition filter.
+		/// <para>
+		/// This call will block until the scan is complete - callbacks are made
+		/// within the scope of this call.
+		/// </para>
+		/// </summary>
+		/// <param name="policy">scan configuration parameters, pass in null for defaults</param>
+		/// <param name="partitionFilter">filter on a subset of data partitions</param>
+		/// <param name="ns">namespace - equivalent to database name</param>
+		/// <param name="setName">optional set name - equivalent to database table</param>
+		/// <param name="callback">read callback method - called with record data</param>
+		/// <param name="binNames">optional bin to retrieve. All bins will be returned if not specified.</param>
+		/// <exception cref="AerospikeException">if scan fails</exception>
+		void ScanPartitions(ScanPolicy policy, PartitionFilter partitionFilter, string ns, string setName, ScanCallback callback, params string[] binNames);
 
 		/// <summary>
 		/// Register package located in a file containing user defined functions with server.
@@ -494,6 +501,17 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if query fails</exception>
 		RecordSet Query(QueryPolicy policy, Statement statement);
 
+		/// <summary>
+		/// Execute query for specified partitions and return record iterator.  The query executor puts
+		/// records on a queue in separate threads.  The calling thread concurrently pops records off
+		/// the queue through the record iterator.
+		/// </summary>
+		/// <param name="policy">query configuration parameters, pass in null for defaults</param>
+		/// <param name="statement">query filter. Statement instance is not suitable for reuse since it's modified in this method.</param>
+		/// <param name="partitionFilter">filter on a subset of data partitions</param>
+		/// <exception cref="AerospikeException">if query fails</exception>
+		RecordSet QueryPartitions(QueryPolicy policy, Statement statement, PartitionFilter partitionFilter);
+
 #if NETFRAMEWORK
 		/// <summary>
 		/// Execute query, apply statement's aggregation function, and return result iterator. 
@@ -507,7 +525,7 @@ namespace Aerospike.Client
 		/// Therefore, the Lua script file must also reside on both server and client.
 		/// </para>
 		/// </summary>
-		/// <param name="policy">generic configuration parameters, pass in null for defaults</param>
+		/// <param name="policy">query configuration parameters, pass in null for defaults</param>
 		/// <param name="statement">
 		/// query filter. Statement instance is not suitable for reuse since it's modified in this method.
 		/// </param>
@@ -521,7 +539,7 @@ namespace Aerospike.Client
 		/// Execute query, apply statement's aggregation function, call action for each aggregation
 		/// object returned from server. 
 		/// </summary>
-		/// <param name="policy">generic configuration parameters, pass in null for defaults</param>
+		/// <param name="policy">query configuration parameters, pass in null for defaults</param>
 		/// <param name="statement">
 		/// query filter with aggregate functions already initialized by SetAggregateFunction().
 		/// Statement instance is not suitable for reuse since it's modified in this method.
@@ -541,7 +559,7 @@ namespace Aerospike.Client
 		/// Therefore, the Lua script file must also reside on both server and client.
 		/// </para>
 		/// </summary>
-		/// <param name="policy">generic configuration parameters, pass in null for defaults</param>
+		/// <param name="policy">query configuration parameters, pass in null for defaults</param>
 		/// <param name="statement">
 		/// query filter with aggregate functions already initialized by SetAggregateFunction().
 		/// Statement instance is not suitable for reuse since it's modified in this method.

@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2019 Aerospike, Inc.
+ * Copyright 2012-2020 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -26,7 +26,7 @@ namespace Aerospike.Client
 		private Dictionary<string,string> map;
 
 		public AsyncInfo(AsyncCluster cluster, InfoPolicy policy, InfoListener listener, AsyncNode node, params string[] commands)
-			: base(cluster, CreatePolicy(policy), false)
+			: base(cluster, CreatePolicy(policy))
 		{
 			this.listener = listener;
 			this.serverNode = node;
@@ -57,6 +57,11 @@ namespace Aerospike.Client
 		protected internal override AsyncCommand CloneCommand()
 		{
 			return new AsyncInfo(this);
+		}
+
+		protected internal override bool IsWrite()
+		{
+			return true;
 		}
 
 		protected internal override Node GetNode(Cluster cluster)

@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2019 Aerospike, Inc.
+ * Copyright 2012-2020 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -29,7 +29,7 @@ namespace Aerospike.Client
 	{
 		public static readonly KeyRecord END = new KeyRecord(null, null);
 
-		private readonly QueryExecutor executor;
+		private readonly IQueryExecutor executor;
 		private readonly BlockingCollection<KeyRecord> queue;
 		private readonly CancellationToken cancelToken;
 		private KeyRecord record;
@@ -38,7 +38,7 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Initialize record set with underlying producer/consumer queue.
 		/// </summary>
-		public RecordSet(QueryExecutor executor, int capacity, CancellationToken cancelToken)
+		public RecordSet(IQueryExecutor executor, int capacity, CancellationToken cancelToken)
 		{
 			this.executor = executor;
 			this.queue = new BlockingCollection<KeyRecord>(capacity);
@@ -192,10 +192,12 @@ namespace Aerospike.Client
 				if (!queue.TryTake(out tmp))
 				{
 					// Can't add or take.  Nothing can be done here.
+					/*
 					if (Log.DebugEnabled())
 					{
 						Log.Debug("RecordSet " + executor.statement.taskId + " both add and take failed on abort");
 					}
+					*/
 					break;
 				}
 			}
