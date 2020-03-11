@@ -632,11 +632,13 @@ namespace Aerospike.Client
 			int fieldCount = 0;
 			int partsFullSize = 0;
 			int partsPartialSize = 0;
+			long maxRecords = 0;
 
 			if (nodePartitions != null)
 			{
 				partsFullSize = nodePartitions.partsFull.Count * 2;
 				partsPartialSize = nodePartitions.partsPartial.Count * 20;
+				maxRecords = nodePartitions.recordMax;
 			}
 
 			if (ns != null)
@@ -663,6 +665,12 @@ namespace Aerospike.Client
 				fieldCount++;
 			}
 
+			if (maxRecords > 0)
+			{
+				dataOffset += 8 + FIELD_HEADER_SIZE;
+				fieldCount++;
+			}
+
 			if (policy.recordsPerSecond > 0)
 			{
 				dataOffset += 4 + FIELD_HEADER_SIZE;
@@ -677,9 +685,13 @@ namespace Aerospike.Client
 				fieldCount++;
 			}
 
-			// Estimate scan options size.
-			dataOffset += 2 + FIELD_HEADER_SIZE;
-			fieldCount++;
+			// Only set scan options for server versions < 4.9.
+			if (nodePartitions == null)
+			{
+				// Estimate scan options size.
+				dataOffset += 2 + FIELD_HEADER_SIZE;
+				fieldCount++;
+			}
 
 			// Estimate scan timeout size.
 			dataOffset += 4 + FIELD_HEADER_SIZE;
@@ -739,6 +751,11 @@ namespace Aerospike.Client
 				}
 			}
 
+			if (maxRecords > 0)
+			{
+				WriteField((ulong)maxRecords, FieldType.SCAN_MAX_RECORDS);
+			}
+
 			if (policy.recordsPerSecond > 0)
 			{
 				WriteField(policy.recordsPerSecond, FieldType.RECORDS_PER_SECOND);
@@ -749,23 +766,21 @@ namespace Aerospike.Client
 				WritePredExp(policy.predExp, predSize);
 			}
 
-			WriteFieldHeader(2, FieldType.SCAN_OPTIONS);
-
-			byte priority = 0;
-
-			// Only set priority/failOnClusterChange for server versions < 4.9.
+			// Only set scan options for server versions < 4.9.
 			if (nodePartitions == null)
 			{
-				priority = (byte)policy.priority;
+				WriteFieldHeader(2, FieldType.SCAN_OPTIONS);
+
+				byte priority = (byte)policy.priority;
 				priority <<= 4;
 
 				if (policy.failOnClusterChange)
 				{
 					priority |= 0x08;
 				}
+				dataBuffer[dataOffset++] = priority;
+				dataBuffer[dataOffset++] = (byte)policy.scanPercent;
 			}
-			dataBuffer[dataOffset++] = priority;
-			dataBuffer[dataOffset++] = (byte)policy.scanPercent;
 
 			// Write scan timeout
 			WriteField(policy.socketTimeout, FieldType.SCAN_TIMEOUT);
@@ -791,6 +806,7 @@ namespace Aerospike.Client
 			int binNameSize = 0;
 			int partsFullSize = 0;
 			int partsPartialSize = 0;
+			long maxRecords = 0;
 
 			Begin();
 
@@ -853,6 +869,7 @@ namespace Aerospike.Client
 				{
 					partsFullSize = nodePartitions.partsFull.Count * 2;
 					partsPartialSize = nodePartitions.partsPartial.Count * 20;
+					maxRecords = nodePartitions.recordMax;
 				}
 
 				if (partsFullSize > 0)
@@ -867,9 +884,20 @@ namespace Aerospike.Client
 					fieldCount++;
 				}
 
-				// Estimate scan options size.
-				dataOffset += 2 + FIELD_HEADER_SIZE;
-				fieldCount++;
+				// Estimate max records size;
+				if (maxRecords > 0)
+				{
+					dataOffset += 8 + FIELD_HEADER_SIZE;
+					fieldCount++;
+				}
+
+				// Only set scan options for server versions < 4.9.
+				if (nodePartitions == null)
+				{
+					// Estimate scan options size.
+					dataOffset += 2 + FIELD_HEADER_SIZE;
+					fieldCount++;
+				}
 
 				// Estimate scan timeout size.
 				dataOffset += 4 + FIELD_HEADER_SIZE;
@@ -1019,22 +1047,25 @@ namespace Aerospike.Client
 					}
 				}
 
-				WriteFieldHeader(2, FieldType.SCAN_OPTIONS);
-				byte priority = 0;
+				if (maxRecords > 0)
+				{
+					WriteField((ulong)maxRecords, FieldType.SCAN_MAX_RECORDS);
+				}
 
-				// Only set priority/failOnClusterChange for server versions < 4.9.
+				// Only set scan options for server versions < 4.9.
 				if (nodePartitions == null)
 				{
-					priority = (byte)policy.priority;
+					WriteFieldHeader(2, FieldType.SCAN_OPTIONS);
+					byte priority = (byte)policy.priority;
 					priority <<= 4;
 
 					if (!write && ((QueryPolicy)policy).failOnClusterChange)
 					{
 						priority |= 0x08;
 					}
+					dataBuffer[dataOffset++] = priority;
+					dataBuffer[dataOffset++] = (byte)100;
 				}
-				dataBuffer[dataOffset++] = priority;
-				dataBuffer[dataOffset++] = (byte)100;
 
 				// Write scan socket idle timeout.
 				WriteField(policy.socketTimeout, FieldType.SCAN_TIMEOUT);

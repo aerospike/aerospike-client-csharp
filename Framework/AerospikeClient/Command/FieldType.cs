@@ -28,6 +28,7 @@ namespace Aerospike.Client
 		public const int RECORDS_PER_SECOND = 10;
 		public const int PID_ARRAY = 11;
 		public const int DIGEST_ARRAY = 12;
+		public const int SCAN_MAX_RECORDS = 13;
 		public const int INDEX_NAME = 21;
 		public const int INDEX_RANGE = 22;
 		public const int INDEX_FILTER = 23;

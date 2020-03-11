@@ -22,11 +22,31 @@ namespace Aerospike.Client
 	public sealed class ScanPolicy : Policy
 	{
 		/// <summary>
+		/// Approximate number of records to return to client. This number is divided by the
+		/// number of nodes involved in the scan.  The actual number of records returned
+		/// may be less than maxRecords if node record counts are small and unbalanced across
+		/// nodes.
+		/// <para>
+		/// This field is supported on server versions >= 4.9.
+		/// </para>
+		/// <para>
+		/// Default: 0 (do not limit record count)
+		/// </para>
+		/// </summary>
+		public long maxRecords;
+
+		/// <summary>
 		/// Percent of data to scan.  Valid integer range is 1 to 100.
-		/// <para>Default: 100</para>
+		/// <para>
+		/// This field is supported on server versions &lt; 4.9.
+		/// For server versions >= 4.9, use <see cref="maxRecords"/>.
+		/// </para>
+		/// <para>
+		/// Default: 100
+		/// </para>
 		/// </summary>
 		public int scanPercent = 100;
-
+	
 		/// <summary>
 		/// Limit returned records per second (rps) rate for each server.
 		/// Do not apply rps limit if recordsPerSecond is zero.
@@ -73,6 +93,7 @@ namespace Aerospike.Client
 		/// </summary>
 		public ScanPolicy(ScanPolicy other) : base(other)
 		{
+			this.maxRecords = other.maxRecords;
 			this.scanPercent = other.scanPercent;
 			this.recordsPerSecond = other.recordsPerSecond;
 			this.maxConcurrentNodes = other.maxConcurrentNodes;

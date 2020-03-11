@@ -69,7 +69,7 @@ namespace Aerospike.Client
 				tracker.PartitionDone(nodePartitions, generation);
 				return;
 			}
-			tracker.SetDigest(key);
+			tracker.SetDigest(nodePartitions, key);
 
 			Record record = ParseRecord();
 
