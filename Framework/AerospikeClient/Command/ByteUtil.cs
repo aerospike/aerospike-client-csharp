@@ -577,7 +577,7 @@ namespace Aerospike.Client
 		{
 			MemoryStream output = new MemoryStream(trgBuf, trgOffset, trgSize);
 
-			using (ZlibStream zs = new ZlibStream(output, CompressionMode.Compress, true))
+			using (ZlibStream zs = new ZlibStream(output, CompressionMode.Compress, CompressionLevel.BestSpeed, true))
 			{
 				zs.Write(srcBuf, 0, srcSize);
 			}
