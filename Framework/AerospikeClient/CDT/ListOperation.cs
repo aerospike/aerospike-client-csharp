@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2019 Aerospike, Inc.
+ * Copyright 2012-2020 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -88,6 +88,26 @@ namespace Aerospike.Client
 		private const int REMOVE_BY_RANK_RANGE = 39;
 		private const int REMOVE_BY_VALUE_REL_RANK_RANGE = 40;
 
+		/// <summary>
+		/// Create list create operation.
+		/// Server creates list at given context level. The context is allowed to be beyond list
+		/// boundaries only if pad is set to true.  In that case, nil list entries will be inserted to
+		/// satisfy the context position.
+		/// </summary>
+		public static Operation Create(string binName, ListOrder order, bool pad, params CTX[] ctx)
+		{
+			// If context not defined, the set order for top-level bin list.
+			if (ctx == null || ctx.Length == 0)
+			{
+				return SetOrder(binName, order);
+			}
+
+			Packer packer = new Packer();
+			CDT.Init(packer, ctx, SET_TYPE, 1, CTX.GetFlag(order, pad));
+			packer.PackNumber((int)order);
+			return new Operation(Operation.Type.CDT_MODIFY, binName, Value.Get(packer.ToByteArray()));
+		}
+	
 		/// <summary>
 		/// Create set list order operation.
 		/// Server sets list order.  Server returns null.

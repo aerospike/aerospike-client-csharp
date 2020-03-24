@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2019 Aerospike, Inc.
+ * Copyright 2012-2020 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -100,6 +100,24 @@ namespace Aerospike.Client
 		private const int GET_BY_VALUE_LIST = 108;
 		private const int GET_BY_KEY_REL_INDEX_RANGE = 109;
 		private const int GET_BY_VALUE_REL_RANK_RANGE = 110;
+
+		/// <summary>
+		/// Create map create operation.
+		/// Server creates map at given context level.
+		/// </summary>
+		public static Operation Create(string binName, MapOrder order, params CTX[] ctx)
+		{
+			// If context not defined, the set order for top-level bin map.
+			if (ctx == null || ctx.Length == 0)
+			{
+				return SetMapPolicy(new MapPolicy(order, MapWriteMode.UPDATE), binName);
+			}
+
+			Packer packer = new Packer();
+			CDT.Init(packer, ctx, SET_TYPE, 1, CTX.GetFlag(order));
+			packer.PackNumber((int)order);
+			return new Operation(Operation.Type.MAP_MODIFY, binName, Value.Get(packer.ToByteArray()));
+		}
 
 		/// <summary>
 		/// Create set map policy operation.

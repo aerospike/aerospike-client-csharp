@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2019 Aerospike, Inc.
+ * Copyright 2012-2020 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -155,6 +155,30 @@ namespace Aerospike.Client
 					packer.PackArrayBegin(count);
 				}
 			}
+		}
+
+		internal static void Init(Packer packer, CTX[] ctx, int command, int count, int flag)
+		{
+			packer.PackArrayBegin(3);
+			packer.PackNumber(0xff);
+			packer.PackArrayBegin(ctx.Length * 2);
+
+			CTX c;
+			int last = ctx.Length - 1;
+
+			for (int i = 0; i < last; i++)
+			{
+				c = ctx[i];
+				packer.PackNumber(c.id);
+				c.value.Pack(packer);
+			}
+
+			c = ctx[last];
+			packer.PackNumber(c.id | flag);
+			c.value.Pack(packer);
+
+			packer.PackArrayBegin(count + 1);
+			packer.PackNumber(command);
 		}
 	}
 }

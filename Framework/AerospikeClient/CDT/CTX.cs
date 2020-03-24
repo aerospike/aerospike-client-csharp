@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2019 Aerospike, Inc.
+ * Copyright 2012-2020 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -40,6 +40,14 @@ namespace Aerospike.Client
 		public static CTX ListIndex(int index)
 		{
 			return new CTX(0x10, Value.Get(index));
+		}
+
+		/// <summary>
+		/// Create list with given order at index offset.
+		/// </summary>
+		public static CTX ListIndexCreate(int index, ListOrder order, bool pad)
+		{
+			return new CTX(0x10 | GetFlag(order, pad), Value.Get(index));
 		}
 
 		/// <summary>
@@ -103,11 +111,38 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
+		/// Create map with given order at map key.
+		/// </summary>
+		public static CTX MapKeyCreate(Value key, MapOrder order)
+		{
+			return new CTX(0x22 | GetFlag(order), key);
+		}
+
+		/// <summary>
 		/// Lookup map by value.
 		/// </summary>
 		public static CTX MapValue(Value key)
 		{
 			return new CTX(0x23, key);
+		}
+
+		internal static int GetFlag(ListOrder order, bool pad)
+		{
+			return (order == ListOrder.ORDERED) ? 0xc0 : pad ? 0x80 : 0x40;
+		}
+
+		internal static int GetFlag(MapOrder order)
+		{
+			switch (order)
+			{
+				default:
+				case MapOrder.UNORDERED:
+					return 0x40;
+				case MapOrder.KEY_ORDERED:
+					return 0x80;
+				case MapOrder.KEY_VALUE_ORDERED:
+					return 0xc0;
+			}
 		}
 
 		internal int id;

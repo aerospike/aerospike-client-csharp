@@ -1,5 +1,5 @@
 ﻿/* 
- * Copyright 2012-2019 Aerospike, Inc.
+ * Copyright 2012-2020 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -110,7 +110,7 @@ namespace Aerospike.Test
 
 			val = (string)rangeList[3];
 			Assert.AreEqual("my string", val);
-	
+
 			rangeList = (IList)list[2];
 			val = (string)rangeList[0];
 			Assert.AreEqual("my string", val);
@@ -854,9 +854,9 @@ namespace Aerospike.Test
 		public void OperateListPartial()
 		{
 			Key key = new Key(args.ns, args.set, "oplkey15");
-		
+
 			client.Delete(null, key);
-		
+
 			List<Value> itemList = new List<Value>();
 			itemList.Add(Value.Get(0));
 			itemList.Add(Value.Get(4));
@@ -871,15 +871,15 @@ namespace Aerospike.Test
 					ListOperation.AppendItems(new ListPolicy(ListOrder.ORDERED, ListWriteFlags.ADD_UNIQUE | ListWriteFlags.PARTIAL | ListWriteFlags.NO_FAIL), binName, itemList),
 					ListOperation.AppendItems(new ListPolicy(ListOrder.ORDERED, ListWriteFlags.ADD_UNIQUE | ListWriteFlags.NO_FAIL), "bin2", itemList)
 					);
-		
+
 			AssertRecordFound(key, record);
-		
+
 			long size = record.GetLong(binName);
-			Assert.AreEqual(6L, size);	
-		
+			Assert.AreEqual(6L, size);
+
 			size = record.GetLong("bin2");
-			Assert.AreEqual(0L, size);	
-		
+			Assert.AreEqual(0L, size);
+
 			itemList = new List<Value>();
 			itemList.Add(Value.Get(11));
 			itemList.Add(Value.Get(3));
@@ -890,21 +890,21 @@ namespace Aerospike.Test
 					);
 
 			AssertRecordFound(key, record);
-		
+
 			size = record.GetLong(binName);
-			Assert.AreEqual(7L, size);	
-		
+			Assert.AreEqual(7L, size);
+
 			size = record.GetLong("bin2");
-			Assert.AreEqual(2L, size);	
+			Assert.AreEqual(2L, size);
 		}
 
 		[TestMethod]
 		public void OperateListInfinity()
 		{
 			Key key = new Key(args.ns, args.set, "oplkey16");
-		
+
 			client.Delete(null, key);
-		
+
 			List<Value> itemList = new List<Value>();
 			itemList.Add(Value.Get(0));
 			itemList.Add(Value.Get(4));
@@ -916,12 +916,12 @@ namespace Aerospike.Test
 			Record record = client.Operate(null, key,
 					ListOperation.AppendItems(new ListPolicy(ListOrder.ORDERED, ListWriteFlags.DEFAULT), binName, itemList)
 					);
-		
+
 			AssertRecordFound(key, record);
-		
+
 			long size = record.GetLong(binName);
-			Assert.AreEqual(6L, size);	
-				
+			Assert.AreEqual(6L, size);
+
 			itemList = new List<Value>();
 			itemList.Add(Value.Get(11));
 			itemList.Add(Value.Get(3));
@@ -931,23 +931,24 @@ namespace Aerospike.Test
 					);
 
 			AssertRecordFound(key, record);
-		
+
 			IList results = record.GetList(binName);
 			int i = 0;
-		
-			long val = (long)results[i++];	
+
+			long val = (long)results[i++];
 			Assert.AreEqual(11L, val);
-		
-			val = (long)results[i++];	
-			Assert.AreEqual(15L, val);	
+
+			val = (long)results[i++];
+			Assert.AreEqual(15L, val);
 		}
 
 		[TestMethod]
-		public void OperateListWildcard() {
+		public void OperateListWildcard()
+		{
 			Key key = new Key(args.ns, args.set, "oplkey17");
-		
+
 			client.Delete(null, key);
-		
+
 			List<Value> i1 = new List<Value>();
 			i1.Add(Value.Get("John"));
 			i1.Add(Value.Get(55));
@@ -955,13 +956,13 @@ namespace Aerospike.Test
 			List<Value> i2 = new List<Value>();
 			i2.Add(Value.Get("Jim"));
 			i2.Add(Value.Get(95));
-		
+
 			List<Value> i3 = new List<Value>();
 			i3.Add(Value.Get("Joe"));
 			i3.Add(Value.Get(80));
 
 			List<Value> itemList = new List<Value>();
-		
+
 			itemList.Add(Value.Get(i1));
 			itemList.Add(Value.Get(i2));
 			itemList.Add(Value.Get(i3));
@@ -969,12 +970,12 @@ namespace Aerospike.Test
 			Record record = client.Operate(null, key,
 					ListOperation.AppendItems(binName, itemList)
 					);
-		
+
 			AssertRecordFound(key, record);
-		
+
 			long size = record.GetLong(binName);
-			Assert.AreEqual(3L, size);	
-				
+			Assert.AreEqual(3L, size);
+
 			itemList = new List<Value>();
 			itemList.Add(Value.Get("Jim"));
 			itemList.Add(Value.WILDCARD);
@@ -984,15 +985,15 @@ namespace Aerospike.Test
 					);
 
 			AssertRecordFound(key, record);
-		
+
 			IList results = record.GetList(binName);
 			int i = 0;
-		
+
 			IList items = (IList)results[i++];
-			String s = (String)items[0];	
+			String s = (String)items[0];
 			Assert.AreEqual("Jim", s);
-		
-			long v = (long)items[1];	
+
+			long v = (long)items[1];
 			Assert.AreEqual(95L, v);
 		}
 
@@ -1029,7 +1030,7 @@ namespace Aerospike.Test
 
 			// Append value to last list and retrieve all lists.
 			Record record = client.Operate(null, key,
-				ListOperation.Append(binName, Value.Get(11), CTX.ListIndex(-1)), 
+				ListOperation.Append(binName, Value.Get(11), CTX.ListIndex(-1)),
 				Operation.Get(binName)
 				);
 
@@ -1122,7 +1123,66 @@ namespace Aerospike.Test
 			Assert.AreEqual(3, list.Count);
 			Assert.AreEqual(2, (long)(long?)list[0]);
 			Assert.AreEqual(4, (long)(long?)list[1]);
-			Assert.AreEqual(11, (long)(long?)list[2]);		
+			Assert.AreEqual(11, (long)(long?)list[2]);
+		}
+
+		[TestMethod]
+		public void OperateListCreateContext()
+		{
+			Key key = new Key(args.ns, args.set, "oplkey20");
+
+			client.Delete(null, key);
+
+			IList<Value> l1 = new List<Value>();
+			l1.Add(Value.Get(7));
+			l1.Add(Value.Get(9));
+			l1.Add(Value.Get(5));
+
+			IList<Value> l2 = new List<Value>();
+			l2.Add(Value.Get(1));
+			l2.Add(Value.Get(2));
+			l2.Add(Value.Get(3));
+
+			IList<Value> l3 = new List<Value>();
+			l3.Add(Value.Get(6));
+			l3.Add(Value.Get(5));
+			l3.Add(Value.Get(4));
+			l3.Add(Value.Get(1));
+
+			List<Value> inputList = new List<Value>();
+			inputList.Add(Value.Get(l1));
+			inputList.Add(Value.Get(l2));
+			inputList.Add(Value.Get(l3));
+
+			// Create list.
+			Record record = client.Operate(null, key,
+				ListOperation.AppendItems(new ListPolicy(ListOrder.ORDERED, 0), binName, inputList),
+				Operation.Get(binName)
+				);
+
+			// Append value to new list created after the original 3 lists.
+			record = client.Operate(null, key,
+				ListOperation.Append(binName, Value.Get(2), CTX.ListIndexCreate(3, ListOrder.ORDERED, false)),
+				//ListOperation.Create(binName, ListOrder.ORDERED, false, CTX.ListIndex(3)),
+				//ListOperation.Append(binName, Value.Get(2), CTX.ListIndex(3)),
+				Operation.Get(binName)
+				);
+
+			AssertRecordFound(key, record);
+
+			IList results = record.GetList(binName);
+			int i = 0;
+
+			long count = (long)results[i++];
+			Assert.AreEqual(1, count);
+
+			IList list = (IList)results[i++];
+			Assert.AreEqual(4, list.Count);
+
+			// Test last nested list.
+			list = (IList)list[1];
+			Assert.AreEqual(1, list.Count);
+			Assert.AreEqual(2, (long)list[0]);
 		}
 	}
 }

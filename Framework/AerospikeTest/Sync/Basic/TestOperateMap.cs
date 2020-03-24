@@ -1,5 +1,5 @@
 ﻿/* 
- * Copyright 2012-2019 Aerospike, Inc.
+ * Copyright 2012-2020 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -1037,6 +1037,55 @@ namespace Aerospike.Test
 
 			long v = (long)map["key121"];
 			Assert.AreEqual(11, v);
+		}
+
+		[TestMethod]
+		public void OperateMapCreateContext()
+		{
+			Key key = new Key(args.ns, args.set, "opmkey20");
+			client.Delete(null, key);
+
+			IDictionary<Value,Value> m1 = new Dictionary<Value,Value>();
+			m1[Value.Get("key11")] = Value.Get(9);
+			m1[Value.Get("key12")] = Value.Get(4);
+
+			IDictionary<Value,Value> m2 = new Dictionary<Value,Value>();
+			m2[Value.Get("key21")] = Value.Get(3);
+			m2[Value.Get("key22")] = Value.Get(5);
+
+			IDictionary<Value,Value> inputMap = new Dictionary<Value,Value>();
+			inputMap[Value.Get("key1")] = Value.Get(m1);
+			inputMap[Value.Get("key2")] = Value.Get(m2);
+
+			// Create maps.
+			client.Put(null, key, new Bin(binName, inputMap));
+
+			// Set map value to 11 for map key "key21" inside of map key "key2"
+			// and retrieve all maps.
+			Record record = client.Operate(null, key,
+				MapOperation.Create(binName, MapOrder.KEY_ORDERED, CTX.MapKey(Value.Get("key3"))),
+				MapOperation.Put(MapPolicy.Default, binName, Value.Get("key31"), Value.Get(99), CTX.MapKey(Value.Get("key3"))),
+				//MapOperation.Put(MapPolicy.Default, binName, Value.Get("key31"), Value.Get(99), CTX.MapKeyCreate(Value.Get("key3"), MapOrder.KEY_ORDERED)),
+				Operation.Get(binName)
+				);
+
+			AssertRecordFound(key, record);
+			//Console.WriteLine("Record: " + record);
+
+			IList results = record.GetList(binName);
+			int i = 1;
+
+			long count = (long)results[i++];
+			Assert.AreEqual(1, count);
+
+			IDictionary map = (IDictionary)results[i++];
+			Assert.AreEqual(3, map.Count);
+
+			map = (IDictionary)map["key3"];
+			Assert.AreEqual(1, map.Count);
+	
+			long v = (long)map["key31"];
+			Assert.AreEqual(99, v);
 		}
 	}
 }
