@@ -151,6 +151,9 @@
     <Compile Include="..\..\Framework\AerospikeClient\Operation\BitPolicy.cs" Link="Operation\BitPolicy.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Operation\BitResizeFlags.cs" Link="Operation\BitResizeFlags.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Operation\BitWriteFlags.cs" Link="Operation\BitWriteFlags.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Operation\HLLOperation.cs" Link="Operation\HLLOperation.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Operation\HLLPolicy.cs" Link="Operation\HLLPolicy.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Operation\HLLWriteFlags.cs" Link="Operation\HLLWriteFlags.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Policy\AdminPolicy.cs" Link="Policy\AdminPolicy.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Policy\AuthMode.cs" Link="Policy\AuthMode.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Policy\BatchPolicy.cs" Link="Policy\BatchPolicy.cs" />

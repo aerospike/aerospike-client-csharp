@@ -309,6 +309,9 @@
     <Compile Include="Operation\BitOperation.cs" />
     <Compile Include="Operation\BitResizeFlags.cs" />
     <Compile Include="Operation\BitOverflowAction.cs" />
+    <Compile Include="Operation\HLLPolicy.cs" />
+    <Compile Include="Operation\HLLWriteFlags.cs" />
+    <Compile Include="Operation\HLLOperation.cs" />
     <Compile Include="Policy\AdminPolicy.cs" />
     <Compile Include="Policy\BatchPolicy.cs" />
     <Compile Include="Policy\ClientPolicy.cs" />

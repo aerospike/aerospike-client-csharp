@@ -52,6 +52,7 @@
     <Compile Include="..\..\Framework\AerospikeTest\Sync\Basic\TestListMap.cs" Link="Sync\TestListMap.cs" />
     <Compile Include="..\..\Framework\AerospikeTest\Sync\Basic\TestOperate.cs" Link="Sync\TestOperate.cs" />
     <Compile Include="..\..\Framework\AerospikeTest\Sync\Basic\TestOperateBit.cs" Link="Sync\TestOperateBit.cs" />
+    <Compile Include="..\..\Framework\AerospikeTest\Sync\Basic\TestOperateHLL.cs" Link="Sync\TestOperateHLL.cs" />
     <Compile Include="..\..\Framework\AerospikeTest\Sync\Basic\TestOperateList.cs" Link="Sync\TestOperateList.cs" />
     <Compile Include="..\..\Framework\AerospikeTest\Sync\Basic\TestOperateMap.cs" Link="Sync\TestOperateMap.cs" />
     <Compile Include="..\..\Framework\AerospikeTest\Sync\Basic\TestPredExp.cs" Link="Sync\TestPredExp.cs" />

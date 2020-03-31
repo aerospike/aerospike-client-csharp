@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2019 Aerospike, Inc.
+ * Copyright 2012-2020 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -71,7 +71,10 @@ namespace Aerospike.Client
 
 				case ParticleType.GEOJSON:
 					return BytesToGeoJSON(buf, offset, len);
-				
+
+				case ParticleType.HLL:
+					return BytesToHLL(buf, offset, len);
+
 				case ParticleType.LIST:
 				{
 					Unpacker unpacker = new Unpacker(buf, offset, len, false);
@@ -214,7 +217,14 @@ namespace Aerospike.Client
 			int hdrsz = 1 + 2 + (ncells * 8);
 			return Utf8ToString(buf, offset + hdrsz, len - hdrsz);
 		}
-		
+
+		public static object BytesToHLL(byte[] buf, int offset, int len)
+		{
+			byte[] bytes = new byte[len];
+			Array.Copy(buf, offset, bytes, 0, len);
+			return Value.GetAsHLL(bytes);
+		}
+
 		public static object BytesToNumber(byte[] buf, int offset, int len)
 		{
 			// Server always returns 8 for integer length.

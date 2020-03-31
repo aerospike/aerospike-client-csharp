@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2019 Aerospike, Inc.
+ * Copyright 2012-2020 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -201,7 +201,15 @@ namespace Aerospike.Client
 		{
 			return (string)GetValue(name);
 		}
-	
+
+		/// <summary>
+		/// Get bin value as HLLValue.
+		/// </summary>
+		public Value.HLLValue GetHLLValue(string name)
+		{
+			return (Value.HLLValue)GetValue(name);
+		}
+
 		/**
 		 * Convert record expiration (seconds from Jan 01 2010 00:00:00 GMT) to
 		 * ttl (seconds from now).

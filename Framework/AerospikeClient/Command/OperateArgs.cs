@@ -51,6 +51,7 @@ namespace Aerospike.Client
 				switch (operation.type)
 				{
 					case Operation.Type.BIT_READ:
+					case Operation.Type.HLL_READ:
 					case Operation.Type.MAP_READ:
 						// Map operations require respondAllOps to be true.
 						respondAllOps = true;
@@ -82,6 +83,7 @@ namespace Aerospike.Client
 						break;
 
 					case Operation.Type.BIT_MODIFY:
+					case Operation.Type.HLL_MODIFY:
 					case Operation.Type.MAP_MODIFY:
 						// Map operations require respondAllOps to be true.
 						respondAllOps = true;

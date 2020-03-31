@@ -248,7 +248,22 @@ namespace Aerospike.Client
 				return new GeoJSONValue(value);
 			}
 		}
-		
+
+		/// <summary>
+		/// Get HyperLogLog or null value instance.
+		/// </summary>
+		public static Value GetAsHLL(byte[] value)
+		{
+			if (value == null)
+			{
+				return NullValue.Instance;
+			}
+			else
+			{
+				return new HLLValue(value);
+			}
+		}
+
 		/// <summary>
 		/// Get null value instance.
 		/// </summary>
@@ -1854,6 +1869,77 @@ namespace Aerospike.Client
 			public override int GetHashCode()
 			{
 				return value.GetHashCode();
+			}
+		}
+
+		/// <summary>
+		/// HyperLogLog value.
+		/// </summary>
+		public sealed class HLLValue : Value
+		{
+			private readonly byte[] bytes;
+
+			public HLLValue(byte[] bytes)
+			{
+				this.bytes = bytes;
+			}
+
+			public override int EstimateSize()
+			{
+				return bytes.Length;
+			}
+
+			public override int Write(byte[] buffer, int offset)
+			{
+				Array.Copy(bytes, 0, buffer, offset, bytes.Length);
+				return bytes.Length;
+			}
+
+			public override void Pack(Packer packer)
+			{
+				packer.PackBytes(bytes);
+			}
+
+			public override void ValidateKeyType()
+			{
+				throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Invalid key type: HLL");
+			}
+
+			public override int Type
+			{
+				get{ return ParticleType.HLL; }
+			}
+
+			public override object Object
+			{
+				get{ return bytes; }
+			}
+
+			public byte[] Bytes
+			{
+				get { return bytes; }
+			}
+
+			public override string ToString()
+			{
+				return ByteUtil.BytesToHexString(bytes);
+			}
+
+			public override bool Equals(object other)
+			{
+				return (other != null &&
+					this.GetType().Equals(other.GetType()) &&
+					Util.ByteArrayEquals(this.bytes, ((HLLValue)other).bytes));
+			}
+
+			public override int GetHashCode()
+			{
+				int result = 1;
+				foreach (byte b in bytes)
+				{
+					result = 31 * result + b;
+				}
+				return result;
 			}
 		}
 

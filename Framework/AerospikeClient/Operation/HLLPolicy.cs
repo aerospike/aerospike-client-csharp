@@ -16,18 +16,32 @@
  */
 namespace Aerospike.Client
 {
-	public sealed class ParticleType
+	/// <summary>
+	/// HyperLogLog operation policy.
+	/// </summary>
+	public sealed class HLLPolicy
 	{
-		// Server particle types.
-		public const int NULL = 0;
-		public const int INTEGER = 1;
-		public const int DOUBLE = 2;
-		public const int STRING = 3;
-		public const int BLOB = 4;
-		public const int CSHARP_BLOB = 8;
-		public const int HLL = 18;
-		public const int MAP = 19;
-		public const int LIST = 20;
-		public const int GEOJSON = 23;
+		/// <summary>
+		/// Default HLL bin write semantics.
+		/// </summary>
+		public static readonly HLLPolicy Default = new HLLPolicy();
+
+		internal readonly int flags;
+
+		/// <summary>
+		/// Use default <seealso cref="HLLWriteFlags"/> when performing <seealso cref="HLLOperation"/> operations.
+		/// </summary>
+		public HLLPolicy()
+			: this(HLLWriteFlags.DEFAULT)
+		{
+		}
+
+		/// <summary>
+		/// Use specified <seealso cref="HLLWriteFlags"/> when performing <seealso cref="HLLOperation"/> operations.
+		/// </summary>
+		public HLLPolicy(HLLWriteFlags flags)
+		{
+			this.flags = (int)flags;
+		}
 	}
 }
