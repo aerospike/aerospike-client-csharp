@@ -1,5 +1,5 @@
 ﻿/* 
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2020 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -18,8 +18,7 @@ namespace Aerospike.Client
 {
 	/// <summary>
 	/// Defines algorithm used to determine the target node for a command.
-	/// The replica algorithm only affects single record commands.
-	/// Batch, scan and query are not affected by replica algorithm.
+	/// Scan and query are not affected by replica algorithm.
 	/// </summary>
 	public enum Replica
 	{
