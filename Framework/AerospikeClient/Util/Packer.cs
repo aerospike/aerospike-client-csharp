@@ -201,62 +201,95 @@ namespace Aerospike.Client
 				return;
 			}
 
-			if (obj is Value)
-			{
-				Value value = (Value) obj;
-				value.Pack(this);
-				return;
-			}
-
 			if (obj is byte[])
 			{
-				PackBytes((byte[]) obj);
+				PackBytes((byte[])obj);
 				return;
 			}
 
-			if (obj is string)
+			if (obj is Value)
 			{
-				PackString((string) obj);
-				return;
-			}
-
-			if (obj is int)
-			{
-				PackNumber((int) obj);
-				return;
-			}
-
-			if (obj is long)
-			{
-				PackNumber((long) obj);
-				return;
-			}
-
-			if (obj is double)
-			{
-				PackDouble((double)obj);
-				return;
-			}
-
-			if (obj is float)
-			{
-				PackFloat((float)obj);
+				Value value = (Value)obj;
+				value.Pack(this);
 				return;
 			}
 
 			if (obj is IList)
 			{
-				PackList((IList) obj);
+				PackList((IList)obj);
 				return;
 			}
 
 			if (obj is IDictionary)
 			{
-				PackMap((IDictionary) obj);
+				PackMap((IDictionary)obj);
 				return;
 			}
 
-			PackBlob(obj);
+			TypeCode code = System.Type.GetTypeCode(obj.GetType());
+
+			switch (code)
+			{
+				case TypeCode.Empty:
+					PackNil();
+					break;
+
+				case TypeCode.String:
+					PackString((string)obj);
+					break;
+
+				case TypeCode.Double:
+					PackDouble((double)obj);
+					break;
+
+				case TypeCode.Single:
+					PackFloat((float)obj);
+					break;
+
+				case TypeCode.Int64:
+					PackNumber((long)obj);
+					break;
+
+				case TypeCode.Int32:
+					PackNumber((int)obj);
+					break;
+
+				case TypeCode.Int16:
+					PackNumber((short)obj);
+					break;
+
+				case TypeCode.UInt64:
+					PackNumber((ulong)obj);
+					break;
+
+				case TypeCode.UInt32:
+					PackNumber((uint)obj);
+					break;
+
+				case TypeCode.UInt16:
+					PackNumber((ushort)obj);
+					break;
+
+				case TypeCode.Boolean:
+					PackBoolean((bool)obj);
+					break;
+
+				case TypeCode.Byte:
+					PackNumber((byte)obj);
+					break;
+
+				case TypeCode.SByte:
+					PackNumber((sbyte)obj);
+					break;
+
+				case TypeCode.Char:
+				case TypeCode.DateTime:
+				case TypeCode.Decimal:
+				case TypeCode.Object:
+				default:
+					PackBlob(obj);
+					break;
+			}
 		}
 
 		public void PackNumber(long val)
