@@ -29,6 +29,7 @@ namespace Aerospike.Client
 	public abstract class AsyncCommand : Command
 	{
 		public static EventHandler<SocketAsyncEventArgs> SocketListener { get { return EventHandlers.SocketHandler; } }
+		private static int ErrorCount = 0;
 		private const int IN_PROGRESS = 0;
 		private const int SUCCESS = 1;
 		private const int RETRY = 2;
@@ -133,8 +134,20 @@ namespace Aerospike.Client
 		// Executes the command on the current thread, using the specified SocketAsyncEventArgs object.
 		internal void ExecuteInline(SocketAsyncEventArgs e)
 		{
-			eventArgs = e;
-			ExecuteCore();
+			// Use global consective error count to determine if it's safe to run command immediately.
+			// ErrorCount does not need to be atomic because it's just a general indicator that stack
+			// recursion may get out of control.  Absolute accuracy is not required in this case.
+			if (ErrorCount < 5)
+			{
+				// Execute command now.
+				eventArgs = e;
+				ExecuteCore();
+			}
+			else
+			{
+				// Prevent recursive error stack overflow by placing command in a queue.
+				ExecuteAsync(e);
+			}
 		}
 
 		// Actually executes the command, once the event args and the thread issues have all been sorted out.
@@ -208,17 +221,21 @@ namespace Aerospike.Client
 				{
 					ConnectionReady();
 				}
+				ErrorCount = 0;
 			}
 			catch (AerospikeException.Connection aec)
 			{
+				ErrorCount++;
 				ConnectionFailed(aec);
 			}
 			catch (SocketException se)
 			{
+				ErrorCount++;
 				ConnectionFailed(GetAerospikeException(se.SocketErrorCode));
 			}
 			catch (Exception e)
 			{
+				ErrorCount++;
 				FailOnApplicationError(new AerospikeException(e));
 			}
 		}
