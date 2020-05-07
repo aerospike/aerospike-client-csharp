@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2019 Aerospike, Inc.
+ * Copyright 2012-2020 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -32,14 +32,16 @@ namespace Aerospike.Client
 		private int head;
 		private int tail;
 		private int size;
+		private int minSize;
 		private volatile int total; // total items: inUse + inPool
 
 		/// <summary>
 		/// Construct stack pool.
 		/// </summary>
-		public Pool(int capacity)
+		public Pool(int minSize, int maxSize)
 		{
-			items = new T[capacity];
+			this.minSize = minSize;
+			items = new T[maxSize];
 		}
 
 		/// <summary>
@@ -196,6 +198,14 @@ namespace Aerospike.Client
 			get { return items.Length; }
 		}
 
+		/// <summary>
+		/// Return number of connections that might be closed.
+		/// </summary>
+		public int Excess()
+		{
+			return total - minSize;
+		}
+	
 		/// <summary>
 		/// Increment total connections.
 		/// </summary>

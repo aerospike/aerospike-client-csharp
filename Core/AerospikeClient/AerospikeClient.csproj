@@ -41,6 +41,7 @@
     <Compile Include="..\..\Framework\AerospikeClient\Async\AsyncCommandQueueBase.cs" Link="Async\AsyncCommandQueueBase.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Async\AsyncCommandRejectingQueue.cs" Link="Async\AsyncCommandRejectingQueue.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Async\AsyncConnection.cs" Link="Async\AsyncConnection.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Async\AsyncConnector.cs" Link="Async\AsyncConnector.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Async\AsyncDelete.cs" Link="Async\AsyncDelete.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Async\AsyncExecute.cs" Link="Async\AsyncExecute.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Async\AsyncExists.cs" Link="Async\AsyncExists.cs" />

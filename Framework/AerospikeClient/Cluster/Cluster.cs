@@ -71,8 +71,11 @@ namespace Aerospike.Client
 		// Random partition replica index. 
 		internal int replicaIndex;
 
-		// Size of node's synchronous connection pool.
-		protected internal readonly int connectionQueueSize;
+		// Minimum sync connections per node.
+		internal readonly int minConnsPerNode;
+
+		// Maximum sync connections per node.
+		internal readonly int maxConnsPerNode;
 
 		// Sync connection pools per node. 
 		protected internal readonly int connPoolsPerNode;
@@ -166,7 +169,14 @@ namespace Aerospike.Client
 				this.passwordHash = ByteUtil.StringToUtf8(pass);
 			}
 
-			connectionQueueSize = policy.maxConnsPerNode;
+			minConnsPerNode = policy.minConnsPerNode;
+			maxConnsPerNode = policy.maxConnsPerNode;
+
+			if (minConnsPerNode > maxConnsPerNode)
+			{
+				throw new AerospikeException("Invalid connection range: " + minConnsPerNode + " - " + maxConnsPerNode);
+			}
+
 			connPoolsPerNode = policy.connPoolsPerNode;
 			connectionTimeout = policy.timeout;
 			loginTimeout = policy.loginTimeout;
@@ -416,14 +426,14 @@ namespace Aerospike.Client
 				AddNodes(peers.nodes);
 			}
 
-			// Close idle connections every 30 tend intervals.
+			// Balance connections every 30 tend intervals.
 			if (++tendCount >= 30)
 			{
 				tendCount = 0;
 
 				foreach (Node node in nodes)
 				{
-					node.CloseIdleConnections();
+					node.BalanceConnections();
 				}
 			}
 		}

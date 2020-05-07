@@ -87,23 +87,33 @@ namespace Aerospike.Client
 			this.sessionExpiration = nv.sessionExpiration;
 			this.features = nv.features;
 
-			connectionPools = new Pool<Connection>[cluster.connPoolsPerNode];
-			int max = cluster.connectionQueueSize / cluster.connPoolsPerNode;
-			int rem = cluster.connectionQueueSize - (max * cluster.connPoolsPerNode);
-
-			for (int i = 0; i < connectionPools.Length; i++)
-			{
-				int capacity = i < rem ? max + 1 : max;
-				connectionPools[i] = new Pool<Connection>(capacity);
-			}
-
 			if (cluster.rackAware)
 			{
-				this.racks = new Dictionary<string,int>();
+				this.racks = new Dictionary<string, int>();
 			}
 			else
 			{
 				this.racks = null;
+			}
+
+			connectionPools = new Pool<Connection>[cluster.connPoolsPerNode];
+			int min = cluster.minConnsPerNode / cluster.connPoolsPerNode;
+			int remMin = cluster.minConnsPerNode - (min * cluster.connPoolsPerNode);
+			int max = cluster.maxConnsPerNode / cluster.connPoolsPerNode;
+			int remMax = cluster.maxConnsPerNode - (max * cluster.connPoolsPerNode);
+
+			for (int i = 0; i < connectionPools.Length; i++)
+			{
+				int minSize = i < remMin ? min + 1 : min;
+				int maxSize = i < remMax ? max + 1 : max;
+
+				Pool<Connection> pool = new Pool<Connection>(minSize, maxSize);
+				connectionPools[i] = pool;
+
+				if (minSize > 0)
+				{
+					CreateConnections(pool, minSize);
+				}
 			}
 		}
 
@@ -564,6 +574,66 @@ namespace Aerospike.Client
 			}
 		}
 
+		private void CreateConnections(Pool<Connection> pool, int count)
+		{
+			// Create sync connections.
+			while (count > 0)
+			{
+				Connection conn;
+
+				try
+				{
+					conn = CreateConnection(pool);
+				}
+				catch (Exception e)
+				{
+					// Failing to create min connections is not considered fatal.
+					// Log failure and return.
+					if (Log.DebugEnabled())
+					{
+						Log.Debug("Failed to create connection: " + e.Message);
+					}
+					return;
+				}
+
+				if (pool.Enqueue(conn))
+				{
+					pool.IncrementTotal();
+				}
+				else
+				{
+					conn.Close(this);
+					break;
+				}
+				count--;
+			}
+		}
+
+		private Connection CreateConnection(Pool<Connection> pool)
+		{
+			Connection conn = CreateConnection(host.tlsName, address, cluster.connectionTimeout, pool);
+
+			if (cluster.user != null)
+			{
+				try
+				{
+					AdminCommand command = new AdminCommand(ThreadLocalData.GetBuffer(), 0);
+
+					if (!command.Authenticate(cluster, conn, sessionToken))
+					{
+						throw new AerospikeException("Authentication failed");
+					}
+				}
+				catch (Exception)
+				{
+					// Socket not authenticated.  Do not put back into pool.
+					CloseConnection(conn);
+					throw;
+				}
+			}
+			return conn;
+		}
+
 		/// <summary>
 		/// Get a socket connection from connection pool to the server node.
 		/// </summary>
@@ -679,7 +749,7 @@ namespace Aerospike.Client
 				}
 			}
 			throw new AerospikeException.Connection(ResultCode.NO_MORE_CONNECTIONS,
-				"Node " + this + " max connections " + cluster.connectionQueueSize + " would be exceeded.");
+				"Node " + this + " max connections " + cluster.maxConnsPerNode + " would be exceeded.");
 		}
 
 		private Connection CreateConnection(string tlsName, IPEndPoint address, int timeout, Pool<Connection> pool)
@@ -714,24 +784,44 @@ namespace Aerospike.Client
 			conn.Close(this);
 		}
 
-		public virtual void CloseIdleConnections()
+		public virtual void BalanceConnections()
 		{
-			foreach (Pool<Connection> pool in connectionPools) 
+			foreach (Pool<Connection> pool in connectionPools)
+			{
+				int excess = pool.Excess();
+
+				if (excess > 0)
+				{
+					CloseIdleConnections(pool, excess);
+				}
+				else if (excess < 0)
+				{
+					CreateConnections(pool, -excess);
+				}
+			}
+		}
+
+		private void CloseIdleConnections(Pool<Connection> pool, int count)
+		{
+			while (count > 0)
 			{
 				Connection conn;
 
-				while (pool.TryDequeueLast(out conn))
+				if (!pool.TryDequeueLast(out conn))
 				{
-					if (conn.IsCurrent())
-					{
-						if (!pool.EnqueueLast(conn))
-						{
-							CloseConnection(conn);
-						}
-						break;
-					}
-					CloseConnection(conn);
+					break;
 				}
+
+				if (conn.IsCurrent())
+				{
+					if (!pool.EnqueueLast(conn))
+					{
+						CloseConnection(conn);
+					}
+					break;
+				}
+				CloseConnection(conn);
+				count--;
 			}
 		}
 

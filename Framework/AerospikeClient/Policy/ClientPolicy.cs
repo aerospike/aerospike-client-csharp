@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2019 Aerospike, Inc.
+ * Copyright 2012-2020 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -65,9 +65,28 @@ namespace Aerospike.Client
 		public int loginTimeout = 5000;
 
 		/// <summary>
-		/// Maximum number of connections allowed per server node.  Synchronous transactions
-		/// will go through retry logic and potentially fail with "ResultCode.NO_MORE_CONNECTIONS"
-		/// if the maximum number of connections would be exceeded.
+		/// Minimum number of synchronous connections allowed per server node.  Preallocate min connections
+		/// on client node creation.  The client will periodically allocate new connections if count falls
+		/// below min connections.
+		/// <para>
+		/// Server proto-fd-idle-ms may also need to be increased substantially if min connections are defined.
+		/// The proto-fd-idle-ms default directs the server to close connections that are idle for 60 seconds
+		/// which can defeat the purpose of keeping connections in reserve for a future burst of activity.
+		/// </para>
+		/// <para>
+		/// If server proto-fd-idle-ms is changed, client <see cref="Aerospike.Client.ClientPolicy.maxSocketIdle"/>
+		/// should also be changed to be a few seconds less than proto-fd-idle-ms.
+		/// </para>
+		/// <para>
+		/// Default: 0
+		/// </para>
+		/// </summary>
+		public int minConnsPerNode;
+
+		/// <summary>
+		/// Maximum number of synchronous connections allowed per server node.  Transactions will go
+		/// through retry logic and potentially fail with "ResultCode.NO_MORE_CONNECTIONS" if the maximum
+		/// number of connections would be exceeded.
 		/// <para>
 		/// The number of connections used per node depends on how many concurrent threads issue
 		/// database commands plus sub-threads used for parallel multi-node commands (batch, scan,
@@ -216,6 +235,7 @@ namespace Aerospike.Client
 			this.authMode = other.authMode;
 			this.timeout = other.timeout;
 			this.loginTimeout = other.loginTimeout;
+			this.minConnsPerNode = other.minConnsPerNode;
 			this.maxConnsPerNode = other.maxConnsPerNode;
 			this.connPoolsPerNode = other.connPoolsPerNode;
 			this.maxSocketIdle = other.maxSocketIdle;

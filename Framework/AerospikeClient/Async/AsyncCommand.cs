@@ -26,7 +26,7 @@ namespace Aerospike.Client
 	/// <summary>
 	/// Asynchronous command handler.
 	/// </summary>
-	public abstract class AsyncCommand : Command
+	public abstract class AsyncCommand : Command, ITimeout
 	{
 		public static EventHandler<SocketAsyncEventArgs> SocketListener { get { return EventHandlers.SocketHandler; } }
 		private static int ErrorCount = 0;
@@ -622,7 +622,7 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Check for timeout from timeout queue thread.
 		/// </summary>
-		protected internal bool CheckTimeout()
+		public bool CheckTimeout()
 		{
 			if (state != IN_PROGRESS)
 			{

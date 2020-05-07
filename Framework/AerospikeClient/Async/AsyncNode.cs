@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2019 Aerospike, Inc.
+ * Copyright 2012-2020 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -26,7 +26,6 @@ namespace Aerospike.Client
 	{
 		private readonly Pool<AsyncConnection> asyncConnQueue;
 		private readonly new AsyncCluster cluster;
-		private int connCount;
 		private int asyncConnsOpened;
 		private int asyncConnsClosed;
 
@@ -39,7 +38,12 @@ namespace Aerospike.Client
 			: base(cluster, nv)
 		{
 			this.cluster = cluster;
-			asyncConnQueue = new Pool<AsyncConnection>(cluster.maxCommands);
+			asyncConnQueue = new Pool<AsyncConnection>(cluster.asyncMinConnsPerNode, cluster.asyncMaxConnsPerNode);
+
+			if (cluster.asyncMinConnsPerNode > 0)
+			{
+				new AsyncConnectorExecutor(cluster, this, cluster.asyncMinConnsPerNode, 20, true);
+			}
 		}
 
 		/// <summary>
@@ -73,23 +77,45 @@ namespace Aerospike.Client
 			}
 		}
 
-		public override void CloseIdleConnections()
+		public override void BalanceConnections()
 		{
-			base.CloseIdleConnections();
+			base.BalanceConnections();
 
-			AsyncConnection conn;
+			int excess = asyncConnQueue.Excess();
 
-			while (asyncConnQueue.TryDequeueLast(out conn))
+			if (excess > 0)
 			{
+				CloseIdleAsyncConnections(excess);
+			}
+			else if (excess < 0)
+			{
+				// Allow only 5 concurrent connection requests because they will be done in the
+				// background and there is no immediate need for them to complete.
+				new AsyncConnectorExecutor(cluster, this, -excess, 5, false);
+			}
+		}
+
+		private void CloseIdleAsyncConnections(int count)
+		{
+			while (count > 0)
+			{
+				AsyncConnection conn;
+
+				if (!asyncConnQueue.TryDequeueLast(out conn))
+				{
+					break;
+				} 
+				
 				if (conn.IsCurrent())
 				{
-					if (! asyncConnQueue.EnqueueLast(conn))
+					if (!asyncConnQueue.EnqueueLast(conn))
 					{
 						conn.Close();
 					}
 					break;
 				}
 				conn.Close();
+				count--;
 			}
 		}
 
@@ -109,20 +135,20 @@ namespace Aerospike.Client
 
 		internal void AddConnection()
 		{
-			Interlocked.Increment(ref connCount);
+			asyncConnQueue.IncrementTotal();
 			Interlocked.Increment(ref asyncConnsOpened);
 		}
 
 		internal void DropConnection()
 		{
-			Interlocked.Decrement(ref connCount);
+			asyncConnQueue.DecrementTotal();
 			Interlocked.Increment(ref asyncConnsClosed);
 		}
 
 		public ConnectionStats GetAsyncConnectionStats()
 		{
 			int inPool = asyncConnQueue.Count;
-			int inUse = connCount - inPool;
+			int inUse = asyncConnQueue.Total - inPool;
 
 			// Timing issues may cause values to go negative. Adjust.
 			if (inUse < 0)

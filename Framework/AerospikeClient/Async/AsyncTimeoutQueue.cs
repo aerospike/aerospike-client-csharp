@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2019 Aerospike, Inc.
+ * Copyright 2012-2020 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -26,8 +26,8 @@ namespace Aerospike.Client
 		public static readonly AsyncTimeoutQueue Instance = new AsyncTimeoutQueue();
 		private const int MinInterval = 10;  // 10ms
 
-		private readonly ConcurrentQueue<AsyncCommand> queue = new ConcurrentQueue<AsyncCommand>();
-		private readonly LinkedList<AsyncCommand> list = new LinkedList<AsyncCommand>();
+		private readonly ConcurrentQueue<ITimeout> queue = new ConcurrentQueue<ITimeout>();
+		private readonly LinkedList<ITimeout> list = new LinkedList<ITimeout>();
 		private readonly Thread thread;
 		private CancellationTokenSource cancel;
 		private CancellationToken cancelToken;
@@ -49,7 +49,7 @@ namespace Aerospike.Client
 			thread.Start();
 		}
 
-		public void Add(AsyncCommand command, int timeout)
+		public void Add(ITimeout command, int timeout)
 		{
 			queue.Enqueue(command);
 
@@ -99,7 +99,7 @@ namespace Aerospike.Client
 
 		private void RegisterCommands()
 		{
-			AsyncCommand command;
+			ITimeout command;
 			while (queue.TryDequeue(out command))
 			{
 				list.AddLast(command);
@@ -108,7 +108,7 @@ namespace Aerospike.Client
 
 		private void CheckTimeouts()
 		{
-			LinkedListNode<AsyncCommand> node = list.First;
+			LinkedListNode<ITimeout> node = list.First;
 
 			if (node == null)
 			{
@@ -117,13 +117,13 @@ namespace Aerospike.Client
 				return;
 			}
 
-			LinkedListNode<AsyncCommand> last = list.Last;
+			LinkedListNode<ITimeout> last = list.Last;
 
 			while (node != null)
 			{
 				list.RemoveFirst();
 
-				AsyncCommand command = node.Value;
+				ITimeout command = node.Value;
 
 				if (command.CheckTimeout())
 				{
@@ -142,5 +142,10 @@ namespace Aerospike.Client
 		{
 			valid = false;
 		}
+	}
+
+	public interface ITimeout
+	{
+		bool CheckTimeout();
 	}
 }

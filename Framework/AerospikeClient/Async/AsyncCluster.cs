@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2019 Aerospike, Inc.
+ * Copyright 2012-2020 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -33,9 +33,23 @@ namespace Aerospike.Client
 		// Maximum number of concurrent asynchronous commands.
 		internal readonly int maxCommands;
 
-		public AsyncCluster(AsyncClientPolicy policy, Host[] hosts) : base(policy, hosts)
+		// Minimum async connections per node.
+		internal readonly int asyncMinConnsPerNode;
+
+		// Maximum async connections per node.
+		internal readonly int asyncMaxConnsPerNode;
+
+		public AsyncCluster(AsyncClientPolicy policy, Host[] hosts)
+			: base(policy, hosts)
 		{
 			maxCommands = policy.asyncMaxCommands;
+			asyncMinConnsPerNode = policy.asyncMinConnsPerNode;
+			asyncMaxConnsPerNode = (policy.asyncMaxConnsPerNode >= 0) ? policy.asyncMaxConnsPerNode : policy.maxConnsPerNode;
+
+			if (asyncMinConnsPerNode > asyncMaxConnsPerNode)
+			{
+				throw new AerospikeException("Invalid async connection range: " + asyncMinConnsPerNode + " - " + asyncMaxConnsPerNode);
+			}
 
 			switch (policy.asyncMaxCommandAction)
 			{
