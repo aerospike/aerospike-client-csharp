@@ -43,7 +43,10 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
-		/// Create list with given order at index offset.
+		/// Lookup list by base list's index offset. If the list at index offset is not found,
+		/// create it with the given sort order at that index offset. If pad is true and the
+		/// index offset is greater than the bounds of the base list, nil entries will be
+		/// inserted before the newly created list.
 		/// </summary>
 		public static CTX ListIndexCreate(int index, ListOrder order, bool pad)
 		{
@@ -111,7 +114,8 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
-		/// Create map with given order at map key.
+		/// Lookup map by base map's key. If the map at key is not found,
+		/// create it with the given sort order at that key.
 		/// </summary>
 		public static CTX MapKeyCreate(Value key, MapOrder order)
 		{

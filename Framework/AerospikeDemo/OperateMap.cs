@@ -43,6 +43,8 @@ namespace Aerospike.Demo
 			RunScoreExample(client, args);
 			RunListRangeExample(client, args);
 			RunNestedExample(client, args);
+			RunNestedMapCreateExample(client, args);
+			RunNestedListCreateExample(client, args);
 		}
 
 		private void RunSimpleExample(AerospikeClient client, Arguments args)
@@ -217,6 +219,75 @@ namespace Aerospike.Demo
 			// and retrieve all maps.
 			Record record = client.Operate(args.writePolicy, key,
 				MapOperation.Put(MapPolicy.Default, binName, Value.Get("key21"), Value.Get(11), CTX.MapKey(Value.Get("key2"))),
+				Operation.Get(binName)
+				);
+
+			record = client.Get(args.policy, key);
+			console.Info("Record: " + record);
+		}
+
+		public void RunNestedMapCreateExample(AerospikeClient client, Arguments args)
+		{
+			Key key = new Key(args.ns, args.set, "mapkey2");
+			string binName = args.GetBinName("mapbin");
+
+			// Delete record if it already exists.
+			client.Delete(args.writePolicy, key);
+
+			IDictionary<Value, Value> m1 = new Dictionary<Value, Value>();
+			m1[Value.Get("key21")] = Value.Get(7);
+			m1[Value.Get("key22")] = Value.Get(6);
+
+			IDictionary<Value, Value> m2 = new Dictionary<Value, Value>();
+			m2[Value.Get("a")] = Value.Get(3);
+			m2[Value.Get("c")] = Value.Get(5);
+
+			IDictionary<Value, Value> inputMap = new Dictionary<Value, Value>();
+			inputMap[Value.Get("key1")] = Value.Get(m1);
+			inputMap[Value.Get("key2")] = Value.Get(m2);
+
+			// Create maps.
+			client.Put(args.writePolicy, key, new Bin(binName, inputMap));
+
+			// Create key ordered map at "key2" only if map does not exist.
+			// Set map value to 4 for map key "key21" inside of map key "key2".
+			CTX ctx = CTX.MapKey(Value.Get("key2"));
+			Record record = client.Operate(args.writePolicy, key,
+				MapOperation.Create(binName, MapOrder.KEY_VALUE_ORDERED, ctx), 
+				MapOperation.Put(MapPolicy.Default, binName, Value.Get("b"), Value.Get(4), ctx),
+				Operation.Get(binName)
+				);
+
+			record = client.Get(args.policy, key);
+			console.Info("Record: " + record);
+		}
+
+		public void RunNestedListCreateExample(AerospikeClient client, Arguments args)
+		{
+			Key key = new Key(args.ns, args.set, "mapkey3");
+			string binName = args.GetBinName("mapbin");
+
+			// Delete record if it already exists.
+			client.Delete(args.writePolicy, key);
+
+			IList<Value> l1 = new List<Value>();
+			l1.Add(Value.Get(7));
+			l1.Add(Value.Get(9));
+			l1.Add(Value.Get(5));
+
+			IDictionary<Value, Value> inputMap = new Dictionary<Value, Value>();
+			inputMap[Value.Get("key1")] = Value.Get(l1);
+
+			// Create maps.
+			client.Put(args.writePolicy, key, new Bin(binName, inputMap));
+
+			// Create ordered list at map's "key2" only if list does not exist.
+			// Append 2,1 to ordered list.
+			CTX ctx = CTX.MapKey(Value.Get("key2"));
+			Record record = client.Operate(args.writePolicy, key,
+				ListOperation.Create(binName, ListOrder.ORDERED, false, ctx),
+				ListOperation.Append(binName, Value.Get(2), ctx),
+				ListOperation.Append(binName, Value.Get(1), ctx),
 				Operation.Get(binName)
 				);
 
