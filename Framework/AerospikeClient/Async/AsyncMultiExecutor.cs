@@ -23,14 +23,23 @@ namespace Aerospike.Client
 		internal readonly AsyncCluster cluster; 
 		private AsyncMultiCommand[] commands;
 		private string ns;
+		private AerospikeException exception; 
 		private ulong clusterKey;
 		private int maxConcurrent;
 		private int completedCount;
+		private readonly bool stopOnFailure;
 		private volatile int done;
 
 		public AsyncMultiExecutor(AsyncCluster cluster)
 		{
 			this.cluster = cluster;
+			this.stopOnFailure = true;
+		}
+
+		public AsyncMultiExecutor(AsyncCluster cluster, bool stopOnFailure)
+		{
+			this.cluster = cluster;
+			this.stopOnFailure = stopOnFailure;
 		}
 
 		public void Execute(AsyncMultiCommand[] commands, int maxConcurrent)
@@ -207,24 +216,43 @@ namespace Aerospike.Client
 
 				if (status == 0)
 				{
-					OnSuccess();
+					if (exception == null)
+					{
+						OnSuccess();
+					}
+					else
+					{
+						OnFailure(exception);
+					}
 				}
 			}
 		}
 
-		protected internal void ChildFailure(AerospikeException ae)
+		internal void ChildFailure(AerospikeException ae)
 		{
-			// There is no need to stop commands if all commands have already completed.
-			int status = Interlocked.CompareExchange(ref done, 1, 0);
+			if (stopOnFailure)
+			{
+				// There is no need to stop commands if all commands have already completed.
+				int status = Interlocked.CompareExchange(ref done, 1, 0);
 
-			if (status == 0)
-			{    	
-				// Send stop signal to all commands.
-				foreach (AsyncMultiCommand command in commands)
+				if (status == 0)
 				{
-					command.Stop();
+					// Send stop signal to all commands.
+					foreach (AsyncMultiCommand command in commands)
+					{
+						command.Stop();
+					}
+					OnFailure(ae);
 				}
-				OnFailure(ae);
+			}
+			else
+			{
+				// Batch sequence executors continue processing.
+				if (exception == null)
+				{
+					exception = ae;
+				}
+				QueryComplete();
 			}
 		}
 

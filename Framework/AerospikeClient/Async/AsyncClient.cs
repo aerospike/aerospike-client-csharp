@@ -459,6 +459,9 @@ namespace Aerospike.Client
 		/// <para>
 		/// The policy can be used to specify timeouts.
 		/// </para>
+		/// <para>
+		/// If a batch request to a node fails, the entire batch is cancelled.
+		/// </para>
 		/// </summary>
 		/// <param name="policy">generic configuration parameters, pass in null for defaults</param>
 		/// <param name="token">cancellation token</param>
@@ -477,6 +480,9 @@ namespace Aerospike.Client
 		/// Another thread will process the command and send the results to the listener in a single call.
 		/// <para>
 		/// The policy can be used to specify timeouts.
+		/// </para>
+		/// <para>
+		/// If a batch request to a node fails, the entire batch is cancelled.
 		/// </para>
 		/// </summary>
 		/// <param name="policy">generic configuration parameters, pass in null for defaults</param>
@@ -503,6 +509,9 @@ namespace Aerospike.Client
 		/// Another thread will process the command and send the results to the listener in multiple unordered calls.
 		/// <para>
 		/// The policy can be used to specify timeouts.
+		/// </para>
+		/// <para>
+		/// If a batch request to a node fails, responses from other nodes will continue to be processed.
 		/// </para>
 		/// </summary>
 		/// <param name="policy">generic configuration parameters, pass in null for defaults</param>
@@ -659,7 +668,9 @@ namespace Aerospike.Client
 		/// The returned records are located in the same list.
 		/// <para>
 		/// Create listener, call asynchronous batch get and return task monitor.
-		/// This method requires Aerospike Server version >= 3.6.0.
+		/// </para>
+		/// <para>
+		/// If a batch request to a node fails, the entire batch is cancelled.
 		/// </para>
 		/// </summary>
 		/// <param name="policy">batch configuration parameters, pass in null for defaults</param>
@@ -681,7 +692,9 @@ namespace Aerospike.Client
 		/// <para>
 		/// This method schedules the get command with a channel selector and returns.
 		/// Another thread will process the command and send the results to the listener in a single call.
-		/// This method requires Aerospike Server version >= 3.6.0.
+		/// </para>
+		/// <para>
+		/// If a batch request to a node fails, the entire batch is cancelled.
 		/// </para>
 		/// </summary>
 		/// <param name="policy">batch configuration parameters, pass in null for defaults</param>
@@ -710,7 +723,9 @@ namespace Aerospike.Client
 		/// <para>
 		/// This method schedules the get command with a channel selector and returns.
 		/// Another thread will process the command and send the results to the listener in a single call.
-		/// This method requires Aerospike Server version >= 3.6.0.
+		/// </para>
+		/// <para>
+		/// If a batch request to a node fails, responses from other nodes will continue to be processed.
 		/// </para>
 		/// </summary>
 		/// <param name="policy">batch configuration parameters, pass in null for defaults</param>
@@ -738,6 +753,9 @@ namespace Aerospike.Client
 		/// If a key is not found, the record will be null.
 		/// The policy can be used to specify timeouts.
 		/// </para>
+		/// <para>
+		/// If a batch request to a node fails, the entire batch is cancelled.
+		/// </para>
 		/// </summary>
 		/// <param name="policy">generic configuration parameters, pass in null for defaults</param>
 		/// <param name="token">cancellation token</param>
@@ -757,6 +775,9 @@ namespace Aerospike.Client
 		/// <para>
 		/// If a key is not found, the record will be null.
 		/// The policy can be used to specify timeouts.
+		/// </para>
+		/// <para>
+		/// If a batch request to a node fails, the entire batch is cancelled.
 		/// </para>
 		/// </summary>
 		/// <param name="policy">generic configuration parameters, pass in null for defaults</param>
@@ -785,6 +806,9 @@ namespace Aerospike.Client
 		/// If a key is not found, the record will be null.
 		/// The policy can be used to specify timeouts.
 		/// </para>
+		/// <para>
+		/// If a batch request to a node fails, responses from other nodes will continue to be processed.
+		/// </para>
 		/// </summary>
 		/// <param name="policy">generic configuration parameters, pass in null for defaults</param>
 		/// <param name="listener">where to send results</param>
@@ -811,6 +835,9 @@ namespace Aerospike.Client
 		/// If a key is not found, the record will be null.
 		/// The policy can be used to specify timeouts.
 		/// </para>
+		/// <para>
+		/// If a batch request to a node fails, the entire batch is cancelled.
+		/// </para>
 		/// </summary>
 		/// <param name="policy">generic configuration parameters, pass in null for defaults</param>
 		/// <param name="token">cancellation token</param>
@@ -831,6 +858,9 @@ namespace Aerospike.Client
 		/// <para>
 		/// If a key is not found, the record will be null.
 		/// The policy can be used to specify timeouts.
+		/// </para>
+		/// <para>
+		/// If a batch request to a node fails, the entire batch is cancelled.
 		/// </para>
 		/// </summary>
 		/// <param name="policy">generic configuration parameters, pass in null for defaults</param>
@@ -860,6 +890,9 @@ namespace Aerospike.Client
 		/// If a key is not found, the record will be null.
 		/// The policy can be used to specify timeouts.
 		/// </para>
+		/// <para>
+		/// If a batch request to a node fails, responses from other nodes will continue to be processed.
+		/// </para>
 		/// </summary>
 		/// <param name="policy">generic configuration parameters, pass in null for defaults</param>
 		/// <param name="listener">where to send results</param>
@@ -887,6 +920,9 @@ namespace Aerospike.Client
 		/// If a key is not found, the record will be null.
 		/// The policy can be used to specify timeouts.
 		/// </para>
+		/// <para>
+		/// If a batch request to a node fails, the entire batch is cancelled.
+		/// </para>
 		/// </summary>
 		/// <param name="policy">generic configuration parameters, pass in null for defaults</param>
 		/// <param name="token">cancellation token</param>
@@ -906,6 +942,9 @@ namespace Aerospike.Client
 		/// <para>
 		/// If a key is not found, the record will be null.
 		/// The policy can be used to specify timeouts.
+		/// </para>
+		/// <para>
+		/// If a batch request to a node fails, the entire batch is cancelled.
 		/// </para>
 		/// </summary>
 		/// <param name="policy">generic configuration parameters, pass in null for defaults</param>
@@ -933,6 +972,9 @@ namespace Aerospike.Client
 		/// <para>
 		/// If a key is not found, the record will be null.
 		/// The policy can be used to specify timeouts.
+		/// </para>
+		/// <para>
+		/// If a batch request to a node fails, responses from other nodes will continue to be processed.
 		/// </para>
 		/// </summary>
 		/// <param name="policy">generic configuration parameters, pass in null for defaults</param>

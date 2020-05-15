@@ -128,7 +128,7 @@ namespace Aerospike.Client
 			BatchPolicy policy,
 			BatchSequenceListener listener,
 			List<BatchRead> records
-		) : base(cluster)
+		) : base(cluster, false)
 		{
 			this.listener = listener;
 
@@ -230,7 +230,7 @@ namespace Aerospike.Client
 			Key[] keys,
 			string[] binNames,
 			int readAttr
-		) : base(cluster, policy, keys)
+		) : base(cluster, policy, keys, true)
 		{
 			this.recordArray = new Record[keys.Length];
 			this.listener = listener;
@@ -336,7 +336,7 @@ namespace Aerospike.Client
 			Key[] keys,
 			string[] binNames,
 			int readAttr
-		) : base(cluster, policy, keys)
+		) : base(cluster, policy, keys, false)
 		{
 			this.listener = listener;
 
@@ -447,7 +447,7 @@ namespace Aerospike.Client
 			BatchPolicy policy,
 			Key[] keys,
 			ExistsArrayListener listener
-		) : base(cluster, policy, keys)
+		) : base(cluster, policy, keys, true)
 		{
 			this.existsArray = new bool[keys.Length];
 			this.listener = listener;
@@ -545,7 +545,7 @@ namespace Aerospike.Client
 			BatchPolicy policy,
 			Key[] keys,
 			ExistsSequenceListener listener
-		) : base(cluster, policy, keys)
+		) : base(cluster, policy, keys, false)
 		{
 			this.listener = listener;
 
@@ -640,8 +640,8 @@ namespace Aerospike.Client
 		protected internal readonly List<BatchNode> batchNodes;
 		protected internal readonly int taskSize;
 
-		public AsyncBatchExecutor(AsyncCluster cluster, BatchPolicy policy, Key[] keys)
-			: base(cluster)
+		public AsyncBatchExecutor(AsyncCluster cluster, BatchPolicy policy, Key[] keys, bool stopOnFailure)
+			: base(cluster, stopOnFailure)
 		{
 			this.keys = keys;
 			this.batchNodes = BatchNode.GenerateList(cluster, policy, keys);
