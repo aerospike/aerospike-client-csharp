@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2019 Aerospike, Inc.
+ * Copyright 2012-2020 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -32,12 +32,10 @@ namespace Aerospike.Client
 
 		private readonly Socket socket;
 		private readonly AsyncNode node;
-		private readonly double maxSocketIdleMillis;
-		private DateTime timestamp;
+		private DateTime lastUsed;
 
-		public AsyncConnection(IPEndPoint address, AsyncCluster cluster, AsyncNode node)
+		public AsyncConnection(IPEndPoint address, AsyncNode node)
 		{
-			this.maxSocketIdleMillis = (double)(cluster.maxSocketIdleMillis);
 			this.node = node;
 
 			try
@@ -56,7 +54,7 @@ namespace Aerospike.Client
 					socket.ReceiveBufferSize = 0;
 				}
 
-				timestamp = DateTime.UtcNow;
+				lastUsed = DateTime.UtcNow;
 				this.node.AddConnection();
 			}
 			catch (Exception e)
@@ -80,17 +78,12 @@ namespace Aerospike.Client
 			return socket.ReceiveAsync(args);
 		}
 
-		public bool IsConnected()
-		{
-			return socket.Connected;
-		}
-
 		/// <summary>
 		/// Is socket connected and used within specified limits.
 		/// </summary>
 		public bool IsValid()
 		{
-			return socket.Connected && (DateTime.UtcNow.Subtract(timestamp).TotalMilliseconds <= maxSocketIdleMillis);
+			return socket.Connected;
 			
 			// Poll is much more accurate because sockets reaped by the server or sockets
 			// that have unread data are identified. The problem is Poll decreases overall
@@ -110,17 +103,14 @@ namespace Aerospike.Client
 			}*/
 		}
 
-		/// <summary>
-		/// Is socket used within specified limits.
-		/// </summary>
-		public bool IsCurrent()
+		public DateTime LastUsed
 		{
-			return DateTime.UtcNow.Subtract(timestamp).TotalMilliseconds <= maxSocketIdleMillis;
+			get { return lastUsed; }
 		}
 
 		public void UpdateLastUsed()
 		{
-			this.timestamp = DateTime.UtcNow;
+			this.lastUsed = DateTime.UtcNow;
 		}
 
 		/// <summary>

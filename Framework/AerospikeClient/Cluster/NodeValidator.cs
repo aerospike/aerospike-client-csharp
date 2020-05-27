@@ -116,8 +116,8 @@ namespace Aerospike.Client
 		{
 			IPEndPoint socketAddress = new IPEndPoint(address, port);
 			Connection conn = (cluster.tlsPolicy != null) ?
-				new TlsConnection(cluster.tlsPolicy, tlsName, socketAddress, cluster.connectionTimeout, cluster.maxSocketIdleMillis, null) :
-				new Connection(socketAddress, cluster.connectionTimeout, cluster.maxSocketIdleMillis, null);
+				new TlsConnection(cluster.tlsPolicy, tlsName, socketAddress, cluster.connectionTimeout, null) :
+				new Connection(socketAddress, cluster.connectionTimeout, null);
 
 			try
 			{
@@ -346,8 +346,8 @@ namespace Aerospike.Client
 						{
 							IPEndPoint socketAddress = new IPEndPoint(address, h.port);
 							Connection conn = (cluster.tlsPolicy != null) ?
-								new TlsConnection(cluster.tlsPolicy, tlsName, socketAddress, cluster.connectionTimeout, cluster.maxSocketIdleMillis, null) :
-								new Connection(socketAddress, cluster.connectionTimeout, cluster.maxSocketIdleMillis, null);
+								new TlsConnection(cluster.tlsPolicy, tlsName, socketAddress, cluster.connectionTimeout, null) :
+								new Connection(socketAddress, cluster.connectionTimeout, null);
 
 							try
 							{
@@ -439,7 +439,7 @@ namespace Aerospike.Client
 						{
 							clearAddress = ia;
 							clearSocketAddress = new IPEndPoint(ia, clearHost.port);
-							clearConn = new Connection(clearSocketAddress, cluster.connectionTimeout, cluster.maxSocketIdleMillis, null);
+							clearConn = new Connection(clearSocketAddress, cluster.connectionTimeout, null);
 
 							try
 							{

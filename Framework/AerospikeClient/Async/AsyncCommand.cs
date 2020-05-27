@@ -209,7 +209,7 @@ namespace Aerospike.Client
 
 				if (conn == null)
 				{
-					conn = new AsyncConnection(node.address, cluster, node);
+					conn = new AsyncConnection(node.address, node);
 					eventArgs.SetBuffer(segment.buffer, segment.offset, 0);
 
 					if (!conn.ConnectAsync(eventArgs))

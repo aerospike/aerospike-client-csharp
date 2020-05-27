@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2019 Aerospike, Inc.
+ * Copyright 2012-2020 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -38,8 +38,8 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Create TLS socket and update node statistics.
 		/// </summary>
-		public TlsConnection(TlsPolicy policy, string tlsName, IPEndPoint address, int timeoutMillis, int maxSocketIdleMillis, Pool<Connection> pool, Node node)
-			: this(policy, tlsName, address, timeoutMillis, maxSocketIdleMillis, pool)
+		public TlsConnection(TlsPolicy policy, string tlsName, IPEndPoint address, int timeoutMillis, Pool<Connection> pool, Node node)
+			: this(policy, tlsName, address, timeoutMillis, pool)
 		{
 			Interlocked.Increment(ref node.connsOpened);
 		}
@@ -47,8 +47,8 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Create TLS socket.
 		/// </summary>
-		public TlsConnection(TlsPolicy policy, string tlsName, IPEndPoint address, int timeoutMillis, int maxSocketIdleMillis, Pool<Connection> pool)
-			: base(address, timeoutMillis, maxSocketIdleMillis, pool)
+		public TlsConnection(TlsPolicy policy, string tlsName, IPEndPoint address, int timeoutMillis, Pool<Connection> pool)
+			: base(address, timeoutMillis, pool)
 		{
 			this.policy = policy;
 

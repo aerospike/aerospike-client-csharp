@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2019 Aerospike, Inc.
+ * Copyright 2012-2020 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -29,19 +29,18 @@ namespace Aerospike.Client
 	{
 		protected internal readonly Socket socket;
 		protected internal readonly Pool<Connection> pool;
-		private readonly double maxSocketIdleMillis;
-		private DateTime timestamp;
+		private DateTime lastUsed;
 
 		public Connection(IPEndPoint address, int timeoutMillis)
-			: this(address, timeoutMillis, 55000, null)
+			: this(address, timeoutMillis, null)
 		{
 		}
 
 		/// <summary>
 		/// Create socket with connection timeout and update node statistics.
 		/// </summary>
-		public Connection(IPEndPoint address, int timeoutMillis, int maxSocketIdleMillis, Pool<Connection> pool, Node node)
-			: this(address, timeoutMillis, maxSocketIdleMillis, pool)
+		public Connection(IPEndPoint address, int timeoutMillis, Pool<Connection> pool, Node node)
+			: this(address, timeoutMillis, pool)
 		{
 			Interlocked.Increment(ref node.connsOpened);
 		}
@@ -49,9 +48,8 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Create socket with connection timeout.
 		/// </summary>
-		public Connection(IPEndPoint address, int timeoutMillis, int maxSocketIdleMillis, Pool<Connection> pool)
+		public Connection(IPEndPoint address, int timeoutMillis, Pool<Connection> pool)
 		{
-			this.maxSocketIdleMillis = (double)(maxSocketIdleMillis);
 			this.pool = pool;
 
 			try
@@ -108,7 +106,7 @@ namespace Aerospike.Client
 					throw new SocketException((int)SocketError.TimedOut);
 				}
 #endif
-				timestamp = DateTime.UtcNow;
+				lastUsed = DateTime.UtcNow;
 			}
 			catch (Exception e)
 			{
@@ -173,19 +171,11 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
-		/// Is socket connected and used within specified limits.
+		/// Is socket connected.
 		/// </summary>
 		public bool IsValid()
 		{
-			return socket.Connected && (DateTime.UtcNow.Subtract(timestamp).TotalMilliseconds <= maxSocketIdleMillis);
-		}
-
-		/// <summary>
-		/// Is socket used within specified limits.
-		/// </summary>
-		public bool IsCurrent()
-		{
-			return DateTime.UtcNow.Subtract(timestamp).TotalMilliseconds <= maxSocketIdleMillis;
+			return socket.Connected;
 		}
 
 		/// <summary>
@@ -195,10 +185,15 @@ namespace Aerospike.Client
 		{
 			return ! socket.Connected;
 		}
-		
+
+		public DateTime LastUsed
+		{
+			get {return lastUsed;}
+		}
+
 		public void UpdateLastUsed()
 		{
-			this.timestamp = DateTime.UtcNow;
+			this.lastUsed = DateTime.UtcNow;
 		}
 
 		/// <summary>

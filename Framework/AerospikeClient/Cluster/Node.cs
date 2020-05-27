@@ -667,7 +667,7 @@ namespace Aerospike.Client
 				{
 					// Found socket.
 					// Verify that socket is active and receive buffer is empty.
-					if (conn.IsValid())
+					if (cluster.IsConnCurrentTran(conn.LastUsed) && conn.IsValid())
 					{
 						try
 						{
@@ -755,8 +755,8 @@ namespace Aerospike.Client
 		private Connection CreateConnection(string tlsName, IPEndPoint address, int timeout, Pool<Connection> pool)
 		{
 			return (cluster.tlsPolicy != null && !cluster.tlsPolicy.forLoginOnly) ?
-				new TlsConnection(cluster.tlsPolicy, tlsName, address, timeout, cluster.maxSocketIdleMillis, pool, this) :
-				new Connection(address, timeout, cluster.maxSocketIdleMillis, pool, this);
+				new TlsConnection(cluster.tlsPolicy, tlsName, address, timeout, pool, this) :
+				new Connection(address, timeout, pool, this);
 		}
 
 		/// <summary>
@@ -812,7 +812,7 @@ namespace Aerospike.Client
 					break;
 				}
 
-				if (conn.IsCurrent())
+				if (cluster.IsConnCurrentTrim(conn.LastUsed))
 				{
 					if (!pool.EnqueueLast(conn))
 					{

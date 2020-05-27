@@ -160,7 +160,7 @@ namespace Aerospike.Client
 			this.watch = Stopwatch.StartNew();
 			AsyncTimeoutQueue.Instance.Add(this, cluster.connectionTimeout);
 
-			this.conn = new AsyncConnection(node.address, cluster, node);
+			this.conn = new AsyncConnection(node.address, node);
 			eventArgs.SetBuffer(dataBuffer, 0, 0);
 
 			if (!conn.ConnectAsync(eventArgs))

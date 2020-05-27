@@ -25,8 +25,6 @@ namespace Aerospike.Client
 {
 	public class Cluster
 	{
-		private const int MaxSocketIdleSecondLimit = 60 * 60 * 24; // Limit maxSocketIdle to 24 hours
-	
 		// Expected cluster name.
 		protected internal readonly String clusterName;
 
@@ -86,9 +84,12 @@ namespace Aerospike.Client
 		// Login timeout.
 		protected internal readonly int loginTimeout;
 
-		// Maximum socket idle in milliseconds.
-		protected internal readonly int maxSocketIdleMillis;
+		// Maximum socket idle to validate connections in transactions.
+		private readonly double maxSocketIdleMillisTran;
 
+		// Maximum socket idle to trim peak connections to min connections.
+		private readonly double maxSocketIdleMillisTrim;
+	
 		// Rack id.
 		public readonly int rackId;
 
@@ -169,6 +170,22 @@ namespace Aerospike.Client
 				this.passwordHash = ByteUtil.StringToUtf8(pass);
 			}
 
+			if (policy.maxSocketIdle < 0)
+			{
+				throw new AerospikeException("Invalid maxSocketIdle: " + policy.maxSocketIdle);
+			}
+
+			if (policy.maxSocketIdle == 0)
+			{
+				maxSocketIdleMillisTran = 0.0;
+				maxSocketIdleMillisTrim = 55000.0;
+			}
+			else
+			{
+				maxSocketIdleMillisTran = (double)(policy.maxSocketIdle * 1000);
+				maxSocketIdleMillisTrim = maxSocketIdleMillisTran;
+			}
+
 			minConnsPerNode = policy.minConnsPerNode;
 			maxConnsPerNode = policy.maxConnsPerNode;
 
@@ -180,7 +197,6 @@ namespace Aerospike.Client
 			connPoolsPerNode = policy.connPoolsPerNode;
 			connectionTimeout = policy.timeout;
 			loginTimeout = policy.loginTimeout;
-			maxSocketIdleMillis = 1000 * ((policy.maxSocketIdle <= MaxSocketIdleSecondLimit) ? policy.maxSocketIdle : MaxSocketIdleSecondLimit);
 			tendInterval = policy.tendInterval;
 			ipMap = policy.ipMap;
 			useServicesAlternate = policy.useServicesAlternate;
@@ -702,6 +718,16 @@ namespace Aerospike.Client
 				}
 			}
 			return false;
+		}
+
+		internal bool IsConnCurrentTran(DateTime lastUsed)
+		{
+			return maxSocketIdleMillisTran == 0.0 || DateTime.UtcNow.Subtract(lastUsed).TotalMilliseconds <= maxSocketIdleMillisTran;
+		}
+
+		internal bool IsConnCurrentTrim(DateTime lastUsed)
+		{
+			return DateTime.UtcNow.Subtract(lastUsed).TotalMilliseconds <= maxSocketIdleMillisTrim;
 		}
 
 		public ClusterStats GetStats()

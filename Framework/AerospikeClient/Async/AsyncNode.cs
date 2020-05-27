@@ -56,7 +56,7 @@ namespace Aerospike.Client
 
 			while (asyncConnQueue.TryDequeue(out conn))
 			{
-				if (conn.IsValid())
+				if (cluster.IsConnCurrentTran(conn.LastUsed) && conn.IsValid())
 				{
 					return conn;
 				}
@@ -106,7 +106,7 @@ namespace Aerospike.Client
 					break;
 				} 
 				
-				if (conn.IsCurrent())
+				if (cluster.IsConnCurrentTrim(conn.LastUsed))
 				{
 					if (!asyncConnQueue.EnqueueLast(conn))
 					{

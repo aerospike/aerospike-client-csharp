@@ -52,13 +52,9 @@ namespace Aerospike.Client
 		/// on client node creation.  The client will periodically allocate new connections if count falls
 		/// below min connections.
 		/// <para>
-		/// Server proto-fd-idle-ms may also need to be increased substantially if min connections are defined.
-		/// The proto-fd-idle-ms default directs the server to close connections that are idle for 60 seconds
-		/// which can defeat the purpose of keeping connections in reserve for a future burst of activity.
-		/// </para>
-		/// <para>
-		/// If server proto-fd-idle-ms is changed, client <see cref="Aerospike.Client.ClientPolicy.maxSocketIdle"/>
-		/// should also be changed to be a few seconds less than proto-fd-idle-ms.
+		/// Server proto-fd-idle-ms and client <see cref="Aerospike.Client.ClientPolicy.maxSocketIdle"/>
+		/// should be set to zero (no reap) if asyncMinConnsPerNode is greater than zero.  Reaping connections
+		/// can defeat the purpose of keeping connections in reserve for a future burst of activity.
 		/// </para>
 		/// <para>
 		/// Default: 0
