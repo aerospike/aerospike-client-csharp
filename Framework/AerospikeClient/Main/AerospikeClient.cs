@@ -303,6 +303,17 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
+		/// Cluster associated with this AerospikeClient instance.
+		/// </summary>
+		public Cluster Cluster
+		{
+			get
+			{
+				return cluster;
+			}
+		}
+
+		/// <summary>
 		/// Return array of active server nodes in the cluster.
 		/// </summary>
 		public Node[] Nodes

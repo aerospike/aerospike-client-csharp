@@ -63,6 +63,11 @@ namespace Aerospike.Client
 		bool Connected { get; }
 
 		/// <summary>
+		/// Cluster associated with this AerospikeClient instance.
+		/// </summary>
+		Cluster Cluster { get; }
+
+		/// <summary>
 		/// Return array of active server nodes in the cluster.
 		/// </summary>
 		Node[] Nodes { get; }
