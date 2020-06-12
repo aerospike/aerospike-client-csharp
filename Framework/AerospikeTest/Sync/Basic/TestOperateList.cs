@@ -1184,5 +1184,67 @@ namespace Aerospike.Test
 			Assert.AreEqual(1, list.Count);
 			Assert.AreEqual(2, (long)list[0]);
 		}
+
+		[TestMethod]
+		public void OperateListBounded()
+		{
+			Key key = new Key(args.ns, args.set, "oplkey21");
+
+			client.Delete(null, key);
+
+			List<Value> inputList = new List<Value>();
+			inputList.Add(Value.Get(55));
+			inputList.Add(Value.Get(11));
+			inputList.Add(Value.Get(33));
+
+			// Create list.
+			Record record = client.Operate(null, key,
+				ListOperation.AppendItems(binName, inputList)
+				);
+
+			// Define bounded list insertion policy.
+			ListPolicy listPolicy = new ListPolicy(ListOrder.UNORDERED, ListWriteFlags.INSERT_BOUNDED);
+
+			// Insert values to new list that are in bounds.
+			record = client.Operate(null, key,
+				ListOperation.Insert(listPolicy, binName, 1, Value.Get(22)),  // Insert at index 1.
+				ListOperation.Insert(listPolicy, binName, -1, Value.Get(44)), // Insert at last offset in list.
+				Operation.Get(binName)
+				);
+
+			AssertRecordFound(key, record);
+
+			// Expect list: [55, 22, 11, 44, 33]
+			IList results = record.GetList(binName);
+			IList list = (IList)results[2];
+			Assert.AreEqual(5, list.Count);
+			Assert.AreEqual(55L, list[0]);
+			Assert.AreEqual(22L, list[1]);
+			Assert.AreEqual(11L, list[2]);
+			Assert.AreEqual(44L, list[3]);
+			Assert.AreEqual(33L, list[4]);
+
+			// Insert value that is out of bounds (index 6).
+			// Note that index 5 would have worked since the server allows 
+			// insertion at the exact end of list.
+			try
+			{
+				record = client.Operate(null, key,
+					ListOperation.Insert(listPolicy, binName, 6, Value.Get(20)),
+					Operation.Get(binName)
+					);
+				//results = record.GetList(binName);
+				//list = (IList)results[1];
+				Assert.Fail("List insert should have failed");
+			}
+			catch (AerospikeException ae)
+			{
+				// AerospikeException with result code OP_NOT_APPLICABLE is expected.
+				if (ae.Result != ResultCode.OP_NOT_APPLICABLE)
+				{
+					throw;
+				}
+			}
+		}
 	}
 }
