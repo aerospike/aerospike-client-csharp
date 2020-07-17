@@ -685,8 +685,8 @@ namespace Aerospike.Client
 				fieldCount++;
 			}
 
-			// Only set scan options for server versions < 4.9.
-			if (nodePartitions == null)
+			// Only set scan options for server versions < 4.9 or if scanPercent was modified.
+			if (nodePartitions == null || policy.scanPercent < 100)
 			{
 				// Estimate scan options size.
 				dataOffset += 2 + FIELD_HEADER_SIZE;
@@ -766,8 +766,8 @@ namespace Aerospike.Client
 				WritePredExp(policy.predExp, predSize);
 			}
 
-			// Only set scan options for server versions < 4.9.
-			if (nodePartitions == null)
+			// Only set scan options for server versions < 4.9 or if scanPercent was modified.
+			if (nodePartitions == null || policy.scanPercent < 100)
 			{
 				WriteFieldHeader(2, FieldType.SCAN_OPTIONS);
 

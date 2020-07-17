@@ -39,7 +39,8 @@ namespace Aerospike.Client
 		/// Percent of data to scan.  Valid integer range is 1 to 100.
 		/// <para>
 		/// This field is supported on server versions &lt; 4.9.
-		/// For server versions >= 4.9, use <see cref="maxRecords"/>.
+		/// Server versions >= 4.9 might allow scanPercent, but not in conjunction with <see cref="maxRecords"/>.
+		/// scanPercent is eventually slated for removal.
 		/// </para>
 		/// <para>
 		/// Default: 100
@@ -133,7 +134,18 @@ namespace Aerospike.Client
 		{
 			if (scanPercent <= 0 || scanPercent > 100)
 			{
-				throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Invalid scan percent: " + scanPercent);
+				throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Invalid scanPercent: " + scanPercent);
+			}
+
+			if (maxRecords < 0)
+			{
+				throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Invalid maxRecords: " + maxRecords);
+			}
+
+			if (scanPercent != 100 && maxRecords != 0)
+			{
+				throw new AerospikeException(ResultCode.PARAMETER_ERROR, "scanPercent(" + scanPercent +
+						") and maxRecords(" + maxRecords + ") are mutually exclusive");
 			}
 		}
 	}
