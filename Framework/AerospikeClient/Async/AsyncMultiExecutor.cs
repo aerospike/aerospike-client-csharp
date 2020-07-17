@@ -14,6 +14,10 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
+
+using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 
 namespace Aerospike.Client
@@ -56,22 +60,21 @@ namespace Aerospike.Client
 		public void ExecuteBatchRetry(AsyncMultiCommand[] cmds, AsyncMultiCommand orig)
 		{
 			// Create new commands array.
-			AsyncMultiCommand[] target = new AsyncMultiCommand[commands.Length + cmds.Length - 1];
-			int count = 0;
+			List<AsyncMultiCommand> target = new List<AsyncMultiCommand>();
 
 			foreach (AsyncMultiCommand cmd in commands)
 			{
 				if (cmd != orig)
 				{
-					target[count++] = cmd;
+					target.Add(cmd);
 				}
 			}
 
 			foreach (AsyncMultiCommand cmd in cmds)
 			{
-				target[count++] = cmd;
+				target.Add(cmd);
 			}
-			commands = target;
+			commands = target.ToArray();
 
 			// Batch executors always execute all commands at once.
 			// Execute all new commands.
