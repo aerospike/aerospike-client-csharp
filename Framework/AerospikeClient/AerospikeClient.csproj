@@ -213,6 +213,7 @@
     <Compile Include="Async\AsyncQueryPartition.cs" />
     <Compile Include="Async\AsyncQueryPartitionExecutor.cs" />
     <Compile Include="Async\AsyncConnector.cs" />
+    <Compile Include="Async\AsyncExecutor.cs" />
     <Compile Include="Async\IAsyncClient.cs" />
     <Compile Include="Async\MaxCommandAction.cs" />
     <Compile Include="BCrypt\BCrypt.cs" />

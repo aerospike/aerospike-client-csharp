@@ -25,14 +25,14 @@ namespace Aerospike.Client
 
 		public AsyncQueryPartition
 		(
-			AsyncMultiExecutor parent,
+			AsyncMultiExecutor executor,
 			AsyncCluster cluster,
 			QueryPolicy policy,
 			RecordSequenceListener listener,
 			Statement statement,
 			PartitionTracker tracker,
 			NodePartitions nodePartitions
-		) : base(parent, cluster, policy, (AsyncNode)nodePartitions.node, tracker.socketTimeout, tracker.totalTimeout)
+		) : base(executor, cluster, policy, (AsyncNode)nodePartitions.node, tracker.socketTimeout, tracker.totalTimeout)
 		{
 			this.listener = listener;
 			this.statement = statement;
@@ -62,10 +62,10 @@ namespace Aerospike.Client
 		{
 			if (tracker.ShouldRetry(ae))
 			{
-				parent.ChildSuccess(node);
+				executor.ChildSuccess(node);
 				return;
 			}
-			parent.ChildFailure(ae);
+			executor.ChildFailure(ae);
 		}
 
 		protected internal override AsyncCommand CloneCommand()

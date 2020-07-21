@@ -18,28 +18,19 @@ using System.Threading;
 
 namespace Aerospike.Client
 {
-	public abstract class AsyncMultiExecutor
+	public abstract class AsyncMultiExecutor : AsyncExecutor
 	{
 		internal readonly AsyncCluster cluster; 
 		private AsyncMultiCommand[] commands;
 		private string ns;
-		private AerospikeException exception; 
 		private ulong clusterKey;
 		private int maxConcurrent;
 		private int completedCount;
-		private readonly bool stopOnFailure;
 		private volatile int done;
 
 		public AsyncMultiExecutor(AsyncCluster cluster)
 		{
 			this.cluster = cluster;
-			this.stopOnFailure = true;
-		}
-
-		public AsyncMultiExecutor(AsyncCluster cluster, bool stopOnFailure)
-		{
-			this.cluster = cluster;
-			this.stopOnFailure = stopOnFailure;
 		}
 
 		public void Execute(AsyncMultiCommand[] commands, int maxConcurrent)
@@ -50,36 +41,6 @@ namespace Aerospike.Client
 			for (int i = 0; i < this.maxConcurrent; i++)
 			{
 				commands[i].Execute();
-			}
-		}
-
-		public void ExecuteBatchRetry(AsyncMultiCommand[] cmds, AsyncMultiCommand orig)
-		{
-			// Create new commands array.
-			AsyncMultiCommand[] target = new AsyncMultiCommand[commands.Length + cmds.Length - 1];
-			int count = 0;
-
-			foreach (AsyncMultiCommand cmd in commands)
-			{
-				if (cmd != orig)
-				{
-					target[count++] = cmd;
-				}
-			}
-
-			foreach (AsyncMultiCommand cmd in cmds)
-			{
-				target[count++] = cmd;
-			}
-			commands = target;
-
-			// Batch executors always execute all commands at once.
-			// Execute all new commands.
-			maxConcurrent = commands.Length;
-
-			foreach (AsyncMultiCommand cmd in cmds)
-			{
-				cmd.Execute();
 			}
 		}
 
@@ -155,7 +116,7 @@ namespace Aerospike.Client
 			}
 		}
 
-		protected internal void ChildSuccess(AsyncNode node)
+		public void ChildSuccess(AsyncNode node)
 		{
 			if (clusterKey == 0)
 			{
@@ -216,43 +177,24 @@ namespace Aerospike.Client
 
 				if (status == 0)
 				{
-					if (exception == null)
-					{
-						OnSuccess();
-					}
-					else
-					{
-						OnFailure(exception);
-					}
+					OnSuccess();
 				}
 			}
 		}
 
-		internal void ChildFailure(AerospikeException ae)
+		public void ChildFailure(AerospikeException ae)
 		{
-			if (stopOnFailure)
-			{
-				// There is no need to stop commands if all commands have already completed.
-				int status = Interlocked.CompareExchange(ref done, 1, 0);
+			// There is no need to stop commands if all commands have already completed.
+			int status = Interlocked.CompareExchange(ref done, 1, 0);
 
-				if (status == 0)
-				{
-					// Send stop signal to all commands.
-					foreach (AsyncMultiCommand command in commands)
-					{
-						command.Stop();
-					}
-					OnFailure(ae);
-				}
-			}
-			else
+			if (status == 0)
 			{
-				// Batch sequence executors continue processing.
-				if (exception == null)
+				// Send stop signal to all commands.
+				foreach (AsyncMultiCommand command in commands)
 				{
-					exception = ae;
+					command.Stop();
 				}
-				QueryComplete();
+				OnFailure(ae);
 			}
 		}
 

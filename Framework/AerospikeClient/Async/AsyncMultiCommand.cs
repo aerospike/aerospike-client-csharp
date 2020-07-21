@@ -22,7 +22,7 @@ namespace Aerospike.Client
 {
 	public abstract class AsyncMultiCommand : AsyncCommand
 	{
-		protected internal readonly AsyncMultiExecutor parent;
+		protected internal readonly AsyncExecutor executor;
 		protected internal AsyncNode serverNode;
 		protected internal int info3;
 		protected internal int resultCode;
@@ -37,10 +37,10 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Batch constructor.
 		/// </summary>
-		public AsyncMultiCommand(AsyncMultiExecutor parent, AsyncCluster cluster, Policy policy, AsyncNode node)
+		public AsyncMultiCommand(AsyncExecutor executor, AsyncCluster cluster, Policy policy, AsyncNode node)
 			: base(cluster, policy)
 		{
-			this.parent = parent;
+			this.executor = executor;
 			this.serverNode = node;
 			this.stopOnNotFound = false;
 		}
@@ -48,17 +48,17 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Scan/Query constructor.
 		/// </summary>
-		public AsyncMultiCommand(AsyncMultiExecutor parent, AsyncCluster cluster, Policy policy, AsyncNode node, int socketTimeout, int totalTimeout)
+		public AsyncMultiCommand(AsyncExecutor executor, AsyncCluster cluster, Policy policy, AsyncNode node, int socketTimeout, int totalTimeout)
 			: base(cluster, policy, socketTimeout, totalTimeout)
 		{
-			this.parent = parent;
+			this.executor = executor;
 			this.serverNode = node;
 			this.stopOnNotFound = true;
 		}
 
 		public AsyncMultiCommand(AsyncMultiCommand other) : base(other)
 		{
-			this.parent = other.parent;
+			this.executor = other.executor;
 			this.serverNode = other.serverNode;
 			this.stopOnNotFound = other.stopOnNotFound;
 		}
@@ -170,12 +170,12 @@ namespace Aerospike.Client
 
 		protected internal override void OnSuccess()
 		{
-			parent.ChildSuccess(node);
+			executor.ChildSuccess(node);
 		}
 
 		protected internal override void OnFailure(AerospikeException e)
 		{
-			parent.ChildFailure(e);
+			executor.ChildFailure(e);
 		}
 
 		protected internal abstract void ParseRow(Key key);
