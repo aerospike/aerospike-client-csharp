@@ -100,20 +100,10 @@ namespace Aerospike.Client
 
 		public void SetBatchRetry(AsyncCommand other)
 		{
-			// Batch split retry retains existing deadline. 
+			// This batch retry command will be added to the timeout queue in ExecuteCore().
 			this.iteration = other.iteration;
 			this.usingSocketTimeout = other.usingSocketTimeout;
-
-			if (totalTimeout > 0)
-			{
-				this.watch = other.watch;
-				AsyncTimeoutQueue.Instance.Add(this, totalTimeout);
-			}
-			else if (socketTimeout > 0)
-			{
-				this.watch = Stopwatch.StartNew();
-				AsyncTimeoutQueue.Instance.Add(this, socketTimeout);
-			}
+			this.watch = other.watch;
 		}
 
         // Simply ask the cluster object to schedule the command for execution.
@@ -165,34 +155,27 @@ namespace Aerospike.Client
 				segment.size = 0;
 			}
 
-			if (watch == null)
+			// In async mode, totalTimeout and socketTimeout are mutually exclusive.
+			// If totalTimeout is defined, socketTimeout is ignored.
+			// This is done so we can avoid having to declare usingSocketTimeout as
+			// volatile and because enabling both timeouts together has limited value.
+			if (totalTimeout > 0)
 			{
-				// In async mode, totalTimeout and socketTimeout are mutually exclusive.
-				// If totalTimeout is defined, socketTimeout is ignored.
-				// This is done so we can avoid having to declare usingSocketTimeout as
-				// volatile and because enabling both timeouts together has limited value.
-				if (totalTimeout > 0)
+				// totalTimeout is a fixed timeout. Stopwatch is started once on first
+				// attempt and not restarted on retry.
+				if (watch == null)
 				{
 					watch = Stopwatch.StartNew();
-					AsyncTimeoutQueue.Instance.Add(this, totalTimeout);
 				}
-				else if (socketTimeout > 0)
-				{
-					usingSocketTimeout = true;
-					watch = Stopwatch.StartNew();
-					AsyncTimeoutQueue.Instance.Add(this, socketTimeout);
-				}
+				AsyncTimeoutQueue.Instance.Add(this, totalTimeout);
 			}
-			else
+			else if (socketTimeout > 0)
 			{
-				// Batch split retry.
-				if (state != IN_PROGRESS)
-				{
-					// Free up resources and notify user on timeout.
-					// Connection should have already been closed on AsyncTimeoutQueue timeout.
-					FailCommand(new AerospikeException.Timeout(policy, true));
-					return;
-				}
+				// socketTimeout is an idle timeout. Stopwatch is restarted on
+				// every attempt.
+				usingSocketTimeout = true;
+				watch = Stopwatch.StartNew();
+				AsyncTimeoutQueue.Instance.Add(this, socketTimeout);
 			}
 			ExecuteCommand();
 		}
