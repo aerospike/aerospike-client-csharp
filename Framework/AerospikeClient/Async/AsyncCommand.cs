@@ -103,14 +103,15 @@ namespace Aerospike.Client
 			// Batch split retry retains existing deadline. 
 			this.iteration = other.iteration;
 			this.usingSocketTimeout = other.usingSocketTimeout;
-			this.watch = other.watch;
 
 			if (totalTimeout > 0)
 			{
+				this.watch = other.watch;
 				AsyncTimeoutQueue.Instance.Add(this, totalTimeout);
 			}
 			else if (socketTimeout > 0)
 			{
+				this.watch = Stopwatch.StartNew();
 				AsyncTimeoutQueue.Instance.Add(this, socketTimeout);
 			}
 		}
