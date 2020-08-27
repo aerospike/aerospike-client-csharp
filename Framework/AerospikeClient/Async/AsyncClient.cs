@@ -280,12 +280,11 @@ namespace Aerospike.Client
 		//-------------------------------------------------------
 
 		/// <summary>
-		/// Asynchronously add integer bin values to existing record bin values.
+		/// Asynchronously add integer/double bin values to existing record bin values.
 		/// Create listener, call asynchronous add and return task monitor.
 		/// <para>
 		/// The policy specifies the transaction timeout, record expiration and how the transaction is
 		/// handled when the record already exists.
-		/// This call only works for integer values. 
 		/// </para>
 		/// </summary>
 		/// <param name="policy">write configuration parameters, pass in null for defaults</param>
@@ -301,13 +300,12 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
-		/// Asynchronously add integer bin values to existing record bin values.
+		/// Asynchronously add integer/double bin values to existing record bin values.
 		/// Schedule the add command with a channel selector and return.
 		/// Another thread will process the command and send the results to the listener.
 		/// <para>
 		/// The policy specifies the transaction timeout, record expiration and how the transaction is
 		/// handled when the record already exists.
-		/// This call only works for integer values. 
 		/// </para>
 		/// </summary>
 		/// <param name="policy">write configuration parameters, pass in null for defaults</param>

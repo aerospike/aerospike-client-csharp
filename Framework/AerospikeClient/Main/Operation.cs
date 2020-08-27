@@ -72,7 +72,7 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
-		/// Create integer add database operation.
+		/// Create integer/double add database operation.
 		/// </summary>
 		public static Operation Add(Bin bin)
 		{

@@ -404,10 +404,9 @@ namespace Aerospike.Client
 		//-------------------------------------------------------
 
 		/// <summary>
-		/// Add integer bin values to existing record bin values.
+		/// Add integer/double bin values to existing record bin values.
 		/// The policy specifies the transaction timeout, record expiration and how the transaction is
 		/// handled when the record already exists.
-		/// This call only works for integer values. 
 		/// </summary>
 		/// <param name="policy">write configuration parameters, pass in null for defaults</param>
 		/// <param name="key">unique record identifier</param>
