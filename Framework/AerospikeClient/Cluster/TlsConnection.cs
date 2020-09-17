@@ -73,6 +73,15 @@ namespace Aerospike.Client
 
 		private bool ValidateServerCertificate(object sender, X509Certificate cert, X509Chain chain, SslPolicyErrors sslPolicyErrors)
 		{
+			if (sslPolicyErrors != SslPolicyErrors.None)
+			{
+				if (Log.DebugEnabled())
+				{
+					Log.Debug("Invalid certificate policy error: " + sslPolicyErrors);
+				}
+				return false;
+			}
+
 			// Exclude certificate serial numbers.
 			if (policy.revokeCertificates != null)
 			{
@@ -91,55 +100,62 @@ namespace Aerospike.Client
 				}
 			}
 
-			if (sslPolicyErrors == SslPolicyErrors.None)
+			// Search subject certificate name.
+			if (FindTlsName(cert.Subject, "CN=", tlsName))
 			{
 				return true;
 			}
-			
+
 			// Search subject alternative names.
 			var cert2 = (X509Certificate2)cert;
 			foreach (X509Extension ext in cert2.Extensions)
 			{
 				if (ext.Oid.Value.Equals("2.5.29.17")) // Subject Alternative Name
 				{
-					const string filter = "DNS Name=";
-					string sans = ext.Format(false);
-					string san;
-					int begin = 0;
-					int end;
-
-					while ((begin = sans.IndexOf(filter, begin)) >= 0)
+					if (FindTlsName(ext.Format(false), "DNS Name=", tlsName))
 					{
-						begin += filter.Length;
-						end = sans.IndexOf(',', begin);
-
-						if (end >= 0)
-						{
-							san = sans.Substring(begin, end - begin);
-						}
-						else
-						{
-							san = sans.Substring(begin);
-						}
-
-						if (san.Equals(tlsName))
-						{
-							return true;
-						}
-
-						if (end < 0)
-						{
-							break;
-						}
-
-						begin = end + 1;
+						return true;
 					}
 				}
 			}
 
 			if (Log.DebugEnabled())
 			{
-				Log.Debug("TLS connection error: " + sslPolicyErrors);
+				Log.Debug("Invalid certificate, tlsName not found: " + tlsName);
+			}
+			return false;
+		}
+
+		private static bool FindTlsName(string str, string filter, string tlsName)
+		{
+			string token;
+			int begin = 0;
+			int end;
+
+			while ((begin = str.IndexOf(filter, begin)) >= 0)
+			{
+				begin += filter.Length;
+				end = str.IndexOf(',', begin);
+
+				if (end >= 0)
+				{
+					token = str.Substring(begin, end - begin);
+				}
+				else
+				{
+					token = str.Substring(begin);
+				}
+
+				if (token.Equals(tlsName))
+				{
+					return true;
+				}
+
+				if (end < 0)
+				{
+					break;
+				}
+				begin = end + 1;
 			}
 			return false;
 		}
