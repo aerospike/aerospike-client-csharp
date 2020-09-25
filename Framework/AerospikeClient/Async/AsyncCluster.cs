@@ -71,9 +71,15 @@ namespace Aerospike.Client
 			InitTendThread(policy.failIfNotConnected);
 		}
 
-		protected internal override Node CreateNode(NodeValidator nv)
+		protected internal override Node CreateNode(NodeValidator nv, bool createMinConn)
 		{
-			return new AsyncNode(this, nv);
+			AsyncNode node = new AsyncNode(this, nv);
+
+			if (createMinConn)
+			{
+				node.CreateMinConnections();
+			}
+			return node;
 		}
 
 		public void ScheduleCommandExecution(AsyncCommand command)

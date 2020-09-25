@@ -32,7 +32,7 @@ namespace Aerospike.Client
 		private int head;
 		private int tail;
 		private int size;
-		private int minSize;
+		internal readonly int minSize;
 		private volatile int total; // total items: inUse + inPool
 
 		/// <summary>
