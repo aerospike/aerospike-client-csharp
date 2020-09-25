@@ -23,6 +23,7 @@ namespace Aerospike.Client
 {
 	public sealed class NodeValidator
 	{
+		internal Node fallback;
 		internal string name;
 		internal List<Host> aliases;
 		internal Host primaryHost;
@@ -37,8 +38,17 @@ namespace Aerospike.Client
 		/// reference a single node.  If round robin DNS configuration is used, the seed host
 		/// may have several addresses that reference different nodes in the cluster.
 		/// </summary>
-		public Node SeedNode(Cluster cluster, Host host)
+		public Node SeedNode(Cluster cluster, Host host, Peers peers)
 		{
+			name = null;
+			aliases = null;
+			primaryHost = null;
+			primaryAddress = null;
+			primaryConn = null;
+			sessionToken = null;
+			sessionExpiration = null;
+			features = 0;
+
 			IPAddress[] addresses = Connection.GetHostAddresses(host.name, cluster.connectionTimeout);
 			Exception exception = null;
 
@@ -54,7 +64,13 @@ namespace Aerospike.Client
 					{
 						SetAliases(address, host.tlsName, host.port);
 					}
-					return cluster.CreateNode(this);
+
+					Node node = cluster.CreateNode(this, false);
+
+					if (ValidatePeers(peers, node))
+					{
+						return node;
+					}
 				}
 				catch (Exception e)
 				{
@@ -71,9 +87,61 @@ namespace Aerospike.Client
 				}
 			}
 
+			// Fallback signifies node exists, but is suspect.
+			// Return null so other seeds can be tried.
+			if (fallback != null)
+			{
+				return null;
+			}
+
 			// Exception can't be null here because Connection.GetHostAddresses()
 			// will throw exception if aliases length is zero.
 			throw exception;
+		}
+
+		private bool ValidatePeers(Peers peers, Node node)
+		{
+			try
+			{
+				node.Refresh(peers);
+
+				if (peers.genChanged)
+				{
+					peers.refreshCount = 0;
+					node.RefreshPeers(peers);
+				}
+			}
+			catch (Exception)
+			{
+				node.Close();
+				throw;
+			}
+
+			if (node.peersCount == 0)
+			{
+				// Node is suspect because multiple seeds are used and node does not have any peers.
+				if (fallback == null)
+				{
+					fallback = node;
+				}
+				else
+				{
+					node.Close();
+				}
+				return false;
+			}
+
+			// Node is valid. Drop fallback if it exists.
+			if (fallback != null)
+			{
+				if (Log.InfoEnabled())
+				{
+					Log.Info("Skip orphan node: " + fallback);
+				}
+				fallback.Close();
+				fallback = null;
+			}
+			return true;
 		}
 
 		/// <summary>

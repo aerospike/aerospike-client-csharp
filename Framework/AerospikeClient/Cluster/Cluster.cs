@@ -369,13 +369,6 @@ namespace Aerospike.Client
 		/// </summary>
 		private void Tend(bool failIfNotConnected)
 		{
-			// All node additions/deletions are performed in tend thread.		
-			// If active nodes don't exist, seed cluster.
-			if (nodes.Length == 0)
-			{
-				SeedNode(failIfNotConnected);
-			}
-
 			// Initialize tend iteration node statistics.
 			Peers peers = new Peers(nodes.Length + 16);
 
@@ -392,21 +385,30 @@ namespace Aerospike.Client
 				}
 			}
 
-			// Refresh all known nodes.
-			foreach (Node node in nodes)
+			// All node additions/deletions are performed in tend thread.		
+			// If active nodes don't exist, seed cluster.
+			if (nodes.Length == 0)
 			{
-				node.Refresh(peers);
+				SeedNode(peers, failIfNotConnected);
 			}
-
-			// Refresh peers when necessary.
-			if (peers.genChanged)
+			else
 			{
-				// Refresh peers for all nodes that responded the first time even if only one node's peers changed.
-				peers.refreshCount = 0;
-
+				// Refresh all known nodes.
 				foreach (Node node in nodes)
 				{
-					node.RefreshPeers(peers);
+					node.Refresh(peers);
+				}
+
+				// Refresh peers when necessary.
+				if (peers.genChanged)
+				{
+					// Refresh peers for all nodes that responded the first time even if only one node's peers changed.
+					peers.refreshCount = 0;
+
+					foreach (Node node in nodes)
+					{
+						node.RefreshPeers(peers);
+					}
 				}
 			}
 
@@ -454,11 +456,12 @@ namespace Aerospike.Client
 			}
 		}
 
-		private bool SeedNode(bool failIfNotConnected)
+		private bool SeedNode(Peers peers, bool failIfNotConnected)
 		{
 			// Must copy array reference for copy on write semantics to work.
 			Host[] seedArray = seeds;
 			Exception[] exceptions = null;
+			NodeValidator nv = new NodeValidator();
 
 			for (int i = 0; i < seedArray.Length; i++)
 			{
@@ -466,13 +469,13 @@ namespace Aerospike.Client
 
 				try
 				{
-					NodeValidator nv = new NodeValidator();
-					Node node = nv.SeedNode(this, seed);
-					
-					Dictionary<string, Node> nodesToAdd = new Dictionary<string, Node>(1);
-					nodesToAdd[node.Name] = node;
-					AddNodes(nodesToAdd);
-					return true;
+					Node node = nv.SeedNode(this, seed, peers);
+
+					if (node != null)
+					{
+						AddNode(node);
+						return true;
+					}
 				}
 				catch (Exception e)
 				{
@@ -494,6 +497,13 @@ namespace Aerospike.Client
 
 					}
 				}
+			}
+
+			// No seeds valid. Use fallback node if it exists.
+			if (nv.fallback != null)
+			{
+				AddNode(nv.fallback);
+				return true;
 			}
 
 			if (failIfNotConnected)
@@ -518,9 +528,24 @@ namespace Aerospike.Client
 			return false;
 		}
 
-		protected internal virtual Node CreateNode(NodeValidator nv)
+		private void AddNode(Node node)
 		{
-			return new Node(this, nv);
+			node.CreateMinConnections();
+
+			Dictionary<string, Node> nodesToAdd = new Dictionary<string, Node>(1);
+			nodesToAdd[node.Name] = node;
+			AddNodes(nodesToAdd);
+		}
+
+		protected internal virtual Node CreateNode(NodeValidator nv, bool createMinConn)
+		{
+			Node node = new Node(this, nv);
+
+			if (createMinConn)
+			{
+				node.CreateMinConnections();
+			}
+			return node;
 		}
 
 		private List<Node> FindNodesToRemove(int refreshCount)

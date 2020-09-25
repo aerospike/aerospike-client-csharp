@@ -39,7 +39,13 @@ namespace Aerospike.Client
 		{
 			this.cluster = cluster;
 			asyncConnQueue = new Pool<AsyncConnection>(cluster.asyncMinConnsPerNode, cluster.asyncMaxConnsPerNode);
+		}
 
+		public override void CreateMinConnections()
+		{
+			base.CreateMinConnections();
+
+			// Create async connections.
 			if (cluster.asyncMinConnsPerNode > 0)
 			{
 				new AsyncConnectorExecutor(cluster, this, cluster.asyncMinConnsPerNode, 20, true);

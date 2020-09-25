@@ -109,11 +109,6 @@ namespace Aerospike.Client
 
 				Pool<Connection> pool = new Pool<Connection>(minSize, maxSize);
 				connectionPools[i] = pool;
-
-				if (minSize > 0)
-				{
-					CreateConnections(pool, minSize);
-				}
 			}
 		}
 
@@ -121,6 +116,18 @@ namespace Aerospike.Client
 		{
 			// Close connections that slipped through the cracks on race conditions.
 			CloseConnections();
+		}
+
+		public virtual void CreateMinConnections()
+		{
+			// Create sync connections.
+			foreach (Pool<Connection> pool in connectionPools)
+			{
+				if (pool.minSize > 0)
+				{
+					CreateConnections(pool, pool.minSize);
+				}
+			}
 		}
 
 		/// <summary>
@@ -378,7 +385,7 @@ namespace Aerospike.Client
 					return true;
 				}
 
-				node = cluster.CreateNode(nv);
+				node = cluster.CreateNode(nv, true);
 				peers.hosts.Add(host);
 				peers.nodes[nv.name] = node;
 				return true;
@@ -450,7 +457,7 @@ namespace Aerospike.Client
 							}
 
 							// Create new node.
-							Node node = cluster.CreateNode(nv);
+							Node node = cluster.CreateNode(nv, true);
 							peers.nodes[nv.name] = node;
 							nodeValidated = true;
 							break;
