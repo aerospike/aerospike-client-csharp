@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2020 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -14,6 +14,8 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
+using System;
+
 namespace Aerospike.Client
 {
 	/// <summary>
@@ -77,6 +79,14 @@ namespace Aerospike.Client
 		public static void SetCallback(Callback callback)
 		{
 			LogCallback = callback;
+		}
+
+		/// <summary>
+		/// Log messages to terminal standard output with timestamp, level and message.
+		/// </summary>
+		public static void SetCallbackStandard()
+		{
+			new Log.Standard();
 		}
 
 		/// <summary>
@@ -149,6 +159,20 @@ namespace Aerospike.Client
 			if (LogCallback != null && level <= LogLevel)
 			{
 				LogCallback(level, message);
+			}
+		}
+
+		private class Standard
+		{
+			public Standard()
+			{
+				Log.SetCallback(LogCallback);
+			}
+
+			public void LogCallback(Log.Level level, String message)
+			{
+				string dt = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+				Console.WriteLine(dt + ' ' + level.ToString() + ' ' + message);
 			}
 		}
 	}
