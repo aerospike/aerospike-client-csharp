@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2020 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -22,11 +22,6 @@ namespace Aerospike.Client
 	{
 		public static ulong ValidateBegin(Node node, string ns)
 		{
-			if (!node.HasClusterStable)
-			{
-				return 0;
-			}
-
 			// Fail when cluster is in migration.
 			string result = Info.Request(node, "cluster-stable:namespace=" + ns);
 
@@ -43,7 +38,7 @@ namespace Aerospike.Client
 
 		public static void Validate(Node node, string ns, ulong expectedKey)
 		{
-			if (expectedKey == 0 || !node.HasClusterStable)
+			if (expectedKey == 0)
 			{
 				return;
 			}

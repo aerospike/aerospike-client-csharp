@@ -486,17 +486,8 @@ namespace Aerospike.Client
 			}
 			else
 			{
-				// Servers >= 4.5.1.0 support truncate-namespace.
-				if (node.HasTruncateNamespace)
-				{
-					sb.Append("truncate-namespace:namespace=");
-					sb.Append(ns);
-				}
-				else
-				{
-					sb.Append("truncate:namespace=");
-					sb.Append(ns);
-				}
+				sb.Append("truncate-namespace:namespace=");
+				sb.Append(ns);
 			}
 
 			if (beforeLastUpdate.HasValue)
@@ -504,14 +495,6 @@ namespace Aerospike.Client
 				sb.Append(";lut=");
 				// Convert to nanoseconds since unix epoch.
 				sb.Append(Util.NanosFromEpoch(beforeLastUpdate.Value));
-			}
-			else
-			{
-				// Servers >= 4.3.1.4 and <= 4.5.0.1 require lut argument.
-				if (node.HasLutNow)
-				{
-					sb.Append(";lut=now");
-				}
 			}
 
 			string response = Info.Request(policy, node, sb.ToString());
@@ -886,15 +869,8 @@ namespace Aerospike.Client
 			}
 
 			Node[] nodes = cluster.ValidateNodes();
-
-			if (cluster.hasPartitionScan)
-			{
-				PartitionTracker tracker = new PartitionTracker(policy, nodes);
-				ScanExecutor.ScanPartitions(cluster, policy, ns, setName, binNames, callback, tracker);
-			}
-			else {
-				ScanExecutor.ScanNodes(cluster, policy, ns, setName, binNames, callback, nodes);
-			}
+			PartitionTracker tracker = new PartitionTracker(policy, nodes);
+			ScanExecutor.ScanPartitions(cluster, policy, ns, setName, binNames, callback, tracker);
 		}
 
 		/// <summary>
@@ -943,14 +919,8 @@ namespace Aerospike.Client
 				policy = scanPolicyDefault;
 			}
 
-			if (node.HasPartitionScan)
-			{
-				PartitionTracker tracker = new PartitionTracker(policy, node);
-				ScanExecutor.ScanPartitions(cluster, policy, ns, setName, binNames, callback, tracker);
-			}
-			else {
-				ScanExecutor.ScanNodes(cluster, policy, ns, setName, binNames, callback, new Node[] {node});
-			}
+			PartitionTracker tracker = new PartitionTracker(policy, node);
+			ScanExecutor.ScanPartitions(cluster, policy, ns, setName, binNames, callback, tracker);
 		}
 
 		/// <summary>
@@ -975,16 +945,8 @@ namespace Aerospike.Client
 			}
 
 			Node[] nodes = cluster.ValidateNodes();
-
-			if (cluster.hasPartitionScan)
-			{
-				PartitionTracker tracker = new PartitionTracker(policy, nodes, partitionFilter);
-				ScanExecutor.ScanPartitions(cluster, policy, ns, setName, binNames, callback, tracker);
-			}
-			else
-			{
-				throw new AerospikeException(ResultCode.PARAMETER_ERROR, "ScanPartitions() not supported");
-			}
+			PartitionTracker tracker = new PartitionTracker(policy, nodes, partitionFilter);
+			ScanExecutor.ScanPartitions(cluster, policy, ns, setName, binNames, callback, tracker);
 		}
 
 		//---------------------------------------------------------------
@@ -1275,8 +1237,7 @@ namespace Aerospike.Client
 			Node[] nodes = cluster.ValidateNodes();
 
 			// A scan will be performed if the secondary index filter is null.
-			// Check if scan and partition scan is supported.
-			if (statement.filter == null && cluster.hasPartitionScan)
+			if (statement.filter == null)
 			{
 				PartitionTracker tracker = new PartitionTracker(policy, nodes);
 				QueryPartitionExecutor executor = new QueryPartitionExecutor(cluster, policy, statement, nodes.Length, tracker);
@@ -1309,8 +1270,7 @@ namespace Aerospike.Client
 			Node[] nodes = cluster.ValidateNodes();
 
 			// A scan will be performed if the secondary index filter is null.
-			// Check if scan and partition scan is supported.
-			if (statement.filter == null && cluster.hasPartitionScan)
+			if (statement.filter == null)
 			{
 				PartitionTracker tracker = new PartitionTracker(policy, nodes, partitionFilter);
 				QueryPartitionExecutor executor = new QueryPartitionExecutor(cluster, policy, statement, nodes.Length, tracker);

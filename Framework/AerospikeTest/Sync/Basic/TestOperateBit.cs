@@ -1,5 +1,5 @@
 ﻿/* 
- * Copyright 2012-2019 Aerospike, Inc.
+ * Copyright 2012-2020 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -30,11 +30,6 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void OperateBitResize()
 		{
-			if (!args.HasBit)
-			{
-				return;
-			}
-
 			Key key = new Key(args.ns, args.set, "opbkey1");
 
 			client.Delete(null, key);
@@ -60,11 +55,6 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void OperateBitInsert()
 		{
-			if (!args.HasBit)
-			{
-				return;
-			}
-
 			Key key = new Key(args.ns, args.set, "opbkey2");
 
 			client.Delete(null, key);
@@ -89,11 +79,6 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void OperateBitRemove()
 		{
-			if (!args.HasBit)
-			{
-				return;
-			}
-
 			Key key = new Key(args.ns, args.set, "opbkey3");
 
 			client.Delete(null, key);
@@ -118,11 +103,6 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void OperateBitSet()
 		{
-			if (!args.HasBit)
-			{
-				return;
-			}
-
 			Key key = new Key(args.ns, args.set, "opbkey1");
 
 			client.Delete(null, key);
@@ -148,11 +128,6 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void OperateBitOr()
 		{
-			if (!args.HasBit)
-			{
-				return;
-			}
-
 			Key key = new Key(args.ns, args.set, "opbkey2");
 
 			client.Delete(null, key);
@@ -177,11 +152,6 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void OperateBitXor()
 		{
-			if (!args.HasBit)
-			{
-				return;
-			}
-
 			Key key = new Key(args.ns, args.set, "opbkey3");
 
 			client.Delete(null, key);
@@ -206,11 +176,6 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void OperateBitAnd()
 		{
-			if (!args.HasBit)
-			{
-				return;
-			}
-
 			Key key = new Key(args.ns, args.set, "opbkey4");
 
 			client.Delete(null, key);
@@ -235,11 +200,6 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void OperateBitNot()
 		{
-			if (!args.HasBit)
-			{
-				return;
-			}
-
 			Key key = new Key(args.ns, args.set, "opbkey5");
 
 			client.Delete(null, key);
@@ -264,11 +224,6 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void OperateBitLshift()
 		{
-			if (!args.HasBit)
-			{
-				return;
-			}
-
 			Key key = new Key(args.ns, args.set, "opbkey6");
 
 			client.Delete(null, key);
@@ -293,11 +248,6 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void OperateBitRshift()
 		{
-			if (!args.HasBit)
-			{
-				return;
-			}
-
 			Key key = new Key(args.ns, args.set, "opbkey7");
 
 			client.Delete(null, key);
@@ -322,11 +272,6 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void OperateBitAdd()
 		{
-			if (!args.HasBit)
-			{
-				return;
-			}
-
 			Key key = new Key(args.ns, args.set, "opbkey10");
 
 			client.Delete(null, key);
@@ -351,11 +296,6 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void OperateBitSubtract()
 		{
-			if (!args.HasBit)
-			{
-				return;
-			}
-
 			Key key = new Key(args.ns, args.set, "opbkey11");
 
 			client.Delete(null, key);
@@ -380,11 +320,6 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void OperateBitSetInt()
 		{
-			if (!args.HasBit)
-			{
-				return;
-			}
-
 			Key key = new Key(args.ns, args.set, "opbkey12");
 
 			client.Delete(null, key);
@@ -409,11 +344,6 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void OperateBitGet()
 		{
-			if (!args.HasBit)
-			{
-				return;
-			}
-
 			Key key = new Key(args.ns, args.set, "opbkey13");
 
 			client.Delete(null, key);
@@ -435,11 +365,6 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void OperateBitCount()
 		{
-			if (!args.HasBit)
-			{
-				return;
-			}
-
 			Key key = new Key(args.ns, args.set, "opbkey14");
 
 			client.Delete(null, key);
@@ -461,11 +386,6 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void OperateBitLscan()
 		{
-			if (!args.HasBit)
-			{
-				return;
-			}
-
 			Key key = new Key(args.ns, args.set, "opbkey15");
 
 			client.Delete(null, key);
@@ -487,11 +407,6 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void OperateBitRscan()
 		{
-			if (!args.HasBit)
-			{
-				return;
-			}
-
 			Key key = new Key(args.ns, args.set, "opbkey16");
 
 			client.Delete(null, key);
@@ -513,11 +428,6 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void OperateBitGetInt()
 		{
-			if (!args.HasBit)
-			{
-				return;
-			}
-
 			Key key = new Key(args.ns, args.set, "opbkey17");
 
 			client.Delete(null, key);

@@ -50,7 +50,7 @@ namespace Aerospike.Client
 
 			foreach (Node node in nodes)
 			{
-				if (isCreate || !node.HasIndexExists)
+				if (isCreate)
 				{
 					// Check index status.
 					if (statusCommand == null)

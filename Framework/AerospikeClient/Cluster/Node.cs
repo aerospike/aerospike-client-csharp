@@ -32,16 +32,6 @@ namespace Aerospike.Client
 		/// </summary>
 		public const int PARTITIONS = 4096;
 
-		public const int HAS_GEO = (1 << 0);
-		public const int HAS_TRUNCATE_NS = (1 << 1);
-		public const int HAS_BIT_OP = (1 << 2);
-		public const int HAS_INDEX_EXISTS = (1 << 3);
-		public const int HAS_PEERS = (1 << 4);
-		public const int HAS_REPLICAS = (1 << 5);
-		public const int HAS_CLUSTER_STABLE = (1 << 6);
-		public const int HAS_LUT_NOW = (1 << 7);
-		public const int HAS_PARTITION_SCAN = (1 << 8);
-
 		private static readonly string[] INFO_PERIODIC = new string[] { "node", "peers-generation", "partition-generation" };
 		private static readonly string[] INFO_PERIODIC_REB = new string[] { "node", "peers-generation", "partition-generation", "rebalance-generation" }; 
 
@@ -177,40 +167,23 @@ namespace Aerospike.Client
 					}
 				}
 
-				if (peers.usePeers)
+				string[] commands = cluster.rackAware ? INFO_PERIODIC_REB : INFO_PERIODIC;
+				Dictionary<string, string> infoMap = Info.Request(tendConnection, commands);
+
+				VerifyNodeName(infoMap);
+				VerifyPeersGeneration(infoMap, peers);
+				VerifyPartitionGeneration(infoMap);
+
+				if (cluster.rackAware)
 				{
-					string[] commands = cluster.rackAware ? INFO_PERIODIC_REB : INFO_PERIODIC;
-					Dictionary<string, string> infoMap = Info.Request(tendConnection, commands);
-
-					VerifyNodeName(infoMap);
-					VerifyPeersGeneration(infoMap, peers);
-					VerifyPartitionGeneration(infoMap);
-
-					if (cluster.rackAware)
-					{
-						VerifyRebalanceGeneration(infoMap);
-					}
-				}
-				else
-				{
-					string[] commands = cluster.useServicesAlternate ?
-						new string[] { "node", "partition-generation", "services-alternate" } :
-						new string[] { "node", "partition-generation", "services" };
-
-					Dictionary<string, string> infoMap = Info.Request(tendConnection, commands);
-					VerifyNodeName(infoMap);
-					VerifyPartitionGeneration(infoMap);
-					AddFriends(infoMap, peers);
+					VerifyRebalanceGeneration(infoMap);
 				}
 				peers.refreshCount++;
 				failures = 0;
 			}
 			catch (Exception e)
 			{
-				if (peers.usePeers)
-				{
-					peers.genChanged = true;
-				}
+				peers.genChanged = true;
 				RefreshFailed(e);
 			}
 		}
@@ -305,98 +278,6 @@ namespace Aerospike.Client
 			if (rebalanceGeneration != gen)
 			{
 				this.rebalanceChanged = true;
-			}
-		}
-
-		private void AddFriends(Dictionary<string, string> infoMap, Peers peers)
-		{
-			// Parse the service addresses and add the friends to the list.
-			String command = cluster.useServicesAlternate ? "services-alternate" : "services";
-			string friendString = infoMap[command];
-
-			if (friendString == null || friendString.Length == 0)
-			{
-				peersCount = 0;
-				return;
-			}
-
-			string[] friendNames = friendString.Split(';');
-			peersCount = friendNames.Length;
-
-			foreach (string friend in friendNames)
-			{
-				string[] friendInfo = friend.Split(':');
-				string hostname = friendInfo[0];
-				string alternativeHost;
-
-				if (cluster.ipMap != null && cluster.ipMap.TryGetValue(hostname, out alternativeHost))
-				{
-					hostname = alternativeHost;
-				}
-
-				int port = Convert.ToInt32(friendInfo[1]);
-				Host host = new Host(hostname, port);
-				Node node;
-
-				// Check global aliases for existing cluster.
-				if (!cluster.aliases.TryGetValue(host, out node))
-				{
-					// Check local aliases for this tend iteration.	
-					if (!peers.hosts.Contains(host))
-					{
-						PrepareFriend(host, peers);
-					}
-				}
-				else
-				{
-					node.referenceCount++;
-				}
-			}
-		}
-
-		private bool PrepareFriend(Host host, Peers peers)
-		{
-			try
-			{
-				NodeValidator nv = new NodeValidator();
-				nv.ValidateNode(cluster, host);
-
-				// Check for duplicate nodes in nodes slated to be added.
-				Node node;
-				if (peers.nodes.TryGetValue(nv.name, out node))
-				{
-					// Duplicate node name found.  This usually occurs when the server 
-					// services list contains both internal and external IP addresses 
-					// for the same node.
-					nv.primaryConn.Close();
-					peers.hosts.Add(host);
-					node.aliases.Add(host);
-					return true;
-				}
-
-				// Check for duplicate nodes in cluster.
-				if (cluster.nodesMap.TryGetValue(nv.name, out node))
-				{
-					nv.primaryConn.Close();
-					peers.hosts.Add(host);
-					node.aliases.Add(host);
-					node.referenceCount++;
-					cluster.aliases[host] = node;
-					return true;
-				}
-
-				node = cluster.CreateNode(nv, true);
-				peers.hosts.Add(host);
-				peers.nodes[nv.name] = node;
-				return true;
-			}
-			catch (Exception e)
-			{
-				if (Log.WarnEnabled())
-				{
-					Log.Warn("Add node " + host + " failed: " + Util.GetErrorMessage(e));
-				}
-				return false;
 			}
 		}
 
@@ -908,70 +789,6 @@ namespace Aerospike.Client
 			{
 				return name;
 			}
-		}
-
-		/// <summary>
-		/// Does server support lut=now in truncate info command.
-		/// </summary>
-		public bool HasLutNow
-		{
-			get { return (features & HAS_LUT_NOW) != 0; }
-		}
-
-		/// <summary>
-		/// Does server support truncate-namespace info command.
-		/// </summary>
-		public bool HasTruncateNamespace
-		{
-			get { return (features & HAS_TRUNCATE_NS) != 0; }
-		}
-	
-		/// <summary>
-		/// Does server support replicas info command.
-		/// </summary>
-		public bool HasReplicas
-		{
-			get { return (features & HAS_REPLICAS) != 0; }
-		}
-
-		/// <summary>
-		/// Does server support peers info command.
-		/// </summary>
-		public bool HasPeers
-		{
-			get { return (features & HAS_PEERS) != 0; }
-		}
-
-		/// <summary>
-		/// Does server support cluster-stable info command.
-		/// </summary>
-		public bool HasClusterStable
-		{
-			get { return (features & HAS_CLUSTER_STABLE) != 0; }
-		}
-
-		/// <summary>
-		/// Does server support bit operations.
-		/// </summary>
-		public bool HasBitOperations
-		{
-			get { return (features & HAS_BIT_OP) != 0; }
-		}
-
-		/// <summary>
-		/// Does server support sindex-exists info command.
-		/// </summary>
-		public bool HasIndexExists
-		{
-			get { return (features & HAS_INDEX_EXISTS) != 0; }
-		}
-
-		/// <summary>
-		/// Does server support partition scans.
-		/// </summary>
-		public bool HasPartitionScan
-		{
-			get { return (features & HAS_PARTITION_SCAN) != 0; }
 		}
 
 		/// <summary>

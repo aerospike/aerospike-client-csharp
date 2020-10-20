@@ -298,6 +298,9 @@ namespace Aerospike.Client
 				
 		private void SetFeatures(Dictionary<string, string> map)
 		{
+			// No features to process since all old features are known to be supported
+			// by required server 5.2.0.4+.
+			/*
 			try
 			{
 				string featuresString = map["features"];
@@ -347,6 +350,7 @@ namespace Aerospike.Client
 			{
 				// Unexpected exception. Use defaults.
 			}
+			*/
 		}
 
 		private void ValidateClusterName(Cluster cluster, Dictionary<string, string> map)

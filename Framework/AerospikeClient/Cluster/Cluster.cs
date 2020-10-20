@@ -110,9 +110,6 @@ namespace Aerospike.Client
 
 		// Request server rack ids.
 		internal readonly bool rackAware;
-
-		// Does cluster support partition scans.
-		internal bool hasPartitionScan;
 		
 		public Cluster(ClientPolicy policy, Host[] hosts)
 		{
@@ -378,11 +375,6 @@ namespace Aerospike.Client
 				node.referenceCount = 0;
 				node.partitionChanged = false;
 				node.rebalanceChanged = false;
-
-				if (!node.HasPeers)
-				{
-					peers.usePeers = false;
-				}
 			}
 
 			// All node additions/deletions are performed in tend thread.		
@@ -426,7 +418,7 @@ namespace Aerospike.Client
 				}
 			}
 
-			if (peers.genChanged || !peers.usePeers)
+			if (peers.genChanged)
 			{
 				// Handle nodes changes determined from refreshes.
 				List<Node> removeList = FindNodesToRemove(peers.refreshCount);
@@ -647,7 +639,6 @@ namespace Aerospike.Client
 					aliases[alias] = node;
 				}
 			}
-			hasPartitionScan = Cluster.SupportsPartitionScan(nodeArray);
 
 			// Replace nodes with copy.
 			nodes = nodeArray;
@@ -727,7 +718,6 @@ namespace Aerospike.Client
 				Array.Copy(nodeArray, 0, nodeArray2, 0, count);
 				nodeArray = nodeArray2;
 			}
-			hasPartitionScan = Cluster.SupportsPartitionScan(nodeArray);
 
 			// Replace nodes with copy.
 			nodes = nodeArray;
@@ -904,22 +894,6 @@ namespace Aerospike.Client
 					this.password = password;
 				}
 			}
-		}
-
-		private static bool SupportsPartitionScan(Node[] nodes)
-		{
-			if (nodes.Length == 0)
-			{
-				return false;
-			}
-
-			foreach (Node node in nodes)
-			{
-				if (! node.HasPartitionScan) {
-					return false;
-				}
-			}
-			return true;
 		}
 
 		public void InterruptTendSleep()

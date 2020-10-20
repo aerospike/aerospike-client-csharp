@@ -1070,16 +1070,8 @@ namespace Aerospike.Client
 			}
 
 			Node[] nodes = cluster.ValidateNodes();
-
-			if (cluster.hasPartitionScan)
-			{
-				PartitionTracker tracker = new PartitionTracker(policy, nodes);
-				new AsyncScanPartitionExecutor(cluster, policy, listener, ns, setName, binNames, tracker);
-			}
-			else
-			{
-				new AsyncScanExecutor(cluster, policy, listener, ns, setName, binNames, nodes);
-			}
+			PartitionTracker tracker = new PartitionTracker(policy, nodes);
+			new AsyncScanPartitionExecutor(cluster, policy, listener, ns, setName, binNames, tracker);
 		}
 
 		/// <summary>
@@ -1106,16 +1098,8 @@ namespace Aerospike.Client
 			}
 
 			Node[] nodes = cluster.ValidateNodes();
-
-			if (cluster.hasPartitionScan)
-			{
-				PartitionTracker tracker = new PartitionTracker(policy, nodes, partitionFilter);
-				new AsyncScanPartitionExecutor(cluster, policy, listener, ns, setName, binNames, tracker);
-			}
-			else
-			{
-				throw new AerospikeException(ResultCode.PARAMETER_ERROR, "ScanPartitions() not supported");
-			}
+			PartitionTracker tracker = new PartitionTracker(policy, nodes, partitionFilter);
+			new AsyncScanPartitionExecutor(cluster, policy, listener, ns, setName, binNames, tracker);
 		}
 	
 		//---------------------------------------------------------------
@@ -1196,8 +1180,7 @@ namespace Aerospike.Client
 			Node[] nodes = cluster.ValidateNodes();
 
 			// A scan will be performed if the secondary index filter is null.
-			// Check if scan and partition scan is supported.
-			if (statement.filter == null && cluster.hasPartitionScan)
+			if (statement.filter == null)
 			{
 				PartitionTracker tracker = new PartitionTracker(policy, nodes);
 				new AsyncQueryPartitionExecutor(cluster, policy, listener, statement, tracker);
@@ -1235,8 +1218,7 @@ namespace Aerospike.Client
 			Node[] nodes = cluster.ValidateNodes();
 
 			// A scan will be performed if the secondary index filter is null.
-			// Check if scan and partition scan is supported.
-			if (statement.filter == null && cluster.hasPartitionScan)
+			if (statement.filter == null)
 			{
 				PartitionTracker tracker = new PartitionTracker(policy, nodes, partitionFilter);
 				new AsyncQueryPartitionExecutor(cluster, policy, listener, statement, tracker);

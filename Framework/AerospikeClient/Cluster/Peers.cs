@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2020 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -25,7 +25,6 @@ namespace Aerospike.Client
 		public readonly HashSet<Host> hosts;
 		public readonly Dictionary<string, Node> nodes;
 		public int refreshCount;
-		public bool usePeers;
 		public bool genChanged;
 
 		public Peers(int peerCapacity)
@@ -33,7 +32,6 @@ namespace Aerospike.Client
 			peers = new List<Peer>(peerCapacity);
 			hosts = new HashSet<Host>();
 			nodes = new Dictionary<string, Node>();
-			usePeers = true;
 		}
 	}
 

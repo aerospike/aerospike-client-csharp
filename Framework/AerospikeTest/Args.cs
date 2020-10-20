@@ -1,5 +1,5 @@
 ﻿/* 
- * Copyright 2012-2019 Aerospike, Inc.
+ * Copyright 2012-2020 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -42,7 +42,6 @@ namespace Aerospike.Test
 		public string tlsName;
 		public TlsPolicy tlsPolicy;
 		public AuthMode authMode;
-		public bool hasBit;
 		public bool singleBin;
 		public bool enterprise;
 
@@ -155,7 +154,6 @@ namespace Aerospike.Test
 		private void SetServerSpecific()
 		{
 			Node node = client.Nodes[0];
-			hasBit = node.HasBitOperations;
 			string namespaceFilter = "namespace/" + ns;
 			Dictionary<string, string> map = Info.Request(null, node, "edition", namespaceFilter);
 
@@ -198,11 +196,6 @@ namespace Aerospike.Test
 		{
 			// Single bin servers don't need a bin name.
 			return singleBin ? "" : name;
-		}
-
-		public bool HasBit
-		{
-			get { return hasBit; }
 		}
 
 		public void Close()

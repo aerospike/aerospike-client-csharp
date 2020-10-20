@@ -1,5 +1,5 @@
 ﻿/* 
- * Copyright 2012-2019 Aerospike, Inc.
+ * Copyright 2012-2020 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -26,7 +26,6 @@ namespace Aerospike.Client
 	public sealed class PartitionParser
 	{
 		internal const string PartitionGeneration = "partition-generation";
-		internal const string ReplicasAll = "replicas-all";
 		internal const string Replicas = "replicas";
 
 		private Dictionary<string, Partitions> map;
@@ -46,16 +45,7 @@ namespace Aerospike.Client
 			this.partitionCount = partitionCount;
 			this.map = map;
 
-			string command;
-			if (node.HasReplicas)
-			{
-				command = Replicas;
-			}
-			else
-			{
-				command = ReplicasAll;
-			}
-
+			string command = Replicas;
 			Info info = new Info(conn, PartitionGeneration, command);
 			this.length = info.length;
 

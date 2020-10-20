@@ -199,8 +199,6 @@
     <Compile Include="Async\AsyncQueryExecutor.cs" />
     <Compile Include="Async\AsyncRead.cs" />
     <Compile Include="Async\AsyncReadHeader.cs" />
-    <Compile Include="Async\AsyncScan.cs" />
-    <Compile Include="Async\AsyncScanExecutor.cs" />
     <Compile Include="Async\AsyncSingleCommand.cs" />
     <Compile Include="Async\AsyncTimeoutQueue.cs" />
     <Compile Include="Async\AsyncTouch.cs" />
@@ -265,7 +263,6 @@
     <Compile Include="Command\ReadCommand.cs" />
     <Compile Include="Command\ReadHeaderCommand.cs" />
     <Compile Include="Command\RegisterCommand.cs" />
-    <Compile Include="Command\ScanCommand.cs" />
     <Compile Include="Command\SyncCommand.cs" />
     <Compile Include="Command\TouchCommand.cs" />
     <Compile Include="Command\WriteCommand.cs" />

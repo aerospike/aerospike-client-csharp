@@ -58,8 +58,6 @@
     <Compile Include="..\..\Framework\AerospikeClient\Async\AsyncQueryValidate.cs" Link="Async\AsyncQueryValidate.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Async\AsyncRead.cs" Link="Async\AsyncRead.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Async\AsyncReadHeader.cs" Link="Async\AsyncReadHeader.cs" />
-    <Compile Include="..\..\Framework\AerospikeClient\Async\AsyncScan.cs" Link="Async\AsyncScan.cs" />
-    <Compile Include="..\..\Framework\AerospikeClient\Async\AsyncScanExecutor.cs" Link="Async\AsyncScanExecutor.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Async\AsyncScanPartition.cs" Link="Async\AsyncScanPartition.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Async\AsyncScanPartitionExecutor.cs" Link="Async\AsyncScanPartitionExecutor.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Async\AsyncSingleCommand.cs" Link="Async\AsyncSingleCommand.cs" />
@@ -115,7 +113,6 @@
     <Compile Include="..\..\Framework\AerospikeClient\Command\ReadCommand.cs" Link="Command\ReadCommand.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Command\ReadHeaderCommand.cs" Link="Command\ReadHeaderCommand.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Command\RegisterCommand.cs" Link="Command\RegisterCommand.cs" />
-    <Compile Include="..\..\Framework\AerospikeClient\Command\ScanCommand.cs" Link="Command\ScanCommand.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Command\ScanExecutor.cs" Link="Command\ScanExecutor.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Command\ScanPartitionCommand.cs" Link="Command\ScanPartitionCommand.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Command\SyncCommand.cs" Link="Command\SyncCommand.cs" />

@@ -74,37 +74,5 @@ namespace Aerospike.Client
 				}
 			}
 		}
-
-		public static void ScanNodes(Cluster cluster, ScanPolicy policy, string ns, string setName, string[] binNames, ScanCallback callback, Node[] nodes)
-		{
-			policy.Validate();
-
-			// Detect cluster migrations when performing scan.
-			ulong taskId = RandomShift.ThreadLocalInstance.NextLong();
-			ulong clusterKey = policy.failOnClusterChange ? QueryValidate.ValidateBegin(nodes[0], ns) : 0;
-			bool first = true;
-
-			if (policy.concurrentNodes && nodes.Length > 1)
-			{
-				Executor executor = new Executor(nodes.Length);
-
-				foreach (Node node in nodes)
-				{
-					ScanCommand command = new ScanCommand(cluster, node, policy, ns, setName, binNames, callback, taskId, clusterKey, first);
-					executor.AddCommand(command);
-					first = false;
-				}
-				executor.Execute(policy.maxConcurrentNodes);
-			}
-			else
-			{
-				foreach (Node node in nodes)
-				{
-					ScanCommand command = new ScanCommand(cluster, node, policy, ns, setName, binNames, callback, taskId, clusterKey, first);
-					command.Execute();
-					first = false;
-				}
-			}
-		}
 	}
 }
