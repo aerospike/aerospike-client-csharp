@@ -21,7 +21,6 @@ namespace Aerospike.Client
 {
 	/// <summary>
 	/// HyperLogLog (HLL) operations.
-	/// Requires server versions >= 4.9.
 	/// <para>
 	/// HyperLogLog operations on HLL items nested in lists/maps are not currently
 	/// supported by the server.
@@ -29,24 +28,25 @@ namespace Aerospike.Client
 	/// </summary>
 	public sealed class HLLOperation
 	{
-		private const int INIT = 0;
-		private const int ADD = 1;
-		private const int SET_UNION = 2;
-		private const int SET_COUNT = 3;
-		private const int FOLD = 4;
-		private const int COUNT = 50;
-		private const int UNION = 51;
-		private const int UNION_COUNT = 52;
-		private const int INTERSECT_COUNT = 53;
-		private const int SIMILARITY = 54;
-		private const int DESCRIBE = 55;
+		internal const int INIT = 0;
+		internal const int ADD = 1;
+		internal const int SET_UNION = 2;
+		internal const int SET_COUNT = 3;
+		internal const int FOLD = 4;
+		internal const int COUNT = 50;
+		internal const int UNION = 51;
+		internal const int UNION_COUNT = 52;
+		internal const int INTERSECT_COUNT = 53;
+		internal const int SIMILARITY = 54;
+		internal const int DESCRIBE = 55;
+		internal const int MAY_CONTAIN = 56;
 
 		/// <summary>
 		/// Create HLL init operation.
 		/// Server creates a new HLL or resets an existing HLL.
 		/// Server does not return a value.
 		/// </summary>
-		/// <param name="policy">write policy, use <seealso cref="HLLPolicy.Default"/> for default</param>
+		/// <param name="policy">write policy, use <see cref="Aerospike.Client.HLLPolicy.Default"/> for default</param>
 		/// <param name="binName">name of bin</param>
 		/// <param name="indexBitCount">number of index bits. Must be between 4 and 16 inclusive.</param>
 		public static Operation Init(HLLPolicy policy, string binName, int indexBitCount)
@@ -59,18 +59,14 @@ namespace Aerospike.Client
 		/// Server creates a new HLL or resets an existing HLL.
 		/// Server does not return a value.
 		/// </summary>
-		/// <param name="policy">write policy, use <seealso cref="HLLPolicy.Default"/> for default</param>
+		/// <param name="policy">write policy, use <see cref="Aerospike.Client.HLLPolicy.Default"/> for default</param>
 		/// <param name="binName">name of bin</param>
 		/// <param name="indexBitCount">number of index bits. Must be between 4 and 16 inclusive.</param>
-		/// <param name="minHashBitCount">number of min hash bits. Must be between 4 and 58 inclusive.</param>
+		/// <param name="minHashBitCount">number of min hash bits. Must be between 4 and 51 inclusive.</param>
 		public static Operation Init(HLLPolicy policy, string binName, int indexBitCount, int minHashBitCount)
 		{
-			Packer packer = new Packer();
-			Init(packer, INIT, 3);
-			packer.PackNumber(indexBitCount);
-			packer.PackNumber(minHashBitCount);
-			packer.PackNumber(policy.flags);
-			return new Operation(Operation.Type.HLL_MODIFY, binName, Value.Get(packer.ToByteArray()));
+			byte[] bytes = PackUtil.Pack(HLLOperation.INIT, indexBitCount, minHashBitCount, policy.flags);
+			return new Operation(Operation.Type.HLL_MODIFY, binName, Value.Get(bytes));
 		}
 
 		/// <summary>
@@ -78,7 +74,7 @@ namespace Aerospike.Client
 		/// Server adds values to the HLL set.
 		/// Server returns number of entries that caused HLL to update a register.
 		/// </summary>
-		/// <param name="policy">write policy, use <seealso cref="HLLPolicy.Default"/> for default</param>
+		/// <param name="policy">write policy, use <see cref="Aerospike.Client.HLLPolicy.Default"/> for default</param>
 		/// <param name="binName">name of bin</param>
 		/// <param name="list">list of values to be added</param>
 		public static Operation Add(HLLPolicy policy, string binName, IList list)
@@ -91,7 +87,7 @@ namespace Aerospike.Client
 		/// Server adds values to HLL set. If HLL bin does not exist, use indexBitCount to create HLL bin.
 		/// Server returns number of entries that caused HLL to update a register.
 		/// </summary>
-		/// <param name="policy">write policy, use <seealso cref="HLLPolicy.Default"/> for default</param>
+		/// <param name="policy">write policy, use <see cref="Aerospike.Client.HLLPolicy.Default"/> for default</param>
 		/// <param name="binName">name of bin</param>
 		/// <param name="list">list of values to be added</param>
 		/// <param name="indexBitCount">number of index bits. Must be between 4 and 16 inclusive.</param>
@@ -105,20 +101,15 @@ namespace Aerospike.Client
 		/// Server adds values to HLL set. If HLL bin does not exist, use indexBitCount and minHashBitCount
 		/// to create HLL bin. Server returns number of entries that caused HLL to update a register.
 		/// </summary>
-		/// <param name="policy">write policy, use <seealso cref="HLLPolicy.Default"/> for default</param>
+		/// <param name="policy">write policy, use <see cref="Aerospike.Client.HLLPolicy.Default"/> for default</param>
 		/// <param name="binName">name of bin</param>
 		/// <param name="list">list of values to be added</param>
 		/// <param name="indexBitCount">number of index bits. Must be between 4 and 16 inclusive.</param>
-		/// <param name="minHashBitCount">number of min hash bits. Must be between 4 and 58 inclusive.</param>
+		/// <param name="minHashBitCount">number of min hash bits. Must be between 4 and 51 inclusive.</param>
 		public static Operation Add(HLLPolicy policy, string binName, IList list, int indexBitCount, int minHashBitCount)
 		{
-			Packer packer = new Packer();
-			Init(packer, ADD, 4);
-			packer.PackList(list);
-			packer.PackNumber(indexBitCount);
-			packer.PackNumber(minHashBitCount);
-			packer.PackNumber(policy.flags);
-			return new Operation(Operation.Type.HLL_MODIFY, binName, Value.Get(packer.ToByteArray()));
+			byte[] bytes = PackUtil.Pack(HLLOperation.ADD, list, indexBitCount, minHashBitCount, policy.flags);
+			return new Operation(Operation.Type.HLL_MODIFY, binName, Value.Get(bytes));
 		}
 
 		/// <summary>
@@ -126,16 +117,13 @@ namespace Aerospike.Client
 		/// Server sets union of specified HLL objects with HLL bin.
 		/// Server does not return a value.
 		/// </summary>
-		/// <param name="policy">write policy, use <seealso cref="HLLPolicy.Default"/> for default</param>
+		/// <param name="policy">write policy, use <see cref="Aerospike.Client.HLLPolicy.Default"/> for default</param>
 		/// <param name="binName">name of bin</param>
 		/// <param name="list">list of HLL objects</param>
 		public static Operation SetUnion(HLLPolicy policy, string binName, IList<Value.HLLValue> list)
 		{
-			Packer packer = new Packer();
-			Init(packer, SET_UNION, 2);
-			packer.PackList((IList)list);
-			packer.PackNumber(policy.flags);
-			return new Operation(Operation.Type.HLL_MODIFY, binName, Value.Get(packer.ToByteArray()));
+			byte[] bytes = PackListInt(HLLOperation.SET_UNION, list, policy.flags);
+			return new Operation(Operation.Type.HLL_MODIFY, binName, Value.Get(bytes));
 		}
 
 		/// <summary>
@@ -145,9 +133,8 @@ namespace Aerospike.Client
 		/// <param name="binName">name of bin</param>
 		public static Operation RefreshCount(string binName)
 		{
-			Packer packer = new Packer();
-			Init(packer, SET_COUNT, 0);
-			return new Operation(Operation.Type.HLL_MODIFY, binName, Value.Get(packer.ToByteArray()));
+			byte[] bytes = PackUtil.Pack(HLLOperation.SET_COUNT);
+			return new Operation(Operation.Type.HLL_MODIFY, binName, Value.Get(bytes));
 		}
 
 		/// <summary>
@@ -160,10 +147,8 @@ namespace Aerospike.Client
 		/// <param name="indexBitCount">number of index bits. Must be between 4 and 16 inclusive.</param>
 		public static Operation Fold(string binName, int indexBitCount)
 		{
-			Packer packer = new Packer();
-			Init(packer, FOLD, 1);
-			packer.PackNumber(indexBitCount);
-			return new Operation(Operation.Type.HLL_MODIFY, binName, Value.Get(packer.ToByteArray()));
+			byte[] bytes = PackUtil.Pack(HLLOperation.FOLD, indexBitCount);
+			return new Operation(Operation.Type.HLL_MODIFY, binName, Value.Get(bytes));
 		}
 
 		/// <summary>
@@ -173,9 +158,8 @@ namespace Aerospike.Client
 		/// <param name="binName">name of bin</param>
 		public static Operation GetCount(string binName)
 		{
-			Packer packer = new Packer();
-			Init(packer, COUNT, 0);
-			return new Operation(Operation.Type.HLL_READ, binName, Value.Get(packer.ToByteArray()));
+			byte[] bytes = PackUtil.Pack(HLLOperation.COUNT);
+			return new Operation(Operation.Type.HLL_READ, binName, Value.Get(bytes));
 		}
 
 		/// <summary>
@@ -187,10 +171,8 @@ namespace Aerospike.Client
 		/// <param name="list">list of HLL objects</param>
 		public static Operation GetUnion(string binName, IList<Value.HLLValue> list)
 		{
-			Packer packer = new Packer();
-			Init(packer, UNION, 1);
-			packer.PackList((IList)list);
-			return new Operation(Operation.Type.HLL_READ, binName, Value.Get(packer.ToByteArray()));
+			byte[] bytes = PackList(HLLOperation.UNION, list);
+			return new Operation(Operation.Type.HLL_READ, binName, Value.Get(bytes));
 		}
 
 		/// <summary>
@@ -202,10 +184,8 @@ namespace Aerospike.Client
 		/// <param name="list">list of HLL objects</param>
 		public static Operation GetUnionCount(string binName, IList<Value.HLLValue> list)
 		{
-			Packer packer = new Packer();
-			Init(packer, UNION_COUNT, 1);
-			packer.PackList((IList)list);
-			return new Operation(Operation.Type.HLL_READ, binName, Value.Get(packer.ToByteArray()));
+			byte[] bytes = PackList(HLLOperation.UNION_COUNT, list);
+			return new Operation(Operation.Type.HLL_READ, binName, Value.Get(bytes));
 		}
 
 		/// <summary>
@@ -217,10 +197,8 @@ namespace Aerospike.Client
 		/// <param name="list">list of HLL objects</param>
 		public static Operation GetIntersectCount(string binName, IList<Value.HLLValue> list)
 		{
-			Packer packer = new Packer();
-			Init(packer, INTERSECT_COUNT, 1);
-			packer.PackList((IList)list);
-			return new Operation(Operation.Type.HLL_READ, binName, Value.Get(packer.ToByteArray()));
+			byte[] bytes = PackList(HLLOperation.INTERSECT_COUNT, list);
+			return new Operation(Operation.Type.HLL_READ, binName, Value.Get(bytes));
 		}
 
 		/// <summary>
@@ -231,10 +209,8 @@ namespace Aerospike.Client
 		/// <param name="list">list of HLL objects</param>
 		public static Operation GetSimilarity(string binName, IList<Value.HLLValue> list)
 		{
-			Packer packer = new Packer();
-			Init(packer, SIMILARITY, 1);
-			packer.PackList((IList)list);
-			return new Operation(Operation.Type.HLL_READ, binName, Value.Get(packer.ToByteArray()));
+			byte[] bytes = PackList(HLLOperation.SIMILARITY, list);
+			return new Operation(Operation.Type.HLL_READ, binName, Value.Get(bytes));
 		}
 
 		/// <summary>
@@ -245,15 +221,31 @@ namespace Aerospike.Client
 		/// <param name="binName">name of bin</param>
 		public static Operation Describe(string binName)
 		{
-			Packer packer = new Packer();
-			Init(packer, DESCRIBE, 0);
-			return new Operation(Operation.Type.HLL_READ, binName, Value.Get(packer.ToByteArray()));
+			byte[] bytes = PackUtil.Pack(HLLOperation.DESCRIBE);
+			return new Operation(Operation.Type.HLL_READ, binName, Value.Get(bytes));
 		}
 
-		private static void Init(Packer packer, int command, int count)
+		private static byte[] PackList(int command, IList<Value.HLLValue> list)
 		{
-			packer.PackArrayBegin(count + 1);
+			Packer packer = new Packer();
+			// Pack.Init() only required when CTX is used and server does not support CTX for bit operations.
+			// Pack.Init(packer, ctx);
+			packer.PackArrayBegin(2);
 			packer.PackNumber(command);
+			packer.PackList((IList)list);
+			return packer.ToByteArray();
+		}
+
+		public static byte[] PackListInt(int command, IList<Value.HLLValue> list, int v1)
+		{
+			Packer packer = new Packer();
+			// Pack.Init() only required when CTX is used and server does not support CTX for bit operations.
+			// Pack.Init(packer, ctx);
+			packer.PackArrayBegin(3);
+			packer.PackNumber(command);
+			packer.PackList((IList)list);
+			packer.PackNumber(v1);
+			return packer.ToByteArray();
 		}
 	}
 }

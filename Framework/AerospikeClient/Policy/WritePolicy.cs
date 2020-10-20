@@ -31,6 +31,10 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Qualify how to handle record writes based on record generation. The default (NONE)
 		/// indicates that the generation is not used to restrict writes.
+		/// <para>
+		/// The server does not support this field for UDF Execute() calls. The read-modify-write
+		/// usage model can still be enforced inside the UDF code itself.
+		/// </para>
 		/// <para>Default: GenerationPolicy.NONE</para>
 		/// </summary>
 		public GenerationPolicy generationPolicy = GenerationPolicy.NONE;
@@ -48,6 +52,10 @@ namespace Aerospike.Client
 		/// (including creation) on the server. If a write operation is creating a record, 
 		/// the expected generation would be 0. This field is only relevant when
 		/// generationPolicy is not NONE.
+		/// <para>
+		/// The server does not support this field for UDF Execute() calls. The read-modify-write
+		/// usage model can still be enforced inside the UDF code itself.
+		/// </para>
 		/// <para>Default: 0</para>
 		/// </summary>
 		public int generation;

@@ -210,7 +210,7 @@ namespace Aerospike.Client
 		public const int OP_NOT_APPLICABLE = 26;
 
 		/// <summary>
-		/// The transaction was not performed because the predexp was false.
+		/// The transaction was not performed because the filter was false.
 		/// </summary>
 		public const int FILTERED_OUT = 27;
 
@@ -539,7 +539,7 @@ namespace Aerospike.Client
 				return "Operation not applicable";
 
 			case FILTERED_OUT:
-				return "Transaction filtered out by predexp";
+				return "Transaction filtered out";
 
 			case QUERY_END:
 				return "Query end";

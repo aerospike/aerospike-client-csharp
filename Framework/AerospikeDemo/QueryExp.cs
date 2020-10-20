@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2020 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -21,9 +21,9 @@ using System.Collections.Generic;
 
 namespace Aerospike.Demo
 {
-	public class QueryPredExp : SyncExample
+	public class QueryExp : SyncExample
 	{
-		public QueryPredExp(Console console)
+		public QueryExp(Console console)
 			: base(console)
 		{
 		}
@@ -104,7 +104,7 @@ namespace Aerospike.Demo
 			int begin = 10;
 			int end = 40;
 
-			console.Info("Query Predicate: (bin2 > 126 && bin2 <= 140) or (bin2 = 360)");
+			console.Info("Query Predicate: (bin2 > 126 && bin2 <= 140) || (bin2 = 360)");
 
 			Statement stmt = new Statement();
 			stmt.SetNamespace(args.ns);
@@ -115,21 +115,15 @@ namespace Aerospike.Demo
 
 			// Predicates are applied on query results on server side.
 			// Predicates can reference any bin.
-			stmt.SetPredExp(
-				PredExp.IntegerBin("bin2"), 
-				PredExp.IntegerValue(126),
-				PredExp.IntegerGreater(),
-				PredExp.IntegerBin("bin2"),
-				PredExp.IntegerValue(140),
-				PredExp.IntegerLessEq(),
-				PredExp.And(2),
-				PredExp.IntegerBin("bin2"),
-				PredExp.IntegerValue(360),
-				PredExp.IntegerEqual(),
-				PredExp.Or(2)
-				);
+			QueryPolicy policy = new QueryPolicy(client.queryPolicyDefault);
+			policy.filterExp = Exp.Build(
+				Exp.Or(
+					Exp.And(
+						Exp.GT(Exp.IntBin("bin2"), Exp.Val(126)),
+						Exp.LE(Exp.IntBin("bin2"), Exp.Val(140))),
+					Exp.EQ(Exp.IntBin("bin2"), Exp.Val(360))));
 
-			RecordSet rs = client.Query(null, stmt);
+			RecordSet rs = client.Query(policy, stmt);
 
 			try
 			{
@@ -150,25 +144,22 @@ namespace Aerospike.Demo
 			int begin = 10;
 			int end = 40;
 
-			console.Info("Query Predicate: Record updated on 2017-01-15");
-			DateTime beginTime = new DateTime(2017, 1, 15);
-			DateTime endTime = new DateTime(2017, 1, 16);
+			console.Info("Query Predicate: Record updated in 2020");
+			DateTime beginTime = new DateTime(2020, 1, 1);
+			DateTime endTime = new DateTime(2021, 1, 1);
 
 			Statement stmt = new Statement();
 			stmt.SetNamespace(args.ns);
 			stmt.SetSetName(args.set);
 			stmt.SetFilter(Filter.Range(binName, begin, end));
-			stmt.SetPredExp(
-				PredExp.RecLastUpdate(),
-				PredExp.IntegerValue(beginTime),
-				PredExp.IntegerGreaterEq(),
-				PredExp.RecLastUpdate(),
-				PredExp.IntegerValue(endTime),
-				PredExp.IntegerLess(),
-				PredExp.And(2)
-				);
 
-			RecordSet rs = client.Query(null, stmt);
+			QueryPolicy policy = new QueryPolicy(client.queryPolicyDefault);
+			policy.filterExp = Exp.Build(
+				Exp.And(
+					Exp.GE(Exp.LastUpdate(), Exp.Val(beginTime)),
+					Exp.LT(Exp.LastUpdate(), Exp.Val(endTime))));
+
+			RecordSet rs = client.Query(policy, stmt);
 
 			try
 			{
@@ -195,14 +186,13 @@ namespace Aerospike.Demo
 			stmt.SetNamespace(args.ns);
 			stmt.SetSetName(args.set);
 			stmt.SetFilter(Filter.Range(binName, begin, end));
-			stmt.SetPredExp(
-				PredExp.StringBin("bin3"),
-				PredExp.StringValue("prefix.*suffix"),
-				PredExp.StringRegex(RegexFlag.ICASE | RegexFlag.NEWLINE)
-				);
 
-			RecordSet rs = client.Query(null, stmt);
+			QueryPolicy policy = new QueryPolicy(client.queryPolicyDefault);
+			policy.filterExp = Exp.Build(
+				Exp.RegexCompare("prefix.*suffix", RegexFlag.ICASE | RegexFlag.NEWLINE, Exp.StringBin("bin3")));
 
+			RecordSet rs = client.Query(policy, stmt);
+			
 			try
 			{
 				while (rs.Next())

@@ -175,7 +175,7 @@
     <Compile Include="QueryList.cs" />
     <Compile Include="LatencyManagerAlt.cs" />
     <Compile Include="ILatencyManager.cs" />
-    <Compile Include="QueryPredExp.cs" />
+    <Compile Include="QueryExp.cs" />
     <Compile Include="OperateMap.cs" />
     <Compile Include="QueryGeoCollection.cs" />
     <Compile Include="OperateList.cs" />

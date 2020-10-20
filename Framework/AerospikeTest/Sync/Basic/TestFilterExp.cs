@@ -1,5 +1,5 @@
 ﻿/* 
- * Copyright 2012-2019 Aerospike, Inc.
+ * Copyright 2012-2020 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -22,7 +22,7 @@ using Aerospike.Client;
 namespace Aerospike.Test
 {
 	[TestClass]
-	public class TestPredExp : TestSync
+	public class TestFilterExp : TestSync
 	{
 		private static readonly Key keyA = new Key(args.ns, args.set, "A");
 		private static readonly Key keyB = new Key(args.ns, args.set, "B");
@@ -52,20 +52,10 @@ namespace Aerospike.Test
 			predAEq1RPolicy = new Policy();
 			predAEq1WPolicy = new WritePolicy();
 
-			predAEq1BPolicy.SetPredExp(
-					PredExp.IntegerBin(binAName),
-					PredExp.IntegerValue(1),
-					PredExp.IntegerEqual());
-
-			predAEq1RPolicy.SetPredExp(
-					PredExp.IntegerBin(binAName),
-					PredExp.IntegerValue(1),
-					PredExp.IntegerEqual());
-
-			predAEq1WPolicy.SetPredExp(
-					PredExp.IntegerBin(binAName),
-					PredExp.IntegerValue(1),
-					PredExp.IntegerEqual());
+			Expression filter = Exp.Build(Exp.EQ(Exp.IntBin(binAName), Exp.Val(1)));
+			predAEq1BPolicy.filterExp = filter;
+			predAEq1RPolicy.filterExp = filter;
+			predAEq1WPolicy.filterExp = filter;
 
 			client.Delete(null, keyA);
 			client.Delete(null, keyB);
@@ -75,7 +65,7 @@ namespace Aerospike.Test
 		}
 
 		[TestMethod]
-		public void PredExpPut()
+		public void FilterExpPut()
 		{
 			client.Put(predAEq1WPolicy, keyA, binA3);
 			Record r = client.Get(null, keyA);
@@ -89,7 +79,7 @@ namespace Aerospike.Test
 		}
 
 		[TestMethod]
-		public void PredExpPutExcept()
+		public void FilterExpPutExcept()
 		{
 			predAEq1WPolicy.failOnFilteredOut = true;
 
@@ -105,7 +95,7 @@ namespace Aerospike.Test
 		}
 
 		[TestMethod]
-		public void PredExpGet()
+		public void FilterExpGet()
 		{
 			Record r = client.Get(predAEq1RPolicy, keyA);
 
@@ -117,7 +107,7 @@ namespace Aerospike.Test
 		}
 
 		[TestMethod]
-		public void PredExpGetExcept()
+		public void FilterExpGetExcept()
 		{
 			predAEq1RPolicy.failOnFilteredOut = true;
 
@@ -133,7 +123,7 @@ namespace Aerospike.Test
 		}
 
 		[TestMethod]
-		public void PredExpBatch()
+		public void FilterExpBatch()
 		{
 			Key[] keys = { keyA, keyB };
 
@@ -144,7 +134,7 @@ namespace Aerospike.Test
 		}
 
 		[TestMethod]
-		public void PredExpDelete()
+		public void FilterExpDelete()
 		{
 			client.Delete(predAEq1WPolicy, keyA);
 			Record r = client.Get(null, keyA);
@@ -158,7 +148,7 @@ namespace Aerospike.Test
 		}
 
 		[TestMethod]
-		public void PredExpDeleteExcept()
+		public void FilterExpDeleteExcept()
 		{
 			predAEq1WPolicy.failOnFilteredOut = true;
 
@@ -173,7 +163,7 @@ namespace Aerospike.Test
 		}
 
 		[TestMethod]
-		public void PredExpDurableDelete()
+		public void FilterExpDurableDelete()
 		{
 			if (!args.enterprise)
 			{
@@ -194,7 +184,7 @@ namespace Aerospike.Test
 		}
 
 		[TestMethod]
-		public void PredExpDurableDeleteExcept()
+		public void FilterExpDurableDeleteExcept()
 		{
 			if (!args.enterprise)
 			{
@@ -216,7 +206,7 @@ namespace Aerospike.Test
 		}
 
 		[TestMethod]
-		public void PredExpOperateRead()
+		public void FilterExpOperateRead()
 		{
 			Record r = client.Operate(predAEq1WPolicy, keyA,
 					Operation.Get(binAName));
@@ -230,7 +220,7 @@ namespace Aerospike.Test
 		}
 
 		[TestMethod]
-		public void PredExpOperateReadExcept()
+		public void FilterExpOperateReadExcept()
 		{
 			predAEq1WPolicy.failOnFilteredOut = true;
 
@@ -246,7 +236,7 @@ namespace Aerospike.Test
 		}
 
 		[TestMethod]
-		public void PredExpOperateWrite()
+		public void FilterExpOperateWrite()
 		{
 			Record r = client.Operate(predAEq1WPolicy, keyA,
 					Operation.Put(binA3), Operation.Get(binAName));
@@ -260,7 +250,7 @@ namespace Aerospike.Test
 		}
 
 		[TestMethod]
-		public void PredExpOperateWriteExcept()
+		public void FilterExpOperateWriteExcept()
 		{
 			predAEq1WPolicy.failOnFilteredOut = true;
 
@@ -278,7 +268,7 @@ namespace Aerospike.Test
 		}
 
 		[TestMethod]
-		public void PredExpUdf()
+		public void FilterExpUdf()
 		{
 			client.Execute(predAEq1WPolicy, keyA, "record_example", "writeBin",
 					Value.Get(binA3.name), binA3.value);
@@ -294,7 +284,7 @@ namespace Aerospike.Test
 		}
 
 		[TestMethod]
-		public void PredExpUdfExcept()
+		public void FilterExpUdfExcept()
 		{
 			predAEq1WPolicy.failOnFilteredOut = true;
 

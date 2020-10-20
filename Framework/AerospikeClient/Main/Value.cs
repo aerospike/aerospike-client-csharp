@@ -518,7 +518,7 @@ namespace Aerospike.Client
 
 			public override void Pack(Packer packer)
 			{
-				packer.PackString(value);
+				packer.PackParticleString(value);
 			}
 
 			public override int Type
@@ -580,7 +580,7 @@ namespace Aerospike.Client
 
 			public override void Pack(Packer packer)
 			{
-				packer.PackBytes(bytes);
+				packer.PackParticleBytes(bytes);
 			}
 
 			public override int Type
@@ -651,7 +651,7 @@ namespace Aerospike.Client
 
 			public override void Pack(Packer packer)
 			{
-				packer.PackBytes(bytes, offset, length);
+				packer.PackParticleBytes(bytes, offset, length);
 			}
 
 			public override int Type
@@ -1801,7 +1801,7 @@ namespace Aerospike.Client
 
 			public override void Pack(Packer packer)
 			{
-				packer.PackBytes(bytes);
+				packer.PackParticleBytes(bytes);
 			}
 
 			public override void ValidateKeyType()

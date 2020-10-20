@@ -121,6 +121,12 @@
     <Compile Include="..\..\Framework\AerospikeClient\Command\SyncCommand.cs" Link="Command\SyncCommand.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Command\TouchCommand.cs" Link="Command\TouchCommand.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Command\WriteCommand.cs" Link="Command\WriteCommand.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Exp\BitExp.cs" Link="Exp\BitExp.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Exp\Exp.cs" Link="Exp\Exp.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Exp\Expression.cs" Link="Exp\Expression.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Exp\HLLExp.cs" Link="Exp\HLLExp.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Exp\ListExp.cs" Link="Exp\ListExp.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Exp\MapExp.cs" Link="Exp\MapExp.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Listener\BatchListListener.cs" Link="Listener\BatchListListener.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Listener\BatchSequenceListener.cs" Link="Listener\BatchSequenceListener.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Listener\DeleteListener.cs" Link="Listener\DeleteListener.cs" />
@@ -182,7 +188,6 @@
     <Compile Include="..\..\Framework\AerospikeClient\Query\KeyRecord.cs" Link="Query\KeyRecord.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Query\PartitionFilter.cs" Link="Query\PartitionFilter.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Query\PartitionTracker.cs" Link="Query\PartitionTracker.cs" />
-    <Compile Include="..\..\Framework\AerospikeClient\Query\PredExp.cs" Link="Query\PredExp.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Query\QueryAggregateCommand.cs" Link="Query\QueryAggregateCommand.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Query\QueryAggregateExecutor.cs" Link="Query\QueryAggregateExecutor.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Query\QueryExecutor.cs" Link="Query\QueryExecutor.cs" />
@@ -203,6 +208,7 @@
     <Compile Include="..\..\Framework\AerospikeClient\Task\RegisterTask.cs" Link="Task\RegisterTask.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Util\Hash.cs" Link="Util\Hash.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Util\Packer.cs" Link="Util\Packer.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Util\PackUtil.cs" Link="Util\PackUtil.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Util\RandomShift.cs" Link="Util\RandomShift.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Util\Ripemd160.cs" Link="Util\Ripemd160.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Util\ThreadLocalData.cs" Link="Util\ThreadLocalData.cs" />
@@ -220,6 +226,7 @@
     <Folder Include="Listener\" />
     <Folder Include="Main\" />
     <Folder Include="BCrypt\" />
+    <Folder Include="Exp\" />
     <Folder Include="Operation\" />
     <Folder Include="Policy\" />
     <Folder Include="Query\" />

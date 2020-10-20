@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2019 Aerospike, Inc.
+ * Copyright 2012-2020 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -121,12 +121,18 @@ namespace Aerospike.Client
 
 		public void PackBytes(byte[] b)
 		{
+			PackByteArrayBegin(b.Length);
+			PackByteArray(b, 0, b.Length);
+		}
+
+		public void PackParticleBytes(byte[] b)
+		{
 			PackByteArrayBegin(b.Length + 1);
 			PackByte(ParticleType.BLOB);
 			PackByteArray(b, 0, b.Length);
 		}
 
-		public void PackBytes(byte[] b, int offset, int length)
+		public void PackParticleBytes(byte[] b, int offset, int length)
 		{
 			PackByteArrayBegin(length + 1);
 			PackByte(ParticleType.BLOB);
@@ -156,24 +162,6 @@ namespace Aerospike.Client
 		
 		private void PackByteArrayBegin(int size)
 		{
-			// Continue to pack byte arrays as strings until all servers/clients
-			// have been upgraded to handle new message pack binary type.
-			if (size < 32)
-			{
-				PackByte((byte)(0xa0 | size));
-			}
-			else if (size < 65536)
-			{
-				PackShort(0xda, (ushort)size);
-			}
-			else
-			{
-				PackInt(0xdb, (uint)size);
-			}
-
-			// TODO: Replace with this code after all servers/clients
-			// have been upgraded to handle new message pack binary type.
-			/*
 			if (size < 32)
 			{
 				PackByte((byte)(0xa0 | size));
@@ -190,7 +178,6 @@ namespace Aerospike.Client
 			{
 				PackInt(0xc6, (uint)size);
 			}
-			*/
 		}
 
 		private void PackObject(object obj)
@@ -203,7 +190,7 @@ namespace Aerospike.Client
 
 			if (obj is byte[])
 			{
-				PackBytes((byte[])obj);
+				PackParticleBytes((byte[])obj);
 				return;
 			}
 
@@ -235,7 +222,7 @@ namespace Aerospike.Client
 					break;
 
 				case TypeCode.String:
-					PackString((string)obj);
+					PackParticleString((string)obj);
 					break;
 
 				case TypeCode.Double:
@@ -392,20 +379,29 @@ namespace Aerospike.Client
 
 		public void PackString(string val)
 		{
-			int size = ByteUtil.EstimateSizeUtf8(val) + 1;
+			int size = ByteUtil.EstimateSizeUtf8(val);
+			PackStringBegin(size);
+			offset += ByteUtil.StringToUtf8(val, buffer, offset);
+		}
 
+		public void PackParticleString(string val)
+		{
+			int size = ByteUtil.EstimateSizeUtf8(val) + 1;
+			PackStringBegin(size);
+			buffer[offset++] = (byte)ParticleType.STRING;
+			offset += ByteUtil.StringToUtf8(val, buffer, offset);
+		}
+
+		private void PackStringBegin(int size)
+		{
 			if (size < 32)
 			{
 				PackByte((byte)(0xa0 | size));
 			}
-			// TODO: Enable this code after all servers/clients
-			// have been upgraded to handle 8 bit string length format.
-			/*
 			else if (size < 256)
 			{
 				PackByte(0xd9, (byte)size);
 			}
-			*/
 			else if (size < 65536)
 			{
 				PackShort(0xda, (ushort)size);
@@ -413,17 +409,15 @@ namespace Aerospike.Client
 			else
 			{
 				PackInt(0xdb, (uint)size);
-			} 
+			}
 
 			if (offset + size > buffer.Length)
 			{
 				Resize(size);
 			}
-			buffer[offset++] = (byte)ParticleType.STRING;
-			offset += ByteUtil.StringToUtf8(val, buffer, offset);
 		}
-
-		private void PackByteArray(byte[] src, int srcOffset, int srcLength)
+		
+		public void PackByteArray(byte[] src, int srcOffset, int srcLength)
 		{
 			if (offset + srcLength > buffer.Length)
 			{

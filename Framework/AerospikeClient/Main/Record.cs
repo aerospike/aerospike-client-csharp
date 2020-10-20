@@ -231,7 +231,7 @@ namespace Aerospike.Client
 				// Record may not have expired on server, but delay or clock differences may
 				// cause it to look expired on client. Floor at 1, not 0, to avoid old
 				// "never expires" interpretation.
-				return (expiration < 0 || expiration > now) ? expiration - now : 1;
+				return ((expiration < 0 && now >= 0) || expiration > now) ? expiration - now : 1;
 			}
 		}
 
