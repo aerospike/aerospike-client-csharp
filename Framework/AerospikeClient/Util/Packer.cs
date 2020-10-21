@@ -162,11 +162,10 @@ namespace Aerospike.Client
 		
 		private void PackByteArrayBegin(int size)
 		{
-			if (size < 32)
-			{
-				PackByte((byte)(0xa0 | size));
-			}
-			else if (size < 256)
+			// Use string header codes for byte arrays.
+			PackStringBegin(size);
+			/*
+			if (size < 256)
 			{
 				PackByte(0xc4, (byte)size);
 			}
@@ -178,6 +177,7 @@ namespace Aerospike.Client
 			{
 				PackInt(0xc6, (uint)size);
 			}
+			*/
 		}
 
 		private void PackObject(object obj)
@@ -381,6 +381,11 @@ namespace Aerospike.Client
 		{
 			int size = ByteUtil.EstimateSizeUtf8(val);
 			PackStringBegin(size);
+
+			if (offset + size > buffer.Length)
+			{
+				Resize(size);
+			}
 			offset += ByteUtil.StringToUtf8(val, buffer, offset);
 		}
 
@@ -388,6 +393,11 @@ namespace Aerospike.Client
 		{
 			int size = ByteUtil.EstimateSizeUtf8(val) + 1;
 			PackStringBegin(size);
+
+			if (offset + size > buffer.Length)
+			{
+				Resize(size);
+			}
 			buffer[offset++] = (byte)ParticleType.STRING;
 			offset += ByteUtil.StringToUtf8(val, buffer, offset);
 		}
@@ -409,11 +419,6 @@ namespace Aerospike.Client
 			else
 			{
 				PackInt(0xdb, (uint)size);
-			}
-
-			if (offset + size > buffer.Length)
-			{
-				Resize(size);
 			}
 		}
 		
