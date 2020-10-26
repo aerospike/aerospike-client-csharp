@@ -207,7 +207,7 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
-		/// Create expression that returns one if HLL bin may contain any item in the list.
+		/// Create expression that returns one if HLL bin may contain all items in the list.
 		/// </summary>
 		/// <example>
 		/// <code>
