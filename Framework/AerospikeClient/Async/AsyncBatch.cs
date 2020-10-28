@@ -642,7 +642,7 @@ namespace Aerospike.Client
 	//-------------------------------------------------------
 	// Batch Base Executor
 	//-------------------------------------------------------
-	
+
 	public abstract class AsyncBatchExecutor : AsyncExecutor
 	{
 		private AerospikeException exception;
@@ -745,6 +745,7 @@ namespace Aerospike.Client
 
 		public AsyncBatchCommand(AsyncBatchCommand other) : base(other)
 		{
+			this.parent = other.parent;
 			this.batch = other.batch;
 			this.batchPolicy = other.batchPolicy;
 			this.sequenceAP = other.sequenceAP;
@@ -769,19 +770,26 @@ namespace Aerospike.Client
 
 		protected internal override bool RetryBatch()
 		{
-			// Retry requires keys for this node to be split among other nodes.
-			// This can cause an exponential number of commands.
-			List<BatchNode> batchNodes = GenerateBatchNodes();
+			List<BatchNode> batchNodes = null;
 
-			if (batchNodes.Count == 1 && batchNodes[0].node == batch.node)
+			try
 			{
-				// Batch node is the same.  Go through normal retry.
-				return false;
+				// Retry requires keys for this node to be split among other nodes.
+				// This can cause an exponential number of commands.
+				batchNodes = GenerateBatchNodes();
+
+				if (batchNodes.Count == 1 && batchNodes[0].node == batch.node)
+				{
+					// Batch node is the same.  Go through normal retry.
+					return false;
+				}
 			}
-
-			// Close original command.
-			base.PutBackArgsOnError();
-
+			finally
+			{
+				// Close original command.
+				base.PutBackArgsOnError();
+			}
+			
 			// Execute new commands.
 			AsyncMultiCommand[] cmds = new AsyncMultiCommand[batchNodes.Count];
 			int count = 0;
@@ -794,7 +802,11 @@ namespace Aerospike.Client
 				cmd.SetBatchRetry(this);
 				cmds[count++] = cmd;
 			}
+
+			// Retry new commands.
 			parent.Retry(cmds);
+
+			// Return true so original batch command is stopped.
 			return true;
 		}
 
