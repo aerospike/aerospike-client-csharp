@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2019 Aerospike, Inc.
+ * Copyright 2012-2020 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -76,7 +76,6 @@ namespace Aerospike.Client
 			sb.Append("threadsInUse: " + threadsInUse);
 			sb.Append(System.Environment.NewLine);
 			sb.Append("completionPortsInUse: " + completionPortsInUse);
-			sb.Append(System.Environment.NewLine);
 			return sb.ToString();
 		}
 	}

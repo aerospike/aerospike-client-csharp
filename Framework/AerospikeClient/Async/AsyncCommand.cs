@@ -574,10 +574,18 @@ namespace Aerospike.Client
 			// Prepare for retry.
 			if (!PrepareRetry(ae.Result != ResultCode.SERVER_NOT_AVAILABLE))
 			{
-				// Batch may be retried in separate commands.
-				if (RetryBatch())
+				try
 				{
-					// Batch was retried in separate commands.  Complete this command.
+					// Batch may be retried in separate commands.
+					if (RetryBatch())
+					{
+						// Batch was retried in separate commands.  Complete this command.
+						return;
+					}
+				}
+				catch (Exception e)
+				{
+					NotifyFailure(new AerospikeException("Batch split retry failed", e));
 					return;
 				}
 			}
@@ -774,7 +782,11 @@ namespace Aerospike.Client
 		private void FailCommand(AerospikeException ae)
 		{
 			PutBackArgsOnError();
-			
+			NotifyFailure(ae);
+		}
+
+		private void NotifyFailure(AerospikeException ae)
+		{
 			try
 			{
 				ae.Node = node;
