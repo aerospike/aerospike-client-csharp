@@ -1,5 +1,5 @@
 ﻿/* 
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2020 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -666,7 +666,7 @@ namespace Aerospike.Test
 			stmt.SetSetName(setName);
 			stmt.SetFilter(Filter.Range(binName, begin, end));
 
-			// storage-engine could be memory for which deviceSize() returns zero.
+			// storage-engine could be memory for which DeviceSize() returns zero.
 			// This just tests that the expression was sent correctly
 			// because all device sizes are effectively allowed.
 			QueryPolicy policy = new QueryPolicy();
@@ -683,6 +683,41 @@ namespace Aerospike.Test
 				Assert.AreEqual(10, count);
 			}
 			finally {
+				rs.Close();
+			}
+		}
+
+		[TestMethod]
+		public void QueryMemorySize()
+		{
+			int begin = 1;
+			int end = 10;
+
+			Statement stmt = new Statement();
+			stmt.SetNamespace(args.ns);
+			stmt.SetSetName(setName);
+			stmt.SetFilter(Filter.Range(binName, begin, end));
+
+			// storage-engine could be memory for which MemorySize() returns zero.
+			// This just tests that the expression was sent correctly
+			// because all memory sizes are effectively allowed.
+			QueryPolicy policy = new QueryPolicy();
+			policy.filterExp = Exp.Build(Exp.GE(Exp.MemorySize(), Exp.Val(0)));
+
+			RecordSet rs = client.Query(policy, stmt);
+
+			try
+			{
+				int count = 0;
+
+				while (rs.Next())
+				{
+					count++;
+				}
+				Assert.AreEqual(10, count);
+			}
+			finally
+			{
 				rs.Close();
 			}
 		}

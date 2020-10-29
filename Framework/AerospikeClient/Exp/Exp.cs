@@ -271,6 +271,25 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
+		/// Create expression that returns record size in memory. If server storage-engine is
+		/// not memory nor data-in-memory, then zero is returned. This expression usually evaluates
+		/// quickly because record meta data is cached in memory.
+		/// <para>
+		/// This method requires Aerospike Server version >= 5.3.0.
+		/// </para>
+		/// </summary>
+		/// <example>
+		/// <code>
+		/// // Record memory size >= 100 KB
+		/// Exp.GE(Exp.MemorySize(), Exp.Val(100 * 1024))
+		/// </code>
+		/// </example>
+		public static Exp MemorySize()
+		{
+			return new Cmd(MEMORY_SIZE);
+		}
+
+		/// <summary>
 		/// Create expression that returns record last update time expressed as 64 bit integer
 		/// nanoseconds since 1970-01-01 epoch. This expression usually evaluates quickly because
 		/// record meta data is cached in memory.
@@ -644,6 +663,7 @@ namespace Aerospike.Client
 		private const int SET_NAME = 70;
 		private const int KEY_EXISTS = 71;
 		private const int IS_TOMBSTONE = 72;
+		private const int MEMORY_SIZE = 73;
 		private const int KEY = 80;
 		private const int BIN = 81;
 		private const int BIN_TYPE = 82;
