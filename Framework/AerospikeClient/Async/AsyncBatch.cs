@@ -14,6 +14,7 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
+using System;
 using System.Collections.Generic;
 using System.Threading;
 
@@ -777,18 +778,24 @@ namespace Aerospike.Client
 				// Retry requires keys for this node to be split among other nodes.
 				// This can cause an exponential number of commands.
 				batchNodes = GenerateBatchNodes();
-
+				
 				if (batchNodes.Count == 1 && batchNodes[0].node == batch.node)
 				{
 					// Batch node is the same.  Go through normal retry.
+					// Normal retries reuse eventArgs, so PutBackArgsOnError()
+					// should not be called here.
 					return false;
 				}
 			}
-			finally
+			catch (Exception)
 			{
 				// Close original command.
 				base.PutBackArgsOnError();
+				throw;
 			}
+
+			// Close original command.
+			base.PutBackArgsOnError();
 			
 			// Execute new commands.
 			AsyncMultiCommand[] cmds = new AsyncMultiCommand[batchNodes.Count];
