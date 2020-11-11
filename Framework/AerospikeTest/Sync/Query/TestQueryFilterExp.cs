@@ -26,10 +26,10 @@ namespace Aerospike.Test
 	[TestClass]
 	public class TestQueryFilterExp : TestSync
 	{
-		private static readonly string setName = args.set + "p";
-		private const string indexName = "pred";
-		private const string keyPrefix = "pred";
-		private const string binName = "predint";
+		private static readonly string setName = args.set + "flt";
+		private const string indexName = "flt";
+		private const string keyPrefix = "flt";
+		private const string binName = "fltint";
 		private const int size = 50;
 
 		[ClassInitialize()]
@@ -591,7 +591,7 @@ namespace Aerospike.Test
 					//Console.WriteLine(rs.Record.ToString());
 					count++;
 				}
-				Assert.AreEqual(2, count);
+				Assert.AreEqual(4, count);
 			}
 			finally
 			{

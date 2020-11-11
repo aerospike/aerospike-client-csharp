@@ -97,11 +97,11 @@ namespace Aerospike.Client
 		{
 			Begin();
 			int fieldCount = EstimateKeySize(policy, key);
-			byte[] filterBytes = null;
+			CommandExp exp = GetCommandExp(policy);
 
-			if (policy.filterExp != null)
+			if (exp != null)
 			{
-				filterBytes = EstimateFilterExp(policy.filterExp);
+				dataOffset += exp.Size();
 				fieldCount++;
 			}
 
@@ -115,9 +115,9 @@ namespace Aerospike.Client
 			WriteHeaderWrite(policy, Command.INFO2_WRITE, fieldCount, bins.Length);
 			WriteKey(policy, key);
 
-			if (filterBytes != null)
+			if (exp != null)
 			{
-				WriteFilterExp(filterBytes);
+				dataOffset = exp.Write(this);
 			}
 
 			foreach (Bin bin in bins)
@@ -131,20 +131,20 @@ namespace Aerospike.Client
 		{
 			Begin();
 			int fieldCount = EstimateKeySize(policy, key);
-			byte[] filterBytes = null;
+			CommandExp exp = GetCommandExp(policy);
 
-			if (policy.filterExp != null)
+			if (exp != null)
 			{
-				filterBytes = EstimateFilterExp(policy.filterExp);
+				dataOffset += exp.Size();
 				fieldCount++;
 			}
 			SizeBuffer();
 			WriteHeaderWrite(policy, Command.INFO2_WRITE | Command.INFO2_DELETE, fieldCount, 0);
 			WriteKey(policy, key);
 
-			if (filterBytes != null)
+			if (exp != null)
 			{
-				WriteFilterExp(filterBytes);
+				dataOffset = exp.Write(this);
 			}
 			End();
 		}
@@ -153,11 +153,11 @@ namespace Aerospike.Client
 		{
 			Begin();
 			int fieldCount = EstimateKeySize(policy, key);
-			byte[] filterBytes = null;
+			CommandExp exp = GetCommandExp(policy);
 
-			if (policy.filterExp != null)
+			if (exp != null)
 			{
-				filterBytes = EstimateFilterExp(policy.filterExp);
+				dataOffset += exp.Size();
 				fieldCount++;
 			}
 			EstimateOperationSize();
@@ -165,9 +165,9 @@ namespace Aerospike.Client
 			WriteHeaderWrite(policy, Command.INFO2_WRITE, fieldCount, 1);
 			WriteKey(policy, key);
 
-			if (filterBytes != null)
+			if (exp != null)
 			{
-				WriteFilterExp(filterBytes);
+				dataOffset = exp.Write(this);
 			}
 			WriteOperation(Operation.Type.TOUCH);
 			End();
@@ -177,20 +177,20 @@ namespace Aerospike.Client
 		{
 			Begin();
 			int fieldCount = EstimateKeySize(policy, key);
-			byte[] filterBytes = null;
+			CommandExp exp = GetCommandExp(policy);
 
-			if (policy.filterExp != null)
+			if (exp != null)
 			{
-				filterBytes = EstimateFilterExp(policy.filterExp);
+				dataOffset += exp.Size();
 				fieldCount++;
 			}
 			SizeBuffer();
 			WriteHeaderReadHeader(policy, Command.INFO1_READ | Command.INFO1_NOBINDATA, fieldCount, 0);
 			WriteKey(policy, key);
 
-			if (filterBytes != null)
+			if (exp != null)
 			{
-				WriteFilterExp(filterBytes);
+				dataOffset = exp.Write(this);
 			}
 			End();
 		}
@@ -199,20 +199,20 @@ namespace Aerospike.Client
 		{
 			Begin();
 			int fieldCount = EstimateKeySize(policy, key);
-			byte[] filterBytes = null;
+			CommandExp exp = GetCommandExp(policy);
 
-			if (policy.filterExp != null)
+			if (exp != null)
 			{
-				filterBytes = EstimateFilterExp(policy.filterExp);
+				dataOffset += exp.Size();
 				fieldCount++;
 			}
 			SizeBuffer();
 			WriteHeaderRead(policy, serverTimeout, Command.INFO1_READ | Command.INFO1_GET_ALL, fieldCount, 0);
 			WriteKey(policy, key);
 
-			if (filterBytes != null)
+			if (exp != null)
 			{
-				WriteFilterExp(filterBytes);
+				dataOffset = exp.Write(this);
 			}
 			End();
 		}
@@ -223,11 +223,11 @@ namespace Aerospike.Client
 			{
 				Begin();
 				int fieldCount = EstimateKeySize(policy, key);
-				byte[] filterBytes = null;
+				CommandExp exp = GetCommandExp(policy);
 
-				if (policy.filterExp != null)
+				if (exp != null)
 				{
-					filterBytes = EstimateFilterExp(policy.filterExp);
+					dataOffset += exp.Size();
 					fieldCount++;
 				}
 
@@ -239,9 +239,9 @@ namespace Aerospike.Client
 				WriteHeaderRead(policy, serverTimeout, Command.INFO1_READ, fieldCount, binNames.Length);
 				WriteKey(policy, key);
 
-				if (filterBytes != null)
+				if (exp != null)
 				{
-					WriteFilterExp(filterBytes);
+					dataOffset = exp.Write(this);
 				}
 
 				foreach (string binName in binNames)
@@ -260,11 +260,11 @@ namespace Aerospike.Client
 		{
 			Begin();
 			int fieldCount = EstimateKeySize(policy, key);
-			byte[] filterBytes = null;
+			CommandExp exp = GetCommandExp(policy);
 
-			if (policy.filterExp != null)
+			if (exp != null)
 			{
-				filterBytes = EstimateFilterExp(policy.filterExp);
+				dataOffset += exp.Size();
 				fieldCount++;
 			}
 			EstimateOperationSize((string)null);
@@ -272,9 +272,9 @@ namespace Aerospike.Client
 			WriteHeaderReadHeader(policy, Command.INFO1_READ | Command.INFO1_NOBINDATA, fieldCount, 0);
 			WriteKey(policy, key);
 
-			if (filterBytes != null)
+			if (exp != null)
 			{
-				WriteFilterExp(filterBytes);
+				dataOffset = exp.Write(this);
 			}
 			End();
 		}
@@ -283,11 +283,11 @@ namespace Aerospike.Client
 		{
 			Begin();
 			int fieldCount = EstimateKeySize(policy, key);
-			byte[] filterBytes = null;
+			CommandExp exp = GetCommandExp(policy);
 
-			if (policy.filterExp != null)
+			if (exp != null)
 			{
-				filterBytes = EstimateFilterExp(policy.filterExp);
+				dataOffset += exp.Size();
 				fieldCount++;
 			}
 			dataOffset += args.size;
@@ -297,9 +297,9 @@ namespace Aerospike.Client
 			WriteHeaderReadWrite(policy, args.readAttr, args.writeAttr, fieldCount, args.operations.Length);
 			WriteKey(policy, key);
 
-			if (filterBytes != null)
+			if (exp != null)
 			{
-				WriteFilterExp(filterBytes);
+				dataOffset = exp.Write(this);
 			}
 
 			foreach (Operation operation in args.operations)
@@ -313,11 +313,11 @@ namespace Aerospike.Client
 		{
 			Begin();
 			int fieldCount = EstimateKeySize(policy, key);
-			byte[] filterBytes = null;
+			CommandExp exp = GetCommandExp(policy);
 
-			if (policy.filterExp != null)
+			if (exp != null)
 			{
-				filterBytes = EstimateFilterExp(policy.filterExp);
+				dataOffset += exp.Size();
 				fieldCount++;
 			}
 			byte[] argBytes = Packer.Pack(args);
@@ -328,9 +328,9 @@ namespace Aerospike.Client
 			WriteHeaderWrite(policy, Command.INFO2_WRITE, fieldCount, 0);
 			WriteKey(policy, key);
 
-			if (filterBytes != null)
+			if (exp != null)
 			{
-				WriteFilterExp(filterBytes);
+				dataOffset = exp.Write(this);
 			}
 			WriteField(packageName, FieldType.UDF_PACKAGE_NAME);
 			WriteField(functionName, FieldType.UDF_FUNCTION);
@@ -348,11 +348,11 @@ namespace Aerospike.Client
 
 			Begin();
 			int fieldCount = 1;
-			byte[] filterBytes = null;
+			CommandExp exp = GetCommandExp(policy);
 
-			if (policy.filterExp != null)
+			if (exp != null)
 			{
-				filterBytes = EstimateFilterExp(policy.filterExp);
+				dataOffset += exp.Size();
 				fieldCount++;
 			}
 
@@ -409,9 +409,9 @@ namespace Aerospike.Client
 
 			WriteHeaderRead(policy, totalTimeout, readAttr | Command.INFO1_BATCH, fieldCount, 0);
 
-			if (filterBytes != null)
+			if (exp != null)
 			{
-				WriteFilterExp(filterBytes);
+				dataOffset = exp.Write(this);
 			}
 
 			int fieldSizeOffset = dataOffset;
@@ -512,11 +512,11 @@ namespace Aerospike.Client
 			// Estimate buffer size.
 			Begin();
 			int fieldCount = 1;
-			byte[] filterBytes = null;
+			CommandExp exp = GetCommandExp(policy);
 
-			if (policy.filterExp != null)
+			if (exp != null)
 			{
-				filterBytes = EstimateFilterExp(policy.filterExp);
+				dataOffset += exp.Size();
 				fieldCount++;
 			}
 			dataOffset += FIELD_HEADER_SIZE + 5;
@@ -558,9 +558,9 @@ namespace Aerospike.Client
 
 			WriteHeaderRead(policy, totalTimeout, readAttr | Command.INFO1_BATCH, fieldCount, 0);
 
-			if (filterBytes != null)
+			if (exp != null)
 			{
-				WriteFilterExp(filterBytes);
+				dataOffset = exp.Write(this);
 			}
 
 			int fieldSizeOffset = dataOffset;
@@ -677,11 +677,11 @@ namespace Aerospike.Client
 				fieldCount++;
 			}
 
-			byte[] filterBytes = null;
+			CommandExp exp = GetCommandExp(policy);
 
-			if (policy.filterExp != null)
+			if (exp != null)
 			{
-				filterBytes = EstimateFilterExp(policy.filterExp);
+				dataOffset += exp.Size();
 				fieldCount++;
 			}
 
@@ -761,9 +761,9 @@ namespace Aerospike.Client
 				WriteField(policy.recordsPerSecond, FieldType.RECORDS_PER_SECOND);
 			}
 
-			if (filterBytes != null)
+			if (exp != null)
 			{
-				WriteFilterExp(filterBytes);
+				dataOffset = exp.Write(this);
 			}
 
 			// Only set scan options for server versions < 4.9 or if scanPercent was modified.
@@ -911,11 +911,14 @@ namespace Aerospike.Client
 				}
 			}
 
-			byte[] filterBytes = null;
+#pragma warning disable 0618
+			PredExp[] predExp = statement.PredExp;
+#pragma warning restore 0618
+			CommandExp exp = (predExp != null) ? new CommandPredExp(predExp) : GetCommandExp(policy);
 
-			if (policy.filterExp != null)
+			if (exp != null)
 			{
-				filterBytes = EstimateFilterExp(policy.filterExp);
+				dataOffset += exp.Size();
 				fieldCount++;
 			}
 
@@ -1071,9 +1074,9 @@ namespace Aerospike.Client
 				}
 			}
 
-			if (filterBytes != null)
+			if (exp != null)
 			{
-				WriteFilterExp(filterBytes);
+				dataOffset = exp.Write(this);
 			}
 
 			if (statement.functionName != null)
@@ -1136,13 +1139,6 @@ namespace Aerospike.Client
 			dataOffset += ByteUtil.EstimateSizeUtf8(functionName) + FIELD_HEADER_SIZE;
 			dataOffset += bytes.Length + FIELD_HEADER_SIZE;
 			return 3;
-		}
-
-		private byte[] EstimateFilterExp(Expression exp)
-		{
-			byte[] bytes = exp.Bytes;
-			dataOffset += bytes.Length + FIELD_HEADER_SIZE;
-			return bytes;
 		}
 
 		private void EstimateOperationSize(Bin bin)
@@ -1439,13 +1435,6 @@ namespace Aerospike.Client
 				WriteField(key.userKey, FieldType.KEY);
 			}
 		}
-
-		private void WriteFilterExp(byte[] bytes)
-		{
-			WriteFieldHeader(bytes.Length, FieldType.FILTER_EXP);
-			Array.Copy(bytes, 0, dataBuffer, dataOffset, bytes.Length);
-			dataOffset += bytes.Length;
-		}
 	
 		private void WriteOperation(Bin bin, Operation.Type operationType)
 		{
@@ -1537,6 +1526,11 @@ namespace Aerospike.Client
 		{
 			dataOffset += ByteUtil.IntToBytes((uint)size + 1, dataBuffer, dataOffset);
 			dataBuffer[dataOffset++] = (byte)type;
+		}
+
+		internal void WriteExpHeader(int size)
+		{
+			WriteFieldHeader(size, FieldType.FILTER_EXP);
 		}
 
 		private void Begin()
@@ -1640,5 +1634,54 @@ namespace Aerospike.Client
 		protected internal abstract int SizeBuffer();
 		protected internal abstract void End();
 		protected internal abstract void SetLength(int length);
+
+#pragma warning disable 0618
+		private static CommandExp GetCommandExp(Policy policy)
+		{
+			if (policy.filterExp != null)
+			{
+				return policy.filterExp;
+			}
+
+			if (policy.predExp != null)
+			{
+				return new CommandPredExp(policy.predExp);
+			}
+			return null;
+		}
+
+		private class CommandPredExp : CommandExp
+		{
+			private readonly PredExp[] predExp;
+			private readonly int sz;
+
+			public CommandPredExp(PredExp[] predExp)
+			{
+				this.predExp = predExp;
+				this.sz = PredExp.EstimateSize(predExp);
+			}
+
+			public int Size()
+			{
+				return sz + FIELD_HEADER_SIZE;
+			}
+
+			public int Write(Command cmd)
+			{
+				cmd.WriteExpHeader(sz);
+				return PredExp.Write(predExp, cmd.dataBuffer, cmd.dataOffset);
+			}
+		}
+#pragma warning restore 0618
+	}
+
+	/// <summary>
+	/// Interface for embedding either PredExp or Expression in a command.
+	/// For internal use only.
+	/// </summary>
+	public interface CommandExp
+	{
+		int Size();
+		int Write(Command cmd);
 	}
 }

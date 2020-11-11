@@ -22,7 +22,7 @@ namespace Aerospike.Client
 	/// Packed expression byte instructions.
 	/// </summary>
 	[Serializable]
-	public sealed class Expression
+	public sealed class Expression : CommandExp
 	{
 		private readonly byte[] bytes;
 
@@ -39,6 +39,26 @@ namespace Aerospike.Client
 		public byte[] Bytes
 		{
 			get { return bytes; }
+		}
+
+		/// <summary>
+		/// Estimate expression size in wire protocol.
+		/// For internal use only.
+		/// </summary>
+		public int Size()
+		{
+			return bytes.Length + Command.FIELD_HEADER_SIZE;
+		}
+
+		/// <summary>
+		/// Write expression in wire protocol.
+		/// For internal use only.
+		/// </summary>
+		public int Write(Command cmd)
+		{
+			cmd.WriteExpHeader(bytes.Length);
+			Array.Copy(bytes, 0, cmd.dataBuffer, cmd.dataOffset, bytes.Length);
+			return cmd.dataOffset + bytes.Length;
 		}
 	}
 }

@@ -59,6 +59,7 @@
     <Compile Include="..\..\Framework\AerospikeTest\Sync\Basic\TestOperateHLL.cs" Link="Sync\TestOperateHLL.cs" />
     <Compile Include="..\..\Framework\AerospikeTest\Sync\Basic\TestOperateList.cs" Link="Sync\TestOperateList.cs" />
     <Compile Include="..\..\Framework\AerospikeTest\Sync\Basic\TestOperateMap.cs" Link="Sync\TestOperateMap.cs" />
+    <Compile Include="..\..\Framework\AerospikeTest\Sync\Basic\TestPredExp.cs" Link="Sync\TestPredExp.cs" />
     <Compile Include="..\..\Framework\AerospikeTest\Sync\Basic\TestPutGet.cs" Link="Sync\TestPutGet.cs" />
     <Compile Include="..\..\Framework\AerospikeTest\Sync\Basic\TestReplace.cs" Link="Sync\TestReplace.cs" />
     <Compile Include="..\..\Framework\AerospikeTest\Sync\Basic\TestScan.cs" Link="Sync\TestScan.cs" />
@@ -73,6 +74,7 @@
     <Compile Include="..\..\Framework\AerospikeTest\Sync\Query\TestQueryGeo.cs" Link="Sync\TestQueryGeo.cs" />
     <Compile Include="..\..\Framework\AerospikeTest\Sync\Query\TestQueryInteger.cs" Link="Sync\TestQueryInteger.cs" />
     <Compile Include="..\..\Framework\AerospikeTest\Sync\Query\TestQueryKey.cs" Link="Sync\TestQueryKey.cs" />
+    <Compile Include="..\..\Framework\AerospikeTest\Sync\Query\TestQueryPredExp.cs" Link="Sync\TestQueryPredExp.cs" />
     <Compile Include="..\..\Framework\AerospikeTest\Sync\Query\TestQueryString.cs" Link="Sync\TestQueryString.cs" />
     <Compile Include="..\..\Framework\AerospikeTest\Sync\TestSync.cs" Link="Sync\TestSync.cs" />
   </ItemGroup>

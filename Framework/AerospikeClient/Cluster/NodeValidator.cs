@@ -298,9 +298,6 @@ namespace Aerospike.Client
 				
 		private void SetFeatures(Dictionary<string, string> map)
 		{
-			// No features to process since all old features are known to be supported
-			// by required server 5.2.0.4+.
-			/*
 			try
 			{
 				string featuresString = map["features"];
@@ -308,39 +305,7 @@ namespace Aerospike.Client
 
 				foreach (string feature in list)
 				{
-					if (feature.Equals("geo"))
-					{
-						this.features |= Node.HAS_GEO;
-					}
-					else if (feature.Equals("replicas"))
-					{
-						this.features |= Node.HAS_REPLICAS;
-					}
-					else if (feature.Equals("peers"))
-					{
-						this.features |= Node.HAS_PEERS;
-					}
-					else if (feature.Equals("cluster-stable"))
-					{
-						this.features |= Node.HAS_CLUSTER_STABLE;
-					}
-					else if (feature.Equals("lut-now"))
-					{
-						this.features |= Node.HAS_LUT_NOW;
-					}
-					else if (feature.Equals("truncate-namespace"))
-					{
-						this.features |= Node.HAS_TRUNCATE_NS;
-					}
-					else if (feature.Equals("blob-bits"))
-					{
-						this.features |= Node.HAS_BIT_OP;
-					}
-					else if (feature.Equals("sindex-exists"))
-					{
-						this.features |= Node.HAS_INDEX_EXISTS;
-					}
-					else if (feature.Equals("pscans"))
+					if (feature.Equals("pscans"))
 					{
 						this.features |= Node.HAS_PARTITION_SCAN;
 					}
@@ -350,7 +315,15 @@ namespace Aerospike.Client
 			{
 				// Unexpected exception. Use defaults.
 			}
-			*/
+
+			// This client requires partition scan support. Partition scans were first
+			// supported in server version 4.9. Do not allow any server node into the
+			// cluster that is running server version < 4.9.
+			if ((this.features & Node.HAS_PARTITION_SCAN) == 0)
+			{
+				throw new AerospikeException("Node " + this.name + ' ' + this.primaryHost +
+					" version < 4.9. This client requires server version >= 4.9");
+			}
 		}
 
 		private void ValidateClusterName(Cluster cluster, Dictionary<string, string> map)
