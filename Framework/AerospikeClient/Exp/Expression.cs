@@ -42,6 +42,14 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
+		/// Return byte instructions in base64 encoding.
+		/// </summary>
+		public string GetBase64()
+		{
+			return Convert.ToBase64String(bytes);
+		}
+
+		/// <summary>
 		/// Estimate expression size in wire protocol.
 		/// For internal use only.
 		/// </summary>
