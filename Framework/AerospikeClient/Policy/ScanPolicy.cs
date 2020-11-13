@@ -14,6 +14,10 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
+using System;
+
+#pragma warning disable 0618
+
 namespace Aerospike.Client
 {
 	/// <summary>
@@ -27,9 +31,6 @@ namespace Aerospike.Client
 		/// may be less than maxRecords if node record counts are small and unbalanced across
 		/// nodes.
 		/// <para>
-		/// This field is supported on server versions >= 4.9.
-		/// </para>
-		/// <para>
 		/// Default: 0 (do not limit record count)
 		/// </para>
 		/// </summary>
@@ -38,8 +39,7 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Percent of data to scan.  Valid integer range is 1 to 100.
 		/// <para>
-		/// This field is supported on server versions &lt; 4.9.
-		/// Server versions >= 4.9 might allow scanPercent, but not in conjunction with <see cref="maxRecords"/>.
+		/// Servers might allow scanPercent, but not in conjunction with <see cref="maxRecords"/>.
 		/// scanPercent is eventually slated for removal.
 		/// </para>
 		/// <para>
@@ -83,10 +83,9 @@ namespace Aerospike.Client
 		public bool includeBinData = true;
 
 		/// <summary>
-		/// Terminate scan if cluster is in migration state.
-		/// Only used for server versions &lt; 4.9.
-		/// <para>Default: false</para>
+		/// This field is no longer used and will eventually be removed.
 		/// </summary>
+		[Obsolete("failOnClusterChange is deprecated")]
 		public bool failOnClusterChange;
 
 		/// <summary>
@@ -106,13 +105,10 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Default constructor.
 		/// <para>
-		/// Set maxRetries for scans on server versions >= 4.9. All other
-		/// scans are not retried.
-		/// </para>
-		/// <para>
-		/// The latest servers support retries on individual data partitions.
-		/// This feature is useful when a cluster is migrating and partition(s)
-		/// are missed or incomplete on the first scan attempt.
+		/// Set maxRetries for scans. The latest servers support retries on
+		/// individual data partitions. This feature is useful when a cluster
+		/// is migrating and partition(s) are missed or incomplete on the first
+		/// scan attempt.
 		/// </para>
 		/// <para>
 		/// If the first scan attempt misses 2 of 4096 partitions, then only
@@ -150,3 +146,4 @@ namespace Aerospike.Client
 		}
 	}
 }
+#pragma warning restore 0618

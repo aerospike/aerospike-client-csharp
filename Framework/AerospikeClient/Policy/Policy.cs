@@ -16,6 +16,8 @@
  */
 using System;
 
+#pragma warning disable 0618
+
 namespace Aerospike.Client
 {
 	/// <summary>
@@ -25,12 +27,9 @@ namespace Aerospike.Client
 	{
 		/// <summary>
 		/// Priority of request relative to other transactions.
-		/// Only used for scans on server versions &lt; 4.9.
-		/// <para>
-		/// Priority is obsolete and will eventually be removed.
-		/// Use <see cref="ScanPolicy.recordsPerSecond"/> instead of priority.
-		/// </para>
+		/// Only used for scans where scanPercent is defined.
 		/// </summary>
+		[Obsolete("priority is deprecated. Use 'ScanPolicy.recordsPerSecond' instead.")]
 		public Priority priority = Priority.DEFAULT;
 
 		/// <summary>
@@ -239,9 +238,7 @@ namespace Aerospike.Client
 			this.readModeAP = other.readModeAP;
 			this.readModeSC = other.readModeSC;
 			this.replica = other.replica;
-#pragma warning disable 0618
 			this.predExp = other.predExp;
-#pragma warning restore 0618
 			this.filterExp = other.filterExp;
 			this.socketTimeout = other.socketTimeout;
 			this.totalTimeout = other.totalTimeout;
@@ -311,3 +308,4 @@ namespace Aerospike.Client
 		}
 	}
 }
+#pragma warning restore 0618

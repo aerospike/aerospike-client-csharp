@@ -18,6 +18,8 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 
+#pragma warning disable 0618
+
 namespace Aerospike.Client
 {
 	public abstract class Command
@@ -911,9 +913,7 @@ namespace Aerospike.Client
 				}
 			}
 
-#pragma warning disable 0618
 			PredExp[] predExp = statement.PredExp;
-#pragma warning restore 0618
 			CommandExp exp = (predExp != null) ? new CommandPredExp(predExp) : GetCommandExp(policy);
 
 			if (exp != null)
@@ -1635,7 +1635,6 @@ namespace Aerospike.Client
 		protected internal abstract void End();
 		protected internal abstract void SetLength(int length);
 
-#pragma warning disable 0618
 		private static CommandExp GetCommandExp(Policy policy)
 		{
 			if (policy.filterExp != null)
@@ -1672,7 +1671,6 @@ namespace Aerospike.Client
 				return PredExp.Write(predExp, cmd.dataBuffer, cmd.dataOffset);
 			}
 		}
-#pragma warning restore 0618
 	}
 
 	/// <summary>
@@ -1685,3 +1683,4 @@ namespace Aerospike.Client
 		int Write(Command cmd);
 	}
 }
+#pragma warning restore 0618

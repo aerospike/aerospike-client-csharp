@@ -27,7 +27,7 @@ namespace Aerospike.Client
 		/// may be less than maxRecords if node record counts are small and unbalanced across
 		/// nodes.
 		/// <para>
-		/// maxRecords is supported on server versions >= 4.9 for scans only.  maxRecords
+		/// maxRecords is only supported when query filter is null.  maxRecords
 		/// exists here because query methods will convert into a scan when the query
 		/// filter is null.  maxRecords is ignored when the query contains a filter.
 		/// </para>
@@ -63,8 +63,8 @@ namespace Aerospike.Client
 		public bool includeBinData = true;
 
 		/// <summary>
-		/// Terminate query if cluster is in migration state.
-		/// Only used for server versions &lt; 4.9.
+		/// Terminate query if cluster is in migration state. If query filter is null (scan),
+		/// this field is ignored.
 		/// <para>Default: false</para>
 		/// </summary>
 		public bool failOnClusterChange;
@@ -84,8 +84,8 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Default constructor.
 		/// <para>
-		/// Set maxRetries for non-aggregation queries with a null filter on
-		/// server versions >= 4.9. All other queries are not retried.
+		/// Set maxRetries for non-aggregation queries with a null filter.
+		/// All other queries are not retried.
 		/// </para>
 		/// <para>
 		/// The latest servers support retries on individual data partitions.
