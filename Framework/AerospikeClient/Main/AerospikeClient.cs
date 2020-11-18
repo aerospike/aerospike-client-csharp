@@ -1481,6 +1481,39 @@ namespace Aerospike.Client
 			return null;
 		}
 
+		//-----------------------------------------------------------------
+		// XDR - Cross datacenter replication
+		//-----------------------------------------------------------------
+
+		/// <summary>
+		/// Set XDR filter for given datacenter name and namespace. The expression filter indicates
+		/// which records XDR should ship to the datacenter.
+		/// </summary>
+		/// <param name="policy">info configuration parameters, pass in null for defaults</param>
+		/// <param name="datacenter">XDR datacenter name</param>
+		/// <param name="ns">namespace - equivalent to database name</param>
+		/// <param name="filter">expression filter</param>
+		/// <exception cref="AerospikeException">if command fails</exception>
+		public void SetXDRFilter(InfoPolicy policy, string datacenter, string ns, Expression filter)
+		{
+			if (policy == null)
+			{
+				policy = infoPolicyDefault;
+			}
+
+			// Send XDR command to one node. That node will distribute the XDR command to other nodes.
+			string command = "xdr-set-filter:dc=" + datacenter + ";namespace=" + ns + ";exp=" + filter.GetBase64();
+			Node node = cluster.GetRandomNode();
+			string response = Info.Request(policy, node, command);
+
+			if (response.Equals("ok", StringComparison.CurrentCultureIgnoreCase))
+			{
+				return;
+			}
+
+			ParseInfoError("xdr-set-filter failed", response);
+		}
+
 		//-------------------------------------------------------
 		// User administration
 		//-------------------------------------------------------

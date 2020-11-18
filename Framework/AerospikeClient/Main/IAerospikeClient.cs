@@ -633,6 +633,17 @@ namespace Aerospike.Client
 		IndexTask DropIndex(Policy policy, string ns, string setName, string indexName);
 
 		/// <summary>
+		/// Set XDR filter for given datacenter name and namespace. The expression filter indicates
+		/// which records XDR should ship to the datacenter.
+		/// </summary>
+		/// <param name="policy">info configuration parameters, pass in null for defaults</param>
+		/// <param name="datacenter">XDR datacenter name</param>
+		/// <param name="ns">namespace - equivalent to database name</param>
+		/// <param name="filter">expression filter</param>
+		/// <exception cref="AerospikeException">if command fails</exception>
+		void SetXDRFilter(InfoPolicy policy, string datacenter, string ns, Expression filter);
+
+		/// <summary>
 		/// Create user with password and roles.  Clear-text password will be hashed using bcrypt 
 		/// before sending to server.
 		/// </summary>
