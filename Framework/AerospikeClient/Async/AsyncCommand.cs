@@ -711,7 +711,7 @@ namespace Aerospike.Client
 			else if (status == FAIL_TOTAL_TIMEOUT || status == FAIL_SOCKET_TIMEOUT)
 			{
 				// Timeout thread closed connection, but transaction still completed. 
-				// Do not connection put back into pool.
+				// Do not put connection back into pool.
 				PutBackArgsOnError();
 			}
 			else
