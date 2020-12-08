@@ -47,16 +47,16 @@ namespace Aerospike.Client
 		private SocketAsyncEventArgs eventArgs;
 		private BufferSegment segmentOrig;
 		private BufferSegment segment;
-		private Stopwatch watch;
+		private Stopwatch socketWatch;
+		private Stopwatch totalWatch;
 		protected internal int dataLength;
 		private int iteration;
-		private int state;
 		private int commandSentCounter;
+		private volatile int state;
+		private volatile bool eventReceived;
 		private bool compressed;
-		private bool usingSocketTimeout;
 		private bool inAuthenticate;
 		protected internal bool inHeader = true;
-		private volatile bool eventReceived;
 
 		/// <summary>
 		/// Default Constructor.
@@ -92,18 +92,16 @@ namespace Aerospike.Client
 			this.eventArgs.UserToken = this;
 			this.segmentOrig = other.segmentOrig;
 			this.segment = other.segment;
-			this.watch = other.watch;
+			this.totalWatch = other.totalWatch;
 			this.iteration = other.iteration;
 			this.commandSentCounter = other.commandSentCounter;
-			this.usingSocketTimeout = other.usingSocketTimeout;
 		}
 
 		public void SetBatchRetry(AsyncCommand other)
 		{
 			// This batch retry command will be added to the timeout queue in ExecuteCore().
 			this.iteration = other.iteration;
-			this.usingSocketTimeout = other.usingSocketTimeout;
-			this.watch = other.watch;
+			this.totalWatch = other.totalWatch;
 		}
 
         // Simply ask the cluster object to schedule the command for execution.
@@ -112,8 +110,25 @@ namespace Aerospike.Client
         // Otherwise, the command will start its execution from the thread pool.
         public void Execute()
         {
-            cluster.ScheduleCommandExecution(this);
+			if (totalTimeout > 0)
+			{
+				// totalTimeout is a fixed timeout. Stopwatch is started once on first
+				// attempt and not restarted on retry.
+				totalWatch = Stopwatch.StartNew();
+				AsyncTimeoutQueue.Instance.Add(this, totalTimeout);
+			}
+			cluster.ScheduleCommandExecution(this);
         }
+
+		public void ExecuteBatchRetry()
+		{
+			if (totalTimeout > 0)
+			{
+				int remain = (int)(totalTimeout - totalWatch.ElapsedMilliseconds);
+				AsyncTimeoutQueue.Instance.Add(this, remain);
+			}
+			cluster.ScheduleCommandExecution(this);
+		}
 
 		// Executes the command from the thread pool, using the specified SocketAsyncEventArgs object.
 		internal void ExecuteAsync(SocketAsyncEventArgs e)
@@ -155,26 +170,25 @@ namespace Aerospike.Client
 				segment.size = 0;
 			}
 
-			// In async mode, totalTimeout and socketTimeout are mutually exclusive.
-			// If totalTimeout is defined, socketTimeout is ignored.
-			// This is done so we can avoid having to declare usingSocketTimeout as
-			// volatile and because enabling both timeouts together has limited value.
 			if (totalTimeout > 0)
 			{
-				// totalTimeout is a fixed timeout. Stopwatch is started once on first
-				// attempt and not restarted on retry.
-				if (watch == null)
+				// Timeout already added in Execute(). Verify state.
+				if (state != IN_PROGRESS)
 				{
-					watch = Stopwatch.StartNew();
+					// Timeout occurred. Close command.
+					PutBackArgsOnError();
+					return;
 				}
-				AsyncTimeoutQueue.Instance.Add(this, totalTimeout);
+
+				if (socketTimeout > 0)
+				{
+					// socketTimeout is an idle timeout. socketWatch is restarted on every attempt.
+					socketWatch = Stopwatch.StartNew();
+				}
 			}
 			else if (socketTimeout > 0)
 			{
-				// socketTimeout is an idle timeout. Stopwatch is restarted on
-				// every attempt.
-				usingSocketTimeout = true;
-				watch = Stopwatch.StartNew();
+				socketWatch = Stopwatch.StartNew();
 				AsyncTimeoutQueue.Instance.Add(this, socketTimeout);
 			}
 			ExecuteCommand();
@@ -419,7 +433,7 @@ namespace Aerospike.Client
 			{
 				commandSentCounter++;
 
-				if (usingSocketTimeout)
+				if (socketWatch != null)
 				{
 					eventReceived = false;
 				}
@@ -447,7 +461,7 @@ namespace Aerospike.Client
 		private void ReceiveEvent()
 		{
 			//Log.Info("Receive Event: " + eventArgs.BytesTransferred + "," + dataOffset + "," + dataLength + "," + inHeader);
-			if (usingSocketTimeout)
+			if (socketWatch != null)
 			{
 				eventReceived = true;
 			}
@@ -539,7 +553,7 @@ namespace Aerospike.Client
 
 		private void ConnectionFailed(AerospikeException ae)
 		{
-			if (iteration <= maxRetries && (totalTimeout == 0 || watch.ElapsedMilliseconds < totalTimeout))
+			if (iteration <= maxRetries && (totalWatch == null || totalWatch.ElapsedMilliseconds < totalTimeout))
 			{
 				int status = Interlocked.CompareExchange(ref state, RETRY, IN_PROGRESS);
 
@@ -594,14 +608,17 @@ namespace Aerospike.Client
 
 			if (command != null)
 			{
-				if (totalTimeout > 0)
+				// Command should only be added to AsyncTimeoutQueue once.
+				// CheckTimeout() will verify both socketTimeout and totalTimeout.
+				if (socketTimeout > 0)
 				{
-					AsyncTimeoutQueue.Instance.Add(command, totalTimeout);
-				}
-				else if (socketTimeout > 0)
-				{
-					command.watch = Stopwatch.StartNew();
+					command.socketWatch = Stopwatch.StartNew();
 					AsyncTimeoutQueue.Instance.Add(command, socketTimeout);
+				}
+				else if (totalTimeout > 0)
+				{
+					int remain = (int)(totalTimeout - totalWatch.ElapsedMilliseconds);
+					AsyncTimeoutQueue.Instance.Add(command, remain);
 				}
 				command.ExecuteCommand();
 			}
@@ -621,16 +638,10 @@ namespace Aerospike.Client
 				return false;
 			}
 
-			long elapsed = watch.ElapsedMilliseconds;
-			
-			if (totalTimeout > 0)
-			{
-				// Check total timeout.
-				if (elapsed < totalTimeout)
-				{
-					return true; // Timeout not reached.
-				}
+			Stopwatch watch = totalWatch;
 
+			if (watch != null && watch.ElapsedMilliseconds >= totalTimeout)
+			{
 				// Total timeout has occurred.
 				if (Interlocked.CompareExchange(ref state, FAIL_TOTAL_TIMEOUT, IN_PROGRESS) == IN_PROGRESS)
 				{
@@ -639,29 +650,32 @@ namespace Aerospike.Client
 					{
 						conn.Close();
 					}
+
+					// Notify user immediately in this timeout thread.
+					// Transaction thread will cleanup eventArgs.
+					NotifyFailure(new AerospikeException.Timeout(policy, true));
 				}
 				return false;  // Do not put back on timeout queue.
 			}
-			else
-			{
-				// Check socket idle timeout.
-				if (elapsed < socketTimeout)
-				{
-					return true; // Timeout not reached.
-				}
 
+			watch = socketWatch;
+
+			if (watch != null && watch.ElapsedMilliseconds >= socketTimeout)
+			{
 				if (eventReceived)
 				{
 					// Event(s) received within socket timeout period.
 					eventReceived = false;
-					watch = Stopwatch.StartNew();
+					socketWatch = Stopwatch.StartNew();
 					return true;
 				}
 
 				// Socket timeout has occurred.
 				if (Interlocked.CompareExchange(ref state, FAIL_SOCKET_TIMEOUT, IN_PROGRESS) == IN_PROGRESS)
 				{
-					// Close connection. This will result in a socket error in the async callback thread.
+					// User will be notified in transaction thread and this timeout thread. 
+					// Close connection. This will result in a socket error in the async callback thread
+					// and a possible retry.
 					if (conn != null)
 					{
 						conn.Close();
@@ -669,6 +683,7 @@ namespace Aerospike.Client
 				}
 				return false;  // Do not put back on timeout queue.
 			}
+			return true; // Timeout not reached.
 		}
 
 		protected internal void Finish()
@@ -752,9 +767,9 @@ namespace Aerospike.Client
 			// Otherwise, resources have already been released.
 			if (status == FAIL_TOTAL_TIMEOUT)
 			{
-				// Free up resources and notify user on timeout.
-				// Connection should have already been closed on AsyncTimeoutQueue timeout.
-				FailCommand(new AerospikeException.Timeout(policy, true));
+				// Free up resources. Connection should have already been closed and user
+				// notified in CheckTimeout().
+				PutBackArgsOnError();
 			}
 			else if (status == FAIL_SOCKET_TIMEOUT)
 			{

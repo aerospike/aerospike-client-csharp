@@ -670,7 +670,7 @@ namespace Aerospike.Client
 
 			foreach (AsyncBatchCommand command in commands)
 			{
-				command.Execute();
+				command.ExecuteBatchRetry();
 			}
 		}
 
