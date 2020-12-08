@@ -215,6 +215,11 @@ namespace Aerospike.Client
 		public const int FILTERED_OUT = 27;
 
 		/// <summary>
+		/// Write command loses conflict to XDR.
+		/// </summary>
+		public const int LOST_CONFLICT = 28;
+
+		/// <summary>
 		/// There are no more records left for query.
 		/// </summary>
 		public const int QUERY_END = 50;
@@ -540,6 +545,9 @@ namespace Aerospike.Client
 
 			case FILTERED_OUT:
 				return "Transaction filtered out";
+
+			case LOST_CONFLICT:
+				return "Transaction failed due to conflict with XDR";
 
 			case QUERY_END:
 				return "Query end";
