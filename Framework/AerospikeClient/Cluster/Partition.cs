@@ -198,7 +198,7 @@ namespace Aerospike.Client
 			for (int i = 0; i < replicas.Length; i++)
 			{
 				uint index = sequence % (uint)replicas.Length;
-				Node node = replicas[index][partitionId];
+				Node node = Volatile.Read(ref replicas[index][partitionId]);
 
 				if (node != null && node.Active)
 				{
@@ -219,7 +219,7 @@ namespace Aerospike.Client
 			for (int i = 1; i <= replicas.Length; i++)
 			{
 				uint index = sequence % (uint)replicas.Length;
-				Node node = replicas[index][partitionId];
+				Node node = Volatile.Read(ref replicas[index][partitionId]);
 
 				if (node != null && node.Active)
 				{
@@ -254,7 +254,7 @@ namespace Aerospike.Client
 
 		public Node GetMasterNode(Cluster cluster)
 		{
-			Node node = partitions.replicas[0][partitionId];
+			Node node = Volatile.Read(ref partitions.replicas[0][partitionId]);
 
 			if (node != null && node.Active)
 			{
@@ -272,7 +272,7 @@ namespace Aerospike.Client
 			for (int i = 0; i < replicas.Length; i++)
 			{
 				int index = Math.Abs(Interlocked.Increment(ref cluster.replicaIndex) % replicas.Length);
-				Node node = replicas[index][partitionId];
+				Node node = Volatile.Read(ref replicas[index][partitionId]);
 
 				if (node != null && node.Active)
 				{

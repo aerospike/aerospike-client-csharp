@@ -16,6 +16,7 @@
  */
 using System;
 using System.Collections.Generic;
+using System.Threading;
 
 namespace Aerospike.Client
 {
@@ -175,7 +176,7 @@ namespace Aerospike.Client
 			{
 				if (!part.done)
 				{
-					Node node = master[part.id];
+					Node node = Volatile.Read(ref master[part.id]);
 
 					if (node == null)
 					{
