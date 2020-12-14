@@ -256,6 +256,7 @@ namespace Aerospike.Client
 		/// <see cref="Aerospike.Client.MapWriteMode"/>.
 		/// </para>
 		/// </summary>
+		[Obsolete("Decrement is deprecated. Use Increment with a negative value instead.")]
 		public static Operation Decrement(MapPolicy policy, string binName, Value key, Value decr, params CTX[] ctx)
 		{
 			byte[] bytes = PackUtil.Pack(MapOperation.DECREMENT, key, decr, policy.attributes, ctx);

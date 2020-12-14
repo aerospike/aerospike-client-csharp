@@ -261,7 +261,7 @@ namespace Aerospike.Test
 			// Increment some user scores.
 			record = client.Operate(null, key,
 				MapOperation.Increment(MapPolicy.Default, binName, Value.Get("John"), Value.Get(5)),
-				MapOperation.Decrement(MapPolicy.Default, binName, Value.Get("Jim"), Value.Get(4))
+				MapOperation.Increment(MapPolicy.Default, binName, Value.Get("Jim"), Value.Get(-4))
 				);
 
 			AssertRecordFound(key, record);

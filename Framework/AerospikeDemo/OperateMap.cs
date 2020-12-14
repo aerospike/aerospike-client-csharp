@@ -104,7 +104,7 @@ namespace Aerospike.Demo
 			// Increment some user scores.
 			record = client.Operate(args.writePolicy, key,
 				MapOperation.Increment(MapPolicy.Default, binName, Value.Get("John"), Value.Get(5)),
-				MapOperation.Decrement(MapPolicy.Default, binName, Value.Get("Jim"), Value.Get(4))
+				MapOperation.Increment(MapPolicy.Default, binName, Value.Get("Jim"), Value.Get(-4))
 				);
 
 			console.Info("Record: " + record);
