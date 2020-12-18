@@ -186,6 +186,15 @@ namespace Aerospike.Client
 			catch (Exception e)
 			{
 				peers.genChanged = true;
+				peersGeneration = -1;
+				partitionChanged = true;
+				partitionGeneration = -1;
+
+				if (cluster.rackAware)
+				{
+					rebalanceChanged = true;
+					rebalanceGeneration = -1;
+				}
 				RefreshFailed(e);
 			}
 		}
@@ -369,6 +378,7 @@ namespace Aerospike.Client
 			}
 			catch (Exception e)
 			{
+				peersGeneration = -1;
 				RefreshFailed(e);
 			}
 		}
@@ -419,6 +429,7 @@ namespace Aerospike.Client
 			}
 			catch (Exception e)
 			{
+				partitionGeneration = -1;
 				RefreshFailed(e);
 			}
 		}
@@ -439,11 +450,12 @@ namespace Aerospike.Client
 				}
 				RackParser parser = new RackParser(tendConnection, this);
 
-				this.rebalanceGeneration = parser.Generation;
-				this.racks = parser.Racks;
+				rebalanceGeneration = parser.Generation;
+				racks = parser.Racks;
 			}
 			catch (Exception e)
 			{
+				rebalanceGeneration = -1;
 				RefreshFailed(e);
 			}
 		}
