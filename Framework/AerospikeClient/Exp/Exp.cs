@@ -449,6 +449,14 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
+		/// Create 64 bit unsigned integer value.
+		/// </summary>
+		public static Exp Val(ulong val)
+		{
+			return new UInt(val);
+		}
+
+		/// <summary>
 		/// Create Calendar value expressed in nanoseconds since 1970-01-01 epoch as 64 bit integer.
 		/// </summary>
 		public static Exp Val(DateTime val)
@@ -842,6 +850,21 @@ namespace Aerospike.Client
 			internal readonly long val;
 
 			internal Int(long val)
+			{
+				this.val = val;
+			}
+
+			public override void Pack(Packer packer)
+			{
+				packer.PackNumber(val);
+			}
+		}
+
+		private sealed class UInt : Exp
+		{
+			internal readonly ulong val;
+
+			internal UInt(ulong val)
 			{
 				this.val = val;
 			}
