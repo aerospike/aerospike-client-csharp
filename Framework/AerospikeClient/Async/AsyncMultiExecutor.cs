@@ -50,7 +50,7 @@ namespace Aerospike.Client
 			this.maxConcurrent = (maxConcurrent == 0 || maxConcurrent >= commands.Length) ? commands.Length : maxConcurrent;
 			this.ns = ns;
 
-			AsyncQueryValidate.ValidateBegin(cluster, new BeginHandler(this, commands, this.maxConcurrent), commands[0].node, ns);
+			AsyncQueryValidate.ValidateBegin(cluster, new BeginHandler(this, commands, this.maxConcurrent), commands[0].serverNode, ns);
 		}
 
 		public bool IsDone()
@@ -90,7 +90,7 @@ namespace Aerospike.Client
 
 		private void ExecuteValidateCommand(AsyncMultiCommand command)
 		{
-			AsyncQueryValidate.Validate(cluster, new NextHandler(this, command), command.node, ns, clusterKey);
+			AsyncQueryValidate.Validate(cluster, new NextHandler(this, command), command.serverNode, ns, clusterKey);
 		}
 
 		private class NextHandler : AsyncQueryValidate.Listener

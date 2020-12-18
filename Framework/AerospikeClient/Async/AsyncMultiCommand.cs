@@ -23,7 +23,7 @@ namespace Aerospike.Client
 	public abstract class AsyncMultiCommand : AsyncCommand
 	{
 		protected internal readonly AsyncExecutor executor;
-		protected internal AsyncNode serverNode;
+		protected internal readonly AsyncNode serverNode;
 		protected internal int info3;
 		protected internal int resultCode;
 		protected internal int generation;

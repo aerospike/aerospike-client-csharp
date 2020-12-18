@@ -62,7 +62,7 @@ namespace Aerospike.Client
 		{
 			if (tracker.ShouldRetry(ae))
 			{
-				executor.ChildSuccess(node);
+				executor.ChildSuccess(serverNode);
 				return;
 			}
 			executor.ChildFailure(ae);

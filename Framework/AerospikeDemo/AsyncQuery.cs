@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2020 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -120,7 +120,10 @@ namespace Aerospike.Demo
 					stmt.SetBinNames(binName);
 					stmt.SetFilter(Filter.Range(binName, begin, end));
 
-					client.Query(null, new RecordSequenceHandler(parent, binName), stmt);
+					QueryPolicy qp = new QueryPolicy();
+					qp.failOnClusterChange = true;
+
+					client.Query(qp, new RecordSequenceHandler(parent, binName), stmt);
 				}
 			}
 
