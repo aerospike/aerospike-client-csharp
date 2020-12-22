@@ -226,6 +226,11 @@ namespace Aerospike.Client
 				ErrorCount++;
 				ConnectionFailed(aec);
 			}
+			catch (AerospikeException ae)
+			{
+				ErrorCount++;
+				FailOnApplicationError(ae);
+			}
 			catch (SocketException se)
 			{
 				ErrorCount++;
