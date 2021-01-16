@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2020 Aerospike, Inc.
+ * Copyright 2012-2021 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -49,13 +49,21 @@ namespace Aerospike.Client
 
 			for (int i = 0; i < this.maxConcurrent; i++)
 			{
-				SocketAsyncEventArgs eventArgs = new SocketAsyncEventArgs();
-				eventArgs.RemoteEndPoint = node.address;
-				eventArgs.Completed += AsyncConnector.SocketListener;
+				try
+				{
+					SocketAsyncEventArgs eventArgs = new SocketAsyncEventArgs();
+					eventArgs.RemoteEndPoint = node.address;
+					eventArgs.Completed += AsyncConnector.SocketListener;
 
-				byte[] dataBuffer = (cluster.user != null) ? new byte[256] : null;
+					byte[] dataBuffer = (cluster.user != null) ? new byte[256] : null;
 
-				new AsyncConnector(cluster, node, this, eventArgs, dataBuffer);
+					new AsyncConnector(cluster, node, this, eventArgs, dataBuffer);
+				}
+				catch (Exception e)
+				{
+					OnFailure("Node " + node + " failed to create connection: " + e.Message);
+					return;
+				}
 			}
 
 			if (wait)
@@ -160,12 +168,22 @@ namespace Aerospike.Client
 			this.watch = Stopwatch.StartNew();
 			AsyncTimeoutQueue.Instance.Add(this, cluster.connectionTimeout);
 
-			this.conn = new AsyncConnection(node.address, node);
-			eventArgs.SetBuffer(dataBuffer, 0, 0);
+			node.IncrementConnection();
+			conn = new AsyncConnection(node.address, node);
 
-			if (!conn.ConnectAsync(eventArgs))
+			try
 			{
-				ConnectionCreated();
+				eventArgs.SetBuffer(dataBuffer, 0, 0);
+
+				if (!conn.ConnectAsync(eventArgs))
+				{
+					ConnectionCreated();
+				}
+			}
+			catch (Exception)
+			{
+				conn.Close();
+				throw;
 			}
 		}
 

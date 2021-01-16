@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2020 Aerospike, Inc.
+ * Copyright 2012-2021 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -68,6 +68,8 @@ namespace Aerospike.Client
 				}
 				conn.Close();
 			}
+
+			IncrementConnection();
 			return null;
 		}
 
@@ -139,9 +141,24 @@ namespace Aerospike.Client
 			}
 		}
 
+		internal void IncrementConnection()
+		{
+			if (asyncConnQueue.IncrementTotal() > asyncConnQueue.Capacity)
+			{
+				asyncConnQueue.DecrementTotal();
+				throw new AerospikeException.Connection(ResultCode.NO_MORE_CONNECTIONS,
+					"Async max connections " + cluster.asyncMaxConnsPerNode + " would be exceeded.");
+			}
+		}
+
+		internal void DecrementConnection()
+		{
+			asyncConnQueue.DecrementTotal();
+		}
+
 		internal void AddConnection()
 		{
-			asyncConnQueue.IncrementTotal();
+			// Total already incremented in GetAsyncConnection().
 			Interlocked.Increment(ref asyncConnsOpened);
 		}
 
