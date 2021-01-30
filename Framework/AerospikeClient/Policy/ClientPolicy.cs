@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2020 Aerospike, Inc.
+ * Copyright 2012-2021 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -130,6 +130,32 @@ namespace Aerospike.Client
 		public int maxSocketIdle = 55;
 
 		/// <summary>
+		/// Maximum number of errors allowed per node per <see cref="errorRateWindow"/> before backoff
+		/// algorithm throws <see cref="Aerospike.Client.AerospikeException.Backoff"/> on database
+		/// commands to that node. If maxErrorRate is zero, there is no error limit and
+		/// the exception will not be thrown.
+		/// <para>
+		/// The counted error types are any error that causes the connection to close (socket errors
+		/// and client timeouts) and <see cref="Aerospike.Client.ResultCode.DEVICE_OVERLOAD"/>.
+		/// </para>
+		/// <para>
+		/// Default: 0
+		/// </para>
+		/// </summary>
+		public int maxErrorRate;
+
+		/// <summary>
+		/// The number of cluster tend iterations that defines the window for <see cref="maxErrorRate"/>.
+		/// One tend iteration is defined as <see cref="tendInterval"/> plus the time to tend all nodes.
+		/// At the end of tend iteration, the error count is reset to zero and backoff state is removed
+		/// on all nodes.
+		/// <para>
+		/// Default: 1
+		/// </para>
+		/// </summary>
+		public int errorRateWindow = 1;
+
+		/// <summary>
 		/// Interval in milliseconds between cluster tends by maintenance thread.
 		/// <para>Default: 1000</para>
 		/// </summary>
@@ -240,6 +266,8 @@ namespace Aerospike.Client
 			this.maxConnsPerNode = other.maxConnsPerNode;
 			this.connPoolsPerNode = other.connPoolsPerNode;
 			this.maxSocketIdle = other.maxSocketIdle;
+			this.maxErrorRate = other.maxErrorRate;
+			this.errorRateWindow = other.errorRateWindow;
 			this.tendInterval = other.tendInterval;
 			this.failIfNotConnected = other.failIfNotConnected;
 			this.readPolicyDefault = new Policy(other.readPolicyDefault);

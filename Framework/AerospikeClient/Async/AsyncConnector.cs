@@ -84,7 +84,14 @@ namespace Aerospike.Client
 				if (next < maxConnections && !completed)
 				{
 					// Create next connection.
-					new AsyncConnector(cluster, node, this, eventArgs, dataBuffer);
+					try
+					{
+						new AsyncConnector(cluster, node, this, eventArgs, dataBuffer);
+					}
+					catch (Exception e)
+					{
+						OnFailure("Node " + node + " failed to create connection: " + e.Message);
+					}
 				}
 			}
 			else
@@ -168,7 +175,7 @@ namespace Aerospike.Client
 			this.watch = Stopwatch.StartNew();
 			AsyncTimeoutQueue.Instance.Add(this, cluster.connectionTimeout);
 
-			node.IncrementConnection();
+			node.IncrAsyncConnTotal();
 			conn = new AsyncConnection(node.address, node);
 
 			try
@@ -182,7 +189,7 @@ namespace Aerospike.Client
 			}
 			catch (Exception)
 			{
-				conn.Close();
+				node.CloseAsyncConnOnError(conn);
 				throw;
 			}
 		}
@@ -322,7 +329,7 @@ namespace Aerospike.Client
 				// Close connection. This will result in a socket error.
 				if (conn != null)
 				{
-					conn.Close();
+					node.CloseAsyncConnOnError(conn);
 				}
 			}
 			return false; // Do not put back on timeout queue.
@@ -334,7 +341,7 @@ namespace Aerospike.Client
 			{
 				if (conn != null)
 				{
-					conn.Close();
+					node.CloseAsyncConnOnError(conn);
 					conn = null;
 				}
 

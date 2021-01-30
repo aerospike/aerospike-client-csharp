@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2020 Aerospike, Inc.
+ * Copyright 2012-2021 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -19,10 +19,7 @@ using System.IO;
 using System.Net;
 using System.Net.Sockets;
 using System.Net.Security;
-using System.Security.Authentication;
-using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
-using System.Threading;
 
 namespace Aerospike.Client
 {
@@ -34,15 +31,6 @@ namespace Aerospike.Client
 		private readonly SslStream sslStream;
 		private readonly TlsPolicy policy;
 		private readonly string tlsName;
-
-		/// <summary>
-		/// Create TLS socket and update node statistics.
-		/// </summary>
-		public TlsConnection(TlsPolicy policy, string tlsName, IPEndPoint address, int timeoutMillis, Pool<Connection> pool, Node node)
-			: this(policy, tlsName, address, timeoutMillis, pool)
-		{
-			Interlocked.Increment(ref node.connsOpened);
-		}
 
 		/// <summary>
 		/// Create TLS socket.

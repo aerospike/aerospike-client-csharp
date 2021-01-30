@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2020 Aerospike, Inc.
+ * Copyright 2012-2021 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -30,20 +30,6 @@ namespace Aerospike.Client
 		protected internal readonly Socket socket;
 		protected internal readonly Pool<Connection> pool;
 		private DateTime lastUsed;
-
-		public Connection(IPEndPoint address, int timeoutMillis)
-			: this(address, timeoutMillis, null)
-		{
-		}
-
-		/// <summary>
-		/// Create socket with connection timeout and update node statistics.
-		/// </summary>
-		public Connection(IPEndPoint address, int timeoutMillis, Pool<Connection> pool, Node node)
-			: this(address, timeoutMillis, pool)
-		{
-			Interlocked.Increment(ref node.connsOpened);
-		}
 
 		/// <summary>
 		/// Create socket with connection timeout.
@@ -171,14 +157,6 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
-		/// Is socket connected.
-		/// </summary>
-		public bool IsValid()
-		{
-			return socket.Connected;
-		}
-
-		/// <summary>
 		/// Is socket closed from client perspective only.
 		/// </summary>
 		public bool IsClosed()
@@ -194,15 +172,6 @@ namespace Aerospike.Client
 		public void UpdateLastUsed()
 		{
 			this.lastUsed = DateTime.UtcNow;
-		}
-
-		/// <summary>
-		/// Shutdown and close socket after updating node statistics.
-		/// </summary>
-		public void Close(Node node)
-		{
-			Interlocked.Increment(ref node.connsClosed);
-			Close();
 		}
 
 		/// <summary>

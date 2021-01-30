@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2020 Aerospike, Inc.
+ * Copyright 2012-2021 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -77,6 +77,12 @@ namespace Aerospike.Client
 
 		// Sync connection pools per node. 
 		protected internal readonly int connPoolsPerNode;
+
+		// Max errors per node per errorRateWindow.
+		internal int maxErrorRate;
+
+		// Number of tend iterations defining window for maxErrorRate.
+		internal int errorRateWindow;
 
 		// Initial connection timeout.
 		protected internal readonly int connectionTimeout;
@@ -192,6 +198,8 @@ namespace Aerospike.Client
 			}
 
 			connPoolsPerNode = policy.connPoolsPerNode;
+			maxErrorRate = policy.maxErrorRate;
+			errorRateWindow = policy.errorRateWindow;
 			connectionTimeout = policy.timeout;
 			loginTimeout = policy.loginTimeout;
 			tendInterval = policy.tendInterval;
@@ -436,14 +444,26 @@ namespace Aerospike.Client
 				AddNodes(peers.nodes);
 			}
 
+			tendCount++;
+	
 			// Balance connections every 30 tend intervals.
-			if (++tendCount >= 30)
+			if (tendCount % 30 == 0)
 			{
-				tendCount = 0;
-
 				foreach (Node node in nodes)
 				{
-					node.BalanceConnections();
+					if (node.ErrorCountWithinLimit())
+					{
+						node.BalanceConnections();
+					}
+				}
+			}
+
+			// Reset connection error window for all nodes every connErrorWindow tend iterations.
+			if (maxErrorRate > 0 && tendCount % errorRateWindow == 0)
+			{
+				foreach (Node node in nodes)
+				{
+					node.ResetErrorCount();
 				}
 			}
 		}
@@ -894,6 +914,28 @@ namespace Aerospike.Client
 					this.password = password;
 				}
 			}
+		}
+
+		/// <summary>
+		/// Set max errors allowed within configurable window for all nodes.
+		/// For performance reasons, maxErrorRate is not declared volatile,
+		/// so we are relying on cache coherency for other threads to
+		/// recognize this change.
+		/// </summary>
+		public void SetMaxErrorRate(int rate)
+		{
+			this.maxErrorRate = rate;
+		}
+
+		/// <summary>
+		/// The number of cluster tend iterations that defines the window for maxErrorRate.
+		/// For performance reasons, errorRateWindow is not declared volatile,
+		/// so we are relying on cache coherency for other threads to
+		/// recognize this change.
+		/// </summary>
+		public void SetErrorRateWindow(int window)
+		{
+			this.errorRateWindow = window;
 		}
 
 		public void InterruptTendSleep()

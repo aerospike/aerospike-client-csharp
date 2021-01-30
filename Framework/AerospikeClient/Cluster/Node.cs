@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2020 Aerospike, Inc.
+ * Copyright 2012-2021 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -50,6 +50,7 @@ namespace Aerospike.Client
 		protected uint connectionIter;
 		protected internal int connsOpened = 1;
 		protected internal int connsClosed;
+		private volatile int errorCount;
 		protected internal int peersGeneration = -1;
 		protected internal int partitionGeneration = -1;
 		protected internal int rebalanceGeneration = -1;
@@ -140,24 +141,16 @@ namespace Aerospike.Client
 
 					if (cluster.user != null)
 					{
-						try
+						if (!EnsureLogin())
 						{
-							if (!EnsureLogin())
-							{
-								AdminCommand command = new AdminCommand(ThreadLocalData.GetBuffer(), 0);
+							AdminCommand command = new AdminCommand(ThreadLocalData.GetBuffer(), 0);
 
-								if (!command.Authenticate(cluster, tendConnection, sessionToken))
-								{
-									// Authentication failed.  Session token probably expired.
-									// Must login again to get new session token.
-									command.Login(cluster, tendConnection, out sessionToken, out sessionExpiration);
-								}								
-							}
-						}
-						catch (Exception)
-						{
-							tendConnection.Close(this);
-							throw;
+							if (!command.Authenticate(cluster, tendConnection, sessionToken))
+							{
+								// Authentication failed.  Session token probably expired.
+								// Must login again to get new session token.
+								command.Login(cluster, tendConnection, out sessionToken, out sessionExpiration);
+							}								
 						}
 					}
 				}
@@ -459,9 +452,11 @@ namespace Aerospike.Client
 			}
 			failures++;
 
-			if (!tendConnection.IsClosed())
+			if (! tendConnection.IsClosed())
 			{
-				tendConnection.Close(this);
+				IncrErrorCount();
+				Interlocked.Increment(ref connsClosed);
+				tendConnection.Close();
 			}
 
 			// Only log message if cluster is still active.
@@ -493,13 +488,9 @@ namespace Aerospike.Client
 					return;
 				}
 
-				if (pool.Enqueue(conn))
+				if (! pool.Enqueue(conn))
 				{
-					pool.IncrementTotal();
-				}
-				else
-				{
-					conn.Close(this);
+					CloseConnection(conn);
 					break;
 				}
 				count--;
@@ -508,7 +499,19 @@ namespace Aerospike.Client
 
 		private Connection CreateConnection(Pool<Connection> pool)
 		{
-			Connection conn = CreateConnection(host.tlsName, address, cluster.connectionTimeout, pool);
+			pool.IncrTotal();
+
+			Connection conn;
+
+			try
+			{
+				conn = CreateConnection(host.tlsName, address, cluster.connectionTimeout, pool);
+			}
+			catch (Exception)
+			{
+				pool.DecrTotal();
+				throw;
+			}
 
 			if (cluster.user != null)
 			{
@@ -524,7 +527,7 @@ namespace Aerospike.Client
 				catch (Exception)
 				{
 					// Socket not authenticated.  Do not put back into pool.
-					CloseConnection(conn);
+					CloseConnectionOnError(conn);
 					throw;
 				}
 			}
@@ -564,7 +567,7 @@ namespace Aerospike.Client
 				{
 					// Found socket.
 					// Verify that socket is active and receive buffer is empty.
-					if (cluster.IsConnCurrentTran(conn.LastUsed) && conn.IsValid())
+					if (cluster.IsConnCurrentTran(conn.LastUsed))
 					{
 						try
 						{
@@ -575,13 +578,13 @@ namespace Aerospike.Client
 						{
 							// Set timeout failed. Something is probably wrong with timeout
 							// value itself, so don't empty queue retrying.  Just get out.
-							CloseConnection(conn);
+							CloseConnectionOnError(conn);
 							throw new AerospikeException.Connection(e);
 						}
 					}
 					CloseConnection(conn);
 				}
-				else if (pool.IncrementTotal() <= pool.Capacity)
+				else if (pool.IncrTotal() <= pool.Capacity)
 				{
 					// Socket not found and queue has available slot.
 					// Create new connection.
@@ -591,7 +594,7 @@ namespace Aerospike.Client
 					}
 					catch (Exception)
 					{
-						pool.DecrementTotal();
+						pool.DecrTotal();
 						throw;
 					}
 
@@ -610,7 +613,7 @@ namespace Aerospike.Client
 						catch (Exception)
 						{
 							// Socket not authenticated.  Do not put back into pool.
-							CloseConnection(conn);
+							CloseConnectionOnError(conn);
 							throw;
 						}
 					}
@@ -619,7 +622,7 @@ namespace Aerospike.Client
 				else
 				{
 					// Socket not found and queue is full.  Try another queue.
-					pool.DecrementTotal();
+					pool.DecrTotal();
 
 					if (backward)
 					{
@@ -651,9 +654,20 @@ namespace Aerospike.Client
 
 		private Connection CreateConnection(string tlsName, IPEndPoint address, int timeout, Pool<Connection> pool)
 		{
-			return (cluster.tlsPolicy != null && !cluster.tlsPolicy.forLoginOnly) ?
-				new TlsConnection(cluster.tlsPolicy, tlsName, address, timeout, pool, this) :
-				new Connection(address, timeout, pool, this);
+			try
+			{
+				Connection conn = (cluster.tlsPolicy != null && !cluster.tlsPolicy.forLoginOnly) ?
+					new TlsConnection(cluster.tlsPolicy, tlsName, address, timeout, pool) :
+					new Connection(address, timeout, pool);
+
+				Interlocked.Increment(ref connsOpened);
+				return conn;
+			}
+			catch (Exception)
+			{
+				IncrErrorCount();
+				throw;
+			}
 		}
 
 		/// <summary>
@@ -673,12 +687,22 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
-		/// Close connection and decrement connection count.
+		/// Close pooled connection on error.
+		/// </summary>
+		public void CloseConnectionOnError(Connection conn)
+		{
+			IncrErrorCount();
+			CloseConnection(conn);
+		}
+
+		/// <summary>
+		/// Close pooled connection.
 		/// </summary>
 		public void CloseConnection(Connection conn)
 		{
-			conn.pool.DecrementTotal();
-			conn.Close(this);
+			conn.pool.DecrTotal();
+			Interlocked.Increment(ref connsClosed);
+			conn.Close();
 		}
 
 		public virtual void BalanceConnections()
@@ -741,6 +765,32 @@ namespace Aerospike.Client
 				inUse += tmp;
 			}
 			return new ConnectionStats(inPool, inUse, connsOpened, connsClosed);
+		}
+
+		public void IncrErrorCount()
+		{
+			if (cluster.maxErrorRate > 0)
+			{
+				Interlocked.Increment(ref errorCount);
+			}
+		}
+
+		public void ResetErrorCount()
+		{
+			errorCount = 0;
+		}
+
+		public bool ErrorCountWithinLimit()
+		{
+			return cluster.maxErrorRate <= 0 || errorCount <= cluster.maxErrorRate;
+		}
+
+		public void ValidateErrorCount()
+		{
+			if (!ErrorCountWithinLimit())
+			{
+				throw new AerospikeException.Backoff(ResultCode.MAX_ERROR_RATE);
+			}
 		}
 
 		/// <summary>

@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2020 Aerospike, Inc.
+ * Copyright 2012-2021 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -1747,7 +1747,7 @@ namespace Aerospike.Client
 			}
 			catch (Exception)
 			{
-				node.CloseConnection(conn);
+				node.CloseConnectionOnError(conn);
 				throw;
 			}
 			return info.GetValue();

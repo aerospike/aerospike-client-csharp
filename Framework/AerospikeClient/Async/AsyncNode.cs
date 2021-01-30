@@ -62,14 +62,19 @@ namespace Aerospike.Client
 
 			while (asyncConnQueue.TryDequeue(out conn))
 			{
-				if (cluster.IsConnCurrentTran(conn.LastUsed) && conn.IsValid())
+				if (! cluster.IsConnCurrentTran(conn.LastUsed))
 				{
-					return conn;
+					CloseAsyncConn(conn);
+					continue;
 				}
-				conn.Close();
-			}
 
-			IncrementConnection();
+				if (! conn.IsValid())
+				{
+					CloseAsyncConnOnError(conn);
+					continue;
+				}
+				return conn;
+			}
 			return null;
 		}
 
@@ -81,7 +86,7 @@ namespace Aerospike.Client
 		{
 			if (! (active && asyncConnQueue.Enqueue(conn)))
 			{
-				conn.Close();
+				CloseAsyncConn(conn);
 			}
 		}
 
@@ -118,11 +123,11 @@ namespace Aerospike.Client
 				{
 					if (!asyncConnQueue.EnqueueLast(conn))
 					{
-						conn.Close();
+						CloseAsyncConn(conn);
 					}
 					break;
 				}
-				conn.Close();
+				CloseAsyncConn(conn);
 				count--;
 			}
 		}
@@ -141,30 +146,41 @@ namespace Aerospike.Client
 			}
 		}
 
-		internal void IncrementConnection()
+		internal void CloseAsyncConnOnError(AsyncConnection conn)
 		{
-			if (asyncConnQueue.IncrementTotal() > asyncConnQueue.Capacity)
+			IncrErrorCount();
+			CloseAsyncConn(conn);
+		}
+
+		private void CloseAsyncConn(AsyncConnection conn)
+		{
+			DecrAsyncConnTotal();
+			IncrAsyncConnClosed();
+			conn.Close();
+		}
+
+		internal void IncrAsyncConnTotal()
+		{
+			if (asyncConnQueue.IncrTotal() > asyncConnQueue.Capacity)
 			{
-				asyncConnQueue.DecrementTotal();
+				asyncConnQueue.DecrTotal();
 				throw new AerospikeException.Connection(ResultCode.NO_MORE_CONNECTIONS,
 					"Async max connections " + cluster.asyncMaxConnsPerNode + " would be exceeded.");
 			}
 		}
 
-		internal void DecrementConnection()
+		internal void DecrAsyncConnTotal()
 		{
-			asyncConnQueue.DecrementTotal();
+			asyncConnQueue.DecrTotal();
 		}
 
-		internal void AddConnection()
+		internal void IncrAsyncConnOpened()
 		{
-			// Total already incremented in GetAsyncConnection().
 			Interlocked.Increment(ref asyncConnsOpened);
 		}
 
-		internal void DropConnection()
+		internal void IncrAsyncConnClosed()
 		{
-			asyncConnQueue.DecrementTotal();
 			Interlocked.Increment(ref asyncConnsClosed);
 		}
 

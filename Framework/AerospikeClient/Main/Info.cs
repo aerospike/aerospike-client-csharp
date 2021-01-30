@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2019 Aerospike, Inc.
+ * Copyright 2012-2021 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -329,7 +329,7 @@ namespace Aerospike.Client
 			}
 			catch (Exception)
 			{
-				node.CloseConnection(conn);
+				node.CloseConnectionOnError(conn);
 				throw;
 			}
 		}
@@ -355,7 +355,7 @@ namespace Aerospike.Client
 			catch (Exception)
 			{
 				// Garbage may be in socket.  Do not put back into pool.
-				node.CloseConnection(conn);
+				node.CloseConnectionOnError(conn);
 				throw;
 			}
 		}
@@ -381,7 +381,7 @@ namespace Aerospike.Client
 			catch (Exception)
 			{
 				// Garbage may be in socket.  Do not put back into pool.
-				node.CloseConnection(conn);
+				node.CloseConnectionOnError(conn);
 				throw;
 			}
 		}
@@ -406,7 +406,7 @@ namespace Aerospike.Client
 			catch (Exception)
 			{
 				// Garbage may be in socket.  Do not put back into pool.
-				node.CloseConnection(conn);
+				node.CloseConnectionOnError(conn);
 				throw;
 			}
 		}
@@ -470,7 +470,7 @@ namespace Aerospike.Client
 		/// <param name="name">name of value to retrieve</param>
 		public static string Request(IPEndPoint socketAddress, string name)
 		{
-			Connection conn = new Connection(socketAddress, DEFAULT_TIMEOUT);
+			Connection conn = new Connection(socketAddress, DEFAULT_TIMEOUT, null);
 
 			try
 			{
@@ -490,7 +490,7 @@ namespace Aerospike.Client
 		/// <param name="names">names of values to retrieve</param>
 		public static Dictionary<string, string> Request(IPEndPoint socketAddress, params string[] names)
 		{
-			Connection conn = new Connection(socketAddress, DEFAULT_TIMEOUT);
+			Connection conn = new Connection(socketAddress, DEFAULT_TIMEOUT, null);
 
 			try
 			{
@@ -509,7 +509,7 @@ namespace Aerospike.Client
 		/// <param name="socketAddress">InetSocketAddress of server node</param>
 		public static Dictionary<string, string> Request(IPEndPoint socketAddress)
 		{
-			Connection conn = new Connection(socketAddress, DEFAULT_TIMEOUT);
+			Connection conn = new Connection(socketAddress, DEFAULT_TIMEOUT, null);
 
 			try
 			{

@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2020 Aerospike, Inc.
+ * Copyright 2012-2021 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -201,12 +201,14 @@ namespace Aerospike.Client
 			try
 			{
 				node = (AsyncNode)GetNode(cluster);
+				node.ValidateErrorCount();
 				eventArgs.RemoteEndPoint = node.address;
 
 				conn = node.GetAsyncConnection();
 
 				if (conn == null)
 				{
+					node.IncrAsyncConnTotal();
 					conn = new AsyncConnection(node.address, node);
 					eventArgs.SetBuffer(segment.buffer, segment.offset, 0);
 
@@ -225,6 +227,11 @@ namespace Aerospike.Client
 			{
 				ErrorCount++;
 				ConnectionFailed(aec);
+			}
+			catch (AerospikeException.Backoff aeb)
+			{
+				ErrorCount++;
+				Backoff(aeb);
 			}
 			catch (AerospikeException ae)
 			{
@@ -297,9 +304,16 @@ namespace Aerospike.Client
 					if (ae.Result == ResultCode.TIMEOUT)
 					{
 						// Create server timeout exception.
-						ae = new AerospikeException.Timeout(command.policy, false);
+						command.FailOnApplicationError(new AerospikeException.Timeout(command.policy, false));
 					}
-					command.FailOnApplicationError(ae);
+					else if (ae.Result == ResultCode.DEVICE_OVERLOAD)
+					{
+						command.DeviceOverload(ae);
+					}
+					else
+					{
+						command.FailOnApplicationError(ae);
+					}
 				}
 				catch (SocketException se)
 				{
@@ -588,6 +602,70 @@ namespace Aerospike.Client
 			}
 		}
 
+		private void DeviceOverload(AerospikeException ae)
+		{
+			node.IncrErrorCount();
+
+			if (iteration <= maxRetries && (totalWatch == null || totalWatch.ElapsedMilliseconds < totalTimeout))
+			{
+				int status = Interlocked.CompareExchange(ref state, RETRY, IN_PROGRESS);
+
+				if (status == IN_PROGRESS)
+				{
+					node.PutAsyncConnection(conn);
+					Retry(ae);
+				}
+				else
+				{
+					AlreadyCompleted(status);
+				}
+			}
+			else
+			{
+				int status = Interlocked.CompareExchange(ref state, FAIL_APPLICATION_ERROR, IN_PROGRESS);
+
+				if (status == IN_PROGRESS)
+				{
+					node.PutAsyncConnection(conn);
+					FailCommand(ae);
+				}
+				else
+				{
+					AlreadyCompleted(status);
+				}
+			}
+		}
+
+		private void Backoff(AerospikeException ae)
+		{
+			if (iteration <= maxRetries && (totalWatch == null || totalWatch.ElapsedMilliseconds < totalTimeout))
+			{
+				int status = Interlocked.CompareExchange(ref state, RETRY, IN_PROGRESS);
+
+				if (status == IN_PROGRESS)
+				{
+					Retry(ae);
+				}
+				else
+				{
+					AlreadyCompleted(status);
+				}
+			}
+			else
+			{
+				int status = Interlocked.CompareExchange(ref state, FAIL_APPLICATION_ERROR, IN_PROGRESS);
+
+				if (status == IN_PROGRESS)
+				{
+					FailCommand(ae);
+				}
+				else
+				{
+					AlreadyCompleted(status);
+				}
+			}
+		}
+
 		private void Retry(AerospikeException ae)
 		{
 			// Prepare for retry.
@@ -653,7 +731,7 @@ namespace Aerospike.Client
 					// Close connection. This will result in a socket error in the async callback thread.
 					if (conn != null)
 					{
-						conn.Close();
+						node.CloseAsyncConnOnError(conn);
 					}
 
 					// Notify user immediately in this timeout thread.
@@ -683,7 +761,7 @@ namespace Aerospike.Client
 					// and a possible retry.
 					if (conn != null)
 					{
-						conn.Close();
+						node.CloseAsyncConnOnError(conn);
 					}
 				}
 				return false;  // Do not put back on timeout queue.
@@ -828,7 +906,7 @@ namespace Aerospike.Client
 		{
 			if (conn != null)
 			{
-				conn.Close();
+				node.CloseAsyncConnOnError(conn);
 				conn = null;
 			}
 		}

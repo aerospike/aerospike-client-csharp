@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2020 Aerospike, Inc.
+ * Copyright 2012-2021 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -469,12 +469,26 @@ namespace Aerospike.Client
 		/// Exception thrown when asynchronous command was rejected because the 
 		/// max concurrent database commands have been exceeded.
 		/// </summary>
-		public sealed class CommandRejected : AerospikeException
+		public sealed class CommandRejected : Backoff
 		{
 			/// <summary>
 			/// Create command rejected exception.
 			/// </summary>
 			public CommandRejected() : base(ResultCode.COMMAND_REJECTED)
+			{
+			}
+		}
+
+		/// <summary>
+		/// Exception thrown when node is in backoff mode due to excessive
+		/// number of errors.
+		/// </summary>
+		public class Backoff : AerospikeException
+		{
+			/// <summary>
+			/// Create backoff exception.
+			/// </summary>
+			public Backoff(int resultCode) : base(resultCode)
 			{
 			}
 		}

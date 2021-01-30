@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2020 Aerospike, Inc.
+ * Copyright 2012-2021 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -209,7 +209,7 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Increment total connections.
 		/// </summary>
-		public int IncrementTotal()
+		public int IncrTotal()
 		{
 			return Interlocked.Increment(ref total);
 		}
@@ -217,7 +217,7 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Decrement total connections.
 		/// </summary>
-		public int DecrementTotal()
+		public int DecrTotal()
 		{
 			return Interlocked.Decrement(ref total);
 		}

@@ -84,7 +84,7 @@ namespace Aerospike.Client
 			}
 			catch (Exception)
 			{
-				node.CloseConnection(conn);
+				node.CloseConnectionOnError(conn);
 				throw;
 			}
 		}

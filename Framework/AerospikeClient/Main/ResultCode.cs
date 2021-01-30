@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2020 Aerospike, Inc.
+ * Copyright 2012-2021 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -21,6 +21,11 @@ namespace Aerospike.Client
 	/// </summary>
 	public sealed class ResultCode
 	{
+		/// <summary>
+		/// Max errors limit reached.
+		/// </summary>
+		public const int MAX_ERROR_RATE = -12;
+
 		/// <summary>
 		/// Max retries limit reached.
 		/// </summary>
@@ -432,6 +437,9 @@ namespace Aerospike.Client
 		{
 			switch (resultCode)
 			{
+			case MAX_ERROR_RATE:
+				return "Max error rate exceeded";
+
 			case MAX_RETRIES_EXCEEDED:
 				return "Max retries exceeded";
 				

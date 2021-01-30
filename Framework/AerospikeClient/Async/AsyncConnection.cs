@@ -31,16 +31,25 @@ namespace Aerospike.Client
 			Environment.OSVersion.Platform == PlatformID.MacOSX);
 
 		private readonly Socket socket;
-		private readonly AsyncNode node;
 		private DateTime lastUsed;
 
 		public AsyncConnection(IPEndPoint address, AsyncNode node)
 		{
-			this.node = node;
-
 			try
 			{
 				socket = new Socket(address.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
+			}
+			catch (Exception e)
+			{
+				node.DecrAsyncConnTotal();
+				node.IncrErrorCount();
+				throw new AerospikeException.Connection(e);
+			}
+
+			node.IncrAsyncConnOpened();
+
+			try
+			{
 				socket.NoDelay = true;
 
 				// Docs say Blocking flag is ignored for async operations.
@@ -55,11 +64,13 @@ namespace Aerospike.Client
 				}
 
 				lastUsed = DateTime.UtcNow;
-				node.AddConnection();
 			}
 			catch (Exception e)
 			{
-				node.DecrementConnection();
+				socket.Dispose();
+				node.DecrAsyncConnTotal();
+				node.IncrAsyncConnClosed();
+				node.IncrErrorCount();
 				throw new AerospikeException.Connection(e);
 			}
 		}
@@ -119,8 +130,6 @@ namespace Aerospike.Client
 		/// </summary>
 		public void Close()
 		{
-			node.DropConnection();
-
 			try
 			{
 				socket.Shutdown(SocketShutdown.Both);

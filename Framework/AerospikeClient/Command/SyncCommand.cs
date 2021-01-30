@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2020 Aerospike, Inc.
+ * Copyright 2012-2021 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -82,6 +82,7 @@ namespace Aerospike.Client
 
 				try
 				{
+					node.ValidateErrorCount();
 					Connection conn = node.GetConnection(socketTimeout);
 
 					try
@@ -112,14 +113,21 @@ namespace Aerospike.Client
 						else
 						{
 							// Close socket to flush out possible garbage.  Do not put back in pool.
-							node.CloseConnection(conn);
+							node.CloseConnectionOnError(conn);
 						}
 
 						if (ae.Result == ResultCode.TIMEOUT)
 						{
-							// Go through retry logic on server timeout.
+							// Retry on server timeout.
 							exception = new AerospikeException.Timeout(policy, false);
 							isClientTimeout = false;
+						}
+						else if (ae.Result == ResultCode.DEVICE_OVERLOAD)
+						{
+							// Add to circuit breaker error count and retry.
+							exception = ae;
+							isClientTimeout = false;
+							node.IncrErrorCount();
 						}
 						else
 						{
@@ -130,7 +138,7 @@ namespace Aerospike.Client
 					{
 						// Socket errors are considered temporary anomalies.
 						// Retry after closing connection.
-						node.CloseConnection(conn);
+						node.CloseConnectionOnError(conn);
 
 						if (se.SocketErrorCode == SocketError.TimedOut)
 						{
@@ -146,7 +154,7 @@ namespace Aerospike.Client
 					{
 						// All other exceptions are considered fatal.  Do not retry.
 						// Close socket to flush out possible garbage.  Do not put back in pool.
-						node.CloseConnection(conn);
+						node.CloseConnectionOnError(conn);
 						throw;
 					}
 				}
@@ -168,6 +176,12 @@ namespace Aerospike.Client
 				{
 					// Socket connection error has occurred. Retry.
 					exception = ce;
+					isClientTimeout = false;
+				}
+				catch (AerospikeException.Backoff be)
+				{
+					// Node is in backoff state. Retry, hopefully on another node.
+					exception = be;
 					isClientTimeout = false;
 				}
 				catch (AerospikeException ae)
