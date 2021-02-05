@@ -148,6 +148,15 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
+		/// Signal the Newtonsoft JSON serializer that Node should not be serialized.
+		/// There is no need to call this method directly.
+		/// </summary>
+		public bool ShouldSerializeNode()
+		{
+			return false;
+		}
+
+		/// <summary>
 		/// Transaction policy.
 		/// </summary>
 		public Policy Policy
