@@ -14,6 +14,7 @@
     <ApplicationIcon />
     <OutputType>Library</OutputType>
     <StartupObject />
+    <RootNamespace>Aerospike.Client</RootNamespace>
   </PropertyGroup>
 
   <ItemGroup>
