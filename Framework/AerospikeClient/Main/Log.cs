@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2020 Aerospike, Inc.
+ * Copyright 2012-2021 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -51,9 +51,8 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
-		/// The log is written to the Windows Event Log by default.
-		/// The caller can override this and set a private method which will be called 
-		/// for each log entry.
+		/// The log is disabled by default. The caller can override this and set a 
+		/// private method which will be called for each log entry.
 		/// </summary>
 		/// <param name="level">Log level.</param>
 		/// <param name="msg">Log message.</param>
