@@ -18,8 +18,6 @@ using System;
 using System.Net.Sockets;
 using System.Threading;
 using System.Diagnostics;
-using System.IO;
-using System.IO.Compression;
 
 namespace Aerospike.Client
 {
@@ -413,7 +411,17 @@ namespace Aerospike.Client
 
 		private void SendEvent()
 		{
-			dataOffset += eventArgs.BytesTransferred;
+			int sent = eventArgs.BytesTransferred;
+
+			if (sent <= 0)
+			{
+				// When a node has shutdown on linux, async command send events return zero
+				// with SocketError.Success. If zero bytes sent on send, cancel command.
+				ConnectionFailed(new AerospikeException.Connection("Connection closed"));
+				return;
+			}
+
+			dataOffset += sent;
 
 			if (dataOffset < dataLength)
 			{

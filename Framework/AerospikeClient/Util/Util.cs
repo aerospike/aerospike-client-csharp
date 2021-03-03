@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2021 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -52,21 +52,19 @@ namespace Aerospike.Client
 
 		public static string GetErrorMessage(Exception e)
 		{
-			// Find initial cause of exception
-			Exception cause = e;
-			while (cause.InnerException != null)
+			if (e.InnerException != null)
 			{
-				cause = e.InnerException;
+				// Inner exceptions identify the real problem.
+				e = e.InnerException;
 			}
 
 			// Connection error messages don't need a stacktrace.
-			if (cause is SocketException || cause is AerospikeException.Connection)
+			if (e is SocketException || e is AerospikeException.Connection)
 			{
 				return e.Message;
 			}
 
-			// Inner exception stack traces identify the real problem.
-			return e.Message + Environment.NewLine + cause.StackTrace;
+			return e.Message + Environment.NewLine + e.StackTrace;
 		}
 
 		public static string ReadFileEncodeBase64(string path)
