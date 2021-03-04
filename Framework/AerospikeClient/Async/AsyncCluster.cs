@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2020 Aerospike, Inc.
+ * Copyright 2012-2021 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -55,7 +55,7 @@ namespace Aerospike.Client
 			{
 				case MaxCommandAction.REJECT: commandQueue = new AsyncCommandRejectingQueue(); break;
 				case MaxCommandAction.BLOCK: commandQueue = new AsyncCommandBlockingQueue(); break;
-				case MaxCommandAction.DELAY: commandQueue = new AsyncCommandDelayingQueue(); break;
+				case MaxCommandAction.DELAY: commandQueue = new AsyncCommandDelayingQueue(policy); break;
 				default: throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Unsupported MaxCommandAction value: " + policy.asyncMaxCommandAction.ToString() + ".");
 			}
 

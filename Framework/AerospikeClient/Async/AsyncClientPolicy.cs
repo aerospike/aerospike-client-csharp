@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2020 Aerospike, Inc.
+ * Copyright 2012-2021 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -35,7 +35,7 @@ namespace Aerospike.Client
 		/// max open connections = asyncMaxCommands * &lt;number of nodes in cluster&gt;
 		/// </para>
 		/// The actual number of open connections consumed depends on how balanced the commands are 
-		/// between nodes and if asyncMaxConnAction is ACCEPT.
+		/// between nodes.
 		/// <para>
 		/// The maximum open connections should not exceed the total socket file descriptors available
 		/// on the client machine.  The socket file descriptors available can be determined by the
@@ -46,6 +46,26 @@ namespace Aerospike.Client
 		/// </para>
 		/// </summary>
 		public int asyncMaxCommands = 200;
+
+		/// <summary>
+		/// Maximum number of async commands that can be stored in the delay queue when
+		/// <see cref="asyncMaxCommandAction"/> is <see cref="Aerospike.Client.MaxCommandAction.DELAY"/>
+		/// and <see cref="asyncMaxCommands"/> is reached.
+		/// Queued commands consume memory, but they do not consume connections.
+		/// <para>
+		/// If this limit is reached, the next async command will be rejected with exception
+		/// <see cref="Aerospike.Client.AerospikeException.CommandRejected"/>.
+		/// If this limit is zero, all async commands will be accepted into the delay queue.
+		/// </para>
+		/// <para>
+		/// The optimal value will depend on your application's magnitude of command bursts and the
+		/// amount of memory available to store commands.
+		/// </para>
+		/// <para>
+		/// Default: 0 (no delay queue limit)
+		/// </para>
+		/// </summary>
+		public int asyncMaxCommandsInQueue;
 
 		/// <summary>
 		/// Minimum number of asynchronous connections allowed per server node.  Preallocate min connections
@@ -87,6 +107,7 @@ namespace Aerospike.Client
 		{
 			this.asyncMaxCommandAction = other.asyncMaxCommandAction;
 			this.asyncMaxCommands = other.asyncMaxCommands;
+			this.asyncMaxCommandsInQueue = other.asyncMaxCommandsInQueue;
 			this.asyncMinConnsPerNode = other.asyncMinConnsPerNode;
 			this.asyncMaxConnsPerNode = other.asyncMaxConnsPerNode;
 		}

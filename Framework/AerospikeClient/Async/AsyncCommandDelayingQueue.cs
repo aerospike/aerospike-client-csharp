@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2019 Aerospike, Inc.
+ * Copyright 2012-2021 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -22,14 +22,17 @@ namespace Aerospike.Client
 {
 	internal sealed class AsyncCommandDelayingQueue : AsyncCommandQueueBase
 	{
-		private readonly ConcurrentQueue<SocketAsyncEventArgs> _argsQueue = new ConcurrentQueue<SocketAsyncEventArgs>();
-		private readonly ConcurrentQueue<AsyncCommand> _commandQueue = new ConcurrentQueue<AsyncCommand>();
-		private readonly WaitCallback _schedulingJobCallback;
-		private volatile int _jobScheduled;
+		private readonly ConcurrentQueue<SocketAsyncEventArgs> argsQueue = new ConcurrentQueue<SocketAsyncEventArgs>();
+		private readonly ConcurrentQueue<AsyncCommand> delayQueue = new ConcurrentQueue<AsyncCommand>();
+		private readonly WaitCallback schedulingJobCallback;
+		private readonly int maxCommandsInQueue;
+		private volatile int delayQueueCount;
+		private volatile int jobScheduled;
 
-		public AsyncCommandDelayingQueue()
+		public AsyncCommandDelayingQueue(AsyncClientPolicy policy)
 		{
-			_schedulingJobCallback = new WaitCallback(ExclusiveScheduleCommands);
+			schedulingJobCallback = new WaitCallback(ExclusiveScheduleCommands);
+			maxCommandsInQueue = policy.asyncMaxCommandsInQueue;
 		}
 
 		// Releases a SocketEventArgs object to the pool.
@@ -37,13 +40,17 @@ namespace Aerospike.Client
 		{
 			AsyncCommand command;
 
-			if (_commandQueue.TryDequeue(out command))
+			if (delayQueue.TryDequeue(out command))
 			{
+				if (maxCommandsInQueue > 0)
+				{
+					Interlocked.Decrement(ref delayQueueCount);
+				}
 				command.ExecuteAsync(e);
 			}
 			else
 			{
-				_argsQueue.Enqueue(e);
+				argsQueue.Enqueue(e);
 				TriggerCommandScheduling();
 			}
 		}
@@ -54,23 +61,42 @@ namespace Aerospike.Client
 			SocketAsyncEventArgs e;
 
 			// Try to dequeue one SocketAsyncEventArgs object from the queue and execute it.
-			if (_argsQueue.TryDequeue(out e))
+			if (argsQueue.TryDequeue(out e))
 			{
 				// If there are no awaiting command, the current command can be executed immediately.
-				if (_commandQueue.IsEmpty) // NB: We could make the choice to always execute the command synchronously in this case. Might be better for performance.
+				if (delayQueue.IsEmpty)
 				{
 					command.ExecuteInline(e);
 					return;
 				}
 				else
 				{
-					_argsQueue.Enqueue(e);
+					argsQueue.Enqueue(e);
 				}
 			}
 			else
 			{
-				// In blocking mode, the command can be queued for later execution.
-				_commandQueue.Enqueue(command);
+				// Queue command for later execution. Delay queue count increment precedes Enqueue and
+				// delay queue count decrement succeeds Dequeue. This might cause maximum allowed delay 
+				// count to be slightly less than maxCommandsInQueue (due to race conditions), but never
+				// greater than maxCommandsInQueue.
+				//
+				// An alternate solution would be to use BlockingCollection to wrap the queue and perform
+				// bounds checking. This would guarantee strict maxCommandsInQueue adherence, but result 
+				// in reduced performance.
+				//
+				// Allowing slighty less than maxCommandsInQueue is not a deal breaker because standard
+				// maxCommandsInQueue values should be at least 1000 when used.  Thus, the more 
+				// performant solution was chosen.
+				if (maxCommandsInQueue == 0 || Interlocked.Increment(ref delayQueueCount) <= maxCommandsInQueue)
+				{
+					delayQueue.Enqueue(command);
+				}
+				else
+				{
+					Interlocked.Decrement(ref delayQueueCount);
+					throw new AerospikeException.CommandRejected();
+				}
 			}
 
 			TriggerCommandScheduling();
@@ -79,9 +105,9 @@ namespace Aerospike.Client
 		// Schedule exactly once the job that will execute queued commands.
 		private void TriggerCommandScheduling()
 		{
-			if (Interlocked.CompareExchange(ref _jobScheduled, 1, 0) == 0)
+			if (Interlocked.CompareExchange(ref jobScheduled, 1, 0) == 0)
 			{
-				ThreadPool.UnsafeQueueUserWorkItem(_schedulingJobCallback, null);
+				ThreadPool.UnsafeQueueUserWorkItem(schedulingJobCallback, null);
 			}
 		}
 
@@ -93,24 +119,28 @@ namespace Aerospike.Client
 				bool lockTaken = false;
 				try
 				{
-					// Lock on _commandQueue for exclusive execution of the job.
-					Monitor.TryEnter(_commandQueue, ref lockTaken); // If we can't enter the lock, it means another instance of the job is already doing the work.
+					// Lock on delayQueue for exclusive execution of the job.
+					Monitor.TryEnter(delayQueue, ref lockTaken); // If we can't enter the lock, it means another instance of the job is already doing the work.
 					if (!lockTaken) return;
 
-					_jobScheduled = 1; // Volatile Write. At this point, the job cannot be rescheduled.
+					jobScheduled = 1; // Volatile Write. At this point, the job cannot be rescheduled.
 
 					// Try scheduling as many commands as possible.
 					SocketAsyncEventArgs e;
-					while (!_commandQueue.IsEmpty && _argsQueue.TryDequeue(out e))
+					while (!delayQueue.IsEmpty && argsQueue.TryDequeue(out e))
 					{
 						AsyncCommand dequeuedCommand;
-						if (_commandQueue.TryDequeue(out dequeuedCommand))
+						if (delayQueue.TryDequeue(out dequeuedCommand))
 						{
+							if (maxCommandsInQueue > 0)
+							{
+								Interlocked.Decrement(ref delayQueueCount);
+							}
 							dequeuedCommand.ExecuteAsync(e);
 						}
 						else
 						{
-							_argsQueue.Enqueue(e);
+							argsQueue.Enqueue(e);
 						}
 					}
 				}
@@ -118,12 +148,12 @@ namespace Aerospike.Client
 				{
 					if (lockTaken)
 					{
-						_jobScheduled = 0; // Volatile Write. At this point, the job can be rescheduled.
-						Monitor.Exit(_commandQueue);
+						jobScheduled = 0; // Volatile Write. At this point, the job can be rescheduled.
+						Monitor.Exit(delayQueue);
 					}
 				}
 			}
-			while (!(_commandQueue.IsEmpty || _argsQueue.IsEmpty)); // Re-execute the job as long as both queues are non-empty
+			while (!(delayQueue.IsEmpty || argsQueue.IsEmpty)); // Re-execute the job as long as both queues are non-empty
 		}
 	}
 }
