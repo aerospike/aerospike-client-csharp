@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2020 Aerospike, Inc.
+ * Copyright 2012-2021 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -25,6 +25,7 @@ namespace Aerospike.Client
 		public const int STRING = 3;
 		public const int BLOB = 4;
 		public const int CSHARP_BLOB = 8;
+		public const int BOOL = 17;
 		public const int HLL = 18;
 		public const int MAP = 19;
 		public const int LIST = 20;
