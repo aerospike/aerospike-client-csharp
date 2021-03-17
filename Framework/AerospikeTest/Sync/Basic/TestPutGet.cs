@@ -1,5 +1,5 @@
 ﻿/* 
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2021 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -55,6 +55,28 @@ namespace Aerospike.Test
 			{
 				Assert.Fail("Invalid record header: generation=" + record.generation + " expiration=" + record.expiration);
 			}
+		}
+
+		[TestMethod]
+		public void PutGetBool()
+		{
+			Key key = new Key(args.ns, args.set, "pgb");
+			Bin bin1 = new Bin("bin1", false);
+			Bin bin2 = new Bin("bin2", true);
+			Bin bin3 = new Bin("bin3", 0);
+			Bin bin4 = new Bin("bin4", 1);
+
+			client.Put(null, key, bin1, bin2, bin3, bin4);
+
+			Record record = client.Get(null, key);
+			bool b = record.GetBool(bin1.name);
+			Assert.IsFalse(b);
+			b = record.GetBool(bin2.name);
+			Assert.IsTrue(b);
+			b = record.GetBool(bin3.name);
+			Assert.IsFalse(b);
+			b = record.GetBool(bin4.name);
+			Assert.IsTrue(b);
 		}
 	}
 }

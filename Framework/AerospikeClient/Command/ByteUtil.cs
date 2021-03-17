@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2020 Aerospike, Inc.
+ * Copyright 2012-2021 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -57,6 +57,9 @@ namespace Aerospike.Client
 
 				case ParticleType.INTEGER:
 					return BytesToNumber(buf, offset, len);
+
+				case ParticleType.BOOL:
+					return BoolBytesToLong(buf, offset, len);
 
 				case ParticleType.DOUBLE:
 					return BytesToDouble(buf, offset);
@@ -282,6 +285,15 @@ namespace Aerospike.Client
 				big = -big;
 			}
 			return big;
+		}
+
+		public static long BoolBytesToLong(byte[] buf, int offset, int len)
+		{
+			if (len <= 0)
+			{
+				return 0L;
+			}
+			return (long)buf[offset];
 		}
 
 		//-------------------------------------------------------

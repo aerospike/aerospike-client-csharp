@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2021 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -201,6 +201,9 @@ namespace Aerospike.Client
 			
 			case ParticleType.INTEGER:
 				return ByteUtil.BytesToNumber(buf, offset, len);
+
+			case ParticleType.BOOL:
+				return ByteUtil.BoolBytesToLong(buf, offset, len);
 
 			case ParticleType.DOUBLE:
 				return ByteUtil.BytesToDouble(buf, offset);
