@@ -26,6 +26,7 @@ namespace Aerospike.Client
 	/// </summary>
 	public abstract class AsyncCommand : Command, ITimeout
 	{
+		private static int TranCount = 0;
 		public static EventHandler<SocketAsyncEventArgs> SocketListener { get { return EventHandlers.SocketHandler; } }
 		private static int ErrorCount = 0;
 		private const int IN_PROGRESS = 0;
@@ -55,6 +56,7 @@ namespace Aerospike.Client
 		private bool compressed;
 		private bool inAuthenticate;
 		protected internal bool inHeader = true;
+		private int tranId;
 
 		/// <summary>
 		/// Default Constructor.
@@ -64,6 +66,7 @@ namespace Aerospike.Client
 		{
 			this.cluster = cluster;
 			this.policy = policy;
+			this.tranId = Interlocked.Increment(ref TranCount);
 		}
 
 		/// <summary>
@@ -74,6 +77,7 @@ namespace Aerospike.Client
 		{
 			this.cluster = cluster;
 			this.policy = policy;
+			this.tranId = Interlocked.Increment(ref TranCount);
 		}
 
 		/// <summary>
@@ -93,6 +97,7 @@ namespace Aerospike.Client
 			this.totalWatch = other.totalWatch;
 			this.iteration = other.iteration;
 			this.commandSentCounter = other.commandSentCounter;
+			this.tranId = other.tranId;
 		}
 
 		public void SetBatchRetry(AsyncCommand other)
@@ -210,6 +215,8 @@ namespace Aerospike.Client
 					conn = new AsyncConnection(node.address, node);
 					eventArgs.SetBuffer(segment.buffer, segment.offset, 0);
 
+					// Could use Log.Info("ConnectAsync: " + tranId);
+					Console.WriteLine("ConnectAsync: " + tranId);
 					if (!conn.ConnectAsync(eventArgs))
 					{
 						ConnectionCreated();
@@ -333,6 +340,9 @@ namespace Aerospike.Client
 
 		private void ConnectionCreated()
 		{
+			// Could use Log.Info("ConnectionCreated: " + tranId);
+			Console.WriteLine("ConnectionCreated: " + tranId);
+
 			if (cluster.user != null)
 			{
 				inAuthenticate = true;
