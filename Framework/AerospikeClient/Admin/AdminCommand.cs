@@ -553,7 +553,7 @@ namespace Aerospike.Client
 
 		public static string HashPassword(string password)
 		{
-			return BCrypt.Net.BCrypt.HashPassword(password, "$2a$10$7EqJtq98hPqEX7fNZaFWoO");
+			return BCrypt.HashPassword(password, "$2a$10$7EqJtq98hPqEX7fNZaFWoO");
 		}
 
 		internal virtual int ParseBlock(int receiveSize)

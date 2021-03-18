@@ -17,7 +17,7 @@
 using System;
 using System.Collections.Generic;
 
-namespace BCrypt.Net
+namespace Aerospike.Client
 {
     /// <summary>Exception for signalling parse errors. </summary>
     public class SaltParseException : Exception

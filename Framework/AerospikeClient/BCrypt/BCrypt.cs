@@ -20,8 +20,7 @@ using System.Diagnostics;
 using System.Security.Cryptography;
 using System.Text;
 
-// namespace: BCrypt.Net
-namespace BCrypt.Net
+namespace Aerospike.Client
 {
     /// <summary>BCrypt implementation.</summary>
     /// <remarks>
