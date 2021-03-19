@@ -184,6 +184,7 @@
     <Compile Include="..\..\Framework\AerospikeClient\Query\IResultSet.cs" Link="Query\IResultSet.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Query\KeyRecord.cs" Link="Query\KeyRecord.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Query\PartitionFilter.cs" Link="Query\PartitionFilter.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Query\PartitionStatus.cs" Link="Query\PartitionStatus.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Query\PartitionTracker.cs" Link="Query\PartitionTracker.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Query\PredExp.cs" Link="Query\PredExp.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Query\QueryAggregateCommand.cs" Link="Query\QueryAggregateCommand.cs" />

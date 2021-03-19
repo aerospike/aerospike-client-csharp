@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2019 Aerospike, Inc.
+ * Copyright 2012-2021 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -102,10 +102,12 @@ namespace Aerospike.Demo
                     new ExampleTreeNode("Join", new GetAndJoin(console)),
                     new ExampleTreeNode("Scan Parallel", new ScanParallel(console)),
                     new ExampleTreeNode("Scan Series", new ScanSeries(console)),
-                    new ExampleTreeNode("Async PutGet", new AsyncPutGet(console)),
+					new ExampleTreeNode("Scan Page", new ScanPage(console)),
+					new ExampleTreeNode("Async PutGet", new AsyncPutGet(console)),
                     new ExampleTreeNode("Async Batch", new AsyncBatch(console)),
-                    new ExampleTreeNode("Async Scan", new AsyncScan(console)),
-                    new ExampleTreeNode("Async Query", new AsyncQuery(console)),
+					new ExampleTreeNode("Async Scan", new AsyncScan(console)),
+					new ExampleTreeNode("Async Scan Page", new AsyncScanPage(console)),
+					new ExampleTreeNode("Async Query", new AsyncQuery(console)),
                     new ExampleTreeNode("Async UDF", new AsyncUserDefinedFunction(console)),
                     new ExampleTreeNode("List/Map", new ListMap(console)),
                     new ExampleTreeNode("User Defined Function", new UserDefinedFunction(console)),

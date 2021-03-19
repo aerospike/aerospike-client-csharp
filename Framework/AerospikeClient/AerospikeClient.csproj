@@ -337,6 +337,7 @@
       <DesignTime>True</DesignTime>
       <DependentUpon>Resources.resx</DependentUpon>
     </Compile>
+    <Compile Include="Query\PartitionStatus.cs" />
     <Compile Include="Query\PredExp.cs" />
     <Compile Include="Query\QueryPartitionExecutor.cs" />
     <Compile Include="Query\QueryPartitionCommand.cs" />

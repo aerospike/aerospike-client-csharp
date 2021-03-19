@@ -152,6 +152,7 @@
     <Compile Include="AsyncBatch.cs" />
     <Compile Include="AsyncExample.cs" />
     <Compile Include="AsyncPutGet.cs" />
+    <Compile Include="AsyncScanPage.cs" />
     <Compile Include="AsyncScan.cs" />
     <Compile Include="Batch.cs" />
     <Compile Include="BenchmarkShared.cs" />
@@ -197,6 +198,7 @@
     <Compile Include="QueryInteger.cs" />
     <Compile Include="QueryString.cs" />
     <Compile Include="QuerySum.cs" />
+    <Compile Include="ScanPage.cs" />
     <Compile Include="ScanParallel.cs" />
     <Compile Include="ScanSeries.cs" />
     <Compile Include="Serialize.cs" />
