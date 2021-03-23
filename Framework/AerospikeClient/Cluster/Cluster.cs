@@ -166,10 +166,7 @@ namespace Aerospike.Client
 					pass = "";
 				}
 
-				if (!(pass.Length == 60 && pass.StartsWith("$2a$")))
-				{
-					pass = AdminCommand.HashPassword(pass);
-				}
+				pass = AdminCommand.HashPassword(pass);
 				this.passwordHash = ByteUtil.StringToUtf8(pass);
 			}
 
