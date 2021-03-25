@@ -110,20 +110,6 @@ namespace Aerospike.Client
 
 				if (result != 0)
 				{
-					if (result == ResultCode.INVALID_COMMAND)
-					{
-						// New login not supported.  Try old authentication.
-						AuthenticateOld(cluster, conn);
-						return;
-					}
-
-					if (result == ResultCode.SECURITY_NOT_ENABLED)
-					{
-						// Server does not require login.
-						return;
-					}
-
-					// login failed.
 					throw new AerospikeException(result, "Login failed");
 				}
 
@@ -195,37 +181,9 @@ namespace Aerospike.Client
 		{
 			WriteHeader(AUTHENTICATE, 2);
 			WriteField(USER, cluster.user);
-
-			if (sessionToken != null)
-			{
-				// New authentication.
-				WriteField(SESSION_TOKEN, sessionToken);
-			}
-			else
-			{
-				// Old authentication.
-				WriteField(CREDENTIAL, cluster.passwordHash);
-			}
+			WriteField(SESSION_TOKEN, sessionToken);
 			WriteSize();
 			return dataOffset;
-		}
-
-		public void AuthenticateOld(Cluster cluster, Connection conn)
-		{
-			dataOffset = 8;
-			WriteHeader(AUTHENTICATE, 2);
-			WriteField(USER, cluster.user);
-			WriteField(CREDENTIAL, cluster.passwordHash);
-			WriteSize();
-
-			conn.Write(dataBuffer, dataOffset);
-			conn.ReadFully(dataBuffer, HEADER_SIZE);
-
-			int result = dataBuffer[RESULT_CODE];
-			if (result != 0)
-			{
-				throw new AerospikeException(result, "Authentication failed");
-			}
 		}
 
 		public void CreateUser(Cluster cluster, AdminPolicy policy, string user, string password, IList<string> roles)
