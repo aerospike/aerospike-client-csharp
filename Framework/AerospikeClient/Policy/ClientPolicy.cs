@@ -147,7 +147,7 @@ namespace Aerospike.Client
 		/// <summary>
 		/// The number of cluster tend iterations that defines the window for <see cref="maxErrorRate"/>.
 		/// One tend iteration is defined as <see cref="tendInterval"/> plus the time to tend all nodes.
-		/// At the end of tend iteration, the error count is reset to zero and backoff state is removed
+		/// At the end of the window, the error count is reset to zero and backoff state is removed
 		/// on all nodes.
 		/// <para>
 		/// Default: 1
