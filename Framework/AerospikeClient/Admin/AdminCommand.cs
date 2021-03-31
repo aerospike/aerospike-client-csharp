@@ -110,6 +110,11 @@ namespace Aerospike.Client
 
 				if (result != 0)
 				{
+					if (result == ResultCode.SECURITY_NOT_ENABLED)
+					{
+						// Server does not require login.
+						return;
+					}
 					throw new AerospikeException(result, "Login failed");
 				}
 

@@ -333,7 +333,9 @@ namespace Aerospike.Client
 
 		private void ConnectionCreated()
 		{
-			if (cluster.user != null)
+			byte[] token = node.sessionToken;
+
+			if (token != null)
 			{
 				inAuthenticate = true;
 				// Authentication messages are small.  Set a reasonable upper bound.
@@ -341,7 +343,7 @@ namespace Aerospike.Client
 				SizeBuffer();
 
 				AdminCommand command = new AdminCommand(dataBuffer, dataOffset);
-				dataLength = command.SetAuthenticate(cluster, node.sessionToken);
+				dataLength = command.SetAuthenticate(cluster, token);
 				eventArgs.SetBuffer(dataBuffer, dataOffset, dataLength - dataOffset);
 				Send();
 				return;

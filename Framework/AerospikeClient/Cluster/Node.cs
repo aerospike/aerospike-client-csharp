@@ -143,13 +143,16 @@ namespace Aerospike.Client
 					{
 						if (!EnsureLogin())
 						{
-							AdminCommand command = new AdminCommand(ThreadLocalData.GetBuffer(), 0);
-
-							if (!command.Authenticate(cluster, tendConnection, sessionToken))
+							if (sessionToken != null)
 							{
-								// Authentication failed.  Session token probably expired.
-								// Must login again to get new session token.
-								command.Login(cluster, tendConnection, out sessionToken, out sessionExpiration);
+								AdminCommand command = new AdminCommand(ThreadLocalData.GetBuffer(), 0);
+
+								if (!command.Authenticate(cluster, tendConnection, sessionToken))
+								{
+									// Authentication failed.  Session token probably expired.
+									// Must login again to get new session token.
+									command.Login(cluster, tendConnection, out sessionToken, out sessionExpiration);
+								}
 							}								
 						}
 					}
@@ -513,7 +516,7 @@ namespace Aerospike.Client
 				throw;
 			}
 
-			if (cluster.user != null)
+			if (sessionToken != null)
 			{
 				try
 				{
@@ -598,13 +601,15 @@ namespace Aerospike.Client
 						throw;
 					}
 
-					if (cluster.user != null)
+					byte[] token = this.sessionToken;
+
+					if (token != null)
 					{
 						try
 						{
 							AdminCommand command = new AdminCommand(ThreadLocalData.GetBuffer(), 0);
 
-							if (!command.Authenticate(cluster, conn, sessionToken))
+							if (!command.Authenticate(cluster, conn, token))
 							{
 								SignalLogin();
 								throw new AerospikeException("Authentication failed");
