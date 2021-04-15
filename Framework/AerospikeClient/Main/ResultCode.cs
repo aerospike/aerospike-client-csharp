@@ -410,22 +410,21 @@ namespace Aerospike.Client
 		/// </summary>
 		public static bool KeepConnection(int resultCode)
 		{
-			// Keep connection on TIMEOUT because it can be server response which does not 
-			// close socket.  Also, client timeout code path does not call this method. 
+			if (resultCode <= 0)
+			{
+				// Do not keep connection on client errors.
+				return false;
+			}
+
 			switch (resultCode)
 			{
-				case 0: // Exception did not originate on server.
-				case CLIENT_ERROR:
-				case QUERY_TERMINATED:
-				case SCAN_TERMINATED:
-				case PARSE_ERROR:
-				case SERIALIZE_ERROR:
-				case SERVER_NOT_AVAILABLE:
 				case SCAN_ABORT:
 				case QUERY_ABORTED:
 					return false;
 
 				default:
+					// Keep connection on TIMEOUT because it can be server response which does not 
+					// close socket.  Also, client timeout code path does not call this method. 
 					return true;
 			}
 		}

@@ -85,7 +85,6 @@ namespace Aerospike.Client
 			// Retry constructor.
 			this.cluster = other.cluster;
 			this.policy = other.policy;
-			this.node = other.node;
 			this.eventArgs = other.eventArgs;
 			this.eventArgs.UserToken = this;
 			this.segmentOrig = other.segmentOrig;
@@ -739,7 +738,7 @@ namespace Aerospike.Client
 				if (Interlocked.CompareExchange(ref state, FAIL_TOTAL_TIMEOUT, IN_PROGRESS) == IN_PROGRESS)
 				{
 					// Close connection. This will result in a socket error in the async callback thread.
-					if (conn != null)
+					if (node != null && conn != null)
 					{
 						node.CloseAsyncConnOnError(conn);
 					}
@@ -769,7 +768,7 @@ namespace Aerospike.Client
 					// User will be notified in transaction thread and this timeout thread. 
 					// Close connection. This will result in a socket error in the async callback thread
 					// and a possible retry.
-					if (conn != null)
+					if (node != null && conn != null)
 					{
 						node.CloseAsyncConnOnError(conn);
 					}
@@ -831,26 +830,37 @@ namespace Aerospike.Client
 
 		private void FailOnApplicationError(AerospikeException ae)
 		{
-			// Ensure that command succeeds or fails, but not both.
-			int status = Interlocked.CompareExchange(ref state, FAIL_APPLICATION_ERROR, IN_PROGRESS);
-
-			if (status == IN_PROGRESS)
+			try
 			{
-				if (ae.KeepConnection())
+				// Ensure that command succeeds or fails, but not both.
+				int status = Interlocked.CompareExchange(ref state, FAIL_APPLICATION_ERROR, IN_PROGRESS);
+
+				if (status == IN_PROGRESS)
 				{
-					// Put connection back in pool.
-					node.PutAsyncConnection(conn);
+					if (node != null && conn != null)
+					{
+						if (ae.KeepConnection())
+						{
+							// Put connection back in pool.
+							node.PutAsyncConnection(conn);
+						}
+						else
+						{
+							// Close socket to flush out possible garbage.
+							CloseConnection();
+						}
+					}
+					FailCommand(ae);
 				}
 				else
 				{
-					// Close socket to flush out possible garbage.
-					CloseConnection();
+					AlreadyCompleted(status);
 				}
-				FailCommand(ae);
 			}
-			else
+			catch (Exception e)
 			{
-				AlreadyCompleted(status);
+				Log.Error("FailOnApplicationError failed: " + Util.GetErrorMessage(e) +
+					System.Environment.NewLine + "Original error: " + Util.GetErrorMessage(ae));
 			}
 		}
 
