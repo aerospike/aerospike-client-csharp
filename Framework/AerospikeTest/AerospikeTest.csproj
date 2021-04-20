@@ -131,7 +131,6 @@
     <EmbeddedResource Include="Resources\filter_example.lua" />
     <EmbeddedResource Include="Resources\record_example.lua" />
     <EmbeddedResource Include="Resources\sum_example.lua" />
-    <EmbeddedResource Include="Resources\largelist_example.lua" />
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="Properties\Resources.resx">
