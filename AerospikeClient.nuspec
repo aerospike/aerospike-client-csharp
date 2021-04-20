@@ -11,15 +11,16 @@
     <icon>icon.png</icon>
     <requireLicenseAcceptance>false</requireLicenseAcceptance>
     <description>Aerospike C# Client Library</description>
-    <copyright>Copyright 2012-2019 Aerospike, Inc.</copyright>
+    <copyright>Copyright 2012-2021 Aerospike, Inc.</copyright>
     <tags>Aerospike database C# client</tags>
     <dependencies>
       <group targetFramework="net452">
-        <dependency id="NeoLua" version="[0.9.14]" />
+        <dependency id="NeoLua" version="[1.3.13]" />
         <dependency id="Zlib.Portable.Signed" version="[1.11.0, )" />
       </group>
       <group targetFramework="netstandard">
         <dependency id="NETStandard.Library" version="[2.0.0, )" />
+        <dependency id="NeoLua" version="[1.3.13]" />
         <dependency id="Iconic.Zlib.Netstandard" version="[1.0.0, )" />
       </group>
     </dependencies>

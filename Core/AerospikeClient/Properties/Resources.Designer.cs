@@ -8,7 +8,7 @@
 // </auto-generated>
 //------------------------------------------------------------------------------
 
-namespace Aerospike.Test.Properties {
+namespace Aerospike.Client.Properties {
     using System;
     
     
@@ -39,7 +39,7 @@ namespace Aerospike.Test.Properties {
         internal static global::System.Resources.ResourceManager ResourceManager {
             get {
                 if (object.ReferenceEquals(resourceMan, null)) {
-                    global::System.Resources.ResourceManager temp = new global::System.Resources.ResourceManager("Aerospike.Test.Properties.Resources", typeof(Resources).Assembly);
+                    global::System.Resources.ResourceManager temp = new global::System.Resources.ResourceManager("AerospikeClient.Properties.Resources", typeof(Resources).Assembly);
                     resourceMan = temp;
                 }
                 return resourceMan;
@@ -63,9 +63,9 @@ namespace Aerospike.Test.Properties {
         /// <summary>
         ///   Looks up a localized resource of type System.Byte[].
         /// </summary>
-        internal static byte[] average_example {
+        internal static byte[] aerospike {
             get {
-                object obj = ResourceManager.GetObject("average_example", resourceCulture);
+                object obj = ResourceManager.GetObject("aerospike", resourceCulture);
                 return ((byte[])(obj));
             }
         }
@@ -73,9 +73,9 @@ namespace Aerospike.Test.Properties {
         /// <summary>
         ///   Looks up a localized resource of type System.Byte[].
         /// </summary>
-        internal static byte[] filter_example {
+        internal static byte[] aslib {
             get {
-                object obj = ResourceManager.GetObject("filter_example", resourceCulture);
+                object obj = ResourceManager.GetObject("aslib", resourceCulture);
                 return ((byte[])(obj));
             }
         }
@@ -83,19 +83,9 @@ namespace Aerospike.Test.Properties {
         /// <summary>
         ///   Looks up a localized resource of type System.Byte[].
         /// </summary>
-        internal static byte[] record_example {
+        internal static byte[] stream_ops {
             get {
-                object obj = ResourceManager.GetObject("record_example", resourceCulture);
-                return ((byte[])(obj));
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized resource of type System.Byte[].
-        /// </summary>
-        internal static byte[] sum_example {
-            get {
-                object obj = ResourceManager.GetObject("sum_example", resourceCulture);
+                object obj = ResourceManager.GetObject("stream_ops", resourceCulture);
                 return ((byte[])(obj));
             }
         }

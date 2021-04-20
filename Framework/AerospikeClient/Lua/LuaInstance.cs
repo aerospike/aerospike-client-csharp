@@ -92,6 +92,8 @@ namespace Aerospike.Client
 			{
 				using (StreamReader reader = new StreamReader(stream))
 				{
+					global.DoChunk(reader, packageName);
+					/*
 					if (debug)
 					{
 						global.DoChunk(lua.CompileChunk(reader, packageName, Lua.DefaultDebugEngine));
@@ -100,6 +102,7 @@ namespace Aerospike.Client
 					{
 						global.DoChunk(reader, packageName);
 					}
+					*/
 				}
 			}
 		}
@@ -107,7 +110,8 @@ namespace Aerospike.Client
 		private void LoadPackageFromFile(string packageName)
 		{
 			string path = FindFile(packageName);
-
+			global.DoChunk(path);
+			/*
 			if (debug)
 			{
 				global.DoChunk(lua.CompileChunk(path, Lua.DefaultDebugEngine));
@@ -116,10 +120,13 @@ namespace Aerospike.Client
 			{
 				global.DoChunk(path);
 			}
+			*/
 		}
 
 		private void LoadPackageFromString(string packageName, string packageContents)
 		{
+			global.DoChunk(packageContents, packageName);
+			/*
 			if (debug)
 			{
 				global.DoChunk(lua.CompileChunk(packageContents, packageName, Lua.DefaultDebugEngine));
@@ -128,6 +135,7 @@ namespace Aerospike.Client
 			{
 				global.DoChunk(packageContents, packageName);
 			}
+			*/
 		}
 
 		private string FindFile(string packageName)

@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2020 Aerospike, Inc.
+ * Copyright 2012-2021 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -532,7 +532,6 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if query fails</exception>
 		RecordSet QueryPartitions(QueryPolicy policy, Statement statement, PartitionFilter partitionFilter);
 
-#if NETFRAMEWORK
 		/// <summary>
 		/// Execute query, apply statement's aggregation function, and return result iterator. 
 		/// The aggregation function should be located in a Lua script file that can be found from the 
@@ -586,7 +585,6 @@ namespace Aerospike.Client
 		/// </param>
 		/// <exception cref="AerospikeException">if query fails</exception>
 		ResultSet QueryAggregate(QueryPolicy policy, Statement statement);
-#endif
 
 		/// <summary>
 		/// Create scalar secondary index.

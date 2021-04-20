@@ -28,13 +28,3 @@ Aerospike C# Client for NET Core
 	$ dotnet restore
 	$ dotnet build --configuration Release 
 	$ dotnet test --configuration Release
-
-**Functionality**
-
-This package supports all C# client functionality except:
-
-* Aggregation queries.  Aggregation queries require Lua code to be executed on the client side and NeoLua does not support NET Core.  The following client methods are not supported:
-
-		public ResultSet QueryAggregate(QueryPolicy policy, Statement statement, string packageName, string functionName, params Value[] functionArgs)
-		public void QueryAggregate(QueryPolicy policy, Statement statement, Action<Object> action)
-		public ResultSet QueryAggregate(QueryPolicy policy, Statement statement)
