@@ -327,7 +327,6 @@
     <Compile Include="Policy\GenerationPolicy.cs" />
     <Compile Include="Policy\InfoPolicy.cs" />
     <Compile Include="Policy\Policy.cs" />
-    <Compile Include="Policy\Priority.cs" />
     <Compile Include="Policy\QueryPolicy.cs" />
     <Compile Include="Policy\RecordExistsAction.cs" />
     <Compile Include="Policy\Replica.cs" />

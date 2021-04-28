@@ -187,7 +187,6 @@
     <Compile Include="..\..\Framework\AerospikeClient\Policy\GenerationPolicy.cs" Link="Policy\GenerationPolicy.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Policy\InfoPolicy.cs" Link="Policy\InfoPolicy.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Policy\Policy.cs" Link="Policy\Policy.cs" />
-    <Compile Include="..\..\Framework\AerospikeClient\Policy\Priority.cs" Link="Policy\Priority.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Policy\QueryPolicy.cs" Link="Policy\QueryPolicy.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Policy\ReadModeAP.cs" Link="Policy\ReadModeAP.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Policy\ReadModeSC.cs" Link="Policy\ReadModeSC.cs" />

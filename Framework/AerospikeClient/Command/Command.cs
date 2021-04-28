@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2020 Aerospike, Inc.
+ * Copyright 2012-2021 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -687,14 +687,6 @@ namespace Aerospike.Client
 				fieldCount++;
 			}
 
-			// Only set scan options for server versions < 4.9 or if scanPercent was modified.
-			if (nodePartitions == null || policy.scanPercent < 100)
-			{
-				// Estimate scan options size.
-				dataOffset += 2 + FIELD_HEADER_SIZE;
-				fieldCount++;
-			}
-
 			// Estimate scan timeout size.
 			dataOffset += 4 + FIELD_HEADER_SIZE;
 			fieldCount++;
@@ -766,22 +758,6 @@ namespace Aerospike.Client
 			if (exp != null)
 			{
 				dataOffset = exp.Write(this);
-			}
-
-			// Only set scan options for server versions < 4.9 or if scanPercent was modified.
-			if (nodePartitions == null || policy.scanPercent < 100)
-			{
-				WriteFieldHeader(2, FieldType.SCAN_OPTIONS);
-
-				byte priority = (byte)policy.priority;
-				priority <<= 4;
-
-				if (policy.failOnClusterChange)
-				{
-					priority |= 0x08;
-				}
-				dataBuffer[dataOffset++] = priority;
-				dataBuffer[dataOffset++] = (byte)policy.scanPercent;
 			}
 
 			// Write scan timeout
@@ -890,14 +866,6 @@ namespace Aerospike.Client
 				if (maxRecords > 0)
 				{
 					dataOffset += 8 + FIELD_HEADER_SIZE;
-					fieldCount++;
-				}
-
-				// Only set scan options for server versions < 4.9.
-				if (nodePartitions == null)
-				{
-					// Estimate scan options size.
-					dataOffset += 2 + FIELD_HEADER_SIZE;
 					fieldCount++;
 				}
 
@@ -1047,21 +1015,6 @@ namespace Aerospike.Client
 				if (maxRecords > 0)
 				{
 					WriteField((ulong)maxRecords, FieldType.SCAN_MAX_RECORDS);
-				}
-
-				// Only set scan options for server versions < 4.9.
-				if (nodePartitions == null)
-				{
-					WriteFieldHeader(2, FieldType.SCAN_OPTIONS);
-					byte priority = (byte)policy.priority;
-					priority <<= 4;
-
-					if (!write && ((QueryPolicy)policy).failOnClusterChange)
-					{
-						priority |= 0x08;
-					}
-					dataBuffer[dataOffset++] = priority;
-					dataBuffer[dataOffset++] = (byte)100;
 				}
 
 				// Write scan socket idle timeout.

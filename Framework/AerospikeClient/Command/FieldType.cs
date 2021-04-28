@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2020 Aerospike, Inc.
+ * Copyright 2012-2021 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -23,7 +23,6 @@ namespace Aerospike.Client
 		public const int KEY = 2;
 		public const int DIGEST_RIPE = 4;
 		public const int TRAN_ID = 7; // user supplied transaction id, which is simply passed back
-		public const int SCAN_OPTIONS = 8;
 		public const int SCAN_TIMEOUT = 9;
 		public const int RECORDS_PER_SECOND = 10;
 		public const int PID_ARRAY = 11;

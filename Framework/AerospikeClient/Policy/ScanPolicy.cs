@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2020 Aerospike, Inc.
+ * Copyright 2012-2021 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -35,18 +35,6 @@ namespace Aerospike.Client
 		/// </para>
 		/// </summary>
 		public long maxRecords;
-
-		/// <summary>
-		/// Percent of data to scan.  Valid integer range is 1 to 100.
-		/// <para>
-		/// Servers might allow scanPercent, but not in conjunction with <see cref="maxRecords"/>.
-		/// scanPercent is eventually slated for removal.
-		/// </para>
-		/// <para>
-		/// Default: 100
-		/// </para>
-		/// </summary>
-		public int scanPercent = 100;
 	
 		/// <summary>
 		/// Limit returned records per second (rps) rate for each server.
@@ -83,23 +71,15 @@ namespace Aerospike.Client
 		public bool includeBinData = true;
 
 		/// <summary>
-		/// This field is no longer used and will eventually be removed.
-		/// </summary>
-		[Obsolete("failOnClusterChange is deprecated")]
-		public bool failOnClusterChange;
-
-		/// <summary>
 		/// Copy scan policy from another scan policy.
 		/// </summary>
 		public ScanPolicy(ScanPolicy other) : base(other)
 		{
 			this.maxRecords = other.maxRecords;
-			this.scanPercent = other.scanPercent;
 			this.recordsPerSecond = other.recordsPerSecond;
 			this.maxConcurrentNodes = other.maxConcurrentNodes;
 			this.concurrentNodes = other.concurrentNodes;
 			this.includeBinData = other.includeBinData;
-			this.failOnClusterChange = other.failOnClusterChange;
 		}
 
 		/// <summary>
@@ -128,20 +108,9 @@ namespace Aerospike.Client
 		/// </summary>
 		public void Validate()
 		{
-			if (scanPercent <= 0 || scanPercent > 100)
-			{
-				throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Invalid scanPercent: " + scanPercent);
-			}
-
 			if (maxRecords < 0)
 			{
 				throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Invalid maxRecords: " + maxRecords);
-			}
-
-			if (scanPercent != 100 && maxRecords != 0)
-			{
-				throw new AerospikeException(ResultCode.PARAMETER_ERROR, "scanPercent(" + scanPercent +
-						") and maxRecords(" + maxRecords + ") are mutually exclusive");
 			}
 		}
 	}
