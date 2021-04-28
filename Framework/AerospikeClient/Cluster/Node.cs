@@ -177,6 +177,18 @@ namespace Aerospike.Client
 					VerifyRebalanceGeneration(infoMap);
 				}
 				peers.refreshCount++;
+
+				// Reload peers, partitions and racks if there were failures on previous tend.
+				if (failures > 0)
+				{
+					peers.genChanged = true;
+					partitionChanged = true;
+
+					if (cluster.rackAware)
+					{
+						rebalanceChanged = true;
+					}
+				}
 				failures = 0;
 			}
 			catch (Exception e)
@@ -242,6 +254,37 @@ namespace Aerospike.Client
 			if (peersGeneration != gen)
 			{
 				peers.genChanged = true;
+
+				if (peersGeneration > gen)
+				{
+					if (Log.InfoEnabled())
+					{
+						Log.Info("Quick node restart detected: node=" + this + " oldgen=" + peersGeneration + " newgen=" + gen);
+					}
+					Restart();
+				}
+			}
+		}
+
+		private void Restart()
+		{
+			try
+			{
+				// Reset error rate.
+				if (cluster.maxErrorRate > 0)
+				{
+					ResetErrorCount();
+				}
+
+				// Balance connections.
+				BalanceConnections();
+			}
+			catch (Exception e)
+			{
+				if (Log.WarnEnabled())
+				{
+					Log.Warn("Node restart failed: " + this + ' ' + Util.GetErrorMessage(e));
+				}
 			}
 		}
 
@@ -446,13 +489,6 @@ namespace Aerospike.Client
 
 		private void RefreshFailed(Exception e)
 		{
-			peersGeneration = -1;
-			partitionGeneration = -1;
-
-			if (cluster.rackAware)
-			{
-				rebalanceGeneration = -1;
-			}
 			failures++;
 
 			if (! tendConnection.IsClosed())
@@ -720,7 +756,7 @@ namespace Aerospike.Client
 				{
 					CloseIdleConnections(pool, excess);
 				}
-				else if (excess < 0)
+				else if (excess < 0 && ErrorCountWithinLimit())
 				{
 					CreateConnections(pool, -excess);
 				}

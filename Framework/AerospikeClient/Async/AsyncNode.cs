@@ -100,7 +100,7 @@ namespace Aerospike.Client
 			{
 				CloseIdleAsyncConnections(excess);
 			}
-			else if (excess < 0)
+			else if (excess < 0 && ErrorCountWithinLimit())
 			{
 				// Create connection requests sequentially because they will be done in the
 				// background and there is no immediate need for them to complete.

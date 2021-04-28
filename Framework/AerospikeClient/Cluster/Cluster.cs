@@ -448,10 +448,7 @@ namespace Aerospike.Client
 			{
 				foreach (Node node in nodes)
 				{
-					if (node.ErrorCountWithinLimit())
-					{
-						node.BalanceConnections();
-					}
+					node.BalanceConnections();
 				}
 			}
 
