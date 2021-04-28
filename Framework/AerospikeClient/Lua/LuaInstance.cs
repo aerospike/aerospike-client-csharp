@@ -211,7 +211,7 @@ namespace Aerospike.Client
 				return ByteUtil.BytesToNumber(buf, offset, len);
 
 			case ParticleType.BOOL:
-				return ByteUtil.BoolBytesToLong(buf, offset, len);
+				return ByteUtil.BytesToBool(buf, offset, len);
 
 			case ParticleType.DOUBLE:
 				return ByteUtil.BytesToDouble(buf, offset);

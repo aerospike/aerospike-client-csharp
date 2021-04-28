@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2020 Aerospike, Inc.
+ * Copyright 2012-2021 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -174,8 +174,19 @@ namespace Aerospike.Client
 		/// </summary>
 		public bool GetBool(string name)
 		{
-			// The server always returns booleans as longs, so get long and convert.
-			return (GetLong(name) != 0) ? true : false;
+			// The server may return boolean as boolean or long (created by older clients).
+			object result = GetValue(name);
+
+			if (result is bool) {
+				return (bool)result;
+			}
+
+			if (result != null)
+			{
+				long v = (long)result;
+				return (v == 0) ? false : true;
+			}
+			return false;
 		}
 
 		/// <summary>
