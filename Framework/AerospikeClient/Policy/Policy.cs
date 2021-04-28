@@ -185,7 +185,7 @@ namespace Aerospike.Client
 		/// Immediate write retries on node failure have been shown to consistently
 		/// result in errors.  If maxRetries is greater than zero on a write, then
 		/// sleepBetweenRetries should be set high enough to allow the cluster to
-		/// reform (>= 500ms).
+		/// reform (>= 3000ms).
 		/// </para>
 		/// <para>
 		/// Default: 0 (do not sleep between retries)
