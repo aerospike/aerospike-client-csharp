@@ -1627,9 +1627,37 @@ namespace Aerospike.Client
 		public void CreateRole(AdminPolicy policy, string roleName, IList<Privilege> privileges, IList<string> whitelist)
 		{
 			AdminCommand command = new AdminCommand();
-			command.CreateRole(cluster, policy, roleName, privileges, whitelist);
+			command.CreateRole(cluster, policy, roleName, privileges, whitelist, 0, 0);
 		}
-	
+
+		/// <summary>
+		/// Create user defined role with optional privileges, whitelist and read/write quotas.
+		/// Quotas require server security configuration "enable-quotas" to be set to true.
+		/// </summary>
+		/// <param name="policy">admin configuration parameters, pass in null for defaults</param>
+		/// <param name="roleName">role name</param>
+		/// <param name="privileges">optional list of privileges assigned to role.</param>
+		/// <param name="whitelist">
+		/// optional list of allowable IP addresses assigned to role.
+		/// IP addresses can contain wildcards (ie. 10.1.2.0/24).
+		/// </param>
+		/// <param name="readQuota">optional maximum reads per second limit, pass in zero for no limit.</param>
+		/// <param name="writeQuota">optional maximum writes per second limit, pass in zero for no limit.</param>
+		/// <exception cref="AerospikeException">if command fails</exception>
+		public void CreateRole
+		(
+			AdminPolicy policy,
+			string roleName,
+			IList<Privilege> privileges,
+			IList<string> whitelist,
+			int readQuota,
+			int writeQuota
+		)
+		{
+			AdminCommand command = new AdminCommand();
+			command.CreateRole(cluster, policy, roleName, privileges, whitelist, readQuota, writeQuota);
+		}
+
 		/// <summary>
 		/// Drop user defined role.
 		/// </summary>
@@ -1682,6 +1710,21 @@ namespace Aerospike.Client
 		{
 			AdminCommand command = new AdminCommand();
 			command.SetWhitelist(cluster, policy, roleName, whitelist);
+		}
+
+		/// <summary>
+		/// Set maximum reads/writes per second limits for a role.  If a quota is zero, the limit is removed.
+		/// Quotas require server security configuration "enable-quotas" to be set to true.
+		/// </summary>
+		/// <param name="policy">admin configuration parameters, pass in null for defaults</param>
+		/// <param name="roleName">role name</param>
+		/// <param name="readQuota">maximum reads per second limit, pass in zero for no limit.</param>
+		/// <param name="writeQuota">maximum writes per second limit, pass in zero for no limit.</param>
+		/// <exception cref="AerospikeException">if command fails</exception>
+		public void SetQuotas(AdminPolicy policy, string roleName, int readQuota, int writeQuota)
+		{
+			AdminCommand command = new AdminCommand();
+			command.setQuotas(cluster, policy, roleName, readQuota, writeQuota);
 		}
 
 		/// <summary>

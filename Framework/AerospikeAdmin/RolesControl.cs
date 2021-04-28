@@ -1,5 +1,5 @@
 ﻿/* 
- * Copyright 2012-2019 Aerospike, Inc.
+ * Copyright 2012-2021 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -188,6 +188,8 @@ namespace Aerospike.Admin
 				bindingSourcePrivs.DataSource = row.privilegeRows;
 			}
 			whitelistBox.Text = RoleEditForm.GetWhitelistString(row.whitelist);
+			readQuotaBox.Text = row.readQuota.ToString();
+			writeQuotaBox.Text = row.writeQuota.ToString();
 		}
 
 		private void DropClicked(object sender, EventArgs e)

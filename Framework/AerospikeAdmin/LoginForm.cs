@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2021 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -116,7 +116,7 @@ namespace Aerospike.Admin
 			policy.password = password;
 			policy.clusterName = clusterName;
 			policy.failIfNotConnected = true;
-			policy.timeout = 600000;
+			policy.timeout = 1000;
 			policy.tlsPolicy = tlsPolicy;
 			policy.authMode = authMode;
 

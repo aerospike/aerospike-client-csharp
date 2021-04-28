@@ -32,6 +32,8 @@
 			this.label1 = new System.Windows.Forms.Label();
 			this.gridRoles = new System.Windows.Forms.DataGridView();
 			this.RoleNameColumn = new System.Windows.Forms.DataGridViewTextBoxColumn();
+			this.whitelistBox = new System.Windows.Forms.TextBox();
+			this.label2 = new System.Windows.Forms.Label();
 			this.titleRole = new System.Windows.Forms.Label();
 			this.gridPrivs = new System.Windows.Forms.DataGridView();
 			this.PrivilegeCodeColumn = new System.Windows.Forms.DataGridViewTextBoxColumn();
@@ -44,8 +46,10 @@
 			this.createMenuItem = new System.Windows.Forms.ToolStripMenuItem();
 			this.dropMenuItem = new System.Windows.Forms.ToolStripMenuItem();
 			this.editMenuItem = new System.Windows.Forms.ToolStripMenuItem();
-			this.label2 = new System.Windows.Forms.Label();
-			this.whitelistBox = new System.Windows.Forms.TextBox();
+			this.readQuotaBox = new System.Windows.Forms.TextBox();
+			this.label3 = new System.Windows.Forms.Label();
+			this.writeQuotaBox = new System.Windows.Forms.TextBox();
+			this.label4 = new System.Windows.Forms.Label();
 			((System.ComponentModel.ISupportInitialize)(this.splitContainer1)).BeginInit();
 			this.splitContainer1.Panel1.SuspendLayout();
 			this.splitContainer1.Panel2.SuspendLayout();
@@ -70,6 +74,10 @@
 			// 
 			// splitContainer1.Panel2
 			// 
+			this.splitContainer1.Panel2.Controls.Add(this.writeQuotaBox);
+			this.splitContainer1.Panel2.Controls.Add(this.label4);
+			this.splitContainer1.Panel2.Controls.Add(this.readQuotaBox);
+			this.splitContainer1.Panel2.Controls.Add(this.label3);
 			this.splitContainer1.Panel2.Controls.Add(this.whitelistBox);
 			this.splitContainer1.Panel2.Controls.Add(this.label2);
 			this.splitContainer1.Panel2.Controls.Add(this.titleRole);
@@ -112,11 +120,30 @@
 			this.RoleNameColumn.HeaderText = "Name";
 			this.RoleNameColumn.Name = "RoleNameColumn";
 			// 
+			// whitelistBox
+			// 
+			this.whitelistBox.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
+            | System.Windows.Forms.AnchorStyles.Right)));
+			this.whitelistBox.Enabled = false;
+			this.whitelistBox.Location = new System.Drawing.Point(71, 20);
+			this.whitelistBox.Name = "whitelistBox";
+			this.whitelistBox.Size = new System.Drawing.Size(299, 20);
+			this.whitelistBox.TabIndex = 10;
+			// 
+			// label2
+			// 
+			this.label2.AutoSize = true;
+			this.label2.Location = new System.Drawing.Point(5, 25);
+			this.label2.Name = "label2";
+			this.label2.Size = new System.Drawing.Size(47, 13);
+			this.label2.TabIndex = 12;
+			this.label2.Text = "Whitelist";
+			// 
 			// titleRole
 			// 
 			this.titleRole.AutoSize = true;
 			this.titleRole.Font = new System.Drawing.Font("Microsoft Sans Serif", 9F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-			this.titleRole.Location = new System.Drawing.Point(2, 52);
+			this.titleRole.Location = new System.Drawing.Point(2, 74);
 			this.titleRole.Name = "titleRole";
 			this.titleRole.Size = new System.Drawing.Size(70, 15);
 			this.titleRole.TabIndex = 3;
@@ -134,12 +161,12 @@
             this.PrivilegeCodeColumn,
             this.NamespaceColumn,
             this.SetNameColumn});
-			this.gridPrivs.Location = new System.Drawing.Point(3, 71);
+			this.gridPrivs.Location = new System.Drawing.Point(3, 92);
 			this.gridPrivs.MultiSelect = false;
 			this.gridPrivs.Name = "gridPrivs";
 			this.gridPrivs.ReadOnly = true;
 			this.gridPrivs.RowHeadersVisible = false;
-			this.gridPrivs.Size = new System.Drawing.Size(375, 318);
+			this.gridPrivs.Size = new System.Drawing.Size(375, 297);
 			this.gridPrivs.TabIndex = 11;
 			this.gridPrivs.SelectionChanged += new System.EventHandler(this.PrivSelectionChanged);
 			// 
@@ -228,24 +255,41 @@
 			this.editMenuItem.Text = "Edit";
 			this.editMenuItem.Click += new System.EventHandler(this.EditClicked);
 			// 
-			// label2
+			// readQuotaBox
 			// 
-			this.label2.AutoSize = true;
-			this.label2.Location = new System.Drawing.Point(5, 25);
-			this.label2.Name = "label2";
-			this.label2.Size = new System.Drawing.Size(47, 13);
-			this.label2.TabIndex = 12;
-			this.label2.Text = "Whitelist";
+			this.readQuotaBox.Enabled = false;
+			this.readQuotaBox.Location = new System.Drawing.Point(71, 46);
+			this.readQuotaBox.Name = "readQuotaBox";
+			this.readQuotaBox.RightToLeft = System.Windows.Forms.RightToLeft.Yes;
+			this.readQuotaBox.Size = new System.Drawing.Size(80, 20);
+			this.readQuotaBox.TabIndex = 13;
 			// 
-			// whitelistBox
+			// label3
 			// 
-			this.whitelistBox.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
-            | System.Windows.Forms.AnchorStyles.Right)));
-			this.whitelistBox.Enabled = false;
-			this.whitelistBox.Location = new System.Drawing.Point(55, 20);
-			this.whitelistBox.Name = "whitelistBox";
-			this.whitelistBox.Size = new System.Drawing.Size(315, 20);
-			this.whitelistBox.TabIndex = 10;
+			this.label3.AutoSize = true;
+			this.label3.Location = new System.Drawing.Point(5, 51);
+			this.label3.Name = "label3";
+			this.label3.Size = new System.Drawing.Size(65, 13);
+			this.label3.TabIndex = 14;
+			this.label3.Text = "Read Quota";
+			// 
+			// writeQuotaBox
+			// 
+			this.writeQuotaBox.Enabled = false;
+			this.writeQuotaBox.Location = new System.Drawing.Point(223, 46);
+			this.writeQuotaBox.Name = "writeQuotaBox";
+			this.writeQuotaBox.RightToLeft = System.Windows.Forms.RightToLeft.Yes;
+			this.writeQuotaBox.Size = new System.Drawing.Size(80, 20);
+			this.writeQuotaBox.TabIndex = 15;
+			// 
+			// label4
+			// 
+			this.label4.AutoSize = true;
+			this.label4.Location = new System.Drawing.Point(157, 51);
+			this.label4.Name = "label4";
+			this.label4.Size = new System.Drawing.Size(64, 13);
+			this.label4.TabIndex = 16;
+			this.label4.Text = "Write Quota";
 			// 
 			// RolesControl
 			// 
@@ -292,5 +336,9 @@
 		private System.Windows.Forms.ToolStripMenuItem editMenuItem;
 		private System.Windows.Forms.TextBox whitelistBox;
 		private System.Windows.Forms.Label label2;
+		private System.Windows.Forms.TextBox writeQuotaBox;
+		private System.Windows.Forms.Label label4;
+		private System.Windows.Forms.TextBox readQuotaBox;
+		private System.Windows.Forms.Label label3;
 	}
 }

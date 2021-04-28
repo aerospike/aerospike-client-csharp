@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2019 Aerospike, Inc.
+ * Copyright 2012-2021 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -31,6 +31,8 @@ namespace Aerospike.Admin
 		private readonly EditType editType;
 		private readonly List<Privilege> oldPrivileges;
 		private readonly List<string> oldWhitelist;
+		private readonly int oldReadQuota;
+		private readonly int oldWriteQuota;
 
 		public RoleEditForm(AerospikeClient client, EditType editType, RoleRow row)
 		{
@@ -62,6 +64,10 @@ namespace Aerospike.Admin
 					oldPrivileges = row.privileges;
 					whiteListBox.Text = GetWhitelistString(row.whitelist);
 					oldWhitelist = row.whitelist;
+					readQuotaBox.Text = row.readQuota.ToString();
+					oldReadQuota = row.readQuota;
+					writeQuotaBox.Text = row.writeQuota.ToString();
+					oldWriteQuota = row.writeQuota;
 					break;
 			}
 			grid.DataSource = bindingSource;
@@ -138,19 +144,23 @@ namespace Aerospike.Admin
 				}
 			}
 
+			int readQuota = int.Parse(readQuotaBox.Text);
+			int writeQuota = int.Parse(writeQuotaBox.Text);
+
 			switch (editType)
 			{
 				case EditType.CREATE:
-					if (privileges.Count == 0 && whitelist.Count == 0)
+					if (privileges.Count == 0 && whitelist.Count == 0 && readQuota == 0 && writeQuota == 0)
 					{
-						throw new AerospikeException("Privileges or whitelist is required.");
+						throw new AerospikeException("Privileges, whitelist, readQuota or writeQuota is required.");
 					}
-					client.CreateRole(null, name, privileges, whitelist);
+					client.CreateRole(null, name, privileges, whitelist, readQuota, writeQuota);
 					break;
 
 				case EditType.EDIT:
 					ReplacePrivileges(name, privileges);
 					ReplaceWhitelist(name, whitelist);
+					ReplaceQuotas(name, readQuota, writeQuota);
 					break;
 			}
 		}
@@ -236,6 +246,14 @@ namespace Aerospike.Admin
 				}
 			}
 			return true;
+		}
+
+		private void ReplaceQuotas(string name, int readQuota, int writeQuota)
+		{
+			if (readQuota != oldReadQuota || writeQuota != oldWriteQuota)
+			{
+				client.SetQuotas(null, name, readQuota, writeQuota);
+			}
 		}
 
 		public string RoleName { get { return nameBox.Text.Trim(); } }

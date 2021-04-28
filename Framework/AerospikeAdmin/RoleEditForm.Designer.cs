@@ -39,6 +39,10 @@
 			this.SetNameColumn = new System.Windows.Forms.DataGridViewTextBoxColumn();
 			this.whiteListBox = new System.Windows.Forms.TextBox();
 			this.label2 = new System.Windows.Forms.Label();
+			this.readQuotaBox = new System.Windows.Forms.TextBox();
+			this.label4 = new System.Windows.Forms.Label();
+			this.writeQuotaBox = new System.Windows.Forms.TextBox();
+			this.label5 = new System.Windows.Forms.Label();
 			((System.ComponentModel.ISupportInitialize)(this.grid)).BeginInit();
 			this.SuspendLayout();
 			// 
@@ -64,7 +68,7 @@
 			// 
 			this.label3.AutoSize = true;
 			this.label3.Font = new System.Drawing.Font("Microsoft Sans Serif", 9F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-			this.label3.Location = new System.Drawing.Point(7, 73);
+			this.label3.Location = new System.Drawing.Point(7, 90);
 			this.label3.Name = "label3";
 			this.label3.RightToLeft = System.Windows.Forms.RightToLeft.No;
 			this.label3.Size = new System.Drawing.Size(70, 15);
@@ -74,7 +78,7 @@
 			// button1
 			// 
 			this.button1.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
-			this.button1.Location = new System.Drawing.Point(260, 314);
+			this.button1.Location = new System.Drawing.Point(260, 384);
 			this.button1.Name = "button1";
 			this.button1.Size = new System.Drawing.Size(75, 23);
 			this.button1.TabIndex = 4;
@@ -85,7 +89,7 @@
 			// button2
 			// 
 			this.button2.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
-			this.button2.Location = new System.Drawing.Point(346, 314);
+			this.button2.Location = new System.Drawing.Point(346, 384);
 			this.button2.Name = "button2";
 			this.button2.Size = new System.Drawing.Size(75, 23);
 			this.button2.TabIndex = 5;
@@ -103,10 +107,10 @@
             this.PrivilegeCodeColumn,
             this.NamespaceColumn,
             this.SetNameColumn});
-			this.grid.Location = new System.Drawing.Point(10, 95);
+			this.grid.Location = new System.Drawing.Point(10, 108);
 			this.grid.Name = "grid";
-			this.grid.Size = new System.Drawing.Size(415, 212);
-			this.grid.TabIndex = 3;
+			this.grid.Size = new System.Drawing.Size(415, 269);
+			this.grid.TabIndex = 4;
 			// 
 			// PrivilegeCodeColumn
 			// 
@@ -142,12 +146,50 @@
 			this.label2.TabIndex = 15;
 			this.label2.Text = "Whitelist IP Addresses";
 			// 
+			// readQuotaBox
+			// 
+			this.readQuotaBox.Location = new System.Drawing.Point(73, 64);
+			this.readQuotaBox.Name = "readQuotaBox";
+			this.readQuotaBox.RightToLeft = System.Windows.Forms.RightToLeft.Yes;
+			this.readQuotaBox.Size = new System.Drawing.Size(104, 20);
+			this.readQuotaBox.TabIndex = 2;
+			// 
+			// label4
+			// 
+			this.label4.AutoSize = true;
+			this.label4.Location = new System.Drawing.Point(7, 67);
+			this.label4.Name = "label4";
+			this.label4.Size = new System.Drawing.Size(65, 13);
+			this.label4.TabIndex = 17;
+			this.label4.Text = "Read Quota";
+			// 
+			// writeQuotaBox
+			// 
+			this.writeQuotaBox.Location = new System.Drawing.Point(260, 64);
+			this.writeQuotaBox.Name = "writeQuotaBox";
+			this.writeQuotaBox.RightToLeft = System.Windows.Forms.RightToLeft.Yes;
+			this.writeQuotaBox.Size = new System.Drawing.Size(104, 20);
+			this.writeQuotaBox.TabIndex = 3;
+			// 
+			// label5
+			// 
+			this.label5.AutoSize = true;
+			this.label5.Location = new System.Drawing.Point(194, 67);
+			this.label5.Name = "label5";
+			this.label5.Size = new System.Drawing.Size(64, 13);
+			this.label5.TabIndex = 19;
+			this.label5.Text = "Write Quota";
+			// 
 			// RoleEditForm
 			// 
 			this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
 			this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
 			this.AutoSize = true;
-			this.ClientSize = new System.Drawing.Size(434, 343);
+			this.ClientSize = new System.Drawing.Size(434, 413);
+			this.Controls.Add(this.writeQuotaBox);
+			this.Controls.Add(this.label5);
+			this.Controls.Add(this.readQuotaBox);
+			this.Controls.Add(this.label4);
 			this.Controls.Add(this.label2);
 			this.Controls.Add(this.whiteListBox);
 			this.Controls.Add(this.grid);
@@ -177,5 +219,9 @@
 		private System.Windows.Forms.DataGridViewTextBoxColumn SetNameColumn;
 		private System.Windows.Forms.TextBox whiteListBox;
 		private System.Windows.Forms.Label label2;
+		private System.Windows.Forms.TextBox readQuotaBox;
+		private System.Windows.Forms.Label label4;
+		private System.Windows.Forms.TextBox writeQuotaBox;
+		private System.Windows.Forms.Label label5;
 	}
 }

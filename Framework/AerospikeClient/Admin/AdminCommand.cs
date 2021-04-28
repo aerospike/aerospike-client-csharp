@@ -36,6 +36,7 @@ namespace Aerospike.Client
 		private const byte GRANT_PRIVILEGES = 12;
 		private const byte REVOKE_PRIVILEGES = 13;
 		private const byte SET_WHITELIST = 14;
+		private const byte SET_QUOTAS = 15;
 		private const byte QUERY_ROLES = 16;
 		private const byte LOGIN = 20;
 
@@ -51,6 +52,11 @@ namespace Aerospike.Client
 		private const byte ROLE = 11;
 		private const byte PRIVILEGES = 12;
 		private const byte WHITELIST = 13;
+		private const byte READ_QUOTA = 14;
+		private const byte WRITE_QUOTA = 15;
+		private const byte READ_INFO = 16;
+		private const byte WRITE_INFO = 17;
+		private const byte CONNECTIONS = 18;
 
 		// Misc
 		private const ulong MSG_VERSION = 2UL;
@@ -248,7 +254,16 @@ namespace Aerospike.Client
 			ExecuteCommand(cluster, policy);
 		}
 
-		public void CreateRole(Cluster cluster, AdminPolicy policy, string roleName, IList<Privilege> privileges, IList<string> whitelist)
+		public void CreateRole
+		(
+			Cluster cluster,
+			AdminPolicy policy,
+			string roleName,
+			IList<Privilege> privileges,
+			IList<string> whitelist,
+			int readQuota,
+			int writeQuota
+		)
 		{
 			byte fieldCount = 1;
 
@@ -258,6 +273,16 @@ namespace Aerospike.Client
 			}
 
 			if (whitelist != null && whitelist.Count > 0)
+			{
+				fieldCount++;
+			}
+
+			if (readQuota > 0)
+			{
+				fieldCount++;
+			}
+
+			if (writeQuota > 0)
 			{
 				fieldCount++;
 			}
@@ -273,6 +298,16 @@ namespace Aerospike.Client
 			if (whitelist != null && whitelist.Count > 0)
 			{
 				WriteWhitelist(whitelist);
+			}
+
+			if (readQuota > 0)
+			{
+				WriteField(READ_QUOTA, readQuota);
+			}
+
+			if (writeQuota > 0)
+			{
+				WriteField(WRITE_QUOTA, writeQuota);
 			}
 			ExecuteCommand(cluster, policy);
 		}
@@ -314,7 +349,16 @@ namespace Aerospike.Client
 
 			ExecuteCommand(cluster, policy);
 		}
-		
+
+		public void setQuotas(Cluster cluster, AdminPolicy policy, String roleName, int readQuota, int writeQuota)
+		{
+			WriteHeader(SET_QUOTAS, 3);
+			WriteField(ROLE, roleName);
+			WriteField(READ_QUOTA, readQuota);
+			WriteField(WRITE_QUOTA, writeQuota);
+			ExecuteCommand(cluster, policy);
+		}
+
 		private void WriteRoles(IList<string> roles)
 		{
 			int offset = dataOffset + FIELD_HEADER_SIZE;
@@ -425,6 +469,13 @@ namespace Aerospike.Client
 			Array.Copy(bytes, 0, dataBuffer, dataOffset + FIELD_HEADER_SIZE, bytes.Length);
 			WriteFieldHeader(id, bytes.Length);
 			dataOffset += bytes.Length;
+		}
+
+		private void WriteField(byte id, int val)
+		{
+			WriteFieldHeader(id, 4);
+			ByteUtil.IntToBytes((uint)val, dataBuffer, dataOffset);
+			dataOffset += 4;
 		}
 
 		private void WriteFieldHeader(byte id, int size)
@@ -572,18 +623,33 @@ namespace Aerospike.Client
 						int id = base.dataBuffer[base.dataOffset++];
 						len--;
 
-						if (id == USER)
+						switch (id)
 						{
-							user.name = ByteUtil.Utf8ToString(base.dataBuffer, base.dataOffset, len);
-							base.dataOffset += len;
-						}
-						else if (id == ROLES)
-						{
-							ParseRoles(user);
-						}
-						else
-						{
-							base.dataOffset += len;
+							case USER:
+								user.name = ByteUtil.Utf8ToString(base.dataBuffer, base.dataOffset, len);
+								base.dataOffset += len;
+								break;
+
+							case ROLES:
+								ParseRoles(user);
+								break;
+
+							case READ_INFO:
+								user.readInfo = ParseInfo();
+								break;
+
+							case WRITE_INFO:
+								user.writeInfo = ParseInfo();
+								break;
+
+							case CONNECTIONS:
+								user.connsInUse = ByteUtil.BytesToUInt(base.dataBuffer, base.dataOffset);
+								base.dataOffset += len;
+								break;
+
+							default:
+								base.dataOffset += len;
+								break;
 						}
 					}
 
@@ -613,6 +679,20 @@ namespace Aerospike.Client
 					base.dataOffset += len;
 					user.roles.Add(role);
 				}
+			}
+
+			private List<uint> ParseInfo()
+			{
+				int size = base.dataBuffer[base.dataOffset++] & 0xFF;
+				List<uint> list = new List<uint>(size);
+
+				for (int i = 0; i < size; i++)
+				{
+					uint val = ByteUtil.BytesToUInt(base.dataBuffer, base.dataOffset);
+					base.dataOffset += 4;
+					list.Add(val);
+				}
+				return list;
 			}
 		}
 
@@ -664,22 +744,34 @@ namespace Aerospike.Client
 						int id = base.dataBuffer[base.dataOffset++];
 						len--;
 
-						if (id == ROLE)
+						switch (id)
 						{
-							role.name = ByteUtil.Utf8ToString(base.dataBuffer, base.dataOffset, len);
-							base.dataOffset += len;
-						}
-						else if (id == PRIVILEGES)
-						{
-							ParsePrivileges(role);
-						}
-						else if (id == WHITELIST)
-						{
-							role.whitelist = ParseWhitelist(len);
-						}
-						else
-						{
-							base.dataOffset += len;
+							case ROLE:
+								role.name = ByteUtil.Utf8ToString(base.dataBuffer, base.dataOffset, len);
+								base.dataOffset += len;
+								break;
+
+							case PRIVILEGES:
+								ParsePrivileges(role);
+								break;
+
+							case WHITELIST:
+								role.whitelist = ParseWhitelist(len);
+								break;
+
+							case READ_QUOTA:
+								role.readQuota = ByteUtil.BytesToInt(base.dataBuffer, base.dataOffset);
+								base.dataOffset += len;
+								break;
+
+							case WRITE_QUOTA:
+								role.writeQuota = ByteUtil.BytesToInt(base.dataBuffer, base.dataOffset);
+								base.dataOffset += len;
+								break;
+
+							default:
+								base.dataOffset += len;
+								break;
 						}
 					}
 

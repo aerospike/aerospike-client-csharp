@@ -1,5 +1,5 @@
 ﻿/* 
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2021 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -29,7 +29,6 @@ namespace Aerospike.Admin
 		private AerospikeClient client;
 		private BindingList<UserRow> users;
 		private BindingSource bindingSourceUsers;
-		private BindingSource bindingSourceRoles;
 		private ContextMenu rightClickMenuUsers;
 		private string userNameFilter;
 
@@ -54,25 +53,23 @@ namespace Aerospike.Admin
 
 			// Initialize user grid
 			gridUsers.AutoGenerateColumns = false;
-			UserNameColumn.DataPropertyName = "UserName";
+			NameColumn.DataPropertyName = "UserName";
+			RolesColumn.DataPropertyName = "RolesString";
+			ConnsInUseColumn.DataPropertyName = "ConnsInUse";
+			ReadQuotaColumn.DataPropertyName = "ReadQuota";
+			ReadTpsColumn.DataPropertyName = "ReadTps";
+			ReadQueryColumn.DataPropertyName = "ReadQuery";
+			ReadLimitlessColumn.DataPropertyName = "ReadLimitless";
+			WriteQuotaColumn.DataPropertyName = "WriteQuota";
+			WriteTpsColumn.DataPropertyName = "WriteTps";
+			WriteQueryColumn.DataPropertyName = "WriteQuery";
+			WriteLimitlessColumn.DataPropertyName = "WriteLimitless";
 
 			bindingSourceUsers = new BindingSource();
 			gridUsers.DataSource = bindingSourceUsers;
 
-			// Initialize role grid
-			gridRoles.AutoGenerateColumns = false;
-			RoleNameColumn.DataPropertyName = "RoleName";
-
-			bindingSourceRoles = new BindingSource();
-			gridRoles.DataSource = bindingSourceRoles;
-
 			// Load data
 			ReadUsers(user);
-
-			if (users.Count > 0)
-			{
-				bindingSourceRoles.DataSource = users[0].roleRows;
-			}
 		}
 
 		private void InitRightClickMenu(bool admin)
@@ -132,16 +129,6 @@ namespace Aerospike.Admin
 			bindingSourceUsers.DataSource = users;
 		}
 
-		private void UserRowEnter(object sender, DataGridViewCellEventArgs e)
-		{
-			UserRow user = users[e.RowIndex];
-
-			if (bindingSourceRoles.DataSource != user.roleRows)
-			{
-				bindingSourceRoles.DataSource = user.roleRows;
-			}
-		}
-
 		private void UserClicked(object sender, MouseEventArgs e)
 		{
 			if (e.Button == MouseButtons.Right)
@@ -185,7 +172,6 @@ namespace Aerospike.Admin
 					// Found user. Make current.
 					gridUsers.ClearSelection();
 					gridUsers.Rows[mid].Selected = true;
-					bindingSourceRoles.DataSource = users[mid].roleRows;
 					break;
 				}
 			}
@@ -257,11 +243,6 @@ namespace Aerospike.Admin
 			{
 				ReadUsers(null);
 			}
-		}
-
-		private void RoleSelectionChanged(object sender, EventArgs e)
-		{
-			gridRoles.ClearSelection();
 		}
 
 		private void RefreshClicked(object sender, EventArgs e)
