@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2020 Aerospike, Inc.
+ * Copyright 2012-2021 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -51,6 +51,7 @@ namespace Aerospike.Client
 				switch (operation.type)
 				{
 					case Operation.Type.BIT_READ:
+					case Operation.Type.EXP_READ:
 					case Operation.Type.HLL_READ:
 					case Operation.Type.MAP_READ:
 						// Map operations require respondAllOps to be true.
@@ -83,6 +84,7 @@ namespace Aerospike.Client
 						break;
 
 					case Operation.Type.BIT_MODIFY:
+					case Operation.Type.EXP_MODIFY:
 					case Operation.Type.HLL_MODIFY:
 					case Operation.Type.MAP_MODIFY:
 						// Map operations require respondAllOps to be true.

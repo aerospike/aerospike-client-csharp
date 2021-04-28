@@ -1,5 +1,5 @@
 ﻿/* 
- * Copyright 2012-2019 Aerospike, Inc.
+ * Copyright 2012-2021 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -26,10 +26,10 @@ namespace Aerospike.Test
 	[TestClass]
 	public class TestQueryExecute : TestSync
 	{
-		private const string indexName = "qeindex1";
-		private const string keyPrefix = "qekey";
-		private static readonly string binName1 = args.GetBinName("qebin1");
-		private static readonly string binName2 = args.GetBinName("qebin2");
+		private const string indexName = "tqeindex";
+		private const string keyPrefix = "tqekey";
+		private static readonly string binName1 = args.GetBinName("tqebin1");
+		private static readonly string binName2 = args.GetBinName("tqebin2");
 		private const int size = 10;
 
 		[ClassInitialize()]
@@ -182,6 +182,61 @@ namespace Aerospike.Test
 					if (!value.Equals(expected))
 					{
 						Assert.Fail("Data mismatch. Expected " + expected + ". Received " + value);
+					}
+					count++;
+				}
+				Assert.AreEqual(end - begin + 1, count);
+			}
+			finally
+			{
+				rs.Close();
+			}
+		}
+
+		[TestMethod]
+		public void QueryExecuteOperateExp()
+		{
+			string binName = "foo";
+			Expression exp = Exp.Build(Exp.Val("bar"));
+
+			int begin = 3;
+			int end = 9;
+
+			Statement stmt = new Statement();
+			stmt.SetNamespace(args.ns);
+			stmt.SetSetName(args.set);
+			stmt.SetFilter(Filter.Range(binName1, begin, end));
+
+			ExecuteTask task = client.Execute(null, stmt,
+				ExpOperation.Write(binName, exp, ExpWriteFlags.DEFAULT)
+				);
+
+			task.Wait(3000, 3000);
+
+			stmt = new Statement();
+			stmt.SetNamespace(args.ns);
+			stmt.SetSetName(args.set);
+			stmt.SetFilter(Filter.Range(binName1, begin, end));
+
+			RecordSet rs = client.Query(null, stmt);
+
+			try
+			{
+				int count = 0;
+
+				while (rs.Next())
+				{
+					Record record = rs.Record;
+					string value = record.GetString(binName);
+
+					if (value == null)
+					{
+						Assert.Fail("Bin " + binName + " not found");
+					}
+
+					if (! value.Equals("bar"))
+					{
+						Assert.Fail("Data mismatch. Expected bar. Received " + value);
 					}
 					count++;
 				}

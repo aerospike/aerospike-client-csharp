@@ -127,7 +127,10 @@
     <Compile Include="..\..\Framework\AerospikeClient\Command\WriteCommand.cs" Link="Command\WriteCommand.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Exp\BitExp.cs" Link="Exp\BitExp.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Exp\Exp.cs" Link="Exp\Exp.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Exp\ExpOperation.cs" Link="Exp\ExpOperation.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Exp\ExpReadFlags.cs" Link="Exp\ExpReadFlags.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Exp\Expression.cs" Link="Exp\Expression.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Exp\ExpWriteFlags.cs" Link="Exp\ExpWriteFlags.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Exp\HLLExp.cs" Link="Exp\HLLExp.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Exp\ListExp.cs" Link="Exp\ListExp.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Exp\MapExp.cs" Link="Exp\MapExp.cs" />

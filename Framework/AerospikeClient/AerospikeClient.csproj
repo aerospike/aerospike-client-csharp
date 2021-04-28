@@ -214,6 +214,8 @@
     <Compile Include="BCrypt\BCrypt.cs" />
     <Compile Include="BCrypt\SaltParseException.cs" />
     <Compile Include="CDT\CDT.cs" />
+    <Compile Include="Exp\ExpOperation.cs" />
+    <Compile Include="Exp\ExpReadFlags.cs" />
     <Compile Include="Exp\ListExp.cs" />
     <Compile Include="CDT\CTX.cs" />
     <Compile Include="CDT\MapWriteFlags.cs" />
@@ -263,6 +265,7 @@
     <Compile Include="Command\SyncCommand.cs" />
     <Compile Include="Command\TouchCommand.cs" />
     <Compile Include="Command\WriteCommand.cs" />
+    <Compile Include="Exp\ExpWriteFlags.cs" />
     <Compile Include="Exp\MapExp.cs" />
     <Compile Include="Listener\BatchListListener.cs" />
     <Compile Include="Listener\BatchSequenceListener.cs" />

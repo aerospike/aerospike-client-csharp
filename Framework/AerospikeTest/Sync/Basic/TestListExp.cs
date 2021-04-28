@@ -1,5 +1,5 @@
 ﻿/* 
- * Copyright 2012-2020 Aerospike, Inc.
+ * Copyright 2012-2021 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -122,6 +122,33 @@ namespace Aerospike.Test
 
 			result = record.GetList(binA);
 			Assert.AreEqual(5, result.Count);
+		}
+
+		[TestMethod]
+		public void ExpReturnsList()
+		{
+			List<Value> list = new List<Value>();
+			list.Add(Value.Get("a"));
+			list.Add(Value.Get("b"));
+			list.Add(Value.Get("c"));
+			list.Add(Value.Get("d"));
+
+			Expression exp = Exp.Build(Exp.Val(list));
+
+			Record record = client.Operate(null, keyA,
+				ExpOperation.Write(binC, exp, ExpWriteFlags.DEFAULT),
+				Operation.Get(binC),
+				ExpOperation.Read("var", exp, ExpReadFlags.DEFAULT)
+				);
+
+			IList results = record.GetList(binC);
+			Assert.AreEqual(2, results.Count);
+
+			IList rlist = (IList)results[1];
+			Assert.AreEqual(4, rlist.Count);
+
+			IList results2 = record.GetList("var");
+			Assert.AreEqual(4, results2.Count);
 		}
 	}
 }

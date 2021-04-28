@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2020 Aerospike, Inc.
+ * Copyright 2012-2021 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -105,6 +105,8 @@ namespace Aerospike.Client
 			MAP_READ,
 			MAP_MODIFY,
 			ADD,
+			EXP_READ,
+			EXP_MODIFY,
 			APPEND,
 			PREPEND,
 			TOUCH,
@@ -115,7 +117,7 @@ namespace Aerospike.Client
 			HLL_MODIFY
 		}
 
-		private static byte[] ProtocolTypes = new byte[] { 1, 1, 2, 3, 4, 3, 4, 5, 9, 10, 11, 12, 13, 14, 15, 16 };
+		private static byte[] ProtocolTypes = new byte[] { 1, 1, 2, 3, 4, 3, 4, 5, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16 };
 
 		public static byte GetProtocolType(Type type)
 		{
