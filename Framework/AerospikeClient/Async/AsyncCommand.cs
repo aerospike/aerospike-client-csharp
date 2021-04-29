@@ -297,15 +297,13 @@ namespace Aerospike.Client
 				}
 				catch (AerospikeException ae)
 				{
-					// Fail without retry on non-network errors.
 					if (ae.Result == ResultCode.TIMEOUT)
 					{
-						// Create server timeout exception.
-						command.FailOnApplicationError(new AerospikeException.Timeout(command.policy, false));
+						command.RetryServerError(new AerospikeException.Timeout(command.policy, false));
 					}
 					else if (ae.Result == ResultCode.DEVICE_OVERLOAD)
 					{
-						command.DeviceOverload(ae);
+						command.RetryServerError(ae);
 					}
 					else
 					{
@@ -611,7 +609,7 @@ namespace Aerospike.Client
 			}
 		}
 
-		private void DeviceOverload(AerospikeException ae)
+		private void RetryServerError(AerospikeException ae)
 		{
 			node.IncrErrorCount();
 
