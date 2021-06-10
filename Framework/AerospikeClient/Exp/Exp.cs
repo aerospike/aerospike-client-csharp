@@ -150,6 +150,20 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
+		/// Create boolean bin expression.
+		/// </summary>
+		/// <example>
+		/// <code>
+		/// // Boolean bin "a" == true
+		/// Exp.EQ(Exp.BoolBin("a"), Exp.Val(true))
+		/// </code>
+		/// </example>
+		public static Exp BoolBin(string name)
+		{
+			return new BinExp(name, Type.BOOL);
+		}
+
+		/// <summary>
 		/// Create byte[] bin expression.
 		/// </summary>
 		/// <example>
