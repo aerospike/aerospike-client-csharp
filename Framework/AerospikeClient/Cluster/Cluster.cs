@@ -99,6 +99,9 @@ namespace Aerospike.Client
 		// Rack id.
 		public readonly int rackId;
 
+		// Count of add node failures in the most recent cluster tend iteration.
+		private int invalidNodeCount;
+
 		// Interval in milliseconds between cluster tends.
 		private readonly int tendInterval;
 
@@ -292,43 +295,25 @@ namespace Aerospike.Client
 		/// Tend the cluster until it has stabilized and return control.
 		/// This helps avoid initial database request timeout issues when
 		/// a large number of threads are initiated at client startup.
-		/// 
-		/// At least two cluster tends are necessary. The first cluster
-		/// tend finds a seed node and obtains the seed's partition maps 
-		/// and peer nodes.  The second cluster tend requests partition 
-		/// maps from the peer nodes.
-		/// 
-		/// A third cluster tend is allowed if some peers nodes can't
-		/// be contacted.  If peer nodes are still unreachable, an
-		/// exception is thrown.
 		/// </summary>
 		private void WaitTillStabilized(bool failIfNotConnected)
 		{
-			int count = -1;
+			// Tend now requests partition maps in same iteration as the nodes
+			// are added, so there is no need to call tend twice anymore.
+			Tend(failIfNotConnected);
 
-			for (int i = 0; i < 3; i++)
+			if (nodes.Length == 0)
 			{
-				Tend(failIfNotConnected);
+				string message = "Cluster seed(s) failed";
 
-				// Check to see if cluster has changed since the last Tend().
-				// If not, assume cluster has stabilized and return.
-				if (count == nodes.Length)
+				if (failIfNotConnected)
 				{
-					return;
+					throw new AerospikeException(message);
 				}
-
-				count = nodes.Length;
-			}
-
-			string message = "Cluster not stabilized after multiple tend attempts";
-
-			if (failIfNotConnected)
-			{
-				throw new AerospikeException(message);
-			}
-			else
-			{
-				Log.Warn(message);
+				else
+				{
+					Log.Warn(message);
+				}
 			}
 		}
 
@@ -409,19 +394,7 @@ namespace Aerospike.Client
 				}
 			}
 
-			// Refresh partition map when necessary.
-			foreach (Node node in nodes)
-			{
-				if (node.partitionChanged)
-				{
-					node.RefreshPartitions(peers);
-				}
-
-				if (node.rebalanceChanged)
-				{
-					node.RefreshRacks();
-				}
-			}
+			invalidNodeCount = peers.InvalidCount;
 
 			if (peers.genChanged)
 			{
@@ -439,6 +412,20 @@ namespace Aerospike.Client
 			if (peers.nodes.Count > 0)
 			{
 				AddNodes(peers.nodes);
+			}
+
+			// Refresh partition map when necessary.
+			foreach (Node node in nodes)
+			{
+				if (node.partitionChanged)
+				{
+					node.RefreshPartitions(peers);
+				}
+
+				if (node.rebalanceChanged)
+				{
+					node.RefreshRacks();
+				}
 			}
 
 			tendCount++;
@@ -485,6 +472,8 @@ namespace Aerospike.Client
 				}
 				catch (Exception e)
 				{
+					peers.Fail(seed);
+
 					// Store exception and try next seed.
 					if (failIfNotConnected)
 					{
@@ -770,7 +759,7 @@ namespace Aerospike.Client
 			{
 				nodeStats[count++] = new NodeStats(node);
 			}
-			return new ClusterStats(nodeStats);
+			return new ClusterStats(nodeStats, invalidNodeCount);
 		}
 		
 		public bool Connected
@@ -930,6 +919,14 @@ namespace Aerospike.Client
 		public void SetErrorRateWindow(int window)
 		{
 			this.errorRateWindow = window;
+		}
+
+		/// <summary>
+		/// Return count of add node failures in the most recent cluster tend iteration.
+		/// </summary>
+		public int InvalidNodeCount
+		{
+			get { return invalidNodeCount; }
 		}
 
 		public void InterruptTendSleep()

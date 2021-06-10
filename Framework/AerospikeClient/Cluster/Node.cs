@@ -59,8 +59,8 @@ namespace Aerospike.Client
 		protected internal int failures;
 		protected internal readonly uint features;
 		private volatile int performLogin;
-		protected internal bool partitionChanged;
-		protected internal bool rebalanceChanged;
+		protected internal bool partitionChanged = true;
+		protected internal bool rebalanceChanged = true;
 		protected internal volatile bool active = true;
 
 		/// <summary>
@@ -355,6 +355,11 @@ namespace Aerospike.Client
 					// Find first host that connects.
 					foreach (Host host in peer.hosts)
 					{
+						if (peers.HasFailed(host))
+						{
+							continue;
+						}
+
 						try
 						{
 							// Attempt connection to host.
@@ -386,6 +391,8 @@ namespace Aerospike.Client
 						}
 						catch (Exception e)
 						{
+							peers.Fail(host);
+
 							if (Log.WarnEnabled())
 							{
 								Log.Warn("Add node " + host + " failed: " + Util.GetErrorMessage(e));

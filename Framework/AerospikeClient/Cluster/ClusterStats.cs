@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2020 Aerospike, Inc.
+ * Copyright 2012-2021 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -40,11 +40,17 @@ namespace Aerospike.Client
 		public readonly int completionPortsInUse;
 
 		/// <summary>
+		/// Count of add node failures in the most recent cluster tend iteration.
+		/// </summary>
+		public readonly int invalidNodeCount;
+
+		/// <summary>
 		/// Cluster statistics constructor.
 		/// </summary>
-		public ClusterStats(NodeStats[] nodes)
+		public ClusterStats(NodeStats[] nodes, int invalidNodeCount)
 		{
 			this.nodes = nodes;
+			this.invalidNodeCount = invalidNodeCount;
 
 			int workerThreadsMax;
 			int completionPortThreadsMax;
@@ -76,6 +82,8 @@ namespace Aerospike.Client
 			sb.Append("threadsInUse: " + threadsInUse);
 			sb.Append(System.Environment.NewLine);
 			sb.Append("completionPortsInUse: " + completionPortsInUse);
+			sb.Append(System.Environment.NewLine);
+			sb.Append("invalidNodeCount: " + invalidNodeCount);
 			return sb.ToString();
 		}
 	}
