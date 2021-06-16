@@ -16,6 +16,7 @@
  */
 using System;
 using System.Collections.Generic;
+using System.Text;
 using System.Threading;
 
 namespace Aerospike.Client
@@ -29,6 +30,7 @@ namespace Aerospike.Client
 		private readonly Node nodeFilter;
 		private readonly PartitionFilter partitionFilter;
 		private List<NodePartitions> nodePartitionsList;
+		private List<AerospikeException> exceptions;
 		private long maxRecords;
 		private int sleepBetweenRetries;
 		public int socketTimeout;
@@ -310,7 +312,24 @@ namespace Aerospike.Client
 			// Check if limits have been reached.
 			if (iteration > policy.maxRetries)
 			{
-				AerospikeException ae = new AerospikeException(ResultCode.MAX_RETRIES_EXCEEDED, "Max retries exceeded: " + policy.maxRetries);
+				StringBuilder sb = new StringBuilder(2048);
+				sb.Append("Max retries exceeded: ");
+				sb.Append(policy.maxRetries);
+				sb.Append(System.Environment.NewLine);
+
+				if (exceptions != null)
+				{
+					sb.Append("sub-exceptions:");
+					sb.Append(System.Environment.NewLine);
+
+					foreach (AerospikeException e in exceptions)
+					{
+						sb.Append(e.Message);
+						sb.Append(System.Environment.NewLine);
+					}
+				}
+
+				AerospikeException ae = new AerospikeException(ResultCode.MAX_RETRIES_EXCEEDED, sb.ToString());
 				ae.Policy = policy;
 				ae.Iteration = iteration;
 				throw ae;
@@ -353,6 +372,11 @@ namespace Aerospike.Client
 				case ResultCode.SERVER_NOT_AVAILABLE:
 				case ResultCode.PARTITION_UNAVAILABLE:
 				case ResultCode.TIMEOUT:
+					if (exceptions == null)
+					{
+						exceptions = new List<AerospikeException>();
+					}
+					exceptions.Add(ae);
 					return true;
 
 				default:
