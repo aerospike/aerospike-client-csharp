@@ -17,6 +17,7 @@
 using System;
 using System.IO;
 using System.Collections;
+using System.Collections.Generic;
 using System.Runtime.Serialization.Formatters.Binary;
 
 namespace Aerospike.Client
@@ -216,6 +217,21 @@ namespace Aerospike.Client
 			else
 			{
 				return new MapValue(value);
+			}
+		}
+
+		/// <summary>
+		/// Get map or null value instance.
+		/// </summary>
+		public static Value Get(IDictionary value, MapOrder order)
+		{
+			if (value == null)
+			{
+				return NullValue.Instance;
+			}
+			else
+			{
+				return new MapValue(value, order);
 			}
 		}
 
@@ -2183,16 +2199,29 @@ namespace Aerospike.Client
 		public sealed class MapValue : Value
 		{
 			internal readonly IDictionary map;
+			internal readonly MapOrder order;
 			internal byte[] bytes;
 
 			public MapValue(IDictionary map)
 			{
 				this.map = map;
+				this.order = MapOrder.UNORDERED;
+			}
+
+			public MapValue(IDictionary map, MapOrder order)
+			{
+				this.map = map;
+				this.order = order;
+			}
+
+			public MapOrder Order
+			{
+				get { return order; }
 			}
 
 			public override int EstimateSize()
 			{
-				bytes = Packer.Pack(map);
+				bytes = Packer.Pack(map, order);
 				return bytes.Length;
 			}
 
@@ -2204,7 +2233,7 @@ namespace Aerospike.Client
 
 			public override void Pack(Packer packer)
 			{
-				packer.PackMap(map);
+				packer.PackMap(map, order);
 			}
 
 			public override void ValidateKeyType()
@@ -2291,6 +2320,7 @@ namespace Aerospike.Client
 				return result;
 			}
 		}
+
 		/// <summary>
 		/// Infinity value.
 		/// </summary>

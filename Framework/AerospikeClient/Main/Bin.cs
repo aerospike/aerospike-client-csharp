@@ -253,6 +253,19 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
+		/// Create bin with a map value and order.  The map value will be serialized as a server map type.
+		/// For servers configured as "single-bin", enter a null or empty name.
+		/// </summary>
+		/// <param name="name">bin name, current limit is 14 characters</param>
+		/// <param name="value">bin value, pass in TreeMap instance if map order is sorted.</param>
+		/// <param name="mapOrder">map sorted order</param>
+		public Bin(string name, IDictionary value, MapOrder mapOrder)
+		{
+			this.name = name;
+			this.value = Value.Get(value, mapOrder);
+		}
+
+		/// <summary>
 		/// Constructor, specifying bin name and object value.
 		/// This is the slowest of the Bin constructors because the type
 		/// must be determined using multiple "instanceof" checks.
