@@ -16,7 +16,6 @@
  */
 using System;
 using System.Collections.Generic;
-using System.Text;
 
 #pragma warning disable 0618
 
@@ -1489,6 +1488,15 @@ namespace Aerospike.Client
 		private void Begin()
 		{
 			dataOffset = MSG_TOTAL_HEADER_SIZE;
+		}
+
+		internal void SkipKey(int fieldCount)
+		{
+			for (int i = 0; i < fieldCount; i++)
+			{
+				int fieldlen = ByteUtil.BytesToInt(dataBuffer, dataOffset);
+				dataOffset += 4 + fieldlen;
+			}
 		}
 
 		internal Key ParseKey(int fieldCount)

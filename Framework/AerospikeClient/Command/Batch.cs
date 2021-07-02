@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2020 Aerospike, Inc.
+ * Copyright 2012-2021 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -16,7 +16,6 @@
  */
 using System;
 using System.Collections.Generic;
-using System.Threading;
 
 namespace Aerospike.Client
 {
@@ -180,7 +179,7 @@ namespace Aerospike.Client
 		internal uint sequenceSC;
 
 		public BatchCommand(Cluster cluster, Executor parent, BatchNode batch, BatchPolicy batchPolicy)
-			: base(cluster, batchPolicy, batch.node, false)
+			: base(cluster, batchPolicy, batch.node, true)
 		{
 			this.parent = parent;
 			this.batch = batch;

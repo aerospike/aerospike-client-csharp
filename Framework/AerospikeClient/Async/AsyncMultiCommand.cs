@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2020 Aerospike, Inc.
+ * Copyright 2012-2021 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -14,9 +14,7 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using System;
 using System.Collections.Generic;
-using System.Net.Sockets;
 
 namespace Aerospike.Client
 {
@@ -31,7 +29,7 @@ namespace Aerospike.Client
 		protected internal int batchIndex;
 		protected internal int fieldCount;
 		protected internal int opCount;
-		private readonly bool stopOnNotFound;
+		private readonly bool isBatch;
 		protected internal volatile bool valid = true;
 
 		/// <summary>
@@ -42,7 +40,7 @@ namespace Aerospike.Client
 		{
 			this.executor = executor;
 			this.serverNode = node;
-			this.stopOnNotFound = false;
+			this.isBatch = true;
 		}
 
 		/// <summary>
@@ -53,14 +51,14 @@ namespace Aerospike.Client
 		{
 			this.executor = executor;
 			this.serverNode = node;
-			this.stopOnNotFound = true;
+			this.isBatch = false;
 		}
 
 		public AsyncMultiCommand(AsyncMultiCommand other) : base(other)
 		{
 			this.executor = other.executor;
 			this.serverNode = other.serverNode;
-			this.stopOnNotFound = other.stopOnNotFound;
+			this.isBatch = other.isBatch;
 		}
 
 		protected internal sealed override void ParseCommand()
@@ -99,7 +97,7 @@ namespace Aerospike.Client
 				{
 					if (resultCode == ResultCode.KEY_NOT_FOUND_ERROR || resultCode == ResultCode.FILTERED_OUT)
 					{
-						if (stopOnNotFound)
+						if (!isBatch)
 						{
 							return true;
 						}
@@ -132,8 +130,16 @@ namespace Aerospike.Client
 					throw new AerospikeException.QueryTerminated();
 				}
 
-				Key key = ParseKey(fieldCount);
-				ParseRow(key);
+				if (isBatch)
+				{
+					SkipKey(fieldCount);
+					ParseRow(null);
+				}
+				else
+				{
+					Key key = ParseKey(fieldCount);
+					ParseRow(key);
+				}
 			}
 			return false;
 		}
