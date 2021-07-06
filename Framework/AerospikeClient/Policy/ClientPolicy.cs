@@ -234,15 +234,17 @@ namespace Aerospike.Client
 		/// that contains the key and exists on the same rack as the client.  This serves to lower cloud
 		/// provider costs when nodes are distributed across different racks/data centers.
 		/// <para>
-		/// <see cref="Aerospike.Client.ClientPolicy.rackId"/>, <see cref="Aerospike.Client.Replica.PREFER_RACK"/>
-		/// and server rack configuration must also be set to enable this functionality.
+		/// <see cref="Aerospike.Client.ClientPolicy.rackId"/> or <see cref="Aerospike.Client.ClientPolicy.rackIds"/>, 
+		/// <see cref="Aerospike.Client.Replica.PREFER_RACK"/> and server rack configuration must also be set to
+		/// enable this functionality.
 		/// </para>
 		/// <para>Default: false</para>
 		/// </summary>
 		public bool rackAware;
 
 		/// <summary>
-		/// Rack where this client instance resides.
+		/// Rack where this client instance resides. If <see cref="Aerospike.Client.ClientPolicy.rackIds"/> is set,
+		/// rackId is ignored.
 		/// <para>
 		/// <see cref="Aerospike.Client.ClientPolicy.rackAware"/>, <see cref="Aerospike.Client.Replica.PREFER_RACK"/>
 		/// and server rack configuration must also be set to enable this functionality.
@@ -251,6 +253,17 @@ namespace Aerospike.Client
 		/// </summary>
 		public int rackId;
 
+		/// <summary>
+		/// List of acceptable racks in order of preference.
+		/// If rackIds is set, <see cref="Aerospike.Client.ClientPolicy.rackId"/> is ignored.
+		/// <para>
+		/// <see cref="Aerospike.Client.ClientPolicy.rackAware"/>, <see cref="Aerospike.Client.Replica.PREFER_RACK"/>
+		/// and server rack configuration must also be set to enable this functionality.
+		/// </para>
+		/// <para>Default: null</para>
+		/// </summary>
+		public List<int> rackIds;
+		
 		/// <summary>
 		/// Copy client policy from another client policy.
 		/// </summary>
@@ -281,6 +294,7 @@ namespace Aerospike.Client
 			this.useServicesAlternate = other.useServicesAlternate;
 			this.rackAware = other.rackAware;
 			this.rackId = other.rackId;
+			this.rackIds = (other.rackIds != null) ? new List<int>(other.rackIds) : null;
 		}
 
 		/// <summary>

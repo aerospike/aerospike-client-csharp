@@ -95,9 +95,9 @@ namespace Aerospike.Client
 
 		// Maximum socket idle to trim peak connections to min connections.
 		private readonly double maxSocketIdleMillisTrim;
-	
-		// Rack id.
-		public readonly int rackId;
+
+		// Rack ids.
+		public readonly int[] rackIds;
 
 		// Count of add node failures in the most recent cluster tend iteration.
 		private int invalidNodeCount;
@@ -206,7 +206,15 @@ namespace Aerospike.Client
 			ipMap = policy.ipMap;
 			useServicesAlternate = policy.useServicesAlternate;
 			rackAware = policy.rackAware;
-			rackId = policy.rackId;
+
+			if (policy.rackIds != null && policy.rackIds.Count > 0)
+			{
+				rackIds = policy.rackIds.ToArray();
+			}
+			else
+			{
+				rackIds = new int[] { policy.rackId };
+			}
 
 			aliases = new Dictionary<Host, Node>();
 			nodesMap = new Dictionary<string, Node>();

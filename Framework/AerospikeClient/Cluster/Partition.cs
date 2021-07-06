@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2020 Aerospike, Inc.
+ * Copyright 2012-2021 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -116,6 +116,7 @@ namespace Aerospike.Client
 
 		private readonly Partitions partitions;
 		private readonly string ns;
+		private Node prevNode;
 		private readonly Replica replica;
 		public readonly uint partitionId;
 		private uint sequence;
@@ -194,10 +195,11 @@ namespace Aerospike.Client
 		public Node GetSequenceNode(Cluster cluster)
 		{
 			Node[][] replicas = partitions.replicas;
+			uint max = (uint)replicas.Length;
 
-			for (int i = 0; i < replicas.Length; i++)
+			for (uint i = 0; i < max; i++)
 			{
-				uint index = sequence % (uint)replicas.Length;
+				uint index = sequence % max;
 				Node node = Volatile.Read(ref replicas[index][partitionId]);
 
 				if (node != null && node.Active)
@@ -213,41 +215,42 @@ namespace Aerospike.Client
 		private Node GetRackNode(Cluster cluster)
 		{
 			Node[][] replicas = partitions.replicas;
-			Node fallback = null;
-			bool retry = (sequence > 0);
+			uint max = (uint)replicas.Length;
 
-			for (int i = 1; i <= replicas.Length; i++)
+			foreach (int rackId in cluster.rackIds)
 			{
-				uint index = sequence % (uint)replicas.Length;
+				uint seq = sequence;
+
+				for (uint i = 0; i < max; i++)
+				{
+					uint index = seq % max;
+					Node node = Volatile.Read(ref replicas[index][partitionId]);
+
+					// If a fallback exists, do not retry on node where command failed
+					// even if node is the only one on the same rack.
+					if (node != null && node != prevNode && node.HasRack(ns, rackId) && node.Active)
+					{
+						prevNode = node;
+						sequence = seq;
+						return node;
+					}
+					seq++;
+				}
+			}
+
+			// Fallback to sequence mode and save previous node as well.
+			for (uint i = 0; i < max; i++)
+			{
+				uint index = sequence % max;
 				Node node = Volatile.Read(ref replicas[index][partitionId]);
 
 				if (node != null && node.Active)
 				{
-					// If fallback exists, do not retry on node where command failed,
-					// even if fallback is not on the same rack.
-					if (retry && fallback != null && i == replicas.Length)
-					{
-						return fallback;
-					}
-
-					if (node.HasRack(ns, cluster.rackId))
-					{
-						return node;
-					}
-
-					if (fallback == null)
-					{
-						fallback = node;
-					}
+					prevNode = node;
+					return node;
 				}
 				sequence++;
 			}
-
-			if (fallback != null)
-			{
-				return fallback;
-			}
-
 			Node[] nodeArray = cluster.Nodes;
 			throw new AerospikeException.InvalidNode(nodeArray.Length, this);
 		}
