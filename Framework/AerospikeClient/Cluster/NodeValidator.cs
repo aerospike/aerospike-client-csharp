@@ -398,9 +398,7 @@ namespace Aerospike.Client
 							{
 								if (this.sessionToken != null)
 								{
-									AdminCommand admin = new AdminCommand(ThreadLocalData.GetBuffer(), 0);
-
-									if (!admin.Authenticate(cluster, conn, this.sessionToken))
+									if (!AdminCommand.Authenticate(cluster, conn, this.sessionToken))
 									{
 										throw new AerospikeException("Authentication failed");
 									}
@@ -490,9 +488,7 @@ namespace Aerospike.Client
 							{
 								if (sessionToken != null)
 								{
-									AdminCommand admin = new AdminCommand(ThreadLocalData.GetBuffer(), 0);
-
-									if (!admin.Authenticate(cluster, clearConn, sessionToken))
+									if (!AdminCommand.Authenticate(cluster, clearConn, sessionToken))
 									{
 										throw new AerospikeException("Authentication failed");
 									}

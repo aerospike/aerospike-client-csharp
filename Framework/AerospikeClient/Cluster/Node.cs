@@ -18,7 +18,6 @@ using System;
 using System.Net;
 using System.Threading;
 using System.Collections.Generic;
-using System.Collections.Concurrent;
 
 namespace Aerospike.Client
 {
@@ -43,8 +42,8 @@ namespace Aerospike.Client
 		protected internal readonly List<Host> aliases;
 		protected internal readonly IPEndPoint address;
 		private Connection tendConnection;
-		protected internal byte[] sessionToken;
-		protected internal DateTime? sessionExpiration;
+		private byte[] sessionToken;
+		private DateTime? sessionExpiration;
 		private volatile Dictionary<string,int> racks;
 		private readonly Pool<Connection>[] connectionPools;
 		protected uint connectionIter;
@@ -141,27 +140,31 @@ namespace Aerospike.Client
 
 					if (cluster.user != null)
 					{
-						if (!EnsureLogin())
+						if (ShouldLogin())
 						{
-							if (sessionToken != null)
-							{
-								AdminCommand command = new AdminCommand(ThreadLocalData.GetBuffer(), 0);
+							Login();
+						}
+						else
+						{
+							byte[] token = sessionToken;
 
-								if (!command.Authenticate(cluster, tendConnection, sessionToken))
+							if (token != null)
+							{
+								if (!AdminCommand.Authenticate(cluster, tendConnection, token))
 								{
-									// Authentication failed.  Session token probably expired.
-									// Must login again to get new session token.
-									command.Login(cluster, tendConnection, out sessionToken, out sessionExpiration);
+									// Authentication failed. Session token probably expired.
+									// Login again to get new session token.
+									Login();
 								}
-							}								
+							}
 						}
 					}
 				}
 				else
 				{
-					if (cluster.user != null)
+					if (cluster.user != null && ShouldLogin())
 					{
-						EnsureLogin();
+						Login();
 					}
 				}
 
@@ -197,17 +200,33 @@ namespace Aerospike.Client
 				RefreshFailed(e);
 			}
 		}
-	
-		private bool EnsureLogin()
+
+		private bool ShouldLogin()
 		{
-			if (performLogin > 0 || (sessionExpiration.HasValue && DateTime.Compare(DateTime.UtcNow, sessionExpiration.Value) >= 0))
+			return performLogin > 0 || (sessionExpiration.HasValue && 
+				DateTime.Compare(DateTime.UtcNow, sessionExpiration.Value) >= 0);
+		}
+
+		private void Login()
+		{
+			if (Log.InfoEnabled())
+			{
+				Log.Info("Login to " + this);
+			}
+
+			try
 			{
 				AdminCommand admin = new AdminCommand(ThreadLocalData.GetBuffer(), 0);
-				admin.Login(cluster, tendConnection, out sessionToken, out sessionExpiration);
-				performLogin = 0;
-				return true;
+				byte[] token;
+				admin.Login(cluster, tendConnection, out token, out sessionExpiration);
+				Volatile.Write(ref sessionToken, token);
+				Interlocked.Exchange(ref performLogin, 0);
 			}
-			return false;
+			catch (Exception)
+			{
+				Interlocked.Exchange(ref performLogin, 1);
+				throw;
+			}
 		}
 	
 		public void SignalLogin()
@@ -274,6 +293,12 @@ namespace Aerospike.Client
 				if (cluster.maxErrorRate > 0)
 				{
 					ResetErrorCount();
+				}
+
+				// Login when user authentication is enabled.
+				if (cluster.user != null)
+				{
+					Login();
 				}
 
 				// Balance connections.
@@ -559,14 +584,15 @@ namespace Aerospike.Client
 				throw;
 			}
 
-			if (sessionToken != null)
+			byte[] token = sessionToken;
+
+			if (token != null)
 			{
 				try
 				{
-					AdminCommand command = new AdminCommand(ThreadLocalData.GetBuffer(), 0);
-
-					if (!command.Authenticate(cluster, conn, sessionToken))
+					if (!AdminCommand.Authenticate(cluster, conn, token))
 					{
+						Interlocked.Exchange(ref performLogin, 1);
 						throw new AerospikeException("Authentication failed");
 					}
 				}
@@ -644,15 +670,13 @@ namespace Aerospike.Client
 						throw;
 					}
 
-					byte[] token = this.sessionToken;
+					byte[] token = SessionToken;
 
 					if (token != null)
 					{
 						try
 						{
-							AdminCommand command = new AdminCommand(ThreadLocalData.GetBuffer(), 0);
-
-							if (!command.Authenticate(cluster, conn, token))
+							if (!AdminCommand.Authenticate(cluster, conn, token))
 							{
 								SignalLogin();
 								throw new AerospikeException("Authentication failed");
@@ -896,6 +920,11 @@ namespace Aerospike.Client
 			{
 				return name;
 			}
+		}
+
+		public byte[] SessionToken
+		{
+			get { return Volatile.Read(ref sessionToken); }
 		}
 
 		/*

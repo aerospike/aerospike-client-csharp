@@ -168,7 +168,7 @@ namespace Aerospike.Client
 			this.listener = listener;
 			this.eventArgs = args;
 			this.eventArgs.UserToken = this;
-			this.sessionToken = node.sessionToken;
+			this.sessionToken = node.SessionToken;
 			this.dataBuffer = (this.sessionToken != null) ? new byte[256] : null; ;
 
 			this.watch = Stopwatch.StartNew();
