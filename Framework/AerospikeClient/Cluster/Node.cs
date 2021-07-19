@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2020 Aerospike, Inc.
+ * Copyright 2012-2021 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -18,7 +18,6 @@ using System;
 using System.Net;
 using System.Threading;
 using System.Collections.Generic;
-using System.Collections.Concurrent;
 
 namespace Aerospike.Client
 {
@@ -51,8 +50,8 @@ namespace Aerospike.Client
 		protected internal readonly List<Host> aliases;
 		protected internal readonly IPEndPoint address;
 		private Connection tendConnection;
-		protected internal byte[] sessionToken;
-		protected internal DateTime? sessionExpiration;
+		internal volatile byte[] sessionToken;
+		private DateTime? sessionExpiration;
 		private volatile Dictionary<string,int> racks;
 		private readonly Pool<Connection>[] connectionPools;
 		protected uint connectionIter;
@@ -148,32 +147,31 @@ namespace Aerospike.Client
 
 					if (cluster.user != null)
 					{
-						try
+						if (ShouldLogin())
 						{
-							if (!EnsureLogin())
-							{
-								AdminCommand command = new AdminCommand(ThreadLocalData.GetBuffer(), 0);
-
-								if (!command.Authenticate(cluster, tendConnection, sessionToken))
-								{
-									// Authentication failed.  Session token probably expired.
-									// Must login again to get new session token.
-									command.Login(cluster, tendConnection, out sessionToken, out sessionExpiration);
-								}								
-							}
+							Login();
 						}
-						catch (Exception)
+						else
 						{
-							tendConnection.Close(this);
-							throw;
+							byte[] token = sessionToken;
+
+							if (token != null)
+							{
+								if (!AdminCommand.Authenticate(cluster, tendConnection, token))
+								{
+									// Authentication failed. Session token probably expired.
+									// Login again to get new session token.
+									Login();
+								}
+							}
 						}
 					}
 				}
 				else
 				{
-					if (cluster.user != null)
+					if (cluster.user != null && ShouldLogin())
 					{
-						EnsureLogin();
+						Login();
 					}
 				}
 
@@ -214,17 +212,33 @@ namespace Aerospike.Client
 				RefreshFailed(e);
 			}
 		}
-	
-		private bool EnsureLogin()
+
+		private bool ShouldLogin()
 		{
-			if (performLogin > 0 || (sessionExpiration.HasValue && DateTime.Compare(DateTime.UtcNow, sessionExpiration.Value) >= 0))
+			return performLogin > 0 || (sessionExpiration.HasValue && 
+				DateTime.Compare(DateTime.UtcNow, sessionExpiration.Value) >= 0);
+		}
+
+		private void Login()
+		{
+			if (Log.InfoEnabled())
+			{
+				Log.Info("Login to " + this);
+			}
+
+			try
 			{
 				AdminCommand admin = new AdminCommand(ThreadLocalData.GetBuffer(), 0);
-				admin.Login(cluster, tendConnection, out sessionToken, out sessionExpiration);
-				performLogin = 0;
-				return true;
+				byte[] token;
+				admin.Login(cluster, tendConnection, out token, out sessionExpiration);
+				sessionToken = token;
+				Interlocked.Exchange(ref performLogin, 0);
 			}
-			return false;
+			catch (Exception)
+			{
+				Interlocked.Exchange(ref performLogin, 1);
+				throw;
+			}
 		}
 	
 		public void SignalLogin()
@@ -271,6 +285,34 @@ namespace Aerospike.Client
 			if (peersGeneration != gen)
 			{
 				peers.genChanged = true;
+
+				if (peersGeneration > gen)
+				{
+					if (Log.InfoEnabled())
+					{
+						Log.Info("Quick node restart detected: node=" + this + " oldgen=" + peersGeneration + " newgen=" + gen);
+					}
+					Restart();
+				}
+			}
+		}
+
+		private void Restart()
+		{
+			try
+			{
+				// Login when user authentication is enabled.
+				if (cluster.user != null)
+				{
+					Login();
+				}
+			}
+			catch (Exception e)
+			{
+				if (Log.WarnEnabled())
+				{
+					Log.Warn("Node restart failed: " + this + ' ' + Util.GetErrorMessage(e));
+				}
 			}
 		}
 
@@ -622,20 +664,24 @@ namespace Aerospike.Client
 
 			if (cluster.user != null)
 			{
-				try
-				{
-					AdminCommand command = new AdminCommand(ThreadLocalData.GetBuffer(), 0);
+				byte[] token = sessionToken;
 
-					if (!command.Authenticate(cluster, conn, sessionToken))
-					{
-						throw new AerospikeException("Authentication failed");
-					}
-				}
-				catch (Exception)
+				if (token != null)
 				{
-					// Socket not authenticated.  Do not put back into pool.
-					CloseConnection(conn);
-					throw;
+					try
+					{
+						if (!AdminCommand.Authenticate(cluster, conn, token))
+						{
+							Interlocked.Exchange(ref performLogin, 1);
+							throw new AerospikeException("Authentication failed");
+						}
+					}
+					catch (Exception)
+					{
+						// Socket not authenticated.  Do not put back into pool.
+						CloseConnection(conn);
+						throw;
+					}
 				}
 			}
 			return conn;
@@ -707,21 +753,24 @@ namespace Aerospike.Client
 
 					if (cluster.user != null)
 					{
-						try
-						{
-							AdminCommand command = new AdminCommand(ThreadLocalData.GetBuffer(), 0);
+						byte[] token = sessionToken;
 
-							if (!command.Authenticate(cluster, conn, sessionToken))
-							{
-								SignalLogin();
-								throw new AerospikeException("Authentication failed");
-							}
-						}
-						catch (Exception)
+						if (token != null)
 						{
-							// Socket not authenticated.  Do not put back into pool.
-							CloseConnection(conn);
-							throw;
+							try
+							{
+								if (!AdminCommand.Authenticate(cluster, conn, token))
+								{
+									SignalLogin();
+									throw new AerospikeException("Authentication failed");
+								}
+							}
+							catch (Exception)
+							{
+								// Socket not authenticated.  Do not put back into pool.
+								CloseConnection(conn);
+								throw;
+							}
 						}
 					}
 					return conn;

@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2020 Aerospike, Inc.
+ * Copyright 2012-2021 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -304,16 +304,21 @@ namespace Aerospike.Client
 		{
 			if (cluster.user != null)
 			{
-				inAuthenticate = true;
-				// Authentication messages are small.  Set a reasonable upper bound.
-				dataOffset = 200;
-				SizeBuffer();
+				byte[] token = node.sessionToken;
 
-				AdminCommand command = new AdminCommand(dataBuffer, dataOffset);
-				dataLength = command.SetAuthenticate(cluster, node.sessionToken);
-				eventArgs.SetBuffer(dataBuffer, dataOffset, dataLength - dataOffset);
-				Send();
-				return;
+				if (token != null)
+				{
+					inAuthenticate = true;
+					// Authentication messages are small.  Set a reasonable upper bound.
+					dataOffset = 200;
+					SizeBuffer();
+
+					AdminCommand command = new AdminCommand(dataBuffer, dataOffset);
+					dataLength = command.SetAuthenticate(cluster, token);
+					eventArgs.SetBuffer(dataBuffer, dataOffset, dataLength - dataOffset);
+					Send();
+					return;
+				}
 			}
 			ConnectionReady();
 		}

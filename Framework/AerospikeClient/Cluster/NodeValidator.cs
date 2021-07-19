@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2020 Aerospike, Inc.
+ * Copyright 2012-2021 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -419,11 +419,9 @@ namespace Aerospike.Client
 
 							try
 							{
-								if (cluster.user != null)
+								if (cluster.user != null && sessionToken != null)
 								{
-									AdminCommand admin = new AdminCommand(ThreadLocalData.GetBuffer(), 0);
-
-									if (!admin.Authenticate(cluster, conn, this.sessionToken))
+									if (!AdminCommand.Authenticate(cluster, conn, this.sessionToken))
 									{
 										throw new AerospikeException("Authentication failed");
 									}
@@ -511,11 +509,12 @@ namespace Aerospike.Client
 
 							try
 							{
-								AdminCommand admin = new AdminCommand(ThreadLocalData.GetBuffer(), 0);
-
-								if (! admin.Authenticate(cluster, clearConn, sessionToken))
+								if (cluster.user != null && sessionToken != null)
 								{
-									throw new AerospikeException("Authentication failed");
+									if (!AdminCommand.Authenticate(cluster, clearConn, sessionToken))
+									{
+										throw new AerospikeException("Authentication failed");
+									}
 								}
 								return; // Authenticated clear connection.
 							}

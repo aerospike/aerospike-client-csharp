@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2020 Aerospike, Inc.
+ * Copyright 2012-2021 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -49,13 +49,19 @@ namespace Aerospike.Client
 
 			for (int i = 0; i < this.maxConcurrent; i++)
 			{
-				SocketAsyncEventArgs eventArgs = new SocketAsyncEventArgs();
-				eventArgs.RemoteEndPoint = node.address;
-				eventArgs.Completed += AsyncConnector.SocketListener;
+				try
+				{
+					SocketAsyncEventArgs eventArgs = new SocketAsyncEventArgs();
+					eventArgs.RemoteEndPoint = node.address;
+					eventArgs.Completed += AsyncConnector.SocketListener;
 
-				byte[] dataBuffer = (cluster.user != null) ? new byte[256] : null;
-
-				new AsyncConnector(cluster, node, this, eventArgs, dataBuffer);
+					new AsyncConnector(cluster, node, this, eventArgs);
+				}
+				catch (Exception e)
+				{
+					OnFailure("Node " + node + " failed to create connection: " + e.Message);
+					return;
+				}
 			}
 
 			if (wait)
@@ -76,7 +82,14 @@ namespace Aerospike.Client
 				if (next < maxConnections && !completed)
 				{
 					// Create next connection.
-					new AsyncConnector(cluster, node, this, eventArgs, dataBuffer);
+					try
+					{
+						new AsyncConnector(cluster, node, this, eventArgs);
+					}
+					catch (Exception e)
+					{
+						OnFailure("Node " + node + " failed to create connection: " + e.Message);
+					}
 				}
 			}
 			else
@@ -134,6 +147,7 @@ namespace Aerospike.Client
 		private readonly AsyncNode node;
 		private readonly ConnectorListener listener;
 		private readonly SocketAsyncEventArgs eventArgs;
+		private readonly byte[] sessionToken;
 		private readonly byte[] dataBuffer;
 		private readonly Stopwatch watch;
 		private AsyncConnection conn;
@@ -146,8 +160,7 @@ namespace Aerospike.Client
 			AsyncCluster cluster,
 			AsyncNode node,
 			ConnectorListener listener,
-			SocketAsyncEventArgs args,
-			byte[] buffer
+			SocketAsyncEventArgs args
 		)
 		{
 			this.cluster = cluster;
@@ -155,7 +168,17 @@ namespace Aerospike.Client
 			this.listener = listener;
 			this.eventArgs = args;
 			this.eventArgs.UserToken = this;
-			this.dataBuffer = buffer;
+
+			if (cluster.user != null)
+			{
+				this.sessionToken = node.sessionToken;
+				this.dataBuffer = (this.sessionToken != null) ? new byte[256] : null;
+			}
+			else
+			{
+				this.sessionToken = null;
+				this.dataBuffer = null;
+			}
 
 			this.watch = Stopwatch.StartNew();
 			AsyncTimeoutQueue.Instance.Add(this, cluster.connectionTimeout);
@@ -174,7 +197,7 @@ namespace Aerospike.Client
 			if (cluster.user != null)
 			{
 				AdminCommand command = new AdminCommand(dataBuffer, 0);
-				dataLength = command.SetAuthenticate(cluster, node.sessionToken);
+				dataLength = command.SetAuthenticate(cluster, sessionToken);
 				eventArgs.SetBuffer(dataBuffer, 0, dataLength);
 				dataOffset = 0;
 				Send();

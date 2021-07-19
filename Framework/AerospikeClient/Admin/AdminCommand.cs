@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2019 Aerospike, Inc.
+ * Copyright 2012-2021 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -16,7 +16,6 @@
  */
 using System;
 using System.Collections.Generic;
-using System.Text;
 
 namespace Aerospike.Client
 {
@@ -81,8 +80,6 @@ namespace Aerospike.Client
 
 		public void Login(Cluster cluster, Connection conn, out byte[] sessionToken, out DateTime? sessionExpiration)
 		{
-			sessionToken = null;
-			sessionExpiration = null;
 			dataOffset = 8;
 
 			conn.SetTimeout(cluster.loginTimeout);
@@ -114,12 +111,16 @@ namespace Aerospike.Client
 					{
 						// New login not supported.  Try old authentication.
 						AuthenticateOld(cluster, conn);
+						sessionToken = null;
+						sessionExpiration = null;
 						return;
 					}
 
 					if (result == ResultCode.SECURITY_NOT_ENABLED)
 					{
 						// Server does not require login.
+						sessionToken = null;
+						sessionExpiration = null;
 						return;
 					}
 
@@ -140,6 +141,9 @@ namespace Aerospike.Client
 				conn.ReadFully(dataBuffer, receiveSize);
 				dataOffset = 0;
 
+				byte[] token = null;
+				DateTime? ttl = null; 
+
 				for (int i = 0; i < fieldCount; i++)
 				{
 					int len = ByteUtil.BytesToInt(dataBuffer, dataOffset);
@@ -149,8 +153,8 @@ namespace Aerospike.Client
 
 					if (id == SESSION_TOKEN)
 					{
-						sessionToken = new byte[len];
-						Array.Copy(dataBuffer, dataOffset, sessionToken, 0, len);
+						token = new byte[len];
+						Array.Copy(dataBuffer, dataOffset, token, 0, len);
 					}
 					else if (id == SESSION_TTL)
 					{
@@ -159,20 +163,27 @@ namespace Aerospike.Client
 
 						if (seconds > 0)
 						{
-							sessionExpiration = DateTime.UtcNow.AddSeconds(seconds);
+							ttl = DateTime.UtcNow.AddSeconds(seconds);
 						}
 						else
 						{
-							Log.Warn("Invalid session TTL: " + seconds);
+							throw new AerospikeException("Invalid session expiration: " + seconds);
 						}
 					}
 					dataOffset += len;
 				}
 
-				if (sessionToken == null)
+				if (token == null)
 				{
-					throw new AerospikeException(result, "Failed to retrieve session token");
+					throw new AerospikeException("Failed to retrieve session token");
 				}
+
+				if (ttl == null)
+				{
+					throw new AerospikeException("Failed to retrieve session expiration");
+				}
+				sessionToken = token;
+				sessionExpiration = ttl;
 			}
 			finally
 			{
@@ -180,7 +191,13 @@ namespace Aerospike.Client
 			}
 		}
 
-		public bool Authenticate(Cluster cluster, Connection conn, byte[] sessionToken)
+		public static bool Authenticate(Cluster cluster, Connection conn, byte[] sessionToken)
+		{
+			AdminCommand command = new AdminCommand(ThreadLocalData.GetBuffer(), 0);
+			return command.AuthenticateSession(cluster, conn, sessionToken);
+		}
+
+		public bool AuthenticateSession(Cluster cluster, Connection conn, byte[] sessionToken)
 		{
 			dataOffset = 8;
 			SetAuthenticate(cluster, sessionToken);
