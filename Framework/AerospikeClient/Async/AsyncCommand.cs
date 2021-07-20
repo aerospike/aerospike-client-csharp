@@ -330,20 +330,23 @@ namespace Aerospike.Client
 
 		private void ConnectionCreated()
 		{
-			byte[] token = node.SessionToken;
-
-			if (token != null)
+			if (cluster.user != null)
 			{
-				inAuthenticate = true;
-				// Authentication messages are small.  Set a reasonable upper bound.
-				dataOffset = 200;
-				SizeBuffer();
+				byte[] token = node.SessionToken;
 
-				AdminCommand command = new AdminCommand(dataBuffer, dataOffset);
-				dataLength = command.SetAuthenticate(cluster, token);
-				eventArgs.SetBuffer(dataBuffer, dataOffset, dataLength - dataOffset);
-				Send();
-				return;
+				if (token != null)
+				{
+					inAuthenticate = true;
+					// Authentication messages are small.  Set a reasonable upper bound.
+					dataOffset = 200;
+					SizeBuffer();
+
+					AdminCommand command = new AdminCommand(dataBuffer, dataOffset);
+					dataLength = command.SetAuthenticate(cluster, token);
+					eventArgs.SetBuffer(dataBuffer, dataOffset, dataLength - dataOffset);
+					Send();
+					return;
+				}
 			}
 			ConnectionReady();
 		}

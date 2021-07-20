@@ -168,8 +168,17 @@ namespace Aerospike.Client
 			this.listener = listener;
 			this.eventArgs = args;
 			this.eventArgs.UserToken = this;
-			this.sessionToken = node.SessionToken;
-			this.dataBuffer = (this.sessionToken != null) ? new byte[256] : null; ;
+
+			if (cluster.user != null)
+			{
+				this.sessionToken = node.SessionToken;
+				this.dataBuffer = (this.sessionToken != null) ? new byte[256] : null;
+			}
+			else
+			{
+				this.sessionToken = null;
+				this.dataBuffer = null;
+			}
 
 			this.watch = Stopwatch.StartNew();
 			AsyncTimeoutQueue.Instance.Add(this, cluster.connectionTimeout);

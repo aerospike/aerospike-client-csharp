@@ -670,23 +670,26 @@ namespace Aerospike.Client
 						throw;
 					}
 
-					byte[] token = SessionToken;
-
-					if (token != null)
+					if (cluster.user != null)
 					{
-						try
+						byte[] token = SessionToken;
+
+						if (token != null)
 						{
-							if (!AdminCommand.Authenticate(cluster, conn, token))
+							try
 							{
-								SignalLogin();
-								throw new AerospikeException("Authentication failed");
+								if (!AdminCommand.Authenticate(cluster, conn, token))
+								{
+									SignalLogin();
+									throw new AerospikeException("Authentication failed");
+								}
 							}
-						}
-						catch (Exception)
-						{
-							// Socket not authenticated.  Do not put back into pool.
-							CloseConnectionOnError(conn);
-							throw;
+							catch (Exception)
+							{
+								// Socket not authenticated.  Do not put back into pool.
+								CloseConnectionOnError(conn);
+								throw;
+							}
 						}
 					}
 					return conn;
