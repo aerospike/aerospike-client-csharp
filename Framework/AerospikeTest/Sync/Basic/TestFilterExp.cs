@@ -169,6 +169,11 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void FilterExpDurableDelete()
 		{
+			if (!args.enterprise)
+			{
+				return;
+			}
+
 			WritePolicy policy = new WritePolicy();
 			policy.filterExp = Exp.Build(Exp.EQ(Exp.IntBin(binA), Exp.Val(1)));
 			policy.durableDelete = true;
@@ -187,6 +192,11 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void FilterExpDurableDeleteExcept()
 		{
+			if (!args.enterprise)
+			{
+				return;
+			}
+
 			WritePolicy policy = new WritePolicy();
 			policy.filterExp = Exp.Build(Exp.EQ(Exp.IntBin(binA), Exp.Val(1)));
 			policy.failOnFilteredOut = true;
