@@ -33,12 +33,7 @@ namespace Aerospike.Demo
 		/// Asynchronous UDF example.
 		/// </summary>
 		public override void RunExample(AsyncClient client, Arguments args)
-		{
-			if (! args.hasUdf) {
-				console.Info("Execute functions are not supported by the connected Aerospike server.");
-				return;
-			}
-		
+		{		
 			Register(client, args);
 			WriteUsingUdfAsync(client, args);
 			WaitTillComplete();

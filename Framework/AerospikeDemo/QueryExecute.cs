@@ -30,11 +30,6 @@ namespace Aerospike.Demo
 		/// </summary>
 		public override void RunExample(AerospikeClient client, Arguments args)
 		{
-			if (!args.hasUdf)
-			{
-				console.Info("Query functions are not supported by the connected Aerospike server.");
-				return;
-			}
 			string indexName = "qeindex1";
 			string keyPrefix = "qekey";
 			string binName1 = args.GetBinName("qebin1");

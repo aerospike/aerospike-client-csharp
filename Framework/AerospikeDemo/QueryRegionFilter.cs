@@ -31,12 +31,6 @@ namespace Aerospike.Demo
 		/// </summary>
 		public override void RunExample(AerospikeClient client, Arguments args)
 		{
-			if (!args.hasGeo)
-			{
-				console.Info("Geospatial functions are not supported by the connected Aerospike server.");
-				return;
-			}
-
 			string indexName = "filterindexloc";
 			string keyPrefix = "filterkeyloc";
 			string binName1 = args.GetBinName("filterloc");

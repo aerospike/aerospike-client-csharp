@@ -34,11 +34,6 @@ namespace Aerospike.Demo
 		/// </summary>
 		public override void RunExample(AerospikeClient client, Arguments args)
 		{
-			if (! args.hasCDTMap)
-			{
-				console.Info("CDT map functions are not supported by the connected Aerospike server.");
-				return;
-			}	
 			RunSimpleExample(client, args);
 			RunScoreExample(client, args);
 			RunListRangeExample(client, args);
