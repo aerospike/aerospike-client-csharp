@@ -103,13 +103,8 @@ namespace Aerospike.Client
 		{
 			try
 			{
-				node.Refresh(peers);
-
-				if (peers.genChanged)
-				{
-					peers.refreshCount = 0;
-					node.RefreshPeers(peers);
-				}
+				peers.refreshCount = 0;
+				node.RefreshPeers(peers);
 			}
 			catch (Exception)
 			{

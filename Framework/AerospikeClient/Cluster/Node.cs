@@ -59,7 +59,7 @@ namespace Aerospike.Client
 		protected internal readonly uint features;
 		private volatile int performLogin;
 		protected internal bool partitionChanged = true;
-		protected internal bool rebalanceChanged = true;
+		protected internal bool rebalanceChanged;
 		protected internal volatile bool active = true;
 
 		/// <summary>
@@ -78,15 +78,8 @@ namespace Aerospike.Client
 			this.sessionToken = nv.sessionToken;
 			this.sessionExpiration = nv.sessionExpiration;
 			this.features = nv.features;
-
-			if (cluster.rackAware)
-			{
-				this.racks = new Dictionary<string, int>();
-			}
-			else
-			{
-				this.racks = null;
-			}
+			this.rebalanceChanged = cluster.rackAware;
+			this.racks = cluster.rackAware ? new Dictionary<string, int>() : null;
 
 			connectionPools = new Pool<Connection>[cluster.connPoolsPerNode];
 			int min = cluster.minConnsPerNode / cluster.connPoolsPerNode;
@@ -186,11 +179,7 @@ namespace Aerospike.Client
 				{
 					peers.genChanged = true;
 					partitionChanged = true;
-
-					if (cluster.rackAware)
-					{
-						rebalanceChanged = true;
-					}
+					rebalanceChanged = cluster.rackAware;
 				}
 				failures = 0;
 			}
