@@ -330,7 +330,7 @@ namespace Aerospike.Client
 
 		private void ConnectionCreated()
 		{
-			if (cluster.user != null)
+			if (cluster.authEnabled)
 			{
 				byte[] token = node.SessionToken;
 

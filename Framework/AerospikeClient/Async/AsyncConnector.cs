@@ -169,7 +169,7 @@ namespace Aerospike.Client
 			this.eventArgs = args;
 			this.eventArgs.UserToken = this;
 
-			if (cluster.user != null)
+			if (cluster.authEnabled)
 			{
 				this.sessionToken = node.SessionToken;
 				this.dataBuffer = (this.sessionToken != null) ? new byte[256] : null;

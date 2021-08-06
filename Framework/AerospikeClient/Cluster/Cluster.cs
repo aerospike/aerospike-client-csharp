@@ -119,7 +119,10 @@ namespace Aerospike.Client
 
 		// Request server rack ids.
 		internal readonly bool rackAware;
-		
+
+		// Is authentication enabled
+		public readonly bool authEnabled;
+
 		public Cluster(ClientPolicy policy, Host[] hosts)
 		{
 			this.clusterName = policy.clusterName;
@@ -152,8 +155,14 @@ namespace Aerospike.Client
 
 			this.seeds = hosts;
 
-			if (policy.user != null && policy.user.Length > 0)
+			if (policy.authMode == AuthMode.PKI)
 			{
+				this.authEnabled = true;
+				this.user = null;
+			}
+			else if (policy.user != null && policy.user.Length > 0)
+			{
+				this.authEnabled = true;
 				this.user = ByteUtil.StringToUtf8(policy.user);
 
 				// Only store clear text password if external authentication is used.
@@ -171,6 +180,11 @@ namespace Aerospike.Client
 
 				pass = AdminCommand.HashPassword(pass);
 				this.passwordHash = ByteUtil.StringToUtf8(pass);
+			}
+			else
+			{
+				this.authEnabled = false;
+				this.user = null;
 			}
 
 			if (policy.maxSocketIdle < 0)

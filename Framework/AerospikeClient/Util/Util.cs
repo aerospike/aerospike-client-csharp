@@ -15,12 +15,9 @@
  * the License.
  */
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Net.Sockets;
-using System.Runtime.InteropServices;
-using System.Security.Authentication;
 using System.Text;
 using System.Threading;
 
@@ -64,6 +61,11 @@ namespace Aerospike.Client
 				return e.Message;
 			}
 
+			return e.Message + Environment.NewLine + e.StackTrace;
+		}
+
+		public static string GetStackTrace(Exception e)
+		{
 			return e.Message + Environment.NewLine + e.StackTrace;
 		}
 

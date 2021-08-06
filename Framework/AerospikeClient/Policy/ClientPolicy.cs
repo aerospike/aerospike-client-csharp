@@ -45,7 +45,7 @@ namespace Aerospike.Client
 		public string clusterName;
 
 		/// <summary>
-		/// Authentication mode used when user/password is defined.
+		/// Authentication mode.
 		/// <para>Default: AuthMode.INTERNAL</para>
 		/// </summary>
 		public AuthMode authMode = AuthMode.INTERNAL;

@@ -184,7 +184,7 @@ namespace Aerospike.Client
 
 			try
 			{
-				if (cluster.user != null)
+				if (cluster.authEnabled)
 				{
 					// Login
 					AdminCommand admin = new AdminCommand(ThreadLocalData.GetBuffer(), 0);

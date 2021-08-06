@@ -131,7 +131,7 @@ namespace Aerospike.Client
 				{
 					tendConnection = CreateConnection(host.tlsName, address, cluster.connectionTimeout, null);
 
-					if (cluster.user != null)
+					if (cluster.authEnabled)
 					{
 						if (ShouldLogin())
 						{
@@ -155,7 +155,7 @@ namespace Aerospike.Client
 				}
 				else
 				{
-					if (cluster.user != null && ShouldLogin())
+					if (cluster.authEnabled && ShouldLogin())
 					{
 						Login();
 					}
@@ -285,7 +285,7 @@ namespace Aerospike.Client
 				}
 
 				// Login when user authentication is enabled.
-				if (cluster.user != null)
+				if (cluster.authEnabled)
 				{
 					Login();
 				}
@@ -659,7 +659,7 @@ namespace Aerospike.Client
 						throw;
 					}
 
-					if (cluster.user != null)
+					if (cluster.authEnabled)
 					{
 						byte[] token = SessionToken;
 

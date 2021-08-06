@@ -98,6 +98,10 @@ namespace Aerospike.Client
 					WriteField(USER, cluster.user);
 					WriteField(CREDENTIAL, cluster.passwordHash);
 				}
+				else if (cluster.authMode == AuthMode.PKI)
+				{
+					WriteHeader(LOGIN, 0);
+				}
 				else
 				{
 					WriteHeader(LOGIN, 3);
@@ -205,8 +209,15 @@ namespace Aerospike.Client
 
 		public int SetAuthenticate(Cluster cluster, byte[] sessionToken)
 		{
-			WriteHeader(AUTHENTICATE, 2);
-			WriteField(USER, cluster.user);
+			if (cluster.authMode != AuthMode.PKI)
+			{
+				WriteHeader(AUTHENTICATE, 2);
+				WriteField(USER, cluster.user);
+			}
+			else
+			{
+				WriteHeader(AUTHENTICATE, 1);
+			}
 			WriteField(SESSION_TOKEN, sessionToken);
 			WriteSize();
 			return dataOffset;
