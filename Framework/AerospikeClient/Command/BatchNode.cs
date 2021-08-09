@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2020 Aerospike, Inc.
+ * Copyright 2012-2021 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -43,7 +43,7 @@ namespace Aerospike.Client
 
 			for (int i = 0; i < keys.Length; i++)
 			{
-				Node node = Partition.GetNodeBatchRead(cluster, keys[i], replica, replicaSC, 0, 0);
+				Node node = Partition.GetNodeBatchRead(cluster, keys[i], replica, replicaSC, null, 0, 0);
 				BatchNode batchNode = FindBatchNode(batchNodes, node);
 
 				if (batchNode == null)
@@ -90,7 +90,7 @@ namespace Aerospike.Client
 			{
 				int offset = batchSeed.offsets[i];
 
-				Node node = Partition.GetNodeBatchRead(cluster, keys[offset], replica, replicaSC, sequenceAP, sequenceSC);	
+				Node node = Partition.GetNodeBatchRead(cluster, keys[offset], replica, replicaSC, batchSeed.node, sequenceAP, sequenceSC);	
 				BatchNode batchNode = FindBatchNode(batchNodes, node);
 
 				if (batchNode == null)
@@ -128,7 +128,7 @@ namespace Aerospike.Client
 
 			for (int i = 0; i < max; i++)
 			{
-				Node node = Partition.GetNodeBatchRead(cluster, records[i].key, replica, replicaSC, 0, 0);
+				Node node = Partition.GetNodeBatchRead(cluster, records[i].key, replica, replicaSC, null, 0, 0);
 				BatchNode batchNode = FindBatchNode(batchNodes, node);
 
 				if (batchNode == null)
@@ -175,7 +175,7 @@ namespace Aerospike.Client
 			{
 				int offset = batchSeed.offsets[i];
 
-				Node node = Partition.GetNodeBatchRead(cluster, records[offset].key, replica, replicaSC, sequenceAP, sequenceSC);
+				Node node = Partition.GetNodeBatchRead(cluster, records[offset].key, replica, replicaSC, batchSeed.node, sequenceAP, sequenceSC);
 				BatchNode batchNode = FindBatchNode(batchNodes, node);
 
 				if (batchNode == null)
