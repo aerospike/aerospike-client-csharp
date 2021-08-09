@@ -32,6 +32,7 @@ namespace Aerospike.Client
 		public const int PARTITIONS = 4096;
 
 		public const int HAS_PARTITION_SCAN = (1 << 0);
+		public const int HAS_QUERY_SHOW = (1 << 1);
 
 		private static readonly string[] INFO_PERIODIC = new string[] { "node", "peers-generation", "partition-generation" };
 		private static readonly string[] INFO_PERIODIC_REB = new string[] { "node", "peers-generation", "partition-generation", "rebalance-generation" }; 
@@ -919,15 +920,10 @@ namespace Aerospike.Client
 			get { return Volatile.Read(ref sessionToken); }
 		}
 
-		/*
-		/// <summary>
-		/// Does server support partition scans.
-		/// </summary>
-		public bool HasPartitionScan
+		public bool HasQueryShow
 		{
-			get { return (features & HAS_PARTITION_SCAN) != 0; }
+			get { return (features & HAS_QUERY_SHOW) != 0; }
 		}
-		*/
 
 		/// <summary>
 		/// Return node name and host address in string format.

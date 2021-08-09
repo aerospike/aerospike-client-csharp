@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2020 Aerospike, Inc.
+ * Copyright 2012-2021 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -43,10 +43,12 @@ namespace Aerospike.Client
 			Node[] nodes = cluster.ValidateNodes();
 			
 			string module = (scan) ? "scan" : "query";
-			string command = "jobs:module=" + module + ";cmd=get-job;trid=" + taskId;
+			string oldCommand = "jobs:module=" + module + ";cmd=get-job;trid=" + taskId;
+			string newCommand = module + "-show:trid=" + taskId;
 
 			foreach (Node node in nodes)
 			{
+				string command = node.HasQueryShow ? newCommand : oldCommand;
 				string response = Info.Request(policy, node, command);
 
 				if (response.StartsWith("ERROR:2"))

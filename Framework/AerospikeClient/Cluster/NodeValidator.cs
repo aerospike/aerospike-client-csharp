@@ -304,6 +304,10 @@ namespace Aerospike.Client
 					{
 						this.features |= Node.HAS_PARTITION_SCAN;
 					}
+					else if (feature.Equals("query-show"))
+					{
+						this.features |= Node.HAS_QUERY_SHOW;
+					}
 				}
 			}
 			catch (Exception)
