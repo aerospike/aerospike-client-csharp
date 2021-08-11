@@ -567,7 +567,7 @@ namespace Aerospike.Client
 				policy = batchPolicyDefault;
 			}
 			bool[] existsArray = new bool[keys.Length];
-			BatchExecutor.Execute(cluster, policy, keys, existsArray, null, null, Command.INFO1_READ | Command.INFO1_NOBINDATA);
+			BatchExecutor.Execute(cluster, policy, keys, existsArray, null, null, null, Command.INFO1_READ | Command.INFO1_NOBINDATA);
 			return existsArray;
 		}
 		
@@ -642,8 +642,6 @@ namespace Aerospike.Client
 		/// This method allows different namespaces/bins to be requested for each key in the batch.
 		/// The returned records are located in the same list.
 		/// If the BatchRecord key field is not found, the corresponding record field will be null.
-		/// The policy can be used to specify timeouts and maximum concurrent threads.
-		/// This method requires Aerospike Server version >= 3.6.0.
 		/// <para>
 		/// If a batch request to a node fails, the entire batch is cancelled.
 		/// </para>
@@ -699,7 +697,6 @@ namespace Aerospike.Client
 		/// Read multiple records for specified keys in one batch call.
 		/// The returned records are in positional order with the original key array order.
 		/// If a key is not found, the positional record will be null.
-		/// The policy can be used to specify timeouts and maximum concurrent threads.
 		/// <para>
 		/// If a batch request to a node fails, the entire batch is cancelled.
 		/// </para>
@@ -714,7 +711,7 @@ namespace Aerospike.Client
 				policy = batchPolicyDefault;
 			}
 			Record[] records = new Record[keys.Length];
-			BatchExecutor.Execute(cluster, policy, keys, null, records, null, Command.INFO1_READ | Command.INFO1_GET_ALL);
+			BatchExecutor.Execute(cluster, policy, keys, null, records, null, null, Command.INFO1_READ | Command.INFO1_GET_ALL);
 			return records;
 		}
 
@@ -722,7 +719,6 @@ namespace Aerospike.Client
 		/// Read multiple record headers and bins for specified keys in one batch call.
 		/// The returned records are in positional order with the original key array order.
 		/// If a key is not found, the positional record will be null.
-		/// The policy can be used to specify timeouts and maximum concurrent threads.
 		/// <para>
 		/// If a batch request to a node fails, the entire batch is cancelled.
 		/// </para>
@@ -738,7 +734,30 @@ namespace Aerospike.Client
 				policy = batchPolicyDefault;
 			}
 			Record[] records = new Record[keys.Length];
-			BatchExecutor.Execute(cluster, policy, keys, null, records, binNames, Command.INFO1_READ);
+			BatchExecutor.Execute(cluster, policy, keys, null, records, binNames, null, Command.INFO1_READ);
+			return records;
+		}
+
+		/// <summary>
+		/// Read multiple records for specified keys using read operations in one batch call.
+		/// The returned records are in positional order with the original key array order.
+		/// If a key is not found, the positional record will be null.
+		/// <para>
+		/// If a batch request to a node fails, the entire batch is cancelled. 
+		/// </para>
+		/// </summary>
+		/// <param name="policy">batch configuration parameters, pass in null for defaults</param>
+		/// <param name="keys">array of unique record identifiers</param>
+		/// <param name="operations">array of read operations on record</param>
+		/// <exception cref="AerospikeException">if read fails</exception>
+		public Record[] Get(BatchPolicy policy, Key[] keys, params Operation[] operations)
+		{
+			if (policy == null)
+			{
+				policy = batchPolicyDefault;
+			}
+			Record[] records = new Record[keys.Length];
+			BatchExecutor.Execute(cluster, policy, keys, null, records, null, operations, Command.INFO1_READ);
 			return records;
 		}
 
@@ -746,7 +765,6 @@ namespace Aerospike.Client
 		/// Read multiple record header data for specified keys in one batch call.
 		/// The returned records are in positional order with the original key array order.
 		/// If a key is not found, the positional record will be null.
-		/// The policy can be used to specify timeouts and maximum concurrent threads.
 		/// <para>
 		/// If a batch request to a node fails, the entire batch is cancelled.
 		/// </para>
@@ -761,7 +779,7 @@ namespace Aerospike.Client
 				policy = batchPolicyDefault;
 			}
 			Record[] records = new Record[keys.Length];
-			BatchExecutor.Execute(cluster, policy, keys, null, records, null, Command.INFO1_READ | Command.INFO1_NOBINDATA);
+			BatchExecutor.Execute(cluster, policy, keys, null, records, null, null, Command.INFO1_READ | Command.INFO1_NOBINDATA);
 			return records;
 		}
 

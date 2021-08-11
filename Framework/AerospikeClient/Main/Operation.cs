@@ -94,7 +94,17 @@ namespace Aerospike.Client
 		{
 			return new Operation(Type.DELETE);
 		}
-		
+
+		/// <summary>
+		/// Create array of operations from varargs. This method can be useful when
+		/// its important to save identical array pointer references. Using varargs
+		/// directly always generates new references.
+		/// </summary>
+		public static Operation[] Array(params Operation[] ops)
+		{
+			return ops;
+		}
+
 		public enum Type
 		{
 			READ,
@@ -117,11 +127,38 @@ namespace Aerospike.Client
 			HLL_MODIFY
 		}
 
-		private static byte[] ProtocolTypes = new byte[] { 1, 1, 2, 3, 4, 3, 4, 5, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16 };
+		private static readonly byte[] ProtocolTypes = new byte[] { 1, 1, 2, 3, 4, 3, 4, 5, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16 };
+
+		private static readonly bool[] IsWrites = new bool[]
+		{
+			false,
+			false,
+			true,
+			false,
+			true,
+			false,
+			true,
+			true,
+			false,
+			true,
+			true,
+			true,
+			true,
+			false,
+			true,
+			true,
+			false,
+			true
+		};
 
 		public static byte GetProtocolType(Type type)
 		{
 			return ProtocolTypes[(int)type];
+		}
+
+		public static bool IsWrite(Type type)
+		{
+			return IsWrites[(int)type];
 		}
 
 		/// <summary>

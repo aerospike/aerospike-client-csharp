@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2020 Aerospike, Inc.
+ * Copyright 2012-2021 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -24,6 +24,7 @@ namespace Aerospike.Client
 		private readonly RecordListener listener;
 		protected internal readonly Key key;
 		private readonly string[] binNames;
+		private readonly bool isOperation;
 		protected readonly Partition partition;
 		protected Record record;
 
@@ -34,6 +35,7 @@ namespace Aerospike.Client
 			this.listener = listener;
 			this.key = key;
 			this.binNames = binNames;
+			this.isOperation = false;
 			this.partition = Partition.Read(cluster, policy, key);
 		}
 
@@ -44,16 +46,18 @@ namespace Aerospike.Client
 			this.listener = null;
 			this.key = key;
 			this.binNames = null;
+			this.isOperation = false;
 			this.partition = Partition.Write(cluster, policy, key);
 		}
 
 		// Operate constructor.
-		public AsyncRead(AsyncCluster cluster, Policy policy, RecordListener listener, Key key, Partition partition)
+		public AsyncRead(AsyncCluster cluster, Policy policy, RecordListener listener, Key key, Partition partition, bool isOperation)
 			: base(cluster, policy)
 		{
 			this.listener = listener;
 			this.key = key;
 			this.binNames = null;
+			this.isOperation = isOperation;
 			this.partition = partition;
 		}
 
@@ -63,6 +67,7 @@ namespace Aerospike.Client
 			this.listener = other.listener;
 			this.key = other.key;
 			this.binNames = other.binNames;
+			this.isOperation = other.isOperation;
 			this.partition = other.partition;
 		}
 
@@ -98,7 +103,8 @@ namespace Aerospike.Client
 					record = new Record(null, generation, expiration);
 					return;
 				}
-				record = ParseRecord(opCount, fieldCount, generation, expiration);
+				SkipKey(fieldCount);
+				record = ParseRecord(opCount, generation, expiration, isOperation);
 				return;
 			}
 
@@ -119,7 +125,8 @@ namespace Aerospike.Client
 
 			if (resultCode == ResultCode.UDF_BAD_RESPONSE)
 			{
-				record = ParseRecord(opCount, fieldCount, generation, expiration);
+				SkipKey(fieldCount);
+				record = ParseRecord(opCount, generation, expiration, isOperation);
 				HandleUdfError(resultCode);
 				return;
 			}
@@ -164,48 +171,6 @@ namespace Aerospike.Client
 			}
 
 			throw new AerospikeException(code, message);
-		}
-
-		private Record ParseRecord(int opCount, int fieldCount, int generation, int expiration)
-		{
-			// There can be fields in the response (setname etc).
-			// But for now, ignore them. Expose them to the API if needed in the future.
-			if (fieldCount > 0)
-			{
-				// Just skip over all the fields
-				for (int i = 0; i < fieldCount; i++)
-				{
-					int fieldSize = ByteUtil.BytesToInt(dataBuffer, dataOffset);
-					dataOffset += 4 + fieldSize;
-				}
-			}
-
-			Dictionary<string, object> bins = null;
-
-			for (int i = 0; i < opCount; i++)
-			{
-				int opSize = ByteUtil.BytesToInt(dataBuffer, dataOffset);
-				byte particleType = dataBuffer[dataOffset + 5];
-				byte nameSize = dataBuffer[dataOffset + 7];
-				string name = ByteUtil.Utf8ToString(dataBuffer, dataOffset + 8, nameSize);
-				dataOffset += 4 + 4 + nameSize;
-
-				int particleBytesSize = (int)(opSize - (4 + nameSize));
-				object value = ByteUtil.BytesToParticle(particleType, dataBuffer, dataOffset, particleBytesSize);
-				dataOffset += particleBytesSize;
-
-				if (bins == null)
-				{
-					bins = new Dictionary<string, object>();
-				}
-				AddBin(bins, name, value);
-			}
-			return new Record(bins, generation, expiration);
-		}
-
-		protected internal virtual void AddBin(Dictionary<string, object> bins, string name, object value)
-		{
-			bins[name] = value;
 		}
 
 		protected internal override void OnSuccess()

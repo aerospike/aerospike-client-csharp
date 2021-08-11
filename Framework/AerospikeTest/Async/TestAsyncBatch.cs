@@ -1,5 +1,5 @@
 ﻿/* 
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2021 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -15,9 +15,9 @@
  * the License.
  */
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Threading;
-using System.Threading.Tasks;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Aerospike.Client;
 
@@ -26,33 +26,52 @@ namespace Aerospike.Test
 	[TestClass]
 	public class TestAsyncBatch : TestAsync
 	{
-		private const string keyPrefix = "asyncbatchkey";
-		private const string valuePrefix = "batchvalue";
-		private static readonly string binName = args.GetBinName("batchbin");
-		private const int size = 8;
+		private const string BinName = "batchbin";
+		private const string ListBin = "listbin";
+		private const string KeyPrefix = "asyncbatchkey";
+		private const string ValuePrefix = "batchvalue";
+		private const int Size = 8;
 		private static Key[] sendKeys;
 
 		[ClassInitialize()]
 		public static void WriteRecords(TestContext testContext)
 		{
-			sendKeys = new Key[size];
+			sendKeys = new Key[Size];
 
-			for (int i = 0; i < size; i++)
+			for (int i = 0; i < Size; i++)
 			{
-				sendKeys[i] = new Key(args.ns, args.set, keyPrefix + (i + 1));
+				sendKeys[i] = new Key(args.ns, args.set, KeyPrefix + (i + 1));
 			}
 
 			AsyncMonitor monitor = new AsyncMonitor();
-			WriteHandler handler = new WriteHandler(monitor, size);
+			WriteHandler handler = new WriteHandler(monitor, Size);
 
 			WritePolicy policy = new WritePolicy();
 			policy.expiration = 2592000;
 
-			for (int i = 1; i <= size; i++)
+			for (int i = 1; i <= Size; i++)
 			{
 				Key key = sendKeys[i - 1];
-				Bin bin = new Bin(binName, valuePrefix + i);
+				Bin bin = new Bin(BinName, ValuePrefix + i);
 				client.Put(policy, handler, key, bin);
+
+				List<int> list = new List<int>();
+
+				for (int j = 0; j < i; j++)
+				{
+					list.Add(j * i);
+				}
+
+				Bin listBin = new Bin(ListBin, list);
+
+				if (i != 6)
+				{
+					client.Put(policy, handler, key, bin, listBin);
+				}
+				else
+				{
+					client.Put(policy, handler, key, new Bin(BinName, i), listBin);
+				}
 			}
 			monitor.WaitTillComplete();
 		}
@@ -172,13 +191,23 @@ namespace Aerospike.Test
 
 			public void OnSuccess(Key[] keys, Record[] records)
 			{
-				if (parent.AssertEquals(size, records.Length))
+				if (parent.AssertEquals(Size, records.Length))
 				{
 					for (int i = 0; i < records.Length; i++)
 					{
-						if (!parent.AssertBinEqual(keys[i], records[i], binName, valuePrefix + (i + 1)))
+						if (i != 5)
 						{
-							break;
+							if (!parent.AssertBinEqual(keys[i], records[i], BinName, ValuePrefix + (i + 1)))
+							{
+								break;
+							}
+						}
+						else
+						{
+							if (!parent.AssertBinEqual(keys[i], records[i], BinName, i + 1))
+							{
+								break;
+							}
 						}
 					}
 				}
@@ -212,7 +241,7 @@ namespace Aerospike.Test
 			{
 				if (parent.AssertRecordFound(key, record))
 				{
-					Object value = record.GetValue(binName);
+					Object value = record.GetValue(BinName);
 					parent.AssertNotNull(value);
 				}
 			}
@@ -247,7 +276,7 @@ namespace Aerospike.Test
 
 			public void OnSuccess(Key[] keys, Record[] records)
 			{
-				if (parent.AssertEquals(size, records.Length))
+				if (parent.AssertEquals(Size, records.Length))
 				{
 					for (int i = 0; i < records.Length; i++)
 					{
@@ -284,18 +313,23 @@ namespace Aerospike.Test
 		{
 			// Batch gets into one call.
 			// Batch allows multiple namespaces in one call, but example test environment may only have one namespace.
-			string[] bins = new string[] { binName };
+
+			// bin * 8
+			Expression exp = Exp.Build(Exp.Mul(Exp.IntBin(BinName), Exp.Val(8)));
+			Operation[] ops = Operation.Array(ExpOperation.Read(BinName, exp, ExpReadFlags.DEFAULT));
+
+			string[] bins = new string[] { BinName };
 			List<BatchRead> records = new List<BatchRead>();
-			records.Add(new BatchRead(new Key(args.ns, args.set, keyPrefix + 1), bins));
-			records.Add(new BatchRead(new Key(args.ns, args.set, keyPrefix + 2), true));
-			records.Add(new BatchRead(new Key(args.ns, args.set, keyPrefix + 3), true));
-			records.Add(new BatchRead(new Key(args.ns, args.set, keyPrefix + 4), false));
-			records.Add(new BatchRead(new Key(args.ns, args.set, keyPrefix + 5), true));
-			records.Add(new BatchRead(new Key(args.ns, args.set, keyPrefix + 6), true));
-			records.Add(new BatchRead(new Key(args.ns, args.set, keyPrefix + 7), bins));
+			records.Add(new BatchRead(new Key(args.ns, args.set, KeyPrefix + 1), bins));
+			records.Add(new BatchRead(new Key(args.ns, args.set, KeyPrefix + 2), true));
+			records.Add(new BatchRead(new Key(args.ns, args.set, KeyPrefix + 3), true));
+			records.Add(new BatchRead(new Key(args.ns, args.set, KeyPrefix + 4), false));
+			records.Add(new BatchRead(new Key(args.ns, args.set, KeyPrefix + 5), true));
+			records.Add(new BatchRead(new Key(args.ns, args.set, KeyPrefix + 6), ops));
+			records.Add(new BatchRead(new Key(args.ns, args.set, KeyPrefix + 7), bins));
 
 			// This record should be found, but the requested bin will not be found.
-			records.Add(new BatchRead(new Key(args.ns, args.set, keyPrefix + 8), new string[] { "binnotfound" }));
+			records.Add(new BatchRead(new Key(args.ns, args.set, KeyPrefix + 8), new string[] { "binnotfound" }));
 
 			// This record should not be found.
 			records.Add(new BatchRead(new Key(args.ns, args.set, "keynotfound"), bins));
@@ -325,17 +359,31 @@ namespace Aerospike.Test
 					
 					if (rec != null) {
 						found++;
-						
-						Object value = rec.GetValue(binName);
-					
-						if (count != 4 && count <= 7) {
-							if (!parent.AssertEquals(valuePrefix + count, value))
+
+						if (count != 4 && count != 6 && count <= 7)
+						{
+							object value = rec.GetValue(BinName);
+
+							if (!parent.AssertEquals(ValuePrefix + count, value))
 							{
 								parent.NotifyCompleted();
 								return;
 							}
 						}
-						else {
+						else if (count == 6)
+						{
+							int value = rec.GetInt(BinName);
+
+							if (!parent.AssertEquals(48, value))
+							{
+								parent.NotifyCompleted();
+								return;
+							}
+						}
+						else
+						{
+							Object value = rec.GetValue(BinName);
+
 							if (!parent.AssertNull(value))
 							{
 								parent.NotifyCompleted();
@@ -345,6 +393,57 @@ namespace Aerospike.Test
 					}
 				}			
 				parent.AssertEquals(8, found);
+				parent.NotifyCompleted();
+			}
+
+			public void OnFailure(AerospikeException e)
+			{
+				parent.SetError(e);
+				parent.NotifyCompleted();
+			}
+		}
+
+		[TestMethod]
+		public void AsyncBatchListOperate()
+		{
+			client.Get(null, new BatchListOperateHandler(this), sendKeys,
+				ListOperation.Size(ListBin),
+				ListOperation.GetByIndex(ListBin, -1, ListReturnType.VALUE));
+
+			WaitTillComplete();
+		}
+
+		private class BatchListOperateHandler : RecordArrayListener
+		{
+			private readonly TestAsyncBatch parent;
+
+			public BatchListOperateHandler(TestAsyncBatch parent)
+			{
+				this.parent = parent;
+			}
+
+			public void OnSuccess(Key[] keys, Record[] records)
+			{
+				if (parent.AssertEquals(Size, records.Length))
+				{
+					for (int i = 0; i < records.Length; i++)
+					{
+						Record record = records[i];
+						IList results = record.GetList(ListBin);
+						long size = (long)results[0];
+						long val = (long)results[1];
+
+						if (!parent.AssertEquals(i + 1, size))
+						{
+							break;
+						}
+
+						if (!parent.AssertEquals(i * (i + 1), val))
+						{
+							break;
+						}
+					}
+				}
 				parent.NotifyCompleted();
 			}
 

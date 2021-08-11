@@ -154,6 +154,7 @@
     <Compile Include="AsyncPutGet.cs" />
     <Compile Include="AsyncScanPage.cs" />
     <Compile Include="AsyncScan.cs" />
+    <Compile Include="BatchOperate.cs" />
     <Compile Include="Batch.cs" />
     <Compile Include="BenchmarkShared.cs" />
     <Compile Include="Console.cs" />

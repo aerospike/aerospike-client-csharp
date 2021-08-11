@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2020 Aerospike, Inc.
+ * Copyright 2012-2021 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -30,6 +30,7 @@ namespace Aerospike.Client
 			bool[] existsArray,
 			Record[] records,
 			string[] binNames,
+			Operation[] ops,
 			int readAttr
 		)
 		{
@@ -38,12 +39,14 @@ namespace Aerospike.Client
 				return;
 			}
 
+			bool isOperation = ops != null;
+
 			if (policy.allowProleReads)
 			{
 				// Send all requests to a single node chosen in round-robin fashion in this transaction thread.
 				Node node = cluster.GetRandomNode();
 				BatchNode batchNode = new BatchNode(node, keys);
-				ExecuteNode(cluster, batchNode, policy, keys, existsArray, records, binNames, readAttr);
+				ExecuteNode(cluster, batchNode, policy, keys, existsArray, records, binNames, ops, readAttr, isOperation);
 				return;
 			}
 
@@ -54,7 +57,7 @@ namespace Aerospike.Client
 				// Run batch requests sequentially in same thread.
 				foreach (BatchNode batchNode in batchNodes)
 				{
-					ExecuteNode(cluster, batchNode, policy, keys, existsArray, records, binNames, readAttr);
+					ExecuteNode(cluster, batchNode, policy, keys, existsArray, records, binNames, ops, readAttr, isOperation);
 				}
 			}
 			else
@@ -73,7 +76,7 @@ namespace Aerospike.Client
 				{
 					if (records != null)
 					{
-						MultiCommand command = new BatchGetArrayCommand(cluster, executor, batchNode, policy, keys, binNames, records, readAttr);
+						MultiCommand command = new BatchGetArrayCommand(cluster, executor, batchNode, policy, keys, binNames, ops, records, readAttr, isOperation);
 						executor.AddCommand(command);
 					}
 					else
@@ -86,11 +89,23 @@ namespace Aerospike.Client
 			}
 		}
 
-		private static void ExecuteNode(Cluster cluster, BatchNode batchNode, BatchPolicy policy, Key[] keys, bool[] existsArray, Record[] records, string[] binNames, int readAttr)
+		private static void ExecuteNode
+		(
+			Cluster cluster,
+			BatchNode batchNode,
+			BatchPolicy policy,
+			Key[] keys,
+			bool[] existsArray,
+			Record[] records,
+			string[] binNames,
+			Operation[] ops,
+			int readAttr,
+			bool isOperation
+		)
 		{
 			if (records != null)
 			{
-				MultiCommand command = new BatchGetArrayCommand(cluster, null, batchNode, policy, keys, binNames, records, readAttr);
+				MultiCommand command = new BatchGetArrayCommand(cluster, null, batchNode, policy, keys, binNames, ops, records, readAttr, isOperation);
 				command.Execute();
 			}
 			else

@@ -1,5 +1,5 @@
 ﻿/* 
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2021 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -14,7 +14,7 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using System;
+using System.Collections;
 using System.Collections.Generic;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Aerospike.Client;
@@ -24,10 +24,11 @@ namespace Aerospike.Test
 	[TestClass]
 	public class TestBatch : TestSync
 	{
-		private const string keyPrefix = "batchkey";
-		private const string valuePrefix = "batchvalue";
-		private static readonly string binName = args.GetBinName("batchbin");
-		private const int size = 8;
+		private const string BinName = "batchbin";
+		private const string ListBin = "listbin";
+		private const string KeyPrefix = "tbatkey";
+		private const string ValuePrefix = "batchvalue";
+		private const int Size = 8;
 
 		[ClassInitialize()]
 		public static void WriteRecords(TestContext testContext)
@@ -35,26 +36,42 @@ namespace Aerospike.Test
 			WritePolicy policy = new WritePolicy();
 			policy.expiration = 2592000;
 
-			for (int i = 1; i <= size; i++)
+			for (int i = 1; i <= Size; i++)
 			{
-				Key key = new Key(args.ns, args.set, keyPrefix + i);
-				Bin bin = new Bin(binName, valuePrefix + i);
+				Key key = new Key(args.ns, args.set, KeyPrefix + i);
+				Bin bin = new Bin(BinName, ValuePrefix + i);
 
-				client.Put(policy, key, bin);
+				List<int> list = new List<int>();
+
+				for (int j = 0; j < i; j++)
+				{
+					list.Add(j * i);
+				}
+
+				Bin listBin = new Bin(ListBin, list);
+
+				if (i != 6)
+				{
+					client.Put(policy, key, bin, listBin);
+				}
+				else
+				{
+					client.Put(policy, key, new Bin(BinName, i), listBin);
+				}
 			}
 		}
 
 		[TestMethod]
 		public void BatchExists()
 		{
-			Key[] keys = new Key[size];
-			for (int i = 0; i < size; i++)
+			Key[] keys = new Key[Size];
+			for (int i = 0; i < Size; i++)
 			{
-				keys[i] = new Key(args.ns, args.set, keyPrefix + (i + 1));
+				keys[i] = new Key(args.ns, args.set, KeyPrefix + (i + 1));
 			}
 
 			bool[] existsArray = client.Exists(null, keys);
-			Assert.AreEqual(size, existsArray.Length);
+			Assert.AreEqual(Size, existsArray.Length);
 
 			for (int i = 0; i < existsArray.Length; i++)
 			{
@@ -68,35 +85,42 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void BatchReads()
 		{
-			Key[] keys = new Key[size];
-			for (int i = 0; i < size; i++)
+			Key[] keys = new Key[Size];
+			for (int i = 0; i < Size; i++)
 			{
-				keys[i] = new Key(args.ns, args.set, keyPrefix + (i + 1));
+				keys[i] = new Key(args.ns, args.set, KeyPrefix + (i + 1));
 			}
 
-			Record[] records = client.Get(null, keys, binName);
-			Assert.AreEqual(size, records.Length);
+			Record[] records = client.Get(null, keys, BinName);
+			Assert.AreEqual(Size, records.Length);
 
 			for (int i = 0; i < records.Length; i++)
 			{
 				Key key = keys[i];
 				Record record = records[i];
 
-				AssertBinEqual(key, record, binName, valuePrefix + (i + 1));
+				if (i != 5)
+				{
+					AssertBinEqual(key, record, BinName, ValuePrefix + (i + 1));
+				}
+				else
+				{
+					AssertBinEqual(key, record, BinName, i + 1);
+				}
 			}
 		}
 
 		[TestMethod]
 		public void BatchReadHeaders()
 		{
-			Key[] keys = new Key[size];
-			for (int i = 0; i < size; i++)
+			Key[] keys = new Key[Size];
+			for (int i = 0; i < Size; i++)
 			{
-				keys[i] = new Key(args.ns, args.set, keyPrefix + (i + 1));
+				keys[i] = new Key(args.ns, args.set, KeyPrefix + (i + 1));
 			}
 
 			Record[] records = client.GetHeader(null, keys);
-			Assert.AreEqual(size, records.Length);
+			Assert.AreEqual(Size, records.Length);
 
 			for (int i = 0; i < records.Length; i++)
 			{
@@ -113,18 +137,23 @@ namespace Aerospike.Test
 		public void BatchReadComplex()
 		{
 			// Batch allows multiple namespaces in one call, but example test environment may only have one namespace.
-			string[] bins = new string[] {binName};
+
+			// bin * 8
+			Expression exp = Exp.Build(Exp.Mul(Exp.IntBin(BinName), Exp.Val(8)));
+			Operation[] ops = Operation.Array(ExpOperation.Read(BinName, exp, ExpReadFlags.DEFAULT));
+
+			string[] bins = new string[] {BinName};
 			List<BatchRead> records = new List<BatchRead>();
-			records.Add(new BatchRead(new Key(args.ns, args.set, keyPrefix + 1), bins));
-			records.Add(new BatchRead(new Key(args.ns, args.set, keyPrefix + 2), true));
-			records.Add(new BatchRead(new Key(args.ns, args.set, keyPrefix + 3), true));
-			records.Add(new BatchRead(new Key(args.ns, args.set, keyPrefix + 4), false));
-			records.Add(new BatchRead(new Key(args.ns, args.set, keyPrefix + 5), true));
-			records.Add(new BatchRead(new Key(args.ns, args.set, keyPrefix + 6), true));
-			records.Add(new BatchRead(new Key(args.ns, args.set, keyPrefix + 7), bins));
+			records.Add(new BatchRead(new Key(args.ns, args.set, KeyPrefix + 1), bins));
+			records.Add(new BatchRead(new Key(args.ns, args.set, KeyPrefix + 2), true));
+			records.Add(new BatchRead(new Key(args.ns, args.set, KeyPrefix + 3), true));
+			records.Add(new BatchRead(new Key(args.ns, args.set, KeyPrefix + 4), false));
+			records.Add(new BatchRead(new Key(args.ns, args.set, KeyPrefix + 5), true));
+			records.Add(new BatchRead(new Key(args.ns, args.set, KeyPrefix + 6), ops));
+			records.Add(new BatchRead(new Key(args.ns, args.set, KeyPrefix + 7), bins));
 
 			// This record should be found, but the requested bin will not be found.
-			records.Add(new BatchRead(new Key(args.ns, args.set, keyPrefix + 8), new string[] {"binnotfound"}));
+			records.Add(new BatchRead(new Key(args.ns, args.set, KeyPrefix + 8), new string[] {"binnotfound"}));
 
 			// This record should not be found.
 			records.Add(new BatchRead(new Key(args.ns, args.set, "keynotfound"), bins));
@@ -132,15 +161,20 @@ namespace Aerospike.Test
 			// Execute batch.
 			client.Get(null, records);
 
-			AssertBatchBinEqual(records, binName, 0);
-			AssertBatchBinEqual(records, binName, 1);
-			AssertBatchBinEqual(records, binName, 2);
-			AssertBatchRecordExists(records, binName, 3);
-			AssertBatchBinEqual(records, binName, 4);
-			AssertBatchBinEqual(records, binName, 5);
-			AssertBatchBinEqual(records, binName, 6);
+			AssertBatchBinEqual(records, BinName, 0);
+			AssertBatchBinEqual(records, BinName, 1);
+			AssertBatchBinEqual(records, BinName, 2);
+			AssertBatchRecordExists(records, BinName, 3);
+			AssertBatchBinEqual(records, BinName, 4);
 
-			BatchRead batch = records[7];
+			BatchRead batch = records[5];
+			AssertRecordFound(batch.key, batch.record);
+			int v = batch.record.GetInt(BinName);
+			Assert.AreEqual(48, v);
+
+			AssertBatchBinEqual(records, BinName, 6);
+
+			batch = records[7];
 			AssertRecordFound(batch.key, batch.record);
 			object val = batch.record.GetValue("binnotfound");
 			if (val != null)
@@ -155,10 +189,37 @@ namespace Aerospike.Test
 			}
 		}
 
+		[TestMethod]
+		public void BatchListOperate()
+		{
+			Key[] keys = new Key[Size];
+			for (int i = 0; i < Size; i++)
+			{
+				keys[i] = new Key(args.ns, args.set, KeyPrefix + (i + 1));
+			}
+
+			Record[] records = client.Get(null, keys,
+				ListOperation.Size(ListBin),
+				ListOperation.GetByIndex(ListBin, -1, ListReturnType.VALUE));
+
+			Assert.AreEqual(Size, records.Length);
+
+			for (int i = 0; i < records.Length; i++)
+			{
+				Record record = records[i];
+				IList results = record.GetList(ListBin);
+				long size = (long)results[0];
+				long val = (long)results[1];
+
+				Assert.AreEqual(i + 1, size);
+				Assert.AreEqual(i * (i + 1), val);
+			}
+		}
+
 		private void AssertBatchBinEqual(List<BatchRead> list, string binName, int i)
 		{
 			BatchRead batch = list[i];
-			AssertBinEqual(batch.key, batch.record, binName, valuePrefix + (i + 1));
+			AssertBinEqual(batch.key, batch.record, binName, ValuePrefix + (i + 1));
 		}
 
 		private void AssertBatchRecordExists(List<BatchRead> list, string binName, int i)

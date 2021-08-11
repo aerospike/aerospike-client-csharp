@@ -30,17 +30,19 @@ namespace Aerospike.Client
 		protected internal int fieldCount;
 		protected internal int opCount;
 		private readonly bool isBatch;
+		protected internal readonly bool isOperation;
 		protected internal volatile bool valid = true;
 
 		/// <summary>
 		/// Batch constructor.
 		/// </summary>
-		public AsyncMultiCommand(AsyncExecutor executor, AsyncCluster cluster, Policy policy, AsyncNode node)
+		public AsyncMultiCommand(AsyncExecutor executor, AsyncCluster cluster, Policy policy, AsyncNode node, bool isOperation)
 			: base(cluster, policy)
 		{
 			this.executor = executor;
 			this.serverNode = node;
 			this.isBatch = true;
+			this.isOperation = isOperation;
 		}
 
 		/// <summary>
@@ -52,6 +54,7 @@ namespace Aerospike.Client
 			this.executor = executor;
 			this.serverNode = node;
 			this.isBatch = false;
+			this.isOperation = false;
 		}
 
 		public AsyncMultiCommand(AsyncMultiCommand other) : base(other)
@@ -59,6 +62,7 @@ namespace Aerospike.Client
 			this.executor = other.executor;
 			this.serverNode = other.serverNode;
 			this.isBatch = other.isBatch;
+			this.isOperation = other.isOperation;
 		}
 
 		protected internal sealed override void ParseCommand()
@@ -146,27 +150,12 @@ namespace Aerospike.Client
 
 		protected internal Record ParseRecord()
 		{
-			Dictionary<string, object> bins = null;
-
-			for (int i = 0 ; i < opCount; i++)
+			if (opCount <= 0)
 			{
-				int opSize = ByteUtil.BytesToInt(dataBuffer, dataOffset);
-				byte particleType = dataBuffer[dataOffset + 5];
-				byte nameSize = dataBuffer[dataOffset + 7];
-				string name = ByteUtil.Utf8ToString(dataBuffer, dataOffset + 8, nameSize);
-				dataOffset += 4 + 4 + nameSize;
-
-				int particleBytesSize = (int)(opSize - (4 + nameSize));
-				object value = ByteUtil.BytesToParticle(particleType, dataBuffer, dataOffset, particleBytesSize);
-				dataOffset += particleBytesSize;
-
-				if (bins == null)
-				{
-					bins = new Dictionary<string, object>();
-				}
-				bins[name] = value;
+				return new Record(null, generation, expiration);
 			}
-			return new Record(bins, generation, expiration);
+
+			return ParseRecord(opCount, generation, expiration, isOperation);
 		}
 
 		protected internal void Stop()

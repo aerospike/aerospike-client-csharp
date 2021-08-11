@@ -34,17 +34,19 @@ namespace Aerospike.Client
 		protected internal int fieldCount;
 		protected internal int opCount;
 		private readonly bool isBatch;
+		protected internal readonly bool isOperation;
 		private readonly bool first;
 		protected internal volatile bool valid = true;
 
 		/// <summary>
 		/// Batch and server execute constructor.
 		/// </summary>
-		protected internal MultiCommand(Cluster cluster, Policy policy, Node node, bool isBatch)
+		protected internal MultiCommand(Cluster cluster, Policy policy, Node node, bool isBatch, bool isOperation)
 			: base(cluster, policy)
 		{
 			this.node = node;
 			this.isBatch = isBatch;
+			this.isOperation = isOperation;
 			this.ns = null;
 			this.clusterKey = 0;
 			this.first = false;
@@ -58,6 +60,7 @@ namespace Aerospike.Client
 		{
 			this.node = node;
 			this.isBatch = false;
+			this.isOperation = false;
 			this.ns = ns;
 			this.clusterKey = 0;
 			this.first = false;
@@ -71,6 +74,7 @@ namespace Aerospike.Client
 		{
 			this.node = node;
 			this.isBatch = false;
+			this.isOperation = false;
 			this.ns = ns;
 			this.clusterKey = clusterKey;
 			this.first = first;
@@ -245,29 +249,12 @@ namespace Aerospike.Client
 		
 		protected internal Record ParseRecord()
 		{
-			Dictionary<string, object> bins = null;
-
-			for (int i = 0; i < opCount; i++)
+			if (opCount <= 0)
 			{
-				int opSize = ByteUtil.BytesToInt(dataBuffer, dataOffset);
-				dataOffset += 5;
-				byte particleType = dataBuffer[dataOffset];
-				dataOffset += 2;
-				byte nameSize = dataBuffer[dataOffset++];
-				string name = ByteUtil.Utf8ToString(dataBuffer, dataOffset, nameSize);
-				dataOffset += nameSize;
-
-				int particleBytesSize = opSize - (4 + nameSize);
-				object value = ByteUtil.BytesToParticle(particleType, dataBuffer, dataOffset, particleBytesSize);
-				dataOffset += particleBytesSize;
-
-				if (bins == null)
-				{
-					bins = new Dictionary<string, object>();
-				}
-				bins[name] = value;
+				return new Record(null, generation, expiration);
 			}
-			return new Record(bins, generation, expiration);
+
+			return ParseRecord(opCount, generation, expiration, isOperation);
 		}
 		
 		public void Stop()

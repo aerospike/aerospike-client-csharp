@@ -15,6 +15,7 @@
  * the License.
  */
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Net.Sockets;
@@ -110,14 +111,14 @@ namespace Aerospike.Client
 			sb.Append(']');
 		}
 
-		public static string ListToString(List<object> list)
+		public static string ListToString(IList list)
 		{
 			StringBuilder sb = new StringBuilder(200);
 			ListToString(sb, list);
 			return sb.ToString();
 		}
 
-		private static void ListToString(StringBuilder sb, List<object> list)
+		private static void ListToString(StringBuilder sb, IList list)
 		{
 			sb.Append('[');
 

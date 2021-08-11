@@ -224,8 +224,6 @@ namespace Aerospike.Client
 		/// This method allows different namespaces/bins to be requested for each key in the batch.
 		/// The returned records are located in the same list.
 		/// If the BatchRecord key field is not found, the corresponding record field will be null.
-		/// The policy can be used to specify timeouts and maximum concurrent threads.
-		/// This method requires Aerospike Server version >= 3.6.0.
 		/// <para>
 		/// If a batch request to a node fails, the entire batch is cancelled.
 		/// </para>
@@ -240,7 +238,6 @@ namespace Aerospike.Client
 		/// Read multiple records for specified keys in one batch call.
 		/// The returned records are in positional order with the original key array order.
 		/// If a key is not found, the positional record will be null.
-		/// The policy can be used to specify timeouts and maximum concurrent threads.
 		/// <para>
 		/// If a batch request to a node fails, the entire batch is cancelled.
 		/// </para>
@@ -254,7 +251,6 @@ namespace Aerospike.Client
 		/// Read multiple record headers and bins for specified keys in one batch call.
 		/// The returned records are in positional order with the original key array order.
 		/// If a key is not found, the positional record will be null.
-		/// The policy can be used to specify timeouts and maximum concurrent threads.
 		/// <para>
 		/// If a batch request to a node fails, the entire batch is cancelled.
 		/// </para>
@@ -266,10 +262,23 @@ namespace Aerospike.Client
 		Record[] Get(BatchPolicy policy, Key[] keys, params string[] binNames);
 
 		/// <summary>
+		/// Read multiple records for specified keys using read operations in one batch call.
+		/// The returned records are in positional order with the original key array order.
+		/// If a key is not found, the positional record will be null.
+		/// <para>
+		/// If a batch request to a node fails, the entire batch is cancelled. 
+		/// </para>
+		/// </summary>
+		/// <param name="policy">batch configuration parameters, pass in null for defaults</param>
+		/// <param name="keys">array of unique record identifiers</param>
+		/// <param name="operations">array of read operations on record</param>
+		/// <exception cref="AerospikeException">if read fails</exception>
+		Record[] Get(BatchPolicy policy, Key[] keys, params Operation[] operations);
+
+		/// <summary>
 		/// Read multiple record header data for specified keys in one batch call.
 		/// The returned records are in positional order with the original key array order.
 		/// If a key is not found, the positional record will be null.
-		/// The policy can be used to specify timeouts and maximum concurrent threads.
 		/// <para>
 		/// If a batch request to a node fails, the entire batch is cancelled.
 		/// </para>

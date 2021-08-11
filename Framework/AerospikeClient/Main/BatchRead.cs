@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2021 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -29,9 +29,15 @@ namespace Aerospike.Client
 		public readonly Key key;
 
 		/// <summary>
-		/// Bins to retrieve for this key.
+		/// Bins to retrieve for this key. binNames are mutually exclusive with ops.
 		/// </summary>
 		public readonly string[] binNames;
+
+		/// <summary>
+		/// Read operations for this key. ops are mutually exclusive with binNames.
+		/// A binName can be emulated with <see cref="Aerospike.Client.Operation.Get(string)"/>
+		/// </summary>
+		public readonly Operation[] ops;
 
 		/// <summary>
 		/// If true, ignore binNames and read all bins.
@@ -54,6 +60,20 @@ namespace Aerospike.Client
 		{
 			this.key = key;
 			this.binNames = binNames;
+			this.ops = null;
+			this.readAllBins = false;
+		}
+
+		/// <summary>
+		/// Initialize batch key and read operations.
+		/// </summary>
+		/// <param name="key">record key</param>
+		/// <param name="ops">read operations to run.</param>
+		public BatchRead(Key key, Operation[] ops)
+		{
+			this.key = key;
+			this.binNames = null;
+			this.ops = ops;
 			this.readAllBins = false;
 		}
 
@@ -66,6 +86,7 @@ namespace Aerospike.Client
 		{
 			this.key = key;
 			this.binNames = null;
+			this.ops = null;
 			this.readAllBins = readAllBins;
 		}
 
