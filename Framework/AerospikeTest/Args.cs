@@ -116,7 +116,7 @@ namespace Aerospike.Test
 			policy.tlsPolicy = tlsPolicy;
 			policy.authMode = authMode;
 
-			if (!user.Equals(""))
+			if (user != null && user.Length > 0)
 			{
 				policy.user = user;
 				policy.password = password;
@@ -142,7 +142,7 @@ namespace Aerospike.Test
 			policy.asyncMaxCommands = 300;
 			policy.authMode = authMode;
 
-			if (!user.Equals(""))
+			if (user != null && user.Length > 0)
 			{
 				policy.user = user;
 				policy.password = password;
