@@ -176,11 +176,6 @@ namespace Aerospike.Client
 				{
 					throw new AerospikeException("Failed to retrieve session token");
 				}
-
-				if (ttl == null)
-				{
-					throw new AerospikeException("Failed to retrieve session expiration");
-				}
 				sessionToken = token;
 				sessionExpiration = ttl;
 			}
