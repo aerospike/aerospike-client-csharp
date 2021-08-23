@@ -147,7 +147,7 @@ namespace Aerospike.Client
 			}
 			else
 			{
-				if (authMode == AuthMode.EXTERNAL)
+				if (authMode == AuthMode.EXTERNAL || authMode == AuthMode.PKI)
 				{
 					throw new AerospikeException("TLS is required for authentication mode: " + authMode);
 				}
