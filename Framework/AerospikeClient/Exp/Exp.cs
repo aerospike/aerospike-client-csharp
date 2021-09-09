@@ -184,7 +184,7 @@ namespace Aerospike.Client
 		/// <code>
 		/// // Geo bin "a" == region
 		/// string region = "{ \"type\": \"AeroCircle\", \"coordinates\": [[-122.0, 37.5], 50000.0] }";
-		/// Exp.GeoCompare(Exp.GeoBin("loc"), Exp.Val(region))
+		/// Exp.GeoCompare(Exp.GeoBin("loc"), Exp.Geo(region))
 		/// </code>
 		/// </example>
 		public static Exp GeoBin(string name)
