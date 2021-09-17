@@ -82,6 +82,49 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
+		/// First partition id.
+		/// </summary>
+		public int Begin
+		{
+			get { return begin; }
+		}
+
+		/// <summary>
+		/// Count of partitions.
+		/// </summary>
+		public int Count
+		{
+			get { return count; }
+		}
+
+		/// <summary>
+		/// Resume after digest.
+		/// </summary>
+		public byte[] Digest
+		{
+			get { return digest; }
+		}
+
+		/// <summary>
+		/// Status of each partition after scan termination.
+		/// Useful for external retry of partially completed scans at a later time.
+		/// <para>
+		/// The partition status is accurate for sync/async ScanPartitions and async QueryPartitions.
+		/// </para>
+		/// <para>
+		/// The partition status is not accurate for
+		/// <see cref="Aerospike.Client.AerospikeClient.QueryPartitions(QueryPolicy, Statement, PartitionFilter)"/>
+		/// because the last digest received is set during query parsing, but the user may not have retrieved
+		/// that digest from the RecordSet yet.
+		/// </para>
+		/// </summary>
+		public PartitionStatus[] Partitions
+		{
+			get { return partitions; }
+			set { this.partitions = value; }
+		}
+
+		/// <summary>
 		/// If using <see cref="Aerospike.Client.ScanPolicy.maxRecords"/> or
 		/// <see cref="Aerospike.Client.QueryPolicy.maxRecords"/>,
 		/// did previous paginated scans with this partition filter instance return all records?
