@@ -119,6 +119,7 @@
     <Compile Include="..\..\Framework\AerospikeClient\Command\ParticleType.cs" Link="Command\ParticleType.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Command\ReadCommand.cs" Link="Command\ReadCommand.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Command\ReadHeaderCommand.cs" Link="Command\ReadHeaderCommand.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Command\RecordParser.cs" Link="Command\RecordParser.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Command\RegisterCommand.cs" Link="Command\RegisterCommand.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Command\ScanExecutor.cs" Link="Command\ScanExecutor.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Command\ScanPartitionCommand.cs" Link="Command\ScanPartitionCommand.cs" />
@@ -186,6 +187,7 @@
     <Compile Include="..\..\Framework\AerospikeClient\Policy\CommitLevel.cs" Link="Policy\CommitLevel.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Policy\GenerationPolicy.cs" Link="Policy\GenerationPolicy.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Policy\InfoPolicy.cs" Link="Policy\InfoPolicy.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Policy\IRecordParser.cs" Link="Policy\IRecordParser.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Policy\Policy.cs" Link="Policy\Policy.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Policy\QueryPolicy.cs" Link="Policy\QueryPolicy.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Policy\ReadModeAP.cs" Link="Policy\ReadModeAP.cs" />

@@ -223,6 +223,14 @@ namespace Aerospike.Client
 		public bool failOnFilteredOut;
 
 		/// <summary>
+		/// Alternate record parser.
+		/// <para>
+		/// Default: Use standard record parser.
+		/// </para>
+		/// </summary>
+		public IRecordParser recordParser = RecordParser.Instance;
+
+		/// <summary>
 		/// Copy constructor.
 		/// </summary>
 		public Policy(Policy other)
@@ -239,6 +247,7 @@ namespace Aerospike.Client
 			this.sendKey = other.sendKey;
 			this.compress = other.compress;
 			this.failOnFilteredOut = other.failOnFilteredOut;
+			this.recordParser = other.recordParser;
 		}
 
 		/// <summary>

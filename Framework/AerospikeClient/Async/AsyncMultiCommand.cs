@@ -155,7 +155,7 @@ namespace Aerospike.Client
 				return new Record(null, generation, expiration);
 			}
 
-			return ParseRecord(opCount, generation, expiration, isOperation);
+			return policy.recordParser.ParseRecord(dataBuffer, ref dataOffset, opCount, generation, expiration, isOperation);
 		}
 
 		protected internal void Stop()

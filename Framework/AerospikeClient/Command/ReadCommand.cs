@@ -123,7 +123,7 @@ namespace Aerospike.Client
 					return;
 				}
 				SkipKey(fieldCount);
-				record = ParseRecord(opCount, generation, expiration, isOperation);
+				record = policy.recordParser.ParseRecord(dataBuffer, ref dataOffset, opCount, generation, expiration, isOperation);
 				return;
 			}
 
@@ -145,7 +145,7 @@ namespace Aerospike.Client
 			if (resultCode == ResultCode.UDF_BAD_RESPONSE)
 			{
 				SkipKey(fieldCount);
-				record = ParseRecord(opCount, generation, expiration, isOperation);
+				record = policy.recordParser.ParseRecord(dataBuffer, ref dataOffset, opCount, generation, expiration, isOperation);
 				HandleUdfError(resultCode);
 				return;
 			}
