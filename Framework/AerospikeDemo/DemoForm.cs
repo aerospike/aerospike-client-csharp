@@ -104,6 +104,7 @@ namespace Aerospike.Demo
                     new ExampleTreeNode("Scan Parallel", new ScanParallel(console)),
                     new ExampleTreeNode("Scan Series", new ScanSeries(console)),
 					new ExampleTreeNode("Scan Page", new ScanPage(console)),
+					new ExampleTreeNode("Scan Resume", new ScanResume(console)),
 					new ExampleTreeNode("Async PutGet", new AsyncPutGet(console)),
                     new ExampleTreeNode("Async Batch", new AsyncBatch(console)),
 					new ExampleTreeNode("Async Scan", new AsyncScan(console)),

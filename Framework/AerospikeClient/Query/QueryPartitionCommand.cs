@@ -77,13 +77,13 @@ namespace Aerospike.Client
 				throw new AerospikeException.QueryTerminated();
 			}
 
-			tracker.SetDigest(nodePartitions, key);
-
 			if (!recordSet.Put(new KeyRecord(key, record)))
 			{
 				Stop();
 				throw new AerospikeException.QueryTerminated();
 			}
+
+			tracker.SetDigest(nodePartitions, key);
 		}
 	}
 }

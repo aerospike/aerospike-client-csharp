@@ -85,8 +85,8 @@ namespace Aerospike.Client
 				throw new AerospikeException.ScanTerminated();
 			}
 
-			tracker.SetDigest(nodePartitions, key);
 			callback(key, record);
+			tracker.SetDigest(nodePartitions, key);
 		}
 	}
 }

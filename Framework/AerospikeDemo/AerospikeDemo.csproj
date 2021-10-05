@@ -199,6 +199,7 @@
     <Compile Include="QueryInteger.cs" />
     <Compile Include="QueryString.cs" />
     <Compile Include="QuerySum.cs" />
+    <Compile Include="ScanResume.cs" />
     <Compile Include="ScanPage.cs" />
     <Compile Include="ScanParallel.cs" />
     <Compile Include="ScanSeries.cs" />

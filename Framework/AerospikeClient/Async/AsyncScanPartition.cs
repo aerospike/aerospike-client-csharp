@@ -65,8 +65,8 @@ namespace Aerospike.Client
 			}
 
 			Record record = ParseRecord();
-			tracker.SetDigest(nodePartitions, key);
 			listener.OnRecord(key, record);
+			tracker.SetDigest(nodePartitions, key);
 		}
 
 		protected internal override void OnFailure(AerospikeException ae)

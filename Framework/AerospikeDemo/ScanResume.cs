@@ -14,43 +14,57 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using System.Threading;
 using Aerospike.Client;
 
 namespace Aerospike.Demo
 {
-	public class ScanPage : SyncExample
+	public class ScanResume : SyncExample
 	{
-		private int recordCount = 0;
+		private int recordCount;
+		private int recordMax;
 
-		public ScanPage(Console console) : base(console)
+		public ScanResume(Console console) : base(console)
 		{
 		}
 
 		/// <summary>
-		/// Scan in pages.
+		/// Terminate a scan and then resume scan later.
 		/// </summary>
 		public override void RunExample(AerospikeClient client, Arguments args)
 		{
 			string binName = "bin";
-			string setName = "page";
+			string setName = "resume";
 
-			WriteRecords(client, args, setName, binName, 190);
+			WriteRecords(client, args, setName, binName, 200);
 
+			// Serialize node scans so scan callback atomics are not necessary.
 			ScanPolicy policy = new ScanPolicy();
-			policy.maxRecords = 100;
+			policy.concurrentNodes = false;
 
 			PartitionFilter filter = PartitionFilter.All();
+			recordCount = 0;
+			recordMax = 50;
 
-			// Scan 3 pages of records.
-			for (int i = 0; i < 3 && !filter.Done; i++)
+			console.Info("Start scan terminate");
+
+			try
 			{
-				recordCount = 0;
-
-				console.Info("Scan page: " + i);
 				client.ScanPartitions(policy, filter, args.ns, setName, ScanCallback);
-				console.Info("Records returned: " + recordCount);
 			}
+			catch (AerospikeException.ScanTerminated e)
+			{
+				console.Info("Scan terminated as expected");
+			}
+			console.Info("Records returned: " + recordCount);
+			
+			// PartitionFilter could be serialized at this point.
+			// Resume scan now.
+			recordCount = 0;
+			recordMax = 0;
+
+			console.Info("Start scan resume");
+			client.ScanPartitions(policy, filter, args.ns, setName, ScanCallback);
+			console.Info("Records returned: " + recordCount);
 		}
 
 		private void WriteRecords
@@ -74,10 +88,14 @@ namespace Aerospike.Demo
 
 		public void ScanCallback(Key key, Record record)
 		{
-			// Callbacks must ensure thread safety when ScanAll() is used with ScanPolicy
-			// concurrentNodes set to true (default).  In this case, parallel
-			// node threads will be sending data to this callback.
-			Interlocked.Increment(ref recordCount);
+			if (recordMax > 0 && recordCount >= recordMax)
+			{
+				// Terminate scan. The scan last digest will not be set and the current record
+				// will be returned again if the scan resumes at a later time.
+				throw new AerospikeException.ScanTerminated();
+			}
+
+			recordCount++;
 		}
 	}
 }
