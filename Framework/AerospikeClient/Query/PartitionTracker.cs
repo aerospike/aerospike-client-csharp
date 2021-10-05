@@ -372,7 +372,6 @@ namespace Aerospike.Client
 				case ResultCode.SERVER_NOT_AVAILABLE:
 				case ResultCode.PARTITION_UNAVAILABLE:
 				case ResultCode.TIMEOUT:
-				case ResultCode.QUOTA_EXCEEDED:
 					if (exceptions == null)
 					{
 						exceptions = new List<AerospikeException>();
