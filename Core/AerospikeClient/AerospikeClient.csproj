@@ -182,15 +182,18 @@
     <Compile Include="..\..\Framework\AerospikeClient\Policy\AdminPolicy.cs" Link="Policy\AdminPolicy.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Policy\AuthMode.cs" Link="Policy\AuthMode.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Policy\BatchPolicy.cs" Link="Policy\BatchPolicy.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Policy\BinValueParseResult.cs" Link="Policy\BinValueParseResult.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Policy\ClientPolicy.cs" Link="Policy\ClientPolicy.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Policy\CommitLevel.cs" Link="Policy\CommitLevel.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Policy\GenerationPolicy.cs" Link="Policy\GenerationPolicy.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Policy\InfoPolicy.cs" Link="Policy\InfoPolicy.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Policy\IRecordHandler.cs" Link="Policy\IRecordHandler.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Policy\Policy.cs" Link="Policy\Policy.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Policy\QueryPolicy.cs" Link="Policy\QueryPolicy.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Policy\ReadModeAP.cs" Link="Policy\ReadModeAP.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Policy\ReadModeSC.cs" Link="Policy\ReadModeSC.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Policy\RecordExistsAction.cs" Link="Policy\RecordExistsAction.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Policy\RecordHandler.cs" Link="Policy\RecordHandler.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Policy\Replica.cs" Link="Policy\Replica.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Policy\ScanPolicy.cs" Link="Policy\ScanPolicy.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Policy\TlsPolicy.cs" Link="Policy\TlsPolicy.cs" />

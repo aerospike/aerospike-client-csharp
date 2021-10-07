@@ -148,14 +148,14 @@ namespace Aerospike.Client
 			return false;
 		}
 
-		protected internal Record ParseRecord()
+		protected internal Record ParseRecord(Key key)
 		{
 			if (opCount <= 0)
 			{
-				return new Record(null, generation, expiration);
+				return EmptyRecord( generation, expiration, policy.recordHandler, key);
 			}
 
-			return ParseRecord(opCount, generation, expiration, isOperation);
+			return ParseRecord(opCount, generation, expiration, isOperation, policy.recordHandler, key);
 		}
 
 		protected internal void Stop()

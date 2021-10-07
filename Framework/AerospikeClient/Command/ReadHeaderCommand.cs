@@ -54,7 +54,7 @@ namespace Aerospike.Client
 			{
 				int generation = ByteUtil.BytesToInt(dataBuffer, 14);
 				int expiration = ByteUtil.BytesToInt(dataBuffer, 18);
-				record = new Record(null, generation, expiration);
+				record = EmptyRecord(generation, expiration, policy.recordHandler, key);
 				return;
 			}
 

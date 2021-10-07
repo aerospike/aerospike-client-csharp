@@ -49,7 +49,7 @@ namespace Aerospike.Client
 			if (resultCode == 0)
 			{
 				BatchRead record = records[batchIndex];
-				record.record = ParseRecord();
+				record.record = ParseRecord(key);
 			}
 		}
 
@@ -106,7 +106,7 @@ namespace Aerospike.Client
 		{
 			if (resultCode == 0)
 			{
-				records[batchIndex] = ParseRecord();
+				records[batchIndex] = ParseRecord(key);
 			}
 		}
 

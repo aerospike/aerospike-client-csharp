@@ -1608,8 +1608,18 @@ namespace Aerospike.Client
 			return new Key(ns, digest, setName, userKey);
 		}
 
-		internal Record ParseRecord(int opCount, int generation, int expiration, bool isOperation)
+		internal Record EmptyRecord(int generation, int expiration, IRecordHandler recordHandler, Key key)
 		{
+			recordHandler.OnRecordStart(key, generation, expiration);
+			var record = new Record(null, generation, expiration);
+			recordHandler.OnRecordEnd(key, record);
+			return record;
+		}
+
+		internal Record ParseRecord(int opCount, int generation, int expiration, bool isOperation, IRecordHandler recordHandler, Key key)
+		{
+			recordHandler.OnRecordStart(key, generation, expiration);
+			
 			Dictionary<string, object> bins = new Dictionary<string, object>();
 
 			for (int i = 0; i < opCount; i++)
@@ -1621,10 +1631,15 @@ namespace Aerospike.Client
 				dataOffset += 4 + 4 + nameSize;
 
 				int particleBytesSize = (int)(opSize - (4 + nameSize));
-				object value = ByteUtil.BytesToParticle(particleType, dataBuffer, dataOffset, particleBytesSize);
+				object value;
+				BinValueParseResult saveValue = recordHandler.OnParseBinValue(name, particleType, dataBuffer, dataOffset, particleBytesSize, out value);
 				dataOffset += particleBytesSize;
 
-				if (isOperation)
+				if (saveValue == BinValueParseResult.IGNORE)
+				{
+					// no need to save the value to bins
+				}
+				else if (isOperation)
 				{
 					object prev;
 
@@ -1656,7 +1671,9 @@ namespace Aerospike.Client
 					bins[name] = value;
 				}
 			}
-			return new Record(bins, generation, expiration);
+			var record = new Record(bins, generation, expiration);
+			recordHandler.OnRecordEnd(key, record);
+			return record;
 		}
 
 		private bool SizeBuffer(Policy policy)

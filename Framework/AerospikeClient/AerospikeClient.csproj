@@ -319,8 +319,10 @@
     <Compile Include="Operation\HLLOperation.cs" />
     <Compile Include="Policy\AdminPolicy.cs" />
     <Compile Include="Policy\BatchPolicy.cs" />
+    <Compile Include="Policy\BinValueParseResult.cs" />
     <Compile Include="Policy\ClientPolicy.cs" />
     <Compile Include="Policy\CommitLevel.cs" />
+    <Compile Include="Policy\IRecordHandler.cs" />
     <Compile Include="Policy\ReadModeSC.cs" />
     <Compile Include="Policy\ReadModeAP.cs" />
     <Compile Include="Policy\AuthMode.cs" />
@@ -329,6 +331,7 @@
     <Compile Include="Policy\Policy.cs" />
     <Compile Include="Policy\QueryPolicy.cs" />
     <Compile Include="Policy\RecordExistsAction.cs" />
+    <Compile Include="Policy\RecordHandler.cs" />
     <Compile Include="Policy\Replica.cs" />
     <Compile Include="Policy\ScanPolicy.cs" />
     <Compile Include="Policy\TlsPolicy.cs" />

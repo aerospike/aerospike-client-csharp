@@ -53,7 +53,7 @@ namespace Aerospike.Client
 				return;
 			}
 
-			Record record = ParseRecord();
+			Record record = ParseRecord(key);
 			tracker.SetDigest(nodePartitions, key);
 			listener.OnRecord(key, record);
 		}

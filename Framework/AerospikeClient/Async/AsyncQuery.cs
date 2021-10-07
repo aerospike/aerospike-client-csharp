@@ -42,7 +42,7 @@ namespace Aerospike.Client
 
 		protected internal override void ParseRow(Key key)
 		{
-			Record record = ParseRecord();
+			Record record = ParseRecord(key);
 			listener.OnRecord(key, record);
 		}
 

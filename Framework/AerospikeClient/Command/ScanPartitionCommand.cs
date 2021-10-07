@@ -78,7 +78,7 @@ namespace Aerospike.Client
 				return;
 			}
 
-			Record record = ParseRecord();
+			Record record = ParseRecord(key);
 
 			if (!valid)
 			{
