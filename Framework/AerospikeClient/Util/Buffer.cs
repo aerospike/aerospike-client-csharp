@@ -17,10 +17,8 @@
 
 namespace Aerospike.Client
 {
-    public interface IRecordHandler
+    public struct Buffer
     {
-        void OnRecordStart(Key key, int generation, int expiration);
-        BinValueParseResult OnParseBinValue(string binName, int type, byte[] buf, int offset, int len, out object value);
-        void OnRecordEnd(Key key, Record record);
+        
     }
 }

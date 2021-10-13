@@ -17,24 +17,8 @@
 
 namespace Aerospike.Client
 {
-    public class RecordHandler : IRecordHandler
+    public interface IRecordParser
     {
-        public static readonly RecordHandler Instance = new RecordHandler();
-
-        public virtual void OnRecordStart(Key key, int generation, int expiration)
-        {
-            // Do nothing
-        }
-
-        public virtual BinValueParseResult OnParseBinValue(string binName, int type, byte[] buf, int offset, int len, out object value)
-        {
-            value = ByteUtil.BytesToParticle(type, buf, offset, len);
-            return BinValueParseResult.SAVE;
-        }
-
-        public virtual void OnRecordEnd(Key key, Record record)
-        {
-            // Do nothing
-        }
+        Record ParseRecord(byte[] dataBuffer, ref int dataOffset, int opCount, int generation, int expiration, bool isOperation);
     }
 }

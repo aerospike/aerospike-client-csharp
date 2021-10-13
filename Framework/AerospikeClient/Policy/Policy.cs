@@ -222,7 +222,7 @@ namespace Aerospike.Client
 		/// </summary>
 		public bool failOnFilteredOut;
 
-		public IRecordHandler recordHandler = RecordHandler.Instance;
+		public IRecordParser recordParser = RecordParser.Instance;
 
 		/// <summary>
 		/// Copy constructor.
@@ -241,7 +241,7 @@ namespace Aerospike.Client
 			this.sendKey = other.sendKey;
 			this.compress = other.compress;
 			this.failOnFilteredOut = other.failOnFilteredOut;
-			this.recordHandler = other.recordHandler;
+			this.recordParser = other.recordParser;
 		}
 
 		/// <summary>

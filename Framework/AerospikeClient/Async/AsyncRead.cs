@@ -100,11 +100,11 @@ namespace Aerospike.Client
 				if (opCount == 0)
 				{
 					// Bin data was not returned.
-					record = EmptyRecord(generation, expiration, policy.recordHandler, key);
+					record = new Record(null, generation, expiration);
 					return;
 				}
 				SkipKey(fieldCount);
-				record = ParseRecord(opCount, generation, expiration, isOperation, policy.recordHandler, key);
+				record = policy.recordParser.ParseRecord(dataBuffer, ref dataOffset, opCount, generation, expiration, isOperation);
 				return;
 			}
 
@@ -126,7 +126,7 @@ namespace Aerospike.Client
 			if (resultCode == ResultCode.UDF_BAD_RESPONSE)
 			{
 				SkipKey(fieldCount);
-				record = ParseRecord(opCount, generation, expiration, isOperation, policy.recordHandler, key);
+				record = policy.recordParser.ParseRecord(dataBuffer, ref dataOffset, opCount, generation, expiration, isOperation);
 				HandleUdfError(resultCode);
 				return;
 			}

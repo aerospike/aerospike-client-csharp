@@ -322,7 +322,7 @@
     <Compile Include="Policy\BinValueParseResult.cs" />
     <Compile Include="Policy\ClientPolicy.cs" />
     <Compile Include="Policy\CommitLevel.cs" />
-    <Compile Include="Policy\IRecordHandler.cs" />
+    <Compile Include="Policy\IRecordParser.cs" />
     <Compile Include="Policy\ReadModeSC.cs" />
     <Compile Include="Policy\ReadModeAP.cs" />
     <Compile Include="Policy\AuthMode.cs" />
@@ -331,7 +331,7 @@
     <Compile Include="Policy\Policy.cs" />
     <Compile Include="Policy\QueryPolicy.cs" />
     <Compile Include="Policy\RecordExistsAction.cs" />
-    <Compile Include="Policy\RecordHandler.cs" />
+    <Compile Include="Policy\RecordParser.cs" />
     <Compile Include="Policy\Replica.cs" />
     <Compile Include="Policy\ScanPolicy.cs" />
     <Compile Include="Policy\TlsPolicy.cs" />
@@ -371,6 +371,7 @@
     <Compile Include="Task\ExecuteTask.cs" />
     <Compile Include="Task\IndexTask.cs" />
     <Compile Include="Task\RegisterTask.cs" />
+    <Compile Include="Util\Buffer.cs" />
     <Compile Include="Util\PackUtil.cs" />
     <Compile Include="Util\Hash.cs" />
     <Compile Include="Util\Packer.cs" />

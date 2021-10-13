@@ -251,10 +251,10 @@ namespace Aerospike.Client
 		{
 			if (opCount <= 0)
 			{
-				return EmptyRecord(generation, expiration, policy.recordHandler, key);
+				return new Record(null, generation, expiration);
 			}
 
-			return ParseRecord(opCount, generation, expiration, isOperation, policy.recordHandler, key);
+			return policy.recordParser.ParseRecord(dataBuffer, ref dataOffset, opCount, generation, expiration, isOperation);
 		}
 		
 		public void Stop()

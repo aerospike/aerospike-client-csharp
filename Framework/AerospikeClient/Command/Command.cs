@@ -1608,74 +1608,6 @@ namespace Aerospike.Client
 			return new Key(ns, digest, setName, userKey);
 		}
 
-		internal Record EmptyRecord(int generation, int expiration, IRecordHandler recordHandler, Key key)
-		{
-			recordHandler.OnRecordStart(key, generation, expiration);
-			var record = new Record(null, generation, expiration);
-			recordHandler.OnRecordEnd(key, record);
-			return record;
-		}
-
-		internal Record ParseRecord(int opCount, int generation, int expiration, bool isOperation, IRecordHandler recordHandler, Key key)
-		{
-			recordHandler.OnRecordStart(key, generation, expiration);
-			
-			Dictionary<string, object> bins = new Dictionary<string, object>();
-
-			for (int i = 0; i < opCount; i++)
-			{
-				int opSize = ByteUtil.BytesToInt(dataBuffer, dataOffset);
-				byte particleType = dataBuffer[dataOffset + 5];
-				byte nameSize = dataBuffer[dataOffset + 7];
-				string name = ByteUtil.Utf8ToString(dataBuffer, dataOffset + 8, nameSize);
-				dataOffset += 4 + 4 + nameSize;
-
-				int particleBytesSize = (int)(opSize - (4 + nameSize));
-				object value;
-				BinValueParseResult saveValue = recordHandler.OnParseBinValue(name, particleType, dataBuffer, dataOffset, particleBytesSize, out value);
-				dataOffset += particleBytesSize;
-
-				if (saveValue == BinValueParseResult.IGNORE)
-				{
-					// no need to save the value to bins
-				}
-				else if (isOperation)
-				{
-					object prev;
-
-					if (bins.TryGetValue(name, out prev))
-					{
-						// Multiple values returned for the same bin. 
-						if (prev is OpResults)
-						{
-							// List already exists.  Add to it.
-							OpResults list = (OpResults)prev;
-							list.Add(value);
-						}
-						else
-						{
-							// Make a list to store all values.
-							OpResults list = new OpResults();
-							list.Add(prev);
-							list.Add(value);
-							bins[name] = list;
-						}
-					}
-					else
-					{
-						bins[name] = value;
-					}
-				}
-				else 
-				{
-					bins[name] = value;
-				}
-			}
-			var record = new Record(bins, generation, expiration);
-			recordHandler.OnRecordEnd(key, record);
-			return record;
-		}
-
 		private bool SizeBuffer(Policy policy)
 		{
 			if (policy.compress && dataOffset > COMPRESS_THRESHOLD)
@@ -1769,13 +1701,6 @@ namespace Aerospike.Client
 			}
 		}
 
-		private class OpResults : List<object>
-		{
-			public override string ToString()
-			{
-				return string.Join(",", base.ToArray());
-			}
-		}
 	}
 
 	/// <summary>
