@@ -371,7 +371,6 @@
     <Compile Include="Task\ExecuteTask.cs" />
     <Compile Include="Task\IndexTask.cs" />
     <Compile Include="Task\RegisterTask.cs" />
-    <Compile Include="Util\Buffer.cs" />
     <Compile Include="Util\PackUtil.cs" />
     <Compile Include="Util\Hash.cs" />
     <Compile Include="Util\Packer.cs" />
