@@ -25,7 +25,8 @@ namespace Aerospike.Client
 {
 	public sealed class ThreadLocalData
 	{
-		private const int THREAD_LOCAL_CUTOFF = 1024 * 128; // 128 KB
+		public const int DEFAULT_THREAD_LOCAL_CUTOFF = 1024 * 128; // 128 KB
+		public static int ThreadLocalCutoff = DEFAULT_THREAD_LOCAL_CUTOFF;
 
 		[ThreadStatic]
 		private static byte[] BufferThreadLocal;
@@ -47,7 +48,7 @@ namespace Aerospike.Client
 		public static byte[] ResizeBuffer(int size)
 		{
 			// Do not store extremely large buffers in thread local storage.
-			if (size > THREAD_LOCAL_CUTOFF)
+			if (size > ThreadLocalCutoff)
 			{
 				if (Log.DebugEnabled())
 				{
