@@ -319,7 +319,6 @@
     <Compile Include="Operation\HLLOperation.cs" />
     <Compile Include="Policy\AdminPolicy.cs" />
     <Compile Include="Policy\BatchPolicy.cs" />
-    <Compile Include="Policy\BinValueParseResult.cs" />
     <Compile Include="Policy\ClientPolicy.cs" />
     <Compile Include="Policy\CommitLevel.cs" />
     <Compile Include="Policy\IRecordParser.cs" />

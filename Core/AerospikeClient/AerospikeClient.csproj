@@ -182,7 +182,6 @@
     <Compile Include="..\..\Framework\AerospikeClient\Policy\AdminPolicy.cs" Link="Policy\AdminPolicy.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Policy\AuthMode.cs" Link="Policy\AuthMode.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Policy\BatchPolicy.cs" Link="Policy\BatchPolicy.cs" />
-    <Compile Include="..\..\Framework\AerospikeClient\Policy\BinValueParseResult.cs" Link="Policy\BinValueParseResult.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Policy\ClientPolicy.cs" Link="Policy\ClientPolicy.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Policy\CommitLevel.cs" Link="Policy\CommitLevel.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Policy\GenerationPolicy.cs" Link="Policy\GenerationPolicy.cs" />

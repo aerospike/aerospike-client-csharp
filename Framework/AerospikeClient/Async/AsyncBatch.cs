@@ -95,7 +95,7 @@ namespace Aerospike.Client
 
 			if (resultCode == 0)
 			{
-				record.record = ParseRecord(key);
+				record.record = ParseRecord();
 			}
 		}
 
@@ -193,7 +193,7 @@ namespace Aerospike.Client
 
 			if (resultCode == 0)
 			{
-				record.record = ParseRecord(key);
+				record.record = ParseRecord();
 			}
 			listener.OnRecord(record);
 		}
@@ -311,7 +311,7 @@ namespace Aerospike.Client
 		{
 			if (resultCode == 0)
 			{
-				records[batchIndex] = ParseRecord(key);
+				records[batchIndex] = ParseRecord();
 			}
 		}
 
@@ -426,7 +426,7 @@ namespace Aerospike.Client
 
 			if (resultCode == 0)
 			{
-				Record record = ParseRecord(key);
+				Record record = ParseRecord();
 				listener.OnRecord(keyOrig, record);
 			}
 			else

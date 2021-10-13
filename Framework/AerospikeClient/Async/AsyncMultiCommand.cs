@@ -148,7 +148,7 @@ namespace Aerospike.Client
 			return false;
 		}
 
-		protected internal Record ParseRecord(Key key)
+		protected internal Record ParseRecord()
 		{
 			if (opCount <= 0)
 			{
