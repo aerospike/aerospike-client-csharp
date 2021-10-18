@@ -1230,7 +1230,7 @@ namespace Aerospike.Client
 		}
 
 		//--------------------------------------------------
-		// Unknown
+		// Miscellaneous
 		//--------------------------------------------------
 
 		/// <summary>
@@ -1253,6 +1253,22 @@ namespace Aerospike.Client
 		public static Exp Unknown()
 		{
 			return new Cmd(UNKNOWN);
+		}
+
+		/// <summary>
+		/// Merge precompiled expression into a new expression tree.
+		/// Useful for storing common precompiled expressions and then reusing 
+		/// these expressions as part of a greater expression.
+		/// </summary>
+		/// <example>
+		/// <code>
+		/// Expression e = Exp.Build(Exp.EQ(Exp.IntBin("a"), Exp.Val(200)));
+		/// Expression merged = Exp.Build(Exp.And(Exp.Expr(e), Exp.EQ(Exp.IntBin("b"), Exp.Val(100))));
+		/// </code>
+		/// </example>
+		public static Exp Expr(Expression e)
+		{
+			return new ExpBytes(e);
 		}
 
 		//--------------------------------------------------
@@ -1654,6 +1670,21 @@ namespace Aerospike.Client
 			public override void Pack(Packer packer)
 			{
 				packer.PackNil();
+			}
+		}
+
+		private sealed class ExpBytes : Exp
+		{
+			internal readonly byte[] bytes;
+
+			internal ExpBytes(Expression e)
+			{
+				this.bytes = e.Bytes;
+			}
+
+			public override void Pack(Packer packer)
+			{
+				packer.PackByteArray(bytes, 0, bytes.Length);
 			}
 		}
 	}

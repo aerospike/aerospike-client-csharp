@@ -342,5 +342,25 @@ namespace Aerospike.Test
 			valExp = record.GetHLLValue(expVar);
 			Assert.IsTrue(Util.ByteArrayEquals((byte[])valH.Object, (byte[])valExp.Object));
 		}
+
+		[TestMethod]
+		public void ExpMerge()
+		{
+			Expression e = Exp.Build(Exp.EQ(Exp.IntBin(binA), Exp.Val(0)));
+			Expression eand = Exp.Build(Exp.And(Exp.Expr(e), Exp.EQ(Exp.IntBin(binD), Exp.Val(2))));
+			Expression eor = Exp.Build(Exp.Or(Exp.Expr(e), Exp.EQ(Exp.IntBin(binD), Exp.Val(2))));
+
+			Record record = client.Operate(null, keyA,
+				ExpOperation.Read("res1", eand, ExpReadFlags.DEFAULT),
+				ExpOperation.Read("res2", eor, ExpReadFlags.DEFAULT));
+
+			AssertRecordFound(keyA, record);
+
+			bool res1 = record.GetBool("res1");
+			Assert.IsFalse(res1);
+
+			bool res2 = record.GetBool("res2");
+			Assert.IsTrue(res2);
+		}
 	}
 }
