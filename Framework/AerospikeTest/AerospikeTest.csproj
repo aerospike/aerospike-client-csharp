@@ -78,7 +78,6 @@
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Suite.cs" />
     <Compile Include="Sync\Basic\TestExpOperation.cs" />
-    <Compile Include="Sync\Basic\TestPredExp.cs" />
     <Compile Include="Sync\Basic\TestListExp.cs" />
     <Compile Include="Sync\Basic\TestHLLExp.cs" />
     <Compile Include="Sync\Basic\TestBitExp.cs" />
@@ -101,7 +100,6 @@
     <Compile Include="Sync\Basic\TestAdd.cs" />
     <Compile Include="Sync\Basic\TestBatch.cs" />
     <Compile Include="Sync\Basic\TestAppend.cs" />
-    <Compile Include="Sync\Query\TestQueryPredExp.cs" />
     <Compile Include="Sync\Query\TestQueryFilterSet.cs" />
     <Compile Include="Sync\Query\TestQueryGeo.cs" />
     <Compile Include="Sync\Query\TestIndex.cs" />
