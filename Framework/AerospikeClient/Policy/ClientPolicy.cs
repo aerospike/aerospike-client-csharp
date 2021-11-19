@@ -188,10 +188,33 @@ namespace Aerospike.Client
 		public QueryPolicy queryPolicyDefault = new QueryPolicy();
 
 		/// <summary>
-		/// Default batch policy that is used when batch command's policy is null.
+		///  Default parent policy used in batch read commands. Parent policy fields
+		///  include socketTimeout, totalTimeout, maxRetries, etc...
 		/// </summary>
-		public BatchPolicy batchPolicyDefault = new BatchPolicy();
+		public BatchPolicy batchPolicyDefault = BatchPolicy.ReadDefault();
 
+		/// <summary>
+		/// Default parent policy used in batch write commands. Parent policy fields
+		/// include socketTimeout, totalTimeout, maxRetries, etc...
+		/// </summary>
+		public BatchPolicy batchParentPolicyWriteDefault = BatchPolicy.WriteDefault();
+
+		/// <summary>
+		/// Default write policy used in batch operate commands.
+		/// Write policy fields include generation, expiration, durableDelete, etc...
+		/// </summary>
+		public BatchWritePolicy batchWritePolicyDefault = new BatchWritePolicy();
+
+		/// <summary>
+		/// Default delete policy used in batch delete commands.
+		/// </summary>
+		public BatchDeletePolicy batchDeletePolicyDefault = new BatchDeletePolicy();
+
+		/// <summary>
+		/// Default user defined function policy used in batch UDF excecute commands.
+		/// </summary>
+		public BatchUDFPolicy batchUDFPolicyDefault = new BatchUDFPolicy();
+		
 		/// <summary>
 		/// Default info policy that is used when info command's policy is null.
 		/// </summary>
@@ -288,6 +311,10 @@ namespace Aerospike.Client
 			this.scanPolicyDefault = new ScanPolicy(other.scanPolicyDefault);
 			this.queryPolicyDefault = new QueryPolicy(other.queryPolicyDefault);
 			this.batchPolicyDefault = new BatchPolicy(other.batchPolicyDefault);
+			this.batchParentPolicyWriteDefault = new BatchPolicy(other.batchParentPolicyWriteDefault);
+			this.batchWritePolicyDefault = new BatchWritePolicy(other.batchWritePolicyDefault);
+			this.batchDeletePolicyDefault = new BatchDeletePolicy(other.batchDeletePolicyDefault);
+			this.batchUDFPolicyDefault = new BatchUDFPolicy(other.batchUDFPolicyDefault);
 			this.infoPolicyDefault = new InfoPolicy(other.infoPolicyDefault);
 			this.tlsPolicy = (other.tlsPolicy != null) ? new TlsPolicy(other.tlsPolicy) : null;
 			this.ipMap = other.ipMap;

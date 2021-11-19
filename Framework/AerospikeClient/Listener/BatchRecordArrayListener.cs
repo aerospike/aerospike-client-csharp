@@ -17,24 +17,26 @@
 namespace Aerospike.Client
 {
 	/// <summary>
-	/// Asynchronous result notifications for batch exists commands.
-	/// The result is sent in a single array.
+	/// Asynchronous result notifications for batch operate commands.
 	/// </summary>
-	public interface ExistsArrayListener
+	public interface BatchRecordArrayListener
 	{
 		/// <summary>
 		/// This method is called when the command completes successfully.
-		/// The returned boolean array is in positional order with the original key array order.
+		/// The returned record array is in positional order with the original key array order.
 		/// </summary>
-		/// <param name="keys">unique record identifiers</param>
-		/// <param name="exists">whether keys exists on server</param>
-		void OnSuccess(Key[] keys, bool[] exists);
+		/// <param name="records">record instances, always populated.</param>
+		/// <param name="status">true if all records returned success.</param>
+		void OnSuccess(BatchRecord[] records, bool status);
 
 		/// <summary>
-		/// This method is called when the command fails. The AerospikeException is likely to be
-		/// <see cref="Aerospike.Client.AerospikeException.BatchExists"/> which contains results
-		/// for keys that did complete.
+		/// This method is called when one or more keys fail.
 		/// </summary>
-		void OnFailure(AerospikeException ae);
+		/// <param name="records">
+		/// record instances, always populated. <see cref="Aerospike.Client.BatchRecord.resultCode"/>
+		/// indicates if an error occurred for each record instance.
+		/// </param>
+		/// <param name="ae">error that occurred</param>
+		void OnFailure(BatchRecord[] records, AerospikeException ae);
 	}
 }

@@ -17,24 +17,40 @@
 namespace Aerospike.Client
 {
 	/// <summary>
-	/// Asynchronous result notifications for batch exists commands.
-	/// The result is sent in a single array.
+	/// Policy attributes used in batch read commands.
 	/// </summary>
-	public interface ExistsArrayListener
+	public sealed class BatchReadPolicy
 	{
 		/// <summary>
-		/// This method is called when the command completes successfully.
-		/// The returned boolean array is in positional order with the original key array order.
+		/// Read policy for AP (availability) namespaces.
+		/// <para>
+		/// Default: <see cref="Aerospike.Client.ReadModeAP.ONE"/>
+		/// </para>
 		/// </summary>
-		/// <param name="keys">unique record identifiers</param>
-		/// <param name="exists">whether keys exists on server</param>
-		void OnSuccess(Key[] keys, bool[] exists);
+		public ReadModeAP readModeAP = ReadModeAP.ONE;
 
 		/// <summary>
-		/// This method is called when the command fails. The AerospikeException is likely to be
-		/// <see cref="Aerospike.Client.AerospikeException.BatchExists"/> which contains results
-		/// for keys that did complete.
+		/// Read policy for SC (strong consistency) namespaces.
+		/// <para>
+		/// Default: <see cref="Aerospike.Client.ReadModeSC.SESSION"/>
+		/// </para>
 		/// </summary>
-		void OnFailure(AerospikeException ae);
+		public ReadModeSC readModeSC = ReadModeSC.SESSION;
+
+		/// <summary>
+		/// Copy constructor.
+		/// </summary>
+		public BatchReadPolicy(BatchReadPolicy other)
+		{
+			this.readModeAP = other.readModeAP;
+			this.readModeSC = other.readModeSC;
+		}
+
+		/// <summary>
+		/// Default constructor.
+		/// </summary>
+		public BatchReadPolicy()
+		{
+		}
 	}
 }

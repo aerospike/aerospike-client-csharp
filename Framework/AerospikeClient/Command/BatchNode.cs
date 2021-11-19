@@ -15,13 +15,22 @@
  * the License.
  */
 using System;
+using System.Collections;
 using System.Collections.Generic;
 
 namespace Aerospike.Client
 {
 	public sealed class BatchNode
 	{
-		public static List<BatchNode> GenerateList(Cluster cluster, BatchPolicy policy, Key[] keys)
+		public static List<BatchNode> GenerateList
+		(
+			Cluster cluster,
+			BatchPolicy policy,
+			Key[] keys,
+			BatchRecord[] records,
+			bool hasWrite,
+			IBatchStatus status
+		)
 		{
 			Node[] nodes = cluster.ValidateNodes();
 
@@ -40,19 +49,63 @@ namespace Aerospike.Client
 
 			// Split keys by server node.
 			List<BatchNode> batchNodes = new List<BatchNode>(nodes.Length);
+			AerospikeException except = null;
 
 			for (int i = 0; i < keys.Length; i++)
 			{
-				Node node = Partition.GetNodeBatchRead(cluster, keys[i], replica, replicaSC, null, 0, 0);
-				BatchNode batchNode = FindBatchNode(batchNodes, node);
+				Key key = keys[i];
 
-				if (batchNode == null)
+				try
 				{
-					batchNodes.Add(new BatchNode(node, keysPerNode, i));
+					Node node = hasWrite ?
+						Partition.GetNodeBatchWrite(cluster, key, replica, null, 0) :
+						Partition.GetNodeBatchRead(cluster, key, replica, replicaSC, null, 0, 0);
+
+					BatchNode batchNode = FindBatchNode(batchNodes, node);
+
+					if (batchNode == null)
+					{
+						batchNodes.Add(new BatchNode(node, keysPerNode, i));
+					}
+					else
+					{
+						batchNode.AddKey(i);
+					}
+				}
+				catch (AerospikeException.InvalidNode ain)
+				{
+					// This method only called on initialization, so inDoubt must be false.
+					if (records != null)
+					{
+						records[i].SetError(ain.Result, false);
+					}
+					else
+					{
+						status.SetInvalidNode(key, i, ain, false, hasWrite);
+					}
+
+					if (!policy.respondAllKeys)
+					{
+						throw ain;
+					}
+
+					if (except == null)
+					{
+						except = ain;
+					}
+				}
+			}
+
+			if (except != null)
+			{
+				// Fatal if no key requests were generated on initialization.
+				if (batchNodes.Count == 0)
+				{
+					throw except;
 				}
 				else
 				{
-					batchNode.AddKey(i);
+					status.SetInvalidNode(except);
 				}
 			}
 			return batchNodes;
@@ -63,9 +116,12 @@ namespace Aerospike.Client
 			Cluster cluster,
 			BatchPolicy policy,
 			Key[] keys,
+			BatchRecord[] records,
 			uint sequenceAP,
 			uint sequenceSC,
-			BatchNode batchSeed
+			BatchNode batchSeed,
+			bool hasWrite,
+			IBatchStatus status
 		)
 		{
 			Node[] nodes = cluster.ValidateNodes();
@@ -85,27 +141,68 @@ namespace Aerospike.Client
 
 			// Split keys by server node.
 			List<BatchNode> batchNodes = new List<BatchNode>(nodes.Length);
+			AerospikeException except = null;
 
 			for (int i = 0; i < batchSeed.offsetsSize; i++)
 			{
 				int offset = batchSeed.offsets[i];
+				Key key = keys[offset];
 
-				Node node = Partition.GetNodeBatchRead(cluster, keys[offset], replica, replicaSC, batchSeed.node, sequenceAP, sequenceSC);	
-				BatchNode batchNode = FindBatchNode(batchNodes, node);
+				try
+				{
+					Node node = hasWrite ?
+						Partition.GetNodeBatchWrite(cluster, key, replica, batchSeed.node, sequenceAP) :
+						Partition.GetNodeBatchRead(cluster, key, replica, replicaSC, batchSeed.node, sequenceAP, sequenceSC);
 
-				if (batchNode == null)
-				{
-					batchNodes.Add(new BatchNode(node, keysPerNode, offset));
+					BatchNode batchNode = FindBatchNode(batchNodes, node);
+
+					if (batchNode == null)
+					{
+						batchNodes.Add(new BatchNode(node, keysPerNode, offset));
+					}
+					else
+					{
+						batchNode.AddKey(offset);
+					}
 				}
-				else
+				catch (AerospikeException.InvalidNode ain)
 				{
-					batchNode.AddKey(offset);
+					if (records != null)
+					{
+						// This method only called on retry, so commandSentCounter(2) will be greater than 1.
+						records[offset].SetError(ain.Result, Command.BatchInDoubt(hasWrite, 2));
+					}
+					else
+					{
+						status.SetInvalidNode(key, offset, ain, Command.BatchInDoubt(hasWrite, 2), hasWrite);
+					}
+
+					if (!policy.respondAllKeys)
+					{
+						throw ain;
+					}
+
+					if (except == null)
+					{
+						except = ain;
+					}
 				}
+			}
+
+			if (except != null)
+			{
+				status.SetInvalidNode(except);
 			}
 			return batchNodes;
 		}
 		
-		public static List<BatchNode> GenerateList(Cluster cluster, BatchPolicy policy, List<BatchRead> records)
+		public static List<BatchNode> GenerateList
+		(
+			Cluster cluster,
+			BatchPolicy policy,
+			IList records,
+			IBatchStatus status
+		)
 		{
 			Node[] nodes = cluster.ValidateNodes();
 
@@ -125,19 +222,58 @@ namespace Aerospike.Client
 
 			// Split keys by server node.
 			List<BatchNode> batchNodes = new List<BatchNode>(nodes.Length);
+			AerospikeException except = null;
 
 			for (int i = 0; i < max; i++)
 			{
-				Node node = Partition.GetNodeBatchRead(cluster, records[i].key, replica, replicaSC, null, 0, 0);
-				BatchNode batchNode = FindBatchNode(batchNodes, node);
+				BatchRecord b = (BatchRecord)records[i];
 
-				if (batchNode == null)
+				try
 				{
-					batchNodes.Add(new BatchNode(node, keysPerNode, i));
+					b.Prepare();
+
+					Node node = b.hasWrite ?
+						Partition.GetNodeBatchWrite(cluster, b.key, replica, null, 0) :
+						Partition.GetNodeBatchRead(cluster, b.key, replica, replicaSC, null, 0, 0);
+
+					BatchNode batchNode = FindBatchNode(batchNodes, node);
+
+					if (batchNode == null)
+					{
+						batchNodes.Add(new BatchNode(node, keysPerNode, i));
+					}
+					else
+					{
+						batchNode.AddKey(i);
+					}
+				}
+				catch (AerospikeException.InvalidNode ain)
+				{
+					// This method only called on initialization, so inDoubt must be false.
+					b.SetError(ain.Result, false);
+
+					if (!policy.respondAllKeys)
+					{
+						throw ain;
+					}
+
+					if (except == null)
+					{
+						except = ain;
+					}
+				}
+			}
+
+			if (except != null)
+			{
+				// Fatal if no key requests were generated on initialization.
+				if (batchNodes.Count == 0)
+				{
+					throw except;
 				}
 				else
 				{
-					batchNode.AddKey(i);
+					status.SetInvalidNode(except);
 				}
 			}
 			return batchNodes;
@@ -147,10 +283,11 @@ namespace Aerospike.Client
 		(
 			Cluster cluster,
 			BatchPolicy policy,
-			List<BatchRead> records,
+			IList records,
 			uint sequenceAP,
 			uint sequenceSC,
-			BatchNode batchSeed
+			BatchNode batchSeed,
+			IBatchStatus status
 		)
 		{
 			Node[] nodes = cluster.ValidateNodes();
@@ -170,22 +307,50 @@ namespace Aerospike.Client
 
 			// Split keys by server node.
 			List<BatchNode> batchNodes = new List<BatchNode>(nodes.Length);
+			AerospikeException except = null;
 
 			for (int i = 0; i < batchSeed.offsetsSize; i++)
 			{
 				int offset = batchSeed.offsets[i];
+				BatchRecord b = (BatchRecord)records[offset];
 
-				Node node = Partition.GetNodeBatchRead(cluster, records[offset].key, replica, replicaSC, batchSeed.node, sequenceAP, sequenceSC);
-				BatchNode batchNode = FindBatchNode(batchNodes, node);
+				try
+				{
+					Node node = b.hasWrite ?
+						Partition.GetNodeBatchWrite(cluster, b.key, replica, batchSeed.node, sequenceAP) :
+						Partition.GetNodeBatchRead(cluster, b.key, replica, replicaSC, batchSeed.node, sequenceAP, sequenceSC);
 
-				if (batchNode == null)
-				{
-					batchNodes.Add(new BatchNode(node, keysPerNode, offset));
+					BatchNode batchNode = FindBatchNode(batchNodes, node);
+
+					if (batchNode == null)
+					{
+						batchNodes.Add(new BatchNode(node, keysPerNode, offset));
+					}
+					else
+					{
+						batchNode.AddKey(offset);
+					}
 				}
-				else
+				catch (AerospikeException.InvalidNode ain)
 				{
-					batchNode.AddKey(offset);
+					// This method only called on retry, so commandSentCounter(2) will be greater than 1.
+					b.SetError(ain.Result, Command.BatchInDoubt(b.hasWrite, 2));
+
+					if (!policy.respondAllKeys)
+					{
+						throw ain;
+					}
+
+					if (except == null)
+					{
+						except = ain;
+					}
 				}
+			}
+
+			if (except != null)
+			{
+				status.SetInvalidNode(except);
 			}
 			return batchNodes;
 		}
@@ -237,5 +402,11 @@ namespace Aerospike.Client
 			}
 			offsets[offsetsSize++] = offset;
 		}
+	}
+
+	public interface IBatchStatus
+	{
+		void SetInvalidNode(Key key, int index, AerospikeException ae, bool inDoubt, bool hasWrite);
+		void SetInvalidNode(AerospikeException ae);
 	}
 }

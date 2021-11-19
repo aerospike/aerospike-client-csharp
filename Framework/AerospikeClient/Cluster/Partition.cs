@@ -92,6 +92,28 @@ namespace Aerospike.Client
 			}
 		}
 
+		public static Node GetNodeBatchWrite
+		(
+			Cluster cluster,
+			Key key,
+			Replica replica,
+			Node prevNode,
+			uint sequence
+		)
+		{
+			Dictionary<string, Partitions> map = cluster.partitionMap;
+			Partitions partitions;
+
+			if (!map.TryGetValue(key.ns, out partitions))
+			{
+				throw new AerospikeException.InvalidNamespace(key.ns, map.Count);
+			}
+
+			Partition p = new Partition(partitions, key, replica, prevNode, false);
+			p.sequence = sequence;
+			return p.GetNodeWrite(cluster);
+		}
+
 		public static Node GetNodeBatchRead
 		(
 			Cluster cluster,

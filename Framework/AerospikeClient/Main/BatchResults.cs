@@ -17,24 +17,27 @@
 namespace Aerospike.Client
 {
 	/// <summary>
-	/// Asynchronous result notifications for batch exists commands.
-	/// The result is sent in a single array.
+	/// Batch record results.
 	/// </summary>
-	public interface ExistsArrayListener
+	public sealed class BatchResults
 	{
 		/// <summary>
-		/// This method is called when the command completes successfully.
-		/// The returned boolean array is in positional order with the original key array order.
+		/// Record results.
 		/// </summary>
-		/// <param name="keys">unique record identifiers</param>
-		/// <param name="exists">whether keys exists on server</param>
-		void OnSuccess(Key[] keys, bool[] exists);
+		public readonly BatchRecord[] records;
 
 		/// <summary>
-		/// This method is called when the command fails. The AerospikeException is likely to be
-		/// <see cref="Aerospike.Client.AerospikeException.BatchExists"/> which contains results
-		/// for keys that did complete.
+		/// Indicates if all records returned success.
 		/// </summary>
-		void OnFailure(AerospikeException ae);
+		public readonly bool status;
+
+		/// <summary>
+		/// Constructor.
+		/// </summary>
+		public BatchResults(BatchRecord[] records, bool status)
+		{
+			this.records = records;
+			this.status = status;
+		}
 	}
 }

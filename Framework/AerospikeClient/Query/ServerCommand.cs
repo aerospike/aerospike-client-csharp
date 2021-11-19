@@ -21,7 +21,7 @@ namespace Aerospike.Client
 		private readonly Statement statement;
 
 		public ServerCommand(Cluster cluster, Node node, WritePolicy policy, Statement statement) 
-			: base(cluster, policy, node, false, false)
+			: base(cluster, policy, node, false)
 		{
 			this.statement = statement;
 		}

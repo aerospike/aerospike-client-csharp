@@ -328,7 +328,8 @@ namespace Aerospike.Client
 			/// <summary>
 			/// Create serialize exception.
 			/// </summary>
-			public Serialize(Exception e) : base(ResultCode.SERIALIZE_ERROR, e)
+			public Serialize(Exception e)
+				: base(ResultCode.SERIALIZE_ERROR, e)
 			{
 			}
 
@@ -349,7 +350,8 @@ namespace Aerospike.Client
 			/// <summary>
 			/// Create parse exception.
 			/// </summary>
-			public Parse(string message) : base(ResultCode.PARSE_ERROR, message)
+			public Parse(string message)
+				: base(ResultCode.PARSE_ERROR, message)
 			{
 			}
 		}
@@ -430,6 +432,70 @@ namespace Aerospike.Client
 			}
 		}
 
+		/// <summary>
+		/// Exception thrown when a batch exists method fails.
+		/// </summary>
+		public sealed class BatchExists : AerospikeException
+		{
+			public readonly bool[] exists;
+
+			public BatchExists(bool[] exists)
+				: base(ResultCode.BATCH_FAILED)
+			{
+				this.exists = exists;
+			}
+
+			public BatchExists(bool[] exists, Exception e)
+				: base(ResultCode.BATCH_FAILED, e)
+			{
+				this.exists = exists;
+			}
+		}
+
+		/// <summary>
+		/// Exception thrown when a batch read method fails.
+		/// The records fields contains responses for key requests that succeeded and null
+		/// records for key requests that failed.
+		/// </summary>
+		public sealed class BatchRecords : AerospikeException
+		{
+			public readonly Record[] records;
+
+			public BatchRecords(Record[] records)
+				: base(ResultCode.BATCH_FAILED)
+			{
+				this.records = records;
+			}
+
+			public BatchRecords(Record[] records, Exception e)
+				: base(ResultCode.BATCH_FAILED, e)
+			{
+				this.records = records;
+			}
+		}
+
+		/// <summary>
+		/// Exception thrown when a batch write method fails.
+		/// The records fields contains responses for key requests that succeeded
+		/// and the resultCode for key requests that failed.
+		/// </summary>
+		public sealed class BatchRecordArray : AerospikeException
+		{
+			public readonly BatchRecord[] records;
+
+			public BatchRecordArray(BatchRecord[] records)
+				: base(ResultCode.BATCH_FAILED)
+			{
+				this.records = records;
+			}
+
+			public BatchRecordArray(BatchRecord[] records, Exception e)
+				: base(ResultCode.BATCH_FAILED, e)
+			{
+				this.records = records;
+			}
+		}
+		
 		/// <summary>
 		/// Exception thrown when scan was terminated prematurely.
 		/// </summary>

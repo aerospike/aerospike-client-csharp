@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2019 Aerospike, Inc.
+ * Copyright 2012-2021 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -14,10 +14,14 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
+using System;
+
+#pragma warning disable 0618
+
 namespace Aerospike.Client
 {
 	/// <summary>
-	/// Configuration variables for multi-record get and exist requests.
+	/// Batch parent policy.
 	/// </summary>
 	public sealed class BatchPolicy : Policy
 	{
@@ -86,11 +90,31 @@ namespace Aerospike.Client
 		public bool allowProleReads;
 
 		/// <summary>
-		/// Send set name field to server for every key in the batch for batch index protocol. 
-		/// This is only necessary when authentication is enabled and security roles are defined
-		/// on a per set basis.
-		/// <para>Default: false</para>
+		/// Should all batch keys be attempted regardless of errors.
+		/// <para>
+		/// If true, every batch key is attempted regardless of previous key specific errors.
+		/// Node specific errors such as timeouts stop keys to that node, but keys directed at
+		/// other nodes will continue to be processed.
+		/// </para>
+		/// <para>
+		/// If false, most key and node specific errors stop the batch. The exceptions are
+		/// <see cref="Aerospike.Client.ResultCode.KEY_NOT_FOUND_ERROR"/> and
+		/// <see cref="Aerospike.Client.ResultCode.FILTERED_OUT"/> which never stop the batch.
+		/// </para>
+		/// <para>
+		/// This field is used on both the client and server. The client handles node specific
+		/// errors and the server handles key specific errors. Server versions &lt; 5.8
+		/// do not support <see cref="Aerospike.Client.BatchPolicy.respondAllKeys"/> and treat this value as false.
+		/// </para>
+		/// <para>Default: true</para>
 		/// </summary>
+		public bool respondAllKeys = true;
+
+		/// <summary>
+		/// This field is deprecated and will eventually be removed.
+		/// The set name is now always sent for every distinct namespace/set in the batch.
+		/// </summary>
+		[Obsolete("Deprecated. The set name is now always sent.")]
 		public bool sendSetName;
 
 		/// <summary>
@@ -102,6 +126,7 @@ namespace Aerospike.Client
 			this.maxConcurrentThreads = other.maxConcurrentThreads;
 			this.allowInline = other.allowInline;
 			this.allowProleReads = other.allowProleReads;
+			this.respondAllKeys = other.respondAllKeys;
 			this.sendSetName = other.sendSetName;
 		}
 
@@ -119,5 +144,25 @@ namespace Aerospike.Client
 		public BatchPolicy()
 		{
 		}
+
+		/// <summary>
+		/// Default batch read policy.
+		/// </summary>
+		public static BatchPolicy ReadDefault()
+		{
+			return new BatchPolicy();
+		}
+
+		/// <summary>
+		/// Default batch write policy.
+		/// </summary>
+		public static BatchPolicy WriteDefault()
+		{
+			BatchPolicy policy = new BatchPolicy();
+			policy.maxRetries = 0;
+			return policy;
+		}
 	}
 }
+
+#pragma warning restore 0618

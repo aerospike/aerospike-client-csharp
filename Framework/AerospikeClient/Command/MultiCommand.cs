@@ -15,7 +15,6 @@
  * the License.
  */
 using System;
-using System.Collections.Generic;
 
 namespace Aerospike.Client
 {
@@ -33,7 +32,6 @@ namespace Aerospike.Client
 		protected internal int batchIndex;
 		protected internal int fieldCount;
 		protected internal int opCount;
-		private readonly bool isBatch;
 		protected internal readonly bool isOperation;
 		private readonly bool first;
 		protected internal volatile bool valid = true;
@@ -41,11 +39,10 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Batch and server execute constructor.
 		/// </summary>
-		protected internal MultiCommand(Cluster cluster, Policy policy, Node node, bool isBatch, bool isOperation)
+		protected internal MultiCommand(Cluster cluster, Policy policy, Node node, bool isOperation)
 			: base(cluster, policy)
 		{
 			this.node = node;
-			this.isBatch = isBatch;
 			this.isOperation = isOperation;
 			this.ns = null;
 			this.clusterKey = 0;
@@ -59,7 +56,6 @@ namespace Aerospike.Client
 			: base(cluster, policy, socketTimeout, totalTimeout)
 		{
 			this.node = node;
-			this.isBatch = false;
 			this.isOperation = false;
 			this.ns = ns;
 			this.clusterKey = 0;
@@ -73,7 +69,6 @@ namespace Aerospike.Client
 			: base(cluster, policy, policy.socketTimeout, policy.totalTimeout)
 		{
 			this.node = node;
-			this.isBatch = false;
 			this.isOperation = false;
 			this.ns = ns;
 			this.clusterKey = clusterKey;
@@ -189,7 +184,10 @@ namespace Aerospike.Client
 			}
 		}
 
-		private bool ParseGroup(int receiveSize)
+		/// <summary>
+		/// Parse all records in the group for scan/query.
+		/// </summary>
+		protected virtual bool ParseGroup(int receiveSize)
 		{
 			while (dataOffset < receiveSize)
 			{
@@ -204,10 +202,7 @@ namespace Aerospike.Client
 				{
 					if (resultCode == ResultCode.KEY_NOT_FOUND_ERROR || resultCode == ResultCode.FILTERED_OUT)
 					{
-						if (!isBatch)
-						{
-							return false;
-						}
+						return false;
 					}
 					else
 					{
@@ -233,20 +228,14 @@ namespace Aerospike.Client
 				opCount = ByteUtil.BytesToShort(dataBuffer, dataOffset);
 				dataOffset += 2;
 
-				if (isBatch)
-				{
-					SkipKey(fieldCount);
-					ParseRow(null);
-				}
-				else
-				{
-					Key key = ParseKey(fieldCount);
-					ParseRow(key);
-				}
+				Key key = ParseKey(fieldCount);
+				ParseRow(key);
 			}
 			return true;
 		}
-		
+
+		protected internal abstract void ParseRow(Key key);
+
 		protected internal Record ParseRecord()
 		{
 			if (opCount <= 0)
@@ -256,7 +245,7 @@ namespace Aerospike.Client
 
 			return policy.recordParser.ParseRecord(dataBuffer, ref dataOffset, opCount, generation, expiration, isOperation);
 		}
-		
+
 		public void Stop()
 		{
 			valid = false;
@@ -266,7 +255,5 @@ namespace Aerospike.Client
 		{
 			return valid;
 		}
-
-		protected internal abstract void ParseRow(Key key);
 	}
 }

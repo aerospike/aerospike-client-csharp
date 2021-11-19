@@ -206,6 +206,24 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
+		/// Get the value returned by a UDF execute in a batch.
+		/// The result may be null.
+		/// </summary>
+		public object GetUDFResult()
+		{
+			return GetValue("SUCCESS");
+		}
+
+		/// <summary>
+		/// Get the error string returned by a UDF execute in a batch.
+		/// Return null if an error did not occur.
+		/// </summary>
+		public string GetUDFError()
+		{
+			return GetString("FAILURE");
+		}
+		
+		/// <summary>
 		/// Get bin value as GeoJSON.
 		/// </summary>
 		public string GetGeoJSON(string name)

@@ -22,6 +22,16 @@ namespace Aerospike.Client
 	public sealed class ResultCode
 	{
 		/// <summary>
+		/// One or more keys failed in a batch.
+		/// </summary>
+		public const int BATCH_FAILED = -14;
+
+		/// <summary>
+		/// No response received from server.
+		/// </summary>
+		public const int NO_RESPONSE = -13;
+
+		/// <summary>
 		/// Max errors limit reached.
 		/// </summary>
 		public const int MAX_ERROR_RATE = -12;
@@ -451,6 +461,12 @@ namespace Aerospike.Client
 		{
 			switch (resultCode)
 			{
+			case BATCH_FAILED:
+				return "One or more keys failed in a batch";
+
+			case NO_RESPONSE:
+				return "No response received from server";
+
 			case MAX_ERROR_RATE:
 				return "Max error rate exceeded";
 

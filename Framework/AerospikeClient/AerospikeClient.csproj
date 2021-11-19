@@ -214,6 +214,8 @@
     <Compile Include="BCrypt\BCrypt.cs" />
     <Compile Include="BCrypt\SaltParseException.cs" />
     <Compile Include="CDT\CDT.cs" />
+    <Compile Include="Command\BatchStatus.cs" />
+    <Compile Include="Command\BatchAttr.cs" />
     <Compile Include="Exp\ExpOperation.cs" />
     <Compile Include="Exp\ExpReadFlags.cs" />
     <Compile Include="Exp\ListExp.cs" />
@@ -267,6 +269,9 @@
     <Compile Include="Command\WriteCommand.cs" />
     <Compile Include="Exp\ExpWriteFlags.cs" />
     <Compile Include="Exp\MapExp.cs" />
+    <Compile Include="Listener\BatchRecordSequenceListener.cs" />
+    <Compile Include="Listener\BatchRecordArrayListener.cs" />
+    <Compile Include="Listener\BatchOperateListListener.cs" />
     <Compile Include="Listener\BatchListListener.cs" />
     <Compile Include="Listener\BatchSequenceListener.cs" />
     <Compile Include="Listener\InfoListener.cs" />
@@ -292,6 +297,11 @@
     <Compile Include="Command\Formatter.cs" />
     <Compile Include="Main\AerospikeClient.cs" />
     <Compile Include="Main\AerospikeException.cs" />
+    <Compile Include="Main\BatchWrite.cs" />
+    <Compile Include="Main\BatchUDF.cs" />
+    <Compile Include="Main\BatchResults.cs" />
+    <Compile Include="Main\BatchDelete.cs" />
+    <Compile Include="Main\BatchRecord.cs" />
     <Compile Include="Main\BatchRead.cs" />
     <Compile Include="Main\Bin.cs" />
     <Compile Include="Main\Host.cs" />
@@ -318,6 +328,10 @@
     <Compile Include="Operation\HLLWriteFlags.cs" />
     <Compile Include="Operation\HLLOperation.cs" />
     <Compile Include="Policy\AdminPolicy.cs" />
+    <Compile Include="Policy\BatchWritePolicy.cs" />
+    <Compile Include="Policy\BatchUDFPolicy.cs" />
+    <Compile Include="Policy\BatchReadPolicy.cs" />
+    <Compile Include="Policy\BatchDeletePolicy.cs" />
     <Compile Include="Policy\BatchPolicy.cs" />
     <Compile Include="Policy\ClientPolicy.cs" />
     <Compile Include="Policy\CommitLevel.cs" />

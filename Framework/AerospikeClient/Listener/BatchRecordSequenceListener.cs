@@ -17,13 +17,13 @@
 namespace Aerospike.Client
 {
 	/// <summary>
-	/// Asynchronous result notifications for batch get commands with variable bins per key.
-	/// The results are sent one batch record at a time.
+	/// Asynchronous result notifications for batch operate commands.
+	/// The results are sent one record at a time.
 	/// </summary>
-	public interface BatchSequenceListener
+	public interface BatchRecordSequenceListener
 	{
 		/// <summary>
-		/// This method is called when an asynchronous batch record is received from the server.
+		/// This method is called when a record is received from the server.
 		/// The receive sequence is not ordered.
 		/// <para>
 		/// The user may throw <see cref="Aerospike.Client.AerospikeException"/> if the
@@ -32,11 +32,9 @@ namespace Aerospike.Client
 		/// through the OnFailure() call.
 		/// </para>
 		/// </summary>
-		/// <param name="record">
-		/// record instance, <see cref="Aerospike.Client.BatchRecord.record"/>
-		///	will be null if the key is not found
-		///	</param>
-		void OnRecord(BatchRead record);
+		/// <param name="record">record instance</param>
+		/// <param name="index">index offset into the original BatchRecord array.</param>
+		void OnRecord(BatchRecord record, int index);
 
 		/// <summary>
 		/// This method is called when the command completes successfully.
