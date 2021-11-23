@@ -904,7 +904,7 @@ namespace Aerospike.Client
 			NotifyFailure(ae);
 		}
 
-		private void NotifyFailure(AerospikeException ae)
+		internal void NotifyFailure(AerospikeException ae)
 		{
 			try
 			{
