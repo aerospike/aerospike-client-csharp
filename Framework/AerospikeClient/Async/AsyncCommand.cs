@@ -37,6 +37,7 @@ namespace Aerospike.Client
 		private const int FAIL_APPLICATION_INIT = 6;
 		private const int FAIL_APPLICATION_ERROR = 7;
 		private const int FAIL_SOCKET_TIMEOUT = 8;
+		private const int FAIL_QUEUE_ERROR = 9;
 
 		protected internal readonly AsyncCluster cluster;
 		protected internal Policy policy;
@@ -865,6 +866,16 @@ namespace Aerospike.Client
 			}
 		}
 
+		internal void FailOnQueueError(AerospikeException ae)
+		{
+			int status = Interlocked.CompareExchange(ref state, FAIL_QUEUE_ERROR, IN_PROGRESS);
+
+			if (status == IN_PROGRESS)
+			{
+				NotifyFailure(ae);
+			}
+		}
+
 		private void AlreadyCompleted(int status)
 		{
 			// Only need to release resources from AsyncTimeoutQueue timeout.
@@ -904,7 +915,7 @@ namespace Aerospike.Client
 			NotifyFailure(ae);
 		}
 
-		internal void NotifyFailure(AerospikeException ae)
+		private void NotifyFailure(AerospikeException ae)
 		{
 			try
 			{

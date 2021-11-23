@@ -211,9 +211,9 @@ namespace Aerospike.Client
 
 		private void CommandFailed(AsyncCommand command, SocketAsyncEventArgs args, Exception e)
 		{
-			// Restore command slot and notify failure.
+			// Restore command slot and fail command.
 			argsQueue.Enqueue(args);
-			command.NotifyFailure(new AerospikeException("Failed to queue delayed async command", e));
+			command.FailOnQueueError(new AerospikeException("Failed to queue delayed async command", e));
 		}
 	}
 }
