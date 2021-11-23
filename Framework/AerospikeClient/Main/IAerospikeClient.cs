@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2020 Aerospike, Inc.
+ * Copyright 2012-2021 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -224,8 +224,6 @@ namespace Aerospike.Client
 		/// This method allows different namespaces/bins to be requested for each key in the batch.
 		/// The returned records are located in the same list.
 		/// If the BatchRecord key field is not found, the corresponding record field will be null.
-		/// The policy can be used to specify timeouts and maximum concurrent threads.
-		/// This method requires Aerospike Server version >= 3.6.0.
 		/// <para>
 		/// If a batch request to a node fails, the entire batch is cancelled.
 		/// </para>
@@ -240,7 +238,6 @@ namespace Aerospike.Client
 		/// Read multiple records for specified keys in one batch call.
 		/// The returned records are in positional order with the original key array order.
 		/// If a key is not found, the positional record will be null.
-		/// The policy can be used to specify timeouts and maximum concurrent threads.
 		/// <para>
 		/// If a batch request to a node fails, the entire batch is cancelled.
 		/// </para>
@@ -254,7 +251,6 @@ namespace Aerospike.Client
 		/// Read multiple record headers and bins for specified keys in one batch call.
 		/// The returned records are in positional order with the original key array order.
 		/// If a key is not found, the positional record will be null.
-		/// The policy can be used to specify timeouts and maximum concurrent threads.
 		/// <para>
 		/// If a batch request to a node fails, the entire batch is cancelled.
 		/// </para>
@@ -266,10 +262,23 @@ namespace Aerospike.Client
 		Record[] Get(BatchPolicy policy, Key[] keys, params string[] binNames);
 
 		/// <summary>
+		/// Read multiple records for specified keys using read operations in one batch call.
+		/// The returned records are in positional order with the original key array order.
+		/// If a key is not found, the positional record will be null.
+		/// <para>
+		/// If a batch request to a node fails, the entire batch is cancelled. 
+		/// </para>
+		/// </summary>
+		/// <param name="policy">batch configuration parameters, pass in null for defaults</param>
+		/// <param name="keys">array of unique record identifiers</param>
+		/// <param name="operations">array of read operations on record</param>
+		/// <exception cref="AerospikeException">if read fails</exception>
+		Record[] Get(BatchPolicy policy, Key[] keys, params Operation[] operations);
+
+		/// <summary>
 		/// Read multiple record header data for specified keys in one batch call.
 		/// The returned records are in positional order with the original key array order.
 		/// If a key is not found, the positional record will be null.
-		/// The policy can be used to specify timeouts and maximum concurrent threads.
 		/// <para>
 		/// If a batch request to a node fails, the entire batch is cancelled.
 		/// </para>
@@ -532,7 +541,6 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if query fails</exception>
 		RecordSet QueryPartitions(QueryPolicy policy, Statement statement, PartitionFilter partitionFilter);
 
-#if NETFRAMEWORK
 		/// <summary>
 		/// Execute query, apply statement's aggregation function, and return result iterator. 
 		/// The aggregation function should be located in a Lua script file that can be found from the 
@@ -586,7 +594,6 @@ namespace Aerospike.Client
 		/// </param>
 		/// <exception cref="AerospikeException">if query fails</exception>
 		ResultSet QueryAggregate(QueryPolicy policy, Statement statement);
-#endif
 
 		/// <summary>
 		/// Create scalar secondary index.
@@ -694,6 +701,43 @@ namespace Aerospike.Client
 		void CreateRole(AdminPolicy policy, string roleName, IList<Privilege> privileges);
 
 		/// <summary>
+		/// Create user defined role with optional privileges and whitelist.
+		/// </summary>
+		/// <param name="policy">admin configuration parameters, pass in null for defaults</param>
+		/// <param name="roleName">role name</param>
+		/// <param name="privileges">optional list of privileges assigned to role.</param>
+		/// <param name="whitelist">
+		/// optional list of allowable IP addresses assigned to role.
+		/// IP addresses can contain wildcards (ie. 10.1.2.0/24).
+		/// </param>
+		/// <exception cref="AerospikeException">if command fails</exception>
+		void CreateRole(AdminPolicy policy, string roleName, IList<Privilege> privileges, IList<string> whitelist);
+
+		/// <summary>
+		/// Create user defined role with optional privileges, whitelist and read/write quotas.
+		/// Quotas require server security configuration "enable-quotas" to be set to true.
+		/// </summary>
+		/// <param name="policy">admin configuration parameters, pass in null for defaults</param>
+		/// <param name="roleName">role name</param>
+		/// <param name="privileges">optional list of privileges assigned to role.</param>
+		/// <param name="whitelist">
+		/// optional list of allowable IP addresses assigned to role.
+		/// IP addresses can contain wildcards (ie. 10.1.2.0/24).
+		/// </param>
+		/// <param name="readQuota">optional maximum reads per second limit, pass in zero for no limit.</param>
+		/// <param name="writeQuota">optional maximum writes per second limit, pass in zero for no limit.</param>
+		/// <exception cref="AerospikeException">if command fails</exception>
+		void CreateRole
+		(
+			AdminPolicy policy,
+			string roleName,
+			IList<Privilege> privileges,
+			IList<string> whitelist,
+			int readQuota,
+			int writeQuota
+		);
+
+		/// <summary>
 		/// Drop user defined role.
 		/// </summary>
 		/// <param name="policy">admin configuration parameters, pass in null for defaults</param>
@@ -718,6 +762,29 @@ namespace Aerospike.Client
 		/// <param name="privileges">privileges assigned to the role.</param>
 		/// <exception cref="AerospikeException">if command fails</exception>
 		void RevokePrivileges(AdminPolicy policy, string roleName, IList<Privilege> privileges);
+
+		/// <summary>
+		/// Set IP address whitelist for a role.  If whitelist is null or empty, remove existing whitelist from role.
+		/// </summary>
+		/// <param name="policy">admin configuration parameters, pass in null for defaults</param>
+		/// <param name="roleName">role name</param>
+		/// <param name="whitelist">
+		/// list of allowable IP addresses or null.
+		/// IP addresses can contain wildcards (ie. 10.1.2.0/24).
+		/// </param>
+		/// <exception cref="AerospikeException">if command fails</exception>
+		void SetWhitelist(AdminPolicy policy, string roleName, IList<string> whitelist);
+
+		/// <summary>
+		/// Set maximum reads/writes per second limits for a role.  If a quota is zero, the limit is removed.
+		/// Quotas require server security configuration "enable-quotas" to be set to true.
+		/// </summary>
+		/// <param name="policy">admin configuration parameters, pass in null for defaults</param>
+		/// <param name="roleName">role name</param>
+		/// <param name="readQuota">maximum reads per second limit, pass in zero for no limit.</param>
+		/// <param name="writeQuota">maximum writes per second limit, pass in zero for no limit.</param>
+		/// <exception cref="AerospikeException">if command fails</exception>
+		void SetQuotas(AdminPolicy policy, string roleName, int readQuota, int writeQuota);
 
 		/// <summary>
 		/// Retrieve roles for a given user.

@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2019 Aerospike, Inc.
+ * Copyright 2012-2021 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -74,6 +74,16 @@ namespace Aerospike.Client
 		public List<string> whitelist;
 
 		/// <summary>
+		/// Maximum reads per second limit.
+		/// </summary>
+		public int readQuota;
+
+		/// <summary>
+		/// Maximum writes per second limit.
+		/// </summary>
+		public int writeQuota;
+
+		/// <summary>
 		/// Is role pre-defined.
 		/// </summary>
 		public bool isPredefined()
@@ -81,6 +91,48 @@ namespace Aerospike.Client
 			return name.Equals(ReadWrite) || name.Equals(ReadWriteUdf) || name.Equals(Read)
 				|| name.Equals(SysAdmin) || name.Equals(UserAdmin) || name.Equals(DataAdmin)
 				|| name.Equals(Write);
+		}
+		
+		public override string ToString()
+		{
+			return "Role [name=" + name + ", privileges=" + privileges + ", whitelist=" + whitelist + ", readQuota=" + readQuota + ", writeQuota=" + writeQuota + "]";
+		}
+
+		public override int GetHashCode()
+		{
+			const int prime = 31;
+			int result = 1;
+			result = prime * result + ((name == null) ? 0 : name.GetHashCode());
+			return result;
+		}
+
+		public override bool Equals(object obj)
+		{
+			if (this == obj)
+			{
+				return true;
+			}
+			if (obj == null)
+			{
+				return false;
+			}
+			if (this.GetType() != obj.GetType())
+			{
+				return false;
+			}
+			Role other = (Role)obj;
+			if (name == null)
+			{
+				if (other.name != null)
+				{
+					return false;
+				}
+			}
+			else if (!name.Equals(other.name))
+			{
+				return false;
+			}
+			return true;
 		}
 	}
 }

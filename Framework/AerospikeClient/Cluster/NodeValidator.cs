@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2020 Aerospike, Inc.
+ * Copyright 2012-2021 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -103,13 +103,8 @@ namespace Aerospike.Client
 		{
 			try
 			{
-				node.Refresh(peers);
-
-				if (peers.genChanged)
-				{
-					peers.refreshCount = 0;
-					node.RefreshPeers(peers);
-				}
+				peers.refreshCount = 0;
+				node.RefreshPeers(peers);
 			}
 			catch (Exception)
 			{
@@ -189,7 +184,7 @@ namespace Aerospike.Client
 
 			try
 			{
-				if (cluster.user != null)
+				if (cluster.authEnabled)
 				{
 					// Login
 					AdminCommand admin = new AdminCommand(ThreadLocalData.GetBuffer(), 0);
@@ -309,6 +304,10 @@ namespace Aerospike.Client
 					{
 						this.features |= Node.HAS_PARTITION_SCAN;
 					}
+					else if (feature.Equals("query-show"))
+					{
+						this.features |= Node.HAS_QUERY_SHOW;
+					}
 				}
 			}
 			catch (Exception)
@@ -396,11 +395,9 @@ namespace Aerospike.Client
 
 							try
 							{
-								if (cluster.user != null)
+								if (this.sessionToken != null)
 								{
-									AdminCommand admin = new AdminCommand(ThreadLocalData.GetBuffer(), 0);
-
-									if (!admin.Authenticate(cluster, conn, this.sessionToken))
+									if (!AdminCommand.Authenticate(cluster, conn, this.sessionToken))
 									{
 										throw new AerospikeException("Authentication failed");
 									}
@@ -488,11 +485,12 @@ namespace Aerospike.Client
 
 							try
 							{
-								AdminCommand admin = new AdminCommand(ThreadLocalData.GetBuffer(), 0);
-
-								if (! admin.Authenticate(cluster, clearConn, sessionToken))
+								if (sessionToken != null)
 								{
-									throw new AerospikeException("Authentication failed");
+									if (!AdminCommand.Authenticate(cluster, clearConn, sessionToken))
+									{
+										throw new AerospikeException("Authentication failed");
+									}
 								}
 								return; // Authenticated clear connection.
 							}

@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2020 Aerospike, Inc.
+ * Copyright 2012-2021 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -207,79 +207,93 @@ namespace Aerospike.Client
         /// <param name="key">unique record identifier</param>
         /// <exception cref="AerospikeException">if queue is full</exception>
         Task<Record> GetHeader(Policy policy, CancellationToken token, Key key);
-        
-        //-------------------------------------------------------
-        // Batch Read Operations
-        //-------------------------------------------------------
 
-        /// <summary>
-        /// Asynchronously read multiple records for specified batch keys in one batch call.
-        /// This method allows different namespaces/bins to be requested for each key in the batch.
-        /// The returned records are located in the same list.
-        /// <para>
-        /// Create listener, call asynchronous batch get and return task monitor.
-        /// </para>
+		//-------------------------------------------------------
+		// Batch Read Operations
+		//-------------------------------------------------------
+
+		/// <summary>
+		/// Asynchronously read multiple records for specified batch keys in one batch call.
+		/// This method allows different namespaces/bins to be requested for each key in the batch.
+		/// The returned records are located in the same list.
+		/// <para>
+		/// Create listener, call asynchronous batch get and return task monitor.
+		/// </para>
 		/// <para>
 		/// If a batch request to a node fails, the entire batch is cancelled.
 		/// </para>
 		/// </summary>
-        /// <param name="policy">batch configuration parameters, pass in null for defaults</param>
-        /// <param name="token">cancellation token</param>
-        /// <param name="records">list of unique record identifiers and the bins to retrieve.</param>
-        /// <exception cref="AerospikeException">if read fails</exception>
-        Task<List<BatchRead>> Get(BatchPolicy policy, CancellationToken token, List<BatchRead> records);
-        
-        /// <summary>
-        /// Asynchronously read multiple records for specified keys in one batch call.
-        /// Create listener, call asynchronous batch get and return task monitor.
-        /// <para>
-        /// If a key is not found, the record will be null.
-        /// The policy can be used to specify timeouts.
-        /// </para>
+		/// <param name="policy">batch configuration parameters, pass in null for defaults</param>
+		/// <param name="token">cancellation token</param>
+		/// <param name="records">list of unique record identifiers and the bins to retrieve.</param>
+		/// <exception cref="AerospikeException">if read fails</exception>
+		Task<List<BatchRead>> Get(BatchPolicy policy, CancellationToken token, List<BatchRead> records);
+
+		/// <summary>
+		/// Asynchronously read multiple records for specified keys in one batch call.
+		/// Create listener, call asynchronous batch get and return task monitor.
+		/// <para>
+		/// If a key is not found, the record will be null.
+		/// </para>
 		/// <para>
 		/// If a batch request to a node fails, the entire batch is cancelled.
 		/// </para>
 		/// </summary>
-        /// <param name="policy">generic configuration parameters, pass in null for defaults</param>
-        /// <param name="token">cancellation token</param>
-        /// <param name="keys">array of unique record identifiers</param>
-        /// <exception cref="AerospikeException">if queue is full</exception>
-        Task<Record[]> Get(BatchPolicy policy, CancellationToken token, Key[] keys);
-        
-        /// <summary>
-        /// Asynchronously read multiple record headers and bins for specified keys in one batch call.
-        /// Create listener, call asynchronous batch get and return task monitor.
-        /// <para>
-        /// If a key is not found, the record will be null.
-        /// The policy can be used to specify timeouts.
-        /// </para>
+		/// <param name="policy">batch configuration parameters, pass in null for defaults</param>
+		/// <param name="token">cancellation token</param>
+		/// <param name="keys">array of unique record identifiers</param>
+		/// <exception cref="AerospikeException">if queue is full</exception>
+		Task<Record[]> Get(BatchPolicy policy, CancellationToken token, Key[] keys);
+
+		/// <summary>
+		/// Asynchronously read multiple record headers and bins for specified keys in one batch call.
+		/// Create listener, call asynchronous batch get and return task monitor.
+		/// <para>
+		/// If a key is not found, the record will be null.
+		/// </para>
 		/// <para>
 		/// If a batch request to a node fails, the entire batch is cancelled.
 		/// </para>
 		/// </summary>
-        /// <param name="policy">generic configuration parameters, pass in null for defaults</param>
-        /// <param name="token">cancellation token</param>
-        /// <param name="keys">array of unique record identifiers</param>
-        /// <param name="binNames">array of bins to retrieve</param>
-        /// <exception cref="AerospikeException">if queue is full</exception>
-        Task<Record[]> Get(BatchPolicy policy, CancellationToken token, Key[] keys, params string[] binNames);
-        
-        /// <summary>
-        /// Asynchronously read multiple record header data for specified keys in one batch call.
-        /// Create listener, call asynchronous batch header get and return task monitor.
-        /// <para>
-        /// If a key is not found, the record will be null.
-        /// The policy can be used to specify timeouts.
-        /// </para>
+		/// <param name="policy">batch configuration parameters, pass in null for defaults</param>
+		/// <param name="token">cancellation token</param>
+		/// <param name="keys">array of unique record identifiers</param>
+		/// <param name="binNames">array of bins to retrieve</param>
+		/// <exception cref="AerospikeException">if queue is full</exception>
+		Task<Record[]> Get(BatchPolicy policy, CancellationToken token, Key[] keys, params string[] binNames);
+
+		/// <summary>
+		/// Asynchronously read multiple record headers and bins for specified keys using read operations
+		/// in one batch call. Create listener, call asynchronous batch get and return task monitor.
+		/// <para>
+		/// If a key is not found, the record will be null.
+		/// </para>
 		/// <para>
 		/// If a batch request to a node fails, the entire batch is cancelled.
 		/// </para>
 		/// </summary>
-        /// <param name="policy">generic configuration parameters, pass in null for defaults</param>
-        /// <param name="token">cancellation token</param>
-        /// <param name="keys">array of unique record identifiers</param>
-        /// <exception cref="AerospikeException">if queue is full</exception>
-        Task<Record[]> GetHeader(BatchPolicy policy, CancellationToken token, Key[] keys);
+		/// <param name="policy">batch configuration parameters, pass in null for defaults</param>
+		/// <param name="token">cancellation token</param>
+		/// <param name="keys">array of unique record identifiers</param>
+		/// <param name="operations">array of read operations on record</param>
+		/// <exception cref="AerospikeException">if queue is full</exception>
+		Task<Record[]> Get(BatchPolicy policy, CancellationToken token, Key[] keys, params Operation[] operations);
+
+		/// <summary>
+		/// Asynchronously read multiple record header data for specified keys in one batch call.
+		/// Create listener, call asynchronous batch header get and return task monitor.
+		/// <para>
+		/// If a key is not found, the record will be null.
+		/// </para>
+		/// <para>
+		/// If a batch request to a node fails, the entire batch is cancelled.
+		/// </para>
+		/// </summary>
+		/// <param name="policy">batch configuration parameters, pass in null for defaults</param>
+		/// <param name="token">cancellation token</param>
+		/// <param name="keys">array of unique record identifiers</param>
+		/// <exception cref="AerospikeException">if queue is full</exception>
+		Task<Record[]> GetHeader(BatchPolicy policy, CancellationToken token, Key[] keys);
         
         //-------------------------------------------------------
         // Generic Database Operations

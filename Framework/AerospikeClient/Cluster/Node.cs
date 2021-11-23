@@ -18,7 +18,6 @@ using System;
 using System.Net;
 using System.Threading;
 using System.Collections.Generic;
-using System.Collections.Concurrent;
 
 namespace Aerospike.Client
 {
@@ -33,6 +32,7 @@ namespace Aerospike.Client
 		public const int PARTITIONS = 4096;
 
 		public const int HAS_PARTITION_SCAN = (1 << 0);
+		public const int HAS_QUERY_SHOW = (1 << 1);
 
 		private static readonly string[] INFO_PERIODIC = new string[] { "node", "peers-generation", "partition-generation" };
 		private static readonly string[] INFO_PERIODIC_REB = new string[] { "node", "peers-generation", "partition-generation", "rebalance-generation" }; 
@@ -43,8 +43,8 @@ namespace Aerospike.Client
 		protected internal readonly List<Host> aliases;
 		protected internal readonly IPEndPoint address;
 		private Connection tendConnection;
-		protected internal byte[] sessionToken;
-		protected internal DateTime? sessionExpiration;
+		private byte[] sessionToken;
+		private DateTime? sessionExpiration;
 		private volatile Dictionary<string,int> racks;
 		private readonly Pool<Connection>[] connectionPools;
 		protected uint connectionIter;
@@ -59,7 +59,7 @@ namespace Aerospike.Client
 		protected internal int failures;
 		protected internal readonly uint features;
 		private volatile int performLogin;
-		protected internal bool partitionChanged;
+		protected internal bool partitionChanged = true;
 		protected internal bool rebalanceChanged;
 		protected internal volatile bool active = true;
 
@@ -79,15 +79,8 @@ namespace Aerospike.Client
 			this.sessionToken = nv.sessionToken;
 			this.sessionExpiration = nv.sessionExpiration;
 			this.features = nv.features;
-
-			if (cluster.rackAware)
-			{
-				this.racks = new Dictionary<string, int>();
-			}
-			else
-			{
-				this.racks = null;
-			}
+			this.rebalanceChanged = cluster.rackAware;
+			this.racks = cluster.rackAware ? new Dictionary<string, int>() : null;
 
 			connectionPools = new Pool<Connection>[cluster.connPoolsPerNode];
 			int min = cluster.minConnsPerNode / cluster.connPoolsPerNode;
@@ -139,26 +132,33 @@ namespace Aerospike.Client
 				{
 					tendConnection = CreateConnection(host.tlsName, address, cluster.connectionTimeout, null);
 
-					if (cluster.user != null)
+					if (cluster.authEnabled)
 					{
-						if (!EnsureLogin())
+						if (ShouldLogin())
 						{
-							AdminCommand command = new AdminCommand(ThreadLocalData.GetBuffer(), 0);
+							Login();
+						}
+						else
+						{
+							byte[] token = sessionToken;
 
-							if (!command.Authenticate(cluster, tendConnection, sessionToken))
+							if (token != null)
 							{
-								// Authentication failed.  Session token probably expired.
-								// Must login again to get new session token.
-								command.Login(cluster, tendConnection, out sessionToken, out sessionExpiration);
-							}								
+								if (!AdminCommand.Authenticate(cluster, tendConnection, token))
+								{
+									// Authentication failed. Session token probably expired.
+									// Login again to get new session token.
+									Login();
+								}
+							}
 						}
 					}
 				}
 				else
 				{
-					if (cluster.user != null)
+					if (cluster.authEnabled && ShouldLogin())
 					{
-						EnsureLogin();
+						Login();
 					}
 				}
 
@@ -174,6 +174,14 @@ namespace Aerospike.Client
 					VerifyRebalanceGeneration(infoMap);
 				}
 				peers.refreshCount++;
+
+				// Reload peers, partitions and racks if there were failures on previous tend.
+				if (failures > 0)
+				{
+					peers.genChanged = true;
+					partitionChanged = true;
+					rebalanceChanged = cluster.rackAware;
+				}
 				failures = 0;
 			}
 			catch (Exception e)
@@ -182,17 +190,33 @@ namespace Aerospike.Client
 				RefreshFailed(e);
 			}
 		}
-	
-		private bool EnsureLogin()
+
+		private bool ShouldLogin()
 		{
-			if (performLogin > 0 || (sessionExpiration.HasValue && DateTime.Compare(DateTime.UtcNow, sessionExpiration.Value) >= 0))
+			return performLogin > 0 || (sessionExpiration.HasValue && 
+				DateTime.Compare(DateTime.UtcNow, sessionExpiration.Value) >= 0);
+		}
+
+		private void Login()
+		{
+			if (Log.InfoEnabled())
+			{
+				Log.Info("Login to " + this);
+			}
+
+			try
 			{
 				AdminCommand admin = new AdminCommand(ThreadLocalData.GetBuffer(), 0);
-				admin.Login(cluster, tendConnection, out sessionToken, out sessionExpiration);
-				performLogin = 0;
-				return true;
+				byte[] token;
+				admin.Login(cluster, tendConnection, out token, out sessionExpiration);
+				Volatile.Write(ref sessionToken, token);
+				Interlocked.Exchange(ref performLogin, 0);
 			}
-			return false;
+			catch (Exception)
+			{
+				Interlocked.Exchange(ref performLogin, 1);
+				throw;
+			}
 		}
 	
 		public void SignalLogin()
@@ -239,6 +263,43 @@ namespace Aerospike.Client
 			if (peersGeneration != gen)
 			{
 				peers.genChanged = true;
+
+				if (peersGeneration > gen)
+				{
+					if (Log.InfoEnabled())
+					{
+						Log.Info("Quick node restart detected: node=" + this + " oldgen=" + peersGeneration + " newgen=" + gen);
+					}
+					Restart();
+				}
+			}
+		}
+
+		private void Restart()
+		{
+			try
+			{
+				// Reset error rate.
+				if (cluster.maxErrorRate > 0)
+				{
+					ResetErrorCount();
+				}
+
+				// Login when user authentication is enabled.
+				if (cluster.authEnabled)
+				{
+					Login();
+				}
+
+				// Balance connections.
+				BalanceConnections();
+			}
+			catch (Exception e)
+			{
+				if (Log.WarnEnabled())
+				{
+					Log.Warn("Node restart failed: " + this + ' ' + Util.GetErrorMessage(e));
+				}
 			}
 		}
 
@@ -309,6 +370,11 @@ namespace Aerospike.Client
 					// Find first host that connects.
 					foreach (Host host in peer.hosts)
 					{
+						if (peers.HasFailed(host))
+						{
+							continue;
+						}
+
 						try
 						{
 							// Attempt connection to host.
@@ -340,6 +406,8 @@ namespace Aerospike.Client
 						}
 						catch (Exception e)
 						{
+							peers.Fail(host);
+
 							if (Log.WarnEnabled())
 							{
 								Log.Warn("Add node " + host + " failed: " + Util.GetErrorMessage(e));
@@ -443,13 +511,6 @@ namespace Aerospike.Client
 
 		private void RefreshFailed(Exception e)
 		{
-			peersGeneration = -1;
-			partitionGeneration = -1;
-
-			if (cluster.rackAware)
-			{
-				rebalanceGeneration = -1;
-			}
 			failures++;
 
 			if (! tendConnection.IsClosed())
@@ -513,14 +574,15 @@ namespace Aerospike.Client
 				throw;
 			}
 
-			if (cluster.user != null)
+			byte[] token = sessionToken;
+
+			if (token != null)
 			{
 				try
 				{
-					AdminCommand command = new AdminCommand(ThreadLocalData.GetBuffer(), 0);
-
-					if (!command.Authenticate(cluster, conn, sessionToken))
+					if (!AdminCommand.Authenticate(cluster, conn, token))
 					{
+						Interlocked.Exchange(ref performLogin, 1);
 						throw new AerospikeException("Authentication failed");
 					}
 				}
@@ -598,23 +660,26 @@ namespace Aerospike.Client
 						throw;
 					}
 
-					if (cluster.user != null)
+					if (cluster.authEnabled)
 					{
-						try
-						{
-							AdminCommand command = new AdminCommand(ThreadLocalData.GetBuffer(), 0);
+						byte[] token = SessionToken;
 
-							if (!command.Authenticate(cluster, conn, sessionToken))
-							{
-								SignalLogin();
-								throw new AerospikeException("Authentication failed");
-							}
-						}
-						catch (Exception)
+						if (token != null)
 						{
-							// Socket not authenticated.  Do not put back into pool.
-							CloseConnectionOnError(conn);
-							throw;
+							try
+							{
+								if (!AdminCommand.Authenticate(cluster, conn, token))
+								{
+									SignalLogin();
+									throw new AerospikeException("Authentication failed");
+								}
+							}
+							catch (Exception)
+							{
+								// Socket not authenticated.  Do not put back into pool.
+								CloseConnectionOnError(conn);
+								throw;
+							}
 						}
 					}
 					return conn;
@@ -715,7 +780,7 @@ namespace Aerospike.Client
 				{
 					CloseIdleConnections(pool, excess);
 				}
-				else if (excess < 0)
+				else if (excess < 0 && ErrorCountWithinLimit())
 				{
 					CreateConnections(pool, -excess);
 				}
@@ -850,15 +915,15 @@ namespace Aerospike.Client
 			}
 		}
 
-		/*
-		/// <summary>
-		/// Does server support partition scans.
-		/// </summary>
-		public bool HasPartitionScan
+		public byte[] SessionToken
 		{
-			get { return (features & HAS_PARTITION_SCAN) != 0; }
+			get { return Volatile.Read(ref sessionToken); }
 		}
-		*/
+
+		public bool HasQueryShow
+		{
+			get { return (features & HAS_QUERY_SHOW) != 0; }
+		}
 
 		/// <summary>
 		/// Return node name and host address in string format.

@@ -95,9 +95,12 @@ namespace Aerospike.Client
 
 		// Maximum socket idle to trim peak connections to min connections.
 		private readonly double maxSocketIdleMillisTrim;
-	
-		// Rack id.
-		public readonly int rackId;
+
+		// Rack ids.
+		public readonly int[] rackIds;
+
+		// Count of add node failures in the most recent cluster tend iteration.
+		private int invalidNodeCount;
 
 		// Interval in milliseconds between cluster tends.
 		private readonly int tendInterval;
@@ -116,7 +119,10 @@ namespace Aerospike.Client
 
 		// Request server rack ids.
 		internal readonly bool rackAware;
-		
+
+		// Is authentication enabled
+		public readonly bool authEnabled;
+
 		public Cluster(ClientPolicy policy, Host[] hosts)
 		{
 			this.clusterName = policy.clusterName;
@@ -141,7 +147,7 @@ namespace Aerospike.Client
 			}
 			else
 			{
-				if (authMode == AuthMode.EXTERNAL)
+				if (authMode == AuthMode.EXTERNAL || authMode == AuthMode.PKI)
 				{
 					throw new AerospikeException("TLS is required for authentication mode: " + authMode);
 				}
@@ -149,8 +155,14 @@ namespace Aerospike.Client
 
 			this.seeds = hosts;
 
-			if (policy.user != null && policy.user.Length > 0)
+			if (policy.authMode == AuthMode.PKI)
 			{
+				this.authEnabled = true;
+				this.user = null;
+			}
+			else if (policy.user != null && policy.user.Length > 0)
+			{
+				this.authEnabled = true;
 				this.user = ByteUtil.StringToUtf8(policy.user);
 
 				// Only store clear text password if external authentication is used.
@@ -166,11 +178,13 @@ namespace Aerospike.Client
 					pass = "";
 				}
 
-				if (!(pass.Length == 60 && pass.StartsWith("$2a$")))
-				{
-					pass = AdminCommand.HashPassword(pass);
-				}
+				pass = AdminCommand.HashPassword(pass);
 				this.passwordHash = ByteUtil.StringToUtf8(pass);
+			}
+			else
+			{
+				this.authEnabled = false;
+				this.user = null;
 			}
 
 			if (policy.maxSocketIdle < 0)
@@ -206,7 +220,15 @@ namespace Aerospike.Client
 			ipMap = policy.ipMap;
 			useServicesAlternate = policy.useServicesAlternate;
 			rackAware = policy.rackAware;
-			rackId = policy.rackId;
+
+			if (policy.rackIds != null && policy.rackIds.Count > 0)
+			{
+				rackIds = policy.rackIds.ToArray();
+			}
+			else
+			{
+				rackIds = new int[] { policy.rackId };
+			}
 
 			aliases = new Dictionary<Host, Node>();
 			nodesMap = new Dictionary<string, Node>();
@@ -295,43 +317,25 @@ namespace Aerospike.Client
 		/// Tend the cluster until it has stabilized and return control.
 		/// This helps avoid initial database request timeout issues when
 		/// a large number of threads are initiated at client startup.
-		/// 
-		/// At least two cluster tends are necessary. The first cluster
-		/// tend finds a seed node and obtains the seed's partition maps 
-		/// and peer nodes.  The second cluster tend requests partition 
-		/// maps from the peer nodes.
-		/// 
-		/// A third cluster tend is allowed if some peers nodes can't
-		/// be contacted.  If peer nodes are still unreachable, an
-		/// exception is thrown.
 		/// </summary>
 		private void WaitTillStabilized(bool failIfNotConnected)
 		{
-			int count = -1;
+			// Tend now requests partition maps in same iteration as the nodes
+			// are added, so there is no need to call tend twice anymore.
+			Tend(failIfNotConnected);
 
-			for (int i = 0; i < 3; i++)
+			if (nodes.Length == 0)
 			{
-				Tend(failIfNotConnected);
+				string message = "Cluster seed(s) failed";
 
-				// Check to see if cluster has changed since the last Tend().
-				// If not, assume cluster has stabilized and return.
-				if (count == nodes.Length)
+				if (failIfNotConnected)
 				{
-					return;
+					throw new AerospikeException(message);
 				}
-
-				count = nodes.Length;
-			}
-
-			string message = "Cluster not stabilized after multiple tend attempts";
-
-			if (failIfNotConnected)
-			{
-				throw new AerospikeException(message);
-			}
-			else
-			{
-				Log.Warn(message);
+				else
+				{
+					Log.Warn(message);
+				}
 			}
 		}
 
@@ -409,9 +413,27 @@ namespace Aerospike.Client
 					{
 						node.RefreshPeers(peers);
 					}
+
+					// Handle nodes changes determined from refreshes.
+					List<Node> removeList = FindNodesToRemove(peers.refreshCount);
+
+					// Remove nodes in a batch.
+					if (removeList.Count > 0)
+					{
+						RemoveNodes(removeList);
+					}
+				}
+
+				// Add peer nodes to cluster.
+				if (peers.nodes.Count > 0)
+				{
+					AddNodes(peers.nodes);
+					RefreshPeers(peers);
 				}
 			}
 
+			invalidNodeCount = peers.InvalidCount;
+	
 			// Refresh partition map when necessary.
 			foreach (Node node in nodes)
 			{
@@ -426,24 +448,6 @@ namespace Aerospike.Client
 				}
 			}
 
-			if (peers.genChanged)
-			{
-				// Handle nodes changes determined from refreshes.
-				List<Node> removeList = FindNodesToRemove(peers.refreshCount);
-
-				// Remove nodes in a batch.
-				if (removeList.Count > 0)
-				{
-					RemoveNodes(removeList);
-				}
-			}
-	
-			// Add nodes in a batch.
-			if (peers.nodes.Count > 0)
-			{
-				AddNodes(peers.nodes);
-			}
-
 			tendCount++;
 	
 			// Balance connections every 30 tend intervals.
@@ -451,10 +455,7 @@ namespace Aerospike.Client
 			{
 				foreach (Node node in nodes)
 				{
-					if (node.ErrorCountWithinLimit())
-					{
-						node.BalanceConnections();
-					}
+					node.BalanceConnections();
 				}
 			}
 
@@ -485,12 +486,14 @@ namespace Aerospike.Client
 
 					if (node != null)
 					{
-						AddNode(node);
+						AddSeedAndPeers(node, peers);
 						return true;
 					}
 				}
 				catch (Exception e)
 				{
+					peers.Fail(seed);
+
 					// Store exception and try next seed.
 					if (failIfNotConnected)
 					{
@@ -514,7 +517,10 @@ namespace Aerospike.Client
 			// No seeds valid. Use fallback node if it exists.
 			if (nv.fallback != null)
 			{
-				AddNode(nv.fallback);
+				// When a fallback is used, peers refreshCount is reset to zero.
+				// refreshCount should always be one at this point.
+				peers.refreshCount = 1;
+				AddSeedAndPeers(nv.fallback, peers);
 				return true;
 			}
 
@@ -540,13 +546,54 @@ namespace Aerospike.Client
 			return false;
 		}
 
-		private void AddNode(Node node)
+		private void AddSeedAndPeers(Node seed, Peers peers)
 		{
-			node.CreateMinConnections();
+			seed.CreateMinConnections();
+			nodesMap.Clear();
 
-			Dictionary<string, Node> nodesToAdd = new Dictionary<string, Node>(1);
-			nodesToAdd[node.Name] = node;
-			AddNodes(nodesToAdd);
+			AddNodes(seed, peers);
+
+			if (peers.nodes.Count > 0)
+			{
+				RefreshPeers(peers);
+			}
+		}
+
+		private void RefreshPeers(Peers peers)
+		{
+			// Iterate until peers have been refreshed and all new peers added.
+			while (true)
+			{
+				// Copy peer node references to array.
+				Node[] nodeArray = new Node[peers.nodes.Count];
+				int count = 0;
+
+				foreach (Node node in peers.nodes.Values)
+				{
+					nodeArray[count++] = node;
+				}
+
+				// Reset peer nodes.
+				peers.nodes.Clear();
+
+				// Refresh peers of peers in order retrieve the node's peersCount
+				// which is used in RefreshPartitions(). This call might add even
+				// more peers.
+				foreach (Node node in nodeArray)
+				{
+					node.RefreshPeers(peers);
+				}
+
+				if (peers.nodes.Count > 0)
+				{
+					// Add new peer nodes to cluster.
+					AddNodes(peers.nodes);
+				}
+				else
+				{
+					break;
+				}
+			}
 		}
 
 		protected internal virtual Node CreateNode(NodeValidator nv, bool createMinConn)
@@ -625,6 +672,28 @@ namespace Aerospike.Client
 			return false;
 		}
 
+		private void AddNodes(Node seed, Peers peers)
+		{
+			// Add all nodes at once to avoid copying entire array multiple times.		
+			// Create temporary nodes array.
+			Node[] nodeArray = new Node[peers.nodes.Count + 1];
+			int count = 0;
+
+			// Add seed.
+			nodeArray[count++] = seed;
+			AddNode(seed);
+
+			// Add peers.
+			foreach (Node peer in peers.nodes.Values)
+			{
+				nodeArray[count++] = peer;
+				AddNode(peer);
+			}
+
+			// Replace nodes with copy.
+			nodes = nodeArray;
+		}
+
 		/// <summary>
 		/// Add nodes using copy on write semantics.
 		/// </summary>
@@ -644,24 +713,29 @@ namespace Aerospike.Client
 			// Add new nodes
 			foreach (Node node in nodesToAdd.Values)
 			{
-				if (Log.InfoEnabled())
-				{
-					Log.Info("Add node " + node);
-				}
-
 				nodeArray[count++] = node;
-				nodesMap[node.Name] = node;
-
-				// Add node's aliases to global alias set.
-				// Aliases are only used in tend thread, so synchronization is not necessary.
-				foreach (Host alias in node.aliases)
-				{
-					aliases[alias] = node;
-				}
+				AddNode(node);
 			}
 
 			// Replace nodes with copy.
 			nodes = nodeArray;
+		}
+
+		private void AddNode(Node node)
+		{
+			if (Log.InfoEnabled())
+			{
+				Log.Info("Add node " + node);
+			}
+
+			nodesMap[node.Name] = node;
+
+			// Add node's aliases to global alias set.
+			// Aliases are only used in tend thread, so synchronization is not necessary.
+			foreach (Host alias in node.aliases)
+			{
+				aliases[alias] = node;
+			}
 		}
 
 		private void RemoveNodes(List<Node> nodesToRemove)
@@ -776,7 +850,7 @@ namespace Aerospike.Client
 			{
 				nodeStats[count++] = new NodeStats(node);
 			}
-			return new ClusterStats(nodeStats);
+			return new ClusterStats(nodeStats, invalidNodeCount);
 		}
 		
 		public bool Connected
@@ -936,6 +1010,14 @@ namespace Aerospike.Client
 		public void SetErrorRateWindow(int window)
 		{
 			this.errorRateWindow = window;
+		}
+
+		/// <summary>
+		/// Return count of add node failures in the most recent cluster tend iteration.
+		/// </summary>
+		public int InvalidNodeCount
+		{
+			get { return invalidNodeCount; }
 		}
 
 		public void InterruptTendSleep()

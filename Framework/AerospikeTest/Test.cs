@@ -1,5 +1,5 @@
-/* 
- * Copyright 2012-2020 Aerospike, Inc.
+﻿/* 
+ * Copyright 2012-2021 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -14,32 +14,25 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-namespace Aerospike.Client
+using System;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
+using Aerospike.Client;
+
+namespace Aerospike.Test
 {
-	/// <summary>
-	/// Priority of operations on database server.
-	/// This enum is obsolete and will eventually be removed.
-	/// </summary>
-	public enum Priority
+	public class Test
 	{
-		/// <summary>
-		/// The server defines the priority.
-		/// </summary>
-		DEFAULT,
-
-		/// <summary>
-		/// Run the database operation in a background thread.
-		/// </summary>
-		LOW,
-
-		/// <summary>
-		/// Run the database operation at medium priority.
-		/// </summary>
-		MEDIUM,
-
-		/// <summary>
-		/// Run the database operation at the highest priority.
-		/// </summary>
-		HIGH
+		public static void TestException(Action action, int expectedErrorCode)
+		{
+			try
+			{
+				action();
+				Assert.Fail("Expected AerospikeException");
+			}
+			catch (AerospikeException e)
+			{
+				Assert.AreEqual(expectedErrorCode, e.Result);
+			}
+		}
 	}
 }

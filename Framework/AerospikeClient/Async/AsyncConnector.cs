@@ -55,9 +55,7 @@ namespace Aerospike.Client
 					eventArgs.RemoteEndPoint = node.address;
 					eventArgs.Completed += AsyncConnector.SocketListener;
 
-					byte[] dataBuffer = (cluster.user != null) ? new byte[256] : null;
-
-					new AsyncConnector(cluster, node, this, eventArgs, dataBuffer);
+					new AsyncConnector(cluster, node, this, eventArgs);
 				}
 				catch (Exception e)
 				{
@@ -72,7 +70,7 @@ namespace Aerospike.Client
 			}
 		}
 
-		public void OnSuccess(SocketAsyncEventArgs eventArgs, byte[] dataBuffer)
+		public void OnSuccess(SocketAsyncEventArgs eventArgs)
 		{
 			int count = Interlocked.Increment(ref countConnections);
 
@@ -86,7 +84,7 @@ namespace Aerospike.Client
 					// Create next connection.
 					try
 					{
-						new AsyncConnector(cluster, node, this, eventArgs, dataBuffer);
+						new AsyncConnector(cluster, node, this, eventArgs);
 					}
 					catch (Exception e)
 					{
@@ -149,6 +147,7 @@ namespace Aerospike.Client
 		private readonly AsyncNode node;
 		private readonly ConnectorListener listener;
 		private readonly SocketAsyncEventArgs eventArgs;
+		private readonly byte[] sessionToken;
 		private readonly byte[] dataBuffer;
 		private readonly Stopwatch watch;
 		private AsyncConnection conn;
@@ -161,8 +160,7 @@ namespace Aerospike.Client
 			AsyncCluster cluster,
 			AsyncNode node,
 			ConnectorListener listener,
-			SocketAsyncEventArgs args,
-			byte[] buffer
+			SocketAsyncEventArgs args
 		)
 		{
 			this.cluster = cluster;
@@ -170,7 +168,17 @@ namespace Aerospike.Client
 			this.listener = listener;
 			this.eventArgs = args;
 			this.eventArgs.UserToken = this;
-			this.dataBuffer = buffer;
+
+			if (cluster.authEnabled)
+			{
+				this.sessionToken = node.SessionToken;
+				this.dataBuffer = (this.sessionToken != null) ? new byte[256] : null;
+			}
+			else
+			{
+				this.sessionToken = null;
+				this.dataBuffer = null;
+			}
 
 			this.watch = Stopwatch.StartNew();
 			AsyncTimeoutQueue.Instance.Add(this, cluster.connectionTimeout);
@@ -196,10 +204,10 @@ namespace Aerospike.Client
 
 		internal void ConnectionCreated()
 		{
-			if (cluster.user != null)
+			if (sessionToken != null)
 			{
 				AdminCommand command = new AdminCommand(dataBuffer, 0);
-				dataLength = command.SetAuthenticate(cluster, node.sessionToken);
+				dataLength = command.SetAuthenticate(cluster, sessionToken);
 				eventArgs.SetBuffer(dataBuffer, 0, dataLength);
 				dataOffset = 0;
 				Send();
@@ -368,7 +376,7 @@ namespace Aerospike.Client
 
 				try
 				{
-					listener.OnSuccess(eventArgs, dataBuffer);
+					listener.OnSuccess(eventArgs);
 				}
 				catch (Exception e)
 				{
@@ -423,7 +431,7 @@ namespace Aerospike.Client
 
 	public interface ConnectorListener
 	{
-		void OnSuccess(SocketAsyncEventArgs args, byte[] dataBuffer);
+		void OnSuccess(SocketAsyncEventArgs args);
 		void OnFailure(string error);
 	}
 }

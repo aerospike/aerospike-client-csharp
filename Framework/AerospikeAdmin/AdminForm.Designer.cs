@@ -56,7 +56,7 @@
             | System.Windows.Forms.AnchorStyles.Right)));
 			this.usersControl.Location = new System.Drawing.Point(85, 0);
 			this.usersControl.Name = "usersControl";
-			this.usersControl.Size = new System.Drawing.Size(533, 459);
+			this.usersControl.Size = new System.Drawing.Size(981, 459);
 			this.usersControl.TabIndex = 2;
 			// 
 			// rolesControl
@@ -66,14 +66,14 @@
             | System.Windows.Forms.AnchorStyles.Right)));
 			this.rolesControl.Location = new System.Drawing.Point(85, 0);
 			this.rolesControl.Name = "rolesControl";
-			this.rolesControl.Size = new System.Drawing.Size(540, 463);
+			this.rolesControl.Size = new System.Drawing.Size(981, 463);
 			this.rolesControl.TabIndex = 3;
 			// 
 			// AdminForm
 			// 
 			this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
 			this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-			this.ClientSize = new System.Drawing.Size(623, 463);
+			this.ClientSize = new System.Drawing.Size(1071, 463);
 			this.Controls.Add(this.sideView);
 			this.Controls.Add(this.usersControl);
 			this.Controls.Add(this.rolesControl);

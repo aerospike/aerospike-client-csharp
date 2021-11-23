@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2019 Aerospike, Inc.
+ * Copyright 2012-2021 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -89,8 +89,9 @@ namespace Aerospike.Demo
                     new ExampleTreeNode("Add", new Add(console)),
                     new ExampleTreeNode("Append", new Append(console)),
                     new ExampleTreeNode("Prepend", new Prepend(console)),
-                    new ExampleTreeNode("Batch", new Batch(console)),
-                    new ExampleTreeNode("Generation", new Generation(console)),
+                    new ExampleTreeNode("Batch Read", new Batch(console)),
+					new ExampleTreeNode("Batch Operate", new BatchOperate(console)),
+				    new ExampleTreeNode("Generation", new Generation(console)),
                     new ExampleTreeNode("Serialize", new Serialize(console)),
                     new ExampleTreeNode("Expire", new Expire(console)),
                     new ExampleTreeNode("Touch", new Touch(console)),
@@ -102,10 +103,13 @@ namespace Aerospike.Demo
                     new ExampleTreeNode("Join", new GetAndJoin(console)),
                     new ExampleTreeNode("Scan Parallel", new ScanParallel(console)),
                     new ExampleTreeNode("Scan Series", new ScanSeries(console)),
-                    new ExampleTreeNode("Async PutGet", new AsyncPutGet(console)),
+					new ExampleTreeNode("Scan Page", new ScanPage(console)),
+					new ExampleTreeNode("Scan Resume", new ScanResume(console)),
+					new ExampleTreeNode("Async PutGet", new AsyncPutGet(console)),
                     new ExampleTreeNode("Async Batch", new AsyncBatch(console)),
-                    new ExampleTreeNode("Async Scan", new AsyncScan(console)),
-                    new ExampleTreeNode("Async Query", new AsyncQuery(console)),
+					new ExampleTreeNode("Async Scan", new AsyncScan(console)),
+					new ExampleTreeNode("Async Scan Page", new AsyncScanPage(console)),
+					new ExampleTreeNode("Async Query", new AsyncQuery(console)),
                     new ExampleTreeNode("Async UDF", new AsyncUserDefinedFunction(console)),
                     new ExampleTreeNode("List/Map", new ListMap(console)),
                     new ExampleTreeNode("User Defined Function", new UserDefinedFunction(console)),

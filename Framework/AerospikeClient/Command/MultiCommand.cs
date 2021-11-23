@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2020 Aerospike, Inc.
+ * Copyright 2012-2021 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -16,10 +16,6 @@
  */
 using System;
 using System.Collections.Generic;
-using System.IO;
-using System.IO.Compression;
-using System.Net;
-using System.Net.Sockets;
 
 namespace Aerospike.Client
 {
@@ -37,18 +33,20 @@ namespace Aerospike.Client
 		protected internal int batchIndex;
 		protected internal int fieldCount;
 		protected internal int opCount;
-		private readonly bool stopOnNotFound;
+		private readonly bool isBatch;
+		protected internal readonly bool isOperation;
 		private readonly bool first;
 		protected internal volatile bool valid = true;
 
 		/// <summary>
 		/// Batch and server execute constructor.
 		/// </summary>
-		protected internal MultiCommand(Cluster cluster, Policy policy, Node node, bool stopOnNotFound)
+		protected internal MultiCommand(Cluster cluster, Policy policy, Node node, bool isBatch, bool isOperation)
 			: base(cluster, policy)
 		{
 			this.node = node;
-			this.stopOnNotFound = stopOnNotFound;
+			this.isBatch = isBatch;
+			this.isOperation = isOperation;
 			this.ns = null;
 			this.clusterKey = 0;
 			this.first = false;
@@ -61,7 +59,8 @@ namespace Aerospike.Client
 			: base(cluster, policy, socketTimeout, totalTimeout)
 		{
 			this.node = node;
-			this.stopOnNotFound = true;
+			this.isBatch = false;
+			this.isOperation = false;
 			this.ns = ns;
 			this.clusterKey = 0;
 			this.first = false;
@@ -74,7 +73,8 @@ namespace Aerospike.Client
 			: base(cluster, policy, policy.socketTimeout, policy.totalTimeout)
 		{
 			this.node = node;
-			this.stopOnNotFound = true;
+			this.isBatch = false;
+			this.isOperation = false;
 			this.ns = ns;
 			this.clusterKey = clusterKey;
 			this.first = first;
@@ -204,7 +204,7 @@ namespace Aerospike.Client
 				{
 					if (resultCode == ResultCode.KEY_NOT_FOUND_ERROR || resultCode == ResultCode.FILTERED_OUT)
 					{
-						if (stopOnNotFound)
+						if (!isBatch)
 						{
 							return false;
 						}
@@ -233,37 +233,28 @@ namespace Aerospike.Client
 				opCount = ByteUtil.BytesToShort(dataBuffer, dataOffset);
 				dataOffset += 2;
 
-				Key key = ParseKey(fieldCount);
-				ParseRow(key);
+				if (isBatch)
+				{
+					SkipKey(fieldCount);
+					ParseRow(null);
+				}
+				else
+				{
+					Key key = ParseKey(fieldCount);
+					ParseRow(key);
+				}
 			}
 			return true;
 		}
 		
 		protected internal Record ParseRecord()
 		{
-			Dictionary<string, object> bins = null;
-
-			for (int i = 0; i < opCount; i++)
+			if (opCount <= 0)
 			{
-				int opSize = ByteUtil.BytesToInt(dataBuffer, dataOffset);
-				dataOffset += 5;
-				byte particleType = dataBuffer[dataOffset];
-				dataOffset += 2;
-				byte nameSize = dataBuffer[dataOffset++];
-				string name = ByteUtil.Utf8ToString(dataBuffer, dataOffset, nameSize);
-				dataOffset += nameSize;
-
-				int particleBytesSize = opSize - (4 + nameSize);
-				object value = ByteUtil.BytesToParticle(particleType, dataBuffer, dataOffset, particleBytesSize);
-				dataOffset += particleBytesSize;
-
-				if (bins == null)
-				{
-					bins = new Dictionary<string, object>();
-				}
-				bins[name] = value;
+				return new Record(null, generation, expiration);
 			}
-			return new Record(bins, generation, expiration);
+
+			return policy.recordParser.ParseRecord(dataBuffer, ref dataOffset, opCount, generation, expiration, isOperation);
 		}
 		
 		public void Stop()

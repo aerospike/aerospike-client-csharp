@@ -315,6 +315,16 @@ namespace Aerospike.Client
 		public const int INVALID_WHITELIST = 73;
 
 		/// <summary>
+		/// Quotas not enabled on server.
+		/// </summary>
+		public const int QUOTAS_NOT_ENABLED = 74;
+
+		/// <summary>
+		/// Invalid quota value.
+		/// </summary>
+		public const int INVALID_QUOTA = 75;
+
+		/// <summary>
 		/// User must be authentication before performing database operations.
 		/// </summary>
 		public const int NOT_AUTHENTICATED = 80;
@@ -329,6 +339,11 @@ namespace Aerospike.Client
 		/// </summary>
 		public const int NOT_WHITELISTED = 82;
 
+		/// <summary>
+		/// Quota exceeded.
+		/// </summary>
+		public const int QUOTA_EXCEEDED = 83;
+		
 		/// <summary>
 		/// A user defined function returned an error code.
 		/// </summary>
@@ -410,22 +425,21 @@ namespace Aerospike.Client
 		/// </summary>
 		public static bool KeepConnection(int resultCode)
 		{
-			// Keep connection on TIMEOUT because it can be server response which does not 
-			// close socket.  Also, client timeout code path does not call this method. 
+			if (resultCode <= 0)
+			{
+				// Do not keep connection on client errors.
+				return false;
+			}
+
 			switch (resultCode)
 			{
-				case 0: // Exception did not originate on server.
-				case CLIENT_ERROR:
-				case QUERY_TERMINATED:
-				case SCAN_TERMINATED:
-				case PARSE_ERROR:
-				case SERIALIZE_ERROR:
-				case SERVER_NOT_AVAILABLE:
 				case SCAN_ABORT:
 				case QUERY_ABORTED:
 					return false;
 
 				default:
+					// Keep connection on TIMEOUT because it can be server response which does not 
+					// close socket.  Also, client timeout code path does not call this method. 
 					return true;
 			}
 		}
@@ -611,6 +625,12 @@ namespace Aerospike.Client
 			case INVALID_WHITELIST:
 				return "Invalid whitelist";
 
+			case QUOTAS_NOT_ENABLED:
+				return "Quotas not enabled";
+
+			case INVALID_QUOTA:
+				return "Invalid quota";
+
 			case NOT_AUTHENTICATED:
 				return "Not authenticated";
 
@@ -619,6 +639,9 @@ namespace Aerospike.Client
 
 			case NOT_WHITELISTED:
 				return "Command not whitelisted";
+
+			case QUOTA_EXCEEDED:
+				return "Quota exceeded";
 
 			case UDF_BAD_RESPONSE:
 				return "UDF returned error";

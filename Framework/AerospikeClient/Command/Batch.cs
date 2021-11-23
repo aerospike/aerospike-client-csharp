@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2020 Aerospike, Inc.
+ * Copyright 2012-2021 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -16,7 +16,6 @@
  */
 using System;
 using System.Collections.Generic;
-using System.Threading;
 
 namespace Aerospike.Client
 {
@@ -35,7 +34,7 @@ namespace Aerospike.Client
 			BatchNode batch,
 			BatchPolicy policy,
 			List<BatchRead> records
-		) : base(cluster, parent, batch, policy)
+		) : base(cluster, parent, batch, policy, true)
 		{
 			this.records = records;
 		}
@@ -73,6 +72,7 @@ namespace Aerospike.Client
 	{
 		private readonly Key[] keys;
 		private readonly string[] binNames;
+		private readonly Operation[] ops;
 		private readonly Record[] records;
 		private readonly int readAttr;
 
@@ -84,19 +84,22 @@ namespace Aerospike.Client
 			BatchPolicy policy,
 			Key[] keys,
 			string[] binNames,
+			Operation[] ops,
 			Record[] records,
-			int readAttr
-		) : base(cluster, parent, batch, policy)
+			int readAttr,
+			bool isOperation
+		) : base(cluster, parent, batch, policy, isOperation)
 		{
 			this.keys = keys;
 			this.binNames = binNames;
+			this.ops = ops;
 			this.records = records;
 			this.readAttr = readAttr;
 		}
 
 		protected internal override void WriteBuffer()
 		{
-			SetBatchRead(batchPolicy, keys, batch, binNames, readAttr);
+			SetBatchRead(batchPolicy, keys, batch, binNames, ops, readAttr);
 		}
 
 		protected internal override void ParseRow(Key key)
@@ -109,7 +112,7 @@ namespace Aerospike.Client
 
 		protected internal override BatchCommand CreateCommand(BatchNode batchNode)
 		{
-			return new BatchGetArrayCommand(cluster, parent, batchNode, batchPolicy, keys, binNames, records, readAttr);
+			return new BatchGetArrayCommand(cluster, parent, batchNode, batchPolicy, keys, binNames, ops, records, readAttr, isOperation);
 		}
 
 		protected internal override List<BatchNode> GenerateBatchNodes()
@@ -135,7 +138,7 @@ namespace Aerospike.Client
 			BatchPolicy policy,
 			Key[] keys,
 			bool[] existsArray
-		) : base(cluster, parent, batch, policy)
+		) : base(cluster, parent, batch, policy, false)
 		{
 			this.keys = keys;
 			this.existsArray = existsArray;
@@ -143,7 +146,7 @@ namespace Aerospike.Client
 
 		protected internal override void WriteBuffer()
 		{
-			SetBatchRead(batchPolicy, keys, batch, null, Command.INFO1_READ | Command.INFO1_NOBINDATA);
+			SetBatchRead(batchPolicy, keys, batch, null, null, Command.INFO1_READ | Command.INFO1_NOBINDATA);
 		}
 
 		protected internal override void ParseRow(Key key)
@@ -179,8 +182,8 @@ namespace Aerospike.Client
 		internal uint sequenceAP;
 		internal uint sequenceSC;
 
-		public BatchCommand(Cluster cluster, Executor parent, BatchNode batch, BatchPolicy batchPolicy)
-			: base(cluster, batchPolicy, batch.node, false)
+		public BatchCommand(Cluster cluster, Executor parent, BatchNode batch, BatchPolicy batchPolicy, bool isOperation)
+			: base(cluster, batchPolicy, batch.node, true, isOperation)
 		{
 			this.parent = parent;
 			this.batch = batch;

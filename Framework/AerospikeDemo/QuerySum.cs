@@ -31,12 +31,6 @@ namespace Aerospike.Demo
 		/// </summary>
 		public override void RunExample(AerospikeClient client, Arguments args)
 		{
-			if (!args.hasUdf)
-			{
-				console.Info("Query functions are not supported by the connected Aerospike server.");
-				return;
-			}
-			
 			string packageContents = @"
 local function reducer(val1,val2)
 	return val1 + val2

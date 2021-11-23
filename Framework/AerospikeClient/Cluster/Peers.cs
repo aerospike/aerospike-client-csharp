@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2020 Aerospike, Inc.
+ * Copyright 2012-2021 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -22,16 +22,31 @@ namespace Aerospike.Client
 	public sealed class Peers
 	{
 		public readonly List<Peer> peers;
-		public readonly HashSet<Host> hosts;
 		public readonly Dictionary<string, Node> nodes;
+		private readonly HashSet<Host> invalidHosts;
 		public int refreshCount;
 		public bool genChanged;
 
 		public Peers(int peerCapacity)
 		{
 			peers = new List<Peer>(peerCapacity);
-			hosts = new HashSet<Host>();
 			nodes = new Dictionary<string, Node>();
+			invalidHosts = new HashSet<Host>();
+		}
+
+		public bool HasFailed(Host host)
+		{
+			return invalidHosts.Contains(host);
+		}
+
+		public void Fail(Host host)
+		{
+			invalidHosts.Add(host);
+		}
+
+		public int InvalidCount
+		{
+			get { return invalidHosts.Count; }
 		}
 	}
 

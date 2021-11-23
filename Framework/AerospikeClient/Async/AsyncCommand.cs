@@ -89,7 +89,6 @@ namespace Aerospike.Client
 			// Retry constructor.
 			this.cluster = other.cluster;
 			this.policy = other.policy;
-			this.node = other.node;
 			this.eventArgs = other.eventArgs;
 			this.eventArgs.UserToken = this;
 			this.segmentOrig = other.segmentOrig;
@@ -305,15 +304,13 @@ namespace Aerospike.Client
 				}
 				catch (AerospikeException ae)
 				{
-					// Fail without retry on non-network errors.
 					if (ae.Result == ResultCode.TIMEOUT)
 					{
-						// Create server timeout exception.
-						command.FailOnApplicationError(new AerospikeException.Timeout(command.policy, false));
+						command.RetryServerError(new AerospikeException.Timeout(command.policy, false));
 					}
 					else if (ae.Result == ResultCode.DEVICE_OVERLOAD)
 					{
-						command.DeviceOverload(ae);
+						command.RetryServerError(ae);
 					}
 					else
 					{
@@ -340,21 +337,23 @@ namespace Aerospike.Client
 
 		private void ConnectionCreated()
 		{
-			// Could use Log.Info("ConnectionCreated: " + tranId);
-			Console.WriteLine("ConnectionCreated: " + tranId);
-
-			if (cluster.user != null)
+			if (cluster.authEnabled)
 			{
-				inAuthenticate = true;
-				// Authentication messages are small.  Set a reasonable upper bound.
-				dataOffset = 200;
-				SizeBuffer();
+				byte[] token = node.SessionToken;
 
-				AdminCommand command = new AdminCommand(dataBuffer, dataOffset);
-				dataLength = command.SetAuthenticate(cluster, node.sessionToken);
-				eventArgs.SetBuffer(dataBuffer, dataOffset, dataLength - dataOffset);
-				Send();
-				return;
+				if (token != null)
+				{
+					inAuthenticate = true;
+					// Authentication messages are small.  Set a reasonable upper bound.
+					dataOffset = 200;
+					SizeBuffer();
+
+					AdminCommand command = new AdminCommand(dataBuffer, dataOffset);
+					dataLength = command.SetAuthenticate(cluster, token);
+					eventArgs.SetBuffer(dataBuffer, dataOffset, dataLength - dataOffset);
+					Send();
+					return;
+				}
 			}
 			ConnectionReady();
 		}
@@ -620,7 +619,7 @@ namespace Aerospike.Client
 			}
 		}
 
-		private void DeviceOverload(AerospikeException ae)
+		private void RetryServerError(AerospikeException ae)
 		{
 			node.IncrErrorCount();
 
@@ -747,7 +746,7 @@ namespace Aerospike.Client
 				if (Interlocked.CompareExchange(ref state, FAIL_TOTAL_TIMEOUT, IN_PROGRESS) == IN_PROGRESS)
 				{
 					// Close connection. This will result in a socket error in the async callback thread.
-					if (conn != null)
+					if (node != null && conn != null)
 					{
 						node.CloseAsyncConnOnError(conn);
 					}
@@ -777,7 +776,7 @@ namespace Aerospike.Client
 					// User will be notified in transaction thread and this timeout thread. 
 					// Close connection. This will result in a socket error in the async callback thread
 					// and a possible retry.
-					if (conn != null)
+					if (node != null && conn != null)
 					{
 						node.CloseAsyncConnOnError(conn);
 					}
@@ -839,26 +838,37 @@ namespace Aerospike.Client
 
 		private void FailOnApplicationError(AerospikeException ae)
 		{
-			// Ensure that command succeeds or fails, but not both.
-			int status = Interlocked.CompareExchange(ref state, FAIL_APPLICATION_ERROR, IN_PROGRESS);
-
-			if (status == IN_PROGRESS)
+			try
 			{
-				if (ae.KeepConnection())
+				// Ensure that command succeeds or fails, but not both.
+				int status = Interlocked.CompareExchange(ref state, FAIL_APPLICATION_ERROR, IN_PROGRESS);
+
+				if (status == IN_PROGRESS)
 				{
-					// Put connection back in pool.
-					node.PutAsyncConnection(conn);
+					if (node != null && conn != null)
+					{
+						if (ae.KeepConnection())
+						{
+							// Put connection back in pool.
+							node.PutAsyncConnection(conn);
+						}
+						else
+						{
+							// Close socket to flush out possible garbage.
+							CloseConnection();
+						}
+					}
+					FailCommand(ae);
 				}
 				else
 				{
-					// Close socket to flush out possible garbage.
-					CloseConnection();
+					AlreadyCompleted(status);
 				}
-				FailCommand(ae);
 			}
-			else
+			catch (Exception e)
 			{
-				AlreadyCompleted(status);
+				Log.Error("FailOnApplicationError failed: " + Util.GetErrorMessage(e) +
+					System.Environment.NewLine + "Original error: " + Util.GetErrorMessage(ae));
 			}
 		}
 
@@ -901,7 +911,7 @@ namespace Aerospike.Client
 			NotifyFailure(ae);
 		}
 
-		private void NotifyFailure(AerospikeException ae)
+		internal void NotifyFailure(AerospikeException ae)
 		{
 			try
 			{

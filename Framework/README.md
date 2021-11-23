@@ -4,9 +4,8 @@ Aerospike C# Client for NET Framework
 **Prerequisites**
 
 * Windows 7/Windows Server 2008 or greater, preferably 64 bit.
-* Visual Studio 2010 or greater, preferably 64 bit.  Visual C# 2010 Express or greater will also work.
-* .NET 4.0 or greater.  Visual Studio 2010 will install .NET 4.0 by default.
-* NeoLua 0.9.14 (if using aggregation queries).  Neo.Lua.dll is bundled with this repo.  The version must be 0.9.14.  Other Neo.Lua.dll versions will not work. 
+* Visual Studio 2015 or greater, preferably 64 bit.
+* .NET 4.5 or greater.
 
 **Contents**
 

@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2020 Aerospike, Inc.
+ * Copyright 2012-2021 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -43,10 +43,10 @@ namespace Aerospike.Client
 			return packer.ToByteArray();
 		}
 
-		public static byte[] Pack(IDictionary val)
+		public static byte[] Pack(IDictionary val, MapOrder order)
 		{
 			Packer packer = new Packer();
-			packer.PackMap(val);
+			packer.PackMap(val, order);
 			return packer.ToByteArray();
 		}
 
@@ -95,11 +95,33 @@ namespace Aerospike.Client
 
 		public void PackMap(IDictionary map)
 		{
-			PackMapBegin(map.Count);
+			PackMap(map, MapOrder.UNORDERED);
+		}
+
+		public void PackMap(IDictionary map, MapOrder order)
+		{
+			PackMapBegin(map.Count, order);
 			foreach (DictionaryEntry entry in map)
 			{
 				PackObject(entry.Key);
 				PackObject(entry.Value);
+			}
+		}
+
+		private void PackMapBegin(int size, MapOrder order)
+		{
+			if (order == MapOrder.UNORDERED)
+			{
+				PackMapBegin(size);
+			}
+			else
+			{
+				// Map is sorted.
+				PackMapBegin(size + 1);
+				PackByte(0xc7);
+				PackByte(0);
+				PackByte((byte)order);
+				PackByte(0xc0);
 			}
 		}
 

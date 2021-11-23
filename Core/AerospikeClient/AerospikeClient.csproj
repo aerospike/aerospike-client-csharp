@@ -10,12 +10,18 @@
     <GenerateAssemblyCompanyAttribute>false</GenerateAssemblyCompanyAttribute>
     <GenerateAssemblyProductAttribute>false</GenerateAssemblyProductAttribute>
     <Authors>Aerospike</Authors>
-    <Version>4.1.5</Version>
+    <Version>4.2.4</Version>
     <ApplicationIcon />
     <OutputType>Library</OutputType>
     <StartupObject />
     <RootNamespace>Aerospike.Client</RootNamespace>
   </PropertyGroup>
+
+  <ItemGroup>
+    <None Remove="Resources\aerospike.lua" />
+    <None Remove="Resources\aslib.lua" />
+    <None Remove="Resources\stream_ops.lua" />
+  </ItemGroup>
 
   <ItemGroup>
     <Compile Include="..\..\Framework\AerospikeClient\Admin\AdminCommand.cs" Link="Admin\AdminCommand.cs" />
@@ -113,6 +119,7 @@
     <Compile Include="..\..\Framework\AerospikeClient\Command\ParticleType.cs" Link="Command\ParticleType.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Command\ReadCommand.cs" Link="Command\ReadCommand.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Command\ReadHeaderCommand.cs" Link="Command\ReadHeaderCommand.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Command\RecordParser.cs" Link="Command\RecordParser.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Command\RegisterCommand.cs" Link="Command\RegisterCommand.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Command\ScanExecutor.cs" Link="Command\ScanExecutor.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Command\ScanPartitionCommand.cs" Link="Command\ScanPartitionCommand.cs" />
@@ -121,7 +128,10 @@
     <Compile Include="..\..\Framework\AerospikeClient\Command\WriteCommand.cs" Link="Command\WriteCommand.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Exp\BitExp.cs" Link="Exp\BitExp.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Exp\Exp.cs" Link="Exp\Exp.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Exp\ExpOperation.cs" Link="Exp\ExpOperation.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Exp\ExpReadFlags.cs" Link="Exp\ExpReadFlags.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Exp\Expression.cs" Link="Exp\Expression.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Exp\ExpWriteFlags.cs" Link="Exp\ExpWriteFlags.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Exp\HLLExp.cs" Link="Exp\HLLExp.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Exp\ListExp.cs" Link="Exp\ListExp.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Exp\MapExp.cs" Link="Exp\MapExp.cs" />
@@ -137,6 +147,16 @@
     <Compile Include="..\..\Framework\AerospikeClient\Listener\RecordListener.cs" Link="Listener\RecordListener.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Listener\RecordSequenceListener.cs" Link="Listener\RecordSequenceListener.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Listener\WriteListener.cs" Link="Listener\WriteListener.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Lua\LuaAerospike.cs" Link="Lua\LuaAerospike.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Lua\LuaBytes.cs" Link="Lua\LuaBytes.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Lua\LuaCache.cs" Link="Lua\LuaCache.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Lua\LuaConfig.cs" Link="Lua\LuaConfig.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Lua\LuaData.cs" Link="Lua\LuaData.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Lua\LuaGeoJSON.cs" Link="Lua\LuaGeoJSON.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Lua\LuaInstance.cs" Link="Lua\LuaInstance.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Lua\LuaList.cs" Link="Lua\LuaList.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Lua\LuaMap.cs" Link="Lua\LuaMap.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Lua\LuaStream.cs" Link="Lua\LuaStream.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Main\AerospikeClient.cs" Link="Main\AerospikeClient.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Main\AerospikeException.cs" Link="Main\AerospikeException.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Main\BatchRead.cs" Link="Main\BatchRead.cs" />
@@ -167,8 +187,8 @@
     <Compile Include="..\..\Framework\AerospikeClient\Policy\CommitLevel.cs" Link="Policy\CommitLevel.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Policy\GenerationPolicy.cs" Link="Policy\GenerationPolicy.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Policy\InfoPolicy.cs" Link="Policy\InfoPolicy.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Policy\IRecordParser.cs" Link="Policy\IRecordParser.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Policy\Policy.cs" Link="Policy\Policy.cs" />
-    <Compile Include="..\..\Framework\AerospikeClient\Policy\Priority.cs" Link="Policy\Priority.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Policy\QueryPolicy.cs" Link="Policy\QueryPolicy.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Policy\ReadModeAP.cs" Link="Policy\ReadModeAP.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Policy\ReadModeSC.cs" Link="Policy\ReadModeSC.cs" />
@@ -185,6 +205,7 @@
     <Compile Include="..\..\Framework\AerospikeClient\Query\IResultSet.cs" Link="Query\IResultSet.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Query\KeyRecord.cs" Link="Query\KeyRecord.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Query\PartitionFilter.cs" Link="Query\PartitionFilter.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Query\PartitionStatus.cs" Link="Query\PartitionStatus.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Query\PartitionTracker.cs" Link="Query\PartitionTracker.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Query\PredExp.cs" Link="Query\PredExp.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Query\QueryAggregateCommand.cs" Link="Query\QueryAggregateCommand.cs" />
@@ -216,6 +237,12 @@
   </ItemGroup>
 
   <ItemGroup>
+    <EmbeddedResource Include="Resources\aerospike.lua" />
+    <EmbeddedResource Include="Resources\aslib.lua" />
+    <EmbeddedResource Include="Resources\stream_ops.lua" />
+  </ItemGroup>
+
+  <ItemGroup>
     <Folder Include="Admin\" />
     <Folder Include="AsyncTask\" />
     <Folder Include="Async\" />
@@ -226,6 +253,7 @@
     <Folder Include="Main\" />
     <Folder Include="BCrypt\" />
     <Folder Include="Exp\" />
+    <Folder Include="Lua\" />
     <Folder Include="Operation\" />
     <Folder Include="Policy\" />
     <Folder Include="Query\" />
@@ -235,6 +263,22 @@
 
   <ItemGroup>
     <PackageReference Include="Iconic.Zlib.Netstandard" Version="1.0.0" />
+    <PackageReference Include="NeoLua" Version="1.3.13" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Update="Properties\Resources.Designer.cs">
+      <DesignTime>True</DesignTime>
+      <AutoGen>True</AutoGen>
+      <DependentUpon>Resources.resx</DependentUpon>
+    </Compile>
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Update="Properties\Resources.resx">
+      <Generator>ResXFileCodeGenerator</Generator>
+      <LastGenOutput>Resources.Designer.cs</LastGenOutput>
+    </EmbeddedResource>
   </ItemGroup>
 
 </Project>

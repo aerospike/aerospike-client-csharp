@@ -19,8 +19,6 @@ using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Net.Sockets;
-using System.Runtime.InteropServices;
-using System.Security.Authentication;
 using System.Text;
 using System.Threading;
 
@@ -67,6 +65,11 @@ namespace Aerospike.Client
 			return e.Message + Environment.NewLine + e.StackTrace;
 		}
 
+		public static string GetStackTrace(Exception e)
+		{
+			return e.Message + Environment.NewLine + e.StackTrace;
+		}
+
 		public static string ReadFileEncodeBase64(string path)
 		{
 			try
@@ -108,14 +111,14 @@ namespace Aerospike.Client
 			sb.Append(']');
 		}
 
-		public static string ListToString(List<object> list)
+		public static string ListToString(IList list)
 		{
 			StringBuilder sb = new StringBuilder(200);
 			ListToString(sb, list);
 			return sb.ToString();
 		}
 
-		private static void ListToString(StringBuilder sb, List<object> list)
+		private static void ListToString(StringBuilder sb, IList list)
 		{
 			sb.Append('[');
 

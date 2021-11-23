@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2020 Aerospike, Inc.
+ * Copyright 2012-2021 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -52,10 +52,10 @@ namespace Aerospike.Client
 				tracker.PartitionDone(nodePartitions, generation);
 				return;
 			}
-			tracker.SetDigest(nodePartitions, key);
 
 			Record record = ParseRecord();
 			listener.OnRecord(key, record);
+			tracker.SetDigest(nodePartitions, key);
 		}
 
 		protected internal override void OnFailure(AerospikeException ae)

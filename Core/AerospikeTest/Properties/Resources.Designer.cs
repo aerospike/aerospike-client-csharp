@@ -63,9 +63,39 @@ namespace Aerospike.Test.Properties {
         /// <summary>
         ///   Looks up a localized resource of type System.Byte[].
         /// </summary>
+        internal static byte[] average_example {
+            get {
+                object obj = ResourceManager.GetObject("average_example", resourceCulture);
+                return ((byte[])(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Byte[].
+        /// </summary>
+        internal static byte[] filter_example {
+            get {
+                object obj = ResourceManager.GetObject("filter_example", resourceCulture);
+                return ((byte[])(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Byte[].
+        /// </summary>
         internal static byte[] record_example {
             get {
                 object obj = ResourceManager.GetObject("record_example", resourceCulture);
+                return ((byte[])(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Byte[].
+        /// </summary>
+        internal static byte[] sum_example {
+            get {
+                object obj = ResourceManager.GetObject("sum_example", resourceCulture);
                 return ((byte[])(obj));
             }
         }

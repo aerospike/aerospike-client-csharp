@@ -7,7 +7,7 @@
 
     <RootNamespace>Aerospike.Test</RootNamespace>
 
-    <Version>4.1.5</Version>
+    <Version>4.2.4</Version>
 
     <Company>Aerospike</Company>
 
@@ -23,7 +23,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <None Remove="Resources\average_example.lua" />
+    <None Remove="Resources\filter_example.lua" />
     <None Remove="Resources\record_example.lua" />
+    <None Remove="Resources\sum_example.lua" />
   </ItemGroup>
 
   <ItemGroup>
@@ -49,6 +52,7 @@
     <Compile Include="..\..\Framework\AerospikeTest\Sync\Basic\TestBitExp.cs" Link="Sync\TestBitExp.cs" />
     <Compile Include="..\..\Framework\AerospikeTest\Sync\Basic\TestDeleteBin.cs" Link="Sync\TestDeleteBin.cs" />
     <Compile Include="..\..\Framework\AerospikeTest\Sync\Basic\TestExpire.cs" Link="Sync\TestExpire.cs" />
+    <Compile Include="..\..\Framework\AerospikeTest\Sync\Basic\TestExpOperation.cs" Link="Sync\TestExpOperation.cs" />
     <Compile Include="..\..\Framework\AerospikeTest\Sync\Basic\TestFilterExp.cs" Link="Sync\TestFilterExp.cs" />
     <Compile Include="..\..\Framework\AerospikeTest\Sync\Basic\TestGeneration.cs" Link="Sync\TestGeneration.cs" />
     <Compile Include="..\..\Framework\AerospikeTest\Sync\Basic\TestHLLExp.cs" Link="Sync\TestHLLExp.cs" />
@@ -59,7 +63,6 @@
     <Compile Include="..\..\Framework\AerospikeTest\Sync\Basic\TestOperateHLL.cs" Link="Sync\TestOperateHLL.cs" />
     <Compile Include="..\..\Framework\AerospikeTest\Sync\Basic\TestOperateList.cs" Link="Sync\TestOperateList.cs" />
     <Compile Include="..\..\Framework\AerospikeTest\Sync\Basic\TestOperateMap.cs" Link="Sync\TestOperateMap.cs" />
-    <Compile Include="..\..\Framework\AerospikeTest\Sync\Basic\TestPredExp.cs" Link="Sync\TestPredExp.cs" />
     <Compile Include="..\..\Framework\AerospikeTest\Sync\Basic\TestPutGet.cs" Link="Sync\TestPutGet.cs" />
     <Compile Include="..\..\Framework\AerospikeTest\Sync\Basic\TestReplace.cs" Link="Sync\TestReplace.cs" />
     <Compile Include="..\..\Framework\AerospikeTest\Sync\Basic\TestScan.cs" Link="Sync\TestScan.cs" />
@@ -67,20 +70,26 @@
     <Compile Include="..\..\Framework\AerospikeTest\Sync\Basic\TestTouch.cs" Link="Sync\TestTouch.cs" />
     <Compile Include="..\..\Framework\AerospikeTest\Sync\Basic\TestUDF.cs" Link="Sync\TestUDF.cs" />
     <Compile Include="..\..\Framework\AerospikeTest\Sync\Query\TestIndex.cs" Link="Sync\TestIndex.cs" />
+    <Compile Include="..\..\Framework\AerospikeTest\Sync\Query\TestQueryAverage.cs" Link="Sync\TestQueryAverage.cs" />
     <Compile Include="..\..\Framework\AerospikeTest\Sync\Query\TestQueryCollection.cs" Link="Sync\TestQueryCollection.cs" />
     <Compile Include="..\..\Framework\AerospikeTest\Sync\Query\TestQueryExecute.cs" Link="Sync\TestQueryExecute.cs" />
+    <Compile Include="..\..\Framework\AerospikeTest\Sync\Query\TestQueryFilter.cs" Link="Sync\TestQueryFilter.cs" />
     <Compile Include="..\..\Framework\AerospikeTest\Sync\Query\TestQueryFilterExp.cs" Link="Sync\TestQueryFilterExp.cs" />
     <Compile Include="..\..\Framework\AerospikeTest\Sync\Query\TestQueryFilterSet.cs" Link="Sync\TestQueryFilterSet.cs" />
     <Compile Include="..\..\Framework\AerospikeTest\Sync\Query\TestQueryGeo.cs" Link="Sync\TestQueryGeo.cs" />
     <Compile Include="..\..\Framework\AerospikeTest\Sync\Query\TestQueryInteger.cs" Link="Sync\TestQueryInteger.cs" />
     <Compile Include="..\..\Framework\AerospikeTest\Sync\Query\TestQueryKey.cs" Link="Sync\TestQueryKey.cs" />
-    <Compile Include="..\..\Framework\AerospikeTest\Sync\Query\TestQueryPredExp.cs" Link="Sync\TestQueryPredExp.cs" />
     <Compile Include="..\..\Framework\AerospikeTest\Sync\Query\TestQueryString.cs" Link="Sync\TestQueryString.cs" />
+    <Compile Include="..\..\Framework\AerospikeTest\Sync\Query\TestQuerySum.cs" Link="Sync\TestQuerySum.cs" />
     <Compile Include="..\..\Framework\AerospikeTest\Sync\TestSync.cs" Link="Sync\TestSync.cs" />
+    <Compile Include="..\..\Framework\AerospikeTest\Test.cs" Link="Test.cs" />
   </ItemGroup>
 
   <ItemGroup>
+    <EmbeddedResource Include="Resources\average_example.lua" />
+    <EmbeddedResource Include="Resources\filter_example.lua" />
     <EmbeddedResource Include="Resources\record_example.lua" />
+    <EmbeddedResource Include="Resources\sum_example.lua" />
   </ItemGroup>
 
   <ItemGroup>

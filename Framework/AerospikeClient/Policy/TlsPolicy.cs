@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2019 Aerospike, Inc.
+ * Copyright 2012-2021 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -40,13 +40,9 @@ namespace Aerospike.Client
 		/// TlsPolicy policy = new TlsPolicy();
 		/// policy.protocols = SslProtocols.Tls | SslProtocols.Tls11 | SslProtocols.Tls12;
 		/// </code>
-		/// Default: SslProtocols.Default 
+		/// Default: SslProtocols.Tls12 
 		/// </summary>
-#if NETFRAMEWORK
-		public SslProtocols protocols = SslProtocols.Default;
-#else
 		public SslProtocols protocols = SslProtocols.Tls12;
-#endif
 
 		/// <summary>
 		/// Reject server certificates whose serial numbers match a serial number in this array.

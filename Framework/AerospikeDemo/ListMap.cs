@@ -32,11 +32,6 @@ namespace Aerospike.Demo
 		/// </summary>
 		public override void RunExample(AerospikeClient client, Arguments args)
 		{
-			if (!args.hasUdf)
-			{
-				console.Info("List/Map functions are not supported by the connected Aerospike server.");
-				return;
-			}
 			TestListStrings(client, args);
 			TestListComplex(client, args);
 			TestMapStrings(client, args);

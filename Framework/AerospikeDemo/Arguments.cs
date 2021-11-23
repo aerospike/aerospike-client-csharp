@@ -40,10 +40,6 @@ namespace Aerospike.Demo
 		internal BatchPolicy batchPolicy;
 		internal int commandMax;
         internal bool singleBin;
-		internal bool hasGeo;
-		internal bool hasUdf;
-		internal bool hasCDTList;
-		internal bool hasCDTMap;
 
 		protected internal Arguments()
 		{
@@ -62,11 +58,8 @@ namespace Aerospike.Demo
 			string namespaceFilter = "namespace/" + ns;
 			Dictionary<string, string> tokens = Info.Request(null, node, featuresFilter, namespaceFilter);
 
+			/* Client requires server 4.9+, so all these features are supported.
 			string features = tokens[featuresFilter];
-			hasGeo = false;
-			hasUdf = false;
-			hasCDTList = false;
-			hasCDTMap = false;
 
 			if (features != null)
 			{
@@ -91,7 +84,7 @@ namespace Aerospike.Demo
 						hasCDTMap = true;
 					}
 				}
-			}
+			}*/
 
 			string namespaceTokens = tokens[namespaceFilter];
 

@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2020 Aerospike, Inc.
+ * Copyright 2012-2021 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -16,18 +16,21 @@
  */
 using System;
 using System.Collections.Generic;
+using System.Text;
 using System.Threading;
 
 namespace Aerospike.Client
 {
 	public sealed class PartitionTracker
 	{
-		private readonly PartitionStatus[] partitionsAll;
+		private readonly PartitionStatus[] partitions;
 		private readonly int partitionsCapacity;
 		private readonly int partitionBegin;
 		private readonly int nodeCapacity;
 		private readonly Node nodeFilter;
+		private readonly PartitionFilter partitionFilter;
 		private List<NodePartitions> nodePartitionsList;
+		private List<AerospikeException> exceptions;
 		private long maxRecords;
 		private int sleepBetweenRetries;
 		public int socketTimeout;
@@ -52,12 +55,14 @@ namespace Aerospike.Client
 			this.partitionBegin = 0;
 			this.nodeCapacity = nodes.Length;
 			this.nodeFilter = null;
+			this.partitionFilter = null;
 
 			// Create initial partition capacity for each node as average + 25%.
 			int ppn = Node.PARTITIONS / nodes.Length;
 			ppn += (int)((uint)ppn >> 2);
 			this.partitionsCapacity = ppn;
-			this.partitionsAll = Init(policy, Node.PARTITIONS, null);
+			this.partitions = InitPartitions(Node.PARTITIONS, null);
+			InitTimeout(policy);
 		}
 
 		public PartitionTracker(ScanPolicy policy, Node nodeFilter)
@@ -77,8 +82,10 @@ namespace Aerospike.Client
 			this.partitionBegin = 0;
 			this.nodeCapacity = 1;
 			this.nodeFilter = nodeFilter;
+			this.partitionFilter = null;
 			this.partitionsCapacity = Node.PARTITIONS;
-			this.partitionsAll = Init(policy, Node.PARTITIONS, null);
+			this.partitions = InitPartitions(Node.PARTITIONS, null);
+			InitTimeout(policy);
 		}
 
 		public PartitionTracker(ScanPolicy policy, Node[] nodes, PartitionFilter filter)
@@ -119,10 +126,24 @@ namespace Aerospike.Client
 			this.nodeCapacity = nodes.Length;
 			this.nodeFilter = null;
 			this.partitionsCapacity = filter.count;
-			this.partitionsAll = Init(policy, filter.count, filter.digest);
+
+			if (filter.partitions == null)
+			{
+				filter.partitions = InitPartitions(filter.count, filter.digest);
+			}
+			else
+			{
+				foreach (PartitionStatus part in filter.partitions)
+				{
+					part.done = false;
+				}
+			}
+			this.partitions = filter.partitions;
+			this.partitionFilter = filter;
+			InitTimeout(policy);
 		}
 
-		private PartitionStatus[] Init(Policy policy, int partitionCount, byte[] digest)
+		private PartitionStatus[] InitPartitions(int partitionCount, byte[] digest)
 		{
 			PartitionStatus[] partsAll = new PartitionStatus[partitionCount];
 
@@ -135,7 +156,11 @@ namespace Aerospike.Client
 			{
 				partsAll[0].digest = digest;
 			}
+			return partsAll;
+		}
 
+		private void InitTimeout(Policy policy)
+		{
 			sleepBetweenRetries = policy.sleepBetweenRetries;
 			socketTimeout = policy.socketTimeout;
 			totalTimeout = policy.totalTimeout;
@@ -149,7 +174,6 @@ namespace Aerospike.Client
 					socketTimeout = totalTimeout;
 				}
 			}
-			return partsAll;
 		}
 
 		public int SleepBetweenRetries
@@ -163,16 +187,16 @@ namespace Aerospike.Client
 			List<NodePartitions> list = new List<NodePartitions>(nodeCapacity);
 
 			Dictionary<string, Partitions> map = cluster.partitionMap;
-			Partitions partitions;
+			Partitions parts;
 
-			if (!map.TryGetValue(ns, out partitions))
+			if (!map.TryGetValue(ns, out parts))
 			{
 				throw new AerospikeException.InvalidNamespace(ns, map.Count);
 			}
 
-			Node[] master = partitions.replicas[0];
+			Node[] master = parts.replicas[0];
 
-			foreach (PartitionStatus part in partitionsAll)
+			foreach (PartitionStatus part in partitions)
 			{
 				if (!part.done)
 				{
@@ -245,14 +269,14 @@ namespace Aerospike.Client
 
 		public void PartitionDone(NodePartitions nodePartitions, int partitionId)
 		{
-			partitionsAll[partitionId - partitionBegin].done = true;
+			partitions[partitionId - partitionBegin].done = true;
 			nodePartitions.partsReceived++;
 		}
 
 		public void SetDigest(NodePartitions nodePartitions, Key key)
 		{
 			uint partitionId = Partition.GetPartitionId(key.digest);
-			partitionsAll[partitionId - partitionBegin].digest = key.digest;
+			partitions[partitionId - partitionBegin].digest = key.digest;
 			nodePartitions.recordCount++;
 		}
 
@@ -271,7 +295,16 @@ namespace Aerospike.Client
 				//	" partsReceived=" + np.partsReceived + " recordsRequested=" + np.recordMax + " recordsReceived=" + np.recordCount);
 			}
 
-			if (partsReceived >= partsRequested || (maxRecords > 0 && recordCount >= maxRecords))
+			if (partsReceived >= partsRequested)
+			{
+				if (partitionFilter != null && recordCount == 0)
+				{
+					partitionFilter.done = true;
+				}
+				return true;
+			}
+
+			if (maxRecords > 0 && recordCount >= maxRecords)
 			{
 				return true;
 			}
@@ -279,7 +312,24 @@ namespace Aerospike.Client
 			// Check if limits have been reached.
 			if (iteration > policy.maxRetries)
 			{
-				AerospikeException ae = new AerospikeException(ResultCode.MAX_RETRIES_EXCEEDED, "Max retries exceeded: " + policy.maxRetries);
+				StringBuilder sb = new StringBuilder(2048);
+				sb.Append("Max retries exceeded: ");
+				sb.Append(policy.maxRetries);
+				sb.Append(System.Environment.NewLine);
+
+				if (exceptions != null)
+				{
+					sb.Append("sub-exceptions:");
+					sb.Append(System.Environment.NewLine);
+
+					foreach (AerospikeException e in exceptions)
+					{
+						sb.Append(e.Message);
+						sb.Append(System.Environment.NewLine);
+					}
+				}
+
+				AerospikeException ae = new AerospikeException(ResultCode.MAX_RETRIES_EXCEEDED, sb.ToString());
 				ae.Policy = policy;
 				ae.Iteration = iteration;
 				throw ae;
@@ -322,6 +372,11 @@ namespace Aerospike.Client
 				case ResultCode.SERVER_NOT_AVAILABLE:
 				case ResultCode.PARTITION_UNAVAILABLE:
 				case ResultCode.TIMEOUT:
+					if (exceptions == null)
+					{
+						exceptions = new List<AerospikeException>();
+					}
+					exceptions.Add(ae);
 					return true;
 
 				default:
@@ -358,18 +413,6 @@ namespace Aerospike.Client
 				partsPartial.Add(part);
 			}
 			partsRequested++;
-		}
-	}
-
-	public sealed class PartitionStatus
-	{
-		public byte[] digest;
-		public readonly int id;
-		public bool done;
-
-		public PartitionStatus(int id)
-		{
-			this.id = id;
 		}
 	}
 }

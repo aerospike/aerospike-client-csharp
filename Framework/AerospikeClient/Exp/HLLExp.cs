@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2020 Aerospike, Inc.
+ * Copyright 2012-2021 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -31,6 +31,30 @@ namespace Aerospike.Client
 	public sealed class HLLExp
 	{
 		private const int MODULE = 2;
+
+		/// <summary>
+		/// Create expression that creates a new HLL or resets an existing HLL.
+		/// </summary>
+		/// <param name="policy">write policy, use <see cref="Aerospike.Client.HLLPolicy.Default"/> for default</param>
+		/// <param name="indexBitCount">number of index bits expression. Must be between 4 and 16 inclusive.</param>
+		/// <param name="bin">HLL bin or value expression</param>
+		public static Exp Init(HLLPolicy policy, Exp indexBitCount, Exp bin)
+		{
+			return Init(policy, indexBitCount, Exp.Val(-1), bin);
+		}
+
+		/// <summary>
+		/// Create expression that creates a new HLL or resets an existing HLL with minhash bits.
+		/// </summary>
+		/// <param name="policy">write policy, use <see cref="Aerospike.Client.HLLPolicy.Default"/> for default</param>
+		/// <param name="indexBitCount">number of index bits expression. Must be between 4 and 16 inclusive.</param>
+		/// <param name="minHashBitCount">number of min hash bits expression. Must be between 4 and 51 inclusive.</param>
+		/// <param name="bin">HLL bin or value expression</param>
+		public static Exp Init(HLLPolicy policy, Exp indexBitCount, Exp minHashBitCount, Exp bin)
+		{
+			byte[] bytes = PackUtil.Pack(HLLOperation.INIT, indexBitCount, minHashBitCount, policy.flags);
+			return AddWrite(bin, bytes);
+		}
 
 		/// <summary>
 		/// Create expression that adds list values to a HLL set and returns HLL set.

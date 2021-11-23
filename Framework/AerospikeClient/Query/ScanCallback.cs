@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2021 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -18,13 +18,14 @@ namespace Aerospike.Client
 {
 	/// <summary>
 	/// This method will be called for each record returned from a scan. The user may throw a 
-	/// <seealso cref="Aerospike.Client.AerospikeException.ScanTerminated"/> 
+	/// <see cref="Aerospike.Client.AerospikeException.ScanTerminated"/> 
 	/// exception if the scan should be aborted.  If any exception is thrown, parallel scan threads
 	/// to other nodes will also be terminated and the exception will be propagated back through the
 	/// initiating scan call.
 	/// <para>
-	/// Multiple threads will likely be calling scanCallback in parallel.  Therefore, your scanCallback
-	/// implementation should be thread safe.
+	/// If <see cref="Aerospike.Client.ScanPolicy.concurrentNodes"/> is true and 
+	/// <see cref="Aerospike.Client.ScanPolicy.maxConcurrentNodes"/> is not equal one, then
+	/// your scan callback implementation must be thread safe.
 	/// </para>
 	/// </summary>
 	/// <param name="key">unique record identifier</param>

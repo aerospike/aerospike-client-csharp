@@ -121,6 +121,7 @@ namespace Aerospike.Client
 							// Retry on server timeout.
 							exception = new AerospikeException.Timeout(policy, false);
 							isClientTimeout = false;
+							node.IncrErrorCount();
 						}
 						else if (ae.Result == ResultCode.DEVICE_OVERLOAD)
 						{

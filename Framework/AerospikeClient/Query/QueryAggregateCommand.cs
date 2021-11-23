@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2020 Aerospike, Inc.
+ * Copyright 2012-2021 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -50,7 +50,6 @@ namespace Aerospike.Client
 
 		protected internal override void ParseRow(Key key)
 		{
-#if NETFRAMEWORK
 			if (opCount != 1)
 			{
 				throw new AerospikeException("Query aggregate expected exactly one bin.  Received " + opCount);
@@ -98,7 +97,6 @@ namespace Aerospike.Client
 				{
 				}
 			}
-#endif
 		}
 	}
 }

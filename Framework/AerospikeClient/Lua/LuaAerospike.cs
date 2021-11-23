@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2021 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -15,8 +15,6 @@
  * the License.
  */
 using System;
-using System.Collections.Generic;
-using Neo.IronLua;
 
 namespace Aerospike.Client
 {
@@ -41,7 +39,7 @@ namespace Aerospike.Client
 
 		public static void LoadLibrary(LuaInstance lua)
 		{
-			LuaTable table = new LuaTable();
+			Neo.IronLua.LuaTable table = new Neo.IronLua.LuaTable();
 			table["log"] = new Action<int, string>(log);
 
 			lua.Register("aero", table);

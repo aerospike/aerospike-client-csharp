@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2020 Aerospike, Inc.
+ * Copyright 2012-2021 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -23,7 +23,7 @@ namespace Aerospike.Client
 		private readonly OperateArgs args;
 
 		public AsyncOperate(AsyncCluster cluster, RecordListener listener, Key key, OperateArgs args)
-			: base(cluster, args.writePolicy, listener, key, args.partition)
+			: base(cluster, args.writePolicy, listener, key, args.partition, true)
 		{
 			this.args = args;
 		}
@@ -61,34 +61,6 @@ namespace Aerospike.Client
 			if (args.hasWrite)
 			{
 				throw new AerospikeException(resultCode);
-			}
-		}
-
-		protected internal override void AddBin(Dictionary<string, object> bins, string name, object value)
-		{
-			object prev;
-
-			if (bins.TryGetValue(name, out prev))
-			{
-				// Multiple values returned for the same bin. 
-				if (prev is OpResults)
-				{
-					// List already exists.  Add to it.
-					OpResults list = (OpResults)prev;
-					list.Add(value);
-				}
-				else
-				{
-					// Make a list to store all values.
-					OpResults list = new OpResults();
-					list.Add(prev);
-					list.Add(value);
-					bins[name] = list;
-				}
-			}
-			else
-			{
-				bins[name] = value;
 			}
 		}
 

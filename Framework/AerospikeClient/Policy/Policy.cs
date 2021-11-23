@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2020 Aerospike, Inc.
+ * Copyright 2012-2021 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -25,13 +25,6 @@ namespace Aerospike.Client
 	/// </summary>
 	public class Policy
 	{
-		/// <summary>
-		/// Priority of request relative to other transactions.
-		/// Only used for scans where scanPercent is defined.
-		/// </summary>
-		[Obsolete("priority is deprecated. Use 'ScanPolicy.recordsPerSecond' instead.")]
-		public Priority priority = Priority.DEFAULT;
-
 		/// <summary>
 		/// Read policy for AP (availability) namespaces.
 		/// <para>
@@ -185,7 +178,7 @@ namespace Aerospike.Client
 		/// Immediate write retries on node failure have been shown to consistently
 		/// result in errors.  If maxRetries is greater than zero on a write, then
 		/// sleepBetweenRetries should be set high enough to allow the cluster to
-		/// reform (>= 500ms).
+		/// reform (>= 3000ms).
 		/// </para>
 		/// <para>
 		/// Default: 0 (do not sleep between retries)
@@ -230,11 +223,18 @@ namespace Aerospike.Client
 		public bool failOnFilteredOut;
 
 		/// <summary>
+		/// Alternate record parser.
+		/// <para>
+		/// Default: Use standard record parser.
+		/// </para>
+		/// </summary>
+		public IRecordParser recordParser = RecordParser.Instance;
+
+		/// <summary>
 		/// Copy constructor.
 		/// </summary>
 		public Policy(Policy other)
 		{
-			this.priority = other.priority;
 			this.readModeAP = other.readModeAP;
 			this.readModeSC = other.readModeSC;
 			this.replica = other.replica;
@@ -247,6 +247,7 @@ namespace Aerospike.Client
 			this.sendKey = other.sendKey;
 			this.compress = other.compress;
 			this.failOnFilteredOut = other.failOnFilteredOut;
+			this.recordParser = other.recordParser;
 		}
 
 		/// <summary>

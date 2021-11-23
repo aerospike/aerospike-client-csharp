@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2020 Aerospike, Inc.
+ * Copyright 2012-2021 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -14,13 +14,24 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
+using System;
+
 namespace Aerospike.Client
 {
 	/// <summary>
 	/// Partition filter used in scan/query.
 	/// </summary>
+	[Serializable]
 	public sealed class PartitionFilter
 	{
+		/// <summary>
+		/// Read all partitions.
+		/// </summary>
+		public static PartitionFilter All()
+		{
+			return new PartitionFilter(0, 4096);
+		}
+
 		/// <summary>
 		/// Filter by partition id.
 		/// </summary>
@@ -34,7 +45,7 @@ namespace Aerospike.Client
 		/// Return records after key's digest in partition containing the digest.
 		/// Note that digest order is not the same as userKey order.
 		/// </summary>
-		/// <param name="key">return records after this key's digest </param>
+		/// <param name="key">return records after this key's digest</param>
 		public static PartitionFilter After(Key key)
 		{
 			return new PartitionFilter(key.digest);
@@ -53,6 +64,8 @@ namespace Aerospike.Client
 		internal readonly int begin;
 		internal readonly int count;
 		internal readonly byte[] digest;
+		internal PartitionStatus[] partitions; // Initialized in PartitionTracker.
+		internal bool done;
 
 		private PartitionFilter(int begin, int count)
 		{
@@ -66,6 +79,59 @@ namespace Aerospike.Client
 			this.begin = (int)Partition.GetPartitionId(digest);
 			this.count = 1;
 			this.digest = digest;
+		}
+
+		/// <summary>
+		/// First partition id.
+		/// </summary>
+		public int Begin
+		{
+			get { return begin; }
+		}
+
+		/// <summary>
+		/// Count of partitions.
+		/// </summary>
+		public int Count
+		{
+			get { return count; }
+		}
+
+		/// <summary>
+		/// Resume after digest.
+		/// </summary>
+		public byte[] Digest
+		{
+			get { return digest; }
+		}
+
+		/// <summary>
+		/// Status of each partition after scan termination.
+		/// Useful for external retry of partially completed scans at a later time.
+		/// <para>
+		/// The partition status is accurate for sync/async ScanPartitions and async QueryPartitions.
+		/// </para>
+		/// <para>
+		/// The partition status is not accurate for
+		/// <see cref="Aerospike.Client.AerospikeClient.QueryPartitions(QueryPolicy, Statement, PartitionFilter)"/>
+		/// because the last digest received is set during query parsing, but the user may not have retrieved
+		/// that digest from the RecordSet yet.
+		/// </para>
+		/// </summary>
+		public PartitionStatus[] Partitions
+		{
+			get { return partitions; }
+			set { this.partitions = value; }
+		}
+
+		/// <summary>
+		/// If using <see cref="Aerospike.Client.ScanPolicy.maxRecords"/> or
+		/// <see cref="Aerospike.Client.QueryPolicy.maxRecords"/>,
+		/// did previous paginated scans with this partition filter instance return all records?
+		/// </summary>
+		public bool Done
+		{
+			get { return done; }
 		}
 	}
 }

@@ -34,11 +34,6 @@ namespace Aerospike.Demo
 		/// </summary>
 		public override void RunExample(AsyncClient client, Arguments args)
 		{
-			if (! args.hasUdf) {
-				console.Info("Query functions are not supported by the connected Aerospike server.");
-				return;
-			}
-
 			completed = false;
 			string indexName = "asqindex";
 			string keyPrefix = "asqkey";

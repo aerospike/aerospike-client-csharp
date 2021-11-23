@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2020 Aerospike, Inc.
+ * Copyright 2012-2021 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -21,7 +21,7 @@ namespace Aerospike.Client
 		private readonly Statement statement;
 
 		public ServerCommand(Cluster cluster, Node node, WritePolicy policy, Statement statement) 
-			: base(cluster, policy, node, true)
+			: base(cluster, policy, node, false, false)
 		{
 			this.statement = statement;
 		}

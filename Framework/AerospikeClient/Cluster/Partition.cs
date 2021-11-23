@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2020 Aerospike, Inc.
+ * Copyright 2012-2021 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -32,7 +32,7 @@ namespace Aerospike.Client
 			{
 				throw new AerospikeException.InvalidNamespace(key.ns, map.Count);
 			}
-			return new Partition(partitions, key, policy.replica, false);
+			return new Partition(partitions, key, policy.replica, null, false);
 		}
 
 		public static Partition Read(Cluster cluster, Policy policy, Key key)
@@ -74,7 +74,7 @@ namespace Aerospike.Client
 				replica = policy.replica;
 				linearize = false;
 			}
-			return new Partition(partitions, key, replica, linearize);
+			return new Partition(partitions, key, replica, null, linearize);
 		}
 
 		public static Replica GetReplicaSC(Policy policy)
@@ -92,7 +92,16 @@ namespace Aerospike.Client
 			}
 		}
 
-		public static Node GetNodeBatchRead(Cluster cluster, Key key, Replica replica, Replica replicaSC, uint sequence, uint sequenceSC)
+		public static Node GetNodeBatchRead
+		(
+			Cluster cluster,
+			Key key,
+			Replica replica,
+			Replica replicaSC,
+			Node prevNode,
+			uint sequence,
+			uint sequenceSC
+		)
 		{
 			// Must copy hashmap reference for copy on write semantics to work.
 			Dictionary<string, Partitions> map = cluster.partitionMap;
@@ -109,23 +118,25 @@ namespace Aerospike.Client
 				sequence = sequenceSC;
 			}
 
-			Partition p = new Partition(partitions, key, replica, false);
+			Partition p = new Partition(partitions, key, replica, prevNode, false);
 			p.sequence = sequence;
 			return p.GetNodeRead(cluster);
 		}
 
 		private readonly Partitions partitions;
 		private readonly string ns;
+		private Node prevNode;
 		private readonly Replica replica;
 		public readonly uint partitionId;
 		private uint sequence;
 		private readonly bool linearize;
 
-		private Partition(Partitions partitions, Key key, Replica replica, bool linearize)
+		private Partition(Partitions partitions, Key key, Replica replica, Node prevNode, bool linearize)
 		{
 			this.partitions = partitions;
 			this.ns = key.ns;
 			this.replica = replica;
+			this.prevNode = prevNode;
 			this.linearize = linearize;
 			this.partitionId = GetPartitionId(key.digest);
 		}
@@ -194,10 +205,11 @@ namespace Aerospike.Client
 		public Node GetSequenceNode(Cluster cluster)
 		{
 			Node[][] replicas = partitions.replicas;
+			uint max = (uint)replicas.Length;
 
-			for (int i = 0; i < replicas.Length; i++)
+			for (uint i = 0; i < max; i++)
 			{
-				uint index = sequence % (uint)replicas.Length;
+				uint index = sequence % max;
 				Node node = Volatile.Read(ref replicas[index][partitionId]);
 
 				if (node != null && node.Active)
@@ -213,41 +225,75 @@ namespace Aerospike.Client
 		private Node GetRackNode(Cluster cluster)
 		{
 			Node[][] replicas = partitions.replicas;
-			Node fallback = null;
-			bool retry = (sequence > 0);
+			uint max = (uint)replicas.Length;
+			uint seq1 = 0;
+			uint seq2 = 0;
+			Node fallback1 = null;
+			Node fallback2 = null;
 
-			for (int i = 1; i <= replicas.Length; i++)
+			foreach (int rackId in cluster.rackIds)
 			{
-				uint index = sequence % (uint)replicas.Length;
-				Node node = Volatile.Read(ref replicas[index][partitionId]);
+				uint seq = sequence;
 
-				if (node != null && node.Active)
+				for (uint i = 0; i < max; i++)
 				{
-					// If fallback exists, do not retry on node where command failed,
-					// even if fallback is not on the same rack.
-					if (retry && fallback != null && i == replicas.Length)
-					{
-						return fallback;
-					}
+					uint index = seq % max;
+					Node node = Volatile.Read(ref replicas[index][partitionId]);
+					// Log.Info("Try " + rackId + ',' + index + ',' + prevNode + ',' + node + ',' + node.HasRack(ns, rackId));
 
-					if (node.HasRack(ns, cluster.rackId))
+					if (node != null)
 					{
-						return node;
+						// Avoid retrying on node where command failed
+						// even if node is the only one on the same rack.
+						if (node != prevNode)
+						{
+							if (node.HasRack(ns, rackId))
+							{
+								if (node.Active)
+								{
+									// Log.Info("Found node on same rack: " + node);
+									prevNode = node;
+									sequence = seq;
+									return node;
+								}
+							}
+							else if (fallback1 == null && node.Active)
+							{
+								// Meets all criteria except not on same rack.
+								fallback1 = node;
+								seq1 = seq;
+							}
+						}
+						else if (fallback2 == null && node.Active)
+						{
+							// Previous node is the least desirable fallback.
+							fallback2 = node;
+							seq2 = seq;
+						}
 					}
-
-					if (fallback == null)
-					{
-						fallback = node;
-					}
+					seq++;
 				}
-				sequence++;
 			}
 
-			if (fallback != null)
+			// Return node on a different rack if it exists.
+			if (fallback1 != null)
 			{
-				return fallback;
+				// Log.Info("Found fallback node: " + fallback1);
+				prevNode = fallback1;
+				sequence = seq1;
+				return fallback1;
 			}
 
+			// Return previous node if it still exists.
+			if (fallback2 != null)
+			{
+				// Log.Info("Found previous node: " + fallback2);
+				prevNode = fallback2;
+				sequence = seq2;
+				return fallback2;
+			}
+
+			// Failed to find suitable node.			
 			Node[] nodeArray = cluster.Nodes;
 			throw new AerospikeException.InvalidNode(nodeArray.Length, this);
 		}

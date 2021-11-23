@@ -100,11 +100,11 @@ namespace Aerospike.Client
 			{
 				CloseIdleAsyncConnections(excess);
 			}
-			else if (excess < 0)
+			else if (excess < 0 && ErrorCountWithinLimit())
 			{
-				// Allow only 5 concurrent connection requests because they will be done in the
+				// Create connection requests sequentially because they will be done in the
 				// background and there is no immediate need for them to complete.
-				new AsyncConnectorExecutor(cluster, this, -excess, 5, false);
+				new AsyncConnectorExecutor(cluster, this, -excess, 1, false);
 			}
 		}
 

@@ -59,7 +59,7 @@ namespace Aerospike.Client
 					return BytesToNumber(buf, offset, len);
 
 				case ParticleType.BOOL:
-					return BoolBytesToLong(buf, offset, len);
+					return BytesToBool(buf, offset, len);
 
 				case ParticleType.DOUBLE:
 					return BytesToDouble(buf, offset);
@@ -287,13 +287,13 @@ namespace Aerospike.Client
 			return big;
 		}
 
-		public static long BoolBytesToLong(byte[] buf, int offset, int len)
+		public static bool BytesToBool(byte[] buf, int offset, int len)
 		{
 			if (len <= 0)
 			{
-				return 0L;
+				return false;
 			}
-			return (long)buf[offset];
+			return (buf[offset] == 0) ? false : true;
 		}
 
 		//-------------------------------------------------------

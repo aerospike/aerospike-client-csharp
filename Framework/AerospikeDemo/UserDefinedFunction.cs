@@ -32,11 +32,6 @@ namespace Aerospike.Demo
 		/// </summary>
 		public override void RunExample(AerospikeClient client, Arguments args)
 		{
-			if (!args.hasUdf)
-			{
-				console.Info("User defined functions are not supported by the connected Aerospike server.");
-				return;
-			}
 			Register(client, args);
 			WriteUsingUdf(client, args);
 			WriteIfGenerationNotChanged(client, args);

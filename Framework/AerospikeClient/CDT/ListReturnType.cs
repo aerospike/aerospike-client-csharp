@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2021 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -56,7 +56,7 @@ namespace Aerospike.Client
 		RANK = 3,
 
 		/// <summary>
-		/// Return reserve value order.
+		/// Return reverse value order.
 		/// <ul>
 		/// <li>0 = largest value</li>
 		/// <li>N = Nth largest value</li>

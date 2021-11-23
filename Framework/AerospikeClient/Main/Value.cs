@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2020 Aerospike, Inc.
+ * Copyright 2012-2021 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -17,6 +17,7 @@
 using System;
 using System.IO;
 using System.Collections;
+using System.Collections.Generic;
 using System.Runtime.Serialization.Formatters.Binary;
 
 namespace Aerospike.Client
@@ -26,6 +27,14 @@ namespace Aerospike.Client
 	/// </summary>
 	public abstract class Value
 	{
+		/// <summary>
+		/// Should client send boolean particle type for a boolean bin.  If false,
+		/// an integer particle type (1 or 0) is sent instead. Must be false for server
+		/// versions less than 5.6 which do not support boolean bins. Can set to true for
+		/// server 5.6+.
+		/// </summary>
+		public static bool UseBoolBin = false;
+		
 		/// <summary>
 		/// Null value.
 		/// </summary>
@@ -155,7 +164,14 @@ namespace Aerospike.Client
 		/// </summary>
 		public static Value Get(bool value)
 		{
-			return new BooleanValue(value);
+			if (UseBoolBin)
+			{
+				return new BooleanValue(value);
+			}
+			else
+			{
+				return new BoolIntValue(value);
+			}
 		}
 
 		/// <summary>
@@ -201,6 +217,21 @@ namespace Aerospike.Client
 			else
 			{
 				return new MapValue(value);
+			}
+		}
+
+		/// <summary>
+		/// Get map or null value instance.
+		/// </summary>
+		public static Value Get(IDictionary value, MapOrder order)
+		{
+			if (value == null)
+			{
+				return NullValue.Instance;
+			}
+			else
+			{
+				return new MapValue(value, order);
 			}
 		}
 
@@ -342,7 +373,14 @@ namespace Aerospike.Client
 					return new UnsignedShortValue((ushort)value);
 
 				case TypeCode.Boolean:
-					return new BooleanValue((bool)value);
+					if (UseBoolBin)
+					{
+						return new BooleanValue((bool)value);
+					}
+					else
+					{
+						return new BoolIntValue((bool)value);
+					}
  
                 case TypeCode.Byte:
 					return new ByteValue((byte)value);
@@ -1402,12 +1440,13 @@ namespace Aerospike.Client
 
 			public override int EstimateSize()
 			{
-				return 8;
+				return 1;
 			}
 
 			public override int Write(byte[] buffer, int offset)
 			{
-				return ByteUtil.LongToBytes(value? (ulong)1 : (ulong)0, buffer, offset);
+				buffer[offset] = value ? (byte)1 : (byte)0;
+				return 1;
 			}
 
 			public override void Pack(Packer packer)
@@ -1415,11 +1454,16 @@ namespace Aerospike.Client
 				packer.PackBoolean(value);
 			}
 
+			public override void ValidateKeyType()
+			{
+				throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Invalid key type: bool");
+			}
+
 			public override int Type
 			{
 				get
 				{
-					return ParticleType.INTEGER;
+					return ParticleType.BOOL;
 				}
 			}
 
@@ -1451,6 +1495,94 @@ namespace Aerospike.Client
 			public override int ToInteger()
 			{
 				return value? 1 : 0;
+			}
+
+			public override uint ToUnsignedInteger()
+			{
+				return value ? (uint)1 : (uint)0;
+			}
+
+			public override long ToLong()
+			{
+				return value ? 1 : 0;
+			}
+
+			public override ulong ToUnsignedLong()
+			{
+				return value ? (ulong)1 : (ulong)0;
+			}
+		}
+
+		/// <summary>
+		/// Boolean value that converts to integer when sending a bin to the server.
+		/// This class will be deleted once full conversion to boolean particle type
+		/// is complete.
+		/// </summary>
+		public sealed class BoolIntValue : Value
+		{
+			private readonly bool value;
+
+			public BoolIntValue(bool value)
+			{
+				this.value = value;
+			}
+
+			public override int EstimateSize()
+			{
+				return 8;
+			}
+
+			public override int Write(byte[] buffer, int offset)
+			{
+				return ByteUtil.LongToBytes(value ? 1UL : 0UL, buffer, offset);
+			}
+
+			public override void Pack(Packer packer)
+			{
+				packer.PackBoolean(value);
+			}
+
+			public override void ValidateKeyType()
+			{
+				throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Invalid key type: BoolIntValue");
+			}
+
+			public override int Type
+			{
+				get
+				{
+					return ParticleType.INTEGER;
+				}
+			}
+
+			public override object Object
+			{
+				get
+				{
+					return value;
+				}
+			}
+
+			public override string ToString()
+			{
+				return Convert.ToString(value);
+			}
+
+			public override bool Equals(object other)
+			{
+				return (other != null &&
+					this.GetType().Equals(other.GetType()) &&
+					this.value == ((BoolIntValue)other).value);
+			}
+
+			public override int GetHashCode()
+			{
+				return value ? 1231 : 1237;
+			}
+
+			public override int ToInteger()
+			{
+				return value ? 1 : 0;
 			}
 
 			public override uint ToUnsignedInteger()
@@ -2067,16 +2199,29 @@ namespace Aerospike.Client
 		public sealed class MapValue : Value
 		{
 			internal readonly IDictionary map;
+			internal readonly MapOrder order;
 			internal byte[] bytes;
 
 			public MapValue(IDictionary map)
 			{
 				this.map = map;
+				this.order = MapOrder.UNORDERED;
+			}
+
+			public MapValue(IDictionary map, MapOrder order)
+			{
+				this.map = map;
+				this.order = order;
+			}
+
+			public MapOrder Order
+			{
+				get { return order; }
 			}
 
 			public override int EstimateSize()
 			{
-				bytes = Packer.Pack(map);
+				bytes = Packer.Pack(map, order);
 				return bytes.Length;
 			}
 
@@ -2088,7 +2233,7 @@ namespace Aerospike.Client
 
 			public override void Pack(Packer packer)
 			{
-				packer.PackMap(map);
+				packer.PackMap(map, order);
 			}
 
 			public override void ValidateKeyType()
@@ -2175,6 +2320,7 @@ namespace Aerospike.Client
 				return result;
 			}
 		}
+
 		/// <summary>
 		/// Infinity value.
 		/// </summary>

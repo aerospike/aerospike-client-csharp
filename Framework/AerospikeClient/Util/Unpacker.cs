@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2021 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -114,11 +114,7 @@ namespace Aerospike.Client
 		{
 			if (lua)
 			{
-#if NETFRAMEWORK
 				return new LuaList(list);
-#else
-				throw new AerospikeException("Lua not supported in .NET core");
-#endif
 			}
 			return list;
 		}
@@ -231,11 +227,7 @@ namespace Aerospike.Client
 		{
 			if (lua)
 			{
-#if NETFRAMEWORK
 				return new LuaMap(map);
-#else
-				throw new AerospikeException("Lua not supported in .NET core");
-#endif
 			}
 			return map;
 		}
@@ -266,11 +258,7 @@ namespace Aerospike.Client
 
 					if (lua)
 					{
-#if NETFRAMEWORK
 						val = new LuaBytes(dest);
-#else
-						throw new AerospikeException("Lua not supported in .NET core");
-#endif
 					}
 					else
 					{

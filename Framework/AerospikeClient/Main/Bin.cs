@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2019 Aerospike, Inc.
+ * Copyright 2012-2021 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -190,8 +190,9 @@ namespace Aerospike.Client
 
 		/// <summary>
 		/// Constructor, specifying bin name and boolean value.
-		/// The server will convert all bools to longs.
 		/// For servers configured as "single-bin", enter a null or empty name.
+		/// Either a boolean or integer bin is sent to the server, depending
+		/// on configuration <see cref="Aerospike.Client.Value.UseBoolBin"/>.
 		/// </summary>
 		/// <param name="name">bin name, current limit is 14 characters</param>
 		/// <param name="value">bin value</param>
@@ -249,6 +250,19 @@ namespace Aerospike.Client
 		{
 			this.name = name;
 			this.value = Value.Get(value);
+		}
+
+		/// <summary>
+		/// Create bin with a map value and order.  The map value will be serialized as a server map type.
+		/// For servers configured as "single-bin", enter a null or empty name.
+		/// </summary>
+		/// <param name="name">bin name, current limit is 14 characters</param>
+		/// <param name="value">bin value, pass in TreeMap instance if map order is sorted.</param>
+		/// <param name="mapOrder">map sorted order</param>
+		public Bin(string name, IDictionary value, MapOrder mapOrder)
+		{
+			this.name = name;
+			this.value = Value.Get(value, mapOrder);
 		}
 
 		/// <summary>

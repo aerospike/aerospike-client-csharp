@@ -1,5 +1,5 @@
 ﻿/* 
- * Copyright 2012-2020 Aerospike, Inc.
+ * Copyright 2012-2021 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -24,18 +24,15 @@ namespace Aerospike.Test
 	[TestClass]
 	public class TestFilterExp : TestSync
 	{
-		private static readonly Key keyA = new Key(args.ns, args.set, "A");
-		private static readonly Key keyB = new Key(args.ns, args.set, "B");
+		string binA = "A";
+		string binB = "B";
+		string binC = "C";
+		string binD = "D";
+		string binE = "E";
 
-		private static readonly String binAName = "A";
-
-		private static readonly Bin binA1 = new Bin(binAName, 1L);
-		private static readonly Bin binA2 = new Bin(binAName, 2L);
-		private static readonly Bin binA3 = new Bin(binAName, 3L);
-
-		private BatchPolicy predAEq1BPolicy;
-		private Policy predAEq1RPolicy;
-		private WritePolicy predAEq1WPolicy;
+		Key keyA = new Key(args.ns, args.set, "A");
+		Key keyB = new Key(args.ns, args.set, new byte[] {(byte)'B'});
+		Key keyC = new Key(args.ns, args.set, "C");
 
 		[ClassInitialize()]
 		public static void Register(TestContext testContext)
@@ -48,60 +45,62 @@ namespace Aerospike.Test
 		[TestInitialize()]
 		public void Initialize()
 		{
-			predAEq1BPolicy = new BatchPolicy();
-			predAEq1RPolicy = new Policy();
-			predAEq1WPolicy = new WritePolicy();
-
-			Expression filter = Exp.Build(Exp.EQ(Exp.IntBin(binAName), Exp.Val(1)));
-			predAEq1BPolicy.filterExp = filter;
-			predAEq1RPolicy.filterExp = filter;
-			predAEq1WPolicy.filterExp = filter;
-
 			client.Delete(null, keyA);
 			client.Delete(null, keyB);
+			client.Delete(null, keyC);
 
-			client.Put(null, keyA, binA1);
-			client.Put(null, keyB, binA2);
+			client.Put(null, keyA, new Bin(binA, 1), new Bin(binB, 1.1), new Bin(binC, "abcde"), new Bin(binD, 1), new Bin(binE, -1));
+			client.Put(null, keyB, new Bin(binA, 2), new Bin(binB, 2.2), new Bin(binC, "abcdeabcde"), new Bin(binD, 1), new Bin(binE, -2));
+			client.Put(null, keyC, new Bin(binA, 0), new Bin(binB, -1), new Bin(binC, 1));
 		}
 
 		[TestMethod]
 		public void FilterExpPut()
 		{
-			client.Put(predAEq1WPolicy, keyA, binA3);
+			WritePolicy policy = new WritePolicy();
+			policy.filterExp = Exp.Build(Exp.EQ(Exp.IntBin(binA), Exp.Val(1)));
+
+			Bin bin = new Bin(binA, 3);
+
+			client.Put(policy, keyA, bin);
 			Record r = client.Get(null, keyA);
 
-			AssertBinEqual(keyA, r, binA3);
+			AssertBinEqual(keyA, r, binA, 3);
 
-			client.Put(predAEq1WPolicy, keyB, binA3);
+			client.Put(policy, keyB, bin);
 			r = client.Get(null, keyB);
 
-			AssertBinEqual(keyB, r, binA2);
+			AssertBinEqual(keyB, r, binA, 2);
 		}
 
 		[TestMethod]
 		public void FilterExpPutExcept()
 		{
-			predAEq1WPolicy.failOnFilteredOut = true;
+			WritePolicy policy = new WritePolicy();
+			policy.filterExp = Exp.Build(Exp.EQ(Exp.IntBin(binA), Exp.Val(1)));
+			policy.failOnFilteredOut = true;
 
-			client.Put(predAEq1WPolicy, keyA, binA3);
+			Bin bin = new Bin(binA, 3);
 
-			try {
-				client.Put(predAEq1WPolicy, keyB, binA3);
-				Assert.Fail("Expected AerospikeException filtered out (27)");
-			}
-			catch (AerospikeException e) {
-				Assert.AreEqual(27, e.Result);
-			}
+			client.Put(policy, keyA, bin);
+
+			Test.TestException(() =>
+			{
+				client.Put(policy, keyB, bin);
+			}, ResultCode.FILTERED_OUT);
 		}
 
 		[TestMethod]
 		public void FilterExpGet()
 		{
-			Record r = client.Get(predAEq1RPolicy, keyA);
+			Policy policy = new Policy();
+			policy.filterExp = Exp.Build(Exp.EQ(Exp.IntBin(binA), Exp.Val(1)));
 
-			AssertBinEqual(keyA, r, binA1);
+			Record r = client.Get(policy, keyA);
 
-			r = client.Get(predAEq1RPolicy, keyB);
+			AssertBinEqual(keyA, r, binA, 1);
+
+			r = client.Get(policy, keyB);
 
 			Assert.AreEqual(null, r);
 		}
@@ -109,57 +108,62 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void FilterExpGetExcept()
 		{
-			predAEq1RPolicy.failOnFilteredOut = true;
+			Policy policy = new Policy();
+			policy.filterExp = Exp.Build(Exp.EQ(Exp.IntBin(binA), Exp.Val(1)));
+			policy.failOnFilteredOut = true;
 
-			client.Get(predAEq1RPolicy, keyA);
+			client.Get(policy, keyA);
 
-			try {
-				client.Get(predAEq1RPolicy, keyB);
-				Assert.Fail("Expected AerospikeException filtered out (27)");
-			}
-			catch (AerospikeException e) {
-				Assert.AreEqual(27, e.Result);
-			}
+			Test.TestException(() =>
+			{
+				client.Get(policy, keyB);
+			}, ResultCode.FILTERED_OUT);
 		}
 
 		[TestMethod]
 		public void FilterExpBatch()
 		{
-			Key[] keys = { keyA, keyB };
+			BatchPolicy policy = new BatchPolicy();
+			policy.filterExp = Exp.Build(Exp.EQ(Exp.IntBin(binA), Exp.Val(1)));
 
-			Record[] records = client.Get(predAEq1BPolicy, keys);
+			Key[] keys = new Key[] { keyA, keyB };
 
-			AssertBinEqual(keyA, records[0], binA1);
+			Record[] records = client.Get(policy, keys);
+
+			AssertBinEqual(keyA, records[0], binA, 1);
 			Assert.AreEqual(null, records[1]);
 		}
 
 		[TestMethod]
 		public void FilterExpDelete()
 		{
-			client.Delete(predAEq1WPolicy, keyA);
+			WritePolicy policy = new WritePolicy();
+			policy.filterExp = Exp.Build(Exp.EQ(Exp.IntBin(binA), Exp.Val(1)));
+
+			client.Delete(policy, keyA);
 			Record r = client.Get(null, keyA);
 
 			Assert.AreEqual(null, r);
 
-			client.Delete(predAEq1WPolicy, keyB);
-			r = client.Get(null,  keyB);
+			client.Delete(policy, keyB);
+			r = client.Get(null, keyB);
 
-			AssertBinEqual(keyB, r, binA2);
+			AssertBinEqual(keyB, r, binA, 2);
 		}
 
 		[TestMethod]
 		public void FilterExpDeleteExcept()
 		{
-			predAEq1WPolicy.failOnFilteredOut = true;
+			WritePolicy policy = new WritePolicy();
+			policy.filterExp = Exp.Build(Exp.EQ(Exp.IntBin(binA), Exp.Val(1)));
+			policy.failOnFilteredOut = true;
 
-			client.Delete(predAEq1WPolicy, keyA);
+			client.Delete(policy, keyA);
 
-			try {
-				client.Delete(predAEq1WPolicy, keyB);
-			}
-			catch (AerospikeException e) {
-				Assert.AreEqual(27, e.Result);
-			}
+			Test.TestException(() =>
+			{
+				client.Delete(policy, keyB);
+			}, ResultCode.FILTERED_OUT);
 		}
 
 		[TestMethod]
@@ -170,17 +174,19 @@ namespace Aerospike.Test
 				return;
 			}
 
-			predAEq1WPolicy.durableDelete = true;
+			WritePolicy policy = new WritePolicy();
+			policy.filterExp = Exp.Build(Exp.EQ(Exp.IntBin(binA), Exp.Val(1)));
+			policy.durableDelete = true;
 
-			client.Delete(predAEq1WPolicy, keyA);
+			client.Delete(policy, keyA);
 			Record r = client.Get(null, keyA);
 
 			Assert.AreEqual(null, r);
 
-			client.Delete(predAEq1WPolicy, keyB);
-			r = client.Get(null,  keyB);
+			client.Delete(policy, keyB);
+			r = client.Get(null, keyB);
 
-			AssertBinEqual(keyB, r, binA2);
+			AssertBinEqual(keyB, r, binA, 2);
 		}
 
 		[TestMethod]
@@ -191,30 +197,30 @@ namespace Aerospike.Test
 				return;
 			}
 
-			predAEq1WPolicy.failOnFilteredOut = true;
-			predAEq1WPolicy.durableDelete = true;
+			WritePolicy policy = new WritePolicy();
+			policy.filterExp = Exp.Build(Exp.EQ(Exp.IntBin(binA), Exp.Val(1)));
+			policy.failOnFilteredOut = true;
+			policy.durableDelete = true;
 
-			client.Delete(predAEq1WPolicy, keyA);
+			client.Delete(policy, keyA);
 
-			try {
-				client.Delete(predAEq1WPolicy, keyB);
-				Assert.Fail("Expected AerospikeException filtered out (27)");
-			}
-			catch (AerospikeException e) {
-				Assert.AreEqual(27, e.Result);
-			}
+			Test.TestException(() =>
+			{
+				client.Delete(policy, keyB);
+			}, ResultCode.FILTERED_OUT);
 		}
 
 		[TestMethod]
 		public void FilterExpOperateRead()
 		{
-			Record r = client.Operate(predAEq1WPolicy, keyA,
-					Operation.Get(binAName));
+			WritePolicy policy = new WritePolicy();
+			policy.filterExp = Exp.Build(Exp.EQ(Exp.IntBin(binA), Exp.Val(1)));
 
-			AssertBinEqual(keyA, r, binA1);
+			Record r = client.Operate(policy, keyA, Operation.Get(binA));
 
-			r = client.Operate(predAEq1WPolicy, keyB,
-					Operation.Get(binAName));
+			AssertBinEqual(keyA, r, binA, 1);
+
+			r = client.Operate(policy, keyB, Operation.Get(binA));
 
 			Assert.AreEqual(null, r);
 		}
@@ -222,29 +228,31 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void FilterExpOperateReadExcept()
 		{
-			predAEq1WPolicy.failOnFilteredOut = true;
+			WritePolicy policy = new WritePolicy();
+			policy.filterExp = Exp.Build(Exp.EQ(Exp.IntBin(binA), Exp.Val(1)));
+			policy.failOnFilteredOut = true;
 
-			client.Operate(predAEq1WPolicy, keyA, Operation.Get(binAName));
+			client.Operate(policy, keyA, Operation.Get(binA));
 
-			try {
-				client.Operate(predAEq1WPolicy, keyB, Operation.Get(binAName));
-				Assert.Fail("Expected AerospikeException filtered out (27)");
-			}
-			catch (AerospikeException e) {
-				Assert.AreEqual(27, e.Result);
-			}
+			Test.TestException(() =>
+			{
+				client.Operate(policy, keyB, Operation.Get(binA));
+			}, ResultCode.FILTERED_OUT);
 		}
 
 		[TestMethod]
 		public void FilterExpOperateWrite()
 		{
-			Record r = client.Operate(predAEq1WPolicy, keyA,
-					Operation.Put(binA3), Operation.Get(binAName));
+			WritePolicy policy = new WritePolicy();
+			policy.filterExp = Exp.Build(Exp.EQ(Exp.IntBin(binA), Exp.Val(1)));
 
-			AssertBinEqual(keyA, r, binA3);
+			Bin bin = new Bin(binA, 3);
 
-			r = client.Operate(predAEq1WPolicy, keyB,
-					Operation.Put(binA3), Operation.Get(binAName));
+			Record r = client.Operate(policy, keyA, Operation.Put(bin), Operation.Get(binA));
+
+			AssertBinEqual(keyA, r, binA, 3);
+
+			r = client.Operate(policy, keyB, Operation.Put(bin), Operation.Get(binA));
 
 			Assert.AreEqual(null, r);
 		}
@@ -252,53 +260,616 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void FilterExpOperateWriteExcept()
 		{
-			predAEq1WPolicy.failOnFilteredOut = true;
+			WritePolicy policy = new WritePolicy();
+			policy.filterExp = Exp.Build(Exp.EQ(Exp.IntBin(binA), Exp.Val(1)));
+			policy.failOnFilteredOut = true;
 
-			client.Operate(predAEq1WPolicy, keyA,
-					Operation.Put(binA3), Operation.Get(binAName));
+			Bin bin = new Bin(binA, 3);
 
-			try {
-				client.Operate(predAEq1WPolicy, keyB,
-						Operation.Put(binA3), Operation.Get(binAName));
-				Assert.Fail("Expected AerospikeException filtered out (27)");
-			}
-			catch (AerospikeException e) {
-				Assert.AreEqual(27, e.Result);
-			}
+			client.Operate(policy, keyA, Operation.Put(bin), Operation.Get(binA));
+
+			Test.TestException(() =>
+			{
+				client.Operate(policy, keyB, Operation.Put(bin), Operation.Get(binA));
+			}, ResultCode.FILTERED_OUT);
 		}
 
 		[TestMethod]
 		public void FilterExpUdf()
 		{
-			client.Execute(predAEq1WPolicy, keyA, "record_example", "writeBin",
-					Value.Get(binA3.name), binA3.value);
+			WritePolicy policy = new WritePolicy();
+			policy.filterExp = Exp.Build(Exp.EQ(Exp.IntBin(binA), Exp.Val(1)));
+
+			client.Execute(policy, keyA, "record_example", "writeBin", Value.Get(binA), Value.Get(3));
+
 			Record r = client.Get(null, keyA);
 
-			AssertBinEqual(keyA, r, binA3);
+			AssertBinEqual(keyA, r, binA, 3);
 
-			client.Execute(predAEq1WPolicy, keyB, "record_example", "writeBin",
-					Value.Get(binA3.name), binA3.value);
+			client.Execute(policy, keyB, "record_example", "writeBin", Value.Get(binA), Value.Get(3));
+
 			r = client.Get(null, keyB);
 
-			AssertBinEqual(keyB, r, binA2);
+			AssertBinEqual(keyB, r, binA, 2);
 		}
 
 		[TestMethod]
 		public void FilterExpUdfExcept()
 		{
-			predAEq1WPolicy.failOnFilteredOut = true;
+			WritePolicy policy = new WritePolicy();
+			policy.filterExp = Exp.Build(Exp.EQ(Exp.IntBin(binA), Exp.Val(1)));
+			policy.failOnFilteredOut = true;
 
-			client.Execute(predAEq1WPolicy, keyA, "record_example", "writeBin",
-					Value.Get(binA3.name), binA3.value);
+			client.Execute(policy, keyA, "record_example", "writeBin", Value.Get(binA), Value.Get(3));
 
-			try {
-				client.Execute(predAEq1WPolicy, keyB, "record_example", "writeBin",
-						Value.Get(binA3.name), binA3.value);
-				Assert.Fail("Expected AerospikeException filtered out (27)");
-			}
-			catch (AerospikeException e) {
-				Assert.AreEqual(27, e.Result);
-			}
+			Test.TestException(() =>
+			{
+				client.Execute(policy, keyB, "record_example", "writeBin", Value.Get(binA), Value.Get(3));
+			}, ResultCode.FILTERED_OUT);
+		}
+
+		[TestMethod]
+		public void FilterExpFilterExclusive()
+		{
+			Policy policy = new Policy();
+			policy.filterExp = Exp.Build(Exp.Exclusive(Exp.EQ(Exp.IntBin(binA), Exp.Val(1)), Exp.EQ(Exp.IntBin(binD), Exp.Val(1))));
+			policy.failOnFilteredOut = true;
+
+			Test.TestException(() =>
+			{
+				client.Get(policy, keyA);
+			}, ResultCode.FILTERED_OUT);
+
+			Record r = client.Get(policy, keyB);
+			AssertBinEqual(keyA, r, binA, 2);
+		}
+
+		[TestMethod]
+		public void FilterExpFilterAddInt()
+		{
+			Policy policy = new Policy();
+			policy.filterExp = Exp.Build(
+				Exp.EQ(
+					Exp.Add(Exp.IntBin(binA), Exp.IntBin(binD), Exp.Val(1)),
+					Exp.Val(4)));
+			policy.failOnFilteredOut = true;
+
+			Test.TestException(() =>
+			{
+				client.Get(policy, keyA);
+			}, ResultCode.FILTERED_OUT);
+
+			Record r = client.Get(policy, keyB);
+			AssertBinEqual(keyA, r, binA, 2);
+		}
+
+		[TestMethod]
+		public void FilterExpFilterAddFloat()
+		{
+			string name = "val";
+
+			Policy policy = new Policy();
+			policy.filterExp = Exp.Build(
+				Exp.Let(
+					Exp.Def(name, Exp.Add(Exp.FloatBin(binB), Exp.Val(1.1))), 
+					Exp.And(
+						Exp.GE(Exp.Var(name), Exp.Val(3.2999)), 
+						Exp.LE(Exp.Var(name), Exp.Val(3.3001)))));
+			policy.failOnFilteredOut = true;
+
+			Test.TestException(() =>
+			{
+				client.Get(policy, keyA);
+			}, ResultCode.FILTERED_OUT);
+
+			Record r = client.Get(policy, keyB);
+			AssertBinEqual(keyA, r, binA, 2);
+		}
+
+		[TestMethod]
+		public void FilterExpFilterSub()
+		{
+			Policy policy = new Policy();
+			policy.filterExp = Exp.Build(
+				Exp.EQ(
+					Exp.Sub(Exp.Val(1), Exp.IntBin(binA), Exp.IntBin(binD)),
+					Exp.Val(-2)));
+			policy.failOnFilteredOut = true;
+
+			Test.TestException(() =>
+			{
+				client.Get(policy, keyA);
+			}, ResultCode.FILTERED_OUT);
+
+			Record r = client.Get(policy, keyB);
+			AssertBinEqual(keyA, r, binA, 2);
+		}
+
+		[TestMethod]
+		public void FilterExpFilterMul()
+		{
+			Policy policy = new Policy();
+			policy.filterExp = Exp.Build(
+				Exp.EQ(
+					Exp.Mul(Exp.Val(2), Exp.IntBin(binA), Exp.IntBin(binD)),
+					Exp.Val(4)));
+			policy.failOnFilteredOut = true;
+
+			Test.TestException(() =>
+			{
+				client.Get(policy, keyA);
+			}, ResultCode.FILTERED_OUT);
+
+			Record r = client.Get(policy, keyB);
+			AssertBinEqual(keyA, r, binA, 2);
+		}
+
+		[TestMethod]
+		public void FilterExpFilterDiv()
+		{
+			Policy policy = new Policy();
+			policy.filterExp = Exp.Build(
+				Exp.EQ(
+					Exp.Div(Exp.Val(8), Exp.IntBin(binA), Exp.IntBin(binD)),
+					Exp.Val(4)));
+			policy.failOnFilteredOut = true;
+
+			Test.TestException(() =>
+			{
+				client.Get(policy, keyA);
+			}, ResultCode.FILTERED_OUT);
+
+			Record r = client.Get(policy, keyB);
+			AssertBinEqual(keyA, r, binA, 2);
+		}
+
+		[TestMethod]
+		public void FilterExpFilterPow()
+		{
+			string name = "x";
+
+			Policy policy = new Policy();
+			policy.filterExp = Exp.Build(
+				Exp.Let(
+					Exp.Def(name, Exp.Pow(Exp.FloatBin(binB), Exp.Val(2.0))),
+					Exp.And(
+						Exp.GE(Exp.Var(name), Exp.Val(4.8399)),
+						Exp.LE(Exp.Var(name), Exp.Val(4.8401)))));
+			policy.failOnFilteredOut = true;
+
+			Test.TestException(() =>
+			{
+				client.Get(policy, keyA);
+			}, ResultCode.FILTERED_OUT);
+
+			Record r = client.Get(policy, keyB);
+			AssertBinEqual(keyA, r, binA, 2);
+		}
+
+		[TestMethod]
+		public void FilterExpFilterLog()
+		{
+			string name = "x";
+
+			Policy policy = new Policy();
+			policy.filterExp = Exp.Build(
+				Exp.Let(
+					Exp.Def(name, Exp.Log(Exp.FloatBin(binB), Exp.Val(2.0))),
+					Exp.And(
+						Exp.GE(Exp.Var(name), Exp.Val(1.1374)),
+						Exp.LE(Exp.Var(name), Exp.Val(1.1376)))));
+			policy.failOnFilteredOut = true;
+
+			Test.TestException(() =>
+			{
+				client.Get(policy, keyA);
+			}, ResultCode.FILTERED_OUT);
+
+			Record r = client.Get(policy, keyB);
+			AssertBinEqual(keyA, r, binA, 2);
+		}
+
+		[TestMethod]
+		public void FilterExpFilterMod()
+		{
+			Policy policy = new Policy();
+			policy.filterExp = Exp.Build(
+				Exp.EQ(
+					Exp.Mod(Exp.IntBin(binA), Exp.Val(2)),
+					Exp.Val(0)));
+			policy.failOnFilteredOut = true;
+
+			Test.TestException(() =>
+			{
+				client.Get(policy, keyA);
+			}, ResultCode.FILTERED_OUT);
+
+			Record r = client.Get(policy, keyB);
+			AssertBinEqual(keyA, r, binA, 2);
+		}
+
+		[TestMethod]
+		public void FilterExpFilterAbs()
+		{
+			Policy policy = new Policy();
+			policy.filterExp = Exp.Build(Exp.EQ(Exp.Abs(Exp.IntBin(binE)), Exp.Val(2)));
+			policy.failOnFilteredOut = true;
+
+			Test.TestException(() =>
+			{
+				client.Get(policy, keyA);
+			}, ResultCode.FILTERED_OUT);
+
+			Record r = client.Get(policy, keyB);
+			AssertBinEqual(keyA, r, binA, 2);
+		}
+
+		[TestMethod]
+		public void FilterExpFilterFloor()
+		{
+			Policy policy = new Policy();
+			policy.filterExp = Exp.Build(Exp.EQ(Exp.Floor(Exp.FloatBin(binB)), Exp.Val(2.0)));
+			policy.failOnFilteredOut = true;
+
+			Test.TestException(() =>
+			{
+				client.Get(policy, keyA);
+			}, ResultCode.FILTERED_OUT);
+
+			Record r = client.Get(policy, keyB);
+			AssertBinEqual(keyA, r, binA, 2);
+		}
+
+		[TestMethod]
+		public void FilterExpFilterCeil()
+		{
+			Policy policy = new Policy();
+			policy.filterExp = Exp.Build(Exp.EQ(Exp.Ceil(Exp.FloatBin(binB)), Exp.Val(3.0)));
+			policy.failOnFilteredOut = true;
+
+			Test.TestException(() =>
+			{
+				client.Get(policy, keyA);
+			}, ResultCode.FILTERED_OUT);
+
+			Record r = client.Get(policy, keyB);
+			AssertBinEqual(keyA, r, binA, 2);
+		}
+
+		[TestMethod]
+		public void FilterExpFilterToInt()
+		{
+			Policy policy = new Policy();
+			policy.filterExp = Exp.Build(Exp.EQ(Exp.ToInt(Exp.FloatBin(binB)), Exp.Val(2)));
+			policy.failOnFilteredOut = true;
+
+			Test.TestException(() =>
+			{
+				client.Get(policy, keyA);
+			}, ResultCode.FILTERED_OUT);
+
+			Record r = client.Get(policy, keyB);
+			AssertBinEqual(keyA, r, binA, 2);
+		}
+
+		[TestMethod]
+		public void FilterExpFilterToFloat()
+		{
+			Policy policy = new Policy();
+			policy.filterExp = Exp.Build(Exp.EQ(Exp.ToFloat(Exp.IntBin(binA)), Exp.Val(2.0)));
+			policy.failOnFilteredOut = true;
+
+			Test.TestException(() =>
+			{
+				client.Get(policy, keyA);
+			}, ResultCode.FILTERED_OUT);
+
+			Record r = client.Get(policy, keyB);
+			AssertBinEqual(keyA, r, binA, 2);
+		}
+
+		[TestMethod]
+		public void FilterExpFilterIntAnd()
+		{
+			Policy policy = new Policy();
+			policy.filterExp = Exp.Build(
+				Exp.Not(
+					Exp.And(
+						Exp.EQ(Exp.IntAnd(Exp.IntBin(binA), Exp.Val(0)), Exp.Val(0)),
+						Exp.EQ(Exp.IntAnd(Exp.IntBin(binA), Exp.Val(0xFFFF)), Exp.Val(1)))));
+			policy.failOnFilteredOut = true;
+
+			Test.TestException(() =>
+			{
+				client.Get(policy, keyA);
+			}, ResultCode.FILTERED_OUT);
+
+			policy.filterExp = Exp.Build(
+				Exp.And(
+					Exp.EQ(Exp.IntAnd(Exp.IntBin(binA), Exp.Val(0)), Exp.Val(0)),
+					Exp.EQ(Exp.IntAnd(Exp.IntBin(binA), Exp.Val(0xFFFF)), Exp.Val(1))));
+
+			Record r = client.Get(policy, keyA);
+			AssertBinEqual(keyA, r, binA, 1);
+		}
+
+		[TestMethod]
+		public void FilterExpFilterIntOr()
+		{
+			Policy policy = new Policy();
+			policy.filterExp = Exp.Build(
+				Exp.Not(
+					Exp.And(
+						Exp.EQ(Exp.IntOr(Exp.IntBin(binA), Exp.Val(0)), Exp.Val(1)),
+						Exp.EQ(Exp.IntOr(Exp.IntBin(binA), Exp.Val(0xFF)), Exp.Val(0xFF)))));
+			policy.failOnFilteredOut = true;
+
+			Test.TestException(() =>
+			{
+				client.Get(policy, keyA);
+			}, ResultCode.FILTERED_OUT);
+
+			policy.filterExp = Exp.Build(
+				Exp.And(
+					Exp.EQ(Exp.IntOr(Exp.IntBin(binA), Exp.Val(0)), Exp.Val(1)),
+					Exp.EQ(Exp.IntOr(Exp.IntBin(binA), Exp.Val(0xFF)), Exp.Val(0xFF))));
+
+			Record r = client.Get(policy, keyA);
+			AssertBinEqual(keyA, r, binA, 1);
+		}
+
+		[TestMethod]
+		public void FilterExpFilterIntXor()
+		{
+			Policy policy = new Policy();
+			policy.filterExp = Exp.Build(
+				Exp.Not(
+					Exp.And(
+						Exp.EQ(Exp.IntXor(Exp.IntBin(binA), Exp.Val(0)), Exp.Val(1)),
+						Exp.EQ(Exp.IntXor(Exp.IntBin(binA), Exp.Val(0xFF)), Exp.Val(0xFE)))));
+			policy.failOnFilteredOut = true;
+
+			Test.TestException(() =>
+			{
+				client.Get(policy, keyA);
+			}, ResultCode.FILTERED_OUT);
+
+			policy.filterExp = Exp.Build(
+				Exp.And(
+					Exp.EQ(Exp.IntXor(Exp.IntBin(binA), Exp.Val(0)), Exp.Val(1)),
+					Exp.EQ(Exp.IntXor(Exp.IntBin(binA), Exp.Val(0xFF)), Exp.Val(0xFE))));
+
+			Record r = client.Get(policy, keyA);
+			AssertBinEqual(keyA, r, binA, 1);
+		}
+
+		[TestMethod]
+		public void FilterExpFilterIntNot()
+		{
+			Policy policy = new Policy();
+			policy.filterExp = Exp.Build(
+				Exp.Not(
+					Exp.EQ(Exp.IntNot(Exp.IntBin(binA)), Exp.Val(-2))));
+			policy.failOnFilteredOut = true;
+
+			Test.TestException(() =>
+			{
+				client.Get(policy, keyA);
+			}, ResultCode.FILTERED_OUT);
+
+			policy.filterExp = Exp.Build(
+				Exp.EQ(Exp.IntNot(Exp.IntBin(binA)), Exp.Val(-2)));
+
+			Record r = client.Get(policy, keyA);
+			AssertBinEqual(keyA, r, binA, 1);
+		}
+
+		[TestMethod]
+		public void FilterExpFilterLshift()
+		{
+			Policy policy = new Policy();
+			policy.filterExp = Exp.Build(
+				Exp.Not(
+					Exp.EQ(Exp.Lshift(Exp.IntBin(binA), Exp.Val(2)), Exp.Val(4))));
+			policy.failOnFilteredOut = true;
+
+			Test.TestException(() =>
+			{
+				client.Get(policy, keyA);
+			}, ResultCode.FILTERED_OUT);
+
+			policy.filterExp = Exp.Build(
+				Exp.EQ(Exp.Lshift(Exp.IntBin(binA), Exp.Val(2)), Exp.Val(4)));
+
+			Record r = client.Get(policy, keyA);
+			AssertBinEqual(keyA, r, binA, 1);
+		}
+
+		[TestMethod]
+		public void FilterExpFilterRshift()
+		{
+			Policy policy = new Policy();
+			policy.filterExp = Exp.Build(
+				Exp.Not(
+					Exp.EQ(Exp.Rshift(Exp.IntBin(binE), Exp.Val(62)), Exp.Val(3))));
+			policy.failOnFilteredOut = true;
+
+			Test.TestException(() =>
+			{
+				client.Get(policy, keyB);
+			}, ResultCode.FILTERED_OUT);
+
+			policy.filterExp = Exp.Build(
+				Exp.EQ(Exp.Rshift(Exp.IntBin(binE), Exp.Val(62)), Exp.Val(3)));
+
+			Record r = client.Get(policy, keyB);
+			AssertBinEqual(keyB, r, binE, -2);
+		}
+
+		[TestMethod]
+		public void FilterExpFilterARshift()
+		{
+			Policy policy = new Policy();
+			policy.filterExp = Exp.Build(
+				Exp.Not(
+					Exp.EQ(Exp.ARshift(Exp.IntBin(binE), Exp.Val(62)), Exp.Val(-1))));
+			policy.failOnFilteredOut = true;
+
+			Test.TestException(() =>
+			{
+				client.Get(policy, keyB);
+			}, ResultCode.FILTERED_OUT);
+
+			policy.filterExp = Exp.Build(
+				Exp.EQ(Exp.ARshift(Exp.IntBin(binE), Exp.Val(62)), Exp.Val(-1)));
+
+			Record r = client.Get(policy, keyB);
+			AssertBinEqual(keyB, r, binE, -2);
+		}
+
+		[TestMethod]
+		public void FilterExpFilterBitCount()
+		{
+			Policy policy = new Policy();
+			policy.filterExp = Exp.Build(
+				Exp.Not(Exp.EQ(Exp.Count(Exp.IntBin(binA)), Exp.Val(1))));
+			policy.failOnFilteredOut = true;
+
+			Test.TestException(() =>
+			{
+				client.Get(policy, keyA);
+			}, ResultCode.FILTERED_OUT);
+
+			policy.filterExp = Exp.Build(
+				Exp.EQ(Exp.Count(Exp.IntBin(binA)), Exp.Val(1)));
+
+			Record r = client.Get(policy, keyA);
+			AssertBinEqual(keyA, r, binA, 1);
+		}
+
+		[TestMethod]
+		public void FilterExpFilterLscan()
+		{
+			Policy policy = new Policy();
+			policy.filterExp = Exp.Build(
+				Exp.Not(
+					Exp.EQ(Exp.Lscan(Exp.IntBin(binA), Exp.Val(true)), Exp.Val(63))));
+			policy.failOnFilteredOut = true;
+
+			Test.TestException(() =>
+			{
+				client.Get(policy, keyA);
+			}, ResultCode.FILTERED_OUT);
+
+			policy.filterExp = Exp.Build(
+				Exp.EQ(Exp.Lscan(Exp.IntBin(binA), Exp.Val(true)), Exp.Val(63)));
+
+			Record r = client.Get(policy, keyA);
+			AssertBinEqual(keyA, r, binA, 1);
+		}
+
+		[TestMethod]
+		public void FilterExpFilterRscan()
+		{
+			Policy policy = new Policy();
+			policy.filterExp = Exp.Build(
+				Exp.Not(
+					Exp.EQ(Exp.Rscan(Exp.IntBin(binA), Exp.Val(true)), Exp.Val(63))));
+			policy.failOnFilteredOut = true;
+
+			Test.TestException(() =>
+			{
+				client.Get(policy, keyA);
+			}, ResultCode.FILTERED_OUT);
+
+			policy.filterExp = Exp.Build(
+				Exp.EQ(Exp.Rscan(Exp.IntBin(binA), Exp.Val(true)), Exp.Val(63)));
+
+			Record r = client.Get(policy, keyA);
+			AssertBinEqual(keyA, r, binA, 1);
+		}
+
+		[TestMethod]
+		public void FilterExpFilterMin()
+		{
+			Policy policy = new Policy();
+			policy.filterExp = Exp.Build(
+				Exp.Not(
+					Exp.EQ(
+						Exp.Min(Exp.IntBin(binA), Exp.IntBin(binD), Exp.IntBin(binE)),
+						Exp.Val(-1))));
+			policy.failOnFilteredOut = true;
+
+			Test.TestException(() =>
+			{
+				client.Get(policy, keyA);
+			}, ResultCode.FILTERED_OUT);
+
+			policy.filterExp = Exp.Build(
+				Exp.EQ(
+					Exp.Min(Exp.IntBin(binA), Exp.IntBin(binD), Exp.IntBin(binE)),
+					Exp.Val(-1)));
+
+			Record r = client.Get(policy, keyA);
+			AssertBinEqual(keyA, r, binA, 1);
+		}
+
+		[TestMethod]
+		public void FilterExpFilterMax()
+		{
+			Policy policy = new Policy();
+			policy.filterExp = Exp.Build(
+				Exp.Not(
+					Exp.EQ(
+						Exp.Max(Exp.IntBin(binA), Exp.IntBin(binD), Exp.IntBin(binE)),
+						Exp.Val(1))));
+			policy.failOnFilteredOut = true;
+
+			Test.TestException(() =>
+			{
+				client.Get(policy, keyA);
+			}, ResultCode.FILTERED_OUT);
+
+			policy.filterExp = Exp.Build(
+				Exp.EQ(
+					Exp.Max(Exp.IntBin(binA), Exp.IntBin(binD), Exp.IntBin(binE)),
+					Exp.Val(1)));
+
+			Record r = client.Get(policy, keyA);
+			AssertBinEqual(keyA, r, binA, 1);
+		}
+
+		[TestMethod]
+		public void FilterExpFilterCond()
+		{
+			Policy policy = new Policy();
+			policy.filterExp = Exp.Build(
+				Exp.Not(
+					Exp.EQ(
+						Exp.Cond(
+							Exp.EQ(Exp.IntBin(binA), Exp.Val(0)), Exp.Add(Exp.IntBin(binD), Exp.IntBin(binE)),
+							Exp.EQ(Exp.IntBin(binA), Exp.Val(1)), Exp.Sub(Exp.IntBin(binD), Exp.IntBin(binE)),
+							Exp.EQ(Exp.IntBin(binA), Exp.Val(2)), Exp.Mul(Exp.IntBin(binD), Exp.IntBin(binE)),
+							Exp.Val(-1)),
+						Exp.Val(2))));
+			policy.failOnFilteredOut = true;
+
+			Test.TestException(() =>
+			{
+				client.Get(policy, keyA);
+			}, ResultCode.FILTERED_OUT);
+
+			policy.filterExp = Exp.Build(
+				Exp.EQ(
+					Exp.Cond(
+						Exp.EQ(Exp.IntBin(binA), Exp.Val(0)), Exp.Add(Exp.IntBin(binD), Exp.IntBin(binE)),
+						Exp.EQ(Exp.IntBin(binA), Exp.Val(1)), Exp.Sub(Exp.IntBin(binD), Exp.IntBin(binE)),
+						Exp.EQ(Exp.IntBin(binA), Exp.Val(2)), Exp.Mul(Exp.IntBin(binD), Exp.IntBin(binE)),
+						Exp.Val(-1)),
+					Exp.Val(2)));
+
+			Record r = client.Get(policy, keyA);
+			AssertBinEqual(keyA, r, binA, 1);
 		}
 	}
 }
