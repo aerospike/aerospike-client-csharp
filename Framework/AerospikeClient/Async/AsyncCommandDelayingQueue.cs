@@ -14,6 +14,7 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
+using System;
 using System.Collections.Concurrent;
 using System.Net.Sockets;
 using System.Threading;
@@ -26,52 +27,89 @@ namespace Aerospike.Client
 		private readonly ConcurrentQueue<AsyncCommand> delayQueue = new ConcurrentQueue<AsyncCommand>();
 		private readonly WaitCallback schedulingJobCallback;
 		private readonly int maxCommandsInQueue;
-		private volatile int delayQueueCount;
+		private int delayQueueCount;
 		private volatile int jobScheduled;
 
 		public AsyncCommandDelayingQueue(AsyncClientPolicy policy)
 		{
-			schedulingJobCallback = new WaitCallback(ExclusiveScheduleCommands);
+			schedulingJobCallback = new WaitCallback(ProcessDelayQueueExclusive);
 			maxCommandsInQueue = policy.asyncMaxCommandsInQueue;
 		}
 
-		// Releases a SocketEventArgs object to the pool.
-		public override void ReleaseArgs(SocketAsyncEventArgs e)
+		public override void ReleaseArgs(SocketAsyncEventArgs args)
 		{
+			// Release command slot.
 			AsyncCommand command;
 
+			// Check delay queue.
 			if (delayQueue.TryDequeue(out command))
 			{
+				// Use command slot to execute delayed command.
 				if (maxCommandsInQueue > 0)
 				{
 					Interlocked.Decrement(ref delayQueueCount);
 				}
-				command.ExecuteAsync(e);
+
+				try
+				{
+					command.ExecuteAsync(args);
+				}
+				catch (Exception e)
+				{
+					CommandFailed(command, args, e);
+				}
+				finally
+				{
+					if (!argsQueue.IsEmpty)
+					{
+						ProcessDelayQueue();
+					}
+				}
 			}
 			else
 			{
-				argsQueue.Enqueue(e);
-				TriggerCommandScheduling();
+				// Put command slot back into pool.
+				// Do not process delay queue.
+				argsQueue.Enqueue(args);
 			}
 		}
 
-		// Schedules a command for later execution.
 		public override void ScheduleCommand(AsyncCommand command)
 		{
-			SocketAsyncEventArgs e;
+			// Schedule command for execution.
+			SocketAsyncEventArgs args;
 
-			// Try to dequeue one SocketAsyncEventArgs object from the queue and execute it.
-			if (argsQueue.TryDequeue(out e))
+			// Check if command slot is available.
+			if (argsQueue.TryDequeue(out args))
 			{
-				// If there are no awaiting command, the current command can be executed immediately.
-				if (delayQueue.IsEmpty)
+				// Command slot is available. Check delay queue.
+				AsyncCommand delayedCommand;
+
+				if (delayQueue.TryDequeue(out delayedCommand))
 				{
-					command.ExecuteInline(e);
-					return;
+					// Commands in delay queue take precedence over new commands.
+					// Put new command in delay queue and use command slot to execute 
+					// delayedCommand. delayQueueCount remains the same. 
+					delayQueue.Enqueue(command);
+
+					try
+					{
+						delayedCommand.ExecuteAsync(args);
+					}
+					catch (Exception e)
+					{
+						CommandFailed(delayedCommand, args, e);
+					}
+					finally
+					{
+						ProcessDelayQueue();
+					}
 				}
 				else
 				{
-					argsQueue.Enqueue(e);
+					// There are no commands in the delay queue to process.
+					// Use command slot to execute new command immediately.
+					command.ExecuteInline(args);
 				}
 			}
 			else
@@ -90,6 +128,8 @@ namespace Aerospike.Client
 				// performant solution was chosen.
 				if (maxCommandsInQueue == 0 || Interlocked.Increment(ref delayQueueCount) <= maxCommandsInQueue)
 				{
+					// Add command to delay queue. There are no available command slots, so do not
+					// process delay queue further.
 					delayQueue.Enqueue(command);
 				}
 				else
@@ -98,62 +138,82 @@ namespace Aerospike.Client
 					throw new AerospikeException.CommandRejected();
 				}
 			}
-
-			TriggerCommandScheduling();
 		}
 
-		// Schedule exactly once the job that will execute queued commands.
-		private void TriggerCommandScheduling()
+		private void ProcessDelayQueue()
 		{
+			// Schedule exactly once the job that will execute delayed commands.
 			if (Interlocked.CompareExchange(ref jobScheduled, 1, 0) == 0)
 			{
 				ThreadPool.UnsafeQueueUserWorkItem(schedulingJobCallback, null);
 			}
 		}
 
-		// Schedule as many commands as possible.
-		private void ExclusiveScheduleCommands(object state)
+		private void ProcessDelayQueueExclusive(object state)
 		{
-			do
+			// Schedule as many commands as possible.
+			bool lockTaken = false;
+
+			try
 			{
-				bool lockTaken = false;
-				try
+				// Lock on delayQueue for exclusive execution of the job.
+				Monitor.TryEnter(delayQueue, ref lockTaken);
+
+				// If we can't enter the lock, it means another instance of the job is already doing the work.
+				if (!lockTaken)
 				{
-					// Lock on delayQueue for exclusive execution of the job.
-					Monitor.TryEnter(delayQueue, ref lockTaken); // If we can't enter the lock, it means another instance of the job is already doing the work.
-					if (!lockTaken) return;
+					return;
+				}
 
-					jobScheduled = 1; // Volatile Write. At this point, the job cannot be rescheduled.
+				// Volatile Write. At this point, the job cannot be rescheduled.
+				jobScheduled = 1; 
 
-					// Try scheduling as many commands as possible.
-					SocketAsyncEventArgs e;
-					while (!delayQueue.IsEmpty && argsQueue.TryDequeue(out e))
+				// Try scheduling as many commands as possible.
+				SocketAsyncEventArgs args;
+
+				while (!delayQueue.IsEmpty && argsQueue.TryDequeue(out args))
+				{
+					AsyncCommand command;
+
+					if (delayQueue.TryDequeue(out command))
 					{
-						AsyncCommand dequeuedCommand;
-						if (delayQueue.TryDequeue(out dequeuedCommand))
+						if (maxCommandsInQueue > 0)
 						{
-							if (maxCommandsInQueue > 0)
-							{
-								Interlocked.Decrement(ref delayQueueCount);
-							}
-							dequeuedCommand.ExecuteAsync(e);
+							Interlocked.Decrement(ref delayQueueCount);
 						}
-						else
+
+						try
 						{
-							argsQueue.Enqueue(e);
+							command.ExecuteAsync(args);
+						}
+						catch (Exception e)
+						{
+							CommandFailed(command, args, e);
 						}
 					}
-				}
-				finally
-				{
-					if (lockTaken)
+					else
 					{
-						jobScheduled = 0; // Volatile Write. At this point, the job can be rescheduled.
-						Monitor.Exit(delayQueue);
+						argsQueue.Enqueue(args);
+						break;
 					}
 				}
 			}
-			while (!(delayQueue.IsEmpty || argsQueue.IsEmpty)); // Re-execute the job as long as both queues are non-empty
+			finally
+			{
+				if (lockTaken)
+				{
+					// Volatile Write. At this point, the job can be rescheduled.
+					jobScheduled = 0; 
+					Monitor.Exit(delayQueue);
+				}
+			}
+		}
+
+		private void CommandFailed(AsyncCommand command, SocketAsyncEventArgs args, Exception e)
+		{
+			// Restore command slot and fail command.
+			argsQueue.Enqueue(args);
+			command.FailOnQueueError(new AerospikeException("Failed to queue delayed async command", e));
 		}
 	}
 }

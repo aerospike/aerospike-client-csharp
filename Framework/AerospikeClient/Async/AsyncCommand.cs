@@ -37,6 +37,7 @@ namespace Aerospike.Client
 		private const int FAIL_APPLICATION_INIT = 6;
 		private const int FAIL_APPLICATION_ERROR = 7;
 		private const int FAIL_SOCKET_TIMEOUT = 8;
+		private const int FAIL_QUEUE_ERROR = 9;
 
 		protected internal readonly AsyncCluster cluster;
 		protected internal Policy policy;
@@ -862,6 +863,16 @@ namespace Aerospike.Client
 			{
 				Log.Error("FailOnApplicationError failed: " + Util.GetErrorMessage(e) +
 					System.Environment.NewLine + "Original error: " + Util.GetErrorMessage(ae));
+			}
+		}
+
+		internal void FailOnQueueError(AerospikeException ae)
+		{
+			int status = Interlocked.CompareExchange(ref state, FAIL_QUEUE_ERROR, IN_PROGRESS);
+
+			if (status == IN_PROGRESS)
+			{
+				NotifyFailure(ae);
 			}
 		}
 
