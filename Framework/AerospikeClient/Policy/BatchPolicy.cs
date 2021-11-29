@@ -60,21 +60,25 @@ namespace Aerospike.Client
 		public int maxConcurrentThreads = 1;
 
 		/// <summary>
-		/// Allow batch to be processed immediately in the server's receiving thread when the server
-		/// deems it to be appropriate.  If false, the batch will always be processed in separate
-		/// transaction threads.  This field is only relevant for the new batch index protocol.
-		/// <para>
-		/// For batch exists or batch reads of smaller sized records (less than 1K per record),
-		/// inline processing will be significantly faster on "in memory" namespaces.  The server
-		/// disables inline processing on disk based namespaces regardless of this policy field.
-		/// </para>
+		/// <see cref="InlineFlags"/> indicate when the server should inline batch
+		/// sub-transactions. Inlined transactions are processed in the server's receiving thread.
+		/// Non-inlined transactions are processed in separate server transaction threads.
 		/// <para>
 		/// Inline processing can introduce the possibility of unfairness because the server
 		/// can process the entire batch before moving onto the next command.
 		/// </para>
-		/// <para>Default: true</para>
+		/// <para>
+		/// Default: <see cref="InlineFlags.INLINE_IN_MEMORY"/>
+		/// </para>
 		/// </summary>
-		public bool allowInline = true;
+		/// <example>
+		/// <code>
+		/// // Inline all example
+		/// BatchPolicy bp = new BatchPolicy();
+		/// bp.inline = InlineFlags.INLINE_IN_MEMORY | InlineFlags.INLINE_ON_DEVICE;
+		/// </code>
+		/// </example>
+		public InlineFlags inline = InlineFlags.INLINE_IN_MEMORY;
 	
 		/// <summary>
 		/// Allow read operations to use replicated data partitions instead of master
@@ -111,23 +115,15 @@ namespace Aerospike.Client
 		public bool respondAllKeys = true;
 
 		/// <summary>
-		/// This field is deprecated and will eventually be removed.
-		/// The set name is now always sent for every distinct namespace/set in the batch.
-		/// </summary>
-		[Obsolete("Deprecated. The set name is now always sent.")]
-		public bool sendSetName;
-
-		/// <summary>
 		/// Copy batch policy from another batch policy.
 		/// </summary>
 		public BatchPolicy(BatchPolicy other)
 			: base(other)
 		{
 			this.maxConcurrentThreads = other.maxConcurrentThreads;
-			this.allowInline = other.allowInline;
+			this.inline = other.inline;
 			this.allowProleReads = other.allowProleReads;
 			this.respondAllKeys = other.respondAllKeys;
-			this.sendSetName = other.sendSetName;
 		}
 
 		/// <summary>

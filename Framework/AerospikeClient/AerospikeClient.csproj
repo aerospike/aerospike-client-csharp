@@ -336,6 +336,7 @@
     <Compile Include="Policy\ClientPolicy.cs" />
     <Compile Include="Policy\CommitLevel.cs" />
     <Compile Include="Policy\IRecordParser.cs" />
+    <Compile Include="Policy\InlineFlags.cs" />
     <Compile Include="Policy\ReadModeSC.cs" />
     <Compile Include="Policy\ReadModeAP.cs" />
     <Compile Include="Policy\AuthMode.cs" />

@@ -449,7 +449,7 @@ namespace Aerospike.Client
 
 			ByteUtil.IntToBytes((uint)max, dataBuffer, dataOffset);
 			dataOffset += 4;
-			dataBuffer[dataOffset++] = (policy.allowInline) ? (byte)1 : (byte)0;
+			dataBuffer[dataOffset++] = (byte)policy.inline;
 			prev = null;
 
 			for (int i = 0; i < max; i++)
@@ -595,7 +595,7 @@ namespace Aerospike.Client
 
 			ByteUtil.IntToBytes((uint)max, dataBuffer, dataOffset);
 			dataOffset += 4;
-			dataBuffer[dataOffset++] = (policy.allowInline) ? (byte)1 : (byte)0;
+			dataBuffer[dataOffset++] = (byte)policy.inline;
 			prev = null;
 
 			for (int i = 0; i < max; i++)
@@ -715,7 +715,7 @@ namespace Aerospike.Client
 			ByteUtil.IntToBytes((uint)max, dataBuffer, dataOffset);
 			dataOffset += 4;
 
-			byte flags = (policy.allowInline) ? (byte)1 : (byte)0;
+			byte flags = (byte)policy.inline;
 
 			if (policy.respondAllKeys)
 			{
@@ -845,7 +845,7 @@ namespace Aerospike.Client
 
 		public void SetBatchOperate
 		(
-			BatchPolicy batchPolicy,
+			BatchPolicy policy,
 			Key[] keys,
 			BatchNode batch,
 			string[] binNames,
@@ -860,7 +860,7 @@ namespace Aerospike.Client
 			// Estimate buffer size.
 			Begin();
 			int fieldCount = 1;
-			CommandExp exp = GetCommandExp(batchPolicy);
+			CommandExp exp = GetCommandExp(policy);
 
 			if (exp != null)
 			{
@@ -919,9 +919,9 @@ namespace Aerospike.Client
 				}
 			}
 
-			bool compress = SizeBuffer(batchPolicy);
+			bool compress = SizeBuffer(policy);
 
-			WriteBatchHeader(batchPolicy, totalTimeout, fieldCount);
+			WriteBatchHeader(policy, totalTimeout, fieldCount);
 
 			if (exp != null)
 			{
@@ -934,9 +934,9 @@ namespace Aerospike.Client
 			ByteUtil.IntToBytes((uint)max, dataBuffer, dataOffset);
 			dataOffset += 4;
 
-			byte flags = (batchPolicy.allowInline) ? (byte)1 : (byte)0;
+			byte flags = (byte)policy.inline;
 
-			if (batchPolicy.respondAllKeys)
+			if (policy.respondAllKeys)
 			{
 				flags |= 2;
 			}
@@ -990,7 +990,7 @@ namespace Aerospike.Client
 
 		public void SetBatchUDF
 		(
-			BatchPolicy batchPolicy,
+			BatchPolicy policy,
 			Key[] keys,
 			BatchNode batch,
 			string packageName,
@@ -1006,7 +1006,7 @@ namespace Aerospike.Client
 			// Estimate buffer size.
 			Begin();
 			int fieldCount = 1;
-			CommandExp exp = GetCommandExp(batchPolicy);
+			CommandExp exp = GetCommandExp(policy);
 
 			if (exp != null)
 			{
@@ -1040,9 +1040,9 @@ namespace Aerospike.Client
 				}
 			}
 
-			bool compress = SizeBuffer(batchPolicy);
+			bool compress = SizeBuffer(policy);
 
-			WriteBatchHeader(batchPolicy, totalTimeout, fieldCount);
+			WriteBatchHeader(policy, totalTimeout, fieldCount);
 
 			if (exp != null)
 			{
@@ -1055,9 +1055,9 @@ namespace Aerospike.Client
 			ByteUtil.IntToBytes((uint)max, dataBuffer, dataOffset);
 			dataOffset += 4;
 
-			byte flags = (batchPolicy.allowInline) ? (byte)1 : (byte)0;
+			byte flags = (byte)policy.inline;
 
-			if (batchPolicy.respondAllKeys)
+			if (policy.respondAllKeys)
 			{
 				flags |= 2;
 			}
