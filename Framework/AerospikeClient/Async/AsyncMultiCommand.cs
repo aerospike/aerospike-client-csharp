@@ -29,7 +29,6 @@ namespace Aerospike.Client
 		protected internal int batchIndex;
 		protected internal int fieldCount;
 		protected internal int opCount;
-		private readonly bool isBatch;
 		protected internal readonly bool isOperation;
 		protected internal volatile bool valid = true;
 
@@ -41,7 +40,6 @@ namespace Aerospike.Client
 		{
 			this.executor = executor;
 			this.serverNode = node;
-			this.isBatch = true;
 			this.isOperation = isOperation;
 		}
 
@@ -53,7 +51,6 @@ namespace Aerospike.Client
 		{
 			this.executor = executor;
 			this.serverNode = node;
-			this.isBatch = false;
 			this.isOperation = false;
 		}
 
@@ -61,12 +58,16 @@ namespace Aerospike.Client
 		{
 			this.executor = other.executor;
 			this.serverNode = other.serverNode;
-			this.isBatch = other.isBatch;
 			this.isOperation = other.isOperation;
 		}
 
 		protected internal sealed override void ParseCommand()
 		{
+			if (!valid)
+			{
+				throw new AerospikeException.QueryTerminated();
+			}
+
 			if (ParseGroup())
 			{
 				Finish();
@@ -87,7 +88,7 @@ namespace Aerospike.Client
 			return true;
 		}
 
-		private bool ParseGroup()
+		protected internal virtual bool ParseGroup()
 		{
 			// Parse each message response and add it to the result array
 			while (dataOffset < dataLength)
@@ -101,10 +102,7 @@ namespace Aerospike.Client
 				{
 					if (resultCode == ResultCode.KEY_NOT_FOUND_ERROR || resultCode == ResultCode.FILTERED_OUT)
 					{
-						if (!isBatch)
-						{
-							return true;
-						}
+						return true;
 					}
 					else
 					{
@@ -129,24 +127,13 @@ namespace Aerospike.Client
 				opCount = ByteUtil.BytesToShort(dataBuffer, dataOffset);
 				dataOffset += 2;
 
-				if (!valid)
-				{
-					throw new AerospikeException.QueryTerminated();
-				}
-
-				if (isBatch)
-				{
-					SkipKey(fieldCount);
-					ParseRow(null);
-				}
-				else
-				{
-					Key key = ParseKey(fieldCount);
-					ParseRow(key);
-				}
+				Key key = ParseKey(fieldCount);
+				ParseRow(key);
 			}
 			return false;
 		}
+
+		protected internal abstract void ParseRow(Key key);
 
 		protected internal Record ParseRecord()
 		{
@@ -172,7 +159,5 @@ namespace Aerospike.Client
 		{
 			executor.ChildFailure(e);
 		}
-
-		protected internal abstract void ParseRow(Key key);
 	}
 }

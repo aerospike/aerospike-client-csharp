@@ -50,7 +50,7 @@ namespace Aerospike.Client
 		private Stopwatch totalWatch;
 		protected internal int dataLength;
 		private int iteration;
-		private int commandSentCounter;
+		protected internal int commandSentCounter;
 		private volatile int state;
 		private volatile bool eventReceived;
 		private bool compressed;
