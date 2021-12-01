@@ -1106,6 +1106,109 @@ namespace Aerospike.Client
 		}
 
 		//-------------------------------------------------------
+		// Batch Read/Write Operations
+		//-------------------------------------------------------
+
+		/// <summary>
+		/// Read/Write multiple records for specified batch keys in one batch call.
+		/// This method allows different namespaces/bins for each key in the batch.
+		/// The returned records are located in the same list.
+		/// <para>
+		/// <see cref="BatchRecord"/> can be <see cref="BatchRead"/>, <see cref="BatchWrite"/>, <see cref="BatchDelete"/> or
+		/// <see cref="BatchUDF"/>.
+		/// </para>
+		/// <para>
+		/// Requires server version 5.8+
+		/// </para>
+		/// </summary>
+		/// <param name="policy">batch configuration parameters, pass in null for defaults</param>
+		/// <param name="records">list of unique record identifiers and read/write operations</param>
+		/// <returns>true if all batch sub-commands succeeded</returns>
+		/// <exception cref="AerospikeException">if command fails</exception>
+		public bool Operate(BatchPolicy policy, List<BatchRecord> records)
+		{
+			if (records.Count == 0)
+			{
+				return true;
+			}
+
+			if (policy == null)
+			{
+				policy = batchParentPolicyWriteDefault;
+			}
+
+			BatchStatus status = new BatchStatus(true);
+			List<BatchNode> batchNodes = BatchNode.GenerateList(cluster, policy, records, status);
+			BatchCommand[] commands = new BatchCommand[batchNodes.Count];
+			int count = 0;
+
+			foreach (BatchNode batchNode in batchNodes)
+			{
+				commands[count++] = new BatchOperateListCommand(cluster, batchNode, policy, records, status);
+			}
+			BatchExecutor.Execute(policy, commands, status);
+			return status.GetStatus();
+		}
+
+		/// <summary>
+		/// Perform read/write operations on multiple keys. If a key is not found, the corresponding result
+		/// <see cref="BatchRecord.resultCode"/> will be <seea cref="ResultCode.KEY_NOT_FOUND_ERROR"/>.
+		/// <para>
+		/// Requires server version 5.8+
+		/// </para>
+		/// </summary>
+		/// <param name="batchPolicy">batch configuration parameters, pass in null for defaults</param>
+		/// <param name="writePolicy">write configuration parameters, pass in null for defaults</param>
+		/// <param name="keys">array of unique record identifiers</param>
+		/// <param name="ops">database operations to perform</param>
+		/// <exception cref="AerospikeException.BatchRecordArray">which contains results for keys that did complete</exception>
+		public BatchResults Operate(BatchPolicy batchPolicy, BatchWritePolicy writePolicy, Key[] keys, params Operation[] ops)
+		{
+			if (keys.Length == 0)
+			{
+				return new BatchResults(new BatchRecord[0], true);
+			}
+
+			if (batchPolicy == null)
+			{
+				batchPolicy = batchParentPolicyWriteDefault;
+			}
+
+			if (writePolicy == null)
+			{
+				writePolicy = batchWritePolicyDefault;
+			}
+
+			BatchAttr attr = new BatchAttr(batchPolicy, writePolicy, ops);
+			BatchRecord[] records = new BatchRecord[keys.Length];
+
+			for (int i = 0; i < keys.Length; i++)
+			{
+				records[i] = new BatchRecord(keys[i], attr.hasWrite);
+			}
+
+			try
+			{
+				BatchStatus status = new BatchStatus(true);
+				List<BatchNode> batchNodes = BatchNode.GenerateList(cluster, batchPolicy, keys, records, attr.hasWrite, status);
+				BatchCommand[] commands = new BatchCommand[batchNodes.Count];
+				int count = 0;
+
+				foreach (BatchNode batchNode in batchNodes)
+				{
+					commands[count++] = new BatchOperateArrayCommand(cluster, batchNode, batchPolicy, keys, ops, records, attr, status);
+				}
+
+				BatchExecutor.Execute(batchPolicy, commands, status);
+				return new BatchResults(records, status.GetStatus());
+			}
+			catch (Exception e)
+			{
+				throw new AerospikeException.BatchRecordArray(records, e);
+			}
+		}
+
+		//-------------------------------------------------------
 		// Scan Operations
 		//-------------------------------------------------------
 
@@ -1381,7 +1484,75 @@ namespace Aerospike.Client
 			}
 			throw new AerospikeException("Invalid UDF return value");
 		}
-		
+
+		/// <summary>
+		/// Execute user defined function on server for each key and return results.
+		/// The package name is used to locate the udf file location:
+		/// <para>
+		/// udf file = &lt;server udf dir&gt;/&lt;package name&gt;.lua
+		/// </para>
+		/// <para>
+		/// Requires server version 5.8+
+		/// </para>
+		/// </summary>
+		/// <param name="batchPolicy">batch configuration parameters, pass in null for defaults</param>
+		/// <param name="udfPolicy">udf configuration parameters, pass in null for defaults</param>
+		/// <param name="keys">array of unique record identifiers</param>
+		/// <param name="packageName">server package name where user defined function resides</param>
+		/// <param name="functionName">user defined function</param>
+		/// <param name="functionArgs">arguments passed in to user defined function</param>
+		/// <exception cref="AerospikeException.BatchRecordArray">which contains results for keys that did complete</exception>
+		public BatchResults Execute(BatchPolicy batchPolicy, BatchUDFPolicy udfPolicy, Key[] keys, string packageName, string functionName, params Value[] functionArgs)
+		{
+			if (keys.Length == 0)
+			{
+				return new BatchResults(new BatchRecord[0], true);
+			}
+
+			if (batchPolicy == null)
+			{
+				batchPolicy = batchParentPolicyWriteDefault;
+			}
+
+			if (udfPolicy == null)
+			{
+				udfPolicy = batchUDFPolicyDefault;
+			}
+
+			byte[] argBytes = Packer.Pack(functionArgs);
+
+			BatchAttr attr = new BatchAttr();
+			attr.SetUDF(udfPolicy);
+
+			BatchRecord[] records = new BatchRecord[keys.Length];
+
+			for (int i = 0; i < keys.Length; i++)
+			{
+				records[i] = new BatchRecord(keys[i], attr.hasWrite);
+			}
+
+			try
+			{
+				BatchStatus status = new BatchStatus(true);
+				List<BatchNode> batchNodes = BatchNode.GenerateList(cluster, batchPolicy, keys, records, attr.hasWrite, status);
+				BatchCommand[] commands = new BatchCommand[batchNodes.Count];
+				int count = 0;
+
+				foreach (BatchNode batchNode in batchNodes)
+				{
+					commands[count++] = new BatchUDFCommand(cluster, batchNode, batchPolicy, keys, packageName, functionName, argBytes, records, attr, status);
+				}
+
+				BatchExecutor.Execute(batchPolicy, commands, status);
+				return new BatchResults(records, status.GetStatus());
+			}
+			catch (Exception e)
+			{
+				// Batch terminated on fatal error.
+				throw new AerospikeException.BatchRecordArray(records, e);
+			}
+		}
+
 		//----------------------------------------------------------
 		// Query/Execute
 		//----------------------------------------------------------

@@ -330,9 +330,6 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Asynchronously delete record for specified key.
 		/// Create listener, call asynchronous delete and return task monitor.
-		/// <para>
-		/// The policy specifies the transaction timeout.
-		/// </para>
 		/// </summary>
 		/// <param name="policy">delete configuration parameters, pass in null for defaults</param>
 		/// <param name="token">cancellation token</param>
@@ -349,9 +346,6 @@ namespace Aerospike.Client
 		/// Asynchronously delete record for specified key.
 		/// Schedule the delete command with a channel selector and return.
 		/// Another thread will process the command and send the results to the listener.
-		/// <para>
-		/// The policy specifies the transaction timeout.
-		/// </para>
 		/// </summary>
 		/// <param name="policy">delete configuration parameters, pass in null for defaults</param>
 		/// <param name="listener">where to send results, pass in null for fire and forget</param>
@@ -367,6 +361,102 @@ namespace Aerospike.Client
 			async.Execute();
 		}
 
+		/// <summary>
+		/// Asynchronously delete records for specified keys.
+		/// Create listener, call asynchronous delete and return task monitor.
+		/// <para>Requires server version 5.8+</para>
+		/// </summary>
+		/// <param name="batchPolicy">batch configuration parameters, pass in null for defaults</param>
+		/// <param name="deletePolicy">delete configuration parameters, pass in null for defaults</param>
+		/// <param name="token">cancellation token</param>
+		/// <param name="keys">array of unique record identifiers</param>
+		/// <exception cref="AerospikeException">if queue is full</exception>
+		public Task<BatchResults> Delete(BatchPolicy batchPolicy, BatchDeletePolicy deletePolicy, CancellationToken token, Key[] keys)
+		{
+			BatchRecordArrayListenerAdapter listener = new BatchRecordArrayListenerAdapter(token);
+			Delete(batchPolicy, deletePolicy, listener, keys);
+			return listener.Task;
+		}
+
+		/// <summary>
+		/// Asynchronously delete records for specified keys.
+		/// Schedule the delete command with a channel selector and return.
+		/// Another thread will process the command and send the results to the listener.
+		/// <para>
+		/// If a key is not found, the corresponding result <see cref="Aerospike.Client.BatchRecord.resultCode"/> will be
+		/// <see cref="Aerospike.Client.ResultCode.KEY_NOT_FOUND_ERROR"/>.
+		/// </para>
+		/// <para>Requires server version 5.8+</para>
+		/// </summary>
+		/// <param name="batchPolicy">batch configuration parameters, pass in null for defaults</param>
+		/// <param name="deletePolicy">delete configuration parameters, pass in null for defaults</param>
+		/// <param name="listener">where to send results </param>
+		/// <param name="keys">array of unique record identifiers</param>
+		/// <exception cref="AerospikeException">if queue is full</exception>
+		public void Delete(BatchPolicy batchPolicy, BatchDeletePolicy deletePolicy, BatchRecordArrayListener listener, Key[] keys)
+		{
+			if (keys.Length == 0)
+			{
+				listener.OnSuccess(new BatchRecord[0], true);
+				return;
+			}
+
+			if (batchPolicy == null)
+			{
+				batchPolicy = batchParentPolicyWriteDefault;
+			}
+
+			if (deletePolicy == null)
+			{
+				deletePolicy = batchDeletePolicyDefault;
+			}
+
+			BatchAttr attr = new BatchAttr();
+			attr.SetDelete(deletePolicy);
+
+			new AsyncBatchOperateRecordArrayExecutor(cluster, batchPolicy, listener, keys, null, attr);
+		}
+
+		/// <summary>
+		/// Asynchronously delete records for specified keys.
+		/// Schedule the delete command with a channel selector and return.
+		/// Another thread will process the command and send the results to the listener.
+		/// <para>
+		/// Each record result is returned in separate OnRecord() calls.
+		/// If a key is not found, the corresponding result <see cref="Aerospike.Client.BatchRecord.resultCode"/> will be
+		/// <see cref="Aerospike.Client.ResultCode.KEY_NOT_FOUND_ERROR"/>.
+		/// </para>
+		/// <para>Requires server version 5.8+</para>
+		/// </summary>
+		/// <param name="batchPolicy">batch configuration parameters, pass in null for defaults</param>
+		/// <param name="deletePolicy">delete configuration parameters, pass in null for defaults</param>
+		/// <param name="listener">where to send results</param>
+		/// <param name="keys">array of unique record identifiers</param>
+		/// <exception cref="AerospikeException">if queue is full</exception>
+		public void Delete(BatchPolicy batchPolicy, BatchDeletePolicy deletePolicy, BatchRecordSequenceListener listener, Key[] keys)
+		{
+			if (keys.Length == 0)
+			{
+				listener.OnSuccess();
+				return;
+			}
+
+			if (batchPolicy == null)
+			{
+				batchPolicy = batchParentPolicyWriteDefault;
+			}
+
+			if (deletePolicy == null)
+			{
+				deletePolicy = batchDeletePolicyDefault;
+			}
+
+			BatchAttr attr = new BatchAttr();
+			attr.SetDelete(deletePolicy);
+
+			new AsyncBatchOperateRecordSequenceExecutor(cluster, batchPolicy, listener, keys, null, attr);
+		}
+	
 		//-------------------------------------------------------
 		// Touch Operations
 		//-------------------------------------------------------
@@ -414,9 +504,6 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Asynchronously determine if a record key exists.
 		/// Create listener, call asynchronous exists and return task monitor.
-		/// <para>
-		/// The policy can be used to specify timeouts.
-		/// </para>
 		/// </summary>
 		/// <param name="policy">generic configuration parameters, pass in null for defaults</param>
 		/// <param name="token">cancellation token</param>
@@ -433,9 +520,6 @@ namespace Aerospike.Client
 		/// Asynchronously determine if a record key exists.
 		/// Schedule the exists command with a channel selector and return.
 		/// Another thread will process the command and send the results to the listener.
-		/// <para>
-		/// The policy can be used to specify timeouts.
-		/// </para>
 		/// </summary>
 		/// <param name="policy">generic configuration parameters, pass in null for defaults</param>
 		/// <param name="listener">where to send results</param>
@@ -454,12 +538,6 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Asynchronously check if multiple record keys exist in one batch call.
 		/// Create listener, call asynchronous array exists and return task monitor.
-		/// <para>
-		/// The policy can be used to specify timeouts.
-		/// </para>
-		/// <para>
-		/// If a batch request to a node fails, the entire batch is cancelled.
-		/// </para>
 		/// </summary>
 		/// <param name="policy">generic configuration parameters, pass in null for defaults</param>
 		/// <param name="token">cancellation token</param>
@@ -476,12 +554,6 @@ namespace Aerospike.Client
 		/// Asynchronously check if multiple record keys exist in one batch call.
 		/// Schedule the array exists command with a channel selector and return.
 		/// Another thread will process the command and send the results to the listener in a single call.
-		/// <para>
-		/// The policy can be used to specify timeouts.
-		/// </para>
-		/// <para>
-		/// If a batch request to a node fails, the entire batch is cancelled.
-		/// </para>
 		/// </summary>
 		/// <param name="policy">generic configuration parameters, pass in null for defaults</param>
 		/// <param name="listener">where to send results</param>
@@ -505,12 +577,6 @@ namespace Aerospike.Client
 		/// Asynchronously check if multiple record keys exist in one batch call.
 		/// Schedule the exists command with a channel selector and return.
 		/// Another thread will process the command and send the results to the listener in multiple unordered calls.
-		/// <para>
-		/// The policy can be used to specify timeouts.
-		/// </para>
-		/// <para>
-		/// If a batch request to a node fails, responses from other nodes will continue to be processed.
-		/// </para>
 		/// </summary>
 		/// <param name="policy">generic configuration parameters, pass in null for defaults</param>
 		/// <param name="listener">where to send results</param>
@@ -537,9 +603,6 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Asynchronously read entire record for specified key.
 		/// Create listener, call asynchronous get and return task monitor.
-		/// <para>
-		/// The policy can be used to specify timeouts.
-		/// </para>
 		/// </summary>
 		/// <param name="policy">generic configuration parameters, pass in null for defaults</param>
 		/// <param name="token">cancellation token</param>
@@ -556,9 +619,6 @@ namespace Aerospike.Client
 		/// Asynchronously read entire record for specified key.
 		/// Schedule the get command with a channel selector and return.
 		/// Another thread will process the command and send the results to the listener.
-		/// <para>
-		/// The policy can be used to specify timeouts.
-		/// </para>
 		/// </summary>
 		/// <param name="policy">generic configuration parameters, pass in null for defaults</param>
 		/// <param name="listener">where to send results</param>
@@ -577,9 +637,6 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Asynchronously read record header and bins for specified key.
 		/// Create listener, call asynchronous get and return task monitor.
-		/// <para>
-		/// The policy can be used to specify timeouts.
-		/// </para>
 		/// </summary>
 		/// <param name="policy">generic configuration parameters, pass in null for defaults</param>
 		/// <param name="token">cancellation token</param>
@@ -597,9 +654,6 @@ namespace Aerospike.Client
 		/// Asynchronously read record header and bins for specified key.
 		/// Schedule the get command with a channel selector and return.
 		/// Another thread will process the command and send the results to the listener.
-		/// <para>
-		/// The policy can be used to specify timeouts.
-		/// </para>
 		/// </summary>
 		/// <param name="policy">generic configuration parameters, pass in null for defaults</param>
 		/// <param name="listener">where to send results</param>
@@ -619,9 +673,6 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Asynchronously read record generation and expiration only for specified key.  Bins are not read.
 		/// Create listener, call asynchronous get header and return task monitor.
-		/// <para>
-		/// The policy can be used to specify timeouts.
-		/// </para>
 		/// </summary>
 		/// <param name="policy">generic configuration parameters, pass in null for defaults</param>
 		/// <param name="token">cancellation token</param>
@@ -638,9 +689,6 @@ namespace Aerospike.Client
 		/// Asynchronously read record generation and expiration only for specified key.  Bins are not read.
 		/// Schedule the get command with a channel selector and return.
 		/// Another thread will process the command and send the results to the listener.
-		/// <para>
-		/// The policy can be used to specify timeouts.
-		/// </para>
 		/// </summary>
 		/// <param name="policy">generic configuration parameters, pass in null for defaults</param>
 		/// <param name="listener">where to send results</param>
@@ -667,9 +715,6 @@ namespace Aerospike.Client
 		/// <para>
 		/// Create listener, call asynchronous batch get and return task monitor.
 		/// </para>
-		/// <para>
-		/// If a batch request to a node fails, the entire batch is cancelled.
-		/// </para>
 		/// </summary>
 		/// <param name="policy">batch configuration parameters, pass in null for defaults</param>
 		/// <param name="token">cancellation token</param>
@@ -690,9 +735,6 @@ namespace Aerospike.Client
 		/// <para>
 		/// This method schedules the get command with a channel selector and returns.
 		/// Another thread will process the command and send the results to the listener in a single call.
-		/// </para>
-		/// <para>
-		/// If a batch request to a node fails, the entire batch is cancelled.
 		/// </para>
 		/// </summary>
 		/// <param name="policy">batch configuration parameters, pass in null for defaults</param>
@@ -722,9 +764,6 @@ namespace Aerospike.Client
 		/// This method schedules the get command with a channel selector and returns.
 		/// Another thread will process the command and send the results to the listener in a single call.
 		/// </para>
-		/// <para>
-		/// If a batch request to a node fails, responses from other nodes will continue to be processed.
-		/// </para>
 		/// </summary>
 		/// <param name="policy">batch configuration parameters, pass in null for defaults</param>
 		/// <param name="listener">where to send results</param>
@@ -750,9 +789,6 @@ namespace Aerospike.Client
 		/// <para>
 		/// If a key is not found, the record will be null.
 		/// </para>
-		/// <para>
-		/// If a batch request to a node fails, the entire batch is cancelled.
-		/// </para>
 		/// </summary>
 		/// <param name="policy">batch configuration parameters, pass in null for defaults</param>
 		/// <param name="token">cancellation token</param>
@@ -771,9 +807,6 @@ namespace Aerospike.Client
 		/// Another thread will process the command and send the results to the listener in a single call.
 		/// <para>
 		/// If a key is not found, the record will be null.
-		/// </para>
-		/// <para>
-		/// If a batch request to a node fails, the entire batch is cancelled.
 		/// </para>
 		/// </summary>
 		/// <param name="policy">batch configuration parameters, pass in null for defaults</param>
@@ -801,9 +834,6 @@ namespace Aerospike.Client
 		/// <para>
 		/// If a key is not found, the record will be null.
 		/// </para>
-		/// <para>
-		/// If a batch request to a node fails, responses from other nodes will continue to be processed.
-		/// </para>
 		/// </summary>
 		/// <param name="policy">batch configuration parameters, pass in null for defaults</param>
 		/// <param name="listener">where to send results</param>
@@ -829,9 +859,6 @@ namespace Aerospike.Client
 		/// <para>
 		/// If a key is not found, the record will be null.
 		/// </para>
-		/// <para>
-		/// If a batch request to a node fails, the entire batch is cancelled.
-		/// </para>
 		/// </summary>
 		/// <param name="policy">batch configuration parameters, pass in null for defaults</param>
 		/// <param name="token">cancellation token</param>
@@ -851,9 +878,6 @@ namespace Aerospike.Client
 		/// Another thread will process the command and send the results to the listener in a single call.
 		/// <para>
 		/// If a key is not found, the record will be null.
-		/// </para>
-		/// <para>
-		/// If a batch request to a node fails, the entire batch is cancelled.
 		/// </para>
 		/// </summary>
 		/// <param name="policy">batch configuration parameters, pass in null for defaults</param>
@@ -882,9 +906,6 @@ namespace Aerospike.Client
 		/// <para>
 		/// If a key is not found, the record will be null.
 		/// </para>
-		/// <para>
-		/// If a batch request to a node fails, responses from other nodes will continue to be processed.
-		/// </para>
 		/// </summary>
 		/// <param name="policy">batch configuration parameters, pass in null for defaults</param>
 		/// <param name="listener">where to send results</param>
@@ -911,19 +932,16 @@ namespace Aerospike.Client
 		/// <para>
 		/// If a key is not found, the record will be null.
 		/// </para>
-		/// <para>
-		/// If a batch request to a node fails, the entire batch is cancelled.
-		/// </para>
 		/// </summary>
 		/// <param name="policy">batch configuration parameters, pass in null for defaults</param>
 		/// <param name="token">cancellation token</param>
 		/// <param name="keys">array of unique record identifiers</param>
-		/// <param name="operations">array of read operations on record</param>
+		/// <param name="ops">array of read operations on record</param>
 		/// <exception cref="AerospikeException">if queue is full</exception>
-		public Task<Record[]> Get(BatchPolicy policy, CancellationToken token, Key[] keys, params Operation[] operations)
+		public Task<Record[]> Get(BatchPolicy policy, CancellationToken token, Key[] keys, params Operation[] ops)
 		{
 			RecordArrayListenerAdapter listener = new RecordArrayListenerAdapter(token);
-			Get(policy, listener, keys, operations);
+			Get(policy, listener, keys, ops);
 			return listener.Task;
 		}
 
@@ -935,16 +953,13 @@ namespace Aerospike.Client
 		/// The returned records are in positional order with the original key array order.
 		/// If a key is not found, the positional record will be null.
 		/// </para>
-		/// <para>
-		/// If a batch request to a node fails, the entire batch is cancelled.
-		/// </para>
 		/// </summary>
 		/// <param name="policy">batch configuration parameters, pass in null for defaults</param>
 		/// <param name="listener">where to send results</param>
 		/// <param name="keys">array of unique record identifiers</param>
-		/// <param name="operations">array of read operations on record</param>
+		/// <param name="ops">array of read operations on record</param>
 		/// <exception cref="AerospikeException">if queue is full</exception>
-		public void Get(BatchPolicy policy, RecordArrayListener listener, Key[] keys, params Operation[] operations)
+		public void Get(BatchPolicy policy, RecordArrayListener listener, Key[] keys, params Operation[] ops)
 		{
 			if (keys.Length == 0)
 			{
@@ -956,7 +971,7 @@ namespace Aerospike.Client
 			{
 				policy = batchPolicyDefault;
 			}
-			new AsyncBatchGetArrayExecutor(cluster, policy, listener, keys, null, operations, Command.INFO1_READ, true);
+			new AsyncBatchGetArrayExecutor(cluster, policy, listener, keys, null, ops, Command.INFO1_READ, true);
 		}
 
 		/// <summary>
@@ -967,17 +982,13 @@ namespace Aerospike.Client
 		/// Each record result is returned in separate OnRecord() calls.
 		/// If a key is not found, the record will be null.
 		/// </para>
-		/// <para>
-		/// If a batch request to a node fails, responses from other nodes will continue to
-		/// be processed.
-		/// </para>
 		/// </summary>
 		/// <param name="policy">batch configuration parameters, pass in null for defaults</param>
 		/// <param name="listener">where to send results</param>
 		/// <param name="keys">array of unique record identifiers</param>
-		/// <param name="operations">array of read operations on record</param>
+		/// <param name="ops">array of read operations on record</param>
 		/// <exception cref="AerospikeException">if queue is full</exception>
-		public void Get(BatchPolicy policy, RecordSequenceListener listener, Key[] keys, params Operation[] operations)
+		public void Get(BatchPolicy policy, RecordSequenceListener listener, Key[] keys, params Operation[] ops)
 		{
 			if (keys.Length == 0)
 			{
@@ -989,7 +1000,7 @@ namespace Aerospike.Client
 			{
 				policy = batchPolicyDefault;
 			}
-			new AsyncBatchGetSequenceExecutor(cluster, policy, listener, keys, null, operations, Command.INFO1_READ, true);
+			new AsyncBatchGetSequenceExecutor(cluster, policy, listener, keys, null, ops, Command.INFO1_READ, true);
 		}
 
 		/// <summary>
@@ -997,9 +1008,6 @@ namespace Aerospike.Client
 		/// Create listener, call asynchronous batch header get and return task monitor.
 		/// <para>
 		/// If a key is not found, the record will be null.
-		/// </para>
-		/// <para>
-		/// If a batch request to a node fails, the entire batch is cancelled.
 		/// </para>
 		/// </summary>
 		/// <param name="policy">batch configuration parameters, pass in null for defaults</param>
@@ -1019,9 +1027,6 @@ namespace Aerospike.Client
 		/// Another thread will process the command and send the results to the listener in a single call.
 		/// <para>
 		/// If a key is not found, the record will be null.
-		/// </para>
-		/// <para>
-		/// If a batch request to a node fails, the entire batch is cancelled.
 		/// </para>
 		/// </summary>
 		/// <param name="policy">batch configuration parameters, pass in null for defaults</param>
@@ -1048,9 +1053,6 @@ namespace Aerospike.Client
 		/// Another thread will process the command and send the results to the listener in multiple unordered calls.
 		/// <para>
 		/// If a key is not found, the record will be null.
-		/// </para>
-		/// <para>
-		/// If a batch request to a node fails, responses from other nodes will continue to be processed.
 		/// </para>
 		/// </summary>
 		/// <param name="policy">batch configuration parameters, pass in null for defaults</param>
@@ -1091,12 +1093,12 @@ namespace Aerospike.Client
 		/// <param name="policy">write configuration parameters, pass in null for defaults</param>
 		/// <param name="token">cancellation token</param>
 		/// <param name="key">unique record identifier</param>
-		/// <param name="operations">database operations to perform</param>
+		/// <param name="ops">database operations to perform</param>
 		/// <exception cref="AerospikeException">if queue is full</exception>
-		public Task<Record> Operate(WritePolicy policy, CancellationToken token, Key key, params Operation[] operations)
+		public Task<Record> Operate(WritePolicy policy, CancellationToken token, Key key, params Operation[] ops)
 		{
 			RecordListenerAdapter listener = new RecordListenerAdapter(token);
-			Operate(policy, listener, key, operations);
+			Operate(policy, listener, key, ops);
 			return listener.Task;
 		}
 
@@ -1112,13 +1114,196 @@ namespace Aerospike.Client
 		/// <param name="policy">write configuration parameters, pass in null for defaults</param>
 		/// <param name="listener">where to send results, pass in null for fire and forget</param>
 		/// <param name="key">unique record identifier</param>
-		/// <param name="operations">database operations to perform</param>
+		/// <param name="ops">database operations to perform</param>
 		/// <exception cref="AerospikeException">if queue is full</exception>
-		public void Operate(WritePolicy policy, RecordListener listener, Key key, params Operation[] operations)
+		public void Operate(WritePolicy policy, RecordListener listener, Key key, params Operation[] ops)
 		{
-			OperateArgs args = new OperateArgs(cluster, policy, writePolicyDefault, operatePolicyReadDefault, key, operations);
+			OperateArgs args = new OperateArgs(cluster, policy, writePolicyDefault, operatePolicyReadDefault, key, ops);
 			AsyncOperate async = new AsyncOperate(cluster, listener, key, args);
 			async.Execute();
+		}
+
+		//-------------------------------------------------------
+		// Batch Read/Write Operations
+		//-------------------------------------------------------
+
+		/// <summary>
+		/// Asynchronously read/write multiple records for specified batch keys in one batch call.
+		/// Create listener, call asynchronous delete and return task monitor.
+		/// <para>Requires server version 5.8+</para>
+		/// </summary>
+		/// <param name="policy">batch configuration parameters, pass in null for defaults</param>
+		/// <param name="token">cancellation token</param>
+		/// <param name="records">list of unique record identifiers and read/write operations</param>
+		/// <returns>Task with completion status: true if all batch sub-transactions were successful.</returns>
+		/// <exception cref="AerospikeException">if queue is full</exception>
+		public Task<bool> Operate(BatchPolicy policy, CancellationToken token, List<BatchRecord> records)
+		{
+			BatchOperateListListenerAdapter listener = new BatchOperateListListenerAdapter(token);
+			Operate(policy, listener, records);
+			return listener.Task;
+		}
+
+		/// <summary>
+		/// Asynchronously read/write multiple records for specified batch keys in one batch call.
+		/// Schedule command with a channel selector and return. Another thread will process the 
+		/// command and send the results to the listener in a single call.
+		/// <para>
+		/// This method allows different namespaces/bins to be requested for each key in the batch.
+		/// The returned records are located in the same list.
+		/// </para>
+		/// <para>
+		/// <see cref="BatchRecord"/> can be <see cref="BatchRead"/>, <see cref="BatchWrite"/>, <see cref="BatchDelete"/> or
+		/// <see cref="BatchUDF"/>.
+		/// </para>
+		/// <para>Requires server version 5.8+</para>
+		/// </summary>
+		/// <param name="policy">batch configuration parameters, pass in null for defaults</param>
+		/// <param name="listener">where to send results</param>
+		/// <param name="records">list of unique record identifiers and read/write operations</param>
+		/// <exception cref="AerospikeException">if queue is full</exception>
+		public void Operate(BatchPolicy policy, BatchOperateListListener listener, List<BatchRecord> records)
+		{
+			if (records.Count == 0)
+			{
+				listener.OnSuccess(records, false);
+				return;
+			}
+
+			if (policy == null)
+			{
+				policy = batchParentPolicyWriteDefault;
+			}
+			new AsyncBatchOperateListExecutor(cluster, policy, listener, records);
+		}
+
+		/// <summary>
+		/// Asynchronously read/write multiple records for specified batch keys in one batch call.
+		/// This method schedules the get command with a channel selector and returns.
+		/// Another thread will process the command and send the results to the listener in a single call.
+		/// <para>
+		/// This method allows different namespaces/bins to be requested for each key in the batch.
+		/// Each record result is returned in separate OnRecord() calls.
+		/// The returned records are located in the same list.
+		/// </para>
+		/// <para>
+		/// <see cref="BatchRecord"/> can be <see cref="BatchRead"/>, <see cref="BatchWrite"/>, <see cref="BatchDelete"/> or
+		/// <see cref="BatchUDF"/>.
+		/// </para>
+		/// <para>Requires server version 5.8+</para>
+		/// </summary>
+		/// <param name="policy">batch configuration parameters, pass in null for defaults</param>
+		/// <param name="listener">where to send results</param>
+		/// <param name="records">list of unique record identifiers and read/write operations</param>
+		/// <exception cref="AerospikeException">if queue is full</exception>
+		public void Operate(BatchPolicy policy, BatchRecordSequenceListener listener, List<BatchRecord> records)
+		{
+			if (records.Count == 0)
+			{
+				listener.OnSuccess();
+				return;
+			}
+
+			if (policy == null)
+			{
+				policy = batchParentPolicyWriteDefault;
+			}
+			new AsyncBatchOperateSequenceExecutor(cluster, policy, listener, records);
+		}
+
+		/// <summary>
+		/// Asynchronously perform read/write operations on multiple keys.
+		/// Create listener, call asynchronous delete and return task monitor.
+		/// <para>Requires server version 5.8+</para>
+		/// </summary>
+		/// <param name="batchPolicy">batch configuration parameters, pass in null for defaults</param>
+		/// <param name="writePolicy">write configuration parameters, pass in null for defaults</param>
+		/// <param name="token">cancellation token</param>
+		/// <param name="keys">array of unique record identifiers</param>
+		/// <param name="ops">array of read/write operations on record</param>
+		/// <exception cref="AerospikeException">if queue is full</exception>
+		public Task<BatchResults> Operate(BatchPolicy batchPolicy, BatchWritePolicy writePolicy, CancellationToken token, Key[] keys, params Operation[] ops)
+		{
+			BatchRecordArrayListenerAdapter listener = new BatchRecordArrayListenerAdapter(token);
+			Operate(batchPolicy, writePolicy, listener, keys, ops);
+			return listener.Task;
+		}
+
+		/// <summary>
+		/// Asynchronously perform read/write operations on multiple keys.
+		/// Schedule command with a channel selector and return. Another thread will process the 
+		/// command and send the results to the listener in a single call.
+		/// <para>
+		/// If a key is not found, the corresponding result <see cref="BatchRecord.resultCode"/> will be
+		/// <see cref="ResultCode.KEY_NOT_FOUND_ERROR"/>.
+		/// </para>
+		/// <para>Requires server version 5.8+</para>
+		/// </summary>
+		/// <param name="batchPolicy">batch configuration parameters, pass in null for defaults</param>
+		/// <param name="writePolicy">write configuration parameters, pass in null for defaults</param>
+		/// <param name="listener">where to send results</param>
+		/// <param name="keys">array of unique record identifiers</param>
+		/// <param name="ops">array of read/write operations on record</param>
+		/// <exception cref="AerospikeException">if queue is full</exception>
+		public void Operate(BatchPolicy batchPolicy, BatchWritePolicy writePolicy, BatchRecordArrayListener listener, Key[] keys, params Operation[] ops)
+		{
+			if (keys.Length == 0)
+			{
+				listener.OnSuccess(new BatchRecord[0], true);
+				return;
+			}
+
+			if (batchPolicy == null)
+			{
+				batchPolicy = batchParentPolicyWriteDefault;
+			}
+
+			if (writePolicy == null)
+			{
+				writePolicy = batchWritePolicyDefault;
+			}
+
+			BatchAttr attr = new BatchAttr(batchPolicy, writePolicy, ops);
+			new AsyncBatchOperateRecordArrayExecutor(cluster, batchPolicy, listener, keys, ops, attr);
+		}
+
+		/// <summary>
+		/// Asynchronously perform read/write operations on multiple keys.
+		/// Schedule command with a channel selector and return. Another thread will process the 
+		/// command and send the results to the listener.
+		/// <para>
+		/// Each record result is returned in separate OnRecord() calls.
+		/// If a key is not found, the corresponding result <see cref="BatchRecord.resultCode"/> will be
+		/// <see cref="ResultCode.KEY_NOT_FOUND_ERROR"/>.
+		/// </para>
+		/// <para>Requires server version 5.8+</para>
+		/// </summary>
+		/// <param name="batchPolicy">batch configuration parameters, pass in null for defaults</param>
+		/// <param name="writePolicy">write configuration parameters, pass in null for defaults</param>
+		/// <param name="listener">where to send results</param>
+		/// <param name="keys">array of unique record identifiers</param>
+		/// <param name="ops">array of read operations on record</param>
+		/// <exception cref="AerospikeException">if queue is full</exception>
+		public void Operate(BatchPolicy batchPolicy, BatchWritePolicy writePolicy, BatchRecordSequenceListener listener, Key[] keys, params Operation[] ops)
+		{
+			if (keys.Length == 0)
+			{
+				listener.OnSuccess();
+				return;
+			}
+
+			if (batchPolicy == null)
+			{
+				batchPolicy = batchParentPolicyWriteDefault;
+			}
+
+			if (writePolicy == null)
+			{
+				writePolicy = batchWritePolicyDefault;
+			}
+
+			BatchAttr attr = new BatchAttr(batchPolicy, writePolicy, ops);
+			new AsyncBatchOperateRecordSequenceExecutor(cluster, batchPolicy, listener, keys, ops, attr);
 		}
 
 		//-------------------------------------------------------
@@ -1229,6 +1414,119 @@ namespace Aerospike.Client
 			}
 			AsyncExecute command = new AsyncExecute(cluster, policy, listener, key, packageName, functionName, functionArgs);
 			command.Execute();
+		}
+
+		/// <summary>
+		/// Asynchronously execute user defined function on server for each key.
+		/// Create listener, call asynchronous delete and return task monitor.
+		/// <para>Requires server version 5.8+</para>
+		/// </summary>
+		/// <param name="batchPolicy">batch configuration parameters, pass in null for defaults</param>
+		/// <param name="udfPolicy">udf configuration parameters, pass in null for defaults</param>
+		/// <param name="token">cancellation token</param>
+		/// <param name="keys">array of unique record identifiers</param>
+		/// <param name="packageName">server package name where user defined function resides</param>
+		/// <param name="functionName">user defined function</param>
+		/// <param name="functionArgs">arguments passed in to user defined function</param>
+		/// <exception cref="AerospikeException">if queue is full</exception>
+		public Task<BatchResults> Execute(BatchPolicy batchPolicy, BatchUDFPolicy udfPolicy, CancellationToken token, Key[] keys, string packageName, string functionName, params Value[] functionArgs)
+		{
+			BatchRecordArrayListenerAdapter listener = new BatchRecordArrayListenerAdapter(token);
+			Execute(batchPolicy, udfPolicy, listener, keys, packageName, functionName, functionArgs);
+			return listener.Task;
+		}
+
+		/// <summary>
+		/// Asynchronously execute user defined function on server for each key.
+		/// This method schedules the execute command with a channel selector and returns.
+		/// Another thread will process the command and send the results to the listener.
+		/// <para>
+		/// The package name is used to locate the udf file location:
+		/// </para>
+		/// <para>
+		/// udf file = &lt;server udf dir&gt;/&lt;package name&gt;.lua
+		/// </para>
+		/// <para>Requires server version 5.8+</para>
+		/// </summary>
+		/// <param name="batchPolicy">batch configuration parameters, pass in null for defaults</param>
+		/// <param name="udfPolicy">udf configuration parameters, pass in null for defaults</param>
+		/// <param name="listener">where to send results</param>
+		/// <param name="keys">array of unique record identifiers</param>
+		/// <param name="packageName">server package name where user defined function resides</param>
+		/// <param name="functionName">user defined function</param>
+		/// <param name="functionArgs">arguments passed in to user defined function</param>
+		/// <exception cref="AerospikeException">if queue is full</exception>
+		public void Execute(BatchPolicy batchPolicy, BatchUDFPolicy udfPolicy, BatchRecordArrayListener listener, Key[] keys, string packageName, string functionName, params Value[] functionArgs)
+		{
+			if (keys.Length == 0)
+			{
+				listener.OnSuccess(new BatchRecord[0], true);
+				return;
+			}
+
+			if (batchPolicy == null)
+			{
+				batchPolicy = batchParentPolicyWriteDefault;
+			}
+
+			if (udfPolicy == null)
+			{
+				udfPolicy = batchUDFPolicyDefault;
+			}
+
+			byte[] argBytes = Packer.Pack(functionArgs);
+
+			BatchAttr attr = new BatchAttr();
+			attr.SetUDF(udfPolicy);
+
+			new AsyncBatchUDFArrayExecutor(cluster, batchPolicy, listener, keys, packageName, functionName, argBytes, attr);
+		}
+
+		/// <summary>
+		/// Asynchronously execute user defined function on server for each key.
+		/// This method schedules the execute command with a channel selector and returns.
+		/// Another thread will process the command and send the results to the listener.
+		/// Each record result is returned in separate OnRecord() calls.
+		/// <para>
+		/// The package name is used to locate the udf file location:
+		/// </para>
+		/// <para>
+		/// udf file = &lt;server udf dir&gt;/&lt;package name&gt;.lua
+		/// </para>
+		/// <para>Requires server version 5.8+</para>
+		/// </summary>
+		/// <param name="batchPolicy">batch configuration parameters, pass in null for defaults</param>
+		/// <param name="udfPolicy">udf configuration parameters, pass in null for defaults</param>
+		/// <param name="listener">where to send results</param>
+		/// <param name="keys">array of unique record identifiers</param>
+		/// <param name="packageName">server package name where user defined function resides</param>
+		/// <param name="functionName">user defined function</param>
+		/// <param name="functionArgs">arguments passed in to user defined function</param>
+		/// <exception cref="AerospikeException">if queue is full</exception>
+		public void Execute(BatchPolicy batchPolicy, BatchUDFPolicy udfPolicy, BatchRecordSequenceListener listener, Key[] keys, string packageName, string functionName, params Value[] functionArgs)
+		{
+			if (keys.Length == 0)
+			{
+				listener.OnSuccess();
+				return;
+			}
+
+			if (batchPolicy == null)
+			{
+				batchPolicy = batchParentPolicyWriteDefault;
+			}
+
+			if (udfPolicy == null)
+			{
+				udfPolicy = batchUDFPolicyDefault;
+			}
+
+			byte[] argBytes = Packer.Pack(functionArgs);
+
+			BatchAttr attr = new BatchAttr();
+			attr.SetUDF(udfPolicy);
+
+			new AsyncBatchUDFSequenceExecutor(cluster, batchPolicy, listener, keys, packageName, functionName, argBytes, attr);
 		}
 
 		//-------------------------------------------------------

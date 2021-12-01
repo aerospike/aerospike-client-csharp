@@ -167,6 +167,8 @@
     <Compile Include="Admin\Role.cs" />
     <Compile Include="Admin\User.cs" />
     <Compile Include="AsyncTask\BatchListListenerAdapter.cs" />
+    <Compile Include="AsyncTask\BatchOperateListListenerAdapter.cs" />
+    <Compile Include="AsyncTask\BatchRecordArrayListenerAdapter.cs" />
     <Compile Include="AsyncTask\DeleteListenerAdapter.cs" />
     <Compile Include="AsyncTask\ExecuteListenerAdapter.cs" />
     <Compile Include="AsyncTask\ExistsArrayListenerAdapter.cs" />

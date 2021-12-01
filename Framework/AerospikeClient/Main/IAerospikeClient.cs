@@ -394,6 +394,42 @@ namespace Aerospike.Client
 		Record Operate(WritePolicy policy, Key key, params Operation[] operations);
 
 		//-------------------------------------------------------
+		// Batch Read/Write Operations
+		//-------------------------------------------------------
+
+		/// <summary>
+		/// Read/Write multiple records for specified batch keys in one batch call.
+		/// This method allows different namespaces/bins for each key in the batch.
+		/// The returned records are located in the same list.
+		/// <para>
+		/// <see cref="BatchRecord"/> can be <see cref="BatchRead"/>, <see cref="BatchWrite"/>, <see cref="BatchDelete"/> or
+		/// <see cref="BatchUDF"/>.
+		/// </para>
+		/// <para>
+		/// Requires server version 5.8+
+		/// </para>
+		/// </summary>
+		/// <param name="policy">batch configuration parameters, pass in null for defaults</param>
+		/// <param name="records">list of unique record identifiers and read/write operations</param>
+		/// <returns>true if all batch sub-commands succeeded</returns>
+		/// <exception cref="AerospikeException">if command fails</exception>
+		bool Operate(BatchPolicy policy, List<BatchRecord> records);
+
+		/// <summary>
+		/// Perform read/write operations on multiple keys. If a key is not found, the corresponding result
+		/// <see cref="BatchRecord.resultCode"/> will be <seea cref="ResultCode.KEY_NOT_FOUND_ERROR"/>.
+		/// <para>
+		/// Requires server version 5.8+
+		/// </para>
+		/// </summary>
+		/// <param name="batchPolicy">batch configuration parameters, pass in null for defaults</param>
+		/// <param name="writePolicy">write configuration parameters, pass in null for defaults</param>
+		/// <param name="keys">array of unique record identifiers</param>
+		/// <param name="ops">database operations to perform</param>
+		/// <exception cref="AerospikeException.BatchRecordArray">which contains results for keys that did complete</exception>
+		BatchResults Operate(BatchPolicy batchPolicy, BatchWritePolicy writePolicy, Key[] keys, params Operation[] ops);
+
+		//-------------------------------------------------------
 		// Scan Operations
 		//-------------------------------------------------------
 
@@ -548,6 +584,25 @@ namespace Aerospike.Client
 		/// <param name="args">arguments passed in to user defined function</param>
 		/// <exception cref="AerospikeException">if transaction fails</exception>
 		object Execute(WritePolicy policy, Key key, string packageName, string functionName, params Value[] args);
+
+		/// <summary>
+		/// Execute user defined function on server for each key and return results.
+		/// The package name is used to locate the udf file location:
+		/// <para>
+		/// udf file = &lt;server udf dir&gt;/&lt;package name&gt;.lua
+		/// </para>
+		/// <para>
+		/// Requires server version 5.8+
+		/// </para>
+		/// </summary>
+		/// <param name="batchPolicy">batch configuration parameters, pass in null for defaults</param>
+		/// <param name="udfPolicy">udf configuration parameters, pass in null for defaults</param>
+		/// <param name="keys">array of unique record identifiers</param>
+		/// <param name="packageName">server package name where user defined function resides</param>
+		/// <param name="functionName">user defined function</param>
+		/// <param name="functionArgs">arguments passed in to user defined function</param>
+		/// <exception cref="AerospikeException.BatchRecordArray">which contains results for keys that did complete</exception>
+		BatchResults Execute(BatchPolicy batchPolicy, BatchUDFPolicy udfPolicy, Key[] keys, string packageName, string functionName, params Value[] functionArgs);
 
 		//----------------------------------------------------------
 		// Query/Execute
