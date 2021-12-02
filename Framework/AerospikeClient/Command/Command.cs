@@ -719,7 +719,7 @@ namespace Aerospike.Client
 
 			if (policy.respondAllKeys)
 			{
-				flags |= 2;
+				flags |= 0x4;
 			}
 			dataBuffer[dataOffset++] = flags;
 
@@ -938,7 +938,7 @@ namespace Aerospike.Client
 
 			if (policy.respondAllKeys)
 			{
-				flags |= 2;
+				flags |= 0x4;
 			}
 			dataBuffer[dataOffset++] = flags;
 			prev = null;
@@ -1059,7 +1059,7 @@ namespace Aerospike.Client
 
 			if (policy.respondAllKeys)
 			{
-				flags |= 2;
+				flags |= 0x4;
 			}
 			dataBuffer[dataOffset++] = flags;
 			prev = null;

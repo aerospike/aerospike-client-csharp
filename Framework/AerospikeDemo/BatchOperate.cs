@@ -27,6 +27,7 @@ namespace Aerospike.Demo
 		private const string BinName1 = "bin1";
 		private const string BinName2 = "bin2";
 		private const string BinName3 = "bin3";
+		private const string BinName4 = "bin4";
 		private const string ResultName1 = "result1";
 		private const string ResultName2 = "result2";
 		private const int RecordCount = 8;
@@ -40,7 +41,9 @@ namespace Aerospike.Demo
 			WriteRecords(client, args);
 			BatchReadOperate(client, args);
 			BatchReadOperateComplex(client, args);
-			BatchListOperate(client, args);
+			BatchListReadOperate(client, args);
+			BatchListWriteOperate(client, args);
+			BatchWriteOperateComplex(client, args);
 		}
 
 		private void WriteRecords(AerospikeClient client, Arguments args)
@@ -133,14 +136,19 @@ namespace Aerospike.Demo
 		}
 
 		/// <summary>
-		/// Perform list operations in one batch.
+		/// Perform list read operations in one batch.
 		/// </summary>
-		private void BatchListOperate(AerospikeClient client, Arguments args)
+		private void BatchListReadOperate(AerospikeClient client, Arguments args)
 		{
-			console.Info("batchListOperate");
+			console.Info("batchListReadOperate");
 			Key[] keys = new Key[RecordCount];
 			for (int i = 0; i < RecordCount; i++)
 			{
+				if (i == 5)
+				{
+					keys[i] = new Key(args.ns, args.set, "not found");
+					continue;
+				}
 				keys[i] = new Key(args.ns, args.set, KeyPrefix + (i + 1));
 			}
 
@@ -153,11 +161,124 @@ namespace Aerospike.Demo
 			{
 				Record record = records[i];
 
-				IList results = record.GetList(BinName3);
-				long size = (long)results[0];
-				object val = results[1];
+				if (record != null)
+				{
+					IList results = record.GetList(BinName3);
+					long size = (long)results[0];
+					object val = results[1];
+					console.Info("Result[{0}]: {1},{2}", i, size, val);
+				}
+				else
+				{
+					console.Info("Result[{0}]: null", i);
+				}
+			}
+		}
 
-				console.Info("Result[{0}]: {1},{2}", i, size, val);
+		/// <summary>
+		/// Perform list read/write operations in one batch.
+		/// </summary>
+		private void BatchListWriteOperate(AerospikeClient client, Arguments args)
+		{
+			console.Info("batchListWriteOperate");
+			Key[] keys = new Key[RecordCount];
+			for (int i = 0; i < RecordCount; i++)
+			{
+				keys[i] = new Key(args.ns, args.set, KeyPrefix + (i + 1));
+			}
+
+			// Add integer to list and get size and last element of list bin for all records.
+			BatchResults bresults = client.Operate(null, null, keys,
+				ListOperation.Append(ListPolicy.Default, BinName3, Value.Get(999)),
+				ListOperation.Size(BinName3), ListOperation.GetByIndex(BinName3, -1, ListReturnType.VALUE));
+
+			for (int i = 0; i < bresults.records.Length; i++)
+			{
+				BatchRecord br = bresults.records[i];
+				Record rec = br.record;
+
+				if (rec != null)
+				{
+					IList results = rec.GetList(BinName3);
+					long size = (long)results[1];
+					object val = results[2];
+
+					console.Info("Result[{0}]: {1},{2}", i, size, val);
+				}
+				else
+				{
+					console.Info("Result[{0}]: error: {1}", i, ResultCode.GetResultString(br.resultCode));
+				}
+			}
+		}
+
+		/// <summary>
+		/// Read/Write records using varying operations in one batch.
+		/// </summary>
+		private void BatchWriteOperateComplex(AerospikeClient client, Arguments args)
+		{
+			console.Info("batchWriteOperateComplex");
+			Expression wexp1 = Exp.Build(Exp.Add(Exp.IntBin(BinName1), Exp.IntBin(BinName2), Exp.Val(1000)));
+			Expression rexp1 = Exp.Build(Exp.Mul(Exp.IntBin(BinName1), Exp.IntBin(BinName2)));
+			Expression rexp2 = Exp.Build(Exp.Add(Exp.IntBin(BinName1), Exp.IntBin(BinName2)));
+			Expression rexp3 = Exp.Build(Exp.Sub(Exp.IntBin(BinName1), Exp.IntBin(BinName2)));
+
+			// Batch uses pointer reference to quickly determine if operations are repeated and can therefore
+			// be optimized, but using varargs directly always creates a new reference. Therefore, save operation
+			// array so we have one pointer reference per operation array.
+			Operation[] wops1 = Operation.Array(Operation.Put(new Bin(BinName4, 100)));
+			Operation[] wops4 = Operation.Array(ExpOperation.Write(BinName1, wexp1, ExpWriteFlags.DEFAULT));
+			Operation[] rops1 = Operation.Array(ExpOperation.Read(ResultName1, rexp1, ExpReadFlags.DEFAULT));
+			Operation[] rops3 = Operation.Array(ExpOperation.Read(ResultName1, rexp2, ExpReadFlags.DEFAULT));
+			Operation[] rops4 = Operation.Array(ExpOperation.Read(ResultName1, rexp3, ExpReadFlags.DEFAULT));
+			Operation[] rops5 = Operation.Array(ExpOperation.Read(ResultName1, rexp2, ExpReadFlags.DEFAULT),
+												ExpOperation.Read(ResultName2, rexp3, ExpReadFlags.DEFAULT));
+
+			List<BatchRecord> records = new List<BatchRecord>();
+			records.Add(new BatchWrite(new Key(args.ns, args.set, KeyPrefix + 1), wops1));
+			records.Add(new BatchWrite(new Key(args.ns, args.set, KeyPrefix + 4), wops4));
+			records.Add(new BatchDelete(new Key(args.ns, args.set, KeyPrefix + 6)));
+
+			records.Add(new BatchRead(new Key(args.ns, args.set, KeyPrefix + 1), rops1));
+			// The following record is optimized (namespace,set,ops are only sent once) because
+			// namespace, set and ops all have the same pointer references as the previous entry.
+			records.Add(new BatchRead(new Key(args.ns, args.set, KeyPrefix + 2), rops1));
+			records.Add(new BatchRead(new Key(args.ns, args.set, KeyPrefix + 3), rops3));
+			records.Add(new BatchRead(new Key(args.ns, args.set, KeyPrefix + 4), rops4));
+			records.Add(new BatchRead(new Key(args.ns, args.set, KeyPrefix + 5), rops5));
+
+			records.Add(new BatchRead(new Key(args.ns, args.set, KeyPrefix + 6), true));
+
+			// Execute batch.
+			client.Operate(null, records);
+
+			// Show results.
+			int i = 0;
+			foreach (BatchRecord record in records)
+			{
+				Record rec = record.record;
+
+				if (rec != null)
+				{
+					object v1 = rec.GetValue(ResultName1);
+					object v2 = rec.GetValue(ResultName2);
+
+					if (v1 == null)
+					{
+						v1 = "null";
+					}
+					
+					if (v2 == null)
+					{
+						v2 = "null";
+					}			
+					console.Info("Result[{0}]: {1}, {2}", i, v1, v2);
+				}
+				else
+				{
+					console.Info("Result[{0}]: error: {1}", i, ResultCode.GetResultString(record.resultCode));
+				}
+				i++;
 			}
 		}
 	}

@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2021 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -25,18 +25,17 @@ namespace Aerospike.Client
 	public interface BatchListListener
 	{
 		/// <summary>
-		/// This method is called when an asynchronous batch get command completes successfully.
+		/// This method is called when the command completes successfully.
 		/// </summary>
 		/// <param name="records">
-		/// record instances, <seealso cref="Aerospike.Client.BatchRead.record"/>
+		/// record instances, <seealso cref="BatchRecord.record"/>
 		///	will be null if the key is not found.
 		///	</param>
 		void OnSuccess(List<BatchRead> records);
 
 		/// <summary>
-		/// This method is called when an asynchronous batch get command fails.
+		/// This method is called when the command fails.
 		/// </summary>
-		/// <param name="exception">error that occurred</param>
-		void OnFailure(AerospikeException exception);
+		void OnFailure(AerospikeException ae);
 	}
 }
