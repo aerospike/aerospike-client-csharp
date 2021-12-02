@@ -1107,19 +1107,16 @@ namespace Aerospike.Client
 			}
 
 			// Write all header data except total size which must be written last.
-			dataBuffer[8] = MSG_REMAINING_HEADER_SIZE; // Message header length.
-			dataBuffer[9] = (byte)readAttr;
-			dataBuffer[10] = (byte)0;
-			dataBuffer[11] = (byte)0;
+			dataOffset += 8;
+			dataBuffer[dataOffset++] = MSG_REMAINING_HEADER_SIZE; // Message header length.
+			dataBuffer[dataOffset++] = (byte)readAttr;
 
-			for (int i = 12; i < 22; i++)
-			{
-				dataBuffer[i] = 0;
-			}
-			ByteUtil.IntToBytes((uint)timeout, dataBuffer, 22);
-			ByteUtil.ShortToBytes((ushort)fieldCount, dataBuffer, 26);
-			ByteUtil.ShortToBytes(0, dataBuffer, 28);
-			dataOffset = MSG_TOTAL_HEADER_SIZE;
+			Array.Clear(dataBuffer, dataOffset, 12);
+			dataOffset += 12;
+
+			dataOffset += ByteUtil.IntToBytes((uint)timeout, dataBuffer, dataOffset);
+			dataOffset += ByteUtil.ShortToBytes((ushort)fieldCount, dataBuffer, dataOffset);
+			dataOffset += ByteUtil.ShortToBytes(0, dataBuffer, dataOffset);
 		}
 
 		private void WriteBatchBinNames(Key key, string[] binNames, BatchAttr attr)

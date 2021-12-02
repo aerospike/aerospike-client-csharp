@@ -1,5 +1,5 @@
 ﻿/* 
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2021 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -15,9 +15,8 @@
  * the License.
  */
 using System;
+using System.Collections.Generic;
 using System.Reflection;
-using System.Threading;
-using System.Threading.Tasks;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Aerospike.Client;
 
@@ -94,6 +93,145 @@ namespace Aerospike.Test
 			public void OnFailure(AerospikeException e)
 			{
 				parent.SetError(e);
+				parent.NotifyCompleted();
+			}
+		}
+
+		[TestMethod]
+		public void AsyncBatchUDF()
+		{
+			Key[] keys = new Key[]
+			{
+				new Key(args.ns, args.set, 20000),
+				new Key(args.ns, args.set, 20001)
+			};
+
+			client.Delete(null, null, keys);
+
+			client.Execute(null, null, new BatchUDFHandler(this), keys, "record_example", "writeBin", Value.Get("B5"), Value.Get("value5"));
+
+			WaitTillComplete();
+		}
+
+		private class BatchUDFHandler : BatchRecordArrayListener
+		{
+			private readonly TestAsyncUDF parent;
+
+			public BatchUDFHandler(TestAsyncUDF parent)
+			{
+				this.parent = parent;
+			}
+
+			public void OnSuccess(BatchRecord[] records, bool status)
+			{
+				try
+				{
+					if (parent.AssertTrue(status))
+					{
+						foreach (BatchRecord r in records)
+						{
+							if (parent.AssertNotNull(r))
+							{
+								parent.AssertEquals(0, r.resultCode);
+							}
+						}
+					}
+					parent.NotifyCompleted();
+				}
+				catch (Exception e)
+				{
+					parent.SetError(e);
+					parent.NotifyCompleted();
+				}
+			}
+
+			public void OnFailure(BatchRecord[] records, AerospikeException ae)
+			{
+				parent.SetError(ae);
+				parent.NotifyCompleted();
+			}
+		}
+
+		[TestMethod]
+		public void AsyncBatchUDFComplex()
+		{
+			List<BatchRecord> records = new List<BatchRecord>();
+			string bin = "B5";
+
+			Value[] a1 = new Value[] { Value.Get(bin), Value.Get("value1") };
+			Value[] a2 = new Value[] { Value.Get(bin), Value.Get(5) };
+			Value[] a3 = new Value[] { Value.Get(bin), Value.Get(999) };
+
+			BatchUDF b1 = new BatchUDF(new Key(args.ns, args.set, 20014), "record_example", "writeBin", a1);
+			BatchUDF b2 = new BatchUDF(new Key(args.ns, args.set, 20015), "record_example", "writeWithValidation", a2);
+			BatchUDF b3 = new BatchUDF(new Key(args.ns, args.set, 20015), "record_example", "writeWithValidation", a3);
+			BatchRead b4 = new BatchRead(new Key(args.ns, args.set, 20014), true);
+			BatchRead b5 = new BatchRead(new Key(args.ns, args.set, 20015), true);
+
+			records.Add(b1);
+			records.Add(b2);
+			records.Add(b3);
+			records.Add(b4);
+			records.Add(b5);
+
+			client.Operate(null, new BatchSeqUDFHandler(this, bin), records);
+
+			WaitTillComplete();
+		}
+
+		private class BatchSeqUDFHandler : BatchRecordSequenceListener
+		{
+			private readonly TestAsyncUDF parent;
+			private string bin;
+
+			public BatchSeqUDFHandler(TestAsyncUDF parent, string bin)
+			{
+				this.parent = parent;
+				this.bin = bin;
+			}
+
+			public void OnRecord(BatchRecord br, int index)
+			{
+				try
+				{
+					switch (index)
+					{
+						case 0:
+							parent.AssertBinEqual(br.key, br.record, bin, 0);
+							break;
+
+						case 1:
+							parent.AssertBinEqual(br.key, br.record, bin, 0);
+							break;
+
+						case 2:
+							parent.AssertEquals(ResultCode.UDF_BAD_RESPONSE, br.resultCode);
+							break;
+
+						case 3:
+							parent.AssertBinEqual(br.key, br.record, bin, "value1");
+							break;
+
+						case 4:
+							parent.AssertBinEqual(br.key, br.record, bin, 5);
+							break;
+					}
+				}
+				catch (Exception e)
+				{
+					parent.SetError(e);
+					parent.NotifyCompleted();
+				}
+			}
+
+			public void OnSuccess()
+			{
+				parent.NotifyCompleted();
+			}
+
+			public void OnFailure(AerospikeException ae)
+			{
+				parent.SetError(ae);
 				parent.NotifyCompleted();
 			}
 		}
