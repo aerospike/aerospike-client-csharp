@@ -59,26 +59,35 @@ namespace Aerospike.Client
 		/// </summary>		
 		public int maxConcurrentThreads = 1;
 
-		/// <summary>
-		/// <see cref="InlineFlags"/> indicate when the server should inline batch
-		/// sub-transactions. Inlined transactions are processed in the server's receiving thread.
-		/// Non-inlined transactions are processed in separate server transaction threads.
+		/// Allow batch to be processed immediately in the server's receiving thread for in-memory
+		/// namespaces. If false, the batch will always be processed in separate transaction threads.
+		/// <para>
+		/// For batch transactions with smaller sized records (&lt;= 1K per record), inline
+		/// processing will be significantly faster on in-memory namespaces.
+		/// </para>
 		/// <para>
 		/// Inline processing can introduce the possibility of unfairness because the server
 		/// can process the entire batch before moving onto the next command.
 		/// </para>
 		/// <para>
-		/// Default: <see cref="InlineFlags.INLINE_IN_MEMORY"/>
+		/// Default: true
 		/// </para>
 		/// </summary>
-		/// <example>
-		/// <code>
-		/// // Inline all example
-		/// BatchPolicy bp = new BatchPolicy();
-		/// bp.inline = InlineFlags.INLINE_IN_MEMORY | InlineFlags.INLINE_ON_DEVICE;
-		/// </code>
-		/// </example>
-		public InlineFlags inline = InlineFlags.INLINE_IN_MEMORY;
+		public bool allowInline = true;
+
+		/// <summary>
+		/// Allow batch to be processed immediately in the server's receiving thread for SSD
+		/// namespaces. If false, the batch will always be processed in separate transaction threads.
+		/// Server versions &lt; 5.8 ignore this field.
+		/// <para>
+		/// Inline processing can introduce the possibility of unfairness because the server
+		/// can process the entire batch before moving onto the next command.
+		/// </para>
+		/// <para>
+		/// Default: false
+		/// </para>
+		/// </summary>
+		public bool allowInlineSSD = false;
 	
 		/// <summary>
 		/// Allow read operations to use replicated data partitions instead of master
@@ -121,7 +130,8 @@ namespace Aerospike.Client
 			: base(other)
 		{
 			this.maxConcurrentThreads = other.maxConcurrentThreads;
-			this.inline = other.inline;
+			this.allowInline = other.allowInline;
+			this.allowInlineSSD = other.allowInlineSSD;
 			this.allowProleReads = other.allowProleReads;
 			this.respondAllKeys = other.respondAllKeys;
 		}

@@ -449,7 +449,7 @@ namespace Aerospike.Client
 
 			ByteUtil.IntToBytes((uint)max, dataBuffer, dataOffset);
 			dataOffset += 4;
-			dataBuffer[dataOffset++] = (byte)policy.inline;
+			dataBuffer[dataOffset++] = (policy.allowInline) ? (byte)1 : (byte)0;
 			prev = null;
 
 			for (int i = 0; i < max; i++)
@@ -595,7 +595,7 @@ namespace Aerospike.Client
 
 			ByteUtil.IntToBytes((uint)max, dataBuffer, dataOffset);
 			dataOffset += 4;
-			dataBuffer[dataOffset++] = (byte)policy.inline;
+			dataBuffer[dataOffset++] = (policy.allowInline) ? (byte)1 : (byte)0;
 			prev = null;
 
 			for (int i = 0; i < max; i++)
@@ -714,14 +714,7 @@ namespace Aerospike.Client
 
 			ByteUtil.IntToBytes((uint)max, dataBuffer, dataOffset);
 			dataOffset += 4;
-
-			byte flags = (byte)policy.inline;
-
-			if (policy.respondAllKeys)
-			{
-				flags |= 0x4;
-			}
-			dataBuffer[dataOffset++] = flags;
+			dataBuffer[dataOffset++] = GetBatchFlags(policy);
 
 			BatchAttr attr = new BatchAttr();
 			prev = null;
@@ -933,14 +926,7 @@ namespace Aerospike.Client
 
 			ByteUtil.IntToBytes((uint)max, dataBuffer, dataOffset);
 			dataOffset += 4;
-
-			byte flags = (byte)policy.inline;
-
-			if (policy.respondAllKeys)
-			{
-				flags |= 0x4;
-			}
-			dataBuffer[dataOffset++] = flags;
+			dataBuffer[dataOffset++] = GetBatchFlags(policy);
 			prev = null;
 
 			for (int i = 0; i < max; i++)
@@ -1054,14 +1040,7 @@ namespace Aerospike.Client
 
 			ByteUtil.IntToBytes((uint)max, dataBuffer, dataOffset);
 			dataOffset += 4;
-
-			byte flags = (byte)policy.inline;
-
-			if (policy.respondAllKeys)
-			{
-				flags |= 0x4;
-			}
-			dataBuffer[dataOffset++] = flags;
+			dataBuffer[dataOffset++] = GetBatchFlags(policy);
 			prev = null;
 
 			for (int i = 0; i < max; i++)
@@ -1095,6 +1074,22 @@ namespace Aerospike.Client
 			// Write real field size.
 			ByteUtil.IntToBytes((uint)(dataOffset - MSG_TOTAL_HEADER_SIZE - 4), dataBuffer, fieldSizeOffset);
 			End(compress);
+		}
+
+		private byte GetBatchFlags(BatchPolicy policy)
+		{
+			byte flags = (policy.allowInline) ? (byte)1 : (byte)0;
+
+			if (policy.allowInlineSSD)
+			{
+				flags |= 0x2;
+			}
+
+			if (policy.respondAllKeys)
+			{
+				flags |= 0x4;
+			}
+			return flags;
 		}
 
 		private void WriteBatchHeader(Policy policy, int timeout, int fieldCount)

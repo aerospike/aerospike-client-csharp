@@ -203,7 +203,6 @@
     <Compile Include="..\..\Framework\AerospikeClient\Policy\CommitLevel.cs" Link="Policy\CommitLevel.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Policy\GenerationPolicy.cs" Link="Policy\GenerationPolicy.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Policy\InfoPolicy.cs" Link="Policy\InfoPolicy.cs" />
-    <Compile Include="..\..\Framework\AerospikeClient\Policy\InlineFlags.cs" Link="Policy\InlineFlags.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Policy\IRecordParser.cs" Link="Policy\IRecordParser.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Policy\Policy.cs" Link="Policy\Policy.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Policy\QueryPolicy.cs" Link="Policy\QueryPolicy.cs" />
