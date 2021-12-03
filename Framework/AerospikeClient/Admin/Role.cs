@@ -34,15 +34,25 @@ namespace Aerospike.Client
 		public const string SysAdmin = "sys-admin";
 
 		/// <summary>
-		/// Manage indicies and user defined functions.
+		/// Manage user defined functions and indicies.
 		/// </summary>
 		public const string DataAdmin = "data-admin";
+
+		/// <summary>
+		/// Manage user defined functions.
+		/// </summary>
+		public const string UDFAdmin = "udf-admin";
+
+		/// <summary>
+		/// Manage indicies.
+		/// </summary>
+		public const string SIndexAdmin = "sindex-admin";
 
 		/// <summary>
 		/// Allow read transactions.
 		/// </summary>
 		public const string Read = "read";
-		
+
 		/// <summary>
 		/// Allow read and write transactions.
 		/// </summary>
@@ -57,6 +67,11 @@ namespace Aerospike.Client
 		/// Allow write transactions.
 		/// </summary>
 		public const string Write = "write";
+
+		/// <summary>
+		/// Allow truncate.
+		/// </summary>
+		public const string Truncate = "truncate";
 
 		/// <summary>
 		/// Role name.
@@ -90,7 +105,8 @@ namespace Aerospike.Client
 		{
 			return name.Equals(ReadWrite) || name.Equals(ReadWriteUdf) || name.Equals(Read)
 				|| name.Equals(SysAdmin) || name.Equals(UserAdmin) || name.Equals(DataAdmin)
-				|| name.Equals(Write);
+				|| name.Equals(UDFAdmin) || name.Equals(SIndexAdmin)
+				|| name.Equals(Write) || name.Equals(Truncate);
 		}
 		
 		public override string ToString()
