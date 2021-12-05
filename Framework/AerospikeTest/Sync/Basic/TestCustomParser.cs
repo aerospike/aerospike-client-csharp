@@ -39,13 +39,18 @@ namespace Aerospike.Test
 
 			public Record ParseRecord(byte[] dataBuffer, ref int dataOffset, int opCount, int generation, int expiration, bool isOperation)
 			{
+				string binName;
+				byte valueType;
+				int valueOffset;
+				int valueSize;
+
 				dataOffset = RecordParser.ExtractBinValue(
 					dataBuffer,
 					dataOffset,
-					out var binName,
-					out byte valueType,
-					out var valueOffset,
-					out var valueSize);
+					out binName,
+					out valueType,
+					out valueOffset,
+					out valueSize);
 
 				this.parseBin(dataBuffer.Skip(valueOffset).Take(valueSize).ToArray());
 				return new Record(null, generation, expiration);
@@ -80,7 +85,8 @@ namespace Aerospike.Test
 			Record record = Get(key, buffer =>
 			{
 				var unpacker = new Unpacker(buffer, 0, buffer.Length, false);
-				int count = unpacker.UnpackMapItemCount(out _);
+				MapOrder mapOrder;
+				int count = unpacker.UnpackMapItemCount(out mapOrder);
 				while (count-- > 0)
 				{
 					string k = unpacker.UnpackString();
@@ -207,7 +213,8 @@ namespace Aerospike.Test
 				Assert.AreEqual(list.Count, listCount);
 				Assert.AreEqual(list[0], unpacker.UnpackInteger());
 
-				int m1Count = unpacker.UnpackMapItemCount(out _);
+				MapOrder m1Order;
+				int m1Count = unpacker.UnpackMapItemCount(out m1Order);
 				Assert.AreEqual(m1.Count, m1Count);
 				var m1Keys = new HashSet<string>();
 				for (int i = 0; i < m1Count; ++i)
@@ -222,18 +229,24 @@ namespace Aerospike.Test
 							Assert.AreEqual(m1[k], unpacker.UnpackString());
 							break;
 						case "k1":
-							Assert.AreEqual(m11.Count, unpacker.UnpackMapItemCount(out _));
+						{
+							MapOrder k1Order;
+							Assert.AreEqual(m11.Count, unpacker.UnpackMapItemCount(out k1Order));
 							break;
+						}
 						case "k2":
 							Assert.AreEqual(l12.Count, unpacker.UnpackListItemCount());
 							Assert.AreEqual(l12[0], unpacker.UnpackInteger());
 							Assert.AreEqual(l12[1], unpacker.UnpackInteger());
 							break;
 						case "k3":
-							Assert.AreEqual(m13.Count, unpacker.UnpackMapItemCount(out _));
+						{
+							MapOrder k3Order;
+							Assert.AreEqual(m13.Count, unpacker.UnpackMapItemCount(out k3Order));
 							Assert.AreEqual("k131", unpacker.UnpackString());
 							Assert.AreEqual(m13["k131"], unpacker.UnpackInteger());
 							break;
+						}
 						default:
 							Assert.Fail($"unexpected m1 key: {k}");
 							break;
