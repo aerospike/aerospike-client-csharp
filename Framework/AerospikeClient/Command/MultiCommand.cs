@@ -198,26 +198,14 @@ namespace Aerospike.Client
 				dataOffset += 2;
 				resultCode = dataBuffer[dataOffset];
 
-				// The only valid server return codes are "ok" and "not found".
-				// If other return codes are received, then abort the batch.
-				if (resultCode != 0)
-				{
-					if (resultCode == ResultCode.KEY_NOT_FOUND_ERROR || resultCode == ResultCode.FILTERED_OUT)
-					{
-						if (stopOnNotFound)
-						{
-							return false;
-						}
-					}
-					else
-					{
-						throw new AerospikeException(resultCode);
-					}
-				}
-
-				// If this is the end marker of the response, do not proceed further
+				// If this is the end marker of the response, do not proceed further.
 				if ((info3 & Command.INFO3_LAST) != 0)
 				{
+					if (resultCode != 0)
+					{
+						// The server returned a fatal error.
+						throw new AerospikeException(resultCode);
+					}
 					return false;
 				}
 
