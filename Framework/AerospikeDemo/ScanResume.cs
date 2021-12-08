@@ -51,7 +51,7 @@ namespace Aerospike.Demo
 			{
 				client.ScanPartitions(policy, filter, args.ns, setName, ScanCallback);
 			}
-			catch (AerospikeException.ScanTerminated e)
+			catch (AerospikeException.ScanTerminated)
 			{
 				console.Info("Scan terminated as expected");
 			}
