@@ -1220,7 +1220,11 @@ namespace Aerospike.Client
 		/// <param name="writePolicy">write configuration parameters, pass in null for defaults</param>
 		/// <param name="token">cancellation token</param>
 		/// <param name="keys">array of unique record identifiers</param>
-		/// <param name="ops">array of read/write operations on record</param>
+		/// <param name="ops">
+		/// read/write operations to perform. <see cref="Operation.Get()"/> is not allowed because it returns a
+		/// variable number of bins and makes it difficult (sometimes impossible) to lineup operations with 
+		/// results. Instead, use <see cref="Operation.Get(string)"/> for each bin name.
+		/// </param>
 		/// <exception cref="AerospikeException">if queue is full</exception>
 		public Task<BatchResults> Operate(BatchPolicy batchPolicy, BatchWritePolicy writePolicy, CancellationToken token, Key[] keys, params Operation[] ops)
 		{
@@ -1243,7 +1247,11 @@ namespace Aerospike.Client
 		/// <param name="writePolicy">write configuration parameters, pass in null for defaults</param>
 		/// <param name="listener">where to send results</param>
 		/// <param name="keys">array of unique record identifiers</param>
-		/// <param name="ops">array of read/write operations on record</param>
+		/// <param name="ops">
+		/// read/write operations to perform. <see cref="Operation.Get()"/> is not allowed because it returns a
+		/// variable number of bins and makes it difficult (sometimes impossible) to lineup operations with 
+		/// results. Instead, use <see cref="Operation.Get(string)"/> for each bin name.
+		/// </param>
 		/// <exception cref="AerospikeException">if queue is full</exception>
 		public void Operate(BatchPolicy batchPolicy, BatchWritePolicy writePolicy, BatchRecordArrayListener listener, Key[] keys, params Operation[] ops)
 		{
@@ -1282,7 +1290,11 @@ namespace Aerospike.Client
 		/// <param name="writePolicy">write configuration parameters, pass in null for defaults</param>
 		/// <param name="listener">where to send results</param>
 		/// <param name="keys">array of unique record identifiers</param>
-		/// <param name="ops">array of read operations on record</param>
+		/// <param name="ops">
+		/// read/write operations to perform. <see cref="Operation.Get()"/> is not allowed because it returns a
+		/// variable number of bins and makes it difficult (sometimes impossible) to lineup operations with 
+		/// results. Instead, use <see cref="Operation.Get(string)"/> for each bin name.
+		/// </param>
 		/// <exception cref="AerospikeException">if queue is full</exception>
 		public void Operate(BatchPolicy batchPolicy, BatchWritePolicy writePolicy, BatchRecordSequenceListener listener, Key[] keys, params Operation[] ops)
 		{

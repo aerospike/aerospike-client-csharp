@@ -1152,7 +1152,7 @@ namespace Aerospike.Client
 
 		/// <summary>
 		/// Perform read/write operations on multiple keys. If a key is not found, the corresponding result
-		/// <see cref="BatchRecord.resultCode"/> will be <seea cref="ResultCode.KEY_NOT_FOUND_ERROR"/>.
+		/// <see cref="BatchRecord.resultCode"/> will be <see cref="ResultCode.KEY_NOT_FOUND_ERROR"/>.
 		/// <para>
 		/// Requires server version 5.8+
 		/// </para>
@@ -1160,7 +1160,11 @@ namespace Aerospike.Client
 		/// <param name="batchPolicy">batch configuration parameters, pass in null for defaults</param>
 		/// <param name="writePolicy">write configuration parameters, pass in null for defaults</param>
 		/// <param name="keys">array of unique record identifiers</param>
-		/// <param name="ops">database operations to perform</param>
+		/// <param name="ops">
+		/// read/write operations to perform. <see cref="Operation.Get()"/> is not allowed because it returns a
+		/// variable number of bins and makes it difficult (sometimes impossible) to lineup operations with 
+		/// results. Instead, use <see cref="Operation.Get(string)"/> for each bin name.
+		/// </param>
 		/// <exception cref="AerospikeException.BatchRecordArray">which contains results for keys that did complete</exception>
 		public BatchResults Operate(BatchPolicy batchPolicy, BatchWritePolicy writePolicy, Key[] keys, params Operation[] ops)
 		{

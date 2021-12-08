@@ -33,7 +33,11 @@ namespace Aerospike.Client
 
 		/// <summary>
 		/// Initialize batch key and read/write operations.
-		/// Use default WritePolicy.
+		/// <para>
+		/// <see cref="Operation.Get()"/> is not allowed because it returns a variable number of bins
+		/// and makes it difficult (sometimes impossible) to lineup operations with results. Instead,
+		/// use <see cref="Operation.Get(string)"/> for each bin name.
+		/// </para>
 		/// </summary>
 		public BatchWrite(Key key, Operation[] ops)
 			: base(key, true)
@@ -44,6 +48,11 @@ namespace Aerospike.Client
 
 		/// <summary>
 		/// Initialize policy, batch key and read/write operations.
+		/// <para>
+		/// <see cref="Operation.Get()"/> is not allowed because it returns a variable number of bins
+		/// and makes it difficult (sometimes impossible) to lineup operations with results. Instead,
+		/// use <see cref="Operation.Get(string)"/> for each bin name.
+		/// </para>
 		/// </summary>
 		public BatchWrite(BatchWritePolicy policy, Key key, Operation[] ops)
 			: base(key, true)

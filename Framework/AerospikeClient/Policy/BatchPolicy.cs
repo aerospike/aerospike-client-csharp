@@ -59,6 +59,7 @@ namespace Aerospike.Client
 		/// </summary>		
 		public int maxConcurrentThreads = 1;
 
+		/// <summary>
 		/// Allow batch to be processed immediately in the server's receiving thread for in-memory
 		/// namespaces. If false, the batch will always be processed in separate transaction threads.
 		/// <para>
