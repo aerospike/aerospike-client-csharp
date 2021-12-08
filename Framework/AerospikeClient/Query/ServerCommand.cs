@@ -39,15 +39,21 @@ namespace Aerospike.Client
 		protected internal override void ParseRow(Key key)
 		{
 			// Server commands (Query/Execute UDF) should only send back a return code.
-			// Keep parsing logic to empty socket buffer just in case server does
-			// send records back.
-			for (int i = 0 ; i < opCount; i++)
+			if (resultCode != 0)
 			{
-				int opSize = ByteUtil.BytesToInt(dataBuffer, dataOffset);
-				dataOffset += 7;
-				byte nameSize = dataBuffer[dataOffset++];
-				int particleBytesSize = (int)(opSize - (4 + nameSize));
-				dataOffset += nameSize + particleBytesSize;
+				// Background scans (with null query filter) return KEY_NOT_FOUND_ERROR
+				// when the set does not exist on the target node.
+				if (resultCode == ResultCode.KEY_NOT_FOUND_ERROR)
+				{
+					// Non-fatal error.
+					return;
+				}
+				throw new AerospikeException(resultCode);
+			}
+
+			if (opCount > 0)
+			{
+				throw new AerospikeException.Parse("Unexpectedly received bins on background query!");
 			}
 
 			if (!valid)
