@@ -122,6 +122,13 @@ namespace Aerospike.Client
 		/// <para>Default: true</para>
 		/// </summary>
 		public bool respondAllKeys = true;
+		
+		/// <summary>
+		/// This field is deprecated and will eventually be removed.
+		/// The set name is now always sent for every distinct namespace/set in the batch.
+		/// </summary>
+		[Obsolete("Deprecated. The set name is now always sent.")]
+		public bool sendSetName;
 
 		/// <summary>
 		/// Copy batch policy from another batch policy.
@@ -134,6 +141,7 @@ namespace Aerospike.Client
 			this.allowInlineSSD = other.allowInlineSSD;
 			this.allowProleReads = other.allowProleReads;
 			this.respondAllKeys = other.respondAllKeys;
+			this.sendSetName = other.sendSetName;
 		}
 
 		/// <summary>
