@@ -130,7 +130,7 @@ namespace Aerospike.Test
 			Assert.AreEqual(map.Count, received.Count);
 			foreach (var kv in map)
 			{
-				Assert.AreEqual(kv.Value, received[kv.Key], $"mismatch for key: {kv.Key}");
+				Assert.AreEqual(kv.Value, received[kv.Key], "mismatch for key: " + kv.Key);
 			}
 		}
 
@@ -177,7 +177,7 @@ namespace Aerospike.Test
 			Assert.IsTrue(record.generation > 0);
 			Assert.AreEqual(list.Count, received.Count);
 			for (int i = 0; i < list.Count; ++i)
-				Assert.AreEqual(list[i], received[i], $"mismatch for index: {i}");
+				Assert.AreEqual(list[i], received[i], "mismatch for index: " + i);
 		}
 
 		[TestMethod]
@@ -248,7 +248,7 @@ namespace Aerospike.Test
 							break;
 						}
 						default:
-							Assert.Fail($"unexpected m1 key: {k}");
+							Assert.Fail("unexpected m1 key: " + k);
 							break;
 					}
 				}
