@@ -128,7 +128,7 @@ namespace Aerospike.Client
 
 			if (exp != null)
 			{
-				dataOffset = exp.Write(this);
+				exp.Write(this);
 			}
 
 			foreach (Bin bin in bins)
@@ -155,7 +155,7 @@ namespace Aerospike.Client
 
 			if (exp != null)
 			{
-				dataOffset = exp.Write(this);
+				exp.Write(this);
 			}
 			End();
 		}
@@ -178,7 +178,7 @@ namespace Aerospike.Client
 
 			if (exp != null)
 			{
-				dataOffset = exp.Write(this);
+				exp.Write(this);
 			}
 			WriteOperation(Operation.Type.TOUCH);
 			End();
@@ -205,7 +205,7 @@ namespace Aerospike.Client
 
 			if (exp != null)
 			{
-				dataOffset = exp.Write(this);
+				exp.Write(this);
 			}
 			End();
 		}
@@ -227,7 +227,7 @@ namespace Aerospike.Client
 
 			if (exp != null)
 			{
-				dataOffset = exp.Write(this);
+				exp.Write(this);
 			}
 			End();
 		}
@@ -256,7 +256,7 @@ namespace Aerospike.Client
 
 				if (exp != null)
 				{
-					dataOffset = exp.Write(this);
+					exp.Write(this);
 				}
 
 				foreach (string binName in binNames)
@@ -289,7 +289,7 @@ namespace Aerospike.Client
 
 			if (exp != null)
 			{
-				dataOffset = exp.Write(this);
+				exp.Write(this);
 			}
 			End();
 		}
@@ -318,7 +318,7 @@ namespace Aerospike.Client
 
 			if (exp != null)
 			{
-				dataOffset = exp.Write(this);
+				exp.Write(this);
 			}
 
 			foreach (Operation operation in args.operations)
@@ -353,7 +353,7 @@ namespace Aerospike.Client
 
 			if (exp != null)
 			{
-				dataOffset = exp.Write(this);
+				exp.Write(this);
 			}
 			WriteField(packageName, FieldType.UDF_PACKAGE_NAME);
 			WriteField(functionName, FieldType.UDF_FUNCTION);
@@ -441,7 +441,7 @@ namespace Aerospike.Client
 
 			if (exp != null)
 			{
-				dataOffset = exp.Write(this);
+				exp.Write(this);
 			}
 
 			int fieldSizeOffset = dataOffset;
@@ -587,7 +587,7 @@ namespace Aerospike.Client
 
 			if (exp != null)
 			{
-				dataOffset = exp.Write(this);
+				exp.Write(this);
 			}
 
 			int fieldSizeOffset = dataOffset;
@@ -706,7 +706,7 @@ namespace Aerospike.Client
 
 			if (exp != null)
 			{
-				dataOffset = exp.Write(this);
+				exp.Write(this);
 			}
 
 			int fieldSizeOffset = dataOffset;
@@ -918,7 +918,7 @@ namespace Aerospike.Client
 
 			if (exp != null)
 			{
-				dataOffset = exp.Write(this);
+				exp.Write(this);
 			}
 
 			int fieldSizeOffset = dataOffset;
@@ -1032,7 +1032,7 @@ namespace Aerospike.Client
 
 			if (exp != null)
 			{
-				dataOffset = exp.Write(this);
+				exp.Write(this);
 			}
 
 			int fieldSizeOffset = dataOffset;
@@ -1332,7 +1332,7 @@ namespace Aerospike.Client
 
 			if (exp != null)
 			{
-				dataOffset = exp.Write(this);
+				exp.Write(this);
 			}
 
 			// Write scan timeout
@@ -1608,7 +1608,7 @@ namespace Aerospike.Client
 
 			if (exp != null)
 			{
-				dataOffset = exp.Write(this);
+				exp.Write(this);
 			}
 
 			if (statement.functionName != null)
@@ -2274,10 +2274,10 @@ namespace Aerospike.Client
 				return sz + FIELD_HEADER_SIZE;
 			}
 
-			public int Write(Command cmd)
+			public void Write(Command cmd)
 			{
 				cmd.WriteExpHeader(sz);
-				return PredExp.Write(predExp, cmd.dataBuffer, cmd.dataOffset);
+				cmd.dataOffset = PredExp.Write(predExp, cmd.dataBuffer, cmd.dataOffset);
 			}
 		}
 	}
@@ -2289,7 +2289,7 @@ namespace Aerospike.Client
 	public interface CommandExp
 	{
 		int Size();
-		int Write(Command cmd);
+		void Write(Command cmd);
 	}
 }
 #pragma warning restore 0618
