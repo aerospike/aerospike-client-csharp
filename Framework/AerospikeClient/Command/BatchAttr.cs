@@ -228,7 +228,7 @@ namespace Aerospike.Client
 			}
 		}
 
-		public void SetWrite()
+		public void SetWrite(Policy wp)
 		{
 			readAttr = 0;
 			writeAttr = Command.INFO2_WRITE | Command.INFO2_RESPOND_ALL_OPS;
@@ -236,7 +236,7 @@ namespace Aerospike.Client
 			expiration = 0;
 			generation = 0;
 			hasWrite = true;
-			sendKey = false;
+			sendKey = wp.sendKey;
 		}
 
 		public void SetWrite(BatchWritePolicy wp)
@@ -344,7 +344,7 @@ namespace Aerospike.Client
 			}
 		}
 
-		public void SetDelete()
+		public void SetDelete(Policy dp)
 		{
 			readAttr = 0;
 			writeAttr = Command.INFO2_WRITE | Command.INFO2_RESPOND_ALL_OPS | Command.INFO2_DELETE;
@@ -352,7 +352,7 @@ namespace Aerospike.Client
 			expiration = 0;
 			generation = 0;
 			hasWrite = true;
-			sendKey = false;
+			sendKey = dp.sendKey;
 		}
 
 		public void SetDelete(BatchDeletePolicy dp)
@@ -393,7 +393,7 @@ namespace Aerospike.Client
 			}
 		}
 
-		public void SetUDF()
+		public void SetUDF(Policy up)
 		{
 			readAttr = 0;
 			writeAttr = Command.INFO2_WRITE;
@@ -401,7 +401,7 @@ namespace Aerospike.Client
 			expiration = 0;
 			generation = 0;
 			hasWrite = true;
-			sendKey = false;
+			sendKey = up.sendKey;
 		}
 
 		public void SetUDF(BatchUDFPolicy up)

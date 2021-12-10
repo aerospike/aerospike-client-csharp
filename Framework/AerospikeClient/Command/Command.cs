@@ -791,7 +791,7 @@ namespace Aerospike.Client
 							else
 							{
 								filter = null;
-								attr.SetWrite();
+								attr.SetWrite(policy);
 							}
 							attr.AdjustWrite(bw.ops);
 							WriteBatchOperations(key, bw.ops, attr, filter);
@@ -811,7 +811,7 @@ namespace Aerospike.Client
 							else
 							{
 								filter = null;
-								attr.SetDelete();
+								attr.SetDelete(policy);
 							}
 							WriteBatchWrite(key, attr, filter, 0, 0);
 							break;
@@ -830,7 +830,7 @@ namespace Aerospike.Client
 							else
 							{
 								filter = null;
-								attr.SetUDF();
+								attr.SetUDF(policy);
 							}
 							WriteBatchWrite(key, attr, filter, 3, 0);
 							WriteField(bu.packageName, FieldType.UDF_PACKAGE_NAME);
