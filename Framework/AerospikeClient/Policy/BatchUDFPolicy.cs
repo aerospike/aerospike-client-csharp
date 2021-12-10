@@ -22,6 +22,21 @@ namespace Aerospike.Client
 	public sealed class BatchUDFPolicy
 	{
 		/// <summary>
+		/// Optional expression filter. If filterExp exists and evaluates to false, the specific batch key
+		/// request is not performed and <see cref="BatchRecord.resultCode"/> is set to
+		/// <see cref="ResultCode.FILTERED_OUT"/>.
+		/// <para>
+		/// If exists, this filter overrides the batch parent filter <seealso cref="Policy.filterExp"/>
+		/// for the specific key in batch commands that allow a different policy per key.
+		/// Otherwise, this filter is ignored.
+		/// </para>
+		/// <para>
+		/// Default: null
+		/// </para>
+		/// </summary>
+		public Expression filterExp;
+
+		/// <summary>
 		/// Desired consistency guarantee when committing a transaction on the server. The default 
 		/// (COMMIT_ALL) indicates that the server should wait for master and all replica commits to 
 		/// be successful before returning success to the client. 
@@ -71,6 +86,7 @@ namespace Aerospike.Client
 		/// </summary>
 		public BatchUDFPolicy(BatchUDFPolicy other)
 		{
+			this.filterExp = other.filterExp;
 			this.commitLevel = other.commitLevel;
 			this.expiration = other.expiration;
 			this.durableDelete = other.durableDelete;

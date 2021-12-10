@@ -748,29 +748,32 @@ namespace Aerospike.Client
 						case BatchRecord.Type.BATCH_READ:
 						{
 							BatchRead br = (BatchRead)record;
+							Expression filter;
 
 							if (br.policy != null)
 							{
+								filter = br.policy.filterExp;
 								attr.SetRead(br.policy);
 							}
 							else
 							{
+								filter = null;
 								attr.SetRead(policy);
 							}
 
 							if (br.binNames != null)
 							{
-								WriteBatchBinNames(key, br.binNames, attr);
+								WriteBatchBinNames(key, br.binNames, attr, filter);
 							}
 							else if (br.ops != null)
 							{
 								attr.AdjustRead(br.ops);
-								WriteBatchOperations(key, br.ops, attr);
+								WriteBatchOperations(key, br.ops, attr, filter);
 							}
 							else
 							{
 								attr.AdjustRead(br.readAllBins);
-								WriteBatchRead(key, attr, 0);
+								WriteBatchRead(key, attr, filter, 0);
 							}
 							break;
 						}
@@ -778,49 +781,58 @@ namespace Aerospike.Client
 						case BatchRecord.Type.BATCH_WRITE:
 						{
 							BatchWrite bw = (BatchWrite)record;
+							Expression filter;
 
 							if (bw.policy != null)
 							{
+								filter = bw.policy.filterExp;
 								attr.SetWrite(bw.policy);
 							}
 							else
 							{
+								filter = null;
 								attr.SetWrite();
 							}
 							attr.AdjustWrite(bw.ops);
-							WriteBatchOperations(key, bw.ops, attr);
+							WriteBatchOperations(key, bw.ops, attr, filter);
 							break;
 						}
 
 						case BatchRecord.Type.BATCH_DELETE:
 						{
 							BatchDelete bd = (BatchDelete)record;
+							Expression filter;
 
 							if (bd.policy != null)
 							{
+								filter = bd.policy.filterExp;
 								attr.SetDelete(bd.policy);
 							}
 							else
 							{
+								filter = null;
 								attr.SetDelete();
 							}
-							WriteBatchWrite(key, attr, 0, 0);
+							WriteBatchWrite(key, attr, filter, 0, 0);
 							break;
 						}
 
 						case BatchRecord.Type.BATCH_UDF:
 						{
 							BatchUDF bu = (BatchUDF)record;
+							Expression filter;
 
 							if (bu.policy != null)
 							{
+								filter = bu.policy.filterExp;
 								attr.SetUDF(bu.policy);
 							}
 							else
 							{
+								filter = null;
 								attr.SetUDF();
 							}
-							WriteBatchWrite(key, attr, 3, 0);
+							WriteBatchWrite(key, attr, filter, 3, 0);
 							WriteField(bu.packageName, FieldType.UDF_PACKAGE_NAME);
 							WriteField(bu.functionName, FieldType.UDF_FUNCTION);
 							WriteField(bu.argBytes, FieldType.UDF_ARGLIST);
@@ -880,7 +892,14 @@ namespace Aerospike.Client
 				else
 				{
 					// Write full header and namespace/set/bin names.
-					EstimateBatchFieldsSize(key, attr);
+					dataOffset += 8; // header(4) + fielCount(2) + opCount(2) = 8
+					dataOffset += ByteUtil.EstimateSizeUtf8(key.ns) + FIELD_HEADER_SIZE;
+					dataOffset += ByteUtil.EstimateSizeUtf8(key.setName) + FIELD_HEADER_SIZE;
+
+					if (attr.sendKey)
+					{
+						dataOffset += key.userKey.EstimateSize() + FIELD_HEADER_SIZE + 1;
+					}
 
 					if (binNames != null)
 					{
@@ -951,19 +970,19 @@ namespace Aerospike.Client
 					// Write full message.
 					if (binNames != null)
 					{
-						WriteBatchBinNames(key, binNames, attr);
+						WriteBatchBinNames(key, binNames, attr, null);
 					}
 					else if (ops != null)
 					{
-						WriteBatchOperations(key, ops, attr);
+						WriteBatchOperations(key, ops, attr, null);
 					}
 					else if ((attr.writeAttr & Command.INFO2_DELETE) != 0)
 					{
-						WriteBatchWrite(key, attr, 0, 0);
+						WriteBatchWrite(key, attr, null, 0, 0);
 					}
 					else
 					{
-						WriteBatchRead(key, attr, 0);
+						WriteBatchRead(key, attr, null, 0);
 					}
 					prev = key;
 				}
@@ -1019,7 +1038,14 @@ namespace Aerospike.Client
 				else
 				{
 					// Write full header and namespace/set/bin names.
-					EstimateBatchFieldsSize(key, attr);
+					dataOffset += 8; // header(4) + fielCount(2) + opCount(2) = 8
+					dataOffset += ByteUtil.EstimateSizeUtf8(key.ns) + FIELD_HEADER_SIZE;
+					dataOffset += ByteUtil.EstimateSizeUtf8(key.setName) + FIELD_HEADER_SIZE;
+
+					if (attr.sendKey)
+					{
+						dataOffset += key.userKey.EstimateSize() + FIELD_HEADER_SIZE + 1;
+					}
 					dataOffset += 6; // gen(2) + exp(4) = 6
 					EstimateUdfSize(packageName, functionName, argBytes);
 					prev = key;
@@ -1063,7 +1089,7 @@ namespace Aerospike.Client
 				else
 				{
 					// Write full message.
-					WriteBatchWrite(key, attr, 3, 0);
+					WriteBatchWrite(key, attr, null, 3, 0);
 					WriteField(packageName, FieldType.UDF_PACKAGE_NAME);
 					WriteField(functionName, FieldType.UDF_FUNCTION);
 					WriteField(argBytes, FieldType.UDF_ARGLIST);
@@ -1114,9 +1140,9 @@ namespace Aerospike.Client
 			dataOffset += ByteUtil.ShortToBytes(0, dataBuffer, dataOffset);
 		}
 
-		private void WriteBatchBinNames(Key key, string[] binNames, BatchAttr attr)
+		private void WriteBatchBinNames(Key key, string[] binNames, BatchAttr attr, Expression filter)
 		{
-			WriteBatchRead(key, attr, binNames.Length);
+			WriteBatchRead(key, attr, filter, binNames.Length);
 
 			foreach (string binName in binNames)
 			{
@@ -1124,15 +1150,15 @@ namespace Aerospike.Client
 			}
 		}
 
-		private void WriteBatchOperations(Key key, Operation[] ops, BatchAttr attr)
+		private void WriteBatchOperations(Key key, Operation[] ops, BatchAttr attr, Expression filter)
 		{
 			if (attr.hasWrite)
 			{
-				WriteBatchWrite(key, attr, 0, ops.Length);
+				WriteBatchWrite(key, attr, filter, 0, ops.Length);
 			}
 			else
 			{
-				WriteBatchRead(key, attr, ops.Length);
+				WriteBatchRead(key, attr, filter, ops.Length);
 			}
 
 			foreach (Operation op in ops)
@@ -1141,16 +1167,16 @@ namespace Aerospike.Client
 			}
 		}
 
-		private void WriteBatchRead(Key key, BatchAttr attr, int opCount)
+		private void WriteBatchRead(Key key, BatchAttr attr, Expression filter, int opCount)
 		{
 			dataBuffer[dataOffset++] = (byte)BATCH_MSG_INFO;
 			dataBuffer[dataOffset++] = (byte)attr.readAttr;
 			dataBuffer[dataOffset++] = (byte)attr.writeAttr;
 			dataBuffer[dataOffset++] = (byte)attr.infoAttr;
-			WriteBatchFields(key, 2, opCount);
+			WriteBatchFields(key, filter, 0, opCount);
 		}
 
-		private void WriteBatchWrite(Key key, BatchAttr attr, int fieldCount, int opCount)
+		private void WriteBatchWrite(Key key, BatchAttr attr, Expression filter, int fieldCount, int opCount)
 		{
 			dataBuffer[dataOffset++] = (byte)BATCH_MSG_WRITE;
 			dataBuffer[dataOffset++] = (byte)attr.readAttr;
@@ -1161,30 +1187,33 @@ namespace Aerospike.Client
 
 			if (attr.sendKey)
 			{
-				WriteBatchFields(key, fieldCount + 3, opCount);
+				fieldCount++;
+				WriteBatchFields(key, filter, fieldCount, opCount);
 				WriteField(key.userKey, FieldType.KEY);
 			}
 			else
 			{
-				WriteBatchFields(key, fieldCount + 2, opCount);
+				WriteBatchFields(key, filter, fieldCount, opCount);
 			}
 		}
 
-		private void EstimateBatchFieldsSize(Key key, BatchAttr attr)
+		private void WriteBatchFields(Key key, Expression filter, int fieldCount, int opCount)
 		{
-			// header(4) + fielCount(2) + opCount(2) = 8
-			dataOffset += 8;
-			dataOffset += ByteUtil.EstimateSizeUtf8(key.ns) + FIELD_HEADER_SIZE;
-			dataOffset += ByteUtil.EstimateSizeUtf8(key.setName) + FIELD_HEADER_SIZE;
-
-			if (attr.sendKey)
+			if (filter != null)
 			{
-				dataOffset += key.userKey.EstimateSize() + FIELD_HEADER_SIZE + 1;
+				fieldCount++;
+				WriteBatchFields(key, fieldCount, opCount);
+				filter.Write(this);
+			}
+			else
+			{
+				WriteBatchFields(key, fieldCount, opCount);
 			}
 		}
 
 		private void WriteBatchFields(Key key, int fieldCount, int opCount)
 		{
+			fieldCount += 2;
 			dataOffset += ByteUtil.ShortToBytes((ushort)fieldCount, dataBuffer, dataOffset);
 			dataOffset += ByteUtil.ShortToBytes((ushort)opCount, dataBuffer, dataOffset);
 			WriteField(key.ns, FieldType.NAMESPACE);

@@ -149,6 +149,14 @@ namespace Aerospike.Client
 		{
 			int size = 0;
 
+			if (policy != null)
+			{
+				if (policy.filterExp != null)
+				{
+					size += policy.filterExp.Size();
+				}
+			}
+
 			if (binNames != null)
 			{
 				foreach (string binName in binNames)

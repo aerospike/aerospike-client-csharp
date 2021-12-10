@@ -74,9 +74,17 @@ namespace Aerospike.Client
 		{
 			int size = 6; // gen(2) + exp(4) = 6
 
-			if (policy != null && policy.sendKey)
+			if (policy != null)
 			{
-				size += key.userKey.EstimateSize() + Command.FIELD_HEADER_SIZE + 1;
+				if (policy.filterExp != null)
+				{
+					size += policy.filterExp.Size();
+				}
+
+				if (policy.sendKey)
+				{
+					size += key.userKey.EstimateSize() + Command.FIELD_HEADER_SIZE + 1;
+				}
 			}
 			return size;
 		}

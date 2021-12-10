@@ -22,6 +22,21 @@ namespace Aerospike.Client
 	public sealed class BatchReadPolicy
 	{
 		/// <summary>
+		/// Optional expression filter. If filterExp exists and evaluates to false, the specific batch key
+		/// request is not performed and <see cref="BatchRecord.resultCode"/> is set to
+		/// <see cref="ResultCode.FILTERED_OUT"/>.
+		/// <para>
+		/// If exists, this filter overrides the batch parent filter <seealso cref="Policy.filterExp"/>
+		/// for the specific key in batch commands that allow a different policy per key.
+		/// Otherwise, this filter is ignored.
+		/// </para>
+		/// <para>
+		/// Default: null
+		/// </para>
+		/// </summary>
+		public Expression filterExp;
+
+		/// <summary>
 		/// Read policy for AP (availability) namespaces.
 		/// <para>
 		/// Default: <see cref="Aerospike.Client.ReadModeAP.ONE"/>
@@ -42,6 +57,7 @@ namespace Aerospike.Client
 		/// </summary>
 		public BatchReadPolicy(BatchReadPolicy other)
 		{
+			this.filterExp = other.filterExp;
 			this.readModeAP = other.readModeAP;
 			this.readModeSC = other.readModeSC;
 		}

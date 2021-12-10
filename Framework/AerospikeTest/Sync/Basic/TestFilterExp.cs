@@ -14,7 +14,7 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using System;
+using System.Collections.Generic;
 using System.Reflection;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Aerospike.Client;
@@ -870,6 +870,49 @@ namespace Aerospike.Test
 
 			Record r = client.Get(policy, keyA);
 			AssertBinEqual(keyA, r, binA, 1);
+		}
+
+		[TestMethod]
+		public void BatchKeyFilter()
+		{
+			// Write/Delete records with filter.
+			BatchWritePolicy wp = new BatchWritePolicy();
+			wp.filterExp = Exp.Build(Exp.EQ(Exp.IntBin(binA), Exp.Val(1)));
+
+			BatchDeletePolicy dp = new BatchDeletePolicy();
+			dp.filterExp = Exp.Build(Exp.EQ(Exp.IntBin(binA), Exp.Val(0)));
+
+			Operation[] put = Operation.Array(Operation.Put(new Bin(binA, 3)));
+
+			List<BatchRecord> brecs = new List<BatchRecord>();
+			brecs.Add(new BatchWrite(wp, keyA, put));
+			brecs.Add(new BatchWrite(wp, keyB, put));
+			brecs.Add(new BatchDelete(dp, keyC));
+
+			bool status = client.Operate(null, brecs);
+			Assert.IsFalse(status); // Filtered out result code causes status to be false.
+
+			BatchRecord br = brecs[0];
+			Assert.AreEqual(ResultCode.OK, br.resultCode);
+
+			br = brecs[1];
+			Assert.AreEqual(ResultCode.FILTERED_OUT, br.resultCode);
+
+			br = brecs[2];
+			Assert.AreEqual(ResultCode.OK, br.resultCode);
+
+			// Read records
+			Key[] keys = new Key[] { keyA, keyB, keyC };
+			Record[] recs = client.Get(null, keys, binA);
+
+			Record r = recs[0];
+			AssertBinEqual(keyA, r, binA, 3);
+
+			r = recs[1];
+			AssertBinEqual(keyB, r, binA, 2);
+
+			r = recs[2];
+			Assert.IsNull(r);
 		}
 	}
 }
