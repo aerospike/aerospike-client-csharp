@@ -485,7 +485,7 @@ namespace Aerospike.Client
 					if (binNames != null && binNames.Length != 0)
 					{
 						dataBuffer[dataOffset++] = (byte)readAttr;
-						WriteBatchFields(key, 2, binNames.Length);
+						WriteBatchFields(key, 0, binNames.Length);
 
 						foreach (string binName in binNames)
 						{
@@ -495,13 +495,13 @@ namespace Aerospike.Client
 					else if (ops != null)
 					{
 						int offset = dataOffset++;
-						WriteBatchFields(key, 2, ops.Length);
+						WriteBatchFields(key, 0, ops.Length);
 						dataBuffer[offset] = (byte)WriteReadOnlyOperations(ops, readAttr);
 					}
 					else
 					{
 						dataBuffer[dataOffset++] = (byte)(readAttr | (record.readAllBins ? Command.INFO1_GET_ALL : Command.INFO1_NOBINDATA));
-						WriteBatchFields(key, 2, 0);
+						WriteBatchFields(key, 0, 0);
 					}
 					prev = record;
 				}
@@ -623,7 +623,7 @@ namespace Aerospike.Client
 					if (binNames != null && binNames.Length != 0)
 					{
 						dataBuffer[dataOffset++] = (byte)readAttr;
-						WriteBatchFields(key, 2, binNames.Length);
+						WriteBatchFields(key, 0, binNames.Length);
 
 						foreach (String binName in binNames)
 						{
@@ -633,13 +633,13 @@ namespace Aerospike.Client
 					else if (ops != null)
 					{
 						int offset = dataOffset++;
-						WriteBatchFields(key, 2, ops.Length);
+						WriteBatchFields(key, 0, ops.Length);
 						dataBuffer[offset] = (byte)WriteReadOnlyOperations(ops, readAttr);
 					}
 					else
 					{
 						dataBuffer[dataOffset++] = (byte)readAttr;
-						WriteBatchFields(key, 2, 0);
+						WriteBatchFields(key, 0, 0);
 					}
 					prev = key;
 				}
