@@ -587,16 +587,17 @@ namespace Aerospike.Test
 		{
 			Expression wexp1 = Exp.Build(Exp.Add(Exp.IntBin(BinName), Exp.Val(1000)));
 
-			Operation[] wops1 = Operation.Array(Operation.Put(new Bin(BinName2, 100)));
-			Operation[] wops2 = Operation.Array(ExpOperation.Write(BinName3, wexp1, ExpWriteFlags.DEFAULT));
-			Operation[] rops1 = Operation.Array(Operation.Get(BinName2));
-			Operation[] rops2 = Operation.Array(Operation.Get(BinName3));
+			Operation[] ops1 = Operation.Array(
+				Operation.Put(new Bin(BinName2, 100)),
+				Operation.Get(BinName2));
+
+			Operation[] ops2 = Operation.Array(
+				ExpOperation.Write(BinName3, wexp1, ExpWriteFlags.DEFAULT),
+				Operation.Get(BinName3));
 
 			List<BatchRecord> records = new List<BatchRecord>();
-			records.Add(new BatchWrite(new Key(args.ns, args.set, KeyPrefix + 1), wops1));
-			records.Add(new BatchWrite(new Key(args.ns, args.set, KeyPrefix + 6), wops2));
-			records.Add(new BatchRead(new Key(args.ns, args.set, KeyPrefix + 1), rops1));
-			records.Add(new BatchRead(new Key(args.ns, args.set, KeyPrefix + 6), rops2));
+			records.Add(new BatchWrite(new Key(args.ns, args.set, KeyPrefix + 1), ops1));
+			records.Add(new BatchWrite(new Key(args.ns, args.set, KeyPrefix + 6), ops2));
 
 			client.Operate(null, new BatchWriteComplexHandler(this, records), records);
 
@@ -619,16 +620,11 @@ namespace Aerospike.Test
 				parent.AssertEquals(true, status);
 
 				BatchRecord r = records[0];
-				parent.AssertBinEqual(r.key, r.record, BinName2, 0);
+				parent.AssertBatchBinEqual(r, BinName2, 100);
 
 				r = records[1];
-				parent.AssertBinEqual(r.key, r.record, BinName3, 0);
+				parent.AssertBatchBinEqual(r, BinName3, 1006);
 
-				r = records[2];
-				parent.AssertBinEqual(r.key, r.record, BinName2, 100);
-
-				r = records[3];
-				parent.AssertBinEqual(r.key, r.record, BinName3, 1006);
 				parent.NotifyCompleted();
 			}
 
@@ -644,16 +640,17 @@ namespace Aerospike.Test
 		{
 			Expression wexp1 = Exp.Build(Exp.Add(Exp.IntBin(BinName), Exp.Val(1000)));
 
-			Operation[] wops1 = Operation.Array(Operation.Put(new Bin(BinName2, 100)));
-			Operation[] wops2 = Operation.Array(ExpOperation.Write(BinName3, wexp1, ExpWriteFlags.DEFAULT));
-			Operation[] rops1 = Operation.Array(Operation.Get(BinName2));
-			Operation[] rops2 = Operation.Array(Operation.Get(BinName3));
+			Operation[] ops1 = Operation.Array(
+				Operation.Put(new Bin(BinName2, 100)),
+				Operation.Get(BinName2));
+
+			Operation[] ops2 = Operation.Array(
+				ExpOperation.Write(BinName3, wexp1, ExpWriteFlags.DEFAULT),
+				Operation.Get(BinName3));
 
 			List<BatchRecord> records = new List<BatchRecord>();
-			records.Add(new BatchWrite(new Key(args.ns, args.set, KeyPrefix + 1), wops1));
-			records.Add(new BatchWrite(new Key(args.ns, args.set, KeyPrefix + 6), wops2));
-			records.Add(new BatchRead(new Key(args.ns, args.set, KeyPrefix + 1), rops1));
-			records.Add(new BatchRead(new Key(args.ns, args.set, KeyPrefix + 6), rops2));
+			records.Add(new BatchWrite(new Key(args.ns, args.set, KeyPrefix + 1), ops1));
+			records.Add(new BatchWrite(new Key(args.ns, args.set, KeyPrefix + 6), ops2));
 			records.Add(new BatchDelete(new Key(args.ns, args.set, 10002)));
 
 			client.Operate(null, new BatchSeqWriteComplexHandler(this), records);
@@ -678,22 +675,14 @@ namespace Aerospike.Test
 				switch (index)
 				{
 					case 0:
-						parent.AssertBinEqual(r.key, r.record, BinName2, 0);
+						parent.AssertBatchBinEqual(r, BinName2, 100);
 						break;
 
 					case 1:
-						parent.AssertBinEqual(r.key, r.record, BinName3, 0);
+						parent.AssertBatchBinEqual(r, BinName3, 1006);
 						break;
 
 					case 2:
-						parent.AssertBinEqual(r.key, r.record, BinName2, 100);
-						break;
-
-					case 3:
-						parent.AssertBinEqual(r.key, r.record, BinName3, 1006);
-						break;
-
-					case 4:
 						parent.AssertEquals(ResultCode.OK, r.resultCode);
 						break;
 
@@ -705,7 +694,7 @@ namespace Aerospike.Test
 
 			public void OnSuccess()
 			{
-				parent.AssertEquals(5, count);
+				parent.AssertEquals(3, count);
 				parent.NotifyCompleted();
 			}
 
@@ -713,6 +702,40 @@ namespace Aerospike.Test
 			{
 				parent.SetError(ae);
 				parent.NotifyCompleted();
+			}
+		}
+
+		private bool AssertBatchBinEqual(BatchRecord r, String binName, int expected)
+		{
+			try
+			{
+				if (!AssertRecordFound(r.key, r.record))
+				{
+					return false;
+				}
+
+				IList list = r.record.GetList(binName);
+				object obj = list[0];
+
+				if (obj != null)
+				{
+					SetError(new Exception("Data mismatch: Expected null. Received " + obj));
+					return false;
+				}
+
+				long val = (long)list[1];
+
+				if (val != expected)
+				{
+					SetError(new Exception("Data mismatch: Expected " + expected + ". Received " + val));
+					return false;
+				}
+				return true;
+			}
+			catch (Exception e)
+			{
+				SetError(new AerospikeException(e));
+				return false;
 			}
 		}
 

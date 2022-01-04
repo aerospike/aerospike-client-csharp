@@ -223,31 +223,28 @@ namespace Aerospike.Demo
 			Expression rexp2 = Exp.Build(Exp.Add(Exp.IntBin(BinName1), Exp.IntBin(BinName2)));
 			Expression rexp3 = Exp.Build(Exp.Sub(Exp.IntBin(BinName1), Exp.IntBin(BinName2)));
 
-			// Batch uses pointer reference to quickly determine if operations are repeated and can therefore
-			// be optimized, but using varargs directly always creates a new reference. Therefore, save operation
-			// array so we have one pointer reference per operation array.
-			Operation[] wops1 = Operation.Array(Operation.Put(new Bin(BinName4, 100)));
-			Operation[] wops4 = Operation.Array(ExpOperation.Write(BinName1, wexp1, ExpWriteFlags.DEFAULT));
-			Operation[] rops1 = Operation.Array(ExpOperation.Read(ResultName1, rexp1, ExpReadFlags.DEFAULT));
-			Operation[] rops3 = Operation.Array(ExpOperation.Read(ResultName1, rexp2, ExpReadFlags.DEFAULT));
-			Operation[] rops4 = Operation.Array(ExpOperation.Read(ResultName1, rexp3, ExpReadFlags.DEFAULT));
-			Operation[] rops5 = Operation.Array(ExpOperation.Read(ResultName1, rexp2, ExpReadFlags.DEFAULT),
-												ExpOperation.Read(ResultName2, rexp3, ExpReadFlags.DEFAULT));
+			Operation[] ops1 = Operation.Array(
+				Operation.Put(new Bin(BinName4, 100)),
+				ExpOperation.Read(ResultName1, rexp1, ExpReadFlags.DEFAULT));
+
+			Operation[] ops2 = Operation.Array(ExpOperation.Read(ResultName1, rexp1, ExpReadFlags.DEFAULT));
+			Operation[] ops3 = Operation.Array(ExpOperation.Read(ResultName1, rexp2, ExpReadFlags.DEFAULT));
+
+			Operation[] ops4 = Operation.Array(
+				ExpOperation.Write(BinName1, wexp1, ExpWriteFlags.DEFAULT),
+				ExpOperation.Read(ResultName1, rexp3, ExpReadFlags.DEFAULT));
+
+			Operation[] ops5 = Operation.Array(
+				ExpOperation.Read(ResultName1, rexp2, ExpReadFlags.DEFAULT),
+				ExpOperation.Read(ResultName2, rexp3, ExpReadFlags.DEFAULT));
 
 			List<BatchRecord> records = new List<BatchRecord>();
-			records.Add(new BatchWrite(new Key(args.ns, args.set, KeyPrefix + 1), wops1));
-			records.Add(new BatchWrite(new Key(args.ns, args.set, KeyPrefix + 4), wops4));
+			records.Add(new BatchWrite(new Key(args.ns, args.set, KeyPrefix + 1), ops1));
+			records.Add(new BatchRead(new Key(args.ns, args.set, KeyPrefix + 2), ops2));
+			records.Add(new BatchRead(new Key(args.ns, args.set, KeyPrefix + 3), ops3));
+			records.Add(new BatchWrite(new Key(args.ns, args.set, KeyPrefix + 4), ops4));
+			records.Add(new BatchRead(new Key(args.ns, args.set, KeyPrefix + 5), ops5));
 			records.Add(new BatchDelete(new Key(args.ns, args.set, KeyPrefix + 6)));
-
-			records.Add(new BatchRead(new Key(args.ns, args.set, KeyPrefix + 1), rops1));
-			// The following record is optimized (namespace,set,ops are only sent once) because
-			// namespace, set and ops all have the same pointer references as the previous entry.
-			records.Add(new BatchRead(new Key(args.ns, args.set, KeyPrefix + 2), rops1));
-			records.Add(new BatchRead(new Key(args.ns, args.set, KeyPrefix + 3), rops3));
-			records.Add(new BatchRead(new Key(args.ns, args.set, KeyPrefix + 4), rops4));
-			records.Add(new BatchRead(new Key(args.ns, args.set, KeyPrefix + 5), rops5));
-
-			records.Add(new BatchRead(new Key(args.ns, args.set, KeyPrefix + 6), true));
 
 			// Execute batch.
 			client.Operate(null, records);

@@ -155,24 +155,16 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void AsyncBatchUDFComplex()
 		{
-			List<BatchRecord> records = new List<BatchRecord>();
 			string bin = "B5";
 
 			Value[] a1 = new Value[] { Value.Get(bin), Value.Get("value1") };
 			Value[] a2 = new Value[] { Value.Get(bin), Value.Get(5) };
 			Value[] a3 = new Value[] { Value.Get(bin), Value.Get(999) };
 
-			BatchUDF b1 = new BatchUDF(new Key(args.ns, args.set, 20014), "record_example", "writeBin", a1);
-			BatchUDF b2 = new BatchUDF(new Key(args.ns, args.set, 20015), "record_example", "writeWithValidation", a2);
-			BatchUDF b3 = new BatchUDF(new Key(args.ns, args.set, 20015), "record_example", "writeWithValidation", a3);
-			BatchRead b4 = new BatchRead(new Key(args.ns, args.set, 20014), true);
-			BatchRead b5 = new BatchRead(new Key(args.ns, args.set, 20015), true);
-
-			records.Add(b1);
-			records.Add(b2);
-			records.Add(b3);
-			records.Add(b4);
-			records.Add(b5);
+			List<BatchRecord> records = new List<BatchRecord>();
+			records.Add(new BatchUDF(new Key(args.ns, args.set, 20014), "record_example", "writeBin", a1));
+			records.Add(new BatchUDF(new Key(args.ns, args.set, 20015), "record_example", "writeWithValidation", a2));
+			records.Add(new BatchUDF(new Key(args.ns, args.set, 20015), "record_example", "writeWithValidation", a3));
 
 			client.Operate(null, new BatchSeqUDFHandler(this, bin), records);
 
@@ -207,14 +199,6 @@ namespace Aerospike.Test
 						case 2:
 							parent.AssertEquals(ResultCode.UDF_BAD_RESPONSE, br.resultCode);
 							break;
-
-						case 3:
-							parent.AssertBinEqual(br.key, br.record, bin, "value1");
-							break;
-
-						case 4:
-							parent.AssertBinEqual(br.key, br.record, bin, 5);
-							break;
 					}
 				}
 				catch (Exception e)
@@ -226,7 +210,11 @@ namespace Aerospike.Test
 
 			public void OnSuccess()
 			{
-				parent.NotifyCompleted();
+				List<BatchRecord> records = new List<BatchRecord>();
+				records.Add(new BatchRead(new Key(args.ns, args.set, 20014), true));
+				records.Add(new BatchRead(new Key(args.ns, args.set, 20015), true));
+
+				client.Operate(null, new BatchSeqReadHandler(parent, bin), records);
 			}
 
 			public void OnFailure(AerospikeException ae)
@@ -234,6 +222,51 @@ namespace Aerospike.Test
 				parent.SetError(ae);
 				parent.NotifyCompleted();
 			}
+		}
+	}
+
+	class BatchSeqReadHandler : BatchRecordSequenceListener
+	{
+		private readonly TestAsyncUDF parent;
+		private string bin;
+
+		public BatchSeqReadHandler(TestAsyncUDF parent, string bin)
+		{
+			this.parent = parent;
+			this.bin = bin;
+		}
+
+		public void OnRecord(BatchRecord br, int index)
+		{
+			try
+			{
+				switch (index)
+				{
+					case 0:
+						parent.AssertBinEqual(br.key, br.record, bin, "value1");
+						break;
+
+					case 1:
+						parent.AssertBinEqual(br.key, br.record, bin, 5);
+						break;
+				}
+			}
+			catch (Exception e)
+			{
+				parent.SetError(e);
+				parent.NotifyCompleted();
+			}
+		}
+
+		public void OnSuccess()
+		{
+			parent.NotifyCompleted();
+		}
+
+		public void OnFailure(AerospikeException ae)
+		{
+			parent.SetError(ae);
+			parent.NotifyCompleted();
 		}
 	}
 }

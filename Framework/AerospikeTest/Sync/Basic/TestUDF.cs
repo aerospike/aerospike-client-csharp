@@ -260,7 +260,6 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void BatchUDFComplex()
 		{
-			List<BatchRecord> records = new List<BatchRecord>();
 			string bin = "B5";
 
 			Value[] a1 = new Value[] { Value.Get(bin), Value.Get("value1") };
@@ -270,21 +269,29 @@ namespace Aerospike.Test
 			BatchUDF b1 = new BatchUDF(new Key(args.ns, args.set, 20004), "record_example", "writeBin", a1);
 			BatchUDF b2 = new BatchUDF(new Key(args.ns, args.set, 20005), "record_example", "writeWithValidation", a2);
 			BatchUDF b3 = new BatchUDF(new Key(args.ns, args.set, 20005), "record_example", "writeWithValidation", a3);
-			BatchRead b4 = new BatchRead(new Key(args.ns, args.set, 20004), true);
-			BatchRead b5 = new BatchRead(new Key(args.ns, args.set, 20005), true);
 
+			List<BatchRecord> records = new List<BatchRecord>();
 			records.Add(b1);
 			records.Add(b2);
 			records.Add(b3);
-			records.Add(b4);
-			records.Add(b5);
 
 			bool status = client.Operate(null, records);
-			Assert.IsFalse(status); // b3 results in an error.
 
+			Assert.IsFalse(status); // b3 results in an error.
 			AssertBinEqual(b1.key, b1.record, bin, 0);
 			AssertBinEqual(b2.key, b2.record, bin, 0);
 			Assert.AreEqual(ResultCode.UDF_BAD_RESPONSE, b3.resultCode);
+
+			BatchRead b4 = new BatchRead(new Key(args.ns, args.set, 20004), true);
+			BatchRead b5 = new BatchRead(new Key(args.ns, args.set, 20005), true);
+
+			records.Clear();
+			records.Add(b4);
+			records.Add(b5);
+
+			status = client.Operate(null, records);
+
+			Assert.IsTrue(status);
 			AssertBinEqual(b4.key, b4.record, bin, "value1");
 			AssertBinEqual(b5.key, b5.record, bin, 5);
 		}

@@ -275,32 +275,36 @@ namespace Aerospike.Test
 			BatchWritePolicy wp = new BatchWritePolicy();
 			wp.sendKey = true;
 
-			List<BatchRecord> records = new List<BatchRecord>();
 			BatchWrite bw1 = new BatchWrite(new Key(args.ns, args.set, KeyPrefix + 1), wops1);
 			BatchWrite bw2 = new BatchWrite(wp, new Key(args.ns, args.set, KeyPrefix + 6), wops2);
 			BatchDelete bd1 = new BatchDelete(new Key(args.ns, args.set, 10002));
+
+			List<BatchRecord> records = new List<BatchRecord>();
+			records.Add(bw1);
+			records.Add(bw2);
+			records.Add(bd1);
+
+			bool status = client.Operate(null, records);
+
+			Assert.IsTrue(status);
+			Assert.AreEqual(0, bw1.resultCode);
+			AssertBinEqual(bw1.key, bw1.record, BinName2, 0);
+			Assert.AreEqual(0, bw2.resultCode);
+			AssertBinEqual(bw2.key, bw2.record, BinName3, 0);
+			Assert.AreEqual(ResultCode.OK, bd1.resultCode);
+
 			BatchRead br1 = new BatchRead(new Key(args.ns, args.set, KeyPrefix + 1), rops1);
 			BatchRead br2 = new BatchRead(new Key(args.ns, args.set, KeyPrefix + 6), rops2);
 			BatchRead br3 = new BatchRead(new Key(args.ns, args.set, 10002), true);
 
-			records.Add(bw1);
-			records.Add(bw2);
-			records.Add(bd1);
+			records.Clear();
 			records.Add(br1);
 			records.Add(br2);
 			records.Add(br3);
 
-			bool status = client.Operate(null, records);
+			status = client.Operate(null, records);
+
 			Assert.IsFalse(status); // Read of deleted record causes status to be false.
-
-			Assert.AreEqual(0, bw1.resultCode);
-			AssertBinEqual(bw1.key, bw1.record, BinName2, 0);
-
-			Assert.AreEqual(0, bw2.resultCode);
-			AssertBinEqual(bw2.key, bw2.record, BinName3, 0);
-
-			Assert.AreEqual(ResultCode.OK, bd1.resultCode);
-
 			AssertBinEqual(br1.key, br1.record, BinName2, 100);
 			AssertBinEqual(br2.key, br2.record, BinName3, 1006);
 			Assert.AreEqual(ResultCode.KEY_NOT_FOUND_ERROR, br3.resultCode);
