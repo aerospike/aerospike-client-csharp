@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2022 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -61,7 +61,7 @@ namespace Aerospike.Client
 
 		/// <summary>
 		/// Allow batch to be processed immediately in the server's receiving thread for in-memory
-		/// namespaces. If false, the batch will always be processed in separate transaction threads.
+		/// namespaces. If false, the batch will always be processed in separate service threads.
 		/// <para>
 		/// For batch transactions with smaller sized records (&lt;= 1K per record), inline
 		/// processing will be significantly faster on in-memory namespaces.
@@ -78,7 +78,7 @@ namespace Aerospike.Client
 
 		/// <summary>
 		/// Allow batch to be processed immediately in the server's receiving thread for SSD
-		/// namespaces. If false, the batch will always be processed in separate transaction threads.
+		/// namespaces. If false, the batch will always be processed in separate service threads.
 		/// Server versions &lt; 5.8 ignore this field.
 		/// <para>
 		/// Inline processing can introduce the possibility of unfairness because the server
