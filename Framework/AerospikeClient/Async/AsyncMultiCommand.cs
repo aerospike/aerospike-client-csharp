@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2022 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -29,7 +29,6 @@ namespace Aerospike.Client
 		protected internal int batchIndex;
 		protected internal int fieldCount;
 		protected internal int opCount;
-		private readonly bool isBatch;
 		protected internal readonly bool isOperation;
 		protected internal volatile bool valid = true;
 
@@ -41,7 +40,6 @@ namespace Aerospike.Client
 		{
 			this.executor = executor;
 			this.serverNode = node;
-			this.isBatch = true;
 			this.isOperation = isOperation;
 		}
 
@@ -53,7 +51,6 @@ namespace Aerospike.Client
 		{
 			this.executor = executor;
 			this.serverNode = node;
-			this.isBatch = false;
 			this.isOperation = false;
 		}
 
@@ -61,7 +58,6 @@ namespace Aerospike.Client
 		{
 			this.executor = other.executor;
 			this.serverNode = other.serverNode;
-			this.isBatch = other.isBatch;
 			this.isOperation = other.isOperation;
 		}
 
@@ -125,16 +121,7 @@ namespace Aerospike.Client
 					throw new AerospikeException.QueryTerminated();
 				}
 
-				if (isBatch)
-				{
-					SkipKey(fieldCount);
-					ParseRow(null);
-				}
-				else
-				{
-					Key key = ParseKey(fieldCount);
-					ParseRow(key);
-				}
+				ParseRow();
 			}
 			return false;
 		}
@@ -164,6 +151,6 @@ namespace Aerospike.Client
 			executor.ChildFailure(e);
 		}
 
-		protected internal abstract void ParseRow(Key key);
+		protected internal abstract void ParseRow();
 	}
 }

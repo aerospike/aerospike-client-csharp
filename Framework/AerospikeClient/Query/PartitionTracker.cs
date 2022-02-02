@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2022 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -41,16 +41,16 @@ namespace Aerospike.Client
 		public PartitionTracker(ScanPolicy policy, Node[] nodes)
 			: this((Policy)policy, nodes)
 		{
-			this.maxRecords = policy.maxRecords;
+			SetMaxRecords(policy.maxRecords);
 		}
 
-		public PartitionTracker(QueryPolicy policy, Node[] nodes)
+		public PartitionTracker(QueryPolicy policy, Statement stmt, Node[] nodes)
 			: this((Policy)policy, nodes)
 		{
-			this.maxRecords = policy.maxRecords;
+			SetMaxRecords(policy, stmt);
 		}
 
-		public PartitionTracker(Policy policy, Node[] nodes)
+		private PartitionTracker(Policy policy, Node[] nodes)
 		{
 			this.partitionBegin = 0;
 			this.nodeCapacity = nodes.Length;
@@ -68,16 +68,16 @@ namespace Aerospike.Client
 		public PartitionTracker(ScanPolicy policy, Node nodeFilter)
 			: this((Policy)policy, nodeFilter)
 		{
-			this.maxRecords = policy.maxRecords;
+			SetMaxRecords(policy.maxRecords);
 		}
 
-		public PartitionTracker(QueryPolicy policy, Node nodeFilter)
+		public PartitionTracker(QueryPolicy policy, Statement stmt, Node nodeFilter)
 			: this((Policy)policy, nodeFilter)
 		{
-			this.maxRecords = policy.maxRecords;
+			SetMaxRecords(policy, stmt);
 		}
 
-		public PartitionTracker(Policy policy, Node nodeFilter)
+		private PartitionTracker(Policy policy, Node nodeFilter)
 		{
 			this.partitionBegin = 0;
 			this.nodeCapacity = 1;
@@ -91,16 +91,16 @@ namespace Aerospike.Client
 		public PartitionTracker(ScanPolicy policy, Node[] nodes, PartitionFilter filter)
 			: this((Policy)policy, nodes, filter)
 		{
-			this.maxRecords = policy.maxRecords;
+			SetMaxRecords(policy.maxRecords);
 		}
 
-		public PartitionTracker(QueryPolicy policy, Node[] nodes, PartitionFilter filter)
+		public PartitionTracker(QueryPolicy policy, Statement stmt, Node[] nodes, PartitionFilter filter)
 			: this((Policy)policy, nodes, filter)
 		{
-			this.maxRecords = policy.maxRecords;
+			SetMaxRecords(policy, stmt);
 		}
 
-		public PartitionTracker(Policy policy, Node[] nodes, PartitionFilter filter)
+		private PartitionTracker(Policy policy, Node[] nodes, PartitionFilter filter)
 		{
 			// Validate here instead of initial PartitionFilter constructor because total number of
 			// cluster partitions may change on the server and PartitionFilter will never have access
@@ -141,6 +141,22 @@ namespace Aerospike.Client
 			this.partitions = filter.partitions;
 			this.partitionFilter = filter;
 			InitTimeout(policy);
+		}
+
+		private void SetMaxRecords(QueryPolicy policy, Statement stmt)
+		{
+#pragma warning disable 0618
+			SetMaxRecords((stmt.maxRecords > 0) ? stmt.maxRecords : policy.maxRecords);
+#pragma warning restore 0618
+		}
+
+		private void SetMaxRecords(long maxRecords)
+		{
+			if (maxRecords < 0)
+			{
+				throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Invalid maxRecords: " + maxRecords);
+			}
+			this.maxRecords = maxRecords;
 		}
 
 		private PartitionStatus[] InitPartitions(int partitionCount, byte[] digest)
@@ -277,6 +293,15 @@ namespace Aerospike.Client
 		{
 			uint partitionId = Partition.GetPartitionId(key.digest);
 			partitions[partitionId - partitionBegin].digest = key.digest;
+			nodePartitions.recordCount++;
+		}
+
+		public void SetLast(NodePartitions nodePartitions, Key key, ulong bval)
+		{
+			uint partitionId = Partition.GetPartitionId(key.digest);
+			PartitionStatus ps = partitions[partitionId - partitionBegin];
+			ps.digest = key.digest;
+			ps.bval = bval;
 			nodePartitions.recordCount++;
 		}
 

@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2022 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -27,10 +27,10 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Initialize task with fields needed to query server nodes.
 		/// </summary>
-		public ExecuteTask(Cluster cluster, Policy policy, Statement statement)
+		public ExecuteTask(Cluster cluster, Policy policy, Statement statement, ulong taskId)
 			: base(cluster, policy)
 		{
-			this.taskId = statement.taskId;
+			this.taskId = taskId;
 			this.scan = statement.filter == null;
 		}
 

@@ -14,46 +14,55 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
+using System.Collections.Generic;
+
 namespace Aerospike.Client
 {
-	public sealed class AsyncScanPartition : AsyncMultiCommand
+	public sealed class QueryListenerCommand : MultiCommand
 	{
-		private readonly ScanPolicy scanPolicy;
-		private readonly RecordSequenceListener listener;
-		private readonly string ns;
-		private readonly string setName;
-		private readonly string[] binNames;
+		private readonly Statement statement;
 		private readonly ulong taskId;
+		private readonly QueryListener listener;
 		private readonly PartitionTracker tracker;
 		private readonly NodePartitions nodePartitions;
 
-		public AsyncScanPartition
+		public QueryListenerCommand
 		(
-			AsyncMultiExecutor executor,
-			AsyncCluster cluster,
-			ScanPolicy scanPolicy,
-			RecordSequenceListener listener,
-			string ns,
-			string setName,
-			string[] binNames,
+			Cluster cluster,
+			Node node,
+			Policy policy,
+			Statement statement,
 			ulong taskId,
+			QueryListener listener,
 			PartitionTracker tracker,
 			NodePartitions nodePartitions
-		) : base(executor, cluster, scanPolicy, (AsyncNode)nodePartitions.node, tracker.socketTimeout, tracker.totalTimeout)
+		) : base(cluster, policy, nodePartitions.node, statement.ns, tracker.socketTimeout, tracker.totalTimeout)
 		{
-			this.scanPolicy = scanPolicy;
-			this.listener = listener;
-			this.ns = ns;
-			this.setName = setName;
-			this.binNames = binNames;
+			this.statement = statement;
 			this.taskId = taskId;
+			this.listener = listener;
 			this.tracker = tracker;
 			this.nodePartitions = nodePartitions;
 		}
 
+		public override void Execute()
+		{
+			try
+			{
+				ExecuteCommand();
+			}
+			catch (AerospikeException ae)
+			{
+				if (!tracker.ShouldRetry(ae))
+				{
+					throw ae;
+				}
+			}
+		}
+
 		protected internal override void WriteBuffer()
 		{
-			SetScan(scanPolicy, ns, setName, binNames, taskId, nodePartitions);
+			SetQuery(cluster, policy, statement, taskId, false, nodePartitions);
 		}
 
 		protected internal override void ParseRow()
@@ -65,7 +74,7 @@ namespace Aerospike.Client
 			{
 				// Only mark partition done when resultCode is OK.
 				// The server may return PARTITION_UNAVAILABLE which means the
-				// specified partition will need to be requested on the scan retry.
+				// specified partition will need to be requested on the query retry.
 				if (resultCode == 0)
 				{
 					tracker.PartitionDone(nodePartitions, generation);
@@ -79,23 +88,14 @@ namespace Aerospike.Client
 			}
 
 			Record record = ParseRecord();
-			listener.OnRecord(key, record);
-			tracker.SetDigest(nodePartitions, key);
-		}
 
-		protected internal override void OnFailure(AerospikeException ae)
-		{
-			if (tracker.ShouldRetry(ae))
+			if (!valid)
 			{
-				executor.ChildSuccess(serverNode);
-				return;
+				throw new AerospikeException.QueryTerminated();
 			}
-			executor.ChildFailure(ae);
-		}
 
-		protected internal override AsyncCommand CloneCommand()
-		{
-			return null;
+			listener(key, record);
+			tracker.SetLast(nodePartitions, key, bval);
 		}
 	}
 }

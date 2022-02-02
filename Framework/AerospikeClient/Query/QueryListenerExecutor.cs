@@ -14,31 +14,36 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using System;
 using System.Collections.Generic;
-using System.Threading;
 
 namespace Aerospike.Client
 {
-	public sealed class ScanExecutor
+	public sealed class QueryListenerExecutor
 	{
-		public static void ScanPartitions(Cluster cluster, ScanPolicy policy, string ns, string setName, string[] binNames, ScanCallback callback, PartitionTracker tracker)
+		public static void execute
+		(
+			Cluster cluster,
+			QueryPolicy policy,
+			Statement statement,
+			QueryListener listener,
+			PartitionTracker tracker
+		)
 		{
+			ulong taskId = statement.PrepareTaskId();
+
 			while (true)
 			{
-				ulong taskId = RandomShift.ThreadLocalInstance.NextLong();
-
 				try
 				{
-					List<NodePartitions> list = tracker.AssignPartitionsToNodes(cluster, ns);
+					List<NodePartitions> list = tracker.AssignPartitionsToNodes(cluster, statement.ns);
 
-					if (policy.concurrentNodes && list.Count > 1)
+					if (policy.maxConcurrentNodes > 0 && list.Count > 1)
 					{
 						Executor executor = new Executor(list.Count);
 
 						foreach (NodePartitions nodePartitions in list)
 						{
-							ScanPartitionCommand command = new ScanPartitionCommand(cluster, policy, ns, setName, binNames, callback, taskId, tracker, nodePartitions);
+							QueryListenerCommand command = new QueryListenerCommand(cluster, nodePartitions.node, policy, statement, taskId, listener, tracker, nodePartitions);
 							executor.AddCommand(command);
 						}
 
@@ -48,7 +53,7 @@ namespace Aerospike.Client
 					{
 						foreach (NodePartitions nodePartitions in list)
 						{
-							ScanPartitionCommand command = new ScanPartitionCommand(cluster, policy, ns, setName, binNames, callback, taskId, tracker, nodePartitions);
+							QueryListenerCommand command = new QueryListenerCommand(cluster, nodePartitions.node, policy, statement, taskId, listener, tracker, nodePartitions);
 							command.Execute();
 						}
 					}
@@ -61,7 +66,6 @@ namespace Aerospike.Client
 
 				if (tracker.IsComplete(policy))
 				{
-					// Scan is complete.
 					return;
 				}
 
@@ -70,6 +74,9 @@ namespace Aerospike.Client
 					// Sleep before trying again.
 					Util.Sleep(policy.sleepBetweenRetries);
 				}
+
+				// taskId must be reset on next pass to avoid server duplicate query detection.
+				taskId = RandomShift.ThreadLocalInstance.NextLong();
 			}
 		}
 	}

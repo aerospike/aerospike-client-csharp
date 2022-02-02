@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2022 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -14,14 +14,13 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using System.Collections.Generic;
-
 namespace Aerospike.Client
 {
 	public sealed class QueryRecordCommand : MultiCommand
 	{
 		private readonly Statement statement;
 		private readonly RecordSet recordSet;
+		private readonly ulong taskId;
 
 		public QueryRecordCommand
 		(
@@ -29,22 +28,27 @@ namespace Aerospike.Client
 			Node node,
 			QueryPolicy policy,
 			Statement statement,
+			ulong taskId,
 			RecordSet recordSet,
 			ulong clusterKey,
 			bool first
 		) : base(cluster, policy, node, statement.ns, clusterKey, first)
 		{
 			this.statement = statement;
+			this.taskId = taskId;
 			this.recordSet = recordSet;
 		}
 
 		protected internal override void WriteBuffer()
 		{
-			SetQuery(policy, statement, false, null);
+			SetQuery(cluster, policy, statement, taskId, false, null);
 		}
 
-		protected internal override void ParseRow(Key key)
+		protected internal override void ParseRow()
 		{
+			ulong bval;
+			Key key = ParseKey(fieldCount, out bval);
+
 			if (resultCode != 0)
 			{
 				throw new AerospikeException(resultCode);

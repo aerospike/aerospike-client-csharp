@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2022 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -20,6 +20,7 @@ namespace Aerospike.Client
 	{
 		private readonly RecordSequenceListener listener;
 		private readonly Statement statement;
+		private readonly ulong taskId;
 
 		public AsyncQuery
 		(
@@ -28,20 +29,25 @@ namespace Aerospike.Client
 			AsyncNode node,
 			QueryPolicy policy,
 			RecordSequenceListener listener,
-			Statement statement
+			Statement statement,
+			ulong taskId
 		) : base(parent, cluster, policy, node, policy.socketTimeout, policy.totalTimeout)
 		{
 			this.listener = listener;
 			this.statement = statement;
+			this.taskId = taskId;
 		}
 
 		protected internal override void WriteBuffer()
 		{
-			SetQuery(policy, statement, false, null);
+			SetQuery(cluster, policy, statement, taskId, false, null);
 		}
 
-		protected internal override void ParseRow(Key key)
+		protected internal override void ParseRow()
 		{
+			ulong bval;
+			Key key = ParseKey(fieldCount, out bval);
+
 			if (resultCode != 0)
 			{
 				throw new AerospikeException(resultCode);

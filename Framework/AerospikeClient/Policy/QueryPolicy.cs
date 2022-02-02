@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2020 Aerospike, Inc.
+ * Copyright 2012-2022 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -14,6 +14,10 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
+using System;
+
+#pragma warning disable 0618
+
 namespace Aerospike.Client
 {
 	/// <summary>
@@ -35,6 +39,7 @@ namespace Aerospike.Client
 		/// Default: 0 (do not limit record count)
 		/// </para>
 		/// </summary>
+		[Obsolete("Use 'Statement.MaxRecords' instead.")]
 		public long maxRecords;
 
 		/// <summary>
@@ -106,3 +111,4 @@ namespace Aerospike.Client
 		}
 	}
 }
+#pragma warning restore 0618

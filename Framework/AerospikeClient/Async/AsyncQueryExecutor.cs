@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2020 Aerospike, Inc.
+ * Copyright 2012-2022 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -14,8 +14,6 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using System;
-
 namespace Aerospike.Client
 {
 	public sealed class AsyncQueryExecutor : AsyncMultiExecutor
@@ -32,15 +30,15 @@ namespace Aerospike.Client
 		) : base(cluster)
 		{
 			this.listener = listener;
-			statement.Prepare(true);
 
 			// Create commands.
+			ulong taskId = statement.PrepareTaskId();
 			AsyncQuery[] tasks = new AsyncQuery[nodes.Length];
 			int count = 0;
 
 			foreach (Node node in nodes)
 			{
-				tasks[count++] = new AsyncQuery(this, cluster, (AsyncNode)node, policy, listener, statement);
+				tasks[count++] = new AsyncQuery(this, cluster, (AsyncNode)node, policy, listener, statement, taskId);
 			}
 
 			// Dispatch commands to nodes.

@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2022 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -20,6 +20,7 @@ namespace Aerospike.Client
 	{
 		private readonly RecordSequenceListener listener;
 		private readonly Statement statement;
+		private readonly ulong taskId;
 		private readonly PartitionTracker tracker;
 		private readonly NodePartitions nodePartitions;
 
@@ -30,23 +31,28 @@ namespace Aerospike.Client
 			QueryPolicy policy,
 			RecordSequenceListener listener,
 			Statement statement,
+			ulong taskId,
 			PartitionTracker tracker,
 			NodePartitions nodePartitions
 		) : base(executor, cluster, policy, (AsyncNode)nodePartitions.node, tracker.socketTimeout, tracker.totalTimeout)
 		{
 			this.listener = listener;
 			this.statement = statement;
+			this.taskId = taskId;
 			this.tracker = tracker;
 			this.nodePartitions = nodePartitions;
 		}
 
 		protected internal override void WriteBuffer()
 		{
-			SetQuery(policy, statement, false, nodePartitions);
+			SetQuery(cluster, policy, statement, taskId, false, nodePartitions);
 		}
 
-		protected internal override void ParseRow(Key key)
+		protected internal override void ParseRow()
 		{
+			ulong bval;
+			Key key = ParseKey(fieldCount, out bval);
+
 			if ((info3 & Command.INFO3_PARTITION_DONE) != 0)
 			{
 				// Only mark partition done when resultCode is OK.
@@ -66,7 +72,7 @@ namespace Aerospike.Client
 
 			Record record = ParseRecord();
 			listener.OnRecord(key, record);
-			tracker.SetDigest(nodePartitions, key);
+			tracker.SetLast(nodePartitions, key, bval);
 		}
 
 		protected internal override void OnFailure(AerospikeException ae)

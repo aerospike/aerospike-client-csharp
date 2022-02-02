@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2022 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -70,8 +70,11 @@ namespace Aerospike.Client
 			SetScan(scanPolicy, ns, setName, binNames, taskId, nodePartitions);
 		}
 
-		protected internal override void ParseRow(Key key)
+		protected internal override void ParseRow()
 		{
+			ulong bval;
+			Key key = ParseKey(fieldCount, out bval);
+
 			if ((info3 & Command.INFO3_PARTITION_DONE) != 0)
 			{
 				// Only mark partition done when resultCode is OK.
