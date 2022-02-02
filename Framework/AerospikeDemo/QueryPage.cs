@@ -40,8 +40,8 @@ namespace Aerospike.Demo
 			stmt.Namespace = args.ns;
 			stmt.SetName = setName;
 			stmt.BinNames = new string[] {binName};
-			stmt.Filter = Filter.Range(binName, 70, 150);
-			stmt.MaxRecords = 50;
+			stmt.Filter = Filter.Range(binName, 1, 200);
+			stmt.MaxRecords = 100;
 
 			PartitionFilter filter = PartitionFilter.All();
 

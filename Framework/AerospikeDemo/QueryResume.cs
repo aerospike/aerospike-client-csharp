@@ -15,6 +15,7 @@
  * the License.
  */
 using Aerospike.Client;
+using System.Threading;
 
 namespace Aerospike.Demo
 {
@@ -122,7 +123,9 @@ namespace Aerospike.Demo
 
 		public void QueryListener(Key key, Record record)
 		{
-			if (recordMax > 0 && recordCount >= recordMax)
+			int count = Interlocked.Increment(ref recordCount);
+
+			if (recordMax > 0 && count >= recordMax)
 			{
 				// Terminate query. The query last record key will not be set
 				// and the current record will be returned again if the query resumes
@@ -131,7 +134,6 @@ namespace Aerospike.Demo
 				// error on a backup).
 				throw new AerospikeException.QueryTerminated();
 			}
-			recordCount++;
 		}
 	}
 }
