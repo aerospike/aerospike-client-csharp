@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2019 Aerospike, Inc.
+ * Copyright 2012-2021 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -35,11 +35,23 @@ namespace Aerospike.Client
 		SYS_ADMIN = 1,
 
 		/// <summary>
-		/// User can perform data administration functions on a database that do not involve user
-		/// administration.  Examples include index and user defined function management.
-		/// Global scope only.
+		/// User can perform UDF and SINDEX administration actions. Global scope only.
 		/// </summary>
 		DATA_ADMIN = 2,
+
+		/// <summary>
+		/// User can perform user defined function(UDF) administration actions.
+		/// Examples include create/drop UDF. Global scope only.
+		/// Requires server version 5.8+
+		/// </summary>
+		UDF_ADMIN = 3,
+
+		/// <summary>
+		/// User can perform secondary index administration actions.
+		/// Examples include create/drop index. Global scope only.
+		/// Requires server version 5.8+
+		/// </summary>
+		SINDEX_ADMIN = 4,
 
 		/// <summary>
 		/// User can read data.
@@ -59,6 +71,12 @@ namespace Aerospike.Client
 		/// <summary>
 		/// User can write data.
 		/// </summary>
-		WRITE = 13
+		WRITE = 13,
+
+		/// <summary>
+		/// User can truncate data.
+		/// Requires server version 5.8+
+		/// </summary>
+		TRUNCATE = 14
 	}
 }
