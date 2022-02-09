@@ -131,13 +131,6 @@ namespace Aerospike.Client
 			{
 				filter.partitions = InitPartitions(filter.count, filter.digest);
 			}
-			else
-			{
-				foreach (PartitionStatus part in filter.partitions)
-				{
-					part.done = false;
-				}
-			}
 			this.partitions = filter.partitions;
 			this.partitionFilter = filter;
 			InitTimeout(policy);
@@ -214,7 +207,9 @@ namespace Aerospike.Client
 
 			foreach (PartitionStatus part in partitions)
 			{
-				if (!part.done)
+				// On first iteration, request all partitions.
+				// On subsequent iterations, only request partitions marked for retry.
+				if (iteration == 1 || part.retry)
 				{
 					Node node = Volatile.Read(ref master[part.id]);
 
@@ -242,6 +237,7 @@ namespace Aerospike.Client
 						list.Add(np);
 					}
 					np.AddPartition(part);
+					part.retry = false;
 				}
 			}
 
@@ -283,10 +279,10 @@ namespace Aerospike.Client
 			return null;
 		}
 
-		public void PartitionDone(NodePartitions nodePartitions, int partitionId)
+		public void PartitionUnavailable(NodePartitions nodePartitions, int partitionId)
 		{
-			partitions[partitionId - partitionBegin].done = true;
-			nodePartitions.partsReceived++;
+			partitions[partitionId - partitionBegin].retry = true;
+			nodePartitions.partsUnavailable++;
 		}
 
 		public void SetDigest(NodePartitions nodePartitions, Key key)
@@ -308,19 +304,17 @@ namespace Aerospike.Client
 		public bool IsComplete(Policy policy)
 		{
 			long recordCount = 0;
-			int partsRequested = 0;
-			int partsReceived = 0;
+			int partsUnavailable = 0;
 
 			foreach (NodePartitions np in nodePartitionsList)
 			{
 				recordCount += np.recordCount;
-				partsRequested += np.partsRequested;
-				partsReceived += np.partsReceived;
+				partsUnavailable += np.partsUnavailable;
 				//Log.Info("Node " + np.node + " partsFull=" + np.partsFull.Count + " partsPartial=" + np.partsPartial.Count +
-				//	" partsReceived=" + np.partsReceived + " recordsRequested=" + np.recordMax + " recordsReceived=" + np.recordCount);
+				//	" partsUnavailable=" + np.partsUnavailable + " recordsRequested=" + np.recordMax + " recordsReceived=" + np.recordCount);
 			}
 
-			if (partsReceived >= partsRequested)
+			if (partsUnavailable == 0)
 			{
 				if (partitionFilter != null && recordCount == 0)
 				{
@@ -390,18 +384,28 @@ namespace Aerospike.Client
 			return false;
 		}
 
-		public bool ShouldRetry(AerospikeException ae)
+		public bool ShouldRetry(NodePartitions nodePartitions, AerospikeException ae)
 		{
 			switch (ae.Result)
 			{
 				case ResultCode.SERVER_NOT_AVAILABLE:
-				case ResultCode.PARTITION_UNAVAILABLE:
 				case ResultCode.TIMEOUT:
 					if (exceptions == null)
 					{
 						exceptions = new List<AerospikeException>();
 					}
 					exceptions.Add(ae);
+
+					foreach (PartitionStatus ps in nodePartitions.partsFull)
+					{
+						ps.retry = true;
+					}
+
+					foreach (PartitionStatus ps in nodePartitions.partsPartial)
+					{
+						ps.retry = true;
+					}
+					nodePartitions.partsUnavailable = nodePartitions.partsFull.Count + nodePartitions.partsPartial.Count;
 					return true;
 
 				default:
@@ -417,8 +421,7 @@ namespace Aerospike.Client
 		public readonly List<PartitionStatus> partsPartial;
 		public long recordCount;
 		public long recordMax;
-		public int partsRequested;
-		public int partsReceived;
+		public int partsUnavailable;
 
 		public NodePartitions(Node node, int capacity)
 		{
@@ -437,7 +440,6 @@ namespace Aerospike.Client
 			{
 				partsPartial.Add(part);
 			}
-			partsRequested++;
 		}
 	}
 }

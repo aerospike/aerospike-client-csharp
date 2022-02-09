@@ -75,6 +75,15 @@ namespace Aerospike.Client
 		public bool failOnClusterChange;
 
 		/// <summary>
+		/// Is query expected to return less than 100 records.
+		/// If true, the server will optimize the query for a small record set.
+		/// This field is ignored for aggregation queries, background queries
+		/// and server versions &lt; 6.0.
+		/// <para>Default: false</para>
+		/// </summary>
+		public bool shortQuery;
+
+		/// <summary>
 		/// Copy query policy from another query policy.
 		/// </summary>
 		public QueryPolicy(QueryPolicy other) : base(other)
@@ -84,6 +93,7 @@ namespace Aerospike.Client
 			this.recordQueueSize = other.recordQueueSize;
 			this.includeBinData = other.includeBinData;
 			this.failOnClusterChange = other.failOnClusterChange;
+			this.shortQuery = other.shortQuery;
 		}
 
 		/// <summary>

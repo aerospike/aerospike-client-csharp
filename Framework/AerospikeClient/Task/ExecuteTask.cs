@@ -43,12 +43,30 @@ namespace Aerospike.Client
 			Node[] nodes = cluster.ValidateNodes();
 			
 			string module = (scan) ? "scan" : "query";
-			string oldCommand = "jobs:module=" + module + ";cmd=get-job;trid=" + taskId;
-			string newCommand = module + "-show:trid=" + taskId;
+			string cmd1 = "query-show:trid=" + taskId;
+			string cmd2 = module + "-show:trid=" + taskId;
+			string cmd3 = "jobs:module=" + module + ";cmd=get-job;trid=" + taskId;
 
 			foreach (Node node in nodes)
 			{
-				string command = node.HasQueryShow ? newCommand : oldCommand;
+				string command;
+
+				if (node.HasPartitionQuery)
+				{
+					// query-show works for both scan and query.
+					command = cmd1;
+				}
+				else if (node.HasQueryShow)
+				{
+					// scan-show and query-show are separate.
+					command = cmd2;
+				}
+				else
+				{
+					// old job monitor syntax.
+					command = cmd3;
+				}
+
 				string response = Info.Request(policy, node, command);
 
 				if (response.StartsWith("ERROR:2"))

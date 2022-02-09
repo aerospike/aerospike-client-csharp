@@ -55,12 +55,12 @@ namespace Aerospike.Client
 
 			if ((info3 & Command.INFO3_PARTITION_DONE) != 0)
 			{
-				// Only mark partition done when resultCode is OK.
-				// The server may return PARTITION_UNAVAILABLE which means the
-				// specified partition will need to be requested on the query retry.
-				if (resultCode == 0)
+				// When an error code is received, mark partition as unavailable
+				// for the current round. Unavailable partitions will be retried
+				// in the next round. Generation is overloaded as partitionId.
+				if (resultCode != 0)
 				{
-					tracker.PartitionDone(nodePartitions, generation);
+					tracker.PartitionUnavailable(nodePartitions, generation);
 				}
 				return;
 			}
@@ -77,7 +77,7 @@ namespace Aerospike.Client
 
 		protected internal override void OnFailure(AerospikeException ae)
 		{
-			if (tracker.ShouldRetry(ae))
+			if (tracker.ShouldRetry(nodePartitions, ae))
 			{
 				executor.ChildSuccess(serverNode);
 				return;

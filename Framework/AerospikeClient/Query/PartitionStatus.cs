@@ -24,7 +24,7 @@ namespace Aerospike.Client
 		public ulong bval;
 		public byte[] digest;
 		public readonly int id;
-		public bool done;
+		public bool retry;
 
 		public PartitionStatus(int id)
 		{
