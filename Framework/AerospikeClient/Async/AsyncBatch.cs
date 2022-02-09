@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2022 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -96,8 +96,10 @@ namespace Aerospike.Client
 			}
 		}
 
-		internal override void ParseRow()
+		protected internal override void ParseRow()
 		{
+			SkipKey(fieldCount);
+
 			BatchRead record = records[batchIndex];
 
 			if (resultCode == 0)
@@ -205,8 +207,10 @@ namespace Aerospike.Client
 			}
 		}
 
-		internal override void ParseRow()
+		protected internal override void ParseRow()
 		{
+			SkipKey(fieldCount);
+
 			BatchRead record = records[batchIndex];
 
 			if (resultCode == 0)
@@ -337,8 +341,10 @@ namespace Aerospike.Client
 			}
 		}
 
-		internal override void ParseRow()
+		protected internal override void ParseRow()
 		{
+			SkipKey(fieldCount);
+
 			if (resultCode == 0)
 			{
 				records[batchIndex] = ParseRecord();
@@ -458,8 +464,10 @@ namespace Aerospike.Client
 			}
 		}
 
-		internal override void ParseRow()
+		protected internal override void ParseRow()
 		{
+			SkipKey(fieldCount);
+
 			Key keyOrig = keys[batchIndex];
 
 			if (resultCode == 0)
@@ -573,8 +581,10 @@ namespace Aerospike.Client
 			}
 		}
 
-		internal override void ParseRow()
+		protected internal override void ParseRow()
 		{
+			SkipKey(fieldCount);
+
 			if (opCount > 0)
 			{
 				throw new AerospikeException.Parse("Received bins that were not requested!");
@@ -680,8 +690,10 @@ namespace Aerospike.Client
 			}
 		}
 
-		internal override void ParseRow()
+		protected internal override void ParseRow()
 		{
+			SkipKey(fieldCount);
+
 			if (opCount > 0)
 			{
 				throw new AerospikeException.Parse("Received bins that were not requested!");
@@ -777,8 +789,10 @@ namespace Aerospike.Client
 			SetBatchOperate(batchPolicy, records, batch);
 		}
 
-		internal override void ParseRow()
+		protected internal override void ParseRow()
 		{
+			SkipKey(fieldCount);
+
 			BatchRecord record = records[batchIndex];
 
 			if (resultCode == 0)
@@ -895,8 +909,10 @@ namespace Aerospike.Client
 			SetBatchOperate(batchPolicy, records, batch);
 		}
 
-		internal override void ParseRow()
+		protected internal override void ParseRow()
 		{
+			SkipKey(fieldCount);
+
 			BatchRecord record = records[batchIndex];
 
 			if (resultCode == 0)
@@ -1032,8 +1048,10 @@ namespace Aerospike.Client
 			SetBatchOperate(batchPolicy, keys, batch, null, ops, attr);
 		}
 
-		internal override void ParseRow()
+		protected internal override void ParseRow()
 		{
+			SkipKey(fieldCount);
+
 			BatchRecord record = records[batchIndex];
 
 			if (resultCode == 0)
@@ -1151,8 +1169,10 @@ namespace Aerospike.Client
 			SetBatchOperate(batchPolicy, keys, batch, null, ops, attr);
 		}
 
-		internal override void ParseRow()
+		protected internal override void ParseRow()
 		{
+			SkipKey(fieldCount);
+
 			Key keyOrig = keys[batchIndex];
 			BatchRecord record;
 
@@ -1282,8 +1302,10 @@ namespace Aerospike.Client
 			SetBatchUDF(batchPolicy, keys, batch, packageName, functionName, argBytes, attr);
 		}
 
-		internal override void ParseRow()
+		protected internal override void ParseRow()
 		{
+			SkipKey(fieldCount);
+
 			BatchRecord record = records[batchIndex];
 
 			if (resultCode == 0)
@@ -1426,8 +1448,10 @@ namespace Aerospike.Client
 			SetBatchUDF(batchPolicy, keys, batch, packageName, functionName, argBytes, attr);
 		}
 
-		internal override void ParseRow()
+		protected internal override void ParseRow()
 		{
+			SkipKey(fieldCount);
+
 			Key keyOrig = keys[batchIndex];
 			BatchRecord record;
 
@@ -1625,50 +1649,6 @@ namespace Aerospike.Client
 			this.sequenceSC = other.sequenceSC;
 		}
 
-		protected internal override bool ParseGroup()
-		{
-			// Parse each message response and add it to the result array
-			while (dataOffset < dataLength)
-			{
-				dataOffset += 3;
-				info3 = dataBuffer[dataOffset];
-				dataOffset += 2;
-				resultCode = dataBuffer[dataOffset];
-
-				// If this is the end marker of the response, do not proceed further
-				if ((info3 & Command.INFO3_LAST) != 0)
-				{
-					// The server sets an error on the last response when respondAll is false
-					// and the error is not KEY_NOT_FOUND_ERROR nor FILTERED_OUT.
-					if (resultCode != 0)
-					{
-						throw new AerospikeException(resultCode);
-					}
-					return true;
-				}
-				dataOffset++;
-				generation = ByteUtil.BytesToInt(dataBuffer, dataOffset);
-				dataOffset += 4;
-				expiration = ByteUtil.BytesToInt(dataBuffer, dataOffset);
-				dataOffset += 4;
-				batchIndex = ByteUtil.BytesToInt(dataBuffer, dataOffset);
-				dataOffset += 4;
-				fieldCount = ByteUtil.BytesToShort(dataBuffer, dataOffset);
-				dataOffset += 2;
-				opCount = ByteUtil.BytesToShort(dataBuffer, dataOffset);
-				dataOffset += 2;
-
-				SkipKey(fieldCount);
-				ParseRow();
-			}
-			return false;
-		}
-
-		protected internal override void ParseRow(Key key)
-		{
-			// Batch uses it's own ParseRow(), so this method will not be called for batch.
-		}
-
 		protected internal override bool PrepareRetry(bool timeout)
 		{
 			if (!(policy.replica == Replica.SEQUENCE || policy.replica == Replica.PREFER_RACK))
@@ -1735,6 +1715,5 @@ namespace Aerospike.Client
 
 		internal abstract AsyncBatchCommand CreateCommand(BatchNode batchNode);
 		internal abstract List<BatchNode> GenerateBatchNodes();
-		internal abstract void ParseRow();
 	}
 }

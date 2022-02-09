@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2022 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -15,13 +15,10 @@
  * the License.
  */
 using System;
-using System.Collections.Generic;
-using System.ComponentModel;
 using System.Drawing;
 using System.Text;
 using System.Windows.Forms;
 using System.IO;
-using System.Security.Authentication;
 using System.Text.RegularExpressions;
 using System.Threading;
 using Aerospike.Client;
@@ -120,7 +117,9 @@ namespace Aerospike.Demo
                     new ExampleTreeNode("Query Region Filter", new QueryRegionFilter(console)),
                     new ExampleTreeNode("Query Filter", new QueryFilter(console)),
                     new ExampleTreeNode("Query Expression", new QueryExp(console)),
-                    new ExampleTreeNode("Query Sum", new QuerySum(console)),
+					new ExampleTreeNode("Query Page", new QueryPage(console)),
+					new ExampleTreeNode("Query Resume", new QueryResume(console)),
+					new ExampleTreeNode("Query Sum", new QuerySum(console)),
                     new ExampleTreeNode("Query Average", new QueryAverage(console)),
                     new ExampleTreeNode("Query Execute", new QueryExecute(console)),
                     new ExampleTreeNode("Query Geo Collection", new QueryGeoCollection(console))

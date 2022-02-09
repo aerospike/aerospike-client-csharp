@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2020 Aerospike, Inc.
+ * Copyright 2012-2022 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -40,8 +40,8 @@ namespace Aerospike.Client
 		internal Value[] functionArgs;
 		internal Operation[] operations;
 		internal ulong taskId;
+		internal long maxRecords;
 		internal int recordsPerSecond;
-		internal bool returnData;
 
 		/// <summary>
 		/// Query namespace.
@@ -211,7 +211,7 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
-		/// Optional query task id.
+		/// Optional task id.
 		/// </summary>
 		public ulong TaskId
 		{
@@ -220,11 +220,26 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
-		/// Set optional query task id.
+		/// Set optional task id.
 		/// </summary>
 		public void SetTaskId(long taskId)
 		{
 			this.taskId = (ulong)taskId;
+		}
+
+		/// <summary>
+		/// Maximum number of records returned (for foreground query) or processed
+		/// (for background execute query). This number is divided by the number of nodes
+		/// involved in the query. The actual number of records returned may be less than
+		/// maxRecords if node record counts are small and unbalanced across nodes.
+		/// <para>
+		/// Default: 0 (do not limit record count)
+		/// </para>
+		/// </summary>
+		public long MaxRecords
+		{
+			set { maxRecords = value; }
+			get { return maxRecords; }
 		}
 
 		/// <summary>
@@ -364,16 +379,11 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
-		/// Prepare statement just prior to execution.
+		/// Return taskId if set by user. Otherwise return a new taskId.
 		/// </summary>
-		internal void Prepare(bool returnData)
+		internal ulong PrepareTaskId()
 		{
-			this.returnData = returnData;
-
-			if (taskId == 0)
-			{
-				taskId = RandomShift.ThreadLocalInstance.NextLong();
-			}
+			return (taskId != 0) ? taskId : RandomShift.ThreadLocalInstance.NextLong();
 		}
 	}
 }

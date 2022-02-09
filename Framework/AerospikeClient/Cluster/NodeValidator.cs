@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2022 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -310,6 +310,10 @@ namespace Aerospike.Client
 					else if (feature.Equals("batch-any"))
 					{
 						this.features |= Node.HAS_BATCH_ANY;
+					}
+					else if (feature.Equals("pquery"))
+					{
+						this.features |= Node.HAS_PARTITION_QUERY;
 					}
 				}
 			}

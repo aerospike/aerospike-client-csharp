@@ -88,14 +88,14 @@ namespace Aerospike.Demo
 
 		public void ScanCallback(Key key, Record record)
 		{
+			recordCount++;
+
 			if (recordMax > 0 && recordCount >= recordMax)
 			{
 				// Terminate scan. The scan last digest will not be set and the current record
 				// will be returned again if the scan resumes at a later time.
 				throw new AerospikeException.ScanTerminated();
 			}
-
-			recordCount++;
 		}
 	}
 }

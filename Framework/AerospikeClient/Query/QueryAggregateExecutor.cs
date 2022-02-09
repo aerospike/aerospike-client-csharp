@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2022 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -109,7 +109,7 @@ namespace Aerospike.Client
 
 		protected internal override MultiCommand CreateCommand(Node node, ulong clusterKey, bool first)
 		{
-			return new QueryAggregateCommand(cluster, node, policy, statement, inputQueue, cancel.Token, clusterKey, first);
+			return new QueryAggregateCommand(cluster, node, policy, statement, taskId, inputQueue, cancel.Token, clusterKey, first);
 		}
 
 		protected internal override void SendCancel()

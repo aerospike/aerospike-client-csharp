@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2022 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -88,7 +88,7 @@ namespace Aerospike.Client
 			return true;
 		}
 
-		protected internal virtual bool ParseGroup()
+		protected internal bool ParseGroup()
 		{
 			// Parse each message response and add it to the result array
 			while (dataOffset < dataLength)
@@ -121,13 +121,12 @@ namespace Aerospike.Client
 				opCount = ByteUtil.BytesToShort(dataBuffer, dataOffset);
 				dataOffset += 2;
 
-				Key key = ParseKey(fieldCount);
-				ParseRow(key);
+				ParseRow();
 			}
 			return false;
 		}
 
-		protected internal abstract void ParseRow(Key key);
+		protected internal abstract void ParseRow();
 
 		protected internal Record ParseRecord()
 		{

@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2022 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -23,6 +23,7 @@ namespace Aerospike.Client
 	public sealed class QueryAggregateCommand : MultiCommand
 	{
 		private readonly Statement statement;
+		private readonly ulong taskId;
 		private readonly BlockingCollection<object> inputQueue;
 		private readonly CancellationToken cancelToken;
 
@@ -32,6 +33,7 @@ namespace Aerospike.Client
 			Node node,
 			QueryPolicy policy,
 			Statement statement,
+			ulong taskId,
 			BlockingCollection<object> inputQueue,
 			CancellationToken cancelToken,
 			ulong clusterKey,
@@ -39,17 +41,20 @@ namespace Aerospike.Client
 		) : base(cluster, policy, node, statement.ns, clusterKey, first)
 		{
 			this.statement = statement;
+			this.taskId = taskId;
 			this.inputQueue = inputQueue;
 			this.cancelToken = cancelToken;
 		}
 
 		protected internal override void WriteBuffer()
 		{
-			SetQuery(policy, statement, false, null);
+			SetQuery(cluster, policy, statement, taskId, false, null);
 		}
 
-		protected internal override void ParseRow(Key key)
+		protected internal override void ParseRow()
 		{
+			SkipKey(fieldCount);
+
 			if (resultCode != 0)
 			{
 				// Aggregation scans (with null query filter) will return KEY_NOT_FOUND_ERROR

@@ -359,6 +359,8 @@
     </Compile>
     <Compile Include="Query\PartitionStatus.cs" />
     <Compile Include="Query\PredExp.cs" />
+    <Compile Include="Query\QueryListenerCommand.cs" />
+    <Compile Include="Query\QueryListenerExecutor.cs" />
     <Compile Include="Query\QueryPartitionExecutor.cs" />
     <Compile Include="Query\QueryPartitionCommand.cs" />
     <Compile Include="Query\IQueryExecutor.cs" />
@@ -379,6 +381,7 @@
     <Compile Include="Query\RecordSet.cs" />
     <Compile Include="Query\RegexFlag.cs" />
     <Compile Include="Query\ResultSet.cs" />
+    <Compile Include="Query\QueryListener.cs" />
     <Compile Include="Query\ScanCallback.cs" />
     <Compile Include="Query\ServerCommand.cs" />
     <Compile Include="Query\Statement.cs" />

@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2022 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -96,13 +96,16 @@ namespace Aerospike.Admin
 		private static BindingList<PrivilegeType> GetPrivilegeTypeBinding()
 		{
 			BindingList<PrivilegeType> bindingList = new BindingList<PrivilegeType>();
-			bindingList.Add(new PrivilegeType(PrivilegeCode.READ, "read"));
-			bindingList.Add(new PrivilegeType(PrivilegeCode.READ_WRITE, "read-write"));
-			bindingList.Add(new PrivilegeType(PrivilegeCode.READ_WRITE_UDF, "read-write-udf"));
-			bindingList.Add(new PrivilegeType(PrivilegeCode.WRITE, "write"));
-			bindingList.Add(new PrivilegeType(PrivilegeCode.SYS_ADMIN, "sys-admin"));
-			bindingList.Add(new PrivilegeType(PrivilegeCode.USER_ADMIN, "user-admin"));
-			bindingList.Add(new PrivilegeType(PrivilegeCode.DATA_ADMIN, "data-admin"));
+			bindingList.Add(new PrivilegeType(PrivilegeCode.READ, Role.Read));
+			bindingList.Add(new PrivilegeType(PrivilegeCode.READ_WRITE, Role.ReadWrite));
+			bindingList.Add(new PrivilegeType(PrivilegeCode.READ_WRITE_UDF, Role.ReadWriteUdf));
+			bindingList.Add(new PrivilegeType(PrivilegeCode.WRITE, Role.Write));
+			bindingList.Add(new PrivilegeType(PrivilegeCode.TRUNCATE, Role.Truncate));
+			bindingList.Add(new PrivilegeType(PrivilegeCode.SYS_ADMIN, Role.SysAdmin));
+			bindingList.Add(new PrivilegeType(PrivilegeCode.USER_ADMIN, Role.UserAdmin));
+			bindingList.Add(new PrivilegeType(PrivilegeCode.DATA_ADMIN, Role.DataAdmin));
+			bindingList.Add(new PrivilegeType(PrivilegeCode.UDF_ADMIN, Role.UDFAdmin));
+			bindingList.Add(new PrivilegeType(PrivilegeCode.SINDEX_ADMIN, Role.SIndexAdmin));
 			return bindingList;
 		}
 

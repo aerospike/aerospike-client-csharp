@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2022 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -609,16 +609,14 @@ namespace Aerospike.Client
 		//----------------------------------------------------------
 
 		/// <summary>
-		/// Apply user defined function on records that match the statement filter.
+		/// Apply user defined function on records that match the background query statement filter.
 		/// Records are not returned to the client.
 		/// This asynchronous server call will return before the command is complete.  
 		/// The user can optionally wait for command completion by using the returned 
 		/// ExecuteTask instance.
 		/// </summary>
 		/// <param name="policy">configuration parameters, pass in null for defaults</param>
-		/// <param name="statement">
-		/// record filter. Statement instance is not suitable for reuse since it's modified in this method.
-		/// </param>
+		/// <param name="statement">background query definition</param>
 		/// <param name="packageName">server package where user defined function resides</param>
 		/// <param name="functionName">function name</param>
 		/// <param name="functionArgs">to pass to function name, if any</param>
@@ -626,16 +624,14 @@ namespace Aerospike.Client
 		ExecuteTask Execute(WritePolicy policy, Statement statement, string packageName, string functionName, params Value[] functionArgs);
 
 		/// <summary>
-		/// Apply operations on records that match the statement filter.
+		/// Apply operations on records that match the background query statement filter.
 		/// Records are not returned to the client.
 		/// This asynchronous server call will return before the command is complete.
 		/// The user can optionally wait for command completion by using the returned
 		/// ExecuteTask instance.
 		/// </summary>
 		/// <param name="policy">write configuration parameters, pass in null for defaults</param>
-		/// <param name="statement">
-		/// record filter. Statement instance is not suitable for reuse since it's modified in this method.
-		/// </param>
+		/// <param name="statement">background query definition</param>
 		/// <param name="operations">list of operations to be performed on selected records</param>
 		/// <exception cref="AerospikeException">if command fails</exception>
 		ExecuteTask Execute(WritePolicy policy, Statement statement, params Operation[] operations);
@@ -648,9 +644,7 @@ namespace Aerospike.Client
 		/// Execute query and call action for each record returned from server.
 		/// </summary>
 		/// <param name="policy">generic configuration parameters, pass in null for defaults</param>
-		/// <param name="statement">
-		/// query filter. Statement instance is not suitable for reuse since it's modified in this method.
-		/// </param>
+		/// <param name="statement">query definition</param>
 		/// <param name="action">action methods to be called for each record</param>
 		/// <exception cref="AerospikeException">if query fails</exception>
 		void Query(QueryPolicy policy, Statement statement, Action<Key, Record> action);
@@ -661,22 +655,78 @@ namespace Aerospike.Client
 		/// record iterator.
 		/// </summary>
 		/// <param name="policy">generic configuration parameters, pass in null for defaults</param>
-		/// <param name="statement">
-		/// query filter. Statement instance is not suitable for reuse since it's modified in this method.
-		/// </param>
+		/// <param name="statement">query definition</param>
 		/// <exception cref="AerospikeException">if query fails</exception>
 		RecordSet Query(QueryPolicy policy, Statement statement);
+
+		/// <summary>
+		/// Execute query on all server nodes and return records via the listener. This method will
+		/// block until the query is complete. Listener callbacks are made within the scope of this call.
+		/// <para>
+		/// If <see cref="QueryPolicy.maxConcurrentNodes"/> is not 1, the supplied listener must handle
+		/// shared data in a thread-safe manner, because the listener will be called by multiple query
+		/// threads (one thread per node) in parallel.
+		/// </para>
+		/// <para>
+		/// Requires server version 6.0+ if using a secondary index query.
+		/// </para>
+		/// </summary>
+		/// <param name="policy">query configuration parameters, pass in null for defaults</param>
+		/// <param name="statement">query definition</param>
+		/// <param name="listener">where to send results</param>
+		/// <exception cref="AerospikeException">if query fails</exception>
+		void Query(QueryPolicy policy, Statement statement, QueryListener listener);
+
+		/// <summary>
+		/// Execute query for specified partitions and return records via the listener. This method will
+		/// block until the query is complete. Listener callbacks are made within the scope of this call.
+		/// <para>
+		/// If <see cref="QueryPolicy.maxConcurrentNodes"/> is not 1, the supplied listener must handle
+		/// shared data in a thread-safe manner, because the listener will be called by multiple query
+		/// threads (one thread per node) in parallel.
+		/// </para>
+		/// <para>
+		/// The completion status of all partitions is stored in the partitionFilter when the query terminates.
+		/// This partitionFilter can then be used to resume an incomplete query at a later time.
+		/// This is the preferred method for query terminate/resume functionality.
+		/// </para>
+		/// <para>
+		/// Requires server version 6.0+ if using a secondary index query.
+		/// </para>
+		/// </summary>
+		/// <param name="policy">query configuration parameters, pass in null for defaults</param>
+		/// <param name="statement">query definition</param>
+		/// <param name="partitionFilter">
+		/// data partition filter. Set to <see cref="PartitionFilter.All"/> for all partitions.
+		/// </param>
+		/// <param name="listener">where to send results</param>
+		/// <exception cref="AerospikeException">if query fails</exception>
+		void Query
+		(
+			QueryPolicy policy,
+			Statement statement,
+			PartitionFilter partitionFilter,
+			QueryListener listener
+		);
 
 		/// <summary>
 		/// Execute query for specified partitions and return record iterator.  The query executor puts
 		/// records on a queue in separate threads.  The calling thread concurrently pops records off
 		/// the queue through the record iterator.
+		/// <para>
+		/// Requires server version 6.0+ if using a secondary index query.
+		/// </para>
 		/// </summary>
 		/// <param name="policy">query configuration parameters, pass in null for defaults</param>
-		/// <param name="statement">query filter. Statement instance is not suitable for reuse since it's modified in this method.</param>
+		/// <param name="statement">query definition</param>
 		/// <param name="partitionFilter">filter on a subset of data partitions</param>
 		/// <exception cref="AerospikeException">if query fails</exception>
-		RecordSet QueryPartitions(QueryPolicy policy, Statement statement, PartitionFilter partitionFilter);
+		RecordSet QueryPartitions
+		(
+			QueryPolicy policy,
+			Statement statement,
+			PartitionFilter partitionFilter
+		);
 
 		/// <summary>
 		/// Execute query, apply statement's aggregation function, and return result iterator. 
@@ -691,14 +741,19 @@ namespace Aerospike.Client
 		/// </para>
 		/// </summary>
 		/// <param name="policy">query configuration parameters, pass in null for defaults</param>
-		/// <param name="statement">
-		/// query filter. Statement instance is not suitable for reuse since it's modified in this method.
-		/// </param>
+		/// <param name="statement">query definition</param>
 		/// <param name="packageName">server package where user defined function resides</param>
 		/// <param name="functionName">aggregation function name</param>
 		/// <param name="functionArgs">arguments to pass to function name, if any</param>
 		/// <exception cref="AerospikeException">if query fails</exception>
-		ResultSet QueryAggregate(QueryPolicy policy, Statement statement, string packageName, string functionName, params Value[] functionArgs);
+		ResultSet QueryAggregate
+		(
+			QueryPolicy policy,
+			Statement statement,
+			string packageName,
+			string functionName,
+			params Value[] functionArgs
+		);
 
 		/// <summary>
 		/// Execute query, apply statement's aggregation function, call action for each aggregation
@@ -706,8 +761,7 @@ namespace Aerospike.Client
 		/// </summary>
 		/// <param name="policy">query configuration parameters, pass in null for defaults</param>
 		/// <param name="statement">
-		/// query filter with aggregate functions already initialized by SetAggregateFunction().
-		/// Statement instance is not suitable for reuse since it's modified in this method.
+		/// query definition with aggregate functions already initialized by SetAggregateFunction().
 		/// </param>
 		/// <param name="action">action methods to be called for each aggregation object</param>
 		/// <exception cref="AerospikeException">if query fails</exception>
@@ -726,8 +780,7 @@ namespace Aerospike.Client
 		/// </summary>
 		/// <param name="policy">query configuration parameters, pass in null for defaults</param>
 		/// <param name="statement">
-		/// query filter with aggregate functions already initialized by SetAggregateFunction().
-		/// Statement instance is not suitable for reuse since it's modified in this method.
+		/// query definition with aggregate functions already initialized by SetAggregateFunction().
 		/// </param>
 		/// <exception cref="AerospikeException">if query fails</exception>
 		ResultSet QueryAggregate(QueryPolicy policy, Statement statement);
@@ -745,7 +798,15 @@ namespace Aerospike.Client
 		/// <param name="binName">bin name that data is indexed on</param>
 		/// <param name="indexType">underlying data type of secondary index</param>
 		/// <exception cref="AerospikeException">if index create fails</exception>
-		IndexTask CreateIndex(Policy policy, string ns, string setName, string indexName, string binName, IndexType indexType);
+		IndexTask CreateIndex
+		(
+			Policy policy,
+			string ns,
+			string setName,
+			string indexName,
+			string binName,
+			IndexType indexType
+		);
 
 		/// <summary>
 		/// Create complex secondary index on bins containing collections.
@@ -761,7 +822,16 @@ namespace Aerospike.Client
 		/// <param name="indexType">underlying data type of secondary index</param>
 		/// <param name="indexCollectionType">index collection type</param>
 		/// <exception cref="AerospikeException">if index create fails</exception>
-		IndexTask CreateIndex(Policy policy, string ns, string setName, string indexName, string binName, IndexType indexType, IndexCollectionType indexCollectionType);
+		IndexTask CreateIndex
+		(
+			Policy policy,
+			string ns,
+			string setName,
+			string indexName,
+			string binName,
+			IndexType indexType,
+			IndexCollectionType indexCollectionType
+		);
 
 		/// <summary>
 		/// Delete secondary index.

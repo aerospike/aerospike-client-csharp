@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2022 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -34,6 +34,7 @@ namespace Aerospike.Client
 		public const int HAS_PARTITION_SCAN = (1 << 0);
 		public const int HAS_QUERY_SHOW = (1 << 1);
 		public const int HAS_BATCH_ANY = (1 << 2);
+		public const int HAS_PARTITION_QUERY = (1 << 3);
 
 		private static readonly string[] INFO_PERIODIC = new string[] { "node", "peers-generation", "partition-generation" };
 		private static readonly string[] INFO_PERIODIC_REB = new string[] { "node", "peers-generation", "partition-generation", "rebalance-generation" }; 
@@ -929,6 +930,11 @@ namespace Aerospike.Client
 		public bool HasBatchAny
 		{
 			get { return (features & HAS_BATCH_ANY) != 0; }
+		}
+
+		public bool HasPartitionQuery
+		{
+			get { return (features & HAS_PARTITION_QUERY) != 0; }
 		}
 
 		/// <summary>

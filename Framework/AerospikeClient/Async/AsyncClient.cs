@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2022 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -1553,10 +1553,13 @@ namespace Aerospike.Client
 		/// This method schedules the node's query commands with channel selectors and returns.
 		/// Selector threads will process the commands and send the results to the listener.
 		/// </para>
+		/// <para>
+		/// Requires server version 6.0+ if using a secondary index query.
+		/// </para>
 		/// </summary>
 		/// <param name="policy">query configuration parameters, pass in null for defaults</param>
 		/// <param name="listener">where to send results</param>
-		/// <param name="statement">database query command parameters</param>
+		/// <param name="statement">query definition</param>
 		/// <exception cref="AerospikeException">if query fails</exception>
 		public void Query(QueryPolicy policy, RecordSequenceListener listener, Statement statement)
 		{
@@ -1567,10 +1570,9 @@ namespace Aerospike.Client
 
 			Node[] nodes = cluster.ValidateNodes();
 
-			// A scan will be performed if the secondary index filter is null.
-			if (statement.filter == null)
+			if (cluster.hasPartitionQuery || statement.filter == null)
 			{
-				PartitionTracker tracker = new PartitionTracker(policy, nodes);
+				PartitionTracker tracker = new PartitionTracker(policy, statement, nodes);
 				new AsyncQueryPartitionExecutor(cluster, policy, listener, statement, tracker);
 			}
 			else
@@ -1590,13 +1592,22 @@ namespace Aerospike.Client
 		/// <para>
 		/// Each record result is returned in separate OnRecord() calls. 
 		/// </para>
+		/// <para>
+		/// Requires server version 6.0+ if using a secondary index query.
+		/// </para>
 		/// </summary>
 		/// <param name="policy">query configuration parameters, pass in null for defaults</param>
 		/// <param name="listener">where to send results</param>
-		/// <param name="statement">database query command parameters</param>
+		/// <param name="statement">query definition</param>
 		/// <param name="partitionFilter">filter on a subset of data partitions</param>
 		/// <exception cref="AerospikeException">if query fails</exception>
-		public void QueryPartitions(QueryPolicy policy, RecordSequenceListener listener, Statement statement, PartitionFilter partitionFilter)
+		public void QueryPartitions
+		(
+			QueryPolicy policy,
+			RecordSequenceListener listener,
+			Statement statement,
+			PartitionFilter partitionFilter
+		)
 		{
 			if (policy == null)
 			{
@@ -1605,10 +1616,9 @@ namespace Aerospike.Client
 
 			Node[] nodes = cluster.ValidateNodes();
 
-			// A scan will be performed if the secondary index filter is null.
-			if (statement.filter == null)
+			if (cluster.hasPartitionQuery || statement.filter == null)
 			{
-				PartitionTracker tracker = new PartitionTracker(policy, nodes, partitionFilter);
+				PartitionTracker tracker = new PartitionTracker(policy, statement, nodes, partitionFilter);
 				new AsyncQueryPartitionExecutor(cluster, policy, listener, statement, tracker);
 			}
 			else

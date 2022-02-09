@@ -14,33 +14,50 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
+using System.Collections.Generic;
+
 namespace Aerospike.Client
 {
-	public sealed class AsyncQueryPartition : AsyncMultiCommand
+	public sealed class QueryListenerCommand : MultiCommand
 	{
-		private readonly RecordSequenceListener listener;
 		private readonly Statement statement;
 		private readonly ulong taskId;
+		private readonly QueryListener listener;
 		private readonly PartitionTracker tracker;
 		private readonly NodePartitions nodePartitions;
 
-		public AsyncQueryPartition
+		public QueryListenerCommand
 		(
-			AsyncMultiExecutor executor,
-			AsyncCluster cluster,
-			QueryPolicy policy,
-			RecordSequenceListener listener,
+			Cluster cluster,
+			Node node,
+			Policy policy,
 			Statement statement,
 			ulong taskId,
+			QueryListener listener,
 			PartitionTracker tracker,
 			NodePartitions nodePartitions
-		) : base(executor, cluster, policy, (AsyncNode)nodePartitions.node, tracker.socketTimeout, tracker.totalTimeout)
+		) : base(cluster, policy, nodePartitions.node, statement.ns, tracker.socketTimeout, tracker.totalTimeout)
 		{
-			this.listener = listener;
 			this.statement = statement;
 			this.taskId = taskId;
+			this.listener = listener;
 			this.tracker = tracker;
 			this.nodePartitions = nodePartitions;
+		}
+
+		public override void Execute()
+		{
+			try
+			{
+				ExecuteCommand();
+			}
+			catch (AerospikeException ae)
+			{
+				if (!tracker.ShouldRetry(nodePartitions, ae))
+				{
+					throw ae;
+				}
+			}
 		}
 
 		protected internal override void WriteBuffer()
@@ -71,23 +88,14 @@ namespace Aerospike.Client
 			}
 
 			Record record = ParseRecord();
-			listener.OnRecord(key, record);
-			tracker.SetLast(nodePartitions, key, bval);
-		}
 
-		protected internal override void OnFailure(AerospikeException ae)
-		{
-			if (tracker.ShouldRetry(nodePartitions, ae))
+			if (!valid)
 			{
-				executor.ChildSuccess(serverNode);
-				return;
+				throw new AerospikeException.QueryTerminated();
 			}
-			executor.ChildFailure(ae);
-		}
 
-		protected internal override AsyncCommand CloneCommand()
-		{
-			return null;
+			listener(key, record);
+			tracker.SetLast(nodePartitions, key, bval);
 		}
 	}
 }

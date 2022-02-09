@@ -14,21 +14,16 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using System;
-
 namespace Aerospike.Client
 {
-	[Serializable]
-	public sealed class PartitionStatus
-	{
-		public ulong bval;
-		public byte[] digest;
-		public readonly int id;
-		public bool retry;
-
-		public PartitionStatus(int id)
-		{
-			this.id = id;
-		}
-	}
+	/// <summary>
+	/// This method will be called for each record returned from a sync query. The user may throw a 
+	/// <see cref="Aerospike.Client.AerospikeException.QueryTerminated"/> exception if the query
+	/// should be aborted. If an exception is thrown, parallel query command threads to other nodes
+	/// will also be terminated.
+	/// </summary>
+	/// <param name="key">unique record identifier</param>
+	/// <param name="record">record instance</param>
+	/// <exception cref="AerospikeException">if error occurs or query should be terminated</exception>
+	public delegate void QueryListener(Key key, Record record);
 }

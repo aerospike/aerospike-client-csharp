@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2020 Aerospike, Inc.
+ * Copyright 2012-2022 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -25,6 +25,7 @@ namespace Aerospike.Client
 		private readonly RecordSequenceListener listener;
 		private readonly Statement statement;
 		private readonly PartitionTracker tracker;
+		private ulong taskId;
 
 		public AsyncQueryPartitionExecutor
 		(
@@ -40,14 +41,13 @@ namespace Aerospike.Client
 			this.statement = statement;
 			this.tracker = tracker;
 
-			statement.returnData = true;
 			tracker.SleepBetweenRetries = 0;
+			taskId = statement.PrepareTaskId();
 			QueryPartitions();
 		}
 
 		private void QueryPartitions()
 		{
-			statement.taskId = RandomShift.ThreadLocalInstance.NextLong();
 			List<NodePartitions> nodePartitionsList = tracker.AssignPartitionsToNodes(cluster, statement.ns);
 
 			AsyncQueryPartition[] tasks = new AsyncQueryPartition[nodePartitionsList.Count];
@@ -55,7 +55,7 @@ namespace Aerospike.Client
 
 			foreach (NodePartitions nodePartitions in nodePartitionsList)
 			{
-				tasks[count++] = new AsyncQueryPartition(this, cluster, policy, listener, statement, tracker, nodePartitions);
+				tasks[count++] = new AsyncQueryPartition(this, cluster, policy, listener, statement, taskId, tracker, nodePartitions);
 			}
 			Execute(tasks, policy.maxConcurrentNodes);
 		}
@@ -72,6 +72,7 @@ namespace Aerospike.Client
 
 				// Prepare for retry.
 				Reset();
+				taskId = RandomShift.ThreadLocalInstance.NextLong();
 				QueryPartitions();
 			}
 			catch (AerospikeException ae)
