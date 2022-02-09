@@ -218,6 +218,8 @@ namespace Aerospike.Client
 						throw new AerospikeException.InvalidNode(part.id);
 					}
 
+					part.retry = false;
+
 					// Use node name to check for single node equality because
 					// partition map may be in transitional state between
 					// the old and new node with the same name.
@@ -237,7 +239,6 @@ namespace Aerospike.Client
 						list.Add(np);
 					}
 					np.AddPartition(part);
-					part.retry = false;
 				}
 			}
 
