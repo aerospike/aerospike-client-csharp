@@ -5,7 +5,9 @@ VisualStudioVersion = 15.0.27130.2020
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AerospikeClient", "AerospikeClient\AerospikeClient.csproj", "{C91F58EB-01B5-4511-B8BE-E441CAF6CDA9}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AerospikeTest", "AerospikeTest\AerospikeTest.csproj", "{E4988B5F-AF50-481F-AD93-52C62CE9EDF0}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AerospikeTest", "AerospikeTest\AerospikeTest.csproj", "{E4988B5F-AF50-481F-AD93-52C62CE9EDF0}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AerospikeBenchmarks", "AerospikeBenchmarks\AerospikeBenchmarks.csproj", "{FDD98ADC-3560-4CA4-AFB9-8C7A2F2F4DB0}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -21,6 +23,10 @@ Global
 		{E4988B5F-AF50-481F-AD93-52C62CE9EDF0}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{E4988B5F-AF50-481F-AD93-52C62CE9EDF0}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{E4988B5F-AF50-481F-AD93-52C62CE9EDF0}.Release|Any CPU.Build.0 = Release|Any CPU
+		{FDD98ADC-3560-4CA4-AFB9-8C7A2F2F4DB0}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{FDD98ADC-3560-4CA4-AFB9-8C7A2F2F4DB0}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{FDD98ADC-3560-4CA4-AFB9-8C7A2F2F4DB0}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{FDD98ADC-3560-4CA4-AFB9-8C7A2F2F4DB0}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
