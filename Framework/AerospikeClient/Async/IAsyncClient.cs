@@ -212,7 +212,7 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Asynchronously delete records for specified keys.
 		/// Create listener, call asynchronous delete and return task monitor.
-		/// <para>Requires server version 5.8+</para>
+		/// <para>Requires server version 6.0+</para>
 		/// </summary>
 		/// <param name="batchPolicy">batch configuration parameters, pass in null for defaults</param>
 		/// <param name="deletePolicy">delete configuration parameters, pass in null for defaults</param>
@@ -230,7 +230,7 @@ namespace Aerospike.Client
 		/// <see cref="Aerospike.Client.ResultCode.KEY_NOT_FOUND_ERROR"/>.
 		/// </para>
 		/// <para>
-		/// Requires server version 5.8+
+		/// Requires server version 6.0+
 		/// </para>
 		/// </summary>
 		/// <param name="batchPolicy">batch configuration parameters, pass in null for defaults</param>
@@ -249,7 +249,7 @@ namespace Aerospike.Client
 		/// If a key is not found, the corresponding result <see cref="Aerospike.Client.BatchRecord.resultCode"/> will be
 		/// <see cref="Aerospike.Client.ResultCode.KEY_NOT_FOUND_ERROR"/>.
 		/// </para>
-		/// <para>Requires server version 5.8+</para>
+		/// <para>Requires server version 6.0+</para>
 		/// </summary>
 		/// <param name="batchPolicy">batch configuration parameters, pass in null for defaults</param>
 		/// <param name="deletePolicy">delete configuration parameters, pass in null for defaults</param>
@@ -680,7 +680,7 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Asynchronously read/write multiple records for specified batch keys in one batch call.
 		/// Create listener, call asynchronous delete and return task monitor.
-		/// <para>Requires server version 5.8+</para>
+		/// <para>Requires server version 6.0+</para>
 		/// </summary>
 		/// <param name="policy">batch configuration parameters, pass in null for defaults</param>
 		/// <param name="token">cancellation token</param>
@@ -700,7 +700,7 @@ namespace Aerospike.Client
 		/// <see cref="BatchRecord"/> can be <see cref="BatchRead"/>, <see cref="BatchWrite"/>, <see cref="BatchDelete"/> or
 		/// <see cref="BatchUDF"/>.
 		/// </para>
-		/// <para>Requires server version 5.8+</para>
+		/// <para>Requires server version 6.0+</para>
 		/// </summary>
 		/// <param name="policy">batch configuration parameters, pass in null for defaults</param>
 		/// <param name="listener">where to send results</param>
@@ -721,7 +721,7 @@ namespace Aerospike.Client
 		/// <see cref="BatchRecord"/> can be <see cref="BatchRead"/>, <see cref="BatchWrite"/>, <see cref="BatchDelete"/> or
 		/// <see cref="BatchUDF"/>.
 		/// </para>
-		/// <para>Requires server version 5.8+</para>
+		/// <para>Requires server version 6.0+</para>
 		/// </summary>
 		/// <param name="policy">batch configuration parameters, pass in null for defaults</param>
 		/// <param name="listener">where to send results</param>
@@ -732,7 +732,7 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Asynchronously perform read/write operations on multiple keys.
 		/// Create listener, call asynchronous delete and return task monitor.
-		/// <para>Requires server version 5.8+</para>
+		/// <para>Requires server version 6.0+</para>
 		/// </summary>
 		/// <param name="batchPolicy">batch configuration parameters, pass in null for defaults</param>
 		/// <param name="writePolicy">write configuration parameters, pass in null for defaults</param>
@@ -750,7 +750,7 @@ namespace Aerospike.Client
 		/// If a key is not found, the corresponding result <see cref="BatchRecord.resultCode"/> will be
 		/// <see cref="ResultCode.KEY_NOT_FOUND_ERROR"/>.
 		/// </para>
-		/// <para>Requires server version 5.8+</para>
+		/// <para>Requires server version 6.0+</para>
 		/// </summary>
 		/// <param name="batchPolicy">batch configuration parameters, pass in null for defaults</param>
 		/// <param name="writePolicy">write configuration parameters, pass in null for defaults</param>
@@ -769,7 +769,7 @@ namespace Aerospike.Client
 		/// If a key is not found, the corresponding result <see cref="BatchRecord.resultCode"/> will be
 		/// <see cref="ResultCode.KEY_NOT_FOUND_ERROR"/>.
 		/// </para>
-		/// <para>Requires server version 5.8+</para>
+		/// <para>Requires server version 6.0+</para>
 		/// </summary>
 		/// <param name="batchPolicy">batch configuration parameters, pass in null for defaults</param>
 		/// <param name="writePolicy">write configuration parameters, pass in null for defaults</param>
@@ -859,7 +859,7 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Asynchronously execute user defined function on server for each key.
 		/// Create listener, call asynchronous delete and return task monitor.
-		/// <para>Requires server version 5.8+</para>
+		/// <para>Requires server version 6.0+</para>
 		/// </summary>
 		/// <param name="batchPolicy">batch configuration parameters, pass in null for defaults</param>
 		/// <param name="udfPolicy">udf configuration parameters, pass in null for defaults</param>
@@ -881,7 +881,7 @@ namespace Aerospike.Client
 		/// <para>
 		/// udf file = &lt;server udf dir&gt;/&lt;package name&gt;.lua
 		/// </para>
-		/// <para>Requires server version 5.8+</para>
+		/// <para>Requires server version 6.0+</para>
 		/// </summary>
 		/// <param name="batchPolicy">batch configuration parameters, pass in null for defaults</param>
 		/// <param name="udfPolicy">udf configuration parameters, pass in null for defaults</param>
@@ -904,7 +904,7 @@ namespace Aerospike.Client
 		/// <para>
 		/// udf file = &lt;server udf dir&gt;/&lt;package name&gt;.lua
 		/// </para>
-		/// <para>Requires server version 5.8+</para>
+		/// <para>Requires server version 6.0+</para>
 		/// </summary>
 		/// <param name="batchPolicy">batch configuration parameters, pass in null for defaults</param>
 		/// <param name="udfPolicy">udf configuration parameters, pass in null for defaults</param>

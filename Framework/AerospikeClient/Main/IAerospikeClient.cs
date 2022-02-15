@@ -185,7 +185,7 @@ namespace Aerospike.Client
 		/// Delete records for specified keys. If a key is not found, the corresponding result
 		/// <see cref="BatchRecord.resultCode"/> will be <see cref="ResultCode.KEY_NOT_FOUND_ERROR"/>.
 		/// <para>
-		/// Requires server version 5.8+
+		/// Requires server version 6.0+
 		/// </para>
 		/// </summary>
 		/// <param name="batchPolicy">batch configuration parameters, pass in null for defaults</param>
@@ -406,7 +406,7 @@ namespace Aerospike.Client
 		/// <see cref="BatchUDF"/>.
 		/// </para>
 		/// <para>
-		/// Requires server version 5.8+
+		/// Requires server version 6.0+
 		/// </para>
 		/// </summary>
 		/// <param name="policy">batch configuration parameters, pass in null for defaults</param>
@@ -419,7 +419,7 @@ namespace Aerospike.Client
 		/// Perform read/write operations on multiple keys. If a key is not found, the corresponding result
 		/// <see cref="BatchRecord.resultCode"/> will be <seea cref="ResultCode.KEY_NOT_FOUND_ERROR"/>.
 		/// <para>
-		/// Requires server version 5.8+
+		/// Requires server version 6.0+
 		/// </para>
 		/// </summary>
 		/// <param name="batchPolicy">batch configuration parameters, pass in null for defaults</param>
@@ -592,7 +592,7 @@ namespace Aerospike.Client
 		/// udf file = &lt;server udf dir&gt;/&lt;package name&gt;.lua
 		/// </para>
 		/// <para>
-		/// Requires server version 5.8+
+		/// Requires server version 6.0+
 		/// </para>
 		/// </summary>
 		/// <param name="batchPolicy">batch configuration parameters, pass in null for defaults</param>

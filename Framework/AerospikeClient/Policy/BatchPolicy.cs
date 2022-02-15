@@ -79,7 +79,7 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Allow batch to be processed immediately in the server's receiving thread for SSD
 		/// namespaces. If false, the batch will always be processed in separate service threads.
-		/// Server versions &lt; 5.8 ignore this field.
+		/// Server versions &lt; 6.0 ignore this field.
 		/// <para>
 		/// Inline processing can introduce the possibility of unfairness because the server
 		/// can process the entire batch before moving onto the next command.
@@ -117,7 +117,7 @@ namespace Aerospike.Client
 		/// </para>
 		/// <para>
 		/// This field is used on both the client and server. The client handles node specific
-		/// errors and the server handles key specific errors. Server versions &lt; 5.8
+		/// errors and the server handles key specific errors. Server versions &lt; 6.0
 		/// do not support <see cref="Aerospike.Client.BatchPolicy.respondAllKeys"/> and treat this value as false.
 		/// </para>
 		/// <para>Default: true</para>
