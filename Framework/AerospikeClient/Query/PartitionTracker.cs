@@ -302,24 +302,43 @@ namespace Aerospike.Client
 			nodePartitions.recordCount++;
 		}
 
-		public bool IsComplete(Policy policy)
+		public bool IsComplete(Cluster cluster, Policy policy)
 		{
 			long recordCount = 0;
 			int partsUnavailable = 0;
+			bool done = true;
 
 			foreach (NodePartitions np in nodePartitionsList)
 			{
 				recordCount += np.recordCount;
 				partsUnavailable += np.partsUnavailable;
-				//Log.Info("Node " + np.node + " partsFull=" + np.partsFull.Count + " partsPartial=" + np.partsPartial.Count +
-				//	" partsUnavailable=" + np.partsUnavailable + " recordsRequested=" + np.recordMax + " recordsReceived=" + np.recordCount);
+
+				// Server version >= 6.0 will return all records for each node up to that node's max.
+				// Server version < 6.0 can return less records than max and still have more records
+				// for each node, so this done calculation is not used for these servers.
+				if (np.recordMax > 0 && np.recordCount >= np.recordMax)
+				{
+					done = false;
+				}
+
+				//Log.Info("Node " + np.node + " partsFull=" + np.partsFull.Count + 
+				//  " partsPartial=" + np.partsPartial.Count + " partsUnavailable=" + np.partsUnavailable +
+				//  " recordsRequested=" + np.recordMax + " recordsReceived=" + np.recordCount);
 			}
 
 			if (partsUnavailable == 0)
 			{
-				if (partitionFilter != null && recordCount == 0)
+				if (partitionFilter != null)
 				{
-					partitionFilter.done = true;
+					// hasPartitionQuery denotes server versions >= 6.0.
+					if (cluster.hasPartitionQuery)
+					{
+						partitionFilter.done = done;
+					}
+					else if (maxRecords == 0 || recordCount == 0)
+					{
+						partitionFilter.done = true;
+					}
 				}
 				return true;
 			}
