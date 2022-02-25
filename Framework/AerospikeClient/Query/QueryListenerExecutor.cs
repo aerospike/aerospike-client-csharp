@@ -64,7 +64,7 @@ namespace Aerospike.Client
 					throw ae;
 				}
 
-				if (tracker.IsComplete(policy))
+				if (tracker.IsComplete(cluster, policy))
 				{
 					return;
 				}

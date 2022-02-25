@@ -69,7 +69,7 @@ namespace Aerospike.Client
 		{
 			try
 			{
-				if (tracker.IsComplete(policy))
+				if (tracker.IsComplete(cluster, policy))
 				{
 					listener.OnSuccess();
 					return;

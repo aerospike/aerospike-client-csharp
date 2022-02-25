@@ -122,7 +122,7 @@ namespace Aerospike.Client
 					break;
 				}
 
-				if (tracker.IsComplete(policy))
+				if (tracker.IsComplete(cluster, policy))
 				{
 					// All partitions received.
 					recordSet.Put(RecordSet.END);
