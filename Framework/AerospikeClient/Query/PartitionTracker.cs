@@ -89,18 +89,18 @@ namespace Aerospike.Client
 		}
 
 		public PartitionTracker(ScanPolicy policy, Node[] nodes, PartitionFilter filter)
-			: this((Policy)policy, nodes, filter)
+			: this((Policy)policy, nodes, filter, policy.maxRecords)
 		{
-			SetMaxRecords(policy.maxRecords);
 		}
 
+#pragma warning disable 0618
 		public PartitionTracker(QueryPolicy policy, Statement stmt, Node[] nodes, PartitionFilter filter)
-			: this((Policy)policy, nodes, filter)
+			: this((Policy)policy, nodes, filter, (stmt.maxRecords > 0) ? stmt.maxRecords : policy.maxRecords)
 		{
-			SetMaxRecords(policy, stmt);
 		}
+#pragma warning restore 0618
 
-		private PartitionTracker(Policy policy, Node[] nodes, PartitionFilter filter)
+		private PartitionTracker(Policy policy, Node[] nodes, PartitionFilter filter, long maxRecords)
 		{
 			// Validate here instead of initial PartitionFilter constructor because total number of
 			// cluster partitions may change on the server and PartitionFilter will never have access
@@ -122,6 +122,7 @@ namespace Aerospike.Client
 					',' + filter.count + ')');
 			}
 
+			SetMaxRecords(maxRecords);
 			this.partitionBegin = filter.begin;
 			this.nodeCapacity = nodes.Length;
 			this.nodeFilter = null;
@@ -130,6 +131,17 @@ namespace Aerospike.Client
 			if (filter.partitions == null)
 			{
 				filter.partitions = InitPartitions(filter.count, filter.digest);
+			}
+			else
+			{
+				// Retry all partitions when maxRecords not specified.
+				if (maxRecords == 0)
+				{
+					foreach (PartitionStatus ps in filter.partitions)
+					{
+						ps.retry = true;
+					}
+				}
 			}
 			this.partitions = filter.partitions;
 			this.partitionFilter = filter;
@@ -207,9 +219,7 @@ namespace Aerospike.Client
 
 			foreach (PartitionStatus part in partitions)
 			{
-				// On first iteration, request all partitions.
-				// On subsequent iterations, only request partitions marked for retry.
-				if (iteration == 1 || part.retry)
+				if (part.retry)
 				{
 					Node node = Volatile.Read(ref master[part.id]);
 
@@ -306,20 +316,11 @@ namespace Aerospike.Client
 		{
 			long recordCount = 0;
 			int partsUnavailable = 0;
-			bool done = true;
 
 			foreach (NodePartitions np in nodePartitionsList)
 			{
 				recordCount += np.recordCount;
 				partsUnavailable += np.partsUnavailable;
-
-				// Server version >= 6.0 will return all records for each node up to that node's max.
-				// Server version < 6.0 can return less records than max and still have more records
-				// for each node, so this done calculation is not used for these servers.
-				if (np.recordMax > 0 && np.recordCount >= np.recordMax)
-				{
-					done = false;
-				}
 
 				//Log.Info("Node " + np.node + " partsFull=" + np.partsFull.Count + 
 				//  " partsPartial=" + np.partsPartial.Count + " partsUnavailable=" + np.partsUnavailable +
@@ -328,16 +329,41 @@ namespace Aerospike.Client
 
 			if (partsUnavailable == 0)
 			{
-				if (partitionFilter != null)
+				if (maxRecords == 0)
 				{
-					// hasPartitionQuery denotes server versions >= 6.0.
-					if (cluster.hasPartitionQuery)
-					{
-						partitionFilter.done = done;
-					}
-					else if (maxRecords == 0 || recordCount == 0)
+					if (partitionFilter != null)
 					{
 						partitionFilter.done = true;
+					}
+				}
+				else
+				{
+					bool done = true;
+
+					// Check if all nodes are done.
+					foreach (NodePartitions np in nodePartitionsList)
+					{
+						// Server version >= 6.0 will return all records for each node up to that node's max.
+						if (np.recordCount >= np.recordMax)
+						{
+							MarkRetry(np);
+							done = false;
+						}
+					}
+
+					if (partitionFilter != null)
+					{
+						if (cluster.hasPartitionQuery)
+						{
+							partitionFilter.done = done;
+						}
+						else
+						{
+							// Servers version < 6.0 can return less records than max and still
+							// have more records for each node, so the done calculation is not
+							// used for these servers.
+							partitionFilter.done = recordCount == 0;
+						}
 					}
 				}
 				return true;
@@ -415,21 +441,25 @@ namespace Aerospike.Client
 						exceptions = new List<AerospikeException>();
 					}
 					exceptions.Add(ae);
-
-					foreach (PartitionStatus ps in nodePartitions.partsFull)
-					{
-						ps.retry = true;
-					}
-
-					foreach (PartitionStatus ps in nodePartitions.partsPartial)
-					{
-						ps.retry = true;
-					}
+					MarkRetry(nodePartitions);
 					nodePartitions.partsUnavailable = nodePartitions.partsFull.Count + nodePartitions.partsPartial.Count;
 					return true;
 
 				default:
 					return false;
+			}
+		}
+
+		private void MarkRetry(NodePartitions nodePartitions)
+		{
+			foreach (PartitionStatus ps in nodePartitions.partsFull)
+			{
+				ps.retry = true;
+			}
+
+			foreach (PartitionStatus ps in nodePartitions.partsPartial)
+			{
+				ps.retry = true;
 			}
 		}
 	}
