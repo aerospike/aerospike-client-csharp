@@ -29,6 +29,7 @@ namespace Aerospike.Client
 		public PartitionStatus(int id)
 		{
 			this.id = id;
+			this.retry = true;
 		}
 	}
 }
