@@ -338,30 +338,42 @@ namespace Aerospike.Client
 				}
 				else
 				{
-					bool done = true;
-
-					// Check if all nodes are done.
-					foreach (NodePartitions np in nodePartitionsList)
+					if (cluster.hasPartitionQuery)
 					{
-						// Server version >= 6.0 will return all records for each node up to that node's max.
-						if (np.recordCount >= np.recordMax)
+						// Server version >= 6.0 will return all records for each node up to
+						// that node's max. If node's record count reached max, there still
+						// may be records available for that node.
+						bool done = true;
+
+						foreach (NodePartitions np in nodePartitionsList)
 						{
-							MarkRetry(np);
-							done = false;
+							if (np.recordCount >= np.recordMax)
+							{
+								MarkRetry(np);
+								done = false;
+							}
 						}
-					}
 
-					if (partitionFilter != null)
-					{
-						if (cluster.hasPartitionQuery)
+						if (partitionFilter != null)
 						{
 							partitionFilter.done = done;
 						}
-						else
+					}
+					else
+					{
+						// Servers version < 6.0 can return less records than max and still
+						// have more records for each node, so the node is only done if no
+						// records were retrieved for that node.
+						foreach (NodePartitions np in nodePartitionsList)
 						{
-							// Servers version < 6.0 can return less records than max and still
-							// have more records for each node, so the done calculation is not
-							// used for these servers.
+							if (np.recordCount > 0)
+							{
+								MarkRetry(np);
+							}
+						}
+
+						if (partitionFilter != null)
+						{
 							partitionFilter.done = recordCount == 0;
 						}
 					}
