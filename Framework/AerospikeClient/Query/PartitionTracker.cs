@@ -448,6 +448,7 @@ namespace Aerospike.Client
 			{
 				case ResultCode.SERVER_NOT_AVAILABLE:
 				case ResultCode.TIMEOUT:
+				case ResultCode.INDEX_NOTFOUND:
 					if (exceptions == null)
 					{
 						exceptions = new List<AerospikeException>();
