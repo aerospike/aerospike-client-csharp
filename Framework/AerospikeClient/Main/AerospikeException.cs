@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2022 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -439,12 +439,6 @@ namespace Aerospike.Client
 		{
 			public readonly bool[] exists;
 
-			public BatchExists(bool[] exists)
-				: base(ResultCode.BATCH_FAILED)
-			{
-				this.exists = exists;
-			}
-
 			public BatchExists(bool[] exists, Exception e)
 				: base(ResultCode.BATCH_FAILED, e)
 			{
@@ -461,12 +455,6 @@ namespace Aerospike.Client
 		{
 			public readonly Record[] records;
 
-			public BatchRecords(Record[] records)
-				: base(ResultCode.BATCH_FAILED)
-			{
-				this.records = records;
-			}
-
 			public BatchRecords(Record[] records, Exception e)
 				: base(ResultCode.BATCH_FAILED, e)
 			{
@@ -477,17 +465,11 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Exception thrown when a batch write method fails.
 		/// The records fields contains responses for key requests that succeeded
-		/// and the resultCode for key requests that failed.
+		/// and result codes for key requests that failed.
 		/// </summary>
 		public sealed class BatchRecordArray : AerospikeException
 		{
 			public readonly BatchRecord[] records;
-
-			public BatchRecordArray(BatchRecord[] records)
-				: base(ResultCode.BATCH_FAILED)
-			{
-				this.records = records;
-			}
 
 			public BatchRecordArray(BatchRecord[] records, Exception e)
 				: base(ResultCode.BATCH_FAILED, e)

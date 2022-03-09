@@ -249,6 +249,13 @@ namespace Aerospike.Client
 			this.records = records;
 		}
 
+		protected internal override bool IsWrite()
+		{
+			// This method is only called to set inDoubt on node level errors.
+			// SetError() will filter out reads when setting record level inDoubt.
+			return true;
+		}
+
 		protected internal override void WriteBuffer()
 		{
 			SetBatchOperate(batchPolicy, (IList)records, batch);
@@ -339,6 +346,11 @@ namespace Aerospike.Client
 			this.attr = attr;
 		}
 
+		protected internal override bool IsWrite()
+		{
+			return attr.hasWrite;
+		}
+
 		protected internal override void WriteBuffer()
 		{
 			SetBatchOperate(batchPolicy, keys, batch, null, ops, attr);
@@ -418,6 +430,11 @@ namespace Aerospike.Client
 			this.argBytes = argBytes;
 			this.records = records;
 			this.attr = attr;
+		}
+
+		protected internal override bool IsWrite()
+		{
+			return attr.hasWrite;
 		}
 
 		protected internal override void WriteBuffer()

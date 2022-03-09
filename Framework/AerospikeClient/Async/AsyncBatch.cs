@@ -831,6 +831,13 @@ namespace Aerospike.Client
 			this.records = other.records;
 		}
 
+		protected internal override bool IsWrite()
+		{
+			// This method is only called to set inDoubt on node level errors.
+			// SetError() will filter out reads when setting record level inDoubt.
+			return true;
+		}
+
 		protected internal override void WriteBuffer()
 		{
 			SetBatchOperate(batchPolicy, records, batch);
@@ -962,6 +969,13 @@ namespace Aerospike.Client
 		{
 			this.listener = other.listener;
 			this.records = other.records;
+		}
+
+		protected internal override bool IsWrite()
+		{
+			// This method is only called to set inDoubt on node level errors.
+			// SetError() will filter out reads when setting record level inDoubt.
+			return true;
 		}
 
 		protected internal override void WriteBuffer()
@@ -1117,6 +1131,11 @@ namespace Aerospike.Client
 			this.attr = other.attr;
 		}
 
+		protected internal override bool IsWrite()
+		{
+			return attr.hasWrite;
+		}
+
 		protected internal override void WriteBuffer()
 		{
 			SetBatchOperate(batchPolicy, keys, batch, null, ops, attr);
@@ -1256,6 +1275,11 @@ namespace Aerospike.Client
 			this.sent = other.sent;
 			this.listener = other.listener;
 			this.attr = other.attr;
+		}
+
+		protected internal override bool IsWrite()
+		{
+			return attr.hasWrite;
 		}
 
 		protected internal override void WriteBuffer()
@@ -1404,6 +1428,11 @@ namespace Aerospike.Client
 			this.argBytes = other.argBytes;
 			this.records = other.records;
 			this.attr = other.attr;
+		}
+
+		protected internal override bool IsWrite()
+		{
+			return attr.hasWrite;
 		}
 
 		protected internal override void WriteBuffer()
@@ -1570,6 +1599,11 @@ namespace Aerospike.Client
 			this.sent = other.sent;
 			this.listener = other.listener;
 			this.attr = other.attr;
+		}
+
+		protected internal override bool IsWrite()
+		{
+			return attr.hasWrite;
 		}
 
 		protected internal override void WriteBuffer()
