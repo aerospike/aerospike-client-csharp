@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2022 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -153,7 +153,7 @@ namespace Aerospike.Demo
 
 			if (records.Length != size)
 			{
-				console.Error("Record size mismatch. Expected %d. Received %d.", size, records.Length);
+				console.Error("Record size mismatch. Expected {1}. Received {2}.", size, records.Length);
 			}
 		}
 
@@ -206,7 +206,7 @@ namespace Aerospike.Demo
 
 			if (found != 8)
 			{
-				console.Error("Records found mismatch. Expected %d. Received %d.", 8, found);
+				console.Error("Records found mismatch. Expected {1}. Received {2}.", 8, found);
 			}
 		}
 	}
