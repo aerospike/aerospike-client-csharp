@@ -153,7 +153,7 @@ namespace Aerospike.Demo
 
 			if (records.Length != size)
 			{
-				console.Error("Record size mismatch. Expected {1}. Received {2}.", size, records.Length);
+				console.Error("Record size mismatch. Expected {0}. Received {1}.", size, records.Length);
 			}
 		}
 
@@ -206,7 +206,7 @@ namespace Aerospike.Demo
 
 			if (found != 8)
 			{
-				console.Error("Records found mismatch. Expected {1}. Received {2}.", 8, found);
+				console.Error("Records found mismatch. Expected {0}. Received {1}.", 8, found);
 			}
 		}
 	}
