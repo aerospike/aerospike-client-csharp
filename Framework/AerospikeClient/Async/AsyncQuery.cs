@@ -18,6 +18,7 @@ namespace Aerospike.Client
 {
 	public sealed class AsyncQuery : AsyncMultiCommand
 	{
+		private readonly AsyncMultiExecutor parent;
 		private readonly RecordSequenceListener listener;
 		private readonly Statement statement;
 		private readonly ulong taskId;
@@ -31,8 +32,9 @@ namespace Aerospike.Client
 			RecordSequenceListener listener,
 			Statement statement,
 			ulong taskId
-		) : base(parent, cluster, policy, node, policy.socketTimeout, policy.totalTimeout)
+		) : base(cluster, policy, node, policy.socketTimeout, policy.totalTimeout)
 		{
+			this.parent = parent;
 			this.listener = listener;
 			this.statement = statement;
 			this.taskId = taskId;
@@ -60,6 +62,16 @@ namespace Aerospike.Client
 		protected internal override AsyncCommand CloneCommand()
 		{
 			return null;
+		}
+
+		protected internal override void OnSuccess()
+		{
+			parent.ChildSuccess(node);
+		}
+
+		protected internal override void OnFailure(AerospikeException e)
+		{
+			parent.ChildFailure(e);
 		}
 	}
 }

@@ -69,6 +69,19 @@ namespace Aerospike.Client
 			}
 		}
 
+		protected internal override void SetError(int resultCode, bool inDoubt)
+		{
+			foreach (int index in batch.offsets)
+			{
+				BatchRecord record = records[index];
+
+				if (record.resultCode == ResultCode.NO_RESPONSE)
+				{
+					record.SetError(resultCode, false);
+				}
+			}
+		}
+
 		protected internal override BatchCommand CreateCommand(BatchNode batchNode)
 		{
 			return new BatchReadListCommand(cluster, batchNode, batchPolicy, records, status);
@@ -136,6 +149,11 @@ namespace Aerospike.Client
 			}
 		}
 
+		protected internal override void SetError(int resultCode, bool inDoubt)
+		{
+			// records does not store error/inDoubt.
+		}
+
 		protected internal override BatchCommand CreateCommand(BatchNode batchNode)
 		{
 			return new BatchGetArrayCommand(cluster, batchNode, batchPolicy, keys, binNames, ops, records, readAttr, isOperation, status);
@@ -193,6 +211,11 @@ namespace Aerospike.Client
 			}
 
 			existsArray[batchIndex] = resultCode == 0;
+		}
+
+		protected internal override void SetError(int resultCode, bool inDoubt)
+		{
+			// existsArray does not store error/inDoubt.
 		}
 
 		protected internal override BatchCommand CreateCommand(BatchNode batchNode)
@@ -263,6 +286,19 @@ namespace Aerospike.Client
 			status.SetRowError();
 		}
 
+		protected internal override void SetError(int resultCode, bool inDoubt)
+		{
+			foreach (int index in batch.offsets)
+			{
+				BatchRecord record = records[index];
+
+				if (record.resultCode == ResultCode.NO_RESPONSE)
+				{
+					record.SetError(resultCode, record.hasWrite && inDoubt);
+				}
+			}
+		}
+
 		protected internal override BatchCommand CreateCommand(BatchNode batchNode)
 		{
 			return new BatchOperateListCommand(cluster, batchNode, batchPolicy, records, status);
@@ -322,6 +358,19 @@ namespace Aerospike.Client
 			{
 				record.SetError(resultCode, Command.BatchInDoubt(attr.hasWrite, commandSentCounter));
 				status.SetRowError();
+			}
+		}
+
+		protected internal override void SetError(int resultCode, bool inDoubt)
+		{
+			foreach (int index in batch.offsets)
+			{
+				BatchRecord record = records[index];
+
+				if (record.resultCode == ResultCode.NO_RESPONSE)
+				{
+					record.SetError(resultCode, attr.hasWrite && inDoubt);
+				}
 			}
 		}
 
@@ -408,6 +457,19 @@ namespace Aerospike.Client
 			status.SetRowError();
 		}
 
+		protected internal override void SetError(int resultCode, bool inDoubt)
+		{
+			foreach (int index in batch.offsets)
+			{
+				BatchRecord record = records[index];
+
+				if (record.resultCode == ResultCode.NO_RESPONSE)
+				{
+					record.SetError(resultCode, attr.hasWrite && inDoubt);
+				}
+			}
+		}
+
 		protected internal override BatchCommand CreateCommand(BatchNode batchNode)
 		{
 			return new BatchUDFCommand(cluster, batchNode, batchPolicy, keys, packageName, functionName, argBytes, records, attr, status);
@@ -431,6 +493,7 @@ namespace Aerospike.Client
 		internal BatchExecutor parent;
 		internal uint sequenceAP;
 		internal uint sequenceSC;
+		internal bool splitRetry;
 
 		public BatchCommand
 		(
@@ -450,15 +513,31 @@ namespace Aerospike.Client
 		{
 			try
 			{
-				if (IsValid())
+				Execute();
+			}
+			catch (AerospikeException ae)
+			{
+				// Set error/inDoubt for keys associated this batch command when
+				// the command was not retried and split. If a split retry occurred,
+				// those new subcommands have already set error/inDoubt on the affected
+				// subset of keys.
+				if (!splitRetry)
 				{
-					Execute();
+					SetError(ae.Result, ae.InDoubt);
 				}
-				parent.OnSuccess();
+				status.SetException(ae);
 			}
 			catch (Exception e)
 			{
-				parent.OnFailure(e);
+				if (!splitRetry)
+				{
+					SetError(ResultCode.CLIENT_ERROR, true);
+				}
+				status.SetException(e);
+			}
+			finally
+			{
+				parent.OnComplete();
 			}
 		}
 
@@ -499,6 +578,8 @@ namespace Aerospike.Client
 				return false;
 			}
 
+			splitRetry = true;
+
 			// Run batch requests sequentially in same thread.
 			foreach (BatchNode batchNode in batchNodes)
 			{
@@ -511,11 +592,42 @@ namespace Aerospike.Client
 				command.iteration = iteration;
 				command.commandSentCounter = commandSentCounter;
 				command.deadline = deadline;
-				command.ExecuteCommand();
+
+				try
+				{
+					command.ExecuteCommand();
+				}
+				catch (AerospikeException ae)
+				{
+					if (!command.splitRetry)
+					{
+						command.SetError(ae.Result, ae.InDoubt);
+					}
+					status.SetException(ae);
+
+					if (!batchPolicy.respondAllKeys)
+					{
+						throw;
+					}
+				}
+				catch (Exception e)
+				{
+					if (!command.splitRetry)
+					{
+						command.SetError(ResultCode.CLIENT_ERROR, true);
+					}
+					status.SetException(e);
+
+					if (!batchPolicy.respondAllKeys)
+					{
+						throw;
+					}
+				}
 			}
 			return true;
 		}
 
+		protected internal abstract void SetError(int resultCode, bool inDoubt);
 		protected internal abstract BatchCommand CreateCommand(BatchNode batchNode);
 		protected internal abstract List<BatchNode> GenerateBatchNodes();
 	}

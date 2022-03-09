@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2022 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -82,11 +82,6 @@ namespace Aerospike.Client
 					else
 					{
 						status.SetInvalidNode(key, i, ain, false, hasWrite);
-					}
-
-					if (!policy.respondAllKeys)
-					{
-						throw ain;
 					}
 
 					if (except == null)
@@ -177,11 +172,6 @@ namespace Aerospike.Client
 						status.SetInvalidNode(key, offset, ain, Command.BatchInDoubt(hasWrite, 2), hasWrite);
 					}
 
-					if (!policy.respondAllKeys)
-					{
-						throw ain;
-					}
-
 					if (except == null)
 					{
 						except = ain;
@@ -251,11 +241,6 @@ namespace Aerospike.Client
 				{
 					// This method only called on initialization, so inDoubt must be false.
 					b.SetError(ain.Result, false);
-
-					if (!policy.respondAllKeys)
-					{
-						throw ain;
-					}
 
 					if (except == null)
 					{
@@ -335,11 +320,6 @@ namespace Aerospike.Client
 				{
 					// This method only called on retry, so commandSentCounter(2) will be greater than 1.
 					b.SetError(ain.Result, Command.BatchInDoubt(b.hasWrite, 2));
-
-					if (!policy.respondAllKeys)
-					{
-						throw ain;
-					}
 
 					if (except == null)
 					{

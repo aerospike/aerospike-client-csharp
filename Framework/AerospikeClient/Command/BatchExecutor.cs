@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2022 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -26,26 +26,41 @@ namespace Aerospike.Client
 			if (policy.maxConcurrentThreads == 1 || commands.Length <= 1)
 			{
 				// Run batch requests sequentially in same thread.
-				if (policy.respondAllKeys)
+				foreach (BatchCommand command in commands)
 				{
-					foreach (BatchCommand command in commands)
-					{
-						try
-						{
-							command.Execute();
-						}
-						catch (Exception re)
-						{
-							// Continue processing remaining commands.
-							status.SetException(re);
-						}
-					}
-				}
-				else
-				{
-					foreach (BatchCommand command in commands)
+					try
 					{
 						command.Execute();
+					}
+					catch (AerospikeException ae)
+					{
+						// Set error/inDoubt for keys associated this batch command when
+						// the command was not retried and split. If a split retry occurred,
+						// those new subcommands have already set error/inDoubt on the affected
+						// subset of keys.
+						if (!command.splitRetry)
+						{
+							command.SetError(ae.Result, ae.InDoubt);
+						}
+						status.SetException(ae);
+
+						if (!policy.respondAllKeys)
+						{
+							throw;
+						}
+					}
+					catch (Exception e)
+					{
+						if (!command.splitRetry)
+						{
+							command.SetError(ResultCode.CLIENT_ERROR, true);
+						}
+						status.SetException(e);
+
+						if (!policy.respondAllKeys)
+						{
+							throw;
+						}
 					}
 				}
 				status.CheckException();
@@ -63,7 +78,6 @@ namespace Aerospike.Client
 			status.CheckException();
 		}
 
-		private readonly BatchPolicy policy;
 		private readonly BatchStatus status;
 		private readonly int maxConcurrentThreads;
 		private readonly BatchCommand[] commands;
@@ -73,7 +87,6 @@ namespace Aerospike.Client
 
 		private BatchExecutor(BatchPolicy policy, BatchCommand[] commands, BatchStatus status)
 		{
-			this.policy = policy;
 			this.commands = commands;
 			this.status = status;
 			this.maxConcurrentThreads = (policy.maxConcurrentThreads == 0 || policy.maxConcurrentThreads >= commands.Length) ? commands.Length : policy.maxConcurrentThreads;
@@ -97,7 +110,7 @@ namespace Aerospike.Client
 			status.CheckException();
 		}
 
-		internal void OnSuccess()
+		internal void OnComplete()
 		{
 			int finished = Interlocked.Increment(ref completedCount);
 
@@ -121,28 +134,6 @@ namespace Aerospike.Client
 				{
 					NotifyCompleted();
 				}
-			}
-		}
-
-		internal void OnFailure(Exception re)
-		{
-			if (policy.respondAllKeys)
-			{
-				status.SetException(re);
-				OnSuccess();
-				return;
-			}
-
-			// Ensure executor succeeds or fails exactly once.
-			if (Interlocked.Exchange(ref done, 1) == 0)
-			{
-				status.SetException(re);
-
-				foreach (BatchCommand command in commands)
-				{
-					command.Stop();
-				}
-				NotifyCompleted();
 			}
 		}
 

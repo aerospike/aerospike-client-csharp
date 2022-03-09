@@ -104,21 +104,25 @@ namespace Aerospike.Client
 		public bool allowProleReads;
 
 		/// <summary>
-		/// Should all batch keys be attempted regardless of errors.
+		/// Should all batch keys be attempted regardless of errors. This field is used on both
+		/// the client and server. The client handles node specific errors and the server handles
+		/// key specific errors.
 		/// <para>
 		/// If true, every batch key is attempted regardless of previous key specific errors.
 		/// Node specific errors such as timeouts stop keys to that node, but keys directed at
 		/// other nodes will continue to be processed.
 		/// </para>
 		/// <para>
-		/// If false, most key and node specific errors stop the batch. The exceptions are
-		/// <see cref="Aerospike.Client.ResultCode.KEY_NOT_FOUND_ERROR"/> and
+		/// If false, the server will stop the batch to its node on most key specific errors.
+		/// The exceptions are <see cref="Aerospike.Client.ResultCode.KEY_NOT_FOUND_ERROR"/> and
 		/// <see cref="Aerospike.Client.ResultCode.FILTERED_OUT"/> which never stop the batch.
+		/// The client will stop the entire batch on node specific errors for sync commands
+		/// that are run in sequence (maxConcurrentThreads == 1). The client will not stop
+		/// the entire batch for async commands or sync commands run in parallel.
 		/// </para>
 		/// <para>
-		/// This field is used on both the client and server. The client handles node specific
-		/// errors and the server handles key specific errors. Server versions &lt; 6.0
-		/// do not support <see cref="Aerospike.Client.BatchPolicy.respondAllKeys"/> and treat this value as false.
+		/// Server versions &lt; 6.0 do not support this field and treat this value as false
+		/// for key specific errors.
 		/// </para>
 		/// <para>Default: true</para>
 		/// </summary>
