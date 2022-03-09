@@ -801,25 +801,6 @@ namespace Aerospike.Client
 							break;
 						}
 
-						case BatchRecord.Type.BATCH_DELETE:
-						{
-							BatchDelete bd = (BatchDelete)record;
-							Expression filter;
-
-							if (bd.policy != null)
-							{
-								filter = bd.policy.filterExp;
-								attr.SetDelete(bd.policy);
-							}
-							else
-							{
-								filter = null;
-								attr.SetDelete(policy);
-							}
-							WriteBatchWrite(key, attr, filter, 0, 0);
-							break;
-						}
-
 						case BatchRecord.Type.BATCH_UDF:
 						{
 							BatchUDF bu = (BatchUDF)record;
@@ -839,6 +820,25 @@ namespace Aerospike.Client
 							WriteField(bu.packageName, FieldType.UDF_PACKAGE_NAME);
 							WriteField(bu.functionName, FieldType.UDF_FUNCTION);
 							WriteField(bu.argBytes, FieldType.UDF_ARGLIST);
+							break;
+						}
+
+						case BatchRecord.Type.BATCH_DELETE:
+						{
+							BatchDelete bd = (BatchDelete)record;
+							Expression filter;
+
+							if (bd.policy != null)
+							{
+								filter = bd.policy.filterExp;
+								attr.SetDelete(bd.policy);
+							}
+							else
+							{
+								filter = null;
+								attr.SetDelete(policy);
+							}
+							WriteBatchWrite(key, attr, filter, 0, 0);
 							break;
 						}
 					}

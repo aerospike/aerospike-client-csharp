@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2022 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -344,6 +344,38 @@ namespace Aerospike.Client
 			}
 		}
 
+		public void SetUDF(Policy up)
+		{
+			readAttr = 0;
+			writeAttr = Command.INFO2_WRITE;
+			infoAttr = 0;
+			expiration = 0;
+			generation = 0;
+			hasWrite = true;
+			sendKey = up.sendKey;
+		}
+
+		public void SetUDF(BatchUDFPolicy up)
+		{
+			readAttr = 0;
+			writeAttr = Command.INFO2_WRITE;
+			infoAttr = 0;
+			expiration = up.expiration;
+			generation = 0;
+			hasWrite = true;
+			sendKey = up.sendKey;
+
+			if (up.durableDelete)
+			{
+				writeAttr |= Command.INFO2_DURABLE_DELETE;
+			}
+
+			if (up.commitLevel == CommitLevel.COMMIT_MASTER)
+			{
+				infoAttr |= Command.INFO3_COMMIT_MASTER;
+			}
+		}
+
 		public void SetDelete(Policy dp)
 		{
 			readAttr = 0;
@@ -388,38 +420,6 @@ namespace Aerospike.Client
 			}
 
 			if (dp.commitLevel == CommitLevel.COMMIT_MASTER)
-			{
-				infoAttr |= Command.INFO3_COMMIT_MASTER;
-			}
-		}
-
-		public void SetUDF(Policy up)
-		{
-			readAttr = 0;
-			writeAttr = Command.INFO2_WRITE;
-			infoAttr = 0;
-			expiration = 0;
-			generation = 0;
-			hasWrite = true;
-			sendKey = up.sendKey;
-		}
-
-		public void SetUDF(BatchUDFPolicy up)
-		{
-			readAttr = 0;
-			writeAttr = Command.INFO2_WRITE;
-			infoAttr = 0;
-			expiration = up.expiration;
-			generation = 0;
-			hasWrite = true;
-			sendKey = up.sendKey;
-
-			if (up.durableDelete)
-			{
-				writeAttr |= Command.INFO2_DURABLE_DELETE;
-			}
-
-			if (up.commitLevel == CommitLevel.COMMIT_MASTER)
 			{
 				infoAttr |= Command.INFO3_COMMIT_MASTER;
 			}
