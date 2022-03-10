@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2022 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -22,7 +22,7 @@ namespace Aerospike.Client
 	/// Packed expression byte instructions.
 	/// </summary>
 	[Serializable]
-	public sealed class Expression : CommandExp
+	public sealed class Expression
 	{
 		private readonly byte[] bytes;
 
