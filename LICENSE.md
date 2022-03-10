@@ -1,7 +1,7 @@
 Aerospike C# Client License
 ===========================
 
-    Copyright 2012-2019 Aerospike, Inc.
+    Copyright 2012-2022 Aerospike, Inc.
 
     Portions may be licensed to Aerospike, Inc. under one or more contributor
     license agreements.
