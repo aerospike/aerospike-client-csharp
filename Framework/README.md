@@ -5,7 +5,7 @@ Aerospike C# Client for NET Framework
 
 * Windows 7/Windows Server 2008 or greater, preferably 64 bit.
 * Visual Studio 2017 or greater, preferably 64 bit.
-* .NET 4.5 or greater.
+* .NET 4.7.2 or greater.
 
 **Contents**
 
