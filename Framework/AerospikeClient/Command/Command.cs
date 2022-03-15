@@ -1086,7 +1086,7 @@ namespace Aerospike.Client
 			return (attr.filterExp != null) ? attr.filterExp : policy.filterExp;
 		}
 
-		private byte GetBatchFlags(BatchPolicy policy)
+		private static byte GetBatchFlags(BatchPolicy policy)
 		{
 			byte flags = (policy.allowInline) ? (byte)1 : (byte)0;
 
