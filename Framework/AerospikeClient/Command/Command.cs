@@ -751,32 +751,29 @@ namespace Aerospike.Client
 						case BatchRecord.Type.BATCH_READ:
 						{
 							BatchRead br = (BatchRead)record;
-							Expression filter;
 
 							if (br.policy != null)
 							{
-								filter = br.policy.filterExp;
 								attr.SetRead(br.policy);
 							}
 							else
 							{
-								filter = null;
 								attr.SetRead(policy);
 							}
 
 							if (br.binNames != null)
 							{
-								WriteBatchBinNames(key, br.binNames, attr, filter);
+								WriteBatchBinNames(key, br.binNames, attr, attr.filterExp);
 							}
 							else if (br.ops != null)
 							{
 								attr.AdjustRead(br.ops);
-								WriteBatchOperations(key, br.ops, attr, filter);
+								WriteBatchOperations(key, br.ops, attr, attr.filterExp);
 							}
 							else
 							{
 								attr.AdjustRead(br.readAllBins);
-								WriteBatchRead(key, attr, filter, 0);
+								WriteBatchRead(key, attr, attr.filterExp, 0);
 							}
 							break;
 						}
@@ -784,39 +781,33 @@ namespace Aerospike.Client
 						case BatchRecord.Type.BATCH_WRITE:
 						{
 							BatchWrite bw = (BatchWrite)record;
-							Expression filter;
 
 							if (bw.policy != null)
 							{
-								filter = bw.policy.filterExp;
 								attr.SetWrite(bw.policy);
 							}
 							else
 							{
-								filter = null;
 								attr.SetWrite(policy);
 							}
 							attr.AdjustWrite(bw.ops);
-							WriteBatchOperations(key, bw.ops, attr, filter);
+							WriteBatchOperations(key, bw.ops, attr, attr.filterExp);
 							break;
 						}
 
 						case BatchRecord.Type.BATCH_UDF:
 						{
 							BatchUDF bu = (BatchUDF)record;
-							Expression filter;
 
 							if (bu.policy != null)
 							{
-								filter = bu.policy.filterExp;
 								attr.SetUDF(bu.policy);
 							}
 							else
 							{
-								filter = null;
 								attr.SetUDF(policy);
 							}
-							WriteBatchWrite(key, attr, filter, 3, 0);
+							WriteBatchWrite(key, attr, attr.filterExp, 3, 0);
 							WriteField(bu.packageName, FieldType.UDF_PACKAGE_NAME);
 							WriteField(bu.functionName, FieldType.UDF_FUNCTION);
 							WriteField(bu.argBytes, FieldType.UDF_ARGLIST);
@@ -826,19 +817,16 @@ namespace Aerospike.Client
 						case BatchRecord.Type.BATCH_DELETE:
 						{
 							BatchDelete bd = (BatchDelete)record;
-							Expression filter;
 
 							if (bd.policy != null)
 							{
-								filter = bd.policy.filterExp;
 								attr.SetDelete(bd.policy);
 							}
 							else
 							{
-								filter = null;
 								attr.SetDelete(policy);
 							}
-							WriteBatchWrite(key, attr, filter, 0, 0);
+							WriteBatchWrite(key, attr, attr.filterExp, 0, 0);
 							break;
 						}
 					}
@@ -868,7 +856,7 @@ namespace Aerospike.Client
 			// Estimate buffer size.
 			Begin();
 			int fieldCount = 1;
-			CommandExp exp = GetCommandExp(policy);
+			CommandExp exp = GetCommandExp(policy, attr);
 
 			if (exp != null)
 			{
@@ -1014,7 +1002,7 @@ namespace Aerospike.Client
 			// Estimate buffer size.
 			Begin();
 			int fieldCount = 1;
-			CommandExp exp = GetCommandExp(policy);
+			CommandExp exp = GetCommandExp(policy, attr);
 
 			if (exp != null)
 			{
@@ -2336,6 +2324,25 @@ namespace Aerospike.Client
 
 		private static CommandExp GetCommandExp(Policy policy)
 		{
+			if (policy.filterExp != null)
+			{
+				return policy.filterExp;
+			}
+
+			if (policy.predExp != null)
+			{
+				return new CommandPredExp(policy.predExp);
+			}
+			return null;
+		}
+
+		private static CommandExp GetCommandExp(Policy policy, BatchAttr attr)
+		{
+			if (attr.filterExp != null)
+			{
+				return attr.filterExp;
+			}
+
 			if (policy.filterExp != null)
 			{
 				return policy.filterExp;

@@ -18,6 +18,7 @@ namespace Aerospike.Client
 {
 	public sealed class BatchAttr
 	{
+		public Expression filterExp;
 		public int readAttr;
 		public int writeAttr;
 		public int infoAttr;
@@ -107,6 +108,7 @@ namespace Aerospike.Client
 
 		public void SetRead(Policy rp)
 		{
+			filterExp = null;
 			readAttr = Command.INFO1_READ;
 
 			if (rp.readModeAP == ReadModeAP.ALL)
@@ -142,6 +144,7 @@ namespace Aerospike.Client
 
 		public void SetRead(BatchReadPolicy rp)
 		{
+			filterExp = rp.filterExp;
 			readAttr = Command.INFO1_READ;
 
 			if (rp.readModeAP == ReadModeAP.ALL)
@@ -230,6 +233,7 @@ namespace Aerospike.Client
 
 		public void SetWrite(Policy wp)
 		{
+			filterExp = null;
 			readAttr = 0;
 			writeAttr = Command.INFO2_WRITE | Command.INFO2_RESPOND_ALL_OPS;
 			infoAttr = 0;
@@ -241,6 +245,7 @@ namespace Aerospike.Client
 
 		public void SetWrite(BatchWritePolicy wp)
 		{
+			filterExp = wp.filterExp;
 			readAttr = 0;
 			writeAttr = Command.INFO2_WRITE | Command.INFO2_RESPOND_ALL_OPS;
 			infoAttr = 0;
@@ -346,6 +351,7 @@ namespace Aerospike.Client
 
 		public void SetUDF(Policy up)
 		{
+			filterExp = null;
 			readAttr = 0;
 			writeAttr = Command.INFO2_WRITE;
 			infoAttr = 0;
@@ -357,6 +363,7 @@ namespace Aerospike.Client
 
 		public void SetUDF(BatchUDFPolicy up)
 		{
+			filterExp = up.filterExp;
 			readAttr = 0;
 			writeAttr = Command.INFO2_WRITE;
 			infoAttr = 0;
@@ -378,6 +385,7 @@ namespace Aerospike.Client
 
 		public void SetDelete(Policy dp)
 		{
+			filterExp = null;
 			readAttr = 0;
 			writeAttr = Command.INFO2_WRITE | Command.INFO2_RESPOND_ALL_OPS | Command.INFO2_DELETE;
 			infoAttr = 0;
@@ -389,6 +397,7 @@ namespace Aerospike.Client
 
 		public void SetDelete(BatchDeletePolicy dp)
 		{
+			filterExp = dp.filterExp;
 			readAttr = 0;
 			writeAttr = Command.INFO2_WRITE | Command.INFO2_RESPOND_ALL_OPS | Command.INFO2_DELETE;
 			infoAttr = 0;
