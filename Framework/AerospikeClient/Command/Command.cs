@@ -1093,7 +1093,7 @@ namespace Aerospike.Client
 			End(compress);
 		}
 
-		private byte GetBatchFlags(BatchPolicy policy)
+		private static byte GetBatchFlags(BatchPolicy policy)
 		{
 			byte flags = (policy.allowInline) ? (byte)1 : (byte)0;
 
