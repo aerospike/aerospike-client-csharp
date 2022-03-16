@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2020 Aerospike, Inc.
+ * Copyright 2012-2022 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -46,7 +46,6 @@ namespace Aerospike.Client
 		{
 			this.cluster = cluster;
 			this.policy = policy;
-			statement.returnData = true;
 			this.statement = statement;
 			this.threads = new List<QueryThread>(nodeCapacity);
 			this.cancel = new CancellationTokenSource();
@@ -69,10 +68,10 @@ namespace Aerospike.Client
 
 		private void Execute()
 		{
+			ulong taskId = statement.PrepareTaskId();
+
 			while (true)
 			{
-				statement.taskId = RandomShift.ThreadLocalInstance.NextLong();
-
 				List<NodePartitions> list = tracker.AssignPartitionsToNodes(cluster, statement.ns);
 
 				// Initialize maximum number of nodes to query in parallel.
@@ -94,7 +93,7 @@ namespace Aerospike.Client
 					{
 						foreach (NodePartitions nodePartitions in list)
 						{
-							MultiCommand command = new QueryPartitionCommand(cluster, nodePartitions.node, policy, statement, recordSet, tracker, nodePartitions);
+							MultiCommand command = new QueryPartitionCommand(cluster, nodePartitions.node, policy, statement, taskId, recordSet, tracker, nodePartitions);
 							threads.Add(new QueryThread(this, command));
 						}
 
@@ -113,7 +112,7 @@ namespace Aerospike.Client
 				{
 					foreach (NodePartitions nodePartitions in list)
 					{
-						MultiCommand command = new QueryPartitionCommand(cluster, nodePartitions.node, policy, statement, recordSet, tracker, nodePartitions);
+						MultiCommand command = new QueryPartitionCommand(cluster, nodePartitions.node, policy, statement, taskId, recordSet, tracker, nodePartitions);
 						command.Execute();
 					}
 				}
@@ -123,7 +122,7 @@ namespace Aerospike.Client
 					break;
 				}
 
-				if (tracker.IsComplete(policy))
+				if (tracker.IsComplete(cluster, policy))
 				{
 					// All partitions received.
 					recordSet.Put(RecordSet.END);
@@ -142,6 +141,9 @@ namespace Aerospike.Client
 				Interlocked.Exchange(ref completedCount, 0);
 				threadsComplete = false;
 				exception = null;
+
+				// taskId must be reset on next pass to avoid server duplicate query detection.
+				taskId = RandomShift.ThreadLocalInstance.NextLong();
 			}
 		}
 

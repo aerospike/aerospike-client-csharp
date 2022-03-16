@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2022 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -43,7 +43,8 @@ namespace Aerospike.Client
 
 		/// <summary>
 		/// Return records after key's digest in partition containing the digest.
-		/// Note that digest order is not the same as userKey order.
+		/// Note that digest order is not the same as userKey order. This method
+		/// only works for scan or query with null filter.
 		/// </summary>
 		/// <param name="key">return records after this key's digest</param>
 		public static PartitionFilter After(Key key)

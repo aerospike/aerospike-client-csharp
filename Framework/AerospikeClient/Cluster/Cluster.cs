@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2022 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -122,6 +122,9 @@ namespace Aerospike.Client
 
 		// Is authentication enabled
 		public readonly bool authEnabled;
+
+		// Does cluster support query by partition.
+		internal bool hasPartitionQuery;
 
 		public Cluster(ClientPolicy policy, Host[] hosts)
 		{
@@ -689,6 +692,7 @@ namespace Aerospike.Client
 				nodeArray[count++] = peer;
 				AddNode(peer);
 			}
+			hasPartitionQuery = Cluster.SupportsPartitionQuery(nodeArray);
 
 			// Replace nodes with copy.
 			nodes = nodeArray;
@@ -716,6 +720,7 @@ namespace Aerospike.Client
 				nodeArray[count++] = node;
 				AddNode(node);
 			}
+			hasPartitionQuery = Cluster.SupportsPartitionQuery(nodeArray);
 
 			// Replace nodes with copy.
 			nodes = nodeArray;
@@ -812,6 +817,7 @@ namespace Aerospike.Client
 				Array.Copy(nodeArray, 0, nodeArray2, 0, count);
 				nodeArray = nodeArray2;
 			}
+			hasPartitionQuery = Cluster.SupportsPartitionQuery(nodeArray);
 
 			// Replace nodes with copy.
 			nodes = nodeArray;
@@ -1012,6 +1018,23 @@ namespace Aerospike.Client
 			this.errorRateWindow = window;
 		}
 
+		private static bool SupportsPartitionQuery(Node[] nodes)
+		{
+			if (nodes.Length == 0)
+			{
+				return false;
+			}
+
+			foreach (Node node in nodes)
+			{
+				if (!node.HasPartitionQuery)
+				{
+					return false;
+				}
+			}
+			return true;
+		}
+		
 		/// <summary>
 		/// Return count of add node failures in the most recent cluster tend iteration.
 		/// </summary>

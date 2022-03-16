@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2022 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -89,8 +89,10 @@ namespace Aerospike.Client
 			SetBatchRead(batchPolicy, records, batch);
 		}
 
-		protected internal override void ParseRow(Key key)
+		protected internal override void ParseRow()
 		{
+			SkipKey(fieldCount);
+
 			BatchRead record = records[batchIndex];
 
 			if (resultCode == 0)
@@ -187,8 +189,10 @@ namespace Aerospike.Client
 			SetBatchRead(batchPolicy, records, batch);
 		}
 
-		protected internal override void ParseRow(Key key)
+		protected internal override void ParseRow()
 		{
+			SkipKey(fieldCount);
+
 			BatchRead record = records[batchIndex];
 
 			if (resultCode == 0)
@@ -307,8 +311,10 @@ namespace Aerospike.Client
 			SetBatchRead(batchPolicy, keys, batch, binNames, ops, readAttr);
 		}
 
-		protected internal override void ParseRow(Key key)
+		protected internal override void ParseRow()
 		{
+			SkipKey(fieldCount);
+
 			if (resultCode == 0)
 			{
 				records[batchIndex] = ParseRecord();
@@ -420,8 +426,10 @@ namespace Aerospike.Client
 			SetBatchRead(batchPolicy, keys, batch, binNames, ops, readAttr);
 		}
 
-		protected internal override void ParseRow(Key key)
+		protected internal override void ParseRow()
 		{
+			SkipKey(fieldCount);
+
 			Key keyOrig = keys[batchIndex];
 
 			if (resultCode == 0)
@@ -527,8 +535,10 @@ namespace Aerospike.Client
 			SetBatchRead(batchPolicy, keys, batch, null, null, Command.INFO1_READ | Command.INFO1_NOBINDATA);
 		}
 
-		protected internal override void ParseRow(Key key)
+		protected internal override void ParseRow()
 		{
+			SkipKey(fieldCount);
+
 			if (opCount > 0)
 			{
 				throw new AerospikeException.Parse("Received bins that were not requested!");
@@ -626,8 +636,10 @@ namespace Aerospike.Client
 			SetBatchRead(batchPolicy, keys, batch, null, null, Command.INFO1_READ | Command.INFO1_NOBINDATA);
 		}
 
-		protected internal override void ParseRow(Key key)
+		protected internal override void ParseRow()
 		{
+			SkipKey(fieldCount);
+
 			if (opCount > 0)
 			{
 				throw new AerospikeException.Parse("Received bins that were not requested!");

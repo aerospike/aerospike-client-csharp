@@ -211,6 +211,9 @@
     <Compile Include="..\..\Framework\AerospikeClient\Query\QueryAggregateCommand.cs" Link="Query\QueryAggregateCommand.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Query\QueryAggregateExecutor.cs" Link="Query\QueryAggregateExecutor.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Query\QueryExecutor.cs" Link="Query\QueryExecutor.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Query\QueryListener.cs" Link="Query\QueryListener.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Query\QueryListenerCommand.cs" Link="Query\QueryListenerCommand.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Query\QueryListenerExecutor.cs" Link="Query\QueryListenerExecutor.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Query\QueryPartitionCommand.cs" Link="Query\QueryPartitionCommand.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Query\QueryPartitionExecutor.cs" Link="Query\QueryPartitionExecutor.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Query\QueryRecordCommand.cs" Link="Query\QueryRecordCommand.cs" />

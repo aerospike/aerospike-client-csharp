@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2022 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -19,11 +19,13 @@ namespace Aerospike.Client
 	public sealed class ServerCommand : MultiCommand
 	{
 		private readonly Statement statement;
+		private readonly ulong taskId;
 
-		public ServerCommand(Cluster cluster, Node node, WritePolicy policy, Statement statement) 
-			: base(cluster, policy, node, false, false)
+		public ServerCommand(Cluster cluster, Node node, WritePolicy policy, Statement statement, ulong taskId) 
+			: base(cluster, policy, node, false)
 		{
 			this.statement = statement;
+			this.taskId = taskId;
 		}
 
 		protected internal override bool IsWrite()
@@ -33,11 +35,13 @@ namespace Aerospike.Client
 		
 		protected internal override void WriteBuffer()
 		{
-			SetQuery(policy, statement, true, null);
+			SetQuery(cluster, policy, statement, taskId, true, null);
 		}
 
-		protected internal override void ParseRow(Key key)
+		protected internal override void ParseRow()
 		{
+			SkipKey(fieldCount);
+
 			// Server commands (Query/Execute UDF) should only send back a return code.
 			if (resultCode != 0)
 			{

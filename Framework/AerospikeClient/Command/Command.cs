@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2022 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -25,6 +25,7 @@ namespace Aerospike.Client
 	{
 		public static readonly int INFO1_READ              = (1 << 0); // Contains a read operation.
 		public static readonly int INFO1_GET_ALL           = (1 << 1); // Get all bins.
+		public static readonly int INFO1_SHORT_QUERY       = (1 << 2); // Short query.
 		public static readonly int INFO1_BATCH             = (1 << 3); // Batch read or exists.
 		public static readonly int INFO1_NOBINDATA         = (1 << 5); // Do not read the bins.
 		public static readonly int INFO1_READ_MODE_AP_ALL  = (1 << 6); // Involve all replicas in read operation.
@@ -40,7 +41,9 @@ namespace Aerospike.Client
 
 		public static readonly int INFO3_LAST              = (1 << 0); // This is the last of a multi-part message.
 		public static readonly int INFO3_COMMIT_MASTER     = (1 << 1); // Commit to master only before declaring success.
-		public static readonly int INFO3_PARTITION_DONE    = (1 << 2); // Partition is complete response in scan.
+		// On send: Do not return partition done in scan/query.
+		// On receive: Specified partition is done in scan/query.
+		public static readonly int INFO3_PARTITION_DONE    = (1 << 2);
 		public static readonly int INFO3_UPDATE_ONLY       = (1 << 3); // Update only. Merge bins.
 		public static readonly int INFO3_CREATE_OR_REPLACE = (1 << 4); // Create or completely replace record.
 		public static readonly int INFO3_REPLACE_ONLY      = (1 << 5); // Completely replace existing record only.
@@ -208,7 +211,7 @@ namespace Aerospike.Client
 				fieldCount++;
 			}
 			SizeBuffer();
-			WriteHeaderRead(policy, serverTimeout, Command.INFO1_READ | Command.INFO1_GET_ALL, fieldCount, 0);
+			WriteHeaderRead(policy, serverTimeout, Command.INFO1_READ | Command.INFO1_GET_ALL, 0, fieldCount, 0);
 			WriteKey(policy, key);
 
 			if (exp != null)
@@ -237,7 +240,7 @@ namespace Aerospike.Client
 					EstimateOperationSize(binName);
 				}
 				SizeBuffer();
-				WriteHeaderRead(policy, serverTimeout, Command.INFO1_READ, fieldCount, binNames.Length);
+				WriteHeaderRead(policy, serverTimeout, Command.INFO1_READ, 0, fieldCount, binNames.Length);
 				WriteKey(policy, key);
 
 				if (exp != null)
@@ -417,7 +420,7 @@ namespace Aerospike.Client
 				readAttr |= Command.INFO1_READ_MODE_AP_ALL;
 			}
 
-			WriteHeaderRead(policy, totalTimeout, readAttr | Command.INFO1_BATCH, fieldCount, 0);
+			WriteHeaderRead(policy, totalTimeout, readAttr | Command.INFO1_BATCH, 0, fieldCount, 0);
 
 			if (exp != null)
 			{
@@ -561,7 +564,7 @@ namespace Aerospike.Client
 				readAttr |= Command.INFO1_READ_MODE_AP_ALL;
 			}
 
-			WriteHeaderRead(policy, totalTimeout, readAttr | Command.INFO1_BATCH, fieldCount, 0);
+			WriteHeaderRead(policy, totalTimeout, readAttr | Command.INFO1_BATCH, 0, fieldCount, 0);
 
 			if (exp != null)
 			{
@@ -642,6 +645,7 @@ namespace Aerospike.Client
 
 		public void SetScan
 		(
+			Cluster cluster,
 			ScanPolicy policy,
 			string ns,
 			string setName,
@@ -652,16 +656,9 @@ namespace Aerospike.Client
 		{
 			Begin();
 			int fieldCount = 0;
-			int partsFullSize = 0;
-			int partsPartialSize = 0;
-			long maxRecords = 0;
-
-			if (nodePartitions != null)
-			{
-				partsFullSize = nodePartitions.partsFull.Count * 2;
-				partsPartialSize = nodePartitions.partsPartial.Count * 20;
-				maxRecords = nodePartitions.recordMax;
-			}
+			int partsFullSize = nodePartitions.partsFull.Count * 2;
+			int partsPartialSize = nodePartitions.partsPartial.Count * 20;
+			long maxRecords = nodePartitions.recordMax;
 
 			if (ns != null)
 			{
@@ -724,15 +721,17 @@ namespace Aerospike.Client
 			}
 
 			SizeBuffer();
-			byte readAttr = (byte)Command.INFO1_READ;
+			int readAttr = (byte)Command.INFO1_READ;
 
 			if (!policy.includeBinData)
 			{
 				readAttr |= (byte)Command.INFO1_NOBINDATA;
 			}
 
+			// Clusters that support partition queries also support not sending partition done messages.
+			int infoAttr = cluster.hasPartitionQuery ? Command.INFO3_PARTITION_DONE : 0;
 			int operationCount = (binNames == null) ? 0 : binNames.Length;
-			WriteHeaderRead(policy, totalTimeout, readAttr, fieldCount, operationCount);
+			WriteHeaderRead(policy, totalTimeout, readAttr, infoAttr, fieldCount, operationCount);
 
 			if (ns != null)
 			{
@@ -767,7 +766,7 @@ namespace Aerospike.Client
 
 			if (maxRecords > 0)
 			{
-				WriteField((ulong)maxRecords, FieldType.SCAN_MAX_RECORDS);
+				WriteField((ulong)maxRecords, FieldType.MAX_RECORDS);
 			}
 
 			if (policy.recordsPerSecond > 0)
@@ -781,7 +780,7 @@ namespace Aerospike.Client
 			}
 
 			// Write scan timeout
-			WriteField(policy.socketTimeout, FieldType.SCAN_TIMEOUT);
+			WriteField(policy.socketTimeout, FieldType.SOCKET_TIMEOUT);
 
 			// Write taskId field
 			WriteField(taskId, FieldType.TRAN_ID);
@@ -796,15 +795,21 @@ namespace Aerospike.Client
 			End();
 		}
 
-		protected internal void SetQuery(Policy policy, Statement statement, bool write, NodePartitions nodePartitions)
+		protected internal void SetQuery
+		(
+			Cluster cluster,
+			Policy policy,
+			Statement statement,
+			ulong taskId,
+			bool background,
+			NodePartitions nodePartitions
+		)
 		{
 			byte[] functionArgBuffer = null;
 			int fieldCount = 0;
 			int filterSize = 0;
 			int binNameSize = 0;
-			int partsFullSize = 0;
-			int partsPartialSize = 0;
-			long maxRecords = 0;
+			bool isNew = cluster.hasPartitionQuery;
 
 			Begin();
 
@@ -814,19 +819,26 @@ namespace Aerospike.Client
 				fieldCount++;
 			}
 
-			if (statement.indexName != null)
-			{
-				dataOffset += ByteUtil.EstimateSizeUtf8(statement.indexName) + FIELD_HEADER_SIZE;
-				fieldCount++;
-			}
-
 			if (statement.setName != null)
 			{
 				dataOffset += ByteUtil.EstimateSizeUtf8(statement.setName) + FIELD_HEADER_SIZE;
 				fieldCount++;
 			}
 
-			// Allocate space for TaskId field.
+			// Estimate recordsPerSecond field size. This field is used in new servers and not used
+			// (but harmless to add) in old servers.
+			if (statement.recordsPerSecond > 0)
+			{
+				dataOffset += 4 + FIELD_HEADER_SIZE;
+				fieldCount++;
+			}
+
+			// Estimate socket timeout field size. This field is used in new servers and not used
+			// (but harmless to add) in old servers.
+			dataOffset += 4 + FIELD_HEADER_SIZE;
+			fieldCount++;
+
+			// Estimate taskId field.
 			dataOffset += 8 + FIELD_HEADER_SIZE;
 			fieldCount++;
 
@@ -834,82 +846,40 @@ namespace Aerospike.Client
 			{
 				IndexCollectionType type = statement.filter.CollectionType;
 
+				// Estimate INDEX_TYPE field.
 				if (type != IndexCollectionType.DEFAULT)
 				{
 					dataOffset += FIELD_HEADER_SIZE + 1;
 					fieldCount++;
 				}
 
+				// Estimate INDEX_RANGE field.
 				dataOffset += FIELD_HEADER_SIZE;
 				filterSize++; // num filters
 				filterSize += statement.filter.EstimateSize();
 				dataOffset += filterSize;
 				fieldCount++;
 
-				// Query bin names are specified as a field (Scan bin names are specified later as operations)
-				if (statement.binNames != null && statement.binNames.Length > 0)
+				if (!isNew)
 				{
-					dataOffset += FIELD_HEADER_SIZE;
-					binNameSize++; // num bin names
-
-					foreach (string binName in statement.binNames)
+					// Query bin names are specified as a field (Scan bin names are specified later as operations)
+					// in old servers. Estimate size for selected bin names.
+					if (statement.binNames != null && statement.binNames.Length > 0)
 					{
-						binNameSize += ByteUtil.EstimateSizeUtf8(binName) + 1;
+						dataOffset += FIELD_HEADER_SIZE;
+						binNameSize++; // num bin names
+
+						foreach (string binName in statement.binNames)
+						{
+							binNameSize += ByteUtil.EstimateSizeUtf8(binName) + 1;
+						}
+						dataOffset += binNameSize;
+						fieldCount++;
 					}
-					dataOffset += binNameSize;
-					fieldCount++;
-				}
-			}
-			else
-			{
-				// Calling query with no filters is more efficiently handled by a primary index scan. 
-				if (nodePartitions != null)
-				{
-					partsFullSize = nodePartitions.partsFull.Count * 2;
-					partsPartialSize = nodePartitions.partsPartial.Count * 20;
-					maxRecords = nodePartitions.recordMax;
-				}
-
-				if (partsFullSize > 0)
-				{
-					dataOffset += partsFullSize + FIELD_HEADER_SIZE;
-					fieldCount++;
-				}
-
-				if (partsPartialSize > 0)
-				{
-					dataOffset += partsPartialSize + FIELD_HEADER_SIZE;
-					fieldCount++;
-				}
-
-				// Estimate max records size;
-				if (maxRecords > 0)
-				{
-					dataOffset += 8 + FIELD_HEADER_SIZE;
-					fieldCount++;
-				}
-
-				// Estimate scan timeout size.
-				dataOffset += 4 + FIELD_HEADER_SIZE;
-				fieldCount++;
-
-				// Estimate records per second size.
-				if (statement.recordsPerSecond > 0)
-				{
-					dataOffset += 4 + FIELD_HEADER_SIZE;
-					fieldCount++;
 				}
 			}
 
-			PredExp[] predExp = statement.PredExp;
-			CommandExp exp = (predExp != null) ? new CommandPredExp(predExp) : GetCommandExp(policy);
-
-			if (exp != null)
-			{
-				dataOffset += exp.Size();
-				fieldCount++;
-			}
-
+			// Estimate aggregation/background function size.
 			if (statement.functionName != null)
 			{
 				dataOffset += FIELD_HEADER_SIZE + 1; // udf type
@@ -928,19 +898,73 @@ namespace Aerospike.Client
 				fieldCount += 4;
 			}
 
+			PredExp[] predExp = statement.PredExp;
+			CommandExp exp = (predExp != null) ? new CommandPredExp(predExp) : GetCommandExp(policy);
+
+			if (exp != null)
+			{
+				dataOffset += exp.Size();
+				fieldCount++;
+			}
+
+			long maxRecords = 0;
+			int partsFullSize = 0;
+			int partsPartialDigestSize = 0;
+			int partsPartialBValSize = 0;
+
+			if (nodePartitions != null)
+			{
+				partsFullSize = nodePartitions.partsFull.Count * 2;
+				partsPartialDigestSize = nodePartitions.partsPartial.Count * 20;
+
+				if (statement.filter != null)
+				{
+					partsPartialBValSize = nodePartitions.partsPartial.Count * 8;
+				}
+				maxRecords = nodePartitions.recordMax;
+			}
+
+			if (partsFullSize > 0)
+			{
+				dataOffset += partsFullSize + FIELD_HEADER_SIZE;
+				fieldCount++;
+			}
+
+			if (partsPartialDigestSize > 0)
+			{
+				dataOffset += partsPartialDigestSize + FIELD_HEADER_SIZE;
+				fieldCount++;
+			}
+
+			if (partsPartialBValSize > 0)
+			{
+				dataOffset += partsPartialBValSize + FIELD_HEADER_SIZE;
+				fieldCount++;
+			}
+
+			// Estimate max records field size. This field is used in new servers and not used
+			// (but harmless to add) in old servers.
+			if (maxRecords > 0)
+			{
+				dataOffset += 8 + FIELD_HEADER_SIZE;
+				fieldCount++;
+			}
+
 			// Operations (used in query execute) and bin names (used in scan/query) are mutually exclusive.
 			int operationCount = 0;
 
 			if (statement.operations != null)
 			{
+				// Estimate size for background operations.
 				foreach (Operation operation in statement.operations)
 				{
 					EstimateOperationSize(operation);
 				}
 				operationCount = statement.operations.Length;
 			}
-			else if (statement.binNames != null && statement.filter == null)
+			else if (statement.binNames != null && (isNew || statement.filter == null))
 			{
+				// Estimate size for selected bin names (query bin names already handled for old servers).
 				foreach (string binName in statement.binNames)
 				{
 					EstimateOperationSize(binName);
@@ -950,15 +974,28 @@ namespace Aerospike.Client
 
 			SizeBuffer();
 
-			if (write)
+			if (background)
 			{
 				WriteHeaderWrite((WritePolicy)policy, Command.INFO2_WRITE, fieldCount, operationCount);
 			}
 			else
 			{
 				QueryPolicy qp = (QueryPolicy)policy;
-				int readAttr = qp.includeBinData ? Command.INFO1_READ : Command.INFO1_READ | Command.INFO1_NOBINDATA;
-				WriteHeaderRead(policy, totalTimeout, readAttr, fieldCount, operationCount);
+				int readAttr = Command.INFO1_READ;
+
+				if (!qp.includeBinData)
+				{
+					readAttr |= Command.INFO1_NOBINDATA;
+				}
+
+				if (qp.shortQuery)
+				{
+					readAttr |= Command.INFO1_SHORT_QUERY;
+				}
+
+				int infoAttr = isNew ? Command.INFO3_PARTITION_DONE : 0;
+
+				WriteHeaderRead(policy, totalTimeout, readAttr, infoAttr, fieldCount, operationCount);
 			}
 
 			if (statement.ns != null)
@@ -966,18 +1003,22 @@ namespace Aerospike.Client
 				WriteField(statement.ns, FieldType.NAMESPACE);
 			}
 
-			if (statement.indexName != null)
-			{
-				WriteField(statement.indexName, FieldType.INDEX_NAME);
-			}
-
 			if (statement.setName != null)
 			{
 				WriteField(statement.setName, FieldType.TABLE);
 			}
 
+			// Write records per second.
+			if (statement.recordsPerSecond > 0)
+			{
+				WriteField(statement.recordsPerSecond, FieldType.RECORDS_PER_SECOND);
+			}
+
+			// Write socket idle timeout.
+			WriteField(policy.socketTimeout, FieldType.SOCKET_TIMEOUT);
+
 			// Write taskId field
-			WriteField(statement.taskId, FieldType.TRAN_ID);
+			WriteField(taskId, FieldType.TRAN_ID);
 
 			if (statement.filter != null)
 			{
@@ -993,58 +1034,32 @@ namespace Aerospike.Client
 				dataBuffer[dataOffset++] = (byte)1;
 				dataOffset = statement.filter.Write(dataBuffer, dataOffset);
 
-				// Query bin names are specified as a field (Scan bin names are specified later as operations)
-				if (statement.binNames != null && statement.binNames.Length > 0)
+				if (!isNew)
 				{
-					WriteFieldHeader(binNameSize, FieldType.QUERY_BINLIST);
-					dataBuffer[dataOffset++] = (byte)statement.binNames.Length;
-
-					foreach (string binName in statement.binNames)
+					// Query bin names are specified as a field (Scan bin names are specified later as operations)
+					// in old servers.
+					if (statement.binNames != null && statement.binNames.Length > 0)
 					{
-						int len = ByteUtil.StringToUtf8(binName, dataBuffer, dataOffset + 1);
-						dataBuffer[dataOffset] = (byte)len;
-						dataOffset += len + 1;
+						WriteFieldHeader(binNameSize, FieldType.QUERY_BINLIST);
+						dataBuffer[dataOffset++] = (byte)statement.binNames.Length;
+
+						foreach (string binName in statement.binNames)
+						{
+							int len = ByteUtil.StringToUtf8(binName, dataBuffer, dataOffset + 1);
+							dataBuffer[dataOffset] = (byte)len;
+							dataOffset += len + 1;
+						}
 					}
 				}
 			}
-			else
+
+			if (statement.functionName != null)
 			{
-				// Calling query with no filters is more efficiently handled by a primary index scan. 
-				if (partsFullSize > 0)
-				{
-					WriteFieldHeader(partsFullSize, FieldType.PID_ARRAY);
-
-					foreach (PartitionStatus part in nodePartitions.partsFull)
-					{
-						ByteUtil.ShortToLittleBytes((ushort)part.id, dataBuffer, dataOffset);
-						dataOffset += 2;
-					}
-				}
-
-				if (partsPartialSize > 0)
-				{
-					WriteFieldHeader(partsPartialSize, FieldType.DIGEST_ARRAY);
-
-					foreach (PartitionStatus part in nodePartitions.partsPartial)
-					{
-						Array.Copy(part.digest, 0, dataBuffer, dataOffset, 20);
-						dataOffset += 20;
-					}
-				}
-
-				if (maxRecords > 0)
-				{
-					WriteField((ulong)maxRecords, FieldType.SCAN_MAX_RECORDS);
-				}
-
-				// Write scan socket idle timeout.
-				WriteField(policy.socketTimeout, FieldType.SCAN_TIMEOUT);
-
-				// Write records per second.
-				if (statement.recordsPerSecond > 0)
-				{
-					WriteField(statement.recordsPerSecond, FieldType.RECORDS_PER_SECOND);
-				}
+				WriteFieldHeader(1, FieldType.UDF_OP);
+				dataBuffer[dataOffset++] = background ? (byte)2 : (byte)1;
+				WriteField(statement.packageName, FieldType.UDF_PACKAGE_NAME);
+				WriteField(statement.functionName, FieldType.UDF_FUNCTION);
+				WriteField(functionArgBuffer, FieldType.UDF_ARGLIST);
 			}
 
 			if (exp != null)
@@ -1052,13 +1067,42 @@ namespace Aerospike.Client
 				dataOffset = exp.Write(this);
 			}
 
-			if (statement.functionName != null)
+			if (partsFullSize > 0)
 			{
-				WriteFieldHeader(1, FieldType.UDF_OP);
-				dataBuffer[dataOffset++] = (statement.returnData) ? (byte)1 : (byte)2;
-				WriteField(statement.packageName, FieldType.UDF_PACKAGE_NAME);
-				WriteField(statement.functionName, FieldType.UDF_FUNCTION);
-				WriteField(functionArgBuffer, FieldType.UDF_ARGLIST);
+				WriteFieldHeader(partsFullSize, FieldType.PID_ARRAY);
+
+				foreach (PartitionStatus part in nodePartitions.partsFull)
+				{
+					ByteUtil.ShortToLittleBytes((ushort)part.id, dataBuffer, dataOffset);
+					dataOffset += 2;
+				}
+			}
+
+			if (partsPartialDigestSize > 0)
+			{
+				WriteFieldHeader(partsPartialDigestSize, FieldType.DIGEST_ARRAY);
+
+				foreach (PartitionStatus part in nodePartitions.partsPartial)
+				{
+					Array.Copy(part.digest, 0, dataBuffer, dataOffset, 20);
+					dataOffset += 20;
+				}
+			}
+
+			if (partsPartialBValSize > 0)
+			{
+				WriteFieldHeader(partsPartialBValSize, FieldType.BVAL_ARRAY);
+
+				foreach (PartitionStatus part in nodePartitions.partsPartial)
+				{
+					ByteUtil.LongToLittleBytes(part.bval, dataBuffer, dataOffset);
+					dataOffset += 8;
+				}
+			}
+
+			if (maxRecords > 0)
+			{
+				WriteField((ulong)maxRecords, FieldType.MAX_RECORDS);
 			}
 
 			if (statement.operations != null)
@@ -1068,9 +1112,8 @@ namespace Aerospike.Client
 					WriteOperation(operation);
 				}
 			}
-			else if (statement.binNames != null && statement.filter == null)
+			else if (statement.binNames != null && (isNew || statement.filter == null))
 			{
-				// Scan bin names are specified after all fields.
 				foreach (string binName in statement.binNames)
 				{
 					WriteOperation(binName, Operation.Type.READ);
@@ -1216,7 +1259,14 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Header write for operate command.
 		/// </summary>
-		private void WriteHeaderReadWrite(WritePolicy policy, int readAttr, int writeAttr, int fieldCount, int operationCount)
+		private void WriteHeaderReadWrite
+		(
+			WritePolicy policy,
+			int readAttr,
+			int writeAttr,
+			int fieldCount,
+			int operationCount
+		)
 		{
 			// Set flags.
 			int generation = 0;
@@ -1308,10 +1358,16 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Header write for read commands.
 		/// </summary>
-		private void WriteHeaderRead(Policy policy, int timeout, int readAttr, int fieldCount, int operationCount)
+		private void WriteHeaderRead
+		(
+			Policy policy,
+			int timeout,
+			int readAttr,
+			int infoAttr,
+			int fieldCount,
+			int operationCount
+		)
 		{
-			int infoAttr = 0;
-
 			switch (policy.readModeSC)
 			{
 				case ReadModeSC.SESSION:
@@ -1567,12 +1623,13 @@ namespace Aerospike.Client
 			}
 		}
 
-		internal Key ParseKey(int fieldCount)
+		internal Key ParseKey(int fieldCount, out ulong bval)
 		{
 			byte[] digest = null;
 			string ns = null;
 			string setName = null;
 			Value userKey = null;
+			bval = 0;
 
 			for (int i = 0; i < fieldCount; i++)
 			{
@@ -1601,6 +1658,10 @@ namespace Aerospike.Client
 						int type = dataBuffer[dataOffset++];
 						size--;
 						userKey = ByteUtil.BytesToKeyValue(type, dataBuffer, dataOffset, size);
+						break;
+
+					case FieldType.BVAL_ARRAY:
+						bval = (ulong)ByteUtil.LittleBytesToLong(dataBuffer, dataOffset);
 						break;
 				}
 				dataOffset += size;
