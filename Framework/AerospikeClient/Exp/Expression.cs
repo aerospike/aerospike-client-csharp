@@ -22,7 +22,7 @@ namespace Aerospike.Client
 	/// Packed expression byte instructions.
 	/// </summary>
 	[Serializable]
-	public sealed class Expression : CommandExp
+	public sealed class Expression
 	{
 		private readonly byte[] bytes;
 

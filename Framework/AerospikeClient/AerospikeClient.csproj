@@ -357,7 +357,6 @@
       <DependentUpon>Resources.resx</DependentUpon>
     </Compile>
     <Compile Include="Query\PartitionStatus.cs" />
-    <Compile Include="Query\PredExp.cs" />
     <Compile Include="Query\QueryListenerCommand.cs" />
     <Compile Include="Query\QueryListenerExecutor.cs" />
     <Compile Include="Query\QueryPartitionExecutor.cs" />
