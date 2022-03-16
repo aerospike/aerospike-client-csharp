@@ -42,14 +42,14 @@ namespace Aerospike.Client
 		/// <summary>
 		/// User can perform user defined function(UDF) administration actions.
 		/// Examples include create/drop UDF. Global scope only.
-		/// Requires server version 5.8+
+		/// Requires server version 6.0+
 		/// </summary>
 		UDF_ADMIN = 3,
 
 		/// <summary>
 		/// User can perform secondary index administration actions.
 		/// Examples include create/drop index. Global scope only.
-		/// Requires server version 5.8+
+		/// Requires server version 6.0+
 		/// </summary>
 		SINDEX_ADMIN = 4,
 
@@ -75,7 +75,7 @@ namespace Aerospike.Client
 
 		/// <summary>
 		/// User can truncate data.
-		/// Requires server version 5.8+
+		/// Requires server version 6.0+
 		/// </summary>
 		TRUNCATE = 14
 	}
