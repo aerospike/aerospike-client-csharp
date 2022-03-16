@@ -19,19 +19,19 @@ using System.Collections.Generic;
 namespace Aerospike.Client
 {
 	/// <summary>
-	/// Asynchronous result notifications for batch get commands with variable bins per key.
-	/// The result is sent in a single list.
+	/// Asynchronous result notifications for batch operate commands with variable operations.
 	/// </summary>
-	public interface BatchListListener
+	public interface BatchOperateListListener
 	{
 		/// <summary>
 		/// This method is called when the command completes successfully.
 		/// </summary>
 		/// <param name="records">
-		/// record instances, <seealso cref="BatchRecord.record"/>
-		///	will be null if the key is not found.
+		/// record instances, <see cref="Aerospike.Client.BatchRecord.record"/>
+		///	will be null if an error occurred for that key.
 		///	</param>
-		void OnSuccess(List<BatchRead> records);
+		/// <param name="status">true if all records returned success.</param>
+		void OnSuccess(List<BatchRecord> records, bool status);
 
 		/// <summary>
 		/// This method is called when the command fails.

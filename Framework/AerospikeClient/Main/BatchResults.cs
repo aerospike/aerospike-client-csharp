@@ -14,28 +14,30 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using System.Collections.Generic;
-
 namespace Aerospike.Client
 {
 	/// <summary>
-	/// Asynchronous result notifications for batch get commands with variable bins per key.
-	/// The result is sent in a single list.
+	/// Batch record results.
 	/// </summary>
-	public interface BatchListListener
+	public sealed class BatchResults
 	{
 		/// <summary>
-		/// This method is called when the command completes successfully.
+		/// Record results.
 		/// </summary>
-		/// <param name="records">
-		/// record instances, <seealso cref="BatchRecord.record"/>
-		///	will be null if the key is not found.
-		///	</param>
-		void OnSuccess(List<BatchRead> records);
+		public readonly BatchRecord[] records;
 
 		/// <summary>
-		/// This method is called when the command fails.
+		/// Indicates if all records returned success.
 		/// </summary>
-		void OnFailure(AerospikeException ae);
+		public readonly bool status;
+
+		/// <summary>
+		/// Constructor.
+		/// </summary>
+		public BatchResults(BatchRecord[] records, bool status)
+		{
+			this.records = records;
+			this.status = status;
+		}
 	}
 }

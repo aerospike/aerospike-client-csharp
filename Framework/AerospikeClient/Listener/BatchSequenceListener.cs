@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2022 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -14,8 +14,6 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using System.Collections.Generic;
-
 namespace Aerospike.Client
 {
 	/// <summary>
@@ -28,29 +26,26 @@ namespace Aerospike.Client
 		/// This method is called when an asynchronous batch record is received from the server.
 		/// The receive sequence is not ordered.
 		/// <para>
-		/// The user may throw a 
-		/// <seealso cref="Aerospike.Client.AerospikeException.QueryTerminated"/> 
-		/// exception if the command should be aborted.  If any exception is thrown, parallel command threads
-		/// to other nodes will also be terminated and the exception will be propagated back through the
-		/// onFailure() call.
+		/// The user may throw <see cref="Aerospike.Client.AerospikeException"/> if the
+		/// command should be aborted. If any exception is thrown, parallel command threads
+		/// to other nodes will also be terminated and the exception will be propagated back
+		/// through the OnFailure() call.
 		/// </para>
 		/// </summary>
 		/// <param name="record">
-		/// record instances, <seealso cref="Aerospike.Client.BatchRead.record"/>
-		///	will be null if the key is not found.
+		/// record instance, <see cref="Aerospike.Client.BatchRecord.record"/>
+		///	will be null if the key is not found
 		///	</param>
-		/// <exception cref="AerospikeException">if error occurs or batch should be terminated.</exception>
 		void OnRecord(BatchRead record);
 
 		/// <summary>
-		/// This method is called when the asynchronous batch get command completes.
+		/// This method is called when the command completes successfully.
 		/// </summary>
 		void OnSuccess();
 
 		/// <summary>
-		/// This method is called when an asynchronous batch get command fails.
+		/// This method is called when the command fails.
 		/// </summary>
-		/// <param name="exception">error that occurred</param>
-		void OnFailure(AerospikeException exception);
+		void OnFailure(AerospikeException ae);
 	}
 }

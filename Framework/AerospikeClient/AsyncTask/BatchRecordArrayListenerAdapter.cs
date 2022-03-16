@@ -1,5 +1,5 @@
-/* 
- * Copyright 2012-2020 Aerospike, Inc.
+﻿/* 
+ * Copyright 2012-2022 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -14,11 +14,25 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
+using System.Threading;
+
 namespace Aerospike.Client
 {
-	public interface AsyncExecutor
+	internal sealed class BatchRecordArrayListenerAdapter : ListenerAdapter<BatchResults>, BatchRecordArrayListener
 	{
-		void ChildSuccess(AsyncNode node);
-		void ChildFailure(AerospikeException ae);
+		public BatchRecordArrayListenerAdapter(CancellationToken token)
+			: base(token)
+		{
+		}
+
+		public void OnSuccess(BatchRecord[] records, bool status)
+		{
+			SetResult(new BatchResults(records, status));
+		}
+
+		public void OnFailure(BatchRecord[] records, AerospikeException ae)
+		{
+			OnFailure(new AerospikeException.BatchRecordArray(records, ae));
+		}
 	}
 }

@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2022 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -14,28 +14,29 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using System.Text;
-
 namespace Aerospike.Client
 {
 	/// <summary>
-	/// Key and bin names used in batch commands where variables bins are needed for each key.
+	/// Batch key and read only operations with default policy.
+	/// Used in batch read commands where different bins are needed for each key.
 	/// </summary>
-	public sealed class BatchRead
+	public sealed class BatchRead : BatchRecord
 	{
 		/// <summary>
-		/// Key.
+		/// Optional read policy.
 		/// </summary>
-		public readonly Key key;
+		public readonly BatchReadPolicy policy;
 
 		/// <summary>
-		/// Bins to retrieve for this key. binNames are mutually exclusive with ops.
+		/// Bins to retrieve for this key. binNames are mutually exclusive with
+		/// <see cref="Aerospike.Client.BatchRead.ops"/>.
 		/// </summary>
 		public readonly string[] binNames;
 
 		/// <summary>
-		/// Read operations for this key. ops are mutually exclusive with binNames.
-		/// A binName can be emulated with <see cref="Aerospike.Client.Operation.Get(string)"/>
+		/// Optional operations for this key. ops are mutually exclusive with
+		/// <see cref="Aerospike.Client.BatchRead.binNames"/>. A binName can be emulated with
+		/// <see cref="Aerospike.Client.Operation.Get(string)"/>
 		/// </summary>
 		public readonly Operation[] ops;
 
@@ -47,55 +48,135 @@ namespace Aerospike.Client
 		public readonly bool readAllBins;
 
 		/// <summary>
-		/// Record result after batch command has completed.  Will be null if record was not found.
-		/// </summary>
-		public Record record;
-
-		/// <summary>
 		/// Initialize batch key and bins to retrieve.
 		/// </summary>
-		/// <param name="key">record key</param>
-		/// <param name="binNames">array of bins to retrieve.</param>
 		public BatchRead(Key key, string[] binNames)
+			: base(key, false)
 		{
-			this.key = key;
+			this.policy = null;
 			this.binNames = binNames;
 			this.ops = null;
 			this.readAllBins = false;
 		}
 
 		/// <summary>
-		/// Initialize batch key and read operations.
-		/// </summary>
-		/// <param name="key">record key</param>
-		/// <param name="ops">read operations to run.</param>
-		public BatchRead(Key key, Operation[] ops)
-		{
-			this.key = key;
-			this.binNames = null;
-			this.ops = ops;
-			this.readAllBins = false;
-		}
-
-		/// <summary>
 		/// Initialize batch key and readAllBins indicator.
 		/// </summary>
-		/// <param name="key">record key</param>
-		/// <param name="readAllBins">should all bins in record be retrieved.</param>
 		public BatchRead(Key key, bool readAllBins)
+			: base(key, false)
 		{
-			this.key = key;
+			this.policy = null;
 			this.binNames = null;
 			this.ops = null;
 			this.readAllBins = readAllBins;
 		}
 
 		/// <summary>
-		/// Convert BatchRecord to string.
+		/// Initialize batch key and read operations.
 		/// </summary>
-		public override string ToString()
+		public BatchRead(Key key, Operation[] ops)
+			: base(key, false)
 		{
-			return key.ToString() + ":" + Util.ArrayToString(binNames);
+			this.policy = null;
+			this.binNames = null;
+			this.ops = ops;
+			this.readAllBins = false;
+		}
+
+		/// <summary>
+		/// Initialize batch policy, key and bins to retrieve.
+		/// </summary>
+		public BatchRead(BatchReadPolicy policy, Key key, string[] binNames)
+			: base(key, false)
+		{
+			this.policy = policy;
+			this.binNames = binNames;
+			this.ops = null;
+			this.readAllBins = false;
+		}
+
+		/// <summary>
+		/// Initialize batch policy, key and readAllBins indicator.
+		/// </summary>
+		public BatchRead(BatchReadPolicy policy, Key key, bool readAllBins)
+			: base(key, false)
+		{
+			this.policy = policy;
+			this.binNames = null;
+			this.ops = null;
+			this.readAllBins = readAllBins;
+		}
+
+		/// <summary>
+		/// Initialize batch policy, key and read operations.
+		/// </summary>
+		public BatchRead(BatchReadPolicy policy, Key key, Operation[] ops)
+			: base(key, false)
+		{
+			this.policy = policy;
+			this.binNames = null;
+			this.ops = ops;
+			this.readAllBins = false;
+		}
+
+		/// <summary>
+		/// Return batch command type.
+		/// </summary>
+		public override Type GetBatchType()
+		{
+			return Type.BATCH_READ;
+		}
+
+		/// <summary>
+		/// Optimized reference equality check to determine batch wire protocol repeat flag.
+		/// For internal use only.
+		/// </summary>
+		public override bool Equals(BatchRecord obj)
+		{
+			if (this.GetType() != obj.GetType())
+			{
+				return false;
+			}
+
+			BatchRead other = (BatchRead)obj;
+			return binNames == other.binNames && ops == other.ops && policy == other.policy && readAllBins == other.readAllBins;
+		}
+
+		/// <summary>
+		/// Return wire protocol size. For internal use only.
+		/// </summary>
+		public override int Size()
+		{
+			int size = 0;
+
+			if (policy != null)
+			{
+				if (policy.filterExp != null)
+				{
+					size += policy.filterExp.Size();
+				}
+			}
+
+			if (binNames != null)
+			{
+				foreach (string binName in binNames)
+				{
+					size += ByteUtil.EstimateSizeUtf8(binName) + Command.OPERATION_HEADER_SIZE;
+				}
+			}
+			else if (ops != null)
+			{
+				foreach (Operation op in ops)
+				{
+					if (Operation.IsWrite(op.type))
+					{
+						throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Write operations not allowed in batch read");
+					}
+					size += ByteUtil.EstimateSizeUtf8(op.binName) + Command.OPERATION_HEADER_SIZE;
+					size += op.value.EstimateSize();
+				}
+			}
+			return size;
 		}
 	}
 }

@@ -220,7 +220,9 @@ namespace Aerospike.Client
 			}
 			return true;
 		}
-		
+
+		protected internal abstract void ParseRow();
+
 		protected internal Record ParseRecord()
 		{
 			if (opCount <= 0)
@@ -230,7 +232,7 @@ namespace Aerospike.Client
 
 			return policy.recordParser.ParseRecord(dataBuffer, ref dataOffset, opCount, generation, expiration, isOperation);
 		}
-		
+
 		public void Stop()
 		{
 			valid = false;
@@ -240,7 +242,5 @@ namespace Aerospike.Client
 		{
 			return valid;
 		}
-
-		protected internal abstract void ParseRow();
 	}
 }

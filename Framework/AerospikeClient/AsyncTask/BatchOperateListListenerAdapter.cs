@@ -1,4 +1,4 @@
-/* 
+﻿/* 
  * Copyright 2012-2022 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
@@ -15,27 +15,22 @@
  * the License.
  */
 using System.Collections.Generic;
+using System.Threading;
 
 namespace Aerospike.Client
 {
-	/// <summary>
-	/// Asynchronous result notifications for batch get commands with variable bins per key.
-	/// The result is sent in a single list.
-	/// </summary>
-	public interface BatchListListener
+	internal sealed class BatchOperateListListenerAdapter : ListenerAdapter<bool>, BatchOperateListListener
 	{
-		/// <summary>
-		/// This method is called when the command completes successfully.
-		/// </summary>
-		/// <param name="records">
-		/// record instances, <seealso cref="BatchRecord.record"/>
-		///	will be null if the key is not found.
-		///	</param>
-		void OnSuccess(List<BatchRead> records);
+		public BatchOperateListListenerAdapter(CancellationToken token)
+			: base(token)
+		{
+		}
 
-		/// <summary>
-		/// This method is called when the command fails.
-		/// </summary>
-		void OnFailure(AerospikeException ae);
+		public void OnSuccess(List<BatchRecord> records, bool status)
+		{
+			// records is an argument to the async call, so the user already has access to it.
+			// Set completion status: true if all batch sub-transactions were successful.
+			SetResult(status);
+		}
 	}
 }

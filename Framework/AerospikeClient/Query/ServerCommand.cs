@@ -21,7 +21,7 @@ namespace Aerospike.Client
 		private readonly Statement statement;
 		private readonly ulong taskId;
 
-		public ServerCommand(Cluster cluster, Node node, WritePolicy policy, Statement statement, ulong taskId) 
+		public ServerCommand(Cluster cluster, Node node, WritePolicy policy, Statement statement, ulong taskId)
 			: base(cluster, policy, node, false)
 		{
 			this.statement = statement;

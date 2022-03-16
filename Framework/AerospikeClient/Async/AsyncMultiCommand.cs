@@ -20,7 +20,6 @@ namespace Aerospike.Client
 {
 	public abstract class AsyncMultiCommand : AsyncCommand
 	{
-		protected internal readonly AsyncExecutor executor;
 		protected internal readonly AsyncNode serverNode;
 		protected internal int info3;
 		protected internal int resultCode;
@@ -35,10 +34,9 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Batch constructor.
 		/// </summary>
-		public AsyncMultiCommand(AsyncExecutor executor, AsyncCluster cluster, Policy policy, AsyncNode node, bool isOperation)
+		public AsyncMultiCommand(AsyncCluster cluster, Policy policy, AsyncNode node, bool isOperation)
 			: base(cluster, policy)
 		{
-			this.executor = executor;
 			this.serverNode = node;
 			this.isOperation = isOperation;
 		}
@@ -46,23 +44,26 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Scan/Query constructor.
 		/// </summary>
-		public AsyncMultiCommand(AsyncExecutor executor, AsyncCluster cluster, Policy policy, AsyncNode node, int socketTimeout, int totalTimeout)
+		public AsyncMultiCommand(AsyncCluster cluster, Policy policy, AsyncNode node, int socketTimeout, int totalTimeout)
 			: base(cluster, policy, socketTimeout, totalTimeout)
 		{
-			this.executor = executor;
 			this.serverNode = node;
 			this.isOperation = false;
 		}
 
 		public AsyncMultiCommand(AsyncMultiCommand other) : base(other)
 		{
-			this.executor = other.executor;
 			this.serverNode = other.serverNode;
 			this.isOperation = other.isOperation;
 		}
 
 		protected internal sealed override void ParseCommand()
 		{
+			if (!valid)
+			{
+				throw new AerospikeException.QueryTerminated();
+			}
+
 			if (ParseGroup())
 			{
 				Finish();
@@ -116,15 +117,12 @@ namespace Aerospike.Client
 				opCount = ByteUtil.BytesToShort(dataBuffer, dataOffset);
 				dataOffset += 2;
 
-				if (!valid)
-				{
-					throw new AerospikeException.QueryTerminated();
-				}
-
 				ParseRow();
 			}
 			return false;
 		}
+
+		protected internal abstract void ParseRow();
 
 		protected internal Record ParseRecord()
 		{
@@ -140,17 +138,5 @@ namespace Aerospike.Client
 		{
 			valid = false;
 		}
-
-		protected internal override void OnSuccess()
-		{
-			executor.ChildSuccess(node);
-		}
-
-		protected internal override void OnFailure(AerospikeException e)
-		{
-			executor.ChildFailure(e);
-		}
-
-		protected internal abstract void ParseRow();
 	}
 }

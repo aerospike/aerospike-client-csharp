@@ -1,5 +1,5 @@
 ﻿/* 
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2022 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -58,6 +58,7 @@ namespace Aerospike.Test
 			if (received == null || !received.Equals(expected))
 			{
 				monitor.SetError("Data mismatch: Expected " + expected + ". Received " + received);
+				return false;
 			}
 			return true;
 		}
@@ -74,6 +75,7 @@ namespace Aerospike.Test
 			if (received != expected)
 			{
 				monitor.SetError("Data mismatch: Expected " + expected + ". Received " + received);
+				return false;
 			}
 			return true;
 		}
@@ -153,6 +155,16 @@ namespace Aerospike.Test
 			if (obj != null)
 			{
 				monitor.SetError("Object is not null");
+				return false;
+			}
+			return true;
+		}
+
+		public bool AssertTrue(bool b)
+		{
+			if (!b)
+			{
+				monitor.SetError("Value is false");
 				return false;
 			}
 			return true;

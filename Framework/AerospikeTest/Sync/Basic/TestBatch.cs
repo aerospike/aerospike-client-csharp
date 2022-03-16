@@ -1,5 +1,5 @@
 ﻿/* 
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2022 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -24,8 +24,11 @@ namespace Aerospike.Test
 	[TestClass]
 	public class TestBatch : TestSync
 	{
-		private const string BinName = "batchbin";
-		private const string ListBin = "listbin";
+		private const string BinName = "bbin";
+		private const string BinName2 = "bbin2";
+		private const string BinName3 = "bbin3";
+		private const string ListBin = "lbin";
+		private const string ListBin2 = "lbin2";
 		private const string KeyPrefix = "tbatkey";
 		private const string ValuePrefix = "batchvalue";
 		private const int Size = 8;
@@ -48,20 +51,33 @@ namespace Aerospike.Test
 					list.Add(j * i);
 				}
 
+				List<int> list2 = new List<int>();
+
+				for (int j = 0; j < 2; j++)
+				{
+					list2.Add(j);
+				}
+
 				Bin listBin = new Bin(ListBin, list);
+				Bin listBin2 = new Bin(ListBin2, list2);
 
 				if (i != 6)
 				{
-					client.Put(policy, key, bin, listBin);
+					client.Put(policy, key, bin, listBin, listBin2);
 				}
 				else
 				{
-					client.Put(policy, key, new Bin(BinName, i), listBin);
+					client.Put(policy, key, new Bin(BinName, i), listBin, listBin2);
 				}
 			}
+
+			// Add records that will eventually be deleted.
+			client.Put(policy, new Key(args.ns, args.set, 10000), new Bin(BinName, 10000));
+			client.Put(policy, new Key(args.ns, args.set, 10001), new Bin(BinName, 10001));
+			client.Put(policy, new Key(args.ns, args.set, 10002), new Bin(BinName, 10002));
 		}
 
-		[TestMethod]
+	[TestMethod]
 		public void BatchExists()
 		{
 			Key[] keys = new Key[Size];
@@ -190,7 +206,7 @@ namespace Aerospike.Test
 		}
 
 		[TestMethod]
-		public void BatchListOperate()
+		public void BatchListReadOperate()
 		{
 			Key[] keys = new Key[Size];
 			for (int i = 0; i < Size; i++)
@@ -214,6 +230,105 @@ namespace Aerospike.Test
 				Assert.AreEqual(i + 1, size);
 				Assert.AreEqual(i * (i + 1), val);
 			}
+		}
+
+		[TestMethod]
+		public void BatchListWriteOperate()
+		{
+			Key[] keys = new Key[Size];
+			for (int i = 0; i < Size; i++)
+			{
+				keys[i] = new Key(args.ns, args.set, KeyPrefix + (i + 1));
+			}
+
+			// Add integer to list and get size and last element of list bin for all records.
+			BatchResults bresults = client.Operate(null, null, keys,
+				ListOperation.Insert(ListBin2, 0, Value.Get(1000)),
+				ListOperation.Size(ListBin2),
+				ListOperation.GetByIndex(ListBin2, -1, ListReturnType.VALUE)
+				);
+
+			for (int i = 0; i < bresults.records.Length; i++)
+			{
+				BatchRecord br = bresults.records[i];
+				Assert.AreEqual(0, br.resultCode);
+
+				IList results = br.record.GetList(ListBin2);
+				long size = (long)results[1];
+				long val = (long)results[2];
+
+				Assert.AreEqual(3, size);
+				Assert.AreEqual(1, val);
+			}
+		}
+
+		[TestMethod]
+		public void BatchWriteComplex()
+		{
+			Expression wexp1 = Exp.Build(Exp.Add(Exp.IntBin(BinName), Exp.Val(1000)));
+
+			Operation[] wops1 = Operation.Array(Operation.Put(new Bin(BinName2, 100)));
+			Operation[] wops2 = Operation.Array(ExpOperation.Write(BinName3, wexp1, ExpWriteFlags.DEFAULT));
+			Operation[] rops1 = Operation.Array(Operation.Get(BinName2));
+			Operation[] rops2 = Operation.Array(Operation.Get(BinName3));
+
+			BatchWritePolicy wp = new BatchWritePolicy();
+			wp.sendKey = true;
+
+			BatchWrite bw1 = new BatchWrite(new Key(args.ns, args.set, KeyPrefix + 1), wops1);
+			BatchWrite bw2 = new BatchWrite(wp, new Key(args.ns, args.set, KeyPrefix + 6), wops2);
+			BatchDelete bd1 = new BatchDelete(new Key(args.ns, args.set, 10002));
+
+			List<BatchRecord> records = new List<BatchRecord>();
+			records.Add(bw1);
+			records.Add(bw2);
+			records.Add(bd1);
+
+			bool status = client.Operate(null, records);
+
+			Assert.IsTrue(status);
+			Assert.AreEqual(0, bw1.resultCode);
+			AssertBinEqual(bw1.key, bw1.record, BinName2, 0);
+			Assert.AreEqual(0, bw2.resultCode);
+			AssertBinEqual(bw2.key, bw2.record, BinName3, 0);
+			Assert.AreEqual(ResultCode.OK, bd1.resultCode);
+
+			BatchRead br1 = new BatchRead(new Key(args.ns, args.set, KeyPrefix + 1), rops1);
+			BatchRead br2 = new BatchRead(new Key(args.ns, args.set, KeyPrefix + 6), rops2);
+			BatchRead br3 = new BatchRead(new Key(args.ns, args.set, 10002), true);
+
+			records.Clear();
+			records.Add(br1);
+			records.Add(br2);
+			records.Add(br3);
+
+			status = client.Operate(null, records);
+
+			Assert.IsFalse(status); // Read of deleted record causes status to be false.
+			AssertBinEqual(br1.key, br1.record, BinName2, 100);
+			AssertBinEqual(br2.key, br2.record, BinName3, 1006);
+			Assert.AreEqual(ResultCode.KEY_NOT_FOUND_ERROR, br3.resultCode);
+		}
+
+		[TestMethod]
+		public void BatchDelete()
+		{
+			// Define keys
+			Key[] keys = new Key[] { new Key(args.ns, args.set, 10000), new Key(args.ns, args.set, 10001) };
+
+			// Ensure keys exists
+			bool[] exists = client.Exists(null, keys);
+			Assert.IsTrue(exists[0]);
+			Assert.IsTrue(exists[1]);
+
+			// Delete keys
+			BatchResults br = client.Delete(null, null, keys);
+			Assert.IsTrue(br.status);
+
+			// Ensure keys do not exist
+			exists = client.Exists(null, keys);
+			Assert.IsFalse(exists[0]);
+			Assert.IsFalse(exists[1]);
 		}
 
 		private void AssertBatchBinEqual(List<BatchRead> list, string binName, int i)

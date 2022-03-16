@@ -15,6 +15,7 @@
  * the License.
  */
 using System;
+using System.Collections;
 using System.Collections.Generic;
 
 namespace Aerospike.Client
@@ -30,39 +31,65 @@ namespace Aerospike.Client
 		public BatchReadListCommand
 		(
 			Cluster cluster,
-			Executor parent,
 			BatchNode batch,
 			BatchPolicy policy,
-			List<BatchRead> records
-		) : base(cluster, parent, batch, policy, true)
+			List<BatchRead> records,
+			BatchStatus status
+		) : base(cluster, batch, policy, status, true)
 		{
 			this.records = records;
 		}
 
 		protected internal override void WriteBuffer()
 		{
-			SetBatchRead(batchPolicy, records, batch);
+			if (batch.node.HasBatchAny)
+			{
+				SetBatchOperate(batchPolicy, records, batch);
+			}
+			else
+			{
+				SetBatchRead(batchPolicy, records, batch);
+			}
 		}
 
 		protected internal override void ParseRow()
 		{
 			SkipKey(fieldCount);
 
+			BatchRead record = records[batchIndex];
+
 			if (resultCode == 0)
 			{
-				BatchRead record = records[batchIndex];
-				record.record = ParseRecord();
+				record.SetRecord(ParseRecord());
+			}
+			else
+			{
+				record.SetError(resultCode, false);
+				status.SetRowError();
+			}
+		}
+
+		protected internal override void SetError(int resultCode, bool inDoubt)
+		{
+			foreach (int index in batch.offsets)
+			{
+				BatchRecord record = records[index];
+
+				if (record.resultCode == ResultCode.NO_RESPONSE)
+				{
+					record.SetError(resultCode, false);
+				}
 			}
 		}
 
 		protected internal override BatchCommand CreateCommand(BatchNode batchNode)
 		{
-			return new BatchReadListCommand(cluster, parent, batchNode, batchPolicy, records);
+			return new BatchReadListCommand(cluster, batchNode, batchPolicy, records, status);
 		}
 
 		protected internal override List<BatchNode> GenerateBatchNodes()
 		{
-			return BatchNode.GenerateList(cluster, batchPolicy, records, sequenceAP, sequenceSC, batch);
+			return BatchNode.GenerateList(cluster, batchPolicy, records, sequenceAP, sequenceSC, batch, status);
 		}
 	}
 
@@ -81,7 +108,6 @@ namespace Aerospike.Client
 		public BatchGetArrayCommand
 		(
 			Cluster cluster,
-			Executor parent,
 			BatchNode batch,
 			BatchPolicy policy,
 			Key[] keys,
@@ -89,8 +115,9 @@ namespace Aerospike.Client
 			Operation[] ops,
 			Record[] records,
 			int readAttr,
-			bool isOperation
-		) : base(cluster, parent, batch, policy, isOperation)
+			bool isOperation,
+			BatchStatus status
+		) : base(cluster, batch, policy, status, isOperation)
 		{
 			this.keys = keys;
 			this.binNames = binNames;
@@ -101,7 +128,15 @@ namespace Aerospike.Client
 
 		protected internal override void WriteBuffer()
 		{
-			SetBatchRead(batchPolicy, keys, batch, binNames, ops, readAttr);
+			if (batch.node.HasBatchAny)
+			{
+				BatchAttr attr = new BatchAttr(policy, readAttr);
+				SetBatchOperate(batchPolicy, keys, batch, binNames, ops, attr);
+			}
+			else
+			{
+				SetBatchRead(batchPolicy, keys, batch, binNames, ops, readAttr);
+			}
 		}
 
 		protected internal override void ParseRow()
@@ -114,14 +149,19 @@ namespace Aerospike.Client
 			}
 		}
 
+		protected internal override void SetError(int resultCode, bool inDoubt)
+		{
+			// records does not store error/inDoubt.
+		}
+
 		protected internal override BatchCommand CreateCommand(BatchNode batchNode)
 		{
-			return new BatchGetArrayCommand(cluster, parent, batchNode, batchPolicy, keys, binNames, ops, records, readAttr, isOperation);
+			return new BatchGetArrayCommand(cluster, batchNode, batchPolicy, keys, binNames, ops, records, readAttr, isOperation, status);
 		}
 
 		protected internal override List<BatchNode> GenerateBatchNodes()
 		{
-			return BatchNode.GenerateList(cluster, batchPolicy, keys, sequenceAP, sequenceSC, batch);
+			return BatchNode.GenerateList(cluster, batchPolicy, keys, null, sequenceAP, sequenceSC, batch, false, status);
 		}
 	}
 
@@ -137,12 +177,12 @@ namespace Aerospike.Client
 		public BatchExistsArrayCommand
 		(
 			Cluster cluster,
-			Executor parent,
 			BatchNode batch,
 			BatchPolicy policy,
 			Key[] keys,
-			bool[] existsArray
-		) : base(cluster, parent, batch, policy, false)
+			bool[] existsArray,
+			BatchStatus status
+		) : base(cluster, batch, policy, status, false)
 		{
 			this.keys = keys;
 			this.existsArray = existsArray;
@@ -150,7 +190,15 @@ namespace Aerospike.Client
 
 		protected internal override void WriteBuffer()
 		{
-			SetBatchRead(batchPolicy, keys, batch, null, null, Command.INFO1_READ | Command.INFO1_NOBINDATA);
+			if (batch.node.HasBatchAny)
+			{
+				BatchAttr attr = new BatchAttr(policy, Command.INFO1_READ | Command.INFO1_NOBINDATA);
+				SetBatchOperate(batchPolicy, keys, batch, null, null, attr);
+			}
+			else
+			{
+				SetBatchRead(batchPolicy, keys, batch, null, null, Command.INFO1_READ | Command.INFO1_NOBINDATA);
+			}
 		}
 
 		protected internal override void ParseRow()
@@ -165,35 +213,349 @@ namespace Aerospike.Client
 			existsArray[batchIndex] = resultCode == 0;
 		}
 
+		protected internal override void SetError(int resultCode, bool inDoubt)
+		{
+			// existsArray does not store error/inDoubt.
+		}
+
 		protected internal override BatchCommand CreateCommand(BatchNode batchNode)
 		{
-			return new BatchExistsArrayCommand(cluster, parent, batchNode, batchPolicy, keys, existsArray);
+			return new BatchExistsArrayCommand(cluster, batchNode, batchPolicy, keys, existsArray, status);
 		}
 
 		protected internal override List<BatchNode> GenerateBatchNodes()
 		{
-			return BatchNode.GenerateList(cluster, batchPolicy, keys, sequenceAP, sequenceSC, batch);
+			return BatchNode.GenerateList(cluster, batchPolicy, keys, null, sequenceAP, sequenceSC, batch, false, status);
 		}
 	}
 
+	//-------------------------------------------------------
+	// OperateList
+	//-------------------------------------------------------
+
+	public sealed class BatchOperateListCommand : BatchCommand
+	{
+		private readonly IList<BatchRecord> records;
+
+		public BatchOperateListCommand
+		(
+			Cluster cluster,
+			BatchNode batch,
+			BatchPolicy policy,
+			IList<BatchRecord> records,
+			BatchStatus status
+		) : base(cluster, batch, policy, status, true)
+		{
+			this.records = records;
+		}
+
+		protected internal override bool IsWrite()
+		{
+			// This method is only called to set inDoubt on node level errors.
+			// SetError() will filter out reads when setting record level inDoubt.
+			return true;
+		}
+
+		protected internal override void WriteBuffer()
+		{
+			SetBatchOperate(batchPolicy, (IList)records, batch);
+		}
+
+		protected internal override void ParseRow()
+		{
+			SkipKey(fieldCount);
+
+			BatchRecord record = records[batchIndex];
+
+			if (resultCode == 0)
+			{
+				record.SetRecord(ParseRecord());
+				return;
+			}
+
+			if (resultCode == ResultCode.UDF_BAD_RESPONSE)
+			{
+				Record r = ParseRecord();
+				string m = r.GetString("FAILURE");
+
+				if (m != null)
+				{
+					// Need to store record because failure bin contains an error message.
+					record.record = r;
+					record.resultCode = resultCode;
+					record.inDoubt = Command.BatchInDoubt(record.hasWrite, commandSentCounter);
+					status.SetRowError();
+					return;
+				}
+			}
+
+			record.SetError(resultCode, Command.BatchInDoubt(record.hasWrite, commandSentCounter));
+			status.SetRowError();
+		}
+
+		protected internal override void SetError(int resultCode, bool inDoubt)
+		{
+			foreach (int index in batch.offsets)
+			{
+				BatchRecord record = records[index];
+
+				if (record.resultCode == ResultCode.NO_RESPONSE)
+				{
+					record.SetError(resultCode, record.hasWrite && inDoubt);
+				}
+			}
+		}
+
+		protected internal override BatchCommand CreateCommand(BatchNode batchNode)
+		{
+			return new BatchOperateListCommand(cluster, batchNode, batchPolicy, records, status);
+		}
+
+		protected internal override List<BatchNode> GenerateBatchNodes()
+		{
+			return BatchNode.GenerateList(cluster, batchPolicy, (IList)records, sequenceAP, sequenceSC, batch, status);
+		}
+	}
+
+	//-------------------------------------------------------
+	// OperateArray
+	//-------------------------------------------------------
+
+	public sealed class BatchOperateArrayCommand : BatchCommand
+	{
+		private readonly Key[] keys;
+		private readonly Operation[] ops;
+		private readonly BatchRecord[] records;
+		private readonly BatchAttr attr;
+
+		public BatchOperateArrayCommand
+		(
+			Cluster cluster,
+			BatchNode batch,
+			BatchPolicy batchPolicy,
+			Key[] keys,
+			Operation[] ops,
+			BatchRecord[] records,
+			BatchAttr attr,
+			BatchStatus status
+		) : base(cluster, batch, batchPolicy, status, ops != null)
+		{
+			this.keys = keys;
+			this.ops = ops;
+			this.records = records;
+			this.attr = attr;
+		}
+
+		protected internal override bool IsWrite()
+		{
+			return attr.hasWrite;
+		}
+
+		protected internal override void WriteBuffer()
+		{
+			SetBatchOperate(batchPolicy, keys, batch, null, ops, attr);
+		}
+
+		protected internal override void ParseRow()
+		{
+			SkipKey(fieldCount);
+
+			BatchRecord record = records[batchIndex];
+
+			if (resultCode == 0)
+			{
+				record.SetRecord(ParseRecord());
+			}
+			else
+			{
+				record.SetError(resultCode, Command.BatchInDoubt(attr.hasWrite, commandSentCounter));
+				status.SetRowError();
+			}
+		}
+
+		protected internal override void SetError(int resultCode, bool inDoubt)
+		{
+			foreach (int index in batch.offsets)
+			{
+				BatchRecord record = records[index];
+
+				if (record.resultCode == ResultCode.NO_RESPONSE)
+				{
+					record.SetError(resultCode, attr.hasWrite && inDoubt);
+				}
+			}
+		}
+
+		protected internal override BatchCommand CreateCommand(BatchNode batchNode)
+		{
+			return new BatchOperateArrayCommand(cluster, batchNode, batchPolicy, keys, ops, records, attr, status);
+		}
+
+		protected internal override List<BatchNode> GenerateBatchNodes()
+		{
+			return BatchNode.GenerateList(cluster, batchPolicy, keys, records, sequenceAP, sequenceSC, batch, attr.hasWrite, status);
+		}
+	}
+
+	//-------------------------------------------------------
+	// UDF
+	//-------------------------------------------------------
+
+	public sealed class BatchUDFCommand : BatchCommand
+	{
+		private readonly Key[] keys;
+		private readonly string packageName;
+		private readonly string functionName;
+		private readonly byte[] argBytes;
+		private readonly BatchRecord[] records;
+		private readonly BatchAttr attr;
+
+		public BatchUDFCommand
+		(
+			Cluster cluster,
+			BatchNode batch,
+			BatchPolicy batchPolicy,
+			Key[] keys,
+			string packageName,
+			string functionName,
+			byte[] argBytes,
+			BatchRecord[] records,
+			BatchAttr attr,
+			BatchStatus status
+		) : base(cluster, batch, batchPolicy, status, false)
+		{
+			this.keys = keys;
+			this.packageName = packageName;
+			this.functionName = functionName;
+			this.argBytes = argBytes;
+			this.records = records;
+			this.attr = attr;
+		}
+
+		protected internal override bool IsWrite()
+		{
+			return attr.hasWrite;
+		}
+
+		protected internal override void WriteBuffer()
+		{
+			SetBatchUDF(batchPolicy, keys, batch, packageName, functionName, argBytes, attr);
+		}
+
+		protected internal override void ParseRow()
+		{
+			SkipKey(fieldCount);
+
+			BatchRecord record = records[batchIndex];
+
+			if (resultCode == 0)
+			{
+				record.SetRecord(ParseRecord());
+				return;
+			}
+
+			if (resultCode == ResultCode.UDF_BAD_RESPONSE)
+			{
+				Record r = ParseRecord();
+				string m = r.GetString("FAILURE");
+
+				if (m != null)
+				{
+					// Need to store record because failure bin contains an error message.
+					record.record = r;
+					record.resultCode = resultCode;
+					record.inDoubt = Command.BatchInDoubt(attr.hasWrite, commandSentCounter);
+					status.SetRowError();
+					return;
+				}
+			}
+
+			record.SetError(resultCode, Command.BatchInDoubt(attr.hasWrite, commandSentCounter));
+			status.SetRowError();
+		}
+
+		protected internal override void SetError(int resultCode, bool inDoubt)
+		{
+			foreach (int index in batch.offsets)
+			{
+				BatchRecord record = records[index];
+
+				if (record.resultCode == ResultCode.NO_RESPONSE)
+				{
+					record.SetError(resultCode, attr.hasWrite && inDoubt);
+				}
+			}
+		}
+
+		protected internal override BatchCommand CreateCommand(BatchNode batchNode)
+		{
+			return new BatchUDFCommand(cluster, batchNode, batchPolicy, keys, packageName, functionName, argBytes, records, attr, status);
+		}
+
+		protected internal override List<BatchNode> GenerateBatchNodes()
+		{
+			return BatchNode.GenerateList(cluster, batchPolicy, keys, records, sequenceAP, sequenceSC, batch, attr.hasWrite, status);
+		}
+	}
+	
 	//-------------------------------------------------------
 	// Batch Base Command
 	//-------------------------------------------------------
 
 	public abstract class BatchCommand : MultiCommand
 	{
-		internal readonly Executor parent;
 		internal readonly BatchNode batch;
 		internal readonly BatchPolicy batchPolicy;
+		internal readonly BatchStatus status;
+		internal BatchExecutor parent;
 		internal uint sequenceAP;
 		internal uint sequenceSC;
+		internal bool splitRetry;
 
-		public BatchCommand(Cluster cluster, Executor parent, BatchNode batch, BatchPolicy batchPolicy, bool isOperation)
-			: base(cluster, batchPolicy, batch.node, isOperation)
+		public BatchCommand
+		(
+			Cluster cluster,
+			BatchNode batch,
+			BatchPolicy batchPolicy,
+			BatchStatus status,
+			bool isOperation
+		) : base(cluster, batchPolicy, batch.node, isOperation)
 		{
-			this.parent = parent;
 			this.batch = batch;
 			this.batchPolicy = batchPolicy;
+			this.status = status;
+		}
+
+		public void Run(object obj)
+		{
+			try
+			{
+				Execute();
+			}
+			catch (AerospikeException ae)
+			{
+				// Set error/inDoubt for keys associated this batch command when
+				// the command was not retried and split. If a split retry occurred,
+				// those new subcommands have already set error/inDoubt on the affected
+				// subset of keys.
+				if (!splitRetry)
+				{
+					SetError(ae.Result, ae.InDoubt);
+				}
+				status.SetException(ae);
+			}
+			catch (Exception e)
+			{
+				if (!splitRetry)
+				{
+					SetError(ResultCode.CLIENT_ERROR, true);
+				}
+				status.SetException(e);
+			}
+			finally
+			{
+				parent.OnComplete();
+			}
 		}
 
 		protected internal override bool PrepareRetry(bool timeout)
@@ -233,10 +595,13 @@ namespace Aerospike.Client
 				return false;
 			}
 
+			splitRetry = true;
+
 			// Run batch requests sequentially in same thread.
 			foreach (BatchNode batchNode in batchNodes)
 			{
 				BatchCommand command = CreateCommand(batchNode);
+				command.parent = parent;
 				command.sequenceAP = sequenceAP;
 				command.sequenceSC = sequenceSC;
 				command.socketTimeout = socketTimeout;
@@ -244,11 +609,42 @@ namespace Aerospike.Client
 				command.iteration = iteration;
 				command.commandSentCounter = commandSentCounter;
 				command.deadline = deadline;
-				command.ExecuteCommand();
+
+				try
+				{
+					command.ExecuteCommand();
+				}
+				catch (AerospikeException ae)
+				{
+					if (!command.splitRetry)
+					{
+						command.SetError(ae.Result, ae.InDoubt);
+					}
+					status.SetException(ae);
+
+					if (!batchPolicy.respondAllKeys)
+					{
+						throw;
+					}
+				}
+				catch (Exception e)
+				{
+					if (!command.splitRetry)
+					{
+						command.SetError(ResultCode.CLIENT_ERROR, true);
+					}
+					status.SetException(e);
+
+					if (!batchPolicy.respondAllKeys)
+					{
+						throw;
+					}
+				}
 			}
 			return true;
 		}
 
+		protected internal abstract void SetError(int resultCode, bool inDoubt);
 		protected internal abstract BatchCommand CreateCommand(BatchNode batchNode);
 		protected internal abstract List<BatchNode> GenerateBatchNodes();
 	}

@@ -70,9 +70,32 @@ namespace Aerospike.Client
 		public readonly QueryPolicy queryPolicyDefault;
 
 		/// <summary>
-		/// Default batch policy that is used when batch command policy is null.
+		/// Default parent policy used in batch read commands. Parent policy fields
+		/// include socketTimeout, totalTimeout, maxRetries, etc...
 		/// </summary>
 		public readonly BatchPolicy batchPolicyDefault;
+
+		/// <summary>
+		/// Default parent policy used in batch write commands. Parent policy fields
+		/// include socketTimeout, totalTimeout, maxRetries, etc...
+		/// </summary>
+		public readonly BatchPolicy batchParentPolicyWriteDefault;
+
+		/// <summary>
+		/// Default write policy used in batch operate commands.
+		/// Write policy fields include generation, expiration, durableDelete, etc...
+		/// </summary>
+		public readonly BatchWritePolicy batchWritePolicyDefault;
+
+		/// <summary>
+		/// Default delete policy used in batch delete commands.
+		/// </summary>
+		public readonly BatchDeletePolicy batchDeletePolicyDefault;
+
+		/// <summary>
+		/// Default user defined function policy used in batch UDF excecute commands.
+		/// </summary>
+		public readonly BatchUDFPolicy batchUDFPolicyDefault;
 
 		/// <summary>
 		/// Default info policy that is used when info command policy is null.
@@ -166,6 +189,10 @@ namespace Aerospike.Client
 			this.scanPolicyDefault = policy.scanPolicyDefault;
 			this.queryPolicyDefault = policy.queryPolicyDefault;
 			this.batchPolicyDefault = policy.batchPolicyDefault;
+			this.batchParentPolicyWriteDefault = policy.batchParentPolicyWriteDefault;
+			this.batchWritePolicyDefault = policy.batchWritePolicyDefault;
+			this.batchDeletePolicyDefault = policy.batchDeletePolicyDefault;
+			this.batchUDFPolicyDefault = policy.batchUDFPolicyDefault;
 			this.infoPolicyDefault = policy.infoPolicyDefault;
 			this.operatePolicyReadDefault = new WritePolicy(this.readPolicyDefault);
 
@@ -186,6 +213,10 @@ namespace Aerospike.Client
 				this.scanPolicyDefault = policy.scanPolicyDefault;
 				this.queryPolicyDefault = policy.queryPolicyDefault;
 				this.batchPolicyDefault = policy.batchPolicyDefault;
+				this.batchParentPolicyWriteDefault = policy.batchParentPolicyWriteDefault;
+				this.batchWritePolicyDefault = policy.batchWritePolicyDefault;
+				this.batchDeletePolicyDefault = policy.batchDeletePolicyDefault;
+				this.batchUDFPolicyDefault = policy.batchUDFPolicyDefault;
 				this.infoPolicyDefault = policy.infoPolicyDefault;
 			}
 			else
@@ -194,7 +225,11 @@ namespace Aerospike.Client
 				this.writePolicyDefault = new WritePolicy();
 				this.scanPolicyDefault = new ScanPolicy();
 				this.queryPolicyDefault = new QueryPolicy();
-				this.batchPolicyDefault = new BatchPolicy();
+				this.batchPolicyDefault = BatchPolicy.ReadDefault();
+				this.batchParentPolicyWriteDefault = BatchPolicy.WriteDefault();
+				this.batchWritePolicyDefault = new BatchWritePolicy();
+				this.batchDeletePolicyDefault = new BatchDeletePolicy();
+				this.batchUDFPolicyDefault = new BatchUDFPolicy();
 				this.infoPolicyDefault = new InfoPolicy();
 			}
 			this.operatePolicyReadDefault = new WritePolicy(this.readPolicyDefault);
@@ -209,10 +244,7 @@ namespace Aerospike.Client
 		/// </summary>
 		public Policy ReadPolicyDefault
 		{
-			get
-			{
-				return readPolicyDefault;
-			}
+			get { return readPolicyDefault; }
 		}
 
 		/// <summary>
@@ -220,10 +252,7 @@ namespace Aerospike.Client
 		/// </summary>
 		public WritePolicy WritePolicyDefault
 		{
-			get
-			{
-				return writePolicyDefault;
-			}
+			get { return writePolicyDefault; }
 		}
 
 		/// <summary>
@@ -231,10 +260,7 @@ namespace Aerospike.Client
 		/// </summary>
 		public ScanPolicy ScanPolicyDefault
 		{
-			get
-			{
-				return scanPolicyDefault;
-			}
+			get { return scanPolicyDefault; }
 		}
 
 		/// <summary>
@@ -242,21 +268,50 @@ namespace Aerospike.Client
 		/// </summary>
 		public QueryPolicy QueryPolicyDefault
 		{
-			get
-			{
-				return queryPolicyDefault;
-			}
+			get { return queryPolicyDefault; }
 		}
 
 		/// <summary>
-		/// Default batch policy that is used when batch command policy is null.
+		/// Default parent policy used in batch read commands.Parent policy fields
+		/// include socketTimeout, totalTimeout, maxRetries, etc...
 		/// </summary>
 		public BatchPolicy BatchPolicyDefault
 		{
-			get
-			{
-				return batchPolicyDefault;
-			}
+			get { return batchPolicyDefault; }
+		}
+
+		/// <summary>
+		/// Default parent policy used in batch write commands. Parent policy fields
+		/// include socketTimeout, totalTimeout, maxRetries, etc...
+		/// </summary>
+		public BatchPolicy BatchParentPolicyWriteDefault
+		{
+			get { return batchParentPolicyWriteDefault; }
+		}
+
+		/// <summary>
+		/// Default write policy used in batch operate commands.
+		/// Write policy fields include generation, expiration, durableDelete, etc...
+		/// </summary>
+		public BatchWritePolicy BatchWritePolicyDefault
+		{
+			get { return batchWritePolicyDefault; }
+		}
+
+		/// <summary>
+		/// Default delete policy used in batch delete commands.
+		/// </summary>
+		public BatchDeletePolicy BatchDeletePolicyDefault
+		{
+			get { return batchDeletePolicyDefault; }
+		}
+
+		/// <summary>
+		/// Default user defined function policy used in batch UDF excecute commands.
+		/// </summary>
+		public BatchUDFPolicy BatchUDFPolicyDefault
+		{
+			get { return batchUDFPolicyDefault; }
 		}
 
 		/// <summary>
@@ -264,10 +319,7 @@ namespace Aerospike.Client
 		/// </summary>
 		public InfoPolicy InfoPolicyDefault
 		{
-			get
-			{
-				return infoPolicyDefault;
-			}
+			get { return infoPolicyDefault; }
 		}
 
 		//-------------------------------------------------------
@@ -445,6 +497,66 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
+		/// Delete records for specified keys. If a key is not found, the corresponding result
+		/// <see cref="BatchRecord.resultCode"/> will be <see cref="ResultCode.KEY_NOT_FOUND_ERROR"/>.
+		/// <para>
+		/// Requires server version 6.0+
+		/// </para>
+		/// </summary>
+		/// <param name="batchPolicy">batch configuration parameters, pass in null for defaults</param>
+		/// <param name="deletePolicy">delete configuration parameters, pass in null for defaults</param>
+		/// <param name="keys">array of unique record identifiers</param>
+		/// <exception cref="AerospikeException.BatchRecordArray">which contains results for keys that did complete</exception>
+		public BatchResults Delete(BatchPolicy batchPolicy, BatchDeletePolicy deletePolicy, Key[] keys)
+		{
+			if (keys.Length == 0)
+			{
+				return new BatchResults(new BatchRecord[0], true);
+			}
+
+			if (batchPolicy == null)
+			{
+				batchPolicy = batchParentPolicyWriteDefault;
+			}
+
+			if (deletePolicy == null)
+			{
+				deletePolicy = batchDeletePolicyDefault;
+			}
+
+			BatchAttr attr = new BatchAttr();
+			attr.SetDelete(deletePolicy);
+
+			BatchRecord[] records = new BatchRecord[keys.Length];
+
+			for (int i = 0; i < keys.Length; i++)
+			{
+				records[i] = new BatchRecord(keys[i], attr.hasWrite);
+			}
+
+			try
+			{
+				BatchStatus status = new BatchStatus(true);
+				List<BatchNode> batchNodes = BatchNode.GenerateList(cluster, batchPolicy, keys, records, attr.hasWrite, status);
+				BatchCommand[] commands = new BatchCommand[batchNodes.Count];
+				int count = 0;
+
+				foreach (BatchNode batchNode in batchNodes)
+				{
+					commands[count++] = new BatchOperateArrayCommand(cluster, batchNode, batchPolicy, keys, null, records, attr, status);
+				}
+
+				BatchExecutor.Execute(batchPolicy, commands, status);
+				return new BatchResults(records, status.GetStatus());
+			}
+			catch (Exception e)
+			{
+				// Batch terminated on fatal error.
+				throw new AerospikeException.BatchRecordArray(records, e);
+			}
+		}
+		
+		/// <summary>
 		/// Remove records in specified namespace/set efficiently.  This method is many orders of magnitude 
 		/// faster than deleting records one at a time.
 		/// <para>
@@ -551,23 +663,54 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Check if multiple record keys exist in one batch call.
 		/// The returned boolean array is in positional order with the original key array order.
-		/// The policy can be used to specify timeouts and maximum concurrent threads.
-		/// <para>
-		/// If a batch request to a node fails, the entire batch is cancelled.
-		/// </para>
 		/// </summary>
 		/// <param name="policy">batch configuration parameters, pass in null for defaults</param>
 		/// <param name="keys">array of unique record identifiers</param>
-		/// <exception cref="AerospikeException">if command fails</exception>
+		/// <exception cref="AerospikeException.BatchExists">which contains results for keys that did complete</exception>
 		public bool[] Exists(BatchPolicy policy, Key[] keys)
 		{
+			if (keys.Length == 0)
+			{
+				return new bool[0];
+			}
+
 			if (policy == null)
 			{
 				policy = batchPolicyDefault;
 			}
+
+
 			bool[] existsArray = new bool[keys.Length];
-			BatchExecutor.Execute(cluster, policy, keys, existsArray, null, null, null, Command.INFO1_READ | Command.INFO1_NOBINDATA);
-			return existsArray;
+
+			try
+			{
+				BatchStatus status = new BatchStatus(false);
+
+				if (policy.allowProleReads)
+				{
+					// Send all requests to a single random node.
+					Node node = cluster.GetRandomNode();
+					BatchNode batchNode = new BatchNode(node, keys);
+					BatchCommand command = new BatchExistsArrayCommand(cluster, batchNode, policy, keys, existsArray, status);
+					BatchExecutor.Execute(command, status);
+					return existsArray;
+				}
+
+				List<BatchNode> batchNodes = BatchNode.GenerateList(cluster, policy, keys, null, false, status);
+				BatchCommand[] commands = new BatchCommand[batchNodes.Count];
+				int count = 0;
+
+				foreach (BatchNode batchNode in batchNodes)
+				{
+					commands[count++] = new BatchExistsArrayCommand(cluster, batchNode, policy, keys, existsArray, status);
+				}
+				BatchExecutor.Execute(policy, commands, status);
+				return existsArray;
+			}
+			catch (Exception e)
+			{
+				throw new AerospikeException.BatchExists(existsArray, e);
+			}
 		}
 		
 		//-------------------------------------------------------
@@ -640,20 +783,18 @@ namespace Aerospike.Client
 		/// Read multiple records for specified batch keys in one batch call.
 		/// This method allows different namespaces/bins to be requested for each key in the batch.
 		/// The returned records are located in the same list.
-		/// If the BatchRecord key field is not found, the corresponding record field will be null.
-		/// <para>
-		/// If a batch request to a node fails, the entire batch is cancelled.
-		/// </para>
+		/// If the BatchRead key field is not found, the corresponding record field will be null.
 		/// </summary>
 		/// <param name="policy">batch configuration parameters, pass in null for defaults</param>
 		/// <param name="records">list of unique record identifiers and the bins to retrieve.
 		/// The returned records are located in the same list.</param>
+		/// <returns>true if all batch key requests succeeded</returns>
 		/// <exception cref="AerospikeException">if read fails</exception>
-		public void Get(BatchPolicy policy, List<BatchRead> records)
+		public bool Get(BatchPolicy policy, List<BatchRead> records)
 		{
 			if (records.Count == 0)
 			{
-				return;
+				return true;
 			}
 
 			if (policy == null)
@@ -661,125 +802,231 @@ namespace Aerospike.Client
 				policy = batchPolicyDefault;
 			}
 
-			List<BatchNode> batchNodes = BatchNode.GenerateList(cluster, policy, records);
+			BatchStatus status = new BatchStatus(true);
+			List<BatchNode> batchNodes = BatchNode.GenerateList(cluster, policy, records, status);
+			BatchCommand[] commands = new BatchCommand[batchNodes.Count];
+			int count = 0;
 
-			if (policy.maxConcurrentThreads == 1 || batchNodes.Count <= 1)
+			foreach (BatchNode batchNode in batchNodes)
 			{
-				// Run batch requests sequentially in same thread.
-				foreach (BatchNode batchNode in batchNodes)
-				{
-					MultiCommand command = new BatchReadListCommand(cluster, null, batchNode, policy, records);
-					command.Execute();
-				}
+				commands[count++] = new BatchReadListCommand(cluster, batchNode, policy, records, status);
 			}
-			else
-			{
-				// Run batch requests in parallel in separate threads.
-				//			
-				// Multiple threads write to the record list, so one might think that
-				// volatile or memory barriers are needed on the write threads and this read thread.
-				// This should not be necessary here because it happens in Executor which does a 
-				// volatile write (Interlocked.Increment(ref completedCount)) at the end of write threads
-				// and a synchronized WaitTillComplete() in this thread.
-				Executor executor = new Executor(batchNodes.Count);
-
-				foreach (BatchNode batchNode in batchNodes)
-				{
-					MultiCommand command = new BatchReadListCommand(cluster, executor, batchNode, policy, records);
-					executor.AddCommand(command);
-				}
-				executor.Execute(policy.maxConcurrentThreads);
-			}
+			BatchExecutor.Execute(policy, commands, status);
+			return status.GetStatus();
 		}
 
 		/// <summary>
 		/// Read multiple records for specified keys in one batch call.
 		/// The returned records are in positional order with the original key array order.
 		/// If a key is not found, the positional record will be null.
-		/// <para>
-		/// If a batch request to a node fails, the entire batch is cancelled.
-		/// </para>
 		/// </summary>
 		/// <param name="policy">batch configuration parameters, pass in null for defaults</param>
 		/// <param name="keys">array of unique record identifiers</param>
-		/// <exception cref="AerospikeException">if read fails</exception>
+		/// <exception cref="AerospikeException.BatchRecords">which contains results for keys that did complete</exception>
 		public Record[] Get(BatchPolicy policy, Key[] keys)
 		{
+			if (keys.Length == 0)
+			{
+				return new Record[0];
+			}
+
 			if (policy == null)
 			{
 				policy = batchPolicyDefault;
 			}
+
 			Record[] records = new Record[keys.Length];
-			BatchExecutor.Execute(cluster, policy, keys, null, records, null, null, Command.INFO1_READ | Command.INFO1_GET_ALL);
-			return records;
+
+			try
+			{
+				BatchStatus status = new BatchStatus(false);
+
+				if (policy.allowProleReads)
+				{
+					// Send all requests to a single random node.
+					Node node = cluster.GetRandomNode();
+					BatchNode batchNode = new BatchNode(node, keys);
+					BatchCommand command = new BatchGetArrayCommand(cluster, batchNode, policy, keys, null, null, records, Command.INFO1_READ | Command.INFO1_GET_ALL, false, status);
+					BatchExecutor.Execute(command, status);
+					return records;
+				}
+
+				List<BatchNode> batchNodes = BatchNode.GenerateList(cluster, policy, keys, null, false, status);
+				BatchCommand[] commands = new BatchCommand[batchNodes.Count];
+				int count = 0;
+
+				foreach (BatchNode batchNode in batchNodes)
+				{
+					commands[count++] = new BatchGetArrayCommand(cluster, batchNode, policy, keys, null, null, records, Command.INFO1_READ | Command.INFO1_GET_ALL, false, status);
+				}
+				BatchExecutor.Execute(policy, commands, status);
+				return records;
+			}
+			catch (Exception e)
+			{
+				throw new AerospikeException.BatchRecords(records, e);
+			}
 		}
 
 		/// <summary>
 		/// Read multiple record headers and bins for specified keys in one batch call.
 		/// The returned records are in positional order with the original key array order.
 		/// If a key is not found, the positional record will be null.
-		/// <para>
-		/// If a batch request to a node fails, the entire batch is cancelled.
-		/// </para>
 		/// </summary>
 		/// <param name="policy">batch configuration parameters, pass in null for defaults</param>
 		/// <param name="keys">array of unique record identifiers</param>
 		/// <param name="binNames">array of bins to retrieve</param>
-		/// <exception cref="AerospikeException">if read fails</exception>
+		/// <exception cref="AerospikeException.BatchRecords">which contains results for keys that did complete</exception>
 		public Record[] Get(BatchPolicy policy, Key[] keys, params string[] binNames)
 		{
+			if (keys.Length == 0)
+			{
+				return new Record[0];
+			}
+
 			if (policy == null)
 			{
 				policy = batchPolicyDefault;
 			}
+
 			Record[] records = new Record[keys.Length];
-			BatchExecutor.Execute(cluster, policy, keys, null, records, binNames, null, Command.INFO1_READ);
-			return records;
+
+			try
+			{
+				BatchStatus status = new BatchStatus(false);
+
+				if (policy.allowProleReads)
+				{
+					// Send all requests to a single random node.
+					Node node = cluster.GetRandomNode();
+					BatchNode batchNode = new BatchNode(node, keys);
+					BatchCommand command = new BatchGetArrayCommand(cluster, batchNode, policy, keys, binNames, null, records, Command.INFO1_READ, false, status);
+					BatchExecutor.Execute(command, status);
+					return records;
+				}
+
+				List<BatchNode> batchNodes = BatchNode.GenerateList(cluster, policy, keys, null, false, status);
+				BatchCommand[] commands = new BatchCommand[batchNodes.Count];
+				int count = 0;
+
+				foreach (BatchNode batchNode in batchNodes)
+				{
+					commands[count++] = new BatchGetArrayCommand(cluster, batchNode, policy, keys, binNames, null, records, Command.INFO1_READ, false, status);
+				}
+				BatchExecutor.Execute(policy, commands, status);
+				return records;
+			}
+			catch (Exception e)
+			{
+				throw new AerospikeException.BatchRecords(records, e);
+			}
 		}
 
 		/// <summary>
 		/// Read multiple records for specified keys using read operations in one batch call.
 		/// The returned records are in positional order with the original key array order.
 		/// If a key is not found, the positional record will be null.
-		/// <para>
-		/// If a batch request to a node fails, the entire batch is cancelled. 
-		/// </para>
 		/// </summary>
 		/// <param name="policy">batch configuration parameters, pass in null for defaults</param>
 		/// <param name="keys">array of unique record identifiers</param>
-		/// <param name="operations">array of read operations on record</param>
-		/// <exception cref="AerospikeException">if read fails</exception>
-		public Record[] Get(BatchPolicy policy, Key[] keys, params Operation[] operations)
+		/// <param name="ops">array of read operations on record</param>
+		/// <exception cref="AerospikeException.BatchRecords">which contains results for keys that did complete</exception>
+		public Record[] Get(BatchPolicy policy, Key[] keys, params Operation[] ops)
 		{
+			if (keys.Length == 0)
+			{
+				return new Record[0];
+			}
+
 			if (policy == null)
 			{
 				policy = batchPolicyDefault;
 			}
+
 			Record[] records = new Record[keys.Length];
-			BatchExecutor.Execute(cluster, policy, keys, null, records, null, operations, Command.INFO1_READ);
-			return records;
+
+			try
+			{
+				BatchStatus status = new BatchStatus(false);
+
+				if (policy.allowProleReads)
+				{
+					// Send all requests to a single random node.
+					Node node = cluster.GetRandomNode();
+					BatchNode batchNode = new BatchNode(node, keys);
+					BatchCommand command = new BatchGetArrayCommand(cluster, batchNode, policy, keys, null, ops, records, Command.INFO1_READ, true, status);
+					BatchExecutor.Execute(command, status);
+					return records;
+				}
+
+				List<BatchNode> batchNodes = BatchNode.GenerateList(cluster, policy, keys, null, false, status);
+				BatchCommand[] commands = new BatchCommand[batchNodes.Count];
+				int count = 0;
+
+				foreach (BatchNode batchNode in batchNodes)
+				{
+					commands[count++] = new BatchGetArrayCommand(cluster, batchNode, policy, keys, null, ops, records, Command.INFO1_READ, true, status);
+				}
+				BatchExecutor.Execute(policy, commands, status);
+				return records;
+			}
+			catch (Exception e)
+			{
+				throw new AerospikeException.BatchRecords(records, e);
+			}
 		}
 
 		/// <summary>
 		/// Read multiple record header data for specified keys in one batch call.
 		/// The returned records are in positional order with the original key array order.
 		/// If a key is not found, the positional record will be null.
-		/// <para>
-		/// If a batch request to a node fails, the entire batch is cancelled.
-		/// </para>
 		/// </summary>
 		/// <param name="policy">batch configuration parameters, pass in null for defaults</param>
 		/// <param name="keys">array of unique record identifiers</param>
-		/// <exception cref="AerospikeException">if read fails</exception>
+		/// <exception cref="AerospikeException.BatchRecords">which contains results for keys that did complete</exception>
 		public Record[] GetHeader(BatchPolicy policy, Key[] keys)
 		{
+			if (keys.Length == 0)
+			{
+				return new Record[0];
+			}
+
 			if (policy == null)
 			{
 				policy = batchPolicyDefault;
 			}
+
 			Record[] records = new Record[keys.Length];
-			BatchExecutor.Execute(cluster, policy, keys, null, records, null, null, Command.INFO1_READ | Command.INFO1_NOBINDATA);
-			return records;
+
+			try
+			{
+				BatchStatus status = new BatchStatus(false);
+
+				if (policy.allowProleReads)
+				{
+					// Send all requests to a single random node.
+					Node node = cluster.GetRandomNode();
+					BatchNode batchNode = new BatchNode(node, keys);
+					BatchCommand command = new BatchGetArrayCommand(cluster, batchNode, policy, keys, null, null, records, Command.INFO1_READ | Command.INFO1_NOBINDATA, false, status);
+					BatchExecutor.Execute(command, status);
+					return records;
+				}
+
+				List<BatchNode> batchNodes = BatchNode.GenerateList(cluster, policy, keys, null, false, status);
+				BatchCommand[] commands = new BatchCommand[batchNodes.Count];
+				int count = 0;
+
+				foreach (BatchNode batchNode in batchNodes)
+				{
+					commands[count++] = new BatchGetArrayCommand(cluster, batchNode, policy, keys, null, null, records, Command.INFO1_READ | Command.INFO1_NOBINDATA, false, status);
+				}
+				BatchExecutor.Execute(policy, commands, status);
+				return records;
+			}
+			catch (Exception e)
+			{
+				throw new AerospikeException.BatchRecords(records, e);
+			}
 		}
 
 		//-------------------------------------------------------
@@ -855,6 +1102,113 @@ namespace Aerospike.Client
 			OperateCommand command = new OperateCommand(cluster, key, args);
 			command.Execute();
 			return command.Record;
+		}
+
+		//-------------------------------------------------------
+		// Batch Read/Write Operations
+		//-------------------------------------------------------
+
+		/// <summary>
+		/// Read/Write multiple records for specified batch keys in one batch call.
+		/// This method allows different namespaces/bins for each key in the batch.
+		/// The returned records are located in the same list.
+		/// <para>
+		/// <see cref="BatchRecord"/> can be <see cref="BatchRead"/>, <see cref="BatchWrite"/>, <see cref="BatchDelete"/> or
+		/// <see cref="BatchUDF"/>.
+		/// </para>
+		/// <para>
+		/// Requires server version 6.0+
+		/// </para>
+		/// </summary>
+		/// <param name="policy">batch configuration parameters, pass in null for defaults</param>
+		/// <param name="records">list of unique record identifiers and read/write operations</param>
+		/// <returns>true if all batch sub-commands succeeded</returns>
+		/// <exception cref="AerospikeException">if command fails</exception>
+		public bool Operate(BatchPolicy policy, List<BatchRecord> records)
+		{
+			if (records.Count == 0)
+			{
+				return true;
+			}
+
+			if (policy == null)
+			{
+				policy = batchParentPolicyWriteDefault;
+			}
+
+			BatchStatus status = new BatchStatus(true);
+			List<BatchNode> batchNodes = BatchNode.GenerateList(cluster, policy, records, status);
+			BatchCommand[] commands = new BatchCommand[batchNodes.Count];
+			int count = 0;
+
+			foreach (BatchNode batchNode in batchNodes)
+			{
+				commands[count++] = new BatchOperateListCommand(cluster, batchNode, policy, records, status);
+			}
+			BatchExecutor.Execute(policy, commands, status);
+			return status.GetStatus();
+		}
+
+		/// <summary>
+		/// Perform read/write operations on multiple keys. If a key is not found, the corresponding result
+		/// <see cref="BatchRecord.resultCode"/> will be <see cref="ResultCode.KEY_NOT_FOUND_ERROR"/>.
+		/// <para>
+		/// Requires server version 6.0+
+		/// </para>
+		/// </summary>
+		/// <param name="batchPolicy">batch configuration parameters, pass in null for defaults</param>
+		/// <param name="writePolicy">write configuration parameters, pass in null for defaults</param>
+		/// <param name="keys">array of unique record identifiers</param>
+		/// <param name="ops">
+		/// read/write operations to perform. <see cref="Operation.Get()"/> is not allowed because it returns a
+		/// variable number of bins and makes it difficult (sometimes impossible) to lineup operations with 
+		/// results. Instead, use <see cref="Operation.Get(string)"/> for each bin name.
+		/// </param>
+		/// <exception cref="AerospikeException.BatchRecordArray">which contains results for keys that did complete</exception>
+		public BatchResults Operate(BatchPolicy batchPolicy, BatchWritePolicy writePolicy, Key[] keys, params Operation[] ops)
+		{
+			if (keys.Length == 0)
+			{
+				return new BatchResults(new BatchRecord[0], true);
+			}
+
+			if (batchPolicy == null)
+			{
+				batchPolicy = batchParentPolicyWriteDefault;
+			}
+
+			if (writePolicy == null)
+			{
+				writePolicy = batchWritePolicyDefault;
+			}
+
+			BatchAttr attr = new BatchAttr(batchPolicy, writePolicy, ops);
+			BatchRecord[] records = new BatchRecord[keys.Length];
+
+			for (int i = 0; i < keys.Length; i++)
+			{
+				records[i] = new BatchRecord(keys[i], attr.hasWrite);
+			}
+
+			try
+			{
+				BatchStatus status = new BatchStatus(true);
+				List<BatchNode> batchNodes = BatchNode.GenerateList(cluster, batchPolicy, keys, records, attr.hasWrite, status);
+				BatchCommand[] commands = new BatchCommand[batchNodes.Count];
+				int count = 0;
+
+				foreach (BatchNode batchNode in batchNodes)
+				{
+					commands[count++] = new BatchOperateArrayCommand(cluster, batchNode, batchPolicy, keys, ops, records, attr, status);
+				}
+
+				BatchExecutor.Execute(batchPolicy, commands, status);
+				return new BatchResults(records, status.GetStatus());
+			}
+			catch (Exception e)
+			{
+				throw new AerospikeException.BatchRecordArray(records, e);
+			}
 		}
 
 		//-------------------------------------------------------
@@ -1132,6 +1486,74 @@ namespace Aerospike.Client
 				throw new AerospikeException(obj.ToString());
 			}
 			throw new AerospikeException("Invalid UDF return value");
+		}
+
+		/// <summary>
+		/// Execute user defined function on server for each key and return results.
+		/// The package name is used to locate the udf file location:
+		/// <para>
+		/// udf file = &lt;server udf dir&gt;/&lt;package name&gt;.lua
+		/// </para>
+		/// <para>
+		/// Requires server version 6.0+
+		/// </para>
+		/// </summary>
+		/// <param name="batchPolicy">batch configuration parameters, pass in null for defaults</param>
+		/// <param name="udfPolicy">udf configuration parameters, pass in null for defaults</param>
+		/// <param name="keys">array of unique record identifiers</param>
+		/// <param name="packageName">server package name where user defined function resides</param>
+		/// <param name="functionName">user defined function</param>
+		/// <param name="functionArgs">arguments passed in to user defined function</param>
+		/// <exception cref="AerospikeException.BatchRecordArray">which contains results for keys that did complete</exception>
+		public BatchResults Execute(BatchPolicy batchPolicy, BatchUDFPolicy udfPolicy, Key[] keys, string packageName, string functionName, params Value[] functionArgs)
+		{
+			if (keys.Length == 0)
+			{
+				return new BatchResults(new BatchRecord[0], true);
+			}
+
+			if (batchPolicy == null)
+			{
+				batchPolicy = batchParentPolicyWriteDefault;
+			}
+
+			if (udfPolicy == null)
+			{
+				udfPolicy = batchUDFPolicyDefault;
+			}
+
+			byte[] argBytes = Packer.Pack(functionArgs);
+
+			BatchAttr attr = new BatchAttr();
+			attr.SetUDF(udfPolicy);
+
+			BatchRecord[] records = new BatchRecord[keys.Length];
+
+			for (int i = 0; i < keys.Length; i++)
+			{
+				records[i] = new BatchRecord(keys[i], attr.hasWrite);
+			}
+
+			try
+			{
+				BatchStatus status = new BatchStatus(true);
+				List<BatchNode> batchNodes = BatchNode.GenerateList(cluster, batchPolicy, keys, records, attr.hasWrite, status);
+				BatchCommand[] commands = new BatchCommand[batchNodes.Count];
+				int count = 0;
+
+				foreach (BatchNode batchNode in batchNodes)
+				{
+					commands[count++] = new BatchUDFCommand(cluster, batchNode, batchPolicy, keys, packageName, functionName, argBytes, records, attr, status);
+				}
+
+				BatchExecutor.Execute(batchPolicy, commands, status);
+				return new BatchResults(records, status.GetStatus());
+			}
+			catch (Exception e)
+			{
+				// Batch terminated on fatal error.
+				throw new AerospikeException.BatchRecordArray(records, e);
+			}
 		}
 
 		//----------------------------------------------------------

@@ -30,6 +30,8 @@
     <Compile Include="..\..\Framework\AerospikeClient\Admin\Role.cs" Link="Admin\Role.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Admin\User.cs" Link="Admin\User.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\AsyncTask\BatchListListenerAdapter.cs" Link="AsyncTask\BatchListListenerAdapter.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\AsyncTask\BatchOperateListListenerAdapter.cs" Link="AsyncTask\BatchOperateListListenerAdapter.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\AsyncTask\BatchRecordArrayListenerAdapter.cs" Link="AsyncTask\BatchRecordArrayListenerAdapter.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\AsyncTask\DeleteListenerAdapter.cs" Link="AsyncTask\DeleteListenerAdapter.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\AsyncTask\ExecuteListenerAdapter.cs" Link="AsyncTask\ExecuteListenerAdapter.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\AsyncTask\ExistsArrayListenerAdapter.cs" Link="AsyncTask\ExistsArrayListenerAdapter.cs" />
@@ -51,7 +53,6 @@
     <Compile Include="..\..\Framework\AerospikeClient\Async\AsyncConnector.cs" Link="Async\AsyncConnector.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Async\AsyncDelete.cs" Link="Async\AsyncDelete.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Async\AsyncExecute.cs" Link="Async\AsyncExecute.cs" />
-    <Compile Include="..\..\Framework\AerospikeClient\Async\AsyncExecutor.cs" Link="Async\AsyncExecutor.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Async\AsyncExists.cs" Link="Async\AsyncExists.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Async\AsyncInfo.cs" Link="Async\AsyncInfo.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Async\AsyncMultiCommand.cs" Link="Async\AsyncMultiCommand.cs" />
@@ -104,8 +105,10 @@
     <Compile Include="..\..\Framework\AerospikeClient\Cluster\RackParser.cs" Link="Cluster\RackParser.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Cluster\TlsConnection.cs" Link="Cluster\TlsConnection.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Command\Batch.cs" Link="Command\Batch.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Command\BatchAttr.cs" Link="Command\BatchAttr.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Command\BatchExecutor.cs" Link="Command\BatchExecutor.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Command\BatchNode.cs" Link="Command\BatchNode.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Command\BatchStatus.cs" Link="Command\BatchStatus.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Command\ByteUtil.cs" Link="Command\ByteUtil.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Command\Command.cs" Link="Command\Command.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Command\DeleteCommand.cs" Link="Command\DeleteCommand.cs" />
@@ -136,6 +139,9 @@
     <Compile Include="..\..\Framework\AerospikeClient\Exp\ListExp.cs" Link="Exp\ListExp.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Exp\MapExp.cs" Link="Exp\MapExp.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Listener\BatchListListener.cs" Link="Listener\BatchListListener.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Listener\BatchOperateListListener.cs" Link="Listener\BatchOperateListListener.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Listener\BatchRecordArrayListener.cs" Link="Listener\BatchRecordArrayListener.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Listener\BatchRecordSequenceListener.cs" Link="Listener\BatchRecordSequenceListener.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Listener\BatchSequenceListener.cs" Link="Listener\BatchSequenceListener.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Listener\DeleteListener.cs" Link="Listener\DeleteListener.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Listener\ExecuteListener.cs" Link="Listener\ExecuteListener.cs" />
@@ -159,7 +165,12 @@
     <Compile Include="..\..\Framework\AerospikeClient\Lua\LuaStream.cs" Link="Lua\LuaStream.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Main\AerospikeClient.cs" Link="Main\AerospikeClient.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Main\AerospikeException.cs" Link="Main\AerospikeException.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Main\BatchDelete.cs" Link="Main\BatchDelete.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Main\BatchRead.cs" Link="Main\BatchRead.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Main\BatchRecord.cs" Link="Main\BatchRecord.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Main\BatchResults.cs" Link="Main\BatchResults.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Main\BatchUDF.cs" Link="Main\BatchUDF.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Main\BatchWrite.cs" Link="Main\BatchWrite.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Main\Bin.cs" Link="Main\Bin.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Main\Host.cs" Link="Main\Host.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Main\IAerospikeClient.cs" Link="Main\IAerospikeClient.cs" />
@@ -182,7 +193,11 @@
     <Compile Include="..\..\Framework\AerospikeClient\Operation\HLLWriteFlags.cs" Link="Operation\HLLWriteFlags.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Policy\AdminPolicy.cs" Link="Policy\AdminPolicy.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Policy\AuthMode.cs" Link="Policy\AuthMode.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Policy\BatchDeletePolicy.cs" Link="Policy\BatchDeletePolicy.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Policy\BatchPolicy.cs" Link="Policy\BatchPolicy.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Policy\BatchReadPolicy.cs" Link="Policy\BatchReadPolicy.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Policy\BatchUDFPolicy.cs" Link="Policy\BatchUDFPolicy.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Policy\BatchWritePolicy.cs" Link="Policy\BatchWritePolicy.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Policy\ClientPolicy.cs" Link="Policy\ClientPolicy.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Policy\CommitLevel.cs" Link="Policy\CommitLevel.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Policy\GenerationPolicy.cs" Link="Policy\GenerationPolicy.cs" />

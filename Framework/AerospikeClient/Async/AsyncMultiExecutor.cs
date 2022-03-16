@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2020 Aerospike, Inc.
+ * Copyright 2012-2022 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -18,7 +18,7 @@ using System.Threading;
 
 namespace Aerospike.Client
 {
-	public abstract class AsyncMultiExecutor : AsyncExecutor
+	public abstract class AsyncMultiExecutor
 	{
 		internal readonly AsyncCluster cluster; 
 		private AsyncMultiCommand[] commands;

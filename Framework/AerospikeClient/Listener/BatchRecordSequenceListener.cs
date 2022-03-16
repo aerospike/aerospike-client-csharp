@@ -14,24 +14,32 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using System.Collections.Generic;
-
 namespace Aerospike.Client
 {
 	/// <summary>
-	/// Asynchronous result notifications for batch get commands with variable bins per key.
-	/// The result is sent in a single list.
+	/// Asynchronous result notifications for batch operate commands.
+	/// The results are sent one record at a time.
 	/// </summary>
-	public interface BatchListListener
+	public interface BatchRecordSequenceListener
 	{
+		/// <summary>
+		/// This method is called when a record is received from the server.
+		/// The receive sequence is not ordered.
+		/// <para>
+		/// The user may throw <see cref="Aerospike.Client.AerospikeException"/> if the
+		/// command should be aborted. If any exception is thrown, parallel command threads
+		/// to other nodes will also be terminated and the exception will be propagated back
+		/// through the OnFailure() call.
+		/// </para>
+		/// </summary>
+		/// <param name="record">record instance</param>
+		/// <param name="index">index offset into the original BatchRecord array.</param>
+		void OnRecord(BatchRecord record, int index);
+
 		/// <summary>
 		/// This method is called when the command completes successfully.
 		/// </summary>
-		/// <param name="records">
-		/// record instances, <seealso cref="BatchRecord.record"/>
-		///	will be null if the key is not found.
-		///	</param>
-		void OnSuccess(List<BatchRead> records);
+		void OnSuccess();
 
 		/// <summary>
 		/// This method is called when the command fails.

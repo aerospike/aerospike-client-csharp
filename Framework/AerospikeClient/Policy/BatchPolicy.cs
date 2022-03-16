@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2019 Aerospike, Inc.
+ * Copyright 2012-2022 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -14,10 +14,14 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
+using System;
+
+#pragma warning disable 0618
+
 namespace Aerospike.Client
 {
 	/// <summary>
-	/// Configuration variables for multi-record get and exist requests.
+	/// Batch parent policy.
 	/// </summary>
 	public sealed class BatchPolicy : Policy
 	{
@@ -56,21 +60,35 @@ namespace Aerospike.Client
 		public int maxConcurrentThreads = 1;
 
 		/// <summary>
-		/// Allow batch to be processed immediately in the server's receiving thread when the server
-		/// deems it to be appropriate.  If false, the batch will always be processed in separate
-		/// transaction threads.  This field is only relevant for the new batch index protocol.
+		/// Allow batch to be processed immediately in the server's receiving thread for in-memory
+		/// namespaces. If false, the batch will always be processed in separate service threads.
 		/// <para>
-		/// For batch exists or batch reads of smaller sized records (less than 1K per record),
-		/// inline processing will be significantly faster on "in memory" namespaces.  The server
-		/// disables inline processing on disk based namespaces regardless of this policy field.
+		/// For batch transactions with smaller sized records (&lt;= 1K per record), inline
+		/// processing will be significantly faster on in-memory namespaces.
 		/// </para>
 		/// <para>
 		/// Inline processing can introduce the possibility of unfairness because the server
 		/// can process the entire batch before moving onto the next command.
 		/// </para>
-		/// <para>Default: true</para>
+		/// <para>
+		/// Default: true
+		/// </para>
 		/// </summary>
 		public bool allowInline = true;
+
+		/// <summary>
+		/// Allow batch to be processed immediately in the server's receiving thread for SSD
+		/// namespaces. If false, the batch will always be processed in separate service threads.
+		/// Server versions &lt; 6.0 ignore this field.
+		/// <para>
+		/// Inline processing can introduce the possibility of unfairness because the server
+		/// can process the entire batch before moving onto the next command.
+		/// </para>
+		/// <para>
+		/// Default: false
+		/// </para>
+		/// </summary>
+		public bool allowInlineSSD = false;
 	
 		/// <summary>
 		/// Allow read operations to use replicated data partitions instead of master
@@ -86,11 +104,35 @@ namespace Aerospike.Client
 		public bool allowProleReads;
 
 		/// <summary>
-		/// Send set name field to server for every key in the batch for batch index protocol. 
-		/// This is only necessary when authentication is enabled and security roles are defined
-		/// on a per set basis.
-		/// <para>Default: false</para>
+		/// Should all batch keys be attempted regardless of errors. This field is used on both
+		/// the client and server. The client handles node specific errors and the server handles
+		/// key specific errors.
+		/// <para>
+		/// If true, every batch key is attempted regardless of previous key specific errors.
+		/// Node specific errors such as timeouts stop keys to that node, but keys directed at
+		/// other nodes will continue to be processed.
+		/// </para>
+		/// <para>
+		/// If false, the server will stop the batch to its node on most key specific errors.
+		/// The exceptions are <see cref="Aerospike.Client.ResultCode.KEY_NOT_FOUND_ERROR"/> and
+		/// <see cref="Aerospike.Client.ResultCode.FILTERED_OUT"/> which never stop the batch.
+		/// The client will stop the entire batch on node specific errors for sync commands
+		/// that are run in sequence (maxConcurrentThreads == 1). The client will not stop
+		/// the entire batch for async commands or sync commands run in parallel.
+		/// </para>
+		/// <para>
+		/// Server versions &lt; 6.0 do not support this field and treat this value as false
+		/// for key specific errors.
+		/// </para>
+		/// <para>Default: true</para>
 		/// </summary>
+		public bool respondAllKeys = true;
+		
+		/// <summary>
+		/// This field is deprecated and will eventually be removed.
+		/// The set name is now always sent for every distinct namespace/set in the batch.
+		/// </summary>
+		[Obsolete("Deprecated. The set name is now always sent.")]
 		public bool sendSetName;
 
 		/// <summary>
@@ -101,7 +143,9 @@ namespace Aerospike.Client
 		{
 			this.maxConcurrentThreads = other.maxConcurrentThreads;
 			this.allowInline = other.allowInline;
+			this.allowInlineSSD = other.allowInlineSSD;
 			this.allowProleReads = other.allowProleReads;
+			this.respondAllKeys = other.respondAllKeys;
 			this.sendSetName = other.sendSetName;
 		}
 
@@ -119,5 +163,25 @@ namespace Aerospike.Client
 		public BatchPolicy()
 		{
 		}
+
+		/// <summary>
+		/// Default batch read policy.
+		/// </summary>
+		public static BatchPolicy ReadDefault()
+		{
+			return new BatchPolicy();
+		}
+
+		/// <summary>
+		/// Default batch write policy.
+		/// </summary>
+		public static BatchPolicy WriteDefault()
+		{
+			BatchPolicy policy = new BatchPolicy();
+			policy.maxRetries = 0;
+			return policy;
+		}
 	}
 }
+
+#pragma warning restore 0618

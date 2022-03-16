@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2022 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -15,103 +15,150 @@
  * the License.
  */
 using System;
-using System.Collections.Generic;
 using System.Threading;
 
 namespace Aerospike.Client
 {
 	public sealed class BatchExecutor
 	{
-		public static void Execute
-		(
-			Cluster cluster,
-			BatchPolicy policy,
-			Key[] keys,
-			bool[] existsArray,
-			Record[] records,
-			string[] binNames,
-			Operation[] ops,
-			int readAttr
-		)
+		public static void Execute(BatchPolicy policy, BatchCommand[] commands, BatchStatus status)
 		{
-			if (keys.Length == 0)
-			{
-				return;
-			}
-
-			bool isOperation = ops != null;
-
-			if (policy.allowProleReads)
-			{
-				// Send all requests to a single node chosen in round-robin fashion in this transaction thread.
-				Node node = cluster.GetRandomNode();
-				BatchNode batchNode = new BatchNode(node, keys);
-				ExecuteNode(cluster, batchNode, policy, keys, existsArray, records, binNames, ops, readAttr, isOperation);
-				return;
-			}
-
-			List<BatchNode> batchNodes = BatchNode.GenerateList(cluster, policy, keys);
-
-			if (policy.maxConcurrentThreads == 1 || batchNodes.Count <= 1)
+			if (policy.maxConcurrentThreads == 1 || commands.Length <= 1)
 			{
 				// Run batch requests sequentially in same thread.
-				foreach (BatchNode batchNode in batchNodes)
+				foreach (BatchCommand command in commands)
 				{
-					ExecuteNode(cluster, batchNode, policy, keys, existsArray, records, binNames, ops, readAttr, isOperation);
+					try
+					{
+						command.Execute();
+					}
+					catch (AerospikeException ae)
+					{
+						// Set error/inDoubt for keys associated this batch command when
+						// the command was not retried and split. If a split retry occurred,
+						// those new subcommands have already set error/inDoubt on the affected
+						// subset of keys.
+						if (!command.splitRetry)
+						{
+							command.SetError(ae.Result, ae.InDoubt);
+						}
+						status.SetException(ae);
+
+						if (!policy.respondAllKeys)
+						{
+							throw;
+						}
+					}
+					catch (Exception e)
+					{
+						if (!command.splitRetry)
+						{
+							command.SetError(ResultCode.CLIENT_ERROR, true);
+						}
+						status.SetException(e);
+
+						if (!policy.respondAllKeys)
+						{
+							throw;
+						}
+					}
+				}
+				status.CheckException();
+				return;
+			}
+
+			// Run batch requests in parallel in separate threads.
+			BatchExecutor executor = new BatchExecutor(policy, commands, status);
+			executor.Execute();
+		}
+
+		public static void Execute(BatchCommand command, BatchStatus status)
+		{
+			command.Execute();
+			status.CheckException();
+		}
+
+		private readonly BatchStatus status;
+		private readonly int maxConcurrentThreads;
+		private readonly BatchCommand[] commands;
+		private int completedCount;
+		private volatile int done;
+		private bool completed;
+
+		private BatchExecutor(BatchPolicy policy, BatchCommand[] commands, BatchStatus status)
+		{
+			this.commands = commands;
+			this.status = status;
+			this.maxConcurrentThreads = (policy.maxConcurrentThreads == 0 || policy.maxConcurrentThreads >= commands.Length) ? commands.Length : policy.maxConcurrentThreads;
+		}
+
+		internal void Execute()
+		{
+			// Start threads.
+			for (int i = 0; i < maxConcurrentThreads; i++)
+			{
+				BatchCommand cmd = commands[i];
+				cmd.parent = this;
+				ThreadPool.QueueUserWorkItem(cmd.Run);
+			}
+
+			// Multiple threads write to the batch record array/list, so one might think that memory barriers
+			// are needed. That should not be necessary because of this synchronized waitTillComplete().
+			WaitTillComplete();
+
+			// Throw an exception if an error occurred.
+			status.CheckException();
+		}
+
+		internal void OnComplete()
+		{
+			int finished = Interlocked.Increment(ref completedCount);
+
+			if (finished < commands.Length)
+			{
+				int nextThread = finished + maxConcurrentThreads - 1;
+
+				// Determine if a new thread needs to be started.
+				if (nextThread < commands.Length && done == 0)
+				{
+					// Start new thread.
+					BatchCommand cmd = commands[nextThread];
+					cmd.parent = this;
+					ThreadPool.QueueUserWorkItem(cmd.Run);
 				}
 			}
 			else
 			{
-				// Run batch requests in parallel in separate threads.
-				//
-				// Multiple threads write to the record/exists array, so one might think that
-				// volatile or memory barriers are needed on the write threads and this read thread.
-				// This should not be necessary here because it happens in Executor which does a 
-				// volatile write (Interlocked.Increment(ref completedCount)) at the end of write threads
-				// and a synchronized WaitTillComplete() in this thread.
-				Executor executor = new Executor(batchNodes.Count * 2);
-
-				// Initialize threads.  
-				foreach (BatchNode batchNode in batchNodes)
+				// Ensure executor succeeds or fails exactly once.
+				if (Interlocked.Exchange(ref done, 1) == 0)
 				{
-					if (records != null)
-					{
-						MultiCommand command = new BatchGetArrayCommand(cluster, executor, batchNode, policy, keys, binNames, ops, records, readAttr, isOperation);
-						executor.AddCommand(command);
-					}
-					else
-					{
-						MultiCommand command = new BatchExistsArrayCommand(cluster, executor, batchNode, policy, keys, existsArray);
-						executor.AddCommand(command);
-					}
+					NotifyCompleted();
 				}
-				executor.Execute(policy.maxConcurrentThreads);
 			}
 		}
 
-		private static void ExecuteNode
-		(
-			Cluster cluster,
-			BatchNode batchNode,
-			BatchPolicy policy,
-			Key[] keys,
-			bool[] existsArray,
-			Record[] records,
-			string[] binNames,
-			Operation[] ops,
-			int readAttr,
-			bool isOperation
-		)
+		internal bool IsDone()
 		{
-			if (records != null)
+			return done != 0;
+		}
+
+		private void WaitTillComplete()
+		{
+			lock (this)
 			{
-				MultiCommand command = new BatchGetArrayCommand(cluster, null, batchNode, policy, keys, binNames, ops, records, readAttr, isOperation);
-				command.Execute();
+				while (!completed)
+				{
+					Monitor.Wait(this);
+				}
 			}
-			else
+		}
+
+		private void NotifyCompleted()
+		{
+			lock (this)
 			{
-				MultiCommand command = new BatchExistsArrayCommand(cluster, null, batchNode, policy, keys, existsArray);
-				command.Execute();
+				completed = true;
+				Monitor.Pulse(this);
 			}
 		}
 	}
