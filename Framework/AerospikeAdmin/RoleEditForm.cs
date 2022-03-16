@@ -147,8 +147,33 @@ namespace Aerospike.Admin
 				}
 			}
 
-			int readQuota = int.Parse(readQuotaBox.Text);
-			int writeQuota = int.Parse(writeQuotaBox.Text);
+			int readQuota = 0;
+
+			try
+			{
+				if (!string.IsNullOrWhiteSpace(readQuotaBox.Text))
+				{
+					readQuota = int.Parse(readQuotaBox.Text);
+				}
+			}
+			catch (Exception)
+			{
+				throw new Exception("Invalid Read Quota Number");
+			}
+
+			int writeQuota = 0;
+
+			try
+			{
+				if (!string.IsNullOrWhiteSpace(writeQuotaBox.Text))
+				{
+					writeQuota = int.Parse(writeQuotaBox.Text);
+				}
+			}
+			catch (Exception)
+			{
+				throw new Exception("Invalid Write Quota Number");
+			}
 
 			switch (editType)
 			{
