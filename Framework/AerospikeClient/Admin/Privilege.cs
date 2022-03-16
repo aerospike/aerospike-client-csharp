@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2019 Aerospike, Inc.
+ * Copyright 2012-2022 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -189,6 +189,12 @@ namespace Aerospike.Client
 				case PrivilegeCode.DATA_ADMIN:
 					return Role.DataAdmin;
 
+				case PrivilegeCode.UDF_ADMIN:
+					return Role.UDFAdmin;
+
+				case PrivilegeCode.SINDEX_ADMIN:
+					return Role.SIndexAdmin;
+
 				case PrivilegeCode.READ:
 					return Role.Read;
 
@@ -200,6 +206,9 @@ namespace Aerospike.Client
 
 				case PrivilegeCode.WRITE:
 					return Role.Write;
+
+				case PrivilegeCode.TRUNCATE:
+					return Role.Truncate;
 
 				default:
 					throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Invalid privilege code: " + code);
