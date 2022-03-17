@@ -67,6 +67,7 @@ namespace Aerospike.Client
 		internal readonly byte[] digest;
 		internal PartitionStatus[] partitions; // Initialized in PartitionTracker.
 		internal bool done;
+		internal bool retry;
 
 		private PartitionFilter(int begin, int count)
 		{

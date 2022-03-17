@@ -131,16 +131,14 @@ namespace Aerospike.Client
 			if (filter.partitions == null)
 			{
 				filter.partitions = InitPartitions(filter.count, filter.digest);
+				filter.retry = true;
 			}
 			else
 			{
 				// Retry all partitions when maxRecords not specified.
 				if (maxRecords == 0)
 				{
-					foreach (PartitionStatus ps in filter.partitions)
-					{
-						ps.retry = true;
-					}
+					filter.retry = true;
 				}
 			}
 			this.partitions = filter.partitions;
@@ -216,10 +214,11 @@ namespace Aerospike.Client
 			}
 
 			Node[] master = parts.replicas[0];
+			bool retry = (partitionFilter == null || partitionFilter.retry) && iteration == 1;
 
 			foreach (PartitionStatus part in partitions)
 			{
-				if (part.retry)
+				if (retry || part.retry)
 				{
 					Node node = Volatile.Read(ref master[part.id]);
 
@@ -252,11 +251,15 @@ namespace Aerospike.Client
 				}
 			}
 
+			int nodeSize = list.Count;
+
+			if (nodeSize <= 0) {
+				throw new AerospikeException.InvalidNode("No nodes were assigned");
+			}
+
 			if (maxRecords > 0)
 			{
 				// Distribute maxRecords across nodes.
-				int nodeSize = list.Count;
-
 				if (maxRecords < nodeSize)
 				{
 					// Only include nodes that have at least 1 record requested.
@@ -356,6 +359,9 @@ namespace Aerospike.Client
 
 						if (partitionFilter != null)
 						{
+							// Set global retry to false because only specific node partitions
+							// should be retried.
+							partitionFilter.retry = false;
 							partitionFilter.done = done;
 						}
 					}
@@ -374,6 +380,9 @@ namespace Aerospike.Client
 
 						if (partitionFilter != null)
 						{
+							// Set global retry to false because only specific node partitions
+							// should be retried.
+							partitionFilter.retry = false;
 							partitionFilter.done = recordCount == 0;
 						}
 					}
