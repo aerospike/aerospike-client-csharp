@@ -560,13 +560,17 @@ namespace Aerospike.Test
 			public void OnRecord(BatchRecord record, int index)
 			{
 				Record rec = record.record;
-				IList results = rec.GetList(ListBin3);
-				long size = (long)results[1];
-				long val = (long)results[2];
 
-				parent.AssertEquals(3, size);
-				parent.AssertEquals(1, val);
-				count++;
+				if (parent.AssertNotNull(rec))
+				{
+					IList results = rec.GetList(ListBin3);
+					long size = (long)results[1];
+					long val = (long)results[2];
+
+					parent.AssertEquals(3, size);
+					parent.AssertEquals(1, val);
+					count++;
+				}
 			}
 
 			public void OnSuccess()
