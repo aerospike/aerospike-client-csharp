@@ -467,11 +467,16 @@ namespace Aerospike.Client
 				case ResultCode.SERVER_NOT_AVAILABLE:
 				case ResultCode.TIMEOUT:
 				case ResultCode.INDEX_NOTFOUND:
-					if (exceptions == null)
+					// Multiple scan/query threads may call this method, so exception
+					// list must be modified under lock.
+					lock (this)
 					{
-						exceptions = new List<AerospikeException>();
+						if (exceptions == null)
+						{
+							exceptions = new List<AerospikeException>();
+						}
+						exceptions.Add(ae);
 					}
-					exceptions.Add(ae);
 					MarkRetry(nodePartitions);
 					nodePartitions.partsUnavailable = nodePartitions.partsFull.Count + nodePartitions.partsPartial.Count;
 					return true;
