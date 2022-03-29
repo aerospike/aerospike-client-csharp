@@ -24,12 +24,12 @@ namespace Aerospike.Client
 		/// <summary>
 		/// One or more keys failed in a batch.
 		/// </summary>
-		public const int BATCH_FAILED = -14;
+		public const int BATCH_FAILED = -16;
 
 		/// <summary>
 		/// No response received from server.
 		/// </summary>
-		public const int NO_RESPONSE = -13;
+		public const int NO_RESPONSE = -15;
 
 		/// <summary>
 		/// Max errors limit reached.

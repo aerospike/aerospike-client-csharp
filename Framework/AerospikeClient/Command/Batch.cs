@@ -69,19 +69,6 @@ namespace Aerospike.Client
 			}
 		}
 
-		protected internal override void SetError(int resultCode, bool inDoubt)
-		{
-			foreach (int index in batch.offsets)
-			{
-				BatchRecord record = records[index];
-
-				if (record.resultCode == ResultCode.NO_RESPONSE)
-				{
-					record.SetError(resultCode, false);
-				}
-			}
-		}
-
 		protected internal override BatchCommand CreateCommand(BatchNode batchNode)
 		{
 			return new BatchReadListCommand(cluster, batchNode, batchPolicy, records, status);
@@ -149,11 +136,6 @@ namespace Aerospike.Client
 			}
 		}
 
-		protected internal override void SetError(int resultCode, bool inDoubt)
-		{
-			// records does not store error/inDoubt.
-		}
-
 		protected internal override BatchCommand CreateCommand(BatchNode batchNode)
 		{
 			return new BatchGetArrayCommand(cluster, batchNode, batchPolicy, keys, binNames, ops, records, readAttr, isOperation, status);
@@ -211,11 +193,6 @@ namespace Aerospike.Client
 			}
 
 			existsArray[batchIndex] = resultCode == 0;
-		}
-
-		protected internal override void SetError(int resultCode, bool inDoubt)
-		{
-			// existsArray does not store error/inDoubt.
 		}
 
 		protected internal override BatchCommand CreateCommand(BatchNode batchNode)
@@ -293,15 +270,20 @@ namespace Aerospike.Client
 			status.SetRowError();
 		}
 
-		protected internal override void SetError(int resultCode, bool inDoubt)
+		protected internal override void SetInDoubt(bool inDoubt)
 		{
+			if (!inDoubt)
+			{
+				return;
+			}
+
 			foreach (int index in batch.offsets)
 			{
 				BatchRecord record = records[index];
 
 				if (record.resultCode == ResultCode.NO_RESPONSE)
 				{
-					record.SetError(resultCode, record.hasWrite && inDoubt);
+					record.inDoubt = record.hasWrite;
 				}
 			}
 		}
@@ -373,15 +355,20 @@ namespace Aerospike.Client
 			}
 		}
 
-		protected internal override void SetError(int resultCode, bool inDoubt)
+		protected internal override void SetInDoubt(bool inDoubt)
 		{
+			if (!inDoubt || !attr.hasWrite)
+			{
+				return;
+			}
+
 			foreach (int index in batch.offsets)
 			{
 				BatchRecord record = records[index];
 
 				if (record.resultCode == ResultCode.NO_RESPONSE)
 				{
-					record.SetError(resultCode, attr.hasWrite && inDoubt);
+					record.inDoubt = inDoubt;
 				}
 			}
 		}
@@ -474,15 +461,20 @@ namespace Aerospike.Client
 			status.SetRowError();
 		}
 
-		protected internal override void SetError(int resultCode, bool inDoubt)
+		protected internal override void SetInDoubt(bool inDoubt)
 		{
+			if (!inDoubt || !attr.hasWrite)
+			{
+				return;
+			}
+
 			foreach (int index in batch.offsets)
 			{
 				BatchRecord record = records[index];
 
 				if (record.resultCode == ResultCode.NO_RESPONSE)
 				{
-					record.SetError(resultCode, attr.hasWrite && inDoubt);
+					record.inDoubt = inDoubt;
 				}
 			}
 		}
@@ -540,7 +532,7 @@ namespace Aerospike.Client
 				// subset of keys.
 				if (!splitRetry)
 				{
-					SetError(ae.Result, ae.InDoubt);
+					SetInDoubt(ae.InDoubt);
 				}
 				status.SetException(ae);
 			}
@@ -548,7 +540,7 @@ namespace Aerospike.Client
 			{
 				if (!splitRetry)
 				{
-					SetError(ResultCode.CLIENT_ERROR, true);
+					SetInDoubt(true);
 				}
 				status.SetException(e);
 			}
@@ -618,7 +610,7 @@ namespace Aerospike.Client
 				{
 					if (!command.splitRetry)
 					{
-						command.SetError(ae.Result, ae.InDoubt);
+						command.SetInDoubt(ae.InDoubt);
 					}
 					status.SetException(ae);
 
@@ -631,7 +623,7 @@ namespace Aerospike.Client
 				{
 					if (!command.splitRetry)
 					{
-						command.SetError(ResultCode.CLIENT_ERROR, true);
+						command.SetInDoubt(true);
 					}
 					status.SetException(e);
 
@@ -644,7 +636,11 @@ namespace Aerospike.Client
 			return true;
 		}
 
-		protected internal abstract void SetError(int resultCode, bool inDoubt);
+		protected internal virtual void SetInDoubt(bool inDoubt)
+		{
+			// Do nothing by default. Batch writes will override this method.
+		}
+
 		protected internal abstract BatchCommand CreateCommand(BatchNode batchNode);
 		protected internal abstract List<BatchNode> GenerateBatchNodes();
 	}

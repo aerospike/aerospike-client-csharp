@@ -112,19 +112,6 @@ namespace Aerospike.Client
 			}
 		}
 
-		internal override void SetError(int resultCode, bool inDoubt)
-		{
-			foreach (int index in batch.offsets)
-			{
-				BatchRecord record = records[index];
-
-				if (record.resultCode == ResultCode.NO_RESPONSE)
-				{
-					record.SetError(resultCode, false);
-				}
-			}
-		}
-
 		protected internal override AsyncCommand CloneCommand()
 		{
 			return new AsyncBatchReadListCommand(this);
@@ -235,20 +222,6 @@ namespace Aerospike.Client
 				record.SetError(resultCode, false);
 			}
 			listener.OnRecord(record);
-		}
-
-		internal override void SetError(int resultCode, bool inDoubt)
-		{
-			foreach (int index in batch.offsets)
-			{
-				BatchRead record = records[index];
-
-				if (record.resultCode == ResultCode.NO_RESPONSE)
-				{
-					record.SetError(resultCode, false);
-					listener.OnRecord(record);
-				}
-			}
 		}
 
 		protected internal override AsyncCommand CloneCommand()
@@ -376,11 +349,6 @@ namespace Aerospike.Client
 			{
 				records[batchIndex] = ParseRecord();
 			}
-		}
-
-		internal override void SetError(int resultCode, bool inDoubt)
-		{
-			// records does not store error/inDoubt.
 		}
 
 		protected internal override AsyncCommand CloneCommand()
@@ -513,11 +481,6 @@ namespace Aerospike.Client
 			}
 		}
 
-		internal override void SetError(int resultCode, bool inDoubt)
-		{
-			// error/inDoubt not sent to listener.
-		}
-
 		protected internal override AsyncCommand CloneCommand()
 		{
 			return new AsyncBatchGetSequenceCommand(this);
@@ -630,11 +593,6 @@ namespace Aerospike.Client
 			existsArray[batchIndex] = resultCode == 0;
 		}
 
-		internal override void SetError(int resultCode, bool inDoubt)
-		{
-			// existsArray does not store error/inDoubt.
-		}
-
 		protected internal override AsyncCommand CloneCommand()
 		{
 			return new AsyncBatchExistsArrayCommand(this);
@@ -743,11 +701,6 @@ namespace Aerospike.Client
 
 			Key keyOrig = keys[batchIndex];
 			listener.OnExists(keyOrig, resultCode == 0);
-		}
-
-		internal override void SetError(int resultCode, bool inDoubt)
-		{
-			// error/inDoubt not sent to listener.
 		}
 
 		protected internal override AsyncCommand CloneCommand()
@@ -875,15 +828,20 @@ namespace Aerospike.Client
 			parent.SetRowError();
 		}
 
-		internal override void SetError(int resultCode, bool inDoubt)
+		internal override void SetInDoubt(bool inDoubt)
 		{
+			if (!inDoubt)
+			{
+				return;
+			}
+
 			foreach (int index in batch.offsets)
 			{
 				BatchRecord record = records[index];
 
 				if (record.resultCode == ResultCode.NO_RESPONSE)
 				{
-					record.SetError(resultCode, record.hasWrite && inDoubt);
+					record.inDoubt = record.hasWrite;
 				}
 			}
 		}
@@ -1017,17 +975,22 @@ namespace Aerospike.Client
 			AsyncBatch.OnRecord(listener, record, batchIndex);
 		}
 
-		internal override void SetError(int resultCode, bool inDoubt)
+		internal override void SetInDoubt(bool inDoubt)
 		{
+			if (!inDoubt)
+			{
+				return;
+			}
+
 			foreach (int index in batch.offsets)
 			{
 				BatchRecord record = records[index];
 
 				if (record.resultCode == ResultCode.NO_RESPONSE)
 				{
-					// Set error, but do not call onRecord() because user already has access to full
-					// BatchRecord list and can examine each record for errors when the exception occurs.
-					record.SetError(resultCode, record.hasWrite && inDoubt);
+					// Set inDoubt, but do not call OnRecord() because user already has access to full
+					// BatchRecord list and can examine each record for inDoubt when the exception occurs.
+					record.inDoubt = record.hasWrite;
 				}
 			}
 		}
@@ -1159,15 +1122,20 @@ namespace Aerospike.Client
 			}
 		}
 
-		internal override void SetError(int resultCode, bool inDoubt)
+		internal override void SetInDoubt(bool inDoubt)
 		{
+			if (!inDoubt || !attr.hasWrite)
+			{
+				return;
+			}
+
 			foreach (int index in batch.offsets)
 			{
 				BatchRecord record = records[index];
 
 				if (record.resultCode == ResultCode.NO_RESPONSE)
 				{
-					record.SetError(resultCode, attr.hasWrite && inDoubt);
+					record.inDoubt = inDoubt;
 				}
 			}
 		}
@@ -1307,14 +1275,15 @@ namespace Aerospike.Client
 			AsyncBatch.OnRecord(listener, record, batchIndex);
 		}
 
-		internal override void SetError(int resultCode, bool inDoubt)
+		internal override void SetInDoubt(bool inDoubt)
 		{
+			// Set inDoubt for all unsent records, so the listener receives a full set of records.
 			foreach (int index in batch.offsets)
 			{
 				if (!sent[index])
 				{
 					Key key = keys[index];
-					BatchRecord record = new BatchRecord(key, null, resultCode, attr.hasWrite && inDoubt, attr.hasWrite);
+					BatchRecord record = new BatchRecord(key, null, ResultCode.NO_RESPONSE, attr.hasWrite && inDoubt, attr.hasWrite);
 					sent[index] = true;
 					AsyncBatch.OnRecord(listener, record, index);
 				}
@@ -1473,15 +1442,20 @@ namespace Aerospike.Client
 			parent.SetRowError();
 		}
 
-		internal override void SetError(int resultCode, bool inDoubt)
+		internal override void SetInDoubt(bool inDoubt)
 		{
+			if (!inDoubt || !attr.hasWrite)
+			{
+				return;
+			}
+
 			foreach (int index in batch.offsets)
 			{
 				BatchRecord record = records[index];
 
 				if (record.resultCode == ResultCode.NO_RESPONSE)
 				{
-					record.SetError(resultCode, attr.hasWrite && inDoubt);
+					record.inDoubt = inDoubt;
 				}
 			}
 		}
@@ -1646,14 +1620,15 @@ namespace Aerospike.Client
 			AsyncBatch.OnRecord(listener, record, batchIndex);
 		}
 
-		internal override void SetError(int resultCode, bool inDoubt)
+		internal override void SetInDoubt(bool inDoubt)
 		{
+			// Set inDoubt for all unsent records, so the listener receives a full set of records.
 			foreach (int index in batch.offsets)
 			{
 				if (!sent[index])
 				{
 					Key key = keys[index];
-					BatchRecord record = new BatchRecord(key, null, resultCode, attr.hasWrite && inDoubt, attr.hasWrite);
+					BatchRecord record = new BatchRecord(key, null, ResultCode.NO_RESPONSE, attr.hasWrite && inDoubt, attr.hasWrite);
 					sent[index] = true;
 					AsyncBatch.OnRecord(listener, record, index);
 				}
@@ -1899,11 +1874,15 @@ namespace Aerospike.Client
 
 		protected internal override void OnFailure(AerospikeException e)
 		{
-			SetError(e.Result, e.InDoubt);
+			SetInDoubt(e.InDoubt);
 			parent.ChildFailure(e);
 		}
 
-		internal abstract void SetError(int resultCode, bool inDoubt);
+		internal virtual void SetInDoubt(bool inDoubt)
+		{
+			// Do nothing by default. Batch writes will override this method.
+		}
+
 		internal abstract AsyncBatchCommand CreateCommand(BatchNode batchNode);
 		internal abstract List<BatchNode> GenerateBatchNodes();
 	}
