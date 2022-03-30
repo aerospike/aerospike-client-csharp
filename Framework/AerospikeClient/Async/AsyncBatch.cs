@@ -363,7 +363,7 @@ namespace Aerospike.Client
 
 		internal override List<BatchNode> GenerateBatchNodes()
 		{
-			return BatchNode.GenerateList(cluster, batchPolicy, keys, null, sequenceAP, sequenceSC, batch, false, parent);
+			return BatchNode.GenerateList(cluster, batchPolicy, keys, sequenceAP, sequenceSC, batch, false, parent);
 		}
 	}
 
@@ -493,7 +493,7 @@ namespace Aerospike.Client
 
 		internal override List<BatchNode> GenerateBatchNodes()
 		{
-			return BatchNode.GenerateList(cluster, batchPolicy, keys, null, sequenceAP, sequenceSC, batch, false, parent);
+			return BatchNode.GenerateList(cluster, batchPolicy, keys, sequenceAP, sequenceSC, batch, false, parent);
 		}
 	}
 
@@ -605,7 +605,7 @@ namespace Aerospike.Client
 
 		internal override List<BatchNode> GenerateBatchNodes()
 		{
-			return BatchNode.GenerateList(cluster, batchPolicy, keys, null, sequenceAP, sequenceSC, batch, false, parent);
+			return BatchNode.GenerateList(cluster, batchPolicy, keys, sequenceAP, sequenceSC, batch, false, parent);
 		}
 	}
 
@@ -715,7 +715,7 @@ namespace Aerospike.Client
 
 		internal override List<BatchNode> GenerateBatchNodes()
 		{
-			return BatchNode.GenerateList(cluster, batchPolicy, keys, null, sequenceAP, sequenceSC, batch, false, parent);
+			return BatchNode.GenerateList(cluster, batchPolicy, keys, sequenceAP, sequenceSC, batch, false, parent);
 		}
 	}
 
@@ -1302,7 +1302,7 @@ namespace Aerospike.Client
 
 		internal override List<BatchNode> GenerateBatchNodes()
 		{
-			return BatchNode.GenerateList(cluster, batchPolicy, keys, null, sequenceAP, sequenceSC, batch, attr.hasWrite, parent);
+			return BatchNode.GenerateList(cluster, batchPolicy, keys, sent, sequenceAP, sequenceSC, batch, attr.hasWrite, parent);
 		}
 	}
 
@@ -1647,7 +1647,7 @@ namespace Aerospike.Client
 
 		internal override List<BatchNode> GenerateBatchNodes()
 		{
-			return BatchNode.GenerateList(cluster, batchPolicy, keys, null, sequenceAP, sequenceSC, batch, attr.hasWrite, parent);
+			return BatchNode.GenerateList(cluster, batchPolicy, keys, sent, sequenceAP, sequenceSC, batch, attr.hasWrite, parent);
 		}
 	}
 

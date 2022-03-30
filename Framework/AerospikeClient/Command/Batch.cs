@@ -143,7 +143,7 @@ namespace Aerospike.Client
 
 		protected internal override List<BatchNode> GenerateBatchNodes()
 		{
-			return BatchNode.GenerateList(cluster, batchPolicy, keys, null, sequenceAP, sequenceSC, batch, false, status);
+			return BatchNode.GenerateList(cluster, batchPolicy, keys, sequenceAP, sequenceSC, batch, false, status);
 		}
 	}
 
@@ -202,7 +202,7 @@ namespace Aerospike.Client
 
 		protected internal override List<BatchNode> GenerateBatchNodes()
 		{
-			return BatchNode.GenerateList(cluster, batchPolicy, keys, null, sequenceAP, sequenceSC, batch, false, status);
+			return BatchNode.GenerateList(cluster, batchPolicy, keys, sequenceAP, sequenceSC, batch, false, status);
 		}
 	}
 
