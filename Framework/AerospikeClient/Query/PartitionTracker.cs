@@ -498,6 +498,15 @@ namespace Aerospike.Client
 				ps.retry = true;
 			}
 		}
+
+		public void PartitionError()
+		{
+			// Mark all partitions for retry on fatal errors.
+			if (partitionFilter != null)
+			{
+				partitionFilter.retry = true;
+			}
+		}
 	}
 
 	public sealed class NodePartitions
