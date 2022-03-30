@@ -467,6 +467,7 @@ namespace Aerospike.Client
 				case ResultCode.SERVER_NOT_AVAILABLE:
 				case ResultCode.TIMEOUT:
 				case ResultCode.INDEX_NOTFOUND:
+				case ResultCode.INDEX_NOTREADABLE:
 					// Multiple scan/query threads may call this method, so exception
 					// list must be modified under lock.
 					lock (this)
