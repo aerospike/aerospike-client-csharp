@@ -348,6 +348,18 @@ namespace Aerospike.Client
 						partitionFilter.done = true;
 					}
 				}
+				else if (iteration > 1)
+				{
+					if (partitionFilter != null)
+					{
+						// If errors occurred on a node, only that node's partitions are retried in the
+						// next iteration. If that node finally succeeds, the other original nodes still
+						// need to be retried if partition state is reused in the next scan/query command.
+						// Force retry on all node partitions.
+						partitionFilter.retry = true;
+						partitionFilter.done = false;
+					}
+				}
 				else
 				{
 					if (cluster.hasPartitionQuery)
@@ -467,6 +479,7 @@ namespace Aerospike.Client
 				case ResultCode.SERVER_NOT_AVAILABLE:
 				case ResultCode.TIMEOUT:
 				case ResultCode.INDEX_NOTFOUND:
+				case ResultCode.INDEX_NOTREADABLE:
 					// Multiple scan/query threads may call this method, so exception
 					// list must be modified under lock.
 					lock (this)
@@ -496,6 +509,15 @@ namespace Aerospike.Client
 			foreach (PartitionStatus ps in nodePartitions.partsPartial)
 			{
 				ps.retry = true;
+			}
+		}
+
+		public void PartitionError()
+		{
+			// Mark all partitions for retry on fatal errors.
+			if (partitionFilter != null)
+			{
+				partitionFilter.retry = true;
 			}
 		}
 	}

@@ -40,7 +40,7 @@ namespace Aerospike.Client
 						// subset of keys.
 						if (!command.splitRetry)
 						{
-							command.SetError(ae.Result, ae.InDoubt);
+							command.SetInDoubt(ae.InDoubt);
 						}
 						status.SetException(ae);
 
@@ -53,7 +53,7 @@ namespace Aerospike.Client
 					{
 						if (!command.splitRetry)
 						{
-							command.SetError(ResultCode.CLIENT_ERROR, true);
+							command.SetInDoubt(true);
 						}
 						status.SetException(e);
 

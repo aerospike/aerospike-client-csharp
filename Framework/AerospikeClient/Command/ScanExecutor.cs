@@ -55,6 +55,7 @@ namespace Aerospike.Client
 				}
 				catch (AerospikeException ae)
 				{
+					tracker.PartitionError();
 					ae.Iteration = tracker.iteration;
 					throw ae;
 				}

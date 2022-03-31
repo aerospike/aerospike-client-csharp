@@ -87,6 +87,7 @@ namespace Aerospike.Client
 
 		protected internal override void OnFailure(AerospikeException ae)
 		{
+			tracker.PartitionError();
 			ae.Iteration = tracker.iteration;
 			listener.OnFailure(ae);
 		}

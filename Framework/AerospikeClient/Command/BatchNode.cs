@@ -22,6 +22,9 @@ namespace Aerospike.Client
 {
 	public sealed class BatchNode
 	{
+		/// <summary>
+		/// Assign keys to nodes in initial batch attempt.
+		/// </summary>
 		public static List<BatchNode> GenerateList
 		(
 			Cluster cluster,
@@ -106,6 +109,9 @@ namespace Aerospike.Client
 			return batchNodes;
 		}
 
+		/// <summary>
+		/// Assign keys to nodes in batch node retry.
+		/// </summary>
 		public static List<BatchNode> GenerateList
 		(
 			Cluster cluster,
@@ -141,6 +147,13 @@ namespace Aerospike.Client
 			for (int i = 0; i < batchSeed.offsetsSize; i++)
 			{
 				int offset = batchSeed.offsets[i];
+
+				if (records[offset].resultCode != ResultCode.NO_RESPONSE)
+				{
+					// Do not retry keys that already have a response.
+					continue;
+				}
+
 				Key key = keys[offset];
 
 				try
@@ -162,15 +175,8 @@ namespace Aerospike.Client
 				}
 				catch (AerospikeException.InvalidNode ain)
 				{
-					if (records != null)
-					{
-						// This method only called on retry, so commandSentCounter(2) will be greater than 1.
-						records[offset].SetError(ain.Result, Command.BatchInDoubt(hasWrite, 2));
-					}
-					else
-					{
-						status.SetInvalidNode(key, offset, ain, Command.BatchInDoubt(hasWrite, 2), hasWrite);
-					}
+					// This method only called on retry, so commandSentCounter(2) will be greater than 1.
+					records[offset].SetError(ain.Result, Command.BatchInDoubt(hasWrite, 2));
 
 					if (except == null)
 					{
@@ -185,7 +191,169 @@ namespace Aerospike.Client
 			}
 			return batchNodes;
 		}
-		
+
+		/// <summary>
+		/// Assign keys to nodes in batch node retry for async sequence listeners.
+		/// </summary>
+		public static List<BatchNode> GenerateList
+		(
+			Cluster cluster,
+			BatchPolicy policy,
+			Key[] keys,
+			bool[] sent,
+			uint sequenceAP,
+			uint sequenceSC,
+			BatchNode batchSeed,
+			bool hasWrite,
+			IBatchStatus status
+		)
+		{
+			Node[] nodes = cluster.ValidateNodes();
+
+			// Create initial key capacity for each node as average + 25%.
+			int keysPerNode = batchSeed.offsetsSize / nodes.Length;
+			keysPerNode += (int)((uint)keysPerNode >> 2);
+
+			// The minimum key capacity is 10.
+			if (keysPerNode < 10)
+			{
+				keysPerNode = 10;
+			}
+
+			Replica replica = policy.replica;
+			Replica replicaSC = Partition.GetReplicaSC(policy);
+
+			// Split keys by server node.
+			List<BatchNode> batchNodes = new List<BatchNode>(nodes.Length);
+			AerospikeException except = null;
+
+			for (int i = 0; i < batchSeed.offsetsSize; i++)
+			{
+				int offset = batchSeed.offsets[i];
+
+				if (sent[offset])
+				{
+					// Do not retry keys that already have a response.
+					continue;
+				}
+
+				Key key = keys[offset];
+
+				try
+				{
+					Node node = hasWrite ?
+						Partition.GetNodeBatchWrite(cluster, key, replica, batchSeed.node, sequenceAP) :
+						Partition.GetNodeBatchRead(cluster, key, replica, replicaSC, batchSeed.node, sequenceAP, sequenceSC);
+
+					BatchNode batchNode = FindBatchNode(batchNodes, node);
+
+					if (batchNode == null)
+					{
+						batchNodes.Add(new BatchNode(node, keysPerNode, offset));
+					}
+					else
+					{
+						batchNode.AddKey(offset);
+					}
+				}
+				catch (AerospikeException.InvalidNode ain)
+				{
+					status.SetInvalidNode(key, offset, ain, Command.BatchInDoubt(hasWrite, 2), hasWrite);
+
+					if (except == null)
+					{
+						except = ain;
+					}
+				}
+			}
+
+			if (except != null)
+			{
+				status.SetInvalidNode(except);
+			}
+			return batchNodes;
+		}
+
+		/// <summary>
+		/// Assign keys to nodes in batch node retry.
+		/// </summary>
+		public static List<BatchNode> GenerateList
+		(
+			Cluster cluster,
+			BatchPolicy policy,
+			Key[] keys,
+			uint sequenceAP,
+			uint sequenceSC,
+			BatchNode batchSeed,
+			bool hasWrite,
+			IBatchStatus status
+		)
+		{
+			Node[] nodes = cluster.ValidateNodes();
+
+			// Create initial key capacity for each node as average + 25%.
+			int keysPerNode = batchSeed.offsetsSize / nodes.Length;
+			keysPerNode += (int)((uint)keysPerNode >> 2);
+
+			// The minimum key capacity is 10.
+			if (keysPerNode < 10)
+			{
+				keysPerNode = 10;
+			}
+
+			Replica replica = policy.replica;
+			Replica replicaSC = Partition.GetReplicaSC(policy);
+
+			// Split keys by server node.
+			List<BatchNode> batchNodes = new List<BatchNode>(nodes.Length);
+			AerospikeException except = null;
+
+			for (int i = 0; i < batchSeed.offsetsSize; i++)
+			{
+				int offset = batchSeed.offsets[i];
+
+				// This method is only used to retry batch reads and the resultCode is not stored, so
+				// retry all keys assigned to this node. Fortunately, it's rare to retry a node after
+				// already receiving records and it's harmless to read the same record twice.
+
+				Key key = keys[offset];
+
+				try
+				{
+					Node node = hasWrite ?
+						Partition.GetNodeBatchWrite(cluster, key, replica, batchSeed.node, sequenceAP) :
+						Partition.GetNodeBatchRead(cluster, key, replica, replicaSC, batchSeed.node, sequenceAP, sequenceSC);
+
+					BatchNode batchNode = FindBatchNode(batchNodes, node);
+
+					if (batchNode == null)
+					{
+						batchNodes.Add(new BatchNode(node, keysPerNode, offset));
+					}
+					else
+					{
+						batchNode.AddKey(offset);
+					}
+				}
+				catch (AerospikeException.InvalidNode ain)
+				{
+					if (except == null)
+					{
+						except = ain;
+					}
+				}
+			}
+
+			if (except != null)
+			{
+				status.SetInvalidNode(except);
+			}
+			return batchNodes;
+		}
+
+		/// <summary>
+		/// Assign keys to nodes in initial batch attempt.
+		/// </summary>
 		public static List<BatchNode> GenerateList
 		(
 			Cluster cluster,
@@ -264,6 +432,9 @@ namespace Aerospike.Client
 			return batchNodes;
 		}
 
+		/// <summary>
+		/// Assign keys to nodes in batch node retry.
+		/// </summary>
 		public static List<BatchNode> GenerateList
 		(
 			Cluster cluster,
@@ -298,6 +469,12 @@ namespace Aerospike.Client
 			{
 				int offset = batchSeed.offsets[i];
 				BatchRecord b = (BatchRecord)records[offset];
+
+				if (b.resultCode != ResultCode.NO_RESPONSE)
+				{
+					// Do not retry keys that already have a response.
+					continue;
+				}
 
 				try
 				{

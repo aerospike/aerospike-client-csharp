@@ -226,7 +226,10 @@ namespace Aerospike.Client
 			{
 				// Wrap exception because throwing will reset the exception's stack trace.
 				// Wrapped exceptions preserve the stack trace in the inner exception.
-				throw new AerospikeException("Query Failed: " + exception.Message, exception);
+				AerospikeException ae = new AerospikeException("Query Failed: " + exception.Message, exception);
+				tracker.PartitionError();
+				ae.Iteration = tracker.iteration;
+				throw ae;
 			}
 		}
 
