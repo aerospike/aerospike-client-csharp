@@ -160,10 +160,21 @@ namespace Aerospike.Client
 		/// <para>Default: 1000</para>
 		/// </summary>
 		public int tendInterval = 1000;
-	
+
 		/// <summary>
-		/// Throw exception if all seed connections fail on cluster instantiation.
-		/// <para>Default: true</para>
+		/// Should cluster instantiation fail if the client fails to connect to a seed or
+		/// all the seed's peers.
+		/// <para>
+		/// If true, throw an exception if all seed connections fail or a seed is valid,
+		/// but all peers from that seed are not reachable.
+		/// </para>
+		/// <para>
+		/// If false, a partial cluster will be created and the client will automatically connect
+		/// to the remaining nodes when they become available.
+		/// </para>
+		/// <para>
+		/// Default: true
+		/// </para>
 		/// </summary>
 		public bool failIfNotConnected = true;
 

@@ -325,7 +325,7 @@ namespace Aerospike.Client
 		{
 			// Tend now requests partition maps in same iteration as the nodes
 			// are added, so there is no need to call tend twice anymore.
-			Tend(failIfNotConnected);
+			Tend(failIfNotConnected, true);
 
 			if (nodes.Length == 0)
 			{
@@ -349,7 +349,7 @@ namespace Aerospike.Client
 				// Tend cluster.
 				try
 				{
-					Tend(false);
+					Tend(false, false);
 				}
 				catch (Exception e)
 				{
@@ -379,7 +379,7 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Check health of all nodes in the cluster.
 		/// </summary>
-		private void Tend(bool failIfNotConnected)
+		private void Tend(bool failIfNotConnected, bool isInit)
 		{
 			// Initialize tend iteration node statistics.
 			Peers peers = new Peers(nodes.Length + 16);
@@ -397,6 +397,12 @@ namespace Aerospike.Client
 			if (nodes.Length == 0)
 			{
 				SeedNode(peers, failIfNotConnected);
+
+				// Abort cluster init if all peers of the seed are not reachable and failIfNotConnected is true.
+				if (isInit && failIfNotConnected && nodes.Length == 1 && peers.InvalidCount > 0)
+				{
+					peers.ClusterInitError();
+				}
 			}
 			else
 			{
