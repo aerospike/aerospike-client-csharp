@@ -1,5 +1,5 @@
 ﻿/* 
- * Copyright 2012-2020 Aerospike, Inc.
+ * Copyright 2012-2022 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -47,6 +47,9 @@ namespace Aerospike.Test
 
 		public Args()
 		{
+			// Disable client log.
+			Log.SetCallback(null);
+
 #if NETFRAMEWORK
             port = Properties.Settings.Default.Port;
 			clusterName = Properties.Settings.Default.ClusterName.Trim();

@@ -128,6 +128,12 @@ namespace Aerospike.Client
 
 		public Cluster(ClientPolicy policy, Host[] hosts)
 		{
+			if (!Log.IsSet())
+			{
+				throw new AerospikeException("Log.SetCallback() or Log.SetCallbackStandard() must be called." + System.Environment.NewLine +
+					"See https://developer.aerospike.com/client/csharp/usage/logging for details.");
+			}
+
 			this.clusterName = policy.clusterName;
 			tlsPolicy = policy.tlsPolicy;
 			this.authMode = policy.authMode;
