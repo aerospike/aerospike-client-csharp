@@ -28,6 +28,11 @@ namespace Aerospike.Client
 	{
 		public static EventHandler<SocketAsyncEventArgs> SocketListener { get { return EventHandlers.SocketHandler; } }
 		private static int ErrorCount = 0;
+
+		public static int largeBufferCount;
+		public static int largeBufferSizeLast;
+		public static int largeBufferSizeMax;
+
 		private const int IN_PROGRESS = 0;
 		private const int SUCCESS = 1;
 		private const int RETRY = 2;
@@ -56,6 +61,7 @@ namespace Aerospike.Client
 		private bool compressed;
 		private bool inAuthenticate;
 		protected internal bool inHeader = true;
+		private bool isClosed;
 
 		/// <summary>
 		/// Default Constructor.
@@ -131,6 +137,11 @@ namespace Aerospike.Client
 		// Executes the command from the thread pool, using the specified SocketAsyncEventArgs object.
 		internal void ExecuteAsync(SocketAsyncEventArgs e)
 		{
+			if (eventArgs != null)
+			{
+				Log.Error("Async command assigned eventArgs twice: " + System.Environment.NewLine +
+					System.Environment.StackTrace);
+			}
 			eventArgs = e;
 			ThreadPool.UnsafeQueueUserWorkItem(EventHandlers.AsyncExecuteHandler, this);
 		}
@@ -144,6 +155,11 @@ namespace Aerospike.Client
 			if (ErrorCount < 5)
 			{
 				// Execute command now.
+				if (eventArgs != null)
+				{
+					Log.Error("Async command assigned eventArgs twice: " + System.Environment.NewLine +
+						System.Environment.StackTrace);
+				}
 				eventArgs = e;
 				ExecuteCore();
 			}
@@ -384,11 +400,33 @@ namespace Aerospike.Client
 			{
 				// Large buffers should not be cached.
 				// Allocate, but do not put back into pool.
+				largeBufferSizeLast = size;
+
+				// Not atomic, but we only need an approx max size.
+				if (size > largeBufferSizeMax)
+				{
+					largeBufferSizeMax = size;
+				}
+
+				int n = Interlocked.Increment(ref largeBufferCount);
+
+				// Large buffers might be created a lot, so try to avoid
+				// spamming the log.
+				if (n % 100000 == 1)
+				{
+					LogState("Create Large Buffer: " + size);
+				}
+
 				segment = new BufferSegment();
 				segment.buffer = new byte[size];
 				segment.offset = 0;
 				segment.size = size;
 			}
+		}
+
+		public static void LogState(string message)
+		{
+			Log.Warn(message + " {" + largeBufferCount + ',' + largeBufferSizeLast + ',' + largeBufferSizeMax + '}');
 		}
 
 		protected internal sealed override void End()
@@ -702,6 +740,10 @@ namespace Aerospike.Client
 
 			if (command != null)
 			{
+				// Mark current command closed because the eventArgs instance
+				// was transferred to the cloned command.
+				isClosed = true;
+
 				// Command should only be added to AsyncTimeoutQueue once.
 				// CheckTimeout() will verify both socketTimeout and totalTimeout.
 				if (socketTimeout > 0)
@@ -800,7 +842,17 @@ namespace Aerospike.Client
 				}
 
 				eventArgs.UserToken = segment;
-				cluster.PutEventArgs(eventArgs);
+
+				if (!isClosed)
+				{
+					isClosed = true;
+					cluster.PutEventArgs(eventArgs);
+				}
+				else
+				{
+					Log.Error("Attempted PutEventArgs on closed command: " + 
+						System.Environment.NewLine + System.Environment.StackTrace);
+				}
 			}
 			else if (status == FAIL_TOTAL_TIMEOUT || status == FAIL_SOCKET_TIMEOUT)
 			{
@@ -962,7 +1014,17 @@ namespace Aerospike.Client
 				}
 			}
 			eventArgs.UserToken = segment;
-			cluster.PutEventArgs(eventArgs);
+
+			if (!isClosed)
+			{
+				isClosed = true;
+				cluster.PutEventArgs(eventArgs);
+			}
+			else
+			{
+				Log.Error("Attempted PutEventArgs on closed command: " + state +
+					System.Environment.NewLine + System.Environment.StackTrace);
+			}
 		}
 
 		private AerospikeException GetAerospikeException(SocketError se)

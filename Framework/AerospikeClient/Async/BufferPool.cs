@@ -56,6 +56,12 @@ namespace Aerospike.Client
 			segment.offset = bufferOffset;
 			segment.size = bufferSize;
 			bufferOffset += bufferSize;
+
+			if (bufferOffset >= buffer.Length)
+			{
+				throw new AerospikeException("BufferPool overflow: " + bufferSize + ',' + 
+					bufferOffset + ',' + buffer.Length);
+			}
 		}
 	}
 

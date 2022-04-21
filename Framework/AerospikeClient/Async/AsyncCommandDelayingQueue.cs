@@ -145,7 +145,14 @@ namespace Aerospike.Client
 			// Schedule exactly once the job that will execute delayed commands.
 			if (Interlocked.CompareExchange(ref jobScheduled, 1, 0) == 0)
 			{
-				ThreadPool.UnsafeQueueUserWorkItem(schedulingJobCallback, null);
+				try
+				{
+					ThreadPool.UnsafeQueueUserWorkItem(schedulingJobCallback, null);
+				}
+				catch (Exception e)
+				{
+					Log.Error("ProcessDelayQueue error: " + e.Message);
+				}
 			}
 		}
 

@@ -51,6 +51,11 @@ namespace Aerospike.Client
 				throw new AerospikeException("Invalid async connection range: " + asyncMinConnsPerNode + " - " + asyncMaxConnsPerNode);
 			}
 
+			if (policy.asyncBufferSize > BufferPool.BUFFER_CUTOFF)
+			{
+				throw new AerospikeException("bufferSize " + policy.asyncBufferSize + " must be <= " + BufferPool.BUFFER_CUTOFF);
+			}
+
 			switch (policy.asyncMaxCommandAction)
 			{
 				case MaxCommandAction.REJECT: commandQueue = new AsyncCommandRejectingQueue(); break;
@@ -67,7 +72,15 @@ namespace Aerospike.Client
 				commandQueue.ReleaseArgs(eventArgs);
 			}
 
-			bufferPool = new BufferPool();
+			if (policy.asyncBufferSize > 0)
+			{
+				bufferPool = new BufferPool(maxCommands, policy.asyncBufferSize);
+			}
+			else
+			{
+				bufferPool = new BufferPool();
+			}
+
 			InitTendThread(policy.failIfNotConnected);
 		}
 
@@ -94,19 +107,40 @@ namespace Aerospike.Client
 
 		public void GetNextBuffer(int size, BufferSegment segment)
 		{
+			bool resized = false;
+
 			lock (this)
 			{
 				if (size > bufferPool.bufferSize)
 				{
 					bufferPool = new BufferPool(maxCommands, size);
+					resized = true;
 				}
 				bufferPool.GetNextBuffer(segment);
+			}
+
+			if (resized)
+			{
+				AsyncCommand.LogState("Resized BufferPool: " + size + ',' + bufferPool.bufferSize);
 			}
 		}
 
 		public bool HasBufferChanged(BufferSegment segment)
 		{
-			return bufferPool.bufferSize != segment.size;
+			if (bufferPool.bufferSize == segment.size)
+			{
+				return false;
+			}
+
+			// Verify buffer is really different.
+			if (bufferPool.buffer == segment.buffer)
+			{
+				AsyncCommand.LogState("HasBufferChanged is true, but buffer has not changed: " +
+					bufferPool.bufferSize + ',' + segment.size + ',' + bufferPool.buffer + ',' +
+					segment.buffer);
+			}
+			return true;
+			//return bufferPool.bufferSize != segment.size;
 		}
 	}
 }
