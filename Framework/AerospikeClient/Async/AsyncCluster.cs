@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2022 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -24,8 +24,8 @@ namespace Aerospike.Client
 {
 	public sealed class AsyncCluster : Cluster
 	{
-		// Pool used in asynchronous SocketChannel communications.
-		private readonly AsyncCommandQueueBase commandQueue;
+		// Command scheduler.
+		private readonly AsyncScheduler scheduler;
 
 		// Contiguous pool of byte buffers.
 		private BufferPool bufferPool;
@@ -53,18 +53,20 @@ namespace Aerospike.Client
 
 			switch (policy.asyncMaxCommandAction)
 			{
-				case MaxCommandAction.REJECT: commandQueue = new AsyncCommandRejectingQueue(); break;
-				case MaxCommandAction.BLOCK: commandQueue = new AsyncCommandBlockingQueue(); break;
-				case MaxCommandAction.DELAY: commandQueue = new AsyncCommandDelayingQueue(policy); break;
-				default: throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Unsupported MaxCommandAction value: " + policy.asyncMaxCommandAction.ToString() + ".");
-			}
+				case MaxCommandAction.REJECT:
+					scheduler = new RejectScheduler(policy);
+					break;
 
-			for (int i = 0; i < maxCommands; i++)
-			{
-				SocketAsyncEventArgs eventArgs = new SocketAsyncEventArgs();
-				eventArgs.UserToken = new BufferSegment();
-				eventArgs.Completed += AsyncCommand.SocketListener;
-				commandQueue.ReleaseArgs(eventArgs);
+				case MaxCommandAction.BLOCK:
+					scheduler = new BlockScheduler(policy);
+					break;
+
+				case MaxCommandAction.DELAY:
+					scheduler = new DelayScheduler(policy);
+					break;
+
+				default:
+					throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Unsupported MaxCommandAction value: " + policy.asyncMaxCommandAction.ToString());
 			}
 
 			bufferPool = new BufferPool();
@@ -84,15 +86,15 @@ namespace Aerospike.Client
 
 		public void ScheduleCommandExecution(AsyncCommand command)
 		{
-			commandQueue.ScheduleCommand(command);
+			scheduler.Schedule(command);
 		}
 
-		public void PutEventArgs(SocketAsyncEventArgs args)
+		public void PutEventArgs(BufferSegment segment)
 		{
-			commandQueue.ReleaseArgs(args);
+			scheduler.Release(segment);
 		}
 
-		public void GetNextBuffer(int size, BufferSegment segment)
+		public void GetBuffer(int size, BufferSegment segment)
 		{
 			lock (this)
 			{
@@ -100,7 +102,7 @@ namespace Aerospike.Client
 				{
 					bufferPool = new BufferPool(maxCommands, size);
 				}
-				bufferPool.GetNextBuffer(segment);
+				bufferPool.GetBuffer(segment);
 			}
 		}
 

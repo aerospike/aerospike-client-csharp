@@ -24,9 +24,8 @@ namespace Aerospike.Client
 	/// <summary>
 	/// Asynchronous command handler.
 	/// </summary>
-	public abstract class AsyncCommand : Command, ITimeout
+	public abstract class AsyncCommand : Command, IAsyncCommand, ITimeout
 	{
-		public static EventHandler<SocketAsyncEventArgs> SocketListener { get { return EventHandlers.SocketHandler; } }
 		private static int ErrorCount = 0;
 		private const int IN_PROGRESS = 0;
 		private const int SUCCESS = 1;
@@ -128,15 +127,8 @@ namespace Aerospike.Client
 			cluster.ScheduleCommandExecution(this);
 		}
 
-		// Executes the command from the thread pool, using the specified SocketAsyncEventArgs object.
-		internal void ExecuteAsync(SocketAsyncEventArgs e)
-		{
-			eventArgs = e;
-			ThreadPool.UnsafeQueueUserWorkItem(EventHandlers.AsyncExecuteHandler, this);
-		}
-
-		// Executes the command on the current thread, using the specified SocketAsyncEventArgs object.
-		internal void ExecuteInline(SocketAsyncEventArgs e)
+		// Executes the command on the current thread.
+		internal void ExecuteInline(BufferSegment segment)
 		{
 			// Use global consective error count to determine if it's safe to run command immediately.
 			// ErrorCount does not need to be atomic because it's just a general indicator that stack
@@ -144,22 +136,38 @@ namespace Aerospike.Client
 			if (ErrorCount < 5)
 			{
 				// Execute command now.
-				eventArgs = e;
+				this.segment = this.segmentOrig = segment;
 				ExecuteCore();
 			}
 			else
 			{
 				// Prevent recursive error stack overflow by placing command in a queue.
-				ExecuteAsync(e);
+				ExecuteAsync(segment);
+			}
+		}
+
+		// Executes the command from the thread pool.
+		internal void ExecuteAsync(BufferSegment segment)
+		{
+			this.segment = this.segmentOrig = segment;
+			ThreadPool.UnsafeQueueUserWorkItem(CommandHandlers.AsyncExecuteHandler, this);
+		}
+
+		// Wrap the stateless event handlers in an instance, in order to avoid static delegate performance penalty.
+		private sealed class CommandHandlers
+		{
+			private static readonly CommandHandlers Instance = new CommandHandlers();
+			public static readonly WaitCallback AsyncExecuteHandler = Instance.HandleExecution;
+
+			private void HandleExecution(object state)
+			{
+				((AsyncCommand)state).ExecuteCore();
 			}
 		}
 
 		// Actually executes the command, once the event args and the thread issues have all been sorted out.
 		private void ExecuteCore()
 		{
-			segment = segmentOrig = eventArgs.UserToken as BufferSegment;
-			eventArgs.UserToken = this;
-
 			if (cluster.HasBufferChanged(segment))
 			{
 				// Reset buffer in SizeBuffer().
@@ -200,20 +208,13 @@ namespace Aerospike.Client
 			{
 				node = (AsyncNode)GetNode(cluster);
 				node.ValidateErrorCount();
-				eventArgs.RemoteEndPoint = node.address;
-
 				conn = node.GetAsyncConnection();
 
 				if (conn == null)
 				{
 					node.IncrAsyncConnTotal();
-					conn = new AsyncConnection(node.address, node);
-					eventArgs.SetBuffer(segment.buffer, segment.offset, 0);
-
-					if (!conn.ConnectAsync(eventArgs))
-					{
-						ConnectionCreated();
-					}
+					conn = new AsyncConnection(node, this);
+					conn.Connect();
 				}
 				else
 				{
@@ -239,7 +240,7 @@ namespace Aerospike.Client
 			catch (SocketException se)
 			{
 				ErrorCount++;
-				ConnectionFailed(GetAerospikeException(se.SocketErrorCode));
+				SocketFailed(se.SocketErrorCode);
 			}
 			catch (Exception e)
 			{
@@ -248,88 +249,7 @@ namespace Aerospike.Client
 			}
 		}
 
-		// Wrap the stateless event handlers in an instance, in order to avoid static delegate performance penalty.
-		private sealed class EventHandlers
-		{
-			private static readonly EventHandlers Instance = new EventHandlers();
-
-			public static readonly WaitCallback AsyncExecuteHandler = Instance.HandleExecution;
-
-			public static readonly EventHandler<SocketAsyncEventArgs> SocketHandler = Instance.HandleSocketEvent;
-
-			private EventHandlers() { }
-
-			private void HandleExecution(object state)
-			{
-				((AsyncCommand)state).ExecuteCore();
-			}
-
-			private void HandleSocketEvent(object sender, SocketAsyncEventArgs args)
-			{
-				AsyncCommand command = args.UserToken as AsyncCommand;
-
-				if (args.SocketError != SocketError.Success)
-				{
-					command.ConnectionFailed(command.GetAerospikeException(args.SocketError));
-					return;
-				}
-
-				try
-				{
-					switch (args.LastOperation)
-					{
-						case SocketAsyncOperation.Receive:
-							command.ReceiveEvent();
-							break;
-						case SocketAsyncOperation.Send:
-							command.SendEvent();
-							break;
-						case SocketAsyncOperation.Connect:
-							command.ConnectionCreated();
-							break;
-						default:
-							command.FailOnApplicationError(new AerospikeException("Invalid socket operation: " + args.LastOperation));
-							break;
-					}
-				}
-				catch (AerospikeException.Connection ac)
-				{
-					command.ConnectionFailed(ac);
-				}
-				catch (AerospikeException ae)
-				{
-					if (ae.Result == ResultCode.TIMEOUT)
-					{
-						command.RetryServerError(new AerospikeException.Timeout(command.policy, false));
-					}
-					else if (ae.Result == ResultCode.DEVICE_OVERLOAD)
-					{
-						command.RetryServerError(ae);
-					}
-					else
-					{
-						command.FailOnApplicationError(ae);
-					}
-				}
-				catch (SocketException se)
-				{
-					command.ConnectionFailed(command.GetAerospikeException(se.SocketErrorCode));
-				}
-				catch (ObjectDisposedException ode)
-				{
-					// This exception occurs because socket is being used after timeout thread closes socket.
-					// Retry when this happens.
-					command.ConnectionFailed(new AerospikeException(ode));
-				}
-				catch (Exception e)
-				{
-					// Fail without retry on unknown errors.
-					command.FailOnApplicationError(new AerospikeException(e));
-				}
-			}
-		}
-
-		private void ConnectionCreated()
+		internal void OnConnected()
 		{
 			if (cluster.authEnabled)
 			{
@@ -344,8 +264,7 @@ namespace Aerospike.Client
 
 					AdminCommand command = new AdminCommand(dataBuffer, dataOffset);
 					dataLength = command.SetAuthenticate(cluster, token);
-					eventArgs.SetBuffer(dataBuffer, dataOffset, dataLength - dataOffset);
-					Send();
+					conn.Send(dataBuffer, dataOffset, dataLength - dataOffset);
 					return;
 				}
 			}
@@ -378,16 +297,13 @@ namespace Aerospike.Client
 			if (size <= BufferPool.BUFFER_CUTOFF)
 			{
 				// Checkout buffer from cache.
-				cluster.GetNextBuffer(size, segment);
+				cluster.GetBuffer(size, segment);
 			}
 			else
 			{
 				// Large buffers should not be cached.
 				// Allocate, but do not put back into pool.
-				segment = new BufferSegment();
-				segment.buffer = new byte[size];
-				segment.offset = 0;
-				segment.size = size;
+				segment = new BufferSegment(-1, size);
 			}
 		}
 
@@ -469,6 +385,17 @@ namespace Aerospike.Client
 				}
 				ReceiveBegin();
 			}
+		}
+
+		internal void SendComplete()
+		{
+			commandSentCounter++;
+
+			if (socketWatch != null)
+			{
+				eventReceived = false;
+			}
+			ReceiveBegin();
 		}
 
 		protected internal void ReceiveBegin()
@@ -581,7 +508,22 @@ namespace Aerospike.Client
 			}
 		}
 
-		private void ConnectionFailed(AerospikeException ae)
+		internal void SocketFailed(SocketError se)
+		{
+			AerospikeException ae;
+
+			if (se == SocketError.TimedOut)
+			{
+				ae = new AerospikeException.Timeout(policy, true);
+			}
+			else
+			{
+				ae = new AerospikeException.Connection("Socket error: " + se);
+			}
+			ConnectionFailed(ae);
+		}
+
+		internal void ConnectionFailed(AerospikeException ae)
 		{
 			if (iteration <= maxRetries && (totalWatch == null || totalWatch.ElapsedMilliseconds < totalTimeout))
 			{
@@ -963,15 +905,6 @@ namespace Aerospike.Client
 			}
 			eventArgs.UserToken = segment;
 			cluster.PutEventArgs(eventArgs);
-		}
-
-		private AerospikeException GetAerospikeException(SocketError se)
-		{
-			if (se == SocketError.TimedOut)
-			{
-				return new AerospikeException.Timeout(policy, true);
-			}
-			return new AerospikeException.Connection("Socket error: " + se);
 		}
 
 		protected internal virtual bool RetryBatch()

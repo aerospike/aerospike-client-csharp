@@ -182,11 +182,7 @@
     <Compile Include="Async\AsyncClientPolicy.cs" />
     <Compile Include="Async\AsyncCluster.cs" />
     <Compile Include="Async\AsyncCommand.cs" />
-    <Compile Include="Async\AsyncCommandBlockingQueue.cs" />
-    <Compile Include="Async\AsyncCommandDelayingQueue.cs" />
-    <Compile Include="Async\AsyncCommandQueueBase.cs" />
     <Compile Include="Async\AsyncScheduler.cs" />
-    <Compile Include="Async\AsyncCommandRejectingQueue.cs" />
     <Compile Include="Async\AsyncConnection.cs" />
     <Compile Include="Async\AsyncDelete.cs" />
     <Compile Include="Async\AsyncExecute.cs" />

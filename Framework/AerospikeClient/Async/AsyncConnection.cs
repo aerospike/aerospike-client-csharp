@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2022 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -17,24 +17,37 @@
 using System;
 using System.Net;
 using System.Net.Sockets;
-using System.Threading;
 
 namespace Aerospike.Client
 {
+	public interface IAsyncCommand
+	{
+		void OnConnected();
+		void OnSocketFailed(SocketError se);
+	}
+
 	/// <summary>
 	/// Asynchronous socket channel connection wrapper.
 	/// </summary>
 	public sealed class AsyncConnection
 	{
+		public static EventHandler<SocketAsyncEventArgs> SocketListener { get {return EventHandlers.SocketHandler;} }
+
 		private readonly static bool ZeroBuffers = !(
 			Environment.OSVersion.Platform == PlatformID.Unix ||
 			Environment.OSVersion.Platform == PlatformID.MacOSX);
 
 		private readonly Socket socket;
+		private readonly SocketAsyncEventArgs args;
+		private IAsyncCommand command;
 		private DateTime lastUsed;
 
-		public AsyncConnection(IPEndPoint address, AsyncNode node)
+		public AsyncConnection(AsyncNode node, IAsyncCommand command)
 		{
+			this.command = command;
+
+			IPEndPoint address = node.address;
+
 			try
 			{
 				socket = new Socket(address.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
@@ -63,6 +76,13 @@ namespace Aerospike.Client
 					socket.ReceiveBufferSize = 0;
 				}
 
+				args = new SocketAsyncEventArgs
+				{
+					UserToken = command,
+					RemoteEndPoint = address
+				};
+				args.Completed += SocketListener;
+
 				lastUsed = DateTime.UtcNow;
 			}
 			catch (Exception e)
@@ -75,15 +95,157 @@ namespace Aerospike.Client
 			}
 		}
 
-		public bool ConnectAsync(SocketAsyncEventArgs args)
+		public void Connect()
 		{
-			return socket.ConnectAsync(args);
+			if (!socket.ConnectAsync(args))
+			{
+				command.OnConnected();
+			}
+		}
+
+		// Wrap the stateless event handlers in an instance, in order to avoid static delegate performance penalty.
+		private sealed class EventHandlers
+		{
+			private static readonly EventHandlers Instance = new EventHandlers();
+			public static readonly EventHandler<SocketAsyncEventArgs> SocketHandler = Instance.HandleSocketEvent;
+
+			private void HandleSocketEvent(object sender, SocketAsyncEventArgs args)
+			{
+				IAsyncCommand cmd = args.UserToken as IAsyncCommand;
+
+				if (args.SocketError != SocketError.Success)
+				{
+					cmd.OnSocketFailed(args.SocketError);
+					return;
+				}
+
+				try
+				{
+					switch (args.LastOperation)
+					{
+						case SocketAsyncOperation.Receive:
+							cmd.ReceiveEvent();
+							break;
+						case SocketAsyncOperation.Send:
+							SendEvent(cmd);
+							break;
+						case SocketAsyncOperation.Connect:
+							cmd.OnConnected();
+							break;
+						default:
+							cmd.FailOnApplicationError(new AerospikeException("Invalid socket operation: " + args.LastOperation));
+							break;
+					}
+				}
+				catch (AerospikeException.Connection ac)
+				{
+					command.ConnectionFailed(ac);
+				}
+				catch (AerospikeException ae)
+				{
+					if (ae.Result == ResultCode.TIMEOUT)
+					{
+						command.RetryServerError(new AerospikeException.Timeout(command.policy, false));
+					}
+					else if (ae.Result == ResultCode.DEVICE_OVERLOAD)
+					{
+						command.RetryServerError(ae);
+					}
+					else
+					{
+						command.FailOnApplicationError(ae);
+					}
+				}
+				catch (SocketException se)
+				{
+					command.ConnectionFailed(command.GetAerospikeException(se.SocketErrorCode));
+				}
+				catch (ObjectDisposedException ode)
+				{
+					// This exception occurs because socket is being used after timeout thread closes socket.
+					// Retry when this happens.
+					command.ConnectionFailed(new AerospikeException(ode));
+				}
+				catch (Exception e)
+				{
+					// Fail without retry on unknown errors.
+					command.FailOnApplicationError(new AerospikeException(e));
+				}
+			}
+		}
+
+		public void Send(AsyncCommand cmd)
+		{
+			args.SetBuffer(cmd.dataBuffer, cmd.dataOffset, cmd.dataLength - cmd.dataOffset);
+
+			if (!socket.SendAsync(args))
+			{
+				SendEvent(cmd);
+			}
+		}
+
+		private void SendEvent(AsyncCommand cmd)
+		{
+			int sent = args.BytesTransferred;
+
+			if (sent <= 0)
+			{
+				// When a node has shutdown on linux, async command send events return zero
+				// with SocketError.Success. If zero bytes sent on send, cancel command.
+				cmd.ConnectionFailed(new AerospikeException.Connection("Connection closed"));
+				return;
+			}
+
+			cmd.dataOffset += sent;
+
+			if (cmd.dataOffset < cmd.dataLength)
+			{
+				Send(cmd);
+			}
+			else
+			{
+				cmd.SendComplete();
+			}
+		}
+
+		public void Receive(int offset, int count)
+		{
+			args.SetBuffer(offset, count);
+
+			if (!socket.ReceiveAsync(args))
+			{
+				ReceiveEvent();
+			}
+		}
+
+		private void ReceiveEvent()
+		{
+			if (socketWatch != null)
+			{
+				eventReceived = true;
+			}
+
+			if (args.BytesTransferred <= 0)
+			{
+				ConnectionFailed(new AerospikeException.Connection("Connection closed"));
+				return;
+			}
+
+			dataOffset += eventArgs.BytesTransferred;
+
+			if (dataOffset < dataLength)
+			{
+				eventArgs.SetBuffer(dataOffset, dataLength - dataOffset);
+				Receive();
+				return;
+			}
 		}
 
 		public bool SendAsync(SocketAsyncEventArgs args)
 		{
 			return socket.SendAsync(args);
 		}
+
 
 		public bool ReceiveAsync(SocketAsyncEventArgs args)
 		{

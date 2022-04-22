@@ -25,8 +25,8 @@ namespace Aerospike.Client
 	/// </summary>
 	public interface AsyncScheduler
 	{
-		void Schedule(AsyncCommand cmd);
-		void Release();
+		void Schedule(AsyncCommand command);
+		void Release(BufferSegment segment);
 	}
 
 	/// <summary>
@@ -34,40 +34,47 @@ namespace Aerospike.Client
 	/// </summary>
 	public sealed class DelayScheduler : AsyncScheduler
 	{
-		private readonly ConcurrentQueue<AsyncCommand> queue = new ConcurrentQueue<AsyncCommand>();
-		private readonly int queueMax;
-		private int queueCount;
-		private int available;
-		private volatile int jobScheduled;
+		private readonly ConcurrentQueue<BufferSegment> bufferQueue = new ConcurrentQueue<BufferSegment>();
+		private readonly ConcurrentQueue<AsyncCommand> delayQueue = new ConcurrentQueue<AsyncCommand>();
 		private readonly WaitCallback jobCallback;
+		private readonly int delayQueueMax;
+		private int delayQueueCount;
+		private volatile int jobScheduled;
 
-		public DelayScheduler(int capacity)
+		public DelayScheduler(AsyncClientPolicy policy)
 		{
-			available = capacity;
 			jobCallback = new WaitCallback(ProcessQueueExclusive);
+			delayQueueMax = policy.asyncMaxCommandsInQueue;
+
+			for (int i = 0; i < policy.asyncMaxCommands; i++)
+			{
+				bufferQueue.Enqueue(new BufferSegment(i));
+			}
 		}
 
-		public void ScheduleCommand(AsyncCommand cmd)
+		/// <summary>
+		/// Schedule command for execution.
+		/// </summary>
+		public void Schedule(AsyncCommand command)
 		{
-			if (Interlocked.Decrement(ref available) >= 0)
+			// Check if command slot is available.
+			if (bufferQueue.TryDequeue(out BufferSegment segment))
 			{
 				// Command slot is available. Check delay queue.
-				AsyncCommand delayed;
-
-				if (queue.TryDequeue(out delayed))
+				if (delayQueue.TryDequeue(out AsyncCommand delayedCommand))
 				{
 					// Commands in delay queue take precedence over new commands.
 					// Put new command in delay queue and use command slot to execute 
-					// delayed command. delayQueueCount remains the same. 
-					queue.Enqueue(cmd);
+					// delayedCommand. delayQueueCount remains the same. 
+					delayQueue.Enqueue(command);
 
 					try
 					{
-						delayed.ExecuteAsync();
+						delayedCommand.ExecuteAsync(segment);
 					}
 					catch (Exception e)
 					{
-						CommandFailed(delayedCommand, args, e);
+						CommandFailed(delayedCommand, segment, e);
 					}
 					finally
 					{
@@ -78,14 +85,11 @@ namespace Aerospike.Client
 				{
 					// There are no commands in the delay queue to process.
 					// Use command slot to execute new command immediately.
-					cmd.ExecuteInline();
+					command.ExecuteInline(segment);
 				}
 			}
 			else
 			{
-				// Command slot not available.
-				Interlocked.Increment(ref available);
-
 				// Queue command for later execution. Delay queue count increment precedes Enqueue and
 				// delay queue count decrement succeeds Dequeue. This might cause maximum allowed delay 
 				// count to be slightly less than maxCommandsInQueue (due to race conditions), but never
@@ -96,49 +100,47 @@ namespace Aerospike.Client
 				// in reduced performance.
 				//
 				// Allowing slighty less than maxCommandsInQueue is not a deal breaker because standard
-				// maxCommandsInQueue values should be at least 1000 when used. Thus, the more 
+				// maxCommandsInQueue values should be at least 1000 when used.  Thus, the more 
 				// performant solution was chosen.
-				if (queueMax == 0 || Interlocked.Increment(ref queueCount) <= queueMax)
+				if (delayQueueMax == 0 || Interlocked.Increment(ref delayQueueCount) <= delayQueueMax)
 				{
 					// Add command to delay queue. There are no available command slots, so do not
 					// process delay queue further.
-					queue.Enqueue(cmd);
+					delayQueue.Enqueue(command);
 				}
 				else
 				{
-					Interlocked.Decrement(ref queueCount);
+					Interlocked.Decrement(ref delayQueueCount);
 					throw new AerospikeException.CommandRejected();
 				}
 			}
 		}
 
 		/// <summary>
-		/// Recover slot(s) from commands that have completed.
+		/// Release command slot.
 		/// </summary>
-		public void Release()
+		public void Release(BufferSegment segment)
 		{
-			AsyncCommand cmd;
-
 			// Check delay queue.
-			if (queue.TryDequeue(out cmd))
+			if (delayQueue.TryDequeue(out AsyncCommand command))
 			{
 				// Use command slot to execute delayed command.
-				if (queueMax > 0)
+				if (delayQueueMax > 0)
 				{
-					Interlocked.Decrement(ref queueCount);
+					Interlocked.Decrement(ref delayQueueCount);
 				}
 
 				try
 				{
-					cmd.ExecuteAsync();
+					command.ExecuteAsync(segment);
 				}
 				catch (Exception e)
 				{
-					CommandFailed(command, args, e);
+					CommandFailed(command, segment, e);
 				}
 				finally
 				{
-					if (!argsQueue.IsEmpty)
+					if (!bufferQueue.IsEmpty)
 					{
 						ProcessDelayQueue();
 					}
@@ -146,8 +148,9 @@ namespace Aerospike.Client
 			}
 			else
 			{
-				// Make command slot available.
-				Interlocked.Increment(ref available);
+				// Put command slot back into pool.
+				// Do not process delay queue.
+				bufferQueue.Enqueue(segment);
 			}
 		}
 
@@ -160,7 +163,7 @@ namespace Aerospike.Client
 			}
 		}
 
-		private void ProcessDelayQueueExclusive(object state)
+		private void ProcessQueueExclusive(object state)
 		{
 			// Schedule as many commands as possible.
 			bool lockTaken = false;
@@ -168,7 +171,7 @@ namespace Aerospike.Client
 			try
 			{
 				// Lock on delayQueue for exclusive execution of the job.
-				Monitor.TryEnter(queue, ref lockTaken);
+				Monitor.TryEnter(delayQueue, ref lockTaken);
 
 				// If we can't enter the lock, it means another instance of the job is already doing the work.
 				if (!lockTaken)
@@ -180,31 +183,27 @@ namespace Aerospike.Client
 				jobScheduled = 1;
 
 				// Try scheduling as many commands as possible.
-				SocketAsyncEventArgs args;
-
-				while (!delayQueue.IsEmpty && argsQueue.TryDequeue(out args))
+				while (!delayQueue.IsEmpty && bufferQueue.TryDequeue(out BufferSegment segment))
 				{
-					AsyncCommand command;
-
-					if (delayQueue.TryDequeue(out command))
+					if (delayQueue.TryDequeue(out AsyncCommand command))
 					{
-						if (maxCommandsInQueue > 0)
+						if (delayQueueMax > 0)
 						{
 							Interlocked.Decrement(ref delayQueueCount);
 						}
 
 						try
 						{
-							command.ExecuteAsync(args);
+							command.ExecuteAsync(segment);
 						}
 						catch (Exception e)
 						{
-							CommandFailed(command, args, e);
+							CommandFailed(command, segment, e);
 						}
 					}
 					else
 					{
-						argsQueue.Enqueue(args);
+						bufferQueue.Enqueue(segment);
 						break;
 					}
 				}
@@ -215,42 +214,57 @@ namespace Aerospike.Client
 				{
 					// Volatile Write. At this point, the job can be rescheduled.
 					jobScheduled = 0;
-					Monitor.Exit(queue);
+					Monitor.Exit(delayQueue);
 				}
 			}
 		}
 
-		/// <summary>
-		/// Reject command if capacity has been reached.
-		/// </summary>
-		public sealed class RejectScheduler : AsyncScheduler
-	{
-		private int available;
-
-		public RejectScheduler(int capacity)
+		private void CommandFailed(AsyncCommand command, BufferSegment segment, Exception e)
 		{
-			available = capacity;
+			// Restore command slot and fail command.
+			bufferQueue.Enqueue(segment);
+			command.FailOnQueueError(new AerospikeException("Failed to queue delayed async command", e));
+		}
+	}
+
+	/// <summary>
+	/// Reject command if capacity has been reached.
+	/// </summary>
+	public sealed class RejectScheduler : AsyncScheduler
+	{
+		private readonly ConcurrentQueue<BufferSegment> bufferQueue = new ConcurrentQueue<BufferSegment>();
+
+		public RejectScheduler(AsyncClientPolicy policy)
+		{
+			for (int i = 0; i < policy.asyncMaxCommands; i++)
+			{
+				bufferQueue.Enqueue(new BufferSegment(i));
+			}
 		}
 
 		/// <summary>
-		/// Reserve commands. Reject command if at capacity.
+		/// Reserve command slot. Reject command if at capacity.
 		/// </summary>
-		public void Schedule(AsyncCommand cmd)
+		public void Schedule(AsyncCommand command)
 		{
-			if (Interlocked.Decrement(ref available) < 0)
+			// Try to dequeue one SocketAsyncEventArgs object from the queue and execute the command.
+			if (bufferQueue.TryDequeue(out BufferSegment segment))
 			{
-				Interlocked.Increment(ref available);
+				command.ExecuteInline(segment);
+			}
+			else
+			{
+				// Queue is empty. Reject command.
 				throw new AerospikeException.CommandRejected();
 			}
-			cmd.ExecuteInline();
 		}
 
 		/// <summary>
-		/// Recover slot(s) from commands that have completed.
+		/// Release command slot.
 		/// </summary>
-		public void Release()
+		public void Release(BufferSegment segment)
 		{
-			Interlocked.Increment(ref available);
+			bufferQueue.Enqueue(segment);
 		}
 	}
 
@@ -259,39 +273,31 @@ namespace Aerospike.Client
 	/// </summary>
 	public sealed class BlockScheduler : AsyncScheduler
 	{
-		private int available;
+		private readonly BlockingCollection<BufferSegment> bufferQueue = new BlockingCollection<BufferSegment>();
 
-		public BlockScheduler(int capacity)
+		public BlockScheduler(AsyncClientPolicy policy)
 		{
-			available = capacity;
+			for (int i = 0; i < policy.asyncMaxCommands; i++)
+			{
+				bufferQueue.Add(new BufferSegment(i));
+			}
 		}
 
 		/// <summary>
 		/// Wait for command slot(s). Execute command when command slot is available.
 		/// </summary>
-		public void Schedule(AsyncCommand cmd)
+		public void Schedule(AsyncCommand command)
 		{
-			lock (this)
-			{
-				while (available <= 0)
-				{
-					Monitor.Wait(this);
-				}
-				available--;
-			}
-			cmd.ExecuteInline();
+			// Block until buffer becomes available.
+			command.ExecuteInline(bufferQueue.Take());
 		}
 
 		/// <summary>
 		/// Release command slot.
 		/// </summary>
-		public void Release()
+		public void Release(BufferSegment segment)
 		{
-			lock (this)
-			{
-				available++;
-				Monitor.Pulse(this);
-			}
+			bufferQueue.Add(segment);
 		}
 	}
 }
