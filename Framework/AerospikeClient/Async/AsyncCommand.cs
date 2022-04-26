@@ -42,7 +42,6 @@ namespace Aerospike.Client
 		protected internal Policy policy;
 		private AsyncConnection conn;
 		protected internal AsyncNode node;
-		private SocketAsyncEventArgs eventArgs;
 		private BufferSegment segmentOrig;
 		private BufferSegment segment;
 		private Stopwatch socketWatch;
@@ -85,8 +84,6 @@ namespace Aerospike.Client
 			// Retry constructor.
 			this.cluster = other.cluster;
 			this.policy = other.policy;
-			this.eventArgs = other.eventArgs;
-			this.eventArgs.UserToken = this;
 			this.segmentOrig = other.segmentOrig;
 			this.segment = other.segment;
 			this.totalWatch = other.totalWatch;
