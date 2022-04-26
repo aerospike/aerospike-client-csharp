@@ -218,6 +218,7 @@ namespace Aerospike.Client
 				}
 				else
 				{
+					conn.Command = this;
 					ConnectionReady();
 				}
 				ErrorCount = 0;
@@ -249,7 +250,7 @@ namespace Aerospike.Client
 			}
 		}
 
-		internal void OnConnected()
+		public void OnConnected()
 		{
 			if (cluster.authEnabled)
 			{
@@ -274,8 +275,7 @@ namespace Aerospike.Client
 		private void ConnectionReady()
 		{
 			WriteBuffer();
-			eventArgs.SetBuffer(dataBuffer, dataOffset, dataLength - dataOffset);
-			Send();
+			conn.Send(dataBuffer, dataOffset, dataLength - dataOffset);
 		}
 
 		protected internal sealed override int SizeBuffer()
@@ -348,46 +348,7 @@ namespace Aerospike.Client
 			ByteUtil.LongToBytes(size, dataBuffer, segment.offset);
 		}
 
-		private void Send()
-		{
-			if (! conn.SendAsync(eventArgs))
-			{
-				SendEvent();
-			}
-		}
-
-		private void SendEvent()
-		{
-			int sent = eventArgs.BytesTransferred;
-
-			if (sent <= 0)
-			{
-				// When a node has shutdown on linux, async command send events return zero
-				// with SocketError.Success. If zero bytes sent on send, cancel command.
-				ConnectionFailed(new AerospikeException.Connection("Connection closed"));
-				return;
-			}
-
-			dataOffset += sent;
-
-			if (dataOffset < dataLength)
-			{
-				eventArgs.SetBuffer(dataOffset, dataLength - dataOffset);
-				Send();
-			}
-			else
-			{
-				commandSentCounter++;
-
-				if (socketWatch != null)
-				{
-					eventReceived = false;
-				}
-				ReceiveBegin();
-			}
-		}
-
-		internal void SendComplete()
+		public void SendComplete()
 		{
 			commandSentCounter++;
 
@@ -395,48 +356,17 @@ namespace Aerospike.Client
 			{
 				eventReceived = false;
 			}
-			ReceiveBegin();
+			conn.Receive(segment.offset, 8);
 		}
 
-		protected internal void ReceiveBegin()
+		public void ReceiveComplete()
 		{
-			dataOffset = segment.offset;
-			dataLength = dataOffset + 8;
-			dataBuffer = eventArgs.Buffer;
-			eventArgs.SetBuffer(dataOffset, 8);
-			Receive();
-		}
-
-		private void Receive()
-		{
-			if (! conn.ReceiveAsync(eventArgs))
-			{
-				ReceiveEvent();
-			}
-		}
-
-		private void ReceiveEvent()
-		{
-			//Log.Info("Receive Event: " + eventArgs.BytesTransferred + "," + dataOffset + "," + dataLength + "," + inHeader);
+			// TODO: Put on every socket receive?
 			if (socketWatch != null)
 			{
 				eventReceived = true;
 			}
 
-			if (eventArgs.BytesTransferred <= 0)
-			{
-				ConnectionFailed(new AerospikeException.Connection("Connection closed"));
-				return;
-			}
-
-			dataOffset += eventArgs.BytesTransferred;
-
-			if (dataOffset < dataLength)
-			{
-				eventArgs.SetBuffer(dataOffset, dataLength - dataOffset);
-				Receive();
-				return;
-			}
 			dataOffset = segment.offset;
 
 			if (inHeader)
@@ -446,7 +376,9 @@ namespace Aerospike.Client
 
 				if (length <= 0)
 				{
-					ReceiveBegin();
+					// Some server versions returned zero length groups for batch/scan/query.
+					// Receive again to retrieve next group.
+					conn.Receive(dataOffset, 8);
 					return;
 				}
 
@@ -459,9 +391,9 @@ namespace Aerospike.Client
 					dataBuffer = segment.buffer;
 					dataOffset = segment.offset;
 				}
-				eventArgs.SetBuffer(dataBuffer, dataOffset, length);
+
 				dataLength = dataOffset + length;
-				Receive();
+				conn.Receive(dataBuffer, dataOffset, length);
 			}
 			else
 			{
@@ -508,7 +440,13 @@ namespace Aerospike.Client
 			}
 		}
 
-		internal void SocketFailed(SocketError se)
+		public void ReceiveNext()
+		{
+			inHeader = true;
+			conn.Receive(segment.offset, 8);
+		}
+
+		public void SocketFailed(SocketError se)
 		{
 			AerospikeException ae;
 
@@ -523,7 +461,7 @@ namespace Aerospike.Client
 			ConnectionFailed(ae);
 		}
 
-		internal void ConnectionFailed(AerospikeException ae)
+		public void ConnectionFailed(AerospikeException ae)
 		{
 			if (iteration <= maxRetries && (totalWatch == null || totalWatch.ElapsedMilliseconds < totalTimeout))
 			{
@@ -552,6 +490,22 @@ namespace Aerospike.Client
 				{
 					AlreadyCompleted(status);
 				}
+			}
+		}
+
+		public void OnAerospikeException(AerospikeException ae)
+		{
+			if (ae.Result == ResultCode.TIMEOUT)
+			{
+				RetryServerError(new AerospikeException.Timeout(policy, false));
+			}
+			else if (ae.Result == ResultCode.DEVICE_OVERLOAD)
+			{
+				RetryServerError(ae);
+			}
+			else
+			{
+				FailOnApplicationError(ae);
 			}
 		}
 
@@ -731,6 +685,7 @@ namespace Aerospike.Client
 			{
 				// Command finished successfully.
 				// Put connection back into pool.
+				conn.Reset();
 				node.PutAsyncConnection(conn);
 
 				// Do not put large buffers back into pool.
@@ -738,11 +693,9 @@ namespace Aerospike.Client
 				{
 					// Put back original buffer instead.
 					segment = segmentOrig;
-					eventArgs.SetBuffer(segment.buffer, segment.offset, 0);
 				}
 
-				eventArgs.UserToken = segment;
-				cluster.PutEventArgs(eventArgs);
+				cluster.PutEventArgs(segment);
 			}
 			else if (status == FAIL_TOTAL_TIMEOUT || status == FAIL_SOCKET_TIMEOUT)
 			{
@@ -772,7 +725,7 @@ namespace Aerospike.Client
 			}
 		}
 
-		private void FailOnApplicationError(AerospikeException ae)
+		public void FailOnApplicationError(AerospikeException ae)
 		{
 			try
 			{
@@ -892,19 +845,8 @@ namespace Aerospike.Client
 			{
 				// Put back original buffer instead.
 				segment = segmentOrig;
-				eventArgs.SetBuffer(segment.buffer, segment.offset, 0);
 			}
-			else
-			{
-				// There may be rare error cases where segment.buffer and eventArgs.Buffer
-				// are different.  Make sure they are in sync.
-				if (eventArgs.Buffer != segment.buffer)
-				{
-					eventArgs.SetBuffer(segment.buffer, segment.offset, 0);
-				}
-			}
-			eventArgs.UserToken = segment;
-			cluster.PutEventArgs(eventArgs);
+			cluster.PutEventArgs(segment);
 		}
 
 		protected internal virtual bool RetryBatch()
