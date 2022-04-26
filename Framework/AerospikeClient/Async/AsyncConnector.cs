@@ -253,6 +253,27 @@ namespace Aerospike.Client
 			}
 		}
 
+		private void ConnectionReady()
+		{
+			if (Interlocked.CompareExchange(ref state, 1, 0) == 0)
+			{
+				conn.UpdateLastUsed();
+				node.PutAsyncConnection(conn);
+
+				try
+				{
+					listener.OnSuccess();
+				}
+				catch (Exception e)
+				{
+					if (Log.WarnEnabled())
+					{
+						Log.Warn("OnSuccess() error: " + Util.GetErrorMessage(e));
+					}
+				}
+			}
+		}
+
 		public bool CheckTimeout()
 		{
 			if (state != 0)
@@ -280,22 +301,12 @@ namespace Aerospike.Client
 
 		public void SocketFailed(SocketError se)
 		{
-			Fail("Create connection failed: " + se);
+			Fail("Create connection socket failed: " + se);
 		}
 
-		public void ConnectionFailed(AerospikeException ae)
+		public void OnError(Exception e)
 		{
-			OnAerospikeException(ae);
-		}
-
-		public void FailOnApplicationError(AerospikeException ae)
-		{
-			OnAerospikeException(ae);
-		}
-
-		public void OnAerospikeException(AerospikeException ae)
-		{
-			Fail("Create connection failed: " + ae.Message);
+			Fail("Create connection failed: " + e.Message);
 		}
 
 		private void Fail(string msg)
@@ -317,27 +328,6 @@ namespace Aerospike.Client
 					if (Log.WarnEnabled())
 					{
 						Log.Warn("OnFailure() error: " + Util.GetErrorMessage(e));
-					}
-				}
-			}
-		}
-
-		private void ConnectionReady()
-		{
-			if (Interlocked.CompareExchange(ref state, 1, 0) == 0)
-			{
-				conn.UpdateLastUsed();
-				node.PutAsyncConnection(conn);
-
-				try
-				{
-					listener.OnSuccess();
-				}
-				catch (Exception e)
-				{
-					if (Log.WarnEnabled())
-					{
-						Log.Warn("OnSuccess() error: " + Util.GetErrorMessage(e));
 					}
 				}
 			}

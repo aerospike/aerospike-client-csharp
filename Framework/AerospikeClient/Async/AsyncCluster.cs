@@ -89,12 +89,12 @@ namespace Aerospike.Client
 			scheduler.Schedule(command);
 		}
 
-		public void PutEventArgs(BufferSegment segment)
+		public bool HasBufferChanged(BufferSegment segment)
 		{
-			scheduler.Release(segment);
+			return bufferPool.bufferSize != segment.size;
 		}
 
-		public void GetBuffer(int size, BufferSegment segment)
+		public void ReserveBuffer(int size, BufferSegment segment)
 		{
 			lock (this)
 			{
@@ -106,9 +106,9 @@ namespace Aerospike.Client
 			}
 		}
 
-		public bool HasBufferChanged(BufferSegment segment)
+		public void ReleaseBuffer(BufferSegment segment)
 		{
-			return bufferPool.bufferSize != segment.size;
+			scheduler.Release(segment);
 		}
 	}
 }

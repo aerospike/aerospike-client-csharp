@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2022 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -84,6 +84,8 @@ namespace Aerospike.Client
 		/// <param name="conn">socket connection</param>
 		public void PutAsyncConnection(AsyncConnection conn)
 		{
+			conn.Reset();
+
 			if (! (active && asyncConnQueue.Enqueue(conn)))
 			{
 				CloseAsyncConn(conn);

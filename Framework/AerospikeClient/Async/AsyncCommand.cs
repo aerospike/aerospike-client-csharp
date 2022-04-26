@@ -54,7 +54,7 @@ namespace Aerospike.Client
 		private volatile bool eventReceived;
 		private bool compressed;
 		private bool inAuthenticate;
-		protected internal bool inHeader = true;
+		private bool inHeader = true;
 
 		/// <summary>
 		/// Default Constructor.
@@ -182,7 +182,7 @@ namespace Aerospike.Client
 				if (state != IN_PROGRESS)
 				{
 					// Timeout occurred. Close command.
-					PutBackArgsOnError();
+					ReleaseBuffer();
 					return;
 				}
 
@@ -297,7 +297,7 @@ namespace Aerospike.Client
 			if (size <= BufferPool.BUFFER_CUTOFF)
 			{
 				// Checkout buffer from cache.
-				cluster.GetBuffer(size, segment);
+				cluster.ReserveBuffer(size, segment);
 			}
 			else
 			{
@@ -361,7 +361,6 @@ namespace Aerospike.Client
 
 		public void ReceiveComplete()
 		{
-			// TODO: Put on every socket receive?
 			if (socketWatch != null)
 			{
 				eventReceived = true;
@@ -446,6 +445,49 @@ namespace Aerospike.Client
 			conn.Receive(segment.offset, 8);
 		}
 
+		public void OnError(Exception e)
+		{
+			if (e is AerospikeException.Connection ac)
+			{
+				ConnectionFailed(ac);
+				return;
+			}
+
+			if (e is AerospikeException ae)
+			{
+				if (ae.Result == ResultCode.TIMEOUT)
+				{
+					RetryServerError(new AerospikeException.Timeout(policy, false));
+				}
+				else if (ae.Result == ResultCode.DEVICE_OVERLOAD)
+				{
+					RetryServerError(ae);
+				}
+				else
+				{
+					FailOnApplicationError(ae);
+				}
+				return;
+			}
+
+			if (e is SocketException se)
+			{
+				SocketFailed(se.SocketErrorCode);
+				return;
+			}
+
+			if (e is ObjectDisposedException ode)
+			{
+				// This exception occurs because socket is being used after timeout thread closes socket.
+				// Retry when this happens.
+				ConnectionFailed(new AerospikeException(ode));
+				return;
+			}
+
+			// Fail without retry on unknown errors.
+			FailOnApplicationError(new AerospikeException(e));
+		}
+
 		public void SocketFailed(SocketError se)
 		{
 			AerospikeException ae;
@@ -461,7 +503,7 @@ namespace Aerospike.Client
 			ConnectionFailed(ae);
 		}
 
-		public void ConnectionFailed(AerospikeException ae)
+		private void ConnectionFailed(AerospikeException ae)
 		{
 			if (iteration <= maxRetries && (totalWatch == null || totalWatch.ElapsedMilliseconds < totalTimeout))
 			{
@@ -490,22 +532,6 @@ namespace Aerospike.Client
 				{
 					AlreadyCompleted(status);
 				}
-			}
-		}
-
-		public void OnAerospikeException(AerospikeException ae)
-		{
-			if (ae.Result == ResultCode.TIMEOUT)
-			{
-				RetryServerError(new AerospikeException.Timeout(policy, false));
-			}
-			else if (ae.Result == ResultCode.DEVICE_OVERLOAD)
-			{
-				RetryServerError(ae);
-			}
-			else
-			{
-				FailOnApplicationError(ae);
 			}
 		}
 
@@ -687,21 +713,13 @@ namespace Aerospike.Client
 				// Put connection back into pool.
 				conn.Reset();
 				node.PutAsyncConnection(conn);
-
-				// Do not put large buffers back into pool.
-				if (segment.size > BufferPool.BUFFER_CUTOFF)
-				{
-					// Put back original buffer instead.
-					segment = segmentOrig;
-				}
-
-				cluster.PutEventArgs(segment);
+				ReleaseBuffer();
 			}
 			else if (status == FAIL_TOTAL_TIMEOUT || status == FAIL_SOCKET_TIMEOUT)
 			{
 				// Timeout thread closed connection, but transaction still completed. 
 				// Do not put connection back into pool.
-				PutBackArgsOnError();
+				ReleaseBuffer();
 			}
 			else
 			{
@@ -725,7 +743,7 @@ namespace Aerospike.Client
 			}
 		}
 
-		public void FailOnApplicationError(AerospikeException ae)
+		private void FailOnApplicationError(AerospikeException ae)
 		{
 			try
 			{
@@ -779,7 +797,7 @@ namespace Aerospike.Client
 			{
 				// Free up resources. Connection should have already been closed and user
 				// notified in CheckTimeout().
-				PutBackArgsOnError();
+				ReleaseBuffer();
 			}
 			else if (status == FAIL_SOCKET_TIMEOUT)
 			{
@@ -806,7 +824,7 @@ namespace Aerospike.Client
 
 		private void FailCommand(AerospikeException ae)
 		{
-			PutBackArgsOnError();
+			ReleaseBuffer();
 			NotifyFailure(ae);
 		}
 
@@ -838,7 +856,7 @@ namespace Aerospike.Client
 			}
 		}
 
-		internal void PutBackArgsOnError()
+		internal void ReleaseBuffer()
 		{
 			// Do not put large buffers back into pool.
 			if (segment.size > BufferPool.BUFFER_CUTOFF)
@@ -846,7 +864,7 @@ namespace Aerospike.Client
 				// Put back original buffer instead.
 				segment = segmentOrig;
 			}
-			cluster.PutEventArgs(segment);
+			cluster.ReleaseBuffer(segment);
 		}
 
 		protected internal virtual bool RetryBatch()

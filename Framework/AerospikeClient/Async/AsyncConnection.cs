@@ -20,25 +20,14 @@ using System.Net.Sockets;
 
 namespace Aerospike.Client
 {
-	public interface IAsyncCommand
-	{
-		void OnConnected();
-		void SendComplete();
-		void ReceiveComplete();
-		void SocketFailed(SocketError se);
-		void ConnectionFailed(AerospikeException ae);
-		void FailOnApplicationError(AerospikeException ae);
-		void OnAerospikeException(AerospikeException ae);
-	}
-
 	/// <summary>
 	/// Asynchronous socket channel connection wrapper.
 	/// </summary>
 	public sealed class AsyncConnection
 	{
-		public static EventHandler<SocketAsyncEventArgs> SocketListener { get {return EventHandlers.SocketHandler;} }
+		private static EventHandler<SocketAsyncEventArgs> SocketListener { get {return EventHandlers.SocketHandler;} }
 
-		private readonly static bool ZeroBuffers = !(
+		private static readonly bool ZeroBuffers = !(
 			Environment.OSVersion.Platform == PlatformID.Unix ||
 			Environment.OSVersion.Platform == PlatformID.MacOSX);
 
@@ -81,11 +70,9 @@ namespace Aerospike.Client
 					socket.ReceiveBufferSize = 0;
 				}
 
-				args = new SocketAsyncEventArgs
-				{
-					UserToken = this,
-					RemoteEndPoint = address
-				};
+				args = new SocketAsyncEventArgs();
+				args.UserToken = this;
+				args.RemoteEndPoint = address;
 				args.Completed += SocketListener;
 
 				lastUsed = DateTime.UtcNow;
@@ -114,67 +101,6 @@ namespace Aerospike.Client
 			}
 		}
 
-		// Wrap the stateless event handlers in an instance, in order to avoid static delegate performance penalty.
-		private sealed class EventHandlers
-		{
-			private static readonly EventHandlers Instance = new EventHandlers();
-			public static readonly EventHandler<SocketAsyncEventArgs> SocketHandler = Instance.HandleSocketEvent;
-
-			private void HandleSocketEvent(object sender, SocketAsyncEventArgs args)
-			{
-				AsyncConnection conn = args.UserToken as AsyncConnection;
-				IAsyncCommand command = conn.command;
-
-				if (args.SocketError != SocketError.Success)
-				{
-					command.SocketFailed(args.SocketError);
-					return;
-				}
-
-				try
-				{
-					switch (args.LastOperation)
-					{
-						case SocketAsyncOperation.Receive:
-							conn.ReceiveEvent();
-							break;
-						case SocketAsyncOperation.Send:
-							conn.SendEvent();
-							break;
-						case SocketAsyncOperation.Connect:
-							command.OnConnected();
-							break;
-						default:
-							command.FailOnApplicationError(new AerospikeException("Invalid socket operation: " + args.LastOperation));
-							break;
-					}
-				}
-				catch (AerospikeException.Connection ac)
-				{
-					command.ConnectionFailed(ac);
-				}
-				catch (AerospikeException ae)
-				{
-					command.OnAerospikeException(ae);
-				}
-				catch (SocketException se)
-				{
-					command.SocketFailed(se.SocketErrorCode);
-				}
-				catch (ObjectDisposedException ode)
-				{
-					// This exception occurs because socket is being used after timeout thread closes socket.
-					// Retry when this happens.
-					command.ConnectionFailed(new AerospikeException(ode));
-				}
-				catch (Exception e)
-				{
-					// Fail without retry on unknown errors.
-					command.FailOnApplicationError(new AerospikeException(e));
-				}
-			}
-		}
-
 		public void Send(byte[] buffer, int offset, int count)
 		{
 			args.SetBuffer(buffer, offset, count);
@@ -197,7 +123,7 @@ namespace Aerospike.Client
 			{
 				// When a node has shutdown on linux, async command send events return zero
 				// with SocketError.Success. If zero bytes sent on send, cancel command.
-				command.ConnectionFailed(new AerospikeException.Connection("Connection closed"));
+				command.OnError(new AerospikeException.Connection("Connection closed"));
 				return;
 			}
 
@@ -237,7 +163,7 @@ namespace Aerospike.Client
 
 			if (received <= 0)
 			{
-				command.ConnectionFailed(new AerospikeException.Connection("Connection closed"));
+				command.OnError(new AerospikeException.Connection("Connection closed"));
 				return;
 			}
 
@@ -249,17 +175,6 @@ namespace Aerospike.Client
 			}
 
 			command.ReceiveComplete();
-		}
-
-		public bool SendAsync(SocketAsyncEventArgs args)
-		{
-			return socket.SendAsync(args);
-		}
-
-
-		public bool ReceiveAsync(SocketAsyncEventArgs args)
-		{
-			return socket.ReceiveAsync(args);
 		}
 
 		/// <summary>
@@ -310,12 +225,91 @@ namespace Aerospike.Client
 		{
 			try
 			{
+				command = null;
 				socket.Shutdown(SocketShutdown.Both);
 			}
 			catch (Exception)
 			{
 			}
-			socket.Dispose();
+
+			try
+			{
+				socket.Dispose();
+				args.Dispose();
+			}
+			catch (Exception)
+			{
+			}
 		}
+
+		// Wrap the stateless event handlers in an instance, in order to avoid static delegate performance penalty.
+		private sealed class EventHandlers
+		{
+			private static readonly EventHandlers Instance = new EventHandlers();
+			public static readonly EventHandler<SocketAsyncEventArgs> SocketHandler = Instance.HandleSocketEvent;
+
+			private void HandleSocketEvent(object sender, SocketAsyncEventArgs args)
+			{
+				AsyncConnection conn = args.UserToken as AsyncConnection;
+
+				if (args.SocketError != SocketError.Success)
+				{
+					SocketFailed(conn, args.SocketError);
+					return;
+				}
+
+				try
+				{
+					switch (args.LastOperation)
+					{
+						case SocketAsyncOperation.Receive:
+							conn.ReceiveEvent();
+							break;
+						case SocketAsyncOperation.Send:
+							conn.SendEvent();
+							break;
+						case SocketAsyncOperation.Connect:
+							conn.command.OnConnected();
+							break;
+						default:
+							throw new AerospikeException("Invalid socket operation: " + args.LastOperation);
+					}
+				}
+				catch (Exception e)
+				{
+					try
+					{
+						conn.command.OnError(e);
+					}
+					catch (Exception ne)
+					{
+						Log.Error("OnError failed: " + Util.GetErrorMessage(ne) +
+							System.Environment.NewLine + "Original error: " + Util.GetErrorMessage(e));
+					}
+				}
+			}
+
+			private static void SocketFailed(AsyncConnection conn, SocketError se)
+			{
+				try
+				{
+					conn.command.SocketFailed(se);
+				}
+				catch (Exception ne)
+				{
+					Log.Error("SocketFailed failed: " + Util.GetErrorMessage(ne) +
+						System.Environment.NewLine + "Original error: " + se);
+				}
+			}
+		}
+	}
+
+	public interface IAsyncCommand
+	{
+		void OnConnected();
+		void SendComplete();
+		void ReceiveComplete();
+		void SocketFailed(SocketError se);
+		void OnError(Exception e);
 	}
 }

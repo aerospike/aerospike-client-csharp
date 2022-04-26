@@ -1840,12 +1840,12 @@ namespace Aerospike.Client
 			catch (Exception)
 			{
 				// Close original command.
-				base.PutBackArgsOnError();
+				base.ReleaseBuffer();
 				throw;
 			}
 
 			// Close original command.
-			base.PutBackArgsOnError();
+			base.ReleaseBuffer();
 			
 			// Execute new commands.
 			AsyncBatchCommand[] cmds = new AsyncBatchCommand[batchNodes.Count];
