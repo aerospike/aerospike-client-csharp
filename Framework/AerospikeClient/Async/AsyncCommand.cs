@@ -147,18 +147,18 @@ namespace Aerospike.Client
 		internal void ExecuteAsync(BufferSegment segment)
 		{
 			this.segment = this.segmentOrig = segment;
-			ThreadPool.UnsafeQueueUserWorkItem(CommandHandlers.AsyncExecuteHandler, this);
+			ThreadPool.UnsafeQueueUserWorkItem(ExecuteHandler, this);
 		}
 
-		// Wrap the stateless event handlers in an instance, in order to avoid static delegate performance penalty.
-		private sealed class CommandHandlers
+		private void ExecuteHandler(object state)
 		{
-			private static readonly CommandHandlers Instance = new CommandHandlers();
-			public static readonly WaitCallback AsyncExecuteHandler = Instance.HandleExecution;
-
-			private void HandleExecution(object state)
+			try
 			{
 				((AsyncCommand)state).ExecuteCore();
+			}
+			catch (Exception e)
+			{
+				Log.Error("ExecuteCore error: " + Util.GetErrorMessage(e));
 			}
 		}
 
@@ -855,13 +855,17 @@ namespace Aerospike.Client
 
 		internal void ReleaseBuffer()
 		{
-			// Do not put large buffers back into pool.
-			if (segment.size > BufferPool.BUFFER_CUTOFF)
+			if (segment != null)
 			{
-				// Put back original buffer instead.
-				segment = segmentOrig;
+				// Do not put large buffers back into pool.
+				if (segment.size > BufferPool.BUFFER_CUTOFF)
+				{
+					// Put back original buffer instead.
+					segment = segmentOrig;
+				}
+				cluster.ReleaseBuffer(segment);
+				segment = null;
 			}
-			cluster.ReleaseBuffer(segment);
 		}
 
 		protected internal virtual bool RetryBatch()

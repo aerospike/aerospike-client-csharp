@@ -25,8 +25,6 @@ namespace Aerospike.Client
 	/// </summary>
 	public sealed class AsyncConnection
 	{
-		private static EventHandler<SocketAsyncEventArgs> SocketListener { get {return EventHandlers.SocketHandler;} }
-
 		private static readonly bool ZeroBuffers = !(
 			Environment.OSVersion.Platform == PlatformID.Unix ||
 			Environment.OSVersion.Platform == PlatformID.MacOSX);
@@ -71,9 +69,8 @@ namespace Aerospike.Client
 				}
 
 				args = new SocketAsyncEventArgs();
-				args.UserToken = this;
 				args.RemoteEndPoint = address;
-				args.Completed += SocketListener;
+				args.Completed += AsyncCompleted;
 
 				lastUsed = DateTime.UtcNow;
 			}
@@ -97,7 +94,19 @@ namespace Aerospike.Client
 		{
 			if (!socket.ConnectAsync(args))
 			{
+				ConnectEvent(args);
+			}
+		}
+
+		private void ConnectEvent(SocketAsyncEventArgs args)
+		{
+			if (args.SocketError == SocketError.Success)
+			{
 				command.OnConnected();
+			}
+			else
+			{
+				command.SocketFailed(args.SocketError);
 			}
 		}
 
@@ -111,30 +120,37 @@ namespace Aerospike.Client
 		{
 			if (!socket.SendAsync(args))
 			{
-				SendEvent();
+				SendEvent(args);
 			}
 		}
 
-		private void SendEvent()
+		private void SendEvent(SocketAsyncEventArgs args)
 		{
-			int sent = args.BytesTransferred;
-
-			if (sent <= 0)
+			if (args.SocketError == SocketError.Success)
 			{
-				// When a node has shutdown on linux, async command send events return zero
-				// with SocketError.Success. If zero bytes sent on send, cancel command.
-				command.OnError(new AerospikeException.Connection("Connection closed"));
-				return;
-			}
+				int sent = args.BytesTransferred;
 
-			if (sent < args.Count)
+				if (sent <= 0)
+				{
+					// When a node has shutdown on linux, async command send events return zero
+					// with SocketError.Success. If zero bytes sent on send, cancel command.
+					command.OnError(new AerospikeException.Connection("Connection closed"));
+					return;
+				}
+
+				if (sent < args.Count)
+				{
+					args.SetBuffer(args.Offset + sent, args.Count - sent);
+					Send();
+					return;
+				}
+
+				command.SendComplete();
+			}
+			else
 			{
-				args.SetBuffer(args.Offset + sent, args.Count - sent);
-				Send();
-				return;
+				command.SocketFailed(args.SocketError);
 			}
-
-			command.SendComplete();
 		}
 
 		public void Receive(byte[] buffer, int offset, int count)
@@ -153,28 +169,35 @@ namespace Aerospike.Client
 		{
 			if (!socket.ReceiveAsync(args))
 			{
-				ReceiveEvent();
+				ReceiveEvent(args);
 			}
 		}
 
-		private void ReceiveEvent()
+		private void ReceiveEvent(SocketAsyncEventArgs args)
 		{
-			int received = args.BytesTransferred;
-
-			if (received <= 0)
+			if (args.SocketError == SocketError.Success)
 			{
-				command.OnError(new AerospikeException.Connection("Connection closed"));
-				return;
-			}
+				int received = args.BytesTransferred;
 
-			if (received < args.Count)
+				if (received <= 0)
+				{
+					command.OnError(new AerospikeException.Connection("Connection closed"));
+					return;
+				}
+
+				if (received < args.Count)
+				{
+					args.SetBuffer(args.Offset + received, args.Count - received);
+					Receive();
+					return;
+				}
+
+				command.ReceiveComplete();
+			}
+			else
 			{
-				args.SetBuffer(args.Offset + received, args.Count - received);
-				Receive();
-				return;
+				command.SocketFailed(args.SocketError);
 			}
-
-			command.ReceiveComplete();
 		}
 
 		/// <summary>
@@ -214,8 +237,8 @@ namespace Aerospike.Client
 
 		public void Reset()
 		{
-			args.SetBuffer(null, 0, 0);
 			command = null;
+			args.SetBuffer(null, 0, 0);
 		}
 
 		/// <summary>
@@ -223,9 +246,10 @@ namespace Aerospike.Client
 		/// </summary>
 		public void Close()
 		{
+			command = null;
+
 			try
 			{
-				command = null;
 				socket.Shutdown(SocketShutdown.Both);
 			}
 			catch (Exception)
@@ -235,6 +259,7 @@ namespace Aerospike.Client
 			try
 			{
 				socket.Dispose();
+				args.SetBuffer(null, 0, 0);
 				args.Dispose();
 			}
 			catch (Exception)
@@ -242,63 +267,40 @@ namespace Aerospike.Client
 			}
 		}
 
-		// Wrap the stateless event handlers in an instance, in order to avoid static delegate performance penalty.
-		private sealed class EventHandlers
+		private void AsyncCompleted(object sender, SocketAsyncEventArgs args)
 		{
-			private static readonly EventHandlers Instance = new EventHandlers();
-			public static readonly EventHandler<SocketAsyncEventArgs> SocketHandler = Instance.HandleSocketEvent;
-
-			private void HandleSocketEvent(object sender, SocketAsyncEventArgs args)
+			if (command == null)
 			{
-				AsyncConnection conn = args.UserToken as AsyncConnection;
-
-				if (args.SocketError != SocketError.Success)
-				{
-					SocketFailed(conn, args.SocketError);
-					return;
-				}
-
-				try
-				{
-					switch (args.LastOperation)
-					{
-						case SocketAsyncOperation.Receive:
-							conn.ReceiveEvent();
-							break;
-						case SocketAsyncOperation.Send:
-							conn.SendEvent();
-							break;
-						case SocketAsyncOperation.Connect:
-							conn.command.OnConnected();
-							break;
-						default:
-							throw new AerospikeException("Invalid socket operation: " + args.LastOperation);
-					}
-				}
-				catch (Exception e)
-				{
-					try
-					{
-						conn.command.OnError(e);
-					}
-					catch (Exception ne)
-					{
-						Log.Error("OnError failed: " + Util.GetErrorMessage(ne) +
-							System.Environment.NewLine + "Original error: " + Util.GetErrorMessage(e));
-					}
-				}
+				return;
 			}
 
-			private static void SocketFailed(AsyncConnection conn, SocketError se)
+			try
+			{
+				switch (args.LastOperation)
+				{
+					case SocketAsyncOperation.Connect:
+						ConnectEvent(args);
+						break;
+					case SocketAsyncOperation.Send:
+						SendEvent(args);
+						break;
+					case SocketAsyncOperation.Receive:
+						ReceiveEvent(args);
+						break;
+					default:
+						throw new AerospikeException("Invalid socket operation: " + args.LastOperation);
+				}
+			}
+			catch (Exception e)
 			{
 				try
 				{
-					conn.command.SocketFailed(se);
+					command.OnError(e);
 				}
 				catch (Exception ne)
 				{
-					Log.Error("SocketFailed failed: " + Util.GetErrorMessage(ne) +
-						System.Environment.NewLine + "Original error: " + se);
+					Log.Error("OnError failed: " + Util.GetErrorMessage(ne) +
+						System.Environment.NewLine + "Original error: " + Util.GetErrorMessage(e));
 				}
 			}
 		}
