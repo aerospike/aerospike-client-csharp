@@ -21,7 +21,7 @@ using System.Net.Sockets;
 namespace Aerospike.Client
 {
 	/// <summary>
-	/// Asynchronous socket channel connection wrapper.
+	/// Async connection.
 	/// </summary>
 	public sealed class AsyncConnection
 	{
@@ -200,9 +200,6 @@ namespace Aerospike.Client
 			}
 		}
 
-		/// <summary>
-		/// Is socket connected and used within specified limits.
-		/// </summary>
 		public bool IsValid()
 		{
 			return socket.Connected;
@@ -241,13 +238,8 @@ namespace Aerospike.Client
 			args.SetBuffer(null, 0, 0);
 		}
 
-		/// <summary>
-		/// Shutdown and close socket.
-		/// </summary>
 		public void Close()
 		{
-			command = null;
-
 			try
 			{
 				socket.Shutdown(SocketShutdown.Both);
@@ -259,7 +251,6 @@ namespace Aerospike.Client
 			try
 			{
 				socket.Dispose();
-				args.SetBuffer(null, 0, 0);
 				args.Dispose();
 			}
 			catch (Exception)
@@ -269,11 +260,6 @@ namespace Aerospike.Client
 
 		private void AsyncCompleted(object sender, SocketAsyncEventArgs args)
 		{
-			if (command == null)
-			{
-				return;
-			}
-
 			try
 			{
 				switch (args.LastOperation)
@@ -293,6 +279,12 @@ namespace Aerospike.Client
 			}
 			catch (Exception e)
 			{
+				if (command == null)
+				{
+					Log.Error("Received async event when connection is in pool.");
+					return;
+				}
+
 				try
 				{
 					command.OnError(e);

@@ -708,7 +708,6 @@ namespace Aerospike.Client
 			{
 				// Command finished successfully.
 				// Put connection back into pool.
-				conn.Reset();
 				node.PutAsyncConnection(conn);
 				ReleaseBuffer();
 			}
