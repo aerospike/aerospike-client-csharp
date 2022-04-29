@@ -1088,7 +1088,12 @@ namespace Aerospike.Client
 
 		private static byte GetBatchFlags(BatchPolicy policy)
 		{
-			byte flags = (policy.allowInline) ? (byte)1 : (byte)0;
+			byte flags = 0x8;
+
+			if (policy.allowInline)
+			{
+				flags |= 0x1;
+			}
 
 			if (policy.allowInlineSSD)
 			{
