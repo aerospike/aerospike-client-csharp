@@ -45,10 +45,6 @@
     <Compile Include="..\..\Framework\AerospikeClient\Async\AsyncClientPolicy.cs" Link="Async\AsyncClientPolicy.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Async\AsyncCluster.cs" Link="Async\AsyncCluster.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Async\AsyncCommand.cs" Link="Async\AsyncCommand.cs" />
-    <Compile Include="..\..\Framework\AerospikeClient\Async\AsyncCommandBlockingQueue.cs" Link="Async\AsyncCommandBlockingQueue.cs" />
-    <Compile Include="..\..\Framework\AerospikeClient\Async\AsyncCommandDelayingQueue.cs" Link="Async\AsyncCommandDelayingQueue.cs" />
-    <Compile Include="..\..\Framework\AerospikeClient\Async\AsyncCommandQueueBase.cs" Link="Async\AsyncCommandQueueBase.cs" />
-    <Compile Include="..\..\Framework\AerospikeClient\Async\AsyncCommandRejectingQueue.cs" Link="Async\AsyncCommandRejectingQueue.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Async\AsyncConnection.cs" Link="Async\AsyncConnection.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Async\AsyncConnector.cs" Link="Async\AsyncConnector.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Async\AsyncDelete.cs" Link="Async\AsyncDelete.cs" />
@@ -68,8 +64,10 @@
     <Compile Include="..\..\Framework\AerospikeClient\Async\AsyncReadHeader.cs" Link="Async\AsyncReadHeader.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Async\AsyncScanPartition.cs" Link="Async\AsyncScanPartition.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Async\AsyncScanPartitionExecutor.cs" Link="Async\AsyncScanPartitionExecutor.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Async\AsyncScheduler.cs" Link="Async\AsyncScheduler.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Async\AsyncSingleCommand.cs" Link="Async\AsyncSingleCommand.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Async\AsyncTimeoutQueue.cs" Link="Async\AsyncTimeoutQueue.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Async\AsyncTlsConnection.cs" Link="Async\AsyncTlsConnection.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Async\AsyncTouch.cs" Link="Async\AsyncTouch.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Async\AsyncWrite.cs" Link="Async\AsyncWrite.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Async\BufferPool.cs" Link="Async\BufferPool.cs" />

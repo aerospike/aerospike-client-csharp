@@ -182,6 +182,7 @@
     <Compile Include="Async\AsyncClientPolicy.cs" />
     <Compile Include="Async\AsyncCluster.cs" />
     <Compile Include="Async\AsyncCommand.cs" />
+    <Compile Include="Async\AsyncTlsConnection.cs" />
     <Compile Include="Async\AsyncScheduler.cs" />
     <Compile Include="Async\AsyncConnection.cs" />
     <Compile Include="Async\AsyncDelete.cs" />

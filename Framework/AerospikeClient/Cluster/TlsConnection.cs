@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2022 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -39,17 +39,11 @@ namespace Aerospike.Client
 			: base(address, timeoutMillis, pool)
 		{
 			this.policy = policy;
-
-			if (tlsName == null)
-			{
-				tlsName = "";
-			}
-			this.tlsName = tlsName;
+			this.tlsName = tlsName ?? "";
 
 			try
 			{
-				RemoteCertificateValidationCallback remoteCallback = new RemoteCertificateValidationCallback(ValidateServerCertificate);
-				sslStream = new SslStream(new NetworkStream(socket, true), false, remoteCallback);
+				sslStream = new SslStream(new NetworkStream(socket, true), false, ValidateServerCertificate);
 				sslStream.AuthenticateAsClient(tlsName, policy.clientCertificates, policy.protocols, false);
 			}
             catch (Exception)
@@ -59,7 +53,24 @@ namespace Aerospike.Client
 			}
 		}
 
-		private bool ValidateServerCertificate(object sender, X509Certificate cert, X509Chain chain, SslPolicyErrors sslPolicyErrors)
+		private bool ValidateServerCertificate
+		(
+			object sender,
+			X509Certificate cert,
+			X509Chain chain,
+			SslPolicyErrors sslPolicyErrors
+		)
+		{
+			return ValidateCertificate(policy, tlsName, cert, sslPolicyErrors);
+		}
+
+		internal static bool ValidateCertificate
+		(
+			TlsPolicy policy,
+			string tlsName,
+			X509Certificate cert,
+			SslPolicyErrors sslPolicyErrors
+		)
 		{
 			if (sslPolicyErrors != SslPolicyErrors.None)
 			{

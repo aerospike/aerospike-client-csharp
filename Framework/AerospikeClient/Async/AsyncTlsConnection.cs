@@ -16,29 +16,31 @@
  */
 using System;
 using System.Net;
+using System.Net.Security;
 using System.Net.Sockets;
+using System.Security.Cryptography.X509Certificates;
 
 namespace Aerospike.Client
 {
 	/// <summary>
-	/// Async connection.
+	/// Async TLS connection.
 	/// </summary>
-	public sealed class AsyncConnection : IAsyncConnection
+	public sealed class AsyncTlsConnection : IAsyncConnection
 	{
-		static internal readonly bool ZeroBuffers = !(
-			Environment.OSVersion.Platform == PlatformID.Unix ||
-			Environment.OSVersion.Platform == PlatformID.MacOSX);
-
 		private readonly Socket socket;
-		private readonly SocketAsyncEventArgs args;
+		private readonly IPEndPoint address;
+		private readonly SslStream sslStream;
+		private readonly TlsPolicy policy;
+		private readonly string tlsName;
 		private IAsyncCommand command;
 		private DateTime lastUsed;
 
-		public AsyncConnection(AsyncNode node, IAsyncCommand command)
+		public AsyncTlsConnection(TlsPolicy policy, string tlsName, AsyncNode node, IAsyncCommand command)
 		{
+			this.policy = policy;
+			this.tlsName = tlsName ?? "";
+			this.address = node.address;
 			this.command = command;
-
-			IPEndPoint address = node.address;
 
 			try
 			{
@@ -60,7 +62,7 @@ namespace Aerospike.Client
 				// Docs say Blocking flag is ignored for async operations.
 				// socket.Blocking = false;
 
-				if (ZeroBuffers)
+				if (AsyncConnection.ZeroBuffers)
 				{
 					// Avoid internal TCP send/receive buffers.
 					// Use application buffers directly.
@@ -68,10 +70,7 @@ namespace Aerospike.Client
 					socket.ReceiveBufferSize = 0;
 				}
 
-				args = new SocketAsyncEventArgs();
-				args.RemoteEndPoint = address;
-				args.Completed += AsyncCompleted;
-
+				sslStream = new SslStream(new NetworkStream(socket, true), false, ValidateServerCertificate);
 				lastUsed = DateTime.UtcNow;
 			}
 			catch (Exception e)
@@ -84,6 +83,17 @@ namespace Aerospike.Client
 			}
 		}
 
+		private bool ValidateServerCertificate
+		(
+			object sender,
+			X509Certificate cert,
+			X509Chain chain,
+			SslPolicyErrors sslPolicyErrors
+		)
+		{
+			return TlsConnection.ValidateCertificate(policy, tlsName, cert, sslPolicyErrors);
+		}
+
 		public IAsyncCommand Command
 		{
 			get {return command;}
@@ -92,6 +102,10 @@ namespace Aerospike.Client
 
 		public void Connect()
 		{
+			SocketAsyncEventArgs args = new SocketAsyncEventArgs();
+			args.RemoteEndPoint = address;
+			args.Completed += AsyncCompleted;
+
 			if (!socket.ConnectAsync(args))
 			{
 				ConnectEvent(args);
@@ -100,28 +114,40 @@ namespace Aerospike.Client
 
 		private void ConnectEvent(SocketAsyncEventArgs args)
 		{
-			if (args.SocketError == SocketError.Success)
+			try
 			{
-				command.OnConnected();
+				if (args.SocketError == SocketError.Success)
+				{
+					// TODO: Implement TLS handshake.
+					//sslStream.AuthenticateAsClient(tlsName, policy.clientCertificates, policy.protocols, false);
+					//_sslStream.BeginAuthenticateAsClient(Address, new X509CertificateCollection(new[] { Context.Certificate }), Context.Protocols, true, ProcessHandshake, _sslStreamId);
+					command.OnConnected();
+				}
+				else
+				{
+					command.OnSocketError(args.SocketError);
+				}
 			}
-			else
+			finally
 			{
-				command.OnSocketError(args.SocketError);
+				args.Dispose();
 			}
 		}
 
 		public void Send(byte[] buffer, int offset, int count)
 		{
-			args.SetBuffer(buffer, offset, count);
+			//args.SetBuffer(buffer, offset, count);
 			Send();
 		}
 
 		private void Send()
 		{
+			/*
 			if (!socket.SendAsync(args))
 			{
 				SendEvent(args);
 			}
+			*/
 		}
 
 		private void SendEvent(SocketAsyncEventArgs args)
@@ -155,22 +181,24 @@ namespace Aerospike.Client
 
 		public void Receive(byte[] buffer, int offset, int count)
 		{
-			args.SetBuffer(buffer, offset, count);
+			//args.SetBuffer(buffer, offset, count);
 			Receive();
 		}
 
 		public void Receive(int offset, int count)
 		{
-			args.SetBuffer(offset, count);
+			//args.SetBuffer(offset, count);
 			Receive();
 		}
 
 		private void Receive()
 		{
+			/*
 			if (!socket.ReceiveAsync(args))
 			{
 				ReceiveEvent(args);
 			}
+			*/
 		}
 
 		private void ReceiveEvent(SocketAsyncEventArgs args)
@@ -235,7 +263,7 @@ namespace Aerospike.Client
 		public void Reset()
 		{
 			command = null;
-			args.SetBuffer(null, 0, 0);
+			//args.SetBuffer(null, 0, 0);
 		}
 
 		public void Close()
@@ -251,7 +279,7 @@ namespace Aerospike.Client
 			try
 			{
 				socket.Dispose();
-				args.Dispose();
+				//args.Dispose();
 			}
 			catch (Exception)
 			{
@@ -262,19 +290,13 @@ namespace Aerospike.Client
 		{
 			try
 			{
-				switch (args.LastOperation)
+				if (args.LastOperation == SocketAsyncOperation.Connect)
 				{
-					case SocketAsyncOperation.Connect:
-						ConnectEvent(args);
-						break;
-					case SocketAsyncOperation.Send:
-						SendEvent(args);
-						break;
-					case SocketAsyncOperation.Receive:
-						ReceiveEvent(args);
-						break;
-					default:
-						throw new AerospikeException("Invalid socket operation: " + args.LastOperation);
+					ConnectEvent(args);
+				}
+				else
+				{
+					throw new AerospikeException("Invalid socket operation: " + args.LastOperation);
 				}
 			}
 			catch (Exception e)
@@ -296,19 +318,5 @@ namespace Aerospike.Client
 				}
 			}
 		}
-	}
-
-	public interface IAsyncConnection
-	{
-		void Connect();
-	}
-
-	public interface IAsyncCommand
-	{
-		void OnConnected();
-		void SendComplete();
-		void ReceiveComplete();
-		void OnSocketError(SocketError se);
-		void OnError(Exception e);
 	}
 }
