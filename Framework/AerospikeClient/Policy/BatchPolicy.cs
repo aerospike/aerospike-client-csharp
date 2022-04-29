@@ -27,9 +27,9 @@ namespace Aerospike.Client
 	{
 		/// <summary>
 		/// Maximum number of concurrent synchronous batch request threads to server nodes at any point in time.
-		/// If there are 16 node/namespace combinations requested and maxConcurrentThreads is 8, 
-		/// then batch requests will be made for 8 node/namespace combinations in parallel threads.
-		/// When a request completes, a new request will be issued until all 16 threads are complete.
+		/// If there are 16 nodes requested and maxConcurrentThreads is 8, then batch requests will be
+		/// made for 8 nodes in parallel threads. When a request completes, a new request will be issued
+		/// until all 16 requests are complete.
 		/// <para>
 		/// Values:
 		/// <list type="bullet">
