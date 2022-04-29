@@ -128,11 +128,15 @@ namespace Aerospike.Client
 
 		public Cluster(ClientPolicy policy, Host[] hosts)
 		{
+			// Disable log subscribe requirement to avoid a breaking change in a minor release.
+			// TODO: Reintroduce requirement in the next major client release.
+			/*
 			if (!Log.IsSet())
 			{
 				throw new AerospikeException("Log.SetCallback() or Log.SetCallbackStandard() must be called." + System.Environment.NewLine +
 					"See https://developer.aerospike.com/client/csharp/usage/logging for details.");
 			}
+			*/
 
 			this.clusterName = policy.clusterName;
 			tlsPolicy = policy.tlsPolicy;
