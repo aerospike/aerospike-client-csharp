@@ -106,7 +106,7 @@ namespace Aerospike.Client
 			}
 			else
 			{
-				command.SocketFailed(args.SocketError);
+				command.OnSocketError(args.SocketError);
 			}
 		}
 
@@ -149,7 +149,7 @@ namespace Aerospike.Client
 			}
 			else
 			{
-				command.SocketFailed(args.SocketError);
+				command.OnSocketError(args.SocketError);
 			}
 		}
 
@@ -196,7 +196,7 @@ namespace Aerospike.Client
 			}
 			else
 			{
-				command.SocketFailed(args.SocketError);
+				command.OnSocketError(args.SocketError);
 			}
 		}
 
@@ -303,7 +303,7 @@ namespace Aerospike.Client
 		void OnConnected();
 		void SendComplete();
 		void ReceiveComplete();
-		void SocketFailed(SocketError se);
+		void OnSocketError(SocketError se);
 		void OnError(Exception e);
 	}
 }

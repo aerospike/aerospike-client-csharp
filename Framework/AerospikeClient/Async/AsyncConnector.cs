@@ -299,7 +299,7 @@ namespace Aerospike.Client
 			return false; // Do not put back on timeout queue.
 		}
 
-		public void SocketFailed(SocketError se)
+		public void OnSocketError(SocketError se)
 		{
 			Fail("Create connection socket failed: " + se);
 		}

@@ -238,7 +238,7 @@ namespace Aerospike.Client
 			catch (SocketException se)
 			{
 				ErrorCount++;
-				SocketFailed(se.SocketErrorCode);
+				OnSocketError(se.SocketErrorCode);
 			}
 			catch (Exception e)
 			{
@@ -469,7 +469,7 @@ namespace Aerospike.Client
 
 			if (e is SocketException se)
 			{
-				SocketFailed(se.SocketErrorCode);
+				OnSocketError(se.SocketErrorCode);
 				return;
 			}
 
@@ -485,7 +485,7 @@ namespace Aerospike.Client
 			FailOnApplicationError(new AerospikeException(e));
 		}
 
-		public void SocketFailed(SocketError se)
+		public void OnSocketError(SocketError se)
 		{
 			AerospikeException ae;
 
