@@ -39,7 +39,7 @@ namespace Aerospike.Client
 			: base(address, timeoutMillis, pool)
 		{
 			this.policy = policy;
-			this.tlsName = tlsName ?? "";
+			this.tlsName = tlsName;
 
 			try
 			{

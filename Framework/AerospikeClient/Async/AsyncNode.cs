@@ -51,6 +51,18 @@ namespace Aerospike.Client
 			}
 		}
 
+		public AsyncConnection CreateAsyncConnection(IAsyncCommand command)
+		{
+			if (cluster.UseTls())
+			{
+				return new AsyncConnectionTls(this, command);
+			}
+			else
+			{
+				return new AsyncConnectionArgs(this, command);
+			}
+		}
+
 		/// <summary>
 		/// Get asynchronous socket connection from connection pool for the server node.
 		/// </summary>

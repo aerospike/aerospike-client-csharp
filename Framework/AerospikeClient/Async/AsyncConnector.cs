@@ -173,8 +173,7 @@ namespace Aerospike.Client
 			AsyncTimeoutQueue.Instance.Add(this, cluster.connectionTimeout);
 
 			node.IncrAsyncConnTotal();
-			// TODO: Support TLS
-			conn = new AsyncConnectionArgs(node, this);
+			conn = node.CreateAsyncConnection(this);
 
 			try
 			{

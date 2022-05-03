@@ -268,7 +268,8 @@ namespace Aerospike.Client
 			List<Host> seedsToAdd = new List<Host>(nodes.Length);
 			foreach (Node node in nodes)
 			{
-				Host host = node.Host;
+				Host host = node.host;
+
 				if (!FindSeed(host))
 				{
 					seedsToAdd.Add(host);
@@ -859,6 +860,11 @@ namespace Aerospike.Client
 		internal bool IsConnCurrentTrim(DateTime lastUsed)
 		{
 			return DateTime.UtcNow.Subtract(lastUsed).TotalMilliseconds <= maxSocketIdleMillisTrim;
+		}
+
+		internal bool UseTls()
+		{
+			return tlsPolicy != null && !tlsPolicy.forLoginOnly;
 		}
 
 		public ClusterStats GetStats()

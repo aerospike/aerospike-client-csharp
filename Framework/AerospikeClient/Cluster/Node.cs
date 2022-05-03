@@ -41,7 +41,7 @@ namespace Aerospike.Client
 
 		protected internal readonly Cluster cluster;
 		private readonly string name;
-		private readonly Host host;
+		protected internal readonly Host host;
 		protected internal readonly List<Host> aliases;
 		protected internal readonly IPEndPoint address;
 		private Connection tendConnection;
@@ -132,7 +132,7 @@ namespace Aerospike.Client
 			{
 				if (tendConnection.IsClosed())
 				{
-					tendConnection = CreateConnection(host.tlsName, address, cluster.connectionTimeout, null);
+					tendConnection = CreateConnection(cluster.connectionTimeout, null);
 
 					if (cluster.authEnabled)
 					{
@@ -568,7 +568,7 @@ namespace Aerospike.Client
 
 			try
 			{
-				conn = CreateConnection(host.tlsName, address, cluster.connectionTimeout, pool);
+				conn = CreateConnection(cluster.connectionTimeout, pool);
 			}
 			catch (Exception)
 			{
@@ -654,7 +654,7 @@ namespace Aerospike.Client
 					// Create new connection.
 					try
 					{
-						conn = CreateConnection(host.tlsName, address, timeoutMillis, pool);
+						conn = CreateConnection(timeoutMillis, pool);
 					}
 					catch (Exception)
 					{
@@ -719,12 +719,12 @@ namespace Aerospike.Client
 				"Node " + this + " max connections " + cluster.maxConnsPerNode + " would be exceeded.");
 		}
 
-		private Connection CreateConnection(string tlsName, IPEndPoint address, int timeout, Pool<Connection> pool)
+		private Connection CreateConnection(int timeout, Pool<Connection> pool)
 		{
 			try
 			{
-				Connection conn = (cluster.tlsPolicy != null && !cluster.tlsPolicy.forLoginOnly) ?
-					new TlsConnection(cluster.tlsPolicy, tlsName, address, timeout, pool) :
+				Connection conn = cluster.UseTls() ?
+					new TlsConnection(cluster.tlsPolicy, host.tlsName, address, timeout, pool) :
 					new Connection(address, timeout, pool);
 
 				Interlocked.Increment(ref connsOpened);

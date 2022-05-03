@@ -210,8 +210,7 @@ namespace Aerospike.Client
 				if (conn == null)
 				{
 					node.IncrAsyncConnTotal();
-					// TODO: Support TLS
-					conn = new AsyncConnectionArgs(node, this);
+					conn = node.CreateAsyncConnection(this);
 					conn.Connect(node.address);
 				}
 				else

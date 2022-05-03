@@ -27,15 +27,13 @@ namespace Aerospike.Client
 	/// </summary>
 	public sealed class AsyncConnectionTls : AsyncConnection
 	{
+		private readonly AsyncNode node;
 		private readonly SslStream sslStream;
-		private readonly TlsPolicy policy;
-		private readonly string tlsName;
 
-		public AsyncConnectionTls(TlsPolicy policy, string tlsName, AsyncNode node, IAsyncCommand command)
+		public AsyncConnectionTls(AsyncNode node, IAsyncCommand command)
 			: base(node, command)
 		{
-			this.policy = policy;
-			this.tlsName = tlsName ?? "";
+			this.node = node;
 
 			try
 			{
@@ -99,7 +97,8 @@ namespace Aerospike.Client
 			{
 				if (args.SocketError == SocketError.Success)
 				{
-					sslStream.BeginAuthenticateAsClient(tlsName, policy.clientCertificates, policy.protocols, false, HandshakeEvent, null);
+					TlsPolicy policy = node.cluster.tlsPolicy;
+					sslStream.BeginAuthenticateAsClient(node.host.tlsName, policy.clientCertificates, policy.protocols, false, HandshakeEvent, null);
 				}
 				else
 				{
@@ -120,7 +119,7 @@ namespace Aerospike.Client
 			SslPolicyErrors sslPolicyErrors
 		)
 		{
-			return TlsConnection.ValidateCertificate(policy, tlsName, cert, sslPolicyErrors);
+			return TlsConnection.ValidateCertificate(node.cluster.tlsPolicy, node.host.tlsName, cert, sslPolicyErrors);
 		}
 
 		private void HandshakeEvent(IAsyncResult result)
