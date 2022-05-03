@@ -210,8 +210,9 @@ namespace Aerospike.Client
 				if (conn == null)
 				{
 					node.IncrAsyncConnTotal();
-					conn = new AsyncConnection(node, this);
-					conn.Connect();
+					// TODO: Support TLS
+					conn = new AsyncConnectionArgs(node, this);
+					conn.Connect(node.address);
 				}
 				else
 				{
@@ -353,7 +354,7 @@ namespace Aerospike.Client
 			{
 				eventReceived = false;
 			}
-			conn.Receive(segment.offset, 8);
+			conn.Receive(dataBuffer, segment.offset, 8);
 		}
 
 		public void ReceiveComplete()
@@ -374,7 +375,7 @@ namespace Aerospike.Client
 				{
 					// Some server versions returned zero length groups for batch/scan/query.
 					// Receive again to retrieve next group.
-					conn.Receive(dataOffset, 8);
+					conn.Receive(dataBuffer, dataOffset, 8);
 					return;
 				}
 
@@ -439,7 +440,7 @@ namespace Aerospike.Client
 		public void ReceiveNext()
 		{
 			inHeader = true;
-			conn.Receive(segment.offset, 8);
+			conn.Receive(dataBuffer, segment.offset, 8);
 		}
 
 		public void OnError(Exception e)

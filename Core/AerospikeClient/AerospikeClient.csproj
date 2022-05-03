@@ -46,6 +46,8 @@
     <Compile Include="..\..\Framework\AerospikeClient\Async\AsyncCluster.cs" Link="Async\AsyncCluster.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Async\AsyncCommand.cs" Link="Async\AsyncCommand.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Async\AsyncConnection.cs" Link="Async\AsyncConnection.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Async\AsyncConnectionArgs.cs" Link="Async\AsyncConnectionArgs.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Async\AsyncConnectionTls.cs" Link="Async\AsyncConnectionTls.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Async\AsyncConnector.cs" Link="Async\AsyncConnector.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Async\AsyncDelete.cs" Link="Async\AsyncDelete.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Async\AsyncExecute.cs" Link="Async\AsyncExecute.cs" />
@@ -67,7 +69,6 @@
     <Compile Include="..\..\Framework\AerospikeClient\Async\AsyncScheduler.cs" Link="Async\AsyncScheduler.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Async\AsyncSingleCommand.cs" Link="Async\AsyncSingleCommand.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Async\AsyncTimeoutQueue.cs" Link="Async\AsyncTimeoutQueue.cs" />
-    <Compile Include="..\..\Framework\AerospikeClient\Async\AsyncTlsConnection.cs" Link="Async\AsyncTlsConnection.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Async\AsyncTouch.cs" Link="Async\AsyncTouch.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Async\AsyncWrite.cs" Link="Async\AsyncWrite.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Async\BufferPool.cs" Link="Async\BufferPool.cs" />

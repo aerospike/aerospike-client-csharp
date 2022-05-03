@@ -173,11 +173,12 @@ namespace Aerospike.Client
 			AsyncTimeoutQueue.Instance.Add(this, cluster.connectionTimeout);
 
 			node.IncrAsyncConnTotal();
-			conn = new AsyncConnection(node, this);
+			// TODO: Support TLS
+			conn = new AsyncConnectionArgs(node, this);
 
 			try
 			{
-				conn.Connect();
+				conn.Connect(node.address);
 			}
 			catch (Exception)
 			{
@@ -201,7 +202,7 @@ namespace Aerospike.Client
 
 		public void SendComplete()
 		{
-			conn.Receive(0, 8);
+			conn.Receive(dataBuffer, 0, 8);
 		}
 
 		public void ReceiveComplete()
@@ -215,7 +216,7 @@ namespace Aerospike.Client
 
 				if (length <= 0)
 				{
-					conn.Receive(dataOffset, 8);
+					conn.Receive(dataBuffer, dataOffset, 8);
 					return;
 				}
 
@@ -228,7 +229,7 @@ namespace Aerospike.Client
 				}
 
 				dataLength = dataOffset + length;
-				conn.Receive(dataOffset, length);
+				conn.Receive(dataBuffer, dataOffset, length);
 			}
 			else
 			{

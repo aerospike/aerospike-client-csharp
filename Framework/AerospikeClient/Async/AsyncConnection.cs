@@ -21,17 +21,16 @@ using System.Net.Sockets;
 namespace Aerospike.Client
 {
 	/// <summary>
-	/// Async connection.
+	/// Async connection base class.
 	/// </summary>
-	public sealed class AsyncConnection : IAsyncConnection
+	public abstract class AsyncConnection
 	{
-		static internal readonly bool ZeroBuffers = !(
+		private static readonly bool ZeroBuffers = !(
 			Environment.OSVersion.Platform == PlatformID.Unix ||
 			Environment.OSVersion.Platform == PlatformID.MacOSX);
 
-		private readonly Socket socket;
-		private readonly SocketAsyncEventArgs args;
-		private IAsyncCommand command;
+		protected readonly Socket socket;
+		protected IAsyncCommand command;
 		private DateTime lastUsed;
 
 		public AsyncConnection(AsyncNode node, IAsyncCommand command)
@@ -68,20 +67,21 @@ namespace Aerospike.Client
 					socket.ReceiveBufferSize = 0;
 				}
 
-				args = new SocketAsyncEventArgs();
-				args.RemoteEndPoint = address;
-				args.Completed += AsyncCompleted;
-
 				lastUsed = DateTime.UtcNow;
 			}
 			catch (Exception e)
 			{
-				socket.Dispose();
-				node.DecrAsyncConnTotal();
-				node.IncrAsyncConnClosed();
-				node.IncrErrorCount();
+				InitError(node);
 				throw new AerospikeException.Connection(e);
 			}
+		}
+
+		protected void InitError(AsyncNode node)
+		{
+			node.DecrAsyncConnTotal();
+			node.IncrAsyncConnClosed();
+			node.IncrErrorCount();
+			socket.Dispose();
 		}
 
 		public IAsyncCommand Command
@@ -90,120 +90,14 @@ namespace Aerospike.Client
 			set {command = value;}
 		}
 
-		public void Connect()
-		{
-			if (!socket.ConnectAsync(args))
-			{
-				ConnectEvent(args);
-			}
-		}
-
-		private void ConnectEvent(SocketAsyncEventArgs args)
-		{
-			if (args.SocketError == SocketError.Success)
-			{
-				command.OnConnected();
-			}
-			else
-			{
-				command.OnSocketError(args.SocketError);
-			}
-		}
-
-		public void Send(byte[] buffer, int offset, int count)
-		{
-			args.SetBuffer(buffer, offset, count);
-			Send();
-		}
-
-		private void Send()
-		{
-			if (!socket.SendAsync(args))
-			{
-				SendEvent(args);
-			}
-		}
-
-		private void SendEvent(SocketAsyncEventArgs args)
-		{
-			if (args.SocketError == SocketError.Success)
-			{
-				int sent = args.BytesTransferred;
-
-				if (sent <= 0)
-				{
-					// When a node has shutdown on linux, async command send events return zero
-					// with SocketError.Success. If zero bytes sent on send, cancel command.
-					command.OnError(new AerospikeException.Connection("Connection closed"));
-					return;
-				}
-
-				if (sent < args.Count)
-				{
-					args.SetBuffer(args.Offset + sent, args.Count - sent);
-					Send();
-					return;
-				}
-
-				command.SendComplete();
-			}
-			else
-			{
-				command.OnSocketError(args.SocketError);
-			}
-		}
-
-		public void Receive(byte[] buffer, int offset, int count)
-		{
-			args.SetBuffer(buffer, offset, count);
-			Receive();
-		}
-
-		public void Receive(int offset, int count)
-		{
-			args.SetBuffer(offset, count);
-			Receive();
-		}
-
-		private void Receive()
-		{
-			if (!socket.ReceiveAsync(args))
-			{
-				ReceiveEvent(args);
-			}
-		}
-
-		private void ReceiveEvent(SocketAsyncEventArgs args)
-		{
-			if (args.SocketError == SocketError.Success)
-			{
-				int received = args.BytesTransferred;
-
-				if (received <= 0)
-				{
-					command.OnError(new AerospikeException.Connection("Connection closed"));
-					return;
-				}
-
-				if (received < args.Count)
-				{
-					args.SetBuffer(args.Offset + received, args.Count - received);
-					Receive();
-					return;
-				}
-
-				command.ReceiveComplete();
-			}
-			else
-			{
-				command.OnSocketError(args.SocketError);
-			}
-		}
+		public abstract void Connect(IPEndPoint address);
+		public abstract void Send(byte[] buffer, int offset, int count);
+		public abstract void Receive(byte[] buffer, int offset, int count);
 
 		public bool IsValid()
 		{
 			return socket.Connected;
-			
+
 			// Poll is much more accurate because sockets reaped by the server or sockets
 			// that have unread data are identified. The problem is Poll decreases overall
 			// benchmark performance by 10%.  Therefore, we will have to rely on retry 
@@ -232,13 +126,12 @@ namespace Aerospike.Client
 			this.lastUsed = DateTime.UtcNow;
 		}
 
-		public void Reset()
+		public virtual void Reset()
 		{
 			command = null;
-			args.SetBuffer(null, 0, 0);
 		}
 
-		public void Close()
+		public virtual void Close()
 		{
 			try
 			{
@@ -251,56 +144,11 @@ namespace Aerospike.Client
 			try
 			{
 				socket.Dispose();
-				args.Dispose();
 			}
 			catch (Exception)
 			{
 			}
 		}
-
-		private void AsyncCompleted(object sender, SocketAsyncEventArgs args)
-		{
-			try
-			{
-				switch (args.LastOperation)
-				{
-					case SocketAsyncOperation.Connect:
-						ConnectEvent(args);
-						break;
-					case SocketAsyncOperation.Send:
-						SendEvent(args);
-						break;
-					case SocketAsyncOperation.Receive:
-						ReceiveEvent(args);
-						break;
-					default:
-						throw new AerospikeException("Invalid socket operation: " + args.LastOperation);
-				}
-			}
-			catch (Exception e)
-			{
-				if (command == null)
-				{
-					Log.Error("Received async event when connection is in pool.");
-					return;
-				}
-
-				try
-				{
-					command.OnError(e);
-				}
-				catch (Exception ne)
-				{
-					Log.Error("OnError failed: " + Util.GetErrorMessage(ne) +
-						System.Environment.NewLine + "Original error: " + Util.GetErrorMessage(e));
-				}
-			}
-		}
-	}
-
-	public interface IAsyncConnection
-	{
-		void Connect();
 	}
 
 	public interface IAsyncCommand
