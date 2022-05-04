@@ -28,7 +28,7 @@ namespace Aerospike.Client
 	public sealed class AsyncConnectionTls : AsyncConnection
 	{
 		private readonly AsyncNode node;
-		private readonly SslStream sslStream;
+		private SslStream sslStream;
 		private byte[] buffer;
 		private int offset;
 		private int count;
@@ -37,16 +37,6 @@ namespace Aerospike.Client
 			: base(node, command)
 		{
 			this.node = node;
-
-			try
-			{
-				sslStream = new SslStream(new NetworkStream(socket, true), false, ValidateServerCertificate);
-			}
-			catch (Exception e)
-			{
-				base.InitError(node);
-				throw new AerospikeException.Connection(e);
-			}
 		}
 
 		public override void Connect(IPEndPoint address)
@@ -100,6 +90,7 @@ namespace Aerospike.Client
 			{
 				if (args.SocketError == SocketError.Success)
 				{
+					sslStream = new SslStream(new NetworkStream(socket, true), false, ValidateServerCertificate);
 					TlsPolicy policy = node.cluster.tlsPolicy;
 					sslStream.BeginAuthenticateAsClient(node.host.tlsName, policy.clientCertificates, policy.protocols, false, HandshakeEvent, null);
 				}
@@ -200,16 +191,6 @@ namespace Aerospike.Client
 
 		public override void Close()
 		{
-			try
-			{
-				// TODO: Test if necessary?
-				// This is not defined in Standard 2.0 api.
-				//sslStream.ShutdownAsync().Wait();
-			}
-			catch (Exception)
-			{
-			}
-
 			try
 			{
 				sslStream.Dispose();
