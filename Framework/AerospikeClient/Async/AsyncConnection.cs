@@ -126,10 +126,7 @@ namespace Aerospike.Client
 			this.lastUsed = DateTime.UtcNow;
 		}
 
-		public virtual void Reset()
-		{
-			command = null;
-		}
+		public abstract void Reset();
 
 		public virtual void Close()
 		{

@@ -29,6 +29,9 @@ namespace Aerospike.Client
 	{
 		private readonly AsyncNode node;
 		private readonly SslStream sslStream;
+		private byte[] buffer;
+		private int offset;
+		private int count;
 
 		public AsyncConnectionTls(AsyncNode node, IAsyncCommand command)
 			: base(node, command)
@@ -155,7 +158,10 @@ namespace Aerospike.Client
 
 		public override void Receive(byte[] buffer, int offset, int count)
 		{
-			sslStream.BeginRead(buffer, offset, count, ReceiveEvent, count);
+			this.buffer = buffer;
+			this.offset = offset;
+			this.count = count;
+			sslStream.BeginRead(buffer, offset, count, ReceiveEvent, null);
 		}
 
 		private void ReceiveEvent(IAsyncResult result)
@@ -170,12 +176,12 @@ namespace Aerospike.Client
 					return;
 				}
 
-				int? expected = result.AsyncState as int?;
-
-				if (received != expected)
+				if (received < count)
 				{
-					// TODO: Add another Receive() call if necessary.
-					command.OnError(new AerospikeException.Connection("Failed to received expected bytes"));
+					offset += received;
+					count -= received;
+					sslStream.BeginRead(buffer, offset, count, ReceiveEvent, null);
+					return;
 				}
 
 				command.ReceiveComplete();
@@ -186,12 +192,18 @@ namespace Aerospike.Client
 			}
 		}
 
+		public override void Reset()
+		{
+			command = null;
+			buffer = null;
+		}
+
 		public override void Close()
 		{
 			try
 			{
 				// TODO: Test if necessary?
-				// This does not work on Standard 2.0 api.
+				// This is not defined in Standard 2.0 api.
 				//sslStream.ShutdownAsync().Wait();
 			}
 			catch (Exception)

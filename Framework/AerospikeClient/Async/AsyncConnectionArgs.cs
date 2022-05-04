@@ -189,7 +189,7 @@ namespace Aerospike.Client
 
 		public override void Reset()
 		{
-			base.Reset();
+			command = null;
 			args.SetBuffer(null, 0, 0);
 		}
 
