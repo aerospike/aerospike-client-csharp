@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2022 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -58,7 +58,7 @@ namespace Aerospike.Client
 			}
 			catch (AerospikeException ae)
 			{
-				if (!tracker.ShouldRetry(ae))
+				if (!tracker.ShouldRetry(nodePartitions, ae))
 				{
 					throw ae;
 				}
@@ -67,15 +67,29 @@ namespace Aerospike.Client
 
 		protected internal override void WriteBuffer()
 		{
-			SetScan(scanPolicy, ns, setName, binNames, taskId, nodePartitions);
+			SetScan(cluster, scanPolicy, ns, setName, binNames, taskId, nodePartitions);
 		}
 
-		protected internal override void ParseRow(Key key)
+		protected internal override void ParseRow()
 		{
+			ulong bval;
+			Key key = ParseKey(fieldCount, out bval);
+
 			if ((info3 & Command.INFO3_PARTITION_DONE) != 0)
 			{
-				tracker.PartitionDone(nodePartitions, generation);
+				// When an error code is received, mark partition as unavailable
+				// for the current round. Unavailable partitions will be retried
+				// in the next round. Generation is overloaded as partitionId.
+				if (resultCode != 0)
+				{
+					tracker.PartitionUnavailable(nodePartitions, generation);
+				}
 				return;
+			}
+
+			if (resultCode != 0)
+			{
+				throw new AerospikeException(resultCode);
 			}
 
 			Record record = ParseRecord();

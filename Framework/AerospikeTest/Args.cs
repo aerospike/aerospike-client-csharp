@@ -1,5 +1,5 @@
 ﻿/* 
- * Copyright 2012-2020 Aerospike, Inc.
+ * Copyright 2012-2022 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -47,6 +47,9 @@ namespace Aerospike.Test
 
 		public Args()
 		{
+			// Disable client log.
+			Log.SetCallback(null);
+
 #if NETFRAMEWORK
             port = Properties.Settings.Default.Port;
 			clusterName = Properties.Settings.Default.ClusterName.Trim();
@@ -101,12 +104,7 @@ namespace Aerospike.Test
         public void Connect()
 		{
 			ConnectSync();
-
-			// SSL only works with synchronous commands.
-			if (tlsPolicy == null)
-			{
-				ConnectAsync();
-			}
+			ConnectAsync();
 		}
 
 		private void ConnectSync()
@@ -139,8 +137,10 @@ namespace Aerospike.Test
 		private void ConnectAsync()
 		{
 			AsyncClientPolicy policy = new AsyncClientPolicy();
-			policy.asyncMaxCommands = 300;
+			policy.clusterName = clusterName;
+			policy.tlsPolicy = tlsPolicy;
 			policy.authMode = authMode;
+			policy.asyncMaxCommands = 300;
 
 			if (user != null && user.Length > 0)
 			{

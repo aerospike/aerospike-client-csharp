@@ -7,7 +7,7 @@
 
     <RootNamespace>Aerospike.Test</RootNamespace>
 
-    <Version>4.2.4</Version>
+    <Version>5.0.0</Version>
 
     <Company>Aerospike</Company>
 
@@ -50,6 +50,7 @@
     <Compile Include="..\..\Framework\AerospikeTest\Sync\Basic\TestAppend.cs" Link="Sync\TestAppend.cs" />
     <Compile Include="..\..\Framework\AerospikeTest\Sync\Basic\TestBatch.cs" Link="Sync\TestBatch.cs" />
     <Compile Include="..\..\Framework\AerospikeTest\Sync\Basic\TestBitExp.cs" Link="Sync\TestBitExp.cs" />
+    <Compile Include="..\..\Framework\AerospikeTest\Sync\Basic\TestCustomParser.cs" Link="Sync\TestCustomParser.cs" />
     <Compile Include="..\..\Framework\AerospikeTest\Sync\Basic\TestDeleteBin.cs" Link="Sync\TestDeleteBin.cs" />
     <Compile Include="..\..\Framework\AerospikeTest\Sync\Basic\TestExpire.cs" Link="Sync\TestExpire.cs" />
     <Compile Include="..\..\Framework\AerospikeTest\Sync\Basic\TestExpOperation.cs" Link="Sync\TestExpOperation.cs" />

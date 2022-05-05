@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2022 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -23,7 +23,7 @@ namespace Aerospike.Client
 	public interface RecordArrayListener
 	{
 		/// <summary>
-		/// This method is called when an asynchronous batch get command completes successfully.
+		/// This method is called when the command completes successfully.
 		/// The returned record array is in positional order with the original key array order.
 		/// </summary>
 		/// <param name="keys">unique record identifiers</param>
@@ -31,9 +31,10 @@ namespace Aerospike.Client
 		void OnSuccess(Key[] keys, Record[] records);
 
 		/// <summary>
-		/// This method is called when an asynchronous batch get command fails.
+		/// This method is called when the command fails. The AerospikeException is likely to be
+		/// <see cref="Aerospike.Client.AerospikeException.BatchRecords"/> which contains results
+		/// for keys that did complete.
 		/// </summary>
-		/// <param name="exception">error that occurred</param>
-		void OnFailure(AerospikeException exception);
+		void OnFailure(AerospikeException ae);
 	}
 }

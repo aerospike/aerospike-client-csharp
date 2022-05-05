@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2022 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -106,6 +106,9 @@ namespace Aerospike.Admin
 
 		private void Login()
 		{
+			// Disable client log.
+			Log.SetCallback(null);
+
 			int port = int.Parse(portBox.Text.Trim());
 			Host[] hosts = Host.ParseHosts(hostBox.Text.Trim(), tlsName, port);
 			string userName = userBox.Text.Trim();

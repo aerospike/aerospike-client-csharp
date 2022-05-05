@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2022 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -23,12 +23,12 @@ namespace Aerospike.Client
 		public const int KEY = 2;
 		public const int DIGEST_RIPE = 4;
 		public const int TRAN_ID = 7; // user supplied transaction id, which is simply passed back
-		public const int SCAN_TIMEOUT = 9;
+		public const int SOCKET_TIMEOUT = 9;
 		public const int RECORDS_PER_SECOND = 10;
 		public const int PID_ARRAY = 11;
 		public const int DIGEST_ARRAY = 12;
-		public const int SCAN_MAX_RECORDS = 13;
-		public const int INDEX_NAME = 21;
+		public const int MAX_RECORDS = 13;
+		public const int BVAL_ARRAY = 15;
 		public const int INDEX_RANGE = 22;
 		public const int INDEX_FILTER = 23;
 		public const int INDEX_LIMIT = 24;
@@ -40,7 +40,6 @@ namespace Aerospike.Client
 		public const int UDF_OP = 33;
 		public const int QUERY_BINLIST = 40;
 		public const int BATCH_INDEX = 41;
-		public const int BATCH_INDEX_WITH_SET = 42;
 		public const int FILTER_EXP = 43;
 	}
 }

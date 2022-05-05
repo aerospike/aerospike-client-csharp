@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2022 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -16,6 +16,7 @@
  */
 using System;
 using System.Collections.Generic;
+using System.Text;
 
 namespace Aerospike.Client
 {
@@ -47,6 +48,28 @@ namespace Aerospike.Client
 		public int InvalidCount
 		{
 			get { return invalidHosts.Count; }
+		}
+
+		public void ClusterInitError()
+		{
+			StringBuilder sb = new StringBuilder();
+			sb.Append("Peers not reachable: ");
+
+			bool comma = false;
+
+			foreach (Host host in invalidHosts)
+			{
+				if (comma)
+				{
+					sb.Append(", ");
+				}
+				else
+				{
+					comma = true;
+				}
+				sb.Append(host);
+			}
+			throw new AerospikeException(sb.ToString());
 		}
 	}
 

@@ -1,5 +1,5 @@
-/* 
- * Copyright 2012-2018 Aerospike, Inc.
+﻿/* 
+ * Copyright 2012-2022 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -14,17 +14,25 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using System.Net.Sockets;
+using System.Threading;
 
 namespace Aerospike.Client
 {
-	internal abstract class AsyncCommandQueueBase
+	internal sealed class BatchRecordArrayListenerAdapter : ListenerAdapter<BatchResults>, BatchRecordArrayListener
 	{
-		// Releases a SocketEventArgs object to the pool.
-		public abstract void ReleaseArgs(SocketAsyncEventArgs e);
+		public BatchRecordArrayListenerAdapter(CancellationToken token)
+			: base(token)
+		{
+		}
 
-		// Schedules a command for later execution.
-		// Throws <see cref="AerospikeException.CommandRejected"/> if command is rejected.
-		public abstract void ScheduleCommand(AsyncCommand command);
+		public void OnSuccess(BatchRecord[] records, bool status)
+		{
+			SetResult(new BatchResults(records, status));
+		}
+
+		public void OnFailure(BatchRecord[] records, AerospikeException ae)
+		{
+			OnFailure(new AerospikeException.BatchRecordArray(records, ae));
+		}
 	}
 }

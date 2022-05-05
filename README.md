@@ -1,7 +1,7 @@
 Aerospike C# Client Package
 ===========================
 
-Aerospike C# client for NET Framework (4.5+) and NET Core (2.0+).
+Aerospike C# client for NET Framework (4.7.2+) and NET Core (2.0+).
 
 **NET Framework**
 

@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2022 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -17,24 +17,28 @@
 using System;
 using System.Net;
 using System.Net.Sockets;
-using System.Threading;
 
 namespace Aerospike.Client
 {
 	/// <summary>
-	/// Asynchronous socket channel connection wrapper.
+	/// Async connection base class.
 	/// </summary>
-	public sealed class AsyncConnection
+	public abstract class AsyncConnection
 	{
-		private readonly static bool ZeroBuffers = !(
+		private static readonly bool ZeroBuffers = !(
 			Environment.OSVersion.Platform == PlatformID.Unix ||
 			Environment.OSVersion.Platform == PlatformID.MacOSX);
 
-		private readonly Socket socket;
+		protected readonly Socket socket;
+		protected IAsyncCommand command;
 		private DateTime lastUsed;
 
-		public AsyncConnection(IPEndPoint address, AsyncNode node)
+		public AsyncConnection(AsyncNode node, IAsyncCommand command)
 		{
+			this.command = command;
+
+			IPEndPoint address = node.address;
+
 			try
 			{
 				socket = new Socket(address.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
@@ -67,36 +71,33 @@ namespace Aerospike.Client
 			}
 			catch (Exception e)
 			{
-				socket.Dispose();
-				node.DecrAsyncConnTotal();
-				node.IncrAsyncConnClosed();
-				node.IncrErrorCount();
+				InitError(node);
 				throw new AerospikeException.Connection(e);
 			}
 		}
 
-		public bool ConnectAsync(SocketAsyncEventArgs args)
+		protected void InitError(AsyncNode node)
 		{
-			return socket.ConnectAsync(args);
+			node.DecrAsyncConnTotal();
+			node.IncrAsyncConnClosed();
+			node.IncrErrorCount();
+			socket.Dispose();
 		}
 
-		public bool SendAsync(SocketAsyncEventArgs args)
+		public IAsyncCommand Command
 		{
-			return socket.SendAsync(args);
+			get {return command;}
+			set {command = value;}
 		}
 
-		public bool ReceiveAsync(SocketAsyncEventArgs args)
-		{
-			return socket.ReceiveAsync(args);
-		}
+		public abstract void Connect(IPEndPoint address);
+		public abstract void Send(byte[] buffer, int offset, int count);
+		public abstract void Receive(byte[] buffer, int offset, int count);
 
-		/// <summary>
-		/// Is socket connected and used within specified limits.
-		/// </summary>
 		public bool IsValid()
 		{
 			return socket.Connected;
-			
+
 			// Poll is much more accurate because sockets reaped by the server or sockets
 			// that have unread data are identified. The problem is Poll decreases overall
 			// benchmark performance by 10%.  Therefore, we will have to rely on retry 
@@ -125,10 +126,9 @@ namespace Aerospike.Client
 			this.lastUsed = DateTime.UtcNow;
 		}
 
-		/// <summary>
-		/// Shutdown and close socket.
-		/// </summary>
-		public void Close()
+		public abstract void Reset();
+
+		public virtual void Close()
 		{
 			try
 			{
@@ -137,7 +137,23 @@ namespace Aerospike.Client
 			catch (Exception)
 			{
 			}
-			socket.Dispose();
+
+			try
+			{
+				socket.Dispose();
+			}
+			catch (Exception)
+			{
+			}
 		}
+	}
+
+	public interface IAsyncCommand
+	{
+		void OnConnected();
+		void SendComplete();
+		void ReceiveComplete();
+		void OnSocketError(SocketError se);
+		void OnError(Exception e);
 	}
 }

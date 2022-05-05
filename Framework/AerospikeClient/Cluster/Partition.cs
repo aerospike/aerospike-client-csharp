@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2022 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -90,6 +90,28 @@ namespace Aerospike.Client
 				default:
 					return policy.replica;
 			}
+		}
+
+		public static Node GetNodeBatchWrite
+		(
+			Cluster cluster,
+			Key key,
+			Replica replica,
+			Node prevNode,
+			uint sequence
+		)
+		{
+			Dictionary<string, Partitions> map = cluster.partitionMap;
+			Partitions partitions;
+
+			if (!map.TryGetValue(key.ns, out partitions))
+			{
+				throw new AerospikeException.InvalidNamespace(key.ns, map.Count);
+			}
+
+			Partition p = new Partition(partitions, key, replica, prevNode, false);
+			p.sequence = sequence;
+			return p.GetNodeWrite(cluster);
 		}
 
 		public static Node GetNodeBatchRead

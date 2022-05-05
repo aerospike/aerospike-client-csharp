@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2022 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -14,9 +14,6 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using System;
-using System.Collections.Generic;
-using System.Reflection;
 using Aerospike.Client;
 
 namespace Aerospike.Demo
@@ -33,6 +30,8 @@ namespace Aerospike.Demo
 			AsyncClientPolicy policy = new AsyncClientPolicy();
 			policy.user = args.user;
 			policy.password = args.password;
+			policy.clusterName = args.clusterName;
+			policy.tlsPolicy = args.tlsPolicy;
 			policy.authMode = args.authMode;
 			policy.asyncMaxCommands = args.commandMax;
 			policy.failIfNotConnected = true;

@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2022 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -123,8 +123,21 @@ namespace Aerospike.Client
 		// Is authentication enabled
 		public readonly bool authEnabled;
 
+		// Does cluster support query by partition.
+		internal bool hasPartitionQuery;
+
 		public Cluster(ClientPolicy policy, Host[] hosts)
 		{
+			// Disable log subscribe requirement to avoid a breaking change in a minor release.
+			// TODO: Reintroduce requirement in the next major client release.
+			/*
+			if (!Log.IsSet())
+			{
+				throw new AerospikeException("Log.SetCallback() or Log.SetCallbackStandard() must be called." + System.Environment.NewLine +
+					"See https://developer.aerospike.com/client/csharp/usage/logging for details.");
+			}
+			*/
+
 			this.clusterName = policy.clusterName;
 			tlsPolicy = policy.tlsPolicy;
 			this.authMode = policy.authMode;
@@ -255,7 +268,8 @@ namespace Aerospike.Client
 			List<Host> seedsToAdd = new List<Host>(nodes.Length);
 			foreach (Node node in nodes)
 			{
-				Host host = node.Host;
+				Host host = node.host;
+
 				if (!FindSeed(host))
 				{
 					seedsToAdd.Add(host);
@@ -322,7 +336,7 @@ namespace Aerospike.Client
 		{
 			// Tend now requests partition maps in same iteration as the nodes
 			// are added, so there is no need to call tend twice anymore.
-			Tend(failIfNotConnected);
+			Tend(failIfNotConnected, true);
 
 			if (nodes.Length == 0)
 			{
@@ -346,7 +360,7 @@ namespace Aerospike.Client
 				// Tend cluster.
 				try
 				{
-					Tend(false);
+					Tend(false, false);
 				}
 				catch (Exception e)
 				{
@@ -376,7 +390,7 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Check health of all nodes in the cluster.
 		/// </summary>
-		private void Tend(bool failIfNotConnected)
+		private void Tend(bool failIfNotConnected, bool isInit)
 		{
 			// Initialize tend iteration node statistics.
 			Peers peers = new Peers(nodes.Length + 16);
@@ -394,6 +408,12 @@ namespace Aerospike.Client
 			if (nodes.Length == 0)
 			{
 				SeedNode(peers, failIfNotConnected);
+
+				// Abort cluster init if all peers of the seed are not reachable and failIfNotConnected is true.
+				if (isInit && failIfNotConnected && nodes.Length == 1 && peers.InvalidCount > 0)
+				{
+					peers.ClusterInitError();
+				}
 			}
 			else
 			{
@@ -689,6 +709,7 @@ namespace Aerospike.Client
 				nodeArray[count++] = peer;
 				AddNode(peer);
 			}
+			hasPartitionQuery = Cluster.SupportsPartitionQuery(nodeArray);
 
 			// Replace nodes with copy.
 			nodes = nodeArray;
@@ -716,6 +737,7 @@ namespace Aerospike.Client
 				nodeArray[count++] = node;
 				AddNode(node);
 			}
+			hasPartitionQuery = Cluster.SupportsPartitionQuery(nodeArray);
 
 			// Replace nodes with copy.
 			nodes = nodeArray;
@@ -812,6 +834,7 @@ namespace Aerospike.Client
 				Array.Copy(nodeArray, 0, nodeArray2, 0, count);
 				nodeArray = nodeArray2;
 			}
+			hasPartitionQuery = Cluster.SupportsPartitionQuery(nodeArray);
 
 			// Replace nodes with copy.
 			nodes = nodeArray;
@@ -837,6 +860,11 @@ namespace Aerospike.Client
 		internal bool IsConnCurrentTrim(DateTime lastUsed)
 		{
 			return DateTime.UtcNow.Subtract(lastUsed).TotalMilliseconds <= maxSocketIdleMillisTrim;
+		}
+
+		internal bool UseTls()
+		{
+			return tlsPolicy != null && !tlsPolicy.forLoginOnly;
 		}
 
 		public ClusterStats GetStats()
@@ -1012,6 +1040,23 @@ namespace Aerospike.Client
 			this.errorRateWindow = window;
 		}
 
+		private static bool SupportsPartitionQuery(Node[] nodes)
+		{
+			if (nodes.Length == 0)
+			{
+				return false;
+			}
+
+			foreach (Node node in nodes)
+			{
+				if (!node.HasPartitionQuery)
+				{
+					return false;
+				}
+			}
+			return true;
+		}
+		
 		/// <summary>
 		/// Return count of add node failures in the most recent cluster tend iteration.
 		/// </summary>

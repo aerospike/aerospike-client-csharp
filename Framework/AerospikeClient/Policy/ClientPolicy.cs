@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2022 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -160,10 +160,21 @@ namespace Aerospike.Client
 		/// <para>Default: 1000</para>
 		/// </summary>
 		public int tendInterval = 1000;
-	
+
 		/// <summary>
-		/// Throw exception if all seed connections fail on cluster instantiation.
-		/// <para>Default: true</para>
+		/// Should cluster instantiation fail if the client fails to connect to a seed or
+		/// all the seed's peers.
+		/// <para>
+		/// If true, throw an exception if all seed connections fail or a seed is valid,
+		/// but all peers from that seed are not reachable.
+		/// </para>
+		/// <para>
+		/// If false, a partial cluster will be created and the client will automatically connect
+		/// to the remaining nodes when they become available.
+		/// </para>
+		/// <para>
+		/// Default: true
+		/// </para>
 		/// </summary>
 		public bool failIfNotConnected = true;
 
@@ -188,10 +199,33 @@ namespace Aerospike.Client
 		public QueryPolicy queryPolicyDefault = new QueryPolicy();
 
 		/// <summary>
-		/// Default batch policy that is used when batch command's policy is null.
+		///  Default parent policy used in batch read commands. Parent policy fields
+		///  include socketTimeout, totalTimeout, maxRetries, etc...
 		/// </summary>
-		public BatchPolicy batchPolicyDefault = new BatchPolicy();
+		public BatchPolicy batchPolicyDefault = BatchPolicy.ReadDefault();
 
+		/// <summary>
+		/// Default parent policy used in batch write commands. Parent policy fields
+		/// include socketTimeout, totalTimeout, maxRetries, etc...
+		/// </summary>
+		public BatchPolicy batchParentPolicyWriteDefault = BatchPolicy.WriteDefault();
+
+		/// <summary>
+		/// Default write policy used in batch operate commands.
+		/// Write policy fields include generation, expiration, durableDelete, etc...
+		/// </summary>
+		public BatchWritePolicy batchWritePolicyDefault = new BatchWritePolicy();
+
+		/// <summary>
+		/// Default delete policy used in batch delete commands.
+		/// </summary>
+		public BatchDeletePolicy batchDeletePolicyDefault = new BatchDeletePolicy();
+
+		/// <summary>
+		/// Default user defined function policy used in batch UDF excecute commands.
+		/// </summary>
+		public BatchUDFPolicy batchUDFPolicyDefault = new BatchUDFPolicy();
+		
 		/// <summary>
 		/// Default info policy that is used when info command's policy is null.
 		/// </summary>
@@ -288,6 +322,10 @@ namespace Aerospike.Client
 			this.scanPolicyDefault = new ScanPolicy(other.scanPolicyDefault);
 			this.queryPolicyDefault = new QueryPolicy(other.queryPolicyDefault);
 			this.batchPolicyDefault = new BatchPolicy(other.batchPolicyDefault);
+			this.batchParentPolicyWriteDefault = new BatchPolicy(other.batchParentPolicyWriteDefault);
+			this.batchWritePolicyDefault = new BatchWritePolicy(other.batchWritePolicyDefault);
+			this.batchDeletePolicyDefault = new BatchDeletePolicy(other.batchDeletePolicyDefault);
+			this.batchUDFPolicyDefault = new BatchUDFPolicy(other.batchUDFPolicyDefault);
 			this.infoPolicyDefault = new InfoPolicy(other.infoPolicyDefault);
 			this.tlsPolicy = (other.tlsPolicy != null) ? new TlsPolicy(other.tlsPolicy) : null;
 			this.ipMap = other.ipMap;

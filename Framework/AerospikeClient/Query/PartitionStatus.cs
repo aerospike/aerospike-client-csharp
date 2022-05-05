@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2022 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -21,13 +21,15 @@ namespace Aerospike.Client
 	[Serializable]
 	public sealed class PartitionStatus
 	{
+		public ulong bval;
 		public byte[] digest;
 		public readonly int id;
-		public bool done;
+		public bool retry;
 
 		public PartitionStatus(int id)
 		{
 			this.id = id;
+			this.retry = true;
 		}
 	}
 }

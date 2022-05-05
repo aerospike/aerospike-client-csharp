@@ -1,5 +1,5 @@
-/* 
- * Copyright 2012-2018 Aerospike, Inc.
+﻿/* 
+ * Copyright 2012-2022 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -14,26 +14,23 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using System.Collections.Concurrent;
-using System.Net.Sockets;
+using System.Collections.Generic;
+using System.Threading;
 
 namespace Aerospike.Client
 {
-	internal sealed class AsyncCommandBlockingQueue : AsyncCommandQueueBase
+	internal sealed class BatchOperateListListenerAdapter : ListenerAdapter<bool>, BatchOperateListListener
 	{
-		private readonly BlockingCollection<SocketAsyncEventArgs> argsQueue = new BlockingCollection<SocketAsyncEventArgs>();
-
-		// Releases a SocketEventArgs object to the pool.
-		public override void ReleaseArgs(SocketAsyncEventArgs e)
+		public BatchOperateListListenerAdapter(CancellationToken token)
+			: base(token)
 		{
-			argsQueue.Add(e);
 		}
 
-		// Schedules a command for later execution.
-		public override void ScheduleCommand(AsyncCommand command)
+		public void OnSuccess(List<BatchRecord> records, bool status)
 		{
-			// Block until EventArgs becomes available.
-			command.ExecuteInline(argsQueue.Take());
+			// records is an argument to the async call, so the user already has access to it.
+			// Set completion status: true if all batch sub-transactions were successful.
+			SetResult(status);
 		}
 	}
 }

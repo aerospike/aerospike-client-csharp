@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2022 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -60,6 +60,7 @@ namespace Aerospike.Client
 
 		private static Level LogLevel = Level.INFO;
 		private static Callback LogCallback = null;
+		private static bool LogCallbackSet = false;
 
 		/// <summary>
 		/// Set log level filter.
@@ -71,13 +72,13 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
-		/// Set optional log callback implementation. If the callback is not defined (or null), 
-		/// log messages will not be displayed.
+		/// Set log callback. To silence the log, set callback to null.
 		/// </summary>
-		/// <param name="callback"><seealso cref="Callback"/> implementation</param>
+		/// <param name="callback"><seealso cref="Callback"/>implementation</param>
 		public static void SetCallback(Callback callback)
 		{
 			LogCallback = callback;
+			LogCallbackSet = true;
 		}
 
 		/// <summary>
@@ -86,6 +87,14 @@ namespace Aerospike.Client
 		public static void SetCallbackStandard()
 		{
 			new Log.Standard();
+		}
+
+		/// <summary>
+		/// Determine if log callback has been set by the user.
+		/// </summary>
+		public static bool IsSet()
+		{
+			return LogCallbackSet;
 		}
 
 		/// <summary>

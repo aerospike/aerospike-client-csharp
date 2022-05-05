@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2022 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -21,6 +21,16 @@ namespace Aerospike.Client
 	/// </summary>
 	public sealed class ResultCode
 	{
+		/// <summary>
+		/// One or more keys failed in a batch.
+		/// </summary>
+		public const int BATCH_FAILED = -16;
+
+		/// <summary>
+		/// No response received from server.
+		/// </summary>
+		public const int NO_RESPONSE = -15;
+
 		/// <summary>
 		/// Max errors limit reached.
 		/// </summary>
@@ -451,6 +461,12 @@ namespace Aerospike.Client
 		{
 			switch (resultCode)
 			{
+			case BATCH_FAILED:
+				return "One or more keys failed in a batch";
+
+			case NO_RESPONSE:
+				return "No response received from server";
+
 			case MAX_ERROR_RATE:
 				return "Max error rate exceeded";
 

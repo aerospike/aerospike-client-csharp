@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2022 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -21,6 +21,7 @@ namespace Aerospike.Client
 	public sealed class QueryPartitionCommand : MultiCommand
 	{
 		private readonly Statement statement;
+		private readonly ulong taskId;
 		private readonly RecordSet recordSet;
 		private readonly PartitionTracker tracker;
 		private readonly NodePartitions nodePartitions;
@@ -31,12 +32,14 @@ namespace Aerospike.Client
 			Node node,
 			Policy policy,
 			Statement statement,
+			ulong taskId,
 			RecordSet recordSet,
 			PartitionTracker tracker,
 			NodePartitions nodePartitions
 		) : base(cluster, policy, nodePartitions.node, statement.ns, tracker.socketTimeout, tracker.totalTimeout)
 		{
 			this.statement = statement;
+			this.taskId = taskId;
 			this.recordSet = recordSet;
 			this.tracker = tracker;
 			this.nodePartitions = nodePartitions;
@@ -50,7 +53,7 @@ namespace Aerospike.Client
 			}
 			catch (AerospikeException ae)
 			{
-				if (!tracker.ShouldRetry(ae))
+				if (!tracker.ShouldRetry(nodePartitions, ae))
 				{
 					throw ae;
 				}
@@ -59,15 +62,29 @@ namespace Aerospike.Client
 
 		protected internal override void WriteBuffer()
 		{
-			SetQuery(policy, statement, false, nodePartitions);
+			SetQuery(cluster, policy, statement, taskId, false, nodePartitions);
 		}
 
-		protected internal override void ParseRow(Key key)
+		protected internal override void ParseRow()
 		{
+			ulong bval;
+			Key key = ParseKey(fieldCount, out bval);
+
 			if ((info3 & Command.INFO3_PARTITION_DONE) != 0)
 			{
-				tracker.PartitionDone(nodePartitions, generation);
+				// When an error code is received, mark partition as unavailable
+				// for the current round. Unavailable partitions will be retried
+				// in the next round. Generation is overloaded as partitionId.
+				if (resultCode != 0)
+				{
+					tracker.PartitionUnavailable(nodePartitions, generation);
+				}
 				return;
+			}
+
+			if (resultCode != 0)
+			{
+				throw new AerospikeException(resultCode);
 			}
 
 			Record record = ParseRecord();
@@ -83,7 +100,7 @@ namespace Aerospike.Client
 				throw new AerospikeException.QueryTerminated();
 			}
 
-			tracker.SetDigest(nodePartitions, key);
+			tracker.SetLast(nodePartitions, key, bval);
 		}
 	}
 }

@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2020 Aerospike, Inc.
+ * Copyright 2012-2022 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -24,6 +24,7 @@ namespace Aerospike.Client
 		protected internal readonly Cluster cluster;
 		protected internal readonly QueryPolicy policy;
 		protected internal readonly Statement statement;
+		protected internal readonly ulong taskId;
 		private readonly Node[] nodes;
 		private readonly QueryThread[] threads;
 		protected internal readonly CancellationTokenSource cancel;
@@ -37,6 +38,7 @@ namespace Aerospike.Client
 			this.cluster = cluster;
 			this.policy = policy;
 			this.statement = statement;
+			this.taskId = statement.PrepareTaskId();
 			this.nodes = nodes;
 			this.threads = new QueryThread[nodes.Length];
 			this.cancel = new CancellationTokenSource();

@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2020 Aerospike, Inc.
+ * Copyright 2012-2022 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -16,9 +16,14 @@
  */
 namespace Aerospike.Client
 {
-	public interface AsyncExecutor
-	{
-		void ChildSuccess(AsyncNode node);
-		void ChildFailure(AerospikeException ae);
-	}
+	/// <summary>
+	/// This method will be called for each record returned from a sync query. The user may throw a 
+	/// <see cref="Aerospike.Client.AerospikeException.QueryTerminated"/> exception if the query
+	/// should be aborted. If an exception is thrown, parallel query command threads to other nodes
+	/// will also be terminated.
+	/// </summary>
+	/// <param name="key">unique record identifier</param>
+	/// <param name="record">record instance</param>
+	/// <exception cref="AerospikeException">if error occurs or query should be terminated</exception>
+	public delegate void QueryListener(Key key, Record record);
 }

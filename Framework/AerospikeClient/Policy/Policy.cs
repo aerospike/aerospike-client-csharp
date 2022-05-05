@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2022 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -51,26 +51,8 @@ namespace Aerospike.Client
 		public Replica replica = Replica.SEQUENCE;
 
 		/// <summary>
-		/// Optional predicate expression filter in postfix notation. If the predicate
-		/// expression exists and evaluates to false, the transaction is ignored.
-		/// <para>
-		/// predExp and filterExp are mutually exclusive.  If both are defined, predExp
-		/// will be ignored.
-		/// </para>
-		/// <para>
-		/// Default: null
-		/// </para>
-		/// </summary>
-		[Obsolete("predExp is deprecated. Use 'Policy.filterExp' instead.")]
-		public PredExp[] predExp;
-
-		/// <summary>
 		/// Optional expression filter. If filterExp exists and evaluates to false, the
 		/// transaction is ignored.
-		/// <para>
-		/// predExp and filterExp are mutually exclusive.  If both are defined, predExp
-		/// will be ignored.
-		/// </para>
 		/// <para>
 		/// Default: null
 		/// </para>
@@ -238,7 +220,6 @@ namespace Aerospike.Client
 			this.readModeAP = other.readModeAP;
 			this.readModeSC = other.readModeSC;
 			this.replica = other.replica;
-			this.predExp = other.predExp;
 			this.filterExp = other.filterExp;
 			this.socketTimeout = other.socketTimeout;
 			this.totalTimeout = other.totalTimeout;
@@ -281,31 +262,6 @@ namespace Aerospike.Client
 			{
 				this.socketTimeout = totalTimeout;
 			}
-		}
-
-		/// <summary>
-		/// Set predicate expression filter in postfix notation. If the predicate
-		/// expression exists and evaluates to false, the transaction is ignored.
-		/// <para>
-		/// Postfix notation is described here:
-		/// <a href="http://wiki.c2.com/?PostfixNotation">http://wiki.c2.com/?PostfixNotation</a>
-		/// </para>
-		/// <para>
-		/// Example:
-		/// <pre>
-		/// // Record last update time > 2017-01-15
-		/// policy.SetPredExp(
-		///   PredExp.RecLastUpdate(),
-		///   PredExp.IntegerValue(new DateTime(2017, 1, 15)),
-		///   PredExp.IntegerGreater(),
-		/// ); 
-		/// </pre>
-		/// </para>
-		/// </summary>
-		[Obsolete("SetPredExp is deprecated. Use 'Policy.filterExp' instead.")]
-		public void SetPredExp(params PredExp[] predExp)
-		{
-			this.predExp = predExp;
 		}
 	}
 }

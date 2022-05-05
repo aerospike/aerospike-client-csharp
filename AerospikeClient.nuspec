@@ -2,7 +2,7 @@
 <package>
   <metadata>
     <id>Aerospike.Client</id>
-    <version>4.2.4</version>
+    <version>5.0.0</version>
     <title>Official Aerospike C# Client</title>
     <authors>Aerospike</authors>
     <owners>Aerospike</owners>
@@ -11,10 +11,10 @@
     <icon>icon.png</icon>
     <requireLicenseAcceptance>false</requireLicenseAcceptance>
     <description>Aerospike C# Client Library</description>
-    <copyright>Copyright 2012-2021 Aerospike, Inc.</copyright>
+    <copyright>Copyright 2012-2022 Aerospike, Inc.</copyright>
     <tags>Aerospike database C# client</tags>
     <dependencies>
-      <group targetFramework="net452">
+      <group targetFramework="net472">
         <dependency id="NeoLua" version="[1.3.13]" />
         <dependency id="Zlib.Portable.Signed" version="[1.11.0, )" />
       </group>
@@ -26,7 +26,7 @@
     </dependencies>
   </metadata>
   <files>
-    <file src="Framework\AerospikeClient\bin\Release\AerospikeClient.dll" target="lib\net452" />
+    <file src="Framework\AerospikeClient\bin\Release\AerospikeClient.dll" target="lib\net472" />
     <file src="Core\AerospikeClient\bin\Release\netstandard2.0\AerospikeClient.dll" target="lib\netstandard" />
     <file src="icon.png" target="" />
   </files>

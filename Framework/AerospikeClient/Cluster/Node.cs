@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2022 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -33,13 +33,15 @@ namespace Aerospike.Client
 
 		public const int HAS_PARTITION_SCAN = (1 << 0);
 		public const int HAS_QUERY_SHOW = (1 << 1);
+		public const int HAS_BATCH_ANY = (1 << 2);
+		public const int HAS_PARTITION_QUERY = (1 << 3);
 
 		private static readonly string[] INFO_PERIODIC = new string[] { "node", "peers-generation", "partition-generation" };
 		private static readonly string[] INFO_PERIODIC_REB = new string[] { "node", "peers-generation", "partition-generation", "rebalance-generation" }; 
 
 		protected internal readonly Cluster cluster;
 		private readonly string name;
-		private readonly Host host;
+		protected internal readonly Host host;
 		protected internal readonly List<Host> aliases;
 		protected internal readonly IPEndPoint address;
 		private Connection tendConnection;
@@ -130,7 +132,7 @@ namespace Aerospike.Client
 			{
 				if (tendConnection.IsClosed())
 				{
-					tendConnection = CreateConnection(host.tlsName, address, cluster.connectionTimeout, null);
+					tendConnection = CreateConnection(cluster.connectionTimeout, null);
 
 					if (cluster.authEnabled)
 					{
@@ -566,7 +568,7 @@ namespace Aerospike.Client
 
 			try
 			{
-				conn = CreateConnection(host.tlsName, address, cluster.connectionTimeout, pool);
+				conn = CreateConnection(cluster.connectionTimeout, pool);
 			}
 			catch (Exception)
 			{
@@ -652,7 +654,7 @@ namespace Aerospike.Client
 					// Create new connection.
 					try
 					{
-						conn = CreateConnection(host.tlsName, address, timeoutMillis, pool);
+						conn = CreateConnection(timeoutMillis, pool);
 					}
 					catch (Exception)
 					{
@@ -717,12 +719,12 @@ namespace Aerospike.Client
 				"Node " + this + " max connections " + cluster.maxConnsPerNode + " would be exceeded.");
 		}
 
-		private Connection CreateConnection(string tlsName, IPEndPoint address, int timeout, Pool<Connection> pool)
+		private Connection CreateConnection(int timeout, Pool<Connection> pool)
 		{
 			try
 			{
-				Connection conn = (cluster.tlsPolicy != null && !cluster.tlsPolicy.forLoginOnly) ?
-					new TlsConnection(cluster.tlsPolicy, tlsName, address, timeout, pool) :
+				Connection conn = cluster.UseTls() ?
+					new TlsConnection(cluster.tlsPolicy, host.tlsName, address, timeout, pool) :
 					new Connection(address, timeout, pool);
 
 				Interlocked.Increment(ref connsOpened);
@@ -923,6 +925,16 @@ namespace Aerospike.Client
 		public bool HasQueryShow
 		{
 			get { return (features & HAS_QUERY_SHOW) != 0; }
+		}
+
+		public bool HasBatchAny
+		{
+			get { return (features & HAS_BATCH_ANY) != 0; }
+		}
+
+		public bool HasPartitionQuery
+		{
+			get { return (features & HAS_PARTITION_QUERY) != 0; }
 		}
 
 		/// <summary>

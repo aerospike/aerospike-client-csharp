@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2022 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -15,7 +15,6 @@
  * the License.
  */
 using System;
-using System.Collections.Generic;
 
 namespace Aerospike.Client
 {
@@ -33,7 +32,6 @@ namespace Aerospike.Client
 		protected internal int batchIndex;
 		protected internal int fieldCount;
 		protected internal int opCount;
-		private readonly bool isBatch;
 		protected internal readonly bool isOperation;
 		private readonly bool first;
 		protected internal volatile bool valid = true;
@@ -41,11 +39,10 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Batch and server execute constructor.
 		/// </summary>
-		protected internal MultiCommand(Cluster cluster, Policy policy, Node node, bool isBatch, bool isOperation)
+		protected internal MultiCommand(Cluster cluster, Policy policy, Node node, bool isOperation)
 			: base(cluster, policy)
 		{
 			this.node = node;
-			this.isBatch = isBatch;
 			this.isOperation = isOperation;
 			this.ns = null;
 			this.clusterKey = 0;
@@ -59,7 +56,6 @@ namespace Aerospike.Client
 			: base(cluster, policy, socketTimeout, totalTimeout)
 		{
 			this.node = node;
-			this.isBatch = false;
 			this.isOperation = false;
 			this.ns = ns;
 			this.clusterKey = 0;
@@ -73,7 +69,6 @@ namespace Aerospike.Client
 			: base(cluster, policy, policy.socketTimeout, policy.totalTimeout)
 		{
 			this.node = node;
-			this.isBatch = false;
 			this.isOperation = false;
 			this.ns = ns;
 			this.clusterKey = clusterKey;
@@ -198,26 +193,14 @@ namespace Aerospike.Client
 				dataOffset += 2;
 				resultCode = dataBuffer[dataOffset];
 
-				// The only valid server return codes are "ok" and "not found".
-				// If other return codes are received, then abort the batch.
-				if (resultCode != 0)
-				{
-					if (resultCode == ResultCode.KEY_NOT_FOUND_ERROR || resultCode == ResultCode.FILTERED_OUT)
-					{
-						if (!isBatch)
-						{
-							return false;
-						}
-					}
-					else
-					{
-						throw new AerospikeException(resultCode);
-					}
-				}
-
-				// If this is the end marker of the response, do not proceed further
+				// If this is the end marker of the response, do not proceed further.
 				if ((info3 & Command.INFO3_LAST) != 0)
 				{
+					if (resultCode != 0)
+					{
+						// The server returned a fatal error.
+						throw new AerospikeException(resultCode);
+					}
 					return false;
 				}
 
@@ -233,20 +216,13 @@ namespace Aerospike.Client
 				opCount = ByteUtil.BytesToShort(dataBuffer, dataOffset);
 				dataOffset += 2;
 
-				if (isBatch)
-				{
-					SkipKey(fieldCount);
-					ParseRow(null);
-				}
-				else
-				{
-					Key key = ParseKey(fieldCount);
-					ParseRow(key);
-				}
+				ParseRow();
 			}
 			return true;
 		}
-		
+
+		protected internal abstract void ParseRow();
+
 		protected internal Record ParseRecord()
 		{
 			if (opCount <= 0)
@@ -256,7 +232,7 @@ namespace Aerospike.Client
 
 			return policy.recordParser.ParseRecord(dataBuffer, ref dataOffset, opCount, generation, expiration, isOperation);
 		}
-		
+
 		public void Stop()
 		{
 			valid = false;
@@ -266,7 +242,5 @@ namespace Aerospike.Client
 		{
 			return valid;
 		}
-
-		protected internal abstract void ParseRow(Key key);
 	}
 }

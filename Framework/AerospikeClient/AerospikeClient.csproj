@@ -10,7 +10,7 @@
     <AppDesignerFolder>Properties</AppDesignerFolder>
     <RootNamespace>Aerospike.Client</RootNamespace>
     <AssemblyName>AerospikeClient</AssemblyName>
-    <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
+    <TargetFrameworkVersion>v4.7.2</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <TargetFrameworkProfile />
   </PropertyGroup>
@@ -167,6 +167,8 @@
     <Compile Include="Admin\Role.cs" />
     <Compile Include="Admin\User.cs" />
     <Compile Include="AsyncTask\BatchListListenerAdapter.cs" />
+    <Compile Include="AsyncTask\BatchOperateListListenerAdapter.cs" />
+    <Compile Include="AsyncTask\BatchRecordArrayListenerAdapter.cs" />
     <Compile Include="AsyncTask\DeleteListenerAdapter.cs" />
     <Compile Include="AsyncTask\ExecuteListenerAdapter.cs" />
     <Compile Include="AsyncTask\ExistsArrayListenerAdapter.cs" />
@@ -180,11 +182,10 @@
     <Compile Include="Async\AsyncClientPolicy.cs" />
     <Compile Include="Async\AsyncCluster.cs" />
     <Compile Include="Async\AsyncCommand.cs" />
-    <Compile Include="Async\AsyncCommandBlockingQueue.cs" />
-    <Compile Include="Async\AsyncCommandDelayingQueue.cs" />
-    <Compile Include="Async\AsyncCommandQueueBase.cs" />
-    <Compile Include="Async\AsyncCommandRejectingQueue.cs" />
     <Compile Include="Async\AsyncConnection.cs" />
+    <Compile Include="Async\AsyncConnectionTls.cs" />
+    <Compile Include="Async\AsyncScheduler.cs" />
+    <Compile Include="Async\AsyncConnectionArgs.cs" />
     <Compile Include="Async\AsyncDelete.cs" />
     <Compile Include="Async\AsyncExecute.cs" />
     <Compile Include="Async\AsyncExists.cs" />
@@ -208,12 +209,13 @@
     <Compile Include="Async\AsyncQueryPartition.cs" />
     <Compile Include="Async\AsyncQueryPartitionExecutor.cs" />
     <Compile Include="Async\AsyncConnector.cs" />
-    <Compile Include="Async\AsyncExecutor.cs" />
     <Compile Include="Async\IAsyncClient.cs" />
     <Compile Include="Async\MaxCommandAction.cs" />
     <Compile Include="BCrypt\BCrypt.cs" />
     <Compile Include="BCrypt\SaltParseException.cs" />
     <Compile Include="CDT\CDT.cs" />
+    <Compile Include="Command\BatchStatus.cs" />
+    <Compile Include="Command\BatchAttr.cs" />
     <Compile Include="Exp\ExpOperation.cs" />
     <Compile Include="Exp\ExpReadFlags.cs" />
     <Compile Include="Exp\ListExp.cs" />
@@ -267,6 +269,9 @@
     <Compile Include="Command\WriteCommand.cs" />
     <Compile Include="Exp\ExpWriteFlags.cs" />
     <Compile Include="Exp\MapExp.cs" />
+    <Compile Include="Listener\BatchRecordSequenceListener.cs" />
+    <Compile Include="Listener\BatchRecordArrayListener.cs" />
+    <Compile Include="Listener\BatchOperateListListener.cs" />
     <Compile Include="Listener\BatchListListener.cs" />
     <Compile Include="Listener\BatchSequenceListener.cs" />
     <Compile Include="Listener\InfoListener.cs" />
@@ -292,6 +297,11 @@
     <Compile Include="Command\Formatter.cs" />
     <Compile Include="Main\AerospikeClient.cs" />
     <Compile Include="Main\AerospikeException.cs" />
+    <Compile Include="Main\BatchWrite.cs" />
+    <Compile Include="Main\BatchUDF.cs" />
+    <Compile Include="Main\BatchResults.cs" />
+    <Compile Include="Main\BatchDelete.cs" />
+    <Compile Include="Main\BatchRecord.cs" />
     <Compile Include="Main\BatchRead.cs" />
     <Compile Include="Main\Bin.cs" />
     <Compile Include="Main\Host.cs" />
@@ -318,6 +328,10 @@
     <Compile Include="Operation\HLLWriteFlags.cs" />
     <Compile Include="Operation\HLLOperation.cs" />
     <Compile Include="Policy\AdminPolicy.cs" />
+    <Compile Include="Policy\BatchWritePolicy.cs" />
+    <Compile Include="Policy\BatchUDFPolicy.cs" />
+    <Compile Include="Policy\BatchReadPolicy.cs" />
+    <Compile Include="Policy\BatchDeletePolicy.cs" />
     <Compile Include="Policy\BatchPolicy.cs" />
     <Compile Include="Policy\ClientPolicy.cs" />
     <Compile Include="Policy\CommitLevel.cs" />
@@ -342,7 +356,8 @@
       <DependentUpon>Resources.resx</DependentUpon>
     </Compile>
     <Compile Include="Query\PartitionStatus.cs" />
-    <Compile Include="Query\PredExp.cs" />
+    <Compile Include="Query\QueryListenerCommand.cs" />
+    <Compile Include="Query\QueryListenerExecutor.cs" />
     <Compile Include="Query\QueryPartitionExecutor.cs" />
     <Compile Include="Query\QueryPartitionCommand.cs" />
     <Compile Include="Query\IQueryExecutor.cs" />
@@ -363,6 +378,7 @@
     <Compile Include="Query\RecordSet.cs" />
     <Compile Include="Query\RegexFlag.cs" />
     <Compile Include="Query\ResultSet.cs" />
+    <Compile Include="Query\QueryListener.cs" />
     <Compile Include="Query\ScanCallback.cs" />
     <Compile Include="Query\ServerCommand.cs" />
     <Compile Include="Query\Statement.cs" />

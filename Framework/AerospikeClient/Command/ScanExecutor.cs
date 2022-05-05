@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2020 Aerospike, Inc.
+ * Copyright 2012-2022 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -24,8 +24,6 @@ namespace Aerospike.Client
 	{
 		public static void ScanPartitions(Cluster cluster, ScanPolicy policy, string ns, string setName, string[] binNames, ScanCallback callback, PartitionTracker tracker)
 		{
-			policy.Validate();
-
 			while (true)
 			{
 				ulong taskId = RandomShift.ThreadLocalInstance.NextLong();
@@ -57,11 +55,12 @@ namespace Aerospike.Client
 				}
 				catch (AerospikeException ae)
 				{
+					tracker.PartitionError();
 					ae.Iteration = tracker.iteration;
 					throw ae;
 				}
 
-				if (tracker.IsComplete(policy))
+				if (tracker.IsComplete(cluster, policy))
 				{
 					// Scan is complete.
 					return;

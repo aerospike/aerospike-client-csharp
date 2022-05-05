@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2022 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -51,7 +51,7 @@ namespace Aerospike.Demo
 			{
 				client.ScanPartitions(policy, filter, args.ns, setName, ScanCallback);
 			}
-			catch (AerospikeException.ScanTerminated e)
+			catch (AerospikeException.ScanTerminated)
 			{
 				console.Info("Scan terminated as expected");
 			}
@@ -88,14 +88,14 @@ namespace Aerospike.Demo
 
 		public void ScanCallback(Key key, Record record)
 		{
+			recordCount++;
+
 			if (recordMax > 0 && recordCount >= recordMax)
 			{
 				// Terminate scan. The scan last digest will not be set and the current record
 				// will be returned again if the scan resumes at a later time.
 				throw new AerospikeException.ScanTerminated();
 			}
-
-			recordCount++;
 		}
 	}
 }

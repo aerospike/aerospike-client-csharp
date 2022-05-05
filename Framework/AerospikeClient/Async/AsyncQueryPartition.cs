@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2022 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -18,59 +18,83 @@ namespace Aerospike.Client
 {
 	public sealed class AsyncQueryPartition : AsyncMultiCommand
 	{
+		private readonly AsyncMultiExecutor parent;
 		private readonly RecordSequenceListener listener;
 		private readonly Statement statement;
+		private readonly ulong taskId;
 		private readonly PartitionTracker tracker;
 		private readonly NodePartitions nodePartitions;
 
 		public AsyncQueryPartition
 		(
-			AsyncMultiExecutor executor,
+			AsyncMultiExecutor parent,
 			AsyncCluster cluster,
 			QueryPolicy policy,
 			RecordSequenceListener listener,
 			Statement statement,
+			ulong taskId,
 			PartitionTracker tracker,
 			NodePartitions nodePartitions
-		) : base(executor, cluster, policy, (AsyncNode)nodePartitions.node, tracker.socketTimeout, tracker.totalTimeout)
+		) : base(cluster, policy, (AsyncNode)nodePartitions.node, tracker.socketTimeout, tracker.totalTimeout)
 		{
+			this.parent = parent;
 			this.listener = listener;
 			this.statement = statement;
+			this.taskId = taskId;
 			this.tracker = tracker;
 			this.nodePartitions = nodePartitions;
 		}
 
 		protected internal override void WriteBuffer()
 		{
-			SetQuery(policy, statement, false, nodePartitions);
+			SetQuery(cluster, policy, statement, taskId, false, nodePartitions);
 		}
 
-		protected internal override void ParseRow(Key key)
+		protected internal override void ParseRow()
 		{
+			ulong bval;
+			Key key = ParseKey(fieldCount, out bval);
+
 			if ((info3 & Command.INFO3_PARTITION_DONE) != 0)
 			{
-				tracker.PartitionDone(nodePartitions, generation);
+				// When an error code is received, mark partition as unavailable
+				// for the current round. Unavailable partitions will be retried
+				// in the next round. Generation is overloaded as partitionId.
+				if (resultCode != 0)
+				{
+					tracker.PartitionUnavailable(nodePartitions, generation);
+				}
 				return;
+			}
+
+			if (resultCode != 0)
+			{
+				throw new AerospikeException(resultCode);
 			}
 
 			Record record = ParseRecord();
 			listener.OnRecord(key, record);
-			tracker.SetDigest(nodePartitions, key);
-		}
-
-		protected internal override void OnFailure(AerospikeException ae)
-		{
-			if (tracker.ShouldRetry(ae))
-			{
-				executor.ChildSuccess(serverNode);
-				return;
-			}
-			executor.ChildFailure(ae);
+			tracker.SetLast(nodePartitions, key, bval);
 		}
 
 		protected internal override AsyncCommand CloneCommand()
 		{
 			return null;
+		}
+
+		protected internal override void OnSuccess()
+		{
+			parent.ChildSuccess(node);
+		}
+
+		protected internal override void OnFailure(AerospikeException ae)
+		{
+			if (tracker.ShouldRetry(nodePartitions, ae))
+			{
+				parent.ChildSuccess(serverNode);
+				return;
+			}
+			parent.ChildFailure(ae);
 		}
 	}
 }

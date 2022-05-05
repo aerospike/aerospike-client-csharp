@@ -1,5 +1,5 @@
 ﻿/* 
- * Copyright 2012-2019 Aerospike, Inc.
+ * Copyright 2012-2022 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -211,5 +211,89 @@ namespace Aerospike.Test
 			byte[] received = (byte[])client.Execute(null, key, "record_example", "readBin", Value.Get(binName));
 			CollectionAssert.AreEqual(blob, received);
 		}
-    }
+
+		[TestMethod]
+		public void BatchUDF()
+		{
+			Key[] keys = new Key[]
+			{
+				new Key(args.ns, args.set, 20000),
+				new Key(args.ns, args.set, 20001)
+			};
+
+			client.Delete(null, null, keys);
+
+			BatchResults br = client.Execute(null, null, keys, "record_example", "writeBin", Value.Get("B5"), Value.Get("value5"));
+			Assert.IsTrue(br.status);
+
+			Record[] records = client.Get(null, keys, "B5");
+			Assert.AreEqual(2, records.Length);
+
+			foreach (Record r in records)
+			{
+				Assert.IsNotNull(r);
+				Assert.AreEqual("value5", r.GetString("B5"));
+			}
+		}
+
+		[TestMethod]
+		public void BatchUDFError()
+		{
+			Key[] keys = new Key[] { new Key(args.ns, args.set, 20002), new Key(args.ns, args.set, 20003) };
+
+			client.Delete(null, null, keys);
+
+			BatchResults br = client.Execute(null, null, keys, "record_example", "writeWithValidation", Value.Get("B5"), Value.Get(999));
+			Assert.IsFalse(br.status);
+
+			foreach (BatchRecord r in br.records)
+			{
+				Assert.IsNotNull(r);
+				Assert.AreEqual(ResultCode.UDF_BAD_RESPONSE, r.resultCode);
+
+				string msg = r.record.GetUDFError();
+				//System.out.println(msg);
+				Assert.IsNotNull(msg);
+			}
+		}
+
+		[TestMethod]
+		public void BatchUDFComplex()
+		{
+			string bin = "B5";
+
+			Value[] a1 = new Value[] { Value.Get(bin), Value.Get("value1") };
+			Value[] a2 = new Value[] { Value.Get(bin), Value.Get(5) };
+			Value[] a3 = new Value[] { Value.Get(bin), Value.Get(999) };
+
+			BatchUDF b1 = new BatchUDF(new Key(args.ns, args.set, 20004), "record_example", "writeBin", a1);
+			BatchUDF b2 = new BatchUDF(new Key(args.ns, args.set, 20005), "record_example", "writeWithValidation", a2);
+			BatchUDF b3 = new BatchUDF(new Key(args.ns, args.set, 20005), "record_example", "writeWithValidation", a3);
+
+			List<BatchRecord> records = new List<BatchRecord>();
+			records.Add(b1);
+			records.Add(b2);
+			records.Add(b3);
+
+			bool status = client.Operate(null, records);
+
+			Assert.IsFalse(status); // b3 results in an error.
+			AssertBinEqual(b1.key, b1.record, bin, 0);
+			AssertBinEqual(b2.key, b2.record, bin, 0);
+			Assert.AreEqual(ResultCode.UDF_BAD_RESPONSE, b3.resultCode);
+
+			BatchRead b4 = new BatchRead(new Key(args.ns, args.set, 20004), true);
+			BatchRead b5 = new BatchRead(new Key(args.ns, args.set, 20005), true);
+
+			records.Clear();
+			records.Add(b4);
+			records.Add(b5);
+
+			status = client.Operate(null, records);
+
+			Assert.IsTrue(status);
+			AssertBinEqual(b4.key, b4.record, bin, "value1");
+			AssertBinEqual(b5.key, b5.record, bin, 5);
+		}
+	}
 }

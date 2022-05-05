@@ -1,5 +1,5 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<Project ToolsVersion="4.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+<Project ToolsVersion="12.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">x86</Platform>
@@ -10,7 +10,7 @@
     <AppDesignerFolder>Properties</AppDesignerFolder>
     <RootNamespace>Aerospike.Demo</RootNamespace>
     <AssemblyName>AerospikeDemo</AssemblyName>
-    <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
+    <TargetFrameworkVersion>v4.7.2</TargetFrameworkVersion>
     <TargetFrameworkProfile>
     </TargetFrameworkProfile>
     <FileAlignment>512</FileAlignment>
@@ -175,6 +175,7 @@
     <Compile Include="OperateMap.cs" />
     <Compile Include="QueryGeoCollection.cs" />
     <Compile Include="OperateList.cs" />
+    <Compile Include="QueryResume.cs" />
     <Compile Include="QueryRegionFilter.cs" />
     <Compile Include="QueryRegion.cs" />
     <Compile Include="GetAndJoin.cs" />
@@ -199,6 +200,7 @@
     <Compile Include="QueryInteger.cs" />
     <Compile Include="QueryString.cs" />
     <Compile Include="QuerySum.cs" />
+    <Compile Include="QueryPage.cs" />
     <Compile Include="ScanResume.cs" />
     <Compile Include="ScanPage.cs" />
     <Compile Include="ScanParallel.cs" />

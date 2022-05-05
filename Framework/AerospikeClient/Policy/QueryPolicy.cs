@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2020 Aerospike, Inc.
+ * Copyright 2012-2022 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -14,6 +14,10 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
+using System;
+
+#pragma warning disable 0618
+
 namespace Aerospike.Client
 {
 	/// <summary>
@@ -35,6 +39,7 @@ namespace Aerospike.Client
 		/// Default: 0 (do not limit record count)
 		/// </para>
 		/// </summary>
+		[Obsolete("Use 'Statement.MaxRecords' instead.")]
 		public long maxRecords;
 
 		/// <summary>
@@ -63,11 +68,20 @@ namespace Aerospike.Client
 		public bool includeBinData = true;
 
 		/// <summary>
-		/// Terminate query if cluster is in migration state. If query filter is null (scan),
-		/// this field is ignored.
+		/// Terminate query if cluster is in migration state. If the server supports partition
+		/// queries or the query filter is null (scan), this field is ignored.
 		/// <para>Default: false</para>
 		/// </summary>
 		public bool failOnClusterChange;
+
+		/// <summary>
+		/// Is query expected to return less than 100 records.
+		/// If true, the server will optimize the query for a small record set.
+		/// This field is ignored for aggregation queries, background queries
+		/// and server versions &lt; 6.0.
+		/// <para>Default: false</para>
+		/// </summary>
+		public bool shortQuery;
 
 		/// <summary>
 		/// Copy query policy from another query policy.
@@ -79,6 +93,7 @@ namespace Aerospike.Client
 			this.recordQueueSize = other.recordQueueSize;
 			this.includeBinData = other.includeBinData;
 			this.failOnClusterChange = other.failOnClusterChange;
+			this.shortQuery = other.shortQuery;
 		}
 
 		/// <summary>
@@ -106,3 +121,4 @@ namespace Aerospike.Client
 		}
 	}
 }
+#pragma warning restore 0618
