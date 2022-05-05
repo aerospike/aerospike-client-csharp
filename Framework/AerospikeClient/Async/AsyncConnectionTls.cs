@@ -28,6 +28,8 @@ namespace Aerospike.Client
 	public sealed class AsyncConnectionTls : AsyncConnection
 	{
 		private readonly AsyncNode node;
+		private readonly AsyncCallback writeHandler;
+		private readonly AsyncCallback readHandler;
 		private SslStream sslStream;
 		private byte[] buffer;
 		private int offset;
@@ -37,6 +39,8 @@ namespace Aerospike.Client
 			: base(node, command)
 		{
 			this.node = node;
+			this.writeHandler = SendEvent;
+			this.readHandler = ReceiveEvent;
 		}
 
 		public override void Connect(IPEndPoint address)
@@ -131,7 +135,7 @@ namespace Aerospike.Client
 
 		public override void Send(byte[] buffer, int offset, int count)
 		{
-			sslStream.BeginWrite(buffer, offset, count, SendEvent, null);
+			sslStream.BeginWrite(buffer, offset, count, writeHandler, null);
 		}
 
 		private void SendEvent(IAsyncResult result)
@@ -152,7 +156,7 @@ namespace Aerospike.Client
 			this.buffer = buffer;
 			this.offset = offset;
 			this.count = count;
-			sslStream.BeginRead(buffer, offset, count, ReceiveEvent, null);
+			sslStream.BeginRead(buffer, offset, count, readHandler, null);
 		}
 
 		private void ReceiveEvent(IAsyncResult result)
@@ -171,7 +175,7 @@ namespace Aerospike.Client
 				{
 					offset += received;
 					count -= received;
-					sslStream.BeginRead(buffer, offset, count, ReceiveEvent, null);
+					sslStream.BeginRead(buffer, offset, count, readHandler, null);
 					return;
 				}
 

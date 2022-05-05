@@ -43,7 +43,7 @@ namespace Aerospike.Client
 
 		public DelayScheduler(AsyncClientPolicy policy)
 		{
-			jobCallback = new WaitCallback(ProcessQueueExclusive);
+			jobCallback = ProcessQueueExclusive;
 			delayQueueMax = policy.asyncMaxCommandsInQueue;
 
 			for (int i = 0; i < policy.asyncMaxCommands; i++)

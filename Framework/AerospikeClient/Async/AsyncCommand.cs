@@ -147,22 +147,28 @@ namespace Aerospike.Client
 		internal void ExecuteAsync(BufferSegment segment)
 		{
 			this.segment = this.segmentOrig = segment;
-			ThreadPool.UnsafeQueueUserWorkItem(ExecuteHandler, this);
+			ThreadPool.UnsafeQueueUserWorkItem(EventHandler.ExecuteAsyncHandler, this);
 		}
 
-		private void ExecuteHandler(object state)
+		// Use a singleton event handler to avoid creating a new delegate for each command.
+		private sealed class EventHandler
 		{
-			try
+			private static readonly EventHandler Instance = new EventHandler();
+			public static readonly WaitCallback ExecuteAsyncHandler = Instance.HandleExecution;
+
+			private void HandleExecution(object state)
 			{
-				((AsyncCommand)state).ExecuteCore();
-			}
-			catch (Exception e)
-			{
-				Log.Error("ExecuteCore error: " + Util.GetErrorMessage(e));
+				try
+				{
+					((AsyncCommand)state).ExecuteCore();
+				}
+				catch (Exception e)
+				{
+					Log.Error("ExecuteCore error: " + Util.GetErrorMessage(e));
+				}
 			}
 		}
 
-		// Actually executes the command, once the event args and the thread issues have all been sorted out.
 		private void ExecuteCore()
 		{
 			if (cluster.HasBufferChanged(segment))
