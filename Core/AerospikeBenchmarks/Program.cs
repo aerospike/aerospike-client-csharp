@@ -36,12 +36,13 @@ namespace Aerospike.Benchmarks
 
 		private static void RunBenchmarks()
 		{
+			Log.SetCallback(LogCallback);
+
 			Args args = new Args();
 			args.Print();
 
 			Log.Level level = args.debug ? Log.Level.DEBUG : Log.Level.INFO;
 			Log.SetLevel(level);
-			Log.SetCallback(LogCallback);
 
 			Metrics metrics = new Metrics(args);
 

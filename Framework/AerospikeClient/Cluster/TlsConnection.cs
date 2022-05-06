@@ -72,6 +72,11 @@ namespace Aerospike.Client
 			SslPolicyErrors sslPolicyErrors
 		)
 		{
+			// RemoteCertificateChainErrors will be set if the certificate is self-signed and not
+			// placed in the Windows or Linux truststore. Enable the following line to temporarily
+			// allow RemoteCertificateChainErrors for testing purposes.
+			//
+			// if (sslPolicyErrors != SslPolicyErrors.None && sslPolicyErrors != SslPolicyErrors.RemoteCertificateChainErrors)
 			if (sslPolicyErrors != SslPolicyErrors.None)
 			{
 				if (Log.DebugEnabled())
@@ -111,7 +116,16 @@ namespace Aerospike.Client
 			{
 				if (ext.Oid.Value.Equals("2.5.29.17")) // Subject Alternative Name
 				{
-					if (FindTlsName(ext.Format(false), "DNS Name=", tlsName))
+					string str = ext.Format(false);
+
+					// Tag is "DNS Name=" on Windows.
+					if (FindTlsName(str, "DNS Name=", tlsName))
+					{
+						return true;
+					}
+
+					// Tag is "DNS:" on Linux.
+					if (FindTlsName(str, "DNS:", tlsName))
 					{
 						return true;
 					}
