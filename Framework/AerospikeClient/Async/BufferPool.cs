@@ -22,7 +22,6 @@ namespace Aerospike.Client
 
 		public readonly byte[] buffer;
 		public readonly int bufferSize;
-		public int bufferOffset;
 
 		/// <summary>
 		/// Construct one large contiguous cached buffer for use in asynchronous socket commands.
@@ -38,7 +37,6 @@ namespace Aerospike.Client
 				size += 8192 - rem;
 			}
 			bufferSize = size;
-			bufferOffset = 0;
 
 			// Allocate one large buffer which will likely be placed on LOH (large object heap).
 			// This heap is not usually compacted, so pinning and fragmentation becomes less of 
@@ -53,14 +51,13 @@ namespace Aerospike.Client
 		public void GetNextBuffer(BufferSegment segment)
 		{
 			segment.buffer = buffer;
-			segment.offset = bufferOffset;
+			segment.offset = bufferSize * segment.index;
 			segment.size = bufferSize;
-			bufferOffset += bufferSize;
 
-			if (bufferOffset >= buffer.Length)
+			if (segment.offset >= buffer.Length)
 			{
-				throw new AerospikeException("BufferPool overflow: " + bufferSize + ',' + 
-					bufferOffset + ',' + buffer.Length);
+				throw new AerospikeException("BufferPool overflow: " + bufferSize + ',' +
+					segment.offset + ',' + buffer.Length);
 			}
 		}
 	}
@@ -68,7 +65,27 @@ namespace Aerospike.Client
 	public sealed class BufferSegment
 	{
 		public byte[] buffer;
+		public readonly int index;
 		public int offset;
 		public int size;
+
+		public BufferSegment(int index)
+		{
+			this.index = index;
+		}
+
+		public BufferSegment(int index, int size)
+		{
+			this.buffer = new byte[size];
+			this.index = index;
+			this.offset = 0;
+			this.size = size;
+		}
+
+		public override string ToString()
+		{
+			string str = (buffer != null) ? buffer.Length.ToString() : "null";
+			return "[" + str + ',' + index + ',' + offset + ',' + size + ']';
+		}
 	}
 }

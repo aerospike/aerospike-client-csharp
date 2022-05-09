@@ -67,18 +67,21 @@ namespace Aerospike.Client
 			for (int i = 0; i < maxCommands; i++)
 			{
 				SocketAsyncEventArgs eventArgs = new SocketAsyncEventArgs();
-				eventArgs.UserToken = new BufferSegment();
+				eventArgs.UserToken = new BufferSegment(i);
 				eventArgs.Completed += AsyncCommand.SocketListener;
 				commandQueue.ReleaseArgs(eventArgs);
 			}
 
 			if (policy.asyncBufferSize > 0)
 			{
+				Log.Warn("Allocate BufferPool: " + clusterId + ',' + maxCommands + ',' + policy.asyncBufferSize + ',' + (maxCommands * policy.asyncBufferSize));
 				bufferPool = new BufferPool(maxCommands, policy.asyncBufferSize);
 			}
 			else
 			{
-				bufferPool = new BufferPool();
+				// Allocate max buffer pool to avoid resizing pool.
+				Log.Warn("Allocate BufferPool: " + clusterId + ',' + maxCommands + ',' + BufferPool.BUFFER_CUTOFF + ',' + (maxCommands * BufferPool.BUFFER_CUTOFF));
+				bufferPool = new BufferPool(maxCommands, BufferPool.BUFFER_CUTOFF);
 			}
 
 			InitTendThread(policy.failIfNotConnected);
@@ -121,7 +124,7 @@ namespace Aerospike.Client
 
 			if (resized)
 			{
-				AsyncCommand.LogState("Resized BufferPool: " + size + ',' + bufferPool.bufferSize);
+				Log.Warn("Resized BufferPool: " + clusterId + ',' + size + ',' + bufferPool.bufferSize + ',' + segment);
 			}
 		}
 
@@ -135,9 +138,9 @@ namespace Aerospike.Client
 			// Verify buffer is really different.
 			if (bufferPool.buffer == segment.buffer)
 			{
-				AsyncCommand.LogState("HasBufferChanged is true, but buffer has not changed: " +
-					bufferPool.bufferSize + ',' + segment.size + ',' + bufferPool.buffer + ',' +
-					segment.buffer);
+				Log.Warn("HasBufferChanged is true, but buffer has not changed: " +
+					clusterId + ',' + bufferPool.bufferSize + ',' + segment
+					);
 			}
 			return true;
 			//return bufferPool.bufferSize != segment.size;

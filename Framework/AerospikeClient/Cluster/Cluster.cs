@@ -25,6 +25,8 @@ namespace Aerospike.Client
 {
 	public class Cluster
 	{
+		private static int ClusterCount;
+
 		// Expected cluster name.
 		protected internal readonly String clusterName;
 
@@ -108,6 +110,8 @@ namespace Aerospike.Client
 		// Cluster tend counter
 		private int tendCount;
 
+		internal readonly int clusterId;
+
 		// Tend thread variables.
 		private Thread tendThread;
 		private CancellationTokenSource cancel;
@@ -125,6 +129,9 @@ namespace Aerospike.Client
 
 		public Cluster(ClientPolicy policy, Host[] hosts)
 		{
+			clusterId = Interlocked.Increment(ref ClusterCount);
+			Log.Warn("Create cluster: " + clusterId);
+
 			this.clusterName = policy.clusterName;
 			tlsPolicy = policy.tlsPolicy;
 			this.authMode = policy.authMode;
@@ -449,7 +456,12 @@ namespace Aerospike.Client
 			}
 
 			tendCount++;
-	
+
+			if (tendCount % 300 == 0)
+			{
+				AsyncCommand.LogLargeBuffers();
+			}
+
 			// Balance connections every 30 tend intervals.
 			if (tendCount % 30 == 0)
 			{
@@ -725,7 +737,7 @@ namespace Aerospike.Client
 		{
 			if (Log.InfoEnabled())
 			{
-				Log.Info("Add node " + node);
+				Log.Info("Add node " + node + " to cluster " + clusterId);
 			}
 
 			nodesMap[node.Name] = node;
@@ -791,7 +803,7 @@ namespace Aerospike.Client
 				{
 					if (tendValid && Log.InfoEnabled())
 					{
-						Log.Info("Remove node " + node);
+						Log.Info("Remove node " + node + " from cluster " + clusterId);
 					}
 				}
 				else
@@ -1028,6 +1040,7 @@ namespace Aerospike.Client
 
 		public void Close()
 		{
+			Log.Warn("Close cluster: " + clusterId);
 			tendValid = false;
 			cancel.Cancel();
 

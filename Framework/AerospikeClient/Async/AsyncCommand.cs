@@ -257,6 +257,11 @@ namespace Aerospike.Client
 				ErrorCount++;
 				ConnectionFailed(GetAerospikeException(se.SocketErrorCode));
 			}
+			catch (IndexOutOfRangeException re)
+			{
+				ErrorCount++;
+				FailOnApplicationError(new AerospikeException("Index range error: " + cluster.clusterId + ',' + dataOffset + ',' + dataLength + ',' + segment, re));
+			}
 			catch (Exception e)
 			{
 				ErrorCount++;
@@ -277,7 +282,14 @@ namespace Aerospike.Client
 
 			private void HandleExecution(object state)
 			{
-				((AsyncCommand)state).ExecuteCore();
+				try
+				{
+					((AsyncCommand)state).ExecuteCore();
+				}
+				catch (Exception e)
+				{
+					Log.Error("ExecuteCore failed: " + Util.GetErrorMessage(e));
+				}
 			}
 
 			private void HandleSocketEvent(object sender, SocketAsyncEventArgs args)
@@ -336,6 +348,11 @@ namespace Aerospike.Client
 					// This exception occurs because socket is being used after timeout thread closes socket.
 					// Retry when this happens.
 					command.ConnectionFailed(new AerospikeException(ode));
+				}
+				catch (IndexOutOfRangeException re)
+				{
+					command.FailOnApplicationError(new AerospikeException("Index range error: " + 
+						command.cluster.clusterId + ',' + command.dataOffset + ',' + command.dataLength + ',' + command.segment, re));
 				}
 				catch (Exception e)
 				{
@@ -408,25 +425,15 @@ namespace Aerospike.Client
 					largeBufferSizeMax = size;
 				}
 
-				int n = Interlocked.Increment(ref largeBufferCount);
+				Interlocked.Increment(ref largeBufferCount);
 
-				// Large buffers might be created a lot, so try to avoid
-				// spamming the log.
-				if (n % 100000 == 1)
-				{
-					LogState("Create Large Buffer: " + size);
-				}
-
-				segment = new BufferSegment();
-				segment.buffer = new byte[size];
-				segment.offset = 0;
-				segment.size = size;
+				segment = new BufferSegment(-1, size);
 			}
 		}
 
-		public static void LogState(string message)
+		public static void LogLargeBuffers()
 		{
-			Log.Warn(message + " {" + largeBufferCount + ',' + largeBufferSizeLast + ',' + largeBufferSizeMax + '}');
+			Log.Warn("LargeBuffers: " + largeBufferCount + ',' + largeBufferSizeLast + ',' + largeBufferSizeMax);
 		}
 
 		protected internal sealed override void End()
