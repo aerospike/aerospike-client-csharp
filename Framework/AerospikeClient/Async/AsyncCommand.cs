@@ -836,29 +836,36 @@ namespace Aerospike.Client
 
 			if (status == IN_PROGRESS)
 			{
-				// Command finished successfully.
-				// Put connection back into pool.
-				node.PutAsyncConnection(conn);
-
-				// Do not put large buffers back into pool.
-				if (segment.size > BufferPool.BUFFER_CUTOFF)
+				try
 				{
-					// Put back original buffer instead.
-					segment = segmentOrig;
-					eventArgs.SetBuffer(segment.buffer, segment.offset, 0);
+					// Command finished successfully.
+					// Put connection back into pool.
+					node.PutAsyncConnection(conn);
+
+					// Do not put large buffers back into pool.
+					if (segment.size > BufferPool.BUFFER_CUTOFF)
+					{
+						// Put back original buffer instead.
+						segment = segmentOrig;
+						eventArgs.SetBuffer(segment.buffer, segment.offset, 0);
+					}
+
+					eventArgs.UserToken = segment;
+
+					if (!isClosed)
+					{
+						isClosed = true;
+						cluster.PutEventArgs(eventArgs);
+					}
+					else
+					{
+						Log.Error("Attempted PutEventArgs on closed command: " +
+							System.Environment.NewLine + System.Environment.StackTrace);
+					}
 				}
-
-				eventArgs.UserToken = segment;
-
-				if (!isClosed)
+				catch (Exception e)
 				{
-					isClosed = true;
-					cluster.PutEventArgs(eventArgs);
-				}
-				else
-				{
-					Log.Error("Attempted PutEventArgs on closed command: " + 
-						System.Environment.NewLine + System.Environment.StackTrace);
+					Log.Error("Finish error: " + e.Message + System.Environment.NewLine + e.StackTrace);
 				}
 			}
 			else if (status == FAIL_TOTAL_TIMEOUT || status == FAIL_SOCKET_TIMEOUT)
@@ -1004,33 +1011,41 @@ namespace Aerospike.Client
 
 		internal void PutBackArgsOnError()
 		{
-			// Do not put large buffers back into pool.
-			if (segment.size > BufferPool.BUFFER_CUTOFF)
+			try
 			{
-				// Put back original buffer instead.
-				segment = segmentOrig;
-				eventArgs.SetBuffer(segment.buffer, segment.offset, 0);
-			}
-			else
-			{
-				// There may be rare error cases where segment.buffer and eventArgs.Buffer
-				// are different.  Make sure they are in sync.
-				if (eventArgs.Buffer != segment.buffer)
+				// Do not put large buffers back into pool.
+				if (segment.size > BufferPool.BUFFER_CUTOFF)
 				{
+					// Put back original buffer instead.
+					segment = segmentOrig;
 					eventArgs.SetBuffer(segment.buffer, segment.offset, 0);
 				}
-			}
-			eventArgs.UserToken = segment;
+				else
+				{
+					// There may be rare error cases where segment.buffer and eventArgs.Buffer
+					// are different.  Make sure they are in sync.
+					if (eventArgs.Buffer != segment.buffer)
+					{
+						eventArgs.SetBuffer(segment.buffer, segment.offset, 0);
+					}
+				}
+				eventArgs.UserToken = segment;
 
-			if (!isClosed)
-			{
-				isClosed = true;
-				cluster.PutEventArgs(eventArgs);
+				if (!isClosed)
+				{
+					isClosed = true;
+					cluster.PutEventArgs(eventArgs);
+				}
+				else
+				{
+					Log.Error("Attempted PutEventArgs on closed command: " + state +
+						System.Environment.NewLine + System.Environment.StackTrace);
+				}
 			}
-			else
+			catch (Exception e)
 			{
-				Log.Error("Attempted PutEventArgs on closed command: " + state +
-					System.Environment.NewLine + System.Environment.StackTrace);
+				Log.Error("PutBackArgsOnError error: " + state + System.Environment.NewLine +
+					e.Message + System.Environment.NewLine + e.StackTrace);
 			}
 		}
 
