@@ -450,45 +450,53 @@ namespace Aerospike.Client
 
 		public void OnError(Exception e)
 		{
-			if (e is AerospikeException.Connection ac)
+			try
 			{
-				ConnectionFailed(ac);
-				return;
-			}
-
-			if (e is AerospikeException ae)
-			{
-				if (ae.Result == ResultCode.TIMEOUT)
+				if (e is AerospikeException.Connection ac)
 				{
-					RetryServerError(new AerospikeException.Timeout(policy, false));
+					ConnectionFailed(ac);
+					return;
 				}
-				else if (ae.Result == ResultCode.DEVICE_OVERLOAD)
+
+				if (e is AerospikeException ae)
 				{
-					RetryServerError(ae);
+					if (ae.Result == ResultCode.TIMEOUT)
+					{
+						RetryServerError(new AerospikeException.Timeout(policy, false));
+					}
+					else if (ae.Result == ResultCode.DEVICE_OVERLOAD)
+					{
+						RetryServerError(ae);
+					}
+					else
+					{
+						FailOnApplicationError(ae);
+					}
+					return;
 				}
-				else
+
+				if (e is SocketException se)
 				{
-					FailOnApplicationError(ae);
+					OnSocketError(se.SocketErrorCode);
+					return;
 				}
-				return;
-			}
 
-			if (e is SocketException se)
+				if (e is ObjectDisposedException ode)
+				{
+					// This exception occurs because socket is being used after timeout thread closes socket.
+					// Retry when this happens.
+					ConnectionFailed(new AerospikeException(ode));
+					return;
+				}
+
+				// Fail without retry on unknown errors.
+				FailOnApplicationError(new AerospikeException(e));
+			}
+			catch (Exception e2)
 			{
-				OnSocketError(se.SocketErrorCode);
-				return;
+				Log.Error("OnError() failed: " + Util.GetErrorMessage(e2) +
+					System.Environment.NewLine + "Original error: " + Util.GetErrorMessage(e));
 			}
-
-			if (e is ObjectDisposedException ode)
-			{
-				// This exception occurs because socket is being used after timeout thread closes socket.
-				// Retry when this happens.
-				ConnectionFailed(new AerospikeException(ode));
-				return;
-			}
-
-			// Fail without retry on unknown errors.
-			FailOnApplicationError(new AerospikeException(e));
 		}
 
 		public void OnSocketError(SocketError se)

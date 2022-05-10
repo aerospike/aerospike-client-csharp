@@ -27,13 +27,19 @@ namespace Aerospike.Client
 	/// </summary>
 	public sealed class AsyncConnectionTls : AsyncConnection
 	{
+		private const int READ = 0;
+		private const int COMPLETE = 1;
+		private const int ERROR = 2;
+
 		private readonly AsyncNode node;
 		private readonly AsyncCallback writeHandler;
 		private readonly AsyncCallback readHandler;
 		private SslStream sslStream;
+		private Exception error;
 		private byte[] buffer;
 		private int offset;
 		private int count;
+		private int state;
 
 		public AsyncConnectionTls(AsyncNode node, IAsyncCommand command)
 			: base(node, command)
@@ -156,34 +162,103 @@ namespace Aerospike.Client
 			this.buffer = buffer;
 			this.offset = offset;
 			this.count = count;
-			sslStream.BeginRead(buffer, offset, count, readHandler, null);
+			Receive();
+		}
+
+		private void Receive()
+		{
+			// Avoid recursive stack overflow by reading in a loop until read completes
+			// asynchronously or there are no more bytes left to read.
+			IAsyncResult result;
+
+			while (true)
+			{
+				result = sslStream.BeginRead(buffer, offset, count, readHandler, null);
+
+				if (result.CompletedSynchronously)
+				{
+					switch (state)
+					{
+						case COMPLETE:
+							command.ReceiveComplete();
+							return;
+
+						case ERROR:
+							command.OnError(error);
+							return;
+
+						default:
+							break;
+					}
+				}
+				else
+				{
+					break;
+				}
+			}
 		}
 
 		private void ReceiveEvent(IAsyncResult result)
 		{
-			try
+			if (result.CompletedSynchronously)
 			{
-				int received = sslStream.EndRead(result);
-
-				if (received <= 0)
+				// Do not call command completed methods because that can result in a new 
+				// Send()/Receive() call before the current sync BeginRead() has completed.
+				// Instead, set the state which will be handled after BeginRead() is done.
+				try
 				{
-					command.OnError(new AerospikeException.Connection("Connection closed"));
-					return;
-				}
+					int received = sslStream.EndRead(result);
 
-				if (received < count)
+					if (received <= 0)
+					{
+						state = ERROR;
+						error = new AerospikeException.Connection("Connection closed");
+						return;
+					}
+
+					if (received < count)
+					{
+						offset += received;
+						count -= received;
+						state = READ;
+						return;
+					}
+
+					state = COMPLETE;
+				}
+				catch (Exception e)
 				{
-					offset += received;
-					count -= received;
-					sslStream.BeginRead(buffer, offset, count, readHandler, null);
-					return;
+					state = ERROR;
+					error = e;
 				}
-
-				command.ReceiveComplete();
 			}
-			catch (Exception e)
+			else
 			{
-				command.OnError(e);
+				// Command completed methods can be called directly on async events.
+				try
+				{
+					int received = sslStream.EndRead(result);
+
+					if (received <= 0)
+					{
+						command.OnError(new AerospikeException.Connection("Connection closed"));
+						return;
+					}
+
+					if (received < count)
+					{
+						offset += received;
+						count -= received;
+						Receive();
+						return;
+					}
+
+					command.ReceiveComplete();
+				}
+				catch (Exception e)
+				{
+					command.OnError(e);
+				}
 			}
 		}
 
@@ -191,6 +266,7 @@ namespace Aerospike.Client
 		{
 			command = null;
 			buffer = null;
+			error = null;
 		}
 
 		public override void Close()
