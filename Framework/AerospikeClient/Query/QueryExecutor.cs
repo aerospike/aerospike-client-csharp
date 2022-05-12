@@ -67,7 +67,7 @@ namespace Aerospike.Client
 			// Start threads.
 			for (int i = 0; i < maxConcurrentNodes; i++)
 			{
-				ThreadPool.QueueUserWorkItem(threads[i].Run);
+				ThreadPool.UnsafeQueueUserWorkItem(threads[i].Run, null);
 			}
 		}
 
@@ -83,7 +83,7 @@ namespace Aerospike.Client
 				if (nextThread < threads.Length && done == 0)
 				{
 					// Start new thread.
-					ThreadPool.QueueUserWorkItem(threads[nextThread].Run);
+					ThreadPool.UnsafeQueueUserWorkItem(threads[nextThread].Run, null);
 				}
 			}
 			else

@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2020 Aerospike, Inc.
+ * Copyright 2012-2022 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -47,7 +47,7 @@ namespace Aerospike.Client
 			// Start threads.
 			for (int i = 0; i < maxConcurrentThreads; i++)
 			{
-				ThreadPool.QueueUserWorkItem(threads[i].Run);
+				ThreadPool.UnsafeQueueUserWorkItem(threads[i].Run, null);
 			}
 			WaitTillComplete();
 
@@ -72,7 +72,7 @@ namespace Aerospike.Client
 				if (nextThread < threads.Count && done == 0)
 				{
 					// Start new thread.
-					ThreadPool.QueueUserWorkItem(threads[nextThread].Run);
+					ThreadPool.UnsafeQueueUserWorkItem(threads[nextThread].Run, null);
 				}
 			}
 			else

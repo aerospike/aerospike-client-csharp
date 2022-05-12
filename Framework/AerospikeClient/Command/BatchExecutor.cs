@@ -99,7 +99,7 @@ namespace Aerospike.Client
 			{
 				BatchCommand cmd = commands[i];
 				cmd.parent = this;
-				ThreadPool.QueueUserWorkItem(cmd.Run);
+				ThreadPool.UnsafeQueueUserWorkItem(cmd.Run, null);
 			}
 
 			// Multiple threads write to the batch record array/list, so one might think that memory barriers
@@ -124,7 +124,7 @@ namespace Aerospike.Client
 					// Start new thread.
 					BatchCommand cmd = commands[nextThread];
 					cmd.parent = this;
-					ThreadPool.QueueUserWorkItem(cmd.Run);
+					ThreadPool.UnsafeQueueUserWorkItem(cmd.Run, null);
 				}
 			}
 			else

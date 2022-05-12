@@ -51,7 +51,7 @@ namespace Aerospike.Client
 			this.cancel = new CancellationTokenSource();
 			this.tracker = tracker;
 			this.recordSet = new RecordSet(this, policy.recordQueueSize, cancel.Token);
-			ThreadPool.QueueUserWorkItem(this.Run);
+			ThreadPool.UnsafeQueueUserWorkItem(this.Run, null);
 		}
 
 		public void Run(object obj)
@@ -99,7 +99,7 @@ namespace Aerospike.Client
 
 						for (int i = 0; i < maxConcurrentThreads; i++)
 						{
-							ThreadPool.QueueUserWorkItem(threads[i].Run);
+							ThreadPool.UnsafeQueueUserWorkItem(threads[i].Run, null);
 						}
 					}
 				}
@@ -179,7 +179,7 @@ namespace Aerospike.Client
 				if (nextThread < threads.Count && done == 0)
 				{
 					// Start new thread.
-					ThreadPool.QueueUserWorkItem(threads[nextThread].Run);
+					ThreadPool.UnsafeQueueUserWorkItem(threads[nextThread].Run, null);
 				}
 			}
 			else
