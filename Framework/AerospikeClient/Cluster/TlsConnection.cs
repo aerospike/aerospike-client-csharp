@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2022 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -39,17 +39,11 @@ namespace Aerospike.Client
 			: base(address, timeoutMillis, pool)
 		{
 			this.policy = policy;
-
-			if (tlsName == null)
-			{
-				tlsName = "";
-			}
 			this.tlsName = tlsName;
 
 			try
 			{
-				RemoteCertificateValidationCallback remoteCallback = new RemoteCertificateValidationCallback(ValidateServerCertificate);
-				sslStream = new SslStream(new NetworkStream(socket, true), false, remoteCallback);
+				sslStream = new SslStream(new NetworkStream(socket, true), false, ValidateServerCertificate);
 				sslStream.AuthenticateAsClient(tlsName, policy.clientCertificates, policy.protocols, false);
 			}
             catch (Exception)
@@ -59,8 +53,30 @@ namespace Aerospike.Client
 			}
 		}
 
-		private bool ValidateServerCertificate(object sender, X509Certificate cert, X509Chain chain, SslPolicyErrors sslPolicyErrors)
+		private bool ValidateServerCertificate
+		(
+			object sender,
+			X509Certificate cert,
+			X509Chain chain,
+			SslPolicyErrors sslPolicyErrors
+		)
 		{
+			return ValidateCertificate(policy, tlsName, cert, sslPolicyErrors);
+		}
+
+		internal static bool ValidateCertificate
+		(
+			TlsPolicy policy,
+			string tlsName,
+			X509Certificate cert,
+			SslPolicyErrors sslPolicyErrors
+		)
+		{
+			// RemoteCertificateChainErrors will be set if the certificate is self-signed and not
+			// placed in the Windows or Linux truststore. Enable the following line to temporarily
+			// allow RemoteCertificateChainErrors for testing purposes.
+			//
+			// if (sslPolicyErrors != SslPolicyErrors.None && sslPolicyErrors != SslPolicyErrors.RemoteCertificateChainErrors)
 			if (sslPolicyErrors != SslPolicyErrors.None)
 			{
 				if (Log.DebugEnabled())
@@ -100,7 +116,16 @@ namespace Aerospike.Client
 			{
 				if (ext.Oid.Value.Equals("2.5.29.17")) // Subject Alternative Name
 				{
-					if (FindTlsName(ext.Format(false), "DNS Name=", tlsName))
+					string str = ext.Format(false);
+
+					// Tag is "DNS Name=" on Windows.
+					if (FindTlsName(str, "DNS Name=", tlsName))
+					{
+						return true;
+					}
+
+					// Tag is "DNS:" on Linux.
+					if (FindTlsName(str, "DNS:", tlsName))
 					{
 						return true;
 					}

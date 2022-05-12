@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2022 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -15,7 +15,6 @@
  * the License.
  */
 using System;
-using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Net.Sockets;
 using System.Threading;
@@ -51,11 +50,7 @@ namespace Aerospike.Client
 			{
 				try
 				{
-					SocketAsyncEventArgs eventArgs = new SocketAsyncEventArgs();
-					eventArgs.RemoteEndPoint = node.address;
-					eventArgs.Completed += AsyncConnector.SocketListener;
-
-					new AsyncConnector(cluster, node, this, eventArgs);
+					new AsyncConnector(cluster, node, this);
 				}
 				catch (Exception e)
 				{
@@ -70,7 +65,7 @@ namespace Aerospike.Client
 			}
 		}
 
-		public void OnSuccess(SocketAsyncEventArgs eventArgs)
+		public void OnSuccess()
 		{
 			int count = Interlocked.Increment(ref countConnections);
 
@@ -84,7 +79,7 @@ namespace Aerospike.Client
 					// Create next connection.
 					try
 					{
-						new AsyncConnector(cluster, node, this, eventArgs);
+						new AsyncConnector(cluster, node, this);
 					}
 					catch (Exception e)
 					{
@@ -139,35 +134,27 @@ namespace Aerospike.Client
 		}
 	}
 
-	public sealed class AsyncConnector : ITimeout
-	{
-		internal static EventHandler<SocketAsyncEventArgs> SocketListener {get {return ConnectorHandlers.SocketHandler;}}
-		
+	public sealed class AsyncConnector : IAsyncCommand, ITimeout
+	{		
 		private readonly AsyncCluster cluster;
 		private readonly AsyncNode node;
 		private readonly ConnectorListener listener;
-		private readonly SocketAsyncEventArgs eventArgs;
 		private readonly byte[] sessionToken;
 		private readonly byte[] dataBuffer;
 		private readonly Stopwatch watch;
 		private AsyncConnection conn;
 		private int state;
-		private int dataOffset;
-		private int dataLength;
 		private bool inHeader = true;
 
 		public AsyncConnector(
 			AsyncCluster cluster,
 			AsyncNode node,
-			ConnectorListener listener,
-			SocketAsyncEventArgs args
+			ConnectorListener listener
 		)
 		{
 			this.cluster = cluster;
 			this.node = node;
 			this.listener = listener;
-			this.eventArgs = args;
-			this.eventArgs.UserToken = this;
 
 			if (cluster.authEnabled)
 			{
@@ -184,16 +171,11 @@ namespace Aerospike.Client
 			AsyncTimeoutQueue.Instance.Add(this, cluster.connectionTimeout);
 
 			node.IncrAsyncConnTotal();
-			conn = new AsyncConnection(node.address, node);
+			conn = node.CreateAsyncConnection(this);
 
 			try
 			{
-				eventArgs.SetBuffer(dataBuffer, 0, 0);
-
-				if (!conn.ConnectAsync(eventArgs))
-				{
-					ConnectionCreated();
-				}
+				conn.Connect(node.address);
 			}
 			catch (Exception)
 			{
@@ -202,102 +184,42 @@ namespace Aerospike.Client
 			}
 		}
 
-		internal void ConnectionCreated()
+		public void OnConnected()
 		{
 			if (sessionToken != null)
 			{
 				AdminCommand command = new AdminCommand(dataBuffer, 0);
-				dataLength = command.SetAuthenticate(cluster, sessionToken);
-				eventArgs.SetBuffer(dataBuffer, 0, dataLength);
-				dataOffset = 0;
-				Send();
+				int dataLength = command.SetAuthenticate(cluster, sessionToken);
+				conn.Send(dataBuffer, 0, dataLength);
 				return;
 			}
 			ConnectionReady();
 		}
 
-		private void Send()
+		public void SendComplete()
 		{
-			if (!conn.SendAsync(eventArgs))
-			{
-				SendEvent();
-			}
+			conn.Receive(dataBuffer, 0, 8);
 		}
 
-		internal void SendEvent()
+		public void ReceiveComplete()
 		{
-			dataOffset += eventArgs.BytesTransferred;
-
-			if (dataOffset < dataLength)
-			{
-				eventArgs.SetBuffer(dataOffset, dataLength - dataOffset);
-				Send();
-			}
-			else
-			{
-				ReceiveBegin();
-			}
-		}
-
-		private void ReceiveBegin()
-		{
-			dataOffset = 0;
-			dataLength = dataOffset + 8;
-			eventArgs.SetBuffer(dataOffset, 8);
-			Receive();
-		}
-
-		private void Receive()
-		{
-			if (!conn.ReceiveAsync(eventArgs))
-			{
-				ReceiveEvent();
-			}
-		}
-
-		internal void ReceiveEvent()
-		{
-			if (eventArgs.BytesTransferred <= 0)
-			{
-				Fail("Connection closed");
-				return;
-			}
-
-			dataOffset += eventArgs.BytesTransferred;
-
-			if (dataOffset < dataLength)
-			{
-				eventArgs.SetBuffer(dataOffset, dataLength - dataOffset);
-				Receive();
-				return;
-			}
-			dataOffset = 0;
-
 			if (inHeader)
 			{
-				long proto = ByteUtil.BytesToLong(dataBuffer, dataOffset);
+				long proto = ByteUtil.BytesToLong(dataBuffer, 0);
 				int length = (int)(proto & 0xFFFFFFFFFFFFL);
 
-				if (length <= 0)
+				if (length <= 0 || length > dataBuffer.Length)
 				{
-					ReceiveBegin();
+					Fail("Invalid auth response: " + length);
 					return;
 				}
 
 				inHeader = false;
-
-				if (length > dataBuffer.Length)
-				{
-					Fail("Invalid auth response");
-					return;
-				}
-				eventArgs.SetBuffer(dataOffset, length);
-				dataLength = dataOffset + length;
-				Receive();
+				conn.Receive(dataBuffer, 0, length);
 			}
 			else
 			{
-				int resultCode = dataBuffer[dataOffset + 1];
+				int resultCode = dataBuffer[1];
 
 				if (resultCode != 0 && resultCode != ResultCode.SECURITY_NOT_ENABLED)
 				{
@@ -315,6 +237,27 @@ namespace Aerospike.Client
 					return;
 				}
 				ConnectionReady();
+			}
+		}
+
+		private void ConnectionReady()
+		{
+			if (Interlocked.CompareExchange(ref state, 1, 0) == 0)
+			{
+				conn.UpdateLastUsed();
+				node.PutAsyncConnection(conn);
+
+				try
+				{
+					listener.OnSuccess();
+				}
+				catch (Exception e)
+				{
+					if (Log.WarnEnabled())
+					{
+						Log.Warn("OnSuccess() error: " + Util.GetErrorMessage(e));
+					}
+				}
 			}
 		}
 
@@ -343,7 +286,17 @@ namespace Aerospike.Client
 			return false; // Do not put back on timeout queue.
 		}
 
-		internal void Fail(string msg)
+		public void OnSocketError(SocketError se)
+		{
+			Fail("Create connection socket failed: " + se);
+		}
+
+		public void OnError(Exception e)
+		{
+			Fail("Create connection failed: " + e.Message);
+		}
+
+		private void Fail(string msg)
 		{
 			if (Interlocked.CompareExchange(ref state, 1, 0) == 0)
 			{
@@ -366,72 +319,11 @@ namespace Aerospike.Client
 				}
 			}
 		}
-
-		private void ConnectionReady()
-		{
-			if (Interlocked.CompareExchange(ref state, 1, 0) == 0)
-			{
-				conn.UpdateLastUsed();
-				node.PutAsyncConnection(conn);
-
-				try
-				{
-					listener.OnSuccess(eventArgs);
-				}
-				catch (Exception e)
-				{
-					if (Log.WarnEnabled())
-					{
-						Log.Warn("OnSuccess() error: " + Util.GetErrorMessage(e));
-					}
-				}
-			}
-		}
-	}
-
-	public sealed class ConnectorHandlers
-	{
-		private static readonly ConnectorHandlers Instance = new ConnectorHandlers();
-		public static readonly EventHandler<SocketAsyncEventArgs> SocketHandler = Instance.HandleSocketEvent;
-
-		private void HandleSocketEvent(object sender, SocketAsyncEventArgs args)
-		{
-			AsyncConnector ac = args.UserToken as AsyncConnector;
-			
-			if (args.SocketError != SocketError.Success)
-			{
-				ac.Fail("Async min connections failed: " + args.SocketError);
-				return;
-			}
-			
-			try
-			{
-				switch (args.LastOperation)
-				{
-					case SocketAsyncOperation.Receive:
-						ac.ReceiveEvent();
-						break;
-					case SocketAsyncOperation.Send:
-						ac.SendEvent();
-						break;
-					case SocketAsyncOperation.Connect:
-						ac.ConnectionCreated();
-						break;
-					default:
-						ac.Fail("Invalid socket operation: " + args.LastOperation);
-						break;
-				}
-			}
-			catch (Exception e)
-			{
-				ac.Fail(e.Message);
-			}
-		}
 	}
 
 	public interface ConnectorListener
 	{
-		void OnSuccess(SocketAsyncEventArgs args);
+		void OnSuccess();
 		void OnFailure(string error);
 	}
 }

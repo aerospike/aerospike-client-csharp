@@ -104,12 +104,7 @@ namespace Aerospike.Test
         public void Connect()
 		{
 			ConnectSync();
-
-			// SSL only works with synchronous commands.
-			if (tlsPolicy == null)
-			{
-				ConnectAsync();
-			}
+			ConnectAsync();
 		}
 
 		private void ConnectSync()
@@ -142,8 +137,10 @@ namespace Aerospike.Test
 		private void ConnectAsync()
 		{
 			AsyncClientPolicy policy = new AsyncClientPolicy();
-			policy.asyncMaxCommands = 300;
+			policy.clusterName = clusterName;
+			policy.tlsPolicy = tlsPolicy;
 			policy.authMode = authMode;
+			policy.asyncMaxCommands = 300;
 
 			if (user != null && user.Length > 0)
 			{

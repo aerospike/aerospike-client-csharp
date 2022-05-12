@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2022 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -14,7 +14,6 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using System.Collections.Concurrent;
 using System.Threading;
 
 namespace Aerospike.Client
@@ -52,6 +51,18 @@ namespace Aerospike.Client
 			}
 		}
 
+		public AsyncConnection CreateAsyncConnection(IAsyncCommand command)
+		{
+			if (cluster.UseTls())
+			{
+				return new AsyncConnectionTls(this, command);
+			}
+			else
+			{
+				return new AsyncConnectionArgs(this, command);
+			}
+		}
+
 		/// <summary>
 		/// Get asynchronous socket connection from connection pool for the server node.
 		/// </summary>
@@ -84,6 +95,8 @@ namespace Aerospike.Client
 		/// <param name="conn">socket connection</param>
 		public void PutAsyncConnection(AsyncConnection conn)
 		{
+			conn.Reset();
+
 			if (! (active && asyncConnQueue.Enqueue(conn)))
 			{
 				CloseAsyncConn(conn);

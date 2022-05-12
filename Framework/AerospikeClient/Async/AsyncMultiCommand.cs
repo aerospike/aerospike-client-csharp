@@ -69,9 +69,9 @@ namespace Aerospike.Client
 				Finish();
 				return;
 			}
+
 			// Prepare for next group.
-			inHeader = true;
-			ReceiveBegin();
+			ReceiveNext();
 		}
 
 		protected internal override Node GetNode(Cluster cluster)

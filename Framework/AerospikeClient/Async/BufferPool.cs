@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2022 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -22,7 +22,6 @@ namespace Aerospike.Client
 
 		public readonly byte[] buffer;
 		public readonly int bufferSize;
-		public int bufferOffset;
 
 		/// <summary>
 		/// Construct one large contiguous cached buffer for use in asynchronous socket commands.
@@ -38,7 +37,6 @@ namespace Aerospike.Client
 				size += 8192 - rem;
 			}
 			bufferSize = size;
-			bufferOffset = 0;
 
 			// Allocate one large buffer which will likely be placed on LOH (large object heap).
 			// This heap is not usually compacted, so pinning and fragmentation becomes less of 
@@ -50,19 +48,32 @@ namespace Aerospike.Client
 		{
 		}
 
-		public void GetNextBuffer(BufferSegment segment)
+		public void GetBuffer(BufferSegment segment)
 		{
 			segment.buffer = buffer;
-			segment.offset = bufferOffset;
+			segment.offset = bufferSize * segment.index;
 			segment.size = bufferSize;
-			bufferOffset += bufferSize;
 		}
 	}
 
 	public sealed class BufferSegment
 	{
 		public byte[] buffer;
+		public readonly int index;
 		public int offset;
 		public int size;
+
+		public BufferSegment(int index)
+		{
+			this.index = index;
+		}
+
+		public BufferSegment(int index, int size)
+		{
+			this.buffer = new byte[size];
+			this.index = index;
+			this.offset = 0;
+			this.size = size;
+		}
 	}
 }
