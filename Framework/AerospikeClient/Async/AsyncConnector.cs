@@ -144,8 +144,6 @@ namespace Aerospike.Client
 		private readonly Stopwatch watch;
 		private AsyncConnection conn;
 		private int state;
-		private int dataOffset;
-		private int dataLength;
 		private bool inHeader = true;
 
 		public AsyncConnector(
@@ -191,8 +189,7 @@ namespace Aerospike.Client
 			if (sessionToken != null)
 			{
 				AdminCommand command = new AdminCommand(dataBuffer, 0);
-				dataLength = command.SetAuthenticate(cluster, sessionToken);
-				dataOffset = 0;
+				int dataLength = command.SetAuthenticate(cluster, sessionToken);
 				conn.Send(dataBuffer, 0, dataLength);
 				return;
 			}
@@ -206,33 +203,23 @@ namespace Aerospike.Client
 
 		public void ReceiveComplete()
 		{
-			dataOffset = 0;
-
 			if (inHeader)
 			{
-				long proto = ByteUtil.BytesToLong(dataBuffer, dataOffset);
+				long proto = ByteUtil.BytesToLong(dataBuffer, 0);
 				int length = (int)(proto & 0xFFFFFFFFFFFFL);
 
-				if (length <= 0)
+				if (length <= 0 || length > dataBuffer.Length)
 				{
-					conn.Receive(dataBuffer, dataOffset, 8);
+					Fail("Invalid auth response: " + length);
 					return;
 				}
 
 				inHeader = false;
-
-				if (length > dataBuffer.Length)
-				{
-					Fail("Invalid auth response");
-					return;
-				}
-
-				dataLength = dataOffset + length;
-				conn.Receive(dataBuffer, dataOffset, length);
+				conn.Receive(dataBuffer, 0, length);
 			}
 			else
 			{
-				int resultCode = dataBuffer[dataOffset + 1];
+				int resultCode = dataBuffer[1];
 
 				if (resultCode != 0 && resultCode != ResultCode.SECURITY_NOT_ENABLED)
 				{
