@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2022 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -74,6 +74,11 @@ namespace Aerospike.Client
 		/// Return value for single key read and value list for range read.
 		/// </summary>
 		VALUE = 7,
+
+		/// <summary>
+		/// Return true if count > 0.
+		/// </summary>
+		EXISTS = 13,
 
 		/// <summary>
 		/// Invert meaning of list command and return values.  For example:
