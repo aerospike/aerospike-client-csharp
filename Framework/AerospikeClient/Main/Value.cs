@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2022 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -17,7 +17,6 @@
 using System;
 using System.IO;
 using System.Collections;
-using System.Collections.Generic;
 using System.Runtime.Serialization.Formatters.Binary;
 
 namespace Aerospike.Client
@@ -34,7 +33,15 @@ namespace Aerospike.Client
 		/// server 5.6+.
 		/// </summary>
 		public static bool UseBoolBin = false;
-		
+
+		/// <summary>
+		/// Should BinaryFormatter be disabled. If true, an exception will be thrown when BinaryFormatter
+		/// is used. BinaryFormatter serialization is triggered when a bin constructed by
+		/// <see cref="Bin.Bin(string, object)"/> or <see cref="Bin.AsBlob(string, object)"/> 
+		/// is used in a write command with an unrecognized object type.
+		/// </summary>
+		public static bool DisableSerializer = false;
+
 		/// <summary>
 		/// Null value.
 		/// </summary>
@@ -1778,12 +1785,22 @@ namespace Aerospike.Client
 
 			public override int EstimateSize()
 			{
+				bytes = Serialize(obj);
+				return bytes.Length;
+			}
+
+			public static byte[] Serialize(object val)
+			{
+				if (DisableSerializer)
+				{
+					throw new AerospikeException("Object serializer has been disabled");
+				}
+
 				using (MemoryStream ms = new MemoryStream())
 				{
 					BinaryFormatter formatter = new BinaryFormatter();
-					formatter.Serialize(ms, obj);
-					bytes = ms.ToArray();
-					return bytes.Length;
+					formatter.Serialize(ms, val);
+					return ms.ToArray();
 				}
 			}
 

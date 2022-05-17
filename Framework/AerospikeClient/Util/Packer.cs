@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2022 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -17,8 +17,6 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.IO;
-using System.Runtime.Serialization.Formatters.Binary;
 
 namespace Aerospike.Client
 {
@@ -163,15 +161,10 @@ namespace Aerospike.Client
 
 		public void PackBlob(object val)
 		{
-			using (MemoryStream ms = new MemoryStream())
-			{
-				BinaryFormatter formatter = new BinaryFormatter();
-				formatter.Serialize(ms, val);
-				byte[] bytes = ms.ToArray();
-				PackByteArrayBegin(bytes.Length + 1);
-				PackByte(ParticleType.CSHARP_BLOB);
-				PackByteArray(bytes, 0, bytes.Length);
-			}
+			byte[] bytes = Value.BlobValue.Serialize(val);
+			PackByteArrayBegin(bytes.Length + 1);
+			PackByte(ParticleType.CSHARP_BLOB);
+			PackByteArray(bytes, 0, bytes.Length);
 		}
 
 		public void PackGeoJSON(string val)

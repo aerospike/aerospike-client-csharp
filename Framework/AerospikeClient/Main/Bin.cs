@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2022 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -266,14 +266,17 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
-		/// Constructor, specifying bin name and object value.
-		/// This is the slowest of the Bin constructors because the type
-		/// must be determined using multiple "instanceof" checks.
+		/// Create bin with an object value. This is the slowest of the Bin constructors because
+		/// the type must be determined using multiple "instanceof" checks. If the object type is
+		/// unrecognized, BinaryFormatter is used to serialize the object.
 		/// <para>
-		/// For servers configured as "single-bin", enter a null or empty name.
+		/// To disable this constructor, set <see cref="Value.DisableSerializer"/> to true.
 		/// </para>
 		/// </summary>
-		/// <param name="name">bin name, current limit is 14 characters</param>
+		/// <param name="name">
+		/// bin name, current limit is 14 characters. For servers configured as "single-bin", enter
+		/// a null or empty name.
+		/// </param>
 		/// <param name="value">bin value</param>
 		public Bin(string name, object value)
 		{
@@ -282,14 +285,17 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
-		/// Create bin with a blob value.  The value will be java serialized.
-		/// This method is faster than the bin Object constructor because the blob is converted 
+		/// Create bin with a blob value.  The value will be serialized by BinaryFormatter.
+		/// This method is faster than the bin object constructor because the blob is converted 
 		/// directly instead of using multiple "instanceof" type checks with a blob default.
 		/// <para>
-		/// For servers configured as "single-bin", enter a null or empty name.
+		/// To disable this method, set <see cref="Value.DisableSerializer"/> to true.
 		/// </para>
 		/// </summary>
-		/// <param name="name">bin name, current limit is 14 characters</param>
+		/// <param name="name">
+		/// bin name, current limit is 14 characters. For servers configured as "single-bin", enter
+		/// a null or empty name.
+		/// </param>
 		/// <param name="value">bin value</param>
 		public static Bin AsBlob(string name, object value)
 		{
