@@ -41,14 +41,14 @@ namespace Aerospike.Client
 		private int delayQueueCount;
 		private volatile int jobScheduled;
 
-		public DelayScheduler(AsyncClientPolicy policy)
+		public DelayScheduler(AsyncClientPolicy policy, BufferPool pool)
 		{
 			jobCallback = ProcessQueueExclusive;
 			delayQueueMax = policy.asyncMaxCommandsInQueue;
 
 			for (int i = 0; i < policy.asyncMaxCommands; i++)
 			{
-				bufferQueue.Enqueue(new BufferSegment(i));
+				bufferQueue.Enqueue(new BufferSegment(pool, i));
 			}
 		}
 
@@ -234,11 +234,11 @@ namespace Aerospike.Client
 	{
 		private readonly ConcurrentQueue<BufferSegment> bufferQueue = new ConcurrentQueue<BufferSegment>();
 
-		public RejectScheduler(AsyncClientPolicy policy)
+		public RejectScheduler(AsyncClientPolicy policy, BufferPool pool)
 		{
 			for (int i = 0; i < policy.asyncMaxCommands; i++)
 			{
-				bufferQueue.Enqueue(new BufferSegment(i));
+				bufferQueue.Enqueue(new BufferSegment(pool, i));
 			}
 		}
 
@@ -275,11 +275,11 @@ namespace Aerospike.Client
 	{
 		private readonly BlockingCollection<BufferSegment> bufferQueue = new BlockingCollection<BufferSegment>();
 
-		public BlockScheduler(AsyncClientPolicy policy)
+		public BlockScheduler(AsyncClientPolicy policy, BufferPool pool)
 		{
 			for (int i = 0; i < policy.asyncMaxCommands; i++)
 			{
-				bufferQueue.Add(new BufferSegment(i));
+				bufferQueue.Add(new BufferSegment(pool, i));
 			}
 		}
 

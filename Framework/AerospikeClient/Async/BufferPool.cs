@@ -18,8 +18,6 @@ namespace Aerospike.Client
 {
 	public sealed class BufferPool
 	{
-		public const int BUFFER_CUTOFF = 1024 * 128; // 128 KB
-
 		public readonly byte[] buffer;
 		public readonly int bufferSize;
 
@@ -43,31 +41,29 @@ namespace Aerospike.Client
 			// an issue.
 			buffer = new byte[maxCommands * bufferSize];
 		}
-
-		public BufferPool()
-		{
-		}
-
-		public void GetBuffer(BufferSegment segment)
-		{
-			segment.buffer = buffer;
-			segment.offset = bufferSize * segment.index;
-			segment.size = bufferSize;
-		}
 	}
 
 	public sealed class BufferSegment
 	{
-		public byte[] buffer;
+		public readonly byte[] buffer;
 		public readonly int index;
-		public int offset;
-		public int size;
+		public readonly int offset;
+		public readonly int size;
 
-		public BufferSegment(int index)
+		/// <summary>
+		/// Allocate buffer segment from pool.
+		/// </summary>
+		public BufferSegment(BufferPool pool, int index)
 		{
+			this.buffer = pool.buffer;
 			this.index = index;
+			this.offset = pool.bufferSize * index;
+			this.size = pool.bufferSize;
 		}
 
+		/// <summary>
+		/// Allocate buffer segment from heap.
+		/// </summary>
 		public BufferSegment(int index, int size)
 		{
 			this.buffer = new byte[size];

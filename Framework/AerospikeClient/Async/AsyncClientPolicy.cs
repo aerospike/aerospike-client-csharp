@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2022 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -101,6 +101,26 @@ namespace Aerospike.Client
 		public int asyncMaxConnsPerNode = -1;
 
 		/// <summary>
+		/// Size of buffer allocated for each async command. The size should be a multiple of 8 KB.
+		/// If not, the size is rounded up to the nearest 8 KB increment.
+		/// <para>
+		/// If an async command requires a buffer size less than or equal to asyncBufferSize, the
+		/// buffer pool will be used. If an async command requires a buffer size greater than
+		/// asyncBufferSize, a new single-use buffer will be created on the heap.
+		/// </para>
+		/// <para>
+		/// This field is also used to size the buffer pool for all async commands:
+		/// </para>
+		/// <code>
+		/// buffer pool size = asyncBufferSize * asyncMaxCommands
+		/// </code> 
+		/// <para>
+		/// Default: 128 * 1024 (128 KB)
+		/// </para>
+		/// </summary>
+		public int asyncBufferSize = 128 * 1024;
+
+		/// <summary>
 		/// Copy async client policy from another async client policy.
 		/// </summary>
 		public AsyncClientPolicy(AsyncClientPolicy other) : base(other)
@@ -110,6 +130,7 @@ namespace Aerospike.Client
 			this.asyncMaxCommandsInQueue = other.asyncMaxCommandsInQueue;
 			this.asyncMinConnsPerNode = other.asyncMinConnsPerNode;
 			this.asyncMaxConnsPerNode = other.asyncMaxConnsPerNode;
+			this.asyncBufferSize = other.asyncBufferSize;
 		}
 
 		/// <summary>

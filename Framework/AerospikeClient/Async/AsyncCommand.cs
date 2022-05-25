@@ -171,14 +171,6 @@ namespace Aerospike.Client
 
 		private void ExecuteCore()
 		{
-			if (cluster.HasBufferChanged(segment))
-			{
-				// Reset buffer in SizeBuffer().
-				segment.buffer = null;
-				segment.offset = 0;
-				segment.size = 0;
-			}
-
 			if (totalTimeout > 0)
 			{
 				// Timeout already added in Execute(). Verify state.
@@ -297,17 +289,9 @@ namespace Aerospike.Client
 
 		private void ResizeBuffer(int size)
 		{
-			if (size <= BufferPool.BUFFER_CUTOFF)
-			{
-				// Checkout buffer from cache.
-				cluster.ReserveBuffer(size, segment);
-			}
-			else
-			{
-				// Large buffers should not be cached.
-				// Allocate, but do not put back into pool.
-				segment = new BufferSegment(-1, size);
-			}
+			// Large buffers should not be cached.
+			// Allocate, but do not put back into pool.
+			segment = new BufferSegment(-1, size);
 		}
 
 		protected internal sealed override void End()
@@ -871,7 +855,7 @@ namespace Aerospike.Client
 			if (segment != null)
 			{
 				// Do not put large buffers back into pool.
-				if (segment.size > BufferPool.BUFFER_CUTOFF)
+				if (segment.index < 0)
 				{
 					// Put back original buffer instead.
 					segment = segmentOrig;

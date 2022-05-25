@@ -28,7 +28,7 @@ namespace Aerospike.Client
 		private readonly AsyncScheduler scheduler;
 
 		// Contiguous pool of byte buffers.
-		private BufferPool bufferPool;
+		private readonly BufferPool bufferPool;
 
 		// Maximum number of concurrent asynchronous commands.
 		internal readonly int maxCommands;
@@ -51,25 +51,26 @@ namespace Aerospike.Client
 				throw new AerospikeException("Invalid async connection range: " + asyncMinConnsPerNode + " - " + asyncMaxConnsPerNode);
 			}
 
+			bufferPool = new BufferPool(maxCommands, policy.asyncBufferSize);
+
 			switch (policy.asyncMaxCommandAction)
 			{
 				case MaxCommandAction.REJECT:
-					scheduler = new RejectScheduler(policy);
+					scheduler = new RejectScheduler(policy, bufferPool);
 					break;
 
 				case MaxCommandAction.BLOCK:
-					scheduler = new BlockScheduler(policy);
+					scheduler = new BlockScheduler(policy, bufferPool);
 					break;
 
 				case MaxCommandAction.DELAY:
-					scheduler = new DelayScheduler(policy);
+					scheduler = new DelayScheduler(policy, bufferPool);
 					break;
 
 				default:
 					throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Unsupported MaxCommandAction value: " + policy.asyncMaxCommandAction.ToString());
 			}
 
-			bufferPool = new BufferPool();
 			InitTendThread(policy.failIfNotConnected);
 		}
 
@@ -87,23 +88,6 @@ namespace Aerospike.Client
 		public void ScheduleCommandExecution(AsyncCommand command)
 		{
 			scheduler.Schedule(command);
-		}
-
-		public bool HasBufferChanged(BufferSegment segment)
-		{
-			return bufferPool.bufferSize != segment.size;
-		}
-
-		public void ReserveBuffer(int size, BufferSegment segment)
-		{
-			lock (this)
-			{
-				if (size > bufferPool.bufferSize)
-				{
-					bufferPool = new BufferPool(maxCommands, size);
-				}
-				bufferPool.GetBuffer(segment);
-			}
 		}
 
 		public void ReleaseBuffer(BufferSegment segment)
