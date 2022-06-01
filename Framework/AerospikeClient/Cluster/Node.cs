@@ -938,11 +938,11 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
-		/// Return node name and host address in string format.
+		/// Return node name, host address and cluster id in string format.
 		/// </summary>
 		public override sealed string ToString()
 		{
-			return name + ' ' + host;
+			return name + ' ' + host + ' ' + cluster.clusterId;
 		}
 
 		/// <summary>

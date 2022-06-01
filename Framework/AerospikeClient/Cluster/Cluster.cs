@@ -25,6 +25,12 @@ namespace Aerospike.Client
 {
 	public class Cluster
 	{
+		// Count of cluster instances.
+		private static int ClusterCount;
+
+		// Cluster ID.
+		public readonly int clusterId;
+		
 		// Expected cluster name.
 		protected internal readonly String clusterName;
 
@@ -137,6 +143,13 @@ namespace Aerospike.Client
 					"See https://developer.aerospike.com/client/csharp/usage/logging for details.");
 			}
 			*/
+
+			this.clusterId = Interlocked.Increment(ref ClusterCount);
+
+			if (Log.DebugEnabled())
+			{
+				Log.Debug("Create cluster " + clusterId);
+			}
 
 			this.clusterName = policy.clusterName;
 			tlsPolicy = policy.tlsPolicy;
@@ -1073,6 +1086,11 @@ namespace Aerospike.Client
 
 		public void Close()
 		{
+			if (Log.DebugEnabled())
+			{
+				Log.Debug("Close cluster " + clusterId);
+			}
+
 			tendValid = false;
 			cancel.Cancel();
 
