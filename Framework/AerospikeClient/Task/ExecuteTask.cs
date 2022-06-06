@@ -71,12 +71,21 @@ namespace Aerospike.Client
 
 				if (response.StartsWith("ERROR:2"))
 				{
+					// Query not found.
+					if (node.HasPartitionQuery)
+					{
+						// Server >= 6.0:  Query has completed.
+						// Continue checking other nodes.
+						continue;
+					}
+
+					// Server < 6.0: Query could be complete or has not started yet.
+					// Return NOT_FOUND and let the calling methods handle it.
 					return BaseTask.NOT_FOUND;
 				}
 
 				if (response.StartsWith("ERROR:"))
 				{
-					// Throw exception immediately.
 					throw new AerospikeException(command + " failed: " + response);
 				}
 
@@ -85,7 +94,6 @@ namespace Aerospike.Client
 
 				if (index < 0)
 				{
-					// Store exception and keep waiting.
 					throw new AerospikeException(command + " failed: " + response);
 				}
 
