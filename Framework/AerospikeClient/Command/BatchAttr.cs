@@ -37,6 +37,17 @@ namespace Aerospike.Client
 			this.readAttr |= rattr;
 		}
 
+		public BatchAttr(Policy policy, int rattr, Operation[] ops)
+		{
+			SetRead(policy);
+			this.readAttr |= rattr;
+
+			if (ops != null)
+			{
+				AdjustRead(ops);
+			}
+		}
+
 		public BatchAttr(BatchPolicy rp, BatchWritePolicy wp, Operation[] ops)
 		{
 			bool readAllBins = false;

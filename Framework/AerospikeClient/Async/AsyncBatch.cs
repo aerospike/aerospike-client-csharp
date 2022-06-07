@@ -332,7 +332,7 @@ namespace Aerospike.Client
 		{
 			if (batch.node.HasBatchAny)
 			{
-				BatchAttr attr = new BatchAttr(batchPolicy, readAttr);
+				BatchAttr attr = new BatchAttr(batchPolicy, readAttr, ops);
 				SetBatchOperate(batchPolicy, keys, batch, binNames, ops, attr);
 			}
 			else
@@ -455,7 +455,7 @@ namespace Aerospike.Client
 		{
 			if (batch.node.HasBatchAny)
 			{
-				BatchAttr attr = new BatchAttr(batchPolicy, readAttr);
+				BatchAttr attr = new BatchAttr(batchPolicy, readAttr, ops);
 				SetBatchOperate(batchPolicy, keys, batch, binNames, ops, attr);
 			}
 			else
