@@ -263,6 +263,37 @@ namespace Aerospike.Test
 		}
 
 		[TestMethod]
+		public void BatchReadAllBins()
+		{
+			Key[] keys = new Key[Size];
+			for (int i = 0; i < Size; i++)
+			{
+				keys[i] = new Key(args.ns, args.set, KeyPrefix + (i + 1));
+			}
+
+			Bin bin = new Bin("bin5", "NewValue");
+
+			BatchResults bresults = client.Operate(null, null, keys,
+				Operation.Put(bin),
+				Operation.Get()
+				);
+
+			for (int i = 0; i < bresults.records.Length; i++)
+			{
+				BatchRecord br = bresults.records[i];
+				Assert.AreEqual(0, br.resultCode);
+
+				Record r = br.record;
+
+				string s = r.GetString(bin.name);
+				Assert.AreEqual("NewValue", s);
+
+				object obj = r.GetValue(BinName);
+				Assert.IsNotNull(obj);
+			}
+		}
+
+		[TestMethod]
 		public void BatchWriteComplex()
 		{
 			Expression wexp1 = Exp.Build(Exp.Add(Exp.IntBin(BinName), Exp.Val(1000)));

@@ -57,30 +57,25 @@ namespace Aerospike.Client
 
 			foreach (Operation op in ops)
 			{
-				switch (op.type)
+				if (Operation.IsWrite(op.type))
 				{
-					case Operation.Type.BIT_READ:
-					case Operation.Type.EXP_READ:
-					case Operation.Type.HLL_READ:
-					case Operation.Type.MAP_READ:
-					case Operation.Type.CDT_READ:
-					case Operation.Type.READ:
-						// Read all bins if no bin is specified.
+					hasWriteOp = true;
+				}
+				else
+				{
+					hasRead = true;
+
+					if (op.type == Operation.Type.READ)
+					{
 						if (op.binName == null)
 						{
 							readAllBins = true;
 						}
-						hasRead = true;
-						break;
-
-					case Operation.Type.READ_HEADER:
+					}
+					else if (op.type == Operation.Type.READ_HEADER)
+					{
 						readHeader = true;
-						hasRead = true;
-						break;
-
-					default:
-						hasWriteOp = true;
-						break;
+					}
 				}
 			}
 
@@ -95,6 +90,8 @@ namespace Aerospike.Client
 					if (readAllBins)
 					{
 						readAttr |= Command.INFO1_GET_ALL;
+						// When GET_ALL is specified, RESPOND_ALL_OPS must be disabled.
+						writeAttr &= ~Command.INFO2_RESPOND_ALL_OPS;
 					}
 					else if (readHeader)
 					{
@@ -191,42 +188,19 @@ namespace Aerospike.Client
 
 		public void AdjustRead(Operation[] ops)
 		{
-			bool readAllBins = false;
-			bool readHeader = false;
-
 			foreach (Operation op in ops)
 			{
-				switch (op.type)
+				if (op.type == Operation.Type.READ)
 				{
-					case Operation.Type.BIT_READ:
-					case Operation.Type.EXP_READ:
-					case Operation.Type.HLL_READ:
-					case Operation.Type.MAP_READ:
-					case Operation.Type.CDT_READ:
-					case Operation.Type.READ:
-						// Read all bins if no bin is specified.
-						if (op.binName == null)
-						{
-							readAllBins = true;
-						}
-						break;
-
-					case Operation.Type.READ_HEADER:
-						readHeader = true;
-						break;
-
-					default:
-						break;
+					if (op.binName == null)
+					{
+						readAttr |= Command.INFO1_GET_ALL;
+					}
 				}
-			}
-
-			if (readAllBins)
-			{
-				readAttr |= Command.INFO1_GET_ALL;
-			}
-			else if (readHeader)
-			{
-				readAttr |= Command.INFO1_NOBINDATA;
+				else if (op.type == Operation.Type.READ_HEADER)
+				{
+					readAttr |= Command.INFO1_NOBINDATA;
+				}
 			}
 		}
 
@@ -313,49 +287,25 @@ namespace Aerospike.Client
 
 		public void AdjustWrite(Operation[] ops)
 		{
-			bool readAllBins = false;
-			bool readHeader = false;
-			bool hasRead = false;
-
 			foreach (Operation op in ops)
 			{
-				switch (op.type)
+				if (! Operation.IsWrite(op.type))
 				{
-					case Operation.Type.BIT_READ:
-					case Operation.Type.EXP_READ:
-					case Operation.Type.HLL_READ:
-					case Operation.Type.MAP_READ:
-					case Operation.Type.CDT_READ:
-					case Operation.Type.READ:
-						// Read all bins if no bin is specified.
+					readAttr |= Command.INFO1_READ;
+
+					if (op.type == Operation.Type.READ)
+					{
 						if (op.binName == null)
 						{
-							readAllBins = true;
+							readAttr |= Command.INFO1_GET_ALL;
+							// When GET_ALL is specified, RESPOND_ALL_OPS must be disabled.
+							writeAttr &= ~Command.INFO2_RESPOND_ALL_OPS;
 						}
-						hasRead = true;
-						break;
-
-					case Operation.Type.READ_HEADER:
-						readHeader = true;
-						hasRead = true;
-						break;
-
-					default:
-						break;
-				}
-			}
-
-			if (hasRead)
-			{
-				readAttr |= Command.INFO1_READ;
-
-				if (readAllBins)
-				{
-					readAttr |= Command.INFO1_GET_ALL;
-				}
-				else if (readHeader)
-				{
-					readAttr |= Command.INFO1_NOBINDATA;
+					}
+					else if (op.type == Operation.Type.READ_HEADER)
+					{
+						readAttr |= Command.INFO1_NOBINDATA;
+					}
 				}
 			}
 		}
