@@ -33,6 +33,35 @@ namespace Aerospike.Client
 			bytes = packer.ToByteArray();
 		}
 
+		internal Expression(byte[] bytes)
+		{
+			this.bytes = bytes;
+		}
+
+		/// <summary>
+		/// Return a new expression from packed expression instructions in bytes.
+		/// </summary>
+		public static Expression FromBytes(byte[] bytes)
+		{
+			return new Expression(bytes);
+		}
+
+		/// <summary>
+		/// Return a new expression from packed expression instructions in base64 encoded chars.
+		/// </summary>
+		public static Expression FromBase64(char[] chars)
+		{
+			return Expression.FromBytes(Convert.FromBase64CharArray(chars, 0, chars.Length));
+		}
+
+		/// <summary>
+		/// Return a new expression from packed expression instructions in base64 encoded string.
+		/// </summary>
+		public static Expression FromBase64(string s)
+		{
+			return Expression.FromBytes(Convert.FromBase64String(s));
+		}
+
 		/// <summary>
 		/// Packed byte instructions.
 		/// </summary>
