@@ -474,6 +474,8 @@ namespace Aerospike.Client
 
 		public bool ShouldRetry(NodePartitions nodePartitions, AerospikeException ae)
 		{
+			ae.Iteration = iteration;
+
 			switch (ae.Result)
 			{
 				case ResultCode.SERVER_NOT_AVAILABLE:
