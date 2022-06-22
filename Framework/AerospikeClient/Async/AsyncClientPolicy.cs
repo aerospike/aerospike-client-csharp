@@ -41,11 +41,10 @@ namespace Aerospike.Client
 		/// on the client machine.  The socket file descriptors available can be determined by the
 		/// following command:
 		/// </para>
-		/// <para>
-		/// ulimit -n
-		/// </para>
+		/// <para>ulimit -n</para>
+		/// <para>Default: 100</para>
 		/// </summary>
-		public int asyncMaxCommands = 200;
+		public int asyncMaxCommands = 100;
 
 		/// <summary>
 		/// Maximum number of async commands that can be stored in the delay queue when

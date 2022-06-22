@@ -97,15 +97,11 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
-		/// Default constructor.
-		/// <para>
-		/// Set maxRetries for non-aggregation queries with a null filter.
-		/// All other queries are not retried.
-		/// </para>
+		/// Default constructor. Disable totalTimeout and set maxRetries.
 		/// <para>
 		/// The latest servers support retries on individual data partitions.
 		/// This feature is useful when a cluster is migrating and partition(s)
-		/// are missed or incomplete on the first query (with null filter) attempt.
+		/// are missed or incomplete on the first query attempt.
 		/// </para>
 		/// <para>
 		/// If the first query attempt misses 2 of 4096 partitions, then only
@@ -117,6 +113,7 @@ namespace Aerospike.Client
 		/// </summary>
 		public QueryPolicy()
 		{
+			base.totalTimeout = 0;
 			base.maxRetries = 5;
 		}
 	}

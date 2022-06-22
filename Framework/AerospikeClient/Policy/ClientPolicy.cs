@@ -87,13 +87,12 @@ namespace Aerospike.Client
 		/// and query). One connection will be used for each thread.
 		/// </para>
 		/// <para>
-		/// This field is ignored by asynchronous transactions since these transactions are already
-		/// bound by asyncMaxCommands by default. Each async command has a one-to-one relationship with
-		/// connections.
+		/// See <see cref="AsyncClientPolicy.asyncMaxConnsPerNode"/> to configure max connections for
+		/// asynchronous commands.
 		/// </para>
-		/// <para>Default: 300</para>
+		/// <para>Default: 100</para>
 		/// </summary>
-		public int maxConnsPerNode = 300;
+		public int maxConnsPerNode = 100;
 
 		/// <summary>
 		/// Number of synchronous connection pools used for each node.  Machines with 8 cpu cores or
@@ -125,9 +124,9 @@ namespace Aerospike.Client
 		/// connections to min connections (minConnsPerNode and asyncMinConnsPerNode) using a
 		/// hard-coded 55 second limit in the cluster tend thread.
 		/// </para>
-		/// <para>Default: 55</para>
+		/// <para>Default: 0</para>
 		/// </summary>
-		public int maxSocketIdle = 55;
+		public int maxSocketIdle;
 
 		/// <summary>
 		/// Maximum number of errors allowed per node per <see cref="errorRateWindow"/> before backoff
@@ -139,10 +138,10 @@ namespace Aerospike.Client
 		/// and client timeouts) and <see cref="Aerospike.Client.ResultCode.DEVICE_OVERLOAD"/>.
 		/// </para>
 		/// <para>
-		/// Default: 0
+		/// Default: 100
 		/// </para>
 		/// </summary>
-		public int maxErrorRate;
+		public int maxErrorRate = 100;
 
 		/// <summary>
 		/// The number of cluster tend iterations that defines the window for <see cref="maxErrorRate"/>.

@@ -83,23 +83,23 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
-		/// Default constructor.
+		/// Default constructor. Disable totalTimeout and set maxRetries.
 		/// <para>
-		/// Set maxRetries for scans. The latest servers support retries on
-		/// individual data partitions. This feature is useful when a cluster
-		/// is migrating and partition(s) are missed or incomplete on the first
-		/// scan attempt.
+		/// The latest servers support retries on individual data partitions.
+		/// This feature is useful when a cluster is migrating and partition(s)
+		/// are missed or incomplete on the first scan attempt.
 		/// </para>
 		/// <para>
 		/// If the first scan attempt misses 2 of 4096 partitions, then only
 		/// those 2 partitions are retried in the next scan attempt from the
-		/// last key digest received for each respective partition.  A higher
+		/// last key digest received for each respective partition. A higher
 		/// default maxRetries is used because it's wasteful to invalidate
 		/// all scan results because a single partition was missed.
 		/// </para>
 		/// </summary>
 		public ScanPolicy()
 		{
+			base.totalTimeout = 0;
 			base.maxRetries = 5;
 		}
 	}

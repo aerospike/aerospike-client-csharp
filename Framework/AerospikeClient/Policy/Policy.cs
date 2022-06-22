@@ -104,11 +104,10 @@ namespace Aerospike.Client
 		/// <para>
 		/// If totalTimeout is zero, there will be no total time limit.
 		/// </para>
-		/// <para>
-		/// Default: 0 (no time limit)
-		/// </para>
+		/// <para>Default for scan/query: 0 (no time limit)</para>
+		/// <para>Default for all other commands: 1000ms</para>
 		/// </summary>
-		public int totalTimeout;
+		public int totalTimeout = 1000;
 
 		/// <summary>
 		/// Maximum number of retries before aborting the current transaction.
@@ -124,18 +123,10 @@ namespace Aerospike.Client
 		/// It's important to use a distinct WritePolicy for non-idempotent 
 		/// writes which sets maxRetries = 0;
 		/// </para>
-		/// <para>
-		/// Default for read: 2 (initial attempt + 2 retries = 3 attempts)
-		/// </para>
-		/// <para>
-		/// Default for write: 0 (no retries)
-		/// </para>
-		/// <para>
-		/// Default for partition scan or query with null filter: 5
+		/// <para>Default for write: 0 (no retries)</para>
+		/// <para>Default for read: 2 (initial attempt + 2 retries = 3 attempts)</para>
+		/// <para>Default for scan/query: 5 
 		/// (6 attempts. See <see cref="Aerospike.Client.ScanPolicy.ScanPolicy()"/>  comments.)
-		/// </para>
-		/// <para>
-		/// No default for legacy scan/query. No retries are allowed for these commands.
 		/// </para>
 		/// </summary>
 		public int maxRetries = 2;
