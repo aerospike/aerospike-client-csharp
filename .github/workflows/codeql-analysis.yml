@@ -66,6 +66,7 @@ jobs:
 
       run: |
         echo "Run, Build Application using below commands"
+        dotnet build /p:UseSharedCompilation=false
         cd Core/AerospikeClient
         dotnet restore
         dotnet build --configuration Release 
