@@ -72,9 +72,9 @@ jobs:
 
       run: |
         dotnet build /p:UseSharedCompilation=false
-   #     cd Core/AerospikeClient
-    #    dotnet restore
-      #  dotnet build --configuration Release 
+        cd Core/AerospikeClient
+        dotnet restore
+        dotnet build --configuration Release 
 
     - name: Perform CodeQL Analysis     
       uses: github/codeql-action/analyze@v2
