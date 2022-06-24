@@ -71,7 +71,7 @@ jobs:
     #   modify them (or add more) to build your code if your project, please refer to the EXAMPLE below for guidance.
 
       run: |
-        echo "Run, Build Application using below commands"
+        dotnet build /p:UseSharedCompilation=false
         cd Core/AerospikeClient
         dotnet restore
         dotnet build --configuration Release 
