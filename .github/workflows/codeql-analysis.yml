@@ -61,7 +61,7 @@ jobs:
         
     # Autobuild attempts to build any compiled languages  (C/C++, C#, or Java).
     # If this step fails, then you should remove it and run the build manually (see below)
-    - name: Autobuild
+    - name: Build
   #    uses: github/codeql-action/autobuild@v2
 
     # ℹ️ Command-line programs to run using the OS shell.
@@ -71,7 +71,6 @@ jobs:
     #   modify them (or add more) to build your code if your project, please refer to the EXAMPLE below for guidance.
 
       run: |
-        dotnet build /p:UseSharedCompilation=false
         cd Core/AerospikeClient
         dotnet restore
         dotnet build --configuration Release 
