@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2020 Aerospike, Inc.
+ * Copyright 2012-2022 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -376,6 +376,19 @@ namespace Aerospike.Client
 					c.value.Pack(packer);
 				}
 			}
+		}
+
+		public static byte[] Pack(CTX[] ctx)
+		{
+			Packer packer = new Packer();
+			packer.PackArrayBegin(ctx.Length * 2);
+
+			foreach (CTX c in ctx)
+			{
+				packer.PackNumber(c.id);
+				c.value.Pack(packer);
+			}
+			return packer.ToByteArray();
 		}
 	}
 }

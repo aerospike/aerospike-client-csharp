@@ -30,9 +30,7 @@ namespace Aerospike.Client
 		public const int MAX_RECORDS = 13;
 		public const int BVAL_ARRAY = 15;
 		public const int INDEX_RANGE = 22;
-		public const int INDEX_FILTER = 23;
-		public const int INDEX_LIMIT = 24;
-		public const int INDEX_ORDER_BY = 25;
+		public const int INDEX_CONTEXT = 23;
 		public const int INDEX_TYPE = 26;
 		public const int UDF_PACKAGE_NAME = 30;
 		public const int UDF_FUNCTION = 31;

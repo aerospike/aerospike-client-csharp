@@ -821,6 +821,7 @@ namespace Aerospike.Client
 		/// <param name="binName">bin name that data is indexed on</param>
 		/// <param name="indexType">underlying data type of secondary index</param>
 		/// <param name="indexCollectionType">index collection type</param>
+		/// <param name="ctx">optional context to index on elements within a CDT</param>
 		/// <exception cref="AerospikeException">if index create fails</exception>
 		IndexTask CreateIndex
 		(
@@ -830,7 +831,8 @@ namespace Aerospike.Client
 			string indexName,
 			string binName,
 			IndexType indexType,
-			IndexCollectionType indexCollectionType
+			IndexCollectionType indexCollectionType,
+			params CTX[] ctx
 		);
 
 		/// <summary>

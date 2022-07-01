@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2022 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -26,10 +26,11 @@ namespace Aerospike.Client
 		/// </summary>
 		/// <param name="name">bin name</param>
 		/// <param name="value">filter value</param>
-		public static Filter Equal(string name, long value)
+		/// <param name="ctx">optional context for elements within a CDT</param>
+		public static Filter Equal(string name, long value, params CTX[] ctx)
 		{
 			Value val = Value.Get(value);
-			return new Filter(name, IndexCollectionType.DEFAULT, val.Type, val, val);
+			return new Filter(name, IndexCollectionType.DEFAULT, val.Type, val, val, ctx);
 		}
 
 		/// <summary>
@@ -37,10 +38,11 @@ namespace Aerospike.Client
 		/// </summary>
 		/// <param name="name">bin name</param>
 		/// <param name="value">filter value</param>
-		public static Filter Equal(string name, string value)
+		/// <param name="ctx">optional context for elements within a CDT</param>
+		public static Filter Equal(string name, string value, params CTX[] ctx)
 		{
 			Value val = Value.Get(value);
-			return new Filter(name, IndexCollectionType.DEFAULT, val.Type, val, val);
+			return new Filter(name, IndexCollectionType.DEFAULT, val.Type, val, val, ctx);
 		}
 
 		/// <summary>
@@ -49,10 +51,11 @@ namespace Aerospike.Client
 		/// <param name="name">bin name</param>
 		/// <param name="type">index collection type</param>
 		/// <param name="value">filter value</param>
-		public static Filter Contains(string name, IndexCollectionType type, long value)
+		/// <param name="ctx">optional context for elements within a CDT</param>
+		public static Filter Contains(string name, IndexCollectionType type, long value, params CTX[] ctx)
 		{
 			Value val = Value.Get(value);
-			return new Filter(name, type, val.Type,  val, val);
+			return new Filter(name, type, val.Type,  val, val, ctx);
 		}
 
 		/// <summary>
@@ -61,12 +64,13 @@ namespace Aerospike.Client
 		/// <param name="name">bin name</param>
 		/// <param name="type">index collection type</param>
 		/// <param name="value">filter value</param>
-		public static Filter Contains(string name, IndexCollectionType type, string value)
+		/// <param name="ctx">optional context for elements within a CDT</param>
+		public static Filter Contains(string name, IndexCollectionType type, string value, params CTX[] ctx)
 		{
 			Value val = Value.Get(value);
-			return new Filter(name, type, val.Type, val, val);
+			return new Filter(name, type, val.Type, val, val, ctx);
 		}
-		
+
 		/// <summary>
 		/// Create range filter for query.
 		/// Range arguments must be longs or integers which can be cast to longs.
@@ -75,9 +79,10 @@ namespace Aerospike.Client
 		/// <param name="name">bin name</param>
 		/// <param name="begin">filter begin value inclusive</param>
 		/// <param name="end">filter end value inclusive</param>
-		public static Filter Range(string name, long begin, long end)
+		/// <param name="ctx">optional context for elements within a CDT</param>
+		public static Filter Range(string name, long begin, long end, params CTX[] ctx)
 		{
-			return new Filter(name, IndexCollectionType.DEFAULT, ParticleType.INTEGER, Value.Get(begin), Value.Get(end));
+			return new Filter(name, IndexCollectionType.DEFAULT, ParticleType.INTEGER, Value.Get(begin), Value.Get(end), ctx);
 		}
 
 		/// <summary>
@@ -89,9 +94,10 @@ namespace Aerospike.Client
 		/// <param name="type">index collection type inclusive</param>
 		/// <param name="begin">filter begin value inclusive</param>
 		/// <param name="end">filter end value</param>
-		public static Filter Range(string name, IndexCollectionType type, long begin, long end)
+		/// <param name="ctx">optional context for elements within a CDT</param>
+		public static Filter Range(string name, IndexCollectionType type, long begin, long end, params CTX[] ctx)
 		{
-			return new Filter(name, type, ParticleType.INTEGER, Value.Get(begin), Value.Get(end));
+			return new Filter(name, type, ParticleType.INTEGER, Value.Get(begin), Value.Get(end), ctx);
 		}
 
 		/// <summary>
@@ -99,9 +105,10 @@ namespace Aerospike.Client
 		/// </summary>
 		/// <param name="name">bin name</param>
 		/// <param name="region">GeoJSON region</param>
-		public static Filter GeoWithinRegion(string name, string region)
+		/// <param name="ctx">optional context for elements within a CDT</param>
+		public static Filter GeoWithinRegion(string name, string region, params CTX[] ctx)
 		{
-			return new Filter(name, IndexCollectionType.DEFAULT, ParticleType.GEOJSON, Value.Get(region), Value.Get(region));
+			return new Filter(name, IndexCollectionType.DEFAULT, ParticleType.GEOJSON, Value.Get(region), Value.Get(region), ctx);
 		}
 
 		/// <summary>
@@ -110,9 +117,10 @@ namespace Aerospike.Client
 		/// <param name="name">bin name</param>
 		/// <param name="type">index collection type</param>
 		/// <param name="region">GeoJSON region</param>
-		public static Filter GeoWithinRegion(string name, IndexCollectionType type, string region)
+		/// <param name="ctx">optional context for elements within a CDT</param>
+		public static Filter GeoWithinRegion(string name, IndexCollectionType type, string region, params CTX[] ctx)
 		{
-			return new Filter(name, type, ParticleType.GEOJSON, Value.Get(region), Value.Get(region));
+			return new Filter(name, type, ParticleType.GEOJSON, Value.Get(region), Value.Get(region), ctx);
 		}
 
 		/// <summary>
@@ -122,10 +130,11 @@ namespace Aerospike.Client
 		/// <param name="lng">longitude</param>
 		/// <param name="lat">latitude</param>
 		/// <param name="radius">radius (meters)</param>
-		public static Filter GeoWithinRadius(string name, double lng, double lat, double radius)
+		/// <param name="ctx">optional context for elements within a CDT</param>
+		public static Filter GeoWithinRadius(string name, double lng, double lat, double radius, params CTX[] ctx)
 		{
 			string rgnstr = string.Format("{{ \"type\": \"AeroCircle\", " + "\"coordinates\": [[{0:F8}, {1:F8}], {2:F}] }}", lng, lat, radius);
-			return new Filter(name, IndexCollectionType.DEFAULT, ParticleType.GEOJSON, Value.Get(rgnstr), Value.Get(rgnstr));
+			return new Filter(name, IndexCollectionType.DEFAULT, ParticleType.GEOJSON, Value.Get(rgnstr), Value.Get(rgnstr), ctx);
 		}
 
 		/// <summary>
@@ -136,10 +145,11 @@ namespace Aerospike.Client
 		/// <param name="lng">longitude</param>
 		/// <param name="lat">latitude</param>
 		/// <param name="radius">radius (meters)</param>
-		public static Filter GeoWithinRadius(string name, IndexCollectionType type, double lng, double lat, double radius)
+		/// <param name="ctx">optional context for elements within a CDT</param>
+		public static Filter GeoWithinRadius(string name, IndexCollectionType type, double lng, double lat, double radius, params CTX[] ctx)
 		{
 			string rgnstr = string.Format("{{ \"type\": \"AeroCircle\", " + "\"coordinates\": [[{0:F8}, {1:F8}], {2:F}] }}", lng, lat, radius);
-			return new Filter(name, type, ParticleType.GEOJSON, Value.Get(rgnstr), Value.Get(rgnstr));
+			return new Filter(name, type, ParticleType.GEOJSON, Value.Get(rgnstr), Value.Get(rgnstr), ctx);
 		}
 
 		/// <summary>
@@ -147,9 +157,10 @@ namespace Aerospike.Client
 		/// </summary>
 		/// <param name="name">bin name</param>
 		/// <param name="point">GeoJSON point</param>
-		public static Filter GeoContains(string name, string point)
+		/// <param name="ctx">optional context for elements within a CDT</param>
+		public static Filter GeoContains(string name, string point, params CTX[] ctx)
 		{
-			return new Filter(name, IndexCollectionType.DEFAULT, ParticleType.GEOJSON, Value.Get(point), Value.Get(point));
+			return new Filter(name, IndexCollectionType.DEFAULT, ParticleType.GEOJSON, Value.Get(point), Value.Get(point), ctx);
 		}
 
 		/// <summary>
@@ -158,24 +169,27 @@ namespace Aerospike.Client
 		/// <param name="name">bin name</param>
 		/// <param name="type">index collection type</param>
 		/// <param name="point">GeoJSON point</param>
-		public static Filter GeoContains(string name, IndexCollectionType type, string point)
+		/// <param name="ctx">optional context for elements within a CDT</param>
+		public static Filter GeoContains(string name, IndexCollectionType type, string point, params CTX[] ctx)
 		{
-			return new Filter(name, type, ParticleType.GEOJSON, Value.Get(point), Value.Get(point));
+			return new Filter(name, type, ParticleType.GEOJSON, Value.Get(point), Value.Get(point), ctx);
 		}
 
 		private readonly string name;
 		private readonly IndexCollectionType colType;
+		private readonly byte[] packedCtx;
 		private readonly int valType;
 		private readonly Value begin;
 		private readonly Value end;
 
-		private Filter(string name, IndexCollectionType colType, int valType, Value begin, Value end)
+		private Filter(string name, IndexCollectionType colType, int valType, Value begin, Value end, CTX[] ctx)
 		{
 			this.name = name;
 			this.colType = colType;
 			this.valType = valType;
 			this.begin = begin;
 			this.end = end;
+			this.packedCtx = (ctx != null && ctx.Length > 0) ? PackUtil.Pack(ctx) : null;
 		}
 
 		internal int EstimateSize()
@@ -210,6 +224,11 @@ namespace Aerospike.Client
 		internal IndexCollectionType CollectionType
 		{
 			get {return colType;}
+		}
+
+		internal byte[] PackedCtx
+		{
+			get {return packedCtx;}
 		}
 	}
 }

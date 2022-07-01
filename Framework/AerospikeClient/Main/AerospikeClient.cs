@@ -1932,6 +1932,7 @@ namespace Aerospike.Client
 		/// <param name="binName">bin name that data is indexed on</param>
 		/// <param name="indexType">underlying data type of secondary index</param>
 		/// <param name="indexCollectionType">index collection type</param>
+		/// <param name="ctx">optional context to index on elements within a CDT</param>
 		/// <exception cref="AerospikeException">if index create fails</exception>
 		public IndexTask CreateIndex
 		(
@@ -1941,14 +1942,16 @@ namespace Aerospike.Client
 			string indexName,
 			string binName,
 			IndexType indexType,
-			IndexCollectionType indexCollectionType
+			IndexCollectionType indexCollectionType,
+			params CTX[] ctx
 		)
 		{
 			if (policy == null)
 			{
 				policy = writePolicyDefault;
 			}
-			StringBuilder sb = new StringBuilder(500);
+
+			StringBuilder sb = new StringBuilder(1024);
 			sb.Append("sindex-create:ns=");
 			sb.Append(ns);
 
@@ -1960,7 +1963,15 @@ namespace Aerospike.Client
 
 			sb.Append(";indexname=");
 			sb.Append(indexName);
-			sb.Append(";numbins=1");
+
+			if (ctx != null && ctx.Length > 0)
+			{
+				byte[] bytes = PackUtil.Pack(ctx);
+				string base64 = Convert.ToBase64String(bytes);
+
+				sb.Append(";context=");
+				sb.Append(base64);
+			}
 
 			if (indexCollectionType != IndexCollectionType.DEFAULT)
 			{
@@ -1972,7 +1983,6 @@ namespace Aerospike.Client
 			sb.Append(binName);
 			sb.Append(",");
 			sb.Append(indexType);
-			sb.Append(";priority=normal");
 
 			// Send index command to one node. That node will distribute the command to other nodes.
 			String response = SendInfoCommand(policy, sb.ToString());

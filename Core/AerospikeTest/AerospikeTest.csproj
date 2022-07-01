@@ -73,6 +73,7 @@
     <Compile Include="..\..\Framework\AerospikeTest\Sync\Query\TestIndex.cs" Link="Sync\TestIndex.cs" />
     <Compile Include="..\..\Framework\AerospikeTest\Sync\Query\TestQueryAverage.cs" Link="Sync\TestQueryAverage.cs" />
     <Compile Include="..\..\Framework\AerospikeTest\Sync\Query\TestQueryCollection.cs" Link="Sync\TestQueryCollection.cs" />
+    <Compile Include="..\..\Framework\AerospikeTest\Sync\Query\TestQueryContext.cs" Link="Sync\TestQueryContext.cs" />
     <Compile Include="..\..\Framework\AerospikeTest\Sync\Query\TestQueryExecute.cs" Link="Sync\TestQueryExecute.cs" />
     <Compile Include="..\..\Framework\AerospikeTest\Sync\Query\TestQueryFilter.cs" Link="Sync\TestQueryFilter.cs" />
     <Compile Include="..\..\Framework\AerospikeTest\Sync\Query\TestQueryFilterExp.cs" Link="Sync\TestQueryFilterExp.cs" />

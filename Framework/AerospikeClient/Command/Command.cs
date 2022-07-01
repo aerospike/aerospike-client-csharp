@@ -1414,6 +1414,8 @@ namespace Aerospike.Client
 			dataOffset += 8 + FIELD_HEADER_SIZE;
 			fieldCount++;
 
+			byte[] packedCtx = null;
+
 			if (statement.filter != null)
 			{
 				IndexCollectionType type = statement.filter.CollectionType;
@@ -1448,6 +1450,14 @@ namespace Aerospike.Client
 						dataOffset += binNameSize;
 						fieldCount++;
 					}
+				}
+
+				packedCtx = statement.filter.PackedCtx;
+
+				if (packedCtx != null)
+				{
+					dataOffset += FIELD_HEADER_SIZE + packedCtx.Length;
+					fieldCount++;
 				}
 			}
 
@@ -1619,6 +1629,13 @@ namespace Aerospike.Client
 							dataOffset += len + 1;
 						}
 					}
+				}
+
+				if (packedCtx != null)
+				{
+					WriteFieldHeader(packedCtx.Length, FieldType.INDEX_CONTEXT);
+					Array.Copy(packedCtx, 0, dataBuffer, dataOffset, packedCtx.Length);
+					dataOffset += packedCtx.Length;
 				}
 			}
 
