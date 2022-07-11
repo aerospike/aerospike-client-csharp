@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2022 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -195,6 +195,11 @@ namespace Aerospike.Client
 			if (len <= 0)
 			{
 				return null;
+			}
+
+			if (Value.DisableDeserializer)
+			{
+				throw new AerospikeException.Serialize("Object deserializer has been disabled");
 			}
 
 			try

@@ -43,6 +43,15 @@ namespace Aerospike.Client
 		public static bool DisableSerializer = false;
 
 		/// <summary>
+		/// Should default object deserializer be disabled. If true, an exception will be thrown when
+		/// a default object deserialization is attempted. Default object serialization is triggered
+		/// when serialized data is read/parsed from the server. DisableDeserializer is separate from
+		/// DisableSerializer because there may be cases when no new serialization is allowed, but
+		/// existing serialized objects need to be supported.
+		/// </summary>
+		public static bool DisableDeserializer = false;
+
+		/// <summary>
 		/// Null value.
 		/// </summary>
 		public static readonly Value NULL = NullValue.Instance;

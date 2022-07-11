@@ -321,7 +321,7 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
-		/// Exception thrown when Java serialization error occurs.
+		/// Exception thrown when a default serialization error occurs.
 		/// </summary>
 		public sealed class Serialize : AerospikeException
 		{
