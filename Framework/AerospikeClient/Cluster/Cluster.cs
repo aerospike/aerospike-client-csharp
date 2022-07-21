@@ -97,7 +97,7 @@ namespace Aerospike.Client
 		private readonly int tendInterval;
 
 		// Cluster tend counter
-		private int tendCount;
+		private uint tendCount;
 
 		// Tend thread variables.
 		private Thread tendThread;
@@ -113,6 +113,13 @@ namespace Aerospike.Client
 
 		// Does cluster support partition scans.
 		internal bool hasPartitionScan;
+
+		internal bool statsEnabled;
+		internal uint statsInterval = 30;
+		internal int latencyColumns;
+		internal int latencyShift;
+		internal ILatencyManager writeLatency;
+		internal ILatencyManager readLatency;
 		
 		public Cluster(ClientPolicy policy, Host[] hosts)
 		{
@@ -209,6 +216,47 @@ namespace Aerospike.Client
 			partitionMap = new Dictionary<string, Partitions>();
 			cancel = new CancellationTokenSource();
 			cancelToken = cancel.Token;
+
+			writeLatency = new LatencyManagerAlt(latencyColumns, latencyShift);
+			readLatency = new LatencyManagerAlt(latencyColumns, latencyShift);
+
+			Log.Warn("ClientPolicy:" +
+				" user=" + policy.user +
+				" minConnsPerNode=" + policy.minConnsPerNode +
+				" maxConnsPerNode=" + policy.maxConnsPerNode +
+				" maxSocketIdle=" + policy.maxSocketIdle +
+				" rackId=" + policy.rackId
+				);
+
+			Log.Warn("WritePolicy Default:" +
+				" socketTimeout=" + policy.writePolicyDefault.socketTimeout +
+				" totalTimeout=" + policy.writePolicyDefault.totalTimeout +
+				" maxRetries=" + policy.writePolicyDefault.maxRetries +
+				" commitLevel=" + policy.writePolicyDefault.commitLevel +
+				" recordExistsAction=" + policy.writePolicyDefault.recordExistsAction +
+				" expiration=" + policy.writePolicyDefault.expiration +
+				" sendKey=" + policy.writePolicyDefault.sendKey +
+				" durableDelete=" + policy.writePolicyDefault.durableDelete
+				);
+
+			Log.Warn("ReadPolicy Default:" + 
+				" socketTimeout=" + policy.readPolicyDefault.socketTimeout + 
+				" totalTimeout=" + policy.readPolicyDefault.totalTimeout + 
+				" maxRetries=" + policy.readPolicyDefault.maxRetries + 
+				" readModeAP=" + policy.readPolicyDefault.readModeAP + 
+				" readModeSC=" + policy.readPolicyDefault.readModeSC
+				);
+
+			Log.Warn("BatchPolicy Default:" +
+				" socketTimeout=" + policy.batchPolicyDefault.socketTimeout +
+				" totalTimeout=" + policy.batchPolicyDefault.totalTimeout +
+				" maxRetries=" + policy.batchPolicyDefault.maxRetries +
+				" readModeAP=" + policy.batchPolicyDefault.readModeAP +
+				" readModeSC=" + policy.batchPolicyDefault.readModeSC + 
+				" maxConcurrentThreads=" + policy.batchPolicyDefault.maxConcurrentThreads + 
+				" allowInline=" + policy.batchPolicyDefault.allowInline + 
+				" allowProleReads=" + policy.batchPolicyDefault.allowProleReads
+				);
 		}
 
 		public virtual void InitTendThread(bool failIfNotConnected)
@@ -444,16 +492,26 @@ namespace Aerospike.Client
 				AddNodes(peers.nodes);
 			}
 
-			// Balance connections every 30 tend intervals.
-			if (++tendCount >= 30)
-			{
-				tendCount = 0;
+			uint count = ++tendCount;
 
+			// Balance connections every 30 tend intervals.
+			if (count % 30 == 0)
+			{
 				foreach (Node node in nodes)
 				{
 					node.BalanceConnections();
 				}
 			}
+
+			if (statsEnabled && (count % statsInterval) == 0)
+			{
+				LogStatistics();
+			}
+		}
+
+		public void LogStatistics()
+		{
+
 		}
 
 		private bool SeedNode(Peers peers, bool failIfNotConnected)
