@@ -394,6 +394,7 @@
     <Compile Include="Util\ThreadLocalData.cs" />
     <Compile Include="Util\Unpacker.cs" />
     <Compile Include="Util\Util.cs" />
+    <Compile Include="Util\ValueStopwatch.cs" />
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="Properties\Resources.resx">
