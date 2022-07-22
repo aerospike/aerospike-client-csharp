@@ -318,6 +318,7 @@
     <Compile Include="Policy\BatchPolicy.cs" />
     <Compile Include="Policy\ClientPolicy.cs" />
     <Compile Include="Policy\CommitLevel.cs" />
+    <Compile Include="Policy\StatsPolicy.cs" />
     <Compile Include="Policy\ReadModeSC.cs" />
     <Compile Include="Policy\ReadModeAP.cs" />
     <Compile Include="Policy\AuthMode.cs" />

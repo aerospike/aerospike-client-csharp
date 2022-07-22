@@ -115,7 +115,7 @@ namespace Aerospike.Client
 		internal bool hasPartitionScan;
 
 		internal bool statsEnabled;
-		internal uint statsInterval = 30;
+		internal uint reportInterval = 30;
 		internal int latencyColumns;
 		internal int latencyShift;
 		internal ILatencyManager writeLatency;
@@ -503,13 +503,13 @@ namespace Aerospike.Client
 				}
 			}
 
-			if (statsEnabled && (count % statsInterval) == 0)
+			if (statsEnabled && (count % reportInterval) == 0)
 			{
-				LogStatistics();
+				LogStats();
 			}
 		}
 
-		public void LogStatistics()
+		public void LogStats()
 		{
 
 		}

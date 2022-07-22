@@ -333,29 +333,15 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
-		/// Enable periodic cluster and latency statistics with defaults.
+		/// Enable periodic cluster and latency statistics.
 		/// </summary>
-		public void EnableStats()
-		{
-			EnableStats(30, 5, 3);
-		}
-
-		/// <summary>
-		/// Enable periodic cluster and latency statistics with configuration.
-		/// </summary>
-		/// <param name="interval">
-		/// Number of cluster tend iterations between statistics log messages. One tend iteration is defined as
-		/// <see cref="Aerospike.Client.ClientPolicy.tendInterval"/> (default 1 second) plus the time to tend all nodes.
-		/// </param>
-		/// <param name="latencyColumns">Number of elapsed time ranges</param>
-		/// <param name="latencyShift">Power of 2 multiple between each range starting at column 3</param>
-		public void EnableStats(uint interval, int latencyColumns, int latencyShift)
+		public void EnableStats(StatsPolicy policy)
 		{
 			cluster.statsEnabled = true;
-			cluster.statsInterval = interval;
-			cluster.latencyColumns = latencyColumns;
-			cluster.latencyShift = latencyShift;
-			cluster.LogStatistics();
+			cluster.reportInterval = policy.reportInterval;
+			cluster.latencyColumns = policy.latencyColumns;
+			cluster.latencyShift = policy.latencyShift;
+			cluster.LogStats();
 		}
 
 		/// <summary>
