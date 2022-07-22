@@ -250,6 +250,7 @@
     <Compile Include="..\..\Framework\AerospikeClient\Util\ThreadLocalData.cs" Link="Util\ThreadLocalData.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Util\Unpacker.cs" Link="Util\Unpacker.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Util\Util.cs" Link="Util\Util.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Util\ValueStopwatch.cs" Link="Util\ValueStopwatch.cs" />
   </ItemGroup>
 
   <ItemGroup>
