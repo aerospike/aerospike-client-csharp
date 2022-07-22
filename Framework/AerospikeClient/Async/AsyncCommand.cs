@@ -17,7 +17,6 @@
 using System;
 using System.Net.Sockets;
 using System.Threading;
-using System.Diagnostics;
 
 namespace Aerospike.Client
 {
@@ -44,8 +43,8 @@ namespace Aerospike.Client
 		protected internal AsyncNode node;
 		private BufferSegment segmentOrig;
 		private BufferSegment segment;
-		private ValueStopwatch? socketWatch;
-		private ValueStopwatch? totalWatch;
+		private ValueStopwatch socketWatch;
+		private ValueStopwatch totalWatch;
 		protected internal int dataLength;
 		private int iteration;
 		protected internal int commandSentCounter;
@@ -118,8 +117,7 @@ namespace Aerospike.Client
 		{
 			if (totalTimeout > 0)
 			{
-				Debug.Assert(totalWatch != null);
-				int remain = (int)(totalTimeout - totalWatch.Value.Elapsed.TotalMilliseconds);
+				int remain = totalTimeout - totalWatch.ElapsedMilliseconds;
 				AsyncTimeoutQueue.Instance.Add(this, remain);
 			}
 			cluster.ScheduleCommandExecution(this);
@@ -340,7 +338,7 @@ namespace Aerospike.Client
 		{
 			commandSentCounter++;
 
-			if (socketWatch != null)
+			if (socketWatch.IsRunning)
 			{
 				eventReceived = false;
 			}
@@ -349,7 +347,7 @@ namespace Aerospike.Client
 
 		public void ReceiveComplete()
 		{
-			if (socketWatch != null)
+			if (socketWatch.IsRunning)
 			{
 				eventReceived = true;
 			}
@@ -501,7 +499,7 @@ namespace Aerospike.Client
 
 		private void ConnectionFailed(AerospikeException ae)
 		{
-			if (iteration <= maxRetries && (!totalWatch.HasValue || totalWatch.Value.Elapsed.TotalMilliseconds < totalTimeout))
+			if (iteration <= maxRetries && (!totalWatch.IsRunning || totalWatch.ElapsedMilliseconds < totalTimeout))
 			{
 				int status = Interlocked.CompareExchange(ref state, RETRY, IN_PROGRESS);
 
@@ -535,7 +533,7 @@ namespace Aerospike.Client
 		{
 			node.IncrErrorCount();
 
-			if (iteration <= maxRetries && (totalWatch == null || totalWatch.Value.Elapsed.TotalMilliseconds < totalTimeout))
+			if (iteration <= maxRetries && (!totalWatch.IsRunning || totalWatch.ElapsedMilliseconds < totalTimeout))
 			{
 				int status = Interlocked.CompareExchange(ref state, RETRY, IN_PROGRESS);
 
@@ -567,7 +565,7 @@ namespace Aerospike.Client
 
 		private void Backoff(AerospikeException ae)
 		{
-			if (iteration <= maxRetries && (totalWatch == null || totalWatch.Value.Elapsed.TotalMilliseconds < totalTimeout))
+			if (iteration <= maxRetries && (!totalWatch.IsRunning || totalWatch.ElapsedMilliseconds < totalTimeout))
 			{
 				int status = Interlocked.CompareExchange(ref state, RETRY, IN_PROGRESS);
 
@@ -629,8 +627,7 @@ namespace Aerospike.Client
 				}
 				else if (totalTimeout > 0)
 				{
-					Debug.Assert(totalWatch != null);
-					int remain = (int)(totalTimeout - totalWatch.Value.Elapsed.TotalMilliseconds);
+					int remain = totalTimeout - totalWatch.ElapsedMilliseconds;
 					AsyncTimeoutQueue.Instance.Add(command, remain);
 				}
 				command.ExecuteCommand();
@@ -651,9 +648,9 @@ namespace Aerospike.Client
 				return false;
 			}
 
-			ValueStopwatch? watch = totalWatch;
+			ValueStopwatch watch = totalWatch;
 
-			if (watch.HasValue && watch.Value.Elapsed.TotalMilliseconds >= totalTimeout)
+			if (watch.IsRunning && watch.ElapsedMilliseconds >= totalTimeout)
 			{
 				// Total timeout has occurred.
 				if (Interlocked.CompareExchange(ref state, FAIL_TOTAL_TIMEOUT, IN_PROGRESS) == IN_PROGRESS)
@@ -673,7 +670,7 @@ namespace Aerospike.Client
 
 			watch = socketWatch;
 
-			if (watch.HasValue && watch.Value.Elapsed.TotalMilliseconds >= socketTimeout)
+			if (watch.IsRunning && watch.ElapsedMilliseconds >= socketTimeout)
 			{
 				if (eventReceived)
 				{
