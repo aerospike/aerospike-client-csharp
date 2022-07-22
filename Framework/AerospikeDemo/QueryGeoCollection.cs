@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2022 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -232,11 +232,7 @@ namespace Aerospike.Demo
 					count++;
 				}
 
-				if (count != 697)
-				{
-					console.Error("Query failed. {0} records expected. {1} returned.", 697, count);
-				}
-				else if (uniques.Count != 21)
+				if (uniques.Count != 21)
 				{
 					console.Error("Query failed. {0} unique records expected. {1} unique returned.", 21, uniques.Count);
 				}
