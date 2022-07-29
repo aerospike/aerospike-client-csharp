@@ -25,6 +25,7 @@ namespace Aerospike.Client
 		internal readonly LatencyManager connLatency;
 		internal readonly LatencyManager writeLatency;
 		internal readonly LatencyManager readLatency;
+		internal readonly LatencyManager batchLatency;
 		private readonly StringBuilder lineBuilder;
 		private readonly StreamWriter writer;
 
@@ -33,23 +34,33 @@ namespace Aerospike.Client
 			connLatency = new LatencyManager(policy);
 			writeLatency = new LatencyManager(policy);
 			readLatency = new LatencyManager(policy);
+			batchLatency = new LatencyManager(policy);
 			lineBuilder = new StringBuilder(256);
 			
-			FileStream fs = new FileStream(policy.path, FileMode.Append, FileAccess.Write);
+			FileStream fs = new FileStream(policy.reportPath, FileMode.Append, FileAccess.Write);
 			writer = new StreamWriter(fs);
 			writer.WriteLine(writeLatency.PrintHeader(lineBuilder));
 		}
 	
 		public void Write()
 		{
-			writer.WriteLine(connLatency.PrintResults(lineBuilder, "conn"));
-			writer.WriteLine(writeLatency.PrintResults(lineBuilder, "write"));
-			writer.WriteLine(readLatency.PrintResults(lineBuilder, "read"));
+			lock (writer)
+			{
+				writer.WriteLine(connLatency.PrintResults(lineBuilder, "conn"));
+				writer.WriteLine(writeLatency.PrintResults(lineBuilder, "write"));
+				writer.WriteLine(readLatency.PrintResults(lineBuilder, "read"));
+				writer.WriteLine(readLatency.PrintResults(lineBuilder, "batch"));
+			}
 		}
 
 		public void Close()
 		{
-			writer.Close();
+			Write();
+
+			lock (writer)
+			{
+				writer.Close();
+			}
 		}
 	}
 }

@@ -22,9 +22,9 @@ namespace Aerospike.Client
 	public class StatsPolicy
 	{
 		/// <summary>
-		/// File path to write cluster statistics and latency histograms.
+		/// File path to append cluster statistics and latency histograms.
 		/// </summary>
-		public string path;
+		public string reportPath;
 
 		/// <summary>
 		/// Number of cluster tend iterations between statistics log messages. One tend iteration is defined as
@@ -59,7 +59,7 @@ namespace Aerospike.Client
 		/// </summary>
 		public StatsPolicy(StatsPolicy other)
 		{
-			this.path = other.path;
+			this.reportPath = other.reportPath;
 			this.reportInterval = other.reportInterval;
 			this.latencyColumns = other.latencyColumns;
 			this.latencyShift = other.latencyShift;

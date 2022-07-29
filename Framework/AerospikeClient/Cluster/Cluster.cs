@@ -552,6 +552,12 @@ namespace Aerospike.Client
 			lw.readLatency.Add(elapsed);
 		}
 
+		public void AddBatchLatency(long elapsed)
+		{
+			LatencyWriter lw = latencyWriter;
+			lw.batchLatency.Add(elapsed);
+		}
+
 		private bool SeedNode(Peers peers, bool failIfNotConnected)
 		{
 			// Must copy array reference for copy on write semantics to work.

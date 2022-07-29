@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2020 Aerospike, Inc.
+ * Copyright 2012-2022 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -401,6 +401,20 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if append fails</exception>
 		public void Append(WritePolicy policy, Key key, params Bin[] bins)
 		{
+			if (cluster.StatsEnabled)
+			{
+				ValueStopwatch watch = ValueStopwatch.StartNew();
+				AppendInternal(policy, key, bins);
+				cluster.AddWriteLatency(watch.ElapsedMilliseconds);
+			}
+			else
+			{
+				AppendInternal(policy, key, bins);
+			}
+		}
+
+		private void AppendInternal(WritePolicy policy, Key key, params Bin[] bins)
+		{
 			if (policy == null)
 			{
 				policy = writePolicyDefault;
@@ -420,6 +434,20 @@ namespace Aerospike.Client
 		/// <param name="bins">array of bin name/value pairs </param>
 		/// <exception cref="AerospikeException">if prepend fails</exception>
 		public void Prepend(WritePolicy policy, Key key, params Bin[] bins)
+		{
+			if (cluster.StatsEnabled)
+			{
+				ValueStopwatch watch = ValueStopwatch.StartNew();
+				PrependInternal(policy, key, bins);
+				cluster.AddWriteLatency(watch.ElapsedMilliseconds);
+			}
+			else
+			{
+				PrependInternal(policy, key, bins);
+			}
+		}
+
+		private void PrependInternal(WritePolicy policy, Key key, params Bin[] bins)
 		{
 			if (policy == null)
 			{
@@ -444,6 +472,20 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if add fails</exception>
 		public void Add(WritePolicy policy, Key key, params Bin[] bins)
 		{
+			if (cluster.StatsEnabled)
+			{
+				ValueStopwatch watch = ValueStopwatch.StartNew();
+				AddInternal(policy, key, bins);
+				cluster.AddWriteLatency(watch.ElapsedMilliseconds);
+			}
+			else
+			{
+				AddInternal(policy, key, bins);
+			}
+		}
+
+		private void AddInternal(WritePolicy policy, Key key, params Bin[] bins)
+		{
 			if (policy == null)
 			{
 				policy = writePolicyDefault;
@@ -465,6 +507,21 @@ namespace Aerospike.Client
 		/// <param name="key">unique record identifier</param>
 		/// <exception cref="AerospikeException">if delete fails</exception>
 		public bool Delete(WritePolicy policy, Key key)
+		{
+			if (cluster.StatsEnabled)
+			{
+				ValueStopwatch watch = ValueStopwatch.StartNew();
+				bool rv = DeleteInternal(policy, key);
+				cluster.AddWriteLatency(watch.ElapsedMilliseconds);
+				return rv;
+			}
+			else
+			{
+				return DeleteInternal(policy, key);
+			}
+		}
+
+		private bool DeleteInternal(WritePolicy policy, Key key)
 		{
 			if (policy == null)
 			{
@@ -565,6 +622,20 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if touch fails</exception>
 		public void Touch(WritePolicy policy, Key key)
 		{
+			if (cluster.StatsEnabled)
+			{
+				ValueStopwatch watch = ValueStopwatch.StartNew();
+				TouchInternal(policy, key);
+				cluster.AddWriteLatency(watch.ElapsedMilliseconds);
+			}
+			else
+			{
+				TouchInternal(policy, key);
+			}
+		}
+
+		private void TouchInternal(WritePolicy policy, Key key)
+		{
 			if (policy == null)
 			{
 				policy = writePolicyDefault;
@@ -586,6 +657,21 @@ namespace Aerospike.Client
 		/// <param name="key">unique record identifier</param>
 		/// <exception cref="AerospikeException">if command fails</exception>
 		public bool Exists(Policy policy, Key key)
+		{
+			if (cluster.StatsEnabled)
+			{
+				ValueStopwatch watch = ValueStopwatch.StartNew();
+				bool rv = ExistsInternal(policy, key);
+				cluster.AddReadLatency(watch.ElapsedMilliseconds);
+				return rv;
+			}
+			else
+			{
+				return ExistsInternal(policy, key);
+			}
+		}
+
+		private bool ExistsInternal(Policy policy, Key key)
 		{
 			if (policy == null)
 			{
@@ -609,6 +695,21 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if command fails</exception>
 		public bool[] Exists(BatchPolicy policy, Key[] keys)
 		{
+			if (cluster.StatsEnabled)
+			{
+				ValueStopwatch watch = ValueStopwatch.StartNew();
+				bool[] rv = ExistsInternal(policy, keys);
+				cluster.AddBatchLatency(watch.ElapsedMilliseconds);
+				return rv;
+			}
+			else
+			{
+				return ExistsInternal(policy, keys);
+			}
+		}
+
+		private bool[] ExistsInternal(BatchPolicy policy, Key[] keys)
+		{
 			if (policy == null)
 			{
 				policy = batchPolicyDefault;
@@ -617,7 +718,7 @@ namespace Aerospike.Client
 			BatchExecutor.Execute(cluster, policy, keys, existsArray, null, null, Command.INFO1_READ | Command.INFO1_NOBINDATA);
 			return existsArray;
 		}
-		
+
 		//-------------------------------------------------------
 		// Read Record Operations
 		//-------------------------------------------------------
@@ -631,6 +732,21 @@ namespace Aerospike.Client
 		/// <param name="key">unique record identifier</param>
 		/// <exception cref="AerospikeException">if read fails</exception>
 		public Record Get(Policy policy, Key key)
+		{
+			if (cluster.StatsEnabled)
+			{
+				ValueStopwatch watch = ValueStopwatch.StartNew();
+				Record rv = GetInternal(policy, key);
+				cluster.AddReadLatency(watch.ElapsedMilliseconds);
+				return rv;
+			}
+			else
+			{
+				return GetInternal(policy, key);
+			}
+		}
+
+		private Record GetInternal(Policy policy, Key key)
 		{
 			if (policy == null)
 			{
@@ -652,6 +768,21 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if read fails</exception>
 		public Record Get(Policy policy, Key key, params string[] binNames)
 		{
+			if (cluster.StatsEnabled)
+			{
+				ValueStopwatch watch = ValueStopwatch.StartNew();
+				Record rv = GetInternal(policy, key, binNames);
+				cluster.AddReadLatency(watch.ElapsedMilliseconds);
+				return rv;
+			}
+			else
+			{
+				return GetInternal(policy, key, binNames);
+			}
+		}
+
+		private Record GetInternal(Policy policy, Key key, params string[] binNames)
+		{
 			if (policy == null)
 			{
 				policy = readPolicyDefault;
@@ -670,6 +801,21 @@ namespace Aerospike.Client
 		/// <param name="key">unique record identifier</param>
 		/// <exception cref="AerospikeException">if read fails</exception>
 		public Record GetHeader(Policy policy, Key key)
+		{
+			if (cluster.StatsEnabled)
+			{
+				ValueStopwatch watch = ValueStopwatch.StartNew();
+				Record rv = GetHeaderInternal(policy, key);
+				cluster.AddReadLatency(watch.ElapsedMilliseconds);
+				return rv;
+			}
+			else
+			{
+				return GetHeaderInternal(policy, key);
+			}
+		}
+
+		private Record GetHeaderInternal(Policy policy, Key key)
 		{
 			if (policy == null)
 			{
@@ -700,6 +846,20 @@ namespace Aerospike.Client
 		/// The returned records are located in the same list.</param>
 		/// <exception cref="AerospikeException">if read fails</exception>
 		public void Get(BatchPolicy policy, List<BatchRead> records)
+		{
+			if (cluster.StatsEnabled)
+			{
+				ValueStopwatch watch = ValueStopwatch.StartNew();
+				GetInternal(policy, records);
+				cluster.AddBatchLatency(watch.ElapsedMilliseconds);
+			}
+			else
+			{
+				GetInternal(policy, records);
+			}
+		}
+
+		private void GetInternal(BatchPolicy policy, List<BatchRead> records)
 		{
 			if (records.Count == 0)
 			{
@@ -756,6 +916,21 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if read fails</exception>
 		public Record[] Get(BatchPolicy policy, Key[] keys)
 		{
+			if (cluster.StatsEnabled)
+			{
+				ValueStopwatch watch = ValueStopwatch.StartNew();
+				Record[] rv = GetInternal(policy, keys);
+				cluster.AddBatchLatency(watch.ElapsedMilliseconds);
+				return rv;
+			}
+			else
+			{
+				return GetInternal(policy, keys);
+			}
+		}
+
+		private Record[] GetInternal(BatchPolicy policy, Key[] keys)
+		{
 			if (policy == null)
 			{
 				policy = batchPolicyDefault;
@@ -780,6 +955,21 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if read fails</exception>
 		public Record[] Get(BatchPolicy policy, Key[] keys, params string[] binNames)
 		{
+			if (cluster.StatsEnabled)
+			{
+				ValueStopwatch watch = ValueStopwatch.StartNew();
+				Record[] rv = GetInternal(policy, keys, binNames);
+				cluster.AddBatchLatency(watch.ElapsedMilliseconds);
+				return rv;
+			}
+			else
+			{
+				return GetInternal(policy, keys, binNames);
+			}
+		}
+
+		private Record[] GetInternal(BatchPolicy policy, Key[] keys, params string[] binNames)
+		{
 			if (policy == null)
 			{
 				policy = batchPolicyDefault;
@@ -802,6 +992,21 @@ namespace Aerospike.Client
 		/// <param name="keys">array of unique record identifiers</param>
 		/// <exception cref="AerospikeException">if read fails</exception>
 		public Record[] GetHeader(BatchPolicy policy, Key[] keys)
+		{
+			if (cluster.StatsEnabled)
+			{
+				ValueStopwatch watch = ValueStopwatch.StartNew();
+				Record[] rv = GetHeaderInternal(policy, keys);
+				cluster.AddBatchLatency(watch.ElapsedMilliseconds);
+				return rv;
+			}
+			else
+			{
+				return GetHeaderInternal(policy, keys);
+			}
+		}
+
+		private Record[] GetHeaderInternal(BatchPolicy policy, Key[] keys)
 		{
 			if (policy == null)
 			{
@@ -880,6 +1085,21 @@ namespace Aerospike.Client
 		/// <param name="operations">database operations to perform</param>
 		/// <exception cref="AerospikeException">if command fails</exception>
 		public Record Operate(WritePolicy policy, Key key, params Operation[] operations)
+		{
+			if (cluster.StatsEnabled)
+			{
+				ValueStopwatch watch = ValueStopwatch.StartNew();
+				Record rv = OperateInternal(policy, key, operations);
+				cluster.AddWriteLatency(watch.ElapsedMilliseconds);
+				return rv;
+			}
+			else
+			{
+				return OperateInternal(policy, key, operations);
+			}
+		}
+
+		private Record OperateInternal(WritePolicy policy, Key key, params Operation[] operations)
 		{
 			OperateArgs args = new OperateArgs(cluster, policy, writePolicyDefault, operatePolicyReadDefault, key, operations);
 			OperateCommand command = new OperateCommand(cluster, key, args);
@@ -1155,6 +1375,21 @@ namespace Aerospike.Client
 		/// <param name="args">arguments passed in to user defined function</param>
 		/// <exception cref="AerospikeException">if transaction fails</exception>
 		public object Execute(WritePolicy policy, Key key, string packageName, string functionName, params Value[] args)
+		{
+			if (cluster.StatsEnabled)
+			{
+				ValueStopwatch watch = ValueStopwatch.StartNew();
+				object rv = ExecuteInternal(policy, key, packageName, functionName, args);
+				cluster.AddWriteLatency(watch.ElapsedMilliseconds);
+				return rv;
+			}
+			else
+			{
+				return ExecuteInternal(policy, key, packageName, functionName, args);
+			}
+		}
+
+		private object ExecuteInternal(WritePolicy policy, Key key, string packageName, string functionName, params Value[] args)
 		{
 			if (policy == null)
 			{

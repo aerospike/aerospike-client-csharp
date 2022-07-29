@@ -42,7 +42,7 @@ namespace Aerospike.Demo
 			try
 			{
 				StatsPolicy sp = new StatsPolicy();
-				sp.path = @"C:\Users\bnichols\Stats\stats.txt";
+				sp.reportPath = @"C:\Users\bnichols\Stats\stats.txt";
 				sp.reportInterval = 1;
 				
 				client.EnableStats(sp);
