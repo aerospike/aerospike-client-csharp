@@ -30,6 +30,23 @@ namespace Aerospike.Demo
 		/// </summary>
 		public override void RunExample(AerospikeClient client, Arguments args)
 		{
+			console.Info("Start");
+
+			for (int i = 0; i < 30000; i++)
+			{
+				Key key = new Key(args.ns, args.set, i);
+				Bin bin = new Bin("a", i);
+				client.Put(null, key, bin);
+
+				if (i % 10000 == 0)
+				{
+					console.Info(i.ToString());
+				}
+			}
+			console.Info("End");
+			client.DisableStats();
+
+			/*
 			if (args.singleBin)
 			{
 				RunSingleBinTest(client, args);
@@ -39,6 +56,7 @@ namespace Aerospike.Demo
 				RunMultiBinTest(client, args);
 			}
 			RunGetHeaderTest(client, args);
+			*/
 		}
 
 		/// <summary>

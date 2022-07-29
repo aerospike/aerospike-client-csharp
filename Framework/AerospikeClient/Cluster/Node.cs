@@ -810,9 +810,21 @@ namespace Aerospike.Client
 
 		private Connection CreateConnection(string tlsName, IPEndPoint address, int timeout, Pool<Connection> pool)
 		{
-			return (cluster.tlsPolicy != null && !cluster.tlsPolicy.forLoginOnly) ?
-				new TlsConnection(cluster.tlsPolicy, tlsName, address, timeout, pool, this) :
-				new Connection(address, timeout, pool, this);
+			if (cluster.StatsEnabled)
+			{
+				ValueStopwatch watch = ValueStopwatch.StartNew();
+				Connection conn = (cluster.tlsPolicy != null && !cluster.tlsPolicy.forLoginOnly) ?
+					new TlsConnection(cluster.tlsPolicy, tlsName, address, timeout, pool, this) :
+					new Connection(address, timeout, pool, this);
+				cluster.AddConnLatency(watch.ElapsedMilliseconds);
+				return conn;
+			}
+			else
+			{
+				return (cluster.tlsPolicy != null && !cluster.tlsPolicy.forLoginOnly) ?
+					new TlsConnection(cluster.tlsPolicy, tlsName, address, timeout, pool, this) :
+					new Connection(address, timeout, pool, this);
+			}
 		}
 
 		/// <summary>

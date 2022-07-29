@@ -20,6 +20,7 @@ using System.Net;
 using System.Security.Authentication;
 using System.Text;
 using System.Threading;
+using System.IO;
 
 namespace Aerospike.Client
 {
@@ -114,12 +115,9 @@ namespace Aerospike.Client
 		// Does cluster support partition scans.
 		internal bool hasPartitionScan;
 
-		internal bool statsEnabled;
-		internal uint reportInterval = 30;
-		internal int latencyColumns;
-		internal int latencyShift;
-		internal ILatencyManager writeLatency;
-		internal ILatencyManager readLatency;
+		private bool statsEnabled;
+		private uint reportInterval;
+		private volatile LatencyWriter latencyWriter;
 		
 		public Cluster(ClientPolicy policy, Host[] hosts)
 		{
@@ -216,9 +214,6 @@ namespace Aerospike.Client
 			partitionMap = new Dictionary<string, Partitions>();
 			cancel = new CancellationTokenSource();
 			cancelToken = cancel.Token;
-
-			writeLatency = new LatencyManagerAlt(latencyColumns, latencyShift);
-			readLatency = new LatencyManagerAlt(latencyColumns, latencyShift);
 
 			Log.Warn("ClientPolicy:" +
 				" user=" + policy.user +
@@ -505,13 +500,56 @@ namespace Aerospike.Client
 
 			if (statsEnabled && (count % reportInterval) == 0)
 			{
-				LogStats();
+				LatencyWriter lw = latencyWriter;
+				lw.Write();
 			}
 		}
 
-		public void LogStats()
+		public void EnableStats(StatsPolicy policy)
 		{
+			if (statsEnabled)
+			{
+				LatencyWriter lw = latencyWriter;
+				lw.Close();
+			}
 
+			latencyWriter = new LatencyWriter(policy);
+			reportInterval = policy.reportInterval;
+			statsEnabled = true;
+		}
+
+		public void DisableStats()
+		{
+			if (statsEnabled)
+			{
+				statsEnabled = false;
+
+				LatencyWriter lw = latencyWriter;
+				lw.Close();
+			}
+		}
+
+		public bool StatsEnabled
+		{
+			get { return statsEnabled; }
+		}
+
+		public void AddConnLatency(long elapsed)
+		{
+			LatencyWriter lw = latencyWriter;
+			lw.connLatency.Add(elapsed);
+		}
+
+		public void AddWriteLatency(long elapsed)
+		{
+			LatencyWriter lw = latencyWriter;
+			lw.writeLatency.Add(elapsed);
+		}
+
+		public void AddReadLatency(long elapsed)
+		{
+			LatencyWriter lw = latencyWriter;
+			lw.readLatency.Add(elapsed);
 		}
 
 		private bool SeedNode(Peers peers, bool failIfNotConnected)

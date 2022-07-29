@@ -366,10 +366,10 @@
     <Compile Include="Task\ExecuteTask.cs" />
     <Compile Include="Task\IndexTask.cs" />
     <Compile Include="Task\RegisterTask.cs" />
+    <Compile Include="Util\LatencyWriter.cs" />
+    <Compile Include="Util\ValueStopWatch.cs" />
     <Compile Include="Util\Hash.cs" />
-    <Compile Include="Util\ILatencyManager.cs" />
     <Compile Include="Util\LatencyManager.cs" />
-    <Compile Include="Util\LatencyManagerAlt.cs" />
     <Compile Include="Util\Packer.cs" />
     <Compile Include="Util\RandomShift.cs" />
     <Compile Include="Util\Ripemd160.cs" />

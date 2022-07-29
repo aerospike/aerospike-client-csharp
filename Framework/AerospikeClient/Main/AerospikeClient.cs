@@ -337,11 +337,7 @@ namespace Aerospike.Client
 		/// </summary>
 		public void EnableStats(StatsPolicy policy)
 		{
-			cluster.statsEnabled = true;
-			cluster.reportInterval = policy.reportInterval;
-			cluster.latencyColumns = policy.latencyColumns;
-			cluster.latencyShift = policy.latencyShift;
-			cluster.LogStats();
+			cluster.EnableStats(policy);
 		}
 
 		/// <summary>
@@ -349,7 +345,7 @@ namespace Aerospike.Client
 		/// </summary>
 		public void DisableStats()
 		{
-			cluster.statsEnabled = false;
+			cluster.DisableStats();
 		}
 
 		//-------------------------------------------------------
@@ -366,6 +362,20 @@ namespace Aerospike.Client
 		/// <param name="bins">array of bin name/value pairs</param>
 		/// <exception cref="AerospikeException">if write fails</exception>
 		public void Put(WritePolicy policy, Key key, params Bin[] bins)
+		{
+			if (cluster.StatsEnabled)
+			{
+				ValueStopwatch watch = ValueStopwatch.StartNew();
+				PutInternal(policy, key, bins);
+				cluster.AddWriteLatency(watch.ElapsedMilliseconds);
+			}
+			else
+			{
+				PutInternal(policy, key, bins);
+			}
+		}
+
+		private void PutInternal(WritePolicy policy, Key key, params Bin[] bins)
 		{
 			if (policy == null)
 			{

@@ -21,17 +21,17 @@ using System.Threading;
 
 namespace Aerospike.Client
 {
-	public sealed class LatencyManager : ILatencyManager
+	public sealed class LatencyManager
     {
 		private readonly Bucket[] buckets;
         private readonly int lastBucket;
         private readonly int bitShift;
 
-        public LatencyManager(int columns, int bitShift)
+        public LatencyManager(StatsPolicy policy)
         {
-            this.lastBucket = columns - 1;
-            this.bitShift = bitShift;
-			buckets = new Bucket[columns];
+            this.lastBucket = policy.latencyColumns - 1;
+            this.bitShift = policy.latencyShift;
+			buckets = new Bucket[policy.latencyColumns];
 
 			for (int i = 0; i < buckets.Length; i++)
 			{
@@ -61,13 +61,15 @@ namespace Aerospike.Client
             return lastBucket;
         }
 
-        public string PrintHeader()
+		public string PrintHeader(StringBuilder sb)
         {
-            StringBuilder sb = new StringBuilder(200);
-            int limit = 1;
-            sb.Append("      <=1ms >1ms");
+			sb.Length = 0;
+			sb.Append(DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"));
+            sb.Append("       <=1ms >1ms");
 
-            for (int i = 2; i <= lastBucket; i++)
+			int limit = 1;
+			
+			for (int i = 2; i <= lastBucket; i++)
             {
                 limit <<= bitShift;
                 String s = " >" + limit + "ms";
@@ -81,8 +83,7 @@ namespace Aerospike.Client
         /// This function is not absolutely accurate for a given time slice because this method 
         /// is not synchronized with the Add() method.  Some values will slip into the next iteration.  
         /// It is not a good idea to add extra locks just to measure performance since that actually 
-        /// affects performance.  Fortunately, the values will even out over time
-        /// (ie. no double counting).
+        /// affects performance.  Fortunately, the values will even out over time (ie. no double counting).
         /// </summary>
         public string PrintResults(StringBuilder sb, string prefix)
         {
@@ -104,7 +105,9 @@ namespace Aerospike.Client
 
             // Print cumulative results.
             sb.Length = 0;
-            sb.Append(prefix);
+			sb.Append(DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"));
+			sb.Append(' ');
+			sb.Append(prefix);
             int spaces = 6 - prefix.Length;
 
             for (int j = 0; j < spaces; j++)
@@ -167,22 +170,13 @@ namespace Aerospike.Client
 			return sb.ToString();
 		}
 
-		private void PrintColumn(StringBuilder sb, int limit, double sum, int value)
+		private void PrintColumn(StringBuilder sb, int limit, double sum, int count)
         {
-            int percent = 0;
-
-            if (value > 0)
-            {
-                percent = (int)((double)value * 100.0 / sum + 0.5);
-            }
-            string percentString = Convert.ToString(percent) + "%";
-            int spaces = limit.ToString().Length + 4 - percentString.Length;
-
-            for (int j = 0; j < spaces; j++)
-            {
-                sb.Append(' ');
-            }
-            sb.Append(percentString);
+			sb.Append(' ');
+			double percent = (count > 0) ? (double)count * 100.0 / sum : 0.0;
+			sb.Append(percent.ToString("0.##"));
+			sb.Append("%:");
+			sb.Append(count);
         }
 		
 		private sealed class Bucket

@@ -22,6 +22,11 @@ namespace Aerospike.Client
 	public class StatsPolicy
 	{
 		/// <summary>
+		/// File path to write cluster statistics and latency histograms.
+		/// </summary>
+		public string path;
+
+		/// <summary>
 		/// Number of cluster tend iterations between statistics log messages. One tend iteration is defined as
 		/// <see cref="Aerospike.Client.ClientPolicy.tendInterval"/> (default 1 second) plus the time to tend all nodes.
 		/// <para>Default: 30</para>
@@ -54,6 +59,7 @@ namespace Aerospike.Client
 		/// </summary>
 		public StatsPolicy(StatsPolicy other)
 		{
+			this.path = other.path;
 			this.reportInterval = other.reportInterval;
 			this.latencyColumns = other.latencyColumns;
 			this.latencyShift = other.latencyShift;
