@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2020 Aerospike, Inc.
+ * Copyright 2012-2022 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -62,7 +62,10 @@ namespace Aerospike.Client
 		/// <param name="policy">write policy, use <see cref="Aerospike.Client.HLLPolicy.Default"/> for default</param>
 		/// <param name="binName">name of bin</param>
 		/// <param name="indexBitCount">number of index bits. Must be between 4 and 16 inclusive.</param>
-		/// <param name="minHashBitCount">number of min hash bits. Must be between 4 and 51 inclusive.</param>
+		/// <param name="minHashBitCount">
+		/// number of min hash bits. Must be between 4 and 51 inclusive.
+		/// Also, indexBitCount + minHashBitCount must be &lt;= 64.
+		/// </param>
 		public static Operation Init(HLLPolicy policy, string binName, int indexBitCount, int minHashBitCount)
 		{
 			byte[] bytes = PackUtil.Pack(HLLOperation.INIT, indexBitCount, minHashBitCount, policy.flags);
@@ -105,7 +108,10 @@ namespace Aerospike.Client
 		/// <param name="binName">name of bin</param>
 		/// <param name="list">list of values to be added</param>
 		/// <param name="indexBitCount">number of index bits. Must be between 4 and 16 inclusive.</param>
-		/// <param name="minHashBitCount">number of min hash bits. Must be between 4 and 51 inclusive.</param>
+		/// <param name="minHashBitCount">
+		/// number of min hash bits. Must be between 4 and 51 inclusive.
+		/// Also, indexBitCount + minHashBitCount must be &lt;= 64.
+		/// </param>
 		public static Operation Add(HLLPolicy policy, string binName, IList list, int indexBitCount, int minHashBitCount)
 		{
 			byte[] bytes = PackUtil.Pack(HLLOperation.ADD, list, indexBitCount, minHashBitCount, policy.flags);

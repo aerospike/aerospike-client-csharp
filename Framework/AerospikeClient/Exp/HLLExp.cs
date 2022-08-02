@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2022 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -48,7 +48,10 @@ namespace Aerospike.Client
 		/// </summary>
 		/// <param name="policy">write policy, use <see cref="Aerospike.Client.HLLPolicy.Default"/> for default</param>
 		/// <param name="indexBitCount">number of index bits expression. Must be between 4 and 16 inclusive.</param>
-		/// <param name="minHashBitCount">number of min hash bits expression. Must be between 4 and 51 inclusive.</param>
+		/// <param name="minHashBitCount">
+		/// number of min hash bits expression. Must be between 4 and 51 inclusive.
+		/// Also, indexBitCount + minHashBitCount must be &lt;= 64.
+		/// </param>
 		/// <param name="bin">HLL bin or value expression</param>
 		public static Exp Init(HLLPolicy policy, Exp indexBitCount, Exp minHashBitCount, Exp bin)
 		{
@@ -115,7 +118,10 @@ namespace Aerospike.Client
 		/// <param name="policy">write policy, use <see cref="Aerospike.Client.HLLPolicy.Default"/> for default</param>
 		/// <param name="list">list bin or value expression of values to be added</param>
 		/// <param name="indexBitCount">number of index bits expression. Must be between 4 and 16 inclusive.</param>
-		/// <param name="minHashBitCount">number of min hash bits expression. Must be between 4 and 51 inclusive.</param>
+		/// <param name="minHashBitCount">
+		/// number of min hash bits expression. Must be between 4 and 51 inclusive.
+		/// Also, indexBitCount + minHashBitCount must be &lt;= 64.
+		/// </param>
 		/// <param name="bin">HLL bin or value expression</param>
 		public static Exp Add(HLLPolicy policy, Exp list, Exp indexBitCount, Exp minHashBitCount, Exp bin)
 		{
