@@ -134,6 +134,7 @@ namespace Aerospike.Client
 
 						if (se.SocketErrorCode == SocketError.TimedOut)
 						{
+							node.IncrTimeoutCount();
 							isClientTimeout = true;
 						}
 						else
@@ -156,6 +157,7 @@ namespace Aerospike.Client
 					// user login failed with a socket error.  Retry.
 					if (se.SocketErrorCode == SocketError.TimedOut)
 					{
+						node.IncrTimeoutCount();
 						isClientTimeout = true;
 					}
 					else

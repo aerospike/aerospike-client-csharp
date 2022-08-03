@@ -15,8 +15,10 @@
  * the License.
  */
 using System;
-using System.Text;
 using System.IO;
+using System.Text;
+using System.Threading;
+using System.Diagnostics;
 
 namespace Aerospike.Client
 {
@@ -26,6 +28,8 @@ namespace Aerospike.Client
 		internal readonly LatencyManager writeLatency;
 		internal readonly LatencyManager readLatency;
 		internal readonly LatencyManager batchLatency;
+		private readonly PerformanceCounter cpuCounter;
+		private readonly PerformanceCounter ramCounter;
 		private readonly StringBuilder sb;
 		private readonly StreamWriter writer;
 
@@ -35,6 +39,10 @@ namespace Aerospike.Client
 			writeLatency = new LatencyManager(policy, "write");
 			readLatency = new LatencyManager(policy, "read");
 			batchLatency = new LatencyManager(policy, "batch");
+
+			cpuCounter = new PerformanceCounter("Processor", "% Processor Time", "_Total");
+			ramCounter = new PerformanceCounter("Memory", "Available MBytes");
+
 			sb = new StringBuilder(256);
 			
 			FileStream fs = new FileStream(policy.reportPath, FileMode.Append, FileAccess.Write);
@@ -45,12 +53,25 @@ namespace Aerospike.Client
 		public void Write(Cluster cluster)
 		{
 			ClusterStats stats = cluster.GetStats();
+			int threadExpandCount = cluster.ResetThreadExpandCount();
+			float cpu = cpuCounter.NextValue();
+			float ram = ramCounter.NextValue();
 
 			lock (writer)
-			{
+			{		
 				sb.Length = 0;
 				sb.Append("entry ");
 				sb.Append(DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"));
+				sb.Append(' ');
+				sb.Append(cpu);
+				sb.Append(' ');
+				sb.Append(ram);
+				sb.Append(' ');
+				sb.Append(threadExpandCount);
+				sb.Append(' ');
+				sb.Append(stats.threadsInUse);
+				sb.Append(' ');
+				sb.Append(stats.completionPortsInUse);
 				writer.WriteLine(sb.ToString());
 
 				WriteLine(connLatency);
@@ -73,17 +94,11 @@ namespace Aerospike.Client
 					sb.Append(cs.opened);
 					sb.Append(' ');
 					sb.Append(cs.closed);
-					writer.WriteLine(sb.ToString());
-				}
+					sb.Append(' ');
 
-				if (stats.threadsInUse > 0 || stats.completionPortsInUse > 0)
-				{
-					sb.Length = 0;
-					sb.Append("all ");
-					sb.Append(' ');
-					sb.Append(stats.threadsInUse);
-					sb.Append(' ');
-					sb.Append(stats.completionPortsInUse);
+					int timeoutCount = ns.node.ResetTimeoutCount();
+					sb.Append(timeoutCount);
+
 					writer.WriteLine(sb.ToString());
 				}
 			}

@@ -117,6 +117,7 @@ namespace Aerospike.Client
 
 		private bool statsEnabled;
 		private uint reportInterval;
+		private int threadExpandCount;
 		private volatile LatencyWriter latencyWriter;
 		
 		public Cluster(ClientPolicy policy, Host[] hosts)
@@ -556,6 +557,19 @@ namespace Aerospike.Client
 		{
 			LatencyWriter lw = latencyWriter;
 			lw.batchLatency.Add(elapsed);
+		}
+
+		public void IncrThreadExpandCount()
+		{
+			if (statsEnabled)
+			{
+				Interlocked.Increment(ref threadExpandCount);
+			}
+		}
+
+		public int ResetThreadExpandCount()
+		{
+			return Interlocked.Exchange(ref threadExpandCount, 0);
 		}
 
 		private bool SeedNode(Peers peers, bool failIfNotConnected)

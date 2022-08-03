@@ -82,6 +82,7 @@ namespace Aerospike.Client
 						executor.AddCommand(command);
 					}
 				}
+				cluster.IncrThreadExpandCount();
 				executor.Execute(policy.maxConcurrentThreads);
 			}
 		}

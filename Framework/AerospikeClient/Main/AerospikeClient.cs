@@ -898,6 +898,7 @@ namespace Aerospike.Client
 					MultiCommand command = new BatchReadListCommand(cluster, executor, batchNode, policy, records);
 					executor.AddCommand(command);
 				}
+				cluster.IncrThreadExpandCount();
 				executor.Execute(policy.maxConcurrentThreads);
 			}
 		}
@@ -1458,6 +1459,7 @@ namespace Aerospike.Client
 				executor.AddCommand(command);
 			}
 
+			cluster.IncrThreadExpandCount();
 			executor.Execute(nodes.Length);
 			return new ExecuteTask(cluster, policy, statement);
 		}
@@ -1492,6 +1494,7 @@ namespace Aerospike.Client
 				ServerCommand command = new ServerCommand(cluster, node, policy, statement);
 				executor.AddCommand(command);
 			}
+			cluster.IncrThreadExpandCount();
 			executor.Execute(nodes.Length);
 			return new ExecuteTask(cluster, policy, statement);
 		}

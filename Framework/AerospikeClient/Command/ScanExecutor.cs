@@ -44,6 +44,7 @@ namespace Aerospike.Client
 							executor.AddCommand(command);
 						}
 
+						cluster.IncrThreadExpandCount();
 						executor.Execute(policy.maxConcurrentNodes);
 					}
 					else
@@ -94,6 +95,7 @@ namespace Aerospike.Client
 					executor.AddCommand(command);
 					first = false;
 				}
+				cluster.IncrThreadExpandCount();
 				executor.Execute(policy.maxConcurrentNodes);
 			}
 			else

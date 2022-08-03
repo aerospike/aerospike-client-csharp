@@ -57,6 +57,7 @@ namespace Aerospike.Client
 		protected uint connectionIter;
 		protected internal int connsOpened = 1;
 		protected internal int connsClosed;
+		private int timeoutCount;
 		protected internal int peersGeneration = -1;
 		protected internal int partitionGeneration = -1;
 		protected internal int rebalanceGeneration = -1;
@@ -912,6 +913,19 @@ namespace Aerospike.Client
 				inUse += tmp;
 			}
 			return new ConnectionStats(inPool, inUse, connsOpened, connsClosed);
+		}
+
+		public void IncrTimeoutCount()
+		{
+			if (cluster.StatsEnabled)
+			{
+				Interlocked.Increment(ref timeoutCount);
+			}
+		}
+
+		public int ResetTimeoutCount()
+		{
+			return Interlocked.Exchange(ref timeoutCount, 0);
 		}
 
 		/// <summary>
