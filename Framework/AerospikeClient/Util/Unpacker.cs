@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2022 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -15,7 +15,6 @@
  * the License.
  */
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 
@@ -208,7 +207,7 @@ namespace Aerospike.Client
 					int mapBits = buffer[offset + 2];
 
 					// Extension is a map type.  Determine which one.
-					if ((mapBits & (0x04 | 0x08)) != 0)
+					if ((mapBits & 0x08) != 0)
 					{
 						// Index/rank range result where order needs to be preserved.
 						return null;
