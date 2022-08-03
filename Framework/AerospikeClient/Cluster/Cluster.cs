@@ -501,7 +501,7 @@ namespace Aerospike.Client
 			if (statsEnabled && (count % reportInterval) == 0)
 			{
 				LatencyWriter lw = latencyWriter;
-				lw.Write();
+				lw.Write(this);
 			}
 		}
 
@@ -510,7 +510,7 @@ namespace Aerospike.Client
 			if (statsEnabled)
 			{
 				LatencyWriter lw = latencyWriter;
-				lw.Close();
+				lw.Close(this);
 			}
 
 			latencyWriter = new LatencyWriter(policy);
@@ -525,7 +525,7 @@ namespace Aerospike.Client
 				statsEnabled = false;
 
 				LatencyWriter lw = latencyWriter;
-				lw.Close();
+				lw.Close(this);
 			}
 		}
 
