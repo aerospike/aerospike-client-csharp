@@ -406,6 +406,7 @@ namespace Aerospike.Client
 					}
 				}
 			}
+			DisableMetrics();
 		}
 
 		/// <summary>

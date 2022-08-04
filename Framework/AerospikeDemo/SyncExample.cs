@@ -43,8 +43,7 @@ namespace Aerospike.Demo
 			{
 				MetricsPolicy sp = new MetricsPolicy();
 				sp.reportPath = @"C:\Users\bnichols\Stats\metrics.txt";
-				sp.reportInterval = 1;
-				
+				sp.reportInterval = 1;			
 				client.EnableMetrics(sp);
 
 				args.SetServerSpecific(client);

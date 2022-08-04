@@ -59,16 +59,13 @@ namespace Aerospike.Client
 			DateTime endTime = DateTime.UtcNow;
 			double cpu = ((endSpan - beginSpan).TotalMilliseconds * 100.0) / ((endTime - beginTime).TotalMilliseconds * Environment.ProcessorCount);
 
-			beginTime = endTime;
-			beginSpan = endSpan;
-			
 			lock (writer)
 			{		
 				sb.Length = 0;
 				sb.Append("entry ");
 				sb.Append(DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"));
 				sb.Append(' ');
-				sb.Append(cpu);
+				sb.Append((int)cpu);
 				sb.Append(' ');
 				sb.Append(mem);
 				sb.Append(' ');
@@ -78,11 +75,6 @@ namespace Aerospike.Client
 				sb.Append(' ');
 				sb.Append(stats.completionPortsInUse);
 				writer.WriteLine(sb.ToString());
-
-				WriteLine(connLatency);
-				WriteLine(writeLatency);
-				WriteLine(readLatency);
-				WriteLine(batchLatency);
 
 				foreach (NodeStats ns in stats.nodes)
 				{
@@ -106,6 +98,14 @@ namespace Aerospike.Client
 
 					writer.WriteLine(sb.ToString());
 				}
+
+				WriteLine(connLatency);
+				WriteLine(writeLatency);
+				WriteLine(readLatency);
+				WriteLine(batchLatency);
+
+				beginTime = endTime;
+				beginSpan = endSpan;
 			}
 		}
 

@@ -51,7 +51,13 @@ namespace Aerospike.Demo
                 try
                 {
                     args.SetServerSpecific(client);
-                    threads = new BenchmarkThreadSync[args.threadMax];
+					
+					MetricsPolicy sp = new MetricsPolicy();
+					sp.reportPath = @"C:\Users\bnichols\Stats\bench.txt";
+					sp.reportInterval = 1;
+					client.EnableMetrics(sp);
+					
+					threads = new BenchmarkThreadSync[args.threadMax];
                     for (int i = 0; i < args.threadMax; i++)
                     {
                         threads[i] = new BenchmarkThreadSync(console, args, shared, this, client);

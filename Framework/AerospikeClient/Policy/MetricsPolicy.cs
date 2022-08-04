@@ -22,12 +22,12 @@ namespace Aerospike.Client
 	public class MetricsPolicy
 	{
 		/// <summary>
-		/// File path to append cluster statistics and latency histograms.
+		/// File path to append cluster metrics and latency histograms.
 		/// </summary>
 		public string reportPath;
 
 		/// <summary>
-		/// Number of cluster tend iterations between statistics log messages. One tend iteration is defined as
+		/// Number of cluster tend iterations between metrics log messages. One tend iteration is defined as
 		/// <see cref="Aerospike.Client.ClientPolicy.tendInterval"/> (default 1 second) plus the time to tend all nodes.
 		/// <para>Default: 30</para>
 		/// </summary>
