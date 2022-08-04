@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2020 Aerospike, Inc.
+ * Copyright 2012-2022 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -24,10 +24,10 @@ namespace Aerospike.Client
 	public sealed class AsyncTimeoutQueue
 	{
 		public static readonly AsyncTimeoutQueue Instance = new AsyncTimeoutQueue();
-		private const int MinInterval = 10;  // 10ms
+		private const int MIN_INTERVAL = 5;  // ms
 
-		private readonly ConcurrentQueue<ITimeout> queue = new ConcurrentQueue<ITimeout>();
-		private readonly LinkedList<ITimeout> list = new LinkedList<ITimeout>();
+		private readonly ConcurrentQueue<WeakReference<ITimeout>> queue = new ConcurrentQueue<WeakReference<ITimeout>>();
+		private readonly LinkedList<WeakReference<ITimeout>> list = new LinkedList<WeakReference<ITimeout>>();
 		private readonly Thread thread;
 		private CancellationTokenSource cancel;
 		private CancellationToken cancelToken;
@@ -43,20 +43,22 @@ namespace Aerospike.Client
 			cancel = new CancellationTokenSource();
 			cancelToken = cancel.Token;
 			valid = true;
-			thread = new Thread(new ThreadStart(this.Run));
-			thread.Name = "asynctimeout";
-			thread.IsBackground = true;
+			thread = new Thread(Run)
+			{
+				Name = "asynctimeout",
+				IsBackground = true
+			};
 			thread.Start();
 		}
 
 		public void Add(ITimeout command, int timeout)
 		{
-			queue.Enqueue(command);
+			queue.Enqueue(new WeakReference<ITimeout>(command));
 
 			if (timeout < sleepInterval)
 			{
-				// Minimum sleep interval is 5ms.
-				sleepInterval = (timeout >= 5)? timeout : 5;
+				// Enforce minimum sleep interval.
+				sleepInterval = Math.Max(timeout, MIN_INTERVAL);
 
 				lock (this)
 				{
@@ -99,16 +101,19 @@ namespace Aerospike.Client
 
 		private void RegisterCommands()
 		{
-			ITimeout command;
-			while (queue.TryDequeue(out command))
+			while (queue.TryDequeue(out WeakReference<ITimeout> commandRef))
 			{
-				list.AddLast(command);
+				// Don't add if the command was garbage collected.
+				if (commandRef.TryGetTarget(out _))
+				{
+					list.AddLast(commandRef);
+				}
 			}
 		}
 
 		private void CheckTimeouts()
 		{
-			LinkedListNode<ITimeout> node = list.First;
+			LinkedListNode<WeakReference<ITimeout>> node = list.First;
 
 			if (node == null)
 			{
@@ -117,17 +122,17 @@ namespace Aerospike.Client
 				return;
 			}
 
-			LinkedListNode<ITimeout> last = list.Last;
+			LinkedListNode<WeakReference<ITimeout>> last = list.Last;
 
 			while (node != null)
 			{
 				list.RemoveFirst();
 
-				ITimeout command = node.Value;
+				WeakReference<ITimeout> commandRef = node.Value;
 
-				if (command.CheckTimeout())
+				if (commandRef.TryGetTarget(out ITimeout command) && command.CheckTimeout())
 				{
-					list.AddLast(command);
+					list.AddLast(commandRef);
 				}
 
 				if (node == last)
