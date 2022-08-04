@@ -54,11 +54,14 @@ namespace Aerospike.Client
 			int threadExpandCount = cluster.ResetThreadExpandCount();
 
 			Process proc = Process.GetCurrentProcess();
+			long mem = proc.PrivateMemorySize64;
 			TimeSpan endSpan = proc.TotalProcessorTime;
 			DateTime endTime = DateTime.UtcNow;
-			double cpu = ((endSpan - beginSpan).TotalMilliseconds * 100.0) / (Environment.ProcessorCount * (endTime - beginTime).TotalMilliseconds);
-			long mem = proc.PrivateMemorySize64;
+			double cpu = ((endSpan - beginSpan).TotalMilliseconds * 100.0) / ((endTime - beginTime).TotalMilliseconds * Environment.ProcessorCount);
 
+			beginTime = endTime;
+			beginSpan = endSpan;
+			
 			lock (writer)
 			{		
 				sb.Length = 0;
