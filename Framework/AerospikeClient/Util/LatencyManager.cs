@@ -28,7 +28,7 @@ namespace Aerospike.Client
         private readonly int lastBucket;
         private readonly int bitShift;
 
-        public LatencyManager(StatsPolicy policy, string type)
+        public LatencyManager(MetricsPolicy policy, string type)
         {
 			this.type = type;
             this.lastBucket = policy.latencyColumns - 1;

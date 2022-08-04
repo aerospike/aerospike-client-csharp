@@ -17,45 +17,47 @@
 using System;
 using System.IO;
 using System.Text;
-using System.Threading;
 using System.Diagnostics;
 
 namespace Aerospike.Client
 {
-	public sealed class LatencyWriter
+	public sealed class MetricsWriter
     {
 		internal readonly LatencyManager connLatency;
 		internal readonly LatencyManager writeLatency;
 		internal readonly LatencyManager readLatency;
 		internal readonly LatencyManager batchLatency;
-		private readonly PerformanceCounter cpuCounter;
-		private readonly PerformanceCounter ramCounter;
 		private readonly StringBuilder sb;
 		private readonly StreamWriter writer;
+		private DateTime beginTime;
+		private TimeSpan beginSpan;
 
-		public LatencyWriter(StatsPolicy policy)
+		public MetricsWriter(MetricsPolicy policy)
         {
 			connLatency = new LatencyManager(policy, "conn");
 			writeLatency = new LatencyManager(policy, "write");
 			readLatency = new LatencyManager(policy, "read");
 			batchLatency = new LatencyManager(policy, "batch");
-
-			cpuCounter = new PerformanceCounter("Processor", "% Processor Time", "_Total");
-			ramCounter = new PerformanceCounter("Memory", "Available MBytes");
-
 			sb = new StringBuilder(256);
 			
 			FileStream fs = new FileStream(policy.reportPath, FileMode.Append, FileAccess.Write);
 			writer = new StreamWriter(fs);
 			writer.WriteLine(writeLatency.PrintHeader(sb));
+
+			beginTime = DateTime.UtcNow;
+			beginSpan = Process.GetCurrentProcess().TotalProcessorTime;
 		}
 	
 		public void Write(Cluster cluster)
 		{
 			ClusterStats stats = cluster.GetStats();
 			int threadExpandCount = cluster.ResetThreadExpandCount();
-			float cpu = cpuCounter.NextValue();
-			float ram = ramCounter.NextValue();
+
+			Process proc = Process.GetCurrentProcess();
+			TimeSpan endSpan = proc.TotalProcessorTime;
+			DateTime endTime = DateTime.UtcNow;
+			double cpu = ((endSpan - beginSpan).TotalMilliseconds * 100.0) / (Environment.ProcessorCount * (endTime - beginTime).TotalMilliseconds);
+			long mem = proc.PrivateMemorySize64;
 
 			lock (writer)
 			{		
@@ -65,7 +67,7 @@ namespace Aerospike.Client
 				sb.Append(' ');
 				sb.Append(cpu);
 				sb.Append(' ');
-				sb.Append(ram);
+				sb.Append(mem);
 				sb.Append(' ');
 				sb.Append(threadExpandCount);
 				sb.Append(' ');

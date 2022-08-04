@@ -44,7 +44,7 @@ namespace Aerospike.Demo
 				}
 			}
 			console.Info("End");
-			client.DisableStats();
+			client.DisableMetrics();
 
 			/*
 			if (args.singleBin)

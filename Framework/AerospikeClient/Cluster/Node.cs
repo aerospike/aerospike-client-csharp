@@ -811,7 +811,7 @@ namespace Aerospike.Client
 
 		private Connection CreateConnection(string tlsName, IPEndPoint address, int timeout, Pool<Connection> pool)
 		{
-			if (cluster.StatsEnabled)
+			if (cluster.MetricsEnabled)
 			{
 				ValueStopwatch watch = ValueStopwatch.StartNew();
 				Connection conn = (cluster.tlsPolicy != null && !cluster.tlsPolicy.forLoginOnly) ?
@@ -917,7 +917,7 @@ namespace Aerospike.Client
 
 		public void IncrTimeoutCount()
 		{
-			if (cluster.StatsEnabled)
+			if (cluster.MetricsEnabled)
 			{
 				Interlocked.Increment(ref timeoutCount);
 			}

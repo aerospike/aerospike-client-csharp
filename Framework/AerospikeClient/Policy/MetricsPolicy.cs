@@ -17,9 +17,9 @@
 namespace Aerospike.Client
 {
 	/// <summary>
-	/// Statistics configuration.
+	/// Client metrics configuration.
 	/// </summary>
-	public class StatsPolicy
+	public class MetricsPolicy
 	{
 		/// <summary>
 		/// File path to append cluster statistics and latency histograms.
@@ -57,7 +57,7 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Copy constructor.
 		/// </summary>
-		public StatsPolicy(StatsPolicy other)
+		public MetricsPolicy(MetricsPolicy other)
 		{
 			this.reportPath = other.reportPath;
 			this.reportInterval = other.reportInterval;
@@ -68,7 +68,7 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Default constructor.
 		/// </summary>
-		public StatsPolicy()
+		public MetricsPolicy()
 		{
 		}
 	}

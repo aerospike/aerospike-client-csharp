@@ -118,7 +118,7 @@ namespace Aerospike.Client
 		private bool statsEnabled;
 		private uint reportInterval;
 		private int threadExpandCount;
-		private volatile LatencyWriter latencyWriter;
+		private volatile MetricsWriter latencyWriter;
 		
 		public Cluster(ClientPolicy policy, Host[] hosts)
 		{
@@ -501,61 +501,61 @@ namespace Aerospike.Client
 
 			if (statsEnabled && (count % reportInterval) == 0)
 			{
-				LatencyWriter lw = latencyWriter;
+				MetricsWriter lw = latencyWriter;
 				lw.Write(this);
 			}
 		}
 
-		public void EnableStats(StatsPolicy policy)
+		public void EnableMetrics(MetricsPolicy policy)
 		{
 			if (statsEnabled)
 			{
-				LatencyWriter lw = latencyWriter;
+				MetricsWriter lw = latencyWriter;
 				lw.Close(this);
 			}
 
-			latencyWriter = new LatencyWriter(policy);
+			latencyWriter = new MetricsWriter(policy);
 			reportInterval = policy.reportInterval;
 			statsEnabled = true;
 		}
 
-		public void DisableStats()
+		public void DisableMetrics()
 		{
 			if (statsEnabled)
 			{
 				statsEnabled = false;
 
-				LatencyWriter lw = latencyWriter;
+				MetricsWriter lw = latencyWriter;
 				lw.Close(this);
 			}
 		}
 
-		public bool StatsEnabled
+		public bool MetricsEnabled
 		{
 			get { return statsEnabled; }
 		}
 
 		public void AddConnLatency(long elapsed)
 		{
-			LatencyWriter lw = latencyWriter;
+			MetricsWriter lw = latencyWriter;
 			lw.connLatency.Add(elapsed);
 		}
 
 		public void AddWriteLatency(long elapsed)
 		{
-			LatencyWriter lw = latencyWriter;
+			MetricsWriter lw = latencyWriter;
 			lw.writeLatency.Add(elapsed);
 		}
 
 		public void AddReadLatency(long elapsed)
 		{
-			LatencyWriter lw = latencyWriter;
+			MetricsWriter lw = latencyWriter;
 			lw.readLatency.Add(elapsed);
 		}
 
 		public void AddBatchLatency(long elapsed)
 		{
-			LatencyWriter lw = latencyWriter;
+			MetricsWriter lw = latencyWriter;
 			lw.batchLatency.Add(elapsed);
 		}
 

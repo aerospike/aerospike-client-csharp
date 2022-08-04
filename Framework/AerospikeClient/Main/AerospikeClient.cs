@@ -335,17 +335,17 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Enable periodic cluster and latency statistics.
 		/// </summary>
-		public void EnableStats(StatsPolicy policy)
+		public void EnableMetrics(MetricsPolicy policy)
 		{
-			cluster.EnableStats(policy);
+			cluster.EnableMetrics(policy);
 		}
 
 		/// <summary>
 		/// Disable statistics.
 		/// </summary>
-		public void DisableStats()
+		public void DisableMetrics()
 		{
-			cluster.DisableStats();
+			cluster.DisableMetrics();
 		}
 
 		//-------------------------------------------------------
@@ -363,7 +363,7 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if write fails</exception>
 		public void Put(WritePolicy policy, Key key, params Bin[] bins)
 		{
-			if (cluster.StatsEnabled)
+			if (cluster.MetricsEnabled)
 			{
 				ValueStopwatch watch = ValueStopwatch.StartNew();
 				PutInternal(policy, key, bins);
@@ -401,7 +401,7 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if append fails</exception>
 		public void Append(WritePolicy policy, Key key, params Bin[] bins)
 		{
-			if (cluster.StatsEnabled)
+			if (cluster.MetricsEnabled)
 			{
 				ValueStopwatch watch = ValueStopwatch.StartNew();
 				AppendInternal(policy, key, bins);
@@ -435,7 +435,7 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if prepend fails</exception>
 		public void Prepend(WritePolicy policy, Key key, params Bin[] bins)
 		{
-			if (cluster.StatsEnabled)
+			if (cluster.MetricsEnabled)
 			{
 				ValueStopwatch watch = ValueStopwatch.StartNew();
 				PrependInternal(policy, key, bins);
@@ -472,7 +472,7 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if add fails</exception>
 		public void Add(WritePolicy policy, Key key, params Bin[] bins)
 		{
-			if (cluster.StatsEnabled)
+			if (cluster.MetricsEnabled)
 			{
 				ValueStopwatch watch = ValueStopwatch.StartNew();
 				AddInternal(policy, key, bins);
@@ -508,7 +508,7 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if delete fails</exception>
 		public bool Delete(WritePolicy policy, Key key)
 		{
-			if (cluster.StatsEnabled)
+			if (cluster.MetricsEnabled)
 			{
 				ValueStopwatch watch = ValueStopwatch.StartNew();
 				bool rv = DeleteInternal(policy, key);
@@ -622,7 +622,7 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if touch fails</exception>
 		public void Touch(WritePolicy policy, Key key)
 		{
-			if (cluster.StatsEnabled)
+			if (cluster.MetricsEnabled)
 			{
 				ValueStopwatch watch = ValueStopwatch.StartNew();
 				TouchInternal(policy, key);
@@ -658,7 +658,7 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if command fails</exception>
 		public bool Exists(Policy policy, Key key)
 		{
-			if (cluster.StatsEnabled)
+			if (cluster.MetricsEnabled)
 			{
 				ValueStopwatch watch = ValueStopwatch.StartNew();
 				bool rv = ExistsInternal(policy, key);
@@ -695,7 +695,7 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if command fails</exception>
 		public bool[] Exists(BatchPolicy policy, Key[] keys)
 		{
-			if (cluster.StatsEnabled)
+			if (cluster.MetricsEnabled)
 			{
 				ValueStopwatch watch = ValueStopwatch.StartNew();
 				bool[] rv = ExistsInternal(policy, keys);
@@ -733,7 +733,7 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if read fails</exception>
 		public Record Get(Policy policy, Key key)
 		{
-			if (cluster.StatsEnabled)
+			if (cluster.MetricsEnabled)
 			{
 				ValueStopwatch watch = ValueStopwatch.StartNew();
 				Record rv = GetInternal(policy, key);
@@ -768,7 +768,7 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if read fails</exception>
 		public Record Get(Policy policy, Key key, params string[] binNames)
 		{
-			if (cluster.StatsEnabled)
+			if (cluster.MetricsEnabled)
 			{
 				ValueStopwatch watch = ValueStopwatch.StartNew();
 				Record rv = GetInternal(policy, key, binNames);
@@ -802,7 +802,7 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if read fails</exception>
 		public Record GetHeader(Policy policy, Key key)
 		{
-			if (cluster.StatsEnabled)
+			if (cluster.MetricsEnabled)
 			{
 				ValueStopwatch watch = ValueStopwatch.StartNew();
 				Record rv = GetHeaderInternal(policy, key);
@@ -847,7 +847,7 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if read fails</exception>
 		public void Get(BatchPolicy policy, List<BatchRead> records)
 		{
-			if (cluster.StatsEnabled)
+			if (cluster.MetricsEnabled)
 			{
 				ValueStopwatch watch = ValueStopwatch.StartNew();
 				GetInternal(policy, records);
@@ -917,7 +917,7 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if read fails</exception>
 		public Record[] Get(BatchPolicy policy, Key[] keys)
 		{
-			if (cluster.StatsEnabled)
+			if (cluster.MetricsEnabled)
 			{
 				ValueStopwatch watch = ValueStopwatch.StartNew();
 				Record[] rv = GetInternal(policy, keys);
@@ -956,7 +956,7 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if read fails</exception>
 		public Record[] Get(BatchPolicy policy, Key[] keys, params string[] binNames)
 		{
-			if (cluster.StatsEnabled)
+			if (cluster.MetricsEnabled)
 			{
 				ValueStopwatch watch = ValueStopwatch.StartNew();
 				Record[] rv = GetInternal(policy, keys, binNames);
@@ -994,7 +994,7 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if read fails</exception>
 		public Record[] GetHeader(BatchPolicy policy, Key[] keys)
 		{
-			if (cluster.StatsEnabled)
+			if (cluster.MetricsEnabled)
 			{
 				ValueStopwatch watch = ValueStopwatch.StartNew();
 				Record[] rv = GetHeaderInternal(policy, keys);
@@ -1087,7 +1087,7 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if command fails</exception>
 		public Record Operate(WritePolicy policy, Key key, params Operation[] operations)
 		{
-			if (cluster.StatsEnabled)
+			if (cluster.MetricsEnabled)
 			{
 				ValueStopwatch watch = ValueStopwatch.StartNew();
 				Record rv = OperateInternal(policy, key, operations);
@@ -1377,7 +1377,7 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if transaction fails</exception>
 		public object Execute(WritePolicy policy, Key key, string packageName, string functionName, params Value[] args)
 		{
-			if (cluster.StatsEnabled)
+			if (cluster.MetricsEnabled)
 			{
 				ValueStopwatch watch = ValueStopwatch.StartNew();
 				object rv = ExecuteInternal(policy, key, packageName, functionName, args);

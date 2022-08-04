@@ -41,11 +41,11 @@ namespace Aerospike.Demo
 
 			try
 			{
-				StatsPolicy sp = new StatsPolicy();
-				sp.reportPath = @"C:\Users\bnichols\Stats\stats.txt";
+				MetricsPolicy sp = new MetricsPolicy();
+				sp.reportPath = @"C:\Users\bnichols\Stats\metrics.txt";
 				sp.reportInterval = 1;
 				
-				client.EnableStats(sp);
+				client.EnableMetrics(sp);
 
 				args.SetServerSpecific(client);
 				RunExample(client, args);
