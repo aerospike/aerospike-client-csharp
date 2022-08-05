@@ -18,11 +18,15 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Concurrent;
 using System.Threading;
+using Microsoft.Extensions.ObjectPool;
 
 namespace Aerospike.Client
 {
 	public sealed class AsyncTimeoutQueue
 	{
+		private static readonly ObjectPool<WeakReference<ITimeout>> WeakRefPool = new DefaultObjectPool<WeakReference<ITimeout>>(
+			policy: new PooledWeakReferencePolicy<ITimeout>(),
+			maximumRetained: 10_000);
 		public static readonly AsyncTimeoutQueue Instance = new AsyncTimeoutQueue();
 		private const int MIN_INTERVAL = 5;  // ms
 
@@ -108,6 +112,10 @@ namespace Aerospike.Client
 				{
 					list.AddLast(commandRef);
 				}
+				else
+				{
+					WeakRefPool.Return(commandRef);
+				}
 			}
 		}
 
@@ -135,6 +143,7 @@ namespace Aerospike.Client
 					list.AddLast(commandRef);
 				}
 
+				WeakRefPool.Return(commandRef);
 				if (node == last)
 				{
 					break;
@@ -152,5 +161,19 @@ namespace Aerospike.Client
 	public interface ITimeout
 	{
 		bool CheckTimeout();
+	}
+
+	internal class PooledWeakReferencePolicy<T> : PooledObjectPolicy<WeakReference<T>> where T : class
+	{
+		public override WeakReference<T> Create()
+		{
+			return new WeakReference<T>(null);
+		}
+
+		public override bool Return(WeakReference<T> obj)
+		{
+			obj.SetTarget(null);
+			return true;
+		}
 	}
 }
