@@ -57,7 +57,14 @@ namespace Aerospike.Client
 
 		public void Add(ITimeout command, int timeout)
 		{
-			queue.Enqueue(new WeakReference<ITimeout>(command));
+			// Because commands can complete much earlier than their timeout, keeping a reference to the command until
+			// their supposed timeout would make the object live a very long life promoting it to gen 2 most of the
+			// time. To cope with that, only a weak reference is kept on the command so it can be garbage collected
+			// after it's completed. Also, a pool of WeakReference is kept to avoid more gen 2 objects.
+			var commandRef = WeakRefPool.Get();
+			commandRef.SetTarget(command);
+			
+			queue.Enqueue(commandRef);
 
 			if (timeout < sleepInterval)
 			{
@@ -162,7 +169,12 @@ namespace Aerospike.Client
 	{
 		bool CheckTimeout();
 	}
-
+	
+	/// <summary>
+	/// A custom <see cref="PooledObjectPolicy{T}"/> is used to specify how to create a <see cref="WeakReference{T}"/>
+	/// and how to reset it.
+	/// </summary>
+	/// <typeparam name="T"></typeparam>
 	internal class PooledWeakReferencePolicy<T> : PooledObjectPolicy<WeakReference<T>> where T : class
 	{
 		public override WeakReference<T> Create()
