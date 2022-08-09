@@ -18,15 +18,13 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Concurrent;
 using System.Threading;
-using Microsoft.Extensions.ObjectPool;
 
 namespace Aerospike.Client
 {
 	public sealed class AsyncTimeoutQueue
 	{
-		private static readonly ObjectPool<WeakReference<ITimeout>> WeakRefPool = new DefaultObjectPool<WeakReference<ITimeout>>(
-			policy: new PooledWeakReferencePolicy<ITimeout>(),
-			maximumRetained: 10_000);
+		private static readonly ConcurrentQueue<WeakReference<ITimeout>> WeakRefPool =
+			new ConcurrentQueue<WeakReference<ITimeout>>();
 		public static readonly AsyncTimeoutQueue Instance = new AsyncTimeoutQueue();
 		private const int MIN_INTERVAL = 5;  // ms
 
@@ -61,8 +59,14 @@ namespace Aerospike.Client
 			// their supposed timeout would make the object live a very long life promoting it to gen 2 most of the
 			// time. To cope with that, only a weak reference is kept on the command so it can be garbage collected
 			// after it's completed. Also, a pool of WeakReference is kept to avoid more gen 2 objects.
-			var commandRef = WeakRefPool.Get();
-			commandRef.SetTarget(command);
+			if (!WeakRefPool.TryDequeue(out var commandRef))
+			{
+				commandRef = new WeakReference<ITimeout>(command);
+			}
+			else
+			{
+				commandRef.SetTarget(command);
+			}
 			
 			queue.Enqueue(commandRef);
 
@@ -121,7 +125,7 @@ namespace Aerospike.Client
 				}
 				else
 				{
-					WeakRefPool.Return(commandRef);
+					WeakRefPool.Enqueue(commandRef);
 				}
 			}
 		}
@@ -149,8 +153,11 @@ namespace Aerospike.Client
 				{
 					list.AddLast(commandRef);
 				}
+				else
+				{
+					WeakRefPool.Enqueue(commandRef);
+				}
 
-				WeakRefPool.Return(commandRef);
 				if (node == last)
 				{
 					break;
@@ -168,24 +175,5 @@ namespace Aerospike.Client
 	public interface ITimeout
 	{
 		bool CheckTimeout();
-	}
-	
-	/// <summary>
-	/// A custom <see cref="PooledObjectPolicy{T}"/> is used to specify how to create a <see cref="WeakReference{T}"/>
-	/// and how to reset it.
-	/// </summary>
-	/// <typeparam name="T"></typeparam>
-	internal class PooledWeakReferencePolicy<T> : PooledObjectPolicy<WeakReference<T>> where T : class
-	{
-		public override WeakReference<T> Create()
-		{
-			return new WeakReference<T>(null);
-		}
-
-		public override bool Return(WeakReference<T> obj)
-		{
-			obj.SetTarget(null);
-			return true;
-		}
 	}
 }
