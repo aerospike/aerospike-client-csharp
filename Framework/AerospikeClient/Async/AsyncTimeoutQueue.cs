@@ -23,8 +23,6 @@ namespace Aerospike.Client
 {
 	public sealed class AsyncTimeoutQueue
 	{
-		public static readonly AsyncTimeoutQueue Instance = new AsyncTimeoutQueue();
-
 		/// <summary>
 		/// Maximum number of weak references allowed in the pool.
 		/// Default: 65000 
@@ -32,16 +30,18 @@ namespace Aerospike.Client
 		public static int MaxWeakRefPoolCount = 65000;
 
 		/// <summary>
-		/// Maximum sleep interval in milliseconds allowed when there are active commands to be checked.
+		/// Maximum sleep interval in milliseconds allowed when there are active commands.
 		/// Default: 1000
 		/// </summary>
-		public static int MaxInterval = 1000;
+		private const int MaxInterval = 1000;
 
 		/// <summary>
 		/// Minimum sleep interval in milliseconds allowed.
 		/// Constant: 5
 		/// </summary>
-		private const int MinInterval = 5; // ms
+		private const int MinInterval = 5;
+
+		internal static readonly AsyncTimeoutQueue Instance = new AsyncTimeoutQueue();
 
 		private readonly ConcurrentQueue<WeakReference<ITimeout>> weakRefPool = new ConcurrentQueue<WeakReference<ITimeout>>();
 		private readonly ConcurrentQueue<WeakReference<ITimeout>> queue = new ConcurrentQueue<WeakReference<ITimeout>>();
@@ -55,8 +55,8 @@ namespace Aerospike.Client
 
 		public AsyncTimeoutQueue()
 		{
-			// Use low level Thread because system Timer class can queue up multiple simultaneous calls
-			// if the callback processing time is greater than the callback interval.  This
+			// Use low level Thread because system Timer class can queue up multiple simultaneous
+			// calls if the callback processing time is greater than the callback interval. This
 			// thread implementation only executes callback after the previous callback and another
 			// interval cycle has completed.
 			cancel = new CancellationTokenSource();
@@ -72,19 +72,7 @@ namespace Aerospike.Client
 
 		public void Add(ITimeout command, int timeout)
 		{
-			// Because commands can complete much earlier than their timeout, keeping a reference to the command until
-			// their supposed timeout would make the object live a very long life promoting it to gen 2 most of the
-			// time. To cope with that, only a weak reference is kept on the command so it can be garbage collected
-			// after it's completed. Also, a pool of WeakReference is kept to avoid more gen 2 objects.
-			if (!weakRefPool.TryDequeue(out var commandRef))
-			{
-				commandRef = new WeakReference<ITimeout>(command);
-			}
-			else
-			{
-				Interlocked.Decrement(ref weakRefPoolCount);
-				commandRef.SetTarget(command);
-			}
+			WeakReference<ITimeout> commandRef = GetWeakRef(command);
 
 			queue.Enqueue(commandRef);
 
@@ -144,7 +132,7 @@ namespace Aerospike.Client
 				}
 				else
 				{
-					ReturnWeakRef(commandRef);
+					PutWeakRef(commandRef);
 				}
 			}
 		}
@@ -178,7 +166,7 @@ namespace Aerospike.Client
 				{
 					// Command is complete, timed out and/or garbage collected.
 					// Return weak reference to pool. 
-					ReturnWeakRef(commandRef);
+					PutWeakRef(commandRef);
 				}
 
 				if (node == last)
@@ -189,7 +177,26 @@ namespace Aerospike.Client
 			}
 		}
 
-		private void ReturnWeakRef(WeakReference<ITimeout> commandRef)
+		private WeakReference<ITimeout> GetWeakRef(ITimeout command)
+		{
+			// Because commands can complete much earlier than their timeout, keeping a reference
+			// to the command until their supposed timeout would make the object live a very long
+			// life promoting it to gen 2 most of the time. To cope with that, only a weak reference
+			// is kept on the command so it can be garbage collected after it's completed. Also, a 
+			// pool of WeakReference is kept to avoid more gen 2 objects.
+			if (!weakRefPool.TryDequeue(out WeakReference<ITimeout> commandRef))
+			{
+				commandRef = new WeakReference<ITimeout>(command);
+			}
+			else
+			{
+				Interlocked.Decrement(ref weakRefPoolCount);
+				commandRef.SetTarget(command);
+			}
+			return commandRef;
+		}
+
+		private void PutWeakRef(WeakReference<ITimeout> commandRef)
 		{
 			if (weakRefPoolCount < MaxWeakRefPoolCount)
 			{
