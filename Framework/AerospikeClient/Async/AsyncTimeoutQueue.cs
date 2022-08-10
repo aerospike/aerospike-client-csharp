@@ -24,13 +24,32 @@ namespace Aerospike.Client
 	public sealed class AsyncTimeoutQueue
 	{
 		public static readonly AsyncTimeoutQueue Instance = new AsyncTimeoutQueue();
-		private const int MIN_INTERVAL = 5;  // ms
 
+		/// <summary>
+		/// Maximum number of weak references allowed in the pool.
+		/// Default: 65000 
+		/// </summary>
+		public static int MaxWeakRefPoolCount = 65000;
+
+		/// <summary>
+		/// Maximum sleep interval in milliseconds allowed when there are active commands to be checked.
+		/// Default: 1000
+		/// </summary>
+		public static int MaxInterval = 1000;
+
+		/// <summary>
+		/// Minimum sleep interval in milliseconds allowed.
+		/// Constant: 5
+		/// </summary>
+		private const int MinInterval = 5; // ms
+
+		private readonly ConcurrentQueue<WeakReference<ITimeout>> weakRefPool = new ConcurrentQueue<WeakReference<ITimeout>>();
 		private readonly ConcurrentQueue<WeakReference<ITimeout>> queue = new ConcurrentQueue<WeakReference<ITimeout>>();
 		private readonly LinkedList<WeakReference<ITimeout>> list = new LinkedList<WeakReference<ITimeout>>();
 		private readonly Thread thread;
 		private CancellationTokenSource cancel;
 		private CancellationToken cancelToken;
+		private volatile int weakRefPoolCount;
 		private volatile int sleepInterval = int.MaxValue;
 		private volatile bool valid;
 
@@ -53,12 +72,26 @@ namespace Aerospike.Client
 
 		public void Add(ITimeout command, int timeout)
 		{
-			queue.Enqueue(new WeakReference<ITimeout>(command));
+			// Because commands can complete much earlier than their timeout, keeping a reference to the command until
+			// their supposed timeout would make the object live a very long life promoting it to gen 2 most of the
+			// time. To cope with that, only a weak reference is kept on the command so it can be garbage collected
+			// after it's completed. Also, a pool of WeakReference is kept to avoid more gen 2 objects.
+			if (!weakRefPool.TryDequeue(out var commandRef))
+			{
+				commandRef = new WeakReference<ITimeout>(command);
+			}
+			else
+			{
+				Interlocked.Decrement(ref weakRefPoolCount);
+				commandRef.SetTarget(command);
+			}
+
+			queue.Enqueue(commandRef);
 
 			if (timeout < sleepInterval)
 			{
 				// Enforce minimum sleep interval.
-				sleepInterval = Math.Max(timeout, MIN_INTERVAL);
+				sleepInterval = Math.Max(timeout, MinInterval);
 
 				lock (this)
 				{
@@ -73,7 +106,8 @@ namespace Aerospike.Client
 			{
 				try
 				{
-					int t = (sleepInterval == int.MaxValue) ? Timeout.Infinite : sleepInterval + 1;
+					int t = (sleepInterval == int.MaxValue) ? Timeout.Infinite : 
+							(sleepInterval < MaxInterval) ? sleepInterval + 1 : MaxInterval;
 
 					if (cancelToken.WaitHandle.WaitOne(t))
 					{
@@ -108,6 +142,10 @@ namespace Aerospike.Client
 				{
 					list.AddLast(commandRef);
 				}
+				else
+				{
+					ReturnWeakRef(commandRef);
+				}
 			}
 		}
 
@@ -132,7 +170,15 @@ namespace Aerospike.Client
 
 				if (commandRef.TryGetTarget(out ITimeout command) && command.CheckTimeout())
 				{
+					// Command is still running and has not timed out.
+					// Add command reference at the end of the active list.
 					list.AddLast(commandRef);
+				}
+				else
+				{
+					// Command is complete, timed out and/or garbage collected.
+					// Return weak reference to pool. 
+					ReturnWeakRef(commandRef);
 				}
 
 				if (node == last)
@@ -140,6 +186,17 @@ namespace Aerospike.Client
 					break;
 				}
 				node = list.First;
+			}
+		}
+
+		private void ReturnWeakRef(WeakReference<ITimeout> commandRef)
+		{
+			if (weakRefPoolCount < MaxWeakRefPoolCount)
+			{
+				// Return weak reference to the pool.
+				Interlocked.Increment(ref weakRefPoolCount);
+				commandRef.SetTarget(null);
+				weakRefPool.Enqueue(commandRef);
 			}
 		}
 
