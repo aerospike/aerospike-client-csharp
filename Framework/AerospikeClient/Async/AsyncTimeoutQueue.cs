@@ -94,8 +94,9 @@ namespace Aerospike.Client
 			{
 				try
 				{
-					int t = (sleepInterval == int.MaxValue) ? Timeout.Infinite : 
-							(sleepInterval < MaxInterval) ? sleepInterval + 1 : MaxInterval;
+					int interval = sleepInterval;
+					int t = (interval == int.MaxValue) ? Timeout.Infinite : 
+							(interval < MaxInterval) ? interval + 1 : MaxInterval;
 
 					if (cancelToken.WaitHandle.WaitOne(t))
 					{

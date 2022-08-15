@@ -176,7 +176,14 @@ namespace Aerospike.Client
 				// Timeout already added in Execute(). Verify state.
 				if (state != IN_PROGRESS)
 				{
-					// Timeout occurred. Close command.
+					// Total timeout might have occurred if command was in the delay queue.
+					// Socket timeout should not be possible for commands in the delay queue.
+					if (state != FAIL_TOTAL_TIMEOUT)
+					{
+						Log.Error("Unexpected state at async command start: " + state);
+					}
+					// User has already been notified of the total timeout. Release buffer and 
+					// return for all error states.
 					ReleaseBuffer();
 					return;
 				}
@@ -654,7 +661,9 @@ namespace Aerospike.Client
 				return false;
 			}
 
-			if (totalTimeout > 0 && totalWatch.ElapsedMilliseconds >= totalTimeout)
+			// totalWatch is not initialized when totalTimeout is zero. Check if totalWatch is
+			// initialized/active before checking totalTimeout.
+			if (totalWatch.IsActive && totalWatch.ElapsedMilliseconds >= totalTimeout)
 			{
 				// Total timeout has occurred.
 				if (Interlocked.CompareExchange(ref state, FAIL_TOTAL_TIMEOUT, IN_PROGRESS) == IN_PROGRESS)
@@ -672,7 +681,10 @@ namespace Aerospike.Client
 				return false;  // Do not put back on timeout queue.
 			}
 
-			if (socketTimeout > 0 && socketWatch.ElapsedMilliseconds >= socketTimeout)
+			// socketWatch is not initialized for commands in the delay queue because the command
+			// has not started yet. Check if socketWatch is initialized/active before checking
+			// socketTimeout.
+			if (socketWatch.IsActive && socketWatch.ElapsedMilliseconds >= socketTimeout)
 			{
 				if (eventReceived)
 				{
@@ -710,10 +722,18 @@ namespace Aerospike.Client
 				node.PutAsyncConnection(conn);
 				ReleaseBuffer();
 			}
-			else if (status == FAIL_TOTAL_TIMEOUT || status == FAIL_SOCKET_TIMEOUT)
+			else if (status == FAIL_TOTAL_TIMEOUT)
 			{
 				// Timeout thread closed connection, but transaction still completed.
-				// Do not put connection back into pool.
+				// User has already been notified with timeout. Release buffer and return.
+				ReleaseBuffer();
+				return;
+			}
+			else if (status == FAIL_SOCKET_TIMEOUT)
+			{
+				// Timeout thread closed connection, but transaction still completed.
+				// User has not been notified of the timeout. Release buffer and let
+				// OnSuccess() be called.
 				ReleaseBuffer();
 			}
 			else
