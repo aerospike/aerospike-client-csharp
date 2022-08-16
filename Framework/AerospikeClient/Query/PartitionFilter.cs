@@ -19,7 +19,14 @@ using System;
 namespace Aerospike.Client
 {
 	/// <summary>
-	/// Partition filter used in scan/query.
+	/// Partition filter used in scan/query. This filter is also used as a cursor.
+	/// <para>
+	/// If a previous scan/query returned all records specified by a PartitionFilter instance, a
+	/// future scan/query using the same PartitionFilter instance will only return new records added
+	/// after the last record read (in digest order) in each partition in the previous scan/query.
+	/// To reset the cursor of an existing PartitionFilter instance, set
+	/// <see cref="PartitionFilter.Partitions"/> to null.
+	/// </para>
 	/// </summary>
 	[Serializable]
 	public sealed class PartitionFilter
@@ -108,16 +115,23 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
-		/// Status of each partition after scan termination.
-		/// Useful for external retry of partially completed scans at a later time.
+		/// Cursor status of each partition after scan termination. The cursor contains the last record
+		/// read for each partition and is usually obtained from Partitions after a previous scan/query.
+		/// This is useful for a retry of a partially completed scan/query.
+		/// <para>
+		/// If a previous scan/query returned all records specified by a PartitionFilter instance, a
+		/// future scan/query using the same PartitionFilter instance will only return new records added
+		/// after the last record read (in digest order) in each partition in the previous scan/query.
+		/// To reset the cursor of an existing PartitionFilter instance, set Partitions to null.
+		/// </para>
 		/// <para>
 		/// The partition status is accurate for sync/async ScanPartitions and async QueryPartitions.
 		/// </para>
 		/// <para>
-		/// The partition status is not accurate for
+		/// The partition status may not be accurate for
 		/// <see cref="Aerospike.Client.AerospikeClient.QueryPartitions(QueryPolicy, Statement, PartitionFilter)"/>
-		/// because the last digest received is set during query parsing, but the user may not have retrieved
-		/// that digest from the RecordSet yet.
+		/// because the last digest received is set during query parsing, but the user may not have
+		/// retrieved that digest from the RecordSet yet.
 		/// </para>
 		/// </summary>
 		public PartitionStatus[] Partitions
