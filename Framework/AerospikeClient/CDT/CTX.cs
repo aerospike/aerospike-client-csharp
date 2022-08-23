@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2020 Aerospike, Inc.
+ * Copyright 2012-2022 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -14,6 +14,8 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
+using System;
+using System.Collections;
 
 namespace Aerospike.Client
 {
@@ -128,6 +130,62 @@ namespace Aerospike.Client
 		public static CTX MapValue(Value key)
 		{
 			return new CTX(0x23, key);
+		}
+
+		/// <summary>
+		/// Serialize context array to bytes.
+		/// </summary>
+		public static byte[] ToBytes(CTX[] ctx)
+		{
+			return PackUtil.Pack(ctx);
+		}
+
+		/// <summary>
+		/// Deserialize bytes to context array.
+		/// </summary>
+		public static CTX[] FromBytes(byte[] bytes)
+		{
+			Unpacker unpacker = new Unpacker(bytes, 0, bytes.Length, false);
+			IList list = (IList)unpacker.UnpackList();
+			int max = list.Count;
+			CTX[] ctx = new CTX[max / 2];
+			int i = 0;
+			int count = 0;
+
+			while (i < max)
+			{
+				int id = (int)(long)list[i];
+
+				if (++i >= max)
+				{
+					throw new AerospikeException.Parse("List count must be even");
+				}
+
+				object obj = list[i];
+				Value val = Value.Get(obj);
+
+				ctx[count++] = new CTX(id, val);
+				i++;
+			}
+			return ctx;
+		}
+
+		/// <summary>
+		/// Serialize context array to base64 encoded string.
+		/// </summary>
+		public static string ToBase64(CTX[] ctx)
+		{
+			byte[] bytes = PackUtil.Pack(ctx);
+			return Convert.ToBase64String(bytes);
+		}
+
+		/// <summary>
+		/// Deserialize base64 encoded string to context array.
+		/// </summary>
+		public static CTX[] FromBase64(string base64)
+		{
+			byte[] bytes = Convert.FromBase64String(base64);
+			return FromBytes(bytes);
 		}
 
 		internal static int GetFlag(ListOrder order, bool pad)
