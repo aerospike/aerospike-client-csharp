@@ -207,8 +207,8 @@ namespace Aerospike.Client
 			}
 		}
 
-		internal int id;
-		internal Value value;
+		public readonly int id;
+		public readonly Value value;
 
 		private CTX(int id, Value value)
 		{
