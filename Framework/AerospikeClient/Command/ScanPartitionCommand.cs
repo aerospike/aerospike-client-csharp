@@ -70,7 +70,7 @@ namespace Aerospike.Client
 			SetScan(cluster, scanPolicy, ns, setName, binNames, taskId, nodePartitions);
 		}
 
-		protected internal override void ParseRow()
+		protected internal override bool ParseRow()
 		{
 			ulong bval;
 			Key key = ParseKey(fieldCount, out bval);
@@ -84,7 +84,7 @@ namespace Aerospike.Client
 				{
 					tracker.PartitionUnavailable(nodePartitions, generation);
 				}
-				return;
+				return true;
 			}
 
 			if (resultCode != 0)
@@ -101,6 +101,7 @@ namespace Aerospike.Client
 
 			callback(key, record);
 			tracker.SetDigest(nodePartitions, key);
+			return true;
 		}
 	}
 }

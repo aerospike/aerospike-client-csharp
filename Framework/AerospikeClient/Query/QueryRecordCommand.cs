@@ -44,7 +44,7 @@ namespace Aerospike.Client
 			SetQuery(cluster, policy, statement, taskId, false, null);
 		}
 
-		protected internal override void ParseRow()
+		protected internal override bool ParseRow()
 		{
 			ulong bval;
 			Key key = ParseKey(fieldCount, out bval);
@@ -66,6 +66,7 @@ namespace Aerospike.Client
 				Stop();
 				throw new AerospikeException.QueryTerminated();
 			}
+			return true;
 		}
 	}
 }

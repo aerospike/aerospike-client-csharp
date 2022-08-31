@@ -38,7 +38,7 @@ namespace Aerospike.Client
 			SetQuery(cluster, policy, statement, taskId, true, null);
 		}
 
-		protected internal override void ParseRow()
+		protected internal override bool ParseRow()
 		{
 			SkipKey(fieldCount);
 
@@ -50,7 +50,7 @@ namespace Aerospike.Client
 				if (resultCode == ResultCode.KEY_NOT_FOUND_ERROR)
 				{
 					// Non-fatal error.
-					return;
+					return false;
 				}
 				throw new AerospikeException(resultCode);
 			}
@@ -64,6 +64,7 @@ namespace Aerospike.Client
 			{
 				throw new AerospikeException.QueryTerminated();
 			}
+			return true;
 		}		
 	}
 }

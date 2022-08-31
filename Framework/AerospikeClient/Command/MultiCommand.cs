@@ -216,12 +216,16 @@ namespace Aerospike.Client
 				opCount = ByteUtil.BytesToShort(dataBuffer, dataOffset);
 				dataOffset += 2;
 
-				ParseRow();
+				// Note: ParseRow() also handles sync error responses.
+				if (! ParseRow())
+				{
+					return false;
+				}
 			}
 			return true;
 		}
 
-		protected internal abstract void ParseRow();
+		protected internal abstract bool ParseRow();
 
 		protected internal Record ParseRecord()
 		{
