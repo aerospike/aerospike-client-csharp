@@ -1,5 +1,5 @@
 ﻿/* 
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2022 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -14,9 +14,6 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using System;
-using System.Collections;
-using System.Collections.Generic;
 using System.Reflection;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Aerospike.Client;
@@ -105,6 +102,38 @@ namespace Aerospike.Test
 					count++;
 				}
 				Assert.AreNotEqual(0, count);
+			}
+			finally
+			{
+				rs.Close();
+			}
+		}
+
+		[TestMethod]
+		public void QuerySetNotFound()
+		{
+			Statement stmt = new Statement()
+			{
+				Namespace = args.ns,
+				SetName = "notfound",
+				BinNames = new string[] { binName },
+				Filter = Filter.Range(binName, 4, 7)
+			};
+			stmt.SetAggregateFunction(Assembly.GetExecutingAssembly(), "Aerospike.Test.Resources.sum_example.lua", "sum_example", "sum_single_bin", Value.Get(binName));
+
+			QueryPolicy qp = new QueryPolicy()
+			{
+				socketTimeout = 5000
+			};
+
+			ResultSet rs = client.QueryAggregate(qp, stmt);
+
+			try
+			{
+				while (rs.Next())
+				{
+					Assert.Fail("No rows should have been returned");
+				}
 			}
 			finally
 			{

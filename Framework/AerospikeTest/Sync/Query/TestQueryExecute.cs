@@ -1,5 +1,5 @@
 ﻿/* 
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2022 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -14,9 +14,6 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using System;
-using System.Collections;
-using System.Collections.Generic;
 using System.Reflection;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Aerospike.Client;
@@ -246,6 +243,21 @@ namespace Aerospike.Test
 			{
 				rs.Close();
 			}
+		}
+
+		[TestMethod]
+		public void QueryExecuteSetNotFound()
+		{
+			Statement stmt = new Statement
+			{
+				Namespace = args.ns,
+				SetName = "notfound",
+				Filter = Filter.Range(binName1, 1, 3)
+			};
+
+			// Previous client versions might timeout when set does not exist.
+			// Test to make sure regression has not resurfaced.
+			client.Execute(null, stmt, Operation.Touch());
 		}
 	}
 }

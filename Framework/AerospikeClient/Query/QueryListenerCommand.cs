@@ -65,7 +65,7 @@ namespace Aerospike.Client
 			SetQuery(cluster, policy, statement, taskId, false, nodePartitions);
 		}
 
-		protected internal override void ParseRow()
+		protected internal override bool ParseRow()
 		{
 			ulong bval;
 			Key key = ParseKey(fieldCount, out bval);
@@ -79,7 +79,7 @@ namespace Aerospike.Client
 				{
 					tracker.PartitionUnavailable(nodePartitions, generation);
 				}
-				return;
+				return true;
 			}
 
 			if (resultCode != 0)
@@ -96,6 +96,7 @@ namespace Aerospike.Client
 
 			listener(key, record);
 			tracker.SetLast(nodePartitions, key, bval);
+			return true;
 		}
 	}
 }

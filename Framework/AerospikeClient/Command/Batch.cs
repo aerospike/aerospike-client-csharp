@@ -52,7 +52,7 @@ namespace Aerospike.Client
 			}
 		}
 
-		protected internal override void ParseRow()
+		protected internal override bool ParseRow()
 		{
 			SkipKey(fieldCount);
 
@@ -67,6 +67,7 @@ namespace Aerospike.Client
 				record.SetError(resultCode, false);
 				status.SetRowError();
 			}
+			return true;
 		}
 
 		protected internal override BatchCommand CreateCommand(BatchNode batchNode)
@@ -126,7 +127,7 @@ namespace Aerospike.Client
 			}
 		}
 
-		protected internal override void ParseRow()
+		protected internal override bool ParseRow()
 		{
 			SkipKey(fieldCount);
 
@@ -134,6 +135,7 @@ namespace Aerospike.Client
 			{
 				records[batchIndex] = ParseRecord();
 			}
+			return true;
 		}
 
 		protected internal override BatchCommand CreateCommand(BatchNode batchNode)
@@ -183,7 +185,7 @@ namespace Aerospike.Client
 			}
 		}
 
-		protected internal override void ParseRow()
+		protected internal override bool ParseRow()
 		{
 			SkipKey(fieldCount);
 
@@ -193,6 +195,7 @@ namespace Aerospike.Client
 			}
 
 			existsArray[batchIndex] = resultCode == 0;
+			return true;
 		}
 
 		protected internal override BatchCommand CreateCommand(BatchNode batchNode)
@@ -238,7 +241,7 @@ namespace Aerospike.Client
 			SetBatchOperate(batchPolicy, (IList)records, batch);
 		}
 
-		protected internal override void ParseRow()
+		protected internal override bool ParseRow()
 		{
 			SkipKey(fieldCount);
 
@@ -247,7 +250,7 @@ namespace Aerospike.Client
 			if (resultCode == 0)
 			{
 				record.SetRecord(ParseRecord());
-				return;
+				return true;
 			}
 
 			if (resultCode == ResultCode.UDF_BAD_RESPONSE)
@@ -262,12 +265,13 @@ namespace Aerospike.Client
 					record.resultCode = resultCode;
 					record.inDoubt = Command.BatchInDoubt(record.hasWrite, commandSentCounter);
 					status.SetRowError();
-					return;
+					return true;
 				}
 			}
 
 			record.SetError(resultCode, Command.BatchInDoubt(record.hasWrite, commandSentCounter));
 			status.SetRowError();
+			return true;
 		}
 
 		protected internal override void SetInDoubt(bool inDoubt)
@@ -338,7 +342,7 @@ namespace Aerospike.Client
 			SetBatchOperate(batchPolicy, keys, batch, null, ops, attr);
 		}
 
-		protected internal override void ParseRow()
+		protected internal override bool ParseRow()
 		{
 			SkipKey(fieldCount);
 
@@ -353,6 +357,7 @@ namespace Aerospike.Client
 				record.SetError(resultCode, Command.BatchInDoubt(attr.hasWrite, commandSentCounter));
 				status.SetRowError();
 			}
+			return true;
 		}
 
 		protected internal override void SetInDoubt(bool inDoubt)
@@ -429,7 +434,7 @@ namespace Aerospike.Client
 			SetBatchUDF(batchPolicy, keys, batch, packageName, functionName, argBytes, attr);
 		}
 
-		protected internal override void ParseRow()
+		protected internal override bool ParseRow()
 		{
 			SkipKey(fieldCount);
 
@@ -438,7 +443,7 @@ namespace Aerospike.Client
 			if (resultCode == 0)
 			{
 				record.SetRecord(ParseRecord());
-				return;
+				return true;
 			}
 
 			if (resultCode == ResultCode.UDF_BAD_RESPONSE)
@@ -453,12 +458,13 @@ namespace Aerospike.Client
 					record.resultCode = resultCode;
 					record.inDoubt = Command.BatchInDoubt(attr.hasWrite, commandSentCounter);
 					status.SetRowError();
-					return;
+					return true;
 				}
 			}
 
 			record.SetError(resultCode, Command.BatchInDoubt(attr.hasWrite, commandSentCounter));
 			status.SetRowError();
+			return true;
 		}
 
 		protected internal override void SetInDoubt(bool inDoubt)
