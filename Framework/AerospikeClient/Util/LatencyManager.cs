@@ -23,17 +23,13 @@ namespace Aerospike.Client
 {
 	public sealed class LatencyManager
     {
-		private readonly string type;
 		private readonly Bucket[] buckets;
-        private readonly int lastBucket;
-        private readonly int bitShift;
+		private readonly int latencyShift;
 
-        public LatencyManager(MetricsPolicy policy, string type)
+		public LatencyManager(int latencyColumns, int latencyShift)
         {
-			this.type = type;
-            this.lastBucket = policy.latencyColumns - 1;
-            this.bitShift = policy.latencyShift;
-			buckets = new Bucket[policy.latencyColumns];
+			this.latencyShift = latencyShift;
+			buckets = new Bucket[latencyColumns];
 
 			for (int i = 0; i < buckets.Length; i++)
 			{
@@ -50,6 +46,7 @@ namespace Aerospike.Client
         private int GetIndex(double elapsed)
         {
             int e = (int)Math.Ceiling(elapsed);
+			int lastBucket = buckets.Length - 1;
             int limit = 1;
 
             for (int i = 0; i < lastBucket; i++)
@@ -58,12 +55,12 @@ namespace Aerospike.Client
                 {
                     return i;
                 }
-                limit <<= bitShift;
+                limit <<= latencyShift;
             }
             return lastBucket;
         }
 
-		public string PrintHeader(StringBuilder sb)
+		public static string PrintHeader(StringBuilder sb, int latencyColumns, int latencyShift)
         {
 			sb.Length = 0;
 			sb.Append("header ");
@@ -71,10 +68,10 @@ namespace Aerospike.Client
             sb.Append(" <=1ms >1ms");
 
 			int limit = 1;
-			
-			for (int i = 2; i <= lastBucket; i++)
+
+			for (int i = 2; i < latencyColumns; i++)
             {
-                limit <<= bitShift;
+                limit <<= latencyShift;
                 String s = " >" + limit + "ms";
                 sb.Append(s);
             }
@@ -88,7 +85,7 @@ namespace Aerospike.Client
         /// It is not a good idea to add extra locks just to measure performance since that actually 
         /// affects performance.  Fortunately, the values will even out over time (ie. no double counting).
         /// </summary>
-        public string PrintResults(StringBuilder sb)
+        public string PrintResults(Node node, StringBuilder sb, string type)
         {
             // Capture snapshot and make buckets cumulative.
             int[] array = new int[buckets.Length];
@@ -114,6 +111,8 @@ namespace Aerospike.Client
 
             // Print cumulative results.
             sb.Length = 0;
+			sb.Append(node);
+			sb.Append(' ');
 			sb.Append(type);
 
             double sumDouble = (double)sum;
@@ -124,7 +123,7 @@ namespace Aerospike.Client
 
             for (int i = 2; i < array.Length; i++)
             {
-                limit <<= bitShift;
+                limit <<= latencyShift;
                 PrintColumn(sb, limit, sumDouble, array[i]);
             }
             return sb.ToString();
@@ -165,7 +164,7 @@ namespace Aerospike.Client
 
 			for (int i = 2; i < array.Length; i++)
 			{
-				limit <<= bitShift;
+				limit <<= latencyShift;
 				PrintColumn(sb, limit, sumDouble, array[i]);
 			}
 			return sb.ToString();

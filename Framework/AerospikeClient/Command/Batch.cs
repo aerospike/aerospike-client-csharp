@@ -180,7 +180,7 @@ namespace Aerospike.Client
 		internal uint sequenceSC;
 
 		public BatchCommand(Cluster cluster, Executor parent, BatchNode batch, BatchPolicy batchPolicy)
-			: base(cluster, batchPolicy, batch.node, false)
+			: base(cluster, batchPolicy, batch.node, LatencyType.BATCH, false)
 		{
 			this.parent = parent;
 			this.batch = batch;

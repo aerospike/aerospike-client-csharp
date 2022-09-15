@@ -115,9 +115,10 @@ namespace Aerospike.Client
 		// Does cluster support partition scans.
 		internal bool hasPartitionScan;
 
-		private bool statsEnabled;
+		private bool metricsEnabled;
 		private uint reportInterval;
 		private int threadExpandCount;
+		private MetricsPolicy metricsPolicy;
 		private volatile MetricsWriter latencyWriter;
 		
 		public Cluster(ClientPolicy policy, Host[] hosts)
@@ -500,7 +501,7 @@ namespace Aerospike.Client
 				}
 			}
 
-			if (statsEnabled && (count % reportInterval) == 0)
+			if (metricsEnabled && (count % reportInterval) == 0)
 			{
 				MetricsWriter lw = latencyWriter;
 				lw.Write(this);
@@ -509,60 +510,56 @@ namespace Aerospike.Client
 
 		public void EnableMetrics(MetricsPolicy policy)
 		{
-			if (statsEnabled)
+			Node[] nodeArray = nodes;
+
+			if (metricsEnabled)
 			{
 				MetricsWriter lw = latencyWriter;
 				lw.Close(this);
+			}
+
+			this.metricsPolicy = policy;
+
+			foreach (Node node in nodes)
+			{
+				node.EnableMetrics(policy);
 			}
 
 			latencyWriter = new MetricsWriter(policy);
 			reportInterval = policy.reportInterval;
-			statsEnabled = true;
+			metricsEnabled = true;
+		}
+
+		public MetricsPolicy MetricsPolicy
+		{
+			get { return metricsPolicy; }
+		}
+
+		public bool MetricsEnabled
+		{
+			get { return metricsEnabled; }
 		}
 
 		public void DisableMetrics()
 		{
-			if (statsEnabled)
+			if (metricsEnabled)
 			{
-				statsEnabled = false;
+				metricsEnabled = false;
 
 				MetricsWriter lw = latencyWriter;
 				lw.Close(this);
 			}
 		}
 
-		public bool MetricsEnabled
-		{
-			get { return statsEnabled; }
-		}
-
-		public void AddConnLatency(long elapsed)
+		internal void WriteMetrics(Node node, Metrics metrics)
 		{
 			MetricsWriter lw = latencyWriter;
-			lw.connLatency.Add(elapsed);
-		}
-
-		public void AddWriteLatency(long elapsed)
-		{
-			MetricsWriter lw = latencyWriter;
-			lw.writeLatency.Add(elapsed);
-		}
-
-		public void AddReadLatency(long elapsed)
-		{
-			MetricsWriter lw = latencyWriter;
-			lw.readLatency.Add(elapsed);
-		}
-
-		public void AddBatchLatency(long elapsed)
-		{
-			MetricsWriter lw = latencyWriter;
-			lw.batchLatency.Add(elapsed);
+			lw.WriteNode(node, metrics);
 		}
 
 		public void IncrThreadExpandCount()
 		{
-			if (statsEnabled)
+			if (metricsEnabled)
 			{
 				Interlocked.Increment(ref threadExpandCount);
 			}

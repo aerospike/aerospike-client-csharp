@@ -15,39 +15,97 @@
  * the License.
  */
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Text;
 using System.Diagnostics;
+using System.Threading;
 
 namespace Aerospike.Client
 {
+	public sealed class LatencyType
+	{
+		public const int CONN = 0;
+		public const int WRITE = 1;
+		public const int READ = 2;
+		public const int BATCH = 3;
+		public const int NONE = 4;
+	}
+
+	public sealed class Metrics
+	{
+		private LatencyManager[] latency;
+		private int errors;
+		private int timeouts;
+
+		public Metrics(MetricsPolicy policy)
+        {
+			int latencyColumns = policy.latencyColumns;
+			int latencyShift = policy.latencyShift;
+
+			latency = new LatencyManager[LatencyType.NONE];
+			latency[LatencyType.CONN] = new LatencyManager(latencyColumns, latencyShift);
+			latency[LatencyType.WRITE] = new LatencyManager(latencyColumns, latencyShift);
+			latency[LatencyType.READ] = new LatencyManager(latencyColumns, latencyShift);
+			latency[LatencyType.CONN] = new LatencyManager(latencyColumns, latencyShift);
+		}
+
+		public void AddLatency(int type, long elapsed)
+		{
+			latency[type].Add(elapsed);
+		}
+
+		public LatencyManager Get(int type)
+		{
+			return latency[type];
+		}
+
+		public void AddError()
+		{
+			Interlocked.Increment(ref errors);
+		}
+
+		public void AddTimeout()
+		{
+			Interlocked.Increment(ref timeouts);
+		}
+
+		public int ResetError()
+		{
+			return Interlocked.Exchange(ref errors, 0);
+		}
+
+		public int ResetTimeout()
+		{
+			return Interlocked.Exchange(ref errors, 0);
+		}
+	}
+
 	public sealed class MetricsWriter
     {
-		internal readonly LatencyManager connLatency;
-		internal readonly LatencyManager writeLatency;
-		internal readonly LatencyManager readLatency;
-		internal readonly LatencyManager batchLatency;
 		private readonly StringBuilder sb;
 		private readonly StreamWriter writer;
 		private DateTime beginTime;
 		private TimeSpan beginSpan;
+		private readonly int latencyColumns;
+		private readonly int latencyShift;
 
 		public MetricsWriter(MetricsPolicy policy)
         {
-			connLatency = new LatencyManager(policy, "conn");
-			writeLatency = new LatencyManager(policy, "write");
-			readLatency = new LatencyManager(policy, "read");
-			batchLatency = new LatencyManager(policy, "batch");
+			latencyColumns = policy.latencyColumns;
+			latencyShift = policy.latencyShift;
 			sb = new StringBuilder(256);
 			
 			FileStream fs = new FileStream(policy.reportPath, FileMode.Append, FileAccess.Write);
 			writer = new StreamWriter(fs);
-			writer.WriteLine(writeLatency.PrintHeader(sb));
+			
+			string line = LatencyManager.PrintHeader(sb, latencyColumns, latencyShift);
+			writer.WriteLine(line);
 
 			beginTime = DateTime.UtcNow;
 			beginSpan = Process.GetCurrentProcess().TotalProcessorTime;
 		}
-	
+
 		public void Write(Cluster cluster)
 		{
 			ClusterStats stats = cluster.GetStats();
@@ -60,7 +118,7 @@ namespace Aerospike.Client
 			double cpu = ((endSpan - beginSpan).TotalMilliseconds * 100.0) / ((endTime - beginTime).TotalMilliseconds * Environment.ProcessorCount);
 
 			lock (writer)
-			{		
+			{
 				sb.Length = 0;
 				sb.Append("entry ");
 				sb.Append(DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"));
@@ -92,26 +150,48 @@ namespace Aerospike.Client
 					sb.Append(' ');
 					sb.Append(cs.closed);
 					sb.Append(' ');
-
-					int timeoutCount = ns.node.ResetTimeoutCount();
-					sb.Append(timeoutCount);
-
+					WriteErrors(ns.node.Metrics);
 					writer.WriteLine(sb.ToString());
 				}
-
-				WriteLine(connLatency);
-				WriteLine(writeLatency);
-				WriteLine(readLatency);
-				WriteLine(batchLatency);
 
 				beginTime = endTime;
 				beginSpan = endSpan;
 			}
 		}
 
-		private void WriteLine(LatencyManager lm)
+		public void WriteNode(Node node, Metrics metrics)
 		{
-			string line = lm.PrintResults(sb);
+			lock (writer)
+			{
+				sb.Length = 0;
+				sb.Append(node);
+				sb.Append(" errors ");
+				WriteErrors(metrics);
+				writer.WriteLine(sb.ToString());
+			}
+		}
+
+		private void WriteErrors(Metrics metrics)
+		{
+			int errors = metrics.ResetError();
+			int timeouts = metrics.ResetTimeout();
+
+			sb.Append(errors);
+			sb.Append(' ');
+			sb.Append(timeouts);
+		}
+
+		private void WriteLatency(Node node, Metrics metrics)
+		{
+			WriteLatency(node, metrics.Get(LatencyType.CONN), "conn");
+			WriteLatency(node, metrics.Get(LatencyType.WRITE), "write");
+			WriteLatency(node, metrics.Get(LatencyType.READ), "read");
+			WriteLatency(node, metrics.Get(LatencyType.BATCH), "batch");
+		}
+
+		private void WriteLatency(Node node, LatencyManager lm, string type)
+		{
+			string line = lm.PrintResults(node, sb, type);
 
 			if (line != null)
 			{

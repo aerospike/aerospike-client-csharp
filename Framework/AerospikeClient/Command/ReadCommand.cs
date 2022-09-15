@@ -29,7 +29,7 @@ namespace Aerospike.Client
 		private Record record;
 
 		public ReadCommand(Cluster cluster, Policy policy, Key key)
-			: base(cluster, policy)
+			: base(cluster, policy, LatencyType.READ)
 		{
 			this.key = key;
 			this.binNames = null;
@@ -37,7 +37,7 @@ namespace Aerospike.Client
 		}
 
 		public ReadCommand(Cluster cluster, Policy policy, Key key, String[] binNames)
-			: base(cluster, policy)
+			: base(cluster, policy, LatencyType.READ)
 		{
 			this.key = key;
 			this.binNames = binNames;
@@ -45,7 +45,7 @@ namespace Aerospike.Client
 		}
 
 		public ReadCommand(Cluster cluster, Policy policy, Key key, Partition partition)
-			: base(cluster, policy)
+			: base(cluster, policy, LatencyType.READ)
 		{
 			this.key = key;
 			this.binNames = null;

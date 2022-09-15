@@ -24,7 +24,7 @@ namespace Aerospike.Client
 		private bool existed;
 
 		public DeleteCommand(Cluster cluster, WritePolicy writePolicy, Key key)
-			: base(cluster, writePolicy)
+			: base(cluster, writePolicy, LatencyType.WRITE)
 		{
 			this.writePolicy = writePolicy;
 			this.key = key;

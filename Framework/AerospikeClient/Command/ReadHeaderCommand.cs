@@ -26,7 +26,7 @@ namespace Aerospike.Client
 		private Record record;
 
 		public ReadHeaderCommand(Cluster cluster, Policy policy, Key key)
-			: base(cluster, policy)
+			: base(cluster, policy, LatencyType.READ)
 		{
 			this.key = key;
 			this.partition = Partition.Read(cluster, policy, key);

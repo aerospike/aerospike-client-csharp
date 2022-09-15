@@ -27,16 +27,18 @@ namespace Aerospike.Client
 		internal int iteration = 1;
 		internal int commandSentCounter;
 		internal DateTime deadline;
+		private int latencyType;
 
 		/// <summary>
 		/// Default constructor.
 		/// </summary>
-		public SyncCommand(Cluster cluster, Policy policy)
+		public SyncCommand(Cluster cluster, Policy policy, int latencyType)
 			: base(policy.socketTimeout, policy.totalTimeout, policy.maxRetries)
 		{
 			this.cluster = cluster;
 			this.policy = policy;
 			this.deadline = DateTime.MinValue;
+			this.latencyType = latencyType;
 		}
 
 		/// <summary>
@@ -48,6 +50,7 @@ namespace Aerospike.Client
 			this.cluster = cluster;
 			this.policy = policy;
 			this.deadline = DateTime.MinValue;
+			this.latencyType = LatencyType.NONE;
 		}
 
 		public virtual void Execute()
@@ -68,6 +71,8 @@ namespace Aerospike.Client
 			// Execute command until successful, timed out or maximum iterations have been reached.
 			while (true)
 			{
+				ValueStopwatch watch = new ValueStopwatch(cluster.MetricsEnabled && latencyType != LatencyType.NONE);
+
 				try
 				{
 					node = GetNode();
@@ -99,6 +104,11 @@ namespace Aerospike.Client
 						// Put connection back in pool.
 						node.PutConnection(conn);
 
+						if (watch.Enabled)
+						{
+							node.AddLatency(latencyType, watch.ElapsedMilliseconds);
+						}
+
 						// Command has completed successfully.  Exit method.
 						return;
 					}
@@ -120,9 +130,11 @@ namespace Aerospike.Client
 							// Go through retry logic on server timeout.
 							exception = new AerospikeException.Timeout(policy, false);
 							isClientTimeout = false;
+							AddTimeout(node);
 						}
 						else
 						{
+							AddError(node);
 							throw;
 						}
 					}
@@ -134,13 +146,14 @@ namespace Aerospike.Client
 
 						if (se.SocketErrorCode == SocketError.TimedOut)
 						{
-							node.IncrTimeoutCount();
 							isClientTimeout = true;
+							AddTimeout(node);
 						}
 						else
 						{
 							exception = new AerospikeException.Connection(se);
 							isClientTimeout = false;
+							AddError(node);
 						}
 					}
 					catch (Exception)
@@ -148,6 +161,7 @@ namespace Aerospike.Client
 						// All other exceptions are considered fatal.  Do not retry.
 						// Close socket to flush out possible garbage.  Do not put back in pool.
 						node.CloseConnection(conn);
+						AddError(node);
 						throw;
 					}
 				}
@@ -157,20 +171,23 @@ namespace Aerospike.Client
 					// user login failed with a socket error.  Retry.
 					if (se.SocketErrorCode == SocketError.TimedOut)
 					{
-						node.IncrTimeoutCount();
 						isClientTimeout = true;
+						AddTimeout(node);
 					}
 					else
 					{
 						exception = new AerospikeException.Connection(se);
 						isClientTimeout = false;
+						AddError(node);
 					}
+
 				}
 				catch (AerospikeException.Connection ce)
 				{
 					// Socket connection error has occurred. Retry.
 					exception = ce;
 					isClientTimeout = false;
+					AddError(node);
 				}
 				catch (AerospikeException ae)
 				{
@@ -178,6 +195,7 @@ namespace Aerospike.Client
 					ae.Policy = policy;
 					ae.Iteration = iteration;
 					ae.SetInDoubt(IsWrite(), commandSentCounter);
+					AddError(node);
 					throw;
 				}
 
@@ -237,6 +255,22 @@ namespace Aerospike.Client
 			exception.Iteration = iteration;
 			exception.SetInDoubt(IsWrite(), commandSentCounter);
 			throw exception;
+		}
+
+		private void AddTimeout(Node node)
+		{
+			if (cluster.MetricsEnabled)
+			{
+				node.AddTimeout();
+			}
+		}
+
+		private void AddError(Node node)
+		{
+			if (cluster.MetricsEnabled)
+			{
+				node.AddError();
+			}
 		}
 
 		protected internal sealed override int SizeBuffer()

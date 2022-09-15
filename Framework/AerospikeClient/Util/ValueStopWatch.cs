@@ -39,6 +39,11 @@ namespace Aerospike.Client
 			this.startTimestamp = startTimestamp;
 		}
 
+		public ValueStopwatch(bool enable)
+		{
+			this.startTimestamp = enable ? Stopwatch.GetTimestamp() : 0;
+		}
+
 		public TimeSpan Elapsed
 		{
 			get { return new TimeSpan((long)((Stopwatch.GetTimestamp() - startTimestamp) * TimestampTicksToMachineTicksRatio)); }
@@ -47,6 +52,11 @@ namespace Aerospike.Client
 		public long ElapsedMilliseconds
 		{
 			get { return (long)((Stopwatch.GetTimestamp() - startTimestamp) * MillisecondsPerTick); }
+		}
+
+		public bool Enabled
+		{
+			get { return startTimestamp != 0; }
 		}
 	}
 }

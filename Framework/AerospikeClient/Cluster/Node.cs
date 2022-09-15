@@ -53,11 +53,11 @@ namespace Aerospike.Client
 		internal volatile byte[] sessionToken;
 		private DateTime? sessionExpiration;
 		private volatile Dictionary<string,int> racks;
+		private volatile Metrics metrics;
 		private readonly Pool<Connection>[] connectionPools;
 		protected uint connectionIter;
 		protected internal int connsOpened = 1;
 		protected internal int connsClosed;
-		private int timeoutCount;
 		protected internal int peersGeneration = -1;
 		protected internal int partitionGeneration = -1;
 		protected internal int rebalanceGeneration = -1;
@@ -69,6 +69,7 @@ namespace Aerospike.Client
 		protected internal bool partitionChanged;
 		protected internal bool rebalanceChanged;
 		protected internal volatile bool active = true;
+
 
 		/// <summary>
 		/// Initialize server node with connection parameters.
@@ -94,6 +95,11 @@ namespace Aerospike.Client
 			else
 			{
 				this.racks = null;
+			}
+
+			if (cluster.MetricsEnabled)
+			{
+				this.metrics = new Metrics(cluster.MetricsPolicy);
 			}
 
 			connectionPools = new Pool<Connection>[cluster.connPoolsPerNode];
@@ -128,6 +134,37 @@ namespace Aerospike.Client
 					CreateConnections(pool, pool.minSize);
 				}
 			}
+		}
+
+		public void EnableMetrics(MetricsPolicy policy)
+		{
+			metrics = new Metrics(policy);
+		}
+
+		/// <summary>
+		/// Return metrics if enabled. Otherwise return null.
+		/// </summary>
+		public Metrics Metrics
+		{
+			get
+			{
+				return metrics;
+			}
+		}
+
+		public void AddError()
+		{
+			metrics.AddError();
+		}
+
+		public void AddTimeout()
+		{
+			metrics.AddTimeout();
+		}
+
+		public void AddLatency(int type, long elapsed)
+		{
+			metrics.AddLatency(type, elapsed);
 		}
 
 		/// <summary>
@@ -817,7 +854,7 @@ namespace Aerospike.Client
 				Connection conn = (cluster.tlsPolicy != null && !cluster.tlsPolicy.forLoginOnly) ?
 					new TlsConnection(cluster.tlsPolicy, tlsName, address, timeout, pool, this) :
 					new Connection(address, timeout, pool, this);
-				cluster.AddConnLatency(watch.ElapsedMilliseconds);
+				metrics.AddLatency(LatencyType.CONN, watch.ElapsedMilliseconds);
 				return conn;
 			}
 			else
@@ -913,19 +950,6 @@ namespace Aerospike.Client
 				inUse += tmp;
 			}
 			return new ConnectionStats(inPool, inUse, connsOpened, connsClosed);
-		}
-
-		public void IncrTimeoutCount()
-		{
-			if (cluster.MetricsEnabled)
-			{
-				Interlocked.Increment(ref timeoutCount);
-			}
-		}
-
-		public int ResetTimeoutCount()
-		{
-			return Interlocked.Exchange(ref timeoutCount, 0);
 		}
 
 		/// <summary>
@@ -1081,6 +1105,18 @@ namespace Aerospike.Client
 		{
 			active = false;
 			CloseConnections();
+
+			if (cluster.MetricsEnabled)
+			{
+				try
+				{
+					cluster.WriteMetrics(this, metrics);
+				}
+				catch (Exception e)
+				{
+					Log.Warn("Write metrics failed " + this + ": " + Util.GetErrorMessage(e)); 
+				}
+			}
 			GC.SuppressFinalize(this);
 		}
 

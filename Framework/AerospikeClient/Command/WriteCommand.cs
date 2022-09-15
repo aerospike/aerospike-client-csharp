@@ -25,7 +25,7 @@ namespace Aerospike.Client
 		private readonly Operation.Type operation;
 
 		public WriteCommand(Cluster cluster, WritePolicy writePolicy, Key key, Bin[] bins, Operation.Type operation)
-			: base(cluster, writePolicy)
+			: base(cluster, writePolicy, LatencyType.WRITE)
 		{
 			this.writePolicy = writePolicy;
 			this.key = key;

@@ -44,8 +44,8 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Batch and server execute constructor.
 		/// </summary>
-		protected internal MultiCommand(Cluster cluster, Policy policy, Node node, bool stopOnNotFound)
-			: base(cluster, policy)
+		protected internal MultiCommand(Cluster cluster, Policy policy, Node node, int latencyType, bool stopOnNotFound)
+			: base(cluster, policy, latencyType)
 		{
 			this.node = node;
 			this.stopOnNotFound = stopOnNotFound;

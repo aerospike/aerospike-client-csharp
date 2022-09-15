@@ -23,7 +23,7 @@ namespace Aerospike.Client
 		private readonly Partition partition;
 
 		public TouchCommand(Cluster cluster, WritePolicy writePolicy, Key key)
- 			: base(cluster, writePolicy)
+			: base(cluster, writePolicy, LatencyType.WRITE)
 		{
 			this.writePolicy = writePolicy;
 			this.key = key;
