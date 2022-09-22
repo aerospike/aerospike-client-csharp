@@ -116,10 +116,10 @@ namespace Aerospike.Client
 		internal bool hasPartitionScan;
 
 		private bool metricsEnabled;
-		private uint reportInterval;
+		private uint metricsInterval;
 		private int threadExpandCount;
 		private MetricsPolicy metricsPolicy;
-		private volatile MetricsWriter latencyWriter;
+		private volatile MetricsWriter metricsWriter;
 		
 		public Cluster(ClientPolicy policy, Host[] hosts)
 		{
@@ -501,32 +501,32 @@ namespace Aerospike.Client
 				}
 			}
 
-			if (metricsEnabled && (count % reportInterval) == 0)
+			if (metricsEnabled && (count % metricsInterval) == 0)
 			{
-				MetricsWriter lw = latencyWriter;
-				lw.Write(this);
+				MetricsWriter writer = metricsWriter;
+				writer.WriteCluster(this);
 			}
 		}
 
 		public void EnableMetrics(MetricsPolicy policy)
 		{
-			Node[] nodeArray = nodes;
-
 			if (metricsEnabled)
 			{
-				MetricsWriter lw = latencyWriter;
-				lw.Close(this);
+				MetricsWriter writer = metricsWriter;
+				writer.Close(this);
 			}
 
 			this.metricsPolicy = policy;
+
+			Node[] nodeArray = nodes;
 
 			foreach (Node node in nodes)
 			{
 				node.EnableMetrics(policy);
 			}
 
-			latencyWriter = new MetricsWriter(policy);
-			reportInterval = policy.reportInterval;
+			metricsWriter = new MetricsWriter(policy);
+			metricsInterval = policy.reportInterval;
 			metricsEnabled = true;
 		}
 
@@ -546,15 +546,15 @@ namespace Aerospike.Client
 			{
 				metricsEnabled = false;
 
-				MetricsWriter lw = latencyWriter;
-				lw.Close(this);
+				MetricsWriter writer = metricsWriter;
+				writer.Close(this);
 			}
 		}
 
-		internal void WriteMetrics(Node node, Metrics metrics)
+		internal void WriteMetrics(Node node)
 		{
-			MetricsWriter lw = latencyWriter;
-			lw.WriteNode(node, metrics);
+			MetricsWriter writer = metricsWriter;
+			writer.WriteNode(node);
 		}
 
 		public void IncrThreadExpandCount()

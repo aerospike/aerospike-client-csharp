@@ -1110,11 +1110,11 @@ namespace Aerospike.Client
 			{
 				try
 				{
-					cluster.WriteMetrics(this, metrics);
+					cluster.WriteMetrics(this);
 				}
 				catch (Exception e)
 				{
-					Log.Warn("Write metrics failed " + this + ": " + Util.GetErrorMessage(e)); 
+					Log.Warn("Write metrics failed on " + this + ": " + Util.GetErrorMessage(e)); 
 				}
 			}
 			GC.SuppressFinalize(this);

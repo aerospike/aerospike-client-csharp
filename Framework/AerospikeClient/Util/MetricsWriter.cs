@@ -85,16 +85,17 @@ namespace Aerospike.Client
     {
 		private readonly StringBuilder sb;
 		private readonly StreamWriter writer;
-		private DateTime beginTime;
-		private TimeSpan beginSpan;
 		private readonly int latencyColumns;
 		private readonly int latencyShift;
+		private DateTime beginTime;
+		private TimeSpan beginSpan;
+		private bool closed;
 
 		public MetricsWriter(MetricsPolicy policy)
         {
 			latencyColumns = policy.latencyColumns;
 			latencyShift = policy.latencyShift;
-			sb = new StringBuilder(256);
+			sb = new StringBuilder(512);
 			
 			FileStream fs = new FileStream(policy.reportPath, FileMode.Append, FileAccess.Write);
 			writer = new StreamWriter(fs);
@@ -106,83 +107,109 @@ namespace Aerospike.Client
 			beginSpan = Process.GetCurrentProcess().TotalProcessorTime;
 		}
 
-		public void Write(Cluster cluster)
+		public void WriteCluster(Cluster cluster)
 		{
-			ClusterStats stats = cluster.GetStats();
-			int threadExpandCount = cluster.ResetThreadExpandCount();
+			lock (writer)
+			{
+				if (!closed)
+				{
+					Write(cluster);
+				}
+			}
+		}
 
+		public void WriteNode(Node node)
+		{
+			lock (writer)
+			{
+				if (!closed)
+				{
+					Write(node);
+				}
+			}
+		}
+
+		public void Close(Cluster cluster)
+		{
+			lock (writer)
+			{
+				if (!closed)
+				{
+					try
+					{
+						closed = true;
+						Write(cluster);
+						writer.Close();
+					}
+					catch (Exception e)
+					{
+						Log.Error("Failed to close metrics writer: " + Util.GetErrorMessage(e));
+					}
+				}
+			}
+		}
+
+		private void Write(Cluster cluster)
+		{
 			Process proc = Process.GetCurrentProcess();
 			long mem = proc.PrivateMemorySize64;
 			TimeSpan endSpan = proc.TotalProcessorTime;
 			DateTime endTime = DateTime.UtcNow;
 			double cpu = ((endSpan - beginSpan).TotalMilliseconds * 100.0) / ((endTime - beginTime).TotalMilliseconds * Environment.ProcessorCount);
+			int threadExpandCount = cluster.ResetThreadExpandCount();
+			ClusterStats stats = new ClusterStats(null);
 
-			lock (writer)
+			sb.Length = 0;
+			sb.Append("cluster ");
+			sb.Append(DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"));
+			sb.Append(' ');
+			sb.Append((int)cpu);
+			sb.Append(' ');
+			sb.Append(mem);
+			sb.Append(' ');
+			sb.Append(threadExpandCount);
+			sb.Append(' ');
+			sb.Append(stats.threadsInUse);
+			sb.Append(' ');
+			sb.Append(stats.completionPortsInUse);
+			writer.WriteLine(sb.ToString());
+
+			Node[] nodes = cluster.Nodes;
+
+			foreach (Node node in nodes)
 			{
-				sb.Length = 0;
-				sb.Append("entry ");
-				sb.Append(DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"));
-				sb.Append(' ');
-				sb.Append((int)cpu);
-				sb.Append(' ');
-				sb.Append(mem);
-				sb.Append(' ');
-				sb.Append(threadExpandCount);
-				sb.Append(' ');
-				sb.Append(stats.threadsInUse);
-				sb.Append(' ');
-				sb.Append(stats.completionPortsInUse);
-				writer.WriteLine(sb.ToString());
-
-				foreach (NodeStats ns in stats.nodes)
-				{
-					sb.Length = 0;
-					sb.Append("node ");
-					sb.Append(ns.node);
-
-					ConnectionStats cs = ns.syncStats;
-					sb.Append(' ');
-					sb.Append(cs.inUse);
-					sb.Append(' ');
-					sb.Append(cs.inPool);
-					sb.Append(' ');
-					sb.Append(cs.opened);
-					sb.Append(' ');
-					sb.Append(cs.closed);
-					sb.Append(' ');
-					WriteErrors(ns.node.Metrics);
-					writer.WriteLine(sb.ToString());
-				}
-
-				beginTime = endTime;
-				beginSpan = endSpan;
+				Write(node);
 			}
+
+			beginTime = endTime;
+			beginSpan = endSpan;
 		}
 
-		public void WriteNode(Node node, Metrics metrics)
+		private void Write(Node node)
 		{
-			lock (writer)
-			{
-				sb.Length = 0;
-				sb.Append(node);
-				sb.Append(" errors ");
-				WriteErrors(metrics);
-				writer.WriteLine(sb.ToString());
-			}
-		}
-
-		private void WriteErrors(Metrics metrics)
-		{
+			NodeStats ns = new NodeStats(node);
+			ConnectionStats cs = ns.syncStats;
+			Metrics metrics = node.Metrics;
 			int errors = metrics.ResetError();
 			int timeouts = metrics.ResetTimeout();
 
+			sb.Length = 0;
+			sb.Append("node ");
+			sb.Append(node);
+			sb.Append(' ');
+			sb.Append(cs.inUse);
+			sb.Append(' ');
+			sb.Append(cs.inPool);
+			sb.Append(' ');
+			sb.Append(cs.opened);
+			sb.Append(' ');
+			sb.Append(cs.closed);
+			sb.Append(' ');
 			sb.Append(errors);
 			sb.Append(' ');
 			sb.Append(timeouts);
-		}
+			writer.WriteLine(sb.ToString());
 
-		private void WriteLatency(Node node, Metrics metrics)
-		{
 			WriteLatency(node, metrics.Get(LatencyType.CONN), "conn");
 			WriteLatency(node, metrics.Get(LatencyType.WRITE), "write");
 			WriteLatency(node, metrics.Get(LatencyType.READ), "read");
@@ -196,16 +223,6 @@ namespace Aerospike.Client
 			if (line != null)
 			{
 				writer.WriteLine(line);
-			}
-		}
-
-		public void Close(Cluster cluster)
-		{
-			Write(cluster);
-
-			lock (writer)
-			{
-				writer.Close();
 			}
 		}
 	}
