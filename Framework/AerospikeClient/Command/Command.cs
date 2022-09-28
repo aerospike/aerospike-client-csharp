@@ -1535,8 +1535,17 @@ namespace Aerospike.Client
 			if (statement.operations != null)
 			{
 				// Estimate size for background operations.
+				if (!background)
+				{
+					throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Operations not allowed in foreground query");
+				}
+
 				foreach (Operation operation in statement.operations)
 				{
+					if (!Operation.IsWrite(operation.type))
+					{
+						throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Read operations not allowed in background query");
+					}
 					EstimateOperationSize(operation);
 				}
 				operationCount = statement.operations.Length;
