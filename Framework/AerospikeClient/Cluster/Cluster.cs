@@ -56,6 +56,9 @@ namespace Aerospike.Client
 
         // TLS connection policy.
 		protected internal readonly TlsPolicy tlsPolicy;
+
+		// Log context.
+		internal readonly Log.Context context;
             
 		// Authentication mode.
 		protected internal readonly AuthMode authMode;
@@ -145,13 +148,14 @@ namespace Aerospike.Client
 			*/
 
 			this.clusterId = Interlocked.Increment(ref ClusterCount);
+			this.clusterName = policy.clusterName;
+			this.context = new Log.Context(this.clusterName);
 
 			if (Log.DebugEnabled())
 			{
-				Log.Debug("Create cluster " + clusterId);
+				Log.Debug(context, "Create cluster " + clusterId);
 			}
 
-			this.clusterName = policy.clusterName;
 			tlsPolicy = policy.tlsPolicy;
 			this.authMode = policy.authMode;
 
@@ -273,7 +277,7 @@ namespace Aerospike.Client
 			{
 				foreach (Host host in seeds)
 				{
-					Log.Debug("Add seed " + host);
+					Log.Debug(context, "Add seed " + host);
 				}
 			}
 
@@ -319,7 +323,7 @@ namespace Aerospike.Client
 			{
 				if (Log.DebugEnabled())
 				{
-					Log.Debug("Add seed " + host);
+					Log.Debug(context, "Add seed " + host);
 				}
 				seedArray[count++] = host;
 			}
@@ -361,7 +365,7 @@ namespace Aerospike.Client
 				}
 				else
 				{
-					Log.Warn(message);
+					Log.Warn(context, message);
 				}
 			}
 		}
@@ -379,7 +383,7 @@ namespace Aerospike.Client
 				{
 					if (Log.WarnEnabled())
 					{
-						Log.Warn("Cluster tend failed: " + Util.GetErrorMessage(e));
+						Log.Warn(context, "Cluster tend failed: " + Util.GetErrorMessage(e));
 					}
 				}
 
@@ -540,7 +544,7 @@ namespace Aerospike.Client
 					{
 						if (Log.WarnEnabled())
 						{
-							Log.Warn("Seed " + seed + " failed: " + Util.GetErrorMessage(e));
+							Log.Warn(context, "Seed " + seed + " failed: " + Util.GetErrorMessage(e));
 						}
 
 					}
@@ -760,7 +764,7 @@ namespace Aerospike.Client
 		{
 			if (Log.InfoEnabled())
 			{
-				Log.Info("Add node " + node);
+				Log.Info(context, "Add node " + node);
 			}
 
 			nodesMap[node.Name] = node;
@@ -826,7 +830,7 @@ namespace Aerospike.Client
 				{
 					if (tendValid && Log.InfoEnabled())
 					{
-						Log.Info("Remove node " + node);
+						Log.Info(context, "Remove node " + node);
 					}
 				}
 				else
@@ -840,7 +844,7 @@ namespace Aerospike.Client
 			{
 				if (Log.WarnEnabled())
 				{
-					Log.Warn("Node remove mismatch. Expected " + nodeArray.Length + " Received " + count);
+					Log.Warn(context, "Node remove mismatch. Expected " + nodeArray.Length + " Received " + count);
 				}
 				// Resize array.
 				Node[] nodeArray2 = new Node[count];
@@ -1010,7 +1014,7 @@ namespace Aerospike.Client
 
 						if (node != null)
 						{
-							Log.Info(ns + ',' + i + ',' + j + ',' + node);
+							Log.Info(context, ns + ',' + i + ',' + j + ',' + node);
 						}
 					}
 				}
@@ -1088,7 +1092,7 @@ namespace Aerospike.Client
 		{
 			if (Log.DebugEnabled())
 			{
-				Log.Debug("Close cluster " + clusterId);
+				Log.Debug(context, "Close cluster " + clusterId);
 			}
 
 			tendValid = false;

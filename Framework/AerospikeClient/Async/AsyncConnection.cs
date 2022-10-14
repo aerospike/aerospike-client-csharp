@@ -30,11 +30,13 @@ namespace Aerospike.Client
 			Environment.OSVersion.Platform == PlatformID.MacOSX);
 
 		protected readonly Socket socket;
+		protected readonly AsyncNode node;
 		protected IAsyncCommand command;
 		private DateTime lastUsed;
 
 		public AsyncConnection(AsyncNode node, IAsyncCommand command)
 		{
+			this.node = node;
 			this.command = command;
 
 			IPEndPoint address = node.address;

@@ -127,7 +127,7 @@ namespace Aerospike.Client
 					// Can't add or take.  Nothing can be done here.
 					if (Log.DebugEnabled())
 					{
-						Log.Debug("Lua input queue " + statement.taskId + " both add and take failed on abort");
+						Log.Debug(cluster.context, "Lua input queue " + statement.taskId + " both add and take failed on abort");
 					}
 					break;
 				}

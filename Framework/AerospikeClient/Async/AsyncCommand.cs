@@ -158,13 +158,15 @@ namespace Aerospike.Client
 
 			private void HandleExecution(object state)
 			{
+				AsyncCommand cmd = state as AsyncCommand;
+
 				try
 				{
-					((AsyncCommand)state).ExecuteCore();
+					cmd.ExecuteCore();
 				}
 				catch (Exception e)
 				{
-					Log.Error("ExecuteCore error: " + Util.GetErrorMessage(e));
+					Log.Error(cmd.cluster.context, "ExecuteCore error: " + Util.GetErrorMessage(e));
 				}
 			}
 		}
@@ -180,7 +182,7 @@ namespace Aerospike.Client
 					// Socket timeout should not be possible for commands in the delay queue.
 					if (state != FAIL_TOTAL_TIMEOUT)
 					{
-						Log.Error("Unexpected state at async command start: " + state);
+						Log.Error(cluster.context, "Unexpected state at async command start: " + state);
 					}
 					// User has already been notified of the total timeout. Release buffer and 
 					// return for all error states.
@@ -485,7 +487,7 @@ namespace Aerospike.Client
 			}
 			catch (Exception e2)
 			{
-				Log.Error("OnError() failed: " + Util.GetErrorMessage(e2) +
+				Log.Error(cluster.context, "OnError() failed: " + Util.GetErrorMessage(e2) +
 					System.Environment.NewLine + "Original error: " + Util.GetErrorMessage(e));
 			}
 		}
@@ -741,7 +743,7 @@ namespace Aerospike.Client
 				// Should never get here.
 				if (Log.WarnEnabled())
 				{
-					Log.Warn("AsyncCommand finished with unexpected return status: " + status);
+					Log.Warn(cluster.context, "AsyncCommand finished with unexpected return status: " + status);
 				}
 			}
 
@@ -753,7 +755,7 @@ namespace Aerospike.Client
 			{
 				if (Log.WarnEnabled())
 				{
-					Log.Warn("OnSuccess() error: " + Util.GetErrorMessage(e));
+					Log.Warn(cluster.context, "OnSuccess() error: " + Util.GetErrorMessage(e));
 				}
 			}
 		}
@@ -789,7 +791,7 @@ namespace Aerospike.Client
 			}
 			catch (Exception e)
 			{
-				Log.Error("FailOnApplicationError failed: " + Util.GetErrorMessage(e) +
+				Log.Error(cluster.context, "FailOnApplicationError failed: " + Util.GetErrorMessage(e) +
 					System.Environment.NewLine + "Original error: " + Util.GetErrorMessage(ae));
 			}
 		}
@@ -832,7 +834,7 @@ namespace Aerospike.Client
 			{
 				if (Log.WarnEnabled())
 				{
-					Log.Warn("AsyncCommand unexpected return status: " + status);
+					Log.Warn(cluster.context, "AsyncCommand unexpected return status: " + status);
 				}
 			}
 		}
@@ -857,7 +859,7 @@ namespace Aerospike.Client
 			{
 				if (Log.WarnEnabled())
 				{
-					Log.Warn("OnFailure() error: " + Util.GetErrorMessage(e));
+					Log.Warn(cluster.context, "OnFailure() error: " + Util.GetErrorMessage(e));
 				}
 			}
 		}

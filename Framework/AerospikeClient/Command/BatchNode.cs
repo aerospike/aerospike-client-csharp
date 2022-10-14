@@ -84,7 +84,7 @@ namespace Aerospike.Client
 					}
 					else
 					{
-						status.SetInvalidNode(key, i, ain, false, hasWrite);
+						status.SetInvalidNode(cluster, key, i, ain, false, hasWrite);
 					}
 
 					if (except == null)
@@ -258,7 +258,7 @@ namespace Aerospike.Client
 				}
 				catch (AerospikeException.InvalidNode ain)
 				{
-					status.SetInvalidNode(key, offset, ain, Command.BatchInDoubt(hasWrite, 2), hasWrite);
+					status.SetInvalidNode(cluster, key, offset, ain, Command.BatchInDoubt(hasWrite, 2), hasWrite);
 
 					if (except == null)
 					{
@@ -563,7 +563,7 @@ namespace Aerospike.Client
 
 	public interface IBatchStatus
 	{
-		void SetInvalidNode(Key key, int index, AerospikeException ae, bool inDoubt, bool hasWrite);
+		void SetInvalidNode(Cluster cluster, Key key, int index, AerospikeException ae, bool inDoubt, bool hasWrite);
 		void SetInvalidNode(AerospikeException ae);
 	}
 }

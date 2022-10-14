@@ -47,8 +47,7 @@ namespace Aerospike.Test
 
 		public Args()
 		{
-			// Disable client log.
-			Log.SetCallback(null);
+			Log.Disable();
 
 #if NETFRAMEWORK
             port = Properties.Settings.Default.Port;

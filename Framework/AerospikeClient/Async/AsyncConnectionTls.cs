@@ -31,7 +31,6 @@ namespace Aerospike.Client
 		private const int COMPLETE = 1;
 		private const int ERROR = 2;
 
-		private readonly AsyncNode node;
 		private readonly AsyncCallback writeHandler;
 		private readonly AsyncCallback readHandler;
 		private SslStream sslStream;
@@ -44,7 +43,6 @@ namespace Aerospike.Client
 		public AsyncConnectionTls(AsyncNode node, IAsyncCommand command)
 			: base(node, command)
 		{
-			this.node = node;
 			this.writeHandler = SendEvent;
 			this.readHandler = ReceiveEvent;
 		}
@@ -78,7 +76,7 @@ namespace Aerospike.Client
 			{
 				if (command == null)
 				{
-					Log.Error("Received async event when connection is in pool.");
+					Log.Error(node.cluster.context, "Received async event when connection is in pool.");
 					return;
 				}
 
@@ -88,7 +86,7 @@ namespace Aerospike.Client
 				}
 				catch (Exception ne)
 				{
-					Log.Error("OnError failed: " + Util.GetErrorMessage(ne) +
+					Log.Error(node.cluster.context, "OnError failed: " + Util.GetErrorMessage(ne) +
 						System.Environment.NewLine + "Original error: " + Util.GetErrorMessage(e));
 				}
 			}
@@ -123,7 +121,7 @@ namespace Aerospike.Client
 			SslPolicyErrors sslPolicyErrors
 		)
 		{
-			return TlsConnection.ValidateCertificate(node.cluster.tlsPolicy, node.host.tlsName, cert, sslPolicyErrors);
+			return TlsConnection.ValidateCertificate(node.cluster, node.host.tlsName, cert, sslPolicyErrors);
 		}
 
 		private void HandshakeEvent(IAsyncResult result)

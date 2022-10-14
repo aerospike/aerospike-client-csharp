@@ -51,16 +51,42 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
-		/// The log is disabled by default. The caller can override this and set a 
-		/// private method which will be called for each log entry.
+		/// Additional context sent to log callback messages.
 		/// </summary>
-		/// <param name="level">Log level.</param>
-		/// <param name="msg">Log message.</param>
-		public delegate void Callback(Level level, string msg);
+		public sealed class Context
+		{
+			/// <summary>
+			/// Cluster name. Will be null if <see cref="ClientPolicy.clusterName"/> is not defined
+			/// or the log message is not associated with a cluster.
+			/// </summary>
+			public readonly string clusterName;
+
+			internal Context(string clusterName)
+			{
+				this.clusterName = clusterName;
+			}
+		}
+
+		/// <summary>
+		/// Log callback message definition. 
+		/// </summary>
+		/// <param name="level">message severity level</param>
+		/// <param name="message">message string</param>
+		public delegate void Callback(Level level, string message);
+
+		/// <summary>
+		/// Log callback message definition with additional context. 
+		/// </summary>
+		/// <param name="level">message severity level</param>
+		/// <param name="context">message context</param>
+		/// <param name="message">message string</param>
+		public delegate void ContextCallback(Level level, Context context, string message);
 
 		private static Level LogLevel = Level.INFO;
 		private static Callback LogCallback = null;
-		private static bool LogCallbackSet = false;
+		private static ContextCallback LogContextCallback = null;
+		private static bool LogEnabled = false;
+		private static bool LogSet = false;
 
 		/// <summary>
 		/// Set log level filter.
@@ -73,12 +99,40 @@ namespace Aerospike.Client
 
 		/// <summary>
 		/// Set log callback. To silence the log, set callback to null.
+		/// This method is mutually exclusive with <see cref="SetContextCallback(ContextCallback)"/>.
 		/// </summary>
-		/// <param name="callback"><seealso cref="Callback"/>implementation</param>
+		/// <param name="callback">Log callback message definition</param>
 		public static void SetCallback(Callback callback)
 		{
-			LogCallback = callback;
-			LogCallbackSet = true;
+			if (callback != null)
+			{
+				LogCallback = callback;
+				LogEnabled = true;
+				LogSet = true;
+			}
+			else
+			{
+				Disable();
+			}
+		}
+
+		/// <summary>
+		/// Set log callback with additional context. To silence the log, set callback to null.
+		/// This method is mutually exclusive with <see cref="SetCallback(Callback)"/>.
+		/// </summary>
+		/// <param name="callback">Log callback message definition</param>
+		public static void SetContextCallback(ContextCallback callback)
+		{
+			if (callback != null)
+			{
+				LogContextCallback = callback;
+				LogEnabled = true;
+				LogSet = true;
+			}
+			else
+			{
+				Disable();
+			}
 		}
 
 		/// <summary>
@@ -90,11 +144,22 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
+		/// Silence the log.
+		/// </summary>
+		public static void Disable()
+		{
+			LogCallback = null;
+			LogContextCallback = null;
+			LogEnabled = false;
+			LogSet = true;
+		}
+
+		/// <summary>
 		/// Determine if log callback has been set by the user.
 		/// </summary>
 		public static bool IsSet()
 		{
-			return LogCallbackSet;
+			return LogSet;
 		}
 
 		/// <summary>
@@ -102,7 +167,7 @@ namespace Aerospike.Client
 		/// </summary>
 		public static bool WarnEnabled()
 		{
-			return LogCallback != null && Level.WARN <= LogLevel;
+			return LogEnabled && Level.WARN <= LogLevel;
 		}
 
 		/// <summary>
@@ -110,7 +175,7 @@ namespace Aerospike.Client
 		/// </summary>
 		public static bool InfoEnabled()
 		{
-			return LogCallback != null && Level.INFO <= LogLevel;
+			return LogEnabled && Level.INFO <= LogLevel;
 		}
 
 		/// <summary>
@@ -118,55 +183,105 @@ namespace Aerospike.Client
 		/// </summary>
 		public static bool DebugEnabled()
 		{
-			return LogCallback != null && Level.DEBUG <= LogLevel;
+			return LogEnabled && Level.DEBUG <= LogLevel;
 		}
 
 		/// <summary>
-		/// Log an error message. 
+		/// Log an error message.
 		/// </summary>
-		/// <param name="message">message string not terminated with a newline</param>
 		public static void Error(string message)
 		{
 			LogMessage(Level.ERROR, message);
 		}
 
 		/// <summary>
-		/// Log a warning message. 
+		/// Log an error message with additional context.
 		/// </summary>
-		/// <param name="message">message string not terminated with a newline</param>
+		public static void Error(Context context, string message)
+		{
+			LogMessage(Level.ERROR, context, message);
+		}
+
+		/// <summary>
+		/// Log a warning message.
+		/// </summary>
 		public static void Warn(string message)
 		{
 			LogMessage(Level.WARN, message);
 		}
 
 		/// <summary>
-		/// Log an info message. 
+		/// Log a warning message with additional context.
 		/// </summary>
-		/// <param name="message">message string not terminated with a newline</param>
+		public static void Warn(Context context, string message)
+		{
+			LogMessage(Level.WARN, context, message);
+		}
+
+		/// <summary>
+		/// Log an info message.
+		/// </summary>
 		public static void Info(string message)
 		{
 			LogMessage(Level.INFO, message);
 		}
 
 		/// <summary>
-		/// Log an debug message. 
+		/// Log an info message with additional context.
 		/// </summary>
-		/// <param name="message">message string not terminated with a newline</param>
+		public static void Info(Context context, string message)
+		{
+			LogMessage(Level.INFO, context, message);
+		}
+
+		/// <summary>
+		/// Log a debug message.
+		/// </summary>
 		public static void Debug(string message)
 		{
 			LogMessage(Level.DEBUG, message);
 		}
 
 		/// <summary>
+		/// Log a debug message with additional context. 
+		/// </summary>
+		public static void Debug(Context context, string message)
+		{
+			LogMessage(Level.DEBUG, context, message);
+		}
+
+		/// <summary>
 		/// Filter and forward message to callback.
 		/// </summary>
 		/// <param name="level">message severity level</param>
-		/// <param name="message">message string not terminated with a newline</param>
+		/// <param name="message">message string</param>
 		public static void LogMessage(Level level, string message)
 		{
-			if (LogCallback != null && level <= LogLevel)
+			if (level <= LogLevel && LogCallback != null)
 			{
 				LogCallback(level, message);
+			}
+		}
+
+		/// <summary>
+		/// Filter and forward message with additional context to callback. 
+		/// </summary>
+		/// <param name="level">message severity level</param>
+		/// <param name="context">message context</param>
+		/// <param name="message">message string</param>
+		public static void LogMessage(Level level, Context context, string message)
+		{
+			if (level <= LogLevel)
+			{
+				// LogContextCallback takes precedence over LogCallback.
+				if (LogContextCallback != null)
+				{
+					LogContextCallback(level, context, message);
+				}
+				else
+				{
+					LogCallback?.Invoke(level, message);
+				}
 			}
 		}
 
@@ -174,13 +289,13 @@ namespace Aerospike.Client
 		{
 			public Standard()
 			{
-				Log.SetCallback(LogCallback);
+				Log.SetContextCallback(LogCallback);
 			}
 
-			public void LogCallback(Log.Level level, String message)
+			public void LogCallback(Level level, Context context, string message)
 			{
 				string dt = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
-				Console.WriteLine(dt + ' ' + level.ToString() + ' ' + message);
+				Console.WriteLine(dt + ' ' + level.ToString() + ' ' + context.clusterName + ' ' + message);
 			}
 		}
 	}
