@@ -106,8 +106,7 @@ namespace Aerospike.Admin
 
 		private void Login()
 		{
-			// Disable client log.
-			Log.SetCallback(null);
+			Log.Disable();
 
 			int port = int.Parse(portBox.Text.Trim());
 			Host[] hosts = Host.ParseHosts(hostBox.Text.Trim(), tlsName, port);

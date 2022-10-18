@@ -29,22 +29,22 @@ namespace Aerospike.Client
 	public sealed class TlsConnection : Connection
 	{
 		private readonly SslStream sslStream;
-		private readonly TlsPolicy policy;
+		private readonly Cluster cluster;
 		private readonly string tlsName;
 
 		/// <summary>
 		/// Create TLS socket.
 		/// </summary>
-		public TlsConnection(TlsPolicy policy, string tlsName, IPEndPoint address, int timeoutMillis, Pool<Connection> pool)
+		public TlsConnection(Cluster cluster, string tlsName, IPEndPoint address, int timeoutMillis, Pool<Connection> pool)
 			: base(address, timeoutMillis, pool)
 		{
-			this.policy = policy;
+			this.cluster = cluster;
 			this.tlsName = tlsName;
 
 			try
 			{
 				sslStream = new SslStream(new NetworkStream(socket, true), false, ValidateServerCertificate);
-				sslStream.AuthenticateAsClient(tlsName, policy.clientCertificates, policy.protocols, false);
+				sslStream.AuthenticateAsClient(tlsName, cluster.tlsPolicy.clientCertificates, cluster.tlsPolicy.protocols, false);
 			}
             catch (Exception)
 			{
@@ -61,12 +61,12 @@ namespace Aerospike.Client
 			SslPolicyErrors sslPolicyErrors
 		)
 		{
-			return ValidateCertificate(policy, tlsName, cert, sslPolicyErrors);
+			return ValidateCertificate(cluster, tlsName, cert, sslPolicyErrors);
 		}
 
 		internal static bool ValidateCertificate
 		(
-			TlsPolicy policy,
+			Cluster cluster,
 			string tlsName,
 			X509Certificate cert,
 			SslPolicyErrors sslPolicyErrors
@@ -81,23 +81,23 @@ namespace Aerospike.Client
 			{
 				if (Log.DebugEnabled())
 				{
-					Log.Debug("Invalid certificate policy error: " + sslPolicyErrors);
+					Log.Debug(cluster.context, "Invalid certificate policy error: " + sslPolicyErrors);
 				}
 				return false;
 			}
 
 			// Exclude certificate serial numbers.
-			if (policy.revokeCertificates != null)
+			if (cluster.tlsPolicy.revokeCertificates != null)
 			{
 				byte[] serialNumber = cert.GetSerialNumber();
 
-				foreach (byte[] sn in policy.revokeCertificates)
+				foreach (byte[] sn in cluster.tlsPolicy.revokeCertificates)
 				{
 					if (Util.ByteArrayEquals(serialNumber, sn))
 					{
 						if (Log.DebugEnabled())
 						{
-							Log.Debug("Invalid certificate serial number: " + ByteUtil.BytesToHexString(serialNumber));
+							Log.Debug(cluster.context, "Invalid certificate serial number: " + ByteUtil.BytesToHexString(serialNumber));
 						}
 						return false;
 					}
@@ -134,7 +134,7 @@ namespace Aerospike.Client
 
 			if (Log.DebugEnabled())
 			{
-				Log.Debug("Invalid certificate, tlsName not found: " + tlsName);
+				Log.Debug(cluster.context, "Invalid certificate, tlsName not found: " + tlsName);
 			}
 			return false;
 		}

@@ -100,7 +100,7 @@ namespace Aerospike.Client
 			// Abort the process.
 			if (Log.DebugEnabled())
 			{
-				Log.Debug(error);
+				Log.Debug(cluster.context, error);
 			}
 			Complete();
 		}
@@ -255,7 +255,7 @@ namespace Aerospike.Client
 				{
 					if (Log.WarnEnabled())
 					{
-						Log.Warn("OnSuccess() error: " + Util.GetErrorMessage(e));
+						Log.Warn(cluster.context, "OnSuccess() error: " + Util.GetErrorMessage(e));
 					}
 				}
 			}
@@ -314,7 +314,7 @@ namespace Aerospike.Client
 				{
 					if (Log.WarnEnabled())
 					{
-						Log.Warn("OnFailure() error: " + Util.GetErrorMessage(e));
+						Log.Warn(cluster.context, "OnFailure() error: " + Util.GetErrorMessage(e));
 					}
 				}
 			}

@@ -76,7 +76,7 @@ namespace Aerospike.Client
 					// Log exception and continue to next alias.
 					if (Log.DebugEnabled())
 					{
-						Log.Debug("Address " + address + ' ' + host.port + " failed: " + Util.GetErrorMessage(e));
+						Log.Debug(cluster.context, "Address " + address + ' ' + host.port + " failed: " + Util.GetErrorMessage(e));
 					}
 
 					if (exception == null)
@@ -130,7 +130,7 @@ namespace Aerospike.Client
 			{
 				if (Log.InfoEnabled())
 				{
-					Log.Info("Skip orphan node: " + fallback);
+					Log.Info(node.cluster.context, "Skip orphan node: " + fallback);
 				}
 				fallback.Close();
 				fallback = null;
@@ -159,7 +159,7 @@ namespace Aerospike.Client
 					// Log exception and continue to next alias.
 					if (Log.DebugEnabled())
 					{
-						Log.Debug("Address " + address + ' ' + host.port + " failed: " + Util.GetErrorMessage(e));
+						Log.Debug(cluster.context, "Address " + address + ' ' + host.port + " failed: " + Util.GetErrorMessage(e));
 					}
 
 					if (exception == null)
@@ -178,7 +178,7 @@ namespace Aerospike.Client
 		{
 			IPEndPoint socketAddress = new IPEndPoint(address, port);
 			Connection conn = (cluster.tlsPolicy != null) ?
-				new TlsConnection(cluster.tlsPolicy, tlsName, socketAddress, cluster.connectionTimeout, null) :
+				new TlsConnection(cluster, tlsName, socketAddress, cluster.connectionTimeout, null) :
 				new Connection(socketAddress, cluster.connectionTimeout, null);
 
 			try
@@ -397,7 +397,7 @@ namespace Aerospike.Client
 						{
 							IPEndPoint socketAddress = new IPEndPoint(address, h.port);
 							Connection conn = (cluster.tlsPolicy != null) ?
-								new TlsConnection(cluster.tlsPolicy, tlsName, socketAddress, cluster.connectionTimeout, null) :
+								new TlsConnection(cluster, tlsName, socketAddress, cluster.connectionTimeout, null) :
 								new Connection(socketAddress, cluster.connectionTimeout, null);
 
 							try
@@ -440,7 +440,7 @@ namespace Aerospike.Client
 			// with original seed.
 			if (Log.InfoEnabled())
 			{
-				Log.Info("Invalid address " + result + ". access-address is probably not configured on server.");
+				Log.Info(cluster.context, "Invalid address " + result + ". access-address is probably not configured on server.");
 			}
 		}
 		

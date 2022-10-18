@@ -972,7 +972,7 @@ namespace Aerospike.Client
 			{
 				record.SetError(resultCode, Command.BatchInDoubt(record.hasWrite, commandSentCounter));
 			}
-			AsyncBatch.OnRecord(listener, record, batchIndex);
+			AsyncBatch.OnRecord(cluster, listener, record, batchIndex);
 		}
 
 		internal override void SetInDoubt(bool inDoubt)
@@ -1191,11 +1191,11 @@ namespace Aerospike.Client
 			Execute(tasks);
 		}
 
-		public override void SetInvalidNode(Key key, int index, AerospikeException ae, bool inDoubt, bool hasWrite)
+		public override void SetInvalidNode(Cluster cluster, Key key, int index, AerospikeException ae, bool inDoubt, bool hasWrite)
 		{
 			BatchRecord record = new BatchRecord(key, null, ae.Result, inDoubt, hasWrite);
 			sent[index] = true;
-			AsyncBatch.OnRecord(listener, record, index);
+			AsyncBatch.OnRecord(cluster, listener, record, index);
 		}
 
 		protected internal override void OnSuccess()
@@ -1272,7 +1272,7 @@ namespace Aerospike.Client
 				record = new BatchRecord(keyOrig, null, resultCode, Command.BatchInDoubt(attr.hasWrite, commandSentCounter), attr.hasWrite);
 			}
 			sent[batchIndex] = true;
-			AsyncBatch.OnRecord(listener, record, batchIndex);
+			AsyncBatch.OnRecord(cluster, listener, record, batchIndex);
 		}
 
 		internal override void SetInDoubt(bool inDoubt)
@@ -1285,7 +1285,7 @@ namespace Aerospike.Client
 					Key key = keys[index];
 					BatchRecord record = new BatchRecord(key, null, ResultCode.NO_RESPONSE, attr.hasWrite && inDoubt, attr.hasWrite);
 					sent[index] = true;
-					AsyncBatch.OnRecord(listener, record, index);
+					AsyncBatch.OnRecord(cluster, listener, record, index);
 				}
 			}
 		}
@@ -1513,11 +1513,11 @@ namespace Aerospike.Client
 			Execute(tasks);
 		}
 
-		public override void SetInvalidNode(Key key, int index, AerospikeException ae, bool inDoubt, bool hasWrite)
+		public override void SetInvalidNode(Cluster cluster, Key key, int index, AerospikeException ae, bool inDoubt, bool hasWrite)
 		{
 			BatchRecord record = new BatchRecord(key, null, ae.Result, inDoubt, hasWrite);
 			sent[index] = true;
-			AsyncBatch.OnRecord(listener, record, index);
+			AsyncBatch.OnRecord(cluster, listener, record, index);
 		}
 
 		protected internal override void OnSuccess()
@@ -1617,7 +1617,7 @@ namespace Aerospike.Client
 				record = new BatchRecord(keyOrig, null, resultCode, Command.BatchInDoubt(attr.hasWrite, commandSentCounter), attr.hasWrite);
 			}
 			sent[batchIndex] = true;
-			AsyncBatch.OnRecord(listener, record, batchIndex);
+			AsyncBatch.OnRecord(cluster, listener, record, batchIndex);
 		}
 
 		internal override void SetInDoubt(bool inDoubt)
@@ -1630,7 +1630,7 @@ namespace Aerospike.Client
 					Key key = keys[index];
 					BatchRecord record = new BatchRecord(key, null, ResultCode.NO_RESPONSE, attr.hasWrite && inDoubt, attr.hasWrite);
 					sent[index] = true;
-					AsyncBatch.OnRecord(listener, record, index);
+					AsyncBatch.OnRecord(cluster, listener, record, index);
 				}
 			}
 		}
@@ -1738,7 +1738,7 @@ namespace Aerospike.Client
 			}
 		}
 
-		public virtual void SetInvalidNode(Key key, int index, AerospikeException ae, bool inDoubt, bool hasWrite)
+		public virtual void SetInvalidNode(Cluster cluster, Key key, int index, AerospikeException ae, bool inDoubt, bool hasWrite)
 		{
 			// Only used in executors with sequence listeners.
 			// These executors will override this method.
@@ -1889,7 +1889,7 @@ namespace Aerospike.Client
 
 	internal class AsyncBatch
 	{
-		internal static void OnRecord(BatchRecordSequenceListener listener, BatchRecord record, int index)
+		internal static void OnRecord(Cluster cluster, BatchRecordSequenceListener listener, BatchRecord record, int index)
 		{
 			try
 			{
@@ -1897,7 +1897,7 @@ namespace Aerospike.Client
 			}
 			catch (Exception e)
 			{
-				Log.Error("Unexpected exception from OnRecord(): " + Util.GetErrorMessage(e));
+				Log.Error(cluster.context, "Unexpected exception from OnRecord(): " + Util.GetErrorMessage(e));
 			}
 		}
 	}

@@ -65,7 +65,7 @@ namespace Aerospike.Client
 			{
 				if (command == null)
 				{
-					Log.Error("Received async event when connection is in pool.");
+					Log.Error(node.cluster.context, "Received async event when connection is in pool.");
 					return;
 				}
 
@@ -75,7 +75,7 @@ namespace Aerospike.Client
 				}
 				catch (Exception ne)
 				{
-					Log.Error("OnError failed: " + Util.GetErrorMessage(ne) +
+					Log.Error(node.cluster.context, "OnError failed: " + Util.GetErrorMessage(ne) +
 						System.Environment.NewLine + "Original error: " + Util.GetErrorMessage(e));
 				}
 			}

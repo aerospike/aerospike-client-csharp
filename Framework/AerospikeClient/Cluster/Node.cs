@@ -203,7 +203,7 @@ namespace Aerospike.Client
 		{
 			if (Log.InfoEnabled())
 			{
-				Log.Info("Login to " + this);
+				Log.Info(cluster.context, "Login to " + this);
 			}
 
 			try
@@ -270,7 +270,7 @@ namespace Aerospike.Client
 				{
 					if (Log.InfoEnabled())
 					{
-						Log.Info("Quick node restart detected: node=" + this + " oldgen=" + peersGeneration + " newgen=" + gen);
+						Log.Info(cluster.context, "Quick node restart detected: node=" + this + " oldgen=" + peersGeneration + " newgen=" + gen);
 					}
 					Restart();
 				}
@@ -300,7 +300,7 @@ namespace Aerospike.Client
 			{
 				if (Log.WarnEnabled())
 				{
-					Log.Warn("Node restart failed: " + this + ' ' + Util.GetErrorMessage(e));
+					Log.Warn(cluster.context, "Node restart failed: " + this + ' ' + Util.GetErrorMessage(e));
 				}
 			}
 		}
@@ -351,7 +351,7 @@ namespace Aerospike.Client
 			{
 				if (Log.DebugEnabled())
 				{
-					Log.Debug("Update peers for node " + this);
+					Log.Debug(cluster.context, "Update peers for node " + this);
 				}
 
 				PeerParser parser = new PeerParser(cluster, tendConnection, peers.peers);
@@ -388,7 +388,7 @@ namespace Aerospike.Client
 								// Must look for new node name in the unlikely event that node names do not agree. 
 								if (Log.WarnEnabled())
 								{
-									Log.Warn("Peer node " + peer.nodeName + " is different than actual node " + nv.name + " for host " + host);
+									Log.Warn(cluster.context, "Peer node " + peer.nodeName + " is different than actual node " + nv.name + " for host " + host);
 								}
 
 								if (FindPeerNode(cluster, peers, nv.name))
@@ -412,7 +412,7 @@ namespace Aerospike.Client
 
 							if (Log.WarnEnabled())
 							{
-								Log.Warn("Add node " + host + " failed: " + Util.GetErrorMessage(e));
+								Log.Warn(cluster.context, "Add node " + host + " failed: " + Util.GetErrorMessage(e));
 							}
 						}
 					}
@@ -470,7 +470,7 @@ namespace Aerospike.Client
 			{
 				if (Log.DebugEnabled())
 				{
-					Log.Debug("Update partition map for node " + this);
+					Log.Debug(cluster.context, "Update partition map for node " + this);
 				}
 				PartitionParser parser = new PartitionParser(tendConnection, this, cluster.partitionMap, Node.PARTITIONS);
 
@@ -498,7 +498,7 @@ namespace Aerospike.Client
 			{
 				if (Log.DebugEnabled())
 				{
-					Log.Debug("Update racks for node " + this);
+					Log.Debug(cluster.context, "Update racks for node " + this);
 				}
 				RackParser parser = new RackParser(tendConnection, this);
 
@@ -525,7 +525,7 @@ namespace Aerospike.Client
 			// Only log message if cluster is still active.
 			if (cluster.tendValid && Log.WarnEnabled())
 			{
-				Log.Warn("Node " + this + " refresh failed: " + Util.GetErrorMessage(e));
+				Log.Warn(cluster.context, "Node " + this + " refresh failed: " + Util.GetErrorMessage(e));
 			}
 		}
 
@@ -546,7 +546,7 @@ namespace Aerospike.Client
 					// Log failure and return.
 					if (Log.DebugEnabled())
 					{
-						Log.Debug("Failed to create connection: " + e.Message);
+						Log.Debug(cluster.context, "Failed to create connection: " + e.Message);
 					}
 					return;
 				}
@@ -724,7 +724,7 @@ namespace Aerospike.Client
 			try
 			{
 				Connection conn = cluster.UseTls() ?
-					new TlsConnection(cluster.tlsPolicy, host.tlsName, address, timeout, pool) :
+					new TlsConnection(cluster, host.tlsName, address, timeout, pool) :
 					new Connection(address, timeout, pool);
 
 				Interlocked.Increment(ref connsOpened);
@@ -942,7 +942,7 @@ namespace Aerospike.Client
 		/// </summary>
 		public override sealed string ToString()
 		{
-			return name + ' ' + host + ' ' + cluster.clusterId;
+			return name + ' ' + host;
 		}
 
 		/// <summary>

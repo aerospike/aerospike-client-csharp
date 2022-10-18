@@ -1,5 +1,5 @@
 ﻿/* 
- * Copyright 2012-2020 Aerospike, Inc.
+ * Copyright 2012-2022 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -163,7 +163,7 @@ namespace Aerospike.Client
 					{
 						if (Log.InfoEnabled())
 						{
-							Log.Info("Namespace " + ns + " replication factor changed from " + partitions.replicas.Length + " to " + replicaCount);
+							Log.Info(node.cluster.context, "Namespace " + ns + " replication factor changed from " + partitions.replicas.Length + " to " + replicaCount);
 						}
 
 						// Resize partition map. 
@@ -246,7 +246,7 @@ namespace Aerospike.Client
 						{
 							if (Log.InfoEnabled())
 							{
-								Log.Info(node.ToString() + " regime(" + regime + ") < old regime(" + regimeOld + ")");
+								Log.Info(node.cluster.context, node.ToString() + " regime(" + regime + ") < old regime(" + regimeOld + ")");
 							}
 							regimeError = true;
 						}
