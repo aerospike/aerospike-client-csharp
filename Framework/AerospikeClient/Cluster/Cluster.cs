@@ -16,21 +16,13 @@
  */
 using System;
 using System.Collections.Generic;
-using System.Net;
-using System.Security.Authentication;
 using System.Text;
 using System.Threading;
 
 namespace Aerospike.Client
 {
 	public class Cluster
-	{
-		// Count of cluster instances.
-		private static int ClusterCount;
-
-		// Cluster ID.
-		public readonly int clusterId;
-		
+	{		
 		// Expected cluster name.
 		protected internal readonly String clusterName;
 
@@ -147,13 +139,12 @@ namespace Aerospike.Client
 			}
 			*/
 
-			this.clusterId = Interlocked.Increment(ref ClusterCount);
-			this.clusterName = policy.clusterName;
+			this.clusterName = (policy.clusterName != null)? policy.clusterName : "";
 			this.context = new Log.Context(this.clusterName);
 
 			if (Log.DebugEnabled())
 			{
-				Log.Debug(context, "Create cluster " + clusterId);
+				Log.Debug(context, "Create cluster " + clusterName);
 			}
 
 			tlsPolicy = policy.tlsPolicy;
@@ -1092,7 +1083,7 @@ namespace Aerospike.Client
 		{
 			if (Log.DebugEnabled())
 			{
-				Log.Debug(context, "Close cluster " + clusterId);
+				Log.Debug(context, "Close cluster " + clusterName);
 			}
 
 			tendValid = false;

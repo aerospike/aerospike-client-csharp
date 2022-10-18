@@ -15,6 +15,7 @@
  * the License.
  */
 using System;
+using System.Text;
 
 namespace Aerospike.Client
 {
@@ -56,8 +57,13 @@ namespace Aerospike.Client
 		public sealed class Context
 		{
 			/// <summary>
-			/// Cluster name. Will be null if <see cref="ClientPolicy.clusterName"/> is not defined
-			/// or the log message is not associated with a cluster.
+			/// Empty context for use when context is not available.
+			/// </summary>
+			public static readonly Context Empty = new Context("");
+
+			/// <summary>
+			/// Cluster name. Will be empty string if <see cref="ClientPolicy.clusterName"/> is not
+			/// defined or the log message is not associated with a cluster.
 			/// </summary>
 			public readonly string clusterName;
 
@@ -77,10 +83,10 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Log callback message definition with additional context. 
 		/// </summary>
-		/// <param name="level">message severity level</param>
 		/// <param name="context">message context</param>
+		/// <param name="level">message severity level</param>
 		/// <param name="message">message string</param>
-		public delegate void ContextCallback(Level level, Context context, string message);
+		public delegate void ContextCallback(Context context, Level level, string message);
 
 		private static Level LogLevel = Level.INFO;
 		private static Callback LogCallback = null;
@@ -191,7 +197,7 @@ namespace Aerospike.Client
 		/// </summary>
 		public static void Error(string message)
 		{
-			LogMessage(Level.ERROR, message);
+			LogMessage(Context.Empty, Level.ERROR, message);
 		}
 
 		/// <summary>
@@ -199,7 +205,7 @@ namespace Aerospike.Client
 		/// </summary>
 		public static void Error(Context context, string message)
 		{
-			LogMessage(Level.ERROR, context, message);
+			LogMessage(context, Level.ERROR, message);
 		}
 
 		/// <summary>
@@ -207,7 +213,7 @@ namespace Aerospike.Client
 		/// </summary>
 		public static void Warn(string message)
 		{
-			LogMessage(Level.WARN, message);
+			LogMessage(Context.Empty, Level.WARN, message);
 		}
 
 		/// <summary>
@@ -215,7 +221,7 @@ namespace Aerospike.Client
 		/// </summary>
 		public static void Warn(Context context, string message)
 		{
-			LogMessage(Level.WARN, context, message);
+			LogMessage(context, Level.WARN, message);
 		}
 
 		/// <summary>
@@ -223,7 +229,7 @@ namespace Aerospike.Client
 		/// </summary>
 		public static void Info(string message)
 		{
-			LogMessage(Level.INFO, message);
+			LogMessage(Context.Empty, Level.INFO, message);
 		}
 
 		/// <summary>
@@ -231,7 +237,7 @@ namespace Aerospike.Client
 		/// </summary>
 		public static void Info(Context context, string message)
 		{
-			LogMessage(Level.INFO, context, message);
+			LogMessage(context, Level.INFO, message);
 		}
 
 		/// <summary>
@@ -239,7 +245,7 @@ namespace Aerospike.Client
 		/// </summary>
 		public static void Debug(string message)
 		{
-			LogMessage(Level.DEBUG, message);
+			LogMessage(Context.Empty, Level.DEBUG, message);
 		}
 
 		/// <summary>
@@ -247,7 +253,7 @@ namespace Aerospike.Client
 		/// </summary>
 		public static void Debug(Context context, string message)
 		{
-			LogMessage(Level.DEBUG, context, message);
+			LogMessage(context, Level.DEBUG, message);
 		}
 
 		/// <summary>
@@ -257,26 +263,23 @@ namespace Aerospike.Client
 		/// <param name="message">message string</param>
 		public static void LogMessage(Level level, string message)
 		{
-			if (level <= LogLevel && LogCallback != null)
-			{
-				LogCallback(level, message);
-			}
+			LogMessage(Context.Empty, level, message);
 		}
 
 		/// <summary>
 		/// Filter and forward message with additional context to callback. 
 		/// </summary>
-		/// <param name="level">message severity level</param>
 		/// <param name="context">message context</param>
+		/// <param name="level">message severity level</param>
 		/// <param name="message">message string</param>
-		public static void LogMessage(Level level, Context context, string message)
+		public static void LogMessage(Context context, Level level, string message)
 		{
 			if (level <= LogLevel)
 			{
 				// LogContextCallback takes precedence over LogCallback.
 				if (LogContextCallback != null)
 				{
-					LogContextCallback(level, context, message);
+					LogContextCallback(context, level, message);
 				}
 				else
 				{
@@ -292,10 +295,22 @@ namespace Aerospike.Client
 				Log.SetContextCallback(LogCallback);
 			}
 
-			public void LogCallback(Level level, Context context, string message)
+			public void LogCallback(Context context, Level level, string message)
 			{
-				string dt = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
-				Console.WriteLine(dt + ' ' + level.ToString() + ' ' + context.clusterName + ' ' + message);
+				StringBuilder sb = new StringBuilder(message.Length + 128);
+				sb.Append(DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"));
+
+				if (context.clusterName.Length > 0)
+				{
+					sb.Append(' ');
+					sb.Append(context.clusterName);
+				}
+
+				sb.Append(' ');
+				sb.Append(level.ToString());
+				sb.Append(' ');
+				sb.Append(message);
+				Console.WriteLine(sb.ToString());
 			}
 		}
 	}

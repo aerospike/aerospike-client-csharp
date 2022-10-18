@@ -942,7 +942,7 @@ namespace Aerospike.Client
 		/// </summary>
 		public override sealed string ToString()
 		{
-			return name + ' ' + host + ' ' + cluster.clusterId;
+			return name + ' ' + host;
 		}
 
 		/// <summary>
