@@ -254,6 +254,19 @@ namespace Aerospike.Client
 				" allowInline=" + policy.batchPolicyDefault.allowInline + 
 				" allowProleReads=" + policy.batchPolicyDefault.allowProleReads
 				);
+
+			Log.Warn("QueryPolicy Default:" +
+				" socketTimeout=" + policy.queryPolicyDefault.socketTimeout +
+				" totalTimeout=" + policy.queryPolicyDefault.totalTimeout +
+				" maxRetries=" + policy.queryPolicyDefault.maxRetries +
+				" readModeAP=" + policy.queryPolicyDefault.readModeAP +
+				" readModeSC=" + policy.queryPolicyDefault.readModeSC +
+				" maxRecords=" + policy.queryPolicyDefault.maxRecords +
+				" maxConcurrentNodes=" + policy.queryPolicyDefault.maxConcurrentNodes +
+				" recordQueueSize=" + policy.queryPolicyDefault.recordQueueSize +
+				" includeBinData=" + policy.queryPolicyDefault.includeBinData +
+				" failOnClusterChange=" + policy.queryPolicyDefault.failOnClusterChange
+				);
 		}
 
 		public virtual void InitTendThread(bool failIfNotConnected)
