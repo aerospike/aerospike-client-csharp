@@ -24,6 +24,9 @@ namespace Aerospike.Client
 		public ulong bval;
 		public byte[] digest;
 		public readonly int id;
+		[NonSerialized] public Node masterNode;
+		[NonSerialized] public int replicaIndex;
+		[NonSerialized] public bool unavailable;
 		public bool retry;
 
 		public PartitionStatus(int id)

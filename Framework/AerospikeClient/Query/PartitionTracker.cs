@@ -220,13 +220,34 @@ namespace Aerospike.Client
 			{
 				if (retry || part.retry)
 				{
-					Node node = Volatile.Read(ref master[part.id]);
+					Node masterNode = Volatile.Read(ref master[part.id]);
+					Node node;
+
+					if (iteration == 1 || !part.unavailable || part.masterNode != masterNode)
+					{
+						node = part.masterNode = masterNode;
+						part.replicaIndex = 0;
+					}
+					else
+					{
+						// Partition was unavailable in the previous iteration and the
+						// master node has not changed. Switch replica.
+						part.replicaIndex++;
+
+						if (part.replicaIndex >= parts.replicas.Length)
+						{
+							part.replicaIndex = 0;
+						}
+
+						node = Volatile.Read(ref parts.replicas[part.replicaIndex][part.id]);
+					}
 
 					if (node == null)
 					{
 						throw new AerospikeException.InvalidNode(part.id);
 					}
 
+					part.unavailable = false;
 					part.retry = false;
 
 					// Use node name to check for single node equality because
@@ -304,7 +325,9 @@ namespace Aerospike.Client
 
 		public void PartitionUnavailable(NodePartitions nodePartitions, int partitionId)
 		{
-			partitions[partitionId - partitionBegin].retry = true;
+			PartitionStatus ps = partitions[partitionId - partitionBegin];
+			ps.unavailable = true;
+			ps.retry = true;
 			nodePartitions.partsUnavailable++;
 		}
 
