@@ -145,7 +145,7 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Return wire protocol size. For internal use only.
 		/// </summary>
-		public override int Size()
+		public override int Size(Policy parentPolicy)
 		{
 			int size = 0;
 

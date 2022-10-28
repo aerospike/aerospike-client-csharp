@@ -686,7 +686,7 @@ namespace Aerospike.Client
 					dataOffset += 8;
 					dataOffset += ByteUtil.EstimateSizeUtf8(key.ns) + FIELD_HEADER_SIZE;
 					dataOffset += ByteUtil.EstimateSizeUtf8(key.setName) + FIELD_HEADER_SIZE;
-					dataOffset += record.Size();
+					dataOffset += record.Size(policy);
 					prev = record;
 				}
 			}

@@ -141,7 +141,7 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Return wire protocol size. For internal use only.
 		/// </summary>
-		public virtual int Size()
+		public virtual int Size(Policy parentPolicy)
 		{
 			return 0;
 		}

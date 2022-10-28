@@ -70,7 +70,7 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Return wire protocol size. For internal use only.
 		/// </summary>
-		public override int Size()
+		public override int Size(Policy parentPolicy)
 		{
 			int size = 6; // gen(2) + exp(4) = 6
 
@@ -81,10 +81,14 @@ namespace Aerospike.Client
 					size += policy.filterExp.Size();
 				}
 
-				if (policy.sendKey)
+				if (policy.sendKey || parentPolicy.sendKey)
 				{
 					size += key.userKey.EstimateSize() + Command.FIELD_HEADER_SIZE + 1;
 				}
+			}
+			else if (parentPolicy.sendKey)
+			{
+				size += key.userKey.EstimateSize() + Command.FIELD_HEADER_SIZE + 1;
 			}
 			return size;
 		}
