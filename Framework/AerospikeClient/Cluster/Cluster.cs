@@ -217,7 +217,7 @@ namespace Aerospike.Client
 			cancel = new CancellationTokenSource();
 			cancelToken = cancel.Token;
 
-			Log.Warn("ClientPolicy:" +
+			Log.Info("ClientPolicy:" +
 				" user=" + policy.user +
 				" minConnsPerNode=" + policy.minConnsPerNode +
 				" maxConnsPerNode=" + policy.maxConnsPerNode +
@@ -225,7 +225,7 @@ namespace Aerospike.Client
 				" rackId=" + policy.rackId
 				);
 
-			Log.Warn("WritePolicy Default:" +
+			Log.Info("WritePolicy Default:" +
 				" socketTimeout=" + policy.writePolicyDefault.socketTimeout +
 				" totalTimeout=" + policy.writePolicyDefault.totalTimeout +
 				" maxRetries=" + policy.writePolicyDefault.maxRetries +
@@ -236,7 +236,7 @@ namespace Aerospike.Client
 				" durableDelete=" + policy.writePolicyDefault.durableDelete
 				);
 
-			Log.Warn("ReadPolicy Default:" + 
+			Log.Info("ReadPolicy Default:" + 
 				" socketTimeout=" + policy.readPolicyDefault.socketTimeout + 
 				" totalTimeout=" + policy.readPolicyDefault.totalTimeout + 
 				" maxRetries=" + policy.readPolicyDefault.maxRetries + 
@@ -244,7 +244,7 @@ namespace Aerospike.Client
 				" readModeSC=" + policy.readPolicyDefault.readModeSC
 				);
 
-			Log.Warn("BatchPolicy Default:" +
+			Log.Info("BatchPolicy Default:" +
 				" socketTimeout=" + policy.batchPolicyDefault.socketTimeout +
 				" totalTimeout=" + policy.batchPolicyDefault.totalTimeout +
 				" maxRetries=" + policy.batchPolicyDefault.maxRetries +
@@ -255,7 +255,7 @@ namespace Aerospike.Client
 				" allowProleReads=" + policy.batchPolicyDefault.allowProleReads
 				);
 
-			Log.Warn("QueryPolicy Default:" +
+			Log.Info("QueryPolicy Default:" +
 				" socketTimeout=" + policy.queryPolicyDefault.socketTimeout +
 				" totalTimeout=" + policy.queryPolicyDefault.totalTimeout +
 				" maxRetries=" + policy.queryPolicyDefault.maxRetries +
