@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2020 Aerospike, Inc.
+ * Copyright 2012-2022 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -57,8 +57,8 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Partition scan/query constructor.
 		/// </summary>
-		protected internal MultiCommand(Cluster cluster, Policy policy, Node node, String ns, int socketTimeout, int totalTimeout)
-			: base(cluster, policy, socketTimeout, totalTimeout)
+		protected internal MultiCommand(Cluster cluster, Policy policy, Node node, String ns, int socketTimeout, int totalTimeout, int latencyType)
+			: base(cluster, policy, socketTimeout, totalTimeout, latencyType)
 		{
 			this.node = node;
 			this.stopOnNotFound = true;
@@ -70,8 +70,8 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Legacy scan/query constructor.
 		/// </summary>
-		protected internal MultiCommand(Cluster cluster, Policy policy, Node node, String ns, ulong clusterKey, bool first)
-			: base(cluster, policy, policy.socketTimeout, policy.totalTimeout)
+		protected internal MultiCommand(Cluster cluster, Policy policy, Node node, String ns, ulong clusterKey, bool first, int latencyType)
+			: base(cluster, policy, policy.socketTimeout, policy.totalTimeout, latencyType)
 		{
 			this.node = node;
 			this.stopOnNotFound = true;

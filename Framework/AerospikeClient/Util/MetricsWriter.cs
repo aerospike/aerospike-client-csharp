@@ -29,7 +29,8 @@ namespace Aerospike.Client
 		public const int WRITE = 1;
 		public const int READ = 2;
 		public const int BATCH = 3;
-		public const int NONE = 4;
+		public const int QUERY = 4;
+		public const int NONE = 5;
 	}
 
 	public sealed class Metrics
@@ -47,7 +48,8 @@ namespace Aerospike.Client
 			latency[LatencyType.CONN] = new LatencyManager(latencyColumns, latencyShift);
 			latency[LatencyType.WRITE] = new LatencyManager(latencyColumns, latencyShift);
 			latency[LatencyType.READ] = new LatencyManager(latencyColumns, latencyShift);
-			latency[LatencyType.CONN] = new LatencyManager(latencyColumns, latencyShift);
+			latency[LatencyType.BATCH] = new LatencyManager(latencyColumns, latencyShift);
+			latency[LatencyType.QUERY] = new LatencyManager(latencyColumns, latencyShift);
 		}
 
 		public void AddLatency(int type, long elapsed)
@@ -214,6 +216,7 @@ namespace Aerospike.Client
 			WriteLatency(node, metrics.Get(LatencyType.WRITE), "write");
 			WriteLatency(node, metrics.Get(LatencyType.READ), "read");
 			WriteLatency(node, metrics.Get(LatencyType.BATCH), "batch");
+			WriteLatency(node, metrics.Get(LatencyType.QUERY), "query");
 		}
 
 		private void WriteLatency(Node node, LatencyManager lm, string type)

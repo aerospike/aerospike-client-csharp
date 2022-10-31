@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2020 Aerospike, Inc.
+ * Copyright 2012-2022 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -44,13 +44,13 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Scan/Query constructor.
 		/// </summary>
-		public SyncCommand(Cluster cluster, Policy policy, int socketTimeout, int totalTimeout)
+		public SyncCommand(Cluster cluster, Policy policy, int socketTimeout, int totalTimeout, int latencyType)
 			: base(socketTimeout, totalTimeout, 0)
 		{
 			this.cluster = cluster;
 			this.policy = policy;
 			this.deadline = DateTime.MinValue;
-			this.latencyType = LatencyType.NONE;
+			this.latencyType = latencyType;
 		}
 
 		public virtual void Execute()
