@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2020 Aerospike, Inc.
+ * Copyright 2012-2022 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -44,8 +44,8 @@ namespace Aerospike.Client
 			this.partition = Partition.Read(cluster, policy, key);
 		}
 
-		public ReadCommand(Cluster cluster, Policy policy, Key key, Partition partition)
-			: base(cluster, policy, LatencyType.READ)
+		public ReadCommand(Cluster cluster, Policy policy, Key key, Partition partition, int latencyType)
+			: base(cluster, policy, latencyType)
 		{
 			this.key = key;
 			this.binNames = null;

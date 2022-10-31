@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2020 Aerospike, Inc.
+ * Copyright 2012-2022 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -20,7 +20,6 @@ using System.Net;
 using System.Security.Authentication;
 using System.Text;
 using System.Threading;
-using System.IO;
 
 namespace Aerospike.Client
 {
