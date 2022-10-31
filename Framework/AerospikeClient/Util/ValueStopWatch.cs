@@ -24,8 +24,8 @@ namespace Aerospike.Client
 	/// </summary>
 	public struct ValueStopwatch
 	{
-		private static readonly double TimestampTicksToMachineTicksRatio = TimeSpan.TicksPerSecond / (double)Stopwatch.Frequency;
-		private static readonly double MillisecondsPerTick = TimestampTicksToMachineTicksRatio / 10000L;
+		private static readonly double TimespanTicksPerStopwatchTick = TimeSpan.TicksPerSecond / (double)Stopwatch.Frequency;
+		private static readonly double MillisecondsPerStopwatchTick = TimespanTicksPerStopwatchTick / TimeSpan.TicksPerMillisecond;
 
 		public static ValueStopwatch StartNew()
 		{
@@ -44,19 +44,19 @@ namespace Aerospike.Client
 			this.startTimestamp = enable ? Stopwatch.GetTimestamp() : 0;
 		}
 
+		public bool IsActive
+		{
+			get { return startTimestamp != 0; }
+		}
+
 		public TimeSpan Elapsed
 		{
-			get { return new TimeSpan((long)((Stopwatch.GetTimestamp() - startTimestamp) * TimestampTicksToMachineTicksRatio)); }
+			get { return new TimeSpan((long)((Stopwatch.GetTimestamp() - startTimestamp) * TimespanTicksPerStopwatchTick)); }
 		}
 
 		public long ElapsedMilliseconds
 		{
-			get { return (long)((Stopwatch.GetTimestamp() - startTimestamp) * MillisecondsPerTick); }
-		}
-
-		public bool Enabled
-		{
-			get { return startTimestamp != 0; }
+			get { return (long)((Stopwatch.GetTimestamp() - startTimestamp) * MillisecondsPerStopwatchTick); }
 		}
 	}
 }

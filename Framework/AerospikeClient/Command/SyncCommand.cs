@@ -104,7 +104,7 @@ namespace Aerospike.Client
 						// Put connection back in pool.
 						node.PutConnection(conn);
 
-						if (watch.Enabled)
+						if (watch.IsActive)
 						{
 							node.AddLatency(latencyType, watch.ElapsedMilliseconds);
 						}
