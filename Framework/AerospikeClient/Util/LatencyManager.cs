@@ -111,8 +111,6 @@ namespace Aerospike.Client
 
             // Print cumulative results.
             sb.Length = 0;
-			sb.Append(node);
-			sb.Append(' ');
 			sb.Append(type);
 
             double sumDouble = (double)sum;
