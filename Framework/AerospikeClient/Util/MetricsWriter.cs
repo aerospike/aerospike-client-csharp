@@ -102,8 +102,8 @@ namespace Aerospike.Client
 			FileStream fs = new FileStream(policy.reportPath, FileMode.Append, FileAccess.Write);
 			writer = new StreamWriter(fs);
 			
-			string line = LatencyManager.PrintHeader(sb, latencyColumns, latencyShift);
-			writer.WriteLine(line);
+			LatencyManager.PrintHeader(sb, latencyColumns, latencyShift);
+			writer.WriteLine(sb.ToString());
 
 			beginTime = DateTime.UtcNow;
 			beginSpan = Process.GetCurrentProcess().TotalProcessorTime;
@@ -126,7 +126,10 @@ namespace Aerospike.Client
 			{
 				if (!closed)
 				{
+					sb.Length = 0;
+					sb.Append(DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"));
 					Write(node);
+					writer.WriteLine();
 				}
 			}
 		}
@@ -162,9 +165,8 @@ namespace Aerospike.Client
 			ClusterStats stats = new ClusterStats(null);
 
 			sb.Length = 0;
-			sb.Append("cluster ");
 			sb.Append(DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"));
-			sb.Append(' ');
+			sb.Append(" cluster ");
 			sb.Append((int)cpu);
 			sb.Append(' ');
 			sb.Append(mem);
@@ -174,14 +176,16 @@ namespace Aerospike.Client
 			sb.Append(stats.threadsInUse);
 			sb.Append(' ');
 			sb.Append(stats.completionPortsInUse);
-			writer.WriteLine(sb.ToString());
+			writer.Write(sb.ToString());
 
 			Node[] nodes = cluster.Nodes;
 
 			foreach (Node node in nodes)
 			{
+				sb.Length = 0;
 				Write(node);
 			}
+			writer.WriteLine();
 
 			beginTime = endTime;
 			beginSpan = endSpan;
@@ -195,8 +199,7 @@ namespace Aerospike.Client
 			int errors = metrics.ResetError();
 			int timeouts = metrics.ResetTimeout();
 
-			sb.Length = 0;
-			sb.Append("node ");
+			sb.Append(" node ");
 			sb.Append(node);
 			sb.Append(' ');
 			sb.Append(cs.inUse);
@@ -210,7 +213,7 @@ namespace Aerospike.Client
 			sb.Append(errors);
 			sb.Append(' ');
 			sb.Append(timeouts);
-			writer.WriteLine(sb.ToString());
+			writer.Write(sb.ToString());
 
 			WriteLatency(node, metrics.Get(LatencyType.CONN), "conn");
 			WriteLatency(node, metrics.Get(LatencyType.WRITE), "write");
@@ -221,11 +224,9 @@ namespace Aerospike.Client
 
 		private void WriteLatency(Node node, LatencyManager lm, string type)
 		{
-			string line = lm.PrintResults(node, sb, type);
-
-			if (line != null)
+			if (lm.PrintResults(node, sb, type))
 			{
-				writer.WriteLine(line);
+				writer.Write(sb.ToString());
 			}
 		}
 	}

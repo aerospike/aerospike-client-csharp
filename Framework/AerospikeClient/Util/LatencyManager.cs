@@ -60,13 +60,12 @@ namespace Aerospike.Client
             return lastBucket;
         }
 
-		public static string PrintHeader(StringBuilder sb, int latencyColumns, int latencyShift)
+		public static void PrintHeader(StringBuilder sb, int latencyColumns, int latencyShift)
         {
 			sb.Length = 0;
-			sb.Append("header ");
 			sb.Append(DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"));
-            sb.Append(" <=1ms >1ms");
-
+			sb.Append(" header <=1ms >1ms");
+ 
 			int limit = 1;
 
 			for (int i = 2; i < latencyColumns; i++)
@@ -75,7 +74,6 @@ namespace Aerospike.Client
                 String s = " >" + limit + "ms";
                 sb.Append(s);
             }
-            return sb.ToString();
         }
 
         /// <summary>
@@ -85,7 +83,7 @@ namespace Aerospike.Client
         /// It is not a good idea to add extra locks just to measure performance since that actually 
         /// affects performance.  Fortunately, the values will even out over time (ie. no double counting).
         /// </summary>
-        public string PrintResults(Node node, StringBuilder sb, string type)
+        public bool PrintResults(Node node, StringBuilder sb, string type)
         {
             // Capture snapshot and make buckets cumulative.
             int[] array = new int[buckets.Length];
@@ -106,11 +104,12 @@ namespace Aerospike.Client
 			if (sum == 0)
 			{
 				// Skip over results that do not contain data.
-				return null;
+				return false;
 			}
 
             // Print cumulative results.
             sb.Length = 0;
+			sb.Append(' ');
 			sb.Append(type);
 
             double sumDouble = (double)sum;
@@ -124,7 +123,7 @@ namespace Aerospike.Client
                 limit <<= latencyShift;
                 PrintColumn(sb, limit, sumDouble, array[i]);
             }
-            return sb.ToString();
+            return true;
         }
 
 		public string PrintSummary(StringBuilder sb, string prefix)
