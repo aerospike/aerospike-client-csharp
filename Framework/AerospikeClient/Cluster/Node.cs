@@ -1105,18 +1105,6 @@ namespace Aerospike.Client
 		{
 			active = false;
 			CloseConnections();
-
-			if (cluster.MetricsEnabled)
-			{
-				try
-				{
-					cluster.WriteMetrics(this);
-				}
-				catch (Exception e)
-				{
-					Log.Warn("Write metrics failed on " + this + ": " + Util.GetErrorMessage(e)); 
-				}
-			}
 			GC.SuppressFinalize(this);
 		}
 

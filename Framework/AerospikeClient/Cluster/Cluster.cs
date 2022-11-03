@@ -419,7 +419,6 @@ namespace Aerospike.Client
 					}
 				}
 			}
-			DisableMetrics();
 		}
 
 		/// <summary>
@@ -561,12 +560,6 @@ namespace Aerospike.Client
 				MetricsWriter writer = metricsWriter;
 				writer.Close(this);
 			}
-		}
-
-		internal void WriteMetrics(Node node)
-		{
-			MetricsWriter writer = metricsWriter;
-			writer.WriteNode(node);
 		}
 
 		public void IncrThreadExpandCount()
@@ -801,6 +794,19 @@ namespace Aerospike.Client
 
 				if (tendValid)
 				{
+					if (metricsEnabled)
+					{
+						// Flush node metrics before removal.
+						try
+						{
+							MetricsWriter writer = metricsWriter;
+							writer.WriteNode(node);
+						}
+						catch (Exception e)
+						{
+							Log.Warn("Write metrics failed on " + node + ": " + Util.GetErrorMessage(e));
+						}
+					}
 					node.Close();
 				}
 				else
@@ -1058,6 +1064,15 @@ namespace Aerospike.Client
 		{
 			tendValid = false;
 			cancel.Cancel();
+
+			try
+			{
+				DisableMetrics();
+			}
+			catch (Exception e)
+			{
+				Log.Warn("DisableMetrics failed: " + Util.GetErrorMessage(e));
+			}
 
 			// Must copy array reference for copy on write semantics to work.
 			Node[] nodeArray = nodes;
