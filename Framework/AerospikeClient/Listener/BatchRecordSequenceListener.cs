@@ -26,6 +26,11 @@ namespace Aerospike.Client
 		/// This method is called when a record is received from the server.
 		/// The receive sequence is not ordered.
 		/// <para>
+		/// This method is not thread-safe. Multiple async completion port threads may be calling
+		/// this listener method simultaneously. All shared data in the callback must be handled 
+		/// in a thread-safe manner.
+		/// </para>
+		/// <para>
 		/// The user may throw <see cref="Aerospike.Client.AerospikeException"/> if the
 		/// command should be aborted. If any exception is thrown, parallel command threads
 		/// to other nodes will also be terminated and the exception will be propagated back

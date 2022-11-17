@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2022 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -25,6 +25,11 @@ namespace Aerospike.Client
 		/// <summary>
 		/// This method is called when an asynchronous batch exists result is received from the server.
 		/// The receive sequence is not ordered.
+		/// <para>
+		/// This method is not thread-safe. Multiple async completion port threads may be calling
+		/// this listener method simultaneously. All shared data in the callback must be handled 
+		/// in a thread-safe manner.
+		/// </para>
 		/// </summary>
 		/// <param name="key">unique record identifier</param>
 		/// <param name="exists">whether key exists on server</param>
