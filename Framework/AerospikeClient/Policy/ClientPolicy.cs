@@ -37,9 +37,10 @@ namespace Aerospike.Client
 		public string password;
 
 		/// <summary>
-		/// Expected cluster name.  If populated, server nodes must return this cluster name in order to
-		/// join the client's view of the cluster. Should only be set when connecting to servers that
-		/// support the "cluster-name" info command.
+		/// Expected cluster name.  If populated, the clusterName must match the cluster-name field
+		/// in the service section in each server configuration.  This ensures that the specified
+		/// seed nodes belong to the expected cluster on startup.  If not, the client will refuse
+		/// to add the node to the client's view of the cluster.
 		/// <para>Default: null</para>
 		/// </summary>
 		public string clusterName;
