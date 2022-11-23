@@ -1,5 +1,5 @@
 ﻿/* 
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2022 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -23,33 +23,25 @@ namespace Aerospike.Client
 	/// <summary>
 	/// Parse rack-ids info command.
 	/// </summary>
-	public sealed class RackParser
+	public sealed class RackParser : Info
 	{
 		internal const string RebalanceGeneration = "rebalance-generation";
 		internal const string RackIds = "rack-ids";
 
 		private readonly Dictionary<string,int> racks;
-		private readonly byte[] buffer;
 		private readonly int generation;
-		private int length;
-		private int offset;
 
 		public RackParser(Connection conn, Node node)
+			: base(conn, RebalanceGeneration, RackIds)
 		{
-			// Send format:  rebalance-generation\nrack-ids\n
-			this.racks = new Dictionary<string,int>();
-
-			Info info = new Info(conn, RebalanceGeneration, RackIds);
-			this.length = info.length;
-
+			// Send format: rebalance-generation\nrack-ids\n
 			if (length == 0)
 			{
 				throw new AerospikeException.Parse("rack-ids response is empty");
 			}
-			this.buffer = info.buffer;
 
+			this.racks = new Dictionary<string, int>();
 			generation = ParseGeneration();
-
 			ParseRacks(node);
 		}
 
@@ -65,28 +57,17 @@ namespace Aerospike.Client
 
 		private int ParseGeneration()
 		{
-			ExpectName(RebalanceGeneration);
-
-			int begin = offset;
-
-			while (offset < length)
-			{
-				if (buffer[offset] == '\n')
-				{
-					string s = ByteUtil.Utf8ToString(buffer, begin, offset - begin).Trim();
-					offset++;
-					return Convert.ToInt32(s);
-				}
-				offset++;
-			}
-			throw new AerospikeException.Parse("Failed to find " + RebalanceGeneration);
+			ParseName(RebalanceGeneration);
+			int gen = ParseInt();
+			Expect('\n');
+			return gen;
 		}
 
 		private void ParseRacks(Node node)
 		{
 			// Use low-level info methods and parse byte array directly for maximum performance.
 			// Receive format: rack-ids\t<ns1>:<rack1>;<ns2>:<rack2>...\n
-			ExpectName(RackIds);
+			ParseName(RackIds);
 
 			int begin = offset;
 
@@ -125,34 +106,6 @@ namespace Aerospike.Client
 					offset++;
 				}
 			}
-		}
-
-		private void ExpectName(string name)
-		{
-			int begin = offset;
-
-			while (offset < length)
-			{
-				if (buffer[offset] == '\t')
-				{
-					string s = ByteUtil.Utf8ToString(buffer, begin, offset - begin).Trim();
-
-					if (name.Equals(s))
-					{
-						offset++;
-						return;
-					}
-					break;
-				}
-				offset++;
-			}
-			throw new AerospikeException.Parse("Failed to find " + name);
-		}
-
-		private string GetTruncatedResponse()
-		{
-			int max = (length > 200) ? 200 : length;
-			return ByteUtil.Utf8ToString(buffer, 0, max);
 		}
 	}
 }

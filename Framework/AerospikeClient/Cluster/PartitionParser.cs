@@ -23,41 +23,31 @@ namespace Aerospike.Client
 	/// <summary>
 	/// Parse node's master (and optionally prole) partitions.
 	/// </summary>
-	public sealed class PartitionParser
+	public sealed class PartitionParser : Info
 	{
 		internal const string PartitionGeneration = "partition-generation";
 		internal const string Replicas = "replicas";
 
 		private Dictionary<string, Partitions> map;
-		private readonly byte[] buffer;
 		private readonly int partitionCount;
 		private readonly int generation;
-		private int length;
-		private int offset;
 		private bool copied;
 		private bool regimeError;
 
 		public PartitionParser(Connection conn, Node node, Dictionary<string, Partitions> map, int partitionCount)
+			: base(conn, PartitionGeneration, Replicas)
 		{
-			// Send format 1:  partition-generation\nreplicas\n
-			// Send format 2:  partition-generation\nreplicas-all\n
-			// Send format 3:  partition-generation\nreplicas-master\n
+			// Send format: partition-generation\nreplicas\n
 			this.partitionCount = partitionCount;
 			this.map = map;
-
-			string command = Replicas;
-			Info info = new Info(conn, PartitionGeneration, command);
-			this.length = info.length;
 
 			if (length == 0)
 			{
 				throw new AerospikeException.Parse("Partition info is empty");
 			}
-			this.buffer = info.buffer;
 
-			generation = ParseGeneration();
-
-			ParseReplicasAll(node, command);
+			this.generation = ParseGeneration();
+			ParseReplicasAll(node, Replicas);
 		}
 
 		public int Generation
@@ -77,30 +67,19 @@ namespace Aerospike.Client
 
 		public int ParseGeneration()
 		{
-			ExpectName(PartitionGeneration);
-
-			int begin = offset;
-
-			while (offset < length)
-			{
-				if (buffer[offset] == '\n')
-				{
-					string s = ByteUtil.Utf8ToString(buffer, begin, offset - begin).Trim();
-					offset++;
-					return Convert.ToInt32(s);
-				}
-				offset++;
-			}
-			throw new AerospikeException.Parse("Failed to find partition-generation value");
+			ParseName(PartitionGeneration);
+			int gen = ParseInt();
+			Expect('\n');
+			return gen;
 		}
 
 		private void ParseReplicasAll(Node node, string command)
 		{
 			// Use low-level info methods and parse byte array directly for maximum performance.
-			// Receive format: replicas-all\t
+			// Receive format: replicas\t
 			//                 <ns1>:[regime],<count>,<base 64 encoded bitmap1>,<base 64 encoded bitmap2>...;
 			//                 <ns2>:[regime],<count>,<base 64 encoded bitmap1>,<base 64 encoded bitmap2>...;\n
-			ExpectName(command);
+			ParseName(command);
 
 			int begin = offset;
 			int regime = 0;
@@ -263,34 +242,6 @@ namespace Aerospike.Client
 				map = new Dictionary<string, Partitions>(map);
 				copied = true;
 			}
-		}
-
-		private void ExpectName(string name)
-		{
-			int begin = offset;
-
-			while (offset < length)
-			{
-				if (buffer[offset] == '\t')
-				{
-					string s = ByteUtil.Utf8ToString(buffer, begin, offset - begin).Trim();
-
-					if (name.Equals(s))
-					{
-						offset++;
-						return;
-					}
-					break;
-				}
-				offset++;
-			}
-			throw new AerospikeException.Parse("Failed to find " + name);
-		}
-
-		private string GetTruncatedResponse()
-		{
-			int max = (length > 200) ? 200 : length;
-			return ByteUtil.Utf8ToString(buffer, 0, max);
 		}
 	}
 }
