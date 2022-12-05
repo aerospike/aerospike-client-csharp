@@ -75,21 +75,21 @@ namespace Aerospike.Client
 						batchNode.AddKey(i);
 					}
 				}
-				catch (AerospikeException.InvalidNode ain)
+				catch (AerospikeException ae)
 				{
 					// This method only called on initialization, so inDoubt must be false.
 					if (records != null)
 					{
-						records[i].SetError(ain.Result, false);
+						records[i].SetError(ae.Result, false);
 					}
 					else
 					{
-						status.SetInvalidNode(cluster, key, i, ain, false, hasWrite);
+						status.BatchKeyError(cluster, key, i, ae, false, hasWrite);
 					}
 
 					if (except == null)
 					{
-						except = ain;
+						except = ae;
 					}
 				}
 			}
@@ -103,7 +103,7 @@ namespace Aerospike.Client
 				}
 				else
 				{
-					status.SetInvalidNode(except);
+					status.BatchKeyError(except);
 				}
 			}
 			return batchNodes;
@@ -173,21 +173,21 @@ namespace Aerospike.Client
 						batchNode.AddKey(offset);
 					}
 				}
-				catch (AerospikeException.InvalidNode ain)
+				catch (AerospikeException ae)
 				{
 					// This method only called on retry, so commandSentCounter(2) will be greater than 1.
-					records[offset].SetError(ain.Result, Command.BatchInDoubt(hasWrite, 2));
+					records[offset].SetError(ae.Result, Command.BatchInDoubt(hasWrite, 2));
 
 					if (except == null)
 					{
-						except = ain;
+						except = ae;
 					}
 				}
 			}
 
 			if (except != null)
 			{
-				status.SetInvalidNode(except);
+				status.BatchKeyError(except);
 			}
 			return batchNodes;
 		}
@@ -256,20 +256,20 @@ namespace Aerospike.Client
 						batchNode.AddKey(offset);
 					}
 				}
-				catch (AerospikeException.InvalidNode ain)
+				catch (AerospikeException ae)
 				{
-					status.SetInvalidNode(cluster, key, offset, ain, Command.BatchInDoubt(hasWrite, 2), hasWrite);
+					status.BatchKeyError(cluster, key, offset, ae, Command.BatchInDoubt(hasWrite, 2), hasWrite);
 
 					if (except == null)
 					{
-						except = ain;
+						except = ae;
 					}
 				}
 			}
 
 			if (except != null)
 			{
-				status.SetInvalidNode(except);
+				status.BatchKeyError(except);
 			}
 			return batchNodes;
 		}
@@ -335,18 +335,18 @@ namespace Aerospike.Client
 						batchNode.AddKey(offset);
 					}
 				}
-				catch (AerospikeException.InvalidNode ain)
+				catch (AerospikeException ae)
 				{
 					if (except == null)
 					{
-						except = ain;
+						except = ae;
 					}
 				}
 			}
 
 			if (except != null)
 			{
-				status.SetInvalidNode(except);
+				status.BatchKeyError(except);
 			}
 			return batchNodes;
 		}
@@ -405,14 +405,14 @@ namespace Aerospike.Client
 						batchNode.AddKey(i);
 					}
 				}
-				catch (AerospikeException.InvalidNode ain)
+				catch (AerospikeException ae)
 				{
 					// This method only called on initialization, so inDoubt must be false.
-					b.SetError(ain.Result, false);
+					b.SetError(ae.Result, false);
 
 					if (except == null)
 					{
-						except = ain;
+						except = ae;
 					}
 				}
 			}
@@ -426,7 +426,7 @@ namespace Aerospike.Client
 				}
 				else
 				{
-					status.SetInvalidNode(except);
+					status.BatchKeyError(except);
 				}
 			}
 			return batchNodes;
@@ -493,21 +493,21 @@ namespace Aerospike.Client
 						batchNode.AddKey(offset);
 					}
 				}
-				catch (AerospikeException.InvalidNode ain)
+				catch (AerospikeException ae)
 				{
 					// This method only called on retry, so commandSentCounter(2) will be greater than 1.
-					b.SetError(ain.Result, Command.BatchInDoubt(b.hasWrite, 2));
+					b.SetError(ae.Result, Command.BatchInDoubt(b.hasWrite, 2));
 
 					if (except == null)
 					{
-						except = ain;
+						except = ae;
 					}
 				}
 			}
 
 			if (except != null)
 			{
-				status.SetInvalidNode(except);
+				status.BatchKeyError(except);
 			}
 			return batchNodes;
 		}
@@ -563,7 +563,7 @@ namespace Aerospike.Client
 
 	public interface IBatchStatus
 	{
-		void SetInvalidNode(Cluster cluster, Key key, int index, AerospikeException ae, bool inDoubt, bool hasWrite);
-		void SetInvalidNode(AerospikeException ae);
+		void BatchKeyError(Cluster cluster, Key key, int index, AerospikeException ae, bool inDoubt, bool hasWrite);
+		void BatchKeyError(AerospikeException ae);
 	}
 }

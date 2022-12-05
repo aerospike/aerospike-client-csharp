@@ -307,21 +307,24 @@ namespace Aerospike.Test
 			wp.sendKey = true;
 
 			BatchWrite bw1 = new BatchWrite(new Key(args.ns, args.set, KeyPrefix + 1), wops1);
-			BatchWrite bw2 = new BatchWrite(wp, new Key(args.ns, args.set, KeyPrefix + 6), wops2);
+			BatchWrite bw2 = new BatchWrite(new Key("invalid", args.set, KeyPrefix + 1), wops1);
+			BatchWrite bw3 = new BatchWrite(wp, new Key(args.ns, args.set, KeyPrefix + 6), wops2);
 			BatchDelete bd1 = new BatchDelete(new Key(args.ns, args.set, 10002));
 
 			List<BatchRecord> records = new List<BatchRecord>();
 			records.Add(bw1);
 			records.Add(bw2);
+			records.Add(bw3);
 			records.Add(bd1);
 
 			bool status = client.Operate(null, records);
 
-			Assert.IsTrue(status);
+			Assert.IsFalse(status); // "invalid" namespace triggers the false status.
 			Assert.AreEqual(0, bw1.resultCode);
 			AssertBinEqual(bw1.key, bw1.record, BinName2, 0);
-			Assert.AreEqual(0, bw2.resultCode);
-			AssertBinEqual(bw2.key, bw2.record, BinName3, 0);
+			Assert.AreEqual(ResultCode.INVALID_NAMESPACE, bw2.resultCode);
+			Assert.AreEqual(0, bw3.resultCode);
+			AssertBinEqual(bw3.key, bw3.record, BinName3, 0);
 			Assert.AreEqual(ResultCode.OK, bd1.resultCode);
 
 			BatchRead br1 = new BatchRead(new Key(args.ns, args.set, KeyPrefix + 1), rops1);

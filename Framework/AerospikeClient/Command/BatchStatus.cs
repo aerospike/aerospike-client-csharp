@@ -29,12 +29,12 @@ namespace Aerospike.Client
 			this.hasResultCode = hasResultCode;
 		}
 
-		public void SetInvalidNode(Cluster cluster, Key key, int index, AerospikeException ae, bool inDoubt, bool hasWrite)
+		public void BatchKeyError(Cluster cluster, Key key, int index, AerospikeException ae, bool inDoubt, bool hasWrite)
 		{
 			// Only used in async commands with a sequence listener.
 		}
 
-		public void SetInvalidNode(AerospikeException e)
+		public void BatchKeyError(AerospikeException e)
 		{
 			error = true;
 

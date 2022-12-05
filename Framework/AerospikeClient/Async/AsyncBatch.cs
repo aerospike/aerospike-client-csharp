@@ -1191,7 +1191,7 @@ namespace Aerospike.Client
 			Execute(tasks);
 		}
 
-		public override void SetInvalidNode(Cluster cluster, Key key, int index, AerospikeException ae, bool inDoubt, bool hasWrite)
+		public override void BatchKeyError(Cluster cluster, Key key, int index, AerospikeException ae, bool inDoubt, bool hasWrite)
 		{
 			BatchRecord record = new BatchRecord(key, null, ae.Result, inDoubt, hasWrite);
 			sent[index] = true;
@@ -1513,7 +1513,7 @@ namespace Aerospike.Client
 			Execute(tasks);
 		}
 
-		public override void SetInvalidNode(Cluster cluster, Key key, int index, AerospikeException ae, bool inDoubt, bool hasWrite)
+		public override void BatchKeyError(Cluster cluster, Key key, int index, AerospikeException ae, bool inDoubt, bool hasWrite)
 		{
 			BatchRecord record = new BatchRecord(key, null, ae.Result, inDoubt, hasWrite);
 			sent[index] = true;
@@ -1738,13 +1738,13 @@ namespace Aerospike.Client
 			}
 		}
 
-		public virtual void SetInvalidNode(Cluster cluster, Key key, int index, AerospikeException ae, bool inDoubt, bool hasWrite)
+		public virtual void BatchKeyError(Cluster cluster, Key key, int index, AerospikeException ae, bool inDoubt, bool hasWrite)
 		{
 			// Only used in executors with sequence listeners.
 			// These executors will override this method.
 		}
 
-		public void SetInvalidNode(AerospikeException ae)
+		public void BatchKeyError(AerospikeException ae)
 		{
 			error = true;
 

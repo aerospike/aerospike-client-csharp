@@ -128,10 +128,17 @@ namespace Aerospike.Demo
 			int count = 0;
 			foreach (BatchRead record in records)
 			{
-				Record rec = record.record;
-				object v1 = rec.GetValue(ResultName1);
-				object v2 = rec.GetValue(ResultName2);
-				console.Info("Result[{0}]: {1}, {2}", count++, v1, v2);
+				if (record.resultCode == 0)
+				{
+					Record rec = record.record;
+					object v1 = rec.GetValue(ResultName1);
+					object v2 = rec.GetValue(ResultName2);
+					console.Info("Result[{0}]: {1}, {2}", count++, v1, v2);
+				}
+				else
+				{
+					console.Info("Result[{0}]: error: {1}", count++, ResultCode.GetResultString(record.resultCode));
+				}
 			}
 		}
 
@@ -195,10 +202,10 @@ namespace Aerospike.Demo
 			for (int i = 0; i < bresults.records.Length; i++)
 			{
 				BatchRecord br = bresults.records[i];
-				Record rec = br.record;
 
-				if (rec != null)
+				if (br.resultCode == 0)
 				{
+					Record rec = br.record;
 					IList results = rec.GetList(BinName3);
 					long size = (long)results[1];
 					object val = results[2];
@@ -253,10 +260,9 @@ namespace Aerospike.Demo
 			int i = 0;
 			foreach (BatchRecord record in records)
 			{
-				Record rec = record.record;
-
-				if (rec != null)
+				if (record.resultCode == 0)
 				{
+					Record rec = record.record;
 					object v1 = rec.GetValue(ResultName1);
 					object v2 = rec.GetValue(ResultName2);
 
