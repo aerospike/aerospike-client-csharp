@@ -43,7 +43,7 @@ namespace Aerospike.Client
 
 						foreach (NodePartitions nodePartitions in list)
 						{
-							QueryListenerCommand command = new QueryListenerCommand(cluster, nodePartitions.node, policy, statement, taskId, listener, tracker, nodePartitions);
+							QueryListenerCommand command = new QueryListenerCommand(cluster, policy, statement, taskId, listener, tracker, nodePartitions);
 							executor.AddCommand(command);
 						}
 
@@ -53,7 +53,7 @@ namespace Aerospike.Client
 					{
 						foreach (NodePartitions nodePartitions in list)
 						{
-							QueryListenerCommand command = new QueryListenerCommand(cluster, nodePartitions.node, policy, statement, taskId, listener, tracker, nodePartitions);
+							QueryListenerCommand command = new QueryListenerCommand(cluster, policy, statement, taskId, listener, tracker, nodePartitions);
 							command.Execute();
 						}
 					}

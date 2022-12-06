@@ -500,7 +500,7 @@ namespace Aerospike.Client
 				{
 					Log.Debug(cluster.context, "Update racks for node " + this);
 				}
-				RackParser parser = new RackParser(tendConnection, this);
+				RackParser parser = new RackParser(tendConnection);
 
 				rebalanceGeneration = parser.Generation;
 				racks = parser.Racks;

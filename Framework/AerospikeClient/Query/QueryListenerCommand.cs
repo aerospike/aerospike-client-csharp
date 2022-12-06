@@ -29,7 +29,6 @@ namespace Aerospike.Client
 		public QueryListenerCommand
 		(
 			Cluster cluster,
-			Node node,
 			Policy policy,
 			Statement statement,
 			ulong taskId,

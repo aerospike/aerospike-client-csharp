@@ -31,7 +31,7 @@ namespace Aerospike.Client
 		private readonly Dictionary<string,int> racks;
 		private readonly int generation;
 
-		public RackParser(Connection conn, Node node)
+		public RackParser(Connection conn)
 			: base(conn, RebalanceGeneration, RackIds)
 		{
 			// Send format: rebalance-generation\nrack-ids\n
@@ -42,7 +42,7 @@ namespace Aerospike.Client
 
 			this.racks = new Dictionary<string, int>();
 			generation = ParseGeneration();
-			ParseRacks(node);
+			ParseRacks();
 		}
 
 		public int Generation
@@ -63,7 +63,7 @@ namespace Aerospike.Client
 			return gen;
 		}
 
-		private void ParseRacks(Node node)
+		private void ParseRacks()
 		{
 			// Use low-level info methods and parse byte array directly for maximum performance.
 			// Receive format: rack-ids\t<ns1>:<rack1>;<ns2>:<rack2>...\n

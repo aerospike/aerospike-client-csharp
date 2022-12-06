@@ -93,7 +93,7 @@ namespace Aerospike.Client
 					{
 						foreach (NodePartitions nodePartitions in list)
 						{
-							MultiCommand command = new QueryPartitionCommand(cluster, nodePartitions.node, policy, statement, taskId, recordSet, tracker, nodePartitions);
+							MultiCommand command = new QueryPartitionCommand(cluster, policy, statement, taskId, recordSet, tracker, nodePartitions);
 							threads.Add(new QueryThread(this, command));
 						}
 
@@ -112,7 +112,7 @@ namespace Aerospike.Client
 				{
 					foreach (NodePartitions nodePartitions in list)
 					{
-						MultiCommand command = new QueryPartitionCommand(cluster, nodePartitions.node, policy, statement, taskId, recordSet, tracker, nodePartitions);
+						MultiCommand command = new QueryPartitionCommand(cluster, policy, statement, taskId, recordSet, tracker, nodePartitions);
 						command.Execute();
 					}
 				}
