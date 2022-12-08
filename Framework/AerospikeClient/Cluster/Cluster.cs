@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2020 Aerospike, Inc.
+ * Copyright 2012-2022 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -97,7 +97,7 @@ namespace Aerospike.Client
 		private readonly int tendInterval;
 
 		// Cluster tend counter
-		private int tendCount;
+		private uint tendCount;
 
 		// Tend thread variables.
 		private Thread tendThread;
@@ -113,6 +113,12 @@ namespace Aerospike.Client
 
 		// Does cluster support partition scans.
 		internal bool hasPartitionScan;
+
+		private bool metricsEnabled;
+		private uint metricsInterval;
+		private int threadExpandCount;
+		private MetricsPolicy metricsPolicy;
+		private volatile MetricsWriter metricsWriter;
 		
 		public Cluster(ClientPolicy policy, Host[] hosts)
 		{
@@ -209,6 +215,57 @@ namespace Aerospike.Client
 			partitionMap = new Dictionary<string, Partitions>();
 			cancel = new CancellationTokenSource();
 			cancelToken = cancel.Token;
+
+			Log.Info("ClientPolicy:" +
+				" user=" + policy.user +
+				" minConnsPerNode=" + policy.minConnsPerNode +
+				" maxConnsPerNode=" + policy.maxConnsPerNode +
+				" maxSocketIdle=" + policy.maxSocketIdle +
+				" rackId=" + policy.rackId
+				);
+
+			Log.Info("WritePolicy Default:" +
+				" socketTimeout=" + policy.writePolicyDefault.socketTimeout +
+				" totalTimeout=" + policy.writePolicyDefault.totalTimeout +
+				" maxRetries=" + policy.writePolicyDefault.maxRetries +
+				" commitLevel=" + policy.writePolicyDefault.commitLevel +
+				" recordExistsAction=" + policy.writePolicyDefault.recordExistsAction +
+				" expiration=" + policy.writePolicyDefault.expiration +
+				" sendKey=" + policy.writePolicyDefault.sendKey +
+				" durableDelete=" + policy.writePolicyDefault.durableDelete
+				);
+
+			Log.Info("ReadPolicy Default:" + 
+				" socketTimeout=" + policy.readPolicyDefault.socketTimeout + 
+				" totalTimeout=" + policy.readPolicyDefault.totalTimeout + 
+				" maxRetries=" + policy.readPolicyDefault.maxRetries + 
+				" readModeAP=" + policy.readPolicyDefault.readModeAP + 
+				" readModeSC=" + policy.readPolicyDefault.readModeSC
+				);
+
+			Log.Info("BatchPolicy Default:" +
+				" socketTimeout=" + policy.batchPolicyDefault.socketTimeout +
+				" totalTimeout=" + policy.batchPolicyDefault.totalTimeout +
+				" maxRetries=" + policy.batchPolicyDefault.maxRetries +
+				" readModeAP=" + policy.batchPolicyDefault.readModeAP +
+				" readModeSC=" + policy.batchPolicyDefault.readModeSC + 
+				" maxConcurrentThreads=" + policy.batchPolicyDefault.maxConcurrentThreads + 
+				" allowInline=" + policy.batchPolicyDefault.allowInline + 
+				" allowProleReads=" + policy.batchPolicyDefault.allowProleReads
+				);
+
+			Log.Info("QueryPolicy Default:" +
+				" socketTimeout=" + policy.queryPolicyDefault.socketTimeout +
+				" totalTimeout=" + policy.queryPolicyDefault.totalTimeout +
+				" maxRetries=" + policy.queryPolicyDefault.maxRetries +
+				" readModeAP=" + policy.queryPolicyDefault.readModeAP +
+				" readModeSC=" + policy.queryPolicyDefault.readModeSC +
+				" maxRecords=" + policy.queryPolicyDefault.maxRecords +
+				" maxConcurrentNodes=" + policy.queryPolicyDefault.maxConcurrentNodes +
+				" recordQueueSize=" + policy.queryPolicyDefault.recordQueueSize +
+				" includeBinData=" + policy.queryPolicyDefault.includeBinData +
+				" failOnClusterChange=" + policy.queryPolicyDefault.failOnClusterChange
+				);
 		}
 
 		public virtual void InitTendThread(bool failIfNotConnected)
@@ -444,16 +501,78 @@ namespace Aerospike.Client
 				AddNodes(peers.nodes);
 			}
 
-			// Balance connections every 30 tend intervals.
-			if (++tendCount >= 30)
-			{
-				tendCount = 0;
+			uint count = ++tendCount;
 
+			// Balance connections every 30 tend intervals.
+			if (count % 30 == 0)
+			{
 				foreach (Node node in nodes)
 				{
 					node.BalanceConnections();
 				}
 			}
+
+			if (metricsEnabled && (count % metricsInterval) == 0)
+			{
+				MetricsWriter writer = metricsWriter;
+				writer.WriteCluster(this);
+			}
+		}
+
+		public void EnableMetrics(MetricsPolicy policy)
+		{
+			if (metricsEnabled)
+			{
+				MetricsWriter writer = metricsWriter;
+				writer.Close(this);
+			}
+
+			this.metricsPolicy = policy;
+
+			Node[] nodeArray = nodes;
+
+			foreach (Node node in nodes)
+			{
+				node.EnableMetrics(policy);
+			}
+
+			metricsWriter = new MetricsWriter(policy);
+			metricsInterval = policy.reportInterval;
+			metricsEnabled = true;
+		}
+
+		public MetricsPolicy MetricsPolicy
+		{
+			get { return metricsPolicy; }
+		}
+
+		public bool MetricsEnabled
+		{
+			get { return metricsEnabled; }
+		}
+
+		public void DisableMetrics()
+		{
+			if (metricsEnabled)
+			{
+				metricsEnabled = false;
+
+				MetricsWriter writer = metricsWriter;
+				writer.Close(this);
+			}
+		}
+
+		public void IncrThreadExpandCount()
+		{
+			if (metricsEnabled)
+			{
+				Interlocked.Increment(ref threadExpandCount);
+			}
+		}
+
+		public int ResetThreadExpandCount()
+		{
+			return Interlocked.Exchange(ref threadExpandCount, 0);
 		}
 
 		private bool SeedNode(Peers peers, bool failIfNotConnected)
@@ -675,6 +794,19 @@ namespace Aerospike.Client
 
 				if (tendValid)
 				{
+					if (metricsEnabled)
+					{
+						// Flush node metrics before removal.
+						try
+						{
+							MetricsWriter writer = metricsWriter;
+							writer.WriteNode(node);
+						}
+						catch (Exception e)
+						{
+							Log.Warn("Write metrics failed on " + node + ": " + Util.GetErrorMessage(e));
+						}
+					}
 					node.Close();
 				}
 				else
@@ -932,6 +1064,15 @@ namespace Aerospike.Client
 		{
 			tendValid = false;
 			cancel.Cancel();
+
+			try
+			{
+				DisableMetrics();
+			}
+			catch (Exception e)
+			{
+				Log.Warn("DisableMetrics failed: " + Util.GetErrorMessage(e));
+			}
 
 			// Must copy array reference for copy on write semantics to work.
 			Node[] nodeArray = nodes;

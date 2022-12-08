@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2022 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -32,7 +32,7 @@ namespace Aerospike.Client
 			RecordSet recordSet,
 			ulong clusterKey,
 			bool first
-		) : base(cluster, policy, node, statement.ns, clusterKey, first)
+		) : base(cluster, policy, node, statement.ns, clusterKey, first, LatencyType.QUERY)
 		{
 			this.statement = statement;
 			this.recordSet = recordSet;

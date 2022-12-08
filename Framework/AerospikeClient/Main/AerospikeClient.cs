@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2020 Aerospike, Inc.
+ * Copyright 2012-2022 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -332,6 +332,22 @@ namespace Aerospike.Client
 			return cluster.GetStats();
 		}
 
+		/// <summary>
+		/// Enable periodic cluster and latency statistics.
+		/// </summary>
+		public void EnableMetrics(MetricsPolicy policy)
+		{
+			cluster.EnableMetrics(policy);
+		}
+
+		/// <summary>
+		/// Disable statistics.
+		/// </summary>
+		public void DisableMetrics()
+		{
+			cluster.DisableMetrics();
+		}
+
 		//-------------------------------------------------------
 		// Write Record Operations
 		//-------------------------------------------------------
@@ -587,7 +603,7 @@ namespace Aerospike.Client
 			BatchExecutor.Execute(cluster, policy, keys, existsArray, null, null, Command.INFO1_READ | Command.INFO1_NOBINDATA);
 			return existsArray;
 		}
-		
+
 		//-------------------------------------------------------
 		// Read Record Operations
 		//-------------------------------------------------------
@@ -708,6 +724,7 @@ namespace Aerospike.Client
 					MultiCommand command = new BatchReadListCommand(cluster, executor, batchNode, policy, records);
 					executor.AddCommand(command);
 				}
+				cluster.IncrThreadExpandCount();
 				executor.Execute(policy.maxConcurrentThreads);
 			}
 		}
@@ -1193,6 +1210,7 @@ namespace Aerospike.Client
 				executor.AddCommand(command);
 			}
 
+			cluster.IncrThreadExpandCount();
 			executor.Execute(nodes.Length);
 			return new ExecuteTask(cluster, policy, statement);
 		}
@@ -1227,6 +1245,7 @@ namespace Aerospike.Client
 				ServerCommand command = new ServerCommand(cluster, node, policy, statement);
 				executor.AddCommand(command);
 			}
+			cluster.IncrThreadExpandCount();
 			executor.Execute(nodes.Length);
 			return new ExecuteTask(cluster, policy, statement);
 		}

@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2020 Aerospike, Inc.
+ * Copyright 2012-2022 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -34,7 +34,7 @@ namespace Aerospike.Client
 			string packageName,
 			string functionName,
 			Value[] args
-		) : base(cluster, writePolicy, key, Partition.Write(cluster, writePolicy, key))
+		) : base(cluster, writePolicy, key, Partition.Write(cluster, writePolicy, key), LatencyType.WRITE)
 		{
 			this.writePolicy = writePolicy;
 			this.packageName = packageName;

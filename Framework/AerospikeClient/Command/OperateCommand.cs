@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2020 Aerospike, Inc.
+ * Copyright 2012-2022 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -24,7 +24,7 @@ namespace Aerospike.Client
 		private readonly OperateArgs args;
 
 		public OperateCommand(Cluster cluster, Key key, OperateArgs args) 
-			: base(cluster, args.writePolicy, key, args.partition)
+			: base(cluster, args.writePolicy, key, args.partition, args.hasWrite? LatencyType.WRITE : LatencyType.READ)
 		{
 			this.args = args;
 		}

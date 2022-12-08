@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2020 Aerospike, Inc.
+ * Copyright 2012-2022 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -34,7 +34,7 @@ namespace Aerospike.Client
 			RecordSet recordSet,
 			PartitionTracker tracker,
 			NodePartitions nodePartitions
-		) : base(cluster, policy, nodePartitions.node, statement.ns, tracker.socketTimeout, tracker.totalTimeout)
+		) : base(cluster, policy, nodePartitions.node, statement.ns, tracker.socketTimeout, tracker.totalTimeout, LatencyType.QUERY)
 		{
 			this.statement = statement;
 			this.recordSet = recordSet;

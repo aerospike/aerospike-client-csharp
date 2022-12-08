@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2020 Aerospike, Inc.
+ * Copyright 2012-2022 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -26,7 +26,7 @@ namespace Aerospike.Client
 		private bool exists;
 
 		public ExistsCommand(Cluster cluster, Policy policy, Key key)
-			: base(cluster, policy)
+			: base(cluster, policy, LatencyType.READ)
 		{
 			this.key = key;
 			this.partition = Partition.Read(cluster, policy, key);

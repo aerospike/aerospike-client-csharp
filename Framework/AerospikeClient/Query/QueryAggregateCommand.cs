@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2020 Aerospike, Inc.
+ * Copyright 2012-2022 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -36,7 +36,7 @@ namespace Aerospike.Client
 			CancellationToken cancelToken,
 			ulong clusterKey,
 			bool first
-		) : base(cluster, policy, node, statement.ns, clusterKey, first)
+		) : base(cluster, policy, node, statement.ns, clusterKey, first, LatencyType.NONE)
 		{
 			this.statement = statement;
 			this.inputQueue = inputQueue;

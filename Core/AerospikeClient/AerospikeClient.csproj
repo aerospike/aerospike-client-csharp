@@ -163,6 +163,7 @@
     <Compile Include="..\..\Framework\AerospikeClient\Policy\CommitLevel.cs" Link="Policy\CommitLevel.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Policy\GenerationPolicy.cs" Link="Policy\GenerationPolicy.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Policy\InfoPolicy.cs" Link="Policy\InfoPolicy.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Policy\MetricsPolicy.cs" Link="Policy\MetricsPolicy.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Policy\Policy.cs" Link="Policy\Policy.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Policy\Priority.cs" Link="Policy\Priority.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Policy\QueryPolicy.cs" Link="Policy\QueryPolicy.cs" />
@@ -202,12 +203,15 @@
     <Compile Include="..\..\Framework\AerospikeClient\Task\IndexTask.cs" Link="Task\IndexTask.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Task\RegisterTask.cs" Link="Task\RegisterTask.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Util\Hash.cs" Link="Util\Hash.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Util\LatencyManager.cs" Link="Util\LatencyManager.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Util\MetricsWriter.cs" Link="Util\MetricsWriter.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Util\Packer.cs" Link="Util\Packer.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Util\RandomShift.cs" Link="Util\RandomShift.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Util\Ripemd160.cs" Link="Util\Ripemd160.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Util\ThreadLocalData.cs" Link="Util\ThreadLocalData.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Util\Unpacker.cs" Link="Util\Unpacker.cs" />
     <Compile Include="..\..\Framework\AerospikeClient\Util\Util.cs" Link="Util\Util.cs" />
+    <Compile Include="..\..\Framework\AerospikeClient\Util\ValueStopWatch.cs" Link="Util\ValueStopWatch.cs" />
   </ItemGroup>
 
   <ItemGroup>

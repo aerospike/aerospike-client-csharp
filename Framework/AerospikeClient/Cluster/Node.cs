@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2022 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -53,6 +53,7 @@ namespace Aerospike.Client
 		internal volatile byte[] sessionToken;
 		private DateTime? sessionExpiration;
 		private volatile Dictionary<string,int> racks;
+		private volatile Metrics metrics;
 		private readonly Pool<Connection>[] connectionPools;
 		protected uint connectionIter;
 		protected internal int connsOpened = 1;
@@ -95,6 +96,11 @@ namespace Aerospike.Client
 				this.racks = null;
 			}
 
+			if (cluster.MetricsEnabled)
+			{
+				this.metrics = new Metrics(cluster.MetricsPolicy);
+			}
+
 			connectionPools = new Pool<Connection>[cluster.connPoolsPerNode];
 			int min = cluster.minConnsPerNode / cluster.connPoolsPerNode;
 			int remMin = cluster.minConnsPerNode - (min * cluster.connPoolsPerNode);
@@ -127,6 +133,37 @@ namespace Aerospike.Client
 					CreateConnections(pool, pool.minSize);
 				}
 			}
+		}
+
+		public void EnableMetrics(MetricsPolicy policy)
+		{
+			metrics = new Metrics(policy);
+		}
+
+		/// <summary>
+		/// Return metrics if enabled. Otherwise return null.
+		/// </summary>
+		public Metrics Metrics
+		{
+			get
+			{
+				return metrics;
+			}
+		}
+
+		public void AddError()
+		{
+			metrics.AddError();
+		}
+
+		public void AddTimeout()
+		{
+			metrics.AddTimeout();
+		}
+
+		public void AddLatency(int type, long elapsed)
+		{
+			metrics.AddLatency(type, elapsed);
 		}
 
 		/// <summary>
@@ -810,9 +847,21 @@ namespace Aerospike.Client
 
 		private Connection CreateConnection(string tlsName, IPEndPoint address, int timeout, Pool<Connection> pool)
 		{
-			return (cluster.tlsPolicy != null && !cluster.tlsPolicy.forLoginOnly) ?
-				new TlsConnection(cluster.tlsPolicy, tlsName, address, timeout, pool, this) :
-				new Connection(address, timeout, pool, this);
+			if (cluster.MetricsEnabled)
+			{
+				ValueStopwatch watch = ValueStopwatch.StartNew();
+				Connection conn = (cluster.tlsPolicy != null && !cluster.tlsPolicy.forLoginOnly) ?
+					new TlsConnection(cluster.tlsPolicy, tlsName, address, timeout, pool, this) :
+					new Connection(address, timeout, pool, this);
+				metrics.AddLatency(LatencyType.CONN, watch.ElapsedMilliseconds);
+				return conn;
+			}
+			else
+			{
+				return (cluster.tlsPolicy != null && !cluster.tlsPolicy.forLoginOnly) ?
+					new TlsConnection(cluster.tlsPolicy, tlsName, address, timeout, pool, this) :
+					new Connection(address, timeout, pool, this);
+			}
 		}
 
 		/// <summary>
