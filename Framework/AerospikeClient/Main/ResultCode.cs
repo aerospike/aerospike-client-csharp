@@ -194,7 +194,7 @@ namespace Aerospike.Client
 		public const int INVALID_NAMESPACE = 20;
 
 		/// <summary>
-		/// Bin name length greater than 14 characters or maximum bins exceeded.
+		/// Bin name length greater than 15 characters or maximum bins exceeded.
 		/// </summary>
 		public const int BIN_NAME_TOO_LONG = 21;
 
@@ -564,7 +564,7 @@ namespace Aerospike.Client
 				return "Namespace not found";
 
 			case BIN_NAME_TOO_LONG:
-				return "Bin name length greater than 14 characters or maximum bins exceeded";
+				return "Bin name length greater than 15 characters or maximum bins exceeded";
 
 			case FAIL_FORBIDDEN:
 				return "Operation not allowed at this time";

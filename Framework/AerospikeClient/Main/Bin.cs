@@ -15,7 +15,6 @@
  * the License.
  */
 using System.Collections;
-using System.Collections.Generic;
 
 namespace Aerospike.Client
 {
@@ -25,7 +24,7 @@ namespace Aerospike.Client
 	public sealed class Bin
 	{
 		/// <summary>
-		/// Bin name. Current limit is 14 characters.
+		/// Bin name. Current limit is 15 characters.
 		/// </summary>
 		public readonly string name;
 
@@ -38,7 +37,7 @@ namespace Aerospike.Client
 		/// Constructor, specifying bin name and value.
 		/// For servers configured as "single-bin", enter a null or empty name.
 		/// </summary>
-		/// <param name="name">bin name, current limit is 14 characters</param>
+		/// <param name="name">bin name, current limit is 15 characters</param>
 		/// <param name="value">bin value</param>
 		public Bin(string name, Value value)
 		{
@@ -50,7 +49,7 @@ namespace Aerospike.Client
 		/// Constructor, specifying bin name and string value.
 		/// For servers configured as "single-bin", enter a null or empty name.
 		/// </summary>
-		/// <param name="name">bin name, current limit is 14 characters</param>
+		/// <param name="name">bin name, current limit is 15 characters</param>
 		/// <param name="value">bin value</param>
 		public Bin(string name, string value)
 		{
@@ -62,7 +61,7 @@ namespace Aerospike.Client
 		/// Constructor, specifying bin name and byte array value.
 		/// For servers configured as "single-bin", enter a null or empty name.
 		/// </summary>
-		/// <param name="name">bin name, current limit is 14 characters</param>
+		/// <param name="name">bin name, current limit is 15 characters</param>
 		/// <param name="value">bin value</param>
 		public Bin(string name, byte[] value)
 		{
@@ -74,7 +73,7 @@ namespace Aerospike.Client
 		/// Constructor, specifying bin name and byte array segment value.
 		/// For servers configured as "single-bin", enter a null or empty name.
 		/// </summary>
-		/// <param name="name">bin name, current limit is 14 characters</param>
+		/// <param name="name">bin name, current limit is 15 characters</param>
 		/// <param name="value">byte array value</param>
 		/// <param name="offset">byte array segment offset</param>
 		/// <param name="length">byte array segment length</param>
@@ -90,7 +89,7 @@ namespace Aerospike.Client
 		/// For servers configured as "single-bin", enter a null or empty name.
 		/// </para>
 		/// </summary>
-		/// <param name="name">bin name, current limit is 14 characters</param>
+		/// <param name="name">bin name, current limit is 15 characters</param>
 		/// <param name="value">bin value</param>
 		public Bin(string name, double value)
 		{
@@ -104,7 +103,7 @@ namespace Aerospike.Client
 		/// For servers configured as "single-bin", enter a null or empty name.
 		/// </para>
 		/// </summary>
-		/// <param name="name">bin name, current limit is 14 characters</param>
+		/// <param name="name">bin name, current limit is 15 characters</param>
 		/// <param name="value">bin value</param>
 		public Bin(string name, float value)
 		{
@@ -116,7 +115,7 @@ namespace Aerospike.Client
 		/// Constructor, specifying bin name and long value.
 		/// For servers configured as "single-bin", enter a null or empty name.
 		/// </summary>
-		/// <param name="name">bin name, current limit is 14 characters</param>
+		/// <param name="name">bin name, current limit is 15 characters</param>
 		/// <param name="value">bin value</param>
 		public Bin(string name, long value)
 		{
@@ -128,7 +127,7 @@ namespace Aerospike.Client
 		/// Constructor, specifying bin name and unsigned long value.
 		/// For servers configured as "single-bin", enter a null or empty name.
 		/// </summary>
-		/// <param name="name">bin name, current limit is 14 characters</param>
+		/// <param name="name">bin name, current limit is 15 characters</param>
 		/// <param name="value">bin value</param>
 		public Bin(string name, ulong value)
 		{
@@ -141,7 +140,7 @@ namespace Aerospike.Client
 		/// The server will convert all integers to longs.
 		/// For servers configured as "single-bin", enter a null or empty name.
 		/// </summary>
-		/// <param name="name">bin name, current limit is 14 characters</param>
+		/// <param name="name">bin name, current limit is 15 characters</param>
 		/// <param name="value">bin value</param>
 		public Bin(string name, int value)
 		{
@@ -154,7 +153,7 @@ namespace Aerospike.Client
 		/// The server will convert all integers to longs.
 		/// For servers configured as "single-bin", enter a null or empty name.
 		/// </summary>
-		/// <param name="name">bin name, current limit is 14 characters</param>
+		/// <param name="name">bin name, current limit is 15 characters</param>
 		/// <param name="value">bin value</param>
 		public Bin(string name, uint value)
 		{
@@ -167,7 +166,7 @@ namespace Aerospike.Client
 		/// The server will convert all shorts to longs.
 		/// For servers configured as "single-bin", enter a null or empty name.
 		/// </summary>
-		/// <param name="name">bin name, current limit is 14 characters</param>
+		/// <param name="name">bin name, current limit is 15 characters</param>
 		/// <param name="value">bin value</param>
 		public Bin(string name, short value)
 		{
@@ -180,7 +179,7 @@ namespace Aerospike.Client
 		/// The server will convert all shorts to longs.
 		/// For servers configured as "single-bin", enter a null or empty name.
 		/// </summary>
-		/// <param name="name">bin name, current limit is 14 characters</param>
+		/// <param name="name">bin name, current limit is 15 characters</param>
 		/// <param name="value">bin value</param>
 		public Bin(string name, ushort value)
 		{
@@ -194,7 +193,7 @@ namespace Aerospike.Client
 		/// Either a boolean or integer bin is sent to the server, depending
 		/// on configuration <see cref="Aerospike.Client.Value.UseBoolBin"/>.
 		/// </summary>
-		/// <param name="name">bin name, current limit is 14 characters</param>
+		/// <param name="name">bin name, current limit is 15 characters</param>
 		/// <param name="value">bin value</param>
 		public Bin(string name, bool value)
 		{
@@ -207,7 +206,7 @@ namespace Aerospike.Client
 		/// The server will convert all byte integers to longs.
 		/// For servers configured as "single-bin", enter a null or empty name.
 		/// </summary>
-		/// <param name="name">bin name, current limit is 14 characters</param>
+		/// <param name="name">bin name, current limit is 15 characters</param>
 		/// <param name="value">bin value</param>
 		public Bin(string name, byte value)
 		{
@@ -220,7 +219,7 @@ namespace Aerospike.Client
 		/// The server will convert all byte integers to longs.
 		/// For servers configured as "single-bin", enter a null or empty name.
 		/// </summary>
-		/// <param name="name">bin name, current limit is 14 characters</param>
+		/// <param name="name">bin name, current limit is 15 characters</param>
 		/// <param name="value">bin value</param>
 		public Bin(string name, sbyte value)
 		{
@@ -232,7 +231,7 @@ namespace Aerospike.Client
 		/// Create bin with a list value.  The list value will be serialized as a server list type.
 		/// For servers configured as "single-bin", enter a null or empty name.
 		/// </summary>
-		/// <param name="name">bin name, current limit is 14 characters</param>
+		/// <param name="name">bin name, current limit is 15 characters</param>
 		/// <param name="value">bin value</param>
 		public Bin(string name, IList value)
 		{
@@ -244,7 +243,7 @@ namespace Aerospike.Client
 		/// Create bin with a map value.  The map value will be serialized as a server map type.
 		/// For servers configured as "single-bin", enter a null or empty name.
 		/// </summary>
-		/// <param name="name">bin name, current limit is 14 characters</param>
+		/// <param name="name">bin name, current limit is 15 characters</param>
 		/// <param name="value">bin value</param>
 		public Bin(string name, IDictionary value)
 		{
@@ -256,7 +255,7 @@ namespace Aerospike.Client
 		/// Create bin with a map value and order.  The map value will be serialized as a server map type.
 		/// For servers configured as "single-bin", enter a null or empty name.
 		/// </summary>
-		/// <param name="name">bin name, current limit is 14 characters</param>
+		/// <param name="name">bin name, current limit is 15 characters</param>
 		/// <param name="value">bin value, pass in TreeMap instance if map order is sorted.</param>
 		/// <param name="mapOrder">map sorted order</param>
 		public Bin(string name, IDictionary value, MapOrder mapOrder)
@@ -274,7 +273,7 @@ namespace Aerospike.Client
 		/// </para>
 		/// </summary>
 		/// <param name="name">
-		/// bin name, current limit is 14 characters. For servers configured as "single-bin", enter
+		/// bin name, current limit is 15 characters. For servers configured as "single-bin", enter
 		/// a null or empty name.
 		/// </param>
 		/// <param name="value">bin value</param>
@@ -293,7 +292,7 @@ namespace Aerospike.Client
 		/// </para>
 		/// </summary>
 		/// <param name="name">
-		/// bin name, current limit is 14 characters. For servers configured as "single-bin", enter
+		/// bin name, current limit is 15 characters. For servers configured as "single-bin", enter
 		/// a null or empty name.
 		/// </param>
 		/// <param name="value">bin value</param>
@@ -306,7 +305,7 @@ namespace Aerospike.Client
 		/// Create bin with a null value. This is useful for bin deletions within a record.
 		/// For servers configured as "single-bin", enter a null or empty name.
 		/// </summary>
-		/// <param name="name">bin name, current limit is 14 characters</param>
+		/// <param name="name">bin name, current limit is 15 characters</param>
 		public static Bin AsNull(string name)
 		{
 			return new Bin(name, Value.AsNull);
@@ -315,7 +314,7 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Create bin with a GeoJSON value.
 		/// </summary>
-		/// <param name="name">bin name, current limit is 14 characters</param>
+		/// <param name="name">bin name, current limit is 15 characters</param>
 		/// <param name="value">bin value</param>
 		public static Bin AsGeoJSON(string name, string value)
 		{
