@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2022 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -122,15 +122,15 @@ namespace Aerospike.Client
 					break;
 				}
 
+				// Set done to false so RecordSet thread has chance to close early again.
+				Interlocked.Exchange(ref done, 0);
+
 				if (tracker.IsComplete(cluster, policy))
 				{
 					// All partitions received.
 					recordSet.Put(RecordSet.END);
 					break;
 				}
-
-				// Set done to false so RecordSet thread has chance to close early again.
-				Interlocked.Exchange(ref done, 0);
 
 				if (policy.sleepBetweenRetries > 0)
 				{
