@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2022 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -94,6 +94,16 @@ namespace Aerospike.Client
 		/// Return true if count > 0.
 		/// </summary>
 		EXISTS = 13,
+
+		/// <summary>
+		/// Return an unordered map.
+		/// </summary>
+		UNORDERED_MAP = 16,
+
+		/// <summary>
+		/// Return an ordered map.
+		/// </summary>
+		ORDERED_MAP = 17,
 
 		/// <summary>
 		/// Invert meaning of map command and return values.  For example:
