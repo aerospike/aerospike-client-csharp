@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2022 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -78,7 +78,6 @@ namespace Aerospike.Client
 			get
 			{
 				StringBuilder sb = new StringBuilder(512);
-				string message = base.Message;
 
 				sb.Append("Error ");
 				sb.Append(resultCode);
@@ -111,16 +110,20 @@ namespace Aerospike.Client
 				}
 
 				sb.Append(": ");
-
-				if (message != null && message.Length > 0)
-				{
-					sb.Append(message);
-				}
-				else
-				{
-					sb.Append(ResultCode.GetResultString(resultCode));
-				}
+				sb.Append(BaseMessage);
 				return sb.ToString();
+			}
+		}
+
+		/// <summary>
+		/// Return base message without extra metadata.
+		/// </summary>
+		public string BaseMessage
+		{
+			get
+			{
+				string message = base.Message;
+				return (message != null && message.Length > 0) ? message : ResultCode.GetResultString(resultCode);
 			}
 		}
 

@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2022 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -442,24 +442,32 @@ namespace Aerospike.Client
 			// Check if limits have been reached.
 			if (iteration > policy.maxRetries)
 			{
-				StringBuilder sb = new StringBuilder(2048);
-				sb.Append("Max retries exceeded: ");
-				sb.Append(policy.maxRetries);
-				sb.Append(System.Environment.NewLine);
-
-				if (exceptions != null)
+				if (exceptions == null || exceptions.Count <= 0)
 				{
-					sb.Append("sub-exceptions:");
-					sb.Append(System.Environment.NewLine);
-
-					foreach (AerospikeException e in exceptions)
-					{
-						sb.Append(e.Message);
-						sb.Append(System.Environment.NewLine);
-					}
+					AerospikeException e = new AerospikeException(ResultCode.MAX_RETRIES_EXCEEDED);
+					e.Policy = policy;
+					e.Iteration = iteration;
+					throw e;
 				}
 
-				AerospikeException ae = new AerospikeException(ResultCode.MAX_RETRIES_EXCEEDED, sb.ToString());
+				// Use last sub-error code received.
+				AerospikeException last = exceptions[exceptions.Count - 1];
+
+				// Include all sub-errors in error message.
+				StringBuilder sb = new StringBuilder(2048);
+				sb.Append(last.BaseMessage);
+				sb.Append(System.Environment.NewLine);
+				sb.Append("sub-exceptions:");
+				sb.Append(System.Environment.NewLine);
+
+				foreach (AerospikeException e in exceptions)
+				{
+					sb.Append(e.Message);
+					sb.Append(System.Environment.NewLine);
+				}
+
+				AerospikeException ae = new AerospikeException(last.Result, sb.ToString());
+				ae.Node = last.Node;
 				ae.Policy = policy;
 				ae.Iteration = iteration;
 				throw ae;
