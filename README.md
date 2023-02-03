@@ -42,3 +42,4 @@ Aerospike C# Client Package
     $ cd ../AerospikeBenchmarks
     $ dotnet restore
     $ dotnet build --configuration Release
+
