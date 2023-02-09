@@ -72,7 +72,7 @@ jobs:
 
       run: |
       
-        cd Core/AerospikeClient
+        cd AerospikeClient
         dotnet restore
         dotnet build -p:UseSharedCompilation=false --configuration Release
 
