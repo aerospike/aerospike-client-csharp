@@ -25,7 +25,7 @@ namespace Aerospike.Client
 {
     public sealed class ByteUtil
     {
-        public static Value BytesToKeyValue(int type, byte[] buf, int offset, int len)
+        public static Value BytesToKeyValue(ParticleType type, byte[] buf, int offset, int len)
         {
             switch (type)
             {
@@ -36,7 +36,7 @@ namespace Aerospike.Client
                     return BytesToLongValue(buf, offset, len);
 
                 case ParticleType.DOUBLE:
-                    return new Value.DoubleValue(BytesToDouble(buf, offset));
+                    return new DoubleValue(BytesToDouble(buf, offset));
 
                 case ParticleType.BLOB:
                     byte[] dest = new byte[len];
@@ -48,7 +48,7 @@ namespace Aerospike.Client
             }
         }
 
-        public static object BytesToParticle(int type, byte[] buf, int offset, int len)
+        public static object BytesToParticle(ParticleType type, byte[] buf, int offset, int len)
         {
             switch (type)
             {
@@ -272,7 +272,7 @@ namespace Aerospike.Client
                 val <<= 8;
                 val |= buf[offset + i];
             }
-            return new Value.LongValue(val);
+            return new LongValue(val);
         }
 
         public static object BytesToBigInteger(byte[] buf, int offset, int len)
