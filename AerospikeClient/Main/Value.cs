@@ -18,1788 +18,733 @@ using System;
 using System.IO;
 using System.Collections;
 using System.Runtime.Serialization.Formatters.Binary;
+using System.Data.SqlTypes;
+using System.Runtime.CompilerServices;
 
 namespace Aerospike.Client
-{
-	/// <summary>
-	/// Polymorphic value classes used to efficiently serialize objects into the wire protocol.
-	/// </summary>
-	public abstract class Value
-	{
-		/// <summary>
-		/// Should client send boolean particle type for a boolean bin.  If false,
-		/// an integer particle type (1 or 0) is sent instead. Must be false for server
-		/// versions less than 5.6 which do not support boolean bins. Can set to true for
-		/// server 5.6+.
-		/// </summary>
-		public static bool UseBoolBin = false;
-
-		/// <summary>
-		/// Should BinaryFormatter be disabled. If true, an exception will be thrown when BinaryFormatter
-		/// is used. BinaryFormatter has been removed from the client by default, so this field is no
-		/// longer relevant.
-		/// </summary>
-		public static bool DisableSerializer = false;
-
-		/// <summary>
-		/// Should default object deserializer be disabled. If true, an exception will be thrown when
-		/// a default object deserialization is attempted. Default object serialization is triggered
-		/// when serialized data is read/parsed from the server. DisableDeserializer is separate from
-		/// DisableSerializer because there may be cases when no new serialization is allowed, but
-		/// existing serialized objects need to be supported. BinaryFormatter has been removed from
-		/// the client by default, so this field is no longer relevant.
-		/// </summary>
-		public static bool DisableDeserializer = false;
-
-		/// <summary>
-		/// Null value.
-		/// </summary>
-		public static readonly Value NULL = NullValue.Instance;
-
-		/// <summary>
-		/// Infinity value to be used in CDT range comparisons only.
-		/// </summary>
-		public static readonly Value INFINITY = new InfinityValue();
-
-		/// <summary>
-		/// Wildcard value to be used in CDT range comparisons only.
-		/// </summary>
-		public static readonly Value WILDCARD = new WildcardValue();
-	
-		/// <summary>
+{ 	
+	public static class Value
+    {
+        /// <summary>
 		/// Get string or null value instance.
 		/// </summary>
-		public static Value Get(string value)
-		{
-			if (value == null)
-			{
-				return NullValue.Instance;
-			}
-			else
-			{
-				return new StringValue(value);
-			}
-		}
+        public static Value<string> Get(this string value) => value == null ? new Value<string>(value, ParticleType.NULL) : new Value<string>(value, ParticleType.STRING);
 
-		/// <summary>
-		/// Get byte array or null value instance.
-		/// </summary>
-		public static Value Get(byte[] value)
-		{
-			if (value == null)
-			{
-				return NullValue.Instance;
-			}
-			else
-			{
-				return new BytesValue(value);
-			}
-		}
+        /// <summary>
+        /// Get byte array value instance.
+        /// </summary>
+        public static Value<byte[]> Get(this byte[] value) => new Value<byte[]>(value, ParticleType.BLOB);
 
-		/// <summary>
-		/// Get byte array segment or null value instance.
-		/// </summary>
-		public static Value Get(byte[] value, int offset, int length)
-		{
-			if (value == null)
-			{
-				return NullValue.Instance;
-			}
-			else
-			{
-				return new ByteSegmentValue(value, offset, length);
-			}
-		}
+        /// <summary>
+        /// Get byte array segment value instance.
+        /// </summary>
+        public static Value<ByteSegmentValue> Get(this ByteSegmentValue value) => new Value<ByteSegmentValue>(value, ParticleType.BLOB);
 
-		/// <summary>
-		/// Get double value instance.
-		/// </summary>
-		public static Value Get(double value)
-		{
-			return new DoubleValue(value);
-		}
+        /// <summary>
+        /// Get double value instance.
+        /// </summary>
+        public static Value<double> Get(this double value) => new Value<double>(value, ParticleType.DOUBLE);
 
-		/// <summary>
-		/// Get float value instance.
-		/// </summary>
-		public static Value Get(float value)
-		{
-			return new FloatValue(value);
-		}
+        /// <summary>
+        /// Get float value instance.
+        /// </summary>
+        public static Value<float> Get(this float value) => new Value<float>(value, ParticleType.DOUBLE);
 
-		/// <summary>
-		/// Get long value instance.
-		/// </summary>
-		public static Value Get(long value)
-		{
-			return new LongValue(value);
-		}
+        /// <summary>
+        /// Get long value instance.
+        /// </summary>
+        public static Value<long> Get(this long value) => new Value<long>(value, ParticleType.INTEGER);
 
-		/// <summary>
-		/// Get unsigned long value instance.
-		/// </summary>
-		public static Value Get(ulong value)
-		{
-			return new UnsignedLongValue(value);
-		}
+        /// <summary>
+        /// Get unsigned long value instance.
+        /// </summary>
+        public static Value<ulong> Get(this ulong value) => new Value<ulong>(value, ParticleType.INTEGER);
 
-		/// <summary>
-		/// Get integer value instance.
-		/// </summary>
-		public static Value Get(int value)
-		{
-			return new IntegerValue(value);
-		}
+        /// <summary>
+        /// Get integer value instance.
+        /// </summary>
+        public static Value<int> Get(this int value) => new Value<int>(value, ParticleType.INTEGER);
 
-		/// <summary>
-		/// Get unsigned integer value instance.
-		/// </summary>
-		public static Value Get(uint value)
-		{
-			return new UnsignedIntegerValue(value);
-		}
+        /// <summary>
+        /// Get unsigned integer value instance.
+        /// </summary>
+        public static Value<uint> Get(this uint value) => new Value<uint>(value, ParticleType.INTEGER);
 
-		/// <summary>
-		/// Get short value instance.
-		/// </summary>
-		public static Value Get(short value)
-		{
-			return new ShortValue(value);
-		}
+        /// <summary>
+        /// Get short value instance.
+        /// </summary>
+        public static Value<short> Get(this short value) => new Value<short>(value, ParticleType.INTEGER);
 
-		/// <summary>
-		/// Get short value instance.
-		/// </summary>
-		public static Value Get(ushort value)
-		{
-			return new UnsignedShortValue(value);
-		}
+        /// <summary>
+        /// Get unsigned short value instance.
+        /// </summary>
+        public static Value<ushort> Get(this ushort value) => new Value<ushort>(value, ParticleType.INTEGER);
 
-		/// <summary>
-		/// Get boolean value instance.
-		/// </summary>
-		public static Value Get(bool value)
-		{
-			if (UseBoolBin)
-			{
-				return new BooleanValue(value);
-			}
-			else
-			{
-				return new BoolIntValue(value);
-			}
-		}
+        /// <summary>
+        /// Get boolean value instance.
+        /// </summary>
+        public static Value<bool> Get(this bool value) => new Value<bool>(value, ParticleType.BOOL);
 
-		/// <summary>
-		/// Get boolean value instance.
-		/// </summary>
-		public static Value Get(byte value)
-		{
-			return new ByteValue(value);
-		}
+        /// <summary>
+        /// Get boolean value instance.
+        /// </summary>
+        public static Value<byte> Get(this byte value) => new Value<byte>(value, ParticleType.INTEGER);
 
-		/// <summary>
-		/// Get signed boolean value instance.
-		/// </summary>
-		public static Value Get(sbyte value)
-		{
-			return new SignedByteValue(value);
-		}
+        /// <summary>
+        /// Get signed boolean value instance.
+        /// </summary>
+        public static Value<sbyte> Get(this sbyte value) => new Value<sbyte>(value, ParticleType.INTEGER);
 
-		/// <summary>
-		/// Get list or null value instance.
-		/// </summary>
-		public static Value Get(IList value)
-		{
-			if (value == null)
-			{
-				return NullValue.Instance;
-			}
-			else
-			{
-				return new ListValue(value);
-			}
-		}
+        /// <summary>
+        /// Get blob value instance.
+        /// </summary>
+        public static Value<BlobValue> Get(this BlobValue value) => new Value<BlobValue>(value, ParticleType.CSHARP_BLOB);
 
-		/// <summary>
-		/// Get map or null value instance.
-		/// </summary>
-		public static Value Get(IDictionary value)
-		{
-			if (value == null)
-			{
-				return NullValue.Instance;
-			}
-			else
-			{
-				return new MapValue(value);
-			}
-		}
+        /// <summary>
+        /// Get GeoJSON value instance.
+        /// </summary>
+        public static Value<GeoJSONValue> Get(this GeoJSONValue value) => new Value<GeoJSONValue>(value, ParticleType.GEOJSON);
 
-		/// <summary>
-		/// Get map or null value instance.
-		/// </summary>
-		public static Value Get(IDictionary value, MapOrder order)
-		{
-			if (value == null)
-			{
-				return NullValue.Instance;
-			}
-			else
-			{
-				return new MapValue(value, order);
-			}
-		}
+        /// <summary>
+        /// Get HyperLogLog value instance.
+        /// </summary>
+        public static Value<HLLValue> Get(this HLLValue value) => new Value<HLLValue>(value, ParticleType.HLL);
 
-		/// <summary>
-		/// Get value array instance.
-		/// </summary>
-		public static Value Get(Value[] value)
-		{
-			if (value == null)
-			{
-				return NullValue.Instance;
-			}
-			else
-			{
-				return new ValueArray(value);
-			}
-		}
+        /// <summary>
+        /// Get list value instance.
+        /// </summary>
+        public static Value<ListValue> Get(this ListValue value) => new Value<ListValue>(value, ParticleType.LIST);
 
-		/// <summary>
-		/// Get blob or null value instance.
-		/// </summary>
-		public static Value GetAsBlob(object value)
-		{
-			if (value == null)
-			{
-				return NullValue.Instance;
-			}
-			else
-			{
-				return new BlobValue(value);
-			}
-		}
+        /// <summary>
+        /// Get map value instance.
+        /// </summary>
+        public static Value<MapValue> Get(this MapValue value) => new Value<MapValue>(value, ParticleType.MAP);
 
-		/// <summary>
-		/// Get GeoJSON or null value instance.
-		/// </summary>
-		public static Value GetAsGeoJSON(string value)
-		{
-			if (value == null)
-			{
-				return NullValue.Instance;
-			}
-			else
-			{
-				return new GeoJSONValue(value);
-			}
-		}
-
-		/// <summary>
-		/// Get HyperLogLog or null value instance.
-		/// </summary>
-		public static Value GetAsHLL(byte[] value)
-		{
-			if (value == null)
-			{
-				return NullValue.Instance;
-			}
-			else
-			{
-				return new HLLValue(value);
-			}
-		}
-
-		/// <summary>
+        /// <summary>
 		/// Get null value instance.
 		/// </summary>
-		public static Value AsNull
+        public static Value<NullValue> AsNull
+        {
+            get => Value<NullValue>.NULL;
+        }
+    }
+    
+    /// <summary>
+	/// Polymorphic value structs used to efficiently serialize objects into the wire protocol.
+	/// </summary>
+	public struct Value<T> : IEquatable<Value<byte[]>>,
+							 IEquatable<Value<ByteSegmentValue>>,
+                             IEquatable<Value<BlobValue>>,
+                             IEquatable<Value<GeoJSONValue>>,
+                             IEquatable<Value<HLLValue>>,
+                             IEquatable<Value<ValueArray<T>>>,
+                             IEquatable<Value<ListValue>>,
+                             IEquatable<Value<MapValue>>
+    {
+        /// <summary>
+        /// Get null value instance.
+        /// </summary>
+        public static Value<NullValue> NULL { get => new Value<NullValue>(ParticleType.NULL); }
+
+        /// <summary>
+		/// Get value array instance.
+		/// </summary>
+        public static Value<ValueArray<T>> Get(ValueArray<T> value) => new Value<ValueArray<T>>(value, ParticleType.LIST);
+
+        /// <summary>
+		/// Get wire protocol value type.
+		/// </summary>
+        public int Type { get; }
+
+        public T value { get; }
+
+        public bool IsNull { get => this.Type == ParticleType.NULL; }
+
+        internal Value(int type)
 		{
-			get
-			{
-				return NullValue.Instance;
-			}
+			this.Type = type;
+			this.value = default;
 		}
 
-		/// <summary>
-		/// Determine value given generic object.
-		/// This is the slowest of the Value get() methods.
-		/// Useful when copying records from one cluster to another.
-		/// </summary>
-		public static Value Get(object value)
+		public Value(T value, int type)
 		{
-			if (value == null)
-			{
-				return NullValue.Instance;
-			}
+			this.Type = ReferenceEquals(value, null) ? ParticleType.NULL : type ;
+			this.value = value;
+		}
 
-			if (value is byte[])
-			{
-				return new BytesValue((byte[])value);
-			}
-
-			if (value is Value)
-			{
-				return (Value)value;
-			}
-
-			if (value is IList)
-			{
-				return new ListValue((IList)value);
-			}
-
-			if (value is IDictionary)
-			{
-				return new MapValue((IDictionary)value);
-			}
-
-			TypeCode code = System.Type.GetTypeCode(value.GetType());
-
-			switch (code)
-			{
-                case TypeCode.Empty:
-					return NullValue.Instance;
-
-                case TypeCode.String:
-					return new StringValue((string)value);
-
-				case TypeCode.Double:
-					return new DoubleValue((double)value);
-
-				case TypeCode.Single:
-					return new FloatValue((float)value);
-
-				case TypeCode.Int64:
-					return new LongValue((long)value);
-
-				case TypeCode.Int32:
-					return new IntegerValue((int)value);
-
-				case TypeCode.Int16:
-					return new ShortValue((short)value);
-
-				case TypeCode.UInt64:
-					return new UnsignedLongValue((ulong)value);
-
-				case TypeCode.UInt32:
-					return new UnsignedIntegerValue((uint)value);
-
-				case TypeCode.UInt16:
-					return new UnsignedShortValue((ushort)value);
-
-				case TypeCode.Boolean:
-					if (UseBoolBin)
-					{
-						return new BooleanValue((bool)value);
-					}
-					else
-					{
-						return new BoolIntValue((bool)value);
-					}
- 
-                case TypeCode.Byte:
-					return new ByteValue((byte)value);
-
-                case TypeCode.SByte:
-					return new SignedByteValue((sbyte)value);
-
-				case TypeCode.Char:
-                case TypeCode.DateTime:
-				case TypeCode.Decimal:
+		public override string ToString()
+		{
+            if (this.IsNull) return null;
+            
+            switch (this.value)
+            {
+                case byte[] bValue:
+                    return ToString(bValue);
                 default:
-					return new BlobValue(value);
-			}
-		}
+                    break;
+            }
+            
+            return this.value?.ToString();
+        }
 
-		/// <summary>
-		/// Get value from Record object. Useful when copying records from one cluster to another.
-		/// </summary>
-		public static Value GetFromRecordObject(object value)
-		{
-			return Value.Get(value);
-		}
+        static public string ToString(byte[] value) => ByteUtil.BytesToHexString(value);
 
-		/// <summary>
-		/// Calculate number of bytes necessary to serialize the fixed value in the wire protocol.
-		/// </summary>
-		public abstract int EstimateSize();
+        /// <summary>
+        /// Calculate number of bytes necessary to serialize the fixed value in the wire protocol.
+        /// </summary>
+        public int EstimateSize()
+        {
+            if (this.IsNull) return 0;
 
-		/// <summary>
+            switch (this.value)
+            {
+                case string sValue:
+                    return EstimateSize(sValue);
+                case byte[] bValue:
+                    return EstimateSize(bValue);
+                case ByteSegmentValue bsValue:
+                    return EstimateSize(bsValue);
+                case ulong ulValue:
+                    return EstimateSize(ulValue);
+                case bool boolValue:
+                    return 1;
+                case BlobValue blobValue:
+                    return EstimateSize(blobValue);
+                case GeoJSONValue geoJSONValue:
+                    return EstimateSize(geoJSONValue);
+                case HLLValue hLLValue:
+                    return EstimateSize(hLLValue);
+                case ValueArray<T> valueArrayValue:
+                    return EstimateSize(valueArrayValue);
+                case ListValue listValue:
+                    return EstimateSize(listValue);
+                case MapValue mapValue:
+                    return EstimateSize(mapValue);
+                default:
+                    break;
+            }
+
+            return 8;
+        }
+
+        static public int EstimateSize(string value) => ByteUtil.EstimateSizeUtf8(value);
+
+        static public int EstimateSize(byte[] value) => value.Length;
+
+        static public int EstimateSize(ByteSegmentValue value) => value.EstimateSize();
+
+        static public int EstimateSize(ulong value) => ((value & 0x8000000000000000) == 0) ? 8 : 9;
+
+        static public int EstimateSize(BlobValue value) => value.EstimateSize();
+
+        static public int EstimateSize(GeoJSONValue value) => value.EstimateSize();
+
+        static public int EstimateSize(HLLValue value) => value.EstimateSize();
+
+        static public int EstimateSize(ValueArray<T> value) => value.EstimateSize();
+
+        static public int EstimateSize(ListValue value) => value.EstimateSize();
+
+        static public int EstimateSize(MapValue value) => value.EstimateSize();
+
+        /// <summary>
 		/// Serialize the fixed value in the wire protocol.
 		/// </summary>
-		public abstract int Write(byte[] buffer, int offset);
+        public int Write(byte[] buffer, int offset)
+        {
+            if (this.IsNull) return 0;
+            switch (this.value)
+            {
+                case string sValue:
+                    return Write(sValue, buffer, offset);
+                case byte[] bValue:
+                    return Write(bValue, buffer, offset);
+                case ByteSegmentValue bsValue:
+                    return Write(bsValue, buffer, offset);
+                case double dValue:
+                    return ByteUtil.DoubleToBytes(dValue, buffer, offset);
+                case float fValue:
+                    return ByteUtil.DoubleToBytes(fValue, buffer, offset);
+                case long lValue:
+                    return ByteUtil.LongToBytes((ulong)lValue, buffer, offset);
+                case ulong ulValue:
+                    return ByteUtil.LongToBytes(ulValue, buffer, offset);
+                case int iValue:
+                    return ByteUtil.LongToBytes((ulong)iValue, buffer, offset);
+                case uint uiValue:
+                    return ByteUtil.LongToBytes(uiValue, buffer, offset);
+                case short shValue:
+                    return ByteUtil.LongToBytes((ulong)shValue, buffer, offset);
+                case ushort ushValue:
+                    return ByteUtil.LongToBytes(ushValue, buffer, offset);
+                case bool boolValue:
+                    return Write(boolValue, buffer, offset);
+                case byte byteValue:
+                    return ByteUtil.LongToBytes((ulong)byteValue, buffer, offset);
+                case sbyte sbyteValue:
+                    return ByteUtil.LongToBytes((ulong)sbyteValue, buffer, offset);
+                case BlobValue blobValue:
+                    return Write(blobValue, buffer, offset);
+                case GeoJSONValue geoJSONValue:
+                    return Write(geoJSONValue, buffer, offset);
+                case HLLValue hLLValue:
+                    return Write(hLLValue, buffer, offset);
+                case ValueArray<T> valueArrayValue:
+                    return Write(valueArrayValue, buffer, offset);
+                case ListValue listValue:
+                    return Write(listValue, buffer, offset);
+                case MapValue mapValue:
+                    return Write(mapValue, buffer, offset);
+                default:
+                    break;
+            }
 
-		/// <summary>
+            return 0;
+        }
+
+        static public int Write(string value, byte[] buffer, int offset) => ByteUtil.StringToUtf8(value, buffer, offset);
+
+        static public int Write(byte[] value, byte[] buffer, int offset)
+        {
+			Array.Copy(value, 0, buffer, offset, value.Length);
+			return value.Length;
+		}
+
+        static public int Write(ByteSegmentValue value, byte[] buffer, int targetOffset) => value.Write(buffer, targetOffset);
+
+        static public int Write(bool value, byte[] buffer, int offset)
+        {
+            buffer[offset] = value ? (byte)1 : (byte)0;
+            return 1;
+        }
+
+        static public int Write(BlobValue value, byte[] buffer, int targetOffset) => value.Write(buffer, targetOffset);
+
+        static public int Write(GeoJSONValue value, byte[] buffer, int targetOffset) => value.Write(buffer, targetOffset);
+
+        static public int Write(HLLValue value, byte[] buffer, int targetOffset) => value.Write(buffer, targetOffset);
+
+        static public int Write(ValueArray<T> value, byte[] buffer, int targetOffset) => value.Write(buffer, targetOffset);
+
+        static public int Write(ListValue value, byte[] buffer, int targetOffset) => value.Write(buffer, targetOffset);
+
+        static public int Write(MapValue value, byte[] buffer, int targetOffset) => value.Write(buffer, targetOffset);
+
+        /// <summary>
 		/// Serialize the value using MessagePack.
 		/// </summary>
-		public abstract void Pack(Packer packer);
+        public void Pack(Packer packer)
+        {
+            if (this.IsNull) packer.PackNil();
+            switch (this.value)
+            {
+                case string sValue:
+                    packer.PackParticleString(sValue);
+                    break;
+                case byte[] bValue:
+                    packer.PackParticleBytes(bValue);
+                    break;
+                case ByteSegmentValue bsValue:
+                    Pack(bsValue, packer);
+                    break;
+                case double dValue:
+                    packer.PackDouble(dValue);
+                    break;
+                case float fValue:
+                    packer.PackFloat(fValue);
+                    break;
+                case long lValue:
+                    packer.PackNumber(lValue);
+                    break;
+                case ulong ulValue:
+                    packer.PackNumber(ulValue);
+                    break;
+                case int iValue:
+                    packer.PackNumber(iValue);
+                    break;
+                case uint uiValue:
+                    packer.PackNumber(uiValue);
+                    break;
+                case short shValue:
+                    packer.PackNumber(shValue);
+                    break;
+                case ushort ushValue:
+                    packer.PackNumber(ushValue);
+                    break;
+                case bool boolValue:
+                    packer.PackBoolean(boolValue);
+                    break;
+                case byte byteValue:
+                    packer.PackNumber(byteValue);
+                    break;
+                case sbyte sbyteValue:
+                    packer.PackNumber(sbyteValue);
+                    break;
+                case BlobValue blobValue:
+                    Pack(blobValue, packer);
+                    break;
+                case GeoJSONValue geoJSONValue:
+                    Pack(geoJSONValue, packer);
+                    break;
+                case HLLValue hLLValue:
+                    Pack(hLLValue, packer);
+                    break;
+                case ValueArray<T> valueArrayValue:
+                    Pack(valueArrayValue, packer);
+                    break;
+                case ListValue listValue:
+                    Pack(listValue, packer);
+                    break;
+                case MapValue mapValue:
+                    Pack(mapValue, packer);
+                    break;
+                default:
+                    break;
+            }
+        }
 
-		/// <summary>
+        static public void Pack(ByteSegmentValue value, Packer packer) => value.Pack(packer);
+
+        static public void Pack(BlobValue value, Packer packer) => value.Pack(packer);
+
+        static public void Pack(GeoJSONValue value, Packer packer) => value.Pack(packer);
+
+        static public void Pack(HLLValue value, Packer packer) => value.Pack(packer);
+
+        static public void Pack(ValueArray<T> value, Packer packer) => value.Pack(packer);
+
+        static public void Pack(ListValue value, Packer packer) => value.Pack(packer);
+
+        static public void Pack(MapValue value, Packer packer) => value.Pack(packer);
+
+        /// <summary>
 		/// Validate if value type can be used as a key.
 		/// </summary>
 		/// <exception cref="AerospikeException">if type can't be used as a key.</exception>
-		public virtual void ValidateKeyType()
+        public void ValidateKeyType()
+        {
+            if (this.IsNull) throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Invalid key type: null");
+            switch (this.value)
+            {
+                case bool boolValue:
+                    throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Invalid key type: bool");
+                case int iValue:
+                    throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Invalid key type: BoolIntValue");
+                case byte[] bValue:
+                    throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Invalid key type: csblob");
+                case BlobValue blobValue:
+                    ValidateKeyType(blobValue);
+                    break;
+                case GeoJSONValue geoJSONValue:
+                    ValidateKeyType(geoJSONValue);
+                    break;
+                case HLLValue hLLValue:
+                    ValidateKeyType(hLLValue);
+                    break;
+                case ValueArray<T> valueArrayValue:
+                    ValidateKeyType(valueArrayValue);
+                    break;
+                case ListValue listValue:
+                    ValidateKeyType(listValue);
+                    break;
+                case MapValue mapValue:
+                    ValidateKeyType(mapValue);
+                    break;
+                default:
+                    break;
+            }
+        }
+
+        static public void ValidateKeyType(BlobValue value) => value.ValidateKeyType();
+
+        static public void ValidateKeyType(GeoJSONValue value) => value.ValidateKeyType();
+
+        static public void ValidateKeyType(HLLValue value) => value.ValidateKeyType();
+
+        static public void ValidateKeyType(ValueArray<T> value) => value.ValidateKeyType();
+
+        static public void ValidateKeyType(ListValue value) => value.ValidateKeyType();
+
+        static public void ValidateKeyType(MapValue value) => value.ValidateKeyType();
+
+        public override bool Equals(object other)
 		{
-		}
-	
-		/// <summary>
-		/// Get wire protocol value type.
-		/// </summary>
-		public abstract int Type {get;}
+			if (other is Value<T> oValue) return this.Equals(oValue);
+			if (this.IsNull && ReferenceEquals(other, null)) return true;
 
-		/// <summary>
-		/// Return original value as an Object.
-		/// </summary>
-		public abstract object Object {get;}
-
-		/// <summary>
-		/// Return value as an integer.
-		/// </summary>
-		public virtual int ToInteger()
-		{
-			return 0;
-		}
-
-		/// <summary>
-		/// Return value as an unsigned integer.
-		/// </summary>
-		public virtual uint ToUnsignedInteger()
-		{
-			return 0;
-		}
-
-		/// <summary>
-		/// Return value as a long.
-		/// </summary>
-		public virtual long ToLong()
-		{
-			return 0;
-		}
-
-		/// <summary>
-		/// Return value as an unsigned long.
-		/// </summary>
-		public virtual ulong ToUnsignedLong()
-		{
-			return 0;
-		}
-		
-		/// <summary>
-		/// Empty value.
-		/// </summary>
-		public sealed class NullValue : Value
-		{
-			public static readonly NullValue Instance = new NullValue();
-			
-			public override int EstimateSize()
-			{
-				return 0;
-			}
-
-			public override int Write(byte[] buffer, int offset)
-			{
-				return 0;
-			}
-
-			public override void Pack(Packer packer)
-			{
-				packer.PackNil();
-			}
-
-			public override void ValidateKeyType()
-			{
-				throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Invalid key type: null");
-			}
-			
-			public override int Type
-			{
-				get
-				{
-					return ParticleType.NULL;
-				}
-			}
-
-			public override object Object
-			{
-				get
-				{
-					return null;
-				}
-			}
-
-			public override string ToString()
-			{
-				return null;
-			}
-
-			public override bool Equals(object other)
-			{
-				if (other == null)
-				{
-					return true;
-				}
-				return this.GetType().Equals(other.GetType());
-			}
-
-			public override int GetHashCode()
-			{
-				return 0;
-			}
+			return false;
 		}
 
-		/// <summary>
-		/// String value.
-		/// </summary>
-		public sealed class StringValue : Value
+		public bool Equals(Value<T> other)
 		{
-			private readonly string value;
+			if (this.IsNull || other.IsNull) return this.IsNull && other.IsNull;
 
-			public StringValue(string value)
-			{
-				this.value = value;
-			}
-
-			public override int EstimateSize()
-			{
-				return ByteUtil.EstimateSizeUtf8(value);
-			}
-
-			public override int Write(byte[] buffer, int offset)
-			{
-				return ByteUtil.StringToUtf8(value, buffer, offset);
-			}
-
-			public override void Pack(Packer packer)
-			{
-				packer.PackParticleString(value);
-			}
-
-			public override int Type
-			{
-				get
-				{
-					return ParticleType.STRING;
-				}
-			}
-
-			public override object Object
-			{
-				get
-				{
-					return value;
-				}
-			}
-
-			public override string ToString()
-			{
-				return value;
-			}
-
-			public override bool Equals(object other)
-			{
-				return (other != null && 
-					this.GetType().Equals(other.GetType()) && 
-					this.value.Equals(((StringValue)other).value));
-			}
-
-			public override int GetHashCode()
-			{
-				return value.GetHashCode();
-			}
+			return this.value.Equals(other.value);
 		}
 
-		/// <summary>
-		/// Byte array value.
-		/// </summary>
-		public sealed class BytesValue : Value
+		public bool Equals(Value<byte[]> other)
 		{
-			private readonly byte[] bytes;
+			if (this.IsNull || other.IsNull) return this.IsNull && other.IsNull;
+			if (this is Value<byte[]> oValue) return Util.ByteArrayEquals(oValue.value, other.value);
 
-			public BytesValue(byte[] bytes)
-			{
-				this.bytes = bytes;
-			}
-
-			public override int EstimateSize()
-			{
-				return bytes.Length;
-			}
-
-			public override int Write(byte[] buffer, int offset)
-			{
-				Array.Copy(bytes, 0, buffer, offset, bytes.Length);
-				return bytes.Length;
-			}
-
-			public override void Pack(Packer packer)
-			{
-				packer.PackParticleBytes(bytes);
-			}
-
-			public override int Type
-			{
-				get
-				{
-					return ParticleType.BLOB;
-				}
-			}
-
-			public override object Object
-			{
-				get
-				{
-					return bytes;
-				}
-			}
-
-			public override string ToString()
-			{
-				return ByteUtil.BytesToHexString(bytes);
-			}
-
-			public override bool Equals(object other)
-			{
-				return (other != null &&
-					this.GetType().Equals(other.GetType()) &&
-					Util.ByteArrayEquals(this.bytes, ((BytesValue)other).bytes));
-			}
-
-			public override int GetHashCode()
-			{
-				int result = 1;
-				foreach (byte b in bytes)
-				{
-					result = 31 * result + b;
-				}
-				return result;
-			}
+			return false;
 		}
 
-		/// <summary>
-		/// Byte segment value.
-		/// </summary>
-		public sealed class ByteSegmentValue : Value
+        public bool Equals(Value<ByteSegmentValue> other)
+        {
+            if (this.IsNull || other.IsNull) return this.IsNull && other.IsNull;
+            if (typeof(T) == typeof(ByteSegmentValue)) return this.value.Equals(other);
+
+            return false;
+        }
+
+        public bool Equals(Value<BlobValue> other)
+        {
+            if (this.IsNull || other.IsNull) return this.IsNull && other.IsNull;
+            if (typeof(T) == typeof(BlobValue)) return this.value.Equals(other);
+
+            return false;
+        }
+
+        public bool Equals(Value<GeoJSONValue> other)
+        {
+            if (this.IsNull || other.IsNull) return this.IsNull && other.IsNull;
+            if (typeof(T) == typeof(GeoJSONValue)) return this.value.Equals(other);
+
+            return false;
+        }
+
+        public bool Equals(Value<HLLValue> other)
+        {
+            if (this.IsNull || other.IsNull) return this.IsNull && other.IsNull;
+            if (typeof(T) == typeof(HLLValue)) return this.value.Equals(other);
+
+            return false;
+        }
+
+        public bool Equals(Value<ValueArray<T>> other)
+        {
+            if (this.IsNull || other.IsNull) return this.IsNull && other.IsNull;
+            if (typeof(T) == typeof(ValueArray<T>)) return this.value.Equals(other);
+
+            return false;
+        }
+
+        public bool Equals(Value<ListValue> other)
+        {
+            if (this.IsNull || other.IsNull) return this.IsNull && other.IsNull;
+            if (typeof(T) == typeof(ListValue)) return this.value.Equals(other);
+
+            return false;
+        }
+
+        public bool Equals(Value<MapValue> other)
+        {
+            if (this.IsNull || other.IsNull) return this.IsNull && other.IsNull;
+            if (typeof(T) == typeof(MapValue)) return this.value.Equals(other);
+
+            return false;
+        }
+
+        public override int GetHashCode()
+        {
+            if (this.IsNull) return 0;
+            if (this is Value<byte[]> oItem) return this.GetHashCode(oItem);
+            if (this is Value<ByteSegmentValue> oByteSegItem) return this.GetHashCode(oByteSegItem);
+            if (this is Value<double> oDoubleItem) return this.GetHashCode(oDoubleItem);
+            if (this is Value<float> oFloatItem) return this.GetHashCode(oFloatItem);
+            if (this is Value<long> oLongItem) return this.GetHashCode(oLongItem);
+            if (this is Value<ulong> uLongItem) return this.GetHashCode(uLongItem);
+            if (this is Value<int> iItem) return iItem.value;
+            if (this is Value<uint> uiItem) return (int)uiItem.value;
+            if (this is Value<short> shItem) return (int)shItem.value;
+            if (this is Value<ushort> ushItem) return (int)ushItem.value;
+            if (this is Value<bool> boolItem) return boolItem.value ? 1231 : 1237;
+            if (this is Value<byte> byteItem) return (int)byteItem.value;
+            if (this is Value<sbyte> sbyteItem) return (int)sbyteItem.value;
+            if (this is Value<BlobValue> blobItem) return this.GetHashCode(blobItem);
+            if (this is Value<GeoJSONValue> geoJSONItem) return this.GetHashCode(geoJSONItem);
+            if (this is Value<HLLValue> hllItem) return this.GetHashCode(hllItem);
+            if (this is Value<ValueArray<T>> valueArrayItem) return this.GetHashCode(valueArrayItem);
+            if (this is Value<ListValue> listValue) return this.GetHashCode(listValue);
+            if (this is Value<MapValue> mapValue) return this.GetHashCode(mapValue);
+
+            return this.value.GetHashCode();
+        }
+
+        public int GetHashCode(Value<byte[]> other) 
 		{
-			private readonly byte[] bytes;
-			private readonly int offset;
-			private readonly int length;
-
-			public ByteSegmentValue(byte[] bytes, int offset, int length)
+			int result = 1;
+			foreach(byte b in other.value)
 			{
-				this.bytes = bytes;
-				this.offset = offset;
-				this.length = length;
+				result = 31 * result + b;
 			}
-
-			public override int EstimateSize()
-			{
-				return length;
-			}
-
-			public override int Write(byte[] buffer, int targetOffset)
-			{
-				Array.Copy(bytes, offset, buffer, targetOffset, length);
-				return length;
-			}
-
-			public override void Pack(Packer packer)
-			{
-				packer.PackParticleBytes(bytes, offset, length);
-			}
-
-			public override int Type
-			{
-				get
-				{
-					return ParticleType.BLOB;
-				}
-			}
-
-			public override object Object
-			{
-				get
-				{
-					return this;
-				}
-			}
-
-			public override string ToString()
-			{
-				return ByteUtil.BytesToHexString(bytes, offset, length);
-			}
-
-			public override bool Equals(object obj)
-			{
-				if (obj == null)
-				{
-					return false;
-				}
-
-				if (!this.GetType().Equals(obj.GetType()))
-				{
-					return false;
-				}
-				ByteSegmentValue other = (ByteSegmentValue)obj;
-
-				if (this.length != other.length)
-				{
-					return false;
-				}
-
-				for (int i = 0; i < length; i++)
-				{
-					if (this.bytes[this.offset + i] != other.bytes[other.offset + i])
-					{
-						return false;
-					}
-				}
-				return true;
-			}
-
-			public override int GetHashCode()
-			{
-				int result = 1;
-				for (int i = 0; i < length; i++)
-				{
-					result = 31 * result + bytes[offset + i];
-				}
-				return result;
-			}
-
-			public byte[] Bytes
-			{
-				get
-				{
-					return bytes;
-				}
-			}
-
-			public int Offset
-			{
-				get
-				{
-					return offset;
-				}
-			}
-
-			public int Length
-			{
-				get
-				{
-					return length;
-				}
-			}
+			return result;
 		}
 
-		/// <summary>
-		/// Double value.
-		/// </summary>
-		public sealed class DoubleValue : Value
-		{
-			private readonly double value;
-
-			public DoubleValue(double value)
-			{
-				this.value = value;
-			}
-
-			public override int EstimateSize()
-			{
-				return 8;
-			}
-
-			public override int Write(byte[] buffer, int offset)
-			{
-				return ByteUtil.DoubleToBytes(value, buffer, offset);
-			}
-
-			public override void Pack(Packer packer)
-			{
-				packer.PackDouble(value);
-			}
-
-			public override int Type
-			{
-				get
-				{
-					return ParticleType.DOUBLE;
-				}
-			}
-
-			public override object Object
-			{
-				get
-				{
-					return value;
-				}
-			}
-
-			public override string ToString()
-			{
-				return Convert.ToString(value);
-			}
-
-			public override bool Equals(object other)
-			{
-				return (other != null &&
-					this.GetType().Equals(other.GetType()) && 
-					this.value == ((DoubleValue)other).value);
-			}
-
-			public override int GetHashCode()
-			{
-				ulong bits = (ulong)BitConverter.DoubleToInt64Bits(value);
-				return (int)(bits ^ (bits >> 32));
-			}
-
-			public override int ToInteger()
-			{
-				return (int)value;
-			}
-
-			public override uint ToUnsignedInteger()
-			{
-				return (uint)value;
-			}
-
-			public override long ToLong()
-			{
-				return (long)value;
-			}
-
-			public override ulong ToUnsignedLong()
-			{
-				return (ulong)value;
-			}
-		}
-
-		/// <summary>
-		/// Float value.
-		/// </summary>
-		public sealed class FloatValue : Value
-		{
-			private readonly float value;
-
-			public FloatValue(float value)
-			{
-				this.value = value;
-			}
-
-			public override int EstimateSize()
-			{
-				return 8;
-			}
-
-			public override int Write(byte[] buffer, int offset)
-			{
-				return ByteUtil.DoubleToBytes(value, buffer, offset);
-			}
-
-			public override void Pack(Packer packer)
-			{
-				packer.PackFloat(value);
-			}
-
-			public override int Type
-			{
-				get
-				{
-					return ParticleType.DOUBLE;
-				}
-			}
-
-			public override object Object
-			{
-				get
-				{
-					return value;
-				}
-			}
-
-			public override string ToString()
-			{
-				return Convert.ToString(value);
-			}
-
-			public override bool Equals(object other)
-			{
-				return (other != null &&
-					this.GetType().Equals(other.GetType()) &&
-					this.value == ((FloatValue)other).value);
-			}
-
-			public override int GetHashCode()
-			{
-				ulong bits = (ulong)BitConverter.DoubleToInt64Bits(value);
-				return (int)(bits ^ (bits >> 32));
-			}
-
-			public override int ToInteger()
-			{
-				return (int)value;
-			}
-
-			public override uint ToUnsignedInteger()
-			{
-				return (uint)value;
-			}
-
-			public override long ToLong()
-			{
-				return (long)value;
-			}
-
-			public override ulong ToUnsignedLong()
-			{
-				return (ulong)value;
-			}
-		}
-
-		/// <summary>
-		/// Long value.
-		/// </summary>
-		public sealed class LongValue : Value
-		{
-			private readonly long value;
-
-			public LongValue(long value)
-			{
-				this.value = value;
-			}
-
-			public override int EstimateSize()
-			{
-				return 8;
-			}
-
-			public override int Write(byte[] buffer, int offset)
-			{
-				return ByteUtil.LongToBytes((ulong)value, buffer, offset);
-			}
-
-			public override void Pack(Packer packer)
-			{
-				packer.PackNumber(value);
-			}
-
-			public override int Type
-			{
-				get
-				{
-					return ParticleType.INTEGER;
-				}
-			}
-
-			public override object Object
-			{
-				get
-				{
-					return value;
-				}
-			}
-
-			public override string ToString()
-			{
-				return Convert.ToString(value);
-			}
-
-			public override bool Equals(object other)
-			{
-				return (other != null &&
-					this.GetType().Equals(other.GetType()) &&
-					this.value == ((LongValue)other).value);
-			}
-
-			public override int GetHashCode()
-			{
-				return (int)((ulong)value ^ ((ulong)value >> 32));
-			}
-
-			public override int ToInteger()
-			{
-				return (int)value;
-			}
-
-			public override uint ToUnsignedInteger()
-			{
-				return (uint)value;
-			}
-
-			public override long ToLong()
-			{
-				return value;
-			}
-
-			public override ulong ToUnsignedLong()
-			{
-				return (ulong)value;
-			}
-		}
-
-		/// <summary>
-		/// Unsigned long value.
-		/// </summary>
-		public sealed class UnsignedLongValue : Value
-		{
-			private readonly ulong value;
-
-			public UnsignedLongValue(ulong value)
-			{
-				this.value = value;
-			}
-
-			public override int EstimateSize()
-			{
-				return ((value & 0x8000000000000000) == 0)? 8 : 9;
-			}
-
-			public override int Write(byte[] buffer, int offset)
-			{
-				return ByteUtil.LongToBytes(value, buffer, offset);
-			}
-
-			public override void Pack(Packer packer)
-			{
-				packer.PackNumber(value);
-			}
-
-			public override int Type
-			{
-				get
-				{
-					return ParticleType.INTEGER;
-				}
-			}
-
-			public override object Object
-			{
-				get
-				{
-					return value;
-				}
-			}
-
-			public override string ToString()
-			{
-				return Convert.ToString(value);
-			}
-
-			public override bool Equals(object other)
-			{
-				return (other != null &&
-					this.GetType().Equals(other.GetType()) &&
-					this.value == ((UnsignedLongValue)other).value);
-			}
-
-			public override int GetHashCode()
-			{
-				return (int)(value ^ (value >> 32));
-			}
-
-			public override int ToInteger()
-			{
-				return (int)value;
-			}
-
-			public override uint ToUnsignedInteger()
-			{
-				return (uint)value;
-			}
-
-			public override long ToLong()
-			{
-				return (long)value;
-			}
-
-			public override ulong ToUnsignedLong()
-			{
-				return value;
-			}
-		}
-
-		/// <summary>
-		/// Integer value.
-		/// </summary>
-		public sealed class IntegerValue : Value
-		{
-			private readonly int value;
-
-			public IntegerValue(int value)
-			{
-				this.value = value;
-			}
-
-			public override int EstimateSize()
-			{
-				return 8;
-			}
-
-			public override int Write(byte[] buffer, int offset)
-			{
-				return ByteUtil.LongToBytes((ulong)value, buffer, offset);
-			}
-
-			public override void Pack(Packer packer)
-			{
-				packer.PackNumber(value);
-			}
-
-			public override int Type
-			{
-				get
-				{
-					return ParticleType.INTEGER;
-				}
-			}
-
-			public override object Object
-			{
-				get
-				{
-					return value;
-				}
-			}
-
-			public override string ToString()
-			{
-				return Convert.ToString(value);
-			}
-
-			public override bool Equals(object other)
-			{
-				return (other != null &&
-					this.GetType().Equals(other.GetType()) &&
-					this.value == ((IntegerValue)other).value);
-			}
-
-			public override int GetHashCode()
-			{
-				return value;
-			}
-
-			public override int ToInteger()
-			{
-				return value;
-			}
-
-			public override uint ToUnsignedInteger()
-			{
-				return (uint)value;
-			}
-
-			public override long ToLong()
-			{
-				return value;
-			}
-
-			public override ulong ToUnsignedLong()
-			{
-				return (ulong)value;
-			}
-		}
-
-		/// <summary>
-		/// Unsigned integer value.
-		/// </summary>
-		public sealed class UnsignedIntegerValue : Value
-		{
-			private readonly uint value;
-
-			public UnsignedIntegerValue(uint value)
-			{
-				this.value = value;
-			}
-
-			public override int EstimateSize()
-			{
-				return 8;
-			}
-
-			public override int Write(byte[] buffer, int offset)
-			{
-				return ByteUtil.LongToBytes(value, buffer, offset);
-			}
-
-			public override void Pack(Packer packer)
-			{
-				packer.PackNumber(value);
-			}
-
-			public override int Type
-			{
-				get
-				{
-					return ParticleType.INTEGER;
-				}
-			}
-
-			public override object Object
-			{
-				get
-				{
-					return value;
-				}
-			}
-
-			public override string ToString()
-			{
-				return Convert.ToString(value);
-			}
-
-			public override bool Equals(object other)
-			{
-				return (other != null &&
-					this.GetType().Equals(other.GetType()) &&
-					this.value == ((UnsignedIntegerValue)other).value);
-			}
-
-			public override int GetHashCode()
-			{
-				return (int)value;
-			}
-
-			public override int ToInteger()
-			{
-				return (int)value;
-			}
-
-			public override uint ToUnsignedInteger()
-			{
-				return value;
-			}
-
-			public override long ToLong()
-			{
-				return value;
-			}
-
-			public override ulong ToUnsignedLong()
-			{
-				return value;
-			}
-		}
-
-		/// <summary>
-		/// Short value.
-		/// </summary>
-		public sealed class ShortValue : Value
-		{
-			private readonly short value;
-
-			public ShortValue(short value)
-			{
-				this.value = value;
-			}
-
-			public override int EstimateSize()
-			{
-				return 8;
-			}
-
-			public override int Write(byte[] buffer, int offset)
-			{
-				return ByteUtil.LongToBytes((ulong)value, buffer, offset);
-			}
-
-			public override void Pack(Packer packer)
-			{
-				packer.PackNumber(value);
-			}
-
-			public override int Type
-			{
-				get
-				{
-					return ParticleType.INTEGER;
-				}
-			}
-
-			public override object Object
-			{
-				get
-				{
-					return value;
-				}
-			}
-
-			public override string ToString()
-			{
-				return Convert.ToString(value);
-			}
-
-			public override bool Equals(object other)
-			{
-				return (other != null &&
-					this.GetType().Equals(other.GetType()) &&
-					this.value == ((ShortValue)other).value);
-			}
-
-			public override int GetHashCode()
-			{
-				return (int)value;
-			}
-
-			public override int ToInteger()
-			{
-				return value;
-			}
-
-			public override uint ToUnsignedInteger()
-			{
-				return (uint)value;
-			}
-
-			public override long ToLong()
-			{
-				return value;
-			}
-
-			public override ulong ToUnsignedLong()
-			{
-				return (ulong)value;
-			}
-		}
-
-		/// <summary>
-		/// Unsigned short value.
-		/// </summary>
-		public sealed class UnsignedShortValue : Value
-		{
-			private readonly ushort value;
-
-			public UnsignedShortValue(ushort value)
-			{
-				this.value = value;
-			}
-
-			public override int EstimateSize()
-			{
-				return 8;
-			}
-
-			public override int Write(byte[] buffer, int offset)
-			{
-				return ByteUtil.LongToBytes(value, buffer, offset);
-			}
-
-			public override void Pack(Packer packer)
-			{
-				packer.PackNumber(value);
-			}
-
-			public override int Type
-			{
-				get
-				{
-					return ParticleType.INTEGER;
-				}
-			}
-
-			public override object Object
-			{
-				get
-				{
-					return value;
-				}
-			}
-
-			public override string ToString()
-			{
-				return Convert.ToString(value);
-			}
-
-			public override bool Equals(object other)
-			{
-				return (other != null &&
-					this.GetType().Equals(other.GetType()) &&
-					this.value == ((UnsignedShortValue)other).value);
-			}
-
-			public override int GetHashCode()
-			{
-				return (int)value;
-			}
-
-			public override int ToInteger()
-			{
-				return value;
-			}
-
-			public override uint ToUnsignedInteger()
-			{
-				return value;
-			}
-
-			public override long ToLong()
-			{
-				return value;
-			}
-
-			public override ulong ToUnsignedLong()
-			{
-				return value;
-			}
-		}
-
-		/// <summary>
-		/// Boolean value.
-		/// </summary>
-		public sealed class BooleanValue : Value
-		{
-			private readonly bool value;
-
-			public BooleanValue(bool value)
-			{
-				this.value = value;
-			}
-
-			public override int EstimateSize()
-			{
-				return 1;
-			}
-
-			public override int Write(byte[] buffer, int offset)
-			{
-				buffer[offset] = value ? (byte)1 : (byte)0;
-				return 1;
-			}
-
-			public override void Pack(Packer packer)
-			{
-				packer.PackBoolean(value);
-			}
-
-			public override void ValidateKeyType()
-			{
-				throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Invalid key type: bool");
-			}
-
-			public override int Type
-			{
-				get
-				{
-					return ParticleType.BOOL;
-				}
-			}
-
-			public override object Object
-			{
-				get
-				{
-					return value;
-				}
-			}
-
-			public override string ToString()
-			{
-				return Convert.ToString(value);
-			}
-
-			public override bool Equals(object other)
-			{
-				return (other != null &&
-					this.GetType().Equals(other.GetType()) &&
-					this.value == ((BooleanValue)other).value);
-			}
-
-			public override int GetHashCode()
-			{
-				return value ? 1231 : 1237;
-			}
-
-			public override int ToInteger()
-			{
-				return value? 1 : 0;
-			}
-
-			public override uint ToUnsignedInteger()
-			{
-				return value ? (uint)1 : (uint)0;
-			}
-
-			public override long ToLong()
-			{
-				return value ? 1 : 0;
-			}
-
-			public override ulong ToUnsignedLong()
-			{
-				return value ? (ulong)1 : (ulong)0;
-			}
-		}
-
-		/// <summary>
-		/// Boolean value that converts to integer when sending a bin to the server.
-		/// This class will be deleted once full conversion to boolean particle type
-		/// is complete.
-		/// </summary>
-		public sealed class BoolIntValue : Value
-		{
-			private readonly bool value;
-
-			public BoolIntValue(bool value)
-			{
-				this.value = value;
-			}
-
-			public override int EstimateSize()
-			{
-				return 8;
-			}
-
-			public override int Write(byte[] buffer, int offset)
-			{
-				return ByteUtil.LongToBytes(value ? 1UL : 0UL, buffer, offset);
-			}
-
-			public override void Pack(Packer packer)
-			{
-				packer.PackBoolean(value);
-			}
-
-			public override void ValidateKeyType()
-			{
-				throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Invalid key type: BoolIntValue");
-			}
-
-			public override int Type
-			{
-				get
-				{
-					return ParticleType.INTEGER;
-				}
-			}
-
-			public override object Object
-			{
-				get
-				{
-					return value;
-				}
-			}
-
-			public override string ToString()
-			{
-				return Convert.ToString(value);
-			}
-
-			public override bool Equals(object other)
-			{
-				return (other != null &&
-					this.GetType().Equals(other.GetType()) &&
-					this.value == ((BoolIntValue)other).value);
-			}
-
-			public override int GetHashCode()
-			{
-				return value ? 1231 : 1237;
-			}
-
-			public override int ToInteger()
-			{
-				return value ? 1 : 0;
-			}
-
-			public override uint ToUnsignedInteger()
-			{
-				return value ? (uint)1 : (uint)0;
-			}
-
-			public override long ToLong()
-			{
-				return value ? 1 : 0;
-			}
-
-			public override ulong ToUnsignedLong()
-			{
-				return value ? (ulong)1 : (ulong)0;
-			}
-		}
-
-		/// <summary>
-		/// Byte value.
-		/// </summary>
-		public sealed class ByteValue : Value
-		{
-			private readonly byte value;
-
-			public ByteValue(byte value)
-			{
-				this.value = value;
-			}
-
-			public override int EstimateSize()
-			{
-				return 8;
-			}
-
-			public override int Write(byte[] buffer, int offset)
-			{
-				return ByteUtil.LongToBytes((ulong)value, buffer, offset);
-			}
-
-			public override void Pack(Packer packer)
-			{
-				packer.PackNumber(value);
-			}
-
-			public override int Type
-			{
-				get
-				{
-					return ParticleType.INTEGER;
-				}
-			}
-
-			public override object Object
-			{
-				get
-				{
-					return value;
-				}
-			}
-
-			public override string ToString()
-			{
-				return Convert.ToString(value);
-			}
-
-			public override bool Equals(object other)
-			{
-				return (other != null &&
-					this.GetType().Equals(other.GetType()) &&
-					this.value == ((ByteValue)other).value);
-			}
-
-			public override int GetHashCode()
-			{
-				return (int)value;
-			}
-
-			public override int ToInteger()
-			{
-				return value;
-			}
-
-			public override uint ToUnsignedInteger()
-			{
-				return value;
-			}
-
-			public override long ToLong()
-			{
-				return value;
-			}
-
-			public override ulong ToUnsignedLong()
-			{
-				return value;
-			}
-		}
-
-		/// <summary>
-		/// Byte value.
-		/// </summary>
-		public sealed class SignedByteValue : Value
-		{
-			private readonly sbyte value;
-
-			public SignedByteValue(sbyte value)
-			{
-				this.value = value;
-			}
-
-			public override int EstimateSize()
-			{
-				return 8;
-			}
-
-			public override int Write(byte[] buffer, int offset)
-			{
-				return ByteUtil.LongToBytes((ulong)value, buffer, offset);
-			}
-
-			public override void Pack(Packer packer)
-			{
-				packer.PackNumber(value);
-			}
-
-			public override int Type
-			{
-				get
-				{
-					return ParticleType.INTEGER;
-				}
-			}
-
-			public override object Object
-			{
-				get
-				{
-					return value;
-				}
-			}
-
-			public override string ToString()
-			{
-				return Convert.ToString(value);
-			}
-
-			public override bool Equals(object other)
-			{
-				return (other != null &&
-					this.GetType().Equals(other.GetType()) &&
-					this.value == ((SignedByteValue)other).value);
-			}
-
-			public override int GetHashCode()
-			{
-				return (int)value;
-			}
-
-			public override int ToInteger()
-			{
-				return value;
-			}
-
-			public override uint ToUnsignedInteger()
-			{
-				return (uint)value;
-			}
-
-			public override long ToLong()
-			{
-				return value;
-			}
-
-			public override ulong ToUnsignedLong()
-			{
-				return (ulong)value;
-			}
-		}
-
-		/// <summary>
-		/// Blob value.
-		/// </summary>
-		public sealed class BlobValue : Value
-		{
-			private readonly object obj;
-			private byte[] bytes;
-
-			public BlobValue(object obj)
-			{
-				this.obj = obj;
-			}
-
-			public override int EstimateSize()
-			{
-				bytes = Serialize(obj);
-				return bytes.Length;
-			}
-
-			public static byte[] Serialize(object val)
-			{
+        public int GetHashCode(Value<ByteSegmentValue> other) => other.value.GetHashCode();
+
+        public int GetHashCode(Value<double> other)
+        {
+            ulong bits = (ulong)BitConverter.DoubleToInt64Bits(other.value);
+            return (int)(bits ^ (bits >> 32));
+        }
+
+        public int GetHashCode(Value<float> other)
+        {
+            ulong bits = (ulong)BitConverter.DoubleToInt64Bits(other.value);
+            return (int)(bits ^ (bits >> 32));
+        }
+
+        public int GetHashCode(Value<long> other)
+        {
+            return (int)((ulong)other.value ^ ((ulong)other.value >> 32));
+        }
+
+        public int GetHashCode(Value<ulong> other)
+        {
+            return (int)(other.value ^ (other.value >> 32));
+        }
+
+        public int GetHashCode(Value<BlobValue> other) => other.value.GetHashCode();
+
+        public int GetHashCode(Value<GeoJSONValue> other) => other.value.GetHashCode();
+
+        public int GetHashCode(Value<HLLValue> other) => other.value.GetHashCode();
+
+        public int GetHashCode(Value<ValueArray<T>> other) => other.value.GetHashCode();
+
+        public int GetHashCode(Value<ListValue> other) => other.value.GetHashCode();
+
+        public int GetHashCode(Value<MapValue> other) => other.value.GetHashCode();
+
+    }
+
+    /// <summary>
+    /// Empty value.
+    /// </summary>
+    public struct NullValue
+    {
+        public int Type { get => ParticleType.NULL; }
+    }
+
+    /// <summary>
+    /// Byte segment value.
+    /// </summary>
+    public struct ByteSegmentValue : IEquatable<ByteSegmentValue>
+    {
+        public byte[] Bytes { get; }
+        public int Offset { get; }
+        public int Length { get; }
+
+        public int Type
+        {
+            get
+            {
+                return ParticleType.BLOB;
+            }
+        }
+
+        public ByteSegmentValue(byte[] bytes, int offset, int length)
+        {
+            this.Bytes = bytes;
+            this.Offset = offset;
+            this.Length = length;
+        }
+
+        public int EstimateSize()
+        {
+            return Length;
+        }
+
+        public int Write(byte[] buffer, int targetOffset)
+        {
+            Array.Copy(Bytes, Offset, buffer, targetOffset, Length);
+            return Length;
+        }
+
+        public void Pack(Packer packer)
+        {
+            packer.PackParticleBytes(Bytes, Offset, Length);
+        }
+
+        public override string ToString()
+        {
+            return ByteUtil.BytesToHexString(Bytes, Offset, Length);
+        }
+
+        public override bool Equals(object obj)
+        {
+            if (obj == null)
+            {
+                return false;
+            }
+
+            if (typeof(ByteSegmentValue) == obj.GetType())
+            {
+                return this.Equals((ByteSegmentValue)obj);
+            }
+
+            return false;
+        }
+
+        public bool Equals(ByteSegmentValue other)
+        {
+            if (this.Length != other.Length)
+            {
+                return false;
+            }
+
+            for (int i = 0; i < Length; i++)
+            {
+                if (this.Bytes[this.Offset + i] != other.Bytes[other.Offset + i])
+                {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        public override int GetHashCode()
+        {
+            int result = 1;
+            for (int i = 0; i < Length; i++)
+            {
+                result = 31 * result + Bytes[Offset + i];
+            }
+            return result;
+        }
+    }
+
+    public struct BlobValue : IEquatable<BlobValue>
+    {
+        public object Obj { get; }
+
+        public byte[] Bytes { get; set; }
+
+        public int Type
+        {
+            get
+            {
+                return ParticleType.CSHARP_BLOB;
+            }
+        }
+
+        public BlobValue(object obj)
+        {
+            this.Obj = obj;
+            this.Bytes = default;
+        }
+
+        public int EstimateSize()
+        {
+            this.Bytes = Serialize(Obj);
+            return Bytes.Length;
+        }
+
+        // TODO: Ask richard about this
+        public static byte[] Serialize(object val)
+        {
 #if BINARY_FORMATTER
 				if (DisableSerializer)
 				{
@@ -1813,656 +758,658 @@ namespace Aerospike.Client
 					return ms.ToArray();
 				}
 #else
-                throw new AerospikeException("Object serializer has been disabled");
+            throw new AerospikeException("Object serializer has been disabled");
 #endif
+        }
+
+        public int Write(byte[] buffer, int offset)
+        {
+            Array.Copy(Bytes, 0, buffer, offset, Bytes.Length);
+            return Bytes.Length;
+        }
+
+        public void Pack(Packer packer)
+        {
+            // Do not try to pack bytes field because it will be null
+            // when packing objects in a collection (ie. EstimateSize() not called).
+            packer.PackBlob(Obj);
+        }
+
+        public void ValidateKeyType()
+        {
+            throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Invalid key type: csblob");
+        }
+
+        public override string ToString()
+        {
+            return ByteUtil.BytesToHexString(Bytes);
+        }
+
+        public override bool Equals(object obj)
+        {
+            if (obj == null)
+            {
+                return false;
             }
 
-			public override int Write(byte[] buffer, int offset)
-			{
-				Array.Copy(bytes, 0, buffer, offset, bytes.Length);
-				return bytes.Length;
-			}
-
-			public override void Pack(Packer packer)
-			{
-				// Do not try to pack bytes field because it will be null
-				// when packing objects in a collection (ie. EstimateSize() not called).
-				packer.PackBlob(obj);
-			}
-
-			public override void ValidateKeyType()
-			{
-				throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Invalid key type: csblob");
-			}
-
-			public override int Type
-			{
-				get
-				{
-					return ParticleType.CSHARP_BLOB;
-				}
-			}
-
-			public override object Object
-			{
-				get
-				{
-					return obj;
-				}
-			}
-
-			public override string ToString()
-			{
-				return ByteUtil.BytesToHexString(bytes);
-			}
-
-			public override bool Equals(object other)
-			{
-				return (other != null &&
-					this.GetType().Equals(other.GetType()) &&
-					this.obj.Equals(((BlobValue)other).obj));
-			}
-
-			public override int GetHashCode()
-			{
-				return obj.GetHashCode();
-			}
-		}
-
-		/// <summary>
-		/// GeoJSON value.
-		/// </summary>
-		public sealed class GeoJSONValue : Value
-		{
-			private readonly string value;
-
-			public GeoJSONValue(string value)
-			{
-				this.value = value;
-			}
-
-			public override int EstimateSize()
-			{
-				// flags + ncells + jsonstr
-				return 1 + 2 + ByteUtil.EstimateSizeUtf8(value);
-			}
-
-			public override int Write(byte[] buffer, int offset)
-			{
-				buffer[offset] = 0; // flags
-				ByteUtil.ShortToBytes(0, buffer, offset + 1); // ncells
-				return 1 + 2 + ByteUtil.StringToUtf8(value, buffer, offset + 3); // jsonstr
-			}
-
-			public override void Pack(Packer packer)
-			{
-				packer.PackGeoJSON(value);
-			}
-
-			public override void ValidateKeyType()
-			{
-				throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Invalid key type: GeoJSON");
-			}
-
-			public override int Type
-			{
-				get
-				{
-					return ParticleType.GEOJSON;
-				}
-			}
-
-			public override object Object
-			{
-				get
-				{
-					return value;
-				}
-			}
-
-			public override string ToString()
-			{
-				return value;
-			}
-
-			public override bool Equals(object other)
-			{
-				return (other != null &&
-					this.GetType().Equals(other.GetType()) &&
-					this.value.Equals(((GeoJSONValue)other).value));
-			}
-
-			public override int GetHashCode()
-			{
-				return value.GetHashCode();
-			}
-		}
-
-		/// <summary>
-		/// HyperLogLog value.
-		/// </summary>
-		public sealed class HLLValue : Value
-		{
-			private readonly byte[] bytes;
-
-			public HLLValue(byte[] bytes)
-			{
-				this.bytes = bytes;
-			}
-
-			public override int EstimateSize()
-			{
-				return bytes.Length;
-			}
-
-			public override int Write(byte[] buffer, int offset)
-			{
-				Array.Copy(bytes, 0, buffer, offset, bytes.Length);
-				return bytes.Length;
-			}
-
-			public override void Pack(Packer packer)
-			{
-				packer.PackParticleBytes(bytes);
-			}
-
-			public override void ValidateKeyType()
-			{
-				throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Invalid key type: HLL");
-			}
-
-			public override int Type
-			{
-				get{ return ParticleType.HLL; }
-			}
-
-			public override object Object
-			{
-				get{ return bytes; }
-			}
-
-			public byte[] Bytes
-			{
-				get { return bytes; }
-			}
-
-			public override string ToString()
-			{
-				return ByteUtil.BytesToHexString(bytes);
-			}
-
-			public override bool Equals(object other)
-			{
-				return (other != null &&
-					this.GetType().Equals(other.GetType()) &&
-					Util.ByteArrayEquals(this.bytes, ((HLLValue)other).bytes));
-			}
-
-			public override int GetHashCode()
-			{
-				int result = 1;
-				foreach (byte b in bytes)
-				{
-					result = 31 * result + b;
-				}
-				return result;
-			}
-		}
-
-		/// <summary>
-		/// Value array.
-		/// </summary>
-		public sealed class ValueArray : Value
-		{
-			private readonly Value[] array;
-			private byte[] bytes;
-
-			public ValueArray(Value[] array)
-			{
-				this.array = array;
-			}
-
-			public override int EstimateSize()
-			{
-				bytes = Packer.Pack(array);
-				return bytes.Length;
-			}
-
-			public override int Write(byte[] buffer, int offset)
-			{
-				Array.Copy(bytes, 0, buffer, offset, bytes.Length);
-				return bytes.Length;
-			}
-
-			public override void Pack(Packer packer)
-			{
-				packer.PackValueArray(array);
-			}
-
-			public override void ValidateKeyType()
-			{
-				throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Invalid key type: value[]");
-			}
-
-			public override int Type
-			{
-				get
-				{
-					return ParticleType.LIST;
-				}
-			}
-
-			public override object Object
-			{
-				get
-				{
-					return array;
-				}
-			}
-
-			public override string ToString()
-			{
-				return Util.ArrayToString(array);
-			}
-
-			public override bool Equals(object obj)
-			{
-				if (obj == null)
-				{
-					return false;
-				}
-
-				if (!this.GetType().Equals(obj.GetType()))
-				{
-					return false;
-				}
-				ValueArray other = (ValueArray)obj;
-
-				if (this.array.Length != other.array.Length)
-				{
-					return false;
-				}
-
-				for (int i = 0; i < this.array.Length; i++)
-				{
-					Value v1 = this.array[i];
-					Value v2 = other.array[i];
-
-					if (v1 == null)
-					{
-						if (v2 == null)
-						{
-							continue;
-						}
-						return false;
-					}
-
-					if (!v1.Equals(v2))
-					{
-						return false;
-					}
-				}
-				return true;
-			}
-
-			public override int GetHashCode()
-			{
-				int result = 1;
-				foreach (Value value in array)
-				{
-					result = 31 * result + (value == null ? 0 : value.GetHashCode());
-				}
-				return result;
-			}
-		}
-
-		/// <summary>
-		/// List value.
-		/// </summary>
-		public sealed class ListValue : Value
-		{
-			internal readonly IList list;
-			internal byte[] bytes;
-
-			public ListValue(IList list)
-			{
-				this.list = list;
-			}
-
-			public override int EstimateSize()
-			{
-				bytes = Packer.Pack(list);
-				return bytes.Length;
-			}
-
-			public override int Write(byte[] buffer, int offset)
-			{
-				Array.Copy(bytes, 0, buffer, offset, bytes.Length);
-				return bytes.Length;
-			}
-
-			public override void Pack(Packer packer)
-			{
-				packer.PackList(list);
-			}
-
-			public override void ValidateKeyType()
-			{
-				throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Invalid key type: list");
-			}
-
-			public override int Type
-			{
-				get
-				{
-					return ParticleType.LIST;
-				}
-			}
-
-			public override object Object
-			{
-				get
-				{
-					return list;
-				}
-			}
-
-			public override string ToString()
-			{
-				return list.ToString();
-			}
-
-			public override bool Equals(object obj)
-			{
-				if (obj == null)
-				{
-					return false;
-				}
-
-				if (!this.GetType().Equals(obj.GetType()))
-				{
-					return false;
-				}
-				ListValue other = (ListValue)obj;
-
-				if (this.list.Count != other.list.Count)
-				{
-					return false;
-				}
-
-				for (int i = 0; i < this.list.Count; i++)
-				{
-					object v1 = this.list[i];
-					object v2 = other.list[i];
-
-					if (v1 == null)
-					{
-						if (v2 == null)
-						{
-							continue;
-						}
-						return false;
-					}
-
-					if (!v1.Equals(v2))
-					{
-						return false;
-					}
-				}
-				return true;
-			}
-
-			public override int GetHashCode()
-			{
-				int result = 1;
-				foreach (object value in list)
-				{
-					result = 31 * result + (value == null ? 0 : value.GetHashCode());
-				}
-				return result;
-			}
-		}
-
-		/// <summary>
-		/// Map value.
-		/// </summary>
-		public sealed class MapValue : Value
-		{
-			internal readonly IDictionary map;
-			internal readonly MapOrder order;
-			internal byte[] bytes;
-
-			public MapValue(IDictionary map)
-			{
-				this.map = map;
-				this.order = MapOrder.UNORDERED;
-			}
-
-			public MapValue(IDictionary map, MapOrder order)
-			{
-				this.map = map;
-				this.order = order;
-			}
-
-			public MapOrder Order
-			{
-				get { return order; }
-			}
-
-			public override int EstimateSize()
-			{
-				bytes = Packer.Pack(map, order);
-				return bytes.Length;
-			}
-
-			public override int Write(byte[] buffer, int offset)
-			{
-				Array.Copy(bytes, 0, buffer, offset, bytes.Length);
-				return bytes.Length;
-			}
-
-			public override void Pack(Packer packer)
-			{
-				packer.PackMap(map, order);
-			}
-
-			public override void ValidateKeyType()
-			{
-				throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Invalid key type: map");
-			}
-
-			public override int Type
-			{
-				get
-				{
-					return ParticleType.MAP;
-				}
-			}
-
-			public override object Object
-			{
-				get
-				{
-					return map;
-				}
-			}
-
-			public override string ToString()
-			{
-				return map.ToString();
-			}
-
-			public override bool Equals(object obj)
-			{
-				if (obj == null)
-				{
-					return false;
-				}
-
-				if (!this.GetType().Equals(obj.GetType()))
-				{
-					return false;
-				}
-				MapValue other = (MapValue)obj;
-
-				if (this.map.Count != other.map.Count)
-				{
-					return false;
-				}
-
-				try
-				{
-					foreach (DictionaryEntry entry in this.map)
-					{
-						object v1 = entry.Value;
-						object v2 = other.map[entry.Key];
-
-						if (v1 == null)
-						{
-							if (v2 == null)
-							{
-								continue;
-							}
-							return false;
-						}
-
-						if (!v1.Equals(v2))
-						{
-							return false;
-						}
-					}
-					return true;
-				}
-				catch (Exception)
-				{
-					return false;
-				}
-			}
-
-			public override int GetHashCode()
-			{
-				int result = 1;
-				foreach (DictionaryEntry entry in map)
-				{
-					result = 31 * result + (entry.Key == null ? 0 : entry.Key.GetHashCode());
-					result = 31 * result + (entry.Value == null ? 0 : entry.Value.GetHashCode());
-				}
-				return result;
-			}
-		}
-
-		/// <summary>
-		/// Infinity value.
-		/// </summary>
-		public sealed class InfinityValue : Value
-		{
-			public override int EstimateSize()
-			{
-				return 0;
-			}
-
-			public override int Write(byte[] buffer, int offset)
-			{
-				return 0;
-			}
-
-			public override void Pack(Packer packer)
-			{
-				packer.PackInfinity();
-			}
-
-			public override void ValidateKeyType()
-			{
-				throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Invalid key type: INF");
-			}
-
-			public override int Type
-			{
-				get
-				{
-					throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Invalid particle type: INF");
-				}
-			}
-
-			public override object Object
-			{
-				get
-				{
-					return null;
-				}
-			}
-
-			public override string ToString()
-			{
-				return "INF";
-			}
-
-			public override bool Equals(object other)
-			{
-				return (other != null && this.GetType().Equals(other.GetType()));
-			}
-
-			public override int GetHashCode()
-			{
-				return 0;
-			}
-		}
-
-		/// <summary>
-		/// Wildcard value.
-		/// </summary>
-		public sealed class WildcardValue : Value
-		{
-			public override int EstimateSize()
-			{
-				return 0;
-			}
-
-			public override int Write(byte[] buffer, int offset)
-			{
-				return 0;
-			}
-
-			public override void Pack(Packer packer)
-			{
-				packer.PackWildcard();
-			}
-
-			public override void ValidateKeyType()
-			{
-				throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Invalid key type: wildcard");
-			}
-
-			public override int Type
-			{
-				get
-				{
-					throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Invalid particle type: wildcard");
-				}
-			}
-
-			public override object Object
-			{
-				get
-				{
-					return null;
-				}
-			}
-
-			public override string ToString()
-			{
-				return "*";
-			}
-
-			public override bool Equals(object other)
-			{
-				return (other != null && this.GetType().Equals(other.GetType()));
-			}
-
-			public override int GetHashCode()
-			{
-				return 0;
-			}
-		}
-	}
+            if (typeof(BlobValue) == obj.GetType())
+            {
+                return this.Equals((BlobValue)obj);
+            }
+
+            return false;
+        }
+
+        public bool Equals(BlobValue other)
+        {
+            for (int i = 0; i < this.Bytes.Length; i++)
+            {
+                if (this.Bytes[i] != other.Bytes[i])
+                {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        public override int GetHashCode()
+        {
+            return Obj.GetHashCode();
+        }
+    }
+
+    /// <summary>
+    /// GeoJSON value.
+    /// </summary>
+    public struct GeoJSONValue : IEquatable<GeoJSONValue>
+    {
+        public string value { get; }
+
+        public int Type
+        {
+            get
+            {
+                return ParticleType.GEOJSON;
+            }
+        }
+
+        public GeoJSONValue(string value)
+        {
+            this.value = value;
+        }
+
+        public int EstimateSize()
+        {
+            // flags + ncells + jsonstr
+            return 1 + 2 + ByteUtil.EstimateSizeUtf8(value);
+        }
+
+        public int Write(byte[] buffer, int offset)
+        {
+            buffer[offset] = 0; // flags
+            ByteUtil.ShortToBytes(0, buffer, offset + 1); // ncells
+            return 1 + 2 + ByteUtil.StringToUtf8(value, buffer, offset + 3); // jsonstr
+        }
+
+        public void Pack(Packer packer)
+        {
+            packer.PackGeoJSON(value);
+        }
+
+        public void ValidateKeyType()
+        {
+            throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Invalid key type: GeoJSON");
+        }
+
+        public override bool Equals(object obj)
+        {
+            if (obj == null)
+            {
+                return false;
+            }
+
+            if (typeof(GeoJSONValue) == obj.GetType())
+            {
+                return this.Equals((GeoJSONValue)obj);
+            }
+
+            return false;
+        }
+
+        public bool Equals(GeoJSONValue other)
+        {
+            return this.value.Equals(other.value);
+        }
+
+        public override int GetHashCode()
+        {
+            return value.GetHashCode();
+        }
+    }
+
+    /// <summary>
+    /// HyperLogLog value.
+    /// </summary>
+    public struct HLLValue : IEquatable<HLLValue>
+    {
+        public byte[] Bytes { get; }
+
+        public int Type
+        {
+            get { return ParticleType.HLL; }
+        }
+
+        public HLLValue(byte[] bytes)
+        {
+            this.Bytes = bytes;
+        }
+
+        public int EstimateSize()
+        {
+            return Bytes.Length;
+        }
+
+        public int Write(byte[] buffer, int offset)
+        {
+            Array.Copy(Bytes, 0, buffer, offset, Bytes.Length);
+            return Bytes.Length;
+        }
+
+        public void Pack(Packer packer)
+        {
+            packer.PackParticleBytes(Bytes);
+        }
+
+        public void ValidateKeyType()
+        {
+            throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Invalid key type: HLL");
+        }
+
+        public override string ToString()
+        {
+            return ByteUtil.BytesToHexString(Bytes);
+        }
+
+        public override bool Equals(object obj)
+        {
+            if (obj == null)
+            {
+                return false;
+            }
+
+            if (typeof(HLLValue) == obj.GetType())
+            {
+                return this.Equals((HLLValue)obj);
+            }
+
+            return false;
+        }
+
+        public bool Equals(HLLValue other)
+        {
+            return Util.ByteArrayEquals(this.Bytes, other.Bytes);
+        }
+
+        public override int GetHashCode()
+        {
+            int result = 1;
+            foreach (byte b in Bytes)
+            {
+                result = 31 * result + b;
+            }
+            return result;
+        }
+    }
+
+    /// <summary>
+    /// Value array.
+    /// </summary>
+    public struct ValueArray<T> : IEquatable<ValueArray<T>>
+    {
+        public Value<T>[] Array { get; set; }
+        public byte[] Bytes { get; set; }
+
+        public int Type
+        {
+            get
+            {
+                return ParticleType.LIST;
+            }
+        }
+
+        public ValueArray(Value<T>[] array)
+        {
+            this.Array = array;
+            this.Bytes = default(byte[]);
+        }
+
+        public int EstimateSize()
+        {
+            Bytes = Packer.Pack(Array);
+            return Bytes.Length;
+        }
+
+        public int Write(byte[] buffer, int offset)
+        {
+            System.Array.Copy(Bytes, 0, buffer, offset, Bytes.Length);
+            return Bytes.Length;
+        }
+
+        public void Pack(Packer packer)
+        {
+            packer.PackValueArray(Array);
+        }
+
+        public void ValidateKeyType()
+        {
+            throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Invalid key type: value[]");
+        }       
+
+        public override string ToString()
+        {
+            return Util.ArrayToString(Array);
+        }
+
+        public override bool Equals(object obj)
+        {
+            if (obj == null)
+            {
+                return false;
+            }
+
+            if (typeof(ValueArray<T>) == obj.GetType())
+            {
+                return this.Equals((ValueArray<T>)obj);
+            }
+
+            return false;
+        }
+
+        public bool Equals(ValueArray<T> other)
+        {
+            if (this.Array.Length != other.Array.Length)
+            {
+                return false;
+            }
+
+            for (int i = 0; i < this.Array.Length; i++)
+            {
+                Value<T> v1 = this.Array[i];
+                Value<T> v2 = other.Array[i];
+
+                if (v1.value == null)
+                {
+                    if (v2.value == null)
+                    {
+                        continue;
+                    }
+                    return false;
+                }
+
+                if (!v1.value.Equals(v2.value))
+                {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        public override int GetHashCode()
+        {
+            int result = 1;
+            foreach (Value<T> item in Array)
+            {
+                result = 31 * result + (item.value == null ? 0 : item.value.GetHashCode());
+            }
+            return result;
+        }
+    }
+
+    /// <summary>
+    /// List value.
+    /// </summary>
+    public struct ListValue : IEquatable<ListValue>
+    {
+        internal readonly IList List;
+        internal byte[] Bytes;
+
+        public int Type
+        {
+            get
+            {
+                return ParticleType.LIST;
+            }
+        }
+
+        public ListValue(IList list)
+        {
+            this.List = list;
+            this.Bytes = default(byte[]);
+        }
+
+        public int EstimateSize()
+        {
+            Bytes = Packer.Pack(List);
+            return Bytes.Length;
+        }
+
+        public int Write(byte[] buffer, int offset)
+        {
+            Array.Copy(Bytes, 0, buffer, offset, Bytes.Length);
+            return Bytes.Length;
+        }
+
+        public void Pack(Packer packer)
+        {
+            packer.PackList(List);
+        }
+
+        public void ValidateKeyType()
+        {
+            throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Invalid key type: list");
+        }
+
+        public override string ToString()
+        {
+            return List.ToString();
+        }
+
+        public override bool Equals(object obj)
+        {
+            if (obj == null)
+            {
+                return false;
+            }
+
+            if (typeof(ListValue) == obj.GetType())
+            {
+                return this.Equals((ListValue)obj);
+            }
+
+            return false; 
+        }
+
+        public bool Equals(ListValue other)
+        {
+            if (this.List.Count != other.List.Count)
+            {
+                return false;
+            }
+
+            for (int i = 0; i < this.List.Count; i++)
+            {
+                object v1 = this.List[i];
+                object v2 = other.List[i];
+
+                if (v1 == null)
+                {
+                    if (v2 == null)
+                    {
+                        continue;
+                    }
+                    return false;
+                }
+
+                if (!v1.Equals(v2))
+                {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        public override int GetHashCode()
+        {
+            int result = 1;
+            foreach (object value in List)
+            {
+                result = 31 * result + (value == null ? 0 : value.GetHashCode());
+            }
+            return result;
+        }
+    }
+
+    /// <summary>
+    /// Map value.
+    /// </summary>
+    public struct MapValue : IEquatable<MapValue>
+    {
+        internal readonly IDictionary Map;
+        internal readonly MapOrder Order;
+        internal byte[] Bytes;
+
+        public int Type
+        {
+            get
+            {
+                return ParticleType.MAP;
+            }
+        }
+
+        public MapValue(IDictionary map)
+        {
+            this.Map = map;
+            this.Order = MapOrder.UNORDERED;
+            this.Bytes = default(byte[]);
+        }
+
+        public MapValue(IDictionary map, MapOrder order)
+        {
+            this.Map = map;
+            this.Order = order;
+            this.Bytes = default(byte[]);
+        }
+
+        public MapOrder MapOrder
+        {
+            get { return MapOrder; }
+        }
+
+        public int EstimateSize()
+        {
+            Bytes = Packer.Pack(Map, Order);
+            return Bytes.Length;
+        }
+
+        public int Write(byte[] buffer, int offset)
+        {
+            Array.Copy(Bytes, 0, buffer, offset, Bytes.Length);
+            return Bytes.Length;
+        }
+
+        public void Pack(Packer packer)
+        {
+            packer.PackMap(Map, Order);
+        }
+
+        public void ValidateKeyType()
+        {
+            throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Invalid key type: map");
+        }
+
+        public override string ToString()
+        {
+            return Map.ToString();
+        }
+
+        public override bool Equals(object obj)
+        {
+            if (obj == null)
+            {
+                return false;
+            }
+
+            if (typeof(MapValue) == obj.GetType())
+            {
+                return this.Equals((MapValue)obj);
+            }
+
+            return false;
+        }
+
+        public bool Equals(MapValue other)
+        {
+            if (this.Map.Count != other.Map.Count)
+            {
+                return false;
+            }
+
+            try
+            {
+                foreach (DictionaryEntry entry in this.Map)
+                {
+                    object v1 = entry.Value;
+                    object v2 = other.Map[entry.Key];
+
+                    if (v1 == null)
+                    {
+                        if (v2 == null)
+                        {
+                            continue;
+                        }
+                        return false;
+                    }
+
+                    if (!v1.Equals(v2))
+                    {
+                        return false;
+                    }
+                }
+                return true;
+            }
+            catch (Exception)
+            {
+                return false;
+            }
+        }
+
+        public override int GetHashCode()
+        {
+            int result = 1;
+            foreach (DictionaryEntry entry in Map)
+            {
+                result = 31 * result + (entry.Key == null ? 0 : entry.Key.GetHashCode());
+                result = 31 * result + (entry.Value == null ? 0 : entry.Value.GetHashCode());
+            }
+            return result;
+        }
+    }
+
+    /// <summary>
+    /// Infinity value.
+    /// </summary>
+    public struct InfinityValue
+    {
+        public int Type
+        {
+            get
+            {
+                throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Invalid particle type: INF");
+            }
+        }
+
+        public int EstimateSize()
+        {
+            return 0;
+        }
+
+        public int Write(byte[] buffer, int offset)
+        {
+            return 0;
+        }
+
+        public void Pack(Packer packer)
+        {
+            packer.PackInfinity();
+        }
+
+        public void ValidateKeyType()
+        {
+            throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Invalid key type: INF");
+        }
+
+        public override string ToString()
+        {
+            return "INF";
+        }
+
+        public override bool Equals(object obj)
+        {
+            if (obj == null)
+            {
+                return false;
+            }
+
+            if (typeof(InfinityValue) == obj.GetType())
+            {
+                return true;
+            }
+
+            return false;
+        }
+
+        public override int GetHashCode()
+        {
+            return 0;
+        }
+    }
+
+    /// <summary>
+    /// Wildcard value.
+    /// </summary>
+    public struct WildcardValue
+    {
+        public int Type
+        {
+            get
+            {
+                throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Invalid particle type: wildcard");
+            }
+        }
+
+        public int EstimateSize()
+        {
+            return 0;
+        }
+
+        public int Write(byte[] buffer, int offset)
+        {
+            return 0;
+        }
+
+        public void Pack(Packer packer)
+        {
+            packer.PackWildcard();
+        }
+
+        public void ValidateKeyType()
+        {
+            throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Invalid key type: wildcard");
+        }
+
+        public override string ToString()
+        {
+            return "*";
+        }
+
+        public override bool Equals(object obj)
+        {
+            if (obj == null)
+            {
+                return false;
+            }
+
+            if (typeof(WildcardValue) == obj.GetType())
+            {
+                return true;
+            }
+
+            return false;
+        }
+
+        public override int GetHashCode()
+        {
+            return 0;
+        }
+    }
 }
