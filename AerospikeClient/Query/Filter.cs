@@ -55,7 +55,7 @@ namespace Aerospike.Client
 		public static Filter Contains(string name, IndexCollectionType type, long value, params CTX[] ctx)
 		{
 			Value val = Value.Get(value);
-			return new Filter(name, type, val.Type,  val, val, ctx);
+			return new Filter(name, type, val.Type, val, val, ctx);
 		}
 
 		/// <summary>
@@ -178,11 +178,11 @@ namespace Aerospike.Client
 		private readonly string name;
 		private readonly IndexCollectionType colType;
 		private readonly byte[] packedCtx;
-		private readonly int valType;
+		private readonly ParticleType valType;
 		private readonly Value begin;
 		private readonly Value end;
 
-		private Filter(string name, IndexCollectionType colType, int valType, Value begin, Value end, CTX[] ctx)
+		private Filter(string name, IndexCollectionType colType, ParticleType valType, Value begin, Value end, CTX[] ctx)
 		{
 			this.name = name;
 			this.colType = colType;

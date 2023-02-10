@@ -233,7 +233,7 @@ namespace Aerospike.Client
 
 		private object UnpackBlob(int count)
 		{
-			int type = buffer[offset++];
+            ParticleType type = (ParticleType)buffer[offset++];
 			count--;
 			object val;
 
@@ -248,7 +248,7 @@ namespace Aerospike.Client
 					break;
 
 				case ParticleType.GEOJSON:
-					val = new Value.GeoJSONValue(ByteUtil.Utf8ToString(buffer, offset, count));
+					val = new GeoJSONValue(ByteUtil.Utf8ToString(buffer, offset, count));
 					break;
 				
 				default:
@@ -716,7 +716,7 @@ namespace Aerospike.Client
 
 		private string UnpackBlobString(int count)
 		{
-			int type = buffer[offset++];
+            ParticleType type = (ParticleType)buffer[offset++];
 			--count;
 			if (type != ParticleType.STRING)
 			{

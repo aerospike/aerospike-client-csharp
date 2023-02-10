@@ -99,7 +99,7 @@ namespace Aerospike.Client
 		{
 			this.ns = ns;
 			this.setName = setName;
-			this.userKey = new Value.StringValue(key);
+			this.userKey = new StringValue(key);
 			digest = ComputeDigest(setName, this.userKey);
 		}
 
@@ -122,7 +122,7 @@ namespace Aerospike.Client
 		{
 			this.ns = ns;
 			this.setName = setName;
-			this.userKey = new Value.BytesValue(key);
+			this.userKey = new BytesValue(key);
 			digest = ComputeDigest(setName, this.userKey);
 		}
 
@@ -147,7 +147,7 @@ namespace Aerospike.Client
 		{
 			this.ns = ns;
 			this.setName = setName;
-			this.userKey = new Value.ByteSegmentValue(key, offset, length);
+			this.userKey = new ByteSegmentValue(key, offset, length);
 			digest = ComputeDigest(setName, this.userKey);
 		}
 
@@ -170,7 +170,7 @@ namespace Aerospike.Client
 		{
 			this.ns = ns;
 			this.setName = setName;
-			this.userKey = new Value.LongValue(key);
+			this.userKey = new LongValue(key);
 			digest = ComputeDigest(setName, this.userKey);
 		}
 
@@ -193,7 +193,7 @@ namespace Aerospike.Client
 		{
 			this.ns = ns;
 			this.setName = setName;
-			this.userKey = new Value.UnsignedLongValue(key);
+			this.userKey = new UnsignedLongValue(key);
 			digest = ComputeDigest(setName, this.userKey);
 		}
 
@@ -216,7 +216,7 @@ namespace Aerospike.Client
 		{
 			this.ns = ns;
 			this.setName = setName;
-			this.userKey = new Value.IntegerValue(key);
+			this.userKey = new IntegerValue(key);
 			digest = ComputeDigest(setName, this.userKey);
 		}
 
@@ -239,7 +239,7 @@ namespace Aerospike.Client
 		{
 			this.ns = ns;
 			this.setName = setName;
-			this.userKey = new Value.UnsignedIntegerValue(key);
+			this.userKey = new UnsignedIntegerValue(key);
 			digest = ComputeDigest(setName, this.userKey);
 		}
 
@@ -262,7 +262,7 @@ namespace Aerospike.Client
 		{
 			this.ns = ns;
 			this.setName = setName;
-			this.userKey = new Value.ShortValue(key);
+			this.userKey = new ShortValue(key);
 			digest = ComputeDigest(setName, this.userKey);
 		}
 
@@ -285,7 +285,7 @@ namespace Aerospike.Client
 		{
 			this.ns = ns;
 			this.setName = setName;
-			this.userKey = new Value.UnsignedShortValue(key);
+			this.userKey = new UnsignedShortValue(key);
 			digest = ComputeDigest(setName, this.userKey);
 		}
 
@@ -308,7 +308,7 @@ namespace Aerospike.Client
 		{
 			this.ns = ns;
 			this.setName = setName;
-			this.userKey = new Value.BooleanValue(key);
+			this.userKey = new BooleanValue(key);
 			digest = ComputeDigest(setName, this.userKey);
 		}
 
@@ -331,7 +331,7 @@ namespace Aerospike.Client
 		{
 			this.ns = ns;
 			this.setName = setName;
-			this.userKey = new Value.ByteValue(key);
+			this.userKey = new ByteValue(key);
 			digest = ComputeDigest(setName, this.userKey);
 		}
 
@@ -354,7 +354,7 @@ namespace Aerospike.Client
 		{
 			this.ns = ns;
 			this.setName = setName;
-			this.userKey = new Value.SignedByteValue(key);
+			this.userKey = new SignedByteValue(key);
 			digest = ComputeDigest(setName, this.userKey);
 		}
 

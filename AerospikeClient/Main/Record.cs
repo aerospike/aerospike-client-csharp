@@ -234,9 +234,9 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Get bin value as HLLValue.
 		/// </summary>
-		public Value.HLLValue GetHLLValue(string name)
+		public HLLValue GetHLLValue(string name)
 		{
-			return (Value.HLLValue)GetValue(name);
+			return (HLLValue)GetValue(name);
 		}
 
 		/**
