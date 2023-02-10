@@ -21,7 +21,7 @@ namespace Aerospike.Client
 	/// <summary>
 	/// Column name/value pair. 
 	/// </summary>
-	public sealed class Bin
+	public struct Bin<T>
 	{
 		/// <summary>
 		/// Bin name. Current limit is 15 characters.
@@ -31,7 +31,7 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Bin value.
 		/// </summary>
-		public readonly Value value;
+		public readonly Value<T> value;
 
 		/// <summary>
 		/// Constructor, specifying bin name and value.
@@ -39,7 +39,7 @@ namespace Aerospike.Client
 		/// </summary>
 		/// <param name="name">bin name, current limit is 15 characters</param>
 		/// <param name="value">bin value</param>
-		public Bin(string name, Value value)
+		public Bin(string name, Value<T> value)
 		{
 			this.name = name;
 			this.value = value;
@@ -66,7 +66,7 @@ namespace Aerospike.Client
 		public Bin(string name, byte[] value)
 		{
 			this.name = name;
-			this.value = Value.Get(value);
+			this.value = Value<T>.Get(value);
 		}
 
 		/// <summary>
@@ -80,7 +80,7 @@ namespace Aerospike.Client
 		public Bin(string name, byte[] value, int offset, int length)
 		{
 			this.name = name;
-			this.value = Value.Get(value, offset, length);
+			this.value = Value<T>.Get(value, offset, length);
 		}
 
 		/// <summary>
@@ -94,7 +94,7 @@ namespace Aerospike.Client
 		public Bin(string name, double value)
 		{
 			this.name = name;
-			this.value = Value.Get(value);
+			this.value = Value<T>.Get(value);
 		}
 
 		/// <summary>
@@ -108,7 +108,7 @@ namespace Aerospike.Client
 		public Bin(string name, float value)
 		{
 			this.name = name;
-			this.value = Value.Get(value);
+			this.value = Value<T>.Get(value);
 		}
 
 		/// <summary>
@@ -120,7 +120,7 @@ namespace Aerospike.Client
 		public Bin(string name, long value)
 		{
 			this.name = name;
-			this.value = Value.Get(value);
+			this.value = Value<T>.Get(value);
 		}
 
 		/// <summary>
@@ -132,7 +132,7 @@ namespace Aerospike.Client
 		public Bin(string name, ulong value)
 		{
 			this.name = name;
-			this.value = Value.Get(value);
+			this.value = Value<T>.Get(value);
 		}
 
 		/// <summary>
@@ -145,7 +145,7 @@ namespace Aerospike.Client
 		public Bin(string name, int value)
 		{
 			this.name = name;
-			this.value = Value.Get(value);
+			this.value = Value<T>.Get(value);
 		}
 
 		/// <summary>
@@ -158,7 +158,7 @@ namespace Aerospike.Client
 		public Bin(string name, uint value)
 		{
 			this.name = name;
-			this.value = Value.Get(value);
+			this.value = Value<T>.Get(value);
 		}
 
 		/// <summary>
@@ -171,7 +171,7 @@ namespace Aerospike.Client
 		public Bin(string name, short value)
 		{
 			this.name = name;
-			this.value = Value.Get(value);
+			this.value = Value<T>.Get(value);
 		}
 
 		/// <summary>
@@ -184,21 +184,21 @@ namespace Aerospike.Client
 		public Bin(string name, ushort value)
 		{
 			this.name = name;
-			this.value = Value.Get(value);
+			this.value = Value<T>.Get(value);
 		}
 
 		/// <summary>
 		/// Constructor, specifying bin name and boolean value.
 		/// For servers configured as "single-bin", enter a null or empty name.
 		/// Either a boolean or integer bin is sent to the server, depending
-		/// on configuration <see cref="Aerospike.Client.Value.UseBoolBin"/>.
+		/// on configuration <see cref="Aerospike.Client.Value<typeparamref name="T"/>.UseBoolBin"/>.
 		/// </summary>
 		/// <param name="name">bin name, current limit is 15 characters</param>
 		/// <param name="value">bin value</param>
 		public Bin(string name, bool value)
 		{
 			this.name = name;
-			this.value = Value.Get(value);
+			this.value = Value<T>.Get(value);
 		}
 
 		/// <summary>
@@ -211,7 +211,7 @@ namespace Aerospike.Client
 		public Bin(string name, byte value)
 		{
 			this.name = name;
-			this.value = Value.Get(value);
+			this.value = Value<T>.Get(value);
 		}
 
 		/// <summary>
@@ -224,7 +224,7 @@ namespace Aerospike.Client
 		public Bin(string name, sbyte value)
 		{
 			this.name = name;
-			this.value = Value.Get(value);
+			this.value = Value<T>.Get(value);
 		}
 
 		/// <summary>
@@ -236,7 +236,7 @@ namespace Aerospike.Client
 		public Bin(string name, IList value)
 		{
 			this.name = name;
-			this.value = Value.Get(value);
+			this.value = Value<T>.Get(value);
 		}
 
 		/// <summary>
@@ -248,7 +248,7 @@ namespace Aerospike.Client
 		public Bin(string name, IDictionary value)
 		{
 			this.name = name;
-			this.value = Value.Get(value);
+			this.value = Value<T>.Get(value);
 		}
 
 		/// <summary>
@@ -261,7 +261,7 @@ namespace Aerospike.Client
 		public Bin(string name, IDictionary value, MapOrder mapOrder)
 		{
 			this.name = name;
-			this.value = Value.Get(value, mapOrder);
+			this.value = Value<T>.Get(value, mapOrder);
 		}
 
 		/// <summary>
@@ -269,7 +269,7 @@ namespace Aerospike.Client
 		/// the type must be determined using multiple "instanceof" checks. If the object type is
 		/// unrecognized, BinaryFormatter is used to serialize the object.
 		/// <para>
-		/// To disable this constructor, set <see cref="Value.DisableSerializer"/> to true.
+		/// To disable this constructor, set <see cref="Value<typeparamref name="T"/>.DisableSerializer"/> to true.
 		/// </para>
 		/// </summary>
 		/// <param name="name">
@@ -280,7 +280,7 @@ namespace Aerospike.Client
 		public Bin(string name, object value)
 		{
 			this.name = name;
-			this.value = Value.Get(value);
+			this.value = Value<T>.Get(value);
 		}
 
 #if BINARY_FORMATTER
@@ -308,9 +308,9 @@ namespace Aerospike.Client
 		/// For servers configured as "single-bin", enter a null or empty name.
 		/// </summary>
 		/// <param name="name">bin name, current limit is 15 characters</param>
-		public static Bin AsNull(string name)
+		public static Bin<T> AsNull(string name)
 		{
-			return new Bin(name, Value.AsNull);
+			return new Bin<T>(name, Value<T>.AsNull);
 		}
 
 		/// <summary>
@@ -318,9 +318,9 @@ namespace Aerospike.Client
 		/// </summary>
 		/// <param name="name">bin name, current limit is 15 characters</param>
 		/// <param name="value">bin value</param>
-		public static Bin AsGeoJSON(string name, string value)
+		public static Bin<T> AsGeoJSON(string name, string value)
 		{
-			return new Bin(name, Value.GetAsGeoJSON(value));
+			return new Bin<T>(name, Value<GeoJSONValue>.Get(value));
 		}
 	
 		/// <summary>
