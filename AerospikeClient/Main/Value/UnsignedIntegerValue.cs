@@ -17,30 +17,30 @@
 
 namespace Aerospike.Client
 {
-    /// <summary>
-    /// Unsigned integer value.
-    /// </summary>
-    public sealed class UnsignedIntegerValue : Value<uint>
-    {
-        public UnsignedIntegerValue(uint value)
-        : base(value, ParticleType.INTEGER)
-        {
-        }
+	/// <summary>
+	/// Unsigned integer value.
+	/// </summary>
+	public sealed class UnsignedIntegerValue : Value<uint>
+	{
+		public UnsignedIntegerValue(uint value)
+		: base(value, ParticleType.INTEGER)
+		{
+		}
 
-        public override int EstimateSize() => 8;
+		public override int EstimateSize() => 8;
 
-        public override int Write(byte[] buffer, int offset) => ByteUtil.LongToBytes(value, buffer, offset);
+		public override int Write(byte[] buffer, int offset) => ByteUtil.LongToBytes(value, buffer, offset);
 
-        public override void Pack(Packer packer) => packer.PackNumber(value);
+		public override void Pack(Packer packer) => packer.PackNumber(value);
 
-        public override int GetHashCode() => (int)value;
+		public override int GetHashCode() => (int)value;
 
-        public override int ToInteger() => (int)value;
+		public override int ToInteger() => (int)value;
 
-        public override uint ToUnsignedInteger() => value;
+		public override uint ToUnsignedInteger() => value;
 
-        public override long ToLong() => value;
+		public override long ToLong() => value;
 
-        public override ulong ToUnsignedLong() => value;
-    }
+		public override ulong ToUnsignedLong() => value;
+	}
 }

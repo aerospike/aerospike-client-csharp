@@ -17,34 +17,34 @@
 
 namespace Aerospike.Client
 {
-    /// <summary>
-    /// Double value.
-    /// </summary>
-    public sealed class DoubleValue : Value<double>
-    {
-        public DoubleValue(double value)
-            : base(value, ParticleType.DOUBLE)
-        {
-        }
+	/// <summary>
+	/// Double value.
+	/// </summary>
+	public sealed class DoubleValue : Value<double>
+	{
+		public DoubleValue(double value)
+			: base(value, ParticleType.DOUBLE)
+		{
+		}
 
-        public override int EstimateSize() => 8;
+		public override int EstimateSize() => 8;
 
-        public override int Write(byte[] buffer, int offset) => ByteUtil.DoubleToBytes(value, buffer, offset);
+		public override int Write(byte[] buffer, int offset) => ByteUtil.DoubleToBytes(value, buffer, offset);
 
-        public override void Pack(Packer packer) => packer.PackDouble(value);
+		public override void Pack(Packer packer) => packer.PackDouble(value);
 
-        public override int GetHashCode()
-        {
-            ulong bits = (ulong)BitConverter.DoubleToInt64Bits(value);
-            return (int)(bits ^ bits >> 32);
-        }
+		public override int GetHashCode()
+		{
+			ulong bits = (ulong)BitConverter.DoubleToInt64Bits(value);
+			return (int)(bits ^ bits >> 32);
+		}
 
-        public override int ToInteger() => (int)value;
+		public override int ToInteger() => (int)value;
 
-        public override uint ToUnsignedInteger() => (uint)value;
+		public override uint ToUnsignedInteger() => (uint)value;
 
-        public override long ToLong() => (long)value;
+		public override long ToLong() => (long)value;
 
-        public override ulong ToUnsignedLong() => (ulong)value;
-    }
+		public override ulong ToUnsignedLong() => (ulong)value;
+	}
 }

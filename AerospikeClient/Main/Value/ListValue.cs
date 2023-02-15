@@ -18,88 +18,88 @@ using System.Collections;
 
 namespace Aerospike.Client
 {
-    /// <summary>
-    /// List value.
-    /// </summary>
-    public sealed class ListValue : Value, IEquatable<ListValue>, IEquatable<IList>
-    {
-        public IList List { get; }
-        public byte[] Bytes { get; private set; }
+	/// <summary>
+	/// List value.
+	/// </summary>
+	public sealed class ListValue : Value, IEquatable<ListValue>, IEquatable<IList>
+	{
+		public IList List { get; }
+		public byte[] Bytes { get; private set; }
 
-        public override ParticleType Type { get => ParticleType.LIST; }
+		public override ParticleType Type { get => ParticleType.LIST; }
 
-        public override object Object { get => List; }
+		public override object Object { get => List; }
 
-        public ListValue(IList list)
-        {
-            this.List = list;
-            Bytes = default;
-        }
+		public ListValue(IList list)
+		{
+			this.List = list;
+			Bytes = default;
+		}
 
-        public override int EstimateSize()
-        {
-            Bytes = Packer.Pack(List);
-            return Bytes.Length;
-        }
+		public override int EstimateSize()
+		{
+			Bytes = Packer.Pack(List);
+			return Bytes.Length;
+		}
 
-        public override int Write(byte[] buffer, int offset)
-        {
-            Array.Copy(Bytes, 0, buffer, offset, Bytes.Length);
-            return Bytes.Length;
-        }
+		public override int Write(byte[] buffer, int offset)
+		{
+			Array.Copy(Bytes, 0, buffer, offset, Bytes.Length);
+			return Bytes.Length;
+		}
 
-        public override void Pack(Packer packer) => packer.PackList(List);
+		public override void Pack(Packer packer) => packer.PackList(List);
 
-        public override void ValidateKeyType() => throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Invalid key type: list");
+		public override void ValidateKeyType() => throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Invalid key type: list");
 
-        public override string ToString() => List.ToString();
+		public override string ToString() => List.ToString();
 
-        public override bool Equals(object obj)
-        {
-            if (obj is IList iValue) return Equals(iValue);
-            if (obj is ListValue lValue) return Equals(lValue);
+		public override bool Equals(object obj)
+		{
+			if (obj is IList iValue) return Equals(iValue);
+			if (obj is ListValue lValue) return Equals(lValue);
 
-            return false;
-        }
+			return false;
+		}
 
-        public bool Equals(ListValue other) => other is null || other.List is null ? false : List.Equals(other.List);
+		public bool Equals(ListValue other) => other is null || other.List is null ? false : List.Equals(other.List);
 
-        public bool Equals(IList other)
-        {
-            if (other is null) return false;
-            
-            if (List.Count != other.Count)  return false;
+		public bool Equals(IList other)
+		{
+			if (other is null) return false;
 
-            for (int i = 0; i < List.Count; i++)
-            {
-                object v1 = List[i];
-                object v2 = other[i];
+			if (List.Count != other.Count) return false;
 
-                if (v1 == null)
-                {
-                    if (v2 == null) continue;
-                    return false;
-                }
+			for (int i = 0; i < List.Count; i++)
+			{
+				object v1 = List[i];
+				object v2 = other[i];
 
-                if (!v1.Equals(v2)) return false;
-            }
-            return true;
-        }
+				if (v1 == null)
+				{
+					if (v2 == null) continue;
+					return false;
+				}
 
-        public override int GetHashCode()
-        {
-            int result = 1;
-            foreach (object value in List)
-            {
-                result = 31 * result + (value == null ? 0 : value.GetHashCode());
-            }
-            return result;
-        }
+				if (!v1.Equals(v2)) return false;
+			}
+			return true;
+		}
 
-        public static bool operator ==(ListValue o1, ListValue o2) => o1?.Equals(o2) ?? false;
-        public static bool operator !=(ListValue o1, ListValue o2) => o1 == o2 ? false : true;
+		public override int GetHashCode()
+		{
+			int result = 1;
+			foreach (object value in List)
+			{
+				result = 31 * result + (value == null ? 0 : value.GetHashCode());
+			}
+			return result;
+		}
 
-        public static bool operator ==(ListValue o1, IList o2) => o1?.Equals(o2) ?? false;
-        public static bool operator !=(ListValue o1, IList o2) => o1 == o2 ? false : true;
-    }
+		public static bool operator ==(ListValue o1, ListValue o2) => o1?.Equals(o2) ?? false;
+		public static bool operator !=(ListValue o1, ListValue o2) => o1 == o2 ? false : true;
+
+		public static bool operator ==(ListValue o1, IList o2) => o1?.Equals(o2) ?? false;
+		public static bool operator !=(ListValue o1, IList o2) => o1 == o2 ? false : true;
+	}
 }

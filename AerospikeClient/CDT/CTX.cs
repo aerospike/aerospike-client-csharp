@@ -19,12 +19,12 @@ using System.Collections;
 
 namespace Aerospike.Client
 {
-    /// <summary>
-    /// Nested CDT context.  Identifies the location of nested list/map to apply the operation.
-    /// for the current level.  An array of CTX identifies location of the list/map on multiple
-    /// levels on nesting.
-    /// </summary>
-    public sealed class CTX
+	/// <summary>
+	/// Nested CDT context.  Identifies the location of nested list/map to apply the operation.
+	/// for the current level.  An array of CTX identifies location of the list/map on multiple
+	/// levels on nesting.
+	/// </summary>
+	public sealed class CTX
 	{
 		/// <summary>
 		/// Lookup list by index offset.
