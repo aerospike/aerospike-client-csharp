@@ -638,7 +638,7 @@ namespace Aerospike.Test
 			stmt.SetFilter(Filter.Range(binName, begin, end));
 
 			QueryPolicy policy = new QueryPolicy();
-			policy.filterExp = Exp.Build(Exp.EQ(Exp.BinType("listbin"), Exp.Val(ParticleType.LIST)));
+			policy.filterExp = Exp.Build(Exp.EQ(Exp.BinType("listbin"), Exp.Val((int)ParticleType.LIST)));
 
 			RecordSet rs = client.Query(policy, stmt);
 
