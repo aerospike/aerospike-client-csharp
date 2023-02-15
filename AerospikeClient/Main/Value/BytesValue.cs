@@ -17,60 +17,60 @@
 
 namespace Aerospike.Client
 {
-    /// <summary>
-    /// Byte array value.
-    /// </summary>
-    public sealed class BytesValue : Value, IEquatable<BytesValue>, IEquatable<byte[]>
-    {
-        public byte[] Bytes { get; }
+	/// <summary>
+	/// Byte array value.
+	/// </summary>
+	public sealed class BytesValue : Value, IEquatable<BytesValue>, IEquatable<byte[]>
+	{
+		public byte[] Bytes { get; }
 
-        public override ParticleType Type { get => ParticleType.BLOB; }
+		public override ParticleType Type { get => ParticleType.BLOB; }
 
-        public override object Object { get => Bytes; }
+		public override object Object { get => Bytes; }
 
-        public BytesValue(byte[] bytes)
-        {
-            Bytes = bytes;
-        }
+		public BytesValue(byte[] bytes)
+		{
+			Bytes = bytes;
+		}
 
-        public override int EstimateSize() => Bytes.Length;
+		public override int EstimateSize() => Bytes.Length;
 
-        public override int Write(byte[] buffer, int offset)
-        {
-            Array.Copy(Bytes, 0, buffer, offset, Bytes.Length);
-            return Bytes.Length;
-        }
+		public override int Write(byte[] buffer, int offset)
+		{
+			Array.Copy(Bytes, 0, buffer, offset, Bytes.Length);
+			return Bytes.Length;
+		}
 
-        public override void Pack(Packer packer) => packer.PackParticleBytes(Bytes);
+		public override void Pack(Packer packer) => packer.PackParticleBytes(Bytes);
 
-        public override string ToString() => ByteUtil.BytesToHexString(Bytes);
+		public override string ToString() => ByteUtil.BytesToHexString(Bytes);
 
-        public override int GetHashCode()
-        {
-            int result = 1;
-            foreach (byte b in Bytes)
-            {
-                result = 31 * result + b;
-            }
-            return result;
-        }
+		public override int GetHashCode()
+		{
+			int result = 1;
+			foreach (byte b in Bytes)
+			{
+				result = 31 * result + b;
+			}
+			return result;
+		}
 
-        public override bool Equals(object obj)
-        {
-            if (obj is byte[] bValue) return Equals(bValue);
-            if (obj is BytesValue bytesValue) return Equals(bytesValue);
+		public override bool Equals(object obj)
+		{
+			if (obj is byte[] bValue) return Equals(bValue);
+			if (obj is BytesValue bytesValue) return Equals(bytesValue);
 
-            return false;
-        }
+			return false;
+		}
 
-        public bool Equals(BytesValue other) => other is null || other.Bytes is null ? false : Util.ByteArrayEquals(Bytes, other.Bytes);
+		public bool Equals(BytesValue other) => other is null || other.Bytes is null ? false : Util.ByteArrayEquals(Bytes, other.Bytes);
 
-        public bool Equals(byte[] other) => other is null ? false : Util.ByteArrayEquals(Bytes, other);
+		public bool Equals(byte[] other) => other is null ? false : Util.ByteArrayEquals(Bytes, other);
 
-        public static bool operator ==(BytesValue o1, BytesValue o2) => o1?.Equals(o2) ?? false;
-        public static bool operator !=(BytesValue o1, BytesValue o2) => o1 == o2 ? false : true;
+		public static bool operator ==(BytesValue o1, BytesValue o2) => o1?.Equals(o2) ?? false;
+		public static bool operator !=(BytesValue o1, BytesValue o2) => o1 == o2 ? false : true;
 
-        public static bool operator ==(BytesValue o1, string o2) => o1?.Equals(o2) ?? false;
-        public static bool operator !=(BytesValue o1, string o2) => o1 == o2 ? false : true;
-    }
+		public static bool operator ==(BytesValue o1, string o2) => o1?.Equals(o2) ?? false;
+		public static bool operator !=(BytesValue o1, string o2) => o1 == o2 ? false : true;
+	}
 }
