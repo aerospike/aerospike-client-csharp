@@ -18,10 +18,10 @@ using System.Collections;
 
 namespace Aerospike.Client
 {
-	/// <summary>
-	/// Column name/value pair. 
-	/// </summary>
-	public struct Bin
+    /// <summary>
+    /// Column name/value pair. 
+    /// </summary>
+    public struct Bin
 	{
 		/// <summary>
 		/// Bin name. Current limit is 15 characters.
@@ -191,7 +191,7 @@ namespace Aerospike.Client
 		/// Constructor, specifying bin name and boolean value.
 		/// For servers configured as "single-bin", enter a null or empty name.
 		/// Either a boolean or integer bin is sent to the server, depending
-		/// on configuration <see cref="Aerospike.Client.Value.UseBoolBin"/>.
+		/// on configuration <see cref="Value.UseBoolBin"/>.
 		/// </summary>
 		/// <param name="name">bin name, current limit is 15 characters</param>
 		/// <param name="value">bin value</param>
