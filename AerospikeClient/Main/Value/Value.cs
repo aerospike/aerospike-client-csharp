@@ -24,19 +24,19 @@ namespace Aerospike.Client
     public abstract class Value
     {
         /// <summary>
-		/// Should client send boolean particle type for a boolean bin.  If false,
-		/// an integer particle type (1 or 0) is sent instead. Must be false for server
-		/// versions less than 5.6 which do not support boolean bins. Can set to true for
-		/// server 5.6+.
-		/// </summary>
-		public static bool UseBoolBin = false;
+        /// Should client send boolean particle type for a boolean bin.  If false
+        /// an integer particle type (1 or 0) is sent instead. Must be false for server
+        /// versions less than 5.6 which do not support boolean bins. Can set to true for
+        /// server 5.6+.
+        /// </summary>
+        public static bool UseBoolBin = false;
 
         /// <summary>
-		/// Should BinaryFormatter be disabled. If true, an exception will be thrown when BinaryFormatter
-		/// is used. BinaryFormatter has been removed from the client by default, so this field is no
-		/// longer relevant.
-		/// </summary>
-		public static bool DisableSerializer = false;
+        /// Should BinaryFormatter be disabled. If true, an exception will be thrown when BinaryFormatter
+        /// is used. BinaryFormatter has been removed from the client by default, so this field is no
+        /// longer relevant.
+        /// </summary>
+        public static bool DisableSerializer = false;
 
         /// <summary>
         /// Should default object deserializer be disabled. If true, an exception will be thrown when

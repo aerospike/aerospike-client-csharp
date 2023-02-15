@@ -320,7 +320,7 @@ namespace Aerospike.Client
 		/// <param name="value">bin value</param>
 		public static Bin AsGeoJSON(string name, string value)
 		{
-			return new Bin(name, Value.Get(value));
+			return new Bin(name, Value.GetAsGeoJSON(value));
 		}
 	
 		/// <summary>
