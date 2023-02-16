@@ -17,48 +17,51 @@
 
 namespace Aerospike.Client
 {
-	/// <summary>
-	/// String value.
-	/// </summary>
-	public sealed class StringValue : Value, IEquatable<StringValue>, IEquatable<string>
+	partial class Value
 	{
-		public string value { get; }
-
-		public override ParticleType Type { get => ParticleType.STRING; }
-
-		public override object Object { get => value; }
-
-		public StringValue(string value)
+		/// <summary>
+		/// String value.
+		/// </summary>
+		public sealed class StringValue : Value, IEquatable<StringValue>, IEquatable<string>
 		{
-			this.value = value;
+			public string value { get; }
+
+			public override ParticleType Type { get => ParticleType.STRING; }
+
+			public override object Object { get => value; }
+
+			public StringValue(string value)
+			{
+				this.value = value;
+			}
+
+			public override int EstimateSize() => ByteUtil.EstimateSizeUtf8(value);
+
+			public override int Write(byte[] buffer, int offset) => ByteUtil.StringToUtf8(value, buffer, offset);
+
+			public override void Pack(Packer packer) => packer.PackParticleString(value);
+
+			public override string ToString() => value;
+
+			public override int GetHashCode() => value.GetHashCode();
+
+			public override bool Equals(object obj)
+			{
+				if (obj is string sValue) return Equals(sValue);
+				if (obj is StringValue vValue) return Equals(vValue);
+
+				return false;
+			}
+
+			public bool Equals(StringValue other) => other is null || other.value is null ? false : value.Equals(other.value);
+
+			public bool Equals(string other) => other is null ? false : value.Equals(other);
+
+			public static bool operator ==(StringValue o1, StringValue o2) => o1?.Equals(o2) ?? false;
+			public static bool operator !=(StringValue o1, StringValue o2) => o1 == o2 ? false : true;
+
+			public static bool operator ==(StringValue o1, string o2) => o1?.Equals(o2) ?? false;
+			public static bool operator !=(StringValue o1, string o2) => o1 == o2 ? false : true;
 		}
-
-		public override int EstimateSize() => ByteUtil.EstimateSizeUtf8(value);
-
-		public override int Write(byte[] buffer, int offset) => ByteUtil.StringToUtf8(value, buffer, offset);
-
-		public override void Pack(Packer packer) => packer.PackParticleString(value);
-
-		public override string ToString() => value;
-
-		public override int GetHashCode() => value.GetHashCode();
-
-		public override bool Equals(object obj)
-		{
-			if (obj is string sValue) return Equals(sValue);
-			if (obj is StringValue vValue) return Equals(vValue);
-
-			return false;
-		}
-
-		public bool Equals(StringValue other) => other is null || other.value is null ? false : value.Equals(other.value);
-
-		public bool Equals(string other) => other is null ? false : value.Equals(other);
-
-		public static bool operator ==(StringValue o1, StringValue o2) => o1?.Equals(o2) ?? false;
-		public static bool operator !=(StringValue o1, StringValue o2) => o1 == o2 ? false : true;
-
-		public static bool operator ==(StringValue o1, string o2) => o1?.Equals(o2) ?? false;
-		public static bool operator !=(StringValue o1, string o2) => o1 == o2 ? false : true;
 	}
 }

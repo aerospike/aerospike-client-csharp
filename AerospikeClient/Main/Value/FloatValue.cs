@@ -17,34 +17,37 @@
 
 namespace Aerospike.Client
 {
-	/// <summary>
-	/// Float value.
-	/// </summary>
-	public sealed class FloatValue : Value<float>
+	partial class Value
 	{
-		public FloatValue(float value)
-		: base(value, ParticleType.DOUBLE)
+		/// <summary>
+		/// Float value.
+		/// </summary>
+		public sealed class FloatValue : Value<float>
 		{
+			public FloatValue(float value)
+			: base(value, ParticleType.DOUBLE)
+			{
+			}
+
+			public override int EstimateSize() => 8;
+
+			public override int Write(byte[] buffer, int offset) => ByteUtil.DoubleToBytes(value, buffer, offset);
+
+			public override void Pack(Packer packer) => packer.PackFloat(value);
+
+			public override int GetHashCode()
+			{
+				ulong bits = (ulong)BitConverter.DoubleToInt64Bits(value);
+				return (int)(bits ^ bits >> 32);
+			}
+
+			public override int ToInteger() => (int)value;
+
+			public override uint ToUnsignedInteger() => (uint)value;
+
+			public override long ToLong() => (long)value;
+
+			public override ulong ToUnsignedLong() => (ulong)value;
 		}
-
-		public override int EstimateSize() => 8;
-
-		public override int Write(byte[] buffer, int offset) => ByteUtil.DoubleToBytes(value, buffer, offset);
-
-		public override void Pack(Packer packer) => packer.PackFloat(value);
-
-		public override int GetHashCode()
-		{
-			ulong bits = (ulong)BitConverter.DoubleToInt64Bits(value);
-			return (int)(bits ^ bits >> 32);
-		}
-
-		public override int ToInteger() => (int)value;
-
-		public override uint ToUnsignedInteger() => (uint)value;
-
-		public override long ToLong() => (long)value;
-
-		public override ulong ToUnsignedLong() => (ulong)value;
 	}
 }

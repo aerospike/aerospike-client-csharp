@@ -36,7 +36,7 @@ namespace Aerospike.Client
                     return BytesToLongValue(buf, offset, len);
 
                 case ParticleType.DOUBLE:
-                    return new DoubleValue(BytesToDouble(buf, offset));
+                    return new Value.DoubleValue(BytesToDouble(buf, offset));
 
                 case ParticleType.BLOB:
                     byte[] dest = new byte[len];
@@ -272,7 +272,7 @@ namespace Aerospike.Client
                 val <<= 8;
                 val |= buf[offset + i];
             }
-            return new LongValue(val);
+            return new Value.LongValue(val);
         }
 
         public static object BytesToBigInteger(byte[] buf, int offset, int len)

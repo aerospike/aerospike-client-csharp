@@ -248,7 +248,7 @@ namespace Aerospike.Client
 					break;
 
 				case ParticleType.GEOJSON:
-					val = new GeoJSONValue(ByteUtil.Utf8ToString(buffer, offset, count));
+					val = new Value.GeoJSONValue(ByteUtil.Utf8ToString(buffer, offset, count));
 					break;
 				
 				default:

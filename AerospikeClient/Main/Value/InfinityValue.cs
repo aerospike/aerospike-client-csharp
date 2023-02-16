@@ -17,35 +17,38 @@
 
 namespace Aerospike.Client
 {
-	/// <summary>
-	/// Infinity value.
-	/// </summary>
-	public sealed class InfinityValue : Value
+	partial class Value
 	{
-		public override ParticleType Type
+		/// <summary>
+		/// Infinity value.
+		/// </summary>
+		public sealed class InfinityValue : Value
 		{
-			get => throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Invalid particle type: INF");
+			public override ParticleType Type
+			{
+				get => throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Invalid particle type: INF");
+			}
+
+			public override object Object { get => null; }
+
+			public override int EstimateSize() => 0;
+
+			public override int Write(byte[] buffer, int offset) => 0;
+
+			public override void Pack(Packer packer) => packer.PackInfinity();
+
+			public override void ValidateKeyType() => throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Invalid key type: INF");
+
+			public override string ToString() => "INF";
+
+			public override bool Equals(object obj)
+			{
+				if (obj is InfinityValue) return true;
+
+				return false;
+			}
+
+			public override int GetHashCode() => 0;
 		}
-
-		public override object Object { get => null; }
-
-		public override int EstimateSize() => 0;
-
-		public override int Write(byte[] buffer, int offset) => 0;
-
-		public override void Pack(Packer packer) => packer.PackInfinity();
-
-		public override void ValidateKeyType() => throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Invalid key type: INF");
-
-		public override string ToString() => "INF";
-
-		public override bool Equals(object obj)
-		{
-			if (obj is InfinityValue) return true;
-
-			return false;
-		}
-
-		public override int GetHashCode() => 0;
 	}
 }

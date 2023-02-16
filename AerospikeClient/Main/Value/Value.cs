@@ -21,7 +21,7 @@ namespace Aerospike.Client
 	/// <summary>
 	/// Polymorphic value classes used to efficiently serialize objects into the wire protocol.
 	/// </summary>
-	public abstract class Value
+	public abstract partial class Value
 	{
 		/// <summary>
 		/// Should client send boolean particle type for a boolean bin.  If false

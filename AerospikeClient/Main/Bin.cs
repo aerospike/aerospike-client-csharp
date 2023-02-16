@@ -26,12 +26,12 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Bin name. Current limit is 15 characters.
 		/// </summary>
-		public readonly string name;
+		public string name { get; }
 
 		/// <summary>
 		/// Bin value.
 		/// </summary>
-		public readonly Value value;
+		public Value value { get; }
 
 		/// <summary>
 		/// Constructor, specifying bin name and value.

@@ -29,9 +29,9 @@ namespace Aerospike.Test
 		private string bin2 = "hllbin_2";
 		private string bin3 = "hllbin_3";
 		private Policy policy = new Policy();
-		private HLLValue hll1;
-		private HLLValue hll2;
-		private HLLValue hll3;
+		private Value.HLLValue hll1;
+		private Value.HLLValue hll2;
+		private Value.HLLValue hll3;
 
 		[TestMethod]
 		public void HllExp()
@@ -67,15 +67,15 @@ namespace Aerospike.Test
 				);
 
 			IList results = rec.GetList(bin1);
-			hll1 = (HLLValue)results[1];
+			hll1 = (Value.HLLValue)results[1];
 			Assert.AreNotEqual(null, hll1);
 
 			results = rec.GetList(bin2);
-			hll2 = (HLLValue)results[1];
+			hll2 = (Value.HLLValue)results[1];
 			Assert.AreNotEqual(null, hll2);
 
 			results = rec.GetList(bin3);
-			hll3 = (HLLValue)results[1];
+			hll3 = (Value.HLLValue)results[1];
 			Assert.AreNotEqual(null, hll3);
 
 			Count(key);
@@ -100,7 +100,7 @@ namespace Aerospike.Test
 
 		private void Union(Key key)
 		{
-			List<HLLValue> hlls = new List<HLLValue>();
+			List<Value.HLLValue> hlls = new List<Value.HLLValue>();
 			hlls.Add(hll1);
 			hlls.Add(hll2);
 			hlls.Add(hll3);
@@ -124,10 +124,10 @@ namespace Aerospike.Test
 
 		private void Intersect(Key key)
 		{
-			List<HLLValue> hlls2 = new List<HLLValue>();
+			List<Value.HLLValue> hlls2 = new List<Value.HLLValue>();
 			hlls2.Add(hll2);
 
-			List<HLLValue> hlls3 = new List<HLLValue>();
+			List<Value.HLLValue> hlls3 = new List<Value.HLLValue>();
 			hlls3.Add(hll3);
 
 			policy.filterExp = Exp.Build(
@@ -149,10 +149,10 @@ namespace Aerospike.Test
 
 		private void Similarity(Key key)
 		{
-			List<HLLValue> hlls2 = new List<HLLValue>();
+			List<Value.HLLValue> hlls2 = new List<Value.HLLValue>();
 			hlls2.Add(hll2);
 
-			List<HLLValue> hlls3 = new List<HLLValue>();
+			List<Value.HLLValue> hlls3 = new List<Value.HLLValue>();
 			hlls3.Add(hll3);
 
 			policy.filterExp = Exp.Build(

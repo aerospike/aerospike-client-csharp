@@ -17,73 +17,76 @@
 
 namespace Aerospike.Client
 {
-	/// <summary>
-	/// Byte segment value.
-	/// </summary>
-	public sealed class ByteSegmentValue : Value, IEquatable<ByteSegmentValue>
+	partial class Value
 	{
-		public byte[] Bytes { get; }
-		public int Offset { get; }
-		public int Length { get; }
-
-		public override ParticleType Type { get => ParticleType.BLOB; }
-
-		public override object Object { get => this; }
-
-		public ByteSegmentValue(byte[] bytes, int offset, int length)
+		/// <summary>
+		/// Byte segment value.
+		/// </summary>
+		public sealed class ByteSegmentValue : Value, IEquatable<ByteSegmentValue>
 		{
-			Bytes = bytes;
-			Offset = offset;
-			Length = length;
-		}
+			public byte[] Bytes { get; }
+			public int Offset { get; }
+			public int Length { get; }
 
-		public override int EstimateSize() => Length;
+			public override ParticleType Type { get => ParticleType.BLOB; }
 
-		public override int Write(byte[] buffer, int targetOffset)
-		{
-			Array.Copy(Bytes, Offset, buffer, targetOffset, Length);
-			return Length;
-		}
+			public override object Object { get => this; }
 
-		public override void Pack(Packer packer)
-		{
-			packer.PackParticleBytes(Bytes, Offset, Length);
-		}
-
-		public override string ToString() => ByteUtil.BytesToHexString(Bytes, Offset, Length);
-
-		public override bool Equals(object obj)
-		{
-			if (obj is ByteSegmentValue bObj) return Equals(bObj);
-
-			return false;
-		}
-
-		public bool Equals(ByteSegmentValue other)
-		{
-			if (other is null) return false;
-
-			if (Length != other.Length) return false;
-
-			for (int i = 0; i < Length; i++)
+			public ByteSegmentValue(byte[] bytes, int offset, int length)
 			{
-				if (Bytes[Offset + i] != other.Bytes[other.Offset + i]) return false;
+				Bytes = bytes;
+				Offset = offset;
+				Length = length;
 			}
 
-			return true;
-		}
+			public override int EstimateSize() => Length;
 
-		public override int GetHashCode()
-		{
-			int result = 1;
-			for (int i = 0; i < Length; i++)
+			public override int Write(byte[] buffer, int targetOffset)
 			{
-				result = 31 * result + Bytes[Offset + i];
+				Array.Copy(Bytes, Offset, buffer, targetOffset, Length);
+				return Length;
 			}
-			return result;
-		}
 
-		public static bool operator ==(ByteSegmentValue o1, ByteSegmentValue o2) => o1?.Equals(o2) ?? false;
-		public static bool operator !=(ByteSegmentValue o1, ByteSegmentValue o2) => o1 == o2 ? false : true;
+			public override void Pack(Packer packer)
+			{
+				packer.PackParticleBytes(Bytes, Offset, Length);
+			}
+
+			public override string ToString() => ByteUtil.BytesToHexString(Bytes, Offset, Length);
+
+			public override bool Equals(object obj)
+			{
+				if (obj is ByteSegmentValue bObj) return Equals(bObj);
+
+				return false;
+			}
+
+			public bool Equals(ByteSegmentValue other)
+			{
+				if (other is null) return false;
+
+				if (Length != other.Length) return false;
+
+				for (int i = 0; i < Length; i++)
+				{
+					if (Bytes[Offset + i] != other.Bytes[other.Offset + i]) return false;
+				}
+
+				return true;
+			}
+
+			public override int GetHashCode()
+			{
+				int result = 1;
+				for (int i = 0; i < Length; i++)
+				{
+					result = 31 * result + Bytes[Offset + i];
+				}
+				return result;
+			}
+
+			public static bool operator ==(ByteSegmentValue o1, ByteSegmentValue o2) => o1?.Equals(o2) ?? false;
+			public static bool operator !=(ByteSegmentValue o1, ByteSegmentValue o2) => o1 == o2 ? false : true;
+		}
 	}
 }

@@ -48,7 +48,7 @@ namespace Aerospike.Test
 		{
 			for (int i = 0; i < n_entries; i++)
 			{
-				entries.Add(new StringValue("key " + i));
+				entries.Add(new Value.StringValue("key " + i));
 			}
 
 			for (int index_bits = minIndexBits; index_bits <= maxIndexBits; index_bits += 4)
@@ -420,12 +420,12 @@ namespace Aerospike.Test
 
 			for (int i = 0; i < n_entries / 2; i++)
 			{
-				vals0.Add(new StringValue("key " + i));
+				vals0.Add(new Value.StringValue("key " + i));
 			}
 
 			for (int i = n_entries / 2; i < n_entries; i++)
 			{
-				vals1.Add(new StringValue("key " + i));
+				vals1.Add(new Value.StringValue("key " + i));
 			}
 
 			for (int index_bits = 4; index_bits < maxIndexBits; index_bits++)
@@ -499,13 +499,13 @@ namespace Aerospike.Test
 				AssertHLLCount(msg, ix, count, sub_vals.Count);
 			}
 
-			List<HLLValue> hlls = new List<HLLValue>();
+			List<Value.HLLValue> hlls = new List<Value.HLLValue>();
 
 			for (int i = 0; i < keys.Length; i++)
 			{
 				Record record = AssertSuccess(msg, keys[i], Operation.Get(binName), HLLOperation.GetCount(binName));
 				IList result_list = record.GetList(binName);
-				HLLValue hll = (HLLValue)result_list[0];
+				Value.HLLValue hll = (Value.HLLValue)result_list[0];
 
 				Assert.AreNotEqual(null, hll);
 				hlls.Add(hll);
@@ -563,7 +563,7 @@ namespace Aerospike.Test
 
 				for (int j = 0; j < n_entries / 3; j++)
 				{
-					sub_vals.Add(new StringValue("key" + i + " " + j));
+					sub_vals.Add(new Value.StringValue("key" + i + " " + j));
 				}
 
 				vals.Add(sub_vals);
@@ -587,14 +587,14 @@ namespace Aerospike.Test
 			string otherName = binName + "o";
 
 			// Keep record around win binName is removed.
-			List<HLLValue> hlls = new List<HLLValue>();
+			List<Value.HLLValue> hlls = new List<Value.HLLValue>();
 			Record record = AssertSuccess("other bin", key,
 				Operation.Delete(),
 				HLLOperation.Add(HLLPolicy.Default, otherName, entries, index_bits),
 				Operation.Get(otherName)
 				);
 			IList result_list = record.GetList(otherName);
-			HLLValue hll = (HLLValue) result_list[1];
+			Value.HLLValue hll = (Value.HLLValue) result_list[1];
 
 			hlls.Add(hll);
 
@@ -680,7 +680,7 @@ namespace Aerospike.Test
 			int index_bits = 14;
 			long expected_union_count = 0;
 			List<IList> vals = new List<IList>();
-			IList<HLLValue> hlls = new List<HLLValue>();
+			IList<Value.HLLValue> hlls = new List<Value.HLLValue>();
 
 			for (int i = 0; i < keys.Length; i++)
 			{
@@ -688,13 +688,13 @@ namespace Aerospike.Test
 
 				for (int j = 0; j < n_entries / 3; j++)
 				{
-					sub_vals.Add(new StringValue("key" + i + " " + j));
+					sub_vals.Add(new Value.StringValue("key" + i + " " + j));
 				}
 
 				Record record = AssertSuccess("init other keys", keys[i], Operation.Delete(), HLLOperation.Add(HLLPolicy.Default, binName, sub_vals, index_bits), Operation.Get(binName));
 
 				IList result_list = record.GetList(binName);
-				hlls.Add((HLLValue)result_list[1]);
+				hlls.Add((Value.HLLValue)result_list[1]);
 				expected_union_count += sub_vals.Count;
 				vals.Add(sub_vals);
 			}
@@ -712,7 +712,7 @@ namespace Aerospike.Test
 
 			AssertHLLCount("verify union count", index_bits, union_count, expected_union_count);
 
-			HLLValue union_hll = (HLLValue)rlist[0];
+			Value.HLLValue union_hll = (Value.HLLValue)rlist[0];
 
 			r = AssertSuccess("", key, Operation.Put(new Bin(binName, union_hll)), HLLOperation.GetCount(binName));
 			rlist = r.GetList(binName);
@@ -732,7 +732,7 @@ namespace Aerospike.Test
 				AssertSuccess("init record", key, Operation.Delete(), HLLOperation.Init(HLLPolicy.Default, binName, index_bits, minhash_bits));
 
 				Record record = client.Get(null, key);
-				HLLValue hll = record.GetHLLValue(binName);
+				Value.HLLValue hll = record.GetHLLValue(binName);
 
 				client.Delete(null, key);
 				client.Put(null, key, new Bin(binName, hll));
@@ -777,7 +777,7 @@ namespace Aerospike.Test
 
 		public void AssertSimilarityOp(double overlap, IList common, IList<IList> vals, int index_bits, int minhash_bits)
 		{
-			IList<HLLValue> hlls = new List<HLLValue>();
+			IList<Value.HLLValue> hlls = new List<Value.HLLValue>();
 
 			for (int i = 0; i < keys.Length; i++)
 			{
@@ -789,7 +789,7 @@ namespace Aerospike.Test
 					);
 
 				IList result_list = record.GetList(binName);
-				hlls.Add((HLLValue)result_list[2]);
+				hlls.Add((Value.HLLValue)result_list[2]);
 			}
 
 			// Keep record around win binName is removed.
@@ -831,7 +831,7 @@ namespace Aerospike.Test
 
 				for (int i = 0; i < expected_intersect_count; i++)
 				{
-					common.Add(new StringValue("common" + i));
+					common.Add(new Value.StringValue("common" + i));
 				}
 
 				List<IList> vals = new List<IList>();
@@ -843,7 +843,7 @@ namespace Aerospike.Test
 
 					for (int j = 0; j < unique_entries_per_node; j++)
 					{
-						sub_vals.Add(new StringValue("key" + i + " " + j));
+						sub_vals.Add(new Value.StringValue("key" + i + " " + j));
 					}
 
 					vals.Add(sub_vals);

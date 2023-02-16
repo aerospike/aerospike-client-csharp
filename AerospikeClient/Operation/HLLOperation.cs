@@ -126,7 +126,7 @@ namespace Aerospike.Client
 		/// <param name="policy">write policy, use <see cref="Aerospike.Client.HLLPolicy.Default"/> for default</param>
 		/// <param name="binName">name of bin</param>
 		/// <param name="list">list of HLL objects</param>
-		public static Operation SetUnion(HLLPolicy policy, string binName, IList<HLLValue> list)
+		public static Operation SetUnion(HLLPolicy policy, string binName, IList<Value.HLLValue> list)
 		{
 			byte[] bytes = PackListInt(HLLOperation.SET_UNION, list, policy.flags);
 			return new Operation(Operation.Type.HLL_MODIFY, binName, Value.Get(bytes));
@@ -175,7 +175,7 @@ namespace Aerospike.Client
 		/// </summary>
 		/// <param name="binName">name of bin</param>
 		/// <param name="list">list of HLL objects</param>
-		public static Operation GetUnion(string binName, IList<HLLValue> list)
+		public static Operation GetUnion(string binName, IList<Value.HLLValue> list)
 		{
 			byte[] bytes = PackList(HLLOperation.UNION, list);
 			return new Operation(Operation.Type.HLL_READ, binName, Value.Get(bytes));
@@ -188,7 +188,7 @@ namespace Aerospike.Client
 		/// </summary>
 		/// <param name="binName">name of bin</param>
 		/// <param name="list">list of HLL objects</param>
-		public static Operation GetUnionCount(string binName, IList<HLLValue> list)
+		public static Operation GetUnionCount(string binName, IList<Value.HLLValue> list)
 		{
 			byte[] bytes = PackList(HLLOperation.UNION_COUNT, list);
 			return new Operation(Operation.Type.HLL_READ, binName, Value.Get(bytes));
@@ -201,7 +201,7 @@ namespace Aerospike.Client
 		/// </summary>
 		/// <param name="binName">name of bin</param>
 		/// <param name="list">list of HLL objects</param>
-		public static Operation GetIntersectCount(string binName, IList<HLLValue> list)
+		public static Operation GetIntersectCount(string binName, IList<Value.HLLValue> list)
 		{
 			byte[] bytes = PackList(HLLOperation.INTERSECT_COUNT, list);
 			return new Operation(Operation.Type.HLL_READ, binName, Value.Get(bytes));
@@ -213,7 +213,7 @@ namespace Aerospike.Client
 		/// </summary>
 		/// <param name="binName">name of bin</param>
 		/// <param name="list">list of HLL objects</param>
-		public static Operation GetSimilarity(string binName, IList<HLLValue> list)
+		public static Operation GetSimilarity(string binName, IList<Value.HLLValue> list)
 		{
 			byte[] bytes = PackList(HLLOperation.SIMILARITY, list);
 			return new Operation(Operation.Type.HLL_READ, binName, Value.Get(bytes));
@@ -231,7 +231,7 @@ namespace Aerospike.Client
 			return new Operation(Operation.Type.HLL_READ, binName, Value.Get(bytes));
 		}
 
-		private static byte[] PackList(int command, IList<HLLValue> list)
+		private static byte[] PackList(int command, IList<Value.HLLValue> list)
 		{
 			Packer packer = new Packer();
 			// Pack.Init() only required when CTX is used and server does not support CTX for bit operations.
@@ -242,7 +242,7 @@ namespace Aerospike.Client
 			return packer.ToByteArray();
 		}
 
-		public static byte[] PackListInt(int command, IList<HLLValue> list, int v1)
+		public static byte[] PackListInt(int command, IList<Value.HLLValue> list, int v1)
 		{
 			Packer packer = new Packer();
 			// Pack.Init() only required when CTX is used and server does not support CTX for bit operations.

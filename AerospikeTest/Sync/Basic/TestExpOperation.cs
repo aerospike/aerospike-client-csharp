@@ -327,12 +327,12 @@ namespace Aerospike.Test
 			AssertRecordFound(keyA, record);
 
 			IList results = record.GetList(binH);
-			HLLValue valH = (HLLValue)results[1];
+			Value.HLLValue valH = (Value.HLLValue)results[1];
 
 			results = record.GetList(binC);
-			HLLValue valC = (HLLValue)results[1];
+			Value.HLLValue valC = (Value.HLLValue)results[1];
 
-			HLLValue valExp = record.GetHLLValue(expVar);
+			Value.HLLValue valExp = record.GetHLLValue(expVar);
 
 			Assert.IsTrue(Util.ByteArrayEquals((byte[])valH.Object, (byte[])valC.Object));
 			Assert.IsTrue(Util.ByteArrayEquals((byte[])valH.Object, (byte[])valExp.Object));

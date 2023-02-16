@@ -17,36 +17,39 @@
 
 namespace Aerospike.Client
 {
-	/// <summary>
-	/// Wildcard value.
-	/// </summary>
-	public sealed class WildcardValue : Value
+	partial class Value
 	{
-		public override ParticleType Type
+		/// <summary>
+		/// Wildcard value.
+		/// </summary>
+		public sealed class WildcardValue : Value
 		{
-			get => throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Invalid particle type: wildcard");
+			public override ParticleType Type
+			{
+				get => throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Invalid particle type: wildcard");
+			}
+
+			public override object Object { get => null; }
+
+			public override int EstimateSize() => 0;
+
+			public override int Write(byte[] buffer, int offset) => 0;
+
+			public override void Pack(Packer packer) => packer.PackWildcard();
+
+			public override void ValidateKeyType() => throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Invalid key type: wildcard");
+
+
+			public override string ToString() => "*";
+
+			public override bool Equals(object obj)
+			{
+				if (obj is WildcardValue) return true;
+
+				return false;
+			}
+
+			public override int GetHashCode() => 0;
 		}
-
-		public override object Object { get => null; }
-
-		public override int EstimateSize() => 0;
-
-		public override int Write(byte[] buffer, int offset) => 0;
-
-		public override void Pack(Packer packer) => packer.PackWildcard();
-
-		public override void ValidateKeyType() => throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Invalid key type: wildcard");
-
-
-		public override string ToString() => "*";
-
-		public override bool Equals(object obj)
-		{
-			if (obj is WildcardValue) return true;
-
-			return false;
-		}
-
-		public override int GetHashCode() => 0;
 	}
 }

@@ -17,30 +17,33 @@
 
 namespace Aerospike.Client
 {
-	/// <summary>
-	/// Byte value.
-	/// </summary>
-	public sealed class ByteValue : Value<byte>
+	partial class Value
 	{
-		public ByteValue(byte value)
-		: base(value, ParticleType.INTEGER)
+		/// <summary>
+		/// Byte value.
+		/// </summary>
+		public sealed class ByteValue : Value<byte>
 		{
+			public ByteValue(byte value)
+			: base(value, ParticleType.INTEGER)
+			{
+			}
+
+			public override int EstimateSize() => 8;
+
+			public override int Write(byte[] buffer, int offset) => ByteUtil.LongToBytes(value, buffer, offset);
+
+			public override void Pack(Packer packer) => packer.PackNumber(value);
+
+			public override int GetHashCode() => value;
+
+			public override int ToInteger() => value;
+
+			public override uint ToUnsignedInteger() => value;
+
+			public override long ToLong() => value;
+
+			public override ulong ToUnsignedLong() => value;
 		}
-
-		public override int EstimateSize() => 8;
-
-		public override int Write(byte[] buffer, int offset) => ByteUtil.LongToBytes(value, buffer, offset);
-
-		public override void Pack(Packer packer) => packer.PackNumber(value);
-
-		public override int GetHashCode() => value;
-
-		public override int ToInteger() => value;
-
-		public override uint ToUnsignedInteger() => value;
-
-		public override long ToLong() => value;
-
-		public override ulong ToUnsignedLong() => value;
 	}
 }

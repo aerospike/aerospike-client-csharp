@@ -17,62 +17,65 @@
 
 namespace Aerospike.Client
 {
-	/// <summary>
-	/// HyperLogLog value.
-	/// </summary>
-	public sealed class HLLValue : Value, IEquatable<HLLValue>, IEquatable<byte[]>
+	partial class Value
 	{
-		public byte[] Bytes { get; }
-
-		public override ParticleType Type { get => ParticleType.HLL; }
-
-		public override object Object { get => Bytes; }
-
-		public HLLValue(byte[] bytes)
+		/// <summary>
+		/// HyperLogLog value.
+		/// </summary>
+		public sealed class HLLValue : Value, IEquatable<HLLValue>, IEquatable<byte[]>
 		{
-			this.Bytes = bytes;
-		}
+			public byte[] Bytes { get; }
 
-		public override int EstimateSize() => Bytes.Length;
+			public override ParticleType Type { get => ParticleType.HLL; }
 
-		public override int Write(byte[] buffer, int offset)
-		{
-			Array.Copy(Bytes, 0, buffer, offset, Bytes.Length);
-			return Bytes.Length;
-		}
+			public override object Object { get => Bytes; }
 
-		public override void Pack(Packer packer) => packer.PackParticleBytes(Bytes);
-
-		public override void ValidateKeyType() => throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Invalid key type: HLL");
-
-		public override string ToString() => ByteUtil.BytesToHexString(Bytes);
-
-		public override bool Equals(object obj)
-		{
-			if (obj is byte[] bValue) return Equals(bValue);
-			if (obj is HLLValue hValue) return Equals(hValue);
-
-			return false;
-		}
-
-		public bool Equals(HLLValue other) => other is null || other.Bytes is null ? false : Util.ByteArrayEquals(Bytes, other.Bytes);
-
-		public bool Equals(byte[] other) => other is null ? false : Util.ByteArrayEquals(Bytes, other);
-
-		public override int GetHashCode()
-		{
-			int result = 1;
-			foreach (byte b in Bytes)
+			public HLLValue(byte[] bytes)
 			{
-				result = 31 * result + b;
+				this.Bytes = bytes;
 			}
-			return result;
+
+			public override int EstimateSize() => Bytes.Length;
+
+			public override int Write(byte[] buffer, int offset)
+			{
+				Array.Copy(Bytes, 0, buffer, offset, Bytes.Length);
+				return Bytes.Length;
+			}
+
+			public override void Pack(Packer packer) => packer.PackParticleBytes(Bytes);
+
+			public override void ValidateKeyType() => throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Invalid key type: HLL");
+
+			public override string ToString() => ByteUtil.BytesToHexString(Bytes);
+
+			public override bool Equals(object obj)
+			{
+				if (obj is byte[] bValue) return Equals(bValue);
+				if (obj is HLLValue hValue) return Equals(hValue);
+
+				return false;
+			}
+
+			public bool Equals(HLLValue other) => other is null || other.Bytes is null ? false : Util.ByteArrayEquals(Bytes, other.Bytes);
+
+			public bool Equals(byte[] other) => other is null ? false : Util.ByteArrayEquals(Bytes, other);
+
+			public override int GetHashCode()
+			{
+				int result = 1;
+				foreach (byte b in Bytes)
+				{
+					result = 31 * result + b;
+				}
+				return result;
+			}
+
+			public static bool operator ==(HLLValue o1, HLLValue o2) => o1?.Equals(o2) ?? false;
+			public static bool operator !=(HLLValue o1, HLLValue o2) => o1 == o2 ? false : true;
+
+			public static bool operator ==(HLLValue o1, byte[] o2) => o1?.Equals(o2) ?? false;
+			public static bool operator !=(HLLValue o1, byte[] o2) => o1 == o2 ? false : true;
 		}
-
-		public static bool operator ==(HLLValue o1, HLLValue o2) => o1?.Equals(o2) ?? false;
-		public static bool operator !=(HLLValue o1, HLLValue o2) => o1 == o2 ? false : true;
-
-		public static bool operator ==(HLLValue o1, byte[] o2) => o1?.Equals(o2) ?? false;
-		public static bool operator !=(HLLValue o1, byte[] o2) => o1 == o2 ? false : true;
 	}
 }

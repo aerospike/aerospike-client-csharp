@@ -20,87 +20,90 @@ using System.Collections.Generic;
 
 namespace Aerospike.Client
 {
-	/// <summary>
-	/// Value array.
-	/// </summary>
-	public sealed class ValueArray : Value, IEquatable<ValueArray>, IEquatable<Value[]>
+	partial class Value
 	{
-		public Value[] Array { get; }
-		public byte[] Bytes { get; private set; }
-
-		public override ParticleType Type { get => ParticleType.LIST; }
-
-		public override object Object { get => Array; }
-
-		public ValueArray(Value[] array)
+		/// <summary>
+		/// Value array.
+		/// </summary>
+		public sealed class ValueArray : Value, IEquatable<ValueArray>, IEquatable<Value[]>
 		{
-			Array = array;
-		}
+			public Value[] Array { get; }
+			public byte[] Bytes { get; set; }
 
-		public override int EstimateSize()
-		{
-			Bytes = Packer.Pack(Array);
-			return Bytes.Length;
-		}
+			public override ParticleType Type { get => ParticleType.LIST; }
 
-		public override int Write(byte[] buffer, int offset)
-		{
-			System.Array.Copy(Bytes, 0, buffer, offset, Bytes.Length);
-			return Bytes.Length;
-		}
+			public override object Object { get => Array; }
 
-		public override void Pack(Packer packer) => packer.PackValueArray(Array);
-
-		public override void ValidateKeyType() => throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Invalid key type: value[]");
-
-		public override string ToString() => Util.ArrayToString(Array);
-
-		public override bool Equals(object obj)
-		{
-			if (obj is Value[] vValue) return Equals(vValue);
-			if (obj is ValueArray vaValue) return Equals(vaValue);
-
-			return false;
-		}
-
-		public bool Equals(ValueArray other) => other is null || other.Array is null ? false : Array.Equals(other.Array);
-
-		public bool Equals(Value[] other)
-		{
-			if (other is null) return false;
-
-			if (Array.Length != other.Length) return false;
-
-			for (int i = 0; i < Array.Length; i++)
+			public ValueArray(Value[] array)
 			{
-				Value v1 = Array[i];
-				Value v2 = other[i];
+				Array = array;
+			}
 
-				if (v1 == null)
+			public override int EstimateSize()
+			{
+				Bytes = Packer.Pack(Array);
+				return Bytes.Length;
+			}
+
+			public override int Write(byte[] buffer, int offset)
+			{
+				System.Array.Copy(Bytes, 0, buffer, offset, Bytes.Length);
+				return Bytes.Length;
+			}
+
+			public override void Pack(Packer packer) => packer.PackValueArray(Array);
+
+			public override void ValidateKeyType() => throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Invalid key type: value[]");
+
+			public override string ToString() => Util.ArrayToString(Array);
+
+			public override bool Equals(object obj)
+			{
+				if (obj is Value[] vValue) return Equals(vValue);
+				if (obj is ValueArray vaValue) return Equals(vaValue);
+
+				return false;
+			}
+
+			public bool Equals(ValueArray other) => other is null || other.Array is null ? false : Array.Equals(other.Array);
+
+			public bool Equals(Value[] other)
+			{
+				if (other is null) return false;
+
+				if (Array.Length != other.Length) return false;
+
+				for (int i = 0; i < Array.Length; i++)
 				{
-					if (v2 == null) continue;
-					return false;
+					Value v1 = Array[i];
+					Value v2 = other[i];
+
+					if (v1 == null)
+					{
+						if (v2 == null) continue;
+						return false;
+					}
+
+					if (!v1.Equals(v2)) return false;
 				}
-
-				if (!v1.Equals(v2)) return false;
+				return true;
 			}
-			return true;
-		}
 
-		public override int GetHashCode()
-		{
-			int result = 1;
-			foreach (Value item in Array)
+			public override int GetHashCode()
 			{
-				result = 31 * result + (item == null ? 0 : item.GetHashCode());
+				int result = 1;
+				foreach (Value item in Array)
+				{
+					result = 31 * result + (item == null ? 0 : item.GetHashCode());
+				}
+				return result;
 			}
-			return result;
+
+			public static bool operator ==(ValueArray o1, ValueArray o2) => o1?.Equals(o2) ?? false;
+			public static bool operator !=(ValueArray o1, ValueArray o2) => o1 == o2 ? false : true;
+
+			public static bool operator ==(ValueArray o1, Value[] o2) => o1?.Equals(o2) ?? false;
+			public static bool operator !=(ValueArray o1, Value[] o2) => o1 == o2 ? false : true;
 		}
-
-		public static bool operator ==(ValueArray o1, ValueArray o2) => o1?.Equals(o2) ?? false;
-		public static bool operator !=(ValueArray o1, ValueArray o2) => o1 == o2 ? false : true;
-
-		public static bool operator ==(ValueArray o1, Value[] o2) => o1?.Equals(o2) ?? false;
-		public static bool operator !=(ValueArray o1, Value[] o2) => o1 == o2 ? false : true;
 	}
 }

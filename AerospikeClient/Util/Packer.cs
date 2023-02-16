@@ -161,7 +161,7 @@ namespace Aerospike.Client
 
 		public void PackBlob(object val)
 		{
-			byte[] bytes = BlobValue.Serialize(val);
+			byte[] bytes = Value.BlobValue.Serialize(val);
 			PackByteArrayBegin(bytes.Length + 1);
 			PackByte((int)ParticleType.CSHARP_BLOB);
 			PackByteArray(bytes, 0, bytes.Length);

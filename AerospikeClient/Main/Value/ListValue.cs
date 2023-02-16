@@ -18,88 +18,91 @@ using System.Collections;
 
 namespace Aerospike.Client
 {
-	/// <summary>
-	/// List value.
-	/// </summary>
-	public sealed class ListValue : Value, IEquatable<ListValue>, IEquatable<IList>
+	partial class Value
 	{
-		public IList List { get; }
-		public byte[] Bytes { get; private set; }
-
-		public override ParticleType Type { get => ParticleType.LIST; }
-
-		public override object Object { get => List; }
-
-		public ListValue(IList list)
+		/// <summary>
+		/// List value.
+		/// </summary>
+		public sealed class ListValue : Value, IEquatable<ListValue>, IEquatable<IList>
 		{
-			this.List = list;
-			Bytes = default;
-		}
+			public IList List { get; }
+			public byte[] Bytes { get; private set; }
 
-		public override int EstimateSize()
-		{
-			Bytes = Packer.Pack(List);
-			return Bytes.Length;
-		}
+			public override ParticleType Type { get => ParticleType.LIST; }
 
-		public override int Write(byte[] buffer, int offset)
-		{
-			Array.Copy(Bytes, 0, buffer, offset, Bytes.Length);
-			return Bytes.Length;
-		}
+			public override object Object { get => List; }
 
-		public override void Pack(Packer packer) => packer.PackList(List);
-
-		public override void ValidateKeyType() => throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Invalid key type: list");
-
-		public override string ToString() => List.ToString();
-
-		public override bool Equals(object obj)
-		{
-			if (obj is IList iValue) return Equals(iValue);
-			if (obj is ListValue lValue) return Equals(lValue);
-
-			return false;
-		}
-
-		public bool Equals(ListValue other) => other is null || other.List is null ? false : List.Equals(other.List);
-
-		public bool Equals(IList other)
-		{
-			if (other is null) return false;
-
-			if (List.Count != other.Count) return false;
-
-			for (int i = 0; i < List.Count; i++)
+			public ListValue(IList list)
 			{
-				object v1 = List[i];
-				object v2 = other[i];
+				this.List = list;
+				Bytes = default;
+			}
 
-				if (v1 == null)
+			public override int EstimateSize()
+			{
+				Bytes = Packer.Pack(List);
+				return Bytes.Length;
+			}
+
+			public override int Write(byte[] buffer, int offset)
+			{
+				Array.Copy(Bytes, 0, buffer, offset, Bytes.Length);
+				return Bytes.Length;
+			}
+
+			public override void Pack(Packer packer) => packer.PackList(List);
+
+			public override void ValidateKeyType() => throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Invalid key type: list");
+
+			public override string ToString() => List.ToString();
+
+			public override bool Equals(object obj)
+			{
+				if (obj is IList iValue) return Equals(iValue);
+				if (obj is ListValue lValue) return Equals(lValue);
+
+				return false;
+			}
+
+			public bool Equals(ListValue other) => other is null || other.List is null ? false : List.Equals(other.List);
+
+			public bool Equals(IList other)
+			{
+				if (other is null) return false;
+
+				if (List.Count != other.Count) return false;
+
+				for (int i = 0; i < List.Count; i++)
 				{
-					if (v2 == null) continue;
-					return false;
+					object v1 = List[i];
+					object v2 = other[i];
+
+					if (v1 == null)
+					{
+						if (v2 == null) continue;
+						return false;
+					}
+
+					if (!v1.Equals(v2)) return false;
 				}
-
-				if (!v1.Equals(v2)) return false;
+				return true;
 			}
-			return true;
-		}
 
-		public override int GetHashCode()
-		{
-			int result = 1;
-			foreach (object value in List)
+			public override int GetHashCode()
 			{
-				result = 31 * result + (value == null ? 0 : value.GetHashCode());
+				int result = 1;
+				foreach (object value in List)
+				{
+					result = 31 * result + (value == null ? 0 : value.GetHashCode());
+				}
+				return result;
 			}
-			return result;
+
+			public static bool operator ==(ListValue o1, ListValue o2) => o1?.Equals(o2) ?? false;
+			public static bool operator !=(ListValue o1, ListValue o2) => o1 == o2 ? false : true;
+
+			public static bool operator ==(ListValue o1, IList o2) => o1?.Equals(o2) ?? false;
+			public static bool operator !=(ListValue o1, IList o2) => o1 == o2 ? false : true;
 		}
-
-		public static bool operator ==(ListValue o1, ListValue o2) => o1?.Equals(o2) ?? false;
-		public static bool operator !=(ListValue o1, ListValue o2) => o1 == o2 ? false : true;
-
-		public static bool operator ==(ListValue o1, IList o2) => o1?.Equals(o2) ?? false;
-		public static bool operator !=(ListValue o1, IList o2) => o1 == o2 ? false : true;
 	}
 }
