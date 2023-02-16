@@ -18,10 +18,10 @@ using System.Collections;
 
 namespace Aerospike.Client
 {
-    /// <summary>
-    /// Column name/value pair. 
-    /// </summary>
-    public struct Bin
+	/// <summary>
+	/// Column name/value pair. 
+	/// </summary>
+	public struct Bin
 	{
 		/// <summary>
 		/// Bin name. Current limit is 15 characters.
@@ -322,7 +322,7 @@ namespace Aerospike.Client
 		{
 			return new Bin(name, Value.GetAsGeoJSON(value));
 		}
-	
+
 		/// <summary>
 		/// Return string representation of bin.
 		/// </summary>
