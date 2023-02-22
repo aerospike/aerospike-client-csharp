@@ -2320,7 +2320,7 @@ namespace Aerospike.Client
 					case FieldType.KEY:
 						int type = dataBuffer[dataOffset++];
 						size--;
-						userKey = ByteUtil.BytesToKeyValue((ParticleType)type, dataBuffer, dataOffset, size);
+						userKey = ByteUtil.BytesToKeyValue(type, dataBuffer, dataOffset, size);
 						break;
 
 					case FieldType.BVAL_ARRAY:

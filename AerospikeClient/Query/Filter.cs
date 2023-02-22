@@ -178,11 +178,11 @@ namespace Aerospike.Client
 		private readonly string name;
 		private readonly IndexCollectionType colType;
 		private readonly byte[] packedCtx;
-		private readonly ParticleType valType;
+		private readonly int valType;
 		private readonly Value begin;
 		private readonly Value end;
 
-		private Filter(string name, IndexCollectionType colType, ParticleType valType, Value begin, Value end, CTX[] ctx)
+		private Filter(string name, IndexCollectionType colType, int valType, Value begin, Value end, CTX[] ctx)
 		{
 			this.name = name;
 			this.colType = colType;

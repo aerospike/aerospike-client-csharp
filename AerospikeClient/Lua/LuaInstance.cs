@@ -197,7 +197,7 @@ namespace Aerospike.Client
 			global[name] = value;
 		}
 
-		public static object BytesToLua(ParticleType type, byte[] buf, int offset, int len) 
+		public static object BytesToLua(int type, byte[] buf, int offset, int len) 
 		{
 			if (len <= 0) {
 				return null;

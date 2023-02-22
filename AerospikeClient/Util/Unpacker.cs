@@ -233,7 +233,7 @@ namespace Aerospike.Client
 
 		private object UnpackBlob(int count)
 		{
-			ParticleType type = (ParticleType)buffer[offset++];
+			int type = buffer[offset++];
 			count--;
 			object val;
 
@@ -716,7 +716,7 @@ namespace Aerospike.Client
 
 		private string UnpackBlobString(int count)
 		{
-			ParticleType type = (ParticleType)buffer[offset++];
+			int type = buffer[offset++];
 			--count;
 			if (type != ParticleType.STRING)
 			{

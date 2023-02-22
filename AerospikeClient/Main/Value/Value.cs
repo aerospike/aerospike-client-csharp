@@ -51,7 +51,7 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Get wire protocol value type.
 		/// </summary>
-		public abstract ParticleType Type { get; }
+		public abstract int Type { get; }
 
 		/// <summary>
 		/// Return original value as an Object.
@@ -263,13 +263,13 @@ namespace Aerospike.Client
 	public abstract class Value<T> : Value, IEquatable<T>, IEquatable<Value<T>>
 	where T : struct
 	{
-		internal Value(ParticleType type)
+		internal Value(int type)
 		{
 			Type = type;
 			value = default;
 		}
 
-		internal Value(T value, ParticleType type)
+		internal Value(T value, int type)
 		{
 			Type = type;
 			this.value = value;
@@ -277,7 +277,7 @@ namespace Aerospike.Client
 
 		public T value { get; }
 
-		public override ParticleType Type { get; }
+		public override int Type { get; }
 
 		public override object Object { get => value; }
 

@@ -36,7 +36,7 @@ namespace Aerospike.Client
 				dataOffset += 4 + 4 + nameSize;
 
 				int particleBytesSize = (int)(opSize - (4 + nameSize));
-				object value = ByteUtil.BytesToParticle((ParticleType)particleType, dataBuffer, dataOffset, particleBytesSize);
+				object value = ByteUtil.BytesToParticle(particleType, dataBuffer, dataOffset, particleBytesSize);
 				dataOffset += particleBytesSize;
 
 				if (isOperation)

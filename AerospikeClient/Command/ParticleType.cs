@@ -16,19 +16,19 @@
  */
 namespace Aerospike.Client
 {
-	public enum ParticleType : int
+	public sealed class ParticleType
 	{
 		// Server particle types.
-		NULL = 0,
-		INTEGER = 1,
-		DOUBLE = 2,
-		STRING = 3,
-		BLOB = 4,
-		CSHARP_BLOB = 8,
-		BOOL = 17,
-		HLL = 18,
-		MAP = 19,
-		LIST = 20,
-		GEOJSON = 23
+		public const int NULL = 0;
+		public const int INTEGER = 1;
+		public const int DOUBLE = 2;
+		public const int STRING = 3;
+		public const int BLOB = 4;
+		public const int CSHARP_BLOB = 8;
+		public const int BOOL = 17;
+		public const int HLL = 18;
+		public const int MAP = 19;
+		public const int LIST = 20;
+		public const int GEOJSON = 23;
 	}
 }
