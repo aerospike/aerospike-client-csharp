@@ -28,7 +28,7 @@ namespace Aerospike.Client
 			public IList List { get; }
 			public byte[] Bytes { get; private set; }
 
-			public override ParticleType Type { get => ParticleType.LIST; }
+			public override int Type { get => ParticleType.LIST; }
 
 			public override object Object { get => List; }
 

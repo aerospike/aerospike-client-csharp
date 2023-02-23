@@ -30,7 +30,7 @@ namespace Aerospike.Client
 			public MapOrder Order { get; }
 			public byte[] Bytes { get; private set; }
 
-			public override ParticleType Type { get => ParticleType.MAP; }
+			public override int Type { get => ParticleType.MAP; }
 
 			public override object Object { get => Map; }
 

@@ -26,7 +26,7 @@ namespace Aerospike.Client
 		{
 			public string value { get; }
 
-			public override ParticleType Type { get => ParticleType.STRING; }
+			public override int Type { get => ParticleType.STRING; }
 
 			public override object Object { get => value; }
 

@@ -28,7 +28,7 @@ namespace Aerospike.Client
 
 			public byte[] Bytes { get; set; }
 
-			public override ParticleType Type { get => ParticleType.CSHARP_BLOB; }
+			public override int Type { get => ParticleType.CSHARP_BLOB; }
 
 			public BlobValue(object obj)
 			{

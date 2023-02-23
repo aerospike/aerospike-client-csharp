@@ -20,19 +20,19 @@ namespace Aerospike.Client
 	partial class Value
 	{
 		/// <summary>
-		/// HyperLogLog value.
+		/// Byte array value.
 		/// </summary>
-		public sealed class HLLValue : Value, IEquatable<HLLValue>, IEquatable<byte[]>
+		public sealed class BytesValue : Value, IEquatable<BytesValue>, IEquatable<byte[]>
 		{
 			public byte[] Bytes { get; }
 
-			public override ParticleType Type { get => ParticleType.HLL; }
+			public override int Type { get => ParticleType.BLOB; }
 
 			public override object Object { get => Bytes; }
 
-			public HLLValue(byte[] bytes)
+			public BytesValue(byte[] bytes)
 			{
-				this.Bytes = bytes;
+				Bytes = bytes;
 			}
 
 			public override int EstimateSize() => Bytes.Length;
@@ -45,21 +45,7 @@ namespace Aerospike.Client
 
 			public override void Pack(Packer packer) => packer.PackParticleBytes(Bytes);
 
-			public override void ValidateKeyType() => throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Invalid key type: HLL");
-
 			public override string ToString() => ByteUtil.BytesToHexString(Bytes);
-
-			public override bool Equals(object obj)
-			{
-				if (obj is byte[] bValue) return Equals(bValue);
-				if (obj is HLLValue hValue) return Equals(hValue);
-
-				return false;
-			}
-
-			public bool Equals(HLLValue other) => other is null || other.Bytes is null ? false : Util.ByteArrayEquals(Bytes, other.Bytes);
-
-			public bool Equals(byte[] other) => other is null ? false : Util.ByteArrayEquals(Bytes, other);
 
 			public override int GetHashCode()
 			{
@@ -71,11 +57,23 @@ namespace Aerospike.Client
 				return result;
 			}
 
-			public static bool operator ==(HLLValue o1, HLLValue o2) => o1?.Equals(o2) ?? false;
-			public static bool operator !=(HLLValue o1, HLLValue o2) => o1 == o2 ? false : true;
+			public override bool Equals(object obj)
+			{
+				if (obj is byte[] bValue) return Equals(bValue);
+				if (obj is BytesValue bytesValue) return Equals(bytesValue);
 
-			public static bool operator ==(HLLValue o1, byte[] o2) => o1?.Equals(o2) ?? false;
-			public static bool operator !=(HLLValue o1, byte[] o2) => o1 == o2 ? false : true;
+				return false;
+			}
+
+			public bool Equals(BytesValue other) => other is null || other.Bytes is null ? false : Util.ByteArrayEquals(Bytes, other.Bytes);
+
+			public bool Equals(byte[] other) => other is null ? false : Util.ByteArrayEquals(Bytes, other);
+
+			public static bool operator ==(BytesValue o1, BytesValue o2) => o1?.Equals(o2) ?? false;
+			public static bool operator !=(BytesValue o1, BytesValue o2) => o1 == o2 ? false : true;
+
+			public static bool operator ==(BytesValue o1, string o2) => o1?.Equals(o2) ?? false;
+			public static bool operator !=(BytesValue o1, string o2) => o1 == o2 ? false : true;
 		}
 	}
 }

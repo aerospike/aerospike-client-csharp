@@ -20,13 +20,13 @@ namespace Aerospike.Client
 	partial class Value
 	{
 		/// <summary>
-		/// Wildcard value.
+		/// Infinity value.
 		/// </summary>
-		public sealed class WildcardValue : Value
+		public sealed class InfinityValue : Value
 		{
-			public override ParticleType Type
+			public override int Type
 			{
-				get => throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Invalid particle type: wildcard");
+				get => throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Invalid particle type: INF");
 			}
 
 			public override object Object { get => null; }
@@ -35,16 +35,15 @@ namespace Aerospike.Client
 
 			public override int Write(byte[] buffer, int offset) => 0;
 
-			public override void Pack(Packer packer) => packer.PackWildcard();
+			public override void Pack(Packer packer) => packer.PackInfinity();
 
-			public override void ValidateKeyType() => throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Invalid key type: wildcard");
+			public override void ValidateKeyType() => throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Invalid key type: INF");
 
-
-			public override string ToString() => "*";
+			public override string ToString() => "INF";
 
 			public override bool Equals(object obj)
 			{
-				if (obj is WildcardValue) return true;
+				if (obj is InfinityValue) return true;
 
 				return false;
 			}
