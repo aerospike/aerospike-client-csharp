@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2022 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -55,7 +55,7 @@ namespace Aerospike.Client
 		public static Filter Contains(string name, IndexCollectionType type, long value, params CTX[] ctx)
 		{
 			Value val = Value.Get(value);
-			return new Filter(name, type, val.Type,  val, val, ctx);
+			return new Filter(name, type, val.Type, val, val, ctx);
 		}
 
 		/// <summary>

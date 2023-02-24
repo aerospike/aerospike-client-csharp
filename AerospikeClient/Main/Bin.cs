@@ -21,17 +21,17 @@ namespace Aerospike.Client
 	/// <summary>
 	/// Column name/value pair. 
 	/// </summary>
-	public sealed class Bin
+	public struct Bin
 	{
 		/// <summary>
 		/// Bin name. Current limit is 15 characters.
 		/// </summary>
-		public readonly string name;
+		public string name { get; }
 
 		/// <summary>
 		/// Bin value.
 		/// </summary>
-		public readonly Value value;
+		public Value value { get; }
 
 		/// <summary>
 		/// Constructor, specifying bin name and value.
@@ -191,7 +191,7 @@ namespace Aerospike.Client
 		/// Constructor, specifying bin name and boolean value.
 		/// For servers configured as "single-bin", enter a null or empty name.
 		/// Either a boolean or integer bin is sent to the server, depending
-		/// on configuration <see cref="Aerospike.Client.Value.UseBoolBin"/>.
+		/// on configuration <see cref="Value.UseBoolBin"/>.
 		/// </summary>
 		/// <param name="name">bin name, current limit is 15 characters</param>
 		/// <param name="value">bin value</param>
@@ -322,7 +322,7 @@ namespace Aerospike.Client
 		{
 			return new Bin(name, Value.GetAsGeoJSON(value));
 		}
-	
+
 		/// <summary>
 		/// Return string representation of bin.
 		/// </summary>

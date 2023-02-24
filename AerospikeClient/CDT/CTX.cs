@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2022 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -146,7 +146,7 @@ namespace Aerospike.Client
 		public static CTX[] FromBytes(byte[] bytes)
 		{
 			Unpacker unpacker = new Unpacker(bytes, 0, bytes.Length, false);
-			IList list = (IList)unpacker.UnpackList();
+			var list = (IList)unpacker.UnpackList();
 			int max = list.Count;
 			CTX[] ctx = new CTX[max / 2];
 			int i = 0;
@@ -161,7 +161,7 @@ namespace Aerospike.Client
 					throw new AerospikeException.Parse("List count must be even");
 				}
 
-				object obj = list[i];
+				var obj = list[i];
 				Value val = Value.Get(obj);
 
 				ctx[count++] = new CTX(id, val);
