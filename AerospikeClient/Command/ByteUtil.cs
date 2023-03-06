@@ -25,7 +25,7 @@ namespace Aerospike.Client
 {
     public sealed class ByteUtil
     {
-        public static Value BytesToKeyValue(int type, byte[] buf, int offset, int len)
+        public static Value BytesToKeyValue(ParticleType type, byte[] buf, int offset, int len)
         {
             switch (type)
             {
@@ -48,7 +48,7 @@ namespace Aerospike.Client
             }
         }
 
-        public static object BytesToParticle(int type, byte[] buf, int offset, int len)
+        public static object BytesToParticle(ParticleType type, byte[] buf, int offset, int len)
         {
             switch (type)
             {

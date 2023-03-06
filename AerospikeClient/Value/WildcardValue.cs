@@ -24,7 +24,7 @@ namespace Aerospike.Client
 		/// </summary>
 		public sealed class WildcardValue : Value
 		{
-			public override int Type
+			public override ParticleType Type
 			{
 				get => throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Invalid particle type: wildcard");
 			}

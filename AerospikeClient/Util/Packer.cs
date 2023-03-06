@@ -148,14 +148,14 @@ namespace Aerospike.Client
 		public void PackParticleBytes(byte[] b)
 		{
 			PackByteArrayBegin(b.Length + 1);
-			PackByte(ParticleType.BLOB);
+			PackByte((int)ParticleType.BLOB);
 			PackByteArray(b, 0, b.Length);
 		}
 
 		public void PackParticleBytes(byte[] b, int offset, int length)
 		{
 			PackByteArrayBegin(length + 1);
-			PackByte(ParticleType.BLOB);
+			PackByte((int)ParticleType.BLOB);
 			PackByteArray(b, offset, length);
 		}
 
@@ -163,7 +163,7 @@ namespace Aerospike.Client
 		{
 			byte[] bytes = Value.BlobValue.Serialize(val);
 			PackByteArrayBegin(bytes.Length + 1);
-			PackByte(ParticleType.CSHARP_BLOB);
+			PackByte((int)ParticleType.CSHARP_BLOB);
 			PackByteArray(bytes, 0, bytes.Length);
 		}
 
@@ -171,7 +171,7 @@ namespace Aerospike.Client
 		{
 			byte[] buffer = ByteUtil.StringToUtf8(val);
 			PackByteArrayBegin(buffer.Length + 1);
-			PackByte(ParticleType.GEOJSON);
+			PackByte((int)ParticleType.GEOJSON);
 			PackByteArray(buffer, 0, buffer.Length);
 		}
 		
