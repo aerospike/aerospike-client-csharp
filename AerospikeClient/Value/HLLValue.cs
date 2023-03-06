@@ -26,7 +26,7 @@ namespace Aerospike.Client
 		{
 			public byte[] Bytes { get; }
 
-			public override int Type { get => ParticleType.HLL; }
+			public override ParticleType Type { get => ParticleType.HLL; }
 
 			public override object Object { get => Bytes; }
 

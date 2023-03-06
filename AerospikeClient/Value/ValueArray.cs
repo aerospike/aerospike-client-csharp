@@ -30,7 +30,7 @@ namespace Aerospike.Client
 			public Value[] Array { get; }
 			public byte[] Bytes { get; set; }
 
-			public override int Type { get => ParticleType.LIST; }
+			public override ParticleType Type { get => ParticleType.LIST; }
 
 			public override object Object { get => Array; }
 

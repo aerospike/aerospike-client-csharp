@@ -28,7 +28,7 @@ namespace Aerospike.Client
 			public int Offset { get; }
 			public int Length { get; }
 
-			public override int Type { get => ParticleType.BLOB; }
+			public override ParticleType Type { get => ParticleType.BLOB; }
 
 			public override object Object { get => this; }
 

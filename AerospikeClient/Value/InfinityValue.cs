@@ -24,7 +24,7 @@ namespace Aerospike.Client
 		/// </summary>
 		public sealed class InfinityValue : Value
 		{
-			public override int Type
+			public override ParticleType Type
 			{
 				get => throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Invalid particle type: INF");
 			}
