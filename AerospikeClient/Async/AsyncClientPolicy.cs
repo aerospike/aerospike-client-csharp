@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2022 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -28,18 +28,22 @@ namespace Aerospike.Client
 		public MaxCommandAction asyncMaxCommandAction = MaxCommandAction.BLOCK;
 
 		/// <summary>
-		/// Maximum number of concurrent asynchronous commands that are active at any point in time.
-		/// Concurrent commands can be used to estimate concurrent connections.
-		/// The number of concurrent open connections is limited by:
+		/// Maximum number of concurrent asynchronous commands that can be active at any point in time.
+		/// Concurrent commands can target different nodes of the Aerospike cluster. Each command will 
+		/// use one concurrent connection. The number of concurrent open connections is therefore
+		/// limited by:
 		/// <para>
-		/// max open connections = asyncMaxCommands * &lt;number of nodes in cluster&gt;
+		/// max open connections = asyncMaxCommands
 		/// </para>
-		/// The actual number of open connections consumed depends on how balanced the commands are 
-		/// between nodes.
+		/// The actual number of open connections to each node of the Aerospike cluster depends on how
+		/// balanced the commands are between nodes and are limited to asyncMaxConnsPerNode for any
+		/// given node. For an extreme case where all commands may be destined to the same node of the
+		/// cluster, asyncMaxCommands should not be set greater than asyncMaxConnsPerNode to avoid
+		/// running out of connections to the node.
 		/// <para>
-		/// The maximum open connections should not exceed the total socket file descriptors available
-		/// on the client machine.  The socket file descriptors available can be determined by the
-		/// following command:
+		/// Further, this maximum number of open connections across all nodes should not exceed the
+		/// total socket file descriptors available on the client machine. The socket file descriptors
+		/// available can be determined by the following command:
 		/// </para>
 		/// <para>ulimit -n</para>
 		/// <para>Default: 100</para>
