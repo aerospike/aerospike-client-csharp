@@ -114,11 +114,10 @@ namespace Aerospike.Test
 				MapOperation.PutItems(updateMode, binName, replaceMap),
 				MapOperation.GetByKey(binName, Value.Get(1), MapReturnType.VALUE),
 				MapOperation.GetByKey(binName, Value.Get(-8734), MapReturnType.VALUE),
-				MapOperation.GetByKeyRange(binName, Value.Get(12), Value.Get(15), MapReturnType.KEY_VALUE)
-				/* Enable when server 6.3 is released.
+				MapOperation.GetByKeyRange(binName, Value.Get(12), Value.Get(15), MapReturnType.KEY_VALUE),
 				MapOperation.GetByKeyRange(binName, Value.Get(12), Value.Get(15), MapReturnType.UNORDERED_MAP),
 				MapOperation.GetByKeyRange(binName, Value.Get(12), Value.Get(15), MapReturnType.ORDERED_MAP)
-				*/
+				
 				);
 
 			AssertRecordFound(key, record);
@@ -147,7 +146,6 @@ namespace Aerospike.Test
 			IList list = (IList)results[i++];
 			Assert.AreEqual(2, list.Count);
 
-			/* Enable when server 6.3 is released.
 			IDictionary dict = (IDictionary)results[i++];
 			Assert.AreEqual(2, dict.Count);
 			Assert.IsTrue(dict is Dictionary<object, object>);
@@ -155,7 +153,7 @@ namespace Aerospike.Test
 			dict = (IDictionary)results[i++];
 			Assert.AreEqual(2, dict.Count);
 			Assert.IsTrue(dict is SortedDictionary<object, object>);
-			*/
+			
 		}
 
 		[TestMethod]
