@@ -537,9 +537,9 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Create map value.
 		/// </summary>
-		public static Exp Val(IDictionary map)
+		public static Exp Val(IDictionary map, MapOrder order)
 		{
-			return new MapVal(map);
+			return new MapVal(map, order);
 		}
 
 		/// <summary>
@@ -1653,15 +1653,23 @@ namespace Aerospike.Client
 		private sealed class MapVal : Exp
 		{
 			internal readonly IDictionary map;
+			internal readonly MapOrder order;
 
 			internal MapVal(IDictionary map)
 			{
 				this.map = map;
+				this.order = MapOrder.UNORDERED;
+			}
+
+			internal MapVal(IDictionary map, MapOrder order)
+			{
+				this.map = map;
+				this.order = order;
 			}
 
 			public override void Pack(Packer packer)
 			{
-				packer.PackMap(map);
+				packer.PackMap(map, order);
 			}
 		}
 
