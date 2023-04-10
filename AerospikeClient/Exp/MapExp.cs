@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2020 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -625,19 +625,19 @@ namespace Aerospike.Client
 
 		private static Exp.Type GetValueType(MapReturnType returnType)
 		{
-			int t = (int)returnType & ~(int)MapReturnType.INVERTED;
+			MapReturnType t = returnType & ~MapReturnType.INVERTED;
 
-			if (t <= (int)MapReturnType.COUNT)
+			return t switch
 			{
-				return Exp.Type.INT;
-			}
-
-			if (t == (int)MapReturnType.KEY_VALUE)
-			{
-				return Exp.Type.MAP;
-			}
-
-			return Exp.Type.LIST;
+				// This method only called from expressions that can return multiple integers (ie list).
+				MapReturnType.INDEX or MapReturnType.REVERSE_INDEX or MapReturnType.RANK or MapReturnType.REVERSE_RANK => Exp.Type.LIST, 
+				MapReturnType.COUNT => Exp.Type.INT,
+				// This method only called from expressions that can return multiple objects (ie list).
+				MapReturnType.KEY or MapReturnType.VALUE => Exp.Type.LIST,
+				MapReturnType.KEY_VALUE or MapReturnType.ORDERED_MAP or MapReturnType.UNORDERED_MAP => Exp.Type.MAP,
+				MapReturnType.EXISTS => Exp.Type.BOOL,
+				_ => throw new AerospikeException("Invalid MapReturnType: " + returnType),
+			};
 		}
 	}
 }
