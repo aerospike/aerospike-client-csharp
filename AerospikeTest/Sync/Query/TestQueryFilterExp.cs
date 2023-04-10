@@ -1,5 +1,5 @@
 ﻿/* 
- * Copyright 2012-2020 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -382,9 +382,7 @@ namespace Aerospike.Test
 			// Map bin contains value "BBB"
 			QueryPolicy policy = new QueryPolicy();
 			policy.filterExp = Exp.Build(
-				Exp.GT(
-					MapExp.GetByValue(MapReturnType.COUNT, Exp.Val("BBB"), Exp.MapBin("mapbin")),
-					Exp.Val(0)));
+				MapExp.GetByValue(MapReturnType.EXISTS, Exp.Val("BBB"), Exp.MapBin("mapbin")));
 
 			RecordSet rs = client.Query(policy, stmt);
 

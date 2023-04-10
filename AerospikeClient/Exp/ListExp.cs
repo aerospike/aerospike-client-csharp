@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2020 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -476,16 +476,16 @@ namespace Aerospike.Client
 
 		private static Exp.Type GetValueType(ListReturnType returnType)
 		{
-			int t = (int)returnType & ~(int)ListReturnType.INVERTED;
+			ListReturnType t = returnType & ~ListReturnType.INVERTED;
 
-			if (t == (int)ListReturnType.VALUE)
+			return t switch
 			{
-				return Exp.Type.LIST;
-			}
-			else
-			{
-				return Exp.Type.INT;
-			}
+				ListReturnType.INDEX or ListReturnType.REVERSE_INDEX or ListReturnType.RANK or ListReturnType.REVERSE_RANK => Exp.Type.LIST,
+				ListReturnType.COUNT => Exp.Type.INT,
+				ListReturnType.VALUE => Exp.Type.LIST, // This method only called from expressions that can return multiple objects (ie list).
+				ListReturnType.EXISTS => Exp.Type.BOOL,
+				_ => throw new AerospikeException("Invalid ListReturnType: " + returnType),
+			};
 		}
 
 		internal static byte[] PackRangeOperation(int command, int returnType, Exp begin, Exp end, CTX[] ctx)

@@ -1,5 +1,5 @@
 ﻿/* 
- * Copyright 2012-2020 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -478,6 +478,7 @@ namespace Aerospike.Test
 				ListOperation.SetOrder(binName, ListOrder.ORDERED),
 				ListOperation.GetByValue(binName, Value.Get(3), ListReturnType.INDEX),
 				ListOperation.GetByValueRange(binName, Value.Get(-1), Value.Get(3), ListReturnType.COUNT),
+				ListOperation.GetByValueRange(binName, Value.Get(-1), Value.Get(3), ListReturnType.EXISTS),
 				ListOperation.GetByValueList(binName, valueList, ListReturnType.RANK),
 				ListOperation.GetByIndex(binName, 3, ListReturnType.VALUE),
 				ListOperation.GetByIndexRange(binName, -2, 2, ListReturnType.VALUE),
@@ -495,6 +496,9 @@ namespace Aerospike.Test
 
 			val = (long)results[i++];
 			Assert.AreEqual(2L, val);
+
+			bool b = (bool)results[i++];
+			Assert.IsTrue(b);
 
 			list = (IList)results[i++];
 			Assert.AreEqual(2L, list.Count);
