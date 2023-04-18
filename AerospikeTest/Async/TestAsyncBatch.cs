@@ -1,5 +1,5 @@
 ﻿/* 
- * Copyright 2012-2022 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -62,7 +62,6 @@ namespace Aerospike.Test
 			{
 				Key key = sendKeys[i - 1];
 				Bin bin = new Bin(BinName, ValuePrefix + i);
-				client.Put(policy, handler, key, bin);
 
 				List<int> list = new List<int>();
 
@@ -222,27 +221,37 @@ namespace Aerospike.Test
 
 			public void OnSuccess(Key[] keys, Record[] records)
 			{
-				if (parent.AssertEquals(Size, records.Length))
+				try
 				{
-					for (int i = 0; i < records.Length; i++)
+					if (parent.AssertEquals(Size, records.Length))
 					{
-						if (i != 5)
+						for (int i = 0; i < records.Length; i++)
 						{
-							if (!parent.AssertBinEqual(keys[i], records[i], BinName, ValuePrefix + (i + 1)))
+							if (i != 5)
 							{
-								break;
+								if (!parent.AssertBinEqual(keys[i], records[i], BinName, ValuePrefix + (i + 1)))
+								{
+									break;
+								}
 							}
-						}
-						else
-						{
-							if (!parent.AssertBinEqual(keys[i], records[i], BinName, i + 1))
+							else
 							{
-								break;
+								if (!parent.AssertBinEqual(keys[i], records[i], BinName, i + 1))
+								{
+									break;
+								}
 							}
 						}
 					}
 				}
-				parent.NotifyCompleted();
+				catch (Exception e)
+				{
+					parent.SetError(e);
+				}
+				finally
+				{
+					parent.NotifyCompleted();
+				}
 			}
 
 			public void OnFailure(AerospikeException e)
