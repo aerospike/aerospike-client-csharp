@@ -25,7 +25,7 @@ namespace Aerospike.Client
 		public byte[] digest;
 		public readonly int id;
 		[NonSerialized] public Node node;
-	    [NonSerialized] public int sequence;
+		[NonSerialized] public int sequence;
 		public bool retry;
 
 		public PartitionStatus(int id)
