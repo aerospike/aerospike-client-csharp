@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2022 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -24,9 +24,8 @@ namespace Aerospike.Client
 		public ulong bval;
 		public byte[] digest;
 		public readonly int id;
-		[NonSerialized] public Node masterNode;
-		[NonSerialized] public int replicaIndex;
-		[NonSerialized] public bool unavailable;
+		[NonSerialized] public Node node;
+		[NonSerialized] public int sequence;
 		public bool retry;
 
 		public PartitionStatus(int id)

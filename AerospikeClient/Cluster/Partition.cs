@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2022 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -145,11 +145,11 @@ namespace Aerospike.Client
 			return p.GetNodeRead(cluster);
 		}
 
-		private readonly Partitions partitions;
+		private Partitions partitions;
 		private readonly string ns;
 		private Node prevNode;
 		private readonly Replica replica;
-		public readonly uint partitionId;
+		public uint partitionId;
 		private uint sequence;
 		private readonly bool linearize;
 
@@ -163,11 +163,32 @@ namespace Aerospike.Client
 			this.partitionId = GetPartitionId(key.digest);
 		}
 
+		public Partition(string ns, Replica replica)
+		{
+			this.ns = ns;
+			this.replica = replica;
+			this.linearize = false;
+		}
+
 		public static uint GetPartitionId(byte[] digest)
 		{
 			// If support for a big endian cpu is added, this code will need to change to 
 			// ByteUtil.LittleBytesToInt() .
 			return BitConverter.ToUInt32(digest, 0) % Node.PARTITIONS;
+		}
+
+		public Node GetNodeQuery(Cluster cluster, Partitions partitions, PartitionStatus ps)
+		{
+			this.partitions = partitions;
+			this.partitionId = (uint)ps.id;
+			this.sequence = (uint)ps.sequence;
+			this.prevNode = ps.node;
+
+			Node node = GetNodeRead(cluster);
+			ps.node = node;
+			ps.sequence = (int)this.sequence;
+			ps.retry = false;
+			return node;
 		}
 
 		public Node GetNodeRead(Cluster cluster)
