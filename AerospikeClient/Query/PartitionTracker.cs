@@ -29,6 +29,7 @@ namespace Aerospike.Client
 		private readonly int nodeCapacity;
 		private readonly Node nodeFilter;
 		private readonly PartitionFilter partitionFilter;
+		private readonly Replica replica;
 		private List<NodePartitions> nodePartitionsList;
 		private List<AerospikeException> exceptions;
 		private long maxRecords;
@@ -56,13 +57,14 @@ namespace Aerospike.Client
 			this.nodeCapacity = nodes.Length;
 			this.nodeFilter = null;
 			this.partitionFilter = null;
+			this.replica = policy.replica;
 
 			// Create initial partition capacity for each node as average + 25%.
 			int ppn = Node.PARTITIONS / nodes.Length;
 			ppn += (int)((uint)ppn >> 2);
 			this.partitionsCapacity = ppn;
 			this.partitions = InitPartitions(Node.PARTITIONS, null);
-			InitTimeout(policy);
+			Init(policy);
 		}
 
 		public PartitionTracker(ScanPolicy policy, Node nodeFilter)
@@ -85,7 +87,7 @@ namespace Aerospike.Client
 			this.partitionFilter = null;
 			this.partitionsCapacity = Node.PARTITIONS;
 			this.partitions = InitPartitions(Node.PARTITIONS, null);
-			InitTimeout(policy);
+			Init(policy);
 		}
 
 		public PartitionTracker(ScanPolicy policy, Node[] nodes, PartitionFilter filter)
@@ -127,6 +129,7 @@ namespace Aerospike.Client
 			this.nodeCapacity = nodes.Length;
 			this.nodeFilter = null;
 			this.partitionsCapacity = filter.count;
+			this.replica = policy.replica;
 
 			if (filter.partitions == null)
 			{
@@ -140,10 +143,17 @@ namespace Aerospike.Client
 				{
 					filter.retry = true;
 				}
+
+				// Reset replica sequence and last node used.
+				foreach (PartitionStatus part in filter.partitions)
+				{
+					part.sequence = 0;
+					part.node = null;
+				}
 			}
 			this.partitions = filter.partitions;
 			this.partitionFilter = filter;
-			InitTimeout(policy);
+			Init(policy);
 		}
 
 		private void SetMaxRecords(QueryPolicy policy, Statement stmt)
@@ -178,7 +188,7 @@ namespace Aerospike.Client
 			return partsAll;
 		}
 
-		private void InitTimeout(Policy policy)
+		private void Init(Policy policy)
 		{
 			sleepBetweenRetries = policy.sleepBetweenRetries;
 			socketTimeout = policy.socketTimeout;
@@ -192,6 +202,11 @@ namespace Aerospike.Client
 				{
 					socketTimeout = totalTimeout;
 				}
+			}
+
+			if (replica == Replica.RANDOM)
+			{
+				throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Invalid replica: " + replica.ToString());
 			}
 		}
 
@@ -213,42 +228,14 @@ namespace Aerospike.Client
 				throw new AerospikeException.InvalidNamespace(ns, map.Count);
 			}
 
-			Node[] master = parts.replicas[0];
+			Partition p = new Partition(ns, replica);
 			bool retry = (partitionFilter == null || partitionFilter.retry) && iteration == 1;
 
 			foreach (PartitionStatus part in partitions)
 			{
 				if (retry || part.retry)
 				{
-					Node masterNode = Volatile.Read(ref master[part.id]);
-					Node node;
-
-					if (iteration == 1 || !part.unavailable || part.masterNode != masterNode)
-					{
-						node = part.masterNode = masterNode;
-						part.replicaIndex = 0;
-					}
-					else
-					{
-						// Partition was unavailable in the previous iteration and the
-						// master node has not changed. Switch replica.
-						part.replicaIndex++;
-
-						if (part.replicaIndex >= parts.replicas.Length)
-						{
-							part.replicaIndex = 0;
-						}
-
-						node = Volatile.Read(ref parts.replicas[part.replicaIndex][part.id]);
-					}
-
-					if (node == null)
-					{
-						throw new AerospikeException.InvalidNode(part.id);
-					}
-
-					part.unavailable = false;
-					part.retry = false;
+					Node node = p.GetNodeQuery(cluster, parts, part);
 
 					// Use node name to check for single node equality because
 					// partition map may be in transitional state between
@@ -326,8 +313,8 @@ namespace Aerospike.Client
 		public void PartitionUnavailable(NodePartitions nodePartitions, int partitionId)
 		{
 			PartitionStatus ps = partitions[partitionId - partitionBegin];
-			ps.unavailable = true;
 			ps.retry = true;
+			ps.sequence++;
 			nodePartitions.partsUnavailable++;
 		}
 
@@ -523,7 +510,7 @@ namespace Aerospike.Client
 						}
 						exceptions.Add(ae);
 					}
-					MarkRetry(nodePartitions);
+					MarkRetrySequence(nodePartitions);
 					nodePartitions.partsUnavailable = nodePartitions.partsFull.Count + nodePartitions.partsPartial.Count;
 					return true;
 
@@ -532,8 +519,25 @@ namespace Aerospike.Client
 			}
 		}
 
+		private void MarkRetrySequence(NodePartitions nodePartitions)
+		{
+			// Mark retry for next replica.
+			foreach (PartitionStatus ps in nodePartitions.partsFull)
+			{
+				ps.retry = true;
+				ps.sequence++;
+			}
+
+			foreach (PartitionStatus ps in nodePartitions.partsPartial)
+			{
+				ps.retry = true;
+				ps.sequence++;
+			}
+		}
+
 		private void MarkRetry(NodePartitions nodePartitions)
 		{
+			// Mark retry for same replica.
 			foreach (PartitionStatus ps in nodePartitions.partsFull)
 			{
 				ps.retry = true;
