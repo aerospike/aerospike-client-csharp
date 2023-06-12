@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2022 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -23,410 +23,491 @@ namespace Aerospike.Client
 	{
 		/// <summary>
 		/// One or more keys failed in a batch.
+		/// Value: -16
 		/// </summary>
 		public const int BATCH_FAILED = -16;
 
 		/// <summary>
 		/// No response received from server.
+		/// Value: -15
 		/// </summary>
 		public const int NO_RESPONSE = -15;
 
 		/// <summary>
 		/// Max errors limit reached.
+		/// Value: -12
 		/// </summary>
 		public const int MAX_ERROR_RATE = -12;
 
 		/// <summary>
 		/// Max retries limit reached.
+		/// Value: -11
 		/// </summary>
 		public const int MAX_RETRIES_EXCEEDED = -11;
 
 		/// <summary>
 		/// Client serialization error.
+		/// Value: -10
 		/// </summary>
 		public const int SERIALIZE_ERROR = -10;
 
 		/// <summary>
 		/// Server is not accepting requests.
+		/// Value: -8
 		/// </summary>
 		public const int SERVER_NOT_AVAILABLE = -8;
 
 		/// <summary>
 		/// Max connections would be exceeded.  There are no more available connections.
+		/// Value: -7
 		/// </summary>
 		public const int NO_MORE_CONNECTIONS = -7;
 
 		/// <summary>
 		/// Asynchronous max concurrent database commands have been exceeded and therefore rejected.
+		/// Value: -6
 		/// </summary>
 		public const int COMMAND_REJECTED = -6;
 
 		/// <summary>
 		/// Query was terminated by user.
+		/// Value: -5
 		/// </summary>
 		public const int QUERY_TERMINATED = -5;
 
 		/// <summary>
 		/// Scan was terminated by user.
+		/// Value: -4
 		/// </summary>
 		public const int SCAN_TERMINATED = -4;
 
 		/// <summary>
 		/// Chosen node is not currently active.
+		/// Value: -3
 		/// </summary>
 		public const int INVALID_NODE_ERROR = -3;
 
 		/// <summary>
 		/// Client parse error.
+		/// Value: -2
 		/// </summary>
 		public const int PARSE_ERROR = -2;
 
 		/// <summary>
 		/// Client generic error.
+		/// Value: -1
 		/// </summary>
 		public const int CLIENT_ERROR = -1;
 
 		/// <summary>
 		/// Operation was successful.
+		/// Value: 0
 		/// </summary>
 		public const int OK = 0;
 
 		/// <summary>
-		/// Unknown server failure.
+		/// Unknown server failure. 
+		/// Value: 1
 		/// </summary>
 		public const int SERVER_ERROR = 1;
 
 		/// <summary>
 		/// On retrieving, touching or replacing a record that doesn't exist.
+		/// Value: 2
 		/// </summary>
 		public const int KEY_NOT_FOUND_ERROR = 2;
 
 		/// <summary>
 		/// On modifying a record with unexpected generation.
+		/// Value: 3
 		/// </summary>
 		public const int GENERATION_ERROR = 3;
 
 		/// <summary>
 		/// Bad parameter(s) were passed in database operation call.
+		/// Value: 4
 		/// </summary>
 		public const int PARAMETER_ERROR = 4;
 
 		/// <summary>
 		/// On create-only (write unique) operations on a record that already
 		/// exists.
+		/// Value: 5
 		/// </summary>
 		public const int KEY_EXISTS_ERROR = 5;
 
 		/// <summary>
 		/// Bin already exists on a create-only operation.
+		/// Value: 6
 		/// </summary>
 		public const int BIN_EXISTS_ERROR = 6;
 
 		/// <summary>
 		/// Expected cluster was not received.
+		/// Value: 7
 		/// </summary>
 		public const int CLUSTER_KEY_MISMATCH = 7;
 
 		/// <summary>
 		/// Server has run out of memory.
+		/// Value: 8
 		/// </summary>
 		public const int SERVER_MEM_ERROR = 8;
 
 		/// <summary>
 		/// Client or server has timed out.
+		/// Value: 9
 		/// </summary>
 		public const int TIMEOUT = 9;
 
 		/// <summary>
 		/// Operation not allowed in current configuration.
+		/// Value: 10
 		/// </summary>
 		public const int ALWAYS_FORBIDDEN = 10;
 
 		/// <summary>
 		/// Partition unavailable.
+		/// Value: 11
 		/// </summary>
 		public const int PARTITION_UNAVAILABLE = 11;
 
 		/// <summary>
 		/// Operation is not supported with configured bin type (single-bin or
 		/// multi-bin).
+		/// Value: 12
 		/// </summary>
 		public const int BIN_TYPE_ERROR = 12;
 
 		/// <summary>
 		/// Record size exceeds limit.
+		/// Value: 13
 		/// </summary>
 		public const int RECORD_TOO_BIG = 13;
 
 		/// <summary>
 		/// Too many concurrent operations on the same record.
+		/// Value: 14
 		/// </summary>
 		public const int KEY_BUSY = 14;
 
 		/// <summary>
 		/// Scan aborted by server.
+		/// Value: 15
 		/// </summary>
 		public const int SCAN_ABORT = 15;
 
 		/// <summary>
 		/// Client operation not supported on connected server.
+		/// Value: 16
 		/// </summary>
 		public const int UNSUPPORTED_FEATURE = 16;
 
 		/// <summary>
 		/// Bin not found on update-only operation.
+		/// Value: 17
 		/// </summary>
 		public const int BIN_NOT_FOUND = 17;
 
 		/// <summary>
 		/// Device not keeping up with writes.
+		/// Value: 18
 		/// </summary>
 		public const int DEVICE_OVERLOAD = 18;
 
 		/// <summary>
 		/// Key type mismatch.
+		/// Value: 19
 		/// </summary>
 		public const int KEY_MISMATCH = 19;
 
 		/// <summary>
 		/// Invalid namespace.
+		/// Value: 20
 		/// </summary>
 		public const int INVALID_NAMESPACE = 20;
 
 		/// <summary>
 		/// Bin name length greater than 15 characters or maximum bins exceeded.
+		/// Value: 21
 		/// </summary>
 		public const int BIN_NAME_TOO_LONG = 21;
 
 		/// <summary>
 		/// Operation not allowed at this time.
+		/// Value: 22
 		/// </summary>
 		public const int FAIL_FORBIDDEN = 22;
 
 		/// <summary>
 		/// Map element not found in UPDATE_ONLY write mode.
+		/// Value: 23
 		/// </summary>
 		public const int ELEMENT_NOT_FOUND = 23;
 
 		/// <summary>
 		/// Map element exists in CREATE_ONLY write mode.
+		/// Value: 24
 		/// </summary>
 		public const int ELEMENT_EXISTS = 24;
 
 		/// <summary>
 		/// Attempt to use an Enterprise feature on a Community server or a server
 		/// without the applicable feature key.
+		/// Value: 25
 		/// </summary>
 		public const int ENTERPRISE_ONLY = 25;
 
 		/// <summary>
 		/// The operation cannot be applied to the current bin value on the server.
+		/// Value: 26
 		/// </summary>
 		public const int OP_NOT_APPLICABLE = 26;
 
 		/// <summary>
 		/// The transaction was not performed because the filter was false.
+		/// Value: 27
 		/// </summary>
 		public const int FILTERED_OUT = 27;
 
 		/// <summary>
 		/// Write command loses conflict to XDR.
+		/// Value: 28
 		/// </summary>
 		public const int LOST_CONFLICT = 28;
 
 		/// <summary>
 		/// There are no more records left for query.
+		/// Value: 50
 		/// </summary>
 		public const int QUERY_END = 50;
 
 		/// <summary>
 		/// Security functionality not supported by connected server.
+		/// Value: 51
 		/// </summary>
 		public const int SECURITY_NOT_SUPPORTED = 51;
 
 		/// <summary>
 		/// Security functionality supported, but not enabled by connected server.
+		/// Value: 52
 		/// </summary>
 		public const int SECURITY_NOT_ENABLED = 52;
 
 		/// <summary>
 		/// Security configuration not supported.
+		/// Value: 53
 		/// </summary>
 		public const int SECURITY_SCHEME_NOT_SUPPORTED = 53;
 		
 		/// <summary>
 		/// Administration command is invalid.
+		/// Value: 54
 		/// </summary>
 		public const int INVALID_COMMAND = 54;
 
 		/// <summary>
 		/// Administration field is invalid.
+		/// Value: 55
 		/// </summary>
 		public const int INVALID_FIELD = 55;
 
 		/// <summary>
 		/// Server is in illegal stage.
+		/// Value: 56
 		/// </summary>
 		public const int ILLEGAL_STATE = 56;
 
 		/// <summary>
 		/// User name is invalid.
+		/// Value: 60
 		/// </summary>
 		public const int INVALID_USER = 60;
 		
 		/// <summary>
 		/// User was previously created.
+		/// Value: 61
 		/// </summary>
 		public const int USER_ALREADY_EXISTS = 61;
 
 		/// <summary>
 		/// Password is invalid.
+		/// Value: 62
 		/// </summary>
 		public const int INVALID_PASSWORD = 62;
 
 		/// <summary>
 		/// Password has expired.
+		/// Value: 63
 		/// </summary>
 		public const int EXPIRED_PASSWORD = 63;
 
 		/// <summary>
 		/// Forbidden password (e.g. recently used)
+		/// Value: 64
 		/// </summary>
 		public const int FORBIDDEN_PASSWORD = 64;
 
 		/// <summary>
 		/// Security credential is invalid.
+		/// Value: 65
 		/// </summary>
 		public const int INVALID_CREDENTIAL = 65;
 
 		/// <summary>
 		/// Login session expired.
+		/// Value: 66
 		/// </summary>
 		public const int EXPIRED_SESSION = 66;
 
 		/// <summary>
 		/// Role name is invalid.
+		/// Value: 70
 		/// </summary>
 		public const int INVALID_ROLE = 70;
 
 		/// <summary>
 		/// Role already exists.
+		/// Value: 71
 		/// </summary>
 		public const int ROLE_ALREADY_EXISTS = 71;
 	
 		/// <summary>
 		/// Specified Privilege is not valid.
+		/// Value: 72
 		/// </summary>
 		public const int INVALID_PRIVILEGE = 72;
 
 		/// <summary>
 		/// Invalid IP address whitelist.
+		/// Value: 73
 		/// </summary>
 		public const int INVALID_WHITELIST = 73;
 
 		/// <summary>
 		/// Quotas not enabled on server.
+		/// Value: 74
 		/// </summary>
 		public const int QUOTAS_NOT_ENABLED = 74;
 
 		/// <summary>
 		/// Invalid quota value.
+		/// Value: 75
 		/// </summary>
 		public const int INVALID_QUOTA = 75;
 
 		/// <summary>
 		/// User must be authentication before performing database operations.
+		/// Value: 80
 		/// </summary>
 		public const int NOT_AUTHENTICATED = 80;
 
 		/// <summary>
 		/// User does not posses the required role to perform the database operation.
+		/// Value: 81
 		/// </summary>
 		public const int ROLE_VIOLATION = 81;
 
 		/// <summary>
 		/// Command not allowed because sender IP address not whitelisted.
+		/// Value: 82
 		/// </summary>
 		public const int NOT_WHITELISTED = 82;
 
 		/// <summary>
 		/// Quota exceeded.
+		/// Value: 83
 		/// </summary>
 		public const int QUOTA_EXCEEDED = 83;
 		
 		/// <summary>
 		/// A user defined function returned an error code.
+		/// Value: 100
 		/// </summary>
 		public const int UDF_BAD_RESPONSE = 100;
 
 		/// <summary>
 		/// Batch functionality has been disabled.
+		/// Value: 150
 		/// </summary>
 		public const int BATCH_DISABLED = 150;
 
 		/// <summary>
 		/// Batch max requests have been exceeded.
+		/// Value: 151
 		/// </summary>
 		public const int BATCH_MAX_REQUESTS_EXCEEDED = 151;
 
 		/// <summary>
 		/// All batch queues are full.
+		/// Value: 152
 		/// </summary>
 		public const int BATCH_QUEUES_FULL = 152;
 	
 		/// <summary>
 		/// Secondary index already exists.
+		/// Value: 200
 		/// </summary>
 		public const int INDEX_ALREADY_EXISTS = 200;
 		public const int INDEX_FOUND = 200; // For legacy reasons.
 
 		/// <summary>
 		/// Requested secondary index does not exist.
+		/// Value: 201
 		/// </summary>
 		public const int INDEX_NOTFOUND = 201;
 
 		/// <summary>
 		/// Secondary index memory space exceeded.
+		/// Value: 202
 		/// </summary>
 		public const int INDEX_OOM = 202;
 
 		/// <summary>
 		/// Secondary index not available.
+		/// Value: 203
 		/// </summary>
 		public const int INDEX_NOTREADABLE = 203;
 
 		/// <summary>
 		/// Generic secondary index error.
+		/// Value: 204
 		/// </summary>
 		public const int INDEX_GENERIC = 204;
 
 		/// <summary>
 		/// Index name maximum length exceeded.
+		/// Value: 205
 		/// </summary>
 		public const int INDEX_NAME_MAXLEN = 205;
 
 		/// <summary>
 		/// Maximum number of indicies exceeded.
+		/// Value: 206
 		/// </summary>
 		public const int INDEX_MAXCOUNT = 206;
 	
 		/// <summary>
 		/// Secondary index query aborted.
+		/// Value: 210
 		/// </summary>
 		public const int QUERY_ABORTED = 210;
 
 		/// <summary>
 		/// Secondary index queue full.
+		/// ValueL 211
 		/// </summary>
 		public const int QUERY_QUEUEFULL = 211;
 
 		/// <summary>
 		/// Secondary index query timed out on server.
+		/// Value: 212
 		/// </summary>
 		public const int QUERY_TIMEOUT = 212;
 
 		/// <summary>
 		/// Generic query error.
+		/// Value: 213
 		/// </summary>
 		public const int QUERY_GENERIC = 213;
 
