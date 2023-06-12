@@ -12,5 +12,5 @@
   "TlsRevoke": "",
   "TlsClientCertFile": "",
   "TlsLoginOnly": false,
-  "AuthMode":  "INTERNAL"
+  "AuthMode": "INTERNAL"
 }
