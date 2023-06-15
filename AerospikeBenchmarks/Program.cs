@@ -104,6 +104,12 @@ namespace Aerospike.Benchmarks
                     client.Close();
                 }
             }
+
+            if (PrefStats.EnableTimings)
+            {
+                PrefStats.ToCSV(args.LatencyFileCSV);
+                PrefStats.ToJson(args.LatencyFileJson);
+            }
         }
 
         private static void LogCallback(Log.Level level, string message)

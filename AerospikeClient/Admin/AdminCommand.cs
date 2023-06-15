@@ -187,6 +187,7 @@ namespace Aerospike.Client
 
 		public static bool Authenticate(Cluster cluster, Connection conn, byte[] sessionToken)
 		{
+			System.Diagnostics.Debugger.Launch();
 			AdminCommand command = new AdminCommand(ThreadLocalData.GetBuffer(), 0);
 			return command.AuthenticateSession(cluster, conn, sessionToken);
 		}
