@@ -55,8 +55,10 @@ namespace Aerospike.Benchmarks
 		internal bool latencyAltFormat;
 		internal bool debug;
 		internal bool singleBin;
+        internal string LatencyFileJson;
+        internal string LatencyFileCSV;
 
-		public Args()
+        public Args()
 		{
 			var builder = new ConfigurationBuilder()
 				.AddJsonFile("settings.json", optional: true, reloadOnChange: true);
@@ -137,7 +139,12 @@ namespace Aerospike.Benchmarks
 				{
 					throw new Exception("Latency exponent shift must be between 1 and 5 inclusive.");
 				}
-			}
+
+                LatencyFileJson = section.GetSection("LatencyFileJson").Value;
+                LatencyFileCSV = section.GetSection("LatencyFileCSV").Value;
+
+                PrefStats.EnableTimings = !(string.IsNullOrEmpty(LatencyFileCSV) && string.IsNullOrEmpty(LatencyFileJson));
+            }
 
 			throughput = int.Parse(section.GetSection("ThroughPut").Value);
 			debug = bool.Parse(section.GetSection("Debug").Value);
