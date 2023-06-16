@@ -24,12 +24,16 @@ namespace Aerospike.Benchmarks
 		private readonly AerospikeClient client;
 		private readonly RandomShift random;
 		private readonly Thread thread;
+		private readonly ILatencyManager LatencyMgr;
+		private readonly bool useLatency;
 
-		public ReadWriteTaskSync(AerospikeClient client, Args args, Metrics metrics)
+		public ReadWriteTaskSync(AerospikeClient client, Args args, Metrics metrics, ILatencyManager latencyManager)
 			: base(args, metrics)
 		{
 			this.client = client;
 			this.random = new RandomShift();
+			this.LatencyMgr = latencyManager;
+			this.useLatency = latencyManager != null;
 			this.thread = new Thread(new ThreadStart(Run));
 		}
 
@@ -67,7 +71,7 @@ namespace Aerospike.Benchmarks
 					}
 
 					// Throttle throughput
-					if (args.throughput > 0)
+					/*if (args.throughput > 0)
 					{
 						int transactions = metrics.writeCount + metrics.readCount;
 
@@ -80,7 +84,7 @@ namespace Aerospike.Benchmarks
 								Util.Sleep((int)millis);
 							}
 						}
-					}
+					}*/
 				}
 			}
 			catch (Exception e)
@@ -100,27 +104,28 @@ namespace Aerospike.Benchmarks
 			}
 			catch (AerospikeException ae)
 			{
-				metrics.WriteFailure(ae);
+				this.metrics.Failure(ae);
 			}
 			catch (Exception e)
 			{
-				metrics.WriteFailure(e);
+				this.metrics.Failure(e);
 			}
 		}
 
 		private void WriteRecord(WritePolicy policy, Key key, Bin bin)
 		{
-			if (metrics.writeLatency != null)
+			if (useLatency)
 			{
 				Stopwatch watch = Stopwatch.StartNew();
 				client.Put(policy, key, bin);
-				long elapsed = watch.ElapsedMilliseconds;
-				metrics.WriteSuccess(elapsed);
+				var elapsed = watch.Elapsed;
+				this.metrics.Success(elapsed);
+				this.LatencyMgr?.Add((long)elapsed.TotalMilliseconds);
 			}
 			else
 			{
 				client.Put(policy, key, bin);
-				metrics.WriteSuccess();
+				this.metrics.Success();
 			}
 		}
 
@@ -134,27 +139,28 @@ namespace Aerospike.Benchmarks
 			}
 			catch (AerospikeException ae)
 			{
-				metrics.ReadFailure(ae);
+				this.metrics.Failure(ae);
 			}
 			catch (Exception e)
 			{
-				metrics.ReadFailure(e);
+				this.metrics.Failure(e);
 			}
 		}
 
 		private void ReadRecord(Policy policy, Key key, string binName)
 		{
-			if (metrics.readLatency != null)
+			if (useLatency)
 			{
 				Stopwatch watch = Stopwatch.StartNew();
 				Record record = client.Get(policy, key, binName);
-				long elapsed = watch.ElapsedMilliseconds;
-				metrics.ReadSuccess(elapsed);
+				var elapsed = watch.Elapsed;
+				this.metrics.Success(elapsed);
+				this.LatencyMgr?.Add((long)elapsed.TotalMilliseconds);
 			}
 			else
 			{
 				Record record = client.Get(policy, key, binName);
-				metrics.ReadSuccess();
+				this.metrics.Success();
 			}
 		}
 
@@ -174,27 +180,28 @@ namespace Aerospike.Benchmarks
 			}
 			catch (AerospikeException ae)
 			{
-				metrics.ReadFailure(ae);
+				this.metrics.Failure(ae);
 			}
 			catch (Exception e)
 			{
-				metrics.ReadFailure(e);
+				this.metrics.Failure(e);
 			}
 		}
 
 		private void BatchRead(BatchPolicy policy, Key[] keys, string binName)
 		{
-			if (metrics.readLatency != null)
+			if (useLatency)
 			{
 				Stopwatch watch = Stopwatch.StartNew();
 				Record[] records = client.Get(policy, keys, binName);
-				long elapsed = watch.ElapsedMilliseconds;
-				metrics.ReadSuccess(elapsed);
+				var elapsed = watch.Elapsed;
+				this.metrics.Success(elapsed);
+				this.LatencyMgr?.Add((long)elapsed.TotalMilliseconds);
 			}
 			else
 			{
 				Record[] records = client.Get(policy, keys, binName);
-				metrics.ReadSuccess();
+				this.metrics.Success();
 			}
 		}
 	}

@@ -23,7 +23,7 @@ namespace Aerospike.Benchmarks
         /// <summary>
         /// Timing of the measured event
         /// </summary>
-        [JsonConverter(typeof(TimespanConverterMS))]
+        //[JsonConverter(typeof(TimespanConverterMS))]
         public double Timing;
         /// <summary>
         /// Event (e.g., Put, Get)
@@ -64,7 +64,23 @@ namespace Aerospike.Benchmarks
                 });
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public static void StopRecording(this Stopwatch stopWatch, string eventType, string funcName, Aerospike.Client.Key[] keys)
+		{
+			stopWatch.Stop();
+			if (EnableTimings)
+				ConcurrentCollection.Enqueue(new PrefStat
+				{
+					SequenceNbr = Interlocked.Increment(ref SequenceNbr),
+					AppElapsedTime = RunningStopwatch.Elapsed,
+					Timing = stopWatch.Elapsed.TotalMilliseconds,
+					Event = eventType,
+					FuncName = funcName,
+					PK = keys?.ToString()
+				});
+		}
+
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static void RecordEvent(this double eventTimeSpan, string eventType, string funcName, Aerospike.Client.Key pk)
         {
             if (EnableTimings)

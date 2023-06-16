@@ -16,133 +16,119 @@
  */
 using System;
 using System.Diagnostics;
+using System.Net;
 using System.Threading;
 using Aerospike.Client;
 
 namespace Aerospike.Benchmarks
 {
-	sealed class Metrics
+	sealed public class Metrics
 	{
-		private readonly Args args;
-		private readonly Stopwatch watch;
-		private long periodBegin;
-
-		internal readonly ILatencyManager writeLatency;
-		internal int writeCount;
-		internal int writeTimeoutCount;
-		internal int writeErrorCount;
-
-		internal readonly ILatencyManager readLatency;
-		internal int readCount;
-		internal int readTimeoutCount;
-		internal int readErrorCount;
-
-		public Metrics(Args args)
+		public enum MetricTypes
 		{
-			this.args = args;
+			None,
+			Read,
+			Write
+		}
 
-			if (args.latency)
+		public struct BlockCounters
+		{
+			public long Count;
+			public long TimeoutCount;
+			public long ErrorCount;
+			public long TimingTicks;
+
+			public double TPS() => TimingTicks == 0
+									? 0d
+									: this.Count / TimeSpan.FromTicks(this.TimingTicks).TotalSeconds;
+
+		}
+
+		private readonly Args Args;
+		private readonly Stopwatch AppStopWatch;
+		public readonly MetricTypes Type;
+
+		public BlockCounters Counters;
+
+		public long TotalCount;
+		public long TotalTicks;
+
+		internal Metrics(MetricTypes type, Args args)
+		{
+			this.Args = args;
+			this.Type = type;
+
+			AppStopWatch = Stopwatch.StartNew();
+		}
+
+		public long AppRunningTime
+		{
+			get => AppStopWatch.ElapsedMilliseconds;
+		}
+
+		/// <summary>
+		/// Returns the old block counter...
+		/// </summary>
+		/// <returns></returns>
+		public BlockCounters NewBlockCounter()
+		{
+			BlockCounters newBlock = new();
+			var oldBlock = this.Counters;
+
+			this.Counters = newBlock;
+
+			Interlocked.Add(ref this.TotalCount, oldBlock.Count);
+			Interlocked.Add(ref this.TotalTicks, oldBlock.TimingTicks);
+
+			return oldBlock;
+		}
+
+		public BlockCounters CurrentCounters { get => this.Counters; }
+
+
+		public void Success(TimeSpan elapsed)
+		{
+			Interlocked.Increment(ref this.Counters.Count);
+			Interlocked.Add(ref this.Counters.TimingTicks, elapsed.Ticks);
+		}
+
+		public void Success() => Interlocked.Increment(ref this.Counters.Count);
+
+		public void Failure(AerospikeException ae)
+		{
+			if (ae.Result == ResultCode.TIMEOUT)
 			{
-				if (args.latencyAltFormat)
+				Interlocked.Increment(ref this.Counters.TimeoutCount);
+			}
+			else
+			{
+				Failure((Exception)ae);
+			}
+		}
+
+		public void Failure(Exception e)
+		{
+			Interlocked.Increment(ref this.Counters.ErrorCount);
+
+			if (Args.debug)
+			{
+				if (e is AggregateException ae)
 				{
-					writeLatency = new LatencyManagerAlt(args.latencyColumns, args.latencyShift);
-					readLatency = new LatencyManagerAlt(args.latencyColumns, args.latencyShift);
+					ae.Handle(ex =>
+					{
+						System.Diagnostics.Debug.WriteLine("Write error: " + ex.Message + System.Environment.NewLine + ex.StackTrace);
+						Console.WriteLine("Write error: " + ex.Message + System.Environment.NewLine + ex.StackTrace);
+						return true;
+					});
 				}
 				else
 				{
-					writeLatency = new LatencyManager(args.latencyColumns, args.latencyShift);
-					readLatency = new LatencyManager(args.latencyColumns, args.latencyShift);
+					System.Diagnostics.Debug.WriteLine("Write error: " + e.Message + System.Environment.NewLine + e.StackTrace);
+					Console.WriteLine("Write error: " + e.Message + System.Environment.NewLine + e.StackTrace);
 				}
 			}
-			watch = Stopwatch.StartNew();
 		}
 
-		public void Start()
-		{
-			periodBegin = Time;
-		}
 
-		public long NextPeriod(long time)
-		{
-			long elapsed = time - periodBegin;
-			periodBegin = time;
-			return elapsed;
-		}
-
-		public long TimeRemaining
-		{
-			get { return Volatile.Read(ref periodBegin) + 1000L - Time; }
-		}
-
-		public long Time
-		{
-			get { return watch.ElapsedMilliseconds; }
-		}
-
-		public void WriteSuccess(long elapsed)
-		{
-			Interlocked.Increment(ref writeCount);
-			writeLatency.Add(elapsed);
-		}
-
-		public void WriteSuccess()
-		{
-			Interlocked.Increment(ref writeCount);
-		}
-
-		public void WriteFailure(AerospikeException ae)
-		{
-			if (ae.Result == ResultCode.TIMEOUT)
-			{
-				Interlocked.Increment(ref writeTimeoutCount);
-			}
-			else
-			{
-				WriteFailure((Exception)ae);
-			}
-		}
-
-		public void WriteFailure(Exception e)
-		{
-			Interlocked.Increment(ref writeErrorCount);
-
-			if (args.debug)
-			{
-				Console.WriteLine("Write error: " + e.Message + System.Environment.NewLine + e.StackTrace);
-			}
-		}
-
-		public void ReadSuccess(long elapsed)
-		{
-			Interlocked.Increment(ref readCount);
-			readLatency.Add(elapsed);
-		}
-
-		public void ReadSuccess()
-		{
-			Interlocked.Increment(ref readCount);
-		}
-
-		public void ReadFailure(AerospikeException ae)
-		{
-			if (ae.Result == ResultCode.TIMEOUT)
-			{
-				Interlocked.Increment(ref readTimeoutCount);
-			}
-			else
-			{
-				ReadFailure((Exception)ae);
-			}
-		}
-
-		public void ReadFailure(Exception e)
-		{
-			Interlocked.Increment(ref readErrorCount);
-
-			if (args.debug)
-			{
-				Console.WriteLine("Read error: " + e.Message + System.Environment.NewLine + e.StackTrace);
-			}
-		}
 	}
 }

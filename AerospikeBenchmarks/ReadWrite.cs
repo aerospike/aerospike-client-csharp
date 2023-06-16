@@ -23,11 +23,13 @@ namespace Aerospike.Benchmarks
 	{
 		private readonly Args args;
 		private readonly Metrics metrics;
+		private readonly ILatencyManager latencyManager;
 
-		public ReadWrite(Args args, Metrics metrics)
+		public ReadWrite(Args args, Metrics metrics, ILatencyManager latencyManager)
 		{
 			this.args = args;
 			this.metrics = metrics;
+			this.latencyManager = latencyManager;
 		}
 
 		public void RunSync(AerospikeClient client)
@@ -36,17 +38,19 @@ namespace Aerospike.Benchmarks
 
 			for (long i = 0; i < args.threadMax; i++)
 			{
-				tasks[i] = new ReadWriteTaskSync(client, args, metrics);
+				tasks[i] = new ReadWriteTaskSync(client, args, metrics, latencyManager);
 			}
 
-			metrics.Start();
+			var ticker = new Ticker(args, metrics, latencyManager);
+			ticker.Run();
 
 			foreach (ReadWriteTaskSync task in tasks)
 			{
 				task.Start();
 			}
 
-			RunTicker(tasks);
+			ticker.WaitForAllToPrint();
+			//ticker.Stop();
 		}
 
 		public void RunAsync(AsyncClient client)
@@ -66,19 +70,21 @@ namespace Aerospike.Benchmarks
 
 			for (int i = 0; i < maxConcurrentCommands; i++)
 			{
-				tasks[i] = new ReadWriteTaskAsync(client, args, metrics);
+				tasks[i] = new ReadWriteTaskAsync(client, args, metrics, latencyManager);
 			}
 
-			metrics.Start();
+			var ticker = new Ticker(args, metrics, latencyManager);
+			ticker.Run();
 
 			foreach (ReadWriteTaskAsync task in tasks)
 			{
 				task.Start();
 			}
-			RunTicker(tasks);
+			ticker.WaitForAllToPrint();
+			//ticker.Stop();
 		}
 
-		private void RunTicker(ReadWriteTask[] tasks)
+		/*private void RunTicker(ReadWriteTask[] tasks)
 		{
 			StringBuilder latencyBuilder = null;
 			string latencyHeader = null;
@@ -155,6 +161,6 @@ namespace Aerospike.Benchmarks
 				}
 				Thread.Sleep(1000);
 			}
-		}
+		}*/
 	}
 }

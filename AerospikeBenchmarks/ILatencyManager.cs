@@ -18,7 +18,7 @@ using System.Text;
 
 namespace Aerospike.Benchmarks
 {
-	interface ILatencyManager
+	internal interface ILatencyManager
 	{
 		void Add(long elapsed);
 		string PrintHeader();

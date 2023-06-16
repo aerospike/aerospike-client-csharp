@@ -23,11 +23,13 @@ namespace Aerospike.Benchmarks
 	{
 		private readonly Args args;
 		private readonly Metrics metrics;
+        private readonly ILatencyManager latencyManager;
 
-		public Initialize(Args args, Metrics metrics)
+		public Initialize(Args args, Metrics metrics, ILatencyManager latencyManager)
 		{
 			this.args = args;
 			this.metrics = metrics;
+			this.latencyManager = latencyManager;
 		}
 
 		public void RunSync(AerospikeClient client)
@@ -42,17 +44,19 @@ namespace Aerospike.Benchmarks
 			for (long i = 0; i < taskCount; i++)
 			{
 				long keyCount = (i < rem) ? keysPerTask + 1 : keysPerTask;
-				tasks[i] = new WriteTaskSync(client, args, metrics, keyStart, keyCount);
+				tasks[i] = new WriteTaskSync(client, args, metrics, keyStart, keyCount, latencyManager);
 				keyStart += keyCount;
 			}
 
-			metrics.Start();
+			var ticker = new Ticker(args, metrics, latencyManager);
+			ticker.Run();
 
 			foreach (WriteTaskSync task in tasks)
 			{
 				task.Start();
 			}
-			RunTicker();
+			ticker.WaitForAllToPrint();
+			//ticker.Stop();
 		}
 
 		public void RunAsync(AsyncClient client)
@@ -78,20 +82,22 @@ namespace Aerospike.Benchmarks
 			{
 				// Allocate separate tasks for each seed command and reuse them in callbacks.
 				long keyCount = (i < keysRem) ? keysPerCommand + 1 : keysPerCommand;
-				tasks[i] = new WriteTaskAsync(client, args, metrics, keyStart, keyCount);
+				tasks[i] = new WriteTaskAsync(client, args, metrics, keyStart, keyCount, latencyManager);
 				keyStart += keyCount;
 			}
 
-			metrics.Start();
+			var ticker = new Ticker(args, metrics, latencyManager);
+			ticker.Run();
 
 			foreach (WriteTaskAsync task in tasks)
 			{
 				task.Start();
 			}
-			RunTicker();
+			ticker.WaitForAllToPrint();
+			//ticker.Stop();
 		}
 
-		private void RunTicker()
+		/*private void RunTicker()
 		{
 			StringBuilder latencyBuilder = null;
 			string latencyHeader = null;
@@ -144,6 +150,6 @@ namespace Aerospike.Benchmarks
 				}
 				Console.WriteLine(metrics.writeLatency.PrintSummary(latencyBuilder, "write"));
 			}
-		}
+		}*/
 	}
 }

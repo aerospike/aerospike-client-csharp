@@ -42,8 +42,6 @@ namespace Aerospike.Benchmarks
             Log.Level level = args.debug ? Log.Level.DEBUG : Log.Level.INFO;
             Log.SetLevel(level);
 
-            Metrics metrics = new Metrics(args);
-
             if (args.sync)
             {
                 ClientPolicy policy = new ClientPolicy();
@@ -55,19 +53,32 @@ namespace Aerospike.Benchmarks
 
                 try
                 {
-                    args.SetServerSpecific(client);
+					var metricsWrite = new Metrics(Metrics.MetricTypes.Write, args);
+					ILatencyManager latencyMgr = args.latency
+													? (args.latencyAltFormat
+														? new LatencyManagerAlt(args.latencyColumns, args.latencyShift)
+														: new LatencyManager(args.latencyColumns, args.latencyShift))
+													: null;
+					Metrics metricsRead = null;
 
-                    if (args.initialize)
-                    {
-                        Initialize prog = new Initialize(args, metrics);
-                        prog.RunSync(client);
-                    }
-                    else
-                    {
-                        ReadWrite prog = new ReadWrite(args, metrics);
-                        prog.RunSync(client);
-                    }
-                }
+					if (!args.initialize)
+					{
+						metricsRead = new Metrics(Metrics.MetricTypes.Read, args);
+					}
+
+					args.SetServerSpecific(client);
+
+					if (metricsRead is null)
+					{
+						var prog = new Initialize(args, metricsWrite, latencyMgr);
+						prog.RunSync(client);
+					}
+					else
+					{
+						//var prog = new ReadWrite(args, metricsWrite, metricsRead, latencyMgr);
+						//prog.RunSync(client);
+					}
+				}
                 finally
                 {
                     client.Close();
@@ -86,19 +97,32 @@ namespace Aerospike.Benchmarks
 
                 try
                 {
-                    args.SetServerSpecific(client);
+					var metricsWrite = new Metrics(Metrics.MetricTypes.Write, args);
+					ILatencyManager latencyMgr = args.latency
+													? (args.latencyAltFormat
+														? new LatencyManagerAlt(args.latencyColumns, args.latencyShift)
+														: new LatencyManager(args.latencyColumns, args.latencyShift))
+													: null;
+					Metrics metricsRead = null;
 
-                    if (args.initialize)
-                    {
-                        Initialize prog = new Initialize(args, metrics);
-                        prog.RunAsync(client);
-                    }
-                    else
-                    {
-                        ReadWrite prog = new ReadWrite(args, metrics);
-                        prog.RunAsync(client);
-                    }
-                }
+					if (!args.initialize)
+					{
+						metricsRead = new Metrics(Metrics.MetricTypes.Read, args);
+					}
+
+					args.SetServerSpecific(client);
+
+					if (metricsRead is null)
+					{
+						var prog = new Initialize(args, metricsWrite, latencyMgr);
+						prog.RunAsync(client);
+					}
+					else
+					{
+						//var prog = new ReadWrite(args, metricsWrite, metricsRead, latencyMgr);
+						//prog.RunAsync(client);
+					}
+				}
                 finally
                 {
                     client.Close();

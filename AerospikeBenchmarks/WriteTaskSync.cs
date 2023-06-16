@@ -27,14 +27,23 @@ namespace Aerospike.Benchmarks
 		private readonly long keyStart;
 		private readonly long keyMax;
 		private readonly Thread thread;
+		private readonly ILatencyManager LatencyMgr;
+		private readonly bool useLatency;
 
-		public WriteTaskSync(AerospikeClient client, Args args, Metrics metrics, long keyStart, long keyMax)
+		public WriteTaskSync(AerospikeClient client, 
+								Args args, 
+								Metrics metrics, 
+								long keyStart, 
+								long keyMax,
+								ILatencyManager latencyManager)
 		{
 			this.client = client;
 			this.args = args;
 			this.metrics = metrics;
 			this.keyStart = keyStart;
 			this.keyMax = keyMax;
+			this.LatencyMgr = latencyManager;
+			this.useLatency = latencyManager != null;
 			this.thread = new Thread(new ThreadStart(Run));
 		}
 
@@ -58,20 +67,20 @@ namespace Aerospike.Benchmarks
 					catch (AerospikeException ae)
 					{
 						i--;
-						metrics.WriteFailure(ae);
+						metrics.Failure(ae);
 					}
 					catch (Exception e)
 					{
 						i--;
-						metrics.WriteFailure(e);
+						metrics.Failure(e);
 					}
 
 					// Throttle throughput
 					if (args.throughput > 0)
 					{
-						int transactions = Volatile.Read(ref metrics.writeCount);
+						long transactions = Volatile.Read(ref metrics.Counters.Count);
 
-						if (transactions > args.throughput)
+						/*if (transactions > args.throughput)
 						{
 							long millis = metrics.TimeRemaining;
 
@@ -79,7 +88,7 @@ namespace Aerospike.Benchmarks
 							{
 								Util.Sleep((int)millis);
 							}
-						}
+						}*/
 					}
 				}
 			}
@@ -94,17 +103,25 @@ namespace Aerospike.Benchmarks
 			Key key = new Key(args.ns, args.set, keyCurrent);
 			Bin bin = new Bin(args.binName, args.GetValue(random));
 
-			if (metrics.writeLatency != null)
+			if (useLatency)
 			{
-				Stopwatch watch = Stopwatch.StartNew();
+				Stopwatch watch = useLatency
+								? Stopwatch.StartNew()
+								: null;
 				client.Put(args.writePolicy, key, bin);
-				long elapsed = watch.ElapsedMilliseconds;
-				metrics.WriteSuccess(elapsed);
+				PrefStats.StopRecording(watch,
+										metrics.Type.ToString(),
+										nameof(Write),
+										key);
+
+				var elapsed = watch.Elapsed;
+				this.metrics.Success(elapsed);
+				this.LatencyMgr?.Add((long)elapsed.TotalMilliseconds);
 			}
 			else
 			{
 				client.Put(args.writePolicy, key, bin);
-				metrics.WriteSuccess();
+				metrics.Success();
 			}
 		}
 	}

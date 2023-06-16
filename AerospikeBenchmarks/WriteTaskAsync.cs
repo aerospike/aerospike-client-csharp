@@ -15,6 +15,7 @@
  * the License.
  */
 using System.Diagnostics;
+using System.Threading.Tasks;
 using Aerospike.Client;
 
 namespace Aerospike.Benchmarks
@@ -26,14 +27,19 @@ namespace Aerospike.Benchmarks
 		private readonly Metrics metrics;
 		private readonly RandomShift random;
 		private readonly WriteListener listener;
-		private readonly Stopwatch watch;
+		private Stopwatch watch;
 		private readonly long keyStart;
 		private readonly long keyMax;
 		private long keyCount;
-		private double begin;
+		private readonly ILatencyManager LatencyMgr;
 		private readonly bool useLatency;
 
-		public WriteTaskAsync(AsyncClient client, Args args, Metrics metrics, long keyStart, long keyMax)
+		public WriteTaskAsync(AsyncClient client, 
+								Args args, 
+								Metrics metrics, 
+								long keyStart, 
+								long keyMax,
+								ILatencyManager latencyManager)
 		{
 			this.client = client;
 			this.args = args;
@@ -41,7 +47,8 @@ namespace Aerospike.Benchmarks
 			this.random = new RandomShift();
 			this.keyStart = keyStart;
 			this.keyMax = keyMax;
-			this.useLatency = metrics.writeLatency != null;
+			this.LatencyMgr = latencyManager;
+			this.useLatency = latencyManager != null;
 
 			if (useLatency)
 			{
@@ -51,7 +58,6 @@ namespace Aerospike.Benchmarks
 			{
 				listener = new WriteHandler(this);
 			}
-			watch = Stopwatch.StartNew();
 		}
 
 		public void Start()
@@ -65,10 +71,10 @@ namespace Aerospike.Benchmarks
 			Key key = new Key(args.ns, args.set, currentKey);
 			Bin bin = new Bin(args.binName, args.GetValue(random));
 
-			if (useLatency)
-			{
-				begin = watch.Elapsed.TotalMilliseconds;
-			}
+			this.watch = useLatency
+								? Stopwatch.StartNew()
+								: null;
+
 			client.Put(args.writePolicy, listener, key, bin);
 		}
 
@@ -114,19 +120,25 @@ namespace Aerospike.Benchmarks
 
 		private void WriteSuccessLatency(Key pk)
 		{
-			var elapsed = watch.Elapsed.TotalMilliseconds - Volatile.Read(ref begin);
-			metrics.writeLatency.Add((long) elapsed);
-			PrefStats.RecordEvent(elapsed,
-									"write",
-									nameof(WriteSuccessLatency),
+			PrefStats.StopRecording(watch,
+									metrics.Type.ToString(),
+									nameof(RunCommand),
 									pk);
+
+			var elapsed = watch.Elapsed;
+			this.metrics.Success(elapsed);
+			this.LatencyMgr?.Add((long)elapsed.TotalMilliseconds);
 			WriteSuccess();
 		}
 
 		private void WriteSuccess()
 		{
-			metrics.WriteSuccess();
-			long count = Interlocked.Increment(ref keyCount);
+			if (!useLatency)
+			{
+				this.metrics.Success();
+			}
+			
+			long count = Interlocked.Increment(ref keyCount); // TODO ask Richard about this
 
 			if (count < keyMax)
 			{
@@ -137,7 +149,7 @@ namespace Aerospike.Benchmarks
 
 		private void WriteFailure(AerospikeException ae)
 		{
-			metrics.WriteFailure(ae);
+			this.metrics.Failure(ae);
 			// Retry command with same key.
 			RunCommand(keyCount);
 		}

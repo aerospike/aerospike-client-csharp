@@ -20,7 +20,7 @@ using Microsoft.Extensions.Configuration;
 
 namespace Aerospike.Benchmarks
 {
-	sealed class Args
+	sealed internal class Args
 	{
 		internal Host[] hosts;
 		internal int port;
@@ -157,27 +157,33 @@ namespace Aerospike.Benchmarks
 			ReadModeAP readModeAP = (ReadModeAP)Enum.Parse(typeof(ReadModeAP), section.GetSection("ReadModeAP").Value, true);
 			ReadModeSC readModeSC = (ReadModeSC)Enum.Parse(typeof(ReadModeSC), section.GetSection("ReadModeSC").Value, true);
 
-			policy = new Policy();
-			policy.totalTimeout = timeout;
-			policy.maxRetries = maxRetries;
-			policy.sleepBetweenRetries = sleepBetweenRetries;
-			policy.replica = replica;
-			policy.readModeAP = readModeAP;
-			policy.readModeSC = readModeSC;
+			policy = new Policy()
+			{
+				totalTimeout = timeout,
+				maxRetries = maxRetries,
+				sleepBetweenRetries = sleepBetweenRetries,
+				replica = replica,
+				readModeAP = readModeAP,
+				readModeSC = readModeSC
+			};
 
-			writePolicy = new WritePolicy();
-			writePolicy.totalTimeout = timeout;
-			writePolicy.maxRetries = maxRetries;
-			writePolicy.sleepBetweenRetries = sleepBetweenRetries;
-			writePolicy.replica = replica;
+			writePolicy = new WritePolicy()
+			{
+				totalTimeout = timeout,
+				maxRetries = maxRetries,
+				sleepBetweenRetries = sleepBetweenRetries,
+				replica = replica
+			};
 
-			batchPolicy = new BatchPolicy();
-			batchPolicy.totalTimeout = timeout;
-			batchPolicy.maxRetries = maxRetries;
-			batchPolicy.sleepBetweenRetries = sleepBetweenRetries;
-			batchPolicy.replica = replica;
-			batchPolicy.readModeAP = readModeAP;
-			batchPolicy.readModeSC = readModeSC;
+			batchPolicy = new BatchPolicy()
+			{
+				totalTimeout = timeout,
+				maxRetries = maxRetries,
+				sleepBetweenRetries = sleepBetweenRetries,
+				replica = replica,
+				readModeAP = readModeAP,
+				readModeSC = readModeSC
+			};
 		}
 
 		/// <summary>
