@@ -15,6 +15,7 @@
  * the License.
  */
 using System.Diagnostics;
+using System.Runtime.CompilerServices;
 using Aerospike.Client;
 
 namespace Aerospike.Benchmarks
@@ -27,7 +28,7 @@ namespace Aerospike.Benchmarks
 		private readonly RecordListener recordListener;
 		private readonly RecordArrayListener recordArrayListener;
 		private readonly Stopwatch watch;
-		private long begin;
+		private double begin;
 		private readonly bool useLatency;
 
 		public ReadWriteTaskAsync(AsyncClient client, Args args, Metrics metrics)
@@ -94,7 +95,7 @@ namespace Aerospike.Benchmarks
 			{
 				if (useLatency)
 				{
-					begin = watch.ElapsedMilliseconds;
+					begin = watch.Elapsed.TotalMilliseconds;
 				}
 				client.Put(args.writePolicy, writeListener, key, bin);
 			}
@@ -119,7 +120,7 @@ namespace Aerospike.Benchmarks
 
 			public void OnSuccess(Key key)
 			{
-				parent.WriteSuccessLatency();
+				parent.WriteSuccessLatency(key);
 			}
 
 			public void OnFailure(AerospikeException ae)
@@ -148,10 +149,11 @@ namespace Aerospike.Benchmarks
 			}
 		}
 
-		private void WriteSuccessLatency()
+		private void WriteSuccessLatency(Key key)
 		{
-			long elapsed = watch.ElapsedMilliseconds - Volatile.Read(ref begin);
-			metrics.writeLatency.Add(elapsed);
+			var elapsed = watch.Elapsed.TotalMilliseconds - Volatile.Read(ref begin);
+			PrefStats.RecordEvent(elapsed, "Write", nameof(WriteSuccessLatency), key);
+			metrics.writeLatency.Add((long)elapsed);
 			WriteSuccess();
 		}
 
@@ -181,7 +183,7 @@ namespace Aerospike.Benchmarks
 			{
 				if (useLatency)
 				{
-					begin = watch.ElapsedMilliseconds;
+					begin = watch.Elapsed.TotalMilliseconds;
 				}
 				client.Get(args.policy, recordListener, key, args.binName);
 			}
@@ -206,7 +208,7 @@ namespace Aerospike.Benchmarks
 
 			public void OnSuccess(Key k, Record record)
 			{
-				parent.ReadSuccessLatency();
+				parent.ReadSuccessLatency(k);
 			}
 
 			public void OnFailure(AerospikeException ae)
@@ -235,10 +237,11 @@ namespace Aerospike.Benchmarks
 			}
 		}
 
-		private void ReadSuccessLatency()
+		private void ReadSuccessLatency(Key key)
 		{
-			long elapsed = watch.ElapsedMilliseconds - Volatile.Read(ref begin);
-			metrics.readLatency.Add(elapsed);
+			var elapsed = watch.Elapsed.TotalMilliseconds - Volatile.Read(ref begin);
+			PrefStats.RecordEvent(elapsed, "Read", nameof(ReadSuccessLatency), key);
+			metrics.readLatency.Add((long)elapsed);
 			ReadSuccess();
 		}
 
@@ -274,7 +277,7 @@ namespace Aerospike.Benchmarks
 			{
 				if (useLatency)
 				{
-					begin = watch.ElapsedMilliseconds;
+					begin = watch.Elapsed.TotalMilliseconds;
 				}
 				client.Get(args.batchPolicy, recordArrayListener, keys, args.binName);
 			}
@@ -330,8 +333,9 @@ namespace Aerospike.Benchmarks
 
 		private void BatchSuccessLatency()
 		{
-			long elapsed = watch.ElapsedMilliseconds - Volatile.Read(ref begin);
-			metrics.readLatency.Add(elapsed);
+			var elapsed = watch.Elapsed.TotalMilliseconds - Volatile.Read(ref begin);
+			PrefStats.RecordEvent(elapsed, "Batch", nameof(BatchSuccessLatency), null);
+			metrics.readLatency.Add((long)elapsed);
 			ReadSuccess();
 		}
 

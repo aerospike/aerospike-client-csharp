@@ -23,7 +23,7 @@ namespace Aerospike.Benchmarks
         /// <summary>
         /// Timing of the measured event
         /// </summary>
-        [JsonConverter(typeof(TimespanConverterMS))]
+        //[JsonConverter(typeof(TimespanConverterMS))]
         public double Timing;
         /// <summary>
         /// Event (e.g., Put, Get)
