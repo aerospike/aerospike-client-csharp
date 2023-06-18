@@ -98,8 +98,9 @@ namespace Aerospike.Benchmarks
 			{
 				Stopwatch watch = Stopwatch.StartNew();
 				client.Put(args.writePolicy, key, bin);
-				long elapsed = watch.ElapsedMilliseconds;
-				metrics.WriteSuccess(elapsed);
+				var elapsed = watch.Elapsed.TotalMilliseconds;
+				PrefStats.RecordEvent(elapsed, "WriteSync", nameof(Write), key);	
+				metrics.WriteSuccess((long)elapsed);
 			}
 			else
 			{

@@ -114,8 +114,8 @@ namespace Aerospike.Benchmarks
 			{
 				Stopwatch watch = Stopwatch.StartNew();
 				client.Put(policy, key, bin);
-				long elapsed = watch.ElapsedMilliseconds;
-				metrics.WriteSuccess(elapsed);
+				PrefStats.StopRecording(watch, "WriteSync", nameof(WriteRecord), key);
+				metrics.WriteSuccess(watch.ElapsedMilliseconds);
 			}
 			else
 			{
@@ -148,8 +148,8 @@ namespace Aerospike.Benchmarks
 			{
 				Stopwatch watch = Stopwatch.StartNew();
 				Record record = client.Get(policy, key, binName);
-				long elapsed = watch.ElapsedMilliseconds;
-				metrics.ReadSuccess(elapsed);
+				PrefStats.StopRecording(watch, "ReadSync", nameof(ReadRecord), key);
+				metrics.ReadSuccess(watch.ElapsedMilliseconds);
 			}
 			else
 			{

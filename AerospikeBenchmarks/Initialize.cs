@@ -117,10 +117,10 @@ namespace Aerospike.Benchmarks
 				total += writeCurrent;
 
 				long elapsed = metrics.NextPeriod(time);
-				long writeTps = (long)writeCurrent * 1000L / elapsed;
+				var writeTps = writeCurrent / TimeSpan.FromMilliseconds( (double) elapsed).TotalSeconds;
 				string dt = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
 
-				Console.WriteLine(dt + " write(count={0} tps={1} timeouts={2} errors={3})",
+				Console.WriteLine(dt + " write(count={0} tps={1:########0} timeouts={2} errors={3})",
 					total, writeTps, writeTimeoutCurrent, writeErrorCurrent);
 
 				if (metrics.writeLatency != null)

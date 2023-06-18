@@ -30,7 +30,7 @@ namespace Aerospike.Benchmarks
 		private readonly long keyStart;
 		private readonly long keyMax;
 		private long keyCount;
-		private long begin;
+		private double begin;
 		private readonly bool useLatency;
 
 		public WriteTaskAsync(AsyncClient client, Args args, Metrics metrics, long keyStart, long keyMax)
@@ -67,7 +67,7 @@ namespace Aerospike.Benchmarks
 
 			if (useLatency)
 			{
-				begin = watch.ElapsedMilliseconds;
+				begin = watch.Elapsed.TotalMilliseconds;
 			}
 			client.Put(args.writePolicy, listener, key, bin);
 		}
@@ -83,7 +83,7 @@ namespace Aerospike.Benchmarks
 
 			public void OnSuccess(Key key)
 			{
-				parent.WriteSuccessLatency();
+				parent.WriteSuccessLatency(key);
 			}
 
 			public void OnFailure(AerospikeException ae)
@@ -112,10 +112,14 @@ namespace Aerospike.Benchmarks
 			}
 		}
 
-		private void WriteSuccessLatency()
+		private void WriteSuccessLatency(Key pk)
 		{
-			long elapsed = watch.ElapsedMilliseconds - Volatile.Read(ref begin);
-			metrics.writeLatency.Add(elapsed);
+			var elapsed = watch.Elapsed.TotalMilliseconds - Volatile.Read(ref begin);
+			metrics.writeLatency.Add((long) elapsed);
+			PrefStats.RecordEvent(elapsed,
+									"write",
+									nameof(WriteSuccessLatency),
+									pk);
 			WriteSuccess();
 		}
 
