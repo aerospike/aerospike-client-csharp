@@ -79,7 +79,7 @@ namespace Aerospike.Client
 
 		public int ResetTimeout()
 		{
-			return Interlocked.Exchange(ref errors, 0);
+			return Interlocked.Exchange(ref timeouts, 0);
 		}
 	}
 
