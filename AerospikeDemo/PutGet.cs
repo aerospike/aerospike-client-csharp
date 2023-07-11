@@ -28,7 +28,7 @@ namespace Aerospike.Demo
 		/// <summary>
 		/// Write and read a bin value.
 		/// </summary>
-		public override void RunExample(AerospikeClient client, Arguments args)
+		public override void RunExample(IAerospikeClient client, Arguments args)
 		{
 			if (args.singleBin)
 			{
@@ -44,7 +44,7 @@ namespace Aerospike.Demo
 		/// <summary>
 		/// Execute put and get on a server configured as multi-bin.  This is the server default.
 		/// </summary>
-		private void RunMultiBinTest(AerospikeClient client, Arguments args)
+		private void RunMultiBinTest(IAerospikeClient client, Arguments args)
 		{
 			Key key = new Key(args.ns, args.set, "putgetkey");
 			Bin bin1 = new Bin("bin1", "value1");
@@ -72,7 +72,7 @@ namespace Aerospike.Demo
 		/// <summary>
 		/// Execute put and get on a server configured as single-bin.
 		/// </summary>
-		private void RunSingleBinTest(AerospikeClient client, Arguments args)
+		private void RunSingleBinTest(IAerospikeClient client, Arguments args)
 		{
 			Key key = new Key(args.ns, args.set, "putgetkey");
 			Bin bin = new Bin("", "value");
@@ -115,7 +115,7 @@ namespace Aerospike.Demo
 		/// <summary>
 		/// Read record header data.
 		/// </summary>
-		private void RunGetHeaderTest(AerospikeClient client, Arguments args)
+		private void RunGetHeaderTest(IAerospikeClient client, Arguments args)
 		{
 			Key key = new Key(args.ns, args.set, "putgetkey");
 

@@ -36,13 +36,13 @@ namespace Aerospike.Demo
 		/// the server does not have to read the existing record before overwriting it.
 		/// </para>
 		/// </summary>
-		public override void RunExample(AerospikeClient client, Arguments args)
+		public override void RunExample(IAerospikeClient client, Arguments args)
 		{
 			RunReplaceExample(client, args);
 			RunReplaceOnlyExample(client, args);
 		}
 
-		private void RunReplaceExample(AerospikeClient client, Arguments args)
+		private void RunReplaceExample(IAerospikeClient client, Arguments args)
 		{
 			Key key = new Key(args.ns, args.set, "replacekey");
 			Bin bin1 = new Bin("bin1", "value1");
@@ -91,7 +91,7 @@ namespace Aerospike.Demo
 			ValidateBin(key, bin3, record);
 		}
 
-		private void RunReplaceOnlyExample(AerospikeClient client, Arguments args)
+		private void RunReplaceOnlyExample(IAerospikeClient client, Arguments args)
 		{
 			Key key = new Key(args.ns, args.set, "replaceonlykey");
 			Bin bin = new Bin("bin", "value");

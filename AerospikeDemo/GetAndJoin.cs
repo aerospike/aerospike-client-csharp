@@ -37,7 +37,7 @@ namespace Aerospike.Demo
 		/// the server does not have to read the existing record before overwriting it.
 		/// </para>
 		/// </summary>
-		public override void RunExample(AerospikeClient client, Arguments args)
+		public override void RunExample(IAerospikeClient client, Arguments args)
 		{
 			// Write securities
 			console.Info("Write securities");
@@ -81,7 +81,7 @@ namespace Aerospike.Demo
 		{
 		}
 
-		public void Write(AerospikeClient client, WritePolicy policy, string ns, string set)
+		public void Write(IAerospikeClient client, WritePolicy policy, string ns, string set)
 		{
 			Key key = new Key(ns, set, accountId);
 
@@ -103,7 +103,7 @@ namespace Aerospike.Demo
 			client.Put(policy, key, binPositions, binTickers);
 		}
 
-		public void Read(AerospikeClient client, BatchPolicy policy, string ns, string set, string accountId)
+		public void Read(IAerospikeClient client, BatchPolicy policy, string ns, string set, string accountId)
 		{
 			Record record = client.Join(policy,
 				new Key(ns, set, accountId),
@@ -215,7 +215,7 @@ namespace Aerospike.Demo
 			price = BitConverter.ToDouble(priceBytes, 0);
 		}
 
-		public void Write(AerospikeClient client, WritePolicy policy, string ns, string set)
+		public void Write(IAerospikeClient client, WritePolicy policy, string ns, string set)
 		{
 			Key key = new Key(ns, set, ticker);
 			Bin binTicker = new Bin("ticker", ticker);

@@ -27,7 +27,7 @@ namespace Aerospike.Test
 	{
 		public static Args Instance = new Args();
 
-		public AerospikeClient client;
+		public IAerospikeClient client;
 		public AsyncClient asyncClient;
 		public Host[] hosts;
 		public int port;

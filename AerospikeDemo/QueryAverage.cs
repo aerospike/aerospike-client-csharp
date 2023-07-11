@@ -29,7 +29,7 @@ namespace Aerospike.Demo
 		/// <summary>
 		/// Create secondary index and query on it and apply aggregation user defined function.
 		/// </summary>
-		public override void RunExample(AerospikeClient client, Arguments args)
+		public override void RunExample(IAerospikeClient client, Arguments args)
 		{
 			string indexName = "avgindex";
 			string keyPrefix = "avgkey";
@@ -43,14 +43,14 @@ namespace Aerospike.Demo
 			client.DropIndex(args.policy, args.ns, args.set, indexName);
 		}
 
-		private void Register(AerospikeClient client, Arguments args)
+		private void Register(IAerospikeClient client, Arguments args)
 		{
 			string packageName = "average_example.lua";
 			console.Info("Register: " + packageName);
 			LuaExample.Register(client, args.policy, packageName);
 		}
 
-		private void CreateIndex(AerospikeClient client, Arguments args, string indexName, string binName)
+		private void CreateIndex(IAerospikeClient client, Arguments args, string indexName, string binName)
 		{
 			console.Info("Create index: ns={0} set={1} index={2} bin={3}",
 				args.ns, args.set, indexName, binName);
@@ -72,7 +72,7 @@ namespace Aerospike.Demo
 			}
 		}
 
-		private void WriteRecords(AerospikeClient client, Arguments args, string keyPrefix, int size)
+		private void WriteRecords(IAerospikeClient client, Arguments args, string keyPrefix, int size)
 		{
 			for (int i = 1; i <= size; i++)
 			{
@@ -86,7 +86,7 @@ namespace Aerospike.Demo
 			}
 		}
 
-		private void RunQuery(AerospikeClient client, Arguments args, string indexName, string binName)
+		private void RunQuery(IAerospikeClient client, Arguments args, string indexName, string binName)
 		{
 			console.Info("Query for:ns={0} set={1} index={2} bin={3}", 
 				args.ns, args.set, indexName, binName);

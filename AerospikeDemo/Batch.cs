@@ -29,7 +29,7 @@ namespace Aerospike.Demo
 		/// <summary>
 		/// Batch multiple gets in one call to the server.
 		/// </summary>
-		public override void RunExample(AerospikeClient client, Arguments args)
+		public override void RunExample(IAerospikeClient client, Arguments args)
 		{
 			string keyPrefix = "batchkey";
 			string valuePrefix = "batchvalue";
@@ -46,7 +46,7 @@ namespace Aerospike.Demo
 		/// <summary>
 		/// Write records individually.
 		/// </summary>
-		private void WriteRecords(AerospikeClient client, Arguments args, string keyPrefix, string binName, string valuePrefix, int size)
+		private void WriteRecords(IAerospikeClient client, Arguments args, string keyPrefix, string binName, string valuePrefix, int size)
 		{
 			for (int i = 1; i <= size; i++)
 			{
@@ -63,7 +63,7 @@ namespace Aerospike.Demo
 		/// <summary>
 		/// Check existence of records in one batch.
 		/// </summary>
-		private void BatchExists(AerospikeClient client, Arguments args, string keyPrefix, int size)
+		private void BatchExists(IAerospikeClient client, Arguments args, string keyPrefix, int size)
 		{
 			// Batch into one call.
 			Key[] keys = new Key[size];
@@ -86,7 +86,7 @@ namespace Aerospike.Demo
 		/// <summary>
 		/// Read records in one batch.
 		/// </summary>
-		private void BatchReads(AerospikeClient client, Arguments args, string keyPrefix, string binName, int size)
+		private void BatchReads(IAerospikeClient client, Arguments args, string keyPrefix, string binName, int size)
 		{
 			// Batch gets into one call.
 			Key[] keys = new Key[size];
@@ -122,7 +122,7 @@ namespace Aerospike.Demo
 		/// <summary>
 		/// Read record header data in one batch.
 		/// </summary>
-		private void BatchReadHeaders(AerospikeClient client, Arguments args, string keyPrefix, int size)
+		private void BatchReadHeaders(IAerospikeClient client, Arguments args, string keyPrefix, int size)
 		{
 			// Batch gets into one call.
 			Key[] keys = new Key[size];
@@ -161,7 +161,7 @@ namespace Aerospike.Demo
 		/// Read records with varying namespaces, bin names and read types in one batch.
 		/// This requires Aerospike Server version >= 3.6.0.
 		/// </summary>
-		private void BatchReadComplex(AerospikeClient client, Arguments args, string keyPrefix, string binName)
+		private void BatchReadComplex(IAerospikeClient client, Arguments args, string keyPrefix, string binName)
 		{
 			// Batch gets into one call.
 			// Batch allows multiple namespaces in one call, but example test environment may only have one namespace.

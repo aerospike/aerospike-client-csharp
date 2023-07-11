@@ -40,7 +40,7 @@ namespace Aerospike.Demo
 			completed = false;
 		}
 
-		private void Register(AerospikeClient client, Arguments args)
+		private void Register(IAerospikeClient client, Arguments args)
 		{
 			string packageName = "record_example.lua";
 			console.Info("Register: " + packageName);

@@ -29,7 +29,7 @@ namespace Aerospike.Demo
 		/// <summary>
 		/// Drop a bin from a record.
 		/// </summary>
-		public override void RunExample(AerospikeClient client, Arguments args)
+		public override void RunExample(IAerospikeClient client, Arguments args)
 		{
 			if (args.singleBin)
 			{

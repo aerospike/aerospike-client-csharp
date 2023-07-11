@@ -28,7 +28,7 @@ namespace Aerospike.Demo
 		/// <summary>
 		/// Apply user defined function on records that match the query filter.
 		/// </summary>
-		public override void RunExample(AerospikeClient client, Arguments args)
+		public override void RunExample(IAerospikeClient client, Arguments args)
 		{
 			string indexName = "qeindex1";
 			string keyPrefix = "qekey";
@@ -44,14 +44,14 @@ namespace Aerospike.Demo
 			client.DropIndex(args.policy, args.ns, args.set, indexName);
 		}
 
-		private void Register(AerospikeClient client, Arguments args)
+		private void Register(IAerospikeClient client, Arguments args)
 		{
 			string packageName = "record_example.lua";
 			console.Info("Register: " + packageName);
 			LuaExample.Register(client, args.policy, packageName);
 		}
 
-		private void CreateIndex(AerospikeClient client, Arguments args, string indexName, string binName)
+		private void CreateIndex(IAerospikeClient client, Arguments args, string indexName, string binName)
 		{
 			console.Info("Create index: ns={0} set={1} index={2} bin={3}",
 				args.ns, args.set, indexName, binName);
@@ -73,7 +73,7 @@ namespace Aerospike.Demo
 			}
 		}
 
-		private void WriteRecords(AerospikeClient client, Arguments args, string keyPrefix, string binName1, string binName2, int size)
+		private void WriteRecords(IAerospikeClient client, Arguments args, string keyPrefix, string binName1, string binName2, int size)
 		{
 			console.Info("Write " + size + " records.");
 
@@ -84,7 +84,7 @@ namespace Aerospike.Demo
 			}
 		}
 
-		private void RunQueryExecute(AerospikeClient client, Arguments args, string indexName, string binName1, string binName2)
+		private void RunQueryExecute(IAerospikeClient client, Arguments args, string indexName, string binName1, string binName2)
 		{
 			int begin = 3;
 			int end = 9;
@@ -103,7 +103,7 @@ namespace Aerospike.Demo
 			task.Wait(3000, 3000);
 		}
 
-		private void ValidateRecords(AerospikeClient client, Arguments args, string indexName, string binName1, string binName2, int size)
+		private void ValidateRecords(IAerospikeClient client, Arguments args, string indexName, string binName1, string binName2, int size)
 		{
 			int begin = 1;
 			int end = size + 100;

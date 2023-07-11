@@ -30,7 +30,7 @@ namespace Aerospike.Demo
 		/// <summary>
 		/// Terminate a scan and then resume scan later.
 		/// </summary>
-		public override void RunExample(AerospikeClient client, Arguments args)
+		public override void RunExample(IAerospikeClient client, Arguments args)
 		{
 			string binName = "bin";
 			string setName = "resume";
@@ -69,7 +69,7 @@ namespace Aerospike.Demo
 
 		private void WriteRecords
 		(
-			AerospikeClient client,
+			IAerospikeClient client,
 			Arguments args,
 			string setName,
 			string binName,

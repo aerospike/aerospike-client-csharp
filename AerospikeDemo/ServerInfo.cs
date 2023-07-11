@@ -29,7 +29,7 @@ namespace Aerospike.Demo
 		/// <summary>
 		/// Query server configuration, cluster status and namespace configuration.
 		/// </summary>
-		public override void RunExample(AerospikeClient client, Arguments args)
+		public override void RunExample(IAerospikeClient client, Arguments args)
 		{
 			Node node = client.Nodes[0];
 			GetServerConfig(node, args);

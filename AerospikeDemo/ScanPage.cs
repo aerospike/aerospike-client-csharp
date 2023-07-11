@@ -30,7 +30,7 @@ namespace Aerospike.Demo
 		/// <summary>
 		/// Scan in pages.
 		/// </summary>
-		public override void RunExample(AerospikeClient client, Arguments args)
+		public override void RunExample(IAerospikeClient client, Arguments args)
 		{
 			string binName = "bin";
 			string setName = "page";
@@ -55,7 +55,7 @@ namespace Aerospike.Demo
 
 		private void WriteRecords
 		(
-			AerospikeClient client,
+			IAerospikeClient client,
 			Arguments args,
 			string setName,
 			string binName,

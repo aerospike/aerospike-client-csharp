@@ -31,7 +31,7 @@ namespace Aerospike.Demo
 		/// <summary>
 		/// Scan all nodes in parallel and read all records in a set.
 		/// </summary>
-		public override void RunExample(AerospikeClient client, Arguments args)
+		public override void RunExample(IAerospikeClient client, Arguments args)
 		{
 			console.Info("Scan parallel: namespace=" + args.ns + " set=" + args.set);
 			recordCount = 0;

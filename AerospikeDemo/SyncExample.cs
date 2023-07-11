@@ -37,7 +37,7 @@ namespace Aerospike.Demo
 			policy.tlsPolicy = args.tlsPolicy;
 			policy.authMode = args.authMode;
 
-			AerospikeClient client = new AerospikeClient(policy, args.hosts);
+			IAerospikeClient client = new AerospikeClient(policy, args.hosts);
 
 			try
 			{
@@ -50,6 +50,6 @@ namespace Aerospike.Demo
 			}
 		}
 
-		public abstract void RunExample(AerospikeClient client, Arguments args);
+		public abstract void RunExample(IAerospikeClient client, Arguments args);
 	}
 }

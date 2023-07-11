@@ -32,7 +32,7 @@ namespace Aerospike.Demo
 		/// <summary>
 		/// Perform operations on a list bin.
 		/// </summary>
-		public override void RunExample(AerospikeClient client, Arguments args)
+		public override void RunExample(IAerospikeClient client, Arguments args)
 		{
 			RunSimpleExample(client, args);
 			RunScoreExample(client, args);
@@ -42,7 +42,7 @@ namespace Aerospike.Demo
 			RunNestedListCreateExample(client, args);
 		}
 
-		private void RunSimpleExample(AerospikeClient client, Arguments args)
+		private void RunSimpleExample(IAerospikeClient client, Arguments args)
 		{
 			Key key = new Key(args.ns, args.set, "mapkey");
 			string binName = args.GetBinName("mapbin");
@@ -75,7 +75,7 @@ namespace Aerospike.Demo
 			}
 		}
 
-		private void RunScoreExample(AerospikeClient client, Arguments args)
+		private void RunScoreExample(IAerospikeClient client, Arguments args)
 		{
 			Key key = new Key(args.ns, args.set, "mapkey");
 			string binName = args.GetBinName("mapbin");
@@ -123,7 +123,7 @@ namespace Aerospike.Demo
 		/// <summary>
 		/// Value list range example.
 		/// </summary>
-		private void RunListRangeExample(AerospikeClient client, Arguments args)
+		private void RunListRangeExample(IAerospikeClient client, Arguments args)
 		{
 			Key key = new Key(args.ns, args.set, "mapkey");
 			string binName = args.GetBinName("mapbin");
@@ -187,7 +187,7 @@ namespace Aerospike.Demo
 		/// <summary>
 		/// Operate on a map of maps.
 		/// </summary>
-		private void RunNestedExample(AerospikeClient client, Arguments args)
+		private void RunNestedExample(IAerospikeClient client, Arguments args)
 		{
 			Key key = new Key(args.ns, args.set, "mapkey2");
 			string binName = args.GetBinName("mapbin");
@@ -221,7 +221,7 @@ namespace Aerospike.Demo
 			console.Info("Record: " + record);
 		}
 
-		public void RunNestedMapCreateExample(AerospikeClient client, Arguments args)
+		public void RunNestedMapCreateExample(IAerospikeClient client, Arguments args)
 		{
 			Key key = new Key(args.ns, args.set, "mapkey2");
 			string binName = args.GetBinName("mapbin");
@@ -257,7 +257,7 @@ namespace Aerospike.Demo
 			console.Info("Record: " + record);
 		}
 
-		public void RunNestedListCreateExample(AerospikeClient client, Arguments args)
+		public void RunNestedListCreateExample(IAerospikeClient client, Arguments args)
 		{
 			Key key = new Key(args.ns, args.set, "mapkey3");
 			string binName = args.GetBinName("mapbin");

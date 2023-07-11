@@ -27,7 +27,7 @@ namespace Aerospike.Demo
 		/// <summary>
 		/// Query in pages.
 		/// </summary>
-		public override void RunExample(AerospikeClient client, Arguments args)
+		public override void RunExample(IAerospikeClient client, Arguments args)
 		{
 			string indexName = "pqidx";
 			string binName = "bin";
@@ -73,7 +73,7 @@ namespace Aerospike.Demo
 
 		private void CreateIndex
 		(
-			AerospikeClient client,
+			IAerospikeClient client,
 			Arguments args,
 			string setName,
 			string indexName,
@@ -101,7 +101,7 @@ namespace Aerospike.Demo
 
 		private void WriteRecords
 		(
-			AerospikeClient client,
+			IAerospikeClient client,
 			Arguments args,
 			string setName,
 			string binName,

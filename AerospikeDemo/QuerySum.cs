@@ -29,7 +29,7 @@ namespace Aerospike.Demo
 		/// <summary>
 		/// Create secondary index and query on it and apply aggregation user defined function.
 		/// </summary>
-		public override void RunExample(AerospikeClient client, Arguments args)
+		public override void RunExample(IAerospikeClient client, Arguments args)
 		{
 			string packageContents = @"
 local function reducer(val1,val2)
@@ -55,7 +55,7 @@ end
 			client.DropIndex(args.policy, args.ns, args.set, indexName);
 		}
 
-		private void Register(AerospikeClient client, Arguments args, string packageContents)
+		private void Register(IAerospikeClient client, Arguments args, string packageContents)
 		{
 			string packageName = "sum_example.lua";
 			console.Info("Register: " + packageName);
@@ -63,7 +63,7 @@ end
 			task.Wait();
 		}
 
-		private void CreateIndex(AerospikeClient client, Arguments args, string indexName, string binName)
+		private void CreateIndex(IAerospikeClient client, Arguments args, string indexName, string binName)
 		{
 			console.Info("Create index: ns={0} set={1} index={2} bin={3}",
 				args.ns, args.set, indexName, binName);
@@ -85,7 +85,7 @@ end
 			}
 		}
 
-		private void WriteRecords(AerospikeClient client, Arguments args, string keyPrefix, string binName, int size)
+		private void WriteRecords(IAerospikeClient client, Arguments args, string keyPrefix, string binName, int size)
 		{
 			for (int i = 1; i <= size; i++)
 			{
@@ -99,7 +99,7 @@ end
 			}
 		}
 
-		private void RunQuery(AerospikeClient client, Arguments args, string indexName, string binName, string packageContents)
+		private void RunQuery(IAerospikeClient client, Arguments args, string indexName, string binName, string packageContents)
 		{
 			int begin = 4;
 			int end = 7;

@@ -29,7 +29,7 @@ namespace Aerospike.Demo
             LuaConfig.PackagePath = LuaDirectory + "?.lua";
         }
 
-        public static void Register(AerospikeClient client, Policy policy, string packageName)
+        public static void Register(IAerospikeClient client, Policy policy, string packageName)
         {
             string path = LuaDirectory + packageName;
             RegisterTask task = client.Register(policy, path, packageName, Language.LUA);

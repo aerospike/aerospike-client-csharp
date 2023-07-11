@@ -33,7 +33,7 @@ namespace Aerospike.Demo
 		/// <summary>
 		/// Scan all nodes in series and read all records in all sets.
 		/// </summary>
-		public override void RunExample(AerospikeClient client, Arguments args)
+		public override void RunExample(IAerospikeClient client, Arguments args)
 		{
 			console.Info("Scan series: namespace=" + args.ns + " set=" + args.set);
 			setMap.Clear();

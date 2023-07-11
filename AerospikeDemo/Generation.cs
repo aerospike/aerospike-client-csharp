@@ -28,7 +28,7 @@ namespace Aerospike.Demo
 		/// <summary>
 		/// Exercise record generation functionality.
 		/// </summary>
-		public override void RunExample(AerospikeClient client, Arguments args)
+		public override void RunExample(IAerospikeClient client, Arguments args)
 		{
 			Key key = new Key(args.ns, args.set, "genkey");
 			string binName = args.GetBinName("genbin");

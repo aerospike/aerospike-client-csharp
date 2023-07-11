@@ -30,7 +30,7 @@ namespace Aerospike.Demo
 		/// <summary>
 		/// Demonstrate multiple operations on a single record in one call.
 		/// </summary>
-		public override void RunExample(AerospikeClient client, Arguments args)
+		public override void RunExample(IAerospikeClient client, Arguments args)
 		{
 			// Write initial record.
 			Key key = new Key(args.ns, args.set, "opkey");

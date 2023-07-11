@@ -29,7 +29,7 @@ namespace Aerospike.Demo
 		/// <summary>
 		/// Demonstrate touch command.
 		/// </summary>
-		public override void RunExample(AerospikeClient client, Arguments args)
+		public override void RunExample(IAerospikeClient client, Arguments args)
 		{
 			Key key = new Key(args.ns, args.set, "touchkey");
 			Bin bin = new Bin(args.GetBinName("touchbin"), "touchvalue");

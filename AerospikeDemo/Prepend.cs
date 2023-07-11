@@ -28,7 +28,7 @@ namespace Aerospike.Demo
 		/// <summary>
 		/// Prepend string to an existing string.
 		/// </summary>
-		public override void RunExample(AerospikeClient client, Arguments args)
+		public override void RunExample(IAerospikeClient client, Arguments args)
 		{
 			Key key = new Key(args.ns, args.set, "prependkey");
 			string binName = args.GetBinName("prependbin");

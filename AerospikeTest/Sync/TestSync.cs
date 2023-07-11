@@ -29,7 +29,7 @@ namespace Aerospike.Test
 	public class TestSync
 	{
 		public static Args args = Args.Instance;
-		public static AerospikeClient client = args.client;
+		public static IAerospikeClient client = args.client;
 
 		public static void AssertBinEqual(Key key, Record record, Bin bin)
 		{
