@@ -149,5 +149,13 @@ namespace Aerospike.Client
 		{
 			get { return done; }
 		}
+
+		/// <summary>
+		/// Indicates if the entire filter requires a retry after a failed attempt.
+		/// </summary>
+		public bool Retry
+		{
+			get { return retry; }
+		}
 	}
 }

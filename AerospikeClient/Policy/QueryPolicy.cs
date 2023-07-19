@@ -82,6 +82,7 @@ namespace Aerospike.Client
 		/// <para>Default: false</para>
 		/// </summary>
 		public bool shortQuery;
+		public uint infoTimeout;
 
 		/// <summary>
 		/// Copy query policy from another query policy.

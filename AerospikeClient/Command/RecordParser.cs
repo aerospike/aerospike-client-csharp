@@ -90,7 +90,7 @@ namespace Aerospike.Client
 	        return valueOffset + valueSize;
         }
 
-        private class OpResults : List<object>
+        public class OpResults : List<object>
         {
 	        public override string ToString()
 	        {
