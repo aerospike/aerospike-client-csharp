@@ -16,211 +16,284 @@
  */
 using Aerospike.Client.Proxy.KVS;
 using Google.Protobuf;
-using Google.Protobuf.Reflection;
-using Grpc.Core;
-using Microsoft.VisualBasic;
+using Grpc.Net.Client;
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Diagnostics;
+using System.Threading.Channels;
 
 #pragma warning disable 0618
 
 namespace Aerospike.Client.Proxy
 {
-	/*public abstract class CommandProxy
+	public class CommandProxy : Command
 	{
-		readonly Policy policy;
-		//private readonly GrpcCallExecutor executor;
-		//private readonly MethodDescriptor<KVS.AerospikeRequestPayload, KVS.AerospikeResponsePayload> methodDescriptor;
-		private long deadlineNanos;
-		private int sendTimeoutMillis;
-		private int iteration = 1;
-		private readonly int numExpectedResponses;
-		bool inDoubt;
+		int generation;
+		int expiration;
+		int batchIndex;
+		int fieldCount;
+		int opCount;
 
-		public CommandProxy(
-			MethodDescriptor<KVS.AerospikeRequestPayload, KVS.AerospikeResponsePayload> methodDescriptor,
-			GrpcCallExecutor executor,
-			Policy policy,
-			int numExpectedResponses
-		)
+		public CommandProxy(Policy policy)
+			: base(policy.socketTimeout, policy.totalTimeout, policy.maxRetries)
 		{
-			this.methodDescriptor = methodDescriptor;
-			this.executor = executor;
-			this.policy = policy;
-			this.numExpectedResponses = numExpectedResponses;
 		}
 
-		void Execute()
+		public void Write(WritePolicy writePolicy, Key key, Bin[] bins, Operation.Type operation)
 		{
-			if (policy.totalTimeout > 0)
+			SetWrite(writePolicy, Operation.Type.WRITE, key, bins);
+			var request = new AerospikeRequestPayload
 			{
-				deadlineNanos = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(policy.totalTimeout);
-				sendTimeoutMillis = (policy.socketTimeout > 0 && policy.socketTimeout < policy.totalTimeout) ?
-									 policy.socketTimeout : policy.totalTimeout;
-			}
-			else
-			{
-				deadlineNanos = 0; // No total deadline.
-				sendTimeoutMillis = Math.Max(policy.socketTimeout, 0);
-			}
+				Id = 0, // ID is only needed in streaming version, can be static for unary
+				Iteration = 1,
+				Payload = ByteString.CopyFrom(dataBuffer),
+			};
+			GRPCConversions.SetRequestPolicy(writePolicy, request);
 
-			ExecuteCommand();
+			var Channel = GrpcChannel.ForAddress(new UriBuilder("http", "localhost", 4000).Uri);
+			var KVS = new KVS.KVS.KVSClient(Channel);
+			var response = KVS.Write(request);
+			dataBuffer = response.Payload.ToByteArray();
+			dataOffset = 13;
+			ParseResult(writePolicy);
 		}
 
-		private void ExecuteCommand()
+		public async Task WriteAsync(WritePolicy writePolicy, CancellationToken token, Key key, Bin[] bins, Operation.Type operation)
 		{
-			long sendDeadlineNanos =
-				(sendTimeoutMillis > 0) ?
-					System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(sendTimeoutMillis) : 0;
+			SetWrite(writePolicy, Operation.Type.WRITE, key, bins);
+			var request = new AerospikeRequestPayload
+			{
+				Id = 0, // ID is only needed in streaming version, can be static for unary
+				Iteration = 1,
+				Payload = ByteString.CopyFrom(dataBuffer),
+			};
+			GRPCConversions.SetRequestPolicy(writePolicy, request);
 
-			KVS.AerospikeRequestPayload.Builder builder = getRequestBuilder();
+			var Channel = GrpcChannel.ForAddress(new UriBuilder("http", "localhost", 4000).Uri);
+			var KVS = new KVS.KVS.KVSClient(Channel);
+			var response = await KVS.WriteAsync(request, cancellationToken: token);
+			dataBuffer = response.Payload.ToByteArray();
+			dataOffset = 13;
+			ParseResult(writePolicy);
+		}
 
-			/*executor.execute(new GrpcStreamingCall(methodDescriptor, builder,
-				policy, iteration, deadlineNanos, sendDeadlineNanos, numExpectedResponses,
-				new StreamObserver<KVS.AerospikeResponsePayload>() {
-			
-				public void onNext(KVS.AerospikeResponsePayload response)
+		public Record Read(Policy policy, Key key)
+		{
+			string[] binNames = null;
+			SetRead(policy, key, binNames);
+
+			var request = new AerospikeRequestPayload
+			{
+				Id = 0, // ID is only needed in streaming version, can be static for unary
+				Iteration = 1,
+				Payload = ByteString.CopyFrom(dataBuffer),
+			};
+			GRPCConversions.SetRequestPolicy(policy, request);
+			var Channel = GrpcChannel.ForAddress(new UriBuilder("http", "localhost", 4000).Uri);
+			var KVS = new KVS.KVS.KVSClient(Channel);
+			var response = KVS.Read(request);
+			dataBuffer = response.Payload.ToByteArray();
+			dataOffset = 13;
+			return ParseRecordResult(policy);
+		}
+
+		public async Task<Record> ReadAsync(Policy policy, Key key, CancellationToken token)
+		{
+			string[] binNames = null;
+			SetRead(policy, key, binNames);
+
+			var request = new AerospikeRequestPayload
+			{
+				Id = 0, // ID is only needed in streaming version, can be static for unary
+				Iteration = 1,
+				Payload = ByteString.CopyFrom(dataBuffer),
+			};
+			GRPCConversions.SetRequestPolicy(policy, request);
+			var Channel = GrpcChannel.ForAddress(new UriBuilder("http", "localhost", 4000).Uri);
+			var KVS = new KVS.KVS.KVSClient(Channel);
+			var response = await KVS.ReadAsync(request, cancellationToken: token);
+			dataBuffer = response.Payload.ToByteArray();
+			dataOffset = 13;
+			return ParseRecordResult(policy);
+		}
+
+		protected internal void ParseResult(WritePolicy policy)
+		{
+			int resultCode = ParseResultCode();
+
+			if (resultCode == 0)
+			{
+				return;
+			}
+
+			if (resultCode == ResultCode.FILTERED_OUT)
+			{
+				if (policy.failOnFilteredOut)
 				{
-					try
+					throw new AerospikeException(resultCode);
+				}
+				return;
+			}
+
+			throw new AerospikeException(resultCode);
+		}
+
+		internal Record ParseRecordResult(Policy policy)
+		{
+			Record record = null;
+			int resultCode = ParseHeader();
+
+			switch (resultCode)
+			{
+				case ResultCode.OK:
+					SkipKey();
+					if (opCount == 0)
 					{
-						inDoubt |= response.getInDoubt();
-						onResponse(response);
+						// Bin data was not returned.
+						record = new Record(null, generation, expiration);
 					}
-					catch (Throwable t)
+					else
 					{
-						OnFailure(t);
-						// Re-throw to abort at the proxy/
-						throw t;
+						record = ParseRecord(dataBuffer, ref dataOffset, opCount, generation, expiration, false);
 					}
-				}
+					break;
 
-				public override void OnError(Exception e)
-				{
-					inDoubt = true;
-					OnFailure(t);
-				}
+				case ResultCode.KEY_NOT_FOUND_ERROR:
+					//handleNotFound(resultCode);
+					break;
 
-				public override void OnCompleted()
-				{
-				}*/
-		/*}
+				case ResultCode.FILTERED_OUT:
+					if (policy.failOnFilteredOut)
+					{
+						throw new AerospikeException(resultCode);
+					}
+					break;
 
-		bool Retry()
-		{
-			if (iteration > policy.maxRetries)
-			{
-				return false;
+				case ResultCode.UDF_BAD_RESPONSE:
+					SkipKey();
+					record = ParseRecord(dataBuffer, ref dataOffset, opCount, generation, expiration, false);
+					//handleUdfError(record, resultCode);
+					break;
+
+				default:
+					throw new AerospikeException(resultCode);
 			}
 
-			if (policy.totalTimeout > 0)
-			{
-				long remaining = deadlineNanos - System.nanoTime() - TimeUnit.MILLISECONDS.toNanos(policy.sleepBetweenRetries);
-
-				if (remaining <= 0)
-				{
-					return false;
-				}
-			}
-
-			iteration++;
-			executor.getEventLoop().schedule(this::RetryNow, policy.sleepBetweenRetries, TimeUnit.MILLISECONDS);
-			return true;
+			return record;
 		}
 
-		private void RetryNow()
+		public int ParseResultCode()
 		{
-			try
-			{
-				ExecuteCommand();
-			}
-			catch (AerospikeException ae)
-			{
-				NotifyFailure(ae);
-			}
-			catch (Exception t)
-			{
-				NotifyFailure(new AerospikeException(ResultCode.CLIENT_ERROR, t));
-			}
+			return dataBuffer[dataOffset] & 0xFF;
 		}
 
-		private void OnFailure(Exception e)
+		public int ParseHeader()
 		{
-			AerospikeException ae;
+			var resultCode = ParseResultCode();
+			dataOffset += 1;
+			generation = ByteUtil.BytesToInt(dataBuffer, dataOffset);
+			dataOffset += 4;
+			expiration = ByteUtil.BytesToInt(dataBuffer, dataOffset);
+			dataOffset += 4;
+			batchIndex = ByteUtil.BytesToInt(dataBuffer, dataOffset);
+			dataOffset += 4;
+			fieldCount = ByteUtil.BytesToShort(dataBuffer, dataOffset);
+			dataOffset += 2;
+			opCount = ByteUtil.BytesToShort(dataBuffer, dataOffset);
+			dataOffset += 2;
+			return resultCode;
+		}
 
-			try
+		public Record ParseRecord(byte[] dataBuffer, ref int dataOffsetRef, int opCount, int generation, int expiration, bool isOperation)
+		{
+			Dictionary<String, Object> bins = new Dictionary<string, object>();
+			int dataOffset = dataOffsetRef;
+
+			for (int i = 0; i < opCount; i++)
 			{
-				if (e.GetType() == typeof(AerospikeException))
+				int opSize = ByteUtil.BytesToInt(dataBuffer, dataOffset);
+				byte particleType = dataBuffer[dataOffset + 5];
+				byte nameSize = dataBuffer[dataOffset + 7];
+				String name = ByteUtil.Utf8ToString(dataBuffer, dataOffset + 8, nameSize);
+				dataOffset += 4 + 4 + nameSize;
+
+				int particleBytesSize = opSize - (4 + nameSize);
+				Object value = ByteUtil.BytesToParticle((ParticleType)particleType, dataBuffer, dataOffset, particleBytesSize);
+				dataOffset += particleBytesSize;
+
+				if (isOperation)
 				{
-					ae = (AerospikeException)e;
+					object prev;
 
-					if (ae.Result == ResultCode.TIMEOUT)
+					if (bins.TryGetValue(name, out prev))
 					{
-						ae = new AerospikeException.Timeout(policy, false);
-					}
-				}
-				else if (e.GetType() == typeof(RpcException)) {
-					RpcException rpce = (RpcException)e;
-					StatusCode code = rpce.StatusCode;
-
-					if (code == StatusCode.Unavailable)
-					{
-						if (Retry())
+						// Multiple values returned for the same bin. 
+						if (prev is RecordParser.OpResults)
 						{
-							return;
+							// List already exists.  Add to it.
+							RecordParser.OpResults list = (RecordParser.OpResults)prev;
+							list.Add(value);
+						}
+						else
+						{
+							// Make a list to store all values.
+							RecordParser.OpResults list = new RecordParser.OpResults();
+							list.Add(prev);
+							list.Add(value);
+							bins[name] = list;
 						}
 					}
-					ae = GrpcConversions.ToAerospike(rpce, policy, iteration);
+					else
+					{
+						bins[name] = value;
+					}
 				}
 				else
 				{
-					ae = new AerospikeException(ResultCode.CLIENT_ERROR, e);
+					bins[name] = value;
 				}
 			}
-			catch (AerospikeException ae2)
-			{
-				ae = ae2;
-			}
-			catch (Exception t2)
-			{
-				ae = new AerospikeException(ResultCode.CLIENT_ERROR, t2);
-			}
-
-			NotifyFailure(ae);
+			dataOffsetRef = dataOffset;
+			return new Record(bins, generation, expiration);
 		}
 
-		void NotifyFailure(AerospikeException ae)
+		public void SkipKey()
 		{
-			try
+			// There can be fields in the response (setname etc).
+			// But for now, ignore them. Expose them to the API if needed in the future.
+			for (int i = 0; i < fieldCount; i++)
 			{
-				ae.Policy = policy;
-				ae.Iteration = iteration;
-				ae.SetInDoubt(inDoubt);
-				OnFailure(ae);
-			}
-			catch (Exception e)
-			{
-				Log.Error("onFailure() error: " + Util.GetStackTrace(e));
+				int fieldlen = ByteUtil.BytesToInt(dataBuffer, dataOffset);
+				dataOffset += 4 + fieldlen;
 			}
 		}
 
-		static void LogOnSuccessError(Exception e)
+		protected override int SizeBuffer()
 		{
-			Log.Error("onSuccess() error: " + Util.GetStackTrace(e));
+			dataBuffer = ThreadLocalData.GetBuffer();
+
+			if (dataOffset > dataBuffer.Length)
+			{
+				dataBuffer = ThreadLocalData.ResizeBuffer(dataOffset);
+			}
+			dataOffset = 0;
+			return dataBuffer.Length;
 		}
 
-		KVS.AerospikeRequestPayload.Builder GetRequestBuilder()
+		protected override void End()
 		{
-			Command command = new Command(policy.socketTimeout, policy.totalTimeout, policy.maxRetries);
-			WriteCommand(command);
-
-			ByteString payload = ByteString.CopyFrom(command.dataBuffer, 0, command.dataOffset);
-			return KVS.AerospikeRequestPayload.newBuilder().setPayload(payload);
+			// Write total size of message.
+			ulong size = ((ulong)dataOffset - 8) | (CL_MSG_VERSION << 56) | (AS_MSG_TYPE << 48);
+			ByteUtil.LongToBytes(size, dataBuffer, 0);
 		}
 
-		abstract void WriteCommand(Command command);
-		abstract void OnResponse(KVS.AerospikeResponsePayload response);
-		abstract void OnFailure(AerospikeException ae);
-	}*/
+		protected override void SetLength(int length)
+		{
+			dataOffset = length;
+		}
+
+		
+	}
 }
 #pragma warning restore 0618

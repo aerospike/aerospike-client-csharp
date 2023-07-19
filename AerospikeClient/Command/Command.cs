@@ -17,6 +17,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Diagnostics;
 
 #pragma warning disable 0618
 
@@ -79,8 +80,8 @@ namespace Aerospike.Client
 		public const ulong AS_MSG_TYPE = 3UL;
 		public const ulong MSG_TYPE_COMPRESSED = 4UL;
 
-		internal byte[] dataBuffer;
-		internal int dataOffset;
+		public byte[] dataBuffer;
+		public int dataOffset;
 		internal readonly int maxRetries;
 		internal readonly int serverTimeout;
 		internal int socketTimeout;

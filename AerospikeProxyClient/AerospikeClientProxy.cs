@@ -163,26 +163,6 @@ namespace Aerospike.Client.Proxy
 
 		private KVS.KVS.KVSClient KVS { get; set; }
 
-		internal byte[] buffer;
-		internal int offset;
-
-		public const int MSG_TOTAL_HEADER_SIZE = 30;
-		public const int FIELD_HEADER_SIZE = 5;
-		public const int OPERATION_HEADER_SIZE = 8;
-		public const int MSG_REMAINING_HEADER_SIZE = 22;
-		public const ulong CL_MSG_VERSION = 2UL;
-		public const ulong AS_MSG_TYPE = 3UL;
-		public const int COMPRESS_THRESHOLD = 128;
-		public const ulong MSG_TYPE_COMPRESSED = 4UL;
-		internal readonly int serverTimeout;
-		private int resultCode;
-		int generation;
-		int expiration;
-		int batchIndex;
-		int fieldCount;
-		int opCount;
-		int info3;
-
 		//private readonly AuthTokenManager authTokenManager;
 		//private readonly GrpcCallExecutor executor;
 
@@ -227,22 +207,6 @@ namespace Aerospike.Client.Proxy
 			this.batchUDFPolicyDefault = policy.batchUDFPolicyDefault;
 			this.infoPolicyDefault = policy.infoPolicyDefault;
 			this.operatePolicyReadDefault = new WritePolicy(this.readPolicyDefault);
-
-			Channel = GrpcChannel.ForAddress(new UriBuilder("http", hosts[0].name, hosts[0].port).Uri);
-			KVS = new KVS.KVS.KVSClient(Channel);
-
-			offset = 0;
-			buffer = ThreadLocalData.GetBuffer();
-
-			if (writePolicyDefault.totalTimeout > 0)
-			{
-				var socketTimeout = (writePolicyDefault.socketTimeout < writePolicyDefault.totalTimeout && writePolicyDefault.socketTimeout > 0) ? writePolicyDefault.socketTimeout : writePolicyDefault.totalTimeout;
-				this.serverTimeout = socketTimeout;
-			}
-			else
-			{
-				this.serverTimeout = 0;
-			}
 
 			/*if (policy.user != null || policy.password != null)
 			{
@@ -394,15 +358,6 @@ namespace Aerospike.Client.Proxy
 		{
 			/*try
 			{
-				executor.close();
-			}
-			catch (Exception e)
-			{
-				Log.Warn("Failed to close grpcCallExecutor: " + Util.GetErrorMessage(e));
-			}
-
-			try
-			{
 				if (authTokenManager != null)
 				{
 					authTokenManager.close();
@@ -477,369 +432,31 @@ namespace Aerospike.Client.Proxy
 		/// <exception cref="AerospikeException">if write fails</exception>
 		public void Put(WritePolicy policy, Key key, params Bin[] bins)
 		{
-			if (policy == null)
-			{
-				policy = writePolicyDefault;
-			}
+			policy ??= writePolicyDefault;
 
-			SetWrite(policy, Operation.Type.WRITE, key, bins);
-
-			var request = new AerospikeRequestPayload
-			{
-				Id = 0, // ID is only needed in streaming version, can be static for unary
-				Iteration = 1,
-				Payload = ByteString.CopyFrom(buffer),
-				//WritePolicy = GRPCConversions.ToGrpc(policy)
-			};
-			GRPCConversions.SetRequestPolicy(policy, request);
-			//var options = 
-			var response = KVS.Write(request);
-			ParseResult(policy);
-			//WriteCommand command = new(cluster, policy, key, bins, Operation.Type.WRITE);
-			//command.Execute();
-		}
-
-		public void SetWrite(WritePolicy policy, Operation.Type operation, Key key, Bin[] bins)
-		{
-			Begin();
-			int fieldCount = EstimateKeySize(policy, key);
-
-			if (policy.filterExp != null)
-			{
-				offset += policy.filterExp.Size();
-				fieldCount++;
-			}
-
-			foreach (Bin bin in bins)
-			{
-				EstimateOperationSize(bin);
-			}
-
-			bool compress = SizeBuffer(policy);
-
-			WriteHeaderWrite(policy, Command.INFO2_WRITE, fieldCount, bins.Length);
-			WriteKey(policy, key);
-
-			/*if (policy.filterExp != null)
-			{
-				policy.filterExp.Write(this);
-			}*/
-
-			foreach (Bin bin in bins)
-			{
-				WriteOperation(bin, operation);
-			}
-			End(compress);
-		}
-
-		private void WriteKey(Policy policy, Key key)
-		{
-			// Write key into buffer.
-			if (key.ns != null)
-			{
-				WriteField(key.ns, FieldType.NAMESPACE);
-			}
-
-			if (key.setName != null)
-			{
-				WriteField(key.setName, FieldType.TABLE);
-			}
-
-			WriteField(key.digest, FieldType.DIGEST_RIPE);
-
-			if (policy.sendKey)
-			{
-				WriteField(key.userKey, FieldType.KEY);
-			}
-		}
-
-		private void WriteField(Value value, int type)
-		{
-			offset = offset + FIELD_HEADER_SIZE;
-			buffer[offset++] = (byte)value.Type;
-			int len = value.Write(buffer, offset) + 1;
-			WriteFieldHeader(len, type);
-			offset += len;
-		}
-
-		private void WriteField(string str, int type)
-		{
-			int len = ByteUtil.StringToUtf8(str, buffer, offset + FIELD_HEADER_SIZE);
-			WriteFieldHeader(len, type);
-			offset += len;
-		}
-
-		private void WriteField(byte[] bytes, int type)
-		{
-			Array.Copy(bytes, 0, buffer, offset + FIELD_HEADER_SIZE, bytes.Length);
-			WriteFieldHeader(bytes.Length, type);
-			offset += bytes.Length;
-		}
-
-		private void WriteField(int val, int type)
-		{
-			WriteFieldHeader(4, type);
-			offset += ByteUtil.IntToBytes((uint)val, buffer, offset);
-		}
-
-		private void WriteField(ulong val, int type)
-		{
-			WriteFieldHeader(8, type);
-			offset += ByteUtil.LongToBytes(val, buffer, offset);
-		}
-
-		private void WriteFieldHeader(int size, int type)
-		{
-			offset += ByteUtil.IntToBytes((uint)size + 1, buffer, offset);
-			buffer[offset++] = (byte)type;
-		}
-
-		private void WriteOperation(Bin bin, Operation.Type operationType)
-		{
-			int nameLength = ByteUtil.StringToUtf8(bin.name, buffer, offset + OPERATION_HEADER_SIZE);
-			int valueLength = bin.value.Write(buffer, offset + OPERATION_HEADER_SIZE + nameLength);
-
-			ByteUtil.IntToBytes((uint)(nameLength + valueLength + 4), buffer, offset);
-			offset += 4;
-			buffer[offset++] = Operation.GetProtocolType(operationType);
-			buffer[offset++] = (byte)bin.value.Type;
-			buffer[offset++] = (byte)0;
-			buffer[offset++] = (byte)nameLength;
-			offset += nameLength + valueLength;
-		}
-
-		private void End(bool compress)
-		{
-			if (!compress)
-			{
-				End();
-				return;
-			}
-
-			// Write proto header.
-			ulong size = ((ulong)offset - 8) | (CL_MSG_VERSION << 56) | (AS_MSG_TYPE << 48);
-			ByteUtil.LongToBytes(size, buffer, 0);
-
-			byte[] srcBuf = buffer;
-			int srcSize = offset;
-
-			// Increase requested buffer size in case compressed buffer size is
-			// greater than the uncompressed buffer size.
-			offset += 16 + 100;
-
-			// This method finds buffer of requested size, resets offset to segment offset
-			// and returns buffer max size;
-			int trgBufSize = SizeBuffer();
-
-			// Compress to target starting at new offset plus new header.
-			int trgSize = ByteUtil.Compress(srcBuf, srcSize, buffer, offset + 16, trgBufSize - 16) + 16;
-
-			ulong proto = ((ulong)trgSize - 8) | (CL_MSG_VERSION << 56) | (MSG_TYPE_COMPRESSED << 48);
-			ByteUtil.LongToBytes(proto, buffer, offset);
-			ByteUtil.LongToBytes((ulong)srcSize, buffer, offset + 8);
-			SetLength(trgSize);
-		}
-
-		private void WriteHeaderWrite(WritePolicy policy, int writeAttr, int fieldCount, int operationCount)
-		{
-			// Set flags.
-			int generation = 0;
-			int infoAttr = 0;
-
-			switch (policy.recordExistsAction)
-			{
-				case RecordExistsAction.UPDATE:
-					break;
-				case RecordExistsAction.UPDATE_ONLY:
-					infoAttr |= Command.INFO3_UPDATE_ONLY;
-					break;
-				case RecordExistsAction.REPLACE:
-					infoAttr |= Command.INFO3_CREATE_OR_REPLACE;
-					break;
-				case RecordExistsAction.REPLACE_ONLY:
-					infoAttr |= Command.INFO3_REPLACE_ONLY;
-					break;
-				case RecordExistsAction.CREATE_ONLY:
-					writeAttr |= Command.INFO2_CREATE_ONLY;
-					break;
-			}
-
-			switch (policy.generationPolicy)
-			{
-				case GenerationPolicy.NONE:
-					break;
-				case GenerationPolicy.EXPECT_GEN_EQUAL:
-					generation = policy.generation;
-					writeAttr |= Command.INFO2_GENERATION;
-					break;
-				case GenerationPolicy.EXPECT_GEN_GT:
-					generation = policy.generation;
-					writeAttr |= Command.INFO2_GENERATION_GT;
-					break;
-			}
-
-			if (policy.commitLevel == CommitLevel.COMMIT_MASTER)
-			{
-				infoAttr |= Command.INFO3_COMMIT_MASTER;
-			}
-
-			if (policy.durableDelete)
-			{
-				writeAttr |= Command.INFO2_DURABLE_DELETE;
-			}
-
-			offset += 8;
-
-			// Write all header data except total size which must be written last. 
-			buffer[offset++] = MSG_REMAINING_HEADER_SIZE; // Message header length.
-			buffer[offset++] = (byte)0;
-			buffer[offset++] = (byte)writeAttr;
-			buffer[offset++] = (byte)infoAttr;
-			buffer[offset++] = 0; // unused
-			buffer[offset++] = 0; // clear the result code
-			offset += ByteUtil.IntToBytes((uint)generation, buffer, offset);
-			offset += ByteUtil.IntToBytes((uint)policy.expiration, buffer, offset);
-			offset += ByteUtil.IntToBytes((uint)serverTimeout, buffer, offset);
-			offset += ByteUtil.ShortToBytes((ushort)fieldCount, buffer, offset);
-			offset += ByteUtil.ShortToBytes((ushort)operationCount, buffer, offset);
-		}
-
-		private void Begin()
-		{
-			offset = MSG_TOTAL_HEADER_SIZE;
-		}
-
-		private void EstimateOperationSize()
-		{
-			offset += OPERATION_HEADER_SIZE;
-		}
-
-		private void EstimateOperationSize(Bin bin)
-		{
-			offset += ByteUtil.EstimateSizeUtf8(bin.name) + OPERATION_HEADER_SIZE;
-			offset += bin.value.EstimateSize();
-		}
-
-		private bool SizeBuffer(Policy policy)
-		{
-			if (policy.compress && offset > COMPRESS_THRESHOLD)
-			{
-				// Command will be compressed. First, write uncompressed command
-				// into separate buffer. Save normal buffer for compressed command.
-				// Normal buffer in async mode is from buffer pool that is used to
-				// minimize memory pinning during socket operations.
-				buffer = new byte[offset];
-				offset = 0;
-				return true;
-			}
-			else
-			{
-				// Command will be uncompressed.
-				SizeBuffer();
-				return false;
-			}
-		}
-
-		internal int SizeBuffer()
-		{
-			buffer = ThreadLocalData.GetBuffer();
-
-			if (offset > buffer.Length)
-			{
-				buffer = ThreadLocalData.ResizeBuffer(offset);
-			}
-			offset = 0;
-			return buffer.Length;
-		}
-
-		internal void SizeBuffer(int size)
-		{
-			if (size > buffer.Length)
-			{
-				buffer = ThreadLocalData.ResizeBuffer(size);
-			}
-		}
-
-		internal void End()
-		{
-			// Write total size of message.
-			ulong size = ((ulong)offset - 8) | (CL_MSG_VERSION << 56) | (AS_MSG_TYPE << 48);
-			ByteUtil.LongToBytes(size, buffer, 0);
-		}
-
-		internal void SetLength(int length)
-		{
-			offset = length;
-		}
-
-		private int EstimateKeySize(Policy policy, Key key)
-		{
-			int fieldCount = 0;
-
-			if (key.ns != null)
-			{
-				offset += ByteUtil.EstimateSizeUtf8(key.ns) + FIELD_HEADER_SIZE;
-				fieldCount++;
-			}
-
-			if (key.setName != null)
-			{
-				offset += ByteUtil.EstimateSizeUtf8(key.setName) + FIELD_HEADER_SIZE;
-				fieldCount++;
-			}
-
-			offset += key.digest.Length + FIELD_HEADER_SIZE;
-			fieldCount++;
-
-			if (policy.sendKey)
-			{
-				offset += key.userKey.EstimateSize() + FIELD_HEADER_SIZE + 1;
-				fieldCount++;
-			}
-			return fieldCount;
-		}
-
-		int ParseResult(Policy policy)
-		{
-			int resultCode = ParseResultCode();
-
-			switch (resultCode)
-			{
-				case ResultCode.OK:
-					break;
-
-				case ResultCode.FILTERED_OUT:
-					if (policy.failOnFilteredOut)
-					{
-						throw new AerospikeException(resultCode);
-					}
-					break;
-
-				default:
-					throw new AerospikeException(resultCode);
-			}
-
-			return resultCode;
+			CommandProxy command = new(policy);
+			command.Write(policy, key, bins, Operation.Type.WRITE);
 		}
 
 		/// <summary>
-		/// Asynchronously write record bin(s).
+		/// Asynchronously write record bin(s). 
+		/// <para>
+		/// The policy specifies the transaction timeout, record expiration and how the transaction is
+		/// handled when the record already exists.
+		/// </para>
 		/// </summary>
-		/// <param name="eventLoop">ignored, pass in null</param>
-		/// <param name="listener">where to send results, pass in null for fire and forget</param>
 		/// <param name="policy">write configuration parameters, pass in null for defaults</param>
+		/// <param name="token">cancellation token</param>
 		/// <param name="key">unique record identifier</param>
 		/// <param name="bins">array of bin name/value pairs</param>
-		/// <exception cref="AerospikeException">if event loop registration fails</exception>
-		/*public void Put(EventLoop eventLoop, WriteListener listener, WritePolicy policy, Key key, Bin...bins)
+		/// <exception cref="AerospikeException">if queue is full</exception>
+		public async Task Put(WritePolicy policy, CancellationToken token, Key key, params Bin[] bins)
 		{
-			if (policy == null)
-			{
-				policy = writePolicyDefault;
-			}
-			WriteCommandProxy command = new WriteCommandProxy(executor, listener, policy, key, bins, Operation.Type.WRITE);
-			command.execute();
-		}*/
+			policy ??= writePolicyDefault;
+
+			CommandProxy command = new(policy);
+			await command.WriteAsync(policy, token, key, bins, Operation.Type.WRITE);
+		}
 
 		//-------------------------------------------------------
 		// String Operations
@@ -866,27 +483,6 @@ namespace Aerospike.Client.Proxy
 		}
 
 		/// <summary>
-		/// Asynchronously append bin string values to existing record bin values.
-		/// This call only works for string values.
-		/// </summary>
-		///
-		/// <param name="eventLoop">ignored, pass in null</param>
-		/// <param name="listener">where to send results, pass in null for fire and forget</param>
-		/// <param name="policy">write configuration parameters, pass in null for defaults</param>
-		/// <param name="key">unique record identifier</param>
-		/// <param name="bins">array of bin name/value pairs</param>
-		/// <exception cref="AerospikeException">if event loop registration fails</exception>
-		/*public void Append(EventLoop eventLoop, WriteListener listener, WritePolicy policy, Key key, Bin...bins)
-		{
-			if (policy == null)
-			{
-				policy = writePolicyDefault;
-			}
-			WriteCommandProxy command = new WriteCommandProxy(executor, listener, policy, key, bins, Operation.Type.APPEND);
-			command.execute();
-		}*/
-
-		/// <summary>
 		/// Prepend bin string values to existing record bin values.
 		/// The policy specifies the transaction timeout, record expiration and how the transaction is
 		/// handled when the record already exists.
@@ -906,25 +502,6 @@ namespace Aerospike.Client.Proxy
 			//command.Execute();
 		}
 
-		/// <summary>
-		/// Asynchronously prepend bin string values to existing record bin values.
-		/// This call only works for string values.
-		/// </summary>
-		/// <param name="eventLoop">ignored, pass in null</param>
-		/// <param name="listener">where to send results, pass in null for fire and forget</param>
-		/// <param name="policy">write configuration parameters, pass in null for defaults</param>
-		/// <param name="key">unique record identifier</param>
-		/// <param name="bins">array of bin name/value pairs</param>
-		/// <exception cref="AerospikeException">if event loop registration fails</exception>
-		/*public void prepend(EventLoop eventLoop, WriteListener listener, WritePolicy policy, Key key, Bin...bins)
-		{
-			if (policy == null)
-			{
-				policy = writePolicyDefault;
-			}
-			WriteCommandProxy command = new WriteCommandProxy(executor, listener, policy, key, bins, Operation.Type.PREPEND);
-			command.execute();
-		}*/
 
 		//-------------------------------------------------------
 		// Arithmetic Operations
@@ -949,25 +526,6 @@ namespace Aerospike.Client.Proxy
 			//command.Execute();
 		}
 
-		/// <summary>
-		/// Asynchronously add integer/double bin values to existing record bin values.
-		/// </summary>
-		/// <param name="eventLoop">ignored, pass in null</param>
-		/// <param name="listener">where to send results, pass in null for fire and forget</param>
-		/// <param name="policy">write configuration parameters, pass in null for defaults</param>
-		/// <param name="key">unique record identifier</param>
-		/// <param name="bins">array of bin name/value pairs</param>
-		/// <exception cref="AerospikeException">if event loop registration fails</exception>
-		/*public void add(EventLoop eventLoop, WriteListener listener, WritePolicy policy, Key key, Bin...bins)
-		{
-			if (policy == null)
-			{
-				policy = writePolicyDefault;
-			}
-			WriteCommandProxy command = new WriteCommandProxy(executor, listener, policy, key, bins, Operation.Type.ADD);
-			command.execute();
-		}*/
-
 		//-------------------------------------------------------
 		// Delete Operations
 		//-------------------------------------------------------
@@ -991,26 +549,6 @@ namespace Aerospike.Client.Proxy
 			//return command.Existed();
 			return false;
 		}
-
-		/// <summary>
-		/// Asynchronously delete record for specified key.
-		/// </summary>
-		/// <param name="eventLoop">ignored, pass in null</param>
-		/// <param name="listener">where to send results, pass in null for fire and forget</param>
-		/// <param name="policy">write configuration parameters, pass in null for defaults</param>
-		/// <param name="key">unique record identifier</param>
-		/// <exception cref="AerospikeException">if event loop registration fails</exception>
-		////
-		/*public void delete(EventLoop eventLoop, DeleteListener listener, WritePolicy policy, Key key)
-		{
-			if (policy == null)
-			{
-				policy = writePolicyDefault;
-			}
-			DeleteCommandProxy command = new DeleteCommandProxy(executor, listener, policy, key);
-			command.execute();
-		}*/
-
 
 		/// <summary>
 		/// Delete records for specified keys. If a key is not found, the corresponding result
@@ -1072,100 +610,6 @@ namespace Aerospike.Client.Proxy
 			}
 		}*/
 
-		/// <summary>
-		/// Asynchronously delete records for specified keys.
-		/// <p>
-		/// If a key is not found, the corresponding result {@link BatchRecord#resultCode} will be
-		/// {@link ResultCode#KEY_NOT_FOUND_ERROR}.
-		/// </p>
-		/// </summary>
-		/// <param name="eventLoop">ignored, pass in null</param>
-		/// <param name="listener">where to send results</param>
-		/// <param name="batchPolicy">batch configuration parameters, pass in null for defaults</param>
-		/// <param name="deletePolicy">delete configuration parameters, pass in null for defaults</param>
-		/// <param name="keys">array of unique record identifiers</param>
-		/// <exception cref="AerospikeException">if event loop registration fails</exception>
-		/*public void delete(
-			EventLoop eventLoop,
-			BatchRecordArrayListener listener,
-			BatchPolicy batchPolicy,
-			BatchDeletePolicy deletePolicy,
-			Key[] keys
-		)
-		{
-			if (keys.length == 0)
-			{
-				listener.onSuccess(new BatchRecord[0], true);
-				return;
-			}
-
-			if (batchPolicy == null)
-			{
-				batchPolicy = batchParentPolicyWriteDefault;
-			}
-
-			if (deletePolicy == null)
-			{
-				deletePolicy = batchDeletePolicyDefault;
-			}
-
-			BatchAttr attr = new BatchAttr();
-			attr.setDelete(deletePolicy);
-
-			CommandProxy command = new BatchProxy.OperateRecordArrayCommand(executor,
-				batchPolicy, keys, null, listener, attr);
-
-			command.execute();
-		}*/
-
-		/// <summary>
-		/// Asynchronously delete records for specified keys.
-		/// <p>
-		/// Each record result is returned in separate onRecord() calls.
-		/// If a key is not found, the corresponding result {@link BatchRecord#resultCode} will be
-		/// {@link ResultCode#KEY_NOT_FOUND_ERROR}.
-		/// </p>
-		/// </summary>
-		/// <param name="eventLoop">ignored, pass in null</param>
-		/// <param name="listener">where to send results</param>
-		/// <param name="batchPolicy">batch configuration parameters, pass in null for defaults</param>
-		/// <param name="deletePolicy">delete configuration parameters, pass in null for defaults</param>
-		/// <param name="keys">array of unique record identifiers</param>
-		/// <exception cref="AerospikeException">if event loop registration fails</exception>
-		/*public void Delete(
-			EventLoop eventLoop,
-			BatchRecordSequenceListener listener,
-			BatchPolicy batchPolicy,
-			BatchDeletePolicy deletePolicy,
-			Key[] keys
-		)
-		{
-			if (keys.length == 0)
-			{
-				listener.onSuccess();
-				return;
-			}
-
-			if (batchPolicy == null)
-			{
-				batchPolicy = batchParentPolicyWriteDefault;
-			}
-
-			if (deletePolicy == null)
-			{
-				deletePolicy = batchDeletePolicyDefault;
-			}
-
-			BatchAttr attr = new BatchAttr();
-			attr.setDelete(deletePolicy);
-
-			CommandProxy command = new BatchProxy.OperateRecordSequenceCommand(executor,
-				batchPolicy, keys, null, listener, attr);
-
-			command.execute();
-		}*/
-
-
 		// Not supported in proxy client
 		public void Truncate(InfoPolicy policy, string ns, string set, DateTime? beforeLastUpdate)
 		{
@@ -1193,25 +637,6 @@ namespace Aerospike.Client.Proxy
 			//command.Execute();
 		}
 
-		/// <summary>
-		/// Asynchronously reset record's time to expiration using the policy's expiration.
-		/// Fail if the record does not exist.
-		/// </summary>
-		/// <param name="eventLoop">ignored, pass in null</param>
-		/// <param name="listener">where to send results, pass in null for fire and forget</param>
-		/// <param name="policy">write configuration parameters, pass in null for defaults</param>
-		/// <param name="key">unique record identifier</param>
-		/// <exception cref="AerospikeException">if event loop registration fails</exception>
-		/*public void Touch(EventLoop eventLoop, WriteListener listener, WritePolicy policy, Key key)
-		{
-			if (policy == null)
-			{
-				policy = writePolicyDefault;
-			}
-			TouchCommandProxy command = new TouchCommandProxy(executor, listener, policy, key);
-			command.execute();
-		}*/
-
 		//-------------------------------------------------------
 		// Existence-Check Operations
 		//-------------------------------------------------------
@@ -1235,24 +660,6 @@ namespace Aerospike.Client.Proxy
 			//return command.Exists();
 			return false;
 		}
-
-		/// <summary>
-		/// Asynchronously determine if a record key exists.
-		/// </summary>
-		/// <param name="eventLoop">ignored, pass in null</param>
-		/// <param name="listener">where to send results</param>
-		/// <param name="policy">generic configuration parameters, pass in null for defaults</param>
-		/// <param name="key">unique record identifier</param>
-		/// <exception cref="AerospikeException">if event loop registration fails</exception>
-		/*public void Exists(EventLoop eventLoop, ExistsListener listener, Policy policy, Key key)
-		{
-			if (policy == null)
-			{
-				policy = readPolicyDefault;
-			}
-			ExistsCommandProxy command = new ExistsCommandProxy(executor, listener, policy, key);
-			command.execute();
-		}*/
 
 		/// <summary>
 		/// Check if multiple record keys exist in one batch call.
@@ -1307,62 +714,6 @@ namespace Aerospike.Client.Proxy
 			}
 		}*/
 
-		/// <summary>
-		/// Asynchronously check if multiple record keys exist in one batch call.
-		/// <p>
-		/// The returned boolean array is in positional order with the original key array order.
-		/// </p>
-		/// </summary>
-		/// <param name="eventLoop">ignored, pass in null</param>
-		/// <param name="listener">where to send results</param>
-		/// <param name="policy">batch configuration parameters, pass in null for defaults</param>
-		/// <param name="keys">unique record identifiers</param>
-		/// <exception cref="AerospikeException">if event loop registration fails</exception>
-		/*public void exists(EventLoop eventLoop, ExistsArrayListener listener, BatchPolicy policy, Key[] keys)
-		{
-			if (keys.length == 0)
-			{
-				listener.onSuccess(keys, new boolean[0]);
-				return;
-			}
-
-			if (policy == null)
-			{
-				policy = batchPolicyDefault;
-			}
-
-			CommandProxy command = new BatchProxy.ExistsArrayCommand(executor, policy, listener, keys);
-			command.execute();
-		}*/
-
-		/// <summary>
-		/// Asynchronously check if multiple record keys exist in one batch call.
-		/// <p>
-		/// Each key's result is returned in separate onExists() calls.
-		/// </p>
-		/// </summary>
-		/// <param name="eventLoop">ignored, pass in null</param>
-		/// <param name="listener">where to send results</param>
-		/// <param name="policy">batch configuration parameters, pass in null for defaults</param>
-		/// <param name="keys">unique record identifiers</param>
-		/// <exception cref="AerospikeException">if event loop registration fails</exception>
-		/*public void exists(EventLoop eventLoop, ExistsSequenceListener listener, BatchPolicy policy, Key[] keys)
-		{
-			if (keys.length == 0)
-			{
-				listener.onSuccess();
-				return;
-			}
-
-			if (policy == null)
-			{
-				policy = batchPolicyDefault;
-			}
-
-			CommandProxy command = new BatchProxy.ExistsSequenceCommand(executor, policy, listener, keys);
-			command.execute();
-		}*/
-
 		//-------------------------------------------------------
 		// Read Record Operations
 		//-------------------------------------------------------
@@ -1377,407 +728,25 @@ namespace Aerospike.Client.Proxy
 		/// <exception cref="AerospikeException">if read fails</exception>
 		public Record Get(Policy policy, Key key)
 		{
-			buffer = ThreadLocalData.GetBuffer();
-			Debugger.Launch();
-			if (policy == null)
-			{
-				policy = readPolicyDefault;
-			}
+			policy ??= readPolicyDefault;
 
-			string[] binNames = null;
-
-			SetRead(policy, key, binNames);
-
-			var request = new AerospikeRequestPayload
-			{
-				Id = 0, // ID is only needed in streaming version, can be static for unary
-				Iteration = 1,
-				Payload = ByteString.CopyFrom(buffer),
-				//ReadPolicy = GRPCConversions.SetRequestPolicy(policy)
-			};
-			GRPCConversions.SetRequestPolicy(policy, request);
-			//var options = 
-			var response = KVS.Read(request);
-			return ParseRecordResult(policy);
-
-			//ReadCommand command = new ReadCommand(cluster, policy, key);
-			//command.Execute();
-			//return command.Record;
-		}
-
-		public int ParseResultCode()
-		{
-			return buffer[offset] & 0xFF;
-		}
-
-		public int ParseHeader()
-		{
-			resultCode = ParseResultCode();
-			offset += 1;
-			generation = ByteUtil.BytesToInt(buffer, offset);
-			offset += 4;
-			expiration = ByteUtil.BytesToInt(buffer, offset);
-			offset += 4;
-			batchIndex = ByteUtil.BytesToInt(buffer, offset);
-			offset += 4;
-			fieldCount = ByteUtil.BytesToShort(buffer, offset);
-			offset += 2;
-			opCount = ByteUtil.BytesToShort(buffer, offset);
-			offset += 2;
-			return resultCode;
-		}
-
-		internal Record ParseRecordResult(Policy policy)
-		{
-			Record record = null;
-			int resultCode = ParseHeader();
-
-			switch (resultCode)
-			{
-				case ResultCode.OK:
-					SkipKey();
-					if (opCount == 0)
-					{
-						// Bin data was not returned.
-						record = new Record(null, generation, expiration);
-					}
-					else
-					{
-						record = ParseRecord(buffer, ref offset, opCount, generation, expiration, false);
-					}
-					break;
-
-				case ResultCode.KEY_NOT_FOUND_ERROR:
-					//handleNotFound(resultCode);
-					break;
-
-				case ResultCode.FILTERED_OUT:
-					if (policy.failOnFilteredOut)
-					{
-						throw new AerospikeException(resultCode);
-					}
-					break;
-
-				case ResultCode.UDF_BAD_RESPONSE:
-					SkipKey();
-					record = ParseRecord(buffer, ref offset, opCount, generation, expiration, false);
-					//handleUdfError(record, resultCode);
-					break;
-
-				default:
-					throw new AerospikeException(resultCode);
-			}
-
-			return record;
-		}
-
-		public Record ParseRecord(byte[] dataBuffer, ref int dataOffsetRef, int opCount, int generation, int expiration, bool isOperation)
-		{
-			Dictionary<String, Object> bins = new Dictionary<string, object>();
-			int dataOffset = dataOffsetRef;
-
-			for (int i = 0; i < opCount; i++)
-			{
-				int opSize = ByteUtil.BytesToInt(dataBuffer, dataOffset);
-				byte particleType = dataBuffer[dataOffset + 5];
-				byte nameSize = dataBuffer[dataOffset + 7];
-				String name = ByteUtil.Utf8ToString(dataBuffer, dataOffset + 8, nameSize);
-				dataOffset += 4 + 4 + nameSize;
-
-				int particleBytesSize = opSize - (4 + nameSize);
-				Object value = ByteUtil.BytesToParticle((ParticleType)particleType, dataBuffer, dataOffset, particleBytesSize);
-				dataOffset += particleBytesSize;
-
-				if (isOperation)
-				{
-					object prev;
-
-					if (bins.TryGetValue(name, out prev))
-					{
-						// Multiple values returned for the same bin. 
-						if (prev is RecordParser.OpResults)
-						{
-							// List already exists.  Add to it.
-							RecordParser.OpResults list = (RecordParser.OpResults)prev;
-							list.Add(value);
-						}
-						else
-						{
-							// Make a list to store all values.
-							RecordParser.OpResults list = new RecordParser.OpResults();
-							list.Add(prev);
-							list.Add(value);
-							bins[name] = list;
-						}
-					}
-					else
-					{
-						bins[name] = value;
-					}
-				}
-				else
-				{
-					bins[name] = value;
-				}
-			}
-			dataOffsetRef = dataOffset;
-			return new Record(bins, generation, expiration);
-		}
-
-		public void SkipKey()
-		{
-			// There can be fields in the response (setname etc).
-			// But for now, ignore them. Expose them to the API if needed in the future.
-			for (int i = 0; i < fieldCount; i++)
-			{
-				int fieldlen = ByteUtil.BytesToInt(buffer, offset);
-				offset += 4 + fieldlen;
-			}
-		}
-
-		public void SetRead(Policy policy, Key key, string[] binNames)
-		{
-			if (binNames != null)
-			{
-				Begin();
-				int fieldCount = EstimateKeySize(policy, key);
-
-				if (policy.filterExp != null)
-				{
-					offset += policy.filterExp.Size();
-					fieldCount++;
-				}
-
-				foreach (string binName in binNames)
-				{
-					EstimateOperationSize(binName);
-				}
-				SizeBuffer();
-				WriteHeaderRead(policy, serverTimeout, Command.INFO1_READ, 0, fieldCount, binNames.Length);
-				WriteKey(policy, key);
-
-				/*if (policy.filterExp != null)
-				{
-					policy.filterExp.Write(this);
-				}*/
-
-				foreach (string binName in binNames)
-				{
-					WriteOperation(binName, Operation.Type.READ);
-				}
-				End();
-			}
-			else
-			{
-				SetRead(policy, key);
-			}
-		}
-
-		private void WriteOperation(string name, Operation.Type operationType)
-		{
-			int nameLength = ByteUtil.StringToUtf8(name, buffer, offset + OPERATION_HEADER_SIZE);
-
-			ByteUtil.IntToBytes((uint)(nameLength + 4), buffer, offset);
-			offset += 4;
-			buffer[offset++] = Operation.GetProtocolType(operationType);
-			buffer[offset++] = (byte)0;
-			buffer[offset++] = (byte)0;
-			buffer[offset++] = (byte)nameLength;
-			offset += nameLength;
-		}
-
-		private void EstimateOperationSize(string binName)
-		{
-			offset += ByteUtil.EstimateSizeUtf8(binName) + OPERATION_HEADER_SIZE;
-		}
-
-		public void SetRead(Policy policy, Key key)
-		{
-			Begin();
-			int fieldCount = EstimateKeySize(policy, key);
-
-			if (policy.filterExp != null)
-			{
-				offset += policy.filterExp.Size();
-				fieldCount++;
-			}
-			SizeBuffer();
-			WriteHeaderRead(policy, serverTimeout, Command.INFO1_READ | Command.INFO1_GET_ALL, 0, fieldCount, 0);
-			WriteKey(policy, key);
-
-			/*if (policy.filterExp != null)
-			{
-				policy.filterExp.Write(this);
-			}*/
-			End();
-		}
-
-		public void SetReadHeader(Policy policy, Key key)
-		{
-			Begin();
-			int fieldCount = EstimateKeySize(policy, key);
-
-			if (policy.filterExp != null)
-			{
-				offset += policy.filterExp.Size();
-				fieldCount++;
-			}
-			EstimateOperationSize((string)null);
-			SizeBuffer();
-			WriteHeaderReadHeader(policy, Command.INFO1_READ | Command.INFO1_NOBINDATA, fieldCount, 0);
-			WriteKey(policy, key);
-
-			/*if (policy.filterExp != null)
-			{
-				policy.filterExp.Write(this);
-			}*/
-			End();
-		}
-
-		private void WriteHeaderReadHeader(Policy policy, int readAttr, int fieldCount, int operationCount)
-		{
-			int infoAttr = 0;
-
-			switch (policy.readModeSC)
-			{
-				case ReadModeSC.SESSION:
-					break;
-				case ReadModeSC.LINEARIZE:
-					infoAttr |= Command.INFO3_SC_READ_TYPE;
-					break;
-				case ReadModeSC.ALLOW_REPLICA:
-					infoAttr |= Command.INFO3_SC_READ_RELAX;
-					break;
-				case ReadModeSC.ALLOW_UNAVAILABLE:
-					infoAttr |= Command.INFO3_SC_READ_TYPE | Command.INFO3_SC_READ_RELAX;
-					break;
-			}
-
-			if (policy.readModeAP == ReadModeAP.ALL)
-			{
-				readAttr |= Command.INFO1_READ_MODE_AP_ALL;
-			}
-
-			offset += 8;
-
-			// Write all header data except total size which must be written last. 
-			buffer[offset++] = MSG_REMAINING_HEADER_SIZE; // Message header length.
-			buffer[offset++] = (byte)readAttr;
-			buffer[offset++] = (byte)0;
-			buffer[offset++] = (byte)infoAttr;
-
-			for (int i = 0; i < 10; i++)
-			{
-				buffer[offset++] = 0;
-			}
-			offset += ByteUtil.IntToBytes((uint)serverTimeout, buffer, offset);
-			offset += ByteUtil.ShortToBytes((ushort)fieldCount, buffer, offset);
-			offset += ByteUtil.ShortToBytes((ushort)operationCount, buffer, offset);
-		}
-
-		private void WriteHeaderRead
-		(
-			Policy policy,
-			int timeout,
-			int readAttr,
-			int infoAttr,
-			int fieldCount,
-			int operationCount
-		)
-		{
-			switch (policy.readModeSC)
-			{
-				case ReadModeSC.SESSION:
-					break;
-				case ReadModeSC.LINEARIZE:
-					infoAttr |= Command.INFO3_SC_READ_TYPE;
-					break;
-				case ReadModeSC.ALLOW_REPLICA:
-					infoAttr |= Command.INFO3_SC_READ_RELAX;
-					break;
-				case ReadModeSC.ALLOW_UNAVAILABLE:
-					infoAttr |= Command.INFO3_SC_READ_TYPE | Command.INFO3_SC_READ_RELAX;
-					break;
-			}
-
-			if (policy.readModeAP == ReadModeAP.ALL)
-			{
-				readAttr |= Command.INFO1_READ_MODE_AP_ALL;
-			}
-
-			if (policy.compress)
-			{
-				readAttr |= Command.INFO1_COMPRESS_RESPONSE;
-			}
-
-			offset += 8;
-
-			// Write all header data except total size which must be written last. 
-			buffer[offset++] = MSG_REMAINING_HEADER_SIZE; // Message header length.
-			buffer[offset++] = (byte)readAttr;
-			buffer[offset++] = (byte)0;
-			buffer[offset++] = (byte)infoAttr;
-
-			for (int i = 0; i < 10; i++)
-			{
-				buffer[offset++] = 0;
-			}
-			offset += ByteUtil.IntToBytes((uint)timeout, buffer, offset);
-			offset += ByteUtil.ShortToBytes((ushort)fieldCount, buffer, offset);
-			offset += ByteUtil.ShortToBytes((ushort)operationCount, buffer, offset);
+			CommandProxy command = new(policy);
+			return command.Read(policy, key);
 		}
 
 		/// <summary>
 		/// Asynchronously read entire record for specified key.
 		/// </summary>
-		/// <param name="eventLoop">ignored, pass in null</param>
-		/// <param name="listener">where to send results</param>
 		/// <param name="policy">generic configuration parameters, pass in null for defaults</param>
+		/// <param name="token">cancellation token</param>
 		/// <param name="key">unique record identifier</param>
-		/// <exception cref="AerospikeException">if event loop registration fails</exception>
-		/*public void get(EventLoop eventLoop, RecordListener listener, Policy policy, Key key)
+		/// <exception cref="AerospikeException">if queue is full</exception>
+		public Task<Record> Get(Policy policy, CancellationToken token, Key key)
 		{
-			Get(eventLoop, listener, policy, key, (String[])null);
-		}*/
-
-		/// <summary>
-		/// Read record header and bins for specified key.
-		/// If found, return record instance.  If not found, return null.
-		/// The policy can be used to specify timeouts.
-		/// </summary>
-		/// <param name="policy">generic configuration parameters, pass in null for defaults</param>
-		/// <param name="key">unique record identifier</param>
-		/// <param name="binNames">bins to retrieve</param>
-		/// <exception cref="AerospikeException">if read fails</exception>
-		/*public Record Get(Policy policy, Key key, params string[] binNames)
-		{
-			if (policy == null)
-			{
-				policy = readPolicyDefault;
-			}
-			//ReadCommand command = new ReadCommand(cluster, policy, key, binNames);
-			//command.Execute();
-			//return command.Record;
-		}*/
-
-		/// <summary>
-		/// Asynchronously read record header and bins for specified key.
-		/// </summary>
-		/// <param name="eventLoop">ignored, pass in null</param>
-		/// <param name="listener">where to send results</param>
-		/// <param name="policy">generic configuration parameters, pass in null for defaults</param>
-		/// <param name="key">unique record identifier</param>
-		/// <param name="binNames">bins to retrieve</param>
-		/// <exception cref="AerospikeException">if event loop registration fails</exception>
-		/*public void get(EventLoop eventLoop, RecordListener listener, Policy policy, Key key, String...binNames)
-		{
-			if (policy == null)
-			{
-				policy = readPolicyDefault;
-			}
-			ReadCommandProxy command = new ReadCommandProxy(executor, listener, policy, key, binNames);
-			command.execute();
-		}*/
+			policy ??= readPolicyDefault;
+			CommandProxy command = new(policy);
+			return command.ReadAsync(policy, key, token);
+		}
 
 		/// <summary>
 		/// Read record generation and expiration only for specified key.  Bins are not read.
@@ -1796,24 +765,6 @@ namespace Aerospike.Client.Proxy
 			//ReadHeaderCommand command = new ReadHeaderCommand(cluster, policy, key);
 			//command.Execute();
 			//return command.Record;
-		}*/
-
-		/// <summary>
-		/// Asynchronously read record generation and expiration only for specified key.  Bins are not read.
-		/// </summary>
-		/// <param name="eventLoop">ignored, pass in null</param>
-		/// <param name="listener">where to send results</param>
-		/// <param name="policy">generic configuration parameters, pass in null for defaults</param>
-		/// <param name="key">unique record identifier</param>
-		/// <exception cref="AerospikeException">if event loop registration fails</exception>
-		/*public void GetHeader(EventLoop eventLoop, RecordListener listener, Policy policy, Key key)
-		{
-			if (policy == null)
-			{
-				policy = readPolicyDefault;
-			}
-			ReadHeaderCommandProxy command = new ReadHeaderCommandProxy(executor, listener, policy, key);
-			command.execute();
 		}*/
 
 		//-------------------------------------------------------
@@ -1854,64 +805,6 @@ namespace Aerospike.Client.Proxy
 			}
 			BatchExecutor.Execute(policy, commands, status);
 			return status.GetStatus();
-		}*/
-
-		/// <summary>
-		/// Asynchronously read multiple records for specified batch keys in one batch call.
-		/// <p>
-		/// This method allows different namespaces/bins to be requested for each key in the batch.
-		/// The returned records are located in the same list.
-		/// If the BatchRead key field is not found, the corresponding record field will be null.
-		/// </p>
-		/// </summary>
-		/// <param name="eventLoop">ignored, pass in null</param>
-		/// <param name="listener">where to send results</param>
-		/// <param name="policy">batch configuration parameters, pass in null for defaults</param>
-		/// <param name="records">list of unique record identifiers and the bins to retrieve.
-		///	The returned records are located in the same list.</param>
-		/// <exception cref="AerospikeException">if event loop registration fails</exception>
-		/*public void Get(EventLoop eventLoop, BatchListListener listener, BatchPolicy policy, List<BatchRead> records)
-		{
-			if (records.size() == 0)
-			{
-				listener.onSuccess(records);
-				return;
-			}
-
-			if (policy == null)
-			{
-				policy = batchPolicyDefault;
-			}
-			CommandProxy command = new BatchProxy.ReadListCommand(executor, policy, listener, records);
-			command.execute();
-		}*/
-
-		/// <summary>
-		/// Asynchronously read multiple records for specified batch keys in one batch call.
-		/// <p>
-		/// This method allows different namespaces/bins to be requested for each key in the batch.
-		/// Each record result is returned in separate onRecord() calls.
-		/// If the BatchRead key field is not found, the corresponding record field will be null.
-		/// </p>
-		/// </summary>
-		/// <param name="eventLoop">ignored, pass in null</param>
-		/// <param name="listener">where to send results</param>
-		/// <param name="policy">batch configuration parameters, pass in null for defaults</param>
-		/// <param name="records">list of unique record identifiers and the bins to retrieve.
-		///	The returned records are located in the same list.</param>
-		/// <exception cref="AerospikeException">if event loop registration fails</exception>
-		/*public void get(EventLoop eventLoop, BatchSequenceListener listener, BatchPolicy policy, List<BatchRead> records) {
-			if (records.size() == 0) {
-				listener.onSuccess();
-				return;
-			}
-
-			if (policy == null) {
-				policy = batchPolicyDefault;
-			}
-
-			CommandProxy command = new BatchProxy.ReadSequenceCommand(executor, policy, listener, records);
-			command.execute();
 		}*/
 
 		/// <summary>
@@ -1965,60 +858,6 @@ namespace Aerospike.Client.Proxy
 			{
 				throw new AerospikeException.BatchRecords(records, e);
 			}
-		}*/
-
-		/// Asynchronously read multiple records for specified keys in one batch call.
-		/// <p>
-		/// The returned records are in positional order with the original key array order.
-		/// If a key is not found, the positional record will be null.
-		///
-		/// @param eventLoop		ignored, pass in null
-		/// @param listener		where to send results
-		/// @param policy		batch configuration parameters, pass in null for defaults
-		/// @param keys			array of unique record identifiers
-		/// @throws AerospikeException	if event loop registration fails
-		/*public void Get(EventLoop eventLoop, RecordArrayListener listener, BatchPolicy policy, Key[] keys)
-		{
-			if (keys.length == 0)
-			{
-				listener.onSuccess(keys, new Record[0]);
-				return;
-			}
-
-			if (policy == null)
-			{
-				policy = batchPolicyDefault;
-			}
-
-			CommandProxy command = new BatchProxy.GetArrayCommand(executor, policy, listener, keys, null, null, Command.INFO1_READ | Command.INFO1_GET_ALL, false);
-			command.execute();
-		}*/
-
-		/// Asynchronously read multiple records for specified keys in one batch call.
-		/// <p>
-		/// Each record result is returned in separate onRecord() calls.
-		/// If a key is not found, the record will be null.
-		///
-		/// @param eventLoop		ignored, pass in null
-		/// @param listener		where to send results
-		/// @param policy		batch configuration parameters, pass in null for defaults
-		/// @param keys			array of unique record identifiers
-		/// @throws AerospikeException	if event loop registration fails
-		/*public void Get(EventLoop eventLoop, RecordSequenceListener listener, BatchPolicy policy, Key[] keys)
-		{
-			if (keys.length == 0)
-			{
-				listener.onSuccess();
-				return;
-			}
-
-			if (policy == null)
-			{
-				policy = batchPolicyDefault;
-			}
-
-			CommandProxy command = new BatchProxy.GetSequenceCommand(executor, policy, listener, keys, null, null, Command.INFO1_READ | Command.INFO1_GET_ALL, false);
-			command.execute();
 		}*/
 
 		/// <summary>
@@ -2075,66 +914,6 @@ namespace Aerospike.Client.Proxy
 			}
 		}*/
 
-		/**
-		 * Asynchronously read multiple record headers and bins for specified keys in one batch call.
-		 * <p>
-		 * The returned records are in positional order with the original key array order.
-		 * If a key is not found, the positional record will be null.
-		 *
-		 * @param eventLoop		ignored, pass in null
-		 * @param listener		where to send results
-		 * @param policy		batch configuration parameters, pass in null for defaults
-		 * @param keys			array of unique record identifiers
-		 * @param binNames		array of bins to retrieve
-		 * @throws AerospikeException	if event loop registration fails
-		 */
-		/*public void get(EventLoop eventLoop, RecordArrayListener listener, BatchPolicy policy, Key[] keys, String...binNames)
-		{
-			if (keys.length == 0)
-			{
-				listener.onSuccess(keys, new Record[0]);
-				return;
-			}
-
-			if (policy == null)
-			{
-				policy = batchPolicyDefault;
-			}
-
-			CommandProxy command = new BatchProxy.GetArrayCommand(executor, policy, listener, keys, binNames, null, Command.INFO1_READ, false);
-			command.execute();
-		}*/
-
-		/**
-		 * Asynchronously read multiple record headers and bins for specified keys in one batch call.
-		 * <p>
-		 * Each record result is returned in separate onRecord() calls.
-		 * If a key is not found, the record will be null.
-		 *
-		 * @param eventLoop		ignored, pass in null
-		 * @param listener		where to send results
-		 * @param policy		batch configuration parameters, pass in null for defaults
-		 * @param keys			array of unique record identifiers
-		 * @param binNames		array of bins to retrieve
-		 * @throws AerospikeException	if event loop registration fails
-		 */
-		/*public void get(EventLoop eventLoop, RecordSequenceListener listener, BatchPolicy policy, Key[] keys, String...binNames)
-		{
-			if (keys.length == 0)
-			{
-				listener.onSuccess();
-				return;
-			}
-
-			if (policy == null)
-			{
-				policy = batchPolicyDefault;
-			}
-
-			CommandProxy command = new BatchProxy.GetSequenceCommand(executor, policy, listener, keys, binNames, null, Command.INFO1_READ, false);
-			command.execute();
-		}*/
-
 		/// <summary>
 		/// Read multiple records for specified keys using read operations in one batch call.
 		/// The returned records are in positional order with the original key array order.
@@ -2189,66 +968,6 @@ namespace Aerospike.Client.Proxy
 			}
 		}*/
 
-		/**
-		 * Asynchronously read multiple records for specified keys using read operations in one batch call.
-		 * <p>
-		 * The returned records are in positional order with the original key array order.
-		 * If a key is not found, the positional record will be null.
-		 *
-		 * @param eventLoop		ignored, pass in null
-		 * @param listener		where to send results
-		 * @param policy		batch configuration parameters, pass in null for defaults
-		 * @param keys			array of unique record identifiers
-		 * @param ops			array of read operations on record
-		 * @throws AerospikeException	if event loop registration fails
-		 */
-		/*public void get(EventLoop eventLoop, RecordArrayListener listener, BatchPolicy policy, Key[] keys, Operation...ops)
-		{
-			if (keys.length == 0)
-			{
-				listener.onSuccess(keys, new Record[0]);
-				return;
-			}
-
-			if (policy == null)
-			{
-				policy = batchPolicyDefault;
-			}
-
-			CommandProxy command = new BatchProxy.GetArrayCommand(executor, policy, listener, keys, null, ops, Command.INFO1_READ, true);
-			command.execute();
-		}*/
-
-		/**
-		 * Asynchronously read multiple records for specified keys using read operations in one batch call.
-		 * <p>
-		 * Each record result is returned in separate onRecord() calls.
-		 * If a key is not found, the record will be null.
-		 *
-		 * @param eventLoop		ignored, pass in null
-		 * @param listener		where to send results
-		 * @param policy		batch configuration parameters, pass in null for defaults
-		 * @param keys			array of unique record identifiers
-		 * @param ops			array of read operations on record
-		 * @throws AerospikeException	if event loop registration fails
-		 */
-		/*public void Get(EventLoop eventLoop, RecordSequenceListener listener, BatchPolicy policy, Key[] keys, Operation...ops)
-		{
-			if (keys.length == 0)
-			{
-				listener.onSuccess();
-				return;
-			}
-
-			if (policy == null)
-			{
-				policy = batchPolicyDefault;
-			}
-
-			CommandProxy command = new BatchProxy.GetSequenceCommand(executor, policy, listener, keys, null, ops, Command.INFO1_READ, true);
-			command.execute();
-		}*/
-
 		/// <summary>
 		/// Read multiple record header data for specified keys in one batch call.
 		/// The returned records are in positional order with the original key array order.
@@ -2300,64 +1019,6 @@ namespace Aerospike.Client.Proxy
 			{
 				throw new AerospikeException.BatchRecords(records, e);
 			}
-		}*/
-
-		/**
-		 * Asynchronously read multiple record header data for specified keys in one batch call.
-		 * <p>
-		 * The returned records are in positional order with the original key array order.
-		 * If a key is not found, the positional record will be null.
-		 *
-		 * @param eventLoop		ignored, pass in null
-		 * @param listener		where to send results
-		 * @param policy		batch configuration parameters, pass in null for defaults
-		 * @param keys			array of unique record identifiers
-		 * @throws AerospikeException	if event loop registration fails
-		 */
-		/*public void GetHeader(EventLoop eventLoop, RecordArrayListener listener, BatchPolicy policy, Key[] keys)
-		{
-			if (keys.length == 0)
-			{
-				listener.onSuccess(keys, new Record[0]);
-				return;
-			}
-
-			if (policy == null)
-			{
-				policy = batchPolicyDefault;
-			}
-
-			CommandProxy command = new BatchProxy.GetArrayCommand(executor, policy, listener, keys, null, null, Command.INFO1_READ | Command.INFO1_NOBINDATA, false);
-			command.execute();
-		}*/
-
-		/**
-		 * Asynchronously read multiple record header data for specified keys in one batch call.
-		 * <p>
-		 * Each record result is returned in separate onRecord() calls.
-		 * If a key is not found, the record will be null.
-		 *
-		 * @param eventLoop		ignored, pass in null
-		 * @param listener		where to send results
-		 * @param policy		batch configuration parameters, pass in null for defaults
-		 * @param keys			array of unique record identifiers
-		 * @throws AerospikeException	if event loop registration fails
-		 */
-		/*public void GetHeader(EventLoop eventLoop, RecordSequenceListener listener, BatchPolicy policy, Key[] keys)
-		{
-			if (keys.length == 0)
-			{
-				listener.onSuccess();
-				return;
-			}
-
-			if (policy == null)
-			{
-				policy = batchPolicyDefault;
-			}
-
-			CommandProxy command = new BatchProxy.GetSequenceCommand(executor, policy, listener, keys, null, null, Command.INFO1_READ | Command.INFO1_NOBINDATA, false);
-			command.execute();
 		}*/
 
 		//-------------------------------------------------------
@@ -2435,30 +1096,6 @@ namespace Aerospike.Client.Proxy
 			//return command.Record;
 		}*/
 
-		/**
-		 * Asynchronously perform multiple read/write operations on a single key in one batch call.
-		 * <p>
-		 * An example would be to add an integer value to an existing record and then
-		 * read the result, all in one database call.
-		 * <p>
-		 * The server executes operations in the same order as the operations array.
-		 * Both scalar bin operations (Operation) and CDT bin operations (ListOperation,
-		 * MapOperation) can be performed in same call.
-		 *
-		 * @param eventLoop				ignored, pass in null
-		 * @param listener				where to send results, pass in null for fire and forget
-		 * @param policy				write configuration parameters, pass in null for defaults
-		 * @param key					unique record identifier
-		 * @param operations			database operations to perform
-		 * @throws AerospikeException	if event loop registration fails
-		 */
-		/*public void Operate(EventLoop eventLoop, RecordListener listener, WritePolicy policy, Key key, Operation...operations)
-		{
-			OperateArgs args = new OperateArgs(policy, writePolicyDefault, operatePolicyReadDefault, key, operations);
-			OperateCommandProxy command = new OperateCommandProxy(executor, listener, args.writePolicy, key, args);
-			command.execute();
-		}*/
-
 		//-------------------------------------------------------
 		// Batch Read/Write Operations
 		//-------------------------------------------------------
@@ -2502,80 +1139,6 @@ namespace Aerospike.Client.Proxy
 			}
 			BatchExecutor.Execute(policy, commands, status);
 			return status.GetStatus();
-		}*/
-
-		/**
-		 * Asynchronously read/write multiple records for specified batch keys in one batch call.
-		 * <p>
-		 * This method allows different namespaces/bins to be requested for each key in the batch.
-		 * The returned records are located in the same list.
-		 * <p>
-		 * {@link BatchRecord} can be {@link BatchRead}, {@link BatchWrite}, {@link BatchDelete} or
-		 * {@link BatchUDF}.
-		 *
-		 * @param eventLoop		ignored, pass in null
-		 * @param listener		where to send results
-		 * @param policy		batch configuration parameters, pass in null for defaults
-		 * @param records		list of unique record identifiers and read/write operations
-		 * @throws AerospikeException	if event loop registration fails
-		 */
-		/*public void Operate(
-			EventLoop eventLoop,
-			BatchOperateListListener listener,
-			BatchPolicy policy,
-			List<BatchRecord> records
-		)
-		{
-			if (records.size() == 0)
-			{
-				listener.onSuccess(records, true);
-				return;
-			}
-
-			if (policy == null)
-			{
-				policy = batchParentPolicyWriteDefault;
-			}
-
-			CommandProxy command = new BatchProxy.OperateListCommand(executor, policy, listener, records);
-			command.execute();
-		}*/
-
-		/**
-		 * Asynchronously read/write multiple records for specified batch keys in one batch call.
-		 * <p>
-		 * This method allows different namespaces/bins to be requested for each key in the batch.
-		 * Each record result is returned in separate onRecord() calls.
-		 * <p>
-		 * {@link BatchRecord} can be {@link BatchRead}, {@link BatchWrite}, {@link BatchDelete} or
-		 * {@link BatchUDF}.
-		 *
-		 * @param eventLoop		ignored, pass in null
-		 * @param listener		where to send results
-		 * @param policy		batch configuration parameters, pass in null for defaults
-		 * @param records		list of unique record identifiers and read/write operations
-		 * @throws AerospikeException	if event loop registration fails
-		 */
-		/*public void Operate(
-			EventLoop eventLoop,
-			BatchRecordSequenceListener listener,
-			BatchPolicy policy,
-			List<BatchRecord> records
-		)
-		{
-			if (records.size() == 0)
-			{
-				listener.onSuccess();
-				return;
-			}
-
-			if (policy == null)
-			{
-				policy = batchParentPolicyWriteDefault;
-			}
-
-			CommandProxy command = new BatchProxy.OperateSequenceCommand(executor, policy, listener, records);
-			command.execute();
 		}*/
 
 		/// <summary>
@@ -2640,108 +1203,6 @@ namespace Aerospike.Client.Proxy
 			}
 		}*/
 
-		/**
-		 * Asynchronously perform read/write operations on multiple keys.
-		 * <p>
-		 * If a key is not found, the corresponding result {@link BatchRecord#resultCode} will be
-		 * {@link ResultCode#KEY_NOT_FOUND_ERROR}.
-		 *
-		 * @param eventLoop		ignored, pass in null
-		 * @param listener		where to send results
-		 * @param batchPolicy	batch configuration parameters, pass in null for defaults
-		 * @param writePolicy	write configuration parameters, pass in null for defaults
-		 * @param keys			array of unique record identifiers
-		 * @param ops
-		 * read/write operations to perform. {@link Operation#get()} is not allowed because it returns a
-		 * variable number of bins and makes it difficult (sometimes impossible) to lineup operations
-		 * with results. Instead, use {@link Operation#get(String)} for each bin name.
-		 * @throws AerospikeException	if event loop registration fails
-		 */
-		/*public void operate(
-			EventLoop eventLoop,
-			BatchRecordArrayListener listener,
-			BatchPolicy batchPolicy,
-			BatchWritePolicy writePolicy,
-			Key[] keys,
-			Operation...ops
-		)
-		{
-			if (keys.length == 0)
-			{
-				listener.onSuccess(new BatchRecord[0], true);
-				return;
-			}
-
-			if (batchPolicy == null)
-			{
-				batchPolicy = batchParentPolicyWriteDefault;
-			}
-
-			if (writePolicy == null)
-			{
-				writePolicy = batchWritePolicyDefault;
-			}
-
-			BatchAttr attr = new BatchAttr(batchPolicy, writePolicy, ops);
-
-			CommandProxy command = new BatchProxy.OperateRecordArrayCommand(executor,
-				batchPolicy, keys, ops, listener, attr);
-
-			command.execute();
-		}*/
-
-		/**
-		 * Asynchronously perform read/write operations on multiple keys.
-		 * <p>
-		 * Each record result is returned in separate onRecord() calls.
-		 * If a key is not found, the corresponding result {@link BatchRecord#resultCode} will be
-		 * {@link ResultCode#KEY_NOT_FOUND_ERROR}.
-		 *
-		 * @param eventLoop		ignored, pass in null
-		 * @param listener		where to send results
-		 * @param batchPolicy	batch configuration parameters, pass in null for defaults
-		 * @param writePolicy	write configuration parameters, pass in null for defaults
-		 * @param keys			array of unique record identifiers
-		 * @param ops
-		 * read/write operations to perform. {@link Operation#get()} is not allowed because it returns a
-		 * variable number of bins and makes it difficult (sometimes impossible) to lineup operations
-		 * with results. Instead, use {@link Operation#get(String)} for each bin name.
-		 * @throws AerospikeException	if event loop registration fails
-		 */
-		/*public void operate(
-			EventLoop eventLoop,
-			BatchRecordSequenceListener listener,
-			BatchPolicy batchPolicy,
-			BatchWritePolicy writePolicy,
-			Key[] keys,
-			Operation...ops
-		)
-		{
-			if (keys.length == 0)
-			{
-				listener.onSuccess();
-				return;
-			}
-
-			if (batchPolicy == null)
-			{
-				batchPolicy = batchParentPolicyWriteDefault;
-			}
-
-			if (writePolicy == null)
-			{
-				writePolicy = batchWritePolicyDefault;
-			}
-
-			BatchAttr attr = new BatchAttr(batchPolicy, writePolicy, ops);
-
-			CommandProxy command = new BatchProxy.OperateRecordSequenceCommand(executor,
-				batchPolicy, keys, ops, listener, attr);
-
-			command.execute();
-		}*/
-
-
 		//-------------------------------------------------------
 		// Scan Operations
 		//-------------------------------------------------------
@@ -2774,28 +1235,6 @@ namespace Aerospike.Client.Proxy
 			PartitionTracker tracker = new PartitionTracker(policy, nodes);
 			ScanExecutor.ScanPartitions(cluster, policy, ns, setName, binNames, callback, tracker);*/
 		}
-
-		/**
-		 * Asynchronously read all records in specified namespace and set.
-		 *
-		 * @param eventLoop				ignored, pass in null
-		 * @param listener				where to send results
-		 * @param policy				scan configuration parameters, pass in null for defaults
-		 * @param namespace				namespace - equivalent to database name
-		 * @param setName				optional set name - equivalent to database table
-		 * @param binNames				optional bin to retrieve. All bins will be returned if not specified.
-		 * @throws AerospikeException	if event loop registration fails
-		 */
-		/*public void scanAll(
-			EventLoop eventLoop,
-			RecordSequenceListener listener,
-			ScanPolicy policy,
-			String namespace,
-			String setName,
-			String... binNames
-		) {
-			scanPartitions(eventLoop, listener, policy, null, namespace, setName, binNames);
-		}*/
 
 		/// Not supported in proxy client
 		public void ScanNode(ScanPolicy policy, string nodeName, string ns, string setName, ScanCallback callback, params string[] binNames)
@@ -2834,42 +1273,6 @@ namespace Aerospike.Client.Proxy
 			PartitionTracker tracker = new PartitionTracker(policy, nodes, partitionFilter);
 			ScanExecutor.ScanPartitions(cluster, policy, ns, setName, binNames, callback, tracker);*/
 		}
-
-		/**
-		 * Asynchronously read records in specified namespace, set and partition filter.
-		 *
-		 * @param eventLoop				ignored, pass in null
-		 * @param listener				where to send results
-		 * @param policy				scan configuration parameters, pass in null for defaults
-		 * @param partitionFilter		filter on a subset of data partitions
-		 * @param namespace				namespace - equivalent to database name
-		 * @param setName				optional set name - equivalent to database table
-		 * @param binNames				optional bin to retrieve. All bins will be returned if not specified.
-		 * @throws AerospikeException	if event loop registration fails
-		 */
-		/*public void scanPartitions(
-			EventLoop eventLoop,
-			RecordSequenceListener listener,
-			ScanPolicy policy,
-			PartitionFilter partitionFilter,
-			String namespace,
-			String setName,
-			String... binNames
-		) {
-			if (policy == null) {
-				policy = scanPolicyDefault;
-			}
-
-			PartitionTracker tracker = null;
-
-			if (partitionFilter != null) {
-					tracker = new PartitionTracker(policy, 1, partitionFilter);
-			}
-
-			ScanCommandProxy command = new ScanCommandProxy(executor, policy, listener, namespace,
-				setName, binNames, partitionFilter, tracker);
-			command.execute();
-		}*/
 
 		//---------------------------------------------------------------
 		// User defined functions
@@ -2944,42 +1347,6 @@ namespace Aerospike.Client.Proxy
 			throw new AerospikeException("Invalid UDF return value");
 		}*/
 
-		/**
-		 * Asynchronously execute user defined function on server.
-		 * <p>
-		 * The function operates on a single record.
-		 * The package name is used to locate the udf file location:
-		 * <p>
-		 * {@code udf file = <server udf dir>/<package name>.lua}
-		 *
-		 * @param eventLoop				ignored, pass in null
-		 * @param listener				where to send results, pass in null for fire and forget
-		 * @param policy				write configuration parameters, pass in null for defaults
-		 * @param key					unique record identifier
-		 * @param packageName			server package name where user defined function resides
-		 * @param functionName			user defined function
-		 * @param functionArgs			arguments passed in to user defined function
-		 * @throws AerospikeException	if event loop registration fails
-		 */
-		/*public void execute(
-			EventLoop eventLoop,
-			ExecuteListener listener,
-			WritePolicy policy,
-			Key key,
-			String packageName,
-			String functionName,
-			Value...functionArgs
-		)
-		{
-			if (policy == null)
-			{
-				policy = writePolicyDefault;
-			}
-			ExecuteCommandProxy command = new ExecuteCommandProxy(executor, listener, policy, key,
-				packageName, functionName, functionArgs);
-			command.execute();
-		}*/
-
 		/// <summary>
 		/// Execute user defined function on server for each key and return results.
 		/// The package name is used to locate the udf file location:
@@ -3047,118 +1414,6 @@ namespace Aerospike.Client.Proxy
 				throw new AerospikeException.BatchRecordArray(records, e);
 			}
 		}*/
-
-				/**
-		 * Asynchronously execute user defined function on server for each key and return results.
-		 * <p>
-		 * The package name is used to locate the udf file location:
-		 * <p>
-		 * {@code udf file = <server udf dir>/<package name>.lua}
-		 *
-		 * @param eventLoop		ignored, pass in null
-		 * @param listener		where to send results
-		 * @param batchPolicy	batch configuration parameters, pass in null for defaults
-		 * @param udfPolicy		udf configuration parameters, pass in null for defaults
-		 * @param keys			array of unique record identifiers
-		 * @param packageName	server package name where user defined function resides
-		 * @param functionName	user defined function
-		 * @param functionArgs	arguments passed in to user defined function
-		 * @throws AerospikeException	if command fails
-		 */
-		/*public void execute(
-			EventLoop eventLoop,
-			BatchRecordArrayListener listener,
-			BatchPolicy batchPolicy,
-			BatchUDFPolicy udfPolicy,
-			Key[] keys,
-			String packageName,
-			String functionName,
-			Value...functionArgs
-		)
-			{
-			if (keys.length == 0)
-			{
-				listener.onSuccess(new BatchRecord[0], true);
-				return;
-			}
-
-			if (batchPolicy == null)
-			{
-				batchPolicy = batchParentPolicyWriteDefault;
-			}
-
-			if (udfPolicy == null)
-			{
-				udfPolicy = batchUDFPolicyDefault;
-			}
-
-			byte[] argBytes = Packer.pack(functionArgs);
-
-			BatchAttr attr = new BatchAttr();
-			attr.setUDF(udfPolicy);
-
-			CommandProxy command = new BatchProxy.UDFArrayCommand(executor, batchPolicy,
-				listener, keys, packageName, functionName, argBytes, attr);
-
-			command.execute();
-		}*/
-
-		/**
-		 * Asynchronously execute user defined function on server for each key and return results.
-		 * Each record result is returned in separate onRecord() calls.
-		 * <p>
-		 * The package name is used to locate the udf file location:
-		 * <p>
-		 * {@code udf file = <server udf dir>/<package name>.lua}
-		 *
-		 * @param eventLoop		ignored, pass in null
-		 * @param listener		where to send results
-		 * @param batchPolicy	batch configuration parameters, pass in null for defaults
-		 * @param udfPolicy		udf configuration parameters, pass in null for defaults
-		 * @param keys			array of unique record identifiers
-		 * @param packageName	server package name where user defined function resides
-		 * @param functionName	user defined function
-		 * @param functionArgs	arguments passed in to user defined function
-		 * @throws AerospikeException	if command fails
-		 */
-		/*public void execute(
-			EventLoop eventLoop,
-			BatchRecordSequenceListener listener,
-			BatchPolicy batchPolicy,
-			BatchUDFPolicy udfPolicy,
-			Key[] keys,
-			String packageName,
-			String functionName,
-			Value...functionArgs
-		)
-		{
-			if (keys.length == 0)
-			{
-				listener.onSuccess();
-				return;
-			}
-
-			if (batchPolicy == null)
-			{
-				batchPolicy = batchParentPolicyWriteDefault;
-			}
-
-			if (udfPolicy == null)
-			{
-				udfPolicy = batchUDFPolicyDefault;
-			}
-
-			byte[] argBytes = Packer.pack(functionArgs);
-
-			BatchAttr attr = new BatchAttr();
-			attr.setUDF(udfPolicy);
-
-			CommandProxy command = new BatchProxy.UDFSequenceCommand(executor, batchPolicy,
-				listener, keys, packageName, functionName, argBytes, attr);
-
-			command.execute();
-		}*/
-
 
 		//----------------------------------------------------------
 		// Query/Execute
@@ -3255,30 +1510,6 @@ namespace Aerospike.Client.Proxy
 					action(rs.Key, rs.Record);
 				}
 			}
-		}*/
-
-				/**
-		 * Asynchronously execute query on all server nodes.
-		 * <p>
-		 * Each record result is returned in separate onRecord() calls.
-		 *
-		 * @param eventLoop				ignored, pass in null
-		 * @param listener				where to send results
-		 * @param policy				query configuration parameters, pass in null for defaults
-		 * @param statement				query definition
-		 * @throws AerospikeException	if event loop registration fails
-		 */
-		/*public void query(EventLoop eventLoop, RecordSequenceListener listener, QueryPolicy policy, Statement statement)
-		{
-			if (policy == null)
-			{
-				policy = queryPolicyDefault;
-			}
-
-			long taskId = statement.prepareTaskId();
-			QueryCommandProxy command = new QueryCommandProxy(executor, listener,
-				policy, statement, taskId, null, null);
-			command.execute();
 		}*/
 
 		/// <summary>
