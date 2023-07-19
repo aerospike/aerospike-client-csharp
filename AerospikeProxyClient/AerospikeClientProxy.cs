@@ -62,42 +62,6 @@ namespace Aerospike.Client.Proxy
 		// Proxy client version
 		public static string Version = GetVersion();
 
-		// Lower limit of proxy server connection.
-		private static readonly int MIN_CONNECTIONS = 1;
-
-		/// Is threadPool shared between other client instances or classes.  If threadPool is
-		/// not shared (default), threadPool will be shutdown when the client instance is closed.
-		/// <para>
-		/// If threadPool is shared, threadPool will not be shutdown when the client instance is
-		/// closed. This shared threadPool should be shutdown manually before the program
-		/// terminates.  Shutdown is recommended, but not absolutely required if threadPool is
-		/// constructed to use daemon threads.
-		/// </para>
-		/// Default: false
-		private readonly bool sharedThreadPool;
-
-		/// Underlying thread pool used in synchronous batch, scan, and query commands. These commands
-		/// are often sent to multiple server nodes in parallel threads.  A thread pool improves
-		/// performance because threads do not have to be created/destroyed for each command.
-		/// The default, null, indicates that the following daemon thread pool will be used:
-		/// <pre>
-		/// threadPool = Executors.newCachedThreadPool(new ThreadFactory() {
-		///     public final Thread newThread(Runnable runnable) {
-		/// 			Thread thread = new Thread(runnable);
-		/// 			thread.setDaemon(true);
-		/// 			return thread;
-		///        }
-		///    });
-		/// </pre>
-		/// Daemon threads automatically terminate when the program terminates.
-		/// <p>
-		/// Default: null (use Executors.newCachedThreadPool)
-		/// </p>
-		//private readonly ExecutorService threadPool;
-
-		// Upper limit of proxy server connection.
-		private static readonly int MAX_CONNECTIONS = 8;
-
 		private static readonly String NotSupported = "Method not supported in proxy client: ";
 
 		//-------------------------------------------------------
@@ -159,12 +123,9 @@ namespace Aerospike.Client.Proxy
 
 		protected readonly WritePolicy operatePolicyReadDefault;
 
-		private GrpcChannel Channel { get; set; }
-
-		private KVS.KVS.KVSClient KVS { get; set; }
+		private GrpcChannel channel { get; set; }
 
 		//private readonly AuthTokenManager authTokenManager;
-		//private readonly GrpcCallExecutor executor;
 
 		//-------------------------------------------------------
 		// Constructors
@@ -207,6 +168,8 @@ namespace Aerospike.Client.Proxy
 			this.batchUDFPolicyDefault = policy.batchUDFPolicyDefault;
 			this.infoPolicyDefault = policy.infoPolicyDefault;
 			this.operatePolicyReadDefault = new WritePolicy(this.readPolicyDefault);
+
+			channel = GrpcChannel.ForAddress(new UriBuilder("http", hosts[0].name, hosts[0].port).Uri);
 
 			/*if (policy.user != null || policy.password != null)
 			{
@@ -433,9 +396,8 @@ namespace Aerospike.Client.Proxy
 		public void Put(WritePolicy policy, Key key, params Bin[] bins)
 		{
 			policy ??= writePolicyDefault;
-
 			CommandProxy command = new(policy);
-			command.Write(policy, key, bins, Operation.Type.WRITE);
+			command.Write(channel, policy, key, bins, Operation.Type.WRITE);
 		}
 
 		/// <summary>
@@ -453,9 +415,8 @@ namespace Aerospike.Client.Proxy
 		public async Task Put(WritePolicy policy, CancellationToken token, Key key, params Bin[] bins)
 		{
 			policy ??= writePolicyDefault;
-
 			CommandProxy command = new(policy);
-			await command.WriteAsync(policy, token, key, bins, Operation.Type.WRITE);
+			await command.WriteAsync(channel, policy, token, key, bins, Operation.Type.WRITE);
 		}
 
 		//-------------------------------------------------------
@@ -474,12 +435,29 @@ namespace Aerospike.Client.Proxy
 		/// <exception cref="AerospikeException">if append fails</exception>
 		public void Append(WritePolicy policy, Key key, params Bin[] bins)
 		{
-			if (policy == null)
-			{
-				policy = writePolicyDefault;
-			}
-			//WriteCommand command = new WriteCommand(cluster, policy, key, bins, Operation.Type.APPEND);
-			//command.Execute();
+			policy ??= writePolicyDefault;
+			CommandProxy command = new(policy);
+			command.Write(channel, policy, key, bins, Operation.Type.APPEND);
+		}
+
+		/// <summary>
+		/// Asynchronously append bin string values to existing record bin values.
+		/// <para>
+		/// The policy specifies the transaction timeout, record expiration and how the transaction is
+		/// handled when the record already exists.
+		/// This call only works for string values. 
+		/// </para>
+		/// </summary>
+		/// <param name="policy">write configuration parameters, pass in null for defaults</param>
+		/// <param name="token">cancellation token</param>
+		/// <param name="key">unique record identifier</param>
+		/// <param name="bins">array of bin name/value pairs</param>
+		/// <exception cref="AerospikeException">if queue is full</exception>
+		public async Task Append(WritePolicy policy, CancellationToken token, Key key, params Bin[] bins)
+		{
+			policy ??= writePolicyDefault;
+			CommandProxy command = new(policy);
+			await command.WriteAsync(channel, policy, token, key, bins, Operation.Type.APPEND);
 		}
 
 		/// <summary>
@@ -494,14 +472,30 @@ namespace Aerospike.Client.Proxy
 		/// <exception cref="AerospikeException">if prepend fails</exception>
 		public void Prepend(WritePolicy policy, Key key, params Bin[] bins)
 		{
-			if (policy == null)
-			{
-				policy = writePolicyDefault;
-			}
-			//WriteCommand command = new WriteCommand(cluster, policy, key, bins, Operation.Type.PREPEND);
-			//command.Execute();
+			policy ??= writePolicyDefault;
+			CommandProxy command = new(policy);
+			command.Write(channel, policy, key, bins, Operation.Type.PREPEND);
 		}
 
+		/// <summary>
+		/// Asynchronously prepend bin string values to existing record bin values.
+		/// <para>
+		/// The policy specifies the transaction timeout, record expiration and how the transaction is
+		/// handled when the record already exists.
+		/// This call works only for string values. 
+		/// </para>
+		/// </summary>
+		/// <param name="policy">write configuration parameters, pass in null for defaults</param>
+		/// <param name="token">cancellation token</param>
+		/// <param name="key">unique record identifier</param>
+		/// <param name="bins">array of bin name/value pairs</param>
+		/// <exception cref="AerospikeException">if queue is full</exception>
+		public async Task Prepend(WritePolicy policy, CancellationToken token, Key key, params Bin[] bins)
+		{
+			policy ??= writePolicyDefault;
+			CommandProxy command = new(policy);
+			await command.WriteAsync(channel, policy, token, key, bins, Operation.Type.PREPEND);
+		}
 
 		//-------------------------------------------------------
 		// Arithmetic Operations
@@ -518,12 +512,28 @@ namespace Aerospike.Client.Proxy
 		/// <exception cref="AerospikeException">if add fails</exception>
 		public void Add(WritePolicy policy, Key key, params Bin[] bins)
 		{
-			if (policy == null)
-			{
-				policy = writePolicyDefault;
-			}
-			//WriteCommand command = new WriteCommand(cluster, policy, key, bins, Operation.Type.ADD);
-			//command.Execute();
+			policy ??= writePolicyDefault;
+			CommandProxy command = new(policy);
+			command.Write(channel, policy, key, bins, Operation.Type.ADD);
+		}
+
+		/// <summary>
+		/// Asynchronously add integer/double bin values to existing record bin values.
+		/// <para>
+		/// The policy specifies the transaction timeout, record expiration and how the transaction is
+		/// handled when the record already exists.
+		/// </para>
+		/// </summary>
+		/// <param name="policy">write configuration parameters, pass in null for defaults</param>
+		/// <param name="token">cancellation token</param>
+		/// <param name="key">unique record identifier</param>
+		/// <param name="bins">array of bin name/value pairs</param>
+		/// <exception cref="AerospikeException">if queue is full</exception>
+		public async Task Add(WritePolicy policy, CancellationToken token, Key key, params Bin[] bins)
+		{
+			policy ??= writePolicyDefault;
+			CommandProxy command = new(policy);
+			await command.WriteAsync(channel, policy, token, key, bins, Operation.Type.ADD);
 		}
 
 		//-------------------------------------------------------
@@ -540,14 +550,23 @@ namespace Aerospike.Client.Proxy
 		/// <exception cref="AerospikeException">if delete fails</exception>
 		public bool Delete(WritePolicy policy, Key key)
 		{
-			if (policy == null)
-			{
-				policy = writePolicyDefault;
-			}
-			//DeleteCommand command = new DeleteCommand(cluster, policy, key);
-			//command.Execute();
-			//return command.Existed();
-			return false;
+			policy ??= writePolicyDefault;
+			CommandProxy command = new(policy);
+			return command.Delete(channel, policy, key);
+		}
+
+		/// <summary>
+		/// Asynchronously delete record for specified key.
+		/// </summary>
+		/// <param name="policy">delete configuration parameters, pass in null for defaults</param>
+		/// <param name="token">cancellation token</param>
+		/// <param name="key">unique record identifier</param>
+		/// <exception cref="AerospikeException">if queue is full</exception>
+		public async Task<bool> Delete(WritePolicy policy, CancellationToken token, Key key)
+		{
+			policy ??= writePolicyDefault;
+			CommandProxy command = new(policy);
+			return await command.DeleteAsync(channel, policy, key, token);
 		}
 
 		/// <summary>
@@ -629,12 +648,23 @@ namespace Aerospike.Client.Proxy
 		/// <exception cref="AerospikeException">if touch fails</exception>
 		public void Touch(WritePolicy policy, Key key)
 		{
-			if (policy == null)
-			{
-				policy = writePolicyDefault;
-			}
-			//TouchCommand command = new TouchCommand(cluster, policy, key);
-			//command.Execute();
+			policy ??= writePolicyDefault;
+			var command = new CommandProxy(policy);
+			command.Touch(channel, policy, key);
+		}
+
+		/// <summary>
+		/// Asynchronously reset record's time to expiration using the policy's expiration.
+		/// </summary>
+		/// <param name="policy">write configuration parameters, pass in null for defaults</param>
+		/// <param name="token">cancellation token</param>
+		/// <param name="key">unique record identifier</param>
+		/// <exception cref="AerospikeException">if queue is full</exception>
+		public async Task Touch(WritePolicy policy, CancellationToken token, Key key)
+		{
+			policy ??= writePolicyDefault;
+			var command = new CommandProxy(policy);
+			await command.TouchAsync(channel, policy, key, token);
 		}
 
 		//-------------------------------------------------------
@@ -651,14 +681,23 @@ namespace Aerospike.Client.Proxy
 		/// <exception cref="AerospikeException">if command fails</exception>
 		public bool Exists(Policy policy, Key key)
 		{
-			if (policy == null)
-			{
-				policy = readPolicyDefault;
-			}
-			//ExistsCommand command = new ExistsCommand(cluster, policy, key);
-			//command.Execute();
-			//return command.Exists();
-			return false;
+			policy ??= readPolicyDefault;
+			var command = new CommandProxy(policy);
+			return command.Exists(channel, policy, key);
+		}
+
+		/// <summary>
+		/// Asynchronously determine if a record key exists.
+		/// </summary>
+		/// <param name="policy">generic configuration parameters, pass in null for defaults</param>
+		/// <param name="token">cancellation token</param>
+		/// <param name="key">unique record identifier</param>
+		/// <exception cref="AerospikeException">if queue is full</exception>
+		public async Task<bool> Exists(Policy policy, CancellationToken token, Key key)
+		{
+			policy ??= readPolicyDefault;
+			var command = new CommandProxy(policy);
+			return await command.ExistsAsync(channel, policy, key, token);
 		}
 
 		/// <summary>
@@ -729,9 +768,8 @@ namespace Aerospike.Client.Proxy
 		public Record Get(Policy policy, Key key)
 		{
 			policy ??= readPolicyDefault;
-
 			CommandProxy command = new(policy);
-			return command.Read(policy, key);
+			return command.Read(channel, policy, key);
 		}
 
 		/// <summary>
@@ -745,7 +783,7 @@ namespace Aerospike.Client.Proxy
 		{
 			policy ??= readPolicyDefault;
 			CommandProxy command = new(policy);
-			return command.ReadAsync(policy, key, token);
+			return command.ReadAsync(channel, policy, key, token);
 		}
 
 		/// <summary>
@@ -756,16 +794,26 @@ namespace Aerospike.Client.Proxy
 		/// <param name="policy">generic configuration parameters, pass in null for defaults</param>
 		/// <param name="key">unique record identifier</param>
 		/// <exception cref="AerospikeException">if read fails</exception>
-		/*public Record GetHeader(Policy policy, Key key)
+		public Record GetHeader(Policy policy, Key key)
 		{
-			if (policy == null)
-			{
-				policy = readPolicyDefault;
-			}
-			//ReadHeaderCommand command = new ReadHeaderCommand(cluster, policy, key);
-			//command.Execute();
-			//return command.Record;
-		}*/
+			policy ??= readPolicyDefault;
+			CommandProxy command = new(policy);
+			return command.ReadHeader(channel, policy, key);
+		}
+
+		/// <summary>
+		/// Asynchronously read record generation and expiration only for specified key.  Bins are not read.
+		/// </summary>
+		/// <param name="policy">generic configuration parameters, pass in null for defaults</param>
+		/// <param name="token">cancellation token</param>
+		/// <param name="key">unique record identifier</param>
+		/// <exception cref="AerospikeException">if queue is full</exception>
+		public Task<Record> GetHeader(Policy policy, CancellationToken token, Key key)
+		{
+			policy ??= readPolicyDefault;
+			CommandProxy command = new(policy);
+			return command.ReadHeaderAsync(channel, policy, key, token);
+		}
 
 		//-------------------------------------------------------
 		// Batch Read Operations
@@ -1022,55 +1070,6 @@ namespace Aerospike.Client.Proxy
 		}*/
 
 		//-------------------------------------------------------
-		// Join methods
-		//-------------------------------------------------------
-		// TODO: Confirm with Brian that Join is not supported
-		/// <summary>
-		/// Read specified bins in left record and then join with right records.  Each join bin name
-		/// (Join.leftKeysBinName) must exist in the left record.  The join bin must contain a list of 
-		/// keys. Those key are used to retrieve other records using a separate batch get.
-		/// </summary>
-		/// <param name="policy">generic configuration parameters, pass in null for defaults</param>
-		/// <param name="key">unique main record identifier</param>
-		/// <param name="binNames">array of bins to retrieve</param>
-		/// <param name="joins">array of join definitions</param>
-		/// <exception cref="AerospikeException">if main read or join reads fail</exception>
-		/*public Record Join(BatchPolicy policy, Key key, string[] binNames, params Join[] joins)
-		{
-			string[] names = new string[binNames.Length + joins.Length];
-			int count = 0;
-
-			foreach (string binName in binNames)
-			{
-				names[count++] = binName;
-			}
-
-			foreach (Join join in joins)
-			{
-				names[count++] = join.leftKeysBinName;
-			}
-			Record record = Get(policy, key, names);
-			JoinRecords(policy, record, joins);
-			return record;
-		}*/
-
-		/// <summary>
-		/// Read all bins in left record and then join with right records.  Each join bin name
-		/// (Join.binNameKeys) must exist in the left record.  The join bin must contain a list of 
-		/// keys. Those key are used to retrieve other records using a separate batch get.
-		/// </summary>
-		/// <param name="policy">generic configuration parameters, pass in null for defaults</param>
-		/// <param name="key">unique main record identifier</param>
-		/// <param name="joins">array of join definitions</param>
-		/// <exception cref="AerospikeException">if main read or join reads fail</exception>
-		/*public Record Join(BatchPolicy policy, Key key, params Join[] joins)
-		{
-			Record record = Get(policy, key);
-			JoinRecords(policy, record, joins);
-			return record;
-		}*/
-
-		//-------------------------------------------------------
 		// Generic Database Operations
 		//-------------------------------------------------------
 
@@ -1088,13 +1087,36 @@ namespace Aerospike.Client.Proxy
 		/// <param name="key">unique record identifier</param>
 		/// <param name="operations">database operations to perform</param>
 		/// <exception cref="AerospikeException">if command fails</exception>
-		/*public Record Operate(WritePolicy policy, Key key, params Operation[] operations)
+		public Record Operate(WritePolicy policy, Key key, params Operation[] operations)
 		{
-			//OperateArgs args = new OperateArgs(cluster, policy, writePolicyDefault, operatePolicyReadDefault, key, operations);
-			//OperateCommand command = new OperateCommand(cluster, key, args);
-			//command.Execute();
-			//return command.Record;
-		}*/
+			OperateArgs args = new OperateArgs(policy, writePolicyDefault, operatePolicyReadDefault, key, operations);
+			var command = new CommandProxy(policy);
+			return command.Operate(channel, key, args);
+		}
+
+		/// <summary>
+		/// Asynchronously perform multiple read/write operations on a single key in one batch call.
+		/// <para>
+		/// An example would be to add an integer value to an existing record and then
+		/// read the result, all in one database call.
+		/// </para>
+		/// <para>
+		/// The server executes operations in the same order as the operations array.  Both scalar
+		/// bin operations (Operation) and CDT bin operations (ListOperation, MapOperation) can be
+		/// performed in same call.
+		/// </para>
+		/// </summary>
+		/// <param name="policy">write configuration parameters, pass in null for defaults</param>
+		/// <param name="token">cancellation token</param>
+		/// <param name="key">unique record identifier</param>
+		/// <param name="ops">database operations to perform</param>
+		/// <exception cref="AerospikeException">if queue is full</exception>
+		public Task<Record> Operate(WritePolicy policy, CancellationToken token, Key key, params Operation[] ops)
+		{
+			OperateArgs args = new OperateArgs(policy, writePolicyDefault, operatePolicyReadDefault, key, operations);
+			var command = new CommandProxy(policy);
+			return command.OperateAsync(channel, key, args, token);
+		}
 
 		//-------------------------------------------------------
 		// Batch Read/Write Operations
@@ -1316,16 +1338,12 @@ namespace Aerospike.Client.Proxy
 		/// <param name="functionName">user defined function</param>
 		/// <param name="args">arguments passed in to user defined function</param>
 		/// <exception cref="AerospikeException">if transaction fails</exception>
-		/*public object Execute(WritePolicy policy, Key key, string packageName, string functionName, params Value[] args)
+		public object Execute(WritePolicy policy, Key key, string packageName, string functionName, params Value[] args)
 		{
-			if (policy == null)
-			{
-				policy = writePolicyDefault;
-			}
-			ExecuteCommand command = new ExecuteCommand(cluster, policy, key, packageName, functionName, args);
-			command.Execute();
+			policy ??= writePolicyDefault;
+			var command = new CommandProxy(policy);
 
-			Record record = command.Record;
+			Record record = command.Execute(channel, policy, key, packageName, functionName, args);
 
 			if (record == null || record.bins == null)
 			{
@@ -1345,7 +1363,44 @@ namespace Aerospike.Client.Proxy
 				throw new AerospikeException(obj.ToString());
 			}
 			throw new AerospikeException("Invalid UDF return value");
-		}*/
+		}
+
+		/// <summary>
+		/// Asynchronously execute user defined function on server for a single record and return result.
+		/// </summary>
+		/// <param name="policy">write configuration parameters, pass in null for defaults</param>
+		/// <param name="token">cancellation token</param>
+		/// <param name="key">unique record identifier</param>
+		/// <param name="packageName">server package name where user defined function resides</param>
+		/// <param name="functionName">user defined function</param>
+		/// <param name="functionArgs">arguments passed in to user defined function</param>
+		/// <returns>task monitor</returns>
+		public async Task<object> Execute(WritePolicy policy, CancellationToken token, Key key, string packageName, string functionName, params Value[] functionArgs)
+		{
+			policy ??= writePolicyDefault;
+			var command = new CommandProxy(policy);
+
+			Record record = await command.ExecuteAsync(channel, token, policy, key, packageName, functionName, args);
+
+			if (record == null || record.bins == null)
+			{
+				return null;
+			}
+
+			IDictionary<string, object> map = record.bins;
+			object obj;
+
+			if (map.TryGetValue("SUCCESS", out obj))
+			{
+				return obj;
+			}
+
+			if (map.TryGetValue("FAILURE", out obj))
+			{
+				throw new AerospikeException(obj.ToString());
+			}
+			throw new AerospikeException("Invalid UDF return value");
+		}
 
 		/// <summary>
 		/// Execute user defined function on server for each key and return results.
@@ -1667,38 +1722,6 @@ namespace Aerospike.Client.Proxy
 			}
 		}*/
 
-		/**
-		 * Asynchronously execute query for specified partitions.
-		 * <p>
-		 * Each record result is returned in separate onRecord() calls.
-		 *
-		 * @param eventLoop				ignored, pass in null
-		 * @param listener				where to send results
-		 * @param policy				query configuration parameters, pass in null for defaults
-		 * @param statement				query definition
-		 * @param partitionFilter		filter on a subset of data partitions
-		 * @throws AerospikeException	if query fails
-		 */
-		/*public void queryPartitions(
-			EventLoop eventLoop,
-			RecordSequenceListener listener,
-			QueryPolicy policy,
-			Statement statement,
-			PartitionFilter partitionFilter
-		)
-		{
-			if (policy == null)
-			{
-				policy = queryPolicyDefault;
-			}
-
-			long taskId = statement.prepareTaskId();
-			PartitionTracker tracker = new PartitionTracker(policy, statement, 1, partitionFilter);
-			QueryCommandProxy command = new QueryCommandProxy(executor, listener, policy,
-				statement, taskId, partitionFilter, tracker);
-			command.execute();
-		}*/
-
 		/// <summary>
 		/// Execute query, apply statement's aggregation function, and return result iterator. 
 		/// The aggregation function should be located in a Lua script file that can be found from the 
@@ -1955,12 +1978,6 @@ namespace Aerospike.Client.Proxy
 		public List<Role> QueryRoles(AdminPolicy policy)
 		{
 			throw new AerospikeException(NotSupported + "queryRoles");
-		}
-
-		//-------------------------------------------------------
-		// Internal Methods
-		//-------------------------------------------------------
-
-		
+		}		
 	}
 }

@@ -16,6 +16,7 @@
  */
 using Aerospike.Client.Proxy.KVS;
 using Google.Protobuf;
+using Google.Protobuf.Collections;
 using Grpc.Net.Client;
 using System;
 using System.Collections;
@@ -40,7 +41,7 @@ namespace Aerospike.Client.Proxy
 		{
 		}
 
-		public void Write(WritePolicy writePolicy, Key key, Bin[] bins, Operation.Type operation)
+		public void Write(GrpcChannel channel, WritePolicy writePolicy, Key key, Bin[] bins, Operation.Type operation)
 		{
 			SetWrite(writePolicy, Operation.Type.WRITE, key, bins);
 			var request = new AerospikeRequestPayload
@@ -51,15 +52,13 @@ namespace Aerospike.Client.Proxy
 			};
 			GRPCConversions.SetRequestPolicy(writePolicy, request);
 
-			var Channel = GrpcChannel.ForAddress(new UriBuilder("http", "localhost", 4000).Uri);
-			var KVS = new KVS.KVS.KVSClient(Channel);
+			var KVS = new KVS.KVS.KVSClient(channel);
 			var response = KVS.Write(request);
-			dataBuffer = response.Payload.ToByteArray();
-			dataOffset = 13;
+			UnloadResponse(response);
 			ParseResult(writePolicy);
 		}
 
-		public async Task WriteAsync(WritePolicy writePolicy, CancellationToken token, Key key, Bin[] bins, Operation.Type operation)
+		public async Task WriteAsync(GrpcChannel channel, WritePolicy writePolicy, CancellationToken token, Key key, Bin[] bins, Operation.Type operation)
 		{
 			SetWrite(writePolicy, Operation.Type.WRITE, key, bins);
 			var request = new AerospikeRequestPayload
@@ -70,15 +69,13 @@ namespace Aerospike.Client.Proxy
 			};
 			GRPCConversions.SetRequestPolicy(writePolicy, request);
 
-			var Channel = GrpcChannel.ForAddress(new UriBuilder("http", "localhost", 4000).Uri);
-			var KVS = new KVS.KVS.KVSClient(Channel);
+			var KVS = new KVS.KVS.KVSClient(channel);
 			var response = await KVS.WriteAsync(request, cancellationToken: token);
-			dataBuffer = response.Payload.ToByteArray();
-			dataOffset = 13;
+			UnloadResponse(response);
 			ParseResult(writePolicy);
 		}
 
-		public Record Read(Policy policy, Key key)
+		public Record Read(GrpcChannel channel, Policy policy, Key key)
 		{
 			string[] binNames = null;
 			SetRead(policy, key, binNames);
@@ -90,15 +87,13 @@ namespace Aerospike.Client.Proxy
 				Payload = ByteString.CopyFrom(dataBuffer),
 			};
 			GRPCConversions.SetRequestPolicy(policy, request);
-			var Channel = GrpcChannel.ForAddress(new UriBuilder("http", "localhost", 4000).Uri);
-			var KVS = new KVS.KVS.KVSClient(Channel);
+			var KVS = new KVS.KVS.KVSClient(channel);
 			var response = KVS.Read(request);
-			dataBuffer = response.Payload.ToByteArray();
-			dataOffset = 13;
+			UnloadResponse(response);
 			return ParseRecordResult(policy);
 		}
 
-		public async Task<Record> ReadAsync(Policy policy, Key key, CancellationToken token)
+		public async Task<Record> ReadAsync(GrpcChannel channel, Policy policy, Key key, CancellationToken token)
 		{
 			string[] binNames = null;
 			SetRead(policy, key, binNames);
@@ -110,15 +105,223 @@ namespace Aerospike.Client.Proxy
 				Payload = ByteString.CopyFrom(dataBuffer),
 			};
 			GRPCConversions.SetRequestPolicy(policy, request);
-			var Channel = GrpcChannel.ForAddress(new UriBuilder("http", "localhost", 4000).Uri);
-			var KVS = new KVS.KVS.KVSClient(Channel);
+			var KVS = new KVS.KVS.KVSClient(channel);
 			var response = await KVS.ReadAsync(request, cancellationToken: token);
-			dataBuffer = response.Payload.ToByteArray();
-			dataOffset = 13;
+			UnloadResponse(response);
 			return ParseRecordResult(policy);
 		}
 
-		protected internal void ParseResult(WritePolicy policy)
+		public Record ReadHeader(GrpcChannel channel, Policy policy, Key key)
+		{
+			SetReadHeader(policy, key);
+
+			var request = new AerospikeRequestPayload
+			{
+				Id = 0, // ID is only needed in streaming version, can be static for unary
+				Iteration = 1,
+				Payload = ByteString.CopyFrom(dataBuffer),
+			};
+			GRPCConversions.SetRequestPolicy(policy, request);
+			var KVS = new KVS.KVS.KVSClient(channel);
+			var response = KVS.Read(request);
+			UnloadResponse(response);
+			return ParseResultHeader(policy);
+		}
+
+		public async Task<Record> ReadHeaderAsync(GrpcChannel channel, Policy policy, Key key, CancellationToken token)
+		{
+			SetReadHeader(policy, key);
+
+			var request = new AerospikeRequestPayload
+			{
+				Id = 0, // ID is only needed in streaming version, can be static for unary
+				Iteration = 1,
+				Payload = ByteString.CopyFrom(dataBuffer),
+			};
+			GRPCConversions.SetRequestPolicy(policy, request);
+			var KVS = new KVS.KVS.KVSClient(channel);
+			var response = await KVS.ReadAsync(request, cancellationToken: token);
+			UnloadResponse(response);
+			return ParseResultHeader(policy);
+		}
+
+		public bool Delete(GrpcChannel channel, WritePolicy policy, Key key)
+		{
+			SetDelete(policy, key);
+
+			var request = new AerospikeRequestPayload
+			{
+				Id = 0, // ID is only needed in streaming version, can be static for unary
+				Iteration = 1,
+				Payload = ByteString.CopyFrom(dataBuffer),
+			};
+			GRPCConversions.SetRequestPolicy(policy, request);
+			var KVS = new KVS.KVS.KVSClient(channel);
+			var response = KVS.Delete(request);
+			UnloadResponse(response);
+			return ParseResultDelete(policy);
+		}
+
+		public async Task<bool> DeleteAsync(GrpcChannel channel, WritePolicy policy, Key key, CancellationToken token)
+		{
+			SetDelete(policy, key);
+
+			var request = new AerospikeRequestPayload
+			{
+				Id = 0, // ID is only needed in streaming version, can be static for unary
+				Iteration = 1,
+				Payload = ByteString.CopyFrom(dataBuffer),
+			};
+			GRPCConversions.SetRequestPolicy(policy, request);
+			var KVS = new KVS.KVS.KVSClient(channel);
+			var response = await KVS.DeleteAsync(request, cancellationToken: token);
+			UnloadResponse(response);
+			return ParseResultDelete(policy);
+		}
+
+		public void Touch(GrpcChannel channel, WritePolicy policy, Key key)
+		{
+			SetTouch(policy, key);
+
+			var request = new AerospikeRequestPayload
+			{
+				Id = 0, // ID is only needed in streaming version, can be static for unary
+				Iteration = 1,
+				Payload = ByteString.CopyFrom(dataBuffer),
+			};
+			GRPCConversions.SetRequestPolicy(policy, request);
+			var KVS = new KVS.KVS.KVSClient(channel);
+			var response = KVS.Touch(request);
+			UnloadResponse(response);
+			ParseResultTouch(policy);
+		}
+
+		public async Task TouchAsync(GrpcChannel channel, WritePolicy policy, Key key, CancellationToken token)
+		{
+			SetTouch(policy, key);
+
+			var request = new AerospikeRequestPayload
+			{
+				Id = 0, // ID is only needed in streaming version, can be static for unary
+				Iteration = 1,
+				Payload = ByteString.CopyFrom(dataBuffer),
+			};
+			GRPCConversions.SetRequestPolicy(policy, request);
+			var KVS = new KVS.KVS.KVSClient(channel);
+			var response = await KVS.TouchAsync(request, cancellationToken: token);
+			UnloadResponse(response);
+			ParseResultTouch(policy);
+		}
+
+		public bool Exists(GrpcChannel channel, Policy policy, Key key)
+		{
+			SetExists(policy, key);
+
+			var request = new AerospikeRequestPayload
+			{
+				Id = 0, // ID is only needed in streaming version, can be static for unary
+				Iteration = 1,
+				Payload = ByteString.CopyFrom(dataBuffer),
+			};
+			GRPCConversions.SetRequestPolicy(policy, request);
+			var KVS = new KVS.KVS.KVSClient(channel);
+			var response = KVS.Exists(request);
+			UnloadResponse(response);
+			return ParseResultExists(policy);
+		}
+
+		public async Task<bool> ExistsAsync(GrpcChannel channel, Policy policy, Key key, CancellationToken token)
+		{
+			SetExists(policy, key);
+
+			var request = new AerospikeRequestPayload
+			{
+				Id = 0, // ID is only needed in streaming version, can be static for unary
+				Iteration = 1,
+				Payload = ByteString.CopyFrom(dataBuffer),
+			};
+			GRPCConversions.SetRequestPolicy(policy, request);
+			var KVS = new KVS.KVS.KVSClient(channel);
+			var response = await KVS.ExistsAsync(request, cancellationToken: token);
+			UnloadResponse(response);
+			return ParseResultExists(policy);
+		}
+
+		public Record Operate(GrpcChannel channel, Key key, OperateArgs args)
+		{
+			SetOperate(args.writePolicy, key, args);
+
+			var request = new AerospikeRequestPayload
+			{
+				Id = 0, // ID is only needed in streaming version, can be static for unary
+				Iteration = 1,
+				Payload = ByteString.CopyFrom(dataBuffer),
+			};
+			GRPCConversions.SetRequestPolicy(args.writePolicy, request);
+			var KVS = new KVS.KVS.KVSClient(channel);
+			var response = KVS.Operate(request);
+			UnloadResponse(response);
+			return ParseRecordResult(args.writePolicy);
+		}
+
+		public async Task<Record> OperateAsync(GrpcChannel channel, Key key, OperateArgs args, CancellationToken token)
+		{
+			SetOperate(args.writePolicy, key, args);
+
+			var request = new AerospikeRequestPayload
+			{
+				Id = 0, // ID is only needed in streaming version, can be static for unary
+				Iteration = 1,
+				Payload = ByteString.CopyFrom(dataBuffer),
+			};
+			GRPCConversions.SetRequestPolicy(args.writePolicy, request);
+			var KVS = new KVS.KVS.KVSClient(channel);
+			var response = await KVS.OperateAsync(request, cancellationToken: token);
+			UnloadResponse(response);
+			return ParseRecordResult(args.writePolicy);
+		}
+
+		public Record Execute(GrpcChannel channel, WritePolicy policy, Key key, string packageName, string functionName, params Value[] args)
+		{
+			SetUdf(policy, key, packageName, functionName, args);
+
+			var request = new AerospikeRequestPayload
+			{
+				Id = 0, // ID is only needed in streaming version, can be static for unary
+				Iteration = 1,
+				Payload = ByteString.CopyFrom(dataBuffer),
+			};
+			GRPCConversions.SetRequestPolicy(policy, request);
+			var KVS = new KVS.KVS.KVSClient(channel);
+			var response = KVS.Execute(request);
+			UnloadResponse(response);
+			return ParseRecordResult(policy);
+		}
+
+		public async Task<Record> ExecuteAsync(GrpcChannel channel, CancellationToken token, WritePolicy policy, Key key, string packageName, string functionName, params Value[] args)
+		{
+			SetUdf(policy, key, packageName, functionName, args);
+
+			var request = new AerospikeRequestPayload
+			{
+				Id = 0, // ID is only needed in streaming version, can be static for unary
+				Iteration = 1,
+				Payload = ByteString.CopyFrom(dataBuffer),
+			};
+			GRPCConversions.SetRequestPolicy(policy, request);
+			var KVS = new KVS.KVS.KVSClient(channel);
+			var response = await KVS.ExecuteAsync(request, cancellationToken: token);
+			UnloadResponse(response);
+			return ParseRecordResult(policy);
+		}
+
+		private void UnloadResponse(AerospikeResponsePayload response)
+		{
+			dataBuffer = response.Payload.ToByteArray();
+			dataOffset = 13;
+		}
+
+		internal void ParseResult(WritePolicy policy)
 		{
 			int resultCode = ParseResultCode();
 
@@ -137,6 +340,35 @@ namespace Aerospike.Client.Proxy
 			}
 
 			throw new AerospikeException(resultCode);
+		}
+
+		internal Record ParseResultHeader(Policy policy)
+		{
+			int resultCode = ParseResultCode();
+
+			if (resultCode == 0)
+			{
+				int generation = ByteUtil.BytesToInt(dataBuffer, 14);
+				int expiration = ByteUtil.BytesToInt(dataBuffer, 18);
+				return new Record(null, generation, expiration);
+			}
+
+			if (resultCode == ResultCode.KEY_NOT_FOUND_ERROR)
+			{
+				return null;
+			}
+
+			if (resultCode == ResultCode.FILTERED_OUT)
+			{
+				if (policy.failOnFilteredOut)
+				{
+					throw new AerospikeException(resultCode);
+				}
+				return null;
+			}
+
+			throw new AerospikeException(resultCode);
+			return null;
 		}
 
 		internal Record ParseRecordResult(Policy policy)
@@ -183,9 +415,84 @@ namespace Aerospike.Client.Proxy
 			return record;
 		}
 
+		internal bool ParseResultDelete(WritePolicy policy)
+		{
+			int resultCode = ParseResultCode();
+
+			if (resultCode == 0)
+			{
+				return true;
+			}
+
+			if (resultCode == ResultCode.KEY_NOT_FOUND_ERROR)
+			{
+				return false;
+			}
+
+			if (resultCode == ResultCode.FILTERED_OUT)
+			{
+				if (policy.failOnFilteredOut)
+				{
+					throw new AerospikeException(resultCode);
+				}
+				return true;
+			}
+
+			throw new AerospikeException(resultCode);
+			return false;
+		}
+
+		internal void ParseResultTouch(WritePolicy writePolicy)
+		{
+			int resultCode = ParseResultCode();
+
+			if (resultCode == 0)
+			{
+				return;
+			}
+
+			if (resultCode == ResultCode.FILTERED_OUT)
+			{
+				if (writePolicy.failOnFilteredOut)
+				{
+					throw new AerospikeException(resultCode);
+				}
+				return;
+			}
+
+			throw new AerospikeException(resultCode);
+		}
+
+		internal bool ParseResultExists(Policy policy)
+		{
+			int resultCode = ParseResultCode();
+
+			if (resultCode == 0)
+			{
+				return true;
+			}
+
+			if (resultCode == ResultCode.KEY_NOT_FOUND_ERROR)
+			{
+				return false;
+			}
+
+			if (resultCode == ResultCode.FILTERED_OUT)
+			{
+				if (policy.failOnFilteredOut)
+				{
+					throw new AerospikeException(resultCode);
+				}
+				return true;
+			}
+
+			throw new AerospikeException(resultCode);
+			return false;
+		}
+
 		public int ParseResultCode()
 		{
-			return dataBuffer[dataOffset] & 0xFF;
+			return dataBuffer[13] & 0xFF;
 		}
 
 		public int ParseHeader()

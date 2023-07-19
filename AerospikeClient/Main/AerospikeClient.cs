@@ -1098,7 +1098,7 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if command fails</exception>
 		public Record Operate(WritePolicy policy, Key key, params Operation[] operations)
 		{
-			OperateArgs args = new OperateArgs(cluster, policy, writePolicyDefault, operatePolicyReadDefault, key, operations);
+			OperateArgs args = new OperateArgs(policy, writePolicyDefault, operatePolicyReadDefault, key, operations);
 			OperateCommand command = new OperateCommand(cluster, key, args);
 			command.Execute();
 			return command.Record;
