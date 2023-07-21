@@ -16,6 +16,7 @@
  */
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Net;
 using System.Security.Authentication;
 using System.Text;
@@ -337,7 +338,14 @@ namespace Aerospike.Client
 				// Tend cluster.
 				try
 				{
+					Stopwatch watch = Stopwatch.StartNew();
 					Tend(false);
+					double elapsed = watch.Elapsed.TotalMilliseconds;
+
+					if (elapsed > 5000.0)
+					{
+						Log.Warn("Cluster tend time longer than 5 seconds: " + elapsed);
+					}
 				}
 				catch (Exception e)
 				{
@@ -347,21 +355,32 @@ namespace Aerospike.Client
 					}
 				}
 
-				if (tendValid)
+				try
 				{
-					// Sleep for tend interval.
-					if (cancelToken.WaitHandle.WaitOne(tendInterval))
+					if (tendValid)
 					{
-						// Cancel signal received.
-						if (tendValid)
+						// Sleep for tend interval.
+						if (cancelToken.WaitHandle.WaitOne(tendInterval))
 						{
-							// Reset cancel token.
-							cancel = new CancellationTokenSource();
-							cancelToken = cancel.Token;
+							// Cancel signal received.
+							if (tendValid)
+							{
+								// Reset cancel token.
+								cancel = new CancellationTokenSource();
+								cancelToken = cancel.Token;
+							}
 						}
 					}
 				}
+				catch (Exception e)
+				{
+					if (Log.WarnEnabled())
+					{
+						Log.Warn("Cluster tend sleep failed: " + Util.GetErrorMessage(e));
+					}
+				}
 			}
+			Log.Warn("Cluster tend thread stopped");
 		}
 
 		/// <summary>

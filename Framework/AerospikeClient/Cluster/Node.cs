@@ -234,9 +234,10 @@ namespace Aerospike.Client
 				sessionToken = token;
 				Interlocked.Exchange(ref performLogin, 0);
 			}
-			catch (Exception)
+			catch (Exception e)
 			{
 				Interlocked.Exchange(ref performLogin, 1);
+				Log.Warn("Node " + this + " login failed: " + Util.GetErrorMessage(e));
 				throw;
 			}
 		}

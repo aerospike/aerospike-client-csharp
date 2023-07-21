@@ -80,7 +80,8 @@ namespace Aerospike.Client
 
 		public void Login(Cluster cluster, Connection conn, out byte[] sessionToken, out DateTime? sessionExpiration)
 		{
-			dataOffset = 8;
+            Log.Info("Node " + conn.GetAddressString() + ": Login begin");
+            dataOffset = 8;
 
 			conn.SetTimeout(cluster.loginTimeout);
 
@@ -109,6 +110,8 @@ namespace Aerospike.Client
 				{
 					if (result == ResultCode.INVALID_COMMAND)
 					{
+						Log.Warn("Node " + conn.GetAddressString() + ": New login protocol not supported!");
+
 						// New login not supported.  Try old authentication.
 						AuthenticateOld(cluster, conn);
 						sessionToken = null;
@@ -118,8 +121,10 @@ namespace Aerospike.Client
 
 					if (result == ResultCode.SECURITY_NOT_ENABLED)
 					{
+						Log.Warn("Node " + conn.GetAddressString() + ": Security not enabled!");
+                        
 						// Server does not require login.
-						sessionToken = null;
+                        sessionToken = null;
 						sessionExpiration = null;
 						return;
 					}
@@ -159,13 +164,19 @@ namespace Aerospike.Client
 					else if (id == SESSION_TTL)
 					{
 						// Subtract 60 seconds from ttl so client session expires before server session.
-						long seconds = ByteUtil.BytesToUInt(dataBuffer, dataOffset) - 60;
+						uint seconds = ByteUtil.BytesToUInt(dataBuffer, dataOffset);
 
-						if (seconds > 0)
+                        if (seconds > 60)
 						{
-							ttl = DateTime.UtcNow.AddSeconds(seconds);
-						}
-						else
+                            uint secs = seconds - 60;
+							DateTime now = DateTime.UtcNow;
+							ttl = now.AddSeconds(secs);
+							Log.Info("session-ttl=" + seconds + " relogin-ttl=" + secs + 
+								" relogin-time=" + ttl.Value.ToString("yyyy-MM-dd HH:mm:ss UTC") +
+								" current-time=" + now.ToString("yyyy-MM-dd HH:mm:ss UTC")
+								);
+                        }
+                        else
 						{
 							throw new AerospikeException("Invalid session expiration: " + seconds);
 						}
@@ -177,12 +188,18 @@ namespace Aerospike.Client
 				{
 					throw new AerospikeException("Failed to retrieve session token");
 				}
+
+				if (ttl == null)
+				{
+					Log.Warn("session-ttl is null!");
+				}
 				sessionToken = token;
 				sessionExpiration = ttl;
 			}
 			finally
 			{
-				conn.SetTimeout(cluster.connectionTimeout);
+                Log.Info("Node " + conn.GetAddressString() + ": Login end");
+                conn.SetTimeout(cluster.connectionTimeout);
 			}
 		}
 

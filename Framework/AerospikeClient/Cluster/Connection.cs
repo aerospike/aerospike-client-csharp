@@ -165,7 +165,13 @@ namespace Aerospike.Client
 			}
 		}
 
-		public virtual Stream GetStream()
+		public String GetAddressString()
+		{
+			IPEndPoint ip = socket.RemoteEndPoint as IPEndPoint;
+            return (ip != null) ? ip.Address.ToString() + ' ' + ip.Port: "";
+		}
+
+        public virtual Stream GetStream()
 		{
 			return new NetworkStream(socket);
 		}

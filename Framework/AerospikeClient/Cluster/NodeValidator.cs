@@ -74,13 +74,16 @@ namespace Aerospike.Client
 				}
 				catch (Exception e)
 				{
-					// Log exception and continue to next alias.
+                    // Log exception and continue to next alias.
+                    /*
 					if (Log.DebugEnabled())
 					{
 						Log.Debug("Address " + address + ' ' + host.port + " failed: " + Util.GetErrorMessage(e));
 					}
+					*/
+                    Log.Warn("Address " + address + ' ' + host.port + " failed: " + Util.GetErrorMessage(e));
 
-					if (exception == null)
+                    if (exception == null)
 					{
 						exception = e;
 					}
@@ -163,12 +166,15 @@ namespace Aerospike.Client
 				catch (Exception e)
 				{
 					// Log exception and continue to next alias.
+					/*
 					if (Log.DebugEnabled())
 					{
 						Log.Debug("Address " + address + ' ' + host.port + " failed: " + Util.GetErrorMessage(e));
 					}
+					*/
+                    Log.Warn("Address " + address + ' ' + host.port + " failed: " + Util.GetErrorMessage(e));
 
-					if (exception == null)
+                    if (exception == null)
 					{
 						exception = e;
 					}
