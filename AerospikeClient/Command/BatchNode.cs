@@ -549,6 +549,18 @@ namespace Aerospike.Client
 			}
 		}
 
+		public BatchNode(List<BatchRecord> records)
+		{
+			this.node = null;
+			this.offsets = new int[records.Count];
+			this.offsetsSize = records.Count;
+
+			for (int i = 0; i < offsetsSize; i++)
+			{
+				offsets[i] = i;
+			}
+		}
+
 		public void AddKey(int offset)
 		{
 			if (offsetsSize >= offsets.Length)

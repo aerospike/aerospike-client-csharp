@@ -305,7 +305,7 @@ namespace Aerospike.Client
 
 		protected internal abstract Node GetNode();
 		protected internal abstract void WriteBuffer();
-		protected internal abstract void ParseResult(Connection conn);
+		protected internal abstract void ParseResult(IConnection conn);
 		protected internal abstract bool PrepareRetry(bool timeout);
 	}
 }

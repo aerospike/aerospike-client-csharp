@@ -14,6 +14,9 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
+using Aerospike.Client.KVS;
+using Google.Protobuf;
+using Grpc.Net.Client;
 using System.Collections.Generic;
 
 namespace Aerospike.Client
@@ -23,7 +26,7 @@ namespace Aerospike.Client
 		private readonly OperateArgs args;
 
 		public AsyncOperate(AsyncCluster cluster, RecordListener listener, Key key, OperateArgs args)
-			: base(cluster, args.writePolicy, listener, key, args.partition, true)
+			: base(cluster, args.writePolicy, listener, key, args.GetPartition(cluster, key), true)
 		{
 			this.args = args;
 		}
@@ -75,6 +78,23 @@ namespace Aerospike.Client
 				partition.PrepareRetryRead(timeout);
 			}
 			return true;
+		}
+
+		public async Task<Record> ExecuteGRPC(GrpcChannel channel, CancellationToken token)
+		{
+			var request = new AerospikeRequestPayload
+			{
+				Id = 0, // ID is only needed in streaming version, can be static for unary
+				Iteration = 1,
+				Payload = ByteString.CopyFrom(dataBuffer),
+			};
+			GRPCConversions.SetRequestPolicy(policy, request);
+
+			var KVS = new KVS.KVS.KVSClient(channel);
+			var response = await KVS.OperateAsync(request, cancellationToken: token);
+			dataBuffer = response.Payload.ToByteArray();
+			ParseResult();
+			return record;
 		}
 	}
 }

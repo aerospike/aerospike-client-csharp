@@ -14,6 +14,9 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
+using Aerospike.Client.KVS;
+using Google.Protobuf;
+using Grpc.Net.Client;
 using System;
 using System.Collections.Generic;
 
@@ -66,6 +69,22 @@ namespace Aerospike.Client
 		{
 			partition.PrepareRetryWrite(timeout);
 			return true;
+		}
+
+		public override void ExecuteGRPC(GrpcChannel channel)
+		{
+			var request = new AerospikeRequestPayload
+			{
+				Id = 0, // ID is only needed in streaming version, can be static for unary
+				Iteration = 1,
+				Payload = ByteString.CopyFrom(dataBuffer),
+			};
+			GRPCConversions.SetRequestPolicy(writePolicy, request);
+
+			var KVS = new KVS.KVS.KVSClient(channel);
+			var response = KVS.Execute(request);
+			var conn = new ConnectionProxy(response.Payload.ToByteArray());
+			ParseResult(conn);
 		}
 	}
 }

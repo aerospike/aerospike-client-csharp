@@ -17,12 +17,17 @@
 using Aerospike.Client.Proxy.KVS;
 using Google.Protobuf;
 using Google.Protobuf.Collections;
+using Grpc.Core;
 using Grpc.Net.Client;
 using System;
+using System.Buffers;
 using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Drawing;
 using System.Threading.Channels;
+using static Aerospike.Client.AerospikeException;
+
 
 #pragma warning disable 0618
 
@@ -35,10 +40,13 @@ namespace Aerospike.Client.Proxy
 		int batchIndex;
 		int fieldCount;
 		int opCount;
+		bool inDoubt;
+		ArrayPool<byte> dataBufferPool;
 
 		public CommandProxy(Policy policy)
 			: base(policy.socketTimeout, policy.totalTimeout, policy.maxRetries)
 		{
+			dataBufferPool = ArrayPool<byte>.Create();
 		}
 
 		public void Write(GrpcChannel channel, WritePolicy writePolicy, Key key, Bin[] bins, Operation.Type operation)
@@ -111,7 +119,7 @@ namespace Aerospike.Client.Proxy
 			return ParseRecordResult(policy);
 		}
 
-		public Record ReadHeader(GrpcChannel channel, Policy policy, Key key)
+		public Record GetHeader(GrpcChannel channel, Policy policy, Key key)
 		{
 			SetReadHeader(policy, key);
 
@@ -123,12 +131,12 @@ namespace Aerospike.Client.Proxy
 			};
 			GRPCConversions.SetRequestPolicy(policy, request);
 			var KVS = new KVS.KVS.KVSClient(channel);
-			var response = KVS.Read(request);
+			var response = KVS.GetHeader(request);
 			UnloadResponse(response);
 			return ParseResultHeader(policy);
 		}
 
-		public async Task<Record> ReadHeaderAsync(GrpcChannel channel, Policy policy, Key key, CancellationToken token)
+		public async Task<Record> GetHeaderAsync(GrpcChannel channel, Policy policy, Key key, CancellationToken token)
 		{
 			SetReadHeader(policy, key);
 
@@ -140,7 +148,7 @@ namespace Aerospike.Client.Proxy
 			};
 			GRPCConversions.SetRequestPolicy(policy, request);
 			var KVS = new KVS.KVS.KVSClient(channel);
-			var response = await KVS.ReadAsync(request, cancellationToken: token);
+			var response = await KVS.GetHeaderAsync(request, cancellationToken: token);
 			UnloadResponse(response);
 			return ParseResultHeader(policy);
 		}
@@ -315,10 +323,77 @@ namespace Aerospike.Client.Proxy
 			return ParseRecordResult(policy);
 		}
 
+		public async Task<bool> BatchOperate(GrpcChannel channel, CancellationToken token, BatchPolicy batchPolicy, BatchWritePolicy writePolicy, List<BatchRecord> records)
+		{
+			
+			var batch = new BatchNode(records);
+			SetBatchOperate(batchPolicy, records, batch);
+
+			var request = new AerospikeRequestPayload
+			{
+				Id = 0, // ID is only needed in streaming version, can be static for unary
+				Iteration = 1,
+				Payload = ByteString.CopyFrom(dataBuffer),
+				//WritePolicy = GRPCConversions.ToGrpc(writePolicy)
+			};
+			GRPCConversions.SetRequestPolicy(batchPolicy, request);
+			var KVS = new KVS.KVS.KVSClient(channel);
+			using var stream = KVS.BatchOperate(request, cancellationToken: token);
+			await foreach (var response in stream.ResponseStream.ReadAllAsync())
+			{
+				var resultCode = response.Status;
+				var hasNext = response.HasNext;
+				inDoubt |= response.InDoubt;
+				if (resultCode != 0 && !hasNext)
+				{
+					//failure case
+					//return new BatchStatus(false);
+					return false;
+				}
+				//var buffer = dataBufferPool.Rent(4096);
+				int offset = 0;
+				var buffer = response.Payload.ToByteArray();
+				ParseProto(ref buffer, ref offset);
+				var rc = ParseHeaderBatch(ref buffer, ref offset);
+
+				if (hasNext)
+				{
+					if (resultCode == 0)
+					{
+						resultCode = rc;
+					}
+					SkipKey(ref buffer, ref offset);
+					ParseBatchResult(ref buffer, ref offset, rc, records);
+					//dataBufferPool.Return(buffer, true);
+					continue;
+				}
+				else
+				{
+					//dataBufferPool.Return(buffer, true);
+				}
+				
+                if (rc == ResultCode.OK)
+                {
+					//return new BatchStatus(true);
+					return true;
+                }
+            }
+
+			// failure case
+			//return new BatchStatus(false);
+			return false;
+		}
+
 		private void UnloadResponse(AerospikeResponsePayload response)
 		{
 			dataBuffer = response.Payload.ToByteArray();
 			dataOffset = 13;
+		}
+
+		private void UnloadBatchResponse(AerospikeResponsePayload response, ref byte[] buffer, ref int offset)
+		{
+			buffer = response.Payload.ToByteArray();
+			offset = 13;
 		}
 
 		internal void ParseResult(WritePolicy policy)
@@ -368,7 +443,6 @@ namespace Aerospike.Client.Proxy
 			}
 
 			throw new AerospikeException(resultCode);
-			return null;
 		}
 
 		internal Record ParseRecordResult(Policy policy)
@@ -413,6 +487,72 @@ namespace Aerospike.Client.Proxy
 			}
 
 			return record;
+		}
+
+		bool ParseBatchResult(ref byte[] buffer, ref int offset, int resultCode, List<BatchRecord> records)
+		{
+			BatchRecord record = records[batchIndex];
+
+			if (resultCode == ResultCode.OK)
+			{
+				record.SetRecord(ParseRecord(buffer, ref offset, opCount, generation, expiration, false));
+				return true;
+			}
+
+			if (resultCode == ResultCode.UDF_BAD_RESPONSE)
+			{
+				Record r = ParseRecord(buffer, ref offset, opCount, generation, expiration, false);
+				String m = r.GetString("FAILURE");
+
+				if (m != null)
+				{
+					// Need to store record because failure bin contains an error message.
+					record.record = r;
+					record.resultCode = resultCode;
+					record.inDoubt = inDoubt;
+					return false;
+				}
+			}
+
+			record.SetError(resultCode, inDoubt);
+			return false;
+		}
+
+		public void ParseProto(ref byte[] buffer, ref int offset)
+		{
+			offset = 0;
+			long sz = ByteUtil.BytesToLong(buffer, offset);
+			var receiveSize = (int)(sz & 0xFFFFFFFFFFFFL);
+			int totalSize = receiveSize + 8;
+
+			if (totalSize != buffer.Length)
+			{
+				throw new AerospikeException("size " + totalSize + " != buffer length " + dataBuffer.Length);
+			}
+
+			offset += 8;
+			ulong type = (ulong)((sz >> 48) & 0xff);
+
+			if (type == Command.AS_MSG_TYPE)
+			{
+				offset += 5;
+			}
+			else if (type == Command.MSG_TYPE_COMPRESSED)
+			{
+				int usize = (int)ByteUtil.BytesToLong(buffer, offset);
+				dataOffset += 8;
+
+				byte[] buf = new byte[usize];
+
+				ByteUtil.Decompress(buffer, offset, receiveSize - 8, buf, usize);
+				buffer = buf;
+				offset = 13;
+			}
+			else
+			{
+				throw new AerospikeException("Invalid proto type: " + type + " Expected: " + Command.AS_MSG_TYPE);
+			}
+			var info3 = buffer[offset - 2] & 0xFF;
 		}
 
 		internal bool ParseResultDelete(WritePolicy policy)
@@ -492,11 +632,12 @@ namespace Aerospike.Client.Proxy
 
 		public int ParseResultCode()
 		{
-			return dataBuffer[13] & 0xFF;
+			return dataBuffer[dataOffset] & 0xFF;
 		}
 
 		public int ParseHeader()
 		{
+			dataOffset = 13;
 			var resultCode = ParseResultCode();
 			dataOffset += 1;
 			generation = ByteUtil.BytesToInt(dataBuffer, dataOffset);
@@ -509,6 +650,24 @@ namespace Aerospike.Client.Proxy
 			dataOffset += 2;
 			opCount = ByteUtil.BytesToShort(dataBuffer, dataOffset);
 			dataOffset += 2;
+			return resultCode;
+		}
+
+		public int ParseHeaderBatch(ref byte[] buffer, ref int offset)
+		{
+			offset = 5;
+			var resultCode = ParseResultCode();
+			offset += 1;
+			generation = ByteUtil.BytesToInt(buffer, offset);
+			offset += 4;
+			expiration = ByteUtil.BytesToInt(buffer, offset);
+			offset += 4;
+			batchIndex = ByteUtil.BytesToInt(buffer, offset);
+			offset += 4;
+			fieldCount = ByteUtil.BytesToShort(buffer, offset);
+			offset += 2;
+			opCount = ByteUtil.BytesToShort(buffer, offset);
+			offset += 2;
 			return resultCode;
 		}
 
@@ -573,6 +732,17 @@ namespace Aerospike.Client.Proxy
 			{
 				int fieldlen = ByteUtil.BytesToInt(dataBuffer, dataOffset);
 				dataOffset += 4 + fieldlen;
+			}
+		}
+
+		public void SkipKey(ref byte[] buffer, ref int offset)
+		{
+			// There can be fields in the response (setname etc).
+			// But for now, ignore them. Expose them to the API if needed in the future.
+			for (int i = 0; i < fieldCount; i++)
+			{
+				int fieldlen = ByteUtil.BytesToInt(buffer, offset);
+				offset += 4 + fieldlen;
 			}
 		}
 

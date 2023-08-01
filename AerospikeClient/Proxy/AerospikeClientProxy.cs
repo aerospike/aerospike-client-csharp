@@ -24,13 +24,13 @@ using Aerospike.Client;
 using System.Threading;
 using System.Diagnostics;
 using System.Diagnostics.Metrics;
-using Aerospike.Client.Proxy.KVS;
+using Aerospike.Client.KVS;
 using Google.Protobuf;
 using System.Threading.Channels;
 using Grpc.Net.Client;
-using Microsoft.AspNetCore.DataProtection.KeyManagement;
 using Google.Protobuf.WellKnownTypes;
 using System.Xml.Linq;
+using static Aerospike.Client.AsyncQueryValidate;
 
 namespace Aerospike.Client.Proxy
 {
@@ -396,8 +396,8 @@ namespace Aerospike.Client.Proxy
 		public void Put(WritePolicy policy, Key key, params Bin[] bins)
 		{
 			policy ??= writePolicyDefault;
-			CommandProxy command = new(policy);
-			command.Write(channel, policy, key, bins, Operation.Type.WRITE);
+			var command = new WriteCommand(null, policy, key, bins, Operation.Type.WRITE);
+			command.ExecuteGRPC(channel);
 		}
 
 		/// <summary>
@@ -412,11 +412,11 @@ namespace Aerospike.Client.Proxy
 		/// <param name="key">unique record identifier</param>
 		/// <param name="bins">array of bin name/value pairs</param>
 		/// <exception cref="AerospikeException">if queue is full</exception>
-		public async Task Put(WritePolicy policy, CancellationToken token, Key key, params Bin[] bins)
+		public Task Put(WritePolicy policy, CancellationToken token, Key key, params Bin[] bins)
 		{
 			policy ??= writePolicyDefault;
-			CommandProxy command = new(policy);
-			await command.WriteAsync(channel, policy, token, key, bins, Operation.Type.WRITE);
+			var async = new AsyncWrite(null, policy, null, key, bins, Operation.Type.WRITE);
+			return async.ExecuteGRPC(channel, token);
 		}
 
 		//-------------------------------------------------------
@@ -436,8 +436,8 @@ namespace Aerospike.Client.Proxy
 		public void Append(WritePolicy policy, Key key, params Bin[] bins)
 		{
 			policy ??= writePolicyDefault;
-			CommandProxy command = new(policy);
-			command.Write(channel, policy, key, bins, Operation.Type.APPEND);
+			var command = new WriteCommand(null, policy, key, bins, Operation.Type.APPEND);
+			command.ExecuteGRPC(channel);
 		}
 
 		/// <summary>
@@ -453,11 +453,11 @@ namespace Aerospike.Client.Proxy
 		/// <param name="key">unique record identifier</param>
 		/// <param name="bins">array of bin name/value pairs</param>
 		/// <exception cref="AerospikeException">if queue is full</exception>
-		public async Task Append(WritePolicy policy, CancellationToken token, Key key, params Bin[] bins)
+		public Task Append(WritePolicy policy, CancellationToken token, Key key, params Bin[] bins)
 		{
 			policy ??= writePolicyDefault;
-			CommandProxy command = new(policy);
-			await command.WriteAsync(channel, policy, token, key, bins, Operation.Type.APPEND);
+			var async = new AsyncWrite(null, policy, null, key, bins, Operation.Type.APPEND);
+			return async.ExecuteGRPC(channel, token);
 		}
 
 		/// <summary>
@@ -473,8 +473,8 @@ namespace Aerospike.Client.Proxy
 		public void Prepend(WritePolicy policy, Key key, params Bin[] bins)
 		{
 			policy ??= writePolicyDefault;
-			CommandProxy command = new(policy);
-			command.Write(channel, policy, key, bins, Operation.Type.PREPEND);
+			var command = new WriteCommand(null, policy, key, bins, Operation.Type.PREPEND);
+			command.ExecuteGRPC(channel);
 		}
 
 		/// <summary>
@@ -490,11 +490,11 @@ namespace Aerospike.Client.Proxy
 		/// <param name="key">unique record identifier</param>
 		/// <param name="bins">array of bin name/value pairs</param>
 		/// <exception cref="AerospikeException">if queue is full</exception>
-		public async Task Prepend(WritePolicy policy, CancellationToken token, Key key, params Bin[] bins)
+		public Task Prepend(WritePolicy policy, CancellationToken token, Key key, params Bin[] bins)
 		{
 			policy ??= writePolicyDefault;
-			CommandProxy command = new(policy);
-			await command.WriteAsync(channel, policy, token, key, bins, Operation.Type.PREPEND);
+			var async = new AsyncWrite(null, policy, null, key, bins, Operation.Type.PREPEND);
+			return async.ExecuteGRPC(channel, token);
 		}
 
 		//-------------------------------------------------------
@@ -513,8 +513,8 @@ namespace Aerospike.Client.Proxy
 		public void Add(WritePolicy policy, Key key, params Bin[] bins)
 		{
 			policy ??= writePolicyDefault;
-			CommandProxy command = new(policy);
-			command.Write(channel, policy, key, bins, Operation.Type.ADD);
+			var command = new WriteCommand(null, policy, key, bins, Operation.Type.ADD);
+			command.ExecuteGRPC(channel);
 		}
 
 		/// <summary>
@@ -529,11 +529,11 @@ namespace Aerospike.Client.Proxy
 		/// <param name="key">unique record identifier</param>
 		/// <param name="bins">array of bin name/value pairs</param>
 		/// <exception cref="AerospikeException">if queue is full</exception>
-		public async Task Add(WritePolicy policy, CancellationToken token, Key key, params Bin[] bins)
+		public Task Add(WritePolicy policy, CancellationToken token, Key key, params Bin[] bins)
 		{
 			policy ??= writePolicyDefault;
-			CommandProxy command = new(policy);
-			await command.WriteAsync(channel, policy, token, key, bins, Operation.Type.ADD);
+			var async = new AsyncWrite(null, policy, null, key, bins, Operation.Type.ADD);
+			return async.ExecuteGRPC(channel, token);
 		}
 
 		//-------------------------------------------------------
@@ -551,8 +551,9 @@ namespace Aerospike.Client.Proxy
 		public bool Delete(WritePolicy policy, Key key)
 		{
 			policy ??= writePolicyDefault;
-			CommandProxy command = new(policy);
-			return command.Delete(channel, policy, key);
+			var command = new DeleteCommand(null, policy, key);
+			command.ExecuteGRPC(channel);
+			return command.Existed();
 		}
 
 		/// <summary>
@@ -562,11 +563,11 @@ namespace Aerospike.Client.Proxy
 		/// <param name="token">cancellation token</param>
 		/// <param name="key">unique record identifier</param>
 		/// <exception cref="AerospikeException">if queue is full</exception>
-		public async Task<bool> Delete(WritePolicy policy, CancellationToken token, Key key)
+		public Task<bool> Delete(WritePolicy policy, CancellationToken token, Key key)
 		{
 			policy ??= writePolicyDefault;
-			CommandProxy command = new(policy);
-			return await command.DeleteAsync(channel, policy, key, token);
+			var async = new AsyncDelete(null, policy, key, null);
+			return async.ExecuteGRPC(channel, token);
 		}
 
 		/// <summary>
@@ -649,8 +650,8 @@ namespace Aerospike.Client.Proxy
 		public void Touch(WritePolicy policy, Key key)
 		{
 			policy ??= writePolicyDefault;
-			var command = new CommandProxy(policy);
-			command.Touch(channel, policy, key);
+			var command = new TouchCommand(null, policy, key);
+			command.ExecuteGRPC(channel);
 		}
 
 		/// <summary>
@@ -660,11 +661,11 @@ namespace Aerospike.Client.Proxy
 		/// <param name="token">cancellation token</param>
 		/// <param name="key">unique record identifier</param>
 		/// <exception cref="AerospikeException">if queue is full</exception>
-		public async Task Touch(WritePolicy policy, CancellationToken token, Key key)
+		public Task Touch(WritePolicy policy, CancellationToken token, Key key)
 		{
 			policy ??= writePolicyDefault;
-			var command = new CommandProxy(policy);
-			await command.TouchAsync(channel, policy, key, token);
+			var async = new AsyncTouch(null, policy, null, key);
+			return async.ExecuteGRPC(channel, token);
 		}
 
 		//-------------------------------------------------------
@@ -682,8 +683,9 @@ namespace Aerospike.Client.Proxy
 		public bool Exists(Policy policy, Key key)
 		{
 			policy ??= readPolicyDefault;
-			var command = new CommandProxy(policy);
-			return command.Exists(channel, policy, key);
+			var command = new ExistsCommand(null, policy, key);
+			command.ExecuteGRPC(channel);
+			return command.Exists();
 		}
 
 		/// <summary>
@@ -693,11 +695,11 @@ namespace Aerospike.Client.Proxy
 		/// <param name="token">cancellation token</param>
 		/// <param name="key">unique record identifier</param>
 		/// <exception cref="AerospikeException">if queue is full</exception>
-		public async Task<bool> Exists(Policy policy, CancellationToken token, Key key)
+		public Task<bool> Exists(Policy policy, CancellationToken token, Key key)
 		{
 			policy ??= readPolicyDefault;
-			var command = new CommandProxy(policy);
-			return await command.ExistsAsync(channel, policy, key, token);
+			var async = new AsyncExists(null, policy, key, null);
+			return async.ExecuteGRPC(channel, token);
 		}
 
 		/// <summary>
@@ -768,8 +770,9 @@ namespace Aerospike.Client.Proxy
 		public Record Get(Policy policy, Key key)
 		{
 			policy ??= readPolicyDefault;
-			CommandProxy command = new(policy);
-			return command.Read(channel, policy, key);
+			var command = new ReadCommand(null, policy, key);
+			command.ExecuteGRPC(channel);
+			return command.Record;
 		}
 
 		/// <summary>
@@ -782,8 +785,8 @@ namespace Aerospike.Client.Proxy
 		public Task<Record> Get(Policy policy, CancellationToken token, Key key)
 		{
 			policy ??= readPolicyDefault;
-			CommandProxy command = new(policy);
-			return command.ReadAsync(channel, policy, key, token);
+			var async = new AsyncRead(null, policy, null, key, (string[])null);
+			return async.ExecuteGRPC(channel, token);
 		}
 
 		/// <summary>
@@ -797,8 +800,9 @@ namespace Aerospike.Client.Proxy
 		public Record GetHeader(Policy policy, Key key)
 		{
 			policy ??= readPolicyDefault;
-			CommandProxy command = new(policy);
-			return command.GetHeader(channel, policy, key);
+			var command = new ReadHeaderCommand(null, policy, key);
+			command.ExecuteGRPC(channel);
+			return command.Record;
 		}
 
 		/// <summary>
@@ -811,8 +815,8 @@ namespace Aerospike.Client.Proxy
 		public Task<Record> GetHeader(Policy policy, CancellationToken token, Key key)
 		{
 			policy ??= readPolicyDefault;
-			CommandProxy command = new(policy);
-			return command.GetHeaderAsync(channel, policy, key, token);
+			var async = new AsyncReadHeader(null, policy, null, key);
+			return async.ExecuteGRPC(channel, token);
 		}
 
 		//-------------------------------------------------------
@@ -1090,8 +1094,9 @@ namespace Aerospike.Client.Proxy
 		public Record Operate(WritePolicy policy, Key key, params Operation[] operations)
 		{
 			OperateArgs args = new OperateArgs(policy, writePolicyDefault, operatePolicyReadDefault, key, operations);
-			var command = new CommandProxy(policy);
-			return command.Operate(channel, key, args);
+			var command = new OperateCommand(null, key, args);
+			command.ExecuteGRPC(channel);
+			return command.Record;
 		}
 
 		/// <summary>
@@ -1114,8 +1119,8 @@ namespace Aerospike.Client.Proxy
 		public Task<Record> Operate(WritePolicy policy, CancellationToken token, Key key, params Operation[] ops)
 		{
 			OperateArgs args = new OperateArgs(policy, writePolicyDefault, operatePolicyReadDefault, key, ops);
-			var command = new CommandProxy(policy);
-			return command.OperateAsync(channel, key, args, token);
+			var async = new AsyncOperate(null, null, key, args);
+			return async.ExecuteGRPC(channel, token);
 		}
 
 		//-------------------------------------------------------
@@ -1341,9 +1346,11 @@ namespace Aerospike.Client.Proxy
 		public object Execute(WritePolicy policy, Key key, string packageName, string functionName, params Value[] args)
 		{
 			policy ??= writePolicyDefault;
-			var command = new CommandProxy(policy);
 
-			Record record = command.Execute(channel, policy, key, packageName, functionName, args);
+			var command = new ExecuteCommand(null, policy, key, packageName, functionName, args);
+			command.ExecuteGRPC(channel);
+
+			var record = command.Record;
 
 			if (record == null || record.bins == null)
 			{
@@ -1375,31 +1382,11 @@ namespace Aerospike.Client.Proxy
 		/// <param name="functionName">user defined function</param>
 		/// <param name="functionArgs">arguments passed in to user defined function</param>
 		/// <returns>task monitor</returns>
-		public async Task<object> Execute(WritePolicy policy, CancellationToken token, Key key, string packageName, string functionName, params Value[] functionArgs)
+		public Task<object> Execute(WritePolicy policy, CancellationToken token, Key key, string packageName, string functionName, params Value[] functionArgs)
 		{
 			policy ??= writePolicyDefault;
-			var command = new CommandProxy(policy);
-
-			Record record = await command.ExecuteAsync(channel, token, policy, key, packageName, functionName);
-
-			if (record == null || record.bins == null)
-			{
-				return null;
-			}
-
-			IDictionary<string, object> map = record.bins;
-			object obj;
-
-			if (map.TryGetValue("SUCCESS", out obj))
-			{
-				return obj;
-			}
-
-			if (map.TryGetValue("FAILURE", out obj))
-			{
-				throw new AerospikeException(obj.ToString());
-			}
-			throw new AerospikeException("Invalid UDF return value");
+			var command = new AsyncExecute(null, policy, null, key, packageName, functionName, functionArgs);
+			return command.ExecuteGRPC(channel, token);
 		}
 
 		/// <summary>
