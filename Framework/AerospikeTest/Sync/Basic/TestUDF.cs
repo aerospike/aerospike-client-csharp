@@ -1,5 +1,5 @@
 ﻿/* 
- * Copyright 2012-2022 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -19,7 +19,6 @@ using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
-using System.Runtime.Serialization.Formatters.Binary;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Aerospike.Client;
 
@@ -191,6 +190,7 @@ namespace Aerospike.Test
 			Assert.AreEqual(value, (string)obj);
 		}
 
+#if BINARY_FORMATTER
 		[TestMethod]
 		public void WriteBlobUsingUdf()
 		{
@@ -235,6 +235,7 @@ namespace Aerospike.Test
 				Assert.AreEqual("value5", r.GetString("B5"));
 			}
 		}
+#endif
 
 		[TestMethod]
 		public void BatchUDFError()

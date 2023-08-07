@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2022 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -17,7 +17,6 @@
 using System;
 using System.IO;
 using System.Collections;
-using System.Runtime.Serialization.Formatters.Binary;
 
 namespace Aerospike.Client
 {
@@ -1800,17 +1799,18 @@ namespace Aerospike.Client
 
 			public static byte[] Serialize(object val)
 			{
-				if (DisableSerializer)
-				{
-					throw new AerospikeException("Object serializer has been disabled");
-				}
+#if BINARY_FORMATTER
+			if (DisableSerializer) throw new AerospikeException("Object serializer has been disabled");
 
-				using (MemoryStream ms = new MemoryStream())
-				{
-					BinaryFormatter formatter = new BinaryFormatter();
-					formatter.Serialize(ms, val);
-					return ms.ToArray();
-				}
+			using (MemoryStream ms = new MemoryStream())
+			{
+				BinaryFormatter formatter = new BinaryFormatter();
+				formatter.Serialize(ms, val);
+				return ms.ToArray();
+			}
+#else
+				throw new AerospikeException("Object serializer has been disabled");
+#endif
 			}
 
 			public override int Write(byte[] buffer, int offset)

@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2022 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -283,6 +283,7 @@ namespace Aerospike.Client
 			this.value = Value.Get(value);
 		}
 
+#if BINARY_FORMATTER
 		/// <summary>
 		/// Create bin with a blob value.  The value will be serialized by BinaryFormatter.
 		/// This method is faster than the bin object constructor because the blob is converted 
@@ -300,6 +301,7 @@ namespace Aerospike.Client
 		{
 			return new Bin(name, Value.GetAsBlob(value));
 		}
+#endif
 
 		/// <summary>
 		/// Create bin with a null value. This is useful for bin deletions within a record.
