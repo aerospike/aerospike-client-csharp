@@ -28,9 +28,13 @@ namespace Aerospike.Test
 		public static Args Instance = new Args();
 
 		public IAerospikeClient client;
+		public AerospikeClient nativeClient;
 		public AsyncClient asyncClient;
 		public Host[] hosts;
+		public Host proxyHost;
 		public int port;
+		public int proxyPort;
+		public bool testProxy;
 		public string user;
 		public string password;
 		public string clusterName;
@@ -50,6 +54,8 @@ namespace Aerospike.Test
             IConfigurationRoot section = builder.Build();
 
             port = int.Parse(section.GetSection("Port").Value);
+			proxyPort = int.Parse(section.GetSection("ProxyPort").Value);
+			testProxy = bool.Parse(section.GetSection("TestProxy").Value);
             clusterName = section.GetSection("ClusterName").Value;
             user = section.GetSection("User").Value;
             password = section.GetSection("Password").Value;
@@ -71,12 +77,20 @@ namespace Aerospike.Test
             }
 
             hosts = Host.ParseHosts(section.GetSection("Host").Value, tlsName, port);
+			proxyHost = Host.ParseHosts(section.GetSection("ProxyHost").Value, tlsName, proxyPort)[0];
         }
 
         public void Connect()
 		{
-			ConnectSync();
-			ConnectAsync();
+			if (testProxy)
+			{
+				ConnectProxy();
+			}
+			else
+			{
+				ConnectSync();
+				ConnectAsync();
+			}
 		}
 
 		private void ConnectSync()
@@ -92,7 +106,8 @@ namespace Aerospike.Test
 				policy.password = password;
 			}
 
-			client = new AerospikeClient(policy, hosts);
+			nativeClient = new AerospikeClient(policy, hosts);
+			client = nativeClient;
 
 			try
 			{
@@ -104,6 +119,58 @@ namespace Aerospike.Test
 				client = null;
                 throw;
             }
+		}
+
+		private void ConnectProxy()
+		{
+			ClientPolicy policy = new ClientPolicy();
+			policy.clusterName = clusterName;
+			policy.tlsPolicy = tlsPolicy;
+			policy.authMode = authMode;
+
+			if (user != null && user.Length > 0)
+			{
+				policy.user = user;
+				policy.password = password;
+			}
+
+			client = new AerospikeClientProxy(policy, proxyHost);
+			nativeClient = new AerospikeClient(policy, hosts);
+
+			int timeout = 30;
+
+			nativeClient.readPolicyDefault.totalTimeout = timeout * 1000;
+			nativeClient.readPolicyDefault.socketTimeout = 5 * 1000;
+			nativeClient.WritePolicyDefault.totalTimeout = timeout * 1000;
+			nativeClient.WritePolicyDefault.socketTimeout = 5 * 1000;
+			nativeClient.ScanPolicyDefault.totalTimeout = timeout * 1000;
+			nativeClient.ScanPolicyDefault.socketTimeout = 5 * 1000;
+			nativeClient.QueryPolicyDefault.totalTimeout = timeout * 1000;
+			nativeClient.QueryPolicyDefault.socketTimeout = 5 * 1000;
+			nativeClient.BatchPolicyDefault.totalTimeout = timeout * 1000;
+			nativeClient.BatchPolicyDefault.socketTimeout = 5 * 1000;
+			nativeClient.BatchParentPolicyWriteDefault.totalTimeout = timeout * 1000;
+			nativeClient.BatchParentPolicyWriteDefault.socketTimeout = 5 * 1000;
+			nativeClient.InfoPolicyDefault.timeout = timeout * 1000;
+
+			client.ReadPolicyDefault = nativeClient.ReadPolicyDefault;
+			client.WritePolicyDefault = nativeClient.WritePolicyDefault;
+			client.ScanPolicyDefault = nativeClient.ScanPolicyDefault;
+			client.QueryPolicyDefault = nativeClient.QueryPolicyDefault;
+			client.BatchPolicyDefault = nativeClient.BatchPolicyDefault;
+			client.BatchParentPolicyWriteDefault = nativeClient.BatchParentPolicyWriteDefault;
+			client.InfoPolicyDefault = nativeClient.InfoPolicyDefault;
+
+			try
+			{
+				SetServerSpecific();
+			}
+			catch
+			{
+				client.Close();
+				client = null;
+				throw;
+			}
 		}
 
 		private void ConnectAsync()
@@ -125,7 +192,7 @@ namespace Aerospike.Test
 
 		private void SetServerSpecific()
 		{
-			Node node = client.Nodes[0];
+			Node node = nativeClient.Nodes[0];
 			string namespaceFilter = "namespace/" + ns;
 			Dictionary<string, string> map = Info.Request(null, node, "edition", namespaceFilter);
 

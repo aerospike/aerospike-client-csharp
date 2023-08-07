@@ -1,4 +1,4 @@
-/* 
+﻿/* 
  * Copyright 2012-2022 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
@@ -17,80 +17,62 @@
 using Aerospike.Client.KVS;
 using Google.Protobuf;
 using Grpc.Net.Client;
+using System;
+using System.Threading.Tasks;
 using static Aerospike.Client.AerospikeException;
 
 namespace Aerospike.Client
 {
-	public sealed class ServerCommand : MultiCommand
+	public abstract class QueryPartitionCommandProxy : MultiCommand
 	{
-		private readonly Statement statement;
-		private readonly ulong taskId;
+		private QueryPolicy policy;
+		private WritePolicy writePolicy;
+		private Statement statement;
+		private PartitionFilter partitionFilter;
+		private Operation[] operations;
 
-		public ServerCommand(Cluster cluster, Node node, WritePolicy policy, Statement statement, ulong taskId)
-			: base(cluster, policy, node, false)
+		public QueryPartitionCommandProxy
+		(
+			QueryPolicy policy,
+			WritePolicy writePolicy,
+			Statement statement,
+			Operation[] operations,
+			PartitionTracker partitionTracker,
+			PartitionFilter partitionFilter,
+			RecordSet recordset
+		) : base(null, policy, null, true)
 		{
+			this.policy = policy;
+			this.writePolicy = writePolicy;
 			this.statement = statement;
-			this.taskId = taskId;
+			this.operations = operations;
+			this.partitionFilter = partitionFilter;
 		}
 
-		protected internal override bool IsWrite()
-		{
-			return true;
-		}
-		
 		protected internal override void WriteBuffer()
 		{
-			SetQuery(cluster, policy, statement, taskId, true, null);
-		}
-
-		protected internal override bool ParseRow()
-		{
-			SkipKey(fieldCount);
-
-			// Server commands (Query/Execute UDF) should only send back a return code.
-			if (resultCode != 0)
-			{
-				// Background scans (with null query filter) return KEY_NOT_FOUND_ERROR
-				// when the set does not exist on the target node.
-				if (resultCode == ResultCode.KEY_NOT_FOUND_ERROR)
-				{
-					// Non-fatal error.
-					return false;
-				}
-				throw new AerospikeException(resultCode);
-			}
-
-			if (opCount > 0)
-			{
-				throw new AerospikeException.Parse("Unexpectedly received bins on background query!");
-			}
-
-			if (!valid)
-			{
-				throw new AerospikeException.QueryTerminated();
-			}
-			return true;
+			SetQuery(null, policy, statement, statement.taskId, false, null);
 		}
 
 		public void ExecuteGRPC(GrpcChannel channel)
 		{
 			WriteBuffer();
-
-			var execRequest = new BackgroundExecuteRequest
+			var queryRequest = new QueryRequest
 			{
-				Statement = GRPCConversions.ToGrpc(statement, (long)taskId, statement.maxRecords),
-				WritePolicy = GRPCConversions.ToGrpcExec((WritePolicy)policy)
+				Statement = GRPCConversions.ToGrpc(statement, (long)statement.taskId, statement.maxRecords),
+				PartitionFilter = GRPCConversions.ToGrpc(partitionFilter),
+				QueryPolicy = GRPCConversions.ToGrpc(policy)
 			};
 			var request = new AerospikeRequestPayload
 			{
 				Id = 0, // ID is only needed in streaming version, can be static for unary
 				Iteration = 1,
 				Payload = ByteString.CopyFrom(dataBuffer),
-				BackgroundExecuteRequest = execRequest,
+				QueryRequest = queryRequest
 			};
-			
+
 			var KVS = new KVS.Query.QueryClient(channel);
-			var stream = KVS.BackgroundExecute(request);//, cancellationToken: token);
+			var stream = KVS.Query(request);//, cancellationToken: token);
 			var conn = new ConnectionProxyStream(stream);
 
 			try

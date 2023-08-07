@@ -225,6 +225,15 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
+		/// Sets inDouvt value to inDoubt
+		/// </summary>
+		internal AerospikeException SetInDoubt(bool inDoubt)
+		{
+			this.inDoubt = inDoubt;
+			return this;
+		}
+
+		/// <summary>
 		/// Exception thrown when database request expires before completing.
 		/// </summary>
 		public sealed class Timeout : AerospikeException
@@ -549,6 +558,16 @@ namespace Aerospike.Client
 			/// Create backoff exception.
 			/// </summary>
 			public Backoff(int resultCode) : base(resultCode)
+			{
+			}
+		}
+
+		public class EndOfGRPCStream : AerospikeException
+		{
+			/// <summary>
+			/// Create command rejected exception.
+			/// </summary>
+			public EndOfGRPCStream() : base(ResultCode.OK, "GRPC Stream was ended successfully")
 			{
 			}
 		}

@@ -73,6 +73,7 @@ namespace Aerospike.Client
 
 		public override void ExecuteGRPC(GrpcChannel channel)
 		{
+			WriteBuffer();
 			var request = new AerospikeRequestPayload
 			{
 				Id = 0, // ID is only needed in streaming version, can be static for unary
@@ -83,7 +84,7 @@ namespace Aerospike.Client
 
 			var KVS = new KVS.KVS.KVSClient(channel);
 			var response = KVS.Execute(request);
-			var conn = new ConnectionProxy(response.Payload.ToByteArray());
+			var conn = new ConnectionProxy(response);
 			ParseResult(conn);
 		}
 	}

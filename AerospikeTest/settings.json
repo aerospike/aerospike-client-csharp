@@ -1,6 +1,9 @@
 ﻿{
   "Host": "localhost",
   "Port": 3000,
+  "ProxyHost": "localhost",
+  "ProxyPort": 4000,
+  "TestProxy":  true,
   "ClusterName": "",
   "Namespace": "test",
   "Set": "test",

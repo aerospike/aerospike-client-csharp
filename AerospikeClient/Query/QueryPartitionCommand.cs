@@ -14,7 +14,11 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
+using Aerospike.Client.KVS;
+using Google.Protobuf;
+using Grpc.Net.Client;
 using System.Collections.Generic;
+using static Aerospike.Client.AerospikeException;
 
 namespace Aerospike.Client
 {
@@ -101,6 +105,41 @@ namespace Aerospike.Client
 
 			tracker.SetLast(nodePartitions, key, bval);
 			return true;
+		}
+
+		public void ExecuteGRPC(GrpcChannel channel)
+		{
+			WriteBuffer();
+			var queryRequest = new QueryRequest
+			{
+				Statement = GRPCConversions.ToGrpc(statement, (long)statement.taskId, statement.maxRecords),
+				//PartitionFilter = GRPCConversions.ToGrpc(partitionFilter),
+				QueryPolicy = GRPCConversions.ToGrpc((QueryPolicy)policy)
+			};
+			var request = new AerospikeRequestPayload
+			{
+				Id = 0, // ID is only needed in streaming version, can be static for unary
+				Iteration = 1,
+				Payload = ByteString.CopyFrom(dataBuffer),
+				QueryRequest = queryRequest
+			};
+
+			var KVS = new KVS.Query.QueryClient(channel);
+			var stream = KVS.Query(request);//, cancellationToken: token);
+			var conn = new ConnectionProxyStream(stream);
+
+			try
+			{
+				ParseResult(conn);
+			}
+			catch (EndOfGRPCStream eogs)
+			{
+				// continue
+			}
+			catch (Exception e)
+			{
+
+			}
 		}
 	}
 }

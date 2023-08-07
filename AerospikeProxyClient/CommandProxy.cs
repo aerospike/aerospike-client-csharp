@@ -325,8 +325,7 @@ namespace Aerospike.Client.Proxy
 
 		public async Task<bool> BatchOperate(GrpcChannel channel, CancellationToken token, BatchPolicy batchPolicy, BatchWritePolicy writePolicy, List<BatchRecord> records)
 		{
-			
-			var batch = new BatchNode(records);
+			var batch = new BatchNode(records.ToArray());
 			SetBatchOperate(batchPolicy, records, batch);
 
 			var request = new AerospikeRequestPayload

@@ -39,7 +39,7 @@ namespace Aerospike.Test
 
 			try
 			{
-				IndexTask task = client.CreateIndex(policy, args.ns, args.set, indexName, binName, IndexType.NUMERIC);
+				IndexTask task = nativeClient.CreateIndex(policy, args.ns, args.set, indexName, binName, IndexType.NUMERIC);
 				task.Wait();
 			}
 			catch (AerospikeException ae)

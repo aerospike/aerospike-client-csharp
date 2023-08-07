@@ -40,10 +40,10 @@ namespace Aerospike.Client
 
 		protected internal readonly AsyncCluster cluster;
 		protected internal Policy policy;
-		private AsyncConnection conn;
+		internal IAsyncConnection conn;
 		protected internal AsyncNode node;
 		private BufferSegment segmentOrig;
-		private BufferSegment segment;
+		internal BufferSegment segment;
 		private ValueStopwatch socketWatch;
 		private ValueStopwatch totalWatch;
 		protected internal int dataLength;

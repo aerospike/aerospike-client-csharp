@@ -30,9 +30,8 @@ using System.Threading.Channels;
 using Grpc.Net.Client;
 using Google.Protobuf.WellKnownTypes;
 using System.Xml.Linq;
-using static Aerospike.Client.AsyncQueryValidate;
 
-namespace Aerospike.Client.Proxy
+namespace Aerospike.Client
 {
 	/// <summary>
 	/// Instantiate an AerospikeClient object to access an Aerospike
@@ -53,7 +52,7 @@ namespace Aerospike.Client.Proxy
 	/// written or read by specifying the relevant subset of bins.
 	/// </para>
 	/// </summary>
-	public class AerospikeClientProxy : IDisposable//, IAerospikeClient
+	public class AerospikeClientProxy : IDisposable, IAerospikeClient
 	{
 		//-------------------------------------------------------
 		// Static variables.
@@ -71,57 +70,57 @@ namespace Aerospike.Client.Proxy
 		/// <summary>
 		/// Default read policy that is used when read command policy is null.
 		/// </summary>
-		public readonly Policy readPolicyDefault;
+		public Policy readPolicyDefault { get; set; }
 
 		/// <summary>
 		/// Default write policy that is used when write command policy is null.
 		/// </summary>
-		public readonly WritePolicy writePolicyDefault;
+		public WritePolicy writePolicyDefault { get; set; }
 
 		/// <summary>
 		/// Default scan policy that is used when scan command policy is null.
 		/// </summary>
-		public readonly ScanPolicy scanPolicyDefault;
+		public ScanPolicy scanPolicyDefault { get; set; }
 
 		/// <summary>
 		/// Default query policy that is used when query command policy is null.
 		/// </summary>
-		public readonly QueryPolicy queryPolicyDefault;
+		public QueryPolicy queryPolicyDefault { get; set; }
 
 		/// <summary>
 		/// Default parent policy used in batch read commands. Parent policy fields
 		/// include socketTimeout, totalTimeout, maxRetries, etc...
 		/// </summary>
-		public readonly BatchPolicy batchPolicyDefault;
+		public BatchPolicy batchPolicyDefault { get; set; }
 
 		/// <summary>
 		/// Default parent policy used in batch write commands. Parent policy fields
 		/// include socketTimeout, totalTimeout, maxRetries, etc...
 		/// </summary>
-		public readonly BatchPolicy batchParentPolicyWriteDefault;
+		public BatchPolicy batchParentPolicyWriteDefault { get; set; }
 
 		/// <summary>
 		/// Default write policy used in batch operate commands.
 		/// Write policy fields include generation, expiration, durableDelete, etc...
 		/// </summary>
-		public readonly BatchWritePolicy batchWritePolicyDefault;
+		public BatchWritePolicy batchWritePolicyDefault { get; set; }
 
 		/// <summary>
 		/// Default delete policy used in batch delete commands.
 		/// </summary>
-		public readonly BatchDeletePolicy batchDeletePolicyDefault;
+		public BatchDeletePolicy batchDeletePolicyDefault { get; set; }
 
 		/// <summary>
 		/// Default user defined function policy used in batch UDF excecute commands.
 		/// </summary>
-		public readonly BatchUDFPolicy batchUDFPolicyDefault;
+		public BatchUDFPolicy batchUDFPolicyDefault { get; set; }
 
 		/// <summary>
 		/// Default info policy that is used when info command policy is null.
 		/// </summary>
-		public readonly InfoPolicy infoPolicyDefault;
+		public InfoPolicy infoPolicyDefault { get; set; }
 
-		protected readonly WritePolicy operatePolicyReadDefault;
+		protected WritePolicy operatePolicyReadDefault { get; set; }
 
 		private GrpcChannel channel { get; set; }
 
@@ -225,6 +224,7 @@ namespace Aerospike.Client.Proxy
 		public Policy ReadPolicyDefault
 		{
 			get { return readPolicyDefault; }
+			set { readPolicyDefault = value; }
 		}
 
 		/// <summary>
@@ -233,6 +233,7 @@ namespace Aerospike.Client.Proxy
 		public WritePolicy WritePolicyDefault
 		{
 			get { return writePolicyDefault; }
+			set { writePolicyDefault = value; }
 		}
 
 		/// <summary>
@@ -241,6 +242,7 @@ namespace Aerospike.Client.Proxy
 		public ScanPolicy ScanPolicyDefault
 		{
 			get { return scanPolicyDefault; }
+			set { scanPolicyDefault = value; }
 		}
 
 		/// <summary>
@@ -249,6 +251,7 @@ namespace Aerospike.Client.Proxy
 		public QueryPolicy QueryPolicyDefault
 		{
 			get { return queryPolicyDefault; }
+			set { queryPolicyDefault = value; }
 		}
 
 		/// <summary>
@@ -258,6 +261,7 @@ namespace Aerospike.Client.Proxy
 		public BatchPolicy BatchPolicyDefault
 		{
 			get { return batchPolicyDefault; }
+			set { batchPolicyDefault = value; }
 		}
 
 		/// <summary>
@@ -267,6 +271,7 @@ namespace Aerospike.Client.Proxy
 		public BatchPolicy BatchParentPolicyWriteDefault
 		{
 			get { return batchParentPolicyWriteDefault; }
+			set { batchParentPolicyWriteDefault = value; }
 		}
 
 		/// <summary>
@@ -276,6 +281,7 @@ namespace Aerospike.Client.Proxy
 		public BatchWritePolicy BatchWritePolicyDefault
 		{
 			get { return batchWritePolicyDefault; }
+			set { batchWritePolicyDefault = value; }
 		}
 
 		/// <summary>
@@ -284,6 +290,7 @@ namespace Aerospike.Client.Proxy
 		public BatchDeletePolicy BatchDeletePolicyDefault
 		{
 			get { return batchDeletePolicyDefault; }
+			set { batchDeletePolicyDefault = value; }
 		}
 
 		/// <summary>
@@ -292,6 +299,7 @@ namespace Aerospike.Client.Proxy
 		public BatchUDFPolicy BatchUDFPolicyDefault
 		{
 			get { return batchUDFPolicyDefault; }
+			set { batchUDFPolicyDefault = value; }
 		}
 
 		/// <summary>
@@ -300,6 +308,7 @@ namespace Aerospike.Client.Proxy
 		public InfoPolicy InfoPolicyDefault
 		{
 			get { return infoPolicyDefault; }
+			set { infoPolicyDefault = value; }
 		}
 
 		//-------------------------------------------------------
@@ -396,7 +405,7 @@ namespace Aerospike.Client.Proxy
 		public void Put(WritePolicy policy, Key key, params Bin[] bins)
 		{
 			policy ??= writePolicyDefault;
-			var command = new WriteCommand(null, policy, key, bins, Operation.Type.WRITE);
+			WriteCommand command = new(null, policy, key, bins, Operation.Type.WRITE);
 			command.ExecuteGRPC(channel);
 		}
 
@@ -415,7 +424,7 @@ namespace Aerospike.Client.Proxy
 		public Task Put(WritePolicy policy, CancellationToken token, Key key, params Bin[] bins)
 		{
 			policy ??= writePolicyDefault;
-			var async = new AsyncWrite(null, policy, null, key, bins, Operation.Type.WRITE);
+			AsyncWrite async = new(null, policy, null, key, bins, Operation.Type.WRITE);
 			return async.ExecuteGRPC(channel, token);
 		}
 
@@ -436,7 +445,7 @@ namespace Aerospike.Client.Proxy
 		public void Append(WritePolicy policy, Key key, params Bin[] bins)
 		{
 			policy ??= writePolicyDefault;
-			var command = new WriteCommand(null, policy, key, bins, Operation.Type.APPEND);
+			WriteCommand command = new(null, policy, key, bins, Operation.Type.APPEND);
 			command.ExecuteGRPC(channel);
 		}
 
@@ -456,7 +465,7 @@ namespace Aerospike.Client.Proxy
 		public Task Append(WritePolicy policy, CancellationToken token, Key key, params Bin[] bins)
 		{
 			policy ??= writePolicyDefault;
-			var async = new AsyncWrite(null, policy, null, key, bins, Operation.Type.APPEND);
+			AsyncWrite async = new(null, policy, null, key, bins, Operation.Type.APPEND);
 			return async.ExecuteGRPC(channel, token);
 		}
 
@@ -473,7 +482,7 @@ namespace Aerospike.Client.Proxy
 		public void Prepend(WritePolicy policy, Key key, params Bin[] bins)
 		{
 			policy ??= writePolicyDefault;
-			var command = new WriteCommand(null, policy, key, bins, Operation.Type.PREPEND);
+			WriteCommand command = new(null, policy, key, bins, Operation.Type.PREPEND);
 			command.ExecuteGRPC(channel);
 		}
 
@@ -493,7 +502,7 @@ namespace Aerospike.Client.Proxy
 		public Task Prepend(WritePolicy policy, CancellationToken token, Key key, params Bin[] bins)
 		{
 			policy ??= writePolicyDefault;
-			var async = new AsyncWrite(null, policy, null, key, bins, Operation.Type.PREPEND);
+			AsyncWrite async = new(null, policy, null, key, bins, Operation.Type.PREPEND);
 			return async.ExecuteGRPC(channel, token);
 		}
 
@@ -513,7 +522,7 @@ namespace Aerospike.Client.Proxy
 		public void Add(WritePolicy policy, Key key, params Bin[] bins)
 		{
 			policy ??= writePolicyDefault;
-			var command = new WriteCommand(null, policy, key, bins, Operation.Type.ADD);
+			WriteCommand command = new(null, policy, key, bins, Operation.Type.ADD);
 			command.ExecuteGRPC(channel);
 		}
 
@@ -532,7 +541,7 @@ namespace Aerospike.Client.Proxy
 		public Task Add(WritePolicy policy, CancellationToken token, Key key, params Bin[] bins)
 		{
 			policy ??= writePolicyDefault;
-			var async = new AsyncWrite(null, policy, null, key, bins, Operation.Type.ADD);
+			AsyncWrite async = new(null, policy, null, key, bins, Operation.Type.ADD);
 			return async.ExecuteGRPC(channel, token);
 		}
 
@@ -551,7 +560,7 @@ namespace Aerospike.Client.Proxy
 		public bool Delete(WritePolicy policy, Key key)
 		{
 			policy ??= writePolicyDefault;
-			var command = new DeleteCommand(null, policy, key);
+			DeleteCommand command = new(null, policy, key);
 			command.ExecuteGRPC(channel);
 			return command.Existed();
 		}
@@ -566,7 +575,7 @@ namespace Aerospike.Client.Proxy
 		public Task<bool> Delete(WritePolicy policy, CancellationToken token, Key key)
 		{
 			policy ??= writePolicyDefault;
-			var async = new AsyncDelete(null, policy, key, null);
+			AsyncDelete async = new(null, policy, key, null);
 			return async.ExecuteGRPC(channel, token);
 		}
 
@@ -581,24 +590,17 @@ namespace Aerospike.Client.Proxy
 		/// <param name="deletePolicy">delete configuration parameters, pass in null for defaults</param>
 		/// <param name="keys">array of unique record identifiers</param>
 		/// <exception cref="AerospikeException.BatchRecordArray">which contains results for keys that did complete</exception>
-		/*public BatchResults Delete(BatchPolicy batchPolicy, BatchDeletePolicy deletePolicy, Key[] keys)
+		public BatchResults Delete(BatchPolicy batchPolicy, BatchDeletePolicy deletePolicy, Key[] keys)
 		{
 			if (keys.Length == 0)
 			{
-				return new BatchResults(new BatchRecord[0], true);
+				return new BatchResults(Array.Empty<BatchRecord>(), true);
 			}
 
-			if (batchPolicy == null)
-			{
-				batchPolicy = batchParentPolicyWriteDefault;
-			}
+			batchPolicy ??= batchParentPolicyWriteDefault;
+			deletePolicy ??= batchDeletePolicyDefault;
 
-			if (deletePolicy == null)
-			{
-				deletePolicy = batchDeletePolicyDefault;
-			}
-
-			BatchAttr attr = new BatchAttr();
+			BatchAttr attr = new();
 			attr.SetDelete(deletePolicy);
 
 			BatchRecord[] records = new BatchRecord[keys.Length];
@@ -610,17 +612,10 @@ namespace Aerospike.Client.Proxy
 
 			try
 			{
-				BatchStatus status = new BatchStatus(true);
-				List<BatchNode> batchNodes = BatchNode.GenerateList(cluster, batchPolicy, keys, records, attr.hasWrite, status);
-				BatchCommand[] commands = new BatchCommand[batchNodes.Count];
-				int count = 0;
-
-				foreach (BatchNode batchNode in batchNodes)
-				{
-					commands[count++] = new BatchOperateArrayCommand(cluster, batchNode, batchPolicy, keys, null, records, attr, status);
-				}
-
-				BatchExecutor.Execute(batchPolicy, commands, status);
+				BatchStatus status = new(true);
+				BatchNode batchNode = new(records);
+				BatchOperateArrayCommand command = new(null, batchNode, batchPolicy, keys, null, records, attr, status);
+				command.ExecuteGRPC(channel);
 				return new BatchResults(records, status.GetStatus());
 			}
 			catch (Exception e)
@@ -628,7 +623,7 @@ namespace Aerospike.Client.Proxy
 				// Batch terminated on fatal error.
 				throw new AerospikeException.BatchRecordArray(records, e);
 			}
-		}*/
+		}
 
 		// Not supported in proxy client
 		public void Truncate(InfoPolicy policy, string ns, string set, DateTime? beforeLastUpdate)
@@ -650,7 +645,7 @@ namespace Aerospike.Client.Proxy
 		public void Touch(WritePolicy policy, Key key)
 		{
 			policy ??= writePolicyDefault;
-			var command = new TouchCommand(null, policy, key);
+			TouchCommand command = new(null, policy, key);
 			command.ExecuteGRPC(channel);
 		}
 
@@ -664,7 +659,7 @@ namespace Aerospike.Client.Proxy
 		public Task Touch(WritePolicy policy, CancellationToken token, Key key)
 		{
 			policy ??= writePolicyDefault;
-			var async = new AsyncTouch(null, policy, null, key);
+			AsyncTouch async = new(null, policy, null, key);
 			return async.ExecuteGRPC(channel, token);
 		}
 
@@ -683,7 +678,7 @@ namespace Aerospike.Client.Proxy
 		public bool Exists(Policy policy, Key key)
 		{
 			policy ??= readPolicyDefault;
-			var command = new ExistsCommand(null, policy, key);
+			ExistsCommand command = new(null, policy, key);
 			command.ExecuteGRPC(channel);
 			return command.Exists();
 		}
@@ -698,7 +693,7 @@ namespace Aerospike.Client.Proxy
 		public Task<bool> Exists(Policy policy, CancellationToken token, Key key)
 		{
 			policy ??= readPolicyDefault;
-			var async = new AsyncExists(null, policy, key, null);
+			AsyncExists async = new(null, policy, key, null);
 			return async.ExecuteGRPC(channel, token);
 		}
 
@@ -709,51 +704,36 @@ namespace Aerospike.Client.Proxy
 		/// <param name="policy">batch configuration parameters, pass in null for defaults</param>
 		/// <param name="keys">array of unique record identifiers</param>
 		/// <exception cref="AerospikeException.BatchExists">which contains results for keys that did complete</exception>
-		/*public bool[] Exists(BatchPolicy policy, Key[] keys)
+		public bool[] Exists(BatchPolicy policy, Key[] keys)
 		{
 			if (keys.Length == 0)
 			{
-				return new bool[0];
+				return Array.Empty<bool>();
 			}
 
-			if (policy == null)
-			{
-				policy = batchPolicyDefault;
-			}
-
+			policy ??= batchPolicyDefault;
 
 			bool[] existsArray = new bool[keys.Length];
 
+			BatchRecord[] records = new BatchRecord[keys.Length];
+			for (int i = 0; i < keys.Length; i++)
+			{
+				records[i] = new BatchRead(keys[i], false);
+			}
+
 			try
 			{
-				BatchStatus status = new BatchStatus(false);
-
-				if (policy.allowProleReads)
-				{
-					// Send all requests to a single random node.
-					Node node = cluster.GetRandomNode();
-					BatchNode batchNode = new BatchNode(node, keys);
-					BatchCommand command = new BatchExistsArrayCommand(cluster, batchNode, policy, keys, existsArray, status);
-					BatchExecutor.Execute(command, status);
-					return existsArray;
-				}
-
-				List<BatchNode> batchNodes = BatchNode.GenerateList(cluster, policy, keys, null, false, status);
-				BatchCommand[] commands = new BatchCommand[batchNodes.Count];
-				int count = 0;
-
-				foreach (BatchNode batchNode in batchNodes)
-				{
-					commands[count++] = new BatchExistsArrayCommand(cluster, batchNode, policy, keys, existsArray, status);
-				}
-				BatchExecutor.Execute(policy, commands, status);
+				BatchStatus status = new(false);
+				BatchNode batchNode = new(records);
+				BatchExistsArrayCommand command = new(null, batchNode, policy, keys, existsArray, status);
+				command.ExecuteGRPC(channel);
 				return existsArray;
 			}
 			catch (Exception e)
 			{
 				throw new AerospikeException.BatchExists(existsArray, e);
 			}
-		}*/
+		}
 
 		//-------------------------------------------------------
 		// Read Record Operations
@@ -770,7 +750,7 @@ namespace Aerospike.Client.Proxy
 		public Record Get(Policy policy, Key key)
 		{
 			policy ??= readPolicyDefault;
-			var command = new ReadCommand(null, policy, key);
+			ReadCommand command = new(null, policy, key);
 			command.ExecuteGRPC(channel);
 			return command.Record;
 		}
@@ -785,8 +765,25 @@ namespace Aerospike.Client.Proxy
 		public Task<Record> Get(Policy policy, CancellationToken token, Key key)
 		{
 			policy ??= readPolicyDefault;
-			var async = new AsyncRead(null, policy, null, key, (string[])null);
+			AsyncRead async = new(null, policy, null, key, (string[])null);
 			return async.ExecuteGRPC(channel, token);
+		}
+
+		/// <summary>
+		/// Read record header and bins for specified key.
+		/// If found, return record instance.  If not found, return null.
+		/// The policy can be used to specify timeouts.
+		/// </summary>
+		/// <param name="policy">generic configuration parameters, pass in null for defaults</param>
+		/// <param name="key">unique record identifier</param>
+		/// <param name="binNames">bins to retrieve</param>
+		/// <exception cref="AerospikeException">if read fails</exception>
+		public Record Get(Policy policy, Key key, params string[] binNames)
+		{
+			policy ??= readPolicyDefault;
+			ReadCommand command = new(null, policy, key, binNames);
+			command.ExecuteGRPC(channel);
+			return command.Record;
 		}
 
 		/// <summary>
@@ -800,7 +797,7 @@ namespace Aerospike.Client.Proxy
 		public Record GetHeader(Policy policy, Key key)
 		{
 			policy ??= readPolicyDefault;
-			var command = new ReadHeaderCommand(null, policy, key);
+			ReadHeaderCommand command = new(null, policy, key);
 			command.ExecuteGRPC(channel);
 			return command.Record;
 		}
@@ -815,7 +812,7 @@ namespace Aerospike.Client.Proxy
 		public Task<Record> GetHeader(Policy policy, CancellationToken token, Key key)
 		{
 			policy ??= readPolicyDefault;
-			var async = new AsyncReadHeader(null, policy, null, key);
+			AsyncReadHeader async = new(null, policy, null, key);
 			return async.ExecuteGRPC(channel, token);
 		}
 
@@ -834,7 +831,7 @@ namespace Aerospike.Client.Proxy
 		/// The returned records are located in the same list.</param>
 		/// <returns>true if all batch key requests succeeded</returns>
 		/// <exception cref="AerospikeException">if read fails</exception>
-		/*public bool Get(BatchPolicy policy, List<BatchRead> records)
+		public bool Get(BatchPolicy policy, List<BatchRead> records)
 		{
 			if (records.Count == 0)
 			{
@@ -846,18 +843,13 @@ namespace Aerospike.Client.Proxy
 				policy = batchPolicyDefault;
 			}
 
-			BatchStatus status = new BatchStatus(true);
-			List<BatchNode> batchNodes = BatchNode.GenerateList(cluster, policy, records, status);
-			BatchCommand[] commands = new BatchCommand[batchNodes.Count];
-			int count = 0;
+			BatchStatus status = new(true);
+			BatchNode batchNode = new(records.ToArray());
 
-			foreach (BatchNode batchNode in batchNodes)
-			{
-				commands[count++] = new BatchReadListCommand(cluster, batchNode, policy, records, status);
-			}
-			BatchExecutor.Execute(policy, commands, status);
+			BatchReadListCommand command = new(null, batchNode, policy, records, status);
+			command.ExecuteGRPC(channel);
 			return status.GetStatus();
-		}*/
+		}
 
 		/// <summary>
 		/// Read multiple records for specified keys in one batch call.
@@ -867,50 +859,39 @@ namespace Aerospike.Client.Proxy
 		/// <param name="policy">batch configuration parameters, pass in null for defaults</param>
 		/// <param name="keys">array of unique record identifiers</param>
 		/// <exception cref="AerospikeException.BatchRecords">which contains results for keys that did complete</exception>
-		/*public Record[] Get(BatchPolicy policy, Key[] keys)
+		public Record[] Get(BatchPolicy policy, Key[] keys)
 		{
 			if (keys.Length == 0)
 			{
-				return new Record[0];
+				return Array.Empty<Record>();
 			}
 
-			if (policy == null)
-			{
-				policy = batchPolicyDefault;
-			}
+			policy ??= batchPolicyDefault;
 
 			Record[] records = new Record[keys.Length];
+			BatchRecord[] batchRecords = new BatchRecord[keys.Length];
+			for (int i = 0; i < keys.Length; i++)
+			{
+				batchRecords[i] = new BatchRead(keys[i], false);
+			}
 
 			try
 			{
-				BatchStatus status = new BatchStatus(false);
-
-				if (policy.allowProleReads)
+				BatchStatus status = new(false);
+				BatchNode batchNode = new(batchRecords);
+				BatchGetArrayCommand command = new(null, batchNode, policy, keys, null, null, records, Command.INFO1_READ | Command.INFO1_GET_ALL, false, status);
+				command.ExecuteGRPC(channel);
+				for (int i = 0; i < batchRecords.Length; i++)
 				{
-					// Send all requests to a single random node.
-					Node node = cluster.GetRandomNode();
-					BatchNode batchNode = new BatchNode(node, keys);
-					BatchCommand command = new BatchGetArrayCommand(cluster, batchNode, policy, keys, null, null, records, Command.INFO1_READ | Command.INFO1_GET_ALL, false, status);
-					BatchExecutor.Execute(command, status);
-					return records;
+					records[i] = batchRecords[i].record;
 				}
-
-				List<BatchNode> batchNodes = BatchNode.GenerateList(cluster, policy, keys, null, false, status);
-				BatchCommand[] commands = new BatchCommand[batchNodes.Count];
-				int count = 0;
-
-				foreach (BatchNode batchNode in batchNodes)
-				{
-					commands[count++] = new BatchGetArrayCommand(cluster, batchNode, policy, keys, null, null, records, Command.INFO1_READ | Command.INFO1_GET_ALL, false, status);
-				}
-				BatchExecutor.Execute(policy, commands, status);
 				return records;
 			}
 			catch (Exception e)
 			{
 				throw new AerospikeException.BatchRecords(records, e);
 			}
-		}*/
+		}
 
 		/// <summary>
 		/// Read multiple record headers and bins for specified keys in one batch call.
@@ -921,50 +902,39 @@ namespace Aerospike.Client.Proxy
 		/// <param name="keys">array of unique record identifiers</param>
 		/// <param name="binNames">array of bins to retrieve</param>
 		/// <exception cref="AerospikeException.BatchRecords">which contains results for keys that did complete</exception>
-		/*public Record[] Get(BatchPolicy policy, Key[] keys, params string[] binNames)
+		public Record[] Get(BatchPolicy policy, Key[] keys, params string[] binNames)
 		{
 			if (keys.Length == 0)
 			{
-				return new Record[0];
+				return Array.Empty<Record>();
 			}
 
-			if (policy == null)
-			{
-				policy = batchPolicyDefault;
-			}
+			policy ??= batchPolicyDefault;
 
 			Record[] records = new Record[keys.Length];
+			BatchRecord[] batchRecords = new BatchRecord[keys.Length];
+			for (int i = 0; i < keys.Length; i++)
+			{
+				batchRecords[i] = new BatchRead(keys[i], binNames);
+			}
 
 			try
 			{
-				BatchStatus status = new BatchStatus(false);
-
-				if (policy.allowProleReads)
+				BatchStatus status = new(false);
+				BatchNode batchNode = new(batchRecords);
+				BatchGetArrayCommand command = new(null, batchNode, policy, keys, binNames, null, records, Command.INFO1_READ, false, status);
+				command.ExecuteGRPC(channel);
+				for (int i = 0; i < batchRecords.Length; i++)
 				{
-					// Send all requests to a single random node.
-					Node node = cluster.GetRandomNode();
-					BatchNode batchNode = new BatchNode(node, keys);
-					BatchCommand command = new BatchGetArrayCommand(cluster, batchNode, policy, keys, binNames, null, records, Command.INFO1_READ, false, status);
-					BatchExecutor.Execute(command, status);
-					return records;
+					records[i] = batchRecords[i].record;
 				}
-
-				List<BatchNode> batchNodes = BatchNode.GenerateList(cluster, policy, keys, null, false, status);
-				BatchCommand[] commands = new BatchCommand[batchNodes.Count];
-				int count = 0;
-
-				foreach (BatchNode batchNode in batchNodes)
-				{
-					commands[count++] = new BatchGetArrayCommand(cluster, batchNode, policy, keys, binNames, null, records, Command.INFO1_READ, false, status);
-				}
-				BatchExecutor.Execute(policy, commands, status);
 				return records;
 			}
 			catch (Exception e)
 			{
 				throw new AerospikeException.BatchRecords(records, e);
 			}
-		}*/
+		}
 
 		/// <summary>
 		/// Read multiple records for specified keys using read operations in one batch call.
@@ -975,50 +945,39 @@ namespace Aerospike.Client.Proxy
 		/// <param name="keys">array of unique record identifiers</param>
 		/// <param name="ops">array of read operations on record</param>
 		/// <exception cref="AerospikeException.BatchRecords">which contains results for keys that did complete</exception>
-		/*public Record[] Get(BatchPolicy policy, Key[] keys, params Operation[] ops)
+		public Record[] Get(BatchPolicy policy, Key[] keys, params Operation[] ops)
 		{
 			if (keys.Length == 0)
 			{
-				return new Record[0];
+				return Array.Empty<Record>();
 			}
 
-			if (policy == null)
-			{
-				policy = batchPolicyDefault;
-			}
+			policy ??= batchPolicyDefault;
 
 			Record[] records = new Record[keys.Length];
+			BatchRecord[] batchRecords = new BatchRecord[keys.Length];
+			for (int i = 0; i < keys.Length; i++)
+			{
+				batchRecords[i] = new BatchRead(keys[i], ops);
+			}
 
 			try
 			{
-				BatchStatus status = new BatchStatus(false);
-
-				if (policy.allowProleReads)
+				BatchStatus status = new(false);
+				BatchNode batchNode = new(batchRecords);
+				BatchGetArrayCommand command = new(null, batchNode, policy, keys, null, ops, records, Command.INFO1_READ, true, status);
+				command.ExecuteGRPC(channel);
+				for (int i = 0; i < batchRecords.Length; i++)
 				{
-					// Send all requests to a single random node.
-					Node node = cluster.GetRandomNode();
-					BatchNode batchNode = new BatchNode(node, keys);
-					BatchCommand command = new BatchGetArrayCommand(cluster, batchNode, policy, keys, null, ops, records, Command.INFO1_READ, true, status);
-					BatchExecutor.Execute(command, status);
-					return records;
+					records[i] = batchRecords[i].record;
 				}
-
-				List<BatchNode> batchNodes = BatchNode.GenerateList(cluster, policy, keys, null, false, status);
-				BatchCommand[] commands = new BatchCommand[batchNodes.Count];
-				int count = 0;
-
-				foreach (BatchNode batchNode in batchNodes)
-				{
-					commands[count++] = new BatchGetArrayCommand(cluster, batchNode, policy, keys, null, ops, records, Command.INFO1_READ, true, status);
-				}
-				BatchExecutor.Execute(policy, commands, status);
 				return records;
 			}
 			catch (Exception e)
 			{
 				throw new AerospikeException.BatchRecords(records, e);
 			}
-		}*/
+		}
 
 		/// <summary>
 		/// Read multiple record header data for specified keys in one batch call.
@@ -1028,50 +987,51 @@ namespace Aerospike.Client.Proxy
 		/// <param name="policy">batch configuration parameters, pass in null for defaults</param>
 		/// <param name="keys">array of unique record identifiers</param>
 		/// <exception cref="AerospikeException.BatchRecords">which contains results for keys that did complete</exception>
-		/*public Record[] GetHeader(BatchPolicy policy, Key[] keys)
+		public Record[] GetHeader(BatchPolicy policy, Key[] keys)
 		{
 			if (keys.Length == 0)
 			{
-				return new Record[0];
+				return Array.Empty<Record>();
 			}
 
-			if (policy == null)
-			{
-				policy = batchPolicyDefault;
-			}
+			policy ??= batchPolicyDefault;
 
 			Record[] records = new Record[keys.Length];
+			BatchRecord[] batchRecords = new BatchRecord[keys.Length];
+			for (int i = 0; i < keys.Length; i++)
+			{
+				batchRecords[i] = new BatchRead(keys[i], false);
+			}
 
 			try
 			{
-				BatchStatus status = new BatchStatus(false);
-
-				if (policy.allowProleReads)
+				BatchStatus status = new(false);
+				BatchNode batchNode = new(batchRecords);
+				BatchGetArrayCommand command = new(null, batchNode, policy, keys, null, null, records, Command.INFO1_READ | Command.INFO1_NOBINDATA, false, status);
+				command.ExecuteGRPC(channel);
+				for (int i = 0; i < batchRecords.Length; i++)
 				{
-					// Send all requests to a single random node.
-					Node node = cluster.GetRandomNode();
-					BatchNode batchNode = new BatchNode(node, keys);
-					BatchCommand command = new BatchGetArrayCommand(cluster, batchNode, policy, keys, null, null, records, Command.INFO1_READ | Command.INFO1_NOBINDATA, false, status);
-					BatchExecutor.Execute(command, status);
-					return records;
+					records[i] = batchRecords[i].record;
 				}
-
-				List<BatchNode> batchNodes = BatchNode.GenerateList(cluster, policy, keys, null, false, status);
-				BatchCommand[] commands = new BatchCommand[batchNodes.Count];
-				int count = 0;
-
-				foreach (BatchNode batchNode in batchNodes)
-				{
-					commands[count++] = new BatchGetArrayCommand(cluster, batchNode, policy, keys, null, null, records, Command.INFO1_READ | Command.INFO1_NOBINDATA, false, status);
-				}
-				BatchExecutor.Execute(policy, commands, status);
 				return records;
 			}
 			catch (Exception e)
 			{
 				throw new AerospikeException.BatchRecords(records, e);
 			}
-		}*/
+		}
+
+		// Not supported in proxy client
+		public Record Join(BatchPolicy policy, Key key, string[] binNames, params Join[] joins)
+		{
+			throw new AerospikeException(NotSupported + "Join");
+		}
+
+		// Not supported in proxy client
+		public Record Join(BatchPolicy policy, Key key, params Join[] joins)
+		{
+			throw new AerospikeException(NotSupported + "Join");
+		}
 
 		//-------------------------------------------------------
 		// Generic Database Operations
@@ -1093,8 +1053,8 @@ namespace Aerospike.Client.Proxy
 		/// <exception cref="AerospikeException">if command fails</exception>
 		public Record Operate(WritePolicy policy, Key key, params Operation[] operations)
 		{
-			OperateArgs args = new OperateArgs(policy, writePolicyDefault, operatePolicyReadDefault, key, operations);
-			var command = new OperateCommand(null, key, args);
+			OperateArgs args = new(policy, writePolicyDefault, operatePolicyReadDefault, key, operations);
+			OperateCommand command = new(null, key, args);
 			command.ExecuteGRPC(channel);
 			return command.Record;
 		}
@@ -1119,7 +1079,7 @@ namespace Aerospike.Client.Proxy
 		public Task<Record> Operate(WritePolicy policy, CancellationToken token, Key key, params Operation[] ops)
 		{
 			OperateArgs args = new OperateArgs(policy, writePolicyDefault, operatePolicyReadDefault, key, ops);
-			var async = new AsyncOperate(null, null, key, args);
+			AsyncOperate async = new(null, null, key, args);
 			return async.ExecuteGRPC(channel, token);
 		}
 
@@ -1128,44 +1088,30 @@ namespace Aerospike.Client.Proxy
 		//-------------------------------------------------------
 
 		/// <summary>
-		/// Asynchronously perform read/write operations on multiple keys.
-		/// Schedule command with a channel selector and return. Another thread will process the 
-		/// command and send the results to the listener.
+		/// Read/Write multiple records for specified batch keys in one batch call.
+		/// This method allows different namespaces/bins for each key in the batch.
+		/// The returned records are located in the same list.
 		/// <para>
-		/// Each record result is returned in separate OnRecord() calls.
-		/// If a key is not found, the corresponding result <see cref="BatchRecord.resultCode"/> will be
-		/// <see cref="ResultCode.KEY_NOT_FOUND_ERROR"/>.
+		/// <see cref="BatchRecord"/> can be <see cref="BatchRead"/>, <see cref="BatchWrite"/>, <see cref="BatchDelete"/> or
+		/// <see cref="BatchUDF"/>.
 		/// </para>
-		/// <para>Requires server version 6.0+</para>
+		/// <para>
+		/// Requires server version 6.0+
+		/// </para>
 		/// </summary>
-		/// <param name="batchPolicy">batch configuration parameters, pass in null for defaults</param>
-		/// <param name="writePolicy">write configuration parameters, pass in null for defaults</param>
+		/// <param name="policy">batch configuration parameters, pass in null for defaults</param>
 		/// <param name="records">list of unique record identifiers and read/write operations</param>
-		/// read/write operations to perform. <see cref="Operation.Get()"/> is not allowed because it returns a
-		/// variable number of bins and makes it difficult (sometimes impossible) to lineup operations with 
-		/// results. Instead, use <see cref="Operation.Get(string)"/> for each bin name.
-		/// </param>
-		/// <exception cref="AerospikeException">if queue is full</exception>
-		public Task<bool> Operate(BatchPolicy batchPolicy, BatchWritePolicy writePolicy, CancellationToken token, List<BatchRecord> records)
+		/// <returns>true if all batch sub-commands succeeded</returns>
+		/// <exception cref="AerospikeException">if command fails</exception>
+		public bool Operate(BatchPolicy policy, List<BatchRecord> records)
 		{
-			Debugger.Launch();
-			if (records.Count == 0)
-			{
-				return (Task<bool>)Task.CompletedTask;
-			}
+			policy ??= batchParentPolicyWriteDefault;
 
-			if (batchPolicy == null)
-			{
-				batchPolicy = batchParentPolicyWriteDefault;
-			}
-
-			if (writePolicy == null)
-			{
-				writePolicy = batchWritePolicyDefault;
-			}
-
-			var command = new CommandProxy(batchPolicy);
-			return command.BatchOperate(channel, token, batchPolicy, writePolicy, records);
+			BatchNode batch = new(records.ToArray());
+			BatchStatus status = new(true);
+			BatchOperateListCommand command = new(null, batch, policy, records, status);
+			command.ExecuteGRPC(channel);
+			return status.GetStatus();
 		}
 
 		/// <summary>
@@ -1184,22 +1130,15 @@ namespace Aerospike.Client.Proxy
 		/// results. Instead, use <see cref="Operation.Get(string)"/> for each bin name.
 		/// </param>
 		/// <exception cref="AerospikeException.BatchRecordArray">which contains results for keys that did complete</exception>
-		/*public BatchResults Operate(BatchPolicy batchPolicy, BatchWritePolicy writePolicy, Key[] keys, params Operation[] ops)
+		public BatchResults Operate(BatchPolicy batchPolicy, BatchWritePolicy writePolicy, Key[] keys, params Operation[] ops)
 		{
 			if (keys.Length == 0)
 			{
-				return new BatchResults(new BatchRecord[0], true);
+				return new BatchResults(Array.Empty<BatchRecord>(), true);
 			}
 
-			if (batchPolicy == null)
-			{
-				batchPolicy = batchParentPolicyWriteDefault;
-			}
-
-			if (writePolicy == null)
-			{
-				writePolicy = batchWritePolicyDefault;
-			}
+			batchPolicy ??= batchParentPolicyWriteDefault;
+			writePolicy ??= batchWritePolicyDefault;
 
 			BatchAttr attr = new BatchAttr(batchPolicy, writePolicy, ops);
 			BatchRecord[] records = new BatchRecord[keys.Length];
@@ -1211,24 +1150,17 @@ namespace Aerospike.Client.Proxy
 
 			try
 			{
-				BatchStatus status = new BatchStatus(true);
-				List<BatchNode> batchNodes = BatchNode.GenerateList(cluster, batchPolicy, keys, records, attr.hasWrite, status);
-				BatchCommand[] commands = new BatchCommand[batchNodes.Count];
-				int count = 0;
-
-				foreach (BatchNode batchNode in batchNodes)
-				{
-					commands[count++] = new BatchOperateArrayCommand(cluster, batchNode, batchPolicy, keys, ops, records, attr, status);
-				}
-
-				BatchExecutor.Execute(batchPolicy, commands, status);
+				BatchStatus status = new(true);
+				BatchNode batchNode = new(records);
+				BatchOperateArrayCommand command = new(null, batchNode, batchPolicy, keys, ops, records, attr, status);
+				command.ExecuteGRPC(channel);
 				return new BatchResults(records, status.GetStatus());
 			}
 			catch (Exception e)
 			{
 				throw new AerospikeException.BatchRecordArray(records, e);
 			}
-		}*/
+		}
 
 		//-------------------------------------------------------
 		// Scan Operations
@@ -1291,13 +1223,13 @@ namespace Aerospike.Client.Proxy
 		/// <exception cref="AerospikeException">if scan fails</exception>
 		public void ScanPartitions(ScanPolicy policy, PartitionFilter partitionFilter, string ns, string setName, ScanCallback callback, params string[] binNames)
 		{
-			if (policy == null)
+			/*if (policy == null)
 			{
 				policy = scanPolicyDefault;
 			}
 
-			/*Node[] nodes = cluster.ValidateNodes();
-			PartitionTracker tracker = new PartitionTracker(policy, nodes, partitionFilter);
+			RecordSet recordSet = RecordSet(policy., 1)
+			PartitionTracker tracker = new(policy, null, partitionFilter);
 			ScanExecutor.ScanPartitions(cluster, policy, ns, setName, binNames, callback, tracker);*/
 		}
 
@@ -1406,22 +1338,15 @@ namespace Aerospike.Client.Proxy
 		/// <param name="functionName">user defined function</param>
 		/// <param name="functionArgs">arguments passed in to user defined function</param>
 		/// <exception cref="AerospikeException.BatchRecordArray">which contains results for keys that did complete</exception>
-		/*public BatchResults Execute(BatchPolicy batchPolicy, BatchUDFPolicy udfPolicy, Key[] keys, string packageName, string functionName, params Value[] functionArgs)
+		public BatchResults Execute(BatchPolicy batchPolicy, BatchUDFPolicy udfPolicy, Key[] keys, string packageName, string functionName, params Value[] functionArgs)
 		{
 			if (keys.Length == 0)
 			{
-				return new BatchResults(new BatchRecord[0], true);
+				return new BatchResults(Array.Empty<BatchRecord>(), true);
 			}
 
-			if (batchPolicy == null)
-			{
-				batchPolicy = batchParentPolicyWriteDefault;
-			}
-
-			if (udfPolicy == null)
-			{
-				udfPolicy = batchUDFPolicyDefault;
-			}
+			batchPolicy ??= batchParentPolicyWriteDefault;
+			udfPolicy ??= batchUDFPolicyDefault;
 
 			byte[] argBytes = Packer.Pack(functionArgs);
 
@@ -1437,17 +1362,10 @@ namespace Aerospike.Client.Proxy
 
 			try
 			{
-				BatchStatus status = new BatchStatus(true);
-				List<BatchNode> batchNodes = BatchNode.GenerateList(cluster, batchPolicy, keys, records, attr.hasWrite, status);
-				BatchCommand[] commands = new BatchCommand[batchNodes.Count];
-				int count = 0;
-
-				foreach (BatchNode batchNode in batchNodes)
-				{
-					commands[count++] = new BatchUDFCommand(cluster, batchNode, batchPolicy, keys, packageName, functionName, argBytes, records, attr, status);
-				}
-
-				BatchExecutor.Execute(batchPolicy, commands, status);
+				BatchStatus status = new(true);
+				BatchNode batchNode = new(records);
+				var command = new BatchUDFCommand(null, batchNode, batchPolicy, keys, packageName, functionName, argBytes, records, attr, status);
+				command.ExecuteGRPC(channel);
 				return new BatchResults(records, status.GetStatus());
 			}
 			catch (Exception e)
@@ -1455,7 +1373,7 @@ namespace Aerospike.Client.Proxy
 				// Batch terminated on fatal error.
 				throw new AerospikeException.BatchRecordArray(records, e);
 			}
-		}*/
+		}
 
 		//----------------------------------------------------------
 		// Query/Execute
@@ -1474,30 +1392,20 @@ namespace Aerospike.Client.Proxy
 		/// <param name="functionName">function name</param>
 		/// <param name="functionArgs">to pass to function name, if any</param>
 		/// <exception cref="AerospikeException">if command fails</exception>
-		/*public ExecuteTask Execute(WritePolicy policy, Statement statement, string packageName, string functionName, params Value[] functionArgs)
+		public ExecuteTask Execute(WritePolicy policy, Statement statement, string packageName, string functionName, params Value[] functionArgs)
 		{
-			if (policy == null)
-			{
-				policy = writePolicyDefault;
-			}
+			policy ??= writePolicyDefault;
 
 			statement.PackageName = packageName;
 			statement.FunctionName = functionName;
 			statement.FunctionArgs = functionArgs;
 
 			ulong taskId = statement.PrepareTaskId();
-			Node[] nodes = cluster.ValidateNodes();
-			Executor executor = new Executor(nodes.Length);
-
-			foreach (Node node in nodes)
-			{
-				ServerCommand command = new ServerCommand(cluster, node, policy, statement, taskId);
-				executor.AddCommand(command);
-			}
-
-			executor.Execute(nodes.Length);
-			return new ExecuteTask(cluster, policy, statement, taskId);
-		}*/
+			ServerCommand command = new(null, null, policy, statement, taskId);
+			command.ExecuteGRPC(channel);
+				
+			return new ExecuteTask(null, policy, statement, taskId);
+		}
 
 		/// <summary>
 		/// Apply operations on records that match the background query statement filter.
@@ -1510,7 +1418,7 @@ namespace Aerospike.Client.Proxy
 		/// <param name="statement">background query definition</param>
 		/// <param name="operations">list of operations to be performed on selected records</param>
 		/// <exception cref="AerospikeException">if command fails</exception>
-		/*public ExecuteTask Execute(WritePolicy policy, Statement statement, params Operation[] operations)
+		public ExecuteTask Execute(WritePolicy policy, Statement statement, params Operation[] operations)
 		{
 			if (policy == null)
 			{
@@ -1520,17 +1428,11 @@ namespace Aerospike.Client.Proxy
 			statement.Operations = operations;
 
 			ulong taskId = statement.PrepareTaskId();
-			Node[] nodes = cluster.ValidateNodes();
-			Executor executor = new Executor(nodes.Length);
+			ServerCommand command = new(null, null, policy, statement, taskId);
+			command.ExecuteGRPC(channel);
 
-			foreach (Node node in nodes)
-			{
-				ServerCommand command = new ServerCommand(cluster, node, policy, statement, taskId);
-				executor.AddCommand(command);
-			}
-			executor.Execute(nodes.Length);
-			return new ExecuteTask(cluster, policy, statement, taskId);
-		}*/
+			return new ExecuteTask(null, policy, statement, taskId);
+		}
 
 		//--------------------------------------------------------
 		// Query functions
@@ -1543,7 +1445,7 @@ namespace Aerospike.Client.Proxy
 		/// <param name="statement">query definition</param>
 		/// <param name="action">action methods to be called for each record</param>
 		/// <exception cref="AerospikeException">if query fails</exception>
-		/*public void Query(QueryPolicy policy, Statement statement, Action<Key, Record> action)
+		public void Query(QueryPolicy policy, Statement statement, Action<Key, Record> action)
 		{
 			using (RecordSet rs = Query(policy, statement))
 			{
@@ -1552,38 +1454,8 @@ namespace Aerospike.Client.Proxy
 					action(rs.Key, rs.Record);
 				}
 			}
-		}*/
-
-		/// <summary>
-		/// Execute query and return record iterator.  The query executor puts records on a queue in 
-		/// separate threads.  The calling thread concurrently pops records off the queue through the 
-		/// record iterator.
-		/// </summary>
-		/// <param name="policy">generic configuration parameters, pass in null for defaults</param>
-		/// <param name="statement">query definition</param>
-		/// <exception cref="AerospikeException">if query fails</exception>
-		/*public RecordSet Query(QueryPolicy policy, Statement statement)
-		{
-			if (policy == null)
-			{
-				policy = queryPolicyDefault;
-			}
-
-			Node[] nodes = cluster.ValidateNodes();
-
-			if (cluster.hasPartitionQuery || statement.filter == null)
-			{
-				PartitionTracker tracker = new PartitionTracker(policy, statement, nodes);
-				QueryPartitionExecutor executor = new QueryPartitionExecutor(cluster, policy, statement, nodes.Length, tracker);
-				return executor.RecordSet;
-			}
-			else
-			{
-				QueryRecordExecutor executor = new QueryRecordExecutor(cluster, policy, statement, nodes);
-				executor.Execute();
-				return executor.RecordSet;
-			}
-		}*/
+			throw new AerospikeException("not implemented yet");
+		}
 
 		/// <summary>
 		/// Execute query on all server nodes and return records via the listener. This method will
@@ -1599,27 +1471,18 @@ namespace Aerospike.Client.Proxy
 		/// </summary>
 		/// <param name="policy">query configuration parameters, pass in null for defaults</param>
 		/// <param name="statement">query definition</param>
-		/// <param name="listener">where to send results</param>
 		/// <exception cref="AerospikeException">if query fails</exception>
-		/*public void Query(QueryPolicy policy, Statement statement, QueryListener listener)
+		public RecordSet Query(QueryPolicy policy, Statement statement)
 		{
-			if (policy == null)
-			{
-				policy = queryPolicyDefault;
-			}
-
-			Node[] nodes = cluster.ValidateNodes();
-
-			if (cluster.hasPartitionQuery || statement.filter == null)
-			{
-				PartitionTracker tracker = new PartitionTracker(policy, statement, nodes);
-				QueryListenerExecutor.execute(cluster, policy, statement, listener, tracker);
-			}
-			else
-			{
-				throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Query by partition is not supported");
-			}
-		}*/
+			CancellationToken token = new();
+			policy ??= queryPolicyDefault;
+			PartitionTracker tracker = new(policy, statement, (Node[])null);
+			//PartitionFilter partitionFilter = new();
+			RecordSet recordSet = new(null, policy.recordQueueSize, token);
+			QueryPartitionCommand command = new(null, policy, statement, statement.taskId, recordSet, tracker, null);
+			command.ExecuteGRPC(channel);
+			return recordSet;
+		}
 
 		/// <summary>
 		/// Execute query for specified partitions and return records via the listener. This method will
@@ -1645,7 +1508,7 @@ namespace Aerospike.Client.Proxy
 		/// </param>
 		/// <param name="listener">where to send results</param>
 		/// <exception cref="AerospikeException">if query fails</exception>
-		/*public void Query
+		public void Query
 		(
 			QueryPolicy policy,
 			Statement statement,
@@ -1653,7 +1516,7 @@ namespace Aerospike.Client.Proxy
 			QueryListener listener
 		)
 		{
-			if (policy == null)
+			/*if (policy == null)
 			{
 				policy = queryPolicyDefault;
 			}
@@ -1668,8 +1531,9 @@ namespace Aerospike.Client.Proxy
 			else
 			{
 				throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Query by partition is not supported");
-			}
-		}*/
+			}*/
+			throw new AerospikeException("not implemented yet");
+		}
 
 		/// <summary>
 		/// Execute query for specified partitions and return record iterator.  The query executor puts
@@ -1683,14 +1547,14 @@ namespace Aerospike.Client.Proxy
 		/// <param name="statement">query definition</param>
 		/// <param name="partitionFilter">filter on a subset of data partitions</param>
 		/// <exception cref="AerospikeException">if query fails</exception>
-		/*public RecordSet QueryPartitions
+		public RecordSet QueryPartitions
 		(
 			QueryPolicy policy,
 			Statement statement,
 			PartitionFilter partitionFilter
 		)
 		{
-			if (policy == null)
+			/*if (policy == null)
 			{
 				policy = queryPolicyDefault;
 			}
@@ -1706,8 +1570,9 @@ namespace Aerospike.Client.Proxy
 			else
 			{
 				throw new AerospikeException(ResultCode.PARAMETER_ERROR, "QueryPartitions() not supported");
-			}
-		}*/
+			}*/
+			throw new AerospikeException("not implemented yet");
+		}
 
 		/// <summary>
 		/// Execute query, apply statement's aggregation function, and return result iterator. 
@@ -1727,7 +1592,7 @@ namespace Aerospike.Client.Proxy
 		/// <param name="functionName">aggregation function name</param>
 		/// <param name="functionArgs">arguments to pass to function name, if any</param>
 		/// <exception cref="AerospikeException">if query fails</exception>
-		/*public ResultSet QueryAggregate
+		public ResultSet QueryAggregate
 		(
 			QueryPolicy policy,
 			Statement statement,
@@ -1736,9 +1601,10 @@ namespace Aerospike.Client.Proxy
 			params Value[] functionArgs
 		)
 		{
-			//statement.SetAggregateFunction(packageName, functionName, functionArgs);
-			//return QueryAggregate(policy, statement);
-		}*/
+			/*statement.SetAggregateFunction(packageName, functionName, functionArgs);
+			return QueryAggregate(policy, statement);*/
+			throw new AerospikeException("not implemented yet");
+		}
 
 		/// <summary>
 		/// Execute query, apply statement's aggregation function, call action for each aggregation
@@ -1750,16 +1616,17 @@ namespace Aerospike.Client.Proxy
 		/// </param>
 		/// <param name="action">action methods to be called for each aggregation object</param>
 		/// <exception cref="AerospikeException">if query fails</exception>
-		/*public void QueryAggregate(QueryPolicy policy, Statement statement, Action<Object> action)
+		public void QueryAggregate(QueryPolicy policy, Statement statement, Action<Object> action)
 		{
-			using (ResultSet rs = QueryAggregate(policy, statement))
+			/*using (ResultSet rs = QueryAggregate(policy, statement))
 			{
 				while (rs.Next())
 				{
 					action(rs.Object);
 				}
-			}
-		}*/
+			}*/
+			throw new AerospikeException("not implemented yet");
+		}
 
 		/// <summary>
 		/// Execute query, apply statement's aggregation function, and return result iterator. 
@@ -1777,9 +1644,9 @@ namespace Aerospike.Client.Proxy
 		/// query definition with aggregate functions already initialized by SetAggregateFunction().
 		/// </param>
 		/// <exception cref="AerospikeException">if query fails</exception>
-		/*public ResultSet QueryAggregate(QueryPolicy policy, Statement statement)
+		public ResultSet QueryAggregate(QueryPolicy policy, Statement statement)
 		{
-			if (policy == null)
+			/*if (policy == null)
 			{
 				policy = queryPolicyDefault;
 			}
@@ -1787,8 +1654,9 @@ namespace Aerospike.Client.Proxy
 			Node[] nodes = cluster.ValidateNodes();
 			QueryAggregateExecutor executor = new QueryAggregateExecutor(cluster, policy, statement, nodes);
 			executor.Execute();
-			return executor.ResultSet;
-		}*/
+			return executor.ResultSet;*/
+			throw new AerospikeException("not implemented yet");
+		}
 
 		//--------------------------------------------------------
 		// Secondary Index functions

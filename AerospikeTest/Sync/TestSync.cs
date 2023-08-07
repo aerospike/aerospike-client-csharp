@@ -30,6 +30,7 @@ namespace Aerospike.Test
 	{
 		public static Args args = Args.Instance;
 		public static IAerospikeClient client = args.client;
+		public static AerospikeClient nativeClient = args.nativeClient;
 
 		public static void AssertBinEqual(Key key, Record record, Bin bin)
 		{

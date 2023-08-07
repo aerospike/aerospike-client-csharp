@@ -1,4 +1,5 @@
-﻿using Aerospike.Client.KVS;
+﻿using Aerospike.Client;
+using Aerospike.Client.KVS;
 using Google.Protobuf;
 using Google.Protobuf.Collections;
 using Grpc.Core;
@@ -222,7 +223,7 @@ namespace Aerospike.Client
 			};
 		}
 
-		/*public static KVS.BackgroundExecutePolicy ToGrpc(WritePolicy writePolicy)
+		public static KVS.BackgroundExecutePolicy ToGrpcExec(WritePolicy writePolicy)
 		{
 			return new()
 			{
@@ -244,7 +245,7 @@ namespace Aerospike.Client
 				DurableDelete = writePolicy.durableDelete,
 				//Xdr = writePolicy.Xdr
 			};
-		}*/
+		}
 
 		public static KVS.WritePolicy ToGrpc(WritePolicy writePolicy)
 		{
@@ -331,6 +332,18 @@ namespace Aerospike.Client
 			}
 
 			return Take(errorMessage, maxMsgLength);
+		}
+
+		public static AerospikeException GrpcStatusError(AerospikeResponsePayload response)
+		{
+			if (response.Status >= 0)
+			{
+				return new AerospikeException(response.Status).SetInDoubt(response.InDoubt);
+			}
+
+			if (response.Status == -9) return new AerospikeException(ResultCode.SERVER_ERROR, "Server ASYNC_QUEUE_FULL").SetInDoubt(response.InDoubt);
+
+			return new AerospikeException(response.Status).SetInDoubt(response.InDoubt);
 		}
 
 		/**

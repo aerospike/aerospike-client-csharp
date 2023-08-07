@@ -1143,7 +1143,6 @@ namespace Aerospike.Client.Proxy
 		/// <exception cref="AerospikeException">if queue is full</exception>
 		public Task<bool> Operate(BatchPolicy batchPolicy, BatchWritePolicy writePolicy, CancellationToken token, List<BatchRecord> records)
 		{
-			Debugger.Launch();
 			if (records.Count == 0)
 			{
 				return (Task<bool>)Task.CompletedTask;

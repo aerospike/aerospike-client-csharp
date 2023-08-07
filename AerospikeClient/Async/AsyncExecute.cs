@@ -138,6 +138,8 @@ namespace Aerospike.Client
 
 		public new async Task<object> ExecuteGRPC(GrpcChannel channel, CancellationToken token)
 		{
+			segment = new BufferSegment(new BufferPool(1, 128 * 1024), 0);
+			WriteBuffer();
 			var request = new AerospikeRequestPayload
 			{
 				Id = 0, // ID is only needed in streaming version, can be static for unary
@@ -148,7 +150,7 @@ namespace Aerospike.Client
 
 			var KVS = new KVS.KVS.KVSClient(channel);
 			var response = await KVS.ExecuteAsync(request, cancellationToken: token);
-			dataBuffer = response.Payload.ToByteArray();
+			conn = new AsyncConnectionProxy(response.Payload.ToByteArray());
 			ParseResult();
 			return ParseEndResult();
 		}

@@ -19,6 +19,7 @@ using System.Collections.Generic;
 using System.Text;
 using System.Reflection;
 using System.IO;
+using System.Diagnostics;
 
 namespace Aerospike.Client
 {
@@ -52,57 +53,57 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Default read policy that is used when read command policy is null.
 		/// </summary>
-		public readonly Policy readPolicyDefault;
+		public Policy readPolicyDefault;
 
 		/// <summary>
 		/// Default write policy that is used when write command policy is null.
 		/// </summary>
-		public readonly WritePolicy writePolicyDefault;
+		public WritePolicy writePolicyDefault;
 
 		/// <summary>
 		/// Default scan policy that is used when scan command policy is null.
 		/// </summary>
-		public readonly ScanPolicy scanPolicyDefault;
+		public ScanPolicy scanPolicyDefault;
 
 		/// <summary>
 		/// Default query policy that is used when query command policy is null.
 		/// </summary>
-		public readonly QueryPolicy queryPolicyDefault;
+		public QueryPolicy queryPolicyDefault;
 
 		/// <summary>
 		/// Default parent policy used in batch read commands. Parent policy fields
 		/// include socketTimeout, totalTimeout, maxRetries, etc...
 		/// </summary>
-		public readonly BatchPolicy batchPolicyDefault;
+		public BatchPolicy batchPolicyDefault;
 
 		/// <summary>
 		/// Default parent policy used in batch write commands. Parent policy fields
 		/// include socketTimeout, totalTimeout, maxRetries, etc...
 		/// </summary>
-		public readonly BatchPolicy batchParentPolicyWriteDefault;
+		public BatchPolicy batchParentPolicyWriteDefault;
 
 		/// <summary>
 		/// Default write policy used in batch operate commands.
 		/// Write policy fields include generation, expiration, durableDelete, etc...
 		/// </summary>
-		public readonly BatchWritePolicy batchWritePolicyDefault;
+		public BatchWritePolicy batchWritePolicyDefault;
 
 		/// <summary>
 		/// Default delete policy used in batch delete commands.
 		/// </summary>
-		public readonly BatchDeletePolicy batchDeletePolicyDefault;
+		public BatchDeletePolicy batchDeletePolicyDefault;
 
 		/// <summary>
 		/// Default user defined function policy used in batch UDF excecute commands.
 		/// </summary>
-		public readonly BatchUDFPolicy batchUDFPolicyDefault;
+		public BatchUDFPolicy batchUDFPolicyDefault;
 
 		/// <summary>
 		/// Default info policy that is used when info command policy is null.
 		/// </summary>
-		public readonly InfoPolicy infoPolicyDefault;
+		public InfoPolicy infoPolicyDefault;
 
-		protected readonly WritePolicy operatePolicyReadDefault;
+		protected WritePolicy operatePolicyReadDefault;
 
 		//-------------------------------------------------------
 		// Constructors
@@ -245,6 +246,7 @@ namespace Aerospike.Client
 		public Policy ReadPolicyDefault
 		{
 			get { return readPolicyDefault; }
+			set { readPolicyDefault = value; }
 		}
 
 		/// <summary>
@@ -253,6 +255,7 @@ namespace Aerospike.Client
 		public WritePolicy WritePolicyDefault
 		{
 			get { return writePolicyDefault; }
+			set { writePolicyDefault = value; }
 		}
 
 		/// <summary>
@@ -261,6 +264,7 @@ namespace Aerospike.Client
 		public ScanPolicy ScanPolicyDefault
 		{
 			get { return scanPolicyDefault; }
+			set { scanPolicyDefault = value; }
 		}
 
 		/// <summary>
@@ -269,6 +273,7 @@ namespace Aerospike.Client
 		public QueryPolicy QueryPolicyDefault
 		{
 			get { return queryPolicyDefault; }
+			set { queryPolicyDefault = value; }
 		}
 
 		/// <summary>
@@ -278,6 +283,7 @@ namespace Aerospike.Client
 		public BatchPolicy BatchPolicyDefault
 		{
 			get { return batchPolicyDefault; }
+			set { batchPolicyDefault = value; }
 		}
 
 		/// <summary>
@@ -287,6 +293,7 @@ namespace Aerospike.Client
 		public BatchPolicy BatchParentPolicyWriteDefault
 		{
 			get { return batchParentPolicyWriteDefault; }
+			set { batchParentPolicyWriteDefault = value; }
 		}
 
 		/// <summary>
@@ -296,6 +303,7 @@ namespace Aerospike.Client
 		public BatchWritePolicy BatchWritePolicyDefault
 		{
 			get { return batchWritePolicyDefault; }
+			set { batchWritePolicyDefault = value; }
 		}
 
 		/// <summary>
@@ -304,6 +312,7 @@ namespace Aerospike.Client
 		public BatchDeletePolicy BatchDeletePolicyDefault
 		{
 			get { return batchDeletePolicyDefault; }
+			set { batchDeletePolicyDefault = value; }
 		}
 
 		/// <summary>
@@ -312,6 +321,7 @@ namespace Aerospike.Client
 		public BatchUDFPolicy BatchUDFPolicyDefault
 		{
 			get { return batchUDFPolicyDefault; }
+			set { batchUDFPolicyDefault = value; }
 		}
 
 		/// <summary>
@@ -320,6 +330,7 @@ namespace Aerospike.Client
 		public InfoPolicy InfoPolicyDefault
 		{
 			get { return infoPolicyDefault; }
+			set { infoPolicyDefault = value; }
 		}
 
 		//-------------------------------------------------------

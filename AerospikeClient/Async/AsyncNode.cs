@@ -23,7 +23,7 @@ namespace Aerospike.Client
 	/// </summary>
 	public sealed class AsyncNode : Node
 	{
-		private readonly Pool<AsyncConnection> asyncConnQueue;
+		private readonly Pool<IAsyncConnection> asyncConnQueue;
 		private readonly new AsyncCluster cluster;
 		private int asyncConnsOpened;
 		private int asyncConnsClosed;
@@ -37,7 +37,7 @@ namespace Aerospike.Client
 			: base(cluster, nv)
 		{
 			this.cluster = cluster;
-			asyncConnQueue = new Pool<AsyncConnection>(cluster.asyncMinConnsPerNode, cluster.asyncMaxConnsPerNode);
+			asyncConnQueue = new Pool<IAsyncConnection>(cluster.asyncMinConnsPerNode, cluster.asyncMaxConnsPerNode);
 		}
 
 		public override void CreateMinConnections()
@@ -66,10 +66,10 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Get asynchronous socket connection from connection pool for the server node.
 		/// </summary>
-		public AsyncConnection GetAsyncConnection()
+		public IAsyncConnection GetAsyncConnection()
 		{
 			// Try to find connection in pool.
-			AsyncConnection conn = null;
+			IAsyncConnection conn = null;
 
 			while (asyncConnQueue.TryDequeue(out conn))
 			{
@@ -93,7 +93,7 @@ namespace Aerospike.Client
 		/// Put asynchronous connection back into connection pool.
 		/// </summary>
 		/// <param name="conn">socket connection</param>
-		public void PutAsyncConnection(AsyncConnection conn)
+		public void PutAsyncConnection(IAsyncConnection conn)
 		{
 			conn.Reset();
 
@@ -125,7 +125,7 @@ namespace Aerospike.Client
 		{
 			while (count > 0)
 			{
-				AsyncConnection conn;
+				IAsyncConnection conn;
 
 				if (!asyncConnQueue.TryDequeueLast(out conn))
 				{
@@ -152,20 +152,20 @@ namespace Aerospike.Client
 		{
 			base.CloseConnections();
 
-			AsyncConnection conn;
+			IAsyncConnection conn;
 			while (asyncConnQueue.TryDequeue(out conn))
 			{
 				conn.Close();
 			}
 		}
 
-		internal void CloseAsyncConnOnError(AsyncConnection conn)
+		internal void CloseAsyncConnOnError(IAsyncConnection conn)
 		{
 			IncrErrorCount();
 			CloseAsyncConn(conn);
 		}
 
-		private void CloseAsyncConn(AsyncConnection conn)
+		private void CloseAsyncConn(IAsyncConnection conn)
 		{
 			DecrAsyncConnTotal();
 			IncrAsyncConnClosed();
