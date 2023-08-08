@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -18,7 +18,6 @@ using System;
 using System.IO;
 using System.Collections;
 using System.Collections.Generic;
-using System.Runtime.Serialization.Formatters.Binary;
 
 namespace Aerospike.Client
 {
@@ -1778,6 +1777,9 @@ namespace Aerospike.Client
 
 			public override int EstimateSize()
 			{
+#if BINARY_FORMATTER
+				if (DisableSerializer) throw new AerospikeException("Object serializer has been disabled");
+
 				using (MemoryStream ms = new MemoryStream())
 				{
 					BinaryFormatter formatter = new BinaryFormatter();
@@ -1785,6 +1787,9 @@ namespace Aerospike.Client
 					bytes = ms.ToArray();
 					return bytes.Length;
 				}
+#else
+				throw new AerospikeException("Object serializer has been disabled");
+#endif
 			}
 
 			public override int Write(byte[] buffer, int offset)

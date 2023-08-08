@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -18,7 +18,6 @@ using System;
 using System.IO;
 using System.Text;
 using System.Numerics;
-using System.Runtime.Serialization.Formatters.Binary;
 using Ionic.Zlib;
 
 namespace Aerospike.Client
@@ -197,20 +196,29 @@ namespace Aerospike.Client
 				return null;
 			}
 
-			try
-			{
-				using (MemoryStream ms = new MemoryStream())
-				{
-					ms.Write(buf, offset, len);
-					ms.Seek(0, 0);
-					BinaryFormatter formatter = new BinaryFormatter();
-					return formatter.Deserialize(ms);
-				}
-			}
-			catch (Exception e)
-			{
-				throw new AerospikeException.Serialize(e);
-			}
+#if BINARY_FORMATTER
+            if (Value.DisableDeserializer)
+            {
+                throw new AerospikeException.Serialize("Object deserializer has been disabled");
+            }
+
+            try
+            {
+                using (MemoryStream ms = new MemoryStream())
+                {
+                    ms.Write(buf, offset, len);
+                    ms.Seek(0, 0);
+                    BinaryFormatter formatter = new BinaryFormatter();
+                    return formatter.Deserialize(ms);
+                }
+            }
+            catch (Exception e)
+            {
+                throw new AerospikeException.Serialize(e);
+            }
+#else
+			throw new AerospikeException.Serialize("Object deserializer has been disabled");
+#endif
 		}
 
 		public static object BytesToGeoJSON(byte[] buf, int offset, int len)

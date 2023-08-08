@@ -281,6 +281,7 @@ namespace Aerospike.Client
 			this.value = Value.Get(value);
 		}
 
+#if BINARY_FORMATTER
 		/// <summary>
 		/// Create bin with a blob value.  The value will be java serialized.
 		/// This method is faster than the bin Object constructor because the blob is converted 
@@ -295,6 +296,7 @@ namespace Aerospike.Client
 		{
 			return new Bin(name, Value.GetAsBlob(value));
 		}
+#endif
 
 		/// <summary>
 		/// Create bin with a null value. This is useful for bin deletions within a record.
