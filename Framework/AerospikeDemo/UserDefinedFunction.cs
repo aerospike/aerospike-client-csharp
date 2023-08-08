@@ -38,7 +38,9 @@ namespace Aerospike.Demo
 			WriteIfNotExists(client, args);
 			WriteWithValidation(client, args);
 			//WriteListMapUsingUdf(client, args);
+#if BINARY_FORMATTER
 			WriteBlobUsingUdf(client, args);
+#endif
 			ServerSideExists(client, args);
 		}
 
@@ -196,6 +198,7 @@ namespace Aerospike.Demo
 			}
 		}
 
+#if BINARY_FORMATTER
 		private void WriteBlobUsingUdf(AerospikeClient client, Arguments args)
 		{
 			Key key = new Key(args.ns, args.set, "udfkey6");
@@ -225,6 +228,7 @@ namespace Aerospike.Demo
 				throw new Exception(string.Format("Mismatch: expected={0} received={1}", expectedString, receivedString));
 			}
 		}
+#endif
 
 		private void ServerSideExists(AerospikeClient client, Arguments args)
 		{
