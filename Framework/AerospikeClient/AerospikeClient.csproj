@@ -294,7 +294,6 @@
     <Compile Include="Lua\LuaList.cs" />
     <Compile Include="Lua\LuaMap.cs" />
     <Compile Include="Lua\LuaStream.cs" />
-    <Compile Include="Command\Formatter.cs" />
     <Compile Include="Main\AerospikeClient.cs" />
     <Compile Include="Main\AerospikeException.cs" />
     <Compile Include="Main\BatchWrite.cs" />
