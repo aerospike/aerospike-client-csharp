@@ -1137,6 +1137,7 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if command fails</exception>
 		public bool Operate(BatchPolicy policy, List<BatchRecord> records)
 		{
+			//Debugger.Launch();
 			if (records.Count == 0)
 			{
 				return true;
@@ -1674,6 +1675,7 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if query fails</exception>
 		public RecordSet Query(QueryPolicy policy, Statement statement)
 		{
+			//Debugger.Launch();
 			if (policy == null)
 			{
 				policy = queryPolicyDefault;

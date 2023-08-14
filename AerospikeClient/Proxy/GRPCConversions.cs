@@ -67,13 +67,13 @@ namespace Aerospike.Client
 
 		public static KVS.QueryPolicy ToGrpc(QueryPolicy queryPolicy)
 		{
-			return new()
-			{
+			var queryPolicyKVS =  new KVS.QueryPolicy()
+			{ 
 				// Base policy fields.
 				ReadModeAP = Enum.TryParse(queryPolicy.readModeAP.ToString(), true, out KVS.ReadModeAP apConversion) ? apConversion : KVS.ReadModeAP.One,
 				ReadModeSC = Enum.TryParse(queryPolicy.readModeSC.ToString(), true, out KVS.ReadModeSC scConversion) ? scConversion : KVS.ReadModeSC.Session,
 				Replica = Enum.TryParse(queryPolicy.replica.ToString(), true, out KVS.Replica replicaConversion) ? replicaConversion : KVS.Replica.Sequence,
-				Expression = queryPolicy.filterExp == null ? null : ByteString.CopyFrom(queryPolicy.filterExp.Bytes),
+				//Expression = queryPolicy.filterExp == null ? null : ByteString.CopyFrom(queryPolicy.filterExp.Bytes),
 				TotalTimeout = (uint)queryPolicy.totalTimeout,
 				Compress = queryPolicy.compress,
 				SendKey = queryPolicy.sendKey,
@@ -85,6 +85,8 @@ namespace Aerospike.Client
 				FailOnClusterChange = queryPolicy.failOnClusterChange,
 				ShortQuery = queryPolicy.shortQuery
 			};
+			if (queryPolicy.filterExp != null) queryPolicyKVS.Expression = ByteString.CopyFrom(queryPolicy.filterExp.Bytes);
+			return queryPolicyKVS;
 		}
 
 		/**
@@ -111,15 +113,19 @@ namespace Aerospike.Client
 				filter.Begin.Pack(packer);
 			}
 
-			return new()
+			var filterKVS =  new KVS.Filter()
 			{
 				Name = filter.Name,
 				ValType = filter.ValType,
 				Begin = filter.Begin == null ? null : ByteString.CopyFrom(packer.ToByteArray()), // TODO ask Brian about this
 				End = filter.End == null ? null : ValueToByteString(filter.End),
-				PackedCtx = filter.PackedCtx == null ? null : ByteString.CopyFrom(filter.PackedCtx),
+				//PackedCtx = filter.PackedCtx == null ? null : ByteString.CopyFrom(filter.PackedCtx),
 				ColType = Enum.TryParse(filter.ColType.ToString(), true, out KVS.IndexCollectionType colTypeConversion) ? colTypeConversion : KVS.IndexCollectionType.Default
 			};
+
+			if (filter.PackedCtx != null) filterKVS.PackedCtx = ByteString.CopyFrom(filter.PackedCtx);
+
+			return filterKVS;
 
 			/*if (filter.getBegin() != null)
 			{
@@ -159,21 +165,27 @@ namespace Aerospike.Client
 			{
 				statement.BinNames
 			};
-			return new()
+
+			var statementKVS = new KVS.Statement
 			{
 				Namespace = statement.Namespace,
 				SetName = statement.SetName,
-				IndexName = statement.IndexName,
+				//IndexName = statement.IndexName,
 				//BinNames = new RepeatedField<string>() { statement.BinNames },
 				Filter = ToGrpc(statement.Filter),
-				PackageName = statement.PackageName,
-				FunctionName = statement.FunctionName,
+				//PackageName = statement.PackageName,
+				//FunctionName = statement.FunctionName,
 				//FunctionArgs = statement.FunctionArgs,
 				//Operations = statement.Operations,
 				TaskId = taskId,
 				MaxRecords = (ulong)maxRecords,
 				RecordsPerSecond = (uint)statement.RecordsPerSecond
 			};
+
+			if (statement.IndexName != null) statementKVS.IndexName = statement.IndexName;
+			if (statement.PackageName != null) statementKVS.PackageName = statement.PackageName;
+			if (statement.FunctionName != null) statementKVS.FunctionName = statement.FunctionName;
+			return statementKVS;
 
 			/*if (statement.BinNames != null)
 			{
@@ -213,14 +225,17 @@ namespace Aerospike.Client
 
 		public static KVS.PartitionFilter ToGrpc(PartitionFilter partitionFilter)
 		{
-			return new()
+			var partitionFilterKVS =  new KVS.PartitionFilter()
 			{
 				Begin = (uint)partitionFilter.Begin,
 				Count = (uint)partitionFilter.Count,
 				Retry = partitionFilter.Retry,
-				Digest = partitionFilter.Digest != null && partitionFilter.Digest.Length > 0 ? ByteString.CopyFrom(partitionFilter.Digest) : null,
+				//Digest = partitionFilter.Digest != null && partitionFilter.Digest.Length > 0 ? ByteString.CopyFrom(partitionFilter.Digest) : null,
 				//PartitionStatuses = partitionFilter.Partitions
 			};
+
+			if (partitionFilter.Digest != null && partitionFilter.Digest.Length > 0) partitionFilterKVS.Digest = ByteString.CopyFrom(partitionFilter.Digest);
+			return partitionFilterKVS;
 		}
 
 		public static KVS.BackgroundExecutePolicy ToGrpcExec(WritePolicy writePolicy)

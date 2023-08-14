@@ -36,7 +36,7 @@ namespace Aerospike.Test
 			// Drop index if it already exists.
 			try
 			{
-				task = client.DropIndex(policy, args.ns, args.set, indexName);
+				task = nativeClient.DropIndex(policy, args.ns, args.set, indexName);
 				task.Wait();
 			}
 			catch (AerospikeException ae)
@@ -47,16 +47,16 @@ namespace Aerospike.Test
 				}
 			}
 
-			task = client.CreateIndex(policy, args.ns, args.set, indexName, binName, IndexType.NUMERIC);
+			task = nativeClient.CreateIndex(policy, args.ns, args.set, indexName, binName, IndexType.NUMERIC);
 			task.Wait();
 
-			task = client.DropIndex(policy, args.ns, args.set, indexName);
+			task = nativeClient.DropIndex(policy, args.ns, args.set, indexName);
 			task.Wait();
 
-			task = client.CreateIndex(policy, args.ns, args.set, indexName, binName, IndexType.NUMERIC);
+			task = nativeClient.CreateIndex(policy, args.ns, args.set, indexName, binName, IndexType.NUMERIC);
 			task.Wait();
 
-			task = client.DropIndex(policy, args.ns, args.set, indexName);
+			task = nativeClient.DropIndex(policy, args.ns, args.set, indexName);
 			task.Wait();
 		}
 

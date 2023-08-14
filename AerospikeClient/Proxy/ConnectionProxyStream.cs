@@ -74,26 +74,28 @@ namespace Aerospike.Client
 
 		public void GRPCRead(byte[] buffer, int length)
 		{
-			if (length + Offset <= Payload.Length)
+			if (Payload == null)
 			{
-				Array.Copy(Payload, Offset, buffer, BufferOffset, length);
-				Offset += length;
-				if (Offset == Payload.Length && !LastResponse)
-				{
-					NextGRPCResponse();
-				}
-			}
-			else
-			{
-				if (Offset <= Payload.Length)
-				{
-					// Copy remaining data
-					Array.Copy(Payload, Offset, buffer, BufferOffset, Payload.Length - Offset);
-					BufferOffset += Payload.Length - Offset;
-				}
-				// Get the next response
 				NextGRPCResponse();
+			}
+			
+			if (length > Payload.Length - Offset)
+			{
+				// Copy remaining data
+				Array.Copy(Payload, Offset, buffer, BufferOffset, Payload.Length - Offset);
+				BufferOffset += Payload.Length - Offset;
+				// Reset payload
+				Payload = null;
+				// Get the next response
 				GRPCRead(buffer, length);
+			}
+				
+			Array.Copy(Payload, Offset, buffer, BufferOffset, length);
+			Offset += length;
+
+			if (Offset >= Payload.Length)
+			{
+				Payload = null;
 			}
 		}
 
@@ -103,18 +105,16 @@ namespace Aerospike.Client
 			{
 				throw new EndOfGRPCStream();
 			}
-			if (Response.HasNext)
+			
+			Stream.ResponseStream.MoveNext().Wait();
+			Response = Stream.ResponseStream.Current;
+			if (Response.Status != 0)
 			{
-				Stream.ResponseStream.MoveNext().Wait();
-				Response = Stream.ResponseStream.Current;
-				if (Response.Status != 0)
-				{
-					throw GRPCConversions.GrpcStatusError(Response);
-				}
-				Payload = Response.Payload.ToByteArray();
-				Offset = 0;
-				LastResponse = !Response.HasNext;
+				throw GRPCConversions.GrpcStatusError(Response);
 			}
+			Payload = Response.Payload.ToByteArray();
+			Offset = 0;
+			LastResponse = !Response.HasNext;
 		}
 
 		public Stream GetStream()

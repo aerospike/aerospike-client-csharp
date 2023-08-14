@@ -28,7 +28,7 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void ServerInfo()
 		{
-			Node node = client.Nodes[0];
+			Node node = nativeClient.Nodes[0];
 			GetServerConfig(node);
 			GetNamespaceConfig(node);
 		}

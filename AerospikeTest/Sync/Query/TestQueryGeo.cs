@@ -41,7 +41,7 @@ namespace Aerospike.Test
 
 			try
 			{
-				IndexTask task = client.CreateIndex(policy, args.ns, setName, indexName, binName, IndexType.GEO2DSPHERE);
+				IndexTask task = nativeClient.CreateIndex(policy, args.ns, setName, indexName, binName, IndexType.GEO2DSPHERE);
 				task.Wait();
 			}
 			catch (AerospikeException ae)
@@ -80,7 +80,7 @@ namespace Aerospike.Test
 		[ClassCleanup()]
 		public static void Destroy()
 		{
-			client.DropIndex(null, args.ns, setName, indexName);
+			nativeClient.DropIndex(null, args.ns, setName, indexName);
 		}
 
 		[TestMethod]

@@ -30,7 +30,6 @@ namespace Aerospike.Client
 	public class ConnectionProxy : IConnection
 	{
 		private static readonly String NotSupported = "Method not supported in proxy client: ";
-		AerospikeResponsePayload Response;
 		byte[] Payload;
 		int Offset;
 
@@ -43,7 +42,6 @@ namespace Aerospike.Client
 			{
 				throw GRPCConversions.GrpcStatusError(response);
 			}
-			Response = response;
 			Payload = response.Payload.ToByteArray();
 			Offset = 0;
 		}
@@ -60,11 +58,8 @@ namespace Aerospike.Client
 
 		public void ReadFully(byte[] buffer, int length)
 		{
-			if (length + Offset <= Payload.Length)
-			{
-				Array.Copy(Payload, Offset, buffer, 0, length);
-				Offset += length;
-			}
+			Array.Copy(Payload, Offset, buffer, 0, length);
+			Offset += length;
 		}
 
 		public Stream GetStream()

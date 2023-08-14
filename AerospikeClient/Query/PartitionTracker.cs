@@ -53,14 +53,15 @@ namespace Aerospike.Client
 
 		private PartitionTracker(Policy policy, Node[] nodes)
 		{
+			var nodeLength = nodes != null ? nodes.Length : 1;
 			this.partitionBegin = 0;
-			this.nodeCapacity = nodes.Length;
+			this.nodeCapacity = nodeLength;
 			this.nodeFilter = null;
 			this.partitionFilter = null;
 			this.replica = policy.replica;
 
 			// Create initial partition capacity for each node as average + 25%.
-			int ppn = Node.PARTITIONS / nodes.Length;
+			int ppn = Node.PARTITIONS / nodeLength;
 			ppn += (int)((uint)ppn >> 2);
 			this.partitionsCapacity = ppn;
 			this.partitions = InitPartitions(Node.PARTITIONS, null);
@@ -315,7 +316,7 @@ namespace Aerospike.Client
 			PartitionStatus ps = partitions[partitionId - partitionBegin];
 			ps.retry = true;
 			ps.sequence++;
-			nodePartitions.partsUnavailable++;
+			if (nodePartitions != null) nodePartitions.partsUnavailable++;
 		}
 
 		public void SetDigest(NodePartitions nodePartitions, Key key)
@@ -331,7 +332,7 @@ namespace Aerospike.Client
 			PartitionStatus ps = partitions[partitionId - partitionBegin];
 			ps.digest = key.digest;
 			ps.bval = bval;
-			nodePartitions.recordCount++;
+			if (nodePartitions != null) nodePartitions.recordCount++;
 		}
 
 		public bool IsComplete(Cluster cluster, Policy policy)

@@ -38,7 +38,7 @@ namespace Aerospike.Test
 		public static void Register(TestContext testContext)
 		{
 			Assembly assembly = Assembly.GetExecutingAssembly();
-			RegisterTask task = client.Register(null, assembly, "Aerospike.Test.LuaResources.record_example.lua", "record_example.lua", Language.LUA);
+			RegisterTask task = nativeClient.Register(null, assembly, "Aerospike.Test.LuaResources.record_example.lua", "record_example.lua", Language.LUA);
 			task.Wait();
 		}
 

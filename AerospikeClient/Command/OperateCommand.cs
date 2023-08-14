@@ -77,7 +77,7 @@ namespace Aerospike.Client
 			{
 				Id = 0, // ID is only needed in streaming version, can be static for unary
 				Iteration = 1,
-				Payload = ByteString.CopyFrom(dataBuffer),
+				Payload = ByteString.CopyFrom(dataBuffer, 0, dataOffset)
 			};
 
 			var KVS = new KVS.KVS.KVSClient(channel);

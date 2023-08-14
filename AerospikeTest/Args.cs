@@ -137,20 +137,21 @@ namespace Aerospike.Test
 			client = new AerospikeClientProxy(policy, proxyHost);
 			nativeClient = new AerospikeClient(policy, hosts);
 
-			int timeout = 30;
+			int timeout = 15;
+			int socketTimeout = 5;
 
 			nativeClient.readPolicyDefault.totalTimeout = timeout * 1000;
-			nativeClient.readPolicyDefault.socketTimeout = 5 * 1000;
+			nativeClient.readPolicyDefault.socketTimeout = socketTimeout * 1000;
 			nativeClient.WritePolicyDefault.totalTimeout = timeout * 1000;
-			nativeClient.WritePolicyDefault.socketTimeout = 5 * 1000;
+			nativeClient.WritePolicyDefault.socketTimeout = socketTimeout * 1000;
 			nativeClient.ScanPolicyDefault.totalTimeout = timeout * 1000;
-			nativeClient.ScanPolicyDefault.socketTimeout = 5 * 1000;
+			nativeClient.ScanPolicyDefault.socketTimeout = socketTimeout * 1000;
 			nativeClient.QueryPolicyDefault.totalTimeout = timeout * 1000;
-			nativeClient.QueryPolicyDefault.socketTimeout = 5 * 1000;
+			nativeClient.QueryPolicyDefault.socketTimeout = socketTimeout * 1000;
 			nativeClient.BatchPolicyDefault.totalTimeout = timeout * 1000;
-			nativeClient.BatchPolicyDefault.socketTimeout = 5 * 1000;
+			nativeClient.BatchPolicyDefault.socketTimeout = socketTimeout * 1000;
 			nativeClient.BatchParentPolicyWriteDefault.totalTimeout = timeout * 1000;
-			nativeClient.BatchParentPolicyWriteDefault.socketTimeout = 5 * 1000;
+			nativeClient.BatchParentPolicyWriteDefault.socketTimeout = socketTimeout * 1000;
 			nativeClient.InfoPolicyDefault.timeout = timeout * 1000;
 
 			client.ReadPolicyDefault = nativeClient.ReadPolicyDefault;

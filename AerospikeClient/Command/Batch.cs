@@ -47,7 +47,7 @@ namespace Aerospike.Client
 
 		protected internal override void WriteBuffer()
 		{
-			if (batch.node.HasBatchAny)
+			if (batch.node != null && batch.node.HasBatchAny)
 			{
 				SetBatchOperate(batchPolicy, records, batch);
 			}
@@ -121,7 +121,7 @@ namespace Aerospike.Client
 
 		protected internal override void WriteBuffer()
 		{
-			if (batch.node.HasBatchAny)
+			if (batch.node != null && batch.node.HasBatchAny)
 			{
 				BatchAttr attr = new BatchAttr(policy, readAttr, ops);
 				SetBatchOperate(batchPolicy, keys, batch, binNames, ops, attr);
@@ -179,7 +179,7 @@ namespace Aerospike.Client
 
 		protected internal override void WriteBuffer()
 		{
-			if (batch.node.HasBatchAny)
+			if (batch.node != null && batch.node.HasBatchAny)
 			{
 				BatchAttr attr = new BatchAttr(policy, Command.INFO1_READ | Command.INFO1_NOBINDATA);
 				SetBatchOperate(batchPolicy, keys, batch, null, null, attr);
@@ -662,7 +662,7 @@ namespace Aerospike.Client
 			{
 				Id = 0, // ID is only needed in streaming version, can be static for unary
 				Iteration = 1,
-				Payload = ByteString.CopyFrom(dataBuffer),
+				Payload = ByteString.CopyFrom(dataBuffer, 0, dataOffset)
 			};
 			GRPCConversions.SetRequestPolicy(batchPolicy, request);
 

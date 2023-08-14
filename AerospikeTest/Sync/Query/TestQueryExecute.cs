@@ -33,7 +33,7 @@ namespace Aerospike.Test
 		public static void Prepare(TestContext testContext)
 		{
 			Assembly assembly = Assembly.GetExecutingAssembly();
-			RegisterTask rtask = client.Register(null, assembly, "Aerospike.Test.LuaResources.record_example.lua", "record_example.lua", Language.LUA);
+			RegisterTask rtask = nativeClient.Register(null, assembly, "Aerospike.Test.LuaResources.record_example.lua", "record_example.lua", Language.LUA);
 			rtask.Wait();
 
 			Policy policy = new Policy();
@@ -41,7 +41,7 @@ namespace Aerospike.Test
 
 			try
 			{
-				IndexTask itask = client.CreateIndex(policy, args.ns, args.set, indexName, binName1, IndexType.NUMERIC);
+				IndexTask itask = nativeClient.CreateIndex(policy, args.ns, args.set, indexName, binName1, IndexType.NUMERIC);
 				itask.Wait();
 			}
 			catch (AerospikeException ae)
@@ -56,7 +56,7 @@ namespace Aerospike.Test
 		[ClassCleanup()]
 		public static void Destroy()
 		{
-			client.DropIndex(null, args.ns, args.set, indexName);
+			nativeClient.DropIndex(null, args.ns, args.set, indexName);
 		}
 
 		[TestInitialize()]

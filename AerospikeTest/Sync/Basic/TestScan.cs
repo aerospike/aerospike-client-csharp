@@ -37,11 +37,11 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void ScanSeries()
 		{
-			Node[] nodes = client.Nodes;
+			Node[] nodes = nativeClient.Nodes;
 
 			foreach (Node node in nodes)
 			{
-				client.ScanNode(null, node, args.ns, args.set, ScanCallback);
+				nativeClient.ScanNode(null, node, args.ns, args.set, ScanCallback);
 
 				foreach (KeyValuePair<string, Metrics> entry in setMap)
 				{

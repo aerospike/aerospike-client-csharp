@@ -61,7 +61,7 @@ namespace Aerospike.Test
 		[ClassCleanup()]
 		public static void Destroy()
 		{
-			client.DropIndex(null, args.ns, args.set, indexName);
+			nativeClient.DropIndex(null, args.ns, args.set, indexName);
 		}
 
 		[TestMethod]

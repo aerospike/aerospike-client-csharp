@@ -1382,7 +1382,8 @@ namespace Aerospike.Client
 			int fieldCount = 0;
 			int filterSize = 0;
 			int binNameSize = 0;
-			bool isNew = cluster.hasPartitionQuery;
+			bool isNew = false; 
+			if (cluster != null) isNew =  cluster.hasPartitionQuery;
 
 			Begin();
 

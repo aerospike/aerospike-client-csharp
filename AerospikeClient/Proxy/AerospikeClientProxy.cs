@@ -1105,6 +1105,7 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if command fails</exception>
 		public bool Operate(BatchPolicy policy, List<BatchRecord> records)
 		{
+			//Debugger.Launch();
 			policy ??= batchParentPolicyWriteDefault;
 
 			BatchNode batch = new(records.ToArray());
@@ -1474,12 +1475,13 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if query fails</exception>
 		public RecordSet Query(QueryPolicy policy, Statement statement)
 		{
+			//Debugger.Launch();
 			CancellationToken token = new();
 			policy ??= queryPolicyDefault;
 			PartitionTracker tracker = new(policy, statement, (Node[])null);
-			//PartitionFilter partitionFilter = new();
+			PartitionFilter partitionFilter = PartitionFilter.All();
 			RecordSet recordSet = new(null, policy.recordQueueSize, token);
-			QueryPartitionCommand command = new(null, policy, statement, statement.taskId, recordSet, tracker, null);
+			QueryPartitionCommandProxy command = new(policy, null, statement, null, tracker, partitionFilter, recordSet);
 			command.ExecuteGRPC(channel);
 			return recordSet;
 		}

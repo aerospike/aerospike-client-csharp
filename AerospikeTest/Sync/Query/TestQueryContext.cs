@@ -36,7 +36,7 @@ namespace Aerospike.Test
 
 			try
 			{
-				IndexTask task = client.CreateIndex(
+				IndexTask task = nativeClient.CreateIndex(
 					policy, args.ns, args.set, indexName, binName,
 					IndexType.NUMERIC, IndexCollectionType.DEFAULT,
 					CTX.ListRank(-1)
@@ -70,7 +70,7 @@ namespace Aerospike.Test
 		[ClassCleanup()]
 		public static void Destroy()
 		{
-			client.DropIndex(null, args.ns, args.set, indexName);
+			nativeClient.DropIndex(null, args.ns, args.set, indexName);
 		}
 
 		[TestMethod]

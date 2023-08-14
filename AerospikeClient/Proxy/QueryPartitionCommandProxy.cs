@@ -23,13 +23,15 @@ using static Aerospike.Client.AerospikeException;
 
 namespace Aerospike.Client
 {
-	public abstract class QueryPartitionCommandProxy : MultiCommand
+	public class QueryPartitionCommandProxy : MultiCommand
 	{
 		private QueryPolicy policy;
 		private WritePolicy writePolicy;
 		private Statement statement;
 		private PartitionFilter partitionFilter;
 		private Operation[] operations;
+		private readonly PartitionTracker tracker;
+		private readonly RecordSet recordSet;
 
 		public QueryPartitionCommandProxy
 		(
@@ -39,7 +41,7 @@ namespace Aerospike.Client
 			Operation[] operations,
 			PartitionTracker partitionTracker,
 			PartitionFilter partitionFilter,
-			RecordSet recordset
+			RecordSet recordSet
 		) : base(null, policy, null, true)
 		{
 			this.policy = policy;
@@ -47,11 +49,52 @@ namespace Aerospike.Client
 			this.statement = statement;
 			this.operations = operations;
 			this.partitionFilter = partitionFilter;
+			this.tracker = partitionTracker;
+			this.recordSet = recordSet;
 		}
 
 		protected internal override void WriteBuffer()
 		{
 			SetQuery(null, policy, statement, statement.taskId, false, null);
+		}
+
+		protected internal override bool ParseRow()
+		{
+			ulong bval;
+			Key key = ParseKey(fieldCount, out bval);
+
+			if ((info3 & Command.INFO3_PARTITION_DONE) != 0)
+			{
+				// When an error code is received, mark partition as unavailable
+				// for the current round. Unavailable partitions will be retried
+				// in the next round. Generation is overloaded as partitionId.
+				if (resultCode != 0)
+				{
+					tracker.PartitionUnavailable(null, generation);
+				}
+				return true;
+			}
+
+			if (resultCode != 0)
+			{
+				throw new AerospikeException(resultCode);
+			}
+
+			Record record = ParseRecord();
+
+			if (!valid)
+			{
+				throw new AerospikeException.QueryTerminated();
+			}
+
+			if (!recordSet.Put(new KeyRecord(key, record)))
+			{
+				Stop();
+				throw new AerospikeException.QueryTerminated();
+			}
+
+			tracker.SetLast(null, key, bval);
+			return true;
 		}
 
 		public void ExecuteGRPC(GrpcChannel channel)
@@ -67,21 +110,25 @@ namespace Aerospike.Client
 			{
 				Id = 0, // ID is only needed in streaming version, can be static for unary
 				Iteration = 1,
-				Payload = ByteString.CopyFrom(dataBuffer),
+				Payload = ByteString.CopyFrom(dataBuffer, 0, dataOffset),
 				QueryRequest = queryRequest
 			};
 
 			var KVS = new KVS.Query.QueryClient(channel);
 			var stream = KVS.Query(request);//, cancellationToken: token);
 			var conn = new ConnectionProxyStream(stream);
-
+			
 			try
 			{
 				ParseResult(conn);
 			}
 			catch (EndOfGRPCStream eogs)
 			{
-				// continue
+				if (tracker.IsComplete(cluster, policy))
+				{
+					// All partitions received.
+					recordSet.Put(RecordSet.END);
+				}
 			}
 			catch (Exception e)
 			{

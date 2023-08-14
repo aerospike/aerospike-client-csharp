@@ -40,7 +40,7 @@ namespace Aerospike.Test
 
 			try
 			{
-				IndexTask itask = client.CreateIndex(policy, args.ns, setName, indexName, binName, IndexType.NUMERIC);
+				IndexTask itask = nativeClient.CreateIndex(policy, args.ns, setName, indexName, binName, IndexType.NUMERIC);
 				itask.Wait();
 			}
 			catch (AerospikeException ae)
@@ -96,7 +96,7 @@ namespace Aerospike.Test
 		[ClassCleanup()]
 		public static void Destroy()
 		{
-			client.DropIndex(null, args.ns, setName, indexName);
+			nativeClient.DropIndex(null, args.ns, setName, indexName);
 		}
 
 		[TestMethod]
