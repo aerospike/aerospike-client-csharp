@@ -122,7 +122,7 @@ namespace Aerospike.Client
 
 		protected WritePolicy operatePolicyReadDefault { get; set; }
 
-		private GrpcChannel channel { get; set; }
+		internal GrpcChannel channel { get; set; }
 
 		//private readonly AuthTokenManager authTokenManager;
 
@@ -366,7 +366,7 @@ namespace Aerospike.Client
 		{
 			get
 			{
-				throw new AerospikeException(NotSupported + "getCluster");
+				throw new AerospikeException(NotSupported + "GetCluster");
 			}
 		}
 
@@ -377,7 +377,7 @@ namespace Aerospike.Client
 		{
 			get
 			{
-				throw new AerospikeException(NotSupported + "getNodes");
+				throw new AerospikeException(NotSupported + "GetNodes");
 			}
 		}
 
@@ -386,7 +386,7 @@ namespace Aerospike.Client
 		/// </summary>
 		public ClusterStats GetClusterStats()
 		{
-			throw new AerospikeException(NotSupported + "getClusterStats");
+			throw new AerospikeException(NotSupported + "GetClusterStats");
 		}
 
 		//-------------------------------------------------------
@@ -607,15 +607,13 @@ namespace Aerospike.Client
 
 			for (int i = 0; i < keys.Length; i++)
 			{
-				records[i] = new BatchRecord(keys[i], attr.hasWrite);
+				records[i] = new BatchDelete(deletePolicy, keys[i]);
 			}
 
 			try
 			{
 				BatchStatus status = new(true);
-				BatchNode batchNode = new(records);
-				BatchOperateArrayCommand command = new(null, batchNode, batchPolicy, keys, null, records, attr, status);
-				command.ExecuteGRPC(channel);
+				Operate(batchPolicy, records, status);
 				return new BatchResults(records, status.GetStatus());
 			}
 			catch (Exception e)
@@ -724,9 +722,11 @@ namespace Aerospike.Client
 			try
 			{
 				BatchStatus status = new(false);
-				BatchNode batchNode = new(records);
-				BatchExistsArrayCommand command = new(null, batchNode, policy, keys, existsArray, status);
-				command.ExecuteGRPC(channel);
+				Operate(policy, records, status);
+				for (int i = 0; i < keys.Length; i++)
+				{
+					existsArray[i] = records[i].record != null;
+				}
 				return existsArray;
 			}
 			catch (Exception e)
@@ -844,10 +844,7 @@ namespace Aerospike.Client
 			}
 
 			BatchStatus status = new(true);
-			BatchNode batchNode = new(records.ToArray());
-
-			BatchReadListCommand command = new(null, batchNode, policy, records, status);
-			command.ExecuteGRPC(channel);
+			Operate(policy, records.ToArray(), status);
 			return status.GetStatus();
 		}
 
@@ -872,16 +869,14 @@ namespace Aerospike.Client
 			BatchRecord[] batchRecords = new BatchRecord[keys.Length];
 			for (int i = 0; i < keys.Length; i++)
 			{
-				batchRecords[i] = new BatchRead(keys[i], false);
+				batchRecords[i] = new BatchRead(keys[i], true);
 			}
 
 			try
 			{
 				BatchStatus status = new(false);
-				BatchNode batchNode = new(batchRecords);
-				BatchGetArrayCommand command = new(null, batchNode, policy, keys, null, null, records, Command.INFO1_READ | Command.INFO1_GET_ALL, false, status);
-				command.ExecuteGRPC(channel);
-				for (int i = 0; i < batchRecords.Length; i++)
+				Operate(policy, batchRecords, status);
+				for (int i = 0; i < keys.Length; i++)
 				{
 					records[i] = batchRecords[i].record;
 				}
@@ -921,10 +916,8 @@ namespace Aerospike.Client
 			try
 			{
 				BatchStatus status = new(false);
-				BatchNode batchNode = new(batchRecords);
-				BatchGetArrayCommand command = new(null, batchNode, policy, keys, binNames, null, records, Command.INFO1_READ, false, status);
-				command.ExecuteGRPC(channel);
-				for (int i = 0; i < batchRecords.Length; i++)
+				Operate(policy, batchRecords, status);
+				for (int i = 0; i < keys.Length; i++)
 				{
 					records[i] = batchRecords[i].record;
 				}
@@ -964,9 +957,7 @@ namespace Aerospike.Client
 			try
 			{
 				BatchStatus status = new(false);
-				BatchNode batchNode = new(batchRecords);
-				BatchGetArrayCommand command = new(null, batchNode, policy, keys, null, ops, records, Command.INFO1_READ, true, status);
-				command.ExecuteGRPC(channel);
+				Operate(policy, batchRecords, status);
 				for (int i = 0; i < batchRecords.Length; i++)
 				{
 					records[i] = batchRecords[i].record;
@@ -1006,9 +997,7 @@ namespace Aerospike.Client
 			try
 			{
 				BatchStatus status = new(false);
-				BatchNode batchNode = new(batchRecords);
-				BatchGetArrayCommand command = new(null, batchNode, policy, keys, null, null, records, Command.INFO1_READ | Command.INFO1_NOBINDATA, false, status);
-				command.ExecuteGRPC(channel);
+				Operate(policy, batchRecords, status);
 				for (int i = 0; i < batchRecords.Length; i++)
 				{
 					records[i] = batchRecords[i].record;
@@ -1105,14 +1094,20 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if command fails</exception>
 		public bool Operate(BatchPolicy policy, List<BatchRecord> records)
 		{
-			//Debugger.Launch();
 			policy ??= batchParentPolicyWriteDefault;
 
-			BatchNode batch = new(records.ToArray());
 			BatchStatus status = new(true);
+			Operate(policy, records.ToArray(), status);
+			return status.GetStatus();
+		}
+
+		private void Operate(BatchPolicy policy, BatchRecord[] records, BatchStatus status)
+		{
+			policy ??= batchParentPolicyWriteDefault;
+
+			BatchNode batch = new(records);
 			BatchOperateListCommand command = new(null, batch, policy, records, status);
 			command.ExecuteGRPC(channel);
-			return status.GetStatus();
 		}
 
 		/// <summary>
@@ -1358,15 +1353,13 @@ namespace Aerospike.Client
 
 			for (int i = 0; i < keys.Length; i++)
 			{
-				records[i] = new BatchRecord(keys[i], attr.hasWrite);
+				records[i] = new BatchUDF(udfPolicy, keys[i], packageName, functionName, functionArgs);
 			}
 
 			try
 			{
 				BatchStatus status = new(true);
-				BatchNode batchNode = new(records);
-				var command = new BatchUDFCommand(null, batchNode, batchPolicy, keys, packageName, functionName, argBytes, records, attr, status);
-				command.ExecuteGRPC(channel);
+				Operate(batchPolicy, records, status);
 				return new BatchResults(records, status.GetStatus());
 			}
 			catch (Exception e)
@@ -1405,7 +1398,7 @@ namespace Aerospike.Client
 			ServerCommand command = new(null, null, policy, statement, taskId);
 			command.ExecuteGRPC(channel);
 				
-			return new ExecuteTask(null, policy, statement, taskId);
+			return new ExecuteTaskProxy(channel, policy, statement, taskId);
 		}
 
 		/// <summary>
@@ -1421,10 +1414,7 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if command fails</exception>
 		public ExecuteTask Execute(WritePolicy policy, Statement statement, params Operation[] operations)
 		{
-			if (policy == null)
-			{
-				policy = writePolicyDefault;
-			}
+			policy ??= writePolicyDefault;
 
 			statement.Operations = operations;
 
@@ -1432,7 +1422,7 @@ namespace Aerospike.Client
 			ServerCommand command = new(null, null, policy, statement, taskId);
 			command.ExecuteGRPC(channel);
 
-			return new ExecuteTask(null, policy, statement, taskId);
+			return new ExecuteTaskProxy(channel, policy, statement, taskId);
 		}
 
 		//--------------------------------------------------------
@@ -1455,7 +1445,6 @@ namespace Aerospike.Client
 					action(rs.Key, rs.Record);
 				}
 			}
-			throw new AerospikeException("not implemented yet");
 		}
 
 		/// <summary>
@@ -1475,15 +1464,7 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if query fails</exception>
 		public RecordSet Query(QueryPolicy policy, Statement statement)
 		{
-			//Debugger.Launch();
-			CancellationToken token = new();
-			policy ??= queryPolicyDefault;
-			PartitionTracker tracker = new(policy, statement, (Node[])null);
-			PartitionFilter partitionFilter = PartitionFilter.All();
-			RecordSet recordSet = new(null, policy.recordQueueSize, token);
-			QueryPartitionCommandProxy command = new(policy, null, statement, null, tracker, partitionFilter, recordSet);
-			command.ExecuteGRPC(channel);
-			return recordSet;
+			return QueryPartitions(policy, statement, PartitionFilter.All());
 		}
 
 		/// <summary>
@@ -1556,44 +1537,16 @@ namespace Aerospike.Client
 			PartitionFilter partitionFilter
 		)
 		{
-			/*if (policy == null)
-			{
-				policy = queryPolicyDefault;
-			}
-
-			Node[] nodes = cluster.ValidateNodes();
-
-			if (cluster.hasPartitionQuery || statement.filter == null)
-			{
-				PartitionTracker tracker = new PartitionTracker(policy, statement, nodes, partitionFilter);
-				QueryPartitionExecutor executor = new QueryPartitionExecutor(cluster, policy, statement, nodes.Length, tracker);
-				return executor.RecordSet;
-			}
-			else
-			{
-				throw new AerospikeException(ResultCode.PARAMETER_ERROR, "QueryPartitions() not supported");
-			}*/
-			throw new AerospikeException("not implemented yet");
+			CancellationToken token = new();
+			policy ??= queryPolicyDefault;
+			PartitionTracker tracker = new(policy, statement, (Node[])null, partitionFilter);
+			RecordSet recordSet = new(null, policy.recordQueueSize, token);
+			QueryPartitionCommandProxy command = new(policy, null, statement, null, tracker, partitionFilter, recordSet);
+			command.ExecuteGRPC(channel);
+			return recordSet;
 		}
 
-		/// <summary>
-		/// Execute query, apply statement's aggregation function, and return result iterator. 
-		/// The aggregation function should be located in a Lua script file that can be found from the 
-		/// "LuaConfig.PackagePath" paths static variable.  The default package path is "udf/?.lua"
-		/// where "?" is the packageName.
-		/// <para>
-		/// The query executor puts results on a queue in separate threads.  The calling thread 
-		/// concurrently pops results off the queue through the ResultSet iterator.
-		/// The aggregation function is called on both server and client (final reduce).
-		/// Therefore, the Lua script file must also reside on both server and client.
-		/// </para>
-		/// </summary>
-		/// <param name="policy">query configuration parameters, pass in null for defaults</param>
-		/// <param name="statement">query definition</param>
-		/// <param name="packageName">server package where user defined function resides</param>
-		/// <param name="functionName">aggregation function name</param>
-		/// <param name="functionArgs">arguments to pass to function name, if any</param>
-		/// <exception cref="AerospikeException">if query fails</exception>
+		/// Not supported in proxy client
 		public ResultSet QueryAggregate
 		(
 			QueryPolicy policy,
@@ -1603,61 +1556,19 @@ namespace Aerospike.Client
 			params Value[] functionArgs
 		)
 		{
-			/*statement.SetAggregateFunction(packageName, functionName, functionArgs);
-			return QueryAggregate(policy, statement);*/
-			throw new AerospikeException("not implemented yet");
+			throw new AerospikeException(NotSupported + "QueryAggregate");
 		}
 
-		/// <summary>
-		/// Execute query, apply statement's aggregation function, call action for each aggregation
-		/// object returned from server. 
-		/// </summary>
-		/// <param name="policy">query configuration parameters, pass in null for defaults</param>
-		/// <param name="statement">
-		/// query definition with aggregate functions already initialized by SetAggregateFunction().
-		/// </param>
-		/// <param name="action">action methods to be called for each aggregation object</param>
-		/// <exception cref="AerospikeException">if query fails</exception>
+		/// Not supported in proxy client
 		public void QueryAggregate(QueryPolicy policy, Statement statement, Action<Object> action)
 		{
-			/*using (ResultSet rs = QueryAggregate(policy, statement))
-			{
-				while (rs.Next())
-				{
-					action(rs.Object);
-				}
-			}*/
-			throw new AerospikeException("not implemented yet");
+			throw new AerospikeException(NotSupported + "QueryAggregate");
 		}
 
-		/// <summary>
-		/// Execute query, apply statement's aggregation function, and return result iterator. 
-		/// The aggregation function should be initialized via the statement's SetAggregateFunction()
-		/// and should be located in a Lua resource file located in an assembly.
-		/// <para>
-		/// The query executor puts results on a queue in separate threads.  The calling thread 
-		/// concurrently pops results off the queue through the ResultSet iterator.
-		/// The aggregation function is called on both server and client (final reduce).
-		/// Therefore, the Lua script file must also reside on both server and client.
-		/// </para>
-		/// </summary>
-		/// <param name="policy">query configuration parameters, pass in null for defaults</param>
-		/// <param name="statement">
-		/// query definition with aggregate functions already initialized by SetAggregateFunction().
-		/// </param>
-		/// <exception cref="AerospikeException">if query fails</exception>
+		/// Not supported in proxy client
 		public ResultSet QueryAggregate(QueryPolicy policy, Statement statement)
 		{
-			/*if (policy == null)
-			{
-				policy = queryPolicyDefault;
-			}
-
-			Node[] nodes = cluster.ValidateNodes();
-			QueryAggregateExecutor executor = new QueryAggregateExecutor(cluster, policy, statement, nodes);
-			executor.Execute();
-			return executor.ResultSet;*/
-			throw new AerospikeException("not implemented yet");
+			throw new AerospikeException(NotSupported + "QueryAggregate");
 		}
 
 		//--------------------------------------------------------
@@ -1675,7 +1586,7 @@ namespace Aerospike.Client
 			IndexType indexType
 		)
 		{
-			throw new AerospikeException(NotSupported + "createIndex");
+			throw new AerospikeException(NotSupported + "CreateIndex");
 		}
 
 		/// Not supported in proxy client
@@ -1691,13 +1602,13 @@ namespace Aerospike.Client
 			params CTX[] ctx
 		)
 		{
-			throw new AerospikeException(NotSupported + "createIndex");
+			throw new AerospikeException(NotSupported + "CreateIndex");
 		}
 		
 		/// Not supported by proxy client
 		public IndexTask DropIndex(Policy policy, string ns, string setName, string indexName)
 		{
-			throw new AerospikeException(NotSupported + "dropIndex");
+			throw new AerospikeException(NotSupported + "DropIndex");
 		}
 
 		//-----------------------------------------------------------------
@@ -1707,7 +1618,7 @@ namespace Aerospike.Client
 		/// Not supported in proxy client
 		public void SetXDRFilter(InfoPolicy policy, string datacenter, string ns, Expression filter)
 		{
-			throw new AerospikeException(NotSupported + "setXDRFilter");
+			throw new AerospikeException(NotSupported + "SetXDRFilter");
 		}
 
 		//-------------------------------------------------------
@@ -1717,59 +1628,46 @@ namespace Aerospike.Client
 		/// Not supported in proxy client		
 		public void CreateUser(AdminPolicy policy, string user, string password, IList<string> roles)
 		{
-			throw new AerospikeException(NotSupported + "createUser");
+			throw new AerospikeException(NotSupported + "CreateUser");
 		}
 
 		/// Not supported in proxy client
 		public void DropUser(AdminPolicy policy, string user)
 		{
-			throw new AerospikeException(NotSupported + "dropUser");
+			throw new AerospikeException(NotSupported + "DropUser");
 		}
 
 		/// Not supported in proxy client
 		public void ChangePassword(AdminPolicy policy, string user, string password)
 		{
-			throw new AerospikeException(NotSupported + "changePassword");
+			throw new AerospikeException(NotSupported + "ChangePassword");
 		}
 
 		/// Not supported in proxy client
 		public void GrantRoles(AdminPolicy policy, string user, IList<string> roles)
 		{
-			throw new AerospikeException(NotSupported + "grantRoles");
+			throw new AerospikeException(NotSupported + "GrantRoles");
 		}
 
 		/// Not supported in proxy client
 		public void RevokeRoles(AdminPolicy policy, string user, IList<string> roles)
 		{
-			throw new AerospikeException(NotSupported + "revokeRoles");
+			throw new AerospikeException(NotSupported + "RevokeRoles");
 		}
 
 		/// Not supported in proxy client
 		public void CreateRole(AdminPolicy policy, string roleName, IList<Privilege> privileges)
 		{
-			throw new AerospikeException(NotSupported + "createRole");
+			throw new AerospikeException(NotSupported + "CreateRole");
 		}
 
 		/// Not supported in proxy client
 		public void CreateRole(AdminPolicy policy, string roleName, IList<Privilege> privileges, IList<string> whitelist)
 		{
-			throw new AerospikeException(NotSupported + "createRole");
+			throw new AerospikeException(NotSupported + "CreateRole");
 		}
 
-		/// <summary>
-		/// Create user defined role with optional privileges, whitelist and read/write quotas.
-		/// Quotas require server security configuration "enable-quotas" to be set to true.
-		/// </summary>
-		/// <param name="policy">admin configuration parameters, pass in null for defaults</param>
-		/// <param name="roleName">role name</param>
-		/// <param name="privileges">optional list of privileges assigned to role.</param>
-		/// <param name="whitelist">
-		/// optional list of allowable IP addresses assigned to role.
-		/// IP addresses can contain wildcards (ie. 10.1.2.0/24).
-		/// </param>
-		/// <param name="readQuota">optional maximum reads per second limit, pass in zero for no limit.</param>
-		/// <param name="writeQuota">optional maximum writes per second limit, pass in zero for no limit.</param>
-		/// <exception cref="AerospikeException">if command fails</exception>
+		/// Not supported in proxy client
 		public void CreateRole
 		(
 			AdminPolicy policy,
@@ -1780,61 +1678,61 @@ namespace Aerospike.Client
 			int writeQuota
 		)
 		{
-			throw new AerospikeException(NotSupported + "createRole");
+			throw new AerospikeException(NotSupported + "CreateRole");
 		}
 
 		/// Not supported in proxy client
 		public void DropRole(AdminPolicy policy, string roleName)
 		{
-			throw new AerospikeException(NotSupported + "dropRole");
+			throw new AerospikeException(NotSupported + "DropRole");
 		}
 
 		/// Not supported in proxy client
 		public void GrantPrivileges(AdminPolicy policy, string roleName, IList<Privilege> privileges)
 		{
-			throw new AerospikeException(NotSupported + "grantPrivileges");
+			throw new AerospikeException(NotSupported + "GrantPrivileges");
 		}
 
 		/// Not supported in proxy client
 		public void RevokePrivileges(AdminPolicy policy, string roleName, IList<Privilege> privileges)
 		{
-			throw new AerospikeException(NotSupported + "revokePrivileges");
+			throw new AerospikeException(NotSupported + "RevokePrivileges");
 		}
 
 		/// Not supported in proxy client
 		public void SetWhitelist(AdminPolicy policy, string roleName, IList<string> whitelist)
 		{
-			throw new AerospikeException(NotSupported + "setWhitelist");
+			throw new AerospikeException(NotSupported + "SetWhitelist");
 		}
 
 		/// Not supported in proxy client
 		public void SetQuotas(AdminPolicy policy, string roleName, int readQuota, int writeQuota)
 		{
-			throw new AerospikeException(NotSupported + "setQuotas");
+			throw new AerospikeException(NotSupported + "SetQuotas");
 		}
 
 		/// Not supported in proxy client
 		public User QueryUser(AdminPolicy policy, string user)
 		{
-			throw new AerospikeException(NotSupported + "queryUser");
+			throw new AerospikeException(NotSupported + "QueryUser");
 		}
 
 		/// Not supported in proxy client
 		public List<User> QueryUsers(AdminPolicy policy)
 		{
-			throw new AerospikeException(NotSupported + "queryUsers");
+			throw new AerospikeException(NotSupported + "QueryUsers");
 		}
 
 		/// Not supported in proxy client
 		public Role QueryRole(AdminPolicy policy, string roleName)
 		{
-			throw new AerospikeException(NotSupported + "queryRole");
+			throw new AerospikeException(NotSupported + "QueryRole");
 		}
 
 		/// Not supported in proxy client
 		public List<Role> QueryRoles(AdminPolicy policy)
 		{
-			throw new AerospikeException(NotSupported + "queryRoles");
+			throw new AerospikeException(NotSupported + "QueryRoles");
 		}		
 	}
 }

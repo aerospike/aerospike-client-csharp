@@ -91,10 +91,10 @@ namespace Aerospike.Client
 			
 			var KVS = new KVS.Query.QueryClient(channel);
 			var stream = KVS.BackgroundExecute(request);//, cancellationToken: token);
-			var conn = new ConnectionProxyStream(stream);
-
+			
 			try
 			{
+				var conn = new ConnectionProxyStream(stream);
 				ParseResult(conn);
 			}
 			catch (EndOfGRPCStream eogs)

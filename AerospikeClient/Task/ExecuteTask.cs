@@ -19,10 +19,10 @@ namespace Aerospike.Client
 	/// <summary>
 	/// Task used to poll for long running execute job completion.
 	/// </summary>
-	public sealed class ExecuteTask : BaseTask
+	public class ExecuteTask : BaseTask
 	{
-		private readonly ulong taskId;
-		private readonly bool scan;
+		internal readonly ulong taskId;
+		internal readonly bool scan;
 
 		/// <summary>
 		/// Initialize task with fields needed to query server nodes.

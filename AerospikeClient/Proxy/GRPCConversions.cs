@@ -73,7 +73,6 @@ namespace Aerospike.Client
 				ReadModeAP = Enum.TryParse(queryPolicy.readModeAP.ToString(), true, out KVS.ReadModeAP apConversion) ? apConversion : KVS.ReadModeAP.One,
 				ReadModeSC = Enum.TryParse(queryPolicy.readModeSC.ToString(), true, out KVS.ReadModeSC scConversion) ? scConversion : KVS.ReadModeSC.Session,
 				Replica = Enum.TryParse(queryPolicy.replica.ToString(), true, out KVS.Replica replicaConversion) ? replicaConversion : KVS.Replica.Sequence,
-				//Expression = queryPolicy.filterExp == null ? null : ByteString.CopyFrom(queryPolicy.filterExp.Bytes),
 				TotalTimeout = (uint)queryPolicy.totalTimeout,
 				Compress = queryPolicy.compress,
 				SendKey = queryPolicy.sendKey,
@@ -119,7 +118,6 @@ namespace Aerospike.Client
 				ValType = filter.ValType,
 				Begin = filter.Begin == null ? null : ByteString.CopyFrom(packer.ToByteArray()), // TODO ask Brian about this
 				End = filter.End == null ? null : ValueToByteString(filter.End),
-				//PackedCtx = filter.PackedCtx == null ? null : ByteString.CopyFrom(filter.PackedCtx),
 				ColType = Enum.TryParse(filter.ColType.ToString(), true, out KVS.IndexCollectionType colTypeConversion) ? colTypeConversion : KVS.IndexCollectionType.Default
 			};
 
@@ -145,12 +143,14 @@ namespace Aerospike.Client
 
 		public static KVS.Operation ToGrpc(Operation operation)
 		{
-			return new() 
+			var operationKVS = new KVS.Operation() 
 			{ 
 				Type = Enum.TryParse(operation.type.ToString(), true, out KVS.OperationType typeConversion) ? typeConversion : KVS.OperationType.Read,
-				BinName = operation.binName,
 				Value = ValueToByteString(operation.value)
 			};
+			if (operation.binName != null) { operationKVS.BinName = operation.binName; }
+
+			return operationKVS;
 		}
 
 		/**
@@ -161,22 +161,11 @@ namespace Aerospike.Client
 		 */
 		public static KVS.Statement ToGrpc(Statement statement, long taskId, long maxRecords)
 		{
-			_ = new RepeatedField<string>()
-			{
-				statement.BinNames
-			};
-
 			var statementKVS = new KVS.Statement
 			{
 				Namespace = statement.Namespace,
-				SetName = statement.SetName,
-				//IndexName = statement.IndexName,
-				//BinNames = new RepeatedField<string>() { statement.BinNames },
-				Filter = ToGrpc(statement.Filter),
-				//PackageName = statement.PackageName,
-				//FunctionName = statement.FunctionName,
-				//FunctionArgs = statement.FunctionArgs,
-				//Operations = statement.Operations,
+				SetName = statement.SetName != null ? statement.SetName : "",
+				Filter = statement.Filter != null ? ToGrpc(statement.Filter) : null,
 				TaskId = taskId,
 				MaxRecords = (ulong)maxRecords,
 				RecordsPerSecond = (uint)statement.RecordsPerSecond
@@ -185,13 +174,13 @@ namespace Aerospike.Client
 			if (statement.IndexName != null) statementKVS.IndexName = statement.IndexName;
 			if (statement.PackageName != null) statementKVS.PackageName = statement.PackageName;
 			if (statement.FunctionName != null) statementKVS.FunctionName = statement.FunctionName;
-			return statementKVS;
+			
 
-			/*if (statement.BinNames != null)
+			if (statement.BinNames != null)
 			{
 				foreach (string binName in statement.BinNames)
 				{
-					statementBuilder.addBinNames(binName);
+					statementKVS.BinNames.Add(binName);
 				}
 			}
 
@@ -199,7 +188,7 @@ namespace Aerospike.Client
 			{
 				foreach (Value arg in statement.FunctionArgs)
 				{
-					statementBuilder.addFunctionArgs(ValueToByteString(arg));
+					statementKVS.FunctionArgs.Add(ValueToByteString(arg));
 				}
 			}
 
@@ -207,20 +196,25 @@ namespace Aerospike.Client
 			{
 				foreach (Operation operation in statement.Operations)
 				{
-					statementBuilder.addOperations(ToGrpc(operation));
+					statementKVS.Operations.Add(ToGrpc(operation));
 				}
-			}*/
+			}
+
+			return statementKVS;
 		}
 
 		public static KVS.PartitionStatus ToGrpc(PartitionStatus ps)
 		{
-			return new()
+			var partitionStatusKVS = new KVS.PartitionStatus()
 			{
 				Id = (uint)ps.id,
 				BVal = (long)ps.bval,
-				Retry = ps.retry,
-				Digest = ps.digest == null ? null : ByteString.CopyFrom(ps.digest)
+				Retry = ps.retry
 			};
+
+			if (ps.digest != null) { partitionStatusKVS.Digest = ByteString.CopyFrom(ps.digest); }
+
+			return partitionStatusKVS;
 		}
 
 		public static KVS.PartitionFilter ToGrpc(PartitionFilter partitionFilter)
@@ -229,12 +223,19 @@ namespace Aerospike.Client
 			{
 				Begin = (uint)partitionFilter.Begin,
 				Count = (uint)partitionFilter.Count,
-				Retry = partitionFilter.Retry,
-				//Digest = partitionFilter.Digest != null && partitionFilter.Digest.Length > 0 ? ByteString.CopyFrom(partitionFilter.Digest) : null,
-				//PartitionStatuses = partitionFilter.Partitions
+				Retry = partitionFilter.Retry
 			};
 
 			if (partitionFilter.Digest != null && partitionFilter.Digest.Length > 0) partitionFilterKVS.Digest = ByteString.CopyFrom(partitionFilter.Digest);
+
+			if (partitionFilter.Partitions != null)
+			{
+				foreach (PartitionStatus partition in partitionFilter.Partitions)
+				{
+					partitionFilterKVS.PartitionStatuses.Add(ToGrpc(partition));
+				}
+			}
+
 			return partitionFilterKVS;
 		}
 
@@ -246,7 +247,7 @@ namespace Aerospike.Client
 				ReadModeAP = Enum.TryParse(writePolicy.readModeAP.ToString(), true, out KVS.ReadModeAP apConversion) ? apConversion : KVS.ReadModeAP.One,
 				ReadModeSC = Enum.TryParse(writePolicy.readModeSC.ToString(), true, out KVS.ReadModeSC scConversion) ? scConversion : KVS.ReadModeSC.Session,
 				Replica = Enum.TryParse(writePolicy.replica.ToString(), true, out KVS.Replica replicaConversion) ? replicaConversion : KVS.Replica.Sequence,
-				Expression = writePolicy.filterExp == null ? null : ByteString.CopyFrom(writePolicy.filterExp.Bytes),
+				Expression = writePolicy.filterExp == null ? ByteString.Empty : ByteString.CopyFrom(writePolicy.filterExp.Bytes),
 				TotalTimeout = (uint)writePolicy.totalTimeout,
 				Compress = writePolicy.compress,
 				SendKey = writePolicy.sendKey,

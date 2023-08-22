@@ -77,7 +77,7 @@ namespace Aerospike.Test
 			client.Put(policy, new Key(args.ns, args.set, 10002), new Bin(BinName, 10002));
 		}
 
-	[TestMethod]
+		[TestMethod]
 		public void BatchExists()
 		{
 			Key[] keys = new Key[Size];

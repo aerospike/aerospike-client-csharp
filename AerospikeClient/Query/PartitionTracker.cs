@@ -127,7 +127,8 @@ namespace Aerospike.Client
 
 			SetMaxRecords(maxRecords);
 			this.partitionBegin = filter.begin;
-			this.nodeCapacity = nodes.Length;
+			var nodeLength = nodes != null ? nodes.Length : 1;
+			this.nodeCapacity = nodeLength;
 			this.nodeFilter = null;
 			this.partitionsCapacity = filter.count;
 			this.replica = policy.replica;

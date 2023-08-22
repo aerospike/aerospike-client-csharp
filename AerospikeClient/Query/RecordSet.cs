@@ -76,7 +76,7 @@ namespace Aerospike.Client
 			if (record == END)
 			{
 				valid = false;
-				executor.CheckForException();
+				if (executor != null) executor.CheckForException();
 				return false;
 			}
 			return true;

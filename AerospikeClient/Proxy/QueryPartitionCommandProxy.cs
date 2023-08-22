@@ -116,19 +116,19 @@ namespace Aerospike.Client
 
 			var KVS = new KVS.Query.QueryClient(channel);
 			var stream = KVS.Query(request);//, cancellationToken: token);
-			var conn = new ConnectionProxyStream(stream);
 			
 			try
 			{
+				var conn = new ConnectionProxyStream(stream);
 				ParseResult(conn);
 			}
 			catch (EndOfGRPCStream eogs)
 			{
-				if (tracker.IsComplete(cluster, policy))
-				{
+				//if (tracker.IsComplete(cluster, policy))
+				//{
 					// All partitions received.
 					recordSet.Put(RecordSet.END);
-				}
+				//}
 			}
 			catch (Exception e)
 			{

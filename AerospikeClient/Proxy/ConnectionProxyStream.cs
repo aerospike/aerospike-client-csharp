@@ -36,7 +36,6 @@ namespace Aerospike.Client
 		byte[] Payload;
 		int Offset;
 		int BufferOffset;
-		bool LastResponse;
 
 		/// <summary>
 		/// Create GRPC Connection Stream class
@@ -44,7 +43,6 @@ namespace Aerospike.Client
 		public ConnectionProxyStream(AsyncServerStreamingCall<AerospikeResponsePayload> stream)
 		{
 			Stream = stream;
-			//stream.ResponseStream.ReadAllAsync();
 			stream.ResponseStream.MoveNext().Wait();
 			Response = stream.ResponseStream.Current;
 			if (Response.Status != 0)
@@ -53,7 +51,10 @@ namespace Aerospike.Client
 			}
 			Payload = Response.Payload.ToByteArray();
 			Offset = 0;
-			LastResponse = !Response.HasNext;
+			if (!Response.HasNext)
+			{
+				throw new EndOfGRPCStream();
+			}
 		}
 
 		public void SetTimeout(int timeoutMillis)
@@ -101,11 +102,6 @@ namespace Aerospike.Client
 
 		private void NextGRPCResponse()
 		{
-			if (LastResponse)
-			{
-				throw new EndOfGRPCStream();
-			}
-			
 			Stream.ResponseStream.MoveNext().Wait();
 			Response = Stream.ResponseStream.Current;
 			if (Response.Status != 0)
@@ -114,7 +110,10 @@ namespace Aerospike.Client
 			}
 			Payload = Response.Payload.ToByteArray();
 			Offset = 0;
-			LastResponse = !Response.HasNext;
+			if (!Response.HasNext)
+			{
+				throw new EndOfGRPCStream();
+			}
 		}
 
 		public Stream GetStream()

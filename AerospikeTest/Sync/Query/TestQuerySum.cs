@@ -78,7 +78,7 @@ namespace Aerospike.Test
 			stmt.SetFilter(Filter.Range(binName, begin, end));
 			stmt.SetAggregateFunction(Assembly.GetExecutingAssembly(), "Aerospike.Test.LuaResources.sum_example.lua", "sum_example", "sum_single_bin", Value.Get(binName));
 
-			ResultSet rs = client.QueryAggregate(null, stmt);
+			ResultSet rs = nativeClient.QueryAggregate(null, stmt);
 
 			try
 			{
@@ -126,7 +126,7 @@ namespace Aerospike.Test
 				socketTimeout = 5000
 			};
 
-			ResultSet rs = client.QueryAggregate(qp, stmt);
+			ResultSet rs = nativeClient.QueryAggregate(qp, stmt);
 
 			try
 			{

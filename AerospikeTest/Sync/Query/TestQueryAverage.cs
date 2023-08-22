@@ -77,7 +77,7 @@ namespace Aerospike.Test
 			stmt.SetFilter(Filter.Range(binName, 0, 1000));
 			stmt.SetAggregateFunction(Assembly.GetExecutingAssembly(), "Aerospike.Test.LuaResources.average_example.lua", "average_example", "average");
 
-			ResultSet rs = client.QueryAggregate(null, stmt);
+			ResultSet rs = nativeClient.QueryAggregate(null, stmt);
 
 			try
 			{

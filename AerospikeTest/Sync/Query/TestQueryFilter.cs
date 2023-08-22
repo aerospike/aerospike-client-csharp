@@ -85,7 +85,7 @@ namespace Aerospike.Test
 			stmt.SetAggregateFunction(Assembly.GetExecutingAssembly(), "Aerospike.Test.LuaResources.filter_example.lua", "filter_example", "profile_filter", Value.Get(passFilter));
 
 			// passFilter will be applied in filter_example.lua.
-			ResultSet rs = client.QueryAggregate(null, stmt);
+			ResultSet rs = nativeClient.QueryAggregate(null, stmt);
 
 			try
 			{
