@@ -1227,9 +1227,9 @@ namespace Aerospike.Client
 		{
 			Begin();
 			int fieldCount = 0;
-			int partsFullSize = nodePartitions.partsFull.Count * 2;
-			int partsPartialSize = nodePartitions.partsPartial.Count * 20;
-			long maxRecords = nodePartitions.recordMax;
+			int partsFullSize = nodePartitions == null ? 0 : nodePartitions.partsFull.Count * 2;
+			int partsPartialSize = nodePartitions == null ? 0 : nodePartitions.partsPartial.Count * 20;
+			long maxRecords = nodePartitions == null ? 0 : nodePartitions.recordMax;
 
 			if (ns != null)
 			{
@@ -1298,7 +1298,7 @@ namespace Aerospike.Client
 			}
 
 			// Clusters that support partition queries also support not sending partition done messages.
-			int infoAttr = cluster.hasPartitionQuery ? Command.INFO3_PARTITION_DONE : 0;
+			int infoAttr = (cluster != null && cluster.hasPartitionQuery) ? Command.INFO3_PARTITION_DONE : 0;
 			int operationCount = (binNames == null) ? 0 : binNames.Length;
 			WriteHeaderRead(policy, totalTimeout, readAttr, infoAttr, fieldCount, operationCount);
 

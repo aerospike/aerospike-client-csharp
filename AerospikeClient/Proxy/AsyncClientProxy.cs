@@ -15,9 +15,11 @@
  * the License.
  */
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
+using static Aerospike.Client.AerospikeException;
 
 namespace Aerospike.Client
 {
@@ -92,6 +94,35 @@ namespace Aerospike.Client
 		{
 		}
 
+		/// <summary>
+		/// Initialize asynchronous client with suitable hosts to seed the cluster map.
+		/// The client policy is used to set defaults and size internal data structures.
+		/// For each host connection that succeeds, the client will:
+		/// <list type="bullet">
+		/// <item>Add host to the cluster map</item>
+		/// <item>Request host's list of other nodes in cluster</item>
+		/// <item>Add these nodes to cluster map</item>
+		/// </list>
+		/// <para>
+		/// In most cases, only one host is necessary to seed the cluster. The remaining hosts 
+		/// are added as future seeds in case of a complete network failure.
+		/// </para>
+		/// <para>
+		/// If one connection succeeds, the client is ready to process database requests.
+		/// If all connections fail and the policy's failIfNotConnected is true, a connection 
+		/// exception will be thrown. Otherwise, the cluster will remain in a disconnected state
+		/// until the server is activated.
+		/// </para>
+		/// </summary>
+		/// <param name="policy">client configuration parameters, pass in null for defaults</param>
+		/// <param name="hosts">array of potential hosts to seed the cluster</param>
+		/// <exception cref="AerospikeException">if all host connections fail</exception>
+		public AsyncClientProxy(AsyncClientPolicy policy, params Host[] hosts)
+			: base(policy, hosts)
+		{
+			policy ??= new AsyncClientPolicy();
+		}
+
 		//-------------------------------------------------------
 		// Write Record Operations
 		//-------------------------------------------------------
@@ -110,33 +141,28 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if queue is full</exception>
 		public Task Put(WritePolicy policy, CancellationToken token, Key key, params Bin[] bins)
 		{
+			//Debugger.Launch();
 			policy ??= writePolicyDefault;
 			AsyncWrite async = new(null, policy, null, key, bins, Operation.Type.WRITE);
 			return async.ExecuteGRPC(channel, token);
 		}
 
 		/// <summary>
-		/// Asynchronously write record bin(s). 
-		/// Schedules the put command with a channel selector and return.
-		/// Another thread will process the command and send the results to the listener.
+		/// Asynchronously write record bin(s).
 		/// <para>
 		/// The policy specifies the transaction timeout, record expiration and how the transaction is
 		/// handled when the record already exists.
 		/// </para>
 		/// </summary>
 		/// <param name="policy">write configuration parameters, pass in null for defaults</param>
-		/// <param name="listener">where to send results, pass in null for fire and forget</param>
+		/// <param name="listener">not used</param>
 		/// <param name="key">unique record identifier</param>
 		/// <param name="bins">array of bin name/value pairs</param>
 		/// <exception cref="AerospikeException">if queue is full</exception>
 		public void Put(WritePolicy policy, WriteListener listener, Key key, params Bin[] bins)
 		{
-			if (policy == null)
-			{
-				policy = writePolicyDefault;
-			}
-			AsyncWrite async = new AsyncWrite(cluster, policy, listener, key, bins, Operation.Type.WRITE);
-			async.Execute();
+			CancellationToken token = new();
+			Put(policy, token, key, bins);
 		}
 
 		//-------------------------------------------------------
@@ -145,7 +171,6 @@ namespace Aerospike.Client
 
 		/// <summary>
 		/// Asynchronously append bin string values to existing record bin values.
-		/// Create listener, call asynchronous append and return task monitor.
 		/// <para>
 		/// The policy specifies the transaction timeout, record expiration and how the transaction is
 		/// handled when the record already exists.
@@ -159,15 +184,13 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if queue is full</exception>
 		public Task Append(WritePolicy policy, CancellationToken token, Key key, params Bin[] bins)
 		{
-			WriteListenerAdapter listener = new WriteListenerAdapter(token);
-			Append(policy, listener, key, bins);
-			return listener.Task;
+			policy ??= writePolicyDefault;
+			AsyncWrite async = new(null, policy, null, key, bins, Operation.Type.APPEND);
+			return async.ExecuteGRPC(channel, token);
 		}
 
 		/// <summary>
 		/// Asynchronously append bin string values to existing record bin values.
-		/// Schedule the append command with a channel selector and return.
-		/// Another thread will process the command and send the results to the listener.
 		/// <para>
 		/// The policy specifies the transaction timeout, record expiration and how the transaction is
 		/// handled when the record already exists.
@@ -175,23 +198,18 @@ namespace Aerospike.Client
 		/// </para>
 		/// </summary>
 		/// <param name="policy">write configuration parameters, pass in null for defaults</param>
-		/// <param name="listener">where to send results, pass in null for fire and forget</param>
+		/// <param name="listener">not used</param>
 		/// <param name="key">unique record identifier</param>
 		/// <param name="bins">array of bin name/value pairs</param>
 		/// <exception cref="AerospikeException">if queue is full</exception>
 		public void Append(WritePolicy policy, WriteListener listener, Key key, params Bin[] bins)
 		{
-			if (policy == null)
-			{
-				policy = writePolicyDefault;
-			}
-			AsyncWrite async = new AsyncWrite(cluster, policy, listener, key, bins, Operation.Type.APPEND);
-			async.Execute();
+			CancellationToken token = new();
+			Append(policy, token, key, bins);
 		}
 
 		/// <summary>
 		/// Asynchronously prepend bin string values to existing record bin values.
-		/// Create listener, call asynchronous prepend and return task monitor.
 		/// <para>
 		/// The policy specifies the transaction timeout, record expiration and how the transaction is
 		/// handled when the record already exists.
@@ -205,9 +223,9 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if queue is full</exception>
 		public Task Prepend(WritePolicy policy, CancellationToken token, Key key, params Bin[] bins)
 		{
-			WriteListenerAdapter listener = new WriteListenerAdapter(token);
-			Prepend(policy, listener, key, bins);
-			return listener.Task;
+			policy ??= writePolicyDefault;
+			AsyncWrite async = new(null, policy, null, key, bins, Operation.Type.PREPEND);
+			return async.ExecuteGRPC(channel, token);
 		}
 
 		/// <summary>
@@ -227,12 +245,8 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if queue is full</exception>
 		public void Prepend(WritePolicy policy, WriteListener listener, Key key, params Bin[] bins)
 		{
-			if (policy == null)
-			{
-				policy = writePolicyDefault;
-			}
-			AsyncWrite async = new AsyncWrite(cluster, policy, listener, key, bins, Operation.Type.PREPEND);
-			async.Execute();
+			CancellationToken token = new();
+			Prepend(policy, token, key, bins);
 		}
 
 		//-------------------------------------------------------
@@ -241,7 +255,6 @@ namespace Aerospike.Client
 
 		/// <summary>
 		/// Asynchronously add integer/double bin values to existing record bin values.
-		/// Create listener, call asynchronous add and return task monitor.
 		/// <para>
 		/// The policy specifies the transaction timeout, record expiration and how the transaction is
 		/// handled when the record already exists.
@@ -254,9 +267,9 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if queue is full</exception>
 		public Task Add(WritePolicy policy, CancellationToken token, Key key, params Bin[] bins)
 		{
-			WriteListenerAdapter listener = new WriteListenerAdapter(token);
-			Add(policy, listener, key, bins);
-			return listener.Task;
+			policy ??= writePolicyDefault;
+			AsyncWrite async = new(null, policy, null, key, bins, Operation.Type.ADD);
+			return async.ExecuteGRPC(channel, token);
 		}
 
 		/// <summary>
@@ -275,12 +288,8 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if queue is full</exception>
 		public void Add(WritePolicy policy, WriteListener listener, Key key, params Bin[] bins)
 		{
-			if (policy == null)
-			{
-				policy = writePolicyDefault;
-			}
-			AsyncWrite async = new AsyncWrite(cluster, policy, listener, key, bins, Operation.Type.ADD);
-			async.Execute();
+			CancellationToken token = new();
+			Add(policy, token, key, bins);
 		}
 
 		//-------------------------------------------------------
@@ -289,7 +298,6 @@ namespace Aerospike.Client
 
 		/// <summary>
 		/// Asynchronously delete record for specified key.
-		/// Create listener, call asynchronous delete and return task monitor.
 		/// </summary>
 		/// <param name="policy">delete configuration parameters, pass in null for defaults</param>
 		/// <param name="token">cancellation token</param>
@@ -297,9 +305,9 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if queue is full</exception>
 		public Task<bool> Delete(WritePolicy policy, CancellationToken token, Key key)
 		{
-			DeleteListenerAdapter listener = new DeleteListenerAdapter(token);
-			Delete(policy, listener, key);
-			return listener.Task;
+			policy ??= writePolicyDefault;
+			AsyncDelete async = new(null, policy, key, null);
+			return async.ExecuteGRPC(channel, token);
 		}
 
 		/// <summary>
@@ -313,12 +321,8 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if queue is full</exception>
 		public void Delete(WritePolicy policy, DeleteListener listener, Key key)
 		{
-			if (policy == null)
-			{
-				policy = writePolicyDefault;
-			}
-			AsyncDelete async = new AsyncDelete(cluster, policy, key, listener);
-			async.Execute();
+			CancellationToken token = new();
+			Delete(policy, token, key);
 		}
 
 		/// <summary>
@@ -333,9 +337,35 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if queue is full</exception>
 		public Task<BatchResults> Delete(BatchPolicy batchPolicy, BatchDeletePolicy deletePolicy, CancellationToken token, Key[] keys)
 		{
-			BatchRecordArrayListenerAdapter listener = new BatchRecordArrayListenerAdapter(token);
-			Delete(batchPolicy, deletePolicy, listener, keys);
-			return listener.Task;
+			if (keys.Length == 0)
+			{
+				return Task.FromResult(new BatchResults(Array.Empty<BatchRecord>(), true));
+			}
+
+			batchPolicy ??= batchParentPolicyWriteDefault;
+			deletePolicy ??= batchDeletePolicyDefault;
+
+			BatchAttr attr = new();
+			attr.SetDelete(deletePolicy);
+
+			BatchRecord[] records = new BatchRecord[keys.Length];
+
+			for (int i = 0; i < keys.Length; i++)
+			{
+				records[i] = new BatchDelete(deletePolicy, keys[i]);
+			}
+
+			try
+			{
+				BatchStatus status = new(true);
+				Operate(batchPolicy, token, records.ToList(), status);
+				return Task.FromResult(new BatchResults(records, status.GetStatus()));
+			}
+			catch (Exception e)
+			{
+				// Batch terminated on fatal error.
+				throw new AerospikeException.BatchRecordArray(records, e);
+			}
 		}
 
 		/// <summary>
@@ -355,26 +385,8 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if queue is full</exception>
 		public void Delete(BatchPolicy batchPolicy, BatchDeletePolicy deletePolicy, BatchRecordArrayListener listener, Key[] keys)
 		{
-			if (keys.Length == 0)
-			{
-				listener.OnSuccess(new BatchRecord[0], true);
-				return;
-			}
-
-			if (batchPolicy == null)
-			{
-				batchPolicy = batchParentPolicyWriteDefault;
-			}
-
-			if (deletePolicy == null)
-			{
-				deletePolicy = batchDeletePolicyDefault;
-			}
-
-			BatchAttr attr = new BatchAttr();
-			attr.SetDelete(deletePolicy);
-
-			new AsyncBatchOperateRecordArrayExecutor(cluster, batchPolicy, listener, keys, null, attr);
+			CancellationToken token = new();
+			Delete(batchPolicy, deletePolicy, token, keys);
 		}
 
 		/// <summary>
@@ -395,26 +407,8 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if queue is full</exception>
 		public void Delete(BatchPolicy batchPolicy, BatchDeletePolicy deletePolicy, BatchRecordSequenceListener listener, Key[] keys)
 		{
-			if (keys.Length == 0)
-			{
-				listener.OnSuccess();
-				return;
-			}
-
-			if (batchPolicy == null)
-			{
-				batchPolicy = batchParentPolicyWriteDefault;
-			}
-
-			if (deletePolicy == null)
-			{
-				deletePolicy = batchDeletePolicyDefault;
-			}
-
-			BatchAttr attr = new BatchAttr();
-			attr.SetDelete(deletePolicy);
-
-			new AsyncBatchOperateRecordSequenceExecutor(cluster, batchPolicy, listener, keys, null, attr);
+			CancellationToken token = new();
+			Delete(batchPolicy, deletePolicy, token, keys);
 		}
 	
 		//-------------------------------------------------------
@@ -423,7 +417,6 @@ namespace Aerospike.Client
 
 		/// <summary>
 		/// Asynchronously reset record's time to expiration using the policy's expiration.
-		/// Create listener, call asynchronous touch and return task monitor.
 		/// Fail if the record does not exist.
 		/// </summary>
 		/// <param name="policy">write configuration parameters, pass in null for defaults</param>
@@ -432,9 +425,9 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if queue is full</exception>
 		public Task Touch(WritePolicy policy, CancellationToken token, Key key)
 		{
-			WriteListenerAdapter listener = new WriteListenerAdapter(token);
-			Touch(policy, listener, key);
-			return listener.Task;
+			policy ??= writePolicyDefault;
+			AsyncTouch async = new(null, policy, null, key);
+			return async.ExecuteGRPC(channel, token);
 		}
 
 		/// <summary>
@@ -449,12 +442,8 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if queue is full</exception>
 		public void Touch(WritePolicy policy, WriteListener listener, Key key)
 		{
-			if (policy == null)
-			{
-				policy = writePolicyDefault;
-			}
-			AsyncTouch async = new AsyncTouch(cluster, policy, listener, key);
-			async.Execute();
+			CancellationToken token = new();
+			Touch(policy, token, key);
 		}
 
 		//-------------------------------------------------------
@@ -463,7 +452,6 @@ namespace Aerospike.Client
 
 		/// <summary>
 		/// Asynchronously determine if a record key exists.
-		/// Create listener, call asynchronous exists and return task monitor.
 		/// </summary>
 		/// <param name="policy">generic configuration parameters, pass in null for defaults</param>
 		/// <param name="token">cancellation token</param>
@@ -471,9 +459,9 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if queue is full</exception>
 		public Task<bool> Exists(Policy policy, CancellationToken token, Key key)
 		{
-			ExistsListenerAdapter listener = new ExistsListenerAdapter(token);
-			Exists(policy, listener, key);
-			return listener.Task;
+			policy ??= readPolicyDefault;
+			AsyncExists async = new(null, policy, key, null);
+			return async.ExecuteGRPC(channel, token);
 		}
 
 		/// <summary>
@@ -487,12 +475,8 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if queue is full</exception>
 		public void Exists(Policy policy, ExistsListener listener, Key key)
 		{
-			if (policy == null)
-			{
-				policy = readPolicyDefault;
-			}
-			AsyncExists async = new AsyncExists(cluster, policy, key, listener);
-			async.Execute();
+			CancellationToken token = new();
+			Exists(policy, token, key);
 		}
 
 		/// <summary>
@@ -505,9 +489,35 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if queue is full</exception>
 		public Task<bool[]> Exists(BatchPolicy policy, CancellationToken token, Key[] keys)
 		{
-			ExistsArrayListenerAdapter listener = new ExistsArrayListenerAdapter(token);
-			Exists(policy, listener, keys);
-			return listener.Task;
+			if (keys.Length == 0)
+			{
+				return Task.FromResult(Array.Empty<bool>());
+			}
+
+			policy ??= batchPolicyDefault;
+
+			bool[] existsArray = new bool[keys.Length];
+
+			BatchRecord[] records = new BatchRecord[keys.Length];
+			for (int i = 0; i < keys.Length; i++)
+			{
+				records[i] = new BatchRead(keys[i], false);
+			}
+
+			try
+			{
+				BatchStatus status = new(false);
+				Operate(policy, token, records.ToList(), status);
+				for (int i = 0; i < keys.Length; i++)
+				{
+					existsArray[i] = records[i].record != null;
+				}
+				return Task.FromResult(existsArray);
+			}
+			catch (Exception e)
+			{
+				throw new AerospikeException.BatchExists(existsArray, e);
+			}
 		}
 
 		/// <summary>
@@ -521,16 +531,8 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if queue is full</exception>
 		public void Exists(BatchPolicy policy, ExistsArrayListener listener, Key[] keys)
 		{
-			if (keys.Length == 0)
-			{
-				listener.OnSuccess(keys, new bool[0]);
-				return;
-			}
-			if (policy == null)
-			{
-				policy = batchPolicyDefault;
-			}
-			new AsyncBatchExistsArrayExecutor(cluster, policy, keys, listener);
+			CancellationToken token = new();
+			Exists(policy, token, keys);
 		}
 
 		/// <summary>
@@ -544,16 +546,8 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if queue is full</exception>
 		public void Exists(BatchPolicy policy, ExistsSequenceListener listener, Key[] keys)
 		{
-			if (keys.Length == 0)
-			{
-				listener.OnSuccess();
-				return;
-			}
-			if (policy == null)
-			{
-				policy = batchPolicyDefault;
-			}
-			new AsyncBatchExistsSequenceExecutor(cluster, policy, keys, listener);
+			CancellationToken token = new();
+			Exists(policy, token, keys);
 		}
 		
 		//-------------------------------------------------------
@@ -562,7 +556,6 @@ namespace Aerospike.Client
 
 		/// <summary>
 		/// Asynchronously read entire record for specified key.
-		/// Create listener, call asynchronous get and return task monitor.
 		/// </summary>
 		/// <param name="policy">generic configuration parameters, pass in null for defaults</param>
 		/// <param name="token">cancellation token</param>
@@ -570,9 +563,9 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if queue is full</exception>
 		public Task<Record> Get(Policy policy, CancellationToken token, Key key)
 		{
-			RecordListenerAdapter listener = new RecordListenerAdapter(token);
-			Get(policy, listener, key);
-			return listener.Task;
+			policy ??= readPolicyDefault;
+			AsyncRead async = new(null, policy, null, key, (string[])null);
+			return async.ExecuteGRPC(channel, token);
 		}
 
 		/// <summary>
@@ -586,12 +579,8 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if queue is full</exception>
 		public void Get(Policy policy, RecordListener listener, Key key)
 		{
-			if (policy == null)
-			{
-				policy = readPolicyDefault;
-			}
-			AsyncRead async = new AsyncRead(cluster, policy, listener, key, (string[])null);
-			async.Execute();
+			CancellationToken token = new();
+			Get(policy, token, key);
 		}
 
 		/// <summary>
@@ -605,9 +594,9 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if queue is full</exception>
 		public Task<Record> Get(Policy policy, CancellationToken token, Key key, params string[] binNames)
 		{
-			RecordListenerAdapter listener = new RecordListenerAdapter(token);
-			Get(policy, listener, key, binNames);
-			return listener.Task;
+			policy ??= readPolicyDefault;
+			AsyncRead async = new(null, policy, null, key, binNames);
+			return async.ExecuteGRPC(channel, token);
 		}
 
 		/// <summary>
@@ -622,17 +611,12 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if queue is full</exception>
 		public void Get(Policy policy, RecordListener listener, Key key, params string[] binNames)
 		{
-			if (policy == null)
-			{
-				policy = readPolicyDefault;
-			}
-			AsyncRead async = new AsyncRead(cluster, policy, listener, key, binNames);
-			async.Execute();
+			CancellationToken token = new();
+			Get(policy, token, key, binNames);
 		}
 
 		/// <summary>
 		/// Asynchronously read record generation and expiration only for specified key.  Bins are not read.
-		/// Create listener, call asynchronous get header and return task monitor.
 		/// </summary>
 		/// <param name="policy">generic configuration parameters, pass in null for defaults</param>
 		/// <param name="token">cancellation token</param>
@@ -640,9 +624,9 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if queue is full</exception>
 		public Task<Record> GetHeader(Policy policy, CancellationToken token, Key key)
 		{
-			RecordListenerAdapter listener = new RecordListenerAdapter(token);
-			GetHeader(policy, listener, key);
-			return listener.Task;
+			policy ??= readPolicyDefault;
+			AsyncReadHeader async = new(null, policy, null, key);
+			return async.ExecuteGRPC(channel, token);
 		}
 
 		/// <summary>
@@ -656,12 +640,8 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if queue is full</exception>
 		public void GetHeader(Policy policy, RecordListener listener, Key key)
 		{
-			if (policy == null)
-			{
-				policy = readPolicyDefault;
-			}
-			AsyncReadHeader async = new AsyncReadHeader(cluster, policy, listener, key);
-			async.Execute();
+			CancellationToken token = new();
+			GetHeader(policy, token, key);
 		}
 
 		//-------------------------------------------------------
@@ -682,9 +662,30 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if read fails</exception>
 		public Task<List<BatchRead>> Get(BatchPolicy policy, CancellationToken token, List<BatchRead> records)
 		{
-			BatchListListenerAdapter listener = new BatchListListenerAdapter(token);
-			Get(policy, listener, records);
-			return listener.Task;
+			if (records.Count == 0)
+			{
+				return Task.FromResult(new List<BatchRead>());
+			}
+
+			policy ??= batchPolicyDefault;
+
+			BatchRecord[] batchRecords = new BatchRecord[records.Count];
+			for (int i = 0; i < records.Count; i++)
+			{
+				batchRecords[i] = records[i];
+			}
+
+			try
+			{
+				BatchStatus status = new(false);
+				Operate(policy, token, batchRecords.ToList(), status);
+				return Task.FromResult(records);
+			}
+			catch (Exception e)
+			{
+				//throw new AerospikeException.BatchRecords(batchRecords, e);
+				throw new AerospikeException("idk");
+			}
 		}
 
 		/// <summary>
@@ -703,16 +704,8 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if read fails</exception>
 		public void Get(BatchPolicy policy, BatchListListener listener, List<BatchRead> records)
 		{
-			if (records.Count == 0)
-			{
-				listener.OnSuccess(records);
-				return;
-			}
-			if (policy == null)
-			{
-				policy = batchPolicyDefault;
-			}
-			new AsyncBatchReadListExecutor(cluster, policy, listener, records);
+			CancellationToken token = new();
+			Get(policy, token, records);
 		}
 
 		/// <summary>
@@ -731,16 +724,8 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if read fails</exception>
 		public void Get(BatchPolicy policy, BatchSequenceListener listener, List<BatchRead> records)
 		{
-			if (records.Count == 0)
-			{
-				listener.OnSuccess();
-				return;
-			}
-			if (policy == null)
-			{
-				policy = batchPolicyDefault;
-			}
-			new AsyncBatchReadSequenceExecutor(cluster, policy, listener, records);
+			CancellationToken token = new();
+			Get(policy, token, records);
 		}
 
 		/// <summary>
@@ -756,9 +741,34 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if queue is full</exception>
 		public Task<Record[]> Get(BatchPolicy policy, CancellationToken token, Key[] keys)
 		{
-			RecordArrayListenerAdapter listener = new RecordArrayListenerAdapter(token);
-			Get(policy, listener, keys);
-			return listener.Task;
+			if (keys.Length == 0)
+			{
+				return Task.FromResult(Array.Empty<Record>());
+			}
+
+			policy ??= batchPolicyDefault;
+
+			Record[] records = new Record[keys.Length];
+			BatchRecord[] batchRecords = new BatchRecord[keys.Length];
+			for (int i = 0; i < keys.Length; i++)
+			{
+				batchRecords[i] = new BatchRead(keys[i], true);
+			}
+
+			try
+			{
+				BatchStatus status = new(false);
+				Operate(policy, token, batchRecords.ToList(), status);
+				for (int i = 0; i < keys.Length; i++)
+				{
+					records[i] = batchRecords[i].record;
+				}
+				return Task.FromResult(records);
+			}
+			catch (Exception e)
+			{
+				throw new AerospikeException.BatchRecords(records, e);
+			}
 		}
 
 		/// <summary>
@@ -775,16 +785,8 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if queue is full</exception>
 		public void Get(BatchPolicy policy, RecordArrayListener listener, Key[] keys)
 		{
-			if (keys.Length == 0)
-			{
-				listener.OnSuccess(keys, new Record[0]);
-				return;
-			}
-			if (policy == null)
-			{
-				policy = batchPolicyDefault;
-			}
-			new AsyncBatchGetArrayExecutor(cluster, policy, listener, keys, null, null, Command.INFO1_READ | Command.INFO1_GET_ALL, false);
+			CancellationToken token = new();
+			Get(policy, token, keys);
 		}
 
 		/// <summary>
@@ -801,16 +803,8 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if queue is full</exception>
 		public void Get(BatchPolicy policy, RecordSequenceListener listener, Key[] keys)
 		{
-			if (keys.Length == 0)
-			{
-				listener.OnSuccess();
-				return;
-			}
-			if (policy == null)
-			{
-				policy = batchPolicyDefault;
-			}
-			new AsyncBatchGetSequenceExecutor(cluster, policy, listener, keys, null, null, Command.INFO1_READ | Command.INFO1_GET_ALL, false);
+			CancellationToken token = new();
+			Get(policy, token, keys);
 		}
 
 		/// <summary>
@@ -827,9 +821,34 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if queue is full</exception>
 		public Task<Record[]> Get(BatchPolicy policy, CancellationToken token, Key[] keys, params string[] binNames)
 		{
-			RecordArrayListenerAdapter listener = new RecordArrayListenerAdapter(token);
-			Get(policy, listener, keys, binNames);
-			return listener.Task;
+			if (keys.Length == 0)
+			{
+				return Task.FromResult(Array.Empty<Record>());
+			}
+
+			policy ??= batchPolicyDefault;
+
+			Record[] records = new Record[keys.Length];
+			BatchRecord[] batchRecords = new BatchRecord[keys.Length];
+			for (int i = 0; i < keys.Length; i++)
+			{
+				batchRecords[i] = new BatchRead(keys[i], binNames);
+			}
+
+			try
+			{
+				BatchStatus status = new(false);
+				Operate(policy, token, batchRecords.ToList(), status);
+				for (int i = 0; i < keys.Length; i++)
+				{
+					records[i] = batchRecords[i].record;
+				}
+				return Task.FromResult(records);
+			}
+			catch (Exception e)
+			{
+				throw new AerospikeException.BatchRecords(records, e);
+			}
 		}
 
 		/// <summary>
@@ -847,16 +866,8 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if queue is full</exception>
 		public void Get(BatchPolicy policy, RecordArrayListener listener, Key[] keys, params string[] binNames)
 		{
-			if (keys.Length == 0)
-			{
-				listener.OnSuccess(keys, new Record[0]);
-				return;
-			}
-			if (policy == null)
-			{
-				policy = batchPolicyDefault;
-			}
-			new AsyncBatchGetArrayExecutor(cluster, policy, listener, keys, binNames, null, Command.INFO1_READ, false);
+			CancellationToken token = new();
+			Get(policy, token, keys, binNames);
 		}
 
 		/// <summary>
@@ -874,16 +885,8 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if queue is full</exception>
 		public void Get(BatchPolicy policy, RecordSequenceListener listener, Key[] keys, params string[] binNames)
 		{
-			if (keys.Length == 0)
-			{
-				listener.OnSuccess();
-				return;
-			}
-			if (policy == null)
-			{
-				policy = batchPolicyDefault;
-			}
-			new AsyncBatchGetSequenceExecutor(cluster, policy, listener, keys, binNames, null, Command.INFO1_READ, false);
+			CancellationToken token = new();
+			Get(policy, token, keys, binNames);
 		}
 
 		/// <summary>
@@ -900,9 +903,34 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if queue is full</exception>
 		public Task<Record[]> Get(BatchPolicy policy, CancellationToken token, Key[] keys, params Operation[] ops)
 		{
-			RecordArrayListenerAdapter listener = new RecordArrayListenerAdapter(token);
-			Get(policy, listener, keys, ops);
-			return listener.Task;
+			if (keys.Length == 0)
+			{
+				return Task.FromResult(Array.Empty<Record>());
+			}
+
+			policy ??= batchPolicyDefault;
+
+			Record[] records = new Record[keys.Length];
+			BatchRecord[] batchRecords = new BatchRecord[keys.Length];
+			for (int i = 0; i < keys.Length; i++)
+			{
+				batchRecords[i] = new BatchRead(keys[i], ops);
+			}
+
+			try
+			{
+				BatchStatus status = new(false);
+				Operate(policy, token, batchRecords.ToList(), status);
+				for (int i = 0; i < batchRecords.Length; i++)
+				{
+					records[i] = batchRecords[i].record;
+				}
+				return Task.FromResult(records);
+			}
+			catch (Exception e)
+			{
+				throw new AerospikeException.BatchRecords(records, e);
+			}
 		}
 
 		/// <summary>
@@ -921,17 +949,8 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if queue is full</exception>
 		public void Get(BatchPolicy policy, RecordArrayListener listener, Key[] keys, params Operation[] ops)
 		{
-			if (keys.Length == 0)
-			{
-				listener.OnSuccess(keys, new Record[0]);
-				return;
-			}
-
-			if (policy == null)
-			{
-				policy = batchPolicyDefault;
-			}
-			new AsyncBatchGetArrayExecutor(cluster, policy, listener, keys, null, ops, Command.INFO1_READ, true);
+			CancellationToken token = new();
+			Get(policy, token, keys);
 		}
 
 		/// <summary>
@@ -950,17 +969,8 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if queue is full</exception>
 		public void Get(BatchPolicy policy, RecordSequenceListener listener, Key[] keys, params Operation[] ops)
 		{
-			if (keys.Length == 0)
-			{
-				listener.OnSuccess();
-				return;
-			}
-
-			if (policy == null)
-			{
-				policy = batchPolicyDefault;
-			}
-			new AsyncBatchGetSequenceExecutor(cluster, policy, listener, keys, null, ops, Command.INFO1_READ, true);
+			CancellationToken token = new();
+			Get(policy, token, keys);
 		}
 
 		/// <summary>
@@ -976,9 +986,34 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if queue is full</exception>
 		public Task<Record[]> GetHeader(BatchPolicy policy, CancellationToken token, Key[] keys)
 		{
-			RecordArrayListenerAdapter listener = new RecordArrayListenerAdapter(token);
-			GetHeader(policy, listener, keys);
-			return listener.Task;
+			if (keys.Length == 0)
+			{
+				return Task.FromResult(Array.Empty<Record>());
+			}
+
+			policy ??= batchPolicyDefault;
+
+			Record[] records = new Record[keys.Length];
+			BatchRecord[] batchRecords = new BatchRecord[keys.Length];
+			for (int i = 0; i < keys.Length; i++)
+			{
+				batchRecords[i] = new BatchRead(keys[i], false);
+			}
+
+			try
+			{
+				BatchStatus status = new(false);
+				Operate(policy, token, batchRecords.ToList(), status);
+				for (int i = 0; i < batchRecords.Length; i++)
+				{
+					records[i] = batchRecords[i].record;
+				}
+				return Task.FromResult(records);
+			}
+			catch (Exception e)
+			{
+				throw new AerospikeException.BatchRecords(records, e);
+			}
 		}
 
 		/// <summary>
@@ -995,16 +1030,8 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if queue is full</exception>
 		public void GetHeader(BatchPolicy policy, RecordArrayListener listener, Key[] keys)
 		{
-			if (keys.Length == 0)
-			{
-				listener.OnSuccess(keys, new Record[0]);
-				return;
-			}
-			if (policy == null)
-			{
-				policy = batchPolicyDefault;
-			}
-			new AsyncBatchGetArrayExecutor(cluster, policy, listener, keys, null, null, Command.INFO1_READ | Command.INFO1_NOBINDATA, false);
+			CancellationToken token = new();
+			GetHeader(policy, token, keys);
 		}
 
 		/// <summary>
@@ -1021,16 +1048,8 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if queue is full</exception>
 		public void GetHeader(BatchPolicy policy, RecordSequenceListener listener, Key[] keys)
 		{
-			if (keys.Length == 0)
-			{
-				listener.OnSuccess();
-				return;
-			}
-			if (policy == null)
-			{
-				policy = batchPolicyDefault;
-			}
-			new AsyncBatchGetSequenceExecutor(cluster, policy, listener, keys, null, null, Command.INFO1_READ | Command.INFO1_NOBINDATA, false);
+			CancellationToken token = new();
+			GetHeader(policy, token, keys);
 		}
 		
 		//-------------------------------------------------------
@@ -1039,7 +1058,6 @@ namespace Aerospike.Client
 
 		/// <summary>
 		/// Asynchronously perform multiple read/write operations on a single key in one batch call.
-		/// Create listener, call asynchronous operate and return task monitor.
 		/// <para>
 		/// An example would be to add an integer value to an existing record and then
 		/// read the result, all in one database call.
@@ -1057,9 +1075,9 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if queue is full</exception>
 		public Task<Record> Operate(WritePolicy policy, CancellationToken token, Key key, params Operation[] ops)
 		{
-			RecordListenerAdapter listener = new RecordListenerAdapter(token);
-			Operate(policy, listener, key, ops);
-			return listener.Task;
+			OperateArgs args = new OperateArgs(policy, writePolicyDefault, operatePolicyReadDefault, key, ops);
+			AsyncOperate async = new(null, null, key, args);
+			return async.ExecuteGRPC(channel, token);
 		}
 
 		/// <summary>
@@ -1078,9 +1096,8 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if queue is full</exception>
 		public void Operate(WritePolicy policy, RecordListener listener, Key key, params Operation[] ops)
 		{
-			OperateArgs args = new OperateArgs(policy, writePolicyDefault, operatePolicyReadDefault, key, ops);
-			AsyncOperate async = new AsyncOperate(cluster, listener, key, args);
-			async.Execute();
+			CancellationToken token = new();
+			Operate(policy, token, key, ops);
 		}
 
 		//-------------------------------------------------------
@@ -1099,9 +1116,11 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if queue is full</exception>
 		public Task<bool> Operate(BatchPolicy policy, CancellationToken token, List<BatchRecord> records)
 		{
-			BatchOperateListListenerAdapter listener = new BatchOperateListListenerAdapter(token);
-			Operate(policy, listener, records);
-			return listener.Task;
+			policy ??= batchParentPolicyWriteDefault;
+
+			BatchStatus status = new(true);
+			Operate(policy, token, records);
+			return Task.FromResult(status.GetStatus());
 		}
 
 		/// <summary>
@@ -1124,17 +1143,8 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if queue is full</exception>
 		public void Operate(BatchPolicy policy, BatchOperateListListener listener, List<BatchRecord> records)
 		{
-			if (records.Count == 0)
-			{
-				listener.OnSuccess(records, false);
-				return;
-			}
-
-			if (policy == null)
-			{
-				policy = batchParentPolicyWriteDefault;
-			}
-			new AsyncBatchOperateListExecutor(cluster, policy, listener, records);
+			CancellationToken token = new();
+			Operate(policy, token, records);
 		}
 
 		/// <summary>
@@ -1158,17 +1168,8 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if queue is full</exception>
 		public void Operate(BatchPolicy policy, BatchRecordSequenceListener listener, List<BatchRecord> records)
 		{
-			if (records.Count == 0)
-			{
-				listener.OnSuccess();
-				return;
-			}
-
-			if (policy == null)
-			{
-				policy = batchParentPolicyWriteDefault;
-			}
-			new AsyncBatchOperateSequenceExecutor(cluster, policy, listener, records);
+			CancellationToken token = new();
+			Operate(policy, token, records);
 		}
 
 		/// <summary>
@@ -1188,9 +1189,34 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if queue is full</exception>
 		public Task<BatchResults> Operate(BatchPolicy batchPolicy, BatchWritePolicy writePolicy, CancellationToken token, Key[] keys, params Operation[] ops)
 		{
-			BatchRecordArrayListenerAdapter listener = new BatchRecordArrayListenerAdapter(token);
-			Operate(batchPolicy, writePolicy, listener, keys, ops);
-			return listener.Task;
+			if (keys.Length == 0)
+			{
+				return Task.FromResult(new BatchResults(Array.Empty<BatchRecord>(), true));
+			}
+
+			batchPolicy ??= batchParentPolicyWriteDefault;
+			writePolicy ??= batchWritePolicyDefault;
+
+			BatchAttr attr = new BatchAttr(batchPolicy, writePolicy, ops);
+			BatchRecord[] records = new BatchRecord[keys.Length];
+
+			for (int i = 0; i < keys.Length; i++)
+			{
+				records[i] = new BatchRecord(keys[i], attr.hasWrite);
+			}
+
+			try
+			{
+				BatchStatus status = new(true);
+				BatchNode batchNode = new(records);
+				BatchOperateArrayCommand command = new(null, batchNode, batchPolicy, keys, ops, records, attr, status);
+				command.ExecuteGRPC(channel);
+				return Task.FromResult(new BatchResults(records, status.GetStatus()));
+			}
+			catch (Exception e)
+			{
+				throw new AerospikeException.BatchRecordArray(records, e);
+			}
 		}
 
 		/// <summary>
@@ -1215,24 +1241,8 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if queue is full</exception>
 		public void Operate(BatchPolicy batchPolicy, BatchWritePolicy writePolicy, BatchRecordArrayListener listener, Key[] keys, params Operation[] ops)
 		{
-			if (keys.Length == 0)
-			{
-				listener.OnSuccess(new BatchRecord[0], true);
-				return;
-			}
-
-			if (batchPolicy == null)
-			{
-				batchPolicy = batchParentPolicyWriteDefault;
-			}
-
-			if (writePolicy == null)
-			{
-				writePolicy = batchWritePolicyDefault;
-			}
-
-			BatchAttr attr = new BatchAttr(batchPolicy, writePolicy, ops);
-			new AsyncBatchOperateRecordArrayExecutor(cluster, batchPolicy, listener, keys, ops, attr);
+			CancellationToken token = new();
+			Operate(batchPolicy, writePolicy, token, keys, ops);
 		}
 
 		/// <summary>
@@ -1258,24 +1268,17 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if queue is full</exception>
 		public void Operate(BatchPolicy batchPolicy, BatchWritePolicy writePolicy, BatchRecordSequenceListener listener, Key[] keys, params Operation[] ops)
 		{
-			if (keys.Length == 0)
-			{
-				listener.OnSuccess();
-				return;
-			}
+			CancellationToken token = new();
+			Operate(batchPolicy, writePolicy, token, keys, ops);
+		}
 
-			if (batchPolicy == null)
-			{
-				batchPolicy = batchParentPolicyWriteDefault;
-			}
+		private void Operate(BatchPolicy policy, CancellationToken token, List<BatchRecord> records, BatchStatus status)
+		{
+			policy ??= batchParentPolicyWriteDefault;
 
-			if (writePolicy == null)
-			{
-				writePolicy = batchWritePolicyDefault;
-			}
-
-			BatchAttr attr = new BatchAttr(batchPolicy, writePolicy, ops);
-			new AsyncBatchOperateRecordSequenceExecutor(cluster, batchPolicy, listener, keys, ops, attr);
+			BatchNode batch = new(records.ToArray());
+			AsyncBatchOperateListCommand command = new(null, null, batch, policy, records);
+			command.ExecuteGRPC(channel, token);
 		}
 
 		//-------------------------------------------------------
@@ -1299,14 +1302,7 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if queue is full</exception>
 		public void ScanAll(ScanPolicy policy, RecordSequenceListener listener, string ns, string setName, params string[] binNames)
 		{
-			if (policy == null)
-			{
-				policy = scanPolicyDefault;
-			}
-
-			Node[] nodes = cluster.ValidateNodes();
-			PartitionTracker tracker = new PartitionTracker(policy, nodes);
-			new AsyncScanPartitionExecutor(cluster, policy, listener, ns, setName, binNames, tracker);
+			throw new AerospikeException("not implemented yet");
 		}
 
 		/// <summary>
@@ -1327,14 +1323,7 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if queue is full</exception>
 		public void ScanPartitions(ScanPolicy policy, RecordSequenceListener listener, PartitionFilter partitionFilter, string ns, string setName, params string[] binNames)
 		{
-			if (policy == null)
-			{
-				policy = scanPolicyDefault;
-			}
-
-			Node[] nodes = cluster.ValidateNodes();
-			PartitionTracker tracker = new PartitionTracker(policy, nodes, partitionFilter);
-			new AsyncScanPartitionExecutor(cluster, policy, listener, ns, setName, binNames, tracker);
+			throw new AerospikeException("not implemented yet");
 		}
 	
 		//---------------------------------------------------------------
@@ -1343,7 +1332,6 @@ namespace Aerospike.Client
 
 		/// <summary>
 		/// Asynchronously execute user defined function on server for a single record and return result.
-		/// Create listener, call asynchronous execute and return task monitor.
 		/// </summary>
 		/// <param name="policy">write configuration parameters, pass in null for defaults</param>
 		/// <param name="token">cancellation token</param>
@@ -1354,9 +1342,9 @@ namespace Aerospike.Client
 		/// <returns>task monitor</returns>
 		public Task<object> Execute(WritePolicy policy, CancellationToken token, Key key, string packageName, string functionName, params Value[] functionArgs)
 		{
-			ExecuteListenerAdapter listener = new ExecuteListenerAdapter(token);
-			Execute(policy, listener, key, packageName, functionName, functionArgs);
-			return listener.Task;
+			policy ??= writePolicyDefault;
+			var command = new AsyncExecute(null, policy, null, key, packageName, functionName, functionArgs);
+			return command.ExecuteGRPC(channel, token);
 		}
 
 		/// <summary>
@@ -1380,12 +1368,8 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if transaction fails</exception>
 		public void Execute(WritePolicy policy, ExecuteListener listener, Key key, string packageName, string functionName, params Value[] functionArgs)
 		{
-			if (policy == null)
-			{
-				policy = writePolicyDefault;
-			}
-			AsyncExecute command = new AsyncExecute(cluster, policy, listener, key, packageName, functionName, functionArgs);
-			command.Execute();
+			CancellationToken token = new();
+			Execute(policy, token, key, packageName, functionName, functionArgs);
 		}
 
 		/// <summary>
@@ -1403,9 +1387,7 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if queue is full</exception>
 		public Task<BatchResults> Execute(BatchPolicy batchPolicy, BatchUDFPolicy udfPolicy, CancellationToken token, Key[] keys, string packageName, string functionName, params Value[] functionArgs)
 		{
-			BatchRecordArrayListenerAdapter listener = new BatchRecordArrayListenerAdapter(token);
-			Execute(batchPolicy, udfPolicy, listener, keys, packageName, functionName, functionArgs);
-			return listener.Task;
+			throw new AerospikeException("not implemented yet");
 		}
 
 		/// <summary>
@@ -1430,28 +1412,7 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if queue is full</exception>
 		public void Execute(BatchPolicy batchPolicy, BatchUDFPolicy udfPolicy, BatchRecordArrayListener listener, Key[] keys, string packageName, string functionName, params Value[] functionArgs)
 		{
-			if (keys.Length == 0)
-			{
-				listener.OnSuccess(new BatchRecord[0], true);
-				return;
-			}
-
-			if (batchPolicy == null)
-			{
-				batchPolicy = batchParentPolicyWriteDefault;
-			}
-
-			if (udfPolicy == null)
-			{
-				udfPolicy = batchUDFPolicyDefault;
-			}
-
-			byte[] argBytes = Packer.Pack(functionArgs);
-
-			BatchAttr attr = new BatchAttr();
-			attr.SetUDF(udfPolicy);
-
-			new AsyncBatchUDFArrayExecutor(cluster, batchPolicy, listener, keys, packageName, functionName, argBytes, attr);
+			throw new AerospikeException("not implemented yet");
 		}
 
 		/// <summary>
@@ -1477,28 +1438,7 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if queue is full</exception>
 		public void Execute(BatchPolicy batchPolicy, BatchUDFPolicy udfPolicy, BatchRecordSequenceListener listener, Key[] keys, string packageName, string functionName, params Value[] functionArgs)
 		{
-			if (keys.Length == 0)
-			{
-				listener.OnSuccess();
-				return;
-			}
-
-			if (batchPolicy == null)
-			{
-				batchPolicy = batchParentPolicyWriteDefault;
-			}
-
-			if (udfPolicy == null)
-			{
-				udfPolicy = batchUDFPolicyDefault;
-			}
-
-			byte[] argBytes = Packer.Pack(functionArgs);
-
-			BatchAttr attr = new BatchAttr();
-			attr.SetUDF(udfPolicy);
-
-			new AsyncBatchUDFSequenceExecutor(cluster, batchPolicy, listener, keys, packageName, functionName, argBytes, attr);
+			throw new AerospikeException("not implemented yet");
 		}
 
 		//-------------------------------------------------------
@@ -1523,22 +1463,7 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if query fails</exception>
 		public void Query(QueryPolicy policy, RecordSequenceListener listener, Statement statement)
 		{
-			if (policy == null)
-			{
-				policy = queryPolicyDefault;
-			}
-
-			Node[] nodes = cluster.ValidateNodes();
-
-			if (cluster.hasPartitionQuery || statement.filter == null)
-			{
-				PartitionTracker tracker = new PartitionTracker(policy, statement, nodes);
-				new AsyncQueryPartitionExecutor(cluster, policy, listener, statement, tracker);
-			}
-			else
-			{
-				new AsyncQueryExecutor(cluster, policy, listener, statement, nodes);
-			}
+			throw new AerospikeException("not implemented yet");
 		}
 
 		/// <summary>
@@ -1569,22 +1494,7 @@ namespace Aerospike.Client
 			PartitionFilter partitionFilter
 		)
 		{
-			if (policy == null)
-			{
-				policy = queryPolicyDefault;
-			}
-
-			Node[] nodes = cluster.ValidateNodes();
-
-			if (cluster.hasPartitionQuery || statement.filter == null)
-			{
-				PartitionTracker tracker = new PartitionTracker(policy, statement, nodes, partitionFilter);
-				new AsyncQueryPartitionExecutor(cluster, policy, listener, statement, tracker);
-			}
-			else
-			{
-				throw new AerospikeException(ResultCode.PARAMETER_ERROR, "QueryPartitions() not supported");
-			}
+			throw new AerospikeException("not implemented yet");
 		}
 	}
 }

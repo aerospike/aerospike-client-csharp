@@ -29,7 +29,8 @@ namespace Aerospike.Test
 
 		public IAerospikeClient client;
 		public AerospikeClient nativeClient;
-		public AsyncClient asyncClient;
+		public IAsyncClient asyncClient;
+		public AsyncClient nativeAsync;
 		public Host[] hosts;
 		public Host proxyHost;
 		public int port;
@@ -124,18 +125,28 @@ namespace Aerospike.Test
 		private void ConnectProxy()
 		{
 			ClientPolicy policy = new ClientPolicy();
+			AsyncClientPolicy asyncPolicy = new AsyncClientPolicy();
 			policy.clusterName = clusterName;
+			asyncPolicy.clusterName = clusterName;
 			policy.tlsPolicy = tlsPolicy;
+			asyncPolicy.tlsPolicy = tlsPolicy;
 			policy.authMode = authMode;
+			asyncPolicy.authMode = authMode;
 
 			if (user != null && user.Length > 0)
 			{
 				policy.user = user;
 				policy.password = password;
+				asyncPolicy.user = user;
+				asyncPolicy.password = password;
 			}
+			
+			asyncPolicy.asyncMaxCommands = 300;
 
 			client = new AerospikeClientProxy(policy, proxyHost);
 			nativeClient = new AerospikeClient(policy, hosts);
+			asyncClient = new AsyncClientProxy(asyncPolicy, proxyHost);
+			nativeAsync = new AsyncClient(asyncPolicy, hosts);
 
 			int timeout = 15;
 			int socketTimeout = 5;
@@ -188,7 +199,8 @@ namespace Aerospike.Test
 				policy.password = password;
 			}
 
-			asyncClient = new AsyncClient(policy, hosts);
+			nativeAsync = new AsyncClient(policy, hosts);
+			asyncClient = nativeAsync;
 		}
 
 		private void SetServerSpecific()

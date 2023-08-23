@@ -88,13 +88,14 @@ namespace Aerospike.Client
 			{
 				Id = 0, // ID is only needed in streaming version, can be static for unary
 				Iteration = 1,
-				Payload = ByteString.CopyFrom(dataBuffer, 0, dataOffset)
+				Payload = ByteString.CopyFrom(dataBuffer, 0, dataLength)
 			};
 			GRPCConversions.SetRequestPolicy(policy, request);
 
 			var KVS = new KVS.KVS.KVSClient(channel);
 			var response = await KVS.OperateAsync(request, cancellationToken: token);
-			conn = new AsyncConnectionProxy(response.Payload.ToByteArray());
+			SetupProxyConnAndBuf(response);
+			ReceiveComplete();
 			ParseResult();
 			return record;
 		}

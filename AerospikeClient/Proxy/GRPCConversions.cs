@@ -47,13 +47,12 @@ namespace Aerospike.Client
 
 		public static KVS.ScanPolicy ToGrpc(ScanPolicy scanPolicy)
 		{
-			return new()
+			KVS.ScanPolicy scanPolicyKVS = new()
 			{
 				// Base policy fields.
 				ReadModeAP = Enum.TryParse(scanPolicy.readModeAP.ToString(), true, out KVS.ReadModeAP apConversion) ? apConversion : KVS.ReadModeAP.One,
 				ReadModeSC = Enum.TryParse(scanPolicy.readModeSC.ToString(), true, out KVS.ReadModeSC scConversion) ? scConversion : KVS.ReadModeSC.Session,
 				Replica = Enum.TryParse(scanPolicy.replica.ToString(), true, out KVS.Replica replicaConversion) ? replicaConversion : KVS.Replica.Sequence,
-				Expression = scanPolicy.filterExp == null ? null : ByteString.CopyFrom(scanPolicy.filterExp.Bytes),
 				TotalTimeout = (uint)scanPolicy.totalTimeout,
 				Compress = scanPolicy.compress,
 				// Scan policy specific fields
@@ -63,6 +62,9 @@ namespace Aerospike.Client
 				ConcurrentNodes = scanPolicy.concurrentNodes,
 				IncludeBinData = scanPolicy.includeBinData
 			};
+			if (scanPolicy.filterExp != null) { scanPolicyKVS.Expression = ByteString.CopyFrom(scanPolicy.filterExp.Bytes); }
+
+			return scanPolicyKVS;
 		}
 
 		public static KVS.QueryPolicy ToGrpc(QueryPolicy queryPolicy)

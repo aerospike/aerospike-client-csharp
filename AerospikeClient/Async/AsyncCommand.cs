@@ -18,6 +18,7 @@ using System;
 using System.Net.Sockets;
 using System.Threading;
 using System.Diagnostics;
+using Aerospike.Client.KVS;
 
 namespace Aerospike.Client
 {
@@ -905,5 +906,19 @@ namespace Aerospike.Client
 		protected internal abstract bool PrepareRetry(bool timeout);
 		protected internal abstract void OnSuccess();
 		protected internal abstract void OnFailure(AerospikeException ae);
+
+		public void SetupProxyConnAndBuf(AerospikeResponsePayload response)
+		{
+			segment = new BufferSegment(new BufferPool(1, 128 * 1024), 0);
+			conn = new AsyncConnectionProxy(response);
+			conn.Receive(dataBuffer, dataOffset, 8);
+		}
+
+		public void SetupProxyConnAndBuf(Grpc.Core.AsyncServerStreamingCall<AerospikeResponsePayload> stream)
+		{
+			segment = new BufferSegment(new BufferPool(1, 128 * 1024), 0);
+			conn = new AsyncConnectionProxyStream(stream);
+			conn.Receive(dataBuffer, dataOffset, 8);
+		}
 	}
 }

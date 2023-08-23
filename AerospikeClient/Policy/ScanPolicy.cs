@@ -71,6 +71,15 @@ namespace Aerospike.Client
 		public bool includeBinData = true;
 
 		/// <summary>
+		/// Number of records to place in queue before blocking.
+		/// Records received from multiple server nodes will be placed in a queue.
+		/// A separate thread consumes these records in parallel.
+		/// If the queue is full, the producer threads will block until records are consumed.
+		/// <para>Default: 5000</para>
+		/// </summary>
+		public int recordQueueSize = 5000;
+
+		/// <summary>
 		/// Copy scan policy from another scan policy.
 		/// </summary>
 		public ScanPolicy(ScanPolicy other) : base(other)
@@ -80,6 +89,7 @@ namespace Aerospike.Client
 			this.maxConcurrentNodes = other.maxConcurrentNodes;
 			this.concurrentNodes = other.concurrentNodes;
 			this.includeBinData = other.includeBinData;
+			this.recordQueueSize = other.recordQueueSize;
 		}
 
 		/// <summary>

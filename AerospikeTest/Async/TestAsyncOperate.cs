@@ -34,8 +34,70 @@ namespace Aerospike.Test
 		public void AsyncOperateList()
 		{
 			Key key = new Key(args.ns, args.set, "aoplkey1");
-			client.Delete(null, new DeleteHandlerList(this, key), key);
-			WaitTillComplete();
+			if (!args.testProxy)
+			{
+
+				client.Delete(null, new DeleteHandlerList(this, key), key);
+				WaitTillComplete();
+			}
+			else
+			{
+				CancellationToken token = new();
+				var existed = client.Delete(null, token, key).Result;
+				DeleteListenerSuccess(key, existed, this);
+			}
+		}
+
+		static void DeleteListenerSuccess(Key key, bool existed, TestAsyncOperate parent)
+		{
+			IList itemList = new List<Value>();
+			itemList.Add(Value.Get(55));
+			itemList.Add(Value.Get(77));
+
+			if (!args.testProxy)
+			{
+				client.Operate(null, new ReadHandler(parent), key,
+					ListOperation.AppendItems(binName, itemList),
+					ListOperation.Pop(binName, -1),
+					ListOperation.Size(binName)
+					);
+			}
+			else
+			{
+				if (existed)
+				{
+					var 
+				}
+			}
+		}
+
+		static void ReadListenerSuccess(Key key, Record record, TestAsyncOperate parent)
+		{
+			if (!parent.AssertRecordFound(key, record))
+			{
+				parent.NotifyCompleted();
+				return;
+			}
+
+			IList list = record.GetList(binName);
+
+			long size = (long)list[0];
+			if (!parent.AssertEquals(2, size))
+			{
+				parent.NotifyCompleted();
+				return;
+			}
+
+			long val = (long)list[1];
+			if (!parent.AssertEquals(77, val))
+			{
+				parent.NotifyCompleted();
+				return;
+			}
+
+			size = (long)list[2];
+			parent.AssertEquals(1, size);
+			parent.NotifyCompleted();
 		}
 
 		private class DeleteHandlerList : DeleteListener
@@ -51,15 +113,7 @@ namespace Aerospike.Test
 
 			public void OnSuccess(Key key, bool existed)
 			{
-				IList itemList = new List<Value>();
-				itemList.Add(Value.Get(55));
-				itemList.Add(Value.Get(77));
-
-				client.Operate(null, new ReadHandler(parent), key,
-					ListOperation.AppendItems(binName, itemList),
-					ListOperation.Pop(binName, -1),
-					ListOperation.Size(binName)
-					);
+				DeleteListenerSuccess(key, existed, parent);
 			}
 
 			public void OnFailure(AerospikeException e)
@@ -80,31 +134,7 @@ namespace Aerospike.Test
 
 			public void OnSuccess(Key key, Record record)
 			{
-				if (!parent.AssertRecordFound(key, record))
-				{
-					parent.NotifyCompleted();
-					return;
-				}
-
-				IList list = record.GetList(binName);
-
-				long size = (long)list[0];
-				if (!parent.AssertEquals(2, size))
-				{
-					parent.NotifyCompleted();
-					return;
-				}
-
-				long val = (long)list[1];
-				if (!parent.AssertEquals(77, val))
-				{
-					parent.NotifyCompleted();
-					return;
-				}
-
-				size = (long)list[2];
-				parent.AssertEquals(1, size);
-				parent.NotifyCompleted();
+				ReadListenerSuccess(key, record, parent);
 			}
 
 			public void OnFailure(AerospikeException e)

@@ -14,8 +14,12 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
+using Aerospike.Client.KVS;
+using Google.Protobuf;
+using Grpc.Net.Client;
 using System;
 using System.Collections.Generic;
+using static Aerospike.Client.AerospikeException;
 
 namespace Aerospike.Client
 {
@@ -1885,6 +1889,36 @@ namespace Aerospike.Client
 
 		internal abstract AsyncBatchCommand CreateCommand(BatchNode batchNode);
 		internal abstract List<BatchNode> GenerateBatchNodes();
+
+		public void ExecuteGRPC(GrpcChannel channel, CancellationToken token)
+		{
+			WriteBuffer();
+			var request = new AerospikeRequestPayload
+			{
+				Id = 0, // ID is only needed in streaming version, can be static for unary
+				Iteration = 1,
+				Payload = ByteString.CopyFrom(dataBuffer, 0, dataOffset)
+			};
+			GRPCConversions.SetRequestPolicy(batchPolicy, request);
+
+			var KVS = new KVS.KVS.KVSClient(channel);
+			var stream = KVS.BatchOperate(request, cancellationToken: token);
+
+			try
+			{
+				var conn = new ConnectionProxyStream(stream);
+				SetupProxyConnAndBuf(stream);
+				ReceiveComplete();
+			}
+			catch (EndOfGRPCStream eogs)
+			{
+				// continue
+			}
+			catch (Exception e)
+			{
+
+			}
+		}
 	}
 
 	internal class AsyncBatch

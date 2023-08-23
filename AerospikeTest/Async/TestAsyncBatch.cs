@@ -102,8 +102,11 @@ namespace Aerospike.Test
 			client.Put(policy, handler, deleteKeys[0], new Bin(BinName, 10000));
 			client.Put(policy, handler, deleteKeys[1], new Bin(BinName, 10001));
 			client.Put(policy, handler, new Key(args.ns, args.set, 10002), new Bin(BinName, 10002));
-			
-			monitor.WaitTillComplete();
+
+			if (!args.testProxy)
+			{
+				monitor.WaitTillComplete();
+			}
 		}
 
 		private class WriteHandler : WriteListener

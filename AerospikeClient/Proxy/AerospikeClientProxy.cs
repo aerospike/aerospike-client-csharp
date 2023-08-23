@@ -409,25 +409,6 @@ namespace Aerospike.Client
 			command.ExecuteGRPC(channel);
 		}
 
-		/// <summary>
-		/// Asynchronously write record bin(s). 
-		/// <para>
-		/// The policy specifies the transaction timeout, record expiration and how the transaction is
-		/// handled when the record already exists.
-		/// </para>
-		/// </summary>
-		/// <param name="policy">write configuration parameters, pass in null for defaults</param>
-		/// <param name="token">cancellation token</param>
-		/// <param name="key">unique record identifier</param>
-		/// <param name="bins">array of bin name/value pairs</param>
-		/// <exception cref="AerospikeException">if queue is full</exception>
-		public Task Put(WritePolicy policy, CancellationToken token, Key key, params Bin[] bins)
-		{
-			policy ??= writePolicyDefault;
-			AsyncWrite async = new(null, policy, null, key, bins, Operation.Type.WRITE);
-			return async.ExecuteGRPC(channel, token);
-		}
-
 		//-------------------------------------------------------
 		// String Operations
 		//-------------------------------------------------------
@@ -450,26 +431,6 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
-		/// Asynchronously append bin string values to existing record bin values.
-		/// <para>
-		/// The policy specifies the transaction timeout, record expiration and how the transaction is
-		/// handled when the record already exists.
-		/// This call only works for string values. 
-		/// </para>
-		/// </summary>
-		/// <param name="policy">write configuration parameters, pass in null for defaults</param>
-		/// <param name="token">cancellation token</param>
-		/// <param name="key">unique record identifier</param>
-		/// <param name="bins">array of bin name/value pairs</param>
-		/// <exception cref="AerospikeException">if queue is full</exception>
-		public Task Append(WritePolicy policy, CancellationToken token, Key key, params Bin[] bins)
-		{
-			policy ??= writePolicyDefault;
-			AsyncWrite async = new(null, policy, null, key, bins, Operation.Type.APPEND);
-			return async.ExecuteGRPC(channel, token);
-		}
-
-		/// <summary>
 		/// Prepend bin string values to existing record bin values.
 		/// The policy specifies the transaction timeout, record expiration and how the transaction is
 		/// handled when the record already exists.
@@ -484,26 +445,6 @@ namespace Aerospike.Client
 			policy ??= writePolicyDefault;
 			WriteCommand command = new(null, policy, key, bins, Operation.Type.PREPEND);
 			command.ExecuteGRPC(channel);
-		}
-
-		/// <summary>
-		/// Asynchronously prepend bin string values to existing record bin values.
-		/// <para>
-		/// The policy specifies the transaction timeout, record expiration and how the transaction is
-		/// handled when the record already exists.
-		/// This call works only for string values. 
-		/// </para>
-		/// </summary>
-		/// <param name="policy">write configuration parameters, pass in null for defaults</param>
-		/// <param name="token">cancellation token</param>
-		/// <param name="key">unique record identifier</param>
-		/// <param name="bins">array of bin name/value pairs</param>
-		/// <exception cref="AerospikeException">if queue is full</exception>
-		public Task Prepend(WritePolicy policy, CancellationToken token, Key key, params Bin[] bins)
-		{
-			policy ??= writePolicyDefault;
-			AsyncWrite async = new(null, policy, null, key, bins, Operation.Type.PREPEND);
-			return async.ExecuteGRPC(channel, token);
 		}
 
 		//-------------------------------------------------------
@@ -526,25 +467,6 @@ namespace Aerospike.Client
 			command.ExecuteGRPC(channel);
 		}
 
-		/// <summary>
-		/// Asynchronously add integer/double bin values to existing record bin values.
-		/// <para>
-		/// The policy specifies the transaction timeout, record expiration and how the transaction is
-		/// handled when the record already exists.
-		/// </para>
-		/// </summary>
-		/// <param name="policy">write configuration parameters, pass in null for defaults</param>
-		/// <param name="token">cancellation token</param>
-		/// <param name="key">unique record identifier</param>
-		/// <param name="bins">array of bin name/value pairs</param>
-		/// <exception cref="AerospikeException">if queue is full</exception>
-		public Task Add(WritePolicy policy, CancellationToken token, Key key, params Bin[] bins)
-		{
-			policy ??= writePolicyDefault;
-			AsyncWrite async = new(null, policy, null, key, bins, Operation.Type.ADD);
-			return async.ExecuteGRPC(channel, token);
-		}
-
 		//-------------------------------------------------------
 		// Delete Operations
 		//-------------------------------------------------------
@@ -563,20 +485,6 @@ namespace Aerospike.Client
 			DeleteCommand command = new(null, policy, key);
 			command.ExecuteGRPC(channel);
 			return command.Existed();
-		}
-
-		/// <summary>
-		/// Asynchronously delete record for specified key.
-		/// </summary>
-		/// <param name="policy">delete configuration parameters, pass in null for defaults</param>
-		/// <param name="token">cancellation token</param>
-		/// <param name="key">unique record identifier</param>
-		/// <exception cref="AerospikeException">if queue is full</exception>
-		public Task<bool> Delete(WritePolicy policy, CancellationToken token, Key key)
-		{
-			policy ??= writePolicyDefault;
-			AsyncDelete async = new(null, policy, key, null);
-			return async.ExecuteGRPC(channel, token);
 		}
 
 		/// <summary>
@@ -647,20 +555,6 @@ namespace Aerospike.Client
 			command.ExecuteGRPC(channel);
 		}
 
-		/// <summary>
-		/// Asynchronously reset record's time to expiration using the policy's expiration.
-		/// </summary>
-		/// <param name="policy">write configuration parameters, pass in null for defaults</param>
-		/// <param name="token">cancellation token</param>
-		/// <param name="key">unique record identifier</param>
-		/// <exception cref="AerospikeException">if queue is full</exception>
-		public Task Touch(WritePolicy policy, CancellationToken token, Key key)
-		{
-			policy ??= writePolicyDefault;
-			AsyncTouch async = new(null, policy, null, key);
-			return async.ExecuteGRPC(channel, token);
-		}
-
 		//-------------------------------------------------------
 		// Existence-Check Operations
 		//-------------------------------------------------------
@@ -679,20 +573,6 @@ namespace Aerospike.Client
 			ExistsCommand command = new(null, policy, key);
 			command.ExecuteGRPC(channel);
 			return command.Exists();
-		}
-
-		/// <summary>
-		/// Asynchronously determine if a record key exists.
-		/// </summary>
-		/// <param name="policy">generic configuration parameters, pass in null for defaults</param>
-		/// <param name="token">cancellation token</param>
-		/// <param name="key">unique record identifier</param>
-		/// <exception cref="AerospikeException">if queue is full</exception>
-		public Task<bool> Exists(Policy policy, CancellationToken token, Key key)
-		{
-			policy ??= readPolicyDefault;
-			AsyncExists async = new(null, policy, key, null);
-			return async.ExecuteGRPC(channel, token);
 		}
 
 		/// <summary>
@@ -756,20 +636,6 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
-		/// Asynchronously read entire record for specified key.
-		/// </summary>
-		/// <param name="policy">generic configuration parameters, pass in null for defaults</param>
-		/// <param name="token">cancellation token</param>
-		/// <param name="key">unique record identifier</param>
-		/// <exception cref="AerospikeException">if queue is full</exception>
-		public Task<Record> Get(Policy policy, CancellationToken token, Key key)
-		{
-			policy ??= readPolicyDefault;
-			AsyncRead async = new(null, policy, null, key, (string[])null);
-			return async.ExecuteGRPC(channel, token);
-		}
-
-		/// <summary>
 		/// Read record header and bins for specified key.
 		/// If found, return record instance.  If not found, return null.
 		/// The policy can be used to specify timeouts.
@@ -800,20 +666,6 @@ namespace Aerospike.Client
 			ReadHeaderCommand command = new(null, policy, key);
 			command.ExecuteGRPC(channel);
 			return command.Record;
-		}
-
-		/// <summary>
-		/// Asynchronously read record generation and expiration only for specified key.  Bins are not read.
-		/// </summary>
-		/// <param name="policy">generic configuration parameters, pass in null for defaults</param>
-		/// <param name="token">cancellation token</param>
-		/// <param name="key">unique record identifier</param>
-		/// <exception cref="AerospikeException">if queue is full</exception>
-		public Task<Record> GetHeader(Policy policy, CancellationToken token, Key key)
-		{
-			policy ??= readPolicyDefault;
-			AsyncReadHeader async = new(null, policy, null, key);
-			return async.ExecuteGRPC(channel, token);
 		}
 
 		//-------------------------------------------------------
@@ -1048,30 +900,6 @@ namespace Aerospike.Client
 			return command.Record;
 		}
 
-		/// <summary>
-		/// Asynchronously perform multiple read/write operations on a single key in one batch call.
-		/// <para>
-		/// An example would be to add an integer value to an existing record and then
-		/// read the result, all in one database call.
-		/// </para>
-		/// <para>
-		/// The server executes operations in the same order as the operations array.  Both scalar
-		/// bin operations (Operation) and CDT bin operations (ListOperation, MapOperation) can be
-		/// performed in same call.
-		/// </para>
-		/// </summary>
-		/// <param name="policy">write configuration parameters, pass in null for defaults</param>
-		/// <param name="token">cancellation token</param>
-		/// <param name="key">unique record identifier</param>
-		/// <param name="ops">database operations to perform</param>
-		/// <exception cref="AerospikeException">if queue is full</exception>
-		public Task<Record> Operate(WritePolicy policy, CancellationToken token, Key key, params Operation[] ops)
-		{
-			OperateArgs args = new OperateArgs(policy, writePolicyDefault, operatePolicyReadDefault, key, ops);
-			AsyncOperate async = new(null, null, key, args);
-			return async.ExecuteGRPC(channel, token);
-		}
-
 		//-------------------------------------------------------
 		// Batch Read/Write Operations
 		//-------------------------------------------------------
@@ -1181,14 +1009,7 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if scan fails</exception>
 		public void ScanAll(ScanPolicy policy, string ns, string setName, ScanCallback callback, params string[] binNames)
 		{
-			/*if (policy == null)
-			{
-				policy = scanPolicyDefault;
-			}
-
-			Node[] nodes = cluster.ValidateNodes();
-			PartitionTracker tracker = new PartitionTracker(policy, nodes);
-			ScanExecutor.ScanPartitions(cluster, policy, ns, setName, binNames, callback, tracker);*/
+			ScanPartitions(policy, PartitionFilter.All(), ns, setName, callback, binNames);
 		}
 
 		/// Not supported in proxy client
@@ -1219,14 +1040,12 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if scan fails</exception>
 		public void ScanPartitions(ScanPolicy policy, PartitionFilter partitionFilter, string ns, string setName, ScanCallback callback, params string[] binNames)
 		{
-			/*if (policy == null)
-			{
-				policy = scanPolicyDefault;
-			}
-
-			RecordSet recordSet = RecordSet(policy., 1)
+			policy ??= scanPolicyDefault;
+			CancellationToken token = new();
 			PartitionTracker tracker = new(policy, null, partitionFilter);
-			ScanExecutor.ScanPartitions(cluster, policy, ns, setName, binNames, callback, tracker);*/
+			RecordSet recordSet = new(null, policy.recordQueueSize, token);
+			ScanPartitionCommandProxy command = new(policy, ns, setName, binNames, tracker, partitionFilter, recordSet);
+			command.ExecuteGRPC(channel);
 		}
 
 		//---------------------------------------------------------------
@@ -1298,23 +1117,6 @@ namespace Aerospike.Client
 				throw new AerospikeException(obj.ToString());
 			}
 			throw new AerospikeException("Invalid UDF return value");
-		}
-
-		/// <summary>
-		/// Asynchronously execute user defined function on server for a single record and return result.
-		/// </summary>
-		/// <param name="policy">write configuration parameters, pass in null for defaults</param>
-		/// <param name="token">cancellation token</param>
-		/// <param name="key">unique record identifier</param>
-		/// <param name="packageName">server package name where user defined function resides</param>
-		/// <param name="functionName">user defined function</param>
-		/// <param name="functionArgs">arguments passed in to user defined function</param>
-		/// <returns>task monitor</returns>
-		public Task<object> Execute(WritePolicy policy, CancellationToken token, Key key, string packageName, string functionName, params Value[] functionArgs)
-		{
-			policy ??= writePolicyDefault;
-			var command = new AsyncExecute(null, policy, null, key, packageName, functionName, functionArgs);
-			return command.ExecuteGRPC(channel, token);
 		}
 
 		/// <summary>
@@ -1499,23 +1301,7 @@ namespace Aerospike.Client
 			QueryListener listener
 		)
 		{
-			/*if (policy == null)
-			{
-				policy = queryPolicyDefault;
-			}
-
-			Node[] nodes = cluster.ValidateNodes();
-
-			if (cluster.hasPartitionQuery || statement.filter == null)
-			{
-				PartitionTracker tracker = new PartitionTracker(policy, statement, nodes, partitionFilter);
-				QueryListenerExecutor.execute(cluster, policy, statement, listener, tracker);
-			}
-			else
-			{
-				throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Query by partition is not supported");
-			}*/
-			throw new AerospikeException("not implemented yet");
+			QueryPartitions(policy, statement, partitionFilter);
 		}
 
 		/// <summary>

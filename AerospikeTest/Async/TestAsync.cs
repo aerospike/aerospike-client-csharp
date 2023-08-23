@@ -17,6 +17,7 @@
 using System;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Aerospike.Client;
+using Grpc.Core;
 
 namespace Aerospike.Test
 {
@@ -24,7 +25,8 @@ namespace Aerospike.Test
 	public class TestAsync
 	{
 		public static Args args = Args.Instance;
-		public static AsyncClient client = args.asyncClient;
+		public static IAsyncClient client = args.asyncClient;
+		public static AsyncClient nativeClient = args.nativeAsync;
 
 		private AsyncMonitor monitor = new AsyncMonitor();
 
@@ -177,7 +179,10 @@ namespace Aerospike.Test
 
 		public void WaitTillComplete()
 		{
-			monitor.WaitTillComplete();
+			if (!args.testProxy)
+			{
+				monitor.WaitTillComplete();
+			}
 		}
 
 		public void NotifyCompleted()

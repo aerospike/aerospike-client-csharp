@@ -15,29 +15,41 @@
  * the License.
  */
 using Aerospike.Client.KVS;
+using Grpc.Core;
 using System;
 using System.Net;
 using System.Net.Sockets;
+using static Aerospike.Client.AerospikeException;
 
 namespace Aerospike.Client
 {
 	/// <summary>
 	/// Async connection proxy class.
 	/// </summary>
-	public class AsyncConnectionProxy : IAsyncConnection
+	public class AsyncConnectionProxyStream : IAsyncConnection
 	{
 		private static readonly String NotSupported = "Method not supported in proxy client: ";
+		AsyncServerStreamingCall<AerospikeResponsePayload> Stream;
+		AerospikeResponsePayload Response;
 		byte[] Payload;
 		int Offset;
+		int BufferOffset;
 
-		public AsyncConnectionProxy(AerospikeResponsePayload response)
+		public AsyncConnectionProxyStream(AsyncServerStreamingCall<AerospikeResponsePayload> stream)
 		{
-			if (response.Status != 0)
+			Stream = stream;
+			stream.ResponseStream.MoveNext().Wait();
+			Response = stream.ResponseStream.Current;
+			if (Response.Status != 0)
 			{
-				throw GRPCConversions.GrpcStatusError(response);
+				throw GRPCConversions.GrpcStatusError(Response);
 			}
-			Payload = response.Payload.ToByteArray();
+			Payload = Response.Payload.ToByteArray();
 			Offset = 0;
+			if (!Response.HasNext)
+			{
+				throw new EndOfGRPCStream();
+			}
 		}
 
 		public IAsyncCommand Command
@@ -63,10 +75,50 @@ namespace Aerospike.Client
 
 		public void Receive(byte[] buffer, int offset, int count)
 		{
-			if (count + Offset <= Payload.Length)
+			BufferOffset = 0;
+			GRPCRead(buffer, count);
+		}
+
+		public void GRPCRead(byte[] buffer, int length)
+		{
+			if (Payload == null)
 			{
-				Array.Copy(Payload, Offset, buffer, 0, count);
-				Offset += count;
+				NextGRPCResponse();
+			}
+
+			if (length > Payload.Length - Offset)
+			{
+				// Copy remaining data
+				Array.Copy(Payload, Offset, buffer, BufferOffset, Payload.Length - Offset);
+				BufferOffset += Payload.Length - Offset;
+				// Reset payload
+				Payload = null;
+				// Get the next response
+				GRPCRead(buffer, length);
+			}
+
+			Array.Copy(Payload, Offset, buffer, BufferOffset, length);
+			Offset += length;
+
+			if (Offset >= Payload.Length)
+			{
+				Payload = null;
+			}
+		}
+
+		private void NextGRPCResponse()
+		{
+			Stream.ResponseStream.MoveNext().Wait();
+			Response = Stream.ResponseStream.Current;
+			if (Response.Status != 0)
+			{
+				throw GRPCConversions.GrpcStatusError(Response);
+			}
+			Payload = Response.Payload.ToByteArray();
+			Offset = 0;
+			if (!Response.HasNext)
+			{
+				throw new EndOfGRPCStream();
 			}
 		}
 

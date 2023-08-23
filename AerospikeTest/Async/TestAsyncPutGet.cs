@@ -56,11 +56,11 @@ namespace Aerospike.Test
 		private class WriteHandler : WriteListener
 		{
 			private readonly TestAsyncPutGet parent;
-			private AsyncClient client;
+			private IAsyncClient client;
 			private Key key;
 			private Bin bin;
 
-			public WriteHandler(TestAsyncPutGet parent, AsyncClient client, Key key, Bin bin)
+			public WriteHandler(TestAsyncPutGet parent, IAsyncClient client, Key key, Bin bin)
 			{
 				this.parent = parent;
 				this.client = client;
