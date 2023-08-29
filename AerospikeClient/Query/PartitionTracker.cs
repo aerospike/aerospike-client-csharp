@@ -324,7 +324,7 @@ namespace Aerospike.Client
 		{
 			uint partitionId = Partition.GetPartitionId(key.digest);
 			partitions[partitionId - partitionBegin].digest = key.digest;
-			nodePartitions.recordCount++;
+			if (nodePartitions != null) nodePartitions.recordCount++;
 		}
 
 		public void SetLast(NodePartitions nodePartitions, Key key, ulong bval)

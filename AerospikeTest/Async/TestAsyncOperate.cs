@@ -30,7 +30,7 @@ namespace Aerospike.Test
 	public class TestAsyncOperate : TestAsync
 	{
 		private static readonly string binName = args.GetBinName("putgetbin");
-		private static CancellationToken token = new();
+		private static CancellationTokenSource tokenSource = new();
 
 		[TestMethod]
 		public async Task AsyncOperateList()
@@ -43,8 +43,7 @@ namespace Aerospike.Test
 			}
 			else
 			{
-				CancellationToken token = new();
-				var existed = await client.Delete(null, token, key);
+				var existed = await client.Delete(null, tokenSource.Token, key);
 				await DeleteHandlerListSuccess(key, existed, this);
 			}
 		}
@@ -66,8 +65,7 @@ namespace Aerospike.Test
 			}
 			else
 			{
-				CancellationToken token = new();
-				var record = await client.Operate(null, token, key, operations);
+				var record = await client.Operate(null, tokenSource.Token, key, operations);
 				ReadListenerSuccess(key, record, parent);
 			}
 		}
@@ -156,7 +154,7 @@ namespace Aerospike.Test
 			}
 			else
 			{
-				var existed = await client.Delete(null, token, key);
+				var existed = await client.Delete(null, tokenSource.Token, key);
 				await DeleteHandlerMapSuccess(key, existed, this);
 			}
 		}
@@ -179,8 +177,7 @@ namespace Aerospike.Test
 			}
 			else
 			{
-				CancellationToken token = new();
-				var record = await client.Operate(null, token, key, operations);
+				var record = await client.Operate(null, tokenSource.Token, key, operations);
 				MapHandlerSuccess(key, record, parent);
 			}
 		}

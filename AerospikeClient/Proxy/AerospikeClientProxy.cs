@@ -534,7 +534,7 @@ namespace Aerospike.Client
 		// Not supported in proxy client
 		public void Truncate(InfoPolicy policy, string ns, string set, DateTime? beforeLastUpdate)
 		{
-			throw new AerospikeException(NotSupported + "truncate");
+			throw new AerospikeException(NotSupported + "Truncate");
 		}
 
 		//-------------------------------------------------------
@@ -862,13 +862,29 @@ namespace Aerospike.Client
 			}
 		}
 
-		// Not supported in proxy client
+		/// <summary>
+		/// Not supported in proxy client
+		/// </summary>
+		/// <param name="policy"></param>
+		/// <param name="key"></param>
+		/// <param name="binNames"></param>
+		/// <param name="joins"></param>
+		/// <returns></returns>
+		/// <exception cref="AerospikeException"></exception>
+
 		public Record Join(BatchPolicy policy, Key key, string[] binNames, params Join[] joins)
 		{
 			throw new AerospikeException(NotSupported + "Join");
 		}
 
-		// Not supported in proxy client
+		/// <summary>
+		/// Not supported in proxy client
+		/// </summary>
+		/// <param name="policy"></param>
+		/// <param name="key"></param>
+		/// <param name="joins"></param>
+		/// <returns></returns>
+		/// <exception cref="AerospikeException"></exception>
 		public Record Join(BatchPolicy policy, Key key, params Join[] joins)
 		{
 			throw new AerospikeException(NotSupported + "Join");
@@ -991,25 +1007,34 @@ namespace Aerospike.Client
 		//-------------------------------------------------------
 
 		/// <summary>
-		/// Read all records in specified namespace and set.  If the policy's 
-		/// concurrentNodes is specified, each server node will be read in
-		/// parallel.  Otherwise, server nodes are read in series.
+		/// Not supported in proxy client
+		/// </summary>
+		/// <param name="policy"></param>
+		/// <param name="ns"></param>
+		/// <param name="setName"></param>
+		/// <param name="callback"></param>
+		/// <param name="binNames"></param>
+		public void ScanAll(ScanPolicy policy, string ns, string setName, ScanCallback callback, params string[] binNames)
+		{
+			throw new AerospikeException(NotSupported + "ScanAll");
+		}
+
+		/// <summary>
+		/// Read all records in specified namespace and set.
 		/// <para>
-		/// This call will block until the scan is complete - callbacks are made
-		/// within the scope of this call.
+		/// This call will block until the scan is complete
 		/// </para>
 		/// </summary>
 		/// <param name="policy">scan configuration parameters, pass in null for defaults</param>
 		/// <param name="ns">namespace - equivalent to database name</param>
 		/// <param name="setName">optional set name - equivalent to database table</param>
-		/// <param name="callback">read callback method - called with record data</param>
 		/// <param name="binNames">
 		/// optional bin to retrieve. All bins will be returned if not specified.
 		/// </param>
 		/// <exception cref="AerospikeException">if scan fails</exception>
-		public void ScanAll(ScanPolicy policy, string ns, string setName, ScanCallback callback, params string[] binNames)
+		public RecordSet ScanAll(ScanPolicy policy, string ns, string setName, params string[] binNames)
 		{
-			ScanPartitions(policy, PartitionFilter.All(), ns, setName, callback, binNames);
+			return ScanPartitions(policy, PartitionFilter.All(), ns, setName, binNames);
 		}
 
 		/// <summary>
@@ -1024,7 +1049,7 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException"></exception>
 		public void ScanNode(ScanPolicy policy, string nodeName, string ns, string setName, ScanCallback callback, params string[] binNames)
 		{
-			throw new AerospikeException(NotSupported + "scanNode");
+			throw new AerospikeException(NotSupported + "ScanNode");
 		}
 
 		/// <summary>
@@ -1039,24 +1064,36 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException"></exception>
 		public void ScanNode(ScanPolicy policy, Node node, string ns, string setName, ScanCallback callback, params string[] binNames)
 		{
-			throw new AerospikeException(NotSupported + "scanNode");
+			throw new AerospikeException(NotSupported + "ScanNode");
+		}
+
+		/// <summary>
+		/// Not supported in proxy client
+		/// </summary>
+		/// <param name="policy"></param>
+		/// <param name="partitionFilter"></param>
+		/// <param name="ns"></param>
+		/// <param name="setName"></param>
+		/// <param name="callback"></param>
+		/// <param name="binNames"></param>
+		public void ScanPartitions(ScanPolicy policy, PartitionFilter partitionFilter, string ns, string setName, ScanCallback callback, params string[] binNames)
+		{
+			throw new AerospikeException(NotSupported + "ScanPartitions");
 		}
 
 		/// <summary>
 		/// Read records in specified namespace, set and partition filter.
 		/// <para>
-		/// This call will block until the scan is complete - callbacks are made
-		/// within the scope of this call.
+		/// This call will block until the scan is complete
 		/// </para>
 		/// </summary>
 		/// <param name="policy">scan configuration parameters, pass in null for defaults</param>
 		/// <param name="partitionFilter">filter on a subset of data partitions</param>
 		/// <param name="ns">namespace - equivalent to database name</param>
 		/// <param name="setName">optional set name - equivalent to database table</param>
-		/// <param name="callback">read callback method - called with record data</param>
 		/// <param name="binNames">optional bin to retrieve. All bins will be returned if not specified.</param>
 		/// <exception cref="AerospikeException">if scan fails</exception>
-		public void ScanPartitions(ScanPolicy policy, PartitionFilter partitionFilter, string ns, string setName, ScanCallback callback, params string[] binNames)
+		public RecordSet ScanPartitions(ScanPolicy policy, PartitionFilter partitionFilter, string ns, string setName, params string[] binNames)
 		{
 			policy ??= scanPolicyDefault;
 			CancellationToken token = new();
@@ -1064,6 +1101,7 @@ namespace Aerospike.Client
 			RecordSet recordSet = new(null, policy.recordQueueSize, token);
 			ScanPartitionCommandProxy command = new(policy, ns, setName, binNames, tracker, partitionFilter, recordSet);
 			command.ExecuteGRPC(channel);
+			return recordSet;
 		}
 
 		//---------------------------------------------------------------
@@ -1081,7 +1119,7 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException"></exception>
 		public RegisterTask Register(Policy policy, string clientPath, string serverPath, Language language)
 		{
-			throw new AerospikeException(NotSupported + "register");
+			throw new AerospikeException(NotSupported + "Register");
 		}
 
 		/// <summary>
@@ -1096,7 +1134,7 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException"></exception>
 		public RegisterTask Register(Policy policy, Assembly resourceAssembly, string resourcePath, string serverPath, Language language)
 		{
-			throw new AerospikeException(NotSupported + "register");
+			throw new AerospikeException(NotSupported + "Register");
 		}
 
 		/// <summary>
@@ -1110,7 +1148,7 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException"></exception>
 		public RegisterTask RegisterUdfString(Policy policy, string code, string serverPath, Language language)
 		{
-			throw new AerospikeException(NotSupported + "registerUdfString");
+			throw new AerospikeException(NotSupported + "RegisterUdfString");
 		}
 
 		/// <summary>
@@ -1121,7 +1159,7 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException"></exception>
 		public void RemoveUdf(InfoPolicy policy, string serverPath)
 		{
-			throw new AerospikeException(NotSupported + "removeUdf");
+			throw new AerospikeException(NotSupported + "RemoveUdf");
 		}
 
 		/// <summary>
@@ -1299,7 +1337,7 @@ namespace Aerospike.Client
 
 		/// <summary>
 		/// Execute query on all server nodes and return records via the listener. This method will
-		/// block until the query is complete. Listener callbacks are made within the scope of this call.
+		/// block until the query is complete.
 		/// <para>
 		/// If <see cref="QueryPolicy.maxConcurrentNodes"/> is not 1, the supplied listener must handle
 		/// shared data in a thread-safe manner, because the listener will be called by multiple query

@@ -29,12 +29,12 @@ namespace Aerospike.Test
 		private const string keyPrefix = "asqkey";
 		private static readonly string binName = args.GetBinName("asqbin");
 		private const int size = 50;
-		private static CancellationToken token;
+		private static CancellationTokenSource tokenSource;
 
 		[ClassInitialize()]
 		public static void Prepare(TestContext testContext)
 		{
-			token = new CancellationToken();
+			tokenSource = new CancellationTokenSource();
 			Policy policy = new Policy();
 			policy.totalTimeout = 0; // Do not timeout on index create.
 
@@ -80,7 +80,7 @@ namespace Aerospike.Test
 				{
 					Key key = new Key(args.ns, args.set, keyPrefix + i);
 					Bin bin = new Bin(binName, i);
-					await client.Put(null, token, key, bin);
+					await client.Put(null, tokenSource.Token, key, bin);
 					await WriteHandlerSuccess(key, count, this);
 				}
 			}
@@ -107,7 +107,7 @@ namespace Aerospike.Test
 				}
 				else
 				{
-					var result = await asyncProxy.Query(null, token, stmt);
+					var result = await asyncProxy.Query(null, tokenSource.Token, stmt);
 					while (result.Next())
 					{
 						Record record = result.Record;

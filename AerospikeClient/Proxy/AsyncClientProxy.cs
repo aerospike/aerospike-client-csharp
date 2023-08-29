@@ -143,8 +143,6 @@ namespace Aerospike.Client
 		public async Task Put(WritePolicy policy, CancellationToken token, Key key, params Bin[] bins)
 		{
 			policy ??= writePolicyDefault;
-			//AsyncWrite async = new(null, policy, null, key, bins, Operation.Type.WRITE);
-			//return async.ExecuteGRPC(channel, token);
 			WriteCommand command = new(null, policy, key, bins, Operation.Type.WRITE);
 			await command.ExecuteGRPC(channel, token);
 		}
@@ -182,8 +180,6 @@ namespace Aerospike.Client
 		public async Task Append(WritePolicy policy, CancellationToken token, Key key, params Bin[] bins)
 		{
 			policy ??= writePolicyDefault;
-			//AsyncWrite async = new(null, policy, null, key, bins, Operation.Type.APPEND);
-			//return async.ExecuteGRPC(channel, token);
 			WriteCommand command = new(null, policy, key, bins, Operation.Type.APPEND);
 			await command.ExecuteGRPC(channel, token);
 		}
@@ -217,8 +213,6 @@ namespace Aerospike.Client
 		public async Task Prepend(WritePolicy policy, CancellationToken token, Key key, params Bin[] bins)
 		{
 			policy ??= writePolicyDefault;
-			//AsyncWrite async = new(null, policy, null, key, bins, Operation.Type.PREPEND);
-			//return async.ExecuteGRPC(channel, token);
 			WriteCommand command = new(null, policy, key, bins, Operation.Type.PREPEND);
 			await command.ExecuteGRPC(channel, token);
 		}
@@ -255,8 +249,6 @@ namespace Aerospike.Client
 		public async Task Add(WritePolicy policy, CancellationToken token, Key key, params Bin[] bins)
 		{
 			policy ??= writePolicyDefault;
-			//AsyncWrite async = new(null, policy, null, key, bins, Operation.Type.ADD);
-			//return async.ExecuteGRPC(channel, token);
 			WriteCommand command = new(null, policy, key, bins, Operation.Type.ADD);
 			await command.ExecuteGRPC(channel, token);
 		}
@@ -288,8 +280,6 @@ namespace Aerospike.Client
 		public async Task<bool> Delete(WritePolicy policy, CancellationToken token, Key key)
 		{
 			policy ??= writePolicyDefault;
-			//AsyncDelete async = new(null, policy, key, null);
-			//return async.ExecuteGRPC(channel, token);
 			DeleteCommand command = new(null, policy, key);
 			return await command.ExecuteGRPC(channel, token);
 		}
@@ -308,7 +298,6 @@ namespace Aerospike.Client
 
 		/// <summary>
 		/// Asynchronously delete records for specified keys.
-		/// Create listener, call asynchronous delete and return task monitor.
 		/// <para>Requires server version 6.0+</para>
 		/// </summary>
 		/// <param name="batchPolicy">batch configuration parameters, pass in null for defaults</param>
@@ -339,7 +328,6 @@ namespace Aerospike.Client
 			try
 			{
 				BatchStatus status = new(true);
-				//Operate(batchPolicy, token, records.ToList(), status);
 				await Operate(batchPolicy, records, status, token);
 				return new BatchResults(records, status.GetStatus());
 			}
@@ -391,8 +379,6 @@ namespace Aerospike.Client
 		public async Task Touch(WritePolicy policy, CancellationToken token, Key key)
 		{
 			policy ??= writePolicyDefault;
-			//AsyncTouch async = new(null, policy, null, key);
-			//return async.ExecuteGRPC(channel, token);
 			TouchCommand command = new(null, policy, key);
 			await command.ExecuteGRPC(channel, token);
 		}
@@ -423,13 +409,17 @@ namespace Aerospike.Client
 		public async Task<bool> Exists(Policy policy, CancellationToken token, Key key)
 		{
 			policy ??= readPolicyDefault;
-			//AsyncExists async = new(null, policy, key, null);
-			//return async.ExecuteGRPC(channel, token);
 			ExistsCommand command = new(null, policy, key);
 			return await command.ExecuteGRPC(channel, token);
 		}
 
+		/// <summary>
 		/// Not supported in proxy client
+		/// </summary>
+		/// <param name="policy"></param>
+		/// <param name="listener"></param>
+		/// <param name="key"></param>
+		/// <exception cref="AerospikeException"></exception>
 		public void Exists(Policy policy, ExistsListener listener, Key key)
 		{
 			throw new AerospikeException(NotSupported + "Exists");
@@ -463,7 +453,6 @@ namespace Aerospike.Client
 			try
 			{
 				BatchStatus status = new(false);
-				//Operate(policy, token, records.ToList(), status);
 				await Operate(policy, records, status, token);
 				for (int i = 0; i < keys.Length; i++)
 				{
@@ -515,8 +504,6 @@ namespace Aerospike.Client
 		public async Task<Record> Get(Policy policy, CancellationToken token, Key key)
 		{
 			policy ??= readPolicyDefault;
-			//AsyncRead async = new(null, policy, null, key, (string[])null);
-			//return async.ExecuteGRPC(channel, token);
 			ReadCommand command = new(null, policy, key);
 			return await command.ExecuteGRPC(channel, token);
 		}
@@ -535,7 +522,6 @@ namespace Aerospike.Client
 
 		/// <summary>
 		/// Asynchronously read record header and bins for specified key.
-		/// Create listener, call asynchronous get and return task monitor.
 		/// </summary>
 		/// <param name="policy">generic configuration parameters, pass in null for defaults</param>
 		/// <param name="token">cancellation token</param>
@@ -545,8 +531,6 @@ namespace Aerospike.Client
 		public async Task<Record> Get(Policy policy, CancellationToken token, Key key, params string[] binNames)
 		{
 			policy ??= readPolicyDefault;
-			//AsyncRead async = new(null, policy, null, key, binNames);
-			//return async.ExecuteGRPC(channel, token);
 			ReadCommand command = new(null, policy, key, binNames);
 			return await command.ExecuteGRPC(channel, token);
 		}
@@ -574,8 +558,6 @@ namespace Aerospike.Client
 		public async Task<Record> GetHeader(Policy policy, CancellationToken token, Key key)
 		{
 			policy ??= readPolicyDefault;
-			//AsyncReadHeader async = new(null, policy, null, key);
-			//return async.ExecuteGRPC(channel, token);
 			ReadHeaderCommand command = new(null, policy, key);
 			return await command.ExecuteGRPC(channel, token);
 		}
@@ -600,9 +582,6 @@ namespace Aerospike.Client
 		/// Asynchronously read multiple records for specified batch keys in one batch call.
 		/// This method allows different namespaces/bins to be requested for each key in the batch.
 		/// The returned records are located in the same list.
-		/// <para>
-		/// Create listener, call asynchronous batch get and return task monitor.
-		/// </para>
 		/// </summary>
 		/// <param name="policy">batch configuration parameters, pass in null for defaults</param>
 		/// <param name="token">cancellation token</param>
@@ -626,7 +605,6 @@ namespace Aerospike.Client
 			try
 			{
 				BatchStatus status = new(false);
-				//Operate(policy, token, batchRecords.ToList(), status);
 				await Operate(policy, batchRecords, status, token);
 				return records;
 			}
@@ -634,6 +612,7 @@ namespace Aerospike.Client
 			{
 				//throw new AerospikeException.BatchRecords(batchRecords, e);
 				throw new AerospikeException("idk");
+				//TODO
 			}
 		}
 
@@ -663,7 +642,6 @@ namespace Aerospike.Client
 
 		/// <summary>
 		/// Asynchronously read multiple records for specified keys in one batch call.
-		/// Create listener, call asynchronous batch get and return task monitor.
 		/// <para>
 		/// If a key is not found, the record will be null.
 		/// </para>
@@ -691,7 +669,6 @@ namespace Aerospike.Client
 			try
 			{
 				BatchStatus status = new(false);
-				//Operate(policy, token, batchRecords.ToList(), status);
 				await Operate(policy, batchRecords, status, token);
 				for (int i = 0; i < keys.Length; i++)
 				{
@@ -731,7 +708,6 @@ namespace Aerospike.Client
 
 		/// <summary>
 		/// Asynchronously read multiple record headers and bins for specified keys in one batch call.
-		/// Create listener, call asynchronous batch get and return task monitor.
 		/// <para>
 		/// If a key is not found, the record will be null.
 		/// </para>
@@ -760,7 +736,6 @@ namespace Aerospike.Client
 			try
 			{
 				BatchStatus status = new(false);
-				//Operate(policy, token, batchRecords.ToList(), status);
 				await Operate(policy, batchRecords, status, token);
 				for (int i = 0; i < keys.Length; i++)
 				{
@@ -802,7 +777,7 @@ namespace Aerospike.Client
 
 		/// <summary>
 		/// Asynchronously read multiple record headers and bins for specified keys using read operations
-		/// in one batch call. Create listener, call asynchronous batch get and return task monitor.
+		/// in one batch call.
 		/// <para>
 		/// If a key is not found, the record will be null.
 		/// </para>
@@ -831,7 +806,6 @@ namespace Aerospike.Client
 			try
 			{
 				BatchStatus status = new(false);
-				//Operate(policy, token, batchRecords.ToList(), status);
 				await Operate(policy, batchRecords, status, token);
 				for (int i = 0; i < batchRecords.Length; i++)
 				{
@@ -873,7 +847,6 @@ namespace Aerospike.Client
 
 		/// <summary>
 		/// Asynchronously read multiple record header data for specified keys in one batch call.
-		/// Create listener, call asynchronous batch header get and return task monitor.
 		/// <para>
 		/// If a key is not found, the record will be null.
 		/// </para>
@@ -901,7 +874,6 @@ namespace Aerospike.Client
 			try
 			{
 				BatchStatus status = new(false);
-				//Operate(policy, token, batchRecords.ToList(), status);
 				await Operate(policy, batchRecords, status, token);
 				for (int i = 0; i < batchRecords.Length; i++)
 				{
@@ -963,8 +935,6 @@ namespace Aerospike.Client
 		public async Task<Record> Operate(WritePolicy policy, CancellationToken token, Key key, params Operation[] ops)
 		{
 			OperateArgs args = new OperateArgs(policy, writePolicyDefault, operatePolicyReadDefault, key, ops);
-			//AsyncOperate async = new(null, null, key, args);
-			//return async.ExecuteGRPC(channel, token);
 			OperateCommand command = new(null, key, args);
 			return await command.ExecuteGRPC(channel, token);
 		}
@@ -989,7 +959,6 @@ namespace Aerospike.Client
 		private async Task Operate(BatchPolicy policy, BatchRecord[] records, BatchStatus status, CancellationToken token)
 		{
 			policy ??= batchParentPolicyWriteDefault;
-
 			BatchNode batch = new(records);
 			BatchOperateListCommand command = new(null, batch, policy, records, status);
 			await command.ExecuteGRPC(channel, token);
@@ -997,7 +966,6 @@ namespace Aerospike.Client
 
 		/// <summary>
 		/// Asynchronously read/write multiple records for specified batch keys in one batch call.
-		/// Create listener, call asynchronous delete and return task monitor.
 		/// <para>Requires server version 6.0+</para>
 		/// </summary>
 		/// <param name="policy">batch configuration parameters, pass in null for defaults</param>
@@ -1008,9 +976,7 @@ namespace Aerospike.Client
 		public async Task<bool> Operate(BatchPolicy policy, CancellationToken token, List<BatchRecord> records)
 		{
 			policy ??= batchParentPolicyWriteDefault;
-
 			BatchStatus status = new(true);
-			//Operate(policy, token, records);
 			await Operate(policy, records.ToArray(), status, token);
 			return status.GetStatus();
 		}
@@ -1041,7 +1007,6 @@ namespace Aerospike.Client
 
 		/// <summary>
 		/// Asynchronously perform read/write operations on multiple keys.
-		/// Create listener, call asynchronous delete and return task monitor.
 		/// <para>Requires server version 6.0+</para>
 		/// </summary>
 		/// <param name="batchPolicy">batch configuration parameters, pass in null for defaults</param>
@@ -1076,7 +1041,6 @@ namespace Aerospike.Client
 			{
 				BatchStatus status = new(true);
 				BatchNode batchNode = new(records);
-				//Operate(batchPolicy, token, records.ToList());
 				BatchOperateArrayCommand command = new(null, batchNode, batchPolicy, keys, ops, records, attr, status);
 				await command.ExecuteGRPC(channel, token);
 				return new BatchResults(records, status.GetStatus());
@@ -1115,59 +1079,38 @@ namespace Aerospike.Client
 			throw new AerospikeException(NotSupported + "Operate");
 		}
 
-		private async Task Operate(BatchPolicy policy, CancellationToken token, List<BatchRecord> records, BatchStatus status)
-		{
-			policy ??= batchParentPolicyWriteDefault;
-
-			BatchNode batch = new(records.ToArray());
-			AsyncBatchOperateListCommand command = new(null, null, batch, policy, records);
-			await command.ExecuteGRPC(channel, token);
-		}
-
 		//-------------------------------------------------------
 		// Scan Operations
 		//-------------------------------------------------------
 
 		/// <summary>
-		/// Asynchronously read all records in specified namespace and set.  If the policy's 
-		/// concurrentNodes is specified, each server node will be read in
-		/// parallel.  Otherwise, server nodes are read in series.
-		/// <para>
-		/// This method schedules the scan command with a channel selector and returns.
-		/// Another thread will process the command and send the results to the listener.
-		/// </para>
+		/// Not supported in proxy client
 		/// </summary>
-		/// <param name="policy">scan configuration parameters, pass in null for defaults</param>
-		/// <param name="listener">where to send results, pass in null for fire and forget</param>
-		/// <param name="ns">namespace - equivalent to database name</param>
-		/// <param name="setName">optional set name - equivalent to database table</param>
-		/// <param name="binNames">optional bin to retrieve. All bins will be returned if not specified.</param>
-		/// <exception cref="AerospikeException">if queue is full</exception>
+		/// <param name="policy"></param>
+		/// <param name="listener"></param>
+		/// <param name="ns"></param>
+		/// <param name="setName"></param>
+		/// <param name="binNames"></param>
+		/// <exception cref="AerospikeException"></exception>
 		public void ScanAll(ScanPolicy policy, RecordSequenceListener listener, string ns, string setName, params string[] binNames)
 		{
 			throw new AerospikeException(NotSupported + "ScanAll");
 		}
 
 		/// <summary>
-		/// Read all records in specified namespace and set.  If the policy's 
-		/// concurrentNodes is specified, each server node will be read in
-		/// parallel.  Otherwise, server nodes are read in series.
-		/// <para>
-		/// This call will block until the scan is complete - callbacks are made
-		/// within the scope of this call.
-		/// </para>
+		/// Asynchronously read all records in specified namespace and set.
 		/// </summary>
 		/// <param name="policy">scan configuration parameters, pass in null for defaults</param>
+		/// <param name="token">cancellation token</param>
 		/// <param name="ns">namespace - equivalent to database name</param>
 		/// <param name="setName">optional set name - equivalent to database table</param>
-		/// <param name="callback">read callback method - called with record data</param>
 		/// <param name="binNames">
 		/// optional bin to retrieve. All bins will be returned if not specified.
 		/// </param>
 		/// <exception cref="AerospikeException">if scan fails</exception>
-		public async Task ScanAll(ScanPolicy policy, CancellationToken token, string ns, string setName, params string[] binNames)
+		public async Task<RecordSet> ScanAll(ScanPolicy policy, CancellationToken token, string ns, string setName, params string[] binNames)
 		{
-			await ScanPartitions(policy, token, PartitionFilter.All(), ns, setName, binNames);
+			return await ScanPartitions(policy, token, PartitionFilter.All(), ns, setName, binNames);
 		}
 
 		/// <summary>
@@ -1186,26 +1129,23 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
-		/// Read records in specified namespace, set and partition filter.
-		/// <para>
-		/// This call will block until the scan is complete - callbacks are made
-		/// within the scope of this call.
-		/// </para>
+		/// Asynchronously read records in specified namespace, set and partition filter.
 		/// </summary>
 		/// <param name="policy">scan configuration parameters, pass in null for defaults</param>
+		/// <param name="token">cancellation token</param>
 		/// <param name="partitionFilter">filter on a subset of data partitions</param>
 		/// <param name="ns">namespace - equivalent to database name</param>
 		/// <param name="setName">optional set name - equivalent to database table</param>
-		/// <param name="callback">read callback method - called with record data</param>
 		/// <param name="binNames">optional bin to retrieve. All bins will be returned if not specified.</param>
 		/// <exception cref="AerospikeException">if scan fails</exception>
-		public async Task ScanPartitions(ScanPolicy policy, CancellationToken token, PartitionFilter partitionFilter, string ns, string setName, params string[] binNames)
+		public async Task<RecordSet> ScanPartitions(ScanPolicy policy, CancellationToken token, PartitionFilter partitionFilter, string ns, string setName, params string[] binNames)
 		{
 			policy ??= scanPolicyDefault;
 			PartitionTracker tracker = new(policy, null, partitionFilter);
 			RecordSet recordSet = new(null, policy.recordQueueSize, token);
 			ScanPartitionCommandProxy command = new(policy, ns, setName, binNames, tracker, partitionFilter, recordSet);
 			await command.ExecuteGRPC(channel, token);
+			return recordSet;
 		}
 
 		//---------------------------------------------------------------
@@ -1225,8 +1165,23 @@ namespace Aerospike.Client
 		public async Task<object> Execute(WritePolicy policy, CancellationToken token, Key key, string packageName, string functionName, params Value[] functionArgs)
 		{
 			policy ??= writePolicyDefault;
-			var command = new AsyncExecute(null, policy, null, key, packageName, functionName, functionArgs);
-			return await command.ExecuteGRPC(channel, token);
+			var command = new ExecuteCommand(null, policy, key, packageName, functionName, functionArgs);
+			await command.ExecuteGRPC(channel, token);
+
+			var record = command.Record;
+
+			IDictionary<string, object> map = record.bins;
+			object obj;
+			if (map.TryGetValue("SUCCESS", out obj))
+			{
+				return obj;
+			}
+
+			if (map.TryGetValue("FAILURE", out obj))
+			{
+				throw new AerospikeException(obj.ToString());
+			}
+			throw new AerospikeException("Invalid UDF return value");
 		}
 
 		/// <summary>
@@ -1282,7 +1237,7 @@ namespace Aerospike.Client
 			try
 			{
 				BatchStatus status = new(true);
-				await  Operate(batchPolicy, records, status, token);
+				await Operate(batchPolicy, records, status, token);
 				return new BatchResults(records, status.GetStatus());
 			}
 			catch (Exception e)
@@ -1363,6 +1318,7 @@ namespace Aerospike.Client
 		/// Execute query and call action for each record returned from server.
 		/// </summary>
 		/// <param name="policy">generic configuration parameters, pass in null for defaults</param>
+		/// <param name="token">cancellation token</param>
 		/// <param name="statement">query definition</param>
 		/// <param name="action">action methods to be called for each record</param>
 		/// <exception cref="AerospikeException">if query fails</exception>
@@ -1390,6 +1346,7 @@ namespace Aerospike.Client
 		/// </para>
 		/// </summary>
 		/// <param name="policy">query configuration parameters, pass in null for defaults</param>
+		/// <param name="token">cancellation token</param>
 		/// <param name="statement">query definition</param>
 		/// <exception cref="AerospikeException">if query fails</exception>
 		public async Task<RecordSet> Query(QueryPolicy policy, CancellationToken token, Statement statement)
@@ -1406,6 +1363,7 @@ namespace Aerospike.Client
 		/// </para>
 		/// </summary>
 		/// <param name="policy">query configuration parameters, pass in null for defaults</param>
+		///<param name="token">cancellation token</param>
 		/// <param name="statement">query definition</param>
 		/// <param name="partitionFilter">filter on a subset of data partitions</param>
 		/// <exception cref="AerospikeException">if query fails</exception>

@@ -25,7 +25,7 @@ namespace Aerospike.Client
 {
 	public class QueryPartitionCommandProxy : MultiCommand
 	{
-		private QueryPolicy policy;
+		private new QueryPolicy policy;
 		private WritePolicy writePolicy;
 		private Statement statement;
 		private PartitionFilter partitionFilter;
@@ -126,9 +126,9 @@ namespace Aerospike.Client
 			try
 			{
 				var conn = new ConnectionProxyStream(stream);
-				await ParseResult(conn);
+				await ParseResult(conn, token);
 			}
-			catch (EndOfGRPCStream eogs)
+			catch (EndOfGRPCStream)
 			{
 				//if (tracker.IsComplete(cluster, policy))
 				//{

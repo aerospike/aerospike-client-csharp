@@ -32,6 +32,7 @@ namespace Aerospike.Test
 		public IAsyncClient asyncClient;
 		public AsyncClient nativeAsync;
 		public AsyncClientProxy asyncProxy;
+		public AerospikeClientProxy proxyClient;
 		public Host[] hosts;
 		public Host proxyHost;
 		public int port;
@@ -144,11 +145,11 @@ namespace Aerospike.Test
 			
 			asyncPolicy.asyncMaxCommands = 300;
 
-			client = new AerospikeClientProxy(policy, proxyHost);
+			proxyClient = new AerospikeClientProxy(policy, proxyHost);
 			nativeClient = new AerospikeClient(policy, hosts);
-			asyncClient = new AsyncClientProxy(asyncPolicy, proxyHost);
 			nativeAsync = new AsyncClient(asyncPolicy, hosts);
-			asyncProxy = new AsyncClientProxy(asyncPolicy, hosts);
+			asyncProxy = new AsyncClientProxy(asyncPolicy, proxyHost);
+			asyncClient = asyncProxy;
 
 			int timeout = 15;
 			int socketTimeout = 5;
@@ -167,13 +168,15 @@ namespace Aerospike.Test
 			nativeClient.BatchParentPolicyWriteDefault.socketTimeout = socketTimeout * 1000;
 			nativeClient.InfoPolicyDefault.timeout = timeout * 1000;
 
-			client.ReadPolicyDefault = nativeClient.ReadPolicyDefault;
-			client.WritePolicyDefault = nativeClient.WritePolicyDefault;
-			client.ScanPolicyDefault = nativeClient.ScanPolicyDefault;
-			client.QueryPolicyDefault = nativeClient.QueryPolicyDefault;
-			client.BatchPolicyDefault = nativeClient.BatchPolicyDefault;
-			client.BatchParentPolicyWriteDefault = nativeClient.BatchParentPolicyWriteDefault;
-			client.InfoPolicyDefault = nativeClient.InfoPolicyDefault;
+			proxyClient.ReadPolicyDefault = nativeClient.ReadPolicyDefault;
+			proxyClient.WritePolicyDefault = nativeClient.WritePolicyDefault;
+			proxyClient.ScanPolicyDefault = nativeClient.ScanPolicyDefault;
+			proxyClient.QueryPolicyDefault = nativeClient.QueryPolicyDefault;
+			proxyClient.BatchPolicyDefault = nativeClient.BatchPolicyDefault;
+			proxyClient.BatchParentPolicyWriteDefault = nativeClient.BatchParentPolicyWriteDefault;
+			proxyClient.InfoPolicyDefault = nativeClient.InfoPolicyDefault;
+
+			client = proxyClient;
 
 			try
 			{

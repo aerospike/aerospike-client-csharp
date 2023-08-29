@@ -184,7 +184,7 @@ namespace Aerospike.Client
 			}
 		}
 
-		protected internal async Task ParseResult(ConnectionProxyStream conn)
+		protected internal async Task ParseResult(ConnectionProxyStream conn, CancellationToken token)
 		{
 			// Read blocks of records.  Do not use thread local receive buffer because each
 			// block will likely be too big for a cache.  Also, scan callbacks can nest
@@ -197,8 +197,10 @@ namespace Aerospike.Client
 
 			while (true)
 			{
+				token.ThrowIfCancellationRequested();
+				
 				// Read header
-				await conn.ReadFully(protoBuf, 8);
+				await conn.ReadFully(protoBuf, 8, token);
 
 				long proto = ByteUtil.BytesToLong(protoBuf, 0);
 				int size = (int)(proto & 0xFFFFFFFFFFFFL);
@@ -223,7 +225,7 @@ namespace Aerospike.Client
 				}
 
 				// Read remaining message bytes in group.
-				await conn.ReadFully(buf, size);
+				await conn.ReadFully(buf, size, token);
 				conn.UpdateLastUsed();
 
 				ulong type = (ulong)((proto >> 48) & 0xff);

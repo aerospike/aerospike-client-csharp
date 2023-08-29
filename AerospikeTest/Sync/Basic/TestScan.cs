@@ -19,6 +19,7 @@ using System.Collections.Concurrent;
 using System.Threading;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Aerospike.Client;
+using Microsoft.AspNetCore.DataProtection.KeyManagement;
 
 namespace Aerospike.Test
 {
@@ -31,7 +32,41 @@ namespace Aerospike.Test
 		public void ScanParallel()
 		{
 			ScanPolicy policy = new ScanPolicy();
-			client.ScanAll(policy, args.ns, args.set, ScanCallback);
+
+			if (!args.testProxy)
+			{
+				client.ScanAll(policy, args.ns, args.set, ScanCallback);
+			}
+			else
+			{
+				var recordSet = proxyClient.ScanAll(policy, args.ns, args.set);
+				Metrics metrics;
+				while (recordSet.Next())
+				{
+					var key = recordSet.Key;
+
+					if (setMap.TryGetValue(key.setName, out metrics))
+					{
+						Interlocked.Increment(ref metrics.count);
+						return;
+					}
+
+					// Set not found.  Must lock to create metrics entry.
+					lock (setMap)
+					{
+						// Retry lookup under lock.
+						if (setMap.TryGetValue(key.setName, out metrics))
+						{
+							Interlocked.Increment(ref metrics.count);
+							return;
+						}
+
+						metrics = new Metrics();
+						metrics.count = 1;
+						setMap[key.setName] = metrics;
+					}
+				}
+			}
 		}
 
 		[TestMethod]

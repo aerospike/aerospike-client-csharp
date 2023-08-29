@@ -240,11 +240,6 @@ namespace Aerospike.Client
 			}
 		}
 
-		public Task ReceiveComplete(AsyncConnectionProxyStream connectionProxyStream)
-		{
-			throw new NotImplementedException();
-		}
-
 		private void ConnectionReady()
 		{
 			if (Interlocked.CompareExchange(ref state, 1, 0) == 0)

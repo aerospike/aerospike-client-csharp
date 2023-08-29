@@ -26,7 +26,7 @@ namespace Aerospike.Test
 	public class TestAsyncScan : TestAsync
 	{
 		private int recordCount;
-		static CancellationToken token = new();
+		static CancellationTokenSource tokenSource = new();
 
 		[TestMethod]
 		public async Task AsyncScan()
@@ -43,7 +43,16 @@ namespace Aerospike.Test
 			}
 			else
 			{
-				await asyncProxy.ScanAll(policy, token, args.ns, args.set);
+				var recordSet = await asyncProxy.ScanAll(policy, tokenSource.Token, args.ns, args.set);
+				while(recordSet.Next()) 
+				{
+					recordCount++;
+
+					if ((recordCount % 10000) == 0)
+					{
+						;
+					}
+				}
 			}
 		}
 

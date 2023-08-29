@@ -133,9 +133,9 @@ namespace Aerospike.Client
 			try
 			{
 				var conn = new ConnectionProxyStream(stream);
-				await ParseResult(conn);
+				await ParseResult(conn, token);
 			}
-			catch (EndOfGRPCStream eogs)
+			catch (EndOfGRPCStream)
 			{
 				//if (tracker.IsComplete(cluster, policy))
 				//{

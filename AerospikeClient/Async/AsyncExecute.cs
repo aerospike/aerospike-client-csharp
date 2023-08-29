@@ -135,24 +135,5 @@ namespace Aerospike.Client
 			}
 			throw new AerospikeException("Invalid UDF return value");
 		}
-
-		public new async Task<object> ExecuteGRPC(GrpcChannel channel, CancellationToken token)
-		{
-			segment = new BufferSegment(new BufferPool(1, 128 * 1024), 0);
-			WriteBuffer();
-			var request = new AerospikeRequestPayload
-			{
-				Id = 0, // ID is only needed in streaming version, can be static for unary
-				Iteration = 1,
-				Payload = ByteString.CopyFrom(dataBuffer, 0, dataLength)
-			};
-			GRPCConversions.SetRequestPolicy(policy, request);
-
-			var KVS = new KVS.KVS.KVSClient(channel);
-			var response = await KVS.ExecuteAsync(request, cancellationToken: token);
-			SetupProxyConnAndBuf(response, this);
-			ParseResult();
-			return ParseEndResult();
-		}
 	}
 }

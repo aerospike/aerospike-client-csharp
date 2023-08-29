@@ -26,6 +26,7 @@ namespace Aerospike.Test
 	public class TestAsyncPutGet : TestAsync
 	{
 		private static readonly string binName = args.GetBinName("putgetbin");
+		private static CancellationTokenSource tokenSource = new();
 
 		[TestMethod]
 		public async Task AsyncPutGet()
@@ -40,8 +41,7 @@ namespace Aerospike.Test
 			}
 			else
 			{
-				CancellationToken token = new();
-				await client.Put(null, token, key, bin);
+				await client.Put(null, tokenSource.Token, key, bin);
 				await WriteListenerSuccess(key, bin, this);
 			}
 		}
@@ -52,11 +52,10 @@ namespace Aerospike.Test
 			Key key = new Key(args.ns, args.set, "putgetkey2");
 			Bin bin = new Bin(binName, "value2");
 
-			CancellationTokenSource cancel = new CancellationTokenSource();
-			Task taskput = client.Put(null, cancel.Token, key, bin);
+			Task taskput = client.Put(null, tokenSource.Token, key, bin);
 			taskput.Wait();
 
-			Task<Record> taskget = client.Get(null, cancel.Token, key);
+			Task<Record> taskget = client.Get(null, tokenSource.Token, key);
 			taskget.Wait();
 
 			TestSync.AssertBinEqual(key, taskget.Result, bin);
@@ -73,8 +72,7 @@ namespace Aerospike.Test
 				}
 				else
 				{
-					CancellationToken token = new();
-					var record = await client.Get(null, token, key);
+					var record = await client.Get(null, tokenSource.Token, key);
 					RecordHandlerSuccess(key, record, bin, parent);
 				}
 			}

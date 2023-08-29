@@ -43,18 +43,7 @@ namespace Aerospike.Client
 		public ConnectionProxyStream(AsyncServerStreamingCall<AerospikeResponsePayload> stream)
 		{
 			Stream = stream;
-			stream.ResponseStream.MoveNext().Wait();
-			Response = stream.ResponseStream.Current;
-			if (Response.Status != 0)
-			{
-				throw GRPCConversions.GrpcStatusError(Response);
-			}
-			Payload = Response.Payload.ToByteArray();
-			Offset = 0;
-			if (!Response.HasNext)
-			{
-				throw new EndOfGRPCStream();
-			}
+			Payload = null;
 		}
 
 		public void SetTimeout(int timeoutMillis)
@@ -72,17 +61,17 @@ namespace Aerospike.Client
 			throw new NotImplementedException();
 		}
 
-		public async Task ReadFully(byte[] buffer, int length)
+		public async Task ReadFully(byte[] buffer, int length, CancellationToken token)
 		{
 			BufferOffset = 0;
-			await GRPCRead(buffer, length);
+			await GRPCRead(buffer, length, token);
 		}
 
-		public async Task GRPCRead(byte[] buffer, int length)
+		public async Task GRPCRead(byte[] buffer, int length, CancellationToken token)
 		{
 			if (Payload == null)
 			{
-				await NextGRPCResponse();
+				await NextGRPCResponse(token);
 			}
 			
 			if (length > Payload.Length - Offset)
@@ -93,7 +82,7 @@ namespace Aerospike.Client
 				// Reset payload
 				Payload = null;
 				// Get the next response
-				await GRPCRead(buffer, length);
+				await GRPCRead(buffer, length, token);
 			}
 				
 			Array.Copy(Payload, Offset, buffer, BufferOffset, length);
@@ -105,8 +94,9 @@ namespace Aerospike.Client
 			}
 		}
 
-		private async Task NextGRPCResponse()
+		private async Task NextGRPCResponse(CancellationToken token)
 		{
+			token.ThrowIfCancellationRequested();
 			await Stream.ResponseStream.MoveNext();
 			Response = Stream.ResponseStream.Current;
 			if (Response.Status != 0)

@@ -61,9 +61,5 @@
   <ItemGroup>
   	<ProjectReference Include="..\AerospikeClient\AerospikeClient.csproj" />
   </ItemGroup>
-  
-  <ItemGroup>
-  	<Folder Include="Async\" />
-  </ItemGroup>
 
 </Project>

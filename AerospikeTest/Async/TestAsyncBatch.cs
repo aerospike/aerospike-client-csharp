@@ -35,22 +35,20 @@ namespace Aerospike.Test
 		private const string ListBin = "lbin";
 		private const string ListBin2 = "lbin2";
 		private const string ListBin3 = "lbin3";
-		private const string KeyPrefix = "asyncbatchkey";
 		private const string ValuePrefix = "batchvalue";
 		private const int Size = 8;
 		private static Key[] sendKeys;
 		private static Key[] deleteKeys;
-		private static CancellationToken token;
+		private static CancellationTokenSource tokenSource;
 
-		[ClassInitialize()]
-		public static async Task WriteRecords(TestContext testContext)
+		public static async Task WriteRecords(string keyPrefix)
 		{
-			token = new CancellationToken();
+			tokenSource = new CancellationTokenSource();
 			sendKeys = new Key[Size];
 
 			for (int i = 0; i < Size; i++)
 			{
-				sendKeys[i] = new Key(args.ns, args.set, KeyPrefix + (i + 1));
+				sendKeys[i] = new Key(args.ns, args.set, keyPrefix + (i + 1));
 			}
 
 			deleteKeys = new Key[2];
@@ -101,7 +99,7 @@ namespace Aerospike.Test
 					}
 					else
 					{
-						await client.Put(policy, token, key, listBin, listBin2, listBin3);
+						await client.Put(policy, tokenSource.Token, key, listBin, listBin2, listBin3);
 					}
 				}
 				else
@@ -112,7 +110,7 @@ namespace Aerospike.Test
 					}
 					else
 					{
-						await client.Put(policy, token, key, new Bin(BinName, i), listBin, listBin2, listBin3);
+						await client.Put(policy, tokenSource.Token, key, new Bin(BinName, i), listBin, listBin2, listBin3);
 					}
 				}
 			}
@@ -129,9 +127,9 @@ namespace Aerospike.Test
 			else
 			{
 				// Add records that will eventually be deleted.
-				await client.Put(policy, token, deleteKeys[0], new Bin(BinName, 10000));
-				await client.Put(policy, token, deleteKeys[1], new Bin(BinName, 10001));
-				await client.Put(policy, token, new Key(args.ns, args.set, 10002), new Bin(BinName, 10002));
+				await client.Put(policy, tokenSource.Token, deleteKeys[0], new Bin(BinName, 10000));
+				await client.Put(policy, tokenSource.Token, deleteKeys[1], new Bin(BinName, 10001));
+				await client.Put(policy, tokenSource.Token, new Key(args.ns, args.set, 10002), new Bin(BinName, 10002));
 			}
 		}
 
@@ -167,6 +165,7 @@ namespace Aerospike.Test
 		[TestMethod]
 		public async Task AsyncBatchExistsArray()
 		{
+			await WriteRecords("AsyncBatchExistsArray");
 			if (!args.testProxy)
 			{
 				client.Exists(null, new ExistsArrayHandler(this), sendKeys);
@@ -174,7 +173,7 @@ namespace Aerospike.Test
 			}
 			else
 			{
-				var exists = await client.Exists(null, token, sendKeys);
+				var exists = await client.Exists(null, tokenSource.Token, sendKeys);
 				ExistsArrayHandlerSuccess(sendKeys, exists, this);
 			}
 		}
@@ -215,6 +214,7 @@ namespace Aerospike.Test
 		[TestMethod]
 		public async Task AsyncBatchExistsSequence()
 		{
+			await WriteRecords("AsyncBatchExistsSequence");
 			if (!args.testProxy)
 			{
 				client.Exists(null, new ExistsSequenceHandler(this), sendKeys);
@@ -222,7 +222,7 @@ namespace Aerospike.Test
 			}
 			else
 			{
-				var exists = await client.Exists(null, token, sendKeys);
+				var exists = await client.Exists(null, tokenSource.Token, sendKeys);
 				foreach (bool exist in exists)
 				{
 					Assert.IsTrue(exist);
@@ -259,6 +259,7 @@ namespace Aerospike.Test
 		[TestMethod]
 		public async Task AsyncBatchGetArray()
 		{
+			await WriteRecords("AsyncBatchGetArray");
 			if (!args.testProxy)
 			{
 				client.Get(null, new RecordArrayHandler(this), sendKeys);
@@ -266,7 +267,7 @@ namespace Aerospike.Test
 			}
 			else
 			{
-				var records = await client.Get(null, token, sendKeys);
+				var records = await client.Get(null, tokenSource.Token, sendKeys);
 				RecordArrayHandlerSuccess(sendKeys, records, this);
 			}
 		}
@@ -330,6 +331,7 @@ namespace Aerospike.Test
 		[TestMethod]
 		public async Task AsyncBatchGetSequence()
 		{
+			await WriteRecords("AsyncBatchGetSequence");
 			if (!args.testProxy)
 			{
 				client.Get(null, new RecordSequenceHandler(this), sendKeys);
@@ -337,7 +339,7 @@ namespace Aerospike.Test
 			}
 			else
 			{
-				var records = await client.Get(null, token, sendKeys);
+				var records = await client.Get(null, tokenSource.Token, sendKeys);
 				foreach (Record record in records)
 				{
 					Object value = record.GetValue(BinName);
@@ -379,6 +381,7 @@ namespace Aerospike.Test
 		[TestMethod]
 		public async Task AsyncBatchGetHeaders()
 		{
+			await WriteRecords("AsyncBatchGetHeaders");
 			if (!args.testProxy)
 			{
 				client.GetHeader(null, new RecordHeaderArrayHandler(this), sendKeys);
@@ -386,7 +389,7 @@ namespace Aerospike.Test
 			}
 			else
 			{
-				var records = await client.GetHeader(null, token, sendKeys);
+				var records = await client.GetHeader(null, tokenSource.Token, sendKeys);
 				RecordHeaderArrayHandlerSuccess(sendKeys, records, this);
 			}
 		}
@@ -442,6 +445,8 @@ namespace Aerospike.Test
 		[TestMethod]
 		public async Task AsyncBatchReadComplex()
 		{
+			string keyPrefix = "AsyncBatchReadComplex";
+			await WriteRecords(keyPrefix);
 			// Batch gets into one call.
 			// Batch allows multiple namespaces in one call, but example test environment may only have one namespace.
 
@@ -451,16 +456,16 @@ namespace Aerospike.Test
 
 			string[] bins = new string[] { BinName };
 			List<BatchRead> records = new List<BatchRead>();
-			records.Add(new BatchRead(new Key(args.ns, args.set, KeyPrefix + 1), bins));
-			records.Add(new BatchRead(new Key(args.ns, args.set, KeyPrefix + 2), true));
-			records.Add(new BatchRead(new Key(args.ns, args.set, KeyPrefix + 3), true));
-			records.Add(new BatchRead(new Key(args.ns, args.set, KeyPrefix + 4), false));
-			records.Add(new BatchRead(new Key(args.ns, args.set, KeyPrefix + 5), true));
-			records.Add(new BatchRead(new Key(args.ns, args.set, KeyPrefix + 6), ops));
-			records.Add(new BatchRead(new Key(args.ns, args.set, KeyPrefix + 7), bins));
+			records.Add(new BatchRead(new Key(args.ns, args.set, keyPrefix + 1), bins));
+			records.Add(new BatchRead(new Key(args.ns, args.set, keyPrefix + 2), true));
+			records.Add(new BatchRead(new Key(args.ns, args.set, keyPrefix + 3), true));
+			records.Add(new BatchRead(new Key(args.ns, args.set, keyPrefix + 4), false));
+			records.Add(new BatchRead(new Key(args.ns, args.set, keyPrefix + 5), true));
+			records.Add(new BatchRead(new Key(args.ns, args.set, keyPrefix + 6), ops));
+			records.Add(new BatchRead(new Key(args.ns, args.set, keyPrefix + 7), bins));
 
 			// This record should be found, but the requested bin will not be found.
-			records.Add(new BatchRead(new Key(args.ns, args.set, KeyPrefix + 8), new string[] { "binnotfound" }));
+			records.Add(new BatchRead(new Key(args.ns, args.set, keyPrefix + 8), new string[] { "binnotfound" }));
 
 			// This record should not be found.
 			records.Add(new BatchRead(new Key(args.ns, args.set, "keynotfound"), bins));
@@ -473,7 +478,7 @@ namespace Aerospike.Test
 			}
 			else
 			{
-				var recordsReturned = await client.Get(null, token, records);
+				var recordsReturned = await client.Get(null, tokenSource.Token, records);
 				BatchListHandlerSuccess(recordsReturned, this);
 			}
 		}
@@ -551,6 +556,7 @@ namespace Aerospike.Test
 		[TestMethod]
 		public async Task AsyncBatchListReadOperate()
 		{
+			await WriteRecords("AsyncBatchListReadOperate");
 			Operation[] operations =
 			{
 				ListOperation.Size(ListBin),
@@ -565,7 +571,7 @@ namespace Aerospike.Test
 			}
 			else
 			{
-				var records = await client.Get(null, token, sendKeys, operations);
+				var records = await client.Get(null, tokenSource.Token, sendKeys, operations);
 				BatchListReadOperateHeadlerSuccess(sendKeys, records, this);
 			}
 		}
@@ -619,6 +625,7 @@ namespace Aerospike.Test
 		[TestMethod]
 		public async Task AsyncBatchListWriteOperate()
 		{
+			await WriteRecords("AsyncBatchListWriteOperate");
 			Operation[] operations = {
 				ListOperation.Insert(ListBin2, 0, Value.Get(1000)), 
 				ListOperation.Size(ListBin2),
@@ -635,7 +642,7 @@ namespace Aerospike.Test
 			}
 			else
 			{
-				var results = await client.Operate(null, null, token, sendKeys, operations);
+				var results = await client.Operate(null, null, tokenSource.Token, sendKeys, operations);
 				BatchListWriteOperateHandlerSuccess(results.records, results.status, this);
 			}
 		}
@@ -691,6 +698,7 @@ namespace Aerospike.Test
 		[TestMethod]
 		public async Task AsyncBatchSeqListWriteOperate()
 		{
+			await WriteRecords("AsyncBatchSeqListWriteOperate");
 			Operation[] operations =
 			{
 				ListOperation.Insert(ListBin3, 0, Value.Get(1000)), 
@@ -707,7 +715,7 @@ namespace Aerospike.Test
 			}
 			else
 			{
-				var result = await client.Operate(null, null, token, sendKeys, operations);
+				var result = await client.Operate(null, null, tokenSource.Token, sendKeys, operations);
 				foreach (BatchRecord batchRecord in result.records)
 				{
 					var record = batchRecord.record;
@@ -767,6 +775,8 @@ namespace Aerospike.Test
 		[TestMethod]
 		public async Task AsyncBatchWriteComplex()
 		{
+			string keyPrefix = "AsyncBatchWriteComplex";
+			await WriteRecords(keyPrefix);
 			Expression wexp1 = Exp.Build(Exp.Add(Exp.IntBin(BinName), Exp.Val(1000)));
 
 			Operation[] ops1 = Operation.Array(
@@ -778,8 +788,8 @@ namespace Aerospike.Test
 				Operation.Get(BinName3));
 
 			List<BatchRecord> records = new List<BatchRecord>();
-			records.Add(new BatchWrite(new Key(args.ns, args.set, KeyPrefix + 1), ops1));
-			records.Add(new BatchWrite(new Key(args.ns, args.set, KeyPrefix + 6), ops2));
+			records.Add(new BatchWrite(new Key(args.ns, args.set, keyPrefix + 1), ops1));
+			records.Add(new BatchWrite(new Key(args.ns, args.set, keyPrefix + 6), ops2));
 
 
 			if (!args.testProxy)
@@ -790,7 +800,7 @@ namespace Aerospike.Test
 			}
 			else
 			{
-				var status = await client.Operate(null, token, records);
+				var status = await client.Operate(null, tokenSource.Token, records);
 				BatchWriteComplexHanlderSuccess(records, status, this);
 			}
 		}
@@ -834,6 +844,8 @@ namespace Aerospike.Test
 		[TestMethod]
 		public async Task AsyncBatchSeqWriteComplex()
 		{
+			string keyPrefix = "AsyncBatchSeqWriteComplex";
+			await WriteRecords(keyPrefix);
 			Expression wexp1 = Exp.Build(Exp.Add(Exp.IntBin(BinName), Exp.Val(1000)));
 
 			Operation[] ops1 = Operation.Array(
@@ -845,8 +857,8 @@ namespace Aerospike.Test
 				Operation.Get(BinName3));
 
 			List<BatchRecord> records = new List<BatchRecord>();
-			records.Add(new BatchWrite(new Key(args.ns, args.set, KeyPrefix + 1), ops1));
-			records.Add(new BatchWrite(new Key(args.ns, args.set, KeyPrefix + 6), ops2));
+			records.Add(new BatchWrite(new Key(args.ns, args.set, keyPrefix + 1), ops1));
+			records.Add(new BatchWrite(new Key(args.ns, args.set, keyPrefix + 6), ops2));
 			records.Add(new BatchDelete(new Key(args.ns, args.set, 10002)));
 
 			if (!args.testProxy)
@@ -857,7 +869,7 @@ namespace Aerospike.Test
 			}
 			else
 			{
-				var status = await client.Operate(null, token, records);
+				var status = await client.Operate(null, tokenSource.Token, records);
 				AssertTrue(status);
 			}
 		}
@@ -946,6 +958,7 @@ namespace Aerospike.Test
 		[TestMethod]
 		public async Task AsyncBatchDelete()
 		{
+			await WriteRecords("AsyncBatchDelete");
 			if (!args.testProxy)
 			{
 				// Ensure keys exists
@@ -955,7 +968,7 @@ namespace Aerospike.Test
 			}
             else
             {
-				var exists = await client.Exists(null, token, deleteKeys);
+				var exists = await client.Exists(null, tokenSource.Token, deleteKeys);
 				await BatchDeleteExistsArrayHandlerSuccess(sendKeys, exists, this);
 			}
         }
@@ -981,7 +994,7 @@ namespace Aerospike.Test
 			}
 			else
 			{
-				var result = await client.Delete(null, null, token, keys);
+				var result = await client.Delete(null, null, tokenSource.Token, keys);
 				await BatchDeleteHandlerSuccess(result.records, result.status, parent);
 			}
 		}
@@ -1023,7 +1036,7 @@ namespace Aerospike.Test
 			}
 			else
 			{
-				var exists = await client.Exists(null, token, deleteKeys); 
+				var exists = await client.Exists(null, tokenSource.Token, deleteKeys); 
 				NotExistsHandlerSuccess(deleteKeys, exists, parent);
 			}
 		}
