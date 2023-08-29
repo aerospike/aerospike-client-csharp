@@ -14,7 +14,6 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using Aerospike.Client.KVS;
 
 namespace Aerospike.Client
 {
