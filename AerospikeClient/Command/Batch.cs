@@ -657,6 +657,12 @@ namespace Aerospike.Client
 
 		public void ExecuteGRPC(GrpcChannel channel)
 		{
+			CancellationToken token = new();
+			ExecuteGRPC(channel, token).Wait();
+		}
+
+		public async Task ExecuteGRPC(GrpcChannel channel, CancellationToken token = new())
+		{
 			WriteBuffer();
 			var request = new AerospikeRequestPayload
 			{
@@ -667,12 +673,12 @@ namespace Aerospike.Client
 			GRPCConversions.SetRequestPolicy(batchPolicy, request);
 
 			var KVS = new KVS.KVS.KVSClient(channel);
-			var stream = KVS.BatchOperate(request);//, cancellationToken: token);
+			var stream = KVS.BatchOperate(request, cancellationToken: token);
 			
 			try
 			{
 				var conn = new ConnectionProxyStream(stream);
-				ParseResult(conn);
+				await ParseResult(conn);
 			}
 			catch (EndOfGRPCStream eogs)
 			{

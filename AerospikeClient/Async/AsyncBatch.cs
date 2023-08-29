@@ -1890,8 +1890,9 @@ namespace Aerospike.Client
 		internal abstract AsyncBatchCommand CreateCommand(BatchNode batchNode);
 		internal abstract List<BatchNode> GenerateBatchNodes();
 
-		public void ExecuteGRPC(GrpcChannel channel, CancellationToken token)
+		public async Task ExecuteGRPC(GrpcChannel channel, CancellationToken token)
 		{
+			segment = new BufferSegment(new BufferPool(1, 128 * 1024), 0);
 			WriteBuffer();
 			var request = new AerospikeRequestPayload
 			{
@@ -1907,8 +1908,7 @@ namespace Aerospike.Client
 			try
 			{
 				var conn = new ConnectionProxyStream(stream);
-				SetupProxyConnAndBuf(stream);
-				ReceiveComplete();
+				SetupProxyConnAndBuf(stream, this);
 			}
 			catch (EndOfGRPCStream eogs)
 			{

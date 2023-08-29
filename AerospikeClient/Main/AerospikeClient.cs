@@ -1675,7 +1675,6 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if query fails</exception>
 		public RecordSet Query(QueryPolicy policy, Statement statement)
 		{
-			//Debugger.Launch();
 			if (policy == null)
 			{
 				policy = queryPolicyDefault;

@@ -122,8 +122,7 @@ namespace Aerospike.Client
 
 			var KVS = new KVS.KVS.KVSClient(channel);
 			var response = await KVS.TouchAsync(request, cancellationToken: token);
-			SetupProxyConnAndBuf(response);
-			ReceiveComplete();
+			SetupProxyConnAndBuf(response, this);
 			ParseResult();
 		}
 	}

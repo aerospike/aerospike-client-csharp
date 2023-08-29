@@ -19,6 +19,7 @@ using System.Collections.Generic;
 using System.Reflection;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Aerospike.Client;
+using Grpc.Core;
 
 namespace Aerospike.Test
 {
@@ -27,6 +28,7 @@ namespace Aerospike.Test
 	{
 		private static readonly string binName = args.GetBinName("audfbin1");
 		private const string binValue = "string value";
+		private static CancellationToken token = new();
 
 		[ClassInitialize()]
 		public static void Register(TestContext testContext)
@@ -42,9 +44,21 @@ namespace Aerospike.Test
 			Key key = new Key(args.ns, args.set, "audfkey1");
 			Bin bin = new Bin(binName, binValue);
 
-			// Write bin
-			client.Execute(null, new WriteHandler(this, key), key, "record_example", "writeBin", Value.Get(bin.name), bin.value);
-			WaitTillComplete();
+			if (!args.testProxy)
+			{
+				// Write bin
+				client.Execute(null, new WriteHandler(this, key), key, "record_example", "writeBin", Value.Get(bin.name), bin.value);
+				WaitTillComplete();
+			}
+			else
+			{
+				var result = client.Execute(null, token, key, "record_example", "writeBin", Value.Get(bin.name), bin.value);
+				var received = client.Execute(null, token, key, "record_example", "readBin", Value.Get(binName));
+				if (AssertNotNull(received))
+				{
+					AssertEquals(binValue, received);
+				}
+			}
 		}
 
 		private class WriteHandler : ExecuteListener
@@ -98,7 +112,7 @@ namespace Aerospike.Test
 		}
 
 		[TestMethod]
-		public void AsyncBatchUDF()
+		public async Task AsyncBatchUDF()
 		{
 			Key[] keys = new Key[]
 			{
@@ -106,11 +120,30 @@ namespace Aerospike.Test
 				new Key(args.ns, args.set, 20001)
 			};
 
-			client.Delete(null, null, keys);
+			if (!args.testProxy)
+			{
+				client.Delete(null, null, keys);
 
-			client.Execute(null, null, new BatchUDFHandler(this), keys, "record_example", "writeBin", Value.Get("B5"), Value.Get("value5"));
+				client.Execute(null, null, new BatchUDFHandler(this), keys, "record_example", "writeBin", Value.Get("B5"), Value.Get("value5"));
 
-			WaitTillComplete();
+				WaitTillComplete();
+			}
+			else
+			{
+				client.Delete(null, null, keys);
+
+				var result = await client.Execute(null, null, token, keys, "record_example", "writeBin", Value.Get("B5"), Value.Get("value5"));
+				if (AssertTrue(result.status))
+				{
+					foreach (BatchRecord r in result.records)
+					{
+						if (AssertNotNull(r))
+						{
+							AssertEquals(0, r.resultCode);
+						}
+					}
+				}
+			}
 		}
 
 		private class BatchUDFHandler : BatchRecordArrayListener
@@ -166,9 +199,17 @@ namespace Aerospike.Test
 			records.Add(new BatchUDF(new Key(args.ns, args.set, 20015), "record_example", "writeWithValidation", a2));
 			records.Add(new BatchUDF(new Key(args.ns, args.set, 20015), "record_example", "writeWithValidation", a3));
 
-			client.Operate(null, new BatchSeqUDFHandler(this, bin), records);
+			if (!args.testProxy)
+			{
+				client.Operate(null, new BatchSeqUDFHandler(this, bin), records);
 
-			WaitTillComplete();
+				WaitTillComplete();
+			}
+			else
+			{
+				var result = client.Operate(null, token, records);
+				// TODO
+			}
 		}
 
 		private class BatchSeqUDFHandler : BatchRecordSequenceListener

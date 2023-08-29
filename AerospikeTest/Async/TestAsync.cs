@@ -27,6 +27,7 @@ namespace Aerospike.Test
 		public static Args args = Args.Instance;
 		public static IAsyncClient client = args.asyncClient;
 		public static AsyncClient nativeClient = args.nativeAsync;
+		public static AsyncClientProxy asyncProxy = args.asyncProxy;
 
 		private AsyncMonitor monitor = new AsyncMonitor();
 

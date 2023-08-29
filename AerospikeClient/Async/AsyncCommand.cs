@@ -436,6 +436,86 @@ namespace Aerospike.Client
 			}
 		}
 
+		public async Task ReceiveComplete(AsyncConnectionProxyStream connectionProxyStream)
+		{
+			if (socketTimeout > 0)
+			{
+				eventReceived = true;
+			}
+
+			dataOffset = segment.offset;
+
+			if (inHeader)
+			{
+				long proto = ByteUtil.BytesToLong(dataBuffer, dataOffset);
+				int length = (int)(proto & 0xFFFFFFFFFFFFL);
+
+				if (length <= 0)
+				{
+					// Some server versions returned zero length groups for batch/scan/query.
+					// Receive again to retrieve next group.
+					await connectionProxyStream.Receive(dataBuffer, dataOffset, 8);
+					return;
+				}
+
+				compressed = ((proto >> 48) & 0xFF) == (long)Command.MSG_TYPE_COMPRESSED;
+				inHeader = false;
+
+				if (length > segment.size)
+				{
+					ResizeBuffer(length);
+					dataBuffer = segment.buffer;
+					dataOffset = segment.offset;
+				}
+
+				dataLength = dataOffset + length;
+				await connectionProxyStream.Receive(dataBuffer, dataOffset, length);
+			}
+			else
+			{
+				if (inAuthenticate)
+				{
+					inAuthenticate = false;
+					inHeader = true;
+
+					int resultCode = dataBuffer[dataOffset + 1];
+
+					if (resultCode != 0 && resultCode != ResultCode.SECURITY_NOT_ENABLED)
+					{
+						// Authentication failed. Session token probably expired.
+						// Signal tend thread to perform node login, so future
+						// transactions do not fail.
+						node.SignalLogin();
+
+						// This is a rare event because the client tracks session
+						// expiration and will relogin before session expiration.
+						// Do not try to login on same socket because login can take
+						// a long time and thousands of simultaneous logins could
+						// overwhelm server.
+						throw new AerospikeException(resultCode);
+					}
+					ConnectionReady();
+					return;
+				}
+
+				conn.UpdateLastUsed();
+
+				if (compressed)
+				{
+					int usize = (int)ByteUtil.BytesToLong(dataBuffer, dataOffset);
+					dataOffset += 8;
+					byte[] ubuf = new byte[usize];
+
+					ByteUtil.Decompress(dataBuffer, dataOffset, dataLength, ubuf, usize);
+					dataBuffer = ubuf;
+					dataOffset = 8;
+					dataLength = usize;
+				}
+
+				ParseCommand();
+			}
+		}
+
 		public void ReceiveNext()
 		{
 			inHeader = true;
@@ -907,17 +987,17 @@ namespace Aerospike.Client
 		protected internal abstract void OnSuccess();
 		protected internal abstract void OnFailure(AerospikeException ae);
 
-		public void SetupProxyConnAndBuf(AerospikeResponsePayload response)
+		public void SetupProxyConnAndBuf(AerospikeResponsePayload response, IAsyncCommand command)
 		{
 			segment = new BufferSegment(new BufferPool(1, 128 * 1024), 0);
-			conn = new AsyncConnectionProxy(response);
+			conn = new AsyncConnectionProxy(response, command);
 			conn.Receive(dataBuffer, dataOffset, 8);
 		}
 
-		public void SetupProxyConnAndBuf(Grpc.Core.AsyncServerStreamingCall<AerospikeResponsePayload> stream)
+		public void SetupProxyConnAndBuf(Grpc.Core.AsyncServerStreamingCall<AerospikeResponsePayload> stream, IAsyncCommand command)
 		{
 			segment = new BufferSegment(new BufferPool(1, 128 * 1024), 0);
-			conn = new AsyncConnectionProxyStream(stream);
+			conn = new AsyncConnectionProxyStream(stream, command);
 			conn.Receive(dataBuffer, dataOffset, 8);
 		}
 	}

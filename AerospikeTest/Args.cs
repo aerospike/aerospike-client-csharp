@@ -31,6 +31,7 @@ namespace Aerospike.Test
 		public AerospikeClient nativeClient;
 		public IAsyncClient asyncClient;
 		public AsyncClient nativeAsync;
+		public AsyncClientProxy asyncProxy;
 		public Host[] hosts;
 		public Host proxyHost;
 		public int port;
@@ -147,6 +148,7 @@ namespace Aerospike.Test
 			nativeClient = new AerospikeClient(policy, hosts);
 			asyncClient = new AsyncClientProxy(asyncPolicy, proxyHost);
 			nativeAsync = new AsyncClient(asyncPolicy, hosts);
+			asyncProxy = new AsyncClientProxy(asyncPolicy, hosts);
 
 			int timeout = 15;
 			int socketTimeout = 5;

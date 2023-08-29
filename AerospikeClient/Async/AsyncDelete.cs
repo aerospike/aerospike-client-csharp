@@ -131,8 +131,7 @@ namespace Aerospike.Client
 
 			var KVS = new KVS.KVS.KVSClient(channel);
 			var response = await KVS.DeleteAsync(request, cancellationToken: token);
-			SetupProxyConnAndBuf(response);
-			ReceiveComplete();
+			SetupProxyConnAndBuf(response, this);
 			ParseResult();
 			return existed;
 		}

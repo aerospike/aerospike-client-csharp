@@ -67,17 +67,22 @@ namespace Aerospike.Client
 			throw new AerospikeException(NotSupported + "Write");
 		}
 
-		public void ReadFully(byte[] buffer, int length)
+		void IConnection.ReadFully(byte[] buffer, int length)
 		{
-			BufferOffset = 0;
-			GRPCRead(buffer, length);
+			throw new NotImplementedException();
 		}
 
-		public void GRPCRead(byte[] buffer, int length)
+		public async Task ReadFully(byte[] buffer, int length)
+		{
+			BufferOffset = 0;
+			await GRPCRead(buffer, length);
+		}
+
+		public async Task GRPCRead(byte[] buffer, int length)
 		{
 			if (Payload == null)
 			{
-				NextGRPCResponse();
+				await NextGRPCResponse();
 			}
 			
 			if (length > Payload.Length - Offset)
@@ -88,7 +93,7 @@ namespace Aerospike.Client
 				// Reset payload
 				Payload = null;
 				// Get the next response
-				GRPCRead(buffer, length);
+				await GRPCRead(buffer, length);
 			}
 				
 			Array.Copy(Payload, Offset, buffer, BufferOffset, length);
@@ -100,9 +105,9 @@ namespace Aerospike.Client
 			}
 		}
 
-		private void NextGRPCResponse()
+		private async Task NextGRPCResponse()
 		{
-			Stream.ResponseStream.MoveNext().Wait();
+			await Stream.ResponseStream.MoveNext();
 			Response = Stream.ResponseStream.Current;
 			if (Response.Status != 0)
 			{

@@ -184,6 +184,88 @@ namespace Aerospike.Client
 			}
 		}
 
+		protected internal async Task ParseResult(ConnectionProxyStream conn)
+		{
+			// Read blocks of records.  Do not use thread local receive buffer because each
+			// block will likely be too big for a cache.  Also, scan callbacks can nest
+			// further database commands which would contend with the thread local receive buffer.
+			// Instead, use separate heap allocated buffers.
+			byte[] protoBuf = new byte[8];
+			byte[] buf = null;
+			byte[] ubuf = null;
+			int receiveSize;
+
+			while (true)
+			{
+				// Read header
+				await conn.ReadFully(protoBuf, 8);
+
+				long proto = ByteUtil.BytesToLong(protoBuf, 0);
+				int size = (int)(proto & 0xFFFFFFFFFFFFL);
+
+				if (size <= 0)
+				{
+					continue;
+				}
+
+				// Prepare buffer
+				if (buf == null || size > buf.Length)
+				{
+					// Corrupted data streams can result in a huge length.
+					// Do a sanity check here.
+					if (size > MAX_BUFFER_SIZE)
+					{
+						throw new AerospikeException("Invalid proto size: " + size);
+					}
+
+					int capacity = (size + 16383) & ~16383; // Round up in 16KB increments.
+					buf = new byte[capacity];
+				}
+
+				// Read remaining message bytes in group.
+				await conn.ReadFully(buf, size);
+				conn.UpdateLastUsed();
+
+				ulong type = (ulong)((proto >> 48) & 0xff);
+
+				if (type == Command.AS_MSG_TYPE)
+				{
+					dataBuffer = buf;
+					dataOffset = 0;
+					receiveSize = size;
+				}
+				else if (type == Command.MSG_TYPE_COMPRESSED)
+				{
+					int usize = (int)ByteUtil.BytesToLong(buf, 0);
+
+					if (ubuf == null || usize > ubuf.Length)
+					{
+						if (usize > MAX_BUFFER_SIZE)
+						{
+							throw new AerospikeException("Invalid proto size: " + usize);
+						}
+
+						int capacity = (usize + 16383) & ~16383; // Round up in 16KB increments.
+						ubuf = new byte[capacity];
+					}
+
+					ByteUtil.Decompress(buf, 8, size, ubuf, usize);
+					dataBuffer = ubuf;
+					dataOffset = 8;
+					receiveSize = usize;
+				}
+				else
+				{
+					throw new AerospikeException("Invalid proto type: " + type + " Expected: " + Command.AS_MSG_TYPE);
+				}
+
+				if (!ParseGroup(receiveSize))
+				{
+					break;
+				}
+			}
+		}
+
 		private bool ParseGroup(int receiveSize)
 		{
 			while (dataOffset < receiveSize)

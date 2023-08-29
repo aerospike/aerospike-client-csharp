@@ -61,7 +61,7 @@ namespace Aerospike.Client
 		// Proxy client version
 		public static string Version = GetVersion();
 
-		private static readonly String NotSupported = "Method not supported in proxy client: ";
+		internal static readonly String NotSupported = "Method not supported in proxy client: ";
 
 		//-------------------------------------------------------
 		// Member variables.
@@ -1012,13 +1012,31 @@ namespace Aerospike.Client
 			ScanPartitions(policy, PartitionFilter.All(), ns, setName, callback, binNames);
 		}
 
+		/// <summary>
 		/// Not supported in proxy client
+		/// </summary>
+		/// <param name="policy"></param>
+		/// <param name="nodeName"></param>
+		/// <param name="ns"></param>
+		/// <param name="setName"></param>
+		/// <param name="callback"></param>
+		/// <param name="binNames"></param>
+		/// <exception cref="AerospikeException"></exception>
 		public void ScanNode(ScanPolicy policy, string nodeName, string ns, string setName, ScanCallback callback, params string[] binNames)
 		{
 			throw new AerospikeException(NotSupported + "scanNode");
 		}
 
+		/// <summary>
 		/// Not supported in proxy client
+		/// </summary>
+		/// <param name="policy"></param>
+		/// <param name="node"></param>
+		/// <param name="ns"></param>
+		/// <param name="setName"></param>
+		/// <param name="callback"></param>
+		/// <param name="binNames"></param>
+		/// <exception cref="AerospikeException"></exception>
 		public void ScanNode(ScanPolicy policy, Node node, string ns, string setName, ScanCallback callback, params string[] binNames)
 		{
 			throw new AerospikeException(NotSupported + "scanNode");
@@ -1052,25 +1070,55 @@ namespace Aerospike.Client
 		// User defined functions
 		//---------------------------------------------------------------
 
+		/// <summary>
 		/// Not supported in proxy client
+		/// </summary>
+		/// <param name="policy"></param>
+		/// <param name="clientPath"></param>
+		/// <param name="serverPath"></param>
+		/// <param name="language"></param>
+		/// <returns></returns>
+		/// <exception cref="AerospikeException"></exception>
 		public RegisterTask Register(Policy policy, string clientPath, string serverPath, Language language)
 		{
 			throw new AerospikeException(NotSupported + "register");
 		}
 
+		/// <summary>
 		/// Not supported in proxy client
+		/// </summary>
+		/// <param name="policy"></param>
+		/// <param name="resourceAssembly"></param>
+		/// <param name="resourcePath"></param>
+		/// <param name="serverPath"></param>
+		/// <param name="language"></param>
+		/// <returns></returns>
+		/// <exception cref="AerospikeException"></exception>
 		public RegisterTask Register(Policy policy, Assembly resourceAssembly, string resourcePath, string serverPath, Language language)
 		{
 			throw new AerospikeException(NotSupported + "register");
 		}
 
+		/// <summary>
 		/// Not supported in proxy client
+		/// </summary>
+		/// <param name="policy"></param>
+		/// <param name="code"></param>
+		/// <param name="serverPath"></param>
+		/// <param name="language"></param>
+		/// <returns></returns>
+		/// <exception cref="AerospikeException"></exception>
 		public RegisterTask RegisterUdfString(Policy policy, string code, string serverPath, Language language)
 		{
 			throw new AerospikeException(NotSupported + "registerUdfString");
 		}
 
+		/// <summary>
 		/// Not supported in proxy client
+		/// </summary>
+		/// <param name="policy"></param>
+		/// <param name="serverPath"></param>
+		/// <exception cref="AerospikeException"></exception>
 		public void RemoveUdf(InfoPolicy policy, string serverPath)
 		{
 			throw new AerospikeException(NotSupported + "removeUdf");
@@ -1270,29 +1318,13 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
-		/// Execute query for specified partitions and return records via the listener. This method will
-		/// block until the query is complete. Listener callbacks are made within the scope of this call.
-		/// <para>
-		/// If <see cref="QueryPolicy.maxConcurrentNodes"/> is not 1, the supplied listener must handle
-		/// shared data in a thread-safe manner, because the listener will be called by multiple query
-		/// threads (one thread per node) in parallel.
-		/// </para>
-		/// <para>
-		/// The completion status of all partitions is stored in the partitionFilter when the query terminates.
-		/// This partitionFilter can then be used to resume an incomplete query at a later time.
-		/// This is the preferred method for query terminate/resume functionality.
-		/// </para>
-		/// <para>
-		/// Requires server version 6.0+ if using a secondary index query.
-		/// </para>
+		/// Not supported in proxy client
 		/// </summary>
-		/// <param name="policy">query configuration parameters, pass in null for defaults</param>
-		/// <param name="statement">query definition</param>
-		/// <param name="partitionFilter">
-		/// data partition filter. Set to <see cref="PartitionFilter.All"/> for all partitions.
-		/// </param>
-		/// <param name="listener">where to send results</param>
-		/// <exception cref="AerospikeException">if query fails</exception>
+		/// <param name="policy"></param>
+		/// <param name="statement"></param>
+		/// <param name="partitionFilter"></param>
+		/// <param name="listener"></param>
+		/// <exception cref="AerospikeException"></exception>
 		public void Query
 		(
 			QueryPolicy policy,
@@ -1301,7 +1333,7 @@ namespace Aerospike.Client
 			QueryListener listener
 		)
 		{
-			QueryPartitions(policy, statement, partitionFilter);
+			throw new AerospikeException(NotSupported + "Query");
 		}
 
 		/// <summary>
@@ -1332,7 +1364,16 @@ namespace Aerospike.Client
 			return recordSet;
 		}
 
+		/// <summary>
 		/// Not supported in proxy client
+		/// </summary>
+		/// <param name="policy"></param>
+		/// <param name="statement"></param>
+		/// <param name="packageName"></param>
+		/// <param name="functionName"></param>
+		/// <param name="functionArgs"></param>
+		/// <returns></returns>
+		/// <exception cref="AerospikeException"></exception>
 		public ResultSet QueryAggregate
 		(
 			QueryPolicy policy,
@@ -1345,13 +1386,25 @@ namespace Aerospike.Client
 			throw new AerospikeException(NotSupported + "QueryAggregate");
 		}
 
+		/// <summary>
 		/// Not supported in proxy client
+		/// </summary>
+		/// <param name="policy"></param>
+		/// <param name="statement"></param>
+		/// <param name="action"></param>
+		/// <exception cref="AerospikeException"></exception>
 		public void QueryAggregate(QueryPolicy policy, Statement statement, Action<Object> action)
 		{
 			throw new AerospikeException(NotSupported + "QueryAggregate");
 		}
 
+		/// <summary>
 		/// Not supported in proxy client
+		/// </summary>
+		/// <param name="policy"></param>
+		/// <param name="statement"></param>
+		/// <returns></returns>
+		/// <exception cref="AerospikeException"></exception>
 		public ResultSet QueryAggregate(QueryPolicy policy, Statement statement)
 		{
 			throw new AerospikeException(NotSupported + "QueryAggregate");
@@ -1361,7 +1414,17 @@ namespace Aerospike.Client
 		// Secondary Index functions
 		//--------------------------------------------------------
 
+		/// <summary>
 		/// Not supported in proxy client
+		/// </summary>
+		/// <param name="policy"></param>
+		/// <param name="ns"></param>
+		/// <param name="setName"></param>
+		/// <param name="indexName"></param>
+		/// <param name="binName"></param>
+		/// <param name="indexType"></param>
+		/// <returns></returns>
+		/// <exception cref="AerospikeException"></exception>
 		public IndexTask CreateIndex
 		(
 			Policy policy,
@@ -1375,7 +1438,19 @@ namespace Aerospike.Client
 			throw new AerospikeException(NotSupported + "CreateIndex");
 		}
 
+		/// <summary>
 		/// Not supported in proxy client
+		/// </summary>
+		/// <param name="policy"></param>
+		/// <param name="ns"></param>
+		/// <param name="setName"></param>
+		/// <param name="indexName"></param>
+		/// <param name="binName"></param>
+		/// <param name="indexType"></param>
+		/// <param name="indexCollectionType"></param>
+		/// <param name="ctx"></param>
+		/// <returns></returns>
+		/// <exception cref="AerospikeException"></exception>
 		public IndexTask CreateIndex
 		(
 			Policy policy,
@@ -1391,7 +1466,15 @@ namespace Aerospike.Client
 			throw new AerospikeException(NotSupported + "CreateIndex");
 		}
 		
+		/// <summary>
 		/// Not supported by proxy client
+		/// </summary>
+		/// <param name="policy"></param>
+		/// <param name="ns"></param>
+		/// <param name="setName"></param>
+		/// <param name="indexName"></param>
+		/// <returns></returns>
+		/// <exception cref="AerospikeException"></exception>
 		public IndexTask DropIndex(Policy policy, string ns, string setName, string indexName)
 		{
 			throw new AerospikeException(NotSupported + "DropIndex");
@@ -1401,7 +1484,14 @@ namespace Aerospike.Client
 		// XDR - Cross datacenter replication
 		//-----------------------------------------------------------------
 
+		/// <summary>
 		/// Not supported in proxy client
+		/// </summary>
+		/// <param name="policy"></param>
+		/// <param name="datacenter"></param>
+		/// <param name="ns"></param>
+		/// <param name="filter"></param>
+		/// <exception cref="AerospikeException"></exception>
 		public void SetXDRFilter(InfoPolicy policy, string datacenter, string ns, Expression filter)
 		{
 			throw new AerospikeException(NotSupported + "SetXDRFilter");
@@ -1411,49 +1501,101 @@ namespace Aerospike.Client
 		// User administration
 		//-------------------------------------------------------
 
-		/// Not supported in proxy client		
+		/// <summary>
+		/// Not supported in proxy client
+		/// </summary>
+		/// <param name="policy"></param>
+		/// <param name="user"></param>
+		/// <param name="password"></param>
+		/// <param name="roles"></param>
+		/// <exception cref="AerospikeException"></exception>		
 		public void CreateUser(AdminPolicy policy, string user, string password, IList<string> roles)
 		{
 			throw new AerospikeException(NotSupported + "CreateUser");
 		}
 
+		/// <summary>
 		/// Not supported in proxy client
+		/// </summary>
+		/// <param name="policy"></param>
+		/// <param name="user"></param>
+		/// <exception cref="AerospikeException"></exception>
 		public void DropUser(AdminPolicy policy, string user)
 		{
 			throw new AerospikeException(NotSupported + "DropUser");
 		}
 
+		/// <summary>
 		/// Not supported in proxy client
+		/// </summary>
+		/// <param name="policy"></param>
+		/// <param name="user"></param>
+		/// <param name="password"></param>
+		/// <exception cref="AerospikeException"></exception>
 		public void ChangePassword(AdminPolicy policy, string user, string password)
 		{
 			throw new AerospikeException(NotSupported + "ChangePassword");
 		}
 
+		/// <summary>
 		/// Not supported in proxy client
+		/// </summary>
+		/// <param name="policy"></param>
+		/// <param name="user"></param>
+		/// <param name="roles"></param>
+		/// <exception cref="AerospikeException"></exception>
 		public void GrantRoles(AdminPolicy policy, string user, IList<string> roles)
 		{
 			throw new AerospikeException(NotSupported + "GrantRoles");
 		}
 
+		/// <summary>
 		/// Not supported in proxy client
+		/// </summary>
+		/// <param name="policy"></param>
+		/// <param name="user"></param>
+		/// <param name="roles"></param>
+		/// <exception cref="AerospikeException"></exception>
 		public void RevokeRoles(AdminPolicy policy, string user, IList<string> roles)
 		{
 			throw new AerospikeException(NotSupported + "RevokeRoles");
 		}
 
+		/// <summary>
 		/// Not supported in proxy client
+		/// </summary>
+		/// <param name="policy"></param>
+		/// <param name="roleName"></param>
+		/// <param name="privileges"></param>
+		/// <exception cref="AerospikeException"></exception>
 		public void CreateRole(AdminPolicy policy, string roleName, IList<Privilege> privileges)
 		{
 			throw new AerospikeException(NotSupported + "CreateRole");
 		}
 
+		/// <summary>
 		/// Not supported in proxy client
+		/// </summary>
+		/// <param name="policy"></param>
+		/// <param name="roleName"></param>
+		/// <param name="privileges"></param>
+		/// <param name="whitelist"></param>
+		/// <exception cref="AerospikeException"></exception>
 		public void CreateRole(AdminPolicy policy, string roleName, IList<Privilege> privileges, IList<string> whitelist)
 		{
 			throw new AerospikeException(NotSupported + "CreateRole");
 		}
 
+		/// <summary>
 		/// Not supported in proxy client
+		/// </summary>
+		/// <param name="policy"></param>
+		/// <param name="roleName"></param>
+		/// <param name="privileges"></param>
+		/// <param name="whitelist"></param>
+		/// <param name="readQuota"></param>
+		/// <param name="writeQuota"></param>
+		/// <exception cref="AerospikeException"></exception>
 		public void CreateRole
 		(
 			AdminPolicy policy,
@@ -1467,55 +1609,107 @@ namespace Aerospike.Client
 			throw new AerospikeException(NotSupported + "CreateRole");
 		}
 
+		/// <summary>
 		/// Not supported in proxy client
+		/// </summary>
+		/// <param name="policy"></param>
+		/// <param name="roleName"></param>
+		/// <exception cref="AerospikeException"></exception>
 		public void DropRole(AdminPolicy policy, string roleName)
 		{
 			throw new AerospikeException(NotSupported + "DropRole");
 		}
 
+		/// <summary>
 		/// Not supported in proxy client
+		/// </summary>
+		/// <param name="policy"></param>
+		/// <param name="roleName"></param>
+		/// <param name="privileges"></param>
+		/// <exception cref="AerospikeException"></exception>
 		public void GrantPrivileges(AdminPolicy policy, string roleName, IList<Privilege> privileges)
 		{
 			throw new AerospikeException(NotSupported + "GrantPrivileges");
 		}
 
+		/// <summary>
 		/// Not supported in proxy client
+		/// </summary>
+		/// <param name="policy"></param>
+		/// <param name="roleName"></param>
+		/// <param name="privileges"></param>
+		/// <exception cref="AerospikeException"></exception>
 		public void RevokePrivileges(AdminPolicy policy, string roleName, IList<Privilege> privileges)
 		{
 			throw new AerospikeException(NotSupported + "RevokePrivileges");
 		}
 
+		/// <summary>
 		/// Not supported in proxy client
+		/// </summary>
+		/// <param name="policy"></param>
+		/// <param name="roleName"></param>
+		/// <param name="whitelist"></param>
+		/// <exception cref="AerospikeException"></exception>
 		public void SetWhitelist(AdminPolicy policy, string roleName, IList<string> whitelist)
 		{
 			throw new AerospikeException(NotSupported + "SetWhitelist");
 		}
 
+		/// <summary>
 		/// Not supported in proxy client
+		/// </summary>
+		/// <param name="policy"></param>
+		/// <param name="roleName"></param>
+		/// <param name="readQuota"></param>
+		/// <param name="writeQuota"></param>
+		/// <exception cref="AerospikeException"></exception>
 		public void SetQuotas(AdminPolicy policy, string roleName, int readQuota, int writeQuota)
 		{
 			throw new AerospikeException(NotSupported + "SetQuotas");
 		}
 
+		/// <summary>
 		/// Not supported in proxy client
+		/// </summary>
+		/// <param name="policy"></param>
+		/// <param name="user"></param>
+		/// <returns></returns>
+		/// <exception cref="AerospikeException"></exception>
 		public User QueryUser(AdminPolicy policy, string user)
 		{
 			throw new AerospikeException(NotSupported + "QueryUser");
 		}
 
+		/// <summary>
 		/// Not supported in proxy client
+		/// </summary>
+		/// <param name="policy"></param>
+		/// <returns></returns>
+		/// <exception cref="AerospikeException"></exception>
 		public List<User> QueryUsers(AdminPolicy policy)
 		{
 			throw new AerospikeException(NotSupported + "QueryUsers");
 		}
 
+		/// <summary>
 		/// Not supported in proxy client
+		/// </summary>
+		/// <param name="policy"></param>
+		/// <param name="roleName"></param>
+		/// <returns></returns>
+		/// <exception cref="AerospikeException"></exception>
 		public Role QueryRole(AdminPolicy policy, string roleName)
 		{
 			throw new AerospikeException(NotSupported + "QueryRole");
 		}
 
+		/// <summary>
 		/// Not supported in proxy client
+		/// </summary>
+		/// <param name="policy"></param>
+		/// <returns></returns>
+		/// <exception cref="AerospikeException"></exception>
 		public List<Role> QueryRoles(AdminPolicy policy)
 		{
 			throw new AerospikeException(NotSupported + "QueryRoles");

@@ -28,13 +28,22 @@ namespace Aerospike.Test
 		private static readonly string binName = args.GetBinName("putgetbin");
 
 		[TestMethod]
-		public void AsyncPutGet()
+		public async Task AsyncPutGet()
 		{
 			Key key = new Key(args.ns, args.set, "putgetkey1");
 			Bin bin = new Bin(binName, "value1");
 
-			client.Put(null, new WriteHandler(this, client, key, bin), key, bin);
-			WaitTillComplete();
+			if (!args.testProxy)
+			{
+				client.Put(null, new WriteHandler(this, client, key, bin), key, bin);
+				WaitTillComplete();
+			}
+			else
+			{
+				CancellationToken token = new();
+				await client.Put(null, token, key, bin);
+				await WriteListenerSuccess(key, bin, this);
+			}
 		}
 
 		[TestMethod]
@@ -52,7 +61,36 @@ namespace Aerospike.Test
 
 			TestSync.AssertBinEqual(key, taskget.Result, bin);
 		}
-		
+
+		static async Task WriteListenerSuccess(Key key, Bin bin, TestAsyncPutGet parent)
+		{
+			try
+			{
+				if (!args.testProxy)
+				{
+					// Write succeeded.  Now call read.
+					client.Get(null, new RecordHandler(parent, key, bin), key);
+				}
+				else
+				{
+					CancellationToken token = new();
+					var record = await client.Get(null, token, key);
+					RecordHandlerSuccess(key, record, bin, parent);
+				}
+			}
+			catch (Exception e)
+			{
+				parent.SetError(e);
+				parent.NotifyCompleted();
+			}
+		}
+
+		static void RecordHandlerSuccess(Key key, Record record, Bin bin, TestAsyncPutGet parent)
+		{
+			parent.AssertBinEqual(key, record, bin);
+			parent.NotifyCompleted();
+		}
+
 		private class WriteHandler : WriteListener
 		{
 			private readonly TestAsyncPutGet parent;
@@ -70,16 +108,7 @@ namespace Aerospike.Test
 
 			public void OnSuccess(Key key)
 			{
-				try
-				{
-					// Write succeeded.  Now call read.
-					client.Get(null, new RecordHandler(parent, key, bin), key);
-				}
-				catch (Exception e)
-				{
-					parent.SetError(e);
-					parent.NotifyCompleted();
-				}
+				WriteListenerSuccess(key, bin, parent).Wait();
 			}
 
 			public void OnFailure(AerospikeException e)
@@ -104,8 +133,7 @@ namespace Aerospike.Test
 
 			public void OnSuccess(Key key, Record record)
 			{
-				parent.AssertBinEqual(key, record, bin);
-				parent.NotifyCompleted();
+				RecordHandlerSuccess(key, record, bin, parent);
 			}
 
 			public void OnFailure(AerospikeException e)

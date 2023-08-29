@@ -16,6 +16,7 @@
  */
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Diagnostics.Metrics;
 using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
@@ -139,30 +140,26 @@ namespace Aerospike.Client
 		/// <param name="key">unique record identifier</param>
 		/// <param name="bins">array of bin name/value pairs</param>
 		/// <exception cref="AerospikeException">if queue is full</exception>
-		public Task Put(WritePolicy policy, CancellationToken token, Key key, params Bin[] bins)
+		public async Task Put(WritePolicy policy, CancellationToken token, Key key, params Bin[] bins)
 		{
-			//Debugger.Launch();
 			policy ??= writePolicyDefault;
-			AsyncWrite async = new(null, policy, null, key, bins, Operation.Type.WRITE);
-			return async.ExecuteGRPC(channel, token);
+			//AsyncWrite async = new(null, policy, null, key, bins, Operation.Type.WRITE);
+			//return async.ExecuteGRPC(channel, token);
+			WriteCommand command = new(null, policy, key, bins, Operation.Type.WRITE);
+			await command.ExecuteGRPC(channel, token);
 		}
 
 		/// <summary>
-		/// Asynchronously write record bin(s).
-		/// <para>
-		/// The policy specifies the transaction timeout, record expiration and how the transaction is
-		/// handled when the record already exists.
-		/// </para>
+		/// Not supported in proxy client
 		/// </summary>
-		/// <param name="policy">write configuration parameters, pass in null for defaults</param>
-		/// <param name="listener">not used</param>
-		/// <param name="key">unique record identifier</param>
-		/// <param name="bins">array of bin name/value pairs</param>
-		/// <exception cref="AerospikeException">if queue is full</exception>
+		/// <param name="policy"></param>
+		/// <param name="listener"></param>
+		/// <param name="key"></param>
+		/// <param name="bins"></param>
+		/// <exception cref="AerospikeException"></exception>
 		public void Put(WritePolicy policy, WriteListener listener, Key key, params Bin[] bins)
 		{
-			CancellationToken token = new();
-			Put(policy, token, key, bins);
+			throw new AerospikeException(NotSupported + "Put");
 		}
 
 		//-------------------------------------------------------
@@ -182,30 +179,26 @@ namespace Aerospike.Client
 		/// <param name="key">unique record identifier</param>
 		/// <param name="bins">array of bin name/value pairs</param>
 		/// <exception cref="AerospikeException">if queue is full</exception>
-		public Task Append(WritePolicy policy, CancellationToken token, Key key, params Bin[] bins)
+		public async Task Append(WritePolicy policy, CancellationToken token, Key key, params Bin[] bins)
 		{
 			policy ??= writePolicyDefault;
-			AsyncWrite async = new(null, policy, null, key, bins, Operation.Type.APPEND);
-			return async.ExecuteGRPC(channel, token);
+			//AsyncWrite async = new(null, policy, null, key, bins, Operation.Type.APPEND);
+			//return async.ExecuteGRPC(channel, token);
+			WriteCommand command = new(null, policy, key, bins, Operation.Type.APPEND);
+			await command.ExecuteGRPC(channel, token);
 		}
 
 		/// <summary>
-		/// Asynchronously append bin string values to existing record bin values.
-		/// <para>
-		/// The policy specifies the transaction timeout, record expiration and how the transaction is
-		/// handled when the record already exists.
-		/// This call only works for string values. 
-		/// </para>
+		/// Not supported in proxy client
 		/// </summary>
-		/// <param name="policy">write configuration parameters, pass in null for defaults</param>
-		/// <param name="listener">not used</param>
-		/// <param name="key">unique record identifier</param>
-		/// <param name="bins">array of bin name/value pairs</param>
-		/// <exception cref="AerospikeException">if queue is full</exception>
+		/// <param name="policy"></param>
+		/// <param name="listener"></param>
+		/// <param name="key"></param>
+		/// <param name="bins"></param>
+		/// <exception cref="AerospikeException"></exception>
 		public void Append(WritePolicy policy, WriteListener listener, Key key, params Bin[] bins)
 		{
-			CancellationToken token = new();
-			Append(policy, token, key, bins);
+			throw new AerospikeException(NotSupported + "Append");
 		}
 
 		/// <summary>
@@ -221,32 +214,26 @@ namespace Aerospike.Client
 		/// <param name="key">unique record identifier</param>
 		/// <param name="bins">array of bin name/value pairs</param>
 		/// <exception cref="AerospikeException">if queue is full</exception>
-		public Task Prepend(WritePolicy policy, CancellationToken token, Key key, params Bin[] bins)
+		public async Task Prepend(WritePolicy policy, CancellationToken token, Key key, params Bin[] bins)
 		{
 			policy ??= writePolicyDefault;
-			AsyncWrite async = new(null, policy, null, key, bins, Operation.Type.PREPEND);
-			return async.ExecuteGRPC(channel, token);
+			//AsyncWrite async = new(null, policy, null, key, bins, Operation.Type.PREPEND);
+			//return async.ExecuteGRPC(channel, token);
+			WriteCommand command = new(null, policy, key, bins, Operation.Type.PREPEND);
+			await command.ExecuteGRPC(channel, token);
 		}
 
 		/// <summary>
-		/// Asynchronously prepend bin string values to existing record bin values.
-		/// Schedule the prepend command with a channel selector and return.
-		/// Another thread will process the command and send the results to the listener.
-		/// <para>
-		/// The policy specifies the transaction timeout, record expiration and how the transaction is
-		/// handled when the record already exists.
-		/// This call works only for string values. 
-		/// </para>
+		/// Not supported in proxy client
 		/// </summary>
-		/// <param name="policy">write configuration parameters, pass in null for defaults</param>
-		/// <param name="listener">where to send results, pass in null for fire and forget</param>
-		/// <param name="key">unique record identifier</param>
-		/// <param name="bins">array of bin name/value pairs</param>
-		/// <exception cref="AerospikeException">if queue is full</exception>
+		/// <param name="policy"></param>
+		/// <param name="listener"></param>
+		/// <param name="key"></param>
+		/// <param name="bins"></param>
+		/// <exception cref="AerospikeException"></exception>
 		public void Prepend(WritePolicy policy, WriteListener listener, Key key, params Bin[] bins)
 		{
-			CancellationToken token = new();
-			Prepend(policy, token, key, bins);
+			throw new AerospikeException(NotSupported + "Prepend");
 		}
 
 		//-------------------------------------------------------
@@ -265,31 +252,26 @@ namespace Aerospike.Client
 		/// <param name="key">unique record identifier</param>
 		/// <param name="bins">array of bin name/value pairs</param>
 		/// <exception cref="AerospikeException">if queue is full</exception>
-		public Task Add(WritePolicy policy, CancellationToken token, Key key, params Bin[] bins)
+		public async Task Add(WritePolicy policy, CancellationToken token, Key key, params Bin[] bins)
 		{
 			policy ??= writePolicyDefault;
-			AsyncWrite async = new(null, policy, null, key, bins, Operation.Type.ADD);
-			return async.ExecuteGRPC(channel, token);
+			//AsyncWrite async = new(null, policy, null, key, bins, Operation.Type.ADD);
+			//return async.ExecuteGRPC(channel, token);
+			WriteCommand command = new(null, policy, key, bins, Operation.Type.ADD);
+			await command.ExecuteGRPC(channel, token);
 		}
 
 		/// <summary>
-		/// Asynchronously add integer/double bin values to existing record bin values.
-		/// Schedule the add command with a channel selector and return.
-		/// Another thread will process the command and send the results to the listener.
-		/// <para>
-		/// The policy specifies the transaction timeout, record expiration and how the transaction is
-		/// handled when the record already exists.
-		/// </para>
+		/// Not supported in proxy client
 		/// </summary>
-		/// <param name="policy">write configuration parameters, pass in null for defaults</param>
-		/// <param name="listener">where to send results, pass in null for fire and forget</param>
-		/// <param name="key">unique record identifier</param>
-		/// <param name="bins">array of bin name/value pairs</param>
-		/// <exception cref="AerospikeException">if queue is full</exception>
+		/// <param name="policy"></param>
+		/// <param name="listener"></param>
+		/// <param name="key"></param>
+		/// <param name="bins"></param>
+		/// <exception cref="AerospikeException"></exception>
 		public void Add(WritePolicy policy, WriteListener listener, Key key, params Bin[] bins)
 		{
-			CancellationToken token = new();
-			Add(policy, token, key, bins);
+			throw new AerospikeException(NotSupported + "Add");
 		}
 
 		//-------------------------------------------------------
@@ -303,26 +285,25 @@ namespace Aerospike.Client
 		/// <param name="token">cancellation token</param>
 		/// <param name="key">unique record identifier</param>
 		/// <exception cref="AerospikeException">if queue is full</exception>
-		public Task<bool> Delete(WritePolicy policy, CancellationToken token, Key key)
+		public async Task<bool> Delete(WritePolicy policy, CancellationToken token, Key key)
 		{
 			policy ??= writePolicyDefault;
-			AsyncDelete async = new(null, policy, key, null);
-			return async.ExecuteGRPC(channel, token);
+			//AsyncDelete async = new(null, policy, key, null);
+			//return async.ExecuteGRPC(channel, token);
+			DeleteCommand command = new(null, policy, key);
+			return await command.ExecuteGRPC(channel, token);
 		}
 
 		/// <summary>
-		/// Asynchronously delete record for specified key.
-		/// Schedule the delete command with a channel selector and return.
-		/// Another thread will process the command and send the results to the listener.
+		/// Not supported in proxy client
 		/// </summary>
-		/// <param name="policy">delete configuration parameters, pass in null for defaults</param>
-		/// <param name="listener">where to send results, pass in null for fire and forget</param>
-		/// <param name="key">unique record identifier</param>
-		/// <exception cref="AerospikeException">if queue is full</exception>
+		/// <param name="policy"></param>
+		/// <param name="listener"></param>
+		/// <param name="key"></param>
+		/// <exception cref="AerospikeException"></exception>
 		public void Delete(WritePolicy policy, DeleteListener listener, Key key)
 		{
-			CancellationToken token = new();
-			Delete(policy, token, key);
+			throw new AerospikeException(NotSupported + "Delete");
 		}
 
 		/// <summary>
@@ -335,11 +316,11 @@ namespace Aerospike.Client
 		/// <param name="token">cancellation token</param>
 		/// <param name="keys">array of unique record identifiers</param>
 		/// <exception cref="AerospikeException">if queue is full</exception>
-		public Task<BatchResults> Delete(BatchPolicy batchPolicy, BatchDeletePolicy deletePolicy, CancellationToken token, Key[] keys)
+		public async Task<BatchResults> Delete(BatchPolicy batchPolicy, BatchDeletePolicy deletePolicy, CancellationToken token, Key[] keys)
 		{
 			if (keys.Length == 0)
 			{
-				return Task.FromResult(new BatchResults(Array.Empty<BatchRecord>(), true));
+				return new BatchResults(Array.Empty<BatchRecord>(), true);
 			}
 
 			batchPolicy ??= batchParentPolicyWriteDefault;
@@ -358,8 +339,9 @@ namespace Aerospike.Client
 			try
 			{
 				BatchStatus status = new(true);
-				Operate(batchPolicy, token, records.ToList(), status);
-				return Task.FromResult(new BatchResults(records, status.GetStatus()));
+				//Operate(batchPolicy, token, records.ToList(), status);
+				await Operate(batchPolicy, records, status, token);
+				return new BatchResults(records, status.GetStatus());
 			}
 			catch (Exception e)
 			{
@@ -369,46 +351,29 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
-		/// Asynchronously delete records for specified keys.
-		/// Schedule the delete command with a channel selector and return.
-		/// Another thread will process the command and send the results to the listener.
-		/// <para>
-		/// If a key is not found, the corresponding result <see cref="Aerospike.Client.BatchRecord.resultCode"/> will be
-		/// <see cref="Aerospike.Client.ResultCode.KEY_NOT_FOUND_ERROR"/>.
-		/// </para>
-		/// <para>Requires server version 6.0+</para>
+		/// Not supported in proxy client
 		/// </summary>
-		/// <param name="batchPolicy">batch configuration parameters, pass in null for defaults</param>
-		/// <param name="deletePolicy">delete configuration parameters, pass in null for defaults</param>
-		/// <param name="listener">where to send results </param>
-		/// <param name="keys">array of unique record identifiers</param>
-		/// <exception cref="AerospikeException">if queue is full</exception>
+		/// <param name="batchPolicy"></param>
+		/// <param name="deletePolicy"></param>
+		/// <param name="listener"></param>
+		/// <param name="keys"></param>
+		/// <exception cref="AerospikeException"></exception>
 		public void Delete(BatchPolicy batchPolicy, BatchDeletePolicy deletePolicy, BatchRecordArrayListener listener, Key[] keys)
 		{
-			CancellationToken token = new();
-			Delete(batchPolicy, deletePolicy, token, keys);
+			throw new AerospikeException(NotSupported + "Delete");
 		}
 
 		/// <summary>
-		/// Asynchronously delete records for specified keys.
-		/// Schedule the delete command with a channel selector and return.
-		/// Another thread will process the command and send the results to the listener.
-		/// <para>
-		/// Each record result is returned in separate OnRecord() calls.
-		/// If a key is not found, the corresponding result <see cref="Aerospike.Client.BatchRecord.resultCode"/> will be
-		/// <see cref="Aerospike.Client.ResultCode.KEY_NOT_FOUND_ERROR"/>.
-		/// </para>
-		/// <para>Requires server version 6.0+</para>
+		/// Not supported in proxy client
 		/// </summary>
-		/// <param name="batchPolicy">batch configuration parameters, pass in null for defaults</param>
-		/// <param name="deletePolicy">delete configuration parameters, pass in null for defaults</param>
-		/// <param name="listener">where to send results</param>
-		/// <param name="keys">array of unique record identifiers</param>
-		/// <exception cref="AerospikeException">if queue is full</exception>
+		/// <param name="batchPolicy"></param>
+		/// <param name="deletePolicy"></param>
+		/// <param name="listener"></param>
+		/// <param name="keys"></param>
+		/// <exception cref="AerospikeException"></exception>
 		public void Delete(BatchPolicy batchPolicy, BatchDeletePolicy deletePolicy, BatchRecordSequenceListener listener, Key[] keys)
 		{
-			CancellationToken token = new();
-			Delete(batchPolicy, deletePolicy, token, keys);
+			throw new AerospikeException(NotSupported + "Delete");
 		}
 	
 		//-------------------------------------------------------
@@ -423,27 +388,25 @@ namespace Aerospike.Client
 		/// <param name="token">cancellation token</param>
 		/// <param name="key">unique record identifier</param>
 		/// <exception cref="AerospikeException">if queue is full</exception>
-		public Task Touch(WritePolicy policy, CancellationToken token, Key key)
+		public async Task Touch(WritePolicy policy, CancellationToken token, Key key)
 		{
 			policy ??= writePolicyDefault;
-			AsyncTouch async = new(null, policy, null, key);
-			return async.ExecuteGRPC(channel, token);
+			//AsyncTouch async = new(null, policy, null, key);
+			//return async.ExecuteGRPC(channel, token);
+			TouchCommand command = new(null, policy, key);
+			await command.ExecuteGRPC(channel, token);
 		}
 
 		/// <summary>
-		/// Asynchronously reset record's time to expiration using the policy's expiration.
-		/// Schedule the touch command with a channel selector and return.
-		/// Another thread will process the command and send the results to the listener.
-		/// Fail if the record does not exist.
+		/// Not supported in proxy client
 		/// </summary>
-		/// <param name="policy">write configuration parameters, pass in null for defaults</param>
-		/// <param name="listener">where to send results, pass in null for fire and forget</param>
-		/// <param name="key">unique record identifier</param>
-		/// <exception cref="AerospikeException">if queue is full</exception>
+		/// <param name="policy"></param>
+		/// <param name="listener"></param>
+		/// <param name="key"></param>
+		/// <exception cref="AerospikeException"></exception>
 		public void Touch(WritePolicy policy, WriteListener listener, Key key)
 		{
-			CancellationToken token = new();
-			Touch(policy, token, key);
+			throw new AerospikeException(NotSupported + "Touch");
 		}
 
 		//-------------------------------------------------------
@@ -457,26 +420,19 @@ namespace Aerospike.Client
 		/// <param name="token">cancellation token</param>
 		/// <param name="key">unique record identifier</param>
 		/// <exception cref="AerospikeException">if queue is full</exception>
-		public Task<bool> Exists(Policy policy, CancellationToken token, Key key)
+		public async Task<bool> Exists(Policy policy, CancellationToken token, Key key)
 		{
 			policy ??= readPolicyDefault;
-			AsyncExists async = new(null, policy, key, null);
-			return async.ExecuteGRPC(channel, token);
+			//AsyncExists async = new(null, policy, key, null);
+			//return async.ExecuteGRPC(channel, token);
+			ExistsCommand command = new(null, policy, key);
+			return await command.ExecuteGRPC(channel, token);
 		}
 
-		/// <summary>
-		/// Asynchronously determine if a record key exists.
-		/// Schedule the exists command with a channel selector and return.
-		/// Another thread will process the command and send the results to the listener.
-		/// </summary>
-		/// <param name="policy">generic configuration parameters, pass in null for defaults</param>
-		/// <param name="listener">where to send results</param>
-		/// <param name="key">unique record identifier</param>
-		/// <exception cref="AerospikeException">if queue is full</exception>
+		/// Not supported in proxy client
 		public void Exists(Policy policy, ExistsListener listener, Key key)
 		{
-			CancellationToken token = new();
-			Exists(policy, token, key);
+			throw new AerospikeException(NotSupported + "Exists");
 		}
 
 		/// <summary>
@@ -487,11 +443,11 @@ namespace Aerospike.Client
 		/// <param name="token">cancellation token</param>
 		/// <param name="keys">array of unique record identifiers</param>
 		/// <exception cref="AerospikeException">if queue is full</exception>
-		public Task<bool[]> Exists(BatchPolicy policy, CancellationToken token, Key[] keys)
+		public async Task<bool[]> Exists(BatchPolicy policy, CancellationToken token, Key[] keys)
 		{
 			if (keys.Length == 0)
 			{
-				return Task.FromResult(Array.Empty<bool>());
+				return Array.Empty<bool>();
 			}
 
 			policy ??= batchPolicyDefault;
@@ -507,12 +463,13 @@ namespace Aerospike.Client
 			try
 			{
 				BatchStatus status = new(false);
-				Operate(policy, token, records.ToList(), status);
+				//Operate(policy, token, records.ToList(), status);
+				await Operate(policy, records, status, token);
 				for (int i = 0; i < keys.Length; i++)
 				{
 					existsArray[i] = records[i].record != null;
 				}
-				return Task.FromResult(existsArray);
+				return existsArray;
 			}
 			catch (Exception e)
 			{
@@ -521,33 +478,27 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
-		/// Asynchronously check if multiple record keys exist in one batch call.
-		/// Schedule the array exists command with a channel selector and return.
-		/// Another thread will process the command and send the results to the listener in a single call.
+		/// Not supported in proxy client
 		/// </summary>
-		/// <param name="policy">generic configuration parameters, pass in null for defaults</param>
-		/// <param name="listener">where to send results</param>
-		/// <param name="keys">array of unique record identifiers</param>
-		/// <exception cref="AerospikeException">if queue is full</exception>
+		/// <param name="policy"></param>
+		/// <param name="listener"></param>
+		/// <param name="keys"></param>
+		/// <exception cref="AerospikeException"></exception>
 		public void Exists(BatchPolicy policy, ExistsArrayListener listener, Key[] keys)
 		{
-			CancellationToken token = new();
-			Exists(policy, token, keys);
+			throw new AerospikeException(NotSupported + "Exists");
 		}
 
 		/// <summary>
-		/// Asynchronously check if multiple record keys exist in one batch call.
-		/// Schedule the exists command with a channel selector and return.
-		/// Another thread will process the command and send the results to the listener in multiple unordered calls.
+		/// Not supported in proxy client
 		/// </summary>
-		/// <param name="policy">generic configuration parameters, pass in null for defaults</param>
-		/// <param name="listener">where to send results</param>
-		/// <param name="keys">array of unique record identifiers</param>
-		/// <exception cref="AerospikeException">if queue is full</exception>
+		/// <param name="policy"></param>
+		/// <param name="listener"></param>
+		/// <param name="keys"></param>
+		/// <exception cref="AerospikeException"></exception>
 		public void Exists(BatchPolicy policy, ExistsSequenceListener listener, Key[] keys)
 		{
-			CancellationToken token = new();
-			Exists(policy, token, keys);
+			throw new AerospikeException(NotSupported + "Exists");
 		}
 		
 		//-------------------------------------------------------
@@ -561,26 +512,25 @@ namespace Aerospike.Client
 		/// <param name="token">cancellation token</param>
 		/// <param name="key">unique record identifier</param>
 		/// <exception cref="AerospikeException">if queue is full</exception>
-		public Task<Record> Get(Policy policy, CancellationToken token, Key key)
+		public async Task<Record> Get(Policy policy, CancellationToken token, Key key)
 		{
 			policy ??= readPolicyDefault;
-			AsyncRead async = new(null, policy, null, key, (string[])null);
-			return async.ExecuteGRPC(channel, token);
+			//AsyncRead async = new(null, policy, null, key, (string[])null);
+			//return async.ExecuteGRPC(channel, token);
+			ReadCommand command = new(null, policy, key);
+			return await command.ExecuteGRPC(channel, token);
 		}
 
 		/// <summary>
-		/// Asynchronously read entire record for specified key.
-		/// Schedule the get command with a channel selector and return.
-		/// Another thread will process the command and send the results to the listener.
+		/// Not supported in proxy client
 		/// </summary>
-		/// <param name="policy">generic configuration parameters, pass in null for defaults</param>
-		/// <param name="listener">where to send results</param>
-		/// <param name="key">unique record identifier</param>
-		/// <exception cref="AerospikeException">if queue is full</exception>
+		/// <param name="policy"></param>
+		/// <param name="listener"></param>
+		/// <param name="key"></param>
+		/// <exception cref="AerospikeException"></exception>
 		public void Get(Policy policy, RecordListener listener, Key key)
 		{
-			CancellationToken token = new();
-			Get(policy, token, key);
+			throw new AerospikeException(NotSupported + "Get");
 		}
 
 		/// <summary>
@@ -592,27 +542,26 @@ namespace Aerospike.Client
 		/// <param name="key">unique record identifier</param>
 		/// <param name="binNames">bins to retrieve</param>
 		/// <exception cref="AerospikeException">if queue is full</exception>
-		public Task<Record> Get(Policy policy, CancellationToken token, Key key, params string[] binNames)
+		public async Task<Record> Get(Policy policy, CancellationToken token, Key key, params string[] binNames)
 		{
 			policy ??= readPolicyDefault;
-			AsyncRead async = new(null, policy, null, key, binNames);
-			return async.ExecuteGRPC(channel, token);
+			//AsyncRead async = new(null, policy, null, key, binNames);
+			//return async.ExecuteGRPC(channel, token);
+			ReadCommand command = new(null, policy, key, binNames);
+			return await command.ExecuteGRPC(channel, token);
 		}
 
 		/// <summary>
-		/// Asynchronously read record header and bins for specified key.
-		/// Schedule the get command with a channel selector and return.
-		/// Another thread will process the command and send the results to the listener.
+		/// Not supported in proxy client
 		/// </summary>
-		/// <param name="policy">generic configuration parameters, pass in null for defaults</param>
-		/// <param name="listener">where to send results</param>
-		/// <param name="key">unique record identifier</param>
-		/// <param name="binNames">bins to retrieve</param>
-		/// <exception cref="AerospikeException">if queue is full</exception>
+		/// <param name="policy"></param>
+		/// <param name="listener"></param>
+		/// <param name="key"></param>
+		/// <param name="binNames"></param>
+		/// <exception cref="AerospikeException"></exception>
 		public void Get(Policy policy, RecordListener listener, Key key, params string[] binNames)
 		{
-			CancellationToken token = new();
-			Get(policy, token, key, binNames);
+			throw new AerospikeException(NotSupported + "Get");
 		}
 
 		/// <summary>
@@ -622,26 +571,25 @@ namespace Aerospike.Client
 		/// <param name="token">cancellation token</param>
 		/// <param name="key">unique record identifier</param>
 		/// <exception cref="AerospikeException">if queue is full</exception>
-		public Task<Record> GetHeader(Policy policy, CancellationToken token, Key key)
+		public async Task<Record> GetHeader(Policy policy, CancellationToken token, Key key)
 		{
 			policy ??= readPolicyDefault;
-			AsyncReadHeader async = new(null, policy, null, key);
-			return async.ExecuteGRPC(channel, token);
+			//AsyncReadHeader async = new(null, policy, null, key);
+			//return async.ExecuteGRPC(channel, token);
+			ReadHeaderCommand command = new(null, policy, key);
+			return await command.ExecuteGRPC(channel, token);
 		}
 
 		/// <summary>
-		/// Asynchronously read record generation and expiration only for specified key.  Bins are not read.
-		/// Schedule the get command with a channel selector and return.
-		/// Another thread will process the command and send the results to the listener.
+		/// Not supported in proxy client
 		/// </summary>
-		/// <param name="policy">generic configuration parameters, pass in null for defaults</param>
-		/// <param name="listener">where to send results</param>
-		/// <param name="key">unique record identifier</param>
-		/// <exception cref="AerospikeException">if queue is full</exception>
+		/// <param name="policy"></param>
+		/// <param name="listener"></param>
+		/// <param name="key"></param>
+		/// <exception cref="AerospikeException"></exception>
 		public void GetHeader(Policy policy, RecordListener listener, Key key)
 		{
-			CancellationToken token = new();
-			GetHeader(policy, token, key);
+			throw new AerospikeException(NotSupported + "Get");
 		}
 
 		//-------------------------------------------------------
@@ -660,11 +608,11 @@ namespace Aerospike.Client
 		/// <param name="token">cancellation token</param>
 		/// <param name="records">list of unique record identifiers and the bins to retrieve.</param>
 		/// <exception cref="AerospikeException">if read fails</exception>
-		public Task<List<BatchRead>> Get(BatchPolicy policy, CancellationToken token, List<BatchRead> records)
+		public async Task<List<BatchRead>> Get(BatchPolicy policy, CancellationToken token, List<BatchRead> records)
 		{
 			if (records.Count == 0)
 			{
-				return Task.FromResult(new List<BatchRead>());
+				return new List<BatchRead>();
 			}
 
 			policy ??= batchPolicyDefault;
@@ -678,8 +626,9 @@ namespace Aerospike.Client
 			try
 			{
 				BatchStatus status = new(false);
-				Operate(policy, token, batchRecords.ToList(), status);
-				return Task.FromResult(records);
+				//Operate(policy, token, batchRecords.ToList(), status);
+				await Operate(policy, batchRecords, status, token);
+				return records;
 			}
 			catch (Exception e)
 			{
@@ -689,43 +638,27 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
-		/// Asynchronously read multiple records for specified batch keys in one batch call.
-		/// This method allows different namespaces/bins to be requested for each key in the batch.
-		/// The returned records are located in the same list.
-		/// If the BatchRecord key field is not found, the corresponding record field will be null.
-		/// <para>
-		/// This method schedules the get command with a channel selector and returns.
-		/// Another thread will process the command and send the results to the listener in a single call.
-		/// </para>
+		/// Not supported in proxy client
 		/// </summary>
-		/// <param name="policy">batch configuration parameters, pass in null for defaults</param>
-		/// <param name="listener">where to send results</param>
-		/// <param name="records">list of unique record identifiers and the bins to retrieve.</param>
-		/// <exception cref="AerospikeException">if read fails</exception>
+		/// <param name="policy"></param>
+		/// <param name="listener"></param>
+		/// <param name="records"></param>
+		/// <exception cref="AerospikeException"></exception>
 		public void Get(BatchPolicy policy, BatchListListener listener, List<BatchRead> records)
 		{
-			CancellationToken token = new();
-			Get(policy, token, records);
+			throw new AerospikeException(NotSupported + "Get");
 		}
 
 		/// <summary>
-		/// Asynchronously read multiple records for specified batch keys in one batch call.
-		/// This method allows different namespaces/bins to be requested for each key in the batch.
-		/// The returned records are located in the same list.
-		/// If the BatchRecord key field is not found, the corresponding record field will be null.
-		/// <para>
-		/// This method schedules the get command with a channel selector and returns.
-		/// Another thread will process the command and send the results to the listener in a single call.
-		/// </para>
+		/// Not supported in proxy client
 		/// </summary>
-		/// <param name="policy">batch configuration parameters, pass in null for defaults</param>
-		/// <param name="listener">where to send results</param>
-		/// <param name="records">list of unique record identifiers and the bins to retrieve.</param>
-		/// <exception cref="AerospikeException">if read fails</exception>
+		/// <param name="policy"></param>
+		/// <param name="listener"></param>
+		/// <param name="records"></param>
+		/// <exception cref="AerospikeException"></exception>
 		public void Get(BatchPolicy policy, BatchSequenceListener listener, List<BatchRead> records)
 		{
-			CancellationToken token = new();
-			Get(policy, token, records);
+			throw new AerospikeException(NotSupported + "Get");
 		}
 
 		/// <summary>
@@ -739,11 +672,11 @@ namespace Aerospike.Client
 		/// <param name="token">cancellation token</param>
 		/// <param name="keys">array of unique record identifiers</param>
 		/// <exception cref="AerospikeException">if queue is full</exception>
-		public Task<Record[]> Get(BatchPolicy policy, CancellationToken token, Key[] keys)
+		public async Task<Record[]> Get(BatchPolicy policy, CancellationToken token, Key[] keys)
 		{
 			if (keys.Length == 0)
 			{
-				return Task.FromResult(Array.Empty<Record>());
+				return Array.Empty<Record>();
 			}
 
 			policy ??= batchPolicyDefault;
@@ -758,12 +691,13 @@ namespace Aerospike.Client
 			try
 			{
 				BatchStatus status = new(false);
-				Operate(policy, token, batchRecords.ToList(), status);
+				//Operate(policy, token, batchRecords.ToList(), status);
+				await Operate(policy, batchRecords, status, token);
 				for (int i = 0; i < keys.Length; i++)
 				{
 					records[i] = batchRecords[i].record;
 				}
-				return Task.FromResult(records);
+				return records;
 			}
 			catch (Exception e)
 			{
@@ -772,39 +706,27 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
-		/// Asynchronously read multiple records for specified keys in one batch call.
-		/// Schedule the batch get command with a channel selector and return.
-		/// Another thread will process the command and send the results to the listener in a single call.
-		/// <para>
-		/// If a key is not found, the record will be null.
-		/// </para>
+		/// Not supported in proxy client
 		/// </summary>
-		/// <param name="policy">batch configuration parameters, pass in null for defaults</param>
-		/// <param name="listener">where to send results</param>
-		/// <param name="keys">array of unique record identifiers</param>
-		/// <exception cref="AerospikeException">if queue is full</exception>
+		/// <param name="policy"></param>
+		/// <param name="listener"></param>
+		/// <param name="keys"></param>
+		/// <exception cref="AerospikeException"></exception>
 		public void Get(BatchPolicy policy, RecordArrayListener listener, Key[] keys)
 		{
-			CancellationToken token = new();
-			Get(policy, token, keys);
+			throw new AerospikeException(NotSupported + "Get");
 		}
 
 		/// <summary>
-		/// Asynchronously read multiple records for specified keys in one batch call.
-		/// Schedule the get command with a channel selector and return.
-		/// Another thread will process the command and send the results to the listener in multiple unordered calls.
-		/// <para>
-		/// If a key is not found, the record will be null.
-		/// </para>
+		/// Not supported in proxy client
 		/// </summary>
-		/// <param name="policy">batch configuration parameters, pass in null for defaults</param>
-		/// <param name="listener">where to send results</param>
-		/// <param name="keys">array of unique record identifiers</param>
-		/// <exception cref="AerospikeException">if queue is full</exception>
+		/// <param name="policy"></param>
+		/// <param name="listener"></param>
+		/// <param name="keys"></param>
+		/// <exception cref="AerospikeException"></exception>
 		public void Get(BatchPolicy policy, RecordSequenceListener listener, Key[] keys)
 		{
-			CancellationToken token = new();
-			Get(policy, token, keys);
+			throw new AerospikeException(NotSupported + "Get");
 		}
 
 		/// <summary>
@@ -819,11 +741,11 @@ namespace Aerospike.Client
 		/// <param name="keys">array of unique record identifiers</param>
 		/// <param name="binNames">array of bins to retrieve</param>
 		/// <exception cref="AerospikeException">if queue is full</exception>
-		public Task<Record[]> Get(BatchPolicy policy, CancellationToken token, Key[] keys, params string[] binNames)
+		public async Task<Record[]> Get(BatchPolicy policy, CancellationToken token, Key[] keys, params string[] binNames)
 		{
 			if (keys.Length == 0)
 			{
-				return Task.FromResult(Array.Empty<Record>());
+				return Array.Empty<Record>();
 			}
 
 			policy ??= batchPolicyDefault;
@@ -838,12 +760,13 @@ namespace Aerospike.Client
 			try
 			{
 				BatchStatus status = new(false);
-				Operate(policy, token, batchRecords.ToList(), status);
+				//Operate(policy, token, batchRecords.ToList(), status);
+				await Operate(policy, batchRecords, status, token);
 				for (int i = 0; i < keys.Length; i++)
 				{
 					records[i] = batchRecords[i].record;
 				}
-				return Task.FromResult(records);
+				return records;
 			}
 			catch (Exception e)
 			{
@@ -852,41 +775,29 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
-		/// Asynchronously read multiple record headers and bins for specified keys in one batch call.
-		/// Schedule the batch get command with a channel selector and return.
-		/// Another thread will process the command and send the results to the listener in a single call.
-		/// <para>
-		/// If a key is not found, the record will be null.
-		/// </para>
+		/// Not supported in proxy client
 		/// </summary>
-		/// <param name="policy">batch configuration parameters, pass in null for defaults</param>
-		/// <param name="listener">where to send results</param>
-		/// <param name="keys">array of unique record identifiers</param>
-		/// <param name="binNames">array of bins to retrieve</param>
-		/// <exception cref="AerospikeException">if queue is full</exception>
+		/// <param name="policy"></param>
+		/// <param name="listener"></param>
+		/// <param name="keys"></param>
+		/// <param name="binNames"></param>
+		/// <exception cref="AerospikeException"></exception>
 		public void Get(BatchPolicy policy, RecordArrayListener listener, Key[] keys, params string[] binNames)
 		{
-			CancellationToken token = new();
-			Get(policy, token, keys, binNames);
+			throw new AerospikeException(NotSupported + "Get");
 		}
 
 		/// <summary>
-		/// Asynchronously read multiple record headers and bins for specified keys in one batch call.
-		/// Schedule the batch get command with a channel selector and return.
-		/// Another thread will process the command and send the results to the listener in multiple unordered calls.
-		/// <para>
-		/// If a key is not found, the record will be null.
-		/// </para>
+		/// Not supported in proxy client
 		/// </summary>
-		/// <param name="policy">batch configuration parameters, pass in null for defaults</param>
-		/// <param name="listener">where to send results</param>
-		/// <param name="keys">array of unique record identifiers</param>
-		/// <param name="binNames">array of bins to retrieve</param>
-		/// <exception cref="AerospikeException">if queue is full</exception>
+		/// <param name="policy"></param>
+		/// <param name="listener"></param>
+		/// <param name="keys"></param>
+		/// <param name="binNames"></param>
+		/// <exception cref="AerospikeException"></exception>
 		public void Get(BatchPolicy policy, RecordSequenceListener listener, Key[] keys, params string[] binNames)
 		{
-			CancellationToken token = new();
-			Get(policy, token, keys, binNames);
+			throw new AerospikeException(NotSupported + "Get");
 		}
 
 		/// <summary>
@@ -901,11 +812,11 @@ namespace Aerospike.Client
 		/// <param name="keys">array of unique record identifiers</param>
 		/// <param name="ops">array of read operations on record</param>
 		/// <exception cref="AerospikeException">if queue is full</exception>
-		public Task<Record[]> Get(BatchPolicy policy, CancellationToken token, Key[] keys, params Operation[] ops)
+		public async Task<Record[]> Get(BatchPolicy policy, CancellationToken token, Key[] keys, params Operation[] ops)
 		{
 			if (keys.Length == 0)
 			{
-				return Task.FromResult(Array.Empty<Record>());
+				return Array.Empty<Record>();
 			}
 
 			policy ??= batchPolicyDefault;
@@ -920,12 +831,13 @@ namespace Aerospike.Client
 			try
 			{
 				BatchStatus status = new(false);
-				Operate(policy, token, batchRecords.ToList(), status);
+				//Operate(policy, token, batchRecords.ToList(), status);
+				await Operate(policy, batchRecords, status, token);
 				for (int i = 0; i < batchRecords.Length; i++)
 				{
 					records[i] = batchRecords[i].record;
 				}
-				return Task.FromResult(records);
+				return records;
 			}
 			catch (Exception e)
 			{
@@ -934,43 +846,29 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
-		/// Asynchronously read multiple records for specified keys using read operations in one batch call.
-		/// Schedule the batch get command with a channel selector and return.
-		/// Another thread will process the command and send the results to the listener in a single call.
-		/// <para>
-		/// The returned records are in positional order with the original key array order.
-		/// If a key is not found, the positional record will be null.
-		/// </para>
+		/// Not supported in proxy client
 		/// </summary>
-		/// <param name="policy">batch configuration parameters, pass in null for defaults</param>
-		/// <param name="listener">where to send results</param>
-		/// <param name="keys">array of unique record identifiers</param>
-		/// <param name="ops">array of read operations on record</param>
-		/// <exception cref="AerospikeException">if queue is full</exception>
+		/// <param name="policy"></param>
+		/// <param name="listener"></param>
+		/// <param name="keys"></param>
+		/// <param name="ops"></param>
+		/// <exception cref="AerospikeException"></exception>
 		public void Get(BatchPolicy policy, RecordArrayListener listener, Key[] keys, params Operation[] ops)
 		{
-			CancellationToken token = new();
-			Get(policy, token, keys);
+			throw new AerospikeException(NotSupported + "Get");
 		}
 
 		/// <summary>
-		/// Asynchronously read multiple records for specified keys using read operations in one batch call.
-		/// Schedule the batch get command with a channel selector and return.
-		/// Another thread will process the command and send the results to the listener in multiple unordered calls.
-		/// <para>
-		/// Each record result is returned in separate OnRecord() calls.
-		/// If a key is not found, the record will be null.
-		/// </para>
+		/// Not supported in proxy client
 		/// </summary>
-		/// <param name="policy">batch configuration parameters, pass in null for defaults</param>
-		/// <param name="listener">where to send results</param>
-		/// <param name="keys">array of unique record identifiers</param>
-		/// <param name="ops">array of read operations on record</param>
-		/// <exception cref="AerospikeException">if queue is full</exception>
+		/// <param name="policy"></param>
+		/// <param name="listener"></param>
+		/// <param name="keys"></param>
+		/// <param name="ops"></param>
+		/// <exception cref="AerospikeException"></exception>
 		public void Get(BatchPolicy policy, RecordSequenceListener listener, Key[] keys, params Operation[] ops)
 		{
-			CancellationToken token = new();
-			Get(policy, token, keys);
+			throw new AerospikeException(NotSupported + "Get");
 		}
 
 		/// <summary>
@@ -984,11 +882,11 @@ namespace Aerospike.Client
 		/// <param name="token">cancellation token</param>
 		/// <param name="keys">array of unique record identifiers</param>
 		/// <exception cref="AerospikeException">if queue is full</exception>
-		public Task<Record[]> GetHeader(BatchPolicy policy, CancellationToken token, Key[] keys)
+		public async Task<Record[]> GetHeader(BatchPolicy policy, CancellationToken token, Key[] keys)
 		{
 			if (keys.Length == 0)
 			{
-				return Task.FromResult(Array.Empty<Record>());
+				return Array.Empty<Record>();
 			}
 
 			policy ??= batchPolicyDefault;
@@ -1003,12 +901,13 @@ namespace Aerospike.Client
 			try
 			{
 				BatchStatus status = new(false);
-				Operate(policy, token, batchRecords.ToList(), status);
+				//Operate(policy, token, batchRecords.ToList(), status);
+				await Operate(policy, batchRecords, status, token);
 				for (int i = 0; i < batchRecords.Length; i++)
 				{
 					records[i] = batchRecords[i].record;
 				}
-				return Task.FromResult(records);
+				return records;
 			}
 			catch (Exception e)
 			{
@@ -1017,39 +916,27 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
-		/// Asynchronously read multiple record header data for specified keys in one batch call.
-		/// Schedule the batch get header command with a channel selector and return.
-		/// Another thread will process the command and send the results to the listener in a single call.
-		/// <para>
-		/// If a key is not found, the record will be null.
-		/// </para>
+		/// Not supported in proxy client
 		/// </summary>
-		/// <param name="policy">batch configuration parameters, pass in null for defaults</param>
-		/// <param name="listener">where to send results</param>
-		/// <param name="keys">array of unique record identifiers</param>
-		/// <exception cref="AerospikeException">if queue is full</exception>
+		/// <param name="policy"></param>
+		/// <param name="listener"></param>
+		/// <param name="keys"></param>
+		/// <exception cref="AerospikeException"></exception>
 		public void GetHeader(BatchPolicy policy, RecordArrayListener listener, Key[] keys)
 		{
-			CancellationToken token = new();
-			GetHeader(policy, token, keys);
+			throw new AerospikeException(NotSupported + "GetHeader");
 		}
 
 		/// <summary>
-		/// Asynchronously read multiple record header data for specified keys in one batch call.
-		/// Schedule the batch get header command with a channel selector and return.
-		/// Another thread will process the command and send the results to the listener in multiple unordered calls.
-		/// <para>
-		/// If a key is not found, the record will be null.
-		/// </para>
+		/// Not supported in proxy client
 		/// </summary>
-		/// <param name="policy">batch configuration parameters, pass in null for defaults</param>
-		/// <param name="listener">where to send results</param>
-		/// <param name="keys">array of unique record identifiers</param>
-		/// <exception cref="AerospikeException">if queue is full</exception>
+		/// <param name="policy"></param>
+		/// <param name="listener"></param>
+		/// <param name="keys"></param>
+		/// <exception cref="AerospikeException"></exception>
 		public void GetHeader(BatchPolicy policy, RecordSequenceListener listener, Key[] keys)
 		{
-			CancellationToken token = new();
-			GetHeader(policy, token, keys);
+			throw new AerospikeException(NotSupported + "GetHeader");
 		}
 		
 		//-------------------------------------------------------
@@ -1073,36 +960,40 @@ namespace Aerospike.Client
 		/// <param name="key">unique record identifier</param>
 		/// <param name="ops">database operations to perform</param>
 		/// <exception cref="AerospikeException">if queue is full</exception>
-		public Task<Record> Operate(WritePolicy policy, CancellationToken token, Key key, params Operation[] ops)
+		public async Task<Record> Operate(WritePolicy policy, CancellationToken token, Key key, params Operation[] ops)
 		{
 			OperateArgs args = new OperateArgs(policy, writePolicyDefault, operatePolicyReadDefault, key, ops);
-			AsyncOperate async = new(null, null, key, args);
-			return async.ExecuteGRPC(channel, token);
+			//AsyncOperate async = new(null, null, key, args);
+			//return async.ExecuteGRPC(channel, token);
+			OperateCommand command = new(null, key, args);
+			return await command.ExecuteGRPC(channel, token);
 		}
 
 		/// <summary>
-		/// Asynchronously perform multiple read/write operations on a single key in one batch call.
-		/// Schedule the operate command with a channel selector and return.
-		/// Another thread will process the command and send the results to the listener.
-		/// <para>
-		/// An example would be to add an integer value to an existing record and then
-		/// read the result, all in one database call.
-		/// </para>
+		/// Not supported in proxy client
 		/// </summary>
-		/// <param name="policy">write configuration parameters, pass in null for defaults</param>
-		/// <param name="listener">where to send results, pass in null for fire and forget</param>
-		/// <param name="key">unique record identifier</param>
-		/// <param name="ops">database operations to perform</param>
-		/// <exception cref="AerospikeException">if queue is full</exception>
+		/// <param name="policy"></param>
+		/// <param name="listener"></param>
+		/// <param name="key"></param>
+		/// <param name="ops"></param>
+		/// <exception cref="AerospikeException"></exception>
 		public void Operate(WritePolicy policy, RecordListener listener, Key key, params Operation[] ops)
 		{
-			CancellationToken token = new();
-			Operate(policy, token, key, ops);
+			throw new AerospikeException(NotSupported + "Operate");
 		}
 
 		//-------------------------------------------------------
 		// Batch Read/Write Operations
 		//-------------------------------------------------------
+
+		private async Task Operate(BatchPolicy policy, BatchRecord[] records, BatchStatus status, CancellationToken token)
+		{
+			policy ??= batchParentPolicyWriteDefault;
+
+			BatchNode batch = new(records);
+			BatchOperateListCommand command = new(null, batch, policy, records, status);
+			await command.ExecuteGRPC(channel, token);
+		}
 
 		/// <summary>
 		/// Asynchronously read/write multiple records for specified batch keys in one batch call.
@@ -1114,62 +1005,38 @@ namespace Aerospike.Client
 		/// <param name="records">list of unique record identifiers and read/write operations</param>
 		/// <returns>Task with completion status: true if all batch sub-transactions were successful.</returns>
 		/// <exception cref="AerospikeException">if queue is full</exception>
-		public Task<bool> Operate(BatchPolicy policy, CancellationToken token, List<BatchRecord> records)
+		public async Task<bool> Operate(BatchPolicy policy, CancellationToken token, List<BatchRecord> records)
 		{
 			policy ??= batchParentPolicyWriteDefault;
 
 			BatchStatus status = new(true);
-			Operate(policy, token, records);
-			return Task.FromResult(status.GetStatus());
+			//Operate(policy, token, records);
+			await Operate(policy, records.ToArray(), status, token);
+			return status.GetStatus();
 		}
 
 		/// <summary>
-		/// Asynchronously read/write multiple records for specified batch keys in one batch call.
-		/// Schedule command with a channel selector and return. Another thread will process the 
-		/// command and send the results to the listener in a single call.
-		/// <para>
-		/// This method allows different namespaces/bins to be requested for each key in the batch.
-		/// The returned records are located in the same list.
-		/// </para>
-		/// <para>
-		/// <see cref="BatchRecord"/> can be <see cref="BatchRead"/>, <see cref="BatchWrite"/>, <see cref="BatchDelete"/> or
-		/// <see cref="BatchUDF"/>.
-		/// </para>
-		/// <para>Requires server version 6.0+</para>
+		/// Not supported in proxy client
 		/// </summary>
-		/// <param name="policy">batch configuration parameters, pass in null for defaults</param>
-		/// <param name="listener">where to send results</param>
-		/// <param name="records">list of unique record identifiers and read/write operations</param>
-		/// <exception cref="AerospikeException">if queue is full</exception>
+		/// <param name="policy"></param>
+		/// <param name="listener"></param>
+		/// <param name="records"></param>
+		/// <exception cref="AerospikeException"></exception>
 		public void Operate(BatchPolicy policy, BatchOperateListListener listener, List<BatchRecord> records)
 		{
-			CancellationToken token = new();
-			Operate(policy, token, records);
+			throw new AerospikeException(NotSupported + "Operate");
 		}
 
 		/// <summary>
-		/// Asynchronously read/write multiple records for specified batch keys in one batch call.
-		/// This method schedules the get command with a channel selector and returns.
-		/// Another thread will process the command and send the results to the listener in a single call.
-		/// <para>
-		/// This method allows different namespaces/bins to be requested for each key in the batch.
-		/// Each record result is returned in separate OnRecord() calls.
-		/// The returned records are located in the same list.
-		/// </para>
-		/// <para>
-		/// <see cref="BatchRecord"/> can be <see cref="BatchRead"/>, <see cref="BatchWrite"/>, <see cref="BatchDelete"/> or
-		/// <see cref="BatchUDF"/>.
-		/// </para>
-		/// <para>Requires server version 6.0+</para>
+		/// Not supported in proxy client
 		/// </summary>
-		/// <param name="policy">batch configuration parameters, pass in null for defaults</param>
-		/// <param name="listener">where to send results</param>
-		/// <param name="records">list of unique record identifiers and read/write operations</param>
-		/// <exception cref="AerospikeException">if queue is full</exception>
+		/// <param name="policy"></param>
+		/// <param name="listener"></param>
+		/// <param name="records"></param>
+		/// <exception cref="AerospikeException"></exception>
 		public void Operate(BatchPolicy policy, BatchRecordSequenceListener listener, List<BatchRecord> records)
 		{
-			CancellationToken token = new();
-			Operate(policy, token, records);
+			throw new AerospikeException(NotSupported + "Operate");
 		}
 
 		/// <summary>
@@ -1187,11 +1054,11 @@ namespace Aerospike.Client
 		/// results. Instead, use <see cref="Operation.Get(string)"/> for each bin name.
 		/// </param>
 		/// <exception cref="AerospikeException">if queue is full</exception>
-		public Task<BatchResults> Operate(BatchPolicy batchPolicy, BatchWritePolicy writePolicy, CancellationToken token, Key[] keys, params Operation[] ops)
+		public async Task<BatchResults> Operate(BatchPolicy batchPolicy, BatchWritePolicy writePolicy, CancellationToken token, Key[] keys, params Operation[] ops)
 		{
 			if (keys.Length == 0)
 			{
-				return Task.FromResult(new BatchResults(Array.Empty<BatchRecord>(), true));
+				return new BatchResults(Array.Empty<BatchRecord>(), true);
 			}
 
 			batchPolicy ??= batchParentPolicyWriteDefault;
@@ -1209,9 +1076,10 @@ namespace Aerospike.Client
 			{
 				BatchStatus status = new(true);
 				BatchNode batchNode = new(records);
+				//Operate(batchPolicy, token, records.ToList());
 				BatchOperateArrayCommand command = new(null, batchNode, batchPolicy, keys, ops, records, attr, status);
-				command.ExecuteGRPC(channel);
-				return Task.FromResult(new BatchResults(records, status.GetStatus()));
+				await command.ExecuteGRPC(channel, token);
+				return new BatchResults(records, status.GetStatus());
 			}
 			catch (Exception e)
 			{
@@ -1220,65 +1088,40 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
-		/// Asynchronously perform read/write operations on multiple keys.
-		/// Schedule command with a channel selector and return. Another thread will process the 
-		/// command and send the results to the listener in a single call.
-		/// <para>
-		/// If a key is not found, the corresponding result <see cref="BatchRecord.resultCode"/> will be
-		/// <see cref="ResultCode.KEY_NOT_FOUND_ERROR"/>.
-		/// </para>
-		/// <para>Requires server version 6.0+</para>
+		/// Not supported in proxy client
 		/// </summary>
-		/// <param name="batchPolicy">batch configuration parameters, pass in null for defaults</param>
-		/// <param name="writePolicy">write configuration parameters, pass in null for defaults</param>
-		/// <param name="listener">where to send results</param>
-		/// <param name="keys">array of unique record identifiers</param>
-		/// <param name="ops">
-		/// read/write operations to perform. <see cref="Operation.Get()"/> is not allowed because it returns a
-		/// variable number of bins and makes it difficult (sometimes impossible) to lineup operations with 
-		/// results. Instead, use <see cref="Operation.Get(string)"/> for each bin name.
-		/// </param>
-		/// <exception cref="AerospikeException">if queue is full</exception>
+		/// <param name="batchPolicy"></param>
+		/// <param name="writePolicy"></param>
+		/// <param name="listener"></param>
+		/// <param name="keys"></param>
+		/// <param name="ops"></param>
+		/// <exception cref="AerospikeException"></exception>
 		public void Operate(BatchPolicy batchPolicy, BatchWritePolicy writePolicy, BatchRecordArrayListener listener, Key[] keys, params Operation[] ops)
 		{
-			CancellationToken token = new();
-			Operate(batchPolicy, writePolicy, token, keys, ops);
+			throw new AerospikeException(NotSupported + "Operate");
 		}
 
 		/// <summary>
-		/// Asynchronously perform read/write operations on multiple keys.
-		/// Schedule command with a channel selector and return. Another thread will process the 
-		/// command and send the results to the listener.
-		/// <para>
-		/// Each record result is returned in separate OnRecord() calls.
-		/// If a key is not found, the corresponding result <see cref="BatchRecord.resultCode"/> will be
-		/// <see cref="ResultCode.KEY_NOT_FOUND_ERROR"/>.
-		/// </para>
-		/// <para>Requires server version 6.0+</para>
+		/// Not supported in proxy client
 		/// </summary>
-		/// <param name="batchPolicy">batch configuration parameters, pass in null for defaults</param>
-		/// <param name="writePolicy">write configuration parameters, pass in null for defaults</param>
-		/// <param name="listener">where to send results</param>
-		/// <param name="keys">array of unique record identifiers</param>
-		/// <param name="ops">
-		/// read/write operations to perform. <see cref="Operation.Get()"/> is not allowed because it returns a
-		/// variable number of bins and makes it difficult (sometimes impossible) to lineup operations with 
-		/// results. Instead, use <see cref="Operation.Get(string)"/> for each bin name.
-		/// </param>
-		/// <exception cref="AerospikeException">if queue is full</exception>
+		/// <param name="batchPolicy"></param>
+		/// <param name="writePolicy"></param>
+		/// <param name="listener"></param>
+		/// <param name="keys"></param>
+		/// <param name="ops"></param>
+		/// <exception cref="AerospikeException"></exception>
 		public void Operate(BatchPolicy batchPolicy, BatchWritePolicy writePolicy, BatchRecordSequenceListener listener, Key[] keys, params Operation[] ops)
 		{
-			CancellationToken token = new();
-			Operate(batchPolicy, writePolicy, token, keys, ops);
+			throw new AerospikeException(NotSupported + "Operate");
 		}
 
-		private void Operate(BatchPolicy policy, CancellationToken token, List<BatchRecord> records, BatchStatus status)
+		private async Task Operate(BatchPolicy policy, CancellationToken token, List<BatchRecord> records, BatchStatus status)
 		{
 			policy ??= batchParentPolicyWriteDefault;
 
 			BatchNode batch = new(records.ToArray());
 			AsyncBatchOperateListCommand command = new(null, null, batch, policy, records);
-			command.ExecuteGRPC(channel, token);
+			await command.ExecuteGRPC(channel, token);
 		}
 
 		//-------------------------------------------------------
@@ -1302,30 +1145,69 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if queue is full</exception>
 		public void ScanAll(ScanPolicy policy, RecordSequenceListener listener, string ns, string setName, params string[] binNames)
 		{
-			throw new AerospikeException("not implemented yet");
+			throw new AerospikeException(NotSupported + "ScanAll");
 		}
 
 		/// <summary>
-		/// Asynchronously read records in specified namespace, set and partition filter.
-		/// If the policy's concurrentNodes is specified, each server node will be read in
+		/// Read all records in specified namespace and set.  If the policy's 
+		/// concurrentNodes is specified, each server node will be read in
 		/// parallel.  Otherwise, server nodes are read in series.
 		/// <para>
-		/// This method schedules the scan command with a channel selector and returns.
-		/// Another thread will process the command and send the results to the listener.
+		/// This call will block until the scan is complete - callbacks are made
+		/// within the scope of this call.
 		/// </para>
 		/// </summary>
 		/// <param name="policy">scan configuration parameters, pass in null for defaults</param>
-		/// <param name="listener">where to send results</param>
+		/// <param name="ns">namespace - equivalent to database name</param>
+		/// <param name="setName">optional set name - equivalent to database table</param>
+		/// <param name="callback">read callback method - called with record data</param>
+		/// <param name="binNames">
+		/// optional bin to retrieve. All bins will be returned if not specified.
+		/// </param>
+		/// <exception cref="AerospikeException">if scan fails</exception>
+		public async Task ScanAll(ScanPolicy policy, CancellationToken token, string ns, string setName, params string[] binNames)
+		{
+			await ScanPartitions(policy, token, PartitionFilter.All(), ns, setName, binNames);
+		}
+
+		/// <summary>
+		/// Not supported in proxy client
+		/// </summary>
+		/// <param name="policy"></param>
+		/// <param name="listener"></param>
+		/// <param name="partitionFilter"></param>
+		/// <param name="ns"></param>
+		/// <param name="setName"></param>
+		/// <param name="binNames"></param>
+		/// <exception cref="AerospikeException"></exception>
+		public void ScanPartitions(ScanPolicy policy, RecordSequenceListener listener, PartitionFilter partitionFilter, string ns, string setName, params string[] binNames)
+		{
+			throw new AerospikeException(NotSupported + "ScanPartitions");
+		}
+
+		/// <summary>
+		/// Read records in specified namespace, set and partition filter.
+		/// <para>
+		/// This call will block until the scan is complete - callbacks are made
+		/// within the scope of this call.
+		/// </para>
+		/// </summary>
+		/// <param name="policy">scan configuration parameters, pass in null for defaults</param>
 		/// <param name="partitionFilter">filter on a subset of data partitions</param>
 		/// <param name="ns">namespace - equivalent to database name</param>
 		/// <param name="setName">optional set name - equivalent to database table</param>
+		/// <param name="callback">read callback method - called with record data</param>
 		/// <param name="binNames">optional bin to retrieve. All bins will be returned if not specified.</param>
-		/// <exception cref="AerospikeException">if queue is full</exception>
-		public void ScanPartitions(ScanPolicy policy, RecordSequenceListener listener, PartitionFilter partitionFilter, string ns, string setName, params string[] binNames)
+		/// <exception cref="AerospikeException">if scan fails</exception>
+		public async Task ScanPartitions(ScanPolicy policy, CancellationToken token, PartitionFilter partitionFilter, string ns, string setName, params string[] binNames)
 		{
-			throw new AerospikeException("not implemented yet");
+			policy ??= scanPolicyDefault;
+			PartitionTracker tracker = new(policy, null, partitionFilter);
+			RecordSet recordSet = new(null, policy.recordQueueSize, token);
+			ScanPartitionCommandProxy command = new(policy, ns, setName, binNames, tracker, partitionFilter, recordSet);
+			await command.ExecuteGRPC(channel, token);
 		}
-	
+
 		//---------------------------------------------------------------
 		// User defined functions
 		//---------------------------------------------------------------
@@ -1340,36 +1222,26 @@ namespace Aerospike.Client
 		/// <param name="functionName">user defined function</param>
 		/// <param name="functionArgs">arguments passed in to user defined function</param>
 		/// <returns>task monitor</returns>
-		public Task<object> Execute(WritePolicy policy, CancellationToken token, Key key, string packageName, string functionName, params Value[] functionArgs)
+		public async Task<object> Execute(WritePolicy policy, CancellationToken token, Key key, string packageName, string functionName, params Value[] functionArgs)
 		{
 			policy ??= writePolicyDefault;
 			var command = new AsyncExecute(null, policy, null, key, packageName, functionName, functionArgs);
-			return command.ExecuteGRPC(channel, token);
+			return await command.ExecuteGRPC(channel, token);
 		}
 
 		/// <summary>
-		/// Asynchronously execute user defined function on server and return result.
-		/// The function operates on a single record.
-		/// The package name is used to locate the udf file location on the server:
-		/// <para>
-		/// udf file = &lt;server udf dir&gt;/&lt;package name&gt;.lua
-		/// </para>
-		/// <para>
-		/// This method schedules the execute command with a channel selector and returns.
-		/// Another thread will process the command and send the results to the listener.
-		/// </para>
+		/// Not supported in proxy client
 		/// </summary>
-		/// <param name="policy">write configuration parameters, pass in null for defaults</param>
-		/// <param name="listener">where to send results</param>
-		/// <param name="key">unique record identifier</param>
-		/// <param name="packageName">server package name where user defined function resides</param>
-		/// <param name="functionName">user defined function</param>
-		/// <param name="functionArgs">arguments passed in to user defined function</param>
-		/// <exception cref="AerospikeException">if transaction fails</exception>
+		/// <param name="policy"></param>
+		/// <param name="listener"></param>
+		/// <param name="key"></param>
+		/// <param name="packageName"></param>
+		/// <param name="functionName"></param>
+		/// <param name="functionArgs"></param>
+		/// <exception cref="AerospikeException"></exception>
 		public void Execute(WritePolicy policy, ExecuteListener listener, Key key, string packageName, string functionName, params Value[] functionArgs)
 		{
-			CancellationToken token = new();
-			Execute(policy, token, key, packageName, functionName, functionArgs);
+			throw new AerospikeException(NotSupported + "Execute");
 		}
 
 		/// <summary>
@@ -1385,60 +1257,71 @@ namespace Aerospike.Client
 		/// <param name="functionName">user defined function</param>
 		/// <param name="functionArgs">arguments passed in to user defined function</param>
 		/// <exception cref="AerospikeException">if queue is full</exception>
-		public Task<BatchResults> Execute(BatchPolicy batchPolicy, BatchUDFPolicy udfPolicy, CancellationToken token, Key[] keys, string packageName, string functionName, params Value[] functionArgs)
+		public async Task<BatchResults> Execute(BatchPolicy batchPolicy, BatchUDFPolicy udfPolicy, CancellationToken token, Key[] keys, string packageName, string functionName, params Value[] functionArgs)
 		{
-			throw new AerospikeException("not implemented yet");
+			if (keys.Length == 0)
+			{
+				return new BatchResults(Array.Empty<BatchRecord>(), true);
+			}
+
+			batchPolicy ??= batchParentPolicyWriteDefault;
+			udfPolicy ??= batchUDFPolicyDefault;
+
+			byte[] argBytes = Packer.Pack(functionArgs);
+
+			BatchAttr attr = new BatchAttr();
+			attr.SetUDF(udfPolicy);
+
+			BatchRecord[] records = new BatchRecord[keys.Length];
+
+			for (int i = 0; i < keys.Length; i++)
+			{
+				records[i] = new BatchUDF(udfPolicy, keys[i], packageName, functionName, functionArgs);
+			}
+
+			try
+			{
+				BatchStatus status = new(true);
+				await  Operate(batchPolicy, records, status, token);
+				return new BatchResults(records, status.GetStatus());
+			}
+			catch (Exception e)
+			{
+				// Batch terminated on fatal error.
+				throw new AerospikeException.BatchRecordArray(records, e);
+			}
 		}
 
 		/// <summary>
-		/// Asynchronously execute user defined function on server for each key.
-		/// This method schedules the execute command with a channel selector and returns.
-		/// Another thread will process the command and send the results to the listener.
-		/// <para>
-		/// The package name is used to locate the udf file location:
-		/// </para>
-		/// <para>
-		/// udf file = &lt;server udf dir&gt;/&lt;package name&gt;.lua
-		/// </para>
-		/// <para>Requires server version 6.0+</para>
+		/// Not supported in proxy client
 		/// </summary>
-		/// <param name="batchPolicy">batch configuration parameters, pass in null for defaults</param>
-		/// <param name="udfPolicy">udf configuration parameters, pass in null for defaults</param>
-		/// <param name="listener">where to send results</param>
-		/// <param name="keys">array of unique record identifiers</param>
-		/// <param name="packageName">server package name where user defined function resides</param>
-		/// <param name="functionName">user defined function</param>
-		/// <param name="functionArgs">arguments passed in to user defined function</param>
-		/// <exception cref="AerospikeException">if queue is full</exception>
+		/// <param name="batchPolicy"></param>
+		/// <param name="udfPolicy"></param>
+		/// <param name="listener"></param>
+		/// <param name="keys"></param>
+		/// <param name="packageName"></param>
+		/// <param name="functionName"></param>
+		/// <param name="functionArgs"></param>
+		/// <exception cref="AerospikeException"></exception>
 		public void Execute(BatchPolicy batchPolicy, BatchUDFPolicy udfPolicy, BatchRecordArrayListener listener, Key[] keys, string packageName, string functionName, params Value[] functionArgs)
 		{
-			throw new AerospikeException("not implemented yet");
+			throw new AerospikeException(NotSupported + "Execute");
 		}
 
 		/// <summary>
-		/// Asynchronously execute user defined function on server for each key.
-		/// This method schedules the execute command with a channel selector and returns.
-		/// Another thread will process the command and send the results to the listener.
-		/// Each record result is returned in separate OnRecord() calls.
-		/// <para>
-		/// The package name is used to locate the udf file location:
-		/// </para>
-		/// <para>
-		/// udf file = &lt;server udf dir&gt;/&lt;package name&gt;.lua
-		/// </para>
-		/// <para>Requires server version 6.0+</para>
+		/// Not supported in proxy client
 		/// </summary>
-		/// <param name="batchPolicy">batch configuration parameters, pass in null for defaults</param>
-		/// <param name="udfPolicy">udf configuration parameters, pass in null for defaults</param>
-		/// <param name="listener">where to send results</param>
-		/// <param name="keys">array of unique record identifiers</param>
-		/// <param name="packageName">server package name where user defined function resides</param>
-		/// <param name="functionName">user defined function</param>
-		/// <param name="functionArgs">arguments passed in to user defined function</param>
-		/// <exception cref="AerospikeException">if queue is full</exception>
+		/// <param name="batchPolicy"></param>
+		/// <param name="udfPolicy"></param>
+		/// <param name="listener"></param>
+		/// <param name="keys"></param>
+		/// <param name="packageName"></param>
+		/// <param name="functionName"></param>
+		/// <param name="functionArgs"></param>
+		/// <exception cref="AerospikeException"></exception>
 		public void Execute(BatchPolicy batchPolicy, BatchUDFPolicy udfPolicy, BatchRecordSequenceListener listener, Key[] keys, string packageName, string functionName, params Value[] functionArgs)
 		{
-			throw new AerospikeException("not implemented yet");
+			throw new AerospikeException(NotSupported + "Execute");
 		}
 
 		//-------------------------------------------------------
@@ -1446,46 +1329,25 @@ namespace Aerospike.Client
 		//-------------------------------------------------------
 
 		/// <summary>
-		/// Asynchronously execute query on all server nodes.  The query policy's 
-		/// <code>maxConcurrentNodes</code> dictate how many nodes can be queried in parallel.
-		/// The default is to query all nodes in parallel.
-		/// <para>
-		/// This method schedules the node's query commands with channel selectors and returns.
-		/// Selector threads will process the commands and send the results to the listener.
-		/// </para>
-		/// <para>
-		/// Requires server version 6.0+ if using a secondary index query.
-		/// </para>
+		/// Not supported in proxy client
 		/// </summary>
-		/// <param name="policy">query configuration parameters, pass in null for defaults</param>
-		/// <param name="listener">where to send results</param>
-		/// <param name="statement">query definition</param>
-		/// <exception cref="AerospikeException">if query fails</exception>
+		/// <param name="policy"></param>
+		/// <param name="listener"></param>
+		/// <param name="statement"></param>
+		/// <exception cref="AerospikeException"></exception>
 		public void Query(QueryPolicy policy, RecordSequenceListener listener, Statement statement)
 		{
-			throw new AerospikeException("not implemented yet");
+			throw new AerospikeException(NotSupported + "Query");
 		}
 
 		/// <summary>
-		/// Asynchronously execute query for specified partitions. The query policy's 
-		/// <code>maxConcurrentNodes</code> dictate how many nodes can be queried in parallel.
-		/// The default is to query all nodes in parallel.
-		/// <para>
-		/// This method schedules the node's query commands with channel selectors and returns.
-		/// Selector threads will process the commands and send the results to the listener.
-		/// </para>
-		/// <para>
-		/// Each record result is returned in separate OnRecord() calls. 
-		/// </para>
-		/// <para>
-		/// Requires server version 6.0+ if using a secondary index query.
-		/// </para>
+		/// Not supported in proxy client
 		/// </summary>
-		/// <param name="policy">query configuration parameters, pass in null for defaults</param>
-		/// <param name="listener">where to send results</param>
-		/// <param name="statement">query definition</param>
-		/// <param name="partitionFilter">filter on a subset of data partitions</param>
-		/// <exception cref="AerospikeException">if query fails</exception>
+		/// <param name="policy"></param>
+		/// <param name="listener"></param>
+		/// <param name="statement"></param>
+		/// <param name="partitionFilter"></param>
+		/// <exception cref="AerospikeException"></exception>
 		public void QueryPartitions
 		(
 			QueryPolicy policy,
@@ -1494,7 +1356,73 @@ namespace Aerospike.Client
 			PartitionFilter partitionFilter
 		)
 		{
-			throw new AerospikeException("not implemented yet");
+			throw new AerospikeException(NotSupported + "Query");
+		}
+
+		/// <summary>
+		/// Execute query and call action for each record returned from server.
+		/// </summary>
+		/// <param name="policy">generic configuration parameters, pass in null for defaults</param>
+		/// <param name="statement">query definition</param>
+		/// <param name="action">action methods to be called for each record</param>
+		/// <exception cref="AerospikeException">if query fails</exception>
+		public async Task Query(QueryPolicy policy, CancellationToken token, Statement statement, Action<Key, Record> action)
+		{
+			using (RecordSet rs = await Query(policy, token, statement))
+			{
+				while (rs.Next())
+				{
+					action(rs.Key, rs.Record);
+				}
+			}
+		}
+
+		/// <summary>
+		/// Execute query on all server nodes and return records via the listener. This method will
+		/// block until the query is complete. Listener callbacks are made within the scope of this call.
+		/// <para>
+		/// If <see cref="QueryPolicy.maxConcurrentNodes"/> is not 1, the supplied listener must handle
+		/// shared data in a thread-safe manner, because the listener will be called by multiple query
+		/// threads (one thread per node) in parallel.
+		/// </para>
+		/// <para>
+		/// Requires server version 6.0+ if using a secondary index query.
+		/// </para>
+		/// </summary>
+		/// <param name="policy">query configuration parameters, pass in null for defaults</param>
+		/// <param name="statement">query definition</param>
+		/// <exception cref="AerospikeException">if query fails</exception>
+		public async Task<RecordSet> Query(QueryPolicy policy, CancellationToken token, Statement statement)
+		{
+			return await QueryPartitions(policy, token, statement, PartitionFilter.All());
+		}
+
+		/// <summary>
+		/// Execute query for specified partitions and return record iterator.  The query executor puts
+		/// records on a queue in separate threads.  The calling thread concurrently pops records off
+		/// the queue through the record iterator.
+		/// <para>
+		/// Requires server version 6.0+ if using a secondary index query.
+		/// </para>
+		/// </summary>
+		/// <param name="policy">query configuration parameters, pass in null for defaults</param>
+		/// <param name="statement">query definition</param>
+		/// <param name="partitionFilter">filter on a subset of data partitions</param>
+		/// <exception cref="AerospikeException">if query fails</exception>
+		public async Task<RecordSet> QueryPartitions
+		(
+			QueryPolicy policy,
+			CancellationToken token,
+			Statement statement,
+			PartitionFilter partitionFilter
+		)
+		{
+			policy ??= queryPolicyDefault;
+			PartitionTracker tracker = new(policy, statement, (Node[])null, partitionFilter);
+			RecordSet recordSet = new(null, policy.recordQueueSize, token);
+			QueryPartitionCommandProxy command = new(policy, null, statement, null, tracker, partitionFilter, recordSet);
+			await command.ExecuteGRPC(channel, token);
+			return recordSet;
 		}
 	}
 }

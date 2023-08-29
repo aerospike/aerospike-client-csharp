@@ -29,10 +29,12 @@ namespace Aerospike.Test
 		private const string keyPrefix = "asqkey";
 		private static readonly string binName = args.GetBinName("asqbin");
 		private const int size = 50;
+		private static CancellationToken token;
 
 		[ClassInitialize()]
 		public static void Prepare(TestContext testContext)
 		{
+			token = new CancellationToken();
 			Policy policy = new Policy();
 			policy.totalTimeout = 0; // Do not timeout on index create.
 
@@ -57,17 +59,65 @@ namespace Aerospike.Test
 		}
 
 		[TestMethod]
-		public void AsyncQuery()
+		public async Task AsyncQuery()
 		{
-			WriteHandler handler = new WriteHandler(this);
-
-			for (int i = 1; i <= size; i++)
+			if (!args.testProxy)
 			{
-				Key key = new Key(args.ns, args.set, keyPrefix + i);
-				Bin bin = new Bin(binName, i);
-				client.Put(null, handler, key, bin);			
+				WriteHandler handler = new WriteHandler(this);
+
+				for (int i = 1; i <= size; i++)
+				{
+					Key key = new Key(args.ns, args.set, keyPrefix + i);
+					Bin bin = new Bin(binName, i);
+					client.Put(null, handler, key, bin);
+				}
+				WaitTillComplete();
 			}
-			WaitTillComplete();
+			else
+			{
+				int count = 0;
+				for (int i = 1; i <= size; i++)
+				{
+					Key key = new Key(args.ns, args.set, keyPrefix + i);
+					Bin bin = new Bin(binName, i);
+					await client.Put(null, token, key, bin);
+					await WriteHandlerSuccess(key, count, this);
+				}
+			}
+		}
+
+		static async Task WriteHandlerSuccess(Key key, int count, TestAsyncQuery parent)
+		{
+			int rows = Interlocked.Increment(ref count);
+
+			if (rows == size)
+			{
+				int begin = 26;
+				int end = 34;
+
+				Statement stmt = new Statement();
+				stmt.SetNamespace(args.ns);
+				stmt.SetSetName(args.set);
+				stmt.SetBinNames(binName);
+				stmt.SetFilter(Filter.Range(binName, begin, end));
+
+				if (!args.testProxy)
+				{
+					client.Query(null, new RecordSequenceHandler(parent), stmt);
+				}
+				else
+				{
+					var result = await asyncProxy.Query(null, token, stmt);
+					while (result.Next())
+					{
+						Record record = result.Record;
+						int integer = record.GetInt(binName);
+						parent.AssertBetween(26, 34, integer);
+						Interlocked.Increment(ref count);
+					}
+					parent.AssertEquals(9, count);
+				}
+			}
 		}
 
 		private class WriteHandler : WriteListener
@@ -82,21 +132,7 @@ namespace Aerospike.Test
 
 			public void OnSuccess(Key key)
 			{
-				int rows = Interlocked.Increment(ref count);
-
-				if (rows == size)
-				{
-					int begin = 26;
-					int end = 34;
-
-					Statement stmt = new Statement();
-					stmt.SetNamespace(args.ns);
-					stmt.SetSetName(args.set);
-					stmt.SetBinNames(binName);
-					stmt.SetFilter(Filter.Range(binName, begin, end));
-
-					client.Query(null, new RecordSequenceHandler(parent), stmt);
-				}
+				WriteHandlerSuccess(key, count, parent).Wait();
 			}
 
 			public void OnFailure(AerospikeException e)

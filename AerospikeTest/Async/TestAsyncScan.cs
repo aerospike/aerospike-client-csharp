@@ -26,16 +26,25 @@ namespace Aerospike.Test
 	public class TestAsyncScan : TestAsync
 	{
 		private int recordCount;
+		static CancellationToken token = new();
 
 		[TestMethod]
-		public void AsyncScan()
+		public async Task AsyncScan()
 		{
 			recordCount = 0;
 
 			ScanPolicy policy = new ScanPolicy();
-			client.ScanAll(policy, new RecordSequenceHandler(this), args.ns, args.set);
 
-			WaitTillComplete();
+			if (!args.testProxy)
+			{
+				client.ScanAll(policy, new RecordSequenceHandler(this), args.ns, args.set);
+
+				WaitTillComplete();
+			}
+			else
+			{
+				await asyncProxy.ScanAll(policy, token, args.ns, args.set);
+			}
 		}
 
 		private class RecordSequenceHandler : RecordSequenceListener

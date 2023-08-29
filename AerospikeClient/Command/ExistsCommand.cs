@@ -19,6 +19,7 @@ using Google.Protobuf;
 using Grpc.Net.Client;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.Eventing.Reader;
 
 namespace Aerospike.Client
 {
@@ -104,6 +105,24 @@ namespace Aerospike.Client
 			var response = KVS.Exists(request);
 			var conn = new ConnectionProxy(response);
 			ParseResult(conn);
+		}
+
+		public async Task<bool> ExecuteGRPC(GrpcChannel channel, CancellationToken token)
+		{
+			WriteBuffer();
+			var request = new AerospikeRequestPayload
+			{
+				Id = 0, // ID is only needed in streaming version, can be static for unary
+				Iteration = 1,
+				Payload = ByteString.CopyFrom(dataBuffer, 0, dataOffset)
+			};
+			GRPCConversions.SetRequestPolicy(policy, request);
+
+			var KVS = new KVS.KVS.KVSClient(channel);
+			var response = await KVS.ExistsAsync(request, cancellationToken: token);
+			var conn = new ConnectionProxy(response);
+			ParseResult(conn);
+			return exists;
 		}
 	}
 }

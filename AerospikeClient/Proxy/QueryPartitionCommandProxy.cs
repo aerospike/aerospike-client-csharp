@@ -99,6 +99,12 @@ namespace Aerospike.Client
 
 		public void ExecuteGRPC(GrpcChannel channel)
 		{
+			CancellationToken token = new();
+			ExecuteGRPC(channel, token).Wait();
+		}
+
+		public async Task ExecuteGRPC(GrpcChannel channel, CancellationToken token)
+		{
 			WriteBuffer();
 			var queryRequest = new QueryRequest
 			{
@@ -115,19 +121,19 @@ namespace Aerospike.Client
 			};
 
 			var KVS = new KVS.Query.QueryClient(channel);
-			var stream = KVS.Query(request);//, cancellationToken: token);
-			
+			var stream = KVS.Query(request, cancellationToken: token);
+
 			try
 			{
 				var conn = new ConnectionProxyStream(stream);
-				ParseResult(conn);
+				await ParseResult(conn);
 			}
 			catch (EndOfGRPCStream eogs)
 			{
 				//if (tracker.IsComplete(cluster, policy))
 				//{
-					// All partitions received.
-					recordSet.Put(RecordSet.END);
+				// All partitions received.
+				recordSet.Put(RecordSet.END);
 				//}
 			}
 			catch (Exception e)

@@ -30,8 +30,9 @@ namespace Aerospike.Client
 		byte[] Payload;
 		int Offset;
 
-		public AsyncConnectionProxy(AerospikeResponsePayload response)
+		public AsyncConnectionProxy(AerospikeResponsePayload response, IAsyncCommand command)
 		{
+			Command = command;
 			if (response.Status != 0)
 			{
 				throw GRPCConversions.GrpcStatusError(response);
@@ -42,8 +43,8 @@ namespace Aerospike.Client
 
 		public IAsyncCommand Command
 		{
-			get { throw new AerospikeException(NotSupported + "Command"); }
-			set { throw new AerospikeException(NotSupported + "Command"); }
+			get;
+			set;
 		}
 
 		public DateTime LastUsed
@@ -68,6 +69,7 @@ namespace Aerospike.Client
 				Array.Copy(Payload, Offset, buffer, 0, count);
 				Offset += count;
 			}
+			Command.ReceiveComplete();
 		}
 
 		public bool IsValid()

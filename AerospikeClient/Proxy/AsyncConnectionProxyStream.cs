@@ -35,8 +35,9 @@ namespace Aerospike.Client
 		int Offset;
 		int BufferOffset;
 
-		public AsyncConnectionProxyStream(AsyncServerStreamingCall<AerospikeResponsePayload> stream)
+		public AsyncConnectionProxyStream(AsyncServerStreamingCall<AerospikeResponsePayload> stream, IAsyncCommand command)
 		{
+			Command = command;
 			Stream = stream;
 			stream.ResponseStream.MoveNext().Wait();
 			Response = stream.ResponseStream.Current;
@@ -54,8 +55,8 @@ namespace Aerospike.Client
 
 		public IAsyncCommand Command
 		{
-			get { throw new AerospikeException(NotSupported + "Command"); }
-			set { throw new AerospikeException(NotSupported + "Command"); }
+			get;
+			set;
 		}
 
 		public DateTime LastUsed
@@ -73,17 +74,23 @@ namespace Aerospike.Client
 			throw new AerospikeException(NotSupported + "Send");
 		}
 
-		public void Receive(byte[] buffer, int offset, int count)
+		void IAsyncConnection.Receive(byte[] buffer, int offset, int count)
 		{
-			BufferOffset = 0;
-			GRPCRead(buffer, count);
+			throw new NotImplementedException();
 		}
 
-		public void GRPCRead(byte[] buffer, int length)
+		public async Task Receive(byte[] buffer, int offset, int count)
+		{
+			BufferOffset = 0;
+			await GRPCRead(buffer, count);
+			await Command.ReceiveComplete(this);
+		}
+
+		public async Task GRPCRead(byte[] buffer, int length)
 		{
 			if (Payload == null)
 			{
-				NextGRPCResponse();
+				await NextGRPCResponse();
 			}
 
 			if (length > Payload.Length - Offset)
@@ -94,7 +101,7 @@ namespace Aerospike.Client
 				// Reset payload
 				Payload = null;
 				// Get the next response
-				GRPCRead(buffer, length);
+				await GRPCRead(buffer, length);
 			}
 
 			Array.Copy(Payload, Offset, buffer, BufferOffset, length);
@@ -106,9 +113,9 @@ namespace Aerospike.Client
 			}
 		}
 
-		private void NextGRPCResponse()
+		private async Task NextGRPCResponse()
 		{
-			Stream.ResponseStream.MoveNext().Wait();
+			await Stream.ResponseStream.MoveNext();
 			Response = Stream.ResponseStream.Current;
 			if (Response.Status != 0)
 			{

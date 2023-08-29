@@ -97,6 +97,12 @@ namespace Aerospike.Client
 
 		public void ExecuteGRPC(GrpcChannel channel)
 		{
+			CancellationToken token = new();
+			ExecuteGRPC(channel, token).Wait();
+		}
+
+		public async Task ExecuteGRPC(GrpcChannel channel, CancellationToken token)
+		{
 			WriteBuffer();
 			var scanRequest = new ScanRequest
 			{
@@ -122,12 +128,12 @@ namespace Aerospike.Client
 			};
 
 			var KVS = new Scan.ScanClient(channel);
-			var stream = KVS.Scan(request);//, cancellationToken: token);
+			var stream = KVS.Scan(request, cancellationToken: token);
 
 			try
 			{
 				var conn = new ConnectionProxyStream(stream);
-				ParseResult(conn);
+				await ParseResult(conn);
 			}
 			catch (EndOfGRPCStream eogs)
 			{

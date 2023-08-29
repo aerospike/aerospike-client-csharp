@@ -155,6 +155,7 @@ namespace Aerospike.Client
 		void OnConnected();
 		void SendComplete();
 		void ReceiveComplete();
+		Task ReceiveComplete(AsyncConnectionProxyStream connectionProxyStream);
 		void OnSocketError(SocketError se);
 		void OnError(Exception e);
 	}

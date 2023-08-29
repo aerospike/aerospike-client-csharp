@@ -110,5 +110,23 @@ namespace Aerospike.Client
 			var conn = new ConnectionProxy(response);
 			ParseResult(conn);
 		}
+
+		public async Task<bool> ExecuteGRPC(GrpcChannel channel, CancellationToken token)
+		{
+			WriteBuffer();
+			var request = new AerospikeRequestPayload
+			{
+				Id = 0, // ID is only needed in streaming version, can be static for unary
+				Iteration = 1,
+				Payload = ByteString.CopyFrom(dataBuffer, 0, dataOffset)
+			};
+			GRPCConversions.SetRequestPolicy(writePolicy, request);
+
+			var KVS = new KVS.KVS.KVSClient(channel);
+			var response = await KVS.DeleteAsync(request, cancellationToken: token);
+			var conn = new ConnectionProxy(response);
+			ParseResult(conn);
+			return existed;
+		}
 	}
 }
