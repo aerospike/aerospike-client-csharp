@@ -174,8 +174,8 @@ namespace Aerospike.Client
 			}
 			HttpClient httpClient = new(handler);
 
-			var connectionUri = hosts[0].tlsName == null ? new UriBuilder("http", hosts[0].name, hosts[0].port).Uri :
-				new UriBuilder("http", hosts[0].name, hosts[0].port).Uri;
+			var connectionUri = hosts[0].tlsName == null ? new UriBuilder("http", hosts[0].name, hosts[0].port).Uri.ToString() :
+				"http://" + hosts[0].name + ":" + hosts[0].tlsName + ":" + hosts[0].port;
 			channel = GrpcChannel.ForAddress(connectionUri, new GrpcChannelOptions
 			{
 				HttpClient = httpClient

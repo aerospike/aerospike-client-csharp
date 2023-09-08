@@ -1,7 +1,7 @@
 ﻿{
-  "Host": "localhost",
+  "Host": "127.0.0.1",
   "Port": 3000,
-  "ProxyHost": "localhost",
+  "ProxyHost": "127.0.0.1",
   "ProxyPort": 4000,
   "TestProxy": true,
   "ClusterName": "",
@@ -16,10 +16,10 @@
   "TlsClientCertFile": "",
   "TlsLoginOnly": true,
   "ProxyTlsEnable": true,
-  "ProxyTlsName": "",
+  "ProxyTlsName": "tls1",
   "ProxyTlsProtocols": "",
   "ProxyTlsRevoke": "",
-  "ProxyTlsClientCertFile": "C:\\Users\\sklaus\\Certs\\clientcert.pfx",
+  "ProxyTlsClientCertFile": "",//"C:\\Users\\sklaus\\Certs\\clientcert.pfx",
   "ProxyTlsLoginOnly": true,
   "AuthMode": "INTERNAL"
 }
