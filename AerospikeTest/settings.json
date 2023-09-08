@@ -3,7 +3,7 @@
   "Port": 3000,
   "ProxyHost": "localhost",
   "ProxyPort": 4000,
-  "TestProxy":  true,
+  "TestProxy": true,
   "ClusterName": "",
   "Namespace": "test",
   "Set": "test",
@@ -14,6 +14,12 @@
   "TlsProtocols": "",
   "TlsRevoke": "",
   "TlsClientCertFile": "",
-  "TlsLoginOnly": false,
-  "AuthMode":  "INTERNAL"
+  "TlsLoginOnly": true,
+  "ProxyTlsEnable": true,
+  "ProxyTlsName": "",
+  "ProxyTlsProtocols": "",
+  "ProxyTlsRevoke": "",
+  "ProxyTlsClientCertFile": "C:\\Users\\sklaus\\Certs\\clientcert.pfx",
+  "ProxyTlsLoginOnly": true,
+  "AuthMode": "INTERNAL"
 }

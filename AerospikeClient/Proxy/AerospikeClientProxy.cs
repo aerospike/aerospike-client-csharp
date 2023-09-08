@@ -30,6 +30,8 @@ using System.Threading.Channels;
 using Grpc.Net.Client;
 using Google.Protobuf.WellKnownTypes;
 using System.Xml.Linq;
+using Grpc.Core;
+using System.Security.Cryptography.X509Certificates;
 
 namespace Aerospike.Client
 {
@@ -57,9 +59,6 @@ namespace Aerospike.Client
 		//-------------------------------------------------------
 		// Static variables.
 		//-------------------------------------------------------
-
-		// Proxy client version
-		public static string Version = GetVersion();
 
 		internal static readonly String NotSupported = "Method not supported in proxy client: ";
 
@@ -168,7 +167,19 @@ namespace Aerospike.Client
 			this.infoPolicyDefault = policy.infoPolicyDefault;
 			this.operatePolicyReadDefault = new WritePolicy(this.readPolicyDefault);
 
-			channel = GrpcChannel.ForAddress(new UriBuilder("http", hosts[0].name, hosts[0].port).Uri);
+			var handler = new HttpClientHandler();
+			if (policy.tlsPolicy != null && policy.tlsPolicy.clientCertificates != null)
+			{
+				handler.ClientCertificates.Add(policy.tlsPolicy.clientCertificates[0]);
+			}
+			HttpClient httpClient = new(handler);
+
+			var connectionUri = hosts[0].tlsName == null ? new UriBuilder("http", hosts[0].name, hosts[0].port).Uri :
+				new UriBuilder("http", hosts[0].name, hosts[0].port).Uri;
+			channel = GrpcChannel.ForAddress(connectionUri, new GrpcChannelOptions
+			{
+				HttpClient = httpClient
+			});
 
 			/*if (policy.user != null || policy.password != null)
 			{
@@ -192,26 +203,6 @@ namespace Aerospike.Client
 				}
 				throw;
 			}*/
-		}
-
-		/**
-		 * Return client version string.
-		 */
-		private static string GetVersion()
-		{
-			//var properties = new Properties();
-			string version = null;
-
-			/*try
-			{
-				properties.load(AerospikeClientProxy.class.getClassLoader().getResourceAsStream("project.properties"));
-				version = properties.getProperty("version");
-			}
-			catch (Exception e) 
-			{
-				Log.warn("Failed to retrieve client version: " + Util.getErrorMessage(e));
-			}*/
-			return version;
 		}
 
 		//-------------------------------------------------------

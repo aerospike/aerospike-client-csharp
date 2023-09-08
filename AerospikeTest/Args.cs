@@ -44,7 +44,9 @@ namespace Aerospike.Test
 		public string ns;
 		public string set;
 		public string tlsName;
+		public string proxyTlsName;
 		public TlsPolicy tlsPolicy;
+		public TlsPolicy proxyTlsPolicy;
 		public AuthMode authMode;
 		public bool singleBin;
 		public bool enterprise;
@@ -79,8 +81,21 @@ namespace Aerospike.Test
                     );
             }
 
-            hosts = Host.ParseHosts(section.GetSection("Host").Value, tlsName, port);
-			proxyHost = Host.ParseHosts(section.GetSection("ProxyHost").Value, tlsName, proxyPort)[0];
+			bool tlsEnableProxy = bool.Parse(section.GetSection("ProxyTlsEnable").Value);
+
+			if (tlsEnableProxy)
+			{
+				proxyTlsName = section.GetSection("ProxyTlsName").Value;
+				proxyTlsPolicy = new TlsPolicy(
+					section.GetSection("ProxyTlsProtocols").Value,
+					section.GetSection("ProxyTlsRevoke").Value,
+					section.GetSection("ProxyTlsClientCertFile").Value,
+					bool.Parse(section.GetSection("ProxyTlsLoginOnly").Value)
+					);
+			}
+
+			hosts = Host.ParseHosts(section.GetSection("Host").Value, tlsName, port);
+			proxyHost = Host.ParseHosts(section.GetSection("ProxyHost").Value, proxyTlsName, proxyPort)[0];
         }
 
         public void Connect()
@@ -127,28 +142,41 @@ namespace Aerospike.Test
 		private void ConnectProxy()
 		{
 			ClientPolicy policy = new ClientPolicy();
+			ClientPolicy proxyPolicy = new ClientPolicy();
 			AsyncClientPolicy asyncPolicy = new AsyncClientPolicy();
+			AsyncClientPolicy proxyAsyncPolicy = new AsyncClientPolicy();
 			policy.clusterName = clusterName;
+			proxyPolicy.clusterName = clusterName;
 			asyncPolicy.clusterName = clusterName;
+			proxyAsyncPolicy.clusterName = clusterName;
 			policy.tlsPolicy = tlsPolicy;
+			proxyPolicy.tlsPolicy = proxyTlsPolicy;
 			asyncPolicy.tlsPolicy = tlsPolicy;
+			proxyAsyncPolicy.tlsPolicy = proxyTlsPolicy;
 			policy.authMode = authMode;
+			proxyPolicy.authMode = authMode;
 			asyncPolicy.authMode = authMode;
+			proxyAsyncPolicy.authMode = authMode;
 
 			if (user != null && user.Length > 0)
 			{
 				policy.user = user;
 				policy.password = password;
+				proxyPolicy.user = user;
+				proxyPolicy.password = password;
 				asyncPolicy.user = user;
 				asyncPolicy.password = password;
+				proxyAsyncPolicy.user = user;
+				proxyAsyncPolicy.password = password;
 			}
 			
 			asyncPolicy.asyncMaxCommands = 300;
+			proxyAsyncPolicy.asyncMaxCommands = 300;
 
-			proxyClient = new AerospikeClientProxy(policy, proxyHost);
+			proxyClient = new AerospikeClientProxy(proxyPolicy, proxyHost);
 			nativeClient = new AerospikeClient(policy, hosts);
 			nativeAsync = new AsyncClient(asyncPolicy, hosts);
-			asyncProxy = new AsyncClientProxy(asyncPolicy, proxyHost);
+			asyncProxy = new AsyncClientProxy(proxyAsyncPolicy, proxyHost);
 			asyncClient = asyncProxy;
 
 			int timeout = 15;
