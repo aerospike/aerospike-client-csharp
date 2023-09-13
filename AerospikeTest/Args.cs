@@ -157,6 +157,10 @@ namespace Aerospike.Test
 			proxyPolicy.authMode = authMode;
 			asyncPolicy.authMode = authMode;
 			proxyAsyncPolicy.authMode = authMode;
+			proxyPolicy.minConnsPerNode = 100;
+			proxyAsyncPolicy.minConnsPerNode = 100;
+			proxyPolicy.maxConnsPerNode = 100;
+			proxyAsyncPolicy.maxConnsPerNode = 100;
 
 			if (user != null && user.Length > 0)
 			{

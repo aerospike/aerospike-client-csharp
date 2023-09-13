@@ -83,14 +83,14 @@ namespace Aerospike.Client
 					response = stream.ResponseStream.Current;
 				}
 			}
-			catch (EndOfGRPCStream eogs)
+			catch (EndOfGRPCStream)
 			{
 				if (response.BackgroundTaskStatus == BackgroundTaskStatus.Complete)
 				{
 					return BaseTask.COMPLETE;
 				}
 			}
-			catch (Exception e)
+			catch (Exception)
 			{
 
 			}

@@ -136,7 +136,7 @@ namespace Aerospike.Client
 				recordSet.Put(RecordSet.END);
 				//}
 			}
-			catch (Exception e)
+			catch (Exception)
 			{
 
 			}

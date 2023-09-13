@@ -32,6 +32,7 @@ using Google.Protobuf.WellKnownTypes;
 using System.Xml.Linq;
 using Grpc.Core;
 using System.Security.Cryptography.X509Certificates;
+using Microsoft.AspNetCore.Http;
 
 namespace Aerospike.Client
 {
@@ -121,7 +122,13 @@ namespace Aerospike.Client
 
 		protected WritePolicy operatePolicyReadDefault { get; set; }
 
-		internal GrpcChannel channel { get; set; }
+		internal Pool<GrpcChannel> grpcChannelPool { get; set; }
+
+		private Uri ConnectionUri { get; set; }
+
+		private Host[] hosts { get; set; }
+
+		private ClientPolicy clientPolicy { get; set; }
 
 		//private readonly AuthTokenManager authTokenManager;
 
@@ -167,19 +174,14 @@ namespace Aerospike.Client
 			this.infoPolicyDefault = policy.infoPolicyDefault;
 			this.operatePolicyReadDefault = new WritePolicy(this.readPolicyDefault);
 
-			var handler = new HttpClientHandler();
-			if (policy.tlsPolicy != null && policy.tlsPolicy.clientCertificates != null)
-			{
-				handler.ClientCertificates.Add(policy.tlsPolicy.clientCertificates[0]);
-			}
-			HttpClient httpClient = new(handler);
+			this.hosts = hosts;
+			clientPolicy = policy;
+			
+			ConnectionUri = hosts[0].tlsName == null ? new UriBuilder("http", hosts[0].name, hosts[0].port).Uri :
+				new UriBuilder("https", hosts[0].name, hosts[0].port).Uri;
 
-			var connectionUri = hosts[0].tlsName == null ? new UriBuilder("http", hosts[0].name, hosts[0].port).Uri.ToString() :
-				"http://" + hosts[0].name + ":" + hosts[0].tlsName + ":" + hosts[0].port;
-			channel = GrpcChannel.ForAddress(connectionUri, new GrpcChannelOptions
-			{
-				HttpClient = httpClient
-			});
+			grpcChannelPool = new Pool<GrpcChannel>(policy.minConnsPerNode, policy.maxConnsPerNode);
+			CreateGrpcChannels(policy.minConnsPerNode);
 
 			/*if (policy.user != null || policy.password != null)
 			{
@@ -307,12 +309,98 @@ namespace Aerospike.Client
 		//-------------------------------------------------------
 
 		/// <summary>
+		/// Get Grpc Channel
+		/// </summary>
+		internal GrpcChannel GetGrpcChannelFromPool()
+		{
+			while (true)
+			{
+				if (grpcChannelPool.TryDequeue(out var channel))
+				{
+					// Found channel.
+					return channel;
+				}
+				else if (grpcChannelPool.IncrTotal() <= grpcChannelPool.Capacity)
+				{
+					// Channel not found and queue has available slot.
+					// Create new channel.
+					try
+					{
+						//var handler = new SocketsHttpHandler();
+						var handler = new HttpClientHandler();
+						if (clientPolicy.tlsPolicy != null && clientPolicy.tlsPolicy.clientCertificates != null)
+						{
+							handler.ClientCertificates.Add(clientPolicy.tlsPolicy.clientCertificates[0]);
+
+						}
+						if (hosts[0].tlsName != null)
+						{
+							handler.ServerCertificateCustomValidationCallback =
+								HttpClientHandler.DangerousAcceptAnyServerCertificateValidator;
+						}
+						
+						channel = CreateGrpcChannel(handler);
+					}
+					catch (Exception)
+					{
+						grpcChannelPool.DecrTotal();
+						throw;
+					}
+					return channel;
+				}
+				throw new AerospikeException.Connection(ResultCode.NO_MORE_CONNECTIONS,
+				"Max connections " + clientPolicy.maxConnsPerNode + " would be exceeded.");
+			}
+		}
+
+		private void CreateGrpcChannels(int count)
+		{
+			//var handler = new SocketsHttpHandler();
+			var handler = new HttpClientHandler();
+			if (clientPolicy.tlsPolicy != null && clientPolicy.tlsPolicy.clientCertificates != null)
+			{
+				handler.ClientCertificates.Add(clientPolicy.tlsPolicy.clientCertificates[0]);
+
+			}
+			if (hosts[0].tlsName != null)
+			{
+				handler.ServerCertificateCustomValidationCallback =
+					HttpClientHandler.DangerousAcceptAnyServerCertificateValidator;
+			}
+			//handler.ConnectCallback = null;
+
+			while (count > 0)
+			{
+				grpcChannelPool.Enqueue(CreateGrpcChannel(handler));
+				count--;
+			}
+		}
+
+		private GrpcChannel CreateGrpcChannel(HttpClientHandler handler)
+		{
+			var channel = GrpcChannel.ForAddress(ConnectionUri, new GrpcChannelOptions
+			{
+				HttpHandler = handler
+			});
+			return channel;
+		}
+
+		internal void PutChannel(GrpcChannel channel)
+		{
+			//if (channel.State == ConnectivityState.Ready)
+			//{
+				grpcChannelPool.Enqueue(channel);
+			//}
+		}
+
+		/// <summary>
 		/// Close all client connections to database server nodes.
 		/// </summary>
 		public void Dispose()
 		{
 			Close();
 		}
+
 
 		/// <summary>
 		/// Close all client connections to database server nodes.
@@ -397,7 +485,15 @@ namespace Aerospike.Client
 		{
 			policy ??= writePolicyDefault;
 			WriteCommand command = new(null, policy, key, bins, Operation.Type.WRITE);
-			command.ExecuteGRPC(channel);
+			var channel = GetGrpcChannelFromPool();
+			try
+			{
+				command.ExecuteGRPC(channel);
+			}
+			finally
+			{
+				PutChannel(channel);
+			}
 		}
 
 		//-------------------------------------------------------
@@ -418,7 +514,14 @@ namespace Aerospike.Client
 		{
 			policy ??= writePolicyDefault;
 			WriteCommand command = new(null, policy, key, bins, Operation.Type.APPEND);
-			command.ExecuteGRPC(channel);
+			var channel = GetGrpcChannelFromPool();
+			try
+			{
+				command.ExecuteGRPC(channel);
+			}
+			finally { 
+				PutChannel(channel); 
+			}
 		}
 
 		/// <summary>
@@ -435,7 +538,15 @@ namespace Aerospike.Client
 		{
 			policy ??= writePolicyDefault;
 			WriteCommand command = new(null, policy, key, bins, Operation.Type.PREPEND);
-			command.ExecuteGRPC(channel);
+			var channel = GetGrpcChannelFromPool();
+			try
+			{
+				command.ExecuteGRPC(channel);
+			}
+			finally
+			{
+				PutChannel(channel);
+			}
 		}
 
 		//-------------------------------------------------------
@@ -455,7 +566,15 @@ namespace Aerospike.Client
 		{
 			policy ??= writePolicyDefault;
 			WriteCommand command = new(null, policy, key, bins, Operation.Type.ADD);
-			command.ExecuteGRPC(channel);
+			var channel = GetGrpcChannelFromPool();
+			try
+			{
+				command.ExecuteGRPC(channel);
+			}
+			finally
+			{
+				PutChannel(channel);
+			}
 		}
 
 		//-------------------------------------------------------
@@ -474,8 +593,17 @@ namespace Aerospike.Client
 		{
 			policy ??= writePolicyDefault;
 			DeleteCommand command = new(null, policy, key);
-			command.ExecuteGRPC(channel);
-			return command.Existed();
+			var channel = GetGrpcChannelFromPool();
+			try
+			{
+				command.ExecuteGRPC(channel);
+				return command.Existed();
+			}
+			finally 
+			{ 
+				PutChannel(channel); 
+			}
+			
 		}
 
 		/// <summary>
@@ -543,7 +671,15 @@ namespace Aerospike.Client
 		{
 			policy ??= writePolicyDefault;
 			TouchCommand command = new(null, policy, key);
-			command.ExecuteGRPC(channel);
+			var channel = GetGrpcChannelFromPool();
+			try
+			{
+				command.ExecuteGRPC(channel);
+			}
+			finally
+			{
+				PutChannel(channel);
+			}
 		}
 
 		//-------------------------------------------------------
@@ -562,8 +698,16 @@ namespace Aerospike.Client
 		{
 			policy ??= readPolicyDefault;
 			ExistsCommand command = new(null, policy, key);
-			command.ExecuteGRPC(channel);
-			return command.Exists();
+			var channel = GetGrpcChannelFromPool();
+			try
+			{
+				command.ExecuteGRPC(channel);
+				return command.Exists();
+			}
+			finally
+			{
+				PutChannel(channel);
+			}
 		}
 
 		/// <summary>
@@ -622,8 +766,16 @@ namespace Aerospike.Client
 		{
 			policy ??= readPolicyDefault;
 			ReadCommand command = new(null, policy, key);
-			command.ExecuteGRPC(channel);
-			return command.Record;
+			var channel = GetGrpcChannelFromPool();
+			try
+			{
+				command.ExecuteGRPC(channel);
+				return command.Record;
+			}
+			finally
+			{
+				PutChannel(channel);
+			}
 		}
 
 		/// <summary>
@@ -639,8 +791,16 @@ namespace Aerospike.Client
 		{
 			policy ??= readPolicyDefault;
 			ReadCommand command = new(null, policy, key, binNames);
-			command.ExecuteGRPC(channel);
-			return command.Record;
+			var channel = GetGrpcChannelFromPool();
+			try
+			{
+				command.ExecuteGRPC(channel);
+				return command.Record;
+			}
+			finally
+			{
+				PutChannel(channel);
+			}
 		}
 
 		/// <summary>
@@ -655,8 +815,16 @@ namespace Aerospike.Client
 		{
 			policy ??= readPolicyDefault;
 			ReadHeaderCommand command = new(null, policy, key);
-			command.ExecuteGRPC(channel);
-			return command.Record;
+			var channel = GetGrpcChannelFromPool();
+			try
+			{
+				command.ExecuteGRPC(channel);
+				return command.Record;
+			}
+			finally
+			{
+				PutChannel(channel);
+			}
 		}
 
 		//-------------------------------------------------------
@@ -903,8 +1071,16 @@ namespace Aerospike.Client
 		{
 			OperateArgs args = new(policy, writePolicyDefault, operatePolicyReadDefault, key, operations);
 			OperateCommand command = new(null, key, args);
-			command.ExecuteGRPC(channel);
-			return command.Record;
+			var channel = GetGrpcChannelFromPool();
+			try
+			{
+				command.ExecuteGRPC(channel);
+				return command.Record;
+			}
+			finally
+			{
+				PutChannel(channel);
+			}
 		}
 
 		//-------------------------------------------------------
@@ -942,7 +1118,15 @@ namespace Aerospike.Client
 
 			BatchNode batch = new(records);
 			BatchOperateListCommand command = new(null, batch, policy, records, status);
-			command.ExecuteGRPC(channel);
+			var channel = GetGrpcChannelFromPool();
+			try
+			{
+				command.ExecuteGRPC(channel);
+			}
+			finally 
+			{ 
+				PutChannel(channel); 
+			}
 		}
 
 		/// <summary>
@@ -979,17 +1163,23 @@ namespace Aerospike.Client
 				records[i] = new BatchRecord(keys[i], attr.hasWrite);
 			}
 
+			BatchStatus status = new(true);
+			BatchNode batchNode = new(records);
+			BatchOperateArrayCommand command = new(null, batchNode, batchPolicy, keys, ops, records, attr, status);
+			var channel = GetGrpcChannelFromPool();
+
 			try
 			{
-				BatchStatus status = new(true);
-				BatchNode batchNode = new(records);
-				BatchOperateArrayCommand command = new(null, batchNode, batchPolicy, keys, ops, records, attr, status);
 				command.ExecuteGRPC(channel);
 				return new BatchResults(records, status.GetStatus());
 			}
 			catch (Exception e)
 			{
 				throw new AerospikeException.BatchRecordArray(records, e);
+			}
+			finally
+			{
+				PutChannel(channel);
 			}
 		}
 
@@ -1091,8 +1281,17 @@ namespace Aerospike.Client
 			PartitionTracker tracker = new(policy, null, partitionFilter);
 			RecordSet recordSet = new(null, policy.recordQueueSize, token);
 			ScanPartitionCommandProxy command = new(policy, ns, setName, binNames, tracker, partitionFilter, recordSet);
-			command.ExecuteGRPC(channel);
-			return recordSet;
+			var channel = GetGrpcChannelFromPool();
+			try
+			{
+				command.ExecuteGRPC(channel);
+				return recordSet;
+			}
+			finally
+			{
+				PutChannel(channel);
+			}
+			
 		}
 
 		//---------------------------------------------------------------
@@ -1172,7 +1371,15 @@ namespace Aerospike.Client
 			policy ??= writePolicyDefault;
 
 			var command = new ExecuteCommand(null, policy, key, packageName, functionName, args);
-			command.ExecuteGRPC(channel);
+			var channel = GetGrpcChannelFromPool();
+			try
+			{
+				command.ExecuteGRPC(channel);
+			}
+			finally
+			{
+				PutChannel(channel);
+			}
 
 			var record = command.Record;
 
@@ -1275,9 +1482,17 @@ namespace Aerospike.Client
 
 			ulong taskId = statement.PrepareTaskId();
 			ServerCommand command = new(null, null, policy, statement, taskId);
-			command.ExecuteGRPC(channel);
-				
-			return new ExecuteTaskProxy(channel, policy, statement, taskId);
+			var channel = GetGrpcChannelFromPool();
+
+			try
+			{
+				command.ExecuteGRPC(channel);
+				return new ExecuteTaskProxy(channel, policy, statement, taskId);
+			}
+			finally
+			{
+				PutChannel(channel); // TODO: will this work properly?
+			}
 		}
 
 		/// <summary>
@@ -1299,9 +1514,17 @@ namespace Aerospike.Client
 
 			ulong taskId = statement.PrepareTaskId();
 			ServerCommand command = new(null, null, policy, statement, taskId);
-			command.ExecuteGRPC(channel);
+			var channel = GetGrpcChannelFromPool();
 
-			return new ExecuteTaskProxy(channel, policy, statement, taskId);
+			try
+			{
+				command.ExecuteGRPC(channel);
+				return new ExecuteTaskProxy(channel, policy, statement, taskId);
+			}
+			finally
+			{
+				PutChannel(channel);
+			}
 		}
 
 		//--------------------------------------------------------
@@ -1389,8 +1612,16 @@ namespace Aerospike.Client
 			PartitionTracker tracker = new(policy, statement, (Node[])null, partitionFilter);
 			RecordSet recordSet = new(null, policy.recordQueueSize, token);
 			QueryPartitionCommandProxy command = new(policy, null, statement, null, tracker, partitionFilter, recordSet);
-			command.ExecuteGRPC(channel);
-			return recordSet;
+			var channel = GetGrpcChannelFromPool();
+			try
+			{
+				command.ExecuteGRPC(GetGrpcChannelFromPool());
+				return recordSet;
+			}
+			finally
+			{
+				PutChannel(channel);
+			}
 		}
 
 		/// <summary>
