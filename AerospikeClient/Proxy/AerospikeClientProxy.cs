@@ -333,11 +333,11 @@ namespace Aerospike.Client
 							handler.ClientCertificates.Add(clientPolicy.tlsPolicy.clientCertificates[0]);
 
 						}
-						if (hosts[0].tlsName != null)
-						{
-							handler.ServerCertificateCustomValidationCallback =
-								HttpClientHandler.DangerousAcceptAnyServerCertificateValidator;
-						}
+						//if (hosts[0].tlsName != null)
+						//{
+						//	handler.ServerCertificateCustomValidationCallback =
+						//		HttpClientHandler.DangerousAcceptAnyServerCertificateValidator;
+						//}
 						
 						channel = CreateGrpcChannel(handler);
 					}
@@ -362,11 +362,11 @@ namespace Aerospike.Client
 				handler.ClientCertificates.Add(clientPolicy.tlsPolicy.clientCertificates[0]);
 
 			}
-			if (hosts[0].tlsName != null)
-			{
-				handler.ServerCertificateCustomValidationCallback =
-					HttpClientHandler.DangerousAcceptAnyServerCertificateValidator;
-			}
+			//if (hosts[0].tlsName != null)
+			//{
+			//	handler.ServerCertificateCustomValidationCallback =
+			//		HttpClientHandler.DangerousAcceptAnyServerCertificateValidator;
+			//}
 			//handler.ConnectCallback = null;
 
 			while (count > 0)
