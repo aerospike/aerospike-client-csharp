@@ -44,6 +44,8 @@ namespace Aerospike.Client
 	/// </summary>
 	public class AsyncClientProxy : AerospikeClientProxy, IAsyncClient
 	{
+		private readonly GrpcBufferPool grpcBufferPool;
+
 		//-------------------------------------------------------
 		// Constructors
 		//-------------------------------------------------------
@@ -122,6 +124,8 @@ namespace Aerospike.Client
 			: base(policy, hosts)
 		{
 			policy ??= new AsyncClientPolicy();
+			var bufferPool = new BufferPool(policy.asyncMaxCommands, policy.asyncBufferSize);
+			grpcBufferPool = new GrpcBufferPool(policy, bufferPool);
 		}
 
 		//-------------------------------------------------------
@@ -143,16 +147,9 @@ namespace Aerospike.Client
 		public async Task Put(WritePolicy policy, CancellationToken token, Key key, params Bin[] bins)
 		{
 			policy ??= writePolicyDefault;
+			var buffer = new byte[8192];
 			WriteCommand command = new(null, policy, key, bins, Operation.Type.WRITE);
-			var channel = GetGrpcChannelFromPool();
-			try
-			{
-				await command.ExecuteGRPC(channel, token);
-			}
-			finally
-			{
-				PutChannel(channel);
-			}
+			await command.ExecuteGRPC(channel, buffer, token);
 		}
 
 		/// <summary>
@@ -189,15 +186,7 @@ namespace Aerospike.Client
 		{
 			policy ??= writePolicyDefault;
 			WriteCommand command = new(null, policy, key, bins, Operation.Type.APPEND);
-			var channel = GetGrpcChannelFromPool();
-			try
-			{
-				await command.ExecuteGRPC(channel, token);
-			}
-			finally
-			{
-				PutChannel(channel);
-			}
+			await command.ExecuteGRPC(channel, token);
 		}
 
 		/// <summary>
@@ -230,15 +219,7 @@ namespace Aerospike.Client
 		{
 			policy ??= writePolicyDefault;
 			WriteCommand command = new(null, policy, key, bins, Operation.Type.PREPEND);
-			var channel = GetGrpcChannelFromPool();
-			try
-			{
-				await command.ExecuteGRPC(channel, token);
-			}
-			finally
-			{
-				PutChannel(channel);
-			}
+			await command.ExecuteGRPC(channel, token);
 		}
 
 		/// <summary>
@@ -274,15 +255,7 @@ namespace Aerospike.Client
 		{
 			policy ??= writePolicyDefault;
 			WriteCommand command = new(null, policy, key, bins, Operation.Type.ADD);
-			var channel = GetGrpcChannelFromPool();
-			try
-			{
-				await command.ExecuteGRPC(channel, token);
-			}
-			finally
-			{
-				PutChannel(channel);
-			}
+			await command.ExecuteGRPC(channel, token);
 		}
 
 		/// <summary>
@@ -313,15 +286,7 @@ namespace Aerospike.Client
 		{
 			policy ??= writePolicyDefault;
 			DeleteCommand command = new(null, policy, key);
-			var channel = GetGrpcChannelFromPool();
-			try
-			{
-				return await command.ExecuteGRPC(channel, token);
-			}
-			finally
-			{
-				PutChannel(channel);
-			}
+			return await command.ExecuteGRPC(channel, token);
 		}
 
 		/// <summary>
@@ -420,15 +385,7 @@ namespace Aerospike.Client
 		{
 			policy ??= writePolicyDefault;
 			TouchCommand command = new(null, policy, key);
-			var channel = GetGrpcChannelFromPool();
-			try
-			{
-				await command.ExecuteGRPC(channel, token);
-			}
-			finally
-			{
-				PutChannel(channel);
-			}
+			await command.ExecuteGRPC(channel, token);
 		}
 
 		/// <summary>
@@ -458,15 +415,7 @@ namespace Aerospike.Client
 		{
 			policy ??= readPolicyDefault;
 			ExistsCommand command = new(null, policy, key);
-			var channel = GetGrpcChannelFromPool();
-			try
-			{
-				return await command.ExecuteGRPC(channel, token);
-			}
-			finally
-			{
-				PutChannel(channel);
-			}
+			return await command.ExecuteGRPC(channel, token);
 		}
 
 		/// <summary>
@@ -561,15 +510,7 @@ namespace Aerospike.Client
 		{
 			policy ??= readPolicyDefault;
 			ReadCommand command = new(null, policy, key);
-			var channel = GetGrpcChannelFromPool();
-			try
-			{
-				return await command.ExecuteGRPC(channel, token);
-			}
-			finally
-			{
-				PutChannel(channel);
-			}
+			return await command.ExecuteGRPC(channel, token);
 		}
 
 		/// <summary>
@@ -596,15 +537,7 @@ namespace Aerospike.Client
 		{
 			policy ??= readPolicyDefault;
 			ReadCommand command = new(null, policy, key, binNames);
-			var channel = GetGrpcChannelFromPool();
-			try
-			{
-				return await command.ExecuteGRPC(channel, token);
-			}
-			finally
-			{
-				PutChannel(channel);
-			}
+			return await command.ExecuteGRPC(channel, token);
 		}
 
 		/// <summary>
@@ -631,15 +564,7 @@ namespace Aerospike.Client
 		{
 			policy ??= readPolicyDefault;
 			ReadHeaderCommand command = new(null, policy, key);
-			var channel = GetGrpcChannelFromPool();
-			try
-			{
-				return await command.ExecuteGRPC(channel, token);
-			}
-			finally
-			{
-				PutChannel(channel);
-			}
+			return await command.ExecuteGRPC(channel, token);
 		}
 
 		/// <summary>
@@ -1016,15 +941,7 @@ namespace Aerospike.Client
 		{
 			OperateArgs args = new OperateArgs(policy, writePolicyDefault, operatePolicyReadDefault, key, ops);
 			OperateCommand command = new(null, key, args);
-			var channel = GetGrpcChannelFromPool();
-			try
-			{
-				return await command.ExecuteGRPC(channel, token);
-			}
-			finally
-			{
-				PutChannel(channel);
-			}
+			return await command.ExecuteGRPC(channel, token);
 		}
 
 		/// <summary>
@@ -1049,15 +966,7 @@ namespace Aerospike.Client
 			policy ??= batchParentPolicyWriteDefault;
 			BatchNode batch = new(records);
 			BatchOperateListCommand command = new(null, batch, policy, records, status);
-			var channel = GetGrpcChannelFromPool();
-			try
-			{
-				await command.ExecuteGRPC(channel, token);
-			}
-			finally
-			{
-				PutChannel(channel);
-			}
+			await command.ExecuteGRPC(channel, token);
 		}
 
 		/// <summary>
@@ -1136,7 +1045,6 @@ namespace Aerospike.Client
 			BatchStatus status = new(true);
 			BatchNode batchNode = new(records);
 			BatchOperateArrayCommand command = new(null, batchNode, batchPolicy, keys, ops, records, attr, status);
-			var channel = GetGrpcChannelFromPool();
 
 			try
 			{
@@ -1146,10 +1054,6 @@ namespace Aerospike.Client
 			catch (Exception e)
 			{
 				throw new AerospikeException.BatchRecordArray(records, e);
-			}
-			finally
-			{
-				PutChannel(channel);
 			}
 		}
 
@@ -1246,16 +1150,8 @@ namespace Aerospike.Client
 			PartitionTracker tracker = new(policy, null, partitionFilter);
 			RecordSet recordSet = new(null, policy.recordQueueSize, token);
 			ScanPartitionCommandProxy command = new(policy, ns, setName, binNames, tracker, partitionFilter, recordSet);
-			var channel = GetGrpcChannelFromPool();
-			try
-			{
-				await command.ExecuteGRPC(channel, token);
-				return recordSet;
-			}
-			finally
-			{
-				PutChannel(channel);
-			}
+			await command.ExecuteGRPC(channel, token);
+			return recordSet;
 		}
 
 		//---------------------------------------------------------------
@@ -1276,9 +1172,7 @@ namespace Aerospike.Client
 		{
 			policy ??= writePolicyDefault;
 			var command = new ExecuteCommand(null, policy, key, packageName, functionName, functionArgs);
-			var channel = GetGrpcChannelFromPool();
 			await command.ExecuteGRPC(channel, token);
-			PutChannel(channel);
 
 			var record = command.Record;
 
@@ -1491,16 +1385,8 @@ namespace Aerospike.Client
 			PartitionTracker tracker = new(policy, statement, (Node[])null, partitionFilter);
 			RecordSet recordSet = new(null, policy.recordQueueSize, token);
 			QueryPartitionCommandProxy command = new(policy, null, statement, null, tracker, partitionFilter, recordSet);
-			var channel = GetGrpcChannelFromPool();
-			try
-			{
-				await command.ExecuteGRPC(channel, token);
-				return recordSet;
-			}
-			finally
-			{
-				PutChannel(channel);
-			}
+			await command.ExecuteGRPC(channel, token);
+			return recordSet;
 		}
 	}
 }

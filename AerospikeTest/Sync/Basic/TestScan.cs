@@ -32,6 +32,10 @@ namespace Aerospike.Test
 		public void ScanParallel()
 		{
 			ScanPolicy policy = new ScanPolicy();
+			if (args.testProxy)
+			{
+				policy.totalTimeout = args.proxyTotalTimeout;
+			}
 
 			if (!args.testProxy)
 			{

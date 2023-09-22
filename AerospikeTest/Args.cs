@@ -50,6 +50,8 @@ namespace Aerospike.Test
 		public AuthMode authMode;
 		public bool singleBin;
 		public bool enterprise;
+		public int proxyTotalTimeout;
+		public int proxySocketTimeout;
 
 		public Args()
 		{
@@ -183,22 +185,30 @@ namespace Aerospike.Test
 			asyncProxy = new AsyncClientProxy(proxyAsyncPolicy, proxyHost);
 			asyncClient = asyncProxy;
 
-			int timeout = 15;
-			int socketTimeout = 5;
+			proxyTotalTimeout = 25000;
+			proxySocketTimeout = 5000;
 
-			nativeClient.readPolicyDefault.totalTimeout = timeout * 1000;
-			nativeClient.readPolicyDefault.socketTimeout = socketTimeout * 1000;
-			nativeClient.WritePolicyDefault.totalTimeout = timeout * 1000;
-			nativeClient.WritePolicyDefault.socketTimeout = socketTimeout * 1000;
-			nativeClient.ScanPolicyDefault.totalTimeout = timeout * 1000;
-			nativeClient.ScanPolicyDefault.socketTimeout = socketTimeout * 1000;
-			nativeClient.QueryPolicyDefault.totalTimeout = timeout * 1000;
-			nativeClient.QueryPolicyDefault.socketTimeout = socketTimeout * 1000;
-			nativeClient.BatchPolicyDefault.totalTimeout = timeout * 1000;
-			nativeClient.BatchPolicyDefault.socketTimeout = socketTimeout * 1000;
-			nativeClient.BatchParentPolicyWriteDefault.totalTimeout = timeout * 1000;
-			nativeClient.BatchParentPolicyWriteDefault.socketTimeout = socketTimeout * 1000;
-			nativeClient.InfoPolicyDefault.timeout = timeout * 1000;
+			nativeClient.readPolicyDefault.totalTimeout = proxyTotalTimeout;
+			nativeClient.readPolicyDefault.socketTimeout = proxySocketTimeout;
+			nativeClient.WritePolicyDefault.totalTimeout = proxyTotalTimeout;
+			nativeClient.WritePolicyDefault.socketTimeout = proxySocketTimeout;
+			nativeClient.ScanPolicyDefault.totalTimeout = proxyTotalTimeout;
+			nativeClient.ScanPolicyDefault.socketTimeout = proxySocketTimeout;
+			nativeClient.QueryPolicyDefault.totalTimeout = proxyTotalTimeout;
+			nativeClient.QueryPolicyDefault.socketTimeout = proxySocketTimeout;
+			nativeClient.BatchPolicyDefault.totalTimeout = proxyTotalTimeout;
+			nativeClient.BatchPolicyDefault.socketTimeout = proxySocketTimeout;
+			nativeClient.BatchParentPolicyWriteDefault.totalTimeout = proxyTotalTimeout;
+			nativeClient.BatchParentPolicyWriteDefault.socketTimeout = proxySocketTimeout;
+			nativeClient.InfoPolicyDefault.timeout = proxyTotalTimeout;
+
+			asyncClient.ReadPolicyDefault = nativeClient.ReadPolicyDefault;
+			asyncClient.WritePolicyDefault = nativeClient.WritePolicyDefault;
+			asyncClient.ScanPolicyDefault = nativeClient.ScanPolicyDefault;
+			asyncClient.QueryPolicyDefault = nativeClient.QueryPolicyDefault;
+			asyncClient.BatchPolicyDefault = nativeClient.BatchPolicyDefault;
+			asyncClient.BatchParentPolicyWriteDefault = nativeClient.BatchParentPolicyWriteDefault;
+			asyncClient.InfoPolicyDefault = nativeClient.InfoPolicyDefault;
 
 			proxyClient.ReadPolicyDefault = nativeClient.ReadPolicyDefault;
 			proxyClient.WritePolicyDefault = nativeClient.WritePolicyDefault;
@@ -207,6 +217,14 @@ namespace Aerospike.Test
 			proxyClient.BatchPolicyDefault = nativeClient.BatchPolicyDefault;
 			proxyClient.BatchParentPolicyWriteDefault = nativeClient.BatchParentPolicyWriteDefault;
 			proxyClient.InfoPolicyDefault = nativeClient.InfoPolicyDefault;
+
+			asyncProxy.ReadPolicyDefault = nativeClient.ReadPolicyDefault;
+			asyncProxy.WritePolicyDefault = nativeClient.WritePolicyDefault;
+			asyncProxy.ScanPolicyDefault = nativeClient.ScanPolicyDefault;
+			asyncProxy.QueryPolicyDefault = nativeClient.QueryPolicyDefault;
+			asyncProxy.BatchPolicyDefault = nativeClient.BatchPolicyDefault;
+			asyncProxy.BatchParentPolicyWriteDefault = nativeClient.BatchParentPolicyWriteDefault;
+			asyncProxy.InfoPolicyDefault = nativeClient.InfoPolicyDefault;
 
 			client = proxyClient;
 

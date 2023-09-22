@@ -38,6 +38,10 @@ namespace Aerospike.Test
 		{
 			Policy policy = new Policy();
 			policy.socketTimeout = 0; // Do not timeout on index create.
+			if (args.testProxy)
+			{
+				policy.totalTimeout = args.proxyTotalTimeout;
+			}
 
 			try
 			{
@@ -94,6 +98,10 @@ namespace Aerospike.Test
 
 			QueryPolicy policy = new QueryPolicy();
 			policy.filterExp = Exp.Build(Exp.GeoCompare(Exp.GeoBin("loc"), Exp.Geo(region)));
+			if (args.testProxy)
+			{
+				policy.totalTimeout = args.proxyTotalTimeout;
+			}
 
 			RecordSet rs = client.Query(policy, stmt);
 

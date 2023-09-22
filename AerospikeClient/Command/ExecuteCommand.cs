@@ -16,6 +16,7 @@
  */
 using Aerospike.Client.KVS;
 using Google.Protobuf;
+using Grpc.Core;
 using Grpc.Net.Client;
 using System;
 using System.Collections.Generic;
@@ -82,10 +83,18 @@ namespace Aerospike.Client
 			};
 			GRPCConversions.SetRequestPolicy(writePolicy, request);
 
-			var KVS = new KVS.KVS.KVSClient(channel);
-			var response = KVS.Execute(request);
-			var conn = new ConnectionProxy(response);
-			ParseResult(conn);
+			try
+			{
+				var client = new KVS.KVS.KVSClient(channel);
+				deadline = DateTime.UtcNow.AddMilliseconds(totalTimeout);
+				var response = client.Execute(request, deadline: deadline);
+				var conn = new ConnectionProxy(response);
+				ParseResult(conn);
+			}
+			catch (RpcException e)
+			{
+				throw GRPCConversions.ToAerospikeException(e, totalTimeout, true);
+			}
 		}
 	}
 }

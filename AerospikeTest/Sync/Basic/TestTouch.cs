@@ -33,6 +33,10 @@ namespace Aerospike.Test
 
 			WritePolicy writePolicy = new WritePolicy();
 			writePolicy.expiration = 2;
+			if (args.testProxy)
+			{
+				writePolicy.totalTimeout = args.proxyTotalTimeout;
+			}
 			client.Put(writePolicy, key, bin);
 
 			writePolicy.expiration = 5;

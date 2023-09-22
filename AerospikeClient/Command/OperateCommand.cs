@@ -16,6 +16,7 @@
  */
 using Aerospike.Client.KVS;
 using Google.Protobuf;
+using Grpc.Core;
 using Grpc.Net.Client;
 using System;
 using System.Collections.Generic;
@@ -80,10 +81,18 @@ namespace Aerospike.Client
 				Payload = ByteString.CopyFrom(dataBuffer, 0, dataOffset)
 			};
 
-			var KVS = new KVS.KVS.KVSClient(channel);
-			var response = KVS.Operate(request);
-			var conn = new ConnectionProxy(response);
-			ParseResult(conn);
+			try 
+			{ 
+				var client = new KVS.KVS.KVSClient(channel);
+				deadline = DateTime.UtcNow.AddMilliseconds(totalTimeout);
+				var response = client.Operate(request, deadline: deadline);
+				var conn = new ConnectionProxy(response);
+				ParseResult(conn);
+			}
+			catch (RpcException e)
+			{
+				throw GRPCConversions.ToAerospikeException(e, totalTimeout, true);
+			}
 		}
 
 		public override async Task<Record> ExecuteGRPC(GrpcChannel channel, CancellationToken token)
@@ -96,11 +105,19 @@ namespace Aerospike.Client
 				Payload = ByteString.CopyFrom(dataBuffer, 0, dataOffset)
 			};
 
-			var KVS = new KVS.KVS.KVSClient(channel);
-			var response = await KVS.OperateAsync(request, cancellationToken: token);
-			var conn = new ConnectionProxy(response);
-			ParseResult(conn);
-			return Record;
+			try
+			{
+				var client = new KVS.KVS.KVSClient(channel);
+				deadline = DateTime.UtcNow.AddMilliseconds(totalTimeout);
+				var response = await client.OperateAsync(request, deadline: deadline, cancellationToken: token);
+				var conn = new ConnectionProxy(response);
+				ParseResult(conn);
+				return Record;
+			}
+			catch (RpcException e)
+			{
+				throw GRPCConversions.ToAerospikeException(e, totalTimeout, true);
+			}
 		}
 	}
 }

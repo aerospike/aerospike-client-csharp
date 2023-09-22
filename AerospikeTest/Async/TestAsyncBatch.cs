@@ -60,7 +60,11 @@ namespace Aerospike.Test
 
 			WritePolicy policy = new WritePolicy();
 			policy.expiration = 2592000;
-
+			if (args.testProxy)
+			{
+				policy.totalTimeout = args.proxyTotalTimeout;
+			}
+			
 			for (int i = 1; i <= Size; i++)
 			{
 				Key key = sendKeys[i - 1];

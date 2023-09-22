@@ -34,6 +34,10 @@ namespace Aerospike.Test
 			recordCount = 0;
 
 			ScanPolicy policy = new ScanPolicy();
+			if (args.testProxy)
+			{
+				policy.totalTimeout = args.proxyTotalTimeout;
+			}
 
 			if (!args.testProxy)
 			{

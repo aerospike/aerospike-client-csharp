@@ -5,6 +5,7 @@ using Google.Protobuf.Collections;
 using Grpc.Core;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.Eventing.Reader;
 using System.Linq;
 using System.Reflection.PortableExecutable;
 using System.Text;
@@ -276,7 +277,7 @@ namespace Aerospike.Client
 			};
 		}
 
-		public static AerospikeException ToAerospike(RpcException rpc, Policy policy, int iteration)
+		public static AerospikeException ToAerospikeException(RpcException rpc, int timeout, bool inDoubt)
 		{
 			StatusCode code = rpc.StatusCode;
 			int resultCode = ResultCode.CLIENT_ERROR;
@@ -303,7 +304,7 @@ namespace Aerospike.Client
 					break;
 
 				case StatusCode.DeadlineExceeded:
-					return new AerospikeException.Timeout(policy, iteration);
+					return new AerospikeException.Timeout(timeout, inDoubt);
 
 				case StatusCode.PermissionDenied:
 					resultCode = ResultCode.FAIL_FORBIDDEN;

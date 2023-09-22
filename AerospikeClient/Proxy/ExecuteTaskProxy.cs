@@ -56,8 +56,8 @@ namespace Aerospike.Client
 				BackgroundTaskStatusRequest = statusRequest
 			};
 
-			var KVS = new KVS.Query.QueryClient(Channel);
-			var stream = KVS.BackgroundTaskStatus(request);
+			var client = new KVS.Query.QueryClient(Channel);
+			var stream = client.BackgroundTaskStatus(request);
 			stream.ResponseStream.MoveNext().Wait();
 			var response = stream.ResponseStream.Current;
 

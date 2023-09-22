@@ -34,6 +34,10 @@ namespace Aerospike.Test
 			// Specify that record expires 2 seconds after it's written.
 			WritePolicy writePolicy = new WritePolicy();
 			writePolicy.expiration = 2;
+			if (args.testProxy)
+			{
+				writePolicy.totalTimeout = args.proxyTotalTimeout;
+			}
 			client.Put(writePolicy, key, bin);
 
 			// Read the record before it expires, showing it is there.	
@@ -56,6 +60,10 @@ namespace Aerospike.Test
 			// The "Never Expire" value is -1, or 0xFFFFFFFF.
 			WritePolicy writePolicy = new WritePolicy();
 			writePolicy.expiration = -1;
+			if (args.testProxy)
+			{
+				writePolicy.totalTimeout = args.proxyTotalTimeout;
+			}
 			client.Put(writePolicy, key, bin);
 
 			// Read the record, showing it is there.

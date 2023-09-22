@@ -13,11 +13,6 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AerospikeClient", "Aerospik
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AerospikeBenchmarks", "AerospikeBenchmarks\AerospikeBenchmarks.csproj", "{09C0B19A-41DD-4B47-A015-B7DFCA0072D3}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AerospikeProxyClient", "AerospikeProxyClient\AerospikeProxyClient.csproj", "{A283CA45-49B6-48E3-B23F-FBF453165C36}"
-	ProjectSection(ProjectDependencies) = postProject
-		{A1AA3444-EAED-4394-BCCA-96EA0E0A88D1} = {A1AA3444-EAED-4394-BCCA-96EA0E0A88D1}
-	EndProjectSection
-EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -44,10 +39,6 @@ Global
 		{09C0B19A-41DD-4B47-A015-B7DFCA0072D3}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{09C0B19A-41DD-4B47-A015-B7DFCA0072D3}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{09C0B19A-41DD-4B47-A015-B7DFCA0072D3}.Release|Any CPU.Build.0 = Release|Any CPU
-		{A283CA45-49B6-48E3-B23F-FBF453165C36}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{A283CA45-49B6-48E3-B23F-FBF453165C36}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{A283CA45-49B6-48E3-B23F-FBF453165C36}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{A283CA45-49B6-48E3-B23F-FBF453165C36}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

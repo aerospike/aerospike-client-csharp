@@ -18,6 +18,7 @@ using System.Collections;
 using System.Collections.Generic;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Aerospike.Client;
+using System.Security.Policy;
 
 namespace Aerospike.Test
 {
@@ -38,6 +39,10 @@ namespace Aerospike.Test
 		{
 			WritePolicy policy = new WritePolicy();
 			policy.expiration = 2592000;
+			if (args.testProxy)
+			{
+				policy.totalTimeout = args.proxyTotalTimeout;
+			}
 
 			for (int i = 1; i <= Size; i++)
 			{

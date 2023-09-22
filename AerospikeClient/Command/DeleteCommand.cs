@@ -16,6 +16,7 @@
  */
 using Aerospike.Client.KVS;
 using Google.Protobuf;
+using Grpc.Core;
 using Grpc.Net.Client;
 
 namespace Aerospike.Client
@@ -105,10 +106,18 @@ namespace Aerospike.Client
 			};
 			GRPCConversions.SetRequestPolicy(writePolicy, request);
 
-			var KVS = new KVS.KVS.KVSClient(channel);
-			var response = KVS.Delete(request);
-			var conn = new ConnectionProxy(response);
-			ParseResult(conn);
+			try
+			{ 
+				var client = new KVS.KVS.KVSClient(channel);
+				deadline = DateTime.UtcNow.AddMilliseconds(totalTimeout);
+				var response = client.Delete(request, deadline: deadline);
+				var conn = new ConnectionProxy(response);
+				ParseResult(conn);
+			}
+			catch (RpcException e)
+			{
+				throw GRPCConversions.ToAerospikeException(e, totalTimeout, true);
+			}
 		}
 
 		public async Task<bool> ExecuteGRPC(GrpcChannel channel, CancellationToken token)
@@ -122,8 +131,9 @@ namespace Aerospike.Client
 			};
 			GRPCConversions.SetRequestPolicy(writePolicy, request);
 
-			var KVS = new KVS.KVS.KVSClient(channel);
-			var response = await KVS.DeleteAsync(request, cancellationToken: token);
+			var client = new KVS.KVS.KVSClient(channel);
+			deadline = DateTime.UtcNow.AddMilliseconds(totalTimeout);
+			var response = await client.DeleteAsync(request, deadline: deadline, cancellationToken: token);
 			var conn = new ConnectionProxy(response);
 			ParseResult(conn);
 			return existed;

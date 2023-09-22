@@ -16,6 +16,7 @@
  */
 using Aerospike.Client.KVS;
 using Google.Protobuf;
+using Grpc.Core;
 using Grpc.Net.Client;
 using System;
 using System.Threading.Tasks;
@@ -120,11 +121,11 @@ namespace Aerospike.Client
 				QueryRequest = queryRequest
 			};
 
-			var KVS = new KVS.Query.QueryClient(channel);
-			var stream = KVS.Query(request, cancellationToken: token);
-
 			try
-			{
+			{ 
+				var client = new KVS.Query.QueryClient(channel);
+				deadline = DateTime.UtcNow.AddMilliseconds(totalTimeout);
+				var stream = client.Query(request, deadline: deadline, cancellationToken: token);
 				var conn = new ConnectionProxyStream(stream);
 				await ParseResult(conn, token);
 			}
@@ -135,6 +136,10 @@ namespace Aerospike.Client
 				// All partitions received.
 				recordSet.Put(RecordSet.END);
 				//}
+			}
+			catch (RpcException e)
+			{
+				throw GRPCConversions.ToAerospikeException(e, totalTimeout, true);
 			}
 			catch (Exception)
 			{

@@ -17,6 +17,8 @@
 using Google.Protobuf;
 using Grpc.Net.Client;
 using Aerospike.Client.KVS;
+using System.Diagnostics;
+using Grpc.Core;
 
 namespace Aerospike.Client
 {
@@ -48,7 +50,7 @@ namespace Aerospike.Client
 			return partition.GetNodeWrite(cluster);
 		}
 
-		protected internal override void WriteBuffer()
+		protected internal override void WriteBuffer(byte[] buffer)
 		{
 			SetWrite(writePolicy, operation, key, bins);
 		}
@@ -94,16 +96,26 @@ namespace Aerospike.Client
 				Payload = ByteString.CopyFrom(dataBuffer, 0, dataOffset)
 			};
 			GRPCConversions.SetRequestPolicy(writePolicy, request);
+
+			try 
+			{ 
+				var client = new KVS.KVS.KVSClient(channel);
+				deadline = DateTime.UtcNow.AddMilliseconds(totalTimeout);
+				var response = client.Write(request, deadline: deadline);
+				var conn = new ConnectionProxy(response);
+				ParseResult(conn);
+			}
+			catch (RpcException e) 
+			{
+				throw GRPCConversions.ToAerospikeException(e, totalTimeout, true);
+			}
 			
-			var KVS = new KVS.KVS.KVSClient(channel);
-			var response = KVS.Write(request);
-			var conn = new ConnectionProxy(response);
-			ParseResult(conn);
 		}
 
-		public async Task ExecuteGRPC(GrpcChannel channel, CancellationToken token)
+		public async Task ExecuteGRPC(GrpcChannel channel, byte[] buffer, CancellationToken token)
 		{
-			WriteBuffer();
+			//Debugger.Launch();
+			WriteBuffer(buffer);
 			var request = new AerospikeRequestPayload
 			{
 				Id = 0, // ID is only needed in streaming version, can be static for unary
@@ -112,10 +124,18 @@ namespace Aerospike.Client
 			};
 			GRPCConversions.SetRequestPolicy(writePolicy, request);
 
-			var KVS = new KVS.KVS.KVSClient(channel);
-			var response = await KVS.WriteAsync(request, cancellationToken: token);
-			var conn = new ConnectionProxy(response);
-			ParseResult(conn);
+			try 
+			{ 
+				var client = new KVS.KVS.KVSClient(channel);
+				deadline = DateTime.UtcNow.AddMilliseconds(totalTimeout);
+				var response = await client.WriteAsync(request, cancellationToken: token, deadline: deadline);
+				var conn = new ConnectionProxy(response);
+				ParseResult(conn);
+			}
+			catch (RpcException e)
+			{
+				throw GRPCConversions.ToAerospikeException(e, totalTimeout, true);
+			}
 		}
 	}
 }
