@@ -77,7 +77,12 @@ namespace Aerospike.Client
 
 		protected internal override void WriteBuffer()
 		{
-			SetWrite(writePolicy, operation, key, bins);
+			WriteBuffer(dataBuffer);
+		}
+
+		internal void WriteBuffer(byte[] buffer)
+		{
+			SetWrite(writePolicy, operation, key, bins, buffer);
 		}
 
 		protected internal override void ParseResult()

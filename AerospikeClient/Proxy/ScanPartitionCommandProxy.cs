@@ -60,7 +60,7 @@ namespace Aerospike.Client
 		protected internal override bool ParseRow()
 		{
 			ulong bval;
-			Key key = ParseKey(fieldCount, out bval);
+			Key key = ParseKey(fieldCount, dataBuffer, out bval);
 
 			if ((info3 & Command.INFO3_PARTITION_DONE) != 0)
 			{
@@ -96,13 +96,13 @@ namespace Aerospike.Client
 			return true;
 		}
 
-		public void ExecuteGRPC(GrpcChannel channel)
+		public void ExecuteGRPC(CallInvoker callInvoker)
 		{
 			CancellationToken token = new();
-			ExecuteGRPC(channel, token).Wait();
+			ExecuteGRPC(callInvoker, token).Wait();
 		}
 
-		public async Task ExecuteGRPC(GrpcChannel channel, CancellationToken token)
+		public async Task ExecuteGRPC(CallInvoker callInvoker, CancellationToken token)
 		{
 			WriteBuffer();
 			var scanRequest = new ScanRequest
@@ -130,7 +130,7 @@ namespace Aerospike.Client
 
 			try
 			{ 
-				var client = new Scan.ScanClient(channel);
+				var client = new Scan.ScanClient(callInvoker);
 				deadline = DateTime.UtcNow.AddMilliseconds(totalTimeout);
 				var stream = client.Scan(request, deadline: deadline, cancellationToken: token);
 				var conn = new ConnectionProxyStream(stream);

@@ -79,8 +79,11 @@ namespace Aerospike.Client
 		{
 			this.clientPolicy = clientPolicy;
 			this.channel = grpcChannel;
-			this.accessToken = new AccessToken(DateTime.UtcNow.Millisecond, 0, "");
-			FetchToken(true);
+			if (IsTokenRequired())
+			{
+				this.accessToken = new AccessToken(DateTime.UtcNow.Millisecond, 0, "");
+				FetchToken(true);
+			}
 		}
 
 		/// <summary>
@@ -198,7 +201,7 @@ namespace Aerospike.Client
 			return clientPolicy.user != null;
 		}
 
-		private AccessToken ParseToken(string token) //throws IOException
+		private AccessToken ParseToken(string token)
 		{
 			string claims = token.Split("\\.")[1];
 			byte[] decodedClaims = Convert.FromBase64String(claims);
@@ -287,12 +290,15 @@ namespace Aerospike.Client
 			ClientInterceptorContext<TRequest, TResponse> context,
 			BlockingUnaryCallContinuation<TRequest, TResponse> continuation)
 		{
-			var credentials = CallCredentials.FromInterceptor(async (context, metadata) =>
+			if (IsTokenRequired())
 			{
-				var token = accessToken.token;
-				metadata.Add("Authorization", $"Bearer {token}");
-			});
-			context.Options.WithCredentials(credentials);
+				var credentials = CallCredentials.FromInterceptor(async (context, metadata) =>
+				{
+					var token = accessToken.token;
+					metadata.Add("Authorization", $"Bearer {token}");
+				});
+				context.Options.WithCredentials(credentials);
+			}
 
 			return continuation(request, context);
 		}
@@ -302,12 +308,15 @@ namespace Aerospike.Client
 			ClientInterceptorContext<TRequest, TResponse> context,
 			AsyncUnaryCallContinuation<TRequest, TResponse> continuation)
 		{
-			var credentials = CallCredentials.FromInterceptor(async (context, metadata) =>
+			if (IsTokenRequired())
 			{
-				var token = accessToken.token;
-				metadata.Add("Authorization", $"Bearer {token}");
-			});
-			context.Options.WithCredentials(credentials);
+				var credentials = CallCredentials.FromInterceptor(async (context, metadata) =>
+				{
+					var token = accessToken.token;
+					metadata.Add("Authorization", $"Bearer {token}");
+				});
+				context.Options.WithCredentials(credentials);
+			}
 			var call = continuation(request, context);
 
 			return new AsyncUnaryCall<TResponse>(HandleResponse(call.ResponseAsync), call.ResponseHeadersAsync, call.GetStatus, call.GetTrailers, call.Dispose);
@@ -324,12 +333,15 @@ namespace Aerospike.Client
 			ClientInterceptorContext<TRequest, TResponse> context,
 			AsyncClientStreamingCallContinuation<TRequest, TResponse> continuation)
 		{
-			var credentials = CallCredentials.FromInterceptor(async (context, metadata) =>
+			if (IsTokenRequired())
 			{
-				var token = accessToken.token;
-				metadata.Add("Authorization", $"Bearer {token}");
-			});
-			context.Options.WithCredentials(credentials);
+				var credentials = CallCredentials.FromInterceptor(async (context, metadata) =>
+				{
+					var token = accessToken.token;
+					metadata.Add("Authorization", $"Bearer {token}");
+				});
+				context.Options.WithCredentials(credentials);
+			}
 
 			return continuation(context);
 		}
@@ -339,12 +351,15 @@ namespace Aerospike.Client
 			ClientInterceptorContext<TRequest, TResponse> context,
 			AsyncServerStreamingCallContinuation<TRequest, TResponse> continuation)
 		{
-			var credentials = CallCredentials.FromInterceptor(async (context, metadata) =>
+			if (IsTokenRequired())
 			{
-				var token = accessToken.token;
-				metadata.Add("Authorization", $"Bearer {token}");
-			});
-			context.Options.WithCredentials(credentials);
+				var credentials = CallCredentials.FromInterceptor(async (context, metadata) =>
+				{
+					var token = accessToken.token;
+					metadata.Add("Authorization", $"Bearer {token}");
+				});
+				context.Options.WithCredentials(credentials);
+			}
 			return continuation(request, context);
 		}
 
@@ -352,12 +367,15 @@ namespace Aerospike.Client
 			ClientInterceptorContext<TRequest, TResponse> context,
 			AsyncDuplexStreamingCallContinuation<TRequest, TResponse> continuation)
 		{
-			var credentials = CallCredentials.FromInterceptor(async (context, metadata) =>
+			if (IsTokenRequired())
 			{
-				var token = accessToken.token;
-				metadata.Add("Authorization", $"Bearer {token}");
-			});
-			context.Options.WithCredentials(credentials);
+				var credentials = CallCredentials.FromInterceptor(async (context, metadata) =>
+				{
+					var token = accessToken.token;
+					metadata.Add("Authorization", $"Bearer {token}");
+				});
+				context.Options.WithCredentials(credentials);
+			}
 
 			return continuation(context);
 		}

@@ -93,7 +93,7 @@ namespace Aerospike.Client
 		/// </summary>
 		public void Write(Command cmd)
 		{
-			cmd.WriteExpHeader(bytes.Length);
+			cmd.WriteExpHeader(bytes.Length, cmd.dataBuffer);
 			Array.Copy(bytes, 0, cmd.dataBuffer, cmd.dataOffset, bytes.Length);
 			cmd.dataOffset += bytes.Length;
 		}

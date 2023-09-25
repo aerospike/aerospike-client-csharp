@@ -126,7 +126,7 @@ namespace Aerospike.Client
 					record = new Record(null, generation, expiration);
 					return;
 				}
-				SkipKey(fieldCount);
+				SkipKey(fieldCount, dataBuffer);
 				record = policy.recordParser.ParseRecord(dataBuffer, ref dataOffset, opCount, generation, expiration, isOperation);
 				return;
 			}
@@ -148,7 +148,7 @@ namespace Aerospike.Client
 
 			if (resultCode == ResultCode.UDF_BAD_RESPONSE)
 			{
-				SkipKey(fieldCount);
+				SkipKey(fieldCount, dataBuffer);
 				record = policy.recordParser.ParseRecord(dataBuffer, ref dataOffset, opCount, generation, expiration, isOperation);
 				HandleUdfError(resultCode);
 				return;
@@ -204,7 +204,7 @@ namespace Aerospike.Client
 			}
 		}
 
-		public virtual void ExecuteGRPC(GrpcChannel channel)
+		public virtual void ExecuteGRPC(CallInvoker callInvoker)
 		{
 			WriteBuffer();
 			var request = new AerospikeRequestPayload
@@ -217,7 +217,7 @@ namespace Aerospike.Client
 
 			try
 			{
-				var client = new KVS.KVS.KVSClient(channel);
+				var client = new KVS.KVS.KVSClient(callInvoker);
 				deadline = DateTime.UtcNow.AddMilliseconds(totalTimeout);
 				var response = client.Read(request, deadline: deadline);
 				var conn = new ConnectionProxy(response);
@@ -229,7 +229,7 @@ namespace Aerospike.Client
 			}
 		}
 
-		public virtual async Task<Record> ExecuteGRPC(GrpcChannel channel, CancellationToken token)
+		public virtual async Task<Record> ExecuteGRPC(CallInvoker callInvoker, CancellationToken token)
 		{
 			WriteBuffer();
 			var request = new AerospikeRequestPayload
@@ -240,7 +240,7 @@ namespace Aerospike.Client
 			};
 			GRPCConversions.SetRequestPolicy(policy, request);
 
-			var client = new KVS.KVS.KVSClient(channel);
+			var client = new KVS.KVS.KVSClient(callInvoker);
 			deadline = DateTime.UtcNow.AddMilliseconds(totalTimeout);
 			var response = await client.ReadAsync(request, deadline: deadline, cancellationToken: token);
 			var conn = new ConnectionProxy(response);

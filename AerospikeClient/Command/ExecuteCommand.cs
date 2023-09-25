@@ -72,7 +72,7 @@ namespace Aerospike.Client
 			return true;
 		}
 
-		public override void ExecuteGRPC(GrpcChannel channel)
+		public override void ExecuteGRPC(CallInvoker callInvoker)
 		{
 			WriteBuffer();
 			var request = new AerospikeRequestPayload
@@ -85,7 +85,7 @@ namespace Aerospike.Client
 
 			try
 			{
-				var client = new KVS.KVS.KVSClient(channel);
+				var client = new KVS.KVS.KVSClient(callInvoker);
 				deadline = DateTime.UtcNow.AddMilliseconds(totalTimeout);
 				var response = client.Execute(request, deadline: deadline);
 				var conn = new ConnectionProxy(response);

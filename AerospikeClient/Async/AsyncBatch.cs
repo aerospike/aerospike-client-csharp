@@ -96,7 +96,7 @@ namespace Aerospike.Client
 
 		protected internal override void ParseRow()
 		{
-			SkipKey(fieldCount);
+			SkipKey(fieldCount, dataBuffer);
 
 			BatchRead record = records[batchIndex];
 
@@ -207,7 +207,7 @@ namespace Aerospike.Client
 
 		protected internal override void ParseRow()
 		{
-			SkipKey(fieldCount);
+			SkipKey(fieldCount, dataBuffer);
 
 			BatchRead record = records[batchIndex];
 
@@ -341,7 +341,7 @@ namespace Aerospike.Client
 
 		protected internal override void ParseRow()
 		{
-			SkipKey(fieldCount);
+			SkipKey(fieldCount, dataBuffer);
 
 			if (resultCode == 0)
 			{
@@ -464,7 +464,7 @@ namespace Aerospike.Client
 
 		protected internal override void ParseRow()
 		{
-			SkipKey(fieldCount);
+			SkipKey(fieldCount, dataBuffer);
 
 			Key keyOrig = keys[batchIndex];
 
@@ -581,7 +581,7 @@ namespace Aerospike.Client
 
 		protected internal override void ParseRow()
 		{
-			SkipKey(fieldCount);
+			SkipKey(fieldCount, dataBuffer);
 
 			if (opCount > 0)
 			{
@@ -690,7 +690,7 @@ namespace Aerospike.Client
 
 		protected internal override void ParseRow()
 		{
-			SkipKey(fieldCount);
+			SkipKey(fieldCount, dataBuffer);
 
 			if (opCount > 0)
 			{
@@ -796,7 +796,7 @@ namespace Aerospike.Client
 
 		protected internal override void ParseRow()
 		{
-			SkipKey(fieldCount);
+			SkipKey(fieldCount, dataBuffer);
 
 			BatchRecord record = records[batchIndex];
 
@@ -941,7 +941,7 @@ namespace Aerospike.Client
 
 		protected internal override void ParseRow()
 		{
-			SkipKey(fieldCount);
+			SkipKey(fieldCount, dataBuffer);
 
 			BatchRecord record = records[batchIndex];
 
@@ -1105,7 +1105,7 @@ namespace Aerospike.Client
 
 		protected internal override void ParseRow()
 		{
-			SkipKey(fieldCount);
+			SkipKey(fieldCount, dataBuffer);
 
 			BatchRecord record = records[batchIndex];
 
@@ -1256,7 +1256,7 @@ namespace Aerospike.Client
 
 		protected internal override void ParseRow()
 		{
-			SkipKey(fieldCount);
+			SkipKey(fieldCount, dataBuffer);
 
 			Key keyOrig = keys[batchIndex];
 			BatchRecord record;
@@ -1410,7 +1410,7 @@ namespace Aerospike.Client
 
 		protected internal override void ParseRow()
 		{
-			SkipKey(fieldCount);
+			SkipKey(fieldCount, dataBuffer);
 
 			BatchRecord record = records[batchIndex];
 
@@ -1586,7 +1586,7 @@ namespace Aerospike.Client
 
 		protected internal override void ParseRow()
 		{
-			SkipKey(fieldCount);
+			SkipKey(fieldCount, dataBuffer);
 
 			Key keyOrig = keys[batchIndex];
 			BatchRecord record;

@@ -60,7 +60,7 @@ namespace Aerospike.Client
 
 		protected internal override bool ParseRow()
 		{
-			SkipKey(fieldCount);
+			SkipKey(fieldCount, dataBuffer);
 
 			BatchRead record = records[batchIndex];
 
@@ -135,7 +135,7 @@ namespace Aerospike.Client
 
 		protected internal override bool ParseRow()
 		{
-			SkipKey(fieldCount);
+			SkipKey(fieldCount, dataBuffer);
 
 			if (resultCode == 0)
 			{
@@ -193,7 +193,7 @@ namespace Aerospike.Client
 
 		protected internal override bool ParseRow()
 		{
-			SkipKey(fieldCount);
+			SkipKey(fieldCount, dataBuffer);
 
 			if (opCount > 0)
 			{
@@ -249,7 +249,7 @@ namespace Aerospike.Client
 
 		protected internal override bool ParseRow()
 		{
-			SkipKey(fieldCount);
+			SkipKey(fieldCount, dataBuffer);
 
 			BatchRecord record = records[batchIndex];
 
@@ -350,7 +350,7 @@ namespace Aerospike.Client
 
 		protected internal override bool ParseRow()
 		{
-			SkipKey(fieldCount);
+			SkipKey(fieldCount, dataBuffer);
 
 			BatchRecord record = records[batchIndex];
 
@@ -442,7 +442,7 @@ namespace Aerospike.Client
 
 		protected internal override bool ParseRow()
 		{
-			SkipKey(fieldCount);
+			SkipKey(fieldCount, dataBuffer);
 
 			BatchRecord record = records[batchIndex];
 
@@ -656,13 +656,13 @@ namespace Aerospike.Client
 		protected internal abstract BatchCommand CreateCommand(BatchNode batchNode);
 		protected internal abstract List<BatchNode> GenerateBatchNodes();
 
-		public void ExecuteGRPC(GrpcChannel channel)
+		public void ExecuteGRPC(CallInvoker callInvoker)
 		{
 			CancellationToken token = new();
-			ExecuteGRPC(channel, token).Wait();
+			ExecuteGRPC(callInvoker, token).Wait();
 		}
 
-		public async Task ExecuteGRPC(GrpcChannel channel, CancellationToken token = new())
+		public async Task ExecuteGRPC(CallInvoker callInvoker, CancellationToken token = new())
 		{
 			WriteBuffer();
 			var request = new AerospikeRequestPayload
@@ -675,7 +675,7 @@ namespace Aerospike.Client
 
 			try
 			{ 
-				var client = new KVS.KVS.KVSClient(channel);
+				var client = new KVS.KVS.KVSClient(callInvoker);
 				deadline = DateTime.UtcNow.AddMilliseconds(totalTimeout);
 				var stream = client.BatchOperate(request, deadline: deadline, cancellationToken: token);
 				var conn = new ConnectionProxyStream(stream);

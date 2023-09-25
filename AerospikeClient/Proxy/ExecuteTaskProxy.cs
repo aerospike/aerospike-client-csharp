@@ -27,15 +27,15 @@ namespace Aerospike.Client
 	/// </summary>
 	public sealed class ExecuteTaskProxy : ExecuteTask
 	{
-		GrpcChannel Channel { get; set; }
+		CallInvoker Invoker { get; set; }
 		
 		/// <summary>
 		/// Initialize task with fields needed to query server nodes.
 		/// </summary>
-		public ExecuteTaskProxy(GrpcChannel channel, Policy policy, Statement statement, ulong taskId)
+		public ExecuteTaskProxy(CallInvoker callInvoker, Policy policy, Statement statement, ulong taskId)
 			: base(null, policy, statement, taskId)
 		{
-			Channel = channel;
+			Invoker = callInvoker;
 		}
 
 		/// <summary>
@@ -56,7 +56,7 @@ namespace Aerospike.Client
 				BackgroundTaskStatusRequest = statusRequest
 			};
 
-			var client = new KVS.Query.QueryClient(Channel);
+			var client = new KVS.Query.QueryClient(Invoker);
 			var stream = client.BackgroundTaskStatus(request);
 			stream.ResponseStream.MoveNext().Wait();
 			var response = stream.ResponseStream.Current;

@@ -46,7 +46,7 @@ namespace Aerospike.Client
 
 		protected internal override bool ParseRow()
 		{
-			SkipKey(fieldCount);
+			SkipKey(fieldCount, dataBuffer);
 
 			// Server commands (Query/Execute UDF) should only send back a return code.
 			if (resultCode != 0)
@@ -73,13 +73,13 @@ namespace Aerospike.Client
 			return true;
 		}
 
-		public void ExecuteGRPC(GrpcChannel channel)
+		public void ExecuteGRPC(CallInvoker callInvoker)
 		{
 			CancellationToken token = new();
-			ExecuteGRPC(channel, token).Wait();
+			ExecuteGRPC(callInvoker, token).Wait();
 		}
 
-		public async Task ExecuteGRPC(GrpcChannel channel, CancellationToken token)
+		public async Task ExecuteGRPC(CallInvoker callInvoker, CancellationToken token)
 		{
 			WriteBuffer();
 
@@ -98,7 +98,7 @@ namespace Aerospike.Client
 			
 			try
 			{ 
-				var client = new KVS.Query.QueryClient(channel);
+				var client = new KVS.Query.QueryClient(callInvoker);
 				deadline = DateTime.UtcNow.AddMilliseconds(totalTimeout);
 				var stream = client.BackgroundExecute(request, deadline: deadline, cancellationToken: token);
 				var conn = new ConnectionProxyStream(stream);

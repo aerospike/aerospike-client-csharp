@@ -47,7 +47,7 @@ namespace Aerospike.Client
 		protected internal override bool ParseRow()
 		{
 			ulong bval;
-			Key key = ParseKey(fieldCount, out bval);
+			Key key = ParseKey(fieldCount, dataBuffer, out bval);
 
 			if (resultCode != 0)
 			{

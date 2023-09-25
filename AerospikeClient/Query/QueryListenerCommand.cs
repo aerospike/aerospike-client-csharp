@@ -67,7 +67,7 @@ namespace Aerospike.Client
 		protected internal override bool ParseRow()
 		{
 			ulong bval;
-			Key key = ParseKey(fieldCount, out bval);
+			Key key = ParseKey(fieldCount, dataBuffer, out bval);
 
 			if ((info3 & Command.INFO3_PARTITION_DONE) != 0)
 			{

@@ -50,18 +50,30 @@ namespace Aerospike.Client
 			return partition.GetNodeWrite(cluster);
 		}
 
-		protected internal override void WriteBuffer(byte[] buffer)
+		protected internal override void WriteBuffer()
 		{
-			SetWrite(writePolicy, operation, key, bins);
+			SizeBuffer();
+			WriteBuffer(dataBuffer);
+		}
+
+
+		internal void WriteBuffer(byte[] buffer)
+		{
+			SetWrite(writePolicy, operation, key, bins, buffer);
 		}
 
 		protected internal override void ParseResult(IConnection conn)
 		{
+			ParseResult(conn, dataBuffer);
+		}
+
+		internal void ParseResult(IConnection conn, byte[] buffer)
+		{
 			// Read header.		
-			conn.ReadFully(dataBuffer, MSG_TOTAL_HEADER_SIZE);
+			conn.ReadFully(buffer, MSG_TOTAL_HEADER_SIZE);
 			conn.UpdateLastUsed();
 
-			int resultCode = dataBuffer[13];
+			int resultCode = buffer[13];
 
 			if (resultCode == 0)
 			{
@@ -86,7 +98,7 @@ namespace Aerospike.Client
 			return true;
 		}
 
-		public void ExecuteGRPC(GrpcChannel channel)
+		public void ExecuteGRPC(CallInvoker callInvoker)
 		{
 			WriteBuffer();
 			var request = new AerospikeRequestPayload
@@ -99,7 +111,7 @@ namespace Aerospike.Client
 
 			try 
 			{ 
-				var client = new KVS.KVS.KVSClient(channel);
+				var client = new KVS.KVS.KVSClient(callInvoker);
 				deadline = DateTime.UtcNow.AddMilliseconds(totalTimeout);
 				var response = client.Write(request, deadline: deadline);
 				var conn = new ConnectionProxy(response);
@@ -112,25 +124,26 @@ namespace Aerospike.Client
 			
 		}
 
-		public async Task ExecuteGRPC(GrpcChannel channel, byte[] buffer, CancellationToken token)
+		public async Task ExecuteGRPC(CallInvoker callInvoker, byte[] buffer, CancellationToken token)
 		{
 			//Debugger.Launch();
+			dataOffset = 0;
 			WriteBuffer(buffer);
 			var request = new AerospikeRequestPayload
 			{
 				Id = 0, // ID is only needed in streaming version, can be static for unary
 				Iteration = 1,
-				Payload = ByteString.CopyFrom(dataBuffer, 0, dataOffset)
+				Payload = ByteString.CopyFrom(buffer, 0, dataOffset)
 			};
 			GRPCConversions.SetRequestPolicy(writePolicy, request);
 
 			try 
 			{ 
-				var client = new KVS.KVS.KVSClient(channel);
+				var client = new KVS.KVS.KVSClient(callInvoker);
 				deadline = DateTime.UtcNow.AddMilliseconds(totalTimeout);
 				var response = await client.WriteAsync(request, cancellationToken: token, deadline: deadline);
 				var conn = new ConnectionProxy(response);
-				ParseResult(conn);
+				ParseResult(conn, buffer);
 			}
 			catch (RpcException e)
 			{

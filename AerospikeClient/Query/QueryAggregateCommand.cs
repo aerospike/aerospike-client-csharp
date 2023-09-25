@@ -53,7 +53,7 @@ namespace Aerospike.Client
 
 		protected internal override bool ParseRow()
 		{
-			SkipKey(fieldCount);
+			SkipKey(fieldCount, dataBuffer);
 
 			if (resultCode != 0)
 			{

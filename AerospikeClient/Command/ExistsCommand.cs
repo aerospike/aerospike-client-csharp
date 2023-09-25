@@ -91,7 +91,7 @@ namespace Aerospike.Client
 			return exists;
 		}
 
-		public void ExecuteGRPC(GrpcChannel channel)
+		public void ExecuteGRPC(CallInvoker callInvoker)
 		{
 			WriteBuffer();
 			var request = new AerospikeRequestPayload
@@ -104,7 +104,7 @@ namespace Aerospike.Client
 
 			try 
 			{ 
-				var client = new KVS.KVS.KVSClient(channel);
+				var client = new KVS.KVS.KVSClient(callInvoker);
 				deadline = DateTime.UtcNow.AddMilliseconds(totalTimeout);
 				var response = client.Exists(request, deadline: deadline);
 				var conn = new ConnectionProxy(response);
@@ -116,7 +116,7 @@ namespace Aerospike.Client
 			}
 		}
 
-		public async Task<bool> ExecuteGRPC(GrpcChannel channel, CancellationToken token)
+		public async Task<bool> ExecuteGRPC(CallInvoker callInvoker, CancellationToken token)
 		{
 			WriteBuffer();
 			var request = new AerospikeRequestPayload
@@ -129,7 +129,7 @@ namespace Aerospike.Client
 
 			try
 			{
-				var client = new KVS.KVS.KVSClient(channel);
+				var client = new KVS.KVS.KVSClient(callInvoker);
 				deadline = DateTime.UtcNow.AddMilliseconds(totalTimeout);
 				var response = await client.ExistsAsync(request, deadline: deadline, cancellationToken: token);
 				var conn = new ConnectionProxy(response);
