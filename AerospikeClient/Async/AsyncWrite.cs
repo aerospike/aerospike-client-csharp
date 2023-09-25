@@ -77,6 +77,7 @@ namespace Aerospike.Client
 
 		protected internal override void WriteBuffer()
 		{
+			SizeBuffer();
 			WriteBuffer(dataBuffer);
 		}
 
