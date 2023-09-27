@@ -107,12 +107,25 @@ namespace Aerospike.Client
 
 		protected internal sealed override int SizeBuffer()
 		{
-			return 1;
+			if (Buffer.DataBuffer == null && Buffer.Offset > 0)
+			{
+				Buffer.Resize(Buffer.Offset);
+			}
+			else if (Buffer.DataBuffer != null && Buffer.Offset > Buffer.DataBuffer.Length)
+			{
+				Buffer.Resize(Buffer.Offset);
+			}
+			
+			Buffer.Offset = 0;
+			return Buffer.DataBuffer.Length;
 		}
 
 		protected internal void SizeBuffer(int size)
 		{
-			return;
+			if (size > Buffer.DataBuffer.Length)
+			{
+				Buffer.Resize(size);
+			}
 		}
 
 		protected internal sealed override void End()
@@ -124,7 +137,7 @@ namespace Aerospike.Client
 
 		protected internal sealed override void SetLength(int length)
 		{
-			dataOffset = length;
+			Buffer.Offset = length;
 		}
 
 		protected internal virtual void ParseResult(IConnection conn)
@@ -1461,22 +1474,17 @@ namespace Aerospike.Client
 		// Scan
 		//--------------------------------------------------
 
-		public override void SetScan
+		public void SetScan
 		(
-			Cluster cluster,
 			ScanPolicy policy,
 			string ns,
 			string setName,
 			string[] binNames,
-			ulong taskId,
-			NodePartitions nodePartitions
+			ulong taskId
 		)
 		{
 			Begin();
 			int fieldCount = 0;
-			int partsFullSize = nodePartitions == null ? 0 : nodePartitions.partsFull.Count * 2;
-			int partsPartialSize = nodePartitions == null ? 0 : nodePartitions.partsPartial.Count * 20;
-			long maxRecords = nodePartitions == null ? 0 : nodePartitions.recordMax;
 
 			if (ns != null)
 			{
@@ -1487,24 +1495,6 @@ namespace Aerospike.Client
 			if (setName != null)
 			{
 				Buffer.Offset += ByteUtil.EstimateSizeUtf8(setName) + FIELD_HEADER_SIZE;
-				fieldCount++;
-			}
-
-			if (partsFullSize > 0)
-			{
-				Buffer.Offset += partsFullSize + FIELD_HEADER_SIZE;
-				fieldCount++;
-			}
-
-			if (partsPartialSize > 0)
-			{
-				Buffer.Offset += partsPartialSize + FIELD_HEADER_SIZE;
-				fieldCount++;
-			}
-
-			if (maxRecords > 0)
-			{
-				Buffer.Offset += 8 + FIELD_HEADER_SIZE;
 				fieldCount++;
 			}
 
@@ -1545,7 +1535,7 @@ namespace Aerospike.Client
 			}
 
 			// Clusters that support partition queries also support not sending partition done messages.
-			int infoAttr = (cluster != null && cluster.hasPartitionQuery) ? Command.INFO3_PARTITION_DONE : 0;
+			int infoAttr = 0;
 			int operationCount = (binNames == null) ? 0 : binNames.Length;
 			WriteHeaderRead(policy, totalTimeout, readAttr, infoAttr, fieldCount, operationCount);
 
@@ -1557,32 +1547,6 @@ namespace Aerospike.Client
 			if (setName != null)
 			{
 				WriteField(setName, FieldType.TABLE);
-			}
-
-			if (partsFullSize > 0)
-			{
-				WriteFieldHeader(partsFullSize, FieldType.PID_ARRAY);
-
-				foreach (PartitionStatus part in nodePartitions.partsFull)
-				{
-					ByteUtil.ShortToLittleBytes((ushort)part.id, Buffer.DataBuffer, Buffer.Offset);
-					Buffer.Offset += 2;
-				}
-			}
-
-			if (partsPartialSize > 0)
-			{
-				WriteFieldHeader(partsPartialSize, FieldType.DIGEST_ARRAY);
-
-				foreach (PartitionStatus part in nodePartitions.partsPartial) {
-					Array.Copy(part.digest, 0, Buffer.DataBuffer, Buffer.Offset, 20); 
-					Buffer.Offset += 20;
-				}
-			}
-
-			if (maxRecords > 0)
-			{
-				WriteField((ulong)maxRecords, FieldType.MAX_RECORDS);
 			}
 
 			if (policy.recordsPerSecond > 0)
@@ -2452,7 +2416,7 @@ namespace Aerospike.Client
 			Buffer.DataBuffer[Buffer.Offset++] = (byte)type;
 		}
 
-		internal void WriteExpHeader(int size)
+		internal override void WriteExpHeader(int size)
 		{
 			WriteFieldHeader(size, FieldType.FILTER_EXP);
 		}
@@ -2471,6 +2435,7 @@ namespace Aerospike.Client
 				// Normal Buffer in async mode is from Buffer pool that is used to
 				// minimize memory pinning during socket operations.
 				//Buffer = new byte[Buffer.Offset];
+				Buffer.Resize(Buffer.Offset);
 				Buffer.Offset = 0;
 				return true;
 			}

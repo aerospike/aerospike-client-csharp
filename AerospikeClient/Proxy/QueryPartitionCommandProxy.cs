@@ -58,7 +58,7 @@ namespace Aerospike.Client
 
 		protected internal override void WriteBuffer()
 		{
-			SetQuery(null, policy, statement, statement.taskId, false, null);
+			SetQuery(policy, statement, statement.taskId, false, null);
 		}
 
 		protected internal override bool ParseRow()
@@ -133,11 +133,7 @@ namespace Aerospike.Client
 			}
 			catch (EndOfGRPCStream)
 			{
-				//if (tracker.IsComplete(cluster, policy))
-				//{
-				// All partitions received.
 				recordSet.Put(RecordSet.END);
-				//}
 			}
 			catch (RpcException e)
 			{

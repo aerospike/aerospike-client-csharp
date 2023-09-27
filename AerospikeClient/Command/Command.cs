@@ -77,8 +77,8 @@ namespace Aerospike.Client
 		public const ulong AS_MSG_TYPE = 3UL;
 		public const ulong MSG_TYPE_COMPRESSED = 4UL;
 
-		public byte[] dataBuffer;
-		public int dataOffset;
+		internal byte[] dataBuffer;
+		internal int dataOffset;
 		internal readonly int maxRetries;
 		internal readonly int serverTimeout;
 		internal int socketTimeout;
@@ -1224,9 +1224,9 @@ namespace Aerospike.Client
 		{
 			Begin();
 			int fieldCount = 0;
-			int partsFullSize = nodePartitions == null ? 0 : nodePartitions.partsFull.Count * 2;
-			int partsPartialSize = nodePartitions == null ? 0 : nodePartitions.partsPartial.Count * 20;
-			long maxRecords = nodePartitions == null ? 0 : nodePartitions.recordMax;
+			int partsFullSize = nodePartitions.partsFull.Count * 2;
+			int partsPartialSize = nodePartitions.partsPartial.Count * 20;
+			long maxRecords = nodePartitions.recordMax;
 
 			if (ns != null)
 			{
@@ -1295,7 +1295,7 @@ namespace Aerospike.Client
 			}
 
 			// Clusters that support partition queries also support not sending partition done messages.
-			int infoAttr = (cluster != null && cluster.hasPartitionQuery) ? Command.INFO3_PARTITION_DONE : 0;
+			int infoAttr = cluster.hasPartitionQuery ? Command.INFO3_PARTITION_DONE : 0;
 			int operationCount = (binNames == null) ? 0 : binNames.Length;
 			WriteHeaderRead(policy, totalTimeout, readAttr, infoAttr, fieldCount, operationCount);
 
@@ -1379,8 +1379,7 @@ namespace Aerospike.Client
 			int fieldCount = 0;
 			int filterSize = 0;
 			int binNameSize = 0;
-			bool isNew = false; 
-			if (cluster != null) isNew =  cluster.hasPartitionQuery;
+			bool isNew = cluster.hasPartitionQuery;
 
 			Begin();
 
@@ -2204,7 +2203,7 @@ namespace Aerospike.Client
 			dataBuffer[dataOffset++] = (byte)type;
 		}
 
-		internal virtual void WriteExpHeader(int size, byte[] dataBuffer)
+		internal virtual void WriteExpHeader(int size)
 		{
 			WriteFieldHeader(size, FieldType.FILTER_EXP);
 		}

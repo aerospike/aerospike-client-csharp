@@ -28,10 +28,22 @@ namespace Aerospike.Client
 		public byte[] DataBuffer { get; set; }
 		public int Offset;
 
+		public Buffer()
+		{
+			DataBuffer = null;
+			Offset = 0;
+		}
+
 		public Buffer(int length)
 		{
 			DataBuffer = new byte[length];
 			Offset = 0;
+		}
+
+		public void Resize(int length)
+		{
+			DataBuffer = new byte[length]; 
+			// TODO: max buffer size?
 		}
 	}
 }

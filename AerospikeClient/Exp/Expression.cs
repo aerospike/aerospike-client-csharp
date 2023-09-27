@@ -93,7 +93,7 @@ namespace Aerospike.Client
 		/// </summary>
 		public void Write(Command cmd)
 		{
-			cmd.WriteExpHeader(bytes.Length, cmd.dataBuffer);
+			cmd.WriteExpHeader(bytes.Length);
 			Array.Copy(bytes, 0, cmd.dataBuffer, cmd.dataOffset, bytes.Length);
 			cmd.dataOffset += bytes.Length;
 		}
@@ -104,7 +104,7 @@ namespace Aerospike.Client
 		/// </summary>
 		public void Write(Command cmd, Buffer buffer)
 		{
-			cmd.WriteExpHeader(bytes.Length, buffer.DataBuffer);
+			cmd.WriteExpHeader(bytes.Length);
 			Array.Copy(bytes, 0, buffer.DataBuffer, buffer.Offset, bytes.Length);
 			buffer.Offset += bytes.Length;
 		}

@@ -79,7 +79,7 @@ namespace Aerospike.Client
 
 			if (type == Command.AS_MSG_TYPE)
 			{
-				dataOffset = 5;
+				Buffer.Offset = 5;
 			}
 			else if (type == Command.MSG_TYPE_COMPRESSED)
 			{

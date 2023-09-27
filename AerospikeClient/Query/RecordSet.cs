@@ -100,7 +100,7 @@ namespace Aerospike.Client
 			// Check if more records are available.
 			if (record != END)
 			{
-				if (queue.TryTake(out record) && record != END)
+				if (queue.TryTake(out record) && record != END && executor != null)
 				{
 					// Some query threads may still be running. Stop these threads.
 					executor.StopThreads(new AerospikeException.QueryTerminated());

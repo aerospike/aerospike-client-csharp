@@ -675,7 +675,7 @@ namespace Aerospike.Client
 		/// <param name="statement">query definition</param>
 		/// <param name="listener">where to send results</param>
 		/// <exception cref="AerospikeException">if query fails</exception>
-		//TODO void Query(QueryPolicy policy, Statement statement, QueryListener listener);
+		void Query(QueryPolicy policy, Statement statement, QueryListener listener);
 
 		/// <summary>
 		/// Execute query for specified partitions and return records via the listener. This method will
