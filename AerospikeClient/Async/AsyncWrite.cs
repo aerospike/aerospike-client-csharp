@@ -15,11 +15,6 @@
  * the License.
  */
 
-using Aerospike.Client.KVS;
-using Google.Protobuf;
-using Grpc.Core;
-using Grpc.Net.Client;
-
 namespace Aerospike.Client
 {
 	public sealed class AsyncWrite : AsyncSingleCommand

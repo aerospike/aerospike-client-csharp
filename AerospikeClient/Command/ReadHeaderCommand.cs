@@ -14,12 +14,6 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using Aerospike.Client.KVS;
-using Google.Protobuf;
-using Grpc.Core;
-using Grpc.Net.Client;
-using System;
-using System.Collections.Generic;
 
 namespace Aerospike.Client
 {
@@ -76,7 +70,7 @@ namespace Aerospike.Client
 				return;
 			}
 
-			throw new AerospikeException(resultCode);	
+			throw new AerospikeException(resultCode);
 		}
 
 		protected internal override bool PrepareRetry(bool timeout)

@@ -14,12 +14,6 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using Aerospike.Client.KVS;
-using Google.Protobuf;
-using Grpc.Core;
-using Grpc.Net.Client;
-using System;
-using System.Collections.Generic;
 
 namespace Aerospike.Client
 {
@@ -27,7 +21,7 @@ namespace Aerospike.Client
 	{
 		private readonly OperateArgs args;
 
-		public OperateCommand(Cluster cluster, Key key, OperateArgs args) 
+		public OperateCommand(Cluster cluster, Key key, OperateArgs args)
 			: base(cluster, args.writePolicy, key, args.GetPartition(cluster, key), true)
 		{
 			this.args = args;

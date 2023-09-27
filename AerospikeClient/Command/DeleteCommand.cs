@@ -14,10 +14,6 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using Aerospike.Client.KVS;
-using Google.Protobuf;
-using Grpc.Core;
-using Grpc.Net.Client;
 
 namespace Aerospike.Client
 {

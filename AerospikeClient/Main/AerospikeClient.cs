@@ -14,12 +14,8 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using System;
-using System.Collections.Generic;
-using System.Text;
 using System.Reflection;
-using System.IO;
-using System.Diagnostics;
+using System.Text;
 
 namespace Aerospike.Client
 {
@@ -126,7 +122,7 @@ namespace Aerospike.Client
 		/// <param name="hostname">host name</param>
 		/// <param name="port">host port</param>
 		/// <exception cref="AerospikeException">if host connection fails</exception>
-		public AerospikeClient(string hostname, int port) 
+		public AerospikeClient(string hostname, int port)
 			: this(new ClientPolicy(), new Host(hostname, port))
 		{
 		}
@@ -151,7 +147,7 @@ namespace Aerospike.Client
 		/// <param name="hostname">host name</param>
 		/// <param name="port">host port</param>
 		/// <exception cref="AerospikeException">if host connection fails</exception>
-		public AerospikeClient(ClientPolicy policy, string hostname, int port) 
+		public AerospikeClient(ClientPolicy policy, string hostname, int port)
 			: this(policy, new Host(hostname, port))
 		{
 		}
@@ -566,7 +562,7 @@ namespace Aerospike.Client
 				throw new AerospikeException.BatchRecordArray(records, e);
 			}
 		}
-		
+
 		/// <summary>
 		/// Remove records in specified namespace/set efficiently.  This method is many orders of magnitude 
 		/// faster than deleting records one at a time.
@@ -723,7 +719,7 @@ namespace Aerospike.Client
 				throw new AerospikeException.BatchExists(existsArray, e);
 			}
 		}
-		
+
 		//-------------------------------------------------------
 		// Read Record Operations
 		//-------------------------------------------------------
@@ -1927,7 +1923,7 @@ namespace Aerospike.Client
 			IndexType indexType
 		)
 		{
-			return CreateIndex(policy, ns, setName, indexName, binName, indexType, IndexCollectionType.DEFAULT);	
+			return CreateIndex(policy, ns, setName, indexName, binName, indexType, IndexCollectionType.DEFAULT);
 		}
 
 		/// <summary>
@@ -2007,7 +2003,7 @@ namespace Aerospike.Client
 			ParseInfoError("Create index failed", response);
 			return null;
 		}
-		
+
 		/// <summary>
 		/// Delete secondary index.
 		/// This asynchronous server call will return before command is complete.

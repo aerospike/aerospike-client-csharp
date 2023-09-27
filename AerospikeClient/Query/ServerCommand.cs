@@ -14,11 +14,6 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using Aerospike.Client.KVS;
-using Google.Protobuf;
-using Grpc.Core;
-using Grpc.Net.Client;
-using static Aerospike.Client.AerospikeException;
 
 namespace Aerospike.Client
 {
@@ -38,7 +33,7 @@ namespace Aerospike.Client
 		{
 			return true;
 		}
-		
+
 		protected internal override void WriteBuffer()
 		{
 			SetQuery(cluster, policy, statement, taskId, true, null);

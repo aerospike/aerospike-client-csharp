@@ -14,14 +14,6 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using Aerospike.Client.KVS;
-using Google.Protobuf;
-using Grpc.Core;
-using Grpc.Net.Client;
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.IO.Compression;
 
 namespace Aerospike.Client
 {
@@ -106,7 +98,7 @@ namespace Aerospike.Client
 			{
 				throw new AerospikeException("Invalid proto type: " + type + " Expected: " + Command.AS_MSG_TYPE);
 			}
-					
+
 			int resultCode = dataBuffer[dataOffset];
 			dataOffset++;
 			int generation = ByteUtil.BytesToInt(dataBuffer, dataOffset);

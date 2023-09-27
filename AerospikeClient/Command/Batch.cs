@@ -14,15 +14,7 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using Aerospike.Client.KVS;
-using Google.Protobuf;
-using Grpc.Core;
-using Grpc.Net.Client;
-using Neo.IronLua;
-using System;
 using System.Collections;
-using System.Collections.Generic;
-using static Aerospike.Client.AerospikeException;
 
 namespace Aerospike.Client
 {
@@ -501,7 +493,7 @@ namespace Aerospike.Client
 			return BatchNode.GenerateList(cluster, batchPolicy, keys, records, sequenceAP, sequenceSC, batch, attr.hasWrite, status);
 		}
 	}
-	
+
 	//-------------------------------------------------------
 	// Batch Base Command
 	//-------------------------------------------------------

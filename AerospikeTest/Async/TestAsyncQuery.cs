@@ -132,7 +132,21 @@ namespace Aerospike.Test
 
 			public void OnSuccess(Key key)
 			{
-				WriteHandlerSuccess(key, count, parent).Wait();
+				int rows = Interlocked.Increment(ref count);
+
+				if (rows == size)
+				{
+					int begin = 26;
+					int end = 34;
+
+					Statement stmt = new Statement();
+					stmt.SetNamespace(args.ns);
+					stmt.SetSetName(args.set);
+					stmt.SetBinNames(binName);
+					stmt.SetFilter(Filter.Range(binName, begin, end));
+
+					client.Query(null, new RecordSequenceHandler(parent), stmt);
+				}
 			}
 
 			public void OnFailure(AerospikeException e)

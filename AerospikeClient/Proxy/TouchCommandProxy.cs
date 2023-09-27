@@ -17,7 +17,6 @@
 using Aerospike.Client.KVS;
 using Google.Protobuf;
 using Grpc.Core;
-using Grpc.Net.Client;
 
 namespace Aerospike.Client
 {
@@ -35,7 +34,7 @@ namespace Aerospike.Client
 		{
 			return true;
 		}
-		
+
 		protected internal override void WriteBuffer()
 		{
 			SetTouch(writePolicy, key);

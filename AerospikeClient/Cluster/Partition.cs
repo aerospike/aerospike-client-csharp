@@ -14,9 +14,6 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using System;
-using System.Collections.Generic;
-using System.Threading;
 
 namespace Aerospike.Client
 {
@@ -24,8 +21,6 @@ namespace Aerospike.Client
 	{
 		public static Partition Write(Cluster cluster, Policy policy, Key key)
 		{
-			if (cluster == null) return null;
-
 			// Must copy hashmap reference for copy on write semantics to work.
 			Dictionary<string, Partitions> map = cluster.partitionMap;
 			Partitions partitions;
@@ -39,8 +34,6 @@ namespace Aerospike.Client
 
 		public static Partition Read(Cluster cluster, Policy policy, Key key)
 		{
-			if (cluster == null) return null;
-
 			// Must copy hashmap reference for copy on write semantics to work.
 			Dictionary<string, Partitions> map = cluster.partitionMap;
 			Partitions partitions;
