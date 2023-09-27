@@ -24,7 +24,7 @@ using static Aerospike.Client.AerospikeException;
 
 namespace Aerospike.Client
 {
-	public sealed class ScanPartitionCommandProxy : MultiCommand
+	public sealed class ScanPartitionCommandProxy : GRPCCommand
 	{
 		private readonly ScanPolicy scanPolicy;
 		private readonly string setName;
@@ -35,6 +35,8 @@ namespace Aerospike.Client
 
 		public ScanPartitionCommandProxy
 		(
+			Buffer buffer,
+			CallInvoker invoker,
 			ScanPolicy scanPolicy,
 			string ns,
 			string setName,
@@ -42,7 +44,7 @@ namespace Aerospike.Client
 			PartitionTracker tracker,
 			PartitionFilter filter,
 			RecordSet recordSet
-		) : base(null, scanPolicy, null, ns, tracker.socketTimeout, tracker.totalTimeout)
+		) : base(buffer, invoker, scanPolicy, tracker.socketTimeout, tracker.totalTimeout)
 		{
 			this.scanPolicy = scanPolicy;
 			this.setName = setName;
@@ -50,6 +52,7 @@ namespace Aerospike.Client
 			this.tracker = tracker;
 			this.partitionFilter = filter;
 			this.recordSet = recordSet;
+			this.ns = ns;
 		}
 
 		protected internal override void WriteBuffer()
@@ -60,7 +63,7 @@ namespace Aerospike.Client
 		protected internal override bool ParseRow()
 		{
 			ulong bval;
-			Key key = ParseKey(fieldCount, dataBuffer, out bval);
+			Key key = ParseKey(fieldCount, out bval);
 
 			if ((info3 & Command.INFO3_PARTITION_DONE) != 0)
 			{
@@ -96,13 +99,13 @@ namespace Aerospike.Client
 			return true;
 		}
 
-		public void ExecuteGRPC(CallInvoker callInvoker)
+		public void Execute()
 		{
 			CancellationToken token = new();
-			ExecuteGRPC(callInvoker, token).Wait();
+			Execute(token).Wait();
 		}
 
-		public async Task ExecuteGRPC(CallInvoker callInvoker, CancellationToken token)
+		public async Task Execute(CancellationToken token)
 		{
 			WriteBuffer();
 			var scanRequest = new ScanRequest
@@ -124,14 +127,14 @@ namespace Aerospike.Client
 			{
 				Id = 0, // ID is only needed in streaming version, can be static for unary
 				Iteration = 1,
-				Payload = ByteString.CopyFrom(dataBuffer, 0, dataOffset),
+				Payload = ByteString.CopyFrom(Buffer.DataBuffer, 0, Buffer.Offset),
 				ScanRequest = scanRequest
 			};
 
 			try
 			{ 
-				var client = new Scan.ScanClient(callInvoker);
-				deadline = DateTime.UtcNow.AddMilliseconds(totalTimeout);
+				var client = new Scan.ScanClient(CallInvoker);
+				var deadline = DateTime.UtcNow.AddMilliseconds(totalTimeout);
 				var stream = client.Scan(request, deadline: deadline, cancellationToken: token);
 				var conn = new ConnectionProxyStream(stream);
 				await ParseResult(conn, token);

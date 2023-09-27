@@ -22,13 +22,13 @@ using static Aerospike.Client.AerospikeException;
 
 namespace Aerospike.Client
 {
-	public sealed class ServerCommand : MultiCommand
+	public sealed class ServerCommandProxy : GRPCCommand
 	{
 		private readonly Statement statement;
 		private readonly ulong taskId;
 
-		public ServerCommand(Cluster cluster, Node node, WritePolicy policy, Statement statement, ulong taskId)
-			: base(cluster, policy, node, false)
+		public ServerCommandProxy(Buffer buffer, CallInvoker invoker, WritePolicy policy, Statement statement, ulong taskId)
+			: base(buffer, invoker, policy)
 		{
 			this.statement = statement;
 			this.taskId = taskId;
@@ -41,7 +41,7 @@ namespace Aerospike.Client
 		
 		protected internal override void WriteBuffer()
 		{
-			SetQuery(cluster, policy, statement, taskId, true, null);
+			SetQuery(policy, statement, taskId, true, null);
 		}
 
 		protected internal override bool ParseRow()
@@ -71,6 +71,51 @@ namespace Aerospike.Client
 				throw new AerospikeException.QueryTerminated();
 			}
 			return true;
+		}
+
+		public void Execute()
+		{
+			CancellationToken token = new();
+			Execute(token).Wait();
+		}
+
+		public async Task Execute(CancellationToken token)
+		{
+			WriteBuffer();
+
+			var execRequest = new BackgroundExecuteRequest
+			{
+				Statement = GRPCConversions.ToGrpc(statement, (long)taskId, statement.maxRecords),
+				WritePolicy = GRPCConversions.ToGrpcExec((WritePolicy)policy)
+			};
+			var request = new AerospikeRequestPayload
+			{
+				Id = 0, // ID is only needed in streaming version, can be static for unary
+				Iteration = 1,
+				Payload = ByteString.CopyFrom(Buffer.DataBuffer, 0, Buffer.Offset),
+				BackgroundExecuteRequest = execRequest,
+			};
+			
+			try
+			{ 
+				var client = new KVS.Query.QueryClient(CallInvoker);
+				var deadline = DateTime.UtcNow.AddMilliseconds(totalTimeout);
+				var stream = client.BackgroundExecute(request, deadline: deadline, cancellationToken: token);
+				var conn = new ConnectionProxyStream(stream);
+				await ParseResult(conn, token);
+			}
+			catch (EndOfGRPCStream)
+			{
+				// continue
+			}
+			catch (RpcException e)
+			{
+				throw GRPCConversions.ToAerospikeException(e, totalTimeout, true);
+			}
+			catch (Exception e)
+			{
+
+			}
 		}
 	}
 }

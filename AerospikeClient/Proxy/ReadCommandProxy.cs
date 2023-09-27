@@ -25,44 +25,27 @@ using System.IO.Compression;
 
 namespace Aerospike.Client
 {
-	public class ReadCommand : SyncCommand
+	public class ReadCommandProxy : GRPCCommand
 	{
-		protected readonly Key key;
-		protected readonly Partition partition;
 		private readonly string[] binNames;
-		private readonly bool isOperation;
 		private Record record;
 
-		public ReadCommand(Cluster cluster, Policy policy, Key key)
-			: base(cluster, policy)
+		public ReadCommandProxy(Buffer buffer, CallInvoker invoker, Policy policy, Key key)
+			: base(buffer, invoker, policy, key)
 		{
-			this.key = key;
 			this.binNames = null;
-			this.partition = Partition.Read(cluster, policy, key);
-			this.isOperation = false;
 		}
 
-		public ReadCommand(Cluster cluster, Policy policy, Key key, String[] binNames)
-			: base(cluster, policy)
+		public ReadCommandProxy(Buffer buffer, CallInvoker invoker, Policy policy, Key key, String[] binNames)
+			: base(buffer, invoker, policy, key)
 		{
-			this.key = key;
 			this.binNames = binNames;
-			this.partition = Partition.Read(cluster, policy, key);
-			this.isOperation = false;
 		}
 
-		public ReadCommand(Cluster cluster, Policy policy, Key key, Partition partition, bool isOperation)
-			: base(cluster, policy)
+		public ReadCommandProxy(Buffer buffer, CallInvoker invoker, Policy policy, Key key, bool isOperation)
+			: base(buffer, invoker, policy, key, isOperation)
 		{
-			this.key = key;
 			this.binNames = null;
-			this.partition = partition;
-			this.isOperation = isOperation;
-		}
-
-		protected internal override Node GetNode()
-		{
-			return partition.GetNodeRead(cluster);
 		}
 
 		protected internal override void WriteBuffer()
@@ -70,12 +53,17 @@ namespace Aerospike.Client
 			SetRead(policy, key, binNames);
 		}
 
+		protected internal override bool ParseRow()
+		{
+			throw new AerospikeException(NotSupported + "ParseRow");
+		}
+
 		protected internal override void ParseResult(IConnection conn)
 		{
 			// Read header.		
-			conn.ReadFully(dataBuffer, 8);
+			conn.ReadFully(Buffer.DataBuffer, 8);
 
-			long sz = ByteUtil.BytesToLong(dataBuffer, 0);
+			long sz = ByteUtil.BytesToLong(Buffer.DataBuffer, 0);
 			int receiveSize = (int)(sz & 0xFFFFFFFFFFFFL);
 
 			if (receiveSize <= 0)
@@ -84,7 +72,7 @@ namespace Aerospike.Client
 			}
 
 			SizeBuffer(receiveSize);
-			conn.ReadFully(dataBuffer, receiveSize);
+			conn.ReadFully(Buffer.DataBuffer, receiveSize);
 			conn.UpdateLastUsed();
 
 			ulong type = (ulong)((sz >> 48) & 0xff);
@@ -95,28 +83,28 @@ namespace Aerospike.Client
 			}
 			else if (type == Command.MSG_TYPE_COMPRESSED)
 			{
-				int usize = (int)ByteUtil.BytesToLong(dataBuffer, 0);
+				int usize = (int)ByteUtil.BytesToLong(Buffer.DataBuffer, 0);
 				byte[] ubuf = new byte[usize];
 
-				ByteUtil.Decompress(dataBuffer, 8, receiveSize, ubuf, usize);
-				dataBuffer = ubuf;
-				dataOffset = 13;
+				ByteUtil.Decompress(Buffer.DataBuffer, 8, receiveSize, ubuf, usize);
+				Buffer.DataBuffer = ubuf;
+				Buffer.Offset = 13;
 			}
 			else
 			{
 				throw new AerospikeException("Invalid proto type: " + type + " Expected: " + Command.AS_MSG_TYPE);
 			}
 					
-			int resultCode = dataBuffer[dataOffset];
-			dataOffset++;
-			int generation = ByteUtil.BytesToInt(dataBuffer, dataOffset);
-			dataOffset += 4;
-			int expiration = ByteUtil.BytesToInt(dataBuffer, dataOffset);
-			dataOffset += 8;
-			int fieldCount = ByteUtil.BytesToShort(dataBuffer, dataOffset);
-			dataOffset += 2;
-			int opCount = ByteUtil.BytesToShort(dataBuffer, dataOffset);
-			dataOffset += 2;
+			int resultCode = Buffer.DataBuffer[Buffer.Offset];
+			Buffer.Offset++;
+			int generation = ByteUtil.BytesToInt(Buffer.DataBuffer, Buffer.Offset);
+			Buffer.Offset += 4;
+			int expiration = ByteUtil.BytesToInt(Buffer.DataBuffer, Buffer.Offset);
+			Buffer.Offset += 8;
+			int fieldCount = ByteUtil.BytesToShort(Buffer.DataBuffer, Buffer.Offset);
+			Buffer.Offset += 2;
+			int opCount = ByteUtil.BytesToShort(Buffer.DataBuffer, Buffer.Offset);
+			Buffer.Offset += 2;
 
 			if (resultCode == 0)
 			{
@@ -127,7 +115,7 @@ namespace Aerospike.Client
 					return;
 				}
 				SkipKey(fieldCount);
-				record = policy.recordParser.ParseRecord(dataBuffer, ref dataOffset, opCount, generation, expiration, isOperation);
+				record = policy.recordParser.ParseRecord(Buffer.DataBuffer, ref Buffer.Offset, opCount, generation, expiration, isOperation);
 				return;
 			}
 
@@ -149,18 +137,12 @@ namespace Aerospike.Client
 			if (resultCode == ResultCode.UDF_BAD_RESPONSE)
 			{
 				SkipKey(fieldCount);
-				record = policy.recordParser.ParseRecord(dataBuffer, ref dataOffset, opCount, generation, expiration, isOperation);
+				record = policy.recordParser.ParseRecord(Buffer.DataBuffer, ref Buffer.Offset, opCount, generation, expiration, isOperation);
 				HandleUdfError(resultCode);
 				return;
 			}
 
 			throw new AerospikeException(resultCode);
-		}
-
-		protected internal override bool PrepareRetry(bool timeout)
-		{
-			partition.PrepareRetryRead(timeout);
-			return true;
 		}
 
 		protected internal virtual void HandleNotFound(int resultCode)
@@ -202,6 +184,50 @@ namespace Aerospike.Client
 			{
 				return record;
 			}
+		}
+
+		public virtual void Execute()
+		{
+			WriteBuffer();
+			var request = new AerospikeRequestPayload
+			{
+				Id = 0, // ID is only needed in streaming version, can be static for unary
+				Iteration = 1,
+				Payload = ByteString.CopyFrom(Buffer.DataBuffer, 0, Buffer.Offset)
+			};
+			GRPCConversions.SetRequestPolicy(policy, request);
+
+			try
+			{
+				var client = new KVS.KVS.KVSClient(CallInvoker);
+				var deadline = DateTime.UtcNow.AddMilliseconds(totalTimeout);
+				var response = client.Read(request, deadline: deadline);
+				var conn = new ConnectionProxy(response);
+				ParseResult(conn);
+			}
+			catch (RpcException e)
+			{
+				throw GRPCConversions.ToAerospikeException(e, totalTimeout, true);
+			}
+		}
+
+		public virtual async Task<Record> Execute(CancellationToken token)
+		{
+			WriteBuffer();
+			var request = new AerospikeRequestPayload
+			{
+				Id = 0, // ID is only needed in streaming version, can be static for unary
+				Iteration = 1,
+				Payload = ByteString.CopyFrom(Buffer.DataBuffer, 0, Buffer.Offset)
+			};
+			GRPCConversions.SetRequestPolicy(policy, request);
+
+			var client = new KVS.KVS.KVSClient(CallInvoker);
+			var deadline = DateTime.UtcNow.AddMilliseconds(totalTimeout);
+			var response = await client.ReadAsync(request, deadline: deadline, cancellationToken: token);
+			var conn = new ConnectionProxy(response);
+			ParseResult(conn);
+			return record;
 		}
 	}
 }

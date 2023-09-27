@@ -94,49 +94,5 @@ namespace Aerospike.Client
 		{
 			return existed;
 		}
-
-		public void ExecuteGRPC(CallInvoker callInvoker)
-		{
-			WriteBuffer();
-			var request = new AerospikeRequestPayload
-			{
-				Id = 0, // ID is only needed in streaming version, can be static for unary
-				Iteration = 1,
-				Payload = ByteString.CopyFrom(dataBuffer, 0, dataOffset)
-			};
-			GRPCConversions.SetRequestPolicy(writePolicy, request);
-
-			try
-			{ 
-				var KVS = new KVS.KVS.KVSClient(callInvoker);
-				deadline = DateTime.UtcNow.AddMilliseconds(totalTimeout);
-				var response = KVS.Delete(request, deadline: deadline);
-				var conn = new ConnectionProxy(response);
-				ParseResult(conn);
-			}
-			catch (RpcException e)
-			{
-				throw GRPCConversions.ToAerospikeException(e, totalTimeout, true);
-			}
-		}
-
-		public async Task<bool> ExecuteGRPC(CallInvoker callInvoker, CancellationToken token)
-		{
-			WriteBuffer();
-			var request = new AerospikeRequestPayload
-			{
-				Id = 0, // ID is only needed in streaming version, can be static for unary
-				Iteration = 1,
-				Payload = ByteString.CopyFrom(dataBuffer, 0, dataOffset)
-			};
-			GRPCConversions.SetRequestPolicy(writePolicy, request);
-
-			var client = new KVS.KVS.KVSClient(callInvoker);
-			deadline = DateTime.UtcNow.AddMilliseconds(totalTimeout);
-			var response = await client.DeleteAsync(request, deadline: deadline, cancellationToken: token);
-			var conn = new ConnectionProxy(response);
-			ParseResult(conn);
-			return existed;
-		}
 	}
 }

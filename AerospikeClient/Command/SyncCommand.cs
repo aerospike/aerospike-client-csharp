@@ -274,14 +274,9 @@ namespace Aerospike.Client
 
 		protected internal sealed override void End()
 		{
-			End(dataBuffer);
-		}
-
-		protected internal sealed override void End(byte[] buffer)
-		{
 			// Write total size of message.
 			ulong size = ((ulong)dataOffset - 8) | (CL_MSG_VERSION << 56) | (AS_MSG_TYPE << 48);
-			ByteUtil.LongToBytes(size, buffer, 0);
+			ByteUtil.LongToBytes(size, dataBuffer, 0);
 		}
 
 		protected internal sealed override void SetLength(int length)

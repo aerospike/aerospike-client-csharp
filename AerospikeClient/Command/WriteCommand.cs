@@ -52,28 +52,16 @@ namespace Aerospike.Client
 
 		protected internal override void WriteBuffer()
 		{
-			SizeBuffer();
-			WriteBuffer(dataBuffer);
-		}
-
-
-		internal void WriteBuffer(byte[] buffer)
-		{
-			SetWrite(writePolicy, operation, key, bins, buffer);
+			SetWrite(writePolicy, operation, key, bins);
 		}
 
 		protected internal override void ParseResult(IConnection conn)
 		{
-			ParseResult(conn, dataBuffer);
-		}
-
-		internal void ParseResult(IConnection conn, byte[] buffer)
-		{
 			// Read header.		
-			conn.ReadFully(buffer, MSG_TOTAL_HEADER_SIZE);
+			conn.ReadFully(dataBuffer, MSG_TOTAL_HEADER_SIZE);
 			conn.UpdateLastUsed();
 
-			int resultCode = buffer[13];
+			int resultCode = dataBuffer[13];
 
 			if (resultCode == 0)
 			{
@@ -96,59 +84,6 @@ namespace Aerospike.Client
 		{
 			partition.PrepareRetryWrite(timeout);
 			return true;
-		}
-
-		public void ExecuteGRPC(CallInvoker callInvoker)
-		{
-			WriteBuffer();
-			var request = new AerospikeRequestPayload
-			{
-				Id = 0, // ID is only needed in streaming version, can be static for unary
-				Iteration = 1,
-				Payload = ByteString.CopyFrom(dataBuffer, 0, dataOffset)
-			};
-			GRPCConversions.SetRequestPolicy(writePolicy, request);
-
-			try 
-			{ 
-				var client = new KVS.KVS.KVSClient(callInvoker);
-				deadline = DateTime.UtcNow.AddMilliseconds(totalTimeout);
-				var response = client.Write(request, deadline: deadline);
-				var conn = new ConnectionProxy(response);
-				ParseResult(conn);
-			}
-			catch (RpcException e) 
-			{
-				throw GRPCConversions.ToAerospikeException(e, totalTimeout, true);
-			}
-			
-		}
-
-		public async Task ExecuteGRPC(CallInvoker callInvoker, byte[] buffer, CancellationToken token)
-		{
-			//Debugger.Launch();
-			dataOffset = 0;
-			WriteBuffer(buffer);
-			var request = new AerospikeRequestPayload
-			{
-				Id = 0, // ID is only needed in streaming version, can be static for unary
-				Iteration = 1,
-				Payload = ByteString.CopyFrom(buffer, 0, dataOffset)
-			};
-			GRPCConversions.SetRequestPolicy(writePolicy, request);
-
-			try 
-			{ 
-				var client = new KVS.KVS.KVSClient(callInvoker);
-				deadline = DateTime.UtcNow.AddMilliseconds(totalTimeout);
-				var response = await client.WriteAsync(request, cancellationToken: token, deadline: deadline);
-				var conn = new ConnectionProxy(response);
-				ParseResult(conn, buffer);
-			}
-			catch (RpcException e)
-			{
-				throw GRPCConversions.ToAerospikeException(e, totalTimeout, true);
-			}
 		}
 	}
 }

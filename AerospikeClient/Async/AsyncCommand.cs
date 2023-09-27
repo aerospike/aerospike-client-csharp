@@ -302,11 +302,6 @@ namespace Aerospike.Client
 
 		protected internal sealed override void End()
 		{
-			End(dataBuffer);
-		}
-
-		protected internal sealed override void End(byte[] buffer)
-		{
 			// Write total size of message.
 			int length = dataOffset - segment.offset;
 
@@ -320,7 +315,7 @@ namespace Aerospike.Client
 			dataOffset = segment.offset;
 
 			ulong size = ((ulong)length - 8) | (CL_MSG_VERSION << 56) | (AS_MSG_TYPE << 48);
-			ByteUtil.LongToBytes(size, buffer, segment.offset);
+			ByteUtil.LongToBytes(size, dataBuffer, segment.offset);
 		}
 
 		protected internal sealed override void SetLength(int length)

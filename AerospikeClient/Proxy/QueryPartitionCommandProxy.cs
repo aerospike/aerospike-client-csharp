@@ -24,7 +24,7 @@ using static Aerospike.Client.AerospikeException;
 
 namespace Aerospike.Client
 {
-	public class QueryPartitionCommandProxy : MultiCommand
+	public class QueryPartitionCommandProxy : GRPCCommand
 	{
 		private new QueryPolicy policy;
 		private WritePolicy writePolicy;
@@ -36,6 +36,8 @@ namespace Aerospike.Client
 
 		public QueryPartitionCommandProxy
 		(
+			Buffer buffer, 
+			CallInvoker invoker,
 			QueryPolicy policy,
 			WritePolicy writePolicy,
 			Statement statement,
@@ -43,7 +45,7 @@ namespace Aerospike.Client
 			PartitionTracker partitionTracker,
 			PartitionFilter partitionFilter,
 			RecordSet recordSet
-		) : base(null, policy, null, true)
+		) : base(buffer, invoker, policy, true)
 		{
 			this.policy = policy;
 			this.writePolicy = writePolicy;
@@ -62,7 +64,7 @@ namespace Aerospike.Client
 		protected internal override bool ParseRow()
 		{
 			ulong bval;
-			Key key = ParseKey(fieldCount, dataBuffer, out bval);
+			Key key = ParseKey(fieldCount, out bval);
 
 			if ((info3 & Command.INFO3_PARTITION_DONE) != 0)
 			{
@@ -98,13 +100,13 @@ namespace Aerospike.Client
 			return true;
 		}
 
-		public void ExecuteGRPC(CallInvoker callInvoker)
+		public void Execute()
 		{
 			CancellationToken token = new();
-			ExecuteGRPC(callInvoker, token).Wait();
+			Execute(token).Wait();
 		}
 
-		public async Task ExecuteGRPC(CallInvoker callInvoker, CancellationToken token)
+		public async Task Execute(CancellationToken token)
 		{
 			WriteBuffer();
 			var queryRequest = new QueryRequest
@@ -117,14 +119,14 @@ namespace Aerospike.Client
 			{
 				Id = 0, // ID is only needed in streaming version, can be static for unary
 				Iteration = 1,
-				Payload = ByteString.CopyFrom(dataBuffer, 0, dataOffset),
+				Payload = ByteString.CopyFrom(Buffer.DataBuffer, 0, Buffer.Offset),
 				QueryRequest = queryRequest
 			};
 
 			try
 			{ 
-				var client = new KVS.Query.QueryClient(callInvoker);
-				deadline = DateTime.UtcNow.AddMilliseconds(totalTimeout);
+				var client = new KVS.Query.QueryClient(CallInvoker);
+				var deadline = DateTime.UtcNow.AddMilliseconds(totalTimeout);
 				var stream = client.Query(request, deadline: deadline, cancellationToken: token);
 				var conn = new ConnectionProxyStream(stream);
 				await ParseResult(conn, token);

@@ -77,13 +77,7 @@ namespace Aerospike.Client
 
 		protected internal override void WriteBuffer()
 		{
-			SizeBuffer();
-			WriteBuffer(dataBuffer);
-		}
-
-		internal void WriteBuffer(byte[] buffer)
-		{
-			SetWrite(writePolicy, operation, key, bins, buffer);
+			SetWrite(writePolicy, operation, key, bins);
 		}
 
 		protected internal override void ParseResult()
@@ -126,31 +120,6 @@ namespace Aerospike.Client
 			if (listener != null)
 			{
 				listener.OnFailure(e);
-			}
-		}
-
-		public async Task ExecuteGRPC(GrpcChannel channel, CancellationToken token)
-		{
-			WriteBuffer();
-			var request = new AerospikeRequestPayload
-			{
-				Id = 0, // ID is only needed in streaming version, can be static for unary
-				Iteration = 1,
-				Payload = ByteString.CopyFrom(dataBuffer, 0, dataOffset)
-			};
-			GRPCConversions.SetRequestPolicy(writePolicy, request);
-
-			try
-			{
-				var client = new KVS.KVS.KVSClient(channel);
-				var deadline = DateTime.UtcNow.AddMilliseconds(totalTimeout);
-				var response = await client.WriteAsync(request, cancellationToken: token, deadline: deadline);
-				var conn = new ConnectionProxy(response);
-				//ParseResult(conn);
-			}
-			catch (RpcException e)
-			{
-				throw GRPCConversions.ToAerospikeException(e, totalTimeout, true);
 			}
 		}
 	}

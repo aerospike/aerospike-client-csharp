@@ -44,8 +44,6 @@ namespace Aerospike.Client
 	/// </summary>
 	public class AsyncClientProxy : AerospikeClientProxy, IAsyncClient
 	{
-		private readonly GrpcBufferPool grpcBufferPool;
-
 		//-------------------------------------------------------
 		// Constructors
 		//-------------------------------------------------------
@@ -124,8 +122,6 @@ namespace Aerospike.Client
 			: base(policy, hosts)
 		{
 			policy ??= new AsyncClientPolicy();
-			var bufferPool = new BufferPool(policy.asyncMaxCommands, policy.asyncBufferSize);
-			grpcBufferPool = new GrpcBufferPool(policy, bufferPool);
 		}
 
 		//-------------------------------------------------------
@@ -147,9 +143,9 @@ namespace Aerospike.Client
 		public async Task Put(WritePolicy policy, CancellationToken token, Key key, params Bin[] bins)
 		{
 			policy ??= writePolicyDefault;
-			var buffer = new byte[8192];
-			WriteCommand command = new(null, policy, key, bins, Operation.Type.WRITE);
-			await command.ExecuteGRPC(callInvoker, buffer, token);
+			var buffer = new Buffer(8192);
+			WriteCommandProxy command = new(buffer, callInvoker, policy, key, bins, Operation.Type.WRITE);
+			await command.Execute(token);
 		}
 
 		/// <summary>
@@ -185,9 +181,9 @@ namespace Aerospike.Client
 		public async Task Append(WritePolicy policy, CancellationToken token, Key key, params Bin[] bins)
 		{
 			policy ??= writePolicyDefault;
-			var buffer = new byte[8192];
-			WriteCommand command = new(null, policy, key, bins, Operation.Type.APPEND);
-			await command.ExecuteGRPC(callInvoker, buffer, token);
+			var buffer = new Buffer(8192);
+			WriteCommandProxy command = new(buffer, callInvoker, policy, key, bins, Operation.Type.APPEND);
+			await command.Execute(token);
 		}
 
 		/// <summary>
@@ -219,9 +215,9 @@ namespace Aerospike.Client
 		public async Task Prepend(WritePolicy policy, CancellationToken token, Key key, params Bin[] bins)
 		{
 			policy ??= writePolicyDefault;
-			var buffer = new byte[8192];
-			WriteCommand command = new(null, policy, key, bins, Operation.Type.PREPEND);
-			await command.ExecuteGRPC(callInvoker, buffer, token);
+			var buffer = new Buffer(8192);
+			WriteCommandProxy command = new(buffer, callInvoker, policy, key, bins, Operation.Type.PREPEND);
+			await command.Execute(token);
 		}
 
 		/// <summary>
@@ -256,9 +252,9 @@ namespace Aerospike.Client
 		public async Task Add(WritePolicy policy, CancellationToken token, Key key, params Bin[] bins)
 		{
 			policy ??= writePolicyDefault;
-			var buffer = new byte[8192];
-			WriteCommand command = new(null, policy, key, bins, Operation.Type.ADD);
-			await command.ExecuteGRPC(callInvoker, buffer, token);
+			var buffer = new Buffer(8192);
+			WriteCommandProxy command = new(buffer, callInvoker, policy, key, bins, Operation.Type.ADD);
+			await command.Execute(token);
 		}
 
 		/// <summary>
@@ -288,8 +284,9 @@ namespace Aerospike.Client
 		public async Task<bool> Delete(WritePolicy policy, CancellationToken token, Key key)
 		{
 			policy ??= writePolicyDefault;
-			DeleteCommand command = new(null, policy, key);
-			return await command.ExecuteGRPC(callInvoker, token);
+			Buffer buffer = new(8192);
+			DeleteCommandProxy command = new(buffer, callInvoker, policy, key);
+			return await command.Execute(token);
 		}
 
 		/// <summary>
@@ -387,8 +384,9 @@ namespace Aerospike.Client
 		public async Task Touch(WritePolicy policy, CancellationToken token, Key key)
 		{
 			policy ??= writePolicyDefault;
-			TouchCommand command = new(null, policy, key);
-			await command.ExecuteGRPC(callInvoker, token);
+			Buffer buffer = new(8192);
+			TouchCommandProxy command = new(buffer, callInvoker, policy, key);
+			await command.Execute(token);
 		}
 
 		/// <summary>
@@ -417,8 +415,9 @@ namespace Aerospike.Client
 		public async Task<bool> Exists(Policy policy, CancellationToken token, Key key)
 		{
 			policy ??= readPolicyDefault;
-			ExistsCommand command = new(null, policy, key);
-			return await command.ExecuteGRPC(callInvoker, token);
+			Buffer buffer = new(8192);
+			ExistsCommandProxy command = new(buffer, callInvoker, policy, key);
+			return await command.Execute(token);
 		}
 
 		/// <summary>
@@ -512,8 +511,9 @@ namespace Aerospike.Client
 		public async Task<Record> Get(Policy policy, CancellationToken token, Key key)
 		{
 			policy ??= readPolicyDefault;
-			ReadCommand command = new(null, policy, key);
-			return await command.ExecuteGRPC(callInvoker, token);
+			Buffer buffer = new(8192);
+			ReadCommandProxy command = new(buffer, callInvoker, policy, key);
+			return await command.Execute(token);
 		}
 
 		/// <summary>
@@ -539,8 +539,9 @@ namespace Aerospike.Client
 		public async Task<Record> Get(Policy policy, CancellationToken token, Key key, params string[] binNames)
 		{
 			policy ??= readPolicyDefault;
-			ReadCommand command = new(null, policy, key, binNames);
-			return await command.ExecuteGRPC(callInvoker, token);
+			Buffer buffer = new(8192);
+			ReadCommandProxy command = new(buffer, callInvoker, policy, key, binNames);
+			return await command.Execute(token);
 		}
 
 		/// <summary>
@@ -566,8 +567,9 @@ namespace Aerospike.Client
 		public async Task<Record> GetHeader(Policy policy, CancellationToken token, Key key)
 		{
 			policy ??= readPolicyDefault;
-			ReadHeaderCommand command = new(null, policy, key);
-			return await command.ExecuteGRPC(callInvoker, token);
+			Buffer buffer = new(8192);
+			ReadHeaderCommandProxy command = new(buffer, callInvoker, policy, key);
+			return await command.Execute(token);
 		}
 
 		/// <summary>
@@ -943,8 +945,9 @@ namespace Aerospike.Client
 		public async Task<Record> Operate(WritePolicy policy, CancellationToken token, Key key, params Operation[] ops)
 		{
 			OperateArgs args = new OperateArgs(policy, writePolicyDefault, operatePolicyReadDefault, key, ops);
-			OperateCommand command = new(null, key, args);
-			return await command.ExecuteGRPC(callInvoker, token);
+			Buffer buffer = new(8192);
+			OperateCommandProxy command = new(buffer, callInvoker, key, args);
+			return await command.Execute(token);
 		}
 
 		/// <summary>
@@ -967,9 +970,10 @@ namespace Aerospike.Client
 		private async Task Operate(BatchPolicy policy, BatchRecord[] records, BatchStatus status, CancellationToken token)
 		{
 			policy ??= batchParentPolicyWriteDefault;
+			Buffer buffer = new(8192);
 			BatchNode batch = new(records);
-			BatchOperateListCommand command = new(null, batch, policy, records, status);
-			await command.ExecuteGRPC(callInvoker, token);
+			BatchOperateListCommandProxy command = new(buffer, callInvoker, batch, policy, records, status);
+			await command.Execute(token);
 		}
 
 		/// <summary>
@@ -1045,13 +1049,14 @@ namespace Aerospike.Client
 				records[i] = new BatchRecord(keys[i], attr.hasWrite);
 			}
 
+			Buffer buffer = new(8192);
 			BatchStatus status = new(true);
 			BatchNode batchNode = new(records);
-			BatchOperateArrayCommand command = new(null, batchNode, batchPolicy, keys, ops, records, attr, status);
+			BatchOperateArrayCommandProxy command = new(buffer, callInvoker, batchNode, batchPolicy, keys, ops, records, attr, status);
 
 			try
 			{
-				await command.ExecuteGRPC(callInvoker, token);
+				await command.Execute(token);
 				return new BatchResults(records, status.GetStatus());
 			}
 			catch (Exception e)
@@ -1150,10 +1155,11 @@ namespace Aerospike.Client
 		public async Task<RecordSet> ScanPartitions(ScanPolicy policy, CancellationToken token, PartitionFilter partitionFilter, string ns, string setName, params string[] binNames)
 		{
 			policy ??= scanPolicyDefault;
+			Buffer buffer = new(8192);
 			PartitionTracker tracker = new(policy, null, partitionFilter);
 			RecordSet recordSet = new(null, policy.recordQueueSize, token);
-			ScanPartitionCommandProxy command = new(policy, ns, setName, binNames, tracker, partitionFilter, recordSet);
-			await command.ExecuteGRPC(callInvoker, token);
+			ScanPartitionCommandProxy command = new(buffer, callInvoker, policy, ns, setName, binNames, tracker, partitionFilter, recordSet);
+			await command.Execute(token);
 			return recordSet;
 		}
 
@@ -1174,8 +1180,9 @@ namespace Aerospike.Client
 		public async Task<object> Execute(WritePolicy policy, CancellationToken token, Key key, string packageName, string functionName, params Value[] functionArgs)
 		{
 			policy ??= writePolicyDefault;
-			var command = new ExecuteCommand(null, policy, key, packageName, functionName, functionArgs);
-			await command.ExecuteGRPC(callInvoker, token);
+			Buffer buffer = new(8192);
+			ExecuteCommandProxy command = new(buffer, callInvoker, policy, key, packageName, functionName, functionArgs);
+			await command.Execute(token);
 
 			var record = command.Record;
 
@@ -1385,10 +1392,11 @@ namespace Aerospike.Client
 		)
 		{
 			policy ??= queryPolicyDefault;
+			Buffer buffer = new(8192);
 			PartitionTracker tracker = new(policy, statement, (Node[])null, partitionFilter);
 			RecordSet recordSet = new(null, policy.recordQueueSize, token);
-			QueryPartitionCommandProxy command = new(policy, null, statement, null, tracker, partitionFilter, recordSet);
-			await command.ExecuteGRPC(callInvoker, token);
+			QueryPartitionCommandProxy command = new(buffer, callInvoker, policy, null, statement, null, tracker, partitionFilter, recordSet);
+			await command.Execute(token);
 			return recordSet;
 		}
 	}

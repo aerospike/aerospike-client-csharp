@@ -21,38 +21,17 @@ using System.Threading;
 namespace Aerospike.Client
 {
 	/// <summary>
-	/// 
+	/// Class representing a buffer as a byte array and an offset
 	/// </summary>
-	public sealed class GrpcBufferPool
+	public sealed class Buffer
 	{
-		private readonly ConcurrentQueue<BufferSegment> bufferQueue = new ConcurrentQueue<BufferSegment>();
+		public byte[] DataBuffer { get; set; }
+		public int Offset;
 
-		public GrpcBufferPool(AsyncClientPolicy policy, BufferPool pool)
+		public Buffer(int length)
 		{
-			for (int i = 0; i < policy.asyncMaxCommands; i++)
-			{
-				bufferQueue.Enqueue(new BufferSegment(pool, i));
-			}
-		}
-
-		/// <summary>
-		/// Schedule command for execution.
-		/// </summary>
-		public BufferSegment Get()
-		{
-			if (bufferQueue.TryDequeue(out var buffer))
-			{
-				return buffer;
-			}
-			return null;
-		}
-
-		/// <summary>
-		/// Release command slot.
-		/// </summary>
-		public void Release(BufferSegment segment)
-		{
-			bufferQueue.Enqueue(segment);
+			DataBuffer = new byte[length];
+			Offset = 0;
 		}
 	}
 }

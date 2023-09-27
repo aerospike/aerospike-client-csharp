@@ -23,22 +23,23 @@ using System.Collections.Generic;
 
 namespace Aerospike.Client
 {
-	public sealed class ExecuteCommand : ReadCommand
+	public sealed class ExecuteCommandProxy : ReadCommandProxy
 	{
 		private readonly WritePolicy writePolicy;
 		private readonly string packageName;
 		private readonly string functionName;
 		private readonly Value[] args;
 
-		public ExecuteCommand
+		public ExecuteCommandProxy
 		(
-			Cluster cluster,
+			Buffer buffer, 
+			CallInvoker invoker,
 			WritePolicy writePolicy,
 			Key key,
 			string packageName,
 			string functionName,
 			Value[] args
-		) : base(cluster, writePolicy, key, Partition.Write(cluster, writePolicy, key), false)
+		) : base(buffer, invoker, writePolicy, key)
 		{
 			this.writePolicy = writePolicy;
 			this.packageName = packageName;
@@ -51,11 +52,6 @@ namespace Aerospike.Client
 			return true;
 		}
 
-		protected internal override Node GetNode()
-		{
-			return partition.GetNodeWrite(cluster);
-		}
-
 		protected internal override void WriteBuffer()
 		{
 			SetUdf(writePolicy, key, packageName, functionName, args);
@@ -66,10 +62,34 @@ namespace Aerospike.Client
 			throw new AerospikeException(resultCode);
 		}
 
-		protected internal override bool PrepareRetry(bool timeout)
+		protected internal override bool ParseRow()
 		{
-			partition.PrepareRetryWrite(timeout);
-			return true;
+			throw new AerospikeException(NotSupported + "ParseRow");
+		}
+
+		public override void Execute()
+		{
+			WriteBuffer();
+			var request = new AerospikeRequestPayload
+			{
+				Id = 0, // ID is only needed in streaming version, can be static for unary
+				Iteration = 1,
+				Payload = ByteString.CopyFrom(Buffer.DataBuffer, 0, Buffer.Offset)
+			};
+			GRPCConversions.SetRequestPolicy(writePolicy, request);
+
+			try
+			{
+				var client = new KVS.KVS.KVSClient(CallInvoker);
+				var deadline = DateTime.UtcNow.AddMilliseconds(totalTimeout);
+				var response = client.Execute(request, deadline: deadline);
+				var conn = new ConnectionProxy(response);
+				ParseResult(conn);
+			}
+			catch (RpcException e)
+			{
+				throw GRPCConversions.ToAerospikeException(e, totalTimeout, true);
+			}
 		}
 	}
 }

@@ -80,54 +80,5 @@ namespace Aerospike.Client
 			partition.PrepareRetryWrite(timeout);
 			return true;
 		}
-
-		public void ExecuteGRPC(CallInvoker callInvoker)
-		{
-			WriteBuffer();
-			var request = new AerospikeRequestPayload
-			{
-				Id = 0, // ID is only needed in streaming version, can be static for unary
-				Iteration = 1,
-				Payload = ByteString.CopyFrom(dataBuffer, 0, dataOffset)
-			};
-			GRPCConversions.SetRequestPolicy(writePolicy, request);
-
-			try
-			{
-				var client = new KVS.KVS.KVSClient(callInvoker);
-				deadline = DateTime.UtcNow.AddMilliseconds(totalTimeout);
-				var response = client.Touch(request, deadline: deadline);
-				var conn = new ConnectionProxy(response);
-				ParseResult(conn);
-			}
-			catch (RpcException e)
-			{
-				throw GRPCConversions.ToAerospikeException(e, totalTimeout, true);
-			}
-		}
-
-		public async Task ExecuteGRPC(CallInvoker callInvoker, CancellationToken token)
-		{
-			WriteBuffer();
-			var request = new AerospikeRequestPayload
-			{
-				Id = 0, // ID is only needed in streaming version, can be static for unary
-				Iteration = 1,
-				Payload = ByteString.CopyFrom(dataBuffer, 0, dataOffset)
-			};
-			GRPCConversions.SetRequestPolicy(writePolicy, request);
-
-			try
-			{
-				var client = new KVS.KVS.KVSClient(callInvoker);
-				var response = await client.TouchAsync(request, cancellationToken: token);
-				var conn = new ConnectionProxy(response);
-				ParseResult(conn);
-			}
-			catch (RpcException e)
-			{
-				throw GRPCConversions.ToAerospikeException(e, totalTimeout, true);
-			}
-		}
 	}
 }
