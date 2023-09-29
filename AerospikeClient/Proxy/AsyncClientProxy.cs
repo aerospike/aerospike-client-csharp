@@ -1399,17 +1399,5 @@ namespace Aerospike.Client
 			await command.Execute(token);
 			return recordSet;
 		}
-
-		/// <summary>
-		/// Not supported in proxy client
-		/// </summary>
-		/// <param name="policy"></param>
-		/// <param name="statement"></param>
-		/// <param name="listener"></param>
-		/// <exception cref="AerospikeException"></exception>
-		public void Query(QueryPolicy policy, Statement statement, QueryListener listener)
-		{
-			throw new AerospikeException(NotSupported + "Query");
-		}
 	}
 }

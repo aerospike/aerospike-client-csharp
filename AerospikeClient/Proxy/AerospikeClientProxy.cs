@@ -1092,10 +1092,10 @@ namespace Aerospike.Client
 		public RecordSet ScanPartitions(ScanPolicy policy, PartitionFilter partitionFilter, string ns, string setName, params string[] binNames)
 		{
 			policy ??= scanPolicyDefault;
-			CancellationToken token = new();
+			CancellationTokenSource source = new();
 			Buffer buffer = new();
 			PartitionTracker tracker = new(policy, null, partitionFilter);
-			RecordSet recordSet = new(null, policy.recordQueueSize, token);
+			RecordSet recordSet = new(null, policy.recordQueueSize, source.Token);
 			ScanPartitionCommandProxy command = new(buffer, callInvoker, policy, ns, setName, binNames, tracker, partitionFilter, recordSet);
 			command.Execute();
 			return recordSet;
@@ -1401,11 +1401,11 @@ namespace Aerospike.Client
 			PartitionFilter partitionFilter
 		)
 		{
-			CancellationToken token = new();
+			CancellationTokenSource source = new();
 			policy ??= queryPolicyDefault;
 			Buffer buffer = new();
 			PartitionTracker tracker = new(policy, statement, (Node[])null, partitionFilter);
-			RecordSet recordSet = new(null, policy.recordQueueSize, token);
+			RecordSet recordSet = new(null, policy.recordQueueSize, source.Token);
 			QueryPartitionCommandProxy command = new(buffer, callInvoker, policy, null, statement, null, tracker, partitionFilter, recordSet);
 			command.Execute();
 			return recordSet;

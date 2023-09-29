@@ -56,13 +56,16 @@ namespace Aerospike.Client
 				BackgroundTaskStatusRequest = statusRequest
 			};
 
-			var client = new KVS.Query.QueryClient(Invoker);
-			var stream = client.BackgroundTaskStatus(request);
-			stream.ResponseStream.MoveNext().Wait();
-			var response = stream.ResponseStream.Current;
+			
+			AerospikeResponsePayload response = new();
 
 			try
 			{
+
+				var client = new KVS.Query.QueryClient(Invoker);
+				var stream = client.BackgroundTaskStatus(request);
+				stream.ResponseStream.MoveNext().Wait();
+				response = stream.ResponseStream.Current;
 				while (true)
 				{
 					if (!response.HasNext)
@@ -89,6 +92,10 @@ namespace Aerospike.Client
 				{
 					return BaseTask.COMPLETE;
 				}
+			}
+			catch (RpcException e)
+			{
+				throw GRPCConversions.ToAerospikeException(e, 0, true);
 			}
 			catch (Exception)
 			{

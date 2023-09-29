@@ -101,8 +101,8 @@ namespace Aerospike.Client
 
 		public void Execute()
 		{
-			CancellationToken token = new();
-			Execute(token).Wait();
+			CancellationTokenSource source = new();
+			Execute(source.Token).Wait();
 		}
 
 		public async Task Execute(CancellationToken token)

@@ -222,7 +222,7 @@ namespace Aerospike.Client
 			}
 		}
 
-		protected internal virtual async Task ParseResult(ConnectionProxyStream conn, CancellationToken token)
+		protected internal async Task ParseResult(ConnectionProxyStream conn, CancellationToken token)
 		{
 			// Read blocks of records.  Do not use thread local receive buffer because each
 			// block will likely be too big for a cache.  Also, scan callbacks can nest
@@ -1584,8 +1584,7 @@ namespace Aerospike.Client
 			Policy policy,
 			Statement statement,
 			ulong taskId,
-			bool background,
-			NodePartitions nodePartitions
+			bool background
 		)
 		{
 			byte[] functionArgBuffer = null;
@@ -1694,49 +1693,6 @@ namespace Aerospike.Client
 			if (policy.filterExp != null)
 			{
 				Buffer.Offset += policy.filterExp.Size();
-				fieldCount++;
-			}
-
-			long maxRecords = 0;
-			int partsFullSize = 0;
-			int partsPartialDigestSize = 0;
-			int partsPartialBValSize = 0;
-
-			if (nodePartitions != null)
-			{
-				partsFullSize = nodePartitions.partsFull.Count * 2;
-				partsPartialDigestSize = nodePartitions.partsPartial.Count * 20;
-
-				if (statement.filter != null)
-				{
-					partsPartialBValSize = nodePartitions.partsPartial.Count * 8;
-				}
-				maxRecords = nodePartitions.recordMax;
-			}
-
-			if (partsFullSize > 0)
-			{
-				Buffer.Offset += partsFullSize + FIELD_HEADER_SIZE;
-				fieldCount++;
-			}
-
-			if (partsPartialDigestSize > 0)
-			{
-				Buffer.Offset += partsPartialDigestSize + FIELD_HEADER_SIZE;
-				fieldCount++;
-			}
-
-			if (partsPartialBValSize > 0)
-			{
-				Buffer.Offset += partsPartialBValSize + FIELD_HEADER_SIZE;
-				fieldCount++;
-			}
-
-			// Estimate max records field size. This field is used in new servers and not used
-			// (but harmless to add) in old servers.
-			if (maxRecords > 0)
-			{
-				Buffer.Offset += 8 + FIELD_HEADER_SIZE;
 				fieldCount++;
 			}
 
@@ -1871,44 +1827,6 @@ namespace Aerospike.Client
 			if (policy.filterExp != null)
 			{
 				policy.filterExp.Write(this, Buffer);
-			}
-
-			if (partsFullSize > 0)
-			{
-				WriteFieldHeader(partsFullSize, FieldType.PID_ARRAY);
-
-				foreach (PartitionStatus part in nodePartitions.partsFull)
-				{
-					ByteUtil.ShortToLittleBytes((ushort)part.id, Buffer.DataBuffer, Buffer.Offset);
-					Buffer.Offset += 2;
-				}
-			}
-
-			if (partsPartialDigestSize > 0)
-			{
-				WriteFieldHeader(partsPartialDigestSize, FieldType.DIGEST_ARRAY);
-
-				foreach (PartitionStatus part in nodePartitions.partsPartial)
-				{
-					Array.Copy(part.digest, 0, Buffer.DataBuffer, Buffer.Offset, 20);
-					Buffer.Offset += 20;
-				}
-			}
-
-			if (partsPartialBValSize > 0)
-			{
-				WriteFieldHeader(partsPartialBValSize, FieldType.BVAL_ARRAY);
-
-				foreach (PartitionStatus part in nodePartitions.partsPartial)
-				{
-					ByteUtil.LongToLittleBytes(part.bval, Buffer.DataBuffer, Buffer.Offset);
-					Buffer.Offset += 8;
-				}
-			}
-
-			if (maxRecords > 0)
-			{
-				WriteField((ulong)maxRecords, FieldType.MAX_RECORDS);
 			}
 
 			if (statement.operations != null)

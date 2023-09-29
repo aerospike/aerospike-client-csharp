@@ -20,12 +20,15 @@ using Grpc.Core;
 using Grpc.Core.Interceptors;
 using Grpc.Net.Client;
 using Neo.IronLua;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Concurrent;
 using System.Numerics;
 using System.Text.Json;
 using System.Threading;
 using System.Timers;
+using Timer = System.Timers.Timer;
 
 namespace Aerospike.Client
 {
@@ -42,157 +45,73 @@ namespace Aerospike.Client
 		/// </summary>
 		private static readonly int refreshMinTime = 5000;
 
-		/// <summary>
-		///  A cap on refresh time in millis to throttle an auto refresh requests in
-		///  case of token refresh failure.
-		/// </summary>
-		private static readonly int maxExponentialBackOff = 15000;
-
-		/// <summary>
-		/// Fraction of token expiry time to elapse before scheduling an auto
-		/// refresh.
-		/// @see AuthTokenManager#refreshMinTime
-		/// </summary>
-		private static readonly float refreshAfterFraction = 0.95f;
-
-
 		private readonly ClientPolicy clientPolicy;
 		private readonly GrpcChannel channel;
 		private volatile bool isFetchingToken = false;
 		private volatile bool isClosed = false;
-		
-		/// <summary>
-		/// Count of consecutive errors while refreshing the token.
-		/// </summary>
-		private volatile int consecutiveRefreshErrors = 0;
-
-		/// <summary>
-		/// The error encountered when refreshing the token. It will be null when
-		/// {@link #consecutiveRefreshErrors} is zero.
-		/// </summary>
-		private volatile Exception refreshError = null;
-
 		private volatile AccessToken accessToken;
-		private volatile bool fetchScheduled;
+		private Timer refreshTimer;
+
 
 		public AuthTokenInterceptor(ClientPolicy clientPolicy, GrpcChannel grpcChannel)
 		{
 			this.clientPolicy = clientPolicy;
 			this.channel = grpcChannel;
+			
 			if (IsTokenRequired())
 			{
 				this.accessToken = new AccessToken(DateTime.UtcNow.Millisecond, 0, "");
-				FetchToken(true);
+				refreshTimer = new Timer();
+				refreshTimer.Enabled = true;
+				refreshTimer.Elapsed += (sender, e) => RefreshToken();
+				refreshTimer.Start();
+			}
+		}
+
+		private void RefreshToken()
+		{
+			try
+			{
+				FetchToken();
+				refreshTimer.Interval = (int)accessToken.expiry - DateTime.Now.Millisecond - 5 * 1000;
+			}
+			catch (Exception)
+			{
+				refreshTimer.Interval = 1000;
 			}
 		}
 
 		/// <summary>
 		/// Fetch the new token if expired or scheduled for auto refresh.
 		/// </summary>
-		/// <param name="forceRefresh">A boolean flag to refresh token forcefully. This is required for initialization and auto
-		/// refresh.Auto refresh will get rejected as token won't be expired at that time, but we need\
-		/// to refresh it beforehand.If true, this function will run from the<b> invoking thread</b>,
-		/// not from the scheduler.</param>
-		private void FetchToken(bool forceRefresh)
+		private void FetchToken()
 		{
-			fetchScheduled = false;
-			if (isClosed || IsTokenRequired() || isFetchingToken)
+			if (isClosed || !IsTokenRequired() || isFetchingToken)
 			{
 				return;
 			}
-			if (ShouldRefresh(forceRefresh))
+			try
 			{
-				try
+				if (Log.DebugEnabled())
 				{
-					if (Log.DebugEnabled())
-					{
-						Log.Debug("Starting token refresh");
-					}
-					var authRequest = new Auth.AerospikeAuthRequest
-					{
-						Username = clientPolicy.user,
-						Password = clientPolicy.password,
-					};
-
-					isFetchingToken = true;
-
-					var client = new Auth.AuthService.AuthServiceClient(channel);
-					var response = client.Get(authRequest);
-					accessToken = ParseToken(response.Token);
+					Log.Debug("Starting token refresh");
 				}
-				catch (Exception e) {
-					OnFetchError(e);
-				}
-			}
-		}
-
-		private void ClearRefreshErrors()
-		{
-			consecutiveRefreshErrors = 0;
-			refreshError = null;
-		}
-
-		private void UpdateRefreshErrors(Exception e)
-		{
-			consecutiveRefreshErrors++;
-			refreshError = e;
-		}
-
-		private void OnFetchError(Exception e)
-		{
-			UpdateRefreshErrors(e);
-			UnsafeScheduleNextRefresh();
-			isFetchingToken = false;
-		}
-
-		private bool ShouldRefresh(bool forceRefresh)
-		{
-			return forceRefresh || !IsTokenValid();
-		}
-
-		private void UnsafeScheduleNextRefresh()
-		{
-			long ttl = accessToken.ttl;
-			long delay = (long)Math.Floor(ttl * refreshAfterFraction);
-
-			if (ttl - delay < refreshMinTime)
-			{
-				// We need at least refreshMinTimeMillis to refresh, schedule
-				// immediately.
-				delay = ttl - refreshMinTime;
-			}
-
-			if (!IsTokenValid())
-			{
-				// Force immediate refresh.
-				delay = 0;
-			}
-
-			if (delay == 0 && consecutiveRefreshErrors > 0)
-			{
-				// If we continue to fail then schedule will be too aggressive on fetching new token. Avoid that by increasing
-				// fetch delay.
-
-				delay = (long)(Math.Pow(2, consecutiveRefreshErrors) * 1000);
-				if (delay > maxExponentialBackOff)
+				var authRequest = new Auth.AerospikeAuthRequest
 				{
-					delay = maxExponentialBackOff;
-				}
+					Username = clientPolicy.user,
+					Password = clientPolicy.password,
+				};
 
-				// Handle wrap around.
-				if (delay < 0)
-				{
-					delay = 0;
-				}
+				isFetchingToken = true;
+
+				var client = new Auth.AuthService.AuthServiceClient(channel);
+				var response = client.Get(authRequest);
+				accessToken = ParseToken(response.Token);
+				isFetchingToken = false;
 			}
-			UnsafeScheduleRefresh(delay, true);
-		}
-
-		private void UnsafeScheduleRefresh(long delay, bool forceRefresh)
-		{
-			if (isClosed || !forceRefresh || fetchScheduled)
+			catch (Exception e) 
 			{
-				return;
+				// TODO
 			}
 		}
 
@@ -203,14 +122,19 @@ namespace Aerospike.Client
 
 		private AccessToken ParseToken(string token)
 		{
-			string claims = token.Split("\\.")[1];
+			string claims = token.Split(".")[1];
 			byte[] decodedClaims = Convert.FromBase64String(claims);
-			Dictionary<object, object> parsedClaims = (Dictionary<object, object>)JsonSerializer.Deserialize(decodedClaims, typeof(Dictionary<object, object>));
+			Dictionary<object, object> parsedClaims;
+			using (StreamReader sr = new StreamReader(new MemoryStream(decodedClaims)))
+			{
+				parsedClaims = (Dictionary<object, object>)JsonConvert.DeserializeObject(sr.ReadToEnd(), typeof(Dictionary<object, object>));
+			}
+			//Dictionary<object, object> parsedClaims = (Dictionary<object, object>)System.Text.Json.JsonSerializer.Deserialize(System.Text.Encoding.UTF8.GetString(decodedClaims), typeof(Dictionary<object, object>));
 			object expiryToken = parsedClaims.GetValueOrDefault("exp");
 			object iat = parsedClaims.GetValueOrDefault("iat");
-			if (expiryToken is int && iat is int) 
+			if (expiryToken is long expiryTokenLong && iat is long iatLong) 
 			{
-				int ttl = ((int)expiryToken - (int)iat) * 1000;
+				long ttl = (expiryTokenLong - iatLong) * 1000;
 				if (ttl <= 0) 
 				{
 					throw new AerospikeException("token 'iat' > 'exp'");
@@ -225,64 +149,10 @@ namespace Aerospike.Client
 			}
 		}
 
-		public CallOptions SetCallCredentials(CallOptions callOptions)
-		{
-			if (IsTokenRequired())
-			{
-				if (!IsTokenValid())
-				{
-					if (Log.WarnEnabled())
-					{
-						// TODO: This warns for evey call, spamming the output.
-						//  Should be rate limited. Possibly once in a few seconds.
-						// This alerts that auto refresh didn't finish correctly. In normal scenario, this should never
-						// happen.
-						Log.Warn("Trying to refresh token before setting into call");
-					}
-					UnsafeScheduleRefresh(0, false);
-				}
-				if (!IsTokenValid())
-				{
-					throw new AerospikeException("Access token has expired");
-				}
-				//return callOptions.Credentials.(new BearerTokenCallCredentials(accessToken.token));
-			}
-			return callOptions;
-		}
-
-		/// <returns>the minimum amount of time it takes for the token to refresh.</returns>
-		public int GetRefreshMinTime()
-		{
-			return refreshMinTime;
-		}
-
 		private bool IsTokenValid()
 		{
 			AccessToken token = accessToken;
 			return !IsTokenRequired() || (token != null && !token.HasExpired());
-		}
-
-		public TokenStatus GetTokenStatus()
-		{
-			if (IsTokenValid())
-			{
-				return new TokenStatus();
-			}
-
-			Exception error = refreshError;
-			if (error != null)
-			{
-				return new TokenStatus(error);
-			}
-
-			AccessToken token = accessToken;
-			if (token != null && token.HasExpired())
-			{
-				return new TokenStatus(new AerospikeException(ResultCode.NOT_AUTHENTICATED,
-					"token has expired"));
-			}
-
-			return new TokenStatus(new AerospikeException(ResultCode.NOT_AUTHENTICATED));
 		}
 
 		public override TResponse BlockingUnaryCall<TRequest, TResponse>(
@@ -292,12 +162,39 @@ namespace Aerospike.Client
 		{
 			if (IsTokenRequired())
 			{
-				var credentials = CallCredentials.FromInterceptor(async (context, metadata) =>
+				if (IsTokenValid())
 				{
-					var token = accessToken.token;
-					metadata.Add("Authorization", $"Bearer {token}");
-				});
-				context.Options.WithCredentials(credentials);
+					var headers = new Metadata();
+					headers.Add(new Metadata.Entry("Authorization", $"Bearer {accessToken.token}"));
+
+					var newOptions = context.Options.WithHeaders(headers);
+
+					var newContext = new ClientInterceptorContext<TRequest, TResponse>(
+						context.Method,
+						context.Host,
+						newOptions);
+
+					return base.BlockingUnaryCall(request, newContext, continuation);
+				}
+				else if (isFetchingToken)
+				{
+					while (isFetchingToken)
+					{
+						Thread.Sleep(500);
+					}
+
+					var headers = new Metadata();
+					headers.Add(new Metadata.Entry("Authorization", $"Bearer {accessToken.token}"));
+
+					var newOptions = context.Options.WithHeaders(headers);
+
+					var newContext = new ClientInterceptorContext<TRequest, TResponse>(
+						context.Method,
+						context.Host,
+						newOptions);
+
+					return base.BlockingUnaryCall(request, newContext, continuation);
+				}
 			}
 
 			return continuation(request, context);
@@ -310,15 +207,42 @@ namespace Aerospike.Client
 		{
 			if (IsTokenRequired())
 			{
-				var credentials = CallCredentials.FromInterceptor(async (context, metadata) =>
+				if (IsTokenValid())
 				{
-					var token = accessToken.token;
-					metadata.Add("Authorization", $"Bearer {token}");
-				});
-				context.Options.WithCredentials(credentials);
-			}
-			var call = continuation(request, context);
+					var headers = new Metadata();
+					headers.Add(new Metadata.Entry("Authorization", $"Bearer {accessToken.token}"));
 
+					var newOptions = context.Options.WithHeaders(headers);
+
+					var newContext = new ClientInterceptorContext<TRequest, TResponse>(
+						context.Method,
+						context.Host,
+						newOptions);
+
+					return base.AsyncUnaryCall(request, newContext, continuation);
+				}
+				else if (isFetchingToken)
+				{
+					while (isFetchingToken)
+					{
+						Thread.Sleep(500);
+					}
+
+					var headers = new Metadata();
+					headers.Add(new Metadata.Entry("Authorization", $"Bearer {accessToken.token}"));
+
+					var newOptions = context.Options.WithHeaders(headers);
+
+					var newContext = new ClientInterceptorContext<TRequest, TResponse>(
+						context.Method,
+						context.Host,
+						newOptions);
+
+					return base.AsyncUnaryCall(request, newContext, continuation);
+				}
+			}
+
+			var call = continuation(request, context);
 			return new AsyncUnaryCall<TResponse>(HandleResponse(call.ResponseAsync), call.ResponseHeadersAsync, call.GetStatus, call.GetTrailers, call.Dispose);
 
 		}
@@ -335,12 +259,39 @@ namespace Aerospike.Client
 		{
 			if (IsTokenRequired())
 			{
-				var credentials = CallCredentials.FromInterceptor(async (context, metadata) =>
+				if (IsTokenValid())
 				{
-					var token = accessToken.token;
-					metadata.Add("Authorization", $"Bearer {token}");
-				});
-				context.Options.WithCredentials(credentials);
+					var headers = new Metadata();
+					headers.Add(new Metadata.Entry("Authorization", $"Bearer {accessToken.token}"));
+
+					var newOptions = context.Options.WithHeaders(headers);
+
+					var newContext = new ClientInterceptorContext<TRequest, TResponse>(
+						context.Method,
+						context.Host,
+						newOptions);
+
+					return base.AsyncClientStreamingCall(newContext, continuation);
+				}
+				else if (isFetchingToken)
+				{
+					while (isFetchingToken)
+					{
+						Thread.Sleep(500);
+					}
+
+					var headers = new Metadata();
+					headers.Add(new Metadata.Entry("Authorization", $"Bearer {accessToken.token}"));
+
+					var newOptions = context.Options.WithHeaders(headers);
+
+					var newContext = new ClientInterceptorContext<TRequest, TResponse>(
+						context.Method,
+						context.Host,
+						newOptions);
+
+					return base.AsyncClientStreamingCall(newContext, continuation);
+				}
 			}
 
 			return continuation(context);
@@ -353,13 +304,41 @@ namespace Aerospike.Client
 		{
 			if (IsTokenRequired())
 			{
-				var credentials = CallCredentials.FromInterceptor(async (context, metadata) =>
+				if (IsTokenValid())
 				{
-					var token = accessToken.token;
-					metadata.Add("Authorization", $"Bearer {token}");
-				});
-				context.Options.WithCredentials(credentials);
+					var headers = new Metadata();
+					headers.Add(new Metadata.Entry("Authorization", $"Bearer {accessToken.token}"));
+
+					var newOptions = context.Options.WithHeaders(headers);
+
+					var newContext = new ClientInterceptorContext<TRequest, TResponse>(
+						context.Method,
+						context.Host,
+						newOptions);
+
+					return base.AsyncServerStreamingCall(request, newContext, continuation);
+				}
+				else if (isFetchingToken)
+				{
+					while (isFetchingToken)
+					{
+						Thread.Sleep(500);
+					}
+
+					var headers = new Metadata();
+					headers.Add(new Metadata.Entry("Authorization", $"Bearer {accessToken.token}"));
+
+					var newOptions = context.Options.WithHeaders(headers);
+
+					var newContext = new ClientInterceptorContext<TRequest, TResponse>(
+						context.Method,
+						context.Host,
+						newOptions);
+
+					return base.AsyncServerStreamingCall(request, newContext, continuation);
+				}
 			}
+
 			return continuation(request, context);
 		}
 
@@ -369,12 +348,39 @@ namespace Aerospike.Client
 		{
 			if (IsTokenRequired())
 			{
-				var credentials = CallCredentials.FromInterceptor(async (context, metadata) =>
+				if (IsTokenValid())
 				{
-					var token = accessToken.token;
-					metadata.Add("Authorization", $"Bearer {token}");
-				});
-				context.Options.WithCredentials(credentials);
+					var headers = new Metadata();
+					headers.Add(new Metadata.Entry("Authorization", $"Bearer {accessToken.token}"));
+
+					var newOptions = context.Options.WithHeaders(headers);
+
+					var newContext = new ClientInterceptorContext<TRequest, TResponse>(
+						context.Method,
+						context.Host,
+						newOptions);
+
+					return base.AsyncDuplexStreamingCall(newContext, continuation);
+				}
+				else if (isFetchingToken)
+				{
+					while (isFetchingToken)
+					{
+						Thread.Sleep(500);
+					}
+
+					var headers = new Metadata();
+					headers.Add(new Metadata.Entry("Authorization", $"Bearer {accessToken.token}"));
+
+					var newOptions = context.Options.WithHeaders(headers);
+
+					var newContext = new ClientInterceptorContext<TRequest, TResponse>(
+						context.Method,
+						context.Host,
+						newOptions);
+
+					return base.AsyncDuplexStreamingCall(newContext, continuation);
+				}
 			}
 
 			return continuation(context);

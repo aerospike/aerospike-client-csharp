@@ -42,6 +42,7 @@ namespace Aerospike.Client
 		/// </summary>
 		public ConnectionProxyStream(AsyncServerStreamingCall<AerospikeResponsePayload> stream)
 		{
+			if (stream == null) throw new ArgumentNullException("stream");
 			Stream = stream;
 			Payload = null;
 		}

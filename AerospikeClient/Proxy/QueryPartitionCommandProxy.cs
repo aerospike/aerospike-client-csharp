@@ -58,7 +58,7 @@ namespace Aerospike.Client
 
 		protected internal override void WriteBuffer()
 		{
-			SetQuery(policy, statement, statement.taskId, false, null);
+			SetQuery(policy, statement, statement.taskId, false);
 		}
 
 		protected internal override bool ParseRow()
@@ -102,8 +102,8 @@ namespace Aerospike.Client
 
 		public void Execute()
 		{
-			CancellationToken token = new();
-			Execute(token).Wait();
+			CancellationTokenSource source = new();
+			Execute(source.Token).Wait();
 		}
 
 		public async Task Execute(CancellationToken token)

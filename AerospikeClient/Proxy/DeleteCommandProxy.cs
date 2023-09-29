@@ -121,12 +121,19 @@ namespace Aerospike.Client
 			};
 			GRPCConversions.SetRequestPolicy(writePolicy, request);
 
-			var client = new KVS.KVS.KVSClient(CallInvoker);
-			var deadline = DateTime.UtcNow.AddMilliseconds(totalTimeout);
-			var response = await client.DeleteAsync(request, deadline: deadline, cancellationToken: token);
-			var conn = new ConnectionProxy(response);
-			ParseResult(conn);
-			return existed;
+			try
+			{
+				var client = new KVS.KVS.KVSClient(CallInvoker);
+				var deadline = DateTime.UtcNow.AddMilliseconds(totalTimeout);
+				var response = await client.DeleteAsync(request, deadline: deadline, cancellationToken: token);
+				var conn = new ConnectionProxy(response);
+				ParseResult(conn);
+				return existed;
+			}
+			catch (RpcException e)
+			{
+				throw GRPCConversions.ToAerospikeException(e, totalTimeout, true);
+			}
 		}
 	}
 }
