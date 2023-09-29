@@ -37,20 +37,11 @@ namespace Aerospike.Client
 	/// </summary>
 	public sealed class AuthTokenInterceptor : Interceptor
 	{
-		/// <summary>
-		/// A conservative estimate of minimum amount of time in millis it takes for
-		/// token refresh to complete.Auto refresh should be scheduled at least
-		/// this amount before expiry, i.e, if remaining expiry time is less than
-		/// this amount refresh should be scheduled immediately.
-		/// </summary>
-		private static readonly int refreshMinTime = 5000;
-
 		private readonly ClientPolicy clientPolicy;
 		private readonly GrpcChannel channel;
 		private volatile bool isFetchingToken = false;
-		private volatile bool isClosed = false;
 		private volatile AccessToken accessToken;
-		private Timer refreshTimer;
+		private readonly Timer refreshTimer;
 
 
 		public AuthTokenInterceptor(ClientPolicy clientPolicy, GrpcChannel grpcChannel)
@@ -61,8 +52,10 @@ namespace Aerospike.Client
 			if (IsTokenRequired())
 			{
 				this.accessToken = new AccessToken(DateTime.UtcNow.Millisecond, 0, "");
-				refreshTimer = new Timer();
-				refreshTimer.Enabled = true;
+				refreshTimer = new Timer
+				{
+					Enabled = true
+				};
 				refreshTimer.Elapsed += (sender, e) => RefreshToken();
 				refreshTimer.Start();
 			}
@@ -86,7 +79,7 @@ namespace Aerospike.Client
 		/// </summary>
 		private void FetchToken()
 		{
-			if (isClosed || !IsTokenRequired() || isFetchingToken)
+			if (!IsTokenRequired() || isFetchingToken)
 			{
 				return;
 			}
@@ -109,9 +102,9 @@ namespace Aerospike.Client
 				accessToken = ParseToken(response.Token);
 				isFetchingToken = false;
 			}
-			catch (Exception e) 
+			catch (RpcException e)
 			{
-				// TODO
+				throw GRPCConversions.ToAerospikeException(e, 0, true);
 			}
 		}
 
@@ -125,7 +118,7 @@ namespace Aerospike.Client
 			string claims = token.Split(".")[1];
 			byte[] decodedClaims = Convert.FromBase64String(claims);
 			Dictionary<object, object> parsedClaims;
-			using (StreamReader sr = new StreamReader(new MemoryStream(decodedClaims)))
+			using (StreamReader sr = new(new MemoryStream(decodedClaims)))
 			{
 				parsedClaims = (Dictionary<object, object>)JsonConvert.DeserializeObject(sr.ReadToEnd(), typeof(Dictionary<object, object>));
 			}
@@ -164,8 +157,10 @@ namespace Aerospike.Client
 			{
 				if (IsTokenValid())
 				{
-					var headers = new Metadata();
-					headers.Add(new Metadata.Entry("Authorization", $"Bearer {accessToken.token}"));
+					var headers = new Metadata
+					{
+						new Metadata.Entry("Authorization", $"Bearer {accessToken.token}")
+					};
 
 					var newOptions = context.Options.WithHeaders(headers);
 
@@ -183,8 +178,10 @@ namespace Aerospike.Client
 						Thread.Sleep(500);
 					}
 
-					var headers = new Metadata();
-					headers.Add(new Metadata.Entry("Authorization", $"Bearer {accessToken.token}"));
+					var headers = new Metadata
+					{
+						new Metadata.Entry("Authorization", $"Bearer {accessToken.token}")
+					};
 
 					var newOptions = context.Options.WithHeaders(headers);
 
@@ -209,8 +206,10 @@ namespace Aerospike.Client
 			{
 				if (IsTokenValid())
 				{
-					var headers = new Metadata();
-					headers.Add(new Metadata.Entry("Authorization", $"Bearer {accessToken.token}"));
+					var headers = new Metadata
+					{
+						new Metadata.Entry("Authorization", $"Bearer {accessToken.token}")
+					};
 
 					var newOptions = context.Options.WithHeaders(headers);
 
@@ -228,8 +227,10 @@ namespace Aerospike.Client
 						Thread.Sleep(500);
 					}
 
-					var headers = new Metadata();
-					headers.Add(new Metadata.Entry("Authorization", $"Bearer {accessToken.token}"));
+					var headers = new Metadata
+					{
+						new Metadata.Entry("Authorization", $"Bearer {accessToken.token}")
+					};
 
 					var newOptions = context.Options.WithHeaders(headers);
 
@@ -261,8 +262,10 @@ namespace Aerospike.Client
 			{
 				if (IsTokenValid())
 				{
-					var headers = new Metadata();
-					headers.Add(new Metadata.Entry("Authorization", $"Bearer {accessToken.token}"));
+					var headers = new Metadata
+					{
+						new Metadata.Entry("Authorization", $"Bearer {accessToken.token}")
+					};
 
 					var newOptions = context.Options.WithHeaders(headers);
 
@@ -280,8 +283,10 @@ namespace Aerospike.Client
 						Thread.Sleep(500);
 					}
 
-					var headers = new Metadata();
-					headers.Add(new Metadata.Entry("Authorization", $"Bearer {accessToken.token}"));
+					var headers = new Metadata
+					{
+						new Metadata.Entry("Authorization", $"Bearer {accessToken.token}")
+					};
 
 					var newOptions = context.Options.WithHeaders(headers);
 
@@ -306,8 +311,10 @@ namespace Aerospike.Client
 			{
 				if (IsTokenValid())
 				{
-					var headers = new Metadata();
-					headers.Add(new Metadata.Entry("Authorization", $"Bearer {accessToken.token}"));
+					var headers = new Metadata
+					{
+						new Metadata.Entry("Authorization", $"Bearer {accessToken.token}")
+					};
 
 					var newOptions = context.Options.WithHeaders(headers);
 
@@ -325,8 +332,10 @@ namespace Aerospike.Client
 						Thread.Sleep(500);
 					}
 
-					var headers = new Metadata();
-					headers.Add(new Metadata.Entry("Authorization", $"Bearer {accessToken.token}"));
+					var headers = new Metadata
+					{
+						new Metadata.Entry("Authorization", $"Bearer {accessToken.token}")
+					};
 
 					var newOptions = context.Options.WithHeaders(headers);
 
@@ -350,8 +359,10 @@ namespace Aerospike.Client
 			{
 				if (IsTokenValid())
 				{
-					var headers = new Metadata();
-					headers.Add(new Metadata.Entry("Authorization", $"Bearer {accessToken.token}"));
+					var headers = new Metadata
+					{
+						new Metadata.Entry("Authorization", $"Bearer {accessToken.token}")
+					};
 
 					var newOptions = context.Options.WithHeaders(headers);
 
@@ -369,8 +380,10 @@ namespace Aerospike.Client
 						Thread.Sleep(500);
 					}
 
-					var headers = new Metadata();
-					headers.Add(new Metadata.Entry("Authorization", $"Bearer {accessToken.token}"));
+					var headers = new Metadata
+					{
+						new Metadata.Entry("Authorization", $"Bearer {accessToken.token}")
+					};
 
 					var newOptions = context.Options.WithHeaders(headers);
 
@@ -384,44 +397,6 @@ namespace Aerospike.Client
 			}
 
 			return continuation(context);
-		}
-	}
-
-	public class TokenStatus
-	{
-		private readonly Exception error;
-		private readonly bool valid;
-
-		public TokenStatus()
-		{
-			this.valid = true;
-			this.error = null;
-		}
-
-		public TokenStatus(Exception error)
-		{
-			this.valid = false;
-			this.error = error;
-		}
-
-		/// <returns>
-		/// true iff the token is valid.
-		/// </returns>
-		public bool IsValid()
-		{
-			return valid;
-		}
-
-		/// <summary>
-		/// Get the token fetch error. Should be used only when {@link #isValid()}
-		/// returns false.
-		/// </summary>
-		/// <returns>
-		/// the token fetch error.
-		/// </returns>
-		public Exception GetError()
-		{
-			return error;
 		}
 	}
 

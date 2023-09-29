@@ -152,9 +152,7 @@ namespace Aerospike.Client
 
 		private void HandleUdfError(int resultCode)
 		{
-			object obj;
-
-			if (!record.bins.TryGetValue("FAILURE", out obj))
+			if (!record.bins.TryGetValue("FAILURE", out object obj))
 			{
 				throw new AerospikeException(resultCode);
 			}

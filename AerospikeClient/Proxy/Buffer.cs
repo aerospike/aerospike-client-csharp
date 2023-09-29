@@ -25,6 +25,8 @@ namespace Aerospike.Client
 	/// </summary>
 	public sealed class Buffer
 	{
+		private const int MAX_BUFFER_SIZE = 1024 * 1024 * 128;  // 128 MB
+
 		public byte[] DataBuffer { get; set; }
 		public int Offset;
 
@@ -42,8 +44,12 @@ namespace Aerospike.Client
 
 		public void Resize(int length)
 		{
+			if (length > MAX_BUFFER_SIZE)
+			{
+				throw new AerospikeException("Invalid buffer size: " + length);
+			}
 			DataBuffer = new byte[length]; 
-			// TODO: max buffer size?
+			
 		}
 	}
 }

@@ -62,8 +62,7 @@ namespace Aerospike.Client
 
 		protected internal override bool ParseRow()
 		{
-			ulong bval;
-			Key key = ParseKey(fieldCount, out bval);
+			Key key = ParseKey(fieldCount, out _);
 
 			if ((info3 & Command.INFO3_PARTITION_DONE) != 0)
 			{
@@ -146,10 +145,6 @@ namespace Aerospike.Client
 			catch (RpcException e)
 			{
 				throw GRPCConversions.ToAerospikeException(e, totalTimeout, true);
-			}
-			catch (Exception e)
-			{
-
 			}
 		}
 	}

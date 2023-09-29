@@ -61,7 +61,6 @@ namespace Aerospike.Client
 
 			try
 			{
-
 				var client = new KVS.Query.QueryClient(Invoker);
 				var stream = client.BackgroundTaskStatus(request);
 				stream.ResponseStream.MoveNext().Wait();
@@ -96,10 +95,6 @@ namespace Aerospike.Client
 			catch (RpcException e)
 			{
 				throw GRPCConversions.ToAerospikeException(e, 0, true);
-			}
-			catch (Exception)
-			{
-
 			}
 
 			return BaseTask.COMPLETE;

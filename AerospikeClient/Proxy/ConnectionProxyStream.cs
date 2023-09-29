@@ -26,24 +26,23 @@ using static Aerospike.Client.AerospikeException;
 namespace Aerospike.Client
 {
 	/// <summary>
-	/// Socket connection wrapper.
+	/// Connection wrapper for GRPC response stream.
 	/// </summary>
 	public class ConnectionProxyStream : IConnection
 	{
 		private static readonly String NotSupported = "Method not supported in proxy client: ";
-		AsyncServerStreamingCall<AerospikeResponsePayload> Stream;
-		AerospikeResponsePayload Response;
-		byte[] Payload;
-		int Offset;
-		int BufferOffset;
+		private readonly AsyncServerStreamingCall<AerospikeResponsePayload> Stream;
+		private AerospikeResponsePayload Response;
+		private byte[] Payload;
+		private int Offset;
+		private int BufferOffset;
 
 		/// <summary>
 		/// Create GRPC Connection Stream class
 		/// </summary>
 		public ConnectionProxyStream(AsyncServerStreamingCall<AerospikeResponsePayload> stream)
 		{
-			if (stream == null) throw new ArgumentNullException("stream");
-			Stream = stream;
+			Stream = stream ?? throw new ArgumentNullException(nameof(stream));
 			Payload = null;
 		}
 

@@ -99,9 +99,6 @@ namespace Aerospike.Client
 		 */
 		public static ByteString ValueToByteString(Value value)
 		{
-			// TODO: @Brian is there a better way to convert value to bytes?
-			// This involves two copies. One when returning bytes Packer
-			// and one for the byte string.
 			Packer packer = new();
 			value.Pack(packer);
 			return ByteString.CopyFrom(packer.ToByteArray());
@@ -110,10 +107,7 @@ namespace Aerospike.Client
 		public static KVS.Filter ToGrpc(Filter filter)
 		{
 			Packer packer = new();
-			if (filter.Begin != null)
-			{
-				filter.Begin.Pack(packer);
-			}
+			filter.Begin?.Pack(packer);
 
 			var filterKVS =  new KVS.Filter()
 			{
@@ -167,7 +161,7 @@ namespace Aerospike.Client
 			var statementKVS = new KVS.Statement
 			{
 				Namespace = statement.Namespace,
-				SetName = statement.SetName != null ? statement.SetName : "",
+				SetName = statement.SetName ?? "",
 				Filter = statement.Filter != null ? ToGrpc(statement.Filter) : null,
 				TaskId = taskId,
 				MaxRecords = (ulong)maxRecords,
@@ -395,15 +389,6 @@ namespace Aerospike.Client
 			string errorMessage = e.Message ?? "";
 
 			errorMessage = errorMessage.Split("\\r?\\n|\\r")[0];
-			/*if (String.IsNullOrEmpty(errorMessage.Trim()))
-			{
-				return e.getClass().getName();
-			}
-			else
-			{
-				return String.Format("%s - %s", e.getClass().getName(),
-					errorMessage);
-			}*/
 			return errorMessage;
 		}
 	}

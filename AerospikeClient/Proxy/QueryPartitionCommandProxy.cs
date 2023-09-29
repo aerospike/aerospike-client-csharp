@@ -26,11 +26,9 @@ namespace Aerospike.Client
 {
 	public class QueryPartitionCommandProxy : GRPCCommand
 	{
-		private new QueryPolicy policy;
-		private WritePolicy writePolicy;
-		private Statement statement;
-		private PartitionFilter partitionFilter;
-		private Operation[] operations;
+		private new readonly QueryPolicy policy;
+		private readonly Statement statement;
+		private readonly PartitionFilter partitionFilter;
 		private readonly PartitionTracker tracker;
 		private readonly RecordSet recordSet;
 
@@ -39,18 +37,14 @@ namespace Aerospike.Client
 			Buffer buffer, 
 			CallInvoker invoker,
 			QueryPolicy policy,
-			WritePolicy writePolicy,
 			Statement statement,
-			Operation[] operations,
 			PartitionTracker partitionTracker,
 			PartitionFilter partitionFilter,
 			RecordSet recordSet
 		) : base(buffer, invoker, policy, true)
 		{
 			this.policy = policy;
-			this.writePolicy = writePolicy;
 			this.statement = statement;
-			this.operations = operations;
 			this.partitionFilter = partitionFilter;
 			this.tracker = partitionTracker;
 			this.recordSet = recordSet;
@@ -63,8 +57,7 @@ namespace Aerospike.Client
 
 		protected internal override bool ParseRow()
 		{
-			ulong bval;
-			Key key = ParseKey(fieldCount, out bval);
+			Key key = ParseKey(fieldCount, out ulong bval);
 
 			if ((info3 & Command.INFO3_PARTITION_DONE) != 0)
 			{
@@ -138,10 +131,6 @@ namespace Aerospike.Client
 			catch (RpcException e)
 			{
 				throw GRPCConversions.ToAerospikeException(e, totalTimeout, true);
-			}
-			catch (Exception)
-			{
-
 			}
 		}
 	}

@@ -306,17 +306,7 @@ namespace Aerospike.Client
 		/// </summary>
 		public void Close()
 		{
-			/*(try
-			{
-				if (authTokenManager != null)
-				{
-					authTokenManager.close();
-				}
-			}
-			catch (Exception e)
-			{
-				Log.Warn("Failed to close authTokenManager: " + Util.GetErrorMessage(e));
-			}*/
+			
 		}
 
 		/// <summary>
@@ -519,7 +509,14 @@ namespace Aerospike.Client
 			}
 		}
 
-		// Not supported in proxy client
+		/// <summary>
+		/// Not supported in proxy client
+		/// </summary>
+		/// <param name="policy"></param>
+		/// <param name="ns"></param>
+		/// <param name="set"></param>
+		/// <param name="beforeLastUpdate"></param>
+		/// <exception cref="AerospikeException"></exception>
 		public void Truncate(InfoPolicy policy, string ns, string set, DateTime? beforeLastUpdate)
 		{
 			throw new AerospikeException(NotSupported + "Truncate");
@@ -683,10 +680,7 @@ namespace Aerospike.Client
 				return true;
 			}
 
-			if (policy == null)
-			{
-				policy = batchPolicyDefault;
-			}
+			policy ??= batchPolicyDefault;
 
 			BatchStatus status = new(true);
 			Operate(policy, records.ToArray(), status);
@@ -974,7 +968,7 @@ namespace Aerospike.Client
 			batchPolicy ??= batchParentPolicyWriteDefault;
 			writePolicy ??= batchWritePolicyDefault;
 
-			BatchAttr attr = new BatchAttr(batchPolicy, writePolicy, ops);
+			BatchAttr attr = new(batchPolicy, writePolicy, ops);
 			BatchRecord[] records = new BatchRecord[keys.Length];
 
 			for (int i = 0; i < keys.Length; i++)
@@ -1188,9 +1182,8 @@ namespace Aerospike.Client
 			}
 
 			IDictionary<string, object> map = record.bins;
-			object obj;
 
-			if (map.TryGetValue("SUCCESS", out obj))
+			if (map.TryGetValue("SUCCESS", out object obj))
 			{
 				return obj;
 			}
@@ -1229,9 +1222,7 @@ namespace Aerospike.Client
 			batchPolicy ??= batchParentPolicyWriteDefault;
 			udfPolicy ??= batchUDFPolicyDefault;
 
-			byte[] argBytes = Packer.Pack(functionArgs);
-
-			BatchAttr attr = new BatchAttr();
+			BatchAttr attr = new();
 			attr.SetUDF(udfPolicy);
 
 			BatchRecord[] records = new BatchRecord[keys.Length];
@@ -1322,12 +1313,10 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if query fails</exception>
 		public void Query(QueryPolicy policy, Statement statement, Action<Key, Record> action)
 		{
-			using (RecordSet rs = Query(policy, statement))
+			using RecordSet rs = Query(policy, statement);
+			while (rs.Next())
 			{
-				while (rs.Next())
-				{
-					action(rs.Key, rs.Record);
-				}
+				action(rs.Key, rs.Record);
 			}
 		}
 
@@ -1406,7 +1395,7 @@ namespace Aerospike.Client
 			Buffer buffer = new();
 			PartitionTracker tracker = new(policy, statement, (Node[])null, partitionFilter);
 			RecordSet recordSet = new(null, policy.recordQueueSize, source.Token);
-			QueryPartitionCommandProxy command = new(buffer, callInvoker, policy, null, statement, null, tracker, partitionFilter, recordSet);
+			QueryPartitionCommandProxy command = new(buffer, callInvoker, policy, statement, tracker, partitionFilter, recordSet);
 			command.Execute();
 			return recordSet;
 		}

@@ -25,13 +25,13 @@ using System.Threading;
 namespace Aerospike.Client
 {
 	/// <summary>
-	/// Socket connection wrapper.
+	/// Connection wrapper for GRPC payload.
 	/// </summary>
 	public class ConnectionProxy : IConnection
 	{
 		private static readonly String NotSupported = "Method not supported in proxy client: ";
-		byte[] Payload;
-		int Offset;
+		private readonly byte[] Payload;
+		private int Offset;
 
 		/// <summary>
 		/// Create GRPC Connection class

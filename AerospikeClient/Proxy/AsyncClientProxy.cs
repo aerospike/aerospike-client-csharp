@@ -121,7 +121,6 @@ namespace Aerospike.Client
 		public AsyncClientProxy(AsyncClientPolicy policy, params Host[] hosts)
 			: base(policy, hosts)
 		{
-			policy ??= new AsyncClientPolicy();
 		}
 
 		//-------------------------------------------------------
@@ -618,11 +617,9 @@ namespace Aerospike.Client
 				await Operate(policy, batchRecords, status, token);
 				return records;
 			}
-			catch (Exception)
+			catch (Exception e)
 			{
-				//throw new AerospikeException.BatchRecords(batchRecords, e);
-				throw new AerospikeException("idk");
-				//TODO
+				throw new AerospikeException.BatchRecordArray(batchRecords, e);
 			}
 		}
 
@@ -944,7 +941,7 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if queue is full</exception>
 		public async Task<Record> Operate(WritePolicy policy, CancellationToken token, Key key, params Operation[] ops)
 		{
-			OperateArgs args = new OperateArgs(policy, writePolicyDefault, operatePolicyReadDefault, key, ops);
+			OperateArgs args = new(policy, writePolicyDefault, operatePolicyReadDefault, key, ops);
 			Buffer buffer = new();
 			OperateCommandProxy command = new(buffer, callInvoker, key, args);
 			return await command.Execute(token);
@@ -1041,7 +1038,7 @@ namespace Aerospike.Client
 			batchPolicy ??= batchParentPolicyWriteDefault;
 			writePolicy ??= batchWritePolicyDefault;
 
-			BatchAttr attr = new BatchAttr(batchPolicy, writePolicy, ops);
+			BatchAttr attr = new(batchPolicy, writePolicy, ops);
 			BatchRecord[] records = new BatchRecord[keys.Length];
 
 			for (int i = 0; i < keys.Length; i++)
@@ -1187,8 +1184,7 @@ namespace Aerospike.Client
 			var record = command.Record;
 
 			IDictionary<string, object> map = record.bins;
-			object obj;
-			if (map.TryGetValue("SUCCESS", out obj))
+			if (map.TryGetValue("SUCCESS", out object obj))
 			{
 				return obj;
 			}
@@ -1238,9 +1234,7 @@ namespace Aerospike.Client
 			batchPolicy ??= batchParentPolicyWriteDefault;
 			udfPolicy ??= batchUDFPolicyDefault;
 
-			byte[] argBytes = Packer.Pack(functionArgs);
-
-			BatchAttr attr = new BatchAttr();
+			BatchAttr attr = new();
 			attr.SetUDF(udfPolicy);
 
 			BatchRecord[] records = new BatchRecord[keys.Length];
@@ -1340,12 +1334,10 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if query fails</exception>
 		public async Task Query(QueryPolicy policy, CancellationToken token, Statement statement, Action<Key, Record> action)
 		{
-			using (RecordSet rs = await Query(policy, token, statement))
+			using RecordSet rs = await Query(policy, token, statement);
+			while (rs.Next())
 			{
-				while (rs.Next())
-				{
-					action(rs.Key, rs.Record);
-				}
+				action(rs.Key, rs.Record);
 			}
 		}
 
@@ -1395,7 +1387,7 @@ namespace Aerospike.Client
 			Buffer buffer = new();
 			PartitionTracker tracker = new(policy, statement, (Node[])null, partitionFilter);
 			RecordSet recordSet = new(null, policy.recordQueueSize, token);
-			QueryPartitionCommandProxy command = new(buffer, callInvoker, policy, null, statement, null, tracker, partitionFilter, recordSet);
+			QueryPartitionCommandProxy command = new(buffer, callInvoker, policy, statement, tracker, partitionFilter, recordSet);
 			await command.Execute(token);
 			return recordSet;
 		}

@@ -389,10 +389,7 @@ namespace Aerospike.Client
 			WriteHeaderWrite(policy, Command.INFO2_WRITE, fieldCount, bins.Length);
 			WriteKey(policy, key);
 
-			if (policy.filterExp != null)
-			{
-				policy.filterExp.Write(this, Buffer);
-			}
+			policy.filterExp?.Write(this, Buffer);
 
 			foreach (Bin bin in bins)
 			{
@@ -415,10 +412,7 @@ namespace Aerospike.Client
 			WriteHeaderWrite(policy, Command.INFO2_WRITE | Command.INFO2_DELETE, fieldCount, 0);
 			WriteKey(policy, key);
 
-			if (policy.filterExp != null)
-			{
-				policy.filterExp.Write(this, Buffer);
-			}
+			policy.filterExp?.Write(this, Buffer);
 			End();
 		}
 
@@ -437,10 +431,7 @@ namespace Aerospike.Client
 			WriteHeaderWrite(policy, Command.INFO2_WRITE, fieldCount, 1);
 			WriteKey(policy, key);
 
-			if (policy.filterExp != null)
-			{
-				policy.filterExp.Write(this, Buffer);
-			}
+			policy.filterExp?.Write(this, Buffer);
 			WriteOperation(Operation.Type.TOUCH);
 			End();
 		}
@@ -463,10 +454,7 @@ namespace Aerospike.Client
 			WriteHeaderReadHeader(policy, Command.INFO1_READ | Command.INFO1_NOBINDATA, fieldCount, 0);
 			WriteKey(policy, key);
 
-			if (policy.filterExp != null)
-			{
-				policy.filterExp.Write(this, Buffer);
-			}
+			policy.filterExp?.Write(this, Buffer);
 			End();
 		}
 
@@ -484,10 +472,7 @@ namespace Aerospike.Client
 			WriteHeaderRead(policy, serverTimeout, Command.INFO1_READ | Command.INFO1_GET_ALL, 0, fieldCount, 0);
 			WriteKey(policy, key);
 
-			if (policy.filterExp != null)
-			{
-				policy.filterExp.Write(this, Buffer);
-			}
+			policy.filterExp?.Write(this, Buffer);
 			End();
 		}
 
@@ -512,10 +497,7 @@ namespace Aerospike.Client
 				WriteHeaderRead(policy, serverTimeout, Command.INFO1_READ, 0, fieldCount, binNames.Length);
 				WriteKey(policy, key);
 
-				if (policy.filterExp != null)
-				{
-					policy.filterExp.Write(this, Buffer);
-				}
+				policy.filterExp?.Write(this, Buffer);
 
 				foreach (string binName in binNames)
 				{
@@ -544,10 +526,7 @@ namespace Aerospike.Client
 			WriteHeaderReadHeader(policy, Command.INFO1_READ | Command.INFO1_NOBINDATA, fieldCount, 0);
 			WriteKey(policy, key);
 
-			if (policy.filterExp != null)
-			{
-				policy.filterExp.Write(this, Buffer);
-			}
+			policy.filterExp?.Write(this, Buffer);
 			End();
 		}
 
@@ -572,10 +551,7 @@ namespace Aerospike.Client
 			WriteHeaderReadWrite(policy, args.readAttr, args.writeAttr, fieldCount, args.operations.Length);
 			WriteKey(policy, key);
 
-			if (policy.filterExp != null)
-			{
-				policy.filterExp.Write(this, Buffer);
-			}
+			policy.filterExp?.Write(this, Buffer);
 
 			foreach (Operation operation in args.operations)
 			{
@@ -606,10 +582,7 @@ namespace Aerospike.Client
 			WriteHeaderWrite(policy, Command.INFO2_WRITE, fieldCount, 0);
 			WriteKey(policy, key);
 
-			if (policy.filterExp != null)
-			{
-				policy.filterExp.Write(this, Buffer);
-			}
+			policy.filterExp?.Write(this, Buffer);
 			WriteField(packageName, FieldType.UDF_PACKAGE_NAME);
 			WriteField(functionName, FieldType.UDF_FUNCTION);
 			WriteField(argBytes, FieldType.UDF_ARGLIST);
@@ -693,10 +666,7 @@ namespace Aerospike.Client
 
 			WriteHeaderRead(policy, totalTimeout, readAttr | Command.INFO1_BATCH, 0, fieldCount, 0);
 
-			if (policy.filterExp != null)
-			{
-				policy.filterExp.Write(this, Buffer);
-			}
+			policy.filterExp?.Write(this, Buffer);
 
 			int fieldSizeOffset = Buffer.Offset;
 			WriteFieldHeader(0, FieldType.BATCH_INDEX); // Need to update size at end
@@ -838,10 +808,7 @@ namespace Aerospike.Client
 
 			WriteHeaderRead(policy, totalTimeout, readAttr | Command.INFO1_BATCH, 0, fieldCount, 0);
 
-			if (policy.filterExp != null)
-			{
-				policy.filterExp.Write(this, Buffer);
-			}
+			policy.filterExp?.Write(this, Buffer);
 
 			int fieldSizeOffset = Buffer.Offset;
 			WriteFieldHeader(0, FieldType.BATCH_INDEX); // Need to update size at end
@@ -956,10 +923,7 @@ namespace Aerospike.Client
 
 			WriteBatchHeader(policy, totalTimeout, fieldCount);
 
-			if (policy.filterExp != null)
-			{
-				policy.filterExp.Write(this, Buffer);
-			}
+			policy.filterExp?.Write(this, Buffer);
 
 			int fieldSizeOffset = Buffer.Offset;
 			WriteFieldHeader(0, FieldType.BATCH_INDEX); // Need to update size at end
@@ -968,7 +932,7 @@ namespace Aerospike.Client
 			Buffer.Offset += 4;
 			Buffer.DataBuffer[Buffer.Offset++] = GetBatchFlags(policy);
 
-			BatchAttr attr = new BatchAttr();
+			BatchAttr attr = new();
 			prev = null;
 
 			for (int i = 0; i < max; i++)
@@ -1175,10 +1139,7 @@ namespace Aerospike.Client
 
 			WriteBatchHeader(policy, totalTimeout, fieldCount);
 
-			if (exp != null)
-			{
-				exp.Write(this, Buffer);
-			}
+			exp?.Write(this, Buffer);
 
 			int fieldSizeOffset = Buffer.Offset;
 			WriteFieldHeader(0, FieldType.BATCH_INDEX); // Need to update size at end
@@ -1296,10 +1257,7 @@ namespace Aerospike.Client
 
 			WriteBatchHeader(policy, totalTimeout, fieldCount);
 
-			if (exp != null)
-			{
-				exp.Write(this, Buffer);
-			}
+			exp?.Write(this, Buffer);
 
 			int fieldSizeOffset = Buffer.Offset;
 			WriteFieldHeader(0, FieldType.BATCH_INDEX); // Need to update size at end
@@ -1344,7 +1302,7 @@ namespace Aerospike.Client
 
 		private static Expression GetBatchExpression(Policy policy, BatchAttr attr)
 		{
-			return (attr.filterExp != null) ? attr.filterExp : policy.filterExp;
+			return attr.filterExp ?? policy.filterExp;
 		}
 
 		private static byte GetBatchFlags(BatchPolicy policy)
@@ -1554,10 +1512,7 @@ namespace Aerospike.Client
 				WriteField(policy.recordsPerSecond, FieldType.RECORDS_PER_SECOND);
 			}
 
-			if (policy.filterExp != null)
-			{
-				policy.filterExp.Write(this, Buffer);
-			}
+			policy.filterExp?.Write(this, Buffer);
 
 			// Write scan timeout
 			WriteField(policy.socketTimeout, FieldType.SOCKET_TIMEOUT);
@@ -1684,7 +1639,7 @@ namespace Aerospike.Client
 				}
 				else
 				{
-					functionArgBuffer = new byte[0];
+					functionArgBuffer = Array.Empty<byte>();
 				}
 				Buffer.Offset += FIELD_HEADER_SIZE + functionArgBuffer.Length;
 				fieldCount += 4;
@@ -1824,10 +1779,7 @@ namespace Aerospike.Client
 				WriteField(functionArgBuffer, FieldType.UDF_ARGLIST);
 			}
 
-			if (policy.filterExp != null)
-			{
-				policy.filterExp.Write(this, Buffer);
-			}
+			policy.filterExp?.Write(this, Buffer);
 
 			if (statement.operations != null)
 			{

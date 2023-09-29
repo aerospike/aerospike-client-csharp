@@ -116,7 +116,7 @@ namespace Aerospike.Client
 		{
 			if (batch.node != null && batch.node.HasBatchAny)
 			{
-				BatchAttr attr = new BatchAttr(policy, readAttr, ops);
+				BatchAttr attr = new(policy, readAttr, ops);
 				SetBatchOperate(batchPolicy, keys, batch, binNames, ops, attr);
 			}
 			else
@@ -165,7 +165,7 @@ namespace Aerospike.Client
 		{
 			if (batch.node != null && batch.node.HasBatchAny)
 			{
-				BatchAttr attr = new BatchAttr(policy, Command.INFO1_READ | Command.INFO1_NOBINDATA);
+				BatchAttr attr = new(policy, Command.INFO1_READ | Command.INFO1_NOBINDATA);
 				SetBatchOperate(batchPolicy, keys, batch, null, null, attr);
 			}
 			else
@@ -510,10 +510,6 @@ namespace Aerospike.Client
 			catch (RpcException e)
 			{
 				throw GRPCConversions.ToAerospikeException(e, totalTimeout, true);
-			}
-			catch (Exception e)
-			{
-
 			}
 		}
 	}

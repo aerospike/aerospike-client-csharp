@@ -112,10 +112,6 @@ namespace Aerospike.Client
 			{
 				throw GRPCConversions.ToAerospikeException(e, totalTimeout, true);
 			}
-			catch (Exception e)
-			{
-
-			}
 		}
 	}
 }
