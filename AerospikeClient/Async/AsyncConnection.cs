@@ -23,7 +23,7 @@ namespace Aerospike.Client
 	/// <summary>
 	/// Async connection base class.
 	/// </summary>
-	public abstract class AsyncConnection : IAsyncConnection
+	public abstract class AsyncConnection
 	{
 		private static readonly bool ZeroBuffers = !(
 			Environment.OSVersion.Platform == PlatformID.Unix ||

@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2020 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -14,10 +14,8 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using System;
-using System.IO;
 using Aerospike.Client;
-using System.Collections.Generic;
+using System;
 
 namespace Aerospike.Demo
 {
@@ -187,7 +185,7 @@ namespace Aerospike.Demo
 				Exp.RegexCompare("prefix.*suffix", RegexFlag.ICASE | RegexFlag.NEWLINE, Exp.StringBin("bin3")));
 
 			RecordSet rs = client.Query(policy, stmt);
-			
+
 			try
 			{
 				while (rs.Next())

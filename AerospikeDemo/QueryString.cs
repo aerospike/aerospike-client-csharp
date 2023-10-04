@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -70,7 +70,7 @@ namespace Aerospike.Demo
 				Key key = new Key(args.ns, args.set, keyPrefix + i);
 				Bin bin = new Bin(binName, valuePrefix + i);
 
-				console.Info("Put: namespace={0} set={1} key={2} bin={3} value={4}", 
+				console.Info("Put: namespace={0} set={1} key={2} bin={3} value={4}",
 					key.ns, key.setName, key.userKey, bin.name, bin.value);
 
 				client.Put(args.writePolicy, key, bin);
@@ -81,7 +81,7 @@ namespace Aerospike.Demo
 		{
 			string filter = valuePrefix + 3;
 
-			console.Info("Query for: ns={0} set={1} index={2} bin={3} filter={4}", 
+			console.Info("Query for: ns={0} set={1} index={2} bin={3} filter={4}",
 				args.ns, args.set, indexName, binName, filter);
 
 			Statement stmt = new Statement();
@@ -104,7 +104,7 @@ namespace Aerospike.Demo
 
 					if (result.Equals(filter))
 					{
-						console.Info("Record found: namespace={0} set={1} digest={2} bin={3} value={4}", 
+						console.Info("Record found: namespace={0} set={1} digest={2} bin={3} value={4}",
 							key.ns, key.setName, ByteUtil.BytesToHexString(key.digest), binName, result);
 					}
 					else

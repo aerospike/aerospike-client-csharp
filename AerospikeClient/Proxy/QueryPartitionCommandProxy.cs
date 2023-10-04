@@ -1,5 +1,5 @@
 ﻿/* 
- * Copyright 2012-2022 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -17,9 +17,6 @@
 using Aerospike.Client.KVS;
 using Google.Protobuf;
 using Grpc.Core;
-using Grpc.Net.Client;
-using System;
-using System.Threading.Tasks;
 using static Aerospike.Client.AerospikeException;
 
 namespace Aerospike.Client
@@ -34,7 +31,7 @@ namespace Aerospike.Client
 
 		public QueryPartitionCommandProxy
 		(
-			Buffer buffer, 
+			Buffer buffer,
 			CallInvoker invoker,
 			QueryPolicy policy,
 			Statement statement,
@@ -117,7 +114,7 @@ namespace Aerospike.Client
 			};
 
 			try
-			{ 
+			{
 				var client = new KVS.Query.QueryClient(CallInvoker);
 				var deadline = DateTime.UtcNow.AddMilliseconds(totalTimeout);
 				var stream = client.Query(request, deadline: deadline, cancellationToken: token);

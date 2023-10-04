@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2022 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -16,8 +16,6 @@
  */
 using Aerospike.Client.KVS;
 using Grpc.Core;
-using Grpc.Net.Client;
-using System.Threading.Channels;
 using static Aerospike.Client.AerospikeException;
 
 namespace Aerospike.Client
@@ -28,7 +26,7 @@ namespace Aerospike.Client
 	public sealed class ExecuteTaskProxy : ExecuteTask
 	{
 		CallInvoker Invoker { get; set; }
-		
+
 		/// <summary>
 		/// Initialize task with fields needed to query server nodes.
 		/// </summary>
@@ -56,7 +54,7 @@ namespace Aerospike.Client
 				BackgroundTaskStatusRequest = statusRequest
 			};
 
-			
+
 			AerospikeResponsePayload response = new();
 
 			try
@@ -98,7 +96,7 @@ namespace Aerospike.Client
 			}
 
 			return BaseTask.COMPLETE;
-			
+
 		}
 	}
 }

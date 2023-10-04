@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -16,11 +16,6 @@
  */
 using Aerospike.Client.KVS;
 using Grpc.Core;
-using System;
-using System.IO;
-using System.Net;
-using System.Net.Sockets;
-using System.Threading;
 using static Aerospike.Client.AerospikeException;
 
 namespace Aerospike.Client
@@ -33,7 +28,7 @@ namespace Aerospike.Client
 		private static readonly String NotSupported = "Method not supported in proxy client: ";
 		private readonly AsyncServerStreamingCall<AerospikeResponsePayload> Stream;
 		private AerospikeResponsePayload Response;
-		private byte[] Payload;
+		private byte[] Payload; // _payload
 		private int Offset;
 		private int BufferOffset;
 
@@ -73,7 +68,9 @@ namespace Aerospike.Client
 			{
 				await NextGRPCResponse(token);
 			}
-			
+
+			token.ThrowIfCancellationRequested();
+
 			if (length > Payload.Length - Offset)
 			{
 				// Copy remaining data
@@ -84,7 +81,7 @@ namespace Aerospike.Client
 				// Get the next response
 				await GRPCRead(buffer, length, token);
 			}
-				
+
 			Array.Copy(Payload, Offset, buffer, BufferOffset, length);
 			Offset += length;
 

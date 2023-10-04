@@ -1,5 +1,5 @@
 ﻿/* 
- * Copyright 2012-2022 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -14,11 +14,9 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using System;
-using System.Collections.Generic;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Aerospike.Client;
 using Microsoft.Extensions.Configuration;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace Aerospike.Test
 {
@@ -57,31 +55,31 @@ namespace Aerospike.Test
 		{
 			Log.Disable();
 
-            var builder = new ConfigurationBuilder().AddJsonFile("settings.json", optional: true, reloadOnChange: true);
-            IConfigurationRoot section = builder.Build();
+			var builder = new ConfigurationBuilder().AddJsonFile("settings.json", optional: true, reloadOnChange: true);
+			IConfigurationRoot section = builder.Build();
 
-            port = int.Parse(section.GetSection("Port").Value);
+			port = int.Parse(section.GetSection("Port").Value);
 			proxyPort = int.Parse(section.GetSection("ProxyPort").Value);
 			testProxy = bool.Parse(section.GetSection("TestProxy").Value);
-            clusterName = section.GetSection("ClusterName").Value;
-            user = section.GetSection("User").Value;
-            password = section.GetSection("Password").Value;
-            ns = section.GetSection("Namespace").Value;
-            set = section.GetSection("Set").Value;
-            authMode = (AuthMode)Enum.Parse(typeof(AuthMode), section.GetSection("AuthMode").Value, true);
+			clusterName = section.GetSection("ClusterName").Value;
+			user = section.GetSection("User").Value;
+			password = section.GetSection("Password").Value;
+			ns = section.GetSection("Namespace").Value;
+			set = section.GetSection("Set").Value;
+			authMode = (AuthMode)Enum.Parse(typeof(AuthMode), section.GetSection("AuthMode").Value, true);
 
-            bool tlsEnable = bool.Parse(section.GetSection("TlsEnable").Value);
+			bool tlsEnable = bool.Parse(section.GetSection("TlsEnable").Value);
 
-            if (tlsEnable)
-            {
-                tlsName = section.GetSection("TlsName").Value;
-                tlsPolicy = new TlsPolicy(
-                    section.GetSection("TlsProtocols").Value,
-                    section.GetSection("TlsRevoke").Value,
-                    section.GetSection("TlsClientCertFile").Value,
-                    bool.Parse(section.GetSection("TlsLoginOnly").Value)
-                    );
-            }
+			if (tlsEnable)
+			{
+				tlsName = section.GetSection("TlsName").Value;
+				tlsPolicy = new TlsPolicy(
+					section.GetSection("TlsProtocols").Value,
+					section.GetSection("TlsRevoke").Value,
+					section.GetSection("TlsClientCertFile").Value,
+					bool.Parse(section.GetSection("TlsLoginOnly").Value)
+					);
+			}
 
 			bool tlsEnableProxy = bool.Parse(section.GetSection("ProxyTlsEnable").Value);
 
@@ -98,9 +96,9 @@ namespace Aerospike.Test
 
 			hosts = Host.ParseHosts(section.GetSection("Host").Value, tlsName, port);
 			proxyHost = Host.ParseHosts(section.GetSection("ProxyHost").Value, proxyTlsName, proxyPort)[0];
-        }
+		}
 
-        public void Connect()
+		public void Connect()
 		{
 			if (testProxy)
 			{
@@ -137,8 +135,8 @@ namespace Aerospike.Test
 			{
 				client.Close();
 				client = null;
-                throw;
-            }
+				throw;
+			}
 		}
 
 		private void ConnectProxy()
@@ -175,7 +173,7 @@ namespace Aerospike.Test
 				proxyAsyncPolicy.user = user;
 				proxyAsyncPolicy.password = password;
 			}
-			
+
 			asyncPolicy.asyncMaxCommands = 300;
 			proxyAsyncPolicy.asyncMaxCommands = 300;
 

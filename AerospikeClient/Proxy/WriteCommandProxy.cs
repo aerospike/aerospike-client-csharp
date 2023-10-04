@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2020 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -14,10 +14,8 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using Google.Protobuf;
-using Grpc.Net.Client;
 using Aerospike.Client.KVS;
-using System.Diagnostics;
+using Google.Protobuf;
 using Grpc.Core;
 
 namespace Aerospike.Client
@@ -87,19 +85,18 @@ namespace Aerospike.Client
 			};
 			GRPCConversions.SetRequestPolicy(writePolicy, request);
 
-			try 
-			{ 
+			try
+			{
 				var client = new KVS.KVS.KVSClient(CallInvoker);
 				var deadline = DateTime.UtcNow.AddMilliseconds(totalTimeout);
 				var response = client.Write(request, deadline: deadline);
 				var conn = new ConnectionProxy(response);
 				ParseResult(conn);
 			}
-			catch (RpcException e) 
+			catch (RpcException e)
 			{
 				throw GRPCConversions.ToAerospikeException(e, totalTimeout, true);
 			}
-			
 		}
 
 		public async Task Execute(CancellationToken token)
@@ -113,8 +110,8 @@ namespace Aerospike.Client
 			};
 			GRPCConversions.SetRequestPolicy(writePolicy, request);
 
-			try 
-			{ 
+			try
+			{
 				var client = new KVS.KVS.KVSClient(CallInvoker);
 				var deadline = DateTime.UtcNow.AddMilliseconds(totalTimeout);
 				var response = await client.WriteAsync(request, cancellationToken: token, deadline: deadline);

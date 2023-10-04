@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2022 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -14,11 +14,9 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using System.IO;
-using System.Collections;
+using Aerospike.Client;
 using System.Collections.Generic;
 using System.Text;
-using Aerospike.Client;
 
 namespace Aerospike.Demo
 {
@@ -70,7 +68,7 @@ namespace Aerospike.Demo
 			WriteMapKeyRecords(client, args, keyPrefix, binName, binName2, mapValuePrefix, size);
 			RunQuery(client, args, binName, binName2, IndexCollectionType.MAPKEYS);
 			client.DropIndex(args.policy, args.ns, args.set, indexName);
-			DeleteRecords(client,args, keyPrefix, size);
+			DeleteRecords(client, args, keyPrefix, size);
 		}
 
 		private void RunListExample(IAerospikeClient client, Arguments args)

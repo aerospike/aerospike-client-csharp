@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2022 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -14,13 +14,6 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.Diagnostics.Metrics;
-using System.Threading;
-using System.Threading.Channels;
-using System.Threading.Tasks;
-using static Aerospike.Client.AerospikeException;
 
 namespace Aerospike.Client
 {
@@ -65,7 +58,7 @@ namespace Aerospike.Client
 		/// <param name="hostname">host name</param>
 		/// <param name="port">host port</param>
 		/// <exception cref="AerospikeException">if host connection fails</exception>
-		public AsyncClientProxy(string hostname, int port) 
+		public AsyncClientProxy(string hostname, int port)
 			: this(new AsyncClientPolicy(), new Host(hostname, port))
 		{
 		}
@@ -90,7 +83,7 @@ namespace Aerospike.Client
 		/// <param name="hostname">host name</param>
 		/// <param name="port">host port</param>
 		/// <exception cref="AerospikeException">if host connection fails</exception>
-		public AsyncClientProxy(AsyncClientPolicy policy, string hostname, int port) 
+		public AsyncClientProxy(AsyncClientPolicy policy, string hostname, int port)
 			: this(policy, new Host(hostname, port))
 		{
 		}
@@ -155,6 +148,8 @@ namespace Aerospike.Client
 		/// <param name="key"></param>
 		/// <param name="bins"></param>
 		/// <exception cref="AerospikeException"></exception>
+		/// <seealso cref="Put(WritePolicy, CancellationToken, Key, Bin[])"/>
+		[Obsolete("Method not supported in proxy client: Put")]
 		public void Put(WritePolicy policy, WriteListener listener, Key key, params Bin[] bins)
 		{
 			throw new AerospikeException(NotSupported + "Put");
@@ -193,6 +188,8 @@ namespace Aerospike.Client
 		/// <param name="key"></param>
 		/// <param name="bins"></param>
 		/// <exception cref="AerospikeException"></exception>
+		/// <seealso cref="Append(WritePolicy, CancellationToken, Key, Bin[])"/>
+		[Obsolete("Method not supported in proxy client: Append")]
 		public void Append(WritePolicy policy, WriteListener listener, Key key, params Bin[] bins)
 		{
 			throw new AerospikeException(NotSupported + "Append");
@@ -227,6 +224,8 @@ namespace Aerospike.Client
 		/// <param name="key"></param>
 		/// <param name="bins"></param>
 		/// <exception cref="AerospikeException"></exception>
+		/// <seealso cref="Prepend(WritePolicy, CancellationToken, Key, Bin[])"/>
+		[Obsolete("Method not supported in proxy client: Prepend")]
 		public void Prepend(WritePolicy policy, WriteListener listener, Key key, params Bin[] bins)
 		{
 			throw new AerospikeException(NotSupported + "Prepend");
@@ -264,6 +263,8 @@ namespace Aerospike.Client
 		/// <param name="key"></param>
 		/// <param name="bins"></param>
 		/// <exception cref="AerospikeException"></exception>
+		/// <seealso cref="Add(WritePolicy, CancellationToken, Key, Bin[])"/>
+		[Obsolete("Method not supported in proxy client: Add")]
 		public void Add(WritePolicy policy, WriteListener listener, Key key, params Bin[] bins)
 		{
 			throw new AerospikeException(NotSupported + "Add");
@@ -295,6 +296,8 @@ namespace Aerospike.Client
 		/// <param name="listener"></param>
 		/// <param name="key"></param>
 		/// <exception cref="AerospikeException"></exception>
+		/// <seealso cref="Delete(WritePolicy, CancellationToken, Key)"/>
+		[Obsolete("Method not supported in proxy client: Delete")]
 		public void Delete(WritePolicy policy, DeleteListener listener, Key key)
 		{
 			throw new AerospikeException(NotSupported + "Delete");
@@ -350,6 +353,8 @@ namespace Aerospike.Client
 		/// <param name="listener"></param>
 		/// <param name="keys"></param>
 		/// <exception cref="AerospikeException"></exception>
+		/// <seealso cref="Delete(BatchPolicy, BatchDeletePolicy, CancellationToken, Key[])"/>
+		[Obsolete("Method not supported in proxy client: Delete")]
 		public void Delete(BatchPolicy batchPolicy, BatchDeletePolicy deletePolicy, BatchRecordArrayListener listener, Key[] keys)
 		{
 			throw new AerospikeException(NotSupported + "Delete");
@@ -363,11 +368,13 @@ namespace Aerospike.Client
 		/// <param name="listener"></param>
 		/// <param name="keys"></param>
 		/// <exception cref="AerospikeException"></exception>
+		/// <seealso cref="Delete(BatchPolicy, BatchDeletePolicy, CancellationToken, Key[])"/>
+		[Obsolete("Method not supported in proxy client: Delete")]
 		public void Delete(BatchPolicy batchPolicy, BatchDeletePolicy deletePolicy, BatchRecordSequenceListener listener, Key[] keys)
 		{
 			throw new AerospikeException(NotSupported + "Delete");
 		}
-	
+
 		//-------------------------------------------------------
 		// Touch Operations
 		//-------------------------------------------------------
@@ -395,6 +402,8 @@ namespace Aerospike.Client
 		/// <param name="listener"></param>
 		/// <param name="key"></param>
 		/// <exception cref="AerospikeException"></exception>
+		/// <seealso cref="Touch(WritePolicy, CancellationToken, Key)"/>
+		[Obsolete("Method not supported in proxy client: Touch")]
 		public void Touch(WritePolicy policy, WriteListener listener, Key key)
 		{
 			throw new AerospikeException(NotSupported + "Touch");
@@ -426,6 +435,8 @@ namespace Aerospike.Client
 		/// <param name="listener"></param>
 		/// <param name="key"></param>
 		/// <exception cref="AerospikeException"></exception>
+		/// <seealso cref="Exists(Policy, CancellationToken, Key)"/>
+		[Obsolete("Method not supported in proxy client: Exists")]
 		public void Exists(Policy policy, ExistsListener listener, Key key)
 		{
 			throw new AerospikeException(NotSupported + "Exists");
@@ -479,6 +490,8 @@ namespace Aerospike.Client
 		/// <param name="listener"></param>
 		/// <param name="keys"></param>
 		/// <exception cref="AerospikeException"></exception>
+		/// <seealso cref="Exists(BatchPolicy, CancellationToken, Key[])"/>
+		[Obsolete("Method not supported in proxy client: Exists")]
 		public void Exists(BatchPolicy policy, ExistsArrayListener listener, Key[] keys)
 		{
 			throw new AerospikeException(NotSupported + "Exists");
@@ -491,11 +504,13 @@ namespace Aerospike.Client
 		/// <param name="listener"></param>
 		/// <param name="keys"></param>
 		/// <exception cref="AerospikeException"></exception>
+		/// <seealso cref="Exists(BatchPolicy, CancellationToken, Key[])"/>
+		[Obsolete("Method not supported in proxy client: Exists")]
 		public void Exists(BatchPolicy policy, ExistsSequenceListener listener, Key[] keys)
 		{
 			throw new AerospikeException(NotSupported + "Exists");
 		}
-		
+
 		//-------------------------------------------------------
 		// Read Record Operations
 		//-------------------------------------------------------
@@ -522,6 +537,8 @@ namespace Aerospike.Client
 		/// <param name="listener"></param>
 		/// <param name="key"></param>
 		/// <exception cref="AerospikeException"></exception>
+		/// <seealso cref="Get(Policy, CancellationToken, Key)"/>
+		[Obsolete("Method not supported in proxy client: Get")]
 		public void Get(Policy policy, RecordListener listener, Key key)
 		{
 			throw new AerospikeException(NotSupported + "Get");
@@ -551,6 +568,8 @@ namespace Aerospike.Client
 		/// <param name="key"></param>
 		/// <param name="binNames"></param>
 		/// <exception cref="AerospikeException"></exception>
+		/// <seealso cref="Get(Policy, CancellationToken, Key, string[])"/>
+		[Obsolete("Method not supported in proxy client: Get")]
 		public void Get(Policy policy, RecordListener listener, Key key, params string[] binNames)
 		{
 			throw new AerospikeException(NotSupported + "Get");
@@ -578,9 +597,11 @@ namespace Aerospike.Client
 		/// <param name="listener"></param>
 		/// <param name="key"></param>
 		/// <exception cref="AerospikeException"></exception>
+		/// <seealso cref="GetHeader(Policy, CancellationToken, Key)"/>
+		[Obsolete("Method not supported in proxy client: GetHeader")]
 		public void GetHeader(Policy policy, RecordListener listener, Key key)
 		{
-			throw new AerospikeException(NotSupported + "Get");
+			throw new AerospikeException(NotSupported + "GetHeader");
 		}
 
 		//-------------------------------------------------------
@@ -630,6 +651,8 @@ namespace Aerospike.Client
 		/// <param name="listener"></param>
 		/// <param name="records"></param>
 		/// <exception cref="AerospikeException"></exception>
+		/// <seealso cref="Get(BatchPolicy, CancellationToken, List{BatchRead})"/>
+		[Obsolete("Method not supported in proxy client: Get")]
 		public void Get(BatchPolicy policy, BatchListListener listener, List<BatchRead> records)
 		{
 			throw new AerospikeException(NotSupported + "Get");
@@ -642,6 +665,8 @@ namespace Aerospike.Client
 		/// <param name="listener"></param>
 		/// <param name="records"></param>
 		/// <exception cref="AerospikeException"></exception>
+		/// <seealso cref="Get(BatchPolicy, CancellationToken, List{BatchRead})"/>
+		[Obsolete("Method not supported in proxy client: Get")]
 		public void Get(BatchPolicy policy, BatchSequenceListener listener, List<BatchRead> records)
 		{
 			throw new AerospikeException(NotSupported + "Get");
@@ -696,6 +721,8 @@ namespace Aerospike.Client
 		/// <param name="listener"></param>
 		/// <param name="keys"></param>
 		/// <exception cref="AerospikeException"></exception>
+		/// <seealso cref="Get(BatchPolicy, CancellationToken, Key[])"/>
+		[Obsolete("Method not supported in proxy client: Get")]
 		public void Get(BatchPolicy policy, RecordArrayListener listener, Key[] keys)
 		{
 			throw new AerospikeException(NotSupported + "Get");
@@ -708,6 +735,8 @@ namespace Aerospike.Client
 		/// <param name="listener"></param>
 		/// <param name="keys"></param>
 		/// <exception cref="AerospikeException"></exception>
+		/// <seealso cref="Get(BatchPolicy, CancellationToken, Key[])"/>
+		[Obsolete("Method not supported in proxy client: Get")]
 		public void Get(BatchPolicy policy, RecordSequenceListener listener, Key[] keys)
 		{
 			throw new AerospikeException(NotSupported + "Get");
@@ -764,6 +793,8 @@ namespace Aerospike.Client
 		/// <param name="keys"></param>
 		/// <param name="binNames"></param>
 		/// <exception cref="AerospikeException"></exception>
+		/// <seealso cref="Get(BatchPolicy, CancellationToken, Key[], string[])"/>
+		[Obsolete("Method not supported in proxy client: Get")]
 		public void Get(BatchPolicy policy, RecordArrayListener listener, Key[] keys, params string[] binNames)
 		{
 			throw new AerospikeException(NotSupported + "Get");
@@ -777,6 +808,8 @@ namespace Aerospike.Client
 		/// <param name="keys"></param>
 		/// <param name="binNames"></param>
 		/// <exception cref="AerospikeException"></exception>
+		/// <seealso cref="Get(BatchPolicy, CancellationToken, Key[], string[])"/>
+		[Obsolete("Method not supported in proxy client: Get")]
 		public void Get(BatchPolicy policy, RecordSequenceListener listener, Key[] keys, params string[] binNames)
 		{
 			throw new AerospikeException(NotSupported + "Get");
@@ -834,6 +867,7 @@ namespace Aerospike.Client
 		/// <param name="keys"></param>
 		/// <param name="ops"></param>
 		/// <exception cref="AerospikeException"></exception>
+		[Obsolete("Method not supported in proxy client: Get")]
 		public void Get(BatchPolicy policy, RecordArrayListener listener, Key[] keys, params Operation[] ops)
 		{
 			throw new AerospikeException(NotSupported + "Get");
@@ -847,6 +881,8 @@ namespace Aerospike.Client
 		/// <param name="keys"></param>
 		/// <param name="ops"></param>
 		/// <exception cref="AerospikeException"></exception>
+		/// <seealso cref="Get(BatchPolicy, CancellationToken, Key[], Operation[])"/>
+		[Obsolete("Method not supported in proxy client: Get")]
 		public void Get(BatchPolicy policy, RecordSequenceListener listener, Key[] keys, params Operation[] ops)
 		{
 			throw new AerospikeException(NotSupported + "Get");
@@ -901,6 +937,8 @@ namespace Aerospike.Client
 		/// <param name="listener"></param>
 		/// <param name="keys"></param>
 		/// <exception cref="AerospikeException"></exception>
+		/// <seealso cref="GetHeader(BatchPolicy, CancellationToken, Key[])"/>
+		[Obsolete("Method not supported in proxy client: GetHeader")]
 		public void GetHeader(BatchPolicy policy, RecordArrayListener listener, Key[] keys)
 		{
 			throw new AerospikeException(NotSupported + "GetHeader");
@@ -913,11 +951,13 @@ namespace Aerospike.Client
 		/// <param name="listener"></param>
 		/// <param name="keys"></param>
 		/// <exception cref="AerospikeException"></exception>
+		/// <seealso cref="GetHeader(BatchPolicy, CancellationToken, Key[])"/>
+		[Obsolete("Method not supported in proxy client: GetHeader")]
 		public void GetHeader(BatchPolicy policy, RecordSequenceListener listener, Key[] keys)
 		{
 			throw new AerospikeException(NotSupported + "GetHeader");
 		}
-		
+
 		//-------------------------------------------------------
 		// Generic Database Operations
 		//-------------------------------------------------------
@@ -955,6 +995,8 @@ namespace Aerospike.Client
 		/// <param name="key"></param>
 		/// <param name="ops"></param>
 		/// <exception cref="AerospikeException"></exception>
+		/// <seealso cref="Operate(WritePolicy, CancellationToken, Key, Operation[])"/>
+		[Obsolete("Method not supported in proxy client: Operate")]
 		public void Operate(WritePolicy policy, RecordListener listener, Key key, params Operation[] ops)
 		{
 			throw new AerospikeException(NotSupported + "Operate");
@@ -997,6 +1039,8 @@ namespace Aerospike.Client
 		/// <param name="listener"></param>
 		/// <param name="records"></param>
 		/// <exception cref="AerospikeException"></exception>
+		/// <seealso cref="Operate(BatchPolicy, CancellationToken, List{BatchRecord})"/>
+		[Obsolete("Method not supported in proxy client: Operate")]
 		public void Operate(BatchPolicy policy, BatchOperateListListener listener, List<BatchRecord> records)
 		{
 			throw new AerospikeException(NotSupported + "Operate");
@@ -1009,6 +1053,8 @@ namespace Aerospike.Client
 		/// <param name="listener"></param>
 		/// <param name="records"></param>
 		/// <exception cref="AerospikeException"></exception>
+		/// <seealso cref="Operate(BatchPolicy, CancellationToken, List{BatchRecord})"/>
+		[Obsolete("Method not supported in proxy client: Operate")]
 		public void Operate(BatchPolicy policy, BatchRecordSequenceListener listener, List<BatchRecord> records)
 		{
 			throw new AerospikeException(NotSupported + "Operate");
@@ -1071,6 +1117,8 @@ namespace Aerospike.Client
 		/// <param name="keys"></param>
 		/// <param name="ops"></param>
 		/// <exception cref="AerospikeException"></exception>
+		/// <seealso cref="Operate(BatchPolicy, BatchWritePolicy, CancellationToken, Key[], Operation[])"/>
+		[Obsolete("Method not supported in proxy client: Operate")]
 		public void Operate(BatchPolicy batchPolicy, BatchWritePolicy writePolicy, BatchRecordArrayListener listener, Key[] keys, params Operation[] ops)
 		{
 			throw new AerospikeException(NotSupported + "Operate");
@@ -1085,6 +1133,8 @@ namespace Aerospike.Client
 		/// <param name="keys"></param>
 		/// <param name="ops"></param>
 		/// <exception cref="AerospikeException"></exception>
+		/// <seealso cref="Operate(BatchPolicy, BatchWritePolicy, CancellationToken, Key[], Operation[])"/>
+		[Obsolete("Method not supported in proxy client: Operate")]
 		public void Operate(BatchPolicy batchPolicy, BatchWritePolicy writePolicy, BatchRecordSequenceListener listener, Key[] keys, params Operation[] ops)
 		{
 			throw new AerospikeException(NotSupported + "Operate");
@@ -1103,6 +1153,8 @@ namespace Aerospike.Client
 		/// <param name="setName"></param>
 		/// <param name="binNames"></param>
 		/// <exception cref="AerospikeException"></exception>
+		/// <seealso cref="ScanAll(ScanPolicy, CancellationToken, string, string, string[])"/>
+		[Obsolete("Method not supported in proxy client: ScanAll")]
 		public void ScanAll(ScanPolicy policy, RecordSequenceListener listener, string ns, string setName, params string[] binNames)
 		{
 			throw new AerospikeException(NotSupported + "ScanAll");
@@ -1134,6 +1186,8 @@ namespace Aerospike.Client
 		/// <param name="setName"></param>
 		/// <param name="binNames"></param>
 		/// <exception cref="AerospikeException"></exception>
+		/// <seealso cref="ScanPartitions(ScanPolicy, CancellationToken, PartitionFilter, string, string, string[])"/>
+		[Obsolete("Method not supported in proxy client: ScanPartitions")]
 		public void ScanPartitions(ScanPolicy policy, RecordSequenceListener listener, PartitionFilter partitionFilter, string ns, string setName, params string[] binNames)
 		{
 			throw new AerospikeException(NotSupported + "ScanPartitions");
@@ -1206,6 +1260,8 @@ namespace Aerospike.Client
 		/// <param name="functionName"></param>
 		/// <param name="functionArgs"></param>
 		/// <exception cref="AerospikeException"></exception>
+		/// <seealso cref="Execute(WritePolicy, CancellationToken, Key, string, string, Value[])"/>
+		[Obsolete("Method not supported in proxy client: Execute")]
 		public void Execute(WritePolicy policy, ExecuteListener listener, Key key, string packageName, string functionName, params Value[] functionArgs)
 		{
 			throw new AerospikeException(NotSupported + "Execute");
@@ -1268,6 +1324,8 @@ namespace Aerospike.Client
 		/// <param name="functionName"></param>
 		/// <param name="functionArgs"></param>
 		/// <exception cref="AerospikeException"></exception>
+		/// <seealso cref="Execute(BatchPolicy, BatchUDFPolicy, CancellationToken, Key[], string, string, Value[])"/>
+		[Obsolete("Method not supported in proxy client: Execute")]
 		public void Execute(BatchPolicy batchPolicy, BatchUDFPolicy udfPolicy, BatchRecordArrayListener listener, Key[] keys, string packageName, string functionName, params Value[] functionArgs)
 		{
 			throw new AerospikeException(NotSupported + "Execute");
@@ -1284,6 +1342,8 @@ namespace Aerospike.Client
 		/// <param name="functionName"></param>
 		/// <param name="functionArgs"></param>
 		/// <exception cref="AerospikeException"></exception>
+		/// <seealso cref="Execute(BatchPolicy, BatchUDFPolicy, CancellationToken, Key[], string, string, Value[])"/>
+		[Obsolete("Method not supported in proxy client: Execute")]
 		public void Execute(BatchPolicy batchPolicy, BatchUDFPolicy udfPolicy, BatchRecordSequenceListener listener, Key[] keys, string packageName, string functionName, params Value[] functionArgs)
 		{
 			throw new AerospikeException(NotSupported + "Execute");
@@ -1300,6 +1360,8 @@ namespace Aerospike.Client
 		/// <param name="listener"></param>
 		/// <param name="statement"></param>
 		/// <exception cref="AerospikeException"></exception>
+		/// <seealso cref="Query(QueryPolicy, CancellationToken, Statement)"/>
+		[Obsolete("Method not supported in proxy client: Query")]
 		public void Query(QueryPolicy policy, RecordSequenceListener listener, Statement statement)
 		{
 			throw new AerospikeException(NotSupported + "Query");
@@ -1313,6 +1375,8 @@ namespace Aerospike.Client
 		/// <param name="statement"></param>
 		/// <param name="partitionFilter"></param>
 		/// <exception cref="AerospikeException"></exception>
+		/// <seealso cref="QueryPartitions(QueryPolicy, CancellationToken, Statement, PartitionFilter)"/>
+		[Obsolete("Method not supported in proxy client: Query")]
 		public void QueryPartitions
 		(
 			QueryPolicy policy,

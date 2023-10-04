@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2022 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -14,33 +14,23 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using Aerospike.Client;
-using Aerospike.Client.KVS;
 using Grpc.Core;
 using Grpc.Core.Interceptors;
 using Grpc.Net.Client;
-using Neo.IronLua;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
-using System;
-using System.Collections.Concurrent;
-using System.Numerics;
 using System.Text.Json;
-using System.Threading;
-using System.Timers;
 using Timer = System.Timers.Timer;
 
 namespace Aerospike.Client
 {
 	/// <summary>
-	/// 
+	/// Interceptor for fetching auth token and attaching to GRPC calls
 	/// </summary>
 	public sealed class AuthTokenInterceptor : Interceptor
 	{
 		private readonly ClientPolicy clientPolicy;
 		private readonly GrpcChannel channel;
 		private volatile bool isFetchingToken = false;
-		private volatile AccessToken accessToken;
+		private AccessToken accessToken;
 		private readonly Timer refreshTimer;
 
 
@@ -48,10 +38,10 @@ namespace Aerospike.Client
 		{
 			this.clientPolicy = clientPolicy;
 			this.channel = grpcChannel;
-			
+
 			if (IsTokenRequired())
 			{
-				this.accessToken = new AccessToken(DateTime.UtcNow.Millisecond, 0, "");
+				this.accessToken = new AccessToken(DateTime.UtcNow.Millisecond, 0, String.Empty);
 				refreshTimer = new Timer
 				{
 					Enabled = true
@@ -66,7 +56,8 @@ namespace Aerospike.Client
 			try
 			{
 				FetchToken();
-				refreshTimer.Interval = (int)accessToken.expiry - DateTime.Now.Millisecond - 5 * 1000;
+				var interval = (int)accessToken.expiry - DateTime.Now.Millisecond - 5 * 1000;
+				refreshTimer.Interval = interval > 0 ? interval : 1000;
 			}
 			catch (Exception)
 			{
@@ -113,22 +104,19 @@ namespace Aerospike.Client
 			return clientPolicy.user != null;
 		}
 
-		private AccessToken ParseToken(string token)
+		private static AccessToken ParseToken(string token)
 		{
 			string claims = token.Split(".")[1];
 			byte[] decodedClaims = Convert.FromBase64String(claims);
-			Dictionary<object, object> parsedClaims;
-			using (StreamReader sr = new(new MemoryStream(decodedClaims)))
+			Dictionary<string, object> parsedClaims = (Dictionary<string, object>)System.Text.Json.JsonSerializer.Deserialize(System.Text.Encoding.UTF8.GetString(decodedClaims.ToArray()), typeof(Dictionary<string, object>));
+			JsonElement expiryToken = (JsonElement)parsedClaims.GetValueOrDefault("exp");
+			JsonElement iat = (JsonElement)parsedClaims.GetValueOrDefault("iat");
+			if (expiryToken.ValueKind == JsonValueKind.Number && iat.ValueKind == JsonValueKind.Number)
 			{
-				parsedClaims = (Dictionary<object, object>)JsonConvert.DeserializeObject(sr.ReadToEnd(), typeof(Dictionary<object, object>));
-			}
-			//Dictionary<object, object> parsedClaims = (Dictionary<object, object>)System.Text.Json.JsonSerializer.Deserialize(System.Text.Encoding.UTF8.GetString(decodedClaims), typeof(Dictionary<object, object>));
-			object expiryToken = parsedClaims.GetValueOrDefault("exp");
-			object iat = parsedClaims.GetValueOrDefault("iat");
-			if (expiryToken is long expiryTokenLong && iat is long iatLong) 
-			{
+				long expiryTokenLong = expiryToken.GetInt64();
+				long iatLong = iat.GetInt64();
 				long ttl = (expiryTokenLong - iatLong) * 1000;
-				if (ttl <= 0) 
+				if (ttl <= 0)
 				{
 					throw new AerospikeException("token 'iat' > 'exp'");
 				}
@@ -145,7 +133,7 @@ namespace Aerospike.Client
 		private bool IsTokenValid()
 		{
 			AccessToken token = accessToken;
-			return !IsTokenRequired() || (token != null && !token.HasExpired());
+			return !IsTokenRequired() || (token.token != String.Empty && !token.HasExpired());
 		}
 
 		public override TResponse BlockingUnaryCall<TRequest, TResponse>(
@@ -155,6 +143,7 @@ namespace Aerospike.Client
 		{
 			if (IsTokenRequired())
 			{
+				context.Options.CancellationToken.ThrowIfCancellationRequested();
 				if (IsTokenValid())
 				{
 					var headers = new Metadata
@@ -171,11 +160,12 @@ namespace Aerospike.Client
 
 					return base.BlockingUnaryCall(request, newContext, continuation);
 				}
-				else if (isFetchingToken)
+				else
 				{
-					while (isFetchingToken)
+					while (isFetchingToken || accessToken.token == String.Empty)
 					{
-						Thread.Sleep(500);
+						context.Options.CancellationToken.ThrowIfCancellationRequested();
+						Task.Delay(500, context.Options.CancellationToken).Wait();
 					}
 
 					var headers = new Metadata
@@ -204,6 +194,7 @@ namespace Aerospike.Client
 		{
 			if (IsTokenRequired())
 			{
+				context.Options.CancellationToken.ThrowIfCancellationRequested();
 				if (IsTokenValid())
 				{
 					var headers = new Metadata
@@ -220,11 +211,12 @@ namespace Aerospike.Client
 
 					return base.AsyncUnaryCall(request, newContext, continuation);
 				}
-				else if (isFetchingToken)
+				else
 				{
-					while (isFetchingToken)
+					while (isFetchingToken || accessToken.token == String.Empty)
 					{
-						Thread.Sleep(500);
+						context.Options.CancellationToken.ThrowIfCancellationRequested();
+						Task.Delay(500, context.Options.CancellationToken).Wait();
 					}
 
 					var headers = new Metadata
@@ -260,6 +252,7 @@ namespace Aerospike.Client
 		{
 			if (IsTokenRequired())
 			{
+				context.Options.CancellationToken.ThrowIfCancellationRequested();
 				if (IsTokenValid())
 				{
 					var headers = new Metadata
@@ -276,11 +269,12 @@ namespace Aerospike.Client
 
 					return base.AsyncClientStreamingCall(newContext, continuation);
 				}
-				else if (isFetchingToken)
+				else
 				{
-					while (isFetchingToken)
+					while (isFetchingToken || accessToken.token == String.Empty)
 					{
-						Thread.Sleep(500);
+						context.Options.CancellationToken.ThrowIfCancellationRequested();
+						Task.Delay(500, context.Options.CancellationToken).Wait();
 					}
 
 					var headers = new Metadata
@@ -309,6 +303,7 @@ namespace Aerospike.Client
 		{
 			if (IsTokenRequired())
 			{
+				context.Options.CancellationToken.ThrowIfCancellationRequested();
 				if (IsTokenValid())
 				{
 					var headers = new Metadata
@@ -325,11 +320,12 @@ namespace Aerospike.Client
 
 					return base.AsyncServerStreamingCall(request, newContext, continuation);
 				}
-				else if (isFetchingToken)
+				else
 				{
-					while (isFetchingToken)
+					while (isFetchingToken || accessToken.token == String.Empty)
 					{
-						Thread.Sleep(500);
+						context.Options.CancellationToken.ThrowIfCancellationRequested();
+						Task.Delay(500, context.Options.CancellationToken).Wait();
 					}
 
 					var headers = new Metadata
@@ -357,6 +353,7 @@ namespace Aerospike.Client
 		{
 			if (IsTokenRequired())
 			{
+				context.Options.CancellationToken.ThrowIfCancellationRequested();
 				if (IsTokenValid())
 				{
 					var headers = new Metadata
@@ -373,11 +370,12 @@ namespace Aerospike.Client
 
 					return base.AsyncDuplexStreamingCall(newContext, continuation);
 				}
-				else if (isFetchingToken)
+				else
 				{
-					while (isFetchingToken)
+					while (isFetchingToken || accessToken.token == String.Empty)
 					{
-						Thread.Sleep(500);
+						context.Options.CancellationToken.ThrowIfCancellationRequested();
+						Task.Delay(500, context.Options.CancellationToken).Wait();
 					}
 
 					var headers = new Metadata
@@ -400,7 +398,7 @@ namespace Aerospike.Client
 		}
 	}
 
-	internal class AccessToken
+	internal readonly struct AccessToken
 	{
 		/// <summary>
 		/// Local token expiry timestamp in millis.

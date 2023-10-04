@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2022 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -14,7 +14,6 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using Aerospike.Client.KVS;
 using Grpc.Core;
 using System.Collections;
 
@@ -115,7 +114,7 @@ namespace Aerospike.Client
 			{
 				Buffer.Resize(Buffer.Offset);
 			}
-			
+
 			Buffer.Offset = 0;
 			return Buffer.DataBuffer.Length;
 		}
@@ -383,7 +382,7 @@ namespace Aerospike.Client
 			{
 				EstimateOperationSize(bin);
 			}
-			
+
 			bool compress = SizeBuffer(policy);
 
 			WriteHeaderWrite(policy, Command.INFO2_WRITE, fieldCount, bins.Length);
@@ -770,8 +769,8 @@ namespace Aerospike.Client
 				Buffer.Offset += key.digest.Length + 4;
 
 				// Try reference equality in hope that namespace for all keys is set from a fixed variable.
-				if (prev != null && prev.ns == key.ns && prev.setName == key.setName) 
-				{	
+				if (prev != null && prev.ns == key.ns && prev.setName == key.setName)
+				{
 					// Can set repeat previous namespace/bin names to save space.
 					Buffer.Offset++;
 				}
@@ -962,86 +961,86 @@ namespace Aerospike.Client
 					switch (record.GetBatchType())
 					{
 						case BatchRecord.Type.BATCH_READ:
-						{
-							BatchRead br = (BatchRead)record;
+							{
+								BatchRead br = (BatchRead)record;
 
-							if (br.policy != null)
-							{
-								attr.SetRead(br.policy);
-							}
-							else
-							{
-								attr.SetRead(policy);
-							}
+								if (br.policy != null)
+								{
+									attr.SetRead(br.policy);
+								}
+								else
+								{
+									attr.SetRead(policy);
+								}
 
-							if (br.binNames != null)
-							{
-								WriteBatchBinNames(key, br.binNames, attr, attr.filterExp);
+								if (br.binNames != null)
+								{
+									WriteBatchBinNames(key, br.binNames, attr, attr.filterExp);
+								}
+								else if (br.ops != null)
+								{
+									attr.AdjustRead(br.ops);
+									WriteBatchOperations(key, br.ops, attr, attr.filterExp);
+								}
+								else
+								{
+									attr.AdjustRead(br.readAllBins);
+									WriteBatchRead(key, attr, attr.filterExp, 0);
+								}
+								break;
 							}
-							else if (br.ops != null)
-							{
-								attr.AdjustRead(br.ops);
-								WriteBatchOperations(key, br.ops, attr, attr.filterExp);
-							}
-							else
-							{
-								attr.AdjustRead(br.readAllBins);
-								WriteBatchRead(key, attr, attr.filterExp, 0);
-							}
-							break;
-						}
 
 						case BatchRecord.Type.BATCH_WRITE:
-						{
-							BatchWrite bw = (BatchWrite)record;
+							{
+								BatchWrite bw = (BatchWrite)record;
 
-							if (bw.policy != null)
-							{
-								attr.SetWrite(bw.policy);
+								if (bw.policy != null)
+								{
+									attr.SetWrite(bw.policy);
+								}
+								else
+								{
+									attr.SetWrite(policy);
+								}
+								attr.AdjustWrite(bw.ops);
+								WriteBatchOperations(key, bw.ops, attr, attr.filterExp);
+								break;
 							}
-							else
-							{
-								attr.SetWrite(policy);
-							}
-							attr.AdjustWrite(bw.ops);
-							WriteBatchOperations(key, bw.ops, attr, attr.filterExp);
-							break;
-						}
 
 						case BatchRecord.Type.BATCH_UDF:
-						{
-							BatchUDF bu = (BatchUDF)record;
+							{
+								BatchUDF bu = (BatchUDF)record;
 
-							if (bu.policy != null)
-							{
-								attr.SetUDF(bu.policy);
+								if (bu.policy != null)
+								{
+									attr.SetUDF(bu.policy);
+								}
+								else
+								{
+									attr.SetUDF(policy);
+								}
+								WriteBatchWrite(key, attr, attr.filterExp, 3, 0);
+								WriteField(bu.packageName, FieldType.UDF_PACKAGE_NAME);
+								WriteField(bu.functionName, FieldType.UDF_FUNCTION);
+								WriteField(bu.argBytes, FieldType.UDF_ARGLIST);
+								break;
 							}
-							else
-							{
-								attr.SetUDF(policy);
-							}
-							WriteBatchWrite(key, attr, attr.filterExp, 3, 0);
-							WriteField(bu.packageName, FieldType.UDF_PACKAGE_NAME);
-							WriteField(bu.functionName, FieldType.UDF_FUNCTION);
-							WriteField(bu.argBytes, FieldType.UDF_ARGLIST);
-							break;
-						}
 
 						case BatchRecord.Type.BATCH_DELETE:
-						{
-							BatchDelete bd = (BatchDelete)record;
+							{
+								BatchDelete bd = (BatchDelete)record;
 
-							if (bd.policy != null)
-							{
-								attr.SetDelete(bd.policy);
+								if (bd.policy != null)
+								{
+									attr.SetDelete(bd.policy);
+								}
+								else
+								{
+									attr.SetDelete(policy);
+								}
+								WriteBatchWrite(key, attr, attr.filterExp, 0, 0);
+								break;
 							}
-							else
-							{
-								attr.SetDelete(policy);
-							}
-							WriteBatchWrite(key, attr, attr.filterExp, 0, 0);
-							break;
-						}
 					}
 					prev = record;
 				}
@@ -1884,34 +1883,34 @@ namespace Aerospike.Client
 
 			switch (policy.recordExistsAction)
 			{
-			case RecordExistsAction.UPDATE:
-				break;
-			case RecordExistsAction.UPDATE_ONLY:
-				infoAttr |= Command.INFO3_UPDATE_ONLY;
-				break;
-			case RecordExistsAction.REPLACE:
-				infoAttr |= Command.INFO3_CREATE_OR_REPLACE;
-				break;
-			case RecordExistsAction.REPLACE_ONLY:
-				infoAttr |= Command.INFO3_REPLACE_ONLY;
-				break;
-			case RecordExistsAction.CREATE_ONLY:
-				writeAttr |= Command.INFO2_CREATE_ONLY;
-				break;
+				case RecordExistsAction.UPDATE:
+					break;
+				case RecordExistsAction.UPDATE_ONLY:
+					infoAttr |= Command.INFO3_UPDATE_ONLY;
+					break;
+				case RecordExistsAction.REPLACE:
+					infoAttr |= Command.INFO3_CREATE_OR_REPLACE;
+					break;
+				case RecordExistsAction.REPLACE_ONLY:
+					infoAttr |= Command.INFO3_REPLACE_ONLY;
+					break;
+				case RecordExistsAction.CREATE_ONLY:
+					writeAttr |= Command.INFO2_CREATE_ONLY;
+					break;
 			}
 
 			switch (policy.generationPolicy)
 			{
-			case GenerationPolicy.NONE:
-				break;
-			case GenerationPolicy.EXPECT_GEN_EQUAL:
-				generation = policy.generation;
-				writeAttr |= Command.INFO2_GENERATION;
-				break;
-			case GenerationPolicy.EXPECT_GEN_GT:
-				generation = policy.generation;
-				writeAttr |= Command.INFO2_GENERATION_GT;
-				break;
+				case GenerationPolicy.NONE:
+					break;
+				case GenerationPolicy.EXPECT_GEN_EQUAL:
+					generation = policy.generation;
+					writeAttr |= Command.INFO2_GENERATION;
+					break;
+				case GenerationPolicy.EXPECT_GEN_GT:
+					generation = policy.generation;
+					writeAttr |= Command.INFO2_GENERATION_GT;
+					break;
 			}
 
 			if (policy.commitLevel == CommitLevel.COMMIT_MASTER)
@@ -2202,9 +2201,9 @@ namespace Aerospike.Client
 			ByteUtil.IntToBytes((uint)(nameLength + valueLength + 4), Buffer.DataBuffer, Buffer.Offset);
 			Buffer.Offset += 4;
 			Buffer.DataBuffer[Buffer.Offset++] = Operation.GetProtocolType(operationType);
-			Buffer.DataBuffer[Buffer.Offset++] = (byte) bin.value.Type;
-			Buffer.DataBuffer[Buffer.Offset++] = (byte) 0;
-			Buffer.DataBuffer[Buffer.Offset++] = (byte) nameLength;
+			Buffer.DataBuffer[Buffer.Offset++] = (byte)bin.value.Type;
+			Buffer.DataBuffer[Buffer.Offset++] = (byte)0;
+			Buffer.DataBuffer[Buffer.Offset++] = (byte)nameLength;
 			Buffer.Offset += nameLength + valueLength;
 		}
 
@@ -2216,9 +2215,9 @@ namespace Aerospike.Client
 			ByteUtil.IntToBytes((uint)(nameLength + valueLength + 4), Buffer.DataBuffer, Buffer.Offset);
 			Buffer.Offset += 4;
 			Buffer.DataBuffer[Buffer.Offset++] = Operation.GetProtocolType(operation.type);
-			Buffer.DataBuffer[Buffer.Offset++] = (byte) operation.value.Type;
-			Buffer.DataBuffer[Buffer.Offset++] = (byte) 0;
-			Buffer.DataBuffer[Buffer.Offset++] = (byte) nameLength;
+			Buffer.DataBuffer[Buffer.Offset++] = (byte)operation.value.Type;
+			Buffer.DataBuffer[Buffer.Offset++] = (byte)0;
+			Buffer.DataBuffer[Buffer.Offset++] = (byte)nameLength;
 			Buffer.Offset += nameLength + valueLength;
 		}
 
@@ -2229,9 +2228,9 @@ namespace Aerospike.Client
 			ByteUtil.IntToBytes((uint)(nameLength + 4), Buffer.DataBuffer, Buffer.Offset);
 			Buffer.Offset += 4;
 			Buffer.DataBuffer[Buffer.Offset++] = Operation.GetProtocolType(operationType);
-			Buffer.DataBuffer[Buffer.Offset++] = (byte) 0;
-			Buffer.DataBuffer[Buffer.Offset++] = (byte) 0;
-			Buffer.DataBuffer[Buffer.Offset++] = (byte) nameLength;
+			Buffer.DataBuffer[Buffer.Offset++] = (byte)0;
+			Buffer.DataBuffer[Buffer.Offset++] = (byte)0;
+			Buffer.DataBuffer[Buffer.Offset++] = (byte)nameLength;
 			Buffer.Offset += nameLength;
 		}
 

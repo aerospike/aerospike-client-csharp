@@ -14,15 +14,9 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using System;
-using System.Collections;
-using System.Collections.Generic;
-using System.Threading;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Aerospike.Client;
-using System.ComponentModel;
-using System.Reflection;
-using Google.Protobuf.Collections;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
+using System.Collections;
 
 namespace Aerospike.Test
 {
@@ -64,7 +58,7 @@ namespace Aerospike.Test
 			{
 				policy.totalTimeout = args.proxyTotalTimeout;
 			}
-			
+
 			for (int i = 1; i <= Size; i++)
 			{
 				Key key = sendKeys[i - 1];
@@ -566,7 +560,7 @@ namespace Aerospike.Test
 				ListOperation.Size(ListBin),
 				ListOperation.GetByIndex(ListBin, -1, ListReturnType.VALUE)
 			};
-			
+
 			if (!args.testProxy)
 			{
 				client.Get(null, new BatchListReadOperateHandler(this), sendKeys, operations);
@@ -631,7 +625,7 @@ namespace Aerospike.Test
 		{
 			await WriteRecords("AsyncBatchListWriteOperate");
 			Operation[] operations = {
-				ListOperation.Insert(ListBin2, 0, Value.Get(1000)), 
+				ListOperation.Insert(ListBin2, 0, Value.Get(1000)),
 				ListOperation.Size(ListBin2),
 				ListOperation.GetByIndex(ListBin2, -1, ListReturnType.VALUE)
 			};
@@ -705,11 +699,11 @@ namespace Aerospike.Test
 			await WriteRecords("AsyncBatchSeqListWriteOperate");
 			Operation[] operations =
 			{
-				ListOperation.Insert(ListBin3, 0, Value.Get(1000)), 
-				ListOperation.Size(ListBin3), 
+				ListOperation.Insert(ListBin3, 0, Value.Get(1000)),
+				ListOperation.Size(ListBin3),
 				ListOperation.GetByIndex(ListBin3, -1, ListReturnType.VALUE)
 			};
-			
+
 			if (!args.testProxy)
 			{
 				client.Operate(null, null, new BatchSeqListWriteOperateHandler(this), sendKeys,
@@ -970,12 +964,12 @@ namespace Aerospike.Test
 
 				WaitTillComplete();
 			}
-            else
-            {
+			else
+			{
 				var exists = await client.Exists(null, tokenSource.Token, deleteKeys);
 				await BatchDeleteExistsArrayHandlerSuccess(sendKeys, exists, this);
 			}
-        }
+		}
 
 		static async Task BatchDeleteExistsArrayHandlerSuccess(Key[] keys, bool[] exists, TestAsyncBatch parent)
 		{
@@ -1032,7 +1026,7 @@ namespace Aerospike.Test
 				return;
 			}
 
-			
+
 			// Ensure keys do not exist
 			if (!args.testProxy)
 			{
@@ -1040,7 +1034,7 @@ namespace Aerospike.Test
 			}
 			else
 			{
-				var exists = await client.Exists(null, tokenSource.Token, deleteKeys); 
+				var exists = await client.Exists(null, tokenSource.Token, deleteKeys);
 				NotExistsHandlerSuccess(deleteKeys, exists, parent);
 			}
 		}

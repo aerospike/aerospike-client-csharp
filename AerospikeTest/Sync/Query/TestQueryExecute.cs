@@ -1,5 +1,5 @@
 ﻿/* 
- * Copyright 2012-2022 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -14,9 +14,9 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using System.Reflection;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Aerospike.Client;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
+using System.Reflection;
 
 namespace Aerospike.Test
 {
@@ -99,7 +99,7 @@ namespace Aerospike.Test
 
 			try
 			{
-				int[] expectedList = new int[] {1,2,3,104,5,106,7,108,-1,10};
+				int[] expectedList = new int[] { 1, 2, 3, 104, 5, 106, 7, 108, -1, 10 };
 				int expectedSize = size - 1;
 				int count = 0;
 
@@ -231,7 +231,7 @@ namespace Aerospike.Test
 						Assert.Fail("Bin " + binName + " not found");
 					}
 
-					if (! value.Equals("bar"))
+					if (!value.Equals("bar"))
 					{
 						Assert.Fail("Data mismatch. Expected bar. Received " + value);
 					}

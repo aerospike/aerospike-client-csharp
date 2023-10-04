@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -14,8 +14,8 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using System;
 using Aerospike.Client;
+using System;
 
 namespace Aerospike.Demo
 {
@@ -48,7 +48,7 @@ namespace Aerospike.Demo
 
 			if (record == null)
 			{
-				throw new Exception(string.Format("Failed to get: namespace={0} set={1} key={2}", 
+				throw new Exception(string.Format("Failed to get: namespace={0} set={1} key={2}",
 					key.ns, key.setName, key.userKey));
 			}
 
@@ -59,7 +59,7 @@ namespace Aerospike.Demo
 
 			if (received.Equals(expected))
 			{
-				console.Info("Prepend successful: namespace={0} set={1} key={2} bin={3} value={4}", 
+				console.Info("Prepend successful: namespace={0} set={1} key={2} bin={3} value={4}",
 					key.ns, key.setName, key.userKey, bin.name, received);
 			}
 			else

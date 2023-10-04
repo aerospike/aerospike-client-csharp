@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2022 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -17,11 +17,7 @@
 using Aerospike.Client.KVS;
 using Google.Protobuf;
 using Grpc.Core;
-using Grpc.Net.Client;
-using Neo.IronLua;
-using System;
 using System.Collections;
-using System.Collections.Generic;
 using static Aerospike.Client.AerospikeException;
 
 namespace Aerospike.Client
@@ -447,7 +443,7 @@ namespace Aerospike.Client
 			}
 		}
 	}
-	
+
 	//-------------------------------------------------------
 	// Batch Base Command
 	//-------------------------------------------------------
@@ -460,7 +456,7 @@ namespace Aerospike.Client
 
 		public BatchCommandProxy
 		(
-			Buffer buffer, 
+			Buffer buffer,
 			CallInvoker invoker,
 			BatchNode batch,
 			BatchPolicy batchPolicy,
@@ -484,7 +480,7 @@ namespace Aerospike.Client
 			Execute(source.Token).Wait();
 		}
 
-		public async Task Execute(CancellationToken token = new())
+		public async Task Execute(CancellationToken token)
 		{
 			WriteBuffer();
 			var request = new AerospikeRequestPayload
@@ -496,7 +492,7 @@ namespace Aerospike.Client
 			GRPCConversions.SetRequestPolicy(batchPolicy, request);
 
 			try
-			{ 
+			{
 				var client = new KVS.KVS.KVSClient(CallInvoker);
 				var deadline = DateTime.UtcNow.AddMilliseconds(totalTimeout);
 				var stream = client.BatchOperate(request, deadline: deadline, cancellationToken: token);

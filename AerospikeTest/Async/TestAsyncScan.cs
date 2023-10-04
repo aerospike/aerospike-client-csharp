@@ -1,5 +1,5 @@
 ﻿/* 
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -14,11 +14,8 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using System;
-using System.Threading;
-using System.Threading.Tasks;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Aerospike.Client;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace Aerospike.Test
 {
@@ -48,7 +45,7 @@ namespace Aerospike.Test
 			else
 			{
 				var recordSet = await asyncProxy.ScanAll(policy, tokenSource.Token, args.ns, args.set);
-				while(recordSet.Next()) 
+				while (recordSet.Next())
 				{
 					recordCount++;
 

@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2019 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -14,11 +14,10 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
+using Aerospike.Client;
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Threading;
-using Aerospike.Client;
 
 namespace Aerospike.Demo
 {
@@ -105,7 +104,7 @@ namespace Aerospike.Demo
 			console.Info("Record: " + record);
 
 			// Get top two scores.
-			record = client.Operate(args.writePolicy, key, 
+			record = client.Operate(args.writePolicy, key,
 				MapOperation.GetByRankRange(binName, -2, 2, MapReturnType.KEY_VALUE)
 				);
 
@@ -178,7 +177,7 @@ namespace Aerospike.Demo
 		}
 
 		private static readonly DateTime Epoch = new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc);
-		
+
 		private static Value MillisSinceEpoch(DateTime dt)
 		{
 			return Value.Get((long)(dt.ToUniversalTime() - Epoch).TotalMilliseconds);
@@ -248,7 +247,7 @@ namespace Aerospike.Demo
 			// Set map value to 4 for map key "key21" inside of map key "key2".
 			CTX ctx = CTX.MapKey(Value.Get("key2"));
 			Record record = client.Operate(args.writePolicy, key,
-				MapOperation.Create(binName, MapOrder.KEY_VALUE_ORDERED, ctx), 
+				MapOperation.Create(binName, MapOrder.KEY_VALUE_ORDERED, ctx),
 				MapOperation.Put(MapPolicy.Default, binName, Value.Get("b"), Value.Get(4), ctx),
 				Operation.Get(binName)
 				);

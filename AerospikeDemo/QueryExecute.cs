@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -14,7 +14,6 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using System.IO;
 using Aerospike.Client;
 
 namespace Aerospike.Demo
@@ -119,7 +118,7 @@ namespace Aerospike.Demo
 
 			try
 			{
-				int[] expectedList = new int[] {1,2,3,104,5,106,7,108,-1,10};
+				int[] expectedList = new int[] { 1, 2, 3, 104, 5, 106, 7, 108, -1, 10 };
 				int expectedSize = size - 1;
 				int count = 0;
 
@@ -133,7 +132,7 @@ namespace Aerospike.Demo
 					record.bins.TryGetValue(binName1, out value1);
 					record.bins.TryGetValue(binName2, out value2);
 
-					console.Info("Record found: ns={0} set={1} bin1={2} value1={3} bin2={4} value2={5}", 
+					console.Info("Record found: ns={0} set={1} bin1={2} value1={3} bin2={4} value2={5}",
 						key.ns, key.setName, binName1, value1, binName2, value2);
 
 					if (value1 == null)
@@ -157,10 +156,10 @@ namespace Aerospike.Demo
 							break;
 						}
 					}
-					else 
+					else
 					{
 						long val2 = (long)value2;
-						
+
 						if (val1 != expectedList[val2 - 1])
 						{
 							console.Error("Data mismatch. Expected " + expectedList[val2 - 1] + ". Received " + value1);

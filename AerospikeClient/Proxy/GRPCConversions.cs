@@ -1,15 +1,23 @@
-﻿using Aerospike.Client;
+﻿/* 
+ * Copyright 2012-2023 Aerospike, Inc.
+ *
+ * Portions may be licensed to Aerospike, Inc. under one or more contributor
+ * license agreements.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not
+ * use this file except in compliance with the License. You may obtain a copy of
+ * the License at http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations under
+ * the License.
+ */
+
 using Aerospike.Client.KVS;
 using Google.Protobuf;
-using Google.Protobuf.Collections;
 using Grpc.Core;
-using System;
-using System.Collections.Generic;
-using System.Diagnostics.Eventing.Reader;
-using System.Linq;
-using System.Reflection.PortableExecutable;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Aerospike.Client
 {
@@ -23,7 +31,8 @@ namespace Aerospike.Client
 			KVS.AerospikeRequestPayload request
 		)
 		{
-			if (policy.GetType() == typeof(WritePolicy)) {
+			if (policy.GetType() == typeof(WritePolicy))
+			{
 				KVS.WritePolicy writePolicy = new()
 				{
 					ReadModeAP = Enum.TryParse(policy.readModeAP.ToString(), true, out KVS.ReadModeAP apConversion) ? apConversion : KVS.ReadModeAP.One,
@@ -70,8 +79,8 @@ namespace Aerospike.Client
 
 		public static KVS.QueryPolicy ToGrpc(QueryPolicy queryPolicy)
 		{
-			var queryPolicyKVS =  new KVS.QueryPolicy()
-			{ 
+			var queryPolicyKVS = new KVS.QueryPolicy()
+			{
 				// Base policy fields.
 				ReadModeAP = Enum.TryParse(queryPolicy.readModeAP.ToString(), true, out KVS.ReadModeAP apConversion) ? apConversion : KVS.ReadModeAP.One,
 				ReadModeSC = Enum.TryParse(queryPolicy.readModeSC.ToString(), true, out KVS.ReadModeSC scConversion) ? scConversion : KVS.ReadModeSC.Session,
@@ -109,7 +118,7 @@ namespace Aerospike.Client
 			Packer packer = new();
 			filter.Begin?.Pack(packer);
 
-			var filterKVS =  new KVS.Filter()
+			var filterKVS = new KVS.Filter()
 			{
 				Name = filter.Name,
 				ValType = filter.ValType,
@@ -140,8 +149,8 @@ namespace Aerospike.Client
 
 		public static KVS.Operation ToGrpc(Operation operation)
 		{
-			var operationKVS = new KVS.Operation() 
-			{ 
+			var operationKVS = new KVS.Operation()
+			{
 				Type = Enum.TryParse(operation.type.ToString(), true, out KVS.OperationType typeConversion) ? typeConversion : KVS.OperationType.Read,
 				Value = ValueToByteString(operation.value)
 			};
@@ -171,7 +180,7 @@ namespace Aerospike.Client
 			if (statement.IndexName != null) statementKVS.IndexName = statement.IndexName;
 			if (statement.PackageName != null) statementKVS.PackageName = statement.PackageName;
 			if (statement.FunctionName != null) statementKVS.FunctionName = statement.FunctionName;
-			
+
 
 			if (statement.BinNames != null)
 			{
@@ -216,7 +225,7 @@ namespace Aerospike.Client
 
 		public static KVS.PartitionFilter ToGrpc(PartitionFilter partitionFilter)
 		{
-			var partitionFilterKVS =  new KVS.PartitionFilter()
+			var partitionFilterKVS = new KVS.PartitionFilter()
 			{
 				Begin = (uint)partitionFilter.Begin,
 				Count = (uint)partitionFilter.Count,

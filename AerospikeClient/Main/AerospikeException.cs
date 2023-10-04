@@ -14,7 +14,6 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using System;
 using System.Text;
 
 namespace Aerospike.Client
@@ -30,22 +29,22 @@ namespace Aerospike.Client
 		protected int iteration = -1;
 		protected bool inDoubt;
 
-        public AerospikeException(int resultCode, string message) 
-            : base(message)
+		public AerospikeException(int resultCode, string message)
+			: base(message)
 		{
-            this.resultCode = resultCode;
+			this.resultCode = resultCode;
 		}
 
-        public AerospikeException(int resultCode, Exception e) 
-            : base(e.Message, e)
+		public AerospikeException(int resultCode, Exception e)
+			: base(e.Message, e)
 		{
-            this.resultCode = resultCode;
+			this.resultCode = resultCode;
 		}
 
-        public AerospikeException(int resultCode) 
-            : base("")
+		public AerospikeException(int resultCode)
+			: base("")
 		{
-            this.resultCode = resultCode;
+			this.resultCode = resultCode;
 		}
 
 		public AerospikeException(int resultCode, bool inDoubt)
@@ -55,18 +54,18 @@ namespace Aerospike.Client
 			this.inDoubt = inDoubt;
 		}
 
-		public AerospikeException(string message, Exception e) 
-            : base(message, e)
+		public AerospikeException(string message, Exception e)
+			: base(message, e)
 		{
 		}
 
-		public AerospikeException(string message) 
-            : base(message)
+		public AerospikeException(string message)
+			: base(message)
 		{
 		}
 
-        public AerospikeException(Exception e)
-            : base(e.Message, e)
+		public AerospikeException(Exception e)
+			: base(e.Message, e)
 		{
 		}
 
@@ -225,7 +224,7 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
-		/// Sets inDouvt value to inDoubt
+		/// Sets inDoubt value to inDoubt
 		/// </summary>
 		internal AerospikeException SetInDoubt(bool inDoubt)
 		{
@@ -489,7 +488,7 @@ namespace Aerospike.Client
 				this.records = records;
 			}
 		}
-		
+
 		/// <summary>
 		/// Exception thrown when scan was terminated prematurely.
 		/// </summary>
@@ -562,10 +561,13 @@ namespace Aerospike.Client
 			}
 		}
 
+		/// <summary>
+		/// Exception used like a iterrupt to indicate the end of a GRPC stream has been reached
+		/// </summary>
 		public class EndOfGRPCStream : AerospikeException
 		{
 			/// <summary>
-			/// Create command rejected exception.
+			/// Create end of GRPC stream exception
 			/// </summary>
 			public EndOfGRPCStream() : base(ResultCode.OK, "GRPC Stream was ended successfully")
 			{

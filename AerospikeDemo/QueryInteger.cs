@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -79,7 +79,7 @@ namespace Aerospike.Demo
 			int begin = 14;
 			int end = 18;
 
-			console.Info("Query for: ns={0} set={1} index={2} bin={3} >= {4} <= {5}", 
+			console.Info("Query for: ns={0} set={1} index={2} bin={3} >= {4} <= {5}",
 				args.ns, args.set, indexName, binName, begin, end);
 
 			Statement stmt = new Statement();

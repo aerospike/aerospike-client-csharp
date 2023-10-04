@@ -14,10 +14,9 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using System;
-using System.IO;
-using System.Collections.Generic;
 using Aerospike.Client;
+using System;
+using System.Collections.Generic;
 
 namespace Aerospike.Demo
 {
@@ -64,7 +63,7 @@ namespace Aerospike.Demo
 
 			if (received != null && received.Equals(expected))
 			{
-				console.Info("Data matched: namespace={0} set={1} key={2} bin={3} value={4}", 
+				console.Info("Data matched: namespace={0} set={1} key={2} bin={3} value={4}",
 					key.ns, key.setName, key.userKey, bin.name, received);
 			}
 			else
@@ -107,7 +106,7 @@ namespace Aerospike.Demo
 
 			if (received != null && received.Equals(expected))
 			{
-				console.Info("Record written: namespace={0} set={1} key={2} bin={3} value={4}", 
+				console.Info("Record written: namespace={0} set={1} key={2} bin={3} value={4}",
 					key.ns, key.setName, key.userKey, binName, received);
 			}
 			else
@@ -125,7 +124,7 @@ namespace Aerospike.Demo
 
 			if (received != null && received.Equals(expected))
 			{
-				console.Info("Success. Record remained unchanged: namespace={0} set={1} key={2} bin={3} value={4}", 
+				console.Info("Success. Record remained unchanged: namespace={0} set={1} key={2} bin={3} value={4}",
 					key.ns, key.setName, key.userKey, binName, received);
 			}
 			else
@@ -187,7 +186,7 @@ namespace Aerospike.Demo
 
 			if (receivedString.Equals(expectedString))
 			{
-				console.Info("UDF data matched: namespace={0} set={1} key={2} bin={3} value={4}", 
+				console.Info("UDF data matched: namespace={0} set={1} key={2} bin={3} value={4}",
 					key.ns, key.setName, key.userKey, binName, received);
 			}
 			else

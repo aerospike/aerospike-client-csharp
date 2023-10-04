@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -14,10 +14,10 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
+using Aerospike.Client;
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using Aerospike.Client;
 
 namespace Aerospike.Demo
 {
@@ -78,7 +78,7 @@ namespace Aerospike.Demo
 				list.Add(random.Next(900, 910).ToString());
 				list.Add(random.Next(900, 910).ToString());
 				list.Add(random.Next(900, 910).ToString());
-				
+
 				Bin bin = new Bin(binName, list);
 
 				client.Put(args.writePolicy, key, bin);

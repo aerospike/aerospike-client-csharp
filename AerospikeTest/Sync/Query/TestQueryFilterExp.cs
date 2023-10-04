@@ -14,12 +14,8 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using System;
-using System.Collections;
-using System.Collections.Generic;
-using System.Reflection;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Aerospike.Client;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace Aerospike.Test
 {
@@ -649,7 +645,8 @@ namespace Aerospike.Test
 		}
 
 		[TestMethod]
-		public void QueryBinExists() {
+		public void QueryBinExists()
+		{
 			int begin = 1;
 			int end = 10;
 
@@ -667,21 +664,25 @@ namespace Aerospike.Test
 
 			RecordSet rs = client.Query(policy, stmt);
 
-			try {
+			try
+			{
 				int count = 0;
 
-				while (rs.Next()) {
+				while (rs.Next())
+				{
 					count++;
 				}
 				Assert.AreEqual(10, count);
 			}
-			finally {
+			finally
+			{
 				rs.Close();
 			}
 		}
 
 		[TestMethod]
-		public void QueryBinType() {
+		public void QueryBinType()
+		{
 			int begin = 1;
 			int end = 10;
 
@@ -699,15 +700,18 @@ namespace Aerospike.Test
 
 			RecordSet rs = client.Query(policy, stmt);
 
-			try {
+			try
+			{
 				int count = 0;
 
-				while (rs.Next()) {
+				while (rs.Next())
+				{
 					count++;
 				}
 				Assert.AreEqual(9, count);
 			}
-			finally {
+			finally
+			{
 				rs.Close();
 			}
 		}
@@ -735,15 +739,18 @@ namespace Aerospike.Test
 
 			RecordSet rs = client.Query(policy, stmt);
 
-			try {
+			try
+			{
 				int count = 0;
 
-				while (rs.Next()) {
+				while (rs.Next())
+				{
 					count++;
 				}
 				Assert.AreEqual(10, count);
 			}
-			finally {
+			finally
+			{
 				rs.Close();
 			}
 		}

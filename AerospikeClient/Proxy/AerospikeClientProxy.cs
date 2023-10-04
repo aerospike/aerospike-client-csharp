@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2022 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -14,28 +14,10 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using System;
-using System.Collections.Generic;
-using System.Text;
-using System.Reflection;
-using System.IO;
-using Google.Protobuf.Compiler;
-using Aerospike.Client;
-using System.Threading;
-using System.Diagnostics;
-using System.Diagnostics.Metrics;
-using Aerospike.Client.KVS;
-using Google.Protobuf;
-using System.Threading.Channels;
-using Grpc.Net.Client;
-using Google.Protobuf.WellKnownTypes;
-using System.Xml.Linq;
 using Grpc.Core;
-using System.Security.Cryptography.X509Certificates;
-using Microsoft.AspNetCore.Http;
-using Neo.IronLua;
 using Grpc.Core.Interceptors;
-using Microsoft.Extensions.Logging;
+using Grpc.Net.Client;
+using System.Reflection;
 
 namespace Aerospike.Client
 {
@@ -170,7 +152,7 @@ namespace Aerospike.Client
 			this.batchUDFPolicyDefault = policy.batchUDFPolicyDefault;
 			this.infoPolicyDefault = policy.infoPolicyDefault;
 			this.operatePolicyReadDefault = new WritePolicy(this.readPolicyDefault);
-			
+
 			var connectionUri = hosts[0].tlsName == null ? new UriBuilder("http", hosts[0].name, hosts[0].port).Uri :
 				new UriBuilder("https", hosts[0].name, hosts[0].port).Uri;
 
@@ -306,7 +288,7 @@ namespace Aerospike.Client
 		/// </summary>
 		public void Close()
 		{
-			
+			channel.Dispose();
 		}
 
 		/// <summary>
@@ -316,7 +298,8 @@ namespace Aerospike.Client
 		{
 			get
 			{
-				return channel != null;
+				return channel.State == ConnectivityState.Idle || channel.State == ConnectivityState.Ready;
+				// channel.State has a note that it is experimental
 			}
 		}
 
@@ -517,6 +500,7 @@ namespace Aerospike.Client
 		/// <param name="set"></param>
 		/// <param name="beforeLastUpdate"></param>
 		/// <exception cref="AerospikeException"></exception>
+		[Obsolete("Method not supported in proxy client: Truncate")]
 		public void Truncate(InfoPolicy policy, string ns, string set, DateTime? beforeLastUpdate)
 		{
 			throw new AerospikeException(NotSupported + "Truncate");
@@ -858,6 +842,7 @@ namespace Aerospike.Client
 		/// <param name="joins"></param>
 		/// <returns></returns>
 		/// <exception cref="AerospikeException"></exception>
+		[Obsolete("Method not supported in proxy client: Join")]
 
 		public Record Join(BatchPolicy policy, Key key, string[] binNames, params Join[] joins)
 		{
@@ -872,6 +857,7 @@ namespace Aerospike.Client
 		/// <param name="joins"></param>
 		/// <returns></returns>
 		/// <exception cref="AerospikeException"></exception>
+		[Obsolete("Method not supported in proxy client: Join")]
 		public Record Join(BatchPolicy policy, Key key, params Join[] joins)
 		{
 			throw new AerospikeException(NotSupported + "Join");
@@ -1004,6 +990,8 @@ namespace Aerospike.Client
 		/// <param name="setName"></param>
 		/// <param name="callback"></param>
 		/// <param name="binNames"></param>
+		/// <seealso cref="ScanAll(ScanPolicy, string, string, string[])"/>
+		[Obsolete("Method not supported in proxy client: ScanAll")]
 		public void ScanAll(ScanPolicy policy, string ns, string setName, ScanCallback callback, params string[] binNames)
 		{
 			throw new AerospikeException(NotSupported + "ScanAll");
@@ -1037,6 +1025,7 @@ namespace Aerospike.Client
 		/// <param name="callback"></param>
 		/// <param name="binNames"></param>
 		/// <exception cref="AerospikeException"></exception>
+		[Obsolete("Method not supported in proxy client: ScanNode")]
 		public void ScanNode(ScanPolicy policy, string nodeName, string ns, string setName, ScanCallback callback, params string[] binNames)
 		{
 			throw new AerospikeException(NotSupported + "ScanNode");
@@ -1052,6 +1041,7 @@ namespace Aerospike.Client
 		/// <param name="callback"></param>
 		/// <param name="binNames"></param>
 		/// <exception cref="AerospikeException"></exception>
+		[Obsolete("Method not supported in proxy client: ScanNode")]
 		public void ScanNode(ScanPolicy policy, Node node, string ns, string setName, ScanCallback callback, params string[] binNames)
 		{
 			throw new AerospikeException(NotSupported + "ScanNode");
@@ -1066,6 +1056,8 @@ namespace Aerospike.Client
 		/// <param name="setName"></param>
 		/// <param name="callback"></param>
 		/// <param name="binNames"></param>
+		/// <seealso cref="ScanPartitions(ScanPolicy, PartitionFilter, string, string, string[])"/>
+		[Obsolete("Method not supported in proxy client: ScanPartitions")]
 		public void ScanPartitions(ScanPolicy policy, PartitionFilter partitionFilter, string ns, string setName, ScanCallback callback, params string[] binNames)
 		{
 			throw new AerospikeException(NotSupported + "ScanPartitions");
@@ -1083,6 +1075,7 @@ namespace Aerospike.Client
 		/// <param name="setName">optional set name - equivalent to database table</param>
 		/// <param name="binNames">optional bin to retrieve. All bins will be returned if not specified.</param>
 		/// <exception cref="AerospikeException">if scan fails</exception>
+		/// <seealso cref="ScanPartitions(ScanPolicy, PartitionFilter, string, string, string[])"/>
 		public RecordSet ScanPartitions(ScanPolicy policy, PartitionFilter partitionFilter, string ns, string setName, params string[] binNames)
 		{
 			policy ??= scanPolicyDefault;
@@ -1108,6 +1101,7 @@ namespace Aerospike.Client
 		/// <param name="language"></param>
 		/// <returns></returns>
 		/// <exception cref="AerospikeException"></exception>
+		[Obsolete("Method not supported in proxy client: Register")]
 		public RegisterTask Register(Policy policy, string clientPath, string serverPath, Language language)
 		{
 			throw new AerospikeException(NotSupported + "Register");
@@ -1123,6 +1117,7 @@ namespace Aerospike.Client
 		/// <param name="language"></param>
 		/// <returns></returns>
 		/// <exception cref="AerospikeException"></exception>
+		[Obsolete("Method not supported in proxy client: Register")]
 		public RegisterTask Register(Policy policy, Assembly resourceAssembly, string resourcePath, string serverPath, Language language)
 		{
 			throw new AerospikeException(NotSupported + "Register");
@@ -1137,6 +1132,7 @@ namespace Aerospike.Client
 		/// <param name="language"></param>
 		/// <returns></returns>
 		/// <exception cref="AerospikeException"></exception>
+		[Obsolete("Method not supported in proxy client: RegisterUdfString")]
 		public RegisterTask RegisterUdfString(Policy policy, string code, string serverPath, Language language)
 		{
 			throw new AerospikeException(NotSupported + "RegisterUdfString");
@@ -1148,6 +1144,7 @@ namespace Aerospike.Client
 		/// <param name="policy"></param>
 		/// <param name="serverPath"></param>
 		/// <exception cref="AerospikeException"></exception>
+		[Obsolete("Method not supported in proxy client: RemoveUdf")]
 		public void RemoveUdf(InfoPolicy policy, string serverPath)
 		{
 			throw new AerospikeException(NotSupported + "RemoveUdf");
@@ -1347,6 +1344,8 @@ namespace Aerospike.Client
 		/// <param name="statement"></param>
 		/// <param name="listener"></param>
 		/// <exception cref="AerospikeException"></exception>
+		/// <seealso cref="Query(QueryPolicy, Statement)"/>
+		[Obsolete("Method not supported in proxy client: Query")]
 		public void Query(QueryPolicy policy, Statement statement, QueryListener listener)
 		{
 			throw new AerospikeException(NotSupported + "Query");
@@ -1360,6 +1359,8 @@ namespace Aerospike.Client
 		/// <param name="partitionFilter"></param>
 		/// <param name="listener"></param>
 		/// <exception cref="AerospikeException"></exception>
+		/// <seealso cref="QueryPartitions(QueryPolicy, Statement, PartitionFilter)"/>
+		[Obsolete("Method not supported in proxy client: Query")]
 		public void Query
 		(
 			QueryPolicy policy,
@@ -1410,6 +1411,7 @@ namespace Aerospike.Client
 		/// <param name="functionArgs"></param>
 		/// <returns></returns>
 		/// <exception cref="AerospikeException"></exception>
+		[Obsolete("Method not supported in proxy client: QueryAggregate")]
 		public ResultSet QueryAggregate
 		(
 			QueryPolicy policy,
@@ -1429,6 +1431,7 @@ namespace Aerospike.Client
 		/// <param name="statement"></param>
 		/// <param name="action"></param>
 		/// <exception cref="AerospikeException"></exception>
+		[Obsolete("Method not supported in proxy client: QueryAggregate")]
 		public void QueryAggregate(QueryPolicy policy, Statement statement, Action<Object> action)
 		{
 			throw new AerospikeException(NotSupported + "QueryAggregate");
@@ -1441,6 +1444,7 @@ namespace Aerospike.Client
 		/// <param name="statement"></param>
 		/// <returns></returns>
 		/// <exception cref="AerospikeException"></exception>
+		[Obsolete("Method not supported in proxy client: QueryAggregate")]
 		public ResultSet QueryAggregate(QueryPolicy policy, Statement statement)
 		{
 			throw new AerospikeException(NotSupported + "QueryAggregate");
@@ -1461,6 +1465,7 @@ namespace Aerospike.Client
 		/// <param name="indexType"></param>
 		/// <returns></returns>
 		/// <exception cref="AerospikeException"></exception>
+		[Obsolete("Method not supported in proxy client: CreateIndex")]
 		public IndexTask CreateIndex
 		(
 			Policy policy,
@@ -1487,6 +1492,7 @@ namespace Aerospike.Client
 		/// <param name="ctx"></param>
 		/// <returns></returns>
 		/// <exception cref="AerospikeException"></exception>
+		[Obsolete("Method not supported in proxy client: CreateIndex")]
 		public IndexTask CreateIndex
 		(
 			Policy policy,
@@ -1501,7 +1507,7 @@ namespace Aerospike.Client
 		{
 			throw new AerospikeException(NotSupported + "CreateIndex");
 		}
-		
+
 		/// <summary>
 		/// Not supported by proxy client
 		/// </summary>
@@ -1511,6 +1517,7 @@ namespace Aerospike.Client
 		/// <param name="indexName"></param>
 		/// <returns></returns>
 		/// <exception cref="AerospikeException"></exception>
+		[Obsolete("Method not supported in proxy client: DropIndex")]
 		public IndexTask DropIndex(Policy policy, string ns, string setName, string indexName)
 		{
 			throw new AerospikeException(NotSupported + "DropIndex");
@@ -1528,6 +1535,7 @@ namespace Aerospike.Client
 		/// <param name="ns"></param>
 		/// <param name="filter"></param>
 		/// <exception cref="AerospikeException"></exception>
+		[Obsolete("Method not supported in proxy client: SetXDRFilter")]
 		public void SetXDRFilter(InfoPolicy policy, string datacenter, string ns, Expression filter)
 		{
 			throw new AerospikeException(NotSupported + "SetXDRFilter");
@@ -1545,6 +1553,7 @@ namespace Aerospike.Client
 		/// <param name="password"></param>
 		/// <param name="roles"></param>
 		/// <exception cref="AerospikeException"></exception>		
+		[Obsolete("Method not supported in proxy client: CreateUser")]
 		public void CreateUser(AdminPolicy policy, string user, string password, IList<string> roles)
 		{
 			throw new AerospikeException(NotSupported + "CreateUser");
@@ -1556,6 +1565,7 @@ namespace Aerospike.Client
 		/// <param name="policy"></param>
 		/// <param name="user"></param>
 		/// <exception cref="AerospikeException"></exception>
+		[Obsolete("Method not supported in proxy client: DropUser")]
 		public void DropUser(AdminPolicy policy, string user)
 		{
 			throw new AerospikeException(NotSupported + "DropUser");
@@ -1568,6 +1578,7 @@ namespace Aerospike.Client
 		/// <param name="user"></param>
 		/// <param name="password"></param>
 		/// <exception cref="AerospikeException"></exception>
+		[Obsolete("Method not supported in proxy client: ChangePassword")]
 		public void ChangePassword(AdminPolicy policy, string user, string password)
 		{
 			throw new AerospikeException(NotSupported + "ChangePassword");
@@ -1580,6 +1591,7 @@ namespace Aerospike.Client
 		/// <param name="user"></param>
 		/// <param name="roles"></param>
 		/// <exception cref="AerospikeException"></exception>
+		[Obsolete("Method not supported in proxy client: GrantRoles")]
 		public void GrantRoles(AdminPolicy policy, string user, IList<string> roles)
 		{
 			throw new AerospikeException(NotSupported + "GrantRoles");
@@ -1592,6 +1604,7 @@ namespace Aerospike.Client
 		/// <param name="user"></param>
 		/// <param name="roles"></param>
 		/// <exception cref="AerospikeException"></exception>
+		[Obsolete("Method not supported in proxy client: RevokeRoles")]
 		public void RevokeRoles(AdminPolicy policy, string user, IList<string> roles)
 		{
 			throw new AerospikeException(NotSupported + "RevokeRoles");
@@ -1604,6 +1617,7 @@ namespace Aerospike.Client
 		/// <param name="roleName"></param>
 		/// <param name="privileges"></param>
 		/// <exception cref="AerospikeException"></exception>
+		[Obsolete("Method not supported in proxy client: CreateRole")]
 		public void CreateRole(AdminPolicy policy, string roleName, IList<Privilege> privileges)
 		{
 			throw new AerospikeException(NotSupported + "CreateRole");
@@ -1617,6 +1631,7 @@ namespace Aerospike.Client
 		/// <param name="privileges"></param>
 		/// <param name="whitelist"></param>
 		/// <exception cref="AerospikeException"></exception>
+		[Obsolete("Method not supported in proxy client: CreateRole")]
 		public void CreateRole(AdminPolicy policy, string roleName, IList<Privilege> privileges, IList<string> whitelist)
 		{
 			throw new AerospikeException(NotSupported + "CreateRole");
@@ -1632,6 +1647,7 @@ namespace Aerospike.Client
 		/// <param name="readQuota"></param>
 		/// <param name="writeQuota"></param>
 		/// <exception cref="AerospikeException"></exception>
+		[Obsolete("Method not supported in proxy client: CreateRole")]
 		public void CreateRole
 		(
 			AdminPolicy policy,
@@ -1651,6 +1667,7 @@ namespace Aerospike.Client
 		/// <param name="policy"></param>
 		/// <param name="roleName"></param>
 		/// <exception cref="AerospikeException"></exception>
+		[Obsolete("Method not supported in proxy client: DropRole")]
 		public void DropRole(AdminPolicy policy, string roleName)
 		{
 			throw new AerospikeException(NotSupported + "DropRole");
@@ -1663,6 +1680,7 @@ namespace Aerospike.Client
 		/// <param name="roleName"></param>
 		/// <param name="privileges"></param>
 		/// <exception cref="AerospikeException"></exception>
+		[Obsolete("Method not supported in proxy client: GrantPrivileges")]
 		public void GrantPrivileges(AdminPolicy policy, string roleName, IList<Privilege> privileges)
 		{
 			throw new AerospikeException(NotSupported + "GrantPrivileges");
@@ -1675,6 +1693,7 @@ namespace Aerospike.Client
 		/// <param name="roleName"></param>
 		/// <param name="privileges"></param>
 		/// <exception cref="AerospikeException"></exception>
+		[Obsolete("Method not supported in proxy client: RevokePrivileges")]
 		public void RevokePrivileges(AdminPolicy policy, string roleName, IList<Privilege> privileges)
 		{
 			throw new AerospikeException(NotSupported + "RevokePrivileges");
@@ -1687,6 +1706,7 @@ namespace Aerospike.Client
 		/// <param name="roleName"></param>
 		/// <param name="whitelist"></param>
 		/// <exception cref="AerospikeException"></exception>
+		[Obsolete("Method not supported in proxy client: SetWhitelist")]
 		public void SetWhitelist(AdminPolicy policy, string roleName, IList<string> whitelist)
 		{
 			throw new AerospikeException(NotSupported + "SetWhitelist");
@@ -1700,6 +1720,7 @@ namespace Aerospike.Client
 		/// <param name="readQuota"></param>
 		/// <param name="writeQuota"></param>
 		/// <exception cref="AerospikeException"></exception>
+		[Obsolete("Method not supported in proxy client: SetQuotas")]
 		public void SetQuotas(AdminPolicy policy, string roleName, int readQuota, int writeQuota)
 		{
 			throw new AerospikeException(NotSupported + "SetQuotas");
@@ -1712,6 +1733,7 @@ namespace Aerospike.Client
 		/// <param name="user"></param>
 		/// <returns></returns>
 		/// <exception cref="AerospikeException"></exception>
+		[Obsolete("Method not supported in proxy client: QueryUser")]
 		public User QueryUser(AdminPolicy policy, string user)
 		{
 			throw new AerospikeException(NotSupported + "QueryUser");
@@ -1723,6 +1745,7 @@ namespace Aerospike.Client
 		/// <param name="policy"></param>
 		/// <returns></returns>
 		/// <exception cref="AerospikeException"></exception>
+		[Obsolete("Method not supported in proxy client: QueryUsers")]
 		public List<User> QueryUsers(AdminPolicy policy)
 		{
 			throw new AerospikeException(NotSupported + "QueryUsers");
@@ -1735,6 +1758,7 @@ namespace Aerospike.Client
 		/// <param name="roleName"></param>
 		/// <returns></returns>
 		/// <exception cref="AerospikeException"></exception>
+		[Obsolete("Method not supported in proxy client: QueryRole")]
 		public Role QueryRole(AdminPolicy policy, string roleName)
 		{
 			throw new AerospikeException(NotSupported + "QueryRole");
@@ -1746,9 +1770,10 @@ namespace Aerospike.Client
 		/// <param name="policy"></param>
 		/// <returns></returns>
 		/// <exception cref="AerospikeException"></exception>
+		[Obsolete("Method not supported in proxy client: QueryRoles")]
 		public List<Role> QueryRoles(AdminPolicy policy)
 		{
 			throw new AerospikeException(NotSupported + "QueryRoles");
-		}		
+		}
 	}
 }

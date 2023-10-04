@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2022 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -37,10 +37,10 @@ namespace Aerospike.Client
 
 		protected internal readonly AsyncCluster cluster;
 		protected internal Policy policy;
-		internal IAsyncConnection conn;
+		private AsyncConnection conn;
 		protected internal AsyncNode node;
 		private BufferSegment segmentOrig;
-		internal BufferSegment segment;
+		private BufferSegment segment;
 		private ValueStopwatch socketWatch;
 		private ValueStopwatch totalWatch;
 		protected internal int dataLength;

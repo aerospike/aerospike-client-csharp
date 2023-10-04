@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -14,7 +14,6 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using System.IO;
 using Aerospike.Client;
 
 namespace Aerospike.Demo
@@ -92,7 +91,7 @@ end
 				Key key = new Key(args.ns, args.set, keyPrefix + i);
 				Bin bin = new Bin(binName, i);
 
-				console.Info("Put: namespace={0} set={1} key={2} bin={3} value={4}", 
+				console.Info("Put: namespace={0} set={1} key={2} bin={3} value={4}",
 					key.ns, key.setName, key.userKey, bin.name, bin.value);
 
 				client.Put(args.writePolicy, key, bin);
@@ -104,7 +103,7 @@ end
 			int begin = 4;
 			int end = 7;
 
-			console.Info("Query for:ns={0} set={1} index={2} bin={3} >= {4} <= {5}", 
+			console.Info("Query for:ns={0} set={1} index={2} bin={3} >= {4} <= {5}",
 				args.ns, args.set, indexName, binName, begin, end);
 
 			Statement stmt = new Statement();

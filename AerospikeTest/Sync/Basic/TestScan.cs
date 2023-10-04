@@ -1,5 +1,5 @@
 ﻿/* 
- * Copyright 2012-2019 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -14,12 +14,9 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using System.Collections.Generic;
-using System.Collections.Concurrent;
-using System.Threading;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Aerospike.Client;
-using Microsoft.AspNetCore.DataProtection.KeyManagement;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
+using System.Collections.Concurrent;
 
 namespace Aerospike.Test
 {
@@ -118,6 +115,6 @@ namespace Aerospike.Test
 		public class Metrics
 		{
 			public long count = 0;
-		}		
+		}
 	}
 }

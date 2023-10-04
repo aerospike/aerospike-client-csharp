@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2022 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -17,7 +17,6 @@
 using Aerospike.Client.KVS;
 using Google.Protobuf;
 using Grpc.Core;
-using Grpc.Net.Client;
 using static Aerospike.Client.AerospikeException;
 
 namespace Aerospike.Client
@@ -38,7 +37,7 @@ namespace Aerospike.Client
 		{
 			return true;
 		}
-		
+
 		protected internal override void WriteBuffer()
 		{
 			SetQuery(policy, statement, taskId, true);
@@ -95,9 +94,9 @@ namespace Aerospike.Client
 				Payload = ByteString.CopyFrom(Buffer.DataBuffer, 0, Buffer.Offset),
 				BackgroundExecuteRequest = execRequest,
 			};
-			
+
 			try
-			{ 
+			{
 				var client = new KVS.Query.QueryClient(CallInvoker);
 				var deadline = DateTime.UtcNow.AddMilliseconds(totalTimeout);
 				var stream = client.BackgroundExecute(request, deadline: deadline, cancellationToken: token);

@@ -43,7 +43,8 @@ namespace Aerospike.Test
 		}
 
 		[TestMethod]
-		public void OperateDelete() {
+		public void OperateDelete()
+		{
 			// Write initial record.
 			Key key = new Key(args.ns, args.set, "opkey");
 			Bin bin1 = new Bin("optintbin1", 1);
@@ -54,7 +55,7 @@ namespace Aerospike.Test
 			Record record = client.Operate(null, key,
 				Operation.Get(bin1.name),
 				Operation.Delete());
-			
+
 			AssertBinEqual(key, record, bin1.name, 1);
 
 			// Verify record is gone.
@@ -76,9 +77,34 @@ namespace Aerospike.Test
 
 			// Read record.
 			record = client.Get(null, key);
-			
+
 			AssertBinEqual(key, record, bin2.name, 2);
 			Assert.IsTrue(record.bins.Count == 1);
+		}
+
+		[TestMethod]
+		public void OperateInvalidNamespace()
+		{
+			List<BatchRecord> records = new()
+			{
+				new BatchUDF(new Key("invalid", "demo", 1), "test_ops", "rec_create",
+					new Value[] { Value.Get(new Dictionary<String, String>() {
+						{
+							"bin1_str", "a"
+						}
+					})
+				}),
+				new BatchWrite(new Key("test", "demo", 2),
+				new Operation[] { Operation.Put(new Bin("bin1_str", "aa")) }),
+				new BatchWrite(new Key("test", "demo", 3),
+				new Operation[] { Operation.Put(new Bin("bin1_str", "aaa")) })
+			};
+
+			BatchPolicy bp = new BatchPolicy();
+			bp.respondAllKeys = true;
+
+			bool isSucceed = client.Operate(bp, records);
+			Assert.IsTrue(isSucceed);
 		}
 	}
 }

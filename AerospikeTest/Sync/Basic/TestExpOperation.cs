@@ -362,5 +362,32 @@ namespace Aerospike.Test
 			bool res2 = record.GetBool("res2");
 			Assert.IsTrue(res2);
 		}
+
+		[TestMethod]
+		public void ExpRowBatchRead()
+		{
+			List<BatchRecord> records = new();
+			Expression expr = Exp.Build(Exp.EQ(Exp.IntBin("count"), Exp.Val(0)));
+
+			for (int i = 0; i < 1; i++)
+			{
+				Key key = new Key("test", "demo", i);
+				client.Put(null, key, new Bin("count", i));
+
+				BatchWritePolicy bwp = new();
+				bwp.filterExp = expr;
+				records.Add(
+					new BatchWrite(bwp, key, new Operation[] {
+				Operation.Put(new Bin("age", 10)),
+				Operation.Get("age"),
+					})
+				);
+			}
+
+			BatchPolicy bp = new BatchPolicy();
+			bp.failOnFilteredOut = true;
+			bool isSuccess = client.Operate(bp, records);
+			Assert.IsTrue(isSuccess);
+		}
 	}
 }

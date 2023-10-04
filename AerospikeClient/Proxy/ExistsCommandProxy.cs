@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2020 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -17,10 +17,6 @@
 using Aerospike.Client.KVS;
 using Google.Protobuf;
 using Grpc.Core;
-using Grpc.Net.Client;
-using System;
-using System.Collections.Generic;
-using System.Diagnostics.Eventing.Reader;
 
 namespace Aerospike.Client
 {
@@ -92,8 +88,8 @@ namespace Aerospike.Client
 			};
 			GRPCConversions.SetRequestPolicy(policy, request);
 
-			try 
-			{ 
+			try
+			{
 				var client = new KVS.KVS.KVSClient(CallInvoker);
 				var deadline = DateTime.UtcNow.AddMilliseconds(totalTimeout);
 				var response = client.Exists(request, deadline: deadline);

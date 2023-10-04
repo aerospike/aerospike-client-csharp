@@ -14,10 +14,7 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using System;
-using System.Collections.Generic;
 using System.Text;
-using System.Threading;
 
 namespace Aerospike.Client
 {
@@ -263,7 +260,8 @@ namespace Aerospike.Client
 
 			int nodeSize = list.Count;
 
-			if (nodeSize <= 0) {
+			if (nodeSize <= 0)
+			{
 				throw new AerospikeException.InvalidNode("No nodes were assigned");
 			}
 
@@ -484,7 +482,7 @@ namespace Aerospike.Client
 			}
 
 			// Prepare for next iteration.
-			if (maxRecords > 0) 
+			if (maxRecords > 0)
 			{
 				maxRecords -= recordCount;
 			}

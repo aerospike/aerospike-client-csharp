@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2022 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -39,7 +39,7 @@ namespace Aerospike.Demo
 			Statement stmt = new Statement();
 			stmt.Namespace = args.ns;
 			stmt.SetName = setName;
-			stmt.BinNames = new string[] {binName};
+			stmt.BinNames = new string[] { binName };
 			stmt.Filter = Filter.Range(binName, 1, 200);
 			stmt.MaxRecords = 100;
 

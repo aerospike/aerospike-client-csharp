@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -17,9 +17,6 @@
 using Aerospike.Client.KVS;
 using Google.Protobuf;
 using Grpc.Core;
-using Grpc.Net.Client;
-using System;
-using System.Collections.Generic;
 
 namespace Aerospike.Client
 {
@@ -32,7 +29,7 @@ namespace Aerospike.Client
 
 		public ExecuteCommandProxy
 		(
-			Buffer buffer, 
+			Buffer buffer,
 			CallInvoker invoker,
 			WritePolicy writePolicy,
 			Key key,

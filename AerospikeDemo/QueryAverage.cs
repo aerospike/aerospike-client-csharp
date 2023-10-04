@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -14,9 +14,8 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using System.Collections.Generic;
-using System.IO;
 using Aerospike.Client;
+using System.Collections.Generic;
 
 namespace Aerospike.Demo
 {
@@ -88,7 +87,7 @@ namespace Aerospike.Demo
 
 		private void RunQuery(IAerospikeClient client, Arguments args, string indexName, string binName)
 		{
-			console.Info("Query for:ns={0} set={1} index={2} bin={3}", 
+			console.Info("Query for:ns={0} set={1} index={2} bin={3}",
 				args.ns, args.set, indexName, binName);
 
 			Statement stmt = new Statement();
@@ -104,7 +103,7 @@ namespace Aerospike.Demo
 				{
 					object obj = rs.Object;
 
-					if (obj is Dictionary<object,object>)
+					if (obj is Dictionary<object, object>)
 					{
 						Dictionary<object, object> map = (Dictionary<object, object>)obj;
 						object objsum = map["sum"];

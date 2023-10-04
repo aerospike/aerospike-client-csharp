@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2020 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -14,10 +14,6 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using Aerospike.Client.KVS;
-using Google.Protobuf;
-using Grpc.Core;
-using Grpc.Net.Client;
 
 namespace Aerospike.Client
 {
@@ -39,7 +35,7 @@ namespace Aerospike.Client
 		{
 			return true;
 		}
-		
+
 		protected internal override Node GetNode()
 		{
 			return partition.GetNodeWrite(cluster);

@@ -1,5 +1,5 @@
 ﻿/* 
- * Copyright 2012-2022 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -14,9 +14,9 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using System.Reflection;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Aerospike.Client;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
+using System.Reflection;
 
 namespace Aerospike.Test
 {
