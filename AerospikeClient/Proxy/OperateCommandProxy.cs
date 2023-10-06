@@ -22,29 +22,29 @@ namespace Aerospike.Client
 {
 	public sealed class OperateCommandProxy : ReadCommandProxy
 	{
-		private readonly OperateArgs args;
+		private OperateArgs Args { get; }
 
 		public OperateCommandProxy(Buffer buffer, CallInvoker invoker, Key key, OperateArgs args)
 			: base(buffer, invoker, args.writePolicy, key, true)
 		{
-			this.args = args;
+			this.Args = args;
 		}
 
 		protected internal override bool IsWrite()
 		{
-			return args.hasWrite;
+			return Args.hasWrite;
 		}
 
 		protected internal override void WriteBuffer()
 		{
-			SetOperate(args.writePolicy, key, args);
+			SetOperate(Args.writePolicy, Key, Args);
 		}
 
 		protected internal override void HandleNotFound(int resultCode)
 		{
 			// Only throw not found exception for command with write operations.
 			// Read-only command operations return a null record.
-			if (args.hasWrite)
+			if (Args.hasWrite)
 			{
 				throw new AerospikeException(resultCode);
 			}
@@ -70,7 +70,7 @@ namespace Aerospike.Client
 			}
 			catch (RpcException e)
 			{
-				throw GRPCConversions.ToAerospikeException(e, totalTimeout, true);
+				throw GRPCConversions.ToAerospikeException(e, totalTimeout, IsWrite());
 			}
 		}
 
@@ -95,7 +95,7 @@ namespace Aerospike.Client
 			}
 			catch (RpcException e)
 			{
-				throw GRPCConversions.ToAerospikeException(e, totalTimeout, true);
+				throw GRPCConversions.ToAerospikeException(e, totalTimeout, IsWrite());
 			}
 		}
 	}

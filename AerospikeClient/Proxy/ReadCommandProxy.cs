@@ -22,30 +22,30 @@ namespace Aerospike.Client
 {
 	public class ReadCommandProxy : GRPCCommand
 	{
-		private readonly string[] binNames;
-		private Record record;
+		private string[] BinNames { get; }
+		public Record Record { get; private set; }
 
 		public ReadCommandProxy(Buffer buffer, CallInvoker invoker, Policy policy, Key key)
 			: base(buffer, invoker, policy, key)
 		{
-			this.binNames = null;
+			this.BinNames = null;
 		}
 
 		public ReadCommandProxy(Buffer buffer, CallInvoker invoker, Policy policy, Key key, String[] binNames)
 			: base(buffer, invoker, policy, key)
 		{
-			this.binNames = binNames;
+			this.BinNames = binNames;
 		}
 
 		public ReadCommandProxy(Buffer buffer, CallInvoker invoker, Policy policy, Key key, bool isOperation)
 			: base(buffer, invoker, policy, key, isOperation)
 		{
-			this.binNames = null;
+			this.BinNames = null;
 		}
 
 		protected internal override void WriteBuffer()
 		{
-			SetRead(policy, key, binNames);
+			SetRead(Policy, Key, BinNames);
 		}
 
 		protected internal override bool ParseRow()
@@ -106,34 +106,34 @@ namespace Aerospike.Client
 				if (opCount == 0)
 				{
 					// Bin data was not returned.
-					record = new Record(null, generation, expiration);
+					Record = new Record(null, generation, expiration);
 					return;
 				}
 				SkipKey(fieldCount);
-				record = policy.recordParser.ParseRecord(Buffer.DataBuffer, ref Buffer.Offset, opCount, generation, expiration, isOperation);
+				Record = Policy.recordParser.ParseRecord(Buffer.DataBuffer, ref Buffer.Offset, opCount, generation, expiration, IsOperation);
 				return;
 			}
 
-			if (resultCode == ResultCode.KEY_NOT_FOUND_ERROR)
+			if (resultCode == Client.ResultCode.KEY_NOT_FOUND_ERROR)
 			{
-				HandleNotFound(resultCode);
+                HandleNotFound(resultCode);
 				return;
 			}
 
-			if (resultCode == ResultCode.FILTERED_OUT)
+			if (resultCode == Client.ResultCode.FILTERED_OUT)
 			{
-				if (policy.failOnFilteredOut)
+				if (Policy.failOnFilteredOut)
 				{
 					throw new AerospikeException(resultCode);
 				}
 				return;
 			}
 
-			if (resultCode == ResultCode.UDF_BAD_RESPONSE)
+			if (resultCode == Client.ResultCode.UDF_BAD_RESPONSE)
 			{
-				SkipKey(fieldCount);
-				record = policy.recordParser.ParseRecord(Buffer.DataBuffer, ref Buffer.Offset, opCount, generation, expiration, isOperation);
-				HandleUdfError(resultCode);
+				base.SkipKey(fieldCount);
+                Record = Policy.recordParser.ParseRecord(Buffer.DataBuffer, ref Buffer.Offset, opCount, generation, expiration, IsOperation);
+                HandleUdfError(resultCode);
 				return;
 			}
 
@@ -147,7 +147,7 @@ namespace Aerospike.Client
 
 		private void HandleUdfError(int resultCode)
 		{
-			if (!record.bins.TryGetValue("FAILURE", out object obj))
+			if (!Record.bins.TryGetValue("FAILURE", out object obj))
 			{
 				throw new AerospikeException(resultCode);
 			}
@@ -171,14 +171,6 @@ namespace Aerospike.Client
 			throw new AerospikeException(code, message);
 		}
 
-		public Record Record
-		{
-			get
-			{
-				return record;
-			}
-		}
-
 		public virtual void Execute()
 		{
 			WriteBuffer();
@@ -188,7 +180,7 @@ namespace Aerospike.Client
 				Iteration = 1,
 				Payload = ByteString.CopyFrom(Buffer.DataBuffer, 0, Buffer.Offset)
 			};
-			GRPCConversions.SetRequestPolicy(policy, request);
+			GRPCConversions.SetRequestPolicy(Policy, request);
 
 			try
 			{
@@ -200,7 +192,7 @@ namespace Aerospike.Client
 			}
 			catch (RpcException e)
 			{
-				throw GRPCConversions.ToAerospikeException(e, totalTimeout, true);
+				throw GRPCConversions.ToAerospikeException(e, totalTimeout, IsWrite());
 			}
 		}
 
@@ -213,7 +205,7 @@ namespace Aerospike.Client
 				Iteration = 1,
 				Payload = ByteString.CopyFrom(Buffer.DataBuffer, 0, Buffer.Offset)
 			};
-			GRPCConversions.SetRequestPolicy(policy, request);
+			GRPCConversions.SetRequestPolicy(Policy, request);
 
 			try
 			{
@@ -222,11 +214,11 @@ namespace Aerospike.Client
 				var response = await client.ReadAsync(request, deadline: deadline, cancellationToken: token);
 				var conn = new ConnectionProxy(response);
 				ParseResult(conn);
-				return record;
+				return Record;
 			}
 			catch (RpcException e)
 			{
-				throw GRPCConversions.ToAerospikeException(e, totalTimeout, true);
+				throw GRPCConversions.ToAerospikeException(e, totalTimeout, IsWrite());
 			}
 		}
 	}

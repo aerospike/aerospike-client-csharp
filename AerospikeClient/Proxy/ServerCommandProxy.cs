@@ -23,14 +23,14 @@ namespace Aerospike.Client
 {
 	public sealed class ServerCommandProxy : GRPCCommand
 	{
-		private readonly Statement statement;
-		private readonly ulong taskId;
+		private Statement Statement { get; }
+		private ulong TaskId { get; }
 
 		public ServerCommandProxy(Buffer buffer, CallInvoker invoker, WritePolicy policy, Statement statement, ulong taskId)
 			: base(buffer, invoker, policy)
 		{
-			this.statement = statement;
-			this.taskId = taskId;
+			this.Statement = statement;
+			this.TaskId = taskId;
 		}
 
 		protected internal override bool IsWrite()
@@ -40,27 +40,27 @@ namespace Aerospike.Client
 
 		protected internal override void WriteBuffer()
 		{
-			SetQuery(policy, statement, taskId, true);
+			SetQuery(Policy, Statement, TaskId, true);
 		}
 
 		protected internal override bool ParseRow()
 		{
-			SkipKey(fieldCount);
+			SkipKey(FieldCount);
 
 			// Server commands (Query/Execute UDF) should only send back a return code.
-			if (resultCode != 0)
+			if (ResultCode != 0)
 			{
 				// Background scans (with null query filter) return KEY_NOT_FOUND_ERROR
 				// when the set does not exist on the target node.
-				if (resultCode == ResultCode.KEY_NOT_FOUND_ERROR)
+				if (ResultCode == Client.ResultCode.KEY_NOT_FOUND_ERROR)
 				{
 					// Non-fatal error.
 					return false;
 				}
-				throw new AerospikeException(resultCode);
+				throw new AerospikeException(ResultCode);
 			}
 
-			if (opCount > 0)
+			if (OpCount > 0)
 			{
 				throw new AerospikeException.Parse("Unexpectedly received bins on background query!");
 			}
@@ -84,8 +84,8 @@ namespace Aerospike.Client
 
 			var execRequest = new BackgroundExecuteRequest
 			{
-				Statement = GRPCConversions.ToGrpc(statement, (long)taskId, statement.maxRecords),
-				WritePolicy = GRPCConversions.ToGrpcExec((WritePolicy)policy)
+				Statement = GRPCConversions.ToGrpc(Statement, (long)TaskId, Statement.maxRecords),
+				WritePolicy = GRPCConversions.ToGrpcExec((WritePolicy)Policy)
 			};
 			var request = new AerospikeRequestPayload
 			{
@@ -109,7 +109,7 @@ namespace Aerospike.Client
 			}
 			catch (RpcException e)
 			{
-				throw GRPCConversions.ToAerospikeException(e, totalTimeout, true);
+				throw GRPCConversions.ToAerospikeException(e, totalTimeout, IsWrite());
 			}
 		}
 	}

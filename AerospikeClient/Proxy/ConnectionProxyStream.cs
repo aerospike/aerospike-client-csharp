@@ -26,11 +26,11 @@ namespace Aerospike.Client
 	public class ConnectionProxyStream : IConnection
 	{
 		private static readonly String NotSupported = "Method not supported in proxy client: ";
-		private readonly AsyncServerStreamingCall<AerospikeResponsePayload> Stream;
-		private AerospikeResponsePayload Response;
-		private byte[] Payload; // _payload
-		private int Offset;
-		private int BufferOffset;
+		private AsyncServerStreamingCall<AerospikeResponsePayload> Stream { get; }
+		private AerospikeResponsePayload Response { get; set; }
+		private byte[] Payload { get; set; }
+		private int Offset { get; set; }
+		private int BufferOffset { get; set; }
 
 		/// <summary>
 		/// Create GRPC Connection Stream class

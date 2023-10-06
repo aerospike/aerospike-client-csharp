@@ -23,174 +23,12 @@ using static Aerospike.Client.AerospikeException;
 namespace Aerospike.Client
 {
 	//-------------------------------------------------------
-	// ReadList
-	//-------------------------------------------------------
-
-	public sealed class BatchReadListCommandProxy : BatchCommandProxy
-	{
-		private readonly List<BatchRead> records;
-
-		public BatchReadListCommandProxy
-		(
-			Buffer buffer,
-			CallInvoker invoker,
-			BatchNode batch,
-			BatchPolicy policy,
-			List<BatchRead> records,
-			BatchStatus status
-		) : base(buffer, invoker, batch, policy, status, true)
-		{
-			this.records = records;
-		}
-
-		protected internal override void WriteBuffer()
-		{
-			if (batch.node != null && batch.node.HasBatchAny)
-			{
-				SetBatchOperate(batchPolicy, records, batch);
-			}
-			else
-			{
-				SetBatchRead(batchPolicy, records, batch);
-			}
-		}
-
-		protected internal override bool ParseRow()
-		{
-			SkipKey(fieldCount);
-
-			BatchRead record = records[batchIndex];
-
-			if (resultCode == 0)
-			{
-				record.SetRecord(ParseRecord());
-			}
-			else
-			{
-				record.SetError(resultCode, false);
-				status.SetRowError();
-			}
-			return true;
-		}
-	}
-
-	//-------------------------------------------------------
-	// GetArray
-	//-------------------------------------------------------
-
-	public sealed class BatchGetArrayCommandProxy : BatchCommandProxy
-	{
-		private readonly Key[] keys;
-		private readonly string[] binNames;
-		private readonly Operation[] ops;
-		private readonly Record[] records;
-		private readonly int readAttr;
-
-		public BatchGetArrayCommandProxy
-		(
-			Buffer buffer,
-			CallInvoker invoker,
-			BatchNode batch,
-			BatchPolicy policy,
-			Key[] keys,
-			string[] binNames,
-			Operation[] ops,
-			Record[] records,
-			int readAttr,
-			bool isOperation,
-			BatchStatus status
-		) : base(buffer, invoker, batch, policy, status, isOperation)
-		{
-			this.keys = keys;
-			this.binNames = binNames;
-			this.ops = ops;
-			this.records = records;
-			this.readAttr = readAttr;
-		}
-
-		protected internal override void WriteBuffer()
-		{
-			if (batch.node != null && batch.node.HasBatchAny)
-			{
-				BatchAttr attr = new(policy, readAttr, ops);
-				SetBatchOperate(batchPolicy, keys, batch, binNames, ops, attr);
-			}
-			else
-			{
-				SetBatchRead(batchPolicy, keys, batch, binNames, ops, readAttr);
-			}
-		}
-
-		protected internal override bool ParseRow()
-		{
-			SkipKey(fieldCount);
-
-			if (resultCode == 0)
-			{
-				records[batchIndex] = ParseRecord();
-			}
-			return true;
-		}
-	}
-
-	//-------------------------------------------------------
-	// ExistsArray
-	//-------------------------------------------------------
-
-	public sealed class BatchExistsArrayCommandProxy : BatchCommandProxy
-	{
-		private readonly Key[] keys;
-		private readonly bool[] existsArray;
-
-		public BatchExistsArrayCommandProxy
-		(
-			Buffer buffer,
-			CallInvoker invoker,
-			BatchNode batch,
-			BatchPolicy policy,
-			Key[] keys,
-			bool[] existsArray,
-			BatchStatus status
-		) : base(buffer, invoker, batch, policy, status, false)
-		{
-			this.keys = keys;
-			this.existsArray = existsArray;
-		}
-
-		protected internal override void WriteBuffer()
-		{
-			if (batch.node != null && batch.node.HasBatchAny)
-			{
-				BatchAttr attr = new(policy, Command.INFO1_READ | Command.INFO1_NOBINDATA);
-				SetBatchOperate(batchPolicy, keys, batch, null, null, attr);
-			}
-			else
-			{
-				SetBatchRead(batchPolicy, keys, batch, null, null, Command.INFO1_READ | Command.INFO1_NOBINDATA);
-			}
-		}
-
-		protected internal override bool ParseRow()
-		{
-			SkipKey(fieldCount);
-
-			if (opCount > 0)
-			{
-				throw new AerospikeException.Parse("Received bins that were not requested!");
-			}
-
-			existsArray[batchIndex] = resultCode == 0;
-			return true;
-		}
-	}
-
-	//-------------------------------------------------------
 	// OperateList
 	//-------------------------------------------------------
 
 	public sealed class BatchOperateListCommandProxy : BatchCommandProxy
 	{
-		private readonly IList<BatchRecord> records;
+		private IList<BatchRecord> Records { get; }
 
 		public BatchOperateListCommandProxy
 		(
@@ -202,7 +40,7 @@ namespace Aerospike.Client
 			BatchStatus status
 		) : base(buffer, invoker, batch, policy, status, true)
 		{
-			this.records = records;
+			this.Records = records;
 		}
 
 		protected internal override bool IsWrite()
@@ -214,39 +52,39 @@ namespace Aerospike.Client
 
 		protected internal override void WriteBuffer()
 		{
-			SetBatchOperate(batchPolicy, (IList)records, batch);
+			SetBatchOperate(BatchPolicy, (IList)Records, Batch);
 		}
 
 		protected internal override bool ParseRow()
 		{
-			SkipKey(fieldCount);
+			SkipKey(FieldCount);
 
-			BatchRecord record = records[batchIndex];
+			BatchRecord record = Records[BatchIndex];
 
-			if (resultCode == 0)
+			if (ResultCode == 0)
 			{
 				record.SetRecord(ParseRecord());
 				return true;
 			}
 
-			if (resultCode == ResultCode.UDF_BAD_RESPONSE)
+			if (ResultCode == Client.ResultCode.UDF_BAD_RESPONSE)
 			{
-				Record r = ParseRecord();
+                Record r = ParseRecord();
 				string m = r.GetString("FAILURE");
 
 				if (m != null)
 				{
 					// Need to store record because failure bin contains an error message.
 					record.record = r;
-					record.resultCode = resultCode;
+					record.resultCode = ResultCode;
 					record.inDoubt = Command.BatchInDoubt(record.hasWrite, 0);
-					status.SetRowError();
+                    Status.SetRowError();
 					return true;
 				}
 			}
 
-			record.SetError(resultCode, Command.BatchInDoubt(record.hasWrite, 0));
-			status.SetRowError();
+			record.SetError(ResultCode, Command.BatchInDoubt(record.hasWrite, 0));
+			Status.SetRowError();
 			return true;
 		}
 
@@ -257,11 +95,11 @@ namespace Aerospike.Client
 				return;
 			}
 
-			foreach (int index in batch.offsets)
+			foreach (int index in Batch.offsets)
 			{
-				BatchRecord record = records[index];
+				BatchRecord record = Records[index];
 
-				if (record.resultCode == ResultCode.NO_RESPONSE)
+				if (record.resultCode == Client.ResultCode.NO_RESPONSE)
 				{
 					record.inDoubt = record.hasWrite;
 				}
@@ -275,10 +113,10 @@ namespace Aerospike.Client
 
 	public sealed class BatchOperateArrayCommandProxy : BatchCommandProxy
 	{
-		private readonly Key[] keys;
-		private readonly Operation[] ops;
-		private readonly BatchRecord[] records;
-		private readonly BatchAttr attr;
+		private Key[] Keys { get; }
+		private Operation[] Ops { get; }
+		private BatchRecord[] Records { get; }
+		private BatchAttr Attr { get; }
 
 		public BatchOperateArrayCommandProxy
 		(
@@ -293,150 +131,52 @@ namespace Aerospike.Client
 			BatchStatus status
 		) : base(buffer, invoker, batch, batchPolicy, status, ops != null)
 		{
-			this.keys = keys;
-			this.ops = ops;
-			this.records = records;
-			this.attr = attr;
+			this.Keys = keys;
+			this.Ops = ops;
+			this.Records = records;
+			this.Attr = attr;
 		}
 
 		protected internal override bool IsWrite()
 		{
-			return attr.hasWrite;
+			return Attr.hasWrite;
 		}
 
 		protected internal override void WriteBuffer()
 		{
-			SetBatchOperate(batchPolicy, keys, batch, null, ops, attr);
+			SetBatchOperate(BatchPolicy, Keys, Batch, null, Ops, Attr);
 		}
 
 		protected internal override bool ParseRow()
 		{
-			SkipKey(fieldCount);
+			SkipKey(FieldCount);
 
-			BatchRecord record = records[batchIndex];
+			BatchRecord record = Records[BatchIndex];
 
-			if (resultCode == 0)
+			if (ResultCode == 0)
 			{
 				record.SetRecord(ParseRecord());
 			}
 			else
 			{
-				record.SetError(resultCode, Command.BatchInDoubt(attr.hasWrite, 0));
-				status.SetRowError();
+				record.SetError(ResultCode, Command.BatchInDoubt(Attr.hasWrite, 0));
+				Status.SetRowError();
 			}
 			return true;
 		}
 
 		protected internal override void SetInDoubt(bool inDoubt)
 		{
-			if (!inDoubt || !attr.hasWrite)
+			if (!inDoubt || !Attr.hasWrite)
 			{
 				return;
 			}
 
-			foreach (int index in batch.offsets)
+			foreach (int index in Batch.offsets)
 			{
-				BatchRecord record = records[index];
+				BatchRecord record = Records[index];
 
-				if (record.resultCode == ResultCode.NO_RESPONSE)
-				{
-					record.inDoubt = inDoubt;
-				}
-			}
-		}
-	}
-
-	//-------------------------------------------------------
-	// UDF
-	//-------------------------------------------------------
-
-	public sealed class BatchUDFCommandProxy : BatchCommandProxy
-	{
-		private readonly Key[] keys;
-		private readonly string packageName;
-		private readonly string functionName;
-		private readonly byte[] argBytes;
-		private readonly BatchRecord[] records;
-		private readonly BatchAttr attr;
-
-		public BatchUDFCommandProxy
-		(
-			Buffer buffer,
-			CallInvoker invoker,
-			BatchNode batch,
-			BatchPolicy batchPolicy,
-			Key[] keys,
-			string packageName,
-			string functionName,
-			byte[] argBytes,
-			BatchRecord[] records,
-			BatchAttr attr,
-			BatchStatus status
-		) : base(buffer, invoker, batch, batchPolicy, status, false)
-		{
-			this.keys = keys;
-			this.packageName = packageName;
-			this.functionName = functionName;
-			this.argBytes = argBytes;
-			this.records = records;
-			this.attr = attr;
-		}
-
-		protected internal override bool IsWrite()
-		{
-			return attr.hasWrite;
-		}
-
-		protected internal override void WriteBuffer()
-		{
-			SetBatchUDF(batchPolicy, keys, batch, packageName, functionName, argBytes, attr);
-		}
-
-		protected internal override bool ParseRow()
-		{
-			SkipKey(fieldCount);
-
-			BatchRecord record = records[batchIndex];
-
-			if (resultCode == 0)
-			{
-				record.SetRecord(ParseRecord());
-				return true;
-			}
-
-			if (resultCode == ResultCode.UDF_BAD_RESPONSE)
-			{
-				Record r = ParseRecord();
-				string m = r.GetString("FAILURE");
-
-				if (m != null)
-				{
-					// Need to store record because failure bin contains an error message.
-					record.record = r;
-					record.resultCode = resultCode;
-					record.inDoubt = Command.BatchInDoubt(attr.hasWrite, 0);
-					status.SetRowError();
-					return true;
-				}
-			}
-
-			record.SetError(resultCode, Command.BatchInDoubt(attr.hasWrite, 0));
-			status.SetRowError();
-			return true;
-		}
-
-		protected internal override void SetInDoubt(bool inDoubt)
-		{
-			if (!inDoubt || !attr.hasWrite)
-			{
-				return;
-			}
-
-			foreach (int index in batch.offsets)
-			{
-				BatchRecord record = records[index];
-
-				if (record.resultCode == ResultCode.NO_RESPONSE)
+				if (record.resultCode == Client.ResultCode.NO_RESPONSE)
 				{
 					record.inDoubt = inDoubt;
 				}
@@ -450,9 +190,9 @@ namespace Aerospike.Client
 
 	public abstract class BatchCommandProxy : GRPCCommand
 	{
-		internal readonly BatchNode batch;
-		internal readonly BatchPolicy batchPolicy;
-		internal readonly BatchStatus status;
+		internal BatchNode Batch { get; }
+		internal BatchPolicy BatchPolicy { get; }
+		internal BatchStatus Status { get; }
 
 		public BatchCommandProxy
 		(
@@ -464,9 +204,9 @@ namespace Aerospike.Client
 			bool isOperation
 		) : base(buffer, invoker, batchPolicy, isOperation)
 		{
-			this.batch = batch;
-			this.batchPolicy = batchPolicy;
-			this.status = status;
+			this.Batch = batch;
+			this.BatchPolicy = batchPolicy;
+			this.Status = status;
 		}
 
 		protected internal virtual void SetInDoubt(bool inDoubt)
@@ -489,7 +229,7 @@ namespace Aerospike.Client
 				Iteration = 1,
 				Payload = ByteString.CopyFrom(Buffer.DataBuffer, 0, Buffer.Offset)
 			};
-			GRPCConversions.SetRequestPolicy(batchPolicy, request);
+			GRPCConversions.SetRequestPolicy(BatchPolicy, request);
 
 			try
 			{
@@ -505,7 +245,7 @@ namespace Aerospike.Client
 			}
 			catch (RpcException e)
 			{
-				throw GRPCConversions.ToAerospikeException(e, totalTimeout, true);
+				throw GRPCConversions.ToAerospikeException(e, totalTimeout, IsWrite());
 			}
 		}
 	}

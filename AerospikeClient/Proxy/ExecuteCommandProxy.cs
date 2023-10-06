@@ -22,10 +22,10 @@ namespace Aerospike.Client
 {
 	public sealed class ExecuteCommandProxy : ReadCommandProxy
 	{
-		private readonly WritePolicy writePolicy;
-		private readonly string packageName;
-		private readonly string functionName;
-		private readonly Value[] args;
+		private WritePolicy WritePolicy { get; }
+		private string PackageName { get; }
+		private string FunctionName { get; }
+		private Value[] Args { get; }
 
 		public ExecuteCommandProxy
 		(
@@ -38,10 +38,10 @@ namespace Aerospike.Client
 			Value[] args
 		) : base(buffer, invoker, writePolicy, key)
 		{
-			this.writePolicy = writePolicy;
-			this.packageName = packageName;
-			this.functionName = functionName;
-			this.args = args;
+			this.WritePolicy = writePolicy;
+			this.PackageName = packageName;
+			this.FunctionName = functionName;
+			this.Args = args;
 		}
 
 		protected internal override bool IsWrite()
@@ -51,7 +51,7 @@ namespace Aerospike.Client
 
 		protected internal override void WriteBuffer()
 		{
-			SetUdf(writePolicy, key, packageName, functionName, args);
+			SetUdf(WritePolicy, Key, PackageName, FunctionName, Args);
 		}
 
 		protected internal override void HandleNotFound(int resultCode)
@@ -73,7 +73,7 @@ namespace Aerospike.Client
 				Iteration = 1,
 				Payload = ByteString.CopyFrom(Buffer.DataBuffer, 0, Buffer.Offset)
 			};
-			GRPCConversions.SetRequestPolicy(writePolicy, request);
+			GRPCConversions.SetRequestPolicy(WritePolicy, request);
 
 			try
 			{
@@ -85,7 +85,7 @@ namespace Aerospike.Client
 			}
 			catch (RpcException e)
 			{
-				throw GRPCConversions.ToAerospikeException(e, totalTimeout, true);
+				throw GRPCConversions.ToAerospikeException(e, totalTimeout, IsWrite());
 			}
 		}
 	}

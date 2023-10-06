@@ -22,12 +22,12 @@ namespace Aerospike.Client
 {
 	public sealed class TouchCommandProxy : GRPCCommand
 	{
-		private readonly WritePolicy writePolicy;
+		private WritePolicy WritePolicy { get; }
 
 		public TouchCommandProxy(Buffer buffer, CallInvoker invoker, WritePolicy writePolicy, Key key)
  			: base(buffer, invoker, writePolicy, key)
 		{
-			this.writePolicy = writePolicy;
+			this.WritePolicy = writePolicy;
 		}
 
 		protected internal override bool IsWrite()
@@ -37,7 +37,7 @@ namespace Aerospike.Client
 
 		protected internal override void WriteBuffer()
 		{
-			SetTouch(writePolicy, key);
+			SetTouch(WritePolicy, Key);
 		}
 
 		protected internal override bool ParseRow()
@@ -58,9 +58,9 @@ namespace Aerospike.Client
 				return;
 			}
 
-			if (resultCode == ResultCode.FILTERED_OUT)
+			if (resultCode == Client.ResultCode.FILTERED_OUT)
 			{
-				if (writePolicy.failOnFilteredOut)
+				if (WritePolicy.failOnFilteredOut)
 				{
 					throw new AerospikeException(resultCode);
 				}
@@ -79,7 +79,7 @@ namespace Aerospike.Client
 				Iteration = 1,
 				Payload = ByteString.CopyFrom(Buffer.DataBuffer, 0, Buffer.Offset)
 			};
-			GRPCConversions.SetRequestPolicy(writePolicy, request);
+			GRPCConversions.SetRequestPolicy(WritePolicy, request);
 
 			try
 			{
@@ -91,7 +91,7 @@ namespace Aerospike.Client
 			}
 			catch (RpcException e)
 			{
-				throw GRPCConversions.ToAerospikeException(e, totalTimeout, true);
+				throw GRPCConversions.ToAerospikeException(e, totalTimeout, IsWrite());
 			}
 		}
 
@@ -104,7 +104,7 @@ namespace Aerospike.Client
 				Iteration = 1,
 				Payload = ByteString.CopyFrom(Buffer.DataBuffer, 0, Buffer.Offset)
 			};
-			GRPCConversions.SetRequestPolicy(writePolicy, request);
+			GRPCConversions.SetRequestPolicy(WritePolicy, request);
 
 			try
 			{
@@ -116,7 +116,7 @@ namespace Aerospike.Client
 			}
 			catch (RpcException e)
 			{
-				throw GRPCConversions.ToAerospikeException(e, totalTimeout, true);
+				throw GRPCConversions.ToAerospikeException(e, totalTimeout, IsWrite());
 			}
 		}
 	}

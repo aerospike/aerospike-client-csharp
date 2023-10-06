@@ -27,27 +27,27 @@ namespace Aerospike.Client
 	/// </summary>
 	public sealed class AuthTokenInterceptor : Interceptor
 	{
-		private readonly ClientPolicy clientPolicy;
-		private readonly GrpcChannel channel;
+		private ClientPolicy ClientPolicy { get; }
+		private GrpcChannel Channel { get; }
 		private volatile bool isFetchingToken = false;
-		private AccessToken accessToken;
-		private readonly Timer refreshTimer;
+		private AccessToken AccessToken { get; set; }
+		private Timer RefreshTimer { get; }
 
 
 		public AuthTokenInterceptor(ClientPolicy clientPolicy, GrpcChannel grpcChannel)
 		{
-			this.clientPolicy = clientPolicy;
-			this.channel = grpcChannel;
+			this.ClientPolicy = clientPolicy;
+			this.Channel = grpcChannel;
 
 			if (IsTokenRequired())
 			{
-				this.accessToken = new AccessToken(DateTime.UtcNow.Millisecond, 0, String.Empty);
-				refreshTimer = new Timer
+				this.AccessToken = new AccessToken(DateTime.UtcNow.Millisecond, 0, String.Empty);
+				RefreshTimer = new Timer
 				{
 					Enabled = true
 				};
-				refreshTimer.Elapsed += (sender, e) => RefreshToken();
-				refreshTimer.Start();
+				RefreshTimer.Elapsed += (sender, e) => RefreshToken();
+				RefreshTimer.Start();
 			}
 		}
 
@@ -56,12 +56,12 @@ namespace Aerospike.Client
 			try
 			{
 				FetchToken();
-				var interval = (int)accessToken.expiry - DateTime.Now.Millisecond - 5 * 1000;
-				refreshTimer.Interval = interval > 0 ? interval : 1000;
+				var interval = (int)AccessToken.expiry - DateTime.Now.Millisecond - 5 * 1000;
+				RefreshTimer.Interval = interval > 0 ? interval : 1000;
 			}
 			catch (Exception)
 			{
-				refreshTimer.Interval = 1000;
+				RefreshTimer.Interval = 1000;
 			}
 		}
 
@@ -82,26 +82,26 @@ namespace Aerospike.Client
 				}
 				var authRequest = new Auth.AerospikeAuthRequest
 				{
-					Username = clientPolicy.user,
-					Password = clientPolicy.password,
+					Username = ClientPolicy.user,
+					Password = ClientPolicy.password,
 				};
 
 				isFetchingToken = true;
 
-				var client = new Auth.AuthService.AuthServiceClient(channel);
+				var client = new Auth.AuthService.AuthServiceClient(Channel);
 				var response = client.Get(authRequest);
-				accessToken = ParseToken(response.Token);
+				AccessToken = ParseToken(response.Token);
 				isFetchingToken = false;
 			}
 			catch (RpcException e)
 			{
-				throw GRPCConversions.ToAerospikeException(e, 0, true);
+				throw GRPCConversions.ToAerospikeException(e, 0, false);
 			}
 		}
 
 		private bool IsTokenRequired()
 		{
-			return clientPolicy.user != null;
+			return ClientPolicy.user != null;
 		}
 
 		private static AccessToken ParseToken(string token)
@@ -132,7 +132,7 @@ namespace Aerospike.Client
 
 		private bool IsTokenValid()
 		{
-			AccessToken token = accessToken;
+			AccessToken token = AccessToken;
 			return !IsTokenRequired() || (token.token != String.Empty && !token.HasExpired());
 		}
 
@@ -148,7 +148,7 @@ namespace Aerospike.Client
 				{
 					var headers = new Metadata
 					{
-						new Metadata.Entry("Authorization", $"Bearer {accessToken.token}")
+						new Metadata.Entry("Authorization", $"Bearer {AccessToken.token}")
 					};
 
 					var newOptions = context.Options.WithHeaders(headers);
@@ -162,7 +162,7 @@ namespace Aerospike.Client
 				}
 				else
 				{
-					while (isFetchingToken || accessToken.token == String.Empty)
+					while (isFetchingToken || AccessToken.token == String.Empty)
 					{
 						context.Options.CancellationToken.ThrowIfCancellationRequested();
 						Task.Delay(500, context.Options.CancellationToken).Wait();
@@ -170,7 +170,7 @@ namespace Aerospike.Client
 
 					var headers = new Metadata
 					{
-						new Metadata.Entry("Authorization", $"Bearer {accessToken.token}")
+						new Metadata.Entry("Authorization", $"Bearer {AccessToken.token}")
 					};
 
 					var newOptions = context.Options.WithHeaders(headers);
@@ -199,7 +199,7 @@ namespace Aerospike.Client
 				{
 					var headers = new Metadata
 					{
-						new Metadata.Entry("Authorization", $"Bearer {accessToken.token}")
+						new Metadata.Entry("Authorization", $"Bearer {AccessToken.token}")
 					};
 
 					var newOptions = context.Options.WithHeaders(headers);
@@ -213,7 +213,7 @@ namespace Aerospike.Client
 				}
 				else
 				{
-					while (isFetchingToken || accessToken.token == String.Empty)
+					while (isFetchingToken || AccessToken.token == String.Empty)
 					{
 						context.Options.CancellationToken.ThrowIfCancellationRequested();
 						Task.Delay(500, context.Options.CancellationToken).Wait();
@@ -221,7 +221,7 @@ namespace Aerospike.Client
 
 					var headers = new Metadata
 					{
-						new Metadata.Entry("Authorization", $"Bearer {accessToken.token}")
+						new Metadata.Entry("Authorization", $"Bearer {AccessToken.token}")
 					};
 
 					var newOptions = context.Options.WithHeaders(headers);
@@ -257,7 +257,7 @@ namespace Aerospike.Client
 				{
 					var headers = new Metadata
 					{
-						new Metadata.Entry("Authorization", $"Bearer {accessToken.token}")
+						new Metadata.Entry("Authorization", $"Bearer {AccessToken.token}")
 					};
 
 					var newOptions = context.Options.WithHeaders(headers);
@@ -271,7 +271,7 @@ namespace Aerospike.Client
 				}
 				else
 				{
-					while (isFetchingToken || accessToken.token == String.Empty)
+					while (isFetchingToken || AccessToken.token == String.Empty)
 					{
 						context.Options.CancellationToken.ThrowIfCancellationRequested();
 						Task.Delay(500, context.Options.CancellationToken).Wait();
@@ -279,7 +279,7 @@ namespace Aerospike.Client
 
 					var headers = new Metadata
 					{
-						new Metadata.Entry("Authorization", $"Bearer {accessToken.token}")
+						new Metadata.Entry("Authorization", $"Bearer {AccessToken.token}")
 					};
 
 					var newOptions = context.Options.WithHeaders(headers);
@@ -308,7 +308,7 @@ namespace Aerospike.Client
 				{
 					var headers = new Metadata
 					{
-						new Metadata.Entry("Authorization", $"Bearer {accessToken.token}")
+						new Metadata.Entry("Authorization", $"Bearer {AccessToken.token}")
 					};
 
 					var newOptions = context.Options.WithHeaders(headers);
@@ -322,7 +322,7 @@ namespace Aerospike.Client
 				}
 				else
 				{
-					while (isFetchingToken || accessToken.token == String.Empty)
+					while (isFetchingToken || AccessToken.token == String.Empty)
 					{
 						context.Options.CancellationToken.ThrowIfCancellationRequested();
 						Task.Delay(500, context.Options.CancellationToken).Wait();
@@ -330,7 +330,7 @@ namespace Aerospike.Client
 
 					var headers = new Metadata
 					{
-						new Metadata.Entry("Authorization", $"Bearer {accessToken.token}")
+						new Metadata.Entry("Authorization", $"Bearer {AccessToken.token}")
 					};
 
 					var newOptions = context.Options.WithHeaders(headers);
@@ -358,7 +358,7 @@ namespace Aerospike.Client
 				{
 					var headers = new Metadata
 					{
-						new Metadata.Entry("Authorization", $"Bearer {accessToken.token}")
+						new Metadata.Entry("Authorization", $"Bearer {AccessToken.token}")
 					};
 
 					var newOptions = context.Options.WithHeaders(headers);
@@ -372,7 +372,7 @@ namespace Aerospike.Client
 				}
 				else
 				{
-					while (isFetchingToken || accessToken.token == String.Empty)
+					while (isFetchingToken || AccessToken.token == String.Empty)
 					{
 						context.Options.CancellationToken.ThrowIfCancellationRequested();
 						Task.Delay(500, context.Options.CancellationToken).Wait();
@@ -380,7 +380,7 @@ namespace Aerospike.Client
 
 					var headers = new Metadata
 					{
-						new Metadata.Entry("Authorization", $"Bearer {accessToken.token}")
+						new Metadata.Entry("Authorization", $"Bearer {AccessToken.token}")
 					};
 
 					var newOptions = context.Options.WithHeaders(headers);

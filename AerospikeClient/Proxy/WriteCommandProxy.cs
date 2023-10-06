@@ -22,16 +22,16 @@ namespace Aerospike.Client
 {
 	public sealed class WriteCommandProxy : GRPCCommand
 	{
-		private readonly WritePolicy writePolicy;
-		private readonly Bin[] bins;
-		private readonly Operation.Type operation;
+		private WritePolicy WritePolicy { get; }
+		private Bin[] Bins { get; }
+		private Operation.Type Operation { get; }
 
 		public WriteCommandProxy(Buffer buffer, CallInvoker invoker, WritePolicy writePolicy, Key key, Bin[] bins, Operation.Type operation)
 			: base(buffer, invoker, writePolicy, key)
 		{
-			this.writePolicy = writePolicy;
-			this.bins = bins;
-			this.operation = operation;
+			this.WritePolicy = writePolicy;
+			this.Bins = bins;
+			this.Operation = operation;
 		}
 
 		protected internal override bool IsWrite()
@@ -41,7 +41,7 @@ namespace Aerospike.Client
 
 		protected internal override void WriteBuffer()
 		{
-			SetWrite(writePolicy, operation, key, bins);
+			SetWrite(WritePolicy, Operation, Key, Bins);
 		}
 
 		protected internal override bool ParseRow()
@@ -62,9 +62,9 @@ namespace Aerospike.Client
 				return;
 			}
 
-			if (resultCode == ResultCode.FILTERED_OUT)
+			if (resultCode == Client.ResultCode.FILTERED_OUT)
 			{
-				if (writePolicy.failOnFilteredOut)
+				if (WritePolicy.failOnFilteredOut)
 				{
 					throw new AerospikeException(resultCode);
 				}
@@ -83,7 +83,7 @@ namespace Aerospike.Client
 				Iteration = 1,
 				Payload = ByteString.CopyFrom(Buffer.DataBuffer, 0, Buffer.Offset)
 			};
-			GRPCConversions.SetRequestPolicy(writePolicy, request);
+			GRPCConversions.SetRequestPolicy(WritePolicy, request);
 
 			try
 			{
@@ -95,7 +95,7 @@ namespace Aerospike.Client
 			}
 			catch (RpcException e)
 			{
-				throw GRPCConversions.ToAerospikeException(e, totalTimeout, true);
+				throw GRPCConversions.ToAerospikeException(e, totalTimeout, IsWrite());
 			}
 		}
 
@@ -108,7 +108,7 @@ namespace Aerospike.Client
 				Iteration = 1,
 				Payload = ByteString.CopyFrom(Buffer.DataBuffer, 0, Buffer.Offset)
 			};
-			GRPCConversions.SetRequestPolicy(writePolicy, request);
+			GRPCConversions.SetRequestPolicy(WritePolicy, request);
 
 			try
 			{
@@ -120,7 +120,7 @@ namespace Aerospike.Client
 			}
 			catch (RpcException e)
 			{
-				throw GRPCConversions.ToAerospikeException(e, totalTimeout, true);
+				throw GRPCConversions.ToAerospikeException(e, totalTimeout, IsWrite());
 			}
 		}
 	}

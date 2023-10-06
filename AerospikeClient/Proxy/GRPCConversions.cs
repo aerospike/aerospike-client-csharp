@@ -130,21 +130,6 @@ namespace Aerospike.Client
 			if (filter.PackedCtx != null) filterKVS.PackedCtx = ByteString.CopyFrom(filter.PackedCtx);
 
 			return filterKVS;
-
-			/*if (filter.getBegin() != null)
-			{
-				// TODO: @Brian is there a better way to convert value to bytes?
-				// This involves two copies. One when returning bytes Packer
-				// and one for the byte string.
-				Packer packer = new();
-				filter.getBegin().pack(packer);
-				builder.setBegin(ByteString.CopyFrom(packer.toByteArray()));
-			}
-
-			if (filter.getBegin() != null)
-			{
-				builder.setBegin(valueToByteString(filter.getBegin()));
-			}*/
 		}
 
 		public static KVS.Operation ToGrpc(Operation operation)

@@ -371,7 +371,7 @@ namespace Aerospike.Test
 
 			for (int i = 0; i < 1; i++)
 			{
-				Key key = new Key("test", "demo", i);
+				Key key = new Key(args.ns, args.set, i);
 				client.Put(null, key, new Bin("count", i));
 
 				BatchWritePolicy bwp = new();
@@ -384,8 +384,10 @@ namespace Aerospike.Test
 				);
 			}
 
-			BatchPolicy bp = new BatchPolicy();
-			bp.failOnFilteredOut = true;
+			BatchPolicy bp = new()
+			{
+				failOnFilteredOut = true
+			};
 			bool isSuccess = client.Operate(bp, records);
 			Assert.IsTrue(isSuccess);
 		}

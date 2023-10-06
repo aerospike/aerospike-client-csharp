@@ -24,8 +24,8 @@ namespace Aerospike.Client
 	public class ConnectionProxy : IConnection
 	{
 		private static readonly String NotSupported = "Method not supported in proxy client: ";
-		private readonly byte[] Payload;
-		private int Offset;
+		private byte[] Payload { get; }
+		private int Offset { get; set; }
 
 		/// <summary>
 		/// Create GRPC Connection class

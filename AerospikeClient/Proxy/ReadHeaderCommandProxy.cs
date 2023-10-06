@@ -22,7 +22,7 @@ namespace Aerospike.Client
 {
 	public sealed class ReadHeaderCommandProxy : GRPCCommand
 	{
-		private Record record;
+		public Record Record { get; private set; }
 
 		public ReadHeaderCommandProxy(Buffer buffer, CallInvoker invoker, Policy policy, Key key)
 			: base(buffer, invoker, policy, key)
@@ -31,7 +31,7 @@ namespace Aerospike.Client
 
 		protected internal override void WriteBuffer()
 		{
-			SetReadHeader(policy, key);
+			SetReadHeader(Policy, Key);
 		}
 
 		protected internal override bool ParseRow()
@@ -51,18 +51,18 @@ namespace Aerospike.Client
 			{
 				int generation = ByteUtil.BytesToInt(Buffer.DataBuffer, 14);
 				int expiration = ByteUtil.BytesToInt(Buffer.DataBuffer, 18);
-				record = new Record(null, generation, expiration);
+				Record = new Record(null, generation, expiration);
 				return;
 			}
 
-			if (resultCode == ResultCode.KEY_NOT_FOUND_ERROR)
+			if (resultCode == Client.ResultCode.KEY_NOT_FOUND_ERROR)
 			{
 				return;
 			}
 
-			if (resultCode == ResultCode.FILTERED_OUT)
+			if (resultCode == Client.ResultCode.FILTERED_OUT)
 			{
-				if (policy.failOnFilteredOut)
+				if (Policy.failOnFilteredOut)
 				{
 					throw new AerospikeException(resultCode);
 				}
@@ -70,14 +70,6 @@ namespace Aerospike.Client
 			}
 
 			throw new AerospikeException(resultCode);
-		}
-
-		public Record Record
-		{
-			get
-			{
-				return record;
-			}
 		}
 
 		public void Execute()
@@ -89,7 +81,7 @@ namespace Aerospike.Client
 				Iteration = 1,
 				Payload = ByteString.CopyFrom(Buffer.DataBuffer, 0, Buffer.Offset)
 			};
-			GRPCConversions.SetRequestPolicy(policy, request);
+			GRPCConversions.SetRequestPolicy(Policy, request);
 
 			try
 			{
@@ -101,7 +93,7 @@ namespace Aerospike.Client
 			}
 			catch (RpcException e)
 			{
-				throw GRPCConversions.ToAerospikeException(e, totalTimeout, true);
+				throw GRPCConversions.ToAerospikeException(e, totalTimeout, IsWrite());
 			}
 		}
 
@@ -114,7 +106,7 @@ namespace Aerospike.Client
 				Iteration = 1,
 				Payload = ByteString.CopyFrom(Buffer.DataBuffer, 0, Buffer.Offset)
 			};
-			GRPCConversions.SetRequestPolicy(policy, request);
+			GRPCConversions.SetRequestPolicy(Policy, request);
 
 			try
 			{
@@ -123,11 +115,11 @@ namespace Aerospike.Client
 				var response = await client.GetHeaderAsync(request, deadline: deadline, cancellationToken: token);
 				var conn = new ConnectionProxy(response);
 				ParseResult(conn);
-				return record;
+				return Record;
 			}
 			catch (RpcException e)
 			{
-				throw GRPCConversions.ToAerospikeException(e, totalTimeout, true);
+				throw GRPCConversions.ToAerospikeException(e, totalTimeout, IsWrite());
 			}
 		}
 	}

@@ -107,9 +107,9 @@ namespace Aerospike.Client
 
 		protected WritePolicy operatePolicyReadDefault { get; set; }
 
-		internal GrpcChannel channel { get; set; }
+		internal GrpcChannel Channel { get; set; }
 
-		internal CallInvoker callInvoker { get; set; }
+		internal CallInvoker CallInvoker { get; set; }
 
 		//-------------------------------------------------------
 		// Constructors
@@ -158,19 +158,20 @@ namespace Aerospike.Client
 
 			var handler = new SocketsHttpHandler
 			{
-				EnableMultipleHttp2Connections = true
+				EnableMultipleHttp2Connections = true,
+				//ConnectTimeout = new TimeSpan(policy.timeout)
 			};
 			if (policy.tlsPolicy != null && policy.tlsPolicy.clientCertificates != null)
 			{
 				handler.SslOptions.ClientCertificates.Add(policy.tlsPolicy.clientCertificates[0]);
 			}
 
-			channel = GrpcChannel.ForAddress(connectionUri, new GrpcChannelOptions
+			Channel = GrpcChannel.ForAddress(connectionUri, new GrpcChannelOptions
 			{
 				HttpHandler = handler
 			});
 
-			callInvoker = channel.Intercept(new AuthTokenInterceptor(policy, channel));
+			CallInvoker = Channel.Intercept(new AuthTokenInterceptor(policy, Channel));
 		}
 
 		//-------------------------------------------------------
@@ -288,7 +289,7 @@ namespace Aerospike.Client
 		/// </summary>
 		public void Close()
 		{
-			channel.Dispose();
+			Channel.Dispose();
 		}
 
 		/// <summary>
@@ -298,7 +299,7 @@ namespace Aerospike.Client
 		{
 			get
 			{
-				return channel.State == ConnectivityState.Idle || channel.State == ConnectivityState.Ready;
+				return Channel.State == ConnectivityState.Idle || Channel.State == ConnectivityState.Ready;
 				// channel.State has a note that it is experimental
 			}
 		}
@@ -339,7 +340,7 @@ namespace Aerospike.Client
 		private string GetVersion()
 		{
 			var request = new KVS.AboutRequest();
-			var about = new KVS.About.AboutClient(callInvoker);
+			var about = new KVS.About.AboutClient(CallInvoker);
 			var deadline = DateTime.UtcNow.AddMilliseconds(readPolicyDefault.totalTimeout);
 			var response = about.Get(request, deadline: deadline);
 			return response.Version;
@@ -362,7 +363,7 @@ namespace Aerospike.Client
 		{
 			policy ??= writePolicyDefault;
 			Buffer buffer = new();
-			WriteCommandProxy command = new(buffer, callInvoker, policy, key, bins, Operation.Type.WRITE);
+			WriteCommandProxy command = new(buffer, CallInvoker, policy, key, bins, Operation.Type.WRITE);
 			command.Execute();
 		}
 
@@ -384,7 +385,7 @@ namespace Aerospike.Client
 		{
 			policy ??= writePolicyDefault;
 			Buffer buffer = new();
-			WriteCommandProxy command = new(buffer, callInvoker, policy, key, bins, Operation.Type.APPEND);
+			WriteCommandProxy command = new(buffer, CallInvoker, policy, key, bins, Operation.Type.APPEND);
 			command.Execute();
 		}
 
@@ -402,7 +403,7 @@ namespace Aerospike.Client
 		{
 			policy ??= writePolicyDefault;
 			Buffer buffer = new();
-			WriteCommandProxy command = new(buffer, callInvoker, policy, key, bins, Operation.Type.PREPEND);
+			WriteCommandProxy command = new(buffer, CallInvoker, policy, key, bins, Operation.Type.PREPEND);
 			command.Execute();
 		}
 
@@ -423,7 +424,7 @@ namespace Aerospike.Client
 		{
 			policy ??= writePolicyDefault;
 			Buffer buffer = new();
-			WriteCommandProxy command = new(buffer, callInvoker, policy, key, bins, Operation.Type.ADD);
+			WriteCommandProxy command = new(buffer, CallInvoker, policy, key, bins, Operation.Type.ADD);
 			command.Execute();
 		}
 
@@ -443,9 +444,9 @@ namespace Aerospike.Client
 		{
 			policy ??= writePolicyDefault;
 			Buffer buffer = new();
-			DeleteCommandProxy command = new(buffer, callInvoker, policy, key);
+			DeleteCommandProxy command = new(buffer, CallInvoker, policy, key);
 			command.Execute();
-			return command.Existed();
+			return command.Existed;
 		}
 
 		/// <summary>
@@ -521,7 +522,7 @@ namespace Aerospike.Client
 		{
 			policy ??= writePolicyDefault;
 			Buffer buffer = new();
-			TouchCommandProxy command = new(buffer, callInvoker, policy, key);
+			TouchCommandProxy command = new(buffer, CallInvoker, policy, key);
 			command.Execute();
 		}
 
@@ -541,9 +542,9 @@ namespace Aerospike.Client
 		{
 			policy ??= readPolicyDefault;
 			Buffer buffer = new();
-			ExistsCommandProxy command = new(buffer, callInvoker, policy, key);
+			ExistsCommandProxy command = new(buffer, CallInvoker, policy, key);
 			command.Execute();
-			return command.Exists();
+			return command.Exists;
 		}
 
 		/// <summary>
@@ -602,7 +603,7 @@ namespace Aerospike.Client
 		{
 			policy ??= readPolicyDefault;
 			Buffer buffer = new();
-			ReadCommandProxy command = new(buffer, callInvoker, policy, key);
+			ReadCommandProxy command = new(buffer, CallInvoker, policy, key);
 			command.Execute();
 			return command.Record;
 		}
@@ -620,7 +621,7 @@ namespace Aerospike.Client
 		{
 			policy ??= readPolicyDefault;
 			Buffer buffer = new();
-			ReadCommandProxy command = new(buffer, callInvoker, policy, key, binNames);
+			ReadCommandProxy command = new(buffer, CallInvoker, policy, key, binNames);
 			command.Execute();
 			return command.Record;
 		}
@@ -637,7 +638,7 @@ namespace Aerospike.Client
 		{
 			policy ??= readPolicyDefault;
 			Buffer buffer = new();
-			ReadHeaderCommandProxy command = new(buffer, callInvoker, policy, key);
+			ReadHeaderCommandProxy command = new(buffer, CallInvoker, policy, key);
 			command.Execute();
 			return command.Record;
 		}
@@ -885,7 +886,7 @@ namespace Aerospike.Client
 		{
 			OperateArgs args = new(policy, writePolicyDefault, operatePolicyReadDefault, key, operations);
 			Buffer buffer = new();
-			OperateCommandProxy command = new(buffer, callInvoker, key, args);
+			OperateCommandProxy command = new(buffer, CallInvoker, key, args);
 			command.Execute();
 			return command.Record;
 		}
@@ -924,7 +925,7 @@ namespace Aerospike.Client
 			policy ??= batchParentPolicyWriteDefault;
 			Buffer buffer = new();
 			BatchNode batch = new(records);
-			BatchOperateListCommandProxy command = new(buffer, callInvoker, batch, policy, records, status);
+			BatchOperateListCommandProxy command = new(buffer, CallInvoker, batch, policy, records, status);
 			command.Execute();
 		}
 
@@ -965,7 +966,7 @@ namespace Aerospike.Client
 			Buffer buffer = new();
 			BatchStatus status = new(true);
 			BatchNode batchNode = new(records);
-			BatchOperateArrayCommandProxy command = new(buffer, callInvoker, batchNode, batchPolicy, keys, ops, records, attr, status);
+			BatchOperateArrayCommandProxy command = new(buffer, CallInvoker, batchNode, batchPolicy, keys, ops, records, attr, status);
 
 			try
 			{
@@ -1083,7 +1084,7 @@ namespace Aerospike.Client
 			Buffer buffer = new();
 			PartitionTracker tracker = new(policy, null, partitionFilter);
 			RecordSet recordSet = new(null, policy.recordQueueSize, source.Token);
-			ScanPartitionCommandProxy command = new(buffer, callInvoker, policy, ns, setName, binNames, tracker, partitionFilter, recordSet);
+			ScanPartitionCommandProxy command = new(buffer, CallInvoker, policy, ns, setName, binNames, tracker, partitionFilter, recordSet);
 			command.Execute();
 			return recordSet;
 		}
@@ -1168,7 +1169,7 @@ namespace Aerospike.Client
 		{
 			policy ??= writePolicyDefault;
 			Buffer buffer = new();
-			ExecuteCommandProxy command = new(buffer, callInvoker, policy, key, packageName, functionName, args);
+			ExecuteCommandProxy command = new(buffer, CallInvoker, policy, key, packageName, functionName, args);
 			command.Execute();
 
 			var record = command.Record;
@@ -1269,9 +1270,9 @@ namespace Aerospike.Client
 
 			ulong taskId = statement.PrepareTaskId();
 			Buffer buffer = new();
-			ServerCommandProxy command = new(buffer, callInvoker, policy, statement, taskId);
+			ServerCommandProxy command = new(buffer, CallInvoker, policy, statement, taskId);
 			command.Execute();
-			return new ExecuteTaskProxy(callInvoker, policy, statement, taskId);
+			return new ExecuteTaskProxy(CallInvoker, policy, statement, taskId);
 		}
 
 		/// <summary>
@@ -1292,9 +1293,9 @@ namespace Aerospike.Client
 
 			ulong taskId = statement.PrepareTaskId();
 			Buffer buffer = new();
-			ServerCommandProxy command = new(buffer, callInvoker, policy, statement, taskId);
+			ServerCommandProxy command = new(buffer, CallInvoker, policy, statement, taskId);
 			command.Execute();
-			return new ExecuteTaskProxy(callInvoker, policy, statement, taskId);
+			return new ExecuteTaskProxy(CallInvoker, policy, statement, taskId);
 		}
 
 		//--------------------------------------------------------
@@ -1396,7 +1397,7 @@ namespace Aerospike.Client
 			Buffer buffer = new();
 			PartitionTracker tracker = new(policy, statement, (Node[])null, partitionFilter);
 			RecordSet recordSet = new(null, policy.recordQueueSize, source.Token);
-			QueryPartitionCommandProxy command = new(buffer, callInvoker, policy, statement, tracker, partitionFilter, recordSet);
+			QueryPartitionCommandProxy command = new(buffer, CallInvoker, policy, statement, tracker, partitionFilter, recordSet);
 			command.Execute();
 			return recordSet;
 		}

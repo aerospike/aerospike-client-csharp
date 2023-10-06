@@ -22,13 +22,13 @@ namespace Aerospike.Client
 {
 	public sealed class DeleteCommandProxy : GRPCCommand
 	{
-		private readonly WritePolicy writePolicy;
-		private bool existed;
+		private WritePolicy WritePolicy { get; }
+		public bool Existed { get; private set; }
 
 		public DeleteCommandProxy(Buffer buffer, CallInvoker invoker, WritePolicy writePolicy, Key key)
 			: base(buffer, invoker, writePolicy, key)
 		{
-			this.writePolicy = writePolicy;
+			this.WritePolicy = writePolicy;
 		}
 
 		protected internal override bool IsWrite()
@@ -38,7 +38,7 @@ namespace Aerospike.Client
 
 		protected internal override void WriteBuffer()
 		{
-			SetDelete(writePolicy, key);
+			SetDelete(WritePolicy, Key);
 		}
 
 		protected internal override bool ParseRow()
@@ -56,32 +56,27 @@ namespace Aerospike.Client
 
 			if (resultCode == 0)
 			{
-				existed = true;
+				Existed = true;
 				return;
 			}
 
-			if (resultCode == ResultCode.KEY_NOT_FOUND_ERROR)
+			if (resultCode == Client.ResultCode.KEY_NOT_FOUND_ERROR)
 			{
-				existed = false;
+                Existed = false;
 				return;
 			}
 
-			if (resultCode == ResultCode.FILTERED_OUT)
+			if (resultCode == Client.ResultCode.FILTERED_OUT)
 			{
-				if (writePolicy.failOnFilteredOut)
+				if (WritePolicy.failOnFilteredOut)
 				{
 					throw new AerospikeException(resultCode);
 				}
-				existed = true;
+                Existed = true;
 				return;
 			}
 
 			throw new AerospikeException(resultCode);
-		}
-
-		public bool Existed()
-		{
-			return existed;
 		}
 
 		public void Execute()
@@ -93,19 +88,19 @@ namespace Aerospike.Client
 				Iteration = 1,
 				Payload = ByteString.CopyFrom(Buffer.DataBuffer, 0, Buffer.Offset)
 			};
-			GRPCConversions.SetRequestPolicy(writePolicy, request);
+			GRPCConversions.SetRequestPolicy(WritePolicy, request);
 
 			try
 			{
-				var KVS = new KVS.KVS.KVSClient(CallInvoker);
+				var client = new KVS.KVS.KVSClient(CallInvoker);
 				var deadline = DateTime.UtcNow.AddMilliseconds(totalTimeout);
-				var response = KVS.Delete(request, deadline: deadline);
+				var response = client.Delete(request, deadline: deadline);
 				var conn = new ConnectionProxy(response);
 				ParseResult(conn);
 			}
 			catch (RpcException e)
 			{
-				throw GRPCConversions.ToAerospikeException(e, totalTimeout, true);
+				throw GRPCConversions.ToAerospikeException(e, totalTimeout, IsWrite());
 			}
 		}
 
@@ -118,7 +113,7 @@ namespace Aerospike.Client
 				Iteration = 1,
 				Payload = ByteString.CopyFrom(Buffer.DataBuffer, 0, Buffer.Offset)
 			};
-			GRPCConversions.SetRequestPolicy(writePolicy, request);
+			GRPCConversions.SetRequestPolicy(WritePolicy, request);
 
 			try
 			{
@@ -127,11 +122,11 @@ namespace Aerospike.Client
 				var response = await client.DeleteAsync(request, deadline: deadline, cancellationToken: token);
 				var conn = new ConnectionProxy(response);
 				ParseResult(conn);
-				return existed;
+				return Existed;
 			}
 			catch (RpcException e)
 			{
-				throw GRPCConversions.ToAerospikeException(e, totalTimeout, true);
+				throw GRPCConversions.ToAerospikeException(e, totalTimeout, IsWrite());
 			}
 		}
 	}

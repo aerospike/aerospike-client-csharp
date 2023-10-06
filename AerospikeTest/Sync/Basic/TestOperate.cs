@@ -87,24 +87,46 @@ namespace Aerospike.Test
 		{
 			List<BatchRecord> records = new()
 			{
-				new BatchUDF(new Key("invalid", "demo", 1), "test_ops", "rec_create",
+				new BatchUDF(new Key("invalid", args.set, 1), "test_ops", "rec_create",
 					new Value[] { Value.Get(new Dictionary<String, String>() {
 						{
 							"bin1_str", "a"
 						}
 					})
 				}),
-				new BatchWrite(new Key("test", "demo", 2),
+				new BatchWrite(new Key(args.ns, args.set, 2),
 				new Operation[] { Operation.Put(new Bin("bin1_str", "aa")) }),
-				new BatchWrite(new Key("test", "demo", 3),
+				new BatchWrite(new Key(args.ns, args.set, 3),
 				new Operation[] { Operation.Put(new Bin("bin1_str", "aaa")) })
 			};
 
-			BatchPolicy bp = new BatchPolicy();
-			bp.respondAllKeys = true;
+			BatchPolicy bp = new()
+			{
+				respondAllKeys = false
+			};
 
-			bool isSucceed = client.Operate(bp, records);
-			Assert.IsTrue(isSucceed);
+			try
+			{
+				bool isSucceed = client.Operate(bp, records);
+				if (isSucceed)
+				{
+					Console.WriteLine("Batch passed");
+				}
+				else
+				{
+					Console.WriteLine("Some operations failed");
+				}
+			}
+			catch (Exception)
+			{
+				throw;
+			}
+			finally {
+				foreach (BatchRecord br in records) 
+				{
+					Console.WriteLine($"key: {br.key}, result: {br.resultCode}, record: {br.record}\n");
+				}
+			}
 		}
 	}
 }

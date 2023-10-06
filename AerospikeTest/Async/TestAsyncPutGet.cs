@@ -137,5 +137,32 @@ namespace Aerospike.Test
 				parent.NotifyCompleted();
 			}
 		}
+
+		[TestMethod]
+		public async Task AsyncPutWithCanel()
+		{
+			Key key = new Key(args.ns, args.set, "putgetkey3");
+			Bin bin = new Bin(binName, "value3");
+
+			tokenSource.Cancel();
+			try
+			{
+				await client.Put(null, tokenSource.Token, key, bin);
+			}
+			catch (TaskCanceledException) // expected exception for native client
+			{
+				if (args.testProxy)
+				{
+					throw;
+				}
+			}
+			catch (OperationCanceledException) // expected exception for proxy client
+			{
+				if (!args.testProxy)
+				{
+					throw;
+				}
+			}
+		}
 	}
 }

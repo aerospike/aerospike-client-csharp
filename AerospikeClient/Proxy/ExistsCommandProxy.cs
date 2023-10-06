@@ -22,7 +22,7 @@ namespace Aerospike.Client
 {
 	public sealed class ExistsCommandProxy : GRPCCommand
 	{
-		private bool exists;
+		public bool Exists { get; private set; }
 
 		public ExistsCommandProxy(Buffer buffer, CallInvoker invoker, Policy policy, Key key)
 			: base(buffer, invoker, policy, key)
@@ -31,7 +31,7 @@ namespace Aerospike.Client
 
 		protected internal override void WriteBuffer()
 		{
-			SetExists(policy, key);
+			SetExists(Policy, Key);
 		}
 
 		protected internal override bool ParseRow()
@@ -49,32 +49,27 @@ namespace Aerospike.Client
 
 			if (resultCode == 0)
 			{
-				exists = true;
+				Exists = true;
 				return;
 			}
 
-			if (resultCode == ResultCode.KEY_NOT_FOUND_ERROR)
+			if (resultCode == Client.ResultCode.KEY_NOT_FOUND_ERROR)
 			{
-				exists = false;
+                Exists = false;
 				return;
 			}
 
-			if (resultCode == ResultCode.FILTERED_OUT)
+			if (resultCode == Client.ResultCode.FILTERED_OUT)
 			{
-				if (policy.failOnFilteredOut)
+				if (Policy.failOnFilteredOut)
 				{
 					throw new AerospikeException(resultCode);
 				}
-				exists = true;
+                Exists = true;
 				return;
 			}
 
 			throw new AerospikeException(resultCode);
-		}
-
-		public bool Exists()
-		{
-			return exists;
 		}
 
 		public void Execute()
@@ -86,7 +81,7 @@ namespace Aerospike.Client
 				Iteration = 1,
 				Payload = ByteString.CopyFrom(Buffer.DataBuffer, 0, Buffer.Offset)
 			};
-			GRPCConversions.SetRequestPolicy(policy, request);
+			GRPCConversions.SetRequestPolicy(Policy, request);
 
 			try
 			{
@@ -98,7 +93,7 @@ namespace Aerospike.Client
 			}
 			catch (RpcException e)
 			{
-				throw GRPCConversions.ToAerospikeException(e, totalTimeout, true);
+				throw GRPCConversions.ToAerospikeException(e, totalTimeout, IsWrite());
 			}
 		}
 
@@ -111,7 +106,7 @@ namespace Aerospike.Client
 				Iteration = 1,
 				Payload = ByteString.CopyFrom(Buffer.DataBuffer, 0, Buffer.Offset)
 			};
-			GRPCConversions.SetRequestPolicy(policy, request);
+			GRPCConversions.SetRequestPolicy(Policy, request);
 
 			try
 			{
@@ -120,11 +115,11 @@ namespace Aerospike.Client
 				var response = await client.ExistsAsync(request, deadline: deadline, cancellationToken: token);
 				var conn = new ConnectionProxy(response);
 				ParseResult(conn);
-				return exists;
+				return Exists;
 			}
 			catch (RpcException e)
 			{
-				throw GRPCConversions.ToAerospikeException(e, totalTimeout, true);
+				throw GRPCConversions.ToAerospikeException(e, totalTimeout, IsWrite());
 			}
 		}
 	}

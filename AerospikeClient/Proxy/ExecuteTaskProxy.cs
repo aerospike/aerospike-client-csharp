@@ -92,7 +92,7 @@ namespace Aerospike.Client
 			}
 			catch (RpcException e)
 			{
-				throw GRPCConversions.ToAerospikeException(e, 0, true);
+				throw GRPCConversions.ToAerospikeException(e, 0, false);
 			}
 
 			return BaseTask.COMPLETE;

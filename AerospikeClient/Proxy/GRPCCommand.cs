@@ -35,28 +35,28 @@ namespace Aerospike.Client
 		internal Buffer Buffer { get; set; }
 		internal CallInvoker CallInvoker { get; set; }
 
-		protected readonly Policy policy;
-		protected internal readonly bool isOperation;
+		protected Policy Policy { get; }
+		protected internal bool IsOperation { get; }
 
-		protected internal String ns;
-		protected internal int info3;
-		protected internal int resultCode;
-		protected internal int generation;
-		protected internal int expiration;
-		protected internal int batchIndex;
-		protected internal int fieldCount;
-		protected internal int opCount;
+		protected internal String Ns { get; set; }
+		protected internal int Info3 { get; set; }
+		protected internal int ResultCode { get; set; }
+		protected internal int Generation { get; set; }
+		protected internal int Expiration { get; set; }
+		protected internal int BatchIndex { get; set; }
+		protected internal int FieldCount { get; set; }
+		protected internal int OpCount { get; set; }
 		protected internal volatile bool valid = true;
 
-		protected readonly Key key;
+		protected Key Key { get; }
 
 		public GRPCCommand(Buffer buffer, CallInvoker invoker, Policy policy)
 			: base(policy.socketTimeout, policy.totalTimeout, 0)
 		{
 			Buffer = buffer;
 			CallInvoker = invoker;
-			this.policy = policy;
-			isOperation = false;
+			this.Policy = policy;
+			IsOperation = false;
 		}
 
 		public GRPCCommand(Buffer buffer, CallInvoker invoker, Policy policy, bool isOperation)
@@ -64,8 +64,8 @@ namespace Aerospike.Client
 		{
 			Buffer = buffer;
 			CallInvoker = invoker;
-			this.policy = policy;
-			this.isOperation = isOperation;
+			this.Policy = policy;
+			this.IsOperation = isOperation;
 		}
 
 		public GRPCCommand(Buffer buffer, CallInvoker invoker, Policy policy, int socketTimeout, int totalTimeout)
@@ -73,8 +73,8 @@ namespace Aerospike.Client
 		{
 			Buffer = buffer;
 			CallInvoker = invoker;
-			this.policy = policy;
-			isOperation = false;
+			this.Policy = policy;
+			IsOperation = false;
 		}
 
 		public GRPCCommand(Buffer buffer, CallInvoker invoker, Policy policy, Key key)
@@ -82,9 +82,9 @@ namespace Aerospike.Client
 		{
 			Buffer = buffer;
 			CallInvoker = invoker;
-			this.key = key;
-			this.policy = policy;
-			isOperation = false;
+			this.Key = key;
+			this.Policy = policy;
+			IsOperation = false;
 		}
 
 		public GRPCCommand(Buffer buffer, CallInvoker invoker, Policy policy, Key key, bool isOperation)
@@ -92,9 +92,9 @@ namespace Aerospike.Client
 		{
 			Buffer = buffer;
 			CallInvoker = invoker;
-			this.key = key;
-			this.policy = policy;
-			this.isOperation = isOperation;
+			this.Key = key;
+			this.Policy = policy;
+			this.IsOperation = isOperation;
 		}
 
 		protected internal abstract void WriteBuffer();
@@ -310,31 +310,31 @@ namespace Aerospike.Client
 			while (Buffer.Offset < receiveSize)
 			{
 				Buffer.Offset += 3;
-				info3 = Buffer.DataBuffer[Buffer.Offset];
+				Info3 = Buffer.DataBuffer[Buffer.Offset];
 				Buffer.Offset += 2;
-				resultCode = Buffer.DataBuffer[Buffer.Offset];
+				ResultCode = Buffer.DataBuffer[Buffer.Offset];
 
 				// If this is the end marker of the response, do not proceed further.
-				if ((info3 & Command.INFO3_LAST) != 0)
+				if ((Info3 & Command.INFO3_LAST) != 0)
 				{
-					if (resultCode != 0)
+					if (ResultCode != 0)
 					{
 						// The server returned a fatal error.
-						throw new AerospikeException(resultCode);
+						throw new AerospikeException(ResultCode);
 					}
 					return false;
 				}
 
 				Buffer.Offset++;
-				generation = ByteUtil.BytesToInt(Buffer.DataBuffer, Buffer.Offset);
+				Generation = ByteUtil.BytesToInt(Buffer.DataBuffer, Buffer.Offset);
 				Buffer.Offset += 4;
-				expiration = ByteUtil.BytesToInt(Buffer.DataBuffer, Buffer.Offset);
+				Expiration = ByteUtil.BytesToInt(Buffer.DataBuffer, Buffer.Offset);
 				Buffer.Offset += 4;
-				batchIndex = ByteUtil.BytesToInt(Buffer.DataBuffer, Buffer.Offset);
+				BatchIndex = ByteUtil.BytesToInt(Buffer.DataBuffer, Buffer.Offset);
 				Buffer.Offset += 4;
-				fieldCount = ByteUtil.BytesToShort(Buffer.DataBuffer, Buffer.Offset);
+				FieldCount = ByteUtil.BytesToShort(Buffer.DataBuffer, Buffer.Offset);
 				Buffer.Offset += 2;
-				opCount = ByteUtil.BytesToShort(Buffer.DataBuffer, Buffer.Offset);
+				OpCount = ByteUtil.BytesToShort(Buffer.DataBuffer, Buffer.Offset);
 				Buffer.Offset += 2;
 
 				// Note: ParseRow() also handles sync error responses.
@@ -350,12 +350,12 @@ namespace Aerospike.Client
 
 		protected internal Record ParseRecord()
 		{
-			if (opCount <= 0)
+			if (OpCount <= 0)
 			{
-				return new Record(null, generation, expiration);
+				return new Record(null, Generation, Expiration);
 			}
 
-			return policy.recordParser.ParseRecord(Buffer.DataBuffer, ref Buffer.Offset, opCount, generation, expiration, isOperation);
+			return Policy.recordParser.ParseRecord(Buffer.DataBuffer, ref Buffer.Offset, OpCount, Generation, Expiration, IsOperation);
 		}
 
 		public void Stop()
@@ -1119,7 +1119,7 @@ namespace Aerospike.Client
 							{
 								if (!attr.hasWrite)
 								{
-									throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Write operations not allowed in batch read");
+									throw new AerospikeException(Client.ResultCode.PARAMETER_ERROR, "Write operations not allowed in batch read");
 								}
 								Buffer.Offset += 6; // Extra write specific fields.
 							}
@@ -1658,14 +1658,14 @@ namespace Aerospike.Client
 				// Estimate size for background operations.
 				if (!background)
 				{
-					throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Operations not allowed in foreground query");
+					throw new AerospikeException(Client.ResultCode.PARAMETER_ERROR, "Operations not allowed in foreground query");
 				}
 
 				foreach (Operation operation in statement.operations)
 				{
 					if (!Operation.IsWrite(operation.type))
 					{
-						throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Read operations not allowed in background query");
+						throw new AerospikeException(Client.ResultCode.PARAMETER_ERROR, "Read operations not allowed in background query");
 					}
 					EstimateOperationSize(operation);
 				}
@@ -1852,7 +1852,7 @@ namespace Aerospike.Client
 		{
 			if (Operation.IsWrite(operation.type))
 			{
-				throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Write operations not allowed in batch read");
+				throw new AerospikeException(Client.ResultCode.PARAMETER_ERROR, "Write operations not allowed in batch read");
 			}
 			Buffer.Offset += ByteUtil.EstimateSizeUtf8(operation.binName) + OPERATION_HEADER_SIZE;
 			Buffer.Offset += operation.value.EstimateSize();

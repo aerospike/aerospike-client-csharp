@@ -23,12 +23,12 @@ namespace Aerospike.Client
 {
 	public sealed class ScanPartitionCommandProxy : GRPCCommand
 	{
-		private readonly ScanPolicy scanPolicy;
-		private readonly string setName;
-		private readonly string[] binNames;
-		private readonly PartitionTracker tracker;
-		private readonly PartitionFilter partitionFilter;
-		private readonly RecordSet recordSet;
+		private ScanPolicy ScanPolicy { get; }
+		private string SetName { get; }
+		private string[] BinNames { get; }
+		private PartitionTracker Tracker { get; }
+		private PartitionFilter PartitionFilter { get; }
+		private RecordSet RecordSet { get; }
 
 		public ScanPartitionCommandProxy
 		(
@@ -43,39 +43,39 @@ namespace Aerospike.Client
 			RecordSet recordSet
 		) : base(buffer, invoker, scanPolicy, tracker.socketTimeout, tracker.totalTimeout)
 		{
-			this.scanPolicy = scanPolicy;
-			this.setName = setName;
-			this.binNames = binNames;
-			this.tracker = tracker;
-			this.partitionFilter = filter;
-			this.recordSet = recordSet;
-			this.ns = ns;
+			this.ScanPolicy = scanPolicy;
+			this.SetName = setName;
+			this.BinNames = binNames;
+			this.Tracker = tracker;
+			this.PartitionFilter = filter;
+			this.RecordSet = recordSet;
+			this.Ns = ns;
 		}
 
 		protected internal override void WriteBuffer()
 		{
-			SetScan(scanPolicy, ns, setName, binNames, RandomShift.ThreadLocalInstance.NextLong());
+			SetScan(ScanPolicy, Ns, SetName, BinNames, RandomShift.ThreadLocalInstance.NextLong());
 		}
 
 		protected internal override bool ParseRow()
 		{
-			Key key = ParseKey(fieldCount, out _);
+			Key key = ParseKey(FieldCount, out _);
 
-			if ((info3 & Command.INFO3_PARTITION_DONE) != 0)
+			if ((Info3 & Command.INFO3_PARTITION_DONE) != 0)
 			{
 				// When an error code is received, mark partition as unavailable
 				// for the current round. Unavailable partitions will be retried
 				// in the next round. Generation is overloaded as partitionId.
-				if (resultCode != 0)
+				if (ResultCode != 0)
 				{
-					tracker.PartitionUnavailable(null, generation);
+					Tracker.PartitionUnavailable(null, Generation);
 				}
 				return true;
 			}
 
-			if (resultCode != 0)
+			if (ResultCode != 0)
 			{
-				throw new AerospikeException(resultCode);
+				throw new AerospikeException(ResultCode);
 			}
 
 			Record record = ParseRecord();
@@ -85,13 +85,13 @@ namespace Aerospike.Client
 				throw new AerospikeException.ScanTerminated();
 			}
 
-			if (!recordSet.Put(new KeyRecord(key, record)))
+			if (!RecordSet.Put(new KeyRecord(key, record)))
 			{
 				Stop();
 				throw new AerospikeException.QueryTerminated();
 			}
 
-			tracker.SetDigest(null, key);
+			Tracker.SetDigest(null, key);
 			return true;
 		}
 
@@ -106,14 +106,14 @@ namespace Aerospike.Client
 			WriteBuffer();
 			var scanRequest = new ScanRequest
 			{
-				Namespace = ns,
-				SetName = setName,
-				PartitionFilter = GRPCConversions.ToGrpc(partitionFilter),
-				ScanPolicy = GRPCConversions.ToGrpc(scanPolicy)
+				Namespace = Ns,
+				SetName = SetName,
+				PartitionFilter = GRPCConversions.ToGrpc(PartitionFilter),
+				ScanPolicy = GRPCConversions.ToGrpc(ScanPolicy)
 			};
-			if (binNames != null)
+			if (BinNames != null)
 			{
-				foreach (string binName in binNames)
+				foreach (string binName in BinNames)
 				{
 					scanRequest.BinNames.Add(binName);
 				}
@@ -137,11 +137,11 @@ namespace Aerospike.Client
 			}
 			catch (EndOfGRPCStream)
 			{
-				recordSet.Put(RecordSet.END);
+				RecordSet.Put(RecordSet.END);
 			}
 			catch (RpcException e)
 			{
-				throw GRPCConversions.ToAerospikeException(e, totalTimeout, true);
+				throw GRPCConversions.ToAerospikeException(e, totalTimeout, IsWrite());
 			}
 		}
 	}
