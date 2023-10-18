@@ -185,7 +185,7 @@ namespace Aerospike.Client
 			try
 			{
 				var client = new KVS.KVS.KVSClient(CallInvoker);
-				var deadline = DateTime.UtcNow.AddMilliseconds(totalTimeout);
+				var deadline = GetDeadline();
 				var response = client.Read(request, deadline: deadline);
 				var conn = new ConnectionProxy(response);
 				ParseResult(conn);
@@ -210,7 +210,7 @@ namespace Aerospike.Client
 			try
 			{
 				var client = new KVS.KVS.KVSClient(CallInvoker);
-				var deadline = DateTime.UtcNow.AddMilliseconds(totalTimeout);
+				var deadline = GetDeadline();
 				var response = await client.ReadAsync(request, deadline: deadline, cancellationToken: token);
 				var conn = new ConnectionProxy(response);
 				ParseResult(conn);

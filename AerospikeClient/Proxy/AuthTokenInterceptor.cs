@@ -48,6 +48,7 @@ namespace Aerospike.Client
 				};
 				RefreshTimer.Elapsed += (sender, e) => RefreshToken();
 				RefreshTimer.Start();
+				RefreshToken();
 			}
 		}
 
@@ -160,28 +161,6 @@ namespace Aerospike.Client
 
 					return base.BlockingUnaryCall(request, newContext, continuation);
 				}
-				else
-				{
-					while (isFetchingToken || AccessToken.token == String.Empty)
-					{
-						context.Options.CancellationToken.ThrowIfCancellationRequested();
-						Task.Delay(500, context.Options.CancellationToken).Wait();
-					}
-
-					var headers = new Metadata
-					{
-						new Metadata.Entry("Authorization", $"Bearer {AccessToken.token}")
-					};
-
-					var newOptions = context.Options.WithHeaders(headers);
-
-					var newContext = new ClientInterceptorContext<TRequest, TResponse>(
-						context.Method,
-						context.Host,
-						newOptions);
-
-					return base.BlockingUnaryCall(request, newContext, continuation);
-				}
 			}
 
 			return continuation(request, context);
@@ -197,28 +176,6 @@ namespace Aerospike.Client
 				context.Options.CancellationToken.ThrowIfCancellationRequested();
 				if (IsTokenValid())
 				{
-					var headers = new Metadata
-					{
-						new Metadata.Entry("Authorization", $"Bearer {AccessToken.token}")
-					};
-
-					var newOptions = context.Options.WithHeaders(headers);
-
-					var newContext = new ClientInterceptorContext<TRequest, TResponse>(
-						context.Method,
-						context.Host,
-						newOptions);
-
-					return base.AsyncUnaryCall(request, newContext, continuation);
-				}
-				else
-				{
-					while (isFetchingToken || AccessToken.token == String.Empty)
-					{
-						context.Options.CancellationToken.ThrowIfCancellationRequested();
-						Task.Delay(500, context.Options.CancellationToken).Wait();
-					}
-
 					var headers = new Metadata
 					{
 						new Metadata.Entry("Authorization", $"Bearer {AccessToken.token}")
@@ -269,28 +226,6 @@ namespace Aerospike.Client
 
 					return base.AsyncClientStreamingCall(newContext, continuation);
 				}
-				else
-				{
-					while (isFetchingToken || AccessToken.token == String.Empty)
-					{
-						context.Options.CancellationToken.ThrowIfCancellationRequested();
-						Task.Delay(500, context.Options.CancellationToken).Wait();
-					}
-
-					var headers = new Metadata
-					{
-						new Metadata.Entry("Authorization", $"Bearer {AccessToken.token}")
-					};
-
-					var newOptions = context.Options.WithHeaders(headers);
-
-					var newContext = new ClientInterceptorContext<TRequest, TResponse>(
-						context.Method,
-						context.Host,
-						newOptions);
-
-					return base.AsyncClientStreamingCall(newContext, continuation);
-				}
 			}
 
 			return continuation(context);
@@ -320,28 +255,6 @@ namespace Aerospike.Client
 
 					return base.AsyncServerStreamingCall(request, newContext, continuation);
 				}
-				else
-				{
-					while (isFetchingToken || AccessToken.token == String.Empty)
-					{
-						context.Options.CancellationToken.ThrowIfCancellationRequested();
-						Task.Delay(500, context.Options.CancellationToken).Wait();
-					}
-
-					var headers = new Metadata
-					{
-						new Metadata.Entry("Authorization", $"Bearer {AccessToken.token}")
-					};
-
-					var newOptions = context.Options.WithHeaders(headers);
-
-					var newContext = new ClientInterceptorContext<TRequest, TResponse>(
-						context.Method,
-						context.Host,
-						newOptions);
-
-					return base.AsyncServerStreamingCall(request, newContext, continuation);
-				}
 			}
 
 			return continuation(request, context);
@@ -356,28 +269,6 @@ namespace Aerospike.Client
 				context.Options.CancellationToken.ThrowIfCancellationRequested();
 				if (IsTokenValid())
 				{
-					var headers = new Metadata
-					{
-						new Metadata.Entry("Authorization", $"Bearer {AccessToken.token}")
-					};
-
-					var newOptions = context.Options.WithHeaders(headers);
-
-					var newContext = new ClientInterceptorContext<TRequest, TResponse>(
-						context.Method,
-						context.Host,
-						newOptions);
-
-					return base.AsyncDuplexStreamingCall(newContext, continuation);
-				}
-				else
-				{
-					while (isFetchingToken || AccessToken.token == String.Empty)
-					{
-						context.Options.CancellationToken.ThrowIfCancellationRequested();
-						Task.Delay(500, context.Options.CancellationToken).Wait();
-					}
-
 					var headers = new Metadata
 					{
 						new Metadata.Entry("Authorization", $"Bearer {AccessToken.token}")

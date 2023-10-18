@@ -79,5 +79,71 @@ namespace Aerospike.Test
 			b = record.GetBool(bin4.name);
 			Assert.IsTrue(b);
 		}
+
+		[TestMethod]
+		public void PutGetCompression()
+		{
+			Client.WritePolicy writePolicy = new()
+			{
+				compress = true
+			};
+			if (args.testProxy)
+			{
+				writePolicy.totalTimeout = args.proxyTotalTimeout;
+			}
+
+			Policy policy = new()
+			{
+				compress = true
+			};
+			if (args.testProxy)
+			{
+				policy.totalTimeout = args.proxyTotalTimeout;
+			}
+
+			Key key = new(args.ns, args.set, "putgetc");
+			Record record;
+
+			List<string> list = new();
+			int[] iterator = Enumerable.Range(0, 2000).ToArray();
+			foreach (int i in iterator)
+			{
+				list.Add(i.ToString());
+			}
+
+			Bin bin1 = new("bin", list);
+
+			client.Put(writePolicy, key, bin1);
+			record = client.Get(policy, key);
+			var bin1List = bin1.value.Object;
+			record.bins.TryGetValue("bin", out object recordBin);
+			CollectionAssert.AreEquivalent((List<string>)bin1List, (List<object>)recordBin);
+
+			record = client.GetHeader(policy, key);
+			AssertRecordFound(key, record);
+
+			// Generation should be greater than zero.  Make sure it's populated.
+			if (record.generation == 0)
+			{
+				Assert.Fail("Invalid record header: generation=" + record.generation + " expiration=" + record.expiration);
+			}
+		}
+
+		[TestMethod]
+		public void PutMaxBinSize()
+		{
+			Key key = new(args.ns, args.set, "maxbin");
+
+			List<string> list = new();
+			int[] iterator = Enumerable.Range(0, 8912896).ToArray();
+			foreach (int i in iterator)
+			{
+				list.Add(i.ToString());
+			}
+
+			Bin bin1 = new("bin", list);
+
+			client.Put(null, key, bin1);
+		}
 	}
 }

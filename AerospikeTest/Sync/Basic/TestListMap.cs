@@ -19,6 +19,7 @@ using System.Collections;
 using System.Collections.Generic;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Aerospike.Client;
+using Microsoft.AspNetCore.DataProtection.KeyManagement;
 
 namespace Aerospike.Test
 {
@@ -75,6 +76,24 @@ namespace Aerospike.Test
 			Assert.AreEqual(2L, receivedList[1]);
 			CollectionAssert.AreEqual(blob, (byte[])receivedList[2]);
 			Assert.AreEqual(Value.GetAsGeoJSON(geopoint), (Value)receivedList[3]);
+		}
+
+		[TestMethod]
+		public void ListOperate()
+		{
+			Key key = new Key(args.ns, args.set, "listkeyop");
+			client.Delete(null, key);
+
+			List<string> list = new List<string>();
+			list.Add("string1");
+			list.Add("string2");
+			list.Add("string3");
+
+			Bin bin = new Bin(args.GetBinName("listbin1"), list);
+			client.Put(null, key, bin);
+
+			Record record = client.Operate(null, key,
+				ListOperation.Increment("listbin1", 2, Value.Get("twenty")));
 		}
 
 		[TestMethod]
@@ -209,5 +228,43 @@ namespace Aerospike.Test
 			Assert.AreEqual("string2", receivedInner2[0]);
 			Assert.AreEqual(5L, receivedInner2[1]);
 		}
-	}
+
+		[TestMethod]
+		public void MapOrdered()
+		{
+			Key key = new Key(args.ns, args.set, "mapOrdered");
+			SortedDictionary<int, int> keyOrderMap = new()
+			{
+				{ 10, 10 },
+				{ 9, 9 },
+				{ 8, 8 },
+				{ 20, 20 }
+			};
+
+			var bin = new Bin("map_bin", new Value.MapValue(keyOrderMap, MapOrder.KEY_ORDERED));
+			client.Put(null, key, bin);
+			Record record = client.Get(null, key);
+			record.bins.TryGetValue("map_bin", out object recordBin);
+			CollectionAssert.AreEquivalent(((SortedDictionary<int, int>)bin.value.Object).ToList(), ((SortedDictionary<object, object>)recordBin).ToList());
+		}
+
+		[TestMethod]
+		public void MapGeoJson()
+		{
+			Key key = new(args.ns, args.set, "geospatial_key");
+
+			Bin geoBin = new("geoBin", Value.GetAsGeoJSON("{\"type\": \"Point\", \"coordinates\":[42.34, 58.62]}"));
+			Dictionary<string, Value.GeoJSONValue> map = new()
+			{
+				{ "myLoc", (Value.GeoJSONValue)Value.GetAsGeoJSON("{\"type\": \"Point\", \"coordinates\":[42.34, 58.62]}") }
+			};
+			Bin mapBin = new("mapBin", map);
+
+			client.Put(null, key, geoBin, mapBin);
+
+			var record = client.Get(null, key);
+			var geoResult = record.GetValue("geoBin");
+			var mapResult = record.GetValue("mapBin");
+		}
+	};
 }

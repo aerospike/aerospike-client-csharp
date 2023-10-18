@@ -16,7 +16,10 @@
  */
 using Aerospike.Client;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using Neo.IronLua;
 using System.Collections;
+using System.Runtime.CompilerServices;
+using System.Text;
 
 namespace Aerospike.Test
 {
@@ -298,6 +301,24 @@ namespace Aerospike.Test
 		}
 
 		[TestMethod]
+		public void BatchReadMax()
+		{
+			Key[] keys = new Key[5001];
+			BatchRecord[] batchRecords = new BatchRecord[5001];
+			for (int i = 0; i < 5001; i++)
+			{
+				keys[i] = new Key(args.ns, args.set, i);
+				batchRecords[i] = new BatchRead(keys[i], true);
+			}
+
+			var records = client.Get(null, keys);
+
+			var result = client.Operate(null, null, keys, Operation.Get());
+
+			var status = client.Operate(null, batchRecords.ToList());
+		}
+
+		[TestMethod]
 		public void BatchWriteComplex()
 		{
 			Expression wexp1 = Exp.Build(Exp.Add(Exp.IntBin(BinName), Exp.Val(1000)));
@@ -367,6 +388,95 @@ namespace Aerospike.Test
 			exists = client.Exists(null, keys);
 			Assert.IsFalse(exists[0]);
 			Assert.IsFalse(exists[1]);
+		}
+
+		[TestMethod]
+		public void BatchParamError()
+		{
+			List<Key> keys = new();
+			List<Object> list_bin = new()
+			{
+				0,
+				"Hello",
+				Encoding.ASCII.GetBytes("World"),
+				true
+			};
+
+			for (int i=0; i<8; i++) 
+			{
+				Key key = new Key(args.ns, args.set, i);
+				keys.Add(key);
+
+				List<Object> newList = new(list_bin);
+				newList.Add(i);
+				Bin bin = new Bin("list_bin", newList);
+
+				client.Put(null, key, bin);
+			}
+
+			BatchPolicy bp = new BatchPolicy();
+			// the Exp.val(3) is invalid parameter in this expression
+			// Instead use ArrayList<Integer>(){{add(3);}} would work correctly
+			Expression expr = Exp.Build(Exp.EQ(ListExp.GetByValueRange(ListReturnType.VALUE, Exp.Val(3), Exp.Val(5), Exp.Bin("list_bin", Exp.Type.LIST)), Exp.Val(3)));
+			bp.filterExp = expr;
+			bp.failOnFilteredOut = true;
+			if (args.testProxy)
+			{
+				bp.totalTimeout = args.proxyTotalTimeout;
+			}
+
+			Record[] records = client.Get(bp, keys.ToArray());
+		}
+
+		[TestMethod]
+		public void BatchASX()
+		{
+			var keyList = new Key[9];
+
+			for (int i = 0; i < 9; i++)
+			{
+				keyList[i] = new Key(args.ns, args.set, i);
+				client.Delete(null, keyList[i]);
+			}
+
+			for (int i = 0; i < 8; i++)
+			{
+				client.Put(null, keyList[i], new Bin("bin", 1));
+			}
+			client.Put(null, keyList[8], new Bin("bin", 10));
+
+			Policy policy = new()
+			{
+				filterExp = Exp.Build(Exp.EQ(Exp.IntBin("bin"), Exp.Val(1))),
+				failOnFilteredOut = true
+			};
+			if (args.testProxy)
+			{
+				policy.totalTimeout = args.proxyTotalTimeout;
+			}
+
+			for (int i = 0; i < 8; i++)
+			{
+				var record = client.Get(policy, keyList[i]);
+				Console.WriteLine(record);
+			}
+
+			BatchPolicy batchPolicy = new()
+			{
+				filterExp = policy.filterExp
+			};
+			if (args.testProxy)
+			{
+				batchPolicy.totalTimeout = args.proxyTotalTimeout;
+			}
+
+			var result = client.Get(batchPolicy, keyList);
+			Console.WriteLine(result);
+
+			keyList[8] = new Key("invalid", args.set, 8);
+
+			var result2 = client.Get(batchPolicy, keyList);
+			Console.WriteLine(result2);
 		}
 
 		private void AssertBatchBinEqual(List<BatchRead> list, string binName, int i)

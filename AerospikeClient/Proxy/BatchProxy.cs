@@ -234,10 +234,11 @@ namespace Aerospike.Client
 			try
 			{
 				var client = new KVS.KVS.KVSClient(CallInvoker);
-				var deadline = DateTime.UtcNow.AddMilliseconds(totalTimeout);
+				var deadline = GetDeadline();
 				var stream = client.BatchOperate(request, deadline: deadline, cancellationToken: token);
 				var conn = new ConnectionProxyStream(stream);
 				await ParseResult(conn, token);
+				Status.CheckException();
 			}
 			catch (EndOfGRPCStream)
 			{

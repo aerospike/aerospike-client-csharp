@@ -293,5 +293,31 @@ namespace Aerospike.Test
 			AssertBinEqual(b4.key, b4.record, bin, "value1");
 			AssertBinEqual(b5.key, b5.record, bin, 5);
 		}
+
+		[TestMethod]
+		public void BatchOperate()
+		{
+			string bin = "Bop";
+			string bin2 = "Bop2";
+
+			Value[] a1 = new Value[] { Value.Get(bin), Value.Get("value1") };
+
+			Operation[] wops1 = Operation.Array(Operation.Put(new Bin(bin2, 100)));
+
+			BatchUDF b1 = new(new Key(args.ns, args.set, 20004), "record_example", "writeBin", a1);
+			BatchWrite b2 = new(new Key(args.ns, args.set, 20005), wops1);
+			BatchRead b3 = new(new Key(args.ns, args.set, 20004), new string[] { bin });
+			BatchDelete b4 = new(new Key(args.ns, args.set, 20004));
+
+			List<BatchRecord> records = new()
+			{
+				b1,
+				b2,
+				b3,
+				b4
+			};
+
+			bool status = client.Operate(null, records);
+		}
 	}
 }

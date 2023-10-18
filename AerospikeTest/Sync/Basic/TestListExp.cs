@@ -20,6 +20,7 @@ using System.Collections.Generic;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Aerospike.Client;
 using Newtonsoft.Json.Linq;
+using Microsoft.AspNetCore.DataProtection.KeyManagement;
 
 namespace Aerospike.Test
 {
@@ -150,6 +151,71 @@ namespace Aerospike.Test
 
 			IList results2 = record.GetList("var");
 			Assert.AreEqual(4, results2.Count);
+		}
+
+		[TestMethod]
+		public void ExpFilterMap()
+		{
+			List<Key> keys = new();
+			for (int i = 0; i < 5; i++)
+			{
+				Key key = new Key("test", "demo", i);
+				keys.Add(key);
+
+				// List element
+				// List<String> child = new ArrayList<>() {{
+				//     add("hello");
+				//     add("world");
+				// }};
+				// child.add(String.format("%d", i));
+
+				// Map element
+				Dictionary<int, int> child = new()
+				{
+					{ 10, 10 },
+					{ 11, 11 }
+				};
+				child.Add(i, i);
+
+				// Parent List
+				List<Object> parent = new()
+				{
+					"a",
+					100,
+					child
+				};
+				client.Put(null, key, new Bin("list_bin", parent));
+			}
+
+			// List<String> target = new ArrayList<>(){{
+			//     add("hello");
+			//     add("world");
+			//     add("3");
+			// }};
+			Dictionary<int, int> target = new()
+			{
+				{ 10, 10 },
+				{ 11, 11 },
+				{ 3, 3 }
+			};
+			List<Object> check = new()
+			{
+				target
+			};
+
+
+			Expression expr = Exp.Build(
+				Exp.EQ(
+					ListExp.GetByValue(ListReturnType.VALUE, Exp.Val(target, MapOrder.UNORDERED), Exp.Bin("list_bin", Exp.Type.LIST)),
+					Exp.Val(check)
+				)
+			);
+
+			BatchPolicy bp = new BatchPolicy();
+			bp.filterExp = expr;
+			bp.failOnFilteredOut = true;
+
+			Record[] records = client.Get(bp, keys.ToArray());
 		}
 	}
 }

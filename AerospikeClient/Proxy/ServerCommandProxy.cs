@@ -92,13 +92,13 @@ namespace Aerospike.Client
 				Id = 0, // ID is only needed in streaming version, can be static for unary
 				Iteration = 1,
 				Payload = ByteString.CopyFrom(Buffer.DataBuffer, 0, Buffer.Offset),
-				BackgroundExecuteRequest = execRequest,
+				BackgroundExecuteRequest = execRequest
 			};
 
 			try
 			{
 				var client = new KVS.Query.QueryClient(CallInvoker);
-				var deadline = DateTime.UtcNow.AddMilliseconds(totalTimeout);
+				var deadline = GetDeadline();
 				var stream = client.BackgroundExecute(request, deadline: deadline, cancellationToken: token);
 				var conn = new ConnectionProxyStream(stream);
 				await ParseResult(conn, token);

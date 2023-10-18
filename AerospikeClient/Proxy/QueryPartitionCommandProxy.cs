@@ -116,7 +116,7 @@ namespace Aerospike.Client
 			try
 			{
 				var client = new KVS.Query.QueryClient(CallInvoker);
-				var deadline = DateTime.UtcNow.AddMilliseconds(totalTimeout);
+				var deadline = GetDeadline();
 				var stream = client.Query(request, deadline: deadline, cancellationToken: token);
 				var conn = new ConnectionProxyStream(stream);
 				await ParseResult(conn, token);

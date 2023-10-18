@@ -130,7 +130,7 @@ namespace Aerospike.Client
 			try
 			{
 				var client = new Scan.ScanClient(CallInvoker);
-				var deadline = DateTime.UtcNow.AddMilliseconds(totalTimeout);
+				var deadline = GetDeadline();
 				var stream = client.Scan(request, deadline: deadline, cancellationToken: token);
 				var conn = new ConnectionProxyStream(stream);
 				await ParseResult(conn, token);

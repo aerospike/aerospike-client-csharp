@@ -241,7 +241,6 @@ namespace Aerospike.Test
 			stmt.SetNamespace(args.ns);
 			stmt.SetSetName(set1);
 
-
 			DateTime now = DateTime.UtcNow;
 			DateTime end = now.Add(TimeSpan.FromMinutes(2));
 

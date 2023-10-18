@@ -139,6 +139,19 @@ namespace Aerospike.Client
 			Buffer.Offset = length;
 		}
 
+		protected DateTime? GetDeadline()
+		{
+			if (totalTimeout > 0)
+			{
+				return DateTime.UtcNow.AddMilliseconds(totalTimeout);
+			}
+			else if (socketTimeout > 0)
+			{
+				return DateTime.UtcNow.AddMilliseconds(socketTimeout);
+			}
+			return null;
+		}
+
 		protected internal virtual void ParseResult(IConnection conn)
 		{
 			// Read blocks of records.  Do not use thread local receive buffer because each
