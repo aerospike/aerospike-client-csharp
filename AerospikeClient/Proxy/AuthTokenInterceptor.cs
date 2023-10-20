@@ -111,7 +111,7 @@ namespace Aerospike.Client
 			int extraEquals = claims.Length % 4;
 			if (extraEquals != 0)
             {
-				for (int i = 0; i < extraEquals; i++)
+				for (int i = 0; i < 4 - extraEquals; i++)
 				{
 					claims += "=";
 				}
