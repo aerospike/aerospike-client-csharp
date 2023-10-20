@@ -18,6 +18,7 @@ using Grpc.Core;
 using Grpc.Core.Interceptors;
 using Grpc.Net.Client;
 using System.Reflection;
+using static Aerospike.Client.AerospikeException;
 
 namespace Aerospike.Client
 {
@@ -158,8 +159,7 @@ namespace Aerospike.Client
 
 			var handler = new SocketsHttpHandler
 			{
-				EnableMultipleHttp2Connections = true,
-				//ConnectTimeout = new TimeSpan(policy.timeout)
+				EnableMultipleHttp2Connections = true
 			};
 			if (policy.tlsPolicy != null && policy.tlsPolicy.clientCertificates != null)
 			{
@@ -172,6 +172,7 @@ namespace Aerospike.Client
 			});
 
 			CallInvoker = Channel.Intercept(new AuthTokenInterceptor(policy, Channel));
+			//GetVersion();
 		}
 
 		//-------------------------------------------------------
@@ -483,7 +484,10 @@ namespace Aerospike.Client
 			try
 			{
 				BatchStatus status = new(true);
-				Operate(batchPolicy, records, status);
+				Buffer buffer = new();
+				BatchNode batch = new(records);
+				BatchOperateArrayCommandProxy command = new(buffer, CallInvoker, batch, batchPolicy, keys, null, records, attr, status);
+				command.Execute();
 				return new BatchResults(records, status.GetStatus());
 			}
 			catch (Exception e)
@@ -574,7 +578,10 @@ namespace Aerospike.Client
 			try
 			{
 				BatchStatus status = new(false);
-				Operate(policy, records, status);
+				Buffer buffer = new();
+				BatchNode batch = new(records);
+				BatchExistsArrayCommandProxy command = new(buffer, CallInvoker, batch, policy, keys, existsArray, status);
+				command.Execute();
 				for (int i = 0; i < keys.Length; i++)
 				{
 					existsArray[i] = records[i].record != null;
@@ -668,7 +675,10 @@ namespace Aerospike.Client
 			policy ??= batchPolicyDefault;
 
 			BatchStatus status = new(true);
-			Operate(policy, records.ToArray(), status);
+			Buffer buffer = new();
+			BatchNode batch = new(records.ToArray());
+			BatchReadListCommandProxy command = new(buffer, CallInvoker, batch, policy, records, status);
+			command.Execute();
 			return status.GetStatus();
 		}
 
@@ -699,7 +709,10 @@ namespace Aerospike.Client
 			try
 			{
 				BatchStatus status = new(false);
-				Operate(policy, batchRecords, status);
+				Buffer buffer = new();
+				BatchNode batch = new(batchRecords);
+				BatchGetArrayCommandProxy command = new(buffer, CallInvoker, batch, policy, keys, null, null, records, Command.INFO1_READ | Command.INFO1_GET_ALL, false, status);
+				command.Execute();
 				for (int i = 0; i < keys.Length; i++)
 				{
 					records[i] = batchRecords[i].record;
@@ -740,7 +753,10 @@ namespace Aerospike.Client
 			try
 			{
 				BatchStatus status = new(false);
-				Operate(policy, batchRecords, status);
+				Buffer buffer = new();
+				BatchNode batch = new(batchRecords);
+				BatchGetArrayCommandProxy command = new(buffer, CallInvoker, batch, policy, keys, binNames, null, records, Command.INFO1_READ, false, status);
+				command.Execute();
 				for (int i = 0; i < keys.Length; i++)
 				{
 					records[i] = batchRecords[i].record;
@@ -781,7 +797,10 @@ namespace Aerospike.Client
 			try
 			{
 				BatchStatus status = new(false);
-				Operate(policy, batchRecords, status);
+				Buffer buffer = new();
+				BatchNode batch = new(batchRecords);
+				BatchGetArrayCommandProxy command = new(buffer, CallInvoker, batch, policy, keys, null, ops, records, Command.INFO1_READ, true, status);
+				command.Execute();
 				for (int i = 0; i < batchRecords.Length; i++)
 				{
 					records[i] = batchRecords[i].record;
@@ -821,7 +840,10 @@ namespace Aerospike.Client
 			try
 			{
 				BatchStatus status = new(false);
-				Operate(policy, batchRecords, status);
+				Buffer buffer = new();
+				BatchNode batch = new(batchRecords);
+				BatchGetArrayCommandProxy command = new(buffer, CallInvoker, batch, policy, keys, null, null, records, Command.INFO1_READ | Command.INFO1_NOBINDATA, false, status);
+				command.Execute();
 				for (int i = 0; i < batchRecords.Length; i++)
 				{
 					records[i] = batchRecords[i].record;
@@ -916,7 +938,10 @@ namespace Aerospike.Client
 			policy ??= batchParentPolicyWriteDefault;
 
 			BatchStatus status = new(true);
-			Operate(policy, records.ToArray(), status);
+			Buffer buffer = new();
+			BatchNode batch = new(records.ToArray());
+			BatchOperateListCommandProxy command = new(buffer, CallInvoker, batch, policy, records, status);
+			command.Execute();
 			return status.GetStatus();
 		}
 
@@ -1220,6 +1245,8 @@ namespace Aerospike.Client
 			batchPolicy ??= batchParentPolicyWriteDefault;
 			udfPolicy ??= batchUDFPolicyDefault;
 
+			byte[] argBytes = Packer.Pack(functionArgs);
+
 			BatchAttr attr = new();
 			attr.SetUDF(udfPolicy);
 
@@ -1233,7 +1260,10 @@ namespace Aerospike.Client
 			try
 			{
 				BatchStatus status = new(true);
-				Operate(batchPolicy, records, status);
+				Buffer buffer = new();
+				BatchNode batch = new(records);
+				BatchUDFCommandProxy command = new(buffer, CallInvoker, batch, batchPolicy, keys, packageName, functionName, argBytes, records, attr, status);
+				command.Execute();
 				return new BatchResults(records, status.GetStatus());
 			}
 			catch (Exception e)

@@ -108,7 +108,15 @@ namespace Aerospike.Client
 		private static AccessToken ParseToken(string token)
 		{
 			string claims = token.Split(".")[1];
-			byte[] decodedClaims = Convert.FromBase64String(claims);
+			int extraEquals = claims.Length % 4;
+			if (extraEquals != 0)
+            {
+				for (int i = 0; i < extraEquals; i++)
+				{
+					claims += "=";
+				}
+            }
+            byte[] decodedClaims = Convert.FromBase64String(claims);
 			Dictionary<string, object> parsedClaims = (Dictionary<string, object>)System.Text.Json.JsonSerializer.Deserialize(System.Text.Encoding.UTF8.GetString(decodedClaims.ToArray()), typeof(Dictionary<string, object>));
 			JsonElement expiryToken = (JsonElement)parsedClaims.GetValueOrDefault("exp");
 			JsonElement iat = (JsonElement)parsedClaims.GetValueOrDefault("iat");

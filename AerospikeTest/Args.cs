@@ -94,7 +94,16 @@ namespace Aerospike.Test
 					);
 			}
 
-			hosts = Host.ParseHosts(section.GetSection("Host").Value, tlsName, port);
+			var hostName = section.GetSection("Host").Value;
+			if (hostName == null || hostName == String.Empty)
+			{
+				hosts = null;
+			}
+			else
+			{
+				hosts = Host.ParseHosts(hostName, tlsName, port);
+			}
+			
 			proxyHost = Host.ParseHosts(section.GetSection("ProxyHost").Value, proxyTlsName, proxyPort)[0];
 		}
 
@@ -178,57 +187,72 @@ namespace Aerospike.Test
 			proxyAsyncPolicy.asyncMaxCommands = 300;
 
 			proxyClient = new AerospikeClientProxy(proxyPolicy, proxyHost);
-			nativeClient = new AerospikeClient(policy, hosts);
-			nativeAsync = new AsyncClient(asyncPolicy, hosts);
+			if (hosts != null)
+			{
+				nativeClient = new AerospikeClient(policy, hosts);
+				nativeAsync = new AsyncClient(asyncPolicy, hosts);
+			}
+			else
+			{
+				nativeClient = null;
+				nativeAsync = null;
+			}
+			
 			asyncProxy = new AsyncClientProxy(proxyAsyncPolicy, proxyHost);
 			asyncClient = asyncProxy;
 
 			proxyTotalTimeout = 25000;
 			proxySocketTimeout = 5000;
 
-			nativeClient.readPolicyDefault.totalTimeout = proxyTotalTimeout;
-			nativeClient.readPolicyDefault.socketTimeout = proxySocketTimeout;
-			nativeClient.WritePolicyDefault.totalTimeout = proxyTotalTimeout;
-			nativeClient.WritePolicyDefault.socketTimeout = proxySocketTimeout;
-			nativeClient.ScanPolicyDefault.totalTimeout = proxyTotalTimeout;
-			nativeClient.ScanPolicyDefault.socketTimeout = proxySocketTimeout;
-			nativeClient.QueryPolicyDefault.totalTimeout = proxyTotalTimeout;
-			nativeClient.QueryPolicyDefault.socketTimeout = proxySocketTimeout;
-			nativeClient.BatchPolicyDefault.totalTimeout = proxyTotalTimeout;
-			nativeClient.BatchPolicyDefault.socketTimeout = proxySocketTimeout;
-			nativeClient.BatchParentPolicyWriteDefault.totalTimeout = proxyTotalTimeout;
-			nativeClient.BatchParentPolicyWriteDefault.socketTimeout = proxySocketTimeout;
-			nativeClient.InfoPolicyDefault.timeout = proxyTotalTimeout;
+			proxyClient.readPolicyDefault.totalTimeout = proxyTotalTimeout;
+			proxyClient.readPolicyDefault.socketTimeout = proxySocketTimeout;
+			proxyClient.WritePolicyDefault.totalTimeout = proxyTotalTimeout;
+			proxyClient.WritePolicyDefault.socketTimeout = proxySocketTimeout;
+			proxyClient.ScanPolicyDefault.totalTimeout = proxyTotalTimeout;
+			proxyClient.ScanPolicyDefault.socketTimeout = proxySocketTimeout;
+			proxyClient.QueryPolicyDefault.totalTimeout = proxyTotalTimeout;
+			proxyClient.QueryPolicyDefault.socketTimeout = proxySocketTimeout;
+			proxyClient.BatchPolicyDefault.totalTimeout = proxyTotalTimeout;
+			proxyClient.BatchPolicyDefault.socketTimeout = proxySocketTimeout;
+			proxyClient.BatchParentPolicyWriteDefault.totalTimeout = proxyTotalTimeout;
+			proxyClient.BatchParentPolicyWriteDefault.socketTimeout = proxySocketTimeout;
+			proxyClient.InfoPolicyDefault.timeout = proxyTotalTimeout;
 
-			asyncClient.ReadPolicyDefault = nativeClient.ReadPolicyDefault;
-			asyncClient.WritePolicyDefault = nativeClient.WritePolicyDefault;
-			asyncClient.ScanPolicyDefault = nativeClient.ScanPolicyDefault;
-			asyncClient.QueryPolicyDefault = nativeClient.QueryPolicyDefault;
-			asyncClient.BatchPolicyDefault = nativeClient.BatchPolicyDefault;
-			asyncClient.BatchParentPolicyWriteDefault = nativeClient.BatchParentPolicyWriteDefault;
-			asyncClient.InfoPolicyDefault = nativeClient.InfoPolicyDefault;
+			asyncProxy.ReadPolicyDefault = proxyClient.ReadPolicyDefault;
+			asyncProxy.WritePolicyDefault = proxyClient.WritePolicyDefault;
+			asyncProxy.ScanPolicyDefault = proxyClient.ScanPolicyDefault;
+			asyncProxy.QueryPolicyDefault = proxyClient.QueryPolicyDefault;
+			asyncProxy.BatchPolicyDefault = proxyClient.BatchPolicyDefault;
+			asyncProxy.BatchParentPolicyWriteDefault = proxyClient.BatchParentPolicyWriteDefault;
+			asyncProxy.InfoPolicyDefault = proxyClient.InfoPolicyDefault;
 
-			proxyClient.ReadPolicyDefault = nativeClient.ReadPolicyDefault;
-			proxyClient.WritePolicyDefault = nativeClient.WritePolicyDefault;
-			proxyClient.ScanPolicyDefault = nativeClient.ScanPolicyDefault;
-			proxyClient.QueryPolicyDefault = nativeClient.QueryPolicyDefault;
-			proxyClient.BatchPolicyDefault = nativeClient.BatchPolicyDefault;
-			proxyClient.BatchParentPolicyWriteDefault = nativeClient.BatchParentPolicyWriteDefault;
-			proxyClient.InfoPolicyDefault = nativeClient.InfoPolicyDefault;
+			if (nativeClient != null)
+			{
+				nativeClient.ReadPolicyDefault = proxyClient.ReadPolicyDefault;
+				nativeClient.WritePolicyDefault = proxyClient.WritePolicyDefault;
+				nativeClient.ScanPolicyDefault = proxyClient.ScanPolicyDefault;
+				nativeClient.QueryPolicyDefault = proxyClient.QueryPolicyDefault;
+				nativeClient.BatchPolicyDefault = proxyClient.BatchPolicyDefault;
+				nativeClient.BatchParentPolicyWriteDefault = proxyClient.BatchParentPolicyWriteDefault;
+				nativeClient.InfoPolicyDefault = proxyClient.InfoPolicyDefault;
 
-			asyncProxy.ReadPolicyDefault = nativeClient.ReadPolicyDefault;
-			asyncProxy.WritePolicyDefault = nativeClient.WritePolicyDefault;
-			asyncProxy.ScanPolicyDefault = nativeClient.ScanPolicyDefault;
-			asyncProxy.QueryPolicyDefault = nativeClient.QueryPolicyDefault;
-			asyncProxy.BatchPolicyDefault = nativeClient.BatchPolicyDefault;
-			asyncProxy.BatchParentPolicyWriteDefault = nativeClient.BatchParentPolicyWriteDefault;
-			asyncProxy.InfoPolicyDefault = nativeClient.InfoPolicyDefault;
+				asyncClient.ReadPolicyDefault = proxyClient.ReadPolicyDefault;
+				asyncClient.WritePolicyDefault = proxyClient.WritePolicyDefault;
+				asyncClient.ScanPolicyDefault = proxyClient.ScanPolicyDefault;
+				asyncClient.QueryPolicyDefault = proxyClient.QueryPolicyDefault;
+				asyncClient.BatchPolicyDefault = proxyClient.BatchPolicyDefault;
+				asyncClient.BatchParentPolicyWriteDefault = proxyClient.BatchParentPolicyWriteDefault;
+				asyncClient.InfoPolicyDefault = proxyClient.InfoPolicyDefault;
+			}
 
 			client = proxyClient;
 
 			try
 			{
-				SetServerSpecific();
+				if (nativeClient != null)
+				{
+					SetServerSpecific();
+				}
 			}
 			catch
 			{

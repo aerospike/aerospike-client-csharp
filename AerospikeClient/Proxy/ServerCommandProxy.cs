@@ -105,7 +105,11 @@ namespace Aerospike.Client
 			}
 			catch (EndOfGRPCStream)
 			{
-				// continue
+				if (ResultCode != 0)
+				{
+					// The server returned a fatal error.
+					throw new AerospikeException(ResultCode);
+				}
 			}
 			catch (RpcException e)
 			{

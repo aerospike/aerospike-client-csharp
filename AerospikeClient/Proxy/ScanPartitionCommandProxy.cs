@@ -138,6 +138,11 @@ namespace Aerospike.Client
 			catch (EndOfGRPCStream)
 			{
 				RecordSet.Put(RecordSet.END);
+				if (ResultCode != 0)
+				{
+					// The server returned a fatal error.
+					throw new AerospikeException(ResultCode);
+				}
 			}
 			catch (RpcException e)
 			{

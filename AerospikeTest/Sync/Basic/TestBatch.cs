@@ -429,7 +429,7 @@ namespace Aerospike.Test
 		}
 
 		[TestMethod]
-		public void BatchASX()
+		public void BatchGetInconsistent()
 		{
 			var keyList = new Key[9];
 
@@ -455,23 +455,24 @@ namespace Aerospike.Test
 				policy.totalTimeout = args.proxyTotalTimeout;
 			}
 
-			for (int i = 0; i < 8; i++)
+			/*for (int i = 0; i < 9; i++)
 			{
 				var record = client.Get(policy, keyList[i]);
 				Console.WriteLine(record);
-			}
+			}*/
 
 			BatchPolicy batchPolicy = new()
 			{
-				filterExp = policy.filterExp
+				filterExp = policy.filterExp,
+				failOnFilteredOut = true
 			};
 			if (args.testProxy)
 			{
 				batchPolicy.totalTimeout = args.proxyTotalTimeout;
 			}
 
-			var result = client.Get(batchPolicy, keyList);
-			Console.WriteLine(result);
+			//var result = client.Get(batchPolicy, keyList);
+			//Console.WriteLine(result);
 
 			keyList[8] = new Key("invalid", args.set, 8);
 
