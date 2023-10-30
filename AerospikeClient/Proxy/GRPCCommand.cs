@@ -327,17 +327,6 @@ namespace Aerospike.Client
 				Buffer.Offset += 2;
 				ResultCode = Buffer.DataBuffer[Buffer.Offset];
 
-				// If this is the end marker of the response, do not proceed further.
-				if ((Info3 & Command.INFO3_LAST) != 0)
-				{
-					if (ResultCode != 0)
-					{
-						// The server returned a fatal error.
-						throw new AerospikeException(ResultCode);
-					}
-					return false;
-				}
-
 				Buffer.Offset++;
 				Generation = ByteUtil.BytesToInt(Buffer.DataBuffer, Buffer.Offset);
 				Buffer.Offset += 4;
@@ -1064,10 +1053,10 @@ namespace Aerospike.Client
 			End(compress);
 		}
 
-		public override void SetBatchOperate
+		public void SetBatchOperate
 		(
 			BatchPolicy policy,
-			Key[] keys,
+			BatchRecord[] records,
 			BatchNode batch,
 			string[] binNames,
 			Operation[] ops,
@@ -1095,7 +1084,7 @@ namespace Aerospike.Client
 
 			for (int i = 0; i < max; i++)
 			{
-				Key key = keys[offsets[i]];
+				Key key = records[offsets[i]].key;
 
 				Buffer.Offset += key.digest.Length + 4;
 
@@ -1167,7 +1156,7 @@ namespace Aerospike.Client
 				ByteUtil.IntToBytes((uint)index, Buffer.DataBuffer, Buffer.Offset);
 				Buffer.Offset += 4;
 
-				Key key = keys[index];
+				Key key = records[index].key;
 				byte[] digest = key.digest;
 				Array.Copy(digest, 0, Buffer.DataBuffer, Buffer.Offset, digest.Length);
 				Buffer.Offset += digest.Length;

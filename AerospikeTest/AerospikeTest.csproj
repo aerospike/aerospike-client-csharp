@@ -46,6 +46,7 @@
   	<EmbeddedResource Include="LuaResources\filter_example.lua" />
   	<EmbeddedResource Include="LuaResources\record_example.lua" />
   	<EmbeddedResource Include="LuaResources\sum_example.lua" />
+	<EmbeddedResource Include="LuaResources\test_ops.lua" />
   </ItemGroup>
 
   <ItemGroup>

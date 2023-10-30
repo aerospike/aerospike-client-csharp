@@ -104,7 +104,7 @@ namespace Aerospike.Client
 			Offset = 0;
 			if (!Response.HasNext)
 			{
-				throw new EndOfGRPCStream();
+				throw new EndOfGRPCStream(Payload[13]);
 			}
 		}
 

@@ -17,6 +17,7 @@
 using Grpc.Core;
 using Grpc.Core.Interceptors;
 using Grpc.Net.Client;
+using Microsoft.AspNetCore.WebUtilities;
 using System.Text.Json;
 using Timer = System.Timers.Timer;
 
@@ -108,6 +109,7 @@ namespace Aerospike.Client
 		private static AccessToken ParseToken(string token)
 		{
 			string claims = token.Split(".")[1];
+			claims = claims.Replace('_', '/').Replace('-', '+');
 			int extraEquals = claims.Length % 4;
 			if (extraEquals != 0)
             {

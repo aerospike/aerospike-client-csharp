@@ -103,12 +103,12 @@ namespace Aerospike.Client
 				var conn = new ConnectionProxyStream(stream);
 				await ParseResult(conn, token);
 			}
-			catch (EndOfGRPCStream)
+			catch (EndOfGRPCStream eos)
 			{
-				if (ResultCode != 0)
+				if (eos.ResultCode != 0)
 				{
 					// The server returned a fatal error.
-					throw new AerospikeException(ResultCode);
+					throw new AerospikeException(eos.ResultCode);
 				}
 			}
 			catch (RpcException e)

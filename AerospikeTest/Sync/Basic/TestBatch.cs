@@ -18,6 +18,7 @@ using Aerospike.Client;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Neo.IronLua;
 using System.Collections;
+using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Text;
 
@@ -420,10 +421,8 @@ namespace Aerospike.Test
 			Expression expr = Exp.Build(Exp.EQ(ListExp.GetByValueRange(ListReturnType.VALUE, Exp.Val(3), Exp.Val(5), Exp.Bin("list_bin", Exp.Type.LIST)), Exp.Val(3)));
 			bp.filterExp = expr;
 			bp.failOnFilteredOut = true;
-			if (args.testProxy)
-			{
-				bp.totalTimeout = args.proxyTotalTimeout;
-			}
+			bp.totalTimeout = 0;
+			bp.socketTimeout = 0;
 
 			Record[] records = client.Get(bp, keys.ToArray());
 		}
@@ -448,36 +447,175 @@ namespace Aerospike.Test
 			Policy policy = new()
 			{
 				filterExp = Exp.Build(Exp.EQ(Exp.IntBin("bin"), Exp.Val(1))),
-				failOnFilteredOut = true
+				failOnFilteredOut = false
 			};
 			if (args.testProxy)
 			{
 				policy.totalTimeout = args.proxyTotalTimeout;
 			}
 
-			/*for (int i = 0; i < 9; i++)
+			for (int i = 0; i < 9; i++)
 			{
 				var record = client.Get(policy, keyList[i]);
 				Console.WriteLine(record);
-			}*/
+			}
 
 			BatchPolicy batchPolicy = new()
 			{
 				filterExp = policy.filterExp,
-				failOnFilteredOut = true
+				failOnFilteredOut = false
 			};
 			if (args.testProxy)
 			{
 				batchPolicy.totalTimeout = args.proxyTotalTimeout;
 			}
 
-			//var result = client.Get(batchPolicy, keyList);
-			//Console.WriteLine(result);
+			var result = client.Get(batchPolicy, keyList);
+			Console.WriteLine(result);
 
 			keyList[8] = new Key("invalid", args.set, 8);
 
 			var result2 = client.Get(batchPolicy, keyList);
 			Console.WriteLine(result2);
+		}
+
+		[TestMethod]
+		public void Batch5001()
+		{
+			var keyList = new Key[5001];
+			var recordList = new BatchRecord[5001];
+
+			for (int i = 0; i < 5001; i++)
+			{
+				keyList[i] = new Key(args.ns, args.set, i);
+				client.Delete(null, keyList[i]);
+				recordList[i] = new BatchRead(keyList[i], true);
+			}
+
+			Policy policy = new();
+			if (args.testProxy)
+			{
+				policy.totalTimeout = args.proxyTotalTimeout;
+			}
+
+			var result = client.Get(null, keyList);
+			Console.WriteLine(result);
+
+			var result2 = client.Operate(null, null, keyList, Operation.Get());
+			Console.WriteLine(result2);
+
+			var result3 = client.Operate(null, recordList.ToList());
+			Console.WriteLine(result3);
+		}
+
+		[TestMethod]
+		public void InDoubtBatch()
+		{
+			Assembly assembly = Assembly.GetExecutingAssembly();
+			RegisterTask task = nativeClient.Register(null, assembly, "Aerospike.Test.LuaResources.test_ops.lua", "test_ops.lua", Language.LUA);
+			task.Wait();
+
+			var recordList = new BatchRecord[100];
+
+			for (int i = 0; i < 100; i++)
+			{
+				var key = new Key(args.ns, args.set, i);
+				client.Delete(null, key);
+				client.Put(null, key, new Bin("bin", 1));
+				recordList[i] = new BatchRead(key, true);
+				Dictionary<string, int> bin = new()
+				{
+					{ "bin", i }
+				};
+				recordList[i] = new BatchUDF(null, key, "test_ops", "wait_and_update",
+					new Value[]
+					{
+						Value.Get(bin),
+						Value.Get(2)
+					}
+				);
+			}
+
+			BatchPolicy policy = new();
+			if (args.testProxy)
+			{
+				policy.totalTimeout = 10000;
+				policy.socketTimeout = 1000;
+				policy.maxRetries = 5;
+			}
+
+			var result = client.Operate(policy, recordList.ToList());
+			Console.WriteLine(result);
+		}
+
+		[TestMethod]
+		public void BigWriteBlock()
+		{
+			Assembly assembly = Assembly.GetExecutingAssembly();
+			RegisterTask task = nativeClient.Register(null, assembly, "Aerospike.Test.LuaResources.test_ops.lua", "test_ops.lua", Language.LUA);
+			task.Wait();
+
+			var recordList = new BatchRecord[3];
+			var writeBlockSize = 1048576;
+			
+			Dictionary<string, string> bigBin = new()
+			{
+				{ "bigbin", new string('a', writeBlockSize) }
+			};
+			Dictionary<string, string> smallBin = new()
+			{
+				{ "bigbin", new string('a', 1000) }
+			};
+
+			Key key1 = new(args.ns, args.set, 1);
+			Key key2 = new(args.ns, args.set, 2);
+			Key key3 = new(args.ns, args.set, 3);
+
+			recordList[0] = new BatchUDF(null, key1, "test_ops", "rec_create", new Value[] { Value.Get(bigBin) });
+			recordList[1] = new BatchUDF(null, key2, "test_ops", "rec_create", new Value[] { Value.Get(bigBin) });
+			recordList[2] = new BatchUDF(null, key3, "test_ops", "rec_create", new Value[] { Value.Get(smallBin) });
+
+			var result = client.Operate(null, recordList.ToList());
+			Console.WriteLine(result);
+		}
+
+		[TestMethod]
+		public void BatchGetRecordResultCode()
+		{
+			var keys = new Key[6];
+
+			for (int i = 0; i < keys.Length; i++)
+			{
+				keys[i] = new Key(args.ns, args.set, i);
+				var bin = new Bin();
+
+				//Dictionary<string, string> bin = new()
+				//{
+				//	{ "bigbin", new string('a', 1000) }
+				//};
+				//{ 'bin_b': bytearray([MOD] if pk % MOD == 0 else [i for i in range(1, pk % MOD + 1)])}
+				//client.Put(keys[i], new Bin("bin_b", Value.Get(bin)));
+			}
+
+			/*Dictionary<string, string> bigBin = new()
+			{
+				{ "bigbin", new string('a', writeBlockSize) }
+			};
+			Dictionary<string, string> smallBin = new()
+			{
+				{ "bigbin", new string('a', 1000) }
+			};
+
+			Key key1 = new(args.ns, args.set, 1);
+			Key key2 = new(args.ns, args.set, 2);
+			Key key3 = new(args.ns, args.set, 3);
+
+			recordList[0] = new BatchUDF(null, key1, "test_ops", "rec_create", new Value[] { Value.Get(bigBin) });
+			recordList[1] = new BatchUDF(null, key2, "test_ops", "rec_create", new Value[] { Value.Get(bigBin) });
+			recordList[2] = new BatchUDF(null, key3, "test_ops", "rec_create", new Value[] { Value.Get(smallBin) });
+
+			var result = client.Operate(null, recordList.ToList());
+			Console.WriteLine(result);*/
 		}
 
 		private void AssertBatchBinEqual(List<BatchRead> list, string binName, int i)
