@@ -74,5 +74,33 @@ namespace Aerospike.Test
 		    Record record = client.Get(policy, key, bin);
 			AssertRecordFound(key, record);
 		}
+
+		[TestMethod]
+		public void InvertedMapExp()
+		{
+			var map = new Dictionary<string, int>
+			{
+				["a"] = 1,
+				["b"] = 2,
+				["c"] = 2,
+				["d"] = 3
+			};
+
+			Key key = new(args.ns, args.set, "ime");
+			Bin bin = new("m", map);
+
+			client.Put(null, key, bin);
+
+			// Use INVERTED to return map with entries removed where value != 2
+			Expression e = Exp.Build(MapExp.RemoveByValue((int)MapReturnType.INVERTED, Exp.Val(2), Exp.MapBin(bin.name)));
+
+			Record rec = client.Operate(null, key, ExpOperation.Read(bin.name, e, ExpReadFlags.DEFAULT));
+			AssertRecordFound(key, rec);
+
+			var m = rec.GetMap(bin.name);
+			Assert.AreEqual((long)2, m.Count);
+			Assert.AreEqual((long)2, m["b"]);
+			Assert.AreEqual((long)2, m["c"]);
+		}
 	}
 }

@@ -135,19 +135,23 @@ namespace Aerospike.Client
 
 		/// <summary>
 		/// Create expression that removes list items identified by value.
+		/// Valid returnType values are <see cref="ListReturnType.NONE"/>
+		/// or <see cref="ListReturnType.INVERTED"/>
 		/// </summary>
-		public static Exp RemoveByValue(Exp value, Exp bin, params CTX[] ctx)
+		public static Exp RemoveByValue(int returnType, Exp value, Exp bin, params CTX[] ctx)
 		{
-			byte[] bytes = PackUtil.Pack(ListOperation.REMOVE_BY_VALUE, (int)ListReturnType.NONE, value, ctx);
+			byte[] bytes = PackUtil.Pack(ListOperation.REMOVE_BY_VALUE, returnType, value, ctx);
 			return AddWrite(bin, bytes, ctx);
 		}
 
 		/// <summary>
 		/// Create expression that removes list items identified by values.
+		/// Valid returnType values are <see cref="ListReturnType.NONE"/>
+		/// or <see cref="ListReturnType.INVERTED"/>
 		/// </summary>
-		public static Exp RemoveByValueList(Exp values, Exp bin, params CTX[] ctx)
+		public static Exp RemoveByValueList(int returnType, Exp values, Exp bin, params CTX[] ctx)
 		{
-			byte[] bytes = PackUtil.Pack(ListOperation.REMOVE_BY_VALUE_LIST, (int)ListReturnType.NONE, values, ctx);
+			byte[] bytes = PackUtil.Pack(ListOperation.REMOVE_BY_VALUE_LIST, returnType, values, ctx);
 			return AddWrite(bin, bytes, ctx);
 		}
 
@@ -155,15 +159,19 @@ namespace Aerospike.Client
 		/// Create expression that removes list items identified by value range (valueBegin inclusive, valueEnd exclusive).
 		/// If valueBegin is null, the range is less than valueEnd. If valueEnd is null, the range is
 		/// greater than equal to valueBegin.
+		/// Valid returnType values are <see cref="ListReturnType.NONE"/>
+		/// or <see cref="ListReturnType.INVERTED"/>
 		/// </summary>
-		public static Exp RemoveByValueRange(Exp valueBegin, Exp valueEnd, Exp bin, params CTX[] ctx)
+		public static Exp RemoveByValueRange(int returnType, Exp valueBegin, Exp valueEnd, Exp bin, params CTX[] ctx)
 		{
-			byte[] bytes = ListExp.PackRangeOperation(ListOperation.REMOVE_BY_VALUE_INTERVAL, (int)ListReturnType.NONE, valueBegin, valueEnd, ctx);
+			byte[] bytes = ListExp.PackRangeOperation(ListOperation.REMOVE_BY_VALUE_INTERVAL, returnType, valueBegin, valueEnd, ctx);
 			return AddWrite(bin, bytes, ctx);
 		}
 
 		/// <summary>
 		/// Create expression that removes list items nearest to value and greater by relative rank.
+		/// Valid returnType values are <see cref="ListReturnType.NONE"/>
+		/// or <see cref="ListReturnType.INVERTED"/>
 		/// <para>
 		/// Examples for ordered list [0,4,5,9,11,15]:
 		/// <ul>
@@ -177,14 +185,16 @@ namespace Aerospike.Client
 		/// </ul>
 		/// </para>
 		/// </summary>
-		public static Exp RemoveByValueRelativeRankRange(Exp value, Exp rank, Exp bin, params CTX[] ctx)
+		public static Exp RemoveByValueRelativeRankRange(int returnType, Exp value, Exp rank, Exp bin, params CTX[] ctx)
 		{
-			byte[] bytes = PackUtil.Pack(ListOperation.REMOVE_BY_VALUE_REL_RANK_RANGE, (int)ListReturnType.NONE, value, rank, ctx);
+			byte[] bytes = PackUtil.Pack(ListOperation.REMOVE_BY_VALUE_REL_RANK_RANGE, returnType, value, rank, ctx);
 			return AddWrite(bin, bytes, ctx);
 		}
 
 		/// <summary>
 		/// Create expression that removes list items nearest to value and greater by relative rank with a count limit.
+		/// Valid returnType values are <see cref="ListReturnType.NONE"/>
+		/// or <see cref="ListReturnType.INVERTED"/>
 		/// <para>
 		/// Examples for ordered list [0,4,5,9,11,15]:
 		/// <ul>
@@ -198,9 +208,9 @@ namespace Aerospike.Client
 		/// </ul>
 		/// </para>
 		/// </summary>
-		public static Exp RemoveByValueRelativeRankRange(Exp value, Exp rank, Exp count, Exp bin, params CTX[] ctx)
+		public static Exp RemoveByValueRelativeRankRange(int returnType, Exp value, Exp rank, Exp count, Exp bin, params CTX[] ctx)
 		{
-			byte[] bytes = PackUtil.Pack(ListOperation.REMOVE_BY_VALUE_REL_RANK_RANGE, (int)ListReturnType.NONE, value, rank, count, ctx);
+			byte[] bytes = PackUtil.Pack(ListOperation.REMOVE_BY_VALUE_REL_RANK_RANGE, returnType, value, rank, count, ctx);
 			return AddWrite(bin, bytes, ctx);
 		}
 
@@ -215,19 +225,23 @@ namespace Aerospike.Client
 
 		/// <summary>
 		/// Create expression that removes list items starting at specified index to the end of list.
+		/// Valid returnType values are <see cref="ListReturnType.NONE"/>
+		/// or <see cref="ListReturnType.INVERTED"/>
 		/// </summary>
-		public static Exp RemoveByIndexRange(Exp index, Exp bin, params CTX[] ctx)
+		public static Exp RemoveByIndexRange(int returnType, Exp index, Exp bin, params CTX[] ctx)
 		{
-			byte[] bytes = PackUtil.Pack(ListOperation.REMOVE_BY_INDEX_RANGE, (int)ListReturnType.NONE, index, ctx);
+			byte[] bytes = PackUtil.Pack(ListOperation.REMOVE_BY_INDEX_RANGE, returnType, index, ctx);
 			return AddWrite(bin, bytes, ctx);
 		}
 
 		/// <summary>
 		/// Create expression that removes "count" list items starting at specified index.
+		/// Valid returnType values are <see cref="ListReturnType.NONE"/>
+		/// or <see cref="ListReturnType.INVERTED"/>
 		/// </summary>
-		public static Exp RemoveByIndexRange(Exp index, Exp count, Exp bin, params CTX[] ctx)
+		public static Exp RemoveByIndexRange(int returnType, Exp index, Exp count, Exp bin, params CTX[] ctx)
 		{
-			byte[] bytes = PackUtil.Pack(ListOperation.REMOVE_BY_INDEX_RANGE, (int)ListReturnType.NONE, index, count, ctx);
+			byte[] bytes = PackUtil.Pack(ListOperation.REMOVE_BY_INDEX_RANGE, returnType, index, count, ctx);
 			return AddWrite(bin, bytes, ctx);
 		}
 
@@ -242,19 +256,23 @@ namespace Aerospike.Client
 
 		/// <summary>
 		/// Create expression that removes list items starting at specified rank to the last ranked item.
+		/// Valid returnType values are <see cref="ListReturnType.NONE"/>
+		/// or <see cref="ListReturnType.INVERTED"/>
 		/// </summary>
-		public static Exp RemoveByRankRange(Exp rank, Exp bin, params CTX[] ctx)
+		public static Exp RemoveByRankRange(int returnType, Exp rank, Exp bin, params CTX[] ctx)
 		{
-			byte[] bytes = PackUtil.Pack(ListOperation.REMOVE_BY_RANK_RANGE, (int)ListReturnType.NONE, rank, ctx);
+			byte[] bytes = PackUtil.Pack(ListOperation.REMOVE_BY_RANK_RANGE, returnType, rank, ctx);
 			return AddWrite(bin, bytes, ctx);
 		}
 
 		/// <summary>
 		/// Create expression that removes "count" list items starting at specified rank.
+		/// Valid returnType values are <see cref="ListReturnType.NONE"/>
+		/// or <see cref="ListReturnType.INVERTED"/>
 		/// </summary>
-		public static Exp RemoveByRankRange(Exp rank, Exp count, Exp bin, params CTX[] ctx)
+		public static Exp RemoveByRankRange(int returnType, Exp rank, Exp count, Exp bin, params CTX[] ctx)
 		{
-			byte[] bytes = PackUtil.Pack(ListOperation.REMOVE_BY_RANK_RANGE, (int)ListReturnType.NONE, rank, count, ctx);
+			byte[] bytes = PackUtil.Pack(ListOperation.REMOVE_BY_RANK_RANGE, returnType, rank, count, ctx);
 			return AddWrite(bin, bytes, ctx);
 		}
 
