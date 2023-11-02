@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2020 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -14,9 +14,7 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using System;
 using System.Collections;
-using System.Collections.Generic;
 
 namespace Aerospike.Client
 {
@@ -113,9 +111,42 @@ namespace Aerospike.Client
 			// If context not defined, the set order for top-level bin map.
 			if (ctx == null || ctx.Length == 0)
 			{
-				return SetMapPolicy(new MapPolicy(order, MapWriteMode.UPDATE), binName);
+				byte[] bytes = PackUtil.Pack(MapOperation.SET_TYPE, (int)order, ctx);
+				return new Operation(Operation.Type.MAP_MODIFY, binName, Value.Get(bytes));
 			}
 
+			Packer packer = new Packer();
+			CDT.Init(packer, ctx, SET_TYPE, 1, CTX.GetFlag(order));
+			packer.PackNumber((int)order);
+			return new Operation(Operation.Type.MAP_MODIFY, binName, Value.Get(packer.ToByteArray()));
+		}
+
+		/// <summary>
+		/// Create map create operation.
+		/// Server creates map at given context level.
+		/// </summary>
+		/// <param name="binName">bin name</param>
+		/// <param name="order">map order</param>
+		/// <param name="persistIndex">if true, persist map index. A map index improves lookup performance,
+		///						but requires more storage.A map index can be created for a top-level
+		///						ordered map only. Nested and unordered map indexes are not supported.</param>
+		///	<param name="ctx">optional path to nested map. If not defined, the top-level map is used</param>
+		public static Operation Create(string binName, MapOrder order, bool persistIndex, params CTX[] ctx)
+		{
+			// If context not defined, the set order for top-level bin map.
+			if (ctx == null || ctx.Length == 0)
+			{
+				int attr = (int)order;
+
+				if (persistIndex)
+				{
+					attr |= 0x10;
+				}
+				byte[] bytes = PackUtil.Pack(MapOperation.SET_TYPE, attr, ctx);
+				return new Operation(Operation.Type.MAP_MODIFY, binName, Value.Get(bytes));
+			}
+
+			// Create nested map. persistIndex does not apply here, so ignore it
 			Packer packer = new Packer();
 			CDT.Init(packer, ctx, SET_TYPE, 1, CTX.GetFlag(order));
 			packer.PackNumber((int)order);
@@ -131,7 +162,14 @@ namespace Aerospike.Client
 		/// </summary>
 		public static Operation SetMapPolicy(MapPolicy policy, string binName, params CTX[] ctx)
 		{
-			byte[] bytes = PackUtil.Pack(MapOperation.SET_TYPE, policy.attributes, ctx);
+			int attr = policy.attributes;
+
+			// Remove persistIndex flag for nested maps.
+			if (ctx != null && ctx.Length != 0 && (attr & 0x10) != 0)
+			{
+				attr &= ~0x10;
+			}
+			byte[] bytes = PackUtil.Pack(MapOperation.SET_TYPE, attr, ctx);
 			return new Operation(Operation.Type.MAP_MODIFY, binName, Value.Get(bytes));
 		}
 

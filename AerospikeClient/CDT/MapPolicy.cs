@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -77,11 +77,35 @@ namespace Aerospike.Client
 
 		/// <summary>
 		/// Create unique key map with specified order when map does not exist.
-		/// Use specified write flags when writing map items.
 		/// </summary>
+		/// <param name="order">map order</param>
+		/// <param name="flags">map write flags <see cref="MapWriteFlags"/></param>
 		public MapPolicy(MapOrder order, MapWriteFlags flags)
 		{
 			this.attributes = (int)order;
+			this.flags = (int)flags;
+			this.itemCommand = MapOperation.PUT;
+			this.itemsCommand = MapOperation.PUT_ITEMS;
+		}
+
+		/// <summary>
+		/// Create unique key map with specified order and persist index flag when map does not exist.
+		/// </summary>
+		/// <param name="order">map order</param>
+		/// <param name="flags">map write flags <see cref="MapWriteFlags"/></param>
+		/// <param name="persistIndex">if true, persist map index. A map index improves lookup performance,
+		///						but requires more storage.A map index can be created for a top-level
+		///						ordered map only. Nested and unordered map indexes are not supported.</param>
+		public MapPolicy(MapOrder order, MapWriteFlags flags, bool persistIndex)
+		{
+			int attr = (int)order;
+
+			if (persistIndex)
+			{
+				attr |= 0x10;
+			}
+
+			this.attributes = attr;
 			this.flags = (int)flags;
 			this.itemCommand = MapOperation.PUT;
 			this.itemsCommand = MapOperation.PUT_ITEMS;
