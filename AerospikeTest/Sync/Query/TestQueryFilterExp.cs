@@ -654,6 +654,40 @@ namespace Aerospike.Test
 		}
 
 		[TestMethod]
+		public void QueryRecordSize()
+		{
+			int begin = 1;
+			int end = 10;
+
+			Statement stmt = new Statement();
+			stmt.SetNamespace(args.ns);
+			stmt.SetSetName(setName);
+			stmt.SetFilter(Filter.Range(binName, begin, end));
+
+			// This just tests that the expression was sent correctly
+			// because all record sizes are effectively allowed
+			QueryPolicy policy = new QueryPolicy();
+			policy.filterExp = Exp.Build(Exp.GE(Exp.RecordSize(), Exp.Val(0)));
+
+			RecordSet rs = client.Query(policy, stmt);
+
+			try
+			{
+				int count = 0;
+
+				while (rs.Next())
+				{
+					count++;
+				}
+				Assert.AreEqual(10, count);
+			}
+			finally
+			{
+				rs.Close();
+			}
+		}
+
+		[TestMethod]
 		public void QueryDeviceSize()
 		{
 			int begin = 1;
