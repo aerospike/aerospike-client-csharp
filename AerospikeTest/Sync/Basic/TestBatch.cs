@@ -17,9 +17,12 @@
 using Aerospike.Client;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Neo.IronLua;
+using System;
 using System.Collections;
 using System.Reflection;
 using System.Runtime.CompilerServices;
+using System.Runtime.Intrinsics.X86;
+using System.Security.Policy;
 using System.Text;
 
 namespace Aerospike.Test
@@ -583,39 +586,193 @@ namespace Aerospike.Test
 		public void BatchGetRecordResultCode()
 		{
 			var keys = new Key[6];
+			var mod = 5;
 
 			for (int i = 0; i < keys.Length; i++)
 			{
 				keys[i] = new Key(args.ns, args.set, i);
-				var bin = new Bin();
+				byte[] bytes = null;
 
-				//Dictionary<string, string> bin = new()
-				//{
-				//	{ "bigbin", new string('a', 1000) }
-				//};
-				//{ 'bin_b': bytearray([MOD] if pk % MOD == 0 else [i for i in range(1, pk % MOD + 1)])}
-				//client.Put(keys[i], new Bin("bin_b", Value.Get(bin)));
+				if (i % mod == 0)
+				{
+					bytes = new byte[1] { (byte)mod };
+				}
+				else
+				{
+					var length = i % mod + 1;
+					bytes = new byte[length];
+					for (int j = 0; j < length; j++)
+					{
+						bytes[j] = (byte)(j % mod + 1);
+					}
+				}
+
+				client.Put(null, keys[i], new Bin("bin_b", bytes));
 			}
 
-			/*Dictionary<string, string> bigBin = new()
+			var expr = Exp.Build(BitExp.Add(BitPolicy.Default, Exp.Val(0), Exp.Val(8), Exp.Val(255), false, BitOverflowAction.FAIL, Exp.BlobBin("bin_b")));
+			var policy = new BatchPolicy
 			{
-				{ "bigbin", new string('a', writeBlockSize) }
+				filterExp = expr
 			};
-			Dictionary<string, string> smallBin = new()
+			if (args.testProxy)
 			{
-				{ "bigbin", new string('a', 1000) }
+				policy.totalTimeout = args.proxyTotalTimeout;
+			}
+
+			client.Get(policy, keys);
+		}
+
+		[TestMethod]
+		public void BatchGetFailureProxy()
+		{
+			var keyList = new Key[10];
+
+			for (int i = 0; i < 10; i++)
+			{
+				keyList[i] = new Key(args.ns, args.set, i);
+				client.Delete(null, keyList[i]);
+			}
+
+			for (int i = 0; i < 10; i++)
+			{
+				var values = new Value[]
+				{
+					new Value.NullValue(),
+					Value.Get(0),
+					Value.Get(10 + i),
+					Value.Get("string_test0"),
+					Value.Get(new int[] {26, 27, 28, 0}),
+					Value.GetAsGeoJSON("{\"type\": \"Polygon\", \"coordinates\": [[[-122.5, 37.0], [-121.0, 37.0], [-121.0, 38.08], [-122.5, 38.08], [-122.5, 37.0]]]}")
+				};
+				client.Put(null, keyList[i], new Bin("list_bin", values));
+			}
+
+			BatchPolicy policy = new()
+			{
+				filterExp = Exp.Build(Exp.EQ(ListExp.GetByValueRange(ListReturnType.VALUE, Exp.Val(10), Exp.Val(13), Exp.ListBin("list_bin")), Exp.Val(11)))
+			};
+			if (args.testProxy)
+			{
+				policy.totalTimeout = args.proxyTotalTimeout;
+			}
+
+			var result = client.Get(policy, keyList);
+		}
+
+		[TestMethod]
+		public void ZeroBatchIndexThreads()
+		{
+			List<BatchRecord> brs = new();
+			for (int i = 0; i < 100; i++)
+			{
+				Key key = new Key(args.ns, args.set, i);
+				Operation[] ops = new Operation[] {
+					Operation.Put(new Bin("bin", i))
+				};
+				brs.Add(new BatchWrite(key, ops));
+			}
+
+			BatchPolicy bp = new BatchPolicy();
+			bp.totalTimeout = 10000;
+
+			try
+			{
+				var isDone = client.Operate(bp, brs);
+			}
+			catch (Exception ex)
+			{
+
+			}
+		}
+
+		[TestMethod]
+		public void BatchTotalTimeout()
+		{
+			Assembly assembly = Assembly.GetExecutingAssembly();
+			RegisterTask task = nativeClient.Register(null, assembly, "Aerospike.Test.LuaResources.test_ops.lua", "test_ops.lua", Language.LUA);
+			task.Wait();
+
+			Key key = new Key(args.ns, args.set, "to");
+			client.Delete(null, key);
+			WritePolicy wp = new()
+			{
+				totalTimeout = 10000,
+				socketTimeout = 1000,
+				maxRetries = 5
+			};
+			Dictionary<string, int> bin = new()
+			{
+				{ "bin", 100 }
 			};
 
-			Key key1 = new(args.ns, args.set, 1);
-			Key key2 = new(args.ns, args.set, 2);
-			Key key3 = new(args.ns, args.set, 3);
+			//try
+			//{
+			Object res = client.Execute(wp, key, "test_ops", "wait_and_create", new Value[] {
+					Value.Get(bin),
+					Value.Get(2),
+				});
+			//}
+			//catch (Exception e)
+			//{
+			//}
+		}
 
-			recordList[0] = new BatchUDF(null, key1, "test_ops", "rec_create", new Value[] { Value.Get(bigBin) });
-			recordList[1] = new BatchUDF(null, key2, "test_ops", "rec_create", new Value[] { Value.Get(bigBin) });
-			recordList[2] = new BatchUDF(null, key3, "test_ops", "rec_create", new Value[] { Value.Get(smallBin) });
+		[TestMethod]
+		public void BatchTotalTimeout2()
+		{
+			Assembly assembly = Assembly.GetExecutingAssembly();
+			RegisterTask task = nativeClient.Register(null, assembly, "Aerospike.Test.LuaResources.test_ops.lua", "test_ops.lua", Language.LUA);
+			task.Wait();
 
-			var result = client.Operate(null, recordList.ToList());
-			Console.WriteLine(result);*/
+			List<BatchRecord> batchRecords = new();
+			for (int i = 0; i < 1; i++)
+			{
+				Key key = new Key(args.ns, args.set, i);
+				Dictionary<string, int> bin = new()
+				{
+					{ "bin", 100 }
+				};
+				batchRecords.Add(
+						new BatchUDF(null, key, "test_ops", "wait_and_create", new Value[] {
+					Value.Get(bin),
+					Value.Get(2),
+				}));
+			}
+			BatchPolicy bp = new() {
+				totalTimeout = 2000,
+				socketTimeout = 1000,
+				maxRetries = 5
+			};
+			//try
+			//{
+				bool result = client.Operate(bp, batchRecords);
+			//}
+		}
+
+		[TestMethod]
+		public void BatchPolicyPrecedence()
+		{
+			var key = new Key(args.ns, args.set, 11111);
+			Bin[] bins =
+			{
+				new Bin("age", 10),
+				new Bin("count", 0),
+				new Bin("list", new int[] { 0, 1, 2, 3 })
+			};
+			client.Put(null, key, bins);
+
+			var batchPolicy = new BatchPolicy
+			{
+				filterExp = Exp.Build(Exp.EQ(ListExp.GetByRank(ListReturnType.RANK, Exp.Type.INT, Exp.Val(0), Exp.ListBin("list")), Exp.Val(1)))
+			};
+
+			var batchDeletePolicy = new BatchDeletePolicy
+			{
+				filterExp = Exp.Build(Exp.EQ(Exp.IntBin("count"), Exp.Val(0)))
+			};
+
+			var result = client.Delete(batchPolicy, batchDeletePolicy, new Key[] { key });
 		}
 
 		private void AssertBatchBinEqual(List<BatchRead> list, string binName, int i)

@@ -19,6 +19,9 @@ using System.Collections;
 using System.Collections.Generic;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Aerospike.Client;
+using Microsoft.AspNetCore.DataProtection.KeyManagement;
+using System.Security.Policy;
+using static Aerospike.Client.AerospikeException;
 
 namespace Aerospike.Test
 {
@@ -1249,6 +1252,53 @@ namespace Aerospike.Test
 					throw;
 				}
 			}
+		}
+
+		[TestMethod]
+		public void OperateListOrder()
+		{
+			var keyList = new Key[8];
+			for (int i = 0; i < 8; i++)
+			{
+				Key key = new(args.ns, args.set, i);
+				keyList[i] = key;
+				client.Delete(null, key);
+
+				Bin[] bins =
+				{
+					new Bin("l", new int[] { 1, 2, 3, 4, 5, 6, 7, 8 }),
+					new Bin("r", new int[] { 8, 7, 6, 5, 4, 3, 2, 1 })
+				};
+				client.Put(null, key, bins);
+			}
+
+			var result0 = client.Operate(null, keyList[0], ExpOperation.Read("l", Exp.Build(ListExp.GetByValueRelativeRankRange(ListReturnType.NONE, Exp.Val(1), Exp.Val(1), Exp.Val(4), Exp.ListBin("l"))), ExpReadFlags.DEFAULT));
+			Console.WriteLine(result0);
+
+			var result1 = client.Operate(null, keyList[1], ExpOperation.Read("r", Exp.Build(ListExp.GetByValueRelativeRankRange(ListReturnType.NONE, Exp.Val(1), Exp.Val(1), Exp.Val(4), Exp.ListBin("r"))), ExpReadFlags.DEFAULT));
+			Console.WriteLine(result1);
+
+			var result2 = client.Operate(null, keyList[2], ExpOperation.Read("l", Exp.Build(ListExp.GetByValueRelativeRankRange(ListReturnType.NONE, Exp.Val(1), Exp.Val(1), Exp.Val(4), Exp.ListBin("l"), Exp.Val(true))), ExpReadFlags.DEFAULT));
+			Console.WriteLine(result2);
+			/*# Record: {'l': [1, 2, 3, 4, 5, 6, 7, 8], 'r': [8, 7, 6, 5, 4, 3, 2, 1]}
+
+			>>> cli.operate(key, [expops.expression_read('l', exp.ListGetByValueRelRankRange(None, aerospike.LIST_RETURN_VALUE, 1, 1, 4, 'l').compile())])
+			(('test', 'inverted', 0, bytearray(b'La\x10\x99\x81\xa0\xc7R\x02\xdbwKo\x85u\xb0z\xddyu')), { 'ttl': 430231, 'gen': 3}, { 'l': [5, 4, 3, 2]})                   # [2, 3, 4, 5]
+			>>> cli.operate(key, [expops.expression_read('r', exp.ListGetByValueRelRankRange(None, aerospike.LIST_RETURN_VALUE, 1, 1, 4, 'r').compile())])
+			(('test', 'inverted', 0, bytearray(b'La\x10\x99\x81\xa0\xc7R\x02\xdbwKo\x85u\xb0z\xddyu')), { 'ttl': 430217, 'gen': 3}, { 'r': [5, 4, 3, 2]})
+			>>> cli.operate(key, [expops.expression_read('l', exp.ListGetByValueRelRankRange(None, aerospike.LIST_RETURN_VALUE, 1, 1, 4, 'l', True).compile())])
+			(('test', 'inverted', 0, bytearray(b'La\x10\x99\x81\xa0\xc7R\x02\xdbwKo\x85u\xb0z\xddyu')), { 'ttl': 430179, 'gen': 3}, { 'l': [1, 6, 7, 8]})
+			>>> cli.operate(key, [expops.expression_read('r', exp.ListGetByValueRelRankRange(None, aerospike.LIST_RETURN_VALUE, 1, 1, 4, 'r', True).compile())])
+			(('test', 'inverted', 0, bytearray(b'La\x10\x99\x81\xa0\xc7R\x02\xdbwKo\x85u\xb0z\xddyu')), { 'ttl': 430169, 'gen': 3}, { 'r': [8, 7, 6, 1]})
+
+			>>> cli.operate(key, [expops.expression_read('l', exp.ListGetByValueRelRankRangeToEnd(None, aerospike.LIST_RETURN_VALUE, 1, 4, 'l', False).compile())])
+			(('test', 'inverted', 0, bytearray(b'La\x10\x99\x81\xa0\xc7R\x02\xdbwKo\x85u\xb0z\xddyu')), { 'ttl': 429832, 'gen': 3}, { 'l': [5, 6, 7, 8]})
+			>>> cli.operate(key, [expops.expression_read('r', exp.ListGetByValueRelRankRangeToEnd(None, aerospike.LIST_RETURN_VALUE, 1, 4, 'r', False).compile())])
+			(('test', 'inverted', 0, bytearray(b'La\x10\x99\x81\xa0\xc7R\x02\xdbwKo\x85u\xb0z\xddyu')), { 'ttl': 429803, 'gen': 3}, { 'r': [5, 6, 7, 8]})                   # [8, 7, 6, 5]
+			>>> cli.operate(key, [expops.expression_read('l', exp.ListGetByValueRelRankRangeToEnd(None, aerospike.LIST_RETURN_VALUE, 1, 4, 'l', True).compile())])
+			(('test', 'inverted', 0, bytearray(b'La\x10\x99\x81\xa0\xc7R\x02\xdbwKo\x85u\xb0z\xddyu')), { 'ttl': 429819, 'gen': 3}, { 'l': [1, 2, 3, 4]})
+			>>> cli.operate(key, [expops.expression_read('r', exp.ListGetByValueRelRankRangeToEnd(None, aerospike.LIST_RETURN_VALUE, 1, 4, 'r', True).compile())])
+			(('test', 'inverted', 0, bytearray(b'La\x10\x99\x81\xa0\xc7R\x02\xdbwKo\x85u\xb0z\xddyu')), { 'ttl': 429798, 'gen': 3}, { 'r': [4, 3, 2, 1]})*/
 		}
 	}
 }

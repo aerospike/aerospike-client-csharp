@@ -15,6 +15,7 @@
  * the License.
  */
 using Aerospike.Client;
+using Microsoft.AspNetCore.DataProtection.KeyManagement;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System.Collections;
 using System.Reflection;
@@ -318,6 +319,20 @@ namespace Aerospike.Test
 			};
 
 			bool status = client.Operate(null, records);
+		}
+
+		[TestMethod]
+		public void IntegerBin()
+		{
+			Assembly assembly = Assembly.GetExecutingAssembly();
+			RegisterTask task = nativeClient.Register(null, assembly, "Aerospike.Test.LuaResources.test_ops.lua", "test_ops.lua", Language.LUA);
+			task.Wait();
+
+			Key key = new Key(args.ns, args.set, "int_bin_name");
+			client.Execute(null, key, "test_ops", "wait_and_create", new Value.MapValue(new Dictionary<int, int>() {  
+					{ 123, 1 }
+				}), new Value.IntegerValue(1));
+			Record r = client.Get(null, key);
 		}
 	}
 }
