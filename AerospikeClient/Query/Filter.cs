@@ -46,6 +46,20 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
+		/// Create blob equality filter for query.
+		/// Requires server version 7.0+
+		/// </summary>
+		/// <param name="name">bin name</param>
+		/// <param name="value">filter value</param>
+		/// <param name="ctx">optional context for elements within a CDT</param>
+		/// <returns>filter instance</returns>
+		public static Filter Equal(string name, byte[] value, params CTX[] ctx)
+		{
+			Value val = Value.Get(value);
+			return new Filter(name, IndexCollectionType.DEFAULT, val.Type, val, val, ctx);
+		}
+
+		/// <summary>
 		/// Create contains number filter for query on collection index.
 		/// </summary>
 		/// <param name="name">bin name</param>
@@ -66,6 +80,20 @@ namespace Aerospike.Client
 		/// <param name="value">filter value</param>
 		/// <param name="ctx">optional context for elements within a CDT</param>
 		public static Filter Contains(string name, IndexCollectionType type, string value, params CTX[] ctx)
+		{
+			Value val = Value.Get(value);
+			return new Filter(name, type, val.Type, val, val, ctx);
+		}
+
+		/// <summary>
+		/// Create contains byte[] filter for query on collection index.
+		/// </summary>
+		/// <param name="name">bin name</param>
+		/// <param name="type">index collection type</param>
+		/// <param name="value">filter value</param>
+		/// <param name="ctx">optional context for elements within a CDT</param>
+		/// <returns>filter instance</returns>
+		public static Filter Contains(string name, IndexCollectionType type, byte[] value, params CTX[] ctx)
 		{
 			Value val = Value.Get(value);
 			return new Filter(name, type, val.Type, val, val, ctx);

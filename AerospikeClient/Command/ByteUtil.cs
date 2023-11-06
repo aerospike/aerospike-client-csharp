@@ -218,7 +218,9 @@ namespace Aerospike.Client
                 throw new AerospikeException.Serialize(e);
             }
 #else
-            throw new AerospikeException.Serialize("Object deserializer has been disabled");
+            byte[] bytes = new byte[len];
+            Array.Copy(buf, offset, bytes, 0, len);
+            return bytes;
 #endif
         }
 

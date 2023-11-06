@@ -265,6 +265,25 @@ namespace Aerospike.Client
 			return new CmdStr(BIN_TYPE, name);
 		}
 
+		/// <summary>
+		/// Create expression that returns the record size. This expression usually evaluates
+		/// quickly because record meta data is cached in memory.
+		/// </summary>
+		/// <para>
+		/// Requires server version 7.0+. This expression replaces <see cref="DeviceSize()"/> and
+		/// <see cref="MemorySize()"/> since those older expressions are equivalent on server version 7.0+.
+		/// </para>
+		/// <example>
+		/// <code>
+		/// //Record size >= 100 KB
+		/// Exp.GE(Exp.RecordSize(), Exp.Val(100 * 1024))
+		/// </code>
+		/// </example>
+		public static Exp RecordSize()
+		{
+			return new Cmd(RECORD_SIZE);
+		}
+
 		//--------------------------------------------------
 		// Misc
 		//--------------------------------------------------
@@ -289,6 +308,10 @@ namespace Aerospike.Client
 		/// memory, then zero is returned. This expression usually evaluates quickly because
 		/// record meta data is cached in memory.
 		/// </summary>
+		/// <para>
+		/// This expression should only be used for server versions less than 7.0. Use
+		/// <see cref="DeviceSize()"/> for server version 7.0+.
+		/// </para>
 		/// <example>
 		/// <code>
 		/// // Record device size >= 100 KB
@@ -305,7 +328,8 @@ namespace Aerospike.Client
 		/// not memory nor data-in-memory, then zero is returned. This expression usually evaluates
 		/// quickly because record meta data is cached in memory.
 		/// <para>
-		/// Requires server version 5.3.0+
+		/// Requires server version between 5.3 inclusive and 7.0 exclusive.
+		/// Use <see cref="RecordSize()"/> for server version 7.0+.
 		/// </para>
 		/// </summary>
 		/// <example>
@@ -1322,6 +1346,7 @@ namespace Aerospike.Client
 		private const int KEY_EXISTS = 71;
 		private const int IS_TOMBSTONE = 72;
 		private const int MEMORY_SIZE = 73;
+		private const int RECORD_SIZE = 74;
 		private const int KEY = 80;
 		private const int BIN = 81;
 		private const int BIN_TYPE = 82;

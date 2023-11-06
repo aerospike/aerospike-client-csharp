@@ -54,7 +54,7 @@ namespace Aerospike.Client
 				return ms.ToArray();
 			}
 #else
-				throw new AerospikeException("Object serializer has been disabled");
+				return (byte[])val;
 #endif
 			}
 

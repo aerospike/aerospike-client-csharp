@@ -226,7 +226,7 @@ namespace Aerospike.Test
 			Assert.AreEqual(4, list.Count);
 
 			record = client.Operate(null, key,
-				MapOperation.SetMapPolicy(new MapPolicy(MapOrder.KEY_ORDERED, MapWriteMode.UPDATE), binName),
+				MapOperation.SetMapPolicy(new MapPolicy(MapOrder.KEY_ORDERED, MapWriteFlags.DEFAULT, true), binName),
 				MapOperation.GetByKeyRange(binName, Value.Get(3), Value.Get(5), MapReturnType.COUNT),
 				MapOperation.GetByKeyRange(binName, Value.Get(-5), Value.Get(2), MapReturnType.KEY_VALUE),
 				MapOperation.GetByIndexRange(binName, 0, 10, MapReturnType.KEY_VALUE));
