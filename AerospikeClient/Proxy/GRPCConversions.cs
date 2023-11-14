@@ -292,7 +292,10 @@ namespace Aerospike.Client
 					break;
 
 				case StatusCode.DeadlineExceeded:
-					return new AerospikeException.Timeout(timeout, inDoubt);
+                    if (Log.DebugEnabled())
+                        Log.Debug($"AerospikeException Deadline: {resultCode}: Exception: {rpc.GetType()} Message: '{rpc.Message}': '{rpc}'");
+
+                    return new AerospikeException.Timeout(timeout, inDoubt);
 
 				case StatusCode.PermissionDenied:
 					resultCode = ResultCode.FAIL_FORBIDDEN;
@@ -315,7 +318,10 @@ namespace Aerospike.Client
 					break;
 			}
 
-			return new AerospikeException(resultCode, GetDisplayMessage(rpc, MAX_ERR_MSG_LENGTH));
+            if (Log.DebugEnabled())
+                Log.Debug($"AerospikeException: {resultCode}: Exception: {rpc.GetType()} Message: '{rpc.Message}': '{rpc}'");
+
+            return new AerospikeException(resultCode, GetDisplayMessage(rpc, MAX_ERR_MSG_LENGTH), rpc);
 		}
 
 		/**

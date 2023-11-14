@@ -17,7 +17,9 @@
 using Grpc.Core;
 using Grpc.Core.Interceptors;
 using Grpc.Net.Client;
+using Microsoft.Extensions.Logging;
 using System.Diagnostics;
+using System.Net;
 using System.Reflection;
 using static Aerospike.Client.AerospikeException;
 
@@ -167,13 +169,28 @@ namespace Aerospike.Client
 				handler.SslOptions.ClientCertificates.Add(policy.tlsPolicy.clientCertificates[0]);
 			}
 
-			Channel = GrpcChannel.ForAddress(connectionUri, new GrpcChannelOptions
-			{
-				HttpHandler = handler
-			});
-			//Debugger.Launch();
+			ILoggerFactory loggerFactory = null;
 
-			CallInvoker = Channel.Intercept(new AuthTokenInterceptor(policy, Channel));
+			if (Log.DebugEnabled())
+			{
+				loggerFactory = LoggerFactory.Create(logging =>
+				{
+					logging.AddDebug();
+					logging.SetMinimumLevel(LogLevel.Debug);					
+				});
+			}
+
+			
+            Channel = GrpcChannel.ForAddress(connectionUri, new GrpcChannelOptions
+			{
+				HttpHandler = handler,
+                //Credentials = ChannelCredentials.SecureSsl,
+                LoggerFactory = loggerFactory
+            });
+
+            //Debugger.Launch();
+
+            CallInvoker = Channel.Intercept(new AuthTokenInterceptor(policy, Channel));
 			//GetVersion();
 		}
 
@@ -343,8 +360,9 @@ namespace Aerospike.Client
 		private string GetVersion()
 		{
 			var request = new KVS.AboutRequest();
-			var about = new KVS.About.AboutClient(CallInvoker);
-			var deadline = DateTime.UtcNow.AddMilliseconds(readPolicyDefault.totalTimeout);
+			//var about = new KVS.About.AboutClient(CallInvoker);
+            var about = new KVS.About.AboutClient(Channel);
+            var deadline = DateTime.UtcNow.AddMilliseconds(readPolicyDefault.totalTimeout);
 			var response = about.Get(request, deadline: deadline);
 			return response.Version;
 		}
@@ -1357,15 +1375,20 @@ namespace Aerospike.Client
 			return QueryPartitions(policy, statement, PartitionFilter.All());
 		}
 
-		/// <summary>
-		/// Not supported in proxy client
-		/// </summary>
-		/// <param name="policy"></param>
-		/// <param name="statement"></param>
-		/// <param name="listener"></param>
-		/// <exception cref="AerospikeException"></exception>
-		/// <seealso cref="Query(QueryPolicy, Statement)"/>
-		[Obsolete("Method not supported in proxy client: Query")]
+        public RecordSet Query(QueryPolicy policy, Statement statement, CancellationToken cancellationToken = default)
+        {
+            return QueryPartitions(policy, statement, PartitionFilter.All(), cancellationToken);
+        }
+
+        /// <summary>
+        /// Not supported in proxy client
+        /// </summary>
+        /// <param name="policy"></param>
+        /// <param name="statement"></param>
+        /// <param name="listener"></param>
+        /// <exception cref="AerospikeException"></exception>
+        /// <seealso cref="Query(QueryPolicy, Statement)"/>
+        [Obsolete("Method not supported in proxy client: Query")]
 		public void Query(QueryPolicy policy, Statement statement, QueryListener listener)
 		{
 			throw new AerospikeException(NotSupported + "Query");
@@ -1411,27 +1434,37 @@ namespace Aerospike.Client
 			PartitionFilter partitionFilter
 		)
 		{
-			CancellationTokenSource source = new();
-			policy ??= queryPolicyDefault;
-			Buffer buffer = new();
-			PartitionTracker tracker = new(policy, statement, (Node[])null, partitionFilter);
-			RecordSet recordSet = new(null, policy.recordQueueSize, source.Token);
-			QueryPartitionCommandProxy command = new(buffer, CallInvoker, policy, statement, tracker, partitionFilter, recordSet);
-			command.Execute();
-			return recordSet;
+			return QueryPartitions(policy, statement, partitionFilter, CancellationToken.None);
 		}
 
-		/// <summary>
-		/// Not supported in proxy client
-		/// </summary>
-		/// <param name="policy"></param>
-		/// <param name="statement"></param>
-		/// <param name="packageName"></param>
-		/// <param name="functionName"></param>
-		/// <param name="functionArgs"></param>
-		/// <returns></returns>
-		/// <exception cref="AerospikeException"></exception>
-		[Obsolete("Method not supported in proxy client: QueryAggregate")]
+        public RecordSet QueryPartitions
+        (
+            QueryPolicy policy,
+            Statement statement,
+            PartitionFilter partitionFilter,
+            CancellationToken cancellationToken
+        )
+        {
+            policy ??= queryPolicyDefault;
+            Buffer buffer = new();
+            PartitionTracker tracker = new(policy, statement, (Node[])null, partitionFilter);
+            RecordSet recordSet = new(null, policy.recordQueueSize, cancellationToken);
+            QueryPartitionCommandProxy command = new(buffer, CallInvoker, policy, statement, tracker, partitionFilter, recordSet);
+            command.Execute(cancellationToken).Wait(policy.totalTimeout, cancellationToken);
+            return recordSet;
+        }
+
+        /// <summary>
+        /// Not supported in proxy client
+        /// </summary>
+        /// <param name="policy"></param>
+        /// <param name="statement"></param>
+        /// <param name="packageName"></param>
+        /// <param name="functionName"></param>
+        /// <param name="functionArgs"></param>
+        /// <returns></returns>
+        /// <exception cref="AerospikeException"></exception>
+        [Obsolete("Method not supported in proxy client: QueryAggregate")]
 		public ResultSet QueryAggregate
 		(
 			QueryPolicy policy,

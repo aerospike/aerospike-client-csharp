@@ -117,7 +117,11 @@ namespace Aerospike.Client
 			{
 				var client = new KVS.Query.QueryClient(CallInvoker);
 				var deadline = GetDeadline();
-				var stream = client.Query(request, deadline: deadline, cancellationToken: token);
+
+                if (Log.DebugEnabled())
+                    Log.Debug($"Execute Query: '{request.QueryRequest.Statement}': '{deadline}': {token.IsCancellationRequested}");
+
+                var stream = client.Query(request, deadline: deadline, cancellationToken: token);
 				var conn = new ConnectionProxyStream(stream);
 				await ParseResult(conn, token);
 			}
@@ -126,10 +130,16 @@ namespace Aerospike.Client
 				RecordSet.Put(RecordSet.END);
 				if (eos.ResultCode != 0)
 				{
-					// The server returned a fatal error.
-					throw new AerospikeException(eos.ResultCode);
+                    if (Log.DebugEnabled())
+                        Log.Debug($"EndOfGRPCStream Exception: {eos.ResultCode}: Exception: {eos.GetType()} Message: '{eos.Message}': '{eos}'");
+
+                    // The server returned a fatal error.
+                    throw new AerospikeException(eos.ResultCode);
 				}
-			}
+
+                if (Log.DebugEnabled())
+                    Log.Debug($"Execute Query Completed: '{this.OpCount}'");
+            }
 			catch (RpcException e)
 			{
 				throw GRPCConversions.ToAerospikeException(e, totalTimeout, IsWrite());
