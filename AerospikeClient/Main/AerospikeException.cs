@@ -29,8 +29,8 @@ namespace Aerospike.Client
 		protected int iteration = -1;
 		protected bool inDoubt;
 
-		public AerospikeException(int resultCode, string message)
-			: base(message)
+		public AerospikeException(int resultCode, string message, Exception inner = null)
+			: base(message, inner)
 		{
 			this.resultCode = resultCode;
 		}
