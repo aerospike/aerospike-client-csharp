@@ -17,314 +17,388 @@
 using Grpc.Core;
 using Grpc.Core.Interceptors;
 using Grpc.Net.Client;
-using Microsoft.AspNetCore.WebUtilities;
+
+using System.Diagnostics;
 using System.Text.Json;
+using static Aerospike.Client.Log;
 using Timer = System.Timers.Timer;
 
 namespace Aerospike.Client
 {
-	/// <summary>
-	/// Interceptor for fetching auth token and attaching to GRPC calls
-	/// </summary>
-	public sealed class AuthTokenInterceptor : Interceptor
-	{
-		private ClientPolicy ClientPolicy { get; }
-		private GrpcChannel Channel { get; }
-		private volatile bool isFetchingToken = false;
-		private AccessToken AccessToken { get; set; }
-		private Timer RefreshTimer { get; }
+    /// <summary>
+    /// Interceptor for fetching auth token and attaching to GRPC calls
+    /// </summary>
+    public sealed class AuthTokenInterceptor : Interceptor
+    {
+        private ClientPolicy ClientPolicy { get; }
+        private GrpcChannel Channel { get; }
+        
+        private AccessToken AccessToken { get; set; }
+        private Metadata MetaData { get; set; }
 
+        private readonly ManualResetEventSlim UpdatingTokenEvent = new ManualResetEventSlim(false);
+        private Timer RefreshTimer { get; }
+        
 
-		public AuthTokenInterceptor(ClientPolicy clientPolicy, GrpcChannel grpcChannel)
-		{
-			this.ClientPolicy = clientPolicy;
-			this.Channel = grpcChannel;
+        public AuthTokenInterceptor(ClientPolicy clientPolicy, GrpcChannel grpcChannel)
+        {
+            this.ClientPolicy = clientPolicy;
+            this.Channel = grpcChannel;
 
-			if (IsTokenRequired())
-			{
-				this.AccessToken = new AccessToken(DateTime.UtcNow.Millisecond, 0, String.Empty);
-				RefreshTimer = new Timer
-				{
-					Enabled = true
-				};
-				RefreshTimer.Elapsed += (sender, e) => RefreshToken();
-				RefreshTimer.Start();
-				RefreshToken();
-			}
-		}
-
-		private void RefreshToken()
-		{
-			try
-			{
-				FetchToken();
-				var interval = (int)AccessToken.expiry - DateTime.Now.Millisecond - 5 * 1000;
-				RefreshTimer.Interval = interval > 0 ? interval : 1000;
-			}
-			catch (Exception)
-			{
-				RefreshTimer.Interval = 1000;
-			}
-		}
-
-		/// <summary>
-		/// Fetch the new token if expired or scheduled for auto refresh.
-		/// </summary>
-		private void FetchToken()
-		{
-			if (!IsTokenRequired() || isFetchingToken)
-			{
-				return;
-			}
-			try
-			{
-				if (Log.DebugEnabled())
-				{
-					Log.Debug("Starting token refresh");
-				}
-				var authRequest = new Auth.AerospikeAuthRequest
-				{
-					Username = ClientPolicy.user,
-					Password = ClientPolicy.password,
-				};
-
-				isFetchingToken = true;
-
-				var client = new Auth.AuthService.AuthServiceClient(Channel);
-				var response = client.Get(authRequest);
-				AccessToken = ParseToken(response.Token);
-				isFetchingToken = false;
-			}
-			catch (RpcException e)
-			{
-				throw GRPCConversions.ToAerospikeException(e, 0, false);
-			}
-		}
-
-		private bool IsTokenRequired()
-		{
-			return ClientPolicy.user != null;
-		}
-
-		private static AccessToken ParseToken(string token)
-		{
-			string claims = token.Split(".")[1];
-			claims = claims.Replace('_', '/').Replace('-', '+');
-			int extraEquals = claims.Length % 4;
-			if (extraEquals != 0)
+            if (IsTokenRequired())
             {
-				for (int i = 0; i < 4 - extraEquals; i++)
-				{
-					claims += "=";
-				}
+                if (Log.DebugEnabled())
+                    Log.Debug("Grpc Token Required");
+
+                RefreshTimer = new Timer
+                {
+                    Enabled = false,
+                    AutoReset = false,
+                };
+                RefreshTimer.Elapsed += (sender, e) => RefreshToken();
+                RefreshToken();
+            }
+        }
+
+        private void RefreshToken()
+        {
+            RefreshTimer.Stop();
+
+            try
+            {
+               if (Log.DebugEnabled())
+                    Log.Debug($"Refresh Token Timer: Enter: {AccessToken}: '{DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss.fff")}'");
+
+                FetchToken();
+                RefreshTimer.Interval = AccessToken.RefreshTime;
+                RefreshTimer.Start();
+
+                if (Log.DebugEnabled())
+                    Log.Debug($"Refresh Token Timer: Exit: {AccessToken}: '{DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss.fff")}'");                
+            }
+            catch (Exception ex)
+            {                
+                Log.Error($"Refresh Token Timer Error {AccessToken} '{DateTime.UtcNow}' Exception: '{ex}'");
+                System.Diagnostics.Debug.WriteLine($"Refresh Token Timer Error {AccessToken} '{DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss.fff")}' '{ex}'");
+
+                //Make sure Timer is stopped so that we force the API calls to reauthorize the token. 
+                //In this manner, if there are any issues the exception is properly thrown upstream 
+                //instead of in the timer thread.
+                RefreshTimer.Stop();
+
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// Fetch the new token if expired or scheduled for auto refresh.
+        /// </summary>
+        private void FetchToken()
+        {
+            if (this.Channel is null 
+                    || !this.IsTokenRequired()) { return; }
+            
+            this.UpdatingTokenEvent.Reset();
+            try
+            {
+                if (Log.DebugEnabled())
+                    Log.Debug($"FetchToken: Enter: {AccessToken}");
+
+                var authRequest = new Auth.AerospikeAuthRequest
+                {
+                    Username = ClientPolicy.user,
+                    Password = ClientPolicy.password
+                };
+
+                var client = new Auth.AuthService.AuthServiceClient(Channel);
+                var response = client.Get(authRequest,
+                                            deadline: DateTime.UtcNow.AddMilliseconds(this.ClientPolicy.loginTimeout));
+
+                this.AccessToken = ParseToken(response.Token);
+                this.MetaData = new Metadata
+                                    {
+                                        new Metadata.Entry("Authorization", $"Bearer {response.Token}")
+                                    };
+
+                if (Log.DebugEnabled())
+                    Log.Debug($"FetchToken: Exchanged New Token: {AccessToken}");
+            }
+            catch (RpcException e)
+            {
+                Log.Error($"FetchToken: Error: {AccessToken}: '{DateTime.UtcNow}': Exception: '{e}'");
+                System.Diagnostics.Debug.WriteLine($"FetchToken: Error: {AccessToken}: '{DateTime.UtcNow}': '{e}'");
+                
+                throw GRPCConversions.ToAerospikeException(e, this.ClientPolicy.loginTimeout, false);
+            }
+            finally
+            {
+                this.UpdatingTokenEvent.Set();
+            }
+        }
+
+        private bool IsTokenRequired()
+        {
+            return ClientPolicy.user != null;
+        }
+
+        private static AccessToken ParseToken(string token)
+        {
+            string claims = token.Split(".")[1];
+            claims = claims.Replace('_', '/').Replace('-', '+');
+            int extraEquals = claims.Length % 4;
+            if (extraEquals != 0)
+            {
+                for (int i = 0; i < 4 - extraEquals; i++)
+                {
+                    claims += "=";
+                }
             }
             byte[] decodedClaims = Convert.FromBase64String(claims);
-			Dictionary<string, object> parsedClaims = (Dictionary<string, object>)System.Text.Json.JsonSerializer.Deserialize(System.Text.Encoding.UTF8.GetString(decodedClaims.ToArray()), typeof(Dictionary<string, object>));
-			JsonElement expiryToken = (JsonElement)parsedClaims.GetValueOrDefault("exp");
-			JsonElement iat = (JsonElement)parsedClaims.GetValueOrDefault("iat");
-			if (expiryToken.ValueKind == JsonValueKind.Number && iat.ValueKind == JsonValueKind.Number)
-			{
-				long expiryTokenLong = expiryToken.GetInt64();
-				long iatLong = iat.GetInt64();
-				long ttl = (expiryTokenLong - iatLong) * 1000;
-				if (ttl <= 0)
-				{
-					throw new AerospikeException("token 'iat' > 'exp'");
-				}
-				// Set expiry based on local clock.
-				long expiry = DateTime.UtcNow.Millisecond + ttl;
-				return new AccessToken(expiry, ttl, token);
-			}
-			else
-			{
-				throw new AerospikeException("Unsupported access token format");
-			}
-		}
+            var strClaims = System.Text.Encoding.UTF8.GetString(decodedClaims.ToArray());
+            Dictionary<string, object> parsedClaims = (Dictionary<string, object>)System.Text.Json.JsonSerializer.Deserialize(strClaims, typeof(Dictionary<string, object>));
+            JsonElement expiryToken = (JsonElement)parsedClaims.GetValueOrDefault("exp");
+            JsonElement iat = (JsonElement)parsedClaims.GetValueOrDefault("iat");
+            if (expiryToken.ValueKind == JsonValueKind.Number && iat.ValueKind == JsonValueKind.Number)
+            {
+                long expiryTokenLong = expiryToken.GetInt64();
+                long iatLong = iat.GetInt64();
+                long ttl = (expiryTokenLong - iatLong) * 1000;
+                if (ttl <= 0)
+                {
+                    Log.Error($"ParseToken Error 'iat' > 'exp' token: '{strClaims}'");
+                    System.Diagnostics.Debug.WriteLine($"ParseToken 'iat' > 'exp' Error token: '{strClaims}'");
 
-		private bool IsTokenValid()
-		{
-			AccessToken token = AccessToken;
-			return !IsTokenRequired() || (token.token != String.Empty && !token.HasExpired());
-		}
+                    throw new AerospikeException("token 'iat' > 'exp'");
+                }
 
-		public override TResponse BlockingUnaryCall<TRequest, TResponse>(
-			TRequest request,
-			ClientInterceptorContext<TRequest, TResponse> context,
-			BlockingUnaryCallContinuation<TRequest, TResponse> continuation)
-		{
-			if (IsTokenRequired())
-			{
-				context.Options.CancellationToken.ThrowIfCancellationRequested();
-				if (IsTokenValid())
-				{
-					var headers = new Metadata
-					{
-						new Metadata.Entry("Authorization", $"Bearer {AccessToken.token}")
-					};
+                return new AccessToken(ttl, token);
+            }
+            else
+            {
+                Log.Error($"ParseToken Error token: '{strClaims}'");
+                System.Diagnostics.Debug.WriteLine($"ParseToken Error token: '{strClaims}'");
+                
+                throw new AerospikeException("Unsupported access token format");
+            }
+        }
+        
+        /// <summary>
+        /// Checks to ensure that the token is still valid or if it is in the process of being updated.
+        /// If the token is being updated, the call is blocked waiting for the token to be reauthorized.
+        /// If the token is expired and not being updated, call <seealso cref="RefreshToken"/> to reschedule the timer and get a valid token.
+        /// </summary>
+        /// <returns>returns true if new token</returns>
+        private bool GetTokenIfNeeded()
+        {
+            if (IsTokenRequired())
+            {
+                if (AccessToken.HasExpired && this.UpdatingTokenEvent.IsSet)
+                {
+                    if (Log.DebugEnabled())
+                        Log.Debug($"GetTokenIfNeeded: Expired: Token: {AccessToken}");
 
-					var newOptions = context.Options.WithHeaders(headers);
+                    this.UpdatingTokenEvent.Reset();
+                    this.RefreshToken();
 
-					var newContext = new ClientInterceptorContext<TRequest, TResponse>(
-						context.Method,
-						context.Host,
-						newOptions);
+                    if (Log.DebugEnabled())
+                        Log.Debug($"GetTokenIfNeeded: New Token: {AccessToken}");
+                }
+                this.UpdatingTokenEvent.Wait(this.ClientPolicy.timeout);
+                return true;
+            }
 
-					return base.BlockingUnaryCall(request, newContext, continuation);
-				}
-			}
+            return false;
+        }
+        
+        public override TResponse BlockingUnaryCall<TRequest, TResponse>(
+            TRequest request,
+            ClientInterceptorContext<TRequest, TResponse> context,
+            BlockingUnaryCallContinuation<TRequest, TResponse> continuation)
+        {
+            
+            context.Options.CancellationToken.ThrowIfCancellationRequested();
+            if (GetTokenIfNeeded())
+            {
+                if (Log.DebugEnabled())
+                    Log.Debug($"BlockingUnaryCall<TRequest, TResponse>: New Token: {AccessToken}");
 
-			return continuation(request, context);
-		}
+                var newOptions = context.Options.WithHeaders(this.MetaData);
 
-		public override AsyncUnaryCall<TResponse> AsyncUnaryCall<TRequest, TResponse>(
-			TRequest request,
-			ClientInterceptorContext<TRequest, TResponse> context,
-			AsyncUnaryCallContinuation<TRequest, TResponse> continuation)
-		{
-			if (IsTokenRequired())
-			{
-				context.Options.CancellationToken.ThrowIfCancellationRequested();
-				if (IsTokenValid())
-				{
-					var headers = new Metadata
-					{
-						new Metadata.Entry("Authorization", $"Bearer {AccessToken.token}")
-					};
+                var newContext = new ClientInterceptorContext<TRequest, TResponse>(
+                    context.Method,
+                    context.Host,
+                    newOptions);
 
-					var newOptions = context.Options.WithHeaders(headers);
+                return base.BlockingUnaryCall(request, newContext, continuation);
+            }
 
-					var newContext = new ClientInterceptorContext<TRequest, TResponse>(
-						context.Method,
-						context.Host,
-						newOptions);
+            if (Log.DebugEnabled())
+                Log.Debug($"BlockingUnaryCall<TRequest, TResponse>: Enter: {AccessToken}");
 
-					return base.AsyncUnaryCall(request, newContext, continuation);
-				}
-			}
+            return continuation(request, context);            
+        }
 
-			var call = continuation(request, context);
-			return new AsyncUnaryCall<TResponse>(HandleResponse(call.ResponseAsync), call.ResponseHeadersAsync, call.GetStatus, call.GetTrailers, call.Dispose);
+        public override AsyncUnaryCall<TResponse> AsyncUnaryCall<TRequest, TResponse>(
+            TRequest request,
+            ClientInterceptorContext<TRequest, TResponse> context,
+            AsyncUnaryCallContinuation<TRequest, TResponse> continuation)
+        {
+           context.Options.CancellationToken.ThrowIfCancellationRequested();
+            if (GetTokenIfNeeded())
+            {
+                if (Log.DebugEnabled())
+                    Log.Debug($"AsyncUnaryCall<TRequest, TResponse>: New token: {AccessToken}");
 
-		}
+                var newOptions = context.Options.WithHeaders(this.MetaData);
 
-		private async Task<TResponse> HandleResponse<TResponse>(Task<TResponse> t)
-		{
-			var response = await t;
-			return response;
-		}
+                var newContext = new ClientInterceptorContext<TRequest, TResponse>(
+                    context.Method,
+                    context.Host,
+                    newOptions);
 
-		public override AsyncClientStreamingCall<TRequest, TResponse> AsyncClientStreamingCall<TRequest, TResponse>(
-			ClientInterceptorContext<TRequest, TResponse> context,
-			AsyncClientStreamingCallContinuation<TRequest, TResponse> continuation)
-		{
-			if (IsTokenRequired())
-			{
-				context.Options.CancellationToken.ThrowIfCancellationRequested();
-				if (IsTokenValid())
-				{
-					var headers = new Metadata
-					{
-						new Metadata.Entry("Authorization", $"Bearer {AccessToken.token}")
-					};
+                var r = base.AsyncUnaryCall(request, newContext, continuation);
 
-					var newOptions = context.Options.WithHeaders(headers);
+                return r;
+            }
 
-					var newContext = new ClientInterceptorContext<TRequest, TResponse>(
-						context.Method,
-						context.Host,
-						newOptions);
+            if (Log.DebugEnabled())
+                Log.Debug($"AsyncUnaryCall<TRequest, TResponse>: Enter: {AccessToken}");
 
-					return base.AsyncClientStreamingCall(newContext, continuation);
-				}
-			}
+            var call = continuation(request, context);
+            return new AsyncUnaryCall<TResponse>(HandleResponse(call.ResponseAsync), call.ResponseHeadersAsync, call.GetStatus, call.GetTrailers, call.Dispose);        
+        }
 
-			return continuation(context);
-		}
+        private async Task<TResponse> HandleResponse<TResponse>(Task<TResponse> t)
+        {
+            var response = await t;
+            return response;
+        }
 
-		public override AsyncServerStreamingCall<TResponse> AsyncServerStreamingCall<TRequest, TResponse>(
-			TRequest request,
-			ClientInterceptorContext<TRequest, TResponse> context,
-			AsyncServerStreamingCallContinuation<TRequest, TResponse> continuation)
-		{
-			if (IsTokenRequired())
-			{
-				context.Options.CancellationToken.ThrowIfCancellationRequested();
-				if (IsTokenValid())
-				{
-					var headers = new Metadata
-					{
-						new Metadata.Entry("Authorization", $"Bearer {AccessToken.token}")
-					};
+        public override AsyncClientStreamingCall<TRequest, TResponse> AsyncClientStreamingCall<TRequest, TResponse>(
+            ClientInterceptorContext<TRequest, TResponse> context,
+            AsyncClientStreamingCallContinuation<TRequest, TResponse> continuation)
+        {
+           context.Options.CancellationToken.ThrowIfCancellationRequested();
+                if (GetTokenIfNeeded())
+                {
+                    if (Log.DebugEnabled())
+                        Log.Debug($"AsyncClientStreamingCall<TRequest, TResponse>: New token: {AccessToken}");
 
-					var newOptions = context.Options.WithHeaders(headers);
+                    var newOptions = context.Options.WithHeaders(this.MetaData);
 
-					var newContext = new ClientInterceptorContext<TRequest, TResponse>(
-						context.Method,
-						context.Host,
-						newOptions);
+                    var newContext = new ClientInterceptorContext<TRequest, TResponse>(
+                        context.Method,
+                        context.Host,
+                        newOptions);
 
-					return base.AsyncServerStreamingCall(request, newContext, continuation);
-				}
-			}
+                    return base.AsyncClientStreamingCall(newContext, continuation);
+                }
 
-			return continuation(request, context);
-		}
+                if (Log.DebugEnabled())
+                    Log.Debug($"AsyncClientStreamingCall<TRequest, TResponse>: Enter: {AccessToken}");
 
-		public override AsyncDuplexStreamingCall<TRequest, TResponse> AsyncDuplexStreamingCall<TRequest, TResponse>(
-			ClientInterceptorContext<TRequest, TResponse> context,
-			AsyncDuplexStreamingCallContinuation<TRequest, TResponse> continuation)
-		{
-			if (IsTokenRequired())
-			{
-				context.Options.CancellationToken.ThrowIfCancellationRequested();
-				if (IsTokenValid())
-				{
-					var headers = new Metadata
-					{
-						new Metadata.Entry("Authorization", $"Bearer {AccessToken.token}")
-					};
+                return continuation(context);            
+        }
 
-					var newOptions = context.Options.WithHeaders(headers);
+        public override AsyncServerStreamingCall<TResponse> AsyncServerStreamingCall<TRequest, TResponse>(
+            TRequest request,
+            ClientInterceptorContext<TRequest, TResponse> context,
+            AsyncServerStreamingCallContinuation<TRequest, TResponse> continuation)
+        {
+            context.Options.CancellationToken.ThrowIfCancellationRequested();
+            if (GetTokenIfNeeded())
+            {
+                if (Log.DebugEnabled())
+                    Log.Debug($"AsyncServerStreamingCall<TRequest, TResponse>: New token: {AccessToken}");
 
-					var newContext = new ClientInterceptorContext<TRequest, TResponse>(
-						context.Method,
-						context.Host,
-						newOptions);
+                var newOptions = context.Options.WithHeaders(this.MetaData);
 
-					return base.AsyncDuplexStreamingCall(newContext, continuation);
-				}
-			}
+                var newContext = new ClientInterceptorContext<TRequest, TResponse>(
+                    context.Method,
+                    context.Host,
+                    newOptions);
 
-			return continuation(context);
-		}
-	}
+                return base.AsyncServerStreamingCall(request, newContext, continuation);
+            }
+            if (Log.DebugEnabled())
+                Log.Debug($"AsyncServerStreamingCall<TRequest, TResponse>: Enter: {AccessToken}");
 
-	internal readonly struct AccessToken
-	{
-		/// <summary>
-		/// Local token expiry timestamp in millis.
-		/// </summary>
-		internal readonly long expiry;
-		/// <summary>
-		/// Remaining time to live for the token in millis.
-		/// </summary>
-		internal readonly long ttl;
-		/// <summary>
-		/// An access token for Aerospike proxy.
-		/// </summary>
-		internal readonly string token;
+            return continuation(request, context);            
+        }
 
-		public AccessToken(long expiry, long ttl, string token)
-		{
-			this.expiry = expiry;
-			this.ttl = ttl;
-			this.token = token;
-		}
+        public override AsyncDuplexStreamingCall<TRequest, TResponse> AsyncDuplexStreamingCall<TRequest, TResponse>(
+            ClientInterceptorContext<TRequest, TResponse> context,
+            AsyncDuplexStreamingCallContinuation<TRequest, TResponse> continuation)
+        {
+            context.Options.CancellationToken.ThrowIfCancellationRequested();
+            if (GetTokenIfNeeded())
+            {
+                if (Log.DebugEnabled())
+                    Log.Debug($"AsyncDuplexStreamingCall<TRequest, TResponse>: New token: {AccessToken}");
 
-		public bool HasExpired()
-		{
-			return DateTime.UtcNow.Millisecond > expiry;
-		}
-	}
+                var newOptions = context.Options.WithHeaders(this.MetaData);
+
+                var newContext = new ClientInterceptorContext<TRequest, TResponse>(
+                    context.Method,
+                    context.Host,
+                    newOptions);
+
+                return base.AsyncDuplexStreamingCall(newContext, continuation);
+            }
+
+            if (Log.DebugEnabled())
+                Log.Debug($"AsyncDuplexStreamingCall<TRequest, TResponse>: Enter: {AccessToken}");
+
+            return continuation(context);            
+        }
+    }
+
+    internal class AccessToken
+    {
+        private const float refreshAfterFraction = 0.75f;
+
+        /// <summary>
+        /// Local token expiry timestamp in mills.
+        /// </summary>
+        private readonly Stopwatch expiry;
+        /// <summary>
+        /// Remaining time to live for the token in mills.
+        /// </summary>
+        private readonly long ttl;
+
+        /// <summary>
+        /// The time before <see cref="ttl"/> to obtain the new token by getting one from the server.
+        /// </summary>
+        public readonly long RefreshTime;
+
+        /// <summary>
+        /// An access token for Aerospike proxy.
+        /// </summary>
+        public readonly string Token;
+
+        public AccessToken(long ttl, string token)
+        {
+            this.expiry = Stopwatch.StartNew();
+            this.ttl = ttl;
+            this.RefreshTime = (long)Math.Floor(ttl * refreshAfterFraction);
+            this.Token = token;
+            System.Diagnostics.Debug.WriteLine(this);
+        }
+
+        /// <summary>
+        /// Token Has Expired
+        /// </summary>
+        public bool HasExpired => expiry.ElapsedMilliseconds >= ttl;
+
+        /// <summary>
+        /// Token should be refreshed before hitting expiration
+        /// </summary>
+        public bool ShouldRefreshToken => expiry.ElapsedMilliseconds >= RefreshTime;
+
+        public override string ToString()
+        {
+            return $"AccessToken{{TokenHash:{Token?.GetHashCode()}, TimeRemain:{expiry.ElapsedMilliseconds}, TTL:{ttl}, RefreshOn:{RefreshTime}}}";
+        }
+    }
 }
 
