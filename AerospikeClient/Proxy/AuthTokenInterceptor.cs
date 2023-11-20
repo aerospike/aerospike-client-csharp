@@ -424,11 +424,11 @@ namespace Aerospike.Client
         /// <summary>
         /// This factor is used when the <see cref="RefreshTime"/> calculation is less or equal to zero
         /// </summary>
-        private const float refreshZeroFraction = 0.50f;
+        private const float refreshZeroFraction = 0.10f;
         /// <summary>
         /// This factor is used when the <see cref="RefreshTime"/> calculation is greater or equal to <see cref="ttl"/>
         /// </summary>
-        private const float refreshAfterFraction = 0.75f;
+        private const float refreshAfterFraction = 0.85f;
 
         /// <summary>
         /// Local token expiry timestamp in mills.
@@ -459,15 +459,21 @@ namespace Aerospike.Client
         {
             this.expiry = Stopwatch.StartNew();
             this.ttl = ttl;
-            this.RefreshTime = ttl - Math.Min((long)(ttl* refreshAfterFraction)-tokenFetchLatency,timeout);
-            if(this.RefreshTime <= 0)
+
+            var useFetchLatency = tokenFetchLatency * 2 >= timeout
+                                        ? timeout * 0.5
+                                        : tokenFetchLatency;
+            var possibleRefreshTime = (ttl * refreshAfterFraction) - useFetchLatency;
+
+            if(possibleRefreshTime > 0 && possibleRefreshTime < ttl)
+            {
+                this.RefreshTime = ttl - (long) possibleRefreshTime;
+            }
+            else
             {
                 this.RefreshTime = (long)Math.Floor(ttl * refreshZeroFraction);
             }
-            else if(this.RefreshTime >= ttl)
-            {
-                this.RefreshTime = (long)Math.Floor(ttl * refreshAfterFraction);
-            }
+            
             this.TokenFetchLatency = tokenFetchLatency;
             this.Token = token;
 
