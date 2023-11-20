@@ -295,7 +295,7 @@ namespace Aerospike.Client
                     if (Log.DebugEnabled())
                         Log.Debug($"AerospikeException Deadline: {resultCode}: Exception: {rpc.GetType()} Message: '{rpc.Message}': '{rpc}'");
 
-                    return new AerospikeException.Timeout(timeout, inDoubt);
+                    return new AerospikeException.Timeout(timeout, inDoubt, rpc);
 
 				case StatusCode.PermissionDenied:
 					resultCode = ResultCode.FAIL_FORBIDDEN;

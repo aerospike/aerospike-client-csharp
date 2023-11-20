@@ -17,7 +17,7 @@
 using Grpc.Core;
 using Grpc.Core.Interceptors;
 using Grpc.Net.Client;
-
+using Microsoft.AspNetCore.Razor.Runtime.TagHelpers;
 using System.Diagnostics;
 using System.Text.Json;
 using static Aerospike.Client.Log;
@@ -26,23 +26,38 @@ using Timer = System.Timers.Timer;
 namespace Aerospike.Client
 {
     /// <summary>
-    /// Interceptor for fetching auth token and attaching to GRPC calls
+    /// Interceptor for fetching custom user authorization token
     /// </summary>
+    /// <remarks>
+    /// For token reauthorization to work properly the driver code would need to be re-factored to allow for Unauthorized exceptions to be retried. 
+    /// Also support for OAuth2 tokens or JWT would greatly help instead of this custom token being provided.
+    /// </remarks>
     public sealed class AuthTokenInterceptor : Interceptor
     {
+        //Do we need a different policy for the proper timeout?
         private ClientPolicy ClientPolicy { get; }
-        private GrpcChannel Channel { get; }
+        private GrpcChannel Channel { get; set; }
         
         private AccessToken AccessToken { get; set; }
-        private Metadata MetaData { get; set; }
-
-        private readonly ManualResetEventSlim UpdatingTokenEvent = new ManualResetEventSlim(false);
-        private Timer RefreshTimer { get; }
+        private readonly ManualResetEventSlim UpdatingToken = new ManualResetEventSlim(false);
+        private Timer RefreshTokenTimer { get; set; }
         
 
+        /*
         public AuthTokenInterceptor(ClientPolicy clientPolicy, GrpcChannel grpcChannel)
         {
             this.ClientPolicy = clientPolicy;
+            this.SetChannel(grpcChannel);
+        }
+        */
+
+        public AuthTokenInterceptor(ClientPolicy clientPolicy)
+        {
+            this.ClientPolicy = clientPolicy;            
+        }
+
+        public void SetChannel(GrpcChannel grpcChannel)
+        {
             this.Channel = grpcChannel;
 
             if (IsTokenRequired())
@@ -50,98 +65,191 @@ namespace Aerospike.Client
                 if (Log.DebugEnabled())
                     Log.Debug("Grpc Token Required");
 
-                RefreshTimer = new Timer
+                RefreshTokenTimer = new Timer
                 {
                     Enabled = false,
                     AutoReset = false,
                 };
-                RefreshTimer.Elapsed += (sender, e) => RefreshToken();
-                RefreshToken();
-            }
-        }
-
-        private void RefreshToken()
-        {
-            RefreshTimer.Stop();
-
-            try
-            {
-               if (Log.DebugEnabled())
-                    Log.Debug($"Refresh Token Timer: Enter: {AccessToken}: '{DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss.fff")}'");
-
-                FetchToken();
-                RefreshTimer.Interval = AccessToken.RefreshTime;
-                RefreshTimer.Start();
-
-                if (Log.DebugEnabled())
-                    Log.Debug($"Refresh Token Timer: Exit: {AccessToken}: '{DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss.fff")}'");                
-            }
-            catch (Exception ex)
-            {                
-                Log.Error($"Refresh Token Timer Error {AccessToken} '{DateTime.UtcNow}' Exception: '{ex}'");
-                System.Diagnostics.Debug.WriteLine($"Refresh Token Timer Error {AccessToken} '{DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss.fff")}' '{ex}'");
-
-                //Make sure Timer is stopped so that we force the API calls to reauthorize the token. 
-                //In this manner, if there are any issues the exception is properly thrown upstream 
-                //instead of in the timer thread.
-                RefreshTimer.Stop();
-
-                throw;
+                RefreshTokenTimer.Elapsed += (sender, e) => RefreshTokenEvent();
+                RefreshToken(CancellationToken.None).Wait(this.ClientPolicy.timeout);
             }
         }
 
         /// <summary>
-        /// Fetch the new token if expired or scheduled for auto refresh.
+        /// Called by the Token Refresh Timer <seealso cref="RefreshTokenTimer"/>
+        /// Note: <see cref="RefreshToken(CancellationToken)"/> method must be called to activate the timer properly!
         /// </summary>
-        private void FetchToken()
+        /// <remarks>
+        /// These are not precise timers and can fire later than the defined interval. 
+        /// </remarks>
+        private void RefreshTokenEvent()
         {
-            if (this.Channel is null 
-                    || !this.IsTokenRequired()) { return; }
+            //If the Token is not being updated and the token needs to be refreshed, than get a new token... 
+            if (this.UpdatingToken.IsSet && this.AccessToken.ShouldRefreshToken)
+            {
+                if (Log.DebugEnabled())
+                    Log.Debug($"Refresh Token Event: Enter: {AccessToken}: '{DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss.fff")}'");
+
+                if (IsTokenRequired())
+                {
+                    try
+                    {
+                        this.RefreshToken(CancellationToken.None).Wait(this.ClientPolicy.timeout);
+                    }
+                    catch
+                    {
+                        if (Log.DebugEnabled())
+                            Log.Debug($"Refresh Token Event: Exception: {AccessToken}: '{DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss.fff")}'");
+                        throw;
+                    }
+                }
+
+                if (Log.DebugEnabled())
+                    Log.Debug($"Refresh Token Event: Exit: {AccessToken}: '{DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss.fff")}'");
+            }
+            else
+            {
+                if (Log.DebugEnabled())
+                    Log.Debug($"Refresh Token Event: Skipped: {AccessToken}: '{DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss.fff")}'");
+
+            }
+        }
+
+        /// <summary>
+        /// Performs the act of fetching a new token. 
+        /// This will cause all new requests to block until a new token is obtain. 
+        /// Request that are already obtained their token and in queue are not effective. 
+        /// 
+        /// This method also sets/configs the <see cref="RefreshTokenTimer"/> and this must be called after the timer is initially configured.
+        /// </summary>
+        /// <param name="cancellationToken"></param>
+        /// <returns></returns>
+        private async Task RefreshToken(CancellationToken cancellationToken)
+        {            
+            //Block requests until a new token is obtained...
+            this.UpdatingToken.Reset();
             
-            this.UpdatingTokenEvent.Reset();
+            //Stop Timer
+            RefreshTokenTimer.Stop();
+            var prevTimerInterval = this.RefreshTokenTimer.Interval;
+
+            try
+            {
+               if (Log.DebugEnabled())
+                    Log.Debug($"Refresh Token: Enter: {AccessToken}");
+                
+                var prevToken = this.AccessToken;
+                this.AccessToken = await FetchToken(this.Channel,
+                                                    this.ClientPolicy.user,
+                                                    this.ClientPolicy.password,
+                                                    this.ClientPolicy.timeout,
+                                                    this.AccessToken,
+                                                    cancellationToken);
+                RefreshTokenTimer.Interval = AccessToken.RefreshTime;
+
+                //Restart timer
+                RefreshTokenTimer.Start();
+                prevToken?.Dispose();
+
+                if (Log.DebugEnabled())
+                    Log.Debug($"Refresh Token: Exit: {AccessToken}");                
+            }
+            catch(AerospikeException)
+            {
+                throw;
+            }
+            catch (ArgumentException argEx) //thrown if timer interval is bad...
+            {
+                Log.Error($"Refresh Token Error {AccessToken} Exception: '{argEx}'");
+                System.Diagnostics.Debug.WriteLine($"Refresh Token Error {AccessToken} '{argEx}'");
+
+                this.RefreshTokenTimer.Interval = prevTimerInterval;
+                //Restart timer
+                RefreshTokenTimer.Start();
+            }
+            catch (OperationCanceledException)
+            {
+                Log.Error($"Refresh Token: Cancellation: {AccessToken}: '{DateTime.UtcNow}'");
+                throw;
+            }            
+            catch (Exception ex)
+            {                
+                Log.Error($"Refresh Token Error {AccessToken} Exception: '{ex}'");
+                System.Diagnostics.Debug.WriteLine($"Refresh Token Error {AccessToken} '{DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss.fff")}' '{ex}'");
+
+                throw;
+            }
+            finally
+            {                
+                //Always Unblock requests
+                this.UpdatingToken.Set();
+            }
+        }
+
+        /// <summary>
+        /// Fetch the new token regardless of TTL...
+        /// Should not be called directly...
+        /// </summary>
+        /// <param name="channel"></param>
+        /// <param name="userName"></param>
+        /// <param name="password"></param>
+        /// <param name="timeout"></param>
+        /// <param name="currentToken"></param>
+        /// <param name="cancellationToken"></param>
+        /// <returns></returns>
+        private static async Task<AccessToken> FetchToken(GrpcChannel channel,
+                                                            string userName,
+                                                            string password,
+                                                            long timeout,
+                                                            AccessToken currentToken,
+                                                            CancellationToken cancellationToken)
+        {           
             try
             {
                 if (Log.DebugEnabled())
-                    Log.Debug($"FetchToken: Enter: {AccessToken}");
+                    Log.Debug($"FetchToken: Enter: {currentToken}");
 
+                //This will not be the true Get latency since it may include scheduling costs
+                var trackLatency = Stopwatch.StartNew();
                 var authRequest = new Auth.AerospikeAuthRequest
                 {
-                    Username = ClientPolicy.user,
-                    Password = ClientPolicy.password
+                    Username = userName,
+                    Password = password
                 };
 
-                var client = new Auth.AuthService.AuthServiceClient(Channel);
-                var response = client.Get(authRequest,
-                                            deadline: DateTime.UtcNow.AddMilliseconds(this.ClientPolicy.loginTimeout));
-
-                this.AccessToken = ParseToken(response.Token);
-                this.MetaData = new Metadata
-                                    {
-                                        new Metadata.Entry("Authorization", $"Bearer {response.Token}")
-                                    };
-
+                var client = new Auth.AuthService.AuthServiceClient(channel);
+                var response = await client.GetAsync(authRequest,
+                                                        cancellationToken: cancellationToken,
+                                                        deadline: DateTime.UtcNow.AddMilliseconds(timeout));                                    
+                trackLatency.Stop();
+                
                 if (Log.DebugEnabled())
-                    Log.Debug($"FetchToken: Exchanged New Token: {AccessToken}");
+                    Log.Debug($"FetchToken: Server Responded: Latency: {trackLatency.ElapsedMilliseconds}");
+
+                var newToken = ParseToken(response.Token, 
+                                            trackLatency.ElapsedMilliseconds,
+                                            timeout);
+                
+                if (Log.DebugEnabled())
+                    Log.Debug($"FetchToken: Exchanged New Token: {newToken}");
+
+                return newToken;
+            }
+            catch (OperationCanceledException)
+            {
+                Log.Error($"FetchToken: Cancellation: {currentToken}: '{DateTime.UtcNow}'");
+                throw;
             }
             catch (RpcException e)
             {
-                Log.Error($"FetchToken: Error: {AccessToken}: '{DateTime.UtcNow}': Exception: '{e}'");
-                System.Diagnostics.Debug.WriteLine($"FetchToken: Error: {AccessToken}: '{DateTime.UtcNow}': '{e}'");
+                Log.Error($"FetchToken: Error: {currentToken}: '{DateTime.UtcNow}': Exception: '{e}'");
+                System.Diagnostics.Debug.WriteLine($"FetchToken: Error: {currentToken}: '{DateTime.UtcNow}': '{e}'");
                 
-                throw GRPCConversions.ToAerospikeException(e, this.ClientPolicy.loginTimeout, false);
-            }
-            finally
-            {
-                this.UpdatingTokenEvent.Set();
-            }
+                throw GRPCConversions.ToAerospikeException(e, (int) timeout, false);
+            }            
         }
-
-        private bool IsTokenRequired()
-        {
-            return ClientPolicy.user != null;
-        }
-
-        private static AccessToken ParseToken(string token)
+        
+        private static AccessToken ParseToken(string token, long tokenFetchLatency, long timeout)
         {
             string claims = token.Split(".")[1];
             claims = claims.Replace('_', '/').Replace('-', '+');
@@ -171,7 +279,7 @@ namespace Aerospike.Client
                     throw new AerospikeException("token 'iat' > 'exp'");
                 }
 
-                return new AccessToken(ttl, token);
+                return new AccessToken(ttl, token, tokenFetchLatency, timeout);
             }
             else
             {
@@ -181,57 +289,54 @@ namespace Aerospike.Client
                 throw new AerospikeException("Unsupported access token format");
             }
         }
+
+        /// <summary>
+        /// Determines if a Token is required
+        /// </summary>
+        /// <returns>True id token is required</returns>
+        public bool IsTokenRequired()
+        {
+            return ClientPolicy.user != null;
+        }
         
         /// <summary>
-        /// Checks to ensure that the token is still valid or if it is in the process of being updated.
+        /// Returns a token is one is required. 
         /// If the token is being updated, the call is blocked waiting for the token to be reauthorized.
-        /// If the token is expired and not being updated, call <seealso cref="RefreshToken"/> to reschedule the timer and get a valid token.
+        /// If the token is current, it is returned.
         /// </summary>
-        /// <returns>returns true if new token</returns>
-        private bool GetTokenIfNeeded()
-        {
+        /// <returns>returns current token or null indicating a token is not required</returns>
+        /// <param name="cancellationToken"></param>
+        public async Task<AccessToken> GetToken(CancellationToken cancellationToken)
+        {            
             if (IsTokenRequired())
             {
-                if (AccessToken.HasExpired && this.UpdatingTokenEvent.IsSet)
+                if (AccessToken.HasExpired && this.UpdatingToken.IsSet)
                 {
+                    this.UpdatingToken.Reset();
                     if (Log.DebugEnabled())
                         Log.Debug($"GetTokenIfNeeded: Expired: Token: {AccessToken}");
 
-                    this.UpdatingTokenEvent.Reset();
-                    this.RefreshToken();
+                    await this.RefreshToken(cancellationToken);
 
                     if (Log.DebugEnabled())
                         Log.Debug($"GetTokenIfNeeded: New Token: {AccessToken}");
                 }
-                this.UpdatingTokenEvent.Wait(this.ClientPolicy.timeout);
-                return true;
+
+                //If token being updated, the request will be blocked until the new token is obtained.
+                this.UpdatingToken.Wait(this.ClientPolicy.timeout, cancellationToken);
+
+                return this.AccessToken;
             }
 
-            return false;
+            return null;
         }
-        
+
         public override TResponse BlockingUnaryCall<TRequest, TResponse>(
             TRequest request,
             ClientInterceptorContext<TRequest, TResponse> context,
             BlockingUnaryCallContinuation<TRequest, TResponse> continuation)
         {
-            
-            context.Options.CancellationToken.ThrowIfCancellationRequested();
-            if (GetTokenIfNeeded())
-            {
-                if (Log.DebugEnabled())
-                    Log.Debug($"BlockingUnaryCall<TRequest, TResponse>: New Token: {AccessToken}");
-
-                var newOptions = context.Options.WithHeaders(this.MetaData);
-
-                var newContext = new ClientInterceptorContext<TRequest, TResponse>(
-                    context.Method,
-                    context.Host,
-                    newOptions);
-
-                return base.BlockingUnaryCall(request, newContext, continuation);
-            }
-
+                        
             if (Log.DebugEnabled())
                 Log.Debug($"BlockingUnaryCall<TRequest, TResponse>: Enter: {AccessToken}");
 
@@ -243,24 +348,7 @@ namespace Aerospike.Client
             ClientInterceptorContext<TRequest, TResponse> context,
             AsyncUnaryCallContinuation<TRequest, TResponse> continuation)
         {
-           context.Options.CancellationToken.ThrowIfCancellationRequested();
-            if (GetTokenIfNeeded())
-            {
-                if (Log.DebugEnabled())
-                    Log.Debug($"AsyncUnaryCall<TRequest, TResponse>: New token: {AccessToken}");
-
-                var newOptions = context.Options.WithHeaders(this.MetaData);
-
-                var newContext = new ClientInterceptorContext<TRequest, TResponse>(
-                    context.Method,
-                    context.Host,
-                    newOptions);
-
-                var r = base.AsyncUnaryCall(request, newContext, continuation);
-
-                return r;
-            }
-
+           
             if (Log.DebugEnabled())
                 Log.Debug($"AsyncUnaryCall<TRequest, TResponse>: Enter: {AccessToken}");
 
@@ -278,48 +366,18 @@ namespace Aerospike.Client
             ClientInterceptorContext<TRequest, TResponse> context,
             AsyncClientStreamingCallContinuation<TRequest, TResponse> continuation)
         {
-           context.Options.CancellationToken.ThrowIfCancellationRequested();
-                if (GetTokenIfNeeded())
-                {
-                    if (Log.DebugEnabled())
-                        Log.Debug($"AsyncClientStreamingCall<TRequest, TResponse>: New token: {AccessToken}");
+           
+            if (Log.DebugEnabled())
+                Log.Debug($"AsyncClientStreamingCall<TRequest, TResponse>: Enter: {AccessToken}");
 
-                    var newOptions = context.Options.WithHeaders(this.MetaData);
-
-                    var newContext = new ClientInterceptorContext<TRequest, TResponse>(
-                        context.Method,
-                        context.Host,
-                        newOptions);
-
-                    return base.AsyncClientStreamingCall(newContext, continuation);
-                }
-
-                if (Log.DebugEnabled())
-                    Log.Debug($"AsyncClientStreamingCall<TRequest, TResponse>: Enter: {AccessToken}");
-
-                return continuation(context);            
+            return continuation(context);            
         }
 
         public override AsyncServerStreamingCall<TResponse> AsyncServerStreamingCall<TRequest, TResponse>(
             TRequest request,
             ClientInterceptorContext<TRequest, TResponse> context,
             AsyncServerStreamingCallContinuation<TRequest, TResponse> continuation)
-        {
-            context.Options.CancellationToken.ThrowIfCancellationRequested();
-            if (GetTokenIfNeeded())
-            {
-                if (Log.DebugEnabled())
-                    Log.Debug($"AsyncServerStreamingCall<TRequest, TResponse>: New token: {AccessToken}");
-
-                var newOptions = context.Options.WithHeaders(this.MetaData);
-
-                var newContext = new ClientInterceptorContext<TRequest, TResponse>(
-                    context.Method,
-                    context.Host,
-                    newOptions);
-
-                return base.AsyncServerStreamingCall(request, newContext, continuation);
-            }
+        {            
             if (Log.DebugEnabled())
                 Log.Debug($"AsyncServerStreamingCall<TRequest, TResponse>: Enter: {AccessToken}");
 
@@ -329,23 +387,7 @@ namespace Aerospike.Client
         public override AsyncDuplexStreamingCall<TRequest, TResponse> AsyncDuplexStreamingCall<TRequest, TResponse>(
             ClientInterceptorContext<TRequest, TResponse> context,
             AsyncDuplexStreamingCallContinuation<TRequest, TResponse> continuation)
-        {
-            context.Options.CancellationToken.ThrowIfCancellationRequested();
-            if (GetTokenIfNeeded())
-            {
-                if (Log.DebugEnabled())
-                    Log.Debug($"AsyncDuplexStreamingCall<TRequest, TResponse>: New token: {AccessToken}");
-
-                var newOptions = context.Options.WithHeaders(this.MetaData);
-
-                var newContext = new ClientInterceptorContext<TRequest, TResponse>(
-                    context.Method,
-                    context.Host,
-                    newOptions);
-
-                return base.AsyncDuplexStreamingCall(newContext, continuation);
-            }
-
+        {           
             if (Log.DebugEnabled())
                 Log.Debug($"AsyncDuplexStreamingCall<TRequest, TResponse>: Enter: {AccessToken}");
 
@@ -353,8 +395,16 @@ namespace Aerospike.Client
         }
     }
 
-    internal class AccessToken
+    [DebuggerDisplay("{ToString(),nq}")]
+    public sealed class AccessToken : IDisposable
     {
+        /// <summary>
+        /// This factor is used when the <see cref="RefreshTime"/> calculation is less or equal to zero
+        /// </summary>
+        private const float refreshZeroFraction = 0.50f;
+        /// <summary>
+        /// This factor is used when the <see cref="RefreshTime"/> calculation is greater or equal to <see cref="ttl"/>
+        /// </summary>
         private const float refreshAfterFraction = 0.75f;
 
         /// <summary>
@@ -367,7 +417,8 @@ namespace Aerospike.Client
         private readonly long ttl;
 
         /// <summary>
-        /// The time before <see cref="ttl"/> to obtain the new token by getting one from the server.
+        /// The time before <see cref="ttl"/> to obtain the new token by getting a new one from the proxy server.
+        /// This field is calculated from <see cref="ttl"/> taking into consideration network latency and other factors like timer delay, etc.
         /// </summary>
         public readonly long RefreshTime;
 
@@ -376,13 +427,29 @@ namespace Aerospike.Client
         /// </summary>
         public readonly string Token;
 
-        public AccessToken(long ttl, string token)
+        /// <summary>
+        /// The latency involved when fetching the token. 
+        /// </summary>
+        public readonly long TokenFetchLatency;
+        
+        public AccessToken(long ttl, string token, long tokenFetchLatency, long timeout)
         {
             this.expiry = Stopwatch.StartNew();
             this.ttl = ttl;
-            this.RefreshTime = (long)Math.Floor(ttl * refreshAfterFraction);
+            this.RefreshTime = ttl - Math.Min((long)(ttl* refreshAfterFraction)-tokenFetchLatency,timeout);
+            if(this.RefreshTime <= 0)
+            {
+                this.RefreshTime = (long)Math.Floor(ttl * refreshZeroFraction);
+            }
+            else if(this.RefreshTime >= ttl)
+            {
+                this.RefreshTime = (long)Math.Floor(ttl * refreshAfterFraction);
+            }
+            this.TokenFetchLatency = tokenFetchLatency;
             this.Token = token;
-            System.Diagnostics.Debug.WriteLine(this);
+
+            if (Log.DebugEnabled())
+                System.Diagnostics.Debug.WriteLine(this);
         }
 
         /// <summary>
@@ -397,7 +464,32 @@ namespace Aerospike.Client
 
         public override string ToString()
         {
-            return $"AccessToken{{TokenHash:{Token?.GetHashCode()}, TimeRemain:{expiry.ElapsedMilliseconds}, TTL:{ttl}, RefreshOn:{RefreshTime}}}";
+            var expired = this.HasExpired ? ", Expired:true" : (this.ShouldRefreshToken ? ", NeedRefresh:true" : string.Empty);
+            var disposed = this.Disposed ? ", Disposed:true" : string.Empty;
+
+            return $"AccessToken{{TokenHash:{Token?.GetHashCode()}, RunningTime:{expiry.ElapsedMilliseconds}, TTL:{ttl}, RefreshOn:{RefreshTime}, Latency:{TokenFetchLatency}{expired}{disposed}}}";
+        }
+
+        public bool Disposed { get; private set; }
+
+        private void Dispose(bool disposing)
+        {
+            if (!Disposed)
+            {
+                if (disposing)
+                {
+                    this.expiry.Stop();                    
+                }
+
+                Disposed = true;
+            }
+        }
+
+        public void Dispose()
+        {
+            // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
+            Dispose(disposing: true);
+            GC.SuppressFinalize(this);
         }
     }
 }

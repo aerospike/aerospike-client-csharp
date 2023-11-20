@@ -180,17 +180,36 @@ namespace Aerospike.Client
 				});
 			}
 
-			
+			var tokenInterceptor = new AuthTokenInterceptor(policy);
+
+            var credentials = CallCredentials.FromInterceptor(async (context, metadata) =>
+            {
+                if (Log.DebugEnabled())
+                    Log.Debug($"CallCredentials.FromInterceptor: Enter: {context.ServiceUrl}");
+
+                if (!context.ServiceUrl.AsSpan(context.ServiceUrl.Length-11).SequenceEqual("AuthService"))
+				{
+					var token = await tokenInterceptor.GetToken(context.CancellationToken);
+					
+					if (Log.DebugEnabled())
+						Log.Debug($"CallCredentials.FromInterceptor: {token}");
+
+					metadata.Add("Authorization", $"Bearer {token.Token}");
+				}
+            });
+
             Channel = GrpcChannel.ForAddress(connectionUri, new GrpcChannelOptions
 			{
 				HttpHandler = handler,
-                //Credentials = ChannelCredentials.SecureSsl,
+                Credentials = ChannelCredentials.Create(new SslCredentials(), credentials),
                 LoggerFactory = loggerFactory
             });
 
+            tokenInterceptor.SetChannel(Channel);
+
             //Debugger.Launch();
 
-            CallInvoker = Channel.Intercept(new AuthTokenInterceptor(policy, Channel));
+            CallInvoker = Channel.Intercept(tokenInterceptor);
 			//GetVersion();
 		}
 

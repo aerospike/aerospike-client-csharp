@@ -134,7 +134,7 @@ namespace Aerospike.Client
                         Log.Debug($"EndOfGRPCStream Exception: {eos.ResultCode}: Exception: {eos.GetType()} Message: '{eos.Message}': '{eos}'");
 
                     // The server returned a fatal error.
-                    throw new AerospikeException(eos.ResultCode);
+                    //throw new AerospikeException(eos.ResultCode);
 				}
 
                 if (Log.DebugEnabled())

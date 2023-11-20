@@ -47,8 +47,8 @@ namespace Aerospike.Client
 			this.resultCode = resultCode;
 		}
 
-		public AerospikeException(int resultCode, bool inDoubt)
-			: base("")
+		public AerospikeException(int resultCode, bool inDoubt, Exception inner = null)
+			: base(string.Empty, inner)
 		{
 			this.resultCode = resultCode;
 			this.inDoubt = inDoubt;
@@ -255,8 +255,8 @@ namespace Aerospike.Client
 			/// <summary>
 			/// Create timeout exception.
 			/// </summary>
-			public Timeout(int totalTimeout, bool inDoubt)
-				: base(ResultCode.TIMEOUT, inDoubt)
+			public Timeout(int totalTimeout, bool inDoubt, Exception inner = null)
+				: base(ResultCode.TIMEOUT, inDoubt, inner)
 			{
 				this.socketTimeout = 0;
 				this.totalTimeout = totalTimeout;
@@ -266,8 +266,8 @@ namespace Aerospike.Client
 			/// <summary>
 			/// Create timeout exception with statistics.
 			/// </summary>
-			public Timeout(Policy policy, bool client)
-				: base(ResultCode.TIMEOUT)
+			public Timeout(Policy policy, bool client, Exception inner = null)
+				: base(ResultCode.TIMEOUT, inner)
 			{
 				this.socketTimeout = policy.socketTimeout;
 				this.totalTimeout = policy.totalTimeout;
@@ -277,8 +277,8 @@ namespace Aerospike.Client
 			/// <summary>
 			/// Create timeout exception with policy and iteration.
 			/// </summary>
-			public Timeout(Policy policy, int iteration)
-				: base(ResultCode.TIMEOUT)
+			public Timeout(Policy policy, int iteration, Exception inner = null)
+				: base(ResultCode.TIMEOUT, inner)
 			{
 				base.node = node;
 				base.iteration = iteration;
@@ -579,7 +579,11 @@ namespace Aerospike.Client
 			/// <summary>
 			/// Create end of GRPC stream exception
 			/// </summary>
-			public EndOfGRPCStream(int resultCode) : base(Client.ResultCode.OK, "GRPC Stream was ended successfully")
+			public EndOfGRPCStream(int resultCode) 
+				: base(resultCode,
+						resultCode == Client.ResultCode.OK
+										? "GRPC Stream was ended successfully"
+										: $"GRPC Stream ended with Result Code of {resultCode}")
 			{
 				ResultCode = resultCode;
 			}
