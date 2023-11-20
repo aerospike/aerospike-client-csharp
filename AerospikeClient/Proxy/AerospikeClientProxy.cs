@@ -115,34 +115,36 @@ namespace Aerospike.Client
 
 		internal CallInvoker CallInvoker { get; set; }
 
-		//-------------------------------------------------------
-		// Constructors
-		//-------------------------------------------------------
+		private AuthTokenInterceptor AuthTokenInterceptor { get; set; }
 
-		/// <summary>
-		/// Initialize Aerospike client with suitable hosts to seed the cluster map.
-		/// The client policy is used to set defaults and size internal data structures.
-		/// For the first host connection that succeeds, the client will:
-		/// <list type="bullet">
-		/// <item>Add host to the cluster map</item>
-		/// <item>Request host's list of other nodes in cluster</item>
-		/// <item>Add these nodes to cluster map</item>
-		/// </list>
-		/// <para>
-		/// In most cases, only one host is necessary to seed the cluster. The remaining hosts 
-		/// are added as future seeds in case of a complete network failure.
-		/// </para>
-		/// <para>
-		/// If one connection succeeds, the client is ready to process database requests.
-		/// If all connections fail and the policy's failIfNotConnected is true, a connection 
-		/// exception will be thrown. Otherwise, the cluster will remain in a disconnected state
-		/// until the server is activated.
-		/// </para>
-		/// </summary>
-		/// <param name="policy">client configuration parameters, pass in null for defaults</param>
-		/// <param name="hosts">array of potential hosts to seed the cluster</param>
-		/// <exception cref="AerospikeException">if all host connections fail</exception>
-		public AerospikeClientProxy(ClientPolicy policy, params Host[] hosts)
+        //-------------------------------------------------------
+        // Constructors
+        //-------------------------------------------------------
+
+        /// <summary>
+        /// Initialize Aerospike client with suitable hosts to seed the cluster map.
+        /// The client policy is used to set defaults and size internal data structures.
+        /// For the first host connection that succeeds, the client will:
+        /// <list type="bullet">
+        /// <item>Add host to the cluster map</item>
+        /// <item>Request host's list of other nodes in cluster</item>
+        /// <item>Add these nodes to cluster map</item>
+        /// </list>
+        /// <para>
+        /// In most cases, only one host is necessary to seed the cluster. The remaining hosts 
+        /// are added as future seeds in case of a complete network failure.
+        /// </para>
+        /// <para>
+        /// If one connection succeeds, the client is ready to process database requests.
+        /// If all connections fail and the policy's failIfNotConnected is true, a connection 
+        /// exception will be thrown. Otherwise, the cluster will remain in a disconnected state
+        /// until the server is activated.
+        /// </para>
+        /// </summary>
+        /// <param name="policy">client configuration parameters, pass in null for defaults</param>
+        /// <param name="hosts">array of potential hosts to seed the cluster</param>
+        /// <exception cref="AerospikeException">if all host connections fail</exception>
+        public AerospikeClientProxy(ClientPolicy policy, params Host[] hosts)
 		{
 			policy ??= new ClientPolicy();
 			this.readPolicyDefault = policy.readPolicyDefault;
@@ -180,7 +182,7 @@ namespace Aerospike.Client
 				});
 			}
 
-			var tokenInterceptor = new AuthTokenInterceptor(policy);
+			this.AuthTokenInterceptor = new AuthTokenInterceptor(policy);
 
             var credentials = CallCredentials.FromInterceptor(async (context, metadata) =>
             {
@@ -189,7 +191,7 @@ namespace Aerospike.Client
 
                 if (!context.ServiceUrl.AsSpan(context.ServiceUrl.Length-11).SequenceEqual("AuthService"))
 				{
-					var token = await tokenInterceptor.GetToken(context.CancellationToken);
+					var token = await this.AuthTokenInterceptor.GetToken(context.CancellationToken);
 					
 					if (Log.DebugEnabled())
 						Log.Debug($"CallCredentials.FromInterceptor: {token}");
@@ -205,11 +207,11 @@ namespace Aerospike.Client
                 LoggerFactory = loggerFactory
             });
 
-            tokenInterceptor.SetChannel(Channel);
+            this.AuthTokenInterceptor.SetChannel(Channel);
 
             //Debugger.Launch();
 
-            CallInvoker = Channel.Intercept(tokenInterceptor);
+            CallInvoker = Channel.Intercept(this.AuthTokenInterceptor);
 			//GetVersion();
 		}
 
@@ -310,19 +312,39 @@ namespace Aerospike.Client
 			set { infoPolicyDefault = value; }
 		}
 
-		//-------------------------------------------------------
-		// Cluster Connection Management
-		//-------------------------------------------------------
+        //-------------------------------------------------------
+        // Cluster Connection Management
+        //-------------------------------------------------------
 
-		/// <summary>
-		/// Close all client connections to database server nodes.
-		/// </summary>
-		public void Dispose()
-		{
-			Close();
-		}
+        public bool Disposed { get; private set; }
+        private void Dispose(bool disposing)
+        {
+            if (!Disposed)
+            {
+                if (disposing)
+                {
+                    this.Close();
+					this.AuthTokenInterceptor?.Dispose();
 
+					this.CallInvoker = null;
+					this.AuthTokenInterceptor = null;
+					this.Channel = null;
+                }
 
+                Disposed = true;
+            }
+        }
+
+        /// <summary>
+        /// Close all client connections to database server nodes.
+        /// </summary>
+        public void Dispose()
+        {
+            // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
+            Dispose(disposing: true);
+            GC.SuppressFinalize(this);
+        }
+       
 		/// <summary>
 		/// Close all client connections to database server nodes.
 		/// </summary>

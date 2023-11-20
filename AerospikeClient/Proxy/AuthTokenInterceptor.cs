@@ -32,7 +32,7 @@ namespace Aerospike.Client
     /// For token reauthorization to work properly the driver code would need to be re-factored to allow for Unauthorized exceptions to be retried. 
     /// Also support for OAuth2 tokens or JWT would greatly help instead of this custom token being provided.
     /// </remarks>
-    public sealed class AuthTokenInterceptor : Interceptor
+    public sealed class AuthTokenInterceptor : Interceptor, IDisposable
     {
         //Do we need a different policy for the proper timeout?
         private ClientPolicy ClientPolicy { get; }
@@ -40,6 +40,7 @@ namespace Aerospike.Client
         
         private AccessToken AccessToken { get; set; }
         private readonly ManualResetEventSlim UpdatingToken = new ManualResetEventSlim(false);
+        
         private Timer RefreshTokenTimer { get; set; }
         
 
@@ -392,6 +393,28 @@ namespace Aerospike.Client
                 Log.Debug($"AsyncDuplexStreamingCall<TRequest, TResponse>: Enter: {AccessToken}");
 
             return continuation(context);            
+        }
+
+        public bool Disposed { get; private set; }
+        private void Dispose(bool disposing)
+        {
+            if (!Disposed)
+            {
+                if (disposing)
+                {
+                    this.RefreshTokenTimer?.Dispose();
+                    this.Channel = null;
+                }
+
+                Disposed = true;
+            }
+        }
+
+        public void Dispose()
+        {
+            // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
+            Dispose(disposing: true);
+            GC.SuppressFinalize(this);
         }
     }
 
