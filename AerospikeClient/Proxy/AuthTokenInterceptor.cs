@@ -37,8 +37,8 @@ namespace Aerospike.Client
         //Do we need a different policy for the proper timeout?
         private ClientPolicy ClientPolicy { get; }
         private GrpcChannel Channel { get; set; }
-        
-        private AccessToken AccessToken { get; set; }
+
+        private AccessToken AccessToken;
         private readonly ManualResetEventSlim UpdatingToken = new ManualResetEventSlim(false);
         
         private Timer RefreshTokenTimer { get; set; }
@@ -126,9 +126,14 @@ namespace Aerospike.Client
         /// <param name="cancellationToken"></param>
         /// <returns></returns>
         private async Task RefreshToken(CancellationToken cancellationToken)
-        {            
-            //Block requests until a new token is obtained...
-            this.UpdatingToken.Reset();
+        {
+            //Block requests until a new token is obtained when it is very close to expire...
+            if (this.AccessToken?.WillExpire ?? true)
+            {
+                this.UpdatingToken.Reset();
+                if (Log.DebugEnabled())
+                    Log.Debug($"Refresh Token: Block: {AccessToken}");
+            }
             
             //Stop Timer
             RefreshTokenTimer.Stop();
@@ -139,13 +144,13 @@ namespace Aerospike.Client
                if (Log.DebugEnabled())
                     Log.Debug($"Refresh Token: Enter: {AccessToken}");
                 
-                var prevToken = this.AccessToken;
-                this.AccessToken = await FetchToken(this.Channel,
-                                                    this.ClientPolicy.user,
-                                                    this.ClientPolicy.password,
-                                                    this.ClientPolicy.timeout,
-                                                    this.AccessToken,
-                                                    cancellationToken);
+                var prevToken = Interlocked.Exchange(ref this.AccessToken,
+                                                        await FetchToken(this.Channel,
+                                                                            this.ClientPolicy.user,
+                                                                            this.ClientPolicy.password,
+                                                                            this.ClientPolicy.timeout,
+                                                                            this.AccessToken,
+                                                                            cancellationToken));
                 RefreshTokenTimer.Interval = AccessToken.RefreshTime;
 
                 //Restart timer
@@ -301,7 +306,7 @@ namespace Aerospike.Client
         }
         
         /// <summary>
-        /// Returns a token is one is required. 
+        /// Returns a token if one is required. 
         /// If the token is being updated, the call is blocked waiting for the token to be reauthorized.
         /// If the token is current, it is returned.
         /// </summary>
@@ -313,6 +318,7 @@ namespace Aerospike.Client
             {
                 if (AccessToken.HasExpired && this.UpdatingToken.IsSet)
                 {
+                    //Need to block at this point so that any new requests won't get an unauthorized exception
                     this.UpdatingToken.Reset();
                     if (Log.DebugEnabled())
                         Log.Debug($"GetTokenIfNeeded: Expired: Token: {AccessToken}");
@@ -323,7 +329,7 @@ namespace Aerospike.Client
                         Log.Debug($"GetTokenIfNeeded: New Token: {AccessToken}");
                 }
 
-                //If token being updated, the request will be blocked until the new token is obtained.
+                //If token is close to being expired, the request is blocked until a new token obtained.
                 this.UpdatingToken.Wait(this.ClientPolicy.timeout, cancellationToken);
 
                 return this.AccessToken;
@@ -446,6 +452,11 @@ namespace Aerospike.Client
         public readonly long RefreshTime;
 
         /// <summary>
+        /// Time close to <see cref="ttl"/> that the token will expire based on <see cref="TokenFetchLatency"/>
+        /// </summary>
+        public readonly long WillExpireSoon;
+
+        /// <summary>
         /// An access token for Aerospike proxy.
         /// </summary>
         public readonly string Token;
@@ -475,6 +486,7 @@ namespace Aerospike.Client
             }
             
             this.TokenFetchLatency = tokenFetchLatency;
+            this.WillExpireSoon = ttl - TokenFetchLatency;
             this.Token = token;
 
             if (Log.DebugEnabled())
@@ -486,6 +498,10 @@ namespace Aerospike.Client
         /// </summary>
         public bool HasExpired => expiry.ElapsedMilliseconds >= ttl;
 
+        /// <summary>
+        /// True to indicate that the token is close to expiring based on latency
+        /// </summary>
+        public bool WillExpire => expiry.ElapsedMilliseconds >= WillExpireSoon;
         /// <summary>
         /// Token should be refreshed before hitting expiration
         /// </summary>

@@ -43,7 +43,7 @@
 	<ItemGroup>
 		<Protobuf Include="Protos\Auth\auth.proto" GrpcServices="Client" />
 		<Protobuf Include="Protos\Kvs\kv.proto" GrpcServices="Client" />
-		<PackageReference Include="Google.Protobuf" Version="3.25.0" />
+		<PackageReference Include="Google.Protobuf" Version="3.25.1" />
 		<PackageReference Include="Grpc.AspNetCore" Version="2.59.0" />
 		<PackageReference Include="Grpc.Net.Client" Version="2.59.0" />
 		<PackageReference Include="Grpc.Tools" Version="2.59.0">
