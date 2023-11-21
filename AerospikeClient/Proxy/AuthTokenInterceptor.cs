@@ -89,7 +89,7 @@ namespace Aerospike.Client
             if (this.UpdatingToken.IsSet && this.AccessToken.ShouldRefreshToken)
             {
                 if (Log.DebugEnabled())
-                    Log.Debug($"Refresh Token Event: Enter: {AccessToken}: '{DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss.fff")}'");
+                    Log.Debug($"Refresh Token Timer Event: Enter: {AccessToken}: '{DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss.fff")}'");
 
                 if (IsTokenRequired())
                 {
@@ -100,18 +100,18 @@ namespace Aerospike.Client
                     catch
                     {
                         if (Log.DebugEnabled())
-                            Log.Debug($"Refresh Token Event: Exception: {AccessToken}: '{DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss.fff")}'");
+                            Log.Debug($"Refresh Token Timer Event: Exception: {AccessToken}: '{DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss.fff")}'");
                         throw;
                     }
                 }
 
                 if (Log.DebugEnabled())
-                    Log.Debug($"Refresh Token Event: Exit: {AccessToken}: '{DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss.fff")}'");
+                    Log.Debug($"Refresh Token Timer Event: Exit: {AccessToken}: '{DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss.fff")}'");
             }
             else
             {
                 if (Log.DebugEnabled())
-                    Log.Debug($"Refresh Token Event: Skipped: {AccessToken}: '{DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss.fff")}'");
+                    Log.Debug($"Refresh Token Timer Event: Skipped: {AccessToken}: '{DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss.fff")}'");
 
             }
         }
