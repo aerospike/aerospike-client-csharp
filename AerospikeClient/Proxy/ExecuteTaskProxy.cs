@@ -61,7 +61,7 @@ namespace Aerospike.Client
 			{
 				var client = new KVS.Query.QueryClient(Invoker);
 				var stream = client.BackgroundTaskStatus(request);
-				stream.ResponseStream.MoveNext().Wait();
+				stream.ResponseStream.MoveNext().Wait(policy.timeout);
 				response = stream.ResponseStream.Current;
 				while (true)
 				{
@@ -79,7 +79,7 @@ namespace Aerospike.Client
 					{
 						return BaseTask.COMPLETE;
 					}
-					stream.ResponseStream.MoveNext().Wait();
+					stream.ResponseStream.MoveNext().Wait(policy.timeout);
 					response = stream.ResponseStream.Current;
 				}
 			}

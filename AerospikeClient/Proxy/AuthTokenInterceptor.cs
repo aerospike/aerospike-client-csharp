@@ -34,7 +34,6 @@ namespace Aerospike.Client
     /// </remarks>
     public sealed class AuthTokenInterceptor : Interceptor, IDisposable
     {
-        //Do we need a different policy for the proper timeout?
         private ClientPolicy ClientPolicy { get; }
         private GrpcChannel Channel { get; set; }
 
@@ -65,8 +64,9 @@ namespace Aerospike.Client
             {
                 if (Log.DebugEnabled())
                     Log.Debug("Grpc Token Required");
+				//this.AccessToken = new AccessToken(0, String.Empty, 0, 0);
 
-                RefreshTokenTimer = new Timer
+				RefreshTokenTimer = new Timer
                 {
                     Enabled = false,
                     AutoReset = false,

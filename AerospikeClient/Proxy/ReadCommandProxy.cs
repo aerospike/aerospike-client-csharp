@@ -117,7 +117,7 @@ namespace Aerospike.Client
 
 			if (resultCode == Client.ResultCode.KEY_NOT_FOUND_ERROR)
 			{
-                HandleNotFound(resultCode);
+				HandleNotFound(resultCode);
 				return;
 			}
 
@@ -133,8 +133,8 @@ namespace Aerospike.Client
 			if (resultCode == Client.ResultCode.UDF_BAD_RESPONSE)
 			{
 				base.SkipKey(fieldCount);
-                Record = Policy.recordParser.ParseRecord(Buffer.DataBuffer, ref Buffer.Offset, opCount, generation, expiration, IsOperation);
-                HandleUdfError(resultCode);
+				Record = Policy.recordParser.ParseRecord(Buffer.DataBuffer, ref Buffer.Offset, opCount, generation, expiration, IsOperation);
+				HandleUdfError(resultCode);
 				return;
 			}
 
@@ -187,7 +187,7 @@ namespace Aerospike.Client
 			{
 				var client = new KVS.KVS.KVSClient(CallInvoker);
 				var deadline = GetDeadline();
-                var response = client.Read(request, deadline: deadline);
+				var response = client.Read(request, deadline: deadline);
 				var conn = new ConnectionProxy(response);
 				ParseResult(conn);
 			}
@@ -213,17 +213,17 @@ namespace Aerospike.Client
 				var client = new KVS.KVS.KVSClient(CallInvoker);
 				var deadline = GetDeadline();
 
-                if (Log.DebugEnabled())
-                    Log.Debug($"Execute Read: '{this.Key}': '{deadline}': {token.IsCancellationRequested}");
+				if (Log.DebugEnabled())
+					Log.Debug($"Execute Read: '{this.Key}': '{deadline}': {token.IsCancellationRequested}");
 
-                var response = await client.ReadAsync(request, deadline: deadline, cancellationToken: token);
+				var response = await client.ReadAsync(request, deadline: deadline, cancellationToken: token);
 				var conn = new ConnectionProxy(response);
 				ParseResult(conn);
 
-                if (Log.DebugEnabled())
-                    Log.Debug($"Execute Read Completed: '{this.Record}'");
+				if (Log.DebugEnabled())
+					Log.Debug($"Execute Read Completed: '{this.Record}'");
 
-                return Record;
+				return Record;
 			}
 			catch (RpcException e)
 			{

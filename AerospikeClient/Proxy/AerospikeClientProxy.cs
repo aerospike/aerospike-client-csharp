@@ -117,34 +117,34 @@ namespace Aerospike.Client
 
 		private AuthTokenInterceptor AuthTokenInterceptor { get; set; }
 
-        //-------------------------------------------------------
-        // Constructors
-        //-------------------------------------------------------
+		//-------------------------------------------------------
+		// Constructors
+		//-------------------------------------------------------
 
-        /// <summary>
-        /// Initialize Aerospike client with suitable hosts to seed the cluster map.
-        /// The client policy is used to set defaults and size internal data structures.
-        /// For the first host connection that succeeds, the client will:
-        /// <list type="bullet">
-        /// <item>Add host to the cluster map</item>
-        /// <item>Request host's list of other nodes in cluster</item>
-        /// <item>Add these nodes to cluster map</item>
-        /// </list>
-        /// <para>
-        /// In most cases, only one host is necessary to seed the cluster. The remaining hosts 
-        /// are added as future seeds in case of a complete network failure.
-        /// </para>
-        /// <para>
-        /// If one connection succeeds, the client is ready to process database requests.
-        /// If all connections fail and the policy's failIfNotConnected is true, a connection 
-        /// exception will be thrown. Otherwise, the cluster will remain in a disconnected state
-        /// until the server is activated.
-        /// </para>
-        /// </summary>
-        /// <param name="policy">client configuration parameters, pass in null for defaults</param>
-        /// <param name="hosts">array of potential hosts to seed the cluster</param>
-        /// <exception cref="AerospikeException">if all host connections fail</exception>
-        public AerospikeClientProxy(ClientPolicy policy, params Host[] hosts)
+		/// <summary>
+		/// Initialize Aerospike client with suitable hosts to seed the cluster map.
+		/// The client policy is used to set defaults and size internal data structures.
+		/// For the first host connection that succeeds, the client will:
+		/// <list type="bullet">
+		/// <item>Add host to the cluster map</item>
+		/// <item>Request host's list of other nodes in cluster</item>
+		/// <item>Add these nodes to cluster map</item>
+		/// </list>
+		/// <para>
+		/// In most cases, only one host is necessary to seed the cluster. The remaining hosts 
+		/// are added as future seeds in case of a complete network failure.
+		/// </para>
+		/// <para>
+		/// If one connection succeeds, the client is ready to process database requests.
+		/// If all connections fail and the policy's failIfNotConnected is true, a connection 
+		/// exception will be thrown. Otherwise, the cluster will remain in a disconnected state
+		/// until the server is activated.
+		/// </para>
+		/// </summary>
+		/// <param name="policy">client configuration parameters, pass in null for defaults</param>
+		/// <param name="hosts">array of potential hosts to seed the cluster</param>
+		/// <exception cref="AerospikeException">if all host connections fail</exception>
+		public AerospikeClientProxy(ClientPolicy policy, params Host[] hosts)
 		{
 			policy ??= new ClientPolicy();
 			this.readPolicyDefault = policy.readPolicyDefault;
@@ -178,40 +178,40 @@ namespace Aerospike.Client
 				loggerFactory = LoggerFactory.Create(logging =>
 				{
 					logging.AddDebug();
-					logging.SetMinimumLevel(LogLevel.Debug);					
+					logging.SetMinimumLevel(LogLevel.Debug);
 				});
 			}
 
 			this.AuthTokenInterceptor = new AuthTokenInterceptor(policy);
 
-            var credentials = CallCredentials.FromInterceptor(async (context, metadata) =>
-            {
-                if (Log.DebugEnabled())
-                    Log.Debug($"CallCredentials.FromInterceptor: Enter: {context.ServiceUrl}");
+			var credentials = CallCredentials.FromInterceptor(async (context, metadata) =>
+			{
+				if (Log.DebugEnabled())
+					Log.Debug($"CallCredentials.FromInterceptor: Enter: {context.ServiceUrl}");
 
-                if (!context.ServiceUrl.AsSpan(context.ServiceUrl.Length-11).SequenceEqual("AuthService"))
+				if (!context.ServiceUrl.AsSpan(context.ServiceUrl.Length - 11).SequenceEqual("AuthService"))
 				{
 					var token = await this.AuthTokenInterceptor.GetToken(context.CancellationToken);
-					
+
 					if (Log.DebugEnabled())
 						Log.Debug($"CallCredentials.FromInterceptor: {token}");
 
 					metadata.Add("Authorization", $"Bearer {token.Token}");
 				}
-            });
+			});
 
-            Channel = GrpcChannel.ForAddress(connectionUri, new GrpcChannelOptions
+			Channel = GrpcChannel.ForAddress(connectionUri, new GrpcChannelOptions
 			{
 				HttpHandler = handler,
-                Credentials = ChannelCredentials.Create(new SslCredentials(), credentials),
-                LoggerFactory = loggerFactory
-            });
+				Credentials = ChannelCredentials.Create(new SslCredentials(), credentials),
+				LoggerFactory = loggerFactory
+			});
 
-            this.AuthTokenInterceptor.SetChannel(Channel);
+			this.AuthTokenInterceptor.SetChannel(Channel);
 
-            //Debugger.Launch();
+			//Debugger.Launch();
 
-            CallInvoker = Channel.Intercept(this.AuthTokenInterceptor);
+			CallInvoker = Channel.Intercept(this.AuthTokenInterceptor);
 			//GetVersion();
 		}
 
@@ -312,39 +312,39 @@ namespace Aerospike.Client
 			set { infoPolicyDefault = value; }
 		}
 
-        //-------------------------------------------------------
-        // Cluster Connection Management
-        //-------------------------------------------------------
+		//-------------------------------------------------------
+		// Cluster Connection Management
+		//-------------------------------------------------------
 
-        public bool Disposed { get; private set; }
-        private void Dispose(bool disposing)
-        {
-            if (!Disposed)
-            {
-                if (disposing)
-                {
-                    this.Close();
+		public bool Disposed { get; private set; }
+		private void Dispose(bool disposing)
+		{
+			if (!Disposed)
+			{
+				if (disposing)
+				{
+					this.Close();
 					this.AuthTokenInterceptor?.Dispose();
 
 					this.CallInvoker = null;
 					this.AuthTokenInterceptor = null;
 					this.Channel = null;
-                }
+				}
 
-                Disposed = true;
-            }
-        }
+				Disposed = true;
+			}
+		}
 
-        /// <summary>
-        /// Close all client connections to database server nodes.
-        /// </summary>
-        public void Dispose()
-        {
-            // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
-            Dispose(disposing: true);
-            GC.SuppressFinalize(this);
-        }
-       
+		/// <summary>
+		/// Close all client connections to database server nodes.
+		/// </summary>
+		public void Dispose()
+		{
+			// Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
+			Dispose(disposing: true);
+			GC.SuppressFinalize(this);
+		}
+
 		/// <summary>
 		/// Close all client connections to database server nodes.
 		/// </summary>
@@ -402,8 +402,8 @@ namespace Aerospike.Client
 		{
 			var request = new KVS.AboutRequest();
 			//var about = new KVS.About.AboutClient(CallInvoker);
-            var about = new KVS.About.AboutClient(Channel);
-            var deadline = DateTime.UtcNow.AddMilliseconds(readPolicyDefault.totalTimeout);
+			var about = new KVS.About.AboutClient(Channel);
+			var deadline = DateTime.UtcNow.AddMilliseconds(readPolicyDefault.totalTimeout);
 			var response = about.Get(request, deadline: deadline);
 			return response.Version;
 		}
@@ -1416,20 +1416,20 @@ namespace Aerospike.Client
 			return QueryPartitions(policy, statement, PartitionFilter.All());
 		}
 
-        public RecordSet Query(QueryPolicy policy, Statement statement, CancellationToken cancellationToken = default)
-        {
-            return QueryPartitions(policy, statement, PartitionFilter.All(), cancellationToken);
-        }
+		public RecordSet Query(QueryPolicy policy, Statement statement, CancellationToken cancellationToken = default)
+		{
+			return QueryPartitions(policy, statement, PartitionFilter.All(), cancellationToken);
+		}
 
-        /// <summary>
-        /// Not supported in proxy client
-        /// </summary>
-        /// <param name="policy"></param>
-        /// <param name="statement"></param>
-        /// <param name="listener"></param>
-        /// <exception cref="AerospikeException"></exception>
-        /// <seealso cref="Query(QueryPolicy, Statement)"/>
-        [Obsolete("Method not supported in proxy client: Query")]
+		/// <summary>
+		/// Not supported in proxy client
+		/// </summary>
+		/// <param name="policy"></param>
+		/// <param name="statement"></param>
+		/// <param name="listener"></param>
+		/// <exception cref="AerospikeException"></exception>
+		/// <seealso cref="Query(QueryPolicy, Statement)"/>
+		[Obsolete("Method not supported in proxy client: Query")]
 		public void Query(QueryPolicy policy, Statement statement, QueryListener listener)
 		{
 			throw new AerospikeException(NotSupported + "Query");
@@ -1478,34 +1478,34 @@ namespace Aerospike.Client
 			return QueryPartitions(policy, statement, partitionFilter, CancellationToken.None);
 		}
 
-        public RecordSet QueryPartitions
-        (
-            QueryPolicy policy,
-            Statement statement,
-            PartitionFilter partitionFilter,
-            CancellationToken cancellationToken
-        )
-        {
-            policy ??= queryPolicyDefault;
-            Buffer buffer = new();
-            PartitionTracker tracker = new(policy, statement, (Node[])null, partitionFilter);
-            RecordSet recordSet = new(null, policy.recordQueueSize, cancellationToken);
-            QueryPartitionCommandProxy command = new(buffer, CallInvoker, policy, statement, tracker, partitionFilter, recordSet);
-            command.Execute(cancellationToken).Wait(policy.totalTimeout, cancellationToken);
-            return recordSet;
-        }
+		public RecordSet QueryPartitions
+		(
+			QueryPolicy policy,
+			Statement statement,
+			PartitionFilter partitionFilter,
+			CancellationToken cancellationToken
+		)
+		{
+			policy ??= queryPolicyDefault;
+			Buffer buffer = new();
+			PartitionTracker tracker = new(policy, statement, (Node[])null, partitionFilter);
+			RecordSet recordSet = new(null, policy.recordQueueSize, cancellationToken);
+			QueryPartitionCommandProxy command = new(buffer, CallInvoker, policy, statement, tracker, partitionFilter, recordSet);
+			command.Execute(cancellationToken).Wait(policy.totalTimeout, cancellationToken);
+			return recordSet;
+		}
 
-        /// <summary>
-        /// Not supported in proxy client
-        /// </summary>
-        /// <param name="policy"></param>
-        /// <param name="statement"></param>
-        /// <param name="packageName"></param>
-        /// <param name="functionName"></param>
-        /// <param name="functionArgs"></param>
-        /// <returns></returns>
-        /// <exception cref="AerospikeException"></exception>
-        [Obsolete("Method not supported in proxy client: QueryAggregate")]
+		/// <summary>
+		/// Not supported in proxy client
+		/// </summary>
+		/// <param name="policy"></param>
+		/// <param name="statement"></param>
+		/// <param name="packageName"></param>
+		/// <param name="functionName"></param>
+		/// <param name="functionArgs"></param>
+		/// <returns></returns>
+		/// <exception cref="AerospikeException"></exception>
+		[Obsolete("Method not supported in proxy client: QueryAggregate")]
 		public ResultSet QueryAggregate
 		(
 			QueryPolicy policy,

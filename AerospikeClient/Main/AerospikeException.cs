@@ -567,7 +567,7 @@ namespace Aerospike.Client
 		public class EndOfGRPCStream : AerospikeException
 		{
 			public int ResultCode;
-			
+
 			/// <summary>
 			/// Create end of GRPC stream exception
 			/// </summary>
@@ -579,7 +579,7 @@ namespace Aerospike.Client
 			/// <summary>
 			/// Create end of GRPC stream exception
 			/// </summary>
-			public EndOfGRPCStream(int resultCode) 
+			public EndOfGRPCStream(int resultCode)
 				: base(resultCode,
 						resultCode == Client.ResultCode.OK
 										? "GRPC Stream was ended successfully"
