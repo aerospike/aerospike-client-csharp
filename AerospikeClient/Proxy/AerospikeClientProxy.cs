@@ -184,31 +184,37 @@ namespace Aerospike.Client
 
 			this.AuthTokenInterceptor = new AuthTokenInterceptor(policy);
 
-			var credentials = CallCredentials.FromInterceptor(async (context, metadata) =>
-			{
-				if (Log.DebugEnabled())
-					Log.Debug($"CallCredentials.FromInterceptor: Enter: {context.ServiceUrl}");
-
-				if (!context.ServiceUrl.AsSpan(context.ServiceUrl.Length - 11).SequenceEqual("AuthService"))
+			CallCredentials credentials = null;
+			
+			if(policy.user != null)
+                credentials = CallCredentials.FromInterceptor(async (context, metadata) =>
 				{
-					var token = await this.AuthTokenInterceptor.GetToken(context.CancellationToken);
-
 					if (Log.DebugEnabled())
-						Log.Debug($"CallCredentials.FromInterceptor: {token}");
+						Log.Debug($"CallCredentials.FromInterceptor: Enter: {context.ServiceUrl}");
 
-					metadata.Add("Authorization", $"Bearer {token.Token}");
-				}
-			});
+					if (!context.ServiceUrl.AsSpan(context.ServiceUrl.Length - 11).SequenceEqual("AuthService"))
+					{
+						var token = await this.AuthTokenInterceptor.GetToken(context.CancellationToken);
+
+						if (Log.DebugEnabled())
+							Log.Debug($"CallCredentials.FromInterceptor: {token}");
+
+						if (token != null)
+							metadata.Add("Authorization", $"Bearer {token.Token}");
+					}
+				});
 
 			Channel = GrpcChannel.ForAddress(connectionUri, new GrpcChannelOptions
 			{
 				HttpHandler = handler,
-				Credentials = ChannelCredentials.Create(new SslCredentials(), credentials),
+				Credentials = hosts[0].tlsName == null
+								? null
+								: ChannelCredentials.Create(new SslCredentials(), credentials),
 				LoggerFactory = loggerFactory
 			});
 
 			this.AuthTokenInterceptor.SetChannel(Channel);
-
+			
 			//Debugger.Launch();
 
 			CallInvoker = Channel.Intercept(this.AuthTokenInterceptor);

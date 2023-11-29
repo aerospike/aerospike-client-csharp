@@ -72,7 +72,14 @@ namespace Aerospike.Client
                     AutoReset = false,
                 };
                 RefreshTokenTimer.Elapsed += (sender, e) => RefreshTokenEvent();
-                RefreshToken(CancellationToken.None).Wait(this.ClientPolicy.timeout);
+
+                var refreshTokenTask = RefreshToken(CancellationToken.None);
+
+                Task.WaitAny(new[] { refreshTokenTask}, this.ClientPolicy.timeout);                
+                if(refreshTokenTask.IsFaulted)
+                    throw refreshTokenTask.Exception;
+                if (refreshTokenTask.IsCanceled)
+                    throw new OperationCanceledException("Initial Token Fetch was Canceled");               
             }
         }
 
