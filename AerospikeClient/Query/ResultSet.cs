@@ -82,12 +82,29 @@ namespace Aerospike.Client
 			return true;
 		}
 
+		public bool Disposed { get; private set; }
+		private void Dispose(bool disposing)
+		{
+			if (!Disposed)
+			{
+				if (disposing)
+				{
+					this.Close();
+					row = null;
+				}
+
+				Disposed = true;
+			}
+		}
+
 		/// <summary>
-		/// Close query.
+		/// Close all client connections to database server nodes.
 		/// </summary>
 		public void Dispose()
 		{
-			Close();
+			// Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
+			Dispose(disposing: true);
+			GC.SuppressFinalize(this);
 		}
 
 		/// <summary>
