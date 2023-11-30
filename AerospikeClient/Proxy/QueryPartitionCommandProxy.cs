@@ -129,17 +129,21 @@ namespace Aerospike.Client
 			catch (EndOfGRPCStream eos)
 			{
 				RecordSet.Put(RecordSet.END);
-				if (eos.ResultCode != 0 && eos.ResultCode != 22)
+				if (eos.ResultCode != 0 && eos.ResultCode != 22) // TODO
 				{
 					if (Log.DebugEnabled())
+					{
 						Log.Debug($"EndOfGRPCStream Exception: {eos.ResultCode}: Exception: {eos.GetType()} Message: '{eos.Message}': '{eos}'");
+					}
 
 					// The server returned a fatal error.
 					throw new AerospikeException(eos.ResultCode);
 				}
 
 				if (Log.DebugEnabled())
+				{
 					Log.Debug($"Execute Query Completed: '{this.OpCount}'");
+				}
 			}
 			catch (RpcException e)
 			{

@@ -179,10 +179,10 @@ namespace Aerospike.Client
 				code = Convert.ToInt32(list[2].Trim());
 				message = list[0] + ':' + list[1] + ' ' + list[3];
 			}
-			catch (Exception)
+			catch (Exception e)
 			{
 				// Use generic exception if parse error occurs.
-				throw new AerospikeException(resultCode, ret);
+				throw new AerospikeException(resultCode, ret, e);
 			}
 
 			throw new AerospikeException(code, message);
