@@ -207,11 +207,13 @@ namespace Aerospike.Client
 			Channel = GrpcChannel.ForAddress(connectionUri, new GrpcChannelOptions
 			{
 				HttpHandler = handler,
-				Credentials = hosts[0].tlsName == null
+                DisposeHttpClient = true, //Make sure we dispose of SocketsHttpHandler (handler) when the channel is disposed
+				ThrowOperationCanceledOnCancellation = true,
+                Credentials = hosts[0].tlsName == null
 								? null
 								: ChannelCredentials.Create(new SslCredentials(), credentials),
-				LoggerFactory = loggerFactory
-			});
+				LoggerFactory = loggerFactory                
+            });
 
 			this.AuthTokenInterceptor.SetChannel(Channel);
 			
