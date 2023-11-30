@@ -17,6 +17,7 @@
 using Aerospike.Client.KVS;
 using Google.Protobuf;
 using Grpc.Core;
+using Grpc.Net.Client;
 
 namespace Aerospike.Client
 {
@@ -30,13 +31,13 @@ namespace Aerospike.Client
 		public ExecuteCommandProxy
 		(
 			Buffer buffer,
-			CallInvoker invoker,
+			GrpcChannel channel,
 			WritePolicy writePolicy,
 			Key key,
 			string packageName,
 			string functionName,
 			Value[] args
-		) : base(buffer, invoker, writePolicy, key)
+		) : base(buffer, channel, writePolicy, key)
 		{
 			this.WritePolicy = writePolicy;
 			this.PackageName = packageName;
@@ -77,7 +78,7 @@ namespace Aerospike.Client
 
 			try
 			{
-				var client = new KVS.KVS.KVSClient(CallInvoker);
+				var client = new KVS.KVS.KVSClient(Channel);
 				var deadline = GetDeadline();
 				var response = client.Execute(request, deadline: deadline);
 				var conn = new ConnectionProxy(response);

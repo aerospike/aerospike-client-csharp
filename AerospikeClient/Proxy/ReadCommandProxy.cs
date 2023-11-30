@@ -17,6 +17,7 @@
 using Aerospike.Client.KVS;
 using Google.Protobuf;
 using Grpc.Core;
+using Grpc.Net.Client;
 using Neo.IronLua;
 
 namespace Aerospike.Client
@@ -26,20 +27,20 @@ namespace Aerospike.Client
 		private string[] BinNames { get; }
 		public Record Record { get; private set; }
 
-		public ReadCommandProxy(Buffer buffer, CallInvoker invoker, Policy policy, Key key)
-			: base(buffer, invoker, policy, key)
+		public ReadCommandProxy(Buffer buffer, GrpcChannel channel, Policy policy, Key key)
+			: base(buffer, channel, policy, key)
 		{
 			this.BinNames = null;
 		}
 
-		public ReadCommandProxy(Buffer buffer, CallInvoker invoker, Policy policy, Key key, String[] binNames)
-			: base(buffer, invoker, policy, key)
+		public ReadCommandProxy(Buffer buffer, GrpcChannel channel, Policy policy, Key key, String[] binNames)
+			: base(buffer, channel, policy, key)
 		{
 			this.BinNames = binNames;
 		}
 
-		public ReadCommandProxy(Buffer buffer, CallInvoker invoker, Policy policy, Key key, bool isOperation)
-			: base(buffer, invoker, policy, key, isOperation)
+		public ReadCommandProxy(Buffer buffer, GrpcChannel channel, Policy policy, Key key, bool isOperation)
+			: base(buffer, channel, policy, key, isOperation)
 		{
 			this.BinNames = null;
 		}
@@ -163,10 +164,10 @@ namespace Aerospike.Client
 				code = Convert.ToInt32(list[2].Trim());
 				message = list[0] + ':' + list[1] + ' ' + list[3];
 			}
-			catch (Exception)
+			catch (Exception e)
 			{
 				// Use generic exception if parse error occurs.
-				throw new AerospikeException(resultCode, ret);
+				throw new AerospikeException(resultCode, ret, e);
 			}
 
 			throw new AerospikeException(code, message);
@@ -185,7 +186,7 @@ namespace Aerospike.Client
 
 			try
 			{
-				var client = new KVS.KVS.KVSClient(CallInvoker);
+				var client = new KVS.KVS.KVSClient(Channel);
 				var deadline = GetDeadline();
 				var response = client.Read(request, deadline: deadline);
 				var conn = new ConnectionProxy(response);
@@ -210,7 +211,7 @@ namespace Aerospike.Client
 
 			try
 			{
-				var client = new KVS.KVS.KVSClient(CallInvoker);
+				var client = new KVS.KVS.KVSClient(Channel);
 				var deadline = GetDeadline();
 
 				if (Log.DebugEnabled())

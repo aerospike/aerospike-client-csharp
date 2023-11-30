@@ -17,6 +17,7 @@
 using Aerospike.Client.KVS;
 using Google.Protobuf;
 using Grpc.Core;
+using Grpc.Net.Client;
 
 namespace Aerospike.Client
 {
@@ -24,8 +25,8 @@ namespace Aerospike.Client
 	{
 		private WritePolicy WritePolicy { get; }
 
-		public TouchCommandProxy(Buffer buffer, CallInvoker invoker, WritePolicy writePolicy, Key key)
- 			: base(buffer, invoker, writePolicy, key)
+		public TouchCommandProxy(Buffer buffer, GrpcChannel channel, WritePolicy writePolicy, Key key)
+ 			: base(buffer, channel, writePolicy, key)
 		{
 			this.WritePolicy = writePolicy;
 		}
@@ -83,7 +84,7 @@ namespace Aerospike.Client
 
 			try
 			{
-				var client = new KVS.KVS.KVSClient(CallInvoker);
+				var client = new KVS.KVS.KVSClient(Channel);
 				var deadline = GetDeadline();
 				var response = client.Touch(request, deadline: deadline);
 				var conn = new ConnectionProxy(response);
@@ -108,7 +109,7 @@ namespace Aerospike.Client
 
 			try
 			{
-				var client = new KVS.KVS.KVSClient(CallInvoker);
+				var client = new KVS.KVS.KVSClient(Channel);
 				var deadline = GetDeadline();
 				var response = await client.TouchAsync(request, deadline: deadline, cancellationToken: token);
 				var conn = new ConnectionProxy(response);

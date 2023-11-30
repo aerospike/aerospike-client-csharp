@@ -15,6 +15,7 @@
  * the License.
  */
 using Grpc.Core;
+using Grpc.Net.Client;
 using System.Collections;
 
 #pragma warning disable 0618
@@ -33,7 +34,7 @@ namespace Aerospike.Client
 		private const int MAX_BUFFER_SIZE = 1024 * 1024 * 128;  // 128 MB
 
 		internal Buffer Buffer { get; set; }
-		internal CallInvoker CallInvoker { get; set; }
+		internal GrpcChannel Channel { get; set; }
 
 		protected Policy Policy { get; }
 		protected internal bool IsOperation { get; }
@@ -50,48 +51,48 @@ namespace Aerospike.Client
 
 		protected Key Key { get; }
 
-		public GRPCCommand(Buffer buffer, CallInvoker invoker, Policy policy)
+		public GRPCCommand(Buffer buffer, GrpcChannel channel, Policy policy)
 			: base(policy.socketTimeout, policy.totalTimeout, 0)
 		{
 			Buffer = buffer;
-			CallInvoker = invoker;
+			Channel = channel;
 			this.Policy = policy;
 			IsOperation = false;
 		}
 
-		public GRPCCommand(Buffer buffer, CallInvoker invoker, Policy policy, bool isOperation)
+		public GRPCCommand(Buffer buffer, GrpcChannel channel, Policy policy, bool isOperation)
 			: base(policy.socketTimeout, policy.totalTimeout, 0)
 		{
 			Buffer = buffer;
-			CallInvoker = invoker;
+			Channel = channel;
 			this.Policy = policy;
 			this.IsOperation = isOperation;
 		}
 
-		public GRPCCommand(Buffer buffer, CallInvoker invoker, Policy policy, int socketTimeout, int totalTimeout)
+		public GRPCCommand(Buffer buffer, GrpcChannel channel, Policy policy, int socketTimeout, int totalTimeout)
 			: base(socketTimeout, totalTimeout, 0)
 		{
 			Buffer = buffer;
-			CallInvoker = invoker;
+			Channel = channel;
 			this.Policy = policy;
 			IsOperation = false;
 		}
 
-		public GRPCCommand(Buffer buffer, CallInvoker invoker, Policy policy, Key key)
+		public GRPCCommand(Buffer buffer, GrpcChannel channel, Policy policy, Key key)
 			: base(policy.socketTimeout, policy.totalTimeout, 0)
 		{
 			Buffer = buffer;
-			CallInvoker = invoker;
+			Channel = channel;
 			this.Key = key;
 			this.Policy = policy;
 			IsOperation = false;
 		}
 
-		public GRPCCommand(Buffer buffer, CallInvoker invoker, Policy policy, Key key, bool isOperation)
+		public GRPCCommand(Buffer buffer, GrpcChannel channel, Policy policy, Key key, bool isOperation)
 			: base(policy.socketTimeout, policy.totalTimeout, 0)
 		{
 			Buffer = buffer;
-			CallInvoker = invoker;
+			Channel = channel;
 			this.Key = key;
 			this.Policy = policy;
 			this.IsOperation = isOperation;

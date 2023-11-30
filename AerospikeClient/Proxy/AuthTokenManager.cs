@@ -28,13 +28,13 @@ using Timer = System.Timers.Timer;
 namespace Aerospike.Client
 {
     /// <summary>
-    /// Interceptor for fetching custom user authorization token
+    /// Manager for custom user authorization token
     /// </summary>
     /// <remarks>
     /// For token reauthorization to work properly the driver code would need to be re-factored to allow for Unauthorized exceptions to be retried. 
     /// Also support for OAuth2 tokens or JWT would greatly help instead of this custom token being provided.
     /// </remarks>
-    public sealed class AuthTokenInterceptor : Interceptor, IDisposable
+    public sealed class AuthTokenManager : IDisposable
     {
         private ClientPolicy ClientPolicy { get; }
         private GrpcChannel Channel { get; set; }
@@ -43,16 +43,7 @@ namespace Aerospike.Client
         private readonly ManualResetEventSlim UpdatingToken = new ManualResetEventSlim(false);
         
         private Timer RefreshTokenTimer { get; set; }
-        
-        /*
-        public AuthTokenInterceptor(ClientPolicy clientPolicy, GrpcChannel grpcChannel)
-        {
-            this.ClientPolicy = clientPolicy;
-            this.SetChannel(grpcChannel);
-        }
-        */
-
-        public AuthTokenInterceptor(ClientPolicy clientPolicy)
+        public AuthTokenManager(ClientPolicy clientPolicy)
         {
             this.ClientPolicy = clientPolicy;            
         }
@@ -62,13 +53,16 @@ namespace Aerospike.Client
             this.Channel = grpcChannel;
 
             if (Log.DebugEnabled())
+            {
                 Log.Debug($"SetChannel: Enter: {grpcChannel.Target} ");
+            }
 
             if (IsTokenRequired())
             {
                 if (Log.DebugEnabled())
+                {
                     Log.Debug($"SetChannel: Token Required");
-				//this.AccessToken = new AccessToken(0, String.Empty, 0, 0);
+                }
 
 				RefreshTokenTimer = new Timer
                 {
@@ -109,7 +103,9 @@ namespace Aerospike.Client
             }
 
             if (Log.DebugEnabled())
+            {
                 Log.Debug($"SetChannel: Exit: {grpcChannel.Target} ");
+            }
         }
 
         /// <summary>
@@ -125,7 +121,9 @@ namespace Aerospike.Client
             if (this.UpdatingToken.IsSet && this.AccessToken.ShouldRefreshToken)
             {
                 if (Log.DebugEnabled())
+                {
                     Log.Debug($"Refresh Token Timer Event: Enter: {AccessToken}: '{DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss.fff")}'");
+                }
 
                 if (IsTokenRequired())
                 {
@@ -136,19 +134,24 @@ namespace Aerospike.Client
                     catch
                     {
                         if (Log.DebugEnabled())
+                        {
                             Log.Debug($"Refresh Token Timer Event: Exception: {AccessToken}: '{DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss.fff")}'");
+                        }
                         throw;
                     }
                 }
 
                 if (Log.DebugEnabled())
+                {
                     Log.Debug($"Refresh Token Timer Event: Exit: {AccessToken}: '{DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss.fff")}'");
+                }
             }
             else
             {
                 if (Log.DebugEnabled())
+                {
                     Log.Debug($"Refresh Token Timer Event: Skipped: {AccessToken}: '{DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss.fff")}'");
-
+                }
             }
         }
 
@@ -168,7 +171,9 @@ namespace Aerospike.Client
             {
                 this.UpdatingToken.Reset();
                 if (Log.DebugEnabled())
+                {
                     Log.Debug($"Refresh Token: Block: {AccessToken}");
+                }
             }
             
             //Stop Timer
@@ -177,8 +182,10 @@ namespace Aerospike.Client
 
             try
             {
-               if (Log.DebugEnabled())
+                if (Log.DebugEnabled())
+                {
                     Log.Debug($"Refresh Token: Enter: {AccessToken}");
+                }
                 
                 var prevToken = Interlocked.Exchange(ref this.AccessToken,
                                                         await FetchToken(this.Channel,
@@ -266,16 +273,20 @@ namespace Aerospike.Client
                                                         cancellationToken: cancellationToken,
                                                         deadline: DateTime.UtcNow.AddMilliseconds(timeout));                                    
                 trackLatency.Stop();
-                
+
                 if (Log.DebugEnabled())
+                {
                     Log.Debug($"FetchToken: Server Responded: Latency: {trackLatency.ElapsedMilliseconds}");
+                }
 
                 var newToken = ParseToken(response.Token, 
                                             trackLatency.ElapsedMilliseconds,
                                             timeout);
-                
+
                 if (Log.DebugEnabled())
+                {
                     Log.Debug($"FetchToken: Exchanged New Token: {newToken}");
+                }
 
                 return newToken;
             }
@@ -359,12 +370,16 @@ namespace Aerospike.Client
                     //Need to block at this point so that any new requests won't get an unauthorized exception
                     this.UpdatingToken.Reset();
                     if (Log.DebugEnabled())
+                    {
                         Log.Debug($"GetTokenIfNeeded: Expired: Token: {AccessToken}");
+                    }
 
                     await this.RefreshToken(cancellationToken);
 
                     if (Log.DebugEnabled())
+                    {
                         Log.Debug($"GetTokenIfNeeded: New Token: {AccessToken}");
+                    }
                 }
 
                 //If token is close to being expired, the request is blocked until a new token obtained.
@@ -374,69 +389,6 @@ namespace Aerospike.Client
             }
 
             return null;
-        }
-
-        public override TResponse BlockingUnaryCall<TRequest, TResponse>(
-            TRequest request,
-            ClientInterceptorContext<TRequest, TResponse> context,
-            BlockingUnaryCallContinuation<TRequest, TResponse> continuation)
-        {
-                        
-            if (Log.DebugEnabled())
-                Log.Debug($"BlockingUnaryCall<TRequest, TResponse>: Enter: {AccessToken}");
-
-            return continuation(request, context);            
-        }
-
-        public override AsyncUnaryCall<TResponse> AsyncUnaryCall<TRequest, TResponse>(
-            TRequest request,
-            ClientInterceptorContext<TRequest, TResponse> context,
-            AsyncUnaryCallContinuation<TRequest, TResponse> continuation)
-        {
-           
-            if (Log.DebugEnabled())
-                Log.Debug($"AsyncUnaryCall<TRequest, TResponse>: Enter: {AccessToken}");
-
-            var call = continuation(request, context);
-            return new AsyncUnaryCall<TResponse>(HandleResponse(call.ResponseAsync), call.ResponseHeadersAsync, call.GetStatus, call.GetTrailers, call.Dispose);        
-        }
-
-        private async Task<TResponse> HandleResponse<TResponse>(Task<TResponse> t)
-        {
-            var response = await t;
-            return response;
-        }
-
-        public override AsyncClientStreamingCall<TRequest, TResponse> AsyncClientStreamingCall<TRequest, TResponse>(
-            ClientInterceptorContext<TRequest, TResponse> context,
-            AsyncClientStreamingCallContinuation<TRequest, TResponse> continuation)
-        {
-           
-            if (Log.DebugEnabled())
-                Log.Debug($"AsyncClientStreamingCall<TRequest, TResponse>: Enter: {AccessToken}");
-
-            return continuation(context);            
-        }
-
-        public override AsyncServerStreamingCall<TResponse> AsyncServerStreamingCall<TRequest, TResponse>(
-            TRequest request,
-            ClientInterceptorContext<TRequest, TResponse> context,
-            AsyncServerStreamingCallContinuation<TRequest, TResponse> continuation)
-        {            
-            if (Log.DebugEnabled())
-                Log.Debug($"AsyncServerStreamingCall<TRequest, TResponse>: Enter: {AccessToken}");
-
-            return continuation(request, context);            
-        }
-
-        public override AsyncDuplexStreamingCall<TRequest, TResponse> AsyncDuplexStreamingCall<TRequest, TResponse>(
-            ClientInterceptorContext<TRequest, TResponse> context,
-            AsyncDuplexStreamingCallContinuation<TRequest, TResponse> continuation)
-        {           
-            if (Log.DebugEnabled())
-                Log.Debug($"AsyncDuplexStreamingCall<TRequest, TResponse>: Enter: {AccessToken}");
-
-            return continuation(context);            
         }
 
         public bool Disposed { get; private set; }
@@ -514,7 +466,7 @@ namespace Aerospike.Client
                                         : tokenFetchLatency;
             var possibleRefreshTime = (ttl * refreshAfterFraction) - useFetchLatency;
 
-            if(possibleRefreshTime > 0 && possibleRefreshTime < ttl)
+            if (possibleRefreshTime > 0 && possibleRefreshTime < ttl)
             {
                 this.RefreshTime = ttl - (long) possibleRefreshTime;
             }
@@ -528,7 +480,9 @@ namespace Aerospike.Client
             this.Token = token;
 
             if (Log.DebugEnabled())
+            {
                 System.Diagnostics.Debug.WriteLine(this);
+            }
         }
 
         /// <summary>

@@ -170,6 +170,8 @@ namespace Aerospike.Test
 			proxyAsyncPolicy.minConnsPerNode = 100;
 			proxyPolicy.maxConnsPerNode = 100;
 			proxyAsyncPolicy.maxConnsPerNode = 100;
+			proxyPolicy.timeout = 3000;
+			proxyAsyncPolicy.timeout = 3000;
 
 			if (user != null && user.Length > 0)
 			{

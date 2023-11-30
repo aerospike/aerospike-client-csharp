@@ -17,6 +17,7 @@
 using Aerospike.Client.KVS;
 using Google.Protobuf;
 using Grpc.Core;
+using Grpc.Net.Client;
 using static Aerospike.Client.AerospikeException;
 
 namespace Aerospike.Client
@@ -26,8 +27,8 @@ namespace Aerospike.Client
 		private Statement Statement { get; }
 		private ulong TaskId { get; }
 
-		public ServerCommandProxy(Buffer buffer, CallInvoker invoker, WritePolicy policy, Statement statement, ulong taskId)
-			: base(buffer, invoker, policy)
+		public ServerCommandProxy(Buffer buffer, GrpcChannel channel, WritePolicy policy, Statement statement, ulong taskId)
+			: base(buffer, channel, policy)
 		{
 			this.Statement = statement;
 			this.TaskId = taskId;
@@ -97,7 +98,7 @@ namespace Aerospike.Client
 
 			try
 			{
-				var client = new KVS.Query.QueryClient(CallInvoker);
+				var client = new KVS.Query.QueryClient(Channel);
 				var deadline = GetDeadline();
 				var stream = client.BackgroundExecute(request, deadline: deadline, cancellationToken: token);
 				var conn = new ConnectionProxyStream(stream);

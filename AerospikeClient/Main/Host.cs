@@ -113,9 +113,9 @@ namespace Aerospike.Client
 			{
 				return new HostParser(str).ParseHosts(defaultTlsName, defaultPort);
 			}
-			catch (Exception)
+			catch (Exception e)
 			{
-				throw new AerospikeException("Invalid hosts string: " + str);
+				throw new AerospikeException("Invalid hosts string: " + str, e);
 			}
 		}
 
@@ -137,9 +137,9 @@ namespace Aerospike.Client
 			{
 				return new HostParser(str).ParseServiceHosts();
 			}
-			catch (Exception)
+			catch (Exception e)
 			{
-				throw new AerospikeException("Invalid service hosts string: " + str);
+				throw new AerospikeException("Invalid service hosts string: " + str, e);
 			}
 		}
 		
