@@ -17,6 +17,7 @@
 using Aerospike.Client.KVS;
 using Google.Protobuf;
 using Grpc.Core;
+using Grpc.Net.Client;
 
 namespace Aerospike.Client
 {
@@ -24,8 +25,8 @@ namespace Aerospike.Client
 	{
 		public Record Record { get; private set; }
 
-		public ReadHeaderCommandProxy(Buffer buffer, CallInvoker invoker, Policy policy, Key key)
-			: base(buffer, invoker, policy, key)
+		public ReadHeaderCommandProxy(Buffer buffer, GrpcChannel channel, Policy policy, Key key)
+			: base(buffer, channel, policy, key)
 		{
 		}
 
@@ -85,7 +86,7 @@ namespace Aerospike.Client
 
 			try
 			{
-				var client = new KVS.KVS.KVSClient(CallInvoker);
+				var client = new KVS.KVS.KVSClient(Channel);
 				var deadline = GetDeadline();
 				var response = client.GetHeader(request, deadline: deadline);
 				var conn = new ConnectionProxy(response);
@@ -110,7 +111,7 @@ namespace Aerospike.Client
 
 			try
 			{
-				var client = new KVS.KVS.KVSClient(CallInvoker);
+				var client = new KVS.KVS.KVSClient(Channel);
 				var deadline = GetDeadline();
 				var response = await client.GetHeaderAsync(request, deadline: deadline, cancellationToken: token);
 				var conn = new ConnectionProxy(response);

@@ -17,6 +17,7 @@
 using Aerospike.Client.KVS;
 using Google.Protobuf;
 using Grpc.Core;
+using Grpc.Net.Client;
 using System.Collections;
 using static Aerospike.Client.AerospikeException;
 
@@ -31,12 +32,12 @@ namespace Aerospike.Client
 		public BatchReadListCommandProxy
 		(
 			Buffer buffer,
-			CallInvoker invoker,
+			GrpcChannel channel,
 			BatchNode batch,
 			BatchPolicy policy,
 			List<BatchRead> records,
 			BatchStatus status
-		) : base(buffer, invoker, batch, policy, records.ToArray(), status, true)
+		) : base(buffer, channel, batch, policy, records.ToArray(), status, true)
 		{
 		}
 
@@ -77,7 +78,7 @@ namespace Aerospike.Client
 		public BatchGetArrayCommandProxy
 		(
 			Buffer buffer,
-			CallInvoker invoker,
+			GrpcChannel channel,
 			BatchNode batch,
 			BatchPolicy policy,
 			string[] binNames,
@@ -86,7 +87,7 @@ namespace Aerospike.Client
 			int readAttr,
 			bool isOperation,
 			BatchStatus status
-		) : base(buffer, invoker, batch, policy, records, status, isOperation)
+		) : base(buffer, channel, batch, policy, records, status, isOperation)
 		{
 			this.BinNames = binNames;
 			this.Ops = ops;
@@ -122,13 +123,13 @@ namespace Aerospike.Client
 		public BatchExistsArrayCommandProxy
 		(
 			Buffer buffer,
-			CallInvoker invoker,
+			GrpcChannel channel,
 			BatchNode batch,
 			BatchPolicy policy,
 			BatchRecord[] records,
 			bool[] existsArray,
 			BatchStatus status
-		) : base(buffer, invoker, batch, policy, records, status, false)
+		) : base(buffer, channel, batch, policy, records, status, false)
 		{
 			this.ExistsArray = existsArray;
 		}
@@ -161,12 +162,12 @@ namespace Aerospike.Client
 		public BatchOperateListCommandProxy
 		(
 			Buffer buffer,
-			CallInvoker invoker,
+			GrpcChannel channel,
 			BatchNode batch,
 			BatchPolicy policy,
 			IList<BatchRecord> records,
 			BatchStatus status
-		) : base(buffer, invoker, batch, policy, records, status, true)
+		) : base(buffer, channel, batch, policy, records, status, true)
 		{
 		}
 
@@ -246,14 +247,14 @@ namespace Aerospike.Client
 		public BatchOperateArrayCommandProxy
 		(
 			Buffer buffer,
-			CallInvoker invoker,
+			GrpcChannel channel,
 			BatchNode batch,
 			BatchPolicy batchPolicy,
 			Operation[] ops,
 			BatchRecord[] records,
 			BatchAttr attr,
 			BatchStatus status
-		) : base(buffer, invoker, batch, batchPolicy, records, status, ops != null)
+		) : base(buffer, channel, batch, batchPolicy, records, status, ops != null)
 		{
 			this.Ops = ops;
 			this.Attr = attr;
@@ -321,7 +322,7 @@ namespace Aerospike.Client
 		public BatchUDFCommandProxy
 		(
 			Buffer buffer,
-			CallInvoker invoker,
+			GrpcChannel channel,
 			BatchNode batch,
 			BatchPolicy batchPolicy,
 			Key[] keys,
@@ -331,7 +332,7 @@ namespace Aerospike.Client
 			BatchRecord[] records,
 			BatchAttr attr,
 			BatchStatus status
-		) : base(buffer, invoker, batch, batchPolicy, records, status, false)
+		) : base(buffer, channel, batch, batchPolicy, records, status, false)
 		{
 			this.Keys = keys;
 			this.PackageName = packageName;
@@ -417,13 +418,13 @@ namespace Aerospike.Client
 		public BatchCommandProxy
 		(
 			Buffer buffer,
-			CallInvoker invoker,
+			GrpcChannel channel,
 			BatchNode batch,
 			BatchPolicy batchPolicy,
 			IList<BatchRecord> records,
 			BatchStatus status,
 			bool isOperation
-		) : base(buffer, invoker, batchPolicy, isOperation)
+		) : base(buffer, channel, batchPolicy, isOperation)
 		{
 			this.Batch = batch;
 			this.BatchPolicy = batchPolicy;
@@ -455,7 +456,7 @@ namespace Aerospike.Client
 
 			try
 			{
-				var client = new KVS.KVS.KVSClient(CallInvoker);
+				var client = new KVS.KVS.KVSClient(Channel);
 				var deadline = GetDeadline();
 				var stream = client.BatchOperate(request, deadline: deadline, cancellationToken: token);
 				var conn = new ConnectionProxyStream(stream);

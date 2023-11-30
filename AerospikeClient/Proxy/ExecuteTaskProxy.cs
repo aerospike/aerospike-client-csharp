@@ -16,6 +16,7 @@
  */
 using Aerospike.Client.KVS;
 using Grpc.Core;
+using Grpc.Net.Client;
 using static Aerospike.Client.AerospikeException;
 
 namespace Aerospike.Client
@@ -25,15 +26,15 @@ namespace Aerospike.Client
 	/// </summary>
 	public sealed class ExecuteTaskProxy : ExecuteTask
 	{
-		CallInvoker Invoker { get; set; }
+		GrpcChannel Channel { get; set; }
 
 		/// <summary>
 		/// Initialize task with fields needed to query server nodes.
 		/// </summary>
-		public ExecuteTaskProxy(CallInvoker callInvoker, Policy policy, Statement statement, ulong taskId)
+		public ExecuteTaskProxy(GrpcChannel channel, Policy policy, Statement statement, ulong taskId)
 			: base(null, policy, statement, taskId)
 		{
-			Invoker = callInvoker;
+			Channel = channel;
 		}
 
 		/// <summary>
@@ -59,7 +60,7 @@ namespace Aerospike.Client
 
 			try
 			{
-				var client = new KVS.Query.QueryClient(Invoker);
+				var client = new KVS.Query.QueryClient(Channel);
 				var stream = client.BackgroundTaskStatus(request);
 				stream.ResponseStream.MoveNext().Wait(policy.timeout);
 				response = stream.ResponseStream.Current;

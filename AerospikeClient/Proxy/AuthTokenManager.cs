@@ -32,7 +32,7 @@ namespace Aerospike.Client
     /// For token reauthorization to work properly the driver code would need to be re-factored to allow for Unauthorized exceptions to be retried. 
     /// Also support for OAuth2 tokens or JWT would greatly help instead of this custom token being provided.
     /// </remarks>
-    public sealed class AuthTokenInterceptor : Interceptor, IDisposable
+    public sealed class AuthTokenManager : IDisposable
     {
         private ClientPolicy ClientPolicy { get; }
         private GrpcChannel Channel { get; set; }
@@ -41,17 +41,8 @@ namespace Aerospike.Client
         private readonly ManualResetEventSlim UpdatingToken = new ManualResetEventSlim(false);
         
         private Timer RefreshTokenTimer { get; set; }
-        
 
-        /*
-        public AuthTokenInterceptor(ClientPolicy clientPolicy, GrpcChannel grpcChannel)
-        {
-            this.ClientPolicy = clientPolicy;
-            this.SetChannel(grpcChannel);
-        }
-        */
-
-        public AuthTokenInterceptor(ClientPolicy clientPolicy)
+        public AuthTokenManager(ClientPolicy clientPolicy)
         {
             this.ClientPolicy = clientPolicy;            
         }
@@ -63,8 +54,9 @@ namespace Aerospike.Client
             if (IsTokenRequired())
             {
                 if (Log.DebugEnabled())
+                {
                     Log.Debug("Grpc Token Required");
-				//this.AccessToken = new AccessToken(0, String.Empty, 0, 0);
+                }
 
 				RefreshTokenTimer = new Timer
                 {
@@ -75,11 +67,11 @@ namespace Aerospike.Client
 
                 var refreshTokenTask = RefreshToken(CancellationToken.None);
 
-                Task.WaitAny(new[] { refreshTokenTask}, this.ClientPolicy.timeout);                
+                Task.WaitAny(new[] { refreshTokenTask }, this.ClientPolicy.timeout);                
                 if(refreshTokenTask.IsFaulted)
                     throw refreshTokenTask.Exception;
                 if (refreshTokenTask.IsCanceled)
-                    throw new OperationCanceledException("Initial Token Fetch was Canceled");               
+                    throw new OperationCanceledException("Initial Token Fetch was Canceled");
             }
         }
 
@@ -96,7 +88,9 @@ namespace Aerospike.Client
             if (this.UpdatingToken.IsSet && this.AccessToken.ShouldRefreshToken)
             {
                 if (Log.DebugEnabled())
+                {
                     Log.Debug($"Refresh Token Timer Event: Enter: {AccessToken}: '{DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss.fff")}'");
+                }
 
                 if (IsTokenRequired())
                 {
@@ -343,69 +337,6 @@ namespace Aerospike.Client
             }
 
             return null;
-        }
-
-        public override TResponse BlockingUnaryCall<TRequest, TResponse>(
-            TRequest request,
-            ClientInterceptorContext<TRequest, TResponse> context,
-            BlockingUnaryCallContinuation<TRequest, TResponse> continuation)
-        {
-                        
-            if (Log.DebugEnabled())
-                Log.Debug($"BlockingUnaryCall<TRequest, TResponse>: Enter: {AccessToken}");
-
-            return continuation(request, context);            
-        }
-
-        public override AsyncUnaryCall<TResponse> AsyncUnaryCall<TRequest, TResponse>(
-            TRequest request,
-            ClientInterceptorContext<TRequest, TResponse> context,
-            AsyncUnaryCallContinuation<TRequest, TResponse> continuation)
-        {
-           
-            if (Log.DebugEnabled())
-                Log.Debug($"AsyncUnaryCall<TRequest, TResponse>: Enter: {AccessToken}");
-
-            var call = continuation(request, context);
-            return new AsyncUnaryCall<TResponse>(HandleResponse(call.ResponseAsync), call.ResponseHeadersAsync, call.GetStatus, call.GetTrailers, call.Dispose);        
-        }
-
-        private async Task<TResponse> HandleResponse<TResponse>(Task<TResponse> t)
-        {
-            var response = await t;
-            return response;
-        }
-
-        public override AsyncClientStreamingCall<TRequest, TResponse> AsyncClientStreamingCall<TRequest, TResponse>(
-            ClientInterceptorContext<TRequest, TResponse> context,
-            AsyncClientStreamingCallContinuation<TRequest, TResponse> continuation)
-        {
-           
-            if (Log.DebugEnabled())
-                Log.Debug($"AsyncClientStreamingCall<TRequest, TResponse>: Enter: {AccessToken}");
-
-            return continuation(context);            
-        }
-
-        public override AsyncServerStreamingCall<TResponse> AsyncServerStreamingCall<TRequest, TResponse>(
-            TRequest request,
-            ClientInterceptorContext<TRequest, TResponse> context,
-            AsyncServerStreamingCallContinuation<TRequest, TResponse> continuation)
-        {            
-            if (Log.DebugEnabled())
-                Log.Debug($"AsyncServerStreamingCall<TRequest, TResponse>: Enter: {AccessToken}");
-
-            return continuation(request, context);            
-        }
-
-        public override AsyncDuplexStreamingCall<TRequest, TResponse> AsyncDuplexStreamingCall<TRequest, TResponse>(
-            ClientInterceptorContext<TRequest, TResponse> context,
-            AsyncDuplexStreamingCallContinuation<TRequest, TResponse> continuation)
-        {           
-            if (Log.DebugEnabled())
-                Log.Debug($"AsyncDuplexStreamingCall<TRequest, TResponse>: Enter: {AccessToken}");
-
-            return continuation(context);            
         }
 
         public bool Disposed { get; private set; }

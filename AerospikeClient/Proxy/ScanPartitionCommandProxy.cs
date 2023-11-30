@@ -17,6 +17,7 @@
 using Aerospike.Client.KVS;
 using Google.Protobuf;
 using Grpc.Core;
+using Grpc.Net.Client;
 using static Aerospike.Client.AerospikeException;
 
 namespace Aerospike.Client
@@ -33,7 +34,7 @@ namespace Aerospike.Client
 		public ScanPartitionCommandProxy
 		(
 			Buffer buffer,
-			CallInvoker invoker,
+			GrpcChannel channel,
 			ScanPolicy scanPolicy,
 			string ns,
 			string setName,
@@ -41,7 +42,7 @@ namespace Aerospike.Client
 			PartitionTracker tracker,
 			PartitionFilter filter,
 			RecordSet recordSet
-		) : base(buffer, invoker, scanPolicy, tracker.socketTimeout, tracker.totalTimeout)
+		) : base(buffer, channel, scanPolicy, tracker.socketTimeout, tracker.totalTimeout)
 		{
 			this.ScanPolicy = scanPolicy;
 			this.SetName = setName;
@@ -129,7 +130,7 @@ namespace Aerospike.Client
 
 			try
 			{
-				var client = new Scan.ScanClient(CallInvoker);
+				var client = new Scan.ScanClient(Channel);
 				var deadline = GetDeadline();
 				var stream = client.Scan(request, deadline: deadline, cancellationToken: token);
 				var conn = new ConnectionProxyStream(stream);

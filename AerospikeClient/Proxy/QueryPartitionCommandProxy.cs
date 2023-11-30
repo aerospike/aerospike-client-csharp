@@ -17,6 +17,7 @@
 using Aerospike.Client.KVS;
 using Google.Protobuf;
 using Grpc.Core;
+using Grpc.Net.Client;
 using static Aerospike.Client.AerospikeException;
 
 namespace Aerospike.Client
@@ -32,13 +33,13 @@ namespace Aerospike.Client
 		public QueryPartitionCommandProxy
 		(
 			Buffer buffer,
-			CallInvoker invoker,
+			GrpcChannel channel,
 			QueryPolicy policy,
 			Statement statement,
 			PartitionTracker partitionTracker,
 			PartitionFilter partitionFilter,
 			RecordSet recordSet
-		) : base(buffer, invoker, policy, true)
+		) : base(buffer, channel, policy, true)
 		{
 			this.Policy = policy;
 			this.Statement = statement;
@@ -115,7 +116,7 @@ namespace Aerospike.Client
 
 			try
 			{
-				var client = new KVS.Query.QueryClient(CallInvoker);
+				var client = new KVS.Query.QueryClient(Channel);
 				var deadline = GetDeadline();
 
 				if (Log.DebugEnabled())
