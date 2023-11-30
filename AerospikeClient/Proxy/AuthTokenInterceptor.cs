@@ -102,8 +102,8 @@ namespace Aerospike.Client
                 }
                 if (refreshTokenTask.IsCanceled)
                 {
-                    Log.Error($"SetChannel: Refresh Token Task Canceled: Time Out: {timeOut + 500}: Exception: '{refreshTokenTask.Exception}'");
-                    System.Diagnostics.Debug.WriteLine($"SetChannel: Refresh Token Task Canceled: Time Out: {timeOut + 500}: Exception: '{refreshTokenTask.Exception}'");
+                    Log.Error($"SetChannel: Refresh Token Task Canceled: Time Out: {timeOut}: Exception: '{refreshTokenTask.Exception}'");
+                    System.Diagnostics.Debug.WriteLine($"SetChannel: Refresh Token Task Canceled: Time Out: {timeOut}: Exception: '{refreshTokenTask.Exception}'");
                     throw new OperationCanceledException("Initial Token Fetch was Canceled", refreshTokenTask.Exception);
                 }
             }
