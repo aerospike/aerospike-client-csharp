@@ -129,7 +129,7 @@ namespace Aerospike.Client
 			catch (EndOfGRPCStream eos)
 			{
 				RecordSet.Put(RecordSet.END);
-				if (eos.ResultCode != 0 && eos.ResultCode != 22) // TODO
+				if (eos.ResultCode != 0)
 				{
 					if (Log.DebugEnabled())
 					{
