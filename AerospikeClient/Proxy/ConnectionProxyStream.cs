@@ -104,7 +104,11 @@ namespace Aerospike.Client
 			Offset = 0;
 			if (!Response.HasNext)
 			{
-				throw new EndOfGRPCStream(Payload[13]);
+                if (Log.DebugEnabled())
+                {
+                    Log.Debug($"NextGRPCResponse: Result Code: {Payload[13]}");
+                }
+                throw new EndOfGRPCStream(Payload[13]);
 			}
 		}
 

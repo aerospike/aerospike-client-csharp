@@ -76,7 +76,7 @@ namespace Aerospike.Client
                 var cancellationToken = cancellationSrc.Token;
                 var timeOut = Math.Max(this.ClientPolicy.timeout, this.ClientPolicy.loginTimeout);
 
-                Task refreshTokenTask = RefreshToken(cancellationToken, timeout: timeOut);
+                Task refreshTokenTask = RefreshToken(cancellationToken, timeout: timeOut, forceRefresh: true);
 
                 if (Task.WaitAny(new[] { refreshTokenTask }, 
                                         timeOut + 500, //Wait a little longer...
@@ -110,7 +110,7 @@ namespace Aerospike.Client
 
         /// <summary>
         /// Called by the Token Refresh Timer <seealso cref="RefreshTokenTimer"/>
-        /// Note: <see cref="RefreshToken(CancellationToken)"/> method must be called to activate the timer properly!
+        /// Note: <see cref="RefreshToken(CancellationToken, int, bool)"/> method must be called to activate the timer properly!
         /// </summary>
         /// <remarks>
         /// These are not precise timers and can fire later than the defined interval. 
@@ -163,16 +163,25 @@ namespace Aerospike.Client
         /// This method also sets/configs the <see cref="RefreshTokenTimer"/> and this must be called after the timer is initially configured.
         /// </summary>
         /// <param name="cancellationToken"></param>
+        /// <param name="timeout"></param>
+        /// <param name="forceRefresh">
+        /// If true the token is refreshed regardless of state
+        /// </param>
         /// <returns></returns>
-        private async Task RefreshToken(CancellationToken cancellationToken, int timeout = -1)
+        private async Task RefreshToken(CancellationToken cancellationToken, int timeout = -1, bool forceRefresh = false)
         {
             //Block requests until a new token is obtained when it is very close to expire...
-            if (this.AccessToken?.WillExpire ?? true)
+            if (this.AccessToken?.WillExpire ?? true && !forceRefresh)
             {
+                var isSet = this.UpdatingToken.IsSet;
                 this.UpdatingToken.Reset();
+                if(!isSet) //Try to prevent double entry...
+                {
+                    return;
+                }
                 if (Log.DebugEnabled())
                 {
-                    Log.Debug($"Refresh Token: Block: {AccessToken}");
+                    Log.Debug($"Refresh Token: Reset: {AccessToken}");
                 }
             }
             
@@ -365,7 +374,7 @@ namespace Aerospike.Client
         {            
             if (IsTokenRequired())
             {
-                if (AccessToken.HasExpired && this.UpdatingToken.IsSet)
+                if (AccessToken.WillExpire && this.UpdatingToken.IsSet)
                 {
                     //Need to block at this point so that any new requests won't get an unauthorized exception
                     this.UpdatingToken.Reset();
@@ -374,7 +383,7 @@ namespace Aerospike.Client
                         Log.Debug($"GetTokenIfNeeded: Expired: Token: {AccessToken}");
                     }
 
-                    await this.RefreshToken(cancellationToken);
+                    await this.RefreshToken(cancellationToken, forceRefresh: true);
 
                     if (Log.DebugEnabled())
                     {
@@ -383,7 +392,13 @@ namespace Aerospike.Client
                 }
 
                 //If token is close to being expired, the request is blocked until a new token obtained.
-                this.UpdatingToken.Wait(this.ClientPolicy.timeout, cancellationToken);
+                if(!this.UpdatingToken.Wait(-1, cancellationToken))
+                {
+                    if (Log.DebugEnabled())
+                    {
+                        Log.Debug($"GetTokenIfNeeded: Slim Token Wait Failed: IsCancled: {cancellationToken.IsCancellationRequested}");
+                    }
+                }
 
                 return this.AccessToken;
             }
@@ -475,8 +490,10 @@ namespace Aerospike.Client
                 this.RefreshTime = (long)Math.Floor(ttl * refreshZeroFraction);
             }
             
+            var willExpireSoon = this.RefreshTime + tokenFetchLatency;
+
             this.TokenFetchLatency = tokenFetchLatency;
-            this.WillExpireSoon = ttl - TokenFetchLatency;
+            this.WillExpireSoon = willExpireSoon >= ttl ? this.RefreshTime : willExpireSoon;
             this.Token = token;
 
             if (Log.DebugEnabled())

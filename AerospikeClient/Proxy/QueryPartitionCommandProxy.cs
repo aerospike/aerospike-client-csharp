@@ -142,7 +142,7 @@ namespace Aerospike.Client
 
 				if (Log.DebugEnabled())
 				{
-					Log.Debug($"Execute Query Completed: '{this.OpCount}'");
+					Log.Debug($"Execute Query: Result Code: {eos.ResultCode}: Completed: '{this.OpCount}'");
 				}
 			}
 			catch (RpcException e)

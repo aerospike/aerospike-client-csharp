@@ -156,8 +156,8 @@ namespace Aerospike.Client
 			this.batchUDFPolicyDefault = policy.batchUDFPolicyDefault;
 			this.infoPolicyDefault = policy.infoPolicyDefault;
 			this.operatePolicyReadDefault = new WritePolicy(this.readPolicyDefault);
-
-			var connectionUri = hosts[0].tlsName == null ? new UriBuilder("http", hosts[0].name, hosts[0].port).Uri :
+			 
+			var connectionUri = hosts[0].tlsName == null || policy.tlsPolicy == null ? new UriBuilder("http", hosts[0].name, hosts[0].port).Uri :
 				new UriBuilder("https", hosts[0].name, hosts[0].port).Uri;
 
 			var handler = new SocketsHttpHandler

@@ -86,7 +86,12 @@ namespace Aerospike.Client
 			}
 			catch (EndOfGRPCStream)
 			{
-				if (response.BackgroundTaskStatus == BackgroundTaskStatus.Complete)
+                if (Log.DebugEnabled())
+                {
+                    Log.Debug($"QueryStatus: Status: {response.BackgroundTaskStatus}");
+                }
+
+                if (response.BackgroundTaskStatus == BackgroundTaskStatus.Complete)
 				{
 					return BaseTask.COMPLETE;
 				}
