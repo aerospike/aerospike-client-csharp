@@ -483,7 +483,7 @@ namespace Aerospike.Client
 
             if (possibleRefreshTime > 0 && possibleRefreshTime < ttl)
             {
-                this.RefreshTime = ttl - (long) possibleRefreshTime;
+                this.RefreshTime = (long) possibleRefreshTime;
             }
             else
             {
