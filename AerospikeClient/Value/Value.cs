@@ -29,7 +29,7 @@ namespace Aerospike.Client
 		/// versions less than 5.6 which do not support boolean bins. Can set to true for
 		/// server 5.6+.
 		/// </summary>
-		public static bool UseBoolBin = false;
+		public static bool UseBoolBin = true;
 
 		/// <summary>
 		/// Should BinaryFormatter be disabled. If true, an exception will be thrown when BinaryFormatter
