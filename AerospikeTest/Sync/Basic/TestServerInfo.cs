@@ -1,5 +1,5 @@
 ﻿/* 
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -48,7 +48,7 @@ namespace Aerospike.Test
 				}
 				else
 				{
-					if (!(key.Equals("services-alumni") || key.Equals("services") || key.Equals("dcs")))
+					if (!(key.Equals("services-alumni") || key.Equals("services") || key.Equals("dcs") || key.Equals("build_ee_sha")))
 					{
 						Assert.IsNotNull(entry.Value);
 					}
