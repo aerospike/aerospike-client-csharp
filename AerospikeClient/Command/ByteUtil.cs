@@ -229,7 +229,7 @@ namespace Aerospike.Client
             // Ignore the flags for now
             int ncells = BytesToShort(buf, offset + 1);
             int hdrsz = 1 + 2 + (ncells * 8);
-            return Utf8ToString(buf, offset + hdrsz, len - hdrsz);
+            return Value.GetAsGeoJSON(Utf8ToString(buf, offset + hdrsz, len - hdrsz));
         }
 
         public static object BytesToHLL(byte[] buf, int offset, int len)
