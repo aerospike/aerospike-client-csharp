@@ -78,5 +78,15 @@ namespace Aerospike.Test
 			b = record.GetBool(bin4.name);
 			Assert.IsTrue(b);
 		}
+
+		[TestMethod]
+		public void PutGetGeoJson()
+		{
+			Key key = new(args.ns, args.set, "geo");
+			Bin geoBin = new("geo", Value.GetAsGeoJSON("{\"type\": \"Point\", \"coordinates\": [42.34, 58.62]}"));
+			client.Put(null, key, geoBin);
+			Record r = client.Get(null, key);
+			Assert.AreEqual(r.GetValue("geo").GetType(), geoBin.value.GetType());
+		}
 	}
 }
