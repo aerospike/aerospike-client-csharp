@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2020 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -14,6 +14,7 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
+
 namespace Aerospike.Client
 {
 	public sealed class WriteCommand : SyncCommand
@@ -49,7 +50,7 @@ namespace Aerospike.Client
 			SetWrite(writePolicy, operation, key, bins);
 		}
 
-		protected internal override void ParseResult(Connection conn)
+		protected internal override void ParseResult(IConnection conn)
 		{
 			// Read header.		
 			conn.ReadFully(dataBuffer, MSG_TOTAL_HEADER_SIZE);

@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -14,9 +14,8 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using System;
-using System.Collections.Generic;
 using Aerospike.Client;
+using System;
 
 namespace Aerospike.Demo
 {
@@ -36,25 +35,25 @@ namespace Aerospike.Demo
 		/// the server does not have to read the existing record before overwriting it.
 		/// </para>
 		/// </summary>
-		public override void RunExample(AerospikeClient client, Arguments args)
+		public override void RunExample(IAerospikeClient client, Arguments args)
 		{
 			RunReplaceExample(client, args);
 			RunReplaceOnlyExample(client, args);
 		}
 
-		private void RunReplaceExample(AerospikeClient client, Arguments args)
+		private void RunReplaceExample(IAerospikeClient client, Arguments args)
 		{
 			Key key = new Key(args.ns, args.set, "replacekey");
 			Bin bin1 = new Bin("bin1", "value1");
 			Bin bin2 = new Bin("bin2", "value2");
 			Bin bin3 = new Bin("bin3", "value3");
 
-			console.Info("Put: namespace={0} set={1} key={2} bin1={3} value1={4} bin2={5} value2={6}", 
+			console.Info("Put: namespace={0} set={1} key={2} bin1={3} value1={4} bin2={5} value2={6}",
 				key.ns, key.setName, key.userKey, bin1.name, bin1.value, bin2.name, bin2.value);
 
 			client.Put(args.writePolicy, key, bin1, bin2);
 
-			console.Info("Replace with: namespace={0} set={1} key={2} bin={3} value={4}", 
+			console.Info("Replace with: namespace={0} set={1} key={2} bin={3} value={4}",
 				key.ns, key.setName, key.userKey, bin3.name, bin3.value);
 
 			WritePolicy policy = new WritePolicy();
@@ -67,7 +66,7 @@ namespace Aerospike.Demo
 
 			if (record == null)
 			{
-				throw new Exception(string.Format("Failed to get: namespace={0} set={1} key={2}", 
+				throw new Exception(string.Format("Failed to get: namespace={0} set={1} key={2}",
 					key.ns, key.setName, key.userKey));
 			}
 
@@ -91,7 +90,7 @@ namespace Aerospike.Demo
 			ValidateBin(key, bin3, record);
 		}
 
-		private void RunReplaceOnlyExample(AerospikeClient client, Arguments args)
+		private void RunReplaceOnlyExample(IAerospikeClient client, Arguments args)
 		{
 			Key key = new Key(args.ns, args.set, "replaceonlykey");
 			Bin bin = new Bin("bin", "value");

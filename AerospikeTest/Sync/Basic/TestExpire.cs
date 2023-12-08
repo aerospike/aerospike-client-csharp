@@ -1,5 +1,5 @@
 ﻿/* 
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -14,9 +14,8 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using System;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Aerospike.Client;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace Aerospike.Test
 {
@@ -34,6 +33,10 @@ namespace Aerospike.Test
 			// Specify that record expires 2 seconds after it's written.
 			WritePolicy writePolicy = new WritePolicy();
 			writePolicy.expiration = 2;
+			if (args.testProxy)
+			{
+				writePolicy.totalTimeout = args.proxyTotalTimeout;
+			}
 			client.Put(writePolicy, key, bin);
 
 			// Read the record before it expires, showing it is there.	
@@ -56,6 +59,10 @@ namespace Aerospike.Test
 			// The "Never Expire" value is -1, or 0xFFFFFFFF.
 			WritePolicy writePolicy = new WritePolicy();
 			writePolicy.expiration = -1;
+			if (args.testProxy)
+			{
+				writePolicy.totalTimeout = args.proxyTotalTimeout;
+			}
 			client.Put(writePolicy, key, bin);
 
 			// Read the record, showing it is there.

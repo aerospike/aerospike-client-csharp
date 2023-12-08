@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -14,10 +14,10 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
+using Aerospike.Client;
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using Aerospike.Client;
 
 namespace Aerospike.Demo
 {
@@ -30,7 +30,7 @@ namespace Aerospike.Demo
 		/// <summary>
 		/// Create secondary index and query on list bins.
 		/// </summary>
-		public override void RunExample(AerospikeClient client, Arguments args)
+		public override void RunExample(IAerospikeClient client, Arguments args)
 		{
 			string indexName = "qlindex";
 			string keyPrefix = "qlkey";
@@ -43,7 +43,7 @@ namespace Aerospike.Demo
 			client.DropIndex(args.policy, args.ns, args.set, indexName);
 		}
 
-		private void CreateIndex(AerospikeClient client, Arguments args, string indexName, string binName)
+		private void CreateIndex(IAerospikeClient client, Arguments args, string indexName, string binName)
 		{
 			console.Info("Create index: ns={0} set={1} index={2} bin={3}",
 				args.ns, args.set, indexName, binName);
@@ -65,7 +65,7 @@ namespace Aerospike.Demo
 			}
 		}
 
-		private void WriteRecords(AerospikeClient client, Arguments args, string keyPrefix, string binName, int size)
+		private void WriteRecords(IAerospikeClient client, Arguments args, string keyPrefix, string binName, int size)
 		{
 			console.Info("Write records");
 			Random random = new Random();
@@ -78,14 +78,14 @@ namespace Aerospike.Demo
 				list.Add(random.Next(900, 910).ToString());
 				list.Add(random.Next(900, 910).ToString());
 				list.Add(random.Next(900, 910).ToString());
-				
+
 				Bin bin = new Bin(binName, list);
 
 				client.Put(args.writePolicy, key, bin);
 			}
 		}
 
-		private void RunQuery(AerospikeClient client, Arguments args, string indexName, string binName)
+		private void RunQuery(IAerospikeClient client, Arguments args, string indexName, string binName)
 		{
 			console.Info("Query list bins");
 

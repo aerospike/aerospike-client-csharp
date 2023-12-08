@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2022 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -14,6 +14,7 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
+
 namespace Aerospike.Client
 {
 	public sealed class ServerCommand : MultiCommand
@@ -32,7 +33,7 @@ namespace Aerospike.Client
 		{
 			return true;
 		}
-		
+
 		protected internal override void WriteBuffer()
 		{
 			SetQuery(cluster, policy, statement, taskId, true, null);
@@ -65,6 +66,6 @@ namespace Aerospike.Client
 				throw new AerospikeException.QueryTerminated();
 			}
 			return true;
-		}		
+		}
 	}
 }

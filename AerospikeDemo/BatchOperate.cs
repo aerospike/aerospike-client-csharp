@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2022 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -36,7 +36,7 @@ namespace Aerospike.Demo
 		{
 		}
 
-		public override void RunExample(AerospikeClient client, Arguments args)
+		public override void RunExample(IAerospikeClient client, Arguments args)
 		{
 			WriteRecords(client, args);
 			BatchReadOperate(client, args);
@@ -46,7 +46,7 @@ namespace Aerospike.Demo
 			BatchWriteOperateComplex(client, args);
 		}
 
-		private void WriteRecords(AerospikeClient client, Arguments args)
+		private void WriteRecords(IAerospikeClient client, Arguments args)
 		{
 			for (int i = 1; i <= RecordCount; i++)
 			{
@@ -72,7 +72,7 @@ namespace Aerospike.Demo
 		/// <summary>
 		/// Perform read operation expressions in one batch.
 		/// </summary>
-		private void BatchReadOperate(AerospikeClient client, Arguments args)
+		private void BatchReadOperate(IAerospikeClient client, Arguments args)
 		{
 			console.Info("batchReadOperate");
 			Key[] keys = new Key[RecordCount];
@@ -96,7 +96,7 @@ namespace Aerospike.Demo
 		/// <summary>
 		/// Read results using varying read operations in one batch.
 		/// </summary>
-		private void BatchReadOperateComplex(AerospikeClient client, Arguments args)
+		private void BatchReadOperateComplex(IAerospikeClient client, Arguments args)
 		{
 			console.Info("batchReadOperateComplex");
 			Expression exp1 = Exp.Build(Exp.Mul(Exp.IntBin(BinName1), Exp.IntBin(BinName2)));
@@ -145,7 +145,7 @@ namespace Aerospike.Demo
 		/// <summary>
 		/// Perform list read operations in one batch.
 		/// </summary>
-		private void BatchListReadOperate(AerospikeClient client, Arguments args)
+		private void BatchListReadOperate(IAerospikeClient client, Arguments args)
 		{
 			console.Info("batchListReadOperate");
 			Key[] keys = new Key[RecordCount];
@@ -185,7 +185,7 @@ namespace Aerospike.Demo
 		/// <summary>
 		/// Perform list read/write operations in one batch.
 		/// </summary>
-		private void BatchListWriteOperate(AerospikeClient client, Arguments args)
+		private void BatchListWriteOperate(IAerospikeClient client, Arguments args)
 		{
 			console.Info("batchListWriteOperate");
 			Key[] keys = new Key[RecordCount];
@@ -222,7 +222,7 @@ namespace Aerospike.Demo
 		/// <summary>
 		/// Read/Write records using varying operations in one batch.
 		/// </summary>
-		private void BatchWriteOperateComplex(AerospikeClient client, Arguments args)
+		private void BatchWriteOperateComplex(IAerospikeClient client, Arguments args)
 		{
 			console.Info("batchWriteOperateComplex");
 			Expression wexp1 = Exp.Build(Exp.Add(Exp.IntBin(BinName1), Exp.IntBin(BinName2), Exp.Val(1000)));

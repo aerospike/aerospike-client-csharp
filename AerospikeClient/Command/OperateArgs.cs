@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2022 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -20,7 +20,6 @@ namespace Aerospike.Client
 	{
 		public readonly WritePolicy writePolicy;
 		public readonly Operation[] operations;
-		public readonly Partition partition;
 		public readonly int size;
 		public readonly int readAttr;
 		public readonly int writeAttr;
@@ -28,7 +27,6 @@ namespace Aerospike.Client
 
 		public OperateArgs
 		(
-			Cluster cluster,
 			WritePolicy policy,
 			WritePolicy writeDefault,
 			WritePolicy readDefault,
@@ -65,7 +63,7 @@ namespace Aerospike.Client
 						}
 						readBin = true;
 						break;
-					
+
 					case Operation.Type.CDT_READ:
 					case Operation.Type.READ:
 						rattr |= Command.INFO1_READ;
@@ -132,14 +130,17 @@ namespace Aerospike.Client
 				wattr |= Command.INFO2_RESPOND_ALL_OPS;
 			}
 			writeAttr = wattr;
+		}
 
-			if (write)
+		public Partition GetPartition(Cluster cluster, Key key)
+		{
+			if (hasWrite)
 			{
-				partition = Partition.Write(cluster, writePolicy, key);
+				return Partition.Write(cluster, writePolicy, key);
 			}
 			else
 			{
-				partition = Partition.Read(cluster, writePolicy, key);
+				return Partition.Read(cluster, writePolicy, key);
 			}
 		}
 	}

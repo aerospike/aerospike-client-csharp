@@ -14,8 +14,6 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using System;
-using System.Collections.Generic;
 using Aerospike.Client;
 
 namespace Aerospike.Demo
@@ -29,7 +27,7 @@ namespace Aerospike.Demo
 		/// <summary>
 		/// Write complex objects using standard C# serializer.
 		/// </summary>
-		public override void RunExample(AerospikeClient client, Arguments args)
+		public override void RunExample(IAerospikeClient client, Arguments args)
 		{
 #if BINARY_FORMATTER
 			TestArray(client, args);
@@ -42,7 +40,7 @@ namespace Aerospike.Demo
 		/// <summary>
 		/// Write array of integers using standard C# serializer.
 		/// </summary>
-		public virtual void TestArray(AerospikeClient client, Arguments args)
+		public virtual void TestArray(IAerospikeClient client, Arguments args)
 		{
 			Key key = new Key(args.ns, args.set, "serialarraykey");
 
@@ -106,7 +104,7 @@ namespace Aerospike.Demo
 		/// <summary>
 		/// Write list object using standard C# serializer.
 		/// </summary>
-		public virtual void TestList(AerospikeClient client, Arguments args)
+		public virtual void TestList(IAerospikeClient client, Arguments args)
 		{
 			Key key = new Key(args.ns, args.set, "seriallistkey");
 
@@ -169,7 +167,7 @@ namespace Aerospike.Demo
 		/// <summary>
 		/// Write complex object using standard C# serializer.
 		/// </summary>
-		public virtual void TestComplex(AerospikeClient client, Arguments args)
+		public virtual void TestComplex(IAerospikeClient client, Arguments args)
 		{
 			Key key = new Key(args.ns, args.set, "serialcomplexkey");
 

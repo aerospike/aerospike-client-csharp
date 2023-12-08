@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2022 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -14,7 +14,6 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using System;
 
 namespace Aerospike.Client
 {
@@ -96,6 +95,17 @@ namespace Aerospike.Client
 			cmd.WriteExpHeader(bytes.Length);
 			Array.Copy(bytes, 0, cmd.dataBuffer, cmd.dataOffset, bytes.Length);
 			cmd.dataOffset += bytes.Length;
+		}
+
+		/// <summary>
+		/// Write expression in wire protocol.
+		/// For internal use only.
+		/// </summary>
+		public void Write(Command cmd, Buffer buffer)
+		{
+			cmd.WriteExpHeader(bytes.Length);
+			Array.Copy(bytes, 0, buffer.DataBuffer, buffer.Offset, bytes.Length);
+			buffer.Offset += bytes.Length;
 		}
 	}
 }

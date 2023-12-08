@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -14,9 +14,9 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
+using Aerospike.Client;
 using System;
 using System.Threading;
-using Aerospike.Client;
 
 namespace Aerospike.Demo
 {
@@ -29,7 +29,7 @@ namespace Aerospike.Demo
 		/// <summary>
 		/// Demonstrate touch command.
 		/// </summary>
-		public override void RunExample(AerospikeClient client, Arguments args)
+		public override void RunExample(IAerospikeClient client, Arguments args)
 		{
 			Key key = new Key(args.ns, args.set, "touchkey");
 			Bin bin = new Bin(args.GetBinName("touchbin"), "touchvalue");
@@ -45,13 +45,13 @@ namespace Aerospike.Demo
 
 			if (record == null)
 			{
-				throw new Exception(string.Format("Failed to get: namespace={0} set={1} key={2} bin={3} value={4}", 
+				throw new Exception(string.Format("Failed to get: namespace={0} set={1} key={2} bin={3} value={4}",
 					key.ns, key.setName, key.userKey, bin.name, null));
 			}
 
 			if (record.expiration == 0)
 			{
-				throw new Exception(string.Format("Failed to get record expiration: namespace={0} set={1} key={2}", 
+				throw new Exception(string.Format("Failed to get record expiration: namespace={0} set={1} key={2}",
 					key.ns, key.setName, key.userKey));
 			}
 
@@ -62,7 +62,7 @@ namespace Aerospike.Demo
 
 			if (record == null)
 			{
-				throw new Exception(string.Format("Failed to get: namespace={0} set={1} key={2}", 
+				throw new Exception(string.Format("Failed to get: namespace={0} set={1} key={2}",
 					key.ns, key.setName, key.userKey));
 			}
 

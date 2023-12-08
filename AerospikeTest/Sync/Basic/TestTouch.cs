@@ -1,5 +1,5 @@
 ﻿/* 
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -14,11 +14,8 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using System;
-using System.Collections;
-using System.Collections.Generic;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Aerospike.Client;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace Aerospike.Test
 {
@@ -32,10 +29,20 @@ namespace Aerospike.Test
 			Bin bin = new Bin(args.GetBinName("touchbin"), "touchvalue");
 
 			WritePolicy writePolicy = new WritePolicy();
-			writePolicy.expiration = 2;
+			if (!args.testProxy || (args.testProxy && nativeClient != null))
+			{
+				writePolicy.expiration = 2;
+			}
+			if (args.testProxy)
+			{
+				writePolicy.totalTimeout = args.proxyTotalTimeout;
+			}
 			client.Put(writePolicy, key, bin);
 
-			writePolicy.expiration = 5;
+			if (!args.testProxy || (args.testProxy && nativeClient != null))
+			{
+				writePolicy.expiration = 5;
+			}
 			Record record = client.Operate(writePolicy, key, Operation.Touch(), Operation.GetHeader());
 			AssertRecordFound(key, record);
 			Assert.AreNotEqual(0, record.expiration);

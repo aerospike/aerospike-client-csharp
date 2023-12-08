@@ -1,5 +1,5 @@
 ﻿/* 
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -14,11 +14,8 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using System;
-using System.Threading;
-using System.Threading.Tasks;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Aerospike.Client;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace Aerospike.Test
 {
@@ -26,16 +23,38 @@ namespace Aerospike.Test
 	public class TestAsyncScan : TestAsync
 	{
 		private int recordCount;
+		static CancellationTokenSource tokenSource = new();
 
 		[TestMethod]
-		public void AsyncScan()
+		public async Task AsyncScan()
 		{
 			recordCount = 0;
 
 			ScanPolicy policy = new ScanPolicy();
-			client.ScanAll(policy, new RecordSequenceHandler(this), args.ns, args.set);
+			if (args.testProxy)
+			{
+				policy.totalTimeout = args.proxyTotalTimeout;
+			}
 
-			WaitTillComplete();
+			if (!args.testProxy)
+			{
+				client.ScanAll(policy, new RecordSequenceHandler(this), args.ns, args.set);
+
+				WaitTillComplete();
+			}
+			else
+			{
+				var recordSet = await asyncProxy.ScanAll(policy, tokenSource.Token, args.ns, args.set);
+				while (recordSet.Next())
+				{
+					recordCount++;
+
+					if ((recordCount % 10000) == 0)
+					{
+						;
+					}
+				}
+			}
 		}
 
 		private class RecordSequenceHandler : RecordSequenceListener

@@ -19,7 +19,7 @@ using System.IO;
 using System.Text;
 using System.Numerics;
 using System.Runtime.Serialization.Formatters.Binary;
-using Ionic.Zlib;
+using System.IO.Compression;
 
 namespace Aerospike.Client
 {
@@ -610,7 +610,7 @@ namespace Aerospike.Client
         {
             MemoryStream output = new MemoryStream(trgBuf, trgOffset, trgSize);
 
-            using (ZlibStream zs = new ZlibStream(output, CompressionMode.Compress, CompressionLevel.BestSpeed, true))
+            using (ZLibStream zs = new ZLibStream(output, CompressionLevel.Fastest, true))
             {
                 zs.Write(srcBuf, 0, srcSize);
             }
@@ -622,7 +622,7 @@ namespace Aerospike.Client
             MemoryStream input = new MemoryStream(srcBuf, srcOffset, srcSize - srcOffset);
             MemoryStream output = new MemoryStream(trgBuf);
 
-            using (ZlibStream zs = new ZlibStream(input, CompressionMode.Decompress))
+            using (ZLibStream zs = new ZLibStream(input, CompressionMode.Decompress))
             {
                 zs.CopyTo(output);
             }

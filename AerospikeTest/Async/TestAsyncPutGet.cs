@@ -1,5 +1,5 @@
 ﻿/* 
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -14,11 +14,8 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using System;
-using System.Threading;
-using System.Threading.Tasks;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Aerospike.Client;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace Aerospike.Test
 {
@@ -26,15 +23,24 @@ namespace Aerospike.Test
 	public class TestAsyncPutGet : TestAsync
 	{
 		private static readonly string binName = args.GetBinName("putgetbin");
+		private static CancellationTokenSource tokenSource = new();
 
 		[TestMethod]
-		public void AsyncPutGet()
+		public async Task AsyncPutGet()
 		{
 			Key key = new Key(args.ns, args.set, "putgetkey1");
 			Bin bin = new Bin(binName, "value1");
 
-			client.Put(null, new WriteHandler(this, client, key, bin), key, bin);
-			WaitTillComplete();
+			if (!args.testProxy)
+			{
+				client.Put(null, new WriteHandler(this, client, key, bin), key, bin);
+				WaitTillComplete();
+			}
+			else
+			{
+				await client.Put(null, tokenSource.Token, key, bin);
+				await WriteListenerSuccess(key, bin, this);
+			}
 		}
 
 		[TestMethod]
@@ -43,24 +49,51 @@ namespace Aerospike.Test
 			Key key = new Key(args.ns, args.set, "putgetkey2");
 			Bin bin = new Bin(binName, "value2");
 
-			CancellationTokenSource cancel = new CancellationTokenSource();
-			Task taskput = client.Put(null, cancel.Token, key, bin);
+			Task taskput = client.Put(null, tokenSource.Token, key, bin);
 			taskput.Wait();
 
-			Task<Record> taskget = client.Get(null, cancel.Token, key);
+			Task<Record> taskget = client.Get(null, tokenSource.Token, key);
 			taskget.Wait();
 
 			TestSync.AssertBinEqual(key, taskget.Result, bin);
 		}
-		
+
+		static async Task WriteListenerSuccess(Key key, Bin bin, TestAsyncPutGet parent)
+		{
+			try
+			{
+				if (!args.testProxy)
+				{
+					// Write succeeded.  Now call read.
+					client.Get(null, new RecordHandler(parent, key, bin), key);
+				}
+				else
+				{
+					var record = await client.Get(null, tokenSource.Token, key);
+					RecordHandlerSuccess(key, record, bin, parent);
+				}
+			}
+			catch (Exception e)
+			{
+				parent.SetError(e);
+				parent.NotifyCompleted();
+			}
+		}
+
+		static void RecordHandlerSuccess(Key key, Record record, Bin bin, TestAsyncPutGet parent)
+		{
+			parent.AssertBinEqual(key, record, bin);
+			parent.NotifyCompleted();
+		}
+
 		private class WriteHandler : WriteListener
 		{
 			private readonly TestAsyncPutGet parent;
-			private AsyncClient client;
+			private IAsyncClient client;
 			private Key key;
 			private Bin bin;
 
-			public WriteHandler(TestAsyncPutGet parent, AsyncClient client, Key key, Bin bin)
+			public WriteHandler(TestAsyncPutGet parent, IAsyncClient client, Key key, Bin bin)
 			{
 				this.parent = parent;
 				this.client = client;
@@ -70,16 +103,7 @@ namespace Aerospike.Test
 
 			public void OnSuccess(Key key)
 			{
-				try
-				{
-					// Write succeeded.  Now call read.
-					client.Get(null, new RecordHandler(parent, key, bin), key);
-				}
-				catch (Exception e)
-				{
-					parent.SetError(e);
-					parent.NotifyCompleted();
-				}
+				WriteListenerSuccess(key, bin, parent).Wait();
 			}
 
 			public void OnFailure(AerospikeException e)
@@ -104,14 +128,40 @@ namespace Aerospike.Test
 
 			public void OnSuccess(Key key, Record record)
 			{
-				parent.AssertBinEqual(key, record, bin);
-				parent.NotifyCompleted();
+				RecordHandlerSuccess(key, record, bin, parent);
 			}
 
 			public void OnFailure(AerospikeException e)
 			{
 				parent.SetError(e);
 				parent.NotifyCompleted();
+			}
+		}
+
+		[TestMethod]
+		public async Task AsyncPutWithCanel()
+		{
+			Key key = new Key(args.ns, args.set, "putgetkey3");
+			Bin bin = new Bin(binName, "value3");
+
+			tokenSource.Cancel();
+			try
+			{
+				await client.Put(null, tokenSource.Token, key, bin);
+			}
+			catch (TaskCanceledException) // expected exception for native client
+			{
+				if (args.testProxy)
+				{
+					throw;
+				}
+			}
+			catch (OperationCanceledException) // expected exception for proxy client
+			{
+				if (!args.testProxy)
+				{
+					throw;
+				}
 			}
 		}
 	}

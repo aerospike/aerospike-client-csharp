@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2022 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -14,9 +14,6 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using System.Collections.Generic;
-using System.Threading;
-using System.Threading.Tasks;
 
 namespace Aerospike.Client
 {
@@ -154,7 +151,7 @@ namespace Aerospike.Client
 			Put(policy, listener, key, bins);
 			return listener.Task;
 		}
-
+		
 		/// <summary>
 		/// Asynchronously write record bin(s). 
 		/// Schedules the put command with a channel selector and return.
@@ -1118,7 +1115,7 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if queue is full</exception>
 		public void Operate(WritePolicy policy, RecordListener listener, Key key, params Operation[] ops)
 		{
-			OperateArgs args = new OperateArgs(cluster, policy, writePolicyDefault, operatePolicyReadDefault, key, ops);
+			OperateArgs args = new OperateArgs(policy, writePolicyDefault, operatePolicyReadDefault, key, ops);
 			AsyncOperate async = new AsyncOperate(cluster, listener, key, args);
 			async.Execute();
 		}

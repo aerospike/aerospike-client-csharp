@@ -1,5 +1,5 @@
 ﻿/* 
- * Copyright 2012-2022 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -14,8 +14,8 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Aerospike.Client;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace Aerospike.Test
 {
@@ -36,8 +36,11 @@ namespace Aerospike.Test
 			// Drop index if it already exists.
 			try
 			{
-				task = client.DropIndex(policy, args.ns, args.set, indexName);
-				task.Wait();
+				if (!args.testProxy || (args.testProxy && nativeClient != null))
+				{
+					task = nativeClient.DropIndex(policy, args.ns, args.set, indexName);
+					task.Wait();
+				}
 			}
 			catch (AerospikeException ae)
 			{
@@ -47,17 +50,20 @@ namespace Aerospike.Test
 				}
 			}
 
-			task = client.CreateIndex(policy, args.ns, args.set, indexName, binName, IndexType.NUMERIC);
-			task.Wait();
+			if (!args.testProxy || (args.testProxy && nativeClient != null))
+			{
+				task = nativeClient.CreateIndex(policy, args.ns, args.set, indexName, binName, IndexType.NUMERIC);
+				task.Wait();
 
-			task = client.DropIndex(policy, args.ns, args.set, indexName);
-			task.Wait();
+				task = nativeClient.DropIndex(policy, args.ns, args.set, indexName);
+				task.Wait();
 
-			task = client.CreateIndex(policy, args.ns, args.set, indexName, binName, IndexType.NUMERIC);
-			task.Wait();
+				task = nativeClient.CreateIndex(policy, args.ns, args.set, indexName, binName, IndexType.NUMERIC);
+				task.Wait();
 
-			task = client.DropIndex(policy, args.ns, args.set, indexName);
-			task.Wait();
+				task = nativeClient.DropIndex(policy, args.ns, args.set, indexName);
+				task.Wait();
+			}
 		}
 
 		[TestMethod]

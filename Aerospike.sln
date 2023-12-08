@@ -11,7 +11,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AerospikeTest", "AerospikeT
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AerospikeClient", "AerospikeClient\AerospikeClient.csproj", "{A1AA3444-EAED-4394-BCCA-96EA0E0A88D1}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AerospikeBenchmarks", "AerospikeBenchmarks\AerospikeBenchmarks.csproj", "{09C0B19A-41DD-4B47-A015-B7DFCA0072D3}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AerospikeBenchmarks", "AerospikeBenchmarks\AerospikeBenchmarks.csproj", "{09C0B19A-41DD-4B47-A015-B7DFCA0072D3}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

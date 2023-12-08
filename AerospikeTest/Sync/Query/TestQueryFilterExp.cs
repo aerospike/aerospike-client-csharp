@@ -14,12 +14,8 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using System;
-using System.Collections;
-using System.Collections.Generic;
-using System.Reflection;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Aerospike.Client;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace Aerospike.Test
 {
@@ -40,8 +36,11 @@ namespace Aerospike.Test
 
 			try
 			{
-				IndexTask itask = client.CreateIndex(policy, args.ns, setName, indexName, binName, IndexType.NUMERIC);
-				itask.Wait();
+				if (!args.testProxy || (args.testProxy && nativeClient != null))
+				{
+					IndexTask itask = nativeClient.CreateIndex(policy, args.ns, setName, indexName, binName, IndexType.NUMERIC);
+					itask.Wait();
+				}
 			}
 			catch (AerospikeException ae)
 			{
@@ -96,7 +95,10 @@ namespace Aerospike.Test
 		[ClassCleanup()]
 		public static void Destroy()
 		{
-			client.DropIndex(null, args.ns, setName, indexName);
+			if (!args.testProxy || (args.testProxy && nativeClient != null))
+			{
+				nativeClient.DropIndex(null, args.ns, setName, indexName);
+			}
 		}
 
 		[TestMethod]
@@ -121,7 +123,10 @@ namespace Aerospike.Test
 						Exp.EQ(Exp.IntBin("bin2"), Exp.Val(22)),
 						Exp.EQ(Exp.IntBin("bin2"), Exp.Val(9))),
 					Exp.EQ(Exp.IntBin(binName), Exp.IntBin("bin2"))));
-
+			if (args.testProxy)
+			{
+				policy.totalTimeout = args.proxyTotalTimeout;
+			}
 			RecordSet rs = client.Query(policy, stmt);
 
 			try
@@ -160,6 +165,10 @@ namespace Aerospike.Test
 					Exp.And(
 						Exp.GE(Exp.IntBin("bin2"), Exp.Val(15)),
 						Exp.LE(Exp.IntBin("bin2"), Exp.Val(42)))));
+			if (args.testProxy)
+			{
+				policy.totalTimeout = args.proxyTotalTimeout;
+			}
 
 			RecordSet rs = client.Query(policy, stmt);
 
@@ -198,6 +207,10 @@ namespace Aerospike.Test
 				Exp.GT(
 					Exp.LastUpdate(),
 					Exp.Val(DateTime.UtcNow.Add(TimeSpan.FromSeconds(1.0)))));
+			if (args.testProxy)
+			{
+				policy.totalTimeout = args.proxyTotalTimeout;
+			}
 
 			RecordSet rs = client.Query(policy, stmt);
 
@@ -237,6 +250,10 @@ namespace Aerospike.Test
 				Exp.GT(
 					ListExp.GetByValue(ListReturnType.COUNT, Exp.Val(4), Exp.ListBin("listbin")),
 					Exp.Val(0)));
+			if (args.testProxy)
+			{
+				policy.totalTimeout = args.proxyTotalTimeout;
+			}
 
 			RecordSet rs = client.Query(policy, stmt);
 
@@ -274,6 +291,10 @@ namespace Aerospike.Test
 				Exp.EQ(
 					ListExp.GetByValue(ListReturnType.COUNT, Exp.Val(5), Exp.ListBin("listbin")),
 					Exp.Val(0)));
+			if (args.testProxy)
+			{
+				policy.totalTimeout = args.proxyTotalTimeout;
+			}
 
 			RecordSet rs = client.Query(policy, stmt);
 
@@ -311,6 +332,10 @@ namespace Aerospike.Test
 				Exp.EQ(
 					ListExp.GetByIndex(ListReturnType.VALUE, Exp.Type.INT, Exp.Val(4), Exp.ListBin("listbin")),
 					Exp.Val(20)));
+			if (args.testProxy)
+			{
+				policy.totalTimeout = args.proxyTotalTimeout;
+			}
 
 			RecordSet rs = client.Query(policy, stmt);
 
@@ -348,6 +373,10 @@ namespace Aerospike.Test
 				Exp.GT(
 					MapExp.GetByKey(MapReturnType.COUNT, Exp.Type.INT, Exp.Val("B"), Exp.MapBin("mapbin")),
 					Exp.Val(0)));
+			if (args.testProxy)
+			{
+				policy.totalTimeout = args.proxyTotalTimeout;
+			}
 
 			RecordSet rs = client.Query(policy, stmt);
 
@@ -383,6 +412,10 @@ namespace Aerospike.Test
 			QueryPolicy policy = new QueryPolicy();
 			policy.filterExp = Exp.Build(
 				MapExp.GetByValue(MapReturnType.EXISTS, Exp.Val("BBB"), Exp.MapBin("mapbin")));
+			if (args.testProxy)
+			{
+				policy.totalTimeout = args.proxyTotalTimeout;
+			}
 
 			RecordSet rs = client.Query(policy, stmt);
 
@@ -420,6 +453,10 @@ namespace Aerospike.Test
 				Exp.EQ(
 					MapExp.GetByKey(MapReturnType.COUNT, Exp.Type.INT, Exp.Val("D"), Exp.MapBin("mapbin")),
 					Exp.Val(0)));
+			if (args.testProxy)
+			{
+				policy.totalTimeout = args.proxyTotalTimeout;
+			}
 
 			RecordSet rs = client.Query(policy, stmt);
 
@@ -457,6 +494,10 @@ namespace Aerospike.Test
 				Exp.EQ(
 					MapExp.GetByValue(MapReturnType.COUNT, Exp.Val("AAA"), Exp.MapBin("mapbin")),
 					Exp.Val(0)));
+			if (args.testProxy)
+			{
+				policy.totalTimeout = args.proxyTotalTimeout;
+			}
 
 			RecordSet rs = client.Query(policy, stmt);
 
@@ -500,6 +541,10 @@ namespace Aerospike.Test
 					MapExp.Size(
 						MapExp.GetByKeyList(MapReturnType.KEY_VALUE, Exp.Val(list), Exp.MapBin("mapbin"))),
 					Exp.Val(2)));
+			if (args.testProxy)
+			{
+				policy.totalTimeout = args.proxyTotalTimeout;
+			}
 
 			RecordSet rs = client.Query(policy, stmt);
 
@@ -543,6 +588,10 @@ namespace Aerospike.Test
 					ListExp.Size( // return type VALUE returns a list
 						MapExp.GetByKeyList(MapReturnType.VALUE, Exp.Val(list), Exp.MapBin("mapbin"))),
 					Exp.Val(2)));
+			if (args.testProxy)
+			{
+				policy.totalTimeout = args.proxyTotalTimeout;
+			}
 
 			RecordSet rs = client.Query(policy, stmt);
 
@@ -577,6 +626,10 @@ namespace Aerospike.Test
 			// Record key digest % 3 == 1
 			QueryPolicy policy = new QueryPolicy();
 			policy.filterExp = Exp.Build(Exp.EQ(Exp.DigestModulo(3), Exp.Val(1)));
+			if (args.testProxy)
+			{
+				policy.totalTimeout = args.proxyTotalTimeout;
+			}
 
 			RecordSet rs = client.Query(policy, stmt);
 
@@ -598,7 +651,8 @@ namespace Aerospike.Test
 		}
 
 		[TestMethod]
-		public void QueryBinExists() {
+		public void QueryBinExists()
+		{
 			int begin = 1;
 			int end = 10;
 
@@ -609,24 +663,32 @@ namespace Aerospike.Test
 
 			QueryPolicy policy = new QueryPolicy();
 			policy.filterExp = Exp.Build(Exp.BinExists("bin2"));
+			if (args.testProxy)
+			{
+				policy.totalTimeout = args.proxyTotalTimeout;
+			}
 
 			RecordSet rs = client.Query(policy, stmt);
 
-			try {
+			try
+			{
 				int count = 0;
 
-				while (rs.Next()) {
+				while (rs.Next())
+				{
 					count++;
 				}
 				Assert.AreEqual(10, count);
 			}
-			finally {
+			finally
+			{
 				rs.Close();
 			}
 		}
 
 		[TestMethod]
-		public void QueryBinType() {
+		public void QueryBinType()
+		{
 			int begin = 1;
 			int end = 10;
 
@@ -637,18 +699,25 @@ namespace Aerospike.Test
 
 			QueryPolicy policy = new QueryPolicy();
 			policy.filterExp = Exp.Build(Exp.EQ(Exp.BinType("listbin"), Exp.Val((int)ParticleType.LIST)));
+			if (args.testProxy)
+			{
+				policy.totalTimeout = args.proxyTotalTimeout;
+			}
 
 			RecordSet rs = client.Query(policy, stmt);
 
-			try {
+			try
+			{
 				int count = 0;
 
-				while (rs.Next()) {
+				while (rs.Next())
+				{
 					count++;
 				}
 				Assert.AreEqual(9, count);
 			}
-			finally {
+			finally
+			{
 				rs.Close();
 			}
 		}
@@ -703,18 +772,25 @@ namespace Aerospike.Test
 			// because all device sizes are effectively allowed.
 			QueryPolicy policy = new QueryPolicy();
 			policy.filterExp = Exp.Build(Exp.GE(Exp.DeviceSize(), Exp.Val(0)));
+			if (args.testProxy)
+			{
+				policy.totalTimeout = args.proxyTotalTimeout;
+			}
 
 			RecordSet rs = client.Query(policy, stmt);
 
-			try {
+			try
+			{
 				int count = 0;
 
-				while (rs.Next()) {
+				while (rs.Next())
+				{
 					count++;
 				}
 				Assert.AreEqual(10, count);
 			}
-			finally {
+			finally
+			{
 				rs.Close();
 			}
 		}
@@ -735,6 +811,10 @@ namespace Aerospike.Test
 			// because all memory sizes are effectively allowed.
 			QueryPolicy policy = new QueryPolicy();
 			policy.filterExp = Exp.Build(Exp.GE(Exp.MemorySize(), Exp.Val(0)));
+			if (args.testProxy)
+			{
+				policy.totalTimeout = args.proxyTotalTimeout;
+			}
 
 			RecordSet rs = client.Query(policy, stmt);
 

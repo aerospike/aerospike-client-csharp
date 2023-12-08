@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2020 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -14,8 +14,6 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using System;
-using System.Collections.Generic;
 
 namespace Aerospike.Client
 {
@@ -42,7 +40,7 @@ namespace Aerospike.Client
 			SetReadHeader(policy, key);
 		}
 
-		protected internal override void ParseResult(Connection conn)
+		protected internal override void ParseResult(IConnection conn)
 		{
 			// Read header.		
 			conn.ReadFully(dataBuffer, MSG_TOTAL_HEADER_SIZE);
@@ -72,7 +70,7 @@ namespace Aerospike.Client
 				return;
 			}
 
-			throw new AerospikeException(resultCode);	
+			throw new AerospikeException(resultCode);
 		}
 
 		protected internal override bool PrepareRetry(bool timeout)

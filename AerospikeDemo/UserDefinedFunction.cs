@@ -14,10 +14,9 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using System;
-using System.IO;
-using System.Collections.Generic;
 using Aerospike.Client;
+using System;
+using System.Collections.Generic;
 
 namespace Aerospike.Demo
 {
@@ -30,7 +29,7 @@ namespace Aerospike.Demo
 		/// <summary>
 		/// Register user defined function and call it.
 		/// </summary>
-		public override void RunExample(AerospikeClient client, Arguments args)
+		public override void RunExample(IAerospikeClient client, Arguments args)
 		{
 			Register(client, args);
 			WriteUsingUdf(client, args);
@@ -44,14 +43,14 @@ namespace Aerospike.Demo
 			ServerSideExists(client, args);
 		}
 
-		private void Register(AerospikeClient client, Arguments args)
+		private void Register(IAerospikeClient client, Arguments args)
 		{
 			string packageName = "record_example.lua";
 			console.Info("Register: " + packageName);
 			LuaExample.Register(client, args.policy, packageName);
 		}
 
-		private void WriteUsingUdf(AerospikeClient client, Arguments args)
+		private void WriteUsingUdf(IAerospikeClient client, Arguments args)
 		{
 			Key key = new Key(args.ns, args.set, "udfkey1");
 			Bin bin = new Bin(args.GetBinName("udfbin1"), "string value");
@@ -64,7 +63,7 @@ namespace Aerospike.Demo
 
 			if (received != null && received.Equals(expected))
 			{
-				console.Info("Data matched: namespace={0} set={1} key={2} bin={3} value={4}", 
+				console.Info("Data matched: namespace={0} set={1} key={2} bin={3} value={4}",
 					key.ns, key.setName, key.userKey, bin.name, received);
 			}
 			else
@@ -73,7 +72,7 @@ namespace Aerospike.Demo
 			}
 		}
 
-		private void WriteIfGenerationNotChanged(AerospikeClient client, Arguments args)
+		private void WriteIfGenerationNotChanged(IAerospikeClient client, Arguments args)
 		{
 			Key key = new Key(args.ns, args.set, "udfkey2");
 			Bin bin = new Bin(args.GetBinName("udfbin2"), "string value");
@@ -89,7 +88,7 @@ namespace Aerospike.Demo
 			console.Info("Record written.");
 		}
 
-		private void WriteIfNotExists(AerospikeClient client, Arguments args)
+		private void WriteIfNotExists(IAerospikeClient client, Arguments args)
 		{
 			Key key = new Key(args.ns, args.set, "udfkey3");
 			string binName = "udfbin3";
@@ -107,7 +106,7 @@ namespace Aerospike.Demo
 
 			if (received != null && received.Equals(expected))
 			{
-				console.Info("Record written: namespace={0} set={1} key={2} bin={3} value={4}", 
+				console.Info("Record written: namespace={0} set={1} key={2} bin={3} value={4}",
 					key.ns, key.setName, key.userKey, binName, received);
 			}
 			else
@@ -125,7 +124,7 @@ namespace Aerospike.Demo
 
 			if (received != null && received.Equals(expected))
 			{
-				console.Info("Success. Record remained unchanged: namespace={0} set={1} key={2} bin={3} value={4}", 
+				console.Info("Success. Record remained unchanged: namespace={0} set={1} key={2} bin={3} value={4}",
 					key.ns, key.setName, key.userKey, binName, received);
 			}
 			else
@@ -134,7 +133,7 @@ namespace Aerospike.Demo
 			}
 		}
 
-		private void WriteWithValidation(AerospikeClient client, Arguments args)
+		private void WriteWithValidation(IAerospikeClient client, Arguments args)
 		{
 			Key key = new Key(args.ns, args.set, "udfkey4");
 			string binName = "udfbin4";
@@ -158,7 +157,7 @@ namespace Aerospike.Demo
 			}
 		}
 
-		private void WriteListMapUsingUdf(AerospikeClient client, Arguments args)
+		private void WriteListMapUsingUdf(IAerospikeClient client, Arguments args)
 		{
 			Key key = new Key(args.ns, args.set, "udfkey5");
 
@@ -187,7 +186,7 @@ namespace Aerospike.Demo
 
 			if (receivedString.Equals(expectedString))
 			{
-				console.Info("UDF data matched: namespace={0} set={1} key={2} bin={3} value={4}", 
+				console.Info("UDF data matched: namespace={0} set={1} key={2} bin={3} value={4}",
 					key.ns, key.setName, key.userKey, binName, received);
 			}
 			else
@@ -199,7 +198,7 @@ namespace Aerospike.Demo
 		}
 
 #if BINARY_FORMATTER
-		private void WriteBlobUsingUdf(AerospikeClient client, Arguments args)
+		private void WriteBlobUsingUdf(IAerospikeClient client, Arguments args)
 		{
 			Key key = new Key(args.ns, args.set, "udfkey6");
 			string binName = args.GetBinName("udfbin6");
@@ -230,7 +229,7 @@ namespace Aerospike.Demo
 		}
 #endif
 
-		private void ServerSideExists(AerospikeClient client, Arguments args)
+		private void ServerSideExists(IAerospikeClient client, Arguments args)
 		{
 			console.Info("Write list.");
 			List<int> list = new List<int>();
@@ -246,7 +245,7 @@ namespace Aerospike.Demo
 			ServerSideExists(client, args.writePolicy, key, bin, 65, false);
 		}
 
-		private void ServerSideExists(AerospikeClient client, WritePolicy policy, Key key, Bin bin, int search, bool expected)
+		private void ServerSideExists(IAerospikeClient client, WritePolicy policy, Key key, Bin bin, int search, bool expected)
 		{
 			long lexists = (long)client.Execute(policy, key, "record_example", "valueExists", Value.Get(bin.name), Value.Get(search));
 			bool exists = (lexists != 0);

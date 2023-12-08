@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -14,7 +14,6 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using System.IO;
 using Aerospike.Client;
 
 namespace Aerospike.Demo
@@ -28,7 +27,7 @@ namespace Aerospike.Demo
 		/// <summary>
 		/// Apply user defined function on records that match the query filter.
 		/// </summary>
-		public override void RunExample(AerospikeClient client, Arguments args)
+		public override void RunExample(IAerospikeClient client, Arguments args)
 		{
 			string indexName = "qeindex1";
 			string keyPrefix = "qekey";
@@ -44,14 +43,14 @@ namespace Aerospike.Demo
 			client.DropIndex(args.policy, args.ns, args.set, indexName);
 		}
 
-		private void Register(AerospikeClient client, Arguments args)
+		private void Register(IAerospikeClient client, Arguments args)
 		{
 			string packageName = "record_example.lua";
 			console.Info("Register: " + packageName);
 			LuaExample.Register(client, args.policy, packageName);
 		}
 
-		private void CreateIndex(AerospikeClient client, Arguments args, string indexName, string binName)
+		private void CreateIndex(IAerospikeClient client, Arguments args, string indexName, string binName)
 		{
 			console.Info("Create index: ns={0} set={1} index={2} bin={3}",
 				args.ns, args.set, indexName, binName);
@@ -73,7 +72,7 @@ namespace Aerospike.Demo
 			}
 		}
 
-		private void WriteRecords(AerospikeClient client, Arguments args, string keyPrefix, string binName1, string binName2, int size)
+		private void WriteRecords(IAerospikeClient client, Arguments args, string keyPrefix, string binName1, string binName2, int size)
 		{
 			console.Info("Write " + size + " records.");
 
@@ -84,7 +83,7 @@ namespace Aerospike.Demo
 			}
 		}
 
-		private void RunQueryExecute(AerospikeClient client, Arguments args, string indexName, string binName1, string binName2)
+		private void RunQueryExecute(IAerospikeClient client, Arguments args, string indexName, string binName1, string binName2)
 		{
 			int begin = 3;
 			int end = 9;
@@ -103,7 +102,7 @@ namespace Aerospike.Demo
 			task.Wait(3000, 3000);
 		}
 
-		private void ValidateRecords(AerospikeClient client, Arguments args, string indexName, string binName1, string binName2, int size)
+		private void ValidateRecords(IAerospikeClient client, Arguments args, string indexName, string binName1, string binName2, int size)
 		{
 			int begin = 1;
 			int end = size + 100;
@@ -119,7 +118,7 @@ namespace Aerospike.Demo
 
 			try
 			{
-				int[] expectedList = new int[] {1,2,3,104,5,106,7,108,-1,10};
+				int[] expectedList = new int[] { 1, 2, 3, 104, 5, 106, 7, 108, -1, 10 };
 				int expectedSize = size - 1;
 				int count = 0;
 
@@ -133,7 +132,7 @@ namespace Aerospike.Demo
 					record.bins.TryGetValue(binName1, out value1);
 					record.bins.TryGetValue(binName2, out value2);
 
-					console.Info("Record found: ns={0} set={1} bin1={2} value1={3} bin2={4} value2={5}", 
+					console.Info("Record found: ns={0} set={1} bin1={2} value1={3} bin2={4} value2={5}",
 						key.ns, key.setName, binName1, value1, binName2, value2);
 
 					if (value1 == null)
@@ -157,10 +156,10 @@ namespace Aerospike.Demo
 							break;
 						}
 					}
-					else 
+					else
 					{
 						long val2 = (long)value2;
-						
+
 						if (val1 != expectedList[val2 - 1])
 						{
 							console.Error("Data mismatch. Expected " + expectedList[val2 - 1] + ". Received " + value1);

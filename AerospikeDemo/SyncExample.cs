@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -14,9 +14,6 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using System;
-using System.Collections.Generic;
-using System.Reflection;
 using Aerospike.Client;
 
 namespace Aerospike.Demo
@@ -37,7 +34,7 @@ namespace Aerospike.Demo
 			policy.tlsPolicy = args.tlsPolicy;
 			policy.authMode = args.authMode;
 
-			AerospikeClient client = new AerospikeClient(policy, args.hosts);
+			IAerospikeClient client = new AerospikeClient(policy, args.hosts);
 
 			try
 			{
@@ -50,6 +47,6 @@ namespace Aerospike.Demo
 			}
 		}
 
-		public abstract void RunExample(AerospikeClient client, Arguments args);
+		public abstract void RunExample(IAerospikeClient client, Arguments args);
 	}
 }

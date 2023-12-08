@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2020 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -14,10 +14,8 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using System;
-using System.IO;
 using Aerospike.Client;
-using System.Collections.Generic;
+using System;
 
 namespace Aerospike.Demo
 {
@@ -31,7 +29,7 @@ namespace Aerospike.Demo
 		/// <summary>
 		/// Perform secondary index queries with predicate filters.
 		/// </summary>
-		public override void RunExample(AerospikeClient client, Arguments args)
+		public override void RunExample(IAerospikeClient client, Arguments args)
 		{
 			string indexName = "predidx";
 			string binName = "idxbin";
@@ -45,7 +43,7 @@ namespace Aerospike.Demo
 			client.DropIndex(args.policy, args.ns, args.set, indexName);
 		}
 
-		private void CreateIndex(AerospikeClient client, Arguments args, string indexName, string binName)
+		private void CreateIndex(IAerospikeClient client, Arguments args, string indexName, string binName)
 		{
 			console.Info("Create index: ns={0} set={1} index={2} bin={3}",
 				args.ns, args.set, indexName, binName);
@@ -67,7 +65,7 @@ namespace Aerospike.Demo
 			}
 		}
 
-		private void WriteRecords(AerospikeClient client, Arguments args, string binName, int size)
+		private void WriteRecords(IAerospikeClient client, Arguments args, string binName, int size)
 		{
 			console.Info("Write " + size + " records.");
 
@@ -94,7 +92,7 @@ namespace Aerospike.Demo
 			}
 		}
 
-		private void RunQuery1(AerospikeClient client, Arguments args, string binName)
+		private void RunQuery1(IAerospikeClient client, Arguments args, string binName)
 		{
 			int begin = 10;
 			int end = 40;
@@ -110,7 +108,7 @@ namespace Aerospike.Demo
 
 			// Predicates are applied on query results on server side.
 			// Predicates can reference any bin.
-			QueryPolicy policy = new QueryPolicy(client.queryPolicyDefault);
+			QueryPolicy policy = new QueryPolicy(client.QueryPolicyDefault);
 			policy.filterExp = Exp.Build(
 				Exp.Or(
 					Exp.And(
@@ -134,7 +132,7 @@ namespace Aerospike.Demo
 			}
 		}
 
-		private void RunQuery2(AerospikeClient client, Arguments args, string binName)
+		private void RunQuery2(IAerospikeClient client, Arguments args, string binName)
 		{
 			int begin = 10;
 			int end = 40;
@@ -148,7 +146,7 @@ namespace Aerospike.Demo
 			stmt.SetSetName(args.set);
 			stmt.SetFilter(Filter.Range(binName, begin, end));
 
-			QueryPolicy policy = new QueryPolicy(client.queryPolicyDefault);
+			QueryPolicy policy = new QueryPolicy(client.QueryPolicyDefault);
 			policy.filterExp = Exp.Build(
 				Exp.And(
 					Exp.GE(Exp.LastUpdate(), Exp.Val(beginTime)),
@@ -170,7 +168,7 @@ namespace Aerospike.Demo
 			}
 		}
 
-		private void RunQuery3(AerospikeClient client, Arguments args, string binName)
+		private void RunQuery3(IAerospikeClient client, Arguments args, string binName)
 		{
 			int begin = 20;
 			int end = 30;
@@ -182,12 +180,12 @@ namespace Aerospike.Demo
 			stmt.SetSetName(args.set);
 			stmt.SetFilter(Filter.Range(binName, begin, end));
 
-			QueryPolicy policy = new QueryPolicy(client.queryPolicyDefault);
+			QueryPolicy policy = new QueryPolicy(client.QueryPolicyDefault);
 			policy.filterExp = Exp.Build(
 				Exp.RegexCompare("prefix.*suffix", RegexFlag.ICASE | RegexFlag.NEWLINE, Exp.StringBin("bin3")));
 
 			RecordSet rs = client.Query(policy, stmt);
-			
+
 			try
 			{
 				while (rs.Next())

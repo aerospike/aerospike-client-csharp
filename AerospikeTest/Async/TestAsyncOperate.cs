@@ -1,5 +1,5 @@
 ﻿/* 
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -14,14 +14,9 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using System;
-using System.Collections;
-using System.Collections.Generic;
-using System.Reflection;
-using System.Threading;
-using System.Threading.Tasks;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Aerospike.Client;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
+using System.Collections;
 
 namespace Aerospike.Test
 {
@@ -29,13 +24,73 @@ namespace Aerospike.Test
 	public class TestAsyncOperate : TestAsync
 	{
 		private static readonly string binName = args.GetBinName("putgetbin");
+		private static CancellationTokenSource tokenSource = new();
 
 		[TestMethod]
-		public void AsyncOperateList()
+		public async Task AsyncOperateList()
 		{
 			Key key = new Key(args.ns, args.set, "aoplkey1");
-			client.Delete(null, new DeleteHandlerList(this, key), key);
-			WaitTillComplete();
+			if (!args.testProxy)
+			{
+				client.Delete(null, new DeleteHandlerList(this, key), key);
+				WaitTillComplete();
+			}
+			else
+			{
+				var existed = await client.Delete(null, tokenSource.Token, key);
+				await DeleteHandlerListSuccess(key, existed, this);
+			}
+		}
+
+		static async Task DeleteHandlerListSuccess(Key key, bool existed, TestAsyncOperate parent)
+		{
+			IList itemList = new List<Value>();
+			itemList.Add(Value.Get(55));
+			itemList.Add(Value.Get(77));
+			Operation[] operations = {
+				ListOperation.AppendItems(binName, itemList),
+				ListOperation.Pop(binName, -1),
+				ListOperation.Size(binName)
+			};
+
+			if (!args.testProxy)
+			{
+				client.Operate(null, new ReadHandler(parent), key, operations);
+			}
+			else
+			{
+				var record = await client.Operate(null, tokenSource.Token, key, operations);
+				ReadListenerSuccess(key, record, parent);
+			}
+		}
+
+		static void ReadListenerSuccess(Key key, Record record, TestAsyncOperate parent)
+		{
+			if (!parent.AssertRecordFound(key, record))
+			{
+				parent.NotifyCompleted();
+				return;
+			}
+
+			IList list = record.GetList(binName);
+
+			long size = (long)list[0];
+			if (!parent.AssertEquals(2, size))
+			{
+				parent.NotifyCompleted();
+				return;
+			}
+
+			long val = (long)list[1];
+			if (!parent.AssertEquals(77, val))
+			{
+				parent.NotifyCompleted();
+				return;
+			}
+
+			size = (long)list[2];
+			parent.AssertEquals(1, size);
+			parent.NotifyCompleted();
 		}
 
 		private class DeleteHandlerList : DeleteListener
@@ -51,15 +106,7 @@ namespace Aerospike.Test
 
 			public void OnSuccess(Key key, bool existed)
 			{
-				IList itemList = new List<Value>();
-				itemList.Add(Value.Get(55));
-				itemList.Add(Value.Get(77));
-
-				client.Operate(null, new ReadHandler(parent), key,
-					ListOperation.AppendItems(binName, itemList),
-					ListOperation.Pop(binName, -1),
-					ListOperation.Size(binName)
-					);
+				DeleteHandlerListSuccess(key, existed, parent).Wait();
 			}
 
 			public void OnFailure(AerospikeException e)
@@ -80,31 +127,7 @@ namespace Aerospike.Test
 
 			public void OnSuccess(Key key, Record record)
 			{
-				if (!parent.AssertRecordFound(key, record))
-				{
-					parent.NotifyCompleted();
-					return;
-				}
-
-				IList list = record.GetList(binName);
-
-				long size = (long)list[0];
-				if (!parent.AssertEquals(2, size))
-				{
-					parent.NotifyCompleted();
-					return;
-				}
-
-				long val = (long)list[1];
-				if (!parent.AssertEquals(77, val))
-				{
-					parent.NotifyCompleted();
-					return;
-				}
-
-				size = (long)list[2];
-				parent.AssertEquals(1, size);
-				parent.NotifyCompleted();
+				ReadListenerSuccess(key, record, parent);
 			}
 
 			public void OnFailure(AerospikeException e)
@@ -115,11 +138,62 @@ namespace Aerospike.Test
 		}
 
 		[TestMethod]
-		public void AsyncOperateMap()
+		public async Task AsyncOperateMap()
 		{
 			Key key = new Key(args.ns, args.set, "aopmkey1");
-			client.Delete(null, new DeleteHandlerMap(this, key), key);
-			WaitTillComplete();
+			if (!args.testProxy)
+			{
+				client.Delete(null, new DeleteHandlerMap(this, key), key);
+				WaitTillComplete();
+			}
+			else
+			{
+				var existed = await client.Delete(null, tokenSource.Token, key);
+				await DeleteHandlerMapSuccess(key, existed, this);
+			}
+		}
+
+		static async Task DeleteHandlerMapSuccess(Key key, bool existed, TestAsyncOperate parent)
+		{
+			Dictionary<Value, Value> map = new Dictionary<Value, Value>();
+			map[Value.Get("a")] = Value.Get(1);
+			map[Value.Get("b")] = Value.Get(2);
+			map[Value.Get("c")] = Value.Get(3);
+			Operation[] operations =
+			{
+				MapOperation.PutItems(MapPolicy.Default, binName, map),
+				MapOperation.GetByRankRange(binName, -1, 1, MapReturnType.KEY_VALUE)
+			};
+
+			if (!args.testProxy)
+			{
+				client.Operate(null, new MapHandler(parent), key, operations);
+			}
+			else
+			{
+				var record = await client.Operate(null, tokenSource.Token, key, operations);
+				MapHandlerSuccess(key, record, parent);
+			}
+		}
+
+		static void MapHandlerSuccess(Key key, Record record, TestAsyncOperate parent)
+		{
+			if (!parent.AssertRecordFound(key, record))
+			{
+				parent.NotifyCompleted();
+				return;
+			}
+
+			IList results = record.GetList(binName);
+			long size = (long)results[0];
+			parent.AssertEquals(3, size);
+
+			IList list = (IList)results[1];
+			KeyValuePair<object, object> entry = (KeyValuePair<object, object>)list[0];
+			parent.AssertEquals("c", entry.Key);
+			parent.AssertEquals(3L, entry.Value);
+
+			parent.NotifyCompleted();
 		}
 
 		private class DeleteHandlerMap : DeleteListener
@@ -135,15 +209,7 @@ namespace Aerospike.Test
 
 			public void OnSuccess(Key key, bool existed)
 			{
-				Dictionary<Value, Value> map = new Dictionary<Value, Value>();
-				map[Value.Get("a")] = Value.Get(1);
-				map[Value.Get("b")] = Value.Get(2);
-				map[Value.Get("c")] = Value.Get(3);
-
-				client.Operate(null, new MapHandler(parent), key,
-						MapOperation.PutItems(MapPolicy.Default, binName, map),
-						MapOperation.GetByRankRange(binName, -1, 1, MapReturnType.KEY_VALUE)
-						);
+				DeleteHandlerMapSuccess(key, existed, parent).Wait();
 			}
 
 			public void OnFailure(AerospikeException e)
@@ -164,24 +230,9 @@ namespace Aerospike.Test
 
 			public void OnSuccess(Key key, Record record)
 			{
-				if (!parent.AssertRecordFound(key, record))
-				{
-					parent.NotifyCompleted();
-					return;
-				}
-
-				IList results = record.GetList(binName);		
-				long size = (long)results[0];
-				parent.AssertEquals(3, size);
-			
-				IList list = (IList)results[1];
-				KeyValuePair<object,object> entry = (KeyValuePair<object,object>)list[0];
-				parent.AssertEquals("c", entry.Key);
-				parent.AssertEquals(3L, entry.Value);
-			
-				parent.NotifyCompleted();
+				MapHandlerSuccess(key, record, parent);
 			}
-			
+
 			public void OnFailure(AerospikeException e)
 			{
 				parent.SetError(e);

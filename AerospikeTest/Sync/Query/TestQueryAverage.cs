@@ -1,5 +1,5 @@
 ﻿/* 
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -14,12 +14,10 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using System;
-using System.Collections;
-using System.Collections.Generic;
-using System.Reflection;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Aerospike.Client;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
+using System.Collections;
+using System.Reflection;
 
 namespace Aerospike.Test
 {
@@ -34,17 +32,23 @@ namespace Aerospike.Test
 		[ClassInitialize()]
 		public static void Prepare(TestContext testContext)
 		{
-			Assembly assembly = Assembly.GetExecutingAssembly();
-			RegisterTask task = client.Register(null, assembly, "Aerospike.Test.LuaResources.average_example.lua", "average_example.lua", Language.LUA);
-			task.Wait();
+			if (!args.testProxy || (args.testProxy && nativeClient != null))
+			{
+				Assembly assembly = Assembly.GetExecutingAssembly();
+				RegisterTask task = nativeClient.Register(null, assembly, "Aerospike.Test.LuaResources.average_example.lua", "average_example.lua", Language.LUA);
+				task.Wait();
+			}
 
 			Policy policy = new Policy();
 			policy.totalTimeout = 0; // Do not timeout on index create.
 
 			try
 			{
-				IndexTask itask = client.CreateIndex(policy, args.ns, args.set, indexName, binName, IndexType.NUMERIC);
-				itask.Wait();
+				if (!args.testProxy || (args.testProxy && nativeClient != null))
+				{
+					IndexTask itask = nativeClient.CreateIndex(policy, args.ns, args.set, indexName, binName, IndexType.NUMERIC);
+					itask.Wait();
+				}
 			}
 			catch (AerospikeException ae)
 			{
@@ -65,47 +69,53 @@ namespace Aerospike.Test
 		[ClassCleanup()]
 		public static void Destroy()
 		{
-			client.DropIndex(null, args.ns, args.set, indexName);
+			if (!args.testProxy || (args.testProxy && nativeClient != null))
+			{
+				nativeClient.DropIndex(null, args.ns, args.set, indexName);
+			}
 		}
 
 		[TestMethod]
 		public void QueryAverage()
 		{
-			Statement stmt = new Statement();
-			stmt.SetNamespace(args.ns);
-			stmt.SetSetName(args.set);
-			stmt.SetFilter(Filter.Range(binName, 0, 1000));
-			stmt.SetAggregateFunction(Assembly.GetExecutingAssembly(), "Aerospike.Test.LuaResources.average_example.lua", "average_example", "average");
-
-			ResultSet rs = client.QueryAggregate(null, stmt);
-
-			try
+			if (!args.testProxy || (args.testProxy && nativeClient != null))
 			{
-				if (rs.Next())
-				{
-					object obj = rs.Object;
+				Statement stmt = new Statement();
+				stmt.SetNamespace(args.ns);
+				stmt.SetSetName(args.set);
+				stmt.SetFilter(Filter.Range(binName, 0, 1000));
+				stmt.SetAggregateFunction(Assembly.GetExecutingAssembly(), "Aerospike.Test.LuaResources.average_example.lua", "average_example", "average");
 
-					if (obj is IDictionary)
+				ResultSet rs = nativeClient.QueryAggregate(null, stmt);
+
+				try
+				{
+					if (rs.Next())
 					{
-						IDictionary map = (IDictionary)obj;
-						long sum = (long)map["sum"];
-						long count = (long)map["count"];
-						double avg = (double) sum / count;
-						Assert.AreEqual(5.5, avg, 0.00000001);
+						object obj = rs.Object;
+
+						if (obj is IDictionary)
+						{
+							IDictionary map = (IDictionary)obj;
+							long sum = (long)map["sum"];
+							long count = (long)map["count"];
+							double avg = (double)sum / count;
+							Assert.AreEqual(5.5, avg, 0.00000001);
+						}
+						else
+						{
+							Assert.Fail("Unexpected object returned: " + obj);
+						}
 					}
 					else
 					{
-						Assert.Fail("Unexpected object returned: " + obj);
+						Assert.Fail("Query Assert.Failed. No records returned.");
 					}
 				}
-				else
+				finally
 				{
-					Assert.Fail("Query Assert.Failed. No records returned.");
+					rs.Close();
 				}
-			}
-			finally
-			{
-				rs.Close();
 			}
 		}
 	}

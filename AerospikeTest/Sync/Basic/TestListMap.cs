@@ -19,6 +19,7 @@ using System.Collections;
 using System.Collections.Generic;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Aerospike.Client;
+using Microsoft.AspNetCore.DataProtection.KeyManagement;
 
 namespace Aerospike.Test
 {
@@ -209,5 +210,5 @@ namespace Aerospike.Test
 			Assert.AreEqual("string2", receivedInner2[0]);
 			Assert.AreEqual(5L, receivedInner2[1]);
 		}
-	}
+	};
 }

@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -27,7 +27,7 @@ namespace Aerospike.Demo
 		/// <summary>
 		/// Create secondary index on an integer bin and query on it.
 		/// </summary>
-		public override void RunExample(AerospikeClient client, Arguments args)
+		public override void RunExample(IAerospikeClient client, Arguments args)
 		{
 			string indexName = "queryindexint";
 			string keyPrefix = "querykeyint";
@@ -40,7 +40,7 @@ namespace Aerospike.Demo
 			client.DropIndex(args.policy, args.ns, args.set, indexName);
 		}
 
-		private void CreateIndex(AerospikeClient client, Arguments args, string indexName, string binName)
+		private void CreateIndex(IAerospikeClient client, Arguments args, string indexName, string binName)
 		{
 			console.Info("Create index: ns={0} set={1} index={2} bin={3}",
 				args.ns, args.set, indexName, binName);
@@ -62,7 +62,7 @@ namespace Aerospike.Demo
 			}
 		}
 
-		private void WriteRecords(AerospikeClient client, Arguments args, string keyPrefix, string binName, int size)
+		private void WriteRecords(IAerospikeClient client, Arguments args, string keyPrefix, string binName, int size)
 		{
 			console.Info("Write " + size + " records.");
 
@@ -74,12 +74,12 @@ namespace Aerospike.Demo
 			}
 		}
 
-		private void RunQuery(AerospikeClient client, Arguments args, string indexName, string binName)
+		private void RunQuery(IAerospikeClient client, Arguments args, string indexName, string binName)
 		{
 			int begin = 14;
 			int end = 18;
 
-			console.Info("Query for: ns={0} set={1} index={2} bin={3} >= {4} <= {5}", 
+			console.Info("Query for: ns={0} set={1} index={2} bin={3} >= {4} <= {5}",
 				args.ns, args.set, indexName, binName, begin, end);
 
 			Statement stmt = new Statement();

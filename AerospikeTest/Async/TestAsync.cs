@@ -1,5 +1,5 @@
 ﻿/* 
- * Copyright 2012-2022 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -14,9 +14,8 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using System;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Aerospike.Client;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace Aerospike.Test
 {
@@ -24,7 +23,9 @@ namespace Aerospike.Test
 	public class TestAsync
 	{
 		public static Args args = Args.Instance;
-		public static AsyncClient client = args.asyncClient;
+		public static IAsyncClient client = args.asyncClient;
+		public static AsyncClient nativeClient = args.nativeAsync;
+		public static AsyncClientProxy asyncProxy = args.asyncProxy;
 
 		private AsyncMonitor monitor = new AsyncMonitor();
 
@@ -177,7 +178,10 @@ namespace Aerospike.Test
 
 		public void WaitTillComplete()
 		{
-			monitor.WaitTillComplete();
+			if (!args.testProxy)
+			{
+				monitor.WaitTillComplete();
+			}
 		}
 
 		public void NotifyCompleted()

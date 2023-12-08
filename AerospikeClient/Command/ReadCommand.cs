@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -14,10 +14,6 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.IO.Compression;
 
 namespace Aerospike.Client
 {
@@ -66,7 +62,7 @@ namespace Aerospike.Client
 			SetRead(policy, key, binNames);
 		}
 
-		protected internal override void ParseResult(Connection conn)
+		protected internal override void ParseResult(IConnection conn)
 		{
 			// Read header.		
 			conn.ReadFully(dataBuffer, 8);
@@ -102,7 +98,7 @@ namespace Aerospike.Client
 			{
 				throw new AerospikeException("Invalid proto type: " + type + " Expected: " + Command.AS_MSG_TYPE);
 			}
-					
+
 			int resultCode = dataBuffer[dataOffset];
 			dataOffset++;
 			int generation = ByteUtil.BytesToInt(dataBuffer, dataOffset);
@@ -183,10 +179,10 @@ namespace Aerospike.Client
 				code = Convert.ToInt32(list[2].Trim());
 				message = list[0] + ':' + list[1] + ' ' + list[3];
 			}
-			catch (Exception)
+			catch (Exception e)
 			{
 				// Use generic exception if parse error occurs.
-				throw new AerospikeException(resultCode, ret);
+				throw new AerospikeException(resultCode, ret, e);
 			}
 
 			throw new AerospikeException(code, message);

@@ -14,7 +14,6 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using System;
 using System.Text;
 
 namespace Aerospike.Client
@@ -30,43 +29,43 @@ namespace Aerospike.Client
 		protected int iteration = -1;
 		protected bool inDoubt;
 
-        public AerospikeException(int resultCode, string message) 
-            : base(message)
+		public AerospikeException(int resultCode, string message, Exception inner = null)
+			: base(message, inner)
 		{
-            this.resultCode = resultCode;
+			this.resultCode = resultCode;
 		}
 
-        public AerospikeException(int resultCode, Exception e) 
-            : base(e.Message, e)
+		public AerospikeException(int resultCode, Exception e)
+			: base(e.Message, e)
 		{
-            this.resultCode = resultCode;
+			this.resultCode = resultCode;
 		}
 
-        public AerospikeException(int resultCode) 
-            : base("")
-		{
-            this.resultCode = resultCode;
-		}
-
-		public AerospikeException(int resultCode, bool inDoubt)
+		public AerospikeException(int resultCode)
 			: base("")
+		{
+			this.resultCode = resultCode;
+		}
+
+		public AerospikeException(int resultCode, bool inDoubt, Exception inner = null)
+			: base(string.Empty, inner)
 		{
 			this.resultCode = resultCode;
 			this.inDoubt = inDoubt;
 		}
 
-		public AerospikeException(string message, Exception e) 
-            : base(message, e)
+		public AerospikeException(string message, Exception e)
+			: base(message, e)
 		{
 		}
 
-		public AerospikeException(string message) 
-            : base(message)
+		public AerospikeException(string message)
+			: base(message)
 		{
 		}
 
-        public AerospikeException(Exception e)
-            : base(e.Message, e)
+		public AerospikeException(Exception e)
+			: base(e.Message, e)
 		{
 		}
 
@@ -225,6 +224,15 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
+		/// Sets inDoubt value to inDoubt
+		/// </summary>
+		internal AerospikeException SetInDoubt(bool inDoubt)
+		{
+			this.inDoubt = inDoubt;
+			return this;
+		}
+
+		/// <summary>
 		/// Exception thrown when database request expires before completing.
 		/// </summary>
 		public sealed class Timeout : AerospikeException
@@ -247,8 +255,8 @@ namespace Aerospike.Client
 			/// <summary>
 			/// Create timeout exception.
 			/// </summary>
-			public Timeout(int totalTimeout, bool inDoubt)
-				: base(ResultCode.TIMEOUT, inDoubt)
+			public Timeout(int totalTimeout, bool inDoubt, Exception inner = null)
+				: base(ResultCode.TIMEOUT, inDoubt, inner)
 			{
 				this.socketTimeout = 0;
 				this.totalTimeout = totalTimeout;
@@ -258,8 +266,8 @@ namespace Aerospike.Client
 			/// <summary>
 			/// Create timeout exception with statistics.
 			/// </summary>
-			public Timeout(Policy policy, bool client)
-				: base(ResultCode.TIMEOUT)
+			public Timeout(Policy policy, bool client, Exception inner = null)
+				: base(ResultCode.TIMEOUT, inner)
 			{
 				this.socketTimeout = policy.socketTimeout;
 				this.totalTimeout = policy.totalTimeout;
@@ -269,8 +277,8 @@ namespace Aerospike.Client
 			/// <summary>
 			/// Create timeout exception with policy and iteration.
 			/// </summary>
-			public Timeout(Policy policy, int iteration)
-				: base(ResultCode.TIMEOUT)
+			public Timeout(Policy policy, int iteration, Exception inner = null)
+				: base(ResultCode.TIMEOUT, inner)
 			{
 				base.node = node;
 				base.iteration = iteration;
@@ -480,7 +488,7 @@ namespace Aerospike.Client
 				this.records = records;
 			}
 		}
-		
+
 		/// <summary>
 		/// Exception thrown when scan was terminated prematurely.
 		/// </summary>
@@ -550,6 +558,34 @@ namespace Aerospike.Client
 			/// </summary>
 			public Backoff(int resultCode) : base(resultCode)
 			{
+			}
+		}
+
+		/// <summary>
+		/// Exception used like a iterrupt to indicate the end of a GRPC stream has been reached
+		/// </summary>
+		public class EndOfGRPCStream : AerospikeException
+		{
+			public int ResultCode;
+
+			/// <summary>
+			/// Create end of GRPC stream exception
+			/// </summary>
+			public EndOfGRPCStream() : base(Client.ResultCode.OK, "GRPC Stream was ended successfully")
+			{
+				ResultCode = Client.ResultCode.OK;
+			}
+
+			/// <summary>
+			/// Create end of GRPC stream exception
+			/// </summary>
+			public EndOfGRPCStream(int resultCode)
+				: base(resultCode,
+						resultCode == Client.ResultCode.OK
+										? "GRPC Stream was ended successfully"
+										: $"GRPC Stream ended with Result Code of {resultCode}")
+			{
+				ResultCode = resultCode;
 			}
 		}
 	}

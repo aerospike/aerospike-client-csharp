@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2022 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -14,9 +14,7 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using System;
 using System.Collections;
-using System.Collections.Generic;
 
 namespace Aerospike.Client
 {
@@ -42,7 +40,7 @@ namespace Aerospike.Client
 
 		protected internal override void WriteBuffer()
 		{
-			if (batch.node.HasBatchAny)
+			if (batch.node != null && batch.node.HasBatchAny)
 			{
 				SetBatchOperate(batchPolicy, records, batch);
 			}
@@ -116,7 +114,7 @@ namespace Aerospike.Client
 
 		protected internal override void WriteBuffer()
 		{
-			if (batch.node.HasBatchAny)
+			if (batch.node != null && batch.node.HasBatchAny)
 			{
 				BatchAttr attr = new BatchAttr(policy, readAttr, ops);
 				SetBatchOperate(batchPolicy, keys, batch, binNames, ops, attr);
@@ -174,7 +172,7 @@ namespace Aerospike.Client
 
 		protected internal override void WriteBuffer()
 		{
-			if (batch.node.HasBatchAny)
+			if (batch.node != null && batch.node.HasBatchAny)
 			{
 				BatchAttr attr = new BatchAttr(policy, Command.INFO1_READ | Command.INFO1_NOBINDATA);
 				SetBatchOperate(batchPolicy, keys, batch, null, null, attr);
@@ -495,7 +493,7 @@ namespace Aerospike.Client
 			return BatchNode.GenerateList(cluster, batchPolicy, keys, records, sequenceAP, sequenceSC, batch, attr.hasWrite, status);
 		}
 	}
-	
+
 	//-------------------------------------------------------
 	// Batch Base Command
 	//-------------------------------------------------------

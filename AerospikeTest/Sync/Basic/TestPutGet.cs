@@ -17,6 +17,7 @@
 using System;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Aerospike.Client;
+using Aerospike.Client.KVS;
 
 namespace Aerospike.Test
 {
@@ -87,6 +88,55 @@ namespace Aerospike.Test
 			client.Put(null, key, geoBin);
 			Record r = client.Get(null, key);
 			Assert.AreEqual(r.GetValue("geo").GetType(), geoBin.value.GetType());
+		}
+
+		[TestMethod]
+		public void PutGetCompression()
+		{
+			Client.WritePolicy writePolicy = new()
+			{
+				compress = true
+			};
+			if (args.testProxy)
+			{
+				writePolicy.totalTimeout = args.proxyTotalTimeout;
+			}
+
+			Policy policy = new()
+			{
+				compress = true
+			};
+			if (args.testProxy)
+			{
+				policy.totalTimeout = args.proxyTotalTimeout;
+			}
+
+			Key key = new(args.ns, args.set, "putgetc");
+			Record record;
+
+			List<string> list = new();
+			int[] iterator = Enumerable.Range(0, 2000).ToArray();
+			foreach (int i in iterator)
+			{
+				list.Add(i.ToString());
+			}
+
+			Bin bin1 = new("bin", list);
+
+			client.Put(writePolicy, key, bin1);
+			record = client.Get(policy, key);
+			var bin1List = bin1.value.Object;
+			record.bins.TryGetValue("bin", out object recordBin);
+			CollectionAssert.AreEquivalent((List<string>)bin1List, (List<object>)recordBin);
+
+			record = client.GetHeader(policy, key);
+			AssertRecordFound(key, record);
+
+			// Generation should be greater than zero.  Make sure it's populated.
+			if (record.generation == 0)
+			{
+				Assert.Fail("Invalid record header: generation=" + record.generation + " expiration=" + record.expiration);
+			}
 		}
 	}
 }

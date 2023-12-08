@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2022 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -14,8 +14,6 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using System;
-using System.Collections.Generic;
 using System.Reflection;
 
 namespace Aerospike.Client
@@ -29,55 +27,55 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Default read policy that is used when read command policy is null.
 		/// </summary>
-		Policy ReadPolicyDefault { get; }
+		Policy ReadPolicyDefault { get; set; }
 
 		/// <summary>
 		/// Default write policy that is used when write command policy is null.
 		/// </summary>
-		WritePolicy WritePolicyDefault { get; }
+		WritePolicy WritePolicyDefault { get; set; }
 
 		/// <summary>
 		/// Default scan policy that is used when scan command policy is null.
 		/// </summary>
-		ScanPolicy ScanPolicyDefault { get; }
+		ScanPolicy ScanPolicyDefault { get; set; }
 
 		/// <summary>
 		/// Default query policy that is used when query command policy is null.
 		/// </summary>
-		QueryPolicy QueryPolicyDefault { get; }
+		QueryPolicy QueryPolicyDefault { get; set; }
 
 		/// <summary>
 		/// Default parent policy used in batch read commands.Parent policy fields
 		/// include socketTimeout, totalTimeout, maxRetries, etc...
 		/// </summary>
-		BatchPolicy BatchPolicyDefault { get; }
+		BatchPolicy BatchPolicyDefault { get; set; }
 
 		/// <summary>
 		/// Default parent policy used in batch write commands. Parent policy fields
 		/// include socketTimeout, totalTimeout, maxRetries, etc...
 		/// </summary>
-		BatchPolicy BatchParentPolicyWriteDefault { get; }
+		BatchPolicy BatchParentPolicyWriteDefault { get; set; }
 
 		/// <summary>
 		/// Default write policy used in batch operate commands.
 		/// Write policy fields include generation, expiration, durableDelete, etc...
 		/// </summary>
-		BatchWritePolicy BatchWritePolicyDefault { get; }
+		BatchWritePolicy BatchWritePolicyDefault { get; set; }
 
 		/// <summary>
 		/// Default delete policy used in batch delete commands.
 		/// </summary>
-		BatchDeletePolicy BatchDeletePolicyDefault { get; }
+		BatchDeletePolicy BatchDeletePolicyDefault { get; set; }
 
 		/// <summary>
 		/// Default user defined function policy used in batch UDF excecute commands.
 		/// </summary>
-		BatchUDFPolicy BatchUDFPolicyDefault { get; }
+		BatchUDFPolicy BatchUDFPolicyDefault { get; set; }
 
 		/// <summary>
 		/// Default info policy that is used when info command policy is null.
 		/// </summary>
-		InfoPolicy InfoPolicyDefault { get; }
+		InfoPolicy InfoPolicyDefault { get; set; }
 
 		//-------------------------------------------------------
 		// Cluster Connection Management

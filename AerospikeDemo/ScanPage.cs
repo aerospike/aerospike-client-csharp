@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -14,8 +14,8 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using System.Threading;
 using Aerospike.Client;
+using System.Threading;
 
 namespace Aerospike.Demo
 {
@@ -30,7 +30,7 @@ namespace Aerospike.Demo
 		/// <summary>
 		/// Scan in pages.
 		/// </summary>
-		public override void RunExample(AerospikeClient client, Arguments args)
+		public override void RunExample(IAerospikeClient client, Arguments args)
 		{
 			string binName = "bin";
 			string setName = "page";
@@ -55,7 +55,7 @@ namespace Aerospike.Demo
 
 		private void WriteRecords
 		(
-			AerospikeClient client,
+			IAerospikeClient client,
 			Arguments args,
 			string setName,
 			string binName,

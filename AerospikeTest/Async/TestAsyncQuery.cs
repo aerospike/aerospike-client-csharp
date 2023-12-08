@@ -1,5 +1,5 @@
 ﻿/* 
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -14,11 +14,8 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using System;
-using System.Threading;
-using System.Threading.Tasks;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Aerospike.Client;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace Aerospike.Test
 {
@@ -29,17 +26,22 @@ namespace Aerospike.Test
 		private const string keyPrefix = "asqkey";
 		private static readonly string binName = args.GetBinName("asqbin");
 		private const int size = 50;
+		private static CancellationTokenSource tokenSource;
 
 		[ClassInitialize()]
 		public static void Prepare(TestContext testContext)
 		{
+			tokenSource = new CancellationTokenSource();
 			Policy policy = new Policy();
 			policy.totalTimeout = 0; // Do not timeout on index create.
 
 			try
 			{
-				IndexTask task = client.CreateIndex(policy, args.ns, args.set, indexName, binName, IndexType.NUMERIC);
-				task.Wait();
+				if (!args.testProxy || (args.testProxy && nativeClient != null))
+				{
+					IndexTask task = nativeClient.CreateIndex(policy, args.ns, args.set, indexName, binName, IndexType.NUMERIC);
+					task.Wait();
+				}
 			}
 			catch (AerospikeException ae)
 			{
@@ -53,21 +55,72 @@ namespace Aerospike.Test
 		[ClassCleanup()]
 		public static void Destroy()
 		{
-			client.DropIndex(null, args.ns, args.set, indexName);
+			if (!args.testProxy || (args.testProxy && nativeClient != null))
+			{
+				nativeClient.DropIndex(null, args.ns, args.set, indexName);
+			}
 		}
 
 		[TestMethod]
-		public void AsyncQuery()
+		public async Task AsyncQuery()
 		{
-			WriteHandler handler = new WriteHandler(this);
-
-			for (int i = 1; i <= size; i++)
+			if (!args.testProxy)
 			{
-				Key key = new Key(args.ns, args.set, keyPrefix + i);
-				Bin bin = new Bin(binName, i);
-				client.Put(null, handler, key, bin);			
+				WriteHandler handler = new WriteHandler(this);
+
+				for (int i = 1; i <= size; i++)
+				{
+					Key key = new Key(args.ns, args.set, keyPrefix + i);
+					Bin bin = new Bin(binName, i);
+					client.Put(null, handler, key, bin);
+				}
+				WaitTillComplete();
 			}
-			WaitTillComplete();
+			else
+			{
+				int count = 0;
+				for (int i = 1; i <= size; i++)
+				{
+					Key key = new Key(args.ns, args.set, keyPrefix + i);
+					Bin bin = new Bin(binName, i);
+					await client.Put(null, tokenSource.Token, key, bin);
+					await WriteHandlerSuccess(key, count, this);
+				}
+			}
+		}
+
+		static async Task WriteHandlerSuccess(Key key, int count, TestAsyncQuery parent)
+		{
+			int rows = Interlocked.Increment(ref count);
+
+			if (rows == size)
+			{
+				int begin = 26;
+				int end = 34;
+
+				Statement stmt = new Statement();
+				stmt.SetNamespace(args.ns);
+				stmt.SetSetName(args.set);
+				stmt.SetBinNames(binName);
+				stmt.SetFilter(Filter.Range(binName, begin, end));
+
+				if (!args.testProxy)
+				{
+					client.Query(null, new RecordSequenceHandler(parent), stmt);
+				}
+				else
+				{
+					var result = await asyncProxy.Query(null, tokenSource.Token, stmt);
+					while (result.Next())
+					{
+						Record record = result.Record;
+						int integer = record.GetInt(binName);
+						parent.AssertBetween(26, 34, integer);
+						Interlocked.Increment(ref count);
+					}
+					parent.AssertEquals(9, count);
+				}
+			}
 		}
 
 		private class WriteHandler : WriteListener

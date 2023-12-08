@@ -43,7 +43,8 @@ namespace Aerospike.Test
 		}
 
 		[TestMethod]
-		public void OperateDelete() {
+		public void OperateDelete()
+		{
 			// Write initial record.
 			Key key = new Key(args.ns, args.set, "opkey");
 			Bin bin1 = new Bin("optintbin1", 1);
@@ -54,7 +55,7 @@ namespace Aerospike.Test
 			Record record = client.Operate(null, key,
 				Operation.Get(bin1.name),
 				Operation.Delete());
-			
+
 			AssertBinEqual(key, record, bin1.name, 1);
 
 			// Verify record is gone.
@@ -76,7 +77,7 @@ namespace Aerospike.Test
 
 			// Read record.
 			record = client.Get(null, key);
-			
+
 			AssertBinEqual(key, record, bin2.name, 2);
 			Assert.IsTrue(record.bins.Count == 1);
 		}

@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -14,9 +14,9 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
+using Aerospike.Client;
 using System;
 using System.Threading;
-using Aerospike.Client;
 
 namespace Aerospike.Demo
 {
@@ -31,7 +31,7 @@ namespace Aerospike.Demo
 		/// <summary>
 		/// Scan all nodes in parallel and read all records in a set.
 		/// </summary>
-		public override void RunExample(AerospikeClient client, Arguments args)
+		public override void RunExample(IAerospikeClient client, Arguments args)
 		{
 			console.Info("Scan parallel: namespace=" + args.ns + " set=" + args.set);
 			recordCount = 0;

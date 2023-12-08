@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2022 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -14,9 +14,7 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using System;
 using System.Collections;
-using System.Collections.Generic;
 
 namespace Aerospike.Client
 {
@@ -542,6 +540,18 @@ namespace Aerospike.Client
 			this.node = node;
 			this.offsets = new int[keys.Length];
 			this.offsetsSize = keys.Length;
+
+			for (int i = 0; i < offsetsSize; i++)
+			{
+				offsets[i] = i;
+			}
+		}
+
+		public BatchNode(BatchRecord[] records)
+		{
+			this.node = null;
+			this.offsets = new int[records.Length];
+			this.offsetsSize = records.Length;
 
 			for (int i = 0; i < offsetsSize; i++)
 			{

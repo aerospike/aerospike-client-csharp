@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -14,9 +14,7 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using System;
 using System.Net.Sockets;
-using System.Threading;
 
 namespace Aerospike.Client
 {
@@ -304,8 +302,9 @@ namespace Aerospike.Client
 		}
 
 		protected internal abstract Node GetNode();
+
 		protected internal abstract void WriteBuffer();
-		protected internal abstract void ParseResult(Connection conn);
+		protected internal abstract void ParseResult(IConnection conn);
 		protected internal abstract bool PrepareRetry(bool timeout);
 	}
 }

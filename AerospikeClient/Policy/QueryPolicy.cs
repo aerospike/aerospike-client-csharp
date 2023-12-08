@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2022 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -14,7 +14,6 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using System;
 
 #pragma warning disable 0618
 
@@ -82,6 +81,7 @@ namespace Aerospike.Client
 		/// <para>Default: false</para>
 		/// </summary>
 		public bool shortQuery;
+		public uint infoTimeout;
 
 		/// <summary>
 		/// Copy query policy from another query policy.

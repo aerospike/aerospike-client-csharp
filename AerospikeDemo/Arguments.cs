@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -51,7 +51,7 @@ namespace Aerospike.Demo
 		/// <summary>
 		/// Some database calls need to know how the server is configured.
 		/// </summary>
-		protected internal void SetServerSpecific(AerospikeClient client)
+		protected internal void SetServerSpecific(IAerospikeClient client)
 		{
 			Node node = client.Nodes[0];
 			string featuresFilter = "features";

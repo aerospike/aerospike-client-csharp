@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -27,7 +27,7 @@ namespace Aerospike.Demo
 		/// <summary>
 		/// Create secondary index and query on it.
 		/// </summary>
-		public override void RunExample(AerospikeClient client, Arguments args)
+		public override void RunExample(IAerospikeClient client, Arguments args)
 		{
 			string indexName = "queryindex";
 			string keyPrefix = "querykey";
@@ -41,7 +41,7 @@ namespace Aerospike.Demo
 			client.DropIndex(args.policy, args.ns, args.set, indexName);
 		}
 
-		private void CreateIndex(AerospikeClient client, Arguments args, string indexName, string binName)
+		private void CreateIndex(IAerospikeClient client, Arguments args, string indexName, string binName)
 		{
 			console.Info("Create index: ns={0} set={1} index={2} bin={3}",
 				args.ns, args.set, indexName, binName);
@@ -63,25 +63,25 @@ namespace Aerospike.Demo
 			}
 		}
 
-		private void WriteRecords(AerospikeClient client, Arguments args, string keyPrefix, string binName, string valuePrefix, int size)
+		private void WriteRecords(IAerospikeClient client, Arguments args, string keyPrefix, string binName, string valuePrefix, int size)
 		{
 			for (int i = 1; i <= size; i++)
 			{
 				Key key = new Key(args.ns, args.set, keyPrefix + i);
 				Bin bin = new Bin(binName, valuePrefix + i);
 
-				console.Info("Put: namespace={0} set={1} key={2} bin={3} value={4}", 
+				console.Info("Put: namespace={0} set={1} key={2} bin={3} value={4}",
 					key.ns, key.setName, key.userKey, bin.name, bin.value);
 
 				client.Put(args.writePolicy, key, bin);
 			}
 		}
 
-		private void RunQuery(AerospikeClient client, Arguments args, string indexName, string binName, string valuePrefix)
+		private void RunQuery(IAerospikeClient client, Arguments args, string indexName, string binName, string valuePrefix)
 		{
 			string filter = valuePrefix + 3;
 
-			console.Info("Query for: ns={0} set={1} index={2} bin={3} filter={4}", 
+			console.Info("Query for: ns={0} set={1} index={2} bin={3} filter={4}",
 				args.ns, args.set, indexName, binName, filter);
 
 			Statement stmt = new Statement();
@@ -104,7 +104,7 @@ namespace Aerospike.Demo
 
 					if (result.Equals(filter))
 					{
-						console.Info("Record found: namespace={0} set={1} digest={2} bin={3} value={4}", 
+						console.Info("Record found: namespace={0} set={1} digest={2} bin={3} value={4}",
 							key.ns, key.setName, ByteUtil.BytesToHexString(key.digest), binName, result);
 					}
 					else

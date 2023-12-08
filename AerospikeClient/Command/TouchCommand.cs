@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2020 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -14,6 +14,7 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
+
 namespace Aerospike.Client
 {
 	public sealed class TouchCommand : SyncCommand
@@ -34,7 +35,7 @@ namespace Aerospike.Client
 		{
 			return true;
 		}
-		
+
 		protected internal override Node GetNode()
 		{
 			return partition.GetNodeWrite(cluster);
@@ -45,7 +46,7 @@ namespace Aerospike.Client
 			SetTouch(writePolicy, key);
 		}
 
-		protected internal override void ParseResult(Connection conn)
+		protected internal override void ParseResult(IConnection conn)
 		{
 			// Read header.		
 			conn.ReadFully(dataBuffer, MSG_TOTAL_HEADER_SIZE);

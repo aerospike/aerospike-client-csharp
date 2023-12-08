@@ -30,7 +30,7 @@ namespace Aerospike.Demo
 		/// <summary>
 		/// Write List and Map objects.
 		/// </summary>
-		public override void RunExample(AerospikeClient client, Arguments args)
+		public override void RunExample(IAerospikeClient client, Arguments args)
 		{
 			TestListStrings(client, args);
 			TestListComplex(client, args);
@@ -47,7 +47,7 @@ namespace Aerospike.Demo
 		/// <summary>
 		/// Write/Read ArrayList<String> directly instead of relying on default serializer.
 		/// </summary>
-		private void TestListStrings(AerospikeClient client, Arguments args)
+		private void TestListStrings(IAerospikeClient client, Arguments args)
 		{
 			console.Info("Read/Write ArrayList<String>");
 			Key key = new Key(args.ns, args.set, "listkey1");
@@ -75,7 +75,7 @@ namespace Aerospike.Demo
 		/// <summary>
 		/// Write/Read ArrayList<Object> directly instead of relying on default serializer.
 		/// </summary>
-		private void TestListComplex(AerospikeClient client, Arguments args)
+		private void TestListComplex(IAerospikeClient client, Arguments args)
 		{
 			console.Info("Read/Write ArrayList<Object>");
 			Key key = new Key(args.ns, args.set, "listkey2");
@@ -105,7 +105,7 @@ namespace Aerospike.Demo
 		/// <summary>
 		/// Write/Read HashMap<String,String> directly instead of relying on default serializer.
 		/// </summary>
-		private void TestMapStrings(AerospikeClient client, Arguments args)
+		private void TestMapStrings(IAerospikeClient client, Arguments args)
 		{
 			console.Info("Read/Write HashMap<String,String>");
 			Key key = new Key(args.ns, args.set, "mapkey1");
@@ -133,7 +133,7 @@ namespace Aerospike.Demo
 		/// <summary>
 		/// Write/Read HashMap<Object,Object> directly instead of relying on default serializer.
 		/// </summary>
-		private void TestMapComplex(AerospikeClient client, Arguments args)
+		private void TestMapComplex(IAerospikeClient client, Arguments args)
 		{
 			console.Info("Read/Write HashMap<Object,Object>");
 			Key key = new Key(args.ns, args.set, "mapkey2");
@@ -177,7 +177,7 @@ namespace Aerospike.Demo
 		/// <summary>
 		/// Write/Read List/HashMap combination directly instead of relying on default serializer.
 		/// </summary>
-		private void TestListMapCombined(AerospikeClient client, Arguments args)
+		private void TestListMapCombined(IAerospikeClient client, Arguments args)
 		{
 			console.Info("Read/Write List/HashMap");
 			Key key = new Key(args.ns, args.set, "listmapkey");
@@ -235,7 +235,7 @@ namespace Aerospike.Demo
 		/// Write/Read list of compound objects using blob for entire list 
 		/// which is slow becauses it uses the default serializer.
 		/// </summary>
-		private void TestListCompoundBlob(AerospikeClient client, Arguments args)
+		private void TestListCompoundBlob(IAerospikeClient client, Arguments args)
 		{
 			console.Info("Read/Write ArrayList<CompoundObject> using blob");
 			Key key = new Key(args.ns, args.set, "listkey4");

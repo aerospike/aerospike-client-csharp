@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -14,8 +14,8 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using System;
 using Aerospike.Client;
+using System;
 
 namespace Aerospike.Demo
 {
@@ -28,7 +28,7 @@ namespace Aerospike.Demo
 		/// <summary>
 		/// Write and read a bin value.
 		/// </summary>
-		public override void RunExample(AerospikeClient client, Arguments args)
+		public override void RunExample(IAerospikeClient client, Arguments args)
 		{
 			if (args.singleBin)
 			{
@@ -44,13 +44,13 @@ namespace Aerospike.Demo
 		/// <summary>
 		/// Execute put and get on a server configured as multi-bin.  This is the server default.
 		/// </summary>
-		private void RunMultiBinTest(AerospikeClient client, Arguments args)
+		private void RunMultiBinTest(IAerospikeClient client, Arguments args)
 		{
 			Key key = new Key(args.ns, args.set, "putgetkey");
 			Bin bin1 = new Bin("bin1", "value1");
 			Bin bin2 = new Bin("bin2", "value2");
 
-			console.Info("Put: namespace={0} set={1} key={2} bin1={3} value1={4} bin2={5} value2={6}", 
+			console.Info("Put: namespace={0} set={1} key={2} bin1={3} value1={4} bin2={5} value2={6}",
 				key.ns, key.setName, key.userKey, bin1.name, bin1.value, bin2.name, bin2.value);
 
 			client.Put(args.writePolicy, key, bin1, bin2);
@@ -61,7 +61,7 @@ namespace Aerospike.Demo
 
 			if (record == null)
 			{
-				throw new Exception(string.Format("Failed to get: namespace={0} set={1} key={2}", 
+				throw new Exception(string.Format("Failed to get: namespace={0} set={1} key={2}",
 					key.ns, key.setName, key.userKey));
 			}
 
@@ -72,24 +72,24 @@ namespace Aerospike.Demo
 		/// <summary>
 		/// Execute put and get on a server configured as single-bin.
 		/// </summary>
-		private void RunSingleBinTest(AerospikeClient client, Arguments args)
+		private void RunSingleBinTest(IAerospikeClient client, Arguments args)
 		{
 			Key key = new Key(args.ns, args.set, "putgetkey");
 			Bin bin = new Bin("", "value");
 
-			console.Info("Single Bin Put: namespace={0} set={1} key={2} value={3}", 
+			console.Info("Single Bin Put: namespace={0} set={1} key={2} value={3}",
 				key.ns, key.setName, key.userKey, bin.value);
 
 			client.Put(args.writePolicy, key, bin);
 
-			console.Info("Single Bin Get: namespace={0} set={1} key={2}", key.ns, 
+			console.Info("Single Bin Get: namespace={0} set={1} key={2}", key.ns,
 				key.setName, key.userKey);
 
 			Record record = client.Get(args.policy, key);
 
 			if (record == null)
 			{
-				throw new Exception(string.Format("Failed to get: namespace={0} set={1} key={2}", 
+				throw new Exception(string.Format("Failed to get: namespace={0} set={1} key={2}",
 					key.ns, key.setName, key.userKey));
 			}
 
@@ -103,7 +103,7 @@ namespace Aerospike.Demo
 
 			if (received != null && received.Equals(expected))
 			{
-				console.Info("Bin matched: namespace={0} set={1} key={2} bin={3} value={4} generation={5} expiration={6}", 
+				console.Info("Bin matched: namespace={0} set={1} key={2} bin={3} value={4} generation={5} expiration={6}",
 					key.ns, key.setName, key.userKey, bin.name, received, record.generation, record.expiration);
 			}
 			else
@@ -115,7 +115,7 @@ namespace Aerospike.Demo
 		/// <summary>
 		/// Read record header data.
 		/// </summary>
-		private void RunGetHeaderTest(AerospikeClient client, Arguments args)
+		private void RunGetHeaderTest(IAerospikeClient client, Arguments args)
 		{
 			Key key = new Key(args.ns, args.set, "putgetkey");
 
@@ -124,14 +124,14 @@ namespace Aerospike.Demo
 
 			if (record == null)
 			{
-				throw new Exception(string.Format("Failed to get: namespace={0} set={1} key={2}", 
+				throw new Exception(string.Format("Failed to get: namespace={0} set={1} key={2}",
 					key.ns, key.setName, key.userKey));
 			}
 
 			// Generation should be greater than zero.  Make sure it's populated.
 			if (record.generation == 0)
 			{
-				throw new Exception(string.Format("Invalid record header: generation={0:D} expiration={1:D}", 
+				throw new Exception(string.Format("Invalid record header: generation={0:D} expiration={1:D}",
 					record.generation, record.expiration));
 			}
 			console.Info("Received: generation={0} expiration={1}", record.generation, record.expiration);

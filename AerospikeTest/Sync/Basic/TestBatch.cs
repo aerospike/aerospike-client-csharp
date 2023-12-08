@@ -14,10 +14,16 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using System.Collections;
-using System.Collections.Generic;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Aerospike.Client;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
+using Neo.IronLua;
+using System;
+using System.Collections;
+using System.Reflection;
+using System.Runtime.CompilerServices;
+using System.Runtime.Intrinsics.X86;
+using System.Security.Policy;
+using System.Text;
 
 namespace Aerospike.Test
 {
@@ -37,7 +43,14 @@ namespace Aerospike.Test
 		public static void WriteRecords(TestContext testContext)
 		{
 			WritePolicy policy = new WritePolicy();
-			policy.expiration = 2592000;
+			if (!args.testProxy || (args.testProxy && nativeClient != null))
+			{
+				policy.expiration = 2592000;
+			}
+			if (args.testProxy)
+			{
+				policy.totalTimeout = args.proxyTotalTimeout;
+			}
 
 			for (int i = 1; i <= Size; i++)
 			{
@@ -77,7 +90,7 @@ namespace Aerospike.Test
 			client.Put(policy, new Key(args.ns, args.set, 10002), new Bin(BinName, 10002));
 		}
 
-	[TestMethod]
+		[TestMethod]
 		public void BatchExists()
 		{
 			Key[] keys = new Key[Size];
@@ -159,7 +172,7 @@ namespace Aerospike.Test
 			Expression exp = Exp.Build(Exp.Mul(Exp.IntBin(BinName), Exp.Val(8)));
 			Operation[] ops = Operation.Array(ExpOperation.Read(BinName, exp, ExpReadFlags.DEFAULT));
 
-			string[] bins = new string[] {BinName};
+			string[] bins = new string[] { BinName };
 			List<BatchRead> records = new List<BatchRead>();
 			records.Add(new BatchRead(new Key(args.ns, args.set, KeyPrefix + 1), bins));
 			records.Add(new BatchRead(new Key(args.ns, args.set, KeyPrefix + 2), true));
@@ -170,7 +183,7 @@ namespace Aerospike.Test
 			records.Add(new BatchRead(new Key(args.ns, args.set, KeyPrefix + 7), bins));
 
 			// This record should be found, but the requested bin will not be found.
-			records.Add(new BatchRead(new Key(args.ns, args.set, KeyPrefix + 8), new string[] {"binnotfound"}));
+			records.Add(new BatchRead(new Key(args.ns, args.set, KeyPrefix + 8), new string[] { "binnotfound" }));
 
 			// This record should not be found.
 			records.Add(new BatchRead(new Key(args.ns, args.set, "keynotfound"), bins));
@@ -377,8 +390,8 @@ namespace Aerospike.Test
 			BatchRead batch = list[i];
 			AssertRecordFound(batch.key, batch.record);
 			Assert.AreNotEqual(0, batch.record.generation);
-            // ttl can be zero if server default-ttl = 0.
-            // Assert.AreNotEqual(0, batch.record.expiration);
+			// ttl can be zero if server default-ttl = 0.
+			// Assert.AreNotEqual(0, batch.record.expiration);
 		}
 	}
 }

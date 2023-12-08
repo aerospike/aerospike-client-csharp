@@ -83,7 +83,7 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Invert meaning of list command and return values.  For example:
 		/// <code>
-		/// ListOperation.RemoveByIndexRange(binName, index, count, ListReturnType.KEY | ListReturnType.INVERTED);
+		/// ListOperation.RemoveByIndexRange(binName, index, count, ListReturnType.INDEX | ListReturnType.INVERTED);
 		/// </code>
 		/// With the INVERTED flag enabled, the keys outside of the specified index range will be removed and returned.
 		/// </summary>

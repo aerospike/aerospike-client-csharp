@@ -19,6 +19,8 @@ using System.Collections;
 using System.Collections.Generic;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Aerospike.Client;
+using Newtonsoft.Json.Linq;
+using Microsoft.AspNetCore.DataProtection.KeyManagement;
 
 namespace Aerospike.Test
 {

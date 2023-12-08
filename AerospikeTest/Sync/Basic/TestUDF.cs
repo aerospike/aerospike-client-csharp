@@ -14,14 +14,11 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using System;
-using System.Collections;
-using System.Collections.Generic;
-using System.IO;
-using System.Reflection;
-using System.Runtime.Serialization.Formatters.Binary;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Aerospike.Client;
+using Microsoft.AspNetCore.DataProtection.KeyManagement;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
+using System.Collections;
+using System.Reflection;
 
 namespace Aerospike.Test
 {
@@ -31,9 +28,12 @@ namespace Aerospike.Test
 		[ClassInitialize()]
 		public static void Register(TestContext testContext)
 		{
-			Assembly assembly = Assembly.GetExecutingAssembly();
-			RegisterTask task = client.Register(null, assembly, "Aerospike.Test.LuaResources.record_example.lua", "record_example.lua", Language.LUA);
-			task.Wait();
+			if (!args.testProxy || (args.testProxy && nativeClient != null))
+			{
+				Assembly assembly = Assembly.GetExecutingAssembly();
+				RegisterTask task = nativeClient.Register(null, assembly, "Aerospike.Test.LuaResources.record_example.lua", "record_example.lua", Language.LUA);
+				task.Wait();
+			}
 		}
 
 		[TestMethod]
@@ -133,7 +133,7 @@ namespace Aerospike.Test
 
 			client.Execute(null, key, "record_example", "writeBin", Value.Get(binName), Value.Get(list));
 
-			IList received = (IList) client.Execute(null, key, "record_example", "readBin", Value.Get(binName));
+			IList received = (IList)client.Execute(null, key, "record_example", "readBin", Value.Get(binName));
 			Assert.IsNotNull(received);
 
 			Assert.AreEqual(list.Count, received.Count);

@@ -14,10 +14,7 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using System;
-using System.Collections.Generic;
 using System.Text;
-using System.Threading;
 
 namespace Aerospike.Client
 {
@@ -53,14 +50,15 @@ namespace Aerospike.Client
 
 		private PartitionTracker(Policy policy, Node[] nodes)
 		{
+			var nodeLength = nodes != null ? nodes.Length : 1;
 			this.partitionBegin = 0;
-			this.nodeCapacity = nodes.Length;
+			this.nodeCapacity = nodeLength;
 			this.nodeFilter = null;
 			this.partitionFilter = null;
 			this.replica = policy.replica;
 
 			// Create initial partition capacity for each node as average + 25%.
-			int ppn = Node.PARTITIONS / nodes.Length;
+			int ppn = Node.PARTITIONS / nodeLength;
 			ppn += (int)((uint)ppn >> 2);
 			this.partitionsCapacity = ppn;
 			this.partitions = InitPartitions(Node.PARTITIONS, null);
@@ -126,7 +124,8 @@ namespace Aerospike.Client
 
 			SetMaxRecords(maxRecords);
 			this.partitionBegin = filter.begin;
-			this.nodeCapacity = nodes.Length;
+			var nodeLength = nodes != null ? nodes.Length : 1;
+			this.nodeCapacity = nodeLength;
 			this.nodeFilter = null;
 			this.partitionsCapacity = filter.count;
 			this.replica = policy.replica;
@@ -261,7 +260,8 @@ namespace Aerospike.Client
 
 			int nodeSize = list.Count;
 
-			if (nodeSize <= 0) {
+			if (nodeSize <= 0)
+			{
 				throw new AerospikeException.InvalidNode("No nodes were assigned");
 			}
 
@@ -315,14 +315,14 @@ namespace Aerospike.Client
 			PartitionStatus ps = partitions[partitionId - partitionBegin];
 			ps.retry = true;
 			ps.sequence++;
-			nodePartitions.partsUnavailable++;
+			if (nodePartitions != null) nodePartitions.partsUnavailable++;
 		}
 
 		public void SetDigest(NodePartitions nodePartitions, Key key)
 		{
 			uint partitionId = Partition.GetPartitionId(key.digest);
 			partitions[partitionId - partitionBegin].digest = key.digest;
-			nodePartitions.recordCount++;
+			if (nodePartitions != null) nodePartitions.recordCount++;
 		}
 
 		public void SetLast(NodePartitions nodePartitions, Key key, ulong bval)
@@ -331,7 +331,7 @@ namespace Aerospike.Client
 			PartitionStatus ps = partitions[partitionId - partitionBegin];
 			ps.digest = key.digest;
 			ps.bval = bval;
-			nodePartitions.recordCount++;
+			if (nodePartitions != null) nodePartitions.recordCount++;
 		}
 
 		public bool IsComplete(Cluster cluster, Policy policy)
@@ -482,7 +482,7 @@ namespace Aerospike.Client
 			}
 
 			// Prepare for next iteration.
-			if (maxRecords > 0) 
+			if (maxRecords > 0)
 			{
 				maxRecords -= recordCount;
 			}

@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -29,7 +29,7 @@ namespace Aerospike.Demo
             LuaConfig.PackagePath = LuaDirectory + "?.lua";
         }
 
-        public static void Register(AerospikeClient client, Policy policy, string packageName)
+        public static void Register(IAerospikeClient client, Policy policy, string packageName)
         {
             string path = LuaDirectory + packageName;
             RegisterTask task = client.Register(policy, path, packageName, Language.LUA);

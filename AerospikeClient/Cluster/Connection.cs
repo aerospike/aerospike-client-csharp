@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -14,18 +14,15 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using System;
-using System.IO;
 using System.Net;
 using System.Net.Sockets;
-using System.Threading;
 
 namespace Aerospike.Client
 {
 	/// <summary>
 	/// Socket connection wrapper.
 	/// </summary>
-	public class Connection
+	public class Connection : IConnection
 	{
 		protected internal readonly Socket socket;
 		protected internal readonly Pool<Connection> pool;
@@ -86,7 +83,7 @@ namespace Aerospike.Client
 #else
 				System.Threading.Tasks.Task task = socket.ConnectAsync(address);
 
-				if (! task.Wait(timeoutMillis))
+				if (!task.Wait(timeoutMillis))
 				{
 					// Connection timed out.
 					throw new SocketException((int)SocketError.TimedOut);
@@ -131,7 +128,7 @@ namespace Aerospike.Client
 				// Check if data is available for reading.
 				// Poll is used because the timeout value is respected under 500ms.
 				// The Receive method does not timeout until after 500ms.
-				if (! socket.Poll(socket.ReceiveTimeout * 1000, SelectMode.SelectRead))
+				if (!socket.Poll(socket.ReceiveTimeout * 1000, SelectMode.SelectRead))
 				{
 					throw new SocketException((int)SocketError.TimedOut);
 				}
@@ -161,12 +158,12 @@ namespace Aerospike.Client
 		/// </summary>
 		public bool IsClosed()
 		{
-			return ! socket.Connected;
+			return !socket.Connected;
 		}
 
 		public DateTime LastUsed
 		{
-			get {return lastUsed;}
+			get { return lastUsed; }
 		}
 
 		public void UpdateLastUsed()
@@ -177,7 +174,7 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Shutdown and close socket.
 		/// </summary>
-		public void Close()
+		public virtual void Close()
 		{
 			try
 			{

@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2022 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -19,10 +19,10 @@ namespace Aerospike.Client
 	/// <summary>
 	/// Task used to poll for long running execute job completion.
 	/// </summary>
-	public sealed class ExecuteTask : BaseTask
+	public class ExecuteTask : BaseTask
 	{
-		private readonly ulong taskId;
-		private readonly bool scan;
+		protected readonly ulong taskId;
+		protected readonly bool scan;
 
 		/// <summary>
 		/// Initialize task with fields needed to query server nodes.

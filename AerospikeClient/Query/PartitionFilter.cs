@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2022 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -14,7 +14,6 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using System;
 
 namespace Aerospike.Client
 {
@@ -148,6 +147,14 @@ namespace Aerospike.Client
 		public bool Done
 		{
 			get { return done; }
+		}
+
+		/// <summary>
+		/// Indicates if the entire filter requires a retry after a failed attempt.
+		/// </summary>
+		public bool Retry
+		{
+			get { return retry; }
 		}
 	}
 }

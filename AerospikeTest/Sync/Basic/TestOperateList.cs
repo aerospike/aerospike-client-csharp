@@ -19,6 +19,9 @@ using System.Collections;
 using System.Collections.Generic;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Aerospike.Client;
+using Microsoft.AspNetCore.DataProtection.KeyManagement;
+using System.Security.Policy;
+using static Aerospike.Client.AerospikeException;
 
 namespace Aerospike.Test
 {

@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2022 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -102,7 +102,7 @@ namespace Aerospike.Client
 			return true;
 		}
 
-		protected internal sealed override void ParseResult(Connection conn)
+		protected internal sealed override void ParseResult(IConnection conn)
 		{
 			// Read blocks of records.  Do not use thread local receive buffer because each
 			// block will likely be too big for a cache.  Also, scan callbacks can nest

@@ -1,5 +1,5 @@
 ﻿/* 
- * Copyright 2012-2019 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -14,11 +14,9 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using System.Collections.Generic;
-using System.Collections.Concurrent;
-using System.Threading;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Aerospike.Client;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
+using System.Collections.Concurrent;
 
 namespace Aerospike.Test
 {
@@ -31,21 +29,63 @@ namespace Aerospike.Test
 		public void ScanParallel()
 		{
 			ScanPolicy policy = new ScanPolicy();
-			client.ScanAll(policy, args.ns, args.set, ScanCallback);
+			if (args.testProxy)
+			{
+				policy.totalTimeout = args.proxyTotalTimeout;
+			}
+
+			if (!args.testProxy)
+			{
+				client.ScanAll(policy, args.ns, args.set, ScanCallback);
+			}
+			else
+			{
+				var recordSet = proxyClient.ScanAll(policy, args.ns, args.set);
+				Metrics metrics;
+				while (recordSet.Next())
+				{
+					var key = recordSet.Key;
+
+					if (setMap.TryGetValue(key.setName, out metrics))
+					{
+						Interlocked.Increment(ref metrics.count);
+						return;
+					}
+
+					// Set not found.  Must lock to create metrics entry.
+					lock (setMap)
+					{
+						// Retry lookup under lock.
+						if (setMap.TryGetValue(key.setName, out metrics))
+						{
+							Interlocked.Increment(ref metrics.count);
+							return;
+						}
+
+						metrics = new Metrics();
+						metrics.count = 1;
+						setMap[key.setName] = metrics;
+					}
+				}
+			}
 		}
 
 		[TestMethod]
 		public void ScanSeries()
 		{
-			Node[] nodes = client.Nodes;
-
-			foreach (Node node in nodes)
+			if (!args.testProxy || (args.testProxy && nativeClient != null))
 			{
-				client.ScanNode(null, node, args.ns, args.set, ScanCallback);
+				Node[] nodes = nativeClient.Nodes;
 
-				foreach (KeyValuePair<string, Metrics> entry in setMap)
+				foreach (Node node in nodes)
 				{
-					entry.Value.count = 0;
+
+					nativeClient.ScanNode(null, node, args.ns, args.set, ScanCallback);
+
+					foreach (KeyValuePair<string, Metrics> entry in setMap)
+					{
+						entry.Value.count = 0;
+					}
 				}
 			}
 		}
@@ -79,6 +119,6 @@ namespace Aerospike.Test
 		public class Metrics
 		{
 			public long count = 0;
-		}		
+		}
 	}
 }

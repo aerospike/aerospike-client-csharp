@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2020 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -14,10 +14,10 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using System;
-using System.Collections.Generic;
-using System.Collections.Concurrent;
 using Aerospike.Client;
+using System;
+using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.Threading;
 
 namespace Aerospike.Demo
@@ -33,7 +33,7 @@ namespace Aerospike.Demo
 		/// <summary>
 		/// Scan all nodes in series and read all records in all sets.
 		/// </summary>
-		public override void RunExample(AerospikeClient client, Arguments args)
+		public override void RunExample(IAerospikeClient client, Arguments args)
 		{
 			console.Info("Scan series: namespace=" + args.ns + " set=" + args.set);
 			setMap.Clear();

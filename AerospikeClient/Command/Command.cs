@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2022 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -14,9 +14,7 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using System;
 using System.Collections;
-using System.Collections.Generic;
 
 #pragma warning disable 0618
 
@@ -107,7 +105,7 @@ namespace Aerospike.Client
 		// Writes
 		//--------------------------------------------------
 
-		public void SetWrite(WritePolicy policy, Operation.Type operation, Key key, Bin[] bins)
+		public virtual void SetWrite(WritePolicy policy, Operation.Type operation, Key key, Bin[] bins)
 		{
 			Begin();
 			int fieldCount = EstimateKeySize(policy, key);
@@ -140,7 +138,7 @@ namespace Aerospike.Client
 			End(compress);
 		}
 
-		public void SetDelete(WritePolicy policy, Key key)
+		public virtual void SetDelete(WritePolicy policy, Key key)
 		{
 			Begin();
 			int fieldCount = EstimateKeySize(policy, key);
@@ -161,7 +159,7 @@ namespace Aerospike.Client
 			End();
 		}
 
-		public void SetTouch(WritePolicy policy, Key key)
+		public virtual void SetTouch(WritePolicy policy, Key key)
 		{
 			Begin();
 			int fieldCount = EstimateKeySize(policy, key);
@@ -188,7 +186,7 @@ namespace Aerospike.Client
 		// Reads
 		//--------------------------------------------------
 
-		public void SetExists(Policy policy, Key key)
+		public virtual void SetExists(Policy policy, Key key)
 		{
 			Begin();
 			int fieldCount = EstimateKeySize(policy, key);
@@ -209,7 +207,7 @@ namespace Aerospike.Client
 			End();
 		}
 
-		public void SetRead(Policy policy, Key key)
+		public virtual void SetRead(Policy policy, Key key)
 		{
 			Begin();
 			int fieldCount = EstimateKeySize(policy, key);
@@ -230,7 +228,7 @@ namespace Aerospike.Client
 			End();
 		}
 
-		public void SetRead(Policy policy, Key key, string[] binNames)
+		public virtual void SetRead(Policy policy, Key key, string[] binNames)
 		{
 			if (binNames != null)
 			{
@@ -268,7 +266,7 @@ namespace Aerospike.Client
 			}
 		}
 
-		public void SetReadHeader(Policy policy, Key key)
+		public virtual void SetReadHeader(Policy policy, Key key)
 		{
 			Begin();
 			int fieldCount = EstimateKeySize(policy, key);
@@ -294,7 +292,7 @@ namespace Aerospike.Client
 		// Operate
 		//--------------------------------------------------
 
-		public void SetOperate(WritePolicy policy, Key key, OperateArgs args)
+		public virtual void SetOperate(WritePolicy policy, Key key, OperateArgs args)
 		{
 			Begin();
 			int fieldCount = EstimateKeySize(policy, key);
@@ -327,7 +325,7 @@ namespace Aerospike.Client
 		// UDF
 		//--------------------------------------------------
 
-		public void SetUdf(WritePolicy policy, Key key, string packageName, string functionName, Value[] args)
+		public virtual void SetUdf(WritePolicy policy, Key key, string packageName, string functionName, Value[] args)
 		{
 			Begin();
 			int fieldCount = EstimateKeySize(policy, key);
@@ -359,7 +357,7 @@ namespace Aerospike.Client
 		// Batch Read Only
 		//--------------------------------------------------
 
-		public void SetBatchRead(BatchPolicy policy, List<BatchRead> records, BatchNode batch)
+		public virtual void SetBatchRead(BatchPolicy policy, List<BatchRead> records, BatchNode batch)
 		{
 			// Estimate full row size
 			int[] offsets = batch.offsets;
@@ -505,7 +503,7 @@ namespace Aerospike.Client
 			End(compress);
 		}
 
-		public void SetBatchRead
+		public virtual void SetBatchRead
 		(
 			BatchPolicy policy,
 			Key[] keys,
@@ -519,7 +517,7 @@ namespace Aerospike.Client
 			int[] offsets = batch.offsets;
 			int max = batch.offsetsSize;
 
-			// Estimate buffer size.
+			// Estimate dataBuffer size.
 			Begin();
 			int fieldCount = 1;
 
@@ -646,7 +644,7 @@ namespace Aerospike.Client
 		// Batch Read/Write Operations
 		//--------------------------------------------------
 
-		public void SetBatchOperate(BatchPolicy policy, IList records, BatchNode batch)
+		public virtual void SetBatchOperate(BatchPolicy policy, IList records, BatchNode batch)
 		{
 			// Estimate full row size
 			int[] offsets = batch.offsets;
@@ -827,7 +825,7 @@ namespace Aerospike.Client
 			End(compress);
 		}
 
-		public void SetBatchOperate
+		public virtual void SetBatchOperate
 		(
 			BatchPolicy policy,
 			Key[] keys,
@@ -841,7 +839,7 @@ namespace Aerospike.Client
 			int[] offsets = batch.offsets;
 			int max = batch.offsetsSize;
 
-			// Estimate buffer size.
+			// Estimate dataBuffer size.
 			Begin();
 			int fieldCount = 1;
 			Expression exp = GetBatchExpression(policy, attr);
@@ -972,7 +970,7 @@ namespace Aerospike.Client
 			End(compress);
 		}
 
-		public void SetBatchUDF
+		public virtual void SetBatchUDF
 		(
 			BatchPolicy policy,
 			Key[] keys,
@@ -987,7 +985,7 @@ namespace Aerospike.Client
 			int[] offsets = batch.offsets;
 			int max = batch.offsetsSize;
 
-			// Estimate buffer size.
+			// Estimate dataBuffer size.
 			Begin();
 			int fieldCount = 1;
 			Expression exp = GetBatchExpression(policy, attr);
@@ -1213,7 +1211,7 @@ namespace Aerospike.Client
 		// Scan
 		//--------------------------------------------------
 
-		public void SetScan
+		public virtual void SetScan
 		(
 			Cluster cluster,
 			ScanPolicy policy,
@@ -1367,7 +1365,7 @@ namespace Aerospike.Client
 		// Query
 		//--------------------------------------------------
 
-		protected internal void SetQuery
+		protected virtual internal void SetQuery
 		(
 			Cluster cluster,
 			Policy policy,
@@ -2059,7 +2057,7 @@ namespace Aerospike.Client
 
 		private void WriteKey(Policy policy, Key key)
 		{
-			// Write key into buffer.
+			// Write key into dataBuffer.
 			if (key.ns != null)
 			{
 				WriteField(key.ns, FieldType.NAMESPACE);
@@ -2205,7 +2203,7 @@ namespace Aerospike.Client
 			dataBuffer[dataOffset++] = (byte)type;
 		}
 
-		internal void WriteExpHeader(int size)
+		internal virtual void WriteExpHeader(int size)
 		{
 			WriteFieldHeader(size, FieldType.FILTER_EXP);
 		}
@@ -2220,8 +2218,8 @@ namespace Aerospike.Client
 			if (policy.compress && dataOffset > COMPRESS_THRESHOLD)
 			{
 				// Command will be compressed. First, write uncompressed command
-				// into separate buffer. Save normal buffer for compressed command.
-				// Normal buffer in async mode is from buffer pool that is used to
+				// into separate dataBuffer. Save normal dataBuffer for compressed command.
+				// Normal dataBuffer in async mode is from dataBuffer pool that is used to
 				// minimize memory pinning during socket operations.
 				dataBuffer = new byte[dataOffset];
 				dataOffset = 0;
@@ -2250,8 +2248,8 @@ namespace Aerospike.Client
 			byte[] srcBuf = dataBuffer;
 			int srcSize = dataOffset;
 
-			// Increase requested buffer size in case compressed buffer size is
-			// greater than the uncompressed buffer size.
+			// Increase requested dataBuffer size in case compressed dataBuffer size is
+			// greater than the uncompressed dataBuffer size.
 			dataOffset += 16 + 100;
 
 			// This method finds dataBuffer of requested size, resets dataOffset to segment offset
@@ -2275,7 +2273,7 @@ namespace Aerospike.Client
 		// Response Parsing
 		//--------------------------------------------------
 
-		internal void SkipKey(int fieldCount)
+		internal virtual void SkipKey(int fieldCount)
 		{
 			// There can be fields in the response (setname etc).
 			// But for now, ignore them. Expose them to the API if needed in the future.
@@ -2286,7 +2284,7 @@ namespace Aerospike.Client
 			}
 		}
 
-		internal Key ParseKey(int fieldCount, out ulong bval)
+		internal virtual Key ParseKey(int fieldCount, out ulong bval)
 		{
 			byte[] digest = null;
 			string ns = null;

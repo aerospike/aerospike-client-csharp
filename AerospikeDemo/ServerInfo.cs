@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -14,9 +14,9 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
+using Aerospike.Client;
 using System;
 using System.Collections.Generic;
-using Aerospike.Client;
 
 namespace Aerospike.Demo
 {
@@ -29,7 +29,7 @@ namespace Aerospike.Demo
 		/// <summary>
 		/// Query server configuration, cluster status and namespace configuration.
 		/// </summary>
-		public override void RunExample(AerospikeClient client, Arguments args)
+		public override void RunExample(IAerospikeClient client, Arguments args)
 		{
 			Node node = client.Nodes[0];
 			GetServerConfig(node, args);
@@ -76,7 +76,7 @@ namespace Aerospike.Demo
 
 			if (tokens == null)
 			{
-				throw new Exception(string.Format("Failed to get namespace info: host={0} namespace={1}", 
+				throw new Exception(string.Format("Failed to get namespace info: host={0} namespace={1}",
 					node, args.ns));
 			}
 

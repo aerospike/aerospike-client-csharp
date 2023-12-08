@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2022 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -14,11 +14,9 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using System.IO;
-using System.Collections;
+using Aerospike.Client;
 using System.Collections.Generic;
 using System.Text;
-using Aerospike.Client;
 
 namespace Aerospike.Demo
 {
@@ -32,14 +30,14 @@ namespace Aerospike.Demo
 		/// <summary>
 		/// Create secondary index on a string bin and query on it.
 		/// </summary>
-		public override void RunExample(AerospikeClient client, Arguments args)
+		public override void RunExample(IAerospikeClient client, Arguments args)
 		{
 			RunMapExample(client, args);
 			RunMapKeyExample(client, args);
 			RunListExample(client, args);
 		}
 
-		private void RunMapExample(AerospikeClient client, Arguments args)
+		private void RunMapExample(IAerospikeClient client, Arguments args)
 		{
 			string indexName = "geo_map";
 			string keyPrefix = "map";
@@ -56,7 +54,7 @@ namespace Aerospike.Demo
 			DeleteRecords(client, args, keyPrefix, size);
 		}
 
-		private void RunMapKeyExample(AerospikeClient client, Arguments args)
+		private void RunMapKeyExample(IAerospikeClient client, Arguments args)
 		{
 			string indexName = "geo_mapkey";
 			string keyPrefix = "mapkey";
@@ -70,10 +68,10 @@ namespace Aerospike.Demo
 			WriteMapKeyRecords(client, args, keyPrefix, binName, binName2, mapValuePrefix, size);
 			RunQuery(client, args, binName, binName2, IndexCollectionType.MAPKEYS);
 			client.DropIndex(args.policy, args.ns, args.set, indexName);
-			DeleteRecords(client,args, keyPrefix, size);
+			DeleteRecords(client, args, keyPrefix, size);
 		}
 
-		private void RunListExample(AerospikeClient client, Arguments args)
+		private void RunListExample(IAerospikeClient client, Arguments args)
 		{
 			string indexName = "geo_list";
 			string keyPrefix = "list";
@@ -89,7 +87,7 @@ namespace Aerospike.Demo
 			DeleteRecords(client, args, keyPrefix, size);
 		}
 
-		private void CreateIndex(AerospikeClient client, Arguments args, IndexCollectionType indexType, string indexName, string binName)
+		private void CreateIndex(IAerospikeClient client, Arguments args, IndexCollectionType indexType, string indexName, string binName)
 		{
 			console.Info("Create GeoJSON {0} index: ns={1} set={2} index={3} bin={4}", indexType, args.ns, args.set, indexName, binName);
 
@@ -110,7 +108,7 @@ namespace Aerospike.Demo
 			}
 		}
 
-		private void WriteMapRecords(AerospikeClient client, Arguments args, string keyPrefix, string binName, string binName2, string valuePrefix, int size)
+		private void WriteMapRecords(IAerospikeClient client, Arguments args, string keyPrefix, string binName, string binName2, string valuePrefix, int size)
 		{
 			for (int i = 0; i < size; i++)
 			{
@@ -141,7 +139,7 @@ namespace Aerospike.Demo
 			console.Info("Write " + size + " records.");
 		}
 
-		private void WriteMapKeyRecords(AerospikeClient client, Arguments args, string keyPrefix, string binName, string binName2, string valuePrefix, int size)
+		private void WriteMapKeyRecords(IAerospikeClient client, Arguments args, string keyPrefix, string binName, string binName2, string valuePrefix, int size)
 		{
 			for (int i = 0; i < size; i++)
 			{
@@ -173,7 +171,7 @@ namespace Aerospike.Demo
 			console.Info("Write " + size + " records.");
 		}
 
-		private void WriteListRecords(AerospikeClient client, Arguments args, string keyPrefix, string binName, string binName2, int size)
+		private void WriteListRecords(IAerospikeClient client, Arguments args, string keyPrefix, string binName, string binName2, int size)
 		{
 			for (int i = 0; i < size; i++)
 			{
@@ -206,7 +204,7 @@ namespace Aerospike.Demo
 			console.Info("Write " + size + " records.");
 		}
 
-		private void RunQuery(AerospikeClient client, Arguments args, string binName, string binName2, IndexCollectionType indexType)
+		private void RunQuery(IAerospikeClient client, Arguments args, string binName, string binName2, IndexCollectionType indexType)
 		{
 			console.Info("Query for: ns={0} set={1} bin={2} {3} within <region>", args.ns, args.set, binName, indexType.ToString());
 
@@ -247,7 +245,7 @@ namespace Aerospike.Demo
 			}
 		}
 
-		private void DeleteRecords(AerospikeClient client, Arguments args, string keyPrefix, int size)
+		private void DeleteRecords(IAerospikeClient client, Arguments args, string keyPrefix, int size)
 		{
 			for (int i = 0; i < size; i++)
 			{

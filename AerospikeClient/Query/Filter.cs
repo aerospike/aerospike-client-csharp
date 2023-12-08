@@ -210,15 +210,19 @@ namespace Aerospike.Client
 		private readonly Value begin;
 		private readonly Value end;
 
-		private Filter(string name, IndexCollectionType colType, ParticleType valType, Value begin, Value end, CTX[] ctx)
+		Filter(string name, IndexCollectionType colType, int valType, Value begin, Value end, byte[] packedCtx)
 		{
 			this.name = name;
 			this.colType = colType;
-			this.valType = valType;
+			this.valType = (ParticleType)valType;
 			this.begin = begin;
 			this.end = end;
-			this.packedCtx = (ctx != null && ctx.Length > 0) ? PackUtil.Pack(ctx) : null;
+			this.packedCtx = packedCtx;
 		}
+
+		private Filter(string name, IndexCollectionType colType, ParticleType valType, Value begin, Value end, CTX[] ctx) :
+			this(name, colType, (int)valType, begin, end, (ctx != null && ctx.Length > 0) ? PackUtil.Pack(ctx) : null)
+		{ }
 
 		internal int EstimateSize()
 		{
@@ -249,14 +253,39 @@ namespace Aerospike.Client
 			return offset;
 		}
 
+		public string Name
+		{
+			get { return name; }
+		}
+
+		public IndexCollectionType ColType
+		{
+			get { return colType; }
+		}
+
+		public Value Begin
+		{
+			get { return begin; }
+		}
+
+		public Value End
+		{
+			get { return end; }
+		}
+
+		public int ValType
+		{
+			get { return (int)valType; }
+		}
+
 		internal IndexCollectionType CollectionType
 		{
-			get {return colType;}
+			get { return colType; }
 		}
 
 		internal byte[] PackedCtx
 		{
-			get {return packedCtx;}
+			get { return packedCtx; }
 		}
 	}
 }

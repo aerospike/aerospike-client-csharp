@@ -14,11 +14,8 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using System;
-using System.Collections;
-using System.Collections.Generic;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Aerospike.Client;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace Aerospike.Test
 {
@@ -28,9 +25,12 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void ServerInfo()
 		{
-			Node node = client.Nodes[0];
-			GetServerConfig(node);
-			GetNamespaceConfig(node);
+			if (!args.testProxy || (args.testProxy && nativeClient != null))
+			{
+				Node node = nativeClient.Nodes[0];
+				GetServerConfig(node);
+				GetNamespaceConfig(node);
+			}
 		}
 
 		private void GetServerConfig(Node node)

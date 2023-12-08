@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -28,7 +28,7 @@ namespace Aerospike.Demo
 		/// <summary>
 		/// Append string to an existing string.
 		/// </summary>
-		public override void RunExample(AerospikeClient client, Arguments args)
+		public override void RunExample(IAerospikeClient client, Arguments args)
 		{
 			Key key = new Key(args.ns, args.set, "appendkey");
 			string binName = args.GetBinName("appendbin");

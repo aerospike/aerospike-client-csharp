@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -14,7 +14,6 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using System.IO;
 using Aerospike.Client;
 
 namespace Aerospike.Demo
@@ -29,7 +28,7 @@ namespace Aerospike.Demo
 		/// <summary>
 		/// Create secondary index and query on it and apply aggregation user defined function.
 		/// </summary>
-		public override void RunExample(AerospikeClient client, Arguments args)
+		public override void RunExample(IAerospikeClient client, Arguments args)
 		{
 			string packageContents = @"
 local function reducer(val1,val2)
@@ -55,7 +54,7 @@ end
 			client.DropIndex(args.policy, args.ns, args.set, indexName);
 		}
 
-		private void Register(AerospikeClient client, Arguments args, string packageContents)
+		private void Register(IAerospikeClient client, Arguments args, string packageContents)
 		{
 			string packageName = "sum_example.lua";
 			console.Info("Register: " + packageName);
@@ -63,7 +62,7 @@ end
 			task.Wait();
 		}
 
-		private void CreateIndex(AerospikeClient client, Arguments args, string indexName, string binName)
+		private void CreateIndex(IAerospikeClient client, Arguments args, string indexName, string binName)
 		{
 			console.Info("Create index: ns={0} set={1} index={2} bin={3}",
 				args.ns, args.set, indexName, binName);
@@ -85,26 +84,26 @@ end
 			}
 		}
 
-		private void WriteRecords(AerospikeClient client, Arguments args, string keyPrefix, string binName, int size)
+		private void WriteRecords(IAerospikeClient client, Arguments args, string keyPrefix, string binName, int size)
 		{
 			for (int i = 1; i <= size; i++)
 			{
 				Key key = new Key(args.ns, args.set, keyPrefix + i);
 				Bin bin = new Bin(binName, i);
 
-				console.Info("Put: namespace={0} set={1} key={2} bin={3} value={4}", 
+				console.Info("Put: namespace={0} set={1} key={2} bin={3} value={4}",
 					key.ns, key.setName, key.userKey, bin.name, bin.value);
 
 				client.Put(args.writePolicy, key, bin);
 			}
 		}
 
-		private void RunQuery(AerospikeClient client, Arguments args, string indexName, string binName, string packageContents)
+		private void RunQuery(IAerospikeClient client, Arguments args, string indexName, string binName, string packageContents)
 		{
 			int begin = 4;
 			int end = 7;
 
-			console.Info("Query for:ns={0} set={1} index={2} bin={3} >= {4} <= {5}", 
+			console.Info("Query for:ns={0} set={1} index={2} bin={3} >= {4} <= {5}",
 				args.ns, args.set, indexName, binName, begin, end);
 
 			Statement stmt = new Statement();

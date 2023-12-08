@@ -1,5 +1,5 @@
 ﻿/* 
- * Copyright 2012-2022 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -14,10 +14,9 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using System.Collections;
-using System.Collections.Generic;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Aerospike.Client;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
+using System.Collections;
 
 namespace Aerospike.Test
 {
@@ -36,12 +35,15 @@ namespace Aerospike.Test
 
 			try
 			{
-				IndexTask task = client.CreateIndex(
+				if (!args.testProxy || (args.testProxy && nativeClient != null))
+				{
+					IndexTask task = nativeClient.CreateIndex(
 					policy, args.ns, args.set, indexName, binName,
 					IndexType.NUMERIC, IndexCollectionType.DEFAULT,
 					CTX.ListRank(-1)
 					);
-				task.Wait();
+					task.Wait();
+				}
 			}
 			catch (AerospikeException ae)
 			{
@@ -70,7 +72,10 @@ namespace Aerospike.Test
 		[ClassCleanup()]
 		public static void Destroy()
 		{
-			client.DropIndex(null, args.ns, args.set, indexName);
+			if (!args.testProxy || (args.testProxy && nativeClient != null))
+			{
+				nativeClient.DropIndex(null, args.ns, args.set, indexName);
+			}
 		}
 
 		[TestMethod]

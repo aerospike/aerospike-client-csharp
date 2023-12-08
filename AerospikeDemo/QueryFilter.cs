@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -14,7 +14,6 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using System.IO;
 using Aerospike.Client;
 using System.Collections.Generic;
 
@@ -30,7 +29,7 @@ namespace Aerospike.Demo
 		/// Query on a secondary index with a filter and then apply an additional filter in the 
 		/// user defined function.
 		/// </summary>
-		public override void RunExample(AerospikeClient client, Arguments args)
+		public override void RunExample(IAerospikeClient client, Arguments args)
 		{
 			string indexName = "profileindex";
 			string keyPrefix = "profilekey";
@@ -43,14 +42,14 @@ namespace Aerospike.Demo
 			client.DropIndex(args.policy, args.ns, args.set, indexName);
 		}
 
-		private void Register(AerospikeClient client, Arguments args)
+		private void Register(IAerospikeClient client, Arguments args)
 		{
 			string packageName = "filter_example.lua";
 			console.Info("Register: " + packageName);
 			LuaExample.Register(client, args.policy, packageName);
 		}
 
-		private void CreateIndex(AerospikeClient client, Arguments args, string indexName, string binName)
+		private void CreateIndex(IAerospikeClient client, Arguments args, string indexName, string binName)
 		{
 			console.Info("Create index: ns={0} set={1} index={2} bin={3}",
 				args.ns, args.set, indexName, binName);
@@ -72,14 +71,14 @@ namespace Aerospike.Demo
 			}
 		}
 
-		private void WriteRecords(AerospikeClient client, Arguments args, string keyPrefix, string binName)
+		private void WriteRecords(IAerospikeClient client, Arguments args, string keyPrefix, string binName)
 		{
 			WriteRecord(client, args, keyPrefix + 1, "Charlie", "cpass");
 			WriteRecord(client, args, keyPrefix + 2, "Bill", "hknfpkj");
 			WriteRecord(client, args, keyPrefix + 3, "Doug", "dj6554");
 		}
 
-		private void WriteRecord(AerospikeClient client, Arguments args, string userKey, string name, string password)
+		private void WriteRecord(IAerospikeClient client, Arguments args, string userKey, string name, string password)
 		{
 			Key key = new Key(args.ns, args.set, userKey);
 			Bin bin1 = new Bin("name", name);
@@ -90,7 +89,7 @@ namespace Aerospike.Demo
 			client.Put(args.writePolicy, key, bin1, bin2);
 		}
 
-		private void RunQuery(AerospikeClient client, Arguments args, string indexName, string binName)
+		private void RunQuery(IAerospikeClient client, Arguments args, string indexName, string binName)
 		{
 			string nameFilter = "Bill";
 			string passFilter = "hknfpkj";

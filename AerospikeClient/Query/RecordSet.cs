@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2020 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -14,9 +14,7 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using System;
 using System.Collections.Concurrent;
-using System.Threading;
 
 namespace Aerospike.Client
 {
@@ -69,25 +67,42 @@ namespace Aerospike.Client
 			catch (OperationCanceledException)
 			{
 				valid = false;
-				executor.CheckForException();
+				executor?.CheckForException();
 				return false;
 			}
 
 			if (record == END)
 			{
 				valid = false;
-				executor.CheckForException();
+				if (executor != null) executor.CheckForException();
 				return false;
 			}
 			return true;
 		}
 
+		public bool Disposed { get; private set; }
+		private void Dispose(bool disposing)
+		{
+			if (!Disposed)
+			{
+				if (disposing)
+				{
+					this.Close();
+					record = null;
+				}
+
+				Disposed = true;
+			}
+		}
+
 		/// <summary>
-		/// Close query.
+		/// Close query
 		/// </summary>
 		public void Dispose()
 		{
-			Close();
+			// Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
+			Dispose(disposing: true);
+			GC.SuppressFinalize(this);
 		}
 
 		/// <summary>
@@ -100,7 +115,7 @@ namespace Aerospike.Client
 			// Check if more records are available.
 			if (record != END)
 			{
-				if (queue.TryTake(out record) && record != END)
+				if (queue.TryTake(out record) && record != END && executor != null)
 				{
 					// Some query threads may still be running. Stop these threads.
 					executor.StopThreads(new AerospikeException.QueryTerminated());

@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -14,8 +14,8 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using System.Text;
 using Aerospike.Client;
+using System.Text;
 
 namespace Aerospike.Demo
 {
@@ -29,7 +29,7 @@ namespace Aerospike.Demo
 		/// <summary>
 		/// Geospatial query with filter example.
 		/// </summary>
-		public override void RunExample(AerospikeClient client, Arguments args)
+		public override void RunExample(IAerospikeClient client, Arguments args)
 		{
 			string indexName = "filterindexloc";
 			string keyPrefix = "filterkeyloc";
@@ -44,14 +44,14 @@ namespace Aerospike.Demo
 			client.DropIndex(args.policy, args.ns, args.set, indexName);
 		}
 
-		private void Register(AerospikeClient client, Arguments args)
+		private void Register(IAerospikeClient client, Arguments args)
 		{
 			string packageName = "geo_filter_example.lua";
 			console.Info("Register: " + packageName);
 			LuaExample.Register(client, args.policy, packageName);
 		}
-		
-		private void CreateIndex(AerospikeClient client, Arguments args, string indexName, string binName)
+
+		private void CreateIndex(IAerospikeClient client, Arguments args, string indexName, string binName)
 		{
 			console.Info("Create index: ns={0} set={1} index={2} bin={3}",
 				args.ns, args.set, indexName, binName);
@@ -73,7 +73,7 @@ namespace Aerospike.Demo
 			}
 		}
 
-		private void WriteRecords(AerospikeClient client, Arguments args, string keyPrefix, string binName1, string binName2, int size)
+		private void WriteRecords(IAerospikeClient client, Arguments args, string keyPrefix, string binName1, string binName2, int size)
 		{
 			console.Info("Write " + size + " records.");
 
@@ -106,7 +106,7 @@ namespace Aerospike.Demo
 			}
 		}
 
-		private void RunQuery(AerospikeClient client, Arguments args, string indexName, string binName1, string binName2)
+		private void RunQuery(IAerospikeClient client, Arguments args, string indexName, string binName1, string binName2)
 		{
 			StringBuilder rgnsb = new StringBuilder();
 

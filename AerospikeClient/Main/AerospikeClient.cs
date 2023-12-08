@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2022 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -14,11 +14,8 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using System;
-using System.Collections.Generic;
-using System.Text;
 using System.Reflection;
-using System.IO;
+using System.Text;
 
 namespace Aerospike.Client
 {
@@ -52,57 +49,57 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Default read policy that is used when read command policy is null.
 		/// </summary>
-		public readonly Policy readPolicyDefault;
+		public Policy readPolicyDefault;
 
 		/// <summary>
 		/// Default write policy that is used when write command policy is null.
 		/// </summary>
-		public readonly WritePolicy writePolicyDefault;
+		public WritePolicy writePolicyDefault;
 
 		/// <summary>
 		/// Default scan policy that is used when scan command policy is null.
 		/// </summary>
-		public readonly ScanPolicy scanPolicyDefault;
+		public ScanPolicy scanPolicyDefault;
 
 		/// <summary>
 		/// Default query policy that is used when query command policy is null.
 		/// </summary>
-		public readonly QueryPolicy queryPolicyDefault;
+		public QueryPolicy queryPolicyDefault;
 
 		/// <summary>
 		/// Default parent policy used in batch read commands. Parent policy fields
 		/// include socketTimeout, totalTimeout, maxRetries, etc...
 		/// </summary>
-		public readonly BatchPolicy batchPolicyDefault;
+		public BatchPolicy batchPolicyDefault;
 
 		/// <summary>
 		/// Default parent policy used in batch write commands. Parent policy fields
 		/// include socketTimeout, totalTimeout, maxRetries, etc...
 		/// </summary>
-		public readonly BatchPolicy batchParentPolicyWriteDefault;
+		public BatchPolicy batchParentPolicyWriteDefault;
 
 		/// <summary>
 		/// Default write policy used in batch operate commands.
 		/// Write policy fields include generation, expiration, durableDelete, etc...
 		/// </summary>
-		public readonly BatchWritePolicy batchWritePolicyDefault;
+		public BatchWritePolicy batchWritePolicyDefault;
 
 		/// <summary>
 		/// Default delete policy used in batch delete commands.
 		/// </summary>
-		public readonly BatchDeletePolicy batchDeletePolicyDefault;
+		public BatchDeletePolicy batchDeletePolicyDefault;
 
 		/// <summary>
 		/// Default user defined function policy used in batch UDF excecute commands.
 		/// </summary>
-		public readonly BatchUDFPolicy batchUDFPolicyDefault;
+		public BatchUDFPolicy batchUDFPolicyDefault;
 
 		/// <summary>
 		/// Default info policy that is used when info command policy is null.
 		/// </summary>
-		public readonly InfoPolicy infoPolicyDefault;
+		public InfoPolicy infoPolicyDefault;
 
-		protected readonly WritePolicy operatePolicyReadDefault;
+		protected WritePolicy operatePolicyReadDefault;
 
 		//-------------------------------------------------------
 		// Constructors
@@ -125,7 +122,7 @@ namespace Aerospike.Client
 		/// <param name="hostname">host name</param>
 		/// <param name="port">host port</param>
 		/// <exception cref="AerospikeException">if host connection fails</exception>
-		public AerospikeClient(string hostname, int port) 
+		public AerospikeClient(string hostname, int port)
 			: this(new ClientPolicy(), new Host(hostname, port))
 		{
 		}
@@ -150,7 +147,7 @@ namespace Aerospike.Client
 		/// <param name="hostname">host name</param>
 		/// <param name="port">host port</param>
 		/// <exception cref="AerospikeException">if host connection fails</exception>
-		public AerospikeClient(ClientPolicy policy, string hostname, int port) 
+		public AerospikeClient(ClientPolicy policy, string hostname, int port)
 			: this(policy, new Host(hostname, port))
 		{
 		}
@@ -245,6 +242,7 @@ namespace Aerospike.Client
 		public Policy ReadPolicyDefault
 		{
 			get { return readPolicyDefault; }
+			set { readPolicyDefault = value; }
 		}
 
 		/// <summary>
@@ -253,6 +251,7 @@ namespace Aerospike.Client
 		public WritePolicy WritePolicyDefault
 		{
 			get { return writePolicyDefault; }
+			set { writePolicyDefault = value; }
 		}
 
 		/// <summary>
@@ -261,6 +260,7 @@ namespace Aerospike.Client
 		public ScanPolicy ScanPolicyDefault
 		{
 			get { return scanPolicyDefault; }
+			set { scanPolicyDefault = value; }
 		}
 
 		/// <summary>
@@ -269,6 +269,7 @@ namespace Aerospike.Client
 		public QueryPolicy QueryPolicyDefault
 		{
 			get { return queryPolicyDefault; }
+			set { queryPolicyDefault = value; }
 		}
 
 		/// <summary>
@@ -278,6 +279,7 @@ namespace Aerospike.Client
 		public BatchPolicy BatchPolicyDefault
 		{
 			get { return batchPolicyDefault; }
+			set { batchPolicyDefault = value; }
 		}
 
 		/// <summary>
@@ -287,6 +289,7 @@ namespace Aerospike.Client
 		public BatchPolicy BatchParentPolicyWriteDefault
 		{
 			get { return batchParentPolicyWriteDefault; }
+			set { batchParentPolicyWriteDefault = value; }
 		}
 
 		/// <summary>
@@ -296,6 +299,7 @@ namespace Aerospike.Client
 		public BatchWritePolicy BatchWritePolicyDefault
 		{
 			get { return batchWritePolicyDefault; }
+			set { batchWritePolicyDefault = value; }
 		}
 
 		/// <summary>
@@ -304,6 +308,7 @@ namespace Aerospike.Client
 		public BatchDeletePolicy BatchDeletePolicyDefault
 		{
 			get { return batchDeletePolicyDefault; }
+			set { batchDeletePolicyDefault = value; }
 		}
 
 		/// <summary>
@@ -312,6 +317,7 @@ namespace Aerospike.Client
 		public BatchUDFPolicy BatchUDFPolicyDefault
 		{
 			get { return batchUDFPolicyDefault; }
+			set { batchUDFPolicyDefault = value; }
 		}
 
 		/// <summary>
@@ -320,18 +326,35 @@ namespace Aerospike.Client
 		public InfoPolicy InfoPolicyDefault
 		{
 			get { return infoPolicyDefault; }
+			set { infoPolicyDefault = value; }
 		}
 
 		//-------------------------------------------------------
 		// Cluster Connection Management
 		//-------------------------------------------------------
 
+		public bool Disposed { get; private set; }
+		private void Dispose(bool disposing)
+		{
+			if (!Disposed)
+			{
+				if (disposing)
+				{
+					this.Close();
+				}
+
+				Disposed = true;
+			}
+		}
+
 		/// <summary>
 		/// Close all client connections to database server nodes.
 		/// </summary>
 		public void Dispose()
 		{
-			Close();
+			// Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
+			Dispose(disposing: true);
+			GC.SuppressFinalize(this);
 		}
 
 		/// <summary>
@@ -555,7 +578,7 @@ namespace Aerospike.Client
 				throw new AerospikeException.BatchRecordArray(records, e);
 			}
 		}
-		
+
 		/// <summary>
 		/// Remove records in specified namespace/set efficiently.  This method is many orders of magnitude 
 		/// faster than deleting records one at a time.
@@ -712,7 +735,7 @@ namespace Aerospike.Client
 				throw new AerospikeException.BatchExists(existsArray, e);
 			}
 		}
-		
+
 		//-------------------------------------------------------
 		// Read Record Operations
 		//-------------------------------------------------------
@@ -1098,7 +1121,7 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if command fails</exception>
 		public Record Operate(WritePolicy policy, Key key, params Operation[] operations)
 		{
-			OperateArgs args = new OperateArgs(cluster, policy, writePolicyDefault, operatePolicyReadDefault, key, operations);
+			OperateArgs args = new OperateArgs(policy, writePolicyDefault, operatePolicyReadDefault, key, operations);
 			OperateCommand command = new OperateCommand(cluster, key, args);
 			command.Execute();
 			return command.Record;
@@ -1916,7 +1939,7 @@ namespace Aerospike.Client
 			IndexType indexType
 		)
 		{
-			return CreateIndex(policy, ns, setName, indexName, binName, indexType, IndexCollectionType.DEFAULT);	
+			return CreateIndex(policy, ns, setName, indexName, binName, indexType, IndexCollectionType.DEFAULT);
 		}
 
 		/// <summary>
@@ -1996,7 +2019,7 @@ namespace Aerospike.Client
 			ParseInfoError("Create index failed", response);
 			return null;
 		}
-		
+
 		/// <summary>
 		/// Delete secondary index.
 		/// This asynchronous server call will return before command is complete.

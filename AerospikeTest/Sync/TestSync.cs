@@ -1,5 +1,5 @@
 ﻿/* 
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -14,9 +14,8 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using System;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Aerospike.Client;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace Aerospike.Test
 {
@@ -29,7 +28,9 @@ namespace Aerospike.Test
 	public class TestSync
 	{
 		public static Args args = Args.Instance;
-		public static AerospikeClient client = args.client;
+		public static IAerospikeClient client = args.client;
+		public static AerospikeClient nativeClient = args.nativeClient;
+		public static AerospikeClientProxy proxyClient = args.proxyClient;
 
 		public static void AssertBinEqual(Key key, Record record, Bin bin)
 		{
@@ -74,6 +75,6 @@ namespace Aerospike.Test
 			{
 				Assert.Fail("Failed to get: namespace=" + args.ns + " set=" + args.set + " key=" + key.userKey);
 			}
- 		}
+		}
 	}
 }

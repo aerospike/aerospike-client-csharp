@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -14,8 +14,8 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using System.Text;
 using Aerospike.Client;
+using System.Text;
 
 namespace Aerospike.Demo
 {
@@ -28,7 +28,7 @@ namespace Aerospike.Demo
 		/// <summary>
 		/// Geospatial query examples.
 		/// </summary>
-		public override void RunExample(AerospikeClient client, Arguments args)
+		public override void RunExample(IAerospikeClient client, Arguments args)
 		{
 			string indexName = "queryindexloc";
 			string keyPrefix = "querykeyloc";
@@ -42,7 +42,7 @@ namespace Aerospike.Demo
 			client.DropIndex(args.policy, args.ns, args.set, indexName);
 		}
 
-		private void CreateIndex(AerospikeClient client, Arguments args, string indexName, string binName)
+		private void CreateIndex(IAerospikeClient client, Arguments args, string indexName, string binName)
 		{
 			console.Info("Create index: ns={0} set={1} index={2} bin={3}",
 				args.ns, args.set, indexName, binName);
@@ -64,7 +64,7 @@ namespace Aerospike.Demo
 			}
 		}
 
-		private void WriteRecords(AerospikeClient client, Arguments args, string keyPrefix, string binName, int size)
+		private void WriteRecords(IAerospikeClient client, Arguments args, string keyPrefix, string binName, int size)
 		{
 			console.Info("Write " + size + " records.");
 
@@ -84,7 +84,7 @@ namespace Aerospike.Demo
 			}
 		}
 
-		private void RunQuery(AerospikeClient client, Arguments args, string indexName, string binName)
+		private void RunQuery(IAerospikeClient client, Arguments args, string indexName, string binName)
 		{
 			StringBuilder rgnsb = new StringBuilder();
 
@@ -132,7 +132,7 @@ namespace Aerospike.Demo
 			}
 		}
 
-		private void RunRadiusQuery(AerospikeClient client, Arguments args, string indexName, string binName)
+		private void RunRadiusQuery(IAerospikeClient client, Arguments args, string indexName, string binName)
 		{
 			double lon = -122.0;
 			double lat = 37.5;

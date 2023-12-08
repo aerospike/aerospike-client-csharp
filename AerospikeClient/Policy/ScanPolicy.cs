@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2022 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -14,7 +14,6 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using System;
 
 #pragma warning disable 0618
 
@@ -35,7 +34,7 @@ namespace Aerospike.Client
 		/// </para>
 		/// </summary>
 		public long maxRecords;
-	
+
 		/// <summary>
 		/// Limit returned records per second (rps) rate for each server.
 		/// Do not apply rps limit if recordsPerSecond is zero.
@@ -71,6 +70,15 @@ namespace Aerospike.Client
 		public bool includeBinData = true;
 
 		/// <summary>
+		/// Number of records to place in queue before blocking.
+		/// Records received from multiple server nodes will be placed in a queue.
+		/// A separate thread consumes these records in parallel.
+		/// If the queue is full, the producer threads will block until records are consumed.
+		/// <para>Default: 5000</para>
+		/// </summary>
+		public int recordQueueSize = 5000;
+
+		/// <summary>
 		/// Copy scan policy from another scan policy.
 		/// </summary>
 		public ScanPolicy(ScanPolicy other) : base(other)
@@ -80,6 +88,7 @@ namespace Aerospike.Client
 			this.maxConcurrentNodes = other.maxConcurrentNodes;
 			this.concurrentNodes = other.concurrentNodes;
 			this.includeBinData = other.includeBinData;
+			this.recordQueueSize = other.recordQueueSize;
 		}
 
 		/// <summary>
