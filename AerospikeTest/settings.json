@@ -1,14 +1,14 @@
 ﻿{
   "Host": "localhost",
   "Port": 3000,
-  "ProxyHost": "localhost", 
+  "ProxyHost": "localhost",//"90cd58b4-ee9a-4a36-8737-185310445a78.asdb.io", //"localhost", 
   "ProxyPort": 4000,
   "TestProxy": false,
   "ClusterName": "",
-  "Namespace": "test",
+  "Namespace": "test",//"aerospike_cloud", //"test"
   "Set": "test",
-  "User": "",
-  "Password": "",
+  "User": "charlie1",// "ddcb1d66dea9470fbb153589abce6cf0", //"charlie1",
+  "Password": "123456",//"7f6a9107902249ccb6cff354babd67a3", //"123456",
   "Timeout": 25000,
   "TlsEnable": false,
   "TlsName": "",
@@ -16,11 +16,11 @@
   "TlsRevoke": "",
   "TlsClientCertFile": "",
   "TlsLoginOnly": false,
-  "ProxyTlsEnable": false,
-  "ProxyTlsName": "",
+  "ProxyTlsEnable": true,
+  "ProxyTlsName": "tls1",//"90cd58b4-ee9a-4a36-8737-185310445a78.asdb.io", //"tls1", //
   "ProxyTlsProtocols": "",
   "ProxyTlsRevoke": "",
-  "ProxyTlsClientCertFile": "",
-  "ProxyTlsLoginOnly": true,
+  "ProxyTlsClientCertFile": "", //"C:\\Users\\sklaus\\Certs\\clientcert.pfx",
+  "ProxyTlsLoginOnly": false,
   "AuthMode": "INTERNAL"
 }
