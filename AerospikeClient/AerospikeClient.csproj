@@ -6,7 +6,7 @@
 		<Nullable>disable</Nullable>
 		<DefineConstants>$(DefineConstants);NETCORE</DefineConstants>
 		<AssemblyName>AerospikeClient</AssemblyName>
-		<PackageId>AerospikeClient</PackageId>
+		<PackageId>Aerospike.Client</PackageId>
 		<ServerGarbageCollection>true</ServerGarbageCollection>
 		<GenerateAssemblyConfigurationAttribute>false</GenerateAssemblyConfigurationAttribute>
 		<GenerateAssemblyCompanyAttribute>false</GenerateAssemblyCompanyAttribute>
