@@ -35,34 +35,19 @@
 	</PropertyGroup>
 
 	<ItemGroup>
-	  <None Remove="Protos\Kvs\kvs.proto" />
-	</ItemGroup>
-
-	<ItemGroup>
 		<EmbeddedResource Include="LuaResources\aerospike.lua" />
 		<EmbeddedResource Include="LuaResources\aslib.lua" />
 		<EmbeddedResource Include="LuaResources\stream_ops.lua" />
 	</ItemGroup>
 
 	<ItemGroup>
-		<Protobuf Include="Protos\Auth\auth.proto" GrpcServices="Client" />
-		<Protobuf Include="Protos\Kvs\kvs.proto">
-		  <GrpcServices>Client</GrpcServices>
-		</Protobuf>
-		<PackageReference Include="Google.Protobuf" Version="3.25.1" />
-		<PackageReference Include="Grpc.AspNetCore" Version="2.59.0" />
-		<PackageReference Include="Grpc.Net.Client" Version="2.59.0" />
-		<PackageReference Include="Grpc.Tools" Version="2.59.0">
-		  <PrivateAssets>all</PrivateAssets>
-		  <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-		</PackageReference>
 		<PackageReference Include="NeoLua" Version="1.3.14" />
 	</ItemGroup>
 
 	<ItemGroup>
-	  <None Update="Protos\Auth\auth.proto">
-	    <GrpcServices>Client</GrpcServices>
-	  </None>
+		<AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleTo">
+			<_Parameter1>AerospikeClientProxy</_Parameter1>
+		</AssemblyAttribute>
 	</ItemGroup>
 
 </Project>

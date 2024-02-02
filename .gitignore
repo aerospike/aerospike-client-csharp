@@ -9,3 +9,4 @@ project.lock.json
 *.suo
 *.nupkg
 TestResults/
+.idea

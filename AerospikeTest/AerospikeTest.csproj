@@ -59,6 +59,7 @@
   </ItemGroup>
   
   <ItemGroup>
+  	<ProjectReference Include="..\AerospikeClientProxy\AerospikeClientProxy.csproj" />
   	<ProjectReference Include="..\AerospikeClient\AerospikeClient.csproj" />
   </ItemGroup>
 
