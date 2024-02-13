@@ -36,7 +36,7 @@ namespace Aerospike.Client
 		}
 
 		public AerospikeException(int resultCode, Exception e)
-			: base(e.Message, e)
+			: base(e?.Message ?? string.Empty, e)
 		{
 			this.resultCode = resultCode;
 		}
