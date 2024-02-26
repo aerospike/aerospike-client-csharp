@@ -13,6 +13,8 @@ Aerospike C# Client Package
     
     * **AerospikeClient**    
         C# client library.
+	* **AerospikeClientProxy**
+		C# proxy client library.
     * **AerospikeTest**    
         C# client unit tests.
     * **AerospikeBenchmarks**    

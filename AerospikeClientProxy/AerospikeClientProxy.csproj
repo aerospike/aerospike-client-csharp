@@ -4,35 +4,63 @@
     <TargetFramework>net6.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>disable</Nullable>
-	<DefineConstants>$(DefineConstants);NETCORE</DefineConstants>
-	<AssemblyName>AerospikeClientProxy</AssemblyName>
-	<PackageId>Aerospike.Client.Proxy</PackageId>
-	<ServerGarbageCollection>true</ServerGarbageCollection>
-	<GenerateAssemblyConfigurationAttribute>false</GenerateAssemblyConfigurationAttribute>
-	<GenerateAssemblyCompanyAttribute>false</GenerateAssemblyCompanyAttribute>
-	<GenerateAssemblyProductAttribute>false</GenerateAssemblyProductAttribute>
-	<Authors>Aerospike</Authors>
-	<Version>7.0.0</Version>
-	<ApplicationIcon />
-	<OutputType>Library</OutputType>
-	<StartupObject />
-	<RootNamespace>Aerospike.Client</RootNamespace>
-	<GenerateDocumentationFile>True</GenerateDocumentationFile>
+    <DefineConstants>$(DefineConstants);NETCORE</DefineConstants>
+    <AssemblyName>AerospikeClientProxy</AssemblyName>
+    <PackageId>Aerospike.Client.Proxy</PackageId>
+    <ServerGarbageCollection>true</ServerGarbageCollection>
+    <Authors>Aerospike</Authors>
+    <Company>Aerospike</Company>
+    <Product>Aerospike C# Proxy Client</Product>
+    <Title>Aerospike C# Proxy Client</Title>
+    <Description>Aerospike C# Proxy Client Library</Description>
+    <PackageTags>Aerospike database C# proxy client</PackageTags>
+    <RepositoryUrl>https://github.com/aerospike/aerospike-client-csharp</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageLicenseFile>LICENSE.md</PackageLicenseFile>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <Icon>icon.png</Icon>
+    <Copyright>Copyright 2012-2024 Aerospike, Inc.</Copyright>
+    <Version>7.0.0</Version>
+    <ApplicationIcon />
+    <OutputType>Library</OutputType>
+    <StartupObject />
+    <RootNamespace>Aerospike.Client</RootNamespace>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
-  	<NoWarn>1701;1702;CS1591</NoWarn>
+    <NoWarn>1701;1702;CS1591</NoWarn>
   </PropertyGroup>
-  
+
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
-  	<NoWarn>1701;1702;CS1591</NoWarn>
+    <NoWarn>1701;1702;CS1591</NoWarn>
   </PropertyGroup>
-  
+
   <PropertyGroup>
-  	<GenerateDocumentationFile>true</GenerateDocumentationFile>
-  	<DocumentationFile>bin\$(Configuration)\$(TargetFramework)\$(AssemblyName).xml</DocumentationFile>
-  	<SignAssembly>True</SignAssembly>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <DocumentationFile>bin\$(Configuration)\$(TargetFramework)\$(AssemblyName).xml</DocumentationFile>
+    <SignAssembly>true</SignAssembly>
   </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <IncludeSymbols>true</IncludeSymbols>
+    <EmbedUntrackedSources>true</EmbedUntrackedSources>
+    <DebugType>embedded</DebugType>
+    <PackageProjectUrl>https://github.com/aerospike/aerospike-client-csharp</PackageProjectUrl>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Resource Include="Connection.png">
+    </Resource>
+    <Content Include="..\README.md">
+      <Pack>true</Pack>
+      <PackagePath />
+    </Content>
+    <None Include="LICENSE.md" Pack="true" PackagePath="" />
+  </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="Google.Protobuf" Version="3.25.1" />
@@ -48,9 +76,9 @@
     <Protobuf Include="Protos\Auth\auth.proto" GrpcServices="Client" />
     <Protobuf Include="Protos\Kvs\kvs.proto" GrpcServices="Client" />
   </ItemGroup>
-  
-   <ItemGroup>
-      <ProjectReference Include="..\AerospikeClient\AerospikeClient.csproj" />
-    </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\AerospikeClient\AerospikeClient.csproj" />
+  </ItemGroup>
 
 </Project>
