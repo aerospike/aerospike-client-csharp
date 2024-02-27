@@ -127,9 +127,9 @@ namespace Aerospike.Client
 		/// <param name="sortFlags">sort flags. See <see cref="ListSortFlags"/>.</param>
 		/// <param name="bin">bin or list value expression</param>
 		/// <param name="ctx">optional context path for nested CDT</param>
-		public static Exp Sort(int sortFlags, Exp bin, params CTX[] ctx)
+		public static Exp Sort(ListSortFlags sortFlags, Exp bin, params CTX[] ctx)
 		{
-			byte[] bytes = PackUtil.Pack(ListOperation.SORT, sortFlags, ctx);
+			byte[] bytes = PackUtil.Pack(ListOperation.SORT, (int)sortFlags, ctx);
 			return AddWrite(bin, bytes, ctx);
 		}
 
@@ -138,9 +138,9 @@ namespace Aerospike.Client
 		/// Valid returnType values are <see cref="ListReturnType.NONE"/>
 		/// or <see cref="ListReturnType.INVERTED"/>
 		/// </summary>
-		public static Exp RemoveByValue(int returnType, Exp value, Exp bin, params CTX[] ctx)
+		public static Exp RemoveByValue(ListReturnType returnType, Exp value, Exp bin, params CTX[] ctx)
 		{
-			byte[] bytes = PackUtil.Pack(ListOperation.REMOVE_BY_VALUE, returnType, value, ctx);
+			byte[] bytes = PackUtil.Pack(ListOperation.REMOVE_BY_VALUE, (int)returnType, value, ctx);
 			return AddWrite(bin, bytes, ctx);
 		}
 
@@ -149,9 +149,9 @@ namespace Aerospike.Client
 		/// Valid returnType values are <see cref="ListReturnType.NONE"/>
 		/// or <see cref="ListReturnType.INVERTED"/>
 		/// </summary>
-		public static Exp RemoveByValueList(int returnType, Exp values, Exp bin, params CTX[] ctx)
+		public static Exp RemoveByValueList(ListReturnType returnType, Exp values, Exp bin, params CTX[] ctx)
 		{
-			byte[] bytes = PackUtil.Pack(ListOperation.REMOVE_BY_VALUE_LIST, returnType, values, ctx);
+			byte[] bytes = PackUtil.Pack(ListOperation.REMOVE_BY_VALUE_LIST, (int)returnType, values, ctx);
 			return AddWrite(bin, bytes, ctx);
 		}
 
@@ -162,9 +162,9 @@ namespace Aerospike.Client
 		/// Valid returnType values are <see cref="ListReturnType.NONE"/>
 		/// or <see cref="ListReturnType.INVERTED"/>
 		/// </summary>
-		public static Exp RemoveByValueRange(int returnType, Exp valueBegin, Exp valueEnd, Exp bin, params CTX[] ctx)
+		public static Exp RemoveByValueRange(ListReturnType returnType, Exp valueBegin, Exp valueEnd, Exp bin, params CTX[] ctx)
 		{
-			byte[] bytes = ListExp.PackRangeOperation(ListOperation.REMOVE_BY_VALUE_INTERVAL, returnType, valueBegin, valueEnd, ctx);
+			byte[] bytes = ListExp.PackRangeOperation(ListOperation.REMOVE_BY_VALUE_INTERVAL, (int)returnType, valueBegin, valueEnd, ctx);
 			return AddWrite(bin, bytes, ctx);
 		}
 
@@ -185,9 +185,9 @@ namespace Aerospike.Client
 		/// </ul>
 		/// </para>
 		/// </summary>
-		public static Exp RemoveByValueRelativeRankRange(int returnType, Exp value, Exp rank, Exp bin, params CTX[] ctx)
+		public static Exp RemoveByValueRelativeRankRange(ListReturnType returnType, Exp value, Exp rank, Exp bin, params CTX[] ctx)
 		{
-			byte[] bytes = PackUtil.Pack(ListOperation.REMOVE_BY_VALUE_REL_RANK_RANGE, returnType, value, rank, ctx);
+			byte[] bytes = PackUtil.Pack(ListOperation.REMOVE_BY_VALUE_REL_RANK_RANGE, (int)returnType, value, rank, ctx);
 			return AddWrite(bin, bytes, ctx);
 		}
 
@@ -208,9 +208,9 @@ namespace Aerospike.Client
 		/// </ul>
 		/// </para>
 		/// </summary>
-		public static Exp RemoveByValueRelativeRankRange(int returnType, Exp value, Exp rank, Exp count, Exp bin, params CTX[] ctx)
+		public static Exp RemoveByValueRelativeRankRange(ListReturnType returnType, Exp value, Exp rank, Exp count, Exp bin, params CTX[] ctx)
 		{
-			byte[] bytes = PackUtil.Pack(ListOperation.REMOVE_BY_VALUE_REL_RANK_RANGE, returnType, value, rank, count, ctx);
+			byte[] bytes = PackUtil.Pack(ListOperation.REMOVE_BY_VALUE_REL_RANK_RANGE, (int)returnType, value, rank, count, ctx);
 			return AddWrite(bin, bytes, ctx);
 		}
 
@@ -228,9 +228,9 @@ namespace Aerospike.Client
 		/// Valid returnType values are <see cref="ListReturnType.NONE"/>
 		/// or <see cref="ListReturnType.INVERTED"/>
 		/// </summary>
-		public static Exp RemoveByIndexRange(int returnType, Exp index, Exp bin, params CTX[] ctx)
+		public static Exp RemoveByIndexRange(ListReturnType returnType, Exp index, Exp bin, params CTX[] ctx)
 		{
-			byte[] bytes = PackUtil.Pack(ListOperation.REMOVE_BY_INDEX_RANGE, returnType, index, ctx);
+			byte[] bytes = PackUtil.Pack(ListOperation.REMOVE_BY_INDEX_RANGE, (int)returnType, index, ctx);
 			return AddWrite(bin, bytes, ctx);
 		}
 
@@ -239,9 +239,9 @@ namespace Aerospike.Client
 		/// Valid returnType values are <see cref="ListReturnType.NONE"/>
 		/// or <see cref="ListReturnType.INVERTED"/>
 		/// </summary>
-		public static Exp RemoveByIndexRange(int returnType, Exp index, Exp count, Exp bin, params CTX[] ctx)
+		public static Exp RemoveByIndexRange(ListReturnType returnType, Exp index, Exp count, Exp bin, params CTX[] ctx)
 		{
-			byte[] bytes = PackUtil.Pack(ListOperation.REMOVE_BY_INDEX_RANGE, returnType, index, count, ctx);
+			byte[] bytes = PackUtil.Pack(ListOperation.REMOVE_BY_INDEX_RANGE, (int)returnType, index, count, ctx);
 			return AddWrite(bin, bytes, ctx);
 		}
 
@@ -259,9 +259,9 @@ namespace Aerospike.Client
 		/// Valid returnType values are <see cref="ListReturnType.NONE"/>
 		/// or <see cref="ListReturnType.INVERTED"/>
 		/// </summary>
-		public static Exp RemoveByRankRange(int returnType, Exp rank, Exp bin, params CTX[] ctx)
+		public static Exp RemoveByRankRange(ListReturnType returnType, Exp rank, Exp bin, params CTX[] ctx)
 		{
-			byte[] bytes = PackUtil.Pack(ListOperation.REMOVE_BY_RANK_RANGE, returnType, rank, ctx);
+			byte[] bytes = PackUtil.Pack(ListOperation.REMOVE_BY_RANK_RANGE, (int)returnType, rank, ctx);
 			return AddWrite(bin, bytes, ctx);
 		}
 
@@ -270,9 +270,9 @@ namespace Aerospike.Client
 		/// Valid returnType values are <see cref="ListReturnType.NONE"/>
 		/// or <see cref="ListReturnType.INVERTED"/>
 		/// </summary>
-		public static Exp RemoveByRankRange(int returnType, Exp rank, Exp count, Exp bin, params CTX[] ctx)
+		public static Exp RemoveByRankRange(ListReturnType returnType, Exp rank, Exp count, Exp bin, params CTX[] ctx)
 		{
-			byte[] bytes = PackUtil.Pack(ListOperation.REMOVE_BY_RANK_RANGE, returnType, rank, count, ctx);
+			byte[] bytes = PackUtil.Pack(ListOperation.REMOVE_BY_RANK_RANGE, (int)returnType, rank, count, ctx);
 			return AddWrite(bin, bytes, ctx);
 		}
 

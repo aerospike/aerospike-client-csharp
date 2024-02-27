@@ -92,7 +92,7 @@ namespace Aerospike.Test
 			client.Put(null, key, bin);
 
 			// Use INVERTED to return map with entries removed where value != 2
-			Expression e = Exp.Build(MapExp.RemoveByValue((int)MapReturnType.INVERTED, Exp.Val(2), Exp.MapBin(bin.name)));
+			Expression e = Exp.Build(MapExp.RemoveByValue(MapReturnType.INVERTED, Exp.Val(2), Exp.MapBin(bin.name)));
 
 			Record rec = client.Operate(null, key, ExpOperation.Read(bin.name, e, ExpReadFlags.DEFAULT));
 			AssertRecordFound(key, rec);
