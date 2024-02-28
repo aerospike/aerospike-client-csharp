@@ -196,6 +196,7 @@ namespace Aerospike.Client
 			int[] regimes = partitions.regimes;
 
 			Span<byte> bufferChars = buffer.AsSpan(start: begin, length: offset - begin);
+			bufferChars = bufferChars.TrimEnd((byte)'\n');
 			Span<byte> restoreBuffer = stackalloc byte[Base64.GetMaxDecodedFromUtf8Length(bufferChars.Length)];
 			var decodeStatus = Base64.DecodeFromUtf8(bufferChars, restoreBuffer, out _, out int restoreBufferLength);
 			Debug.Assert(decodeStatus == OperationStatus.Done);
