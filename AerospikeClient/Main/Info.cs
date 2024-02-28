@@ -19,7 +19,6 @@ using System.Text;
 using System.Net;
 using System.Net.Sockets;
 using System.Collections.Generic;
-using System.Runtime.InteropServices;
 
 namespace Aerospike.Client
 {
@@ -580,13 +579,14 @@ namespace Aerospike.Client
 		public void ParseName(string name)
 		{
 			int begin = offset;
-			ReadOnlySpan<byte> nameBytes = MemoryMarshal.AsBytes(name.AsSpan());
 
 			while (offset < length)
 			{
 				if (buffer[offset] == '\t')
 				{
-					if (nameBytes.SequenceEqual(buffer.AsSpan(start: begin, length: offset - begin)))
+					String s = ByteUtil.Utf8ToString(buffer, begin, offset - begin);
+
+					if (name.Equals(s))
 					{
 						offset++;
 
