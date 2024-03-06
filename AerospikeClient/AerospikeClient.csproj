@@ -38,7 +38,6 @@
   <PropertyGroup>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <DocumentationFile>bin\$(Configuration)\$(TargetFramework)\$(AssemblyName).xml</DocumentationFile>
-    <SignAssembly>true</SignAssembly>
   </PropertyGroup>
 
   <PropertyGroup>
@@ -49,10 +48,6 @@
     <PackageIcon>icon.png</PackageIcon>
   </PropertyGroup>
 
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
-    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
-  </PropertyGroup>
-
   <ItemGroup>
     <Resource Include="Connection.png">
     </Resource>
@@ -61,7 +56,7 @@
       <PackagePath />
     </Content>
     <None Include="..\icon.png">
-      <Pack>True</Pack>
+      <Pack>true</Pack>
       <PackagePath>\</PackagePath>
     </None>
     <None Include="LICENSE.md" Pack="true" PackagePath="" />
