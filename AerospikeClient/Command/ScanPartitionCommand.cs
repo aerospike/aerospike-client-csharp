@@ -104,7 +104,6 @@ namespace Aerospike.Client
 				callback(key, record);
 				tracker.SetDigest(nodePartitions, key);
 			}
-
 			return true;
 		}
 	}

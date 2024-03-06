@@ -98,7 +98,6 @@ namespace Aerospike.Client
 				listener(key, record);
 				tracker.SetLast(nodePartitions, key, bval);
 			}
-
 			return true;
 		}
 	}
