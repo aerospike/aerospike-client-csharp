@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2023 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -14,6 +14,7 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
+using Microsoft.AspNetCore.Connections;
 using System.Text;
 
 namespace Aerospike.Client
@@ -29,6 +30,7 @@ namespace Aerospike.Client
 		private readonly Replica replica;
 		private List<NodePartitions> nodePartitionsList;
 		private List<AerospikeException> exceptions;
+		private volatile int recordCount;
 		private long maxRecords;
 		private int sleepBetweenRetries;
 		public int socketTimeout;
@@ -274,24 +276,36 @@ namespace Aerospike.Client
 				partitionFilter.retry = true;
 			}
 
+			recordCount = -1;
+
 			if (maxRecords > 0)
 			{
-				// Distribute maxRecords across nodes.
-				if (maxRecords < nodeSize)
+				if (maxRecords >= nodeSize)
 				{
-					// Only include nodes that have at least 1 record requested.
-					nodeSize = (int)maxRecords;
-					list = list.GetRange(0, nodeSize);
-				}
+                    // Distribute maxRecords across nodes.
+                    long max = maxRecords / nodeSize;
+                    int rem = (int)(maxRecords - (max * nodeSize));
 
-				long max = maxRecords / nodeSize;
-				int rem = (int)(maxRecords - (max * nodeSize));
-
-				for (int i = 0; i < nodeSize; i++)
+                    for (int i = 0; i < nodeSize; i++)
+                    {
+                        NodePartitions np = list[i];
+                        np.recordMax = i < rem ? max + 1 : max;
+                    }
+                }
+				else
 				{
-					NodePartitions np = list[i];
-					np.recordMax = i < rem ? max + 1 : max;
-				}
+                    // If maxRecords < nodeSize, the scan/query could consistently return 0 records even
+                    // when some records are still available in nodes that were not included in the
+                    // maxRecords distribution. Therefore, ensure each node receives at least one max record
+                    // allocation and filter out excess records when receiving records from the server.
+                    for (int i = 0; i < nodeSize; i++)
+                    {
+                        NodePartitions np = list[i];
+                        np.recordMax = 1;
+                    }
+
+					recordCount = 0;
+                }
 			}
 			nodePartitionsList = list;
 			return list;
@@ -316,6 +330,8 @@ namespace Aerospike.Client
 			ps.retry = true;
 			ps.sequence++;
 			if (nodePartitions != null) nodePartitions.partsUnavailable++;
+			AddException(nodePartitions.node, new AerospikeException(ResultCode.PARTITION_UNAVAILABLE,
+                "Partition " + partitionId + " unavailable"));
 		}
 
 		public void SetDigest(NodePartitions nodePartitions, Key key)
@@ -334,14 +350,19 @@ namespace Aerospike.Client
 			if (nodePartitions != null) nodePartitions.recordCount++;
 		}
 
+		public bool AllowRecord()
+		{
+			return recordCount == -1 || Interlocked.Increment(ref recordCount) <= maxRecords;
+		}
+
 		public bool IsComplete(Cluster cluster, Policy policy)
 		{
-			long recordCount = 0;
+			long recCount = 0;
 			int partsUnavailable = 0;
 
 			foreach (NodePartitions np in nodePartitionsList)
 			{
-				recordCount += np.recordCount;
+                recCount += np.recordCount;
 				partsUnavailable += np.partsUnavailable;
 
 				//Log.Info("Node " + np.node + " partsFull=" + np.partsFull.Count + 
@@ -414,14 +435,14 @@ namespace Aerospike.Client
 							// Set global retry to false because only specific node partitions
 							// should be retried.
 							partitionFilter.retry = false;
-							partitionFilter.done = recordCount == 0;
+							partitionFilter.done = recCount == 0;
 						}
 					}
 				}
 				return true;
 			}
 
-			if (maxRecords > 0 && recordCount >= maxRecords)
+			if (maxRecords > 0 && recCount >= maxRecords)
 			{
 				return true;
 			}
@@ -429,14 +450,6 @@ namespace Aerospike.Client
 			// Check if limits have been reached.
 			if (iteration > policy.maxRetries)
 			{
-				if (exceptions == null || exceptions.Count <= 0)
-				{
-					AerospikeException e = new AerospikeException(ResultCode.MAX_RETRIES_EXCEEDED);
-					e.Policy = policy;
-					e.Iteration = iteration;
-					throw e;
-				}
-
 				// Use last sub-error code received.
 				AerospikeException last = exceptions[exceptions.Count - 1];
 
@@ -484,7 +497,7 @@ namespace Aerospike.Client
 			// Prepare for next iteration.
 			if (maxRecords > 0)
 			{
-				maxRecords -= recordCount;
+				maxRecords -= recCount;
 			}
 			iteration++;
 			return false;
@@ -500,16 +513,7 @@ namespace Aerospike.Client
 				case ResultCode.TIMEOUT:
 				case ResultCode.INDEX_NOTFOUND:
 				case ResultCode.INDEX_NOTREADABLE:
-					// Multiple scan/query threads may call this method, so exception
-					// list must be modified under lock.
-					lock (this)
-					{
-						if (exceptions == null)
-						{
-							exceptions = new List<AerospikeException>();
-						}
-						exceptions.Add(ae);
-					}
+					AddException(nodePartitions.node, ae);
 					MarkRetrySequence(nodePartitions);
 					nodePartitions.partsUnavailable = nodePartitions.partsFull.Count + nodePartitions.partsPartial.Count;
 					return true;
@@ -519,7 +523,23 @@ namespace Aerospike.Client
 			}
 		}
 
-		private void MarkRetrySequence(NodePartitions nodePartitions)
+        private void AddException(Node node, AerospikeException ae)
+        {
+            // Multiple scan/query threads may call this method, so exception
+            // list must be modified under lock.
+            lock (this) 
+			{
+                if (exceptions == null)
+                {
+                    exceptions = new List<AerospikeException>();
+                }
+                ae.Node = node;
+                ae.Iteration = iteration;
+                exceptions.Add(ae);
+            }
+        }
+
+        private void MarkRetrySequence(NodePartitions nodePartitions)
 		{
 			// Mark retry for next replica.
 			foreach (PartitionStatus ps in nodePartitions.partsFull)
