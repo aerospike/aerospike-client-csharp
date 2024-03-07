@@ -9,3 +9,7 @@ project.lock.json
 *.suo
 *.nupkg
 TestResults/
+.vscode
+coverage/
+.config
+tools/
