@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2022 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -73,8 +73,12 @@ namespace Aerospike.Client
 			}
 
 			Record record = ParseRecord();
-			listener.OnRecord(key, record);
-			tracker.SetLast(nodePartitions, key, bval);
+
+			if (tracker.AllowRecord())
+			{
+				listener.OnRecord(key, record);
+				tracker.SetLast(nodePartitions, key, bval);
+			}
 		}
 
 		protected internal override AsyncCommand CloneCommand()

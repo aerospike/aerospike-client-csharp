@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2023 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -92,13 +92,16 @@ namespace Aerospike.Client
 				throw new AerospikeException.QueryTerminated();
 			}
 
-			if (!recordSet.Put(new KeyRecord(key, record)))
+			if (tracker.AllowRecord())
 			{
-				Stop();
-				throw new AerospikeException.QueryTerminated();
-			}
+				if (!recordSet.Put(new KeyRecord(key, record)))
+				{
+					Stop();
+					throw new AerospikeException.QueryTerminated();
+				}
 
-			tracker.SetLast(nodePartitions, key, bval);
+				tracker.SetLast(nodePartitions, key, bval);
+			}
 			return true;
 		}
 	}
