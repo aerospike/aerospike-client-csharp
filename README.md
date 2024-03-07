@@ -37,6 +37,9 @@ Aerospike C# Client Package
     $ cd AerospikeClient
     $ dotnet restore
     $ dotnet build --configuration Release
+    $ cd ../AerospikeClientProxy
+    $ dotnet restore
+    $ dotnet build --configureation Release
     $ cd ../AerospikeTest
     $ dotnet restore
     $ dotnet build --configuration Release
