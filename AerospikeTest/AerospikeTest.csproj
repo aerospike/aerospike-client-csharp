@@ -16,50 +16,75 @@
     <Nullable>disable</Nullable>
 
     <IsPackable>false</IsPackable>
-    
-	<Version>7.0.0</Version>
 
-	<Company>Aerospike</Company>
+    <Version>7.0.0</Version>
 
-	<Authors>Aerospike</Authors>
+    <Company>Aerospike</Company>
+
+    <Authors>Aerospike</Authors>
+
+    <Configurations>Debug;Release;Coverage</Configurations>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
-	<DefineConstants>TRACE;DEBUG;NETCORE</DefineConstants>
+    <DefineConstants>TRACE;DEBUG;NETCORE</DefineConstants>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Coverage|AnyCPU'">
+    <DefineConstants>TRACE;DEBUG;NETCORE</DefineConstants>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
-	<DefineConstants>TRACE;NETCORE</DefineConstants>
+    <DefineConstants>TRACE;NETCORE</DefineConstants>
   </PropertyGroup>
   <PropertyGroup>
     <StartupObject />
   </PropertyGroup>
 
   <ItemGroup>
-	<None Update="settings.json">
-		<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-	</None>
+    <None Update="settings.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
 
   <ItemGroup>
-  	<EmbeddedResource Include="LuaResources\average_example.lua" />
-  	<EmbeddedResource Include="LuaResources\filter_example.lua" />
-  	<EmbeddedResource Include="LuaResources\record_example.lua" />
-  	<EmbeddedResource Include="LuaResources\sum_example.lua" />
+    <EmbeddedResource Include="LuaResources\average_example.lua" />
+    <EmbeddedResource Include="LuaResources\filter_example.lua" />
+    <EmbeddedResource Include="LuaResources\record_example.lua" />
+    <EmbeddedResource Include="LuaResources\sum_example.lua" />
   </ItemGroup>
 
   <ItemGroup>
-  	<PackageReference Include="Microsoft.Extensions.Configuration" Version="7.0.0" />
-  	<PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="7.0.0" />
-  	<PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.3.2" />
-  	<PackageReference Include="MSTest.TestAdapter" Version="2.2.10" />
-  	<PackageReference Include="MSTest.TestFramework" Version="2.2.10" />
-  	<PackageReference Include="coverlet.collector" Version="3.1.2" />
-  	<PackageReference Include="System.Configuration.ConfigurationManager" Version="7.0.0" />
+    <PackageReference Include="coverlet.msbuild" Version="6.0.1">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <PackageReference Include="Microsoft.Extensions.Configuration" Version="8.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="8.0.0" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.9.0" />
+    <PackageReference Include="MSTest.TestAdapter" Version="3.2.2" />
+    <PackageReference Include="MSTest.TestFramework" Version="3.2.2" />
+    <PackageReference Include="coverlet.collector" Version="6.0.1">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <PackageReference Include="System.Configuration.ConfigurationManager" Version="8.0.0" />
   </ItemGroup>
-  
+
+  <PropertyGroup>
+    <CollectCoverage>true</CollectCoverage>
+    <CoverletOutputFormat>lcov</CoverletOutputFormat>
+    <CoverletOutput>./coverage/lcov.info</CoverletOutput>
+  </PropertyGroup>
+
   <ItemGroup>
-  	<ProjectReference Include="..\AerospikeClient\AerospikeClient.csproj" />
+    <ProjectReference Include="..\AerospikeClient\AerospikeClient.csproj" />
+    <ProjectReference Include="..\AerospikeClientProxy\AerospikeClientProxy.csproj" />
   </ItemGroup>
+
+  <Target Name="AnalyzeCoverage" AfterTargets="PostBuildEvent" Condition="'$(ConfigurationName)' == 'Coverage'">
+    <Exec Command="dotnet test" />
+    <Exec Command="dotnet reportgenerator &quot;-reports:coverage/lcov.info&quot; &quot;-targetdir:coverage&quot; -reporttypes:Html" />
+  </Target>
 
 </Project>

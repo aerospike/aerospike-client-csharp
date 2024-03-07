@@ -19,6 +19,7 @@ namespace Aerospike.Client
 	/// <summary>
 	/// Map return type. Type of data to return when selecting or removing items from the map.
 	/// </summary>
+	[Flags]
 	public enum MapReturnType
 	{
 		/// <summary>
