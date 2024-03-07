@@ -5,15 +5,15 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>disable</Nullable>
     <DefineConstants>$(DefineConstants);NETCORE</DefineConstants>
-    <AssemblyName>AerospikeClient</AssemblyName>
-    <PackageId>Aerospike.Client</PackageId>
+    <AssemblyName>AerospikeClientProxy</AssemblyName>
+    <PackageId>Aerospike.Client.Proxy</PackageId>
     <ServerGarbageCollection>true</ServerGarbageCollection>
     <Authors>Aerospike</Authors>
     <Company>Aerospike</Company>
-    <Product>Aerospike C# Client</Product>
-    <Title>Aerospike C# Client</Title>
-    <Description>Aerospike C# Client Library</Description>
-    <PackageTags>Aerospike database C# client</PackageTags>
+    <Product>Aerospike C# Proxy Client</Product>
+    <Title>Aerospike C# Proxy Client</Title>
+    <Description>Aerospike C# Proxy Client Library</Description>
+    <PackageTags>Aerospike database C# proxy client</PackageTags>
     <RepositoryUrl>https://github.com/aerospike/aerospike-client-csharp</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <PackageLicenseFile>LICENSE.md</PackageLicenseFile>
@@ -45,7 +45,6 @@
     <EmbedUntrackedSources>true</EmbedUntrackedSources>
     <DebugType>embedded</DebugType>
     <PackageProjectUrl>https://github.com/aerospike/aerospike-client-csharp</PackageProjectUrl>
-    <PackageIcon>icon.png</PackageIcon>
   </PropertyGroup>
 
   <ItemGroup>
@@ -63,19 +62,22 @@
   </ItemGroup>
 
   <ItemGroup>
-    <EmbeddedResource Include="LuaResources\aerospike.lua" />
-    <EmbeddedResource Include="LuaResources\aslib.lua" />
-    <EmbeddedResource Include="LuaResources\stream_ops.lua" />
+    <PackageReference Include="Google.Protobuf" Version="3.25.1" />
+    <PackageReference Include="Grpc.AspNetCore" Version="2.59.0" />
+    <PackageReference Include="Grpc.Net.Client" Version="2.59.0" />
+    <PackageReference Include="Grpc.Tools" Version="2.59.0">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="NeoLua" Version="1.3.14" />
+    <Protobuf Include="Protos\Auth\auth.proto" GrpcServices="Client" />
+    <Protobuf Include="Protos\Kvs\kvs.proto" GrpcServices="Client" />
   </ItemGroup>
 
   <ItemGroup>
-    <AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleTo">
-      <_Parameter1>AerospikeClientProxy</_Parameter1>
-    </AssemblyAttribute>
+    <ProjectReference Include="..\AerospikeClient\AerospikeClient.csproj" />
   </ItemGroup>
 
 </Project>

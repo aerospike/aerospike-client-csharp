@@ -14,8 +14,10 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using System;
-using System.Collections.Generic;
+
+using System.Buffers;
+using System.Buffers.Text;
+using System.Diagnostics;
 using System.Text;
 
 namespace Aerospike.Client
@@ -192,8 +194,13 @@ namespace Aerospike.Client
 		{
 			Node[] nodeArray = partitions.replicas[index];
 			int[] regimes = partitions.regimes;
-			char[] chars = Encoding.ASCII.GetChars(buffer, begin, offset - begin);
-			byte[] restoreBuffer = Convert.FromBase64CharArray(chars, 0, chars.Length);
+
+			Span<byte> bufferChars = buffer.AsSpan(start: begin, length: offset - begin);
+			bufferChars = bufferChars.TrimEnd((byte)'\n');
+			Span<byte> restoreBuffer = stackalloc byte[Base64.GetMaxDecodedFromUtf8Length(bufferChars.Length)];
+			var decodeStatus = Base64.DecodeFromUtf8(bufferChars, restoreBuffer, out _, out int restoreBufferLength);
+			Debug.Assert(decodeStatus == OperationStatus.Done);
+			restoreBuffer = restoreBuffer[..restoreBufferLength]; // To get proper exception for out-of-bounds access.
 
 			for (int i = 0; i < partitionCount; i++)
 			{
