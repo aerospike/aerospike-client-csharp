@@ -19,6 +19,7 @@ namespace Aerospike.Client
 	/// <summary>
 	/// List return type. Type of data to return when selecting or removing items from the list.
 	/// </summary>
+	[Flags]
 	public enum ListReturnType
 	{
 		/// <summary>

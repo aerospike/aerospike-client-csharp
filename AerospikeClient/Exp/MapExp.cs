@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2023 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -185,9 +185,9 @@ namespace Aerospike.Client
 		/// Valid returnType values are <see cref="MapReturnType.NONE"/>
 		/// or <see cref="MapReturnType.INVERTED"/>
 		/// </summary>
-		public static Exp RemoveByKeyList(int returnType, Exp keys, Exp bin, params CTX[] ctx)
+		public static Exp RemoveByKeyList(MapReturnType returnType, Exp keys, Exp bin, params CTX[] ctx)
 		{
-			byte[] bytes = PackUtil.Pack(MapOperation.REMOVE_BY_KEY_LIST, returnType, keys, ctx);
+			byte[] bytes = PackUtil.Pack(MapOperation.REMOVE_BY_KEY_LIST, (int)returnType, keys, ctx);
 			return AddWrite(bin, bytes, ctx);
 		}
 
@@ -198,9 +198,9 @@ namespace Aerospike.Client
 		/// If keyBegin is null, the range is less than keyEnd.
 		/// If keyEnd is null, the range is greater than equal to keyBegin.
 		/// </summary>
-		public static Exp RemoveByKeyRange(int returnType, Exp keyBegin, Exp keyEnd, Exp bin, params CTX[] ctx)
+		public static Exp RemoveByKeyRange(MapReturnType returnType, Exp keyBegin, Exp keyEnd, Exp bin, params CTX[] ctx)
 		{
-			byte[] bytes = ListExp.PackRangeOperation(MapOperation.REMOVE_BY_KEY_INTERVAL, returnType, keyBegin, keyEnd, ctx);
+			byte[] bytes = ListExp.PackRangeOperation(MapOperation.REMOVE_BY_KEY_INTERVAL, (int)returnType, keyBegin, keyEnd, ctx);
 			return AddWrite(bin, bytes, ctx);
 		}
 
@@ -220,9 +220,9 @@ namespace Aerospike.Client
 		/// </ul>
 		/// </para>
 		/// </summary>
-		public static Exp RemoveByKeyRelativeIndexRange(int returnType, Exp key, Exp index, Exp bin, params CTX[] ctx)
+		public static Exp RemoveByKeyRelativeIndexRange(MapReturnType returnType, Exp key, Exp index, Exp bin, params CTX[] ctx)
 		{
-			byte[] bytes = PackUtil.Pack(MapOperation.REMOVE_BY_KEY_REL_INDEX_RANGE, returnType, key, index, ctx);
+			byte[] bytes = PackUtil.Pack(MapOperation.REMOVE_BY_KEY_REL_INDEX_RANGE, (int)returnType, key, index, ctx);
 			return AddWrite(bin, bytes, ctx);
 		}
 
@@ -242,9 +242,9 @@ namespace Aerospike.Client
 		/// </ul>
 		/// </para>
 		/// </summary>
-		public static Exp RemoveByKeyRelativeIndexRange(int returnType, Exp key, Exp index, Exp count, Exp bin, params CTX[] ctx)
+		public static Exp RemoveByKeyRelativeIndexRange(MapReturnType returnType, Exp key, Exp index, Exp count, Exp bin, params CTX[] ctx)
 		{
-			byte[] bytes = PackUtil.Pack(MapOperation.REMOVE_BY_KEY_REL_INDEX_RANGE, returnType, key, index, count, ctx);
+			byte[] bytes = PackUtil.Pack(MapOperation.REMOVE_BY_KEY_REL_INDEX_RANGE, (int)returnType, key, index, count, ctx);
 			return AddWrite(bin, bytes, ctx);
 		}
 
@@ -253,9 +253,9 @@ namespace Aerospike.Client
 		/// Valid returnType values are <see cref="MapReturnType.NONE"/>
 		/// or <see cref="MapReturnType.INVERTED"/>
 		/// </summary>
-		public static Exp RemoveByValue(int returnType, Exp value, Exp bin, params CTX[] ctx)
+		public static Exp RemoveByValue(MapReturnType returnType, Exp value, Exp bin, params CTX[] ctx)
 		{
-			byte[] bytes = PackUtil.Pack(MapOperation.REMOVE_BY_VALUE, returnType, value, ctx);
+			byte[] bytes = PackUtil.Pack(MapOperation.REMOVE_BY_VALUE, (int)returnType, value, ctx);
 			return AddWrite(bin, bytes, ctx);
 		}
 
@@ -264,9 +264,9 @@ namespace Aerospike.Client
 		/// Valid returnType values are <see cref="MapReturnType.NONE"/>
 		/// or <see cref="MapReturnType.INVERTED"/>
 		/// </summary>
-		public static Exp RemoveByValueList(int returnType, Exp values, Exp bin, params CTX[] ctx)
+		public static Exp RemoveByValueList(MapReturnType returnType, Exp values, Exp bin, params CTX[] ctx)
 		{
-			byte[] bytes = PackUtil.Pack(MapOperation.REMOVE_BY_VALUE_LIST, returnType, values, ctx);
+			byte[] bytes = PackUtil.Pack(MapOperation.REMOVE_BY_VALUE_LIST, (int)returnType, values, ctx);
 			return AddWrite(bin, bytes, ctx);
 		}
 
@@ -277,9 +277,9 @@ namespace Aerospike.Client
 		/// If valueBegin is null, the range is less than valueEnd.
 		/// If valueEnd is null, the range is greater than equal to valueBegin.
 		/// </summary>
-		public static Exp RemoveByValueRange(int returnType, Exp valueBegin, Exp valueEnd, Exp bin, params CTX[] ctx)
+		public static Exp RemoveByValueRange(MapReturnType returnType, Exp valueBegin, Exp valueEnd, Exp bin, params CTX[] ctx)
 		{
-			byte[] bytes = ListExp.PackRangeOperation(MapOperation.REMOVE_BY_VALUE_INTERVAL, returnType, valueBegin, valueEnd, ctx);
+			byte[] bytes = ListExp.PackRangeOperation(MapOperation.REMOVE_BY_VALUE_INTERVAL, (int)returnType, valueBegin, valueEnd, ctx);
 			return AddWrite(bin, bytes, ctx);
 		}
 
@@ -296,9 +296,9 @@ namespace Aerospike.Client
 		/// </ul>
 		/// </para>
 		/// </summary>
-		public static Exp RemoveByValueRelativeRankRange(int returnType, Exp value, Exp rank, Exp bin, params CTX[] ctx)
+		public static Exp RemoveByValueRelativeRankRange(MapReturnType returnType, Exp value, Exp rank, Exp bin, params CTX[] ctx)
 		{
-			byte[] bytes = PackUtil.Pack(MapOperation.REMOVE_BY_VALUE_REL_RANK_RANGE, returnType, value, rank, ctx);
+			byte[] bytes = PackUtil.Pack(MapOperation.REMOVE_BY_VALUE_REL_RANK_RANGE, (int)returnType, value, rank, ctx);
 			return AddWrite(bin, bytes, ctx);
 		}
 
@@ -315,9 +315,9 @@ namespace Aerospike.Client
 		/// </ul>
 		/// </para>
 		/// </summary>
-		public static Exp RemoveByValueRelativeRankRange(int returnType, Exp value, Exp rank, Exp count, Exp bin, params CTX[] ctx)
+		public static Exp RemoveByValueRelativeRankRange(MapReturnType returnType, Exp value, Exp rank, Exp count, Exp bin, params CTX[] ctx)
 		{
-			byte[] bytes = PackUtil.Pack(MapOperation.REMOVE_BY_VALUE_REL_RANK_RANGE, returnType, value, rank, count, ctx);
+			byte[] bytes = PackUtil.Pack(MapOperation.REMOVE_BY_VALUE_REL_RANK_RANGE, (int)returnType, value, rank, count, ctx);
 			return AddWrite(bin, bytes, ctx);
 		}
 
@@ -335,9 +335,9 @@ namespace Aerospike.Client
 		/// Valid returnType values are <see cref="MapReturnType.NONE"/>
 		/// or <see cref="MapReturnType.INVERTED"/>
 		/// </summary>
-		public static Exp RemoveByIndexRange(int returnType, Exp index, Exp bin, params CTX[] ctx)
+		public static Exp RemoveByIndexRange(MapReturnType returnType, Exp index, Exp bin, params CTX[] ctx)
 		{
-			byte[] bytes = PackUtil.Pack(MapOperation.REMOVE_BY_INDEX_RANGE, returnType, index, ctx);
+			byte[] bytes = PackUtil.Pack(MapOperation.REMOVE_BY_INDEX_RANGE, (int)returnType, index, ctx);
 			return AddWrite(bin, bytes, ctx);
 		}
 
@@ -346,9 +346,9 @@ namespace Aerospike.Client
 		/// Valid returnType values are <see cref="MapReturnType.NONE"/>
 		/// or <see cref="MapReturnType.INVERTED"/>
 		/// </summary>
-		public static Exp RemoveByIndexRange(int returnType, Exp index, Exp count, Exp bin, params CTX[] ctx)
+		public static Exp RemoveByIndexRange(MapReturnType returnType, Exp index, Exp count, Exp bin, params CTX[] ctx)
 		{
-			byte[] bytes = PackUtil.Pack(MapOperation.REMOVE_BY_INDEX_RANGE, returnType, index, count, ctx);
+			byte[] bytes = PackUtil.Pack(MapOperation.REMOVE_BY_INDEX_RANGE, (int)returnType, index, count, ctx);
 			return AddWrite(bin, bytes, ctx);
 		}
 
@@ -366,9 +366,9 @@ namespace Aerospike.Client
 		/// Valid returnType values are <see cref="MapReturnType.NONE"/>
 		/// or <see cref="MapReturnType.INVERTED"/>
 		/// </summary>
-		public static Exp RemoveByRankRange(int returnType, Exp rank, Exp bin, params CTX[] ctx)
+		public static Exp RemoveByRankRange(MapReturnType returnType, Exp rank, Exp bin, params CTX[] ctx)
 		{
-			byte[] bytes = PackUtil.Pack(MapOperation.REMOVE_BY_RANK_RANGE, returnType, rank, ctx);
+			byte[] bytes = PackUtil.Pack(MapOperation.REMOVE_BY_RANK_RANGE, (int)returnType, rank, ctx);
 			return AddWrite(bin, bytes, ctx);
 		}
 
@@ -377,9 +377,9 @@ namespace Aerospike.Client
 		/// Valid returnType values are <see cref="MapReturnType.NONE"/>
 		/// or <see cref="MapReturnType.INVERTED"/>
 		/// </summary>
-		public static Exp RemoveByRankRange(int returnType, Exp rank, Exp count, Exp bin, params CTX[] ctx)
+		public static Exp RemoveByRankRange(MapReturnType returnType, Exp rank, Exp count, Exp bin, params CTX[] ctx)
 		{
-			byte[] bytes = PackUtil.Pack(MapOperation.REMOVE_BY_RANK_RANGE, returnType, rank, count, ctx);
+			byte[] bytes = PackUtil.Pack(MapOperation.REMOVE_BY_RANK_RANGE, (int)returnType, rank, count, ctx);
 			return AddWrite(bin, bytes, ctx);
 		}
 
