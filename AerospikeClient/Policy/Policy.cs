@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2023 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -163,6 +163,11 @@ namespace Aerospike.Client
 		/// Send user defined key in addition to hash digest on both reads and writes.
 		/// If the key is sent on a write, the key will be stored with the record on 
 		/// the server.
+		/// <para>
+		/// If the key is sent on a read, the server will generate the hash digest from
+		/// the key and vildate that digest with the digest sent by the client. Unless
+		/// this is the explicit intent of the developer, avoid sending the key on reads.
+		/// </para>
 		/// <para>
 		/// Default: false (do not send the user defined key)
 		/// </para>
