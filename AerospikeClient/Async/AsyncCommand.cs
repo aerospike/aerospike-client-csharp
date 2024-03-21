@@ -538,7 +538,7 @@ namespace Aerospike.Client
 
 		private void RetryServerError(AerospikeException ae)
 		{
-			node.IncrErrorCount();
+			node.IncrErrorRate();
 
 			if (ShouldRetry())
 			{

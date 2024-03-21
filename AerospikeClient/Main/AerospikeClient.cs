@@ -399,6 +399,22 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
+		/// Enable extended periodic cluster and node latency metrics.
+		/// </summary>
+		public void EnableMetrics(MetricsPolicy metricsPolicy)
+		{
+			cluster.EnableMetrics(metricsPolicy);
+		}
+
+		/// <summary>
+		/// Disable extended periodic cluster and node latency metrics.
+		/// </summary>
+		public void DisableMetrics()
+		{
+			cluster.DisableMetrics();
+		}
+
+		/// <summary>
 		/// Return operating cluster statistics.
 		/// </summary>
 		public ClusterStats GetClusterStats()

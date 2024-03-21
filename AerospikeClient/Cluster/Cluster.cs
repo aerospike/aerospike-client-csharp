@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2022 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -126,6 +126,13 @@ namespace Aerospike.Client
 
 		// Does cluster support query by partition.
 		internal bool hasPartitionQuery;
+
+		public bool MetricsEnabled;
+		MetricsPolicy MetricsPolicy;
+		private volatile IMetricsListener MetricsListener;
+		private volatile int RetryCount;
+		private volatile int TranCount;
+		private volatile int DelayQueueTimeoutCount;
 
 		public Cluster(ClientPolicy policy, Host[] hosts)
 		{
@@ -492,8 +499,13 @@ namespace Aerospike.Client
 			{
 				foreach (Node node in nodes)
 				{
-					node.ResetErrorCount();
+					node.ResetErrorRate();
 				}
+			}
+
+			if (MetricsEnabled && (tendCount % MetricsPolicy.Interval) == 0)
+			{
+				MetricsListener.OnSnapshot(this);
 			}
 		}
 
@@ -788,6 +800,19 @@ namespace Aerospike.Client
 					aliases.Remove(alias);
 				}
 
+				if (MetricsEnabled)
+				{
+					// Flush node metrics before removal.
+					try
+					{
+						MetricsListener.OnNodeClose(node);
+					}
+					catch (Exception e)
+					{
+						Log.Warn("Write metrics failed on " + node + ": " + Util.GetErrorMessage(e));
+					}
+				}
+
 				if (tendValid)
 				{
 					node.Close();
@@ -873,6 +898,43 @@ namespace Aerospike.Client
 		internal bool UseTls()
 		{
 			return tlsPolicy != null && !tlsPolicy.forLoginOnly;
+		}
+
+		public void EnableMetrics(MetricsPolicy policy)
+		{
+			if (MetricsEnabled)
+			{
+				this.MetricsListener.OnDisable(this);
+			}
+
+			IMetricsListener listener = policy.Listener;
+
+			if (listener == null)
+			{
+				listener = new MetricsWriter(policy.ReportDir);
+			}
+
+			this.MetricsListener = listener;
+			this.MetricsPolicy = policy;
+
+			Node[] nodeArray = nodes;
+
+			foreach (Node node in nodeArray)
+			{
+				node.EnableMetrics(policy);
+			}
+
+			listener.OnEnable(this, policy);
+			MetricsEnabled = true;
+		}
+
+		public void DisableMetrics()
+		{
+			if (MetricsEnabled)
+			{
+				MetricsEnabled = false;
+				MetricsListener.OnDisable(this);
+			}
 		}
 
 		public ClusterStats GetStats()
@@ -1064,7 +1126,66 @@ namespace Aerospike.Client
 			}
 			return true;
 		}
-		
+
+		/// <summary>
+		/// Increment transaction count when metrics are enabled.
+		/// </summary>
+		public void AddTran()
+		{
+			if (MetricsEnabled)
+			{
+				Interlocked.Increment(ref TranCount);
+			}
+		}
+
+		/// <summary>
+		/// Return transaction count. The value is cumulative and not reset per metrics interval.
+		/// </summary>
+		public int GetTranCount()
+		{
+			return TranCount;
+		}
+
+		/// <summary>
+		/// Increment transaction retry count. There can be multiple retries for a single transaction.
+		/// </summary>
+		public void AddRetry()
+		{
+			Interlocked.Increment(ref RetryCount);
+		}
+
+		/// <summary>
+		/// Add transaction retry count. There can be multiple retries for a single transaction.
+		/// </summary>
+		public void AddRetries(int count)
+		{
+			Interlocked.Add(ref RetryCount, count);
+		}
+
+		/// <summary>
+		/// Return transaction retry count. The value is cumulative and not reset per metrics interval.
+		/// </summary>
+		public int GetRetryCount()
+		{
+			return RetryCount;
+		}
+
+		/// <summary>
+		/// Increment async delay queue timeout count.
+		/// </summary>
+		public void AddDelayQueueTimeout()
+		{
+			Interlocked.Increment(ref DelayQueueTimeoutCount);
+		}
+
+		/// <summary>
+		/// Increment async delay queue timeout count.
+		/// </summary>
+		public long GetDelayQueueTimeoutCount()
+		{
+			return DelayQueueTimeoutCount;
+		}
+
 		/// <summary>
 		/// Return count of add node failures in the most recent cluster tend iteration.
 		/// </summary>

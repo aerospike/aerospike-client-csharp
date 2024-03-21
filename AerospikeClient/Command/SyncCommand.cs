@@ -119,14 +119,14 @@ namespace Aerospike.Client
 							// Retry on server timeout.
 							exception = new AerospikeException.Timeout(policy, false);
 							isClientTimeout = false;
-							node.IncrErrorCount();
+							node.IncrErrorRate();
 						}
 						else if (ae.Result == ResultCode.DEVICE_OVERLOAD)
 						{
 							// Add to circuit breaker error count and retry.
 							exception = ae;
 							isClientTimeout = false;
-							node.IncrErrorCount();
+							node.IncrErrorRate();
 						}
 						else
 						{

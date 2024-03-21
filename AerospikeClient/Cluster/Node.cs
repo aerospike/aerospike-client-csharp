@@ -18,6 +18,7 @@ using System;
 using System.Net;
 using System.Threading;
 using System.Collections.Generic;
+using static Aerospike.Client.Latency;
 
 namespace Aerospike.Client
 {
@@ -48,11 +49,14 @@ namespace Aerospike.Client
 		private byte[] sessionToken;
 		private DateTime? sessionExpiration;
 		private volatile Dictionary<string,int> racks;
+		private volatile NodeMetrics Metrics;
 		private readonly Pool<Connection>[] connectionPools;
 		protected uint connectionIter;
 		protected internal int connsOpened = 1;
 		protected internal int connsClosed;
+		private volatile int errorRateCount;
 		private volatile int errorCount;
+		private volatile int timeoutCount;
 		protected internal int peersGeneration = -1;
 		protected internal int partitionGeneration = -1;
 		protected internal int rebalanceGeneration = -1;
@@ -284,7 +288,7 @@ namespace Aerospike.Client
 				// Reset error rate.
 				if (cluster.maxErrorRate > 0)
 				{
-					ResetErrorCount();
+					ResetErrorRate();
 				}
 
 				// Login when user authentication is enabled.
@@ -517,7 +521,7 @@ namespace Aerospike.Client
 
 			if (! tendConnection.IsClosed())
 			{
-				IncrErrorCount();
+				IncrErrorRate();
 				Interlocked.Increment(ref connsClosed);
 				tendConnection.Close();
 			}
@@ -732,7 +736,7 @@ namespace Aerospike.Client
 			}
 			catch (Exception)
 			{
-				IncrErrorCount();
+				IncrErrorRate();
 				throw;
 			}
 		}
@@ -758,7 +762,7 @@ namespace Aerospike.Client
 		/// </summary>
 		public void CloseConnectionOnError(Connection conn)
 		{
-			IncrErrorCount();
+			IncrErrorRate();
 			CloseConnection(conn);
 		}
 
@@ -782,7 +786,7 @@ namespace Aerospike.Client
 				{
 					CloseIdleConnections(pool, excess);
 				}
-				else if (excess < 0 && ErrorCountWithinLimit())
+				else if (excess < 0 && ErrorRateWithinLimit())
 				{
 					CreateConnections(pool, -excess);
 				}
@@ -834,31 +838,85 @@ namespace Aerospike.Client
 			return new ConnectionStats(inPool, inUse, connsOpened, connsClosed);
 		}
 
-		public void IncrErrorCount()
+		public void EnableMetrics(MetricsPolicy policy)
+		{
+			Metrics = new NodeMetrics(policy);
+		}
+
+		public NodeMetrics GetMetrics()
+		{
+			return Metrics;
+		}
+
+		/// <summary>
+		/// Add elapsed time in nanoseconds to latency buckets corresponding to latency type.
+		/// </summary>
+		public void AddLatency(LatencyType type, long elapsed)
+		{
+			Metrics.AddLatency(type, elapsed);
+		}
+
+		public void IncrErrorRate()
 		{
 			if (cluster.maxErrorRate > 0)
 			{
-				Interlocked.Increment(ref errorCount);
+				Interlocked.Increment(ref errorRateCount);
 			}
 		}
 
-		public void ResetErrorCount()
+		public void ResetErrorRate()
 		{
-			errorCount = 0;
+			errorRateCount = 0;
 		}
 
-		public bool ErrorCountWithinLimit()
+		public bool ErrorRateWithinLimit()
 		{
-			return cluster.maxErrorRate <= 0 || errorCount <= cluster.maxErrorRate;
+			return cluster.maxErrorRate <= 0 || errorRateCount <= cluster.maxErrorRate;
 		}
 
 		public void ValidateErrorCount()
 		{
-			if (!ErrorCountWithinLimit())
+			if (!ErrorRateWithinLimit())
 			{
 				throw new AerospikeException.Backoff(ResultCode.MAX_ERROR_RATE);
 			}
 		}
+
+		/// <summary>
+		/// Increment transaction error count. If the error is retryable, multiple errors per
+		/// transaction may occur.
+		/// </summary>
+
+		public void AddError()
+		{
+			Interlocked.Increment(ref errorCount);
+		}
+
+		/// <summary>
+		/// Increment transaction timeout count. If the timeout is retryable (ie socketTimeout),
+		/// multiple timeouts per transaction may occur.
+		/// </summary>
+		public void AddTimeout()
+		{
+			Interlocked.Increment(ref timeoutCount);
+		}
+
+		/// <summary>
+		/// Return transaction error count. The value is cumulative and not reset per metrics interval.
+		/// </summary>
+		public int GetErrorCount()
+		{
+			return errorCount;
+		}
+
+		/// <summary>
+		/// Return transaction timeout count. The value is cumulative and not reset per metrics interval.
+		/// </summary>
+		public int GetTimeoutCount()
+		{
+			return timeoutCount;
+		}
+
 
 		/// <summary>
 		/// Return if this node has the same rack as the client for the
