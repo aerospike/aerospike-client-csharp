@@ -131,6 +131,8 @@ namespace Aerospike.Client
 					return;
 				}
 
+				node.IncrBytesWritten(sent);
+
 				if (sent < args.Count)
 				{
 					args.SetBuffer(args.Offset + sent, args.Count - sent);
@@ -171,6 +173,8 @@ namespace Aerospike.Client
 					command.OnError(new AerospikeException.Connection("Connection closed"));
 					return;
 				}
+
+				node.IncrBytesRead(received);
 
 				if (received < args.Count)
 				{

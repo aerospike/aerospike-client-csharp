@@ -831,7 +831,7 @@ namespace Aerospike.Client
 				}
 				inUse += tmp;
 			}
-			return new ConnectionStats(inPool, inUse, connsOpened, connsClosed);
+			return new ConnectionStats(inPool, inUse, connsOpened, connsClosed, -1, -1);
 		}
 
 		public void IncrErrorCount()

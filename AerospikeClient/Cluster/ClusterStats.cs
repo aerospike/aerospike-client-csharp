@@ -122,7 +122,7 @@ namespace Aerospike.Client
 			}
 			else
 			{
-				this.asyncStats = new ConnectionStats(0, 0, 0, 0);
+				this.asyncStats = new ConnectionStats(0, 0, 0, 0, 0, 0);
 			}
 		}
 
@@ -159,16 +159,28 @@ namespace Aerospike.Client
 		/// Total number of node connections closed since node creation.
 		/// </summary>
 		public readonly int closed;
-	
+
+		/// <summary>
+		/// Total number of bytes read from that connection.
+		/// </summary>
+		public readonly int bytesRead;
+
+		/// <summary>
+		/// Total number of bytes written to that connection.
+		/// </summary>
+		public readonly int bytesWritten;
+
 		/// <summary>
 		/// Connection statistics constructor.
 		/// </summary>
-		public ConnectionStats(int inPool, int inUse, int opened, int closed)
+		public ConnectionStats(int inPool, int inUse, int opened, int closed, int bytesRead, int bytesWritten)
 		{
 			this.inPool = inPool;
 			this.inUse = inUse;
 			this.opened = opened;
 			this.closed = closed;
+			this.bytesRead = bytesRead;
+			this.bytesWritten = bytesWritten;
 		}
 
 		/// <summary>
@@ -176,7 +188,7 @@ namespace Aerospike.Client
 		/// </summary>
 		public override string ToString()
 		{
-			return "" + inUse + ',' + inPool + ',' + opened + ',' + closed;
+			return "" + inUse + ',' + inPool + ',' + opened + ',' + closed + ',' + bytesRead + ',' + bytesWritten;
 		}
 	}
 }
