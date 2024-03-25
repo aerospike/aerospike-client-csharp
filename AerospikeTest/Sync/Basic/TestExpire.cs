@@ -1,5 +1,5 @@
 ﻿/* 
- * Copyright 2012-2023 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -15,6 +15,7 @@
  * the License.
  */
 using Aerospike.Client;
+using Microsoft.AspNetCore.DataProtection.KeyManagement;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace Aerospike.Test
@@ -27,12 +28,14 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void Expire()
 		{
-			Key key = new Key(args.ns, args.set, "expirekey ");
+			Key key = new Key(args.ns, args.set, "expirekey1");
 			Bin bin = new Bin(binName, "expirevalue");
 
 			// Specify that record expires 2 seconds after it's written.
-			WritePolicy writePolicy = new WritePolicy();
-			writePolicy.expiration = 2;
+			WritePolicy writePolicy = new WritePolicy
+			{
+				expiration = 2
+			};
 			if (args.testProxy)
 			{
 				writePolicy.totalTimeout = args.proxyTotalTimeout;
@@ -52,7 +55,7 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void NoExpire()
 		{
-			Key key = new Key(args.ns, args.set, "expirekey");
+			Key key = new Key(args.ns, args.set, "expirekey2");
 			Bin bin = new Bin(binName, "noexpirevalue");
 
 			// Specify that record NEVER expires. 
@@ -74,6 +77,40 @@ namespace Aerospike.Test
 			Util.Sleep(10 * 1000);
 			record = client.Get(null, key, bin.name);
 			Assert.IsNotNull(record);
+		}
+
+		[TestMethod]
+		public void ResetReadTtl()
+		{
+			Key key = new(args.ns, args.set, "expirekey3");
+			Bin bin = new(binName, "expirevalue");
+
+			// Specify that record expires 2 seconds after it's written.
+			WritePolicy writePolicy = new()
+			{
+				expiration = 2
+			};
+			client.Put(writePolicy, key, bin);
+
+			// Read the record before it expires and reset read ttl.
+			Util.Sleep(1000);
+			Policy readPolicy = new()
+			{
+				readTouchTtlPercent = 80
+			};
+			Record record = client.Get(readPolicy, key, bin.name);
+			AssertBinEqual(key, record, bin);
+
+			// Read the record again, but don't reset read ttl.
+			Util.Sleep(1000);
+			readPolicy.readTouchTtlPercent = -1;
+			record = client.Get(readPolicy, key, bin.name);
+			AssertBinEqual(key, record, bin);
+
+			// Read the record after it expires, showing it's gone.
+			Util.Sleep(2000);
+			record = client.Get(null, key, bin.name);
+			Assert.IsNull(record);
 		}
 	}
 }
