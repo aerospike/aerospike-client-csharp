@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2022 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -144,7 +144,7 @@ namespace Aerospike.Client
 					infoAttr = Command.INFO3_SC_READ_TYPE | Command.INFO3_SC_READ_RELAX;
 					break;
 			}
-			expiration = 0;
+			expiration = rp.readTouchTtlPercent;
 			generation = 0;
 			hasWrite = false;
 			sendKey = false;
@@ -180,7 +180,7 @@ namespace Aerospike.Client
 					infoAttr = Command.INFO3_SC_READ_TYPE | Command.INFO3_SC_READ_RELAX;
 					break;
 			}
-			expiration = 0;
+			expiration = rp.readTouchTtlPercent;
 			generation = 0;
 			hasWrite = false;
 			sendKey = false;
