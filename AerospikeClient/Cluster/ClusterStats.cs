@@ -163,17 +163,17 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Total number of bytes read from that connection.
 		/// </summary>
-		public readonly int bytesRead;
+		public readonly long bytesRead;
 
 		/// <summary>
 		/// Total number of bytes written to that connection.
 		/// </summary>
-		public readonly int bytesWritten;
+		public readonly long bytesWritten;
 
 		/// <summary>
 		/// Connection statistics constructor.
 		/// </summary>
-		public ConnectionStats(int inPool, int inUse, int opened, int closed, int bytesRead, int bytesWritten)
+		public ConnectionStats(int inPool, int inUse, int opened, int closed, long bytesRead, long bytesWritten)
 		{
 			this.inPool = inPool;
 			this.inUse = inUse;

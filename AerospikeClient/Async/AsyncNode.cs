@@ -26,8 +26,8 @@ namespace Aerospike.Client
 		private readonly new AsyncCluster cluster;
 		private int asyncConnsOpened;
 		private int asyncConnsClosed;
-		private int bytesRead;
-		private int bytesWritten;
+		private long bytesRead;
+		private long bytesWritten;
 
 		/// <summary>
 		/// Initialize server node with connection parameters.
@@ -198,12 +198,12 @@ namespace Aerospike.Client
 			Interlocked.Increment(ref asyncConnsClosed);
 		}
 
-		public void IncrBytesRead(int bytesRead)
+		public void IncrBytesRead(long bytesRead)
 		{
 			Interlocked.Increment(ref this.bytesRead);
 		}
 
-		public void IncrBytesWritten(int bytesWritten)
+		public void IncrBytesWritten(long bytesWritten)
 		{
 			Interlocked.Increment(ref this.bytesWritten);
 		}
