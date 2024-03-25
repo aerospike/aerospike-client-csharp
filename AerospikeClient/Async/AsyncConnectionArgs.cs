@@ -131,7 +131,7 @@ namespace Aerospike.Client
 					return;
 				}
 
-				node.IncrBytesWritten(sent);
+				node.IncrBytesSent(sent);
 
 				if (sent < args.Count)
 				{
@@ -174,7 +174,7 @@ namespace Aerospike.Client
 					return;
 				}
 
-				node.IncrBytesRead(received);
+				node.IncrBytesReceived(received);
 
 				if (received < args.Count)
 				{

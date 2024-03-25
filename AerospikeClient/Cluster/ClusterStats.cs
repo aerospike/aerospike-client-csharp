@@ -161,26 +161,26 @@ namespace Aerospike.Client
 		public readonly int closed;
 
 		/// <summary>
-		/// Total number of bytes read from that connection.
+		/// Total number of bytes received from that connection.
 		/// </summary>
-		public readonly long bytesRead;
+		public readonly long bytesReceived;
 
 		/// <summary>
-		/// Total number of bytes written to that connection.
+		/// Total number of bytes sent to that connection.
 		/// </summary>
-		public readonly long bytesWritten;
+		public readonly long bytesSent;
 
 		/// <summary>
 		/// Connection statistics constructor.
 		/// </summary>
-		public ConnectionStats(int inPool, int inUse, int opened, int closed, long bytesRead, long bytesWritten)
+		public ConnectionStats(int inPool, int inUse, int opened, int closed, long bytesReceived, long bytesSent)
 		{
 			this.inPool = inPool;
 			this.inUse = inUse;
 			this.opened = opened;
 			this.closed = closed;
-			this.bytesRead = bytesRead;
-			this.bytesWritten = bytesWritten;
+			this.bytesReceived = bytesReceived;
+			this.bytesSent = bytesSent;
 		}
 
 		/// <summary>
@@ -188,7 +188,7 @@ namespace Aerospike.Client
 		/// </summary>
 		public override string ToString()
 		{
-			return "" + inUse + ',' + inPool + ',' + opened + ',' + closed + ',' + bytesRead + ',' + bytesWritten;
+			return "" + inUse + ',' + inPool + ',' + opened + ',' + closed + ',' + bytesReceived + ',' + bytesSent;
 		}
 	}
 }
