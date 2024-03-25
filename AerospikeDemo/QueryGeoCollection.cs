@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2023 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -33,7 +33,6 @@ namespace Aerospike.Demo
 		public override void RunExample(IAerospikeClient client, Arguments args)
 		{
 			RunMapExample(client, args);
-			RunMapKeyExample(client, args);
 			RunListExample(client, args);
 		}
 
@@ -50,23 +49,6 @@ namespace Aerospike.Demo
 			CreateIndex(client, args, IndexCollectionType.MAPVALUES, indexName, binName);
 			WriteMapRecords(client, args, keyPrefix, binName, binName2, mapValuePrefix, size);
 			RunQuery(client, args, binName, binName2, IndexCollectionType.MAPVALUES);
-			client.DropIndex(args.policy, args.ns, args.set, indexName);
-			DeleteRecords(client, args, keyPrefix, size);
-		}
-
-		private void RunMapKeyExample(IAerospikeClient client, Arguments args)
-		{
-			string indexName = "geo_mapkey";
-			string keyPrefix = "mapkey";
-			string mapValuePrefix = "mk";
-			string binName = "geo_mkey_bin";
-			string binName2 = "geo_uniq_bin";
-			int size = 1000;
-
-			// create collection index on mapKey
-			CreateIndex(client, args, IndexCollectionType.MAPKEYS, indexName, binName);
-			WriteMapKeyRecords(client, args, keyPrefix, binName, binName2, mapValuePrefix, size);
-			RunQuery(client, args, binName, binName2, IndexCollectionType.MAPKEYS);
 			client.DropIndex(args.policy, args.ns, args.set, indexName);
 			DeleteRecords(client, args, keyPrefix, size);
 		}
@@ -129,38 +111,6 @@ namespace Aerospike.Demo
 					geoString = GeneratePolygon(rlat, rlng);
 
 					map[valuePrefix + "regionkey_" + i + "_" + jj] = Value.GetAsGeoJSON(geoString);
-
-				}
-				Bin bin = new Bin(binName, map);
-				Bin bin2 = new Bin(binName2, "other_bin_value_" + i);
-				client.Put(args.writePolicy, key, bin, bin2);
-			}
-
-			console.Info("Write " + size + " records.");
-		}
-
-		private void WriteMapKeyRecords(IAerospikeClient client, Arguments args, string keyPrefix, string binName, string binName2, string valuePrefix, int size)
-		{
-			for (int i = 0; i < size; i++)
-			{
-				Key key = new Key(args.ns, args.set, keyPrefix + i);
-				Dictionary<Value, string> map = new Dictionary<Value, string>();
-
-				for (int jj = 0; jj < 10; ++jj)
-				{
-
-					double plat = 0.0 + (0.01 * i);
-					double plng = 0.0 + (0.10 * jj);
-					string geoString = GeneratePoint(plat, plng);
-
-					map[Value.GetAsGeoJSON(geoString)] = valuePrefix + "pointkey_" + i + "_" + jj;
-
-					double rlat = 0.0 + (0.01 * i);
-					double rlng = 0.0 - (0.10 * jj);
-
-					geoString = GeneratePolygon(rlat, rlng);
-
-					map[Value.GetAsGeoJSON(geoString)] = valuePrefix + "regionkey_" + i + "_" + jj;
 
 				}
 				Bin bin = new Bin(binName, map);
