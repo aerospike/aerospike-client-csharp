@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2023 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -36,6 +36,7 @@ namespace Aerospike.Client
 		public static readonly int INFO2_GENERATION_GT     = (1 << 3); // Update if new generation >= old, good for restore.
 		public static readonly int INFO2_DURABLE_DELETE    = (1 << 4); // Transaction resulting in record deletion leaves tombstone (Enterprise only).
 		public static readonly int INFO2_CREATE_ONLY       = (1 << 5); // Create only. Fail if record already exists.
+		public static readonly int INFO2_RELAX_AP_LONG_QUERY = (1 << 6); // Treat as long query, but relac read consistency
 		public static readonly int INFO2_RESPOND_ALL_OPS   = (1 << 7); // Return a result for every operation.
 
 		public static readonly int INFO3_LAST              = (1 << 0); // This is the last of a multi-part message.
@@ -218,7 +219,7 @@ namespace Aerospike.Client
 				fieldCount++;
 			}
 			SizeBuffer();
-			WriteHeaderRead(policy, serverTimeout, Command.INFO1_READ | Command.INFO1_GET_ALL, 0, fieldCount, 0);
+			WriteHeaderRead(policy, serverTimeout, Command.INFO1_READ | Command.INFO1_GET_ALL, 0, 0, fieldCount, 0);
 			WriteKey(policy, key);
 
 			if (policy.filterExp != null)
@@ -246,7 +247,7 @@ namespace Aerospike.Client
 					EstimateOperationSize(binName);
 				}
 				SizeBuffer();
-				WriteHeaderRead(policy, serverTimeout, Command.INFO1_READ, 0, fieldCount, binNames.Length);
+				WriteHeaderRead(policy, serverTimeout, Command.INFO1_READ, 0, 0, fieldCount, binNames.Length);
 				WriteKey(policy, key);
 
 				if (policy.filterExp != null)
@@ -428,7 +429,7 @@ namespace Aerospike.Client
 				readAttr |= Command.INFO1_READ_MODE_AP_ALL;
 			}
 
-			WriteHeaderRead(policy, totalTimeout, readAttr | Command.INFO1_BATCH, 0, fieldCount, 0);
+			WriteHeaderRead(policy, totalTimeout, readAttr | Command.INFO1_BATCH, 0, 0, fieldCount, 0);
 
 			if (policy.filterExp != null)
 			{
@@ -573,7 +574,7 @@ namespace Aerospike.Client
 				readAttr |= Command.INFO1_READ_MODE_AP_ALL;
 			}
 
-			WriteHeaderRead(policy, totalTimeout, readAttr | Command.INFO1_BATCH, 0, fieldCount, 0);
+			WriteHeaderRead(policy, totalTimeout, readAttr | Command.INFO1_BATCH, 0, 0, fieldCount, 0);
 
 			if (policy.filterExp != null)
 			{
@@ -1297,7 +1298,7 @@ namespace Aerospike.Client
 			// Clusters that support partition queries also support not sending partition done messages.
 			int infoAttr = cluster.hasPartitionQuery ? Command.INFO3_PARTITION_DONE : 0;
 			int operationCount = (binNames == null) ? 0 : binNames.Length;
-			WriteHeaderRead(policy, totalTimeout, readAttr, infoAttr, fieldCount, operationCount);
+			WriteHeaderRead(policy, totalTimeout, readAttr, 0, infoAttr, fieldCount, operationCount);
 
 			if (ns != null)
 			{
@@ -1568,20 +1569,25 @@ namespace Aerospike.Client
 			{
 				QueryPolicy qp = (QueryPolicy)policy;
 				int readAttr = Command.INFO1_READ;
+				int writeAttr = 0;
 
 				if (!qp.includeBinData)
 				{
 					readAttr |= Command.INFO1_NOBINDATA;
 				}
 
-				if (qp.shortQuery)
+				if (qp.shortQuery || qp.expectedDuration == QueryDuration.SHORT)
 				{
 					readAttr |= Command.INFO1_SHORT_QUERY;
+				}
+				else if (qp.expectedDuration == QueryDuration.LONG_RELAX_AP)
+				{
+					writeAttr |= Command.INFO2_RELAX_AP_LONG_QUERY;
 				}
 
 				int infoAttr = isNew ? Command.INFO3_PARTITION_DONE : 0;
 
-				WriteHeaderRead(policy, totalTimeout, readAttr, infoAttr, fieldCount, operationCount);
+				WriteHeaderRead(policy, totalTimeout, readAttr, writeAttr, infoAttr, fieldCount, operationCount);
 			}
 
 			if (statement.ns != null)
@@ -1964,6 +1970,7 @@ namespace Aerospike.Client
 			Policy policy,
 			int timeout,
 			int readAttr,
+			int writeAttr,
 			int infoAttr,
 			int fieldCount,
 			int operationCount
@@ -1999,7 +2006,7 @@ namespace Aerospike.Client
 			// Write all header data except total size which must be written last. 
 			dataBuffer[dataOffset++] = MSG_REMAINING_HEADER_SIZE; // Message header length.
 			dataBuffer[dataOffset++] = (byte)readAttr;
-			dataBuffer[dataOffset++] = (byte)0;
+			dataBuffer[dataOffset++] = (byte)writeAttr;
 			dataBuffer[dataOffset++] = (byte)infoAttr;
 
 			for (int i = 0; i < 10; i++)

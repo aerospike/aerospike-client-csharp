@@ -94,7 +94,7 @@ namespace Aerospike.Client
 				InfoTimeout = queryPolicy.infoTimeout,
 				IncludeBinData = queryPolicy.includeBinData,
 				FailOnClusterChange = queryPolicy.failOnClusterChange,
-				ShortQuery = queryPolicy.shortQuery
+				ShortQuery = queryPolicy.shortQuery || queryPolicy.expectedDuration == QueryDuration.SHORT
 			};
 			if (queryPolicy.filterExp != null) {
 				queryPolicyKVS.Expression = ByteString.CopyFrom(queryPolicy.filterExp.Bytes);
