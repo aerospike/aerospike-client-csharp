@@ -75,7 +75,8 @@ namespace Aerospike.Client
 
 		/// <summary>
 		/// Optional query index name.  If not set, the server
-		/// will determine the index from the filter's bin name.
+		/// will determine the index from the filter's bin name
+		/// and data type of the operand.
 		/// </summary>
 		public string IndexName
 		{
@@ -85,7 +86,8 @@ namespace Aerospike.Client
 
 		/// <summary>
 		/// Set optional query index name.  If not set, the server
-		/// will determine the index from the filter's bin name.
+		/// will determine the index from the filter's bin name
+		/// and data type of the operand.
 		/// </summary>
 		public void SetIndexName(string indexName)
 		{

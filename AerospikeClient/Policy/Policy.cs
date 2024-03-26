@@ -188,6 +188,11 @@ namespace Aerospike.Client
 		/// If the key is sent on a write, the key will be stored with the record on 
 		/// the server.
 		/// <para>
+		/// If the key is sent on a read, the server will generate the hash digest from
+		/// the key and vildate that digest with the digest sent by the client. Unless
+		/// this is the explicit intent of the developer, avoid sending the key on reads.
+		/// </para>
+		/// <para>
 		/// Default: false (do not send the user defined key)
 		/// </para>
 		/// </summary>
