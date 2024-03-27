@@ -2,7 +2,7 @@ syntax = "proto3";
 
 option go_package = "aerospike.com/proxy/protos/";
 option java_package = "com.aerospike.proxy.client";
-option csharp_namespace = "Aerospike.Client.Auth";
+option csharp_namespace = "Aerospike.Client.Proxy.Auth";
 
 // Proxy auth service
 service AuthService {

@@ -1,5 +1,5 @@
 ﻿/* 
- * Copyright 2012-2023 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -15,11 +15,11 @@
  * the License.
  */
 
-using Aerospike.Client.KVS;
+using Aerospike.Client.Proxy.KVS;
 using Google.Protobuf;
 using Grpc.Core;
 
-namespace Aerospike.Client
+namespace Aerospike.Client.Proxy
 {
 	internal class GRPCConversions
 	{

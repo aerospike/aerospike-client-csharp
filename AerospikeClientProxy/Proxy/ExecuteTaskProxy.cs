@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2023 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -14,12 +14,12 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using Aerospike.Client.KVS;
+using Aerospike.Client.Proxy.KVS;
 using Grpc.Core;
 using Grpc.Net.Client;
 using static Aerospike.Client.AerospikeException;
 
-namespace Aerospike.Client
+namespace Aerospike.Client.Proxy
 {
 	/// <summary>
 	/// Task used to poll for long running execute job completion.

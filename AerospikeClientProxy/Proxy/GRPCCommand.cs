@@ -20,7 +20,7 @@ using System.Collections;
 
 #pragma warning disable 0618
 
-namespace Aerospike.Client
+namespace Aerospike.Client.Proxy
 {
 	public abstract class GRPCCommand : Command
 	{

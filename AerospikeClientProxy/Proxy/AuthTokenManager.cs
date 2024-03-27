@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2023 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -20,7 +20,7 @@ using System.Diagnostics;
 using System.Text.Json;
 using Timer = System.Timers.Timer;
 
-namespace Aerospike.Client
+namespace Aerospike.Client.Proxy
 {
 	/// <summary>
 	/// Manager for custom user authorization token

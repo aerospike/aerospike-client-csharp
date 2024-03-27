@@ -48,8 +48,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Resource Include="Connection.png">
-    </Resource>
     <Content Include="..\README.md">
       <Pack>true</Pack>
       <PackagePath />

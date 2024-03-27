@@ -17,8 +17,7 @@
 using System;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Aerospike.Client;
-using Aerospike.Client.KVS;
-using System.Xml.Linq;
+using Aerospike.Client.Proxy;
 
 namespace Aerospike.Test
 {
