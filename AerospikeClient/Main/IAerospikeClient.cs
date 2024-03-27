@@ -415,7 +415,7 @@ namespace Aerospike.Client
 
 		/// <summary>
 		/// Perform read/write operations on multiple keys. If a key is not found, the corresponding result
-		/// <see cref="BatchRecord.resultCode"/> will be <seea cref="ResultCode.KEY_NOT_FOUND_ERROR"/>.
+		/// <see cref="BatchRecord.resultCode"/> will be <see cref="ResultCode.KEY_NOT_FOUND_ERROR"/>.
 		/// <para>
 		/// Requires server version 6.0+
 		/// </para>
