@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2022 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -100,7 +100,7 @@ namespace Aerospike.Client
 		/// </summary>
 		public override int Size(Policy parentPolicy)
 		{
-			int size = 6; // gen(2) + exp(4) = 6
+			int size = 2; // gen(2) = 2
 
 			if (policy != null)
 			{

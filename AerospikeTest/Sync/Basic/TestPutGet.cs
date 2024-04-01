@@ -1,5 +1,5 @@
 ﻿/* 
- * Copyright 2012-2023 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -17,7 +17,7 @@
 using System;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Aerospike.Client;
-using Aerospike.Client.KVS;
+using Aerospike.Client.Proxy;
 
 namespace Aerospike.Test
 {
@@ -93,49 +93,64 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void PutGetCompression()
 		{
-			Client.WritePolicy writePolicy = new()
+			if (!args.testProxy || (args.testProxy && nativeClient != null))
 			{
-				compress = true
-			};
-			if (args.testProxy)
-			{
-				writePolicy.totalTimeout = args.proxyTotalTimeout;
-			}
+				Node node = nativeClient.Nodes[0];
+				IDictionary<string, string> map = Info.Request(null, node);
+				Assert.IsNotNull(map);
 
-			Policy policy = new()
-			{
-				compress = true
-			};
-			if (args.testProxy)
-			{
-				policy.totalTimeout = args.proxyTotalTimeout;
-			}
+				foreach (KeyValuePair<string, string> entry in map)
+				{
+					string kvp = entry.Key;
 
-			Key key = new(args.ns, args.set, "putgetc");
-			Record record;
+					if (kvp.Equals("build_ee_sha")) // Compression only available in EE
+					{
+						Client.WritePolicy writePolicy = new()
+						{
+							compress = true
+						};
+						if (args.testProxy)
+						{
+							writePolicy.totalTimeout = args.proxyTotalTimeout;
+						}
 
-			List<string> list = new();
-			int[] iterator = Enumerable.Range(0, 2000).ToArray();
-			foreach (int i in iterator)
-			{
-				list.Add(i.ToString());
-			}
+						Policy policy = new()
+						{
+							compress = true
+						};
+						if (args.testProxy)
+						{
+							policy.totalTimeout = args.proxyTotalTimeout;
+						}
 
-			Bin bin1 = new("bin", list);
+						Key key = new(args.ns, args.set, "putgetc");
+						Record record;
 
-			client.Put(writePolicy, key, bin1);
-			record = client.Get(policy, key);
-			var bin1List = bin1.value.Object;
-			record.bins.TryGetValue("bin", out object recordBin);
-			CollectionAssert.AreEquivalent((List<string>)bin1List, (List<object>)recordBin);
+						List<string> list = new();
+						int[] iterator = Enumerable.Range(0, 2000).ToArray();
+						foreach (int i in iterator)
+						{
+							list.Add(i.ToString());
+						}
 
-			record = client.GetHeader(policy, key);
-			AssertRecordFound(key, record);
+						Bin bin1 = new("bin", list);
 
-			// Generation should be greater than zero.  Make sure it's populated.
-			if (record.generation == 0)
-			{
-				Assert.Fail("Invalid record header: generation=" + record.generation + " expiration=" + record.expiration);
+						client.Put(writePolicy, key, bin1);
+						record = client.Get(policy, key);
+						var bin1List = bin1.value.Object;
+						record.bins.TryGetValue("bin", out object recordBin);
+						CollectionAssert.AreEquivalent((List<string>)bin1List, (List<object>)recordBin);
+
+						record = client.GetHeader(policy, key);
+						AssertRecordFound(key, record);
+
+						// Generation should be greater than zero.  Make sure it's populated.
+						if (record.generation == 0)
+						{
+							Assert.Fail("Invalid record header: generation=" + record.generation + " expiration=" + record.expiration);
+						}
+					}
+				}
 			}
 		}
 	}

@@ -1,5 +1,5 @@
 ﻿/* 
- * Copyright 2012-2023 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -15,11 +15,11 @@
  * the License.
  */
 
-using Aerospike.Client.KVS;
+using Aerospike.Client.Proxy.KVS;
 using Google.Protobuf;
 using Grpc.Core;
 
-namespace Aerospike.Client
+namespace Aerospike.Client.Proxy
 {
 	internal class GRPCConversions
 	{
@@ -94,7 +94,7 @@ namespace Aerospike.Client
 				InfoTimeout = queryPolicy.infoTimeout,
 				IncludeBinData = queryPolicy.includeBinData,
 				FailOnClusterChange = queryPolicy.failOnClusterChange,
-				ShortQuery = queryPolicy.shortQuery
+				ShortQuery = queryPolicy.shortQuery || queryPolicy.expectedDuration == QueryDuration.SHORT
 			};
 			if (queryPolicy.filterExp != null) {
 				queryPolicyKVS.Expression = ByteString.CopyFrom(queryPolicy.filterExp.Bytes);

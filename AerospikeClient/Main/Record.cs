@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2022 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -228,7 +228,7 @@ namespace Aerospike.Client
 		/// </summary>
 		public string GetGeoJSON(string name)
 		{
-			return (string)GetValue(name);
+			return GetValue(name).ToString();
 		}
 
 		/// <summary>

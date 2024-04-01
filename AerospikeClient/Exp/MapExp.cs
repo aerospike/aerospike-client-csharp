@@ -29,6 +29,15 @@ namespace Aerospike.Client
 	/// map modify expression.
 	/// </para>
 	/// <para>
+	/// Valid map key types are:
+	/// <ul>
+	/// <li>string</li>
+	/// <li>integer</li>
+	/// <li>byte[]</li>
+	/// </ul>
+	/// The server will vaildate map key types in an upcoming release.
+	/// </para>
+	/// <para>
 	/// All maps maintain an index and a rank.  The index is the item offset from the start of the map,
 	/// for both unordered and ordered maps.  The rank is the sorted index of the value component.
 	/// Map supports negative indexing for index and rank.

@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2023 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -15,7 +15,7 @@
  * the License.
  */
 
-namespace Aerospike.Client
+namespace Aerospike.Client.Proxy
 {
 	/// <summary>
 	/// AerospikeClientFactory generates a new Client of the specified type

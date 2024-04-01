@@ -1,5 +1,5 @@
 ﻿/* 
- * Copyright 2012-2023 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -19,6 +19,7 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Neo.IronLua;
 using System;
 using System.Collections;
+using System.Collections.Generic;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Runtime.Intrinsics.X86;
@@ -378,6 +379,77 @@ namespace Aerospike.Test
 			Assert.IsFalse(exists[0]);
 			Assert.IsFalse(exists[1]);
 		}
+
+		[TestMethod]
+		public void BatchReadTTL()
+		{
+			// WARNING: This test takes a long time to run due to sleeps.
+			// Define keys
+			Key key1 = new(args.ns, args.set, 88888);
+			Key key2 = new(args.ns, args.set, 88889);
+
+			// Write keys with ttl.
+			BatchWritePolicy bwp = new()
+			{
+				expiration = 10
+			};
+			Key[] keys = new Key[] { key1, key2 };
+			client.Operate(null, bwp, keys, Operation.Put(new Bin("a", 1)));
+
+			// Read records before they expire and reset read ttl on one record.
+			Util.Sleep(8000);
+			BatchReadPolicy brp1 = new()
+			{
+				readTouchTtlPercent = 80
+			};
+
+			BatchReadPolicy brp2 = new()
+			{
+				readTouchTtlPercent = -1
+			};
+
+			BatchRead br1 = new(brp1, key1, new String[] { "a" });
+			BatchRead br2 = new(brp2, key2, new String[] { "a" });
+
+			List<BatchRecord> list = new()
+				{
+					br1,
+					br2
+				};
+
+			bool rv = client.Operate(null, list);
+
+			Assert.IsTrue(rv);
+			Assert.AreEqual(ResultCode.OK, br1.resultCode);
+			Assert.AreEqual(ResultCode.OK, br2.resultCode);
+
+			// Read records again, but don't reset read ttl.
+			Util.Sleep(3000);
+			brp1.readTouchTtlPercent = -1;
+			brp2.readTouchTtlPercent = -1;
+
+			br1 = new BatchRead(brp1, key1, new String[] { "a" });
+			br2 = new BatchRead(brp2, key2, new String[] { "a" });
+
+			list.Clear();
+			list.Add(br1);
+			list.Add(br2);
+
+			rv = client.Operate(null, list);
+
+			// Key 2 should have expired.
+			Assert.AreEqual(ResultCode.OK, br1.resultCode);
+			Assert.AreEqual(ResultCode.KEY_NOT_FOUND_ERROR, br2.resultCode);
+			Assert.IsFalse(rv);
+
+			// Read  record after it expires, showing it's gone.
+			Util.Sleep(8000);
+			rv = client.Operate(null, list);
+			Assert.AreEqual(ResultCode.KEY_NOT_FOUND_ERROR, br1.resultCode);
+			Assert.AreEqual(ResultCode.KEY_NOT_FOUND_ERROR, br2.resultCode);
+			Assert.IsFalse(rv);
+		}
+
 
 		private void AssertBatchBinEqual(List<BatchRead> list, string binName, int i)
 		{

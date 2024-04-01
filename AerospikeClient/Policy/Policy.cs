@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2023 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -160,9 +160,38 @@ namespace Aerospike.Client
 		public int sleepBetweenRetries;
 
 		/// <summary>
+		/// Determine how record TTL (time to live) is affected on reads. When enabled, the server can
+		/// efficiently operate as a read-based LRU cache where the least recently used records are expired.
+		/// The value is expressed as a percentage of the TTL sent on the most recent write such that a read
+		/// within this interval of the record’s end of life will generate a touch.
+		/// <para>
+		/// For example, if the most recent write had a TTL of 10 hours and read_touch_ttl_percent is set to
+		/// 80, the next read within 8 hours of the record's end of life (equivalent to 2 hours after the most
+		/// recent write) will result in a touch, resetting the TTL to another 10 hours.
+		/// </para>
+		/// <para>
+		/// Values:
+		/// <ul>
+		/// <li> 0 : Use server config default-read-touch-ttl-pct for the record's namespace/set.</li>
+		/// <li>-1 : Do not reset record TTL on reads.</li>
+		/// <li>1 - 100 : Reset record TTL on reads when within this percentage of the most recent write TTL.</li>
+		/// </ul>
+		/// </para>
+		/// <para>
+		/// Default: 0
+		/// </para>
+		/// </summary>
+		public int readTouchTtlPercent;
+
+		/// <summary>
 		/// Send user defined key in addition to hash digest on both reads and writes.
 		/// If the key is sent on a write, the key will be stored with the record on 
 		/// the server.
+		/// <para>
+		/// If the key is sent on a read, the server will generate the hash digest from
+		/// the key and vildate that digest with the digest sent by the client. Unless
+		/// this is the explicit intent of the developer, avoid sending the key on reads.
+		/// </para>
 		/// <para>
 		/// Default: false (do not send the user defined key)
 		/// </para>
@@ -216,6 +245,7 @@ namespace Aerospike.Client
 			this.totalTimeout = other.totalTimeout;
 			this.maxRetries = other.maxRetries;
 			this.sleepBetweenRetries = other.sleepBetweenRetries;
+			this.readTouchTtlPercent = other.readTouchTtlPercent;
 			this.sendKey = other.sendKey;
 			this.compress = other.compress;
 			this.failOnFilteredOut = other.failOnFilteredOut;

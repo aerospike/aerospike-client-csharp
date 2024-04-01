@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2023 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -24,6 +24,15 @@ namespace Aerospike.Client
 	/// </summary>
 	public class QueryPolicy : Policy
 	{
+		/// <summary>
+		/// Expected query duration. The server treats the query in different ways depending on the expected duration.
+		/// This field is ignored for aggregation queries, background queries and server versions &lt; 6.0.
+		/// <para>
+		/// Default: <see cref="QueryDuration.LONG"/>
+		/// </para>
+		/// </summary>
+		public QueryDuration expectedDuration;
+
 		/// <summary>
 		/// Approximate number of records to return to client. This number is divided by the
 		/// number of nodes involved in the query.  The actual number of records returned
@@ -74,12 +83,20 @@ namespace Aerospike.Client
 		public bool failOnClusterChange;
 
 		/// <summary>
+		/// This field is deprecated and will eventually be removed. Use <see cref="expectedDuration"/> 
+		/// instead.
+		/// <para>
+		/// For backwards compatibility: If shortQuery is true, the query is treated as a short
+		/// query and <see cref="expectedDuration"/> is ignored. If shortQuery is false, 
+		/// <see cref="expectedDuration"/> is used and defaults to <see cref="QueryDuration.LONG"/>.
+		/// </para>
 		/// Is query expected to return less than 100 records per node.
 		/// If true, the server will optimize the query for a small record set.
 		/// This field is ignored for aggregation queries, background queries
 		/// and server versions &lt; 6.0.
 		/// <para>Default: false</para>
 		/// </summary>
+		[Obsolete("Use 'expectedDuration' instead.")]
 		public bool shortQuery;
 		public uint infoTimeout;
 
@@ -88,6 +105,7 @@ namespace Aerospike.Client
 		/// </summary>
 		public QueryPolicy(QueryPolicy other) : base(other)
 		{
+			this.expectedDuration = other.expectedDuration;
 			this.maxRecords = other.maxRecords;
 			this.maxConcurrentNodes = other.maxConcurrentNodes;
 			this.recordQueueSize = other.recordQueueSize;

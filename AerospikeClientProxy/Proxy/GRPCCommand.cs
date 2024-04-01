@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2023 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -20,7 +20,7 @@ using System.Collections;
 
 #pragma warning disable 0618
 
-namespace Aerospike.Client
+namespace Aerospike.Client.Proxy
 {
 	public abstract class GRPCCommand : Command
 	{
@@ -550,7 +550,7 @@ namespace Aerospike.Client
 
 			bool compress = SizeBuffer(policy);
 
-			WriteHeaderReadWrite(policy, args.readAttr, args.writeAttr, fieldCount, args.operations.Length);
+			WriteHeaderReadWrite(policy, args, fieldCount);
 			WriteKey(policy, key);
 
 			policy.filterExp?.Write(this, Buffer);
@@ -913,7 +913,7 @@ namespace Aerospike.Client
 				else
 				{
 					// Estimate full header, namespace and bin names.
-					Buffer.Offset += 8;
+					Buffer.Offset += 12;
 					Buffer.Offset += ByteUtil.EstimateSizeUtf8(key.ns) + FIELD_HEADER_SIZE;
 					Buffer.Offset += ByteUtil.EstimateSizeUtf8(key.setName) + FIELD_HEADER_SIZE;
 					Buffer.Offset += record.Size(policy);
@@ -1098,7 +1098,7 @@ namespace Aerospike.Client
 				else
 				{
 					// Write full header and namespace/set/bin names.
-					Buffer.Offset += 8; // header(4) + fielCount(2) + opCount(2) = 8
+					Buffer.Offset += 12; // header(4) + ttl(4) + fielCount(2) + opCount(2) = 8
 					Buffer.Offset += ByteUtil.EstimateSizeUtf8(key.ns) + FIELD_HEADER_SIZE;
 					Buffer.Offset += ByteUtil.EstimateSizeUtf8(key.setName) + FIELD_HEADER_SIZE;
 
@@ -1124,14 +1124,14 @@ namespace Aerospike.Client
 								{
 									throw new AerospikeException(Client.ResultCode.PARAMETER_ERROR, "Write operations not allowed in batch read");
 								}
-								Buffer.Offset += 6; // Extra write specific fields.
+								Buffer.Offset += 2; // Extra write specific fields.
 							}
 							EstimateOperationSize(op);
 						}
 					}
 					else if ((attr.writeAttr & Command.INFO2_DELETE) != 0)
 					{
-						Buffer.Offset += 6; // Extra write specific fields.
+						Buffer.Offset += 2; // Extra write specific fields.
 					}
 					prev = key;
 				}
@@ -1241,7 +1241,7 @@ namespace Aerospike.Client
 				else
 				{
 					// Write full header and namespace/set/bin names.
-					Buffer.Offset += 8; // header(4) + fielCount(2) + opCount(2) = 8
+					Buffer.Offset += 12; // header(4) + ttl(4) + fielCount(2) + opCount(2) = 8
 					Buffer.Offset += ByteUtil.EstimateSizeUtf8(key.ns) + FIELD_HEADER_SIZE;
 					Buffer.Offset += ByteUtil.EstimateSizeUtf8(key.setName) + FIELD_HEADER_SIZE;
 
@@ -1249,7 +1249,7 @@ namespace Aerospike.Client
 					{
 						Buffer.Offset += key.userKey.EstimateSize() + FIELD_HEADER_SIZE + 1;
 					}
-					Buffer.Offset += 6; // gen(2) + exp(4) = 6
+					Buffer.Offset += 2; // gen(2) = 6
 					EstimateUdfSize(packageName, functionName, argBytes);
 					prev = key;
 				}
@@ -1379,16 +1379,17 @@ namespace Aerospike.Client
 
 		private void WriteBatchRead(Key key, BatchAttr attr, Expression filter, int opCount)
 		{
-			Buffer.DataBuffer[Buffer.Offset++] = (byte)BATCH_MSG_INFO;
+			Buffer.DataBuffer[Buffer.Offset++] = (byte)(BATCH_MSG_INFO | BATCH_MSG_TTL);
 			Buffer.DataBuffer[Buffer.Offset++] = (byte)attr.readAttr;
 			Buffer.DataBuffer[Buffer.Offset++] = (byte)attr.writeAttr;
 			Buffer.DataBuffer[Buffer.Offset++] = (byte)attr.infoAttr;
+			Buffer.Offset += ByteUtil.IntToBytes((uint)attr.expiration, Buffer.DataBuffer, Buffer.Offset);
 			WriteBatchFields(key, filter, 0, opCount);
 		}
 
 		private void WriteBatchWrite(Key key, BatchAttr attr, Expression filter, int fieldCount, int opCount)
 		{
-			Buffer.DataBuffer[Buffer.Offset++] = (byte)BATCH_MSG_WRITE;
+			Buffer.DataBuffer[Buffer.Offset++] = (byte)(BATCH_MSG_INFO | BATCH_MSG_GEN | BATCH_MSG_TTL);
 			Buffer.DataBuffer[Buffer.Offset++] = (byte)attr.readAttr;
 			Buffer.DataBuffer[Buffer.Offset++] = (byte)attr.writeAttr;
 			Buffer.DataBuffer[Buffer.Offset++] = (byte)attr.infoAttr;
@@ -1948,15 +1949,17 @@ namespace Aerospike.Client
 		private void WriteHeaderReadWrite
 		(
 			WritePolicy policy,
-			int readAttr,
-			int writeAttr,
-			int fieldCount,
-			int operationCount
+			OperateArgs args,
+			int fieldCount
 		)
 		{
 			// Set flags.
 			int generation = 0;
+			int ttl = args.hasWrite ? policy.expiration : policy.readTouchTtlPercent;
+			int readAttr = args.readAttr;
+			int writeAttr = args.writeAttr;
 			int infoAttr = 0;
+			int operationCount = args.operations.Length;
 
 			switch (policy.recordExistsAction)
 			{
@@ -2035,7 +2038,7 @@ namespace Aerospike.Client
 			Buffer.DataBuffer[Buffer.Offset++] = 0; // unused
 			Buffer.DataBuffer[Buffer.Offset++] = 0; // clear the result code
 			Buffer.Offset += ByteUtil.IntToBytes((uint)generation, Buffer.DataBuffer, Buffer.Offset);
-			Buffer.Offset += ByteUtil.IntToBytes((uint)policy.expiration, Buffer.DataBuffer, Buffer.Offset);
+			Buffer.Offset += ByteUtil.IntToBytes((uint)ttl, Buffer.DataBuffer, Buffer.Offset);
 			Buffer.Offset += ByteUtil.IntToBytes((uint)serverTimeout, Buffer.DataBuffer, Buffer.Offset);
 			Buffer.Offset += ByteUtil.ShortToBytes((ushort)fieldCount, Buffer.DataBuffer, Buffer.Offset);
 			Buffer.Offset += ByteUtil.ShortToBytes((ushort)operationCount, Buffer.DataBuffer, Buffer.Offset);
@@ -2087,10 +2090,11 @@ namespace Aerospike.Client
 			Buffer.DataBuffer[Buffer.Offset++] = (byte)0;
 			Buffer.DataBuffer[Buffer.Offset++] = (byte)infoAttr;
 
-			for (int i = 0; i < 10; i++)
+			for (int i = 0; i < 6; i++)
 			{
 				Buffer.DataBuffer[Buffer.Offset++] = 0;
 			}
+			Buffer.Offset += ByteUtil.IntToBytes((uint)policy.readTouchTtlPercent, Buffer.DataBuffer, Buffer.Offset);
 			Buffer.Offset += ByteUtil.IntToBytes((uint)timeout, Buffer.DataBuffer, Buffer.Offset);
 			Buffer.Offset += ByteUtil.ShortToBytes((ushort)fieldCount, Buffer.DataBuffer, Buffer.Offset);
 			Buffer.Offset += ByteUtil.ShortToBytes((ushort)operationCount, Buffer.DataBuffer, Buffer.Offset);
@@ -2131,10 +2135,11 @@ namespace Aerospike.Client
 			Buffer.DataBuffer[Buffer.Offset++] = (byte)0;
 			Buffer.DataBuffer[Buffer.Offset++] = (byte)infoAttr;
 
-			for (int i = 0; i < 10; i++)
+			for (int i = 0; i < 6; i++)
 			{
 				Buffer.DataBuffer[Buffer.Offset++] = 0;
 			}
+			Buffer.Offset += ByteUtil.IntToBytes((uint)policy.readTouchTtlPercent, Buffer.DataBuffer, Buffer.Offset);
 			Buffer.Offset += ByteUtil.IntToBytes((uint)serverTimeout, Buffer.DataBuffer, Buffer.Offset);
 			Buffer.Offset += ByteUtil.ShortToBytes((ushort)fieldCount, Buffer.DataBuffer, Buffer.Offset);
 			Buffer.Offset += ByteUtil.ShortToBytes((ushort)operationCount, Buffer.DataBuffer, Buffer.Offset);
