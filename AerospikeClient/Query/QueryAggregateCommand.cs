@@ -46,6 +46,11 @@ namespace Aerospike.Client
 			this.cancelToken = cancelToken;
 		}
 
+		protected override Latency.LatencyType GetLatencyType()
+		{
+			return Latency.LatencyType.QUERY;
+		}
+
 		protected internal override void WriteBuffer()
 		{
 			SetQuery(cluster, policy, statement, taskId, false, null);

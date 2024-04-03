@@ -554,6 +554,11 @@ namespace Aerospike.Client
 			}
 		}
 
+		protected override Latency.LatencyType GetLatencyType()
+		{
+			return Latency.LatencyType.BATCH;
+		}
+
 		protected internal override bool PrepareRetry(bool timeout)
 		{
 			if (!((batchPolicy.replica == Replica.SEQUENCE || batchPolicy.replica == Replica.PREFER_RACK) &&

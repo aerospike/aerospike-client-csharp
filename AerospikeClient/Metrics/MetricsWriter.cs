@@ -243,7 +243,12 @@ namespace Aerospike.Client
 
 			WriteConn(node.GetConnectionStats());
 			Sb.Append(',');
-			WriteConn(node.GetAsyncConnectionStats());
+			var asyncStats = new ConnectionStats(0, 0, 0, 0);
+			if (node is AsyncNode)
+			{
+				asyncStats = ((AsyncNode)node).GetAsyncConnectionStats();
+			}
+			WriteConn(asyncStats);
 			Sb.Append(',');
 
 			Sb.Append(node.GetErrorCount());   // Cumulative. Not reset on each interval.

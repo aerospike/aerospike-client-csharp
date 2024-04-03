@@ -45,6 +45,11 @@ namespace Aerospike.Client
 			return partition.GetNodeWrite(cluster);
 		}
 
+		protected override Latency.LatencyType GetLatencyType()
+		{
+			return Latency.LatencyType.WRITE;
+		}
+
 		protected internal override void WriteBuffer()
 		{
 			SetWrite(writePolicy, operation, key, bins);

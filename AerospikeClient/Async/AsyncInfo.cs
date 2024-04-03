@@ -69,6 +69,11 @@ namespace Aerospike.Client
 			return serverNode;
 		}
 
+		protected override Latency.LatencyType GetLatencyType()
+		{
+			return Latency.LatencyType.NONE;
+		}
+
 		protected internal override void WriteBuffer()
 		{
 			dataOffset = 8;

@@ -35,6 +35,11 @@ namespace Aerospike.Client
 			return partition.GetNodeRead(cluster);
 		}
 
+		protected override Latency.LatencyType GetLatencyType()
+		{
+			return Latency.LatencyType.READ;
+		}
+
 		protected internal override void WriteBuffer()
 		{
 			SetReadHeader(policy, key);

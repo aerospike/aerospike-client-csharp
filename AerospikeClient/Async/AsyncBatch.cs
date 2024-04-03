@@ -1801,6 +1801,11 @@ namespace Aerospike.Client
 			this.sequenceSC = other.sequenceSC;
 		}
 
+		protected override Latency.LatencyType GetLatencyType()
+		{
+			return Latency.LatencyType.BATCH;
+		}
+
 		protected internal override bool PrepareRetry(bool timeout)
 		{
 			if (!(policy.replica == Replica.SEQUENCE || policy.replica == Replica.PREFER_RACK))

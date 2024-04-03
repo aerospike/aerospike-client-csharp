@@ -15,6 +15,7 @@
  * the License.
  */
 using System.Net.Sockets;
+using static Aerospike.Client.Latency;
 
 namespace Aerospike.Client
 {
@@ -896,6 +897,7 @@ namespace Aerospike.Client
 		}
 
 		protected internal abstract Node GetNode(Cluster cluster);
+		protected abstract LatencyType GetLatencyType();
 		protected internal abstract void WriteBuffer();
 		protected internal abstract AsyncCommand CloneCommand();
 		protected internal abstract void ParseCommand();

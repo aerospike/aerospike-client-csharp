@@ -34,6 +34,11 @@ namespace Aerospike.Client
 			return true;
 		}
 
+		protected override Latency.LatencyType GetLatencyType()
+		{
+			return Latency.LatencyType.QUERY;
+		}
+
 		protected internal override void WriteBuffer()
 		{
 			SetQuery(cluster, policy, statement, taskId, true, null);

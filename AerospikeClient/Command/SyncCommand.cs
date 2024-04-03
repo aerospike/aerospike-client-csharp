@@ -15,6 +15,7 @@
  * the License.
  */
 using System.Net.Sockets;
+using static Aerospike.Client.Latency;
 
 namespace Aerospike.Client
 {
@@ -25,6 +26,7 @@ namespace Aerospike.Client
 		internal int iteration = 1;
 		internal int commandSentCounter;
 		internal DateTime deadline;
+		private const long MS_TO_NS = 1000000;
 
 		/// <summary>
 		/// Default constructor.
@@ -61,6 +63,8 @@ namespace Aerospike.Client
 		{
 			Node node;
 			AerospikeException exception = null;
+			DateTime begin = DateTime.MinValue;
+			LatencyType latencyType = cluster.MetricsEnabled ? GetLatencyType() : LatencyType.NONE;
 			bool isClientTimeout;
 
 			// Execute command until successful, timed out or maximum iterations have been reached.
@@ -81,6 +85,10 @@ namespace Aerospike.Client
 				try
 				{
 					node.ValidateErrorCount();
+					if (latencyType != LatencyType.NONE)
+					{
+						begin = DateTime.UtcNow;
+					}
 					Connection conn = node.GetConnection(socketTimeout);
 
 					try
@@ -97,6 +105,12 @@ namespace Aerospike.Client
 
 						// Put connection back in pool.
 						node.PutConnection(conn);
+
+						if (latencyType != LatencyType.NONE)
+						{
+							long elapsed = (long)((DateTime.UtcNow - begin).TotalMilliseconds * MS_TO_NS);
+							node.AddLatency(latencyType, elapsed);
+						}
 
 						// Command has completed successfully.  Exit method.
 						return;
@@ -303,6 +317,7 @@ namespace Aerospike.Client
 
 		protected internal abstract Node GetNode();
 
+		protected abstract LatencyType GetLatencyType();
 		protected internal abstract void WriteBuffer();
 		protected internal abstract void ParseResult(IConnection conn);
 		protected internal abstract bool PrepareRetry(bool timeout);
