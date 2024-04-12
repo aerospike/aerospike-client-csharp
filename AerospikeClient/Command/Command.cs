@@ -675,7 +675,8 @@ namespace Aerospike.Client
 				// Use reference equality only in hope that common namespaces/bin names are set from
 				// fixed variables.  It's fine if equality not determined correctly because it just
 				// results in more space used. The batch will still be correct.
-				if (prev != null && prev.key.ns == key.ns && prev.key.setName == key.setName && record.Equals(prev))
+				if (!policy.sendKey && prev != null && prev.key.ns == key.ns && 
+					prev.key.setName == key.setName && record.Equals(prev))
 				{
 					// Can set repeat previous namespace/bin names to save space.
 					dataOffset++;
@@ -726,7 +727,8 @@ namespace Aerospike.Client
 				// Use reference equality only in hope that common namespaces/bin names are set from
 				// fixed variables.  It's fine if equality not determined correctly because it just
 				// results in more space used. The batch will still be correct.
-				if (prev != null && prev.key.ns == key.ns && prev.key.setName == key.setName && record.Equals(prev))
+				if (!policy.sendKey && prev != null && prev.key.ns == key.ns &&
+					prev.key.setName == key.setName && record.Equals(prev))
 				{
 					// Can set repeat previous namespace/bin names to save space.
 					dataBuffer[dataOffset++] = BATCH_MSG_REPEAT;
@@ -863,7 +865,8 @@ namespace Aerospike.Client
 				dataOffset += key.digest.Length + 4;
 
 				// Try reference equality in hope that namespace/set for all keys is set from fixed variables.
-				if (prev != null && prev.ns == key.ns && prev.setName == key.setName)
+				if (!attr.sendKey && prev != null && prev.ns == key.ns && 
+					prev.setName == key.setName)
 				{
 					// Can set repeat previous namespace/bin names to save space.
 					dataOffset++;
@@ -939,7 +942,8 @@ namespace Aerospike.Client
 				dataOffset += digest.Length;
 
 				// Try reference equality in hope that namespace/set for all keys is set from fixed variables.
-				if (prev != null && prev.ns == key.ns && prev.setName == key.setName)
+				if (!attr.sendKey && prev != null && prev.ns == key.ns && 
+					prev.setName == key.setName)
 				{
 					// Can set repeat previous namespace/bin names to save space.
 					dataBuffer[dataOffset++] = BATCH_MSG_REPEAT;
@@ -1009,7 +1013,8 @@ namespace Aerospike.Client
 				dataOffset += key.digest.Length + 4;
 
 				// Try reference equality in hope that namespace/set for all keys is set from fixed variables.
-				if (prev != null && prev.ns == key.ns && prev.setName == key.setName)
+				if (!attr.sendKey && prev != null && prev.ns == key.ns && 
+					prev.setName == key.setName)
 				{
 					// Can set repeat previous namespace/bin names to save space.
 					dataOffset++;
@@ -1060,7 +1065,8 @@ namespace Aerospike.Client
 				dataOffset += digest.Length;
 
 				// Try reference equality in hope that namespace/set for all keys is set from fixed variables.
-				if (prev != null && prev.ns == key.ns && prev.setName == key.setName)
+				if (!attr.sendKey && prev != null && prev.ns == key.ns && 
+					prev.setName == key.setName)
 				{
 					// Can set repeat previous namespace/bin names to save space.
 					dataBuffer[dataOffset++] = BATCH_MSG_REPEAT;
