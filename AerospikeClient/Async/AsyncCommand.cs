@@ -51,7 +51,8 @@ namespace Aerospike.Client
 		private bool compressed;
 		private bool inAuthenticate;
 		private bool inHeader = true;
-
+		private Activity activity;
+		
 		/// <summary>
 		/// Default Constructor.
 		/// </summary>
@@ -200,14 +201,25 @@ namespace Aerospike.Client
 			}
 			ExecuteCommand();
 		}
-
+		
 		private void ExecuteCommand()
 		{
 			iteration++;
+			
+			Exception exception = null;
+
+			StartActivity();
 
 			try
 			{
 				node = (AsyncNode)GetNode(cluster);
+				
+				if (activity != null)
+				{
+					activity.SetTag("node.name", node.Name);
+					activity.SetTag("node.address", node.NodeAddress.ToString());
+				}
+				
 				node.ValidateErrorCount();
 				conn = node.GetAsyncConnection();
 
@@ -226,28 +238,59 @@ namespace Aerospike.Client
 			}
 			catch (AerospikeException.Connection aec)
 			{
+				exception = aec;
 				ErrorCount++;
 				ConnectionFailed(aec);
 			}
 			catch (AerospikeException.Backoff aeb)
 			{
+				exception = aeb;
 				ErrorCount++;
 				Backoff(aeb);
 			}
 			catch (AerospikeException ae)
 			{
+				exception = ae;
 				ErrorCount++;
 				FailOnApplicationError(ae);
 			}
 			catch (SocketException se)
 			{
+				exception = se;
 				ErrorCount++;
 				OnSocketError(se.SocketErrorCode);
 			}
 			catch (Exception e)
 			{
+				exception = e;
 				ErrorCount++;
 				FailOnApplicationError(new AerospikeException(e));
+			}
+			finally
+			{
+				if (activity != null && exception != null)
+				{
+					activity.SetStatus(ActivityStatusCode.Error, exception.ToString());
+				}
+			}
+		}
+
+		private void StartActivity()
+		{
+			// Because of the retry mecanism, one operation can result in several I/Os, on several nodes.
+			// For this reason, we create a new Activity on every retry, so that we can set the actual node
+			// adress and the I/O status as tags of this current Activity.
+
+			// If we're retrying, stop the previous Activity before restarting a new one.
+			activity?.Dispose();
+			activity = Tracing.Source.StartActivity(GetType().Name, ActivityKind.Client);
+			if (activity != null)
+			{
+				// https://github.com/open-telemetry/opentelemetry-specification/blob/6ce62202e5407518e19c56c445c13682ef51a51d/specification/trace/semantic_conventions/span-general.md#general-remote-service-attributes
+				activity.SetTag("peer.service", Tracing.SERVICE_NAME);
+				// https://github.com/open-telemetry/opentelemetry-specification/blob/6ce62202e5407518e19c56c445c13682ef51a51d/specification/trace/semantic_conventions/database.md#connection-level-attributes
+				activity.SetTag("db.system", Tracing.SERVICE_NAME);
+				activity.SetTag("iteration", iteration);
 			}
 		}
 
