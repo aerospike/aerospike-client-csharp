@@ -64,7 +64,7 @@ namespace Aerospike.Client
 			}
 
 			BatchDelete other = (BatchDelete)obj;
-			return policy == other.policy;
+			return policy == other.policy && (policy == null || !policy.sendKey);
 		}
 
 		/// <summary>
