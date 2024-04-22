@@ -19,6 +19,7 @@ using Grpc.Core.Interceptors;
 using Grpc.Net.Client;
 using Microsoft.Extensions.Logging;
 using System.Diagnostics;
+using System.Diagnostics.Metrics;
 using System.Net;
 using System.Reflection;
 using static Aerospike.Client.AerospikeException;
@@ -382,6 +383,22 @@ namespace Aerospike.Client.Proxy
 			{
 				throw new AerospikeException(NotSupported + "GetNodes");
 			}
+		}
+
+		/// <summary>
+		/// Enable extended periodic cluster and node latency metrics.
+		/// </summary>
+		public void EnableMetrics(MetricsPolicy metricsPolicy)
+		{
+			throw new AerospikeException(NotSupported + "EnableMetrics");
+		}
+
+		/// <summary>
+		/// Disable extended periodic cluster and node latency metrics.
+		/// </summary>
+		public void DisableMetrics()
+		{
+			throw new AerospikeException(NotSupported + "DisableMetrics");
 		}
 
 		/// <summary>

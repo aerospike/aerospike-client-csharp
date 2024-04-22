@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2023 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -198,15 +198,33 @@ namespace Aerospike.Client
 
 		public ConnectionStats GetAsyncConnectionStats()
 		{
-			int inPool = asyncConnQueue.Count;
-			int inUse = asyncConnQueue.Total - inPool;
+			int inPool = 0;
+			int inUse = 0;
+			int opened = 0;
+			int closed = 0;
 
-			// Timing issues may cause values to go negative. Adjust.
-			if (inUse < 0)
+			if (asyncConnQueue != null)
 			{
-				inUse = 0;
+				inPool = asyncConnQueue.Count;
+				inUse = asyncConnQueue.Total - inPool;
+
+				// Timing issues may cause values to go negative. Adjust.
+				if (inUse < 0)
+				{
+					inUse = 0;
+				}
+				opened = asyncConnsOpened;
+				closed = asyncConnsClosed;
 			}
-			return new ConnectionStats(inPool, inUse, asyncConnsOpened, asyncConnsClosed);
+
+			if (!this.MetricsEnabled)
+			{
+				return new ConnectionStats(inPool, inUse, asyncConnsOpened, asyncConnsClosed);
+			}
+			else
+			{
+				return new ConnectionStats(inPool, inUse, asyncConnsOpened, asyncConnsClosed, this.bytesReceived, this.bytesSent);
+			}
 		}
 	}
 }

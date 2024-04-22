@@ -20,6 +20,7 @@ using System.Drawing;
 using System.IO;
 using System.Text;
 using System;
+using System.Diagnostics;
 
 namespace Aerospike.Client
 {
@@ -40,6 +41,8 @@ namespace Aerospike.Client
 		private int LatencyColumns;
 		private int LatencyShift;
 		private bool Enabled;
+		private DateTime prevTime;
+		private TimeSpan prevCpuUsage;
 
 		/// <summary>
 		/// Initialize metrics writer.
@@ -48,6 +51,8 @@ namespace Aerospike.Client
 		{
 			this.Dir = dir;
 			this.Sb = new StringBuilder(8192);
+			this.prevTime = DateTime.UtcNow;
+			this.prevCpuUsage = Process.GetCurrentProcess().TotalProcessorTime;
 		}
 
 		/// <summary>
@@ -141,11 +146,9 @@ namespace Aerospike.Client
 			Writer = new StreamWriter(path, true);
 			Size = 0;
 
-			// Must use separate StringBuilder instance to avoid conflicting with metrics detail write.
 			Sb.Append(now.ToString(TimestampFormat));
 			Sb.Append(" header(1)");
-			Sb.Append(" cluster[name,cpu,mem,recoverQueueSize,invalidNodeCount,tranCount,retryCount,delayQueueTimeoutCount,eventloop[],node[]]");
-			Sb.Append(" eventloop[processSize,queueSize]");
+			Sb.Append(" cluster[name,cpu,mem,invalidNodeCount,tranCount,retryCount,delayQueueTimeoutCount,asyncThreadsInUse,asyncCompletionPortsInUse,node[]]");
 			Sb.Append(" node[name,address,port,syncConn,asyncConn,errors,timeouts,latency[]]");
 			Sb.Append(" conn[inUse,inPool,opened,closed]");
 			Sb.Append(" latency(");
@@ -166,10 +169,7 @@ namespace Aerospike.Client
 				clusterName = "";
 			}
 
-			double cpu = 0;
-			double mem = 0;
-			//double cpu = Util.getProcessCpuLoad();
-			//long mem = Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory();
+			GetCpuMemoryUsage(out double cpu, out long mem);
 
 			Sb.Append(DateTime.Now.ToString(TimestampFormat));
 			Sb.Append(" cluster[");
@@ -179,8 +179,6 @@ namespace Aerospike.Client
 			Sb.Append(',');
 			Sb.Append(mem);
 			Sb.Append(',');
-			//Sb.Append(cluster.GetRecoverQueueSize()); // does not seem to exist
-			Sb.Append(',');
 			Sb.Append(cluster.InvalidNodeCount); // Cumulative. Not reset on each interval.
 			Sb.Append(',');
 			Sb.Append(cluster.GetTranCount());  // Cumulative. Not reset on each interval.
@@ -188,29 +186,23 @@ namespace Aerospike.Client
 			Sb.Append(cluster.GetRetryCount()); // Cumulative. Not reset on each interval.
 			Sb.Append(',');
 			Sb.Append(cluster.GetDelayQueueTimeoutCount()); // Cumulative. Not reset on each interval.
+			Sb.Append(",");
+
+			int workerThreadsMax;
+			int completionPortThreadsMax;
+			ThreadPool.GetMaxThreads(out workerThreadsMax, out completionPortThreadsMax);
+
+			int workerThreads;
+			int completionPortThreads;
+			ThreadPool.GetAvailableThreads(out workerThreads, out completionPortThreads);
+
+			var threadsInUse = workerThreadsMax - workerThreads;
+			var completionPortsInUse = completionPortThreadsMax - completionPortThreads;
+
+			Sb.Append(threadsInUse);
+			Sb.Append(",");
+			Sb.Append(completionPortsInUse);
 			Sb.Append(",[");
-
-			//EventLoop[] eventLoops = cluster.GetEventLoopArray();
-
-			/*if (eventLoops != null)
-			{
-				for (int i = 0; i < eventLoops.length; i++)
-				{
-					EventLoop el = eventLoops[i];
-
-					if (i > 0)
-					{
-						Sb.Append(',');
-					}
-
-					Sb.Append('[');
-					Sb.Append(el.getProcessSize());
-					Sb.Append(',');
-					Sb.Append(el.getQueueSize());
-					Sb.Append(']');
-				}
-			}
-			Sb.Append("],[");*/
 
 			Node[] nodes = cluster.Nodes;
 
@@ -327,6 +319,23 @@ namespace Aerospike.Client
 
 				throw new AerospikeException(ioe);
 			}
+		}
+
+		private void GetCpuMemoryUsage(out double cpu, out long memory)
+		{
+			Process currentProcess = System.Diagnostics.Process.GetCurrentProcess();
+			memory = currentProcess.WorkingSet64 + currentProcess.VirtualMemorySize64 + currentProcess.PagedMemorySize64;
+
+			var currentTime = DateTime.UtcNow;
+			var currentCpuUsage = Process.GetCurrentProcess().TotalProcessorTime;
+
+			var cpuUsedMs = (currentCpuUsage - prevCpuUsage).TotalMilliseconds;
+			var totalMsPassed = (currentTime - prevTime).TotalMilliseconds;
+
+			cpu = cpuUsedMs / (Environment.ProcessorCount * totalMsPassed) * 100;
+
+			prevTime = currentTime;
+			prevCpuUsage = currentCpuUsage;
 		}
 	}
 }

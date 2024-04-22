@@ -25,6 +25,7 @@ namespace Aerospike.Client
 	public sealed class NodeMetrics
 	{
 		private readonly LatencyBuckets[] Latency;
+		private const long MS_TO_NS = 1000000;
 
 		/// <summary>
 		/// Initialize extended node metrics.
@@ -46,9 +47,10 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Add elapsed time in nanoseconds to latency buckets corresponding to latency type.
 		/// </summary>
-		public void AddLatency(LatencyType type, long elapsed)
+		/// <param name="elapsedMs">elapsed time in milliseconds. The conversion to nanoseconds is done later</param>
+		public void AddLatency(LatencyType type, double elapsedMs)
 		{
-			Latency[(int)type].Add(elapsed);
+			Latency[(int)type].Add((long)elapsedMs * MS_TO_NS);
 		}
 
 		/// <summary>

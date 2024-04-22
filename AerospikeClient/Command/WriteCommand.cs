@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2023 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -33,6 +33,7 @@ namespace Aerospike.Client
 			this.partition = Partition.Write(cluster, writePolicy, key);
 			this.bins = bins;
 			this.operation = operation;
+			cluster.AddTran();
 		}
 
 		protected internal override bool IsWrite()

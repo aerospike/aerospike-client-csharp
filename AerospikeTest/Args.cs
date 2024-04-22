@@ -148,6 +148,8 @@ namespace Aerospike.Test
 			nativeClient.InfoPolicyDefault.timeout = timeout;
 			client = nativeClient;
 
+			client.EnableMetrics(new MetricsPolicy());
+
 			try
 			{
 				SetServerSpecific();
@@ -302,6 +304,7 @@ namespace Aerospike.Test
 			nativeAsync.InfoPolicyDefault.timeout = timeout;
 
 			asyncClient = nativeAsync;
+			asyncClient.EnableMetrics(new MetricsPolicy());
 		}
 
 		private void SetServerSpecific()

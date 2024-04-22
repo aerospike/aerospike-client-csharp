@@ -32,6 +32,7 @@ namespace Aerospike.Client
 			this.binNames = null;
 			this.partition = Partition.Read(cluster, policy, key);
 			this.isOperation = false;
+			cluster.AddTran();
 		}
 
 		public ReadCommand(Cluster cluster, Policy policy, Key key, String[] binNames)
@@ -41,6 +42,7 @@ namespace Aerospike.Client
 			this.binNames = binNames;
 			this.partition = Partition.Read(cluster, policy, key);
 			this.isOperation = false;
+			cluster.AddTran();
 		}
 
 		public ReadCommand(Cluster cluster, Policy policy, Key key, Partition partition, bool isOperation)
@@ -50,6 +52,7 @@ namespace Aerospike.Client
 			this.binNames = null;
 			this.partition = partition;
 			this.isOperation = isOperation;
+			cluster.AddTran();
 		}
 
 		protected internal override Node GetNode()

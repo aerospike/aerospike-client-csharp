@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2023 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -32,6 +32,7 @@ namespace Aerospike.Client
 			this.listener = listener;
 			this.key = key;
 			this.partition = Partition.Write(cluster, policy, key);
+			cluster.AddTran();
 		}
 
 		public AsyncDelete(AsyncDelete other)

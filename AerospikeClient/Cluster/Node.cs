@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2022 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -19,6 +19,7 @@ using System.Net;
 using System.Threading;
 using System.Collections.Generic;
 using static Aerospike.Client.Latency;
+using System.Xml.Linq;
 
 namespace Aerospike.Client
 {
@@ -50,10 +51,13 @@ namespace Aerospike.Client
 		private DateTime? sessionExpiration;
 		private volatile Dictionary<string,int> racks;
 		private volatile NodeMetrics Metrics;
+		protected bool MetricsEnabled;
 		private readonly Pool<Connection>[] connectionPools;
 		protected uint connectionIter;
 		protected internal int connsOpened = 1;
 		protected internal int connsClosed;
+		protected internal long bytesReceived;
+		protected internal long bytesSent;
 		private volatile int errorRateCount;
 		private volatile int errorCount;
 		private volatile int timeoutCount;
@@ -87,6 +91,22 @@ namespace Aerospike.Client
 			this.features = nv.features;
 			this.rebalanceChanged = cluster.rackAware;
 			this.racks = cluster.rackAware ? new Dictionary<string, int>() : null;
+			this.errorCount = 0;
+			this.errorRateCount = 0;
+			this.timeoutCount = 0;
+
+			this.MetricsEnabled = cluster.MetricsEnabled;
+			if (cluster.MetricsEnabled)
+			{
+				this.Metrics = new NodeMetrics(cluster.MetricsPolicy);
+				this.bytesReceived = 0;
+				this.bytesSent = 0;
+			}
+			else
+			{
+				this.bytesReceived = -1;
+				this.bytesSent = -1;
+			}
 
 			connectionPools = new Pool<Connection>[cluster.connPoolsPerNode];
 			int min = cluster.minConnsPerNode / cluster.connPoolsPerNode;
@@ -727,9 +747,25 @@ namespace Aerospike.Client
 		{
 			try
 			{
-				Connection conn = cluster.UseTls() ?
+				Connection conn;
+
+				if (cluster.MetricsEnabled)
+				{
+					DateTime begin = DateTime.UtcNow;
+
+					conn = cluster.UseTls() ?
 					new TlsConnection(cluster, host.tlsName, address, timeout, pool) :
 					new Connection(address, timeout, pool);
+
+					double elapsedMs = (DateTime.UtcNow - begin).TotalMilliseconds;
+					Metrics.AddLatency(LatencyType.CONN, elapsedMs);
+				}
+				else
+				{
+					conn = cluster.UseTls() ?
+					new TlsConnection(cluster, host.tlsName, address, timeout, pool) :
+					new Connection(address, timeout, pool);
+				}
 
 				Interlocked.Increment(ref connsOpened);
 				return conn;
@@ -817,6 +853,22 @@ namespace Aerospike.Client
 			}
 		}
 
+		public void IncrBytesReceived(long bytesReceived)
+		{
+			if (this.MetricsEnabled)
+			{
+				Interlocked.Add(ref this.bytesReceived, bytesReceived);
+			}
+		}
+
+		public void IncrBytesSent(long bytesSent)
+		{
+			if (this.MetricsEnabled)
+			{
+				Interlocked.Add(ref this.bytesSent, bytesSent);
+			}
+		}
+
 		public ConnectionStats GetConnectionStats()
 		{
 			int inPool = 0;
@@ -835,12 +887,23 @@ namespace Aerospike.Client
 				}
 				inUse += tmp;
 			}
-			return new ConnectionStats(inPool, inUse, connsOpened, connsClosed);
+
+			if (!this.MetricsEnabled)
+			{
+				return new ConnectionStats(inPool, inUse, connsOpened, connsClosed);
+			}
+			else
+			{
+				return new ConnectionStats(inPool, inUse, connsOpened, connsClosed, this.bytesReceived, this.bytesSent);
+			}
 		}
 
 		public void EnableMetrics(MetricsPolicy policy)
 		{
 			Metrics = new NodeMetrics(policy);
+			this.MetricsEnabled = true;
+			this.bytesReceived = 0;
+			this.bytesSent = 0;
 		}
 
 		public NodeMetrics GetMetrics()
@@ -848,12 +911,20 @@ namespace Aerospike.Client
 			return Metrics;
 		}
 
+		public void DisableMetrics()
+		{
+			this.MetricsEnabled = false;
+			this.bytesReceived = -1;
+			this.bytesSent = -1;
+		}
+
 		/// <summary>
 		/// Add elapsed time in nanoseconds to latency buckets corresponding to latency type.
 		/// </summary>
-		public void AddLatency(LatencyType type, long elapsed)
+		/// <param name="elapsedMs">elapsed time in milliseconds. The conversion to nanoseconds is done later</param>
+		public void AddLatency(LatencyType type, double elapsedMs)
 		{
-			Metrics.AddLatency(type, elapsed);
+			Metrics.AddLatency(type, elapsedMs);
 		}
 
 		public void IncrErrorRate()

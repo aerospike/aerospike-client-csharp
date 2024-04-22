@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2023 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -14,6 +14,7 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
+using System.Diagnostics.Metrics;
 using System.Reflection;
 
 namespace Aerospike.Client
@@ -101,8 +102,19 @@ namespace Aerospike.Client
 		/// </summary>
 		Node[] Nodes { get; }
 
+
 		/// <summary>
-		/// Return operating cluster statistics.
+		/// Enable extended periodic cluster and node latency metrics.
+		/// </summary>
+		void EnableMetrics(MetricsPolicy metricsPolicy);
+
+		/// <summary>
+		/// Disable extended periodic cluster and node latency metrics.
+		/// </summary>
+		void DisableMetrics();
+
+		/// <summary>
+		/// Return operating cluster statistics snapshot.
 		/// </summary>
 		ClusterStats GetClusterStats();
 

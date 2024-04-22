@@ -128,7 +128,7 @@ namespace Aerospike.Client
 		internal bool hasPartitionQuery;
 
 		public bool MetricsEnabled;
-		MetricsPolicy MetricsPolicy;
+		public MetricsPolicy MetricsPolicy;
 		private volatile IMetricsListener MetricsListener;
 		private volatile int RetryCount;
 		private volatile int TranCount;
@@ -467,7 +467,7 @@ namespace Aerospike.Client
 				}
 			}
 
-			invalidNodeCount = peers.InvalidCount;
+			invalidNodeCount += peers.InvalidCount;
 	
 			// Refresh partition map when necessary.
 			foreach (Node node in nodes)
@@ -933,6 +933,12 @@ namespace Aerospike.Client
 			if (MetricsEnabled)
 			{
 				MetricsEnabled = false;
+				Node[] nodeArray = nodes;
+
+				foreach (Node node in nodeArray)
+				{
+					node.DisableMetrics();
+				}
 				MetricsListener.OnDisable(this);
 			}
 		}
@@ -948,7 +954,7 @@ namespace Aerospike.Client
 			{
 				nodeStats[count++] = new NodeStats(node);
 			}
-			return new ClusterStats(nodeStats, invalidNodeCount);
+			return new ClusterStats(this, nodeStats);
 		}
 		
 		public bool Connected
@@ -1209,6 +1215,15 @@ namespace Aerospike.Client
 
 			tendValid = false;
 			cancel.Cancel();
+
+			try
+			{
+				DisableMetrics();
+			}
+			catch (Exception e)
+			{
+				Log.Warn("DisableMetrics failed: " + Util.GetErrorMessage(e));
+			}
 
 			// Must copy array reference for copy on write semantics to work.
 			Node[] nodeArray = nodes;

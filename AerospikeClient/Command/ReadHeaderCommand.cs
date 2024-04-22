@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2023 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -28,6 +28,7 @@ namespace Aerospike.Client
 		{
 			this.key = key;
 			this.partition = Partition.Read(cluster, policy, key);
+			cluster.AddTran();
 		}
 
 		protected internal override Node GetNode()

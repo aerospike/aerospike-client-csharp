@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2023 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -32,7 +32,7 @@ namespace Aerospike.Client
 			BatchPolicy policy,
 			BatchListListener listener,
 			List<BatchRead> records
-		) : base(true)
+		) : base(cluster, true)
 		{
 			this.listener = listener;
 			this.records = records;
@@ -140,7 +140,7 @@ namespace Aerospike.Client
 			BatchPolicy policy,
 			BatchSequenceListener listener,
 			List<BatchRead> records
-		) : base(true)
+		) : base(cluster, true)
 		{
 			this.listener = listener;
 
@@ -258,7 +258,7 @@ namespace Aerospike.Client
 			Operation[] ops,
 			int readAttr,
 			bool isOperation
-		) : base(false)
+		) : base(cluster, false)
 		{
 			this.keys = keys;
 			this.records = new Record[keys.Length];
@@ -383,7 +383,7 @@ namespace Aerospike.Client
 			Operation[] ops,
 			int readAttr,
 			bool isOperation
-		) : base(false)
+		) : base(cluster, false)
 		{
 			this.listener = listener;
 
@@ -511,7 +511,7 @@ namespace Aerospike.Client
 			BatchPolicy policy,
 			Key[] keys,
 			ExistsArrayListener listener
-		) : base(false)
+		) : base(cluster,false)
 		{
 			this.keys = keys;
 			this.existsArray = new bool[keys.Length];
@@ -621,7 +621,7 @@ namespace Aerospike.Client
 			BatchPolicy policy,
 			Key[] keys,
 			ExistsSequenceListener listener
-		) : base(false)
+		) : base(cluster, false)
 		{
 			this.listener = listener;
 
@@ -732,7 +732,7 @@ namespace Aerospike.Client
 			BatchPolicy policy,
 			BatchOperateListListener listener,
 			List<BatchRecord> records
-		) : base(true)
+		) : base(cluster, true)
 		{
 			this.listener = listener;
 			this.records = records;
@@ -874,7 +874,7 @@ namespace Aerospike.Client
 			BatchPolicy policy,
 			BatchRecordSequenceListener listener,
 			List<BatchRecord> records
-		) : base(true)
+		) : base(cluster, true)
 		{
 			this.listener = listener;
 
@@ -1026,7 +1026,7 @@ namespace Aerospike.Client
 			Key[] keys,
 			Operation[] ops,
 			BatchAttr attr
-		) : base(true)
+		) : base(cluster, true)
 		{
 			this.listener = listener;
 			this.records = new BatchRecord[keys.Length];
@@ -1171,7 +1171,7 @@ namespace Aerospike.Client
 			Key[] keys,
 			Operation[] ops,
 			BatchAttr attr
-		) : base(true)
+		) : base(cluster, true)
 		{
 			this.listener = listener;
 			this.sent = new bool[keys.Length];
@@ -1323,7 +1323,7 @@ namespace Aerospike.Client
 			string functionName,
 			byte[] argBytes,
 			BatchAttr attr
-		) : base(true)
+		) : base(cluster, true)
 		{
 			this.listener = listener;
 			this.recordArray = new BatchRecord[keys.Length];
@@ -1493,7 +1493,7 @@ namespace Aerospike.Client
 			string functionName,
 			byte[] argBytes,
 			BatchAttr attr
-		) : base(true)
+		) : base(cluster, true)
 		{
 			this.listener = listener;
 			this.sent = new bool[keys.Length];
@@ -1661,9 +1661,10 @@ namespace Aerospike.Client
 		private readonly bool hasResultCode;
 		private bool error;
 
-		public AsyncBatchExecutor(bool hasResultCode)
+		public AsyncBatchExecutor(AsyncCluster cluster, bool hasResultCode)
 		{
 			this.hasResultCode = hasResultCode;
+			cluster.AddTran();
 		}
 
 		public void Execute(AsyncBatchCommand[] commands)
@@ -1839,6 +1840,8 @@ namespace Aerospike.Client
 					// should not be called here.
 					return false;
 				}
+
+				cluster.AddRetries(batchNodes.Count);
 			}
 			catch (Exception)
 			{
