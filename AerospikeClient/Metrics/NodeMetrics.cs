@@ -24,7 +24,7 @@ namespace Aerospike.Client
 	/// </summary>
 	public sealed class NodeMetrics
 	{
-		private readonly LatencyBuckets[] Latency;
+		private readonly LatencyBuckets[] latency;
 		private const long MS_TO_NS = 1000000;
 
 		/// <summary>
@@ -36,11 +36,11 @@ namespace Aerospike.Client
 			int latencyShift = policy.LatencyShift;
 			int max = Client.Latency.GetMax();
 
-			Latency = new LatencyBuckets[max];
+			latency = new LatencyBuckets[max];
 
 			for (int i = 0; i < max; i++)
 			{
-				Latency[i] = new LatencyBuckets(latencyColumns, latencyShift);
+				latency[i] = new LatencyBuckets(latencyColumns, latencyShift);
 			}
 		}
 
@@ -50,7 +50,7 @@ namespace Aerospike.Client
 		/// <param name="elapsedMs">elapsed time in milliseconds. The conversion to nanoseconds is done later</param>
 		public void AddLatency(LatencyType type, double elapsedMs)
 		{
-			Latency[(int)type].Add((long)elapsedMs * MS_TO_NS);
+			latency[(int)type].Add((long)elapsedMs * MS_TO_NS);
 		}
 
 		/// <summary>
@@ -58,7 +58,7 @@ namespace Aerospike.Client
 		/// </summary>
 		public LatencyBuckets GetLatencyBuckets(int type)
 		{
-			return Latency[type];
+			return latency[type];
 		}
 	}
 }

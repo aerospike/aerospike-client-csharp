@@ -62,7 +62,7 @@ namespace Aerospike.Client
 		{
 			Node node;
 			AerospikeException exception = null;
-			DateTime begin = DateTime.MinValue;
+			ValueStopwatch metricsWatch = new();
 			LatencyType latencyType = cluster.MetricsEnabled ? GetLatencyType() : LatencyType.NONE;
 			bool isClientTimeout;
 
@@ -86,7 +86,7 @@ namespace Aerospike.Client
 					node.ValidateErrorCount();
 					if (latencyType != LatencyType.NONE)
 					{
-						begin = DateTime.UtcNow;
+						metricsWatch = ValueStopwatch.StartNew();
 					}
 					Connection conn = node.GetConnection(socketTimeout);
 
@@ -97,7 +97,6 @@ namespace Aerospike.Client
 
 						// Send command.
 						conn.Write(dataBuffer, dataOffset);
-						node.IncrBytesSent(dataOffset);
 						commandSentCounter++;
 
 						// Parse results.
@@ -107,9 +106,8 @@ namespace Aerospike.Client
 						node.PutConnection(conn);
 
 						if (latencyType != LatencyType.NONE)
-						{
-							double elapsedMs = (DateTime.UtcNow - begin).TotalMilliseconds;
-							node.AddLatency(latencyType, elapsedMs);
+						{ 
+							node.AddLatency(latencyType, metricsWatch.Elapsed.TotalMilliseconds);
 						}
 
 						// Command has completed successfully.  Exit method.

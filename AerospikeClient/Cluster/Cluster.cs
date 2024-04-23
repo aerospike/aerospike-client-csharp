@@ -129,10 +129,10 @@ namespace Aerospike.Client
 
 		public bool MetricsEnabled;
 		public MetricsPolicy MetricsPolicy;
-		private volatile IMetricsListener MetricsListener;
-		private volatile int RetryCount;
-		private volatile int TranCount;
-		private volatile int DelayQueueTimeoutCount;
+		private volatile IMetricsListener metricsListener;
+		private volatile int retryCount;
+		private volatile int tranCount;
+		private volatile int delayQueueTimeoutCount;
 
 		public Cluster(ClientPolicy policy, Host[] hosts)
 		{
@@ -505,7 +505,7 @@ namespace Aerospike.Client
 
 			if (MetricsEnabled && (tendCount % MetricsPolicy.Interval) == 0)
 			{
-				MetricsListener.OnSnapshot(this);
+				metricsListener.OnSnapshot(this);
 			}
 		}
 
@@ -805,7 +805,7 @@ namespace Aerospike.Client
 					// Flush node metrics before removal.
 					try
 					{
-						MetricsListener.OnNodeClose(node);
+						metricsListener.OnNodeClose(node);
 					}
 					catch (Exception e)
 					{
@@ -904,7 +904,7 @@ namespace Aerospike.Client
 		{
 			if (MetricsEnabled)
 			{
-				this.MetricsListener.OnDisable(this);
+				this.metricsListener.OnDisable(this);
 			}
 
 			IMetricsListener listener = policy.Listener;
@@ -914,7 +914,7 @@ namespace Aerospike.Client
 				listener = new MetricsWriter(policy.ReportDir);
 			}
 
-			this.MetricsListener = listener;
+			this.metricsListener = listener;
 			this.MetricsPolicy = policy;
 
 			Node[] nodeArray = nodes;
@@ -939,7 +939,7 @@ namespace Aerospike.Client
 				{
 					node.DisableMetrics();
 				}
-				MetricsListener.OnDisable(this);
+				metricsListener.OnDisable(this);
 			}
 		}
 
@@ -1140,7 +1140,7 @@ namespace Aerospike.Client
 		{
 			if (MetricsEnabled)
 			{
-				Interlocked.Increment(ref TranCount);
+				Interlocked.Increment(ref tranCount);
 			}
 		}
 
@@ -1149,7 +1149,7 @@ namespace Aerospike.Client
 		/// </summary>
 		public int GetTranCount()
 		{
-			return TranCount;
+			return tranCount;
 		}
 
 		/// <summary>
@@ -1157,7 +1157,7 @@ namespace Aerospike.Client
 		/// </summary>
 		public void AddRetry()
 		{
-			Interlocked.Increment(ref RetryCount);
+			Interlocked.Increment(ref retryCount);
 		}
 
 		/// <summary>
@@ -1165,7 +1165,7 @@ namespace Aerospike.Client
 		/// </summary>
 		public void AddRetries(int count)
 		{
-			Interlocked.Add(ref RetryCount, count);
+			Interlocked.Add(ref retryCount, count);
 		}
 
 		/// <summary>
@@ -1173,7 +1173,7 @@ namespace Aerospike.Client
 		/// </summary>
 		public int GetRetryCount()
 		{
-			return RetryCount;
+			return retryCount;
 		}
 
 		/// <summary>
@@ -1181,7 +1181,7 @@ namespace Aerospike.Client
 		/// </summary>
 		public void AddDelayQueueTimeout()
 		{
-			Interlocked.Increment(ref DelayQueueTimeoutCount);
+			Interlocked.Increment(ref delayQueueTimeoutCount);
 		}
 
 		/// <summary>
@@ -1189,7 +1189,7 @@ namespace Aerospike.Client
 		/// </summary>
 		public long GetDelayQueueTimeoutCount()
 		{
-			return DelayQueueTimeoutCount;
+			return delayQueueTimeoutCount;
 		}
 
 		/// <summary>

@@ -25,8 +25,8 @@ namespace Aerospike.Client
 	{
 		private const long NS_TO_MS = 1000000;
 
-		private volatile int[] Buckets;
-		private readonly int LatencyShift;
+		private volatile int[] buckets;
+		private readonly int latencyShift;
 
 		/// <summary>
 		/// Initialize latency buckets.
@@ -36,8 +36,8 @@ namespace Aerospike.Client
 		/// 							The first 2 buckets are &lt;=1ms and &gt;1ms.</param>
 		public LatencyBuckets(int latencyColumns, int latencyShift)
 		{
-			this.LatencyShift = latencyShift;
-			Buckets = new int[latencyColumns];
+			this.latencyShift = latencyShift;
+			buckets = new int[latencyColumns];
 		}
 
 		/// <summary>
@@ -45,7 +45,7 @@ namespace Aerospike.Client
 		/// </summary>
 		public int GetMax()
 		{
-			return Buckets.Length;
+			return buckets.Length;
 		}
 
 		/// <summary>
@@ -53,7 +53,7 @@ namespace Aerospike.Client
 		/// </summary>
 		public long GetBucket(int i)
 		{
-			return Volatile.Read(ref Buckets[i]);
+			return Volatile.Read(ref buckets[i]);
 		}
 
 		/// <summary>
@@ -62,7 +62,7 @@ namespace Aerospike.Client
 		public void Add(long elapsed)
 		{
 			int index = GetIndex(elapsed);
-			Interlocked.Increment(ref Buckets[index]);
+			Interlocked.Increment(ref buckets[index]);
 		}
 
 		private int GetIndex(long elapsedNanos)
@@ -76,7 +76,7 @@ namespace Aerospike.Client
 				elapsed++;
 			}
 
-			int lastBucket = Buckets.Length - 1;
+			int lastBucket = buckets.Length - 1;
 			long limit = 1;
 
 			for (int i = 0; i < lastBucket; i++)
@@ -85,7 +85,7 @@ namespace Aerospike.Client
 				{
 					return i;
 				}
-				limit <<= LatencyShift;
+				limit <<= latencyShift;
 			}
 			return lastBucket;
 		}

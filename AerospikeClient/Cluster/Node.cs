@@ -50,8 +50,8 @@ namespace Aerospike.Client
 		private byte[] sessionToken;
 		private DateTime? sessionExpiration;
 		private volatile Dictionary<string,int> racks;
-		private volatile NodeMetrics Metrics;
-		protected bool MetricsEnabled;
+		private volatile NodeMetrics metrics;
+		protected bool metricsEnabled;
 		private readonly Pool<Connection>[] connectionPools;
 		protected uint connectionIter;
 		protected internal int connsOpened = 1;
@@ -95,10 +95,10 @@ namespace Aerospike.Client
 			this.errorRateCount = 0;
 			this.timeoutCount = 0;
 
-			this.MetricsEnabled = cluster.MetricsEnabled;
+			this.metricsEnabled = cluster.MetricsEnabled;
 			if (cluster.MetricsEnabled)
 			{
-				this.Metrics = new NodeMetrics(cluster.MetricsPolicy);
+				this.metrics = new NodeMetrics(cluster.MetricsPolicy);
 				this.bytesReceived = 0;
 				this.bytesSent = 0;
 			}
@@ -751,14 +751,13 @@ namespace Aerospike.Client
 
 				if (cluster.MetricsEnabled)
 				{
-					DateTime begin = DateTime.UtcNow;
+					ValueStopwatch metricsWatch = ValueStopwatch.StartNew();
 
 					conn = cluster.UseTls() ?
 					new TlsConnection(cluster, host.tlsName, address, timeout, pool) :
 					new Connection(address, timeout, pool);
 
-					double elapsedMs = (DateTime.UtcNow - begin).TotalMilliseconds;
-					Metrics.AddLatency(LatencyType.CONN, elapsedMs);
+					metrics.AddLatency(LatencyType.CONN, metricsWatch.Elapsed.TotalMilliseconds);
 				}
 				else
 				{
@@ -853,22 +852,6 @@ namespace Aerospike.Client
 			}
 		}
 
-		public void IncrBytesReceived(long bytesReceived)
-		{
-			if (this.MetricsEnabled)
-			{
-				Interlocked.Add(ref this.bytesReceived, bytesReceived);
-			}
-		}
-
-		public void IncrBytesSent(long bytesSent)
-		{
-			if (this.MetricsEnabled)
-			{
-				Interlocked.Add(ref this.bytesSent, bytesSent);
-			}
-		}
-
 		public ConnectionStats GetConnectionStats()
 		{
 			int inPool = 0;
@@ -888,32 +871,25 @@ namespace Aerospike.Client
 				inUse += tmp;
 			}
 
-			if (!this.MetricsEnabled)
-			{
-				return new ConnectionStats(inPool, inUse, connsOpened, connsClosed);
-			}
-			else
-			{
-				return new ConnectionStats(inPool, inUse, connsOpened, connsClosed, this.bytesReceived, this.bytesSent);
-			}
+			return new ConnectionStats(inPool, inUse, connsOpened, connsClosed);
 		}
 
 		public void EnableMetrics(MetricsPolicy policy)
 		{
-			Metrics = new NodeMetrics(policy);
-			this.MetricsEnabled = true;
+			metrics = new NodeMetrics(policy);
+			this.metricsEnabled = true;
 			this.bytesReceived = 0;
 			this.bytesSent = 0;
 		}
 
 		public NodeMetrics GetMetrics()
 		{
-			return Metrics;
+			return metrics;
 		}
 
 		public void DisableMetrics()
 		{
-			this.MetricsEnabled = false;
+			this.metricsEnabled = false;
 			this.bytesReceived = -1;
 			this.bytesSent = -1;
 		}
@@ -924,7 +900,7 @@ namespace Aerospike.Client
 		/// <param name="elapsedMs">elapsed time in milliseconds. The conversion to nanoseconds is done later</param>
 		public void AddLatency(LatencyType type, double elapsedMs)
 		{
-			Metrics.AddLatency(type, elapsedMs);
+			metrics.AddLatency(type, elapsedMs);
 		}
 
 		public void IncrErrorRate()

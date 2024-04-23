@@ -53,8 +53,8 @@ namespace Aerospike.Client
 		private bool compressed;
 		private bool inAuthenticate;
 		private bool inHeader = true;
-		DateTime begin;
-		readonly bool metricsEnabled;
+		private ValueStopwatch metricsWatch;
+		private readonly bool metricsEnabled;
 
 		/// <summary>
 		/// Default Constructor.
@@ -218,7 +218,7 @@ namespace Aerospike.Client
 				node.ValidateErrorCount();
 				if (metricsEnabled)
 				{
-					begin = DateTime.UtcNow;
+					metricsWatch = ValueStopwatch.StartNew();
 				}
 				conn = node.GetAsyncConnection();
 
@@ -271,8 +271,7 @@ namespace Aerospike.Client
 		{
 			if (metricsEnabled)
 			{
-				double elapsedMs = (DateTime.UtcNow - begin).TotalMilliseconds;
-				node.AddLatency(LatencyType.CONN, elapsedMs);
+				node.AddLatency(LatencyType.CONN, metricsWatch.Elapsed.TotalMilliseconds);
 			}
 			
 			if (cluster.authEnabled)
@@ -781,8 +780,7 @@ namespace Aerospike.Client
 			LatencyType latencyType = cluster.MetricsEnabled ? GetLatencyType() : LatencyType.NONE;
 			if (latencyType != LatencyType.NONE)
 			{
-				double elapsedMs = (DateTime.UtcNow - begin).TotalMilliseconds;
-				node.AddLatency(latencyType, elapsedMs);
+				node.AddLatency(latencyType, metricsWatch.Elapsed.TotalMilliseconds);
 			}
 
 			try

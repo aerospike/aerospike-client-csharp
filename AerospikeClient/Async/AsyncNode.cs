@@ -36,6 +36,7 @@ namespace Aerospike.Client
 			: base(cluster, nv)
 		{
 			this.cluster = cluster;
+			this.metricsEnabled = cluster.MetricsEnabled;
 			asyncConnQueue = new Pool<AsyncConnection>(cluster.asyncMinConnsPerNode, cluster.asyncMaxConnsPerNode);
 		}
 
@@ -196,6 +197,22 @@ namespace Aerospike.Client
 			Interlocked.Increment(ref asyncConnsClosed);
 		}
 
+		public void IncrBytesReceived(long bytesReceived)
+		{
+			if (this.metricsEnabled)
+			{
+				Interlocked.Add(ref this.bytesReceived, bytesReceived);
+			}
+		}
+
+		public void IncrBytesSent(long bytesSent)
+		{
+			if (this.metricsEnabled)
+			{
+				Interlocked.Add(ref this.bytesSent, bytesSent);
+			}
+		}
+
 		public ConnectionStats GetAsyncConnectionStats()
 		{
 			int inPool = 0;
@@ -217,13 +234,13 @@ namespace Aerospike.Client
 				closed = asyncConnsClosed;
 			}
 
-			if (!this.MetricsEnabled)
+			if (!this.metricsEnabled)
 			{
-				return new ConnectionStats(inPool, inUse, asyncConnsOpened, asyncConnsClosed);
+				return new ConnectionStats(inPool, inUse, opened, closed);
 			}
 			else
 			{
-				return new ConnectionStats(inPool, inUse, asyncConnsOpened, asyncConnsClosed, this.bytesReceived, this.bytesSent);
+				return new ConnectionStats(inPool, inUse, opened, closed, this.bytesReceived, this.bytesSent);
 			}
 		}
 	}

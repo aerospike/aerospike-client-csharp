@@ -48,7 +48,7 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Count of transaction retires since cluster was started.
 		/// </summary>
-		public readonly long retryCount;
+		public readonly long RetryCount;
 
 		/// <summary>
 		/// Cluster statistics constructor.
@@ -57,7 +57,7 @@ namespace Aerospike.Client
 		{
 			this.nodes = nodes;
 			this.invalidNodeCount = cluster.InvalidNodeCount;
-			this.retryCount = cluster.GetRetryCount();
+			this.RetryCount = cluster.GetRetryCount();
 
 			int workerThreadsMax;
 			int completionPortThreadsMax;
@@ -92,7 +92,7 @@ namespace Aerospike.Client
 			sb.Append(System.Environment.NewLine);
 			sb.Append("invalidNodeCount: " + invalidNodeCount);
 			sb.Append(System.Environment.NewLine);
-			sb.Append("retryCount: " + retryCount);
+			sb.Append("retryCount: " + RetryCount);
 			return sb.ToString();
 		}
 	}
@@ -121,13 +121,13 @@ namespace Aerospike.Client
 		/// Transaction error count since node was initialized. If the error is retryable, multiple errors per
 		/// transaction may occur.
 		/// </summary>
-		public readonly long errorCount;
+		public readonly long ErrorCount;
 
 		/// <summary>
 		/// Transaction timeout count since node was initialized. If the timeout is retryable (ie socketTimeout),
 		/// multiple timeouts per transaction may occur.
 		/// </summary>
-		public readonly long timeoutCount;
+		public readonly long TimeoutCount;
 
 		/// <summary>
 		/// Node statistics constructor.
@@ -136,8 +136,8 @@ namespace Aerospike.Client
 		{
 			this.node = node;
 			this.syncStats = node.GetConnectionStats();
-			this.errorCount = node.GetErrorCount();
-			this.timeoutCount = node.GetTimeoutCount();
+			this.ErrorCount = node.GetErrorCount();
+			this.TimeoutCount = node.GetTimeoutCount();
 
 			if (node is AsyncNode)
 			{
@@ -154,7 +154,7 @@ namespace Aerospike.Client
 		/// </summary>
 		public override string ToString()
 		{
-			return node + " sync(" + syncStats + ") async(" + asyncStats + ") " + errorCount + ',' + timeoutCount;
+			return node + " sync(" + syncStats + ") async(" + asyncStats + ") " + ErrorCount + ',' + TimeoutCount;
 		}
 	}
 
@@ -185,13 +185,15 @@ namespace Aerospike.Client
 
 		/// <summary>
 		/// Total number of bytes received from that connection.
+		/// Only collected for the async client when metrics are enabled.
 		/// </summary>
-		public readonly long bytesReceived;
+		public readonly long BytesReceived;
 
 		/// <summary>
 		/// Total number of bytes sent to that connection.
+		/// Only collected for the async client when metrics are enabled.
 		/// </summary>
-		public readonly long bytesSent;
+		public readonly long BytesSent;
 
 		/// <summary>
 		/// Connection statistics constructor.
@@ -202,8 +204,8 @@ namespace Aerospike.Client
 			this.inUse = inUse;
 			this.opened = opened;
 			this.closed = closed;
-			this.bytesReceived = -1;
-			this.bytesSent = -1;
+			this.BytesReceived = -1;
+			this.BytesSent = -1;
 		}
 
 		/// <summary>
@@ -215,8 +217,8 @@ namespace Aerospike.Client
 			this.inUse = inUse;
 			this.opened = opened;
 			this.closed = closed;
-			this.bytesReceived = bytesReceived;
-			this.bytesSent = bytesSent;
+			this.BytesReceived = bytesReceived;
+			this.BytesSent = bytesSent;
 		}
 
 		/// <summary>
@@ -224,13 +226,13 @@ namespace Aerospike.Client
 		/// </summary>
 		public override string ToString()
 		{
-			if (this.bytesReceived < 0)
+			if (this.BytesReceived < 0)
 			{
 				return "" + inUse + ',' + inPool + ',' + opened + ',' + closed;
 			}
 			else
 			{
-				return "" + inUse + ',' + inPool + ',' + opened + ',' + closed + ',' + bytesReceived + ',' + bytesSent;
+				return "" + inUse + ',' + inPool + ',' + opened + ',' + closed + ',' + BytesReceived + ',' + BytesSent;
 			}
 		}
 	}

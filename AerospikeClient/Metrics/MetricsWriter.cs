@@ -29,18 +29,18 @@ namespace Aerospike.Client
 	/// </summary>
 	public sealed class MetricsWriter : IMetricsListener
 	{
-		private static readonly string FilenameFormat = "yyyyMMddHHmmss";
-		private static readonly string TimestampFormat = "yyyy-MM-dd HH:mm:ss.SSS";
-		private static readonly int MinFileSize = 1000000;
+		private static readonly string filenameFormat = "yyyyMMddHHmmss";
+		private static readonly string timestampFormat = "yyyy-MM-dd HH:mm:ss.SSS";
+		private static readonly int minFileSize = 1000000;
 
-		private readonly string Dir;
-		private readonly StringBuilder Sb;
-		private StreamWriter Writer;
-		private long Size;
-		private long MaxSize;
-		private int LatencyColumns;
-		private int LatencyShift;
-		private bool Enabled;
+		private readonly string dir;
+		private readonly StringBuilder sb;
+		private StreamWriter writer;
+		private long size;
+		private long maxSize;
+		private int latencyColumns;
+		private int latencyShift;
+		private bool enabled;
 		private DateTime prevTime;
 		private TimeSpan prevCpuUsage;
 
@@ -49,8 +49,8 @@ namespace Aerospike.Client
 		/// </summary>
 		public MetricsWriter(String dir)
 		{
-			this.Dir = dir;
-			this.Sb = new StringBuilder(8192);
+			this.dir = dir;
+			this.sb = new StringBuilder(8192);
 			this.prevTime = DateTime.UtcNow;
 			this.prevCpuUsage = Process.GetCurrentProcess().TotalProcessorTime;
 		}
@@ -62,19 +62,19 @@ namespace Aerospike.Client
 
 		public void OnEnable(Cluster cluster, MetricsPolicy policy)
 		{
-			if (policy.ReportSizeLimit != 0 && policy.ReportSizeLimit < MinFileSize)
+			if (policy.ReportSizeLimit != 0 && policy.ReportSizeLimit < minFileSize)
 			{
 				throw new AerospikeException("MetricsPolicy.reportSizeLimit " + policy.ReportSizeLimit +
-					" must be at least " + MinFileSize);
+					" must be at least " + minFileSize);
 			}
 
-			this.MaxSize = policy.ReportSizeLimit;
-			this.LatencyColumns = policy.LatencyColumns;
-			this.LatencyShift = policy.LatencyShift;
+			this.maxSize = policy.ReportSizeLimit;
+			this.latencyColumns = policy.LatencyColumns;
+			this.latencyShift = policy.LatencyShift;
 
 			try
 			{
-				Directory.CreateDirectory(Dir);
+				Directory.CreateDirectory(dir);
 				Open();
 			}
 			catch (IOException ioe)
@@ -82,7 +82,7 @@ namespace Aerospike.Client
 				throw new AerospikeException(ioe);
 			}
 
-			Enabled = true;
+			enabled = true;
 		}
 
 		/// <summary>
@@ -92,7 +92,7 @@ namespace Aerospike.Client
 		{
 			lock (this)
 			{
-				if (Enabled)
+				if (enabled)
 				{
 					WriteCluster(cluster);
 				}
@@ -106,10 +106,10 @@ namespace Aerospike.Client
 		{
 			lock (this)
 			{
-				if (Enabled)
+				if (enabled)
 				{
-					Sb.Append(DateTime.Now.ToString(TimestampFormat));
-					Sb.Append(" node");
+					sb.Append(DateTime.Now.ToString(timestampFormat));
+					sb.Append(" node");
 					WriteNode(node);
 					WriteLine();
 				}
@@ -123,13 +123,13 @@ namespace Aerospike.Client
 		{
 			lock (this)
 			{
-				if (Enabled)
+				if (enabled)
 				{
 					try
 					{
-						Enabled = false;
+						enabled = false;
 						WriteCluster(cluster);
-						Writer.Close();
+						writer.Close();
 					}
 					catch (Exception e)
 					{
@@ -142,21 +142,21 @@ namespace Aerospike.Client
 		private void Open()
 		{
 			DateTime now = DateTime.Now;
-			string path = Dir + Path.DirectorySeparatorChar + "metrics-" + now.ToString(FilenameFormat) + ".log";
-			Writer = new StreamWriter(path, true);
-			Size = 0;
+			string path = dir + Path.DirectorySeparatorChar + "metrics-" + now.ToString(filenameFormat) + ".log";
+			writer = new StreamWriter(path, true);
+			size = 0;
 
-			Sb.Append(now.ToString(TimestampFormat));
-			Sb.Append(" header(1)");
-			Sb.Append(" cluster[name,cpu,mem,invalidNodeCount,tranCount,retryCount,delayQueueTimeoutCount,asyncThreadsInUse,asyncCompletionPortsInUse,node[]]");
-			Sb.Append(" node[name,address,port,syncConn,asyncConn,errors,timeouts,latency[]]");
-			Sb.Append(" conn[inUse,inPool,opened,closed]");
-			Sb.Append(" latency(");
-			Sb.Append(LatencyColumns);
-			Sb.Append(',');
-			Sb.Append(LatencyShift);
-			Sb.Append(')');
-			Sb.Append("[type[l1,l2,l3...]]");
+			sb.Append(now.ToString(timestampFormat));
+			sb.Append(" header(1)");
+			sb.Append(" cluster[name,cpu,mem,invalidNodeCount,tranCount,retryCount,delayQueueTimeoutCount,asyncThreadsInUse,asyncCompletionPortsInUse,node[]]");
+			sb.Append(" node[name,address,port,syncConn,asyncConn,errors,timeouts,latency[]]");
+			sb.Append(" conn[inUse,inPool,opened,closed]");
+			sb.Append(" latency(");
+			sb.Append(latencyColumns);
+			sb.Append(',');
+			sb.Append(latencyShift);
+			sb.Append(')');
+			sb.Append("[type[l1,l2,l3...]]");
 			WriteLine();
 		}
 
@@ -164,45 +164,41 @@ namespace Aerospike.Client
 		{
 			String clusterName = cluster.clusterName;
 
-			if (clusterName == null)
-			{
-				clusterName = "";
-			}
+			clusterName ??= "";
 
 			GetCpuMemoryUsage(out double cpu, out long mem);
 
-			Sb.Append(DateTime.Now.ToString(TimestampFormat));
-			Sb.Append(" cluster[");
-			Sb.Append(clusterName);
-			Sb.Append(',');
-			Sb.Append((int)cpu);
-			Sb.Append(',');
-			Sb.Append(mem);
-			Sb.Append(',');
-			Sb.Append(cluster.InvalidNodeCount); // Cumulative. Not reset on each interval.
-			Sb.Append(',');
-			Sb.Append(cluster.GetTranCount());  // Cumulative. Not reset on each interval.
-			Sb.Append(',');
-			Sb.Append(cluster.GetRetryCount()); // Cumulative. Not reset on each interval.
-			Sb.Append(',');
-			Sb.Append(cluster.GetDelayQueueTimeoutCount()); // Cumulative. Not reset on each interval.
-			Sb.Append(",");
+			sb.Append(DateTime.Now.ToString(timestampFormat));
+			sb.Append(" cluster[");
+			sb.Append(clusterName);
+			sb.Append(',');
+			sb.Append((int)cpu);
+			sb.Append(',');
+			sb.Append(mem);
+			sb.Append(',');
+			sb.Append(cluster.InvalidNodeCount); // Cumulative. Not reset on each interval.
+			sb.Append(',');
+			sb.Append(cluster.GetTranCount());  // Cumulative. Not reset on each interval.
+			sb.Append(',');
+			sb.Append(cluster.GetRetryCount()); // Cumulative. Not reset on each interval.
+			sb.Append(',');
+			sb.Append(cluster.GetDelayQueueTimeoutCount()); // Cumulative. Not reset on each interval.
+			sb.Append(",");
 
 			int workerThreadsMax;
 			int completionPortThreadsMax;
 			ThreadPool.GetMaxThreads(out workerThreadsMax, out completionPortThreadsMax);
 
-			int workerThreads;
 			int completionPortThreads;
-			ThreadPool.GetAvailableThreads(out workerThreads, out completionPortThreads);
+			ThreadPool.GetAvailableThreads(out int workerThreads, out completionPortThreads);
 
 			var threadsInUse = workerThreadsMax - workerThreads;
 			var completionPortsInUse = completionPortThreadsMax - completionPortThreads;
 
-			Sb.Append(threadsInUse);
-			Sb.Append(",");
-			Sb.Append(completionPortsInUse);
-			Sb.Append(",[");
+			sb.Append(threadsInUse);
+			sb.Append(",");
+			sb.Append(completionPortsInUse);
+			sb.Append(",[");
 
 			Node[] nodes = cluster.Nodes;
 
@@ -212,41 +208,41 @@ namespace Aerospike.Client
 
 				if (i > 0)
 				{
-					Sb.Append(',');
+					sb.Append(',');
 				}
 				WriteNode(node);
 			}
-			Sb.Append("]]");
+			sb.Append("]]");
 			WriteLine();
 		}
 
 		private void WriteNode(Node node)
 		{
-			Sb.Append('[');
-			Sb.Append(node.Name);
-			Sb.Append(',');
+			sb.Append('[');
+			sb.Append(node.Name);
+			sb.Append(',');
 
 			Host host = node.Host;
 
-			Sb.Append(host.name);
-			Sb.Append(',');
-			Sb.Append(host.port);
-			Sb.Append(',');
+			sb.Append(host.name);
+			sb.Append(',');
+			sb.Append(host.port);
+			sb.Append(',');
 
 			WriteConn(node.GetConnectionStats());
-			Sb.Append(',');
+			sb.Append(',');
 			var asyncStats = new ConnectionStats(0, 0, 0, 0);
 			if (node is AsyncNode)
 			{
 				asyncStats = ((AsyncNode)node).GetAsyncConnectionStats();
 			}
 			WriteConn(asyncStats);
-			Sb.Append(',');
+			sb.Append(',');
 
-			Sb.Append(node.GetErrorCount());   // Cumulative. Not reset on each interval.
-			Sb.Append(',');
-			Sb.Append(node.GetTimeoutCount()); // Cumulative. Not reset on each interval.
-			Sb.Append(",[");
+			sb.Append(node.GetErrorCount());   // Cumulative. Not reset on each interval.
+			sb.Append(',');
+			sb.Append(node.GetTimeoutCount()); // Cumulative. Not reset on each interval.
+			sb.Append(",[");
 
 			NodeMetrics nm = node.GetMetrics();
 			int max = Latency.GetMax();
@@ -255,11 +251,11 @@ namespace Aerospike.Client
 			{
 				if (i > 0)
 				{
-					Sb.Append(',');
+					sb.Append(',');
 				}
 
-				Sb.Append(LatencyTypeToString((LatencyType)i));
-				Sb.Append('[');
+				sb.Append(LatencyTypeToString((LatencyType)i));
+				sb.Append('[');
 
 				LatencyBuckets buckets = nm.GetLatencyBuckets(i);
 				int bucketMax = buckets.GetMax();
@@ -268,38 +264,38 @@ namespace Aerospike.Client
 				{
 					if (j > 0)
 					{
-						Sb.Append(',');
+						sb.Append(',');
 					}
-					Sb.Append(buckets.GetBucket(j)); // Cumulative. Not reset on each interval.
+					sb.Append(buckets.GetBucket(j)); // Cumulative. Not reset on each interval.
 				}
-				Sb.Append(']');
+				sb.Append(']');
 			}
-			Sb.Append("]]");
+			sb.Append("]]");
 		}
 
 		private void WriteConn(ConnectionStats cs)
 		{
-			Sb.Append(cs.inUse);
-			Sb.Append(',');
-			Sb.Append(cs.inPool);
-			Sb.Append(',');
-			Sb.Append(cs.opened); // Cumulative. Not reset on each interval.
-			Sb.Append(',');
-			Sb.Append(cs.closed); // Cumulative. Not reset on each interval.
+			sb.Append(cs.inUse);
+			sb.Append(',');
+			sb.Append(cs.inPool);
+			sb.Append(',');
+			sb.Append(cs.opened); // Cumulative. Not reset on each interval.
+			sb.Append(',');
+			sb.Append(cs.closed); // Cumulative. Not reset on each interval.
 		}
 
 		private void WriteLine()
 		{
 			try
 			{
-				Sb.Append(System.Environment.NewLine);
-				Writer.Write(Sb.ToString());
-				Size += Sb.Length;
-				Writer.Flush();
+				sb.Append(System.Environment.NewLine);
+				writer.Write(sb.ToString());
+				size += sb.Length;
+				writer.Flush();
 
-				if (MaxSize > 0 && Size >= MaxSize)
+				if (maxSize > 0 && size >= maxSize)
 				{
-					Writer.Close();
+					writer.Close();
 
 					// This call is recursive since Open() calls WriteLine() to write the header.
 					Open();
@@ -307,11 +303,11 @@ namespace Aerospike.Client
 			}
 			catch (IOException ioe)
 			{
-				Enabled = false;
+				enabled = false;
 
 				try
 				{
-					Writer.Close();
+					writer.Close();
 				}
 				catch (Exception)
 				{

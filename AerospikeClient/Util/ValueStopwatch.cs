@@ -22,18 +22,18 @@ namespace Aerospike.Client
 	/// <summary>
 	/// <see cref="Stopwatch"/> but as a struct.
 	/// </summary>
-	public struct ValueStopwatch
+	public readonly struct ValueStopwatch
 	{
 		private static readonly double TimespanTicksPerStopwatchTick = TimeSpan.TicksPerSecond / (double)Stopwatch.Frequency;
 		private static readonly double MillisecondsPerStopwatchTick = TimespanTicksPerStopwatchTick / TimeSpan.TicksPerMillisecond;
 
-		public static ValueStopwatch StartNew() => new ValueStopwatch(Stopwatch.GetTimestamp());
+		public static ValueStopwatch StartNew() => new(Stopwatch.GetTimestamp());
 
 		private readonly long startTimestamp;
 
 		public bool IsActive => startTimestamp != 0;
 
-		public TimeSpan Elapsed => new TimeSpan((long)((Stopwatch.GetTimestamp() - startTimestamp) * TimespanTicksPerStopwatchTick));
+		public TimeSpan Elapsed => new((long)((Stopwatch.GetTimestamp() - startTimestamp) * TimespanTicksPerStopwatchTick));
 
 		public long ElapsedMilliseconds => (long)((Stopwatch.GetTimestamp() - startTimestamp) * MillisecondsPerStopwatchTick);
 
