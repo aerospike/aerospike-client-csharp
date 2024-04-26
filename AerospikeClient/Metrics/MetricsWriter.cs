@@ -30,7 +30,7 @@ namespace Aerospike.Client
 	public sealed class MetricsWriter : IMetricsListener
 	{
 		private static readonly string filenameFormat = "yyyyMMddHHmmss";
-		private static readonly string timestampFormat = "yyyy-MM-dd HH:mm:ss.SSS";
+		private static readonly string timestampFormat = "yyyy-MM-dd HH:mm:ss";
 		private static readonly int minFileSize = 1000000;
 
 		private readonly string dir;
@@ -185,12 +185,8 @@ namespace Aerospike.Client
 			sb.Append(cluster.GetDelayQueueTimeoutCount()); // Cumulative. Not reset on each interval.
 			sb.Append(",");
 
-			int workerThreadsMax;
-			int completionPortThreadsMax;
-			ThreadPool.GetMaxThreads(out workerThreadsMax, out completionPortThreadsMax);
-
-			int completionPortThreads;
-			ThreadPool.GetAvailableThreads(out int workerThreads, out completionPortThreads);
+			ThreadPool.GetMaxThreads(out int workerThreadsMax, out int completionPortThreadsMax);
+			ThreadPool.GetAvailableThreads(out int workerThreads, out int completionPortThreads);
 
 			var threadsInUse = workerThreadsMax - workerThreads;
 			var completionPortsInUse = completionPortThreadsMax - completionPortThreads;
@@ -290,8 +286,9 @@ namespace Aerospike.Client
 			{
 				sb.Append(System.Environment.NewLine);
 				writer.Write(sb.ToString());
-				size += sb.Length;
 				writer.Flush();
+				size += sb.Length;
+				sb.Clear();
 
 				if (maxSize > 0 && size >= maxSize)
 				{

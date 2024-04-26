@@ -305,6 +305,8 @@ namespace Aerospike.Test
 
 			asyncClient = nativeAsync;
 			asyncClient.EnableMetrics(new MetricsPolicy());
+
+			Thread.Sleep(1 * 60 * 1000);
 		}
 
 		private void SetServerSpecific()

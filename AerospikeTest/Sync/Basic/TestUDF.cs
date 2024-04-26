@@ -296,6 +296,8 @@ namespace Aerospike.Test
 			Assert.IsTrue(status);
 			AssertBinEqual(b4.key, b4.record, bin, "value1");
 			AssertBinEqual(b5.key, b5.record, bin, 5);
+
+			Thread.Sleep(10 * 60 * 1000);
 		}
 	}
 }

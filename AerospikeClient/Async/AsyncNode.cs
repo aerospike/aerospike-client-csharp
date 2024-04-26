@@ -36,7 +36,6 @@ namespace Aerospike.Client
 			: base(cluster, nv)
 		{
 			this.cluster = cluster;
-			this.metricsEnabled = cluster.MetricsEnabled;
 			asyncConnQueue = new Pool<AsyncConnection>(cluster.asyncMinConnsPerNode, cluster.asyncMaxConnsPerNode);
 		}
 
