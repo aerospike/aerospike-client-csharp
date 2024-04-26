@@ -725,7 +725,7 @@ namespace Aerospike.Client
 			{
 				Connection conn = cluster.UseTls() ?
 					new TlsConnection(cluster, host.tlsName, address, timeout, pool) :
-					new Connection(address, timeout, pool);
+					new Connection(address, timeout, this, pool);
 
 				Interlocked.Increment(ref connsOpened);
 				return conn;
