@@ -180,6 +180,14 @@ namespace Aerospike.Client
 						isClientTimeout = false;
 					}
 				}
+				catch (IOException ioe)
+				{
+					// IO errors are considered temporary anomalies.  Retry.
+					// Log.info("IOException: " + tranId + ',' + node + ',' + sequence + ',' + iteration);
+					exception = new AerospikeException.Connection(ioe);
+					isClientTimeout = false;
+					node.IncrErrorCount();
+				}
 				catch (AerospikeException.Connection ce)
 				{
 					// Socket connection error has occurred. Retry.
