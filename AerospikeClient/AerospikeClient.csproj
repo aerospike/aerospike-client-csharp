@@ -16,7 +16,7 @@
     <PackageTags>Aerospike database C# client</PackageTags>
     <RepositoryUrl>https://github.com/aerospike/aerospike-client-csharp</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
-    <PackageLicenseFile>LICENSE.md</PackageLicenseFile>
+    <PackageLicenseExpression>apache-2.0</PackageLicenseExpression>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <Icon>icon.png</Icon>
     <Copyright>Copyright 2012-2024 Aerospike, Inc.</Copyright>
@@ -50,14 +50,13 @@
 
   <ItemGroup>
     <Content Include="..\README.md">
-      <Pack>true</Pack>
-      <PackagePath />
+        <Pack>true</Pack>
+        <PackagePath />
     </Content>
     <None Include="..\icon.png">
       <Pack>true</Pack>
       <PackagePath>\</PackagePath>
     </None>
-    <None Include="LICENSE.md" Pack="true" PackagePath="" />
   </ItemGroup>
 
   <ItemGroup>

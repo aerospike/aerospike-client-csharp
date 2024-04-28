@@ -16,7 +16,7 @@
     <PackageTags>Aerospike database C# proxy client</PackageTags>
     <RepositoryUrl>https://github.com/aerospike/aerospike-client-csharp</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
-    <PackageLicenseFile>LICENSE.md</PackageLicenseFile>
+    <PackageLicenseExpression>apache-2.0<s/PackageLicenseExpression>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <Icon>icon.png</Icon>
     <Copyright>Copyright 2012-2024 Aerospike, Inc.</Copyright>
@@ -56,7 +56,6 @@
       <Pack>true</Pack>
       <PackagePath>\</PackagePath>
     </None>
-    <None Include="LICENSE.md" Pack="true" PackagePath="" />
   </ItemGroup>
 
   <ItemGroup>
