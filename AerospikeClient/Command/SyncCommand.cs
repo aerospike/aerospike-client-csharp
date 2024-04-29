@@ -173,6 +173,7 @@ namespace Aerospike.Client
 						node.CloseConnection(conn);
 						exception = new AerospikeException.Connection(ioe);
 						isClientTimeout = false;
+						node.AddError();
 					}
 					catch (Exception)
 					{
@@ -205,6 +206,7 @@ namespace Aerospike.Client
 					// Log.info("IOException: " + tranId + ',' + node + ',' + sequence + ',' + iteration);
 					exception = new AerospikeException.Connection(ioe);
 					isClientTimeout = false;
+					node.AddError();
 				}
 				catch (AerospikeException.Connection ce)
 				{

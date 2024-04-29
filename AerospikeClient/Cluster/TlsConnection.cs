@@ -61,7 +61,7 @@ namespace Aerospike.Client
 
 				if (node != null)
 				{
-					node.IncrErrorCount();
+					node.IncrErrorRate();
 				}
 				throw;
 			}

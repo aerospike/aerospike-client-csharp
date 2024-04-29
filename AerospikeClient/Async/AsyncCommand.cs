@@ -264,6 +264,7 @@ namespace Aerospike.Client
 			{
 				// IO errors are considered temporary anomalies.  Retry.
 				ErrorCount++;
+				node.AddError();
 				ConnectionFailed(new AerospikeException.Connection(ioe));
 			}
 			catch (Exception e)
@@ -506,6 +507,7 @@ namespace Aerospike.Client
 				if (e is IOException ioe)
 				{
 					// IO errors are considered temporary anomalies.  Retry.
+					node.AddError();
 					ConnectionFailed(new AerospikeException.Connection(ioe));
 					return;
 				}
@@ -514,6 +516,7 @@ namespace Aerospike.Client
 				{
 					// This exception occurs because socket is being used after timeout thread closes socket.
 					// Retry when this happens.
+					node.AddError();
 					ConnectionFailed(new AerospikeException(ode));
 					return;
 				}
