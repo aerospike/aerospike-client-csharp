@@ -92,7 +92,7 @@ namespace Aerospike.Client
 
 			BatchUDF other = (BatchUDF)obj;
 			return functionName == other.functionName && functionArgs == other.functionArgs && 
-				   packageName == other.packageName && policy == other.policy;
+				   packageName == other.packageName && policy == other.policy && (policy == null || !policy.sendKey);
 		}
 
 		/// <summary>

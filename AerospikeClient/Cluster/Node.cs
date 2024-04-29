@@ -754,8 +754,8 @@ namespace Aerospike.Client
 					ValueStopwatch metricsWatch = ValueStopwatch.StartNew();
 
 					conn = cluster.UseTls() ?
-					new TlsConnection(cluster, host.tlsName, address, timeout, pool) :
-					new Connection(address, timeout, pool);
+					new TlsConnection(cluster, host.tlsName, address, timeout, this, pool) :
+					new Connection(address, timeout, this, pool);
 
 					metrics.AddLatency(LatencyType.CONN, metricsWatch.Elapsed.TotalMilliseconds);
 				}

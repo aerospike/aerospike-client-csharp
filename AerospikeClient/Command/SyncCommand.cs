@@ -166,6 +166,14 @@ namespace Aerospike.Client
 							node.AddError();
 						}
 					}
+					catch (IOException ioe)
+					{
+						// IO errors are considered temporary anomalies.  Retry.
+						// Log.info("IOException: " + tranId + ',' + node + ',' + sequence + ',' + iteration);
+						node.CloseConnection(conn);
+						exception = new AerospikeException.Connection(ioe);
+						isClientTimeout = false;
+					}
 					catch (Exception)
 					{
 						// All other exceptions are considered fatal.  Do not retry.
@@ -190,6 +198,13 @@ namespace Aerospike.Client
 						isClientTimeout = false;
 						node.AddError();
 					}
+				}
+				catch (IOException ioe)
+				{
+					// IO errors are considered temporary anomalies.  Retry.
+					// Log.info("IOException: " + tranId + ',' + node + ',' + sequence + ',' + iteration);
+					exception = new AerospikeException.Connection(ioe);
+					isClientTimeout = false;
 				}
 				catch (AerospikeException.Connection ce)
 				{

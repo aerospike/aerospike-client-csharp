@@ -278,6 +278,35 @@ namespace Aerospike.Test
 		}
 
 		[TestMethod]
+		public void BatchOperateSendKey()
+		{
+			Key[] keys = new Key[3];
+			for (int i = 0; i < 3; i++)
+			{
+				keys[i] = new Key(args.ns, args.set, "sendkey" + i);
+			}
+
+			BatchWritePolicy batchWritePolicy = new()
+			{
+				sendKey = true
+			};
+
+			Operation[] ops = {
+				Operation.Put(new Bin("now", DateTime.Now.ToFileTime()))
+			};
+
+			client.Operate(null, batchWritePolicy, keys, ops);
+
+			Key myKey = new(args.ns, args.set, "sendkey2");
+			WritePolicy wp = new()
+			{
+				sendKey = true
+			};
+			
+			client.Put(wp, myKey, new Bin("name", "Andrew"));
+		}
+
+		[TestMethod]
 		public void BatchReadAllBins()
 		{
 			Key[] keys = new Key[Size];

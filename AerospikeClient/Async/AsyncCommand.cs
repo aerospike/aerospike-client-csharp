@@ -14,6 +14,7 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
+using System;
 using System.Net.Sockets;
 using System.Timers;
 using static Aerospike.Client.Latency;
@@ -259,6 +260,12 @@ namespace Aerospike.Client
 				node.AddError();
 				OnSocketError(se.SocketErrorCode);
 			}
+			catch (IOException ioe)
+			{
+				// IO errors are considered temporary anomalies.  Retry.
+				ErrorCount++;
+				ConnectionFailed(new AerospikeException.Connection(ioe));
+			}
 			catch (Exception e)
 			{
 				ErrorCount++;
@@ -493,6 +500,13 @@ namespace Aerospike.Client
 				if (e is SocketException se)
 				{
 					OnSocketError(se.SocketErrorCode);
+					return;
+				}
+
+				if (e is IOException ioe)
+				{
+					// IO errors are considered temporary anomalies.  Retry.
+					ConnectionFailed(new AerospikeException.Connection(ioe));
 					return;
 				}
 
