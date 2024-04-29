@@ -15,6 +15,7 @@
  * the License.
  */
 using System.Net.Sockets;
+using static Aerospike.Client.Latency;
 
 namespace Aerospike.Client
 {
@@ -61,6 +62,8 @@ namespace Aerospike.Client
 		{
 			Node node;
 			AerospikeException exception = null;
+			ValueStopwatch metricsWatch = new();
+			LatencyType latencyType = cluster.MetricsEnabled ? GetLatencyType() : LatencyType.NONE;
 			bool isClientTimeout;
 
 			// Execute command until successful, timed out or maximum iterations have been reached.
@@ -81,6 +84,10 @@ namespace Aerospike.Client
 				try
 				{
 					node.ValidateErrorCount();
+					if (latencyType != LatencyType.NONE)
+					{
+						metricsWatch = ValueStopwatch.StartNew();
+					}
 					Connection conn = node.GetConnection(socketTimeout);
 
 					try
@@ -97,6 +104,11 @@ namespace Aerospike.Client
 
 						// Put connection back in pool.
 						node.PutConnection(conn);
+
+						if (latencyType != LatencyType.NONE)
+						{ 
+							node.AddLatency(latencyType, metricsWatch.Elapsed.TotalMilliseconds);
+						}
 
 						// Command has completed successfully.  Exit method.
 						return;
@@ -119,17 +131,20 @@ namespace Aerospike.Client
 							// Retry on server timeout.
 							exception = new AerospikeException.Timeout(policy, false);
 							isClientTimeout = false;
-							node.IncrErrorCount();
+							node.IncrErrorRate();
+							node.AddTimeout();
 						}
 						else if (ae.Result == ResultCode.DEVICE_OVERLOAD)
 						{
 							// Add to circuit breaker error count and retry.
 							exception = ae;
 							isClientTimeout = false;
-							node.IncrErrorCount();
+							node.IncrErrorRate();
+							node.AddError();
 						}
 						else
 						{
+							node.AddError();
 							throw;
 						}
 					}
@@ -142,11 +157,13 @@ namespace Aerospike.Client
 						if (se.SocketErrorCode == SocketError.TimedOut)
 						{
 							isClientTimeout = true;
+							node.AddTimeout();
 						}
 						else
 						{
 							exception = new AerospikeException.Connection(se);
 							isClientTimeout = false;
+							node.AddError();
 						}
 					}
 					catch (IOException ioe)
@@ -156,12 +173,14 @@ namespace Aerospike.Client
 						node.CloseConnection(conn);
 						exception = new AerospikeException.Connection(ioe);
 						isClientTimeout = false;
+						node.AddError();
 					}
 					catch (Exception)
 					{
 						// All other exceptions are considered fatal.  Do not retry.
 						// Close socket to flush out possible garbage.  Do not put back in pool.
 						node.CloseConnectionOnError(conn);
+						node.AddError();
 						throw;
 					}
 				}
@@ -172,11 +191,13 @@ namespace Aerospike.Client
 					if (se.SocketErrorCode == SocketError.TimedOut)
 					{
 						isClientTimeout = true;
+						node.AddTimeout();
 					}
 					else
 					{
 						exception = new AerospikeException.Connection(se);
 						isClientTimeout = false;
+						node.AddError();
 					}
 				}
 				catch (IOException ioe)
@@ -185,18 +206,21 @@ namespace Aerospike.Client
 					// Log.info("IOException: " + tranId + ',' + node + ',' + sequence + ',' + iteration);
 					exception = new AerospikeException.Connection(ioe);
 					isClientTimeout = false;
+					node.AddError();
 				}
 				catch (AerospikeException.Connection ce)
 				{
 					// Socket connection error has occurred. Retry.
 					exception = ce;
 					isClientTimeout = false;
+					node.AddError();
 				}
 				catch (AerospikeException.Backoff be)
 				{
 					// Node is in backoff state. Retry, hopefully on another node.
 					exception = be;
 					isClientTimeout = false;
+					node.AddError();
 				}
 				catch (AerospikeException ae)
 				{
@@ -204,6 +228,12 @@ namespace Aerospike.Client
 					ae.Policy = policy;
 					ae.Iteration = iteration;
 					ae.SetInDoubt(IsWrite(), commandSentCounter);
+					node.AddError();
+					throw;
+				}
+				catch (Exception)
+				{
+					node.AddError();
 					throw;
 				}
 
@@ -251,6 +281,8 @@ namespace Aerospike.Client
 						return;
 					}
 				}
+
+				cluster.AddRetry();
 			}
 
 			// Retries have been exhausted.  Throw last exception.
@@ -318,6 +350,7 @@ namespace Aerospike.Client
 
 		protected internal abstract Node GetNode();
 
+		protected abstract LatencyType GetLatencyType();
 		protected internal abstract void WriteBuffer();
 		protected internal abstract void ParseResult(IConnection conn);
 		protected internal abstract bool PrepareRetry(bool timeout);

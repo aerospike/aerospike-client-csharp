@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2022 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -21,8 +21,10 @@ namespace Aerospike.Client
 {
 	public sealed class BatchExecutor
 	{
-		public static void Execute(BatchPolicy policy, BatchCommand[] commands, BatchStatus status)
+		public static void Execute(Cluster cluster, BatchPolicy policy, BatchCommand[] commands, BatchStatus status)
 		{
+			cluster.AddTran();
+
 			if (policy.maxConcurrentThreads == 1 || commands.Length <= 1)
 			{
 				// Run batch requests sequentially in same thread.

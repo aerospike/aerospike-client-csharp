@@ -48,7 +48,7 @@ namespace Aerospike.Client
 			catch (Exception e)
 			{
 				node.DecrAsyncConnTotal();
-				node.IncrErrorCount();
+				node.IncrErrorRate();
 				throw new AerospikeException.Connection(e);
 			}
 
@@ -82,7 +82,7 @@ namespace Aerospike.Client
 		{
 			node.DecrAsyncConnTotal();
 			node.IncrAsyncConnClosed();
-			node.IncrErrorCount();
+			node.IncrErrorRate();
 			socket.Dispose();
 		}
 

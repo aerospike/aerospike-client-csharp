@@ -16,6 +16,8 @@
  */
 using System;
 using System.Net.Sockets;
+using System.Timers;
+using static Aerospike.Client.Latency;
 
 namespace Aerospike.Client
 {
@@ -52,6 +54,8 @@ namespace Aerospike.Client
 		private bool compressed;
 		private bool inAuthenticate;
 		private bool inHeader = true;
+		private ValueStopwatch metricsWatch;
+		private readonly bool metricsEnabled;
 
 		/// <summary>
 		/// Default Constructor.
@@ -61,6 +65,7 @@ namespace Aerospike.Client
 		{
 			this.cluster = cluster;
 			this.policy = policy;
+			this.metricsEnabled = cluster.MetricsEnabled;
 		}
 
 		/// <summary>
@@ -71,6 +76,7 @@ namespace Aerospike.Client
 		{
 			this.cluster = cluster;
 			this.policy = policy;
+			this.metricsEnabled = cluster.MetricsEnabled;
 		}
 
 		/// <summary>
@@ -87,6 +93,7 @@ namespace Aerospike.Client
 			this.totalWatch = other.totalWatch;
 			this.iteration = other.iteration;
 			this.commandSentCounter = other.commandSentCounter;
+			this.metricsEnabled = cluster.MetricsEnabled;
 		}
 
 		public void SetBatchRetry(AsyncCommand other)
@@ -210,6 +217,10 @@ namespace Aerospike.Client
 			{
 				node = (AsyncNode)GetNode(cluster);
 				node.ValidateErrorCount();
+				if (metricsEnabled)
+				{
+					metricsWatch = ValueStopwatch.StartNew();
+				}
 				conn = node.GetAsyncConnection();
 
 				if (conn == null)
@@ -228,38 +239,49 @@ namespace Aerospike.Client
 			catch (AerospikeException.Connection aec)
 			{
 				ErrorCount++;
+				node.AddError();
 				ConnectionFailed(aec);
 			}
 			catch (AerospikeException.Backoff aeb)
 			{
 				ErrorCount++;
+				node.AddError();
 				Backoff(aeb);
 			}
 			catch (AerospikeException ae)
 			{
 				ErrorCount++;
+				node.AddError();
 				FailOnApplicationError(ae);
 			}
 			catch (SocketException se)
 			{
 				ErrorCount++;
+				node.AddError();
 				OnSocketError(se.SocketErrorCode);
 			}
 			catch (IOException ioe)
 			{
 				// IO errors are considered temporary anomalies.  Retry.
 				ErrorCount++;
+				node.AddError();
 				ConnectionFailed(new AerospikeException.Connection(ioe));
 			}
 			catch (Exception e)
 			{
 				ErrorCount++;
+				node.AddError();
 				FailOnApplicationError(new AerospikeException(e));
 			}
 		}
 
 		public void OnConnected()
 		{
+			if (metricsEnabled)
+			{
+				node.AddLatency(LatencyType.CONN, metricsWatch.Elapsed.TotalMilliseconds);
+			}
+			
 			if (cluster.authEnabled)
 			{
 				byte[] token = node.SessionToken;
@@ -451,6 +473,7 @@ namespace Aerospike.Client
 			{
 				if (e is AerospikeException.Connection ac)
 				{
+					node.AddError();
 					ConnectionFailed(ac);
 					return;
 				}
@@ -459,14 +482,17 @@ namespace Aerospike.Client
 				{
 					if (ae.Result == ResultCode.TIMEOUT)
 					{
+						node.AddTimeout();
 						RetryServerError(new AerospikeException.Timeout(policy, false));
 					}
 					else if (ae.Result == ResultCode.DEVICE_OVERLOAD)
 					{
+						node.AddError();
 						RetryServerError(ae);
 					}
 					else
 					{
+						node.AddError();
 						FailOnApplicationError(ae);
 					}
 					return;
@@ -481,6 +507,7 @@ namespace Aerospike.Client
 				if (e is IOException ioe)
 				{
 					// IO errors are considered temporary anomalies.  Retry.
+					node.AddError();
 					ConnectionFailed(new AerospikeException.Connection(ioe));
 					return;
 				}
@@ -489,11 +516,13 @@ namespace Aerospike.Client
 				{
 					// This exception occurs because socket is being used after timeout thread closes socket.
 					// Retry when this happens.
+					node.AddError();
 					ConnectionFailed(new AerospikeException(ode));
 					return;
 				}
 
 				// Fail without retry on unknown errors.
+				node.AddError();
 				FailOnApplicationError(new AerospikeException(e));
 			}
 			catch (Exception e2)
@@ -510,10 +539,12 @@ namespace Aerospike.Client
 			if (se == SocketError.TimedOut)
 			{
 				ae = new AerospikeException.Timeout(policy, true);
+				node.AddTimeout();
 			}
 			else
 			{
 				ae = new AerospikeException.Connection("Socket error: " + se);
+				node.AddError();
 			}
 			ConnectionFailed(ae);
 		}
@@ -552,7 +583,7 @@ namespace Aerospike.Client
 
 		private void RetryServerError(AerospikeException ae)
 		{
-			node.IncrErrorCount();
+			node.IncrErrorRate();
 
 			if (ShouldRetry())
 			{
@@ -656,6 +687,7 @@ namespace Aerospike.Client
 					int remain = (int)(totalTimeout - totalWatch.ElapsedMilliseconds);
 					AsyncTimeoutQueue.Instance.Add(command, remain);
 				}
+				cluster.AddRetry();
 				command.ExecuteCommand();
 			}
 			else
@@ -687,6 +719,8 @@ namespace Aerospike.Client
 						node.CloseAsyncConnOnError(conn);
 					}
 
+					node.AddTimeout();
+
 					// Notify user immediately in this timeout thread.
 					// Transaction thread will cleanup eventArgs.
 					NotifyFailure(new AerospikeException.Timeout(policy, true));
@@ -717,6 +751,8 @@ namespace Aerospike.Client
 					{
 						node.CloseAsyncConnOnError(conn);
 					}
+
+					node.AddTimeout();
 				}
 				return false;  // Do not put back on timeout queue.
 			}
@@ -756,6 +792,12 @@ namespace Aerospike.Client
 				{
 					Log.Warn(cluster.context, "AsyncCommand finished with unexpected return status: " + status);
 				}
+			}
+
+			LatencyType latencyType = cluster.MetricsEnabled ? GetLatencyType() : LatencyType.NONE;
+			if (latencyType != LatencyType.NONE)
+			{
+				node.AddLatency(latencyType, metricsWatch.Elapsed.TotalMilliseconds);
 			}
 
 			try
@@ -910,6 +952,7 @@ namespace Aerospike.Client
 		}
 
 		protected internal abstract Node GetNode(Cluster cluster);
+		protected abstract LatencyType GetLatencyType();
 		protected internal abstract void WriteBuffer();
 		protected internal abstract AsyncCommand CloneCommand();
 		protected internal abstract void ParseCommand();

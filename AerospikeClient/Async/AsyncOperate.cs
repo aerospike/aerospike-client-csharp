@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2023 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -46,6 +46,11 @@ namespace Aerospike.Client
 		protected internal override Node GetNode(Cluster cluster)
 		{
 			return args.hasWrite ? partition.GetNodeWrite(cluster) : partition.GetNodeRead(cluster);
+		}
+
+		protected override Latency.LatencyType GetLatencyType()
+		{
+			return args.hasWrite ? Latency.LatencyType.WRITE : Latency.LatencyType.READ;
 		}
 
 		protected internal override void WriteBuffer()

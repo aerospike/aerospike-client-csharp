@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2022 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -18,6 +18,8 @@ using System;
 using System.Net;
 using System.Threading;
 using System.Collections.Generic;
+using static Aerospike.Client.Latency;
+using System.Xml.Linq;
 
 namespace Aerospike.Client
 {
@@ -48,11 +50,17 @@ namespace Aerospike.Client
 		private byte[] sessionToken;
 		private DateTime? sessionExpiration;
 		private volatile Dictionary<string,int> racks;
+		private volatile NodeMetrics metrics;
+		protected bool metricsEnabled;
 		private readonly Pool<Connection>[] connectionPools;
 		protected uint connectionIter;
 		protected internal int connsOpened = 1;
 		protected internal int connsClosed;
+		protected internal long bytesReceived;
+		protected internal long bytesSent;
+		private volatile int errorRateCount;
 		private volatile int errorCount;
+		private volatile int timeoutCount;
 		protected internal int peersGeneration = -1;
 		protected internal int partitionGeneration = -1;
 		protected internal int rebalanceGeneration = -1;
@@ -83,6 +91,22 @@ namespace Aerospike.Client
 			this.features = nv.features;
 			this.rebalanceChanged = cluster.rackAware;
 			this.racks = cluster.rackAware ? new Dictionary<string, int>() : null;
+			this.errorCount = 0;
+			this.errorRateCount = 0;
+			this.timeoutCount = 0;
+
+			this.metricsEnabled = cluster.MetricsEnabled;
+			if (cluster.MetricsEnabled)
+			{
+				this.metrics = new NodeMetrics(cluster.MetricsPolicy);
+				this.bytesReceived = 0;
+				this.bytesSent = 0;
+			}
+			else
+			{
+				this.bytesReceived = -1;
+				this.bytesSent = -1;
+			}
 
 			connectionPools = new Pool<Connection>[cluster.connPoolsPerNode];
 			int min = cluster.minConnsPerNode / cluster.connPoolsPerNode;
@@ -284,7 +308,7 @@ namespace Aerospike.Client
 				// Reset error rate.
 				if (cluster.maxErrorRate > 0)
 				{
-					ResetErrorCount();
+					ResetErrorRate();
 				}
 
 				// Login when user authentication is enabled.
@@ -517,7 +541,7 @@ namespace Aerospike.Client
 
 			if (! tendConnection.IsClosed())
 			{
-				IncrErrorCount();
+				IncrErrorRate();
 				Interlocked.Increment(ref connsClosed);
 				tendConnection.Close();
 			}
@@ -723,16 +747,31 @@ namespace Aerospike.Client
 		{
 			try
 			{
-				Connection conn = cluster.UseTls() ?
+				Connection conn;
+
+				if (cluster.MetricsEnabled)
+				{
+					ValueStopwatch metricsWatch = ValueStopwatch.StartNew();
+
+					conn = cluster.UseTls() ?
 					new TlsConnection(cluster, host.tlsName, address, timeout, this, pool) :
 					new Connection(address, timeout, this, pool);
+
+					metrics.AddLatency(LatencyType.CONN, metricsWatch.Elapsed.TotalMilliseconds);
+				}
+				else
+				{
+					conn = cluster.UseTls() ?
+					new TlsConnection(cluster, host.tlsName, address, timeout, pool) :
+					new Connection(address, timeout, pool);
+				}
 
 				Interlocked.Increment(ref connsOpened);
 				return conn;
 			}
 			catch (Exception)
 			{
-				IncrErrorCount();
+				IncrErrorRate();
 				throw;
 			}
 		}
@@ -758,7 +797,7 @@ namespace Aerospike.Client
 		/// </summary>
 		public void CloseConnectionOnError(Connection conn)
 		{
-			IncrErrorCount();
+			IncrErrorRate();
 			CloseConnection(conn);
 		}
 
@@ -782,7 +821,7 @@ namespace Aerospike.Client
 				{
 					CloseIdleConnections(pool, excess);
 				}
-				else if (excess < 0 && ErrorCountWithinLimit())
+				else if (excess < 0 && ErrorRateWithinLimit())
 				{
 					CreateConnections(pool, -excess);
 				}
@@ -831,34 +870,100 @@ namespace Aerospike.Client
 				}
 				inUse += tmp;
 			}
+
 			return new ConnectionStats(inPool, inUse, connsOpened, connsClosed);
 		}
 
-		public void IncrErrorCount()
+		public void EnableMetrics(MetricsPolicy policy)
+		{
+			metrics = new NodeMetrics(policy);
+			this.metricsEnabled = true;
+			this.bytesReceived = 0;
+			this.bytesSent = 0;
+		}
+
+		public NodeMetrics GetMetrics()
+		{
+			return metrics;
+		}
+
+		public void DisableMetrics()
+		{
+			this.metricsEnabled = false;
+			this.bytesReceived = -1;
+			this.bytesSent = -1;
+		}
+
+		/// <summary>
+		/// Add elapsed time in nanoseconds to latency buckets corresponding to latency type.
+		/// </summary>
+		/// <param name="elapsedMs">elapsed time in milliseconds. The conversion to nanoseconds is done later</param>
+		public void AddLatency(LatencyType type, double elapsedMs)
+		{
+			metrics.AddLatency(type, elapsedMs);
+		}
+
+		public void IncrErrorRate()
 		{
 			if (cluster.maxErrorRate > 0)
 			{
-				Interlocked.Increment(ref errorCount);
+				Interlocked.Increment(ref errorRateCount);
 			}
 		}
 
-		public void ResetErrorCount()
+		public void ResetErrorRate()
 		{
-			errorCount = 0;
+			errorRateCount = 0;
 		}
 
-		public bool ErrorCountWithinLimit()
+		public bool ErrorRateWithinLimit()
 		{
-			return cluster.maxErrorRate <= 0 || errorCount <= cluster.maxErrorRate;
+			return cluster.maxErrorRate <= 0 || errorRateCount <= cluster.maxErrorRate;
 		}
 
 		public void ValidateErrorCount()
 		{
-			if (!ErrorCountWithinLimit())
+			if (!ErrorRateWithinLimit())
 			{
 				throw new AerospikeException.Backoff(ResultCode.MAX_ERROR_RATE);
 			}
 		}
+
+		/// <summary>
+		/// Increment transaction error count. If the error is retryable, multiple errors per
+		/// transaction may occur.
+		/// </summary>
+
+		public void AddError()
+		{
+			Interlocked.Increment(ref errorCount);
+		}
+
+		/// <summary>
+		/// Increment transaction timeout count. If the timeout is retryable (ie socketTimeout),
+		/// multiple timeouts per transaction may occur.
+		/// </summary>
+		public void AddTimeout()
+		{
+			Interlocked.Increment(ref timeoutCount);
+		}
+
+		/// <summary>
+		/// Return transaction error count. The value is cumulative and not reset per metrics interval.
+		/// </summary>
+		public int GetErrorCount()
+		{
+			return errorCount;
+		}
+
+		/// <summary>
+		/// Return transaction timeout count. The value is cumulative and not reset per metrics interval.
+		/// </summary>
+		public int GetTimeoutCount()
+		{
+			return timeoutCount;
+		}
+
 
 		/// <summary>
 		/// Return if this node has the same rack as the client for the

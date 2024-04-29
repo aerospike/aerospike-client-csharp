@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2023 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -112,7 +112,7 @@ namespace Aerospike.Client
 			{
 				CloseIdleAsyncConnections(excess);
 			}
-			else if (excess < 0 && ErrorCountWithinLimit())
+			else if (excess < 0 && ErrorRateWithinLimit())
 			{
 				// Create connection requests sequentially because they will be done in the
 				// background and there is no immediate need for them to complete.
@@ -160,7 +160,7 @@ namespace Aerospike.Client
 
 		internal void CloseAsyncConnOnError(AsyncConnection conn)
 		{
-			IncrErrorCount();
+			IncrErrorRate();
 			CloseAsyncConn(conn);
 		}
 
@@ -196,17 +196,51 @@ namespace Aerospike.Client
 			Interlocked.Increment(ref asyncConnsClosed);
 		}
 
+		public void IncrBytesReceived(long bytesReceived)
+		{
+			if (this.metricsEnabled)
+			{
+				Interlocked.Add(ref this.bytesReceived, bytesReceived);
+			}
+		}
+
+		public void IncrBytesSent(long bytesSent)
+		{
+			if (this.metricsEnabled)
+			{
+				Interlocked.Add(ref this.bytesSent, bytesSent);
+			}
+		}
+
 		public ConnectionStats GetAsyncConnectionStats()
 		{
-			int inPool = asyncConnQueue.Count;
-			int inUse = asyncConnQueue.Total - inPool;
+			int inPool = 0;
+			int inUse = 0;
+			int opened = 0;
+			int closed = 0;
 
-			// Timing issues may cause values to go negative. Adjust.
-			if (inUse < 0)
+			if (asyncConnQueue != null)
 			{
-				inUse = 0;
+				inPool = asyncConnQueue.Count;
+				inUse = asyncConnQueue.Total - inPool;
+
+				// Timing issues may cause values to go negative. Adjust.
+				if (inUse < 0)
+				{
+					inUse = 0;
+				}
+				opened = asyncConnsOpened;
+				closed = asyncConnsClosed;
 			}
-			return new ConnectionStats(inPool, inUse, asyncConnsOpened, asyncConnsClosed);
+
+			if (!this.metricsEnabled)
+			{
+				return new ConnectionStats(inPool, inUse, opened, closed);
+			}
+			else
+			{
+				return new ConnectionStats(inPool, inUse, opened, closed, this.bytesReceived, this.bytesSent);
+			}
 		}
 	}
 }

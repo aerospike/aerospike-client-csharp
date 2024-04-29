@@ -148,6 +148,9 @@ namespace Aerospike.Test
 			nativeClient.InfoPolicyDefault.timeout = timeout;
 			client = nativeClient;
 
+			//Example of how to enable metrics
+			//client.EnableMetrics(new MetricsPolicy());
+
 			try
 			{
 				SetServerSpecific();
@@ -302,6 +305,9 @@ namespace Aerospike.Test
 			nativeAsync.InfoPolicyDefault.timeout = timeout;
 
 			asyncClient = nativeAsync;
+
+			// Example of how to enable metrics
+			//asyncClient.EnableMetrics(new MetricsPolicy());
 		}
 
 		private void SetServerSpecific()

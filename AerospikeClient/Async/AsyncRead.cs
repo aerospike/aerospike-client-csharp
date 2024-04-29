@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2023 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -35,6 +35,7 @@ namespace Aerospike.Client
 			this.binNames = binNames;
 			this.isOperation = false;
 			this.partition = Partition.Read(cluster, policy, key);
+			cluster.AddTran();
 		}
 
 		// UDF constructor.
@@ -46,6 +47,7 @@ namespace Aerospike.Client
 			this.binNames = null;
 			this.isOperation = false;
 			this.partition = Partition.Write(cluster, policy, key);
+			cluster.AddTran();
 		}
 
 		// Operate constructor.
@@ -57,6 +59,7 @@ namespace Aerospike.Client
 			this.binNames = null;
 			this.isOperation = isOperation;
 			this.partition = partition;
+			cluster.AddTran();
 		}
 
 		public AsyncRead(AsyncRead other)
@@ -77,6 +80,11 @@ namespace Aerospike.Client
 		protected internal override Node GetNode(Cluster cluster)
 		{
 			return partition.GetNodeRead(cluster);
+		}
+
+		protected override Latency.LatencyType GetLatencyType()
+		{
+			return Latency.LatencyType.READ;
 		}
 
 		protected internal override void WriteBuffer()

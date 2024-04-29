@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -14,6 +14,7 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
+using System.Runtime.ConstrainedExecution;
 using System.Text;
 using System.Threading;
 
@@ -45,12 +46,18 @@ namespace Aerospike.Client
 		public readonly int invalidNodeCount;
 
 		/// <summary>
+		/// Count of transaction retires since cluster was started.
+		/// </summary>
+		public readonly long RetryCount;
+
+		/// <summary>
 		/// Cluster statistics constructor.
 		/// </summary>
-		public ClusterStats(NodeStats[] nodes, int invalidNodeCount)
+		public ClusterStats(Cluster cluster, NodeStats[] nodes)
 		{
 			this.nodes = nodes;
-			this.invalidNodeCount = invalidNodeCount;
+			this.invalidNodeCount = cluster.InvalidNodeCount;
+			this.RetryCount = cluster.GetRetryCount();
 
 			int workerThreadsMax;
 			int completionPortThreadsMax;
@@ -84,6 +91,8 @@ namespace Aerospike.Client
 			sb.Append("completionPortsInUse: " + completionPortsInUse);
 			sb.Append(System.Environment.NewLine);
 			sb.Append("invalidNodeCount: " + invalidNodeCount);
+			sb.Append(System.Environment.NewLine);
+			sb.Append("retryCount: " + RetryCount);
 			return sb.ToString();
 		}
 	}
@@ -109,12 +118,26 @@ namespace Aerospike.Client
 		public readonly ConnectionStats asyncStats;
 
 		/// <summary>
+		/// Transaction error count since node was initialized. If the error is retryable, multiple errors per
+		/// transaction may occur.
+		/// </summary>
+		public readonly long ErrorCount;
+
+		/// <summary>
+		/// Transaction timeout count since node was initialized. If the timeout is retryable (ie socketTimeout),
+		/// multiple timeouts per transaction may occur.
+		/// </summary>
+		public readonly long TimeoutCount;
+
+		/// <summary>
 		/// Node statistics constructor.
 		/// </summary>
 		public NodeStats(Node node)
 		{
 			this.node = node;
 			this.syncStats = node.GetConnectionStats();
+			this.ErrorCount = node.GetErrorCount();
+			this.TimeoutCount = node.GetTimeoutCount();
 
 			if (node is AsyncNode)
 			{
@@ -131,7 +154,7 @@ namespace Aerospike.Client
 		/// </summary>
 		public override string ToString()
 		{
-			return node + " sync(" + syncStats + ") async(" + asyncStats + ')';
+			return node + " sync(" + syncStats + ") async(" + asyncStats + ") " + ErrorCount + ',' + TimeoutCount;
 		}
 	}
 
@@ -159,7 +182,19 @@ namespace Aerospike.Client
 		/// Total number of node connections closed since node creation.
 		/// </summary>
 		public readonly int closed;
-	
+
+		/// <summary>
+		/// Total number of bytes received from that connection.
+		/// Only collected for the async client when metrics are enabled.
+		/// </summary>
+		public readonly long BytesReceived;
+
+		/// <summary>
+		/// Total number of bytes sent to that connection.
+		/// Only collected for the async client when metrics are enabled.
+		/// </summary>
+		public readonly long BytesSent;
+
 		/// <summary>
 		/// Connection statistics constructor.
 		/// </summary>
@@ -169,6 +204,21 @@ namespace Aerospike.Client
 			this.inUse = inUse;
 			this.opened = opened;
 			this.closed = closed;
+			this.BytesReceived = -1;
+			this.BytesSent = -1;
+		}
+
+		/// <summary>
+		/// Connection statistics constructor, including byte metrics.
+		/// </summary>
+		public ConnectionStats(int inPool, int inUse, int opened, int closed, long bytesReceived, long bytesSent)
+		{
+			this.inPool = inPool;
+			this.inUse = inUse;
+			this.opened = opened;
+			this.closed = closed;
+			this.BytesReceived = bytesReceived;
+			this.BytesSent = bytesSent;
 		}
 
 		/// <summary>
@@ -176,7 +226,14 @@ namespace Aerospike.Client
 		/// </summary>
 		public override string ToString()
 		{
-			return "" + inUse + ',' + inPool + ',' + opened + ',' + closed;
+			if (this.BytesReceived < 0)
+			{
+				return "" + inUse + ',' + inPool + ',' + opened + ',' + closed;
+			}
+			else
+			{
+				return "" + inUse + ',' + inPool + ',' + opened + ',' + closed + ',' + BytesReceived + ',' + BytesSent;
+			}
 		}
 	}
 }

@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2022 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -46,6 +46,7 @@ namespace Aerospike.Client
 			this.binNames = binNames;
 			this.tracker = tracker;
 
+			cluster.AddTran();
 			tracker.SleepBetweenRetries = 0;
 			ScanPartitions();
 		}

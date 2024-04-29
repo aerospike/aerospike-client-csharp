@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2022 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -37,6 +37,11 @@ namespace Aerospike.Client
 			this.statement = statement;
 			this.taskId = taskId;
 			this.recordSet = recordSet;
+		}
+
+		protected override Latency.LatencyType GetLatencyType()
+		{
+			return Latency.LatencyType.QUERY;
 		}
 
 		protected internal override void WriteBuffer()

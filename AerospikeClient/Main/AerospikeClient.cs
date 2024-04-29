@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2023 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -399,7 +399,23 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
-		/// Return operating cluster statistics.
+		/// Enable extended periodic cluster and node latency metrics.
+		/// </summary>
+		public void EnableMetrics(MetricsPolicy metricsPolicy)
+		{
+			cluster.EnableMetrics(metricsPolicy);
+		}
+
+		/// <summary>
+		/// Disable extended periodic cluster and node latency metrics.
+		/// </summary>
+		public void DisableMetrics()
+		{
+			cluster.DisableMetrics();
+		}
+
+		/// <summary>
+		/// Return operating cluster statistics snapshot.
 		/// </summary>
 		public ClusterStats GetClusterStats()
 		{
@@ -569,7 +585,7 @@ namespace Aerospike.Client
 					commands[count++] = new BatchOperateArrayCommand(cluster, batchNode, batchPolicy, keys, null, records, attr, status);
 				}
 
-				BatchExecutor.Execute(batchPolicy, commands, status);
+				BatchExecutor.Execute(cluster, batchPolicy, commands, status);
 				return new BatchResults(records, status.GetStatus());
 			}
 			catch (Exception e)
@@ -727,7 +743,7 @@ namespace Aerospike.Client
 				{
 					commands[count++] = new BatchExistsArrayCommand(cluster, batchNode, policy, keys, existsArray, status);
 				}
-				BatchExecutor.Execute(policy, commands, status);
+				BatchExecutor.Execute(cluster, policy, commands, status);
 				return existsArray;
 			}
 			catch (Exception e)
@@ -834,7 +850,7 @@ namespace Aerospike.Client
 			{
 				commands[count++] = new BatchReadListCommand(cluster, batchNode, policy, records, status);
 			}
-			BatchExecutor.Execute(policy, commands, status);
+			BatchExecutor.Execute(cluster, policy, commands, status);
 			return status.GetStatus();
 		}
 
@@ -882,7 +898,7 @@ namespace Aerospike.Client
 				{
 					commands[count++] = new BatchGetArrayCommand(cluster, batchNode, policy, keys, null, null, records, Command.INFO1_READ | Command.INFO1_GET_ALL, false, status);
 				}
-				BatchExecutor.Execute(policy, commands, status);
+				BatchExecutor.Execute(cluster, policy, commands, status);
 				return records;
 			}
 			catch (Exception e)
@@ -936,7 +952,7 @@ namespace Aerospike.Client
 				{
 					commands[count++] = new BatchGetArrayCommand(cluster, batchNode, policy, keys, binNames, null, records, Command.INFO1_READ, false, status);
 				}
-				BatchExecutor.Execute(policy, commands, status);
+				BatchExecutor.Execute(cluster, policy, commands, status);
 				return records;
 			}
 			catch (Exception e)
@@ -990,7 +1006,7 @@ namespace Aerospike.Client
 				{
 					commands[count++] = new BatchGetArrayCommand(cluster, batchNode, policy, keys, null, ops, records, Command.INFO1_READ, true, status);
 				}
-				BatchExecutor.Execute(policy, commands, status);
+				BatchExecutor.Execute(cluster, policy, commands, status);
 				return records;
 			}
 			catch (Exception e)
@@ -1043,7 +1059,7 @@ namespace Aerospike.Client
 				{
 					commands[count++] = new BatchGetArrayCommand(cluster, batchNode, policy, keys, null, null, records, Command.INFO1_READ | Command.INFO1_NOBINDATA, false, status);
 				}
-				BatchExecutor.Execute(policy, commands, status);
+				BatchExecutor.Execute(cluster, policy, commands, status);
 				return records;
 			}
 			catch (Exception e)
@@ -1168,7 +1184,7 @@ namespace Aerospike.Client
 			{
 				commands[count++] = new BatchOperateListCommand(cluster, batchNode, policy, records, status);
 			}
-			BatchExecutor.Execute(policy, commands, status);
+			BatchExecutor.Execute(cluster, policy, commands, status);
 			return status.GetStatus();
 		}
 
@@ -1225,7 +1241,7 @@ namespace Aerospike.Client
 					commands[count++] = new BatchOperateArrayCommand(cluster, batchNode, batchPolicy, keys, ops, records, attr, status);
 				}
 
-				BatchExecutor.Execute(batchPolicy, commands, status);
+				BatchExecutor.Execute(cluster, batchPolicy, commands, status);
 				return new BatchResults(records, status.GetStatus());
 			}
 			catch (Exception e)
@@ -1569,7 +1585,7 @@ namespace Aerospike.Client
 					commands[count++] = new BatchUDFCommand(cluster, batchNode, batchPolicy, keys, packageName, functionName, argBytes, records, attr, status);
 				}
 
-				BatchExecutor.Execute(batchPolicy, commands, status);
+				BatchExecutor.Execute(cluster, batchPolicy, commands, status);
 				return new BatchResults(records, status.GetStatus());
 			}
 			catch (Exception e)
@@ -1607,6 +1623,8 @@ namespace Aerospike.Client
 			statement.FunctionName = functionName;
 			statement.FunctionArgs = functionArgs;
 
+			cluster.AddTran();
+
 			ulong taskId = statement.PrepareTaskId();
 			Node[] nodes = cluster.ValidateNodes();
 			Executor executor = new Executor(nodes.Length);
@@ -1640,6 +1658,8 @@ namespace Aerospike.Client
 			}
 
 			statement.Operations = operations;
+
+			cluster.AddTran();
 
 			ulong taskId = statement.PrepareTaskId();
 			Node[] nodes = cluster.ValidateNodes();

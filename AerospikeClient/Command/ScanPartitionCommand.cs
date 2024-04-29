@@ -65,6 +65,11 @@ namespace Aerospike.Client
 			}
 		}
 
+		protected override Latency.LatencyType GetLatencyType()
+		{
+			return Latency.LatencyType.QUERY;
+		}
+
 		protected internal override void WriteBuffer()
 		{
 			SetScan(cluster, scanPolicy, ns, setName, binNames, taskId, nodePartitions);
