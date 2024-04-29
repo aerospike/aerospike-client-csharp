@@ -207,8 +207,10 @@ namespace Aerospike.Client.Proxy
                 Credentials = hosts[0].tlsName == null
 								? null
 								: ChannelCredentials.Create(new SslCredentials(), credentials),
-				LoggerFactory = loggerFactory                
-            });
+				LoggerFactory = loggerFactory,
+				MaxReceiveMessageSize = 128 * 1024 * 1024,
+				MaxRetryBufferSize = 128 * 1024 * 1024
+			});
 
 			this.AuthTokenManager.SetChannel(Channel);
 		}
