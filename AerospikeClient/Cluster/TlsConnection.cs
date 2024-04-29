@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2022 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -20,6 +20,7 @@ using System.Net;
 using System.Net.Sockets;
 using System.Net.Security;
 using System.Security.Cryptography.X509Certificates;
+using System.Xml.Linq;
 
 namespace Aerospike.Client
 {
@@ -36,6 +37,14 @@ namespace Aerospike.Client
 		/// Create TLS socket.
 		/// </summary>
 		public TlsConnection(Cluster cluster, string tlsName, IPEndPoint address, int timeoutMillis, Pool<Connection> pool)
+			: this(cluster, tlsName, address, timeoutMillis, null, pool)
+		{
+		}
+		
+		/// <summary>
+		/// Create TLS socket.
+		/// </summary>
+		public TlsConnection(Cluster cluster, string tlsName, IPEndPoint address, int timeoutMillis, Node node, Pool<Connection> pool)
 			: base(address, timeoutMillis, pool)
 		{
 			this.cluster = cluster;
@@ -49,6 +58,11 @@ namespace Aerospike.Client
             catch (Exception)
 			{
 				Close();
+
+				if (node != null)
+				{
+					node.IncrErrorCount();
+				}
 				throw;
 			}
 		}

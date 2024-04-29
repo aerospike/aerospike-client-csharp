@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2023 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -149,6 +149,14 @@ namespace Aerospike.Client
 							isClientTimeout = false;
 						}
 					}
+					catch (IOException ioe)
+					{
+						// IO errors are considered temporary anomalies.  Retry.
+						// Log.info("IOException: " + tranId + ',' + node + ',' + sequence + ',' + iteration);
+						node.CloseConnection(conn);
+						exception = new AerospikeException.Connection(ioe);
+						isClientTimeout = false;
+					}
 					catch (Exception)
 					{
 						// All other exceptions are considered fatal.  Do not retry.
@@ -170,6 +178,13 @@ namespace Aerospike.Client
 						exception = new AerospikeException.Connection(se);
 						isClientTimeout = false;
 					}
+				}
+				catch (IOException ioe)
+				{
+					// IO errors are considered temporary anomalies.  Retry.
+					// Log.info("IOException: " + tranId + ',' + node + ',' + sequence + ',' + iteration);
+					exception = new AerospikeException.Connection(ioe);
+					isClientTimeout = false;
 				}
 				catch (AerospikeException.Connection ce)
 				{

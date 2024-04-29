@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2023 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -32,6 +32,15 @@ namespace Aerospike.Client
 		/// Create socket with connection timeout.
 		/// </summary>
 		public Connection(IPEndPoint address, int timeoutMillis, Pool<Connection> pool)
+			: this(address, timeoutMillis, null, pool)
+		{ 
+		
+		}
+
+		/// <summary>
+		/// Create socket with connection timeout.
+		/// </summary>
+		public Connection(IPEndPoint address, int timeoutMillis, Node node, Pool<Connection> pool)
 		{
 			this.pool = pool;
 
@@ -95,6 +104,11 @@ namespace Aerospike.Client
 			{
 				//socket.Close();
 				socket.Dispose();
+
+				if (node != null)
+				{
+					node.IncrErrorCount();
+				}
 				throw new AerospikeException.Connection(e);
 			}
 		}
