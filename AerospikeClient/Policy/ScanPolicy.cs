@@ -106,7 +106,7 @@ namespace Aerospike.Client
 		/// all scan results because a single partition was missed.
 		/// </para>
 		/// </summary>
-		public ScanPolicy()
+		public ScanPolicy() : base()
 		{
 			base.totalTimeout = 0;
 			base.maxRetries = 5;

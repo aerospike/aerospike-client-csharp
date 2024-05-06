@@ -129,7 +129,7 @@ namespace Aerospike.Client
 		/// all query results because a single partition was missed.
 		/// </para>
 		/// </summary>
-		public QueryPolicy()
+		public QueryPolicy() : base()
 		{
 			base.totalTimeout = 0;
 			base.maxRetries = 5;
