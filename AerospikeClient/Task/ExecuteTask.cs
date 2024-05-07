@@ -35,6 +35,14 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
+		/// Return task id.
+		/// </summary>
+		public ulong GetTaskId()
+		{
+			return taskId;
+		}
+
+		/// <summary>
 		/// Query all nodes for task completion status.
 		/// </summary>
 		public override int QueryStatus()
