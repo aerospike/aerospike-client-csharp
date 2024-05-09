@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -15,6 +15,7 @@
  * the License.
  */
 using System;
+using System.IO;
 using System.Net.Sockets;
 using System.Threading;
 
@@ -151,6 +152,14 @@ namespace Aerospike.Client
 							isClientTimeout = false;
 						}
 					}
+					catch (IOException ioe)
+					{
+						// IO errors are considered temporary anomalies.  Retry.
+						// Log.info("IOException: " + tranId + ',' + node + ',' + sequence + ',' + iteration);
+						node.CloseConnection(conn);
+						exception = new AerospikeException.Connection(ioe);
+						isClientTimeout = false;
+					}
 					catch (Exception)
 					{
 						// All other exceptions are considered fatal.  Do not retry.
@@ -183,6 +192,13 @@ namespace Aerospike.Client
 				{
 					// Node is in backoff state. Retry, hopefully on another node.
 					exception = be;
+					isClientTimeout = false;
+				}
+				catch (IOException ioe)
+				{
+					// IO errors are considered temporary anomalies.  Retry.
+					// Log.info("IOException: " + tranId + ',' + node + ',' + sequence + ',' + iteration);
+					exception = new AerospikeException.Connection(ioe);
 					isClientTimeout = false;
 				}
 				catch (AerospikeException ae)

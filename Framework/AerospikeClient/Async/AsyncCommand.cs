@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -18,6 +18,7 @@ using System;
 using System.Net.Sockets;
 using System.Threading;
 using System.Diagnostics;
+using System.IO;
 
 namespace Aerospike.Client
 {
@@ -241,6 +242,12 @@ namespace Aerospike.Client
 				ErrorCount++;
 				ConnectionFailed(GetAerospikeException(se.SocketErrorCode));
 			}
+			catch (IOException ioe)
+			{
+				// IO errors are considered temporary anomalies.  Retry.
+				ErrorCount++;
+				ConnectionFailed(new AerospikeException.Connection(ioe));
+			}
 			catch (Exception e)
 			{
 				ErrorCount++;
@@ -320,6 +327,12 @@ namespace Aerospike.Client
 					// This exception occurs because socket is being used after timeout thread closes socket.
 					// Retry when this happens.
 					command.ConnectionFailed(new AerospikeException(ode));
+				}
+				catch (IOException ioe)
+				{
+					// IO errors are considered temporary anomalies.  Retry.
+					command.ConnectionFailed(new AerospikeException.Connection(ioe));
+					return;
 				}
 				catch (Exception e)
 				{
