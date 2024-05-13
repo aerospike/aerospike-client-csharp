@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2023 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -92,6 +92,14 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
+		/// Copy scan policy from another policy.
+		/// </summary>
+		public ScanPolicy(Policy other)
+			: base(other)
+		{
+		}
+
+		/// <summary>
 		/// Default constructor. Disable totalTimeout and set maxRetries.
 		/// <para>
 		/// The latest servers support retries on individual data partitions.
@@ -106,7 +114,7 @@ namespace Aerospike.Client
 		/// all scan results because a single partition was missed.
 		/// </para>
 		/// </summary>
-		public ScanPolicy()
+		public ScanPolicy() : base()
 		{
 			base.totalTimeout = 0;
 			base.maxRetries = 5;
