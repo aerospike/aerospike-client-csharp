@@ -101,6 +101,17 @@ namespace Aerospike.Client
 		/// Write expression in wire protocol.
 		/// For internal use only.
 		/// </summary>
+		public void Write(CommandNew cmd)
+		{
+			cmd.WriteExpHeader(cmd.dataBuffer, ref cmd.dataOffset, bytes.Length);
+			Array.Copy(bytes, 0, cmd.dataBuffer, cmd.dataOffset, bytes.Length);
+			cmd.dataOffset += bytes.Length;
+		}
+
+		/// <summary>
+		/// Write expression in wire protocol.
+		/// For internal use only.
+		/// </summary>
 		public void Write(Command cmd, Buffer buffer)
 		{
 			cmd.WriteExpHeader(bytes.Length);
