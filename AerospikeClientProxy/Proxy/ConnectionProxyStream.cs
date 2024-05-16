@@ -51,6 +51,11 @@ namespace Aerospike.Client.Proxy
 			throw new AerospikeException(NotSupported + "Write");
 		}
 
+		public Task Write(byte[] buffer, int length, CancellationToken token)
+		{
+			throw new AerospikeException(NotSupported + "Write");
+		}
+
 		void IConnection.ReadFully(byte[] buffer, int length)
 		{
 			throw new NotImplementedException();

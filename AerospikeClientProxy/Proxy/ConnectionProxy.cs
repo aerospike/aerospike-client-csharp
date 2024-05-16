@@ -50,10 +50,20 @@ namespace Aerospike.Client.Proxy
 			throw new AerospikeException(NotSupported + "Write");
 		}
 
+		public Task Write(byte[] buffer, int length, CancellationToken token)
+		{
+			throw new AerospikeException(NotSupported + "Write");
+		}
+
 		public void ReadFully(byte[] buffer, int length)
 		{
 			Array.Copy(Payload, Offset, buffer, 0, length);
 			Offset += length;
+		}
+
+		public Task ReadFully(byte[] buffer, int length, CancellationToken token)
+		{
+			throw new AerospikeException(NotSupported + "ReadFully");
 		}
 
 		public Stream GetStream()

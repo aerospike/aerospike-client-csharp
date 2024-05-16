@@ -26,10 +26,10 @@ namespace Aerospike.Client
 		public Task Execute(CancellationToken token);
 
 		public void WriteBuffer();
-		public void ParseResult(IConnection conn);
+		public Task ParseResult(IConnection conn, CancellationToken token);
 		public bool PrepareRetry(bool timeout);
 
-		public int SizeBuffer();
+		public int SizeBuffer(ref byte[] dataBuffer, ref int dataOffset);
 		public void SizeBuffer(int size);
 		public void End(byte[] dataBuffer, ref int dataOffset);
 		public void SetLength(byte[] dataBuffer, ref int dataOffset, int length);

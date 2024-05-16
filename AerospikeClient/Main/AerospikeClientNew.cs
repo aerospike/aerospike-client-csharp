@@ -15,6 +15,7 @@
  * the License.
  */
 using System.Buffers;
+using System.Diagnostics;
 using System.Reflection;
 using System.Text;
 
@@ -331,7 +332,7 @@ namespace Aerospike.Client
 		/// <param name="key">unique record identifier</param>
 		/// <param name="bins">array of bin name/value pairs</param>
 		/// <exception cref="AerospikeException">if write fails</exception>
-		public void Put(WritePolicy policy, Key key, params Bin[] bins)
+		/*public void Put(WritePolicy policy, Key key, params Bin[] bins)
 		{
 			policy ??= WritePolicyDefault;
 			WriteCommand command = new(Cluster, policy, key, bins, Operation.Type.WRITE);
@@ -613,7 +614,7 @@ namespace Aerospike.Client
 			{
 				throw new AerospikeException.BatchExists(existsArray, e);
 			}
-		}
+		}*/
 
 		//-------------------------------------------------------
 		// Read Record Operations
@@ -628,8 +629,9 @@ namespace Aerospike.Client
 		/// <param name="key">unique record identifier</param>
 		/// <param name="token">cancellation token</param>
 		/// <exception cref="AerospikeException">if read fails</exception>
-		async Task<Record> Get(Policy policy, Key key, CancellationToken token)
+		public async Task<Record> Get(Policy policy, Key key, CancellationToken token)
 		{
+			Debugger.Launch();
 			policy ??= ReadPolicyDefault;
 			ReadCommandNew command = new(bufferPool, Cluster, policy, key);
 			await command.Execute(token);
@@ -644,12 +646,13 @@ namespace Aerospike.Client
 		/// <param name="policy">generic configuration parameters, pass in null for defaults</param>
 		/// <param name="key">unique record identifier</param>
 		/// <param name="binNames">bins to retrieve</param>
+		/// <param name="token">cancellation token</param>
 		/// <exception cref="AerospikeException">if read fails</exception>
-		public Record Get(Policy policy, Key key, params string[] binNames)
+		public async Task<Record> Get(Policy policy, Key key, string[] binNames, CancellationToken token)
 		{
 			policy ??= ReadPolicyDefault;
-			ReadCommand command = new(Cluster, policy, key, binNames);
-			command.Execute();
+			ReadCommandNew command = new(bufferPool, Cluster, policy, key, binNames);
+			await command.Execute(token);
 			return command.Record;
 		}
 
@@ -661,7 +664,7 @@ namespace Aerospike.Client
 		/// <param name="policy">generic configuration parameters, pass in null for defaults</param>
 		/// <param name="key">unique record identifier</param>
 		/// <exception cref="AerospikeException">if read fails</exception>
-		public Record GetHeader(Policy policy, Key key)
+		/*public Record GetHeader(Policy policy, Key key)
 		{
 			policy ??= ReadPolicyDefault;
 			ReadHeaderCommand command = new(Cluster, policy, key);
@@ -2217,6 +2220,6 @@ namespace Aerospike.Client
 					record.bins[join.leftKeysBinName] = records;
 				}
 			}
-		}
+		}*/
 	}
 }

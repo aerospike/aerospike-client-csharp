@@ -44,19 +44,21 @@ namespace Aerospike.Client
 		public ArrayPool<byte> BufferPool { get; }
 
 
-		public CommandNew(ArrayPool<byte> bufferPool, int socketTimeout, int totalTimeout, int maxRetries)
+		public CommandNew(ArrayPool<byte> bufferPool, Cluster cluster, Policy policy)
 		{
-			this.MaxRetries = maxRetries;
-			this.TotalTimeout = totalTimeout;
+			this.Cluster = cluster;
+			this.Policy = policy;
+			this.MaxRetries = policy.maxRetries;
+			this.TotalTimeout = policy.totalTimeout;
 
 			if (TotalTimeout > 0)
 			{
-				this.SocketTimeout = (socketTimeout < totalTimeout && socketTimeout > 0) ? socketTimeout : totalTimeout;
+				this.SocketTimeout = (policy.socketTimeout < TotalTimeout && policy.socketTimeout > 0) ? policy.socketTimeout : TotalTimeout;
 				this.ServerTimeout = this.SocketTimeout;
 			}
 			else
 			{
-				this.SocketTimeout = socketTimeout;
+				this.SocketTimeout = policy.socketTimeout;
 				this.ServerTimeout = 0;
 			}
 
@@ -83,6 +85,8 @@ namespace Aerospike.Client
 			// Execute command until successful, timed out or maximum iterations have been reached.
 			while (true)
 			{
+				token.ThrowIfCancellationRequested();
+
 				try
 				{
 					node = GetNode();
@@ -111,13 +115,13 @@ namespace Aerospike.Client
 						WriteBuffer();
 
 						// Send command.
-						//await conn.Write(dataBuffer, dataOffset, token);
-						conn.Write(dataBuffer, dataOffset);
+						//conn.Write(dataBuffer, dataOffset);
+						await conn.Write(dataBuffer, dataOffset, token);
 						commandSentCounter++;
 
 						// Parse results.
-						//await ParseResult(conn, token);
-						ParseResult(conn);
+						await ParseResult(conn, token);
+						//ParseResult(conn);
 
 						// Put connection back in pool.
 						node.PutConnection(conn);
@@ -334,14 +338,12 @@ namespace Aerospike.Client
 		internal abstract LatencyType GetLatencyType();
 
 		public abstract void WriteBuffer();
-		public abstract void ParseResult(IConnection conn);
+		public abstract Task ParseResult(IConnection conn, CancellationToken token);
 		public abstract bool PrepareRetry(bool timeout);
 
-		public int SizeBuffer()
+		public int SizeBuffer(ref byte[] dataBuffer, ref int dataOffset)
 		{
-			dataBuffer = BufferPool.Rent(dataOffset);
-
-			if (dataOffset > dataBuffer.Length)
+			if (dataBuffer == null || dataOffset > dataBuffer.Length)
 			{
 				dataBuffer = BufferPool.Rent(dataOffset);
 			}

@@ -27,7 +27,7 @@ namespace Aerospike.Client
 		public Record Record { get; private set; }
 
 		public ReadCommandNew(ArrayPool<byte> bufferPool, Cluster cluster, Policy policy, Key key)
-			: base(bufferPool, policy.socketTimeout, policy.totalTimeout, policy.maxRetries)
+			: base(bufferPool, cluster, policy)
 		{
 			this.key = key;
 			this.binNames = null;
@@ -37,7 +37,7 @@ namespace Aerospike.Client
 		}
 
 		public ReadCommandNew(ArrayPool<byte> bufferPool, Cluster cluster, Policy policy, Key key, String[] binNames)
-			: base(bufferPool, policy.socketTimeout, policy.totalTimeout, policy.maxRetries)
+			: base(bufferPool, cluster, policy)
 		{
 			this.key = key;
 			this.binNames = binNames;
@@ -47,7 +47,7 @@ namespace Aerospike.Client
 		}
 
 		public ReadCommandNew(ArrayPool<byte> bufferPool, Cluster cluster, Policy policy, Key key, Partition partition, bool isOperation)
-			: base(bufferPool, policy.socketTimeout, policy.totalTimeout, policy.maxRetries)
+			: base(bufferPool, cluster, policy)
 		{
 			this.key = key;
 			this.binNames = null;
@@ -73,13 +73,15 @@ namespace Aerospike.Client
 
 		public override void WriteBuffer()
 		{
-			this.SetRead(dataBuffer, ref dataOffset, Policy, key, binNames);
+			this.SetRead(ref dataBuffer, ref dataOffset, Policy, key, binNames);
 		}
 
-		public override void ParseResult(IConnection conn)
+		public override async Task ParseResult(IConnection conn, CancellationToken token)
 		{
+			token.ThrowIfCancellationRequested();
+
 			// Read header.		
-			conn.ReadFully(dataBuffer, 8);
+			await conn.ReadFully(dataBuffer, 8, token);
 
 			long sz = ByteUtil.BytesToLong(dataBuffer, 0);
 			int receiveSize = (int)(sz & 0xFFFFFFFFFFFFL);
@@ -90,7 +92,7 @@ namespace Aerospike.Client
 			}
 
 			SizeBuffer(receiveSize);
-			conn.ReadFully(dataBuffer, receiveSize);
+			await conn.ReadFully(dataBuffer, receiveSize, token);
 			conn.UpdateLastUsed();
 
 			ulong type = (ulong)((sz >> 48) & 0xff);

@@ -82,7 +82,7 @@ namespace Aerospike.Client
 		// Writes
 		//--------------------------------------------------
 
-		public static void SetWrite(this CommandNew command, byte[] dataBuffer, ref int dataOffset, WritePolicy policy, Operation.Type operation, Key key, Bin[] bins)
+		public static void SetWrite(this CommandNew command, ref byte[] dataBuffer, ref int dataOffset, WritePolicy policy, Operation.Type operation, Key key, Bin[] bins)
 		{
 			Begin(ref dataOffset);
 			int fieldCount = EstimateKeySize(ref dataOffset, policy, key);
@@ -109,10 +109,10 @@ namespace Aerospike.Client
 			{
 				WriteOperation(dataBuffer, ref dataOffset, bin, operation);
 			}
-			End(command, dataBuffer, ref dataOffset, compress);
+			End(command, ref dataBuffer, ref dataOffset, compress);
 		}
 
-		public static void SetDelete(this CommandNew command, byte[] dataBuffer, ref int dataOffset, WritePolicy policy, Key key)
+		public static void SetDelete(this CommandNew command, ref byte[] dataBuffer, ref int dataOffset, WritePolicy policy, Key key)
 		{
 			Begin(ref dataOffset);
 			int fieldCount = EstimateKeySize(ref dataOffset, policy, key);
@@ -122,7 +122,7 @@ namespace Aerospike.Client
 				dataOffset += policy.filterExp.Size();
 				fieldCount++;
 			}
-			command.SizeBuffer();
+			command.SizeBuffer(ref dataBuffer, ref dataOffset);
 			WriteHeaderWrite(command, dataBuffer, ref dataOffset, policy, INFO2_WRITE | INFO2_DELETE, fieldCount, 0);
 			WriteKey(dataBuffer, ref dataOffset, policy, key);
 
@@ -130,7 +130,7 @@ namespace Aerospike.Client
 			command.End(dataBuffer, ref dataOffset);
 		}
 
-		public static void SetTouch(this CommandNew command, byte[] dataBuffer, ref int dataOffset, WritePolicy policy, Key key)
+		public static void SetTouch(this CommandNew command, ref byte[] dataBuffer, ref int dataOffset, WritePolicy policy, Key key)
 		{
 			Begin(ref dataOffset);
 			int fieldCount = EstimateKeySize(ref dataOffset, policy, key);
@@ -141,7 +141,7 @@ namespace Aerospike.Client
 				fieldCount++;
 			}
 			EstimateOperationSize(ref dataOffset);
-			command.SizeBuffer();
+			command.SizeBuffer(ref dataBuffer, ref dataOffset);
 			WriteHeaderWrite(command, dataBuffer, ref dataOffset, policy, INFO2_WRITE, fieldCount, 1);
 			WriteKey(dataBuffer, ref dataOffset, policy, key);
 
@@ -154,7 +154,7 @@ namespace Aerospike.Client
 		// Reads
 		//--------------------------------------------------
 
-		public static void SetExists(this CommandNew command, byte[] dataBuffer, ref int dataOffset, Policy policy, Key key)
+		public static void SetExists(this CommandNew command, ref byte[] dataBuffer, ref int dataOffset, Policy policy, Key key)
 		{
 			Begin(ref dataOffset);
 			int fieldCount = EstimateKeySize(ref dataOffset, policy, key);
@@ -164,7 +164,7 @@ namespace Aerospike.Client
 				dataOffset += policy.filterExp.Size();
 				fieldCount++;
 			}
-			command.SizeBuffer();
+			command.SizeBuffer(ref dataBuffer, ref dataOffset);
 			WriteHeaderReadHeader(command, dataBuffer, ref dataOffset, policy, INFO1_READ | INFO1_NOBINDATA, fieldCount, 0);
 			WriteKey(dataBuffer, ref dataOffset, policy, key);
 
@@ -172,7 +172,7 @@ namespace Aerospike.Client
 			command.End(dataBuffer, ref dataOffset);
 		}
 
-		public static void SetRead(this CommandNew command, byte[] dataBuffer, ref int dataOffset, Policy policy, Key key)
+		public static void SetRead(this CommandNew command, ref byte[] dataBuffer, ref int dataOffset, Policy policy, Key key)
 		{
 			Begin(ref dataOffset);
 			int fieldCount = EstimateKeySize(ref dataOffset, policy, key);
@@ -182,7 +182,7 @@ namespace Aerospike.Client
 				dataOffset += policy.filterExp.Size();
 				fieldCount++;
 			}
-			command.SizeBuffer();
+			command.SizeBuffer(ref dataBuffer, ref dataOffset);
 			WriteHeaderRead(dataBuffer, ref dataOffset, policy, command.ServerTimeout, INFO1_READ | INFO1_GET_ALL, 0, 0, fieldCount, 0);
 			WriteKey(dataBuffer, ref dataOffset, policy, key);
 
@@ -190,7 +190,7 @@ namespace Aerospike.Client
 			command.End(dataBuffer, ref dataOffset);
 		}
 
-		public static void SetRead(this CommandNew command, byte[] dataBuffer, ref int dataOffset, Policy policy, Key key, string[] binNames)
+		public static void SetRead(this CommandNew command, ref byte[] dataBuffer, ref int dataOffset, Policy policy, Key key, string[] binNames)
 		{
 			if (binNames != null)
 			{
@@ -207,7 +207,7 @@ namespace Aerospike.Client
 				{
 					EstimateOperationSize(ref dataOffset, binName);
 				}
-				command.SizeBuffer();
+				command.SizeBuffer(ref dataBuffer, ref dataOffset);
 				WriteHeaderRead(dataBuffer, ref dataOffset, policy, command.ServerTimeout, INFO1_READ, 0, 0, fieldCount, binNames.Length);
 				WriteKey(dataBuffer, ref dataOffset, policy, key);
 
@@ -221,11 +221,11 @@ namespace Aerospike.Client
 			}
 			else
 			{
-				SetRead(command, dataBuffer, ref dataOffset, policy, key);
+				SetRead(command, ref dataBuffer, ref dataOffset, policy, key);
 			}
 		}
 
-		public static void SetReadHeader(this CommandNew command, byte[] dataBuffer, ref int dataOffset, Policy policy, Key key)
+		public static void SetReadHeader(this CommandNew command, ref byte[] dataBuffer, ref int dataOffset, Policy policy, Key key)
 		{
 			Begin(ref dataOffset);
 			int fieldCount = EstimateKeySize(ref dataOffset, policy, key);
@@ -236,7 +236,7 @@ namespace Aerospike.Client
 				fieldCount++;
 			}
 			EstimateOperationSize(ref dataOffset, (string)null);
-			command.SizeBuffer();
+			command.SizeBuffer(ref dataBuffer, ref dataOffset);
 			WriteHeaderReadHeader(command, dataBuffer, ref dataOffset, policy, INFO1_READ |	INFO1_NOBINDATA, fieldCount, 0);
 			WriteKey(dataBuffer, ref dataOffset, policy, key);
 
@@ -248,7 +248,7 @@ namespace Aerospike.Client
 		// Operate
 		//--------------------------------------------------
 
-		public static void SetOperate(this CommandNew command, byte[] dataBuffer, ref int dataOffset, WritePolicy policy, Key key, OperateArgs args)
+		public static void SetOperate(this CommandNew command, ref byte[] dataBuffer, ref int dataOffset, WritePolicy policy, Key key, OperateArgs args)
 		{
 			Begin(ref dataOffset);
 			int fieldCount = EstimateKeySize(ref dataOffset, policy, key);
@@ -271,14 +271,14 @@ namespace Aerospike.Client
 			{
 				WriteOperation(dataBuffer, ref dataOffset, operation);
 			}
-			End(command, dataBuffer, ref dataOffset, compress);
+			End(command, ref dataBuffer, ref dataOffset, compress);
 		}
 
 		//--------------------------------------------------
 		// UDF
 		//--------------------------------------------------
 
-		public static void SetUdf(this CommandNew command, byte[] dataBuffer, ref int dataOffset, WritePolicy policy, Key key, string packageName, string functionName, Value[] args)
+		public static void SetUdf(this CommandNew command, ref byte[] dataBuffer, ref int dataOffset, WritePolicy policy, Key key, string packageName, string functionName, Value[] args)
 		{
 			Begin(ref dataOffset);
 			int fieldCount = EstimateKeySize(ref dataOffset, policy, key);
@@ -300,14 +300,14 @@ namespace Aerospike.Client
 			WriteField(dataBuffer, ref dataOffset, packageName, FieldType.UDF_PACKAGE_NAME);
 			WriteField(dataBuffer, ref dataOffset, functionName, FieldType.UDF_FUNCTION);
 			WriteField(dataBuffer, ref dataOffset, argBytes, FieldType.UDF_ARGLIST);
-			End(command, dataBuffer, ref dataOffset, compress);
+			End(command, ref dataBuffer, ref dataOffset, compress);
 		}
 
 		//--------------------------------------------------
 		// Batch Read Only
 		//--------------------------------------------------
 
-		public static void SetBatchRead(this CommandNew command, byte[] dataBuffer, ref int dataOffset, BatchPolicy policy, List<BatchRead> records, BatchNode batch)
+		public static void SetBatchRead(this CommandNew command, ref byte[] dataBuffer, ref int dataOffset, BatchPolicy policy, List<BatchRead> records, BatchNode batch)
 		{
 			// Estimate full row size
 			int[] offsets = batch.offsets;
@@ -447,13 +447,13 @@ namespace Aerospike.Client
 
 			// Write real field size.
 			ByteUtil.IntToBytes((uint)(dataOffset - MSG_TOTAL_HEADER_SIZE - 4), dataBuffer, fieldSizeOffset);
-			End(command, dataBuffer, ref dataOffset, compress);
+			End(command, ref dataBuffer, ref dataOffset, compress);
 		}
 
 		public static void SetBatchRead
 		(
 			this CommandNew command,
-			byte[] dataBuffer, 
+			ref byte[] dataBuffer, 
 			ref int dataOffset, 
 			BatchPolicy policy,
 			Key[] keys,
@@ -584,14 +584,14 @@ namespace Aerospike.Client
 
 			// Write real field size.
 			ByteUtil.IntToBytes((uint)(dataOffset - MSG_TOTAL_HEADER_SIZE - 4), dataBuffer, fieldSizeOffset);
-			End(command, dataBuffer, ref dataOffset, compress);
+			End(command, ref dataBuffer, ref dataOffset, compress);
 		}
 
 		//--------------------------------------------------
 		// Batch Read/Write Operations
 		//--------------------------------------------------
 
-		public static void SetBatchOperate(this CommandNew command, byte[] dataBuffer, ref int dataOffset, BatchPolicy policy, IList records, BatchNode batch)
+		public static void SetBatchOperate(this CommandNew command,	ref byte[] dataBuffer, ref int dataOffset, BatchPolicy policy, IList records, BatchNode batch)
 		{
 			// Estimate full row size
 			int[] offsets = batch.offsets;
@@ -768,13 +768,13 @@ namespace Aerospike.Client
 
 			// Write real field size.
 			ByteUtil.IntToBytes((uint)(dataOffset - MSG_TOTAL_HEADER_SIZE - 4), dataBuffer, fieldSizeOffset);
-			End(command, dataBuffer, ref dataOffset, compress);
+			End(command, ref dataBuffer, ref dataOffset, compress);
 		}
 
 		public static void SetBatchOperate
 		(
 			this CommandNew command,
-			byte[] dataBuffer, 
+			ref byte[] dataBuffer, 
 			ref int dataOffset,
 			BatchPolicy policy,
 			Key[] keys,
@@ -915,13 +915,13 @@ namespace Aerospike.Client
 
 			// Write real field size.
 			ByteUtil.IntToBytes((uint)(dataOffset - MSG_TOTAL_HEADER_SIZE - 4), dataBuffer, fieldSizeOffset);
-			End(command, dataBuffer, ref dataOffset, compress);
+			End(command, ref dataBuffer, ref dataOffset, compress);
 		}
 
 		public static void SetBatchUDF
 		(
 			this CommandNew command,
-			byte[] dataBuffer, 
+			ref byte[] dataBuffer, 
 			ref int dataOffset,
 			BatchPolicy policy,
 			Key[] keys,
@@ -1026,7 +1026,7 @@ namespace Aerospike.Client
 
 			// Write real field size.
 			ByteUtil.IntToBytes((uint)(dataOffset - MSG_TOTAL_HEADER_SIZE - 4), dataBuffer, fieldSizeOffset);
-			End(command, dataBuffer, ref dataOffset, compress);
+			End(command, ref dataBuffer, ref dataOffset, compress);
 		}
 
 		private static Expression GetBatchExpression(Policy policy, BatchAttr attr)
@@ -1165,7 +1165,7 @@ namespace Aerospike.Client
 		public static void SetScan
 		(
 			this CommandNew command,
-			byte[] dataBuffer, 
+			ref byte[] dataBuffer, 
 			ref int dataOffset,
 			Cluster cluster,
 			ScanPolicy policy,
@@ -1240,7 +1240,7 @@ namespace Aerospike.Client
 				}
 			}
 
-			command.SizeBuffer();
+			command.SizeBuffer(ref dataBuffer, ref dataOffset);
 			int readAttr = INFO1_READ;
 
 			if (!policy.includeBinData)
@@ -1319,7 +1319,7 @@ namespace Aerospike.Client
 		public static void SetQuery
 		(
 			this CommandNew command,
-			byte[] dataBuffer, 
+			ref byte[] dataBuffer, 
 			ref int dataOffset,
 			Cluster cluster,
 			Policy policy,
@@ -1512,7 +1512,7 @@ namespace Aerospike.Client
 				operationCount = statement.binNames.Length;
 			}
 
-			command.SizeBuffer();
+			command.SizeBuffer(ref dataBuffer, ref dataOffset);
 
 			if (background)
 			{
@@ -2194,12 +2194,12 @@ namespace Aerospike.Client
 			else
 			{
 				// CommandNew will be uncompressed.
-				command.SizeBuffer();
+				command.SizeBuffer(ref dataBuffer, ref dataOffset);
 				return false;
 			}
 		}
 
-		private static void End(CommandNew command, byte[] dataBuffer, ref int dataOffset, bool compress)
+		private static void End(CommandNew command, ref byte[] dataBuffer, ref int dataOffset, bool compress)
 		{
 			if (!compress)
 			{
@@ -2220,7 +2220,7 @@ namespace Aerospike.Client
 
 			// This method finds dataBuffer of requested size, resets dataOffset to segment offset
 			// and returns dataBuffer max size;
-			int trgBufSize = command.SizeBuffer();
+			int trgBufSize = command.SizeBuffer(ref dataBuffer, ref dataOffset);
 
 			// Compress to target starting at new dataOffset plus new header.
 			int trgSize = ByteUtil.Compress(srcBuf, srcSize, dataBuffer, dataOffset + 16, trgBufSize - 16) + 16;

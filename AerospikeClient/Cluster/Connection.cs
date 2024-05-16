@@ -26,6 +26,8 @@ namespace Aerospike.Client
 	{
 		protected internal readonly Socket socket;
 		protected internal readonly Pool<Connection> pool;
+		readonly SocketAsyncEventArgs args;
+		readonly SocketAwaitable saw;
 		private DateTime lastUsed;
 
 		/// <summary>
@@ -43,6 +45,8 @@ namespace Aerospike.Client
 		public Connection(IPEndPoint address, int timeoutMillis, Node node, Pool<Connection> pool)
 		{
 			this.pool = pool;
+			this.args = new SocketAsyncEventArgs();
+			this.saw = new SocketAwaitable(this.args);
 
 			try
 			{
@@ -133,6 +137,21 @@ namespace Aerospike.Client
 				}
 				pos += count;
 			}
+		}
+
+		public virtual async Task Write(byte[] buffer, int length, CancellationToken token)
+		{
+			token.ThrowIfCancellationRequested();
+
+			args.SetBuffer(buffer, 0, length);
+			await socket.SendAsync(saw);
+		}
+
+		public virtual async Task ReadFully(byte[] buffer, int length, CancellationToken token)
+		{
+			token.ThrowIfCancellationRequested();
+
+			await socket.ReceiveAsync(saw, buffer, 0, length);
 		}
 
 		public virtual void ReadFully(byte[] buffer, int length)

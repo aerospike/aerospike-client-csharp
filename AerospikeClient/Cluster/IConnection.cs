@@ -25,8 +25,10 @@ namespace Aerospike.Client
 		public void SetTimeout(int timeoutMillis);
 
 		public abstract void Write(byte[] buffer, int length);
+		public abstract Task Write(byte[] buffer, int length, CancellationToken token);
 
 		public abstract void ReadFully(byte[] buffer, int length);
+		public abstract Task ReadFully(byte[] buffer, int length, CancellationToken token);
 
 		public abstract Stream GetStream();
 
