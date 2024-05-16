@@ -1,4 +1,4 @@
-/* 
+/*
  * Copyright 2012-2018 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
@@ -14,7 +14,7 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-/* 
+/*
  * Copyright (c) 2000 - 2015 The Legion of the Bouncy Castle Inc. (http://www.bouncycastle.org)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of this software
@@ -25,7 +25,7 @@
  *
  * The above copyright notice and this permission notice shall be included in all copies or
  * substantial portions of the Software.
- * 
+ *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING
  * BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
  * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
@@ -39,22 +39,26 @@ namespace Aerospike.Client
 	/// <summary>
 	/// RIPEMD-160 hash.  Algorithm provided by Hans Dobbertin, Antoon Bosselaers, and Bart Preneel:
 	/// https://homes.esat.kuleuven.be/~bosselae/ripemd160.html
-	/// 
+	///
 	/// This is an optimized implementation based on Bouncy Castle's RipeMD160Digest.cs:
 	/// http://www.bouncycastle.org/csharp
 	/// </summary>
-	public sealed class Ripemd160
+	public struct ValueRipemd160
 	{
 		private uint[] X = new uint[16];
 		private byte[] xBuf = new byte[4];
-		private int xOff;
-		private int xBufOff;
-		private long byteCount;
+		private int xOff = 0;
+		private int xBufOff = 0;
+		private long byteCount = 0;
 		private uint H0 = 0x67452301;
 		private uint H1 = 0xefcdab89;
 		private uint H2 = 0x98badcfe;
 		private uint H3 = 0x10325476;
 		private uint H4 = 0xc3d2e1f0;
+
+		public ValueRipemd160()
+		{
+		}
 
 		/// <summary>
 		/// Reset parameters to start new hash.
@@ -115,7 +119,7 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Add byte to be hashed.
 		/// </summary>
-		public void Add(byte input)
+		private void Add(byte input)
 		{
 			xBuf[xBufOff++] = input;
 
@@ -173,8 +177,8 @@ namespace Aerospike.Client
 		private void ProcessWord(byte[] input, int inOff)
 		{
 			X[xOff++] = ((uint)input[inOff]) |
-						(((uint)input[inOff + 1]) << 8) | 
-						(((uint)input[inOff + 2]) << 16) | 
+						(((uint)input[inOff + 1]) << 8) |
+						(((uint)input[inOff + 2]) << 16) |
 						(((uint)input[inOff + 3]) << 24);
 
 			if (xOff == 16)
@@ -193,7 +197,7 @@ namespace Aerospike.Client
 			X[14] = (uint)(bitLength & 0xffffffff);
 			X[15] = (uint)((ulong)bitLength >> 32);
 		}
-		
+
 		private void ProcessBlock()
 		{
 			uint aa = H0, aaa = H0;
