@@ -15,6 +15,7 @@
  * the License.
  */
 using Aerospike.Client;
+using Aerospike.Client.Proxy;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace Aerospike.Test
@@ -105,6 +106,37 @@ namespace Aerospike.Test
 			finally
 			{
 				rs.Close();
+			}
+		}
+
+		[TestMethod]
+		public void QueryException()
+		{
+			for (int i = 0; i < 5; i++)
+			{
+				Key k = new Key(args.ns, args.set, i);
+				client.Put(null, k, new Bin("bin", i));
+			}
+			Statement stmt = new();
+			stmt.SetNamespace(args.ns);
+			stmt.SetSetName(args.set);
+			Expression exp = Exp.Build(Exp.Or(Exp.EQ(Exp.Val(1), Exp.Val(1)), Exp.Val("bad expression")));
+			QueryPolicy qp = new()
+			{
+				filterExp = exp
+			};
+			try
+			{
+				RecordSet rcs = client.Query(qp, stmt);
+				while (rcs.Next())
+				{
+					System.Console.WriteLine(rcs.Record);
+				}
+				rcs.Close();
+			}
+			catch (System.Exception e)
+			{
+				System.Console.WriteLine(e);
 			}
 		}
 	}

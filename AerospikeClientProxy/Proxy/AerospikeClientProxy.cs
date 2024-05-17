@@ -1499,7 +1499,38 @@ namespace Aerospike.Client.Proxy
 			PartitionTracker tracker = new(policy, statement, (Node[])null, partitionFilter);
 			RecordSet recordSet = new(null, policy.recordQueueSize, cancellationToken);
 			QueryPartitionCommandProxy command = new(buffer, Channel, policy, statement, tracker, partitionFilter, recordSet);
-			command.Execute(cancellationToken).Wait(policy.totalTimeout, cancellationToken);
+
+			try
+			{
+				command.Execute(cancellationToken).Wait(policy.totalTimeout, cancellationToken);
+			}
+			catch (AggregateException ae)
+			{
+				foreach (var ex in ae.InnerExceptions)
+				{
+					throw;
+				}
+			}
+			catch (ArgumentOutOfRangeException)
+			{
+				throw;
+			}
+			catch (OperationCanceledException)
+			{
+				throw;
+			}
+			catch (ObjectDisposedException)
+			{
+				throw;
+			}
+			catch (AerospikeException)
+			{
+				throw;
+			}
+			catch (Exception)
+			{
+				throw;
+			}
 			return recordSet;
 		}
 

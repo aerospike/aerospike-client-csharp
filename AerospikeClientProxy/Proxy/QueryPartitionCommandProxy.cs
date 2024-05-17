@@ -135,7 +135,7 @@ namespace Aerospike.Client.Proxy
 				{
 					if (Log.DebugEnabled())
 					{
-						Log.Debug($"QueryParitionCoommandProxy EndOfGRPCStream Exception: {eos.ResultCode}: Exception: {eos.GetType()} Message: '{eos.Message}': '{eos}'");
+						Log.Debug($"QueryParitionCommandProxy EndOfGRPCStream Exception: {eos.ResultCode}: Exception: {eos.GetType()} Message: '{eos.Message}': '{eos}'");
 					}
 
 					// The server returned a fatal error.
