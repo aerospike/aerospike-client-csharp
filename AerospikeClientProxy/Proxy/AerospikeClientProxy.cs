@@ -1500,9 +1500,11 @@ namespace Aerospike.Client.Proxy
 			RecordSet recordSet = new(null, policy.recordQueueSize, cancellationToken);
 			QueryPartitionCommandProxy command = new(buffer, Channel, policy, statement, tracker, partitionFilter, recordSet);
 
+			var task = command.Execute(cancellationToken);
+
 			try
 			{
-				command.Execute(cancellationToken).Wait(policy.totalTimeout, cancellationToken);
+				task.Wait(command.totalTimeout, cancellationToken);
 			}
 			catch (AggregateException ae)
 			{
@@ -1510,22 +1512,6 @@ namespace Aerospike.Client.Proxy
 				{
 					throw;
 				}
-			}
-			catch (ArgumentOutOfRangeException)
-			{
-				throw;
-			}
-			catch (OperationCanceledException)
-			{
-				throw;
-			}
-			catch (ObjectDisposedException)
-			{
-				throw;
-			}
-			catch (AerospikeException)
-			{
-				throw;
 			}
 			catch (Exception)
 			{

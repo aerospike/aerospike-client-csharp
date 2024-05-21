@@ -91,12 +91,6 @@ namespace Aerospike.Client.Proxy
 			return true;
 		}
 
-		public void Execute()
-		{
-			CancellationTokenSource source = new();
-			Execute(source.Token).Wait(totalTimeout);
-		}
-
 		public async Task Execute(CancellationToken token)
 		{
 			WriteBuffer();
