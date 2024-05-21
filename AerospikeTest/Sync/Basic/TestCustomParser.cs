@@ -37,14 +37,14 @@ namespace Aerospike.Test
 				this.parseBin = parseBin;
 			}
 
-			public Record ParseRecord(byte[] dataBuffer, ref int dataOffset, int opCount, int generation, int expiration, bool isOperation)
+			public (Record record, int dataOffset) ParseRecord(byte[] dataBuffer, int dataOffset, int opCount, int generation, int expiration, bool isOperation)
 			{
 				string binName;
 				byte valueType;
 				int valueOffset;
 				int valueSize;
 
-				dataOffset = RecordParser.ExtractBinValue(
+				int dataOffsetLocal = RecordParser.ExtractBinValue(
 					dataBuffer,
 					dataOffset,
 					out binName,
@@ -53,7 +53,7 @@ namespace Aerospike.Test
 					out valueSize);
 
 				this.parseBin(dataBuffer.Skip(valueOffset).Take(valueSize).ToArray());
-				return new Record(null, generation, expiration);
+				return (new Record(null, generation, expiration), dataOffsetLocal);
 			}
 		}
 

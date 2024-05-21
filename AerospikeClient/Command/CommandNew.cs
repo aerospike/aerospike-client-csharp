@@ -25,7 +25,7 @@ using static Aerospike.Client.Latency;
 
 namespace Aerospike.Client
 {
-	public abstract class CommandNew : ICommand
+	public abstract class CommandNew
 	{
 		internal int ServerTimeout { get; private set; }
 		internal int SocketTimeout { get; private set; }
@@ -341,34 +341,6 @@ namespace Aerospike.Client
 		public abstract Task ParseResult(IConnection conn, CancellationToken token);
 		public abstract bool PrepareRetry(bool timeout);
 
-		public int SizeBuffer(ref byte[] dataBuffer, ref int dataOffset)
-		{
-			if (dataBuffer == null || dataOffset > dataBuffer.Length)
-			{
-				dataBuffer = BufferPool.Rent(dataOffset);
-			}
-			dataOffset = 0;
-			return dataBuffer.Length;
-		}
-
-		public void SizeBuffer(int size)
-		{
-			if (size > dataBuffer.Length)
-			{
-				dataBuffer = BufferPool.Rent(size);
-			}
-		}
-
-		public void End(byte[] dataBuffer, ref int dataOffset)
-		{
-			// Write total size of message.
-			ulong size = ((ulong)dataOffset - 8) | (CommandHelpers.CL_MSG_VERSION << 56) | (CommandHelpers.AS_MSG_TYPE << 48);
-			ByteUtil.LongToBytes(size, dataBuffer, 0);
-		}
-
-		public void SetLength(byte[] dataBuffer, ref int dataOffset, int length)
-		{
-			dataOffset = length;
-		}
+		
 	}
 }

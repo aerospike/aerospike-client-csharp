@@ -358,7 +358,8 @@ namespace Aerospike.Client.Proxy
 				return new Record(null, Generation, Expiration);
 			}
 
-			return Policy.recordParser.ParseRecord(Buffer.DataBuffer, ref Buffer.Offset, OpCount, Generation, Expiration, IsOperation);
+			(Record record, Buffer.Offset) = Policy.recordParser.ParseRecord(Buffer.DataBuffer, Buffer.Offset, OpCount, Generation, Expiration, IsOperation);
+			return record;
 		}
 
 		public void Stop()

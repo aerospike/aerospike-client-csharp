@@ -19,6 +19,6 @@ namespace Aerospike.Client
 {
     public interface IRecordParser
     {
-        Record ParseRecord(byte[] dataBuffer, ref int dataOffset, int opCount, int generation, int expiration, bool isOperation);
+        (Record record, int dataOffset) ParseRecord(byte[] dataBuffer, int dataOffset, int opCount, int generation, int expiration, bool isOperation);
     }
 }

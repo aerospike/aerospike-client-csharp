@@ -96,7 +96,7 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Cluster associated with this AerospikeClient instance.
 		/// </summary>
-		Cluster Cluster { get; }
+		Cluster Cluster { get; set; }
 
 		/// <summary>
 		/// Return array of active server nodes in the cluster.
@@ -390,7 +390,7 @@ namespace Aerospike.Client
 		/// <param name="binNames">array of bins to retrieve</param>
 		/// <param name="joins">array of join definitions</param>
 		/// <exception cref="AerospikeException">if main read or join reads fail</exception>
-		Record Join(BatchPolicy policy, Key key, string[] binNames, params Join[] joins);
+		//Record Join(BatchPolicy policy, Key key, string[] binNames, params Join[] joins);
 
 		/// <summary>
 		/// Read all bins in left record and then join with right records.  Each join bin name
@@ -401,7 +401,7 @@ namespace Aerospike.Client
 		/// <param name="key">unique main record identifier</param>
 		/// <param name="joins">array of join definitions</param>
 		/// <exception cref="AerospikeException">if main read or join reads fail</exception>
-		Record Join(BatchPolicy policy, Key key, params Join[] joins);
+		//Record Join(BatchPolicy policy, Key key, params Join[] joins);
 
 		//-------------------------------------------------------
 		// Generic Database Operations
@@ -783,6 +783,10 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if query fails</exception>
 		Task<IResultSet> QueryAggregate(QueryPolicy policy, Statement statement, CancellationToken token);
 
+		//--------------------------------------------------------
+		// Secondary Index functions
+		//--------------------------------------------------------
+
 		/// <summary>
 		/// Create scalar secondary index.
 		/// This asynchronous server call will return before command is complete.
@@ -873,15 +877,17 @@ namespace Aerospike.Client
 		/// <param name="policy">admin configuration parameters, pass in null for defaults</param>
 		/// <param name="user">user name</param>
 		/// <param name="password">user password in clear-text format</param>
-		/// <param name="roles">variable arguments array of role names.  Predefined roles are listed in Role.cs</param>		
-		void CreateUser(AdminPolicy policy, string user, string password, IList<string> roles);
+		/// <param name="roles">variable arguments array of role names.  Predefined roles are listed in Role.cs</param>
+		/// <param name="token">cancellation token</param>
+		Task CreateUser(AdminPolicy policy, string user, string password, IList<string> roles, CancellationToken token);
 
 		/// <summary>
 		/// Remove user from cluster.
 		/// </summary>
 		/// <param name="policy">admin configuration parameters, pass in null for defaults</param>
 		/// <param name="user">user name</param>
-		void DropUser(AdminPolicy policy, string user);
+		/// <param name="token"> cancellation token</param>
+		Task DropUser(AdminPolicy policy, string user, CancellationToken token);
 
 		/// <summary>
 		/// Change user's password.
@@ -889,7 +895,8 @@ namespace Aerospike.Client
 		/// <param name="policy">admin configuration parameters, pass in null for defaults</param>
 		/// <param name="user">user name</param>
 		/// <param name="password">user password in clear-text format</param>
-		void ChangePassword(AdminPolicy policy, string user, string password);
+		/// <param name="token"> cancellation token</param>
+		Task ChangePassword(AdminPolicy policy, string user, string password, CancellationToken token);
 
 		/// <summary>
 		/// Add roles to user's list of roles.
@@ -897,7 +904,8 @@ namespace Aerospike.Client
 		/// <param name="policy">admin configuration parameters, pass in null for defaults</param>
 		/// <param name="user">user name</param>
 		/// <param name="roles">role names.  Predefined roles are listed in Role.cs</param>
-		void GrantRoles(AdminPolicy policy, string user, IList<string> roles);
+		/// <param name="token"> cancellation token</param>
+		Task GrantRoles(AdminPolicy policy, string user, IList<string> roles, CancellationToken token);
 
 		/// <summary>
 		/// Remove roles from user's list of roles.
@@ -905,7 +913,8 @@ namespace Aerospike.Client
 		/// <param name="policy">admin configuration parameters, pass in null for defaults</param>
 		/// <param name="user">user name</param>
 		/// <param name="roles">role names.  Predefined roles are listed in Role.cs</param>
-		void RevokeRoles(AdminPolicy policy, string user, IList<string> roles);
+		/// <param name="token"> cancellation token</param>
+		Task RevokeRoles(AdminPolicy policy, string user, IList<string> roles, CancellationToken token);
 
 		/// <summary>
 		/// Create user defined role.
@@ -913,8 +922,9 @@ namespace Aerospike.Client
 		/// <param name="policy">admin configuration parameters, pass in null for defaults</param>
 		/// <param name="roleName">role name</param>
 		/// <param name="privileges">privileges assigned to the role.</param>
+		/// <param name="token"> cancellation token</param>
 		/// <exception cref="AerospikeException">if command fails </exception>
-		void CreateRole(AdminPolicy policy, string roleName, IList<Privilege> privileges);
+		Task CreateRole(AdminPolicy policy, string roleName, IList<Privilege> privileges, CancellationToken token);
 
 		/// <summary>
 		/// Create user defined role with optional privileges and whitelist.
@@ -926,8 +936,9 @@ namespace Aerospike.Client
 		/// optional list of allowable IP addresses assigned to role.
 		/// IP addresses can contain wildcards (ie. 10.1.2.0/24).
 		/// </param>
+		/// <param name="token"> cancellation token</param>
 		/// <exception cref="AerospikeException">if command fails</exception>
-		void CreateRole(AdminPolicy policy, string roleName, IList<Privilege> privileges, IList<string> whitelist);
+		Task CreateRole(AdminPolicy policy, string roleName, IList<Privilege> privileges, IList<string> whitelist, CancellationToken token);
 
 		/// <summary>
 		/// Create user defined role with optional privileges, whitelist and read/write quotas.
@@ -942,15 +953,17 @@ namespace Aerospike.Client
 		/// </param>
 		/// <param name="readQuota">optional maximum reads per second limit, pass in zero for no limit.</param>
 		/// <param name="writeQuota">optional maximum writes per second limit, pass in zero for no limit.</param>
+		/// <param name="token"> cancellation token</param>
 		/// <exception cref="AerospikeException">if command fails</exception>
-		void CreateRole
+		Task CreateRole
 		(
 			AdminPolicy policy,
 			string roleName,
 			IList<Privilege> privileges,
 			IList<string> whitelist,
 			int readQuota,
-			int writeQuota
+			int writeQuota,
+			CancellationToken token
 		);
 
 		/// <summary>
@@ -958,8 +971,9 @@ namespace Aerospike.Client
 		/// </summary>
 		/// <param name="policy">admin configuration parameters, pass in null for defaults</param>
 		/// <param name="roleName">role name</param>
+		/// <param name="token"> cancellation token</param>
 		/// <exception cref="AerospikeException">if command fails</exception>
-		void DropRole(AdminPolicy policy, string roleName);
+		Task DropRole(AdminPolicy policy, string roleName, CancellationToken token);
 
 		/// <summary>
 		/// Grant privileges to an user defined role.
@@ -967,8 +981,9 @@ namespace Aerospike.Client
 		/// <param name="policy">admin configuration parameters, pass in null for defaults</param>
 		/// <param name="roleName">role name</param>
 		/// <param name="privileges">privileges assigned to the role.</param>
+		/// <param name="token"> cancellation token</param>
 		/// <exception cref="AerospikeException">if command fails</exception>
-		void GrantPrivileges(AdminPolicy policy, string roleName, IList<Privilege> privileges);
+		Task GrantPrivileges(AdminPolicy policy, string roleName, IList<Privilege> privileges, CancellationToken token);
 
 		/// <summary>
 		/// Revoke privileges from an user defined role.
@@ -976,8 +991,9 @@ namespace Aerospike.Client
 		/// <param name="policy">admin configuration parameters, pass in null for defaults</param>
 		/// <param name="roleName">role name</param>
 		/// <param name="privileges">privileges assigned to the role.</param>
+		/// <param name="token"> cancellation token</param>
 		/// <exception cref="AerospikeException">if command fails</exception>
-		void RevokePrivileges(AdminPolicy policy, string roleName, IList<Privilege> privileges);
+		Task RevokePrivileges(AdminPolicy policy, string roleName, IList<Privilege> privileges, CancellationToken token);
 
 		/// <summary>
 		/// Set IP address whitelist for a role.  If whitelist is null or empty, remove existing whitelist from role.
@@ -988,8 +1004,9 @@ namespace Aerospike.Client
 		/// list of allowable IP addresses or null.
 		/// IP addresses can contain wildcards (ie. 10.1.2.0/24).
 		/// </param>
+		/// <param name="token"> cancellation token</param>
 		/// <exception cref="AerospikeException">if command fails</exception>
-		void SetWhitelist(AdminPolicy policy, string roleName, IList<string> whitelist);
+		Task SetWhitelist(AdminPolicy policy, string roleName, IList<string> whitelist, CancellationToken token);
 
 		/// <summary>
 		/// Set maximum reads/writes per second limits for a role.  If a quota is zero, the limit is removed.
@@ -999,35 +1016,40 @@ namespace Aerospike.Client
 		/// <param name="roleName">role name</param>
 		/// <param name="readQuota">maximum reads per second limit, pass in zero for no limit.</param>
 		/// <param name="writeQuota">maximum writes per second limit, pass in zero for no limit.</param>
+		/// <param name="token"> cancellation token</param>
 		/// <exception cref="AerospikeException">if command fails</exception>
-		void SetQuotas(AdminPolicy policy, string roleName, int readQuota, int writeQuota);
+		Task SetQuotas(AdminPolicy policy, string roleName, int readQuota, int writeQuota, CancellationToken token);
 
 		/// <summary>
 		/// Retrieve roles for a given user.
 		/// </summary>
 		/// <param name="policy">admin configuration parameters, pass in null for defaults</param>
 		/// <param name="user">user name filter</param>
-		User QueryUser(AdminPolicy policy, string user);
+		/// <param name="token"> cancellation token</param>
+		Task<User> QueryUser(AdminPolicy policy, string user, CancellationToken token);
 
 		/// <summary>
 		/// Retrieve all users and their roles.
 		/// </summary>
 		/// <param name="policy">admin configuration parameters, pass in null for defaults</param>
-		List<User> QueryUsers(AdminPolicy policy);
+		/// <param name="token"> cancellation token</param>
+		Task<List<User>> QueryUsers(AdminPolicy policy, CancellationToken token);
 
 		/// <summary>
 		/// Retrieve role definition.
 		/// </summary>
 		/// <param name="policy">admin configuration parameters, pass in null for defaults</param>
 		/// <param name="roleName">role name filter</param>
+		/// <param name="token"> cancellation token</param>
 		/// <exception cref="AerospikeException">if command fails</exception>
-		Role QueryRole(AdminPolicy policy, string roleName);
+		Task<Role> QueryRole(AdminPolicy policy, string roleName, CancellationToken token);
 
 		/// <summary>
 		/// Retrieve all roles.
 		/// </summary>
 		/// <param name="policy">admin configuration parameters, pass in null for defaults</param>
+		/// <param name="token"> cancellation token</param>
 		/// <exception cref="AerospikeException">if command fails</exception>
-		List<Role> QueryRoles(AdminPolicy policy);
+		Task<List<Role>> QueryRoles(AdminPolicy policy, CancellationToken token);
 	}
 }

@@ -16,22 +16,43 @@
  */
 using System.Buffers;
 using System.Collections;
+using static Aerospike.Client.Latency;
 
 namespace Aerospike.Client
 {
-	public interface ICommand
+	internal interface ICommand
 	{
-		public ArrayPool<byte> BufferPool { get; }
+		public ArrayPool<byte> BufferPool { get; set; }
+		public int ServerTimeout { get; set; }
+		public int SocketTimeout { get; set; }
+		public int TotalTimeout { get; set; }
+		public int MaxRetries { get; set; }
+		public Cluster Cluster { get; set; }
+		public Policy Policy { get; set; }
 
-		public Task Execute(CancellationToken token);
+		public byte[] DataBuffer { get; set;  }
+		public int DataOffset { get; set; }
+		public int Iteration { get; set; }// 1;
+		public int CommandSentCounter { get; set; }
+		public DateTime Deadline { get; set; }
 
 		public void WriteBuffer();
 		public Task ParseResult(IConnection conn, CancellationToken token);
 		public bool PrepareRetry(bool timeout);
 
-		public int SizeBuffer(ref byte[] dataBuffer, ref int dataOffset);
-		public void SizeBuffer(int size);
-		public void End(byte[] dataBuffer, ref int dataOffset);
-		public void SetLength(byte[] dataBuffer, ref int dataOffset, int length);
+		public bool IsWrite();
+		public Node GetNode();
+
+		public LatencyType GetLatencyType();
+
+		public bool RetryBatch
+		(
+			Cluster cluster,
+			int socketTimeout,
+			int totalTimeout,
+			DateTime deadline,
+			int iteration,
+			int commandSentCounter
+		);
 	}
 }

@@ -27,6 +27,7 @@ namespace Aerospike.Test
 		public static Args Instance = new Args();
 
 		public IAerospikeClient client;
+		public IAerospikeClientNew asyncAwaitClient;
 		public AerospikeClient nativeClient;
 		public IAsyncClient asyncClient;
 		public AsyncClient nativeAsync;
@@ -37,6 +38,7 @@ namespace Aerospike.Test
 		public int port;
 		public int proxyPort;
 		public bool testProxy;
+		public bool testAsyncAwait;
 		public string user;
 		public string password;
 		public int timeout;
@@ -63,6 +65,7 @@ namespace Aerospike.Test
 			port = int.Parse(section.GetSection("Port").Value);
 			proxyPort = int.Parse(section.GetSection("ProxyPort").Value);
 			testProxy = bool.Parse(section.GetSection("TestProxy").Value);
+			testAsyncAwait = bool.Parse(section.GetSection("TestAsyncAwait").Value);
 			clusterName = section.GetSection("ClusterName").Value;
 			user = section.GetSection("User").Value;
 			password = section.GetSection("Password").Value;
@@ -147,6 +150,8 @@ namespace Aerospike.Test
 			nativeClient.BatchParentPolicyWriteDefault.totalTimeout = timeout;
 			nativeClient.InfoPolicyDefault.timeout = timeout;
 			client = nativeClient;
+
+			asyncAwaitClient = new AerospikeClientNew(policy, hosts);
 
 			//Example of how to enable metrics
 			//client.EnableMetrics(new MetricsPolicy());

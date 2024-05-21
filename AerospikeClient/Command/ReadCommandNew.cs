@@ -18,8 +18,22 @@ using System.Buffers;
 
 namespace Aerospike.Client
 {
-	public class ReadCommandNew : CommandNew
+	internal class ReadCommandNew : ICommand
 	{
+		public ArrayPool<byte> BufferPool { get; set; }
+		public int ServerTimeout { get; set; }
+		public int SocketTimeout { get; set; }
+		public int TotalTimeout { get; set; }
+		public int MaxRetries { get; set; }
+		public Cluster Cluster { get; set; }
+		public Policy Policy { get; set; }
+
+		public byte[] DataBuffer { get; set; }
+		public int DataOffset { get; set; }
+		public int Iteration { get; set; }// 1;
+		public int CommandSentCounter { get; set; }
+		public DateTime Deadline { get; set; }
+
 		protected readonly Key key;
 		protected readonly Partition partition;
 		private readonly string[] binNames;
@@ -27,8 +41,8 @@ namespace Aerospike.Client
 		public Record Record { get; private set; }
 
 		public ReadCommandNew(ArrayPool<byte> bufferPool, Cluster cluster, Policy policy, Key key)
-			: base(bufferPool, cluster, policy)
 		{
+			this.SetCommonProperties(bufferPool, cluster, policy);
 			this.key = key;
 			this.binNames = null;
 			this.partition = Partition.Read(cluster, policy, key);
@@ -37,8 +51,8 @@ namespace Aerospike.Client
 		}
 
 		public ReadCommandNew(ArrayPool<byte> bufferPool, Cluster cluster, Policy policy, Key key, String[] binNames)
-			: base(bufferPool, cluster, policy)
 		{
+			this.SetCommonProperties(bufferPool, cluster, policy);
 			this.key = key;
 			this.binNames = binNames;
 			this.partition = Partition.Read(cluster, policy, key);
@@ -47,8 +61,8 @@ namespace Aerospike.Client
 		}
 
 		public ReadCommandNew(ArrayPool<byte> bufferPool, Cluster cluster, Policy policy, Key key, Partition partition, bool isOperation)
-			: base(bufferPool, cluster, policy)
 		{
+			this.SetCommonProperties(bufferPool, cluster, policy);
 			this.key = key;
 			this.binNames = null;
 			this.partition = partition;
@@ -56,34 +70,34 @@ namespace Aerospike.Client
 			cluster.AddTran();
 		}
 
-		internal override bool IsWrite()
+		public bool IsWrite()
 		{
 			return false;
 		}
 
-		internal override Node GetNode()
+		public Node GetNode()
 		{
 			return partition.GetNodeRead(Cluster);
 		}
 
-		internal override Latency.LatencyType GetLatencyType()
+		public Latency.LatencyType GetLatencyType()
 		{
 			return Latency.LatencyType.READ;
 		}
 
-		public override void WriteBuffer()
+		public void WriteBuffer()
 		{
-			this.SetRead(ref dataBuffer, ref dataOffset, Policy, key, binNames);
+			this.SetRead(Policy, key, binNames);
 		}
 
-		public override async Task ParseResult(IConnection conn, CancellationToken token)
+		public async Task ParseResult(IConnection conn, CancellationToken token)
 		{
 			token.ThrowIfCancellationRequested();
 
 			// Read header.		
-			await conn.ReadFully(dataBuffer, 8, token);
+			await conn.ReadFully(DataBuffer, 8, token);
 
-			long sz = ByteUtil.BytesToLong(dataBuffer, 0);
+			long sz = ByteUtil.BytesToLong(DataBuffer, 0);
 			int receiveSize = (int)(sz & 0xFFFFFFFFFFFFL);
 
 			if (receiveSize <= 0)
@@ -91,40 +105,40 @@ namespace Aerospike.Client
 				throw new AerospikeException("Invalid receive size: " + receiveSize);
 			}
 
-			SizeBuffer(receiveSize);
-			await conn.ReadFully(dataBuffer, receiveSize, token);
+			this.SizeBuffer(receiveSize);
+			await conn.ReadFully(DataBuffer, receiveSize, token);
 			conn.UpdateLastUsed();
 
 			ulong type = (ulong)((sz >> 48) & 0xff);
 
 			if (type == Command.AS_MSG_TYPE)
 			{
-				dataOffset = 5;
+				DataOffset = 5;
 			}
 			else if (type == Command.MSG_TYPE_COMPRESSED)
 			{
-				int usize = (int)ByteUtil.BytesToLong(dataBuffer, 0);
+				int usize = (int)ByteUtil.BytesToLong(DataBuffer, 0);
 				byte[] ubuf = new byte[usize];
 
-				ByteUtil.Decompress(dataBuffer, 8, receiveSize, ubuf, usize);
-				dataBuffer = ubuf;
-				dataOffset = 13;
+				ByteUtil.Decompress(DataBuffer, 8, receiveSize, ubuf, usize);
+				DataBuffer = ubuf;
+				DataOffset = 13;
 			}
 			else
 			{
 				throw new AerospikeException("Invalid proto type: " + type + " Expected: " + Command.AS_MSG_TYPE);
 			}
 
-			int resultCode = dataBuffer[dataOffset];
-			dataOffset++;
-			int generation = ByteUtil.BytesToInt(dataBuffer, dataOffset);
-			dataOffset += 4;
-			int expiration = ByteUtil.BytesToInt(dataBuffer, dataOffset);
-			dataOffset += 8;
-			int fieldCount = ByteUtil.BytesToShort(dataBuffer, dataOffset);
-			dataOffset += 2;
-			int opCount = ByteUtil.BytesToShort(dataBuffer, dataOffset);
-			dataOffset += 2;
+			int resultCode = DataBuffer[DataOffset];
+			DataOffset++;
+			int generation = ByteUtil.BytesToInt(DataBuffer, DataOffset);
+			DataOffset += 4;
+			int expiration = ByteUtil.BytesToInt(DataBuffer, DataOffset);
+			DataOffset += 8;
+			int fieldCount = ByteUtil.BytesToShort(DataBuffer, DataOffset);
+			DataOffset += 2;
+			int opCount = ByteUtil.BytesToShort(DataBuffer, DataOffset);
+			DataOffset += 2;
 
 			if (resultCode == 0)
 			{
@@ -134,8 +148,8 @@ namespace Aerospike.Client
 					Record = new Record(null, generation, expiration);
 					return;
 				}
-				CommandHelpers.SkipKey(this, dataBuffer, ref dataOffset, fieldCount);
-				Record = Policy.recordParser.ParseRecord(dataBuffer, ref dataOffset, opCount, generation, expiration, isOperation);
+				this.SkipKey(fieldCount);
+				(Record, DataOffset) = Policy.recordParser.ParseRecord(DataBuffer, DataOffset, opCount, generation, expiration, isOperation);
 				return;
 			}
 
@@ -156,8 +170,8 @@ namespace Aerospike.Client
 
 			if (resultCode == ResultCode.UDF_BAD_RESPONSE)
 			{
-				CommandHelpers.SkipKey(this, dataBuffer, ref dataOffset, fieldCount);
-				Record = Policy.recordParser.ParseRecord(dataBuffer, ref dataOffset, opCount, generation, expiration, isOperation);
+				this.SkipKey(fieldCount);
+				(Record, DataOffset) = Policy.recordParser.ParseRecord(DataBuffer, DataOffset, opCount, generation, expiration, isOperation);
 				HandleUdfError(resultCode);
 				return;
 			}
@@ -165,13 +179,27 @@ namespace Aerospike.Client
 			throw new AerospikeException(resultCode);
 		}
 
-		public override bool PrepareRetry(bool timeout)
+		public bool PrepareRetry(bool timeout)
 		{
 			partition.PrepareRetryRead(timeout);
 			return true;
 		}
 
-		public virtual void HandleNotFound(int resultCode)
+		public bool RetryBatch
+		(
+			Cluster cluster,
+			int socketTimeout,
+			int totalTimeout,
+			DateTime deadline,
+			int iteration,
+			int commandSentCounter
+		)
+		{
+			// Override this method in batch to regenerate node assignments.
+			return false;
+		}
+
+		public void HandleNotFound(int resultCode)
 		{
 			// Do nothing in default case. Record will be null.
 		}

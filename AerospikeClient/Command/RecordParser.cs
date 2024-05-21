@@ -22,22 +22,22 @@ namespace Aerospike.Client
     {
         public static readonly RecordParser Instance = new RecordParser();
 
-        public Record ParseRecord(byte[] dataBuffer, ref int dataOffsetRef, int opCount, int generation, int expiration, bool isOperation)
+        public (Record record, int dataOffset) ParseRecord(byte[] dataBuffer, int dataOffset, int opCount, int generation, int expiration, bool isOperation)
         {
 			Dictionary<string, object> bins = new Dictionary<string, object>();
-			int dataOffset = dataOffsetRef;
+			int dataOffsetLocal = dataOffset;
 
 			for (int i = 0; i < opCount; i++)
 			{
-				int opSize = ByteUtil.BytesToInt(dataBuffer, dataOffset);
-				byte particleType = dataBuffer[dataOffset + 5];
-				byte nameSize = dataBuffer[dataOffset + 7];
-				string name = ByteUtil.Utf8ToString(dataBuffer, dataOffset + 8, nameSize);
-				dataOffset += 4 + 4 + nameSize;
+				int opSize = ByteUtil.BytesToInt(dataBuffer, dataOffsetLocal);
+				byte particleType = dataBuffer[dataOffsetLocal + 5];
+				byte nameSize = dataBuffer[dataOffsetLocal + 7];
+				string name = ByteUtil.Utf8ToString(dataBuffer, dataOffsetLocal + 8, nameSize);
+				dataOffsetLocal += 4 + 4 + nameSize;
 
 				int particleBytesSize = (int)(opSize - (4 + nameSize));
-				object value = ByteUtil.BytesToParticle((ParticleType)particleType, dataBuffer, dataOffset, particleBytesSize);
-				dataOffset += particleBytesSize;
+				object value = ByteUtil.BytesToParticle((ParticleType)particleType, dataBuffer, dataOffsetLocal, particleBytesSize);
+				dataOffsetLocal += particleBytesSize;
 
 				if (isOperation)
 				{
@@ -71,8 +71,7 @@ namespace Aerospike.Client
 					bins[name] = value;
 				}
 			}
-			dataOffsetRef = dataOffset;
-			return new Record(bins, generation, expiration);
+			return (new Record(bins, generation, expiration), dataOffsetLocal);
         }
 
 		/// <summary>
