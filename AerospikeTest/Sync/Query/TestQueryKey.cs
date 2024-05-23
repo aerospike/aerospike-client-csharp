@@ -15,7 +15,6 @@
  * the License.
  */
 using Aerospike.Client;
-using Aerospike.Client.Proxy;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace Aerospike.Test
