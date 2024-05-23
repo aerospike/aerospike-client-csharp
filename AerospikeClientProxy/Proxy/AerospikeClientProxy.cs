@@ -1381,7 +1381,11 @@ namespace Aerospike.Client.Proxy
 		public ExecuteTask Execute(WritePolicy policy, Statement statement, params Operation[] operations)
 		{
 			policy ??= writePolicyDefault;
-			statement.Operations = operations;
+
+			if (operations.Length > 0)
+			{
+				statement.Operations = operations;
+			}
 
 			ulong taskId = statement.PrepareTaskId();
 			Buffer buffer = new();
