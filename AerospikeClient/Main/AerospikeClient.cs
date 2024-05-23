@@ -1657,7 +1657,10 @@ namespace Aerospike.Client
 				policy = writePolicyDefault;
 			}
 
-			statement.Operations = operations;
+			if (operations.Length > 0)
+			{
+				statement.Operations = operations;
+			}
 
 			cluster.AddTran();
 
