@@ -582,7 +582,7 @@ namespace Aerospike.Client
 
 				foreach (BatchNode batchNode in batchNodes)
 				{
-					commands[count++] = new BatchOperateArrayCommand(cluster, batchNode, batchPolicy, keys, null, records, attr, status);
+					commands[count++] = new BatchOperateArrayCommand(cluster, batchNode, batchPolicy, keys, null, records, attr, status); // parse row is awaitable
 				}
 
 				BatchExecutor.Execute(cluster, batchPolicy, commands, status);

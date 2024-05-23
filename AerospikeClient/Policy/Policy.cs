@@ -48,7 +48,7 @@ namespace Aerospike.Client
 		/// Default:  <see cref="Aerospike.Client.Replica.SEQUENCE"/>
 		/// </para>
 		/// </summary>
-		public Replica replica = Replica.SEQUENCE;
+		public Replica replica = Replica.SEQUENCE; 
 
 		/// <summary>
 		/// Optional expression filter. If filterExp exists and evaluates to false, the

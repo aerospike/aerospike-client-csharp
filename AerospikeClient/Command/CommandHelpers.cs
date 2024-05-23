@@ -19,6 +19,8 @@ using System.Buffers;
 using System.Collections;
 using static Aerospike.Client.Latency;
 using System.Net.Sockets;
+using Neo.IronLua;
+using System.Threading.Tasks;
 
 namespace Aerospike.Client
 {
@@ -111,6 +113,62 @@ namespace Aerospike.Client
 				command.Deadline = DateTime.UtcNow.AddMilliseconds(command.TotalTimeout);
 			}
 			await ExecuteCommand(command, token);
+		}
+
+		public static async Task Execute(this ICommand command, Cluster cluster, BatchPolicy policy, BatchCommandNew[] commands, BatchStatus status, CancellationToken token)
+		{
+			cluster.AddTran();
+
+			if (policy.maxConcurrentThreads == 1 || commands.Length <= 1)
+			{
+				var iterator = new bool[commands.Length];
+
+				//await foreach (BatchCommandNew batchCommand in commands)
+				await Parallel.ForEachAsync(iterator,
+										   new ParallelOptions(),
+					async (ignore, cancellationToken) =>
+				{
+				
+					token.ThrowIfCancellationRequested();
+
+					try
+					{
+						await batchCommand.Execute(token);
+					}
+					catch (AerospikeException ae)
+					{
+						// Set error/inDoubt for keys associated this batch command when
+						// the command was not retried and split. If a split retry occurred,
+						// those new subcommands have already set error/inDoubt on the affected
+						// subset of keys.
+						if (!batchCommand.splitRetry)
+						{
+							batchCommand.SetInDoubt(ae.InDoubt);
+						}
+						status.SetException(ae);
+
+						if (!policy.respondAllKeys)
+						{
+							throw;
+						}
+					}
+					catch (Exception e)
+					{
+						if (!batchCommand.splitRetry)
+						{
+							batchCommand.SetInDoubt(true);
+						}
+						status.SetException(e);
+
+						if (!policy.respondAllKeys)
+						{
+							throw;
+						}
+					}
+				}
+				status.CheckException();
+				return;
+			}
 		}
 
 		private static async Task ExecuteCommand(ICommand command, CancellationToken token)
