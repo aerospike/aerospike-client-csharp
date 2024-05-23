@@ -89,37 +89,6 @@ namespace Aerospike.Test
 			}
 		}
 
-		[TestMethod]
-		public async Task QueryException()
-		{
-			for (int i = 0; i < 5; i++)
-			{
-				Key k = new Key(args.ns, args.set, i);
-				client.Put(null, k, new Bin("bin", i));
-			}
-			Statement stmt = new();
-			stmt.SetNamespace(args.ns);
-			stmt.SetSetName(args.set);
-			Expression exp = Exp.Build(Exp.Or(Exp.EQ(Exp.Val(1), Exp.Val(1)), Exp.Val("bad expression")));
-			QueryPolicy qp = new()
-			{
-				filterExp = exp
-			};
-			try
-			{
-				RecordSet rcs = await asyncProxy.Query(qp, tokenSource.Token, stmt);
-				while (rcs.Next())
-				{
-					System.Console.WriteLine(rcs.Record);
-				}
-				rcs.Close();
-			}
-			catch (System.Exception e)
-			{
-				System.Console.WriteLine(e);
-			}
-		}
-
 		static async Task WriteHandlerSuccess(Key key, int count, TestAsyncQuery parent)
 		{
 			int rows = Interlocked.Increment(ref count);

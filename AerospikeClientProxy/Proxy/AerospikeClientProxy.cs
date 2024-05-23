@@ -22,6 +22,7 @@ using System.Diagnostics;
 using System.Diagnostics.Metrics;
 using System.Net;
 using System.Reflection;
+using System.Runtime.ExceptionServices;
 using static Aerospike.Client.AerospikeException;
 
 namespace Aerospike.Client.Proxy
@@ -1500,22 +1501,21 @@ namespace Aerospike.Client.Proxy
 			RecordSet recordSet = new(null, policy.recordQueueSize, cancellationToken);
 			QueryPartitionCommandProxy command = new(buffer, Channel, policy, statement, tracker, partitionFilter, recordSet);
 
-			var task = command.Execute(cancellationToken);
-
 			try
 			{
-				task.Wait(command.totalTimeout, cancellationToken);
+				var completedInTime = command.Execute(cancellationToken).Wait(command.GetWaitTimeout(), cancellationToken);
+
+				if (!completedInTime)
+				{
+					throw new AerospikeException.Timeout(policy, true);
+				}
 			}
 			catch (AggregateException ae)
 			{
 				foreach (var ex in ae.InnerExceptions)
 				{
-					throw;
+					ExceptionDispatchInfo.Capture(ex).Throw();
 				}
-			}
-			catch (Exception)
-			{
-				throw;
 			}
 			return recordSet;
 		}

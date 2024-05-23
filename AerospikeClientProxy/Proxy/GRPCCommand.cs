@@ -153,6 +153,14 @@ namespace Aerospike.Client.Proxy
 			return null;
 		}
 
+		/// <summary>
+		/// Gets the timeout to be used in Task.Wait() calls
+		/// </summary>
+		public int GetWaitTimeout()
+		{
+			return totalTimeout <= 0 ? -1 : totalTimeout;
+		}
+
 		protected internal virtual void ParseResult(IConnection conn)
 		{
 			// Read blocks of records.  Do not use thread local receive buffer because each

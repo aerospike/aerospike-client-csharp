@@ -18,6 +18,7 @@ using Aerospike.Client.Proxy.KVS;
 using Google.Protobuf;
 using Grpc.Core;
 using Grpc.Net.Client;
+using System.Runtime.ExceptionServices;
 using static Aerospike.Client.AerospikeException;
 
 namespace Aerospike.Client.Proxy
@@ -99,7 +100,22 @@ namespace Aerospike.Client.Proxy
 		public void Execute()
 		{
 			CancellationTokenSource source = new();
-			Execute(source.Token).Wait(totalTimeout);
+			try
+			{
+				var completedInTime = Execute(source.Token).Wait(GetWaitTimeout());
+				
+				if (!completedInTime)
+				{
+					throw new AerospikeException.Timeout(Policy, true);
+				}
+			}
+			catch (AggregateException ae)
+			{
+				foreach (var ex in ae.InnerExceptions)
+				{
+					ExceptionDispatchInfo.Capture(ex).Throw();
+				}
+			}
 		}
 
 		public async Task Execute(CancellationToken token)
