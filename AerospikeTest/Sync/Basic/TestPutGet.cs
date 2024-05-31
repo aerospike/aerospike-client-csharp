@@ -25,41 +25,75 @@ namespace Aerospike.Test
 	public class TestPutGet : TestSync
 	{
 		[TestMethod]
-		public void PutGet()
+		public async Task PutGet()
 		{
 			Key key = new Key(args.ns, args.set, "putgetkey");
 			Record record;
 
-			if (args.singleBin) 
+			if (!args.testAsyncAwait)
 			{
-				Bin bin = new Bin("", "value");
-			
-				client.Put(null, key, bin);
-				record = client.Get(null, key);
-				AssertBinEqual(key, record, bin);			
-			}
-			else {
-				Bin bin1 = new Bin("bin1", "value1");
-				Bin bin2 = new Bin("bin2", "value2");
-			
-				client.Put(null, key, bin1, bin2);
-				record = client.Get(null, key);
-				AssertBinEqual(key, record, bin1);
-				AssertBinEqual(key, record, bin2);			
-			}
+				if (args.singleBin)
+				{
+					Bin bin = new Bin("", "value");
 
-			record = client.GetHeader(null, key);
-			AssertRecordFound(key, record);
+					client.Put(null, key, bin);
+					record = client.Get(null, key);
+					AssertBinEqual(key, record, bin);
+				}
+				else
+				{
+					Bin bin1 = new Bin("bin1", "value1");
+					Bin bin2 = new Bin("bin2", "value2");
 
-			// Generation should be greater than zero.  Make sure it's populated.
-			if (record.generation == 0)
+					client.Put(null, key, bin1, bin2);
+					record = client.Get(null, key);
+					AssertBinEqual(key, record, bin1);
+					AssertBinEqual(key, record, bin2);
+				}
+
+				record = client.GetHeader(null, key);
+				AssertRecordFound(key, record);
+
+				// Generation should be greater than zero.  Make sure it's populated.
+				if (record.generation == 0)
+				{
+					Assert.Fail("Invalid record header: generation=" + record.generation + " expiration=" + record.expiration);
+				}
+			}
+			else
 			{
-				Assert.Fail("Invalid record header: generation=" + record.generation + " expiration=" + record.expiration);
+				if (args.singleBin)
+				{
+					Bin bin = new Bin("", "value");
+
+					await asyncAwaitClient.Put(null, key, new[] { bin }, CancellationToken.None);
+					record = await asyncAwaitClient.Get(null, key, CancellationToken.None);
+					AssertBinEqual(key, record, bin);
+				}
+				else
+				{
+					Bin bin1 = new Bin("bin1", "value1");
+					Bin bin2 = new Bin("bin2", "value2");
+
+					await asyncAwaitClient.Put(null, key, new[] { bin1, bin2 }, CancellationToken.None);
+					record = await asyncAwaitClient.Get(null, key, CancellationToken.None);
+					AssertBinEqual(key, record, bin1);
+					AssertBinEqual(key, record, bin2);
+				}
+
+				record = await asyncAwaitClient.GetHeader(null, key, CancellationToken.None);
+				AssertRecordFound(key, record);
+
+				// Generation should be greater than zero.  Make sure it's populated.
+				if (record.generation == 0)
+				{
+					Assert.Fail("Invalid record header: generation=" + record.generation + " expiration=" + record.expiration);
+				}
 			}
 		}
 
 		[TestMethod]
-		public void PutGetBool()
+		public async Task PutGetBool()
 		{
 			Key key = new Key(args.ns, args.set, "pgb");
 			Bin bin1 = new Bin("bin1", false);
@@ -67,33 +101,60 @@ namespace Aerospike.Test
 			Bin bin3 = new Bin("bin3", 0);
 			Bin bin4 = new Bin("bin4", 1);
 
-			client.Put(null, key, bin1, bin2, bin3, bin4);
+			if (!args.testAsyncAwait)
+			{
+				client.Put(null, key, bin1, bin2, bin3, bin4);
 
-			Record record = client.Get(null, key);
-			bool b = record.GetBool(bin1.name);
-			Assert.IsFalse(b);
-			b = record.GetBool(bin2.name);
-			Assert.IsTrue(b);
-			b = record.GetBool(bin3.name);
-			Assert.IsFalse(b);
-			b = record.GetBool(bin4.name);
-			Assert.IsTrue(b);
+				Record record = client.Get(null, key);
+				bool b = record.GetBool(bin1.name);
+				Assert.IsFalse(b);
+				b = record.GetBool(bin2.name);
+				Assert.IsTrue(b);
+				b = record.GetBool(bin3.name);
+				Assert.IsFalse(b);
+				b = record.GetBool(bin4.name);
+				Assert.IsTrue(b);
+			}
+			else
+			{
+				await asyncAwaitClient.Put(null, key, new[] { bin1, bin2, bin3, bin4 }, CancellationToken.None);
+
+				Record record = await asyncAwaitClient.Get(null, key, CancellationToken.None);
+				bool b = record.GetBool(bin1.name);
+				Assert.IsFalse(b);
+				b = record.GetBool(bin2.name);
+				Assert.IsTrue(b);
+				b = record.GetBool(bin3.name);
+				Assert.IsFalse(b);
+				b = record.GetBool(bin4.name);
+				Assert.IsTrue(b);
+			}
 		}
 
 		[TestMethod]
-		public void PutGetGeoJson()
+		public async Task PutGetGeoJson()
 		{
 			Key key = new(args.ns, args.set, "geo");
 			Bin geoBin = new("geo", Value.GetAsGeoJSON("{\"type\": \"Point\", \"coordinates\": [42.34, 58.62]}"));
-			client.Put(null, key, geoBin);
-			Record r = client.Get(null, key);
-			Assert.AreEqual(r.GetValue("geo").GetType(), geoBin.value.GetType());
+			
+			if (!args.testAsyncAwait)
+			{
+				client.Put(null, key, geoBin);
+				Record r = client.Get(null, key);
+				Assert.AreEqual(r.GetValue("geo").GetType(), geoBin.value.GetType());
+			}
+			else
+			{
+				await asyncAwaitClient.Put(null, key, new[] { geoBin }, CancellationToken.None);
+				Record r = await asyncAwaitClient.Get(null, key, CancellationToken.None);
+				Assert.AreEqual(r.GetValue("geo").GetType(), geoBin.value.GetType());
+			}
 		}
 
 		[TestMethod]
-		public void PutGetCompression()
+		public async Task PutGetCompression()
 		{
-			if (!args.testProxy || (args.testProxy && nativeClient != null))
+			if (!args.testProxy || (args.testProxy && nativeClient != null) || args.testAsyncAwait)
 			{
 				Node node = nativeClient.Nodes[0];
 				IDictionary<string, string> map = Info.Request(null, node);
@@ -135,19 +196,39 @@ namespace Aerospike.Test
 
 						Bin bin1 = new("bin", list);
 
-						client.Put(writePolicy, key, bin1);
-						record = client.Get(policy, key);
-						var bin1List = bin1.value.Object;
-						record.bins.TryGetValue("bin", out object recordBin);
-						CollectionAssert.AreEquivalent((List<string>)bin1List, (List<object>)recordBin);
-
-						record = client.GetHeader(policy, key);
-						AssertRecordFound(key, record);
-
-						// Generation should be greater than zero.  Make sure it's populated.
-						if (record.generation == 0)
+						if (!args.testAsyncAwait)
 						{
-							Assert.Fail("Invalid record header: generation=" + record.generation + " expiration=" + record.expiration);
+							client.Put(writePolicy, key, bin1);
+							record = client.Get(policy, key);
+							var bin1List = bin1.value.Object;
+							record.bins.TryGetValue("bin", out object recordBin);
+							CollectionAssert.AreEquivalent((List<string>)bin1List, (List<object>)recordBin);
+
+							record = client.GetHeader(policy, key);
+							AssertRecordFound(key, record);
+
+							// Generation should be greater than zero.  Make sure it's populated.
+							if (record.generation == 0)
+							{
+								Assert.Fail("Invalid record header: generation=" + record.generation + " expiration=" + record.expiration);
+							}
+						}
+						else
+						{
+							await asyncAwaitClient.Put(writePolicy, key, new[] { bin1 }, CancellationToken.None);
+							record = await asyncAwaitClient.Get(policy, key, CancellationToken.None);
+							var bin1List = bin1.value.Object;
+							record.bins.TryGetValue("bin", out object recordBin);
+							CollectionAssert.AreEquivalent((List<string>)bin1List, (List<object>)recordBin);
+
+							record = await asyncAwaitClient.GetHeader(policy, key, CancellationToken.None);
+							AssertRecordFound(key, record);
+
+							// Generation should be greater than zero.  Make sure it's populated.
+							if (record.generation == 0)
+							{
+								Assert.Fail("Invalid record header: generation=" + record.generation + " expiration=" + record.expiration);
+							}
 						}
 					}
 				}

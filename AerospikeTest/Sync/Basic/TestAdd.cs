@@ -24,28 +24,51 @@ namespace Aerospike.Test
 	public class TestAdd : TestSync
 	{
 		[TestMethod]
-		public void Add()
+		public async Task Add()
 		{
 			Key key = new Key(args.ns, args.set, "addkey");
 			string binName = args.GetBinName("addbin");
 
-			// Delete record if it already exists.
-			client.Delete(null, key);
+			if (!args.testAsyncAwait)
+			{
+				// Delete record if it already exists.
+				client.Delete(null, key);
 
-			// Perform some adds and check results.
-			Bin bin = new Bin(binName, 10);
-			client.Add(null, key, bin);
+				// Perform some adds and check results.
+				Bin bin = new Bin(binName, 10);
+				client.Add(null, key, bin);
 
-			bin = new Bin(binName, 5);
-			client.Add(null, key, bin);
+				bin = new Bin(binName, 5);
+				client.Add(null, key, bin);
 
-			Record record = client.Get(null, key, bin.name);
-			AssertBinEqual(key, record, bin.name, 15);
+				Record record = client.Get(null, key, bin.name);
+				AssertBinEqual(key, record, bin.name, 15);
 
-			// Test add and get combined.
-			bin = new Bin(binName, 30);
-			record = client.Operate(null, key, Operation.Add(bin), Operation.Get(bin.name));
-			AssertBinEqual(key, record, bin.name, 45);
+				// Test add and get combined.
+				bin = new Bin(binName, 30);
+				record = client.Operate(null, key, Operation.Add(bin), Operation.Get(bin.name));
+				AssertBinEqual(key, record, bin.name, 45);
+			}
+			else
+			{
+				// Delete record if it already exists.
+				await asyncAwaitClient.Delete(null, key, CancellationToken.None);
+
+				// Perform some adds and check results.
+				Bin bin = new Bin(binName, 10);
+				await asyncAwaitClient.Add(null, key, new[] { bin }, CancellationToken.None);
+
+				bin = new Bin(binName, 5);
+				await asyncAwaitClient.Add(null, key, new[] { bin }, CancellationToken.None);
+
+				Record record = await asyncAwaitClient.Get(null, key, new[] { bin.name }, CancellationToken.None);
+				AssertBinEqual(key, record, bin.name, 15);
+
+				// Test add and get combined.
+				bin = new Bin(binName, 30);
+				record = await asyncAwaitClient.Operate(null, key, new[] { Operation.Add(bin), Operation.Get(bin.name) }, CancellationToken.None);
+				AssertBinEqual(key, record, bin.name, 45);
+			}
 		}
 	}
 }

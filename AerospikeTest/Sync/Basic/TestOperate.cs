@@ -26,60 +26,112 @@ namespace Aerospike.Test
 	public class TestOperate : TestSync
 	{
 		[TestMethod]
-		public void Operate()
+		public async Task Operate()
 		{
 			// Write initial record.
 			Key key = new Key(args.ns, args.set, "opkey");
 			Bin bin1 = new Bin("optintbin", 7);
 			Bin bin2 = new Bin("optstringbin", "string value");
-			client.Put(null, key, bin1, bin2);
+			if (!args.testAsyncAwait)
+			{
+				client.Put(null, key, bin1, bin2);
 
-			// Add integer, write new string and read record.
-			Bin bin3 = new Bin(bin1.name, 4);
-			Bin bin4 = new Bin(bin2.name, "new string");
-			Record record = client.Operate(null, key, Operation.Add(bin3), Operation.Put(bin4), Operation.Get());
-			AssertBinEqual(key, record, bin3.name, 11);
-			AssertBinEqual(key, record, bin4);
+				// Add integer, write new string and read record.
+				Bin bin3 = new Bin(bin1.name, 4);
+				Bin bin4 = new Bin(bin2.name, "new string");
+				Record record = client.Operate(null, key, Operation.Add(bin3), Operation.Put(bin4), Operation.Get());
+				AssertBinEqual(key, record, bin3.name, 11);
+				AssertBinEqual(key, record, bin4);
+			}
+			else
+			{
+				await asyncAwaitClient.Put(null, key, new[] { bin1, bin2 }, CancellationToken.None);
+
+				// Add integer, write new string and read record.
+				Bin bin3 = new Bin(bin1.name, 4);
+				Bin bin4 = new Bin(bin2.name, "new string");
+				Record record = await asyncAwaitClient.Operate(null, key, new[] { Operation.Add(bin3), Operation.Put(bin4), Operation.Get() }, CancellationToken.None);
+				AssertBinEqual(key, record, bin3.name, 11);
+				AssertBinEqual(key, record, bin4);
+			}
 		}
 
 		[TestMethod]
-		public void OperateDelete()
+		public async Task OperateDelete()
 		{
 			// Write initial record.
 			Key key = new Key(args.ns, args.set, "opkey");
 			Bin bin1 = new Bin("optintbin1", 1);
 
-			client.Put(null, key, bin1);
+			if (!args.testAsyncAwait)
+			{
+				client.Put(null, key, bin1);
 
-			// Read bin1 and then delete all.
-			Record record = client.Operate(null, key,
-				Operation.Get(bin1.name),
-				Operation.Delete());
+				// Read bin1 and then delete all.
+				Record record = client.Operate(null, key,
+					Operation.Get(bin1.name),
+					Operation.Delete());
 
-			AssertBinEqual(key, record, bin1.name, 1);
+				AssertBinEqual(key, record, bin1.name, 1);
 
-			// Verify record is gone.
-			Assert.IsFalse(client.Exists(null, key));
+				// Verify record is gone.
+				Assert.IsFalse(client.Exists(null, key));
 
-			// Rewrite record.
-			Bin bin2 = new Bin("optintbin2", 2);
+				// Rewrite record.
+				Bin bin2 = new Bin("optintbin2", 2);
 
-			client.Put(null, key, bin1, bin2);
+				client.Put(null, key, bin1, bin2);
 
-			// Read bin 1 and then delete all followed by a write of bin2.
-			record = client.Operate(null, key,
-				Operation.Get(bin1.name),
-				Operation.Delete(),
-				Operation.Put(bin2),
-				Operation.Get(bin2.name));
+				// Read bin 1 and then delete all followed by a write of bin2.
+				record = client.Operate(null, key,
+					Operation.Get(bin1.name),
+					Operation.Delete(),
+					Operation.Put(bin2),
+					Operation.Get(bin2.name));
 
-			AssertBinEqual(key, record, bin1.name, 1);
+				AssertBinEqual(key, record, bin1.name, 1);
 
-			// Read record.
-			record = client.Get(null, key);
+				// Read record.
+				record = client.Get(null, key);
 
-			AssertBinEqual(key, record, bin2.name, 2);
-			Assert.IsTrue(record.bins.Count == 1);
+				AssertBinEqual(key, record, bin2.name, 2);
+				Assert.IsTrue(record.bins.Count == 1);
+			}
+			else
+			{
+				await asyncAwaitClient.Put(null, key, new[] { bin1 }, CancellationToken.None);
+
+				// Read bin1 and then delete all.
+				Record record = await asyncAwaitClient.Operate(null, key,
+					new[] { Operation.Get(bin1.name),
+					Operation.Delete() }, CancellationToken.None);
+
+				AssertBinEqual(key, record, bin1.name, 1);
+
+				// Verify record is gone.
+				Assert.IsFalse(await asyncAwaitClient.Exists(null, key, CancellationToken.None));
+
+				// Rewrite record.
+				Bin bin2 = new Bin("optintbin2", 2);
+
+				await asyncAwaitClient.Put(null, key, new[] { bin1, bin2 }, CancellationToken.None);
+
+				// Read bin 1 and then delete all followed by a write of bin2.
+				record = await asyncAwaitClient.Operate(null, key,
+					new[] { Operation.Get(bin1.name),
+					Operation.Delete(),
+					Operation.Put(bin2),
+					Operation.Get(bin2.name) },
+					CancellationToken.None);
+
+				AssertBinEqual(key, record, bin1.name, 1);
+
+				// Read record.
+				record = await asyncAwaitClient.Get(null, key, CancellationToken.None);
+
+				AssertBinEqual(key, record, bin2.name, 2);
+				Assert.IsTrue(record.bins.Count == 1);
+			}
 		}
 	}
 }

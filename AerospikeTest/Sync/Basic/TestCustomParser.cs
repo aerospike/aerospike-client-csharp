@@ -57,14 +57,21 @@ namespace Aerospike.Test
 			}
 		}
 
-		private Record Get(Key key, ParseBin parseBin)
+		private async Task<Record> Get(Key key, ParseBin parseBin)
 		{
 			var policy = new Policy() { recordParser = new BinParser(parseBin) };
-			return client.Get(policy, key);
+			if (!args.testAsyncAwait)
+			{
+				return client.Get(policy, key);
+			}
+			else
+			{
+				return await asyncAwaitClient.Get(policy, key, CancellationToken.None);
+			}
 		}
 
 		[TestMethod]
-		public void UnpackMap()
+		public async Task UnpackMap()
 		{
 			Key key = new Key(args.ns, args.set, "customparser");
 			var map = new Dictionary<object, object>();
@@ -79,10 +86,18 @@ namespace Aerospike.Test
 			map.Add("k7", -1234L);
 
 			Bin bin = new Bin(args.GetBinName("listmapbin"), map);
-			client.Put(null, key, bin);
 
-			var received = new Dictionary<object, object>();
-			Record record = Get(key, buffer =>
+			if (!args.testAsyncAwait)
+			{
+				client.Put(null, key, bin);
+			}
+            else
+            {
+				await asyncAwaitClient.Put(null, key, new[] { bin }, CancellationToken.None);
+			}
+
+            var received = new Dictionary<object, object>();
+			Record record = await Get(key, buffer =>
 			{
 				var unpacker = new Unpacker(buffer, 0, buffer.Length, false);
 				MapOrder mapOrder;
@@ -135,7 +150,7 @@ namespace Aerospike.Test
 		}
 
 		[TestMethod]
-		public void UnpackList()
+		public async Task UnpackList()
 		{
 			Key key = new Key(args.ns, args.set, "customparser");
 			var list = new List<object>();
@@ -153,10 +168,17 @@ namespace Aerospike.Test
 			list.Add(false);
 
 			Bin bin = new Bin(args.GetBinName("listmapbin"), list);
-			client.Put(null, key, bin);
+			if (!args.testAsyncAwait)
+			{
+				client.Put(null, key, bin);
+			}
+			else
+			{
+				await asyncAwaitClient.Put(null, key, new[] { bin }, CancellationToken.None);
+			}
 
 			var received = new List<object>();
-			Record record = Get(key, buffer =>
+			Record record = await Get(key, buffer =>
 			{
 				var unpacker = new Unpacker(buffer, 0, buffer.Length, false);
 				int count = unpacker.UnpackListItemCount();
@@ -181,7 +203,7 @@ namespace Aerospike.Test
 		}
 
 		[TestMethod]
-		public void UnpackComplex()
+		public async Task UnpackComplex()
 		{
 			Key key = new Key(args.ns, args.set, "customparser");
 			var list = new List<object>();
@@ -204,9 +226,17 @@ namespace Aerospike.Test
 			l2.Add("some more text");
 
 			Bin bin = new Bin(args.GetBinName("listmapbin"), list);
-			client.Put(null, key, bin);
 
-			Record record = Get(key, buffer =>
+			if (!args.testAsyncAwait)
+			{
+				client.Put(null, key, bin);
+			}
+			else
+			{
+				await asyncAwaitClient.Put(null, key,new[] { bin }, CancellationToken.None);
+			}
+
+			Record record = await Get(key, buffer =>
 			{
 				var unpacker = new Unpacker(buffer, 0, buffer.Length, false);
 				int listCount = unpacker.UnpackListItemCount();
@@ -261,7 +291,7 @@ namespace Aerospike.Test
 		}
 
 		[TestMethod]
-		public void SkippingComplex()
+		public async Task SkippingComplex()
 		{
 			Key key = new Key(args.ns, args.set, "customparser");
 			var list = new List<object>();
@@ -289,9 +319,17 @@ namespace Aerospike.Test
 			l2.Add("some more text");
 
 			Bin bin = new Bin(args.GetBinName("listmapbin"), list);
-			client.Put(null, key, bin);
 
-			Record record = Get(key, buffer =>
+			if (!args.testAsyncAwait)
+			{
+				client.Put(null, key, bin);
+			}
+			else
+			{
+				await asyncAwaitClient.Put(null, key, new[] { bin }, CancellationToken.None);
+			}
+
+			Record record = await Get(key, buffer =>
 			{
 				var unpacker = new Unpacker(buffer, 0, buffer.Length, false);
 				int listCount = unpacker.UnpackListItemCount();

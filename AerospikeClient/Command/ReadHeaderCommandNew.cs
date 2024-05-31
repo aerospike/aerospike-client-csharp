@@ -34,7 +34,16 @@ namespace Aerospike.Client
 		public int Iteration { get; set; }// 1;
 		public int CommandSentCounter { get; set; }
 		public DateTime Deadline { get; set; }
-		
+
+		public int Info3 { get; set; }
+		public int ResultCode { get; set; }
+		public int Generation { get; set; }
+		public int Expiration { get; set; }
+		public int BatchIndex { get; set; }
+		public int FieldCount { get; set; }
+		public int OpCount { get; set; }
+		public bool IsOperation { get; set; }
+
 		private readonly Key key;
 		private readonly Partition partition;
 		public Record Record { get; private set; }
@@ -85,12 +94,12 @@ namespace Aerospike.Client
 				return;
 			}
 
-			if (resultCode == ResultCode.KEY_NOT_FOUND_ERROR)
+			if (resultCode == Client.ResultCode.KEY_NOT_FOUND_ERROR)
 			{
 				return;
 			}
 
-			if (resultCode == ResultCode.FILTERED_OUT)
+			if (resultCode == Client.ResultCode.FILTERED_OUT)
 			{
 				if (Policy.failOnFilteredOut)
 				{
@@ -120,6 +129,15 @@ namespace Aerospike.Client
 		{
 			// Override this method in batch to regenerate node assignments.
 			return false;
+		}
+
+		public bool ParseGroup(int receiveSize)
+		{
+			throw new NotImplementedException();
+		}
+		public bool ParseRow()
+		{
+			throw new NotImplementedException();
 		}
 	}
 }

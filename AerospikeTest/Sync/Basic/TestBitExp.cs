@@ -27,160 +27,294 @@ namespace Aerospike.Test
 		private Policy policy = new Policy();
 
 		[TestMethod]
-		public void CallRead() {
+		public async Task CallRead() {
 			Key key = new Key(args.ns, args.set, 5000);
-			client.Delete(null, key);
 
-			Bin bin = new Bin(binA, new byte[] {0x01, 0x42, 0x03, 0x04, 0x05});
-			client.Put(null, key, bin);
+			if (!args.testAsyncAwait)
+			{
+				client.Delete(null, key);
 
-			Get(key);
-			Count(key);
-			Lscan(key);
-			Rscan(key);
-			GetInt(key);
+				Bin bin = new Bin(binA, new byte[] { 0x01, 0x42, 0x03, 0x04, 0x05 });
+				client.Put(null, key, bin);
+
+				await Get(key);
+				await Count(key);
+				await Lscan(key);
+				await Rscan(key);
+				await GetInt(key);
+			}
+			else
+			{
+				await asyncAwaitClient.Delete(null, key, CancellationToken.None);
+
+				Bin bin = new Bin(binA, new byte[] { 0x01, 0x42, 0x03, 0x04, 0x05 });
+				await asyncAwaitClient.Put(null, key, new[] { bin }, CancellationToken.None);
+
+				await Get(key);
+				await Count(key);
+				await Lscan(key);
+				await Rscan(key);
+				await GetInt(key);
+			}
 		}
 
 		[TestMethod]
-		public void CallModify() {
+		public async Task CallModify() {
 			Key key = new Key(args.ns, args.set, 5001);
-			client.Delete(null, key);
+			if (!args.testAsyncAwait)
+			{
+				client.Delete(null, key);
 
-			Bin bin = new Bin(binA, new byte[] {0x01, 0x42, 0x03, 0x04, 0x05});
-			client.Put(null, key, bin);
+				Bin bin = new Bin(binA, new byte[] { 0x01, 0x42, 0x03, 0x04, 0x05 });
+				client.Put(null, key, bin);
 
-			Resize(key);
-			Insert(key);
-			Remove(key);
-			Set(key);
-			Or(key);
-			Xor(key);
-			And(key);
-			Not(key);
-			Lshift(key);
-			Rshift(key);
-			Add(key);
-			Subtract(key);
-			SetInt(key);
+				await Resize(key);
+				await Insert(key);
+				await Remove(key);
+				await Set(key);
+				await Or(key);
+				await Xor(key);
+				await And(key);
+				await Not(key);
+				await Lshift(key);
+				await Rshift(key);
+				await Add(key);
+				await Subtract(key);
+				await SetInt(key);
+			}
+			else
+			{
+				await asyncAwaitClient.Delete(null, key, CancellationToken.None);
+
+				Bin bin = new Bin(binA, new byte[] { 0x01, 0x42, 0x03, 0x04, 0x05 });
+				await asyncAwaitClient.Put(null, key, new[] { bin }, CancellationToken.None);
+
+				await Resize(key);
+				await Insert(key);
+				await Remove(key);
+				await Set(key);
+				await Or(key);
+				await Xor(key);
+				await And(key);
+				await Not(key);
+				await Lshift(key);
+				await Rshift(key);
+				await Add(key);
+				await Subtract(key);
+				await SetInt(key);
+			}
 		}
 
-		private void Get(Key key) {
+		private async Task Get(Key key) {
 			policy.filterExp = Exp.Build(
 				Exp.NE(
 					BitExp.Get(Exp.Val(16), Exp.Val(8), Exp.BlobBin(binA)),
 					BitExp.Get(Exp.Val(16), Exp.Val(8), Exp.BlobBin(binA))));
 
-			Record r = client.Get(policy, key);
-			Assert.AreEqual(null, r);
+			if (!args.testAsyncAwait)
+			{
+				Record r = client.Get(policy, key);
+				Assert.AreEqual(null, r);
 
-			policy.filterExp = Exp.Build(
-				Exp.EQ(
-					BitExp.Get(Exp.Val(16), Exp.Val(8), Exp.BlobBin(binA)),
-					BitExp.Get(Exp.Val(16), Exp.Val(8), Exp.BlobBin(binA))));
+				policy.filterExp = Exp.Build(
+					Exp.EQ(
+						BitExp.Get(Exp.Val(16), Exp.Val(8), Exp.BlobBin(binA)),
+						BitExp.Get(Exp.Val(16), Exp.Val(8), Exp.BlobBin(binA))));
 
-			r = client.Get(policy, key);
-			AssertRecordFound(key, r);
+				r = client.Get(policy, key);
+				AssertRecordFound(key, r);
 
-			policy.filterExp = Exp.Build(
-				Exp.EQ(
-					BitExp.Get(Exp.Val(16), Exp.Val(8), Exp.BlobBin(binA)),
-					Exp.Val(new byte[] {0x03})));
+				policy.filterExp = Exp.Build(
+					Exp.EQ(
+						BitExp.Get(Exp.Val(16), Exp.Val(8), Exp.BlobBin(binA)),
+						Exp.Val(new byte[] { 0x03 })));
 
-			r = client.Get(policy, key);
-			AssertRecordFound(key, r);
+				r = client.Get(policy, key);
+				AssertRecordFound(key, r);
+			}
+			else
+			{
+				Record r = await asyncAwaitClient.Get(policy, key, CancellationToken.None);
+				Assert.AreEqual(null, r);
+
+				policy.filterExp = Exp.Build(
+					Exp.EQ(
+						BitExp.Get(Exp.Val(16), Exp.Val(8), Exp.BlobBin(binA)),
+						BitExp.Get(Exp.Val(16), Exp.Val(8), Exp.BlobBin(binA))));
+
+				r = await asyncAwaitClient.Get(policy, key, CancellationToken.None);
+				AssertRecordFound(key, r);
+
+				policy.filterExp = Exp.Build(
+					Exp.EQ(
+						BitExp.Get(Exp.Val(16), Exp.Val(8), Exp.BlobBin(binA)),
+						Exp.Val(new byte[] { 0x03 })));
+
+				r = await asyncAwaitClient.Get(policy, key, CancellationToken.None);
+				AssertRecordFound(key, r);
+			}
 		}
 
-		private void Count(Key key) {
+		private async Task Count(Key key) {
 			policy.filterExp = Exp.Build(
 				Exp.NE(
 					BitExp.Count(Exp.Val(16), Exp.Val(8), Exp.BlobBin(binA)),
 					BitExp.Count(Exp.Val(32), Exp.Val(8), Exp.BlobBin(binA))));
 
-			Record r = client.Get(policy, key);
-			Assert.AreEqual(null, r);
+			if (!args.testAsyncAwait)
+			{
+				Record r = client.Get(policy, key);
+				Assert.AreEqual(null, r);
 
-			policy.filterExp = Exp.Build(
-				Exp.EQ(
-					BitExp.Count(Exp.Val(16), Exp.Val(8), Exp.BlobBin(binA)),
-					BitExp.Count(Exp.Val(32), Exp.Val(8), Exp.BlobBin(binA))));
+				policy.filterExp = Exp.Build(
+					Exp.EQ(
+						BitExp.Count(Exp.Val(16), Exp.Val(8), Exp.BlobBin(binA)),
+						BitExp.Count(Exp.Val(32), Exp.Val(8), Exp.BlobBin(binA))));
 
-			r = client.Get(policy, key);
-			AssertRecordFound(key, r);
+				r = client.Get(policy, key);
+				AssertRecordFound(key, r);
+			}
+			else
+			{
+				Record r = await asyncAwaitClient.Get(policy, key, CancellationToken.None);
+				Assert.AreEqual(null, r);
+
+				policy.filterExp = Exp.Build(
+					Exp.EQ(
+						BitExp.Count(Exp.Val(16), Exp.Val(8), Exp.BlobBin(binA)),
+						BitExp.Count(Exp.Val(32), Exp.Val(8), Exp.BlobBin(binA))));
+
+				r = await asyncAwaitClient.Get(policy, key, CancellationToken.None);
+				AssertRecordFound(key, r);
+			}
 		}
 
-		private void Lscan(Key key) {
+		private async Task Lscan(Key key) {
 			policy.filterExp = Exp.Build(
 				Exp.NE(
 					BitExp.Lscan(Exp.Val(32), Exp.Val(8), Exp.Val(true), Exp.BlobBin(binA)),
 					Exp.Val(5)));
 
-			Record r = client.Get(policy, key);
-			Assert.AreEqual(null, r);
+			if (!args.testAsyncAwait)
+			{
+				Record r = client.Get(policy, key);
+				Assert.AreEqual(null, r);
 
-			policy.filterExp = Exp.Build(
-				Exp.NE(
-					BitExp.Lscan(Exp.Val(0), Exp.Val(8), Exp.Val(true),
-						BitExp.Get(Exp.Val(32), Exp.Val(8), Exp.BlobBin(binA))),
-					Exp.Val(5)));
+				policy.filterExp = Exp.Build(
+					Exp.NE(
+						BitExp.Lscan(Exp.Val(0), Exp.Val(8), Exp.Val(true),
+							BitExp.Get(Exp.Val(32), Exp.Val(8), Exp.BlobBin(binA))),
+						Exp.Val(5)));
 
-			r = client.Get(policy, key);
-			Assert.AreEqual(null, r);
+				r = client.Get(policy, key);
+				Assert.AreEqual(null, r);
 
-			policy.filterExp = Exp.Build(
-				Exp.EQ(
-					BitExp.Lscan(Exp.Val(0), Exp.Val(8), Exp.Val(true),
-						BitExp.Get(Exp.Val(32), Exp.Val(8), Exp.BlobBin(binA))),
-					Exp.Val(5)));
+				policy.filterExp = Exp.Build(
+					Exp.EQ(
+						BitExp.Lscan(Exp.Val(0), Exp.Val(8), Exp.Val(true),
+							BitExp.Get(Exp.Val(32), Exp.Val(8), Exp.BlobBin(binA))),
+						Exp.Val(5)));
 
-			r = client.Get(policy, key);
-			AssertRecordFound(key, r);
+				r = client.Get(policy, key);
+				AssertRecordFound(key, r);
 
-			policy.filterExp = Exp.Build(
-				Exp.EQ(
-					BitExp.Lscan(Exp.Val(32), Exp.Val(8), Exp.Val(true), Exp.BlobBin(binA)),
-					Exp.Val(5)));
+				policy.filterExp = Exp.Build(
+					Exp.EQ(
+						BitExp.Lscan(Exp.Val(32), Exp.Val(8), Exp.Val(true), Exp.BlobBin(binA)),
+						Exp.Val(5)));
 
-			r = client.Get(policy, key);
-			AssertRecordFound(key, r);
+				r = client.Get(policy, key);
+				AssertRecordFound(key, r);
+			}
+			else
+			{
+				Record r = await asyncAwaitClient.Get(policy, key, CancellationToken.None);
+				Assert.AreEqual(null, r);
+
+				policy.filterExp = Exp.Build(
+					Exp.NE(
+						BitExp.Lscan(Exp.Val(0), Exp.Val(8), Exp.Val(true),
+							BitExp.Get(Exp.Val(32), Exp.Val(8), Exp.BlobBin(binA))),
+						Exp.Val(5)));
+
+				r = await asyncAwaitClient.Get(policy, key, CancellationToken.None);
+				Assert.AreEqual(null, r);
+
+				policy.filterExp = Exp.Build(
+					Exp.EQ(
+						BitExp.Lscan(Exp.Val(0), Exp.Val(8), Exp.Val(true),
+							BitExp.Get(Exp.Val(32), Exp.Val(8), Exp.BlobBin(binA))),
+						Exp.Val(5)));
+
+				r = await asyncAwaitClient.Get(policy, key, CancellationToken.None);
+				AssertRecordFound(key, r);
+
+				policy.filterExp = Exp.Build(
+					Exp.EQ(
+						BitExp.Lscan(Exp.Val(32), Exp.Val(8), Exp.Val(true), Exp.BlobBin(binA)),
+						Exp.Val(5)));
+
+				r = await asyncAwaitClient.Get(policy, key, CancellationToken.None);
+				AssertRecordFound(key, r);
+			}
 		}
 
-		private void Rscan(Key key) {
+		private async Task Rscan(Key key) {
 			policy.filterExp = Exp.Build(
 				Exp.NE(
 					BitExp.Rscan(Exp.Val(32), Exp.Val(8), Exp.Val(true), Exp.BlobBin(binA)),
 					Exp.Val(7)));
 
-			Record r = client.Get(policy, key);
-			Assert.AreEqual(null, r);
+			if (!args.testAsyncAwait)
+			{
+				Record r = client.Get(policy, key);
+				Assert.AreEqual(null, r);
 
-			policy.filterExp = Exp.Build(
-				Exp.EQ(
-					BitExp.Rscan(Exp.Val(32), Exp.Val(8), Exp.Val(true), Exp.BlobBin(binA)),
-					Exp.Val(7)));
+				policy.filterExp = Exp.Build(
+					Exp.EQ(
+						BitExp.Rscan(Exp.Val(32), Exp.Val(8), Exp.Val(true), Exp.BlobBin(binA)),
+						Exp.Val(7)));
 
-			r = client.Get(policy, key);
-			AssertRecordFound(key, r);
+				r = client.Get(policy, key);
+				AssertRecordFound(key, r);
+			}
+			else
+			{
+				Record r = await asyncAwaitClient.Get(policy, key, CancellationToken.None);
+				Assert.AreEqual(null, r);
+
+				policy.filterExp = Exp.Build(
+					Exp.EQ(
+						BitExp.Rscan(Exp.Val(32), Exp.Val(8), Exp.Val(true), Exp.BlobBin(binA)),
+						Exp.Val(7)));
+
+				r = await asyncAwaitClient.Get(policy, key, CancellationToken.None);
+				AssertRecordFound(key, r);
+			}
 		}
 
-		private void GetInt(Key key) {
+		private async Task GetInt(Key key) {
 			policy.filterExp = Exp.Build(
 				Exp.NE(
 					BitExp.GetInt(Exp.Val(32), Exp.Val(8), true, Exp.BlobBin(binA)),
 					Exp.Val(0x05)));
 
-			Record r = client.Get(policy, key);
-			Assert.AreEqual(null, r);
+			if (!args.testAsyncAwait)
+			{
+				Record r = await asyncAwaitClient.Get(policy, key, CancellationToken.None);
+				Assert.AreEqual(null, r);
 
-			policy.filterExp = Exp.Build(
-				Exp.EQ(
-					BitExp.GetInt(Exp.Val(32), Exp.Val(8), true, Exp.BlobBin(binA)),
-					Exp.Val(0x05)));
+				policy.filterExp = Exp.Build(
+					Exp.EQ(
+						BitExp.GetInt(Exp.Val(32), Exp.Val(8), true, Exp.BlobBin(binA)),
+						Exp.Val(0x05)));
 
-			r = client.Get(policy, key);
-			AssertRecordFound(key, r);
+				r = await asyncAwaitClient.Get(policy, key, CancellationToken.None);
+				AssertRecordFound(key, r);
+			}
 		}
 
-		private void Resize(Key key) {
+		private async Task Resize(Key key) {
 			Exp size = Exp.Val(6);
 
 			policy.filterExp = Exp.Build(
@@ -188,19 +322,35 @@ namespace Aerospike.Test
 					BitExp.Resize(BitPolicy.Default, size, 0, Exp.BlobBin(binA)),
 					BitExp.Resize(BitPolicy.Default, size, 0, Exp.BlobBin(binA))));
 
-			Record r = client.Get(policy, key);
-			Assert.AreEqual(null, r);
+			if (!args.testAsyncAwait)
+			{
+				Record r = client.Get(policy, key);
+				Assert.AreEqual(null, r);
 
-			policy.filterExp = Exp.Build(
-				Exp.EQ(
-					BitExp.Resize(BitPolicy.Default, size, 0, Exp.BlobBin(binA)),
-					BitExp.Resize(BitPolicy.Default, size, 0, Exp.BlobBin(binA))));
+				policy.filterExp = Exp.Build(
+					Exp.EQ(
+						BitExp.Resize(BitPolicy.Default, size, 0, Exp.BlobBin(binA)),
+						BitExp.Resize(BitPolicy.Default, size, 0, Exp.BlobBin(binA))));
 
-			r = client.Get(policy, key);
-			AssertRecordFound(key, r);
+				r = client.Get(policy, key);
+				AssertRecordFound(key, r);
+			}
+			else
+			{
+				Record r = await asyncAwaitClient.Get(policy, key, CancellationToken.None);
+				Assert.AreEqual(null, r);
+
+				policy.filterExp = Exp.Build(
+					Exp.EQ(
+						BitExp.Resize(BitPolicy.Default, size, 0, Exp.BlobBin(binA)),
+						BitExp.Resize(BitPolicy.Default, size, 0, Exp.BlobBin(binA))));
+
+				r = await asyncAwaitClient.Get(policy, key, CancellationToken.None);
+				AssertRecordFound(key, r);
+			}
 		}
 
-		private void Insert(Key key) {
+		private async Task Insert(Key key) {
 			byte[] bytes = new byte[] {(byte)0xff};
 			int expected = 0xff;
 
@@ -210,20 +360,37 @@ namespace Aerospike.Test
 						BitExp.Insert(BitPolicy.Default, Exp.Val(1), Exp.Val(bytes), Exp.BlobBin(binA))),
 					Exp.Val(expected)));
 
-			Record r = client.Get(policy, key);
-			Assert.AreEqual(null, r);
+			if (!args.testAsyncAwait)
+			{
+				Record r = client.Get(policy, key);
+				Assert.AreEqual(null, r);
 
-			policy.filterExp = Exp.Build(
-				Exp.EQ(
-					BitExp.GetInt(Exp.Val(8), Exp.Val(8), false,
-						BitExp.Insert(BitPolicy.Default, Exp.Val(1), Exp.Val(bytes), Exp.BlobBin(binA))),
-					Exp.Val(expected)));
+				policy.filterExp = Exp.Build(
+					Exp.EQ(
+						BitExp.GetInt(Exp.Val(8), Exp.Val(8), false,
+							BitExp.Insert(BitPolicy.Default, Exp.Val(1), Exp.Val(bytes), Exp.BlobBin(binA))),
+						Exp.Val(expected)));
 
-			r = client.Get(policy, key);
-			AssertRecordFound(key, r);
+				r = client.Get(policy, key);
+				AssertRecordFound(key, r);
+			}
+			else
+			{
+				Record r = await asyncAwaitClient.Get(policy, key, CancellationToken.None);
+				Assert.AreEqual(null, r);
+
+				policy.filterExp = Exp.Build(
+					Exp.EQ(
+						BitExp.GetInt(Exp.Val(8), Exp.Val(8), false,
+							BitExp.Insert(BitPolicy.Default, Exp.Val(1), Exp.Val(bytes), Exp.BlobBin(binA))),
+						Exp.Val(expected)));
+
+				r = await asyncAwaitClient.Get(policy, key, CancellationToken.None);
+				AssertRecordFound(key, r);
+			}
 		}
 
-		private void Remove(Key key) {
+		private async Task Remove(Key key) {
 			int expected = 0x42;
 
 			policy.filterExp = Exp.Build(
@@ -232,20 +399,37 @@ namespace Aerospike.Test
 						BitExp.Remove(BitPolicy.Default, Exp.Val(0), Exp.Val(1), Exp.BlobBin(binA))),
 					Exp.Val(expected)));
 
-			Record r = client.Get(policy, key);
-			Assert.AreEqual(null, r);
+			if (!args.testAsyncAwait)
+			{
+				Record r = client.Get(policy, key);
+				Assert.AreEqual(null, r);
 
-			policy.filterExp = Exp.Build(
-				Exp.EQ(
-					BitExp.GetInt(Exp.Val(0), Exp.Val(8), false,
-						BitExp.Remove(BitPolicy.Default, Exp.Val(0), Exp.Val(1), Exp.BlobBin(binA))),
-					Exp.Val(expected)));
+				policy.filterExp = Exp.Build(
+					Exp.EQ(
+						BitExp.GetInt(Exp.Val(0), Exp.Val(8), false,
+							BitExp.Remove(BitPolicy.Default, Exp.Val(0), Exp.Val(1), Exp.BlobBin(binA))),
+						Exp.Val(expected)));
 
-			r = client.Get(policy, key);
-			AssertRecordFound(key, r);
+				r = client.Get(policy, key);
+				AssertRecordFound(key, r);
+			}
+			else
+			{
+				Record r = await asyncAwaitClient.Get(policy, key, CancellationToken.None);
+				Assert.AreEqual(null, r);
+
+				policy.filterExp = Exp.Build(
+					Exp.EQ(
+						BitExp.GetInt(Exp.Val(0), Exp.Val(8), false,
+							BitExp.Remove(BitPolicy.Default, Exp.Val(0), Exp.Val(1), Exp.BlobBin(binA))),
+						Exp.Val(expected)));
+
+				r = await asyncAwaitClient.Get(policy, key, CancellationToken.None);
+				AssertRecordFound(key, r);
+			}
 		}
 
-		private void Set(Key key) {
+		private async Task Set(Key key) {
 			byte[] bytes = new byte[] {(byte)0x80};
 
 			policy.filterExp = Exp.Build(
@@ -254,20 +438,37 @@ namespace Aerospike.Test
 						BitExp.Set(BitPolicy.Default, Exp.Val(31), Exp.Val(1), Exp.Val(bytes), Exp.BlobBin(binA))),
 					BitExp.Get(Exp.Val(32), Exp.Val(8), Exp.BlobBin(binA))));
 
-			Record r = client.Get(policy, key);
-			Assert.AreEqual(null, r);
+			if (!args.testAsyncAwait)
+			{
+				Record r = client.Get(policy, key);
+				Assert.AreEqual(null, r);
 
-			policy.filterExp = Exp.Build(
-				Exp.EQ(
-					BitExp.Get(Exp.Val(24), Exp.Val(8),
-						BitExp.Set(BitPolicy.Default, Exp.Val(31), Exp.Val(1), Exp.Val(bytes), Exp.BlobBin(binA))),
-					BitExp.Get(Exp.Val(32), Exp.Val(8), Exp.BlobBin(binA))));
+				policy.filterExp = Exp.Build(
+					Exp.EQ(
+						BitExp.Get(Exp.Val(24), Exp.Val(8),
+							BitExp.Set(BitPolicy.Default, Exp.Val(31), Exp.Val(1), Exp.Val(bytes), Exp.BlobBin(binA))),
+						BitExp.Get(Exp.Val(32), Exp.Val(8), Exp.BlobBin(binA))));
 
-			r = client.Get(policy, key);
-			AssertRecordFound(key, r);
+				r = client.Get(policy, key);
+				AssertRecordFound(key, r);
+			}
+			else
+			{
+				Record r = await asyncAwaitClient.Get(policy, key, CancellationToken.None);
+				Assert.AreEqual(null, r);
+
+				policy.filterExp = Exp.Build(
+					Exp.EQ(
+						BitExp.Get(Exp.Val(24), Exp.Val(8),
+							BitExp.Set(BitPolicy.Default, Exp.Val(31), Exp.Val(1), Exp.Val(bytes), Exp.BlobBin(binA))),
+						BitExp.Get(Exp.Val(32), Exp.Val(8), Exp.BlobBin(binA))));
+
+				r = await asyncAwaitClient.Get(policy, key, CancellationToken.None);
+				AssertRecordFound(key, r);
+			}
 		}
 
-		private void Or(Key key) {
+		private async Task Or(Key key) {
 			byte[] bytes = new byte[] {(byte)0x01};
 
 			policy.filterExp = Exp.Build(
@@ -275,21 +476,38 @@ namespace Aerospike.Test
 					BitExp.Get(Exp.Val(24), Exp.Val(8),
 						BitExp.Or(BitPolicy.Default, Exp.Val(24), Exp.Val(8), Exp.Val(bytes), Exp.BlobBin(binA))),
 					BitExp.Get(Exp.Val(32), Exp.Val(8), Exp.BlobBin(binA))));
+			if (!args.testAsyncAwait)
+			{
 
-			Record r = client.Get(policy, key);
-			Assert.AreEqual(null, r);
+				Record r = client.Get(policy, key);
+				Assert.AreEqual(null, r);
 
-			policy.filterExp = Exp.Build(
-				Exp.EQ(
-					BitExp.Get(Exp.Val(24), Exp.Val(8),
-						BitExp.Or(BitPolicy.Default, Exp.Val(24), Exp.Val(8), Exp.Val(bytes), Exp.BlobBin(binA))),
-					BitExp.Get(Exp.Val(32), Exp.Val(8), Exp.BlobBin(binA))));
+				policy.filterExp = Exp.Build(
+					Exp.EQ(
+						BitExp.Get(Exp.Val(24), Exp.Val(8),
+							BitExp.Or(BitPolicy.Default, Exp.Val(24), Exp.Val(8), Exp.Val(bytes), Exp.BlobBin(binA))),
+						BitExp.Get(Exp.Val(32), Exp.Val(8), Exp.BlobBin(binA))));
 
-			r = client.Get(policy, key);
-			AssertRecordFound(key, r);
+				r = client.Get(policy, key);
+				AssertRecordFound(key, r);
+			}
+			else
+			{
+				Record r = await asyncAwaitClient.Get(policy, key, CancellationToken.None);
+				Assert.AreEqual(null, r);
+
+				policy.filterExp = Exp.Build(
+					Exp.EQ(
+						BitExp.Get(Exp.Val(24), Exp.Val(8),
+							BitExp.Or(BitPolicy.Default, Exp.Val(24), Exp.Val(8), Exp.Val(bytes), Exp.BlobBin(binA))),
+						BitExp.Get(Exp.Val(32), Exp.Val(8), Exp.BlobBin(binA))));
+
+				r = await asyncAwaitClient.Get(policy, key, CancellationToken.None);
+				AssertRecordFound(key, r);
+			}
 		}
 
-		private void Xor(Key key) {
+		private async Task Xor(Key key) {
 			byte[] bytes = new byte[] {(byte)0x02};
 
 			policy.filterExp = Exp.Build(
@@ -298,20 +516,37 @@ namespace Aerospike.Test
 						BitExp.Xor(BitPolicy.Default, Exp.Val(0), Exp.Val(8), Exp.Val(bytes), Exp.BlobBin(binA))),
 					BitExp.Get(Exp.Val(16), Exp.Val(8), Exp.BlobBin(binA))));
 
-			Record r = client.Get(policy, key);
-			Assert.AreEqual(null, r);
+			if (!args.testAsyncAwait)
+			{
+				Record r = client.Get(policy, key);
+				Assert.AreEqual(null, r);
 
-			policy.filterExp = Exp.Build(
-				Exp.EQ(
-					BitExp.Get(Exp.Val(0), Exp.Val(8),
-						BitExp.Xor(BitPolicy.Default, Exp.Val(0), Exp.Val(8), Exp.Val(bytes), Exp.BlobBin(binA))),
-					BitExp.Get(Exp.Val(16), Exp.Val(8), Exp.BlobBin(binA))));
+				policy.filterExp = Exp.Build(
+					Exp.EQ(
+						BitExp.Get(Exp.Val(0), Exp.Val(8),
+							BitExp.Xor(BitPolicy.Default, Exp.Val(0), Exp.Val(8), Exp.Val(bytes), Exp.BlobBin(binA))),
+						BitExp.Get(Exp.Val(16), Exp.Val(8), Exp.BlobBin(binA))));
 
-			r = client.Get(policy, key);
-			AssertRecordFound(key, r);
+				r = client.Get(policy, key);
+				AssertRecordFound(key, r);
+			}
+			else
+			{
+				Record r = await asyncAwaitClient.Get(policy, key, CancellationToken.None);
+				Assert.AreEqual(null, r);
+
+				policy.filterExp = Exp.Build(
+					Exp.EQ(
+						BitExp.Get(Exp.Val(0), Exp.Val(8),
+							BitExp.Xor(BitPolicy.Default, Exp.Val(0), Exp.Val(8), Exp.Val(bytes), Exp.BlobBin(binA))),
+						BitExp.Get(Exp.Val(16), Exp.Val(8), Exp.BlobBin(binA))));
+
+				r = await asyncAwaitClient.Get(policy, key, CancellationToken.None);
+				AssertRecordFound(key, r);
+			}
 		}
 
-		private void And(Key key) {
+		private async Task And(Key key) {
 			byte[] bytes = new byte[] {(byte)0x01};
 
 			policy.filterExp = Exp.Build(
@@ -320,137 +555,256 @@ namespace Aerospike.Test
 						BitExp.And(BitPolicy.Default, Exp.Val(16), Exp.Val(8), Exp.Val(bytes), Exp.BlobBin(binA))),
 					BitExp.Get(Exp.Val(0), Exp.Val(8), Exp.BlobBin(binA))));
 
-			Record r = client.Get(policy, key);
-			Assert.AreEqual(null, r);
+			if (!args.testAsyncAwait)
+			{
+				Record r = client.Get(policy, key);
+				Assert.AreEqual(null, r);
 
-			policy.filterExp = Exp.Build(
-				Exp.EQ(
-					BitExp.Get(Exp.Val(0), Exp.Val(8),
-						BitExp.And(BitPolicy.Default, Exp.Val(16), Exp.Val(8), Exp.Val(bytes), Exp.BlobBin(binA))),
-					BitExp.Get(Exp.Val(0), Exp.Val(8), Exp.BlobBin(binA))));
+				policy.filterExp = Exp.Build(
+					Exp.EQ(
+						BitExp.Get(Exp.Val(0), Exp.Val(8),
+							BitExp.And(BitPolicy.Default, Exp.Val(16), Exp.Val(8), Exp.Val(bytes), Exp.BlobBin(binA))),
+						BitExp.Get(Exp.Val(0), Exp.Val(8), Exp.BlobBin(binA))));
 
-			r = client.Get(policy, key);
-			AssertRecordFound(key, r);
+				r = client.Get(policy, key);
+				AssertRecordFound(key, r);
+			}
+			else
+			{
+				Record r = await asyncAwaitClient.Get(policy, key, CancellationToken.None);
+				Assert.AreEqual(null, r);
+
+				policy.filterExp = Exp.Build(
+					Exp.EQ(
+						BitExp.Get(Exp.Val(0), Exp.Val(8),
+							BitExp.And(BitPolicy.Default, Exp.Val(16), Exp.Val(8), Exp.Val(bytes), Exp.BlobBin(binA))),
+						BitExp.Get(Exp.Val(0), Exp.Val(8), Exp.BlobBin(binA))));
+
+				r = await asyncAwaitClient.Get(policy, key, CancellationToken.None);
+				AssertRecordFound(key, r);
+			}
 		}
 
-		private void Not(Key key) {
+		private async Task Not(Key key) {
 			policy.filterExp = Exp.Build(
 				Exp.NE(
 					BitExp.Get(Exp.Val(0), Exp.Val(8),
 						BitExp.Not(BitPolicy.Default, Exp.Val(6), Exp.Val(1), Exp.BlobBin(binA))),
 					BitExp.Get(Exp.Val(16), Exp.Val(8), Exp.BlobBin(binA))));
 
-			Record r = client.Get(policy, key);
-			Assert.AreEqual(null, r);
+			if (!args.testAsyncAwait)
+			{
+				Record r = client.Get(policy, key);
+				Assert.AreEqual(null, r);
 
-			policy.filterExp = Exp.Build(
-				Exp.EQ(
-					BitExp.Get(Exp.Val(0), Exp.Val(8),
-						BitExp.Not(BitPolicy.Default, Exp.Val(6), Exp.Val(1), Exp.BlobBin(binA))),
-					BitExp.Get(Exp.Val(16), Exp.Val(8), Exp.BlobBin(binA))));
+				policy.filterExp = Exp.Build(
+					Exp.EQ(
+						BitExp.Get(Exp.Val(0), Exp.Val(8),
+							BitExp.Not(BitPolicy.Default, Exp.Val(6), Exp.Val(1), Exp.BlobBin(binA))),
+						BitExp.Get(Exp.Val(16), Exp.Val(8), Exp.BlobBin(binA))));
 
-			r = client.Get(policy, key);
-			AssertRecordFound(key, r);
+				r = client.Get(policy, key);
+				AssertRecordFound(key, r);
+			}
+			else
+			{
+				Record r = await asyncAwaitClient.Get(policy, key, CancellationToken.None);
+				Assert.AreEqual(null, r);
+
+				policy.filterExp = Exp.Build(
+					Exp.EQ(
+						BitExp.Get(Exp.Val(0), Exp.Val(8),
+							BitExp.Not(BitPolicy.Default, Exp.Val(6), Exp.Val(1), Exp.BlobBin(binA))),
+						BitExp.Get(Exp.Val(16), Exp.Val(8), Exp.BlobBin(binA))));
+
+				r = await asyncAwaitClient.Get(policy, key, CancellationToken.None);
+				AssertRecordFound(key, r);
+			}
 		}
 
-		private void Lshift(Key key) {
+		private async Task Lshift(Key key) {
 			policy.filterExp = Exp.Build(
 				Exp.NE(
 					BitExp.Get(Exp.Val(0), Exp.Val(6),
 						BitExp.Lshift(BitPolicy.Default, Exp.Val(0), Exp.Val(8), Exp.Val(2), Exp.BlobBin(binA))),
 					BitExp.Get(Exp.Val(2), Exp.Val(6), Exp.BlobBin(binA))));
 
-			Record r = client.Get(policy, key);
-			Assert.AreEqual(null, r);
+			if (!args.testAsyncAwait)
+			{
+				Record r = client.Get(policy, key);
+				Assert.AreEqual(null, r);
 
-			policy.filterExp = Exp.Build(
-				Exp.EQ(
-					BitExp.Get(Exp.Val(0), Exp.Val(6),
-						BitExp.Lshift(BitPolicy.Default, Exp.Val(0), Exp.Val(8), Exp.Val(2), Exp.BlobBin(binA))),
-					BitExp.Get(Exp.Val(2), Exp.Val(6), Exp.BlobBin(binA))));
+				policy.filterExp = Exp.Build(
+					Exp.EQ(
+						BitExp.Get(Exp.Val(0), Exp.Val(6),
+							BitExp.Lshift(BitPolicy.Default, Exp.Val(0), Exp.Val(8), Exp.Val(2), Exp.BlobBin(binA))),
+						BitExp.Get(Exp.Val(2), Exp.Val(6), Exp.BlobBin(binA))));
 
-			r = client.Get(policy, key);
-			AssertRecordFound(key, r);
+				r = client.Get(policy, key);
+				AssertRecordFound(key, r);
+			}
+			else
+			{
+				Record r = await asyncAwaitClient.Get(policy, key, CancellationToken.None);
+				Assert.AreEqual(null, r);
+
+				policy.filterExp = Exp.Build(
+					Exp.EQ(
+						BitExp.Get(Exp.Val(0), Exp.Val(6),
+							BitExp.Lshift(BitPolicy.Default, Exp.Val(0), Exp.Val(8), Exp.Val(2), Exp.BlobBin(binA))),
+						BitExp.Get(Exp.Val(2), Exp.Val(6), Exp.BlobBin(binA))));
+
+				r = await asyncAwaitClient.Get(policy, key, CancellationToken.None);
+				AssertRecordFound(key, r);
+			}
 		}
 
-		private void Rshift(Key key) {
+		private async Task Rshift(Key key) {
 			policy.filterExp = Exp.Build(
 				Exp.NE(
 					BitExp.Get(Exp.Val(26), Exp.Val(6),
 						BitExp.Rshift(BitPolicy.Default, Exp.Val(24), Exp.Val(8), Exp.Val(2), Exp.BlobBin(binA))),
 					BitExp.Get(Exp.Val(24), Exp.Val(6), Exp.BlobBin(binA))));
 
-			Record r = client.Get(policy, key);
-			Assert.AreEqual(null, r);
+			if (!args.testAsyncAwait)
+			{
+				Record r = client.Get(policy, key);
+				Assert.AreEqual(null, r);
 
-			policy.filterExp = Exp.Build(
-				Exp.EQ(
-					BitExp.Get(Exp.Val(26), Exp.Val(6),
-						BitExp.Rshift(BitPolicy.Default, Exp.Val(24), Exp.Val(8), Exp.Val(2), Exp.BlobBin(binA))),
-					BitExp.Get(Exp.Val(24), Exp.Val(6), Exp.BlobBin(binA))));
+				policy.filterExp = Exp.Build(
+					Exp.EQ(
+						BitExp.Get(Exp.Val(26), Exp.Val(6),
+							BitExp.Rshift(BitPolicy.Default, Exp.Val(24), Exp.Val(8), Exp.Val(2), Exp.BlobBin(binA))),
+						BitExp.Get(Exp.Val(24), Exp.Val(6), Exp.BlobBin(binA))));
 
-			r = client.Get(policy, key);
-			AssertRecordFound(key, r);
+				r = client.Get(policy, key);
+				AssertRecordFound(key, r);
+			}
+			else
+			{
+				Record r = await asyncAwaitClient.Get(policy, key, CancellationToken.None);
+				Assert.AreEqual(null, r);
+
+				policy.filterExp = Exp.Build(
+					Exp.EQ(
+						BitExp.Get(Exp.Val(26), Exp.Val(6),
+							BitExp.Rshift(BitPolicy.Default, Exp.Val(24), Exp.Val(8), Exp.Val(2), Exp.BlobBin(binA))),
+						BitExp.Get(Exp.Val(24), Exp.Val(6), Exp.BlobBin(binA))));
+
+				r = client.Get(policy, key);
+				AssertRecordFound(key, r);
+			}
 		}
 
-		private void Add(Key key) {
+		private async Task Add(Key key) {
 			policy.filterExp = Exp.Build(
 				Exp.NE(
 					BitExp.Get(Exp.Val(16), Exp.Val(8),
 						BitExp.Add(BitPolicy.Default, Exp.Val(16), Exp.Val(8), Exp.Val(1), false, BitOverflowAction.FAIL, Exp.BlobBin(binA))),
 					BitExp.Get(Exp.Val(24), Exp.Val(8), Exp.BlobBin(binA))));
 
-			Record r = client.Get(policy, key);
-			Assert.AreEqual(null, r);
+			if (!args.testAsyncAwait)
+			{
+				Record r = client.Get(policy, key);
+				Assert.AreEqual(null, r);
 
-			policy.filterExp = Exp.Build(
-				Exp.EQ(
-					BitExp.Get(Exp.Val(16), Exp.Val(8),
-						BitExp.Add(BitPolicy.Default, Exp.Val(16), Exp.Val(8), Exp.Val(1), false, BitOverflowAction.FAIL, Exp.BlobBin(binA))),
-					BitExp.Get(Exp.Val(24), Exp.Val(8), Exp.BlobBin(binA))));
+				policy.filterExp = Exp.Build(
+					Exp.EQ(
+						BitExp.Get(Exp.Val(16), Exp.Val(8),
+							BitExp.Add(BitPolicy.Default, Exp.Val(16), Exp.Val(8), Exp.Val(1), false, BitOverflowAction.FAIL, Exp.BlobBin(binA))),
+						BitExp.Get(Exp.Val(24), Exp.Val(8), Exp.BlobBin(binA))));
 
-			r = client.Get(policy, key);
-			AssertRecordFound(key, r);
+				r = client.Get(policy, key);
+				AssertRecordFound(key, r);
+			}
+			else
+			{
+				Record r = await asyncAwaitClient.Get(policy, key, CancellationToken.None);
+				Assert.AreEqual(null, r);
+
+				policy.filterExp = Exp.Build(
+					Exp.EQ(
+						BitExp.Get(Exp.Val(16), Exp.Val(8),
+							BitExp.Add(BitPolicy.Default, Exp.Val(16), Exp.Val(8), Exp.Val(1), false, BitOverflowAction.FAIL, Exp.BlobBin(binA))),
+						BitExp.Get(Exp.Val(24), Exp.Val(8), Exp.BlobBin(binA))));
+
+				r = await asyncAwaitClient.Get(policy, key, CancellationToken.None);
+				AssertRecordFound(key, r);
+			}
 		}
 
-		private void Subtract(Key key) {
+		private async Task Subtract(Key key) {
 			policy.filterExp = Exp.Build(
 				Exp.NE(
 					BitExp.Get(Exp.Val(24), Exp.Val(8),
 						BitExp.Subtract(BitPolicy.Default, Exp.Val(24), Exp.Val(8), Exp.Val(1), false, BitOverflowAction.FAIL, Exp.BlobBin(binA))),
 					BitExp.Get(Exp.Val(16), Exp.Val(8), Exp.BlobBin(binA))));
 
-			Record r = client.Get(policy, key);
-			Assert.AreEqual(null, r);
+			if (!args.testAsyncAwait)
+			{
+				Record r = client.Get(policy, key);
+				Assert.AreEqual(null, r);
 
-			policy.filterExp = Exp.Build(
-				Exp.EQ(
-					BitExp.Get(Exp.Val(24), Exp.Val(8),
-						BitExp.Subtract(BitPolicy.Default, Exp.Val(24), Exp.Val(8), Exp.Val(1), false, BitOverflowAction.FAIL, Exp.BlobBin(binA))),
-					BitExp.Get(Exp.Val(16), Exp.Val(8), Exp.BlobBin(binA))));
+				policy.filterExp = Exp.Build(
+					Exp.EQ(
+						BitExp.Get(Exp.Val(24), Exp.Val(8),
+							BitExp.Subtract(BitPolicy.Default, Exp.Val(24), Exp.Val(8), Exp.Val(1), false, BitOverflowAction.FAIL, Exp.BlobBin(binA))),
+						BitExp.Get(Exp.Val(16), Exp.Val(8), Exp.BlobBin(binA))));
 
-			r = client.Get(policy, key);
-			AssertRecordFound(key, r);
+				r = client.Get(policy, key);
+				AssertRecordFound(key, r);
+			}
+			else
+			{
+				Record r = await asyncAwaitClient.Get(policy, key, CancellationToken.None);
+				Assert.AreEqual(null, r);
+
+				policy.filterExp = Exp.Build(
+					Exp.EQ(
+						BitExp.Get(Exp.Val(24), Exp.Val(8),
+							BitExp.Subtract(BitPolicy.Default, Exp.Val(24), Exp.Val(8), Exp.Val(1), false, BitOverflowAction.FAIL, Exp.BlobBin(binA))),
+						BitExp.Get(Exp.Val(16), Exp.Val(8), Exp.BlobBin(binA))));
+
+				r = await asyncAwaitClient.Get(policy, key, CancellationToken.None);
+				AssertRecordFound(key, r);
+			}
 		}
 
-		private void SetInt(Key key) {
+		private async Task SetInt(Key key) {
 			policy.filterExp = Exp.Build(
 				Exp.NE(
 					BitExp.Get(Exp.Val(24), Exp.Val(8),
 						BitExp.SetInt(BitPolicy.Default, Exp.Val(24), Exp.Val(8), Exp.Val(0x42), Exp.BlobBin(binA))),
 					BitExp.Get(Exp.Val(8), Exp.Val(8), Exp.BlobBin(binA))));
 
-			Record r = client.Get(policy, key);
-			Assert.AreEqual(null, r);
+			if (!args.testAsyncAwait)
+			{
+				Record r = client.Get(policy, key);
+				Assert.AreEqual(null, r);
 
-			policy.filterExp = Exp.Build(
-				Exp.EQ(
-					BitExp.Get(Exp.Val(24), Exp.Val(8),
-						BitExp.SetInt(BitPolicy.Default, Exp.Val(24), Exp.Val(8), Exp.Val(0x42), Exp.BlobBin(binA))),
-					BitExp.Get(Exp.Val(8), Exp.Val(8), Exp.BlobBin(binA))));
+				policy.filterExp = Exp.Build(
+					Exp.EQ(
+						BitExp.Get(Exp.Val(24), Exp.Val(8),
+							BitExp.SetInt(BitPolicy.Default, Exp.Val(24), Exp.Val(8), Exp.Val(0x42), Exp.BlobBin(binA))),
+						BitExp.Get(Exp.Val(8), Exp.Val(8), Exp.BlobBin(binA))));
 
-			r = client.Get(policy, key);
-			AssertRecordFound(key, r);
+				r = client.Get(policy, key);
+				AssertRecordFound(key, r);
+			}
+			else
+			{
+				Record r = await asyncAwaitClient.Get(policy, key, CancellationToken.None);
+				Assert.AreEqual(null, r);
+
+				policy.filterExp = Exp.Build(
+					Exp.EQ(
+						BitExp.Get(Exp.Val(24), Exp.Val(8),
+							BitExp.SetInt(BitPolicy.Default, Exp.Val(24), Exp.Val(8), Exp.Val(0x42), Exp.BlobBin(binA))),
+						BitExp.Get(Exp.Val(8), Exp.Val(8), Exp.BlobBin(binA))));
+
+				r = await asyncAwaitClient.Get(policy, key, CancellationToken.None);
+				AssertRecordFound(key, r);
+			}
 		}
 	}
 }

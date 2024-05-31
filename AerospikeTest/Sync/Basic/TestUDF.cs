@@ -28,11 +28,15 @@ namespace Aerospike.Test
 		[ClassInitialize()]
 		public static void Register(TestContext testContext)
 		{
-			if (!args.testProxy || (args.testProxy && nativeClient != null))
+			if (!args.testProxy || (args.testProxy && nativeClient != null) && !args.testAsyncAwait)
 			{
 				Assembly assembly = Assembly.GetExecutingAssembly();
 				RegisterTask task = nativeClient.Register(null, assembly, "Aerospike.Test.LuaResources.record_example.lua", "record_example.lua", Language.LUA);
 				task.Wait();
+			}
+			else if (args.testAsyncAwait)
+			{
+				throw new NotImplementedException();
 			}
 		}
 
@@ -42,10 +46,17 @@ namespace Aerospike.Test
 			Key key = new Key(args.ns, args.set, "udfkey1");
 			Bin bin = new Bin(args.GetBinName("udfbin1"), "string value");
 
-			client.Execute(null, key, "record_example", "writeBin", Value.Get(bin.name), bin.value);
+			if (!args.testAsyncAwait)
+			{
+				client.Execute(null, key, "record_example", "writeBin", Value.Get(bin.name), bin.value);
 
-			Record record = client.Get(null, key, bin.name);
-			AssertBinEqual(key, record, bin);
+				Record record = client.Get(null, key, bin.name);
+				AssertBinEqual(key, record, bin);
+			}
+			else
+			{
+				throw new NotImplementedException();
+			}
 		}
 
 		[TestMethod]
@@ -54,14 +65,21 @@ namespace Aerospike.Test
 			Key key = new Key(args.ns, args.set, "udfkey2");
 			Bin bin = new Bin(args.GetBinName("udfbin2"), "string value");
 
-			// Seed record.
-			client.Put(null, key, bin);
+			if (!args.testAsyncAwait)
+			{
+				// Seed record.
+				client.Put(null, key, bin);
 
-			// Get record generation.
-			long gen = (long)client.Execute(null, key, "record_example", "getGeneration");
+				// Get record generation.
+				long gen = (long)client.Execute(null, key, "record_example", "getGeneration");
 
-			// Write record if generation has not changed.
-			client.Execute(null, key, "record_example", "writeIfGenerationNotChanged", Value.Get(bin.name), bin.value, Value.Get(gen));
+				// Write record if generation has not changed.
+				client.Execute(null, key, "record_example", "writeIfGenerationNotChanged", Value.Get(bin.name), bin.value, Value.Get(gen));
+			}
+			else 
+			{ 
+				throw new NotImplementedException(); 
+			}
 		}
 
 		[TestMethod]
@@ -70,22 +88,29 @@ namespace Aerospike.Test
 			Key key = new Key(args.ns, args.set, "udfkey3");
 			string binName = "udfbin3";
 
-			// Delete record if it already exists.
-			client.Delete(null, key);
+			if (!args.testAsyncAwait)
+			{
+				// Delete record if it already exists.
+				client.Delete(null, key);
 
-			// Write record only if not already exists. This should succeed.
-			client.Execute(null, key, "record_example", "writeUnique", Value.Get(binName), Value.Get("first"));
+				// Write record only if not already exists. This should succeed.
+				client.Execute(null, key, "record_example", "writeUnique", Value.Get(binName), Value.Get("first"));
 
-			// Verify record written.
-			Record record = client.Get(null, key, binName);
-			AssertBinEqual(key, record, binName, "first");
+				// Verify record written.
+				Record record = client.Get(null, key, binName);
+				AssertBinEqual(key, record, binName, "first");
 
-			// Write record second time. This should Assert.Fail.
-			client.Execute(null, key, "record_example", "writeUnique", Value.Get(binName), Value.Get("second"));
+				// Write record second time. This should Assert.Fail.
+				client.Execute(null, key, "record_example", "writeUnique", Value.Get(binName), Value.Get("second"));
 
-			// Verify record not written.
-			record = client.Get(null, key, binName);
-			AssertBinEqual(key, record, binName, "first");
+				// Verify record not written.
+				record = client.Get(null, key, binName);
+				AssertBinEqual(key, record, binName, "first");
+			}
+			else
+			{
+				throw new NotImplementedException();
+			}
 		}
 
 		[TestMethod]
@@ -94,18 +119,25 @@ namespace Aerospike.Test
 			Key key = new Key(args.ns, args.set, "udfkey4");
 			string binName = "udfbin4";
 
-			// Lua function writeWithValidation accepts number between 1 and 10.
-			// Write record with valid value.
-			client.Execute(null, key, "record_example", "writeWithValidation", Value.Get(binName), Value.Get(4));
+			if (!args.testAsyncAwait)
+			{
+				// Lua function writeWithValidation accepts number between 1 and 10.
+				// Write record with valid value.
+				client.Execute(null, key, "record_example", "writeWithValidation", Value.Get(binName), Value.Get(4));
 
-			// Write record with invalid value.		
-			try
-			{
-				client.Execute(null, key, "record_example", "writeWithValidation", Value.Get(binName), Value.Get(11));
-				Assert.Fail("UDF should not have succeeded!");
+				// Write record with invalid value.		
+				try
+				{
+					client.Execute(null, key, "record_example", "writeWithValidation", Value.Get(binName), Value.Get(11));
+					Assert.Fail("UDF should not have succeeded!");
+				}
+				catch (Exception)
+				{
+				}
 			}
-			catch (Exception)
+			else
 			{
+				throw new NotImplementedException();
 			}
 		}
 
@@ -131,22 +163,29 @@ namespace Aerospike.Test
 
 			string binName = args.GetBinName("udfbin5");
 
-			client.Execute(null, key, "record_example", "writeBin", Value.Get(binName), Value.Get(list));
+			if (!args.testAsyncAwait)
+			{
+				client.Execute(null, key, "record_example", "writeBin", Value.Get(binName), Value.Get(list));
 
-			IList received = (IList)client.Execute(null, key, "record_example", "readBin", Value.Get(binName));
-			Assert.IsNotNull(received);
+				IList received = (IList)client.Execute(null, key, "record_example", "readBin", Value.Get(binName));
+				Assert.IsNotNull(received);
 
-			Assert.AreEqual(list.Count, received.Count);
-			Assert.AreEqual(list[0], received[0]);
-			Assert.AreEqual(list[1], received[1]);
-			CollectionAssert.AreEqual((IList)list[2], (IList)received[2]);
+				Assert.AreEqual(list.Count, received.Count);
+				Assert.AreEqual(list[0], received[0]);
+				Assert.AreEqual(list[1], received[1]);
+				CollectionAssert.AreEqual((IList)list[2], (IList)received[2]);
 
-			IDictionary exp = (IDictionary)list[3];
-			IDictionary rec = (IDictionary)received[3];
+				IDictionary exp = (IDictionary)list[3];
+				IDictionary rec = (IDictionary)received[3];
 
-			Assert.AreEqual(exp["a"], rec["a"]);
-			Assert.AreEqual(exp[2L], rec[2L]);
-			CollectionAssert.AreEqual((IList)exp["list"], (IList)rec["list"]);
+				Assert.AreEqual(exp["a"], rec["a"]);
+				Assert.AreEqual(exp[2L], rec[2L]);
+				CollectionAssert.AreEqual((IList)exp["list"], (IList)rec["list"]);
+			}
+			else
+			{
+				throw new NotImplementedException();
+			}
 		}
 
 		[TestMethod]
@@ -171,24 +210,31 @@ namespace Aerospike.Test
 
 			string binName = args.GetBinName("udfbin6");
 
-			// Write list.
-			client.Execute(null, key, "record_example", "writeBin", Value.Get(binName), Value.Get(list));
+			if (!args.testAsyncAwait)
+			{
+				// Write list.
+				client.Execute(null, key, "record_example", "writeBin", Value.Get(binName), Value.Get(list));
 
-			// Append value to list.
-			string value = "appended value";
-			client.Execute(null, key, "record_example", "appendListBin", Value.Get(binName), Value.Get(value));
+				// Append value to list.
+				string value = "appended value";
+				client.Execute(null, key, "record_example", "appendListBin", Value.Get(binName), Value.Get(value));
 
-			Record record = client.Get(null, key, binName);
-			AssertRecordFound(key, record);
+				Record record = client.Get(null, key, binName);
+				AssertRecordFound(key, record);
 
-			object received = record.GetValue(binName);
-			Assert.IsNotNull(received);
-			Assert.IsInstanceOfType(received, typeof(IList));
-			IList reclist = (IList)received;
-			Assert.AreEqual(5, reclist.Count);
-			object obj = reclist[4];
-			Assert.IsInstanceOfType(obj, typeof(string));
-			Assert.AreEqual(value, (string)obj);
+				object received = record.GetValue(binName);
+				Assert.IsNotNull(received);
+				Assert.IsInstanceOfType(received, typeof(IList));
+				IList reclist = (IList)received;
+				Assert.AreEqual(5, reclist.Count);
+				object obj = reclist[4];
+				Assert.IsInstanceOfType(obj, typeof(string));
+				Assert.AreEqual(value, (string)obj);
+			}
+			else
+			{
+				throw new NotImplementedException();
+			}
 		}
 
 #if BINARY_FORMATTER
@@ -223,18 +269,26 @@ namespace Aerospike.Test
 				new Key(args.ns, args.set, 20001)
 			};
 
-			client.Delete(null, null, keys);
-
-			BatchResults br = client.Execute(null, null, keys, "record_example", "writeBin", Value.Get("B5"), Value.Get("value5"));
-			Assert.IsTrue(br.status);
-
-			Record[] records = client.Get(null, keys, "B5");
-			Assert.AreEqual(2, records.Length);
-
-			foreach (Record r in records)
+			if (!args.testAsyncAwait)
 			{
-				Assert.IsNotNull(r);
-				Assert.AreEqual("value5", r.GetString("B5"));
+
+				client.Delete(null, null, keys);
+
+				BatchResults br = client.Execute(null, null, keys, "record_example", "writeBin", Value.Get("B5"), Value.Get("value5"));
+				Assert.IsTrue(br.status);
+
+				Record[] records = client.Get(null, keys, "B5");
+				Assert.AreEqual(2, records.Length);
+
+				foreach (Record r in records)
+				{
+					Assert.IsNotNull(r);
+					Assert.AreEqual("value5", r.GetString("B5"));
+				}
+			}
+			else
+			{
+				throw new NotImplementedException();
 			}
 		}
 
@@ -243,19 +297,28 @@ namespace Aerospike.Test
 		{
 			Key[] keys = new Key[] { new Key(args.ns, args.set, 20002), new Key(args.ns, args.set, 20003) };
 
-			client.Delete(null, null, keys);
-
-			BatchResults br = client.Execute(null, null, keys, "record_example", "writeWithValidation", Value.Get("B5"), Value.Get(999));
-			Assert.IsFalse(br.status);
-
-			foreach (BatchRecord r in br.records)
+			if (!args.testAsyncAwait)
 			{
-				Assert.IsNotNull(r);
-				Assert.AreEqual(ResultCode.UDF_BAD_RESPONSE, r.resultCode);
 
-				string msg = r.record.GetUDFError();
-				//System.out.println(msg);
-				Assert.IsNotNull(msg);
+
+				client.Delete(null, null, keys);
+
+				BatchResults br = client.Execute(null, null, keys, "record_example", "writeWithValidation", Value.Get("B5"), Value.Get(999));
+				Assert.IsFalse(br.status);
+
+				foreach (BatchRecord r in br.records)
+				{
+					Assert.IsNotNull(r);
+					Assert.AreEqual(ResultCode.UDF_BAD_RESPONSE, r.resultCode);
+
+					string msg = r.record.GetUDFError();
+					//System.out.println(msg);
+					Assert.IsNotNull(msg);
+				}
+			}
+			else
+			{
+				throw new NotImplementedException();
 			}
 		}
 
@@ -277,25 +340,32 @@ namespace Aerospike.Test
 			records.Add(b2);
 			records.Add(b3);
 
-			bool status = client.Operate(null, records);
+			if (!args.testAsyncAwait)
+			{
+				bool status = client.Operate(null, records);
 
-			Assert.IsFalse(status); // b3 results in an error.
-			AssertBinEqual(b1.key, b1.record, bin, 0);
-			AssertBinEqual(b2.key, b2.record, bin, 0);
-			Assert.AreEqual(ResultCode.UDF_BAD_RESPONSE, b3.resultCode);
+				Assert.IsFalse(status); // b3 results in an error.
+				AssertBinEqual(b1.key, b1.record, bin, 0);
+				AssertBinEqual(b2.key, b2.record, bin, 0);
+				Assert.AreEqual(ResultCode.UDF_BAD_RESPONSE, b3.resultCode);
 
-			BatchRead b4 = new BatchRead(new Key(args.ns, args.set, 20004), true);
-			BatchRead b5 = new BatchRead(new Key(args.ns, args.set, 20005), true);
+				BatchRead b4 = new BatchRead(new Key(args.ns, args.set, 20004), true);
+				BatchRead b5 = new BatchRead(new Key(args.ns, args.set, 20005), true);
 
-			records.Clear();
-			records.Add(b4);
-			records.Add(b5);
+				records.Clear();
+				records.Add(b4);
+				records.Add(b5);
 
-			status = client.Operate(null, records);
+				status = client.Operate(null, records);
 
-			Assert.IsTrue(status);
-			AssertBinEqual(b4.key, b4.record, bin, "value1");
-			AssertBinEqual(b5.key, b5.record, bin, 5);
+				Assert.IsTrue(status);
+				AssertBinEqual(b4.key, b4.record, bin, "value1");
+				AssertBinEqual(b5.key, b5.record, bin, 5);
+			}
+			else
+			{
+				throw new NotImplementedException();
+			}
 		}
 	}
 }

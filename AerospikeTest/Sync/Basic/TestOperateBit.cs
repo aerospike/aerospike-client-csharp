@@ -28,422 +28,841 @@ namespace Aerospike.Test
 		private const string binName = "opbbin";
 
 		[TestMethod]
-		public void OperateBitResize()
+		public async Task OperateBitResize()
 		{
 			Key key = new Key(args.ns, args.set, "opbkey1");
 
-			client.Delete(null, key);
+			if (!args.testAsyncAwait)
+			{
+				client.Delete(null, key);
 
-			byte[] bytes = new byte[] { 0x01, 0x42 };
+				byte[] bytes = new byte[] { 0x01, 0x42 };
 
-			client.Put(null, key, new Bin(binName, bytes));
+				client.Put(null, key, new Bin(binName, bytes));
 
-			Record record = client.Operate(null, key,
-				BitOperation.Resize(BitPolicy.Default, binName, 4, BitResizeFlags.DEFAULT),
-				Operation.Get(binName)
-				);
+				Record record = client.Operate(null, key,
+					BitOperation.Resize(BitPolicy.Default, binName, 4, BitResizeFlags.DEFAULT),
+					Operation.Get(binName)
+					);
 
-			AssertRecordFound(key, record);
+				AssertRecordFound(key, record);
 
-			IList list = record.GetList(binName);
+				IList list = record.GetList(binName);
 
-			byte[] b = (byte[])list[1];
-			//Console.WriteLine(ByteUtil.BytesToHexString(b));
-			Assert.IsTrue(Util.ByteArrayEquals(new byte[] { 0x01, 0x42, 0x00, 0x00 }, b));
+				byte[] b = (byte[])list[1];
+				//Console.WriteLine(ByteUtil.BytesToHexString(b));
+				Assert.IsTrue(Util.ByteArrayEquals(new byte[] { 0x01, 0x42, 0x00, 0x00 }, b));
+			}
+			else
+			{
+				await asyncAwaitClient.Delete(null, key, CancellationToken.None);
+
+				byte[] bytes = new byte[] { 0x01, 0x42 };
+
+				await asyncAwaitClient.Put(null, key, new[] { new Bin(binName, bytes) }, CancellationToken.None);
+
+				Record record = await asyncAwaitClient.Operate(null, key,
+					new[] { BitOperation.Resize(BitPolicy.Default, binName, 4, BitResizeFlags.DEFAULT),
+					Operation.Get(binName) },
+					CancellationToken.None
+					);
+
+				AssertRecordFound(key, record);
+
+				IList list = record.GetList(binName);
+
+				byte[] b = (byte[])list[1];
+				//Console.WriteLine(ByteUtil.BytesToHexString(b));
+				Assert.IsTrue(Util.ByteArrayEquals(new byte[] { 0x01, 0x42, 0x00, 0x00 }, b));
+			}
 		}
 
 		[TestMethod]
-		public void OperateBitInsert()
+		public async Task OperateBitInsert()
 		{
 			Key key = new Key(args.ns, args.set, "opbkey2");
 
-			client.Delete(null, key);
+			if (!args.testAsyncAwait)
+			{
+				client.Delete(null, key);
 
-			byte[] bytes = new byte[] { 0x01, 0x42, 0x03, 0x04, 0x05 };
+				byte[] bytes = new byte[] { 0x01, 0x42, 0x03, 0x04, 0x05 };
 
-			client.Put(null, key, new Bin(binName, bytes));
+				client.Put(null, key, new Bin(binName, bytes));
 
-			Record record = client.Operate(null, key,
-				BitOperation.Insert(BitPolicy.Default, binName, 1, new byte[] { 0xFF, 0xC7 }),
-				Operation.Get(binName)
-				);
+				Record record = client.Operate(null, key,
+					BitOperation.Insert(BitPolicy.Default, binName, 1, new byte[] { 0xFF, 0xC7 }),
+					Operation.Get(binName)
+					);
 
-			AssertRecordFound(key, record);
+				AssertRecordFound(key, record);
 
-			IList list = record.GetList(binName);
+				IList list = record.GetList(binName);
 
-			byte[] b = (byte[])list[1];
-			Assert.IsTrue(Util.ByteArrayEquals(new byte[] { 0x01, 0xFF, 0xC7, 0x42, 0x03, 0x04, 0x05 }, b));
+				byte[] b = (byte[])list[1];
+				Assert.IsTrue(Util.ByteArrayEquals(new byte[] { 0x01, 0xFF, 0xC7, 0x42, 0x03, 0x04, 0x05 }, b));
+			}
+			else
+			{
+				await asyncAwaitClient.Delete(null, key, CancellationToken.None);
+
+				byte[] bytes = new byte[] { 0x01, 0x42, 0x03, 0x04, 0x05 };
+
+				await asyncAwaitClient.Put(null, key, new[] { new Bin(binName, bytes) }, CancellationToken.None);
+
+				Record record = await asyncAwaitClient.Operate(null, key,
+					new[] {BitOperation.Insert(BitPolicy.Default, binName, 1, new byte[] { 0xFF, 0xC7 }),
+					Operation.Get(binName) },
+					CancellationToken.None
+					);
+
+				AssertRecordFound(key, record);
+
+				IList list = record.GetList(binName);
+
+				byte[] b = (byte[])list[1];
+				Assert.IsTrue(Util.ByteArrayEquals(new byte[] { 0x01, 0xFF, 0xC7, 0x42, 0x03, 0x04, 0x05 }, b));
+			}
 		}
 
 		[TestMethod]
-		public void OperateBitRemove()
+		public async Task OperateBitRemove()
 		{
 			Key key = new Key(args.ns, args.set, "opbkey3");
 
-			client.Delete(null, key);
+			if (!args.testAsyncAwait)
+			{
+				client.Delete(null, key);
 
-			byte[] bytes = new byte[] { 0x01, 0x42, 0x03, 0x04, 0x05 };
+				byte[] bytes = new byte[] { 0x01, 0x42, 0x03, 0x04, 0x05 };
 
-			client.Put(null, key, new Bin(binName, bytes));
+				client.Put(null, key, new Bin(binName, bytes));
 
-			Record record = client.Operate(null, key,
-				BitOperation.Remove(BitPolicy.Default, binName, 2, 3),
-				Operation.Get(binName)
-				);
+				Record record = client.Operate(null, key,
+					BitOperation.Remove(BitPolicy.Default, binName, 2, 3),
+					Operation.Get(binName)
+					);
 
-			AssertRecordFound(key, record);
+				AssertRecordFound(key, record);
 
-			IList list = record.GetList(binName);
+				IList list = record.GetList(binName);
 
-			byte[] b = (byte[])list[1];
-			Assert.IsTrue(Util.ByteArrayEquals(new byte[] { 0x01, 0x42 }, b));
+				byte[] b = (byte[])list[1];
+				Assert.IsTrue(Util.ByteArrayEquals(new byte[] { 0x01, 0x42 }, b));
+			}
+			else
+			{
+				await asyncAwaitClient.Delete(null, key, CancellationToken.None);
+
+				byte[] bytes = new byte[] { 0x01, 0x42, 0x03, 0x04, 0x05 };
+
+				await asyncAwaitClient.Put(null, key, new[] { new Bin(binName, bytes) }, CancellationToken.None);
+
+				Record record = await asyncAwaitClient.Operate(null, key,
+					new[] {BitOperation.Remove(BitPolicy.Default, binName, 2, 3),
+					Operation.Get(binName) },
+					CancellationToken.None
+					); ;
+
+				AssertRecordFound(key, record);
+
+				IList list = record.GetList(binName);
+
+				byte[] b = (byte[])list[1];
+				Assert.IsTrue(Util.ByteArrayEquals(new byte[] { 0x01, 0x42 }, b));
+			}
 		}
 
 		[TestMethod]
-		public void OperateBitSet()
+		public async Task OperateBitSet()
 		{
 			Key key = new Key(args.ns, args.set, "opbkey1");
 
-			client.Delete(null, key);
+			if (!args.testAsyncAwait) { 
+				client.Delete(null, key);
 
-			byte[] bytes = new byte[] { 0x01, 0x42, 0x03, 0x04, 0x05 };
+				byte[] bytes = new byte[] { 0x01, 0x42, 0x03, 0x04, 0x05 };
 
-			client.Put(null, key, new Bin(binName, bytes));
+				client.Put(null, key, new Bin(binName, bytes));
 
-			Record record = client.Operate(null, key,
-				BitOperation.Set(BitPolicy.Default, binName, 13, 3, new byte[] { 0xE0 }),
-				Operation.Get(binName)
-				);
+				Record record = client.Operate(null, key,
+					BitOperation.Set(BitPolicy.Default, binName, 13, 3, new byte[] { 0xE0 }),
+					Operation.Get(binName)
+					);
 
-			AssertRecordFound(key, record);
+				AssertRecordFound(key, record);
 
-			IList list = record.GetList(binName);
+				IList list = record.GetList(binName);
 
-			byte[] b = (byte[])list[1];
-			//Console.WriteLine(ByteUtil.BytesToHexString(b));
-			Assert.IsTrue(Util.ByteArrayEquals(new byte[] { 0x01, 0x47, 0x03, 0x04, 0x05 }, b));
+				byte[] b = (byte[])list[1];
+				//Console.WriteLine(ByteUtil.BytesToHexString(b));
+				Assert.IsTrue(Util.ByteArrayEquals(new byte[] { 0x01, 0x47, 0x03, 0x04, 0x05 }, b));
+			}
+			else
+			{
+				await asyncAwaitClient.Delete(null, key, CancellationToken.None);
+
+				byte[] bytes = new byte[] { 0x01, 0x42, 0x03, 0x04, 0x05 };
+
+				await asyncAwaitClient.Put(null, key, new[] { new Bin(binName, bytes) }, CancellationToken.None);
+
+				Record record = await asyncAwaitClient.Operate(null, key,
+					new[] { BitOperation.Set(BitPolicy.Default, binName, 13, 3, new byte[] { 0xE0 }),
+					Operation.Get(binName) },
+					CancellationToken.None
+					);
+
+				AssertRecordFound(key, record);
+
+				IList list = record.GetList(binName);
+
+				byte[] b = (byte[])list[1];
+				//Console.WriteLine(ByteUtil.BytesToHexString(b));
+				Assert.IsTrue(Util.ByteArrayEquals(new byte[] { 0x01, 0x47, 0x03, 0x04, 0x05 }, b));
+			}
 		}
 
 		[TestMethod]
-		public void OperateBitOr()
+		public async Task OperateBitOr()
 		{
 			Key key = new Key(args.ns, args.set, "opbkey2");
 
-			client.Delete(null, key);
+			if (!args.testAsyncAwait)
+			{
+				client.Delete(null, key);
 
-			byte[] bytes = new byte[] { 0x01, 0x42, 0x03, 0x04, 0x05 };
+				byte[] bytes = new byte[] { 0x01, 0x42, 0x03, 0x04, 0x05 };
 
-			client.Put(null, key, new Bin(binName, bytes));
+				client.Put(null, key, new Bin(binName, bytes));
 
-			Record record = client.Operate(null, key,
-				BitOperation.Or(BitPolicy.Default, binName, 17, 6, new byte[] { 0xA8 }),
-				Operation.Get(binName)
-				);
+				Record record = client.Operate(null, key,
+					BitOperation.Or(BitPolicy.Default, binName, 17, 6, new byte[] { 0xA8 }),
+					Operation.Get(binName)
+					);
 
-			AssertRecordFound(key, record);
+				AssertRecordFound(key, record);
 
-			IList list = record.GetList(binName);
+				IList list = record.GetList(binName);
 
-			byte[] b = (byte[])list[1];
-			Assert.IsTrue(Util.ByteArrayEquals(new byte[] { 0x01, 0x42, 0x57, 0x04, 0x05 }, b));
+				byte[] b = (byte[])list[1];
+				Assert.IsTrue(Util.ByteArrayEquals(new byte[] { 0x01, 0x42, 0x57, 0x04, 0x05 }, b));
+			}
+			else
+			{
+				await asyncAwaitClient.Delete(null, key, CancellationToken.None);
+
+				byte[] bytes = new byte[] { 0x01, 0x42, 0x03, 0x04, 0x05 };
+
+				await asyncAwaitClient.Put(null, key, new[] { new Bin(binName, bytes) }, CancellationToken.None);
+
+				Record record = await asyncAwaitClient.Operate(null, key,
+					new[] { BitOperation.Or(BitPolicy.Default, binName, 17, 6, new byte[] { 0xA8 }),
+					Operation.Get(binName) },
+					CancellationToken.None
+					);
+
+				AssertRecordFound(key, record);
+
+				IList list = record.GetList(binName);
+
+				byte[] b = (byte[])list[1];
+				Assert.IsTrue(Util.ByteArrayEquals(new byte[] { 0x01, 0x42, 0x57, 0x04, 0x05 }, b));
+			}
 		}
 
 		[TestMethod]
-		public void OperateBitXor()
+		public async Task OperateBitXor()
 		{
 			Key key = new Key(args.ns, args.set, "opbkey3");
 
-			client.Delete(null, key);
+			if (!args.testAsyncAwait)
+			{
+				client.Delete(null, key);
 
-			byte[] bytes = new byte[] { 0x01, 0x42, 0x03, 0x04, 0x05 };
+				byte[] bytes = new byte[] { 0x01, 0x42, 0x03, 0x04, 0x05 };
 
-			client.Put(null, key, new Bin(binName, bytes));
+				client.Put(null, key, new Bin(binName, bytes));
 
-			Record record = client.Operate(null, key,
-				BitOperation.Xor(BitPolicy.Default, binName, 17, 6, new byte[] { 0xAC }),
-				Operation.Get(binName)
-				);
+				Record record = client.Operate(null, key,
+					BitOperation.Xor(BitPolicy.Default, binName, 17, 6, new byte[] { 0xAC }),
+					Operation.Get(binName)
+					);
 
-			AssertRecordFound(key, record);
+				AssertRecordFound(key, record);
 
-			IList list = record.GetList(binName);
+				IList list = record.GetList(binName);
 
-			byte[] b = (byte[])list[1];
-			Assert.IsTrue(Util.ByteArrayEquals(new byte[] { 0x01, 0x42, 0x55, 0x04, 0x05 }, b));
+				byte[] b = (byte[])list[1];
+				Assert.IsTrue(Util.ByteArrayEquals(new byte[] { 0x01, 0x42, 0x55, 0x04, 0x05 }, b));
+			}
+			else
+			{
+				await asyncAwaitClient.Delete(null, key, CancellationToken.None);
+
+				byte[] bytes = new byte[] { 0x01, 0x42, 0x03, 0x04, 0x05 };
+
+				await asyncAwaitClient.Put(null, key, new[] { new Bin(binName, bytes) }, CancellationToken.None);
+
+				Record record = await asyncAwaitClient.Operate(null, key,
+					new[] { BitOperation.Xor(BitPolicy.Default, binName, 17, 6, new byte[] { 0xAC }),
+					Operation.Get(binName) },
+					CancellationToken.None
+					);
+
+				AssertRecordFound(key, record);
+
+				IList list = record.GetList(binName);
+
+				byte[] b = (byte[])list[1];
+				Assert.IsTrue(Util.ByteArrayEquals(new byte[] { 0x01, 0x42, 0x55, 0x04, 0x05 }, b));
+			}
 		}
 
 		[TestMethod]
-		public void OperateBitAnd()
+		public async Task OperateBitAnd()
 		{
 			Key key = new Key(args.ns, args.set, "opbkey4");
 
-			client.Delete(null, key);
+			if (!args.testAsyncAwait)
+			{
+				client.Delete(null, key);
 
-			byte[] bytes = new byte[] { 0x01, 0x42, 0x03, 0x04, 0x05 };
+				byte[] bytes = new byte[] { 0x01, 0x42, 0x03, 0x04, 0x05 };
 
-			client.Put(null, key, new Bin(binName, bytes));
+				client.Put(null, key, new Bin(binName, bytes));
 
-			Record record = client.Operate(null, key,
-				BitOperation.And(BitPolicy.Default, binName, 23, 9, new byte[] { 0x3C, 0x80 }),
-				Operation.Get(binName)
-				);
+				Record record = client.Operate(null, key,
+					BitOperation.And(BitPolicy.Default, binName, 23, 9, new byte[] { 0x3C, 0x80 }),
+					Operation.Get(binName)
+					);
 
-			AssertRecordFound(key, record);
+				AssertRecordFound(key, record);
 
-			IList list = record.GetList(binName);
+				IList list = record.GetList(binName);
 
-			byte[] b = (byte[])list[1];
-			Assert.IsTrue(Util.ByteArrayEquals(new byte[] { 0x01, 0x42, 0x02, 0x00, 0x05 }, b));
+				byte[] b = (byte[])list[1];
+				Assert.IsTrue(Util.ByteArrayEquals(new byte[] { 0x01, 0x42, 0x02, 0x00, 0x05 }, b));
+			}
+			else
+			{
+				await asyncAwaitClient.Delete(null, key, CancellationToken.None);
+
+				byte[] bytes = new byte[] { 0x01, 0x42, 0x03, 0x04, 0x05 };
+
+				await asyncAwaitClient.Put(null, key, new[] { new Bin(binName, bytes) }, CancellationToken.None);
+
+				Record record = await asyncAwaitClient.Operate(null, key,
+					new[] { BitOperation.And(BitPolicy.Default, binName, 23, 9, new byte[] { 0x3C, 0x80 }),
+					Operation.Get(binName) },
+					CancellationToken.None
+					);
+
+				AssertRecordFound(key, record);
+
+				IList list = record.GetList(binName);
+
+				byte[] b = (byte[])list[1];
+				Assert.IsTrue(Util.ByteArrayEquals(new byte[] { 0x01, 0x42, 0x02, 0x00, 0x05 }, b));
+			}
 		}
 
 		[TestMethod]
-		public void OperateBitNot()
+		public async Task OperateBitNot()
 		{
 			Key key = new Key(args.ns, args.set, "opbkey5");
 
-			client.Delete(null, key);
+			if (!args.testAsyncAwait)
+			{
+				client.Delete(null, key);
 
-			byte[] bytes = new byte[] { 0x01, 0x42, 0x03, 0x04, 0x05 };
+				byte[] bytes = new byte[] { 0x01, 0x42, 0x03, 0x04, 0x05 };
 
-			client.Put(null, key, new Bin(binName, bytes));
+				client.Put(null, key, new Bin(binName, bytes));
 
-			Record record = client.Operate(null, key,
-				BitOperation.Not(BitPolicy.Default, binName, 25, 6),
-				Operation.Get(binName)
-				);
+				Record record = client.Operate(null, key,
+					BitOperation.Not(BitPolicy.Default, binName, 25, 6),
+					Operation.Get(binName)
+					);
 
-			AssertRecordFound(key, record);
+				AssertRecordFound(key, record);
 
-			IList list = record.GetList(binName);
+				IList list = record.GetList(binName);
 
-			byte[] b = (byte[])list[1];
-			Assert.IsTrue(Util.ByteArrayEquals(new byte[] { 0x01, 0x42, 0x03, 0x7A, 0x05 }, b));
+				byte[] b = (byte[])list[1];
+				Assert.IsTrue(Util.ByteArrayEquals(new byte[] { 0x01, 0x42, 0x03, 0x7A, 0x05 }, b));
+			}
+			else
+			{
+				await asyncAwaitClient.Delete(null, key, CancellationToken.None);
+
+				byte[] bytes = new byte[] { 0x01, 0x42, 0x03, 0x04, 0x05 };
+
+				await asyncAwaitClient.Put(null, key, new[] { new Bin(binName, bytes) }, CancellationToken.None);
+
+				Record record = await asyncAwaitClient.Operate(null, key,
+					new[] { BitOperation.Not(BitPolicy.Default, binName, 25, 6),
+					Operation.Get(binName) },
+					CancellationToken.None
+					);
+
+				AssertRecordFound(key, record);
+
+				IList list = record.GetList(binName);
+
+				byte[] b = (byte[])list[1];
+				Assert.IsTrue(Util.ByteArrayEquals(new byte[] { 0x01, 0x42, 0x03, 0x7A, 0x05 }, b));
+			}
 		}
 
 		[TestMethod]
-		public void OperateBitLshift()
+		public async Task OperateBitLshift()
 		{
 			Key key = new Key(args.ns, args.set, "opbkey6");
 
-			client.Delete(null, key);
+			if (!args.testAsyncAwait)
+			{
+				client.Delete(null, key);
 
-			byte[] bytes = new byte[] { 0x01, 0x42, 0x03, 0x04, 0x05 };
+				byte[] bytes = new byte[] { 0x01, 0x42, 0x03, 0x04, 0x05 };
 
-			client.Put(null, key, new Bin(binName, bytes));
+				client.Put(null, key, new Bin(binName, bytes));
 
-			Record record = client.Operate(null, key,
-				BitOperation.Lshift(BitPolicy.Default, binName, 32, 8, 3),
-				Operation.Get(binName)
-				);
+				Record record = client.Operate(null, key,
+					BitOperation.Lshift(BitPolicy.Default, binName, 32, 8, 3),
+					Operation.Get(binName)
+					);
 
-			AssertRecordFound(key, record);
+				AssertRecordFound(key, record);
 
-			IList list = record.GetList(binName);
+				IList list = record.GetList(binName);
 
-			byte[] b = (byte[])list[1];
-			Assert.IsTrue(Util.ByteArrayEquals(new byte[] { 0x01, 0x42, 0x03, 0x04, 0x28 }, b));
+				byte[] b = (byte[])list[1];
+				Assert.IsTrue(Util.ByteArrayEquals(new byte[] { 0x01, 0x42, 0x03, 0x04, 0x28 }, b));
+			}
+			else
+			{
+				await asyncAwaitClient.Delete(null, key, CancellationToken.None);
+
+				byte[] bytes = new byte[] { 0x01, 0x42, 0x03, 0x04, 0x05 };
+
+				await asyncAwaitClient.Put(null, key, new[] { new Bin(binName, bytes) }, CancellationToken.None);
+
+				Record record = await asyncAwaitClient.Operate(null, key,
+					new[] { BitOperation.Lshift(BitPolicy.Default, binName, 32, 8, 3),
+					Operation.Get(binName) },
+					CancellationToken.None
+					);
+
+				AssertRecordFound(key, record);
+
+				IList list = record.GetList(binName);
+
+				byte[] b = (byte[])list[1];
+				Assert.IsTrue(Util.ByteArrayEquals(new byte[] { 0x01, 0x42, 0x03, 0x04, 0x28 }, b));
+			}
 		}
 
 		[TestMethod]
-		public void OperateBitRshift()
+		public async Task OperateBitRshift()
 		{
 			Key key = new Key(args.ns, args.set, "opbkey7");
 
-			client.Delete(null, key);
+			if (!args.testAsyncAwait)
+			{
+				client.Delete(null, key);
 
-			byte[] bytes = new byte[] { 0x01, 0x42, 0x03, 0x04, 0x05 };
+				byte[] bytes = new byte[] { 0x01, 0x42, 0x03, 0x04, 0x05 };
 
-			client.Put(null, key, new Bin(binName, bytes));
+				client.Put(null, key, new Bin(binName, bytes));
 
-			Record record = client.Operate(null, key,
-				BitOperation.Rshift(BitPolicy.Default, binName, 0, 9, 1),
-				Operation.Get(binName)
-				);
+				Record record = client.Operate(null, key,
+					BitOperation.Rshift(BitPolicy.Default, binName, 0, 9, 1),
+					Operation.Get(binName)
+					);
 
-			AssertRecordFound(key, record);
+				AssertRecordFound(key, record);
 
-			IList list = record.GetList(binName);
+				IList list = record.GetList(binName);
 
-			byte[] b = (byte[])list[1];
-			Assert.IsTrue(Util.ByteArrayEquals(new byte[] { 0x00, 0xC2, 0x03, 0x04, 0x05 }, b));
+				byte[] b = (byte[])list[1];
+				Assert.IsTrue(Util.ByteArrayEquals(new byte[] { 0x00, 0xC2, 0x03, 0x04, 0x05 }, b));
+			}
+			else
+			{
+				await asyncAwaitClient.Delete(null, key, CancellationToken.None);
+
+				byte[] bytes = new byte[] { 0x01, 0x42, 0x03, 0x04, 0x05 };
+
+				await asyncAwaitClient.Put(null, key, new[] { new Bin(binName, bytes) }, CancellationToken.None);
+
+				Record record = await asyncAwaitClient.Operate(null, key,
+					new[] { BitOperation.Rshift(BitPolicy.Default, binName, 0, 9, 1),
+					Operation.Get(binName) },
+					CancellationToken.None
+					);
+
+				AssertRecordFound(key, record);
+
+				IList list = record.GetList(binName);
+
+				byte[] b = (byte[])list[1];
+				Assert.IsTrue(Util.ByteArrayEquals(new byte[] { 0x00, 0xC2, 0x03, 0x04, 0x05 }, b));
+			}
 		}
 
 		[TestMethod]
-		public void OperateBitAdd()
+		public async Task OperateBitAdd()
 		{
 			Key key = new Key(args.ns, args.set, "opbkey10");
 
-			client.Delete(null, key);
+			if (!args.testAsyncAwait)
+			{
+				client.Delete(null, key);
 
-			byte[] bytes = new byte[] { 0x01, 0x42, 0x03, 0x04, 0x05 };
+				byte[] bytes = new byte[] { 0x01, 0x42, 0x03, 0x04, 0x05 };
 
-			client.Put(null, key, new Bin(binName, bytes));
+				client.Put(null, key, new Bin(binName, bytes));
 
-			Record record = client.Operate(null, key,
-				BitOperation.Add(BitPolicy.Default, binName, 24, 16, 128, false, BitOverflowAction.FAIL),
-				Operation.Get(binName)
-				);
+				Record record = client.Operate(null, key,
+					BitOperation.Add(BitPolicy.Default, binName, 24, 16, 128, false, BitOverflowAction.FAIL),
+					Operation.Get(binName)
+					);
 
-			AssertRecordFound(key, record);
+				AssertRecordFound(key, record);
 
-			IList list = record.GetList(binName);
+				IList list = record.GetList(binName);
 
-			byte[] b = (byte[])list[1];
-			Assert.IsTrue(Util.ByteArrayEquals(new byte[] { 0x01, 0x42, 0x03, 0x04, 0x85 }, b));
+				byte[] b = (byte[])list[1];
+				Assert.IsTrue(Util.ByteArrayEquals(new byte[] { 0x01, 0x42, 0x03, 0x04, 0x85 }, b));
+			}
+			else
+			{
+				await asyncAwaitClient.Delete(null, key, CancellationToken.None);
+
+				byte[] bytes = new byte[] { 0x01, 0x42, 0x03, 0x04, 0x05 };
+
+				await asyncAwaitClient.Put(null, key, new[] { new Bin(binName, bytes) }, CancellationToken.None);
+
+				Record record = await asyncAwaitClient.Operate(null, key,
+					new[] { BitOperation.Add(BitPolicy.Default, binName, 24, 16, 128, false, BitOverflowAction.FAIL),
+					Operation.Get(binName) },
+					CancellationToken.None
+					);
+
+				AssertRecordFound(key, record);
+
+				IList list = record.GetList(binName);
+
+				byte[] b = (byte[])list[1];
+				Assert.IsTrue(Util.ByteArrayEquals(new byte[] { 0x01, 0x42, 0x03, 0x04, 0x85 }, b));
+			}
 		}
 
 		[TestMethod]
-		public void OperateBitSubtract()
+		public async Task OperateBitSubtract()
 		{
 			Key key = new Key(args.ns, args.set, "opbkey11");
 
-			client.Delete(null, key);
+			if (!args.testAsyncAwait)
+			{
+				client.Delete(null, key);
 
-			byte[] bytes = new byte[] { 0x01, 0x42, 0x03, 0x04, 0x05 };
+				byte[] bytes = new byte[] { 0x01, 0x42, 0x03, 0x04, 0x05 };
 
-			client.Put(null, key, new Bin(binName, bytes));
+				client.Put(null, key, new Bin(binName, bytes));
 
-			Record record = client.Operate(null, key,
-				BitOperation.Subtract(BitPolicy.Default, binName, 24, 16, 128, false, BitOverflowAction.FAIL),
-				Operation.Get(binName)
-				);
+				Record record = client.Operate(null, key,
+					BitOperation.Subtract(BitPolicy.Default, binName, 24, 16, 128, false, BitOverflowAction.FAIL),
+					Operation.Get(binName)
+					);
 
-			AssertRecordFound(key, record);
+				AssertRecordFound(key, record);
 
-			IList list = record.GetList(binName);
+				IList list = record.GetList(binName);
 
-			byte[] b = (byte[])list[1];
-			Assert.IsTrue(Util.ByteArrayEquals(new byte[] { 0x01, 0x42, 0x03, 0x03, 0x85 }, b));
+				byte[] b = (byte[])list[1];
+				Assert.IsTrue(Util.ByteArrayEquals(new byte[] { 0x01, 0x42, 0x03, 0x03, 0x85 }, b));
+			}
+			else
+			{
+				await asyncAwaitClient.Delete(null, key, CancellationToken.None);
+
+				byte[] bytes = new byte[] { 0x01, 0x42, 0x03, 0x04, 0x05 };
+
+				await asyncAwaitClient.Put(null, key, new[] { new Bin(binName, bytes) }, CancellationToken.None);
+
+				Record record = await asyncAwaitClient.Operate(null, key,
+					new[] { BitOperation.Subtract(BitPolicy.Default, binName, 24, 16, 128, false, BitOverflowAction.FAIL),
+					Operation.Get(binName) },
+					CancellationToken.None
+					);
+
+				AssertRecordFound(key, record);
+
+				IList list = record.GetList(binName);
+
+				byte[] b = (byte[])list[1];
+				Assert.IsTrue(Util.ByteArrayEquals(new byte[] { 0x01, 0x42, 0x03, 0x03, 0x85 }, b));
+			}
 		}
 
 		[TestMethod]
-		public void OperateBitSetInt()
+		public async Task OperateBitSetInt()
 		{
 			Key key = new Key(args.ns, args.set, "opbkey12");
 
-			client.Delete(null, key);
+			if (!args.testAsyncAwait)
+			{
+				client.Delete(null, key);
 
-			byte[] bytes = new byte[] { 0x01, 0x42, 0x03, 0x04, 0x05 };
+				byte[] bytes = new byte[] { 0x01, 0x42, 0x03, 0x04, 0x05 };
 
-			client.Put(null, key, new Bin(binName, bytes));
+				client.Put(null, key, new Bin(binName, bytes));
 
-			Record record = client.Operate(null, key,
-				BitOperation.SetInt(BitPolicy.Default, binName, 1, 8, 127),
-				Operation.Get(binName)
-				);
+				Record record = client.Operate(null, key,
+					BitOperation.SetInt(BitPolicy.Default, binName, 1, 8, 127),
+					Operation.Get(binName)
+					);
 
-			AssertRecordFound(key, record);
+				AssertRecordFound(key, record);
 
-			IList list = record.GetList(binName);
+				IList list = record.GetList(binName);
 
-			byte[] b = (byte[])list[1];
-			Assert.IsTrue(Util.ByteArrayEquals(new byte[] { 0x3F, 0xC2, 0x03, 0x04, 0x05 }, b));
+				byte[] b = (byte[])list[1];
+				Assert.IsTrue(Util.ByteArrayEquals(new byte[] { 0x3F, 0xC2, 0x03, 0x04, 0x05 }, b));
+			}
+			else
+			{
+				await asyncAwaitClient.Delete(null, key, CancellationToken.None);
+
+				byte[] bytes = new byte[] { 0x01, 0x42, 0x03, 0x04, 0x05 };
+
+				await asyncAwaitClient.Put(null, key, new[] { new Bin(binName, bytes) }, CancellationToken.None);
+
+				Record record = await asyncAwaitClient.Operate(null, key,
+					new[] { BitOperation.SetInt(BitPolicy.Default, binName, 1, 8, 127),
+					Operation.Get(binName) },
+					CancellationToken.None
+					);
+
+				AssertRecordFound(key, record);
+
+				IList list = record.GetList(binName);
+
+				byte[] b = (byte[])list[1];
+				Assert.IsTrue(Util.ByteArrayEquals(new byte[] { 0x3F, 0xC2, 0x03, 0x04, 0x05 }, b));
+			}
 		}
 
 		[TestMethod]
-		public void OperateBitGet()
+		public async Task OperateBitGet()
 		{
 			Key key = new Key(args.ns, args.set, "opbkey13");
 
-			client.Delete(null, key);
+			if (!args.testAsyncAwait)
+			{
+				client.Delete(null, key);
 
-			byte[] bytes = new byte[] { 0x01, 0x42, 0x03, 0x04, 0x05 };
+				byte[] bytes = new byte[] { 0x01, 0x42, 0x03, 0x04, 0x05 };
 
-			client.Put(null, key, new Bin(binName, bytes));
+				client.Put(null, key, new Bin(binName, bytes));
 
-			Record record = client.Operate(null, key,
-				BitOperation.Get(binName, 9, 5)
-				);
+				Record record = client.Operate(null, key,
+					BitOperation.Get(binName, 9, 5)
+					);
 
-			AssertRecordFound(key, record);
+				AssertRecordFound(key, record);
 
-			byte[] b = (byte[])record.GetValue(binName);
-			Assert.IsTrue(Util.ByteArrayEquals(new byte[] { 0x80 }, b));
+				byte[] b = (byte[])record.GetValue(binName);
+				Assert.IsTrue(Util.ByteArrayEquals(new byte[] { 0x80 }, b));
+			}
+			else
+			{
+				await asyncAwaitClient.Delete(null, key, CancellationToken.None);
+
+				byte[] bytes = new byte[] { 0x01, 0x42, 0x03, 0x04, 0x05 };
+
+				await asyncAwaitClient.Put(null, key, new[] { new Bin(binName, bytes) }, CancellationToken.None);
+
+				Record record = await asyncAwaitClient.Operate(null, key,
+					new[] { BitOperation.Get(binName, 9, 5) },
+					CancellationToken.None
+					);
+
+				AssertRecordFound(key, record);
+
+				byte[] b = (byte[])record.GetValue(binName);
+				Assert.IsTrue(Util.ByteArrayEquals(new byte[] { 0x80 }, b));
+
+			}
 		}
 
 		[TestMethod]
-		public void OperateBitCount()
+		public async Task OperateBitCount()
 		{
 			Key key = new Key(args.ns, args.set, "opbkey14");
 
-			client.Delete(null, key);
+			if (!args.testAsyncAwait)
+			{
+				client.Delete(null, key);
 
-			byte[] bytes = new byte[] { 0x01, 0x42, 0x03, 0x04, 0x05 };
+				byte[] bytes = new byte[] { 0x01, 0x42, 0x03, 0x04, 0x05 };
 
-			client.Put(null, key, new Bin(binName, bytes));
+				client.Put(null, key, new Bin(binName, bytes));
 
-			Record record = client.Operate(null, key,
-				BitOperation.Count(binName, 20, 4)
-				);
+				Record record = client.Operate(null, key,
+					BitOperation.Count(binName, 20, 4)
+					);
 
-			AssertRecordFound(key, record);
+				AssertRecordFound(key, record);
 
-			long v = (long)record.GetValue(binName);
-			Assert.AreEqual(2, v);
+				long v = (long)record.GetValue(binName);
+				Assert.AreEqual(2, v);
+			}
+			else
+			{
+				await asyncAwaitClient.Delete(null, key, CancellationToken.None);
+
+				byte[] bytes = new byte[] { 0x01, 0x42, 0x03, 0x04, 0x05 };
+
+				await asyncAwaitClient.Put(null, key, new[] { new Bin(binName, bytes) }, CancellationToken.None);
+
+				Record record = await asyncAwaitClient.Operate(null, key,
+					new[] { BitOperation.Count(binName, 20, 4) },
+					CancellationToken.None
+					);
+
+				AssertRecordFound(key, record);
+
+				long v = (long)record.GetValue(binName);
+				Assert.AreEqual(2, v);
+			}
 		}
 
 		[TestMethod]
-		public void OperateBitLscan()
+		public async Task OperateBitLscan()
 		{
 			Key key = new Key(args.ns, args.set, "opbkey15");
 
-			client.Delete(null, key);
+			if (!args.testAsyncAwait)
+			{
+				client.Delete(null, key);
 
-			byte[] bytes = new byte[] { 0x01, 0x42, 0x03, 0x04, 0x05 };
+				byte[] bytes = new byte[] { 0x01, 0x42, 0x03, 0x04, 0x05 };
 
-			client.Put(null, key, new Bin(binName, bytes));
+				client.Put(null, key, new Bin(binName, bytes));
 
-			Record record = client.Operate(null, key,
-				BitOperation.Lscan(binName, 24, 8, true)
-				);
+				Record record = client.Operate(null, key,
+					BitOperation.Lscan(binName, 24, 8, true)
+					);
 
-			AssertRecordFound(key, record);
+				AssertRecordFound(key, record);
 
-			long v = (long)record.GetValue(binName);
-			Assert.AreEqual(5, v);
+				long v = (long)record.GetValue(binName);
+				Assert.AreEqual(5, v);
+			}
+			else
+			{
+				await asyncAwaitClient.Delete(null, key, CancellationToken.None);
+
+				byte[] bytes = new byte[] { 0x01, 0x42, 0x03, 0x04, 0x05 };
+
+				await asyncAwaitClient.Put(null, key, new[] { new Bin(binName, bytes) }, CancellationToken.None);
+
+				Record record = await asyncAwaitClient.Operate(null, key,
+					new[] { BitOperation.Lscan(binName, 24, 8, true) },
+					CancellationToken.None
+					);
+
+				AssertRecordFound(key, record);
+
+				long v = (long)record.GetValue(binName);
+				Assert.AreEqual(5, v);
+			}
 		}
 
 		[TestMethod]
-		public void OperateBitRscan()
+		public async Task OperateBitRscan()
 		{
 			Key key = new Key(args.ns, args.set, "opbkey16");
 
-			client.Delete(null, key);
+			if (!args.testAsyncAwait)
+			{
+				client.Delete(null, key);
 
-			byte[] bytes = new byte[] { 0x01, 0x42, 0x03, 0x04, 0x05 };
+				byte[] bytes = new byte[] { 0x01, 0x42, 0x03, 0x04, 0x05 };
 
-			client.Put(null, key, new Bin(binName, bytes));
+				client.Put(null, key, new Bin(binName, bytes));
 
-			Record record = client.Operate(null, key,
-				BitOperation.Rscan(binName, 32, 8, true)
-				);
+				Record record = client.Operate(null, key,
+					BitOperation.Rscan(binName, 32, 8, true)
+					);
 
-			AssertRecordFound(key, record);
+				AssertRecordFound(key, record);
 
-			long v = (long)record.GetValue(binName);
-			Assert.AreEqual(7, v);
+				long v = (long)record.GetValue(binName);
+				Assert.AreEqual(7, v);
+			}
+			else
+			{
+				await asyncAwaitClient.Delete(null, key, CancellationToken.None);
+
+				byte[] bytes = new byte[] { 0x01, 0x42, 0x03, 0x04, 0x05 };
+
+				await asyncAwaitClient.Put(null, key, new[] { new Bin(binName, bytes) }, CancellationToken.None);
+
+				Record record = await asyncAwaitClient.Operate(null, key,
+					new[] { BitOperation.Rscan(binName, 32, 8, true) },
+					CancellationToken.None
+					);
+
+				AssertRecordFound(key, record);
+
+				long v = (long)record.GetValue(binName);
+				Assert.AreEqual(7, v);
+			}
 		}
 
 		[TestMethod]
-		public void OperateBitGetInt()
+		public async Task OperateBitGetInt()
 		{
 			Key key = new Key(args.ns, args.set, "opbkey17");
 
-			client.Delete(null, key);
+			if (!args.testAsyncAwait)
+			{
+				client.Delete(null, key);
 
-			byte[] bytes = new byte[] { 0x01, 0x42, 0x03, 0x04, 0x05 };
+				byte[] bytes = new byte[] { 0x01, 0x42, 0x03, 0x04, 0x05 };
 
-			client.Put(null, key, new Bin(binName, bytes));
+				client.Put(null, key, new Bin(binName, bytes));
 
-			Record record = client.Operate(null, key,
-				BitOperation.GetInt(binName, 8, 16, false)
-				);
+				Record record = client.Operate(null, key,
+					BitOperation.GetInt(binName, 8, 16, false)
+					);
 
-			AssertRecordFound(key, record);
+				AssertRecordFound(key, record);
 
-			long v = (long)record.GetValue(binName);
-			Assert.AreEqual(16899, v);
+				long v = (long)record.GetValue(binName);
+				Assert.AreEqual(16899, v);
+			}
+			else
+			{
+				await asyncAwaitClient.Delete(null, key, CancellationToken.None);
+
+				byte[] bytes = new byte[] { 0x01, 0x42, 0x03, 0x04, 0x05 };
+
+				await asyncAwaitClient.Put(null, key, new[] { new Bin(binName, bytes) }, CancellationToken.None);
+
+				Record record = await asyncAwaitClient.Operate(null, key,
+					new[] { BitOperation.GetInt(binName, 8, 16, false) },
+					CancellationToken.None
+					);
+
+				AssertRecordFound(key, record);
+
+				long v = (long)record.GetValue(binName);
+				Assert.AreEqual(16899, v);
+			}
 		}
 	}
 }

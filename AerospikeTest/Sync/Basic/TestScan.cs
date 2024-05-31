@@ -34,9 +34,13 @@ namespace Aerospike.Test
 				policy.totalTimeout = args.proxyTotalTimeout;
 			}
 
-			if (!args.testProxy)
+			if (!args.testProxy && !args.testAsyncAwait)
 			{
 				client.ScanAll(policy, args.ns, args.set, ScanCallback);
+			}
+			else if (args.testAsyncAwait)
+			{
+				throw new NotImplementedException();
 			}
 			else
 			{
@@ -73,13 +77,12 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void ScanSeries()
 		{
-			if (!args.testProxy || (args.testProxy && nativeClient != null))
+			if (!args.testProxy || (args.testProxy && nativeClient != null) && !args.testAsyncAwait)
 			{
 				Node[] nodes = nativeClient.Nodes;
 
 				foreach (Node node in nodes)
 				{
-
 					nativeClient.ScanNode(null, node, args.ns, args.set, ScanCallback);
 
 					foreach (KeyValuePair<string, Metrics> entry in setMap)
@@ -87,6 +90,10 @@ namespace Aerospike.Test
 						entry.Value.count = 0;
 					}
 				}
+			}
+			else
+			{
+				throw new NotImplementedException();
 			}
 		}
 

@@ -54,15 +54,23 @@ namespace Aerospike.Test
 		private Policy policy;
 
 		[TestInitialize()]
-		public void SetUp()
+		public async Task SetUp()
 		{
-			client.Delete(null, keyA);
-			client.Delete(null, keyB);
+			if (!args.testAsyncAwait)
+			{
+				client.Delete(null, keyA);
+				client.Delete(null, keyB);
+			}
+			else
+			{
+				await asyncAwaitClient.Delete(null, keyA, CancellationToken.None);
+				await asyncAwaitClient.Delete(null, keyB, CancellationToken.None);
+			}
 			policy = new Policy();
 		}
 
 		[TestMethod]
-		public void ModifyWithContext()
+		public async Task ModifyWithContext()
 		{
 			IList<Value> listSubA = new List<Value>();
 			listSubA.Add(Value.Get("e"));
@@ -83,51 +91,98 @@ namespace Aerospike.Test
 			listB.Add(Value.Get("y"));
 			listB.Add(Value.Get("z"));
 
-			client.Operate(null, keyA,
-				ListOperation.AppendItems(ListPolicy.Default, binA, (IList)listA),
-				ListOperation.AppendItems(ListPolicy.Default, binB, (IList)listB),
-				Operation.Put(new Bin(binC, "M"))
-				);
+			if (!args.testAsyncAwait)
+			{
+				client.Operate(null, keyA,
+					ListOperation.AppendItems(ListPolicy.Default, binA, (IList)listA),
+					ListOperation.AppendItems(ListPolicy.Default, binB, (IList)listB),
+					Operation.Put(new Bin(binC, "M"))
+					);
 
-			CTX ctx = CTX.ListIndex(4);
-			Record record;
-			IList result;
+				CTX ctx = CTX.ListIndex(4);
+				Record record;
+				IList result;
 
-			policy.filterExp = Exp.Build(
-				Exp.EQ(
-					ListExp.Size(
-						// Temporarily Append binB/binC to binA in expression.
-						ListExp.AppendItems(ListPolicy.Default, Exp.ListBin(binB),
-							ListExp.Append(ListPolicy.Default, Exp.StringBin(binC), Exp.ListBin(binA), ctx),
+				policy.filterExp = Exp.Build(
+					Exp.EQ(
+						ListExp.Size(
+							// Temporarily Append binB/binC to binA in expression.
+							ListExp.AppendItems(ListPolicy.Default, Exp.ListBin(binB),
+								ListExp.Append(ListPolicy.Default, Exp.StringBin(binC), Exp.ListBin(binA), ctx),
+								ctx),
 							ctx),
-						ctx),
-					Exp.Val(9)));
+						Exp.Val(9)));
 
-			record = client.Get(policy, keyA, binA);
-			AssertRecordFound(keyA, record);
+				record = client.Get(policy, keyA, binA);
+				AssertRecordFound(keyA, record);
 
-			result = record.GetList(binA);
-			Assert.AreEqual(5, result.Count);
+				result = record.GetList(binA);
+				Assert.AreEqual(5, result.Count);
 
-			policy.filterExp = Exp.Build(
-				Exp.EQ(
-					ListExp.Size(
-						// Temporarily Append local listB and local "M" string to binA in expression.
-						ListExp.AppendItems(ListPolicy.Default, Exp.Val((IList)listB),
-							ListExp.Append(ListPolicy.Default, Exp.Val("M"), Exp.ListBin(binA), ctx),
+				policy.filterExp = Exp.Build(
+					Exp.EQ(
+						ListExp.Size(
+							// Temporarily Append local listB and local "M" string to binA in expression.
+							ListExp.AppendItems(ListPolicy.Default, Exp.Val((IList)listB),
+								ListExp.Append(ListPolicy.Default, Exp.Val("M"), Exp.ListBin(binA), ctx),
+								ctx),
 							ctx),
-						ctx),
-					Exp.Val(9)));
+						Exp.Val(9)));
 
-			record = client.Get(policy, keyA, binA);
-			AssertRecordFound(keyA, record);
+				record = client.Get(policy, keyA, binA);
+				AssertRecordFound(keyA, record);
 
-			result = record.GetList(binA);
-			Assert.AreEqual(5, result.Count);
+				result = record.GetList(binA);
+				Assert.AreEqual(5, result.Count);
+			}
+			else
+			{
+				await asyncAwaitClient.Operate(null, keyA,
+					new[] {ListOperation.AppendItems(ListPolicy.Default, binA, (IList)listA),
+					ListOperation.AppendItems(ListPolicy.Default, binB, (IList)listB),
+					Operation.Put(new Bin(binC, "M")) }, CancellationToken.None
+					);
+
+				CTX ctx = CTX.ListIndex(4);
+				Record record;
+				IList result;
+
+				policy.filterExp = Exp.Build(
+					Exp.EQ(
+						ListExp.Size(
+							// Temporarily Append binB/binC to binA in expression.
+							ListExp.AppendItems(ListPolicy.Default, Exp.ListBin(binB),
+								ListExp.Append(ListPolicy.Default, Exp.StringBin(binC), Exp.ListBin(binA), ctx),
+								ctx),
+							ctx),
+						Exp.Val(9)));
+
+				record = await asyncAwaitClient.Get(policy, keyA, new[] { binA }, CancellationToken.None);
+				AssertRecordFound(keyA, record);
+
+				result = record.GetList(binA);
+				Assert.AreEqual(5, result.Count);
+
+				policy.filterExp = Exp.Build(
+					Exp.EQ(
+						ListExp.Size(
+							// Temporarily Append local listB and local "M" string to binA in expression.
+							ListExp.AppendItems(ListPolicy.Default, Exp.Val((IList)listB),
+								ListExp.Append(ListPolicy.Default, Exp.Val("M"), Exp.ListBin(binA), ctx),
+								ctx),
+							ctx),
+						Exp.Val(9)));
+
+				record = await asyncAwaitClient.Get(policy, keyA, new[] { binA }, CancellationToken.None);
+				AssertRecordFound(keyA, record);
+
+				result = record.GetList(binA);
+				Assert.AreEqual(5, result.Count);
+			}
 		}
 
 		[TestMethod]
-		public void ExpReturnsList()
+		public async Task ExpReturnsList()
 		{
 			List<Value> list = new List<Value>();
 			list.Add(Value.Get("a"));
@@ -137,20 +192,40 @@ namespace Aerospike.Test
 
 			Expression exp = Exp.Build(Exp.Val(list));
 
-			Record record = client.Operate(null, keyA,
-				ExpOperation.Write(binC, exp, ExpWriteFlags.DEFAULT),
-				Operation.Get(binC),
-				ExpOperation.Read("var", exp, ExpReadFlags.DEFAULT)
-				);
+			if (!args.testAsyncAwait)
+			{
+				Record record = client.Operate(null, keyA,
+					ExpOperation.Write(binC, exp, ExpWriteFlags.DEFAULT),
+					Operation.Get(binC),
+					ExpOperation.Read("var", exp, ExpReadFlags.DEFAULT)
+					);
 
-			IList results = record.GetList(binC);
-			Assert.AreEqual(2, results.Count);
+				IList results = record.GetList(binC);
+				Assert.AreEqual(2, results.Count);
 
-			IList rlist = (IList)results[1];
-			Assert.AreEqual(4, rlist.Count);
+				IList rlist = (IList)results[1];
+				Assert.AreEqual(4, rlist.Count);
 
-			IList results2 = record.GetList("var");
-			Assert.AreEqual(4, results2.Count);
+				IList results2 = record.GetList("var");
+				Assert.AreEqual(4, results2.Count);
+			}
+			else
+			{
+				Record record = await asyncAwaitClient.Operate(null, keyA,
+					new[] {ExpOperation.Write(binC, exp, ExpWriteFlags.DEFAULT),
+					Operation.Get(binC),
+					ExpOperation.Read("var", exp, ExpReadFlags.DEFAULT) }, CancellationToken.None
+					);
+
+				IList results = record.GetList(binC);
+				Assert.AreEqual(2, results.Count);
+
+				IList rlist = (IList)results[1];
+				Assert.AreEqual(4, rlist.Count);
+
+				IList results2 = record.GetList("var");
+				Assert.AreEqual(4, results2.Count);
+			}
 		}
 	}
 }

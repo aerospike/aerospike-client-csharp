@@ -23,7 +23,7 @@ namespace Aerospike.Test
 	public class TestTouch : TestSync
 	{
 		[TestMethod]
-		public void Touch()
+		public async Task Touch()
 		{
 			Key key = new Key(args.ns, args.set, "touchkey");
 			Bin bin = new Bin(args.GetBinName("touchbin"), "touchvalue");
@@ -37,25 +37,51 @@ namespace Aerospike.Test
 			{
 				writePolicy.totalTimeout = args.proxyTotalTimeout;
 			}
-			client.Put(writePolicy, key, bin);
 
-			if (!args.testProxy || (args.testProxy && nativeClient != null))
+			if (!args.testAsyncAwait)
 			{
-				writePolicy.expiration = 5;
+				client.Put(writePolicy, key, bin);
+
+				if (!args.testProxy || (args.testProxy && nativeClient != null))
+				{
+					writePolicy.expiration = 5;
+				}
+				Record record = client.Operate(writePolicy, key, Operation.Touch(), Operation.GetHeader());
+				AssertRecordFound(key, record);
+				Assert.AreNotEqual(0, record.expiration);
+
+				Util.Sleep(3000);
+
+				record = client.Get(null, key, bin.name);
+				AssertRecordFound(key, record);
+
+				Util.Sleep(4000);
+
+				record = client.Get(null, key, bin.name);
+				Assert.IsNull(record);
 			}
-			Record record = client.Operate(writePolicy, key, Operation.Touch(), Operation.GetHeader());
-			AssertRecordFound(key, record);
-			Assert.AreNotEqual(0, record.expiration);
+			else
+			{
+				await asyncAwaitClient.Put(writePolicy, key, new[] { bin }, CancellationToken.None);
 
-			Util.Sleep(3000);
+				if (!args.testProxy || (args.testProxy && nativeClient != null))
+				{
+					writePolicy.expiration = 5;
+				}
+				Record record = await asyncAwaitClient.Operate(writePolicy, key, new[] { Operation.Touch(), Operation.GetHeader() }, CancellationToken.None);
+				AssertRecordFound(key, record);
+				Assert.AreNotEqual(0, record.expiration);
 
-			record = client.Get(null, key, bin.name);
-			AssertRecordFound(key, record);
+				Util.Sleep(3000);
 
-			Util.Sleep(4000);
+				record = await asyncAwaitClient.Get(null, key, new[] { bin.name }, CancellationToken.None);
+				AssertRecordFound(key, record);
 
-			record = client.Get(null, key, bin.name);
-			Assert.IsNull(record);
+				Util.Sleep(4000);
+
+				record = await asyncAwaitClient.Get(null, key, new[] { bin.name }, CancellationToken.None);
+				Assert.IsNull(record);
+			}
 		}
 	}
 }

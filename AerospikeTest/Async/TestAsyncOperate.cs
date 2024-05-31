@@ -15,6 +15,7 @@
  * the License.
  */
 using Aerospike.Client;
+using Grpc.Core;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System.Collections;
 
@@ -30,10 +31,15 @@ namespace Aerospike.Test
 		public async Task AsyncOperateList()
 		{
 			Key key = new Key(args.ns, args.set, "aoplkey1");
-			if (!args.testProxy)
+			if (!args.testProxy && !args.testAsyncAwait)
 			{
 				client.Delete(null, new DeleteHandlerList(this, key), key);
 				WaitTillComplete();
+			}
+			else if (args.testAsyncAwait)
+			{
+				var existed = await asyncAwaitClient.Delete(null, key, tokenSource.Token);
+				await DeleteHandlerListSuccess(key, existed, this);
 			}
 			else
 			{
@@ -53,9 +59,14 @@ namespace Aerospike.Test
 				ListOperation.Size(binName)
 			};
 
-			if (!args.testProxy)
+			if (!args.testProxy && !args.testAsyncAwait)
 			{
 				client.Operate(null, new ReadHandler(parent), key, operations);
+			}
+			else if (args.testAsyncAwait)
+			{
+				var record = await asyncAwaitClient.Operate(null, key, operations, tokenSource.Token);
+				ReadListenerSuccess(key, record, parent);
 			}
 			else
 			{
@@ -141,10 +152,15 @@ namespace Aerospike.Test
 		public async Task AsyncOperateMap()
 		{
 			Key key = new Key(args.ns, args.set, "aopmkey1");
-			if (!args.testProxy)
+			if (!args.testProxy && !args.testAsyncAwait)
 			{
 				client.Delete(null, new DeleteHandlerMap(this, key), key);
 				WaitTillComplete();
+			}
+			else if (args.testAsyncAwait)
+			{
+				var existed = await asyncAwaitClient.Delete(null, key, tokenSource.Token);
+				await DeleteHandlerMapSuccess(key, existed, this);
 			}
 			else
 			{
@@ -165,9 +181,14 @@ namespace Aerospike.Test
 				MapOperation.GetByRankRange(binName, -1, 1, MapReturnType.KEY_VALUE)
 			};
 
-			if (!args.testProxy)
+			if (!args.testProxy && !args.testAsyncAwait)
 			{
 				client.Operate(null, new MapHandler(parent), key, operations);
+			}
+			else if (args.testAsyncAwait)
+			{
+				var record = await asyncAwaitClient.Operate(null, key, operations, tokenSource.Token);
+				MapHandlerSuccess(key, record, parent);
 			}
 			else
 			{

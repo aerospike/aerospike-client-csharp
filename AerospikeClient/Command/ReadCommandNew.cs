@@ -34,6 +34,15 @@ namespace Aerospike.Client
 		public int CommandSentCounter { get; set; }
 		public DateTime Deadline { get; set; }
 
+		public int Info3 { get; set; }
+		public int ResultCode { get; set; }
+		public int Generation { get; set; }
+		public int Expiration { get; set; }
+		public int BatchIndex { get; set; }
+		public int FieldCount { get; set; }
+		public int OpCount { get; set; }
+		public bool IsOperation { get; set; }
+
 		protected readonly Key key;
 		protected readonly Partition partition;
 		private readonly string[] binNames;
@@ -153,13 +162,13 @@ namespace Aerospike.Client
 				return;
 			}
 
-			if (resultCode == ResultCode.KEY_NOT_FOUND_ERROR)
+			if (resultCode == Client.ResultCode.KEY_NOT_FOUND_ERROR)
 			{
 				HandleNotFound(resultCode);
 				return;
 			}
 
-			if (resultCode == ResultCode.FILTERED_OUT)
+			if (resultCode == Client.ResultCode.FILTERED_OUT)
 			{
 				if (Policy.failOnFilteredOut)
 				{
@@ -168,7 +177,7 @@ namespace Aerospike.Client
 				return;
 			}
 
-			if (resultCode == ResultCode.UDF_BAD_RESPONSE)
+			if (resultCode == Client.ResultCode.UDF_BAD_RESPONSE)
 			{
 				this.SkipKey(fieldCount);
 				(Record, DataOffset) = Policy.recordParser.ParseRecord(DataBuffer, DataOffset, opCount, generation, expiration, isOperation);
@@ -230,6 +239,15 @@ namespace Aerospike.Client
 			}
 
 			throw new AerospikeException(code, message);
+		}
+
+		public bool ParseGroup(int receiveSize)
+		{
+			throw new NotImplementedException();
+		}
+		public bool ParseRow()
+		{
+			throw new NotImplementedException();
 		}
 	}
 }

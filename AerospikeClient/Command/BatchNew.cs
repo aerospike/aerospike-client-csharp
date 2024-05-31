@@ -24,7 +24,7 @@ namespace Aerospike.Client
 	// ReadList
 	//-------------------------------------------------------
 
-	public sealed class BatchReadListCommandNew : BatchCommandNew
+	public sealed class BatchReadListCommandNew : BatchCommandNew, ICommand
 	{
 		private readonly List<BatchRead> records;
 
@@ -53,25 +53,25 @@ namespace Aerospike.Client
 			}
 		}
 
-		protected internal override bool ParseRow()
+		public new bool ParseRow()
 		{
-			this.SkipKey(fieldCount);
+			this.SkipKey(FieldCount);
 
-			BatchRead record = records[batchIndex];
+			BatchRead record = records[BatchIndex];
 
-			if (resultCode == 0)
+			if (ResultCode == 0)
 			{
-				record.SetRecord(ParseRecord());
+				record.SetRecord(this.ParseRecord());
 			}
 			else
 			{
-				record.SetError(resultCode, false);
+				record.SetError(ResultCode, false);
 				status.SetRowError();
 			}
 			return true;
 		}
 
-		public new BatchCommand CreateCommand(BatchNode batchNode)
+		public new BatchCommandNew CreateCommand(BatchNode batchNode)
 		{
 			return new BatchReadListCommandNew(BufferPool, Cluster, batchNode, batchPolicy, records, status);
 		}
@@ -86,7 +86,7 @@ namespace Aerospike.Client
 	// GetArray
 	//-------------------------------------------------------
 
-	public sealed class BatchGetArrayCommandNew : BatchCommandNew
+	public sealed class BatchGetArrayCommandNew : BatchCommandNew, ICommand
 	{
 		private readonly Key[] keys;
 		private readonly string[] binNames;
@@ -120,7 +120,7 @@ namespace Aerospike.Client
 		{
 			if (batch.node != null && batch.node.HasBatchAny)
 			{
-				BatchAttr attr = new BatchAttr(Policy, readAttr, ops);
+				BatchAttr attr = new(Policy, readAttr, ops);
 				this.SetBatchOperate(batchPolicy, keys, batch, binNames, ops, attr);
 			}
 			else
@@ -129,20 +129,20 @@ namespace Aerospike.Client
 			}
 		}
 
-		protected internal override bool ParseRow()
+		public new bool ParseRow()
 		{
-			this.SkipKey(fieldCount);
+			this.SkipKey(FieldCount);
 
-			if (resultCode == 0)
+			if (ResultCode == 0)
 			{
-				records[batchIndex] = ParseRecord();
+				records[BatchIndex] = this.ParseRecord();
 			}
 			return true;
 		}
 
 		public new BatchCommand CreateCommand(BatchNode batchNode)
 		{
-			return new BatchGetArrayCommand(Cluster, batchNode, batchPolicy, keys, binNames, ops, records, readAttr, isOperation, status);
+			return new BatchGetArrayCommand(Cluster, batchNode, batchPolicy, keys, binNames, ops, records, readAttr, IsOperation, status);
 		}
 
 		public new List<BatchNode> GenerateBatchNodes()
@@ -155,7 +155,7 @@ namespace Aerospike.Client
 	// ExistsArray
 	//-------------------------------------------------------
 
-	public sealed class BatchExistsArrayCommandNew : BatchCommandNew
+	public sealed class BatchExistsArrayCommandNew : BatchCommandNew, ICommand
 	{
 		private readonly Key[] keys;
 		private readonly bool[] existsArray;
@@ -179,7 +179,7 @@ namespace Aerospike.Client
 		{
 			if (batch.node != null && batch.node.HasBatchAny)
 			{
-				BatchAttr attr = new BatchAttr(Policy, Command.INFO1_READ | Command.INFO1_NOBINDATA);
+				BatchAttr attr = new(Policy, Command.INFO1_READ | Command.INFO1_NOBINDATA);
 				this.SetBatchOperate(batchPolicy, keys, batch, null, null, attr);
 			}
 			else
@@ -188,16 +188,16 @@ namespace Aerospike.Client
 			}
 		}
 
-		protected internal override bool ParseRow()
+		public new bool ParseRow()
 		{
-			this.SkipKey(fieldCount);
+			this.SkipKey(FieldCount);
 
-			if (opCount > 0)
+			if (OpCount > 0)
 			{
 				throw new AerospikeException.Parse("Received bins that were not requested!");
 			}
 
-			existsArray[batchIndex] = resultCode == 0;
+			existsArray[BatchIndex] = ResultCode == 0;
 			return true;
 		}
 
@@ -216,7 +216,7 @@ namespace Aerospike.Client
 	// OperateList
 	//-------------------------------------------------------
 
-	public sealed class BatchOperateListCommandNew : BatchCommandNew
+	public sealed class BatchOperateListCommandNew : BatchCommandNew, ICommand
 	{
 		private readonly IList<BatchRecord> records;
 
@@ -245,35 +245,35 @@ namespace Aerospike.Client
 			this.SetBatchOperate(batchPolicy, (IList)records, batch);
 		}
 
-		protected internal override bool ParseRow()
+		public new bool ParseRow()
 		{
-			this.SkipKey(fieldCount);
+			this.SkipKey(FieldCount);
 
-			BatchRecord record = records[batchIndex];
+			BatchRecord record = records[BatchIndex];
 
-			if (resultCode == 0)
+			if (ResultCode == 0)
 			{
-				record.SetRecord(ParseRecord());
+				record.SetRecord(this.ParseRecord());
 				return true;
 			}
 
-			if (resultCode == ResultCode.UDF_BAD_RESPONSE)
+			if (ResultCode == Client.ResultCode.UDF_BAD_RESPONSE)
 			{
-				Record r = ParseRecord();
+				Record r = this.ParseRecord();
 				string m = r.GetString("FAILURE");
 
 				if (m != null)
 				{
 					// Need to store record because failure bin contains an error message.
 					record.record = r;
-					record.resultCode = resultCode;
+					record.resultCode = ResultCode;
 					record.inDoubt = Command.BatchInDoubt(record.hasWrite, CommandSentCounter);
 					status.SetRowError();
 					return true;
 				}
 			}
 
-			record.SetError(resultCode, Command.BatchInDoubt(record.hasWrite, CommandSentCounter));
+			record.SetError(ResultCode, Command.BatchInDoubt(record.hasWrite, CommandSentCounter));
 			status.SetRowError();
 			return true;
 		}
@@ -289,7 +289,7 @@ namespace Aerospike.Client
 			{
 				BatchRecord record = records[index];
 
-				if (record.resultCode == ResultCode.NO_RESPONSE)
+				if (record.resultCode == Client.ResultCode.NO_RESPONSE)
 				{
 					record.inDoubt = record.hasWrite;
 				}
@@ -311,7 +311,7 @@ namespace Aerospike.Client
 	// OperateArray
 	//-------------------------------------------------------
 
-	public sealed class BatchOperateArrayCommandNew : BatchCommandNew
+	public sealed class BatchOperateArrayCommandNew : BatchCommandNew, ICommand
 	{
 		private readonly Key[] keys;
 		private readonly Operation[] ops;
@@ -347,19 +347,19 @@ namespace Aerospike.Client
 			this.SetBatchOperate(batchPolicy, keys, batch, null, ops, attr);
 		}
 
-		protected internal override bool ParseRow()
+		public new bool ParseRow()
 		{
-			this.SkipKey(fieldCount);
+			this.SkipKey(FieldCount);
 
-			BatchRecord record = records[batchIndex];
+			BatchRecord record = records[BatchIndex];
 
-			if (resultCode == 0)
+			if (ResultCode == 0)
 			{
-				record.SetRecord(ParseRecord());
+				record.SetRecord(this.ParseRecord());
 			}
 			else
 			{
-				record.SetError(resultCode, Command.BatchInDoubt(attr.hasWrite, commandSentCounter));
+				record.SetError(ResultCode, Command.BatchInDoubt(attr.hasWrite, CommandSentCounter));
 				status.SetRowError();
 			}
 			return true;
@@ -376,7 +376,7 @@ namespace Aerospike.Client
 			{
 				BatchRecord record = records[index];
 
-				if (record.resultCode == ResultCode.NO_RESPONSE)
+				if (record.resultCode == Client.ResultCode.NO_RESPONSE)
 				{
 					record.inDoubt = inDoubt;
 				}
@@ -398,7 +398,7 @@ namespace Aerospike.Client
 	// UDF
 	//-------------------------------------------------------
 
-	public sealed class BatchUDFCommandNew : BatchCommandNew
+	public sealed class BatchUDFCommandNew : BatchCommandNew, ICommand
 	{
 		private readonly Key[] keys;
 		private readonly string packageName;
@@ -440,35 +440,35 @@ namespace Aerospike.Client
 			this.SetBatchUDF(batchPolicy, keys, batch, packageName, functionName, argBytes, attr);
 		}
 
-		protected internal override bool ParseRow()
+		public new bool ParseRow()
 		{
-			this.SkipKey(fieldCount);
+			this.SkipKey(FieldCount);
 
-			BatchRecord record = records[batchIndex];
+			BatchRecord record = records[BatchIndex];
 
-			if (resultCode == 0)
+			if (ResultCode == 0)
 			{
-				record.SetRecord(ParseRecord());
+				record.SetRecord(this.ParseRecord());
 				return true;
 			}
 
-			if (resultCode == ResultCode.UDF_BAD_RESPONSE)
+			if (ResultCode == Client.ResultCode.UDF_BAD_RESPONSE)
 			{
-				Record r = ParseRecord();
+				Record r = this.ParseRecord();
 				string m = r.GetString("FAILURE");
 
 				if (m != null)
 				{
 					// Need to store record because failure bin contains an error message.
 					record.record = r;
-					record.resultCode = resultCode;
+					record.resultCode = ResultCode;
 					record.inDoubt = Command.BatchInDoubt(attr.hasWrite, CommandSentCounter);
 					status.SetRowError();
 					return true;
 				}
 			}
 
-			record.SetError(resultCode, Command.BatchInDoubt(attr.hasWrite, CommandSentCounter));
+			record.SetError(ResultCode, Command.BatchInDoubt(attr.hasWrite, CommandSentCounter));
 			status.SetRowError();
 			return true;
 		}
@@ -484,7 +484,7 @@ namespace Aerospike.Client
 			{
 				BatchRecord record = records[index];
 
-				if (record.resultCode == ResultCode.NO_RESPONSE)
+				if (record.resultCode == Client.ResultCode.NO_RESPONSE)
 				{
 					record.inDoubt = inDoubt;
 				}
@@ -521,18 +521,18 @@ namespace Aerospike.Client
 		public int Iteration { get; set; }// 1;
 		public int CommandSentCounter { get; set; }
 		public DateTime Deadline { get; set; }
+		public int Info3 { get; set; }
+		public int ResultCode { get; set; }
+		public int Generation { get; set; }
+		public int Expiration { get; set; }
+		public int BatchIndex { get; set; }
+		public int FieldCount { get; set; }
+		public int OpCount { get; set; }
+		public bool IsOperation { get; set; }
 
 		private readonly Node node;
 		protected internal readonly String ns;
 		private readonly ulong clusterKey;
-		protected internal int info3;
-		protected internal int resultCode;
-		protected internal int generation;
-		protected internal int expiration;
-		protected internal int batchIndex;
-		protected internal int fieldCount;
-		protected internal int opCount;
-		protected internal readonly bool isOperation;
 		private readonly bool first;
 		protected internal volatile bool valid = true;
 
@@ -556,7 +556,7 @@ namespace Aerospike.Client
 		{
 			this.SetCommonProperties(bufferPool, cluster, batchPolicy);
 			this.node = batch.node;
-			this.isOperation = isOperation;
+			this.IsOperation = isOperation;
 			this.ns = null;
 			this.clusterKey = 0;
 			this.first = false;
@@ -594,7 +594,7 @@ namespace Aerospike.Client
 
 		public Node GetNode()
 		{
-			throw new NotImplementedException();
+			return node;
 		}
 
 		public void WriteBuffer()
@@ -603,6 +603,16 @@ namespace Aerospike.Client
 		}
 
 		public async Task ParseResult(IConnection conn, CancellationToken token)
+		{
+			await CommandHelpers.ParseResult(this, conn, token);
+		}
+
+		public bool ParseGroup(int receiveSize)
+		{
+			return CommandHelpers.ParseGroup(this, receiveSize);
+		}
+
+		public bool ParseRow()
 		{
 			throw new NotImplementedException();
 		}

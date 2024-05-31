@@ -21,6 +21,7 @@ using static Aerospike.Client.Latency;
 using System.Net.Sockets;
 using Neo.IronLua;
 using System.Threading.Tasks;
+using System.Threading;
 
 namespace Aerospike.Client
 {
@@ -82,7 +83,7 @@ namespace Aerospike.Client
 		public const ulong CL_MSG_VERSION = 2UL;
 		public const ulong AS_MSG_TYPE = 3UL;
 		public const ulong MSG_TYPE_COMPRESSED = 4UL;
-
+		public const int MAX_BUFFER_SIZE = 1024 * 1024 * 128;  // 128 MB
 
 		public static void SetCommonProperties(this ICommand command, ArrayPool<byte> bufferPool, Cluster cluster, Policy policy)
 		{
@@ -121,15 +122,14 @@ namespace Aerospike.Client
 
 			if (policy.maxConcurrentThreads == 1 || commands.Length <= 1)
 			{
-				var iterator = new bool[commands.Length];
 
 				//await foreach (BatchCommandNew batchCommand in commands)
-				await Parallel.ForEachAsync(iterator,
-										   new ParallelOptions(),
-					async (ignore, cancellationToken) =>
+				await Parallel.ForEachAsync(commands,
+										   token,
+					async (batchCommand, token) =>
 				{
-				
-					token.ThrowIfCancellationRequested();
+
+					//token.ThrowIfCancellationRequested(); handled Parallel.ForEachAsync
 
 					try
 					{
@@ -165,7 +165,7 @@ namespace Aerospike.Client
 							throw;
 						}
 					}
-				}
+				});
 				status.CheckException();
 				return;
 			}
@@ -411,6 +411,142 @@ namespace Aerospike.Client
 			exception.Iteration = command.Iteration;
 			exception.SetInDoubt(command.IsWrite(), command.CommandSentCounter);
 			throw exception;
+		}
+
+		public static async Task ParseResult(this ICommand command, IConnection conn, CancellationToken token)
+		{
+			// Read blocks of records.  Do not use thread local receive buffer because each
+			// block will likely be too big for a cache.  Also, scan callbacks can nest
+			// further database commands which would contend with the thread local receive buffer.
+			// Instead, use separate heap allocated buffers.
+			byte[] protoBuf = new byte[8];
+			byte[] buf = null;
+			byte[] ubuf = null;
+			int receiveSize;
+
+			while (true)
+			{
+				// Read header
+				await conn.ReadFully(protoBuf, 8, token);
+
+				long proto = ByteUtil.BytesToLong(protoBuf, 0);
+				int size = (int)(proto & 0xFFFFFFFFFFFFL);
+
+				if (size <= 0)
+				{
+					continue;
+				}
+
+				// Prepare buffer
+				if (buf == null || size > buf.Length)
+				{
+					// Corrupted data streams can result in a huge length.
+					// Do a sanity check here.
+					if (size > MAX_BUFFER_SIZE)
+					{
+						throw new AerospikeException("Invalid proto size: " + size);
+					}
+
+					int capacity = (size + 16383) & ~16383; // Round up in 16KB increments.
+					buf = new byte[capacity];
+				}
+
+				// Read remaining message bytes in group.
+				await conn.ReadFully(buf, size, token);
+				conn.UpdateLastUsed();
+
+				ulong type = (ulong)((proto >> 48) & 0xff);
+
+				if (type == Command.AS_MSG_TYPE)
+				{
+					command.DataBuffer = buf;
+					command.DataOffset = 0;
+					receiveSize = size;
+				}
+				else if (type == Command.MSG_TYPE_COMPRESSED)
+				{
+					int usize = (int)ByteUtil.BytesToLong(buf, 0);
+
+					if (ubuf == null || usize > ubuf.Length)
+					{
+						if (usize > MAX_BUFFER_SIZE)
+						{
+							throw new AerospikeException("Invalid proto size: " + usize);
+						}
+
+						int capacity = (usize + 16383) & ~16383; // Round up in 16KB increments.
+						ubuf = new byte[capacity];
+					}
+
+					ByteUtil.Decompress(buf, 8, size, ubuf, usize);
+					command.DataBuffer = ubuf;
+					command.DataOffset = 8;
+					receiveSize = usize;
+				}
+				else
+				{
+					throw new AerospikeException("Invalid proto type: " + type + " Expected: " + Command.AS_MSG_TYPE);
+				}
+
+				if (!command.ParseGroup(receiveSize))
+				{
+					break;
+				}
+			}
+		}
+
+		public static bool ParseGroup(this ICommand command, int receiveSize)
+		{
+			while (command.DataOffset < receiveSize)
+			{
+				command.DataOffset += 3;
+				command.Info3 = command.DataBuffer[command.DataOffset];
+				command.DataOffset += 2;
+				command.ResultCode = command.DataBuffer[command.DataOffset];
+
+				// If this is the end marker of the response, do not proceed further.
+				if ((command.Info3 & Command.INFO3_LAST) != 0)
+				{
+					if (command.ResultCode != 0)
+					{
+						// The server returned a fatal error.
+						throw new AerospikeException(command.ResultCode);
+					}
+					return false;
+				}
+
+				command.DataOffset++;
+				command.Generation = ByteUtil.BytesToInt(command.DataBuffer, command.DataOffset);
+				command.DataOffset += 4;
+				command.Expiration = ByteUtil.BytesToInt(command.DataBuffer, command.DataOffset);
+				command.DataOffset += 4;
+				command.BatchIndex = ByteUtil.BytesToInt(command.DataBuffer, command.DataOffset);
+				command.DataOffset += 4;
+				command.FieldCount = ByteUtil.BytesToShort(command.DataBuffer, command.DataOffset);
+				command.DataOffset += 2;
+				command.OpCount = ByteUtil.BytesToShort(command.DataBuffer, command.DataOffset);
+				command.DataOffset += 2;
+
+				// Note: ParseRow() also handles sync error responses.
+				if (!command.ParseRow())
+				{
+					return false;
+				}
+			}
+			return true;
+		}
+
+		public static Record ParseRecord(this ICommand command)
+		{
+			if (command.OpCount <= 0)
+			{
+				return new Record(null, command.Generation, command.Expiration);
+			}
+
+			(Record record, command.DataOffset) = command.Policy.recordParser.ParseRecord(
+				command.DataBuffer, command.DataOffset, command.OpCount, command.Generation, 
+				command.Expiration, command.IsOperation);
+			return record;
 		}
 
 		public static int SizeBuffer(this ICommand command)

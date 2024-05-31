@@ -436,7 +436,6 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException.BatchRecordArray">which contains results for keys that did complete</exception>
 		public async Task<BatchResults> Delete(BatchPolicy batchPolicy, BatchDeletePolicy deletePolicy, Key[] keys, CancellationToken token)
 		{
-			throw new NotImplementedException();
 			if (keys.Length == 0)
 			{
 				return new BatchResults(Array.Empty<BatchRecord>(), true);
@@ -460,15 +459,15 @@ namespace Aerospike.Client
 			{
 				BatchStatus status = new(true);
 				List<BatchNode> batchNodes = BatchNode.GenerateList(Cluster, batchPolicy, keys, records, attr.hasWrite, status);
-				BatchCommand[] commands = new BatchCommand[batchNodes.Count];
+				BatchCommandNew[] commands = new BatchCommandNew[batchNodes.Count];
 				int count = 0;
 
 				foreach (BatchNode batchNode in batchNodes)
 				{
-					commands[count++] = new BatchOperateArrayCommand(Cluster, batchNode, batchPolicy, keys, null, records, attr, status);
+					commands[count++] = new BatchOperateArrayCommandNew(bufferPool, Cluster, batchNode, batchPolicy, keys, null, records, attr, status);
 				}
 
-				BatchExecutor.Execute(Cluster, batchPolicy, commands, status);
+				await commands[0].Execute(Cluster, batchPolicy, commands, status, token);
 				return new BatchResults(records, status.GetStatus());
 			}
 			catch (Exception e)
@@ -587,7 +586,6 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException.BatchExists">which contains results for keys that did complete</exception>
 		public async Task<bool[]> Exists(BatchPolicy policy, Key[] keys, CancellationToken token)
 		{
-			throw new NotImplementedException();
 			if (keys.Length == 0)
 			{
 				return Array.Empty<bool>();
@@ -607,20 +605,20 @@ namespace Aerospike.Client
 					// Send all requests to a single random node.
 					Node node = Cluster.GetRandomNode();
 					BatchNode batchNode = new(node, keys);
-					BatchCommand command = new BatchExistsArrayCommand(Cluster, batchNode, policy, keys, existsArray, status);
-					BatchExecutor.Execute(command, status);
+					BatchCommandNew command = new BatchExistsArrayCommandNew(bufferPool, Cluster, batchNode, policy, keys, existsArray, status);
+					await command.Execute(Cluster, policy, new[] { command }, status, token);
 					return existsArray;
 				}
 
 				List<BatchNode> batchNodes = BatchNode.GenerateList(Cluster, policy, keys, null, false, status);
-				BatchCommand[] commands = new BatchCommand[batchNodes.Count];
+				BatchCommandNew[] commands = new BatchCommandNew[batchNodes.Count];
 				int count = 0;
 
 				foreach (BatchNode batchNode in batchNodes)
 				{
-					commands[count++] = new BatchExistsArrayCommand(Cluster, batchNode, policy, keys, existsArray, status);
+					commands[count++] = new BatchExistsArrayCommandNew(bufferPool, Cluster, batchNode, policy, keys, existsArray, status);
 				}
-				BatchExecutor.Execute(Cluster, policy, commands, status);
+				await commands[0].Execute(Cluster, policy, commands, status, token);
 				return existsArray;
 			}
 			catch (Exception e)
@@ -703,7 +701,6 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if read fails</exception>
 		public async Task<bool> Get(BatchPolicy policy, List<BatchRead> records, CancellationToken token)
 		{
-			throw new NotImplementedException();
 			if (records.Count == 0)
 			{
 				return true;
@@ -713,14 +710,14 @@ namespace Aerospike.Client
 
 			BatchStatus status = new(true);
 			List<BatchNode> batchNodes = BatchNode.GenerateList(Cluster, policy, records, status);
-			BatchCommand[] commands = new BatchCommand[batchNodes.Count];
+			BatchCommandNew[] commands = new BatchCommandNew[batchNodes.Count];
 			int count = 0;
 
 			foreach (BatchNode batchNode in batchNodes)
 			{
-				commands[count++] = new BatchReadListCommand(Cluster, batchNode, policy, records, status);
+				commands[count++] = new BatchReadListCommandNew(bufferPool, Cluster, batchNode, policy, records, status);
 			}
-			BatchExecutor.Execute(Cluster, policy, commands, status);
+			await commands[0].Execute(Cluster, policy, commands, status, token);
 			return status.GetStatus();
 		}
 
@@ -735,7 +732,6 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException.BatchRecords">which contains results for keys that did complete</exception>
 		public async Task<Record[]> Get(BatchPolicy policy, Key[] keys, CancellationToken token)
 		{
-			throw new NotImplementedException();
 			if (keys.Length == 0)
 			{
 				return Array.Empty<Record>();
@@ -754,20 +750,20 @@ namespace Aerospike.Client
 					// Send all requests to a single random node.
 					Node node = Cluster.GetRandomNode();
 					BatchNode batchNode = new(node, keys);
-					BatchCommand command = new BatchGetArrayCommand(Cluster, batchNode, policy, keys, null, null, records, Command.INFO1_READ | Command.INFO1_GET_ALL, false, status);
-					BatchExecutor.Execute(command, status);
+					BatchCommandNew command = new BatchGetArrayCommandNew(bufferPool, Cluster, batchNode, policy, keys, null, null, records, Command.INFO1_READ | Command.INFO1_GET_ALL, false, status);
+					await command.Execute(Cluster, policy, new[] { command }, status, token);
 					return records;
 				}
 
 				List<BatchNode> batchNodes = BatchNode.GenerateList(Cluster, policy, keys, null, false, status);
-				BatchCommand[] commands = new BatchCommand[batchNodes.Count];
+				BatchCommandNew[] commands = new BatchCommandNew[batchNodes.Count];
 				int count = 0;
 
 				foreach (BatchNode batchNode in batchNodes)
 				{
-					commands[count++] = new BatchGetArrayCommand(Cluster, batchNode, policy, keys, null, null, records, Command.INFO1_READ | Command.INFO1_GET_ALL, false, status);
+					commands[count++] = new BatchGetArrayCommandNew(bufferPool, Cluster, batchNode, policy, keys, null, null, records, Command.INFO1_READ | Command.INFO1_GET_ALL, false, status);
 				}
-				BatchExecutor.Execute(Cluster, policy, commands, status);
+				await commands[0].Execute(Cluster, policy, commands, status, token);
 				return records;
 			}
 			catch (Exception e)
@@ -788,7 +784,6 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException.BatchRecords">which contains results for keys that did complete</exception>
 		public async Task<Record[]> Get(BatchPolicy policy, Key[] keys, string[] binNames, CancellationToken token)
 		{
-			throw new NotImplementedException();
 			if (keys.Length == 0)
 			{
 				return Array.Empty<Record>();
@@ -807,20 +802,20 @@ namespace Aerospike.Client
 					// Send all requests to a single random node.
 					Node node = Cluster.GetRandomNode();
 					BatchNode batchNode = new(node, keys);
-					BatchCommand command = new BatchGetArrayCommand(Cluster, batchNode, policy, keys, binNames, null, records, Command.INFO1_READ, false, status);
-					BatchExecutor.Execute(command, status);
+					BatchCommandNew command = new BatchGetArrayCommandNew(bufferPool, Cluster, batchNode, policy, keys, binNames, null, records, Command.INFO1_READ, false, status);
+					await command.Execute(Cluster, policy, new[] { command }, status, token);
 					return records;
 				}
 
 				List<BatchNode> batchNodes = BatchNode.GenerateList(Cluster, policy, keys, null, false, status);
-				BatchCommand[] commands = new BatchCommand[batchNodes.Count];
+				BatchCommandNew[] commands = new BatchCommandNew[batchNodes.Count];
 				int count = 0;
 
 				foreach (BatchNode batchNode in batchNodes)
 				{
-					commands[count++] = new BatchGetArrayCommand(Cluster, batchNode, policy, keys, binNames, null, records, Command.INFO1_READ, false, status);
+					commands[count++] = new BatchGetArrayCommandNew(bufferPool, Cluster, batchNode, policy, keys, binNames, null, records, Command.INFO1_READ, false, status);
 				}
-				BatchExecutor.Execute(Cluster, policy, commands, status);
+				await commands[0].Execute(Cluster, policy, commands, status, token);
 				return records;
 			}
 			catch (Exception e)
@@ -841,7 +836,6 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException.BatchRecords">which contains results for keys that did complete</exception>
 		public async Task<Record[]> Get(BatchPolicy policy, Key[] keys, Operation[] ops, CancellationToken token)
 		{
-			throw new NotImplementedException();
 			if (keys.Length == 0)
 			{
 				return Array.Empty<Record>();
@@ -860,20 +854,20 @@ namespace Aerospike.Client
 					// Send all requests to a single random node.
 					Node node = Cluster.GetRandomNode();
 					BatchNode batchNode = new(node, keys);
-					BatchCommand command = new BatchGetArrayCommand(Cluster, batchNode, policy, keys, null, ops, records, Command.INFO1_READ, true, status);
-					BatchExecutor.Execute(command, status);
+					BatchCommandNew command = new BatchGetArrayCommandNew(bufferPool, Cluster, batchNode, policy, keys, null, ops, records, Command.INFO1_READ, true, status);
+					await command.Execute(Cluster, policy, new[] { command }, status, token);
 					return records;
 				}
 
 				List<BatchNode> batchNodes = BatchNode.GenerateList(Cluster, policy, keys, null, false, status);
-				BatchCommand[] commands = new BatchCommand[batchNodes.Count];
+				BatchCommandNew[] commands = new BatchCommandNew[batchNodes.Count];
 				int count = 0;
 
 				foreach (BatchNode batchNode in batchNodes)
 				{
-					commands[count++] = new BatchGetArrayCommand(Cluster, batchNode, policy, keys, null, ops, records, Command.INFO1_READ, true, status);
+					commands[count++] = new BatchGetArrayCommandNew(bufferPool, Cluster, batchNode, policy, keys, null, ops, records, Command.INFO1_READ, true, status);
 				}
-				BatchExecutor.Execute(Cluster, policy, commands, status);
+				await commands[0].Execute(Cluster, policy, commands, status, token);
 				return records;
 			}
 			catch (Exception e)
@@ -893,7 +887,6 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException.BatchRecords">which contains results for keys that did complete</exception>
 		public async Task<Record[]> GetHeader(BatchPolicy policy, Key[] keys, CancellationToken token)
 		{
-			throw new NotImplementedException();
 			if (keys.Length == 0)
 			{
 				return Array.Empty<Record>();
@@ -912,20 +905,20 @@ namespace Aerospike.Client
 					// Send all requests to a single random node.
 					Node node = Cluster.GetRandomNode();
 					BatchNode batchNode = new(node, keys);
-					BatchCommand command = new BatchGetArrayCommand(Cluster, batchNode, policy, keys, null, null, records, Command.INFO1_READ | Command.INFO1_NOBINDATA, false, status);
-					BatchExecutor.Execute(command, status);
+					BatchCommandNew command = new BatchGetArrayCommandNew(bufferPool, Cluster, batchNode, policy, keys, null, null, records, Command.INFO1_READ | Command.INFO1_NOBINDATA, false, status);
+					await command.Execute(Cluster, policy, new[] { command }, status, token);
 					return records;
 				}
 
 				List<BatchNode> batchNodes = BatchNode.GenerateList(Cluster, policy, keys, null, false, status);
-				BatchCommand[] commands = new BatchCommand[batchNodes.Count];
+				BatchCommandNew[] commands = new BatchCommandNew[batchNodes.Count];
 				int count = 0;
 
 				foreach (BatchNode batchNode in batchNodes)
 				{
-					commands[count++] = new BatchGetArrayCommand(Cluster, batchNode, policy, keys, null, null, records, Command.INFO1_READ | Command.INFO1_NOBINDATA, false, status);
+					commands[count++] = new BatchGetArrayCommandNew(bufferPool, Cluster, batchNode, policy, keys, null, null, records, Command.INFO1_READ | Command.INFO1_NOBINDATA, false, status);
 				}
-				BatchExecutor.Execute(Cluster, policy, commands, status);
+				await commands[0].Execute(Cluster, policy, commands, status, token);
 				return records;
 			}
 			catch (Exception e)
@@ -1035,7 +1028,6 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if command fails</exception>
 		public async Task<bool> Operate(BatchPolicy policy, List<BatchRecord> records, CancellationToken token)
 		{
-			throw new NotImplementedException();
 			if (records.Count == 0)
 			{
 				return true;
@@ -1045,14 +1037,14 @@ namespace Aerospike.Client
 
 			BatchStatus status = new(true);
 			List<BatchNode> batchNodes = BatchNode.GenerateList(Cluster, policy, records, status);
-			BatchCommand[] commands = new BatchCommand[batchNodes.Count];
+			BatchCommandNew[] commands = new BatchCommandNew[batchNodes.Count];
 			int count = 0;
 
 			foreach (BatchNode batchNode in batchNodes)
 			{
-				commands[count++] = new BatchOperateListCommand(Cluster, batchNode, policy, records, status);
+				commands[count++] = new BatchOperateListCommandNew(bufferPool, Cluster, batchNode, policy, records, status);
 			}
-			BatchExecutor.Execute(Cluster, policy, commands, status);
+			await commands[0].Execute(Cluster, policy, commands, status, token);
 			return status.GetStatus();
 		}
 
@@ -1075,7 +1067,6 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException.BatchRecordArray">which contains results for keys that did complete</exception>
 		public async Task<BatchResults> Operate(BatchPolicy batchPolicy, BatchWritePolicy writePolicy, Key[] keys, Operation[] ops, CancellationToken token)
 		{
-			throw new NotImplementedException();
 			if (keys.Length == 0)
 			{
 				return new BatchResults(Array.Empty<BatchRecord>(), true);
@@ -1097,15 +1088,15 @@ namespace Aerospike.Client
 			{
 				BatchStatus status = new(true);
 				List<BatchNode> batchNodes = BatchNode.GenerateList(Cluster, batchPolicy, keys, records, attr.hasWrite, status);
-				BatchCommand[] commands = new BatchCommand[batchNodes.Count];
+				BatchCommandNew[] commands = new BatchCommandNew[batchNodes.Count];
 				int count = 0;
 
 				foreach (BatchNode batchNode in batchNodes)
 				{
-					commands[count++] = new BatchOperateArrayCommand(Cluster, batchNode, batchPolicy, keys, ops, records, attr, status);
+					commands[count++] = new BatchOperateArrayCommandNew(bufferPool, Cluster, batchNode, batchPolicy, keys, ops, records, attr, status);
 				}
 
-				BatchExecutor.Execute(Cluster, batchPolicy, commands, status);
+				await commands[0].Execute(Cluster, batchPolicy, commands, status, token);
 				return new BatchResults(records, status.GetStatus());
 			}
 			catch (Exception e)

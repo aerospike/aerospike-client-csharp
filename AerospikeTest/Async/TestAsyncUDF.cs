@@ -30,11 +30,15 @@ namespace Aerospike.Test
 		[ClassInitialize()]
 		public static void Register(TestContext testContext)
 		{
-			if (!args.testProxy || (args.testProxy && nativeClient != null))
+			if (!args.testProxy || (args.testProxy && nativeClient != null) && !args.testAsyncAwait)
 			{
 				Assembly assembly = Assembly.GetExecutingAssembly();
 				RegisterTask task = nativeClient.Register(null, assembly, "Aerospike.Test.LuaResources.record_example.lua", "record_example.lua", Language.LUA);
 				task.Wait();
+			}
+			else if (args.testAsyncAwait)
+			{
+				throw new NotImplementedException();
 			}
 		}
 
@@ -44,7 +48,7 @@ namespace Aerospike.Test
 			Key key = new Key(args.ns, args.set, "audfkey1");
 			Bin bin = new Bin(binName, binValue);
 
-			if (!args.testProxy)
+			if (!args.testProxy || !args.testAsyncAwait)
 			{
 				// Write bin
 				client.Execute(null, new WriteHandler(this, key), key, "record_example", "writeBin", Value.Get(bin.name), bin.value);
@@ -121,13 +125,17 @@ namespace Aerospike.Test
 				new Key(args.ns, args.set, 20001)
 			};
 
-			if (!args.testProxy)
+			if (!args.testProxy || !args.testAsyncAwait)
 			{
 				client.Delete(null, null, keys);
 
 				client.Execute(null, null, new BatchUDFHandler(this), keys, "record_example", "writeBin", Value.Get("B5"), Value.Get("value5"));
 
 				WaitTillComplete();
+			}
+			else if (args.testAsyncAwait)
+			{
+				throw new NotImplementedException();
 			}
 			else
 			{
@@ -200,11 +208,15 @@ namespace Aerospike.Test
 			records.Add(new BatchUDF(new Key(args.ns, args.set, 20015), "record_example", "writeWithValidation", a2));
 			records.Add(new BatchUDF(new Key(args.ns, args.set, 20015), "record_example", "writeWithValidation", a3));
 
-			if (!args.testProxy)
+			if (!args.testProxy || !args.testAsyncAwait)
 			{
 				client.Operate(null, new BatchSeqUDFHandler(this, bin), records);
 
 				WaitTillComplete();
+			}
+			else if (args.testAsyncAwait)
+			{
+				throw new NotImplementedException();
 			}
 			else
 			{
@@ -219,9 +231,13 @@ namespace Aerospike.Test
 			records.Add(new BatchRead(new Key(args.ns, args.set, 20014), true));
 			records.Add(new BatchRead(new Key(args.ns, args.set, 20015), true));
 
-			if (!args.testProxy)
+			if (!args.testProxy && !args.testAsyncAwait)
 			{
 				client.Operate(null, new BatchSeqReadHandler(parent, bin), records);
+			}
+			else if (args.testAsyncAwait)
+			{
+				throw new NotImplementedException();
 			}
 			else
 			{

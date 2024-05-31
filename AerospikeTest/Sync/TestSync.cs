@@ -30,6 +30,7 @@ namespace Aerospike.Test
 	{
 		public static Args args = Args.Instance;
 		public static IAerospikeClient client = args.client;
+		public static IAerospikeClientNew asyncAwaitClient = args.asyncAwaitClient;
 		public static AerospikeClient nativeClient = args.nativeClient;
 		public static AerospikeClientProxy proxyClient = args.proxyClient;
 

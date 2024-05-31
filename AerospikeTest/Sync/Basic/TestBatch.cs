@@ -22,6 +22,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Reflection;
 using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 using System.Runtime.Intrinsics.X86;
 using System.Security.Policy;
 using System.Text;
@@ -41,7 +42,7 @@ namespace Aerospike.Test
 		private const int Size = 8;
 
 		[ClassInitialize()]
-		public static void WriteRecords(TestContext testContext)
+		public static async Task WriteRecords(TestContext testContext)
 		{
 			WritePolicy policy = new WritePolicy();
 			if (!args.testProxy || (args.testProxy && nativeClient != null))
@@ -53,46 +54,88 @@ namespace Aerospike.Test
 				policy.totalTimeout = args.proxyTotalTimeout;
 			}
 
-			for (int i = 1; i <= Size; i++)
+			if (!args.testAsyncAwait)
 			{
-				Key key = new Key(args.ns, args.set, KeyPrefix + i);
-				Bin bin = new Bin(BinName, ValuePrefix + i);
-
-				List<int> list = new List<int>();
-
-				for (int j = 0; j < i; j++)
+				for (int i = 1; i <= Size; i++)
 				{
-					list.Add(j * i);
+					Key key = new Key(args.ns, args.set, KeyPrefix + i);
+					Bin bin = new Bin(BinName, ValuePrefix + i);
+
+					List<int> list = new List<int>();
+
+					for (int j = 0; j < i; j++)
+					{
+						list.Add(j * i);
+					}
+
+					List<int> list2 = new List<int>();
+
+					for (int j = 0; j < 2; j++)
+					{
+						list2.Add(j);
+					}
+
+					Bin listBin = new Bin(ListBin, list);
+					Bin listBin2 = new Bin(ListBin2, list2);
+
+					if (i != 6)
+					{
+						client.Put(policy, key, bin, listBin, listBin2);
+					}
+					else
+					{
+						client.Put(policy, key, new Bin(BinName, i), listBin, listBin2);
+					}
 				}
 
-				List<int> list2 = new List<int>();
-
-				for (int j = 0; j < 2; j++)
-				{
-					list2.Add(j);
-				}
-
-				Bin listBin = new Bin(ListBin, list);
-				Bin listBin2 = new Bin(ListBin2, list2);
-
-				if (i != 6)
-				{
-					client.Put(policy, key, bin, listBin, listBin2);
-				}
-				else
-				{
-					client.Put(policy, key, new Bin(BinName, i), listBin, listBin2);
-				}
+				// Add records that will eventually be deleted.
+				client.Put(policy, new Key(args.ns, args.set, 10000), new Bin(BinName, 10000));
+				client.Put(policy, new Key(args.ns, args.set, 10001), new Bin(BinName, 10001));
+				client.Put(policy, new Key(args.ns, args.set, 10002), new Bin(BinName, 10002));
 			}
+			else
+			{
+				for (int i = 1; i <= Size; i++)
+				{
+					Key key = new Key(args.ns, args.set, KeyPrefix + i);
+					Bin bin = new Bin(BinName, ValuePrefix + i);
 
-			// Add records that will eventually be deleted.
-			client.Put(policy, new Key(args.ns, args.set, 10000), new Bin(BinName, 10000));
-			client.Put(policy, new Key(args.ns, args.set, 10001), new Bin(BinName, 10001));
-			client.Put(policy, new Key(args.ns, args.set, 10002), new Bin(BinName, 10002));
+					List<int> list = new List<int>();
+
+					for (int j = 0; j < i; j++)
+					{
+						list.Add(j * i);
+					}
+
+					List<int> list2 = new List<int>();
+
+					for (int j = 0; j < 2; j++)
+					{
+						list2.Add(j);
+					}
+
+					Bin listBin = new Bin(ListBin, list);
+					Bin listBin2 = new Bin(ListBin2, list2);
+
+					if (i != 6)
+					{
+						await asyncAwaitClient.Put(policy, key, new[] { bin, listBin, listBin2 }, CancellationToken.None);
+					}
+					else
+					{
+						await asyncAwaitClient.Put(policy, key, new[] { new Bin(BinName, i), listBin, listBin2 }, CancellationToken.None);
+					}
+				}
+
+				// Add records that will eventually be deleted.
+				await asyncAwaitClient.Put(policy, new Key(args.ns, args.set, 10000), new[] { new Bin(BinName, 10000) }, CancellationToken.None);
+				await asyncAwaitClient.Put(policy, new Key(args.ns, args.set, 10001), new[] { new Bin(BinName, 10001) }, CancellationToken.None);
+				await asyncAwaitClient.Put(policy, new Key(args.ns, args.set, 10002), new[] { new Bin(BinName, 10002) }, CancellationToken.None);
+			}
 		}
 
 		[TestMethod]
-		public void BatchExists()
+		public async Task BatchExists()
 		{
 			Key[] keys = new Key[Size];
 			for (int i = 0; i < Size; i++)
@@ -100,20 +143,36 @@ namespace Aerospike.Test
 				keys[i] = new Key(args.ns, args.set, KeyPrefix + (i + 1));
 			}
 
-			bool[] existsArray = client.Exists(null, keys);
-			Assert.AreEqual(Size, existsArray.Length);
-
-			for (int i = 0; i < existsArray.Length; i++)
+			if (!args.testAsyncAwait)
 			{
-				if (!existsArray[i])
+				bool[] existsArray = client.Exists(null, keys);
+				Assert.AreEqual(Size, existsArray.Length);
+
+				for (int i = 0; i < existsArray.Length; i++)
 				{
-					Assert.Fail("Some batch records not found.");
+					if (!existsArray[i])
+					{
+						Assert.Fail("Some batch records not found.");
+					}
+				}
+			}
+			else
+			{
+				bool[] existsArray = await asyncAwaitClient.Exists(null, keys, CancellationToken.None);
+				Assert.AreEqual(Size, existsArray.Length);
+
+				for (int i = 0; i < existsArray.Length; i++)
+				{
+					if (!existsArray[i])
+					{
+						Assert.Fail("Some batch records not found.");
+					}
 				}
 			}
 		}
 
 		[TestMethod]
-		public void BatchReads()
+		public async Task BatchReads()
 		{
 			Key[] keys = new Key[Size];
 			for (int i = 0; i < Size; i++)
@@ -121,27 +180,50 @@ namespace Aerospike.Test
 				keys[i] = new Key(args.ns, args.set, KeyPrefix + (i + 1));
 			}
 
-			Record[] records = client.Get(null, keys, BinName);
-			Assert.AreEqual(Size, records.Length);
-
-			for (int i = 0; i < records.Length; i++)
+			if (!args.testAsyncAwait)
 			{
-				Key key = keys[i];
-				Record record = records[i];
+				Record[] records = client.Get(null, keys, BinName);
+				Assert.AreEqual(Size, records.Length);
 
-				if (i != 5)
+				for (int i = 0; i < records.Length; i++)
 				{
-					AssertBinEqual(key, record, BinName, ValuePrefix + (i + 1));
+					Key key = keys[i];
+					Record record = records[i];
+
+					if (i != 5)
+					{
+						AssertBinEqual(key, record, BinName, ValuePrefix + (i + 1));
+					}
+					else
+					{
+						AssertBinEqual(key, record, BinName, i + 1);
+					}
 				}
-				else
+			}
+			else
+			{
+				Record[] records = await asyncAwaitClient.Get(null, keys, new[] { BinName }, CancellationToken.None);
+				Assert.AreEqual(Size, records.Length);
+
+				for (int i = 0; i < records.Length; i++)
 				{
-					AssertBinEqual(key, record, BinName, i + 1);
+					Key key = keys[i];
+					Record record = records[i];
+
+					if (i != 5)
+					{
+						AssertBinEqual(key, record, BinName, ValuePrefix + (i + 1));
+					}
+					else
+					{
+						AssertBinEqual(key, record, BinName, i + 1);
+					}
 				}
 			}
 		}
 
 		[TestMethod]
-		public void BatchReadHeaders()
+		public async Task BatchReadHeaders()
 		{
 			Key[] keys = new Key[Size];
 			for (int i = 0; i < Size; i++)
@@ -149,23 +231,42 @@ namespace Aerospike.Test
 				keys[i] = new Key(args.ns, args.set, KeyPrefix + (i + 1));
 			}
 
-			Record[] records = client.GetHeader(null, keys);
-			Assert.AreEqual(Size, records.Length);
+			if (!args.testAsyncAwait)
+			{ 
+				Record[] records = client.GetHeader(null, keys);
+				Assert.AreEqual(Size, records.Length);
 
-			for (int i = 0; i < records.Length; i++)
+				for (int i = 0; i < records.Length; i++)
+				{
+					Key key = keys[i];
+					Record record = records[i];
+
+					AssertRecordFound(key, record);
+					Assert.AreNotEqual(0, record.generation);
+					// ttl can be zero if server default-ttl = 0.
+					//Assert.AreNotEqual(0, record.expiration);
+				}
+			}
+			else
 			{
-				Key key = keys[i];
-				Record record = records[i];
+				Record[] records = await asyncAwaitClient.GetHeader(null, keys, CancellationToken.None);
+				Assert.AreEqual(Size, records.Length);
 
-				AssertRecordFound(key, record);
-				Assert.AreNotEqual(0, record.generation);
-				// ttl can be zero if server default-ttl = 0.
-				//Assert.AreNotEqual(0, record.expiration);
+				for (int i = 0; i < records.Length; i++)
+				{
+					Key key = keys[i];
+					Record record = records[i];
+
+					AssertRecordFound(key, record);
+					Assert.AreNotEqual(0, record.generation);
+					// ttl can be zero if server default-ttl = 0.
+					//Assert.AreNotEqual(0, record.expiration);
+				}
 			}
 		}
 
 		[TestMethod]
-		public void BatchReadComplex()
+		public async Task BatchReadComplex()
 		{
 			// Batch allows multiple namespaces in one call, but example test environment may only have one namespace.
 
@@ -189,39 +290,74 @@ namespace Aerospike.Test
 			// This record should not be found.
 			records.Add(new BatchRead(new Key(args.ns, args.set, "keynotfound"), bins));
 
-			// Execute batch.
-			client.Get(null, records);
-
-			AssertBatchBinEqual(records, BinName, 0);
-			AssertBatchBinEqual(records, BinName, 1);
-			AssertBatchBinEqual(records, BinName, 2);
-			AssertBatchRecordExists(records, BinName, 3);
-			AssertBatchBinEqual(records, BinName, 4);
-
-			BatchRead batch = records[5];
-			AssertRecordFound(batch.key, batch.record);
-			int v = batch.record.GetInt(BinName);
-			Assert.AreEqual(48, v);
-
-			AssertBatchBinEqual(records, BinName, 6);
-
-			batch = records[7];
-			AssertRecordFound(batch.key, batch.record);
-			object val = batch.record.GetValue("binnotfound");
-			if (val != null)
+			if (!args.testAsyncAwait)
 			{
-				Assert.Fail("Unexpected batch bin value received");
+				// Execute batch.
+				client.Get(null, records);
+
+				AssertBatchBinEqual(records, BinName, 0);
+				AssertBatchBinEqual(records, BinName, 1);
+				AssertBatchBinEqual(records, BinName, 2);
+				AssertBatchRecordExists(records, BinName, 3);
+				AssertBatchBinEqual(records, BinName, 4);
+
+				BatchRead batch = records[5];
+				AssertRecordFound(batch.key, batch.record);
+				int v = batch.record.GetInt(BinName);
+				Assert.AreEqual(48, v);
+
+				AssertBatchBinEqual(records, BinName, 6);
+
+				batch = records[7];
+				AssertRecordFound(batch.key, batch.record);
+				object val = batch.record.GetValue("binnotfound");
+				if (val != null)
+				{
+					Assert.Fail("Unexpected batch bin value received");
+				}
+
+				batch = records[8];
+				if (batch.record != null)
+				{
+					Assert.Fail("Unexpected batch record received");
+				}
 			}
-
-			batch = records[8];
-			if (batch.record != null)
+			else
 			{
-				Assert.Fail("Unexpected batch record received");
+				// Execute batch.
+				await asyncAwaitClient.Get(null, records, CancellationToken.None);
+
+				AssertBatchBinEqual(records, BinName, 0);
+				AssertBatchBinEqual(records, BinName, 1);
+				AssertBatchBinEqual(records, BinName, 2);
+				AssertBatchRecordExists(records, BinName, 3);
+				AssertBatchBinEqual(records, BinName, 4);
+
+				BatchRead batch = records[5];
+				AssertRecordFound(batch.key, batch.record);
+				int v = batch.record.GetInt(BinName);
+				Assert.AreEqual(48, v);
+
+				AssertBatchBinEqual(records, BinName, 6);
+
+				batch = records[7];
+				AssertRecordFound(batch.key, batch.record);
+				object val = batch.record.GetValue("binnotfound");
+				if (val != null)
+				{
+					Assert.Fail("Unexpected batch bin value received");
+				}
+
+				batch = records[8];
+				if (batch.record != null)
+				{
+					Assert.Fail("Unexpected batch record received");
+				}
 			}
 		}
 
 		[TestMethod]
-		public void BatchListReadOperate()
+		public async Task BatchListReadOperate()
 		{
 			Key[] keys = new Key[Size];
 			for (int i = 0; i < Size; i++)
@@ -229,26 +365,48 @@ namespace Aerospike.Test
 				keys[i] = new Key(args.ns, args.set, KeyPrefix + (i + 1));
 			}
 
-			Record[] records = client.Get(null, keys,
-				ListOperation.Size(ListBin),
-				ListOperation.GetByIndex(ListBin, -1, ListReturnType.VALUE));
-
-			Assert.AreEqual(Size, records.Length);
-
-			for (int i = 0; i < records.Length; i++)
+			if (!args.testAsyncAwait)
 			{
-				Record record = records[i];
-				IList results = record.GetList(ListBin);
-				long size = (long)results[0];
-				long val = (long)results[1];
+				Record[] records = client.Get(null, keys,
+					ListOperation.Size(ListBin),
+					ListOperation.GetByIndex(ListBin, -1, ListReturnType.VALUE));
 
-				Assert.AreEqual(i + 1, size);
-				Assert.AreEqual(i * (i + 1), val);
+				Assert.AreEqual(Size, records.Length);
+
+				for (int i = 0; i < records.Length; i++)
+				{
+					Record record = records[i];
+					IList results = record.GetList(ListBin);
+					long size = (long)results[0];
+					long val = (long)results[1];
+
+					Assert.AreEqual(i + 1, size);
+					Assert.AreEqual(i * (i + 1), val);
+				}
+			}
+			else
+			{
+				Record[] records = await asyncAwaitClient.Get(null, keys,
+					new[] { ListOperation.Size(ListBin),
+					ListOperation.GetByIndex(ListBin, -1, ListReturnType.VALUE) }, CancellationToken.None);
+
+				Assert.AreEqual(Size, records.Length);
+
+				for (int i = 0; i < records.Length; i++)
+				{
+					Record record = records[i];
+					IList results = record.GetList(ListBin);
+					long size = (long)results[0];
+					long val = (long)results[1];
+
+					Assert.AreEqual(i + 1, size);
+					Assert.AreEqual(i * (i + 1), val);
+				}
 			}
 		}
 
 		[TestMethod]
-		public void BatchListWriteOperate()
+		public async Task BatchListWriteOperate()
 		{
 			Key[] keys = new Key[Size];
 			for (int i = 0; i < Size; i++)
@@ -256,29 +414,54 @@ namespace Aerospike.Test
 				keys[i] = new Key(args.ns, args.set, KeyPrefix + (i + 1));
 			}
 
-			// Add integer to list and get size and last element of list bin for all records.
-			BatchResults bresults = client.Operate(null, null, keys,
-				ListOperation.Insert(ListBin2, 0, Value.Get(1000)),
-				ListOperation.Size(ListBin2),
-				ListOperation.GetByIndex(ListBin2, -1, ListReturnType.VALUE)
-				);
-
-			for (int i = 0; i < bresults.records.Length; i++)
+			if (!args.testAsyncAwait)
 			{
-				BatchRecord br = bresults.records[i];
-				Assert.AreEqual(0, br.resultCode);
+				// Add integer to list and get size and last element of list bin for all records.
+				BatchResults bresults = client.Operate(null, null, keys,
+					ListOperation.Insert(ListBin2, 0, Value.Get(1000)),
+					ListOperation.Size(ListBin2),
+					ListOperation.GetByIndex(ListBin2, -1, ListReturnType.VALUE)
+					);
 
-				IList results = br.record.GetList(ListBin2);
-				long size = (long)results[1];
-				long val = (long)results[2];
+				for (int i = 0; i < bresults.records.Length; i++)
+				{
+					BatchRecord br = bresults.records[i];
+					Assert.AreEqual(0, br.resultCode);
 
-				Assert.AreEqual(3, size);
-				Assert.AreEqual(1, val);
+					IList results = br.record.GetList(ListBin2);
+					long size = (long)results[1];
+					long val = (long)results[2];
+
+					Assert.AreEqual(3, size);
+					Assert.AreEqual(1, val);
+				}
+			}
+			else
+			{
+				// Add integer to list and get size and last element of list bin for all records.
+				BatchResults bresults = await asyncAwaitClient.Operate(null, null, keys,
+					new[] { ListOperation.Insert(ListBin2, 0, Value.Get(1000)),
+					ListOperation.Size(ListBin2),
+					ListOperation.GetByIndex(ListBin2, -1, ListReturnType.VALUE) }, CancellationToken.None
+					);
+
+				for (int i = 0; i < bresults.records.Length; i++)
+				{
+					BatchRecord br = bresults.records[i];
+					Assert.AreEqual(0, br.resultCode);
+
+					IList results = br.record.GetList(ListBin2);
+					long size = (long)results[1];
+					long val = (long)results[2];
+
+					Assert.AreEqual(3, size);
+					Assert.AreEqual(1, val);
+				}
 			}
 		}
 
 		[TestMethod]
-		public void BatchOperateSendKey()
+		public async Task BatchOperateSendKey()
 		{
 			Key[] keys = new Key[3];
 			for (int i = 0; i < 3; i++)
@@ -295,19 +478,34 @@ namespace Aerospike.Test
 				Operation.Put(new Bin("now", DateTime.Now.ToFileTime()))
 			};
 
-			client.Operate(null, batchWritePolicy, keys, ops);
-
-			Key myKey = new(args.ns, args.set, "sendkey2");
-			WritePolicy wp = new()
+			if (!args.testAsyncAwait)
 			{
-				sendKey = true
-			};
-			
-			client.Put(wp, myKey, new Bin("name", "Andrew"));
+				client.Operate(null, batchWritePolicy, keys, ops);
+
+				Key myKey = new(args.ns, args.set, "sendkey2");
+				WritePolicy wp = new()
+				{
+					sendKey = true
+				};
+
+				client.Put(wp, myKey, new Bin("name", "Andrew"));
+			}
+			else
+			{
+				await asyncAwaitClient.Operate(null, batchWritePolicy, keys, ops, CancellationToken.None);
+
+				Key myKey = new(args.ns, args.set, "sendkey2");
+				WritePolicy wp = new()
+				{
+					sendKey = true
+				};
+
+				await asyncAwaitClient.Put(wp, myKey, new[] { new Bin("name", "Andrew") }, CancellationToken.None);
+			}
 		}
 
 		[TestMethod]
-		public void BatchReadAllBins()
+		public async Task BatchReadAllBins()
 		{
 			Key[] keys = new Key[Size];
 			for (int i = 0; i < Size; i++)
@@ -317,28 +515,52 @@ namespace Aerospike.Test
 
 			Bin bin = new Bin("bin5", "NewValue");
 
-			BatchResults bresults = client.Operate(null, null, keys,
-				Operation.Put(bin),
-				Operation.Get()
-				);
-
-			for (int i = 0; i < bresults.records.Length; i++)
+			if (!args.testAsyncAwait)
 			{
-				BatchRecord br = bresults.records[i];
-				Assert.AreEqual(0, br.resultCode);
+				BatchResults bresults = client.Operate(null, null, keys,
+					Operation.Put(bin),
+					Operation.Get()
+					);
 
-				Record r = br.record;
+				for (int i = 0; i < bresults.records.Length; i++)
+				{
+					BatchRecord br = bresults.records[i];
+					Assert.AreEqual(0, br.resultCode);
 
-				string s = r.GetString(bin.name);
-				Assert.AreEqual("NewValue", s);
+					Record r = br.record;
 
-				object obj = r.GetValue(BinName);
-				Assert.IsNotNull(obj);
+					string s = r.GetString(bin.name);
+					Assert.AreEqual("NewValue", s);
+
+					object obj = r.GetValue(BinName);
+					Assert.IsNotNull(obj);
+				}
+			}
+			else
+			{
+				BatchResults bresults = await asyncAwaitClient.Operate(null, null, keys,
+					new[] { Operation.Put(bin),
+					Operation.Get() }, CancellationToken.None
+					);
+
+				for (int i = 0; i < bresults.records.Length; i++)
+				{
+					BatchRecord br = bresults.records[i];
+					Assert.AreEqual(0, br.resultCode);
+
+					Record r = br.record;
+
+					string s = r.GetString(bin.name);
+					Assert.AreEqual("NewValue", s);
+
+					object obj = r.GetValue(BinName);
+					Assert.IsNotNull(obj);
+				}
 			}
 		}
 
 		[TestMethod]
-		public void BatchWriteComplex()
+		public async Task BatchWriteComplex()
 		{
 			Expression wexp1 = Exp.Build(Exp.Add(Exp.IntBin(BinName), Exp.Val(1000)));
 
@@ -361,56 +583,106 @@ namespace Aerospike.Test
 			records.Add(bw3);
 			records.Add(bd1);
 
-			bool status = client.Operate(null, records);
+			if (!args.testAsyncAwait)
+			{
+				bool status = client.Operate(null, records);
 
-			Assert.IsFalse(status); // "invalid" namespace triggers the false status.
-			Assert.AreEqual(0, bw1.resultCode);
-			AssertBinEqual(bw1.key, bw1.record, BinName2, 0);
-			Assert.AreEqual(ResultCode.INVALID_NAMESPACE, bw2.resultCode);
-			Assert.AreEqual(0, bw3.resultCode);
-			AssertBinEqual(bw3.key, bw3.record, BinName3, 0);
-			Assert.AreEqual(ResultCode.OK, bd1.resultCode);
+				Assert.IsFalse(status); // "invalid" namespace triggers the false status.
+				Assert.AreEqual(0, bw1.resultCode);
+				AssertBinEqual(bw1.key, bw1.record, BinName2, 0);
+				Assert.AreEqual(ResultCode.INVALID_NAMESPACE, bw2.resultCode);
+				Assert.AreEqual(0, bw3.resultCode);
+				AssertBinEqual(bw3.key, bw3.record, BinName3, 0);
+				Assert.AreEqual(ResultCode.OK, bd1.resultCode);
 
-			BatchRead br1 = new BatchRead(new Key(args.ns, args.set, KeyPrefix + 1), rops1);
-			BatchRead br2 = new BatchRead(new Key(args.ns, args.set, KeyPrefix + 6), rops2);
-			BatchRead br3 = new BatchRead(new Key(args.ns, args.set, 10002), true);
+				BatchRead br1 = new BatchRead(new Key(args.ns, args.set, KeyPrefix + 1), rops1);
+				BatchRead br2 = new BatchRead(new Key(args.ns, args.set, KeyPrefix + 6), rops2);
+				BatchRead br3 = new BatchRead(new Key(args.ns, args.set, 10002), true);
 
-			records.Clear();
-			records.Add(br1);
-			records.Add(br2);
-			records.Add(br3);
+				records.Clear();
+				records.Add(br1);
+				records.Add(br2);
+				records.Add(br3);
 
-			status = client.Operate(null, records);
+				status = client.Operate(null, records);
 
-			Assert.IsFalse(status); // Read of deleted record causes status to be false.
-			AssertBinEqual(br1.key, br1.record, BinName2, 100);
-			AssertBinEqual(br2.key, br2.record, BinName3, 1006);
-			Assert.AreEqual(ResultCode.KEY_NOT_FOUND_ERROR, br3.resultCode);
+				Assert.IsFalse(status); // Read of deleted record causes status to be false.
+				AssertBinEqual(br1.key, br1.record, BinName2, 100);
+				AssertBinEqual(br2.key, br2.record, BinName3, 1006);
+				Assert.AreEqual(ResultCode.KEY_NOT_FOUND_ERROR, br3.resultCode);
+			}
+			else
+			{
+				bool status = await asyncAwaitClient.Operate(null, records, CancellationToken.None);
+
+				Assert.IsFalse(status); // "invalid" namespace triggers the false status.
+				Assert.AreEqual(0, bw1.resultCode);
+				AssertBinEqual(bw1.key, bw1.record, BinName2, 0);
+				Assert.AreEqual(ResultCode.INVALID_NAMESPACE, bw2.resultCode);
+				Assert.AreEqual(0, bw3.resultCode);
+				AssertBinEqual(bw3.key, bw3.record, BinName3, 0);
+				Assert.AreEqual(ResultCode.OK, bd1.resultCode);
+
+				BatchRead br1 = new BatchRead(new Key(args.ns, args.set, KeyPrefix + 1), rops1);
+				BatchRead br2 = new BatchRead(new Key(args.ns, args.set, KeyPrefix + 6), rops2);
+				BatchRead br3 = new BatchRead(new Key(args.ns, args.set, 10002), true);
+
+				records.Clear();
+				records.Add(br1);
+				records.Add(br2);
+				records.Add(br3);
+
+				status = await asyncAwaitClient.Operate(null, records, CancellationToken.None);
+
+				Assert.IsFalse(status); // Read of deleted record causes status to be false.
+				AssertBinEqual(br1.key, br1.record, BinName2, 100);
+				AssertBinEqual(br2.key, br2.record, BinName3, 1006);
+				Assert.AreEqual(ResultCode.KEY_NOT_FOUND_ERROR, br3.resultCode);
+			}
 		}
 
 		[TestMethod]
-		public void BatchDelete()
+		public async Task BatchDelete()
 		{
 			// Define keys
 			Key[] keys = new Key[] { new Key(args.ns, args.set, 10000), new Key(args.ns, args.set, 10001) };
 
-			// Ensure keys exists
-			bool[] exists = client.Exists(null, keys);
-			Assert.IsTrue(exists[0]);
-			Assert.IsTrue(exists[1]);
+			if (!args.testAsyncAwait)
+			{
+				// Ensure keys exists
+				bool[] exists = client.Exists(null, keys);
+				Assert.IsTrue(exists[0]);
+				Assert.IsTrue(exists[1]);
 
-			// Delete keys
-			BatchResults br = client.Delete(null, null, keys);
-			Assert.IsTrue(br.status);
+				// Delete keys
+				BatchResults br = client.Delete(null, null, keys);
+				Assert.IsTrue(br.status);
 
-			// Ensure keys do not exist
-			exists = client.Exists(null, keys);
-			Assert.IsFalse(exists[0]);
-			Assert.IsFalse(exists[1]);
+				// Ensure keys do not exist
+				exists = client.Exists(null, keys);
+				Assert.IsFalse(exists[0]);
+				Assert.IsFalse(exists[1]);
+			}
+			else
+			{
+				// Ensure keys exists
+				bool[] exists = await asyncAwaitClient.Exists(null, keys, CancellationToken.None);
+				Assert.IsTrue(exists[0]);
+				Assert.IsTrue(exists[1]);
+
+				// Delete keys
+				BatchResults br = await asyncAwaitClient.Delete(null, null, keys, CancellationToken.None);
+				Assert.IsTrue(br.status);
+
+				// Ensure keys do not exist
+				exists = await asyncAwaitClient.Exists(null, keys, CancellationToken.None);
+				Assert.IsFalse(exists[0]);
+				Assert.IsFalse(exists[1]);
+			}
 		}
 
 		[TestMethod]
-		public void BatchReadTTL()
+		public async Task BatchReadTTL()
 		{
 			// WARNING: This test takes a long time to run due to sleeps.
 			// Define keys
@@ -423,60 +695,121 @@ namespace Aerospike.Test
 				expiration = 10
 			};
 			Key[] keys = new Key[] { key1, key2 };
-			client.Operate(null, bwp, keys, Operation.Put(new Bin("a", 1)));
 
-			// Read records before they expire and reset read ttl on one record.
-			Util.Sleep(8000);
-			BatchReadPolicy brp1 = new()
+			if (!args.testAsyncAwait)
 			{
-				readTouchTtlPercent = 80
-			};
+				client.Operate(null, bwp, keys, Operation.Put(new Bin("a", 1)));
 
-			BatchReadPolicy brp2 = new()
-			{
-				readTouchTtlPercent = -1
-			};
+				// Read records before they expire and reset read ttl on one record.
+				Util.Sleep(8000);
+				BatchReadPolicy brp1 = new()
+				{
+					readTouchTtlPercent = 80
+				};
 
-			BatchRead br1 = new(brp1, key1, new String[] { "a" });
-			BatchRead br2 = new(brp2, key2, new String[] { "a" });
+				BatchReadPolicy brp2 = new()
+				{
+					readTouchTtlPercent = -1
+				};
 
-			List<BatchRecord> list = new()
+				BatchRead br1 = new(brp1, key1, new String[] { "a" });
+				BatchRead br2 = new(brp2, key2, new String[] { "a" });
+
+				List<BatchRecord> list = new()
 				{
 					br1,
 					br2
 				};
 
-			bool rv = client.Operate(null, list);
+				bool rv = client.Operate(null, list);
 
-			Assert.IsTrue(rv);
-			Assert.AreEqual(ResultCode.OK, br1.resultCode);
-			Assert.AreEqual(ResultCode.OK, br2.resultCode);
+				Assert.IsTrue(rv);
+				Assert.AreEqual(ResultCode.OK, br1.resultCode);
+				Assert.AreEqual(ResultCode.OK, br2.resultCode);
 
-			// Read records again, but don't reset read ttl.
-			Util.Sleep(3000);
-			brp1.readTouchTtlPercent = -1;
-			brp2.readTouchTtlPercent = -1;
+				// Read records again, but don't reset read ttl.
+				Util.Sleep(3000);
+				brp1.readTouchTtlPercent = -1;
+				brp2.readTouchTtlPercent = -1;
 
-			br1 = new BatchRead(brp1, key1, new String[] { "a" });
-			br2 = new BatchRead(brp2, key2, new String[] { "a" });
+				br1 = new BatchRead(brp1, key1, new String[] { "a" });
+				br2 = new BatchRead(brp2, key2, new String[] { "a" });
 
-			list.Clear();
-			list.Add(br1);
-			list.Add(br2);
+				list.Clear();
+				list.Add(br1);
+				list.Add(br2);
 
-			rv = client.Operate(null, list);
+				rv = client.Operate(null, list);
 
-			// Key 2 should have expired.
-			Assert.AreEqual(ResultCode.OK, br1.resultCode);
-			Assert.AreEqual(ResultCode.KEY_NOT_FOUND_ERROR, br2.resultCode);
-			Assert.IsFalse(rv);
+				// Key 2 should have expired.
+				Assert.AreEqual(ResultCode.OK, br1.resultCode);
+				Assert.AreEqual(ResultCode.KEY_NOT_FOUND_ERROR, br2.resultCode);
+				Assert.IsFalse(rv);
 
-			// Read  record after it expires, showing it's gone.
-			Util.Sleep(8000);
-			rv = client.Operate(null, list);
-			Assert.AreEqual(ResultCode.KEY_NOT_FOUND_ERROR, br1.resultCode);
-			Assert.AreEqual(ResultCode.KEY_NOT_FOUND_ERROR, br2.resultCode);
-			Assert.IsFalse(rv);
+				// Read  record after it expires, showing it's gone.
+				Util.Sleep(8000);
+				rv = client.Operate(null, list);
+				Assert.AreEqual(ResultCode.KEY_NOT_FOUND_ERROR, br1.resultCode);
+				Assert.AreEqual(ResultCode.KEY_NOT_FOUND_ERROR, br2.resultCode);
+				Assert.IsFalse(rv);
+			}
+			else
+			{
+				await asyncAwaitClient.Operate(null, bwp, keys, new[] { Operation.Put(new Bin("a", 1)) }, CancellationToken.None);
+
+				// Read records before they expire and reset read ttl on one record.
+				Util.Sleep(8000);
+				BatchReadPolicy brp1 = new()
+				{
+					readTouchTtlPercent = 80
+				};
+
+				BatchReadPolicy brp2 = new()
+				{
+					readTouchTtlPercent = -1
+				};
+
+				BatchRead br1 = new(brp1, key1, new String[] { "a" });
+				BatchRead br2 = new(brp2, key2, new String[] { "a" });
+
+				List<BatchRecord> list = new()
+				{
+					br1,
+					br2
+				};
+
+				bool rv = await asyncAwaitClient.Operate(null, list, CancellationToken.None);
+
+				Assert.IsTrue(rv);
+				Assert.AreEqual(ResultCode.OK, br1.resultCode);
+				Assert.AreEqual(ResultCode.OK, br2.resultCode);
+
+				// Read records again, but don't reset read ttl.
+				Util.Sleep(3000);
+				brp1.readTouchTtlPercent = -1;
+				brp2.readTouchTtlPercent = -1;
+
+				br1 = new BatchRead(brp1, key1, new String[] { "a" });
+				br2 = new BatchRead(brp2, key2, new String[] { "a" });
+
+				list.Clear();
+				list.Add(br1);
+				list.Add(br2);
+
+				rv = await asyncAwaitClient.Operate(null, list, CancellationToken.None);
+
+				// Key 2 should have expired.
+				Assert.AreEqual(ResultCode.OK, br1.resultCode);
+				Assert.AreEqual(ResultCode.KEY_NOT_FOUND_ERROR, br2.resultCode);
+				Assert.IsFalse(rv);
+
+				// Read  record after it expires, showing it's gone.
+				Util.Sleep(8000);
+				rv = await asyncAwaitClient.Operate(null, list, CancellationToken.None);
+				Assert.AreEqual(ResultCode.KEY_NOT_FOUND_ERROR, br1.resultCode);
+				Assert.AreEqual(ResultCode.KEY_NOT_FOUND_ERROR, br2.resultCode);
+				Assert.IsFalse(rv);
+			}
 		}
 
 

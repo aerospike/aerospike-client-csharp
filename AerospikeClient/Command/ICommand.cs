@@ -36,8 +36,20 @@ namespace Aerospike.Client
 		public int CommandSentCounter { get; set; }
 		public DateTime Deadline { get; set; }
 
+		public int Info3 { get; set; }
+		public int ResultCode { get; set; }
+		public int Generation { get; set; }
+		public int Expiration { get; set; }
+		public int BatchIndex { get; set; }
+		public int FieldCount { get; set; }
+		public int OpCount { get; set; }
+		public bool IsOperation { get; set; }
+
 		public void WriteBuffer();
 		public Task ParseResult(IConnection conn, CancellationToken token);
+		public bool ParseGroup(int receiveSize);
+		public bool ParseRow();
+
 		public bool PrepareRetry(bool timeout);
 
 		public bool IsWrite();

@@ -26,7 +26,7 @@ namespace Aerospike.Test
 		private static readonly string binName = args.GetBinName("expirebin");
 
 		[TestMethod]
-		public void Expire()
+		public async Task Expire()
 		{
 			Key key = new Key(args.ns, args.set, "expirekey1");
 			Bin bin = new Bin(binName, "expirevalue");
@@ -40,20 +40,37 @@ namespace Aerospike.Test
 			{
 				writePolicy.totalTimeout = args.proxyTotalTimeout;
 			}
-			client.Put(writePolicy, key, bin);
 
-			// Read the record before it expires, showing it is there.	
-			Record record = client.Get(null, key, bin.name);
-			AssertBinEqual(key, record, bin);
+			if (!args.testAsyncAwait)
+			{
+				client.Put(writePolicy, key, bin);
 
-			// Read the record after it expires, showing it's gone.
-			Util.Sleep(3 * 1000);
-			record = client.Get(null, key, bin.name);
-			Assert.IsNull(record);
+				// Read the record before it expires, showing it is there.	
+				Record record = client.Get(null, key, bin.name);
+				AssertBinEqual(key, record, bin);
+
+				// Read the record after it expires, showing it's gone.
+				Util.Sleep(3 * 1000);
+				record = client.Get(null, key, bin.name);
+				Assert.IsNull(record);
+			}
+			else
+			{
+				await asyncAwaitClient.Put(writePolicy, key, new[] { bin }, CancellationToken.None);
+
+				// Read the record before it expires, showing it is there.	
+				Record record = await asyncAwaitClient.Get(null, key, new[] { bin.name }, CancellationToken.None);
+				AssertBinEqual(key, record, bin);
+
+				// Read the record after it expires, showing it's gone.
+				Util.Sleep(3 * 1000);
+				record = await asyncAwaitClient.Get(null, key, new[] { bin.name }, CancellationToken.None);
+				Assert.IsNull(record);
+			}
 		}
 
 		[TestMethod]
-		public void NoExpire()
+		public async Task NoExpire()
 		{
 			Key key = new Key(args.ns, args.set, "expirekey2");
 			Bin bin = new Bin(binName, "noexpirevalue");
@@ -66,21 +83,39 @@ namespace Aerospike.Test
 			{
 				writePolicy.totalTimeout = args.proxyTotalTimeout;
 			}
-			client.Put(writePolicy, key, bin);
 
-			// Read the record, showing it is there.
-			Record record = client.Get(null, key, bin.name);
-			AssertBinEqual(key, record, bin);
+			if (!args.testAsyncAwait)
+			{
+				client.Put(writePolicy, key, bin);
 
-			// Read this Record after the Default Expiration, showing it is still there.
-			// We should have set the Namespace TTL at 5 sec.
-			Util.Sleep(10 * 1000);
-			record = client.Get(null, key, bin.name);
-			Assert.IsNotNull(record);
+				// Read the record, showing it is there.
+				Record record = client.Get(null, key, bin.name);
+				AssertBinEqual(key, record, bin);
+
+				// Read this Record after the Default Expiration, showing it is still there.
+				// We should have set the Namespace TTL at 5 sec.
+				Util.Sleep(10 * 1000);
+				record = client.Get(null, key, bin.name);
+				Assert.IsNotNull(record);
+			}
+			else
+			{
+				await asyncAwaitClient.Put(writePolicy, key, new[] { bin }, CancellationToken.None);
+
+				// Read the record, showing it is there.
+				Record record = await asyncAwaitClient.Get(null, key, new[] { bin.name }, CancellationToken.None);
+				AssertBinEqual(key, record, bin);
+
+				// Read this Record after the Default Expiration, showing it is still there.
+				// We should have set the Namespace TTL at 5 sec.
+				Util.Sleep(10 * 1000);
+				record = await asyncAwaitClient.Get(null, key, new[] { bin.name }, CancellationToken.None);
+				Assert.IsNotNull(record);
+			}
 		}
 
 		[TestMethod]
-		public void ResetReadTtl()
+		public async Task ResetReadTtl()
 		{
 			Key key = new(args.ns, args.set, "expirekey3");
 			Bin bin = new(binName, "expirevalue");
@@ -90,27 +125,55 @@ namespace Aerospike.Test
 			{
 				expiration = 2
 			};
-			client.Put(writePolicy, key, bin);
 
-			// Read the record before it expires and reset read ttl.
-			Util.Sleep(1000);
-			Policy readPolicy = new()
+			if (!args.testAsyncAwait)
 			{
-				readTouchTtlPercent = 80
-			};
-			Record record = client.Get(readPolicy, key, bin.name);
-			AssertBinEqual(key, record, bin);
+				client.Put(writePolicy, key, bin);
 
-			// Read the record again, but don't reset read ttl.
-			Util.Sleep(1000);
-			readPolicy.readTouchTtlPercent = -1;
-			record = client.Get(readPolicy, key, bin.name);
-			AssertBinEqual(key, record, bin);
+				// Read the record before it expires and reset read ttl.
+				Util.Sleep(1000);
+				Policy readPolicy = new()
+				{
+					readTouchTtlPercent = 80
+				};
+				Record record = client.Get(readPolicy, key, bin.name);
+				AssertBinEqual(key, record, bin);
 
-			// Read the record after it expires, showing it's gone.
-			Util.Sleep(2000);
-			record = client.Get(null, key, bin.name);
-			Assert.IsNull(record);
+				// Read the record again, but don't reset read ttl.
+				Util.Sleep(1000);
+				readPolicy.readTouchTtlPercent = -1;
+				record = client.Get(readPolicy, key, bin.name);
+				AssertBinEqual(key, record, bin);
+
+				// Read the record after it expires, showing it's gone.
+				Util.Sleep(2000);
+				record = client.Get(null, key, bin.name);
+				Assert.IsNull(record);
+			}
+			else
+			{
+				await asyncAwaitClient.Put(writePolicy, key, new[] { bin }, CancellationToken.None);
+
+				// Read the record before it expires and reset read ttl.
+				Util.Sleep(1000);
+				Policy readPolicy = new()
+				{
+					readTouchTtlPercent = 80
+				};
+				Record record = await asyncAwaitClient.Get(readPolicy, key, new[] { bin.name }, CancellationToken.None);
+				AssertBinEqual(key, record, bin);
+
+				// Read the record again, but don't reset read ttl.
+				Util.Sleep(1000);
+				readPolicy.readTouchTtlPercent = -1;
+				record = await asyncAwaitClient.Get(readPolicy, key, new[] { bin.name }, CancellationToken.None);
+				AssertBinEqual(key, record, bin);
+
+				// Read the record after it expires, showing it's gone.
+				Util.Sleep(2000);
+				record = await asyncAwaitClient.Get(null, key, new[] { bin.name }, CancellationToken.None);
+				Assert.IsNull(record);
+			}
 		}
 	}
 }

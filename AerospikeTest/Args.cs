@@ -119,6 +119,10 @@ namespace Aerospike.Test
 			{
 				ConnectProxy();
 			}
+			else if (testAsyncAwait)
+			{
+				ConnectAsyncAwait();
+			}
 			else
 			{
 				ConnectSync();
@@ -164,6 +168,55 @@ namespace Aerospike.Test
 			{
 				client.Close();
 				client = null;
+				throw;
+			}
+		}
+
+		private void ConnectAsyncAwait()
+		{
+			ClientPolicy policy = new ClientPolicy();
+			policy.clusterName = clusterName;
+			policy.tlsPolicy = tlsPolicy;
+			policy.authMode = authMode;
+			policy.timeout = timeout;
+
+			if (user != null && user.Length > 0)
+			{
+				policy.user = user;
+				policy.password = password;
+			}
+
+			asyncAwaitClient = new AerospikeClientNew(policy, hosts);
+
+			asyncAwaitClient.ReadPolicyDefault.totalTimeout = timeout;
+			asyncAwaitClient.WritePolicyDefault.totalTimeout = timeout;
+			asyncAwaitClient.ScanPolicyDefault.totalTimeout = timeout;
+			asyncAwaitClient.QueryPolicyDefault.totalTimeout = timeout;
+			asyncAwaitClient.BatchPolicyDefault.totalTimeout = timeout;
+			asyncAwaitClient.BatchParentPolicyWriteDefault.totalTimeout = timeout;
+			asyncAwaitClient.InfoPolicyDefault.timeout = timeout;
+
+			nativeClient = new AerospikeClient(policy, hosts);
+
+			nativeClient.readPolicyDefault.totalTimeout = timeout;
+			nativeClient.WritePolicyDefault.totalTimeout = timeout;
+			nativeClient.ScanPolicyDefault.totalTimeout = timeout;
+			nativeClient.QueryPolicyDefault.totalTimeout = timeout;
+			nativeClient.BatchPolicyDefault.totalTimeout = timeout;
+			nativeClient.BatchParentPolicyWriteDefault.totalTimeout = timeout;
+			nativeClient.InfoPolicyDefault.timeout = timeout;
+
+			//Example of how to enable metrics
+			//client.EnableMetrics(new MetricsPolicy());
+
+			try
+			{
+				SetServerSpecific();
+			}
+			catch
+			{
+				asyncAwaitClient.Close();
+				asyncAwaitClient = null;
 				throw;
 			}
 		}

@@ -31,10 +31,15 @@ namespace Aerospike.Test
 			Key key = new Key(args.ns, args.set, "putgetkey1");
 			Bin bin = new Bin(binName, "value1");
 
-			if (!args.testProxy)
+			if (!args.testProxy && !args.testAsyncAwait)
 			{
 				client.Put(null, new WriteHandler(this, client, key, bin), key, bin);
 				WaitTillComplete();
+			}
+			else if (args.testAsyncAwait)
+			{
+				await asyncAwaitClient.Put(null, key, new[] { bin }, tokenSource.Token);
+				await WriteListenerSuccess(key, bin, this);
 			}
 			else
 			{
@@ -49,20 +54,33 @@ namespace Aerospike.Test
 			Key key = new Key(args.ns, args.set, "putgetkey2");
 			Bin bin = new Bin(binName, "value2");
 
-			Task taskput = client.Put(null, tokenSource.Token, key, bin);
-			taskput.Wait();
+			if (!args.testAsyncAwait)
+			{
+				Task taskput = client.Put(null, tokenSource.Token, key, bin);
+				taskput.Wait();
 
-			Task<Record> taskget = client.Get(null, tokenSource.Token, key);
-			taskget.Wait();
+				Task<Record> taskget = client.Get(null, tokenSource.Token, key);
+				taskget.Wait();
 
-			TestSync.AssertBinEqual(key, taskget.Result, bin);
+				TestSync.AssertBinEqual(key, taskget.Result, bin);
+			}
+			else
+			{
+				Task taskput = asyncAwaitClient.Put(null, key, new[] { bin }, tokenSource.Token);
+				taskput.Wait();
+
+				Task<Record> taskget = asyncAwaitClient.Get(null, key, tokenSource.Token);
+				taskget.Wait();
+
+				TestSync.AssertBinEqual(key, taskget.Result, bin);
+			}
 		}
 
 		static async Task WriteListenerSuccess(Key key, Bin bin, TestAsyncPutGet parent)
 		{
 			try
 			{
-				if (!args.testProxy)
+				if (!args.testProxy && !args.testAsyncAwait)
 				{
 					// Write succeeded.  Now call read.
 					client.Get(null, new RecordHandler(parent, key, bin), key);
@@ -147,18 +165,25 @@ namespace Aerospike.Test
 			tokenSource.Cancel();
 			try
 			{
-				await client.Put(null, tokenSource.Token, key, bin);
+				if (!args.testAsyncAwait)
+				{
+					await client.Put(null, tokenSource.Token, key, bin);
+				}
+				else
+				{
+					await asyncAwaitClient.Put(null, key, new[] { bin }, tokenSource.Token);
+				}
 			}
 			catch (TaskCanceledException) // expected exception for native client
 			{
-				if (args.testProxy)
+				if (args.testProxy || args.testAsyncAwait)
 				{
 					throw;
 				}
 			}
 			catch (OperationCanceledException) // expected exception for proxy client
 			{
-				if (!args.testProxy)
+				if (!args.testProxy && !args.testAsyncAwait)
 				{
 					throw;
 				}

@@ -24,56 +24,105 @@ namespace Aerospike.Test
 	public class TestReplace : TestSync
 	{
 		[TestMethod]
-		public void Replace()
+		public async Task Replace()
 		{
 			Key key = new Key(args.ns, args.set, "replacekey");
 			Bin bin1 = new Bin("bin1", "value1");
 			Bin bin2 = new Bin("bin2", "value2");
 			Bin bin3 = new Bin("bin3", "value3");
 
-			client.Put(null, key, bin1, bin2);
-
-			WritePolicy policy = new WritePolicy();
-			policy.recordExistsAction = RecordExistsAction.REPLACE;
-			client.Put(policy, key, bin3);
-
-			Record record = client.Get(null, key);
-			AssertRecordFound(key, record);
-
-			if (record.GetValue(bin1.name) != null)
+			if (!args.testAsyncAwait)
 			{
-				Assert.Fail(bin1.name + " found when it should have been deleted.");
-			}
+				client.Put(null, key, bin1, bin2);
 
-			if (record.GetValue(bin2.name) != null)
-			{
-				Assert.Fail(bin2.name + " found when it should have been deleted.");
+				WritePolicy policy = new WritePolicy();
+				policy.recordExistsAction = RecordExistsAction.REPLACE;
+				client.Put(policy, key, bin3);
+
+				Record record = client.Get(null, key);
+				AssertRecordFound(key, record);
+
+				if (record.GetValue(bin1.name) != null)
+				{
+					Assert.Fail(bin1.name + " found when it should have been deleted.");
+				}
+
+				if (record.GetValue(bin2.name) != null)
+				{
+					Assert.Fail(bin2.name + " found when it should have been deleted.");
+				}
+				AssertBinEqual(key, record, bin3);
 			}
-			AssertBinEqual(key, record, bin3);
+			else
+			{
+				await asyncAwaitClient.Put(null, key, new[] { bin1, bin2 }, CancellationToken.None);
+
+				WritePolicy policy = new WritePolicy();
+				policy.recordExistsAction = RecordExistsAction.REPLACE;
+				await asyncAwaitClient.Put(policy, key, new[] { bin3 }, CancellationToken.None);
+
+				Record record = await asyncAwaitClient.Get(null, key, CancellationToken.None);
+				AssertRecordFound(key, record);
+
+				if (record.GetValue(bin1.name) != null)
+				{
+					Assert.Fail(bin1.name + " found when it should have been deleted.");
+				}
+
+				if (record.GetValue(bin2.name) != null)
+				{
+					Assert.Fail(bin2.name + " found when it should have been deleted.");
+				}
+				AssertBinEqual(key, record, bin3);
+			}
 		}
 
 		[TestMethod]
-		public void ReplaceOnly()
+		public async Task ReplaceOnly()
 		{
 			Key key = new Key(args.ns, args.set, "replaceonlykey");
 			Bin bin = new Bin("bin", "value");
 
-			// Delete record if it already exists.
-			client.Delete(null, key);
-
-			try
+			if (!args.testAsyncAwait)
 			{
-				WritePolicy policy = new WritePolicy();
-				policy.recordExistsAction = RecordExistsAction.REPLACE_ONLY;
-				client.Put(policy, key, bin);
+				// Delete record if it already exists.
+				client.Delete(null, key);
 
-				Assert.Fail("Failure. This command should have resulted in an error.");
-			}
-			catch (AerospikeException ae)
-			{
-				if (ae.Result != ResultCode.KEY_NOT_FOUND_ERROR)
+				try
 				{
-					throw ae;
+					WritePolicy policy = new WritePolicy();
+					policy.recordExistsAction = RecordExistsAction.REPLACE_ONLY;
+					client.Put(policy, key, bin);
+
+					Assert.Fail("Failure. This command should have resulted in an error.");
+				}
+				catch (AerospikeException ae)
+				{
+					if (ae.Result != ResultCode.KEY_NOT_FOUND_ERROR)
+					{
+						throw ae;
+					}
+				}
+			}
+			else
+			{
+				// Delete record if it already exists.
+				await asyncAwaitClient.Delete(null, key, CancellationToken.None);
+
+				try
+				{
+					WritePolicy policy = new WritePolicy();
+					policy.recordExistsAction = RecordExistsAction.REPLACE_ONLY;
+					await asyncAwaitClient.Put(policy, key, new[] { bin }, CancellationToken.None);
+		
+					Assert.Fail("Failure. This command should have resulted in an error.");
+				}
+				catch (AerospikeException ae)
+				{
+					if (ae.Result != ResultCode.KEY_NOT_FOUND_ERROR)
+					{
+						throw ae;
+					}
 				}
 			}
 		}

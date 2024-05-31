@@ -77,47 +77,92 @@ namespace Aerospike.Test
 #endif
 
 		[TestMethod]
-		public void SerializeList()
+		public async Task SerializeList()
 		{
 			Key key = new Key(args.ns, args.set, "seriallistkey");
 
-			// Delete record if it already exists.
-			client.Delete(null, key);
-
-			List<string> list = new List<string>();
-			list.Add("string1");
-			list.Add("string2");
-			list.Add("string3");
-
-			Bin bin = new Bin(binName, list);
-
-			client.Put(null, key, bin);
-
-			Record record = client.Get(null, key, bin.name);
-			AssertRecordFound(key, record);
-
-			IList received = null;
-
-			try
+			if (!args.testAsyncAwait)
 			{
-				received = (IList) record.GetValue(bin.name);
-			}
-			catch (Exception)
-			{
-				Assert.Fail("Assert.Failed to parse returned value: namespace=" + key.ns + " set=" + key.setName + " key=" + key.userKey + " bin=" + bin.name);
-			}
+				// Delete record if it already exists.
+				client.Delete(null, key);
 
-			Assert.IsNotNull(received);
-			Assert.AreEqual(3, received.Count);
-			int max = received.Count;
+				List<string> list = new List<string>();
+				list.Add("string1");
+				list.Add("string2");
+				list.Add("string3");
 
-			for (int i = 0; i < max; i++)
-			{
-				string expected = "string" + (i + 1);
-				if (!received[i].Equals(expected))
+				Bin bin = new Bin(binName, list);
+
+				client.Put(null, key, bin);
+
+				Record record = client.Get(null, key, bin.name);
+				AssertRecordFound(key, record);
+
+				IList received = null;
+
+				try
 				{
-					object obj = received[i];
-					Assert.Fail("Mismatch: index=" + i + " expected=" + expected + " received=" + obj);
+					received = (IList)record.GetValue(bin.name);
+				}
+				catch (Exception)
+				{
+					Assert.Fail("Assert.Failed to parse returned value: namespace=" + key.ns + " set=" + key.setName + " key=" + key.userKey + " bin=" + bin.name);
+				}
+
+				Assert.IsNotNull(received);
+				Assert.AreEqual(3, received.Count);
+				int max = received.Count;
+
+				for (int i = 0; i < max; i++)
+				{
+					string expected = "string" + (i + 1);
+					if (!received[i].Equals(expected))
+					{
+						object obj = received[i];
+						Assert.Fail("Mismatch: index=" + i + " expected=" + expected + " received=" + obj);
+					}
+				}
+			}
+			else
+			{
+				// Delete record if it already exists.
+				await asyncAwaitClient.Delete(null, key, CancellationToken.None);
+
+				List<string> list = new List<string>();
+				list.Add("string1");
+				list.Add("string2");
+				list.Add("string3");
+
+				Bin bin = new Bin(binName, list);
+
+				await asyncAwaitClient.Put(null, key, new[] { bin }, CancellationToken.None);
+
+				Record record = await asyncAwaitClient.Get(null, key, new[] { bin.name }, CancellationToken.None);
+				AssertRecordFound(key, record);
+
+				IList received = null;
+
+				try
+				{
+					received = (IList)record.GetValue(bin.name);
+				}
+				catch (Exception)
+				{
+					Assert.Fail("Assert.Failed to parse returned value: namespace=" + key.ns + " set=" + key.setName + " key=" + key.userKey + " bin=" + bin.name);
+				}
+
+				Assert.IsNotNull(received);
+				Assert.AreEqual(3, received.Count);
+				int max = received.Count;
+
+				for (int i = 0; i < max; i++)
+				{
+					string expected = "string" + (i + 1);
+					if (!received[i].Equals(expected))
+					{
+						object obj = received[i];
+						Assert.Fail("Mismatch: index=" + i + " expected=" + expected + " received=" + obj);
+					}
 				}
 			}
 		}

@@ -49,14 +49,21 @@ namespace Aerospike.Test
 		private Policy policy;
 
 		[TestInitialize()]
-		public void SetUp()
+		public async Task SetUp()
 		{
-			client.Delete(null, key);
+			if (!args.testAsyncAwait)
+			{
+				client.Delete(null, key);
+			}
+			else
+			{
+				await asyncAwaitClient.Delete(null, key, CancellationToken.None);
+			}
 			policy = new Policy();
 		}
 
 		[TestMethod]
-		public void PutSortedDictionary()
+		public async Task PutSortedDictionary()
 		{
 			var map = new SortedDictionary<string, string>();
 			map["key1"] = "e";
@@ -65,18 +72,32 @@ namespace Aerospike.Test
 			map["key4"] = "b";
 			map["key5"] = "a";
 
-			client.Operate(null, key,
-				MapOperation.PutItems(new MapPolicy(MapOrder.KEY_ORDERED, MapWriteFlags.DEFAULT), bin, map)
+			if (!args.testAsyncAwait) { 
+				client.Operate(null, key,
+					MapOperation.PutItems(new MapPolicy(MapOrder.KEY_ORDERED, MapWriteFlags.DEFAULT), bin, map)
+					);
+
+				policy.filterExp = Exp.Build(Exp.EQ(Exp.MapBin("m"), Exp.Val(map, MapOrder.KEY_ORDERED)));
+
+				Record record = client.Get(policy, key, bin);
+				AssertRecordFound(key, record);
+			}
+			else
+			{
+				await asyncAwaitClient.Operate(null, key,
+					new[] { MapOperation.PutItems(new MapPolicy(MapOrder.KEY_ORDERED, MapWriteFlags.DEFAULT), bin, map) },
+					CancellationToken.None
 				);
 
-			policy.filterExp = Exp.Build(Exp.EQ(Exp.MapBin("m"), Exp.Val(map, MapOrder.KEY_ORDERED)));
+				policy.filterExp = Exp.Build(Exp.EQ(Exp.MapBin("m"), Exp.Val(map, MapOrder.KEY_ORDERED)));
 
-		    Record record = client.Get(policy, key, bin);
-			AssertRecordFound(key, record);
+				Record record = await asyncAwaitClient.Get(policy, key, new[] { bin }, CancellationToken.None);
+				AssertRecordFound(key, record);
+			}
 		}
 
 		[TestMethod]
-		public void InvertedMapExp()
+		public async Task InvertedMapExp()
 		{
 			var map = new Dictionary<string, int>
 			{
@@ -89,18 +110,36 @@ namespace Aerospike.Test
 			Key key = new(args.ns, args.set, "ime");
 			Bin bin = new("m", map);
 
-			client.Put(null, key, bin);
+			if (!args.testAsyncAwait)
+			{
+				client.Put(null, key, bin);
 
-			// Use INVERTED to return map with entries removed where value != 2
-			Expression e = Exp.Build(MapExp.RemoveByValue(MapReturnType.INVERTED, Exp.Val(2), Exp.MapBin(bin.name)));
+				// Use INVERTED to return map with entries removed where value != 2
+				Expression e = Exp.Build(MapExp.RemoveByValue(MapReturnType.INVERTED, Exp.Val(2), Exp.MapBin(bin.name)));
 
-			Record rec = client.Operate(null, key, ExpOperation.Read(bin.name, e, ExpReadFlags.DEFAULT));
-			AssertRecordFound(key, rec);
+				Record rec = client.Operate(null, key, ExpOperation.Read(bin.name, e, ExpReadFlags.DEFAULT));
+				AssertRecordFound(key, rec);
 
-			var m = rec.GetMap(bin.name);
-			Assert.AreEqual((long)2, m.Count);
-			Assert.AreEqual((long)2, m["b"]);
-			Assert.AreEqual((long)2, m["c"]);
+				var m = rec.GetMap(bin.name);
+				Assert.AreEqual((long)2, m.Count);
+				Assert.AreEqual((long)2, m["b"]);
+				Assert.AreEqual((long)2, m["c"]);
+			}
+			else
+			{
+				await asyncAwaitClient.Put(null, key, new[] { bin }, CancellationToken.None);
+
+				// Use INVERTED to return map with entries removed where value != 2
+				Expression e = Exp.Build(MapExp.RemoveByValue(MapReturnType.INVERTED, Exp.Val(2), Exp.MapBin(bin.name)));
+
+				Record rec = await asyncAwaitClient.Operate(null, key, new[] { ExpOperation.Read(bin.name, e, ExpReadFlags.DEFAULT) }, CancellationToken.None);
+				AssertRecordFound(key, rec);
+
+				var m = rec.GetMap(bin.name);
+				Assert.AreEqual((long)2, m.Count);
+				Assert.AreEqual((long)2, m["b"]);
+				Assert.AreEqual((long)2, m["c"]);
+			}
 		}
 	}
 }

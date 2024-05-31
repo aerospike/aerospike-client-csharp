@@ -37,10 +37,14 @@ namespace Aerospike.Test
 
 			try
 			{
-				if (!args.testProxy || (args.testProxy && nativeClient != null))
+				if (!args.testProxy || (args.testProxy && nativeClient != null) || !args.testAsyncAwait)
 				{
 					IndexTask task = nativeClient.CreateIndex(policy, args.ns, args.set, indexName, binName, IndexType.NUMERIC);
 					task.Wait();
+				}
+				else if (args.testAsyncAwait) 
+				{
+					throw new NotImplementedException();
 				}
 			}
 			catch (AerospikeException ae)
@@ -64,7 +68,7 @@ namespace Aerospike.Test
 		[TestMethod]
 		public async Task AsyncQuery()
 		{
-			if (!args.testProxy)
+			if (!args.testProxy && !args.testAsyncAwait)
 			{
 				WriteHandler handler = new WriteHandler(this);
 
@@ -75,6 +79,10 @@ namespace Aerospike.Test
 					client.Put(null, handler, key, bin);
 				}
 				WaitTillComplete();
+			}
+			else if (args.testAsyncAwait)
+			{
+				throw new NotImplementedException();
 			}
 			else
 			{
@@ -104,7 +112,7 @@ namespace Aerospike.Test
 				stmt.SetBinNames(binName);
 				stmt.SetFilter(Filter.Range(binName, begin, end));
 
-				if (!args.testProxy)
+				if (!args.testProxy && !args.testAsyncAwait)
 				{
 					client.Query(null, new RecordSequenceHandler(parent), stmt);
 				}

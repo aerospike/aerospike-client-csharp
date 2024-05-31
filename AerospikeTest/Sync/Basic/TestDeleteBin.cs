@@ -24,29 +24,52 @@ namespace Aerospike.Test
 	public class TestDeleteBin : TestSync
 	{
 		[TestMethod]
-		public void DeleteBin()
+		public async Task DeleteBin()
 		{
 			Key key = new Key(args.ns, args.set, "delbinkey");
 			string binName1 = args.GetBinName("bin1");
 			string binName2 = args.GetBinName("bin2");
 			Bin bin1 = new Bin(binName1, "value1");
 			Bin bin2 = new Bin(binName2, "value2");
-			client.Put(null, key, bin1, bin2);
 
-			bin1 = Bin.AsNull(binName1); // Set bin value to null to drop bin.
-			client.Put(null, key, bin1);
-
-			Record record = client.Get(null, key, bin1.name, bin2.name, "bin3");
-			AssertRecordFound(key, record);
-
-			if (record.GetValue("bin1") != null)
+			if (!args.testAsyncAwait)
 			{
-				Assert.Fail("bin1 still exists.");
-			}
+				client.Put(null, key, bin1, bin2);
 
-			object v2 = record.GetValue("bin2");
-			Assert.IsNotNull(v2);
-			Assert.AreEqual("value2", v2);
+				bin1 = Bin.AsNull(binName1); // Set bin value to null to drop bin.
+				client.Put(null, key, bin1);
+
+				Record record = client.Get(null, key, bin1.name, bin2.name, "bin3");
+				AssertRecordFound(key, record);
+
+				if (record.GetValue("bin1") != null)
+				{
+					Assert.Fail("bin1 still exists.");
+				}
+
+				object v2 = record.GetValue("bin2");
+				Assert.IsNotNull(v2);
+				Assert.AreEqual("value2", v2);
+			}
+			else
+			{
+				await asyncAwaitClient.Put(null, key, new[] { bin1, bin2 }, CancellationToken.None);
+
+				bin1 = Bin.AsNull(binName1); // Set bin value to null to drop bin.
+				await asyncAwaitClient.Put(null, key, new[] { bin1 }, CancellationToken.None);
+
+				Record record = await asyncAwaitClient.Get(null, key, new[] { bin1.name, bin2.name, "bin3" }, CancellationToken.None);
+				AssertRecordFound(key, record);
+
+				if (record.GetValue("bin1") != null)
+				{
+					Assert.Fail("bin1 still exists.");
+				}
+
+				object v2 = record.GetValue("bin2");
+				Assert.IsNotNull(v2);
+				Assert.AreEqual("value2", v2);
+			}
 		}
 	}
 }

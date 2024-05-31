@@ -18,6 +18,7 @@ using System.Collections.Generic;
 using System.Reflection;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Aerospike.Client;
+using Grpc.Core;
 
 namespace Aerospike.Test
 {
@@ -46,131 +47,235 @@ namespace Aerospike.Test
 		}
 
 		[TestInitialize()]
-		public void Initialize()
+		public async Task Initialize()
 		{
-			client.Delete(null, keyA);
-			client.Delete(null, keyB);
-			client.Delete(null, keyC);
-
-			client.Put(null, keyA, new Bin(binA, 1), new Bin(binB, 1.1), new Bin(binC, "abcde"), new Bin(binD, 1), new Bin(binE, -1));
-			client.Put(null, keyB, new Bin(binA, 2), new Bin(binB, 2.2), new Bin(binC, "abcdeabcde"), new Bin(binD, 1), new Bin(binE, -2));
-			client.Put(null, keyC, new Bin(binA, 0), new Bin(binB, -1), new Bin(binC, 1));
-		}
-
-		[TestMethod]
-		public void FilterExpPut()
-		{
-			WritePolicy policy = new WritePolicy();
-			policy.filterExp = Exp.Build(Exp.EQ(Exp.IntBin(binA), Exp.Val(1)));
-
-			Bin bin = new Bin(binA, 3);
-
-			client.Put(policy, keyA, bin);
-			Record r = client.Get(null, keyA);
-
-			AssertBinEqual(keyA, r, binA, 3);
-
-			client.Put(policy, keyB, bin);
-			r = client.Get(null, keyB);
-
-			AssertBinEqual(keyB, r, binA, 2);
-		}
-
-		[TestMethod]
-		public void FilterExpPutExcept()
-		{
-			WritePolicy policy = new WritePolicy();
-			policy.filterExp = Exp.Build(Exp.EQ(Exp.IntBin(binA), Exp.Val(1)));
-			policy.failOnFilteredOut = true;
-
-			Bin bin = new Bin(binA, 3);
-
-			client.Put(policy, keyA, bin);
-
-			Test.TestException(() =>
+			if (!args.testAsyncAwait)
 			{
+				client.Delete(null, keyA);
+				client.Delete(null, keyB);
+				client.Delete(null, keyC);
+
+				client.Put(null, keyA, new Bin(binA, 1), new Bin(binB, 1.1), new Bin(binC, "abcde"), new Bin(binD, 1), new Bin(binE, -1));
+				client.Put(null, keyB, new Bin(binA, 2), new Bin(binB, 2.2), new Bin(binC, "abcdeabcde"), new Bin(binD, 1), new Bin(binE, -2));
+				client.Put(null, keyC, new Bin(binA, 0), new Bin(binB, -1), new Bin(binC, 1));
+			}
+			else
+			{
+				await asyncAwaitClient.Delete(null, keyA, CancellationToken.None);
+				await asyncAwaitClient.Delete(null, keyB, CancellationToken.None);
+				await asyncAwaitClient.Delete(null, keyC, CancellationToken.None);
+
+				await asyncAwaitClient.Put(null, keyA, new[] { new Bin(binA, 1), new Bin(binB, 1.1), new Bin(binC, "abcde"), new Bin(binD, 1), new Bin(binE, -1) }, CancellationToken.None);
+				await asyncAwaitClient.Put(null, keyB, new[] { new Bin(binA, 2), new Bin(binB, 2.2), new Bin(binC, "abcdeabcde"), new Bin(binD, 1), new Bin(binE, -2) }, CancellationToken.None);
+				await asyncAwaitClient.Put(null, keyC, new[] { new Bin(binA, 0), new Bin(binB, -1), new Bin(binC, 1) }, CancellationToken.None);
+			}
+		}
+
+		[TestMethod]
+		public async Task FilterExpPut()
+		{
+			WritePolicy policy = new WritePolicy();
+			policy.filterExp = Exp.Build(Exp.EQ(Exp.IntBin(binA), Exp.Val(1)));
+
+			Bin bin = new Bin(binA, 3);
+
+			if (!args.testAsyncAwait)
+			{
+				client.Put(policy, keyA, bin);
+				Record r = client.Get(null, keyA);
+
+				AssertBinEqual(keyA, r, binA, 3);
+
 				client.Put(policy, keyB, bin);
-			}, ResultCode.FILTERED_OUT);
+				r = client.Get(null, keyB);
+
+				AssertBinEqual(keyB, r, binA, 2);
+			}
+			else
+			{
+				await asyncAwaitClient.Put(policy, keyA, new[] { bin }, CancellationToken.None);
+				Record r = client.Get(null, keyA);
+
+				AssertBinEqual(keyA, r, binA, 3);
+
+				await asyncAwaitClient.Put(policy, keyB, new[] { bin }, CancellationToken.None);
+				r = await asyncAwaitClient.Get(null, keyB, CancellationToken.None);
+
+				AssertBinEqual(keyB, r, binA, 2);
+			}
 		}
 
 		[TestMethod]
-		public void FilterExpGet()
+		public async Task FilterExpPutExcept()
+		{
+			WritePolicy policy = new WritePolicy();
+			policy.filterExp = Exp.Build(Exp.EQ(Exp.IntBin(binA), Exp.Val(1)));
+			policy.failOnFilteredOut = true;
+
+			Bin bin = new Bin(binA, 3);
+
+			if (!args.testAsyncAwait)
+			{
+				client.Put(policy, keyA, bin);
+
+				Test.TestException(() =>
+				{
+					client.Put(policy, keyB, bin);
+				}, ResultCode.FILTERED_OUT);
+			}
+			else
+			{
+				await asyncAwaitClient.Put(policy, keyA, new[] { bin }, CancellationToken.None);
+
+				Test.TestException(async () =>
+				{
+					await asyncAwaitClient.Put(policy, keyB, new[] { bin }, CancellationToken.None);
+				}, ResultCode.FILTERED_OUT);
+			}
+		}
+
+		[TestMethod]
+		public async Task FilterExpGet()
 		{
 			Policy policy = new Policy();
 			policy.filterExp = Exp.Build(Exp.EQ(Exp.IntBin(binA), Exp.Val(1)));
 
-			Record r = client.Get(policy, keyA);
+			if (!args.testAsyncAwait)
+			{
+				Record r = client.Get(policy, keyA);
 
-			AssertBinEqual(keyA, r, binA, 1);
+				AssertBinEqual(keyA, r, binA, 1);
 
-			r = client.Get(policy, keyB);
+				r = client.Get(policy, keyB);
 
-			Assert.AreEqual(null, r);
+				Assert.AreEqual(null, r);
+			}
+			else
+			{
+				Record r = await asyncAwaitClient.Get(policy, keyA, CancellationToken.None);
+
+				AssertBinEqual(keyA, r, binA, 1);
+
+				r = await asyncAwaitClient.Get(policy, keyB, CancellationToken.None);
+
+				Assert.AreEqual(null, r);
+			}
 		}
 
 		[TestMethod]
-		public void FilterExpGetExcept()
+		public async Task FilterExpGetExcept()
 		{
 			Policy policy = new Policy();
 			policy.filterExp = Exp.Build(Exp.EQ(Exp.IntBin(binA), Exp.Val(1)));
 			policy.failOnFilteredOut = true;
 
-			client.Get(policy, keyA);
-
-			Test.TestException(() =>
+			if (!args.testAsyncAwait)
 			{
-				client.Get(policy, keyB);
-			}, ResultCode.FILTERED_OUT);
+				client.Get(policy, keyA);
+
+				Test.TestException(() =>
+				{
+					client.Get(policy, keyB);
+				}, ResultCode.FILTERED_OUT);
+			}
+			else
+			{
+				await asyncAwaitClient.Get(policy, keyA, CancellationToken.None);
+
+				Test.TestException(async () =>
+				{
+					await asyncAwaitClient.Get(policy, keyB, CancellationToken.None);
+				}, ResultCode.FILTERED_OUT);
+			}
+
 		}
 
 		[TestMethod]
-		public void FilterExpBatch()
+		public async Task FilterExpBatch()
 		{
 			BatchPolicy policy = new BatchPolicy();
 			policy.filterExp = Exp.Build(Exp.EQ(Exp.IntBin(binA), Exp.Val(1)));
 
 			Key[] keys = new Key[] { keyA, keyB };
 
-			Record[] records = client.Get(policy, keys);
+			if (!args.testAsyncAwait)
+			{
+				Record[] records = client.Get(policy, keys);
 
-			AssertBinEqual(keyA, records[0], binA, 1);
-			Assert.AreEqual(null, records[1]);
+				AssertBinEqual(keyA, records[0], binA, 1);
+				Assert.AreEqual(null, records[1]);
+			}
+			else
+			{
+				Record[] records = await asyncAwaitClient.Get(policy, keys, CancellationToken.None);
+
+				AssertBinEqual(keyA, records[0], binA, 1);
+				Assert.AreEqual(null, records[1]);
+			}
 		}
 
 		[TestMethod]
-		public void FilterExpDelete()
+		public async Task FilterExpDelete()
 		{
 			WritePolicy policy = new WritePolicy();
 			policy.filterExp = Exp.Build(Exp.EQ(Exp.IntBin(binA), Exp.Val(1)));
 
-			client.Delete(policy, keyA);
-			Record r = client.Get(null, keyA);
+			if (!args.testAsyncAwait)
+			{
+				client.Delete(policy, keyA);
+				Record r = client.Get(null, keyA);
 
-			Assert.AreEqual(null, r);
+				Assert.AreEqual(null, r);
 
-			client.Delete(policy, keyB);
-			r = client.Get(null, keyB);
+				client.Delete(policy, keyB);
+				r = client.Get(null, keyB);
 
-			AssertBinEqual(keyB, r, binA, 2);
+				AssertBinEqual(keyB, r, binA, 2);
+			}
+			else
+			{
+				await asyncAwaitClient.Delete(policy, keyA, CancellationToken.None);
+				Record r = client.Get(null, keyA);
+
+				Assert.AreEqual(null, r);
+
+				await asyncAwaitClient.Delete(policy, keyB, CancellationToken.None);
+				r = await asyncAwaitClient.Get(null, keyB, CancellationToken.None);
+
+				AssertBinEqual(keyB, r, binA, 2);
+
+			}
 		}
 
 		[TestMethod]
-		public void FilterExpDeleteExcept()
+		public async Task FilterExpDeleteExcept()
 		{
 			WritePolicy policy = new WritePolicy();
 			policy.filterExp = Exp.Build(Exp.EQ(Exp.IntBin(binA), Exp.Val(1)));
 			policy.failOnFilteredOut = true;
 
-			client.Delete(policy, keyA);
-
-			Test.TestException(() =>
+			if (!args.testAsyncAwait)
 			{
-				client.Delete(policy, keyB);
-			}, ResultCode.FILTERED_OUT);
-		}
+				client.Delete(policy, keyA);
+
+				Test.TestException(() =>
+				{
+					client.Delete(policy, keyB);
+				}, ResultCode.FILTERED_OUT);
+			}
+            else
+            {
+				await asyncAwaitClient.Delete(policy, keyA, CancellationToken.None);
+
+				Test.TestException(async () =>
+				{
+					await asyncAwaitClient.Delete(policy, keyB, CancellationToken.None);
+				}, ResultCode.FILTERED_OUT);
+			}
+        }
 
 		[TestMethod]
-		public void FilterExpDurableDelete()
+		public async Task FilterExpDurableDelete()
 		{
 			if (!args.enterprise)
 			{
@@ -181,19 +286,34 @@ namespace Aerospike.Test
 			policy.filterExp = Exp.Build(Exp.EQ(Exp.IntBin(binA), Exp.Val(1)));
 			policy.durableDelete = true;
 
-			client.Delete(policy, keyA);
-			Record r = client.Get(null, keyA);
+			if (!args.testAsyncAwait)
+			{ 
+				client.Delete(policy, keyA);
+				Record r = client.Get(null, keyA);
 
-			Assert.AreEqual(null, r);
+				Assert.AreEqual(null, r);
 
-			client.Delete(policy, keyB);
-			r = client.Get(null, keyB);
+				client.Delete(policy, keyB);
+				r = client.Get(null, keyB);
 
-			AssertBinEqual(keyB, r, binA, 2);
+				AssertBinEqual(keyB, r, binA, 2);
+			}
+			else
+			{
+				await asyncAwaitClient.Delete(policy, keyA, CancellationToken.None);
+				Record r = client.Get(null, keyA);
+
+				Assert.AreEqual(null, r);
+
+				await asyncAwaitClient.Delete(policy, keyB, CancellationToken.None);
+				r = await asyncAwaitClient.Get(null, keyB, CancellationToken.None);
+
+				AssertBinEqual(keyB, r, binA, 2);
+			}
 		}
 
 		[TestMethod]
-		public void FilterExpDurableDeleteExcept()
+		public async Task FilterExpDurableDeleteExcept()
 		{
 			if (!args.enterprise)
 			{
@@ -205,63 +325,113 @@ namespace Aerospike.Test
 			policy.failOnFilteredOut = true;
 			policy.durableDelete = true;
 
-			client.Delete(policy, keyA);
-
-			Test.TestException(() =>
+			if (!args.testAsyncAwait)
 			{
-				client.Delete(policy, keyB);
-			}, ResultCode.FILTERED_OUT);
+				client.Delete(policy, keyA);
+
+				Test.TestException(() =>
+				{
+					client.Delete(policy, keyB);
+				}, ResultCode.FILTERED_OUT);
+			}
+			else
+			{
+				await asyncAwaitClient.Delete(policy, keyA, CancellationToken.None);
+
+				Test.TestException(async () =>
+				{
+					await asyncAwaitClient.Delete(policy, keyB, CancellationToken.None);
+				}, ResultCode.FILTERED_OUT);
+			}
 		}
 
 		[TestMethod]
-		public void FilterExpOperateRead()
+		public async Task FilterExpOperateRead()
 		{
 			WritePolicy policy = new WritePolicy();
 			policy.filterExp = Exp.Build(Exp.EQ(Exp.IntBin(binA), Exp.Val(1)));
 
-			Record r = client.Operate(policy, keyA, Operation.Get(binA));
+			if (!args.testAsyncAwait)
+			{
+				Record r = client.Operate(policy, keyA, Operation.Get(binA));
 
-			AssertBinEqual(keyA, r, binA, 1);
+				AssertBinEqual(keyA, r, binA, 1);
 
-			r = client.Operate(policy, keyB, Operation.Get(binA));
+				r = client.Operate(policy, keyB, Operation.Get(binA));
 
-			Assert.AreEqual(null, r);
+				Assert.AreEqual(null, r);
+			}
+			else
+			{
+				Record r = await asyncAwaitClient.Operate(policy, keyA, new[] { Operation.Get(binA) }, CancellationToken.None);
+
+				AssertBinEqual(keyA, r, binA, 1);
+
+				r = await asyncAwaitClient.Operate(policy, keyB, new[] { Operation.Get(binA) }, CancellationToken.None);
+
+				Assert.AreEqual(null, r);
+			}
 		}
 
 		[TestMethod]
-		public void FilterExpOperateReadExcept()
+		public async Task FilterExpOperateReadExcept()
 		{
 			WritePolicy policy = new WritePolicy();
 			policy.filterExp = Exp.Build(Exp.EQ(Exp.IntBin(binA), Exp.Val(1)));
 			policy.failOnFilteredOut = true;
 
-			client.Operate(policy, keyA, Operation.Get(binA));
-
-			Test.TestException(() =>
+			if (!args.testAsyncAwait)
 			{
-				client.Operate(policy, keyB, Operation.Get(binA));
-			}, ResultCode.FILTERED_OUT);
+				client.Operate(policy, keyA, Operation.Get(binA));
+
+				Test.TestException(() =>
+				{
+					client.Operate(policy, keyB, Operation.Get(binA));
+				}, ResultCode.FILTERED_OUT);
+			}
+			else
+			{
+				await asyncAwaitClient.Operate(policy, keyA, new[] { Operation.Get(binA) }, CancellationToken.None);
+
+				Test.TestException(async () =>
+				{
+					await asyncAwaitClient.Operate(policy, keyB, new[] { Operation.Get(binA) }, CancellationToken.None);
+				}, ResultCode.FILTERED_OUT);
+			}
 		}
 
 		[TestMethod]
-		public void FilterExpOperateWrite()
+		public async Task FilterExpOperateWrite()
 		{
 			WritePolicy policy = new WritePolicy();
 			policy.filterExp = Exp.Build(Exp.EQ(Exp.IntBin(binA), Exp.Val(1)));
 
 			Bin bin = new Bin(binA, 3);
 
-			Record r = client.Operate(policy, keyA, Operation.Put(bin), Operation.Get(binA));
+			if (!args.testAsyncAwait)
+			{
+				Record r = client.Operate(policy, keyA, Operation.Put(bin), Operation.Get(binA));
 
-			AssertBinEqual(keyA, r, binA, 3);
+				AssertBinEqual(keyA, r, binA, 3);
 
-			r = client.Operate(policy, keyB, Operation.Put(bin), Operation.Get(binA));
+				r = client.Operate(policy, keyB, Operation.Put(bin), Operation.Get(binA));
 
-			Assert.AreEqual(null, r);
+				Assert.AreEqual(null, r);
+			}
+			else
+			{
+				Record r = await asyncAwaitClient.Operate(policy, keyA, new[] { Operation.Put(bin), Operation.Get(binA) }, CancellationToken.None);
+
+				AssertBinEqual(keyA, r, binA, 3);
+
+				r = await asyncAwaitClient.Operate(policy, keyB, new[] { Operation.Put(bin), Operation.Get(binA) }, CancellationToken.None);
+
+				Assert.AreEqual(null, r);
+			}
 		}
 
 		[TestMethod]
-		public void FilterExpOperateWriteExcept()
+		public async Task FilterExpOperateWriteExcept()
 		{
 			WritePolicy policy = new WritePolicy();
 			policy.filterExp = Exp.Build(Exp.EQ(Exp.IntBin(binA), Exp.Val(1)));
@@ -269,31 +439,52 @@ namespace Aerospike.Test
 
 			Bin bin = new Bin(binA, 3);
 
-			client.Operate(policy, keyA, Operation.Put(bin), Operation.Get(binA));
-
-			Test.TestException(() =>
+			if (!args.testAsyncAwait)
 			{
-				client.Operate(policy, keyB, Operation.Put(bin), Operation.Get(binA));
-			}, ResultCode.FILTERED_OUT);
+				await asyncAwaitClient.Operate(policy, keyA, new[] { Operation.Put(bin), Operation.Get(binA) }, CancellationToken.None);
+
+				Test.TestException(async () =>
+				{
+					await asyncAwaitClient.Operate(policy, keyB, new[] { Operation.Put(bin), Operation.Get(binA) }, CancellationToken.None);
+				}, ResultCode.FILTERED_OUT);
+			}
 		}
 
 		[TestMethod]
-		public void FilterExpUdf()
+		public async Task FilterExpUdf()
 		{
 			WritePolicy policy = new WritePolicy();
 			policy.filterExp = Exp.Build(Exp.EQ(Exp.IntBin(binA), Exp.Val(1)));
 
-			client.Execute(policy, keyA, "record_example", "writeBin", Value.Get(binA), Value.Get(3));
+			if (!args.testAsyncAwait)
+			{
+				client.Execute(policy, keyA, "record_example", "writeBin", Value.Get(binA), Value.Get(3));
 
-			Record r = client.Get(null, keyA);
+				Record r = client.Get(null, keyA);
 
-			AssertBinEqual(keyA, r, binA, 3);
+				AssertBinEqual(keyA, r, binA, 3);
 
-			client.Execute(policy, keyB, "record_example", "writeBin", Value.Get(binA), Value.Get(3));
+				client.Execute(policy, keyB, "record_example", "writeBin", Value.Get(binA), Value.Get(3));
 
-			r = client.Get(null, keyB);
+				r = client.Get(null, keyB);
 
-			AssertBinEqual(keyB, r, binA, 2);
+				AssertBinEqual(keyB, r, binA, 2);
+			}
+			else
+			{
+				throw new NotImplementedException();
+				/*await asyncAwaitClient.Execute(policy, keyA, "record_example", "writeBin", Value.Get(binA), Value.Get(3), CancellationToken.None);
+
+				Record r = await asyncAwaitClient.Get(null, keyA);
+
+				AssertBinEqual(keyA, r, binA, 3);
+
+				await asyncAwaitClient.Execute(policy, keyB, "record_example", "writeBin", Value.Get(binA), Value.Get(3));
+
+				r = await asyncAwaitClient.Get(null, keyB);
+
+				AssertBinEqual(keyB, r, binA, 2);*/
+			}
 		}
 
 		[TestMethod]
@@ -303,32 +494,53 @@ namespace Aerospike.Test
 			policy.filterExp = Exp.Build(Exp.EQ(Exp.IntBin(binA), Exp.Val(1)));
 			policy.failOnFilteredOut = true;
 
-			client.Execute(policy, keyA, "record_example", "writeBin", Value.Get(binA), Value.Get(3));
 
-			Test.TestException(() =>
+			if (!args.testAsyncAwait)
 			{
-				client.Execute(policy, keyB, "record_example", "writeBin", Value.Get(binA), Value.Get(3));
-			}, ResultCode.FILTERED_OUT);
-		}
+				client.Execute(policy, keyA, "record_example", "writeBin", Value.Get(binA), Value.Get(3));
+
+				Test.TestException(() =>
+				{
+					client.Execute(policy, keyB, "record_example", "writeBin", Value.Get(binA), Value.Get(3));
+				}, ResultCode.FILTERED_OUT);
+			}
+            else
+			{
+				throw new NotImplementedException();
+			}
+        }
 
 		[TestMethod]
-		public void FilterExpFilterExclusive()
+		public async Task FilterExpFilterExclusive()
 		{
 			Policy policy = new Policy();
 			policy.filterExp = Exp.Build(Exp.Exclusive(Exp.EQ(Exp.IntBin(binA), Exp.Val(1)), Exp.EQ(Exp.IntBin(binD), Exp.Val(1))));
 			policy.failOnFilteredOut = true;
 
-			Test.TestException(() =>
+			if (!args.testAsyncAwait)
 			{
-				client.Get(policy, keyA);
-			}, ResultCode.FILTERED_OUT);
+				Test.TestException(() =>
+				{
+					client.Get(policy, keyA);
+				}, ResultCode.FILTERED_OUT);
 
-			Record r = client.Get(policy, keyB);
-			AssertBinEqual(keyA, r, binA, 2);
+				Record r = client.Get(policy, keyB);
+				AssertBinEqual(keyA, r, binA, 2);
+			}
+			else
+			{
+				Test.TestException(async () =>
+				{
+					await asyncAwaitClient.Get(policy, keyA, CancellationToken.None);
+				}, ResultCode.FILTERED_OUT);
+
+				Record r = await asyncAwaitClient.Get(policy, keyB, CancellationToken.None);
+				AssertBinEqual(keyA, r, binA, 2);
+			}
 		}
 
 		[TestMethod]
-		public void FilterExpFilterAddInt()
+		public async Task FilterExpFilterAddInt()
 		{
 			Policy policy = new Policy();
 			policy.filterExp = Exp.Build(
@@ -337,17 +549,30 @@ namespace Aerospike.Test
 					Exp.Val(4)));
 			policy.failOnFilteredOut = true;
 
-			Test.TestException(() =>
+			if (!args.testAsyncAwait)
 			{
-				client.Get(policy, keyA);
-			}, ResultCode.FILTERED_OUT);
+				Test.TestException(() =>
+				{
+					client.Get(policy, keyA);
+				}, ResultCode.FILTERED_OUT);
 
-			Record r = client.Get(policy, keyB);
-			AssertBinEqual(keyA, r, binA, 2);
+				Record r = client.Get(policy, keyB);
+				AssertBinEqual(keyA, r, binA, 2);
+			}
+			else
+			{
+				Test.TestException(async () =>
+				{
+					await asyncAwaitClient.Get(policy, keyA, CancellationToken.None);
+				}, ResultCode.FILTERED_OUT);
+
+				Record r = await asyncAwaitClient.Get(policy, keyB, CancellationToken.None);
+				AssertBinEqual(keyA, r, binA, 2);
+			}
 		}
 
 		[TestMethod]
-		public void FilterExpFilterAddFloat()
+		public async Task FilterExpFilterAddFloat()
 		{
 			string name = "val";
 
@@ -360,13 +585,26 @@ namespace Aerospike.Test
 						Exp.LE(Exp.Var(name), Exp.Val(3.3001)))));
 			policy.failOnFilteredOut = true;
 
-			Test.TestException(() =>
+			if (!args.testAsyncAwait)
 			{
-				client.Get(policy, keyA);
-			}, ResultCode.FILTERED_OUT);
+				Test.TestException(() =>
+				{
+					client.Get(policy, keyA);
+				}, ResultCode.FILTERED_OUT);
 
-			Record r = client.Get(policy, keyB);
-			AssertBinEqual(keyA, r, binA, 2);
+				Record r = client.Get(policy, keyB);
+				AssertBinEqual(keyA, r, binA, 2);
+			}
+			else
+			{
+				Test.TestException(async () =>
+				{
+					await asyncAwaitClient.Get(policy, keyA, CancellationToken.None);
+				}, ResultCode.FILTERED_OUT);
+
+				Record r = await asyncAwaitClient.Get(policy, keyB, CancellationToken.None);
+				AssertBinEqual(keyA, r, binA, 2);
+			}
 		}
 
 		[TestMethod]
@@ -389,7 +627,7 @@ namespace Aerospike.Test
 		}
 
 		[TestMethod]
-		public void FilterExpFilterMul()
+		public async Task FilterExpFilterMul()
 		{
 			Policy policy = new Policy();
 			policy.filterExp = Exp.Build(
@@ -398,17 +636,30 @@ namespace Aerospike.Test
 					Exp.Val(4)));
 			policy.failOnFilteredOut = true;
 
-			Test.TestException(() =>
+			if (!args.testAsyncAwait)
 			{
-				client.Get(policy, keyA);
-			}, ResultCode.FILTERED_OUT);
+				Test.TestException(() =>
+				{
+					client.Get(policy, keyA);
+				}, ResultCode.FILTERED_OUT);
 
-			Record r = client.Get(policy, keyB);
-			AssertBinEqual(keyA, r, binA, 2);
+				Record r = client.Get(policy, keyB);
+				AssertBinEqual(keyA, r, binA, 2);
+			}
+			else
+			{
+				Test.TestException(async () =>
+				{
+					await asyncAwaitClient.Get(policy, keyA, CancellationToken.None);
+				}, ResultCode.FILTERED_OUT);
+
+				Record r = await asyncAwaitClient.Get(policy, keyB, CancellationToken.None);
+				AssertBinEqual(keyA, r, binA, 2);
+			}
 		}
 
 		[TestMethod]
-		public void FilterExpFilterDiv()
+		public async Task FilterExpFilterDiv()
 		{
 			Policy policy = new Policy();
 			policy.filterExp = Exp.Build(
@@ -417,17 +668,30 @@ namespace Aerospike.Test
 					Exp.Val(4)));
 			policy.failOnFilteredOut = true;
 
-			Test.TestException(() =>
+			if (!args.testAsyncAwait)
 			{
-				client.Get(policy, keyA);
-			}, ResultCode.FILTERED_OUT);
+				Test.TestException(() =>
+				{
+					client.Get(policy, keyA);
+				}, ResultCode.FILTERED_OUT);
 
-			Record r = client.Get(policy, keyB);
-			AssertBinEqual(keyA, r, binA, 2);
+				Record r = client.Get(policy, keyB);
+				AssertBinEqual(keyA, r, binA, 2);
+			}
+			else
+			{
+				Test.TestException(async () =>
+				{
+					await asyncAwaitClient.Get(policy, keyA, CancellationToken.None);
+				}, ResultCode.FILTERED_OUT);
+
+				Record r = await asyncAwaitClient.Get(policy, keyB, CancellationToken.None);
+				AssertBinEqual(keyA, r, binA, 2);
+			}
 		}
 
 		[TestMethod]
-		public void FilterExpFilterPow()
+		public async Task FilterExpFilterPow()
 		{
 			string name = "x";
 
@@ -440,17 +704,30 @@ namespace Aerospike.Test
 						Exp.LE(Exp.Var(name), Exp.Val(4.8401)))));
 			policy.failOnFilteredOut = true;
 
-			Test.TestException(() =>
+			if (!args.testAsyncAwait)
 			{
-				client.Get(policy, keyA);
-			}, ResultCode.FILTERED_OUT);
+				Test.TestException(() =>
+				{
+					client.Get(policy, keyA);
+				}, ResultCode.FILTERED_OUT);
 
-			Record r = client.Get(policy, keyB);
-			AssertBinEqual(keyA, r, binA, 2);
+				Record r = client.Get(policy, keyB);
+				AssertBinEqual(keyA, r, binA, 2);
+			}
+			else
+			{
+				Test.TestException(async () =>
+				{
+					await asyncAwaitClient.Get(policy, keyA, CancellationToken.None);
+				}, ResultCode.FILTERED_OUT);
+
+				Record r = await asyncAwaitClient.Get(policy, keyB, CancellationToken.None);
+				AssertBinEqual(keyA, r, binA, 2);
+			}
 		}
 
 		[TestMethod]
-		public void FilterExpFilterLog()
+		public async Task FilterExpFilterLog()
 		{
 			string name = "x";
 
@@ -463,17 +740,30 @@ namespace Aerospike.Test
 						Exp.LE(Exp.Var(name), Exp.Val(1.1376)))));
 			policy.failOnFilteredOut = true;
 
-			Test.TestException(() =>
+			if (!args.testAsyncAwait)
 			{
-				client.Get(policy, keyA);
-			}, ResultCode.FILTERED_OUT);
+				Test.TestException(() =>
+				{
+					client.Get(policy, keyA);
+				}, ResultCode.FILTERED_OUT);
 
-			Record r = client.Get(policy, keyB);
-			AssertBinEqual(keyA, r, binA, 2);
+				Record r = client.Get(policy, keyB);
+				AssertBinEqual(keyA, r, binA, 2);
+			}
+			else
+			{
+				Test.TestException(async () =>
+				{
+					await asyncAwaitClient.Get(policy, keyA, CancellationToken.None);
+				}, ResultCode.FILTERED_OUT);
+
+				Record r = await asyncAwaitClient.Get(policy, keyB, CancellationToken.None);
+				AssertBinEqual(keyA, r, binA, 2);
+			}
 		}
 
 		[TestMethod]
-		public void FilterExpFilterMod()
+		public async Task FilterExpFilterMod()
 		{
 			Policy policy = new Policy();
 			policy.filterExp = Exp.Build(
@@ -482,97 +772,175 @@ namespace Aerospike.Test
 					Exp.Val(0)));
 			policy.failOnFilteredOut = true;
 
-			Test.TestException(() =>
+			if (!args.testAsyncAwait)
 			{
-				client.Get(policy, keyA);
-			}, ResultCode.FILTERED_OUT);
+				Test.TestException(() =>
+				{
+					client.Get(policy, keyA);
+				}, ResultCode.FILTERED_OUT);
 
-			Record r = client.Get(policy, keyB);
-			AssertBinEqual(keyA, r, binA, 2);
+				Record r = client.Get(policy, keyB);
+				AssertBinEqual(keyA, r, binA, 2);
+			}
+			else
+			{
+				Test.TestException(async () =>
+				{
+					await asyncAwaitClient.Get(policy, keyA, CancellationToken.None);
+				}, ResultCode.FILTERED_OUT);
+
+				Record r = await asyncAwaitClient.Get(policy, keyB, CancellationToken.None);
+				AssertBinEqual(keyA, r, binA, 2);
+			}
 		}
 
 		[TestMethod]
-		public void FilterExpFilterAbs()
+		public async Task FilterExpFilterAbs()
 		{
 			Policy policy = new Policy();
 			policy.filterExp = Exp.Build(Exp.EQ(Exp.Abs(Exp.IntBin(binE)), Exp.Val(2)));
 			policy.failOnFilteredOut = true;
 
-			Test.TestException(() =>
+			if (!args.testAsyncAwait)
 			{
-				client.Get(policy, keyA);
-			}, ResultCode.FILTERED_OUT);
+				Test.TestException(() =>
+				{
+					client.Get(policy, keyA);
+				}, ResultCode.FILTERED_OUT);
 
-			Record r = client.Get(policy, keyB);
-			AssertBinEqual(keyA, r, binA, 2);
+				Record r = client.Get(policy, keyB);
+				AssertBinEqual(keyA, r, binA, 2);
+			}
+			else
+			{
+				Test.TestException(async () =>
+				{
+					await asyncAwaitClient.Get(policy, keyA, CancellationToken.None);
+				}, ResultCode.FILTERED_OUT);
+
+				Record r = await asyncAwaitClient.Get(policy, keyB, CancellationToken.None);
+				AssertBinEqual(keyA, r, binA, 2);
+			}
 		}
 
 		[TestMethod]
-		public void FilterExpFilterFloor()
+		public async Task FilterExpFilterFloor()
 		{
 			Policy policy = new Policy();
 			policy.filterExp = Exp.Build(Exp.EQ(Exp.Floor(Exp.FloatBin(binB)), Exp.Val(2.0)));
 			policy.failOnFilteredOut = true;
 
-			Test.TestException(() =>
+			if (!args.testAsyncAwait)
 			{
-				client.Get(policy, keyA);
-			}, ResultCode.FILTERED_OUT);
+				Test.TestException(() =>
+				{
+					client.Get(policy, keyA);
+				}, ResultCode.FILTERED_OUT);
 
-			Record r = client.Get(policy, keyB);
-			AssertBinEqual(keyA, r, binA, 2);
+				Record r = client.Get(policy, keyB);
+				AssertBinEqual(keyA, r, binA, 2);
+			}
+			else
+			{
+				Test.TestException(async () =>
+				{
+					await asyncAwaitClient.Get(policy, keyA, CancellationToken.None);
+				}, ResultCode.FILTERED_OUT);
+
+				Record r = await asyncAwaitClient.Get(policy, keyB, CancellationToken.None);
+				AssertBinEqual(keyA, r, binA, 2);
+			}
 		}
 
 		[TestMethod]
-		public void FilterExpFilterCeil()
+		public async Task FilterExpFilterCeil()
 		{
 			Policy policy = new Policy();
 			policy.filterExp = Exp.Build(Exp.EQ(Exp.Ceil(Exp.FloatBin(binB)), Exp.Val(3.0)));
 			policy.failOnFilteredOut = true;
 
-			Test.TestException(() =>
+			if (!args.testAsyncAwait)
 			{
-				client.Get(policy, keyA);
-			}, ResultCode.FILTERED_OUT);
+				Test.TestException(() =>
+				{
+					client.Get(policy, keyA);
+				}, ResultCode.FILTERED_OUT);
 
-			Record r = client.Get(policy, keyB);
-			AssertBinEqual(keyA, r, binA, 2);
+				Record r = client.Get(policy, keyB);
+				AssertBinEqual(keyA, r, binA, 2);
+			}
+			else
+			{
+				Test.TestException(async () =>
+				{
+					await asyncAwaitClient.Get(policy, keyA, CancellationToken.None);
+				}, ResultCode.FILTERED_OUT);
+
+				Record r = await asyncAwaitClient.Get(policy, keyB, CancellationToken.None);
+				AssertBinEqual(keyA, r, binA, 2);
+			}
 		}
 
 		[TestMethod]
-		public void FilterExpFilterToInt()
+		public async Task FilterExpFilterToInt()
 		{
 			Policy policy = new Policy();
 			policy.filterExp = Exp.Build(Exp.EQ(Exp.ToInt(Exp.FloatBin(binB)), Exp.Val(2)));
 			policy.failOnFilteredOut = true;
 
-			Test.TestException(() =>
+			if (!args.testAsyncAwait)
 			{
-				client.Get(policy, keyA);
-			}, ResultCode.FILTERED_OUT);
+				Test.TestException(() =>
+				{
+					client.Get(policy, keyA);
+				}, ResultCode.FILTERED_OUT);
 
-			Record r = client.Get(policy, keyB);
-			AssertBinEqual(keyA, r, binA, 2);
+				Record r = client.Get(policy, keyB);
+				AssertBinEqual(keyA, r, binA, 2);
+			}
+			else
+			{
+				Test.TestException(async () =>
+				{
+					await asyncAwaitClient.Get(policy, keyA, CancellationToken.None);
+				}, ResultCode.FILTERED_OUT);
+
+				Record r = await asyncAwaitClient.Get(policy, keyB, CancellationToken.None);
+				AssertBinEqual(keyA, r, binA, 2);
+			}
 		}
 
 		[TestMethod]
-		public void FilterExpFilterToFloat()
+		public async Task FilterExpFilterToFloat()
 		{
 			Policy policy = new Policy();
 			policy.filterExp = Exp.Build(Exp.EQ(Exp.ToFloat(Exp.IntBin(binA)), Exp.Val(2.0)));
 			policy.failOnFilteredOut = true;
 
-			Test.TestException(() =>
+			if (!args.testAsyncAwait)
 			{
-				client.Get(policy, keyA);
-			}, ResultCode.FILTERED_OUT);
+				Test.TestException(() =>
+				{
+					client.Get(policy, keyA);
+				}, ResultCode.FILTERED_OUT);
 
-			Record r = client.Get(policy, keyB);
-			AssertBinEqual(keyA, r, binA, 2);
+				Record r = client.Get(policy, keyB);
+				AssertBinEqual(keyA, r, binA, 2);
+			}
+			else
+			{
+				Test.TestException(async () =>
+				{
+					await asyncAwaitClient.Get(policy, keyA, CancellationToken.None);
+				}, ResultCode.FILTERED_OUT);
+
+				Record r = await asyncAwaitClient.Get(policy, keyB, CancellationToken.None);
+				AssertBinEqual(keyA, r, binA, 2);
+			}
 		}
 
 		[TestMethod]
-		public void FilterExpFilterIntAnd()
+		public async Task FilterExpFilterIntAnd()
 		{
 			Policy policy = new Policy();
 			policy.filterExp = Exp.Build(
@@ -582,22 +950,40 @@ namespace Aerospike.Test
 						Exp.EQ(Exp.IntAnd(Exp.IntBin(binA), Exp.Val(0xFFFF)), Exp.Val(1)))));
 			policy.failOnFilteredOut = true;
 
-			Test.TestException(() =>
+			if (!args.testAsyncAwait)
 			{
-				client.Get(policy, keyA);
-			}, ResultCode.FILTERED_OUT);
+				Test.TestException(() =>
+				{
+					client.Get(policy, keyA);
+				}, ResultCode.FILTERED_OUT);
 
-			policy.filterExp = Exp.Build(
-				Exp.And(
-					Exp.EQ(Exp.IntAnd(Exp.IntBin(binA), Exp.Val(0)), Exp.Val(0)),
-					Exp.EQ(Exp.IntAnd(Exp.IntBin(binA), Exp.Val(0xFFFF)), Exp.Val(1))));
+				policy.filterExp = Exp.Build(
+					Exp.And(
+						Exp.EQ(Exp.IntAnd(Exp.IntBin(binA), Exp.Val(0)), Exp.Val(0)),
+						Exp.EQ(Exp.IntAnd(Exp.IntBin(binA), Exp.Val(0xFFFF)), Exp.Val(1))));
 
-			Record r = client.Get(policy, keyA);
-			AssertBinEqual(keyA, r, binA, 1);
+				Record r = client.Get(policy, keyA);
+				AssertBinEqual(keyA, r, binA, 1);
+			}
+			else
+			{
+				Test.TestException(async () =>
+				{
+					await asyncAwaitClient.Get(policy, keyA, CancellationToken.None);
+				}, ResultCode.FILTERED_OUT);
+
+				policy.filterExp = Exp.Build(
+					Exp.And(
+						Exp.EQ(Exp.IntAnd(Exp.IntBin(binA), Exp.Val(0)), Exp.Val(0)),
+						Exp.EQ(Exp.IntAnd(Exp.IntBin(binA), Exp.Val(0xFFFF)), Exp.Val(1))));
+
+				Record r = await asyncAwaitClient.Get(policy, keyA, CancellationToken.None);
+				AssertBinEqual(keyA, r, binA, 1);
+			}
 		}
 
 		[TestMethod]
-		public void FilterExpFilterIntOr()
+		public async Task FilterExpFilterIntOr()
 		{
 			Policy policy = new Policy();
 			policy.filterExp = Exp.Build(
@@ -607,22 +993,40 @@ namespace Aerospike.Test
 						Exp.EQ(Exp.IntOr(Exp.IntBin(binA), Exp.Val(0xFF)), Exp.Val(0xFF)))));
 			policy.failOnFilteredOut = true;
 
-			Test.TestException(() =>
+			if (!args.testAsyncAwait)
 			{
-				client.Get(policy, keyA);
-			}, ResultCode.FILTERED_OUT);
+				Test.TestException(() =>
+				{
+					client.Get(policy, keyA);
+				}, ResultCode.FILTERED_OUT);
 
-			policy.filterExp = Exp.Build(
-				Exp.And(
-					Exp.EQ(Exp.IntOr(Exp.IntBin(binA), Exp.Val(0)), Exp.Val(1)),
-					Exp.EQ(Exp.IntOr(Exp.IntBin(binA), Exp.Val(0xFF)), Exp.Val(0xFF))));
+				policy.filterExp = Exp.Build(
+					Exp.And(
+						Exp.EQ(Exp.IntOr(Exp.IntBin(binA), Exp.Val(0)), Exp.Val(1)),
+						Exp.EQ(Exp.IntOr(Exp.IntBin(binA), Exp.Val(0xFF)), Exp.Val(0xFF))));
 
-			Record r = client.Get(policy, keyA);
-			AssertBinEqual(keyA, r, binA, 1);
+				Record r = client.Get(policy, keyA);
+				AssertBinEqual(keyA, r, binA, 1);
+			}
+			else
+			{
+				Test.TestException(async () =>
+				{
+					await asyncAwaitClient.Get(policy, keyA, CancellationToken.None);
+				}, ResultCode.FILTERED_OUT);
+
+				policy.filterExp = Exp.Build(
+					Exp.And(
+						Exp.EQ(Exp.IntOr(Exp.IntBin(binA), Exp.Val(0)), Exp.Val(1)),
+						Exp.EQ(Exp.IntOr(Exp.IntBin(binA), Exp.Val(0xFF)), Exp.Val(0xFF))));
+
+				Record r = await asyncAwaitClient.Get(policy, keyA, CancellationToken.None);
+				AssertBinEqual(keyA, r, binA, 1);
+			}
 		}
 
 		[TestMethod]
-		public void FilterExpFilterIntXor()
+		public async Task FilterExpFilterIntXor()
 		{
 			Policy policy = new Policy();
 			policy.filterExp = Exp.Build(
@@ -632,22 +1036,40 @@ namespace Aerospike.Test
 						Exp.EQ(Exp.IntXor(Exp.IntBin(binA), Exp.Val(0xFF)), Exp.Val(0xFE)))));
 			policy.failOnFilteredOut = true;
 
-			Test.TestException(() =>
+			if (!args.testAsyncAwait)
 			{
-				client.Get(policy, keyA);
-			}, ResultCode.FILTERED_OUT);
+				Test.TestException(() =>
+				{
+					client.Get(policy, keyA);
+				}, ResultCode.FILTERED_OUT);
 
-			policy.filterExp = Exp.Build(
-				Exp.And(
-					Exp.EQ(Exp.IntXor(Exp.IntBin(binA), Exp.Val(0)), Exp.Val(1)),
-					Exp.EQ(Exp.IntXor(Exp.IntBin(binA), Exp.Val(0xFF)), Exp.Val(0xFE))));
+				policy.filterExp = Exp.Build(
+					Exp.And(
+						Exp.EQ(Exp.IntXor(Exp.IntBin(binA), Exp.Val(0)), Exp.Val(1)),
+						Exp.EQ(Exp.IntXor(Exp.IntBin(binA), Exp.Val(0xFF)), Exp.Val(0xFE))));
 
-			Record r = client.Get(policy, keyA);
-			AssertBinEqual(keyA, r, binA, 1);
+				Record r = client.Get(policy, keyA);
+				AssertBinEqual(keyA, r, binA, 1);
+			}
+			else
+			{
+				Test.TestException(async () =>
+				{
+					await asyncAwaitClient.Get(policy, keyA, CancellationToken.None);
+				}, ResultCode.FILTERED_OUT);
+
+				policy.filterExp = Exp.Build(
+					Exp.And(
+						Exp.EQ(Exp.IntXor(Exp.IntBin(binA), Exp.Val(0)), Exp.Val(1)),
+						Exp.EQ(Exp.IntXor(Exp.IntBin(binA), Exp.Val(0xFF)), Exp.Val(0xFE))));
+
+				Record r = await asyncAwaitClient.Get(policy, keyA, CancellationToken.None);
+				AssertBinEqual(keyA, r, binA, 1);
+			}
 		}
 
 		[TestMethod]
-		public void FilterExpFilterIntNot()
+		public async Task FilterExpFilterIntNot()
 		{
 			Policy policy = new Policy();
 			policy.filterExp = Exp.Build(
@@ -655,20 +1077,36 @@ namespace Aerospike.Test
 					Exp.EQ(Exp.IntNot(Exp.IntBin(binA)), Exp.Val(-2))));
 			policy.failOnFilteredOut = true;
 
-			Test.TestException(() =>
+			if (!args.testAsyncAwait)
 			{
-				client.Get(policy, keyA);
-			}, ResultCode.FILTERED_OUT);
+				Test.TestException(() =>
+				{
+					client.Get(policy, keyA);
+				}, ResultCode.FILTERED_OUT);
 
-			policy.filterExp = Exp.Build(
-				Exp.EQ(Exp.IntNot(Exp.IntBin(binA)), Exp.Val(-2)));
+				policy.filterExp = Exp.Build(
+					Exp.EQ(Exp.IntNot(Exp.IntBin(binA)), Exp.Val(-2)));
 
-			Record r = client.Get(policy, keyA);
-			AssertBinEqual(keyA, r, binA, 1);
+				Record r = client.Get(policy, keyA);
+				AssertBinEqual(keyA, r, binA, 1);
+			}
+			else
+			{
+				Test.TestException(async () =>
+				{
+					await asyncAwaitClient.Get(policy, keyA, CancellationToken.None);
+				}, ResultCode.FILTERED_OUT);
+
+				policy.filterExp = Exp.Build(
+					Exp.EQ(Exp.IntNot(Exp.IntBin(binA)), Exp.Val(-2)));
+
+				Record r = await asyncAwaitClient.Get(policy, keyA, CancellationToken.None);
+				AssertBinEqual(keyA, r, binA, 1);
+			}
 		}
 
 		[TestMethod]
-		public void FilterExpFilterLshift()
+		public async Task FilterExpFilterLshift()
 		{
 			Policy policy = new Policy();
 			policy.filterExp = Exp.Build(
@@ -676,20 +1114,36 @@ namespace Aerospike.Test
 					Exp.EQ(Exp.Lshift(Exp.IntBin(binA), Exp.Val(2)), Exp.Val(4))));
 			policy.failOnFilteredOut = true;
 
-			Test.TestException(() =>
+			if (!args.testAsyncAwait)
 			{
-				client.Get(policy, keyA);
-			}, ResultCode.FILTERED_OUT);
+				Test.TestException(() =>
+				{
+					client.Get(policy, keyA);
+				}, ResultCode.FILTERED_OUT);
 
-			policy.filterExp = Exp.Build(
-				Exp.EQ(Exp.Lshift(Exp.IntBin(binA), Exp.Val(2)), Exp.Val(4)));
+				policy.filterExp = Exp.Build(
+					Exp.EQ(Exp.Lshift(Exp.IntBin(binA), Exp.Val(2)), Exp.Val(4)));
 
-			Record r = client.Get(policy, keyA);
-			AssertBinEqual(keyA, r, binA, 1);
+				Record r = client.Get(policy, keyA);
+				AssertBinEqual(keyA, r, binA, 1);
+			}
+			else
+			{
+				Test.TestException(async () =>
+				{
+					await asyncAwaitClient.Get(policy, keyA, CancellationToken.None);
+				}, ResultCode.FILTERED_OUT);
+
+				policy.filterExp = Exp.Build(
+					Exp.EQ(Exp.Lshift(Exp.IntBin(binA), Exp.Val(2)), Exp.Val(4)));
+
+				Record r = await asyncAwaitClient.Get(policy, keyA, CancellationToken.None);
+				AssertBinEqual(keyA, r, binA, 1);
+			}
 		}
 
 		[TestMethod]
-		public void FilterExpFilterRshift()
+		public async Task FilterExpFilterRshift()
 		{
 			Policy policy = new Policy();
 			policy.filterExp = Exp.Build(
@@ -697,20 +1151,36 @@ namespace Aerospike.Test
 					Exp.EQ(Exp.Rshift(Exp.IntBin(binE), Exp.Val(62)), Exp.Val(3))));
 			policy.failOnFilteredOut = true;
 
-			Test.TestException(() =>
+			if (!args.testAsyncAwait)
 			{
-				client.Get(policy, keyB);
-			}, ResultCode.FILTERED_OUT);
+				Test.TestException(() =>
+				{
+					client.Get(policy, keyB);
+				}, ResultCode.FILTERED_OUT);
 
-			policy.filterExp = Exp.Build(
-				Exp.EQ(Exp.Rshift(Exp.IntBin(binE), Exp.Val(62)), Exp.Val(3)));
+				policy.filterExp = Exp.Build(
+					Exp.EQ(Exp.Rshift(Exp.IntBin(binE), Exp.Val(62)), Exp.Val(3)));
 
-			Record r = client.Get(policy, keyB);
-			AssertBinEqual(keyB, r, binE, -2);
+				Record r = client.Get(policy, keyB);
+				AssertBinEqual(keyB, r, binE, -2);
+			}
+			else
+			{
+				Test.TestException(async () =>
+				{
+					await asyncAwaitClient.Get(policy, keyB, CancellationToken.None);
+				}, ResultCode.FILTERED_OUT);
+
+				policy.filterExp = Exp.Build(
+					Exp.EQ(Exp.Rshift(Exp.IntBin(binE), Exp.Val(62)), Exp.Val(3)));
+
+				Record r = await asyncAwaitClient.Get(policy, keyB, CancellationToken.None);
+				AssertBinEqual(keyB, r, binE, -2);
+			}
 		}
 
 		[TestMethod]
-		public void FilterExpFilterARshift()
+		public async Task FilterExpFilterARshift()
 		{
 			Policy policy = new Policy();
 			policy.filterExp = Exp.Build(
@@ -718,40 +1188,72 @@ namespace Aerospike.Test
 					Exp.EQ(Exp.ARshift(Exp.IntBin(binE), Exp.Val(62)), Exp.Val(-1))));
 			policy.failOnFilteredOut = true;
 
-			Test.TestException(() =>
+			if (!args.testAsyncAwait)
 			{
-				client.Get(policy, keyB);
-			}, ResultCode.FILTERED_OUT);
+				Test.TestException(() =>
+				{
+					client.Get(policy, keyB);
+				}, ResultCode.FILTERED_OUT);
 
-			policy.filterExp = Exp.Build(
-				Exp.EQ(Exp.ARshift(Exp.IntBin(binE), Exp.Val(62)), Exp.Val(-1)));
+				policy.filterExp = Exp.Build(
+					Exp.EQ(Exp.ARshift(Exp.IntBin(binE), Exp.Val(62)), Exp.Val(-1)));
 
-			Record r = client.Get(policy, keyB);
-			AssertBinEqual(keyB, r, binE, -2);
+				Record r = client.Get(policy, keyB);
+				AssertBinEqual(keyB, r, binE, -2);
+			}
+			else
+			{
+				Test.TestException(async () =>
+				{
+					await asyncAwaitClient.Get(policy, keyB, CancellationToken.None);
+				}, ResultCode.FILTERED_OUT);
+
+				policy.filterExp = Exp.Build(
+					Exp.EQ(Exp.ARshift(Exp.IntBin(binE), Exp.Val(62)), Exp.Val(-1)));
+
+				Record r = await asyncAwaitClient.Get(policy, keyB, CancellationToken.None);
+				AssertBinEqual(keyB, r, binE, -2);
+			}
 		}
 
 		[TestMethod]
-		public void FilterExpFilterBitCount()
+		public async Task FilterExpFilterBitCount()
 		{
 			Policy policy = new Policy();
 			policy.filterExp = Exp.Build(
 				Exp.Not(Exp.EQ(Exp.Count(Exp.IntBin(binA)), Exp.Val(1))));
 			policy.failOnFilteredOut = true;
 
-			Test.TestException(() =>
+			if (!args.testAsyncAwait)
 			{
-				client.Get(policy, keyA);
-			}, ResultCode.FILTERED_OUT);
+				Test.TestException(() =>
+				{
+					client.Get(policy, keyA);
+				}, ResultCode.FILTERED_OUT);
 
-			policy.filterExp = Exp.Build(
-				Exp.EQ(Exp.Count(Exp.IntBin(binA)), Exp.Val(1)));
+				policy.filterExp = Exp.Build(
+					Exp.EQ(Exp.Count(Exp.IntBin(binA)), Exp.Val(1)));
 
-			Record r = client.Get(policy, keyA);
-			AssertBinEqual(keyA, r, binA, 1);
+				Record r = client.Get(policy, keyA);
+				AssertBinEqual(keyA, r, binA, 1);
+			}
+			else
+			{
+				Test.TestException(async () =>
+				{
+					await asyncAwaitClient.Get(policy, keyA, CancellationToken.None);
+				}, ResultCode.FILTERED_OUT);
+
+				policy.filterExp = Exp.Build(
+					Exp.EQ(Exp.Count(Exp.IntBin(binA)), Exp.Val(1)));
+
+				Record r = await asyncAwaitClient.Get(policy, keyA, CancellationToken.None);
+				AssertBinEqual(keyA, r, binA, 1);
+			}
 		}
 
 		[TestMethod]
-		public void FilterExpFilterLscan()
+		public async Task FilterExpFilterLscan()
 		{
 			Policy policy = new Policy();
 			policy.filterExp = Exp.Build(
@@ -759,20 +1261,36 @@ namespace Aerospike.Test
 					Exp.EQ(Exp.Lscan(Exp.IntBin(binA), Exp.Val(true)), Exp.Val(63))));
 			policy.failOnFilteredOut = true;
 
-			Test.TestException(() =>
+			if (!args.testAsyncAwait)
 			{
-				client.Get(policy, keyA);
-			}, ResultCode.FILTERED_OUT);
+				Test.TestException(() =>
+				{
+					client.Get(policy, keyA);
+				}, ResultCode.FILTERED_OUT);
 
-			policy.filterExp = Exp.Build(
-				Exp.EQ(Exp.Lscan(Exp.IntBin(binA), Exp.Val(true)), Exp.Val(63)));
+				policy.filterExp = Exp.Build(
+					Exp.EQ(Exp.Lscan(Exp.IntBin(binA), Exp.Val(true)), Exp.Val(63)));
 
-			Record r = client.Get(policy, keyA);
-			AssertBinEqual(keyA, r, binA, 1);
+				Record r = client.Get(policy, keyA);
+				AssertBinEqual(keyA, r, binA, 1);
+			}
+			else
+			{
+				Test.TestException(async () =>
+				{
+					await asyncAwaitClient.Get(policy, keyA, CancellationToken.None);
+				}, ResultCode.FILTERED_OUT);
+
+				policy.filterExp = Exp.Build(
+					Exp.EQ(Exp.Lscan(Exp.IntBin(binA), Exp.Val(true)), Exp.Val(63)));
+
+				Record r = await asyncAwaitClient.Get(policy, keyA, CancellationToken.None);
+				AssertBinEqual(keyA, r, binA, 1);
+			}
 		}
 
 		[TestMethod]
-		public void FilterExpFilterRscan()
+		public async Task FilterExpFilterRscan()
 		{
 			Policy policy = new Policy();
 			policy.filterExp = Exp.Build(
@@ -780,20 +1298,36 @@ namespace Aerospike.Test
 					Exp.EQ(Exp.Rscan(Exp.IntBin(binA), Exp.Val(true)), Exp.Val(63))));
 			policy.failOnFilteredOut = true;
 
-			Test.TestException(() =>
+			if (!args.testAsyncAwait)
 			{
-				client.Get(policy, keyA);
-			}, ResultCode.FILTERED_OUT);
+				Test.TestException(() =>
+				{
+					client.Get(policy, keyA);
+				}, ResultCode.FILTERED_OUT);
 
-			policy.filterExp = Exp.Build(
-				Exp.EQ(Exp.Rscan(Exp.IntBin(binA), Exp.Val(true)), Exp.Val(63)));
+				policy.filterExp = Exp.Build(
+					Exp.EQ(Exp.Rscan(Exp.IntBin(binA), Exp.Val(true)), Exp.Val(63)));
 
-			Record r = client.Get(policy, keyA);
-			AssertBinEqual(keyA, r, binA, 1);
+				Record r = client.Get(policy, keyA);
+				AssertBinEqual(keyA, r, binA, 1);
+			}
+			else
+			{
+				Test.TestException(async () =>
+				{
+					await asyncAwaitClient.Get(policy, keyA, CancellationToken.None);
+				}, ResultCode.FILTERED_OUT);
+
+				policy.filterExp = Exp.Build(
+					Exp.EQ(Exp.Rscan(Exp.IntBin(binA), Exp.Val(true)), Exp.Val(63)));
+
+				Record r = await asyncAwaitClient.Get(policy, keyA, CancellationToken.None);
+				AssertBinEqual(keyA, r, binA, 1);
+			}
 		}
 
 		[TestMethod]
-		public void FilterExpFilterMin()
+		public async Task FilterExpFilterMin()
 		{
 			Policy policy = new Policy();
 			policy.filterExp = Exp.Build(
@@ -803,22 +1337,40 @@ namespace Aerospike.Test
 						Exp.Val(-1))));
 			policy.failOnFilteredOut = true;
 
-			Test.TestException(() =>
+			if (!args.testAsyncAwait)
 			{
-				client.Get(policy, keyA);
-			}, ResultCode.FILTERED_OUT);
+				Test.TestException(() =>
+				{
+					client.Get(policy, keyA);
+				}, ResultCode.FILTERED_OUT);
 
-			policy.filterExp = Exp.Build(
-				Exp.EQ(
-					Exp.Min(Exp.IntBin(binA), Exp.IntBin(binD), Exp.IntBin(binE)),
-					Exp.Val(-1)));
+				policy.filterExp = Exp.Build(
+					Exp.EQ(
+						Exp.Min(Exp.IntBin(binA), Exp.IntBin(binD), Exp.IntBin(binE)),
+						Exp.Val(-1)));
 
-			Record r = client.Get(policy, keyA);
-			AssertBinEqual(keyA, r, binA, 1);
+				Record r = client.Get(policy, keyA);
+				AssertBinEqual(keyA, r, binA, 1);
+			}
+			else
+			{
+				Test.TestException(async () =>
+				{
+					await asyncAwaitClient.Get(policy, keyA, CancellationToken.None);
+				}, ResultCode.FILTERED_OUT);
+
+				policy.filterExp = Exp.Build(
+					Exp.EQ(
+						Exp.Min(Exp.IntBin(binA), Exp.IntBin(binD), Exp.IntBin(binE)),
+						Exp.Val(-1)));
+
+				Record r = await asyncAwaitClient.Get(policy, keyA, CancellationToken.None);
+				AssertBinEqual(keyA, r, binA, 1);
+			}
 		}
 
 		[TestMethod]
-		public void FilterExpFilterMax()
+		public async Task FilterExpFilterMax()
 		{
 			Policy policy = new Policy();
 			policy.filterExp = Exp.Build(
@@ -828,22 +1380,40 @@ namespace Aerospike.Test
 						Exp.Val(1))));
 			policy.failOnFilteredOut = true;
 
-			Test.TestException(() =>
+			if (!args.testAsyncAwait)
 			{
-				client.Get(policy, keyA);
-			}, ResultCode.FILTERED_OUT);
+				Test.TestException(() =>
+				{
+					client.Get(policy, keyA);
+				}, ResultCode.FILTERED_OUT);
 
-			policy.filterExp = Exp.Build(
-				Exp.EQ(
-					Exp.Max(Exp.IntBin(binA), Exp.IntBin(binD), Exp.IntBin(binE)),
-					Exp.Val(1)));
+				policy.filterExp = Exp.Build(
+					Exp.EQ(
+						Exp.Max(Exp.IntBin(binA), Exp.IntBin(binD), Exp.IntBin(binE)),
+						Exp.Val(1)));
 
-			Record r = client.Get(policy, keyA);
-			AssertBinEqual(keyA, r, binA, 1);
+				Record r = client.Get(policy, keyA);
+				AssertBinEqual(keyA, r, binA, 1);
+			}
+			else
+			{
+				Test.TestException(async () =>
+				{
+					await asyncAwaitClient.Get(policy, keyA, CancellationToken.None);
+				}, ResultCode.FILTERED_OUT);
+
+				policy.filterExp = Exp.Build(
+					Exp.EQ(
+						Exp.Max(Exp.IntBin(binA), Exp.IntBin(binD), Exp.IntBin(binE)),
+						Exp.Val(1)));
+
+				Record r = await asyncAwaitClient.Get(policy, keyA, CancellationToken.None);
+				AssertBinEqual(keyA, r, binA, 1);
+			}
 		}
 
 		[TestMethod]
-		public void FilterExpFilterCond()
+		public async Task FilterExpFilterCond()
 		{
 			Policy policy = new Policy();
 			policy.filterExp = Exp.Build(
@@ -857,26 +1427,48 @@ namespace Aerospike.Test
 						Exp.Val(2))));
 			policy.failOnFilteredOut = true;
 
-			Test.TestException(() =>
+			if (!args.testAsyncAwait)
 			{
-				client.Get(policy, keyA);
-			}, ResultCode.FILTERED_OUT);
+				Test.TestException(() =>
+				{
+					client.Get(policy, keyA);
+				}, ResultCode.FILTERED_OUT);
 
-			policy.filterExp = Exp.Build(
-				Exp.EQ(
-					Exp.Cond(
-						Exp.EQ(Exp.IntBin(binA), Exp.Val(0)), Exp.Add(Exp.IntBin(binD), Exp.IntBin(binE)),
-						Exp.EQ(Exp.IntBin(binA), Exp.Val(1)), Exp.Sub(Exp.IntBin(binD), Exp.IntBin(binE)),
-						Exp.EQ(Exp.IntBin(binA), Exp.Val(2)), Exp.Mul(Exp.IntBin(binD), Exp.IntBin(binE)),
-						Exp.Val(-1)),
-					Exp.Val(2)));
+				policy.filterExp = Exp.Build(
+					Exp.EQ(
+						Exp.Cond(
+							Exp.EQ(Exp.IntBin(binA), Exp.Val(0)), Exp.Add(Exp.IntBin(binD), Exp.IntBin(binE)),
+							Exp.EQ(Exp.IntBin(binA), Exp.Val(1)), Exp.Sub(Exp.IntBin(binD), Exp.IntBin(binE)),
+							Exp.EQ(Exp.IntBin(binA), Exp.Val(2)), Exp.Mul(Exp.IntBin(binD), Exp.IntBin(binE)),
+							Exp.Val(-1)),
+						Exp.Val(2)));
 
-			Record r = client.Get(policy, keyA);
-			AssertBinEqual(keyA, r, binA, 1);
+				Record r = client.Get(policy, keyA);
+				AssertBinEqual(keyA, r, binA, 1);
+			}
+			else
+			{
+				Test.TestException(async () =>
+				{
+					await asyncAwaitClient.Get(policy, keyA, CancellationToken.None);
+				}, ResultCode.FILTERED_OUT);
+
+				policy.filterExp = Exp.Build(
+					Exp.EQ(
+						Exp.Cond(
+							Exp.EQ(Exp.IntBin(binA), Exp.Val(0)), Exp.Add(Exp.IntBin(binD), Exp.IntBin(binE)),
+							Exp.EQ(Exp.IntBin(binA), Exp.Val(1)), Exp.Sub(Exp.IntBin(binD), Exp.IntBin(binE)),
+							Exp.EQ(Exp.IntBin(binA), Exp.Val(2)), Exp.Mul(Exp.IntBin(binD), Exp.IntBin(binE)),
+							Exp.Val(-1)),
+						Exp.Val(2)));
+
+				Record r = await asyncAwaitClient.Get(policy, keyA, CancellationToken.None);
+				AssertBinEqual(keyA, r, binA, 1);
+			}
 		}
 
 		[TestMethod]
-		public void BatchKeyFilter()
+		public async Task BatchKeyFilter()
 		{
 			// Write/Delete records with filter.
 			BatchWritePolicy wp = new BatchWritePolicy();
@@ -892,30 +1484,60 @@ namespace Aerospike.Test
 			brecs.Add(new BatchWrite(wp, keyB, put));
 			brecs.Add(new BatchDelete(dp, keyC));
 
-			bool status = client.Operate(null, brecs);
-			Assert.IsFalse(status); // Filtered out result code causes status to be false.
+			if (!args.testAsyncAwait)
+			{
+				bool status = client.Operate(null, brecs);
+				Assert.IsFalse(status); // Filtered out result code causes status to be false.
 
-			BatchRecord br = brecs[0];
-			Assert.AreEqual(ResultCode.OK, br.resultCode);
+				BatchRecord br = brecs[0];
+				Assert.AreEqual(ResultCode.OK, br.resultCode);
 
-			br = brecs[1];
-			Assert.AreEqual(ResultCode.FILTERED_OUT, br.resultCode);
+				br = brecs[1];
+				Assert.AreEqual(ResultCode.FILTERED_OUT, br.resultCode);
 
-			br = brecs[2];
-			Assert.AreEqual(ResultCode.OK, br.resultCode);
+				br = brecs[2];
+				Assert.AreEqual(ResultCode.OK, br.resultCode);
 
-			// Read records
-			Key[] keys = new Key[] { keyA, keyB, keyC };
-			Record[] recs = client.Get(null, keys, binA);
+				// Read records
+				Key[] keys = new Key[] { keyA, keyB, keyC };
+				Record[] recs = client.Get(null, keys, binA);
 
-			Record r = recs[0];
-			AssertBinEqual(keyA, r, binA, 3);
+				Record r = recs[0];
+				AssertBinEqual(keyA, r, binA, 3);
 
-			r = recs[1];
-			AssertBinEqual(keyB, r, binA, 2);
+				r = recs[1];
+				AssertBinEqual(keyB, r, binA, 2);
 
-			r = recs[2];
-			Assert.IsNull(r);
+				r = recs[2];
+				Assert.IsNull(r);
+			}
+			else
+			{
+				bool status = await asyncAwaitClient.Operate(null, brecs, CancellationToken.None);
+				Assert.IsFalse(status); // Filtered out result code causes status to be false.
+
+				BatchRecord br = brecs[0];
+				Assert.AreEqual(ResultCode.OK, br.resultCode);
+
+				br = brecs[1];
+				Assert.AreEqual(ResultCode.FILTERED_OUT, br.resultCode);
+
+				br = brecs[2];
+				Assert.AreEqual(ResultCode.OK, br.resultCode);
+
+				// Read records
+				Key[] keys = new Key[] { keyA, keyB, keyC };
+				Record[] recs = await asyncAwaitClient.Get(null, keys, new[] { binA }, CancellationToken.None);
+
+				Record r = recs[0];
+				AssertBinEqual(keyA, r, binA, 3);
+
+				r = recs[1];
+				AssertBinEqual(keyB, r, binA, 2);
+
+				r = recs[2];
+				Assert.IsNull(r);
+			}
 		}
 	}
 }

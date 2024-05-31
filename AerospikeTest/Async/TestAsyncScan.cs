@@ -36,11 +36,25 @@ namespace Aerospike.Test
 				policy.totalTimeout = args.proxyTotalTimeout;
 			}
 
-			if (!args.testProxy)
+			if (!args.testProxy && !args.testAsyncAwait)
 			{
 				client.ScanAll(policy, new RecordSequenceHandler(this), args.ns, args.set);
 
 				WaitTillComplete();
+			}
+			else if (args.testAsyncAwait)
+			{
+				throw new NotImplementedException();
+				/*var recordSet = await asyncAwaitClient.ScanAll(policy, args.ns, args.set, tokenSource.Token);
+				while (recordSet.Next())
+				{
+					recordCount++;
+
+					if ((recordCount % 10000) == 0)
+					{
+						;
+					}
+				}*/
 			}
 			else
 			{

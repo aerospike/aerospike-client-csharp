@@ -24,41 +24,76 @@ namespace Aerospike.Test
 	public class TestAppend : TestSync
 	{
 		[TestMethod]
-		public void Append()
+		public async Task Append()
 		{
 			Key key = new Key(args.ns, args.set, "appendkey");
 			string binName = args.GetBinName("appendbin");
 
-			// Delete record if it already exists.
-			client.Delete(null, key);
 
-			Bin bin = new Bin(binName, "Hello");
-			client.Append(null, key, bin);
+			if (!args.testAsyncAwait)
+			{
+				// Delete record if it already exists.
+				client.Delete(null, key);
 
-			bin = new Bin(binName, " World");
-			client.Append(null, key, bin);
+				Bin bin = new Bin(binName, "Hello");
+				client.Append(null, key, bin);
 
-			Record record = client.Get(null, key, bin.name);
-			AssertBinEqual(key, record, bin.name, "Hello World");
+				bin = new Bin(binName, " World");
+				client.Append(null, key, bin);
+
+				Record record = client.Get(null, key, bin.name);
+				AssertBinEqual(key, record, bin.name, "Hello World");
+			}
+			else
+			{
+				// Delete record if it already exists.
+				await asyncAwaitClient.Delete(null, key, CancellationToken.None);
+
+				Bin bin = new Bin(binName, "Hello");
+				await asyncAwaitClient.Append(null, key, new[] { bin }, CancellationToken.None);
+
+				bin = new Bin(binName, " World");
+				await asyncAwaitClient.Append(null, key, new[] { bin }, CancellationToken.None);
+
+				Record record = await asyncAwaitClient.Get(null, key, new[] { bin.name }, CancellationToken.None);
+				AssertBinEqual(key, record, bin.name, "Hello World");
+			}
 		}
 
 		[TestMethod]
-		public void Prepend()
+		public async Task Prepend()
 		{
 			Key key = new Key(args.ns, args.set, "prependkey");
 			string binName = args.GetBinName("prependbin");
 
-			// Delete record if it already exists.
-			client.Delete(null, key);
+			if (!args.testAsyncAwait)
+			{
+				// Delete record if it already exists.
+				client.Delete(null, key);
 
-			Bin bin = new Bin(binName, "World");
-			client.Prepend(null, key, bin);
+				Bin bin = new Bin(binName, "World");
+				client.Prepend(null, key, bin);
 
-			bin = new Bin(binName, "Hello ");
-			client.Prepend(null, key, bin);
+				bin = new Bin(binName, "Hello ");
+				client.Prepend(null, key, bin);
 
-			Record record = client.Get(null, key, bin.name);
-			AssertBinEqual(key, record, bin.name, "Hello World");
+				Record record = client.Get(null, key, bin.name);
+				AssertBinEqual(key, record, bin.name, "Hello World");
+			}
+			else
+			{
+				// Delete record if it already exists.
+				await asyncAwaitClient.Delete(null, key, CancellationToken.None);
+
+				Bin bin = new Bin(binName, "World");
+				await asyncAwaitClient.Prepend(null, key, new[] { bin }, CancellationToken.None);
+
+				bin = new Bin(binName, "Hello ");
+				await asyncAwaitClient.Prepend(null, key, new[] { bin }, CancellationToken.None);
+
+				Record record = await asyncAwaitClient.Get(null, key, new[] { bin.name }, CancellationToken.None);
+				AssertBinEqual(key, record, bin.name, "Hello World");
+			}
 		}
 	}
 }
