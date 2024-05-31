@@ -19,7 +19,7 @@ using System.Buffers;
 
 namespace Aerospike.Client
 {
-	internal class OperateCommandNew : ReadCommandNew
+	internal class OperateCommandNew : ReadCommandNew, ICommand
 	{
 		private readonly OperateArgs args;
 

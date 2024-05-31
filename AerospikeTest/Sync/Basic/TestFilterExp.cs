@@ -19,6 +19,7 @@ using System.Reflection;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Aerospike.Client;
 using Grpc.Core;
+using System.Runtime.ExceptionServices;
 
 namespace Aerospike.Test
 {
@@ -94,7 +95,7 @@ namespace Aerospike.Test
 			else
 			{
 				await asyncAwaitClient.Put(policy, keyA, new[] { bin }, CancellationToken.None);
-				Record r = client.Get(null, keyA);
+				Record r = await asyncAwaitClient.Get(null, keyA, CancellationToken.None);
 
 				AssertBinEqual(keyA, r, binA, 3);
 
@@ -127,8 +128,7 @@ namespace Aerospike.Test
 			{
 				await asyncAwaitClient.Put(policy, keyA, new[] { bin }, CancellationToken.None);
 
-				Test.TestException(async () =>
-				{
+				await Test.ThrowsAerospikeException(async () => {
 					await asyncAwaitClient.Put(policy, keyB, new[] { bin }, CancellationToken.None);
 				}, ResultCode.FILTERED_OUT);
 			}
@@ -182,12 +182,10 @@ namespace Aerospike.Test
 			{
 				await asyncAwaitClient.Get(policy, keyA, CancellationToken.None);
 
-				Test.TestException(async () =>
-				{
+				await Test.ThrowsAerospikeException(async () => {
 					await asyncAwaitClient.Get(policy, keyB, CancellationToken.None);
 				}, ResultCode.FILTERED_OUT);
 			}
-
 		}
 
 		[TestMethod]
@@ -235,7 +233,7 @@ namespace Aerospike.Test
 			else
 			{
 				await asyncAwaitClient.Delete(policy, keyA, CancellationToken.None);
-				Record r = client.Get(null, keyA);
+				Record r = await asyncAwaitClient.Get(null, keyA, CancellationToken.None);
 
 				Assert.AreEqual(null, r);
 
@@ -267,8 +265,7 @@ namespace Aerospike.Test
             {
 				await asyncAwaitClient.Delete(policy, keyA, CancellationToken.None);
 
-				Test.TestException(async () =>
-				{
+				await Test.ThrowsAerospikeException(async () => {
 					await asyncAwaitClient.Delete(policy, keyB, CancellationToken.None);
 				}, ResultCode.FILTERED_OUT);
 			}
@@ -301,7 +298,7 @@ namespace Aerospike.Test
 			else
 			{
 				await asyncAwaitClient.Delete(policy, keyA, CancellationToken.None);
-				Record r = client.Get(null, keyA);
+				Record r = await asyncAwaitClient.Get(null, keyA, CancellationToken.None);
 
 				Assert.AreEqual(null, r);
 
@@ -338,8 +335,7 @@ namespace Aerospike.Test
 			{
 				await asyncAwaitClient.Delete(policy, keyA, CancellationToken.None);
 
-				Test.TestException(async () =>
-				{
+				await Test.ThrowsAerospikeException(async () => {
 					await asyncAwaitClient.Delete(policy, keyB, CancellationToken.None);
 				}, ResultCode.FILTERED_OUT);
 			}
@@ -393,8 +389,7 @@ namespace Aerospike.Test
 			{
 				await asyncAwaitClient.Operate(policy, keyA, new[] { Operation.Get(binA) }, CancellationToken.None);
 
-				Test.TestException(async () =>
-				{
+				await Test.ThrowsAerospikeException(async () => {
 					await asyncAwaitClient.Operate(policy, keyB, new[] { Operation.Get(binA) }, CancellationToken.None);
 				}, ResultCode.FILTERED_OUT);
 			}
@@ -443,8 +438,7 @@ namespace Aerospike.Test
 			{
 				await asyncAwaitClient.Operate(policy, keyA, new[] { Operation.Put(bin), Operation.Get(binA) }, CancellationToken.None);
 
-				Test.TestException(async () =>
-				{
+				await Test.ThrowsAerospikeException(async () => {
 					await asyncAwaitClient.Operate(policy, keyB, new[] { Operation.Put(bin), Operation.Get(binA) }, CancellationToken.None);
 				}, ResultCode.FILTERED_OUT);
 			}
@@ -529,8 +523,7 @@ namespace Aerospike.Test
 			}
 			else
 			{
-				Test.TestException(async () =>
-				{
+				await Test.ThrowsAerospikeException(async () => {
 					await asyncAwaitClient.Get(policy, keyA, CancellationToken.None);
 				}, ResultCode.FILTERED_OUT);
 
@@ -561,8 +554,7 @@ namespace Aerospike.Test
 			}
 			else
 			{
-				Test.TestException(async () =>
-				{
+				await Test.ThrowsAerospikeException(async () => {
 					await asyncAwaitClient.Get(policy, keyA, CancellationToken.None);
 				}, ResultCode.FILTERED_OUT);
 
@@ -597,8 +589,7 @@ namespace Aerospike.Test
 			}
 			else
 			{
-				Test.TestException(async () =>
-				{
+				await Test.ThrowsAerospikeException(async () => {
 					await asyncAwaitClient.Get(policy, keyA, CancellationToken.None);
 				}, ResultCode.FILTERED_OUT);
 
@@ -608,7 +599,7 @@ namespace Aerospike.Test
 		}
 
 		[TestMethod]
-		public void FilterExpFilterSub()
+		public async Task FilterExpFilterSub()
 		{
 			Policy policy = new Policy();
 			policy.filterExp = Exp.Build(
@@ -617,13 +608,25 @@ namespace Aerospike.Test
 					Exp.Val(-2)));
 			policy.failOnFilteredOut = true;
 
-			Test.TestException(() =>
+			if (!args.testAsyncAwait)
 			{
-				client.Get(policy, keyA);
-			}, ResultCode.FILTERED_OUT);
+				Test.TestException(() =>
+				{
+					client.Get(policy, keyA);
+				}, ResultCode.FILTERED_OUT);
 
-			Record r = client.Get(policy, keyB);
-			AssertBinEqual(keyA, r, binA, 2);
+				Record r = client.Get(policy, keyB);
+				AssertBinEqual(keyA, r, binA, 2);
+			}
+			else
+			{
+				await Test.ThrowsAerospikeException(async () => {
+					await asyncAwaitClient.Get(policy, keyA, CancellationToken.None);
+				}, ResultCode.FILTERED_OUT);
+
+				Record r = await asyncAwaitClient.Get(policy, keyB, CancellationToken.None);
+				AssertBinEqual(keyA, r, binA, 2);
+			}
 		}
 
 		[TestMethod]
@@ -648,8 +651,7 @@ namespace Aerospike.Test
 			}
 			else
 			{
-				Test.TestException(async () =>
-				{
+				await Test.ThrowsAerospikeException(async () => {
 					await asyncAwaitClient.Get(policy, keyA, CancellationToken.None);
 				}, ResultCode.FILTERED_OUT);
 
@@ -680,8 +682,7 @@ namespace Aerospike.Test
 			}
 			else
 			{
-				Test.TestException(async () =>
-				{
+				await Test.ThrowsAerospikeException(async () => {
 					await asyncAwaitClient.Get(policy, keyA, CancellationToken.None);
 				}, ResultCode.FILTERED_OUT);
 
@@ -716,8 +717,7 @@ namespace Aerospike.Test
 			}
 			else
 			{
-				Test.TestException(async () =>
-				{
+				await Test.ThrowsAerospikeException(async () => {
 					await asyncAwaitClient.Get(policy, keyA, CancellationToken.None);
 				}, ResultCode.FILTERED_OUT);
 
@@ -752,8 +752,7 @@ namespace Aerospike.Test
 			}
 			else
 			{
-				Test.TestException(async () =>
-				{
+				await Test.ThrowsAerospikeException(async () => {
 					await asyncAwaitClient.Get(policy, keyA, CancellationToken.None);
 				}, ResultCode.FILTERED_OUT);
 
@@ -784,8 +783,7 @@ namespace Aerospike.Test
 			}
 			else
 			{
-				Test.TestException(async () =>
-				{
+				await Test.ThrowsAerospikeException(async () => {
 					await asyncAwaitClient.Get(policy, keyA, CancellationToken.None);
 				}, ResultCode.FILTERED_OUT);
 
@@ -813,8 +811,7 @@ namespace Aerospike.Test
 			}
 			else
 			{
-				Test.TestException(async () =>
-				{
+				await Test.ThrowsAerospikeException(async () => {
 					await asyncAwaitClient.Get(policy, keyA, CancellationToken.None);
 				}, ResultCode.FILTERED_OUT);
 
@@ -842,8 +839,7 @@ namespace Aerospike.Test
 			}
 			else
 			{
-				Test.TestException(async () =>
-				{
+				await Test.ThrowsAerospikeException(async () => {
 					await asyncAwaitClient.Get(policy, keyA, CancellationToken.None);
 				}, ResultCode.FILTERED_OUT);
 
@@ -871,8 +867,7 @@ namespace Aerospike.Test
 			}
 			else
 			{
-				Test.TestException(async () =>
-				{
+				await Test.ThrowsAerospikeException(async () => {
 					await asyncAwaitClient.Get(policy, keyA, CancellationToken.None);
 				}, ResultCode.FILTERED_OUT);
 
@@ -900,8 +895,7 @@ namespace Aerospike.Test
 			}
 			else
 			{
-				Test.TestException(async () =>
-				{
+				await Test.ThrowsAerospikeException(async () => {
 					await asyncAwaitClient.Get(policy, keyA, CancellationToken.None);
 				}, ResultCode.FILTERED_OUT);
 
@@ -929,8 +923,7 @@ namespace Aerospike.Test
 			}
 			else
 			{
-				Test.TestException(async () =>
-				{
+				await Test.ThrowsAerospikeException(async () => {
 					await asyncAwaitClient.Get(policy, keyA, CancellationToken.None);
 				}, ResultCode.FILTERED_OUT);
 
@@ -967,8 +960,7 @@ namespace Aerospike.Test
 			}
 			else
 			{
-				Test.TestException(async () =>
-				{
+				await Test.ThrowsAerospikeException(async () => {
 					await asyncAwaitClient.Get(policy, keyA, CancellationToken.None);
 				}, ResultCode.FILTERED_OUT);
 
@@ -1010,8 +1002,7 @@ namespace Aerospike.Test
 			}
 			else
 			{
-				Test.TestException(async () =>
-				{
+				await Test.ThrowsAerospikeException(async () => {
 					await asyncAwaitClient.Get(policy, keyA, CancellationToken.None);
 				}, ResultCode.FILTERED_OUT);
 
@@ -1053,8 +1044,7 @@ namespace Aerospike.Test
 			}
 			else
 			{
-				Test.TestException(async () =>
-				{
+				await Test.ThrowsAerospikeException(async () => {
 					await asyncAwaitClient.Get(policy, keyA, CancellationToken.None);
 				}, ResultCode.FILTERED_OUT);
 
@@ -1092,8 +1082,7 @@ namespace Aerospike.Test
 			}
 			else
 			{
-				Test.TestException(async () =>
-				{
+				await Test.ThrowsAerospikeException(async () => {
 					await asyncAwaitClient.Get(policy, keyA, CancellationToken.None);
 				}, ResultCode.FILTERED_OUT);
 
@@ -1129,8 +1118,7 @@ namespace Aerospike.Test
 			}
 			else
 			{
-				Test.TestException(async () =>
-				{
+				await Test.ThrowsAerospikeException(async () => {
 					await asyncAwaitClient.Get(policy, keyA, CancellationToken.None);
 				}, ResultCode.FILTERED_OUT);
 
@@ -1166,8 +1154,7 @@ namespace Aerospike.Test
 			}
 			else
 			{
-				Test.TestException(async () =>
-				{
+				await Test.ThrowsAerospikeException(async () => {
 					await asyncAwaitClient.Get(policy, keyB, CancellationToken.None);
 				}, ResultCode.FILTERED_OUT);
 
@@ -1203,8 +1190,7 @@ namespace Aerospike.Test
 			}
 			else
 			{
-				Test.TestException(async () =>
-				{
+				await Test.ThrowsAerospikeException(async () => {
 					await asyncAwaitClient.Get(policy, keyB, CancellationToken.None);
 				}, ResultCode.FILTERED_OUT);
 
@@ -1239,8 +1225,7 @@ namespace Aerospike.Test
 			}
 			else
 			{
-				Test.TestException(async () =>
-				{
+				await Test.ThrowsAerospikeException(async () => {
 					await asyncAwaitClient.Get(policy, keyA, CancellationToken.None);
 				}, ResultCode.FILTERED_OUT);
 
@@ -1276,8 +1261,7 @@ namespace Aerospike.Test
 			}
 			else
 			{
-				Test.TestException(async () =>
-				{
+				await Test.ThrowsAerospikeException(async () => {
 					await asyncAwaitClient.Get(policy, keyA, CancellationToken.None);
 				}, ResultCode.FILTERED_OUT);
 
@@ -1313,8 +1297,7 @@ namespace Aerospike.Test
 			}
 			else
 			{
-				Test.TestException(async () =>
-				{
+				await Test.ThrowsAerospikeException(async () => {
 					await asyncAwaitClient.Get(policy, keyA, CancellationToken.None);
 				}, ResultCode.FILTERED_OUT);
 
@@ -1354,8 +1337,7 @@ namespace Aerospike.Test
 			}
 			else
 			{
-				Test.TestException(async () =>
-				{
+				await Test.ThrowsAerospikeException(async () => {
 					await asyncAwaitClient.Get(policy, keyA, CancellationToken.None);
 				}, ResultCode.FILTERED_OUT);
 
@@ -1397,8 +1379,7 @@ namespace Aerospike.Test
 			}
 			else
 			{
-				Test.TestException(async () =>
-				{
+				await Test.ThrowsAerospikeException(async () => {
 					await asyncAwaitClient.Get(policy, keyA, CancellationToken.None);
 				}, ResultCode.FILTERED_OUT);
 
@@ -1448,8 +1429,7 @@ namespace Aerospike.Test
 			}
 			else
 			{
-				Test.TestException(async () =>
-				{
+				await Test.ThrowsAerospikeException(async () => {
 					await asyncAwaitClient.Get(policy, keyA, CancellationToken.None);
 				}, ResultCode.FILTERED_OUT);
 

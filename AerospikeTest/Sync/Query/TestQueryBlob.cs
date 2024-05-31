@@ -33,20 +33,24 @@ namespace Aerospike.Test
 		private static int size = 5;
 
 		[ClassInitialize()]
-		public static void Prepare(TestContext testContext)
+		public static async Task Prepare(TestContext testContext)
 		{
 			Policy policy = new();
 			policy.totalTimeout = 5000;
 
 			try
 			{
-				if (!args.testProxy || (args.testProxy && nativeClient != null))
+				if ((!args.testProxy && !args.testAsyncAwait) || (args.testProxy && nativeClient != null))
 				{
 					IndexTask task = nativeClient.CreateIndex(policy, args.ns, args.set, indexName, binName, IndexType.BLOB);
 					task.Wait();
 
 					task = nativeClient.CreateIndex(policy, args.ns, args.set, indexNameList, binNameList, IndexType.BLOB, IndexCollectionType.LIST);
 					task.Wait();
+				}
+				else if (args.testAsyncAwait)
+				{
+					throw new NotImplementedException();
 				}
 			}
 			catch (AerospikeException ae)
@@ -71,17 +75,28 @@ namespace Aerospike.Test
 				Bin bin = new Bin(binName, bytes);
 				Bin binList = new Bin(binNameList, list);
 
-				client.Put(null, key, bin, binList);
+				if (!args.testAsyncAwait)
+				{
+					client.Put(null, key, bin, binList);
+				}
+				else
+				{
+					await asyncAwaitClient.Put(null, key, new[] { bin, binList }, CancellationToken.None);
+				}
 			}
 		}
 
 		[ClassCleanup()]
 		public static void Destroy()
 		{
-			if (!args.testProxy || (args.testProxy && nativeClient != null))
+			if ((!args.testProxy && !args.testAsyncAwait) || (args.testProxy && nativeClient != null))
 			{
 				nativeClient.DropIndex(null, args.ns, args.set, indexName);
 				nativeClient.DropIndex(null, args.ns, args.set, indexNameList);
+			}
+			else if (args.testAsyncAwait) 
+			{
+				throw new NotImplementedException();
 			}
 		}
 
@@ -97,25 +112,31 @@ namespace Aerospike.Test
 			stmt.SetBinNames(binName);
 			stmt.SetFilter(Filter.Equal(binName, bytes));
 
-			RecordSet rs = client.Query(null, stmt);
+			if (!args.testAsyncAwait) { 
+				RecordSet rs = client.Query(null, stmt);
 
-			try
-			{
-				int count = 0;
-
-				while (rs.Next())
+				try
 				{
-					Record record = rs.Record;
-					byte[] result = (byte[])record.GetValue(binName);
-					CollectionAssert.AreEqual(bytes, result);
-					count++;
-				}
+					int count = 0;
 
-				Assert.AreNotEqual(0, count);
+					while (rs.Next())
+					{
+						Record record = rs.Record;
+						byte[] result = (byte[])record.GetValue(binName);
+						CollectionAssert.AreEqual(bytes, result);
+						count++;
+					}
+
+					Assert.AreNotEqual(0, count);
+				}
+				finally
+				{
+					rs.Close();
+				}
 			}
-			finally
+			else
 			{
-				rs.Close();
+				throw new NotImplementedException();
 			}
 		}
 
@@ -131,28 +152,35 @@ namespace Aerospike.Test
 			stmt.SetBinNames(binName, binNameList);
 			stmt.SetFilter(Filter.Contains(binNameList, IndexCollectionType.LIST, bytes));
 
-			RecordSet rs = client.Query(null, stmt);
-
-			try
+			if (!args.testAsyncAwait)
 			{
-				int count = 0;
+				RecordSet rs = client.Query(null, stmt);
 
-				while (rs.Next())
+				try
 				{
-					Record record = rs.Record;
-					List<object> list = (List<object>)record.GetValue(binNameList);
-					Assert.AreEqual(1, list.Count);
+					int count = 0;
 
-					byte[] result = (byte[])list.ElementAt(0);
-					CollectionAssert.AreEqual(bytes, result);
-					count++;
+					while (rs.Next())
+					{
+						Record record = rs.Record;
+						List<object> list = (List<object>)record.GetValue(binNameList);
+						Assert.AreEqual(1, list.Count);
+
+						byte[] result = (byte[])list.ElementAt(0);
+						CollectionAssert.AreEqual(bytes, result);
+						count++;
+					}
+
+					Assert.AreEqual(1, count);
 				}
-
-				Assert.AreEqual(1, count);
+				finally
+				{
+					rs.Close();
+				}
 			}
-			finally
+			else
 			{
-				rs.Close();
+				throw new NotImplementedException(); 
 			}
 		}
 	}

@@ -18,6 +18,7 @@ using System;
 using System.Collections;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Aerospike.Client;
+using System.Runtime.ExceptionServices;
 
 namespace Aerospike.Test
 {
@@ -62,7 +63,6 @@ namespace Aerospike.Test
 
 			if (!args.testAsyncAwait)
 			{
-
 				Record record = client.Operate(null, keyA, ExpOperation.Read(expVar, exp, ExpReadFlags.DEFAULT));
 				AssertRecordFound(keyA, record);
 
@@ -79,8 +79,7 @@ namespace Aerospike.Test
 				Record record = await asyncAwaitClient.Operate(null, keyA, new[] { ExpOperation.Read(expVar, exp, ExpReadFlags.DEFAULT) }, CancellationToken.None);
 				AssertRecordFound(keyA, record);
 
-				Test.TestException(async () =>
-				{
+				await Test.ThrowsAerospikeException(async () => {
 					await asyncAwaitClient.Operate(null, keyB, new[] { ExpOperation.Read(expVar, exp, ExpReadFlags.DEFAULT) }, CancellationToken.None);
 				}, ResultCode.OP_NOT_APPLICABLE);
 
@@ -122,8 +121,7 @@ namespace Aerospike.Test
 					CancellationToken.None);
 				AssertRecordFound(keyA, record);
 
-				Test.TestException(async () =>
-				{
+				await Test.ThrowsAerospikeException(async () => {
 					await asyncAwaitClient.Operate(null, keyB,
 						new[] {ExpOperation.Write(binD, wexp, ExpWriteFlags.DEFAULT),
 						ExpOperation.Read(expVar, rexp, ExpReadFlags.DEFAULT) },
@@ -171,8 +169,7 @@ namespace Aerospike.Test
 					CancellationToken.None);
 				AssertRecordFound(keyA, record);
 
-				Test.TestException(async () =>
-				{
+				await Test.ThrowsAerospikeException(async () => {
 					await asyncAwaitClient.Operate(null, keyB,
 						new[] {ExpOperation.Write(binC, wexp, ExpWriteFlags.DEFAULT),
 						ExpOperation.Read(expVar, rexp, ExpReadFlags.DEFAULT) },
@@ -231,8 +228,7 @@ namespace Aerospike.Test
 			}
 			else
 			{
-				Test.TestException(async () =>
-				{
+				await Test.ThrowsAerospikeException(async () => {
 					await asyncAwaitClient.Operate(null, keyA, new[] { ExpOperation.Write(binC, wexp, ExpWriteFlags.UPDATE_ONLY) }, CancellationToken.None);
 				}, ResultCode.BIN_NOT_FOUND);
 
@@ -242,8 +238,7 @@ namespace Aerospike.Test
 				record = await asyncAwaitClient.Operate(null, keyA, new[] { ExpOperation.Write(binC, wexp, ExpWriteFlags.CREATE_ONLY) }, CancellationToken.None);
 				AssertRecordFound(keyA, record);
 
-				Test.TestException(async () =>
-				{
+				await Test.ThrowsAerospikeException(async () => {
 					await asyncAwaitClient.Operate(null, keyA, new[] { ExpOperation.Write(binC, wexp, ExpWriteFlags.CREATE_ONLY) }, CancellationToken.None);
 				}, ResultCode.BIN_EXISTS_ERROR);
 
@@ -252,8 +247,7 @@ namespace Aerospike.Test
 
 				Expression dexp = Exp.Build(Exp.Nil());
 
-				Test.TestException(async () =>
-				{
+				await Test.ThrowsAerospikeException(async () => {
 					await asyncAwaitClient.Operate(null, keyA, new[] { ExpOperation.Write(binC, dexp, ExpWriteFlags.DEFAULT) }, CancellationToken.None);
 				}, ResultCode.OP_NOT_APPLICABLE);
 
@@ -299,8 +293,7 @@ namespace Aerospike.Test
 			}
 			else
 			{
-				Test.TestException(async () =>
-				{
+				await Test.ThrowsAerospikeException(async () => {
 					await asyncAwaitClient.Operate(null, keyA,
 						new[] {ExpOperation.Write(binC, exp, ExpWriteFlags.DEFAULT),
 						Operation.Get(binC) },

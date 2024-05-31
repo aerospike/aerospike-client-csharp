@@ -19,6 +19,7 @@ using System.Collections;
 using System.Collections.Generic;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Aerospike.Client;
+using System.Runtime.CompilerServices;
 
 namespace Aerospike.Test
 {
@@ -28,1076 +29,2180 @@ namespace Aerospike.Test
 		private const string binName = "opmapbin";
 
 		[TestMethod]
-		public void OperateMapPut()
+		public async Task OperateMapPut()
 		{
-			Key key = new Key(args.ns, args.set, "opmkey1");		
-			client.Delete(null, key);
-		
-			MapPolicy putMode = MapPolicy.Default;
-			MapPolicy addMode = new MapPolicy(MapOrder.UNORDERED, MapWriteMode.CREATE_ONLY);
-			MapPolicy updateMode = new MapPolicy(MapOrder.UNORDERED, MapWriteMode.UPDATE_ONLY);
-			MapPolicy orderedUpdateMode = new MapPolicy(MapOrder.KEY_ORDERED, MapWriteMode.UPDATE_ONLY);
-		
-			// Calling put() multiple times performs poorly because the server makes
-			// a copy of the map for each call, but we still need to test it.
-			// putItems() should be used instead for best performance.
-			Record record = client.Operate(null, key,
-					MapOperation.Put(putMode, binName, Value.Get(11), Value.Get(789)),
-					MapOperation.Put(putMode, binName, Value.Get(10), Value.Get(999)),
-					MapOperation.Put(addMode, binName, Value.Get(12), Value.Get(500)),
-					MapOperation.Put(addMode, binName, Value.Get(15), Value.Get(1000)),
-					// Ordered type should be ignored since map has already been created in first put().
-					MapOperation.Put(orderedUpdateMode, binName, Value.Get(10), Value.Get(1)),
-					MapOperation.Put(updateMode, binName, Value.Get(15), Value.Get(5))
-					);
-		
-			AssertRecordFound(key, record);
-				
-			IList results = record.GetList(binName);
-			int i = 0;
+			Key key = new Key(args.ns, args.set, "opmkey1");
 
-			long size = (long)results[i++];	
-			Assert.AreEqual(1, size);
-		
-			size = (long)results[i++];	
-			Assert.AreEqual(2, size);
-		
-			size = (long)results[i++];	
-			Assert.AreEqual(3, size);
-		
-			size = (long)results[i++];	
-			Assert.AreEqual(4, size);
-		
-			size = (long)results[i++];	
-			Assert.AreEqual(4, size);
-		
-			size = (long)results[i++];	
-			Assert.AreEqual(4, size);
+			if (!args.testAsyncAwait)
+			{
+				client.Delete(null, key);
 
-			record = client.Get(null, key, binName);
-		
-			IDictionary map = record.GetMap(binName);	
-			Assert.AreEqual(4, map.Count);
-			Assert.AreEqual(1L, map[10L]);
+				MapPolicy putMode = MapPolicy.Default;
+				MapPolicy addMode = new MapPolicy(MapOrder.UNORDERED, MapWriteMode.CREATE_ONLY);
+				MapPolicy updateMode = new MapPolicy(MapOrder.UNORDERED, MapWriteMode.UPDATE_ONLY);
+				MapPolicy orderedUpdateMode = new MapPolicy(MapOrder.KEY_ORDERED, MapWriteMode.UPDATE_ONLY);
+
+				// Calling put() multiple times performs poorly because the server makes
+				// a copy of the map for each call, but we still need to test it.
+				// putItems() should be used instead for best performance.
+				Record record = client.Operate(null, key,
+						MapOperation.Put(putMode, binName, Value.Get(11), Value.Get(789)),
+						MapOperation.Put(putMode, binName, Value.Get(10), Value.Get(999)),
+						MapOperation.Put(addMode, binName, Value.Get(12), Value.Get(500)),
+						MapOperation.Put(addMode, binName, Value.Get(15), Value.Get(1000)),
+						// Ordered type should be ignored since map has already been created in first put().
+						MapOperation.Put(orderedUpdateMode, binName, Value.Get(10), Value.Get(1)),
+						MapOperation.Put(updateMode, binName, Value.Get(15), Value.Get(5))
+						);
+
+				AssertRecordFound(key, record);
+
+				IList results = record.GetList(binName);
+				int i = 0;
+
+				long size = (long)results[i++];
+				Assert.AreEqual(1, size);
+
+				size = (long)results[i++];
+				Assert.AreEqual(2, size);
+
+				size = (long)results[i++];
+				Assert.AreEqual(3, size);
+
+				size = (long)results[i++];
+				Assert.AreEqual(4, size);
+
+				size = (long)results[i++];
+				Assert.AreEqual(4, size);
+
+				size = (long)results[i++];
+				Assert.AreEqual(4, size);
+
+				record = client.Get(null, key, binName);
+
+				IDictionary map = record.GetMap(binName);
+				Assert.AreEqual(4, map.Count);
+				Assert.AreEqual(1L, map[10L]);
+			}
+			else
+			{
+				await asyncAwaitClient.Delete(null, key, CancellationToken.None);
+
+				MapPolicy putMode = MapPolicy.Default;
+				MapPolicy addMode = new MapPolicy(MapOrder.UNORDERED, MapWriteMode.CREATE_ONLY);
+				MapPolicy updateMode = new MapPolicy(MapOrder.UNORDERED, MapWriteMode.UPDATE_ONLY);
+				MapPolicy orderedUpdateMode = new MapPolicy(MapOrder.KEY_ORDERED, MapWriteMode.UPDATE_ONLY);
+
+				// Calling put() multiple times performs poorly because the server makes
+				// a copy of the map for each call, but we still need to test it.
+				// putItems() should be used instead for best performance.
+				Record record = await asyncAwaitClient.Operate(null, key,
+						new[] { MapOperation.Put(putMode, binName, Value.Get(11), Value.Get(789)),
+						MapOperation.Put(putMode, binName, Value.Get(10), Value.Get(999)),
+						MapOperation.Put(addMode, binName, Value.Get(12), Value.Get(500)),
+						MapOperation.Put(addMode, binName, Value.Get(15), Value.Get(1000)),
+						// Ordered type should be ignored since map has already been created in first put().
+						MapOperation.Put(orderedUpdateMode, binName, Value.Get(10), Value.Get(1)),
+						MapOperation.Put(updateMode, binName, Value.Get(15), Value.Get(5)) },
+						CancellationToken.None
+						);
+
+				AssertRecordFound(key, record);
+
+				IList results = record.GetList(binName);
+				int i = 0;
+
+				long size = (long)results[i++];
+				Assert.AreEqual(1, size);
+
+				size = (long)results[i++];
+				Assert.AreEqual(2, size);
+
+				size = (long)results[i++];
+				Assert.AreEqual(3, size);
+
+				size = (long)results[i++];
+				Assert.AreEqual(4, size);
+
+				size = (long)results[i++];
+				Assert.AreEqual(4, size);
+
+				size = (long)results[i++];
+				Assert.AreEqual(4, size);
+
+				record = await asyncAwaitClient.Get(null, key, new[] { binName }, CancellationToken.None);
+
+				IDictionary map = record.GetMap(binName);
+				Assert.AreEqual(4, map.Count);
+				Assert.AreEqual(1L, map[10L]);
+			}
 		}
 
 		[TestMethod]
-		public void OperateMapPutItems()
+		public async Task OperateMapPutItems()
 		{
 			Key key = new Key(args.ns, args.set, "opmkey2");
-			client.Delete(null, key);
 
-			Dictionary<Value, Value> addMap = new Dictionary<Value, Value>();
-			addMap[Value.Get(12)] = Value.Get("myval");
-			addMap[Value.Get(-8734)] = Value.Get("str2");
-			addMap[Value.Get(1)] = Value.Get("my default");
+			if (!args.testAsyncAwait)
+			{
+				client.Delete(null, key);
 
-			Dictionary<Value, Value> putMap = new Dictionary<Value, Value>();
-			putMap[Value.Get(12)] = Value.Get("myval12222");
-			putMap[Value.Get(13)] = Value.Get("str13");
+				Dictionary<Value, Value> addMap = new Dictionary<Value, Value>();
+				addMap[Value.Get(12)] = Value.Get("myval");
+				addMap[Value.Get(-8734)] = Value.Get("str2");
+				addMap[Value.Get(1)] = Value.Get("my default");
 
-			Dictionary<Value, Value> updateMap = new Dictionary<Value, Value>();
-			updateMap[Value.Get(13)] = Value.Get("myval2");
+				Dictionary<Value, Value> putMap = new Dictionary<Value, Value>();
+				putMap[Value.Get(12)] = Value.Get("myval12222");
+				putMap[Value.Get(13)] = Value.Get("str13");
 
-			Dictionary<Value, Value> replaceMap = new Dictionary<Value, Value>();
-			replaceMap[Value.Get(12)] = Value.Get(23);
-			replaceMap[Value.Get(-8734)] = Value.Get("changed");
+				Dictionary<Value, Value> updateMap = new Dictionary<Value, Value>();
+				updateMap[Value.Get(13)] = Value.Get("myval2");
 
-			MapPolicy putMode = MapPolicy.Default;
-			MapPolicy addMode = new MapPolicy(MapOrder.KEY_ORDERED, MapWriteMode.CREATE_ONLY);
-			MapPolicy updateMode = new MapPolicy(MapOrder.KEY_ORDERED, MapWriteMode.UPDATE_ONLY);
+				Dictionary<Value, Value> replaceMap = new Dictionary<Value, Value>();
+				replaceMap[Value.Get(12)] = Value.Get(23);
+				replaceMap[Value.Get(-8734)] = Value.Get("changed");
 
-			Record record = client.Operate(null, key,
-				MapOperation.PutItems(addMode, binName, addMap),
-				MapOperation.PutItems(putMode, binName, putMap),
-				MapOperation.PutItems(updateMode, binName, updateMap),
-				MapOperation.PutItems(updateMode, binName, replaceMap),
-				MapOperation.GetByKey(binName, Value.Get(1), MapReturnType.VALUE),
-				MapOperation.GetByKey(binName, Value.Get(-8734), MapReturnType.VALUE),
-				MapOperation.GetByKeyRange(binName, Value.Get(12), Value.Get(15), MapReturnType.KEY_VALUE),
-				MapOperation.GetByKeyRange(binName, Value.Get(12), Value.Get(15), MapReturnType.UNORDERED_MAP),
-				MapOperation.GetByKeyRange(binName, Value.Get(12), Value.Get(15), MapReturnType.ORDERED_MAP)
-				
-				);
+				MapPolicy putMode = MapPolicy.Default;
+				MapPolicy addMode = new MapPolicy(MapOrder.KEY_ORDERED, MapWriteMode.CREATE_ONLY);
+				MapPolicy updateMode = new MapPolicy(MapOrder.KEY_ORDERED, MapWriteMode.UPDATE_ONLY);
 
-			AssertRecordFound(key, record);
+				Record record = client.Operate(null, key,
+					MapOperation.PutItems(addMode, binName, addMap),
+					MapOperation.PutItems(putMode, binName, putMap),
+					MapOperation.PutItems(updateMode, binName, updateMap),
+					MapOperation.PutItems(updateMode, binName, replaceMap),
+					MapOperation.GetByKey(binName, Value.Get(1), MapReturnType.VALUE),
+					MapOperation.GetByKey(binName, Value.Get(-8734), MapReturnType.VALUE),
+					MapOperation.GetByKeyRange(binName, Value.Get(12), Value.Get(15), MapReturnType.KEY_VALUE),
+					MapOperation.GetByKeyRange(binName, Value.Get(12), Value.Get(15), MapReturnType.UNORDERED_MAP),
+					MapOperation.GetByKeyRange(binName, Value.Get(12), Value.Get(15), MapReturnType.ORDERED_MAP)
 
-			IList results = record.GetList(binName);
-			int i = 0;
+					);
 
-			long size = (long)results[i++];
-			Assert.AreEqual(3, size);
+				AssertRecordFound(key, record);
 
-			size = (long)results[i++];
-			Assert.AreEqual(4, size);
+				IList results = record.GetList(binName);
+				int i = 0;
 
-			size = (long)results[i++];
-			Assert.AreEqual(4, size);
+				long size = (long)results[i++];
+				Assert.AreEqual(3, size);
 
-			size = (long)results[i++];
-			Assert.AreEqual(4, size);
+				size = (long)results[i++];
+				Assert.AreEqual(4, size);
 
-			string str = (string)results[i++];
-			Assert.AreEqual("my default", str);
+				size = (long)results[i++];
+				Assert.AreEqual(4, size);
 
-			str = (string)results[i++];
-			Assert.AreEqual("changed", str);
+				size = (long)results[i++];
+				Assert.AreEqual(4, size);
 
-			IList list = (IList)results[i++];
-			Assert.AreEqual(2, list.Count);
+				string str = (string)results[i++];
+				Assert.AreEqual("my default", str);
 
-			IDictionary dict = (IDictionary)results[i++];
-			Assert.AreEqual(2, dict.Count);
-			Assert.IsTrue(dict is Dictionary<object, object>);
+				str = (string)results[i++];
+				Assert.AreEqual("changed", str);
 
-			dict = (IDictionary)results[i++];
-			Assert.AreEqual(2, dict.Count);
-			Assert.IsTrue(dict is SortedDictionary<object, object>);
+				IList list = (IList)results[i++];
+				Assert.AreEqual(2, list.Count);
+
+				IDictionary dict = (IDictionary)results[i++];
+				Assert.AreEqual(2, dict.Count);
+				Assert.IsTrue(dict is Dictionary<object, object>);
+
+				dict = (IDictionary)results[i++];
+				Assert.AreEqual(2, dict.Count);
+				Assert.IsTrue(dict is SortedDictionary<object, object>);
+			}
+			else
+			{
+				await asyncAwaitClient.Delete(null, key, CancellationToken.None);
+
+				Dictionary<Value, Value> addMap = new Dictionary<Value, Value>();
+				addMap[Value.Get(12)] = Value.Get("myval");
+				addMap[Value.Get(-8734)] = Value.Get("str2");
+				addMap[Value.Get(1)] = Value.Get("my default");
+
+				Dictionary<Value, Value> putMap = new Dictionary<Value, Value>();
+				putMap[Value.Get(12)] = Value.Get("myval12222");
+				putMap[Value.Get(13)] = Value.Get("str13");
+
+				Dictionary<Value, Value> updateMap = new Dictionary<Value, Value>();
+				updateMap[Value.Get(13)] = Value.Get("myval2");
+
+				Dictionary<Value, Value> replaceMap = new Dictionary<Value, Value>();
+				replaceMap[Value.Get(12)] = Value.Get(23);
+				replaceMap[Value.Get(-8734)] = Value.Get("changed");
+
+				MapPolicy putMode = MapPolicy.Default;
+				MapPolicy addMode = new MapPolicy(MapOrder.KEY_ORDERED, MapWriteMode.CREATE_ONLY);
+				MapPolicy updateMode = new MapPolicy(MapOrder.KEY_ORDERED, MapWriteMode.UPDATE_ONLY);
+
+				Record record = await asyncAwaitClient.Operate(null, key,
+					new[] { MapOperation.PutItems(addMode, binName, addMap),
+					MapOperation.PutItems(putMode, binName, putMap),
+					MapOperation.PutItems(updateMode, binName, updateMap),
+					MapOperation.PutItems(updateMode, binName, replaceMap),
+					MapOperation.GetByKey(binName, Value.Get(1), MapReturnType.VALUE),
+					MapOperation.GetByKey(binName, Value.Get(-8734), MapReturnType.VALUE),
+					MapOperation.GetByKeyRange(binName, Value.Get(12), Value.Get(15), MapReturnType.KEY_VALUE),
+					MapOperation.GetByKeyRange(binName, Value.Get(12), Value.Get(15), MapReturnType.UNORDERED_MAP),
+					MapOperation.GetByKeyRange(binName, Value.Get(12), Value.Get(15), MapReturnType.ORDERED_MAP) },
+					CancellationToken.None
+					);
+
+				AssertRecordFound(key, record);
+
+				IList results = record.GetList(binName);
+				int i = 0;
+
+				long size = (long)results[i++];
+				Assert.AreEqual(3, size);
+
+				size = (long)results[i++];
+				Assert.AreEqual(4, size);
+
+				size = (long)results[i++];
+				Assert.AreEqual(4, size);
+
+				size = (long)results[i++];
+				Assert.AreEqual(4, size);
+
+				string str = (string)results[i++];
+				Assert.AreEqual("my default", str);
+
+				str = (string)results[i++];
+				Assert.AreEqual("changed", str);
+
+				IList list = (IList)results[i++];
+				Assert.AreEqual(2, list.Count);
+
+				IDictionary dict = (IDictionary)results[i++];
+				Assert.AreEqual(2, dict.Count);
+				Assert.IsTrue(dict is Dictionary<object, object>);
+
+				dict = (IDictionary)results[i++];
+				Assert.AreEqual(2, dict.Count);
+				Assert.IsTrue(dict is SortedDictionary<object, object>);
+			}
 			
 		}
 
 		[TestMethod]
-		public void OperateMapMixed()
+		public async Task OperateMapMixed()
 		{
 			// Test normal operations with map operations.
 			Key key = new Key(args.ns, args.set, "opmkey2");
-			client.Delete(null, key);
+			if (!args.testAsyncAwait)
+			{
+				client.Delete(null, key);
 
-			Dictionary<Value, Value> itemMap = new Dictionary<Value, Value>();
-			itemMap[Value.Get(12)] = Value.Get("myval");
-			itemMap[Value.Get(-8734)] = Value.Get("str2");
-			itemMap[Value.Get(1)] = Value.Get("my default");
-			itemMap[Value.Get(7)] = Value.Get(1);
+				Dictionary<Value, Value> itemMap = new Dictionary<Value, Value>();
+				itemMap[Value.Get(12)] = Value.Get("myval");
+				itemMap[Value.Get(-8734)] = Value.Get("str2");
+				itemMap[Value.Get(1)] = Value.Get("my default");
+				itemMap[Value.Get(7)] = Value.Get(1);
 
-			Record record = client.Operate(null, key,
-				MapOperation.PutItems(new MapPolicy(MapOrder.KEY_VALUE_ORDERED, MapWriteMode.UPDATE), binName, itemMap),
-				Operation.Put(new Bin("otherbin", "hello"))
-				);
+				Record record = client.Operate(null, key,
+					MapOperation.PutItems(new MapPolicy(MapOrder.KEY_VALUE_ORDERED, MapWriteMode.UPDATE), binName, itemMap),
+					Operation.Put(new Bin("otherbin", "hello"))
+					);
 
-			AssertRecordFound(key, record);
+				AssertRecordFound(key, record);
 
-			long size = record.GetLong(binName);
-			Assert.AreEqual(4, size);
+				long size = record.GetLong(binName);
+				Assert.AreEqual(4, size);
 
-			record = client.Operate(null, key,
-				MapOperation.GetByKey(binName, Value.Get(12), MapReturnType.INDEX),
-				Operation.Append(new Bin("otherbin", Value.Get("goodbye"))),
-				Operation.Get("otherbin")
-				);
+				record = client.Operate(null, key,
+					MapOperation.GetByKey(binName, Value.Get(12), MapReturnType.INDEX),
+					Operation.Append(new Bin("otherbin", Value.Get("goodbye"))),
+					Operation.Get("otherbin")
+					);
 
-			AssertRecordFound(key, record);
+				AssertRecordFound(key, record);
 
-			long index = record.GetLong(binName);
-			Assert.AreEqual(3, index);
+				long index = record.GetLong(binName);
+				Assert.AreEqual(3, index);
 
-			IList results = record.GetList("otherbin");
-			string val = (string)results[1];
-			Assert.AreEqual("hellogoodbye", val);
+				IList results = record.GetList("otherbin");
+				string val = (string)results[1];
+				Assert.AreEqual("hellogoodbye", val);
+			}
+			else
+			{
+				await asyncAwaitClient.Delete(null, key, CancellationToken.None);
+
+				Dictionary<Value, Value> itemMap = new Dictionary<Value, Value>();
+				itemMap[Value.Get(12)] = Value.Get("myval");
+				itemMap[Value.Get(-8734)] = Value.Get("str2");
+				itemMap[Value.Get(1)] = Value.Get("my default");
+				itemMap[Value.Get(7)] = Value.Get(1);
+
+				Record record = await asyncAwaitClient.Operate(null, key,
+					new[] { MapOperation.PutItems(new MapPolicy(MapOrder.KEY_VALUE_ORDERED, MapWriteMode.UPDATE), binName, itemMap),
+					Operation.Put(new Bin("otherbin", "hello")) },
+					CancellationToken.None
+					);
+
+				AssertRecordFound(key, record);
+
+				long size = record.GetLong(binName);
+				Assert.AreEqual(4, size);
+
+				record = await asyncAwaitClient.Operate(null, key,
+					new[] { MapOperation.GetByKey(binName, Value.Get(12), MapReturnType.INDEX),
+					Operation.Append(new Bin("otherbin", Value.Get("goodbye"))),
+					Operation.Get("otherbin") },
+					CancellationToken.None
+					);
+
+				AssertRecordFound(key, record);
+
+				long index = record.GetLong(binName);
+				Assert.AreEqual(3, index);
+
+				IList results = record.GetList("otherbin");
+				string val = (string)results[1];
+				Assert.AreEqual("hellogoodbye", val);
+			}
 		}
 
 		[TestMethod]
-		public void OperateMapSwitch()
+		public async Task OperateMapSwitch()
 		{
 			// Switch from unordered map to a key ordered map.
 			Key key = new Key(args.ns, args.set, "opmkey4");
-			client.Delete(null, key);
+			if (!args.testAsyncAwait)
+			{
+				client.Delete(null, key);
 
-			Record record = client.Operate(null, key,
-				MapOperation.Put(MapPolicy.Default, binName, Value.Get(4), Value.Get(4)),
-				MapOperation.Put(MapPolicy.Default, binName, Value.Get(3), Value.Get(3)),
-				MapOperation.Put(MapPolicy.Default, binName, Value.Get(2), Value.Get(2)),
-				MapOperation.Put(MapPolicy.Default, binName, Value.Get(1), Value.Get(1)),
-				MapOperation.GetByIndex(binName, 2, MapReturnType.KEY_VALUE),
-				MapOperation.GetByIndexRange(binName, 0, 10, MapReturnType.KEY_VALUE)
-				);
+				Record record = client.Operate(null, key,
+					MapOperation.Put(MapPolicy.Default, binName, Value.Get(4), Value.Get(4)),
+					MapOperation.Put(MapPolicy.Default, binName, Value.Get(3), Value.Get(3)),
+					MapOperation.Put(MapPolicy.Default, binName, Value.Get(2), Value.Get(2)),
+					MapOperation.Put(MapPolicy.Default, binName, Value.Get(1), Value.Get(1)),
+					MapOperation.GetByIndex(binName, 2, MapReturnType.KEY_VALUE),
+					MapOperation.GetByIndexRange(binName, 0, 10, MapReturnType.KEY_VALUE)
+					);
 
-			AssertRecordFound(key, record);
+				AssertRecordFound(key, record);
 
-			IList results = record.GetList(binName);
-			int i = 3;
+				IList results = record.GetList(binName);
+				int i = 3;
 
-			long size = (long)results[i++];
-			Assert.AreEqual(4, size);
+				long size = (long)results[i++];
+				Assert.AreEqual(4, size);
 
-			IList list = (IList)results[i++];
-			Assert.AreEqual(1, list.Count);
+				IList list = (IList)results[i++];
+				Assert.AreEqual(1, list.Count);
 
-			list = (IList)results[i++];
-			Assert.AreEqual(4, list.Count);
+				list = (IList)results[i++];
+				Assert.AreEqual(4, list.Count);
 
-			record = client.Operate(null, key,
-				MapOperation.SetMapPolicy(new MapPolicy(MapOrder.KEY_ORDERED, MapWriteFlags.DEFAULT, true), binName),
-				MapOperation.GetByKeyRange(binName, Value.Get(3), Value.Get(5), MapReturnType.COUNT),
-				MapOperation.GetByKeyRange(binName, Value.Get(-5), Value.Get(2), MapReturnType.KEY_VALUE),
-				MapOperation.GetByIndexRange(binName, 0, 10, MapReturnType.KEY_VALUE));
+				record = client.Operate(null, key,
+					MapOperation.SetMapPolicy(new MapPolicy(MapOrder.KEY_ORDERED, MapWriteFlags.DEFAULT, true), binName),
+					MapOperation.GetByKeyRange(binName, Value.Get(3), Value.Get(5), MapReturnType.COUNT),
+					MapOperation.GetByKeyRange(binName, Value.Get(-5), Value.Get(2), MapReturnType.KEY_VALUE),
+					MapOperation.GetByIndexRange(binName, 0, 10, MapReturnType.KEY_VALUE));
 
-			AssertRecordFound(key, record);
+				AssertRecordFound(key, record);
 
-			results = record.GetList(binName);
-			i = 0;
+				results = record.GetList(binName);
+				i = 0;
 
-			object obj = results[i++];
-			Assert.IsNull(obj);
+				object obj = results[i++];
+				Assert.IsNull(obj);
 
-			long val = (long)results[i++];
-			Assert.AreEqual(2, val);
+				long val = (long)results[i++];
+				Assert.AreEqual(2, val);
 
-			list = (IList)results[i++];
-			Assert.AreEqual(1, list.Count);
-			KeyValuePair<object, object> entry = (KeyValuePair<object, object>)list[0];
-			Assert.AreEqual(1L, entry.Value);
+				list = (IList)results[i++];
+				Assert.AreEqual(1, list.Count);
+				KeyValuePair<object, object> entry = (KeyValuePair<object, object>)list[0];
+				Assert.AreEqual(1L, entry.Value);
 
-			list = (IList)results[i++];
-			entry = (KeyValuePair<object,object>)list[3];
-			Assert.AreEqual(4L, entry.Key);
+				list = (IList)results[i++];
+				entry = (KeyValuePair<object, object>)list[3];
+				Assert.AreEqual(4L, entry.Key);
+			}
+			else
+			{
+				await asyncAwaitClient.Delete(null, key, CancellationToken.None);
+
+				Record record = await asyncAwaitClient.Operate(null, key,
+					new[] { MapOperation.Put(MapPolicy.Default, binName, Value.Get(4), Value.Get(4)),
+					MapOperation.Put(MapPolicy.Default, binName, Value.Get(3), Value.Get(3)),
+					MapOperation.Put(MapPolicy.Default, binName, Value.Get(2), Value.Get(2)),
+					MapOperation.Put(MapPolicy.Default, binName, Value.Get(1), Value.Get(1)),
+					MapOperation.GetByIndex(binName, 2, MapReturnType.KEY_VALUE),
+					MapOperation.GetByIndexRange(binName, 0, 10, MapReturnType.KEY_VALUE) },
+					CancellationToken.None
+					);
+
+				AssertRecordFound(key, record);
+
+				IList results = record.GetList(binName);
+				int i = 3;
+
+				long size = (long)results[i++];
+				Assert.AreEqual(4, size);
+
+				IList list = (IList)results[i++];
+				Assert.AreEqual(1, list.Count);
+
+				list = (IList)results[i++];
+				Assert.AreEqual(4, list.Count);
+
+				record = await asyncAwaitClient.Operate(null, key,
+					new[] { MapOperation.SetMapPolicy(new MapPolicy(MapOrder.KEY_ORDERED, MapWriteFlags.DEFAULT, true), binName),
+					MapOperation.GetByKeyRange(binName, Value.Get(3), Value.Get(5), MapReturnType.COUNT),
+					MapOperation.GetByKeyRange(binName, Value.Get(-5), Value.Get(2), MapReturnType.KEY_VALUE),
+					MapOperation.GetByIndexRange(binName, 0, 10, MapReturnType.KEY_VALUE) },
+					CancellationToken.None);
+
+				AssertRecordFound(key, record);
+
+				results = record.GetList(binName);
+				i = 0;
+
+				object obj = results[i++];
+				Assert.IsNull(obj);
+
+				long val = (long)results[i++];
+				Assert.AreEqual(2, val);
+
+				list = (IList)results[i++];
+				Assert.AreEqual(1, list.Count);
+				KeyValuePair<object, object> entry = (KeyValuePair<object, object>)list[0];
+				Assert.AreEqual(1L, entry.Value);
+
+				list = (IList)results[i++];
+				entry = (KeyValuePair<object, object>)list[3];
+				Assert.AreEqual(4L, entry.Key);
+			}
 		}
 
 		[TestMethod]
-		public void OperateMapRank()
+		public async Task OperateMapRank()
 		{
 			// Test rank.
 			Key key = new Key(args.ns, args.set, "opmkey6");
-			client.Delete(null, key);
+			if (!args.testAsyncAwait)
+			{
+				client.Delete(null, key);
 
-			Dictionary<Value, Value> inputMap = new Dictionary<Value, Value>();
-			inputMap[Value.Get("Charlie")] = Value.Get(55);
-			inputMap[Value.Get("Jim")] = Value.Get(98);
-			inputMap[Value.Get("John")] = Value.Get(76);
-			inputMap[Value.Get("Harry")] = Value.Get(82);
+				Dictionary<Value, Value> inputMap = new Dictionary<Value, Value>();
+				inputMap[Value.Get("Charlie")] = Value.Get(55);
+				inputMap[Value.Get("Jim")] = Value.Get(98);
+				inputMap[Value.Get("John")] = Value.Get(76);
+				inputMap[Value.Get("Harry")] = Value.Get(82);
 
-			// Write values to empty map.
-			Record record = client.Operate(null, key, MapOperation.PutItems(MapPolicy.Default, binName, inputMap));
+				// Write values to empty map.
+				Record record = client.Operate(null, key, MapOperation.PutItems(MapPolicy.Default, binName, inputMap));
 
-			AssertRecordFound(key, record);
+				AssertRecordFound(key, record);
 
-			// Increment some user scores.
-			record = client.Operate(null, key,
-				MapOperation.Increment(MapPolicy.Default, binName, Value.Get("John"), Value.Get(5)),
-				MapOperation.Increment(MapPolicy.Default, binName, Value.Get("Jim"), Value.Get(-4))
-				);
+				// Increment some user scores.
+				record = client.Operate(null, key,
+					MapOperation.Increment(MapPolicy.Default, binName, Value.Get("John"), Value.Get(5)),
+					MapOperation.Increment(MapPolicy.Default, binName, Value.Get("Jim"), Value.Get(-4))
+					);
 
-			AssertRecordFound(key, record);
+				AssertRecordFound(key, record);
 
-			// Get scores.
-			record = client.Operate(null, key,
-				MapOperation.GetByRankRange(binName, -2, 2, MapReturnType.KEY),
-				MapOperation.GetByRankRange(binName, 0, 2, MapReturnType.KEY_VALUE),
-				MapOperation.GetByRank(binName, 0, MapReturnType.VALUE),
-				MapOperation.GetByRank(binName, 2, MapReturnType.KEY),
-				MapOperation.GetByValueRange(binName, Value.Get(90), Value.Get(95), MapReturnType.RANK),
-				MapOperation.GetByValueRange(binName, Value.Get(90), Value.Get(95), MapReturnType.COUNT),
-				MapOperation.GetByValueRange(binName, Value.Get(90), Value.Get(95), MapReturnType.KEY_VALUE),
-				MapOperation.GetByValueRange(binName, Value.Get(81), Value.Get(82), MapReturnType.KEY),
-				MapOperation.GetByValue(binName, Value.Get(77), MapReturnType.KEY),
-				MapOperation.GetByValue(binName, Value.Get(81), MapReturnType.RANK),
-				MapOperation.GetByKey(binName, Value.Get("Charlie"), MapReturnType.RANK),
-				MapOperation.GetByKey(binName, Value.Get("Charlie"), MapReturnType.REVERSE_RANK)
-				);
+				// Get scores.
+				record = client.Operate(null, key,
+					MapOperation.GetByRankRange(binName, -2, 2, MapReturnType.KEY),
+					MapOperation.GetByRankRange(binName, 0, 2, MapReturnType.KEY_VALUE),
+					MapOperation.GetByRank(binName, 0, MapReturnType.VALUE),
+					MapOperation.GetByRank(binName, 2, MapReturnType.KEY),
+					MapOperation.GetByValueRange(binName, Value.Get(90), Value.Get(95), MapReturnType.RANK),
+					MapOperation.GetByValueRange(binName, Value.Get(90), Value.Get(95), MapReturnType.COUNT),
+					MapOperation.GetByValueRange(binName, Value.Get(90), Value.Get(95), MapReturnType.KEY_VALUE),
+					MapOperation.GetByValueRange(binName, Value.Get(81), Value.Get(82), MapReturnType.KEY),
+					MapOperation.GetByValue(binName, Value.Get(77), MapReturnType.KEY),
+					MapOperation.GetByValue(binName, Value.Get(81), MapReturnType.RANK),
+					MapOperation.GetByKey(binName, Value.Get("Charlie"), MapReturnType.RANK),
+					MapOperation.GetByKey(binName, Value.Get("Charlie"), MapReturnType.REVERSE_RANK)
+					);
 
-			AssertRecordFound(key, record);
+				AssertRecordFound(key, record);
 
-			IList results = record.GetList(binName);
-			int i = 0;
+				IList results = record.GetList(binName);
+				int i = 0;
 
-			IList list = (IList)results[i++];
-			string str;
-			long val;
+				IList list = (IList)results[i++];
+				string str;
+				long val;
 
-			str = (string)list[0];
-			Assert.AreEqual("Harry", str);
-			str = (string)list[1];
-			Assert.AreEqual("Jim", str);
+				str = (string)list[0];
+				Assert.AreEqual("Harry", str);
+				str = (string)list[1];
+				Assert.AreEqual("Jim", str);
 
-			list = (IList)results[i++];
-			KeyValuePair<object,object> entry = (KeyValuePair<object,object>)list[0];
-			Assert.AreEqual("Charlie", entry.Key);
-			Assert.AreEqual(55L, entry.Value);
-			entry = (KeyValuePair<object,object>)list[1];
-			Assert.AreEqual("John", entry.Key);
-			Assert.AreEqual(81L, entry.Value);
+				list = (IList)results[i++];
+				KeyValuePair<object, object> entry = (KeyValuePair<object, object>)list[0];
+				Assert.AreEqual("Charlie", entry.Key);
+				Assert.AreEqual(55L, entry.Value);
+				entry = (KeyValuePair<object, object>)list[1];
+				Assert.AreEqual("John", entry.Key);
+				Assert.AreEqual(81L, entry.Value);
 
-			val = (long)results[i++];
-			Assert.AreEqual(55, val);
+				val = (long)results[i++];
+				Assert.AreEqual(55, val);
 
-			str = (string)results[i++];
-			Assert.AreEqual("Harry", str);
+				str = (string)results[i++];
+				Assert.AreEqual("Harry", str);
 
-			list = (IList)results[i++];
-			val = (long)list[0];
-			Assert.AreEqual(3, val);
+				list = (IList)results[i++];
+				val = (long)list[0];
+				Assert.AreEqual(3, val);
 
-			val = (long)results[i++];
-			Assert.AreEqual(1, val);
+				val = (long)results[i++];
+				Assert.AreEqual(1, val);
 
-			list = (IList)results[i++];
-			entry = (KeyValuePair<object,object>)list[0];
-			Assert.AreEqual("Jim", entry.Key);
-			Assert.AreEqual(94L, entry.Value);
+				list = (IList)results[i++];
+				entry = (KeyValuePair<object, object>)list[0];
+				Assert.AreEqual("Jim", entry.Key);
+				Assert.AreEqual(94L, entry.Value);
 
-			list = (IList)results[i++];
-			str = (string)list[0];
-			Assert.AreEqual("John", str);
+				list = (IList)results[i++];
+				str = (string)list[0];
+				Assert.AreEqual("John", str);
 
-			list = (IList)results[i++];
-			Assert.AreEqual(0, list.Count);
+				list = (IList)results[i++];
+				Assert.AreEqual(0, list.Count);
 
-			list = (IList)results[i++];
-			val = (long)list[0];
-			Assert.AreEqual(1, val);
+				list = (IList)results[i++];
+				val = (long)list[0];
+				Assert.AreEqual(1, val);
 
-			val = (long)results[i++];
-			Assert.AreEqual(0, val);
+				val = (long)results[i++];
+				Assert.AreEqual(0, val);
 
-			val = (long)results[i++];
-			Assert.AreEqual(3, val);
+				val = (long)results[i++];
+				Assert.AreEqual(3, val);
+			}
+			else
+			{
+				await asyncAwaitClient.Delete(null, key, CancellationToken.None);
+
+				Dictionary<Value, Value> inputMap = new Dictionary<Value, Value>();
+				inputMap[Value.Get("Charlie")] = Value.Get(55);
+				inputMap[Value.Get("Jim")] = Value.Get(98);
+				inputMap[Value.Get("John")] = Value.Get(76);
+				inputMap[Value.Get("Harry")] = Value.Get(82);
+
+				// Write values to empty map.
+				Record record = await asyncAwaitClient.Operate(null, key, new[] { MapOperation.PutItems(MapPolicy.Default, binName, inputMap) }, CancellationToken.None);
+
+				AssertRecordFound(key, record);
+
+				// Increment some user scores.
+				record = await asyncAwaitClient.Operate(null, key,
+					new[] { MapOperation.Increment(MapPolicy.Default, binName, Value.Get("John"), Value.Get(5)),
+					MapOperation.Increment(MapPolicy.Default, binName, Value.Get("Jim"), Value.Get(-4)) },
+					CancellationToken.None
+					);
+
+				AssertRecordFound(key, record);
+
+				// Get scores.
+				record = await asyncAwaitClient.Operate(null, key,
+					new[] { MapOperation.GetByRankRange(binName, -2, 2, MapReturnType.KEY),
+					MapOperation.GetByRankRange(binName, 0, 2, MapReturnType.KEY_VALUE),
+					MapOperation.GetByRank(binName, 0, MapReturnType.VALUE),
+					MapOperation.GetByRank(binName, 2, MapReturnType.KEY),
+					MapOperation.GetByValueRange(binName, Value.Get(90), Value.Get(95), MapReturnType.RANK),
+					MapOperation.GetByValueRange(binName, Value.Get(90), Value.Get(95), MapReturnType.COUNT),
+					MapOperation.GetByValueRange(binName, Value.Get(90), Value.Get(95), MapReturnType.KEY_VALUE),
+					MapOperation.GetByValueRange(binName, Value.Get(81), Value.Get(82), MapReturnType.KEY),
+					MapOperation.GetByValue(binName, Value.Get(77), MapReturnType.KEY),
+					MapOperation.GetByValue(binName, Value.Get(81), MapReturnType.RANK),
+					MapOperation.GetByKey(binName, Value.Get("Charlie"), MapReturnType.RANK),
+					MapOperation.GetByKey(binName, Value.Get("Charlie"), MapReturnType.REVERSE_RANK) },
+					CancellationToken.None
+					);
+
+				AssertRecordFound(key, record);
+
+				IList results = record.GetList(binName);
+				int i = 0;
+
+				IList list = (IList)results[i++];
+				string str;
+				long val;
+
+				str = (string)list[0];
+				Assert.AreEqual("Harry", str);
+				str = (string)list[1];
+				Assert.AreEqual("Jim", str);
+
+				list = (IList)results[i++];
+				KeyValuePair<object, object> entry = (KeyValuePair<object, object>)list[0];
+				Assert.AreEqual("Charlie", entry.Key);
+				Assert.AreEqual(55L, entry.Value);
+				entry = (KeyValuePair<object, object>)list[1];
+				Assert.AreEqual("John", entry.Key);
+				Assert.AreEqual(81L, entry.Value);
+
+				val = (long)results[i++];
+				Assert.AreEqual(55, val);
+
+				str = (string)results[i++];
+				Assert.AreEqual("Harry", str);
+
+				list = (IList)results[i++];
+				val = (long)list[0];
+				Assert.AreEqual(3, val);
+
+				val = (long)results[i++];
+				Assert.AreEqual(1, val);
+
+				list = (IList)results[i++];
+				entry = (KeyValuePair<object, object>)list[0];
+				Assert.AreEqual("Jim", entry.Key);
+				Assert.AreEqual(94L, entry.Value);
+
+				list = (IList)results[i++];
+				str = (string)list[0];
+				Assert.AreEqual("John", str);
+
+				list = (IList)results[i++];
+				Assert.AreEqual(0, list.Count);
+
+				list = (IList)results[i++];
+				val = (long)list[0];
+				Assert.AreEqual(1, val);
+
+				val = (long)results[i++];
+				Assert.AreEqual(0, val);
+
+				val = (long)results[i++];
+				Assert.AreEqual(3, val);
+			}
 		}
 
 		[TestMethod]
-		public void OperateMapRemove()
+		public async Task OperateMapRemove()
 		{
 			// Test remove.
 			Key key = new Key(args.ns, args.set, "opmkey7");
-			client.Delete(null, key);
 
-			Dictionary<Value, Value> inputMap = new Dictionary<Value, Value>();
-			inputMap[Value.Get("Charlie")] = Value.Get(55);
-			inputMap[Value.Get("Jim")] = Value.Get(98);
-			inputMap[Value.Get("John")] = Value.Get(76);
-			inputMap[Value.Get("Harry")] = Value.Get(82);
-			inputMap[Value.Get("Sally")] = Value.Get(79);
-			inputMap[Value.Get("Lenny")] = Value.Get(84);
-			inputMap[Value.Get("Abe")] = Value.Get(88);
+			if (!args.testAsyncAwait)
+			{
+				client.Delete(null, key);
 
-			List<Value> removeItems = new List<Value>();
-			removeItems.Add(Value.Get("Sally"));
-			removeItems.Add(Value.Get("UNKNOWN"));
-			removeItems.Add(Value.Get("Lenny"));
+				Dictionary<Value, Value> inputMap = new Dictionary<Value, Value>();
+				inputMap[Value.Get("Charlie")] = Value.Get(55);
+				inputMap[Value.Get("Jim")] = Value.Get(98);
+				inputMap[Value.Get("John")] = Value.Get(76);
+				inputMap[Value.Get("Harry")] = Value.Get(82);
+				inputMap[Value.Get("Sally")] = Value.Get(79);
+				inputMap[Value.Get("Lenny")] = Value.Get(84);
+				inputMap[Value.Get("Abe")] = Value.Get(88);
 
-			Record record = client.Operate(null, key,
-				MapOperation.PutItems(MapPolicy.Default, binName, inputMap),
-				MapOperation.RemoveByKey(binName, Value.Get("NOTFOUND"), MapReturnType.VALUE),
-				MapOperation.RemoveByKey(binName, Value.Get("Jim"), MapReturnType.VALUE),
-				MapOperation.RemoveByKeyList(binName, removeItems, MapReturnType.COUNT),
-				MapOperation.RemoveByValue(binName, Value.Get(55), MapReturnType.KEY),
-				MapOperation.Size(binName));
+				List<Value> removeItems = new List<Value>();
+				removeItems.Add(Value.Get("Sally"));
+				removeItems.Add(Value.Get("UNKNOWN"));
+				removeItems.Add(Value.Get("Lenny"));
 
-			AssertRecordFound(key, record);
+				Record record = client.Operate(null, key,
+					MapOperation.PutItems(MapPolicy.Default, binName, inputMap),
+					MapOperation.RemoveByKey(binName, Value.Get("NOTFOUND"), MapReturnType.VALUE),
+					MapOperation.RemoveByKey(binName, Value.Get("Jim"), MapReturnType.VALUE),
+					MapOperation.RemoveByKeyList(binName, removeItems, MapReturnType.COUNT),
+					MapOperation.RemoveByValue(binName, Value.Get(55), MapReturnType.KEY),
+					MapOperation.Size(binName));
 
-			IList results = record.GetList(binName);
-			int i = 0;
+				AssertRecordFound(key, record);
 
-			long val = (long)results[i++];
-			Assert.AreEqual(7, val);
+				IList results = record.GetList(binName);
+				int i = 0;
 
-			object obj = results[i++];
-			Assert.IsNull(obj);
+				long val = (long)results[i++];
+				Assert.AreEqual(7, val);
 
-			val = (long)results[i++];
-			Assert.AreEqual(98, val);
+				object obj = results[i++];
+				Assert.IsNull(obj);
 
-			val = (long)results[i++];
-			Assert.AreEqual(2, val);
+				val = (long)results[i++];
+				Assert.AreEqual(98, val);
 
-			IList list = (IList)results[i++];
-			Assert.AreEqual(1, list.Count);
-			Assert.AreEqual("Charlie", (string)list[0]);
+				val = (long)results[i++];
+				Assert.AreEqual(2, val);
 
-			val = (long)results[i++];
-			Assert.AreEqual(3, val);
+				IList list = (IList)results[i++];
+				Assert.AreEqual(1, list.Count);
+				Assert.AreEqual("Charlie", (string)list[0]);
+
+				val = (long)results[i++];
+				Assert.AreEqual(3, val);
+			}
+			else
+			{
+				await asyncAwaitClient.Delete(null, key, CancellationToken.None);
+
+				Dictionary<Value, Value> inputMap = new Dictionary<Value, Value>();
+				inputMap[Value.Get("Charlie")] = Value.Get(55);
+				inputMap[Value.Get("Jim")] = Value.Get(98);
+				inputMap[Value.Get("John")] = Value.Get(76);
+				inputMap[Value.Get("Harry")] = Value.Get(82);
+				inputMap[Value.Get("Sally")] = Value.Get(79);
+				inputMap[Value.Get("Lenny")] = Value.Get(84);
+				inputMap[Value.Get("Abe")] = Value.Get(88);
+
+				List<Value> removeItems = new List<Value>();
+				removeItems.Add(Value.Get("Sally"));
+				removeItems.Add(Value.Get("UNKNOWN"));
+				removeItems.Add(Value.Get("Lenny"));
+
+				Record record = await asyncAwaitClient.Operate(null, key,
+					new[] { MapOperation.PutItems(MapPolicy.Default, binName, inputMap),
+					MapOperation.RemoveByKey(binName, Value.Get("NOTFOUND"), MapReturnType.VALUE),
+					MapOperation.RemoveByKey(binName, Value.Get("Jim"), MapReturnType.VALUE),
+					MapOperation.RemoveByKeyList(binName, removeItems, MapReturnType.COUNT),
+					MapOperation.RemoveByValue(binName, Value.Get(55), MapReturnType.KEY),
+					MapOperation.Size(binName) },
+					CancellationToken.None);
+
+				AssertRecordFound(key, record);
+
+				IList results = record.GetList(binName);
+				int i = 0;
+
+				long val = (long)results[i++];
+				Assert.AreEqual(7, val);
+
+				object obj = results[i++];
+				Assert.IsNull(obj);
+
+				val = (long)results[i++];
+				Assert.AreEqual(98, val);
+
+				val = (long)results[i++];
+				Assert.AreEqual(2, val);
+
+				IList list = (IList)results[i++];
+				Assert.AreEqual(1, list.Count);
+				Assert.AreEqual("Charlie", (string)list[0]);
+
+				val = (long)results[i++];
+				Assert.AreEqual(3, val);
+			}
 		}
 
 		[TestMethod]
-		public void OperateMapRemoveRange()
+		public async Task OperateMapRemoveRange()
 		{
 			// Test remove ranges.
 			Key key = new Key(args.ns, args.set, "opmkey8");
-			client.Delete(null, key);
 
-			Dictionary<Value, Value> inputMap = new Dictionary<Value, Value>();
-			inputMap[Value.Get("Charlie")] = Value.Get(55);
-			inputMap[Value.Get("Jim")] = Value.Get(98);
-			inputMap[Value.Get("John")] = Value.Get(76);
-			inputMap[Value.Get("Harry")] = Value.Get(82);
-			inputMap[Value.Get("Sally")] = Value.Get(79);
-			inputMap[Value.Get("Lenny")] = Value.Get(84);
-			inputMap[Value.Get("Abe")] = Value.Get(88);
+			if (!args.testAsyncAwait)
+			{
+				client.Delete(null, key);
 
-			Record record = client.Operate(null, key,
-				MapOperation.PutItems(MapPolicy.Default, binName, inputMap),
-				MapOperation.RemoveByKeyRange(binName, Value.Get("J"), Value.Get("K"), MapReturnType.COUNT),
-				MapOperation.RemoveByValueRange(binName, Value.Get(80), Value.Get(85), MapReturnType.COUNT),
-				MapOperation.RemoveByIndexRange(binName, 0, 2, MapReturnType.COUNT),
-				MapOperation.RemoveByRankRange(binName, 0, 2, MapReturnType.COUNT)
-				);
+				Dictionary<Value, Value> inputMap = new Dictionary<Value, Value>();
+				inputMap[Value.Get("Charlie")] = Value.Get(55);
+				inputMap[Value.Get("Jim")] = Value.Get(98);
+				inputMap[Value.Get("John")] = Value.Get(76);
+				inputMap[Value.Get("Harry")] = Value.Get(82);
+				inputMap[Value.Get("Sally")] = Value.Get(79);
+				inputMap[Value.Get("Lenny")] = Value.Get(84);
+				inputMap[Value.Get("Abe")] = Value.Get(88);
 
-			AssertRecordFound(key, record);
+				Record record = client.Operate(null, key,
+					MapOperation.PutItems(MapPolicy.Default, binName, inputMap),
+					MapOperation.RemoveByKeyRange(binName, Value.Get("J"), Value.Get("K"), MapReturnType.COUNT),
+					MapOperation.RemoveByValueRange(binName, Value.Get(80), Value.Get(85), MapReturnType.COUNT),
+					MapOperation.RemoveByIndexRange(binName, 0, 2, MapReturnType.COUNT),
+					MapOperation.RemoveByRankRange(binName, 0, 2, MapReturnType.COUNT)
+					);
 
-			IList results = record.GetList(binName);
-			int i = 0;
+				AssertRecordFound(key, record);
 
-			long val = (long)results[i++];
-			Assert.AreEqual(7, val);
+				IList results = record.GetList(binName);
+				int i = 0;
 
-			val = (long)results[i++];
-			Assert.AreEqual(2, val);
+				long val = (long)results[i++];
+				Assert.AreEqual(7, val);
 
-			val = (long)results[i++];
-			Assert.AreEqual(2, val);
+				val = (long)results[i++];
+				Assert.AreEqual(2, val);
 
-			val = (long)results[i++];
-			Assert.AreEqual(2, val);
+				val = (long)results[i++];
+				Assert.AreEqual(2, val);
 
-			val = (long)results[i++];
-			Assert.AreEqual(1, val);
+				val = (long)results[i++];
+				Assert.AreEqual(2, val);
+
+				val = (long)results[i++];
+				Assert.AreEqual(1, val);
+			}
+			else
+			{
+				await asyncAwaitClient.Delete(null, key, CancellationToken.None);
+
+				Dictionary<Value, Value> inputMap = new Dictionary<Value, Value>();
+				inputMap[Value.Get("Charlie")] = Value.Get(55);
+				inputMap[Value.Get("Jim")] = Value.Get(98);
+				inputMap[Value.Get("John")] = Value.Get(76);
+				inputMap[Value.Get("Harry")] = Value.Get(82);
+				inputMap[Value.Get("Sally")] = Value.Get(79);
+				inputMap[Value.Get("Lenny")] = Value.Get(84);
+				inputMap[Value.Get("Abe")] = Value.Get(88);
+
+				Record record = await asyncAwaitClient.Operate(null, key,
+					new[] { MapOperation.PutItems(MapPolicy.Default, binName, inputMap),
+					MapOperation.RemoveByKeyRange(binName, Value.Get("J"), Value.Get("K"), MapReturnType.COUNT),
+					MapOperation.RemoveByValueRange(binName, Value.Get(80), Value.Get(85), MapReturnType.COUNT),
+					MapOperation.RemoveByIndexRange(binName, 0, 2, MapReturnType.COUNT),
+					MapOperation.RemoveByRankRange(binName, 0, 2, MapReturnType.COUNT) },
+					CancellationToken.None
+					);
+
+				AssertRecordFound(key, record);
+
+				IList results = record.GetList(binName);
+				int i = 0;
+
+				long val = (long)results[i++];
+				Assert.AreEqual(7, val);
+
+				val = (long)results[i++];
+				Assert.AreEqual(2, val);
+
+				val = (long)results[i++];
+				Assert.AreEqual(2, val);
+
+				val = (long)results[i++];
+				Assert.AreEqual(2, val);
+
+				val = (long)results[i++];
+				Assert.AreEqual(1, val);
+			}
 		}
 
 		[TestMethod]
-		public void OperateMapClear()
+		public async Task OperateMapClear()
 		{
 			// Test clear.
 			Key key = new Key(args.ns, args.set, "opmkey9");
-			client.Delete(null, key);
 
-			Dictionary<Value, Value> inputMap = new Dictionary<Value, Value>();
-			inputMap[Value.Get("Charlie")] = Value.Get(55);
-			inputMap[Value.Get("Jim")] = Value.Get(98);
+			if (!args.testAsyncAwait)
+			{
+				client.Delete(null, key);
 
-			Record record = client.Operate(null, key, MapOperation.PutItems(MapPolicy.Default, binName, inputMap));
+				Dictionary<Value, Value> inputMap = new Dictionary<Value, Value>();
+				inputMap[Value.Get("Charlie")] = Value.Get(55);
+				inputMap[Value.Get("Jim")] = Value.Get(98);
 
-			AssertRecordFound(key, record);
+				Record record = client.Operate(null, key, MapOperation.PutItems(MapPolicy.Default, binName, inputMap));
 
-			long size = record.GetLong(binName);
-			Assert.AreEqual(2, size);
+				AssertRecordFound(key, record);
 
-			record = client.Operate(null, key,
-				MapOperation.Clear(binName),
-				MapOperation.Size(binName)
-				);
+				long size = record.GetLong(binName);
+				Assert.AreEqual(2, size);
 
-			IList results = record.GetList(binName);
-			size = (long)results[1];
-			Assert.AreEqual(0, size);
+				record = client.Operate(null, key,
+					MapOperation.Clear(binName),
+					MapOperation.Size(binName)
+					);
+
+				IList results = record.GetList(binName);
+				size = (long)results[1];
+				Assert.AreEqual(0, size);
+			}
+			else
+			{
+				await asyncAwaitClient.Delete(null, key, CancellationToken.None);
+
+				Dictionary<Value, Value> inputMap = new Dictionary<Value, Value>();
+				inputMap[Value.Get("Charlie")] = Value.Get(55);
+				inputMap[Value.Get("Jim")] = Value.Get(98);
+
+				Record record = await asyncAwaitClient.Operate(null, key, new[] { MapOperation.PutItems(MapPolicy.Default, binName, inputMap) }, CancellationToken.None);
+
+				AssertRecordFound(key, record);
+
+				long size = record.GetLong(binName);
+				Assert.AreEqual(2, size);
+
+				record = await asyncAwaitClient.Operate(null, key,
+					new[] { MapOperation.Clear(binName),
+					MapOperation.Size(binName) },
+					CancellationToken.None
+					);
+
+				IList results = record.GetList(binName);
+				size = (long)results[1];
+				Assert.AreEqual(0, size);
+			}
 		}
 
 		[TestMethod]
-		public void OperateMapScore()
+		public async Task OperateMapScore()
 		{
 			// Test score.
 			Key key = new Key(args.ns, args.set, "opmkey10");
-			client.Delete(null, key);
 
-			MapPolicy mapPolicy = new MapPolicy(MapOrder.KEY_VALUE_ORDERED, MapWriteMode.UPDATE);
+			if (!args.testAsyncAwait)
+			{
+				client.Delete(null, key);
 
-			Dictionary<Value, Value> inputMap = new Dictionary<Value, Value>();
-			inputMap[Value.Get("weiling")] = Value.Get(0);
-			inputMap[Value.Get("briann")] = Value.Get(0);
-			inputMap[Value.Get("brianb")] = Value.Get(0);
-			inputMap[Value.Get("meher")] = Value.Get(0);
+				MapPolicy mapPolicy = new MapPolicy(MapOrder.KEY_VALUE_ORDERED, MapWriteMode.UPDATE);
 
-			// Create map.
-			Record record = client.Operate(null, key, MapOperation.PutItems(mapPolicy, binName, inputMap));
+				Dictionary<Value, Value> inputMap = new Dictionary<Value, Value>();
+				inputMap[Value.Get("weiling")] = Value.Get(0);
+				inputMap[Value.Get("briann")] = Value.Get(0);
+				inputMap[Value.Get("brianb")] = Value.Get(0);
+				inputMap[Value.Get("meher")] = Value.Get(0);
 
-			AssertRecordFound(key, record);
+				// Create map.
+				Record record = client.Operate(null, key, MapOperation.PutItems(mapPolicy, binName, inputMap));
 
-			// Change scores
-			record = client.Operate(null, key,
-				MapOperation.Increment(mapPolicy, binName, Value.Get("weiling"), Value.Get(10)),
-				MapOperation.Increment(mapPolicy, binName, Value.Get("briann"), Value.Get(20)),
-				MapOperation.Increment(mapPolicy, binName, Value.Get("brianb"), Value.Get(1)),
-				MapOperation.Increment(mapPolicy, binName, Value.Get("meher"), Value.Get(20))
-				);
+				AssertRecordFound(key, record);
 
-			AssertRecordFound(key, record);
+				// Change scores
+				record = client.Operate(null, key,
+					MapOperation.Increment(mapPolicy, binName, Value.Get("weiling"), Value.Get(10)),
+					MapOperation.Increment(mapPolicy, binName, Value.Get("briann"), Value.Get(20)),
+					MapOperation.Increment(mapPolicy, binName, Value.Get("brianb"), Value.Get(1)),
+					MapOperation.Increment(mapPolicy, binName, Value.Get("meher"), Value.Get(20))
+					);
 
-			// Query top 3 scores
-			record = client.Operate(null, key, MapOperation.GetByRankRange(binName, -3, 3, MapReturnType.KEY));
+				AssertRecordFound(key, record);
 
-			AssertRecordFound(key, record);
+				// Query top 3 scores
+				record = client.Operate(null, key, MapOperation.GetByRankRange(binName, -3, 3, MapReturnType.KEY));
 
-			// Remove people with score 10 and display top 3 again
-			record = client.Operate(null, key,
-				MapOperation.RemoveByValue(binName, Value.Get(10), MapReturnType.KEY),
-				MapOperation.GetByRankRange(binName, -3, 3, MapReturnType.KEY)
-				);
+				AssertRecordFound(key, record);
 
-			AssertRecordFound(key, record);
+				// Remove people with score 10 and display top 3 again
+				record = client.Operate(null, key,
+					MapOperation.RemoveByValue(binName, Value.Get(10), MapReturnType.KEY),
+					MapOperation.GetByRankRange(binName, -3, 3, MapReturnType.KEY)
+					);
 
-			IList results = record.GetList(binName);
-			int i = 0;
-			IList list = (IList)results[i++];
-			string s = (string)list[0];
-			Assert.AreEqual("weiling", s);
+				AssertRecordFound(key, record);
 
-			list = (IList)results[i++];
-			s = (string)list[0];
-			Assert.AreEqual("brianb", s);
-			s = (string)list[1];
-			Assert.AreEqual("briann", s);
-			s = (string)list[2];
-			Assert.AreEqual("meher", s);
+				IList results = record.GetList(binName);
+				int i = 0;
+				IList list = (IList)results[i++];
+				string s = (string)list[0];
+				Assert.AreEqual("weiling", s);
+
+				list = (IList)results[i++];
+				s = (string)list[0];
+				Assert.AreEqual("brianb", s);
+				s = (string)list[1];
+				Assert.AreEqual("briann", s);
+				s = (string)list[2];
+				Assert.AreEqual("meher", s);
+			}
+			else
+			{
+				await asyncAwaitClient.Delete(null, key, CancellationToken.None);
+
+				MapPolicy mapPolicy = new MapPolicy(MapOrder.KEY_VALUE_ORDERED, MapWriteMode.UPDATE);
+
+				Dictionary<Value, Value> inputMap = new Dictionary<Value, Value>();
+				inputMap[Value.Get("weiling")] = Value.Get(0);
+				inputMap[Value.Get("briann")] = Value.Get(0);
+				inputMap[Value.Get("brianb")] = Value.Get(0);
+				inputMap[Value.Get("meher")] = Value.Get(0);
+
+				// Create map.
+				Record record = await asyncAwaitClient.Operate(null, key, new[] { MapOperation.PutItems(mapPolicy, binName, inputMap) }, CancellationToken.None);
+
+				AssertRecordFound(key, record);
+
+				// Change scores
+				record = await asyncAwaitClient.Operate(null, key,
+					new[] { MapOperation.Increment(mapPolicy, binName, Value.Get("weiling"), Value.Get(10)),
+					MapOperation.Increment(mapPolicy, binName, Value.Get("briann"), Value.Get(20)),
+					MapOperation.Increment(mapPolicy, binName, Value.Get("brianb"), Value.Get(1)),
+					MapOperation.Increment(mapPolicy, binName, Value.Get("meher"), Value.Get(20)) },
+					CancellationToken.None
+					);
+
+				AssertRecordFound(key, record);
+
+				// Query top 3 scores
+				record = await asyncAwaitClient.Operate(null, key, new[] { MapOperation.GetByRankRange(binName, -3, 3, MapReturnType.KEY) }, CancellationToken.None);
+
+				AssertRecordFound(key, record);
+
+				// Remove people with score 10 and display top 3 again
+				record = await asyncAwaitClient.Operate(null, key,
+					new[] { MapOperation.RemoveByValue(binName, Value.Get(10), MapReturnType.KEY),
+					MapOperation.GetByRankRange(binName, -3, 3, MapReturnType.KEY) },
+					CancellationToken.None
+					);
+
+				AssertRecordFound(key, record);
+
+				IList results = record.GetList(binName);
+				int i = 0;
+				IList list = (IList)results[i++];
+				string s = (string)list[0];
+				Assert.AreEqual("weiling", s);
+
+				list = (IList)results[i++];
+				s = (string)list[0];
+				Assert.AreEqual("brianb", s);
+				s = (string)list[1];
+				Assert.AreEqual("briann", s);
+				s = (string)list[2];
+				Assert.AreEqual("meher", s);
+			}
 		}
 
 		[TestMethod]
-		public void OperateMapGetByList()
+		public async Task OperateMapGetByList()
 		{
 			Key key = new Key(args.ns, args.set, "opmkey11");
-			client.Delete(null, key);
 
-			Dictionary<Value, Value> inputMap = new Dictionary<Value, Value>();
-			inputMap[Value.Get("Charlie")] = Value.Get(55);
-			inputMap[Value.Get("Jim")] = Value.Get(98);
-			inputMap[Value.Get("John")] = Value.Get(76);
-			inputMap[Value.Get("Harry")] = Value.Get(82);
+			if (!args.testAsyncAwait)
+			{
+				client.Delete(null, key);
 
-			// Write values to empty map.
-			Record record = client.Operate(null, key, MapOperation.PutItems(MapPolicy.Default, binName, inputMap));
+				Dictionary<Value, Value> inputMap = new Dictionary<Value, Value>();
+				inputMap[Value.Get("Charlie")] = Value.Get(55);
+				inputMap[Value.Get("Jim")] = Value.Get(98);
+				inputMap[Value.Get("John")] = Value.Get(76);
+				inputMap[Value.Get("Harry")] = Value.Get(82);
 
-			AssertRecordFound(key, record);
+				// Write values to empty map.
+				Record record = client.Operate(null, key, MapOperation.PutItems(MapPolicy.Default, binName, inputMap));
 
-			List<string> keyList = new List<string>();
-			keyList.Add("Harry");
-			keyList.Add("Jim");
+				AssertRecordFound(key, record);
 
-			List<int> valueList = new List<int>();
-			valueList.Add(76);
-			valueList.Add(50);
+				List<string> keyList = new List<string>();
+				keyList.Add("Harry");
+				keyList.Add("Jim");
 
-			record = client.Operate(null, key,
-					MapOperation.GetByKeyList(binName, keyList, MapReturnType.KEY_VALUE),
-					MapOperation.GetByValueList(binName, valueList, MapReturnType.KEY_VALUE)
-					);
+				List<int> valueList = new List<int>();
+				valueList.Add(76);
+				valueList.Add(50);
 
-			AssertRecordFound(key, record);
+				record = client.Operate(null, key,
+						MapOperation.GetByKeyList(binName, keyList, MapReturnType.KEY_VALUE),
+						MapOperation.GetByValueList(binName, valueList, MapReturnType.KEY_VALUE)
+						);
 
-			IList results = record.GetList(binName);
-		
-			IList list = (IList)results[0];
-			Assert.AreEqual(2, list.Count);
-			KeyValuePair<object, object> entry = (KeyValuePair<object, object>)list[0];
-			Assert.AreEqual("Harry", entry.Key);
-			Assert.AreEqual(82L, entry.Value);
-			entry = (KeyValuePair<object, object>)list[1];
-			Assert.AreEqual("Jim", entry.Key);
-			Assert.AreEqual(98L, entry.Value);
+				AssertRecordFound(key, record);
 
-			list = (IList)results[1];
-			Assert.AreEqual(1, list.Count);
-			entry = (KeyValuePair<object, object>)list[0];
-			Assert.AreEqual("John", entry.Key);
-			Assert.AreEqual(76L, entry.Value);
+				IList results = record.GetList(binName);
+
+				IList list = (IList)results[0];
+				Assert.AreEqual(2, list.Count);
+				KeyValuePair<object, object> entry = (KeyValuePair<object, object>)list[0];
+				Assert.AreEqual("Harry", entry.Key);
+				Assert.AreEqual(82L, entry.Value);
+				entry = (KeyValuePair<object, object>)list[1];
+				Assert.AreEqual("Jim", entry.Key);
+				Assert.AreEqual(98L, entry.Value);
+
+				list = (IList)results[1];
+				Assert.AreEqual(1, list.Count);
+				entry = (KeyValuePair<object, object>)list[0];
+				Assert.AreEqual("John", entry.Key);
+				Assert.AreEqual(76L, entry.Value);
+			}
+			else
+			{
+				await asyncAwaitClient.Delete(null, key, CancellationToken.None);
+
+				Dictionary<Value, Value> inputMap = new Dictionary<Value, Value>();
+				inputMap[Value.Get("Charlie")] = Value.Get(55);
+				inputMap[Value.Get("Jim")] = Value.Get(98);
+				inputMap[Value.Get("John")] = Value.Get(76);
+				inputMap[Value.Get("Harry")] = Value.Get(82);
+
+				// Write values to empty map.
+				Record record = await asyncAwaitClient.Operate(null, key, new[] { MapOperation.PutItems(MapPolicy.Default, binName, inputMap) }, CancellationToken.None);
+
+				AssertRecordFound(key, record);
+
+				List<string> keyList = new List<string>();
+				keyList.Add("Harry");
+				keyList.Add("Jim");
+
+				List<int> valueList = new List<int>();
+				valueList.Add(76);
+				valueList.Add(50);
+
+				record = await asyncAwaitClient.Operate(null, key,
+						new[] { MapOperation.GetByKeyList(binName, keyList, MapReturnType.KEY_VALUE),
+						MapOperation.GetByValueList(binName, valueList, MapReturnType.KEY_VALUE) },
+						CancellationToken.None
+						);
+
+				AssertRecordFound(key, record);
+
+				IList results = record.GetList(binName);
+
+				IList list = (IList)results[0];
+				Assert.AreEqual(2, list.Count);
+				KeyValuePair<object, object> entry = (KeyValuePair<object, object>)list[0];
+				Assert.AreEqual("Harry", entry.Key);
+				Assert.AreEqual(82L, entry.Value);
+				entry = (KeyValuePair<object, object>)list[1];
+				Assert.AreEqual("Jim", entry.Key);
+				Assert.AreEqual(98L, entry.Value);
+
+				list = (IList)results[1];
+				Assert.AreEqual(1, list.Count);
+				entry = (KeyValuePair<object, object>)list[0];
+				Assert.AreEqual("John", entry.Key);
+				Assert.AreEqual(76L, entry.Value);
+			}
 		}
 
 		[TestMethod]
-		public void OperateMapInverted()
+		public async Task OperateMapInverted()
 		{
 			Key key = new Key(args.ns, args.set, "opmkey12");
-			client.Delete(null, key);
 
-			Dictionary<Value, Value> inputMap = new Dictionary<Value, Value>();
-			inputMap[Value.Get("Charlie")] = Value.Get(55);
-			inputMap[Value.Get("Jim")] = Value.Get(98);
-			inputMap[Value.Get("John")] = Value.Get(76);
-			inputMap[Value.Get("Harry")] = Value.Get(82);
+			if (!args.testAsyncAwait)
+			{
+				client.Delete(null, key);
 
-			// Write values to empty map.
-			Record record = client.Operate(null, key, MapOperation.PutItems(MapPolicy.Default, binName, inputMap));
+				Dictionary<Value, Value> inputMap = new Dictionary<Value, Value>();
+				inputMap[Value.Get("Charlie")] = Value.Get(55);
+				inputMap[Value.Get("Jim")] = Value.Get(98);
+				inputMap[Value.Get("John")] = Value.Get(76);
+				inputMap[Value.Get("Harry")] = Value.Get(82);
 
-			AssertRecordFound(key, record);
+				// Write values to empty map.
+				Record record = client.Operate(null, key, MapOperation.PutItems(MapPolicy.Default, binName, inputMap));
 
-			List<string> keyList = new List<string>();
-			keyList.Add("Harry");
-			keyList.Add("Jim");
+				AssertRecordFound(key, record);
 
-			List<int> valueList = new List<int>();
-			valueList.Add(76);
-			valueList.Add(55);
-			valueList.Add(98);
-			valueList.Add(50);
+				List<string> keyList = new List<string>();
+				keyList.Add("Harry");
+				keyList.Add("Jim");
 
-			record = client.Operate(null, key,
-					MapOperation.GetByValue(binName, Value.Get(81), MapReturnType.RANK | MapReturnType.INVERTED),
-					MapOperation.GetByValue(binName, Value.Get(82), MapReturnType.RANK | MapReturnType.INVERTED),
-					MapOperation.GetByValueRange(binName, Value.Get(90), Value.Get(95), MapReturnType.RANK | MapReturnType.INVERTED),
-					MapOperation.GetByValueRange(binName, Value.Get(90), Value.Get(100), MapReturnType.RANK | MapReturnType.INVERTED),
-					MapOperation.GetByValueList(binName, valueList, MapReturnType.KEY_VALUE | MapReturnType.INVERTED),
-					MapOperation.GetByRankRange(binName, -2, 2, MapReturnType.KEY | MapReturnType.INVERTED),
-					MapOperation.GetByRankRange(binName, 0, 3, MapReturnType.KEY_VALUE | MapReturnType.INVERTED)
-					);
+				List<int> valueList = new List<int>();
+				valueList.Add(76);
+				valueList.Add(55);
+				valueList.Add(98);
+				valueList.Add(50);
 
-			AssertRecordFound(key, record);
+				record = client.Operate(null, key,
+						MapOperation.GetByValue(binName, Value.Get(81), MapReturnType.RANK | MapReturnType.INVERTED),
+						MapOperation.GetByValue(binName, Value.Get(82), MapReturnType.RANK | MapReturnType.INVERTED),
+						MapOperation.GetByValueRange(binName, Value.Get(90), Value.Get(95), MapReturnType.RANK | MapReturnType.INVERTED),
+						MapOperation.GetByValueRange(binName, Value.Get(90), Value.Get(100), MapReturnType.RANK | MapReturnType.INVERTED),
+						MapOperation.GetByValueList(binName, valueList, MapReturnType.KEY_VALUE | MapReturnType.INVERTED),
+						MapOperation.GetByRankRange(binName, -2, 2, MapReturnType.KEY | MapReturnType.INVERTED),
+						MapOperation.GetByRankRange(binName, 0, 3, MapReturnType.KEY_VALUE | MapReturnType.INVERTED)
+						);
 
-			IList results = record.GetList(binName);
-			int i = 0;
+				AssertRecordFound(key, record);
 
-			IList list = (IList)results[i++];
-			Assert.AreEqual(4, list.Count);
+				IList results = record.GetList(binName);
+				int i = 0;
 
-			list = (IList)results[i++];
-			Assert.AreEqual(3, list.Count);
+				IList list = (IList)results[i++];
+				Assert.AreEqual(4, list.Count);
 
-			list = (IList)results[i++];
-			Assert.AreEqual(4, list.Count);
+				list = (IList)results[i++];
+				Assert.AreEqual(3, list.Count);
 
-			list = (IList)results[i++];
-			Assert.AreEqual(3, list.Count);
-			Assert.AreEqual(0L, list[0]);
-			Assert.AreEqual(1L, list[1]);
-			Assert.AreEqual(2L, list[2]);
+				list = (IList)results[i++];
+				Assert.AreEqual(4, list.Count);
 
-			list = (IList)results[i++];
-			Assert.AreEqual(1, list.Count);		
-			KeyValuePair<object, object> entry = (KeyValuePair<object, object>)list[0];
-			Assert.AreEqual("Harry", entry.Key);
-			Assert.AreEqual(82L, entry.Value);
+				list = (IList)results[i++];
+				Assert.AreEqual(3, list.Count);
+				Assert.AreEqual(0L, list[0]);
+				Assert.AreEqual(1L, list[1]);
+				Assert.AreEqual(2L, list[2]);
 
-			list = (IList)results[i++];
-			Assert.AreEqual(2, list.Count);
-			Assert.AreEqual("Charlie", list[0]);
-			Assert.AreEqual("John", list[1]);
+				list = (IList)results[i++];
+				Assert.AreEqual(1, list.Count);
+				KeyValuePair<object, object> entry = (KeyValuePair<object, object>)list[0];
+				Assert.AreEqual("Harry", entry.Key);
+				Assert.AreEqual(82L, entry.Value);
 
-			list = (IList)results[i++];
-			Assert.AreEqual(1, list.Count);		
-			entry = (KeyValuePair<object, object>)list[0];
-			Assert.AreEqual("Jim", entry.Key);
-			Assert.AreEqual(98L, entry.Value);
+				list = (IList)results[i++];
+				Assert.AreEqual(2, list.Count);
+				Assert.AreEqual("Charlie", list[0]);
+				Assert.AreEqual("John", list[1]);
+
+				list = (IList)results[i++];
+				Assert.AreEqual(1, list.Count);
+				entry = (KeyValuePair<object, object>)list[0];
+				Assert.AreEqual("Jim", entry.Key);
+				Assert.AreEqual(98L, entry.Value);
+			}
+			else
+			{
+				await asyncAwaitClient.Delete(null, key, CancellationToken.None);
+
+				Dictionary<Value, Value> inputMap = new Dictionary<Value, Value>();
+				inputMap[Value.Get("Charlie")] = Value.Get(55);
+				inputMap[Value.Get("Jim")] = Value.Get(98);
+				inputMap[Value.Get("John")] = Value.Get(76);
+				inputMap[Value.Get("Harry")] = Value.Get(82);
+
+				// Write values to empty map.
+				Record record = await asyncAwaitClient.Operate(null, key, new[] { MapOperation.PutItems(MapPolicy.Default, binName, inputMap) }, CancellationToken.None);
+
+				AssertRecordFound(key, record);
+
+				List<string> keyList = new List<string>();
+				keyList.Add("Harry");
+				keyList.Add("Jim");
+
+				List<int> valueList = new List<int>();
+				valueList.Add(76);
+				valueList.Add(55);
+				valueList.Add(98);
+				valueList.Add(50);
+
+				record = await asyncAwaitClient.Operate(null, key,
+						new[] { MapOperation.GetByValue(binName, Value.Get(81), MapReturnType.RANK | MapReturnType.INVERTED),
+						MapOperation.GetByValue(binName, Value.Get(82), MapReturnType.RANK | MapReturnType.INVERTED),
+						MapOperation.GetByValueRange(binName, Value.Get(90), Value.Get(95), MapReturnType.RANK | MapReturnType.INVERTED),
+						MapOperation.GetByValueRange(binName, Value.Get(90), Value.Get(100), MapReturnType.RANK | MapReturnType.INVERTED),
+						MapOperation.GetByValueList(binName, valueList, MapReturnType.KEY_VALUE | MapReturnType.INVERTED),
+						MapOperation.GetByRankRange(binName, -2, 2, MapReturnType.KEY | MapReturnType.INVERTED),
+						MapOperation.GetByRankRange(binName, 0, 3, MapReturnType.KEY_VALUE | MapReturnType.INVERTED) },
+						CancellationToken.None
+						);
+
+				AssertRecordFound(key, record);
+
+				IList results = record.GetList(binName);
+				int i = 0;
+
+				IList list = (IList)results[i++];
+				Assert.AreEqual(4, list.Count);
+
+				list = (IList)results[i++];
+				Assert.AreEqual(3, list.Count);
+
+				list = (IList)results[i++];
+				Assert.AreEqual(4, list.Count);
+
+				list = (IList)results[i++];
+				Assert.AreEqual(3, list.Count);
+				Assert.AreEqual(0L, list[0]);
+				Assert.AreEqual(1L, list[1]);
+				Assert.AreEqual(2L, list[2]);
+
+				list = (IList)results[i++];
+				Assert.AreEqual(1, list.Count);
+				KeyValuePair<object, object> entry = (KeyValuePair<object, object>)list[0];
+				Assert.AreEqual("Harry", entry.Key);
+				Assert.AreEqual(82L, entry.Value);
+
+				list = (IList)results[i++];
+				Assert.AreEqual(2, list.Count);
+				Assert.AreEqual("Charlie", list[0]);
+				Assert.AreEqual("John", list[1]);
+
+				list = (IList)results[i++];
+				Assert.AreEqual(1, list.Count);
+				entry = (KeyValuePair<object, object>)list[0];
+				Assert.AreEqual("Jim", entry.Key);
+				Assert.AreEqual(98L, entry.Value);
+			}
 		}
 
 		[TestMethod]
-		public void OperateMapGetRelative()
+		public async Task OperateMapGetRelative()
 		{
 			Key key = new Key(args.ns, args.set, "opmkey14");
-			client.Delete(null, key);
 
-			Dictionary<Value, Value> inputMap = new Dictionary<Value, Value>();
-			inputMap[Value.Get(0)] = Value.Get(17);
-			inputMap[Value.Get(4)] = Value.Get(2);
-			inputMap[Value.Get(5)] = Value.Get(15);
-			inputMap[Value.Get(9)] = Value.Get(10);
+			if (!args.testAsyncAwait)
+			{
+				client.Delete(null, key);
 
-			// Write values to empty map.
-			Record record = client.Operate(null, key, MapOperation.PutItems(MapPolicy.Default, binName, inputMap));
+				Dictionary<Value, Value> inputMap = new Dictionary<Value, Value>();
+				inputMap[Value.Get(0)] = Value.Get(17);
+				inputMap[Value.Get(4)] = Value.Get(2);
+				inputMap[Value.Get(5)] = Value.Get(15);
+				inputMap[Value.Get(9)] = Value.Get(10);
 
-			AssertRecordFound(key, record);
+				// Write values to empty map.
+				Record record = client.Operate(null, key, MapOperation.PutItems(MapPolicy.Default, binName, inputMap));
 
-			record = client.Operate(null, key, MapOperation.GetByKeyRelativeIndexRange(binName, Value.Get(5), 0, MapReturnType.KEY),
-				MapOperation.GetByKeyRelativeIndexRange(binName, Value.Get(5), 1, MapReturnType.KEY),
-				MapOperation.GetByKeyRelativeIndexRange(binName, Value.Get(5), -1, MapReturnType.KEY),
-				MapOperation.GetByKeyRelativeIndexRange(binName, Value.Get(3), 2, MapReturnType.KEY),
-				MapOperation.GetByKeyRelativeIndexRange(binName, Value.Get(3), -2, MapReturnType.KEY),
-				MapOperation.GetByKeyRelativeIndexRange(binName, Value.Get(5), 0, 1, MapReturnType.KEY),
-				MapOperation.GetByKeyRelativeIndexRange(binName, Value.Get(5), 1, 2, MapReturnType.KEY),
-				MapOperation.GetByKeyRelativeIndexRange(binName, Value.Get(5), -1, 1, MapReturnType.KEY),
-				MapOperation.GetByKeyRelativeIndexRange(binName, Value.Get(3), 2, 1, MapReturnType.KEY),
-				MapOperation.GetByKeyRelativeIndexRange(binName, Value.Get(3), -2, 2, MapReturnType.KEY),
-				MapOperation.GetByValueRelativeRankRange(binName, Value.Get(11), 1, MapReturnType.VALUE),
-				MapOperation.GetByValueRelativeRankRange(binName, Value.Get(11), -1, MapReturnType.VALUE),
-				MapOperation.GetByValueRelativeRankRange(binName, Value.Get(11), 1, 1, MapReturnType.VALUE),
-				MapOperation.GetByValueRelativeRankRange(binName, Value.Get(11), -1, 1, MapReturnType.VALUE));
+				AssertRecordFound(key, record);
 
-			AssertRecordFound(key, record);
+				record = client.Operate(null, key, MapOperation.GetByKeyRelativeIndexRange(binName, Value.Get(5), 0, MapReturnType.KEY),
+					MapOperation.GetByKeyRelativeIndexRange(binName, Value.Get(5), 1, MapReturnType.KEY),
+					MapOperation.GetByKeyRelativeIndexRange(binName, Value.Get(5), -1, MapReturnType.KEY),
+					MapOperation.GetByKeyRelativeIndexRange(binName, Value.Get(3), 2, MapReturnType.KEY),
+					MapOperation.GetByKeyRelativeIndexRange(binName, Value.Get(3), -2, MapReturnType.KEY),
+					MapOperation.GetByKeyRelativeIndexRange(binName, Value.Get(5), 0, 1, MapReturnType.KEY),
+					MapOperation.GetByKeyRelativeIndexRange(binName, Value.Get(5), 1, 2, MapReturnType.KEY),
+					MapOperation.GetByKeyRelativeIndexRange(binName, Value.Get(5), -1, 1, MapReturnType.KEY),
+					MapOperation.GetByKeyRelativeIndexRange(binName, Value.Get(3), 2, 1, MapReturnType.KEY),
+					MapOperation.GetByKeyRelativeIndexRange(binName, Value.Get(3), -2, 2, MapReturnType.KEY),
+					MapOperation.GetByValueRelativeRankRange(binName, Value.Get(11), 1, MapReturnType.VALUE),
+					MapOperation.GetByValueRelativeRankRange(binName, Value.Get(11), -1, MapReturnType.VALUE),
+					MapOperation.GetByValueRelativeRankRange(binName, Value.Get(11), 1, 1, MapReturnType.VALUE),
+					MapOperation.GetByValueRelativeRankRange(binName, Value.Get(11), -1, 1, MapReturnType.VALUE));
 
-			IList results = record.GetList(binName);
-			int i = 0;
+				AssertRecordFound(key, record);
 
-			IList list = (IList)results[i++];
-			Assert.AreEqual(2L, list.Count);
-			Assert.AreEqual(5L, list[0]);
-			Assert.AreEqual(9L, list[1]);
+				IList results = record.GetList(binName);
+				int i = 0;
 
-			list = (IList)results[i++];
-			Assert.AreEqual(1L, list.Count);
-			Assert.AreEqual(9L, list[0]);
+				IList list = (IList)results[i++];
+				Assert.AreEqual(2L, list.Count);
+				Assert.AreEqual(5L, list[0]);
+				Assert.AreEqual(9L, list[1]);
 
-			list = (IList)results[i++];
-			Assert.AreEqual(3L, list.Count);
-			Assert.AreEqual(4L, list[0]);
-			Assert.AreEqual(5L, list[1]);
-			Assert.AreEqual(9L, list[2]);
+				list = (IList)results[i++];
+				Assert.AreEqual(1L, list.Count);
+				Assert.AreEqual(9L, list[0]);
 
-			list = (IList)results[i++];
-			Assert.AreEqual(1L, list.Count);
-			Assert.AreEqual(9L, list[0]);
+				list = (IList)results[i++];
+				Assert.AreEqual(3L, list.Count);
+				Assert.AreEqual(4L, list[0]);
+				Assert.AreEqual(5L, list[1]);
+				Assert.AreEqual(9L, list[2]);
 
-			list = (IList)results[i++];
-			Assert.AreEqual(4L, list.Count);
-			Assert.AreEqual(0L, list[0]);
-			Assert.AreEqual(4L, list[1]);
-			Assert.AreEqual(5L, list[2]);
-			Assert.AreEqual(9L, list[3]);
+				list = (IList)results[i++];
+				Assert.AreEqual(1L, list.Count);
+				Assert.AreEqual(9L, list[0]);
 
-			list = (IList)results[i++];
-			Assert.AreEqual(1L, list.Count);
-			Assert.AreEqual(5L, list[0]);
+				list = (IList)results[i++];
+				Assert.AreEqual(4L, list.Count);
+				Assert.AreEqual(0L, list[0]);
+				Assert.AreEqual(4L, list[1]);
+				Assert.AreEqual(5L, list[2]);
+				Assert.AreEqual(9L, list[3]);
 
-			list = (IList)results[i++];
-			Assert.AreEqual(1L, list.Count);
-			Assert.AreEqual(9L, list[0]);
+				list = (IList)results[i++];
+				Assert.AreEqual(1L, list.Count);
+				Assert.AreEqual(5L, list[0]);
 
-			list = (IList)results[i++];
-			Assert.AreEqual(1L, list.Count);
-			Assert.AreEqual(4L, list[0]);
+				list = (IList)results[i++];
+				Assert.AreEqual(1L, list.Count);
+				Assert.AreEqual(9L, list[0]);
 
-			list = (IList)results[i++];
-			Assert.AreEqual(1L, list.Count);
-			Assert.AreEqual(9L, list[0]);
+				list = (IList)results[i++];
+				Assert.AreEqual(1L, list.Count);
+				Assert.AreEqual(4L, list[0]);
 
-			list = (IList)results[i++];
-			Assert.AreEqual(1L, list.Count);
-			Assert.AreEqual(0L, list[0]);
+				list = (IList)results[i++];
+				Assert.AreEqual(1L, list.Count);
+				Assert.AreEqual(9L, list[0]);
 
-			list = (IList)results[i++];
-			Assert.AreEqual(1L, list.Count);
-			Assert.AreEqual(17L, list[0]);
+				list = (IList)results[i++];
+				Assert.AreEqual(1L, list.Count);
+				Assert.AreEqual(0L, list[0]);
 
-			list = (IList)results[i++];
-			Assert.AreEqual(3L, list.Count);
-			Assert.AreEqual(10L, list[0]);
-			Assert.AreEqual(15L, list[1]);
-			Assert.AreEqual(17L, list[2]);
+				list = (IList)results[i++];
+				Assert.AreEqual(1L, list.Count);
+				Assert.AreEqual(17L, list[0]);
 
-			list = (IList)results[i++];
-			Assert.AreEqual(1L, list.Count);
-			Assert.AreEqual(17L, list[0]);
+				list = (IList)results[i++];
+				Assert.AreEqual(3L, list.Count);
+				Assert.AreEqual(10L, list[0]);
+				Assert.AreEqual(15L, list[1]);
+				Assert.AreEqual(17L, list[2]);
 
-			list = (IList)results[i++];
-			Assert.AreEqual(1L, list.Count);
-			Assert.AreEqual(10L, list[0]);
+				list = (IList)results[i++];
+				Assert.AreEqual(1L, list.Count);
+				Assert.AreEqual(17L, list[0]);
+
+				list = (IList)results[i++];
+				Assert.AreEqual(1L, list.Count);
+				Assert.AreEqual(10L, list[0]);
+			}
+			else
+			{
+				await asyncAwaitClient.Delete(null, key, CancellationToken.None);
+
+				Dictionary<Value, Value> inputMap = new Dictionary<Value, Value>();
+				inputMap[Value.Get(0)] = Value.Get(17);
+				inputMap[Value.Get(4)] = Value.Get(2);
+				inputMap[Value.Get(5)] = Value.Get(15);
+				inputMap[Value.Get(9)] = Value.Get(10);
+
+				// Write values to empty map.
+				Record record = await asyncAwaitClient.Operate(null, key, new[] { MapOperation.PutItems(MapPolicy.Default, binName, inputMap) }, CancellationToken.None);
+
+				AssertRecordFound(key, record);
+
+				record = await asyncAwaitClient.Operate(null, key,
+					new[] { MapOperation.GetByKeyRelativeIndexRange(binName, Value.Get(5), 0, MapReturnType.KEY),
+					MapOperation.GetByKeyRelativeIndexRange(binName, Value.Get(5), 1, MapReturnType.KEY),
+					MapOperation.GetByKeyRelativeIndexRange(binName, Value.Get(5), -1, MapReturnType.KEY),
+					MapOperation.GetByKeyRelativeIndexRange(binName, Value.Get(3), 2, MapReturnType.KEY),
+					MapOperation.GetByKeyRelativeIndexRange(binName, Value.Get(3), -2, MapReturnType.KEY),
+					MapOperation.GetByKeyRelativeIndexRange(binName, Value.Get(5), 0, 1, MapReturnType.KEY),
+					MapOperation.GetByKeyRelativeIndexRange(binName, Value.Get(5), 1, 2, MapReturnType.KEY),
+					MapOperation.GetByKeyRelativeIndexRange(binName, Value.Get(5), -1, 1, MapReturnType.KEY),
+					MapOperation.GetByKeyRelativeIndexRange(binName, Value.Get(3), 2, 1, MapReturnType.KEY),
+					MapOperation.GetByKeyRelativeIndexRange(binName, Value.Get(3), -2, 2, MapReturnType.KEY),
+					MapOperation.GetByValueRelativeRankRange(binName, Value.Get(11), 1, MapReturnType.VALUE),
+					MapOperation.GetByValueRelativeRankRange(binName, Value.Get(11), -1, MapReturnType.VALUE),
+					MapOperation.GetByValueRelativeRankRange(binName, Value.Get(11), 1, 1, MapReturnType.VALUE),
+					MapOperation.GetByValueRelativeRankRange(binName, Value.Get(11), -1, 1, MapReturnType.VALUE) },
+					CancellationToken.None);
+
+				AssertRecordFound(key, record);
+
+				IList results = record.GetList(binName);
+				int i = 0;
+
+				IList list = (IList)results[i++];
+				Assert.AreEqual(2L, list.Count);
+				Assert.AreEqual(5L, list[0]);
+				Assert.AreEqual(9L, list[1]);
+
+				list = (IList)results[i++];
+				Assert.AreEqual(1L, list.Count);
+				Assert.AreEqual(9L, list[0]);
+
+				list = (IList)results[i++];
+				Assert.AreEqual(3L, list.Count);
+				Assert.AreEqual(4L, list[0]);
+				Assert.AreEqual(5L, list[1]);
+				Assert.AreEqual(9L, list[2]);
+
+				list = (IList)results[i++];
+				Assert.AreEqual(1L, list.Count);
+				Assert.AreEqual(9L, list[0]);
+
+				list = (IList)results[i++];
+				Assert.AreEqual(4L, list.Count);
+				Assert.AreEqual(0L, list[0]);
+				Assert.AreEqual(4L, list[1]);
+				Assert.AreEqual(5L, list[2]);
+				Assert.AreEqual(9L, list[3]);
+
+				list = (IList)results[i++];
+				Assert.AreEqual(1L, list.Count);
+				Assert.AreEqual(5L, list[0]);
+
+				list = (IList)results[i++];
+				Assert.AreEqual(1L, list.Count);
+				Assert.AreEqual(9L, list[0]);
+
+				list = (IList)results[i++];
+				Assert.AreEqual(1L, list.Count);
+				Assert.AreEqual(4L, list[0]);
+
+				list = (IList)results[i++];
+				Assert.AreEqual(1L, list.Count);
+				Assert.AreEqual(9L, list[0]);
+
+				list = (IList)results[i++];
+				Assert.AreEqual(1L, list.Count);
+				Assert.AreEqual(0L, list[0]);
+
+				list = (IList)results[i++];
+				Assert.AreEqual(1L, list.Count);
+				Assert.AreEqual(17L, list[0]);
+
+				list = (IList)results[i++];
+				Assert.AreEqual(3L, list.Count);
+				Assert.AreEqual(10L, list[0]);
+				Assert.AreEqual(15L, list[1]);
+				Assert.AreEqual(17L, list[2]);
+
+				list = (IList)results[i++];
+				Assert.AreEqual(1L, list.Count);
+				Assert.AreEqual(17L, list[0]);
+
+				list = (IList)results[i++];
+				Assert.AreEqual(1L, list.Count);
+				Assert.AreEqual(10L, list[0]);
+			}
 		}
 
 		[TestMethod]
-		public void OperateMapRemoveRelative()
+		public async Task OperateMapRemoveRelative()
 		{
 			Key key = new Key(args.ns, args.set, "opmkey15");
-			client.Delete(null, key);
 
-			Dictionary<Value, Value> inputMap = new Dictionary<Value, Value>();
-			inputMap[Value.Get(0)] = Value.Get(17);
-			inputMap[Value.Get(4)] = Value.Get(2);
-			inputMap[Value.Get(5)] = Value.Get(15);
-			inputMap[Value.Get(9)] = Value.Get(10);
+			if (!args.testAsyncAwait)
+			{
+				client.Delete(null, key);
 
-			// Write values to empty map.
-			Record record = client.Operate(null, key, MapOperation.PutItems(MapPolicy.Default, binName, inputMap));
+				Dictionary<Value, Value> inputMap = new Dictionary<Value, Value>();
+				inputMap[Value.Get(0)] = Value.Get(17);
+				inputMap[Value.Get(4)] = Value.Get(2);
+				inputMap[Value.Get(5)] = Value.Get(15);
+				inputMap[Value.Get(9)] = Value.Get(10);
 
-			AssertRecordFound(key, record);
+				// Write values to empty map.
+				Record record = client.Operate(null, key, MapOperation.PutItems(MapPolicy.Default, binName, inputMap));
 
-			record = client.Operate(null, key,
-				MapOperation.RemoveByKeyRelativeIndexRange(binName, Value.Get(5), 0, MapReturnType.VALUE),
-				MapOperation.RemoveByKeyRelativeIndexRange(binName, Value.Get(5), 1, MapReturnType.VALUE),
-				MapOperation.RemoveByKeyRelativeIndexRange(binName, Value.Get(5), -1, 1, MapReturnType.VALUE)
-				);
+				AssertRecordFound(key, record);
 
-			AssertRecordFound(key, record);
+				record = client.Operate(null, key,
+					MapOperation.RemoveByKeyRelativeIndexRange(binName, Value.Get(5), 0, MapReturnType.VALUE),
+					MapOperation.RemoveByKeyRelativeIndexRange(binName, Value.Get(5), 1, MapReturnType.VALUE),
+					MapOperation.RemoveByKeyRelativeIndexRange(binName, Value.Get(5), -1, 1, MapReturnType.VALUE)
+					);
 
-			IList results = record.GetList(binName);
-			int i = 0;
+				AssertRecordFound(key, record);
 
-			IList list = (IList)results[i++];
-			Assert.AreEqual(2L, list.Count);
-			Assert.AreEqual(15L, list[0]);
-			Assert.AreEqual(10L, list[1]);
+				IList results = record.GetList(binName);
+				int i = 0;
 
-			list = (IList)results[i++];
-			Assert.AreEqual(0L, list.Count);
+				IList list = (IList)results[i++];
+				Assert.AreEqual(2L, list.Count);
+				Assert.AreEqual(15L, list[0]);
+				Assert.AreEqual(10L, list[1]);
 
-			list = (IList)results[i++];
-			Assert.AreEqual(1L, list.Count);
-			Assert.AreEqual(2L, list[0]);
+				list = (IList)results[i++];
+				Assert.AreEqual(0L, list.Count);
 
-			// Write values to empty map.
-			client.Delete(null, key);
+				list = (IList)results[i++];
+				Assert.AreEqual(1L, list.Count);
+				Assert.AreEqual(2L, list[0]);
 
-			record = client.Operate(null, key, MapOperation.PutItems(MapPolicy.Default, binName, inputMap));
+				// Write values to empty map.
+				client.Delete(null, key);
 
-			AssertRecordFound(key, record);
+				record = client.Operate(null, key, MapOperation.PutItems(MapPolicy.Default, binName, inputMap));
 
-			record = client.Operate(null, key,
-				MapOperation.RemoveByValueRelativeRankRange(binName, Value.Get(11), 1, MapReturnType.VALUE),
-				MapOperation.RemoveByValueRelativeRankRange(binName, Value.Get(11), -1, 1, MapReturnType.VALUE)
-				);
+				AssertRecordFound(key, record);
 
-			AssertRecordFound(key, record);
+				record = client.Operate(null, key,
+					MapOperation.RemoveByValueRelativeRankRange(binName, Value.Get(11), 1, MapReturnType.VALUE),
+					MapOperation.RemoveByValueRelativeRankRange(binName, Value.Get(11), -1, 1, MapReturnType.VALUE)
+					);
 
-			results = record.GetList(binName);
-			i = 0;
+				AssertRecordFound(key, record);
 
-			list = (IList)results[i++];
-			Assert.AreEqual(1L, list.Count);
-			Assert.AreEqual(17L, list[0]);
+				results = record.GetList(binName);
+				i = 0;
 
-			list = (IList)results[i++];
-			Assert.AreEqual(1L, list.Count);
-			Assert.AreEqual(10L, list[0]);
+				list = (IList)results[i++];
+				Assert.AreEqual(1L, list.Count);
+				Assert.AreEqual(17L, list[0]);
+
+				list = (IList)results[i++];
+				Assert.AreEqual(1L, list.Count);
+				Assert.AreEqual(10L, list[0]);
+			}
+			else
+			{
+				await asyncAwaitClient.Delete(null, key, CancellationToken.None);
+
+				Dictionary<Value, Value> inputMap = new Dictionary<Value, Value>();
+				inputMap[Value.Get(0)] = Value.Get(17);
+				inputMap[Value.Get(4)] = Value.Get(2);
+				inputMap[Value.Get(5)] = Value.Get(15);
+				inputMap[Value.Get(9)] = Value.Get(10);
+
+				// Write values to empty map.
+				Record record = await asyncAwaitClient.Operate(null, key, new[] { MapOperation.PutItems(MapPolicy.Default, binName, inputMap) }, CancellationToken.None);
+
+				AssertRecordFound(key, record);
+
+				record = await asyncAwaitClient.Operate(null, key,
+					new[] { MapOperation.RemoveByKeyRelativeIndexRange(binName, Value.Get(5), 0, MapReturnType.VALUE),
+					MapOperation.RemoveByKeyRelativeIndexRange(binName, Value.Get(5), 1, MapReturnType.VALUE),
+					MapOperation.RemoveByKeyRelativeIndexRange(binName, Value.Get(5), -1, 1, MapReturnType.VALUE) },
+					CancellationToken.None
+					);
+
+				AssertRecordFound(key, record);
+
+				IList results = record.GetList(binName);
+				int i = 0;
+
+				IList list = (IList)results[i++];
+				Assert.AreEqual(2L, list.Count);
+				Assert.AreEqual(15L, list[0]);
+				Assert.AreEqual(10L, list[1]);
+
+				list = (IList)results[i++];
+				Assert.AreEqual(0L, list.Count);
+
+				list = (IList)results[i++];
+				Assert.AreEqual(1L, list.Count);
+				Assert.AreEqual(2L, list[0]);
+
+				// Write values to empty map.
+				await asyncAwaitClient.Delete(null, key, CancellationToken.None);
+
+				record = await asyncAwaitClient.Operate(null, key, new[] { MapOperation.PutItems(MapPolicy.Default, binName, inputMap) }, CancellationToken.None);
+
+				AssertRecordFound(key, record);
+
+				record = await asyncAwaitClient.Operate(null, key,
+					new[] { MapOperation.RemoveByValueRelativeRankRange(binName, Value.Get(11), 1, MapReturnType.VALUE),
+					MapOperation.RemoveByValueRelativeRankRange(binName, Value.Get(11), -1, 1, MapReturnType.VALUE) },
+					CancellationToken.None
+					);
+
+				AssertRecordFound(key, record);
+
+				results = record.GetList(binName);
+				i = 0;
+
+				list = (IList)results[i++];
+				Assert.AreEqual(1L, list.Count);
+				Assert.AreEqual(17L, list[0]);
+
+				list = (IList)results[i++];
+				Assert.AreEqual(1L, list.Count);
+				Assert.AreEqual(10L, list[0]);
+			}
 		}
 
 		[TestMethod]
-		public void OperateMapPartial() {
+		public async Task OperateMapPartial() {
 			Key key = new Key(args.ns, args.set, "opmkey16");
-			client.Delete(null, key);
+			if (!args.testAsyncAwait)
+			{
+				client.Delete(null, key);
 
-			Dictionary<Value, Value> inputMap = new Dictionary<Value, Value>();
-			inputMap[Value.Get(0)] = Value.Get(17);
-			inputMap[Value.Get(4)] = Value.Get(2);
-			inputMap[Value.Get(5)] = Value.Get(15);
-			inputMap[Value.Get(9)] = Value.Get(10);
-		
-			// Write values to empty map.
-			Record record = client.Operate(null, key, 
-					MapOperation.PutItems(MapPolicy.Default, binName, inputMap),
-					MapOperation.PutItems(MapPolicy.Default, "bin2", inputMap)
-					);
-					
-			AssertRecordFound(key, record);
+				Dictionary<Value, Value> inputMap = new Dictionary<Value, Value>();
+				inputMap[Value.Get(0)] = Value.Get(17);
+				inputMap[Value.Get(4)] = Value.Get(2);
+				inputMap[Value.Get(5)] = Value.Get(15);
+				inputMap[Value.Get(9)] = Value.Get(10);
 
-			Dictionary<Value, Value> sourceMap = new Dictionary<Value, Value>();
-			sourceMap[Value.Get(3)] = Value.Get(3);
-			sourceMap[Value.Get(5)] = Value.Get(15);
+				// Write values to empty map.
+				Record record = client.Operate(null, key,
+						MapOperation.PutItems(MapPolicy.Default, binName, inputMap),
+						MapOperation.PutItems(MapPolicy.Default, "bin2", inputMap)
+						);
 
-			record = client.Operate(null, key,
-					MapOperation.PutItems(new MapPolicy(MapOrder.UNORDERED, MapWriteFlags.CREATE_ONLY | MapWriteFlags.PARTIAL | MapWriteFlags.NO_FAIL), binName, sourceMap),
-					MapOperation.PutItems(new MapPolicy(MapOrder.UNORDERED, MapWriteFlags.CREATE_ONLY | MapWriteFlags.NO_FAIL), "bin2", sourceMap)
-					);
-		
-			AssertRecordFound(key, record);
+				AssertRecordFound(key, record);
 
-			long size = record.GetLong(binName);
-			Assert.AreEqual(5L, size);
-		
-			size = record.GetLong("bin2");
-			Assert.AreEqual(4L, size);	
+				Dictionary<Value, Value> sourceMap = new Dictionary<Value, Value>();
+				sourceMap[Value.Get(3)] = Value.Get(3);
+				sourceMap[Value.Get(5)] = Value.Get(15);
+
+				record = client.Operate(null, key,
+						MapOperation.PutItems(new MapPolicy(MapOrder.UNORDERED, MapWriteFlags.CREATE_ONLY | MapWriteFlags.PARTIAL | MapWriteFlags.NO_FAIL), binName, sourceMap),
+						MapOperation.PutItems(new MapPolicy(MapOrder.UNORDERED, MapWriteFlags.CREATE_ONLY | MapWriteFlags.NO_FAIL), "bin2", sourceMap)
+						);
+
+				AssertRecordFound(key, record);
+
+				long size = record.GetLong(binName);
+				Assert.AreEqual(5L, size);
+
+				size = record.GetLong("bin2");
+				Assert.AreEqual(4L, size);
+			}
+			else
+			{
+				await asyncAwaitClient.Delete(null, key, CancellationToken.None);
+
+				Dictionary<Value, Value> inputMap = new Dictionary<Value, Value>();
+				inputMap[Value.Get(0)] = Value.Get(17);
+				inputMap[Value.Get(4)] = Value.Get(2);
+				inputMap[Value.Get(5)] = Value.Get(15);
+				inputMap[Value.Get(9)] = Value.Get(10);
+
+				// Write values to empty map.
+				Record record = await asyncAwaitClient.Operate(null, key,
+						new[] { MapOperation.PutItems(MapPolicy.Default, binName, inputMap),
+						MapOperation.PutItems(MapPolicy.Default, "bin2", inputMap) },
+						CancellationToken.None
+						);
+
+				AssertRecordFound(key, record);
+
+				Dictionary<Value, Value> sourceMap = new Dictionary<Value, Value>();
+				sourceMap[Value.Get(3)] = Value.Get(3);
+				sourceMap[Value.Get(5)] = Value.Get(15);
+
+				record = await asyncAwaitClient.Operate(null, key,
+						new[] { MapOperation.PutItems(new MapPolicy(MapOrder.UNORDERED, MapWriteFlags.CREATE_ONLY | MapWriteFlags.PARTIAL | MapWriteFlags.NO_FAIL), binName, sourceMap),
+						MapOperation.PutItems(new MapPolicy(MapOrder.UNORDERED, MapWriteFlags.CREATE_ONLY | MapWriteFlags.NO_FAIL), "bin2", sourceMap) },
+						CancellationToken.None
+						);
+
+				AssertRecordFound(key, record);
+
+				long size = record.GetLong(binName);
+				Assert.AreEqual(5L, size);
+
+				size = record.GetLong("bin2");
+				Assert.AreEqual(4L, size);
+			}
 		}
 
 		[TestMethod]
-		public void OperateMapInfinity() {
+		public async Task OperateMapInfinity() {
 			Key key = new Key(args.ns, args.set, "opmkey17");
-			client.Delete(null, key);
-		
-			Dictionary<Value,Value> inputMap = new Dictionary<Value,Value>();
-			inputMap[Value.Get(0)] = Value.Get(17);
-			inputMap[Value.Get(4)] = Value.Get(2);
-			inputMap[Value.Get(5)] = Value.Get(15);
-			inputMap[Value.Get(9)] = Value.Get(10);
-		
-			// Write values to empty map.
-			Record record = client.Operate(null, key, 
-					MapOperation.PutItems(MapPolicy.Default, binName, inputMap)
-					);
-					
-			AssertRecordFound(key, record);
+			if (!args.testAsyncAwait)
+			{
+				client.Delete(null, key);
 
-			record = client.Operate(null, key,
-					MapOperation.GetByKeyRange(binName, Value.Get(5), Value.INFINITY, MapReturnType.KEY)
-					);
-		
-			AssertRecordFound(key, record);
-		
-			IList results = record.GetList(binName);
-			int i = 0;
-		
-			long v = (long)results[i++];
-			Assert.AreEqual(5L, v);
-		
-			v = (long)results[i++];
-			Assert.AreEqual(9L, v);
+				Dictionary<Value, Value> inputMap = new Dictionary<Value, Value>();
+				inputMap[Value.Get(0)] = Value.Get(17);
+				inputMap[Value.Get(4)] = Value.Get(2);
+				inputMap[Value.Get(5)] = Value.Get(15);
+				inputMap[Value.Get(9)] = Value.Get(10);
+
+				// Write values to empty map.
+				Record record = client.Operate(null, key,
+						MapOperation.PutItems(MapPolicy.Default, binName, inputMap)
+						);
+
+				AssertRecordFound(key, record);
+
+				record = client.Operate(null, key,
+						MapOperation.GetByKeyRange(binName, Value.Get(5), Value.INFINITY, MapReturnType.KEY)
+						);
+
+				AssertRecordFound(key, record);
+
+				IList results = record.GetList(binName);
+				int i = 0;
+
+				long v = (long)results[i++];
+				Assert.AreEqual(5L, v);
+
+				v = (long)results[i++];
+				Assert.AreEqual(9L, v);
+			}
+			else
+			{
+				await asyncAwaitClient.Delete(null, key, CancellationToken.None);
+
+				Dictionary<Value, Value> inputMap = new Dictionary<Value, Value>();
+				inputMap[Value.Get(0)] = Value.Get(17);
+				inputMap[Value.Get(4)] = Value.Get(2);
+				inputMap[Value.Get(5)] = Value.Get(15);
+				inputMap[Value.Get(9)] = Value.Get(10);
+
+				// Write values to empty map.
+				Record record = await asyncAwaitClient.Operate(null, key,
+						new[] { MapOperation.PutItems(MapPolicy.Default, binName, inputMap) },
+						CancellationToken.None
+						);
+
+				AssertRecordFound(key, record);
+
+				record = await asyncAwaitClient.Operate(null, key,
+						new[] { MapOperation.GetByKeyRange(binName, Value.Get(5), Value.INFINITY, MapReturnType.KEY) },
+						CancellationToken.None
+						);
+
+				AssertRecordFound(key, record);
+
+				IList results = record.GetList(binName);
+				int i = 0;
+
+				long v = (long)results[i++];
+				Assert.AreEqual(5L, v);
+
+				v = (long)results[i++];
+				Assert.AreEqual(9L, v);
+			}
 		}
 
 		[TestMethod]
-		public void OperateMapWildcard() {
+		public async Task OperateMapWildcard() {
 			Key key = new Key(args.ns, args.set, "opmkey18");
-			client.Delete(null, key);
-		
-			List<Value> i1 = new List<Value>();
-			i1.Add(Value.Get("John"));
-			i1.Add(Value.Get(55));
+			if (!args.testAsyncAwait)
+			{
+				client.Delete(null, key);
 
-			List<Value> i2 = new List<Value>();
-			i2.Add(Value.Get("Jim"));
-			i2.Add(Value.Get(95));
-		
-			List<Value> i3 = new List<Value>();
-			i3.Add(Value.Get("Joe"));
-			i3.Add(Value.Get(80));
+				List<Value> i1 = new List<Value>();
+				i1.Add(Value.Get("John"));
+				i1.Add(Value.Get(55));
 
-			Dictionary<Value,Value> inputMap = new Dictionary<Value,Value>();
-			inputMap[Value.Get(4)] = Value.Get(i1);
-			inputMap[Value.Get(5)] = Value.Get(i2);
-			inputMap[Value.Get(9)] = Value.Get(i3);
-		
-			// Write values to empty map.
-			Record record = client.Operate(null, key, 
-					MapOperation.PutItems(MapPolicy.Default, binName, inputMap)
-					);
-					
-			AssertRecordFound(key, record);
+				List<Value> i2 = new List<Value>();
+				i2.Add(Value.Get("Jim"));
+				i2.Add(Value.Get(95));
 
-			List<Value> filterList = new List<Value>();
-			filterList.Add(Value.Get("Joe"));
-			filterList.Add(Value.WILDCARD);
+				List<Value> i3 = new List<Value>();
+				i3.Add(Value.Get("Joe"));
+				i3.Add(Value.Get(80));
 
-			record = client.Operate(null, key,
-					MapOperation.GetByValue(binName, Value.Get(filterList), MapReturnType.KEY)
-					);
-		
-			AssertRecordFound(key, record);
-			//System.out.println("Record: " + record);
-		
-			IList results = record.GetList(binName);
-			int i = 0;
-		
-			long v = (long)results[i++];
-			Assert.AreEqual(9L, v);		
+				Dictionary<Value, Value> inputMap = new Dictionary<Value, Value>();
+				inputMap[Value.Get(4)] = Value.Get(i1);
+				inputMap[Value.Get(5)] = Value.Get(i2);
+				inputMap[Value.Get(9)] = Value.Get(i3);
+
+				// Write values to empty map.
+				Record record = client.Operate(null, key,
+						MapOperation.PutItems(MapPolicy.Default, binName, inputMap)
+						);
+
+				AssertRecordFound(key, record);
+
+				List<Value> filterList = new List<Value>();
+				filterList.Add(Value.Get("Joe"));
+				filterList.Add(Value.WILDCARD);
+
+				record = client.Operate(null, key,
+						MapOperation.GetByValue(binName, Value.Get(filterList), MapReturnType.KEY)
+						);
+
+				AssertRecordFound(key, record);
+				//System.out.println("Record: " + record);
+
+				IList results = record.GetList(binName);
+				int i = 0;
+
+				long v = (long)results[i++];
+				Assert.AreEqual(9L, v);
+			}
+			else
+			{
+				await asyncAwaitClient.Delete(null, key, CancellationToken.None);
+
+				List<Value> i1 = new List<Value>();
+				i1.Add(Value.Get("John"));
+				i1.Add(Value.Get(55));
+
+				List<Value> i2 = new List<Value>();
+				i2.Add(Value.Get("Jim"));
+				i2.Add(Value.Get(95));
+
+				List<Value> i3 = new List<Value>();
+				i3.Add(Value.Get("Joe"));
+				i3.Add(Value.Get(80));
+
+				Dictionary<Value, Value> inputMap = new Dictionary<Value, Value>();
+				inputMap[Value.Get(4)] = Value.Get(i1);
+				inputMap[Value.Get(5)] = Value.Get(i2);
+				inputMap[Value.Get(9)] = Value.Get(i3);
+
+				// Write values to empty map.
+				Record record = await asyncAwaitClient.Operate(null, key,
+						new[] { MapOperation.PutItems(MapPolicy.Default, binName, inputMap) },
+						CancellationToken.None
+						);
+
+				AssertRecordFound(key, record);
+
+				List<Value> filterList = new List<Value>();
+				filterList.Add(Value.Get("Joe"));
+				filterList.Add(Value.WILDCARD);
+
+				record = await asyncAwaitClient.Operate(null, key,
+						new[] { MapOperation.GetByValue(binName, Value.Get(filterList), MapReturnType.KEY) }, CancellationToken.None
+						);
+
+				AssertRecordFound(key, record);
+				//System.out.println("Record: " + record);
+
+				IList results = record.GetList(binName);
+				int i = 0;
+
+				long v = (long)results[i++];
+				Assert.AreEqual(9L, v);
+			}
 		}
 		
 		[TestMethod]
-		public void OperateNestedMap()
+		public async Task OperateNestedMap()
 		{
 			Key key = new Key(args.ns, args.set, "opmkey19");
-			client.Delete(null, key);
+			if (!args.testAsyncAwait)
+			{
+				client.Delete(null, key);
 
-			IDictionary<Value, Value> m1 = new Dictionary<Value, Value>();
-			m1[Value.Get("key11")] = Value.Get(9);
-			m1[Value.Get("key12")] = Value.Get(4);
+				IDictionary<Value, Value> m1 = new Dictionary<Value, Value>();
+				m1[Value.Get("key11")] = Value.Get(9);
+				m1[Value.Get("key12")] = Value.Get(4);
 
-			IDictionary<Value, Value> m2 = new Dictionary<Value, Value>();
-			m2[Value.Get("key21")] = Value.Get(3);
-			m2[Value.Get("key22")] = Value.Get(5);
+				IDictionary<Value, Value> m2 = new Dictionary<Value, Value>();
+				m2[Value.Get("key21")] = Value.Get(3);
+				m2[Value.Get("key22")] = Value.Get(5);
 
-			Dictionary<Value, Value> inputMap = new Dictionary<Value, Value>();
-			inputMap[Value.Get("key1")] = Value.Get(m1);
-			inputMap[Value.Get("key2")] = Value.Get(m2);
+				Dictionary<Value, Value> inputMap = new Dictionary<Value, Value>();
+				inputMap[Value.Get("key1")] = Value.Get(m1);
+				inputMap[Value.Get("key2")] = Value.Get(m2);
 
-			// Create maps.
-			client.Put(null, key, new Bin(binName, inputMap));
+				// Create maps.
+				client.Put(null, key, new Bin(binName, inputMap));
 
-			// Set map value to 11 for map key "key21" inside of map key "key2"
-			// and retrieve all maps.
-			Record record = client.Operate(null, key,
-				MapOperation.Put(MapPolicy.Default, binName, Value.Get("key21"), Value.Get(11), CTX.MapKey(Value.Get("key2"))),
-				Operation.Get(binName)
-				);
+				// Set map value to 11 for map key "key21" inside of map key "key2"
+				// and retrieve all maps.
+				Record record = client.Operate(null, key,
+					MapOperation.Put(MapPolicy.Default, binName, Value.Get("key21"), Value.Get(11), CTX.MapKey(Value.Get("key2"))),
+					Operation.Get(binName)
+					);
 
-			AssertRecordFound(key, record);
+				AssertRecordFound(key, record);
 
-			IList results = record.GetList(binName);
-			int i = 0;
+				IList results = record.GetList(binName);
+				int i = 0;
 
-			long count = (long)results[i++];
-			Assert.AreEqual(2, count);
+				long count = (long)results[i++];
+				Assert.AreEqual(2, count);
 
-			IDictionary map = (IDictionary)results[i++];
-			Assert.AreEqual(2, map.Count);
+				IDictionary map = (IDictionary)results[i++];
+				Assert.AreEqual(2, map.Count);
 
-			map = (IDictionary)map["key2"];
-			long v = (long)map["key21"];
-			Assert.AreEqual(11, v);
-			v = (long)map["key22"];
-			Assert.AreEqual(5, v);			
+				map = (IDictionary)map["key2"];
+				long v = (long)map["key21"];
+				Assert.AreEqual(11, v);
+				v = (long)map["key22"];
+				Assert.AreEqual(5, v);
+			}
+			else
+			{
+				await asyncAwaitClient.Delete(null, key, CancellationToken.None);
+
+				IDictionary<Value, Value> m1 = new Dictionary<Value, Value>();
+				m1[Value.Get("key11")] = Value.Get(9);
+				m1[Value.Get("key12")] = Value.Get(4);
+
+				IDictionary<Value, Value> m2 = new Dictionary<Value, Value>();
+				m2[Value.Get("key21")] = Value.Get(3);
+				m2[Value.Get("key22")] = Value.Get(5);
+
+				Dictionary<Value, Value> inputMap = new Dictionary<Value, Value>();
+				inputMap[Value.Get("key1")] = Value.Get(m1);
+				inputMap[Value.Get("key2")] = Value.Get(m2);
+
+				// Create maps.
+				await asyncAwaitClient.Put(null, key, new[] { new Bin(binName, inputMap) }, CancellationToken.None);
+
+				// Set map value to 11 for map key "key21" inside of map key "key2"
+				// and retrieve all maps.
+				Record record = await asyncAwaitClient.Operate(null, key,
+					new[] { MapOperation.Put(MapPolicy.Default, binName, Value.Get("key21"), Value.Get(11), CTX.MapKey(Value.Get("key2"))),
+					Operation.Get(binName) },
+					CancellationToken.None
+					);
+
+				AssertRecordFound(key, record);
+
+				IList results = record.GetList(binName);
+				int i = 0;
+
+				long count = (long)results[i++];
+				Assert.AreEqual(2, count);
+
+				IDictionary map = (IDictionary)results[i++];
+				Assert.AreEqual(2, map.Count);
+
+				map = (IDictionary)map["key2"];
+				long v = (long)map["key21"];
+				Assert.AreEqual(11, v);
+				v = (long)map["key22"];
+				Assert.AreEqual(5, v);
+			}
 		}
 
 		[TestMethod]
-		public void OperateDoubleNestedMap()
+		public async Task OperateDoubleNestedMap()
 		{
 			Key key = new Key(args.ns, args.set, "opmkey19");
-			client.Delete(null, key);
+			if (!args.testAsyncAwait)
+			{
+				client.Delete(null, key);
 
-			IDictionary<Value, Value> m11 = new Dictionary<Value, Value>();
-			m11[Value.Get("key111")] = Value.Get(1);
+				IDictionary<Value, Value> m11 = new Dictionary<Value, Value>();
+				m11[Value.Get("key111")] = Value.Get(1);
 
-			IDictionary<Value, Value> m12 = new Dictionary<Value, Value>();
-			m12[Value.Get("key121")] = Value.Get(5);
+				IDictionary<Value, Value> m12 = new Dictionary<Value, Value>();
+				m12[Value.Get("key121")] = Value.Get(5);
 
-			IDictionary<Value, Value> m1 = new Dictionary<Value, Value>();
-			m1[Value.Get("key11")] = Value.Get(m11);
-			m1[Value.Get("key12")] = Value.Get(m12);
+				IDictionary<Value, Value> m1 = new Dictionary<Value, Value>();
+				m1[Value.Get("key11")] = Value.Get(m11);
+				m1[Value.Get("key12")] = Value.Get(m12);
 
-			IDictionary<Value, Value> m21 = new Dictionary<Value, Value>();
-			m21[Value.Get("key211")] = Value.Get(7);
+				IDictionary<Value, Value> m21 = new Dictionary<Value, Value>();
+				m21[Value.Get("key211")] = Value.Get(7);
 
-			IDictionary<Value, Value> m2 = new Dictionary<Value, Value>();
-			m2[Value.Get("key21")] = Value.Get(m21);
+				IDictionary<Value, Value> m2 = new Dictionary<Value, Value>();
+				m2[Value.Get("key21")] = Value.Get(m21);
 
-			Dictionary<Value, Value> inputMap = new Dictionary<Value, Value>();
-			inputMap[Value.Get("key1")] = Value.Get(m1);
-			inputMap[Value.Get("key2")] = Value.Get(m2);
+				Dictionary<Value, Value> inputMap = new Dictionary<Value, Value>();
+				inputMap[Value.Get("key1")] = Value.Get(m1);
+				inputMap[Value.Get("key2")] = Value.Get(m2);
 
-			// Create maps.
-			client.Put(null, key, new Bin(binName, inputMap));
+				// Create maps.
+				client.Put(null, key, new Bin(binName, inputMap));
 
-			// Set map value to 11 for map key "key21" inside of map key "key2"
-			// and retrieve all maps.
-			Record record = client.Operate(null, key,
-				MapOperation.Put(MapPolicy.Default, binName, Value.Get("key121"), Value.Get(11), CTX.MapKey(Value.Get("key1")), CTX.MapRank(-1)),
-				Operation.Get(binName)
-				);
+				// Set map value to 11 for map key "key21" inside of map key "key2"
+				// and retrieve all maps.
+				Record record = client.Operate(null, key,
+					MapOperation.Put(MapPolicy.Default, binName, Value.Get("key121"), Value.Get(11), CTX.MapKey(Value.Get("key1")), CTX.MapRank(-1)),
+					Operation.Get(binName)
+					);
 
-			AssertRecordFound(key, record);
+				AssertRecordFound(key, record);
 
-			IList results = record.GetList(binName);
-			int i = 0;
+				IList results = record.GetList(binName);
+				int i = 0;
 
-			long count = (long)results[i++];
-			Assert.AreEqual(1, count);
+				long count = (long)results[i++];
+				Assert.AreEqual(1, count);
 
-			IDictionary map = (IDictionary)results[i++];
-			Assert.AreEqual(2, map.Count);
+				IDictionary map = (IDictionary)results[i++];
+				Assert.AreEqual(2, map.Count);
 
-			map = (IDictionary)map["key1"];
-			Assert.AreEqual(2, map.Count);
+				map = (IDictionary)map["key1"];
+				Assert.AreEqual(2, map.Count);
 
-			map = (IDictionary)map["key12"];
-			Assert.AreEqual(1, map.Count);
+				map = (IDictionary)map["key12"];
+				Assert.AreEqual(1, map.Count);
 
-			long v = (long)map["key121"];
-			Assert.AreEqual(11, v);
+				long v = (long)map["key121"];
+				Assert.AreEqual(11, v);
+			}
+			else
+			{
+				await asyncAwaitClient.Delete(null, key, CancellationToken.None);
+
+				IDictionary<Value, Value> m11 = new Dictionary<Value, Value>();
+				m11[Value.Get("key111")] = Value.Get(1);
+
+				IDictionary<Value, Value> m12 = new Dictionary<Value, Value>();
+				m12[Value.Get("key121")] = Value.Get(5);
+
+				IDictionary<Value, Value> m1 = new Dictionary<Value, Value>();
+				m1[Value.Get("key11")] = Value.Get(m11);
+				m1[Value.Get("key12")] = Value.Get(m12);
+
+				IDictionary<Value, Value> m21 = new Dictionary<Value, Value>();
+				m21[Value.Get("key211")] = Value.Get(7);
+
+				IDictionary<Value, Value> m2 = new Dictionary<Value, Value>();
+				m2[Value.Get("key21")] = Value.Get(m21);
+
+				Dictionary<Value, Value> inputMap = new Dictionary<Value, Value>();
+				inputMap[Value.Get("key1")] = Value.Get(m1);
+				inputMap[Value.Get("key2")] = Value.Get(m2);
+
+				// Create maps.
+				await asyncAwaitClient.Put(null, key, new[] { new Bin(binName, inputMap) }, CancellationToken.None);
+
+				// Set map value to 11 for map key "key21" inside of map key "key2"
+				// and retrieve all maps.
+				Record record = await asyncAwaitClient.Operate(null, key,
+					new[] { MapOperation.Put(MapPolicy.Default, binName, Value.Get("key121"), Value.Get(11), CTX.MapKey(Value.Get("key1")), CTX.MapRank(-1)),
+					Operation.Get(binName) },
+					CancellationToken.None
+					);
+
+				AssertRecordFound(key, record);
+
+				IList results = record.GetList(binName);
+				int i = 0;
+
+				long count = (long)results[i++];
+				Assert.AreEqual(1, count);
+
+				IDictionary map = (IDictionary)results[i++];
+				Assert.AreEqual(2, map.Count);
+
+				map = (IDictionary)map["key1"];
+				Assert.AreEqual(2, map.Count);
+
+				map = (IDictionary)map["key12"];
+				Assert.AreEqual(1, map.Count);
+
+				long v = (long)map["key121"];
+				Assert.AreEqual(11, v);
+			}
 		}
 
 		[TestMethod]
-		public void OperateMapCreateContext()
+		public async Task OperateMapCreateContext()
 		{
 			Key key = new Key(args.ns, args.set, "opmkey20");
-			client.Delete(null, key);
+			if (!args.testAsyncAwait)
+			{
+				client.Delete(null, key);
 
-			IDictionary<Value,Value> m1 = new Dictionary<Value,Value>();
-			m1[Value.Get("key11")] = Value.Get(9);
-			m1[Value.Get("key12")] = Value.Get(4);
+				IDictionary<Value, Value> m1 = new Dictionary<Value, Value>();
+				m1[Value.Get("key11")] = Value.Get(9);
+				m1[Value.Get("key12")] = Value.Get(4);
 
-			IDictionary<Value,Value> m2 = new Dictionary<Value,Value>();
-			m2[Value.Get("key21")] = Value.Get(3);
-			m2[Value.Get("key22")] = Value.Get(5);
+				IDictionary<Value, Value> m2 = new Dictionary<Value, Value>();
+				m2[Value.Get("key21")] = Value.Get(3);
+				m2[Value.Get("key22")] = Value.Get(5);
 
-			IDictionary inputMap = new Dictionary<Value, Value>();
-			inputMap[Value.Get("key1")] = Value.Get(m1);
-			inputMap[Value.Get("key2")] = Value.Get(m2);
+				IDictionary inputMap = new Dictionary<Value, Value>();
+				inputMap[Value.Get("key1")] = Value.Get(m1);
+				inputMap[Value.Get("key2")] = Value.Get(m2);
 
-			// Create maps.
-			client.Put(null, key, new Bin(binName, inputMap));
+				// Create maps.
+				client.Put(null, key, new Bin(binName, inputMap));
 
-			// Set map value to 11 for map key "key21" inside of map key "key2"
-			// and retrieve all maps.
-			Record record = client.Operate(null, key,
-				MapOperation.Create(binName, MapOrder.KEY_ORDERED, CTX.MapKey(Value.Get("key3"))),
-				MapOperation.Put(MapPolicy.Default, binName, Value.Get("key31"), Value.Get(99), CTX.MapKey(Value.Get("key3"))),
-				//MapOperation.Put(MapPolicy.Default, binName, Value.Get("key31"), Value.Get(99), CTX.MapKeyCreate(Value.Get("key3"), MapOrder.KEY_ORDERED)),
-				Operation.Get(binName)
-				);
+				// Set map value to 11 for map key "key21" inside of map key "key2"
+				// and retrieve all maps.
+				Record record = client.Operate(null, key,
+					MapOperation.Create(binName, MapOrder.KEY_ORDERED, CTX.MapKey(Value.Get("key3"))),
+					MapOperation.Put(MapPolicy.Default, binName, Value.Get("key31"), Value.Get(99), CTX.MapKey(Value.Get("key3"))),
+					//MapOperation.Put(MapPolicy.Default, binName, Value.Get("key31"), Value.Get(99), CTX.MapKeyCreate(Value.Get("key3"), MapOrder.KEY_ORDERED)),
+					Operation.Get(binName)
+					);
 
-			AssertRecordFound(key, record);
-			//Console.WriteLine("Record: " + record);
+				AssertRecordFound(key, record);
+				//Console.WriteLine("Record: " + record);
 
-			IList results = record.GetList(binName);
-			int i = 1;
+				IList results = record.GetList(binName);
+				int i = 1;
 
-			long count = (long)results[i++];
-			Assert.AreEqual(1, count);
+				long count = (long)results[i++];
+				Assert.AreEqual(1, count);
 
-			IDictionary map = (IDictionary)results[i++];
-			Assert.AreEqual(3, map.Count);
+				IDictionary map = (IDictionary)results[i++];
+				Assert.AreEqual(3, map.Count);
 
-			map = (IDictionary)map["key3"];
-			Assert.AreEqual(1, map.Count);
-	
-			long v = (long)map["key31"];
-			Assert.AreEqual(99, v);
+				map = (IDictionary)map["key3"];
+				Assert.AreEqual(1, map.Count);
+
+				long v = (long)map["key31"];
+				Assert.AreEqual(99, v);
+			}
+			else
+			{
+				await asyncAwaitClient.Delete(null, key, CancellationToken.None);
+
+				IDictionary<Value, Value> m1 = new Dictionary<Value, Value>();
+				m1[Value.Get("key11")] = Value.Get(9);
+				m1[Value.Get("key12")] = Value.Get(4);
+
+				IDictionary<Value, Value> m2 = new Dictionary<Value, Value>();
+				m2[Value.Get("key21")] = Value.Get(3);
+				m2[Value.Get("key22")] = Value.Get(5);
+
+				IDictionary inputMap = new Dictionary<Value, Value>();
+				inputMap[Value.Get("key1")] = Value.Get(m1);
+				inputMap[Value.Get("key2")] = Value.Get(m2);
+
+				// Create maps.
+				await asyncAwaitClient.Put(null, key, new[] { new Bin(binName, inputMap) }, CancellationToken.None);
+
+				// Set map value to 11 for map key "key21" inside of map key "key2"
+				// and retrieve all maps.
+				Record record = await asyncAwaitClient.Operate(null, key,
+					new[] { MapOperation.Create(binName, MapOrder.KEY_ORDERED, CTX.MapKey(Value.Get("key3"))),
+					MapOperation.Put(MapPolicy.Default, binName, Value.Get("key31"), Value.Get(99), CTX.MapKey(Value.Get("key3"))),
+					//MapOperation.Put(MapPolicy.Default, binName, Value.Get("key31"), Value.Get(99), CTX.MapKeyCreate(Value.Get("key3"), MapOrder.KEY_ORDERED)),
+					Operation.Get(binName) },
+					CancellationToken.None
+					);
+
+				AssertRecordFound(key, record);
+				//Console.WriteLine("Record: " + record);
+
+				IList results = record.GetList(binName);
+				int i = 1;
+
+				long count = (long)results[i++];
+				Assert.AreEqual(1, count);
+
+				IDictionary map = (IDictionary)results[i++];
+				Assert.AreEqual(3, map.Count);
+
+				map = (IDictionary)map["key3"];
+				Assert.AreEqual(1, map.Count);
+
+				long v = (long)map["key31"];
+				Assert.AreEqual(99, v);
+			}
 		}
 	}
 }

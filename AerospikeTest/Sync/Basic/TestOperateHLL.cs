@@ -759,20 +759,40 @@ namespace Aerospike.Test
 
 				await AssertSuccess("init record", key, Operation.Delete(), HLLOperation.Init(HLLPolicy.Default, binName, index_bits, minhash_bits));
 
-				Record record = client.Get(null, key);
-				Value.HLLValue hll = record.GetHLLValue(binName);
+				if (!args.testAsyncAwait)
+				{
+					Record record = client.Get(null, key);
+					Value.HLLValue hll = record.GetHLLValue(binName);
 
-				client.Delete(null, key);
-				client.Put(null, key, new Bin(binName, hll));
+					client.Delete(null, key);
+					client.Put(null, key, new Bin(binName, hll));
 
-				record = await AssertSuccess("describe", key, HLLOperation.GetCount(binName), HLLOperation.Describe(binName));
+					record = await AssertSuccess("describe", key, HLLOperation.GetCount(binName), HLLOperation.Describe(binName));
 
-				IList result_list = record.GetList(binName);
-				long count = (long)result_list[0];
-				IList description = (IList)result_list[1];
+					IList result_list = record.GetList(binName);
+					long count = (long)result_list[0];
+					IList description = (IList)result_list[1];
 
-				Assert.AreEqual(0, count);
-				AssertDescription("Check description", description, index_bits, minhash_bits);
+					Assert.AreEqual(0, count);
+					AssertDescription("Check description", description, index_bits, minhash_bits);
+				}
+				else
+				{
+					Record record = await asyncAwaitClient.Get(null, key, CancellationToken.None);
+					Value.HLLValue hll = record.GetHLLValue(binName);
+
+					await asyncAwaitClient.Delete(null, key, CancellationToken.None);
+					await asyncAwaitClient.Put(null, key, new[] { new Bin(binName, hll) }, CancellationToken.None);
+
+					record = await AssertSuccess("describe", key, HLLOperation.GetCount(binName), HLLOperation.Describe(binName));
+
+					IList result_list = record.GetList(binName);
+					long count = (long)result_list[0];
+					IList description = (IList)result_list[1];
+
+					Assert.AreEqual(0, count);
+					AssertDescription("Check description", description, index_bits, minhash_bits);
+				}
 			}
 		}
 

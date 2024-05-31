@@ -691,7 +691,7 @@ namespace Aerospike.Test
 							BitExp.Rshift(BitPolicy.Default, Exp.Val(24), Exp.Val(8), Exp.Val(2), Exp.BlobBin(binA))),
 						BitExp.Get(Exp.Val(24), Exp.Val(6), Exp.BlobBin(binA))));
 
-				r = client.Get(policy, key);
+				r = await asyncAwaitClient.Get(policy, key, CancellationToken.None);
 				AssertRecordFound(key, r);
 			}
 		}

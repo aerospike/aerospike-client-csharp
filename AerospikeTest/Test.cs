@@ -34,5 +34,32 @@ namespace Aerospike.Test
 				Assert.AreEqual(expectedErrorCode, e.Result);
 			}
 		}
+
+		public static async Task ThrowsAerospikeException(Func<Task> action, int expectedResultCode)
+		{
+			if (action == null)
+			{
+				throw new ArgumentNullException(nameof(action));
+			}
+
+			try
+			{
+				await action().ConfigureAwait(false);
+				Assert.Fail("Expected AerospikeException");
+			}
+			catch (AggregateException ex)
+			{
+				foreach (var e in ex.InnerExceptions) { 
+					if (e is AerospikeException ae)
+					{
+						Assert.AreEqual(expectedResultCode, ae.Result);
+					}
+				}
+			}
+			catch (AerospikeException e)
+			{
+				Assert.AreEqual(expectedResultCode, e.Result);
+			}
+		}
 	}
 }

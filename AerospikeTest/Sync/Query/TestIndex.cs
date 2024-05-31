@@ -36,7 +36,7 @@ namespace Aerospike.Test
 			// Drop index if it already exists.
 			try
 			{
-				if (!args.testProxy || (args.testProxy && nativeClient != null) && !args.testAsyncAwait)
+				if ((!args.testProxy && !args.testAsyncAwait) || (args.testProxy && nativeClient != null))
 				{
 					task = nativeClient.DropIndex(policy, args.ns, args.set, indexName);
 					task.Wait();
@@ -54,7 +54,7 @@ namespace Aerospike.Test
 				}
 			}
 
-			if (!args.testProxy || (args.testProxy && nativeClient != null) && !args.testAsyncAwait)
+			if ((!args.testProxy && !args.testAsyncAwait) || (args.testProxy && nativeClient != null))
 			{
 				task = nativeClient.CreateIndex(policy, args.ns, args.set, indexName, binName, IndexType.NUMERIC);
 				task.Wait();

@@ -32,11 +32,15 @@ namespace Aerospike.Test
 		[ClassInitialize()]
 		public static void Prepare(TestContext testContext)
 		{
-			if (!args.testProxy || (args.testProxy && nativeClient != null))
+			if ((!args.testProxy && !args.testAsyncAwait) || (args.testProxy && nativeClient != null))
 			{
 				Assembly assembly = Assembly.GetExecutingAssembly();
 				RegisterTask task = nativeClient.Register(null, assembly, "Aerospike.Test.LuaResources.average_example.lua", "average_example.lua", Language.LUA);
 				task.Wait();
+			}
+			else if (args.testAsyncAwait)
+			{
+				throw new NotImplementedException();
 			}
 
 			Policy policy = new Policy();
@@ -44,10 +48,14 @@ namespace Aerospike.Test
 
 			try
 			{
-				if (!args.testProxy || (args.testProxy && nativeClient != null))
+				if ((!args.testProxy && !args.testAsyncAwait) || (args.testProxy && nativeClient != null))
 				{
 					IndexTask itask = nativeClient.CreateIndex(policy, args.ns, args.set, indexName, binName, IndexType.NUMERIC);
 					itask.Wait();
+				}
+				else if (args.testAsyncAwait)
+				{
+					throw new NotImplementedException(); 
 				}
 			}
 			catch (AerospikeException ae)
@@ -69,16 +77,20 @@ namespace Aerospike.Test
 		[ClassCleanup()]
 		public static void Destroy()
 		{
-			if (!args.testProxy || (args.testProxy && nativeClient != null))
+			if ((!args.testProxy && !args.testAsyncAwait) || (args.testProxy && nativeClient != null))
 			{
 				nativeClient.DropIndex(null, args.ns, args.set, indexName);
+			}
+			else if (args.testAsyncAwait)
+			{ 
+				throw new NotImplementedException();	
 			}
 		}
 
 		[TestMethod]
 		public void QueryAverage()
 		{
-			if (!args.testProxy || (args.testProxy && nativeClient != null))
+			if ((!args.testProxy && !args.testAsyncAwait) || (args.testProxy && nativeClient != null))
 			{
 				Statement stmt = new Statement();
 				stmt.SetNamespace(args.ns);
@@ -116,6 +128,10 @@ namespace Aerospike.Test
 				{
 					rs.Close();
 				}
+			}
+			else if (args.testAsyncAwait)
+			{
+				throw new NotImplementedException();
 			}
 		}
 	}

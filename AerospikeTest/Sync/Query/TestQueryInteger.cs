@@ -28,17 +28,21 @@ namespace Aerospike.Test
 		private const int size = 50;
 
 		[ClassInitialize()]
-		public static void Prepare(TestContext testContext)
+		public static async Task Prepare(TestContext testContext)
 		{
 			Policy policy = new Policy();
 			policy.totalTimeout = 0; // Do not timeout on index create.
 
 			try
 			{
-				if (!args.testProxy || (args.testProxy && nativeClient != null))
+				if ((!args.testProxy && !args.testAsyncAwait) || (args.testProxy && nativeClient != null))
 				{
 					IndexTask task = nativeClient.CreateIndex(policy, args.ns, args.set, indexName, binName, IndexType.NUMERIC);
 					task.Wait();
+				}
+				else if (args.testAsyncAwait)
+				{
+					throw new NotImplementedException();
 				}
 			}
 			catch (AerospikeException ae)
@@ -53,16 +57,27 @@ namespace Aerospike.Test
 			{
 				Key key = new Key(args.ns, args.set, keyPrefix + i);
 				Bin bin = new Bin(binName, i);
-				client.Put(null, key, bin);
+				if (!args.testAsyncAwait)
+				{
+					client.Put(null, key, bin);
+				}
+				else
+				{
+					await asyncAwaitClient.Put(null, key, new[] { bin }, CancellationToken.None);
+				}
 			}
 		}
 
 		[ClassCleanup()]
 		public static void Destroy()
 		{
-			if (!args.testProxy || (args.testProxy && nativeClient != null))
+			if ((!args.testProxy && !args.testAsyncAwait) || (args.testProxy && nativeClient != null))
 			{
 				nativeClient.DropIndex(null, args.ns, args.set, indexName);
+			}
+			else if (args.testAsyncAwait)
+			{
+				throw new NotImplementedException(); 
 			}
 		}
 
@@ -78,21 +93,28 @@ namespace Aerospike.Test
 			stmt.SetBinNames(binName);
 			stmt.SetFilter(Filter.Range(binName, begin, end));
 
-			RecordSet rs = client.Query(null, stmt);
-
-			try
+			if (!args.testAsyncAwait)
 			{
-				int count = 0;
+				RecordSet rs = client.Query(null, stmt);
 
-				while (rs.Next())
+				try
 				{
-					count++;
+					int count = 0;
+
+					while (rs.Next())
+					{
+						count++;
+					}
+					Assert.AreEqual(5, count);
 				}
-				Assert.AreEqual(5, count);
+				finally
+				{
+					rs.Close();
+				}
 			}
-			finally
+			else
 			{
-				rs.Close();
+				throw new NotImplementedException();
 			}
 		}
 	}

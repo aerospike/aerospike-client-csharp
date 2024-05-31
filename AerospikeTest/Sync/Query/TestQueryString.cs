@@ -29,17 +29,21 @@ namespace Aerospike.Test
 		private static int size = 5;
 
 		[ClassInitialize()]
-		public static void Prepare(TestContext testContext)
+		public static async Task Prepare(TestContext testContext)
 		{
 			Policy policy = new Policy();
 			policy.totalTimeout = 0; // Do not timeout on index create.
 
 			try
 			{
-				if (!args.testProxy || (args.testProxy && nativeClient != null))
+				if ((!args.testProxy && !args.testAsyncAwait) || (args.testProxy && nativeClient != null))
 				{
 					IndexTask task = nativeClient.CreateIndex(policy, args.ns, args.set, indexName, binName, IndexType.STRING);
 					task.Wait();
+				}
+				else if (args.testAsyncAwait)
+				{
+					throw new NotImplementedException();
 				}
 			}
 			catch (AerospikeException ae)
@@ -54,16 +58,27 @@ namespace Aerospike.Test
 			{
 				Key key = new Key(args.ns, args.set, keyPrefix + i);
 				Bin bin = new Bin(binName, valuePrefix + i);
-				client.Put(null, key, bin);
+				if (!args.testAsyncAwait)
+				{
+					client.Put(null, key, bin);
+				}
+				else
+				{
+					await asyncAwaitClient.Put(null, key, new[] { bin }, CancellationToken.None);
+				}
 			}
 		}
 
 		[ClassCleanup()]
 		public static void Destroy()
 		{
-			if (!args.testProxy || (args.testProxy && nativeClient != null))
+			if ((!args.testProxy && !args.testAsyncAwait) || (args.testProxy && nativeClient != null))
 			{
 				nativeClient.DropIndex(null, args.ns, args.set, indexName);
+			}
+			else if (args.testAsyncAwait)
+			{
+				throw new NotImplementedException(); 
 			}
 		}
 
@@ -78,25 +93,32 @@ namespace Aerospike.Test
 			stmt.SetBinNames(binName);
 			stmt.SetFilter(Filter.Equal(binName, filter));
 
-			RecordSet rs = client.Query(null, stmt);
-
-			try
+			if (!args.testAsyncAwait)
 			{
-				int count = 0;
+				RecordSet rs = client.Query(null, stmt);
 
-				while (rs.Next())
+				try
 				{
-					Record record = rs.Record;
-					string result = record.GetString(binName);
-					Assert.AreEqual(filter, result);
-					count++;
-				}
+					int count = 0;
 
-				Assert.AreNotEqual(0, count);
+					while (rs.Next())
+					{
+						Record record = rs.Record;
+						string result = record.GetString(binName);
+						Assert.AreEqual(filter, result);
+						count++;
+					}
+
+					Assert.AreNotEqual(0, count);
+				}
+				finally
+				{
+					rs.Close();
+				}
 			}
-			finally
+			else
 			{
-				rs.Close();
+				throw new NotImplementedException();
 			}
 		}
 	}

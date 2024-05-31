@@ -326,6 +326,7 @@ namespace Aerospike.Client
 		/// <param name="token">cancellation token</param>
 		/// <returns>true if all batch key requests succeeded</returns>
 		/// <exception cref="AerospikeException">if read fails</exception>
+		/// TODO: Async verison in original client returns List of BatchRead and sync returns bool, so what should we do here?
 		Task<bool> Get(BatchPolicy policy, List<BatchRead> records, CancellationToken token);
 
 		/// <summary>

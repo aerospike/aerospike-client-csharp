@@ -67,9 +67,13 @@ namespace Aerospike.Test
 		[ClassCleanup()]
 		public static void Destroy()
 		{
-			if (!args.testProxy || (args.testProxy && nativeClient != null))
+			if ((!args.testProxy && !args.testAsyncAwait) || (args.testProxy && nativeClient != null))
 			{
 				nativeClient.DropIndex(null, args.ns, args.set, indexName);
+			}
+			else if (args.testAsyncAwait)
+			{
+				throw new NotImplementedException();
 			}
 		}
 
@@ -85,26 +89,33 @@ namespace Aerospike.Test
 			stmt.SetBinNames(binName);
 			stmt.SetFilter(Filter.Range(binName, begin, end));
 
-			RecordSet rs = client.Query(null, stmt);
-
-			try
+			if (!args.testAsyncAwait)
 			{
-				int count = 0;
+				RecordSet rs = client.Query(null, stmt);
 
-				while (rs.Next())
+				try
 				{
-					Key key = rs.Key;
-					Assert.IsNotNull(key.userKey);
+					int count = 0;
 
-					object userkey = key.userKey.Object;
-					Assert.IsNotNull(userkey);
-					count++;
+					while (rs.Next())
+					{
+						Key key = rs.Key;
+						Assert.IsNotNull(key.userKey);
+
+						object userkey = key.userKey.Object;
+						Assert.IsNotNull(userkey);
+						count++;
+					}
+					Assert.AreEqual(4, count);
 				}
-				Assert.AreEqual(4, count);
+				finally
+				{
+					rs.Close();
+				}
 			}
-			finally
+			else
 			{
-				rs.Close();
+				throw new NotImplementedException();
 			}
 		}
 	}

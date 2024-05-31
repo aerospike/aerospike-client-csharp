@@ -29,7 +29,7 @@ namespace Aerospike.Test
 		private const string binB = "b";
 
 		[ClassInitialize()]
-		public static void Prepare(TestContext testContext)
+		public static async Task Prepare(TestContext testContext)
 		{
 			WritePolicy policy = new WritePolicy();
 			if (!args.testProxy)
@@ -40,20 +40,34 @@ namespace Aerospike.Test
 			// Write records in set p1.
 			for (int i = 1; i <= 5; i++)
 			{
-				if (!args.testProxy || (args.testProxy && nativeClient != null))
+				if ((!args.testProxy) || (args.testProxy && nativeClient != null))
 				{
 					policy.expiration = i * 60;
 				}
 
 				Key key = new Key(args.ns, set1, i);
-				client.Put(policy, key, new Bin(binA, i));
+				if (!args.testAsyncAwait)
+				{
+					client.Put(policy, key, new Bin(binA, i));
+				}
+				else
+				{
+					await asyncAwaitClient.Put(policy, key, new[] { new Bin(binA, i) }, CancellationToken.None);
+				}
 			}
 
 			// Write records in set p2.
 			for (int i = 20; i <= 22; i++)
 			{
 				Key key = new Key(args.ns, set2, i);
-				client.Put(null, key, new Bin(binA, i), new Bin(binB, (double)i));
+				if (!args.testAsyncAwait)
+				{
+					client.Put(null, key, new Bin(binA, i), new Bin(binB, (double)i));
+				}
+				else
+				{
+					await asyncAwaitClient.Put(null, key, new[] { new Bin(binA, i), new Bin(binB, (double)i) }, CancellationToken.None);
+				}
 			}
 
 			// Write records in set p3 with send key.
@@ -66,15 +80,33 @@ namespace Aerospike.Test
 
 			for (int i = 31; i <= 40; i++)
 			{
-				Key intKey = new Key(args.ns, set3, i);
-				client.Put(policy, intKey, new Bin(binA, i));
+				if (!args.testAsyncAwait)
+				{
+					Key intKey = new Key(args.ns, set3, i);
+					client.Put(policy, intKey, new Bin(binA, i));
 
-				Key strKey = new Key(args.ns, set3, "key-p3-" + i);
-				client.Put(policy, strKey, new Bin(binA, i));
+					Key strKey = new Key(args.ns, set3, "key-p3-" + i);
+					client.Put(policy, strKey, new Bin(binA, i));
+				}
+				else
+				{
+					Key intKey = new Key(args.ns, set3, i);
+					await asyncAwaitClient.Put(policy, intKey, new[] { new Bin(binA, i) }, CancellationToken.None);
+
+					Key strKey = new Key(args.ns, set3, "key-p3-" + i);
+					await asyncAwaitClient.Put(policy, strKey, new[] { new Bin(binA, i) }, CancellationToken.None);
+				}
 			}
 
 			// Write one record in set p3 with send key not set.
-			client.Put(null, new Key(args.ns, set3, 25), new Bin(binA, 25));
+			if (!args.testAsyncAwait)
+			{
+				client.Put(null, new Key(args.ns, set3, 25), new Bin(binA, 25));
+			}
+			else
+			{
+				await asyncAwaitClient.Put(null, new Key(args.ns, set3, 25), new[] { new Bin(binA, 25) }, CancellationToken.None);
+			}
 		}
 
 		[TestMethod]
@@ -90,21 +122,28 @@ namespace Aerospike.Test
 				policy.totalTimeout = args.proxyTotalTimeout;
 			}
 
-			RecordSet rs = client.Query(policy, stmt);
-
-			try
+			if (!args.testAsyncAwait)
 			{
-				int count = 0;
+				RecordSet rs = client.Query(policy, stmt);
 
-				while (rs.Next())
+				try
 				{
-					count++;
+					int count = 0;
+
+					while (rs.Next())
+					{
+						count++;
+					}
+					Assert.AreEqual(3, count);
 				}
-				Assert.AreEqual(3, count);
+				finally
+				{
+					rs.Close();
+				}
 			}
-			finally
+			else
 			{
-				rs.Close();
+				throw new NotImplementedException();
 			}
 		}
 
@@ -122,21 +161,28 @@ namespace Aerospike.Test
 				policy.totalTimeout = args.proxyTotalTimeout;
 			}
 
-			RecordSet rs = client.Query(policy, stmt);
-
-			try
+			if (!args.testAsyncAwait)
 			{
-				int count = 0;
+				RecordSet rs = client.Query(policy, stmt);
 
-				while (rs.Next())
+				try
 				{
-					count++;
+					int count = 0;
+
+					while (rs.Next())
+					{
+						count++;
+					}
+					Assert.AreEqual(1, count);
 				}
-				Assert.AreEqual(1, count);
+				finally
+				{
+					rs.Close();
+				}
 			}
-			finally
+			else
 			{
-				rs.Close();
+				throw new NotImplementedException();
 			}
 		}
 
@@ -154,21 +200,28 @@ namespace Aerospike.Test
 				policy.totalTimeout = args.proxyTotalTimeout;
 			}
 
-			RecordSet rs = client.Query(policy, stmt);
-
-			try
+			if (!args.testAsyncAwait)
 			{
-				int count = 0;
+				RecordSet rs = client.Query(policy, stmt);
 
-				while (rs.Next())
+				try
 				{
-					count++;
+					int count = 0;
+
+					while (rs.Next())
+					{
+						count++;
+					}
+					Assert.AreEqual(1, count);
 				}
-				Assert.AreEqual(1, count);
+				finally
+				{
+					rs.Close();
+				}
 			}
-			finally
+			else
 			{
-				rs.Close();
+				throw new NotImplementedException();
 			}
 		}
 
@@ -186,22 +239,29 @@ namespace Aerospike.Test
 				policy.totalTimeout = args.proxyTotalTimeout;
 			}
 
-			RecordSet rs = client.Query(policy, stmt);
-
-			try
+			if (!args.testAsyncAwait)
 			{
-				int count = 0;
+				RecordSet rs = client.Query(policy, stmt);
 
-				while (rs.Next())
+				try
 				{
-					//System.out.println(rs.getKey().toString() + " - " + rs.getRecord().toString());
-					count++;
+					int count = 0;
+
+					while (rs.Next())
+					{
+						//System.out.println(rs.getKey().toString() + " - " + rs.getRecord().toString());
+						count++;
+					}
+					Assert.AreEqual(4, count);
 				}
-				Assert.AreEqual(4, count);
+				finally
+				{
+					rs.Close();
+				}
 			}
-			finally
+			else
 			{
-				rs.Close();
+				throw new NotImplementedException();
 			}
 		}
 
@@ -219,21 +279,28 @@ namespace Aerospike.Test
 				policy.totalTimeout = args.proxyTotalTimeout;
 			}
 
-			RecordSet rs = client.Query(policy, stmt);
-
-			try
+			if (!args.testAsyncAwait)
 			{
-				int count = 0;
+				RecordSet rs = client.Query(policy, stmt);
 
-				while (rs.Next())
+				try
 				{
-					count++;
+					int count = 0;
+
+					while (rs.Next())
+					{
+						count++;
+					}
+					Assert.AreEqual(20, count);
 				}
-				Assert.AreEqual(20, count);
+				finally
+				{
+					rs.Close();
+				}
 			}
-			finally
+			else
 			{
-				rs.Close();
+				throw new NotImplementedException();
 			}
 		}
 
@@ -257,21 +324,28 @@ namespace Aerospike.Test
 				policy.totalTimeout = args.proxyTotalTimeout;
 			}
 
-			RecordSet rs = client.Query(policy, stmt);
-
-			try
+			if (!args.testAsyncAwait)
 			{
-				int count = 0;
+				RecordSet rs = client.Query(policy, stmt);
 
-				while (rs.Next())
+				try
 				{
-					count++;
+					int count = 0;
+
+					while (rs.Next())
+					{
+						count++;
+					}
+					Assert.AreEqual(2, count);
 				}
-				Assert.AreEqual(2, count);
+				finally
+				{
+					rs.Close();
+				}
 			}
-			finally
+			else
 			{
-				rs.Close();
+				throw new NotImplementedException();
 			}
 		}
 
@@ -289,21 +363,28 @@ namespace Aerospike.Test
 				policy.totalTimeout = args.proxyTotalTimeout;
 			}
 
-			RecordSet rs = client.Query(policy, stmt);
-
-			try
+			if (!args.testAsyncAwait)
 			{
-				int count = 0;
+				RecordSet rs = client.Query(policy, stmt);
 
-				while (rs.Next())
+				try
 				{
-					count++;
+					int count = 0;
+
+					while (rs.Next())
+					{
+						count++;
+					}
+					Assert.AreEqual(1, count);
 				}
-				Assert.AreEqual(1, count);
+				finally
+				{
+					rs.Close();
+				}
 			}
-			finally
-			{
-				rs.Close();
+			else 
+			{ 
+				throw new NotImplementedException(); 
 			}
 		}
 	}

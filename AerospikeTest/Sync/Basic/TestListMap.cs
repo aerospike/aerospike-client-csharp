@@ -165,7 +165,7 @@ namespace Aerospike.Test
 				map["key3"] = "string3";
 
 				Bin bin = new Bin(args.GetBinName("mapbin1"), map);
-				client.Put(null, key, bin);
+				await asyncAwaitClient.Put(null, key, new[] { bin }, CancellationToken.None);
 
 				Record record = await asyncAwaitClient.Get(null, key, new[] { bin.name }, CancellationToken.None);
 				IDictionary receivedMap = (IDictionary)record.GetValue(bin.name);

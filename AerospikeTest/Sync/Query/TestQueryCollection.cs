@@ -32,13 +32,17 @@ namespace Aerospike.Test
 		private const int size = 20;
 
 		[ClassInitialize()]
-		public static void Prepare(TestContext testContext)
+		public static async Task Prepare(TestContext testContext)
 		{
-			if (!args.testProxy || (args.testProxy && nativeClient != null))
+			if ((!args.testProxy && !args.testAsyncAwait) || (args.testProxy && nativeClient != null))
 			{
 				Assembly assembly = Assembly.GetExecutingAssembly();
 				RegisterTask rtask = nativeClient.Register(null, assembly, "Aerospike.Test.LuaResources.record_example.lua", "record_example.lua", Language.LUA);
 				rtask.Wait();
+			}
+			else if (args.testAsyncAwait)
+			{
+				throw new NotImplementedException();
 			}
 
 			Policy policy = new Policy();
@@ -46,10 +50,14 @@ namespace Aerospike.Test
 
 			try
 			{
-				if (!args.testProxy || (args.testProxy && nativeClient != null))
+				if ((!args.testProxy && !args.testAsyncAwait) || (args.testProxy && nativeClient != null))
 				{
 					IndexTask task = nativeClient.CreateIndex(policy, args.ns, args.set, indexName, binName, IndexType.STRING, IndexCollectionType.MAPKEYS);
 					task.Wait();
+				}
+				else if (args.testAsyncAwait)
+				{ 
+					throw new NotImplementedException(); 
 				}
 			}
 			catch (AerospikeException ae)
@@ -76,16 +84,27 @@ namespace Aerospike.Test
 				}
 
 				Bin bin = new Bin(binName, map);
-				client.Put(null, key, bin);
+				if (!args.testAsyncAwait)
+				{
+					client.Put(null, key, bin);
+				}
+				else
+				{
+					await asyncAwaitClient.Put(null, key, new[] { bin }, CancellationToken.None);
+				}
 			}
 		}
 
 		[ClassCleanup()]
 		public static void Destroy()
 		{
-			if (!args.testProxy || (args.testProxy && nativeClient != null))
+			if ((!args.testProxy && !args.testAsyncAwait) || (args.testProxy && nativeClient != null))
 			{
 				nativeClient.DropIndex(null, args.ns, args.set, indexName);
+			}
+			else if (args.testAsyncAwait)
+			{
+				throw new NotImplementedException();
 			}
 		}
 
@@ -99,28 +118,35 @@ namespace Aerospike.Test
 			stmt.SetBinNames(binName);
 			stmt.SetFilter(Filter.Contains(binName, IndexCollectionType.MAPKEYS, queryMapKey));
 
-			RecordSet rs = client.Query(null, stmt);
-
-			try
+			if (!args.testAsyncAwait)
 			{
-				int count = 0;
+				RecordSet rs = client.Query(null, stmt);
 
-				while (rs.Next())
+				try
 				{
-					Record record = rs.Record;
-					IDictionary result = (IDictionary)record.GetValue(binName);
+					int count = 0;
 
-					if (!result.Contains(queryMapKey))
+					while (rs.Next())
 					{
-						Assert.Fail("Query mismatch: Expected mapKey " + queryMapKey + " Received " + result);
+						Record record = rs.Record;
+						IDictionary result = (IDictionary)record.GetValue(binName);
+
+						if (!result.Contains(queryMapKey))
+						{
+							Assert.Fail("Query mismatch: Expected mapKey " + queryMapKey + " Received " + result);
+						}
+						count++;
 					}
-					count++;
+					Assert.AreNotEqual(0, count);
 				}
-				Assert.AreNotEqual(0, count);
+				finally
+				{
+					rs.Close();
+				}
 			}
-			finally
+			else if (args.testAsyncAwait)
 			{
-				rs.Close();
+				throw new NotImplementedException();
 			}
 		}
 	}

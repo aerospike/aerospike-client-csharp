@@ -37,7 +37,7 @@ namespace Aerospike.Test
 
 			try
 			{
-				if (!args.testProxy || (args.testProxy && nativeClient != null) || !args.testAsyncAwait)
+				if ((!args.testProxy && !args.testAsyncAwait) || (args.testProxy && nativeClient != null))
 				{
 					IndexTask task = nativeClient.CreateIndex(policy, args.ns, args.set, indexName, binName, IndexType.NUMERIC);
 					task.Wait();

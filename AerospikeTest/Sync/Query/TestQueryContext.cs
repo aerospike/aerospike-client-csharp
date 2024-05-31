@@ -35,7 +35,7 @@ namespace Aerospike.Test
 
 			try
 			{
-				if (!args.testProxy || (args.testProxy && nativeClient != null))
+				if ((!args.testProxy && !args.testAsyncAwait) || (args.testProxy && nativeClient != null))
 				{
 					IndexTask task = nativeClient.CreateIndex(
 					policy, args.ns, args.set, indexName, binName,
@@ -43,6 +43,10 @@ namespace Aerospike.Test
 					CTX.ListRank(-1)
 					);
 					task.Wait();
+				}
+				else if (args.testAsyncAwait)
+				{
+					throw new NotImplementedException();
 				}
 			}
 			catch (AerospikeException ae)
@@ -72,9 +76,13 @@ namespace Aerospike.Test
 		[ClassCleanup()]
 		public static void Destroy()
 		{
-			if (!args.testProxy || (args.testProxy && nativeClient != null))
+			if ((!args.testProxy && !args.testAsyncAwait) || (args.testProxy && nativeClient != null))
 			{
 				nativeClient.DropIndex(null, args.ns, args.set, indexName);
+			}
+			else if (args.testAsyncAwait)
+			{
+				throw new NotImplementedException(); 
 			}
 		}
 
@@ -90,29 +98,36 @@ namespace Aerospike.Test
 			stmt.SetBinNames(binName);
 			stmt.SetFilter(Filter.Range(binName, begin, end, CTX.ListRank(-1)));
 
-			RecordSet rs = client.Query(null, stmt);
-
-			try
+			if (!args.testProxy)
 			{
-				int count = 0;
+				RecordSet rs = client.Query(null, stmt);
 
-				while (rs.Next())
+				try
 				{
-					Record r = rs.Record;
-					IList list = r.GetList(binName);
-					long received = (long)list[list.Count - 1];
+					int count = 0;
 
-					if (received < begin || received > end)
+					while (rs.Next())
 					{
-						Assert.Fail("Received not between: " + begin + " and " + end);
+						Record r = rs.Record;
+						IList list = r.GetList(binName);
+						long received = (long)list[list.Count - 1];
+
+						if (received < begin || received > end)
+						{
+							Assert.Fail("Received not between: " + begin + " and " + end);
+						}
+						count++;
 					}
-					count++;
+					Assert.AreEqual(5, count);
 				}
-				Assert.AreEqual(5, count);
+				finally
+				{
+					rs.Close();
+				}
 			}
-			finally
+			else
 			{
-				rs.Close();
+				throw new NotImplementedException();
 			}
 		}
 	}

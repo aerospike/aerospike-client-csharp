@@ -73,16 +73,20 @@ namespace Aerospike.Test
 		[ClassCleanup()]
 		public static void Destroy()
 		{
-			if (!args.testProxy || (args.testProxy && nativeClient != null))
+			if ((!args.testProxy && !args.testAsyncAwait) || (args.testProxy && nativeClient != null))
 			{
 				nativeClient.DropIndex(null, args.ns, args.set, indexName);
+			}
+			else if (args.testAsyncAwait)
+			{
+				throw new NotImplementedException();
 			}
 		}
 
 		[TestMethod]
 		public void QueryFilter()
 		{
-			if (!args.testProxy || (args.testProxy && nativeClient != null))
+			if ((!args.testProxy && !args.testAsyncAwait) || (args.testProxy && nativeClient != null))
 			{
 				string nameFilter = "Bill";
 				string passFilter = "hknfpkj";
@@ -113,6 +117,10 @@ namespace Aerospike.Test
 				{
 					rs.Close();
 				}
+			}
+			else if (args.testAsyncAwait)
+			{
+				throw new NotImplementedException(); 
 			}
 		}
 	}

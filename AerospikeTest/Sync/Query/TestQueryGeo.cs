@@ -30,7 +30,7 @@ namespace Aerospike.Test
 		private const int size = 20;
 
 		[ClassInitialize()]
-		public static void Prepare(TestContext testContext)
+		public static async Task Prepare(TestContext testContext)
 		{
 			Policy policy = new Policy();
 			policy.socketTimeout = 0; // Do not timeout on index create.
@@ -41,10 +41,14 @@ namespace Aerospike.Test
 
 			try
 			{
-				if (!args.testProxy || (args.testProxy && nativeClient != null))
+				if ((!args.testProxy && !args.testAsyncAwait) || (args.testProxy && nativeClient != null))
 				{
 					IndexTask task = nativeClient.CreateIndex(policy, args.ns, setName, indexName, binName, IndexType.GEO2DSPHERE);
 					task.Wait();
+				}
+				else if (args.testAsyncAwait)
+				{
+					throw new NotImplementedException();
 				}
 			}
 			catch (AerospikeException ae)
@@ -64,7 +68,14 @@ namespace Aerospike.Test
 				string loc = "{ \"type\": \"Point\", \"coordinates\": [" + lng + ", " + lat + "] }";
 				Bin bin = Bin.AsGeoJSON("loc", loc);
 
-				client.Put(null, key, bin);
+				if (!args.testAsyncAwait)
+				{
+					client.Put(null, key, bin);
+				}
+				else
+				{
+					await asyncAwaitClient.Put(null, key, new[] { bin }, CancellationToken.None);
+				}
 			}
 
 			// Insert regions
@@ -76,16 +87,27 @@ namespace Aerospike.Test
 				string loc = "{ \"type\": \"AeroCircle\", \"coordinates\": [[" + starbucks[i][0] + ", " + starbucks[i][1] + "], 3000.0 ] }";
 				Bin bin = Bin.AsGeoJSON("loc", loc);
 
-				client.Put(null, key, bin);
+				if (!args.testAsyncAwait)
+				{
+					client.Put(null, key, bin);
+				}
+				else
+				{
+					await asyncAwaitClient.Put(null, key, new[] { bin }, CancellationToken.None);
+				}
 			}
 		}
 
 		[ClassCleanup()]
 		public static void Destroy()
 		{
-			if (!args.testProxy || (args.testProxy && nativeClient != null))
+			if ((!args.testProxy && !args.testAsyncAwait) || (args.testProxy && nativeClient != null))
 			{
 				nativeClient.DropIndex(null, args.ns, setName, indexName);
+			}
+			else if (args.testAsyncAwait)
+			{
+				throw new NotImplementedException();
 			}
 		}
 
@@ -105,22 +127,29 @@ namespace Aerospike.Test
 				policy.totalTimeout = args.proxyTotalTimeout;
 			}
 
-			RecordSet rs = client.Query(policy, stmt);
-
-			try
+			if (!args.testAsyncAwait)
 			{
-				int count = 0;
+				RecordSet rs = client.Query(policy, stmt);
 
-				while (rs.Next())
+				try
 				{
-					//System.out.println(rs.getRecord().toString());
-					count++;
+					int count = 0;
+
+					while (rs.Next())
+					{
+						//System.out.println(rs.getRecord().toString());
+						count++;
+					}
+					Assert.AreEqual(5, count);
 				}
-				Assert.AreEqual(5, count);
+				finally
+				{
+					rs.Close();
+				}
 			}
-			finally
+			else
 			{
-				rs.Close();
+				throw new NotImplementedException();
 			}
 		}
 	}
