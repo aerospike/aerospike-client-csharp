@@ -44,9 +44,7 @@ namespace Aerospike.Client
 			// Benchmarks show creating instance every time is faster than thread local
 			// implementation because instance implementation puts ValueRipemd160 on
 			// stack (fast) and eliminates the overhead of retrieving thread local instance.
-			ValueRipemd160 ripe = new ValueRipemd160();
-			ripe.Add(buffer, 0, length);
-			return ripe.HashDigest();
+			return ValueRipemd160.ComputeHashDigest(buffer.AsSpan(0, length));
 		}
 #endif
 	}
