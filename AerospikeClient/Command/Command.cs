@@ -1304,9 +1304,8 @@ namespace Aerospike.Client
 			}
 
 			// Clusters that support partition queries also support not sending partition done messages.
-			int infoAttr = cluster.hasPartitionQuery ? Command.INFO3_PARTITION_DONE : 0;
 			int operationCount = (binNames == null) ? 0 : binNames.Length;
-			WriteHeaderRead(policy, totalTimeout, readAttr, 0, infoAttr, fieldCount, operationCount);
+			WriteHeaderRead(policy, totalTimeout, readAttr, 0, Command.INFO3_PARTITION_DONE, fieldCount, operationCount);
 
 			if (ns != null)
 			{
@@ -1593,7 +1592,7 @@ namespace Aerospike.Client
 					writeAttr |= Command.INFO2_RELAX_AP_LONG_QUERY;
 				}
 
-				int infoAttr = isNew ? Command.INFO3_PARTITION_DONE : 0;
+				int infoAttr = (isNew || statement.filter == null) ? Command.INFO3_PARTITION_DONE : 0;
 
 				WriteHeaderRead(policy, totalTimeout, readAttr, writeAttr, infoAttr, fieldCount, operationCount);
 			}
