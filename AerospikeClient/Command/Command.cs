@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2022 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -1297,9 +1297,8 @@ namespace Aerospike.Client
 			}
 
 			// Clusters that support partition queries also support not sending partition done messages.
-			int infoAttr = cluster.hasPartitionQuery ? Command.INFO3_PARTITION_DONE : 0;
 			int operationCount = (binNames == null) ? 0 : binNames.Length;
-			WriteHeaderRead(policy, totalTimeout, readAttr, infoAttr, fieldCount, operationCount);
+			WriteHeaderRead(policy, totalTimeout, readAttr, Command.INFO3_PARTITION_DONE, fieldCount, operationCount);
 
 			if (ns != null)
 			{
@@ -1581,7 +1580,7 @@ namespace Aerospike.Client
 					readAttr |= Command.INFO1_SHORT_QUERY;
 				}
 
-				int infoAttr = isNew ? Command.INFO3_PARTITION_DONE : 0;
+				int infoAttr = (isNew || statement.filter == null) ? Command.INFO3_PARTITION_DONE : 0;
 
 				WriteHeaderRead(policy, totalTimeout, readAttr, infoAttr, fieldCount, operationCount);
 			}
