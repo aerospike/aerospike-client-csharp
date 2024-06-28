@@ -31,6 +31,7 @@ namespace Aerospike.Client.Proxy
 		private PartitionTracker Tracker { get; }
 		private PartitionFilter PartitionFilter { get; }
 		private RecordSet RecordSet { get; }
+		private NodePartitions NodePartitions { get; }
 
 		public ScanPartitionCommandProxy
 		(
@@ -52,6 +53,7 @@ namespace Aerospike.Client.Proxy
 			this.PartitionFilter = filter;
 			this.RecordSet = recordSet;
 			this.Ns = ns;
+			this.NodePartitions = new NodePartitions(null, Node.PARTITIONS);
 		}
 
 		protected internal override void WriteBuffer()
@@ -154,8 +156,14 @@ namespace Aerospike.Client.Proxy
 			}
 			catch (EndOfGRPCStream eos)
 			{
-				RecordSet.Put(RecordSet.END);
-				if (eos.ResultCode != 0)
+				if (eos.ResultCode == 0)
+				{
+					this.Tracker.IsComplete(false, Policy, new List<NodePartitions> { this.NodePartitions });
+
+					// All partitions received.
+					RecordSet.Put(RecordSet.END);
+				}
+				else //eos.ResultCode != 0
 				{
 					if (Log.DebugEnabled())
 					{

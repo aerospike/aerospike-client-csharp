@@ -62,7 +62,7 @@ namespace Aerospike.Client
 					throw ae;
 				}
 
-				if (tracker.IsComplete(cluster, policy))
+				if (tracker.IsClusterComplete(cluster, policy))
 				{
 					// Scan is complete.
 					return;

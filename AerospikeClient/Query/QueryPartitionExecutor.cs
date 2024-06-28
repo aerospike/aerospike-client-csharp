@@ -126,7 +126,7 @@ namespace Aerospike.Client
 				// Set done to false so RecordSet thread has chance to close early again.
 				Interlocked.Exchange(ref done, 0);
 
-				if (tracker.IsComplete(cluster, policy))
+				if (tracker.IsClusterComplete(cluster, policy))
 				{
 					// All partitions received.
 					recordSet.Put(RecordSet.END);
