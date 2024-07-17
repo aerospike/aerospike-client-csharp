@@ -138,5 +138,10 @@ namespace Aerospike.Client
 		{
 			valid = false;
 		}
+
+		protected override bool IsSingle()
+		{
+			return false;
+		}
 	}
 }

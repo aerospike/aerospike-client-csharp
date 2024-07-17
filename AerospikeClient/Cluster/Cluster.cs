@@ -70,6 +70,12 @@ namespace Aerospike.Client
 		// Random partition replica index. 
 		internal int replicaIndex;
 
+		// Count of connections in shutdown queue. 
+		private int recoverCount;
+
+		// Thread-safe queue of sync connections to be closed.
+		private readonly Pool<ConnectionRecover> recoverQueue;
+
 		// Minimum sync connections per node.
 		internal readonly int minConnsPerNode;
 
@@ -262,6 +268,8 @@ namespace Aerospike.Client
 			nodesMap = new Dictionary<string, Node>();
 			nodes = new Node[0];
 			partitionMap = new Dictionary<string, Partitions>();
+			recoverCount = 0;
+			recoverQueue = new Pool<ConnectionRecover>(10000, 10000);
 			cancel = new CancellationTokenSource();
 			cancelToken = cancel.Token;
 		}
@@ -507,6 +515,8 @@ namespace Aerospike.Client
 			{
 				metricsListener.OnSnapshot(this);
 			}
+
+			ProcessRecoverQueue();
 		}
 
 		private bool SeedNode(Peers peers, bool failIfNotConnected)
@@ -900,6 +910,63 @@ namespace Aerospike.Client
 			return tlsPolicy != null && !tlsPolicy.forLoginOnly;
 		}
 
+		public void RecoverConnection(ConnectionRecover cs)
+		{
+			// Many cloud providers encounter performance problems when sockets are
+			// closed by the client when the server still has data left to write.
+			// The solution is to shutdown the socket and give the server time to
+			// respond before closing the socket.
+			//
+			// Put connection on a queue for later closing.
+			if (cs.IsComplete())
+			{
+				return;
+			}
+
+			// Do not let queue get out of control.
+			if (recoverCount++ < 10000)
+			{
+				recoverQueue.EnqueueLast(cs);
+			}
+			else
+			{
+				recoverCount++;
+				cs.Abort();
+			}
+		}
+
+		private void ProcessRecoverQueue()
+		{
+			ConnectionRecover last = recoverQueue.PeekLast();
+
+			if (last == default)
+			{
+				return;
+			}
+
+			// Thread local can be used here because this method
+			// is only called from the cluster tend thread.
+			byte[] buf = ThreadLocalData.GetBuffer();
+			ConnectionRecover cs;
+
+			while (recoverQueue.TryDequeueLast(out cs) && cs != default)
+			{
+				if (cs.Drain(buf))
+				{
+					recoverCount++;
+				}
+				else
+				{
+					recoverQueue.EnqueueLast(cs);
+				}
+
+				if (cs == last)
+				{
+					break;
+				}
+			}
+		}
+
 		public void EnableMetrics(MetricsPolicy policy)
 		{
 			if (MetricsEnabled)
@@ -1190,6 +1257,20 @@ namespace Aerospike.Client
 		public long GetDelayQueueTimeoutCount()
 		{
 			return delayQueueTimeoutCount;
+		}
+
+		/// <summary>
+		/// Return connection recoverQueue size. The queue contains connections that have timed out and
+		/// need to be drained before returning the connection to a connection pool. The recoverQueue
+		/// is only used when <see cref="Policy.TimeoutDelay"/> is true.
+		/// <p>
+		/// Since recoverQueue is a linked list where the size() calculation is expensive, a separate
+		/// counter is used to track recoverQueue.size().
+		/// </p>
+		/// </summary>
+		public int GetRecoverQueueSize()
+		{
+			return recoverCount;
 		}
 
 		/// <summary>

@@ -713,10 +713,10 @@ namespace Aerospike.Client
 				// Total timeout has occurred.
 				if (Interlocked.CompareExchange(ref state, FAIL_TOTAL_TIMEOUT, IN_PROGRESS) == IN_PROGRESS)
 				{
-					// Close connection. This will result in a socket error in the async callback thread.
+					// Recover connection when possible. If not possible, close connection. This will result in a socket error in the async callback thread.
 					if (node != null && conn != null)
 					{
-						node.CloseAsyncConnOnError(conn);
+						RecoverConnection();
 					}
 
 					node.AddTimeout();
@@ -745,11 +745,11 @@ namespace Aerospike.Client
 				if (Interlocked.CompareExchange(ref state, FAIL_SOCKET_TIMEOUT, IN_PROGRESS) == IN_PROGRESS)
 				{
 					// User will be notified in transaction thread and this timeout thread.
-					// Close connection. This will result in a socket error in the async callback thread
+					// Recover connection when possible. If not possible, close connection. This will result in a socket error in the async callback thread
 					// and a possible retry.
 					if (node != null && conn != null)
 					{
-						node.CloseAsyncConnOnError(conn);
+						RecoverConnection();
 					}
 
 					node.AddTimeout();
@@ -757,6 +757,22 @@ namespace Aerospike.Client
 				return false;  // Do not put back on timeout queue.
 			}
 			return true; // Timeout not reached.
+		}
+
+		private void RecoverConnection()
+		{
+			if (this.policy.TimeoutDelay > 0)
+			{
+				var connectionRecover = new AsyncConnectionRecover(this, this.conn, inAuthenticate, inHeader, IsSingle());
+				AsyncTimeoutQueue.Instance.Add(connectionRecover, this.policy.TimeoutDelay);
+				connectionRecover.StartDrain();
+				// AsyncConnectionRecover took ownership of connection
+				this.conn = null;
+				return;
+			}
+
+			// Abort connection recovery.
+			CloseConnection();
 		}
 
 		protected internal void Finish()
@@ -949,6 +965,11 @@ namespace Aerospike.Client
 		protected internal virtual bool IsWrite()
 		{
 			return false;
+		}
+
+		protected virtual bool IsSingle()
+		{
+			return true;
 		}
 
 		protected internal abstract Node GetNode(Cluster cluster);

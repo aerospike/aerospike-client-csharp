@@ -28,6 +28,8 @@ namespace Aerospike.Client
 
 		public abstract void ReadFully(byte[] buffer, int length);
 
+		public abstract void ReadFully(byte[] buffer, int length, byte state);
+
 		public abstract Stream GetStream();
 
 		/// <summary>

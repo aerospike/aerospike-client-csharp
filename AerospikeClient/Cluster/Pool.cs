@@ -141,6 +141,28 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
+		/// Peek at item from head of stack.
+		/// </summary>
+		public T PeekFirst()
+		{
+			Monitor.Enter(this);
+
+			try
+			{
+				if (size == 0)
+				{
+					return default;
+				}
+
+				return items[head];
+			}
+			finally
+			{
+				Monitor.Exit(this);
+			}
+		}
+
+		/// <summary>
 		/// Pop item from tail of stack.
 		/// </summary>
 		public bool TryDequeueLast(out T item)
@@ -163,6 +185,28 @@ namespace Aerospike.Client
 				}
 				size--;
 				return true;
+			}
+			finally
+			{
+				Monitor.Exit(this);
+			}
+		}
+
+		/// <summary>
+		/// Peek at item from tail of stack.
+		/// </summary>
+		public T PeekLast()
+		{
+			Monitor.Enter(this);
+
+			try
+			{
+				if (size == 0)
+				{
+					return default;
+				}
+
+				return items[tail];
 			}
 			finally
 			{

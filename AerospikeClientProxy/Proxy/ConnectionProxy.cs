@@ -56,6 +56,11 @@ namespace Aerospike.Client.Proxy
 			Offset += length;
 		}
 
+		public void ReadFully(byte[] buffer, int length, byte state)
+		{
+			throw new AerospikeException(NotSupported + "ReadFully");
+		}
+
 		public Stream GetStream()
 		{
 			throw new AerospikeException(NotSupported + "GetStream");

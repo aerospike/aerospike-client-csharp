@@ -196,7 +196,7 @@ namespace Aerospike.Client
 			dataOffset = 8;
 			SetAuthenticate(cluster, sessionToken);
 			conn.Write(dataBuffer, dataOffset);
-			conn.ReadFully(dataBuffer, HEADER_SIZE);
+			conn.ReadFully(dataBuffer, HEADER_SIZE, Command.STATE_READ_AUTH_HEADER);
 
 			int result = dataBuffer[RESULT_CODE];
 			return result == 0 || result == ResultCode.SECURITY_NOT_ENABLED;

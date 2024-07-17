@@ -36,6 +36,11 @@ namespace Aerospike.Client
 		public readonly int threadsInUse;
 
 		/// <summary>
+		/// Number of connections residing in sync connection shutdown queue.
+		/// </summary>
+		public readonly int RecoverQueueSize;
+
+		/// <summary>
 		/// Number of active async completion ports.
 		/// </summary>
 		public readonly int completionPortsInUse;
@@ -68,6 +73,7 @@ namespace Aerospike.Client
 			ThreadPool.GetAvailableThreads(out workerThreads, out completionPortThreads);
 
 			this.threadsInUse = workerThreadsMax - workerThreads;
+			this.RecoverQueueSize = cluster.GetRecoverQueueSize();
 			this.completionPortsInUse = completionPortThreadsMax - completionPortThreads;
         }
 
@@ -87,6 +93,8 @@ namespace Aerospike.Client
 			}
 
 			sb.Append("threadsInUse: " + threadsInUse);
+			sb.Append(System.Environment.NewLine);
+			sb.Append("recoverQueueSize: " + RecoverQueueSize);
 			sb.Append(System.Environment.NewLine);
 			sb.Append("completionPortsInUse: " + completionPortsInUse);
 			sb.Append(System.Environment.NewLine);
@@ -145,7 +153,7 @@ namespace Aerospike.Client
 			}
 			else
 			{
-				this.asyncStats = new ConnectionStats(0, 0, 0, 0);
+				this.asyncStats = new ConnectionStats(0, 0, 0, 0, 0);
 			}
 		}
 
@@ -184,6 +192,11 @@ namespace Aerospike.Client
 		public readonly int closed;
 
 		/// <summary>
+		/// Total number of node connections recovered since node creation.
+		/// </summary>
+		public readonly int Recovered;
+
+		/// <summary>
 		/// Total number of bytes received from that connection.
 		/// Only collected for the async client when metrics are enabled.
 		/// </summary>
@@ -198,12 +211,13 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Connection statistics constructor.
 		/// </summary>
-		public ConnectionStats(int inPool, int inUse, int opened, int closed)
+		public ConnectionStats(int inPool, int inUse, int opened, int closed, int Recovered)
 		{
 			this.inPool = inPool;
 			this.inUse = inUse;
 			this.opened = opened;
 			this.closed = closed;
+			this.Recovered = Recovered;
 			this.BytesReceived = -1;
 			this.BytesSent = -1;
 		}
@@ -211,12 +225,13 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Connection statistics constructor, including byte metrics.
 		/// </summary>
-		public ConnectionStats(int inPool, int inUse, int opened, int closed, long bytesReceived, long bytesSent)
+		public ConnectionStats(int inPool, int inUse, int opened, int closed, int recovered, long bytesReceived, long bytesSent)
 		{
 			this.inPool = inPool;
 			this.inUse = inUse;
 			this.opened = opened;
 			this.closed = closed;
+			this.Recovered = recovered;
 			this.BytesReceived = bytesReceived;
 			this.BytesSent = bytesSent;
 		}
@@ -228,11 +243,11 @@ namespace Aerospike.Client
 		{
 			if (this.BytesReceived < 0)
 			{
-				return "" + inUse + ',' + inPool + ',' + opened + ',' + closed;
+				return "" + inUse + ',' + inPool + ',' + opened + ',' + closed + ',' + Recovered;
 			}
 			else
 			{
-				return "" + inUse + ',' + inPool + ',' + opened + ',' + closed + ',' + BytesReceived + ',' + BytesSent;
+				return "" + inUse + ',' + inPool + ',' + opened + ',' + closed + ',' + Recovered + ',' + BytesReceived + ',' + BytesSent;
 			}
 		}
 	}

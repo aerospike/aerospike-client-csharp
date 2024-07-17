@@ -110,6 +110,44 @@ namespace Aerospike.Client
 		public int totalTimeout = 1000;
 
 		/// <summary>
+		/// Delay milliseconds after socket read timeout in an attempt to recover the socket
+		/// in the background.  Processing continues on the original transaction and the user
+		/// is still notified at the original transaction timeout.
+		/// <para>
+		/// When a transaction is stopped prematurely, the socket must be drained of all incoming
+		/// data or closed to prevent unread socket data from corrupting the next transaction
+		/// that would use that socket.
+		/// </para>
+		/// <para>
+		/// If a socket read timeout occurs and timeoutDelay is greater than zero, the socket
+		/// will be drained until all data has been read or timeoutDelay is reached.  If all
+		/// data has been read, the socket will be placed back into the connection pool.  If
+		/// timeoutDelay is reached before the draining is complete, the socket will be closed.
+		/// </para>
+		/// <para>
+		/// Sync sockets are drained in the cluster tend thread at periodic intervals.  Async
+		/// sockets are drained in the event loop from which the async command executed.
+		/// </para>
+		/// <para>
+		/// Many cloud providers encounter performance problems when sockets are closed by the
+		/// client when the server still has data left to write (results in socket RST packet).
+		/// If the socket is fully drained before closing, the socket RST performance penalty
+		/// can be avoided on these cloud providers.
+		/// </para>
+		/// <para>
+		/// The disadvantage of enabling timeoutDelay is that extra memory/processing is required
+		/// to drain sockets and additional connections may still be needed for transaction retries.
+		/// </para>
+		/// <para>
+		/// If timeoutDelay were to be enabled, 3000ms would be a reasonable value.
+		/// </para>
+		/// <para>
+		/// Default: 0 (no delay, connection closed on timeout)
+		/// </para>
+		/// </summary>
+		public int TimeoutDelay;
+
+		/// <summary>
 		/// Maximum number of retries before aborting the current transaction.
 		/// The initial attempt is not counted as a retry.
 		/// <para>
@@ -243,6 +281,7 @@ namespace Aerospike.Client
 			this.filterExp = other.filterExp;
 			this.socketTimeout = other.socketTimeout;
 			this.totalTimeout = other.totalTimeout;
+			this.TimeoutDelay = other.TimeoutDelay;
 			this.maxRetries = other.maxRetries;
 			this.sleepBetweenRetries = other.sleepBetweenRetries;
 			this.readTouchTtlPercent = other.readTouchTtlPercent;

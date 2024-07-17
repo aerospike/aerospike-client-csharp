@@ -15,6 +15,7 @@
  * the License.
  */
 using System;
+using static Aerospike.Client.Connection;
 
 namespace Aerospike.Client
 {
@@ -92,6 +93,11 @@ namespace Aerospike.Client
 			}
 		}
 
+		protected override bool IsSingle()
+		{
+			return false;
+		}
+
 		protected internal override Node GetNode()
 		{
 			return node;
@@ -116,7 +122,7 @@ namespace Aerospike.Client
 			while (true)
 			{
 				// Read header
-				conn.ReadFully(protoBuf, 8);
+				conn.ReadFully(protoBuf, 8, Command.STATE_READ_HEADER);
 
 				long proto = ByteUtil.BytesToLong(protoBuf, 0);
 				int size = (int)(proto & 0xFFFFFFFFFFFFL);
@@ -140,9 +146,37 @@ namespace Aerospike.Client
 					buf = new byte[capacity];
 				}
 
-				// Read remaining message bytes in group.
-				conn.ReadFully(buf, size);
-				conn.UpdateLastUsed();
+				try
+				{
+					// Read remaining message bytes in group.
+					conn.ReadFully(buf, size, Command.STATE_READ_DETAIL);
+					conn.UpdateLastUsed();
+				}
+				catch (ReadTimeout rt)
+				{
+					if (rt.offset >= 4)
+					{
+						throw;
+					}
+
+					// First 4 bytes of detail contains whether this is the last
+					// group to be sent.  Consider this as part of header.
+					// Copy proto back into buffer to complete header.
+					byte[] b = new byte[12];
+					int count = 0;
+
+					for (int i = 0; i < 8; i++)
+					{
+						b[count++] = protoBuf[i];
+					}
+
+					for (int i = 0; i < rt.offset; i++)
+					{
+						b[count++] = buf[i];
+					}
+
+					throw new ReadTimeout(b, rt.offset + 8, count, Command.STATE_READ_HEADER);
+				}
 
 				ulong type = (ulong)((proto >> 48) & 0xff);
 

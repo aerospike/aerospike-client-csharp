@@ -26,6 +26,7 @@ namespace Aerospike.Client
 		private readonly new AsyncCluster cluster;
 		private int asyncConnsOpened;
 		private int asyncConnsClosed;
+		private int asyncConnsRecovered;
 
 		/// <summary>
 		/// Initialize server node with connection parameters.
@@ -212,6 +213,11 @@ namespace Aerospike.Client
 			}
 		}
 
+		public void IncrAsyncConnsRecovered()
+		{
+			Interlocked.Increment(ref asyncConnsRecovered);
+		}
+
 		public ConnectionStats GetAsyncConnectionStats()
 		{
 			int inPool = 0;
@@ -235,11 +241,11 @@ namespace Aerospike.Client
 
 			if (!this.metricsEnabled)
 			{
-				return new ConnectionStats(inPool, inUse, opened, closed);
+				return new ConnectionStats(inPool, inUse, opened, closed, asyncConnsRecovered);
 			}
 			else
 			{
-				return new ConnectionStats(inPool, inUse, opened, closed, this.bytesReceived, this.bytesSent);
+				return new ConnectionStats(inPool, inUse, opened, closed, asyncConnsRecovered, this.bytesReceived, this.bytesSent);
 			}
 		}
 	}
