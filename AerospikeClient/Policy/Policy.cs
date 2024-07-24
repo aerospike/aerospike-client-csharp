@@ -125,8 +125,8 @@ namespace Aerospike.Client
 		/// timeoutDelay is reached before the draining is complete, the socket will be closed.
 		/// </para>
 		/// <para>
-		/// Sync sockets are drained in the cluster tend thread at periodic intervals.  Async
-		/// sockets are drained in the event loop from which the async command executed.
+		/// Sync sockets are drained in the cluster tend thread at periodic intervals.
+		/// timeoutDelay is not supported for async sockets.
 		/// </para>
 		/// <para>
 		/// Many cloud providers encounter performance problems when sockets are closed by the

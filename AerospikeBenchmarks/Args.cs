@@ -143,6 +143,7 @@ namespace Aerospike.Benchmarks
 			debug = bool.Parse(section.GetSection("Debug").Value);
 
 			int timeout = int.Parse(section.GetSection("Timeout").Value);
+			int timeoutDelay = int.Parse(section.GetSection("TimeoutDelay").Value);
 			int maxRetries = int.Parse(section.GetSection("MaxRetries").Value);
 			int sleepBetweenRetries = int.Parse(section.GetSection("SleepBetweenRetries").Value);
 			Replica replica = (Replica)Enum.Parse(typeof(Replica), section.GetSection("Replica").Value, true);
@@ -157,12 +158,14 @@ namespace Aerospike.Benchmarks
 			policy.replica = replica;
 			policy.readModeAP = readModeAP;
 			policy.readModeSC = readModeSC;
+			policy.TimeoutDelay = timeoutDelay;
 
 			writePolicy = new WritePolicy();
 			writePolicy.totalTimeout = timeout;
 			writePolicy.maxRetries = maxRetries;
 			writePolicy.sleepBetweenRetries = sleepBetweenRetries;
 			writePolicy.replica = replica;
+			writePolicy.TimeoutDelay = timeoutDelay;
 
 			batchPolicy = new BatchPolicy();
 			batchPolicy.totalTimeout = timeout;
@@ -171,6 +174,7 @@ namespace Aerospike.Benchmarks
 			batchPolicy.replica = replica;
 			batchPolicy.readModeAP = readModeAP;
 			batchPolicy.readModeSC = readModeSC;
+			batchPolicy.TimeoutDelay = timeoutDelay;
 		}
 
 		/// <summary>

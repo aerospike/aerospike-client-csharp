@@ -153,7 +153,7 @@ namespace Aerospike.Client
 			}
 			else
 			{
-				this.asyncStats = new ConnectionStats(0, 0, 0, 0, 0);
+				this.asyncStats = new ConnectionStats(0, 0, 0, 0);
 			}
 		}
 
@@ -192,11 +192,6 @@ namespace Aerospike.Client
 		public readonly int closed;
 
 		/// <summary>
-		/// Total number of node connections recovered since node creation.
-		/// </summary>
-		public readonly int Recovered;
-
-		/// <summary>
 		/// Total number of bytes received from that connection.
 		/// Only collected for the async client when metrics are enabled.
 		/// </summary>
@@ -211,13 +206,12 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Connection statistics constructor.
 		/// </summary>
-		public ConnectionStats(int inPool, int inUse, int opened, int closed, int Recovered)
+		public ConnectionStats(int inPool, int inUse, int opened, int closed)
 		{
 			this.inPool = inPool;
 			this.inUse = inUse;
 			this.opened = opened;
 			this.closed = closed;
-			this.Recovered = Recovered;
 			this.BytesReceived = -1;
 			this.BytesSent = -1;
 		}
@@ -225,13 +219,12 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Connection statistics constructor, including byte metrics.
 		/// </summary>
-		public ConnectionStats(int inPool, int inUse, int opened, int closed, int recovered, long bytesReceived, long bytesSent)
+		public ConnectionStats(int inPool, int inUse, int opened, int closed, long bytesReceived, long bytesSent)
 		{
 			this.inPool = inPool;
 			this.inUse = inUse;
 			this.opened = opened;
 			this.closed = closed;
-			this.Recovered = recovered;
 			this.BytesReceived = bytesReceived;
 			this.BytesSent = bytesSent;
 		}
@@ -243,11 +236,11 @@ namespace Aerospike.Client
 		{
 			if (this.BytesReceived < 0)
 			{
-				return "" + inUse + ',' + inPool + ',' + opened + ',' + closed + ',' + Recovered;
+				return "" + inUse + ',' + inPool + ',' + opened + ',' + closed;
 			}
 			else
 			{
-				return "" + inUse + ',' + inPool + ',' + opened + ',' + closed + ',' + Recovered + ',' + BytesReceived + ',' + BytesSent;
+				return "" + inUse + ',' + inPool + ',' + opened + ',' + closed + ',' + BytesReceived + ',' + BytesSent;
 			}
 		}
 	}

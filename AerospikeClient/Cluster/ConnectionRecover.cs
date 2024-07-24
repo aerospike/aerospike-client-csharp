@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -14,33 +14,28 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using System.Diagnostics.Metrics;
 using System.Net.Sockets;
 
 namespace Aerospike.Client
 {
 	/// <summary>
-	/// 
+	/// Class used to recover sync connections based on timeoutDelay
 	/// </summary>
 	public sealed class ConnectionRecover
 	{
 		private readonly Connection conn;
 		private readonly Node node;
 		private byte[] headerBuf;
-		private int tranId;
-		private int timeoutDelay;
+		private readonly int timeoutDelay;
 		private int offset;
 		private int length;
-		private bool isSingle;
-		private bool checkReturnCode;
+		private readonly bool isSingle;
+		private readonly bool checkReturnCode;
 		private bool lastGroup;
 		private byte state;
 
 		public ConnectionRecover(Connection conn, Node node, int timeoutDelay, Connection.ReadTimeout crt, bool isSingle)
 		{
-			//tranId = 
-			//System.out.println("" + tranId + " timeout:" + crt.state + ',' + crt.offset + ',' + crt.length);
-			Log.Debug(node.cluster.context, "Creating ConnectionRecover");
 			this.conn = conn;
 			this.node = node;
 			this.timeoutDelay = timeoutDelay;
@@ -151,7 +146,6 @@ namespace Aerospike.Client
 						offset = 0;
 						state = Command.STATE_READ_HEADER;
 					}
-					Log.Debug(node.cluster.context, "IsSingle false passed draining");
 					Recover();
 					return true;
 				}
@@ -160,7 +154,6 @@ namespace Aerospike.Client
 			{
 				if (se.SocketErrorCode == SocketError.TimedOut && (DateTime.Now - conn.LastUsed).TotalMilliseconds >= timeoutDelay)
 				{
-					Log.Debug(node.cluster.context, "Timeout expected, close connection");
 					Abort();
 					return true;
 				}
@@ -196,10 +189,9 @@ namespace Aerospike.Client
 
 		private void Recover()
 		{
-			Log.Debug(node.cluster.context, "Sync connection recovered");
+			//Log.Debug(node.cluster.context, "Sync connection recovered");
 			conn.UpdateLastUsed();
 			node.PutConnection(conn);
-			node.IncrConnsRecovered();
 			state = Command.STATE_COMPLETE;
 		}
 

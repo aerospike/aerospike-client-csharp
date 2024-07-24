@@ -57,7 +57,6 @@ namespace Aerospike.Client
 		protected uint connectionIter;
 		protected internal int connsOpened = 1;
 		protected internal int connsClosed;
-		protected internal int connsRecovered;
 		protected internal long bytesReceived;
 		protected internal long bytesSent;
 		private volatile int errorRateCount;
@@ -917,7 +916,7 @@ namespace Aerospike.Client
 				inUse += tmp;
 			}
 
-			return new ConnectionStats(inPool, inUse, connsOpened, connsClosed, connsRecovered);
+			return new ConnectionStats(inPool, inUse, connsOpened, connsClosed);
 		}
 
 		public void EnableMetrics(MetricsPolicy policy)
@@ -1009,11 +1008,6 @@ namespace Aerospike.Client
 		public int GetTimeoutCount()
 		{
 			return timeoutCount;
-		}
-
-		public void IncrConnsRecovered()
-		{
-			Interlocked.Increment(ref connsRecovered);
 		}
 
 		/// <summary>

@@ -148,11 +148,6 @@ namespace Aerospike.Client
 			{
 			}
 		}
-
-		public void ChangeCommand(IAsyncCommand command)
-		{
-			this.command = command;
-		}
 	}
 
 	public interface IAsyncCommand
