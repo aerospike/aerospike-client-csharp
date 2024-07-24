@@ -26,7 +26,6 @@ namespace Aerospike.Client
 		private readonly Log.Context logContext;
 		private readonly AsyncNode node;
 		private readonly AsyncConnection conn;
-		//private int tranId;
 		private readonly int timeoutDelay;
 		private int offset;
 		private int length;
@@ -34,7 +33,7 @@ namespace Aerospike.Client
 		private bool inAuth;
 		private bool inHeader;
 		private bool isSingle;
-		private bool done;
+		private volatile bool done;
 		private long proto;
 		private ValueStopwatch watch;
 
@@ -48,11 +47,21 @@ namespace Aerospike.Client
 			this.inHeader = inHeader;
 			this.isSingle = isSingle;
 			this.offset = cmd.dataOffset;
-			this.dataBuffer = cmd.dataBuffer;
 			this.timeoutDelay = cmd.policy.TimeoutDelay;
 			done = false;
 			watch = ValueStopwatch.StartNew();
-		}
+
+			if (!inHeader)
+			{
+				dataBuffer = new byte[8];
+			}
+            else
+            {
+				proto = ByteUtil.BytesToLong(cmd.dataBuffer, cmd.dataOffset);
+				length = (int)(proto & 0xFFFFFFFFFFFFL);
+				dataBuffer = new byte[length];
+            }
+        }
 
 		public bool CheckTimeout()
 		{
@@ -76,8 +85,8 @@ namespace Aerospike.Client
 		/// </summary>
 		public void Abort()
 		{
-			node.CloseAsyncConnOnError(conn);
 			done = true;
+			node.CloseAsyncConn(conn);
 		}
 
 		public void StartDrain()
@@ -109,6 +118,7 @@ namespace Aerospike.Client
 					}
 
 					inHeader = false;
+					ReallocateBuffer(length);
 
 					Log.Debug(logContext, "Draining detail");
 					conn.Receive(dataBuffer, offset, length);
@@ -146,6 +156,19 @@ namespace Aerospike.Client
 						ReceiveNext();
 						return;
 					}
+					else if (inAuth)
+					{
+						if (dataBuffer[offset + 1] != 0)
+						{
+							// Authentication failed.
+							Log.Debug(logContext, "Invalid user/password");
+							Abort();
+							return;
+						}
+
+						Recover();
+						return;
+					}
 					else
 					{
 						Recover();
@@ -165,6 +188,7 @@ namespace Aerospike.Client
 		{
 			inHeader = true;
 			Log.Debug(logContext, "Draining header");
+			ReallocateBuffer(8);
 			conn.Receive(dataBuffer, offset, 8);
 		}
 
@@ -176,12 +200,20 @@ namespace Aerospike.Client
 				Log.Debug(logContext, "Async connection recovered");
 				conn.UpdateLastUsed();
 				node.PutAsyncConnection(conn);
-				node.IncrConnsRecovered();
+				node.IncrAsyncConnsRecovered();
 			}
 			catch (Exception e)
 			{
 				Log.Debug(logContext, "AsyncConnectionRecover failed: ");
 				Log.Debug(logContext, e.Message + e.StackTrace);
+			}
+		}
+
+		public void ReallocateBuffer(int length)
+		{
+			if (dataBuffer.Length < length)
+			{
+				dataBuffer = new byte[length];
 			}
 		}
 

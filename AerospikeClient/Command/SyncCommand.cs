@@ -153,6 +153,7 @@ namespace Aerospike.Client
 						if (policy.TimeoutDelay > 0)
 						{
 							cluster.RecoverConnection(new ConnectionRecover(conn, node, policy.TimeoutDelay, crt, IsSingle()));
+							conn = null;
 						}
 						else
 						{

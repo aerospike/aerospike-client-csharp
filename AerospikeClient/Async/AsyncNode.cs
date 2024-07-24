@@ -165,7 +165,7 @@ namespace Aerospike.Client
 			CloseAsyncConn(conn);
 		}
 
-		private void CloseAsyncConn(AsyncConnection conn)
+		internal void CloseAsyncConn(AsyncConnection conn)
 		{
 			DecrAsyncConnTotal();
 			IncrAsyncConnClosed();
@@ -224,6 +224,7 @@ namespace Aerospike.Client
 			int inUse = 0;
 			int opened = 0;
 			int closed = 0;
+			int recovered = 0;
 
 			if (asyncConnQueue != null)
 			{
@@ -237,15 +238,16 @@ namespace Aerospike.Client
 				}
 				opened = asyncConnsOpened;
 				closed = asyncConnsClosed;
+				recovered = asyncConnsRecovered;
 			}
 
 			if (!this.metricsEnabled)
 			{
-				return new ConnectionStats(inPool, inUse, opened, closed, asyncConnsRecovered);
+				return new ConnectionStats(inPool, inUse, opened, closed, recovered);
 			}
 			else
 			{
-				return new ConnectionStats(inPool, inUse, opened, closed, asyncConnsRecovered, this.bytesReceived, this.bytesSent);
+				return new ConnectionStats(inPool, inUse, opened, closed, recovered, this.bytesReceived, this.bytesSent);
 			}
 		}
 	}

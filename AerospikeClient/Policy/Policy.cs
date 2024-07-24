@@ -145,7 +145,7 @@ namespace Aerospike.Client
 		/// Default: 0 (no delay, connection closed on timeout)
 		/// </para>
 		/// </summary>
-		public int TimeoutDelay;
+		public int TimeoutDelay = 0;
 
 		/// <summary>
 		/// Maximum number of retries before aborting the current transaction.
