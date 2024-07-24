@@ -164,7 +164,7 @@ namespace Aerospike.Client
 			CloseAsyncConn(conn);
 		}
 
-		internal void CloseAsyncConn(AsyncConnection conn)
+		private void CloseAsyncConn(AsyncConnection conn)
 		{
 			DecrAsyncConnTotal();
 			IncrAsyncConnClosed();
