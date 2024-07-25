@@ -269,7 +269,7 @@ namespace Aerospike.Client
 			nodes = new Node[0];
 			partitionMap = new Dictionary<string, Partitions>();
 			recoverCount = 0;
-			recoverQueue = new Pool<ConnectionRecover>(10000, 10000);
+			recoverQueue = new Pool<ConnectionRecover>(256, 10000);
 			cancel = new CancellationTokenSource();
 			cancelToken = cancel.Token;
 		}
@@ -953,7 +953,7 @@ namespace Aerospike.Client
 			{
 				if (cs.Drain(buf))
 				{
-					Interlocked.Increment(ref recoverCount);
+					Interlocked.Decrement(ref recoverCount);
 				}
 				else
 				{
