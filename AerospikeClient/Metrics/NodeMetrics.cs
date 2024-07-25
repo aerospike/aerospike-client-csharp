@@ -47,6 +47,7 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Add elapsed time in nanoseconds to latency buckets corresponding to latency type.
 		/// </summary>
+		/// <param name="type"></param>
 		/// <param name="elapsedMs">elapsed time in milliseconds. The conversion to nanoseconds is done later</param>
 		public void AddLatency(LatencyType type, double elapsedMs)
 		{

@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2023 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -27,6 +27,8 @@ namespace Aerospike.Client
 		public abstract void Write(byte[] buffer, int length);
 
 		public abstract void ReadFully(byte[] buffer, int length);
+
+		public abstract void ReadFully(byte[] buffer, int length, byte state);
 
 		public abstract Stream GetStream();
 

@@ -88,7 +88,7 @@ namespace Aerospike.Client
 					{
 						metricsWatch = ValueStopwatch.StartNew();
 					}
-					Connection conn = node.GetConnection(socketTimeout);
+					Connection conn = node.GetConnection(socketTimeout, policy.TimeoutDelay);
 
 					try
 					{
@@ -147,6 +147,21 @@ namespace Aerospike.Client
 							node.AddError();
 							throw;
 						}
+					}
+					catch (Connection.ReadTimeout crt)
+					{
+						if (policy.TimeoutDelay > 0)
+						{
+							cluster.RecoverConnection(new ConnectionRecover(conn, node, policy.TimeoutDelay, crt, IsSingle()));
+							conn = null;
+						}
+						else
+						{
+							node.CloseConnection(conn);
+						}
+						exception = new AerospikeException.Timeout(policy, true);
+						isClientTimeout = true;
+						node.AddTimeout();
 					}
 					catch (SocketException se)
 					{
@@ -207,6 +222,13 @@ namespace Aerospike.Client
 					exception = new AerospikeException.Connection(ioe);
 					isClientTimeout = false;
 					node.AddError();
+				}
+				catch (Connection.ReadTimeout)
+				{
+					// Connection already handled.
+					exception = new AerospikeException.Timeout(policy, true);
+					isClientTimeout = true;
+					node.AddTimeout();
 				}
 				catch (AerospikeException.Connection ce)
 				{
@@ -346,6 +368,11 @@ namespace Aerospike.Client
 		protected internal virtual bool IsWrite()
 		{
 			return false;
+		}
+
+		protected virtual bool IsSingle()
+		{
+			return true;
 		}
 
 		protected internal abstract Node GetNode();

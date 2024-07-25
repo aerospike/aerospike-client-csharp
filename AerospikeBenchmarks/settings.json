@@ -1,5 +1,5 @@
 ﻿{
-  "Host": "172.17.0.3",
+  "Host": "localhost",
   "Port": 3000,
   "AuthMode": "INTERNAL",
   "User": "",
@@ -31,6 +31,7 @@
   "LatencyAltFormat": false,
   "Throughput": 0,
   "Timeout": 1000,
+  "TimeoutDelay": 0,
   "MaxRetries": 0,
   "SleepBetweenRetries": 0,
   "Replica": "SEQUENCE",

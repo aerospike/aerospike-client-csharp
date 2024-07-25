@@ -20,6 +20,7 @@ using System.Threading;
 using System.Collections.Generic;
 using static Aerospike.Client.Latency;
 using System.Xml.Linq;
+using System.Net.Sockets;
 
 namespace Aerospike.Client
 {
@@ -629,6 +630,24 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if a connection could not be provided</exception>
 		public Connection GetConnection(int timeoutMillis)
 		{
+			try
+			{
+				return GetConnection(timeoutMillis, 0);
+			}
+			catch (Connection.ReadTimeout)
+			{
+				throw new AerospikeException.Timeout(timeoutMillis, false);
+			}
+		}
+
+		/// <summary>
+		/// Get a socket connection from connection pool to the server node.
+		/// </summary>
+		/// <param name="timeoutMillis">connection timeout value in milliseconds if a new connection is created</param>
+		/// <param name="timeoutDelay"></param>	
+		/// <exception cref="AerospikeException">if a connection could not be provided</exception>
+		public Connection GetConnection(int timeoutMillis, int timeoutDelay)
+		{
 			uint max = (uint)cluster.connPoolsPerNode;
 			uint initialIndex;
 			bool backward;
@@ -698,6 +717,32 @@ namespace Aerospike.Client
 								{
 									SignalLogin();
 									throw new AerospikeException("Authentication failed");
+								}
+							}
+							catch (Connection.ReadTimeout crt)
+							{
+								if (timeoutDelay > 0)
+								{
+									// The connection state is always STATE_READ_AUTH_HEADER here which does not reference
+									// isSingle, so just pass in true for isSingle in ConnectionRecover.
+									cluster.RecoverConnection(new ConnectionRecover(conn, this, timeoutDelay, crt, true));
+									conn = null;
+								}
+								else
+								{
+									CloseConnection(conn);
+								}
+								throw;
+							}
+							catch (SocketException se)
+							{
+								CloseConnection(conn);
+								if (se.SocketErrorCode == SocketError.TimedOut)
+								{
+									// This is really a socket write timeout, but the calling
+									// method's catch handler just identifies error as a client
+									// timeout, which is what we need.
+									throw new Connection.ReadTimeout(null, 0, 0, (byte)0);
 								}
 							}
 							catch (Exception)
@@ -897,6 +942,7 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Add elapsed time in nanoseconds to latency buckets corresponding to latency type.
 		/// </summary>
+		/// <param name="type"></param>
 		/// <param name="elapsedMs">elapsed time in milliseconds. The conversion to nanoseconds is done later</param>
 		public void AddLatency(LatencyType type, double elapsedMs)
 		{
@@ -963,7 +1009,6 @@ namespace Aerospike.Client
 		{
 			return timeoutCount;
 		}
-
 
 		/// <summary>
 		/// Return if this node has the same rack as the client for the

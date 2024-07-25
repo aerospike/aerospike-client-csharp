@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2023 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -73,7 +73,7 @@ namespace Aerospike.Client
 		protected internal override void ParseResult(IConnection conn)
 		{
 			// Read header.		
-			conn.ReadFully(dataBuffer, 8);
+			conn.ReadFully(dataBuffer, 8, Command.STATE_READ_HEADER);
 
 			long sz = ByteUtil.BytesToLong(dataBuffer, 0);
 			int receiveSize = (int)(sz & 0xFFFFFFFFFFFFL);
@@ -84,7 +84,7 @@ namespace Aerospike.Client
 			}
 
 			SizeBuffer(receiveSize);
-			conn.ReadFully(dataBuffer, receiveSize);
+			conn.ReadFully(dataBuffer, receiveSize, Command.STATE_READ_DETAIL);
 			conn.UpdateLastUsed();
 
 			ulong type = (ulong)((sz >> 48) & 0xff);

@@ -63,6 +63,11 @@ namespace Aerospike.Client
 		//   1      0     allow replica
 		//   1      1     allow unavailable
 
+		public const byte STATE_READ_AUTH_HEADER = 1;
+		public const byte STATE_READ_HEADER = 2;
+		public const byte STATE_READ_DETAIL = 3;
+		public const byte STATE_COMPLETE = 4;
+
 		public const byte BATCH_MSG_READ = 0x0;
 		public const byte BATCH_MSG_REPEAT = 0x1;
 		public const byte BATCH_MSG_INFO = 0x2;
