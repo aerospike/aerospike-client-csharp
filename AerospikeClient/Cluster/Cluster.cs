@@ -71,10 +71,10 @@ namespace Aerospike.Client
 		internal int replicaIndex;
 
 		// Count of connections in shutdown queue. 
-		private volatile int recoverCount;
+		private int recoverCount;
 
 		// Thread-safe queue of sync connections to be closed.
-		private volatile Pool<ConnectionRecover> recoverQueue;
+		private Pool<ConnectionRecover> recoverQueue;
 
 		// Minimum sync connections per node.
 		internal readonly int minConnsPerNode;
@@ -930,7 +930,7 @@ namespace Aerospike.Client
 			}
 			else
 			{
-				Interlocked.Increment(ref recoverCount);
+				Interlocked.Decrement(ref recoverCount);
 				cs.Abort();
 			}
 		}
