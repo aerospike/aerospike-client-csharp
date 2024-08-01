@@ -15,6 +15,8 @@
  * the License.
  */
 using System.Text;
+using static Aerospike.Client.AbortError;
+using static Aerospike.Client.CommitError;
 
 namespace Aerospike.Client
 {
@@ -37,6 +39,12 @@ namespace Aerospike.Client
 
 		public AerospikeException(int resultCode, Exception e)
 			: base(e?.Message ?? string.Empty, e)
+		{
+			this.resultCode = resultCode;
+		}
+
+		public AerospikeException(int resultCode, string message)
+			: base(message)
 		{
 			this.resultCode = resultCode;
 		}
@@ -76,7 +84,7 @@ namespace Aerospike.Client
 		{
 			get
 			{
-				StringBuilder sb = new StringBuilder(512);
+				StringBuilder sb = new(512);
 
 				sb.Append("Error ");
 				sb.Append(resultCode);
@@ -299,7 +307,7 @@ namespace Aerospike.Client
 						return "Client timeout: " + totalTimeout;
 					}
 
-					StringBuilder sb = new StringBuilder(512);
+					StringBuilder sb = new(512);
 
 					if (client)
 					{
@@ -487,6 +495,12 @@ namespace Aerospike.Client
 			{
 				this.records = records;
 			}
+
+			public BatchRecordArray(BatchRecord[] records, String message, Exception e)
+				: base(ResultCode.BATCH_FAILED, message, e)
+			{
+				this.records = records;
+			}
 		}
 
 		/// <summary>
@@ -586,6 +600,139 @@ namespace Aerospike.Client
 										: $"GRPC Stream ended with Result Code of {resultCode}")
 			{
 				ResultCode = resultCode;
+			}
+		}
+
+		/// <summary>
+		/// Exception thrown when {@link AerospikeClient#commit(com.aerospike.client.Tran)} fails.
+		/// </summary>
+		public sealed class Commit : AerospikeException
+		{
+			/// <summary>
+			/// Error status of the attempted commit.
+			/// </summary>
+			public readonly CommitErrorType Error;
+
+			/// <summary>
+			/// Verify result for each read key in the MRT. May be null if failure occurred before verify.
+			/// </summary>
+			public readonly BatchRecord[] VerifyRecords;
+
+			/// <summary>
+			/// Roll forward/backward result for each write key in the MRT. May be null if failure occurred before
+			/// roll forward/backward.
+			/// </summary>
+			public readonly BatchRecord[] RollRecords;
+
+			public Commit(CommitErrorType error, BatchRecord[] verifyRecords, BatchRecord[] rollRecords)
+				: base(ResultCode.TRAN_FAILED, CommitErrorToString(error))
+			{
+				this.Error = error;
+				this.VerifyRecords = verifyRecords;
+				this.RollRecords = rollRecords;
+			}
+
+			public Commit(CommitErrorType error, BatchRecord[] verifyRecords, BatchRecord[] rollRecords, Exception cause)
+				: base(ResultCode.TRAN_FAILED, CommitErrorToString(error), cause)
+			{
+				this.Error = error;
+				this.VerifyRecords = verifyRecords;
+				this.RollRecords = rollRecords;
+			}
+
+			/// <summary>
+			/// Get Commit message with records.
+			/// </summary>
+			public override string Message
+			{
+				get
+				{
+					StringBuilder sb = new(1024);
+					RecordsToString(sb, "verify errors:", VerifyRecords);
+					RecordsToString(sb, "roll errors:", RollRecords);
+					return BaseMessage + sb.ToString();
+				}
+			}
+		}
+
+		/// <summary>
+		/// Exception thrown when {@link AerospikeClient#abort(com.aerospike.client.Tran)} fails.
+		/// </summary>
+		public sealed class Abort : AerospikeException
+		{
+			/// <summary>
+			/// Error status of the attempted abort.
+			/// </summary>
+			public readonly AbortErrorType Error;
+
+			/// <summary>
+			/// Roll backward result for each write key in the MRT. May be null if failure occurred before roll backward.
+			/// </summary>
+			public readonly BatchRecord[] RollRecords;
+
+			public Abort(AbortErrorType error, BatchRecord[] rollRecords)
+				: base(ResultCode.TRAN_FAILED, AbortErrorToString(error))
+			{
+				this.Error = error;
+				this.RollRecords = rollRecords;
+			}
+
+			public Abort(AbortErrorType error, BatchRecord[] rollRecords, Exception cause)
+				: base(ResultCode.TRAN_FAILED, AbortErrorToString(error), cause)
+			{
+				this.Error = error;
+				this.RollRecords = rollRecords;
+			}
+
+			/// <summary>
+			/// Get Commit message with records.
+			/// </summary>
+			public override string Message
+			{
+				get
+				{
+					StringBuilder sb = new(1024);
+					RecordsToString(sb, "roll errors:", RollRecords);
+					return BaseMessage + sb.ToString();
+				}
+			}
+		}
+
+		private static void RecordsToString(StringBuilder sb, String title, BatchRecord[] records)
+		{
+			if (records == null)
+			{
+				return;
+			}
+
+			int count = 0;
+
+			foreach (BatchRecord br in records) {
+				// Only show results with an error response.
+				if (!(br.resultCode == ResultCode.OK || br.resultCode == ResultCode.NO_RESPONSE)) 
+				{
+					// Only show first 3 errors.
+					if (count >= 3) 
+					{
+						sb.Append(System.Environment.NewLine);
+						sb.Append("...");
+						break;
+					}
+
+					if (count == 0)
+					{
+						sb.Append(System.Environment.NewLine);
+						sb.Append(title);
+					}
+
+					sb.Append(System.Environment.NewLine);
+					sb.Append(br.key);
+					sb.Append(',');
+					sb.Append(br.resultCode);
+					sb.Append(',');
+					sb.Append(br.inDoubt);
+					count++;
+				}
 			}
 		}
 	}

@@ -23,7 +23,7 @@ namespace Aerospike.Client
 	/// <summary>
 	/// Batch parent policy.
 	/// </summary>
-	public sealed class BatchPolicy : Policy
+	public class BatchPolicy : Policy
 	{
 		/// <summary>
 		/// Maximum number of concurrent synchronous batch node request threads to server nodes.

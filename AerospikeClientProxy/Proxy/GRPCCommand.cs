@@ -468,7 +468,7 @@ namespace Aerospike.Client.Proxy
 			End();
 		}
 
-		public override void SetRead(Policy policy, Key key)
+		public void SetRead(Policy policy, Key key)
 		{
 			Begin();
 			int fieldCount = EstimateKeySize(policy, key);
@@ -884,7 +884,8 @@ namespace Aerospike.Client.Proxy
 		// Batch Read/Write Operations
 		//--------------------------------------------------
 
-		public override void SetBatchOperate(BatchPolicy policy, IList records, BatchNode batch)
+		public override void SetBatchOperate(BatchPolicy policy, BatchWritePolicy writePolicy,
+			BatchUDFPolicy udfPolicy, BatchDeletePolicy deletePolicy, IList records, BatchNode batch)
 		{
 			// Estimate full row size
 			int[] offsets = batch.offsets;
@@ -1535,7 +1536,7 @@ namespace Aerospike.Client.Proxy
 			WriteField(policy.socketTimeout, FieldType.SOCKET_TIMEOUT);
 
 			// Write taskId field
-			WriteField(taskId, FieldType.TRAN_ID);
+			WriteField(taskId, FieldType.QUERY_ID);
 
 			if (binNames != null)
 			{
@@ -1745,7 +1746,7 @@ namespace Aerospike.Client.Proxy
 			WriteField(policy.socketTimeout, FieldType.SOCKET_TIMEOUT);
 
 			// Write taskId field
-			WriteField(taskId, FieldType.TRAN_ID);
+			WriteField(taskId, FieldType.QUERY_ID);
 
 			if (statement.filter != null)
 			{

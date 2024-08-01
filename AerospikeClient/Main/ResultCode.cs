@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2023 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -21,6 +21,12 @@ namespace Aerospike.Client
 	/// </summary>
 	public sealed class ResultCode
 	{
+		/// <summary>
+		/// Multi-record transaction failed
+		/// Value: -17
+		/// </summary>
+		public const int TRAN_FAILED = -17;
+		
 		/// <summary>
 		/// One or more keys failed in a batch.
 		/// Value: -16
@@ -275,6 +281,24 @@ namespace Aerospike.Client
 		/// Value: 28
 		/// </summary>
 		public const int LOST_CONFLICT = 28;
+
+		/// <summary>
+		/// MRT record blocked by a different transaction.
+		/// Value: 29
+		/// </summary>
+		public const int MRT_BLOCKED = 29;
+
+		/// <summary>
+		/// MRT read verify failed. Some other command changed record outside of the transaction.
+		/// Value: 30
+		/// </summary>
+		public const int MRT_CONFLICT = 30;
+
+		/// <summary>
+		/// MRT deadline reached without a successful commit or abort.
+		/// Value: 31
+		/// </summary>
+		public const int MRT_EXPIRED = 31;
 
 		/// <summary>
 		/// There are no more records left for query.
@@ -542,6 +566,9 @@ namespace Aerospike.Client
 		{
 			switch (resultCode)
 			{
+			case TRAN_FAILED:
+				return "Multi-record transaction failed";
+
 			case BATCH_FAILED:
 				return "One or more keys failed in a batch";
 
@@ -667,6 +694,15 @@ namespace Aerospike.Client
 
 			case LOST_CONFLICT:
 				return "Transaction failed due to conflict with XDR";
+
+			case MRT_BLOCKED:
+				return "MRT record blocked by a different transaction";
+
+			case MRT_CONFLICT:
+				return "MRT verify failed";
+
+			case MRT_EXPIRED:
+				return "MRT expired";
 
 			case QUERY_END:
 				return "Query end";

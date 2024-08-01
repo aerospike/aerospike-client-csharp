@@ -14,9 +14,6 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using System.Collections.Generic;
-using System.Threading;
-using System.Threading.Tasks;
 
 namespace Aerospike.Client
 {
@@ -39,7 +36,39 @@ namespace Aerospike.Client
     /// </para>
     /// </summary>
     public interface IAsyncClient : IAerospikeClient
-    {
+	{
+		//-------------------------------------------------------
+		// Multi-Record Transactions
+		//-------------------------------------------------------
+
+		/// <summary>
+		/// Asynchronously attempt to commit the given multi-record transaction. First, the expected
+		/// record versions are sent to the server nodes for verification.If all nodes return success,
+		/// the transaction is committed.Otherwise, the transaction is aborted.
+		/// <p>
+		/// This method registers the command with an event loop and returns.
+		/// The event loop thread will process the command and send the results to the listener.
+		/// </p><p>
+		/// Requires server version 8.0+
+		/// </p>
+		/// </summary>
+		/// <param name="listener">where to send results</param>
+		/// <param name="tran">multi-record transaction</param>
+		void Commit(CommitListener listener, Tran tran);
+
+		/// <summary>
+		///  Asynchronously abort and rollback the given multi-record transaction.
+	    /// <p>
+	    /// This method registers the command with an event loop and returns.
+	    /// The event loop thread will process the command and send the results to the listener.
+	    /// </p><p>
+	    /// Requires server version 8.0+
+		/// </p>
+		/// </summary>
+		/// <param name="listener"></param>
+		/// <param name="tran"></param>
+		void Abort(AbortListener listener, Tran tran);
+
 		//-------------------------------------------------------
 		// Write Record Operations
 		//-------------------------------------------------------

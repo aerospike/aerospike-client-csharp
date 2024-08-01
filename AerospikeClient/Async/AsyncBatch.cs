@@ -86,7 +86,7 @@ namespace Aerospike.Client
 		{
 			if (batch.node.HasBatchAny)
 			{
-				SetBatchOperate(batchPolicy, records, batch);
+				SetBatchOperate(batchPolicy, null, null, null, records, batch);
 			}
 			else
 			{
@@ -96,9 +96,9 @@ namespace Aerospike.Client
 
 		protected internal override void ParseRow()
 		{
-			SkipKey(fieldCount);
-
 			BatchRead record = records[batchIndex];
+
+			ParseFieldsRead(record.key);
 
 			if (resultCode == 0)
 			{
@@ -197,7 +197,7 @@ namespace Aerospike.Client
 		{
 			if (batch.node.HasBatchAny)
 			{
-				SetBatchOperate(batchPolicy, records, batch);
+				SetBatchOperate(batchPolicy, null, null, null, records, batch);
 			}
 			else
 			{
@@ -207,9 +207,9 @@ namespace Aerospike.Client
 
 		protected internal override void ParseRow()
 		{
-			SkipKey(fieldCount);
-
 			BatchRead record = records[batchIndex];
+
+			ParseFieldsRead(record.key);
 
 			if (resultCode == 0)
 			{
@@ -330,7 +330,7 @@ namespace Aerospike.Client
 		{
 			if (batch.node.HasBatchAny)
 			{
-				BatchAttr attr = new BatchAttr(batchPolicy, readAttr, ops);
+				BatchAttr attr = new(batchPolicy, readAttr, ops);
 				SetBatchOperate(batchPolicy, keys, batch, binNames, ops, attr);
 			}
 			else
@@ -341,7 +341,7 @@ namespace Aerospike.Client
 
 		protected internal override void ParseRow()
 		{
-			SkipKey(fieldCount);
+			ParseFieldsRead(keys[batchIndex]);
 
 			if (resultCode == 0)
 			{
@@ -453,7 +453,7 @@ namespace Aerospike.Client
 		{
 			if (batch.node.HasBatchAny)
 			{
-				BatchAttr attr = new BatchAttr(batchPolicy, readAttr, ops);
+				BatchAttr attr = new(batchPolicy, readAttr, ops);
 				SetBatchOperate(batchPolicy, keys, batch, binNames, ops, attr);
 			}
 			else
@@ -464,9 +464,9 @@ namespace Aerospike.Client
 
 		protected internal override void ParseRow()
 		{
-			SkipKey(fieldCount);
-
 			Key keyOrig = keys[batchIndex];
+
+			ParseFieldsRead(keyOrig);
 
 			if (resultCode == 0)
 			{
@@ -570,7 +570,7 @@ namespace Aerospike.Client
 		{
 			if (batch.node.HasBatchAny)
 			{
-				BatchAttr attr = new BatchAttr(batchPolicy, Command.INFO1_READ | Command.INFO1_NOBINDATA);
+				BatchAttr attr = new(batchPolicy, Command.INFO1_READ | Command.INFO1_NOBINDATA);
 				SetBatchOperate(batchPolicy, keys, batch, null, null, attr);
 			}
 			else
@@ -581,12 +581,12 @@ namespace Aerospike.Client
 
 		protected internal override void ParseRow()
 		{
-			SkipKey(fieldCount);
-
 			if (opCount > 0)
 			{
 				throw new AerospikeException.Parse("Received bins that were not requested!");
 			}
+
+			ParseFieldsRead(keys[batchIndex]);
 
 			existsArray[batchIndex] = resultCode == 0;
 		}
@@ -679,7 +679,7 @@ namespace Aerospike.Client
 		{
 			if (batch.node.HasBatchAny)
 			{
-				BatchAttr attr = new BatchAttr(batchPolicy, Command.INFO1_READ | Command.INFO1_NOBINDATA);
+				BatchAttr attr = new(batchPolicy, Command.INFO1_READ | Command.INFO1_NOBINDATA);
 				SetBatchOperate(batchPolicy, keys, batch, null, null, attr);
 			}
 			else
@@ -690,14 +690,13 @@ namespace Aerospike.Client
 
 		protected internal override void ParseRow()
 		{
-			SkipKey(fieldCount);
-
 			if (opCount > 0)
 			{
 				throw new AerospikeException.Parse("Received bins that were not requested!");
 			}
 
 			Key keyOrig = keys[batchIndex];
+			ParseFieldsRead(keyOrig);
 			listener.OnExists(keyOrig, resultCode == 0);
 		}
 
@@ -791,14 +790,14 @@ namespace Aerospike.Client
 
 		protected internal override void WriteBuffer()
 		{
-			SetBatchOperate(batchPolicy, records, batch);
+			SetBatchOperate(batchPolicy, null, null, null, records, batch);
 		}
 
 		protected internal override void ParseRow()
 		{
-			SkipKey(fieldCount);
-
 			BatchRecord record = records[batchIndex];
+
+			ParseFields(record.key, record.hasWrite);
 
 			if (resultCode == 0)
 			{
@@ -936,14 +935,14 @@ namespace Aerospike.Client
 
 		protected internal override void WriteBuffer()
 		{
-			SetBatchOperate(batchPolicy, records, batch);
+			SetBatchOperate(batchPolicy, null, null, null, records, batch);
 		}
 
 		protected internal override void ParseRow()
 		{
-			SkipKey(fieldCount);
-
 			BatchRecord record = records[batchIndex];
+
+			ParseFields(record.key, record.hasWrite);
 
 			if (resultCode == 0)
 			{
@@ -1105,9 +1104,9 @@ namespace Aerospike.Client
 
 		protected internal override void ParseRow()
 		{
-			SkipKey(fieldCount);
-
 			BatchRecord record = records[batchIndex];
+
+			ParseFields(record.key, record.hasWrite);
 
 			if (resultCode == 0)
 			{
@@ -1191,7 +1190,7 @@ namespace Aerospike.Client
 
 		public override void BatchKeyError(Cluster cluster, Key key, int index, AerospikeException ae, bool inDoubt, bool hasWrite)
 		{
-			BatchRecord record = new BatchRecord(key, null, ae.Result, inDoubt, hasWrite);
+			BatchRecord record = new(key, null, ae.Result, inDoubt, hasWrite);
 			sent[index] = true;
 			AsyncBatch.OnRecord(cluster, listener, record, index);
 		}
@@ -1256,9 +1255,10 @@ namespace Aerospike.Client
 
 		protected internal override void ParseRow()
 		{
-			SkipKey(fieldCount);
-
 			Key keyOrig = keys[batchIndex];
+
+			ParseFields(keyOrig, attr.hasWrite);
+
 			BatchRecord record;
 
 			if (resultCode == 0)
@@ -1281,7 +1281,7 @@ namespace Aerospike.Client
 				if (!sent[index])
 				{
 					Key key = keys[index];
-					BatchRecord record = new BatchRecord(key, null, ResultCode.NO_RESPONSE, attr.hasWrite && inDoubt, attr.hasWrite);
+					BatchRecord record = new(key, null, ResultCode.NO_RESPONSE, attr.hasWrite && inDoubt, attr.hasWrite);
 					sent[index] = true;
 					AsyncBatch.OnRecord(cluster, listener, record, index);
 				}
@@ -1410,9 +1410,9 @@ namespace Aerospike.Client
 
 		protected internal override void ParseRow()
 		{
-			SkipKey(fieldCount);
-
 			BatchRecord record = records[batchIndex];
+
+			ParseFields(record.key, record.hasWrite);
 
 			if (resultCode == 0)
 			{
@@ -1513,7 +1513,7 @@ namespace Aerospike.Client
 
 		public override void BatchKeyError(Cluster cluster, Key key, int index, AerospikeException ae, bool inDoubt, bool hasWrite)
 		{
-			BatchRecord record = new BatchRecord(key, null, ae.Result, inDoubt, hasWrite);
+			BatchRecord record = new(key, null, ae.Result, inDoubt, hasWrite);
 			sent[index] = true;
 			AsyncBatch.OnRecord(cluster, listener, record, index);
 		}
@@ -1586,9 +1586,10 @@ namespace Aerospike.Client
 
 		protected internal override void ParseRow()
 		{
-			SkipKey(fieldCount);
-
 			Key keyOrig = keys[batchIndex];
+
+			ParseFields(keyOrig, attr.hasWrite);
+
 			BatchRecord record;
 
 			if (resultCode == 0)
@@ -1626,7 +1627,7 @@ namespace Aerospike.Client
 				if (!sent[index])
 				{
 					Key key = keys[index];
-					BatchRecord record = new BatchRecord(key, null, ResultCode.NO_RESPONSE, attr.hasWrite && inDoubt, attr.hasWrite);
+					BatchRecord record = new(key, null, ResultCode.NO_RESPONSE, attr.hasWrite && inDoubt, attr.hasWrite);
 					sent[index] = true;
 					AsyncBatch.OnRecord(cluster, listener, record, index);
 				}
@@ -1685,7 +1686,7 @@ namespace Aerospike.Client
 				max += commands.Length - 1;
 			}
 
-			foreach (AsyncBatchCommand command in commands)
+			foreach (AsyncBatchCommand command in commands.Cast<AsyncBatchCommand>())
 			{
 				command.ExecuteBatchRetry();
 			}
@@ -1805,6 +1806,40 @@ namespace Aerospike.Client
 		protected override Latency.LatencyType GetLatencyType()
 		{
 			return Latency.LatencyType.BATCH;
+		}
+
+		protected void ParseFieldsRead(Key key)
+		{
+			if (policy.Tran != null)
+			{
+				long? version = ParseVersion(fieldCount);
+				policy.Tran.OnRead(key, version);
+			}
+			else
+			{
+				SkipKey(fieldCount);
+			}
+		}
+
+		protected void ParseFields(Key key, bool hasWrite)
+		{
+			if (policy.Tran != null)
+			{
+				long? version = ParseVersion(fieldCount);
+
+				if (hasWrite)
+				{
+					policy.Tran.OnWrite(key, version, resultCode);
+				}
+				else
+				{
+					policy.Tran.OnRead(key, version);
+				}
+			}
+			else
+			{
+				SkipKey(fieldCount);
+			}
 		}
 
 		protected internal override bool PrepareRetry(bool timeout)

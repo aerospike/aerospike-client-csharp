@@ -30,7 +30,6 @@ namespace Aerospike.Client
 			WritePolicy policy,
 			WritePolicy writeDefault,
 			WritePolicy readDefault,
-			Key key,
 			Operation[] operations
 		)
 		{

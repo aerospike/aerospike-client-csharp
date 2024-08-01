@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2023 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -424,15 +424,52 @@ namespace Aerospike.Client
                );
         }
 
-        //-------------------------------------------------------
-        // 32 bit number conversions.
-        //-------------------------------------------------------
+		//-------------------------------------------------------
+		// Transaction version conversions.
+		//-------------------------------------------------------
 
-        /// <summary>
-        /// Convert int to big endian 32 bits.
-        /// The bit pattern will be the same regardless of sign.
+		/// <summary>
+		/// Convert long to a 7 byte record version for MRT.
+		/// </summary>
+		public static void LongToVersionBytes(long v, byte[] buf, int offset)
+		{
+			buf[offset++] = (byte)(v >> 0);
+			buf[offset++] = (byte)(v >> 8);
+			buf[offset++] = (byte)(v >> 16);
+			buf[offset++] = (byte)(v >> 24);
+			buf[offset++] = (byte)(v >> 32);
+			buf[offset++] = (byte)(v >> 40);
+			buf[offset] = (byte)(v >> 48);
+		}
+
+		/// <summary>
+        /// Convert 7 byte record version to a long for MRT.
         /// </summary>
-        public static int IntToBytes(uint v, byte[] buf, int offset)
+        /// <param name="buf"></param>
+        /// <param name="offset"></param>
+        /// <returns></returns>
+		public static long VersionBytesToLong(byte[] buf, int offset)
+		{
+			return (
+				((long)(buf[offset] & 0xFF) << 0) |
+				((long)(buf[offset + 1] & 0xFF) << 8) |
+				((long)(buf[offset + 2] & 0xFF) << 16) |
+				((long)(buf[offset + 3] & 0xFF) << 24) |
+				((long)(buf[offset + 4] & 0xFF) << 32) |
+				((long)(buf[offset + 5] & 0xFF) << 40) |
+				((long)(buf[offset + 6] & 0xFF) << 48)
+			);
+		}
+
+		//-------------------------------------------------------
+		// 32 bit number conversions.
+		//-------------------------------------------------------
+
+		/// <summary>
+		/// Convert int to big endian 32 bits.
+		/// The bit pattern will be the same regardless of sign.
+		/// </summary>
+		public static int IntToBytes(uint v, byte[] buf, int offset)
         {
             // Benchmarks show that custom conversion is faster than System.BitConverter.GetBytes().
             // Assume little endian machine and reverse/convert in one pass.

@@ -129,6 +129,52 @@ namespace Aerospike.Client
 		}
 
 		//-------------------------------------------------------
+		// Multi-Record Transactions
+		//-------------------------------------------------------
+
+		/// <summary>
+		/// Asynchronously attempt to commit the given multi-record transaction. First, the expected
+		/// record versions are sent to the server nodes for verification.If all nodes return success,
+		/// the transaction is committed.Otherwise, the transaction is aborted.
+		/// <p>
+		/// This method registers the command with an event loop and returns.
+		/// The event loop thread will process the command and send the results to the listener.
+		/// </p><p>
+		/// Requires server version 8.0+
+		/// </p>
+		/// </summary>
+		/// <param name="listener">where to send results</param>
+		/// <param name="tran">multi-record transaction</param>
+		public void Commit(CommitListener listener, Tran tran)
+		{
+			tran.SetRollAttempted();
+
+			//AsyncTranRoll tm = new AsyncTranRoll(
+			//cluster, tranVerifyPolicyDefault, tranRollPolicyDefault, tran
+			//);
+			//tm.Commit(listener);
+		}
+
+		/// <summary>
+		/// Asynchronously abort and rollback the given multi-record transaction.
+	    /// <p>
+	    /// This method registers the command with an event loop and returns.
+	    /// The event loop thread will process the command and send the results to the listener.
+		/// </p><p>
+		/// Requires server version 8.0+
+		/// </p>
+		/// </summary>
+		/// <param name="listener">where to send results</param>
+		/// <param name="tran">multi-record transaction</param>
+		public void Abort(AbortListener listener, Tran tran)
+		{
+			tran.SetRollAttempted();
+
+			//AsyncTranRoll tm = new AsyncTranRoll(cluster, null, tranRollPolicyDefault, tran);
+			//tm.Abort(listener);
+		}
+
+		//-------------------------------------------------------
 		// Write Record Operations
 		//-------------------------------------------------------
 
@@ -1115,7 +1161,7 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if queue is full</exception>
 		public void Operate(WritePolicy policy, RecordListener listener, Key key, params Operation[] ops)
 		{
-			OperateArgs args = new OperateArgs(policy, writePolicyDefault, operatePolicyReadDefault, key, ops);
+			OperateArgs args = new OperateArgs(policy, writePolicyDefault, operatePolicyReadDefault, ops);
 			AsyncOperate async = new AsyncOperate(cluster, listener, key, args);
 			async.Execute();
 		}

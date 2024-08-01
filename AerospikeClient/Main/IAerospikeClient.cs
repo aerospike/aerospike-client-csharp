@@ -74,6 +74,17 @@ namespace Aerospike.Client
 		BatchUDFPolicy BatchUDFPolicyDefault { get; set; }
 
 		/// <summary>
+		/// Default multi-record transactions (MRT) policy when verifying record versions in a batch on a commit.
+		/// </summary>
+		BatchPolicy TranVerifyPolicyDefault { get; set; }
+
+		/// <summary>
+		/// Default multi-record transactions (MRT) policy when rolling the transaction records forward (commit)
+	    /// or back(abort) in a batch.
+		/// </summary>
+		BatchPolicy TranRollPolicyDefault { get; set; }
+
+		/// <summary>
 		/// Default info policy that is used when info command policy is null.
 		/// </summary>
 		InfoPolicy InfoPolicyDefault { get; set; }
@@ -117,6 +128,30 @@ namespace Aerospike.Client
 		/// Return operating cluster statistics snapshot.
 		/// </summary>
 		ClusterStats GetClusterStats();
+
+		//-------------------------------------------------------
+		// Multi-Record Transactions
+		//-------------------------------------------------------
+
+		/// <summary>
+		/// Attempt to commit the given multi-record transaction. First, the expected record versions are
+		/// sent to the server nodes for verification.If all nodes return success, the transaction is
+		/// committed.Otherwise, the transaction is aborted.
+		/// <p>
+		/// Requires server version 8.0+
+		/// </p>
+		/// </summary>
+		/// <param name="tran">multi-record transaction</param>
+		void Commit(Tran tran);
+
+		/// <summary>
+		/// Abort and rollback the given multi-record transaction.
+	    /// <p>
+	    /// Requires server version 8.0+
+		/// </p>
+		/// </summary>
+		/// <param name="tran">multi-record transaction</param>
+		void Abort(Tran tran);
 
 		//-------------------------------------------------------
 		// Write Record Operations

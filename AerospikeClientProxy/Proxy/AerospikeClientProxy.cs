@@ -101,6 +101,17 @@ namespace Aerospike.Client.Proxy
 		public BatchUDFPolicy batchUDFPolicyDefault { get; set; }
 
 		/// <summary>
+		/// Default multi-record transactions (MRT) policy when verifying record versions in a batch on a commit.
+		/// </summary>
+		public BatchPolicy tranVerifyPolicyDefault { get; set; }
+
+		/// <summary>
+		/// Default multi-record transactions (MRT) policy when rolling the transaction records forward (commit)
+		/// or back(abort) in a batch.
+		/// </summary>
+		public BatchPolicy tranRollPolicyDefault { get; set; }
+
+		/// <summary>
 		/// Default info policy that is used when info command policy is null.
 		/// </summary>
 		public InfoPolicy infoPolicyDefault { get; set; }
@@ -150,6 +161,8 @@ namespace Aerospike.Client.Proxy
 			this.batchWritePolicyDefault = policy.batchWritePolicyDefault;
 			this.batchDeletePolicyDefault = policy.batchDeletePolicyDefault;
 			this.batchUDFPolicyDefault = policy.batchUDFPolicyDefault;
+			this.tranVerifyPolicyDefault = policy.tranVerifyPolicyDefault;
+			this.tranRollPolicyDefault = policy.tranRollPolicyDefault;
 			this.infoPolicyDefault = policy.infoPolicyDefault;
 			this.operatePolicyReadDefault = new WritePolicy(this.readPolicyDefault);
 
@@ -305,6 +318,25 @@ namespace Aerospike.Client.Proxy
 		}
 
 		/// <summary>
+		/// Default multi-record transactions (MRT) policy when verifying record versions in a batch on a commit.
+		/// </summary>
+		public BatchPolicy TranVerifyPolicyDefault
+		{
+			get { return tranVerifyPolicyDefault; }
+			set { tranVerifyPolicyDefault = value; }
+		}
+
+		/// <summary>
+		/// Default multi-record transactions (MRT) policy when rolling the transaction records forward (commit)
+		/// or back(abort) in a batch.
+		/// </summary>
+		public BatchPolicy TranRollPolicyDefault
+		{
+			get { return tranRollPolicyDefault; }
+			set { tranRollPolicyDefault = value; }
+		}
+
+		/// <summary>
 		/// Default info policy that is used when info command policy is null.
 		/// </summary>
 		public InfoPolicy InfoPolicyDefault
@@ -422,6 +454,36 @@ namespace Aerospike.Client.Proxy
 			var deadline = DateTime.UtcNow.AddMilliseconds(readPolicyDefault.totalTimeout);
 			var response = about.Get(request, deadline: deadline);
 			return response.Version;
+		}
+
+		//-------------------------------------------------------
+		// Multi-Record Transactions
+		//-------------------------------------------------------
+
+		/// <summary>
+		/// Attempt to commit the given multi-record transaction. First, the expected record versions are
+		/// sent to the server nodes for verification.If all nodes return success, the transaction is
+		/// committed.Otherwise, the transaction is aborted.
+		/// <p>
+		/// Requires server version 8.0+
+		/// </p>
+		/// </summary>
+		/// <param name="tran">multi-record transaction</param>
+		public void Commit(Tran tran)
+		{
+			
+		}
+
+		/// <summary>
+		/// Abort and rollback the given multi-record transaction.
+		/// <p>
+		/// Requires server version 8.0+
+		/// </p>
+		/// </summary>
+		/// <param name="tran">multi-record transaction</param>
+		public void Abort(Tran tran)
+		{
+			
 		}
 
 		//-------------------------------------------------------
@@ -979,7 +1041,7 @@ namespace Aerospike.Client.Proxy
 		/// <exception cref="AerospikeException">if command fails</exception>
 		public Record Operate(WritePolicy policy, Key key, params Operation[] operations)
 		{
-			OperateArgs args = new(policy, writePolicyDefault, operatePolicyReadDefault, key, operations);
+			OperateArgs args = new(policy, writePolicyDefault, operatePolicyReadDefault, operations);
 			Buffer buffer = new();
 			OperateCommandProxy command = new(buffer, Channel, key, args);
 			command.Execute();

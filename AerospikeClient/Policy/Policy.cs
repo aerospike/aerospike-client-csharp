@@ -26,6 +26,14 @@ namespace Aerospike.Client
 	public class Policy
 	{
 		/// <summary>
+		/// Multi-record transaction identifier.
+	    /// <para>
+	    /// Default: null
+		/// </para>
+		/// </summary>
+		public Tran Tran { get; set; }
+		
+		/// <summary>
 		/// Read policy for AP (availability) namespaces.
 		/// <para>
 		/// Default: <see cref="Aerospike.Client.ReadModeAP.ONE"/>
@@ -275,6 +283,7 @@ namespace Aerospike.Client
 		/// </summary>
 		public Policy(Policy other)
 		{
+			this.Tran = other.Tran;
 			this.readModeAP = other.readModeAP;
 			this.readModeSC = other.readModeSC;
 			this.replica = other.replica;

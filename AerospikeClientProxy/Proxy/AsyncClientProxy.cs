@@ -112,6 +112,44 @@ namespace Aerospike.Client.Proxy
 		}
 
 		//-------------------------------------------------------
+		// Multi-Record Transactions
+		//-------------------------------------------------------
+
+		/// <summary>
+		/// Asynchronously attempt to commit the given multi-record transaction. First, the expected
+		/// record versions are sent to the server nodes for verification.If all nodes return success,
+		/// the transaction is committed.Otherwise, the transaction is aborted.
+		/// <p>
+		/// This method registers the command with an event loop and returns.
+		/// The event loop thread will process the command and send the results to the listener.
+		/// </p><p>
+		/// Requires server version 8.0+
+		/// </p>
+		/// </summary>
+		/// <param name="listener">where to send results</param>
+		/// <param name="tran">multi-record transaction</param>
+		public void Commit(CommitListener listener, Tran tran)
+		{
+			
+		}
+
+		/// <summary>
+		/// Asynchronously abort and rollback the given multi-record transaction.
+		/// <p>
+		/// This method registers the command with an event loop and returns.
+		/// The event loop thread will process the command and send the results to the listener.
+		/// </p><p>
+		/// Requires server version 8.0+
+		/// </p>
+		/// </summary>
+		/// <param name="listener">where to send results</param>
+		/// <param name="tran">multi-record transaction</param>
+		public void Abort(AbortListener listener, Tran tran)
+		{
+			
+		}
+
+		//-------------------------------------------------------
 		// Write Record Operations
 		//-------------------------------------------------------
 
@@ -993,7 +1031,7 @@ namespace Aerospike.Client.Proxy
 		/// <exception cref="AerospikeException">if queue is full</exception>
 		public async Task<Record> Operate(WritePolicy policy, CancellationToken token, Key key, params Operation[] ops)
 		{
-			OperateArgs args = new(policy, writePolicyDefault, operatePolicyReadDefault, key, ops);
+			OperateArgs args = new(policy, writePolicyDefault, operatePolicyReadDefault, ops);
 			Buffer buffer = new();
 			OperateCommandProxy command = new(buffer, Channel, key, args);
 			return await command.Execute(token);

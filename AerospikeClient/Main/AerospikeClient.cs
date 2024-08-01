@@ -95,6 +95,17 @@ namespace Aerospike.Client
 		public BatchUDFPolicy batchUDFPolicyDefault;
 
 		/// <summary>
+		/// Default multi-record transactions (MRT) policy when verifying record versions in a batch on a commit.
+		/// </summary>
+		public BatchPolicy tranVerifyPolicyDefault;
+
+		/// <summary>
+		/// Default multi-record transactions (MRT) policy when rolling the transaction records forward (commit)
+		/// or back(abort) in a batch.
+		/// </summary>
+		public BatchPolicy tranRollPolicyDefault;
+
+		/// <summary>
 		/// Default info policy that is used when info command policy is null.
 		/// </summary>
 		public InfoPolicy infoPolicyDefault;
@@ -190,6 +201,8 @@ namespace Aerospike.Client
 			this.batchWritePolicyDefault = policy.batchWritePolicyDefault;
 			this.batchDeletePolicyDefault = policy.batchDeletePolicyDefault;
 			this.batchUDFPolicyDefault = policy.batchUDFPolicyDefault;
+			this.tranVerifyPolicyDefault = policy.tranVerifyPolicyDefault;
+			this.tranRollPolicyDefault = policy.tranRollPolicyDefault;
 			this.infoPolicyDefault = policy.infoPolicyDefault;
 			this.operatePolicyReadDefault = new WritePolicy(this.readPolicyDefault);
 
@@ -214,6 +227,8 @@ namespace Aerospike.Client
 				this.batchWritePolicyDefault = policy.batchWritePolicyDefault;
 				this.batchDeletePolicyDefault = policy.batchDeletePolicyDefault;
 				this.batchUDFPolicyDefault = policy.batchUDFPolicyDefault;
+				this.tranVerifyPolicyDefault = policy.tranVerifyPolicyDefault;
+				this.tranRollPolicyDefault = policy.tranRollPolicyDefault;
 				this.infoPolicyDefault = policy.infoPolicyDefault;
 			}
 			else
@@ -227,6 +242,8 @@ namespace Aerospike.Client
 				this.batchWritePolicyDefault = new BatchWritePolicy();
 				this.batchDeletePolicyDefault = new BatchDeletePolicy();
 				this.batchUDFPolicyDefault = new BatchUDFPolicy();
+				this.tranVerifyPolicyDefault = new TranVerifyPolicy();
+				this.tranRollPolicyDefault= new TranRollPolicy();
 				this.infoPolicyDefault = new InfoPolicy();
 			}
 			this.operatePolicyReadDefault = new WritePolicy(this.readPolicyDefault);
@@ -318,6 +335,25 @@ namespace Aerospike.Client
 		{
 			get { return batchUDFPolicyDefault; }
 			set { batchUDFPolicyDefault = value; }
+		}
+
+		/// <summary>
+		/// Default multi-record transactions (MRT) policy when verifying record versions in a batch on a commit.
+		/// </summary>
+		public BatchPolicy TranVerifyPolicyDefault
+		{
+			get { return tranVerifyPolicyDefault; }
+			set { tranVerifyPolicyDefault = value; }
+		}
+
+		/// <summary>
+		/// Default multi-record transactions (MRT) policy when rolling the transaction records forward (commit)
+		/// or back(abort) in a batch.
+		/// </summary>
+		public BatchPolicy TranRollPolicyDefault
+		{
+			get { return tranRollPolicyDefault; }
+			set { tranRollPolicyDefault = value; }
 		}
 
 		/// <summary>
@@ -420,6 +456,42 @@ namespace Aerospike.Client
 		public ClusterStats GetClusterStats()
 		{
 			return cluster.GetStats();
+		}
+
+		//-------------------------------------------------------
+		// Multi-Record Transactions
+		//-------------------------------------------------------
+
+		/// <summary>
+		/// Attempt to commit the given multi-record transaction. First, the expected record versions are
+		/// sent to the server nodes for verification.If all nodes return success, the transaction is
+		/// committed.Otherwise, the transaction is aborted.
+		/// <p>
+		/// Requires server version 8.0+
+		/// </p>
+		/// </summary>
+		/// <param name="tran">multi-record transaction</param>
+		public void Commit(Tran tran)
+		{
+			tran.SetRollAttempted();
+
+			TranRoll tm = new TranRoll(cluster, tran);
+			tm.Commit(tranVerifyPolicyDefault, tranRollPolicyDefault);
+		}
+
+		/// <summary>
+		/// Abort and rollback the given multi-record transaction.
+		/// <p>
+		/// Requires server version 8.0+
+		/// </p>
+		/// </summary>
+		/// <param name="tran">multi-record transaction</param>
+		public void Abort(Tran tran)
+		{
+			tran.SetRollAttempted();
+
+			TranRoll tm = new TranRoll(cluster, tran);
+			tm.Abort(tranRollPolicyDefault);
 		}
 
 		//-------------------------------------------------------
@@ -1137,7 +1209,7 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if command fails</exception>
 		public Record Operate(WritePolicy policy, Key key, params Operation[] operations)
 		{
-			OperateArgs args = new OperateArgs(policy, writePolicyDefault, operatePolicyReadDefault, key, operations);
+			OperateArgs args = new OperateArgs(policy, writePolicyDefault, operatePolicyReadDefault, operations);
 			OperateCommand command = new OperateCommand(cluster, key, args);
 			command.Execute();
 			return command.Record;
@@ -2027,7 +2099,7 @@ namespace Aerospike.Client
 
 			sb.Append(";indexdata=");
 			sb.Append(binName);
-			sb.Append(",");
+			sb.Append(',');
 			sb.Append(indexType);
 
 			// Send index command to one node. That node will distribute the command to other nodes.

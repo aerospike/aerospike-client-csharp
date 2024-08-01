@@ -17,43 +17,27 @@
 
 namespace Aerospike.Client
 {
-	public sealed class WriteCommand : SyncWriteCommand
+	public sealed class TranClose : SyncWriteCommand
 	{
-		private readonly Bin[] bins;
-		private readonly Operation.Type operation;
+		private readonly Tran tran;
 
-		public WriteCommand(Cluster cluster, WritePolicy writePolicy, Key key, Bin[] bins, Operation.Type operation)
+		public TranClose(Cluster cluster, Tran tran, WritePolicy writePolicy, Key key) 
 			: base(cluster, writePolicy, key)
 		{
-			this.bins = bins;
-			this.operation = operation;
-			cluster.AddTran();
+			this.tran = tran;
 		}
 
 		protected internal override void WriteBuffer()
 		{
-			SetWrite(writePolicy, operation, key, bins);
+			SetTranClose(tran, key);
 		}
 
 		protected internal override void ParseResult(IConnection conn)
 		{
-			// Read header.		
-			conn.ReadFully(dataBuffer, MSG_TOTAL_HEADER_SIZE, Command.STATE_READ_HEADER);
-			conn.UpdateLastUsed();
+			int resultCode = ParseHeader(conn);
 
-			int resultCode = dataBuffer[13];
-
-			if (resultCode == 0)
+			if (resultCode == ResultCode.OK || resultCode == ResultCode.KEY_NOT_FOUND_ERROR)
 			{
-				return;
-			}
-
-			if (resultCode == ResultCode.FILTERED_OUT)
-			{
-				if (writePolicy.failOnFilteredOut)
-				{
-					throw new AerospikeException(resultCode);
-				}
 				return;
 			}
 

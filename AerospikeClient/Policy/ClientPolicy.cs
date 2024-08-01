@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2022 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -225,7 +225,18 @@ namespace Aerospike.Client
 		/// Default user defined function policy used in batch UDF excecute commands.
 		/// </summary>
 		public BatchUDFPolicy batchUDFPolicyDefault = new BatchUDFPolicy();
-		
+
+		/// <summary>
+		/// Default multi-record transactions (MRT) policy when verifying record versions in a batch on a commit.
+		/// </summary>
+		public TranVerifyPolicy tranVerifyPolicyDefault = new TranVerifyPolicy();
+
+		/// <summary>
+		/// Default multi-record transactions (MRT) policy when rolling the transaction records forward (commit)
+		/// or back(abort) in a batch.
+		/// </summary>
+		public TranRollPolicy tranRollPolicyDefault = new TranRollPolicy();
+
 		/// <summary>
 		/// Default info policy that is used when info command's policy is null.
 		/// </summary>
@@ -326,6 +337,8 @@ namespace Aerospike.Client
 			this.batchWritePolicyDefault = new BatchWritePolicy(other.batchWritePolicyDefault);
 			this.batchDeletePolicyDefault = new BatchDeletePolicy(other.batchDeletePolicyDefault);
 			this.batchUDFPolicyDefault = new BatchUDFPolicy(other.batchUDFPolicyDefault);
+			this.tranVerifyPolicyDefault = new TranVerifyPolicy(other.tranVerifyPolicyDefault);
+			this.tranRollPolicyDefault = new TranRollPolicy(other.tranRollPolicyDefault);
 			this.infoPolicyDefault = new InfoPolicy(other.infoPolicyDefault);
 			this.tlsPolicy = (other.tlsPolicy != null) ? new TlsPolicy(other.tlsPolicy) : null;
 			this.ipMap = other.ipMap;
