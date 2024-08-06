@@ -305,6 +305,7 @@ namespace Aerospike.Client
 		/// </summary>
 		public Policy()
 		{
+			Tran = null;
 		}
 
 		/// <summary>

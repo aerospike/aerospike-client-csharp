@@ -86,7 +86,7 @@ namespace Aerospike.Client
 		{
 			if (batch.node.HasBatchAny)
 			{
-				SetBatchOperate(batchPolicy, null, null, null, records, batch);
+				SetBatchOperate(batchPolicy, records, batch);
 			}
 			else
 			{
@@ -197,7 +197,7 @@ namespace Aerospike.Client
 		{
 			if (batch.node.HasBatchAny)
 			{
-				SetBatchOperate(batchPolicy, null, null, null, records, batch);
+				SetBatchOperate(batchPolicy, records, batch);
 			}
 			else
 			{
@@ -790,7 +790,7 @@ namespace Aerospike.Client
 
 		protected internal override void WriteBuffer()
 		{
-			SetBatchOperate(batchPolicy, null, null, null, records, batch);
+			SetBatchOperate(batchPolicy, records, batch);
 		}
 
 		protected internal override void ParseRow()
@@ -935,7 +935,7 @@ namespace Aerospike.Client
 
 		protected internal override void WriteBuffer()
 		{
-			SetBatchOperate(batchPolicy, null, null, null, records, batch);
+			SetBatchOperate(batchPolicy, records, batch);
 		}
 
 		protected internal override void ParseRow()

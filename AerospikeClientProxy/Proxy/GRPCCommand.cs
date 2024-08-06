@@ -884,8 +884,7 @@ namespace Aerospike.Client.Proxy
 		// Batch Read/Write Operations
 		//--------------------------------------------------
 
-		public override void SetBatchOperate(BatchPolicy policy, BatchWritePolicy writePolicy,
-			BatchUDFPolicy udfPolicy, BatchDeletePolicy deletePolicy, IList records, BatchNode batch)
+		public override void SetBatchOperate(BatchPolicy policy, IList records, BatchNode batch)
 		{
 			// Estimate full row size
 			int[] offsets = batch.offsets;

@@ -258,7 +258,7 @@ namespace Aerospike.Client
 		/// </summary>
 		public Policy ReadPolicyDefault
 		{
-			get { return readPolicyDefault; }
+			get { return new Policy(readPolicyDefault); }
 			set { readPolicyDefault = value; }
 		}
 
@@ -267,7 +267,7 @@ namespace Aerospike.Client
 		/// </summary>
 		public WritePolicy WritePolicyDefault
 		{
-			get { return writePolicyDefault; }
+			get { return new WritePolicy(writePolicyDefault); }
 			set { writePolicyDefault = value; }
 		}
 
@@ -276,7 +276,7 @@ namespace Aerospike.Client
 		/// </summary>
 		public ScanPolicy ScanPolicyDefault
 		{
-			get { return scanPolicyDefault; }
+			get { return new ScanPolicy(scanPolicyDefault); }
 			set { scanPolicyDefault = value; }
 		}
 
@@ -285,7 +285,7 @@ namespace Aerospike.Client
 		/// </summary>
 		public QueryPolicy QueryPolicyDefault
 		{
-			get { return queryPolicyDefault; }
+			get { return new QueryPolicy(queryPolicyDefault); }
 			set { queryPolicyDefault = value; }
 		}
 
@@ -295,7 +295,7 @@ namespace Aerospike.Client
 		/// </summary>
 		public BatchPolicy BatchPolicyDefault
 		{
-			get { return batchPolicyDefault; }
+			get { return new BatchPolicy(batchPolicyDefault); }
 			set { batchPolicyDefault = value; }
 		}
 
@@ -305,7 +305,7 @@ namespace Aerospike.Client
 		/// </summary>
 		public BatchPolicy BatchParentPolicyWriteDefault
 		{
-			get { return batchParentPolicyWriteDefault; }
+			get { return new BatchPolicy(batchParentPolicyWriteDefault); }
 			set { batchParentPolicyWriteDefault = value; }
 		}
 
@@ -315,7 +315,7 @@ namespace Aerospike.Client
 		/// </summary>
 		public BatchWritePolicy BatchWritePolicyDefault
 		{
-			get { return batchWritePolicyDefault; }
+			get { return new BatchWritePolicy(batchWritePolicyDefault); }
 			set { batchWritePolicyDefault = value; }
 		}
 
@@ -324,7 +324,7 @@ namespace Aerospike.Client
 		/// </summary>
 		public BatchDeletePolicy BatchDeletePolicyDefault
 		{
-			get { return batchDeletePolicyDefault; }
+			get { return new BatchDeletePolicy(batchDeletePolicyDefault); }
 			set { batchDeletePolicyDefault = value; }
 		}
 
@@ -333,7 +333,7 @@ namespace Aerospike.Client
 		/// </summary>
 		public BatchUDFPolicy BatchUDFPolicyDefault
 		{
-			get { return batchUDFPolicyDefault; }
+			get { return new BatchUDFPolicy(batchUDFPolicyDefault); }
 			set { batchUDFPolicyDefault = value; }
 		}
 
@@ -342,7 +342,7 @@ namespace Aerospike.Client
 		/// </summary>
 		public BatchPolicy TranVerifyPolicyDefault
 		{
-			get { return tranVerifyPolicyDefault; }
+			get { return new BatchPolicy(tranVerifyPolicyDefault); }
 			set { tranVerifyPolicyDefault = value; }
 		}
 
@@ -352,7 +352,7 @@ namespace Aerospike.Client
 		/// </summary>
 		public BatchPolicy TranRollPolicyDefault
 		{
-			get { return tranRollPolicyDefault; }
+			get { return new BatchPolicy(tranRollPolicyDefault); }
 			set { tranRollPolicyDefault = value; }
 		}
 

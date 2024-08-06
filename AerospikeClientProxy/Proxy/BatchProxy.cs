@@ -44,7 +44,8 @@ namespace Aerospike.Client.Proxy
 
 		protected internal override void WriteBuffer()
 		{
-			SetBatchOperate(BatchPolicy, null, null, null, (IList)Records, Batch);
+			//SetBatchOperate(BatchPolicy, null, null, null, (IList)Records, Batch);
+			SetBatchOperate(BatchPolicy, (IList)Records, Batch);
 		}
 
 		protected internal override bool ParseRow()
@@ -141,7 +142,8 @@ namespace Aerospike.Client.Proxy
 
 		protected internal override void WriteBuffer()
 		{
-			SetBatchOperate(BatchPolicy, null, null, null, Records.ToArray(), Batch);
+			//SetBatchOperate(BatchPolicy, null, null, null, Records.ToArray(), Batch);
+			SetBatchOperate(BatchPolicy, Records.ToArray(), Batch);
 		}
 
 		protected internal override bool ParseRow()
@@ -192,7 +194,8 @@ namespace Aerospike.Client.Proxy
 
 		protected internal override void WriteBuffer()
 		{
-			SetBatchOperate(BatchPolicy, null, null, null, (IList)Records, Batch);
+			//SetBatchOperate(BatchPolicy, null, null, null, (IList)Records, Batch);
+			SetBatchOperate(BatchPolicy, (IList)Records, Batch);
 		}
 
 		protected internal override bool ParseRow()
