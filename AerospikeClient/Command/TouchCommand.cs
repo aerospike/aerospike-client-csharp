@@ -55,10 +55,50 @@ namespace Aerospike.Client
 		protected internal override void ParseResult(IConnection conn)
 		{
 			// Read header.		
-			conn.ReadFully(dataBuffer, MSG_TOTAL_HEADER_SIZE, Command.STATE_READ_HEADER);
+			conn.ReadFully(dataBuffer, 8, Command.STATE_READ_HEADER);
+
+			long sz = ByteUtil.BytesToLong(dataBuffer, 0);
+			int receiveSize = (int)(sz & 0xFFFFFFFFFFFFL);
+
+			if (receiveSize <= 0)
+			{
+				throw new AerospikeException("Invalid receive size: " + receiveSize);
+			}
+
+			SizeBuffer(receiveSize);
+			conn.ReadFully(dataBuffer, receiveSize, Command.STATE_READ_DETAIL);
 			conn.UpdateLastUsed();
 
-			int resultCode = dataBuffer[13];
+			ulong type = (ulong)((sz >> 48) & 0xff);
+
+			if (type == Command.AS_MSG_TYPE)
+			{
+				dataOffset = 5;
+			}
+			else if (type == Command.MSG_TYPE_COMPRESSED)
+			{
+				int usize = (int)ByteUtil.BytesToLong(dataBuffer, 0);
+				byte[] ubuf = new byte[usize];
+
+				ByteUtil.Decompress(dataBuffer, 8, receiveSize, ubuf, usize);
+				dataBuffer = ubuf;
+				dataOffset = 13;
+			}
+			else
+			{
+				throw new AerospikeException("Invalid proto type: " + type + " Expected: " + Command.AS_MSG_TYPE);
+			}
+
+			int resultCode = dataBuffer[dataOffset];
+			dataOffset++;
+			int generation = ByteUtil.BytesToInt(dataBuffer, dataOffset);
+			dataOffset += 4;
+			int expiration = ByteUtil.BytesToInt(dataBuffer, dataOffset);
+			dataOffset += 8;
+			int fieldCount = ByteUtil.BytesToShort(dataBuffer, dataOffset);
+			dataOffset += 2;
+			int opCount = ByteUtil.BytesToShort(dataBuffer, dataOffset);
+			dataOffset += 2;
 
 			if (resultCode == 0)
 			{
