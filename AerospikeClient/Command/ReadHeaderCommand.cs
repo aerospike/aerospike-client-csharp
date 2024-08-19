@@ -48,16 +48,10 @@ namespace Aerospike.Client
 
 		protected internal override void ParseResult(IConnection conn)
 		{
-			// Read header.		
-			conn.ReadFully(dataBuffer, MSG_TOTAL_HEADER_SIZE, Command.STATE_READ_HEADER);
-			conn.UpdateLastUsed();
-
-			int resultCode = dataBuffer[13];
+			ParseHeader(conn);
 
 			if (resultCode == 0)
 			{
-				int generation = ByteUtil.BytesToInt(dataBuffer, 14);
-				int expiration = ByteUtil.BytesToInt(dataBuffer, 18);
 				record = new Record(null, generation, expiration);
 				return;
 			}

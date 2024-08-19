@@ -14,10 +14,8 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using System;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Aerospike.Client;
-using Aerospike.Client.Proxy;
 
 namespace Aerospike.Test
 {
@@ -53,6 +51,22 @@ namespace Aerospike.Test
 
 			// Generation should be greater than zero.  Make sure it's populated.
 			if (record.generation == 0)
+			{
+				Assert.Fail("Invalid record header: generation=" + record.generation + " expiration=" + record.expiration);
+			}
+		}
+
+		[TestMethod]
+		public void PutGetHeader()
+		{
+			Key key = new(args.ns, args.set, "getHeader");
+			client.Put(null, key, new Bin("mybin", "myvalue"));
+
+			Record record = client.GetHeader(null, key);
+			AssertRecordFound(key, record);
+
+			// Generation should be greater than zero.  Make sure it's populated.
+			if (record.generation == 0) 
 			{
 				Assert.Fail("Invalid record header: generation=" + record.generation + " expiration=" + record.expiration);
 			}
