@@ -44,9 +44,8 @@ namespace Aerospike.Client
 		/// When reportSizeLimit is reached or exceeded, the current metrics file is closed and a new
 		/// metrics file is created with a new timestamp.If reportSizeLimit is zero, the metrics file
 		/// size is unbounded and the file will only be closed when
-		/// {@link com.aerospike.client.AerospikeClient#disableMetrics()} or TODO
-		/// {
-		/// link com.aerospike.client.AerospikeClient#close()} is called.
+		/// <see cref="AerospikeClient.DisableMetrics()"/> or
+		/// <see cref="AerospikeClient.Close()"/> is called.
 		/// </para>
 		/// Default: 0
 		/// </summary>
@@ -54,7 +53,7 @@ namespace Aerospike.Client
 
 		/// <summary>
 		/// Number of cluster tend iterations between metrics notification events. One tend iteration
-		/// is defined as {@link ClientPolicy#tendInterval} (default 1 second) plus the time to tend all
+		/// is defined as <see cref="ClientPolicy.tendInterval"/> (default 1 second) plus the time to tend all
 		/// nodes.
 		/// Default: 30
 		/// </summary>
