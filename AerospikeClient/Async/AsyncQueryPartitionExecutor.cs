@@ -41,7 +41,7 @@ namespace Aerospike.Client
 			this.statement = statement;
 			this.tracker = tracker;
 
-			cluster.AddTran();
+			cluster.AddCommand();
 			tracker.SleepBetweenRetries = 0;
 			taskId = statement.PrepareTaskId();
 			QueryPartitions();

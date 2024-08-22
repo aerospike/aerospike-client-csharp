@@ -46,8 +46,7 @@ namespace Aerospike.Client
 			{
 				commands[count++] = new AsyncBatchReadListCommand(this, cluster, batchNode, policy, records);
 			}
-			// Dispatch commands to nodes.
-			Execute(commands);
+			this.commands = commands;
 		}
 
 		protected internal override void OnSuccess()
@@ -153,8 +152,7 @@ namespace Aerospike.Client
 			{
 				commands[count++] = new AsyncBatchReadSequenceCommand(this, cluster, batchNode, policy, listener, records);
 			}
-			// Dispatch commands to nodes.
-			Execute(commands);
+			this.commands = commands;
 		}
 
 		protected internal override void OnSuccess()
@@ -273,8 +271,7 @@ namespace Aerospike.Client
 			{
 				commands[count++] = new AsyncBatchGetArrayCommand(this, cluster, batchNode, policy, keys, binNames, ops, records, readAttr, isOperation);
 			}
-			// Dispatch commands to nodes.
-			Execute(commands);
+			this.commands = commands;
 		}
 
 		protected internal override void OnSuccess()
@@ -396,8 +393,7 @@ namespace Aerospike.Client
 			{
 				commands[count++] = new AsyncBatchGetSequenceCommand(this, cluster, batchNode, policy, keys, binNames, ops, listener, readAttr, isOperation);
 			}
-			// Dispatch commands to nodes.
-			Execute(commands);
+			this.commands = commands;
 		}
 
 		protected internal override void OnSuccess()
@@ -526,8 +522,7 @@ namespace Aerospike.Client
 			{
 				commands[count++] = new AsyncBatchExistsArrayCommand(this, cluster, batchNode, policy, keys, existsArray);
 			}
-			// Dispatch commands to nodes.
-			Execute(commands);
+			this.commands = commands;
 		}
 
 		protected internal override void OnSuccess()
@@ -581,13 +576,7 @@ namespace Aerospike.Client
 
 		protected internal override void ParseRow()
 		{
-			if (opCount > 0)
-			{
-				throw new AerospikeException.Parse("Received bins that were not requested!");
-			}
-
 			ParseFieldsRead(keys[batchIndex]);
-
 			existsArray[batchIndex] = resultCode == 0;
 		}
 
@@ -634,8 +623,7 @@ namespace Aerospike.Client
 			{
 				commands[count++] = new AsyncBatchExistsSequenceCommand(this, cluster, batchNode, policy, keys, listener);
 			}
-			// Dispatch commands to nodes.
-			Execute(commands);
+			this.commands = commands;
 		}
 
 		protected internal override void OnSuccess()
@@ -690,11 +678,6 @@ namespace Aerospike.Client
 
 		protected internal override void ParseRow()
 		{
-			if (opCount > 0)
-			{
-				throw new AerospikeException.Parse("Received bins that were not requested!");
-			}
-
 			Key keyOrig = keys[batchIndex];
 			ParseFieldsRead(keyOrig);
 			listener.OnExists(keyOrig, resultCode == 0);
@@ -745,8 +728,7 @@ namespace Aerospike.Client
 			{
 				tasks[count++] = new AsyncBatchOperateListCommand(this, cluster, batchNode, policy, records);
 			}
-			// Dispatch commands to nodes.
-			Execute(tasks);
+			this.commands = tasks;
 		}
 
 		protected internal override void OnSuccess()
@@ -839,6 +821,11 @@ namespace Aerospike.Client
 				if (record.resultCode == ResultCode.NO_RESPONSE)
 				{
 					record.inDoubt = record.hasWrite;
+
+					if (record.inDoubt && policy.Txn != null)
+					{
+						policy.Txn.OnWriteInDoubt(record.key);
+					}
 				}
 			}
 		}
@@ -886,8 +873,7 @@ namespace Aerospike.Client
 			{
 				tasks[count++] = new AsyncBatchOperateSequenceCommand(this, cluster, batchNode, policy, listener, records);
 			}
-			// Dispatch commands to nodes.
-			Execute(tasks);
+			this.commands = tasks;
 		}
 
 		protected internal override void OnSuccess()
@@ -988,6 +974,11 @@ namespace Aerospike.Client
 					// Set inDoubt, but do not call OnRecord() because user already has access to full
 					// BatchRecord list and can examine each record for inDoubt when the exception occurs.
 					record.inDoubt = record.hasWrite;
+
+					if (record.inDoubt && policy.Txn != null)
+					{
+						policy.Txn.OnWriteInDoubt(record.key);
+					}
 				}
 			}
 		}
@@ -1044,8 +1035,7 @@ namespace Aerospike.Client
 			{
 				tasks[count++] = new AsyncBatchOperateRecordArrayCommand(this, cluster, batchNode, policy, keys, ops, records, attr);
 			}
-			// Dispatch commands to nodes.
-			Execute(tasks);
+			this.commands = tasks;
 		}
 
 		protected internal override void OnSuccess()
@@ -1132,7 +1122,9 @@ namespace Aerospike.Client
 
 				if (record.resultCode == ResultCode.NO_RESPONSE)
 				{
-					record.inDoubt = inDoubt;
+					record.inDoubt = true;
+
+					policy.Txn?.OnWriteInDoubt(record.key);
 				}
 			}
 		}
@@ -1184,8 +1176,7 @@ namespace Aerospike.Client
 			{
 				tasks[count++] = new AsyncBatchOperateRecordSequenceCommand(this, cluster, batchNode, policy, keys, ops, sent, listener, attr);
 			}
-			// Dispatch commands to nodes.
-			Execute(tasks);
+			this.commands = tasks;
 		}
 
 		public override void BatchKeyError(Cluster cluster, Key key, int index, AerospikeException ae, bool inDoubt, bool hasWrite)
@@ -1283,6 +1274,12 @@ namespace Aerospike.Client
 					Key key = keys[index];
 					BatchRecord record = new(key, null, ResultCode.NO_RESPONSE, attr.hasWrite && inDoubt, attr.hasWrite);
 					sent[index] = true;
+
+					if (record.inDoubt && policy.Txn != null)
+					{
+						policy.Txn.OnWriteInDoubt(key);
+					}
+
 					AsyncBatch.OnRecord(cluster, listener, record, index);
 				}
 			}
@@ -1342,8 +1339,7 @@ namespace Aerospike.Client
 			{
 				tasks[count++] = new AsyncBatchUDFArrayCommand(this, cluster, batchNode, policy, keys, packageName, functionName, argBytes, recordArray, attr);
 			}
-			// Dispatch commands to nodes.
-			Execute(tasks);
+			this.commands = tasks;
 		}
 
 		protected internal override void OnSuccess()
@@ -1453,7 +1449,9 @@ namespace Aerospike.Client
 
 				if (record.resultCode == ResultCode.NO_RESPONSE)
 				{
-					record.inDoubt = inDoubt;
+					record.inDoubt = true;
+
+					policy.Txn?.OnWriteInDoubt(record.key);
 				}
 			}
 		}
@@ -1507,8 +1505,7 @@ namespace Aerospike.Client
 			{
 				tasks[count++] = new AsyncBatchUDFSequenceCommand(this, cluster, batchNode, policy, keys, packageName, functionName, argBytes, sent, listener, attr);
 			}
-			// Dispatch commands to nodes.
-			Execute(tasks);
+			this.commands = tasks;
 		}
 
 		public override void BatchKeyError(Cluster cluster, Key key, int index, AerospikeException ae, bool inDoubt, bool hasWrite)
@@ -1629,6 +1626,12 @@ namespace Aerospike.Client
 					Key key = keys[index];
 					BatchRecord record = new(key, null, ResultCode.NO_RESPONSE, attr.hasWrite && inDoubt, attr.hasWrite);
 					sent[index] = true;
+
+					if (record.inDoubt && policy.Txn != null)
+					{
+						policy.Txn.OnWriteInDoubt(record.key);
+					}
+
 					AsyncBatch.OnRecord(cluster, listener, record, index);
 				}
 			}
@@ -1651,6 +1654,228 @@ namespace Aerospike.Client
 	}
 
 	//-------------------------------------------------------
+	// MRT
+	//-------------------------------------------------------
+
+	public sealed class AsyncBatchTxnVerifyExecutor : AsyncBatchExecutor
+	{
+		internal readonly BatchRecordArrayListener listener;
+		private readonly BatchRecord[] records;
+
+		public AsyncBatchTxnVerifyExecutor
+		(
+			AsyncCluster cluster,
+			BatchPolicy policy,
+			BatchRecordArrayListener listener,
+			Key[] keys,
+			long[] versions,
+			BatchRecord[] records
+		) : base(cluster, true)
+		{
+			this.listener = listener;
+			this.records = records;
+
+			// Create commands.
+			List<BatchNode> batchNodes = BatchNode.GenerateList(cluster, policy, keys, records, false, this);
+			AsyncBatchCommand[] tasks = new AsyncBatchCommand[batchNodes.Count];
+			int count = 0;
+
+			foreach (BatchNode batchNode in batchNodes)
+			{
+				tasks[count++] = new AsyncBatchTxnVerifyCommand(this, cluster, batchNode, policy, policy.Txn, keys, versions, records);
+			}
+			this.commands = tasks;
+		}
+
+		protected internal override void OnSuccess()
+		{
+			listener.OnSuccess(records, GetStatus());
+		}
+
+		protected internal override void OnFailure(AerospikeException ae)
+		{
+			listener.OnFailure(records, ae);
+		}
+	}
+
+	sealed class AsyncBatchTxnVerifyCommand : AsyncBatchCommand
+	{
+		private Txn txn;
+		private Key[] keys;
+		private long[] versions;
+		private BatchRecord[] records;
+
+		public AsyncBatchTxnVerifyCommand(
+			AsyncBatchExecutor parent,
+			AsyncCluster cluster,
+			BatchNode batch,
+			BatchPolicy batchPolicy,
+			Txn txn,
+			Key[] keys,
+			long[] versions, // TODO does this need to be long?
+			BatchRecord[] records
+		) : base(parent, cluster, batch, batchPolicy, false)
+		{
+			this.txn = txn;
+			this.keys = keys;
+			this.versions = versions;
+			this.records = records;
+		}
+
+		public AsyncBatchTxnVerifyCommand(AsyncBatchTxnVerifyCommand other) : base(other)
+		{
+			this.txn = other.txn;
+			this.keys = other.keys;
+			this.versions = other.versions;
+			this.records = other.records;
+		}
+
+		protected internal override void WriteBuffer()
+		{
+			SetBatchTxnVerify(batchPolicy, txn, keys, versions, batch);
+		}
+
+		protected internal override void ParseRow()
+		{
+			SkipKey(fieldCount);
+
+			BatchRecord record = records[batchIndex];
+
+			if (resultCode == ResultCode.OK)
+			{
+				record.resultCode = resultCode;
+			}
+			else
+			{
+				record.SetError(resultCode, false);
+				parent.SetRowError();
+			}
+		}
+
+		protected internal override AsyncCommand CloneCommand()
+		{
+			return new AsyncBatchTxnVerifyCommand(this);
+		}
+
+		internal override AsyncBatchCommand CreateCommand(BatchNode batchNode)
+		{
+			return new AsyncBatchTxnVerifyCommand(parent, cluster, batchNode, batchPolicy, txn, keys, versions, records);
+		}
+
+		internal override List<BatchNode> GenerateBatchNodes()
+		{
+			return BatchNode.GenerateList(cluster, batchPolicy, keys, sequenceAP, sequenceSC, batch, false, parent);
+		}
+	}
+
+	public sealed class AsyncBatchTxnRollExecutor : AsyncBatchExecutor
+	{
+		internal readonly BatchRecordArrayListener listener;
+		private readonly BatchRecord[] records;
+
+		public AsyncBatchTxnRollExecutor
+		(
+			AsyncCluster cluster,
+			BatchPolicy policy,
+			BatchRecordArrayListener listener,
+			Key[] keys,
+			BatchRecord[] records,
+			BatchAttr attr
+		) : base(cluster, true)
+		{
+			this.listener = listener;
+			this.records = records;
+
+			// Create commands.
+			List<BatchNode> batchNodes = BatchNode.GenerateList(cluster, policy, keys, records, false, this);
+			AsyncBatchCommand[] tasks = new AsyncBatchCommand[batchNodes.Count];
+			int count = 0;
+
+			foreach (BatchNode batchNode in batchNodes)
+			{
+				tasks[count++] = new AsyncBatchTxnRollCommand(this, cluster, batchNode, policy, keys, records, attr);
+			}
+			this.commands = tasks;
+		}
+
+		protected internal override void OnSuccess()
+		{
+			listener.OnSuccess(records, GetStatus());
+		}
+
+		protected internal override void OnFailure(AerospikeException ae)
+		{
+			listener.OnFailure(records, ae);
+		}
+	}
+
+	sealed class AsyncBatchTxnRollCommand : AsyncBatchCommand
+	{
+		private Key[] keys;
+		private BatchRecord[] records;
+		private BatchAttr attr;
+
+		public AsyncBatchTxnRollCommand(
+			AsyncBatchExecutor parent,
+			AsyncCluster cluster,
+			BatchNode batch,
+			BatchPolicy batchPolicy,
+			Key[] keys,
+			BatchRecord[] records,
+			BatchAttr attr
+		) : base(parent, cluster, batch, batchPolicy, false)
+		{
+			this.keys = keys;
+			this.records = records;
+			this.attr = attr;
+		}
+
+		public AsyncBatchTxnRollCommand(AsyncBatchTxnRollCommand other) : base(other)
+		{
+			this.keys = other.keys;
+			this.attr = other.attr;
+			this.records = other.records;
+		}
+
+		protected internal override void WriteBuffer()
+		{
+			SetBatchTxnRoll(batchPolicy, keys, batch, attr);
+		}
+
+		protected internal override void ParseRow()
+		{
+			SkipKey(fieldCount);
+
+			BatchRecord record = records[batchIndex];
+
+			if (resultCode == ResultCode.OK)
+			{
+				record.resultCode = resultCode;
+			}
+			else
+			{
+				record.SetError(resultCode, Command.BatchInDoubt(attr.hasWrite, commandSentCounter));
+				parent.SetRowError();
+			}
+		}
+
+		protected internal override AsyncCommand CloneCommand()
+		{
+			return new AsyncBatchTxnRollCommand(this);
+		}
+
+		internal override AsyncBatchCommand CreateCommand(BatchNode batchNode)
+		{
+			return new AsyncBatchTxnRollCommand(parent, cluster, batchNode, batchPolicy, keys, records, attr);
+		}
+
+		internal override List<BatchNode> GenerateBatchNodes()
+		{
+			return BatchNode.GenerateList(cluster, batchPolicy, keys, sequenceAP, sequenceSC, batch, true, parent);
+		}
+	}
+
+	//-------------------------------------------------------
 	// Batch Base Executor
 	//-------------------------------------------------------
 
@@ -1661,11 +1886,17 @@ namespace Aerospike.Client
 		private int count;
 		private readonly bool hasResultCode;
 		private bool error;
+		public AsyncBatchCommand[] commands;
 
 		public AsyncBatchExecutor(AsyncCluster cluster, bool hasResultCode)
 		{
 			this.hasResultCode = hasResultCode;
-			cluster.AddTran();
+			cluster.AddCommand();
+		}
+
+		public void Execute()
+		{
+			Execute(commands);
 		}
 
 		public void Execute(AsyncBatchCommand[] commands)
@@ -1810,10 +2041,10 @@ namespace Aerospike.Client
 
 		protected void ParseFieldsRead(Key key)
 		{
-			if (policy.Tran != null)
+			if (policy.Txn != null)
 			{
 				long? version = ParseVersion(fieldCount);
-				policy.Tran.OnRead(key, version);
+				policy.Txn.OnRead(key, version);
 			}
 			else
 			{
@@ -1823,17 +2054,17 @@ namespace Aerospike.Client
 
 		protected void ParseFields(Key key, bool hasWrite)
 		{
-			if (policy.Tran != null)
+			if (policy.Txn != null)
 			{
 				long? version = ParseVersion(fieldCount);
 
 				if (hasWrite)
 				{
-					policy.Tran.OnWrite(key, version, resultCode);
+					policy.Txn.OnWrite(key, version, resultCode);
 				}
 				else
 				{
-					policy.Tran.OnRead(key, version);
+					policy.Txn.OnRead(key, version);
 				}
 			}
 			else

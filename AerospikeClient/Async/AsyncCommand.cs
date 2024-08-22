@@ -908,6 +908,12 @@ namespace Aerospike.Client
 				ae.Policy = policy;
 				ae.Iteration = iteration;
 				ae.SetInDoubt(IsWrite(), commandSentCounter);
+				
+				if (ae.InDoubt)
+				{
+					OnInDoubt();
+				}
+				
 				OnFailure(ae);
 			}
 			catch (Exception e)
@@ -941,6 +947,12 @@ namespace Aerospike.Client
 				cluster.ReleaseBuffer(segment);
 				segment = null;
 			}
+		}
+
+		// Do nothing by default. Write commands will override this method.
+		protected internal virtual void OnInDoubt()
+		{
+
 		}
 
 		protected internal virtual bool RetryBatch()

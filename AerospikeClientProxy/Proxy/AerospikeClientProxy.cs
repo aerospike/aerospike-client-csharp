@@ -103,13 +103,13 @@ namespace Aerospike.Client.Proxy
 		/// <summary>
 		/// Default multi-record transactions (MRT) policy when verifying record versions in a batch on a commit.
 		/// </summary>
-		public BatchPolicy tranVerifyPolicyDefault { get; set; }
+		public TxnVerifyPolicy txnVerifyPolicyDefault { get; set; }
 
 		/// <summary>
 		/// Default multi-record transactions (MRT) policy when rolling the transaction records forward (commit)
 		/// or back(abort) in a batch.
 		/// </summary>
-		public BatchPolicy tranRollPolicyDefault { get; set; }
+		public TxnRollPolicy txnRollPolicyDefault { get; set; }
 
 		/// <summary>
 		/// Default info policy that is used when info command policy is null.
@@ -161,8 +161,8 @@ namespace Aerospike.Client.Proxy
 			this.batchWritePolicyDefault = policy.batchWritePolicyDefault;
 			this.batchDeletePolicyDefault = policy.batchDeletePolicyDefault;
 			this.batchUDFPolicyDefault = policy.batchUDFPolicyDefault;
-			this.tranVerifyPolicyDefault = policy.tranVerifyPolicyDefault;
-			this.tranRollPolicyDefault = policy.tranRollPolicyDefault;
+			this.txnVerifyPolicyDefault = policy.txnVerifyPolicyDefault;
+			this.txnRollPolicyDefault = policy.txnRollPolicyDefault;
 			this.infoPolicyDefault = policy.infoPolicyDefault;
 			this.operatePolicyReadDefault = new WritePolicy(this.readPolicyDefault);
 
@@ -320,20 +320,20 @@ namespace Aerospike.Client.Proxy
 		/// <summary>
 		/// Default multi-record transactions (MRT) policy when verifying record versions in a batch on a commit.
 		/// </summary>
-		public BatchPolicy TranVerifyPolicyDefault
+		public TxnVerifyPolicy TxnVerifyPolicyDefault
 		{
-			get { return tranVerifyPolicyDefault; }
-			set { tranVerifyPolicyDefault = value; }
+			get { return txnVerifyPolicyDefault; }
+			set { txnVerifyPolicyDefault = value; }
 		}
 
 		/// <summary>
 		/// Default multi-record transactions (MRT) policy when rolling the transaction records forward (commit)
 		/// or back(abort) in a batch.
 		/// </summary>
-		public BatchPolicy TranRollPolicyDefault
+		public TxnRollPolicy TxnRollPolicyDefault
 		{
-			get { return tranRollPolicyDefault; }
-			set { tranRollPolicyDefault = value; }
+			get { return txnRollPolicyDefault; }
+			set { txnRollPolicyDefault = value; }
 		}
 
 		/// <summary>
@@ -469,9 +469,9 @@ namespace Aerospike.Client.Proxy
 		/// </p>
 		/// </summary>
 		/// <param name="tran">multi-record transaction</param>
-		public void Commit(Tran tran)
+		public CommitStatus.CommitStatusType Commit(Txn tran)
 		{
-			
+			return CommitStatus.CommitStatusType.OK;
 		}
 
 		/// <summary>
@@ -481,9 +481,9 @@ namespace Aerospike.Client.Proxy
 		/// </p>
 		/// </summary>
 		/// <param name="tran">multi-record transaction</param>
-		public void Abort(Tran tran)
+		public AbortStatus.AbortStatusType Abort(Txn tran)
 		{
-			
+			return AbortStatus.AbortStatusType.OK;
 		}
 
 		//-------------------------------------------------------

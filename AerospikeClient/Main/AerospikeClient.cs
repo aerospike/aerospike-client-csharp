@@ -97,13 +97,13 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Default multi-record transactions (MRT) policy when verifying record versions in a batch on a commit.
 		/// </summary>
-		public BatchPolicy tranVerifyPolicyDefault;
+		public TxnVerifyPolicy txnVerifyPolicyDefault;
 
 		/// <summary>
 		/// Default multi-record transactions (MRT) policy when rolling the transaction records forward (commit)
 		/// or back(abort) in a batch.
 		/// </summary>
-		public BatchPolicy tranRollPolicyDefault;
+		public TxnRollPolicy txnRollPolicyDefault;
 
 		/// <summary>
 		/// Default info policy that is used when info command policy is null.
@@ -201,8 +201,8 @@ namespace Aerospike.Client
 			this.batchWritePolicyDefault = policy.batchWritePolicyDefault;
 			this.batchDeletePolicyDefault = policy.batchDeletePolicyDefault;
 			this.batchUDFPolicyDefault = policy.batchUDFPolicyDefault;
-			this.tranVerifyPolicyDefault = policy.tranVerifyPolicyDefault;
-			this.tranRollPolicyDefault = policy.tranRollPolicyDefault;
+			this.txnVerifyPolicyDefault = policy.txnVerifyPolicyDefault;
+			this.txnRollPolicyDefault = policy.txnRollPolicyDefault;
 			this.infoPolicyDefault = policy.infoPolicyDefault;
 			this.operatePolicyReadDefault = new WritePolicy(this.readPolicyDefault);
 
@@ -227,8 +227,8 @@ namespace Aerospike.Client
 				this.batchWritePolicyDefault = policy.batchWritePolicyDefault;
 				this.batchDeletePolicyDefault = policy.batchDeletePolicyDefault;
 				this.batchUDFPolicyDefault = policy.batchUDFPolicyDefault;
-				this.tranVerifyPolicyDefault = policy.tranVerifyPolicyDefault;
-				this.tranRollPolicyDefault = policy.tranRollPolicyDefault;
+				this.txnVerifyPolicyDefault = policy.txnVerifyPolicyDefault;
+				this.txnRollPolicyDefault = policy.txnRollPolicyDefault;
 				this.infoPolicyDefault = policy.infoPolicyDefault;
 			}
 			else
@@ -242,8 +242,8 @@ namespace Aerospike.Client
 				this.batchWritePolicyDefault = new BatchWritePolicy();
 				this.batchDeletePolicyDefault = new BatchDeletePolicy();
 				this.batchUDFPolicyDefault = new BatchUDFPolicy();
-				this.tranVerifyPolicyDefault = new TranVerifyPolicy();
-				this.tranRollPolicyDefault= new TranRollPolicy();
+				this.txnVerifyPolicyDefault = new TxnVerifyPolicy();
+				this.txnRollPolicyDefault= new TxnRollPolicy();
 				this.infoPolicyDefault = new InfoPolicy();
 			}
 			this.operatePolicyReadDefault = new WritePolicy(this.readPolicyDefault);
@@ -340,20 +340,20 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Default multi-record transactions (MRT) policy when verifying record versions in a batch on a commit.
 		/// </summary>
-		public BatchPolicy TranVerifyPolicyDefault
+		public TxnVerifyPolicy TxnVerifyPolicyDefault
 		{
-			get { return new BatchPolicy(tranVerifyPolicyDefault); }
-			set { tranVerifyPolicyDefault = value; }
+			get { return new TxnVerifyPolicy(txnVerifyPolicyDefault); }
+			set { txnVerifyPolicyDefault = value; }
 		}
 
 		/// <summary>
 		/// Default multi-record transactions (MRT) policy when rolling the transaction records forward (commit)
 		/// or back(abort) in a batch.
 		/// </summary>
-		public BatchPolicy TranRollPolicyDefault
+		public TxnRollPolicy TxnRollPolicyDefault
 		{
-			get { return new BatchPolicy(tranRollPolicyDefault); }
-			set { tranRollPolicyDefault = value; }
+			get { return new TxnRollPolicy(txnRollPolicyDefault); }
+			set { txnRollPolicyDefault = value; }
 		}
 
 		/// <summary>
@@ -464,19 +464,22 @@ namespace Aerospike.Client
 
 		/// <summary>
 		/// Attempt to commit the given multi-record transaction. First, the expected record versions are
-		/// sent to the server nodes for verification.If all nodes return success, the transaction is
+		/// sent to the server nodes for verification. If all nodes return success, the transaction is
 		/// committed.Otherwise, the transaction is aborted.
 		/// <p>
 		/// Requires server version 8.0+
 		/// </p>
 		/// </summary>
-		/// <param name="tran">multi-record transaction</param>
-		public void Commit(Tran tran)
+		/// <param name="txn">multi-record transaction</param>
+		public CommitStatus.CommitStatusType Commit(Txn txn)
 		{
-			tran.SetRollAttempted();
+			if (!txn.SetRollAttempted())
+			{
+				return CommitStatus.CommitStatusType.ALREADY_ATTEMPTED;
+			}
 
-			TranRoll tm = new TranRoll(cluster, tran);
-			tm.Commit(tranVerifyPolicyDefault, tranRollPolicyDefault);
+			TxnRoll tm = new TxnRoll(cluster, txn);
+			return tm.Commit(txnVerifyPolicyDefault, txnRollPolicyDefault);
 		}
 
 		/// <summary>
@@ -485,13 +488,16 @@ namespace Aerospike.Client
 		/// Requires server version 8.0+
 		/// </p>
 		/// </summary>
-		/// <param name="tran">multi-record transaction</param>
-		public void Abort(Tran tran)
+		/// <param name="txn">multi-record transaction</param>
+		public AbortStatus.AbortStatusType Abort(Txn txn)
 		{
-			tran.SetRollAttempted();
+			if (!txn.SetRollAttempted())
+			{
+				return AbortStatus.AbortStatusType.ALREADY_ATTEMPTED;
+			}
 
-			TranRoll tm = new TranRoll(cluster, tran);
-			tm.Abort(tranRollPolicyDefault);
+			TxnRoll tm = new TxnRoll(cluster, txn);
+			return tm.Abort(txnRollPolicyDefault);
 		}
 
 		//-------------------------------------------------------
@@ -500,7 +506,7 @@ namespace Aerospike.Client
 
 		/// <summary>
 		/// Write record bin(s).
-		/// The policy specifies the transaction timeout, record expiration and how the transaction is
+		/// The policy specifies the command timeouts, record expiration and how the command is
 		/// handled when the record already exists.
 		/// </summary>
 		/// <param name="policy">write configuration parameters, pass in null for defaults</param>
@@ -513,6 +519,12 @@ namespace Aerospike.Client
 			{
 				policy = writePolicyDefault;
 			}
+
+			if (policy.Txn != null)
+			{
+				TxnMonitor.AddKey(cluster, policy, key);
+			}
+
 			WriteCommand command = new WriteCommand(cluster, policy, key, bins, Operation.Type.WRITE);
 			command.Execute();
 		}
@@ -523,7 +535,7 @@ namespace Aerospike.Client
 
 		/// <summary>
 		/// Append bin string values to existing record bin values.
-		/// The policy specifies the transaction timeout, record expiration and how the transaction is
+		/// The policy specifies the command timeout, record expiration and how the command is
 		/// handled when the record already exists.
 		/// This call only works for string values. 
 		/// </summary>
@@ -537,13 +549,19 @@ namespace Aerospike.Client
 			{
 				policy = writePolicyDefault;
 			}
+
+			if (policy.Txn != null)
+			{
+				TxnMonitor.AddKey(cluster, policy, key);
+			}
+
 			WriteCommand command = new WriteCommand(cluster, policy, key, bins, Operation.Type.APPEND);
 			command.Execute();
 		}
 
 		/// <summary>
 		/// Prepend bin string values to existing record bin values.
-		/// The policy specifies the transaction timeout, record expiration and how the transaction is
+		/// The policy specifies the command timeout, record expiration and how the command is
 		/// handled when the record already exists.
 		/// This call works only for string values. 
 		/// </summary>
@@ -557,6 +575,12 @@ namespace Aerospike.Client
 			{
 				policy = writePolicyDefault;
 			}
+
+			if (policy.Txn != null)
+			{
+				TxnMonitor.AddKey(cluster, policy, key);
+			}
+
 			WriteCommand command = new WriteCommand(cluster, policy, key, bins, Operation.Type.PREPEND);
 			command.Execute();
 		}
@@ -567,7 +591,7 @@ namespace Aerospike.Client
 
 		/// <summary>
 		/// Add integer/double bin values to existing record bin values.
-		/// The policy specifies the transaction timeout, record expiration and how the transaction is
+		/// The policy specifies the command timeout, record expiration and how the command is
 		/// handled when the record already exists.
 		/// </summary>
 		/// <param name="policy">write configuration parameters, pass in null for defaults</param>
@@ -580,6 +604,12 @@ namespace Aerospike.Client
 			{
 				policy = writePolicyDefault;
 			}
+
+			if (policy.Txn != null)
+			{
+				TxnMonitor.AddKey(cluster, policy, key);
+			}
+
 			WriteCommand command = new WriteCommand(cluster, policy, key, bins, Operation.Type.ADD);
 			command.Execute();
 		}
@@ -591,7 +621,7 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Delete record for specified key.
 		/// Return whether record existed on server before deletion.
-		/// The policy specifies the transaction timeout.
+		/// The policy specifies the command timeout.
 		/// </summary>
 		/// <param name="policy">delete configuration parameters, pass in null for defaults</param>
 		/// <param name="key">unique record identifier</param>
@@ -602,6 +632,12 @@ namespace Aerospike.Client
 			{
 				policy = writePolicyDefault;
 			}
+
+			if (policy.Txn != null)
+			{
+				TxnMonitor.AddKey(cluster, policy, key);
+			}
+
 			DeleteCommand command = new DeleteCommand(cluster, policy, key);
 			command.Execute();
 			return command.Existed();
@@ -633,6 +669,11 @@ namespace Aerospike.Client
 			if (deletePolicy == null)
 			{
 				deletePolicy = batchDeletePolicyDefault;
+			}
+
+			if (batchPolicy.Txn != null)
+			{
+				TxnMonitor.AddKeys(cluster, batchPolicy, keys);
 			}
 
 			BatchAttr attr = new BatchAttr();
@@ -744,6 +785,12 @@ namespace Aerospike.Client
 			{
 				policy = writePolicyDefault;
 			}
+			
+			if (policy.Txn != null)
+			{
+				TxnMonitor.AddKey(cluster, policy, key);
+			}
+
 			TouchCommand command = new TouchCommand(cluster, policy, key);
 			command.Execute();
 		}
@@ -766,6 +813,12 @@ namespace Aerospike.Client
 			{
 				policy = readPolicyDefault;
 			}
+
+			if (policy.Txn != null)
+			{
+				policy.Txn.SetNamespace(key.ns);
+			}
+
 			ExistsCommand command = new ExistsCommand(cluster, policy, key);
 			command.Execute();
 			return command.Exists();
@@ -790,6 +843,10 @@ namespace Aerospike.Client
 				policy = batchPolicyDefault;
 			}
 
+			if (policy.Txn != null)
+			{
+				policy.Txn.SetNamespace(keys);
+			}
 
 			bool[] existsArray = new bool[keys.Length];
 
@@ -842,6 +899,9 @@ namespace Aerospike.Client
 			{
 				policy = readPolicyDefault;
 			}
+
+			policy.Txn?.SetNamespace(key.ns);
+
 			ReadCommand command = new ReadCommand(cluster, policy, key);
 			command.Execute();
 			return command.Record;
@@ -862,6 +922,12 @@ namespace Aerospike.Client
 			{
 				policy = readPolicyDefault;
 			}
+
+			if (policy.Txn != null)
+			{
+				policy.Txn.SetNamespace(key.ns);
+			}
+
 			ReadCommand command = new ReadCommand(cluster, policy, key, binNames);
 			command.Execute();
 			return command.Record;
@@ -881,6 +947,12 @@ namespace Aerospike.Client
 			{
 				policy = readPolicyDefault;
 			}
+
+			if (policy.Txn != null)
+			{
+				policy.Txn.SetNamespace(key.ns);
+			}
+
 			ReadHeaderCommand command = new ReadHeaderCommand(cluster, policy, key);
 			command.Execute();
 			return command.Record;
@@ -911,6 +983,11 @@ namespace Aerospike.Client
 			if (policy == null)
 			{
 				policy = batchPolicyDefault;
+			}
+
+			if (policy.Txn != null)
+			{
+				policy.Txn.SetNamespace(records);
 			}
 
 			BatchStatus status = new BatchStatus(true);
@@ -945,6 +1022,13 @@ namespace Aerospike.Client
 			{
 				policy = batchPolicyDefault;
 			}
+
+
+			if (policy.Txn != null)
+			{
+				policy.Txn.SetNamespace(keys);
+			}
+
 
 			Record[] records = new Record[keys.Length];
 
@@ -998,6 +1082,11 @@ namespace Aerospike.Client
 			if (policy == null)
 			{
 				policy = batchPolicyDefault;
+			}
+
+			if (policy.Txn != null)
+			{
+				policy.Txn.SetNamespace(keys);
 			}
 
 			Record[] records = new Record[keys.Length];
@@ -1054,6 +1143,11 @@ namespace Aerospike.Client
 				policy = batchPolicyDefault;
 			}
 
+			if (policy.Txn != null)
+			{
+				policy.Txn.SetNamespace(keys);
+			}
+
 			Record[] records = new Record[keys.Length];
 
 			try
@@ -1106,6 +1200,13 @@ namespace Aerospike.Client
 			{
 				policy = batchPolicyDefault;
 			}
+
+
+			if (policy.Txn != null)
+			{
+				policy.Txn.SetNamespace(keys);
+			}
+
 
 			Record[] records = new Record[keys.Length];
 
@@ -1210,9 +1311,31 @@ namespace Aerospike.Client
 		public Record Operate(WritePolicy policy, Key key, params Operation[] operations)
 		{
 			OperateArgs args = new OperateArgs(policy, writePolicyDefault, operatePolicyReadDefault, operations);
-			OperateCommand command = new OperateCommand(cluster, key, args);
-			command.Execute();
-			return command.Record;
+			
+			if (args.hasWrite)
+			{
+				policy = args.writePolicy;
+
+				if (policy.Txn != null)
+				{
+					TxnMonitor.AddKey(cluster, policy, key);
+				}
+
+				OperateCommandWrite command = new(cluster, key, args);
+				command.Execute();
+				return command.Record;
+			}
+			else
+			{
+				if (policy?.Txn != null)
+				{
+					policy.Txn.SetNamespace(key.ns);
+				}
+
+				OperateCommandRead command = new(cluster, key, args);
+				command.Execute();
+				return command.Record;
+			}
 		}
 
 		//-------------------------------------------------------
@@ -1245,6 +1368,11 @@ namespace Aerospike.Client
 			if (policy == null)
 			{
 				policy = batchParentPolicyWriteDefault;
+			}
+
+			if (policy.Txn != null)
+			{
+				TxnMonitor.AddKeys(cluster, policy, records);
 			}
 
 			BatchStatus status = new BatchStatus(true);
@@ -1291,6 +1419,11 @@ namespace Aerospike.Client
 			if (writePolicy == null)
 			{
 				writePolicy = batchWritePolicyDefault;
+			}
+
+			if (batchPolicy.Txn != null)
+			{
+				TxnMonitor.AddKeys(cluster, batchPolicy, keys);
 			}
 
 			BatchAttr attr = new BatchAttr(batchPolicy, writePolicy, ops);
@@ -1567,13 +1700,19 @@ namespace Aerospike.Client
 		/// <param name="packageName">server package name where user defined function resides</param>
 		/// <param name="functionName">user defined function</param>
 		/// <param name="args">arguments passed in to user defined function</param>
-		/// <exception cref="AerospikeException">if transaction fails</exception>
+		/// <exception cref="AerospikeException">if command fails</exception>
 		public object Execute(WritePolicy policy, Key key, string packageName, string functionName, params Value[] args)
 		{
 			if (policy == null)
 			{
 				policy = writePolicyDefault;
 			}
+
+			if (policy.Txn != null)
+			{
+				TxnMonitor.AddKey(cluster, policy, key);
+			}
+
 			ExecuteCommand command = new ExecuteCommand(cluster, policy, key, packageName, functionName, args);
 			command.Execute();
 
@@ -1631,6 +1770,11 @@ namespace Aerospike.Client
 			if (udfPolicy == null)
 			{
 				udfPolicy = batchUDFPolicyDefault;
+			}
+
+			if (batchPolicy.Txn != null)
+			{
+				TxnMonitor.AddKeys(cluster, batchPolicy, keys);
 			}
 
 			byte[] argBytes = Packer.Pack(functionArgs);
@@ -1695,7 +1839,7 @@ namespace Aerospike.Client
 			statement.FunctionName = functionName;
 			statement.FunctionArgs = functionArgs;
 
-			cluster.AddTran();
+			cluster.AddCommand();
 
 			ulong taskId = statement.PrepareTaskId();
 			Node[] nodes = cluster.ValidateNodes();
@@ -1734,7 +1878,7 @@ namespace Aerospike.Client
 				statement.Operations = operations;
 			}
 
-			cluster.AddTran();
+			cluster.AddCommand();
 
 			ulong taskId = statement.PrepareTaskId();
 			Node[] nodes = cluster.ValidateNodes();

@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -14,7 +14,6 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using System.Linq;
 
 namespace Aerospike.Client
 {
@@ -378,11 +377,9 @@ namespace Aerospike.Client
 		/// </summary>
 		public override int GetHashCode()
 		{
-			int result = 1;
-			foreach (byte element in digest)
-			{
-				result = 31 * result + element;
-			}
+			// The digest is already a hash, so pick 4 bytes from the 20 byte digest at a 
+			// random offset (in this case 8).
+			int result = ByteUtil.LittleBytesToInt(digest, 8) + 31;
 			return 31 * result + ns.GetHashCode();
 		}
 

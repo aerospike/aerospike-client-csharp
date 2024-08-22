@@ -15,56 +15,51 @@
  * the License.
  */
 
-using System.Runtime.InteropServices;
-
 namespace Aerospike.Client
 {
-	public abstract class SyncWriteCommand : SyncCommand
+	public abstract class AsyncReadBase : AsyncSingleCommand
 	{
-		protected readonly WritePolicy writePolicy;
-		protected readonly Key key;
-		private readonly Partition partition;
+		protected internal readonly Key key;
+		protected readonly Partition partition;
 
-		public SyncWriteCommand(Cluster cluster, WritePolicy writePolicy, Key key)
-			: base(cluster, writePolicy)
+		public AsyncReadBase(AsyncCluster cluster, Policy policy, Key key) 
+			: base(cluster, policy)
 		{
-			this.writePolicy = writePolicy;
 			this.key = key;
-			this.partition = Partition.Write(cluster, writePolicy, key);
+			this.partition = Partition.Read(cluster, policy, key);
 			cluster.AddCommand();
+		}
+
+		public AsyncReadBase(AsyncReadBase other)
+			: base(other)
+		{
+			this.key = other.key;
+			this.partition = other.partition;
 		}
 
 		protected internal override bool IsWrite()
 		{
-			return true;
+			return false;
 		}
 
-		protected internal override Node GetNode()
+		protected internal override Node GetNode(Cluster cluster)
 		{
-			return partition.GetNodeWrite(cluster);
+			return partition.GetNodeRead(cluster);
 		}
 
 		protected override Latency.LatencyType GetLatencyType()
 		{
-			return Latency.LatencyType.WRITE;
+			return Latency.LatencyType.READ;
 		}
 
 		protected internal override bool PrepareRetry(bool timeout)
 		{
-			partition.PrepareRetryWrite(timeout);
+			partition.PrepareRetryRead(timeout);
 			return true;
-		}
-
-		protected internal override void OnInDoubt()
-		{
-			if (writePolicy.Txn != null)
-			{
-				writePolicy.Txn.OnWriteInDoubt(key);
-			}
 		}
 
 		protected internal abstract override void WriteBuffer();
 
-		protected internal abstract override void ParseResult(IConnection conn);
+		protected internal abstract override bool ParseResult();
 	}
 }

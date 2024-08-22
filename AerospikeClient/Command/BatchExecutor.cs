@@ -23,7 +23,7 @@ namespace Aerospike.Client
 	{
 		public static void Execute(Cluster cluster, BatchPolicy policy, BatchCommand[] commands, BatchStatus status)
 		{
-			cluster.AddTran();
+			cluster.AddCommand();
 
 			if (policy.maxConcurrentThreads == 1 || commands.Length <= 1)
 			{

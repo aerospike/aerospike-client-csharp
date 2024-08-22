@@ -17,65 +17,55 @@
 
 namespace Aerospike.Client
 {
-	public sealed class AsyncWrite : AsyncWriteBase
+	public sealed class AsyncTxnMarkRollForward : AsyncWriteBase
 	{
+		private readonly Txn txn;
 		private readonly WriteListener listener;
-		private readonly Bin[] bins;
-		private readonly Operation.Type operation;
 
-		public AsyncWrite
+		public AsyncTxnMarkRollForward
 		(
 			AsyncCluster cluster,
-			WritePolicy writePolicy,
+			Txn txn,
 			WriteListener listener,
-			Key key,
-			Bin[] bins,
-			Operation.Type operation
+			WritePolicy writePolicy,
+			Key key
 		) : base(cluster, writePolicy, key)
 		{
+			this.txn = txn;
 			this.listener = listener;
-			this.bins = bins;
-			this.operation = operation;
-			cluster.AddCommand();
 		}
 
-		public AsyncWrite(AsyncWrite other)
+		public AsyncTxnMarkRollForward(AsyncTxnMarkRollForward other)
 			: base(other)
 		{
+			this.txn = other.txn;
 			this.listener = other.listener;
-			this.bins = other.bins;
-			this.operation = other.operation;
 		}
 
 		protected internal override AsyncCommand CloneCommand()
 		{
-			return new AsyncWrite(this);
+			return new AsyncTxnMarkRollForward(this);
 		}
 
 		protected internal override void WriteBuffer()
 		{
-			SetWrite(writePolicy, operation, Key, bins);
+			SetTxnMarkRollForward(txn, Key);
 		}
 
 		protected internal override bool ParseResult()
 		{
 			ParseHeader();
 
-			if (resultCode == ResultCode.OK)
+			if (resultCode == ResultCode.OK || resultCode == ResultCode.BIN_EXISTS_ERROR)
 			{
-				return true;
-			}
-
-			if (resultCode == ResultCode.FILTERED_OUT)
-			{
-				if (policy.failOnFilteredOut)
-				{
-					throw new AerospikeException(resultCode);
-				}
 				return true;
 			}
 
 			throw new AerospikeException(resultCode);
+		}
+
+		protected internal override void OnInDoubt()
+		{
 		}
 
 		protected internal override void OnSuccess()

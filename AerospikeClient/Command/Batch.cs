@@ -186,12 +186,6 @@ namespace Aerospike.Client
 		protected internal override bool ParseRow()
 		{
 			ParseFieldsRead(keys[batchIndex]);
-
-			if (opCount > 0)
-			{
-				throw new AerospikeException.Parse("Received bins that were not requested!");
-			}
-
 			existsArray[batchIndex] = resultCode == 0;
 			return true;
 		}
@@ -286,6 +280,10 @@ namespace Aerospike.Client
 				if (record.resultCode == ResultCode.NO_RESPONSE)
 				{
 					record.inDoubt = record.hasWrite;
+
+					if (record.inDoubt && policy.Txn != null) {
+						policy.Txn.OnWriteInDoubt(record.key);
+					}
 				}
 			}
 		}
@@ -372,6 +370,10 @@ namespace Aerospike.Client
 				if (record.resultCode == ResultCode.NO_RESPONSE)
 				{
 					record.inDoubt = inDoubt;
+
+					if (record.inDoubt && policy.Txn != null) {
+						policy.Txn.OnWriteInDoubt(record.key);
+					}
 				}
 			}
 		}
@@ -479,6 +481,10 @@ namespace Aerospike.Client
 				if (record.resultCode == ResultCode.NO_RESPONSE)
 				{
 					record.inDoubt = inDoubt;
+
+					if (record.inDoubt && policy.Txn != null) {
+						policy.Txn.OnWriteInDoubt(record.key);
+					}
 				}
 			}
 		}
@@ -498,25 +504,25 @@ namespace Aerospike.Client
 	// MRT
 	//-------------------------------------------------------
 
-	public sealed class BatchTranVerify : BatchCommand
+	public sealed class BatchTxnVerify : BatchCommand
 	{
-		private readonly Tran tran;
+		private readonly Txn txn;
 		private readonly Key[] keys;
 		private readonly long[] versions;
 		private readonly BatchRecord[] records;
 
-		public BatchTranVerify(
+		public BatchTxnVerify(
 			Cluster cluster,
 			BatchNode batch,
 			BatchPolicy batchPolicy,
-			Tran tran,
+			Txn tran,
 			Key[] keys,
 			long[] versions,
 			BatchRecord[] records,
 			BatchStatus status
 		) : base(cluster, batch, batchPolicy, status, false)
 		{
-			this.tran = tran;
+			this.txn = tran;
 			this.keys = keys;
 			this.versions = versions;
 			this.records = records;
@@ -529,7 +535,7 @@ namespace Aerospike.Client
 
 		protected internal override void WriteBuffer()
 		{
-			SetBatchTranVerify(batchPolicy, tran, keys, versions, batch);
+			SetBatchTxnVerify(batchPolicy, txn, keys, versions, batch);
 		}
 
 		protected internal override bool ParseRow()
@@ -552,7 +558,7 @@ namespace Aerospike.Client
 
 		protected internal override BatchCommand CreateCommand(BatchNode batchNode)
 		{
-			return new BatchTranVerify(cluster, batchNode, batchPolicy, tran, keys, versions, records, status);
+			return new BatchTxnVerify(cluster, batchNode, batchPolicy, txn, keys, versions, records, status);
 		}
 
 		protected internal override List<BatchNode> GenerateBatchNodes()
@@ -561,13 +567,13 @@ namespace Aerospike.Client
 		}
 	}
 
-	public sealed class BatchTranRoll : BatchCommand
+	public sealed class BatchTxnRoll : BatchCommand
 	{
 		private readonly Key[] keys;
 		private readonly BatchRecord[] records;
 		private readonly BatchAttr attr;
 
-		public  BatchTranRoll(
+		public  BatchTxnRoll(
 			Cluster cluster,
 			BatchNode batch,
 			BatchPolicy batchPolicy,
@@ -589,7 +595,7 @@ namespace Aerospike.Client
 
 		protected internal override void WriteBuffer()
 		{
-			SetBatchTranRoll(batchPolicy, keys, batch, attr);
+			SetBatchTxnRoll(batchPolicy, keys, batch, attr);
 		}
 
 		protected internal override bool ParseRow()
@@ -630,7 +636,7 @@ namespace Aerospike.Client
 
 		protected internal override BatchCommand CreateCommand(BatchNode batchNode)
 		{
-			return new BatchTranRoll(cluster, batchNode, batchPolicy, keys, records, attr, status);
+			return new BatchTxnRoll(cluster, batchNode, batchPolicy, keys, records, attr, status);
 		}
 
 		protected internal override List<BatchNode> GenerateBatchNodes()
@@ -701,10 +707,10 @@ namespace Aerospike.Client
 
 		protected void ParseFieldsRead(Key key)
 		{
-			if (policy.Tran != null)
+			if (policy.Txn != null)
 			{
 				long? version = ParseVersion(fieldCount);
-				policy.Tran.OnRead(key, version);
+				policy.Txn.OnRead(key, version);
 			}
 			else
 			{
@@ -714,17 +720,17 @@ namespace Aerospike.Client
 
 		protected void ParseFields(BatchRecord br)
 		{
-			if (policy.Tran != null)
+			if (policy.Txn != null)
 			{
 				long? version = ParseVersion(fieldCount);
 
 				if (br.hasWrite)
 				{
-					policy.Tran.OnWrite(br.key, version, resultCode);
+					policy.Txn.OnWrite(br.key, version, resultCode);
 				}
 				else
 				{
-					policy.Tran.OnRead(br.key, version);
+					policy.Txn.OnRead(br.key, version);
 				}
 			}
 			else

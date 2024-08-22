@@ -14,10 +14,7 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using System;
-using System.Collections.Generic;
 using System.Text;
-using System.Threading;
 
 namespace Aerospike.Client
 {
@@ -97,7 +94,7 @@ namespace Aerospike.Client
 		// Login timeout.
 		protected internal readonly int loginTimeout;
 
-		// Maximum socket idle to validate connections in transactions.
+		// Maximum socket idle to validate connections in commands.
 		private readonly double maxSocketIdleMillisTran;
 
 		// Maximum socket idle to trim peak connections to min connections.
@@ -137,7 +134,7 @@ namespace Aerospike.Client
 		public MetricsPolicy MetricsPolicy;
 		private volatile IMetricsListener metricsListener;
 		private volatile int retryCount;
-		private volatile int tranCount;
+		private volatile int commandCount;
 		private volatile int delayQueueTimeoutCount;
 
 		public Cluster(ClientPolicy policy, Host[] hosts)
@@ -1201,26 +1198,26 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
-		/// Increment transaction count when metrics are enabled.
+		/// Increment command count when metrics are enabled.
 		/// </summary>
-		public void AddTran()
+		public void AddCommand()
 		{
 			if (MetricsEnabled)
 			{
-				Interlocked.Increment(ref tranCount);
+				Interlocked.Increment(ref commandCount);
 			}
 		}
 
 		/// <summary>
-		/// Return transaction count. The value is cumulative and not reset per metrics interval.
+		/// Return command count. The value is cumulative and not reset per metrics interval.
 		/// </summary>
-		public int GetTranCount()
+		public int GetCommandCount()
 		{
-			return tranCount;
+			return commandCount;
 		}
 
 		/// <summary>
-		/// Increment transaction retry count. There can be multiple retries for a single transaction.
+		/// Increment command retry count. There can be multiple retries for a single command.
 		/// </summary>
 		public void AddRetry()
 		{
@@ -1228,7 +1225,7 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
-		/// Add transaction retry count. There can be multiple retries for a single transaction.
+		/// Add command retry count. There can be multiple retries for a single command.
 		/// </summary>
 		public void AddRetries(int count)
 		{
@@ -1236,7 +1233,7 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
-		/// Return transaction retry count. The value is cumulative and not reset per metrics interval.
+		/// Return command retry count. The value is cumulative and not reset per metrics interval.
 		/// </summary>
 		public int GetRetryCount()
 		{

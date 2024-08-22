@@ -15,57 +15,39 @@
  * the License.
  */
 
-using System;
-
 namespace Aerospike.Client
 {
-	public sealed class DeleteCommand : SyncWriteCommand
+	public sealed class TxnAddKeys : SyncWriteCommand
 	{
-		private bool existed;
+		private readonly OperateArgs args;
 
-		public DeleteCommand(Cluster cluster, WritePolicy writePolicy, Key key)
-			: base(cluster, writePolicy, key)
+		public TxnAddKeys (Cluster cluster, Key key, OperateArgs args) 
+			: base(cluster, args.writePolicy, key)
 		{
-			cluster.AddCommand();
+			this.args = args;
 		}
 
 		protected internal override void WriteBuffer()
 		{
-			SetDelete(writePolicy, key);
+			SetTxnAddKeys(args.writePolicy, key, args);
 		}
 
 		protected internal override void ParseResult(IConnection conn)
 		{
 			ParseHeader(conn);
+			ParseTranDeadline(policy.Txn);
 
-			if (resultCode == 0)
+			if (resultCode == ResultCode.OK)
 			{
-				existed = true;
-				return;
-			}
-
-			if (resultCode == ResultCode.KEY_NOT_FOUND_ERROR)
-			{
-				existed = false;
-				return;
-			}
-
-			if (resultCode == ResultCode.FILTERED_OUT)
-			{
-				if (writePolicy.failOnFilteredOut)
-				{
-					throw new AerospikeException(resultCode);
-				}
-				existed = true;
 				return;
 			}
 
 			throw new AerospikeException(resultCode);
 		}
 
-		public bool Existed()
+		protected internal override void OnInDoubt()
 		{
-			return existed;
+			policy.Txn.SetMonitorInDoubt();
 		}
 	}
 }

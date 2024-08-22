@@ -29,7 +29,7 @@ namespace Aerospike.Client
 			PartitionTracker tracker
 		)
 		{
-			cluster.AddTran();
+			cluster.AddCommand();
 			
 			ulong taskId = statement.PrepareTaskId();
 

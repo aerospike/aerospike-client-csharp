@@ -14,24 +14,32 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using static Aerospike.Client.AbortStatus;
 
 namespace Aerospike.Client
 {
 	/// <summary>
-	/// Asynchronous result notifications for multi-record transaction (MRT) aborts.
+	/// Multi-record transaction (MRT) policy fields used to batch roll forward/backward records on
+    /// commit or abort.Used a placeholder for now as there are no additional fields beyond BatchPolicy.
 	/// </summary>
-	public interface AbortListener
+	public sealed class TxnRollPolicy : BatchPolicy
 	{
 		/// <summary>
-		/// This method is called when the abort succeeds.
+		/// Copy policy from another policy.
 		/// </summary>
-		void OnSuccess(AbortStatusType status);
+		public TxnRollPolicy(TxnRollPolicy other) : 
+			base(other)
+		{
+		}
 
 		/// <summary>
-		/// This method is called when the abort fails.
+		/// Default constructor.
 		/// </summary>
-		/// <param name="exception">error that occurred</param>
-		void OnFailure(AerospikeException exception);
+		public TxnRollPolicy()
+		{
+			replica = Replica.MASTER;
+			maxRetries = 5;
+			totalTimeout = 10000;
+			sleepBetweenRetries = 1000;
+		}
 	}
 }

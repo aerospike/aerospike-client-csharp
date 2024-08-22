@@ -1,0 +1,430 @@
+/* 
+ * Copyright 2012-2024 Aerospike, Inc.
+ *
+ * Portions may be licensed to Aerospike, Inc. under one or more contributor
+ * license agreements.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not
+ * use this file except in compliance with the License. You may obtain a copy of
+ * the License at http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations under
+ * the License.
+ */
+using static Aerospike.Client.AbortStatus;
+using static Aerospike.Client.CommitError;
+using static Aerospike.Client.CommitStatus;
+
+namespace Aerospike.Client
+{
+	public sealed class AsyncTxnRoll
+	{
+		private readonly AsyncCluster cluster;
+		private readonly BatchPolicy verifyPolicy;
+		private readonly BatchPolicy rollPolicy;
+		private readonly WritePolicy writePolicy;
+		private readonly Txn txn;
+		private readonly Key tranKey;
+		private CommitListener commitListener;
+		private AbortListener abortListener;
+		private BatchRecord[] verifyRecords;
+		private BatchRecord[] rollRecords;
+		private AerospikeException verifyException;
+
+		public AsyncTxnRoll
+		(
+			AsyncCluster cluster,
+			BatchPolicy verifyPolicy,
+			BatchPolicy rollPolicy,
+			Txn txn
+		)
+		{
+			this.cluster = cluster;
+			this.verifyPolicy = verifyPolicy;
+			this.rollPolicy = rollPolicy;
+			this.writePolicy = new WritePolicy(rollPolicy);
+			this.txn = txn;
+			this.tranKey = TxnMonitor.GetTxnMonitorKey(txn);
+		}
+
+		public void Commit(CommitListener listener)
+		{
+			commitListener = listener;
+			Verify(new VerifyListener(this));
+		}
+
+		public void Abort(AbortListener listener)
+		{
+			abortListener = listener;
+
+			Roll(new RollListener(this), Command.INFO4_MRT_ROLL_BACK);
+		}
+
+		private void Verify(BatchRecordArrayListener verifyListener)
+		{
+			// Validate record versions in a batch.
+			HashSet<KeyValuePair<Key, long>> reads = txn.Reads.ToHashSet<KeyValuePair<Key, long>>();
+			int max = reads.Count;
+			if (max == 0)
+			{
+				return;
+			}
+
+			BatchRecord[] records = new BatchRecord[max];
+			Key[] keys = new Key[max];
+			long[] versions = new long[max];
+			int count = 0;
+
+			foreach (KeyValuePair<Key, long> entry in reads)
+			{
+				Key key = entry.Key;
+				keys[count] = key;
+				records[count] = new BatchRecord(key, false);
+				versions[count] = entry.Value;
+				count++;
+			}
+			this.verifyRecords = records;
+
+			new AsyncBatchTxnVerifyExecutor(cluster, verifyPolicy, verifyListener, keys, versions, records);
+		}
+
+		private void MarkRollForward()
+		{
+			// Tell MRT monitor that a roll-forward will commence.
+			try
+			{
+				MarkRollForwardListener writeListener = new(this);
+				AsyncTxnMarkRollForward command = new(cluster, txn, writeListener, writePolicy, tranKey);
+				command.Execute();
+			}
+			catch (Exception t) 
+			{
+				NotifyCommitFailure(CommitErrorType.MARK_ROLL_FORWARD_ABANDONED, t, false);
+			}
+		}
+
+		private void RollForward()
+		{
+			try
+			{
+				RollForwardListener rollListener = new(this);
+				Roll(rollListener, Command.INFO4_MRT_ROLL_FORWARD);
+			}
+			catch (Exception t)
+			{
+				NotifyCommitSuccess(CommitStatusType.ROLL_FORWARD_ABANDONED);
+			}
+		}
+
+		private void RollBack()
+		{
+			try
+			{
+				RollForwardListener rollListener = new(this);
+				Roll(rollListener, Command.INFO4_MRT_ROLL_BACK);
+			}
+			catch (Exception t)
+			{
+				NotifyCommitFailure(CommitErrorType.VERIFY_FAIL_ABORT_ABANDONED, t, false);
+			}
+		}
+
+		private void Roll(BatchRecordArrayListener rollListener, int txnAttr)
+		{
+			HashSet<Key> keySet = txn.Writes;
+
+			if (keySet.Count == 0)
+			{
+				return;
+			}
+
+			Key[] keys = keySet.ToArray<Key>();
+			BatchRecord[] records = new BatchRecord[keys.Length];
+
+			for (int i = 0; i < keys.Length; i++)
+			{
+				records[i] = new BatchRecord(keys[i], true);
+			}
+
+			this.rollRecords = records;
+
+			// Copy txn roll policy because it needs to be modified.
+			BatchPolicy batchPolicy = new(rollPolicy);
+
+			BatchAttr attr = new();
+			attr.SetTxn(txnAttr);
+
+			new AsyncBatchTxnRollExecutor(cluster, verifyPolicy, rollListener, keys, records, attr);
+		}
+
+		private void CloseOnCommit(bool verified)
+		{
+			if (!txn.MonitorMightExist())
+			{
+				if (verified)
+				{
+					NotifyCommitSuccess(CommitStatusType.OK);
+				}
+				else
+				{
+					NotifyCommitFailure(CommitErrorType.VERIFY_FAIL, null, false);
+				}
+			}
+		}
+
+		private void CloseOnAbort()
+		{
+			if (!txn.MonitorMightExist())
+			{
+				// There is no MRT monitor record to remove.
+				NotifyAbortSuccess(AbortStatusType.OK);
+				return;
+			}
+
+			try
+			{
+				CloseOnAbortListener deleteListener = new(this);
+				AsyncTxnClose command = new(cluster, txn, deleteListener, writePolicy, tranKey);
+				command.Execute();
+			}
+			catch (Exception t) 
+			{
+				NotifyAbortSuccess(AbortStatusType.CLOSE_ABANDONED);
+			}
+		}
+
+		private void NotifyCommitSuccess(CommitStatusType status)
+		{
+			txn.Clear();
+
+			try
+			{
+				commitListener.OnSuccess(status);
+			}
+			catch (Exception t)
+			{
+				Log.Error("CommitListener onSuccess() failed: " + t.StackTrace);
+			}
+		}
+
+		private void NotifyCommitFailure(CommitErrorType error, Exception cause, bool setInDoubt)
+		{
+			try
+			{
+				AerospikeException.Commit aec = (cause == null) ?
+					new AerospikeException.Commit(error, verifyRecords, rollRecords) :
+					new AerospikeException.Commit(error, verifyRecords, rollRecords, cause);
+
+				if (verifyException != null)
+				{
+					//aec.AddSuppressed(verifyException); TODO
+				}
+
+				if (cause is AerospikeException) {
+					AerospikeException src = (AerospikeException)cause;
+					aec.Node = src.Node;
+					aec.Policy = src.Policy;
+					aec.Iteration = src.Iteration;
+
+					if (setInDoubt)
+					{
+						aec.SetInDoubt(src.InDoubt);
+					}
+				}
+
+				commitListener.OnFailure(aec);
+			}
+			catch (Exception t)
+			{
+				Log.Error("CommitListener onFailure() failed: " + t.StackTrace);
+			}
+		}
+
+		private void NotifyAbortSuccess(AbortStatusType status)
+		{
+			txn.Clear();
+
+			try
+			{
+				abortListener.OnSuccess(status);
+			}
+			catch (Exception t)
+			{
+				Log.Error("AbortListener onSuccess() failed: " + t.StackTrace);
+			}
+		}
+
+		private sealed class VerifyListener : BatchRecordArrayListener
+		{
+			private readonly AsyncTxnRoll command;
+			
+			public VerifyListener(AsyncTxnRoll command) 
+			{ 
+				this.command = command;
+			}
+			
+			public void OnSuccess(BatchRecord[] records, bool status)
+			{
+				command.verifyRecords = records;
+
+				if (status)
+				{
+					if (command.txn.MonitorExists())
+					{
+						command.MarkRollForward();
+					}
+					else
+					{
+						// There is nothing to roll-forward.
+						command.CloseOnCommit(true);
+					}
+				}
+				else
+				{
+					command.RollBack();
+				}
+			}
+
+			public void OnFailure(BatchRecord[] records, AerospikeException ae)
+			{
+				command.verifyRecords = records;
+				command.verifyException = ae;
+				command.RollBack();
+			}
+		};
+
+		private sealed class RollListener : BatchRecordArrayListener 
+		{
+			private readonly AsyncTxnRoll command;
+
+			public RollListener(AsyncTxnRoll command)
+			{
+				this.command = command;
+			}
+
+			public void OnSuccess(BatchRecord[] records, bool status)
+			{
+				command.rollRecords = records;
+
+				if (status)
+				{
+					command.CloseOnAbort();
+				}
+				else
+				{
+					command.NotifyAbortSuccess(AbortStatusType.ROLL_BACK_ABANDONED);
+				}
+			}
+		
+			public void OnFailure(BatchRecord[] records, AerospikeException ae)
+			{
+				command.rollRecords = records;
+				command.NotifyAbortSuccess(AbortStatusType.ROLL_BACK_ABANDONED);
+			}
+		};
+
+		private sealed class MarkRollForwardListener : WriteListener
+		{
+			private readonly AsyncTxnRoll command;
+
+			public MarkRollForwardListener(AsyncTxnRoll command)
+			{
+				this.command = command;
+			}
+
+			public void OnSuccess(Key key)
+			{
+				command.RollForward();
+			}
+
+			public void OnFailure(AerospikeException ae)
+			{
+				command.NotifyCommitFailure(CommitErrorType.MARK_ROLL_FORWARD_ABANDONED, ae, true);
+			}
+		};
+
+		private sealed class RollForwardListener : BatchRecordArrayListener
+		{
+			private readonly AsyncTxnRoll command;
+
+			public RollForwardListener(AsyncTxnRoll command)
+			{
+				this.command = command;
+			}
+
+			public void OnSuccess(BatchRecord[] records, bool status)
+			{
+				command.rollRecords = records;
+
+				if (status)
+				{
+					command.CloseOnCommit(true);
+				}
+				else
+				{
+					command.NotifyCommitSuccess(CommitStatusType.ROLL_FORWARD_ABANDONED);
+				}
+			}
+
+			public void OnFailure(BatchRecord[] records, AerospikeException ae)
+			{
+				command.rollRecords = records;
+				command.NotifyCommitSuccess(CommitStatusType.ROLL_FORWARD_ABANDONED);
+			}
+		};
+
+		private sealed class RollBackListener : BatchRecordArrayListener
+		{
+			private readonly AsyncTxnRoll command;
+
+			public RollBackListener(AsyncTxnRoll command)
+			{
+				this.command = command;
+			}
+
+			public void OnSuccess(BatchRecord[] records, bool status)
+			{
+				command.rollRecords = records;
+
+				if (status)
+				{
+					command.CloseOnCommit(false);
+				}
+				else
+				{
+					command.NotifyCommitFailure(CommitErrorType.VERIFY_FAIL_ABORT_ABANDONED, null, false);
+				}
+			}
+
+			public void OnFailure(BatchRecord[] records, AerospikeException ae)
+			{
+				command.rollRecords = records;
+				command.NotifyCommitFailure(CommitErrorType.VERIFY_FAIL_ABORT_ABANDONED, ae, false);
+			}
+		};
+
+		private sealed class CloseOnAbortListener : DeleteListener
+		{
+			private readonly AsyncTxnRoll command;
+
+			public CloseOnAbortListener(AsyncTxnRoll command)
+			{
+				this.command = command;
+			}
+
+			public void OnSuccess(Key key, bool existed)
+			{
+				command.NotifyAbortSuccess(AbortStatusType.OK);
+			}
+
+			public void OnFailure(AerospikeException ae)
+			{
+				command.NotifyAbortSuccess(AbortStatusType.CLOSE_ABANDONED);
+			}
+		};
+	}
+}
+

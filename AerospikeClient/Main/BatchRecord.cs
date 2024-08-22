@@ -39,7 +39,7 @@ namespace Aerospike.Client
 		public int resultCode;
 
 		/// <summary>
-		/// Is it possible that the write transaction may have completed even though an error
+		/// Is it possible that the write command may have completed even though an error
 		/// occurred for this record. This may be the case when a client error occurs (like timeout)
 		/// after the command was sent to the server.
 		/// </summary>

@@ -17,31 +17,25 @@
 
 namespace Aerospike.Client
 {
-	public sealed class TranClose : SyncWriteCommand
+	public sealed class AsyncOperateRead : AsyncRead
 	{
-		private readonly Tran tran;
+		private readonly OperateArgs args;
 
-		public TranClose(Cluster cluster, Tran tran, WritePolicy writePolicy, Key key) 
-			: base(cluster, writePolicy, key)
+		public AsyncOperateRead(AsyncCluster cluster, RecordListener listener, Key key, OperateArgs args)
+			: base(cluster, args.writePolicy, listener, key, true)
 		{
-			this.tran = tran;
+			this.args = args;
+		}
+
+		public AsyncOperateRead(AsyncOperateRead other)
+			: base(other)
+		{
+			this.args = other.args;
 		}
 
 		protected internal override void WriteBuffer()
 		{
-			SetTranClose(tran, key);
-		}
-
-		protected internal override void ParseResult(IConnection conn)
-		{
-			int resultCode = ParseHeader(conn);
-
-			if (resultCode == ResultCode.OK || resultCode == ResultCode.KEY_NOT_FOUND_ERROR)
-			{
-				return;
-			}
-
-			throw new AerospikeException(resultCode);
+			SetOperate(args.writePolicy, key, args);
 		}
 	}
 }

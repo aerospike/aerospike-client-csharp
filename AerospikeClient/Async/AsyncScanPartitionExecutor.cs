@@ -46,7 +46,7 @@ namespace Aerospike.Client
 			this.binNames = binNames;
 			this.tracker = tracker;
 
-			cluster.AddTran();
+			cluster.AddCommand();
 			tracker.SleepBetweenRetries = 0;
 			ScanPartitions();
 		}

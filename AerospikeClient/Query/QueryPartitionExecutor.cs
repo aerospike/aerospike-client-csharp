@@ -51,7 +51,7 @@ namespace Aerospike.Client
 			this.cancel = new CancellationTokenSource();
 			this.tracker = tracker;
 			this.recordSet = new RecordSet(this, policy.recordQueueSize, cancel.Token);
-			cluster.AddTran();
+			cluster.AddCommand();
 			ThreadPool.UnsafeQueueUserWorkItem(this.Run, null);
 		}
 

@@ -15,54 +15,46 @@
  * the License.
  */
 
+using System;
+
 namespace Aerospike.Client
 {
-	public sealed class AsyncWrite : AsyncWriteBase
+	public sealed class AsyncOperateWrite : AsyncWriteBase
 	{
-		private readonly WriteListener listener;
-		private readonly Bin[] bins;
-		private readonly Operation.Type operation;
+		private readonly RecordListener listener;
+		private readonly OperateArgs args;
+		private Record record;
 
-		public AsyncWrite
-		(
-			AsyncCluster cluster,
-			WritePolicy writePolicy,
-			WriteListener listener,
-			Key key,
-			Bin[] bins,
-			Operation.Type operation
-		) : base(cluster, writePolicy, key)
+		public AsyncOperateWrite(AsyncCluster cluster, RecordListener listener, Key key, OperateArgs args)
+			: base(cluster, args.writePolicy, key)
 		{
-			this.listener = listener;
-			this.bins = bins;
-			this.operation = operation;
-			cluster.AddCommand();
+			this.args = args;
 		}
 
-		public AsyncWrite(AsyncWrite other)
+		public AsyncOperateWrite(AsyncOperateWrite other)
 			: base(other)
 		{
-			this.listener = other.listener;
-			this.bins = other.bins;
-			this.operation = other.operation;
+			this.args = other.args;
 		}
 
 		protected internal override AsyncCommand CloneCommand()
 		{
-			return new AsyncWrite(this);
+			return new AsyncOperateWrite(this);
 		}
 
 		protected internal override void WriteBuffer()
 		{
-			SetWrite(writePolicy, operation, Key, bins);
+			SetOperate(args.writePolicy, Key, args);
 		}
 
 		protected internal override bool ParseResult()
 		{
 			ParseHeader();
+			ParseFields(policy.Txn, Key, true);
 
 			if (resultCode == ResultCode.OK)
 			{
+				record = policy.recordParser.ParseRecord(dataBuffer, ref dataOffset, opCount, generation, expiration, true);
 				return true;
 			}
 
@@ -82,7 +74,7 @@ namespace Aerospike.Client
 		{
 			if (listener != null)
 			{
-				listener.OnSuccess(Key);
+				listener.OnSuccess(Key, record);
 			}
 		}
 
@@ -95,4 +87,3 @@ namespace Aerospike.Client
 		}
 	}
 }
-

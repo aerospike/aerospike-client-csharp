@@ -51,7 +51,7 @@ namespace Aerospike.Client
 		public readonly int invalidNodeCount;
 
 		/// <summary>
-		/// Count of transaction retires since cluster was started.
+		/// Count of command retires since cluster was started.
 		/// </summary>
 		public readonly long RetryCount;
 
@@ -126,14 +126,14 @@ namespace Aerospike.Client
 		public readonly ConnectionStats asyncStats;
 
 		/// <summary>
-		/// Transaction error count since node was initialized. If the error is retryable, multiple errors per
-		/// transaction may occur.
+		/// Command error count since node was initialized. If the error is retryable, multiple errors per
+		/// Command may occur.
 		/// </summary>
 		public readonly long ErrorCount;
 
 		/// <summary>
-		/// Transaction timeout count since node was initialized. If the timeout is retryable (ie socketTimeout),
-		/// multiple timeouts per transaction may occur.
+		/// Command timeout count since node was initialized. If the timeout is retryable (ie socketTimeout),
+		/// multiple timeouts per Command may occur.
 		/// </summary>
 		public readonly long TimeoutCount;
 

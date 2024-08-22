@@ -976,8 +976,8 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
-		/// Increment transaction error count. If the error is retryable, multiple errors per
-		/// transaction may occur.
+		/// Increment command error count. If the error is retryable, multiple errors per
+		/// command may occur.
 		/// </summary>
 
 		public void AddError()
@@ -986,8 +986,8 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
-		/// Increment transaction timeout count. If the timeout is retryable (ie socketTimeout),
-		/// multiple timeouts per transaction may occur.
+		/// Increment command timeout count. If the timeout is retryable (ie socketTimeout),
+		/// multiple timeouts per command may occur.
 		/// </summary>
 		public void AddTimeout()
 		{
@@ -995,7 +995,7 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
-		/// Return transaction error count. The value is cumulative and not reset per metrics interval.
+		/// Return command error count. The value is cumulative and not reset per metrics interval.
 		/// </summary>
 		public int GetErrorCount()
 		{
@@ -1003,7 +1003,7 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
-		/// Return transaction timeout count. The value is cumulative and not reset per metrics interval.
+		/// Return command timeout count. The value is cumulative and not reset per metrics interval.
 		/// </summary>
 		public int GetTimeoutCount()
 		{

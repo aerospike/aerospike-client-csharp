@@ -31,7 +31,7 @@ namespace Aerospike.Client
 	    /// Default: null
 		/// </para>
 		/// </summary>
-		public Tran Tran { get; set; }
+		public Txn Txn { get; set; }
 		
 		/// <summary>
 		/// Read policy for AP (availability) namespaces.
@@ -283,7 +283,7 @@ namespace Aerospike.Client
 		/// </summary>
 		public Policy(Policy other)
 		{
-			this.Tran = other.Tran;
+			this.Txn = other.Txn;
 			this.readModeAP = other.readModeAP;
 			this.readModeSC = other.readModeSC;
 			this.replica = other.replica;
@@ -305,7 +305,7 @@ namespace Aerospike.Client
 		/// </summary>
 		public Policy()
 		{
-			Tran = null;
+			Txn = null;
 		}
 
 		/// <summary>

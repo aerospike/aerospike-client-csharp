@@ -229,13 +229,13 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Default multi-record transactions (MRT) policy when verifying record versions in a batch on a commit.
 		/// </summary>
-		public TranVerifyPolicy tranVerifyPolicyDefault = new TranVerifyPolicy();
+		public TxnVerifyPolicy txnVerifyPolicyDefault = new TxnVerifyPolicy();
 
 		/// <summary>
 		/// Default multi-record transactions (MRT) policy when rolling the transaction records forward (commit)
 		/// or back(abort) in a batch.
 		/// </summary>
-		public TranRollPolicy tranRollPolicyDefault = new TranRollPolicy();
+		public TxnRollPolicy txnRollPolicyDefault = new TxnRollPolicy();
 
 		/// <summary>
 		/// Default info policy that is used when info command's policy is null.
@@ -337,8 +337,8 @@ namespace Aerospike.Client
 			this.batchWritePolicyDefault = new BatchWritePolicy(other.batchWritePolicyDefault);
 			this.batchDeletePolicyDefault = new BatchDeletePolicy(other.batchDeletePolicyDefault);
 			this.batchUDFPolicyDefault = new BatchUDFPolicy(other.batchUDFPolicyDefault);
-			this.tranVerifyPolicyDefault = new TranVerifyPolicy(other.tranVerifyPolicyDefault);
-			this.tranRollPolicyDefault = new TranRollPolicy(other.tranRollPolicyDefault);
+			this.txnVerifyPolicyDefault = new TxnVerifyPolicy(other.txnVerifyPolicyDefault);
+			this.txnRollPolicyDefault = new TxnRollPolicy(other.txnRollPolicyDefault);
 			this.infoPolicyDefault = new InfoPolicy(other.infoPolicyDefault);
 			this.tlsPolicy = (other.tlsPolicy != null) ? new TlsPolicy(other.tlsPolicy) : null;
 			this.ipMap = other.ipMap;

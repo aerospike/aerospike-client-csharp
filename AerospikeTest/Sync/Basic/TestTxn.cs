@@ -22,7 +22,7 @@ using System.Text;
 namespace Aerospike.Test
 {
 	[TestClass]
-	public class TestTran : TestSync
+	public class TestTxn : TestSync
 	{
 		private static readonly string binName = "bin";
 
@@ -38,54 +38,54 @@ namespace Aerospike.Test
 		}
 
 		[TestMethod]
-		public void TranWrite()
+		public void TxnWrite()
 		{
-			Key key = new Key(args.ns, args.set, "mrtkey1");
+			Key key = new(args.ns, args.set, "mrtkey1");
 
 			client.Put(null, key, new Bin(binName, "val1"));
 
-			Tran tran = new Tran();
+			Txn txn = new();
 
 			WritePolicy wp = client.WritePolicyDefault;
-			wp.Tran = tran;
+			wp.Txn = txn;
 			client.Put(wp, key, new Bin(binName, "val2"));
 
-			client.Commit(tran);
+			client.Commit(txn);
 
 			Record record = client.Get(null, key);
 			AssertBinEqual(key, record, binName, "val2");
 		}
 
 		[TestMethod]
-		public void TranWriteTwice()
+		public void TxnWriteTwice()
 		{
-			Key key = new Key(args.ns, args.set, "mrtkey2");
+			Key key = new(args.ns, args.set, "mrtkey2");
 
-			Tran tran = new Tran();
+			Txn txn = new();
 
 			WritePolicy wp = client.WritePolicyDefault;
-			wp.Tran = tran;
+			wp.Txn = txn;
 			client.Put(wp, key, new Bin(binName, "val1"));
 			client.Put(wp, key, new Bin(binName, "val2"));
 
-			client.Commit(tran);
+			client.Commit(txn);
 
 			Record record = client.Get(null, key);
 			AssertBinEqual(key, record, binName, "val2");
 		}
 
 		[TestMethod]
-		public void tranWriteConflict()
+		public void TxnWriteConflict()
 		{
-			Key key = new Key(args.ns, args.set, "mrtkey21");
+			Key key = new(args.ns, args.set, "mrtkey21");
 
-			Tran tran1 = new Tran();
-			Tran tran2 = new Tran();
+			Txn txn1 = new();
+			Txn txn2 = new();
 
 			WritePolicy wp1 = client.WritePolicyDefault;
 			WritePolicy wp2 = client.WritePolicyDefault;
-			wp1.Tran = tran1;
-			wp2.Tran = tran2;
+			wp1.Txn = txn1;
+			wp2.Txn = txn2;
 
 			client.Put(wp1, key, new Bin(binName, "val1"));
 
@@ -101,24 +101,24 @@ namespace Aerospike.Test
 				}
 			}
 
-			client.Commit(tran1);
-			client.Commit(tran2);
+			client.Commit(txn1);
+			client.Commit(txn2);
 
 			Record record = client.Get(null, key);
 			AssertBinEqual(key, record, binName, "val1");
 		}
 
 		[TestMethod]
-		public void TranWriteBlock()
+		public void TxnWriteBlock()
 		{
-			Key key = new Key(args.ns, args.set, "mrtkey3");
+			Key key = new(args.ns, args.set, "mrtkey3");
 
 			client.Put(null, key, new Bin(binName, "val1"));
 
-			Tran tran = new Tran();
+			Txn txn = new();
 
 			WritePolicy wp = client.WritePolicyDefault;
-			wp.Tran = tran;
+			wp.Txn = txn;
 			client.Put(wp, key, new Bin(binName, "val2"));
 
 			try
@@ -135,247 +135,247 @@ namespace Aerospike.Test
 				}
 			}
 
-			client.Commit(tran);
+			client.Commit(txn);
 		}
 
 		[TestMethod]
-		public void TranWriteRead()
+		public void TxnWriteRead()
 		{
-			Key key = new Key(args.ns, args.set, "mrtkey4");
+			Key key = new(args.ns, args.set, "mrtkey4");
 
 			client.Put(null, key, new Bin(binName, "val1"));
 
-			Tran tran = new Tran();
+			Txn txn = new();
 
 			WritePolicy wp = client.WritePolicyDefault;
-			wp.Tran = tran;
+			wp.Txn = txn;
 			client.Put(wp, key, new Bin(binName, "val2"));
 
 			Record record = client.Get(null, key);
 			AssertBinEqual(key, record, binName, "val1");
 
-			client.Commit(tran);
+			client.Commit(txn);
 
 			record = client.Get(null, key);
 			AssertBinEqual(key, record, binName, "val2");
 		}
 
 		[TestMethod]
-		public void TranWriteAbort()
+		public void TxnWriteAbort()
 		{
-			Key key = new Key(args.ns, args.set, "mrtkey5");
+			Key key = new(args.ns, args.set, "mrtkey5");
 
 			client.Put(null, key, new Bin(binName, "val1"));
 
-			Tran tran = new Tran();
+			Txn txn = new();
 
 			WritePolicy wp = client.WritePolicyDefault;
-			wp.Tran = tran;
+			wp.Txn = txn;
 			client.Put(wp, key, new Bin(binName, "val2"));
 
 			Policy p = client.ReadPolicyDefault;
-			p.Tran = tran;
+			p.Txn = txn;
 			Record record = client.Get(p, key);
 			AssertBinEqual(key, record, binName, "val2");
 
-			client.Abort(tran);
+			client.Abort(txn);
 
 			record = client.Get(null, key);
 			AssertBinEqual(key, record, binName, "val1");
 		}
 
 		[TestMethod]
-		public void TranDelete()
+		public void TxnDelete()
 		{
-			Key key = new Key(args.ns, args.set, "mrtkey6");
+			Key key = new(args.ns, args.set, "mrtkey6");
 
 			client.Put(null, key, new Bin(binName, "val1"));
 
-			Tran tran = new Tran();
+			Txn txn = new();
 
 			WritePolicy wp = client.WritePolicyDefault;
-			wp.Tran = tran;
+			wp.Txn = txn;
 			wp.durableDelete = true;
 			client.Delete(wp, key);
 
-			client.Commit(tran);
+			client.Commit(txn);
 
 			Record record = client.Get(null, key);
 			Assert.IsNull(record);
 		}
 
 		[TestMethod]
-		public void TranDeleteAbort()
+		public void TxnDeleteAbort()
 		{
-			Key key = new Key(args.ns, args.set, "mrtkey7");
+			Key key = new(args.ns, args.set, "mrtkey7");
 
 			client.Put(null, key, new Bin(binName, "val1"));
 
-			Tran tran = new Tran();
+			Txn txn = new();
 
 			WritePolicy wp = client.WritePolicyDefault;
-			wp.Tran = tran;
+			wp.Txn = txn;
 			wp.durableDelete = true;
 			client.Delete(wp, key);
 
-			client.Abort(tran);
+			client.Abort(txn);
 
 			Record record = client.Get(null, key);
 			AssertBinEqual(key, record, binName, "val1");
 		}
 
 		[TestMethod]
-		public void TranDeleteTwice()
+		public void TxnDeleteTwice()
 		{
-			Key key = new Key(args.ns, args.set, "mrtkey8");
+			Key key = new(args.ns, args.set, "mrtkey8");
 
-			Tran tran = new Tran();
+			Txn txn = new();
 
 			client.Put(null, key, new Bin(binName, "val1"));
 
 			WritePolicy wp = client.WritePolicyDefault;
-			wp.Tran = tran;
+			wp.Txn = txn;
 			wp.durableDelete = true;
 			client.Delete(wp, key);
 			client.Delete(wp, key);
 
-			client.Commit(tran);
+			client.Commit(txn);
 
 			Record record = client.Get(null, key);
 			Assert.IsNull(record);
 		}
 
 		[TestMethod]
-		public void TranTouch()
+		public void TxnTouch()
 		{
-			Key key = new Key(args.ns, args.set, "mrtkey9");
+			Key key = new(args.ns, args.set, "mrtkey9");
 
 			client.Put(null, key, new Bin(binName, "val1"));
 
-			Tran tran = new Tran();
+			Txn txn = new();
 
 			WritePolicy wp = client.WritePolicyDefault;
-			wp.Tran = tran;
+			wp.Txn = txn;
 			client.Touch(wp, key);
 
-			client.Commit(tran);
+			client.Commit(txn);
 
 			Record record = client.Get(null, key);
 			AssertBinEqual(key, record, binName, "val1");
 		}
 
 		[TestMethod]
-		public void TranTouchAbort()
+		public void TxnTouchAbort()
 		{
-			Key key = new Key(args.ns, args.set, "mrtkey10");
+			Key key = new(args.ns, args.set, "mrtkey10");
 
 			client.Put(null, key, new Bin(binName, "val1"));
 
-			Tran tran = new Tran();
+			Txn txn = new();
 
 			WritePolicy wp = client.WritePolicyDefault;
-			wp.Tran = tran;
+			wp.Txn = txn;
 			client.Touch(wp, key);
 
-			client.Abort(tran);
+			client.Abort(txn);
 
 			Record record = client.Get(null, key);
 			AssertBinEqual(key, record, binName, "val1");
 		}
 
 		[TestMethod]
-		public void TranOperateWrite()
+		public void TxnOperateWrite()
 		{
-			Key key = new Key(args.ns, args.set, "mrtkey11");
+			Key key = new(args.ns, args.set, "mrtkey11");
 
 			client.Put(null, key, new Bin(binName, "val1"), new Bin("bin2", "bal1"));
 
-			Tran tran = new Tran();
+			Txn txn = new();
 
 			WritePolicy wp = client.WritePolicyDefault;
-			wp.Tran = tran;
+			wp.Txn = txn;
 			Record record = client.Operate(wp, key,
 				Operation.Put(new Bin(binName, "val2")),
 				Operation.Get("bin2")
 			);
 			AssertBinEqual(key, record, "bin2", "bal1");
 
-			client.Commit(tran);
+			client.Commit(txn);
 
 			record = client.Get(null, key);
 			AssertBinEqual(key, record, binName, "val2");
 		}
 
 		[TestMethod]
-		public void TranOperateWriteAbort()
+		public void TxnOperateWriteAbort()
 		{
-			Key key = new Key(args.ns, args.set, "mrtkey12");
+			Key key = new(args.ns, args.set, "mrtkey12");
 
 			client.Put(null, key, new Bin(binName, "val1"), new Bin("bin2", "bal1"));
 
-			Tran tran = new Tran();
+			Txn txn = new();
 
 			WritePolicy wp = client.WritePolicyDefault;
-			wp.Tran = tran;
+			wp.Txn = txn;
 			Record record = client.Operate(wp, key,
 				Operation.Put(new Bin(binName, "val2")),
 				Operation.Get("bin2")
 			);
 			AssertBinEqual(key, record, "bin2", "bal1");
 
-			client.Abort(tran);
+			client.Abort(txn);
 
 			record = client.Get(null, key);
 			AssertBinEqual(key, record, binName, "val1");
 		}
 
 		[TestMethod]
-		public void TranUDF()
+		public void TxnUDF()
 		{
-			Key key = new Key(args.ns, args.set, "mrtkey13");
+			Key key = new(args.ns, args.set, "mrtkey13");
 
 			client.Put(null, key, new Bin(binName, "val1"));
 
-			Tran tran = new Tran();
+			Txn txn = new();
 
 			WritePolicy wp = client.WritePolicyDefault;
-			wp.Tran = tran;
+			wp.Txn = txn;
 			client.Execute(wp, key, "record_example", "writeBin", Value.Get(binName), Value.Get("val2"));
 
-			client.Commit(tran);
+			client.Commit(txn);
 
 			Record record = client.Get(null, key);
 			AssertBinEqual(key, record, binName, "val2");
 		}
 
 		[TestMethod]
-		public void TranUDFAbort()
+		public void TxnUDFAbort()
 		{
-			Key key = new Key(args.ns, args.set, "mrtkey14");
+			Key key = new(args.ns, args.set, "mrtkey14");
 
 			client.Put(null, key, new Bin(binName, "val1"));
 
-			Tran tran = new Tran();
+			Txn txn = new();
 
 			WritePolicy wp = client.WritePolicyDefault;
-			wp.Tran = tran;
+			wp.Txn = txn;
 			client.Execute(wp, key, "record_example", "writeBin", Value.Get(binName), Value.Get("val2"));
 
-			client.Abort(tran);
+			client.Abort(txn);
 
 			Record record = client.Get(null, key);
 			AssertBinEqual(key, record, binName, "val1");
 		}
 
 		[TestMethod]
-		public void TranBatch()
+		public void TxnBatch()
 		{
 			Key[] keys = new Key[10];
-			Bin bin = new Bin(binName, 1);
+			Bin bin = new(binName, 1);
 
 			for (int i = 0; i < keys.Length; i++)
 			{
-				Key key = new Key(args.ns, args.set, i);
+				Key key = new(args.ns, args.set, i);
 				keys[i] = key;
 
 				client.Put(null, key, bin);
@@ -384,12 +384,12 @@ namespace Aerospike.Test
 			Record[] recs = client.Get(null, keys);
 			AssertBatchEqual(keys, recs, 1);
 
-			Tran tran = new Tran();
+			Txn txn = new();
 
-			bin = new Bin(binName, 2);
+			bin = new(binName, 2);
 
 			BatchPolicy bp = BatchPolicy.WriteDefault();
-			bp.Tran = tran;
+			bp.Txn = txn;
 
 			BatchResults bresults = client.Operate(bp, null, keys, Operation.Put(bin));
 
@@ -415,21 +415,21 @@ namespace Aerospike.Test
 				throw new AerospikeException(sb.ToString());
 			}
 
-			client.Commit(tran);
+			client.Commit(txn);
 
 			recs = client.Get(null, keys);
 			AssertBatchEqual(keys, recs, 2);
 		}
 
 		[TestMethod]
-		public void TranBatchAbort()
+		public void TxnBatchAbort()
 		{
-			Key[] keys = new Key[10];
-			Bin bin = new Bin(binName, 1);
+			var keys = new Key[10];
+			Bin bin = new(binName, 1);
 
 			for (int i = 0; i < keys.Length; i++)
 			{
-				Key key = new Key(args.ns, args.set, i);
+				Key key = new(args.ns, args.set, i);
 				keys[i] = key;
 
 				client.Put(null, key, bin);
@@ -438,12 +438,12 @@ namespace Aerospike.Test
 			Record[] recs = client.Get(null, keys);
 			AssertBatchEqual(keys, recs, 1);
 
-			Tran tran = new Tran();
+			Txn txn = new();
 
 			bin = new Bin(binName, 2);
 
 			BatchPolicy bp = BatchPolicy.WriteDefault();
-			bp.Tran = tran;
+			bp.Txn = txn;
 
 			BatchResults bresults = client.Operate(bp, null, keys, Operation.Put(bin));
 
@@ -469,7 +469,7 @@ namespace Aerospike.Test
 				throw new AerospikeException(sb.ToString());
 			}
 
-			client.Abort(tran);
+			client.Abort(txn);
 
 			recs = client.Get(null, keys);
 			AssertBatchEqual(keys, recs, 1);

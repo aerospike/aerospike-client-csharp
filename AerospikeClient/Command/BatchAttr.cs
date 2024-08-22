@@ -409,7 +409,7 @@ namespace Aerospike.Client
 			opSize = dataOffset;
 		}
 
-		public void SetTran(int attr)
+		public void SetTxn(int attr)
 		{
 			filterExp = null;
 			readAttr = 0;

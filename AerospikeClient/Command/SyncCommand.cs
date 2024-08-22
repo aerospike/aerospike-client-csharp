@@ -14,7 +14,9 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
+using System;
 using System.Net.Sockets;
+using System.Runtime.InteropServices;
 using static Aerospike.Client.Latency;
 
 namespace Aerospike.Client
@@ -26,6 +28,11 @@ namespace Aerospike.Client
 		internal int iteration = 1;
 		internal int commandSentCounter;
 		internal DateTime deadline;
+		protected int resultCode;
+		protected int generation;
+		protected int expiration;
+		protected int fieldCount;
+		protected int opCount;
 
 		/// <summary>
 		/// Default constructor.
@@ -339,6 +346,17 @@ namespace Aerospike.Client
 			}
 		}
 
+		protected void SkipFields(int fieldCount)
+		{
+			// There can be fields in the response (setname etc).
+			// But for now, ignore them. Expose them to the API if needed in the future.
+			for (int i = 0; i < fieldCount; i++)
+			{
+				int fieldlen = ByteUtil.BytesToInt(dataBuffer, dataOffset);
+				dataOffset += 4 + fieldlen;
+			}
+		}
+
 		protected internal sealed override void End()
 		{
 			// Write total size of message.
@@ -346,9 +364,125 @@ namespace Aerospike.Client
 			ByteUtil.LongToBytes(size, dataBuffer, 0);
 		}
 
+		protected void ParseHeader(IConnection conn)
+		{
+			// Read header.
+			conn.ReadFully(dataBuffer, 8, Command.STATE_READ_HEADER);
+
+			long sz = ByteUtil.BytesToLong(dataBuffer, 0);
+			int receiveSize = (int)(sz & 0xFFFFFFFFFFFFL);
+
+			if (receiveSize <= 0)
+			{
+				throw new AerospikeException("Invalid receive size: " + receiveSize);
+			}
+
+			SizeBuffer(receiveSize);
+			conn.ReadFully(dataBuffer, receiveSize, Command.STATE_READ_DETAIL);
+			conn.UpdateLastUsed();
+
+			ulong type = (ulong)(sz >> 48) & 0xff;
+
+			if (type == Command.AS_MSG_TYPE)
+			{
+				dataOffset = 5;
+			}
+			else if (type == Command.MSG_TYPE_COMPRESSED)
+			{
+				int usize = (int)ByteUtil.BytesToLong(dataBuffer, 0);
+				byte[] ubuf = new byte[usize];
+
+				ByteUtil.Decompress(dataBuffer, 8, receiveSize, ubuf, usize);
+				dataBuffer = ubuf;
+				dataOffset = 13;
+			}
+			else
+			{
+				throw new AerospikeException("Invalid proto type: " + type + " Expected: " + Command.AS_MSG_TYPE);
+			}
+
+			this.resultCode = dataBuffer[dataOffset] & 0xFF;
+			dataOffset++;
+			this.generation = ByteUtil.BytesToInt(dataBuffer, dataOffset);
+			dataOffset += 4;
+			this.expiration = ByteUtil.BytesToInt(dataBuffer, dataOffset);
+			dataOffset += 8;
+			this.fieldCount = ByteUtil.BytesToShort(dataBuffer, dataOffset);
+			dataOffset += 2;
+			this.opCount = ByteUtil.BytesToShort(dataBuffer, dataOffset);
+			dataOffset += 2;
+		}
+
+		protected void ParseFields(Txn tran, Key key, bool hasWrite)
+		{
+			if (tran == null)
+			{
+				SkipFields(fieldCount);
+				return;
+			}
+
+			long? version = null;
+
+			for (int i = 0; i < fieldCount; i++)
+			{
+				int len = ByteUtil.BytesToInt(dataBuffer, dataOffset);
+				dataOffset += 4;
+
+				int type = dataBuffer[dataOffset++];
+				int size = len - 1;
+
+				if (type == FieldType.RECORD_VERSION)
+				{
+					if (size == 7)
+					{
+						version = ByteUtil.VersionBytesToLong(dataBuffer, dataOffset);
+					}
+					else
+					{
+						throw new AerospikeException("Record version field has invalid size: " + size);
+					}
+				}
+				dataOffset += size;
+			}
+
+			if (hasWrite)
+			{
+				tran.OnWrite(key, version, resultCode);
+			}
+			else
+			{
+				tran.OnRead(key, version);
+			}
+		}
+
+		protected void ParseTranDeadline(Txn txn)
+		{
+			for (int i = 0; i < fieldCount; i++)
+			{
+				int len = ByteUtil.BytesToInt(dataBuffer, dataOffset);
+				dataOffset += 4;
+
+				int type = dataBuffer[dataOffset++];
+				int size = len - 1;
+
+				if (type == FieldType.MRT_DEADLINE)
+				{
+					int deadline = ByteUtil.LittleBytesToInt(dataBuffer, dataOffset);
+					txn.Deadline = deadline;
+				}
+				dataOffset += size;
+			}
+		}
+
 		protected internal sealed override void SetLength(int length)
 		{
 			dataOffset = length;
+		}
+
+		// Do nothing by default. Write commands will override this method.
+		protected internal virtual void OnInDoubt()
+		{
+
 		}
 
 		protected internal virtual bool RetryBatch

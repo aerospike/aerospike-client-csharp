@@ -43,6 +43,7 @@ namespace Aerospike.Test
 		public string clusterName;
 		public string ns;
 		public string set;
+		public bool useServicesAlternate;
 		public string tlsName;
 		public string proxyTlsName;
 		public TlsPolicy tlsPolicy;
@@ -70,6 +71,7 @@ namespace Aerospike.Test
 			ns = section.GetSection("Namespace").Value;
 			set = section.GetSection("Set").Value;
 			authMode = (AuthMode)Enum.Parse(typeof(AuthMode), section.GetSection("AuthMode").Value, true);
+			useServicesAlternate = bool.Parse(section.GetSection("UseServicesAlternate").Value);
 
 			bool tlsEnable = bool.Parse(section.GetSection("TlsEnable").Value);
 
@@ -130,6 +132,7 @@ namespace Aerospike.Test
 			policy.tlsPolicy = tlsPolicy;
 			policy.authMode = authMode;
 			policy.timeout = timeout;
+			policy.useServicesAlternate = useServicesAlternate;
 
 			if (user != null && user.Length > 0)
 			{
@@ -187,6 +190,11 @@ namespace Aerospike.Test
 			proxyAsyncPolicy.maxConnsPerNode = 100;
 			proxyPolicy.timeout = timeout;
 			proxyAsyncPolicy.timeout = timeout;
+			policy.useServicesAlternate = useServicesAlternate;
+			proxyPolicy.useServicesAlternate = useServicesAlternate;
+			asyncPolicy.useServicesAlternate = useServicesAlternate;
+			proxyAsyncPolicy.useServicesAlternate = useServicesAlternate;
+
 
 			if (user != null && user.Length > 0)
 			{
@@ -287,6 +295,7 @@ namespace Aerospike.Test
 			policy.authMode = authMode;
 			policy.asyncMaxCommands = 300;
 			policy.timeout = timeout;
+			policy.useServicesAlternate = useServicesAlternate;
 
 			if (user != null && user.Length > 0)
 			{

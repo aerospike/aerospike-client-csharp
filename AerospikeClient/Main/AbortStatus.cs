@@ -17,31 +17,29 @@
 
 namespace Aerospike.Client
 {
-	public sealed class TranMarkRollForward : SyncWriteCommand
+	/// <summary>
+	/// Multi-record transaction (MRT) abort error status code
+	/// </summary>
+	public static class AbortStatus
 	{
-		private readonly Tran tran;
-
-		public TranMarkRollForward(Cluster cluster, Tran tran, WritePolicy writePolicy, Key key) 
-			: base(cluster, writePolicy, key)
+		public enum AbortStatusType
 		{
-			this.tran = tran;
+			OK,
+			ALREADY_ATTEMPTED,
+			ROLL_BACK_ABANDONED,
+			CLOSE_ABANDONED
 		}
 
-		protected internal override void WriteBuffer()
+		public static string AbortErrorToString(AbortStatusType status)
 		{
-			SetTranMarkRollForward(tran, key);
-		}
-
-		protected internal override void ParseResult(IConnection conn)
-		{
-			int resultCode = ParseHeader(conn);
-
-			if (resultCode == ResultCode.OK || resultCode == ResultCode.BIN_EXISTS_ERROR)
+			return status switch
 			{
-				return;
-			}
-
-			throw new AerospikeException(resultCode);
+				AbortStatusType.OK => "Abort succeeded.",
+				AbortStatusType.ALREADY_ATTEMPTED => "Abort or commit already attempted.",
+				AbortStatusType.ROLL_BACK_ABANDONED => "MRT client roll back abandoned. Server will eventually abort the MRT.",
+				AbortStatusType.CLOSE_ABANDONED => "MRT has been rolled back, but MRT client close was abandoned. Server will eventually close the MRT.",
+				_ => "Unexpected AbortStatusType."
+			};
 		}
 	}
 }

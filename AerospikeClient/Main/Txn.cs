@@ -15,28 +15,30 @@
  * the License.
  */
 
+using System;
 using System.Collections.Concurrent;
-using System.Collections.Generic;
 
 namespace Aerospike.Client
 {
 	/// <summary>
 	/// Mutli-record transaction (MRT). Each command in the MRT must use the same namespace.
 	/// </summary>
-	public class Tran
+	public class Txn
 	{
 		public long Id { get; private set; }
 		public ConcurrentDictionary<Key, long> Reads { get; private set; }
 		public HashSet<Key> Writes { get; private set; }
-		public string Ns { get; set; }
+		public string Ns { get; private set; }
 		public int Deadline { get; set; }
+
+		private bool monitorInDoubt;
 
 		private bool rollAttempted;
 
 		/// <summary>
 		/// Create MRT, assign random transaction id and initialize reads/writes hashmaps with default capacities.
 		/// </summary>
-		public Tran()
+		public Txn()
 		{
 			Id = CreateId();
 			Reads = new ConcurrentDictionary<Key, long>();
@@ -48,7 +50,7 @@ namespace Aerospike.Client
 		/// </summary>
 		/// <param name="readsCapacity">expected number of record reads in the MRT. Minimum value is 16.</param>
 		/// <param name="writesCapacity">expected number of record writes in the MRT. Minimum value is 16.</param>
-		public Tran(int readsCapacity, int writesCapacity)
+		public Txn(int readsCapacity, int writesCapacity)
 		{
 			if (readsCapacity < 16)
 			{
@@ -86,8 +88,6 @@ namespace Aerospike.Client
 		/// <param name="version"></param>
 		internal void OnRead(Key key, long? version)
 		{
-			Ns = key.ns;
-
 			if (version.HasValue)
 			{
 				Reads.TryAdd(key, version.Value);
@@ -99,9 +99,16 @@ namespace Aerospike.Client
 		/// </summary>
 		/// <param name="key"></param>
 		/// <returns></returns>
-		public long GetReadVersion(Key key)
+		public long? GetReadVersion(Key key)
 		{
-			return Reads[key];
+			if (Reads.ContainsKey(key))
+			{
+				return Reads[key];
+			}
+			else
+			{
+				return null;
+			}
 		}
 
 		/// <summary>
@@ -128,14 +135,87 @@ namespace Aerospike.Client
 			}
 		}
 
-		public void SetRollAttempted()
+		/// <summary>
+		/// Add key to write hash when write command is in doubt (usually caused by timeout).
+		/// </summary>
+		public void OnWriteInDoubt(Key key)
+		{
+			Reads.Remove(key, out _);
+			Writes.Add(key);
+		}
+
+		/// <summary>
+		/// Set MRT namespace only if doesn't already exist.
+		/// If namespace already exists, verify new namespace is the same.
+		/// </summary>
+		public void SetNamespace(string ns)
+		{
+			if (Ns == null) 
+			{
+				Ns = ns;
+			}
+			else if (!Ns.Equals(ns)) {
+				throw new AerospikeException("Namespace must be the same for all commands in the MRT. orig: " +
+					Ns + " new: " + ns);
+			}
+		}
+
+		/// <summary>
+		/// Set MRT namespaces for each key only if doesn't already exist.
+		/// If namespace already exists, verify new namespace is the same.
+		/// </summary>
+		public void SetNamespace(Key[] keys)
+		{
+			foreach (Key key in keys)
+			{
+				SetNamespace(key.ns);
+			}
+		}
+
+		/// <summary>
+		/// Set MRT namespaces for each key only if doesn't already exist.
+		/// If namespace already exists, verify new namespace is the same.
+		/// </summary>
+		public void SetNamespace(List<BatchRead> records)
+		{
+			foreach (BatchRead br in records)
+			{
+				SetNamespace(br.key.ns);
+			}
+		}
+
+		/// <summary>
+		/// Set that the MRT monitor existence is in doubt.
+		/// </summary>
+		public void SetMonitorInDoubt()
+		{
+			this.monitorInDoubt = true;
+		}
+
+		/// <summary>
+		/// Does MRT monitor record exist or is in doubt.
+		/// </summary>
+		public bool MonitorMightExist()
+		{
+			return Deadline != 0 || monitorInDoubt;
+		}
+
+		/// <summary>
+		/// Does MRT monitor record exist.
+		/// </summary>
+		public bool MonitorExists()
+		{
+			return Deadline != 0;
+		}
+
+		public bool SetRollAttempted()
 		{
 			if (rollAttempted)
 			{
-				throw new AerospikeException(ResultCode.PARAMETER_ERROR,
-					"commit() or abort() may only be called once for a given MRT");
+				return false;
 			}
 			rollAttempted = true;
+			return true;
 		}
 
 		public void Clear()

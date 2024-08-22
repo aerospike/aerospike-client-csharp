@@ -17,29 +17,35 @@
 
 namespace Aerospike.Client
 {
-	/// <summary>
-	/// Multi-record transaction (MRT) policy fields used to batch roll forward/backward records on
-    /// commit or abort.Used a placeholder for now as there are no additional fields beyond BatchPolicy.
-	/// </summary>
-	public sealed class TranRollPolicy : BatchPolicy
+	public sealed class TxnClose : SyncWriteCommand
 	{
-		/// <summary>
-		/// Copy policy from another policy.
-		/// </summary>
-		public TranRollPolicy(TranRollPolicy other) : 
-			base(other)
+		private readonly Txn tran;
+
+		public TxnClose(Cluster cluster, Txn tran, WritePolicy writePolicy, Key key) 
+			: base(cluster, writePolicy, key)
 		{
+			this.tran = tran;
 		}
 
-		/// <summary>
-		/// Default constructor.
-		/// </summary>
-		public TranRollPolicy()
+		protected internal override void WriteBuffer()
 		{
-			replica = Replica.MASTER;
-			maxRetries = 5;
-			totalTimeout = 10000;
-			sleepBetweenRetries = 1000;
+			SetTxnClose(tran, key);
+		}
+
+		protected internal override void ParseResult(IConnection conn)
+		{
+			ParseHeader(conn);
+
+			if (resultCode == ResultCode.OK || resultCode == ResultCode.KEY_NOT_FOUND_ERROR)
+			{
+				return;
+			}
+
+			throw new AerospikeException(resultCode);
+		}
+
+		protected internal override void OnInDoubt()
+		{
 		}
 	}
 }

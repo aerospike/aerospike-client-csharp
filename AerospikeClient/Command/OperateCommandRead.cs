@@ -17,43 +17,19 @@
 
 namespace Aerospike.Client
 {
-	public sealed class WriteCommand : SyncWriteCommand
+	public sealed class OperateCommandRead : ReadCommand
 	{
-		private readonly Bin[] bins;
-		private readonly Operation.Type operation;
+		private readonly OperateArgs args;
 
-		public WriteCommand(Cluster cluster, WritePolicy writePolicy, Key key, Bin[] bins, Operation.Type operation)
-			: base(cluster, writePolicy, key)
+		public OperateCommandRead(Cluster cluster, Key key, OperateArgs args)
+			: base(cluster, args.writePolicy, key, args.GetPartition(cluster, key), true)
 		{
-			this.bins = bins;
-			this.operation = operation;
-			cluster.AddCommand();
+			this.args = args;
 		}
 
 		protected internal override void WriteBuffer()
 		{
-			SetWrite(writePolicy, operation, key, bins);
-		}
-
-		protected internal override void ParseResult(IConnection conn)
-		{
-			ParseHeader(conn);
-
-			if (resultCode == ResultCode.OK)
-			{
-				return;
-			}
-
-			if (resultCode == ResultCode.FILTERED_OUT)
-			{
-				if (writePolicy.failOnFilteredOut)
-				{
-					throw new AerospikeException(resultCode);
-				}
-				return;
-			}
-
-			throw new AerospikeException(resultCode);
+			SetOperate(args.writePolicy, key, args);
 		}
 	}
 }

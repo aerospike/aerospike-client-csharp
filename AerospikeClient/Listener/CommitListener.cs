@@ -14,6 +14,8 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
+using static Aerospike.Client.CommitStatus;
+
 namespace Aerospike.Client
 {
 	/// <summary>
@@ -24,7 +26,7 @@ namespace Aerospike.Client
 		/// <summary>
 		/// This method is called when the records are verified and the commit succeeds.
 		/// </summary>
-		void OnSuccess();
+		void OnSuccess(CommitStatusType status);
 
 		/// <summary>
 		/// This method is called when the commit fails.

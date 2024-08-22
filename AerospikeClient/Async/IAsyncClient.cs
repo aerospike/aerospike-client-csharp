@@ -45,29 +45,29 @@ namespace Aerospike.Client
 		/// Asynchronously attempt to commit the given multi-record transaction. First, the expected
 		/// record versions are sent to the server nodes for verification.If all nodes return success,
 		/// the transaction is committed.Otherwise, the transaction is aborted.
-		/// <p>
+		/// <para>
 		/// This method registers the command with an event loop and returns.
 		/// The event loop thread will process the command and send the results to the listener.
-		/// </p><p>
+		/// </para><para>
 		/// Requires server version 8.0+
-		/// </p>
+		/// </para>
 		/// </summary>
 		/// <param name="listener">where to send results</param>
 		/// <param name="tran">multi-record transaction</param>
-		void Commit(CommitListener listener, Tran tran);
+		void Commit(CommitListener listener, Txn txn);
 
 		/// <summary>
-		///  Asynchronously abort and rollback the given multi-record transaction.
-	    /// <p>
-	    /// This method registers the command with an event loop and returns.
-	    /// The event loop thread will process the command and send the results to the listener.
-	    /// </p><p>
-	    /// Requires server version 8.0+
-		/// </p>
+		/// Asynchronously abort and rollback the given multi-record transaction.
+		/// <para>
+		/// This method registers the command with an event loop and returns.
+		/// The event loop thread will process the command and send the results to the listener.
+		/// </para><para>
+		/// Requires server version 8.0+
+		/// </para>
 		/// </summary>
 		/// <param name="listener"></param>
 		/// <param name="tran"></param>
-		void Abort(AbortListener listener, Tran tran);
+		void Abort(AbortListener listener, Txn tran);
 
 		//-------------------------------------------------------
 		// Write Record Operations

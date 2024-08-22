@@ -17,72 +17,69 @@
 
 namespace Aerospike.Client
 {
-	public sealed class AsyncWrite : AsyncWriteBase
+	public sealed class AsyncTxnAddKeys : AsyncWriteBase
 	{
-		private readonly WriteListener listener;
-		private readonly Bin[] bins;
-		private readonly Operation.Type operation;
+		private readonly RecordListener listener;
+		private readonly OperateArgs args;
 
-		public AsyncWrite
+		public AsyncTxnAddKeys
 		(
 			AsyncCluster cluster,
-			WritePolicy writePolicy,
-			WriteListener listener,
+			RecordListener listener,
 			Key key,
-			Bin[] bins,
-			Operation.Type operation
-		) : base(cluster, writePolicy, key)
+			OperateArgs args
+		) : base(cluster, args.writePolicy, key)
 		{
 			this.listener = listener;
-			this.bins = bins;
-			this.operation = operation;
-			cluster.AddCommand();
+			this.args = args;
 		}
 
-		public AsyncWrite(AsyncWrite other)
+		public AsyncTxnAddKeys(AsyncTxnAddKeys other)
 			: base(other)
 		{
 			this.listener = other.listener;
-			this.bins = other.bins;
-			this.operation = other.operation;
+			this.args = other.args;
 		}
 
 		protected internal override AsyncCommand CloneCommand()
 		{
-			return new AsyncWrite(this);
+			return new AsyncTxnAddKeys(this);
 		}
 
 		protected internal override void WriteBuffer()
 		{
-			SetWrite(writePolicy, operation, Key, bins);
+			SetTxnAddKeys(args.writePolicy, Key, args);
 		}
 
 		protected internal override bool ParseResult()
 		{
 			ParseHeader();
+			ParseTranDeadline(policy.Txn);
 
 			if (resultCode == ResultCode.OK)
 			{
 				return true;
 			}
 
-			if (resultCode == ResultCode.FILTERED_OUT)
-			{
-				if (policy.failOnFilteredOut)
-				{
-					throw new AerospikeException(resultCode);
-				}
-				return true;
-			}
-
 			throw new AerospikeException(resultCode);
+		}
+
+		protected internal override bool PrepareRetry(bool timeout)
+		{
+			partition.PrepareRetryWrite(timeout);
+			return true;
+		}
+
+		protected internal override void OnInDoubt()
+		{
+			policy.Txn.SetMonitorInDoubt();
 		}
 
 		protected internal override void OnSuccess()
 		{
 			if (listener != null)
 			{
-				listener.OnSuccess(Key);
+				listener.OnSuccess(Key, null);
 			}
 		}
 

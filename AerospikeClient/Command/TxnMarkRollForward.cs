@@ -15,57 +15,39 @@
  * the License.
  */
 
-using System;
-
 namespace Aerospike.Client
 {
-	public sealed class DeleteCommand : SyncWriteCommand
+	public sealed class TxnMarkRollForward : SyncWriteCommand
 	{
-		private bool existed;
+		private readonly Txn tran;
 
-		public DeleteCommand(Cluster cluster, WritePolicy writePolicy, Key key)
+		public TxnMarkRollForward(Cluster cluster, Txn tran, WritePolicy writePolicy, Key key) 
 			: base(cluster, writePolicy, key)
 		{
-			cluster.AddCommand();
+			this.tran = tran;
 		}
 
 		protected internal override void WriteBuffer()
 		{
-			SetDelete(writePolicy, key);
+			SetTxnMarkRollForward(tran, key);
 		}
 
 		protected internal override void ParseResult(IConnection conn)
 		{
 			ParseHeader(conn);
 
-			if (resultCode == 0)
+			// BIN_EXISTS_ERROR is considered a success because it means a previous attempt already
+			// succeeded in notifying the server that the MRT will be rolled forward.
+			if (resultCode == ResultCode.OK || resultCode == ResultCode.BIN_EXISTS_ERROR)
 			{
-				existed = true;
-				return;
-			}
-
-			if (resultCode == ResultCode.KEY_NOT_FOUND_ERROR)
-			{
-				existed = false;
-				return;
-			}
-
-			if (resultCode == ResultCode.FILTERED_OUT)
-			{
-				if (writePolicy.failOnFilteredOut)
-				{
-					throw new AerospikeException(resultCode);
-				}
-				existed = true;
 				return;
 			}
 
 			throw new AerospikeException(resultCode);
 		}
 
-		public bool Existed()
+		protected internal override void OnInDoubt()
 		{
-			return existed;
 		}
 	}
 }

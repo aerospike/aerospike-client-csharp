@@ -15,7 +15,7 @@
  * the License.
  */
 using System.Text;
-using static Aerospike.Client.AbortError;
+using static Aerospike.Client.AbortStatus;
 using static Aerospike.Client.CommitError;
 
 namespace Aerospike.Client
@@ -167,7 +167,7 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
-		/// Transaction policy.
+		/// Command policy.
 		/// </summary>
 		public Policy Policy
 		{
@@ -208,7 +208,7 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
-		/// Is it possible that write transaction may have completed.
+		/// Is it possible that write command may have completed.
 		/// </summary>
 		public bool InDoubt
 		{
@@ -219,7 +219,7 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
-		/// Set whether it is possible that the write transaction may have completed
+		/// Set whether it is possible that the write command may have completed
 		/// even though this exception was generated.  This may be the case when a 
 		/// client error occurs (like timeout) after the command was sent to the server.
 		/// </summary>
@@ -604,7 +604,7 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
-		/// Exception thrown when {@link AerospikeClient#commit(com.aerospike.client.Tran)} fails.
+		/// Exception thrown when {@link AerospikeClient#commit(com.aerospike.client.Txn)} fails.
 		/// </summary>
 		public sealed class Commit : AerospikeException
 		{
@@ -656,28 +656,28 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
-		/// Exception thrown when {@link AerospikeClient#abort(com.aerospike.client.Tran)} fails.
+		/// Exception thrown when {@link AerospikeClient#abort(com.aerospike.client.Txn)} fails.
 		/// </summary>
 		public sealed class Abort : AerospikeException
 		{
 			/// <summary>
 			/// Error status of the attempted abort.
 			/// </summary>
-			public readonly AbortErrorType Error;
+			public readonly AbortStatusType Error;
 
 			/// <summary>
 			/// Roll backward result for each write key in the MRT. May be null if failure occurred before roll backward.
 			/// </summary>
 			public readonly BatchRecord[] RollRecords;
 
-			public Abort(AbortErrorType error, BatchRecord[] rollRecords)
+			public Abort(AbortStatusType error, BatchRecord[] rollRecords)
 				: base(ResultCode.TRAN_FAILED, AbortErrorToString(error))
 			{
 				this.Error = error;
 				this.RollRecords = rollRecords;
 			}
 
-			public Abort(AbortErrorType error, BatchRecord[] rollRecords, Exception cause)
+			public Abort(AbortStatusType error, BatchRecord[] rollRecords, Exception cause)
 				: base(ResultCode.TRAN_FAILED, AbortErrorToString(error), cause)
 			{
 				this.Error = error;

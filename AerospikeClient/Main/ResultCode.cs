@@ -22,7 +22,7 @@ namespace Aerospike.Client
 	public sealed class ResultCode
 	{
 		/// <summary>
-		/// Multi-record transaction failed
+		/// Multi-record transaction failed.
 		/// Value: -17
 		/// </summary>
 		public const int TRAN_FAILED = -17;
@@ -271,7 +271,7 @@ namespace Aerospike.Client
 		public const int OP_NOT_APPLICABLE = 26;
 
 		/// <summary>
-		/// The transaction was not performed because the filter was false.
+		/// The command was not performed because the filter was false.
 		/// Value: 27
 		/// </summary>
 		public const int FILTERED_OUT = 27;
@@ -690,7 +690,7 @@ namespace Aerospike.Client
 				return "Operation not applicable";
 
 			case FILTERED_OUT:
-				return "Transaction filtered out";
+				return "Command filtered out";
 
 			case LOST_CONFLICT:
 				return "Transaction failed due to conflict with XDR";

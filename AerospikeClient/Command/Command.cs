@@ -117,7 +117,7 @@ namespace Aerospike.Client
 		// Multi-record Transactions
 		//--------------------------------------------------
 
-		public void SetTranAddKeys(WritePolicy policy, Key key, OperateArgs args)
+		public void SetTxnAddKeys(WritePolicy policy, Key key, OperateArgs args)
 		{
 			Begin();
 			int fieldCount = EstimateKeySize(key);
@@ -131,7 +131,7 @@ namespace Aerospike.Client
 			End(policy.compress);
 		}
 
-		public void SetTranVerify(Tran tran, Key key, long ver)
+		public void SetTranVerify(Txn tran, Key key, long ver)
 		{
 			Begin();
 			int fieldCount = EstimateKeySize(key);
@@ -160,9 +160,9 @@ namespace Aerospike.Client
 			End();
 		}
 
-		public void SetBatchTranVerify(
+		public void SetBatchTxnVerify(
 			BatchPolicy policy,
-			Tran tran,
+			Txn tran,
 			Key[] keys,
 			long[] versions,
 			BatchNode batch
@@ -174,7 +174,7 @@ namespace Aerospike.Client
 
 		public void SetBatchTranVerify(
 			BatchPolicy policy,
-			Tran tran,
+			Txn tran,
 			Key[] keys,
 			long[] versions,
 			BatchOffsets offsets
@@ -279,7 +279,7 @@ namespace Aerospike.Client
 			End(compress);
 		}
 
-		public void SetTranMarkRollForward(Tran tran, Key key)
+		public void SetTxnMarkRollForward(Txn tran, Key key)
 		{
 			Bin bin = new("fwd", true);
 
@@ -291,7 +291,7 @@ namespace Aerospike.Client
 			End();
 		}
 
-		public void SetTranRoll(Key key, Tran tran, int tranAttr)
+		public void SetTranRoll(Key key, Txn tran, int tranAttr)
 		{
 			Begin();
 			int fieldCount = EstimateKeySize(key);
@@ -317,7 +317,7 @@ namespace Aerospike.Client
 			End();
 		}
 
-		public void SetBatchTranRoll(
+		public void SetBatchTxnRoll(
 			BatchPolicy policy,
 			Key[] keys,
 			BatchNode batch,
@@ -339,8 +339,8 @@ namespace Aerospike.Client
 			Begin();
 			int fieldCount = 1;
 			int max = offsets.Size();
-			Tran tran = policy.Tran;
-			long[] versions = new long[max];
+			Txn tran = policy.Txn;
+			long?[] versions = new long?[max];
 
 			for (int i = 0; i < max; i++)
 			{
@@ -358,7 +358,7 @@ namespace Aerospike.Client
 			{
 				int offset = offsets.Get(i);
 				Key key = keys[offset];
-				long ver = versions[i];
+				long? ver = versions[i];
 
 				dataOffset += key.digest.Length + 4;
 
@@ -395,7 +395,7 @@ namespace Aerospike.Client
 			{
 				int offset = offsets.Get(i);
 				Key key = keys[offset];
-				long ver = versions[i];
+				long? ver = versions[i];
 
 				ByteUtil.IntToBytes((uint)offset, dataBuffer, dataOffset);
 				dataOffset += 4;
@@ -422,7 +422,7 @@ namespace Aerospike.Client
 			End(compress);
 		}
 
-		public void SetTranClose(Tran tran, Key key)
+		public void SetTxnClose(Txn tran, Key key)
 		{
 			Begin();
 			int fieldCount = EstimateKeySize(key);
@@ -1121,7 +1121,7 @@ namespace Aerospike.Client
 		{
 			Begin();
 			int max = offsets.Size();
-			Tran tran = policy.Tran;
+			Txn tran = policy.Txn;
 			long?[] versions = null;
 
 			if (tran != null)
@@ -1280,7 +1280,7 @@ namespace Aerospike.Client
 								{
 									attr.SetUDF(policy);
 								}
-								WriteBatchWrite(key, policy.Tran, null, attr, attr.filterExp, 3, 0);
+								WriteBatchWrite(key, policy.Txn, null, attr, attr.filterExp, 3, 0);
 								WriteField(bu.packageName, FieldType.UDF_PACKAGE_NAME);
 								WriteField(bu.functionName, FieldType.UDF_FUNCTION);
 								WriteField(bu.argBytes, FieldType.UDF_ARGLIST);
@@ -1337,7 +1337,7 @@ namespace Aerospike.Client
 		{
 			// Estimate full row size
 			int max = offsets.Size();
-			Tran tran = policy.Tran;
+			Txn tran = policy.Txn;
 			long?[] versions = null;
 
 			Begin();
@@ -1511,7 +1511,7 @@ namespace Aerospike.Client
 			// Estimate buffer size.
 			Begin();
 			int max = offsets.Size();
-			Tran tran = policy.Tran;
+			Txn tran = policy.Txn;
 			long?[] versions = null;
 
 			if (tran != null)
@@ -1672,7 +1672,7 @@ namespace Aerospike.Client
 			return flags;
 		}
 
-		private void SizeTranBatch(Tran tran, long? ver)
+		private void SizeTranBatch(Txn tran, long? ver)
 		{
 			if (tran != null)
 			{
@@ -1711,7 +1711,7 @@ namespace Aerospike.Client
 			dataOffset += ByteUtil.ShortToBytes(0, dataBuffer, dataOffset);
 		}
 
-		private void WriteBatchBinNames(Key key, Tran tran, long? ver, string[] binNames, BatchAttr attr, Expression filter)
+		private void WriteBatchBinNames(Key key, Txn tran, long? ver, string[] binNames, BatchAttr attr, Expression filter)
 		{
 			WriteBatchRead(key, tran, ver, attr, filter, binNames.Length);
 
@@ -1721,7 +1721,7 @@ namespace Aerospike.Client
 			}
 		}
 
-		private void WriteBatchOperations(Key key, Tran tran, long? ver, Operation[] ops, BatchAttr attr, Expression filter)
+		private void WriteBatchOperations(Key key, Txn tran, long? ver, Operation[] ops, BatchAttr attr, Expression filter)
 		{
 			if (attr.hasWrite)
 			{
@@ -1738,7 +1738,7 @@ namespace Aerospike.Client
 			}
 		}
 
-		private void WriteBatchRead(Key key, Tran tran, long? ver, BatchAttr attr, Expression filter, int opCount)
+		private void WriteBatchRead(Key key, Txn tran, long? ver, BatchAttr attr, Expression filter, int opCount)
 		{
 			dataBuffer[dataOffset++] = (byte)(BATCH_MSG_INFO | BATCH_MSG_INFO4 | BATCH_MSG_TTL);
 			dataBuffer[dataOffset++] = (byte)attr.readAttr;
@@ -1750,7 +1750,7 @@ namespace Aerospike.Client
 			WriteBatchFields(key, tran, ver, attr,filter, 0, opCount);
 		}
 
-		private void WriteBatchWrite(Key key, Tran tran, long? ver, BatchAttr attr, Expression filter, int fieldCount, int opCount)
+		private void WriteBatchWrite(Key key, Txn tran, long? ver, BatchAttr attr, Expression filter, int fieldCount, int opCount)
 		{
 			dataBuffer[dataOffset++] = (byte)(BATCH_MSG_INFO | BATCH_MSG_INFO4 | BATCH_MSG_GEN | BATCH_MSG_TTL);
 			dataBuffer[dataOffset++] = (byte)attr.readAttr;
@@ -1764,7 +1764,7 @@ namespace Aerospike.Client
 			WriteBatchFields(key, tran, ver, attr, filter, fieldCount, opCount);
 		}
 
-		private void WriteBatchFields(Key key, Tran tran, long? ver, BatchAttr attr, Expression filter, int fieldCount, int opCount)
+		private void WriteBatchFields(Key key, Txn tran, long? ver, BatchAttr attr, Expression filter, int fieldCount, int opCount)
 		{
 			if (tran != null)
 			{
@@ -2356,7 +2356,7 @@ namespace Aerospike.Client
 		{
 			int fieldCount = EstimateKeySize(key);
 
-			fieldCount += SizeTran(key, policy.Tran, sendDeadline);
+			fieldCount += SizeTran(key, policy.Txn, sendDeadline);
 
 			if (policy.sendKey)
 			{
@@ -2737,7 +2737,7 @@ namespace Aerospike.Client
 		private void WriteKey(Policy policy, Key key, bool sendDeadline)
 		{
 			WriteKey(key);
-			WriteTran(policy.Tran, sendDeadline);
+			WriteTran(policy.Txn, sendDeadline);
 
 			if (policy.sendKey)
 			{
@@ -2847,7 +2847,7 @@ namespace Aerospike.Client
 			dataBuffer[dataOffset++] = 0;
 		}
 
-		private int SizeTran(Key key, Tran tran, bool sendDeadline)
+		private int SizeTran(Key key, Txn tran, bool sendDeadline)
 		{
 			int fieldCount = 0;
 
@@ -2873,7 +2873,7 @@ namespace Aerospike.Client
 			return fieldCount;
 		}
 
-		private void WriteTran(Tran tran, bool sendDeadline)
+		private void WriteTran(Txn tran, bool sendDeadline)
 		{
 			if (tran != null)
 			{

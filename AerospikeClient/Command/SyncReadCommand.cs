@@ -17,43 +17,37 @@
 
 namespace Aerospike.Client
 {
-	public sealed class WriteCommand : SyncWriteCommand
+	public abstract class SyncReadCommand : SyncCommand
 	{
-		private readonly Bin[] bins;
-		private readonly Operation.Type operation;
+		protected readonly Key key;
+		private readonly Partition partition;
 
-		public WriteCommand(Cluster cluster, WritePolicy writePolicy, Key key, Bin[] bins, Operation.Type operation)
-			: base(cluster, writePolicy, key)
+		public SyncReadCommand(Cluster cluster, Policy policy, Key key)
+			: base(cluster, policy)
 		{
-			this.bins = bins;
-			this.operation = operation;
+			this.key = key;
+			this.partition = Partition.Read(cluster, policy, key);
 			cluster.AddCommand();
 		}
 
-		protected internal override void WriteBuffer()
+		protected internal override Node GetNode()
 		{
-			SetWrite(writePolicy, operation, key, bins);
+			return partition.GetNodeRead(cluster);
 		}
 
-		protected internal override void ParseResult(IConnection conn)
+		protected override Latency.LatencyType GetLatencyType()
 		{
-			ParseHeader(conn);
-
-			if (resultCode == ResultCode.OK)
-			{
-				return;
-			}
-
-			if (resultCode == ResultCode.FILTERED_OUT)
-			{
-				if (writePolicy.failOnFilteredOut)
-				{
-					throw new AerospikeException(resultCode);
-				}
-				return;
-			}
-
-			throw new AerospikeException(resultCode);
+			return Latency.LatencyType.READ;
 		}
+
+		protected internal override bool PrepareRetry(bool timeout)
+		{
+			partition.PrepareRetryRead(timeout);
+			return true;
+		}
+
+		protected internal abstract override void WriteBuffer();
+
+		protected internal abstract override void ParseResult(IConnection conn);
 	}
 }

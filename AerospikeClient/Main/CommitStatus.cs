@@ -15,26 +15,32 @@
  * the License.
  */
 
+using static Aerospike.Client.AbortStatus;
+
 namespace Aerospike.Client
 {
 	/// <summary>
-	/// Multi-record transaction (MRT) abort error status.
+	/// Multi-record transaction (MRT) commit status code.
 	/// </summary>
-	public static class AbortError
+	public static class CommitStatus
 	{
-		public enum AbortErrorType
+		public enum CommitStatusType
 		{
-			ROLL_BACK_ABANDONED,
+			OK,
+			ALREADY_ATTEMPTED,
+			ROLL_FORWARD_ABANDONED,
 			CLOSE_ABANDONED
 		}
 
-		public static string AbortErrorToString(AbortErrorType error)
+		public static string CommitErrorToString(CommitStatusType status)
 		{
-			return error switch
+			return status switch
 			{
-				AbortErrorType.ROLL_BACK_ABANDONED => "MRT client roll back abandoned. Server will eventually abort the MRT.",
-				AbortErrorType.CLOSE_ABANDONED => "MRT has been rolled back, but MRT client close was abandoned. Server will eventually close the MRT.",
-				_ => "Unexpected AbortErrorType"
+				CommitStatusType.OK => "Commit succeeded.",
+				CommitStatusType.ALREADY_ATTEMPTED => "Commit or abort already attempted.",
+				CommitStatusType.ROLL_FORWARD_ABANDONED => "MRT client roll forward abandoned. Server will eventually commit the MRT.",
+				CommitStatusType.CLOSE_ABANDONED => "MRT has been rolled back, but MRT client close was abandoned. Server will eventually close the MRT.",
+				_ => "Unexpected AbortStatusType."
 			};
 		}
 	}

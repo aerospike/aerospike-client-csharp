@@ -15,57 +15,51 @@
  * the License.
  */
 
-using System;
+using Aerospike.Client;
 
 namespace Aerospike.Client
 {
-	public sealed class DeleteCommand : SyncWriteCommand
+	public sealed class OperateCommandWrite : SyncWriteCommand
 	{
-		private bool existed;
+		private readonly OperateArgs args;
+		public Record Record { get; private set; }
 
-		public DeleteCommand(Cluster cluster, WritePolicy writePolicy, Key key)
-			: base(cluster, writePolicy, key)
+		public OperateCommandWrite(Cluster cluster, Key key, OperateArgs args)
+			: base(cluster, args.writePolicy, key)
 		{
-			cluster.AddCommand();
+			this.args = args;
 		}
 
 		protected internal override void WriteBuffer()
 		{
-			SetDelete(writePolicy, key);
+			SetOperate(args.writePolicy, key, args);
 		}
 
 		protected internal override void ParseResult(IConnection conn)
 		{
 			ParseHeader(conn);
+			ParseFields(policy.Txn, key, true);
 
-			if (resultCode == 0)
-			{
-				existed = true;
+			if (resultCode == ResultCode.OK) {
+				Record = policy.recordParser.ParseRecord(dataBuffer, ref dataOffset, opCount, generation, expiration, true);
 				return;
 			}
 
-			if (resultCode == ResultCode.KEY_NOT_FOUND_ERROR)
-			{
-				existed = false;
-				return;
+			if (opCount > 0) {
+				throw new AerospikeException("Unexpected operate opCount on error: " + opCount + ',' + resultCode);
 			}
 
 			if (resultCode == ResultCode.FILTERED_OUT)
 			{
-				if (writePolicy.failOnFilteredOut)
+				if (policy.failOnFilteredOut)
 				{
 					throw new AerospikeException(resultCode);
 				}
-				existed = true;
 				return;
 			}
 
 			throw new AerospikeException(resultCode);
 		}
-
-		public bool Existed()
-		{
-			return existed;
-		}
+		
 	}
 }

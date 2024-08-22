@@ -19,6 +19,12 @@ namespace Aerospike.Client
 {
 	public abstract class AsyncSingleCommand : AsyncCommand
 	{
+		protected int resultCode;
+		protected int generation;
+		protected int expiration;
+		protected int fieldCount;
+		protected int opCount;
+
 		public AsyncSingleCommand(AsyncCluster cluster, Policy policy) 
 			: base(cluster, policy)
 		{
@@ -35,6 +41,88 @@ namespace Aerospike.Client
 			Finish();
 		}
 
-		protected internal abstract void ParseResult();
+		protected void ParseHeader()
+		{
+			resultCode = dataBuffer[dataOffset + 5];
+			generation = ByteUtil.BytesToInt(dataBuffer, dataOffset + 6);
+			expiration = ByteUtil.BytesToInt(dataBuffer, dataOffset + 10);
+			fieldCount = ByteUtil.BytesToShort(dataBuffer, dataOffset + 18);
+			opCount = ByteUtil.BytesToShort(dataBuffer, dataOffset + 20);
+			dataOffset += Command.MSG_REMAINING_HEADER_SIZE;
+		}
+
+		protected void ParseFields(Txn tran, Key key, bool hasWrite)
+		{
+			if (tran == null)
+			{
+				SkipFields(fieldCount);
+				return;
+			}
+
+			long? version = null;
+
+			for (int i = 0; i < fieldCount; i++)
+			{
+				int len = ByteUtil.BytesToInt(dataBuffer, dataOffset);
+				dataOffset += 4;
+
+				int type = dataBuffer[dataOffset++];
+				int size = len - 1;
+
+				if (type == FieldType.RECORD_VERSION)
+				{
+					if (size == 7)
+					{
+						version = ByteUtil.VersionBytesToLong(dataBuffer, dataOffset);
+					}
+					else
+					{
+						throw new AerospikeException("Record version field has invalid size: " + size);
+					}
+				}
+				dataOffset += size;
+			}
+
+			if (hasWrite)
+			{
+				tran.OnWrite(key, version, resultCode);
+			}
+			else
+			{
+				tran.OnRead(key, version);
+			}
+		}
+
+		protected void SkipFields(int fieldCount)
+		{
+			// There can be fields in the response (setname etc).
+			// But for now, ignore them. Expose them to the API if needed in the future.
+			for (int i = 0; i < fieldCount; i++)
+			{
+				int fieldlen = ByteUtil.BytesToInt(dataBuffer, dataOffset);
+				dataOffset += 4 + fieldlen;
+			}
+		}
+
+		protected void ParseTranDeadline(Txn txn)
+		{
+			for (int i = 0; i < fieldCount; i++)
+			{
+				int len = ByteUtil.BytesToInt(dataBuffer, dataOffset);
+				dataOffset += 4;
+
+				int type = dataBuffer[dataOffset++];
+				int size = len - 1;
+
+				if (type == FieldType.MRT_DEADLINE)
+				{
+					int deadline = ByteUtil.LittleBytesToInt(dataBuffer, dataOffset);
+					txn.Deadline = deadline;
+				}
+				dataOffset += size;
+			}
+		}
+
+		protected internal abstract bool ParseResult();
 	}
 }

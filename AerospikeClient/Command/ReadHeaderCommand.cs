@@ -17,28 +17,13 @@
 
 namespace Aerospike.Client
 {
-	public sealed class ReadHeaderCommand : SyncCommand
+	public sealed class ReadHeaderCommand : SyncReadCommand
 	{
-		private readonly Key key;
-		private readonly Partition partition;
 		private Record record;
 
 		public ReadHeaderCommand(Cluster cluster, Policy policy, Key key)
-			: base(cluster, policy)
+			: base(cluster, policy, key)
 		{
-			this.key = key;
-			this.partition = Partition.Read(cluster, policy, key);
-			cluster.AddTran();
-		}
-
-		protected internal override Node GetNode()
-		{
-			return partition.GetNodeRead(cluster);
-		}
-
-		protected override Latency.LatencyType GetLatencyType()
-		{
-			return Latency.LatencyType.READ;
 		}
 
 		protected internal override void WriteBuffer()
@@ -48,16 +33,11 @@ namespace Aerospike.Client
 
 		protected internal override void ParseResult(IConnection conn)
 		{
-			// Read header.		
-			conn.ReadFully(dataBuffer, MSG_TOTAL_HEADER_SIZE, Command.STATE_READ_HEADER);
-			conn.UpdateLastUsed();
+			ParseHeader(conn);
+			ParseFields(policy.Txn, key, false);
 
-			int resultCode = dataBuffer[13];
-
-			if (resultCode == 0)
+			if (resultCode == ResultCode.OK)
 			{
-				int generation = ByteUtil.BytesToInt(dataBuffer, 14);
-				int expiration = ByteUtil.BytesToInt(dataBuffer, 18);
 				record = new Record(null, generation, expiration);
 				return;
 			}
@@ -77,12 +57,6 @@ namespace Aerospike.Client
 			}
 
 			throw new AerospikeException(resultCode);
-		}
-
-		protected internal override bool PrepareRetry(bool timeout)
-		{
-			partition.PrepareRetryRead(timeout);
-			return true;
 		}
 
 		public Record Record

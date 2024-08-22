@@ -15,28 +15,29 @@
  * the License.
  */
 
+using static Aerospike.Client.CommitStatus;
 using static Aerospike.Client.CommitError;
-using static Aerospike.Client.AbortError;
+using static Aerospike.Client.AbortStatus;
 
 namespace Aerospike.Client
 {
-	public sealed class TranRoll
+	public sealed class TxnRoll
 	{
 		private readonly Cluster cluster;
-		private readonly Tran tran;
+		private readonly Txn txn;
 		private BatchRecord[] verifyRecords;
 		private BatchRecord[] rollRecords;
 
-		public TranRoll(Cluster cluster, Tran tran)
+		public TxnRoll(Cluster cluster, Txn txn)
 		{
 			this.cluster = cluster;
-			this.tran = tran;
+			this.txn = txn;
 		}
 
-		public void Commit(BatchPolicy verifyPolicy, BatchPolicy rollPolicy)
+		public CommitStatusType Commit(BatchPolicy verifyPolicy, BatchPolicy rollPolicy)
 		{
 			WritePolicy writePolicy;
-			Key tranKey;
+			Key txnKey;
 
 			try
 			{
@@ -54,16 +55,16 @@ namespace Aerospike.Client
 				{
 					// Throw combination of verify and roll exceptions.
 					//t.InnerException = t2; //TODO: Ask about this
-					throw new AerospikeException.Commit(CommitError.CommitErrorType.VERIFY_FAIL_ABORT_ABANDONED, verifyRecords, rollRecords, t);
+					throw new AerospikeException.Commit(CommitErrorType.VERIFY_FAIL_ABORT_ABANDONED, verifyRecords, rollRecords, t);
 				}
 
-				if (tran.Deadline != 0)
+				if (txn.Deadline != 0)
 				{
 					try
 					{
 						writePolicy = new WritePolicy(rollPolicy);
-						tranKey = TranMonitor.GetTranMonitorKey(tran);
-						Close(writePolicy, tranKey);
+						txnKey = TxnMonitor.GetTxnMonitorKey(txn);
+						Close(writePolicy, txnKey);
 					}
 					catch (Exception t3)
 					{
@@ -78,15 +79,15 @@ namespace Aerospike.Client
 			}
 
 			writePolicy = new WritePolicy(rollPolicy);
-			tranKey = TranMonitor.GetTranMonitorKey(tran);
-			HashSet<Key> keySet = tran.Writes;
+			txnKey = TxnMonitor.GetTxnMonitorKey(txn);
+			HashSet<Key> keySet = txn.Writes;
 
 			if (keySet.Count != 0)
 			{
 				// Tell MRT monitor that a roll-forward will commence.
 				try
 				{
-					MarkRollForward(writePolicy, tranKey);
+					MarkRollForward(writePolicy, txnKey);
 				}
 				catch (Exception t)
 				{
@@ -104,23 +105,25 @@ namespace Aerospike.Client
 				}
 			}
 
-			if (tran.Deadline != 0)
+			if (txn.Deadline != 0)
 			{
 				// Remove MRT monitor.
 				try
 				{
-					Close(writePolicy, tranKey);
+					Close(writePolicy, txnKey);
 				}
 				catch (Exception t)
 				{
-					throw new AerospikeException.Commit(CommitErrorType.CLOSE_ABANDONED, verifyRecords, rollRecords, t);
+					return CommitStatusType.CLOSE_ABANDONED;
 				}
 			}
+
+			return CommitStatusType.OK;
 		}
 
-		public void Abort(BatchPolicy rollPolicy)
+		public AbortStatusType Abort(BatchPolicy rollPolicy)
 		{
-			HashSet<Key> keySet = tran.Writes;
+			HashSet<Key> keySet = txn.Writes;
 
 			if (keySet.Count != 0)
 			{
@@ -128,30 +131,32 @@ namespace Aerospike.Client
 				{
 					Roll(rollPolicy, Command.INFO4_MRT_ROLL_BACK);
 				}
-				catch (Exception t)
+				catch (Exception)
 				{
-					throw new AerospikeException.Abort(AbortErrorType.ROLL_BACK_ABANDONED, rollRecords, t);
+					return AbortStatusType.ROLL_BACK_ABANDONED;
 				}
 			}
 
-			if (tran.Deadline != 0)
+			if (txn.Deadline != 0)
 			{
 				try
 				{
 					WritePolicy writePolicy = new(rollPolicy);
-					Key tranKey = TranMonitor.GetTranMonitorKey(tran);
-					Close(writePolicy, tranKey);
+					Key txnKey = TxnMonitor.GetTxnMonitorKey(txn);
+					Close(writePolicy, txnKey);
 				}
 				catch (Exception t)
 				{
-					throw new AerospikeException.Abort(AbortErrorType.CLOSE_ABANDONED, rollRecords, t);
+					return AbortStatusType.CLOSE_ABANDONED;
 				}
 			}
+
+			return AbortStatusType.OK;
 		}
 		private void Verify(BatchPolicy verifyPolicy)
 		{
 			// Validate record versions in a batch.
-			HashSet<KeyValuePair<Key, long>> reads = tran.Reads.ToHashSet<KeyValuePair<Key, long>>();
+			HashSet<KeyValuePair<Key, long>> reads = txn.Reads.ToHashSet<KeyValuePair<Key, long>>();
 			int max = reads.Count;
 			if (max == 0)
 			{
@@ -181,8 +186,8 @@ namespace Aerospike.Client
 
 			foreach (BatchNode bn in bns)
 			{
-				commands[count++] = new BatchTranVerify(
-					cluster, bn, verifyPolicy, tran, keys, versions, records, status);
+				commands[count++] = new BatchTxnVerify(
+					cluster, bn, verifyPolicy, txn, keys, versions, records, status);
 			}
 
 			BatchExecutor.Execute(cluster, verifyPolicy, commands, status);
@@ -193,16 +198,16 @@ namespace Aerospike.Client
 			}
 		}
 
-		private void MarkRollForward(WritePolicy writePolicy, Key tranKey)
+		private void MarkRollForward(WritePolicy writePolicy, Key txnKey)
 		{
 			// Tell MRT monitor that a roll-forward will commence.
-			TranMarkRollForward cmd = new(cluster, tran, writePolicy, tranKey);
+			TxnMarkRollForward cmd = new(cluster, txn, writePolicy, txnKey);
 			cmd.Execute();
 		}
 
-		private void Roll(BatchPolicy rollPolicy, int tranAttr)
+		private void Roll(BatchPolicy rollPolicy, int txnAttr)
 		{
-			HashSet<Key> keySet = tran.Writes;
+			HashSet<Key> keySet = txn.Writes;
 
 			if (keySet.Count == 0)
 			{
@@ -219,44 +224,44 @@ namespace Aerospike.Client
 
 			this.rollRecords = records;
 
-			// Copy tran roll policy because it needs to be modified.
+			// Copy txn roll policy because it needs to be modified.
 			BatchPolicy batchPolicy = new(rollPolicy);
 
 			BatchAttr attr = new();
-			attr.SetTran(tranAttr);
+			attr.SetTxn(txnAttr);
 			BatchStatus status = new(true);
 
-			// generate() requires a null tran instance.
+			// generate() requires a null txn instance.
 			List<BatchNode> bns = BatchNode.GenerateList(cluster, batchPolicy, keys, records, true, status);
 			BatchCommand[] commands = new BatchCommand[bns.Count];
 
-			// Batch roll forward requires the tran instance.
-			batchPolicy.Tran = tran;
+			// Batch roll forward requires the txn instance.
+			batchPolicy.Txn = txn;
 
 			int count = 0;
 
 			foreach (BatchNode bn in bns)
 			{
-				commands[count++] = new BatchTranRoll(
+				commands[count++] = new BatchTxnRoll(
 					cluster, bn, batchPolicy, keys, records, attr, status);
 			}
 			BatchExecutor.Execute(cluster, batchPolicy, commands, status);
 
 			if (!status.GetStatus())
 			{
-				string rollString = tranAttr == Command.INFO4_MRT_ROLL_FORWARD ? "commit" : "abort";
+				string rollString = txnAttr == Command.INFO4_MRT_ROLL_FORWARD ? "commit" : "abort";
 				throw new AerospikeException("Failed to " + rollString + " one or more records");
 			}
 		}
 
-		private void Close(WritePolicy writePolicy, Key tranKey)
+		private void Close(WritePolicy writePolicy, Key txnKey)
 		{
 			// Delete MRT monitor on server.
-			TranClose cmd = new(cluster, tran, writePolicy, tranKey);
+			TxnClose cmd = new(cluster, txn, writePolicy, txnKey);
 			cmd.Execute();
 
 			// Reset MRT on client.
-			tran.Clear();
+			txn.Clear();
 		}
 	}
 }

@@ -17,72 +17,62 @@
 
 namespace Aerospike.Client
 {
-	public sealed class AsyncWrite : AsyncWriteBase
+	public sealed class AsyncTxnClose : AsyncWriteBase
 	{
-		private readonly WriteListener listener;
-		private readonly Bin[] bins;
-		private readonly Operation.Type operation;
+		private readonly Txn txn;
+		private readonly DeleteListener listener;
 
-		public AsyncWrite
+		public AsyncTxnClose
 		(
 			AsyncCluster cluster,
+			Txn txn,
+			DeleteListener listener,
 			WritePolicy writePolicy,
-			WriteListener listener,
-			Key key,
-			Bin[] bins,
-			Operation.Type operation
+			Key key
 		) : base(cluster, writePolicy, key)
 		{
+			this.txn = txn;
 			this.listener = listener;
-			this.bins = bins;
-			this.operation = operation;
-			cluster.AddCommand();
 		}
 
-		public AsyncWrite(AsyncWrite other)
+		public AsyncTxnClose(AsyncTxnClose other)
 			: base(other)
 		{
+			this.txn = other.txn;
 			this.listener = other.listener;
-			this.bins = other.bins;
-			this.operation = other.operation;
 		}
 
 		protected internal override AsyncCommand CloneCommand()
 		{
-			return new AsyncWrite(this);
+			return new AsyncTxnClose(this);
 		}
 
 		protected internal override void WriteBuffer()
 		{
-			SetWrite(writePolicy, operation, Key, bins);
+			SetTxnClose(txn, Key);
 		}
 
 		protected internal override bool ParseResult()
 		{
 			ParseHeader();
 
-			if (resultCode == ResultCode.OK)
+			if (resultCode == ResultCode.OK || resultCode == ResultCode.KEY_NOT_FOUND_ERROR)
 			{
-				return true;
-			}
-
-			if (resultCode == ResultCode.FILTERED_OUT)
-			{
-				if (policy.failOnFilteredOut)
-				{
-					throw new AerospikeException(resultCode);
-				}
 				return true;
 			}
 
 			throw new AerospikeException(resultCode);
 		}
 
+		protected internal override void OnInDoubt()
+		{
+		}
+
 		protected internal override void OnSuccess()
 		{
 			if (listener != null)
 			{
-				listener.OnSuccess(Key);
+				listener.OnSuccess(Key, true);
 			}
 		}
 

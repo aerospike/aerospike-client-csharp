@@ -21,12 +21,12 @@ namespace Aerospike.Client
 	/// Multi-record transaction (MRT) policy fields used to batch verify record versions on commit.
     /// Used a placeholder for now as there are no additional fields beyond BatchPolicy.
 	/// </summary>
-	public sealed class TranVerifyPolicy : BatchPolicy
+	public sealed class TxnVerifyPolicy : BatchPolicy
 	{
 		/// <summary>
 		/// Copy policy from another policy.
 		/// </summary>
-		public TranVerifyPolicy(TranVerifyPolicy other) : 
+		public TxnVerifyPolicy(TxnVerifyPolicy other) : 
 			base(other)
 		{
 		}
@@ -34,7 +34,7 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Default constructor.
 		/// </summary>
-		public TranVerifyPolicy()
+		public TxnVerifyPolicy()
 		{
 			readModeSC = ReadModeSC.LINEARIZE;
 			replica = Replica.MASTER;

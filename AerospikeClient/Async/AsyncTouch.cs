@@ -17,30 +17,20 @@
 
 namespace Aerospike.Client
 {
-	public sealed class AsyncTouch : AsyncSingleCommand
+	public sealed class AsyncTouch : AsyncWriteBase
 	{
-		private readonly WritePolicy writePolicy;
 		private readonly WriteListener listener;
-		private readonly Key key;
-		private readonly Partition partition;
 
 		public AsyncTouch(AsyncCluster cluster, WritePolicy writePolicy, WriteListener listener, Key key)
-			: base(cluster, writePolicy)
+			: base(cluster, writePolicy, key)
 		{
-			this.writePolicy = writePolicy;
 			this.listener = listener;
-			this.key = key;
-			this.partition = Partition.Write(cluster, policy, key);
-			cluster.AddTran();
 		}
 
 		public AsyncTouch(AsyncTouch other)
 			: base(other)
 		{
-			this.writePolicy = other.writePolicy;
 			this.listener = other.listener;
-			this.key = other.key;
-			this.partition = other.partition;
 		}
 
 		protected internal override AsyncCommand CloneCommand()
@@ -48,33 +38,18 @@ namespace Aerospike.Client
 			return new AsyncTouch(this);
 		}
 
-		protected internal override bool IsWrite()
-		{
-			return true;
-		}
-
-		protected internal override Node GetNode(Cluster cluster)
-		{
-			return partition.GetNodeWrite(cluster);
-		}
-
-		protected override Latency.LatencyType GetLatencyType()
-		{
-			return Latency.LatencyType.WRITE;
-		}
-
 		protected internal override void WriteBuffer()
 		{
-			SetTouch(writePolicy, key);
+			SetTouch(writePolicy, Key);
 		}
 
-		protected internal override void ParseResult()
+		protected internal override bool ParseResult()
 		{
-			int resultCode = dataBuffer[dataOffset + 5];
+			ParseHeader();
 
-			if (resultCode == 0)
+			if (resultCode == ResultCode.OK)
 			{
-				return;
+				return true;
 			}
 
 			if (resultCode == ResultCode.FILTERED_OUT)
@@ -83,23 +58,17 @@ namespace Aerospike.Client
 				{
 					throw new AerospikeException(resultCode);
 				}
-				return;
+				return true;
 			}
 
 			throw new AerospikeException(resultCode);
-		}
-
-		protected internal override bool PrepareRetry(bool timeout)
-		{
-			partition.PrepareRetryWrite(timeout);
-			return true;
 		}
 
 		protected internal override void OnSuccess()
 		{
 			if (listener != null)
 			{
-				listener.OnSuccess(key);
+				listener.OnSuccess(Key);
 			}
 		}
 

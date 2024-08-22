@@ -127,10 +127,9 @@ namespace Aerospike.Client.Proxy
 		/// </p>
 		/// </summary>
 		/// <param name="listener">where to send results</param>
-		/// <param name="tran">multi-record transaction</param>
-		public void Commit(CommitListener listener, Tran tran)
+		/// <param name="txn">multi-record transaction</param>
+		public void Commit(CommitListener listener, Txn txn)
 		{
-			
 		}
 
 		/// <summary>
@@ -143,10 +142,9 @@ namespace Aerospike.Client.Proxy
 		/// </p>
 		/// </summary>
 		/// <param name="listener">where to send results</param>
-		/// <param name="tran">multi-record transaction</param>
-		public void Abort(AbortListener listener, Tran tran)
+		/// <param name="txn">multi-record transaction</param>
+		public void Abort(AbortListener listener, Txn txn)
 		{
-			
 		}
 
 		//-------------------------------------------------------
