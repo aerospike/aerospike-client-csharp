@@ -41,7 +41,7 @@ namespace Aerospike.Client
                 case ParticleType.BLOB:
                     byte[] dest = new byte[len];
                     Array.Copy(buf, offset, dest, 0, len);
-                    return Value.Get(dest);
+					return Value.Get(dest);
 
                 default:
                     return null;

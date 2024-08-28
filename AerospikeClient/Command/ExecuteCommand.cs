@@ -64,11 +64,6 @@ namespace Aerospike.Client
 				return;
 			}
 
-			if (opCount > 0)
-			{
-				throw new AerospikeException("Unexpected UDF opCount on error: " + opCount + ',' + resultCode);
-			}
-
 			if (resultCode == ResultCode.FILTERED_OUT)
 			{
 				if (policy.failOnFilteredOut)

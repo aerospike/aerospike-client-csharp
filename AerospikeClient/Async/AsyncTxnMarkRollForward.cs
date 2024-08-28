@@ -56,6 +56,8 @@ namespace Aerospike.Client
 		{
 			ParseHeader();
 
+			// BIN_EXISTS_ERROR is considered a success because it means a previous attempt already
+		    // succeeded in notifying the server that the MRT will be rolled forward.
 			if (resultCode == ResultCode.OK || resultCode == ResultCode.BIN_EXISTS_ERROR)
 			{
 				return true;

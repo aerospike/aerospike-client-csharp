@@ -86,7 +86,7 @@ namespace Aerospike.Client
 		public int asyncMinConnsPerNode;
 
 		/// <summary>
-		/// Maximum number of asynchronous connections allowed per server node.  Transactions will go
+		/// Maximum number of asynchronous connections allowed per server node. Commands will go
 		/// through retry logic and potentially fail with "ResultCode.NO_MORE_CONNECTIONS" if the maximum
 		/// number of connections would be exceeded.
 		/// <para>

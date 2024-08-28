@@ -27,7 +27,7 @@ namespace Aerospike.Client
 		{
 			this.key = key;
 			this.partition = Partition.Read(cluster, policy, key);
-			cluster.AddCommand();
+			cluster.AddCommandCount();
 		}
 
 		public AsyncReadBase(AsyncReadBase other)

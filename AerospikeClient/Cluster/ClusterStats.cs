@@ -51,7 +51,7 @@ namespace Aerospike.Client
 		public readonly int invalidNodeCount;
 
 		/// <summary>
-		/// Count of command retires since cluster was started.
+		/// Count of command retries since cluster was started.
 		/// </summary>
 		public readonly long RetryCount;
 

@@ -1200,7 +1200,7 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Increment command count when metrics are enabled.
 		/// </summary>
-		public void AddCommand()
+		public void AddCommandCount()
 		{
 			if (MetricsEnabled)
 			{

@@ -413,9 +413,9 @@ namespace Aerospike.Client
 			dataOffset += 2;
 		}
 
-		protected void ParseFields(Txn tran, Key key, bool hasWrite)
+		protected void ParseFields(Txn txn, Key key, bool hasWrite)
 		{
-			if (tran == null)
+			if (txn == null)
 			{
 				SkipFields(fieldCount);
 				return;
@@ -447,15 +447,15 @@ namespace Aerospike.Client
 
 			if (hasWrite)
 			{
-				tran.OnWrite(key, version, resultCode);
+				txn.OnWrite(key, version, resultCode);
 			}
 			else
 			{
-				tran.OnRead(key, version);
+				txn.OnRead(key, version);
 			}
 		}
 
-		protected void ParseTranDeadline(Txn txn)
+		protected void ParseTxnDeadline(Txn txn)
 		{
 			for (int i = 0; i < fieldCount; i++)
 			{

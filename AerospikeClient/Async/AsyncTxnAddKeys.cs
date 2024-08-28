@@ -54,7 +54,7 @@ namespace Aerospike.Client
 		protected internal override bool ParseResult()
 		{
 			ParseHeader();
-			ParseTranDeadline(policy.Txn);
+			ParseTxnDeadline(policy.Txn);
 
 			if (resultCode == ResultCode.OK)
 			{

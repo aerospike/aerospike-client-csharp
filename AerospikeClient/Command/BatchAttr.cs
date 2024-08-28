@@ -22,7 +22,7 @@ namespace Aerospike.Client
 		public int readAttr;
 		public int writeAttr;
 		public int infoAttr;
-		public int tranAttr;
+		public int txnAttr;
 		public int expiration;
 		public int opSize;
 		public short generation;
@@ -415,7 +415,7 @@ namespace Aerospike.Client
 			readAttr = 0;
 			writeAttr = Command.INFO2_WRITE | Command.INFO2_RESPOND_ALL_OPS | Command.INFO2_DURABLE_DELETE;
 			infoAttr = 0;
-			tranAttr = attr;
+			txnAttr = attr;
 			expiration = 0;
 			generation = 0;
 			hasWrite = true;

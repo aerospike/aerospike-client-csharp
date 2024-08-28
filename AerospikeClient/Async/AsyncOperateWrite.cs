@@ -28,6 +28,7 @@ namespace Aerospike.Client
 		public AsyncOperateWrite(AsyncCluster cluster, RecordListener listener, Key key, OperateArgs args)
 			: base(cluster, args.writePolicy, key)
 		{
+			this.listener = listener;
 			this.args = args;
 		}
 

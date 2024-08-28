@@ -79,7 +79,7 @@ namespace Aerospike.Client
 		public int minConnsPerNode;
 
 		/// <summary>
-		/// Maximum number of synchronous connections allowed per server node.  Transactions will go
+		/// Maximum number of synchronous connections allowed per server node.  Commands will go
 		/// through retry logic and potentially fail with "ResultCode.NO_MORE_CONNECTIONS" if the maximum
 		/// number of connections would be exceeded.
 		/// <para>
@@ -120,7 +120,7 @@ namespace Aerospike.Client
 		/// </para>
 		/// <para>
 		/// If server's proto-fd-idle-ms is zero (no reap), then maxSocketIdle should also be zero.
-		/// Connections retrieved from a pool in transactions will not be checked for maxSocketIdle
+		/// Connections retrieved from a pool in commands will not be checked for maxSocketIdle
 		/// when maxSocketIdle is zero.  Idle connections will still be trimmed down from peak
 		/// connections to min connections (minConnsPerNode and asyncMinConnsPerNode) using a
 		/// hard-coded 55 second limit in the cluster tend thread.

@@ -26,7 +26,7 @@ namespace Aerospike.Client
 		public DeleteCommand(Cluster cluster, WritePolicy writePolicy, Key key)
 			: base(cluster, writePolicy, key)
 		{
-			cluster.AddCommand();
+			cluster.AddCommandCount();
 		}
 
 		protected internal override void WriteBuffer()

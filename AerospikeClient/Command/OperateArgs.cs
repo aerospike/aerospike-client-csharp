@@ -130,17 +130,5 @@ namespace Aerospike.Client
 			}
 			writeAttr = wattr;
 		}
-
-		public Partition GetPartition(Cluster cluster, Key key)
-		{
-			if (hasWrite)
-			{
-				return Partition.Write(cluster, writePolicy, key);
-			}
-			else
-			{
-				return Partition.Read(cluster, writePolicy, key);
-			}
-		}
 	}
 }

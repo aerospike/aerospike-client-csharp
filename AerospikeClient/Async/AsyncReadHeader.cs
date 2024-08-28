@@ -26,7 +26,7 @@ namespace Aerospike.Client
 			: base(cluster, policy, key)
 		{
 			this.listener = listener;
-			cluster.AddCommand();
+			cluster.AddCommandCount();
 		}
 
 		public AsyncReadHeader(AsyncReadHeader other)

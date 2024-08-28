@@ -24,14 +24,8 @@ namespace Aerospike.Client
 	public interface AbortListener
 	{
 		/// <summary>
-		/// This method is called when the abort succeeds.
+		/// This method is called when the abort succeeded or will succeed.
 		/// </summary>
 		void OnSuccess(AbortStatusType status);
-
-		/// <summary>
-		/// This method is called when the abort fails.
-		/// </summary>
-		/// <param name="exception">error that occurred</param>
-		void OnFailure(AerospikeException exception);
 	}
 }

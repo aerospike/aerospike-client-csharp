@@ -27,7 +27,6 @@ namespace Aerospike.Client
 		{
 			this.bins = bins;
 			this.operation = operation;
-			cluster.AddCommand();
 		}
 
 		protected internal override void WriteBuffer()

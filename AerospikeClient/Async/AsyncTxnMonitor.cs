@@ -42,9 +42,9 @@ namespace Aerospike.Client
 			}
 
 			// Add key to MRT monitor and then run original command.
-			Operation[] ops = TxnMonitor.GetTranOps(txn, cmdKey);
+			Operation[] ops = TxnMonitor.GetTxnOps(txn, cmdKey);
 			SingleTxnMonitor stm = new(cluster, command);
-			stm.Execute(policy, ops);
+			stm.Execute(cluster, policy, ops);
 		}
 
 		public static void ExecuteBatch(
@@ -61,9 +61,9 @@ namespace Aerospike.Client
 			}
 
 			// Add write keys to MRT monitor and then run original command.
-			Operation[] ops = TxnMonitor.GetTranOps(policy.Txn, keys);
+			Operation[] ops = TxnMonitor.GetTxnOps(policy.Txn, keys);
 			BatchTxnMonitor ate = new(executor);
-			ate.Execute(policy, ops);
+			ate.Execute(executor.cluster, policy, ops);
 		}
 
 		public static void ExecuteBatch(
@@ -80,7 +80,7 @@ namespace Aerospike.Client
 			}
 
 			// Add write keys to MRT monitor and then run original command.
-			Operation[] ops = TxnMonitor.GetTranOps(policy.Txn, records);
+			Operation[] ops = TxnMonitor.GetTxnOps(policy.Txn, records);
 
 			if (ops == null)
 			{
@@ -90,7 +90,7 @@ namespace Aerospike.Client
 			}
 
 			BatchTxnMonitor ate = new(executor);
-			ate.Execute(policy, ops);
+			ate.Execute(executor.cluster, policy, ops);
 		}
 
 		public sealed class SingleTxnMonitor : AsyncTxnMonitor
@@ -143,17 +143,17 @@ namespace Aerospike.Client
 			this.cluster = cluster;
 		}
 
-		void Execute(Policy policy, Operation[] ops)
+		void Execute(AsyncCluster cluster, Policy policy, Operation[] ops)
 		{
-			Key tranKey = TxnMonitor.GetTxnMonitorKey(policy.Txn);
+			Key txnKey = TxnMonitor.GetTxnMonitorKey(policy.Txn);
 			WritePolicy wp = TxnMonitor.CopyTimeoutPolicy(policy);
 
-			ExecuteRecordListener tranListener = new(this);
+			ExecuteRecordListener txnListener = new(this);
 
 			// Add write key(s) to MRT monitor.
 			OperateArgs args = new(wp, null, null, ops);
-			AsyncTxnAddKeys tranCommand = new(cluster, tranListener, tranKey, args);
-			tranCommand.Execute();
+			AsyncTxnAddKeys txnCommand = new(cluster, txnListener, txnKey, args);
+			txnCommand.Execute();
 		}
 
 		private void NotifyFailure(AerospikeException ae)
@@ -199,7 +199,7 @@ namespace Aerospike.Client
 
 			public void OnFailure(AerospikeException ae)
 			{
-				monitor.NotifyFailure(new AerospikeException(ResultCode.TRAN_FAILED, "Failed to add key(s) to MRT monitor", ae));
+				monitor.NotifyFailure(new AerospikeException(ResultCode.TXN_FAILED, "Failed to add key(s) to MRT monitor", ae));
 			}
 		}
 	}

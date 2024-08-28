@@ -20,7 +20,7 @@ namespace Aerospike.Client
 	public sealed class TxnMonitor
 	{
 		private static readonly ListPolicy OrderedListPolicy = new(ListOrder.ORDERED,
-		ListWriteFlags.ADD_UNIQUE | ListWriteFlags.NO_FAIL | ListWriteFlags.PARTIAL);
+			ListWriteFlags.ADD_UNIQUE | ListWriteFlags.NO_FAIL | ListWriteFlags.PARTIAL);
 
 		private static readonly string BinNameId = "id";
 		private static readonly string BinNameDigests = "keyds";
@@ -35,19 +35,19 @@ namespace Aerospike.Client
 				return;
 			}
 
-			Operation[] ops = GetTranOps(txn, cmdKey);
+			Operation[] ops = GetTxnOps(txn, cmdKey);
 			AddWriteKeys(cluster, policy, ops);
 		}
 
 		public static void AddKeys(Cluster cluster, BatchPolicy policy, Key[] keys)
 		{
-			Operation[] ops = GetTranOps(policy.Txn, keys);
+			Operation[] ops = GetTxnOps(policy.Txn, keys);
 			AddWriteKeys(cluster, policy, ops);
 		}
 
 		public static void AddKeys(Cluster cluster, BatchPolicy policy, List<BatchRecord> records)
 		{
-			Operation[] ops = GetTranOps(policy.Txn, records);
+			Operation[] ops = GetTxnOps(policy.Txn, records);
 
 			if (ops != null)
 			{
@@ -55,44 +55,44 @@ namespace Aerospike.Client
 			}
 		}
 
-		public static Operation[] GetTranOps(Txn tran, Key cmdKey)
+		public static Operation[] GetTxnOps(Txn txn, Key cmdKey)
 		{
-			tran.SetNamespace(cmdKey.ns);
+			txn.SetNamespace(cmdKey.ns);
 
-			if (tran.Deadline == 0) 
+			if (txn.MonitorExists()) 
 			{
 				// No existing monitor record.
 				return new Operation[] {
-					Operation.Put(new Bin(BinNameId, tran.Id)),
 					ListOperation.Append(OrderedListPolicy, BinNameDigests, Value.Get(cmdKey.digest))
 				};
 			}
 			else
 			{
 				return new Operation[] {
+					Operation.Put(new Bin(BinNameId, txn.Id)),
 					ListOperation.Append(OrderedListPolicy, BinNameDigests, Value.Get(cmdKey.digest))
 				};
 			}
 		}
 
-		public static Operation[] GetTranOps(Txn tran, Key[] keys)
+		public static Operation[] GetTxnOps(Txn txn, Key[] keys)
 		{
 			List<Value> list = new(keys.Length);
 
 			foreach (Key key in keys) 
 			{
-				tran.SetNamespace(key.ns);
+				txn.SetNamespace(key.ns);
 				list.Add(Value.Get(key.digest));
 			}
-			return GetTranOps(tran, list);
+			return GetTxnOps(txn, list);
 		}
 
-		public static Operation[] GetTranOps(Txn tran, List<BatchRecord> records)
+		public static Operation[] GetTxnOps(Txn txn, List<BatchRecord> records)
 		{
 			List<Value> list = new(records.Count);
 
 			foreach (BatchRecord br in records) {
-				tran.SetNamespace(br.key.ns);
+				txn.SetNamespace(br.key.ns);
 
 				if (br.hasWrite) 
 				{
@@ -105,22 +105,22 @@ namespace Aerospike.Client
 				// Readonly batch does not need to add key digests.
 				return null;
 			}
-			return GetTranOps(tran, list);
+			return GetTxnOps(txn, list);
 		}
 
-		private static Operation[] GetTranOps(Txn tran, List<Value> list)
+		private static Operation[] GetTxnOps(Txn txn, List<Value> list)
 		{
-			if (tran.Deadline == 0)
+			if (txn.MonitorExists())
 			{
 				// No existing monitor record.
 				return new Operation[] {
-						Operation.Put(new Bin(BinNameId, tran.Id)),
 						ListOperation.AppendItems(OrderedListPolicy, BinNameDigests, list)
 					};
 			}
 			else
 			{
 				return new Operation[] {
+						Operation.Put(new Bin(BinNameId, txn.Id)),
 						ListOperation.AppendItems(OrderedListPolicy, BinNameDigests, list)
 					};
 			}
@@ -128,16 +128,16 @@ namespace Aerospike.Client
 
 		private static void AddWriteKeys(Cluster cluster, Policy policy, Operation[] ops)
 		{
-			Key tranKey = GetTxnMonitorKey(policy.Txn);
+			Key txnKey = GetTxnMonitorKey(policy.Txn);
 			WritePolicy wp = CopyTimeoutPolicy(policy);
 			OperateArgs args = new(wp, null, null, ops);
-			TxnAddKeys cmd = new(cluster, tranKey, args);
+			TxnAddKeys cmd = new(cluster, txnKey, args);
 			cmd.Execute();
 		}
 
-		public static Key GetTxnMonitorKey(Txn tran)
+		public static Key GetTxnMonitorKey(Txn txn)
 		{
-			return new Key(tran.Ns, "<ERO~MRT", tran.Id);
+			return new Key(txn.Ns, "<ERO~MRT", txn.Id);
 		}
 
 		public static WritePolicy CopyTimeoutPolicy(Policy policy)

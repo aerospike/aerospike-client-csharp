@@ -25,7 +25,7 @@ namespace Aerospike.Client
 		/// Multi-record transaction failed.
 		/// Value: -17
 		/// </summary>
-		public const int TRAN_FAILED = -17;
+		public const int TXN_FAILED = -17;
 		
 		/// <summary>
 		/// One or more keys failed in a batch.
@@ -566,7 +566,7 @@ namespace Aerospike.Client
 		{
 			switch (resultCode)
 			{
-			case TRAN_FAILED:
+			case TXN_FAILED:
 				return "Multi-record transaction failed";
 
 			case BATCH_FAILED:
@@ -693,13 +693,13 @@ namespace Aerospike.Client
 				return "Command filtered out";
 
 			case LOST_CONFLICT:
-				return "Transaction failed due to conflict with XDR";
+				return "Command failed due to conflict with XDR";
 
 			case MRT_BLOCKED:
 				return "MRT record blocked by a different transaction";
 
 			case MRT_CONFLICT:
-				return "MRT verify failed";
+				return "MRT read verify failed";
 
 			case MRT_EXPIRED:
 				return "MRT expired";

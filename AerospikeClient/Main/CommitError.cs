@@ -27,9 +27,7 @@ namespace Aerospike.Client
 			VERIFY_FAIL,
 			VERIFY_FAIL_CLOSE_ABANDONED,
 			VERIFY_FAIL_ABORT_ABANDONED,
-			MARK_ROLL_FORWARD_ABANDONED,
-			ROLL_FORWARD_ABANDONED,
-			CLOSE_ABANDONED
+			MARK_ROLL_FORWARD_ABANDONED
 		}
 
 		public static string CommitErrorToString(CommitErrorType type)
@@ -40,8 +38,6 @@ namespace Aerospike.Client
 				CommitErrorType.VERIFY_FAIL_CLOSE_ABANDONED => "MRT verify failed. MRT aborted. MRT client close abandoned. Server will eventually close the MRT.",
 				CommitErrorType.VERIFY_FAIL_ABORT_ABANDONED => "MRT verify failed. MRT client abort abandoned. Server will eventually abort the MRT.",
 				CommitErrorType.MARK_ROLL_FORWARD_ABANDONED => "MRT client mark roll forward abandoned. Server will eventually abort the MRT.",
-				CommitErrorType.ROLL_FORWARD_ABANDONED => "MRT client roll forward abandoned. Server will eventually commit the MRT.",
-				CommitErrorType.CLOSE_ABANDONED => "MRT has been rolled forward, but MRT client close was abandoned. Server will eventually close the MRT.",
 				_ => "Unexpected CommitErrorType"
 			};
 		}

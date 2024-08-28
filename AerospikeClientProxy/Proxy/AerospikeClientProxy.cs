@@ -462,14 +462,14 @@ namespace Aerospike.Client.Proxy
 
 		/// <summary>
 		/// Attempt to commit the given multi-record transaction. First, the expected record versions are
-		/// sent to the server nodes for verification.If all nodes return success, the transaction is
-		/// committed.Otherwise, the transaction is aborted.
+		/// sent to the server nodes for verification. If all nodes return success, the transaction is
+		/// committed. Otherwise, the transaction is aborted.
 		/// <p>
 		/// Requires server version 8.0+
 		/// </p>
 		/// </summary>
-		/// <param name="tran">multi-record transaction</param>
-		public CommitStatus.CommitStatusType Commit(Txn tran)
+		/// <param name="txn">multi-record transaction</param>
+		public CommitStatus.CommitStatusType Commit(Txn txn)
 		{
 			return CommitStatus.CommitStatusType.OK;
 		}
@@ -480,8 +480,8 @@ namespace Aerospike.Client.Proxy
 		/// Requires server version 8.0+
 		/// </p>
 		/// </summary>
-		/// <param name="tran">multi-record transaction</param>
-		public AbortStatus.AbortStatusType Abort(Txn tran)
+		/// <param name="txn">multi-record transaction</param>
+		public AbortStatus.AbortStatusType Abort(Txn txn)
 		{
 			return AbortStatus.AbortStatusType.OK;
 		}
@@ -492,7 +492,7 @@ namespace Aerospike.Client.Proxy
 
 		/// <summary>
 		/// Write record bin(s).
-		/// The policy specifies the transaction timeout, record expiration and how the transaction is
+		/// The policy specifies the command timeout, record expiration and how the command is
 		/// handled when the record already exists.
 		/// </summary>
 		/// <param name="policy">write configuration parameters, pass in null for defaults</param>
@@ -513,7 +513,7 @@ namespace Aerospike.Client.Proxy
 
 		/// <summary>
 		/// Append bin string values to existing record bin values.
-		/// The policy specifies the transaction timeout, record expiration and how the transaction is
+		/// The policy specifies the command timeout, record expiration and how the command is
 		/// handled when the record already exists.
 		/// This call only works for string values. 
 		/// </summary>
@@ -531,7 +531,7 @@ namespace Aerospike.Client.Proxy
 
 		/// <summary>
 		/// Prepend bin string values to existing record bin values.
-		/// The policy specifies the transaction timeout, record expiration and how the transaction is
+		/// The policy specifies the command timeout, record expiration and how the command is
 		/// handled when the record already exists.
 		/// This call works only for string values. 
 		/// </summary>
@@ -553,7 +553,7 @@ namespace Aerospike.Client.Proxy
 
 		/// <summary>
 		/// Add integer/double bin values to existing record bin values.
-		/// The policy specifies the transaction timeout, record expiration and how the transaction is
+		/// The policy specifies the command timeout, record expiration and how the command is
 		/// handled when the record already exists.
 		/// </summary>
 		/// <param name="policy">write configuration parameters, pass in null for defaults</param>
@@ -575,7 +575,7 @@ namespace Aerospike.Client.Proxy
 		/// <summary>
 		/// Delete record for specified key.
 		/// Return whether record existed on server before deletion.
-		/// The policy specifies the transaction timeout.
+		/// The policy specifies the command timeout.
 		/// </summary>
 		/// <param name="policy">delete configuration parameters, pass in null for defaults</param>
 		/// <param name="key">unique record identifier</param>

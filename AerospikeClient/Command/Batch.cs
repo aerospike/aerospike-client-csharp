@@ -515,14 +515,14 @@ namespace Aerospike.Client
 			Cluster cluster,
 			BatchNode batch,
 			BatchPolicy batchPolicy,
-			Txn tran,
+			Txn txn,
 			Key[] keys,
 			long[] versions,
 			BatchRecord[] records,
 			BatchStatus status
 		) : base(cluster, batch, batchPolicy, status, false)
 		{
-			this.txn = tran;
+			this.txn = txn;
 			this.keys = keys;
 			this.versions = versions;
 			this.records = records;

@@ -33,7 +33,7 @@ namespace Aerospike.Client
 			this.writePolicy = writePolicy;
 			this.Key = key;
 			this.partition = Partition.Write(cluster, policy, key);
-			cluster.AddCommand();
+			cluster.AddCommandCount();
 		}
 
 		public AsyncWriteBase(AsyncWriteBase other)

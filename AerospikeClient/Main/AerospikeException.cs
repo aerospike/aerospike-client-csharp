@@ -625,7 +625,7 @@ namespace Aerospike.Client
 			public readonly BatchRecord[] RollRecords;
 
 			public Commit(CommitErrorType error, BatchRecord[] verifyRecords, BatchRecord[] rollRecords)
-				: base(ResultCode.TRAN_FAILED, CommitErrorToString(error))
+				: base(ResultCode.TXN_FAILED, CommitErrorToString(error))
 			{
 				this.Error = error;
 				this.VerifyRecords = verifyRecords;
@@ -633,7 +633,7 @@ namespace Aerospike.Client
 			}
 
 			public Commit(CommitErrorType error, BatchRecord[] verifyRecords, BatchRecord[] rollRecords, Exception cause)
-				: base(ResultCode.TRAN_FAILED, CommitErrorToString(error), cause)
+				: base(ResultCode.TXN_FAILED, CommitErrorToString(error), cause)
 			{
 				this.Error = error;
 				this.VerifyRecords = verifyRecords;
@@ -649,49 +649,6 @@ namespace Aerospike.Client
 				{
 					StringBuilder sb = new(1024);
 					RecordsToString(sb, "verify errors:", VerifyRecords);
-					RecordsToString(sb, "roll errors:", RollRecords);
-					return BaseMessage + sb.ToString();
-				}
-			}
-		}
-
-		/// <summary>
-		/// Exception thrown when {@link AerospikeClient#abort(com.aerospike.client.Txn)} fails.
-		/// </summary>
-		public sealed class Abort : AerospikeException
-		{
-			/// <summary>
-			/// Error status of the attempted abort.
-			/// </summary>
-			public readonly AbortStatusType Error;
-
-			/// <summary>
-			/// Roll backward result for each write key in the MRT. May be null if failure occurred before roll backward.
-			/// </summary>
-			public readonly BatchRecord[] RollRecords;
-
-			public Abort(AbortStatusType error, BatchRecord[] rollRecords)
-				: base(ResultCode.TRAN_FAILED, AbortErrorToString(error))
-			{
-				this.Error = error;
-				this.RollRecords = rollRecords;
-			}
-
-			public Abort(AbortStatusType error, BatchRecord[] rollRecords, Exception cause)
-				: base(ResultCode.TRAN_FAILED, AbortErrorToString(error), cause)
-			{
-				this.Error = error;
-				this.RollRecords = rollRecords;
-			}
-
-			/// <summary>
-			/// Get Commit message with records.
-			/// </summary>
-			public override string Message
-			{
-				get
-				{
-					StringBuilder sb = new(1024);
 					RecordsToString(sb, "roll errors:", RollRecords);
 					return BaseMessage + sb.ToString();
 				}

@@ -32,6 +32,6 @@ namespace Aerospike.Client
 		/// This method is called when the commit fails.
 		/// </summary>
 		/// <param name="exception">error that occurred</param>
-		void OnFailure(AerospikeException exception);
+		void OnFailure(AerospikeException.Commit exception);
 	}
 }

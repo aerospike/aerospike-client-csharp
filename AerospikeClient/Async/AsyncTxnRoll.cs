@@ -27,7 +27,7 @@ namespace Aerospike.Client
 		private readonly BatchPolicy rollPolicy;
 		private readonly WritePolicy writePolicy;
 		private readonly Txn txn;
-		private readonly Key tranKey;
+		private readonly Key txnKey;
 		private CommitListener commitListener;
 		private AbortListener abortListener;
 		private BatchRecord[] verifyRecords;
@@ -47,7 +47,7 @@ namespace Aerospike.Client
 			this.rollPolicy = rollPolicy;
 			this.writePolicy = new WritePolicy(rollPolicy);
 			this.txn = txn;
-			this.tranKey = TxnMonitor.GetTxnMonitorKey(txn);
+			this.txnKey = TxnMonitor.GetTxnMonitorKey(txn);
 		}
 
 		public void Commit(CommitListener listener)
@@ -97,7 +97,7 @@ namespace Aerospike.Client
 			try
 			{
 				MarkRollForwardListener writeListener = new(this);
-				AsyncTxnMarkRollForward command = new(cluster, txn, writeListener, writePolicy, tranKey);
+				AsyncTxnMarkRollForward command = new(cluster, txn, writeListener, writePolicy, txnKey);
 				command.Execute();
 			}
 			catch (Exception t) 
@@ -187,7 +187,7 @@ namespace Aerospike.Client
 			try
 			{
 				CloseOnAbortListener deleteListener = new(this);
-				AsyncTxnClose command = new(cluster, txn, deleteListener, writePolicy, tranKey);
+				AsyncTxnClose command = new(cluster, txn, deleteListener, writePolicy, txnKey);
 				command.Execute();
 			}
 			catch (Exception t) 

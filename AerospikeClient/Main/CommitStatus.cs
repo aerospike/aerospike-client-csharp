@@ -39,7 +39,7 @@ namespace Aerospike.Client
 				CommitStatusType.OK => "Commit succeeded.",
 				CommitStatusType.ALREADY_ATTEMPTED => "Commit or abort already attempted.",
 				CommitStatusType.ROLL_FORWARD_ABANDONED => "MRT client roll forward abandoned. Server will eventually commit the MRT.",
-				CommitStatusType.CLOSE_ABANDONED => "MRT has been rolled back, but MRT client close was abandoned. Server will eventually close the MRT.",
+				CommitStatusType.CLOSE_ABANDONED => "MRT has been rolled forward, but MRT client close was abandoned. Server will eventually close the MRT.",
 				_ => "Unexpected AbortStatusType."
 			};
 		}

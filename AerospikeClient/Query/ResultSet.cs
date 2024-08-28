@@ -189,7 +189,7 @@ namespace Aerospike.Client
 		{
 			valid = false;
 
-			// Send end command to transaction thread.
+			// Send end command to command thread.
 			// It's critical that the end token add succeeds.
 			while (!queue.TryAdd(END))
 			{

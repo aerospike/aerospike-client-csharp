@@ -22,7 +22,6 @@ namespace Aerospike.Client
 		public TouchCommand(Cluster cluster, WritePolicy writePolicy, Key key)
  			: base(cluster, writePolicy, key)
 		{
-			cluster.AddCommand();
 		}
 
 		protected internal override void WriteBuffer()

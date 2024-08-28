@@ -18,6 +18,8 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Aerospike.Client;
 using System.Reflection;
 using System.Text;
+using static Aerospike.Client.CommitStatus;
+using static Aerospike.Client.AbortStatus;
 
 namespace Aerospike.Test
 {
@@ -42,89 +44,53 @@ namespace Aerospike.Test
 		{
 			Key key = new(args.ns, args.set, "asyncTxnWrite");
 
-			client.Put(null, key, new Bin(binName, "val1"));
+			client.Put(null, new PutHandler(this), key, new Bin(binName, "val1"));
 
 			Txn txn = new();
 
 			WritePolicy wp = client.WritePolicyDefault;
 			wp.Txn = txn;
-			client.Put(wp, key, new Bin(binName, "val2"));
+			client.Put(wp, new PutHandler(this), key, new Bin(binName, "val2"));
 
-			client.Commit(txn);
+			client.Commit(new CommitHandler(this), txn);
 
-			Record record = client.Get(null, key);
-			AssertBinEqual(key, record, binName, "val2");
+			client.Get(null, new GetExpectHandler(this, "val2"), key);
 		}
 
 		[TestMethod]
 		public void AsyncTxnWriteTwice()
 		{
-			Key key = new(args.ns, args.set, "mrtkey2");
+			Key key = new(args.ns, args.set, "asyncTxnWriteTwice");
 
 			Txn txn = new();
 
 			WritePolicy wp = client.WritePolicyDefault;
 			wp.Txn = txn;
-			client.Put(wp, key, new Bin(binName, "val1"));
-			client.Put(wp, key, new Bin(binName, "val2"));
+			client.Put(wp, new PutHandler(this), key, new Bin(binName, "val1"));
+			client.Put(wp, new PutHandler(this), key, new Bin(binName, "val2"));
 
-			client.Commit(txn);
+			client.Commit(new CommitHandler(this), txn);
 
-			Record record = client.Get(null, key);
-			AssertBinEqual(key, record, binName, "val2");
-		}
-
-		[TestMethod]
-		public void AsyncTxnWriteConflict()
-		{
-			Key key = new(args.ns, args.set, "mrtkey21");
-
-			Txn txn1 = new();
-			Txn txn2 = new();
-
-			WritePolicy wp1 = client.WritePolicyDefault;
-			WritePolicy wp2 = client.WritePolicyDefault;
-			wp1.Txn = txn1;
-			wp2.Txn = txn2;
-
-			client.Put(wp1, key, new Bin(binName, "val1"));
-
-			try
-			{
-				client.Put(wp2, key, new Bin(binName, "val2"));
-			}
-			catch (AerospikeException ae)
-			{
-				if (ae.Result != ResultCode.MRT_BLOCKED)
-				{
-					throw ae;
-				}
-			}
-
-			client.Commit(txn1);
-			client.Commit(txn2);
-
-			Record record = client.Get(null, key);
-			AssertBinEqual(key, record, binName, "val1");
+			client.Get(null, new GetExpectHandler(this, "val2"), key);
 		}
 
 		[TestMethod]
 		public void AsyncTxnWriteBlock()
 		{
-			Key key = new(args.ns, args.set, "mrtkey3");
+			Key key = new(args.ns, args.set, "asyncTxnWriteBlock");
 
-			client.Put(null, key, new Bin(binName, "val1"));
+			client.Put(null, new PutHandler(this), key, new Bin(binName, "val1"));
 
 			Txn txn = new();
 
 			WritePolicy wp = client.WritePolicyDefault;
 			wp.Txn = txn;
-			client.Put(wp, key, new Bin(binName, "val2"));
+			client.Put(wp, new PutHandler(this), key, new Bin(binName, "val2"));
 
 			try
 			{
 				// This write should be blocked.
-				client.Put(null, key, new Bin(binName, "val3"));
+				client.Put(null, new PutHandler(this), key, new Bin(binName, "val3"));
 				throw new AerospikeException("Unexpected success");
 			}
 			catch (AerospikeException e)
@@ -135,236 +101,225 @@ namespace Aerospike.Test
 				}
 			}
 
-			client.Commit(txn);
+			client.Commit(new CommitHandler(this), txn);
 		}
 
 		[TestMethod]
 		public void AsyncTxnWriteRead()
 		{
-			Key key = new(args.ns, args.set, "mrtkey4");
+			Key key = new(args.ns, args.set, "asyncTxnWriteRead");
 
-			client.Put(null, key, new Bin(binName, "val1"));
+			client.Put(null, new PutHandler(this), key, new Bin(binName, "val1"));
 
 			Txn txn = new();
 
 			WritePolicy wp = client.WritePolicyDefault;
 			wp.Txn = txn;
-			client.Put(wp, key, new Bin(binName, "val2"));
+			client.Put(wp, new PutHandler(this), key, new Bin(binName, "val2"));
 
-			Record record = client.Get(null, key);
-			AssertBinEqual(key, record, binName, "val1");
+			client.Get(null, new GetExpectHandler(this, "val1"), key);
 
-			client.Commit(txn);
+			client.Commit(new CommitHandler(this), txn);
 
-			record = client.Get(null, key);
-			AssertBinEqual(key, record, binName, "val2");
+			client.Get(null, new GetExpectHandler(this, "val2"), key);
 		}
 
 		[TestMethod]
 		public void AsyncTxnWriteAbort()
 		{
-			Key key = new(args.ns, args.set, "mrtkey5");
+			Key key = new(args.ns, args.set, "asyncTxnWriteAbort");
 
-			client.Put(null, key, new Bin(binName, "val1"));
+			client.Put(null, new PutHandler(this), key, new Bin(binName, "val1"));
 
 			Txn txn = new();
 
 			WritePolicy wp = client.WritePolicyDefault;
 			wp.Txn = txn;
-			client.Put(wp, key, new Bin(binName, "val2"));
+			client.Put(wp, new PutHandler(this), key, new Bin(binName, "val2"));
 
 			Policy p = client.ReadPolicyDefault;
 			p.Txn = txn;
-			Record record = client.Get(p, key);
-			AssertBinEqual(key, record, binName, "val2");
+			client.Get(p, new GetExpectHandler(this, "val2"), key);
 
-			client.Abort(txn);
+			client.Abort(new AbortHandler(this), txn);
 
-			record = client.Get(null, key);
-			AssertBinEqual(key, record, binName, "val1");
+			client.Get(null, new GetExpectHandler(this, "val1"), key);
 		}
 
 		[TestMethod]
 		public void AsyncTxnDelete()
 		{
-			Key key = new(args.ns, args.set, "mrtkey6");
+			Key key = new(args.ns, args.set, "asyncTxnDelete");
 
-			client.Put(null, key, new Bin(binName, "val1"));
+			client.Put(null, new PutHandler(this), key, new Bin(binName, "val1"));
 
 			Txn txn = new();
 
 			WritePolicy wp = client.WritePolicyDefault;
 			wp.Txn = txn;
 			wp.durableDelete = true;
-			client.Delete(wp, key);
+			client.Delete(wp, new DeleteHandler(this), key);
 
-			client.Commit(txn);
+			client.Commit(new CommitHandler(this), txn);
 
-			Record record = client.Get(null, key);
-			Assert.IsNull(record);
+			client.Get(null, new GetExpectHandler(this, null), key);
 		}
 
 		[TestMethod]
 		public void AsyncTxnDeleteAbort()
 		{
-			Key key = new(args.ns, args.set, "mrtkey7");
+			Key key = new(args.ns, args.set, "asyncTxnDeleteAbort");
 
-			client.Put(null, key, new Bin(binName, "val1"));
+			client.Put(null, new PutHandler(this), key, new Bin(binName, "val1"));
 
 			Txn txn = new();
 
 			WritePolicy wp = client.WritePolicyDefault;
 			wp.Txn = txn;
 			wp.durableDelete = true;
-			client.Delete(wp, key);
+			client.Delete(wp, new DeleteHandler(this), key);
 
-			client.Abort(txn);
+			client.Abort(new AbortHandler(this), txn);
 
-			Record record = client.Get(null, key);
-			AssertBinEqual(key, record, binName, "val1");
+			client.Get(null, new GetExpectHandler(this, "val1"), key);
 		}
 
 		[TestMethod]
 		public void AsyncTxnDeleteTwice()
 		{
-			Key key = new(args.ns, args.set, "mrtkey8");
+			Key key = new(args.ns, args.set, "asyncTxnDeleteTwice");
 
 			Txn txn = new();
 
-			client.Put(null, key, new Bin(binName, "val1"));
+			client.Put(null, new PutHandler(this), key, new Bin(binName, "val1"));
 
 			WritePolicy wp = client.WritePolicyDefault;
 			wp.Txn = txn;
 			wp.durableDelete = true;
-			client.Delete(wp, key);
-			client.Delete(wp, key);
+			client.Delete(wp, new DeleteHandler(this), key);
+			client.Delete(wp, new DeleteHandler(this), key);
 
-			client.Commit(txn);
+			client.Commit(new CommitHandler(this), txn);
 
-			Record record = client.Get(null, key);
-			Assert.IsNull(record);
+			client.Get(null, new GetExpectHandler(this, null), key);
 		}
 
 		[TestMethod]
 		public void AsyncTxnTouch()
 		{
-			Key key = new(args.ns, args.set, "mrtkey9");
+			Key key = new(args.ns, args.set, "asyncTxnTouch");
 
-			client.Put(null, key, new Bin(binName, "val1"));
+			client.Put(null, new PutHandler(this), key, new Bin(binName, "val1"));
 
 			Txn txn = new();
 
 			WritePolicy wp = client.WritePolicyDefault;
 			wp.Txn = txn;
-			client.Touch(wp, key);
+			client.Touch(wp, new TouchHandler(this), key);
 
-			client.Commit(txn);
+			client.Commit(new CommitHandler(this), txn);
 
-			Record record = client.Get(null, key);
-			AssertBinEqual(key, record, binName, "val1");
+			client.Get(null, new GetExpectHandler(this, "val1"), key);
 		}
 
 		[TestMethod]
 		public void AsyncTxnTouchAbort()
 		{
-			Key key = new(args.ns, args.set, "mrtkey10");
+			Key key = new(args.ns, args.set, "asyncTxnTouchAbort");
 
-			client.Put(null, key, new Bin(binName, "val1"));
+			client.Put(null, new PutHandler(this), key, new Bin(binName, "val1"));
 
 			Txn txn = new();
 
 			WritePolicy wp = client.WritePolicyDefault;
 			wp.Txn = txn;
-			client.Touch(wp, key);
+			client.Touch(wp, new TouchHandler(this), key);
 
-			client.Abort(txn);
+			client.Abort(new AbortHandler(this), txn);
 
-			Record record = client.Get(null, key);
-			AssertBinEqual(key, record, binName, "val1");
+			client.Get(null, new GetExpectHandler(this, "val1"), key);
 		}
 
 		[TestMethod]
 		public void AsyncTxnOperateWrite()
 		{
-			Key key = new(args.ns, args.set, "mrtkey11");
+			Key key = new(args.ns, args.set, "asyncTxnOperateWrite3");
+			Bin bin2 = new("bin2", "bal1");
 
-			client.Put(null, key, new Bin(binName, "val1"), new Bin("bin2", "bal1"));
+			client.Put(null, new PutHandler(this), key, new Bin(binName, "val1"), bin2);
 
 			Txn txn = new();
 
 			WritePolicy wp = client.WritePolicyDefault;
 			wp.Txn = txn;
-			Record record = client.Operate(wp, key,
+			client.Operate(wp, new OperateExpectHandler(this, bin2), key,
 				Operation.Put(new Bin(binName, "val2")),
 				Operation.Get("bin2")
 			);
-			AssertBinEqual(key, record, "bin2", "bal1");
 
-			client.Commit(txn);
+			client.Commit(new CommitHandler(this), txn);
 
-			record = client.Get(null, key);
-			AssertBinEqual(key, record, binName, "val2");
+			client.Get(null, new GetExpectHandler(this, "val2"), key);
 		}
 
 		[TestMethod]
 		public void AsyncTxnOperateWriteAbort()
 		{
-			Key key = new(args.ns, args.set, "mrtkey12");
+			Key key = new(args.ns, args.set, "asyncTxnOperateWriteAbort");
+			Bin bin2 = new("bin2", "bal1");
 
-			client.Put(null, key, new Bin(binName, "val1"), new Bin("bin2", "bal1"));
+			client.Put(null, new PutHandler(this), key, new Bin(binName, "val1"), bin2);
 
 			Txn txn = new();
 
 			WritePolicy wp = client.WritePolicyDefault;
 			wp.Txn = txn;
-			Record record = client.Operate(wp, key,
+			client.Operate(wp, new OperateExpectHandler(this, bin2), key,
 				Operation.Put(new Bin(binName, "val2")),
-				Operation.Get("bin2")
+				Operation.Get(bin2.name)
 			);
-			AssertBinEqual(key, record, "bin2", "bal1");
 
-			client.Abort(txn);
+			client.Abort(new AbortHandler(this), txn);
 
-			record = client.Get(null, key);
-			AssertBinEqual(key, record, binName, "val1");
+			client.Get(null, new GetExpectHandler(this, "val1"), key);
 		}
 
 		[TestMethod]
 		public void AsyncTxnUDF()
 		{
-			Key key = new(args.ns, args.set, "mrtkey13");
+			Key key = new(args.ns, args.set, "asyncTxnUDF");
+			Bin bin2 = new("bin2", "bal1");
 
-			client.Put(null, key, new Bin(binName, "val1"));
+			client.Put(null, new PutHandler(this), key, new Bin(binName, "val1"), bin2);
 
 			Txn txn = new();
 
 			WritePolicy wp = client.WritePolicyDefault;
 			wp.Txn = txn;
-			client.Execute(wp, key, "record_example", "writeBin", Value.Get(binName), Value.Get("val2"));
+			client.Execute(wp, new UDFHandler(this), key, "record_example", "writeBin", Value.Get(binName), Value.Get("val2"));
 
-			client.Commit(txn);
+			client.Commit(new CommitHandler(this), txn);
 
-			Record record = client.Get(null, key);
-			AssertBinEqual(key, record, binName, "val2");
+			client.Get(null, new GetExpectHandler(this, "val2"), key);
 		}
 
 		[TestMethod]
 		public void AsyncTxnUDFAbort()
 		{
-			Key key = new(args.ns, args.set, "mrtkey14");
+			Key key = new(args.ns, args.set, "asyncTxnUDFAbort");
+			Bin bin2 = new("bin2", "bal1");
 
-			client.Put(null, key, new Bin(binName, "val1"));
+			client.Put(null, new PutHandler(this), key, new Bin(binName, "val1"));
 
 			Txn txn = new();
 
 			WritePolicy wp = client.WritePolicyDefault;
 			wp.Txn = txn;
-			client.Execute(wp, key, "record_example", "writeBin", Value.Get(binName), Value.Get("val2"));
+			client.Execute(wp, new UDFHandler(this), key, "record_example", "writeBin", Value.Get(binName), Value.Get("val2"));
 
-			client.Abort(txn);
+			client.Abort(new AbortHandler(this), txn);
 
-			Record record = client.Get(null, key);
-			AssertBinEqual(key, record, binName, "val1");
+			client.Get(null, new GetExpectHandler(this, "val1"), key);
 		}
 
 		[TestMethod]
@@ -375,14 +330,13 @@ namespace Aerospike.Test
 
 			for (int i = 0; i < keys.Length; i++)
 			{
-				Key key = new(args.ns, args.set, i);
+				Key key = new(args.ns, args.set, "asyncTxnBatch" + i);
 				keys[i] = key;
 
 				client.Put(null, key, bin);
 			}
 
-			Record[] recs = client.Get(null, keys);
-			AssertBatchEqual(keys, recs, 1);
+			client.Get(null, new BatchGetExpectHandler(this, 1), keys);
 
 			Txn txn = new();
 
@@ -391,34 +345,11 @@ namespace Aerospike.Test
 			BatchPolicy bp = BatchPolicy.WriteDefault();
 			bp.Txn = txn;
 
-			BatchResults bresults = client.Operate(bp, null, keys, Operation.Put(bin));
+			client.Operate(bp, null, new BatchOperateHandler(this), keys, Operation.Put(bin));
 
-			if (!bresults.status)
-			{
-				StringBuilder sb = new StringBuilder();
-				sb.Append("Batch failed:");
-				sb.Append(System.Environment.NewLine);
+			client.Commit(new CommitHandler(this), txn);
 
-				foreach (BatchRecord br in bresults.records)
-				{
-					if (br.resultCode == 0)
-					{
-						sb.Append("Record: " + br.record);
-					}
-					else
-					{
-						sb.Append("ResultCode: " + br.resultCode);
-					}
-					sb.Append(System.Environment.NewLine);
-				}
-
-				throw new AerospikeException(sb.ToString());
-			}
-
-			client.Commit(txn);
-
-			recs = client.Get(null, keys);
-			AssertBatchEqual(keys, recs, 2);
+			client.Get(null, new BatchGetExpectHandler(this, 1), keys);
 		}
 
 		[TestMethod]
@@ -429,14 +360,13 @@ namespace Aerospike.Test
 
 			for (int i = 0; i < keys.Length; i++)
 			{
-				Key key = new(args.ns, args.set, i);
+				Key key = new(args.ns, args.set, "asyncTxnBatch" + i);
 				keys[i] = key;
 
 				client.Put(null, key, bin);
 			}
 
-			Record[] recs = client.Get(null, keys);
-			AssertBatchEqual(keys, recs, 1);
+			client.Get(null, new BatchGetExpectHandler(this, 1), keys);
 
 			Txn txn = new();
 
@@ -445,47 +375,299 @@ namespace Aerospike.Test
 			BatchPolicy bp = BatchPolicy.WriteDefault();
 			bp.Txn = txn;
 
-			BatchResults bresults = client.Operate(bp, null, keys, Operation.Put(bin));
+			client.Operate(bp, null, new BatchOperateHandler(this), keys, Operation.Put(bin));
 
-			if (!bresults.status)
+			client.Abort(new AbortHandler(this), txn);
+
+			client.Get(null, new BatchGetExpectHandler(this, 1), keys);
+		}
+
+		private class CommitHandler : CommitListener
+		{
+			private readonly TestAsyncTxn parent;
+
+			public CommitHandler(TestAsyncTxn parent)
 			{
-				StringBuilder sb = new StringBuilder();
-				sb.Append("Batch failed:");
-				sb.Append(System.Environment.NewLine);
+				this.parent = parent;
+			}
 
-				foreach (BatchRecord br in bresults.records)
+			public void OnSuccess(CommitStatusType status)
+			{
+				parent.NotifyCompleted();
+			}
+
+			public void OnFailure(AerospikeException.Commit e)
+			{
+				parent.SetError(e);
+				parent.NotifyCompleted();
+			}
+		}
+
+		private class AbortHandler : AbortListener
+		{
+			private readonly TestAsyncTxn parent;
+
+			public AbortHandler(TestAsyncTxn parent)
+			{
+				this.parent = parent;
+			}
+
+			public void OnSuccess(AbortStatusType status)
+			{
+				parent.NotifyCompleted();
+			}
+
+			public void OnFailure(AerospikeException e)
+			{
+				parent.SetError(e);
+				parent.NotifyCompleted();
+			}
+		}
+
+		private class PutHandler : WriteListener
+		{
+			private readonly TestAsyncTxn parent;
+
+			public PutHandler(TestAsyncTxn parent)
+			{
+				this.parent = parent;
+			}
+
+			public void OnSuccess(Key key)
+			{
+				parent.NotifyCompleted();
+			}
+
+			public void OnFailure(AerospikeException e)
+			{
+				parent.SetError(e);
+				parent.NotifyCompleted();
+			}
+		}
+
+		private class GetExpectHandler : RecordListener
+		{
+			private readonly TestAsyncTxn parent;
+			private string expect;
+
+			public GetExpectHandler(TestAsyncTxn parent, string expect)
+			{
+				this.parent = parent;
+				this.expect = expect;
+			}
+
+			public void OnSuccess(Key key, Record record)
+			{
+				if (expect != null)
 				{
-					if (br.resultCode == 0)
+					if (parent.AssertBinEqual(key, record, binName, expect))
 					{
-						sb.Append("Record: " + br.record);
+						parent.NotifyCompleted();
 					}
 					else
 					{
-						sb.Append("ResultCode: " + br.resultCode);
+						parent.NotifyCompleted();
 					}
-					sb.Append(System.Environment.NewLine);
 				}
-
-				throw new AerospikeException(sb.ToString());
+				else
+				{
+					if (parent.AssertRecordNotFound(key, record))
+					{
+						parent.NotifyCompleted();
+					}
+					else
+					{
+						parent.NotifyCompleted();
+					}
+				}
 			}
 
-			client.Abort(txn);
-
-			recs = client.Get(null, keys);
-			AssertBatchEqual(keys, recs, 1);
+			public void OnFailure(AerospikeException e)
+			{
+				parent.SetError(e);
+				parent.NotifyCompleted();
+			}
 		}
 
-		private void AsyncAssertBatchEqual(Key[] keys, Record[] recs, int expected)
+		private class OperateExpectHandler : RecordListener
 		{
-			for (int i = 0; i < keys.Length; i++)
+			private readonly TestAsyncTxn parent;
+			private Bin? expect;
+
+			public OperateExpectHandler(TestAsyncTxn parent, Bin? expect)
 			{
-				Key key = keys[i];
-				Record rec = recs[i];
+				this.parent = parent;
+				this.expect = expect;
+			}
 
-				Assert.IsNotNull(rec);
+			public void OnSuccess(Key key, Record record)
+			{
+				if (expect != null)
+				{
+					if (parent.AssertBinEqual(key, record, expect?.name, expect?.value.Object))
+					{
+						parent.NotifyCompleted();
+					}
+					else
+					{
+						parent.NotifyCompleted();
+					}
+				}
+				else
+				{
+					if (parent.AssertRecordNotFound(key, record))
+					{
+						parent.NotifyCompleted();
+					}
+					else
+					{
+						parent.NotifyCompleted();
+					}
+				}
+			}
 
-				int received = rec.GetInt(binName);
-				Assert.AreEqual(expected, received);
+			public void OnFailure(AerospikeException e)
+			{
+				parent.SetError(e);
+				parent.NotifyCompleted();
+			}
+		}
+
+		private class UDFHandler : ExecuteListener
+		{
+			private readonly TestAsyncTxn parent;
+
+			public UDFHandler(TestAsyncTxn parent)
+			{
+				this.parent = parent;
+			}
+
+			public void OnSuccess(Key key, Object obj)
+			{
+				parent.NotifyCompleted();
+			}
+
+			public void OnFailure(AerospikeException e)
+			{
+				parent.SetError(e);
+				parent.NotifyCompleted();
+			}
+		}
+
+		private class BatchGetExpectHandler : RecordArrayListener
+		{
+			private readonly TestAsyncTxn parent;
+			private readonly int expected;
+
+			public BatchGetExpectHandler(TestAsyncTxn parent, int expected)
+			{
+				this.parent = parent;
+				this.expected = expected;
+			}
+
+			public void OnSuccess(Key[] keys, Record[] records)
+			{
+				if (parent.AssertBatchEqual(keys, records, binName, expected))
+				{
+					parent.NotifyCompleted();
+				}
+				else 
+				{ 
+					parent.NotifyCompleted(); 
+				}
+			}
+
+			public void OnFailure(AerospikeException e)
+			{
+				parent.SetError(e);
+				parent.NotifyCompleted();
+			}
+		}
+
+		private class BatchOperateHandler : BatchRecordArrayListener
+		{
+			private TestAsyncTxn parent;
+
+			public BatchOperateHandler(TestAsyncTxn parent)
+			{
+				this.parent = parent;
+			}
+
+			public void OnSuccess(BatchRecord[] records, bool status)
+			{
+				if (status)
+				{
+					parent.NotifyCompleted();
+				}
+				else
+				{
+					StringBuilder sb = new StringBuilder();
+					sb.Append("Batch failed:");
+					sb.Append(System.Environment.NewLine);
+
+					foreach (BatchRecord br in records)
+					{
+						if (br.resultCode == 0)
+						{
+							sb.Append("Record: " + br.record);
+						}
+						else
+						{
+							sb.Append("ResultCode: " + br.resultCode);
+						}
+						sb.Append(System.Environment.NewLine);
+					}
+					parent.SetError(new AerospikeException(sb.ToString()));
+					parent.NotifyCompleted();
+				}
+			}
+
+			public void OnFailure(BatchRecord[] records, AerospikeException e)
+			{
+				parent.SetError(e);
+				parent.NotifyCompleted();
+			}
+		}
+
+		private class TouchHandler : WriteListener
+		{
+			private TestAsyncTxn parent;
+
+			public TouchHandler(TestAsyncTxn parent)
+			{
+				this.parent = parent;
+			}
+
+			public void OnSuccess(Key key)
+			{
+				parent.NotifyCompleted();
+			}
+
+			public void OnFailure(AerospikeException e)
+			{
+				parent.SetError(e);
+				parent.NotifyCompleted();
+			}
+		}
+
+		private class DeleteHandler : DeleteListener
+		{
+			private TestAsyncTxn parent;
+
+			public DeleteHandler(TestAsyncTxn parent)
+			{
+				this.parent = parent;
+			}
+
+			public void OnSuccess(Key key, bool existed)
+			{
+				parent.NotifyCompleted();
+			}
+
+			public void OnFailure(AerospikeException e)
+			{
+				parent.SetError(e);
+				parent.NotifyCompleted();
 			}
 		}
 	}

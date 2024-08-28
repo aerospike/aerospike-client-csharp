@@ -1887,11 +1887,13 @@ namespace Aerospike.Client
 		private readonly bool hasResultCode;
 		private bool error;
 		public AsyncBatchCommand[] commands;
+		public AsyncCluster cluster;
 
 		public AsyncBatchExecutor(AsyncCluster cluster, bool hasResultCode)
 		{
 			this.hasResultCode = hasResultCode;
-			cluster.AddCommand();
+			this.cluster = cluster;
+			cluster.AddCommandCount();
 		}
 
 		public void Execute()

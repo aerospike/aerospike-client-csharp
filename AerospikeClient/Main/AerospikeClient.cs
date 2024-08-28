@@ -230,6 +230,7 @@ namespace Aerospike.Client
 				this.txnVerifyPolicyDefault = policy.txnVerifyPolicyDefault;
 				this.txnRollPolicyDefault = policy.txnRollPolicyDefault;
 				this.infoPolicyDefault = policy.infoPolicyDefault;
+				this.operatePolicyReadDefault = new WritePolicy(this.readPolicyDefault);
 			}
 			else
 			{
@@ -237,7 +238,7 @@ namespace Aerospike.Client
 				this.writePolicyDefault = new WritePolicy();
 				this.scanPolicyDefault = new ScanPolicy();
 				this.queryPolicyDefault = new QueryPolicy();
-				this.batchPolicyDefault = BatchPolicy.ReadDefault();
+				this.batchPolicyDefault = new BatchPolicy();
 				this.batchParentPolicyWriteDefault = BatchPolicy.WriteDefault();
 				this.batchWritePolicyDefault = new BatchWritePolicy();
 				this.batchDeletePolicyDefault = new BatchDeletePolicy();
@@ -465,7 +466,7 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Attempt to commit the given multi-record transaction. First, the expected record versions are
 		/// sent to the server nodes for verification. If all nodes return success, the transaction is
-		/// committed.Otherwise, the transaction is aborted.
+		/// committed. Otherwise, the transaction is aborted.
 		/// <p>
 		/// Requires server version 8.0+
 		/// </p>
@@ -478,8 +479,8 @@ namespace Aerospike.Client
 				return CommitStatus.CommitStatusType.ALREADY_ATTEMPTED;
 			}
 
-			TxnRoll tm = new TxnRoll(cluster, txn);
-			return tm.Commit(txnVerifyPolicyDefault, txnRollPolicyDefault);
+			TxnRoll tr = new(cluster, txn);
+			return tr.Commit(txnVerifyPolicyDefault, txnRollPolicyDefault);
 		}
 
 		/// <summary>
@@ -496,8 +497,8 @@ namespace Aerospike.Client
 				return AbortStatus.AbortStatusType.ALREADY_ATTEMPTED;
 			}
 
-			TxnRoll tm = new TxnRoll(cluster, txn);
-			return tm.Abort(txnRollPolicyDefault);
+			TxnRoll tr = new(cluster, txn);
+			return tr.Abort(txnRollPolicyDefault);
 		}
 
 		//-------------------------------------------------------
@@ -1839,7 +1840,7 @@ namespace Aerospike.Client
 			statement.FunctionName = functionName;
 			statement.FunctionArgs = functionArgs;
 
-			cluster.AddCommand();
+			cluster.AddCommandCount();
 
 			ulong taskId = statement.PrepareTaskId();
 			Node[] nodes = cluster.ValidateNodes();
@@ -1878,7 +1879,7 @@ namespace Aerospike.Client
 				statement.Operations = operations;
 			}
 
-			cluster.AddCommand();
+			cluster.AddCommandCount();
 
 			ulong taskId = statement.PrepareTaskId();
 			Node[] nodes = cluster.ValidateNodes();

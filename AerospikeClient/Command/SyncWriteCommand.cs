@@ -31,7 +31,7 @@ namespace Aerospike.Client
 			this.writePolicy = writePolicy;
 			this.key = key;
 			this.partition = Partition.Write(cluster, writePolicy, key);
-			cluster.AddCommand();
+			cluster.AddCommandCount();
 		}
 
 		protected internal override bool IsWrite()

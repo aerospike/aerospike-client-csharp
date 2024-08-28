@@ -22,7 +22,7 @@ namespace Aerospike.Client
 		private readonly OperateArgs args;
 
 		public OperateCommandRead(Cluster cluster, Key key, OperateArgs args)
-			: base(cluster, args.writePolicy, key, args.GetPartition(cluster, key), true)
+			: base(cluster, args.writePolicy, key, true)
 		{
 			this.args = args;
 		}

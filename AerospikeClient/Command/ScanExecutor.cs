@@ -24,7 +24,7 @@ namespace Aerospike.Client
 	{
 		public static void ScanPartitions(Cluster cluster, ScanPolicy policy, string ns, string setName, string[] binNames, ScanCallback callback, PartitionTracker tracker)
 		{
-			cluster.AddCommand();
+			cluster.AddCommandCount();
 			
 			while (true)
 			{

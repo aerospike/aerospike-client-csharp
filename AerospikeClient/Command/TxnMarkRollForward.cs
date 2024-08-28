@@ -19,17 +19,17 @@ namespace Aerospike.Client
 {
 	public sealed class TxnMarkRollForward : SyncWriteCommand
 	{
-		private readonly Txn tran;
+		private readonly Txn txn;
 
-		public TxnMarkRollForward(Cluster cluster, Txn tran, WritePolicy writePolicy, Key key) 
+		public TxnMarkRollForward(Cluster cluster, Txn txn, WritePolicy writePolicy, Key key) 
 			: base(cluster, writePolicy, key)
 		{
-			this.tran = tran;
+			this.txn = txn;
 		}
 
 		protected internal override void WriteBuffer()
 		{
-			SetTxnMarkRollForward(tran, key);
+			SetTxnMarkRollForward(txn, key);
 		}
 
 		protected internal override void ParseResult(IConnection conn)

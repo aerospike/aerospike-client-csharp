@@ -36,7 +36,6 @@ namespace Aerospike.Client
 			this.listener = listener;
 			this.bins = bins;
 			this.operation = operation;
-			cluster.AddCommand();
 		}
 
 		public AsyncWrite(AsyncWrite other)

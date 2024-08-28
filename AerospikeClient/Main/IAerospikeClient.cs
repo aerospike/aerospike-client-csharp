@@ -135,7 +135,7 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Attempt to commit the given multi-record transaction. First, the expected record versions are
 		/// sent to the server nodes for verification.If all nodes return success, the command is
-		/// committed.Otherwise, the command is aborted.
+		/// committed. Otherwise, the transaction is aborted.
 		/// <p>
 		/// Requires server version 8.0+
 		/// </p>

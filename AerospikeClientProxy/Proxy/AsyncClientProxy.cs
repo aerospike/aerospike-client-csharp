@@ -118,7 +118,7 @@ namespace Aerospike.Client.Proxy
 		/// <summary>
 		/// Asynchronously attempt to commit the given multi-record transaction. First, the expected
 		/// record versions are sent to the server nodes for verification.If all nodes return success,
-		/// the transaction is committed.Otherwise, the transaction is aborted.
+		/// the transaction is committed. Otherwise, the transaction is aborted.
 		/// <p>
 		/// This method registers the command with an event loop and returns.
 		/// The event loop thread will process the command and send the results to the listener.
@@ -154,7 +154,7 @@ namespace Aerospike.Client.Proxy
 		/// <summary>
 		/// Asynchronously write record bin(s). 
 		/// <para>
-		/// The policy specifies the transaction timeout, record expiration and how the transaction is
+		/// The policy specifies the command timeout, record expiration and how the command is
 		/// handled when the record already exists.
 		/// </para>
 		/// </summary>
@@ -193,7 +193,7 @@ namespace Aerospike.Client.Proxy
 		/// <summary>
 		/// Asynchronously append bin string values to existing record bin values.
 		/// <para>
-		/// The policy specifies the transaction timeout, record expiration and how the transaction is
+		/// The policy specifies the command timeout, record expiration and how the command is
 		/// handled when the record already exists.
 		/// This call only works for string values. 
 		/// </para>
@@ -229,7 +229,7 @@ namespace Aerospike.Client.Proxy
 		/// <summary>
 		/// Asynchronously prepend bin string values to existing record bin values.
 		/// <para>
-		/// The policy specifies the transaction timeout, record expiration and how the transaction is
+		/// The policy specifies the command timeout, record expiration and how the command is
 		/// handled when the record already exists.
 		/// This call works only for string values. 
 		/// </para>
@@ -269,7 +269,7 @@ namespace Aerospike.Client.Proxy
 		/// <summary>
 		/// Asynchronously add integer/double bin values to existing record bin values.
 		/// <para>
-		/// The policy specifies the transaction timeout, record expiration and how the transaction is
+		/// The policy specifies the command timeout, record expiration and how the command is
 		/// handled when the record already exists.
 		/// </para>
 		/// </summary>
@@ -1061,7 +1061,7 @@ namespace Aerospike.Client.Proxy
 		/// <param name="policy">batch configuration parameters, pass in null for defaults</param>
 		/// <param name="token">cancellation token</param>
 		/// <param name="records">list of unique record identifiers and read/write operations</param>
-		/// <returns>Task with completion status: true if all batch sub-transactions were successful.</returns>
+		/// <returns>Task with completion status: true if all batch sub-commands were successful.</returns>
 		/// <exception cref="AerospikeException">if queue is full</exception>
 		public async Task<bool> Operate(BatchPolicy policy, CancellationToken token, List<BatchRecord> records)
 		{

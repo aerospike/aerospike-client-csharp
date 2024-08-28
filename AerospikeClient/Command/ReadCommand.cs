@@ -28,7 +28,6 @@ namespace Aerospike.Client
 		{
 			this.binNames = null;
 			this.isOperation = false;
-			cluster.AddCommand();
 		}
 
 		public ReadCommand(Cluster cluster, Policy policy, Key key, String[] binNames)
@@ -36,15 +35,13 @@ namespace Aerospike.Client
 		{
 			this.binNames = binNames;
 			this.isOperation = false;
-			cluster.AddCommand();
 		}
 
-		public ReadCommand(Cluster cluster, Policy policy, Key key, Partition partition, bool isOperation)
+		public ReadCommand(Cluster cluster, Policy policy, Key key, bool isOperation)
 			: base(cluster, policy, key)
 		{
 			this.binNames = null;
 			this.isOperation = isOperation;
-			cluster.AddCommand();
 		}
 
 		protected internal override void WriteBuffer()
@@ -61,11 +58,6 @@ namespace Aerospike.Client
 			{
 				this.record = policy.recordParser.ParseRecord(dataBuffer, ref dataOffset, opCount, generation, expiration, isOperation);
 				return;
-			}
-
-			if (opCount > 0)
-			{
-				throw new AerospikeException("Unexpected read opCount on error: " + opCount + ',' + resultCode);
 			}
 
 			if (resultCode == ResultCode.KEY_NOT_FOUND_ERROR)

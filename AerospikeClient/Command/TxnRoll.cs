@@ -58,7 +58,7 @@ namespace Aerospike.Client
 					throw new AerospikeException.Commit(CommitErrorType.VERIFY_FAIL_ABORT_ABANDONED, verifyRecords, rollRecords, t);
 				}
 
-				if (txn.Deadline != 0)
+				if (txn.MonitorMightExist())
 				{
 					try
 					{
@@ -80,9 +80,8 @@ namespace Aerospike.Client
 
 			writePolicy = new WritePolicy(rollPolicy);
 			txnKey = TxnMonitor.GetTxnMonitorKey(txn);
-			HashSet<Key> keySet = txn.Writes;
 
-			if (keySet.Count != 0)
+			if (txn.MonitorExists())
 			{
 				// Tell MRT monitor that a roll-forward will commence.
 				try
@@ -101,11 +100,11 @@ namespace Aerospike.Client
 				}
 				catch (Exception t)
 				{
-					throw new AerospikeException.Commit(CommitErrorType.ROLL_FORWARD_ABANDONED, verifyRecords, rollRecords, t);
+					return CommitStatusType.ROLL_FORWARD_ABANDONED;
 				}
 			}
 
-			if (txn.Deadline != 0)
+			if (txn.MonitorMightExist())
 			{
 				// Remove MRT monitor.
 				try
@@ -123,21 +122,16 @@ namespace Aerospike.Client
 
 		public AbortStatusType Abort(BatchPolicy rollPolicy)
 		{
-			HashSet<Key> keySet = txn.Writes;
-
-			if (keySet.Count != 0)
+			try
 			{
-				try
-				{
-					Roll(rollPolicy, Command.INFO4_MRT_ROLL_BACK);
-				}
-				catch (Exception)
-				{
-					return AbortStatusType.ROLL_BACK_ABANDONED;
-				}
+				Roll(rollPolicy, Command.INFO4_MRT_ROLL_BACK);
+			}
+			catch (Exception)
+			{
+				return AbortStatusType.ROLL_BACK_ABANDONED;
 			}
 
-			if (txn.Deadline != 0)
+			if (txn.MonitorMightExist())
 			{
 				try
 				{
@@ -224,18 +218,18 @@ namespace Aerospike.Client
 
 			this.rollRecords = records;
 
-			// Copy txn roll policy because it needs to be modified.
+			// Copy transaction roll policy because it needs to be modified.
 			BatchPolicy batchPolicy = new(rollPolicy);
 
 			BatchAttr attr = new();
 			attr.SetTxn(txnAttr);
 			BatchStatus status = new(true);
 
-			// generate() requires a null txn instance.
+			// generate() requires a null transaction instance.
 			List<BatchNode> bns = BatchNode.GenerateList(cluster, batchPolicy, keys, records, true, status);
 			BatchCommand[] commands = new BatchCommand[bns.Count];
 
-			// Batch roll forward requires the txn instance.
+			// Batch roll forward requires the transaction instance.
 			batchPolicy.Txn = txn;
 
 			int count = 0;

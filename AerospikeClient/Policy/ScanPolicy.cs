@@ -21,6 +21,10 @@ namespace Aerospike.Client
 {
 	/// <summary>
 	/// Container object for optional parameters used in scan operations.
+	/// <para>
+	/// Inherited Policy fields <see cref="Policy.Txn"/> and 
+	/// <see cref="Policy.failOnFilteredOut"/> are ignored.
+	/// </para>
 	/// </summary>
 	public sealed class ScanPolicy : Policy
 	{

@@ -17,7 +17,7 @@
 namespace Aerospike.Client
 {
 	/// <summary>
-	/// Desired consistency guarantee when committing a transaction on the server.
+	/// Desired consistency guarantee when committing a command on the server.
 	/// </summary>
 	public enum CommitLevel
 	{
