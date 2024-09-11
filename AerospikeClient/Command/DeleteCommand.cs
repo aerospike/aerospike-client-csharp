@@ -26,7 +26,6 @@ namespace Aerospike.Client
 		public DeleteCommand(Cluster cluster, WritePolicy writePolicy, Key key)
 			: base(cluster, writePolicy, key)
 		{
-			cluster.AddCommandCount();
 		}
 
 		protected internal override void WriteBuffer()
@@ -37,8 +36,9 @@ namespace Aerospike.Client
 		protected internal override void ParseResult(IConnection conn)
 		{
 			ParseHeader(conn);
+			ParseFields(policy.Txn, key, true);
 
-			if (resultCode == 0)
+			if (resultCode == ResultCode.OK)
 			{
 				existed = true;
 				return;

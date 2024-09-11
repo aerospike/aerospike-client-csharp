@@ -44,18 +44,18 @@ namespace Aerospike.Client
 				// Verify read versions in batch.
 				Verify(verifyPolicy);
 			}
-			catch (Exception t)
+			catch (Exception e)
 			{
 				// Verify failed. Abort.
 				try
 				{
 					Roll(rollPolicy, Command.INFO4_MRT_ROLL_BACK);
 				}
-				catch (Exception t2)
+				catch (Exception e2)
 				{
 					// Throw combination of verify and roll exceptions.
-					//t.InnerException = t2; //TODO: Ask about this
-					throw new AerospikeException.Commit(CommitErrorType.VERIFY_FAIL_ABORT_ABANDONED, verifyRecords, rollRecords, t);
+					
+					throw OnCommitError(CommitErrorType.VERIFY_FAIL_ABORT_ABANDONED, e, false);
 				}
 
 				if (txn.MonitorMightExist())
@@ -66,16 +66,16 @@ namespace Aerospike.Client
 						txnKey = TxnMonitor.GetTxnMonitorKey(txn);
 						Close(writePolicy, txnKey);
 					}
-					catch (Exception t3)
+					catch (Exception e3)
 					{
 						// Throw combination of verify and close exceptions.
 						//t.AddSuppressed(t3);
-						throw new AerospikeException.Commit(CommitErrorType.VERIFY_FAIL_CLOSE_ABANDONED, verifyRecords, rollRecords, t);
+						throw OnCommitError(CommitErrorType.VERIFY_FAIL_CLOSE_ABANDONED, e, false);
 					}
 				}
 
 				// Throw original exception when abort succeeds.
-				throw new AerospikeException.Commit(CommitErrorType.VERIFY_FAIL, verifyRecords, rollRecords, t);
+				throw OnCommitError(CommitErrorType.VERIFY_FAIL, e, false);
 			}
 
 			writePolicy = new WritePolicy(rollPolicy);
@@ -88,9 +88,9 @@ namespace Aerospike.Client
 				{
 					MarkRollForward(writePolicy, txnKey);
 				}
-				catch (Exception t)
+				catch (Exception e)
 				{
-					throw new AerospikeException.Commit(CommitErrorType.MARK_ROLL_FORWARD_ABANDONED, verifyRecords, rollRecords, t);
+					throw OnCommitError(CommitErrorType.MARK_ROLL_FORWARD_ABANDONED, e, true);
 				}
 
 				// Roll-forward writes in batch.
@@ -98,7 +98,7 @@ namespace Aerospike.Client
 				{
 					Roll(rollPolicy, Command.INFO4_MRT_ROLL_FORWARD);
 				}
-				catch (Exception t)
+				catch (Exception)
 				{
 					return CommitStatusType.ROLL_FORWARD_ABANDONED;
 				}
@@ -111,13 +111,29 @@ namespace Aerospike.Client
 				{
 					Close(writePolicy, txnKey);
 				}
-				catch (Exception t)
+				catch (Exception)
 				{
 					return CommitStatusType.CLOSE_ABANDONED;
 				}
 			}
 
 			return CommitStatusType.OK;
+		}
+
+		private AerospikeException.Commit OnCommitError(CommitErrorType error, Exception cause, bool setInDoubt) 
+		{
+			AerospikeException.Commit aec = new(error, verifyRecords, rollRecords, cause);
+			
+			if (cause is AerospikeException) {
+				AerospikeException src = (AerospikeException)cause;
+				aec.Node = src.Node;
+				aec.Policy = src.Policy;
+				aec.Iteration = src.Iteration;
+				if (setInDoubt) {
+					aec.SetInDoubt(src.InDoubt);
+				}
+			}
+			return aec;
 		}
 
 		public AbortStatusType Abort(BatchPolicy rollPolicy)
@@ -139,7 +155,7 @@ namespace Aerospike.Client
 					Key txnKey = TxnMonitor.GetTxnMonitorKey(txn);
 					Close(writePolicy, txnKey);
 				}
-				catch (Exception t)
+				catch (Exception)
 				{
 					return AbortStatusType.CLOSE_ABANDONED;
 				}
@@ -159,7 +175,7 @@ namespace Aerospike.Client
 
 			BatchRecord[] records = new BatchRecord[max];
 			Key[] keys = new Key[max];
-			long[] versions = new long[max];
+			long?[] versions = new long?[max];
 			int count = 0;
 
 			foreach (KeyValuePair<Key, long> entry in reads)
@@ -181,7 +197,7 @@ namespace Aerospike.Client
 			foreach (BatchNode bn in bns)
 			{
 				commands[count++] = new BatchTxnVerify(
-					cluster, bn, verifyPolicy, txn, keys, versions, records, status);
+					cluster, bn, verifyPolicy, keys, versions, records, status);
 			}
 
 			BatchExecutor.Execute(cluster, verifyPolicy, commands, status);
@@ -218,28 +234,22 @@ namespace Aerospike.Client
 
 			this.rollRecords = records;
 
-			// Copy transaction roll policy because it needs to be modified.
-			BatchPolicy batchPolicy = new(rollPolicy);
-
 			BatchAttr attr = new();
 			attr.SetTxn(txnAttr);
 			BatchStatus status = new(true);
 
 			// generate() requires a null transaction instance.
-			List<BatchNode> bns = BatchNode.GenerateList(cluster, batchPolicy, keys, records, true, status);
+			List<BatchNode> bns = BatchNode.GenerateList(cluster, rollPolicy, keys, records, true, status);
 			BatchCommand[] commands = new BatchCommand[bns.Count];
-
-			// Batch roll forward requires the transaction instance.
-			batchPolicy.Txn = txn;
 
 			int count = 0;
 
 			foreach (BatchNode bn in bns)
 			{
 				commands[count++] = new BatchTxnRoll(
-					cluster, bn, batchPolicy, keys, records, attr, status);
+					cluster, bn, rollPolicy, txn, keys, records, attr, status);
 			}
-			BatchExecutor.Execute(cluster, batchPolicy, commands, status);
+			BatchExecutor.Execute(cluster, rollPolicy, commands, status);
 
 			if (!status.GetStatus())
 			{

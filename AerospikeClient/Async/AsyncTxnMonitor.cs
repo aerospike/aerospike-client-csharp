@@ -14,10 +14,6 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using Aerospike.Client;
-using System.Diagnostics.Metrics;
-using System.Diagnostics;
-
 namespace Aerospike.Client
 {
 	public abstract class AsyncTxnMonitor
@@ -114,18 +110,16 @@ namespace Aerospike.Client
 		public sealed class BatchTxnMonitor : AsyncTxnMonitor
 		{
 			private readonly AsyncBatchExecutor executor;
-			private readonly AsyncBatchCommand[] commands;
 
 			public BatchTxnMonitor(AsyncBatchExecutor executor)
 				: base(null, null)
 			{
 				this.executor = executor;
-				this.commands = executor.commands;
 			}
 
 			public override void RunCommand()
 			{
-				executor.Execute(commands);
+				executor.Execute();
 			}
 
 			public override void OnFailure(AerospikeException ae)

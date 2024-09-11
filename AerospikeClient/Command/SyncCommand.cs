@@ -28,11 +28,6 @@ namespace Aerospike.Client
 		internal int iteration = 1;
 		internal int commandSentCounter;
 		internal DateTime deadline;
-		protected int resultCode;
-		protected int generation;
-		protected int expiration;
-		protected int fieldCount;
-		protected int opCount;
 
 		/// <summary>
 		/// Default constructor.
@@ -346,17 +341,6 @@ namespace Aerospike.Client
 			}
 		}
 
-		protected void SkipFields(int fieldCount)
-		{
-			// There can be fields in the response (setname etc).
-			// But for now, ignore them. Expose them to the API if needed in the future.
-			for (int i = 0; i < fieldCount; i++)
-			{
-				int fieldlen = ByteUtil.BytesToInt(dataBuffer, dataOffset);
-				dataOffset += 4 + fieldlen;
-			}
-		}
-
 		protected internal sealed override void End()
 		{
 			// Write total size of message.
@@ -411,67 +395,6 @@ namespace Aerospike.Client
 			dataOffset += 2;
 			this.opCount = ByteUtil.BytesToShort(dataBuffer, dataOffset);
 			dataOffset += 2;
-		}
-
-		protected void ParseFields(Txn txn, Key key, bool hasWrite)
-		{
-			if (txn == null)
-			{
-				SkipFields(fieldCount);
-				return;
-			}
-
-			long? version = null;
-
-			for (int i = 0; i < fieldCount; i++)
-			{
-				int len = ByteUtil.BytesToInt(dataBuffer, dataOffset);
-				dataOffset += 4;
-
-				int type = dataBuffer[dataOffset++];
-				int size = len - 1;
-
-				if (type == FieldType.RECORD_VERSION)
-				{
-					if (size == 7)
-					{
-						version = ByteUtil.VersionBytesToLong(dataBuffer, dataOffset);
-					}
-					else
-					{
-						throw new AerospikeException("Record version field has invalid size: " + size);
-					}
-				}
-				dataOffset += size;
-			}
-
-			if (hasWrite)
-			{
-				txn.OnWrite(key, version, resultCode);
-			}
-			else
-			{
-				txn.OnRead(key, version);
-			}
-		}
-
-		protected void ParseTxnDeadline(Txn txn)
-		{
-			for (int i = 0; i < fieldCount; i++)
-			{
-				int len = ByteUtil.BytesToInt(dataBuffer, dataOffset);
-				dataOffset += 4;
-
-				int type = dataBuffer[dataOffset++];
-				int size = len - 1;
-
-				if (type == FieldType.MRT_DEADLINE)
-				{
-					int deadline = ByteUtil.LittleBytesToInt(dataBuffer, dataOffset);
-					txn.Deadline = deadline;
-				}
-				dataOffset += size;
-			}
 		}
 
 		protected internal sealed override void SetLength(int length)

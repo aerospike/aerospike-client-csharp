@@ -40,7 +40,7 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void TxnWrite()
 		{
-			Key key = new(args.ns, args.set, "mrtkey1");
+			Key key = new(args.ns, args.set, "mrtkey111");
 
 			client.Put(null, key, new Bin(binName, "val1"));
 
@@ -97,7 +97,7 @@ namespace Aerospike.Test
 			{
 				if (ae.Result != ResultCode.MRT_BLOCKED)
 				{
-					throw ae;
+					throw;
 				}
 			}
 
@@ -131,7 +131,7 @@ namespace Aerospike.Test
 			{
 				if (e.Result != ResultCode.MRT_BLOCKED)
 				{
-					throw e;
+					throw;
 				}
 			}
 
@@ -248,7 +248,7 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void TxnTouch()
 		{
-			Key key = new(args.ns, args.set, "mrtkey9");
+			Key key = new(args.ns, args.set, "mrtkey91");
 
 			client.Put(null, key, new Bin(binName, "val1"));
 

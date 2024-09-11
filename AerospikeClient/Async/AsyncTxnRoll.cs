@@ -70,12 +70,13 @@ namespace Aerospike.Client
 			int max = reads.Count;
 			if (max == 0)
 			{
+				verifyListener.OnSuccess(new BatchRecord[0], true);
 				return;
 			}
 
 			BatchRecord[] records = new BatchRecord[max];
 			Key[] keys = new Key[max];
-			long[] versions = new long[max];
+			long?[] versions = new long?[max];
 			int count = 0;
 
 			foreach (KeyValuePair<Key, long> entry in reads)
@@ -88,7 +89,8 @@ namespace Aerospike.Client
 			}
 			this.verifyRecords = records;
 
-			new AsyncBatchTxnVerifyExecutor(cluster, verifyPolicy, verifyListener, keys, versions, records);
+			AsyncBatchTxnVerifyExecutor executor = new(cluster, verifyPolicy, verifyListener, keys, versions, records);
+			executor.Execute();
 		}
 
 		private void MarkRollForward()
@@ -97,7 +99,7 @@ namespace Aerospike.Client
 			try
 			{
 				MarkRollForwardListener writeListener = new(this);
-				AsyncTxnMarkRollForward command = new(cluster, txn, writeListener, writePolicy, txnKey);
+				AsyncTxnMarkRollForward command = new(cluster, writeListener, writePolicy, txnKey);
 				command.Execute();
 			}
 			catch (Exception t) 
@@ -113,7 +115,7 @@ namespace Aerospike.Client
 				RollForwardListener rollListener = new(this);
 				Roll(rollListener, Command.INFO4_MRT_ROLL_FORWARD);
 			}
-			catch (Exception t)
+			catch (Exception e)
 			{
 				NotifyCommitSuccess(CommitStatusType.ROLL_FORWARD_ABANDONED);
 			}
@@ -138,6 +140,7 @@ namespace Aerospike.Client
 
 			if (keySet.Count == 0)
 			{
+				rollListener.OnSuccess(new BatchRecord[0], true);
 				return;
 			}
 
@@ -149,15 +152,11 @@ namespace Aerospike.Client
 				records[i] = new BatchRecord(keys[i], true);
 			}
 
-			this.rollRecords = records;
-
-			// Copy txn roll policy because it needs to be modified.
-			BatchPolicy batchPolicy = new(rollPolicy);
-
 			BatchAttr attr = new();
 			attr.SetTxn(txnAttr);
 
-			new AsyncBatchTxnRollExecutor(cluster, verifyPolicy, rollListener, keys, records, attr);
+			AsyncBatchTxnRollExecutor executor = new(cluster, rollPolicy, rollListener, txn, keys, records, attr);
+			executor.Execute();
 		}
 
 		private void CloseOnCommit(bool verified)
@@ -171,6 +170,22 @@ namespace Aerospike.Client
 				else
 				{
 					NotifyCommitFailure(CommitErrorType.VERIFY_FAIL, null, false);
+				}
+				return;
+			}
+
+			try
+			{
+				AsyncTxnClose command = new(cluster, txn, new CloseOnCommitListener(this, verified), writePolicy, txnKey);
+				command.Execute();
+			}
+			catch (Exception e) 
+			{
+				if (verified) {
+					NotifyCommitSuccess(CommitStatusType.CLOSE_ABANDONED);
+				}
+				else {
+					NotifyCommitFailure(CommitErrorType.VERIFY_FAIL_CLOSE_ABANDONED, e, false);
 				}
 			}
 		}
@@ -190,7 +205,7 @@ namespace Aerospike.Client
 				AsyncTxnClose command = new(cluster, txn, deleteListener, writePolicy, txnKey);
 				command.Execute();
 			}
-			catch (Exception t) 
+			catch (Exception e) 
 			{
 				NotifyAbortSuccess(AbortStatusType.CLOSE_ABANDONED);
 			}
@@ -406,6 +421,42 @@ namespace Aerospike.Client
 			}
 		};
 
+
+		private sealed class CloseOnCommitListener : DeleteListener
+		{
+			private readonly AsyncTxnRoll command;
+			private readonly bool verified;
+
+			public CloseOnCommitListener(AsyncTxnRoll command, bool verified)
+			{
+				this.command = command;
+				this.verified = verified;
+			}
+
+			public void OnSuccess(Key key, bool existed)
+			{
+				if (verified)
+				{
+					command.NotifyCommitSuccess(CommitStatusType.OK);
+				}
+				else
+				{
+					command.NotifyCommitFailure(CommitErrorType.VERIFY_FAIL, null, false);
+				}
+			}
+
+			public void OnFailure(AerospikeException ae)
+			{
+				if (verified)
+				{
+					command.NotifyCommitSuccess(CommitStatusType.CLOSE_ABANDONED);
+				}
+				else
+				{
+					command.NotifyCommitFailure(CommitErrorType.VERIFY_FAIL_CLOSE_ABANDONED, ae, false);
+				}
+			}
+		};
 		private sealed class CloseOnAbortListener : DeleteListener
 		{
 			private readonly AsyncTxnRoll command;

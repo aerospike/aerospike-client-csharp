@@ -19,22 +19,20 @@ namespace Aerospike.Client
 {
 	public sealed class TxnMarkRollForward : SyncWriteCommand
 	{
-		private readonly Txn txn;
-
 		public TxnMarkRollForward(Cluster cluster, Txn txn, WritePolicy writePolicy, Key key) 
 			: base(cluster, writePolicy, key)
 		{
-			this.txn = txn;
 		}
 
 		protected internal override void WriteBuffer()
 		{
-			SetTxnMarkRollForward(txn, key);
+			SetTxnMarkRollForward(key);
 		}
 
 		protected internal override void ParseResult(IConnection conn)
 		{
 			ParseHeader(conn);
+			ParseFields(policy.Txn, key, true);
 
 			// BIN_EXISTS_ERROR is considered a success because it means a previous attempt already
 			// succeeded in notifying the server that the MRT will be rolled forward.

@@ -43,6 +43,7 @@ namespace Aerospike.Client
 			Id = CreateId();
 			Reads = new ConcurrentDictionary<Key, long>();
 			Writes = new HashSet<Key>();
+			Deadline = 0;
 		}
 
 		/// <summary>
@@ -63,7 +64,7 @@ namespace Aerospike.Client
 			}
 
 			Id = CreateId();
-			Reads = new ConcurrentDictionary<Key, long>(-1, readsCapacity); // TODO: concurrency level
+			Reads = new ConcurrentDictionary<Key, long>(100, readsCapacity); // TODO: concurrency level
 			Writes = new HashSet<Key>(writesCapacity);
 		}
 

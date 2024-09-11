@@ -46,6 +46,7 @@ namespace Aerospike.Client
 		protected internal override bool ParseResult()
 		{
 			ParseHeader();
+			ParseFields(policy.Txn, Key, true);
 
 			if (resultCode == ResultCode.OK)
 			{

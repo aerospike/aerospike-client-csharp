@@ -471,7 +471,7 @@ namespace Aerospike.Test
 			Assert.AreEqual(ResultCode.KEY_NOT_FOUND_ERROR, br2.resultCode);
 			Assert.IsFalse(rv);
 
-			// Read  record after it expires, showing it's gone.
+			// Read record after it expires, showing it's gone.
 			Util.Sleep(8000);
 			rv = client.Operate(null, list);
 			Assert.AreEqual(ResultCode.KEY_NOT_FOUND_ERROR, br1.resultCode);

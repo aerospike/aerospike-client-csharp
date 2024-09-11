@@ -1668,7 +1668,7 @@ namespace Aerospike.Client
 			BatchPolicy policy,
 			BatchRecordArrayListener listener,
 			Key[] keys,
-			long[] versions,
+			long?[] versions,
 			BatchRecord[] records
 		) : base(cluster, true)
 		{
@@ -1682,7 +1682,7 @@ namespace Aerospike.Client
 
 			foreach (BatchNode batchNode in batchNodes)
 			{
-				tasks[count++] = new AsyncBatchTxnVerifyCommand(this, cluster, batchNode, policy, policy.Txn, keys, versions, records);
+				tasks[count++] = new AsyncBatchTxnVerifyCommand(this, cluster, batchNode, policy, keys, versions, records);
 			}
 			this.commands = tasks;
 		}
@@ -1700,23 +1700,20 @@ namespace Aerospike.Client
 
 	sealed class AsyncBatchTxnVerifyCommand : AsyncBatchCommand
 	{
-		private Txn txn;
-		private Key[] keys;
-		private long[] versions;
-		private BatchRecord[] records;
+		private readonly Key[] keys;
+		private readonly long?[] versions;
+		private readonly BatchRecord[] records;
 
 		public AsyncBatchTxnVerifyCommand(
 			AsyncBatchExecutor parent,
 			AsyncCluster cluster,
 			BatchNode batch,
 			BatchPolicy batchPolicy,
-			Txn txn,
 			Key[] keys,
-			long[] versions, // TODO does this need to be long?
+			long?[] versions,
 			BatchRecord[] records
 		) : base(parent, cluster, batch, batchPolicy, false)
 		{
-			this.txn = txn;
 			this.keys = keys;
 			this.versions = versions;
 			this.records = records;
@@ -1724,7 +1721,6 @@ namespace Aerospike.Client
 
 		public AsyncBatchTxnVerifyCommand(AsyncBatchTxnVerifyCommand other) : base(other)
 		{
-			this.txn = other.txn;
 			this.keys = other.keys;
 			this.versions = other.versions;
 			this.records = other.records;
@@ -1732,7 +1728,7 @@ namespace Aerospike.Client
 
 		protected internal override void WriteBuffer()
 		{
-			SetBatchTxnVerify(batchPolicy, txn, keys, versions, batch);
+			SetBatchTxnVerify(batchPolicy, keys, versions, batch);
 		}
 
 		protected internal override void ParseRow()
@@ -1759,7 +1755,7 @@ namespace Aerospike.Client
 
 		internal override AsyncBatchCommand CreateCommand(BatchNode batchNode)
 		{
-			return new AsyncBatchTxnVerifyCommand(parent, cluster, batchNode, batchPolicy, txn, keys, versions, records);
+			return new AsyncBatchTxnVerifyCommand(parent, cluster, batchNode, batchPolicy, keys, versions, records);
 		}
 
 		internal override List<BatchNode> GenerateBatchNodes()
@@ -1778,6 +1774,7 @@ namespace Aerospike.Client
 			AsyncCluster cluster,
 			BatchPolicy policy,
 			BatchRecordArrayListener listener,
+			Txn txn,
 			Key[] keys,
 			BatchRecord[] records,
 			BatchAttr attr
@@ -1793,7 +1790,7 @@ namespace Aerospike.Client
 
 			foreach (BatchNode batchNode in batchNodes)
 			{
-				tasks[count++] = new AsyncBatchTxnRollCommand(this, cluster, batchNode, policy, keys, records, attr);
+				tasks[count++] = new AsyncBatchTxnRollCommand(this, cluster, batchNode, policy, txn, keys, records, attr);
 			}
 			this.commands = tasks;
 		}
@@ -1811,20 +1808,23 @@ namespace Aerospike.Client
 
 	sealed class AsyncBatchTxnRollCommand : AsyncBatchCommand
 	{
-		private Key[] keys;
-		private BatchRecord[] records;
-		private BatchAttr attr;
+		private readonly Txn txn;
+		private readonly Key[] keys;
+		private readonly BatchRecord[] records;
+		private readonly BatchAttr attr;
 
 		public AsyncBatchTxnRollCommand(
 			AsyncBatchExecutor parent,
 			AsyncCluster cluster,
 			BatchNode batch,
 			BatchPolicy batchPolicy,
+			Txn txn,
 			Key[] keys,
 			BatchRecord[] records,
 			BatchAttr attr
 		) : base(parent, cluster, batch, batchPolicy, false)
 		{
+			this.txn = txn;
 			this.keys = keys;
 			this.records = records;
 			this.attr = attr;
@@ -1839,7 +1839,7 @@ namespace Aerospike.Client
 
 		protected internal override void WriteBuffer()
 		{
-			SetBatchTxnRoll(batchPolicy, keys, batch, attr);
+			SetBatchTxnRoll(batchPolicy, txn, keys, batch, attr);
 		}
 
 		protected internal override void ParseRow()
@@ -1866,7 +1866,7 @@ namespace Aerospike.Client
 
 		internal override AsyncBatchCommand CreateCommand(BatchNode batchNode)
 		{
-			return new AsyncBatchTxnRollCommand(parent, cluster, batchNode, batchPolicy, keys, records, attr);
+			return new AsyncBatchTxnRollCommand(parent, cluster, batchNode, batchPolicy, txn, keys, records, attr);
 		}
 
 		internal override List<BatchNode> GenerateBatchNodes()

@@ -43,283 +43,253 @@ namespace Aerospike.Test
 		public void AsyncTxnWrite()
 		{
 			Key key = new(args.ns, args.set, "asyncTxnWrite");
-
-			client.Put(null, new PutHandler(this), key, new Bin(binName, "val1"));
-
 			Txn txn = new();
 
-			WritePolicy wp = client.WritePolicyDefault;
-			wp.Txn = txn;
-			client.Put(wp, new PutHandler(this), key, new Bin(binName, "val2"));
+			var cmds = new Runner[] 
+			{
+				new Put(null, key, "val1"),
+				new Put(txn, key, "val2"),
+				new Commit(txn),
+				new GetExpect(null, key, "val2")
+			};
 
-			client.Commit(new CommitHandler(this), txn);
-
-			client.Get(null, new GetExpectHandler(this, "val2"), key);
+			Execute(cmds);
 		}
 
 		[TestMethod]
 		public void AsyncTxnWriteTwice()
 		{
 			Key key = new(args.ns, args.set, "asyncTxnWriteTwice");
-
 			Txn txn = new();
 
-			WritePolicy wp = client.WritePolicyDefault;
-			wp.Txn = txn;
-			client.Put(wp, new PutHandler(this), key, new Bin(binName, "val1"));
-			client.Put(wp, new PutHandler(this), key, new Bin(binName, "val2"));
+			var cmds = new Runner[] 
+			{
+				new Put(txn, key, "val1"),
+				new Put(txn, key, "val2"),
+				new Commit(txn),
+				new GetExpect(null, key, "val2")
+			};
 
-			client.Commit(new CommitHandler(this), txn);
-
-			client.Get(null, new GetExpectHandler(this, "val2"), key);
+			Execute(cmds);
 		}
 
 		[TestMethod]
 		public void AsyncTxnWriteBlock()
 		{
-			Key key = new(args.ns, args.set, "asyncTxnWriteBlock");
-
-			client.Put(null, new PutHandler(this), key, new Bin(binName, "val1"));
-
+			Key key = new(args.ns, args.set, "asyncTxnWriteBlock1111");
 			Txn txn = new();
-
-			WritePolicy wp = client.WritePolicyDefault;
-			wp.Txn = txn;
-			client.Put(wp, new PutHandler(this), key, new Bin(binName, "val2"));
-
-			try
+			
+			var cmds = new Runner[] 
 			{
-				// This write should be blocked.
-				client.Put(null, new PutHandler(this), key, new Bin(binName, "val3"));
-				throw new AerospikeException("Unexpected success");
-			}
-			catch (AerospikeException e)
-			{
-				if (e.Result != ResultCode.MRT_BLOCKED)
-				{
-					throw e;
-				}
-			}
+				new Put(null, key, "val1"),
+				new Put(txn, key, "val2"),
+				new Put(null, key, "val3", ResultCode.MRT_BLOCKED), // Should be blocked
+				new Commit(txn),
+			};
 
-			client.Commit(new CommitHandler(this), txn);
+			Execute(cmds);
 		}
 
 		[TestMethod]
 		public void AsyncTxnWriteRead()
 		{
 			Key key = new(args.ns, args.set, "asyncTxnWriteRead");
-
-			client.Put(null, new PutHandler(this), key, new Bin(binName, "val1"));
-
 			Txn txn = new();
 
-			WritePolicy wp = client.WritePolicyDefault;
-			wp.Txn = txn;
-			client.Put(wp, new PutHandler(this), key, new Bin(binName, "val2"));
+			var cmds = new Runner[] 
+			{
+				new Put(null, key, "val1"),
+				new Put(txn, key, "val2"),
+				new GetExpect(null, key, "val1"),
+				new Commit(txn),
+				new GetExpect(null, key, "val2")
+			};
 
-			client.Get(null, new GetExpectHandler(this, "val1"), key);
-
-			client.Commit(new CommitHandler(this), txn);
-
-			client.Get(null, new GetExpectHandler(this, "val2"), key);
+			Execute(cmds);
 		}
 
 		[TestMethod]
 		public void AsyncTxnWriteAbort()
 		{
 			Key key = new(args.ns, args.set, "asyncTxnWriteAbort");
-
-			client.Put(null, new PutHandler(this), key, new Bin(binName, "val1"));
-
 			Txn txn = new();
 
-			WritePolicy wp = client.WritePolicyDefault;
-			wp.Txn = txn;
-			client.Put(wp, new PutHandler(this), key, new Bin(binName, "val2"));
+			var cmds = new Runner[] 
+			{
+				new Put(null, key, "val1"),
+				new Put(txn, key, "val2"),
+				new GetExpect(txn, key, "val2"),
+				new Abort(txn),
+				new GetExpect(null, key, "val1")
+			};
 
-			Policy p = client.ReadPolicyDefault;
-			p.Txn = txn;
-			client.Get(p, new GetExpectHandler(this, "val2"), key);
-
-			client.Abort(new AbortHandler(this), txn);
-
-			client.Get(null, new GetExpectHandler(this, "val1"), key);
+			Execute(cmds);
 		}
 
 		[TestMethod]
 		public void AsyncTxnDelete()
 		{
 			Key key = new(args.ns, args.set, "asyncTxnDelete");
-
-			client.Put(null, new PutHandler(this), key, new Bin(binName, "val1"));
-
 			Txn txn = new();
 
-			WritePolicy wp = client.WritePolicyDefault;
-			wp.Txn = txn;
-			wp.durableDelete = true;
-			client.Delete(wp, new DeleteHandler(this), key);
+			var cmds = new Runner[] 
+			{
+				new Put(null, key, "val1"),
+				new Delete(txn, key),
+				new Commit(txn),
+				new GetExpect(null, key, null)
+			};
 
-			client.Commit(new CommitHandler(this), txn);
-
-			client.Get(null, new GetExpectHandler(this, null), key);
+			Execute(cmds);
 		}
 
 		[TestMethod]
 		public void AsyncTxnDeleteAbort()
 		{
 			Key key = new(args.ns, args.set, "asyncTxnDeleteAbort");
-
-			client.Put(null, new PutHandler(this), key, new Bin(binName, "val1"));
-
 			Txn txn = new();
+			
+			var cmds = new Runner[] 
+			{
+				new Put(null, key, "val1"),
+				new Delete(txn, key),
+				new Abort(txn),
+				new GetExpect(null, key, "val1")
+			};
 
-			WritePolicy wp = client.WritePolicyDefault;
-			wp.Txn = txn;
-			wp.durableDelete = true;
-			client.Delete(wp, new DeleteHandler(this), key);
-
-			client.Abort(new AbortHandler(this), txn);
-
-			client.Get(null, new GetExpectHandler(this, "val1"), key);
+			Execute(cmds);
 		}
 
 		[TestMethod]
 		public void AsyncTxnDeleteTwice()
 		{
 			Key key = new(args.ns, args.set, "asyncTxnDeleteTwice");
-
 			Txn txn = new();
 
-			client.Put(null, new PutHandler(this), key, new Bin(binName, "val1"));
+			var cmds = new Runner[] 
+			{
+				new Put(null, key, "val1"),
+				new Delete(txn, key),
+				new Delete(txn, key),
+				new Commit(txn),
+				new GetExpect(null, key, null)
+			};
 
-			WritePolicy wp = client.WritePolicyDefault;
-			wp.Txn = txn;
-			wp.durableDelete = true;
-			client.Delete(wp, new DeleteHandler(this), key);
-			client.Delete(wp, new DeleteHandler(this), key);
-
-			client.Commit(new CommitHandler(this), txn);
-
-			client.Get(null, new GetExpectHandler(this, null), key);
+			Execute(cmds);
 		}
 
 		[TestMethod]
 		public void AsyncTxnTouch()
 		{
 			Key key = new(args.ns, args.set, "asyncTxnTouch");
-
-			client.Put(null, new PutHandler(this), key, new Bin(binName, "val1"));
-
 			Txn txn = new();
 
-			WritePolicy wp = client.WritePolicyDefault;
-			wp.Txn = txn;
-			client.Touch(wp, new TouchHandler(this), key);
+			var cmds = new Runner[] 
+			{
+				new Put(null, key, "val1"),
+				new Touch(txn, key),
+				new Commit(txn),
+				new GetExpect(null, key, "val1")
+			};
 
-			client.Commit(new CommitHandler(this), txn);
-
-			client.Get(null, new GetExpectHandler(this, "val1"), key);
+			Execute(cmds);
 		}
 
 		[TestMethod]
 		public void AsyncTxnTouchAbort()
 		{
 			Key key = new(args.ns, args.set, "asyncTxnTouchAbort");
-
-			client.Put(null, new PutHandler(this), key, new Bin(binName, "val1"));
-
 			Txn txn = new();
+			
+			var cmds = new Runner[] 
+			{
+				new Put(null, key, "val1"),
+				new Touch(txn, key),
+				new Abort(txn),
+				new GetExpect(null, key, "val1")
+			};
 
-			WritePolicy wp = client.WritePolicyDefault;
-			wp.Txn = txn;
-			client.Touch(wp, new TouchHandler(this), key);
-
-			client.Abort(new AbortHandler(this), txn);
-
-			client.Get(null, new GetExpectHandler(this, "val1"), key);
+			Execute(cmds);
 		}
 
 		[TestMethod]
 		public void AsyncTxnOperateWrite()
 		{
 			Key key = new(args.ns, args.set, "asyncTxnOperateWrite3");
+			Txn txn = new();
 			Bin bin2 = new("bin2", "bal1");
 
-			client.Put(null, new PutHandler(this), key, new Bin(binName, "val1"), bin2);
+			var cmds = new Runner[] 
+			{
+				new Put(null, key, new Bin(binName, "val1"), bin2),
+				new OperateExpect(txn, key,
+					bin2,
+					Operation.Put(new Bin(binName, "val2")),
+					Operation.Get(bin2.name)
+				),
+				new Commit(txn),
+				new GetExpect(null, key, "val2")
+			};
 
-			Txn txn = new();
-
-			WritePolicy wp = client.WritePolicyDefault;
-			wp.Txn = txn;
-			client.Operate(wp, new OperateExpectHandler(this, bin2), key,
-				Operation.Put(new Bin(binName, "val2")),
-				Operation.Get("bin2")
-			);
-
-			client.Commit(new CommitHandler(this), txn);
-
-			client.Get(null, new GetExpectHandler(this, "val2"), key);
+			Execute(cmds);
 		}
 
 		[TestMethod]
 		public void AsyncTxnOperateWriteAbort()
 		{
 			Key key = new(args.ns, args.set, "asyncTxnOperateWriteAbort");
-			Bin bin2 = new("bin2", "bal1");
-
-			client.Put(null, new PutHandler(this), key, new Bin(binName, "val1"), bin2);
-
 			Txn txn = new();
+			Bin bin2 = new("bin2", "bal1");
+			
+			var cmds = new Runner[] 
+			{
+				new Put(null, key, new Bin(binName, "val1"), bin2),
+				new OperateExpect(txn, key,
+					bin2,
+					Operation.Put(new Bin(binName, "val2")),
+					Operation.Get(bin2.name)
+				),
+				new Abort(txn),
+				new GetExpect(null, key, "val1")
+			};
 
-			WritePolicy wp = client.WritePolicyDefault;
-			wp.Txn = txn;
-			client.Operate(wp, new OperateExpectHandler(this, bin2), key,
-				Operation.Put(new Bin(binName, "val2")),
-				Operation.Get(bin2.name)
-			);
-
-			client.Abort(new AbortHandler(this), txn);
-
-			client.Get(null, new GetExpectHandler(this, "val1"), key);
+			Execute(cmds);
 		}
 
 		[TestMethod]
 		public void AsyncTxnUDF()
 		{
 			Key key = new(args.ns, args.set, "asyncTxnUDF");
-			Bin bin2 = new("bin2", "bal1");
-
-			client.Put(null, new PutHandler(this), key, new Bin(binName, "val1"), bin2);
-
 			Txn txn = new();
+			Bin bin2 = new("bin2", "bal1");
+			
+			var cmds = new Runner[] 
+			{
+				new Put(null, key, new Bin(binName, "val1"), bin2),
+				new UDF(txn, key, "record_example", "writeBin", Value.Get(binName), Value.Get("val2")),
+				new Commit(txn),
+				new GetExpect(null, key, "val2")
+			};
 
-			WritePolicy wp = client.WritePolicyDefault;
-			wp.Txn = txn;
-			client.Execute(wp, new UDFHandler(this), key, "record_example", "writeBin", Value.Get(binName), Value.Get("val2"));
-
-			client.Commit(new CommitHandler(this), txn);
-
-			client.Get(null, new GetExpectHandler(this, "val2"), key);
+			Execute(cmds);
 		}
 
 		[TestMethod]
 		public void AsyncTxnUDFAbort()
 		{
 			Key key = new(args.ns, args.set, "asyncTxnUDFAbort");
-			Bin bin2 = new("bin2", "bal1");
-
-			client.Put(null, new PutHandler(this), key, new Bin(binName, "val1"));
-
 			Txn txn = new();
+			Bin bin2 = new("bin2", "bal1");
+			
+			var cmds = new Runner[] 
+			{
+				new Put(null, key, new Bin(binName, "val1"), bin2),
+				new UDF(txn, key, "record_example", "writeBin", Value.Get(binName), Value.Get("val2")),
+				new Abort(txn),
+				new GetExpect(null, key, "val1")
+			};
 
-			WritePolicy wp = client.WritePolicyDefault;
-			wp.Txn = txn;
-			client.Execute(wp, new UDFHandler(this), key, "record_example", "writeBin", Value.Get(binName), Value.Get("val2"));
-
-			client.Abort(new AbortHandler(this), txn);
-
-			client.Get(null, new GetExpectHandler(this, "val1"), key);
+			Execute(cmds);
 		}
 
 		[TestMethod]
@@ -327,7 +297,7 @@ namespace Aerospike.Test
 		{
 			Key[] keys = new Key[10];
 			Bin bin = new(binName, 1);
-
+			
 			for (int i = 0; i < keys.Length; i++)
 			{
 				Key key = new(args.ns, args.set, "asyncTxnBatch" + i);
@@ -336,20 +306,18 @@ namespace Aerospike.Test
 				client.Put(null, key, bin);
 			}
 
-			client.Get(null, new BatchGetExpectHandler(this, 1), keys);
-
 			Txn txn = new();
-
 			bin = new(binName, 2);
 
-			BatchPolicy bp = BatchPolicy.WriteDefault();
-			bp.Txn = txn;
+			var cmds = new Runner[] 
+			{
+				new BatchGetExpect(null, keys, 1),
+				new BatchOperate(txn, keys, Operation.Put(bin)),
+				new Commit(txn),
+				new BatchGetExpect(null, keys, 2),
+			};
 
-			client.Operate(bp, null, new BatchOperateHandler(this), keys, Operation.Put(bin));
-
-			client.Commit(new CommitHandler(this), txn);
-
-			client.Get(null, new BatchGetExpectHandler(this, 1), keys);
+			Execute(cmds);
 		}
 
 		[TestMethod]
@@ -366,309 +334,665 @@ namespace Aerospike.Test
 				client.Put(null, key, bin);
 			}
 
-			client.Get(null, new BatchGetExpectHandler(this, 1), keys);
-
 			Txn txn = new();
-
 			bin = new Bin(binName, 2);
 
-			BatchPolicy bp = BatchPolicy.WriteDefault();
-			bp.Txn = txn;
+			var cmds = new Runner[] 
+			{
+				new BatchGetExpect(null, keys, 1),
+				new BatchOperate(txn, keys, Operation.Put(bin)),
+				new Abort(txn),
+				new BatchGetExpect(null, keys, 1),
+			};
 
-			client.Operate(bp, null, new BatchOperateHandler(this), keys, Operation.Put(bin));
-
-			client.Abort(new AbortHandler(this), txn);
-
-			client.Get(null, new BatchGetExpectHandler(this, 1), keys);
+			Execute(cmds);
 		}
 
-		private class CommitHandler : CommitListener
+		private void Execute(Runner[] cmdArray) 
+		{
+			Cmds a = new(this, cmdArray);
+			a.RunNext();
+			WaitTillComplete();
+		}
+
+		private void OnError(Exception e) 
+		{
+			SetError(e);
+			NotifyCompleted();
+		}
+
+		private void OnError(Exception e, int expectedResult)
+		{
+			if (e is AerospikeException ae)
+			{
+				if (ae.Result == expectedResult)
+				{
+					NotifyCompleted();
+					return;
+				}
+			}
+
+			OnError(e);
+		}
+
+		private void OnError() 
+		{
+			// Error is located in monitor instance which is checked in waitTillComplete();
+			NotifyCompleted();
+		}
+
+		private class Cmds : Listener 
 		{
 			private readonly TestAsyncTxn parent;
+			readonly Runner[] cmds;
+			int idx;
 
-			public CommitHandler(TestAsyncTxn parent)
+			public Cmds(TestAsyncTxn parent, Runner[] cmds) 
 			{
 				this.parent = parent;
+				this.cmds = cmds;
+				this.idx = -1;
 			}
 
-			public void OnSuccess(CommitStatusType status)
+			public void RunNext() 
 			{
-				parent.NotifyCompleted();
+				if (++idx == cmds.Length) 
+				{
+					parent.NotifyCompleted();
+					return;
+				}
+
+				try 
+				{
+					cmds[idx].Run(parent, this);
+				}
+				catch (Exception e) 
+				{
+					parent.OnError(e);
+				}
 			}
 
-			public void OnFailure(AerospikeException.Commit e)
+			public void OnSuccess() 
 			{
-				parent.SetError(e);
-				parent.NotifyCompleted();
+				RunNext();
+			}
+
+			public void OnFailure() 
+			{
+				parent.OnError();
+			}
+
+			public void OnFailure(Exception e) 
+			{
+				parent.OnError(e);
+			}
+
+			public void OnFailure(Exception e, int expectedResult)
+			{
+				parent.OnError(e, expectedResult);
 			}
 		}
 
-		private class AbortHandler : AbortListener
+		public class Commit : Runner
 		{
-			private readonly TestAsyncTxn parent;
+			private readonly Txn txn;
 
-			public AbortHandler(TestAsyncTxn parent)
+			public Commit(Txn txn) 
 			{
-				this.parent = parent;
+				this.txn = txn;
 			}
 
-			public void OnSuccess(AbortStatusType status)
+			public void Run(TestAsyncTxn parent, Listener listener) 
 			{
-				parent.NotifyCompleted();
+				client.Commit(new CommitHandler(listener), txn);
 			}
 
-			public void OnFailure(AerospikeException e)
+			private class CommitHandler : CommitListener
 			{
-				parent.SetError(e);
-				parent.NotifyCompleted();
+				private readonly Listener listener;
+
+				public CommitHandler(Listener listener)
+				{
+					this.listener = listener;
+				}
+
+				public void OnSuccess(CommitStatusType status)
+				{
+					listener.OnSuccess();
+				}
+
+				public void OnFailure(AerospikeException.Commit e)
+				{
+					listener.OnFailure(e);
+				}
 			}
 		}
 
-		private class PutHandler : WriteListener
+		public class Abort : Runner 
 		{
-			private readonly TestAsyncTxn parent;
+			private readonly Txn txn;
 
-			public PutHandler(TestAsyncTxn parent)
+			public Abort(Txn txn) 
 			{
-				this.parent = parent;
+				this.txn = txn;
 			}
 
-			public void OnSuccess(Key key)
+			public void Run(TestAsyncTxn parent, Listener listener) 
 			{
-				parent.NotifyCompleted();
+				client.Abort(new AbortHandler(listener), txn);
 			}
-
-			public void OnFailure(AerospikeException e)
+			
+			private class AbortHandler : AbortListener
 			{
-				parent.SetError(e);
-				parent.NotifyCompleted();
+				private readonly Listener listener;
+
+				public AbortHandler(Listener listener)
+				{
+					this.listener = listener;
+				}
+
+				public void OnSuccess(AbortStatusType status)
+				{
+					listener.OnSuccess();
+				}
 			}
 		}
 
-		private class GetExpectHandler : RecordListener
+		public class Put : Runner
 		{
-			private readonly TestAsyncTxn parent;
-			private string expect;
+			private readonly Txn txn;
+			private readonly Key key;
+			private readonly Bin[] bins;
+			private readonly int expectedResult = 0;
 
-			public GetExpectHandler(TestAsyncTxn parent, string expect)
+			public Put(Txn txn, Key key, string val)
 			{
-				this.parent = parent;
+				this.txn = txn;
+				this.key = key;
+				this.bins = new Bin[] { new(binName, val)};
+			}
+
+			public Put(Txn txn, Key key, string val, int expectedResult)
+			{
+				this.txn = txn;
+				this.key = key;
+				this.bins = new Bin[] { new(binName, val) };
+				this.expectedResult = expectedResult;
+			}
+
+			public Put(Txn txn, Key key, params Bin[] bins)
+			{
+				this.txn = txn;
+				this.key = key;
+				this.bins = bins;
+			}
+
+			public void Run(TestAsyncTxn parent, Listener listener)
+			{
+				WritePolicy wp = null;
+				if (txn != null)
+				{
+					wp = client.WritePolicyDefault;
+					wp.Txn = txn;
+				}
+				client.Put(wp, new PutHandler(listener, expectedResult), key, bins);
+			}
+
+			private class PutHandler : WriteListener
+			{
+				private readonly Listener listener;
+				private readonly int expectedResult;
+
+				public PutHandler(Listener listener, int expectedResult)
+				{
+					this.listener = listener;
+					this.expectedResult = expectedResult;
+				}
+
+				public void OnSuccess(Key key)
+				{
+					listener.OnSuccess();
+				}
+
+				public void OnFailure(AerospikeException e)
+				{
+					if (expectedResult != 0)
+					{
+						listener.OnFailure(e, expectedResult);
+					}
+					else
+					{
+						listener.OnFailure(e);
+					}
+				}
+			}
+		}
+
+		public class GetExpect : Runner
+		{
+			private readonly Txn txn;
+			private readonly Key key;
+			private readonly string expect;
+
+			public GetExpect(Txn txn, Key key, string expect)
+			{
+				this.txn = txn;
+				this.key = key;
 				this.expect = expect;
 			}
 
-			public void OnSuccess(Key key, Record record)
+			public void Run(TestAsyncTxn parent, Listener listener)
 			{
-				if (expect != null)
+				Policy p = null;
+
+				if (txn != null) 
 				{
-					if (parent.AssertBinEqual(key, record, binName, expect))
-					{
-						parent.NotifyCompleted();
-					}
-					else
-					{
-						parent.NotifyCompleted();
-					}
+					p = client.ReadPolicyDefault;
+					p.Txn = txn;
 				}
-				else
+				client.Get(p, new GetExpectHandler(parent, listener, expect), key);
+			}
+
+			private class GetExpectHandler : RecordListener
+			{
+				private readonly TestAsyncTxn parent;
+				private readonly Listener listener;
+				private string expect;
+
+				public GetExpectHandler(TestAsyncTxn parent, Listener listener, string expect)
 				{
-					if (parent.AssertRecordNotFound(key, record))
-					{
-						parent.NotifyCompleted();
-					}
-					else
-					{
-						parent.NotifyCompleted();
-					}
+					this.parent = parent;
+					this.listener = listener;
+					this.expect = expect;
 				}
-			}
 
-			public void OnFailure(AerospikeException e)
-			{
-				parent.SetError(e);
-				parent.NotifyCompleted();
-			}
-		}
-
-		private class OperateExpectHandler : RecordListener
-		{
-			private readonly TestAsyncTxn parent;
-			private Bin? expect;
-
-			public OperateExpectHandler(TestAsyncTxn parent, Bin? expect)
-			{
-				this.parent = parent;
-				this.expect = expect;
-			}
-
-			public void OnSuccess(Key key, Record record)
-			{
-				if (expect != null)
+				public void OnSuccess(Key key, Record record)
 				{
-					if (parent.AssertBinEqual(key, record, expect?.name, expect?.value.Object))
+					if (expect != null)
 					{
-						parent.NotifyCompleted();
-					}
-					else
-					{
-						parent.NotifyCompleted();
-					}
-				}
-				else
-				{
-					if (parent.AssertRecordNotFound(key, record))
-					{
-						parent.NotifyCompleted();
-					}
-					else
-					{
-						parent.NotifyCompleted();
-					}
-				}
-			}
-
-			public void OnFailure(AerospikeException e)
-			{
-				parent.SetError(e);
-				parent.NotifyCompleted();
-			}
-		}
-
-		private class UDFHandler : ExecuteListener
-		{
-			private readonly TestAsyncTxn parent;
-
-			public UDFHandler(TestAsyncTxn parent)
-			{
-				this.parent = parent;
-			}
-
-			public void OnSuccess(Key key, Object obj)
-			{
-				parent.NotifyCompleted();
-			}
-
-			public void OnFailure(AerospikeException e)
-			{
-				parent.SetError(e);
-				parent.NotifyCompleted();
-			}
-		}
-
-		private class BatchGetExpectHandler : RecordArrayListener
-		{
-			private readonly TestAsyncTxn parent;
-			private readonly int expected;
-
-			public BatchGetExpectHandler(TestAsyncTxn parent, int expected)
-			{
-				this.parent = parent;
-				this.expected = expected;
-			}
-
-			public void OnSuccess(Key[] keys, Record[] records)
-			{
-				if (parent.AssertBatchEqual(keys, records, binName, expected))
-				{
-					parent.NotifyCompleted();
-				}
-				else 
-				{ 
-					parent.NotifyCompleted(); 
-				}
-			}
-
-			public void OnFailure(AerospikeException e)
-			{
-				parent.SetError(e);
-				parent.NotifyCompleted();
-			}
-		}
-
-		private class BatchOperateHandler : BatchRecordArrayListener
-		{
-			private TestAsyncTxn parent;
-
-			public BatchOperateHandler(TestAsyncTxn parent)
-			{
-				this.parent = parent;
-			}
-
-			public void OnSuccess(BatchRecord[] records, bool status)
-			{
-				if (status)
-				{
-					parent.NotifyCompleted();
-				}
-				else
-				{
-					StringBuilder sb = new StringBuilder();
-					sb.Append("Batch failed:");
-					sb.Append(System.Environment.NewLine);
-
-					foreach (BatchRecord br in records)
-					{
-						if (br.resultCode == 0)
+						if (parent.AssertBinEqual(key, record, binName, expect))
 						{
-							sb.Append("Record: " + br.record);
+							listener.OnSuccess();
 						}
 						else
 						{
-							sb.Append("ResultCode: " + br.resultCode);
+							listener.OnFailure();
 						}
-						sb.Append(System.Environment.NewLine);
 					}
-					parent.SetError(new AerospikeException(sb.ToString()));
-					parent.NotifyCompleted();
+					else
+					{
+						if (parent.AssertRecordNotFound(key, record))
+						{
+							listener.OnSuccess();
+						}
+						else
+						{
+							listener.OnFailure();
+						}
+					}
+				}
+
+				public void OnFailure(AerospikeException e)
+				{
+					listener.OnFailure(e);
 				}
 			}
+		}
 
-			public void OnFailure(BatchRecord[] records, AerospikeException e)
+		public class OperateExpect : Runner
+		{
+			private readonly Txn txn;
+			private readonly Key key;
+			private readonly Operation[] ops;
+			private readonly Bin? expect;
+
+			public OperateExpect(Txn txn, Key key, Bin? expect, params Operation[] ops) 
 			{
-				parent.SetError(e);
-				parent.NotifyCompleted();
+				this.txn = txn;
+				this.key = key;
+				this.expect = expect;
+				this.ops = ops;
+			}
+
+			public void Run(TestAsyncTxn parent, Listener listener)
+			{
+				WritePolicy wp = null;
+
+				if (txn != null) 
+				{
+					wp = client.WritePolicyDefault;
+					wp.Txn = txn;
+				}
+				client.Operate(wp, new OperateExpectHandler(parent, listener, expect), key, ops);
+			}
+
+			private class OperateExpectHandler : RecordListener
+			{
+				private readonly TestAsyncTxn parent;
+
+				private readonly Listener listener;
+				private Bin? expect;
+
+				public OperateExpectHandler(TestAsyncTxn parent, Listener listener, Bin? expect)
+				{
+					this.parent = parent;
+					this.listener = listener;
+					this.expect = expect;
+				}
+
+				public void OnSuccess(Key key, Record record)
+				{
+					if (expect != null)
+					{
+						if (parent.AssertBinEqual(key, record, expect?.name, expect?.value.Object))
+						{
+							listener.OnSuccess();
+						}
+						else
+						{
+							listener.OnFailure();
+						}
+					}
+					else
+					{
+						if (parent.AssertRecordNotFound(key, record))
+						{
+							listener.OnSuccess();
+						}
+						else
+						{
+							listener.OnFailure();
+						}
+					}
+				}
+
+				public void OnFailure(AerospikeException e)
+				{
+					listener.OnFailure(e);
+				}
 			}
 		}
 
-		private class TouchHandler : WriteListener
+		public class UDF : Runner
 		{
-			private TestAsyncTxn parent;
+			private readonly Txn txn;
+			private readonly Key key;
+			private readonly string packageName;
+			private readonly string functionName;
+			private readonly Value[] functionArgs;
 
-			public TouchHandler(TestAsyncTxn parent)
-			{
-				this.parent = parent;
+			public UDF(
+				Txn txn,
+				Key key,
+				string packageName,
+				string functionName,
+				params Value[] functionArgs
+			) {
+				this.txn = txn;
+				this.key = key;
+				this.packageName = packageName;
+				this.functionName = functionName;
+				this.functionArgs = functionArgs;
 			}
 
-			public void OnSuccess(Key key)
+			public void Run(TestAsyncTxn parent, Listener listener)
 			{
-				parent.NotifyCompleted();
+				WritePolicy wp = null;
+
+				if (txn != null) 
+				{
+					wp = client.WritePolicyDefault;
+					wp.Txn = txn;
+				}
+				client.Execute(wp, new UDFHandler(listener), key,  packageName, functionName, functionArgs);
 			}
 
-			public void OnFailure(AerospikeException e)
+			private class UDFHandler : ExecuteListener
 			{
-				parent.SetError(e);
-				parent.NotifyCompleted();
+				private readonly Listener listener;
+
+				public UDFHandler(Listener listener)
+				{
+					this.listener = listener;
+				}
+
+				public void OnSuccess(Key key, Object obj)
+				{
+					listener.OnSuccess();
+				}
+
+				public void OnFailure(AerospikeException e)
+				{
+					listener.OnFailure(e);
+				}
 			}
 		}
 
-		private class DeleteHandler : DeleteListener
+		public class BatchGetExpect : Runner
 		{
-			private TestAsyncTxn parent;
+			private readonly Txn txn;
+			private readonly Key[] keys;
+			private readonly int expected;
 
-			public DeleteHandler(TestAsyncTxn parent)
+			public BatchGetExpect(Txn txn, Key[] keys, int expected) 
 			{
-				this.parent = parent;
+				this.txn = txn;
+				this.keys = keys;
+				this.expected = expected;
 			}
 
-			public void OnSuccess(Key key, bool existed)
+			public void Run(TestAsyncTxn parent, Listener listener)
 			{
-				parent.NotifyCompleted();
+				BatchPolicy bp = null;
+
+				if (txn != null) {
+					bp = client.BatchPolicyDefault;
+					bp.Txn = txn;
+				}
+				client.Get(bp, new BatchGetExpectHandler(parent, listener, expected), keys);
 			}
 
-			public void OnFailure(AerospikeException e)
+			private class BatchGetExpectHandler : RecordArrayListener
 			{
-				parent.SetError(e);
-				parent.NotifyCompleted();
+				private readonly TestAsyncTxn parent;
+				private readonly Listener listener;
+				private readonly int expected;
+
+				public BatchGetExpectHandler(TestAsyncTxn parent, Listener listener, int expected)
+				{
+					this.parent = parent;
+					this.listener = listener;
+					this.expected = expected;
+				}
+
+				public void OnSuccess(Key[] keys, Record[] records)
+				{
+					if (parent.AssertBatchEqual(keys, records, binName, expected))
+					{
+						listener.OnSuccess();
+					}
+					else 
+					{ 
+						listener.OnFailure();
+					}
+				}
+
+				public void OnFailure(AerospikeException e)
+				{
+					listener.OnFailure(e);
+				}
 			}
+		}
+
+		public class BatchOperate : Runner
+		{
+			private readonly Txn txn;
+			private readonly Key[] keys;
+			private readonly Operation[] ops;
+
+			public BatchOperate(Txn txn, Key[] keys, params Operation[] ops) 
+			{
+				this.txn = txn;
+				this.keys = keys;
+				this.ops = ops;
+			}
+
+			public void Run(TestAsyncTxn parent, Listener listener)
+			{
+				BatchPolicy bp = null;
+
+				if (txn != null) 
+				{
+					bp = client.BatchParentPolicyWriteDefault;
+					bp.Txn = txn;
+				}
+				client.Operate(bp, null, new BatchOperateHandler(listener), keys, ops);
+			}
+
+			private class BatchOperateHandler : BatchRecordArrayListener
+			{
+				private Listener listener;
+
+				public BatchOperateHandler(Listener listener)
+				{
+					this.listener = listener;
+				}
+
+				public void OnSuccess(BatchRecord[] records, bool status)
+				{
+					if (status)
+					{
+						listener.OnSuccess();
+					}
+					else
+					{
+						StringBuilder sb = new StringBuilder();
+						sb.Append("Batch failed:");
+						sb.Append(System.Environment.NewLine);
+
+						foreach (BatchRecord br in records)
+						{
+							if (br.resultCode == 0)
+							{
+								sb.Append("Record: " + br.record);
+							}
+							else
+							{
+								sb.Append("ResultCode: " + br.resultCode);
+							}
+							sb.Append(System.Environment.NewLine);
+						}
+						listener.OnFailure(new AerospikeException(sb.ToString()));
+					}
+				}
+
+				public void OnFailure(BatchRecord[] records, AerospikeException e)
+				{
+					listener.OnFailure(e);
+				}
+			}
+		}
+
+		public class Touch : Runner
+		{
+			private readonly Txn txn;
+			private readonly Key key;
+
+			public Touch(Txn txn, Key key) 
+			{
+				this.txn = txn;
+				this.key = key;
+			}
+
+			public void Run(TestAsyncTxn parent, Listener listener)
+			{
+				WritePolicy wp = null;
+
+				if (txn != null) {
+					wp = client.WritePolicyDefault;
+					wp.Txn = txn;
+				}
+				client.Touch(wp, new TouchHandler(listener), key);
+			}
+
+			private class TouchHandler : WriteListener
+			{
+				private Listener listener;
+
+				public TouchHandler(Listener listener)
+				{
+					this.listener = listener;
+				}
+
+				public void OnSuccess(Key key)
+				{
+					listener.OnSuccess();
+				}
+
+				public void OnFailure(AerospikeException e)
+				{
+					listener.OnFailure(e);
+				}
+			}
+		}
+
+		public class Delete : Runner
+		{
+			private readonly Txn txn;
+			private readonly Key key;
+
+			public Delete(Txn txn, Key key) 
+			{
+				this.txn = txn;
+				this.key = key;
+			}
+
+			public void Run(TestAsyncTxn parent, Listener listener)
+			{
+				WritePolicy wp = null;
+
+				if (txn != null) 
+				{
+					wp = client.WritePolicyDefault;
+					wp.Txn = txn;
+					wp.durableDelete = true;
+				}
+				client.Delete(wp, new DeleteHandler(listener), key);
+			}
+
+			private class DeleteHandler : DeleteListener
+			{
+				private Listener listener;
+
+				public DeleteHandler(Listener listener)
+				{
+					this.listener = listener;
+				}
+
+				public void OnSuccess(Key key, bool existed)
+				{
+					listener.OnSuccess();
+				}
+
+				public void OnFailure(AerospikeException e)
+				{
+					listener.OnFailure(e);
+				}
+			}
+		}
+
+		public interface Runner 
+		{
+			void Run(TestAsyncTxn parent, Listener listener);
+		}
+
+		public interface Listener 
+		{
+			void OnSuccess();
+			void OnFailure();
+			void OnFailure(Exception e);
+
+			void OnFailure(Exception e, int expectedResult);
 		}
 	}
 }

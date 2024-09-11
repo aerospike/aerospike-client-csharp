@@ -35,6 +35,7 @@ namespace Aerospike.Client
 		protected internal override void ParseResult(IConnection conn)
 		{
 			ParseHeader(conn);
+			ParseFields(policy.Txn, key, true);
 
 			if (resultCode == ResultCode.OK || resultCode == ResultCode.KEY_NOT_FOUND_ERROR)
 			{

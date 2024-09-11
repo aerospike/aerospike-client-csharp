@@ -19,26 +19,22 @@ namespace Aerospike.Client
 {
 	public sealed class AsyncTxnMarkRollForward : AsyncWriteBase
 	{
-		private readonly Txn txn;
 		private readonly WriteListener listener;
 
 		public AsyncTxnMarkRollForward
 		(
 			AsyncCluster cluster,
-			Txn txn,
 			WriteListener listener,
 			WritePolicy writePolicy,
 			Key key
 		) : base(cluster, writePolicy, key)
 		{
-			this.txn = txn;
 			this.listener = listener;
 		}
 
 		public AsyncTxnMarkRollForward(AsyncTxnMarkRollForward other)
 			: base(other)
 		{
-			this.txn = other.txn;
 			this.listener = other.listener;
 		}
 
@@ -49,15 +45,16 @@ namespace Aerospike.Client
 
 		protected internal override void WriteBuffer()
 		{
-			SetTxnMarkRollForward(txn, Key);
+			SetTxnMarkRollForward(Key);
 		}
 
 		protected internal override bool ParseResult()
 		{
 			ParseHeader();
+			ParseFields(policy.Txn, Key, true);
 
 			// BIN_EXISTS_ERROR is considered a success because it means a previous attempt already
-		    // succeeded in notifying the server that the MRT will be rolled forward.
+			// succeeded in notifying the server that the MRT will be rolled forward.
 			if (resultCode == ResultCode.OK || resultCode == ResultCode.BIN_EXISTS_ERROR)
 			{
 				return true;

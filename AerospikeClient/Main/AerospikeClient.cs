@@ -49,66 +49,66 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Default read policy that is used when read command policy is null.
 		/// </summary>
-		public Policy readPolicyDefault;
+		protected Policy readPolicyDefault;
 
 		/// <summary>
 		/// Default write policy that is used when write command policy is null.
 		/// </summary>
-		public WritePolicy writePolicyDefault;
+		protected WritePolicy writePolicyDefault;
 
 		/// <summary>
 		/// Default scan policy that is used when scan command policy is null.
 		/// </summary>
-		public ScanPolicy scanPolicyDefault;
+		protected ScanPolicy scanPolicyDefault;
 
 		/// <summary>
 		/// Default query policy that is used when query command policy is null.
 		/// </summary>
-		public QueryPolicy queryPolicyDefault;
+		protected QueryPolicy queryPolicyDefault;
 
 		/// <summary>
 		/// Default parent policy used in batch read commands. Parent policy fields
 		/// include socketTimeout, totalTimeout, maxRetries, etc...
 		/// </summary>
-		public BatchPolicy batchPolicyDefault;
+		protected BatchPolicy batchPolicyDefault;
 
 		/// <summary>
 		/// Default parent policy used in batch write commands. Parent policy fields
 		/// include socketTimeout, totalTimeout, maxRetries, etc...
 		/// </summary>
-		public BatchPolicy batchParentPolicyWriteDefault;
+		protected BatchPolicy batchParentPolicyWriteDefault;
 
 		/// <summary>
 		/// Default write policy used in batch operate commands.
 		/// Write policy fields include generation, expiration, durableDelete, etc...
 		/// </summary>
-		public BatchWritePolicy batchWritePolicyDefault;
+		protected BatchWritePolicy batchWritePolicyDefault;
 
 		/// <summary>
 		/// Default delete policy used in batch delete commands.
 		/// </summary>
-		public BatchDeletePolicy batchDeletePolicyDefault;
+		protected BatchDeletePolicy batchDeletePolicyDefault;
 
 		/// <summary>
 		/// Default user defined function policy used in batch UDF excecute commands.
 		/// </summary>
-		public BatchUDFPolicy batchUDFPolicyDefault;
+		protected BatchUDFPolicy batchUDFPolicyDefault;
 
 		/// <summary>
 		/// Default multi-record transactions (MRT) policy when verifying record versions in a batch on a commit.
 		/// </summary>
-		public TxnVerifyPolicy txnVerifyPolicyDefault;
+		protected TxnVerifyPolicy txnVerifyPolicyDefault;
 
 		/// <summary>
 		/// Default multi-record transactions (MRT) policy when rolling the transaction records forward (commit)
 		/// or back(abort) in a batch.
 		/// </summary>
-		public TxnRollPolicy txnRollPolicyDefault;
+		protected TxnRollPolicy txnRollPolicyDefault;
 
 		/// <summary>
 		/// Default info policy that is used when info command policy is null.
 		/// </summary>
-		public InfoPolicy infoPolicyDefault;
+		protected InfoPolicy infoPolicyDefault;
 
 		protected WritePolicy operatePolicyReadDefault;
 

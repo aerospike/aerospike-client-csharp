@@ -22,12 +22,7 @@ namespace Aerospike.Client
 	{
 		protected internal readonly AsyncNode serverNode;
 		protected internal int info3;
-		protected internal int resultCode;
-		protected internal int generation;
-		protected internal int expiration;
 		protected internal int batchIndex;
-		protected internal int fieldCount;
-		protected internal int opCount;
 		protected internal readonly bool isOperation;
 		protected internal volatile bool valid = true;
 
