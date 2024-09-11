@@ -35,7 +35,6 @@ namespace Aerospike.Client
 		{
 			ParseHeader(conn);
 			ParseFields(policy.Txn, key, false);
-
 			if (resultCode == ResultCode.OK)
 			{
 				record = new Record(null, generation, expiration);

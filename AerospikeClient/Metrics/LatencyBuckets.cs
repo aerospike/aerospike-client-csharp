@@ -18,7 +18,7 @@
 namespace Aerospike.Client
 {
 	/// <summary>
-	/// Latency buckets for a command group (See {@link com.aerospike.client.metrics.LatencyType}).
+	/// Latency buckets for a command group (See <see cref="Latency.LatencyType"/>).
 	/// Latency bucket counts are cumulative and not reset on each metrics snapshot interval.
 	/// </summary>
 	public sealed class LatencyBuckets

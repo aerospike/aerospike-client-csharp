@@ -53,7 +53,6 @@ namespace Aerospike.Client
 		{
 			ParseHeader(conn);
 			ParseFields(policy.Txn, key, false);
-
 			if (resultCode == ResultCode.OK)
 			{
 				this.record = policy.recordParser.ParseRecord(dataBuffer, ref dataOffset, opCount, generation, expiration, isOperation);

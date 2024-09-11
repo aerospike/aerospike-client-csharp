@@ -348,7 +348,7 @@ namespace Aerospike.Client
 			ByteUtil.LongToBytes(size, dataBuffer, 0);
 		}
 
-		protected void ParseHeader(IConnection conn)
+		protected internal void ParseHeader(IConnection conn)
 		{
 			// Read header.
 			conn.ReadFully(dataBuffer, 8, Command.STATE_READ_HEADER);
