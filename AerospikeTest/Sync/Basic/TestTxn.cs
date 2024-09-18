@@ -18,6 +18,7 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Aerospike.Client;
 using System.Reflection;
 using System.Text;
+using Microsoft.AspNetCore.DataProtection.KeyManagement;
 
 namespace Aerospike.Test
 {
@@ -165,6 +166,8 @@ namespace Aerospike.Test
 		{
 			Key key = new(args.ns, args.set, "mrtkey5");
 
+			client.Delete(null, key);
+
 			client.Put(null, key, new Bin(binName, "val1"));
 
 			Txn txn = new();
@@ -182,6 +185,7 @@ namespace Aerospike.Test
 
 			record = client.Get(null, key);
 			AssertBinEqual(key, record, binName, "val1");
+			Assert.AreEqual(3, record.generation);
 		}
 
 		[TestMethod]
@@ -473,6 +477,132 @@ namespace Aerospike.Test
 
 			recs = client.Get(null, keys);
 			AssertBatchEqual(keys, recs, 1);
+		}
+
+		[TestMethod]
+		public void TxnWriteCommitAbort()
+		{
+			Key key = new(args.ns, args.set, "mrtkey15");
+
+			client.Put(null, key, new Bin(binName, "val1"));
+
+			Txn txn = new();
+
+			WritePolicy wp = client.WritePolicyDefault;
+			wp.Txn = txn;
+			client.Put(wp, key, new Bin(binName, "val2"));
+
+			Policy p = client.ReadPolicyDefault;
+			p.Txn = txn;
+			Record record = client.Get(p, key);
+			AssertBinEqual(key, record, binName, "val2");
+
+			client.Commit(txn);
+			record = client.Get(null, key);
+			AssertBinEqual(key, record, binName, "val2");
+
+			var abortStatus = client.Abort(txn);
+			Assert.AreEqual(AbortStatus.AbortStatusType.ALREADY_ATTEMPTED, abortStatus);
+		}
+
+		[TestMethod]
+		public void TxnWriteReadTwoTxn()
+		{
+			Txn txn1 = new();
+			Txn txn2 = new();
+
+			Key key = new(args.ns, args.set, "mrtkey16");
+
+			client.Put(null, key, new Bin(binName, "val1"));
+
+			var rp1 = client.ReadPolicyDefault;
+			rp1.Txn = txn1;
+			var record = client.Get(rp1, key);
+			AssertBinEqual(key, record, binName, "val1");
+
+			var rp2 = client.ReadPolicyDefault;
+			rp2.Txn = txn2;
+			record = client.Get(rp2, key);
+			AssertBinEqual(key, record, binName, "val1");
+
+			var status = client.Commit(txn1);
+			Assert.AreEqual(CommitStatus.CommitStatusType.OK, status);
+
+			status = client.Commit(txn2);
+			Assert.AreEqual(CommitStatus.CommitStatusType.OK, status);
+		}
+
+		[TestMethod]
+		public void TxnLUTCommit()
+		{
+			Txn txn = new();
+
+			Key key1 = new(args.ns, args.set, "mrtkey17");
+			Key key2 = new(args.ns, args.set, "mrtkey18");
+			Key key3 = new(args.ns, args.set, "mrtkey19");
+
+			var wp = client.WritePolicyDefault;
+			wp.Txn = txn;
+			client.Put(wp, key1, new Bin(binName, "val1"));
+
+			var p = client.ReadPolicyDefault;
+			p.Txn = txn;
+			var record = client.Get(p, key1);
+			Assert.AreEqual(1, record.generation);
+
+			client.Put(wp, key1, new Bin(binName, "val11"));
+
+			record = client.Get(p, key1);
+			Assert.AreEqual(2, record.generation);
+
+			client.Put(null, key2, new Bin(binName, "val1"));
+
+			record = client.Get(p, key2);
+			Assert.AreEqual(1, record.generation);
+
+			client.Put(wp, key2, new Bin(binName, "val11"));
+
+			record = client.Get(p, key2);
+			Assert.AreEqual(2, record.generation);
+
+			client.Put(wp, key3, new Bin(binName, "val1"));
+
+			record = client.Get(p, key3);
+			Assert.AreEqual(1, record.generation);
+
+			client.Commit(txn);
+
+			record = client.Get(null, key1);
+			Assert.AreEqual(3, record.generation);
+			record = client.Get(null, key2);
+			Assert.AreEqual(3, record.generation);
+			record = client.Get(null, key3);
+			Assert.AreEqual(2, record.generation);
+		}
+
+		[TestMethod]
+		public void TxnInvalidNamespace()
+		{
+			Key key = new("invalid", args.set, "mrtkey");
+
+			Txn txn = new();
+
+			WritePolicy wp = client.WritePolicyDefault;
+			wp.Txn = txn;
+
+			try
+			{
+				client.Put(wp, key, new Bin(binName, "val1"));
+				client.Commit(txn);
+				throw new AerospikeException("Unexpected success");
+			}
+			catch (AerospikeException e)
+			{
+				if (e.Result != ResultCode.INVALID_NAMESPACE)
+				{
+					throw;
+				}
+			}
 		}
 
 		private void AssertBatchEqual(Key[] keys, Record[] recs, int expected)

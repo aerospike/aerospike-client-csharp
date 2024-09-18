@@ -64,7 +64,7 @@ namespace Aerospike.Client
 			}
 
 			Id = CreateId();
-			Reads = new ConcurrentDictionary<Key, long>(100, readsCapacity); // TODO: concurrency level
+			Reads = new ConcurrentDictionary<Key, long>(100, readsCapacity);
 			Writes = new HashSet<Key>(writesCapacity);
 		}
 
