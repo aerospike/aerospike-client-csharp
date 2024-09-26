@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2023 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -275,6 +275,12 @@ namespace Aerospike.Client
 		/// Value: 28
 		/// </summary>
 		public const int LOST_CONFLICT = 28;
+
+		/// <summary>
+		/// Write can't complete until XDR finishes shipping.
+		/// Value: 32
+		/// </summary>
+		public const int XDR_KEY_BUSY = 32;
 
 		/// <summary>
 		/// There are no more records left for query.
@@ -667,6 +673,9 @@ namespace Aerospike.Client
 
 			case LOST_CONFLICT:
 				return "Transaction failed due to conflict with XDR";
+
+			case XDR_KEY_BUSY:
+				return "Write can't complete until XDR finishes shipping.";
 
 			case QUERY_END:
 				return "Query end";
