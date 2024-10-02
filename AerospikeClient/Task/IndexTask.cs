@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2020 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -101,7 +101,9 @@ namespace Aerospike.Client
 
 				if (index < 0)
 				{
-					if (response.IndexOf("FAIL:201") >= 0 || response.IndexOf("FAIL:203") >= 0)
+					Info.Error error = new(response);
+					
+					if (error.Code == ResultCode.INDEX_NOTFOUND || error.Code == ResultCode.INDEX_NOTREADABLE)
 					{
 						// Index not found or not readable.
 						return BaseTask.NOT_FOUND;
@@ -109,7 +111,7 @@ namespace Aerospike.Client
 					else
 					{
 						// Throw exception immediately.
-						throw new AerospikeException(command + " failed: " + response);
+						throw new AerospikeException(error.Code, command + " failed: " + error.Message);
 					}
 				}
 
@@ -126,7 +128,8 @@ namespace Aerospike.Client
 			else
 			{
 				// Check if index has been dropped.
-				if (response.IndexOf("FAIL:201") < 0)
+				Info.Error error = new(response);
+				if (error.Code != ResultCode.INDEX_NOTFOUND)
 				{
 					// Index still exists.
 					return BaseTask.IN_PROGRESS;

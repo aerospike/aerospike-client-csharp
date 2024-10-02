@@ -2401,23 +2401,11 @@ namespace Aerospike.Client
 
 		private void ParseInfoError(string prefix, string response)
 		{
+			Info.Error error = new(response);
+			int code = (error.Code == 0) ? ResultCode.SERVER_ERROR : error.Code;
+
 			string message = prefix + ": " + response;
-			string[] list = response.Split(':');
-
-			if (list.Length >= 2 && list[0].Equals("FAIL"))
-			{
-				int code = 0;
-
-				try
-				{
-					code = Convert.ToInt32(list[1]);
-				}
-				catch (Exception)
-				{
-				}
-				throw new AerospikeException(code, message);
-			}
-			throw new AerospikeException(message);
+			throw new AerospikeException(code, message);
 		}
 
 		private void JoinRecords(BatchPolicy policy, Record record, Join[] joins)

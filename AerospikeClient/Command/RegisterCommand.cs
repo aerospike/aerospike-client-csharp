@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -14,8 +14,7 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using System;
-using System.Collections.Generic;
+
 using System.Text;
 
 namespace Aerospike.Client
@@ -48,13 +47,26 @@ namespace Aerospike.Client
 				string file = null;
 				string line = null;
 				string message = null;
+				string messageNew = null;
+				int errorCode = 0;
 
 				while (parser.Next())
 				{
 					string name = parser.GetName();
 
-					if (name.Equals("error"))
+					if (name.StartsWith("ERROR"))
 					{
+						// New error format: ERROR:<code>:<msg1>;file=<filename>;line=<line>;message=<base64 encoded msg2>
+						int idx = name.IndexOf(';');
+						string s = (idx > 0) ? name.Substring(0, idx) : name;
+						Info.Error ie = new(s);
+						messageNew = ie.Message;
+						errorCode = ie.Code;
+						file = parser.GetValue();
+					}
+					else if (name.Equals("error"))
+					{
+						// Old error format: error=<code>;file=<filename>;line=<line>;message=<base64 encoded msg>
 						error = parser.GetValue();
 					}
 					else if (name.Equals("file"))
@@ -71,7 +83,15 @@ namespace Aerospike.Client
 					}
 				}
 
-				if (error != null)
+				if (errorCode != 0)
+				{
+					throw new AerospikeException(errorCode, "Registration failed: " + Environment.NewLine +
+						"File: " + file + Environment.NewLine +
+						"Line: " + line + Environment.NewLine +
+						"Message: " + messageNew + ". " + message
+						);
+				}
+				else if (error != null)
 				{
 					throw new AerospikeException("Registration failed: " + error + Environment.NewLine +
 						"File: " + file + Environment.NewLine +

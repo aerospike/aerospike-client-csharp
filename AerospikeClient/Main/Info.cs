@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2022 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -300,6 +300,35 @@ namespace Aerospike.Client
 		{
 			Info info = new Info(conn);
 			return info.ParseMultiResponse();
+		}
+
+		//-------------------------------------------------------
+		// Parse Methods
+		//-------------------------------------------------------
+
+		/// <summary>
+		/// Parse info response string and return the result code for info commands
+		/// that only return OK or an error string. Info commands that return other
+		/// data are not handled by this method.
+		/// </summary>
+		public static int ParseResultCode(string response)
+		{
+			if (response.StartsWith("OK", StringComparison.OrdinalIgnoreCase))
+			{
+				return ResultCode.OK;
+			}
+
+			Info.Error error = new(response);
+
+			if (error.Code >= 0)
+			{
+				// Server errors return error code.
+				return error.Code;
+			}
+			else
+			{
+				throw new AerospikeException(error.Code, "Unrecognized info response: " + response);
+			}
 		}
 
 		//-------------------------------------------------------
@@ -897,6 +926,70 @@ namespace Aerospike.Client
 				char[] chars = Encoding.ASCII.GetChars(parent.buffer, valueBegin, len);
 				byte[] bytes = Convert.FromBase64CharArray(chars, 0, chars.Length);
 				return ByteUtil.Utf8ToString(bytes, 0, bytes.Length);
+			}
+		}
+
+		public class Error
+		{
+			public int Code { get; private set; }
+			public string Message { get; private set; }
+
+			/// <summary>
+			/// Parse info command response into code and message.
+			/// If the response is not a recognized error format, the code is set to
+			/// <see cref="ResultCode.CLIENT_ERROR"/> and the message is set to the full
+			/// response string.
+			/// </summary>
+			/// <param name="response"></param>
+			public Error(string response)
+			{
+				int rc = ResultCode.CLIENT_ERROR;
+				string msg = response;
+				
+				// Error format: ERROR|FAIL[:<code>][:<message>]
+				try
+				{
+					String[] list = response.Split(":");
+					String s = list[0];
+					if (s.StartsWith("FAIL", StringComparison.OrdinalIgnoreCase) ||
+						s.StartsWith("ERROR", StringComparison.OrdinalIgnoreCase))
+					{
+						if (list.Length >= 3)
+						{
+							msg = list[2].Trim();
+							s = list[1].Trim();
+							if (s.Length != 0)
+							{
+								rc = Convert.ToInt32(s);
+							}
+						}
+						else if (list.Length == 2)
+						{
+							s = list[1].Trim();
+
+							if (s.Length != 0)
+							{
+								try
+								{
+									rc = Convert.ToInt32(s);
+								}
+								catch (Exception)
+								{
+									// Some error strings omit the code and just have a message.
+									msg = s;
+								}
+							}
+						}
+					}
+				}
+				catch (Exception)
+				{
+				}
+				finally
+				{
+					this.Code = rc;
+					this.Message = msg;
+				}
 			}
 		}
 	}
