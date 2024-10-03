@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2022 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -24,6 +24,7 @@ namespace Aerospike.Client
 	{
 		public readonly List<Peer> peers;
 		public readonly Dictionary<string, Node> nodes;
+		public readonly List<Node> removeList;
 		private readonly HashSet<Host> invalidHosts;
 		public int refreshCount;
 		public bool genChanged;
@@ -33,6 +34,7 @@ namespace Aerospike.Client
 			peers = new List<Peer>(peerCapacity);
 			nodes = new Dictionary<string, Node>();
 			invalidHosts = new HashSet<Host>();
+			removeList = new List<Node>();
 		}
 
 		public bool HasFailed(Host host)
@@ -78,5 +80,6 @@ namespace Aerospike.Client
 		internal String nodeName;
 		internal String tlsName;
 		internal List<Host> hosts;
+		internal Node replaceNode;
 	}
 }
