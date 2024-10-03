@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2022 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -220,6 +220,12 @@ namespace Aerospike.Client
 
 				if (detectLoadBalancer)
 				{
+					if (IPAddress.IsLoopback(address))
+					{
+						// Disable load balancer detection for localhost.
+						detectLoadBalancer = false;
+					}
+					
 					// Seed may be load balancer with changing address. Determine real address.
 					addressCommand = (cluster.tlsPolicy != null) ?
 						cluster.useServicesAlternate ? "service-tls-alt" : "service-tls-std" :

@@ -458,12 +458,12 @@ namespace Aerospike.Client
 					}
 
 					// Handle nodes changes determined from refreshes.
-					List<Node> removeList = FindNodesToRemove(peers.refreshCount);
+					FindNodesToRemove(peers);
 
 					// Remove nodes in a batch.
-					if (removeList.Count > 0)
+					if (peers.removeList.Count > 0)
 					{
-						RemoveNodes(removeList);
+						RemoveNodes(peers.removeList);
 					}
 				}
 
@@ -657,9 +657,10 @@ namespace Aerospike.Client
 			return node;
 		}
 
-		private List<Node> FindNodesToRemove(int refreshCount)
+		private void FindNodesToRemove(Peers peers)
 		{
-			List<Node> removeList = new List<Node>();
+			int refreshCount = peers.refreshCount;
+			List<Node> removeList = peers.removeList;
 
 			foreach (Node node in nodes)
 			{
@@ -700,7 +701,6 @@ namespace Aerospike.Client
 					}
 				}
 			}
-			return removeList;
 		}
 
 		private bool FindNodeInPartitionMap(Node filter)
