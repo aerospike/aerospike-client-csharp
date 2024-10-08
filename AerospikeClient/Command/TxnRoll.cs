@@ -54,8 +54,7 @@ namespace Aerospike.Client
 				catch (Exception e2)
 				{
 					// Throw combination of verify and roll exceptions.
-					
-					throw OnCommitError(CommitErrorType.VERIFY_FAIL_ABORT_ABANDONED, e, false);
+					throw OnCommitError(CommitErrorType.VERIFY_FAIL_ABORT_ABANDONED, e, false, e2);
 				}
 
 				if (txn.MonitorMightExist())
@@ -69,8 +68,7 @@ namespace Aerospike.Client
 					catch (Exception e3)
 					{
 						// Throw combination of verify and close exceptions.
-						//t.AddSuppressed(t3);
-						throw OnCommitError(CommitErrorType.VERIFY_FAIL_CLOSE_ABANDONED, e, false);
+						throw OnCommitError(CommitErrorType.VERIFY_FAIL_CLOSE_ABANDONED, e, false, e3);
 					}
 				}
 
@@ -120,16 +118,38 @@ namespace Aerospike.Client
 			return CommitStatusType.OK;
 		}
 
-		private AerospikeException.Commit OnCommitError(CommitErrorType error, Exception cause, bool setInDoubt) 
+		private AerospikeException.Commit OnCommitError(CommitErrorType error, Exception cause, bool setInDoubt, Exception innerException = null) 
 		{
-			AerospikeException.Commit aec = new(error, verifyRecords, rollRecords, cause);
-			
-			if (cause is AerospikeException) {
+			AerospikeException.Commit aec;
+
+			if (innerException != null)
+			{
+				if (cause == null)
+				{
+					aec = new AerospikeException.Commit(error, verifyRecords, rollRecords, innerException);
+				}
+				else
+				{
+					aec = new AerospikeException.Commit(error, verifyRecords, rollRecords, new[] { cause, innerException });
+				}
+			}
+			else if (cause != null)
+			{
+				aec = new AerospikeException.Commit(error, verifyRecords, rollRecords, cause);
+			}
+			else
+			{
+				aec = new AerospikeException.Commit(error, verifyRecords, rollRecords);
+			}
+
+			if (cause is AerospikeException)
+			{
 				AerospikeException src = (AerospikeException)cause;
 				aec.Node = src.Node;
 				aec.Policy = src.Policy;
 				aec.Iteration = src.Iteration;
-				if (setInDoubt) {
+				if (setInDoubt)
+				{
 					aec.SetInDoubt(src.InDoubt);
 				}
 			}
@@ -166,26 +186,32 @@ namespace Aerospike.Client
 		private void Verify(BatchPolicy verifyPolicy)
 		{
 			// Validate record versions in a batch.
-			HashSet<KeyValuePair<Key, long>> reads = txn.Reads.ToHashSet<KeyValuePair<Key, long>>();
-			int max = reads.Count;
-			if (max == 0)
+			int count = 0;
+			BatchRecord[] records = null;
+			Key[] keys = null;
+			long?[] versions = null;
+
+			bool actionPerformed = txn.Reads.PerformActionOnEachElement(max =>
+			{
+				if (max == 0) return false;
+
+				records = new BatchRecord[max];
+				keys = new Key[max];
+				versions = new long?[max];
+				return true;
+			},
+			(key, value, count) =>
+			{
+				keys[count] = key;
+				records[count] = new BatchRecord(key, false);
+				versions[count] = value;
+			});
+
+			if (!actionPerformed) // If no action was performed, there are no elements. Return.
 			{
 				return;
 			}
 
-			BatchRecord[] records = new BatchRecord[max];
-			Key[] keys = new Key[max];
-			long?[] versions = new long?[max];
-			int count = 0;
-
-			foreach (KeyValuePair<Key, long> entry in reads)
-			{
-				Key key = entry.Key;
-				keys[count] = key;
-				records[count] = new BatchRecord(key, false);
-				versions[count] = entry.Value;
-				count++;
-			}
 			this.verifyRecords = records;
 
 			BatchStatus status = new(true);

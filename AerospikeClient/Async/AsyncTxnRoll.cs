@@ -66,27 +66,33 @@ namespace Aerospike.Client
 		private void Verify(BatchRecordArrayListener verifyListener)
 		{
 			// Validate record versions in a batch.
-			HashSet<KeyValuePair<Key, long>> reads = txn.Reads.ToHashSet<KeyValuePair<Key, long>>();
-			int max = reads.Count;
-			if (max == 0)
+			int count = 0;
+			BatchRecord[] records = null;
+			Key[] keys = null;
+			long?[] versions = null;
+
+			bool actionPerformed = txn.Reads.PerformActionOnEachElement(max =>
+			{
+				if (max == 0) return false;
+
+				records = new BatchRecord[max];
+				keys = new Key[max];
+				versions = new long?[max];
+				return true;
+			},
+			(key, value, count) =>
+			{
+				keys[count] = key;
+				records[count] = new BatchRecord(key, false);
+				versions[count] = value;
+			});
+
+			if (!actionPerformed) // If no action was performed, there are no elements. Return.
 			{
 				verifyListener.OnSuccess(new BatchRecord[0], true);
 				return;
 			}
 
-			BatchRecord[] records = new BatchRecord[max];
-			Key[] keys = new Key[max];
-			long?[] versions = new long?[max];
-			int count = 0;
-
-			foreach (KeyValuePair<Key, long> entry in reads)
-			{
-				Key key = entry.Key;
-				keys[count] = key;
-				records[count] = new BatchRecord(key, false);
-				versions[count] = entry.Value;
-				count++;
-			}
 			this.verifyRecords = records;
 
 			AsyncBatchTxnVerifyExecutor executor = new(cluster, verifyPolicy, verifyListener, keys, versions, records);
@@ -115,7 +121,7 @@ namespace Aerospike.Client
 				RollForwardListener rollListener = new(this);
 				Roll(rollListener, Command.INFO4_MRT_ROLL_FORWARD);
 			}
-			catch (Exception e)
+			catch (Exception)
 			{
 				NotifyCommitSuccess(CommitStatusType.ROLL_FORWARD_ABANDONED);
 			}
@@ -205,7 +211,7 @@ namespace Aerospike.Client
 				AsyncTxnClose command = new(cluster, txn, deleteListener, writePolicy, txnKey);
 				command.Execute();
 			}
-			catch (Exception e) 
+			catch (Exception) 
 			{
 				NotifyAbortSuccess(AbortStatusType.CLOSE_ABANDONED);
 			}
@@ -229,13 +235,26 @@ namespace Aerospike.Client
 		{
 			try
 			{
-				AerospikeException.Commit aec = (cause == null) ?
-					new AerospikeException.Commit(error, verifyRecords, rollRecords) :
-					new AerospikeException.Commit(error, verifyRecords, rollRecords, cause);
+				AerospikeException.Commit aec;
 
 				if (verifyException != null)
 				{
-					//aec.AddSuppressed(verifyException); TODO
+					if (cause == null)
+					{
+						aec = new AerospikeException.Commit(error, verifyRecords, rollRecords, verifyException);
+					}
+					else
+					{
+						aec = new AerospikeException.Commit(error, verifyRecords, rollRecords, new[] { cause, verifyException });
+					}
+				}
+				else if (cause != null)
+				{
+					aec = new AerospikeException.Commit(error, verifyRecords, rollRecords, cause);
+				}
+				else
+				{
+					aec = new AerospikeException.Commit(error, verifyRecords, rollRecords);
 				}
 
 				if (cause is AerospikeException) {

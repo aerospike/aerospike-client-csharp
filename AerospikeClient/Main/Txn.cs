@@ -25,8 +25,10 @@ namespace Aerospike.Client
 	/// </summary>
 	public class Txn
 	{
+		private static long randomState = DateTime.UtcNow.Ticks;
+
 		public long Id { get; private set; }
-		public ConcurrentDictionary<Key, long> Reads { get; private set; }
+		public ConcurrentHashMap<Key, long> Reads { get; private set; }
 		public HashSet<Key> Writes { get; private set; }
 		public string Ns { get; private set; }
 		public int Deadline { get; set; }
@@ -41,7 +43,7 @@ namespace Aerospike.Client
 		public Txn()
 		{
 			Id = CreateId();
-			Reads = new ConcurrentDictionary<Key, long>();
+			Reads = new ConcurrentHashMap<Key, long>();
 			Writes = new HashSet<Key>();
 			Deadline = 0;
 		}
@@ -55,7 +57,7 @@ namespace Aerospike.Client
 		{
 			if (readsCapacity < 16)
 			{
-				readsCapacity = 16;
+				readsCapacity = 16; // TODO ask Richard and Brian about this
 			}
 
             if (writesCapacity < 16)
@@ -64,22 +66,27 @@ namespace Aerospike.Client
 			}
 
 			Id = CreateId();
-			Reads = new ConcurrentDictionary<Key, long>(100, readsCapacity);
+			Reads = new ConcurrentHashMap<Key, long>(readsCapacity);
 			Writes = new HashSet<Key>(writesCapacity);
 		}
 
+		[System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
+		private static long UnsignedRightShift(long n, int s) => n >= 0 ? n >> s : (n >> s) + (2 << ~s);
+
 		private static long CreateId()
 		{
-			// An id of zero is considered invalid. Create random numbers
-			// in a loop until non-zero is returned.
-			Random r = new();
-			long id = r.NextInt64();
-
-			while (id == 0)
+			// xorshift64* doesn't generate zeroes.
+			long oldState, newState, interlockedResult;
+			do
 			{
-				id = r.NextInt64();
-			}
-			return id;
+				oldState = Interlocked.Read(ref randomState);
+				newState = oldState;
+				newState ^= UnsignedRightShift(newState, 12);
+				newState ^= newState << 25;
+				newState ^= UnsignedRightShift(newState, 27);
+				interlockedResult = Interlocked.CompareExchange(ref randomState, newState, oldState);
+			} while (oldState != interlockedResult);
+			return newState * 0x2545f4914f6cdd1dL;
 		}
 
 		/// <summary>
@@ -130,7 +137,7 @@ namespace Aerospike.Client
 			{
 				if (resultCode == ResultCode.OK)
 				{
-					Reads.Remove(key, out _);
+					Reads.Remove(key);
 					Writes.Add(key);
 				}
 			}
@@ -141,7 +148,7 @@ namespace Aerospike.Client
 		/// </summary>
 		public void OnWriteInDoubt(Key key)
 		{
-			Reads.Remove(key, out _);
+			Reads.Remove(key);
 			Writes.Add(key);
 		}
 

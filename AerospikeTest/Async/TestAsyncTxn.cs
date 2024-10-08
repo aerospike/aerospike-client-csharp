@@ -76,7 +76,7 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void AsyncTxnWriteBlock()
 		{
-			Key key = new(args.ns, args.set, "asyncTxnWriteBlock1111");
+			Key key = new(args.ns, args.set, "asyncTxnWriteBlock");
 			Txn txn = new();
 			
 			var cmds = new Runner[] 
@@ -348,6 +348,92 @@ namespace Aerospike.Test
 			Execute(cmds);
 		}
 
+		[TestMethod]
+		public void AsyncTxnWriteCommitAbort()
+		{
+			Key key = new(args.ns, args.set, "asyncTxnCommitAbort");
+			Txn txn = new();
+
+			var cmds = new Runner[]
+			{
+				new Put(null, key, "val1"),
+				new Put(txn, key, "val2"),
+				new Commit(txn),
+				new GetExpect(null, key, "val2"),
+				new Abort(txn, AbortStatus.AbortStatusType.ALREADY_ATTEMPTED)
+			};
+
+			Execute(cmds);
+		}
+
+		[TestMethod]
+		public void AsyncTxnWriteReadTwoTxn()
+		{
+			Key key = new(args.ns, args.set, "asyncTxnWriteReadTwoTxn");
+			Txn txn1 = new();
+			Txn txn2 = new();
+
+			var cmds = new Runner[]
+			{
+				new Put(null, key, "val1"),
+				new GetExpect(txn1, key, "val1"),
+				new GetExpect(txn2, key, "val1"),
+				new Commit(txn1),
+				new Commit(txn2),
+			};
+
+			Execute(cmds);
+		}
+
+		[TestMethod]
+		public void AsyncTxnLUTCommit() // Test Case 38
+		{
+			Key key1 = new(args.ns, args.set, "asyncTxnLUTCommit1");
+			Key key2 = new(args.ns, args.set, "asyncTxnLUTCommit2");
+			Key key3 = new(args.ns, args.set, "asyncTxnLUTCommit3");
+			Txn txn = new(); // T1
+
+			var cmds = new Runner[]
+			{
+				new Delete(null, key1), // Prep
+				new Delete(null, key2),
+				new Delete(null, key3),
+				new Put(txn, key1, "val1"), // T1
+				new GetExpect(txn, key1, "val1", 1), // T2
+				new Put(txn, key1, "val11"), // T3
+				new GetExpect(txn, key1, "val11", 2), // T4
+				new Put(null, key2, "val1"), // T5
+				new GetExpect(txn, key2, "val1", 1), // T6
+				new Put(txn, key2, "val11"), // T7
+				new GetExpect(txn, key2, "val11", 2), // T8
+				new Put(txn, key3, "val1"), // T9
+				new GetExpect(txn, key3, "val1", 1), // T10
+				new Commit(txn), // T11
+				new GetExpect(txn, key1, "val11", 3), // T12
+				new GetExpect(txn, key2, "val11", 3),
+				new GetExpect(txn, key3, "val1", 2)
+			};
+
+			Execute(cmds);
+		}
+
+		[TestMethod]
+		public void AsyncTxnWriteAfterCommit()
+		{
+			Key key = new(args.ns, args.set, "asyncTxnWriteAfter");
+			Txn txn = new();
+
+			var cmds = new Runner[]
+			{
+				new Put(txn, key, "val1"),
+				new Commit(txn),
+				new Sleep(1000),
+				new Put(txn, key, "val1", ResultCode.MRT_EXPIRED),
+			};
+
+			Execute(cmds);
+		}
+
 		private void Execute(Runner[] cmdArray) 
 		{
 			Cmds a = new(this, cmdArray);
@@ -436,64 +522,102 @@ namespace Aerospike.Test
 		public class Commit : Runner
 		{
 			private readonly Txn txn;
+			private readonly bool throwsCommitException;
 
 			public Commit(Txn txn) 
 			{
 				this.txn = txn;
+				this.throwsCommitException = false;
+			}
+
+			public Commit(Txn txn, bool throwsCommitException)
+			{
+				this.txn = txn;
+				this.throwsCommitException = throwsCommitException;
 			}
 
 			public void Run(TestAsyncTxn parent, Listener listener) 
 			{
-				client.Commit(new CommitHandler(listener), txn);
+				client.Commit(new CommitHandler(listener, throwsCommitException), txn);
 			}
 
 			private class CommitHandler : CommitListener
 			{
 				private readonly Listener listener;
+				private readonly bool throwsCommitException;
 
-				public CommitHandler(Listener listener)
+				public CommitHandler(Listener listener, bool throwsCommitException)
 				{
 					this.listener = listener;
+					this.throwsCommitException = throwsCommitException;
 				}
 
 				public void OnSuccess(CommitStatusType status)
 				{
-					listener.OnSuccess();
+					if (status == CommitStatusType.OK)
+					{
+						listener.OnSuccess();
+						return;
+					}
+					listener.OnFailure();
 				}
 
 				public void OnFailure(AerospikeException.Commit e)
 				{
+					if (throwsCommitException)
+					{
+						listener.OnSuccess();
+						return;
+					}
+					
 					listener.OnFailure(e);
 				}
 			}
 		}
 
+		
+
 		public class Abort : Runner 
 		{
 			private readonly Txn txn;
+			private readonly AbortStatusType status;
 
 			public Abort(Txn txn) 
 			{
 				this.txn = txn;
+				this.status = AbortStatusType.OK;
+			}
+
+			public Abort(Txn txn, AbortStatusType abortStatus)
+			{
+				this.txn = txn;
+				this.status = abortStatus;
 			}
 
 			public void Run(TestAsyncTxn parent, Listener listener) 
 			{
-				client.Abort(new AbortHandler(listener), txn);
+				client.Abort(new AbortHandler(listener, status), txn);
 			}
 			
 			private class AbortHandler : AbortListener
 			{
 				private readonly Listener listener;
+				private readonly AbortStatusType status;
 
-				public AbortHandler(Listener listener)
+				public AbortHandler(Listener listener, AbortStatusType status)
 				{
 					this.listener = listener;
+					this.status = status;
 				}
 
 				public void OnSuccess(AbortStatusType status)
 				{
-					listener.OnSuccess();
+					if (status == this.status)
+					{
+						listener.OnSuccess();
+						return;
+					}
+					listener.OnFailure();
 				}
 			}
 		}
@@ -573,12 +697,22 @@ namespace Aerospike.Test
 			private readonly Txn txn;
 			private readonly Key key;
 			private readonly string expect;
+			private readonly int generation;
 
 			public GetExpect(Txn txn, Key key, string expect)
 			{
 				this.txn = txn;
 				this.key = key;
 				this.expect = expect;
+				generation = 0; // Do not check generation
+			}
+
+			public GetExpect(Txn txn, Key key, string expect, int generation)
+			{
+				this.txn = txn;
+				this.key = key;
+				this.expect = expect;
+				this.generation = generation;
 			}
 
 			public void Run(TestAsyncTxn parent, Listener listener)
@@ -590,7 +724,7 @@ namespace Aerospike.Test
 					p = client.ReadPolicyDefault;
 					p.Txn = txn;
 				}
-				client.Get(p, new GetExpectHandler(parent, listener, expect), key);
+				client.Get(p, new GetExpectHandler(parent, listener, expect, generation), key);
 			}
 
 			private class GetExpectHandler : RecordListener
@@ -598,16 +732,26 @@ namespace Aerospike.Test
 				private readonly TestAsyncTxn parent;
 				private readonly Listener listener;
 				private string expect;
+				private int generation;
 
-				public GetExpectHandler(TestAsyncTxn parent, Listener listener, string expect)
+				public GetExpectHandler(TestAsyncTxn parent, Listener listener, string expect, int generation)
 				{
 					this.parent = parent;
 					this.listener = listener;
 					this.expect = expect;
+					this.generation = generation;
 				}
 
 				public void OnSuccess(Key key, Record record)
 				{
+					if (generation != 0)
+					{
+						if (generation != record.generation)
+						{
+							listener.OnFailure(new AssertFailedException("Expected generation: " + generation + " but got: " + record.generation));
+						}
+					}
+					
 					if (expect != null)
 					{
 						if (parent.AssertBinEqual(key, record, binName, expect))
@@ -978,6 +1122,22 @@ namespace Aerospike.Test
 				{
 					listener.OnFailure(e);
 				}
+			}
+		}
+
+		public class Sleep : Runner
+		{
+			private readonly int sleepMillis;
+
+			public Sleep(int sleepMillis)
+			{
+				this.sleepMillis = sleepMillis;
+			}
+
+			public void Run(TestAsyncTxn parent, Listener listener)
+			{
+				Util.Sleep(sleepMillis);
+				parent.NotifyCompleted();
 			}
 		}
 

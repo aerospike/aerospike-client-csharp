@@ -14,8 +14,10 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
+using System.Collections.ObjectModel;
 using System.Text;
 using static Aerospike.Client.AbortStatus;
+using static Aerospike.Client.AerospikeException;
 using static Aerospike.Client.CommitError;
 
 namespace Aerospike.Client
@@ -604,7 +606,9 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
-		/// Exception thrown when {@link AerospikeClient#commit(com.aerospike.client.Txn)} fails.
+		/// Exception thrown when <see cref="Txn"/> fails.
+		/// Commit Exception has similar behavior to AggregateException. 
+		/// <see cref="InnerExceptions"/> might be populated if mutliple exceptions contribute to the failure. 
 		/// </summary>
 		public sealed class Commit : AerospikeException
 		{
@@ -624,20 +628,33 @@ namespace Aerospike.Client
 			/// </summary>
 			public readonly BatchRecord[] RollRecords;
 
+			private readonly Exception[] _innerExceptions; // Complete set of exceptions.
+
 			public Commit(CommitErrorType error, BatchRecord[] verifyRecords, BatchRecord[] rollRecords)
 				: base(ResultCode.TXN_FAILED, CommitErrorToString(error))
 			{
 				this.Error = error;
 				this.VerifyRecords = verifyRecords;
 				this.RollRecords = rollRecords;
+				_innerExceptions = Array.Empty<Exception>();
 			}
 
-			public Commit(CommitErrorType error, BatchRecord[] verifyRecords, BatchRecord[] rollRecords, Exception cause)
-				: base(ResultCode.TXN_FAILED, CommitErrorToString(error), cause)
+			public Commit(CommitErrorType error, BatchRecord[] verifyRecords, BatchRecord[] rollRecords, Exception innerException)
+				: base(ResultCode.TXN_FAILED, CommitErrorToString(error), innerException)
 			{
 				this.Error = error;
 				this.VerifyRecords = verifyRecords;
 				this.RollRecords = rollRecords;
+				_innerExceptions = new[] { innerException };
+			}
+
+			public Commit(CommitErrorType error, BatchRecord[] verifyRecords, BatchRecord[] rollRecords, Exception[] innerExceptions)
+				: base(ResultCode.TXN_FAILED, CommitErrorToString(error), innerExceptions[0])
+			{
+				this.Error = error;
+				this.VerifyRecords = verifyRecords;
+				this.RollRecords = rollRecords;
+				_innerExceptions = innerExceptions;
 			}
 
 			/// <summary>
@@ -653,6 +670,12 @@ namespace Aerospike.Client
 					return BaseMessage + sb.ToString();
 				}
 			}
+
+			/// <summary>
+			/// Gets a read-only collection of the <see cref="System.Exception"/> instances that caused the
+			/// current exception.
+			/// </summary>
+			public ReadOnlyCollection<Exception> InnerExceptions => new ReadOnlyCollection<Exception>(_innerExceptions);
 		}
 
 		private static void RecordsToString(StringBuilder sb, String title, BatchRecord[] records)

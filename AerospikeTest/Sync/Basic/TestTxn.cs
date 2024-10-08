@@ -18,7 +18,6 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Aerospike.Client;
 using System.Reflection;
 using System.Text;
-using Microsoft.AspNetCore.DataProtection.KeyManagement;
 
 namespace Aerospike.Test
 {
@@ -41,7 +40,7 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void TxnWrite()
 		{
-			Key key = new(args.ns, args.set, "mrtkey111");
+			Key key = new(args.ns, args.set, "mrtkey1");
 
 			client.Put(null, key, new Bin(binName, "val1"));
 
@@ -78,7 +77,7 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void TxnWriteConflict()
 		{
-			Key key = new(args.ns, args.set, "mrtkey21");
+			Key key = new(args.ns, args.set, "mrtkey021");
 
 			Txn txn1 = new();
 			Txn txn2 = new();
@@ -93,6 +92,7 @@ namespace Aerospike.Test
 			try
 			{
 				client.Put(wp2, key, new Bin(binName, "val2"));
+				throw new AerospikeException("Unexpected success");
 			}
 			catch (AerospikeException ae)
 			{
@@ -399,7 +399,7 @@ namespace Aerospike.Test
 
 			if (!bresults.status)
 			{
-				StringBuilder sb = new StringBuilder();
+				StringBuilder sb = new();
 				sb.Append("Batch failed:");
 				sb.Append(System.Environment.NewLine);
 
@@ -453,7 +453,7 @@ namespace Aerospike.Test
 
 			if (!bresults.status)
 			{
-				StringBuilder sb = new StringBuilder();
+				StringBuilder sb = new();
 				sb.Append("Batch failed:");
 				sb.Append(System.Environment.NewLine);
 
@@ -533,51 +533,166 @@ namespace Aerospike.Test
 		}
 
 		[TestMethod]
-		public void TxnLUTCommit()
+		public void TxnLUTCommit() // Test Case 38
 		{
-			Txn txn = new();
+			Txn txn = new(); // T0
 
 			Key key1 = new(args.ns, args.set, "mrtkey17");
 			Key key2 = new(args.ns, args.set, "mrtkey18");
 			Key key3 = new(args.ns, args.set, "mrtkey19");
 
+			client.Delete(null, key1);
+			client.Delete(null, key2);
+			client.Delete(null, key3);
+
 			var wp = client.WritePolicyDefault;
 			wp.Txn = txn;
-			client.Put(wp, key1, new Bin(binName, "val1"));
+			client.Put(wp, key1, new Bin(binName, "val1")); // T1
 
 			var p = client.ReadPolicyDefault;
 			p.Txn = txn;
-			var record = client.Get(p, key1);
+			var record = client.Get(p, key1); // T2
 			Assert.AreEqual(1, record.generation);
 
-			client.Put(wp, key1, new Bin(binName, "val11"));
+			client.Put(wp, key1, new Bin(binName, "val11")); // T3
 
-			record = client.Get(p, key1);
+			record = client.Get(p, key1); // T4
 			Assert.AreEqual(2, record.generation);
 
-			client.Put(null, key2, new Bin(binName, "val1"));
+			client.Put(null, key2, new Bin(binName, "val1")); // T5
 
-			record = client.Get(p, key2);
+			record = client.Get(p, key2); // T6
 			Assert.AreEqual(1, record.generation);
 
-			client.Put(wp, key2, new Bin(binName, "val11"));
+			client.Put(wp, key2, new Bin(binName, "val11")); // T7
 
-			record = client.Get(p, key2);
+			record = client.Get(p, key2); // T8
 			Assert.AreEqual(2, record.generation);
 
-			client.Put(wp, key3, new Bin(binName, "val1"));
+			client.Put(wp, key3, new Bin(binName, "val1")); // T9
 
-			record = client.Get(p, key3);
+			record = client.Get(p, key3); // T10
 			Assert.AreEqual(1, record.generation);
 
-			client.Commit(txn);
+			client.Commit(txn); // T11
 
-			record = client.Get(null, key1);
+			record = client.Get(null, key1); // T12
 			Assert.AreEqual(3, record.generation);
 			record = client.Get(null, key2);
 			Assert.AreEqual(3, record.generation);
 			record = client.Get(null, key3);
 			Assert.AreEqual(2, record.generation);
+		}
+
+		[TestMethod]
+		public void TxnLUTAbort() // Test Case 39
+		{
+			client.Truncate(null, args.ns, args.set, DateTime.Now);
+			
+			Txn txn = new(); // T0
+
+			Key key1 = new(args.ns, args.set, "mrtkey20");
+			Key key2 = new(args.ns, args.set, "mrtkey21");
+			Key key3 = new(args.ns, args.set, "mrtkey22");
+
+			//client.Delete(null, key1);
+			//client.Delete(null, key2);
+			//client.Delete(null, key3);
+
+			client.Put(null, key1, new Bin(binName, "val1")); // T1
+
+			var p = client.ReadPolicyDefault;
+			p.Txn = txn;
+			var record = client.Get(p, key1); // T2
+			Assert.AreEqual(1, record.generation);
+
+			var binR2O = new Bin(binName, "val2");
+			client.Put(null, key2, binR2O); // T3
+			record = client.Get(p, key2); // T4
+			Assert.AreEqual(1, record.generation);
+
+			var wp = client.WritePolicyDefault;
+			wp.Txn = txn;
+			client.Put(wp, key2, new Bin(binName, "val11")); // T5
+
+			record = client.Get(p, key2);
+			Assert.AreEqual(2, record.generation);
+
+			record = client.Get(null, key2); // T6
+			Assert.AreEqual(1, record.generation);
+
+			client.Put(wp, key3, new Bin(binName, "val3")); // T7
+			record = client.Get(p, key3);
+			Assert.AreEqual(1, record.generation);
+
+			var binR1UO = new Bin(binName, "val1"); // T8
+			client.Put(null, key1, binR1UO);
+			record = client.Get(null, key1);
+			Assert.AreEqual(2, record.generation);
+
+			try
+			{
+				client.Put(wp, key1, new Bin(binName, "val1111")); // T9
+				record = client.Get(p, key1);
+				Assert.AreEqual(2, record.generation);
+				throw new AerospikeException("Unexpected success");
+			}
+			catch (AerospikeException ae)
+			{
+				if (ae.Result != ResultCode.MRT_CONFLICT)
+				{
+					throw;
+				}
+			}
+
+			try
+			{
+				client.Commit(txn); // T10
+			}
+			catch (AerospikeException.Commit ae)
+			{
+
+			}
+
+			record = client.Get(null, key1); // T11
+			Assert.AreEqual(2, record.generation);
+			AssertBinEqual(key1, record, binR1UO);
+			record = client.Get(null, key2);
+			Assert.AreEqual(3, record.generation);
+			AssertBinEqual(key2, record, binR2O);
+			record = client.Get(null, key3);
+			Assert.IsNull(record);
+
+			// Cleanup
+			client.Abort(txn);
+		}
+
+		[TestMethod]
+		public void TxnWriteAfterCommit()
+		{
+			Key key = new(args.ns, args.set, "mrtkey23");
+
+			Txn txn = new();
+
+			WritePolicy wp = client.WritePolicyDefault;
+			wp.Txn = txn;
+			client.Put(wp, key, new Bin(binName, "val1"));
+
+			client.Commit(txn);
+
+			try
+			{
+				client.Put(wp, key, new Bin(binName, "val1"));
+				throw new AerospikeException("Unexpected success");
+			}
+			catch (AerospikeException ae)
+			{
+				if (ae.Result != ResultCode.MRT_EXPIRED)
+				{
+					throw;
+				}
+			}
+
 		}
 
 		[TestMethod]
@@ -605,7 +720,7 @@ namespace Aerospike.Test
 			}
 		}
 
-		private void AssertBatchEqual(Key[] keys, Record[] recs, int expected)
+		private static void AssertBatchEqual(Key[] keys, Record[] recs, int expected)
 		{
 			for (int i = 0; i < keys.Length; i++)
 			{
