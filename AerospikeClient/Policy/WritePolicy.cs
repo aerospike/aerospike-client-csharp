@@ -111,10 +111,10 @@ namespace Aerospike.Client
 		/// </summary>
 		public bool failOnTouchRecordDoesNotExist = true;
 
-        /// <summary>
-        /// Copy write policy from another write policy.
-        /// </summary>
-        public WritePolicy(WritePolicy other)
+		/// <summary>
+		/// Copy write policy from another write policy.
+		/// </summary>
+		public WritePolicy(WritePolicy other)
 			: base(other)
 		{
 			this.recordExistsAction = other.recordExistsAction;
