@@ -65,6 +65,15 @@ namespace Aerospike.Client
 				return;
 			}
 
+			if (resultCode == ResultCode.KEY_NOT_FOUND_ERROR)
+			{
+				if (writePolicy.failOnTouchRecordDoesNotExist)
+				{
+					throw new AerospikeException(resultCode);
+				}
+				return;
+			}
+
 			if (resultCode == ResultCode.FILTERED_OUT)
 			{
 				if (writePolicy.failOnFilteredOut)
