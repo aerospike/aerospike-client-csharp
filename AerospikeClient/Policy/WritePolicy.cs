@@ -99,11 +99,22 @@ namespace Aerospike.Client
 		/// <para>Default: false (do not tombstone deleted records).</para>
 		/// </summary>
 		public bool durableDelete;
-	
+
 		/// <summary>
-		/// Copy write policy from another write policy.
+		/// Qualify how to handle touches when the record does not exist.
+		/// If true, throw <see cref="Aerospike.Client.AerospikeException"/>
+		/// with result code <seealso cref="Aerospike.Client.ResultCode.KEY_NOT_FOUND_ERROR"/>;
+		/// otherwise, do nothing.
+		/// <para>
+		/// Default: true
+		/// </para>
 		/// </summary>
-		public WritePolicy(WritePolicy other)
+		public bool failOnTouchRecordDoesNotExist = true;
+
+        /// <summary>
+        /// Copy write policy from another write policy.
+        /// </summary>
+        public WritePolicy(WritePolicy other)
 			: base(other)
 		{
 			this.recordExistsAction = other.recordExistsAction;
@@ -113,7 +124,8 @@ namespace Aerospike.Client
 			this.expiration = other.expiration;
 			this.respondAllOps = other.respondAllOps;
 			this.durableDelete = other.durableDelete;
-		}
+			this.failOnTouchRecordDoesNotExist = other.failOnTouchRecordDoesNotExist;
+        }
 
 		/// <summary>
 		/// Copy write policy from another policy.

@@ -56,6 +56,18 @@ namespace Aerospike.Test
 
 			record = client.Get(null, key, bin.name);
 			Assert.IsNull(record);
-		}
+
+			try
+			{
+				client.Touch(writePolicy, key);
+				Assert.Fail("Must throw ResultCode.KEY_NOT_FOUND_ERROR exception.");
+			}
+			catch (AerospikeException ex) when (ex.Result == ResultCode.KEY_NOT_FOUND_ERROR)
+			{
+			}
+
+			writePolicy.failOnTouchRecordDoesNotExist = false;
+			client.Touch(writePolicy, key);
+        }
 	}
 }
