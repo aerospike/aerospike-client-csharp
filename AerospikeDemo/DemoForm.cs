@@ -89,6 +89,7 @@ namespace Aerospike.Demo
 					new ExampleTreeNode("Async Scan", new AsyncScan(console)),
 					new ExampleTreeNode("Async Scan Page", new AsyncScanPage(console)),
 					new ExampleTreeNode("Async Transaction", new AsyncTransaction(console)),
+					new ExampleTreeNode("Async Transaction with Task", new AsyncTransactionWithTask(console)),
 					new ExampleTreeNode("Async Query", new AsyncQuery(console)),
 					new ExampleTreeNode("Async UDF", new AsyncUserDefinedFunction(console)),
 					new ExampleTreeNode("List/Map", new ListMap(console)),

@@ -301,6 +301,12 @@ namespace Aerospike.Client
 		public const int MRT_EXPIRED = 31;
 
 		/// <summary>
+		/// Write can't complete until XDR finishes shipping.
+		/// Value: 32
+		/// </summary>
+		public const int XDR_KEY_BUSY = 32;
+
+		/// <summary>
 		/// There are no more records left for query.
 		/// Value: 50
 		/// </summary>
@@ -703,6 +709,9 @@ namespace Aerospike.Client
 
 			case MRT_EXPIRED:
 				return "MRT expired";
+
+			case XDR_KEY_BUSY:
+				return "Write can't complete until XDR finishes shipping.";
 
 			case QUERY_END:
 				return "Query end";

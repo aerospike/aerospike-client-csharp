@@ -15,6 +15,8 @@
  * the License.
  */
 
+using static Aerospike.Client.AsyncQueryValidate;
+
 namespace Aerospike.Client
 {
 	/// <summary>
@@ -134,12 +136,13 @@ namespace Aerospike.Client
 
 		/// <summary>
 		/// Asynchronously attempt to commit the given multi-record transaction. First, the expected
-		/// record versions are sent to the server nodes for verification.If all nodes return success,
+		/// record versions are sent to the server nodes for verification. If all nodes return success,
 		/// the transaction is committed. Otherwise, the transaction is aborted.
 		/// <para>
-		/// This method registers the command with an event loop and returns.
-		/// The event loop thread will process the command and send the results to the listener.
-		/// </para><para>
+		/// Schedules the commit command with a channel selector and return.
+		/// Another thread will process the command and send the results to the listener.
+		/// </para>
+		/// <para>
 		/// Requires server version 8.0+
 		/// </para>
 		/// </summary>
@@ -159,10 +162,23 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
+		/// Asynchronously attempt to commit the given multi-record transaction.
+		/// Create listener, call asynchronous put and return task monitor.
+		/// </summary>
+		/// <param name="txn">multi-record transaction</param>
+		/// <param name="token">cancellation token</param>
+		public Task Commit(Txn txn, CancellationToken token)
+		{
+			var listener = new CommitListenerAdapter(token);
+			Commit(listener, txn);
+			return listener.Task;
+		}
+
+		/// <summary>
 		/// Asynchronously abort and rollback the given multi-record transaction.
 		/// <para>
-		/// This method registers the command with an event loop and returns.
-		/// The event loop thread will process the command and send the results to the listener.
+		/// Schedules the commit command with a channel selector and return.
+		/// Another thread will process the command and send the results to the listener.
 		/// </para><para>
 		/// Requires server version 8.0+
 		/// </para>
@@ -178,6 +194,13 @@ namespace Aerospike.Client
 
 			AsyncTxnRoll atr = new(cluster, null, txnRollPolicyDefault, txn);
 			atr.Abort(listener);
+		}
+
+		public Task Abort(Txn txn, CancellationToken token)
+		{
+			var listener = new AbortListenerAdapter(token);
+			Abort(listener, txn);
+			return listener.Task;
 		}
 
 		//-------------------------------------------------------

@@ -386,7 +386,7 @@ namespace Aerospike.Client
 
 				foreach (Peer peer in peers.peers)
 				{
-					if (FindPeerNode(cluster, peers, peer.nodeName))
+					if (FindPeerNode(cluster, peers, peer))
 					{
 						// Node already exists. Do not even try to connect to hosts.				
 						continue;
@@ -415,20 +415,17 @@ namespace Aerospike.Client
 								{
 									Log.Warn(cluster.context, "Peer node " + peer.nodeName + " is different than actual node " + nv.name + " for host " + host);
 								}
-
-								if (FindPeerNode(cluster, peers, nv.name))
-								{
-									// Node already exists. Do not even try to connect to hosts.				
-									nv.primaryConn.Close();
-									nodeValidated = true;
-									break;
-								}
 							}
 
 							// Create new node.
 							Node node = cluster.CreateNode(nv, true);
 							peers.nodes[nv.name] = node;
 							nodeValidated = true;
+
+							if (peer.replaceNode != null)
+							{
+								peers.removeList.Add(peer.replaceNode);
+							}
 							break;
 						}
 						catch (Exception e)
@@ -461,20 +458,40 @@ namespace Aerospike.Client
 			}
 		}
 
-		private static bool FindPeerNode(Cluster cluster, Peers peers, string nodeName)
+		private static bool FindPeerNode(Cluster cluster, Peers peers, Peer peer)
 		{
 			// Check global node map for existing cluster.
-			Node node;
-			if (cluster.nodesMap.TryGetValue(nodeName, out node))
+			if (cluster.nodesMap.TryGetValue(peer.nodeName, out Node node))
 			{
-				node.referenceCount++;
-				return true;
+				// Node name found
+				if (node.failures <= 0 || IPAddress.IsLoopback(node.address.Address))
+				{
+					// If the node does not have cluster tend errors or is localhost,
+					// reject new peer as the IP address does not need to change.
+					node.referenceCount++;
+					return true;
+				}
+
+				// Match peer hosts with the node host.
+				foreach (Host h in peer.hosts)
+				{
+					if (h.Equals(node.host))
+					{
+						// Main node host is also the same as one of the peer hosts.
+						// Peer should not be added.
+						node.referenceCount++;
+						return true;
+					}
+				}
+
+				peer.replaceNode = node;
 			}
 
 			// Check local node map for this tend iteration.
-			if (peers.nodes.TryGetValue(nodeName, out node))
+			if (peers.nodes.TryGetValue(peer.nodeName, out node))
 			{
 				node.referenceCount++;
+				peer.replaceNode = null;
 				return true;
 			}
 			return false;
