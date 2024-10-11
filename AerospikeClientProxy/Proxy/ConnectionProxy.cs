@@ -60,6 +60,10 @@ namespace Aerospike.Client.Proxy
 			Array.Copy(Payload, Offset, buffer, 0, length);
 			Offset += length;
 		}
+		public void ReadFully(byte[] buffer, int length, byte state)
+		{
+			throw new AerospikeException(NotSupported + "ReadFully");
+		}
 
 		public Task ReadFully(byte[] buffer, int length, CancellationToken token)
 		{

@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2023 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -32,6 +32,14 @@ namespace Aerospike.Client
 		{
 			this.taskId = taskId;
 			this.scan = statement.filter == null;
+		}
+
+		/// <summary>
+		/// Return task id.
+		/// </summary>
+		public ulong GetTaskId()
+		{
+			return taskId;
 		}
 
 		/// <summary>

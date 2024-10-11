@@ -153,6 +153,14 @@ namespace Aerospike.Client.Proxy
 			return null;
 		}
 
+		/// <summary>
+		/// Gets the timeout to be used in Task.Wait() calls
+		/// </summary>
+		public int GetWaitTimeout()
+		{
+			return totalTimeout <= 0 ? -1 : totalTimeout;
+		}
+
 		protected internal virtual void ParseResult(IConnection conn)
 		{
 			// Read blocks of records.  Do not use thread local receive buffer because each
@@ -906,7 +914,8 @@ namespace Aerospike.Client.Proxy
 				// Use reference equality only in hope that common namespaces/bin names are set from
 				// fixed variables.  It's fine if equality not determined correctly because it just
 				// results in more space used. The batch will still be correct.
-				if (prev != null && prev.key.ns == key.ns && prev.key.setName == key.setName && record.Equals(prev))
+				if (!policy.sendKey && prev != null && prev.key.ns == key.ns &&
+					prev.key.setName == key.setName && record.Equals(prev))
 				{
 					// Can set repeat previous namespace/bin names to save space.
 					Buffer.Offset++;
@@ -954,7 +963,8 @@ namespace Aerospike.Client.Proxy
 				// Use reference equality only in hope that common namespaces/bin names are set from
 				// fixed variables.  It's fine if equality not determined correctly because it just
 				// results in more space used. The batch will still be correct.
-				if (prev != null && prev.key.ns == key.ns && prev.key.setName == key.setName && record.Equals(prev))
+				if (!policy.sendKey && prev != null && prev.key.ns == key.ns &&
+					prev.key.setName == key.setName && record.Equals(prev))
 				{
 					// Can set repeat previous namespace/bin names to save space.
 					Buffer.DataBuffer[Buffer.Offset++] = BATCH_MSG_REPEAT;
@@ -1091,7 +1101,8 @@ namespace Aerospike.Client.Proxy
 				Buffer.Offset += key.digest.Length + 4;
 
 				// Try reference equality in hope that namespace/set for all keys is set from fixed variables.
-				if (prev != null && prev.ns == key.ns && prev.setName == key.setName)
+				if (!attr.sendKey && prev != null && prev.ns == key.ns &&
+					prev.setName == key.setName)
 				{
 					// Can set repeat previous namespace/bin names to save space.
 					Buffer.Offset++;
@@ -1164,7 +1175,8 @@ namespace Aerospike.Client.Proxy
 				Buffer.Offset += digest.Length;
 
 				// Try reference equality in hope that namespace/set for all keys is set from fixed variables.
-				if (prev != null && prev.ns == key.ns && prev.setName == key.setName)
+				if (!attr.sendKey && prev != null && prev.ns == key.ns &&
+					prev.setName == key.setName)
 				{
 					// Can set repeat previous namespace/bin names to save space.
 					Buffer.DataBuffer[Buffer.Offset++] = BATCH_MSG_REPEAT;
@@ -1234,7 +1246,8 @@ namespace Aerospike.Client.Proxy
 				Buffer.Offset += key.digest.Length + 4;
 
 				// Try reference equality in hope that namespace/set for all keys is set from fixed variables.
-				if (prev != null && prev.ns == key.ns && prev.setName == key.setName)
+				if (!attr.sendKey && prev != null && prev.ns == key.ns &&
+					prev.setName == key.setName)
 				{
 					// Can set repeat previous namespace/bin names to save space.
 					Buffer.Offset++;
@@ -1282,7 +1295,8 @@ namespace Aerospike.Client.Proxy
 				Buffer.Offset += digest.Length;
 
 				// Try reference equality in hope that namespace/set for all keys is set from fixed variables.
-				if (prev != null && prev.ns == key.ns && prev.setName == key.setName)
+				if (!attr.sendKey && prev != null && prev.ns == key.ns &&
+					prev.setName == key.setName)
 				{
 					// Can set repeat previous namespace/bin names to save space.
 					Buffer.DataBuffer[Buffer.Offset++] = BATCH_MSG_REPEAT;

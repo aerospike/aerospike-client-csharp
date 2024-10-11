@@ -1,5 +1,5 @@
 ﻿/* 
- * Copyright 2012-2023 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -62,11 +62,16 @@ namespace Aerospike.Test
 				task = nativeClient.DropIndex(policy, args.ns, args.set, indexName);
 				task.Wait();
 
-				task = nativeClient.CreateIndex(policy, args.ns, args.set, indexName, binName, IndexType.NUMERIC);
-				task.Wait();
+				// Ensure all nodes have dropped the index.
+				Node[] nodes = client.Nodes.ToArray();
+				string cmd = IndexTask.BuildStatusCommand(args.ns, indexName);
 
-				task = nativeClient.DropIndex(policy, args.ns, args.set, indexName);
-				task.Wait();
+				foreach (Node node in nodes)
+				{
+					string response = Info.Request(node, cmd);
+					int code = Info.ParseResultCode(response);
+					Assert.AreEqual(code, 201);
+				}
 			}
 			else if (args.testAsyncAwait)
 			{

@@ -4,7 +4,7 @@
   "ProxyHost": "localhost", 
   "ProxyPort": 4000,
   "TestProxy": false,
-  "TestAsyncAwait": true,
+  "TestAsyncAwait": false,
   "ClusterName": "",
   "Namespace": "test",
   "Set": "test",

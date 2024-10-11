@@ -217,6 +217,7 @@ namespace Aerospike.Client
 			{
 				node = (AsyncNode)GetNode(cluster);
 				node.ValidateErrorCount();
+
 				if (metricsEnabled)
 				{
 					metricsWatch = ValueStopwatch.StartNew();
@@ -239,38 +240,38 @@ namespace Aerospike.Client
 			catch (AerospikeException.Connection aec)
 			{
 				ErrorCount++;
-				node.AddError();
+				node?.AddError();
 				ConnectionFailed(aec);
 			}
 			catch (AerospikeException.Backoff aeb)
 			{
 				ErrorCount++;
-				node.AddError();
+				node?.AddError();
 				Backoff(aeb);
 			}
 			catch (AerospikeException ae)
 			{
 				ErrorCount++;
-				node.AddError();
+				node?.AddError();
 				FailOnApplicationError(ae);
 			}
 			catch (SocketException se)
 			{
 				ErrorCount++;
-				node.AddError();
+				node?.AddError();
 				OnSocketError(se.SocketErrorCode);
 			}
 			catch (IOException ioe)
 			{
 				// IO errors are considered temporary anomalies.  Retry.
 				ErrorCount++;
-				node.AddError();
+				node?.AddError();
 				ConnectionFailed(new AerospikeException.Connection(ioe));
 			}
 			catch (Exception e)
 			{
 				ErrorCount++;
-				node.AddError();
+				node?.AddError();
 				FailOnApplicationError(new AerospikeException(e));
 			}
 		}
@@ -295,7 +296,7 @@ namespace Aerospike.Client
 
 					AdminCommand command = new AdminCommand(dataBuffer, dataOffset);
 					dataLength = command.SetAuthenticate(cluster, token);
-					conn.Send(dataBuffer, dataOffset, dataLength - dataOffset);
+					conn?.Send(dataBuffer, dataOffset, dataLength - dataOffset);
 					return;
 				}
 			}
@@ -305,7 +306,7 @@ namespace Aerospike.Client
 		private void ConnectionReady()
 		{
 			WriteBuffer();
-			conn.Send(dataBuffer, dataOffset, dataLength - dataOffset);
+			conn?.Send(dataBuffer, dataOffset, dataLength - dataOffset);
 		}
 
 		protected internal sealed override int SizeBuffer()
@@ -378,7 +379,8 @@ namespace Aerospike.Client
 			{
 				eventReceived = false;
 			}
-			conn.Receive(dataBuffer, segment.offset, 8);
+
+			conn?.Receive(dataBuffer, segment.offset, 8);
 		}
 
 		public void ReceiveComplete()
@@ -399,7 +401,7 @@ namespace Aerospike.Client
 				{
 					// Some server versions returned zero length groups for batch/scan/query.
 					// Receive again to retrieve next group.
-					conn.Receive(dataBuffer, dataOffset, 8);
+					conn?.Receive(dataBuffer, dataOffset, 8);
 					return;
 				}
 
@@ -414,7 +416,7 @@ namespace Aerospike.Client
 				}
 
 				dataLength = dataOffset + length;
-				conn.Receive(dataBuffer, dataOffset, length);
+				conn?.Receive(dataBuffer, dataOffset, length);
 			}
 			else
 			{
@@ -443,7 +445,7 @@ namespace Aerospike.Client
 					return;
 				}
 
-				conn.UpdateLastUsed();
+				conn?.UpdateLastUsed();
 
 				if (compressed)
 				{
@@ -464,7 +466,7 @@ namespace Aerospike.Client
 		public void ReceiveNext()
 		{
 			inHeader = true;
-			conn.Receive(dataBuffer, segment.offset, 8);
+			conn?.Receive(dataBuffer, segment.offset, 8);
 		}
 
 		public void OnError(Exception e)
@@ -719,7 +721,7 @@ namespace Aerospike.Client
 						node.CloseAsyncConnOnError(conn);
 					}
 
-					node.AddTimeout();
+					node?.AddTimeout();
 
 					// Notify user immediately in this timeout thread.
 					// Transaction thread will cleanup eventArgs.
@@ -752,7 +754,7 @@ namespace Aerospike.Client
 						node.CloseAsyncConnOnError(conn);
 					}
 
-					node.AddTimeout();
+					node?.AddTimeout();
 				}
 				return false;  // Do not put back on timeout queue.
 			}

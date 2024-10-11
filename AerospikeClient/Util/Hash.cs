@@ -1,4 +1,4 @@
-/* 
+/*
  * Copyright 2012-2018 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
@@ -42,11 +42,9 @@ namespace Aerospike.Client
 		public static byte[] ComputeHash(byte[] buffer, int length)
 		{
 			// Benchmarks show creating instance every time is faster than thread local
-			// implementation because instance implementation puts Ripemd160 arrays on 
+			// implementation because instance implementation puts ValueRipemd160 on
 			// stack (fast) and eliminates the overhead of retrieving thread local instance.
-			Ripemd160 ripe = new Ripemd160();
-			ripe.Add(buffer, 0, length);
-			return ripe.HashDigest();
+			return ValueRipemd160.ComputeHashDigest(buffer.AsSpan(0, length));
 		}
 #endif
 	}

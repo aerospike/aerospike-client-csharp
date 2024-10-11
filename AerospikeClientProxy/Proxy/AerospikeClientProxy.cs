@@ -22,6 +22,7 @@ using System.Diagnostics;
 using System.Diagnostics.Metrics;
 using System.Net;
 using System.Reflection;
+using System.Runtime.ExceptionServices;
 using static Aerospike.Client.AerospikeException;
 
 namespace Aerospike.Client.Proxy
@@ -207,8 +208,10 @@ namespace Aerospike.Client.Proxy
                 Credentials = hosts[0].tlsName == null
 								? null
 								: ChannelCredentials.Create(new SslCredentials(), credentials),
-				LoggerFactory = loggerFactory                
-            });
+				LoggerFactory = loggerFactory,
+				MaxReceiveMessageSize = 128 * 1024 * 1024,
+				MaxRetryBufferSize = 128 * 1024 * 1024
+			});
 
 			this.AuthTokenManager.SetChannel(Channel);
 		}
@@ -1380,7 +1383,11 @@ namespace Aerospike.Client.Proxy
 		public ExecuteTask Execute(WritePolicy policy, Statement statement, params Operation[] operations)
 		{
 			policy ??= writePolicyDefault;
-			statement.Operations = operations;
+
+			if (operations.Length > 0)
+			{
+				statement.Operations = operations;
+			}
 
 			ulong taskId = statement.PrepareTaskId();
 			Buffer buffer = new();
@@ -1499,7 +1506,23 @@ namespace Aerospike.Client.Proxy
 			PartitionTracker tracker = new(policy, statement, (Node[])null, partitionFilter);
 			RecordSet recordSet = new(null, policy.recordQueueSize, cancellationToken);
 			QueryPartitionCommandProxy command = new(buffer, Channel, policy, statement, tracker, partitionFilter, recordSet);
-			command.Execute(cancellationToken).Wait(policy.totalTimeout, cancellationToken);
+
+			try
+			{
+				var completedInTime = command.Execute(cancellationToken).Wait(command.GetWaitTimeout(), cancellationToken);
+
+				if (!completedInTime)
+				{
+					throw new AerospikeException.Timeout(policy, true);
+				}
+			}
+			catch (AggregateException ae)
+			{
+				foreach (var ex in ae.InnerExceptions)
+				{
+					ExceptionDispatchInfo.Capture(ex).Throw();
+				}
+			}
 			return recordSet;
 		}
 

@@ -181,6 +181,50 @@ namespace Aerospike.Client
 			}
 		}
 
+		public void ReadFully(byte[] buffer, int length, byte state)
+		{
+			int count = 0;
+			if (socket.ReceiveTimeout > 0)
+			{
+				// Check if data is available for reading.
+				// Poll is used because the timeout value is respected under 500ms.
+				// The Receive method does not timeout until after 500ms.
+				if (!socket.Poll(socket.ReceiveTimeout * 1000, SelectMode.SelectRead))
+				{
+					throw new ReadTimeout(buffer, 0, length, state);
+				}
+			}
+
+			int pos = 0;
+
+			while (pos < length)
+			{
+				try
+				{
+					count = socket.Receive(buffer, pos, length - pos, SocketFlags.None);
+				}
+				catch (SocketException se)
+				{
+					if (se.SocketErrorCode == SocketError.TimedOut)
+					{
+						throw new ReadTimeout(buffer, pos, length, state);
+					}
+					throw;
+				}
+
+				if (count <= 0)
+				{
+					throw new SocketException((int)SocketError.ConnectionReset);
+				}
+				pos += count;
+			}
+		}
+
+		public int Read(byte[] buffer, int pos, int length)
+		{
+			return socket.Receive(buffer, pos, length - pos, SocketFlags.None);
+		}
+
 		public virtual Stream GetStream()
 		{
 			return new NetworkStream(socket);
@@ -267,6 +311,22 @@ namespace Aerospike.Client
 				throw new AerospikeException.Connection("Failed to resolve " + host);
 			}
 #endif
+		}
+
+		public class ReadTimeout : Exception
+		{
+			public readonly byte[] buffer;
+			public readonly int offset;
+			public readonly int length;
+			public readonly byte state;
+
+			public ReadTimeout(byte[] buffer, int offset, int length, byte state)
+			{
+				this.buffer = buffer;
+				this.offset = offset;
+				this.length = length;
+				this.state = state;
+			}
 		}
 	}
 }

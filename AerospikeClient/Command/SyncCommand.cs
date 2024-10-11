@@ -26,6 +26,11 @@ namespace Aerospike.Client
 		internal int iteration = 1;
 		internal int commandSentCounter;
 		internal DateTime deadline;
+		protected int resultCode;
+		protected int generation;
+		protected int expiration;
+		protected int fieldCount;
+		protected int opCount;
 
 		/// <summary>
 		/// Default constructor.
@@ -88,7 +93,7 @@ namespace Aerospike.Client
 					{
 						metricsWatch = ValueStopwatch.StartNew();
 					}
-					Connection conn = node.GetConnection(socketTimeout);
+					Connection conn = node.GetConnection(socketTimeout, policy.TimeoutDelay);
 
 					try
 					{
@@ -147,6 +152,21 @@ namespace Aerospike.Client
 							node.AddError();
 							throw;
 						}
+					}
+					catch (Connection.ReadTimeout crt)
+					{
+						if (policy.TimeoutDelay > 0)
+						{
+							cluster.RecoverConnection(new ConnectionRecover(conn, node, policy.TimeoutDelay, crt, IsSingle()));
+							conn = null;
+						}
+						else
+						{
+							node.CloseConnection(conn);
+						}
+						exception = new AerospikeException.Timeout(policy, true);
+						isClientTimeout = true;
+						node.AddTimeout();
 					}
 					catch (SocketException se)
 					{
@@ -207,6 +227,13 @@ namespace Aerospike.Client
 					exception = new AerospikeException.Connection(ioe);
 					isClientTimeout = false;
 					node.AddError();
+				}
+				catch (Connection.ReadTimeout)
+				{
+					// Connection already handled.
+					exception = new AerospikeException.Timeout(policy, true);
+					isClientTimeout = true;
+					node.AddTimeout();
 				}
 				catch (AerospikeException.Connection ce)
 				{
@@ -324,6 +351,55 @@ namespace Aerospike.Client
 			ByteUtil.LongToBytes(size, dataBuffer, 0);
 		}
 
+		protected internal void ParseHeader(IConnection conn)
+		{
+			// Read header.
+			conn.ReadFully(dataBuffer, 8, Command.STATE_READ_HEADER);
+
+			long sz = ByteUtil.BytesToLong(dataBuffer, 0);
+			int receiveSize = (int)(sz & 0xFFFFFFFFFFFFL);
+
+			if (receiveSize <= 0)
+			{
+				throw new AerospikeException("Invalid receive size: " + receiveSize);
+			}
+
+			SizeBuffer(receiveSize);
+			conn.ReadFully(dataBuffer, receiveSize, Command.STATE_READ_DETAIL);
+			conn.UpdateLastUsed();
+
+			ulong type = (ulong)((sz >> 48) & 0xff);
+
+			if (type == Command.AS_MSG_TYPE)
+			{
+				dataOffset = 5;
+			}
+			else if (type == Command.MSG_TYPE_COMPRESSED)
+			{
+				int usize = (int)ByteUtil.BytesToLong(dataBuffer, 0);
+				byte[] ubuf = new byte[usize];
+
+				ByteUtil.Decompress(dataBuffer, 8, receiveSize, ubuf, usize);
+				dataBuffer = ubuf;
+				dataOffset = 13;
+			}
+			else
+			{
+				throw new AerospikeException("Invalid proto type: " + type + " Expected: " + Command.AS_MSG_TYPE);
+			}
+
+			this.resultCode = dataBuffer[dataOffset];
+			dataOffset++;
+			this.generation = ByteUtil.BytesToInt(dataBuffer, dataOffset);
+			dataOffset += 4;
+			this.expiration = ByteUtil.BytesToInt(dataBuffer, dataOffset);
+			dataOffset += 8;
+			this.fieldCount = ByteUtil.BytesToShort(dataBuffer, dataOffset);
+			dataOffset += 2;
+			this.opCount = ByteUtil.BytesToShort(dataBuffer, dataOffset);
+			dataOffset += 2;
+		}
+
 		protected internal sealed override void SetLength(int length)
 		{
 			dataOffset = length;
@@ -346,6 +422,11 @@ namespace Aerospike.Client
 		protected internal virtual bool IsWrite()
 		{
 			return false;
+		}
+
+		protected virtual bool IsSingle()
+		{
+			return true;
 		}
 
 		protected internal abstract Node GetNode();

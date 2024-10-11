@@ -1,4 +1,4 @@
-/* 
+/*
  * Copyright 2012-2018 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
@@ -14,7 +14,7 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-/* 
+/*
  * Copyright (c) 2000 - 2015 The Legion of the Bouncy Castle Inc. (http://www.bouncycastle.org)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of this software
@@ -25,13 +25,14 @@
  *
  * The above copyright notice and this permission notice shall be included in all copies or
  * substantial portions of the Software.
- * 
+ *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING
  * BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
  * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
  * DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
+
 using System;
 
 namespace Aerospike.Client
@@ -39,22 +40,47 @@ namespace Aerospike.Client
 	/// <summary>
 	/// RIPEMD-160 hash.  Algorithm provided by Hans Dobbertin, Antoon Bosselaers, and Bart Preneel:
 	/// https://homes.esat.kuleuven.be/~bosselae/ripemd160.html
-	/// 
+	///
 	/// This is an optimized implementation based on Bouncy Castle's RipeMD160Digest.cs:
 	/// http://www.bouncycastle.org/csharp
 	/// </summary>
-	public sealed class Ripemd160
+	public ref struct ValueRipemd160
 	{
-		private uint[] X = new uint[16];
-		private byte[] xBuf = new byte[4];
-		private int xOff;
-		private int xBufOff;
-		private long byteCount;
+		private Span<uint> X;
+		private Span<byte> xBuf;
+		private int xOff = 0;
+		private int xBufOff = 0;
+		private long byteCount = 0;
 		private uint H0 = 0x67452301;
 		private uint H1 = 0xefcdab89;
 		private uint H2 = 0x98badcfe;
 		private uint H3 = 0x10325476;
 		private uint H4 = 0xc3d2e1f0;
+
+		public static byte[] ComputeHashDigest(ReadOnlySpan<byte> input)
+		{
+			Span<uint> x = stackalloc uint[16];
+			Span<byte> xBuf = stackalloc byte[4];
+			// The content of the memory allocated by stackalloc is undefined, so we explicitly clear it.
+			x.Clear();
+			xBuf.Clear();
+			ValueRipemd160 ripe = new(x, xBuf);
+			ripe.Add(input);
+			return ripe.HashDigest();
+		}
+
+		public ValueRipemd160()
+		{
+			// fallback implementation
+			X = new uint[16];
+			xBuf = new byte[4];
+		}
+
+		public ValueRipemd160(Span<uint> x, Span<byte> xBuf)
+		{
+			this.X = x;
+			this.xBuf = xBuf;
+		}
 
 		/// <summary>
 		/// Reset parameters to start new hash.
@@ -63,8 +89,8 @@ namespace Aerospike.Client
 		/// </summary>
 		public void Reset()
 		{
-			Array.Clear(X, 0, X.Length);
-			Array.Clear(xBuf, 0, xBuf.Length);
+			X.Clear();
+			xBuf.Clear();
 			xOff = 0;
 			xBufOff = 0;
 			byteCount = 0;
@@ -78,15 +104,15 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Add bytes to be hashed.
 		/// </summary>
-		public void Add(byte[] input, int inOff, int length)
+		public void Add(ReadOnlySpan<byte> input)
 		{
 			// fill the current word
 			int i = 0;
 			if (xBufOff != 0)
 			{
-				while (i < length)
+				while (i < input.Length)
 				{
-					xBuf[xBufOff++] = input[inOff + i++];
+					xBuf[xBufOff++] = input[i++];
 					if (xBufOff == 4)
 					{
 						ProcessWord(xBuf, 0);
@@ -97,25 +123,25 @@ namespace Aerospike.Client
 			}
 
 			// process whole words.
-			int limit = ((length - i) & ~3) + i;
+			int limit = ((input.Length - i) & ~3) + i;
 			for (; i < limit; i += 4)
 			{
-				ProcessWord(input, inOff + i);
+				ProcessWord(input, i);
 			}
 
 			// load in the remainder.
-			while (i < length)
+			while (i < input.Length)
 			{
-				xBuf[xBufOff++] = input[inOff + i++];
+				xBuf[xBufOff++] = input[i++];
 			}
 
-			byteCount += length;
+			byteCount += input.Length;
 		}
 
 		/// <summary>
 		/// Add byte to be hashed.
 		/// </summary>
-		public void Add(byte input)
+		private void Add(byte input)
 		{
 			xBuf[xBufOff++] = input;
 
@@ -132,18 +158,19 @@ namespace Aerospike.Client
 		/// Return hash digest for bytes that have been added up to this point.
 		/// </summary>
 		public byte[] HashDigest()
-        {
-            long bitLength = (byteCount << 3);
+		{
+			long bitLength = (byteCount << 3);
 
-            // add the pad bytes.
-            Add((byte)128);
+			// add the pad bytes.
+			Add((byte)128);
 
 			while (xBufOff != 0)
 			{
 				Add((byte)0);
 			}
-            ProcessLength(bitLength);
-            ProcessBlock();
+
+			ProcessLength(bitLength);
+			ProcessBlock();
 
 			return new byte[]
 			{
@@ -168,14 +195,14 @@ namespace Aerospike.Client
 				(byte)(H4 >> 16),
 				(byte)(H4 >> 24)
 			};
-        }
+		}
 
-		private void ProcessWord(byte[] input, int inOff)
+		private void ProcessWord(ReadOnlySpan<byte> input, int inOff)
 		{
 			X[xOff++] = ((uint)input[inOff]) |
-						(((uint)input[inOff + 1]) << 8) | 
-						(((uint)input[inOff + 2]) << 16) | 
-						(((uint)input[inOff + 3]) << 24);
+			            (((uint)input[inOff + 1]) << 8) |
+			            (((uint)input[inOff + 2]) << 16) |
+			            (((uint)input[inOff + 3]) << 24);
 
 			if (xOff == 16)
 			{
@@ -193,7 +220,7 @@ namespace Aerospike.Client
 			X[14] = (uint)(bitLength & 0xffffffff);
 			X[15] = (uint)((ulong)bitLength >> 32);
 		}
-		
+
 		private void ProcessBlock()
 		{
 			uint aa = H0, aaa = H0;
@@ -1025,7 +1052,7 @@ namespace Aerospike.Client
 
 			// Reset the offset and clean out the word buffer.
 			xOff = 0;
-			Array.Clear(X, 0, X.Length);
+			X.Clear();
 		}
 	}
 }

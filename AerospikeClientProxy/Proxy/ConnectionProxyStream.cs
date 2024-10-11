@@ -61,6 +61,11 @@ namespace Aerospike.Client.Proxy
 			throw new NotImplementedException();
 		}
 
+		public void ReadFully(byte[] buffer, int length, byte state)
+		{
+			throw new AerospikeException(NotSupported + "ReadFully");
+		}
+
 		public async Task ReadFully(byte[] buffer, int length, CancellationToken token)
 		{
 			BufferOffset = 0;

@@ -115,6 +115,14 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
+		/// Copy query policy from another policy.
+		/// </summary>
+		public QueryPolicy(Policy other)
+			: base(other)
+		{
+		}
+
+		/// <summary>
 		/// Default constructor. Disable totalTimeout and set maxRetries.
 		/// <para>
 		/// The latest servers support retries on individual data partitions.
@@ -129,7 +137,7 @@ namespace Aerospike.Client
 		/// all query results because a single partition was missed.
 		/// </para>
 		/// </summary>
-		public QueryPolicy()
+		public QueryPolicy() : base()
 		{
 			base.totalTimeout = 0;
 			base.maxRetries = 5;

@@ -148,7 +148,7 @@ namespace Aerospike.Client
 
 			sb.Append(now.ToString(timestampFormat));
 			sb.Append(" header(1)");
-			sb.Append(" cluster[name,cpu,mem,invalidNodeCount,tranCount,retryCount,delayQueueTimeoutCount,asyncThreadsInUse,asyncCompletionPortsInUse,node[]]");
+			sb.Append(" cluster[name,cpu,mem,recoverQueueSize,invalidNodeCount,tranCount,retryCount,delayQueueTimeoutCount,asyncThreadsInUse,asyncCompletionPortsInUse,node[]]");
 			sb.Append(" node[name,address,port,syncConn,asyncConn,errors,timeouts,latency[]]");
 			sb.Append(" conn[inUse,inPool,opened,closed]");
 			sb.Append(" latency(");
@@ -176,6 +176,8 @@ namespace Aerospike.Client
 			sb.Append(',');
 			sb.Append(mem);
 			sb.Append(',');
+			sb.Append(cluster.GetRecoverQueueSize());
+			sb.Append(',');
 			sb.Append(cluster.InvalidNodeCount); // Cumulative. Not reset on each interval.
 			sb.Append(',');
 			sb.Append(cluster.GetTranCount());  // Cumulative. Not reset on each interval.
@@ -183,7 +185,7 @@ namespace Aerospike.Client
 			sb.Append(cluster.GetRetryCount()); // Cumulative. Not reset on each interval.
 			sb.Append(',');
 			sb.Append(cluster.GetDelayQueueTimeoutCount()); // Cumulative. Not reset on each interval.
-			sb.Append(",");
+			sb.Append(',');
 
 			ThreadPool.GetMaxThreads(out int workerThreadsMax, out int completionPortThreadsMax);
 			ThreadPool.GetAvailableThreads(out int workerThreads, out int completionPortThreads);

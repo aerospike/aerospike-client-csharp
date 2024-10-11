@@ -1,5 +1,5 @@
 ﻿/* 
- * Copyright 2012-2023 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -35,6 +35,36 @@ namespace Aerospike.Test
 			{
 				throw new NotImplementedException();
 			}
+		}
+
+		[TestMethod]
+		public void ErrorResponse()
+		{
+			Info.Error error;
+
+			error = new Info.Error("FaIL:201:index not found");
+			Assert.AreEqual(error.Code, 201);
+			Assert.AreEqual(error.Message, "index not found");
+
+			error = new Info.Error("ERRor:201:index not found");
+			Assert.AreEqual(error.Code, 201);
+			Assert.AreEqual(error.Message, "index not found");
+
+			error = new Info.Error("error::index not found ");
+			Assert.AreEqual(error.Code, ResultCode.CLIENT_ERROR);
+			Assert.AreEqual(error.Message, "index not found");
+
+			error = new Info.Error("error: index not found ");
+			Assert.AreEqual(error.Code, ResultCode.CLIENT_ERROR);
+			Assert.AreEqual(error.Message, "index not found");
+
+			error = new Info.Error("error:99");
+			Assert.AreEqual(error.Code, 99);
+			Assert.AreEqual(error.Message, "error:99");
+
+			error = new Info.Error("generic message");
+			Assert.AreEqual(error.Code, ResultCode.CLIENT_ERROR);
+			Assert.AreEqual(error.Message, "generic message");
 		}
 
 		private void GetServerConfig(Node node)

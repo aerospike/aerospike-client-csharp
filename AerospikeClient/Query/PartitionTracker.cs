@@ -355,7 +355,12 @@ namespace Aerospike.Client
 			return recordCount == -1 || Interlocked.Increment(ref recordCount) <= maxRecords;
 		}
 
-		public bool IsComplete(Cluster cluster, Policy policy)
+		public bool IsClusterComplete(Cluster cluster, Policy policy)
+		{
+			return IsComplete(cluster.hasPartitionQuery, policy, this.nodePartitionsList);
+		}
+
+		public bool IsComplete(bool hasPartitionQuery, Policy policy, List<NodePartitions> nodePartitionsList)
 		{
 			long recCount = 0;
 			int partsUnavailable = 0;
@@ -393,7 +398,7 @@ namespace Aerospike.Client
 				}
 				else
 				{
-					if (cluster.hasPartitionQuery)
+					if (hasPartitionQuery)
 					{
 						// Server version >= 6.0 will return all records for each node up to
 						// that node's max. If node's record count reached max, there still

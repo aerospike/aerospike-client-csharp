@@ -36,6 +36,11 @@ namespace Aerospike.Client
 		public readonly int threadsInUse;
 
 		/// <summary>
+		/// Number of connections residing in sync connection shutdown queue.
+		/// </summary>
+		public readonly int RecoverQueueSize;
+
+		/// <summary>
 		/// Number of active async completion ports.
 		/// </summary>
 		public readonly int completionPortsInUse;
@@ -68,6 +73,7 @@ namespace Aerospike.Client
 			ThreadPool.GetAvailableThreads(out workerThreads, out completionPortThreads);
 
 			this.threadsInUse = workerThreadsMax - workerThreads;
+			this.RecoverQueueSize = cluster.GetRecoverQueueSize();
 			this.completionPortsInUse = completionPortThreadsMax - completionPortThreads;
         }
 
@@ -87,6 +93,8 @@ namespace Aerospike.Client
 			}
 
 			sb.Append("threadsInUse: " + threadsInUse);
+			sb.Append(System.Environment.NewLine);
+			sb.Append("recoverQueueSize: " + RecoverQueueSize);
 			sb.Append(System.Environment.NewLine);
 			sb.Append("completionPortsInUse: " + completionPortsInUse);
 			sb.Append(System.Environment.NewLine);

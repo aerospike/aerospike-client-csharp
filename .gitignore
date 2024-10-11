@@ -13,3 +13,6 @@ TestResults/
 coverage/
 .config
 tools/
+
+# Rider related files
+.idea/
