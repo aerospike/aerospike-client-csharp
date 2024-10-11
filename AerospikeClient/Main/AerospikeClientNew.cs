@@ -15,9 +15,12 @@
  * the License.
  */
 using System.Buffers;
+using System.Collections.Generic;
 using System.Diagnostics;
+using System.Diagnostics.Metrics;
 using System.Reflection;
 using System.Text;
+using System.Threading.Channels;
 
 namespace Aerospike.Client
 {
@@ -1574,7 +1577,7 @@ namespace Aerospike.Client
 		/// <param name="partitionFilter">filter on a subset of data partitions</param>
 		/// <param name="token">cancellation token</param>
 		/// <exception cref="AerospikeException">if query fails</exception>
-		public async Task<IRecordSet> QueryPartitions
+		public async Task<RecordSetNew> QueryPartitions
 		(
 			QueryPolicy policy,
 			Statement statement,
@@ -1582,20 +1585,93 @@ namespace Aerospike.Client
 			CancellationToken token
 		)
 		{
-			throw new NotImplementedException();
 			policy ??= QueryPolicyDefault;
 
 			Node[] nodes = Cluster.ValidateNodes();
+			var recordSet = new RecordSetNew(policy.recordQueueSize, token); // Needs to be replaced since we have no executor
 
 			if (Cluster.hasPartitionQuery || statement.filter == null)
 			{
 				PartitionTracker tracker = new(policy, statement, nodes, partitionFilter);
-				QueryPartitionExecutor executor = new(Cluster, policy, statement, nodes.Length, tracker);
-				return executor.RecordSet;
+
+				// Initialize maximum number of nodes to query in parallel.
+				List<NodePartitions> list = tracker.AssignPartitionsToNodes(Cluster, statement.ns);
+				int maxConcurrentThreads = (policy.maxConcurrentNodes == 0 || policy.maxConcurrentNodes >= list.Count) ? list.Count : policy.maxConcurrentNodes;
+				
+				// TODO should we check for one maxConcurrentThread and do something different?
+				var channel = Channel.CreateBounded<QueryPartitionCommandNew>( // create channel somewhere else, partition possibly? need using clause so can be disposed
+					new BoundedChannelOptions(maxConcurrentThreads)
+					{
+						SingleWriter = true,
+						SingleReader = false,
+						AllowSynchronousContinuations = true
+					});
+				var prepareTask = PrepareQueryPartition(channel, recordSet, bufferPool, Cluster, policy, statement, tracker, list, token);
+				var executeTask = ExecuteQueryPartition(channel, recordSet, tracker, token);
+
+				await Task.WhenAll(prepareTask, executeTask);
+
+				if (tracker.IsClusterComplete(Cluster, policy))
+				{
+					// All partitions received.
+					//recordSet.Put(RecordSet.END); // How to add last entry?
+				}
 			}
 			else
 			{
 				throw new AerospikeException(ResultCode.PARAMETER_ERROR, "QueryPartitions() not supported");
+			}
+
+			return recordSet;
+		}
+
+		private static async Task PrepareQueryPartition(
+			Channel<QueryPartitionCommandNew> channel,
+			RecordSetNew recordSet, 
+			ArrayPool<byte> bufferPool, 
+			Cluster cluster, 
+			QueryPolicy policy, 
+			Statement statement, 
+			PartitionTracker tracker,
+			List<NodePartitions> list,
+			CancellationToken token)
+		{
+			cluster.AddTran();
+			
+			ulong taskId = statement.PrepareTaskId();
+			// Produce query commands
+			for (int i = 0; i < list.Count; i++)
+			{
+				QueryPartitionCommandNew queryCommand = new(bufferPool, cluster, policy, statement, taskId, recordSet, tracker, list[i]);
+				await channel.Writer.WriteAsync(queryCommand, token);
+				taskId = RandomShift.ThreadLocalInstance.NextLong(); // Need different way to generate id
+			}
+			channel.Writer.Complete();
+		}
+
+		private static async Task ExecuteQueryPartition(Channel<QueryPartitionCommandNew> channel, RecordSetNew recordSet, PartitionTracker tracker, CancellationToken token)
+		{
+			// Consume/execute query commands
+			while (await channel.Reader.WaitToReadAsync(token))
+			{
+				while (channel.Reader.TryRead(out var queryCommand))
+				{
+					try
+					{
+						await queryCommand.Execute(token);
+					}
+					catch (Exception exception)
+					{
+						// Wrap exception because throwing will reset the exception's stack trace.
+						// Wrapped exceptions preserve the stack trace in the inner exception.
+						AerospikeException ae = new("Query Failed: " + exception.Message, exception);
+						tracker.PartitionError();
+						ae.Iteration = tracker.iteration;
+						//token
+						// Trigger cancellation
+						throw ae;
+					}
+				}
 			}
 		}
 

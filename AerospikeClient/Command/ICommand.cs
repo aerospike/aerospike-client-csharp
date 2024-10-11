@@ -47,8 +47,8 @@ namespace Aerospike.Client
 
 		public void WriteBuffer();
 		public Task ParseResult(IConnection conn, CancellationToken token);
-		public bool ParseGroup(int receiveSize);
-		public bool ParseRow();
+		public KeyRecord ParseGroup(int receiveSize);
+		public KeyRecord ParseRow();
 
 		public bool PrepareRetry(bool timeout);
 

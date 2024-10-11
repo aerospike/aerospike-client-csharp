@@ -131,11 +131,11 @@ namespace Aerospike.Client
 			return false;
 		}
 
-		public bool ParseGroup(int receiveSize)
+		public KeyRecord ParseGroup(int receiveSize)
 		{
 			throw new NotImplementedException();
 		}
-		public bool ParseRow()
+		public KeyRecord ParseRow()
 		{
 			throw new NotImplementedException();
 		}

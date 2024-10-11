@@ -16,10 +16,11 @@
  */
 
 using System.Buffers;
+using System.Xml.Linq;
 
 namespace Aerospike.Client
 {
-	internal class ReadHeaderCommandNew : ICommand
+	internal class QueryPartitionCommandNew : ICommand
 	{
 		public ArrayPool<byte> BufferPool { get; set; }
 		public int ServerTimeout { get; set; }
@@ -44,16 +45,40 @@ namespace Aerospike.Client
 		public int OpCount { get; set; }
 		public bool IsOperation { get; set; }
 
-		private readonly Key key;
-		private readonly Partition partition;
-		public Record Record { get; private set; }
+		public Statement Statement { get; set; }
+		private readonly ulong taskId;
+		private readonly RecordSetNew recordSet;
+		public PartitionTracker Tracker { get; set; }
+		public NodePartitions NodePartitions { get; set; }
 
-		public ReadHeaderCommandNew(ArrayPool<byte> bufferPool, Cluster cluster, Policy policy, Key key)
+		public QueryPartitionCommandNew
+		(
+			ArrayPool<byte> bufferPool, 
+			Cluster cluster, 
+			Policy policy,
+			Statement statement,
+			ulong taskId,
+			RecordSetNew recordSet,
+			PartitionTracker tracker,
+			NodePartitions nodePartitions
+		)
 		{
 			this.SetCommonProperties(bufferPool, cluster, policy);
-			this.key = key;
-			this.partition = Partition.Read(cluster, policy, key);
-			cluster.AddTran();
+			this.Statement = statement;
+			this.taskId = taskId;
+			this.recordSet = recordSet;
+			this.Tracker = tracker;
+			this.NodePartitions = nodePartitions;
+		}
+
+		public Latency.LatencyType GetLatencyType()
+		{
+			return Latency.LatencyType.QUERY;
+		}
+
+		public bool PrepareRetry(bool timeout)
+		{
+			return false; // TODO
 		}
 
 		public bool IsWrite()
@@ -63,58 +88,57 @@ namespace Aerospike.Client
 
 		public Node GetNode()
 		{
-			return partition.GetNodeRead(Cluster);
-		}
-
-		public Latency.LatencyType GetLatencyType()
-		{
-			return Latency.LatencyType.READ;
+			return null; // TODO
 		}
 
 		public void WriteBuffer()
 		{
-			this.SetReadHeader(Policy, key);
+			this.SetQuery(Cluster, Policy, Statement, taskId, false, NodePartitions);
 		}
 
 		public async Task ParseResult(IConnection conn, CancellationToken token)
 		{
-			token.ThrowIfCancellationRequested();
-
-			// Read header.		
-			await conn.ReadFully(DataBuffer, CommandHelpers.MSG_TOTAL_HEADER_SIZE, token);
-			conn.UpdateLastUsed();
-
-			int resultCode = DataBuffer[13];
-
-			if (resultCode == 0)
-			{
-				int generation = ByteUtil.BytesToInt(DataBuffer, 14);
-				int expiration = ByteUtil.BytesToInt(DataBuffer, 18);
-				Record = new Record(null, generation, expiration);
-				return;
-			}
-
-			if (resultCode == Client.ResultCode.KEY_NOT_FOUND_ERROR)
-			{
-				return;
-			}
-
-			if (resultCode == Client.ResultCode.FILTERED_OUT)
-			{
-				if (Policy.failOnFilteredOut)
-				{
-					throw new AerospikeException(resultCode);
-				}
-				return;
-			}
-
-			throw new AerospikeException(resultCode);
+			await CommandHelpers.ParseResult(this, conn, token);
 		}
 
-		public bool PrepareRetry(bool timeout)
+		public KeyRecord ParseGroup(int receiveSize)
 		{
-			partition.PrepareRetryRead(timeout);
-			return true;
+			return CommandHelpers.ParseGroup(this, receiveSize);
+		}
+
+		public KeyRecord ParseRow()
+		{
+			ulong bval;
+			Key key = this.ParseKey(FieldCount, out bval);
+
+			if ((Info3 & Command.INFO3_PARTITION_DONE) != 0)
+			{
+				// When an error code is received, mark partition as unavailable
+				// for the current round. Unavailable partitions will be retried
+				// in the next round. Generation is overloaded as partitionId.
+				if (ResultCode != 0)
+				{
+					Tracker.PartitionUnavailable(NodePartitions, Generation);
+				}
+				return null;
+			}
+
+			if (ResultCode != 0)
+			{
+				throw new AerospikeException(ResultCode);
+			}
+
+			Record record = this.ParseRecord();
+
+			KeyRecord keyRecord = null;
+
+			if (Tracker.AllowRecord())
+			{
+				keyRecord = new(key, record);
+
+				Tracker.SetLast(NodePartitions, key, bval);
+			}
+			return keyRecord;
 		}
 
 		public bool RetryBatch
@@ -129,15 +153,6 @@ namespace Aerospike.Client
 		{
 			// Override this method in batch to regenerate node assignments.
 			return false;
-		}
-
-		public KeyRecord ParseGroup(int receiveSize)
-		{
-			throw new NotImplementedException();
-		}
-		public KeyRecord ParseRow()
-		{
-			throw new NotImplementedException();
 		}
 	}
 }

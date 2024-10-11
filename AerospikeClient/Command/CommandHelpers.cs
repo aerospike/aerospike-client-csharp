@@ -22,6 +22,10 @@ using System.Net.Sockets;
 using Neo.IronLua;
 using System.Threading.Tasks;
 using System.Threading;
+using System.Diagnostics;
+using System.Numerics;
+using System.Threading.Channels;
+using System;
 
 namespace Aerospike.Client
 {
@@ -114,6 +118,21 @@ namespace Aerospike.Client
 				command.Deadline = DateTime.UtcNow.AddMilliseconds(command.TotalTimeout);
 			}
 			await ExecuteCommand(command, token);
+		}
+
+		public static async Task Execute(this ICommand command, QueryPartitionCommandNew queryCommand, CancellationToken token)
+		{
+			try
+			{
+				await ExecuteCommand(queryCommand, token);
+			}
+			catch (AerospikeException ae)
+			{
+				if (!queryCommand.Tracker.ShouldRetry(queryCommand.NodePartitions, ae))
+				{
+					throw ae;
+				}
+			}
 		}
 
 		public static async Task Execute(this ICommand command, Cluster cluster, BatchPolicy policy, BatchCommandNew[] commands, BatchStatus status, CancellationToken token)
@@ -413,7 +432,7 @@ namespace Aerospike.Client
 			throw exception;
 		}
 
-		public static async Task ParseResult(this ICommand command, IConnection conn, CancellationToken token)
+		public static async Task<RecordSetNew> ParseResult(this ICommand command, IConnection conn, CancellationToken token)
 		{
 			// Read blocks of records.  Do not use thread local receive buffer because each
 			// block will likely be too big for a cache.  Also, scan callbacks can nest
@@ -488,15 +507,20 @@ namespace Aerospike.Client
 					throw new AerospikeException("Invalid proto type: " + type + " Expected: " + Command.AS_MSG_TYPE);
 				}
 
-				if (!command.ParseGroup(receiveSize))
+				var keyRecord = command.ParseGroup(receiveSize);
+				if (keyRecord == null)
 				{
 					break;
 				}
+
+				yield return keyRecord;
 			}
 		}
 
-		public static bool ParseGroup(this ICommand command, int receiveSize)
+		public static KeyRecord ParseGroup(this ICommand command, int receiveSize)
 		{
+			KeyRecord keyRecord = null;
+
 			while (command.DataOffset < receiveSize)
 			{
 				command.DataOffset += 3;
@@ -512,7 +536,7 @@ namespace Aerospike.Client
 						// The server returned a fatal error.
 						throw new AerospikeException(command.ResultCode);
 					}
-					return false;
+					return null;
 				}
 
 				command.DataOffset++;
@@ -528,12 +552,10 @@ namespace Aerospike.Client
 				command.DataOffset += 2;
 
 				// Note: ParseRow() also handles sync error responses.
-				if (!command.ParseRow())
-				{
-					return false;
-				}
+
+				keyRecord = command.ParseRow();
 			}
-			return true;
+			return keyRecord;
 		}
 
 		public static Record ParseRecord(this ICommand command)

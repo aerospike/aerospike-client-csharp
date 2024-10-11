@@ -19,7 +19,7 @@ namespace Aerospike.Client
 	/// <summary>
 	/// Container object for key identifier and record data.
 	/// </summary>
-	public sealed class KeyRecord
+	public class KeyRecord
 	{
 		/// <summary>
 		/// Unique identifier for record.
@@ -29,7 +29,7 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Record header and bin data.
 		/// </summary>
-		public readonly Record record;
+		protected Record record;
 
 		/// <summary>
 		/// Initialize key and record.

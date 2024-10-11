@@ -715,7 +715,7 @@ namespace Aerospike.Client
 		/// <param name="partitionFilter">filter on a subset of data partitions</param>
 		/// <param name="token">cancellation token</param>
 		/// <exception cref="AerospikeException">if query fails</exception>
-		Task<IRecordSet> QueryPartitions
+		Task<RecordSetNew> QueryPartitions
 		(
 			QueryPolicy policy,
 			Statement statement,

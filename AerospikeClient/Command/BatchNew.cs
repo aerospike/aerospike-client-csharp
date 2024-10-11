@@ -53,7 +53,7 @@ namespace Aerospike.Client
 			}
 		}
 
-		public new bool ParseRow()
+		public new BatchRecord ParseRow()
 		{
 			this.SkipKey(FieldCount);
 
@@ -68,7 +68,7 @@ namespace Aerospike.Client
 				record.SetError(ResultCode, false);
 				status.SetRowError();
 			}
-			return true;
+			return record;
 		}
 
 		public new BatchCommandNew CreateCommand(BatchNode batchNode)
@@ -245,7 +245,7 @@ namespace Aerospike.Client
 			this.SetBatchOperate(batchPolicy, (IList)records, batch);
 		}
 
-		public new bool ParseRow()
+		public new BatchRecord ParseRow()
 		{
 			this.SkipKey(FieldCount);
 
@@ -254,7 +254,7 @@ namespace Aerospike.Client
 			if (ResultCode == 0)
 			{
 				record.SetRecord(this.ParseRecord());
-				return true;
+				return record;
 			}
 
 			if (ResultCode == Client.ResultCode.UDF_BAD_RESPONSE)
@@ -269,13 +269,13 @@ namespace Aerospike.Client
 					record.resultCode = ResultCode;
 					record.inDoubt = Command.BatchInDoubt(record.hasWrite, CommandSentCounter);
 					status.SetRowError();
-					return true;
+					return record;
 				}
 			}
 
 			record.SetError(ResultCode, Command.BatchInDoubt(record.hasWrite, CommandSentCounter));
 			status.SetRowError();
-			return true;
+			return record;
 		}
 
 		public new void SetInDoubt(bool inDoubt)
@@ -347,7 +347,7 @@ namespace Aerospike.Client
 			this.SetBatchOperate(batchPolicy, keys, batch, null, ops, attr);
 		}
 
-		public new bool ParseRow()
+		public new BatchRecord ParseRow()
 		{
 			this.SkipKey(FieldCount);
 
@@ -362,7 +362,7 @@ namespace Aerospike.Client
 				record.SetError(ResultCode, Command.BatchInDoubt(attr.hasWrite, CommandSentCounter));
 				status.SetRowError();
 			}
-			return true;
+			return record;
 		}
 
 		public new void SetInDoubt(bool inDoubt)
@@ -440,7 +440,7 @@ namespace Aerospike.Client
 			this.SetBatchUDF(batchPolicy, keys, batch, packageName, functionName, argBytes, attr);
 		}
 
-		public new bool ParseRow()
+		public new BatchRecord ParseRow()
 		{
 			this.SkipKey(FieldCount);
 
@@ -449,7 +449,7 @@ namespace Aerospike.Client
 			if (ResultCode == 0)
 			{
 				record.SetRecord(this.ParseRecord());
-				return true;
+				return record;
 			}
 
 			if (ResultCode == Client.ResultCode.UDF_BAD_RESPONSE)
@@ -464,13 +464,13 @@ namespace Aerospike.Client
 					record.resultCode = ResultCode;
 					record.inDoubt = Command.BatchInDoubt(attr.hasWrite, CommandSentCounter);
 					status.SetRowError();
-					return true;
+					return record;
 				}
 			}
 
 			record.SetError(ResultCode, Command.BatchInDoubt(attr.hasWrite, CommandSentCounter));
 			status.SetRowError();
-			return true;
+			return record;
 		}
 
 		public new void SetInDoubt(bool inDoubt)
@@ -607,12 +607,12 @@ namespace Aerospike.Client
 			await CommandHelpers.ParseResult(this, conn, token);
 		}
 
-		public bool ParseGroup(int receiveSize)
+		public KeyRecord ParseGroup(int receiveSize)
 		{
 			return CommandHelpers.ParseGroup(this, receiveSize);
 		}
 
-		public bool ParseRow()
+		public KeyRecord ParseRow()
 		{
 			throw new NotImplementedException();
 		}
