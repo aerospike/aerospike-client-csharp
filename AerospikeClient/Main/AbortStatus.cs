@@ -25,7 +25,8 @@ namespace Aerospike.Client
 		public enum AbortStatusType
 		{
 			OK,
-			ALREADY_ATTEMPTED,
+			ALREADY_COMMITTED,
+			ALREADY_ABORTED,
 			ROLL_BACK_ABANDONED,
 			CLOSE_ABANDONED
 		}
@@ -35,7 +36,8 @@ namespace Aerospike.Client
 			return status switch
 			{
 				AbortStatusType.OK => "Abort succeeded.",
-				AbortStatusType.ALREADY_ATTEMPTED => "Abort or commit already attempted.",
+				AbortStatusType.ALREADY_COMMITTED => "Already committed.",
+				AbortStatusType.ALREADY_ABORTED => "Already aborted.",
 				AbortStatusType.ROLL_BACK_ABANDONED => "MRT client roll back abandoned. Server will eventually abort the MRT.",
 				AbortStatusType.CLOSE_ABANDONED => "MRT has been rolled back, but MRT client close was abandoned. Server will eventually close the MRT.",
 				_ => "Unexpected AbortStatusType."

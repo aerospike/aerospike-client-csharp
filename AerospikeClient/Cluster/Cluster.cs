@@ -271,6 +271,74 @@ namespace Aerospike.Client
 			cancelToken = cancel.Token;
 		}
 
+		public void StartTendThread(ClientPolicy policy)
+		{
+			if (policy.forceSingleNode)
+			{
+				// Communicate with the first seed node only.
+				// Do not run cluster tend thread.
+				try
+				{
+					ForceSingleNode();
+				}
+				catch (Exception)
+				{
+					Close();
+					throw;
+				}
+			}
+			else
+			{
+				InitTendThread(policy.failIfNotConnected);
+			}
+		}
+
+		public void ForceSingleNode()
+		{
+			// Initialize tendThread, but do not start it.
+			tendValid = true;
+			tendThread = new Thread(new ThreadStart(this.Run));
+
+			// Validate first seed.
+			Host seed = seeds[0];
+			NodeValidator nv = new();
+			Node node = null;
+
+			try
+			{
+				node = nv.SeedNode(this, seed, null);
+			}
+			catch (Exception e)
+			{
+				throw new AerospikeException("Seed " + seed + " failed: " + e.Message, e);
+			}
+
+			node.CreateMinConnections();
+
+			// Add seed node to nodes.
+			Dictionary<string, Node> nodesToAdd = new(1);
+			nodesToAdd[node.Name] = node;
+			AddNodes(nodesToAdd);
+
+			// Initialize partitionMaps.
+			Peers peers = new(nodes.Length + 16);
+			node.RefreshPartitions(peers);
+
+			// Set partition maps for all namespaces to point to same node.
+			foreach (Partitions partitions in partitionMap.Values)
+			{
+				foreach (Node[] nodeArray in partitions.replicas)
+				{
+					int max = nodeArray.Length;
+
+					for (int i = 0; i < max; i++)
+					{
+						nodeArray[i] = node;
+					}
+				}
+			}
+		}
+
 		public virtual void InitTendThread(bool failIfNotConnected)
 		{
 			// Tend cluster until all nodes identified.

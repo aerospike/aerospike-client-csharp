@@ -307,6 +307,18 @@ namespace Aerospike.Client
 		public const int XDR_KEY_BUSY = 32;
 
 		/// <summary>
+		/// MRT was already committed.
+		/// Value: 33
+		/// </summary>
+		public const int MRT_COMMITTED = 33;
+
+		/// <summary>
+		/// MRT was already aborted.
+		/// Value: 34
+		/// </summary>
+		public const int MRT_ABORTED = 34;
+
+		/// <summary>
 		/// There are no more records left for query.
 		/// Value: 50
 		/// </summary>
@@ -713,6 +725,12 @@ namespace Aerospike.Client
 			case XDR_KEY_BUSY:
 				return "Write can't complete until XDR finishes shipping.";
 
+			case MRT_COMMITTED:
+				return "MRT already committed";
+
+			case MRT_ABORTED:
+				return "MRT already aborted";
+
 			case QUERY_END:
 				return "Query end";
 
@@ -732,7 +750,7 @@ namespace Aerospike.Client
 				return "Invalid field";
 
 			case ILLEGAL_STATE:
-				return "Illegal state";
+				return "Illegal State";
 
 			case INVALID_USER:
 				return "Invalid user";

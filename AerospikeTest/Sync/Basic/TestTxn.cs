@@ -502,7 +502,7 @@ namespace Aerospike.Test
 			AssertBinEqual(key, record, binName, "val2");
 
 			var abortStatus = client.Abort(txn);
-			Assert.AreEqual(AbortStatus.AbortStatusType.ALREADY_ATTEMPTED, abortStatus);
+			Assert.AreEqual(AbortStatus.AbortStatusType.ALREADY_COMMITTED, abortStatus);
 		}
 
 		[TestMethod]

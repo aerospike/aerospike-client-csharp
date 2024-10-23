@@ -50,15 +50,35 @@ namespace Aerospike.Client
 			this.txnKey = TxnMonitor.GetTxnMonitorKey(txn);
 		}
 
-		public void Commit(CommitListener listener)
+		public void Verify(CommitListener listener)
 		{
 			commitListener = listener;
 			Verify(new VerifyListener(this));
 		}
 
+		public void Commit(CommitListener listener)
+		{
+			commitListener = listener;
+			Commit();
+		}
+
+		private void Commit()
+		{
+			if (txn.MonitorExists())
+			{
+				MarkRollForward();
+			}
+			else
+			{
+				txn.State = Txn.TxnState.COMMITTED;
+				CloseOnCommit(true);
+			}
+		}
+
 		public void Abort(AbortListener listener)
 		{
 			abortListener = listener;
+			txn.State = Txn.TxnState.ABORTED;
 
 			Roll(new RollListener(this), Command.INFO4_MRT_ROLL_BACK);
 		}
@@ -306,18 +326,12 @@ namespace Aerospike.Client
 
 				if (status)
 				{
-					if (command.txn.MonitorExists())
-					{
-						command.MarkRollForward();
-					}
-					else
-					{
-						// There is nothing to roll-forward.
-						command.CloseOnCommit(true);
-					}
+					command.txn.State = Txn.TxnState.VERIFIED;
+					command.Commit();
 				}
 				else
 				{
+					command.txn.State = Txn.TxnState.ABORTED;
 					command.RollBack();
 				}
 			}
@@ -371,6 +385,7 @@ namespace Aerospike.Client
 
 			public void OnSuccess(Key key)
 			{
+				command.txn.State = Txn.TxnState.VERIFIED;
 				command.RollForward();
 			}
 

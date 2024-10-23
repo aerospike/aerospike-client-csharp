@@ -284,7 +284,7 @@ namespace Aerospike.Client
 				if (compressed)
 				{
 					// Do not recover connections with compressed data because that would
-					// require saving large buffers with associated state and performing decompression
+					// require saving large buffers with associated State and performing decompression
 					// just to drain the connection.
 					throw new AerospikeException("Recovering connections with compressed multi-record data is not supported");
 				}

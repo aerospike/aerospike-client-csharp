@@ -25,17 +25,27 @@ namespace Aerospike.Client
 	/// </summary>
 	public class Txn
 	{
+		/// <summary>
+		/// Transaction State.
+		/// </summary>
+		public enum TxnState
+		{
+			OPEN,
+			VERIFIED,
+			COMMITTED,
+			ABORTED
+		}
+
 		private static long randomState = DateTime.UtcNow.Ticks;
 
 		public long Id { get; private set; }
 		public ConcurrentHashMap<Key, long> Reads { get; private set; }
 		public HashSet<Key> Writes { get; private set; }
+		public TxnState State { get; set; }
 		public string Ns { get; private set; }
 		public int Deadline { get; set; }
 
 		private bool monitorInDoubt;
-
-		private bool rollAttempted;
 
 		/// <summary>
 		/// Create MRT, assign random transaction id and initialize reads/writes hashmaps with default capacities.
@@ -46,6 +56,7 @@ namespace Aerospike.Client
 			Reads = new ConcurrentHashMap<Key, long>();
 			Writes = new HashSet<Key>();
 			Deadline = 0;
+			State = TxnState.OPEN;
 		}
 
 		/// <summary>
@@ -68,6 +79,8 @@ namespace Aerospike.Client
 			Id = CreateId();
 			Reads = new ConcurrentHashMap<Key, long>(readsCapacity);
 			Writes = new HashSet<Key>(writesCapacity);
+			Deadline = 0;
+			State = TxnState.OPEN;
 		}
 
 		[System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
@@ -214,16 +227,6 @@ namespace Aerospike.Client
 		public bool MonitorExists()
 		{
 			return Deadline != 0;
-		}
-
-		public bool SetRollAttempted()
-		{
-			if (rollAttempted)
-			{
-				return false;
-			}
-			rollAttempted = true;
-			return true;
 		}
 
 		public void Clear()

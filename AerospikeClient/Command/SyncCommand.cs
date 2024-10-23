@@ -241,7 +241,7 @@ namespace Aerospike.Client
 				}
 				catch (AerospikeException.Backoff be)
 				{
-					// Node is in backoff state. Retry, hopefully on another node.
+					// Node is in backoff State. Retry, hopefully on another node.
 					exception = be;
 					isClientTimeout = false;
 					node.AddError();

@@ -59,7 +59,7 @@ namespace Aerospike.Client
 		/// </list>
 		/// <para>
 		/// If the connection succeeds, the client is ready to process database requests.
-		/// If the connection fails, the cluster will remain in a disconnected state
+		/// If the connection fails, the cluster will remain in a disconnected State
 		/// until the server is activated.
 		/// </para>
 		/// </summary>
@@ -83,7 +83,7 @@ namespace Aerospike.Client
 		/// <para>
 		/// If the connection succeeds, the client is ready to process database requests.
 		/// If the connection fails and the policy's failOnInvalidHosts is true, a connection 
-		/// exception will be thrown. Otherwise, the cluster will remain in a disconnected state
+		/// exception will be thrown. Otherwise, the cluster will remain in a disconnected State
 		/// until the server is activated.
 		/// </para>
 		/// </summary>
@@ -112,7 +112,7 @@ namespace Aerospike.Client
 		/// <para>
 		/// If one connection succeeds, the client is ready to process database requests.
 		/// If all connections fail and the policy's failIfNotConnected is true, a connection 
-		/// exception will be thrown. Otherwise, the cluster will remain in a disconnected state
+		/// exception will be thrown. Otherwise, the cluster will remain in a disconnected State
 		/// until the server is activated.
 		/// </para>
 		/// </summary>
@@ -150,15 +150,30 @@ namespace Aerospike.Client
 		/// <param name="txn">multi-record transaction</param>
 		public void Commit(CommitListener listener, Txn txn)
 		{
-			if (!txn.SetRollAttempted())
-			{
-				listener.OnSuccess(CommitStatus.CommitStatusType.ALREADY_ATTEMPTED);
-			}
-
 			AsyncTxnRoll atr = new(
 				cluster, txnVerifyPolicyDefault, txnRollPolicyDefault, txn
 				);
-			atr.Commit(listener);
+
+			switch (txn.State)
+			{
+				default:
+				case Txn.TxnState.OPEN:
+					atr.Verify(listener);
+					break;
+
+				case Txn.TxnState.VERIFIED:
+					atr.Verify(listener);
+					break;
+
+				case Txn.TxnState.COMMITTED:
+					listener.OnSuccess(CommitStatus.CommitStatusType.ALREADY_COMMITTED);
+					break;
+
+				case Txn.TxnState.ABORTED:
+					listener.OnSuccess(CommitStatus.CommitStatusType.ALREADY_ABORTED);
+					break;
+
+			}
 		}
 
 		/// <summary>
@@ -187,13 +202,24 @@ namespace Aerospike.Client
 		/// <param name="txn">multi-record transaction</param>
 		public void Abort(AbortListener listener, Txn txn)
 		{
-			if (!txn.SetRollAttempted())
-			{
-				listener.OnSuccess(AbortStatus.AbortStatusType.ALREADY_ATTEMPTED);
-			}
-
 			AsyncTxnRoll atr = new(cluster, null, txnRollPolicyDefault, txn);
-			atr.Abort(listener);
+			
+			switch (txn.State)
+			{
+				default:
+				case Txn.TxnState.OPEN:
+				case Txn.TxnState.VERIFIED:
+					atr.Abort(listener);
+					break;
+
+				case Txn.TxnState.COMMITTED:
+					listener.OnSuccess(AbortStatus.AbortStatusType.ALREADY_COMMITTED);
+					break;
+
+				case Txn.TxnState.ABORTED:
+					listener.OnSuccess(AbortStatus.AbortStatusType.ALREADY_ABORTED);
+					break;
+			}
 		}
 
 		public Task Abort(Txn txn, CancellationToken token)

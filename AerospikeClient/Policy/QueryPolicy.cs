@@ -80,7 +80,7 @@ namespace Aerospike.Client
 		public bool includeBinData = true;
 
 		/// <summary>
-		/// Terminate query if cluster is in migration state. If the server supports partition
+		/// Terminate query if cluster is in migration State. If the server supports partition
 		/// queries or the query filter is null (scan), this field is ignored.
 		/// <para>Default: false</para>
 		/// </summary>

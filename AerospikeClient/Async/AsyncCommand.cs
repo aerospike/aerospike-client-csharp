@@ -180,14 +180,14 @@ namespace Aerospike.Client
 		{
 			if (totalTimeout > 0)
 			{
-				// Timeout already added in Execute(). Verify state.
+				// Timeout already added in Execute(). Verify State.
 				if (state != IN_PROGRESS)
 				{
 					// Total timeout might have occurred if command was in the delay queue.
 					// Socket timeout should not be possible for commands in the delay queue.
 					if (state != FAIL_TOTAL_TIMEOUT)
 					{
-						Log.Error(cluster.context, "Unexpected state at async command start: " + state);
+						Log.Error(cluster.context, "Unexpected State at async command start: " + state);
 					}
 					// User has already been notified of the total timeout. Release buffer and 
 					// return for all error states.

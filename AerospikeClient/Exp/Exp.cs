@@ -408,12 +408,12 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
-		/// Create expression that returns if record has been deleted and is still in tombstone state.
+		/// Create expression that returns if record has been deleted and is still in tombstone State.
 		/// This expression usually evaluates quickly because record meta data is cached in memory.
 		/// </summary>
 		/// <example>
 		/// <code>
-		/// // Deleted records that are in tombstone state.
+		/// // Deleted records that are in tombstone State.
 		/// Exp.isTombstone()
 		/// </code>
 		/// </example>

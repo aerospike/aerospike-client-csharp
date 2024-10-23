@@ -740,7 +740,7 @@ namespace Aerospike.Client
 							{
 								if (timeoutDelay > 0)
 								{
-									// The connection state is always STATE_READ_AUTH_HEADER here which does not reference
+									// The connection State is always STATE_READ_AUTH_HEADER here which does not reference
 									// isSingle, so just pass in true for isSingle in ConnectionRecover.
 									cluster.RecoverConnection(new ConnectionRecover(conn, this, timeoutDelay, crt, true));
 									conn = null;

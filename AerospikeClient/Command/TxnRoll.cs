@@ -34,7 +34,7 @@ namespace Aerospike.Client
 			this.txn = txn;
 		}
 
-		public CommitStatusType Commit(BatchPolicy verifyPolicy, BatchPolicy rollPolicy)
+		public void Verify(BatchPolicy verifyPolicy, BatchPolicy rollPolicy)
 		{
 			WritePolicy writePolicy;
 			Key txnKey;
@@ -42,11 +42,12 @@ namespace Aerospike.Client
 			try
 			{
 				// Verify read versions in batch.
-				Verify(verifyPolicy);
+				VerifyRecordVersions(verifyPolicy);
 			}
 			catch (Exception e)
 			{
 				// Verify failed. Abort.
+				txn.State = Txn.TxnState.ABORTED;
 				try
 				{
 					Roll(rollPolicy, Command.INFO4_MRT_ROLL_BACK);
@@ -76,8 +77,13 @@ namespace Aerospike.Client
 				throw OnCommitError(CommitErrorType.VERIFY_FAIL, e, false);
 			}
 
-			writePolicy = new WritePolicy(rollPolicy);
-			txnKey = TxnMonitor.GetTxnMonitorKey(txn);
+			txn.State = Txn.TxnState.VERIFIED;
+		}
+
+		public CommitStatusType Commit(BatchPolicy rollPolicy)
+		{
+			var writePolicy = new WritePolicy(rollPolicy);
+			var txnKey = TxnMonitor.GetTxnMonitorKey(txn);
 
 			if (txn.MonitorExists())
 			{
@@ -90,6 +96,8 @@ namespace Aerospike.Client
 				{
 					throw OnCommitError(CommitErrorType.MARK_ROLL_FORWARD_ABANDONED, e, true);
 				}
+
+				txn.State = Txn.TxnState.COMMITTED;
 
 				// Roll-forward writes in batch.
 				try
@@ -158,6 +166,8 @@ namespace Aerospike.Client
 
 		public AbortStatusType Abort(BatchPolicy rollPolicy)
 		{
+			txn.State = Txn.TxnState.ABORTED;
+			
 			try
 			{
 				Roll(rollPolicy, Command.INFO4_MRT_ROLL_BACK);
@@ -183,7 +193,7 @@ namespace Aerospike.Client
 
 			return AbortStatusType.OK;
 		}
-		private void Verify(BatchPolicy verifyPolicy)
+		private void VerifyRecordVersions(BatchPolicy verifyPolicy)
 		{
 			// Validate record versions in a batch.
 			int count = 0;

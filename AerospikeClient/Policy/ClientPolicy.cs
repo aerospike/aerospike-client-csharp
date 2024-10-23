@@ -14,6 +14,7 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
+using System;
 using System.Collections.Generic;
 
 namespace Aerospike.Client
@@ -147,7 +148,7 @@ namespace Aerospike.Client
 		/// <summary>
 		/// The number of cluster tend iterations that defines the window for <see cref="maxErrorRate"/>.
 		/// One tend iteration is defined as <see cref="tendInterval"/> plus the time to tend all nodes.
-		/// At the end of the window, the error count is reset to zero and backoff state is removed
+		/// At the end of the window, the error count is reset to zero and backoff State is removed
 		/// on all nodes.
 		/// <para>
 		/// Default: 1
@@ -274,6 +275,15 @@ namespace Aerospike.Client
 		/// </summary>
 		public bool useServicesAlternate;
 
+		/// For testing purposes only.  Do not modify.
+		/// <para>
+		/// Should the AerospikeClient instance communicate with the first seed node only
+		/// instead of using the data partition map to determine which node to send the
+		/// database command.
+		/// </para>
+		/// Default: false
+		public bool forceSingleNode = false;
+
 		/// <summary>
 		/// Track server rack data.  This field is useful when directing read commands to the server node
 		/// that contains the key and exists on the same rack as the client.  This serves to lower cloud
@@ -343,6 +353,7 @@ namespace Aerospike.Client
 			this.tlsPolicy = (other.tlsPolicy != null) ? new TlsPolicy(other.tlsPolicy) : null;
 			this.ipMap = other.ipMap;
 			this.useServicesAlternate = other.useServicesAlternate;
+			this.forceSingleNode = other.forceSingleNode;
 			this.rackAware = other.rackAware;
 			this.rackId = other.rackId;
 			this.rackIds = (other.rackIds != null) ? new List<int>(other.rackIds) : null;

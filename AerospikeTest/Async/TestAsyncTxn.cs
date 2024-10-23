@@ -360,7 +360,7 @@ namespace Aerospike.Test
 				new Put(txn, key, "val2"),
 				new Commit(txn),
 				new GetExpect(null, key, "val2"),
-				new Abort(txn, AbortStatus.AbortStatusType.ALREADY_ATTEMPTED)
+				new Abort(txn, AbortStatus.AbortStatusType.ALREADY_COMMITTED)
 			};
 
 			Execute(cmds);
