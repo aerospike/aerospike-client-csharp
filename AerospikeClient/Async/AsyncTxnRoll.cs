@@ -86,7 +86,6 @@ namespace Aerospike.Client
 		private void Verify(BatchRecordArrayListener verifyListener)
 		{
 			// Validate record versions in a batch.
-			int count = 0;
 			BatchRecord[] records = null;
 			Key[] keys = null;
 			long?[] versions = null;
@@ -162,20 +161,28 @@ namespace Aerospike.Client
 
 		private void Roll(BatchRecordArrayListener rollListener, int txnAttr)
 		{
-			HashSet<Key> keySet = txn.Writes;
 
-			if (keySet.Count == 0)
+			BatchRecord[] records = null;
+			Key[] keys = null;
+
+			bool actionPerformed = txn.Writes.PerformActionOnEachElement(max =>
+			{
+				if (max == 0) return false;
+
+				records = new BatchRecord[max];
+				keys = new Key[max];
+				return true;
+			},
+			(item, count) =>
+			{
+				keys[count] = item;
+				records[count] = new BatchRecord(item, true);
+			});
+
+			if (!actionPerformed)
 			{
 				rollListener.OnSuccess(new BatchRecord[0], true);
 				return;
-			}
-
-			Key[] keys = keySet.ToArray<Key>();
-			BatchRecord[] records = new BatchRecord[keys.Length];
-
-			for (int i = 0; i < keys.Length; i++)
-			{
-				records[i] = new BatchRecord(keys[i], true);
 			}
 
 			BatchAttr attr = new();

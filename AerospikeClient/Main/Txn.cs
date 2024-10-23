@@ -40,7 +40,7 @@ namespace Aerospike.Client
 
 		public long Id { get; private set; }
 		public ConcurrentHashMap<Key, long> Reads { get; private set; }
-		public HashSet<Key> Writes { get; private set; }
+		public ConcurrentHashSet<Key> Writes { get; private set; }
 		public TxnState State { get; set; }
 		public string Ns { get; private set; }
 		public int Deadline { get; set; }
@@ -54,7 +54,7 @@ namespace Aerospike.Client
 		{
 			Id = CreateId();
 			Reads = new ConcurrentHashMap<Key, long>();
-			Writes = new HashSet<Key>();
+			Writes = new ConcurrentHashSet<Key>();
 			Deadline = 0;
 			State = TxnState.OPEN;
 		}
@@ -78,7 +78,7 @@ namespace Aerospike.Client
 
 			Id = CreateId();
 			Reads = new ConcurrentHashMap<Key, long>(readsCapacity);
-			Writes = new HashSet<Key>(writesCapacity);
+			Writes = new ConcurrentHashSet<Key>(writesCapacity);
 			Deadline = 0;
 			State = TxnState.OPEN;
 		}

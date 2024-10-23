@@ -196,7 +196,6 @@ namespace Aerospike.Client
 		private void VerifyRecordVersions(BatchPolicy verifyPolicy)
 		{
 			// Validate record versions in a batch.
-			int count = 0;
 			BatchRecord[] records = null;
 			Key[] keys = null;
 			long?[] versions = null;
@@ -228,7 +227,7 @@ namespace Aerospike.Client
 			List<BatchNode> bns = BatchNode.GenerateList(cluster, verifyPolicy, keys, records, false, status);
 			BatchCommand[] commands = new BatchCommand[bns.Count];
 
-			count = 0;
+			int count = 0;
 
 			foreach (BatchNode bn in bns)
 			{
@@ -253,19 +252,26 @@ namespace Aerospike.Client
 
 		private void Roll(BatchPolicy rollPolicy, int txnAttr)
 		{
-			HashSet<Key> keySet = txn.Writes;
+			BatchRecord[] records = null;
+			Key[] keys = null;
 
-			if (keySet.Count == 0)
+			bool actionPerformed = txn.Writes.PerformActionOnEachElement(max =>
+			{
+				if (max == 0) return false;
+
+				records = new BatchRecord[max];
+				keys = new Key[max];
+				return true;
+			},
+			(item, count) =>
+			{
+				keys[count] = item;
+				records[count] = new BatchRecord(item, true);
+			});
+
+			if (!actionPerformed)
 			{
 				return;
-			}
-
-			Key[] keys = keySet.ToArray<Key>();
-			BatchRecord[] records = new BatchRecord[keys.Length];
-
-			for (int i = 0; i < keys.Length; i++)
-			{
-				records[i] = new BatchRecord(keys[i], true);
 			}
 
 			this.rollRecords = records;
