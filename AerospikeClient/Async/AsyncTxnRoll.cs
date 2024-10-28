@@ -129,7 +129,7 @@ namespace Aerospike.Client
 			}
 			catch (Exception t) 
 			{
-				NotifyCommitFailure(CommitErrorType.MARK_ROLL_FORWARD_ABANDONED, t, false);
+				NotifyMarkRollForwardFailure(CommitErrorType.MARK_ROLL_FORWARD_ABANDONED, t);
 			}
 		}
 
@@ -150,12 +150,12 @@ namespace Aerospike.Client
 		{
 			try
 			{
-				RollForwardListener rollListener = new(this);
+				RollBackListener rollListener = new(this);
 				Roll(rollListener, Command.INFO4_MRT_ROLL_BACK);
 			}
 			catch (Exception t)
 			{
-				NotifyCommitFailure(CommitErrorType.VERIFY_FAIL_ABORT_ABANDONED, t, false);
+				NotifyCommitFailure(CommitErrorType.VERIFY_FAIL_ABORT_ABANDONED, t);
 			}
 		}
 
@@ -202,7 +202,7 @@ namespace Aerospike.Client
 				}
 				else
 				{
-					NotifyCommitFailure(CommitErrorType.VERIFY_FAIL, null, false);
+					NotifyCommitFailure(CommitErrorType.VERIFY_FAIL, null);
 				}
 				return;
 			}
@@ -218,7 +218,7 @@ namespace Aerospike.Client
 					NotifyCommitSuccess(CommitStatusType.CLOSE_ABANDONED);
 				}
 				else {
-					NotifyCommitFailure(CommitErrorType.VERIFY_FAIL_CLOSE_ABANDONED, e, false);
+					NotifyCommitFailure(CommitErrorType.VERIFY_FAIL_CLOSE_ABANDONED, e);
 				}
 			}
 		}
@@ -258,49 +258,102 @@ namespace Aerospike.Client
 			}
 		}
 
-		private void NotifyCommitFailure(CommitErrorType error, Exception cause, bool setInDoubt)
+		private void NotifyCommitFailure(CommitErrorType error, Exception cause)
 		{
-			try
-			{
-				AerospikeException.Commit aec;
+			AerospikeException.Commit aec = CreateCommitException(error, cause);
 
-				if (verifyException != null)
+			if (verifyException != null)
+			{
+				if (cause == null)
 				{
-					if (cause == null)
-					{
-						aec = new AerospikeException.Commit(error, verifyRecords, rollRecords, verifyException);
-					}
-					else
-					{
-						aec = new AerospikeException.Commit(error, verifyRecords, rollRecords, new[] { cause, verifyException });
-					}
-				}
-				else if (cause != null)
-				{
-					aec = new AerospikeException.Commit(error, verifyRecords, rollRecords, cause);
+					aec = new AerospikeException.Commit(error, verifyRecords, rollRecords, verifyException);
 				}
 				else
 				{
-					aec = new AerospikeException.Commit(error, verifyRecords, rollRecords);
+					aec = new AerospikeException.Commit(error, verifyRecords, rollRecords, new[] { cause, verifyException });
 				}
+			}
+			else if (cause != null)
+			{
+				aec = new AerospikeException.Commit(error, verifyRecords, rollRecords, cause);
+			}
+			else
+			{
+				aec = new AerospikeException.Commit(error, verifyRecords, rollRecords);
+			}
 
-				if (cause is AerospikeException) {
+			NotifyCommitFailure(aec);
+		}
+
+		private void NotifyMarkRollForwardFailure(CommitErrorType error, Exception cause)
+		{
+			AerospikeException.Commit aec = CreateCommitException(error, cause);
+
+			if (cause is AerospikeException)
+			{
+				AerospikeException ae = (AerospikeException)cause;
+
+				if (ae.Result == ResultCode.MRT_ABORTED)
+				{
+					aec.SetInDoubt(false);
+					txn.InDoubt = false;
+					txn.State = Txn.TxnState.ABORTED;
+				}
+				else if (txn.InDoubt)
+				{
+					// The transaction was already inDoubt and just failed again,
+					// so the new exception should also be inDoubt.
+					aec.SetInDoubt(true);
+				}
+				else if (aec.InDoubt)
+				{
+					// The current exception is inDoubt.
+					aec.SetInDoubt(true);
+					txn.InDoubt = true;
+				}
+			}
+			else
+			{
+				if (txn.InDoubt)
+				{
+					aec.SetInDoubt(true);
+				}
+			}
+
+			NotifyCommitFailure(aec);
+		}
+
+		private AerospikeException.Commit CreateCommitException(CommitErrorType error, Exception cause)
+		{
+			if (cause != null)
+			{
+				AerospikeException.Commit aec = new(error, verifyRecords, rollRecords, cause);
+
+				if (cause is AerospikeException)
+				{
 					AerospikeException src = (AerospikeException)cause;
 					aec.Node = src.Node;
 					aec.Policy = src.Policy;
 					aec.Iteration = src.Iteration;
-
-					if (setInDoubt)
-					{
-						aec.SetInDoubt(src.InDoubt);
-					}
+					aec.SetInDoubt(src.InDoubt);
 				}
+				return aec;
+			}
+			else
+			{
+				return new AerospikeException.Commit(error, verifyRecords, rollRecords);
+			}
+		}
 
+		private void NotifyCommitFailure(AerospikeException.Commit aec)
+		{
+			try
+			{
 				commitListener.OnFailure(aec);
 			}
-			catch (Exception t)
+			catch (Exception e)
 			{
-				Log.Error("CommitListener onFailure() failed: " + t.StackTrace);
+				Log.Error("CommitListener OnFailure() failed: " + e.StackTrace);
 			}
 		}
 
@@ -312,9 +365,9 @@ namespace Aerospike.Client
 			{
 				abortListener.OnSuccess(status);
 			}
-			catch (Exception t)
+			catch (Exception e)
 			{
-				Log.Error("AbortListener onSuccess() failed: " + t.StackTrace);
+				Log.Error("AbortListener onSuccess() failed: " + e.StackTrace);
 			}
 		}
 
@@ -347,6 +400,7 @@ namespace Aerospike.Client
 			{
 				command.verifyRecords = records;
 				command.verifyException = ae;
+				command.txn.State = Txn.TxnState.ABORTED;
 				command.RollBack();
 			}
 		};
@@ -393,12 +447,13 @@ namespace Aerospike.Client
 			public void OnSuccess(Key key)
 			{
 				command.txn.State = Txn.TxnState.VERIFIED;
+				command.txn.InDoubt = false;
 				command.RollForward();
 			}
 
 			public void OnFailure(AerospikeException ae)
 			{
-				command.NotifyCommitFailure(CommitErrorType.MARK_ROLL_FORWARD_ABANDONED, ae, true);
+				command.NotifyMarkRollForwardFailure(CommitErrorType.MARK_ROLL_FORWARD_ABANDONED, ae);
 			}
 		};
 
@@ -451,14 +506,14 @@ namespace Aerospike.Client
 				}
 				else
 				{
-					command.NotifyCommitFailure(CommitErrorType.VERIFY_FAIL_ABORT_ABANDONED, null, false);
+					command.NotifyCommitFailure(CommitErrorType.VERIFY_FAIL_ABORT_ABANDONED, null);
 				}
 			}
 
 			public void OnFailure(BatchRecord[] records, AerospikeException ae)
 			{
 				command.rollRecords = records;
-				command.NotifyCommitFailure(CommitErrorType.VERIFY_FAIL_ABORT_ABANDONED, ae, false);
+				command.NotifyCommitFailure(CommitErrorType.VERIFY_FAIL_ABORT_ABANDONED, ae);
 			}
 		};
 
@@ -482,7 +537,7 @@ namespace Aerospike.Client
 				}
 				else
 				{
-					command.NotifyCommitFailure(CommitErrorType.VERIFY_FAIL, null, false);
+					command.NotifyCommitFailure(CommitErrorType.VERIFY_FAIL, null);
 				}
 			}
 
@@ -494,7 +549,7 @@ namespace Aerospike.Client
 				}
 				else
 				{
-					command.NotifyCommitFailure(CommitErrorType.VERIFY_FAIL_CLOSE_ABANDONED, ae, false);
+					command.NotifyCommitFailure(CommitErrorType.VERIFY_FAIL_CLOSE_ABANDONED, ae);
 				}
 			}
 		};

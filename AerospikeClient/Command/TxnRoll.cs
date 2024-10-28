@@ -55,7 +55,7 @@ namespace Aerospike.Client
 				catch (Exception e2)
 				{
 					// Throw combination of verify and roll exceptions.
-					throw OnCommitError(CommitErrorType.VERIFY_FAIL_ABORT_ABANDONED, e, false, e2);
+					throw CreateCommitException(CommitErrorType.VERIFY_FAIL_ABORT_ABANDONED, e, e2);
 				}
 
 				if (txn.MonitorMightExist())
@@ -69,12 +69,12 @@ namespace Aerospike.Client
 					catch (Exception e3)
 					{
 						// Throw combination of verify and close exceptions.
-						throw OnCommitError(CommitErrorType.VERIFY_FAIL_CLOSE_ABANDONED, e, false, e3);
+						throw CreateCommitException(CommitErrorType.VERIFY_FAIL_CLOSE_ABANDONED, e, e3);
 					}
 				}
 
 				// Throw original exception when abort succeeds.
-				throw OnCommitError(CommitErrorType.VERIFY_FAIL, e, false);
+				throw CreateCommitException(CommitErrorType.VERIFY_FAIL, e);
 			}
 
 			txn.State = Txn.TxnState.VERIFIED;
@@ -92,12 +92,44 @@ namespace Aerospike.Client
 				{
 					MarkRollForward(writePolicy, txnKey);
 				}
+				catch (AerospikeException ae)
+				{
+					AerospikeException.Commit aec = CreateCommitException(CommitErrorType.MARK_ROLL_FORWARD_ABANDONED, ae);
+
+					if (ae.Result == ResultCode.MRT_ABORTED)
+					{
+						aec.SetInDoubt(false);
+						txn.InDoubt = false;
+						txn.State = Txn.TxnState.ABORTED;
+					}
+					else if (txn.InDoubt)
+					{
+						// The transaction was already inDoubt and just failed again,
+						// so the new exception should also be inDoubt.
+						aec.SetInDoubt(true);
+					}
+					else if (ae.InDoubt)
+					{
+						// The current exception is inDoubt.
+						aec.SetInDoubt(true);
+						txn.InDoubt = true;
+					}
+					throw aec;
+				}
 				catch (Exception e)
 				{
-					throw OnCommitError(CommitErrorType.MARK_ROLL_FORWARD_ABANDONED, e, true);
+					AerospikeException.Commit aec = CreateCommitException(CommitErrorType.MARK_ROLL_FORWARD_ABANDONED, e);
+					
+					if (txn.InDoubt)
+					{
+						aec.SetInDoubt(true);
+					}
+
+					throw aec;
 				}
 
 				txn.State = Txn.TxnState.COMMITTED;
+				txn.InDoubt = false;
 
 				// Roll-forward writes in batch.
 				try
@@ -126,7 +158,7 @@ namespace Aerospike.Client
 			return CommitStatusType.OK;
 		}
 
-		private AerospikeException.Commit OnCommitError(CommitErrorType error, Exception cause, bool setInDoubt, Exception innerException = null) 
+		private AerospikeException.Commit CreateCommitException(CommitErrorType error, Exception cause, Exception innerException = null) 
 		{
 			AerospikeException.Commit aec;
 
@@ -156,10 +188,7 @@ namespace Aerospike.Client
 				aec.Node = src.Node;
 				aec.Policy = src.Policy;
 				aec.Iteration = src.Iteration;
-				if (setInDoubt)
-				{
-					aec.SetInDoubt(src.InDoubt);
-				}
+				aec.SetInDoubt(src.InDoubt);
 			}
 			return aec;
 		}

@@ -154,6 +154,11 @@ namespace Aerospike.Client
 				compress = policy.compress,
 				respondAllOps = true
 			};
+
+			// Note that the server only accepts the timeout on MRT monitor record create.
+			// The server ignores the MRT timeout field on successive MRT monitor record
+			// updates.
+			wp.expiration = policy.Txn.Timeout;
 			return wp;
 		}
 	}

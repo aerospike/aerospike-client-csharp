@@ -17,6 +17,9 @@
 
 using System;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
+using System.Security.Cryptography;
+using System.Threading;
 
 namespace Aerospike.Client
 {
@@ -26,7 +29,7 @@ namespace Aerospike.Client
 	public class Txn
 	{
 		/// <summary>
-		/// Transaction State.
+		/// MRT State.
 		/// </summary>
 		public enum TxnState
 		{
@@ -41,14 +44,30 @@ namespace Aerospike.Client
 		public long Id { get; private set; }
 		public ConcurrentHashMap<Key, long> Reads { get; private set; }
 		public ConcurrentHashSet<Key> Writes { get; private set; }
-		public TxnState State { get; set; }
+		public TxnState State { get; internal set; }
 		public string Ns { get; private set; }
-		public int Deadline { get; set; }
+
+		/// <summary>
+		/// MRT deadline. The deadline is a wall clock time calculated by the server from the
+		/// MRT timeout that is sent by the client when creating the MRT monitor record. This deadline
+		/// is used to avoid client/server clock skew issues. For internal use only.
+		/// </summary>
+		internal int Deadline { get; set; }
+		
+		/// <summary>
+		/// MRT timeout in seconds. The timer starts when the MRT monitor record is created.
+		/// This occurs when the first command in the MRT is executed. If the timeout is reached before
+		/// a commit or abort is called, the server will expire and rollback the MRT.
+		/// </summary>
+		public int Timeout { get; set; }
 
 		private bool monitorInDoubt;
 
+		public bool InDoubt { get; internal set; }
+
 		/// <summary>
-		/// Create MRT, assign random transaction id and initialize reads/writes hashmaps with default capacities.
+		/// Create MRT, assign random transaction id and initialize reads/writes hashmaps with 
+		/// default capacities. The default MRT timeout is 10 seconds.
 		/// </summary>
 		public Txn()
 		{
@@ -57,10 +76,12 @@ namespace Aerospike.Client
 			Writes = new ConcurrentHashSet<Key>();
 			Deadline = 0;
 			State = TxnState.OPEN;
+			Timeout = 10; // seconds
 		}
 
 		/// <summary>
-		/// Create MRT, assign random transaction id and initialize reads/writes hashmaps with given capacities.
+		/// Create MRT, assign random transaction id and initialize reads/writes hashmaps with 
+		/// given capacities. The default MRT timeout is 10 seconds.
 		/// </summary>
 		/// <param name="readsCapacity">expected number of record reads in the MRT. Minimum value is 16.</param>
 		/// <param name="writesCapacity">expected number of record writes in the MRT. Minimum value is 16.</param>
@@ -81,6 +102,7 @@ namespace Aerospike.Client
 			Writes = new ConcurrentHashSet<Key>(writesCapacity);
 			Deadline = 0;
 			State = TxnState.OPEN;
+			Timeout = 10; // seconds
 		}
 
 		[System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
@@ -88,7 +110,6 @@ namespace Aerospike.Client
 
 		private static long CreateId()
 		{
-			// xorshift64* doesn't generate zeroes.
 			long oldState, newState, interlockedResult;
 			do
 			{

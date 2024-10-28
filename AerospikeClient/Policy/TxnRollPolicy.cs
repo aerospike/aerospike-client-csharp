@@ -38,6 +38,7 @@ namespace Aerospike.Client
 		{
 			replica = Replica.MASTER;
 			maxRetries = 5;
+			socketTimeout = 3000;
 			totalTimeout = 10000;
 			sleepBetweenRetries = 1000;
 		}
