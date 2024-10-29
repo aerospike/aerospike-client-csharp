@@ -289,10 +289,11 @@ namespace Aerospike.Client
 		public const int MRT_BLOCKED = 29;
 
 		/// <summary>
-		/// MRT read verify failed. Some other command changed record outside of the transaction.
+		/// MRT read version mismatch identified during commit.
+		/// Some other command changed the record outside of the transaction.
 		/// Value: 30
 		/// </summary>
-		public const int MRT_CONFLICT = 30;
+		public const int MRT_VERSION_MISMATCH = 30;
 
 		/// <summary>
 		/// MRT deadline reached without a successful commit or abort.
@@ -716,8 +717,8 @@ namespace Aerospike.Client
 			case MRT_BLOCKED:
 				return "MRT record blocked by a different transaction";
 
-			case MRT_CONFLICT:
-				return "MRT read verify failed";
+			case MRT_VERSION_MISMATCH:
+				return "MRT version mismatch";
 
 			case MRT_EXPIRED:
 				return "MRT expired";

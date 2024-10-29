@@ -1784,7 +1784,7 @@ namespace Aerospike.Client
 			this.records = records;
 
 			// Create commands.
-			List<BatchNode> batchNodes = BatchNode.GenerateList(cluster, policy, keys, records, false, this);
+			List<BatchNode> batchNodes = BatchNode.GenerateList(cluster, policy, keys, records, true, this);
 			AsyncBatchCommand[] tasks = new AsyncBatchCommand[batchNodes.Count];
 			int count = 0;
 

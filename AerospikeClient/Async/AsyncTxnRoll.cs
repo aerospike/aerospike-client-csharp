@@ -127,9 +127,9 @@ namespace Aerospike.Client
 				AsyncTxnMarkRollForward command = new(cluster, writeListener, writePolicy, txnKey);
 				command.Execute();
 			}
-			catch (Exception t) 
+			catch (Exception e) 
 			{
-				NotifyMarkRollForwardFailure(CommitErrorType.MARK_ROLL_FORWARD_ABANDONED, t);
+				NotifyMarkRollForwardFailure(CommitErrorType.MARK_ROLL_FORWARD_ABANDONED, e);
 			}
 		}
 
@@ -153,9 +153,9 @@ namespace Aerospike.Client
 				RollBackListener rollListener = new(this);
 				Roll(rollListener, Command.INFO4_MRT_ROLL_BACK);
 			}
-			catch (Exception t)
+			catch (Exception e)
 			{
-				NotifyCommitFailure(CommitErrorType.VERIFY_FAIL_ABORT_ABANDONED, t);
+				NotifyCommitFailure(CommitErrorType.VERIFY_FAIL_ABORT_ABANDONED, e);
 			}
 		}
 
@@ -214,10 +214,12 @@ namespace Aerospike.Client
 			}
 			catch (Exception e) 
 			{
-				if (verified) {
+				if (verified) 
+				{
 					NotifyCommitSuccess(CommitStatusType.CLOSE_ABANDONED);
 				}
-				else {
+				else 
+				{
 					NotifyCommitFailure(CommitErrorType.VERIFY_FAIL_CLOSE_ABANDONED, e);
 				}
 			}
@@ -254,7 +256,7 @@ namespace Aerospike.Client
 			}
 			catch (Exception t)
 			{
-				Log.Error("CommitListener onSuccess() failed: " + t.StackTrace);
+				Log.Error("CommitListener OnSuccess() failed: " + t.StackTrace);
 			}
 		}
 
@@ -301,13 +303,13 @@ namespace Aerospike.Client
 				}
 				else if (txn.InDoubt)
 				{
-					// The transaction was already inDoubt and just failed again,
-					// so the new exception should also be inDoubt.
+					// The transaction was already InDoubt and just failed again,
+					// so the new exception should also be InDoubt.
 					aec.SetInDoubt(true);
 				}
-				else if (aec.InDoubt)
+				else if (ae.InDoubt)
 				{
-					// The current exception is inDoubt.
+					// The current exception is InDoubt.
 					aec.SetInDoubt(true);
 					txn.InDoubt = true;
 				}
@@ -367,7 +369,7 @@ namespace Aerospike.Client
 			}
 			catch (Exception e)
 			{
-				Log.Error("AbortListener onSuccess() failed: " + e.StackTrace);
+				Log.Error("AbortListener OnSuccess() failed: " + e.StackTrace);
 			}
 		}
 
@@ -446,7 +448,7 @@ namespace Aerospike.Client
 
 			public void OnSuccess(Key key)
 			{
-				command.txn.State = Txn.TxnState.VERIFIED;
+				command.txn.State = Txn.TxnState.COMMITTED;
 				command.txn.InDoubt = false;
 				command.RollForward();
 			}

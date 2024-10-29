@@ -104,8 +104,8 @@ namespace Aerospike.Client
 					}
 					else if (txn.InDoubt)
 					{
-						// The transaction was already inDoubt and just failed again,
-						// so the new exception should also be inDoubt.
+						// The transaction was already InDoubt and just failed again,
+						// so the new exception should also be InDoubt.
 						aec.SetInDoubt(true);
 					}
 					else if (ae.InDoubt)

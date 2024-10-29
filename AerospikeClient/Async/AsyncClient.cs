@@ -162,7 +162,7 @@ namespace Aerospike.Client
 					break;
 
 				case Txn.TxnState.VERIFIED:
-					atr.Verify(listener);
+					atr.Commit(listener);
 					break;
 
 				case Txn.TxnState.COMMITTED:

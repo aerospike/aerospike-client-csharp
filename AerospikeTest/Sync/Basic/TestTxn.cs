@@ -639,7 +639,7 @@ namespace Aerospike.Test
 			}
 			catch (AerospikeException ae)
 			{
-				if (ae.Result != ResultCode.MRT_CONFLICT)
+				if (ae.Result != ResultCode.MRT_VERSION_MISMATCH)
 				{
 					throw;
 				}

@@ -15,12 +15,6 @@
  * the License.
  */
 
-using System;
-using System.Collections.Concurrent;
-using System.Collections.Generic;
-using System.Security.Cryptography;
-using System.Threading;
-
 namespace Aerospike.Client
 {
 	/// <summary>
@@ -45,6 +39,10 @@ namespace Aerospike.Client
 		public ConcurrentHashMap<Key, long> Reads { get; private set; }
 		public ConcurrentHashSet<Key> Writes { get; private set; }
 		public TxnState State { get; internal set; }
+		
+		/// <summary>
+		/// MRT namespace.
+		/// </summary>
 		public string Ns { get; private set; }
 
 		/// <summary>
@@ -229,7 +227,7 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Set that the MRT monitor existence is in doubt.
 		/// </summary>
-		public void SetMonitorInDoubt()
+		internal void SetMonitorInDoubt()
 		{
 			this.monitorInDoubt = true;
 		}
