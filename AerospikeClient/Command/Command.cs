@@ -137,7 +137,20 @@ namespace Aerospike.Client
 
 			bool compress = SizeBuffer(policy);
 
-			WriteTxnMonitor(key, args.readAttr, args.writeAttr, fieldCount, args.operations.Length);
+			dataOffset += 8;
+			dataBuffer[dataOffset++] = MSG_REMAINING_HEADER_SIZE;
+			dataBuffer[dataOffset++] = (byte)args.readAttr;
+			dataBuffer[dataOffset++] = (byte)args.writeAttr;
+			dataBuffer[dataOffset++] = (byte)0;
+			dataBuffer[dataOffset++] = 0;
+			dataBuffer[dataOffset++] = 0;
+			dataOffset += ByteUtil.IntToBytes(0, dataBuffer, dataOffset);
+			dataOffset += ByteUtil.IntToBytes((uint)policy.expiration, dataBuffer, dataOffset);
+			dataOffset += ByteUtil.IntToBytes((uint)serverTimeout, dataBuffer, dataOffset);
+			dataOffset += ByteUtil.ShortToBytes((ushort)fieldCount, dataBuffer, dataOffset);
+			dataOffset += ByteUtil.ShortToBytes((ushort)args.operations.Length, dataBuffer, dataOffset);
+
+			WriteKey(key);
 
 			foreach (Operation operation in args.operations)
 			{
