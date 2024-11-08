@@ -1,7 +1,5 @@
 name: Run tests
 
-env:
-
 # Trigger test workflow whenever:
 # 1. Commits are pushed directly to the mrt branch
 on:
