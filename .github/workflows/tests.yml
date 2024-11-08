@@ -1,0 +1,69 @@
+name: Run tests
+
+env:
+
+# Trigger test workflow whenever:
+# 1. Commits are pushed directly to the mrt branch
+on:
+  push:
+    branches: ["mrt"]
+  pull_request:
+    branches: ["mrt"]
+    types: [
+      # Default triggers
+      opened,
+      synchronize,
+      reopened,
+      # Additional triggers
+      labeled,
+      unlabeled
+    ]
+  workflow_dispatch:
+    inputs:
+      test-server-rc:
+        type: boolean
+        default: false
+        required: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+      fail-fast: false
+
+    steps:
+    - uses: actions/checkout@v4
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: 6.0.x
+    - name: Restore dependencies
+      run: dotnet restore
+    - name: Install dependencies
+      run: dotnet add package NeoLua --version 1.3.14
+    - name: Build
+      run: dotnet build --no-restore
+
+  test-ee:
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        submodules: recursive
+
+    - uses: ./.github/actions/run-ee-server
+      with:
+        use-server-rc: ${{ contains(github.event.pull_request.labels.*.name, 'new-server-features') }}
+        docker-hub-username: ${{ secrets.DOCKER_HUB_BOT_USERNAME }}
+        docker-hub-password: ${{ secrets.DOCKER_HUB_BOT_PW }}
+
+    - name: Run tests
+      run: dotnet test --no-build --verbosity normal
+
+    - name: Show logs if failed
+      if: ${{ failure() }}
+      run: |
+        docker container logs aerospike
+        cat ./configs/aerospike.conf

@@ -24,27 +24,6 @@ inputs:
 runs:
   using: "composite"
   steps:
-  - name: Install crudini to manipulate config.conf
-    # This will only work on the Github hosted runners.
-    run: pipx install crudini --pip-args "-c ${{ github.workspace }}/.github/workflows/requirements.txt"
-    working-directory: .github/workflows
-    shell: bash
-
-  - name: Create config.conf
-    run: cp config.conf.template config.conf
-    working-directory: test
-    shell: bash
-
-  - run: echo SUPERUSER_NAME_AND_PASSWORD="superuser" >> $GITHUB_ENV
-    shell: bash
-
-  - name: Set credentials in config file
-    run: |
-      crudini --existing=param --set config.conf enterprise-edition user ${{ env.SUPERUSER_NAME_AND_PASSWORD }}
-      crudini --existing=param --set config.conf enterprise-edition password ${{ env.SUPERUSER_NAME_AND_PASSWORD }}
-    working-directory: test
-    shell: bash
-
   - name: Log into Docker Hub to get server RC
     if: ${{ inputs.use-server-rc == 'true' }}
     run: docker login --username ${{ inputs.docker-hub-username }} --password ${{ inputs.docker-hub-password }}

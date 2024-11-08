@@ -1,10 +1,6 @@
 name: Build artifacts
 run-name: Build artifacts (run_tests=${{ inputs.run_tests }}, use-server-rc=${{ inputs.use-server-rc }}, server-tag=${{ inputs.server-tag }})
 
-# Builds manylinux wheels and source distribution
-# Optionally run tests on manylinux wheels
-# Then upload artifacts to Github
-
 on:
   workflow_dispatch:
     inputs:
