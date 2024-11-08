@@ -59,7 +59,6 @@ on:
 jobs:
   dotnet:
     strategy:
-      matrix:
       fail-fast: false
     uses: ./.github/workflows/dotnet.yml
     with:
