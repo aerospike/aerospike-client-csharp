@@ -40,7 +40,7 @@ jobs:
     - name: Install dependencies
       run: dotnet add package NeoLua --version 1.3.14
     - name: Build
-      run: dotnet build --no-restore
+      run: dotnet build --no-restore /p:EnableWindowsTargeting=true
 
   test-ee:
     runs-on: ubuntu-latest
