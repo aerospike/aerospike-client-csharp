@@ -64,17 +64,6 @@ runs:
       is-security-enabled: true
       is-strong-consistency-enabled: true
 
-  - run: echo ASADM_AUTH_FLAGS="--user=${{ env.SUPERUSER_NAME_AND_PASSWORD }} --password=${{ env.SUPERUSER_NAME_AND_PASSWORD }}" >> $GITHUB_ENV
-    shell: bash
-
-  # All the partitions are assumed to be dead when reusing a roster file
-  - run: docker exec ${{ env.SERVER_CONTAINER_NAME }} asadm $ASADM_AUTH_FLAGS --enable --execute "manage revive ns test"
-    shell: bash
-
-  # Apply changes
-  - run: docker exec ${{ env.SERVER_CONTAINER_NAME }} asadm $ASADM_AUTH_FLAGS --enable --execute "manage recluster"
-    shell: bash
-
   # For debugging
   - run: docker logs aerospike
     shell: bash
