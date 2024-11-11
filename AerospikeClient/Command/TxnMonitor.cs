@@ -57,6 +57,7 @@ namespace Aerospike.Client
 
 		public static Operation[] GetTxnOps(Txn txn, Key cmdKey)
 		{
+			txn.VerifyCommand();
 			txn.SetNamespace(cmdKey.ns);
 
 			if (txn.MonitorExists()) 
@@ -77,6 +78,8 @@ namespace Aerospike.Client
 
 		public static Operation[] GetTxnOps(Txn txn, Key[] keys)
 		{
+			txn.VerifyCommand();
+
 			List<Value> list = new(keys.Length);
 
 			foreach (Key key in keys) 
@@ -89,6 +92,8 @@ namespace Aerospike.Client
 
 		public static Operation[] GetTxnOps(Txn txn, List<BatchRecord> records)
 		{
+			txn.VerifyCommand();
+
 			List<Value> list = new(records.Count);
 
 			foreach (BatchRecord br in records) {

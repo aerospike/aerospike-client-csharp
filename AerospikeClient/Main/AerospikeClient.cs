@@ -834,10 +834,7 @@ namespace Aerospike.Client
 				policy = readPolicyDefault;
 			}
 
-			if (policy.Txn != null)
-			{
-				policy.Txn.SetNamespace(key.ns);
-			}
+			policy.Txn?.PrepareRead(key.ns);
 
 			ExistsCommand command = new ExistsCommand(cluster, policy, key);
 			command.Execute();
@@ -863,10 +860,7 @@ namespace Aerospike.Client
 				policy = batchPolicyDefault;
 			}
 
-			if (policy.Txn != null)
-			{
-				policy.Txn.SetNamespace(keys);
-			}
+			policy.Txn?.PrepareRead(keys);
 
 			bool[] existsArray = new bool[keys.Length];
 
@@ -920,7 +914,7 @@ namespace Aerospike.Client
 				policy = readPolicyDefault;
 			}
 
-			policy.Txn?.SetNamespace(key.ns);
+			policy.Txn?.PrepareRead(key.ns);
 
 			ReadCommand command = new ReadCommand(cluster, policy, key);
 			command.Execute();
@@ -943,10 +937,7 @@ namespace Aerospike.Client
 				policy = readPolicyDefault;
 			}
 
-			if (policy.Txn != null)
-			{
-				policy.Txn.SetNamespace(key.ns);
-			}
+			policy.Txn?.PrepareRead(key.ns);
 
 			ReadCommand command = new ReadCommand(cluster, policy, key, binNames);
 			command.Execute();
@@ -968,10 +959,7 @@ namespace Aerospike.Client
 				policy = readPolicyDefault;
 			}
 
-			if (policy.Txn != null)
-			{
-				policy.Txn.SetNamespace(key.ns);
-			}
+			policy.Txn?.PrepareRead(key.ns);
 
 			ReadHeaderCommand command = new ReadHeaderCommand(cluster, policy, key);
 			command.Execute();
@@ -1005,10 +993,7 @@ namespace Aerospike.Client
 				policy = batchPolicyDefault;
 			}
 
-			if (policy.Txn != null)
-			{
-				policy.Txn.SetNamespace(records);
-			}
+			policy.Txn?.PrepareRead(records);
 
 			BatchStatus status = new BatchStatus(true);
 			List<BatchNode> batchNodes = BatchNode.GenerateList(cluster, policy, records, status);
@@ -1044,10 +1029,7 @@ namespace Aerospike.Client
 			}
 
 
-			if (policy.Txn != null)
-			{
-				policy.Txn.SetNamespace(keys);
-			}
+			policy.Txn?.PrepareRead(keys);
 
 
 			Record[] records = new Record[keys.Length];
@@ -1104,10 +1086,7 @@ namespace Aerospike.Client
 				policy = batchPolicyDefault;
 			}
 
-			if (policy.Txn != null)
-			{
-				policy.Txn.SetNamespace(keys);
-			}
+			policy.Txn?.PrepareRead(keys);
 
 			Record[] records = new Record[keys.Length];
 
@@ -1163,10 +1142,7 @@ namespace Aerospike.Client
 				policy = batchPolicyDefault;
 			}
 
-			if (policy.Txn != null)
-			{
-				policy.Txn.SetNamespace(keys);
-			}
+			policy.Txn?.PrepareRead(keys);
 
 			Record[] records = new Record[keys.Length];
 
@@ -1222,10 +1198,7 @@ namespace Aerospike.Client
 			}
 
 
-			if (policy.Txn != null)
-			{
-				policy.Txn.SetNamespace(keys);
-			}
+			policy.Txn?.PrepareRead(keys);
 
 
 			Record[] records = new Record[keys.Length];
@@ -1349,7 +1322,7 @@ namespace Aerospike.Client
 			{
 				if (policy?.Txn != null)
 				{
-					policy.Txn.SetNamespace(key.ns);
+					policy.Txn.PrepareRead(key.ns);
 				}
 
 				OperateCommandRead command = new(cluster, key, args);

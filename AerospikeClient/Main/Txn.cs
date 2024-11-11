@@ -122,6 +122,48 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
+		/// Verify current MRT state and namespace for a future read command.
+		/// </summary>
+		/// <param name="ns"></param>
+		internal void PrepareRead(string ns)
+		{
+			VerifyCommand();
+			SetNamespace(ns);
+		}
+
+		/// <summary>
+		/// Verify current MRT state and namespaces for a future batch read command.
+		/// </summary>
+		/// <param name="keys"></param>
+		internal void PrepareRead(Key[] keys)
+		{
+			VerifyCommand();
+			SetNamespace(keys);
+		}
+
+		/// <summary>
+		/// Verify current MRT state and namespaces for a future batch read command.
+		/// </summary>
+		/// <param name="records"></param>
+		internal void PrepareRead(List<BatchRead> records)
+		{
+			VerifyCommand();
+			SetNamespace(records);
+		}
+
+		/// <summary>
+		/// Verify that the MRT state allows future commands.
+		/// </summary>
+		/// <exception cref="AerospikeException"></exception>
+		public void VerifyCommand()
+		{
+			if (State != TxnState.OPEN)
+			{
+				throw new AerospikeException("Command not allowed in current MRT state: " + State);
+			}
+		}
+
+		/// <summary>
 		/// Process the results of a record read. For internal use only.
 		/// </summary>
 		/// <param name="key"></param>
@@ -188,7 +230,7 @@ namespace Aerospike.Client
 		/// Set MRT namespace only if doesn't already exist.
 		/// If namespace already exists, verify new namespace is the same.
 		/// </summary>
-		public void SetNamespace(string ns)
+		internal void SetNamespace(string ns)
 		{
 			if (Ns == null) 
 			{
@@ -204,7 +246,7 @@ namespace Aerospike.Client
 		/// Set MRT namespaces for each key only if doesn't already exist.
 		/// If namespace already exists, verify new namespace is the same.
 		/// </summary>
-		public void SetNamespace(Key[] keys)
+		internal void SetNamespace(Key[] keys)
 		{
 			foreach (Key key in keys)
 			{
@@ -216,7 +258,7 @@ namespace Aerospike.Client
 		/// Set MRT namespaces for each key only if doesn't already exist.
 		/// If namespace already exists, verify new namespace is the same.
 		/// </summary>
-		public void SetNamespace(List<BatchRead> records)
+		internal void SetNamespace(List<BatchRead> records)
 		{
 			foreach (BatchRead br in records)
 			{

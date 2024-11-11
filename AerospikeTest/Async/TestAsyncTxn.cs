@@ -409,9 +409,9 @@ namespace Aerospike.Test
 				new Put(txn, key3, "val1"), // T9
 				new GetExpect(txn, key3, "val1", 1), // T10
 				new Commit(txn), // T11
-				new GetExpect(txn, key1, "val11", 3), // T12
-				new GetExpect(txn, key2, "val11", 3),
-				new GetExpect(txn, key3, "val1", 2)
+				new GetExpect(null, key1, "val11", 3), // T12
+				new GetExpect(null, key2, "val11", 3),
+				new GetExpect(null, key3, "val1", 2)
 			};
 
 			Execute(cmds);

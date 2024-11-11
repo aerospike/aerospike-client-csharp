@@ -687,7 +687,7 @@ namespace Aerospike.Test
 			}
 			catch (AerospikeException ae)
 			{
-				if (ae.Result != ResultCode.MRT_EXPIRED)
+				if (!ae.Message.Contains("Command not allowed in current MRT state:"))
 				{
 					throw;
 				}

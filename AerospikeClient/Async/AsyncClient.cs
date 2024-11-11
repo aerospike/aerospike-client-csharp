@@ -632,7 +632,7 @@ namespace Aerospike.Client
 				policy = readPolicyDefault;
 			}
 
-			policy.Txn?.SetNamespace(key.ns);
+			policy.Txn?.PrepareRead(key.ns);
 
 			AsyncExists async = new AsyncExists(cluster, policy, key, listener);
 			async.Execute();
@@ -673,7 +673,7 @@ namespace Aerospike.Client
 			{
 				policy = batchPolicyDefault;
 			}
-			policy.Txn?.SetNamespace(keys);
+			policy.Txn?.PrepareRead(keys);
 
 			AsyncBatchExistsArrayExecutor executor = new(cluster, policy, keys, listener);
 			executor.Execute();
@@ -699,7 +699,7 @@ namespace Aerospike.Client
 			{
 				policy = batchPolicyDefault;
 			}
-			policy.Txn?.SetNamespace(keys);
+			policy.Txn?.PrepareRead(keys);
 
 			AsyncBatchExistsSequenceExecutor executor = new(cluster, policy, keys, listener);
 			executor.Execute();
@@ -740,7 +740,7 @@ namespace Aerospike.Client
 				policy = readPolicyDefault;
 			}
 
-			policy.Txn?.SetNamespace(key.ns);
+			policy.Txn?.PrepareRead(key.ns);
 
 			AsyncRead async = new AsyncRead(cluster, policy, listener, key, (string[])null);
 			async.Execute();
@@ -779,7 +779,7 @@ namespace Aerospike.Client
 				policy = readPolicyDefault;
 			}
 
-			policy.Txn?.SetNamespace(key.ns);
+			policy.Txn?.PrepareRead(key.ns);
 
 			AsyncRead async = new AsyncRead(cluster, policy, listener, key, binNames);
 			async.Execute();
@@ -816,7 +816,7 @@ namespace Aerospike.Client
 				policy = readPolicyDefault;
 			}
 
-			policy.Txn?.SetNamespace(key.ns);
+			policy.Txn?.PrepareRead(key.ns);
 
 			AsyncReadHeader async = new AsyncReadHeader(cluster, policy, listener, key);
 			async.Execute();
@@ -870,7 +870,7 @@ namespace Aerospike.Client
 			{
 				policy = batchPolicyDefault;
 			}
-			policy.Txn?.SetNamespace(records);
+			policy.Txn?.PrepareRead(records);
 
 			AsyncBatchReadListExecutor executor = new(cluster, policy, listener, records);
 			executor.Execute();
@@ -901,7 +901,7 @@ namespace Aerospike.Client
 			{
 				policy = batchPolicyDefault;
 			}
-			policy.Txn?.SetNamespace(records);
+			policy.Txn?.PrepareRead(records);
 
 			AsyncBatchReadSequenceExecutor executor = new(cluster, policy, listener, records);
 			executor.Execute();
@@ -948,7 +948,7 @@ namespace Aerospike.Client
 			{
 				policy = batchPolicyDefault;
 			}
-			policy.Txn?.SetNamespace(keys);
+			policy.Txn?.PrepareRead(keys);
 
 			AsyncBatchGetArrayExecutor executor = new(cluster, policy, listener, keys, null, null, Command.INFO1_READ | Command.INFO1_GET_ALL, false);
 			executor.Execute();
@@ -977,7 +977,7 @@ namespace Aerospike.Client
 			{
 				policy = batchPolicyDefault;
 			}
-			policy.Txn?.SetNamespace(keys);
+			policy.Txn?.PrepareRead(keys);
 
 			AsyncBatchGetSequenceExecutor executor = new(cluster, policy, listener, keys, null, null, Command.INFO1_READ | Command.INFO1_GET_ALL, false);
 			executor.Execute();
@@ -1026,7 +1026,7 @@ namespace Aerospike.Client
 			{
 				policy = batchPolicyDefault;
 			}
-			policy.Txn?.SetNamespace(keys);
+			policy.Txn?.PrepareRead(keys);
 
 			AsyncBatchGetArrayExecutor executor = new(cluster, policy, listener, keys, binNames, null, Command.INFO1_READ, false);
 			executor.Execute();
@@ -1056,7 +1056,7 @@ namespace Aerospike.Client
 			{
 				policy = batchPolicyDefault;
 			}
-			policy.Txn?.SetNamespace(keys);
+			policy.Txn?.PrepareRead(keys);
 
 			int readAttr = (binNames == null || binNames.Length == 0)?
 			Command.INFO1_READ | Command.INFO1_GET_ALL : Command.INFO1_READ;
@@ -1111,7 +1111,7 @@ namespace Aerospike.Client
 				policy = batchPolicyDefault;
 			}
 
-			policy.Txn?.SetNamespace(keys);
+			policy.Txn?.PrepareRead(keys);
 
 			AsyncBatchGetArrayExecutor executor = new(cluster, policy, listener, keys, null, ops, Command.INFO1_READ, true);
 			executor.Execute();
@@ -1144,7 +1144,7 @@ namespace Aerospike.Client
 				policy = batchPolicyDefault;
 			}
 
-			policy.Txn?.SetNamespace(keys);
+			policy.Txn?.PrepareRead(keys);
 
 			AsyncBatchGetSequenceExecutor executor = new(cluster, policy, listener, keys, null, ops, Command.INFO1_READ, true);
 			executor.Execute();
@@ -1191,7 +1191,7 @@ namespace Aerospike.Client
 			{
 				policy = batchPolicyDefault;
 			}
-			policy.Txn?.SetNamespace(keys);
+			policy.Txn?.PrepareRead(keys);
 
 			AsyncBatchGetArrayExecutor executor = new(cluster, policy, listener, keys, null, null, Command.INFO1_READ | Command.INFO1_NOBINDATA, false);
 			executor.Execute();
@@ -1220,7 +1220,7 @@ namespace Aerospike.Client
 			{
 				policy = batchPolicyDefault;
 			}
-			policy.Txn?.SetNamespace(keys);
+			policy.Txn?.PrepareRead(keys);
 
 			AsyncBatchGetSequenceExecutor executor = new(cluster, policy, listener, keys, null, null, Command.INFO1_READ | Command.INFO1_NOBINDATA, false);
 			executor.Execute();
@@ -1281,7 +1281,7 @@ namespace Aerospike.Client
 			}
 			else
 			{
-				policy.Txn?.SetNamespace(key.ns);
+				policy.Txn?.PrepareRead(key.ns);
 
 				AsyncOperateRead async = new(cluster, listener, key, args);
 				async.Execute();
