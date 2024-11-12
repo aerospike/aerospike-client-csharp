@@ -46,10 +46,6 @@ jobs:
     runs-on: ubuntu-latest
     needs: build
     steps:
-    - uses: actions/checkout@v2
-      with:
-        submodules: recursive
-
     - uses: ./.github/actions/run-ee-server
       with:
         use-server-rc: ${{ contains(github.event.pull_request.labels.*.name, 'new-server-features') }}
