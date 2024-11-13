@@ -71,9 +71,6 @@ jobs:
     #  run: dotnet add package NeoLua --version 1.3.14
     - name: Build
       run: dotnet build --configuration Release --no-restore /p:EnableWindowsTargeting=true
-     
-    - name: Publish
-      run: dotnet publish -c Release -o ../publish
 
     - name: Run tests
       run: dotnet test --no-build --verbosity normal
