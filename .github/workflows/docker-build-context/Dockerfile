@@ -12,16 +12,6 @@ WORKDIR /opt/aerospike/smd
 
 ARG AEROSPIKE_CONF_TEMPLATE_PATH=/etc/aerospike/aerospike.template.conf
 
-# Not using asconfig to edit config because we are working with a template file, which may not have valid values yet
-RUN echo -e "security {\n\tenable-quotas true\n}\n" >> $AEROSPIKE_CONF_TEMPLATE_PATH
-# security.smd was generated manually by
-# 1. Starting a new Aerospike EE server using Docker
-# 2. Creating the superuser user
-# 3. Copying /opt/aerospike/smd/security.smd from the container and committing it to this repo
-# This file should always work
-# TODO: generate this automatically, somehow.
-COPY security.smd .
-
 # Enable strong consistency
 RUN sed -i "s/\(namespace.*{\)/\1\n\tstrong-consistency true/" $AEROSPIKE_CONF_TEMPLATE_PATH
 RUN sed -i "s/\(namespace.*{\)/\1\n\tstrong-consistency-allow-expunge true/" $AEROSPIKE_CONF_TEMPLATE_PATH
