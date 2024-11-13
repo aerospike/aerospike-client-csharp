@@ -61,7 +61,7 @@ runs:
   - uses: ./.github/actions/wait-for-as-server-to-start
     with:
       container-name: ${{ env.SERVER_CONTAINER_NAME }}
-      is-security-enabled: true
+      is-security-enabled: false
       is-strong-consistency-enabled: true
 
   # For debugging
