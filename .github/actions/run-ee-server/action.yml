@@ -11,7 +11,7 @@ inputs:
   server-tag:
     required: true
     description: Specify Docker tag
-    default: 'latest'
+    default: '8.0.0.0-alpha5_1'
   # Github Composite Actions can't access secrets
   # so we need to pass them in as inputs
   docker-hub-username:
