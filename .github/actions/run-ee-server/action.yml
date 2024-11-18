@@ -65,11 +65,11 @@ runs:
       is-strong-consistency-enabled: true
 
   # All the partitions are assumed to be dead when reusing a roster file
-  - run: docker exec ${{ env.SERVER_CONTAINER_NAME }} --enable --execute "manage revive ns test"
+  - run: docker exec ${{ env.SERVER_CONTAINER_NAME }} asadm --enable --execute "manage revive ns test"
     shell: bash
 
   # Apply changes
-  - run: docker exec ${{ env.SERVER_CONTAINER_NAME }} --enable --execute "manage recluster"
+  - run: docker exec ${{ env.SERVER_CONTAINER_NAME }} asadm --enable --execute "manage recluster"
     shell: bash
 
   # For debugging
