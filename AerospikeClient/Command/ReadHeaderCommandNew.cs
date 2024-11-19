@@ -111,6 +111,11 @@ namespace Aerospike.Client
 			throw new AerospikeException(resultCode);
 		}
 
+		public IAsyncEnumerable<KeyRecord> ParseMultipleResult(IConnection conn, CancellationToken token)
+		{
+			throw new NotImplementedException();
+		}
+
 		public bool PrepareRetry(bool timeout)
 		{
 			partition.PrepareRetryRead(timeout);

@@ -604,7 +604,13 @@ namespace Aerospike.Client
 
 		public async Task ParseResult(IConnection conn, CancellationToken token)
 		{
-			await CommandHelpers.ParseResult(this, conn, token);
+			throw new NotImplementedException();
+		}
+
+		public IAsyncEnumerable<KeyRecord> ParseMultipleResult(IConnection conn, CancellationToken token)
+		{
+			return null;
+			//return CommandHelpers.ParseResult(this, conn, token);
 		}
 
 		public KeyRecord ParseGroup(int receiveSize)

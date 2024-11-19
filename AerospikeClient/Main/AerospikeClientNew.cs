@@ -1577,7 +1577,7 @@ namespace Aerospike.Client
 		/// <param name="partitionFilter">filter on a subset of data partitions</param>
 		/// <param name="token">cancellation token</param>
 		/// <exception cref="AerospikeException">if query fails</exception>
-		public async Task<RecordSetNew> QueryPartitions
+		public async IAsyncEnumerable<KeyRecord> QueryPartitions
 		(
 			QueryPolicy policy,
 			Statement statement,
@@ -1588,7 +1588,6 @@ namespace Aerospike.Client
 			policy ??= QueryPolicyDefault;
 
 			Node[] nodes = Cluster.ValidateNodes();
-			var recordSet = new RecordSetNew(policy.recordQueueSize, token); // Needs to be replaced since we have no executor
 
 			if (Cluster.hasPartitionQuery || statement.filter == null)
 			{
@@ -1606,12 +1605,12 @@ namespace Aerospike.Client
 						SingleReader = false,
 						AllowSynchronousContinuations = true
 					});
-				var prepareTask = PrepareQueryPartition(channel, recordSet, bufferPool, Cluster, policy, statement, tracker, list, token);
-				var executeTask = ExecuteQueryPartition(channel, recordSet, tracker, token);
+				var prepareTask = PrepareQueryPartition(channel, bufferPool, Cluster, policy, statement, tracker, list, token);
+				var executeTask = ExecuteQueryPartition(channel, tracker, token);
 
 				await Task.WhenAll(prepareTask, executeTask);
 
-				if (tracker.IsClusterComplete(Cluster, policy))
+				if (tracker.IsClusterComplete(Cluster, policy)) // TODO, this checks maxRacords, error handling
 				{
 					// All partitions received.
 					//recordSet.Put(RecordSet.END); // How to add last entry?
@@ -1622,12 +1621,12 @@ namespace Aerospike.Client
 				throw new AerospikeException(ResultCode.PARAMETER_ERROR, "QueryPartitions() not supported");
 			}
 
-			return recordSet;
+			return null; // TODO: get results from channel. use select many
 		}
 
 		private static async Task PrepareQueryPartition(
 			Channel<QueryPartitionCommandNew> channel,
-			RecordSetNew recordSet, 
+			//RecordSetNew recordSet, 
 			ArrayPool<byte> bufferPool, 
 			Cluster cluster, 
 			QueryPolicy policy, 
@@ -1642,14 +1641,18 @@ namespace Aerospike.Client
 			// Produce query commands
 			for (int i = 0; i < list.Count; i++)
 			{
-				QueryPartitionCommandNew queryCommand = new(bufferPool, cluster, policy, statement, taskId, recordSet, tracker, list[i]);
+				QueryPartitionCommandNew queryCommand = new(bufferPool, cluster, policy, statement, taskId, tracker, list[i]);
 				await channel.Writer.WriteAsync(queryCommand, token);
 				taskId = RandomShift.ThreadLocalInstance.NextLong(); // Need different way to generate id
 			}
 			channel.Writer.Complete();
 		}
 
-		private static async Task ExecuteQueryPartition(Channel<QueryPartitionCommandNew> channel, RecordSetNew recordSet, PartitionTracker tracker, CancellationToken token)
+		private static async Task ExecuteQueryPartition(
+			Channel<QueryPartitionCommandNew> channel, 
+			//RecordSetNew recordSet, 
+			PartitionTracker tracker, 
+			CancellationToken token)
 		{
 			// Consume/execute query commands
 			while (await channel.Reader.WaitToReadAsync(token))

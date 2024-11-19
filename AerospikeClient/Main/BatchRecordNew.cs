@@ -76,7 +76,7 @@ namespace Aerospike.Client
 		/// </summary>
 		public void Prepare()
 		{
-			this.record = null;
+			this.Record = null;
 			this.resultCode = ResultCode.NO_RESPONSE;
 			this.inDoubt = false;
 		}
@@ -86,7 +86,7 @@ namespace Aerospike.Client
 		/// </summary>
 		public void SetRecord(Record record)
 		{
-			this.record = record;
+			this.Record = record;
 			this.resultCode = ResultCode.OK;
 		}
 
@@ -104,7 +104,7 @@ namespace Aerospike.Client
 		/// </summary>
 		public override string ToString()
 		{
-			return key.ToString();
+			return Key.ToString();
 		}
 
 		/// <summary>

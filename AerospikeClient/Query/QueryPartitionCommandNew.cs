@@ -47,7 +47,7 @@ namespace Aerospike.Client
 
 		public Statement Statement { get; set; }
 		private readonly ulong taskId;
-		private readonly RecordSetNew recordSet;
+		//private readonly RecordSetNew recordSet;
 		public PartitionTracker Tracker { get; set; }
 		public NodePartitions NodePartitions { get; set; }
 
@@ -58,7 +58,7 @@ namespace Aerospike.Client
 			Policy policy,
 			Statement statement,
 			ulong taskId,
-			RecordSetNew recordSet,
+			//RecordSetNew recordSet,
 			PartitionTracker tracker,
 			NodePartitions nodePartitions
 		)
@@ -66,7 +66,7 @@ namespace Aerospike.Client
 			this.SetCommonProperties(bufferPool, cluster, policy);
 			this.Statement = statement;
 			this.taskId = taskId;
-			this.recordSet = recordSet;
+			//this.recordSet = recordSet;
 			this.Tracker = tracker;
 			this.NodePartitions = nodePartitions;
 		}
@@ -98,7 +98,12 @@ namespace Aerospike.Client
 
 		public async Task ParseResult(IConnection conn, CancellationToken token)
 		{
-			await CommandHelpers.ParseResult(this, conn, token);
+			keyRecords = CommandHelpers.ParseMultipleResult(this, conn, token);
+		}
+
+		public async IAsyncEnumerable<KeyRecord> ParseMultipleResult(IConnection conn, CancellationToken token)
+		{
+			return await CommandHelpers.ParseMultipleResult(this, conn, token);
 		}
 
 		public KeyRecord ParseGroup(int receiveSize)

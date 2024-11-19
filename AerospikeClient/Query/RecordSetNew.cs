@@ -46,7 +46,7 @@ namespace Aerospike.Client
 		
 		public IAsyncEnumerator<KeyRecord> GetAsyncEnumerator(CancellationToken token)
 		{
-			return null;
+			return null; // ParseRecord here or in ParseGroup
 		}
 		
 		public bool Disposed { get; private set; }

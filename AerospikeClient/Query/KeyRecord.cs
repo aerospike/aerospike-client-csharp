@@ -24,20 +24,20 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Unique identifier for record.
 		/// </summary>
-		public readonly Key key;
+		public Key Key { get; private set; }
 
 		/// <summary>
 		/// Record header and bin data.
 		/// </summary>
-		protected Record record;
+		public Record Record { get; set; }
 
 		/// <summary>
 		/// Initialize key and record.
 		/// </summary>
 		public KeyRecord(Key key, Record record)
 		{
-			this.key = key;
-			this.record = record;
+			this.Key = key;
+			this.Record = record;
 		}
 	}
 }

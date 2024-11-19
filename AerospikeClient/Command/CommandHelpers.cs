@@ -26,6 +26,7 @@ using System.Diagnostics;
 using System.Numerics;
 using System.Threading.Channels;
 using System;
+using System.Runtime.CompilerServices;
 
 namespace Aerospike.Client
 {
@@ -120,7 +121,16 @@ namespace Aerospike.Client
 			await ExecuteCommand(command, token);
 		}
 
-		public static async Task Execute(this ICommand command, QueryPartitionCommandNew queryCommand, CancellationToken token)
+		public static IAsyncEnumerable<KeyRecord> ExecuteMultiple(this ICommand command, CancellationToken token)
+		{
+			if (command.TotalTimeout > 0)
+			{
+				command.Deadline = DateTime.UtcNow.AddMilliseconds(command.TotalTimeout);
+			}
+			return ExecuteMultipleCommand(command, token);
+		}
+
+		public static async Task ExecuteQuery(this ICommand command, QueryPartitionCommandNew queryCommand, CancellationToken token)
 		{
 			try
 			{
@@ -432,7 +442,250 @@ namespace Aerospike.Client
 			throw exception;
 		}
 
-		public static async Task<RecordSetNew> ParseResult(this ICommand command, IConnection conn, CancellationToken token)
+		private static async IAsyncEnumerable<KeyRecord> ExecuteMultipleCommand(ICommand command, [EnumeratorCancellation] CancellationToken token)
+		{
+			IAsyncEnumerable<KeyRecord> keyRecords = null;
+			Node node;
+			AerospikeException exception = null;
+			ValueStopwatch metricsWatch = new();
+			LatencyType latencyType = command.Cluster.MetricsEnabled ? command.GetLatencyType() : LatencyType.NONE;
+			bool isClientTimeout;
+
+			// Execute command until successful, timed out or maximum iterations have been reached.
+			while (true)
+			{
+				token.ThrowIfCancellationRequested();
+
+				try
+				{
+					node = command.GetNode();
+				}
+				catch (AerospikeException ae)
+				{
+					ae.Policy = command.Policy;
+					ae.Iteration = command.Iteration;
+					ae.SetInDoubt(command.IsWrite(), command.CommandSentCounter);
+					throw;
+				}
+
+				try
+				{
+					node.ValidateErrorCount();
+					if (latencyType != LatencyType.NONE)
+					{
+						metricsWatch = ValueStopwatch.StartNew();
+					}
+					//Connection conn = await node.GetConnection(SocketTimeout, token);
+					Connection conn = node.GetConnection(command.SocketTimeout);
+
+					try
+					{
+						// Set command buffer.
+						command.WriteBuffer();
+
+						// Send command.
+						await conn.Write(command.DataBuffer, command.DataOffset, token);
+						command.CommandSentCounter++;
+
+						// Parse results.
+						keyRecords = ParseMultipleResult(command, conn, token);
+
+						// Put connection back in pool.
+						node.PutConnection(conn);
+
+						if (latencyType != LatencyType.NONE)
+						{
+							node.AddLatency(latencyType, metricsWatch.Elapsed.TotalMilliseconds);
+						}
+
+						// Command has completed successfully.  Exit method.
+						return keyRecords;
+					}
+					catch (AerospikeException ae)
+					{
+						if (ae.KeepConnection())
+						{
+							// Put connection back in pool.
+							node.PutConnection(conn);
+						}
+						else
+						{
+							// Close socket to flush out possible garbage.  Do not put back in pool.
+							node.CloseConnectionOnError(conn);
+						}
+
+						if (ae.Result == ResultCode.TIMEOUT)
+						{
+							// Retry on server timeout.
+							exception = new AerospikeException.Timeout(command.Policy, false);
+							isClientTimeout = false;
+							node.IncrErrorRate();
+							node.AddTimeout();
+						}
+						else if (ae.Result == ResultCode.DEVICE_OVERLOAD)
+						{
+							// Add to circuit breaker error count and retry.
+							exception = ae;
+							isClientTimeout = false;
+							node.IncrErrorRate();
+							node.AddError();
+						}
+						else
+						{
+							node.AddError();
+							throw;
+						}
+					}
+					catch (SocketException se)
+					{
+						// Socket errors are considered temporary anomalies.
+						// Retry after closing connection.
+						node.CloseConnectionOnError(conn);
+
+						if (se.SocketErrorCode == SocketError.TimedOut)
+						{
+							isClientTimeout = true;
+							node.AddTimeout();
+						}
+						else
+						{
+							exception = new AerospikeException.Connection(se);
+							isClientTimeout = false;
+							node.AddError();
+						}
+					}
+					catch (IOException ioe)
+					{
+						// IO errors are considered temporary anomalies.  Retry.
+						// Log.info("IOException: " + tranId + ',' + node + ',' + sequence + ',' + iteration);
+						node.CloseConnection(conn);
+						exception = new AerospikeException.Connection(ioe);
+						isClientTimeout = false;
+						node.AddError();
+					}
+					catch (Exception)
+					{
+						// All other exceptions are considered fatal.  Do not retry.
+						// Close socket to flush out possible garbage.  Do not put back in pool.
+						node.CloseConnectionOnError(conn);
+						node.AddError();
+						throw;
+					}
+				}
+				catch (SocketException se)
+				{
+					// This exception might happen after initial connection succeeded, but
+					// user login failed with a socket error.  Retry.
+					if (se.SocketErrorCode == SocketError.TimedOut)
+					{
+						isClientTimeout = true;
+						node.AddTimeout();
+					}
+					else
+					{
+						exception = new AerospikeException.Connection(se);
+						isClientTimeout = false;
+						node.AddError();
+					}
+				}
+				catch (IOException ioe)
+				{
+					// IO errors are considered temporary anomalies.  Retry.
+					// Log.info("IOException: " + tranId + ',' + node + ',' + sequence + ',' + iteration);
+					exception = new AerospikeException.Connection(ioe);
+					isClientTimeout = false;
+					node.AddError();
+				}
+				catch (AerospikeException.Connection ce)
+				{
+					// Socket connection error has occurred. Retry.
+					exception = ce;
+					isClientTimeout = false;
+					node.AddError();
+				}
+				catch (AerospikeException.Backoff be)
+				{
+					// Node is in backoff state. Retry, hopefully on another node.
+					exception = be;
+					isClientTimeout = false;
+					node.AddError();
+				}
+				catch (AerospikeException ae)
+				{
+					ae.Node = node;
+					ae.Policy = command.Policy;
+					ae.Iteration = command.Iteration;
+					ae.SetInDoubt(command.IsWrite(), command.CommandSentCounter);
+					node.AddError();
+					throw;
+				}
+				catch (Exception)
+				{
+					node.AddError();
+					throw;
+				}
+
+				// Check maxRetries.
+				if (command.Iteration > command.MaxRetries)
+				{
+					break;
+				}
+
+				if (command.TotalTimeout > 0)
+				{
+					// Check for total timeout.
+					long remaining = (long)command.Deadline.Subtract(DateTime.UtcNow).TotalMilliseconds - command.Policy.sleepBetweenRetries;
+
+					if (remaining <= 0)
+					{
+						break;
+					}
+
+					if (remaining < command.TotalTimeout)
+					{
+						command.TotalTimeout = (int)remaining;
+
+						if (command.SocketTimeout > command.TotalTimeout)
+						{
+							command.SocketTimeout = command.TotalTimeout;
+						}
+					}
+				}
+
+				if (!isClientTimeout && command.Policy.sleepBetweenRetries > 0)
+				{
+					// Sleep before trying again.
+					Util.Sleep(command.Policy.sleepBetweenRetries);
+				}
+
+				command.Iteration++;
+
+				if (!command.PrepareRetry(isClientTimeout || exception.Result != ResultCode.SERVER_NOT_AVAILABLE))
+				{
+					// Batch may be retried in separate commands.
+					if (command.RetryBatch(command.Cluster, command.SocketTimeout, command.TotalTimeout, command.Deadline, command.Iteration, command.CommandSentCounter))
+					{
+						// Batch was retried in separate commands.  Complete this command.
+						//return; // yeild break?
+					}
+				}
+
+				command.Cluster.AddRetry();
+			}
+
+			// Retries have been exhausted.  Throw last exception.
+			if (isClientTimeout)
+			{
+				exception = new AerospikeException.Timeout(command.Policy, true);
+			}
+			exception.Node = node;
+			exception.Policy = command.Policy;
+			exception.Iteration = command.Iteration;
+			exception.SetInDoubt(command.IsWrite(), command.CommandSentCounter);
+			throw exception;
+		}
+
+		public static async IAsyncEnumerable<KeyRecord> ParseMultipleResult(this ICommand command, IConnection conn, [EnumeratorCancellation] CancellationToken token)
 		{
 			// Read blocks of records.  Do not use thread local receive buffer because each
 			// block will likely be too big for a cache.  Also, scan callbacks can nest
@@ -510,7 +763,7 @@ namespace Aerospike.Client
 				var keyRecord = command.ParseGroup(receiveSize);
 				if (keyRecord == null)
 				{
-					break;
+					yield break;
 				}
 
 				yield return keyRecord;

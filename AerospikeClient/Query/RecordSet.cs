@@ -134,7 +134,7 @@ namespace Aerospike.Client
 		{
 			get
 			{
-				return record.key;
+				return record.Key;
 			}
 		}
 
@@ -145,7 +145,7 @@ namespace Aerospike.Client
 		{
 			get
 			{
-				return record.record;
+				return record.Record;
 			}
 		}
 
