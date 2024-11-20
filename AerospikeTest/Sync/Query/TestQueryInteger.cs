@@ -35,11 +35,8 @@ namespace Aerospike.Test
 
 			try
 			{
-				if (!args.testProxy || (args.testProxy && nativeClient != null))
-				{
-					IndexTask task = nativeClient.CreateIndex(policy, args.ns, args.set, indexName, binName, IndexType.NUMERIC);
-					task.Wait();
-				}
+				IndexTask task = client.CreateIndex(policy, args.ns, args.set, indexName, binName, IndexType.NUMERIC);
+				task.Wait();
 			}
 			catch (AerospikeException ae)
 			{
@@ -60,10 +57,7 @@ namespace Aerospike.Test
 		[ClassCleanup()]
 		public static void Destroy()
 		{
-			if (!args.testProxy || (args.testProxy && nativeClient != null))
-			{
-				nativeClient.DropIndex(null, args.ns, args.set, indexName);
-			}
+			client.DropIndex(null, args.ns, args.set, indexName);
 		}
 
 		[TestMethod]

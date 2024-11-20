@@ -22,7 +22,7 @@ namespace Aerospike.Client
 	/// <summary>
 	/// Socket connection wrapper.
 	/// </summary>
-	public class Connection : IConnection
+	public class Connection
 	{
 		protected internal readonly Socket socket;
 		protected internal readonly Pool<Connection> pool;

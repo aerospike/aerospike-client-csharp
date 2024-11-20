@@ -32,18 +32,11 @@ namespace Aerospike.Test
 		public static void Prepare(TestContext testContext)
 		{
 			WritePolicy policy = new WritePolicy();
-			if (!args.testProxy)
-			{
-				policy.totalTimeout = args.proxyTotalTimeout;
-			}
 
 			// Write records in set p1.
 			for (int i = 1; i <= 5; i++)
 			{
-				if (!args.testProxy || (args.testProxy && nativeClient != null))
-				{
-					policy.expiration = i * 60;
-				}
+				policy.expiration = i * 60;
 
 				Key key = new Key(args.ns, set1, i);
 				client.Put(policy, key, new Bin(binA, i));
@@ -59,10 +52,6 @@ namespace Aerospike.Test
 			// Write records in set p3 with send key.
 			policy = new WritePolicy();
 			policy.sendKey = true;
-			if (args.testProxy)
-			{
-				policy.totalTimeout = args.proxyTotalTimeout;
-			}
 
 			for (int i = 31; i <= 40; i++)
 			{
@@ -85,10 +74,6 @@ namespace Aerospike.Test
 
 			QueryPolicy policy = new QueryPolicy();
 			policy.filterExp = Exp.Build(Exp.EQ(Exp.SetName(), Exp.Val(set2)));
-			if (args.testProxy)
-			{
-				policy.totalTimeout = args.proxyTotalTimeout;
-			}
 
 			RecordSet rs = client.Query(policy, stmt);
 
@@ -117,10 +102,6 @@ namespace Aerospike.Test
 
 			QueryPolicy policy = new QueryPolicy();
 			policy.filterExp = Exp.Build(Exp.GT(Exp.FloatBin(binB), Exp.Val(21.5)));
-			if (args.testProxy)
-			{
-				policy.totalTimeout = args.proxyTotalTimeout;
-			}
 
 			RecordSet rs = client.Query(policy, stmt);
 
@@ -149,10 +130,6 @@ namespace Aerospike.Test
 
 			QueryPolicy policy = new QueryPolicy();
 			policy.filterExp = Exp.Build(Exp.RegexCompare("^key-.*-35$", 0, Exp.Key(Exp.Type.STRING)));
-			if (args.testProxy)
-			{
-				policy.totalTimeout = args.proxyTotalTimeout;
-			}
 
 			RecordSet rs = client.Query(policy, stmt);
 
@@ -181,10 +158,6 @@ namespace Aerospike.Test
 
 			QueryPolicy policy = new QueryPolicy();
 			policy.filterExp = Exp.Build(Exp.LT(Exp.Key(Exp.Type.INT), Exp.Val(35)));
-			if (args.testProxy)
-			{
-				policy.totalTimeout = args.proxyTotalTimeout;
-			}
 
 			RecordSet rs = client.Query(policy, stmt);
 
@@ -214,10 +187,6 @@ namespace Aerospike.Test
 
 			QueryPolicy policy = new QueryPolicy();
 			policy.filterExp = Exp.Build(Exp.KeyExists());
-			if (args.testProxy)
-			{
-				policy.totalTimeout = args.proxyTotalTimeout;
-			}
 
 			RecordSet rs = client.Query(policy, stmt);
 
@@ -252,10 +221,6 @@ namespace Aerospike.Test
 				Exp.And(
 					Exp.GE(Exp.VoidTime(), Exp.Val(now)),
 					Exp.LT(Exp.VoidTime(), Exp.Val(end))));
-			if (args.testProxy)
-			{
-				policy.totalTimeout = args.proxyTotalTimeout;
-			}
 
 			RecordSet rs = client.Query(policy, stmt);
 
@@ -284,10 +249,6 @@ namespace Aerospike.Test
 
 			QueryPolicy policy = new QueryPolicy();
 			policy.filterExp = Exp.Build(Exp.LE(Exp.TTL(), Exp.Val(60)));
-			if (args.testProxy)
-			{
-				policy.totalTimeout = args.proxyTotalTimeout;
-			}
 
 			RecordSet rs = client.Query(policy, stmt);
 

@@ -15,7 +15,6 @@
  * the License.
  */
 using Aerospike.Client;
-using Aerospike.Client.Proxy;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace Aerospike.Test
@@ -30,8 +29,6 @@ namespace Aerospike.Test
 	{
 		public static Args args = Args.Instance;
 		public static IAerospikeClient client = args.client;
-		public static AerospikeClient nativeClient = args.nativeClient;
-		public static AerospikeClientProxy proxyClient = args.proxyClient;
 
 		public static void AssertBinEqual(Key key, Record record, Bin bin)
 		{

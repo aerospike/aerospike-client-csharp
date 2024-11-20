@@ -46,7 +46,7 @@ namespace Aerospike.Client
 			SetExists(policy, key);
 		}
 
-		protected internal override void ParseResult(IConnection conn)
+		protected internal override void ParseResult(Connection conn)
 		{
 			ParseHeader(conn);
 

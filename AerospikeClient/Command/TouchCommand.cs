@@ -52,7 +52,7 @@ namespace Aerospike.Client
 			SetTouch(writePolicy, key);
 		}
 
-		protected internal override void ParseResult(IConnection conn)
+		protected internal override void ParseResult(Connection conn)
 		{
 			ParseHeader(conn);
 
