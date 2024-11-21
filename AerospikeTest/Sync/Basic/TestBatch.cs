@@ -44,14 +44,7 @@ namespace Aerospike.Test
 		public static void WriteRecords(TestContext testContext)
 		{
 			WritePolicy policy = new WritePolicy();
-			if (!args.testProxy || (args.testProxy && nativeClient != null))
-			{
-				policy.expiration = 2592000;
-			}
-			if (args.testProxy)
-			{
-				policy.totalTimeout = args.proxyTotalTimeout;
-			}
+			policy.expiration = 2592000;
 
 			for (int i = 1; i <= Size; i++)
 			{

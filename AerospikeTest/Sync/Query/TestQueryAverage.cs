@@ -32,23 +32,17 @@ namespace Aerospike.Test
 		[ClassInitialize()]
 		public static void Prepare(TestContext testContext)
 		{
-			if (!args.testProxy || (args.testProxy && nativeClient != null))
-			{
-				Assembly assembly = Assembly.GetExecutingAssembly();
-				RegisterTask task = nativeClient.Register(null, assembly, "Aerospike.Test.LuaResources.average_example.lua", "average_example.lua", Language.LUA);
-				task.Wait();
-			}
+			Assembly assembly = Assembly.GetExecutingAssembly();
+			RegisterTask task = client.Register(null, assembly, "Aerospike.Test.LuaResources.average_example.lua", "average_example.lua", Language.LUA);
+			task.Wait();
 
 			Policy policy = new Policy();
 			policy.totalTimeout = 0; // Do not timeout on index create.
 
 			try
 			{
-				if (!args.testProxy || (args.testProxy && nativeClient != null))
-				{
-					IndexTask itask = nativeClient.CreateIndex(policy, args.ns, args.set, indexName, binName, IndexType.NUMERIC);
-					itask.Wait();
-				}
+				IndexTask itask = client.CreateIndex(policy, args.ns, args.set, indexName, binName, IndexType.NUMERIC);
+				itask.Wait();
 			}
 			catch (AerospikeException ae)
 			{
@@ -69,53 +63,47 @@ namespace Aerospike.Test
 		[ClassCleanup()]
 		public static void Destroy()
 		{
-			if (!args.testProxy || (args.testProxy && nativeClient != null))
-			{
-				nativeClient.DropIndex(null, args.ns, args.set, indexName);
-			}
+			client.DropIndex(null, args.ns, args.set, indexName);
 		}
 
 		[TestMethod]
 		public void QueryAverage()
 		{
-			if (!args.testProxy || (args.testProxy && nativeClient != null))
+			Statement stmt = new Statement();
+			stmt.SetNamespace(args.ns);
+			stmt.SetSetName(args.set);
+			stmt.SetFilter(Filter.Range(binName, 0, 1000));
+			stmt.SetAggregateFunction(Assembly.GetExecutingAssembly(), "Aerospike.Test.LuaResources.average_example.lua", "average_example", "average");
+
+			ResultSet rs = client.QueryAggregate(null, stmt);
+
+			try
 			{
-				Statement stmt = new Statement();
-				stmt.SetNamespace(args.ns);
-				stmt.SetSetName(args.set);
-				stmt.SetFilter(Filter.Range(binName, 0, 1000));
-				stmt.SetAggregateFunction(Assembly.GetExecutingAssembly(), "Aerospike.Test.LuaResources.average_example.lua", "average_example", "average");
-
-				ResultSet rs = nativeClient.QueryAggregate(null, stmt);
-
-				try
+				if (rs.Next())
 				{
-					if (rs.Next())
-					{
-						object obj = rs.Object;
+					object obj = rs.Object;
 
-						if (obj is IDictionary)
-						{
-							IDictionary map = (IDictionary)obj;
-							long sum = (long)map["sum"];
-							long count = (long)map["count"];
-							double avg = (double)sum / count;
-							Assert.AreEqual(5.5, avg, 0.00000001);
-						}
-						else
-						{
-							Assert.Fail("Unexpected object returned: " + obj);
-						}
+					if (obj is IDictionary)
+					{
+						IDictionary map = (IDictionary)obj;
+						long sum = (long)map["sum"];
+						long count = (long)map["count"];
+						double avg = (double)sum / count;
+						Assert.AreEqual(5.5, avg, 0.00000001);
 					}
 					else
 					{
-						Assert.Fail("Query Assert.Failed. No records returned.");
+						Assert.Fail("Unexpected object returned: " + obj);
 					}
 				}
-				finally
+				else
 				{
-					rs.Close();
+					Assert.Fail("Query Assert.Failed. No records returned.");
 				}
+			}
+			finally
+			{
+				rs.Close();
 			}
 		}
 	}

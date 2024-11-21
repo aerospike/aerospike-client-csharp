@@ -32,7 +32,7 @@ namespace Aerospike.Client
 			SetTxnAddKeys(args.writePolicy, key, args);
 		}
 
-		protected internal override void ParseResult(IConnection conn)
+		protected internal override void ParseResult(Connection conn)
 		{
 			ParseHeader(conn);
 			ParseTxnDeadline(policy.Txn);

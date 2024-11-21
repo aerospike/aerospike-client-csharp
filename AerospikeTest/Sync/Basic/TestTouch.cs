@@ -29,20 +29,12 @@ namespace Aerospike.Test
 			Bin bin = new Bin(args.GetBinName("touchbin"), "touchvalue");
 
 			WritePolicy writePolicy = new WritePolicy();
-			if (!args.testProxy || (args.testProxy && nativeClient != null))
-			{
-				writePolicy.expiration = 2;
-			}
-			if (args.testProxy)
-			{
-				writePolicy.totalTimeout = args.proxyTotalTimeout;
-			}
+			writePolicy.expiration = 2;
+			
 			client.Put(writePolicy, key, bin);
 
-			if (!args.testProxy || (args.testProxy && nativeClient != null))
-			{
-				writePolicy.expiration = 5;
-			}
+			writePolicy.expiration = 5;
+			
 			Record record = client.Operate(writePolicy, key, Operation.Touch(), Operation.GetHeader());
 			AssertRecordFound(key, record);
 			Assert.AreNotEqual(0, record.expiration);

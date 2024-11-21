@@ -37,11 +37,8 @@ namespace Aerospike.Test
 
 			try
 			{
-				if (!args.testProxy || (args.testProxy && nativeClient != null))
-				{
-					IndexTask task = nativeClient.CreateIndex(policy, args.ns, args.set, indexName, binName, IndexType.NUMERIC);
-					task.Wait();
-				}
+				IndexTask task = client.CreateIndex(policy, args.ns, args.set, indexName, binName, IndexType.NUMERIC);
+				task.Wait();
 			}
 			catch (AerospikeException ae)
 			{
@@ -55,41 +52,24 @@ namespace Aerospike.Test
 		[ClassCleanup()]
 		public static void Destroy()
 		{
-			if (!args.testProxy || (args.testProxy && nativeClient != null))
-			{
-				nativeClient.DropIndex(null, args.ns, args.set, indexName);
-			}
+			client.DropIndex(null, args.ns, args.set, indexName);
 		}
 
 		[TestMethod]
-		public async Task AsyncQuery()
+		public void AsyncQuery()
 		{
-			if (!args.testProxy)
-			{
-				WriteHandler handler = new WriteHandler(this);
+			WriteHandler handler = new WriteHandler(this);
 
-				for (int i = 1; i <= size; i++)
-				{
-					Key key = new Key(args.ns, args.set, keyPrefix + i);
-					Bin bin = new Bin(binName, i);
-					client.Put(null, handler, key, bin);
-				}
-				WaitTillComplete();
-			}
-			else
+			for (int i = 1; i <= size; i++)
 			{
-				int count = 0;
-				for (int i = 1; i <= size; i++)
-				{
-					Key key = new Key(args.ns, args.set, keyPrefix + i);
-					Bin bin = new Bin(binName, i);
-					await client.Put(null, tokenSource.Token, key, bin);
-					await WriteHandlerSuccess(key, count, this);
-				}
+				Key key = new Key(args.ns, args.set, keyPrefix + i);
+				Bin bin = new Bin(binName, i);
+				client.Put(null, handler, key, bin);
 			}
+			WaitTillComplete();
 		}
 
-		static async Task WriteHandlerSuccess(Key key, int count, TestAsyncQuery parent)
+		static void WriteHandlerSuccess(Key key, int count, TestAsyncQuery parent)
 		{
 			int rows = Interlocked.Increment(ref count);
 
@@ -104,22 +84,7 @@ namespace Aerospike.Test
 				stmt.SetBinNames(binName);
 				stmt.SetFilter(Filter.Range(binName, begin, end));
 
-				if (!args.testProxy)
-				{
-					client.Query(null, new RecordSequenceHandler(parent), stmt);
-				}
-				else
-				{
-					var result = await asyncProxy.Query(null, tokenSource.Token, stmt);
-					while (result.Next())
-					{
-						Record record = result.Record;
-						int integer = record.GetInt(binName);
-						parent.AssertBetween(26, 34, integer);
-						Interlocked.Increment(ref count);
-					}
-					parent.AssertEquals(9, count);
-				}
+				client.Query(null, new RecordSequenceHandler(parent), stmt);
 			}
 		}
 

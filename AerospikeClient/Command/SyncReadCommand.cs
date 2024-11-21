@@ -48,6 +48,6 @@ namespace Aerospike.Client
 
 		protected internal abstract override void WriteBuffer();
 
-		protected internal abstract override void ParseResult(IConnection conn);
+		protected internal abstract override void ParseResult(Connection conn);
 	}
 }

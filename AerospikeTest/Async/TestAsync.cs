@@ -15,7 +15,6 @@
  * the License.
  */
 using Aerospike.Client;
-using Aerospike.Client.Proxy;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
 
@@ -26,8 +25,6 @@ namespace Aerospike.Test
 	{
 		public static Args args = Args.Instance;
 		public static IAsyncClient client = args.asyncClient;
-		public static AsyncClient nativeClient = args.nativeAsync;
-		public static AsyncClientProxy asyncProxy = args.asyncProxy;
 
 		private AsyncMonitor monitor = new AsyncMonitor();
 
@@ -214,10 +211,7 @@ namespace Aerospike.Test
 
 		public void WaitTillComplete()
 		{
-			if (!args.testProxy)
-			{
-				monitor.WaitTillComplete();
-			}
+			monitor.WaitTillComplete();
 		}
 
 		public void NotifyCompleted()

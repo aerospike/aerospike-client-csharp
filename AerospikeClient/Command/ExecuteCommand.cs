@@ -46,7 +46,7 @@ namespace Aerospike.Client
 			SetUdf(writePolicy, key, packageName, functionName, args);
 		}
 
-		protected internal override void ParseResult(IConnection conn)
+		protected internal override void ParseResult(Connection conn)
 		{
 			ParseHeader(conn);
 			ParseFields(policy.Txn, key, true);
