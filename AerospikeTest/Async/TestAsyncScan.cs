@@ -26,35 +26,13 @@ namespace Aerospike.Test
 		static CancellationTokenSource tokenSource = new();
 
 		[TestMethod]
-		public async Task AsyncScan()
+		public void AsyncScan()
 		{
 			recordCount = 0;
 
 			ScanPolicy policy = new ScanPolicy();
-			if (args.testProxy)
-			{
-				policy.totalTimeout = args.proxyTotalTimeout;
-			}
-
-			if (!args.testProxy)
-			{
-				client.ScanAll(policy, new RecordSequenceHandler(this), args.ns, args.set);
-
-				WaitTillComplete();
-			}
-			else
-			{
-				var recordSet = await asyncProxy.ScanAll(policy, tokenSource.Token, args.ns, args.set);
-				while (recordSet.Next())
-				{
-					recordCount++;
-
-					if ((recordCount % 10000) == 0)
-					{
-						;
-					}
-				}
-			}
+			client.ScanAll(policy, new RecordSequenceHandler(this), args.ns, args.set);
+			WaitTillComplete();
 		}
 
 		private class RecordSequenceHandler : RecordSequenceListener

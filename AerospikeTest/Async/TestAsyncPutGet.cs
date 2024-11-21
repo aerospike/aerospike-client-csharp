@@ -26,21 +26,13 @@ namespace Aerospike.Test
 		private static CancellationTokenSource tokenSource = new();
 
 		[TestMethod]
-		public async Task AsyncPutGet()
+		public void AsyncPutGet()
 		{
 			Key key = new Key(args.ns, args.set, "putgetkey1");
 			Bin bin = new Bin(binName, "value1");
 
-			if (!args.testProxy)
-			{
-				client.Put(null, new WriteHandler(this, client, key, bin), key, bin);
-				WaitTillComplete();
-			}
-			else
-			{
-				await client.Put(null, tokenSource.Token, key, bin);
-				await WriteListenerSuccess(key, bin, this);
-			}
+			client.Put(null, new WriteHandler(this, client, key, bin), key, bin);
+			WaitTillComplete();
 		}
 
 		[TestMethod]
@@ -58,20 +50,12 @@ namespace Aerospike.Test
 			TestSync.AssertBinEqual(key, taskget.Result, bin);
 		}
 
-		static async Task WriteListenerSuccess(Key key, Bin bin, TestAsyncPutGet parent)
+		static void WriteListenerSuccess(Key key, Bin bin, TestAsyncPutGet parent)
 		{
 			try
 			{
-				if (!args.testProxy)
-				{
-					// Write succeeded.  Now call read.
-					client.Get(null, new RecordHandler(parent, key, bin), key);
-				}
-				else
-				{
-					var record = await client.Get(null, tokenSource.Token, key);
-					RecordHandlerSuccess(key, record, bin, parent);
-				}
+				// Write succeeded.  Now call read.
+				client.Get(null, new RecordHandler(parent, key, bin), key);
 			}
 			catch (Exception e)
 			{
@@ -103,7 +87,7 @@ namespace Aerospike.Test
 
 			public void OnSuccess(Key key)
 			{
-				WriteListenerSuccess(key, bin, parent).Wait();
+				WriteListenerSuccess(key, bin, parent);
 			}
 
 			public void OnFailure(AerospikeException e)
@@ -151,17 +135,6 @@ namespace Aerospike.Test
 			}
 			catch (TaskCanceledException) // expected exception for native client
 			{
-				if (args.testProxy)
-				{
-					throw;
-				}
-			}
-			catch (OperationCanceledException) // expected exception for proxy client
-			{
-				if (!args.testProxy)
-				{
-					throw;
-				}
 			}
 		}
 	}

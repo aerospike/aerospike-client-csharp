@@ -351,7 +351,7 @@ namespace Aerospike.Client
 			ByteUtil.LongToBytes(size, dataBuffer, 0);
 		}
 
-		protected internal void ParseHeader(IConnection conn)
+		protected internal void ParseHeader(Connection conn)
 		{
 			// Read header.
 			conn.ReadFully(dataBuffer, 8, Command.STATE_READ_HEADER);
@@ -433,7 +433,7 @@ namespace Aerospike.Client
 
 		protected abstract LatencyType GetLatencyType();
 		protected internal abstract void WriteBuffer();
-		protected internal abstract void ParseResult(IConnection conn);
+		protected internal abstract void ParseResult(Connection conn);
 		protected internal abstract bool PrepareRetry(bool timeout);
 	}
 }

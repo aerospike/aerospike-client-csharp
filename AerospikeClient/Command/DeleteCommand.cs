@@ -53,7 +53,7 @@ namespace Aerospike.Client
 			SetDelete(writePolicy, key);
 		}
 
-		protected internal override void ParseResult(IConnection conn)
+		protected internal override void ParseResult(Connection conn)
 		{
 			ParseHeader(conn);
 

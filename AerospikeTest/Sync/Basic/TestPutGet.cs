@@ -107,62 +107,51 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void PutGetCompression()
 		{
-			if (!args.testProxy || (args.testProxy && nativeClient != null))
+			Node node = client.Nodes[0];
+			IDictionary<string, string> map = Info.Request(null, node);
+			Assert.IsNotNull(map);
+
+			foreach (KeyValuePair<string, string> entry in map)
 			{
-				Node node = nativeClient.Nodes[0];
-				IDictionary<string, string> map = Info.Request(null, node);
-				Assert.IsNotNull(map);
+				string kvp = entry.Key;
 
-				foreach (KeyValuePair<string, string> entry in map)
+				if (kvp.Equals("build_ee_sha")) // Compression only available in EE
 				{
-					string kvp = entry.Key;
-
-					if (kvp.Equals("build_ee_sha")) // Compression only available in EE
+					Client.WritePolicy writePolicy = new()
 					{
-						Client.WritePolicy writePolicy = new()
-						{
-							compress = true
-						};
-						if (args.testProxy)
-						{
-							writePolicy.totalTimeout = args.proxyTotalTimeout;
-						}
+						compress = true
+					};
 
-						Policy policy = new()
-						{
-							compress = true
-						};
-						if (args.testProxy)
-						{
-							policy.totalTimeout = args.proxyTotalTimeout;
-						}
+					Policy policy = new()
+					{
+						compress = true
+					};
 
-						Key key = new(args.ns, args.set, "putgetc");
-						Record record;
+					Key key = new(args.ns, args.set, "putgetc");
+					Record record;
 
-						List<string> list = new();
-						int[] iterator = Enumerable.Range(0, 2000).ToArray();
-						foreach (int i in iterator)
-						{
-							list.Add(i.ToString());
-						}
+					List<string> list = new();
+					int[] iterator = Enumerable.Range(0, 2000).ToArray();
+					foreach (int i in iterator)
+					{
+						list.Add(i.ToString());
+					}
 
-						Bin bin1 = new("bin", list);
+					Bin bin1 = new("bin", list);
 
-						client.Put(writePolicy, key, bin1);
-						record = client.Get(policy, key);
-						var bin1List = bin1.value.Object;
-						record.bins.TryGetValue("bin", out object recordBin);
-						CollectionAssert.AreEquivalent((List<string>)bin1List, (List<object>)recordBin);
+					client.Put(writePolicy, key, bin1);
+					record = client.Get(policy, key);
+					var bin1List = bin1.value.Object;
+					record.bins.TryGetValue("bin", out object recordBin);
+					CollectionAssert.AreEquivalent((List<string>)bin1List, (List<object>)recordBin);
 
-						record = client.GetHeader(policy, key);
-						AssertRecordFound(key, record);
+					record = client.GetHeader(policy, key);
+					AssertRecordFound(key, record);
 
-						// Generation should be greater than zero.  Make sure it's populated.
-						if (record.generation == 0)
-						{
-							Assert.Fail("Invalid record header: generation=" + record.generation + " expiration=" + record.expiration);
-						}
+					// Generation should be greater than zero.  Make sure it's populated.
+					if (record.generation == 0)
+					{
+						Assert.Fail("Invalid record header: generation=" + record.generation + " expiration=" + record.expiration);
 					}
 				}
 			}

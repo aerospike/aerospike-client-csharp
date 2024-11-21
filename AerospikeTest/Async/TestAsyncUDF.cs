@@ -30,35 +30,20 @@ namespace Aerospike.Test
 		[ClassInitialize()]
 		public static void Register(TestContext testContext)
 		{
-			if (!args.testProxy || (args.testProxy && nativeClient != null))
-			{
-				Assembly assembly = Assembly.GetExecutingAssembly();
-				RegisterTask task = nativeClient.Register(null, assembly, "Aerospike.Test.LuaResources.record_example.lua", "record_example.lua", Language.LUA);
-				task.Wait();
-			}
+			Assembly assembly = Assembly.GetExecutingAssembly();
+			RegisterTask task = client.Register(null, assembly, "Aerospike.Test.LuaResources.record_example.lua", "record_example.lua", Language.LUA);
+			task.Wait();
 		}
 
 		[TestMethod]
-		public async Task AsyncUDF()
+		public void AsyncUDF()
 		{
 			Key key = new Key(args.ns, args.set, "audfkey1");
 			Bin bin = new Bin(binName, binValue);
 
-			if (!args.testProxy)
-			{
-				// Write bin
-				client.Execute(null, new WriteHandler(this, key), key, "record_example", "writeBin", Value.Get(bin.name), bin.value);
-				WaitTillComplete();
-			}
-			else
-			{
-				var result = await client.Execute(null, tokenSource.Token, key, "record_example", "writeBin", Value.Get(bin.name), bin.value);
-				var received = await client.Execute(null, tokenSource.Token, key, "record_example", "readBin", Value.Get(binName));
-				if (AssertNotNull(received))
-				{
-					AssertEquals(binValue, received);
-				}
-			}
+			// Write bin
+			client.Execute(null, new WriteHandler(this, key), key, "record_example", "writeBin", Value.Get(bin.name), bin.value);
+			WaitTillComplete();
 		}
 
 		private class WriteHandler : ExecuteListener
@@ -113,7 +98,7 @@ namespace Aerospike.Test
 		}
 
 		[TestMethod]
-		public async Task AsyncBatchUDF()
+		public void AsyncBatchUDF()
 		{
 			Key[] keys = new Key[]
 			{
@@ -121,30 +106,11 @@ namespace Aerospike.Test
 				new Key(args.ns, args.set, 20001)
 			};
 
-			if (!args.testProxy)
-			{
-				client.Delete(null, null, keys);
+			client.Delete(null, null, keys);
 
-				client.Execute(null, null, new BatchUDFHandler(this), keys, "record_example", "writeBin", Value.Get("B5"), Value.Get("value5"));
+			client.Execute(null, null, new BatchUDFHandler(this), keys, "record_example", "writeBin", Value.Get("B5"), Value.Get("value5"));
 
-				WaitTillComplete();
-			}
-			else
-			{
-				client.Delete(null, null, keys);
-
-				var result = await client.Execute(null, null, tokenSource.Token, keys, "record_example", "writeBin", Value.Get("B5"), Value.Get("value5"));
-				if (AssertTrue(result.status))
-				{
-					foreach (BatchRecord r in result.records)
-					{
-						if (AssertNotNull(r))
-						{
-							AssertEquals(0, r.resultCode);
-						}
-					}
-				}
-			}
+			WaitTillComplete();
 		}
 
 		private class BatchUDFHandler : BatchRecordArrayListener
@@ -187,7 +153,7 @@ namespace Aerospike.Test
 		}
 
 		[TestMethod]
-		public async Task AsyncBatchUDFComplex()
+		public void AsyncBatchUDFComplex()
 		{
 			string bin = "B5";
 
@@ -200,34 +166,18 @@ namespace Aerospike.Test
 			records.Add(new BatchUDF(new Key(args.ns, args.set, 20015), "record_example", "writeWithValidation", a2));
 			records.Add(new BatchUDF(new Key(args.ns, args.set, 20015), "record_example", "writeWithValidation", a3));
 
-			if (!args.testProxy)
-			{
-				client.Operate(null, new BatchSeqUDFHandler(this, bin), records);
+			client.Operate(null, new BatchSeqUDFHandler(this, bin), records);
 
-				WaitTillComplete();
-			}
-			else
-			{
-				await client.Operate(null, tokenSource.Token, records);
-				await BatchSeqUDFHandlerSuccess(this, bin);
-			}
+			WaitTillComplete();
 		}
 
-		static async Task BatchSeqUDFHandlerSuccess(TestAsyncUDF parent, string bin)
+		static void BatchSeqUDFHandlerSuccess(TestAsyncUDF parent, string bin)
 		{
 			List<BatchRecord> records = new List<BatchRecord>();
 			records.Add(new BatchRead(new Key(args.ns, args.set, 20014), true));
 			records.Add(new BatchRead(new Key(args.ns, args.set, 20015), true));
 
-			if (!args.testProxy)
-			{
-				client.Operate(null, new BatchSeqReadHandler(parent, bin), records);
-			}
-			else
-			{
-				var result = await client.Operate(null, tokenSource.Token, records);
-				Assert.IsTrue(result);
-			}
+			client.Operate(null, new BatchSeqReadHandler(parent, bin), records);
 		}
 
 		private class BatchSeqUDFHandler : BatchRecordSequenceListener
@@ -269,7 +219,7 @@ namespace Aerospike.Test
 
 			public void OnSuccess()
 			{
-				BatchSeqUDFHandlerSuccess(parent, bin).Wait();
+				BatchSeqUDFHandlerSuccess(parent, bin);
 			}
 
 			public void OnFailure(AerospikeException ae)
