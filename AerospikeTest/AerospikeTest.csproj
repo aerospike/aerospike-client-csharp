@@ -92,7 +92,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\AerospikeClient\AerospikeClient.csproj" />
-    <ProjectReference Include="..\AerospikeClientProxy\AerospikeClientProxy.csproj" />
   </ItemGroup>
 
   <Target Name="AnalyzeCoverage" AfterTargets="PostBuildEvent" Condition="'$(ConfigurationName)' == 'Coverage'">

@@ -108,7 +108,7 @@ namespace Aerospike.Client
 			return true;
 		}
 
-		protected internal sealed override void ParseResult(IConnection conn)
+		protected internal sealed override void ParseResult(Connection conn)
 		{
 			// Read blocks of records.  Do not use thread local receive buffer because each
 			// block will likely be too big for a cache.  Also, scan callbacks can nest

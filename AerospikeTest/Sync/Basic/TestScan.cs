@@ -29,65 +29,25 @@ namespace Aerospike.Test
 		public void ScanParallel()
 		{
 			ScanPolicy policy = new ScanPolicy();
-			if (args.testProxy)
-			{
-				policy.totalTimeout = args.proxyTotalTimeout;
-			}
 
-			if (!args.testProxy)
-			{
-				client.ScanAll(policy, args.ns, args.set, ScanCallback);
-			}
-			else
-			{
-				var recordSet = proxyClient.ScanAll(policy, args.ns, args.set);
-				Metrics metrics;
-				while (recordSet.Next())
-				{
-					var key = recordSet.Key;
-
-					if (setMap.TryGetValue(key.setName, out metrics))
-					{
-						Interlocked.Increment(ref metrics.count);
-						return;
-					}
-
-					// Set not found.  Must lock to create metrics entry.
-					lock (setMap)
-					{
-						// Retry lookup under lock.
-						if (setMap.TryGetValue(key.setName, out metrics))
-						{
-							Interlocked.Increment(ref metrics.count);
-							return;
-						}
-
-						metrics = new Metrics();
-						metrics.count = 1;
-						setMap[key.setName] = metrics;
-					}
-				}
-			}
+			client.ScanAll(policy, args.ns, args.set, ScanCallback);
 		}
 
 		[TestMethod]
 		public void ScanSeries()
 		{
-			if (!args.testProxy || (args.testProxy && nativeClient != null))
+			Node[] nodes = client.Nodes;
+
+			foreach (Node node in nodes)
 			{
-				Node[] nodes = nativeClient.Nodes;
+				client.ScanNode(null, node, args.ns, args.set, ScanCallback);
 
-				foreach (Node node in nodes)
+				foreach (KeyValuePair<string, Metrics> entry in setMap)
 				{
-
-					nativeClient.ScanNode(null, node, args.ns, args.set, ScanCallback);
-
-					foreach (KeyValuePair<string, Metrics> entry in setMap)
-					{
-						entry.Value.count = 0;
-					}
+					entry.Value.count = 0;
 				}
 			}
+
 		}
 
 		public void ScanCallback(Key key, Record record)

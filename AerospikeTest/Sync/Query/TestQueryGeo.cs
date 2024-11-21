@@ -34,18 +34,11 @@ namespace Aerospike.Test
 		{
 			Policy policy = new Policy();
 			policy.socketTimeout = 0; // Do not timeout on index create.
-			if (args.testProxy)
-			{
-				policy.totalTimeout = args.proxyTotalTimeout;
-			}
 
 			try
 			{
-				if (!args.testProxy || (args.testProxy && nativeClient != null))
-				{
-					IndexTask task = nativeClient.CreateIndex(policy, args.ns, setName, indexName, binName, IndexType.GEO2DSPHERE);
-					task.Wait();
-				}
+				IndexTask task = client.CreateIndex(policy, args.ns, setName, indexName, binName, IndexType.GEO2DSPHERE);
+				task.Wait();
 			}
 			catch (AerospikeException ae)
 			{
@@ -83,10 +76,7 @@ namespace Aerospike.Test
 		[ClassCleanup()]
 		public static void Destroy()
 		{
-			if (!args.testProxy || (args.testProxy && nativeClient != null))
-			{
-				nativeClient.DropIndex(null, args.ns, setName, indexName);
-			}
+			client.DropIndex(null, args.ns, setName, indexName);
 		}
 
 		[TestMethod]
@@ -100,10 +90,6 @@ namespace Aerospike.Test
 
 			QueryPolicy policy = new QueryPolicy();
 			policy.filterExp = Exp.Build(Exp.GeoCompare(Exp.GeoBin("loc"), Exp.Geo(region)));
-			if (args.testProxy)
-			{
-				policy.totalTimeout = args.proxyTotalTimeout;
-			}
 
 			RecordSet rs = client.Query(policy, stmt);
 

@@ -35,11 +35,8 @@ namespace Aerospike.Test
 
 			try
 			{
-				if (!args.testProxy || (args.testProxy && nativeClient != null))
-				{
-					IndexTask itask = nativeClient.CreateIndex(policy, args.ns, args.set, indexName, binName, IndexType.NUMERIC);
-					itask.Wait();
-				}
+				IndexTask itask = client.CreateIndex(policy, args.ns, args.set, indexName, binName, IndexType.NUMERIC);
+				itask.Wait();
 			}
 			catch (AerospikeException ae)
 			{
@@ -51,10 +48,6 @@ namespace Aerospike.Test
 
 			WritePolicy writePolicy = new WritePolicy();
 			writePolicy.sendKey = true;
-			if (args.testProxy)
-			{
-				writePolicy.totalTimeout = args.proxyTotalTimeout;
-			}
 
 			for (int i = 1; i <= size; i++)
 			{
@@ -67,10 +60,7 @@ namespace Aerospike.Test
 		[ClassCleanup()]
 		public static void Destroy()
 		{
-			if (!args.testProxy || (args.testProxy && nativeClient != null))
-			{
-				nativeClient.DropIndex(null, args.ns, args.set, indexName);
-			}
+			client.DropIndex(null, args.ns, args.set, indexName);
 		}
 
 		[TestMethod]

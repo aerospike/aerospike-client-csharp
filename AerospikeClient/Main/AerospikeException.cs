@@ -560,33 +560,5 @@ namespace Aerospike.Client
 			{
 			}
 		}
-
-		/// <summary>
-		/// Exception used like a iterrupt to indicate the end of a GRPC stream has been reached
-		/// </summary>
-		public class EndOfGRPCStream : AerospikeException
-		{
-			public int ResultCode;
-
-			/// <summary>
-			/// Create end of GRPC stream exception
-			/// </summary>
-			public EndOfGRPCStream() : base(Client.ResultCode.OK, "GRPC Stream was ended successfully")
-			{
-				ResultCode = Client.ResultCode.OK;
-			}
-
-			/// <summary>
-			/// Create end of GRPC stream exception
-			/// </summary>
-			public EndOfGRPCStream(int resultCode)
-				: base(resultCode,
-						resultCode == Client.ResultCode.OK
-										? "GRPC Stream was ended successfully"
-										: $"GRPC Stream ended with Result Code of {resultCode}")
-			{
-				ResultCode = resultCode;
-			}
-		}
 	}
 }
