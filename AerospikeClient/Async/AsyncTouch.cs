@@ -139,9 +139,13 @@ namespace Aerospike.Client
 
 		protected internal override void OnFailure(AerospikeException e)
 		{
-			if (listener != null || existsListener != null)
+			if (listener != null)
 			{
 				listener.OnFailure(e);
+			}
+			else if (existsListener != null)
+			{
+				existsListener.OnFailure(e);
 			}
 		}
 	}
