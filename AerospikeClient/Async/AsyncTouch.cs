@@ -21,16 +21,33 @@ namespace Aerospike.Client
 	{
 		private readonly WritePolicy writePolicy;
 		private readonly WriteListener listener;
+		private readonly ExistsListener existsListener;
 		private readonly Key key;
 		private readonly Partition partition;
+		private readonly bool throwsKeyNotFoundError;
+		private bool touched;
 
 		public AsyncTouch(AsyncCluster cluster, WritePolicy writePolicy, WriteListener listener, Key key)
 			: base(cluster, writePolicy)
 		{
 			this.writePolicy = writePolicy;
 			this.listener = listener;
+			this.existsListener = null;
 			this.key = key;
 			this.partition = Partition.Write(cluster, policy, key);
+			this.throwsKeyNotFoundError = true;
+			cluster.AddTran();
+		}
+
+		public AsyncTouch(AsyncCluster cluster, WritePolicy writePolicy, ExistsListener listener, Key key, bool throwsKeyNotFoundError)
+			: base(cluster, writePolicy)
+		{
+			this.writePolicy = writePolicy;
+			this.listener = null;
+			this.existsListener = listener;
+			this.key = key;
+			this.partition = Partition.Write(cluster, policy, key);
+			this.throwsKeyNotFoundError = throwsKeyNotFoundError;
 			cluster.AddTran();
 		}
 
@@ -39,8 +56,10 @@ namespace Aerospike.Client
 		{
 			this.writePolicy = other.writePolicy;
 			this.listener = other.listener;
+			this.existsListener = other.existsListener;
 			this.key = other.key;
 			this.partition = other.partition;
+			this.throwsKeyNotFoundError = other.throwsKeyNotFoundError;
 		}
 
 		protected internal override AsyncCommand CloneCommand()
@@ -74,6 +93,17 @@ namespace Aerospike.Client
 
 			if (resultCode == 0)
 			{
+				touched = true;
+				return;
+			}
+
+			touched = false;
+			if (resultCode == ResultCode.KEY_NOT_FOUND_ERROR)
+			{
+				if (throwsKeyNotFoundError)
+				{
+					throw new AerospikeException(resultCode);
+				}
 				return;
 			}
 
@@ -101,11 +131,15 @@ namespace Aerospike.Client
 			{
 				listener.OnSuccess(key);
 			}
+			else if (existsListener != null)
+			{
+				existsListener.OnSuccess(key, touched);
+			}
 		}
 
 		protected internal override void OnFailure(AerospikeException e)
 		{
-			if (listener != null)
+			if (listener != null || existsListener != null)
 			{
 				listener.OnFailure(e);
 			}

@@ -407,6 +407,17 @@ namespace Aerospike.Client.Proxy
 			throw new AerospikeException(NotSupported + "Touch");
 		}
 
+		public Task<bool> Touched(WritePolicy policy, CancellationToken token, Key key)
+		{
+			throw new AerospikeException(NotSupported + "Touched");
+		}
+
+		public void Touched(WritePolicy policy, ExistsListener listener, Key key)
+		{
+			throw new AerospikeException(NotSupported + "Touched");
+		}
+
+
 		//-------------------------------------------------------
 		// Existence-Check Operations
 		//-------------------------------------------------------

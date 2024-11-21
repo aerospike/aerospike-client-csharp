@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2022 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -284,6 +284,29 @@ namespace Aerospike.Client
 		/// <param name="key">unique record identifier</param>
 		/// <exception cref="AerospikeException">if queue is full</exception>
 		void Touch(WritePolicy policy, WriteListener listener, Key key);
+
+		/// <summary>
+		/// Asynchronously reset record's time to expiration using the policy's expiration.
+		/// Create listener, call asynchronous touched and return task monitor.
+		/// Returns bool indicating if record was touched. Does not fail if the record does not exist.
+		/// </summary>
+		/// <param name="policy">write configuration parameters, pass in null for defaults</param>
+		/// <param name="token">cancellation token</param>
+		/// <param name="key">unique record identifier</param>
+		/// <exception cref="AerospikeException">if queue is full</exception>
+		Task<bool> Touched(WritePolicy policy, CancellationToken token, Key key);
+
+		/// <summary>
+		/// Asynchronously reset record's time to expiration using the policy's expiration.
+		/// Schedule the touched command with a channel selector and return.
+		/// Another thread will process the command and send the results to the listener.
+		/// Result is a bool indicating if record was touched. Does not fail if the record does not exist.
+		/// </summary>
+		/// <param name="policy">write configuration parameters, pass in null for defaults</param>
+		/// <param name="listener">where to send results, pass in null for fire and forget</param>
+		/// <param name="key">unique record identifier</param>
+		/// <exception cref="AerospikeException">if queue is full</exception>
+		void Touched(WritePolicy policy, ExistsListener listener, Key key);
 
 		//-------------------------------------------------------
 		// Existence-Check Operations

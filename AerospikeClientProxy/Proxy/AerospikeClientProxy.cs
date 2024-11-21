@@ -607,6 +607,11 @@ namespace Aerospike.Client.Proxy
 			command.Execute();
 		}
 
+		public bool Touched(WritePolicy policy, Key key)
+		{
+			throw new AerospikeException(NotSupported + "Touched");
+		}
+
 		//-------------------------------------------------------
 		// Existence-Check Operations
 		//-------------------------------------------------------

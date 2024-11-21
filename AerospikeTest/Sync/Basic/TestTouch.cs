@@ -1,5 +1,5 @@
 ﻿/* 
- * Copyright 2012-2023 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -56,6 +56,15 @@ namespace Aerospike.Test
 
 			record = client.Get(null, key, bin.name);
 			Assert.IsNull(record);
+		}
+
+		[TestMethod]
+		public void Touched()
+		{
+			Key key = new(args.ns, args.set, "doesNotExistTouch");
+
+			bool touched = client.Touched(null, key);
+			Assert.IsFalse(touched);
 		}
 	}
 }
