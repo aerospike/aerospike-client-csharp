@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2022 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -42,13 +42,22 @@ namespace Aerospike.Client
 		//-------------------------------------------------------
 
 		/// <summary>
+		/// Asynchronously attempt to commit the given multi-record transaction.
+		/// Create listener, call asynchronous commit and return task monitor.
+		/// </summary>
+		/// <param name="txn">multi-record transaction</param>
+		/// <param name="token">cancellation token</param>
+		public Task Commit(Txn txn, CancellationToken token);
+
+		/// <summary>
 		/// Asynchronously attempt to commit the given multi-record transaction. First, the expected
-		/// record versions are sent to the server nodes for verification.If all nodes return success,
+		/// record versions are sent to the server nodes for verification. If all nodes return success,
 		/// the transaction is committed. Otherwise, the transaction is aborted.
 		/// <para>
-		/// This method registers the command with an event loop and returns.
-		/// The event loop thread will process the command and send the results to the listener.
-		/// </para><para>
+		/// Schedules the commit command with a channel selector and return.
+		/// Another thread will process the command and send the results to the listener.
+		/// </para>
+		/// <para>
 		/// Requires server version 8.0+
 		/// </para>
 		/// </summary>
@@ -57,16 +66,24 @@ namespace Aerospike.Client
 		void Commit(CommitListener listener, Txn txn);
 
 		/// <summary>
+		/// Asynchronously attempt to abort and rollback the given multi-record transaction.
+		/// Create listener, call asynchronous commit and return task monitor.
+		/// </summary>
+		/// <param name="txn">multi-record transaction</param>
+		/// <param name="token">cancellation token</param>
+		public Task Abort(Txn txn, CancellationToken token);
+
+		/// <summary>
 		/// Asynchronously abort and rollback the given multi-record transaction.
 		/// <para>
-		/// This method registers the command with an event loop and returns.
-		/// The event loop thread will process the command and send the results to the listener.
+		/// Schedules the abort command with a channel selector and return.
+		/// Another thread will process the command and send the results to the listener.
 		/// </para><para>
 		/// Requires server version 8.0+
 		/// </para>
 		/// </summary>
-		/// <param name="listener"></param>
-		/// <param name="txn"></param>
+		/// <param name="listener">where to send results</param>
+		/// <param name="txn">multi-record transaction</param>
 		void Abort(AbortListener listener, Txn txn);
 
 		//-------------------------------------------------------

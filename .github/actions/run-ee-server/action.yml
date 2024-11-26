@@ -42,7 +42,7 @@ runs:
   - name: Build and push
     uses: docker/build-push-action@v6
     with:
-      # Don't want to use default Git context or else it will clone the whole Python client repo again
+      # Don't want to use default Git context or else it will clone the whole client repo again
       context: .github/workflows/docker-build-context
       build-args: |
         server_image=${{ env.IMAGE_NAME }}

@@ -320,6 +320,12 @@ namespace Aerospike.Client
 		public const int MRT_ABORTED = 34;
 
 		/// <summary>
+		/// MRT write command limit (4096) exceeded.
+		/// Value: 35
+		/// </summary>
+		public const int MRT_TOO_MANY_WRITES = 35;
+
+		/// <summary>
 		/// There are no more records left for query.
 		/// Value: 50
 		/// </summary>
@@ -731,6 +737,9 @@ namespace Aerospike.Client
 
 			case MRT_ABORTED:
 				return "MRT already aborted";
+
+			case MRT_TOO_MANY_WRITES:
+				return "MRT write command limit exceeded";
 
 			case QUERY_END:
 				return "Query end";

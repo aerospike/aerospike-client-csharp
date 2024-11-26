@@ -51,11 +51,15 @@ namespace Aerospike.Client
 		/// is used to avoid client/server clock skew issues. For internal use only.
 		/// </summary>
 		internal int Deadline { get; set; }
-		
+
 		/// <summary>
 		/// MRT timeout in seconds. The timer starts when the MRT monitor record is created.
 		/// This occurs when the first command in the MRT is executed. If the timeout is reached before
 		/// a commit or abort is called, the server will expire and rollback the MRT.
+		/// <para>
+		/// If the MRT timeout is zero, the server configuration mrt-duration is used.
+		/// The default mrt-duration is 10 seconds.
+		/// </para>
 		/// </summary>
 		public int Timeout { get; set; }
 
@@ -65,21 +69,27 @@ namespace Aerospike.Client
 
 		/// <summary>
 		/// Create MRT, assign random transaction id and initialize reads/writes hashmaps with 
-		/// default capacities. The default MRT timeout is 10 seconds.
+		/// default capacities.
+		/// <para>
+		/// The default client MRT timeout is zero.This means use the server configuration mrt-duration
+		/// as the MRT timeout. The default mrt-duration is 10 seconds.
+		/// </para>
 		/// </summary>
 		public Txn()
 		{
 			Id = CreateId();
 			Reads = new ConcurrentHashMap<Key, long>();
 			Writes = new ConcurrentHashSet<Key>();
-			Deadline = 0;
 			State = TxnState.OPEN;
-			Timeout = 10; // seconds
 		}
 
 		/// <summary>
 		/// Create MRT, assign random transaction id and initialize reads/writes hashmaps with 
-		/// given capacities. The default MRT timeout is 10 seconds.
+		/// given capacities.
+		/// <para>
+		/// The default client MRT timeout is zero.This means use the server configuration mrt-duration
+		/// as the MRT timeout. The default mrt-duration is 10 seconds.
+		/// </para>
 		/// </summary>
 		/// <param name="readsCapacity">expected number of record reads in the MRT. Minimum value is 16.</param>
 		/// <param name="writesCapacity">expected number of record writes in the MRT. Minimum value is 16.</param>
@@ -98,9 +108,7 @@ namespace Aerospike.Client
 			Id = CreateId();
 			Reads = new ConcurrentHashMap<Key, long>(readsCapacity);
 			Writes = new ConcurrentHashSet<Key>(writesCapacity);
-			Deadline = 0;
 			State = TxnState.OPEN;
-			Timeout = 10; // seconds
 		}
 
 		[System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
@@ -199,7 +207,7 @@ namespace Aerospike.Client
 		/// <param name="key"></param>
 		/// <param name="version"></param>
 		/// <param name="resultCode"></param>
-		public void OnWrite(Key key, long? version, int resultCode)
+		internal void OnWrite(Key key, long? version, int resultCode)
 		{
 			// Write commands set namespace prior to sending the command, so there is
 			// no need to call it here when receiving the response.
@@ -220,7 +228,7 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Add key to write hash when write command is in doubt (usually caused by timeout).
 		/// </summary>
-		public void OnWriteInDoubt(Key key)
+		internal void OnWriteInDoubt(Key key)
 		{
 			Reads.Remove(key);
 			Writes.Add(key);

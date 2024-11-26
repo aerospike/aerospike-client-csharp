@@ -100,6 +100,11 @@ namespace Aerospike.Client
 
 		private bool ValidatePeers(Peers peers, Node node)
 		{
+			if (peers == null)
+			{
+				return true;
+			}
+			
 			try
 			{
 				peers.refreshCount = 0;

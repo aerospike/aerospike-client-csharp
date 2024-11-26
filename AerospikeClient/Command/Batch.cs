@@ -536,7 +536,7 @@ namespace Aerospike.Client
 
 			BatchRecord record = records[batchIndex];
 
-			if (resultCode == 0)
+			if (resultCode == ResultCode.OK)
 			{
 				record.resultCode = resultCode;
 			}

@@ -316,7 +316,7 @@ namespace Aerospike.Client
 			Begin();
 			int fieldCount = EstimateKeySize(key);
 			EstimateOperationSize(bin);
-			SizeBuffer();
+			//SizeBuffer();
 			WriteTxnMonitor(key, 0, Command.INFO2_WRITE, fieldCount, 1);
 			WriteOperation(bin, Operation.Type.WRITE);
 			End();
@@ -462,7 +462,7 @@ namespace Aerospike.Client
 		{
 			Begin();
 			int fieldCount = EstimateKeySize(key);
-			SizeBuffer();
+			//SizeBuffer();
 			WriteTxnMonitor(key, 0, Command.INFO2_WRITE | Command.INFO2_DELETE | Command.INFO2_DURABLE_DELETE,
 				fieldCount, 0);
 			End();
@@ -470,6 +470,7 @@ namespace Aerospike.Client
 
 		private void WriteTxnMonitor(Key key, int readAttr, int writeAttr, int fieldCount, int opCount)
 		{
+			SizeBuffer();
 			dataOffset += 8;
 			dataBuffer[dataOffset++] = MSG_REMAINING_HEADER_SIZE;
 			dataBuffer[dataOffset++] = (byte)readAttr;

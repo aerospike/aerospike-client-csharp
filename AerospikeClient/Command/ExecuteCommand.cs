@@ -24,7 +24,7 @@ namespace Aerospike.Client
 		private readonly string packageName;
 		private readonly string functionName;
 		private readonly Value[] args;
-		public Record Record {  get; private set; }
+		public Record Record { get; private set; }
 
 		public ExecuteCommand
 		(

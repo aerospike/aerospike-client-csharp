@@ -24,7 +24,7 @@ namespace Aerospike.Client
 	public interface CommitListener
 	{
 		/// <summary>
-		/// This method is called when the records are verified and the commit succeeds.
+		/// This method is called when the records are verified and the commit succeeded or will succeed.
 		/// </summary>
 		void OnSuccess(CommitStatusType status);
 

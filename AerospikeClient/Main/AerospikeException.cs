@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2023 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -16,8 +16,6 @@
  */
 using System.Collections.ObjectModel;
 using System.Text;
-using static Aerospike.Client.AbortStatus;
-using static Aerospike.Client.AerospikeException;
 using static Aerospike.Client.CommitError;
 
 namespace Aerospike.Client
@@ -498,7 +496,7 @@ namespace Aerospike.Client
 				this.records = records;
 			}
 
-			public BatchRecordArray(BatchRecord[] records, String message, Exception e)
+			public BatchRecordArray(BatchRecord[] records, string message, Exception e)
 				: base(ResultCode.BATCH_FAILED, message, e)
 			{
 				this.records = records;
@@ -578,7 +576,7 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
-		/// Exception thrown when <see cref="Txn"/> fails.
+		/// Exception thrown when <see cref="AerospikeClient.Commit(Txn)"/> fails.
 		/// Commit Exception has similar behavior to AggregateException. 
 		/// <see cref="InnerExceptions"/> might be populated if mutliple exceptions contribute to the failure. 
 		/// </summary>
