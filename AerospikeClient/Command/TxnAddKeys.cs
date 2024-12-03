@@ -44,10 +44,5 @@ namespace Aerospike.Client
 
 			throw new AerospikeException(resultCode);
 		}
-
-		protected internal override void OnInDoubt()
-		{
-			policy.Txn.SetMonitorInDoubt();
-		}
 	}
 }

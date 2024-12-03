@@ -14,6 +14,8 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
+using System.Transactions;
+
 namespace Aerospike.Client
 {
 	/// <summary>
@@ -283,47 +285,10 @@ namespace Aerospike.Client
 		public const int LOST_CONFLICT = 28;
 
 		/// <summary>
-		/// MRT record blocked by a different transaction.
-		/// Value: 29
-		/// </summary>
-		public const int MRT_BLOCKED = 29;
-
-		/// <summary>
-		/// MRT read version mismatch identified during commit.
-		/// Some other command changed the record outside of the transaction.
-		/// Value: 30
-		/// </summary>
-		public const int MRT_VERSION_MISMATCH = 30;
-
-		/// <summary>
-		/// MRT deadline reached without a successful commit or abort.
-		/// Value: 31
-		/// </summary>
-		public const int MRT_EXPIRED = 31;
-
-		/// <summary>
 		/// Write can't complete until XDR finishes shipping.
 		/// Value: 32
 		/// </summary>
 		public const int XDR_KEY_BUSY = 32;
-
-		/// <summary>
-		/// MRT was already committed.
-		/// Value: 33
-		/// </summary>
-		public const int MRT_COMMITTED = 33;
-
-		/// <summary>
-		/// MRT was already aborted.
-		/// Value: 34
-		/// </summary>
-		public const int MRT_ABORTED = 34;
-
-		/// <summary>
-		/// MRT write command limit (4096) exceeded.
-		/// Value: 35
-		/// </summary>
-		public const int MRT_TOO_MANY_WRITES = 35;
 
 		/// <summary>
 		/// There are no more records left for query.
@@ -474,6 +439,43 @@ namespace Aerospike.Client
 		/// Value: 100
 		/// </summary>
 		public const int UDF_BAD_RESPONSE = 100;
+
+		/// <summary>
+		/// MRT record blocked by a different transaction.
+		/// Value: 120
+		/// </summary>
+		public const int MRT_BLOCKED = 120;
+
+		/// <summary>
+		/// MRT read version mismatch identified during commit.
+		/// Some other command changed the record outside of the transaction.
+		/// Value: 121
+		/// </summary>
+		public const int MRT_VERSION_MISMATCH = 121;
+
+		/// <summary>
+		/// MRT deadline reached without a successful commit or abort.
+		/// Value: 122
+		/// </summary>
+		public const int MRT_EXPIRED = 122;
+
+		/// <summary>
+		/// MRT write command limit (4096) exceeded.
+		/// Value: 123
+		/// </summary>
+		public const int MRT_TOO_MANY_WRITES = 123;
+
+		/// <summary>
+		/// MRT was already committed.
+		/// Value: 124
+		/// </summary>
+		public const int MRT_COMMITTED = 124;
+	
+		/// <summary>
+		/// MRT was already aborted.
+		/// Value: 125
+		/// </summary>
+		public const int MRT_ABORTED = 125;
 
 		/// <summary>
 		/// Batch functionality has been disabled.
@@ -720,26 +722,8 @@ namespace Aerospike.Client
 			case LOST_CONFLICT:
 				return "Command failed due to conflict with XDR";
 
-			case MRT_BLOCKED:
-				return "MRT record blocked by a different transaction";
-
-			case MRT_VERSION_MISMATCH:
-				return "MRT version mismatch";
-
-			case MRT_EXPIRED:
-				return "MRT expired";
-
 			case XDR_KEY_BUSY:
 				return "Write can't complete until XDR finishes shipping.";
-
-			case MRT_COMMITTED:
-				return "MRT already committed";
-
-			case MRT_ABORTED:
-				return "MRT already aborted";
-
-			case MRT_TOO_MANY_WRITES:
-				return "MRT write command limit exceeded";
 
 			case QUERY_END:
 				return "Query end";
@@ -815,6 +799,24 @@ namespace Aerospike.Client
 
 			case UDF_BAD_RESPONSE:
 				return "UDF returned error";
+
+			case MRT_BLOCKED:
+				return "MRT record blocked by a different transaction";
+
+			case MRT_VERSION_MISMATCH:
+				return "MRT version mismatch";
+
+			case MRT_EXPIRED:
+				return "MRT expired";
+
+			case MRT_TOO_MANY_WRITES:
+				return "MRT write command limit exceeded";
+
+			case MRT_COMMITTED:
+				return "MRT already committed";
+
+			case MRT_ABORTED:
+				return "MRT already aborted";
 
 			case BATCH_DISABLED:
 				return "Batch functionality has been disabled";

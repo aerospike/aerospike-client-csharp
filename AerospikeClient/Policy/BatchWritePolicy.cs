@@ -127,5 +127,14 @@ namespace Aerospike.Client
 		public BatchWritePolicy()
 		{
 		}
+
+		/// <summary>
+		/// Creates a deep copy of this batch write policy.
+		/// </summary>
+		/// <returns></returns>
+		public BatchWritePolicy Clone()
+		{
+			return new BatchWritePolicy(this);
+		}
 	}
 }

@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2019 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -130,6 +130,15 @@ namespace Aerospike.Client
 		{
 			// Writes are not retried by default.
 			base.maxRetries = 0;
+		}
+
+		/// <summary>
+		/// Creates a deep copy of this write policy.
+		/// </summary>
+		/// <returns></returns>
+		public new WritePolicy Clone()
+		{
+			return new WritePolicy(this);
 		}
 	}
 }

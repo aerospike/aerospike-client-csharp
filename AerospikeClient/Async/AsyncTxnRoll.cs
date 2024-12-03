@@ -194,7 +194,7 @@ namespace Aerospike.Client
 
 		private void CloseOnCommit(bool verified)
 		{
-			if (!txn.MonitorMightExist())
+			if (!txn.CloseMonitor())
 			{
 				if (verified)
 				{
@@ -227,7 +227,7 @@ namespace Aerospike.Client
 
 		private void CloseOnAbort()
 		{
-			if (!txn.MonitorMightExist())
+			if (!txn.CloseMonitor())
 			{
 				// There is no MRT monitor record to remove.
 				NotifyAbortSuccess(AbortStatusType.OK);

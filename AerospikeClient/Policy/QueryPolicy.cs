@@ -146,6 +146,15 @@ namespace Aerospike.Client
 			base.totalTimeout = 0;
 			base.maxRetries = 5;
 		}
+
+		/// <summary>
+		/// Creates a deep copy of this query policy.
+		/// </summary>
+		/// <returns></returns>
+		public new QueryPolicy Clone()
+		{
+			return new QueryPolicy(this);
+		}
 	}
 }
 #pragma warning restore 0618

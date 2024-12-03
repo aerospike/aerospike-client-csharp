@@ -58,7 +58,7 @@ namespace Aerospike.Client
 					throw CreateCommitException(CommitErrorType.VERIFY_FAIL_ABORT_ABANDONED, e, e2);
 				}
 
-				if (txn.MonitorMightExist())
+				if (txn.CloseMonitor())
 				{
 					try
 					{
@@ -142,7 +142,7 @@ namespace Aerospike.Client
 				}
 			}
 
-			if (txn.MonitorMightExist())
+			if (txn.CloseMonitor())
 			{
 				// Remove MRT monitor.
 				try
@@ -206,7 +206,7 @@ namespace Aerospike.Client
 				return AbortStatusType.ROLL_BACK_ABANDONED;
 			}
 
-			if (txn.MonitorMightExist())
+			if (txn.CloseMonitor())
 			{
 				try
 				{

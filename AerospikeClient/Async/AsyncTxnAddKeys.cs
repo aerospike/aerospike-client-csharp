@@ -70,11 +70,6 @@ namespace Aerospike.Client
 			return true;
 		}
 
-		protected internal override void OnInDoubt()
-		{
-			policy.Txn.SetMonitorInDoubt();
-		}
-
 		protected internal override void OnSuccess()
 		{
 			if (listener != null)

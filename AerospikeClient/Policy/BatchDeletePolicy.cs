@@ -101,5 +101,14 @@ namespace Aerospike.Client
 		public BatchDeletePolicy()
 		{
 		}
+
+		/// <summary>
+		/// Creates a deep copy of this batch delete policy.
+		/// </summary>
+		/// <returns></returns>
+		public BatchDeletePolicy Clone()
+		{
+			return new BatchDeletePolicy(this);
+		}
 	}
 }

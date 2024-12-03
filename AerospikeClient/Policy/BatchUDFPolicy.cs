@@ -99,5 +99,14 @@ namespace Aerospike.Client
 		public BatchUDFPolicy()
 		{
 		}
+
+		/// <summary>
+		/// Creates a deep copy of this batch UDF policy.
+		/// </summary>
+		/// <returns></returns>
+		public BatchUDFPolicy Clone()
+		{
+			return new BatchUDFPolicy(this);
+		}
 	}
 }

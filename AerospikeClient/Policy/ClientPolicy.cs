@@ -365,5 +365,14 @@ namespace Aerospike.Client
 		public ClientPolicy()
 		{
 		}
+
+		/// <summary>
+		/// Creates a deep copy of this client policy.
+		/// </summary>
+		/// <returns></returns>
+		public ClientPolicy Clone()
+		{
+			return new ClientPolicy(this);
+		}
 	}
 }

@@ -26,77 +26,89 @@ namespace Aerospike.Client
 
 		/// <summary>
 		/// Default read policy that is used when read command policy is null.
-		/// Get returns a copy of the read policy default to avoid problems if this shared instance is later modified.
+		/// Use when the policy will not be modified. Use <see cref="Policy.Clone()"/>
+		/// when the policy will be modified for use in a specific command.
 		/// </summary>
 		Policy ReadPolicyDefault { get; set; }
 
 		/// <summary>
 		/// Default write policy that is used when write command policy is null.
-		/// Get returns a copy of the write policy default to avoid problems if this shared instance is later modified.
+		/// Use when the policy will not be modified. Use <see cref="WritePolicy.Clone()"/>
+		/// when the policy will be modified for use in a specific command.
 		/// </summary>
 		WritePolicy WritePolicyDefault { get; set; }
 
 		/// <summary>
 		/// Default scan policy that is used when scan command policy is null.
-		/// Get returns a copy of the scan policy default to avoid problems if this shared instance is later modified.
+		/// Use when the policy will not be modified. Use <see cref="ScanPolicy.Clone()"/>
+		/// when the policy will be modified for use in a specific command.
 		/// </summary>
 		ScanPolicy ScanPolicyDefault { get; set; }
 
 		/// <summary>
 		/// Default query policy that is used when query command policy is null.
-		/// Get returns a copy of the query policy default to avoid problems if this shared instance is later modified.
+		/// Use when the policy will not be modified. Use <see cref="QueryPolicy.Clone()"/>
+		/// when the policy will be modified for use in a specific command.
 		/// </summary>
 		QueryPolicy QueryPolicyDefault { get; set; }
 
 		/// <summary>
 		/// Default parent policy used in batch read commands.Parent policy fields
 		/// include socketTimeout, totalTimeout, maxRetries, etc...
-		/// Get returns a copy of the batch header read policy default to avoid problems if this shared instance is later modified.
+		/// Use when the policy will not be modified. Use <see cref="BatchPolicy.Clone()"/>
+		/// when the policy will be modified for use in a specific command.
 		/// </summary>
 		BatchPolicy BatchPolicyDefault { get; set; }
 
 		/// <summary>
 		/// Default parent policy used in batch write commands. Parent policy fields
 		/// include socketTimeout, totalTimeout, maxRetries, etc...
-		/// Get returns a copy of the batch header write policy default to avoid problems if this shared instance is later modified.
+		/// Use when the policy will not be modified. Use <see cref="BatchPolicy.Clone()"/>
+		/// when the policy will be modified for use in a specific command.
 		/// </summary>
 		BatchPolicy BatchParentPolicyWriteDefault { get; set; }
 
 		/// <summary>
 		/// Default write policy used in batch operate commands.
 		/// Write policy fields include generation, expiration, durableDelete, etc...
-		/// Get returns a copy of the batch detail write policy default to avoid problems if this shared instance is later modified.
+		/// Use when the policy will not be modified. Use <see cref="BatchWritePolicy.Clone()"/>
+		/// when the policy will be modified for use in a specific command.
 		/// </summary>
 		BatchWritePolicy BatchWritePolicyDefault { get; set; }
 
 		/// <summary>
 		/// Default delete policy used in batch delete commands.
-		/// Get returns a copy of the batch detail delete policy default to avoid problems if this shared instance is later modified.
+		/// Use when the policy will not be modified. Use <see cref="BatchDeletePolicy.Clone()"/>
+		/// when the policy will be modified for use in a specific command.
 		/// </summary>
 		BatchDeletePolicy BatchDeletePolicyDefault { get; set; }
 
 		/// <summary>
 		/// Default user defined function policy used in batch UDF execute commands.
-		/// Get returns a copy of the batch detail UDF policy default to avoid problems if this shared instance is later modified.
+		/// Use when the policy will not be modified. Use <see cref="BatchUDFPolicy.Clone()"/>
+		/// when the policy will be modified for use in a specific command.
 		/// </summary>
 		BatchUDFPolicy BatchUDFPolicyDefault { get; set; }
 
 		/// <summary>
 		/// Default info policy that is used when info command policy is null.
-		/// Get returns a copy of the info command policy default to avoid problems if this shared instance is later modified.
+		/// Use when the policy will not be modified. Use <see cref="InfoPolicy.Clone()"/>
+		/// when the policy will be modified for use in a specific command.
 		/// </summary>
 		InfoPolicy InfoPolicyDefault { get; set; }
 
 		/// <summary>
 		/// Default multi-record transactions (MRT) policy when verifying record versions in a batch on a commit.
-		/// Get returns a copy of the txn verify policy default.
+		/// Use when the policy will not be modified. Use <see cref="TxnVerifyPolicy.Clone()"/>
+		/// when the policy will be modified for use in a specific command.
 		/// </summary>
 		TxnVerifyPolicy TxnVerifyPolicyDefault { get; set; }
 
 		/// <summary>
 		/// Default multi-record transactions (MRT) policy when rolling the transaction records forward (commit)
 		/// or back(abort) in a batch.
-		/// Get returns a copy of the txn roll policy default.
+		/// Use when the policy will not be modified. Use <see cref="TxnRollPolicy.Clone()"/>
+		/// when the policy will be modified for use in a specific command.
 		/// </summary>
 		TxnRollPolicy TxnRollPolicyDefault { get; set; }
 

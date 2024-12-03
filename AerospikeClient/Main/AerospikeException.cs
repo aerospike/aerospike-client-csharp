@@ -576,7 +576,7 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
-		/// Exception thrown when <see cref="AerospikeClient.Commit(Txn)"/> fails.
+		/// Exception thrown when a multi-record transaction commit fails.
 		/// Commit Exception has similar behavior to AggregateException. 
 		/// <see cref="InnerExceptions"/> might be populated if mutliple exceptions contribute to the failure. 
 		/// </summary>

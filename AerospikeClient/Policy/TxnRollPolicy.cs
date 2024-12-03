@@ -42,5 +42,14 @@ namespace Aerospike.Client
 			totalTimeout = 10000;
 			sleepBetweenRetries = 1000;
 		}
+
+		/// <summary>
+		/// Creates a deep copy of this txn roll policy.
+		/// </summary>
+		/// <returns></returns>
+		public new TxnRollPolicy Clone()
+		{
+			return new TxnRollPolicy(this);
+		}
 	}
 }

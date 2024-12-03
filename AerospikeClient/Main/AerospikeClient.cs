@@ -256,125 +256,137 @@ namespace Aerospike.Client
 
 		/// <summary>
 		/// Default read policy that is used when read command policy is null.
-		/// Get returns a copy of the read policy default to avoid problems if this shared instance is later modified.
+		/// Use when the policy will not be modified. Use <see cref="Policy.Clone()"/>
+		/// when the policy will be modified for use in a specific command.
 		/// </summary>
 		public Policy ReadPolicyDefault
 		{
-			get { return new Policy(readPolicyDefault); }
+			get { return readPolicyDefault; }
 			set { readPolicyDefault = value; }
 		}
 
 		/// <summary>
 		/// Default write policy that is used when write command policy is null.
-		/// Get returns a copy of the write policy default to avoid problems if this shared instance is later modified.
+		/// Use when the policy will not be modified. Use <see cref="WritePolicy.Clone()"/>
+		/// when the policy will be modified for use in a specific command.
 		/// </summary>
 		public WritePolicy WritePolicyDefault
 		{
-			get { return new WritePolicy(writePolicyDefault); }
+			get { return writePolicyDefault; }
 			set { writePolicyDefault = value; }
 		}
 
 		/// <summary>
 		/// Default scan policy that is used when scan command policy is null.
-		/// Get returns a copy of the scan policy default to avoid problems if this shared instance is later modified.
+		/// Use when the policy will not be modified. Use <see cref="ScanPolicy.Clone()"/>
+		/// when the policy will be modified for use in a specific command.
 		/// </summary>
 		public ScanPolicy ScanPolicyDefault
 		{
-			get { return new ScanPolicy(scanPolicyDefault); }
+			get { return scanPolicyDefault; }
 			set { scanPolicyDefault = value; }
 		}
 
 		/// <summary>
 		/// Default query policy that is used when query command policy is null.
-		/// Get returns a copy of the query policy default to avoid problems if this shared instance is later modified.
+		/// Use when the policy will not be modified. Use <see cref="QueryPolicy.Clone()"/>
+		/// when the policy will be modified for use in a specific command.
 		/// </summary>
 		public QueryPolicy QueryPolicyDefault
 		{
-			get { return new QueryPolicy(queryPolicyDefault); }
+			get { return queryPolicyDefault; }
 			set { queryPolicyDefault = value; }
 		}
 
 		/// <summary>
 		/// Default parent policy used in batch read commands. Parent policy fields
 		/// include socketTimeout, totalTimeout, maxRetries, etc...
-		/// Get returns a copy of the batch header read policy default to avoid problems if this shared instance is later modified.
+		/// Use when the policy will not be modified. Use <see cref="BatchPolicy.Clone()"/>
+		/// when the policy will be modified for use in a specific command.
 		/// </summary>
 		public BatchPolicy BatchPolicyDefault
 		{
-			get { return new BatchPolicy(batchPolicyDefault); }
+			get { return batchPolicyDefault; }
 			set { batchPolicyDefault = value; }
 		}
 
 		/// <summary>
 		/// Default parent policy used in batch write commands. Parent policy fields
 		/// include socketTimeout, totalTimeout, maxRetries, etc...
-		/// Get returns a copy of the batch header write policy default to avoid problems if this shared instance is later modified.
+		/// Use when the policy will not be modified. Use <see cref="BatchPolicy.Clone()"/>
+		/// when the policy will be modified for use in a specific command.
 		/// </summary>
 		public BatchPolicy BatchParentPolicyWriteDefault
 		{
-			get { return new BatchPolicy(batchParentPolicyWriteDefault); }
+			get { return batchParentPolicyWriteDefault; }
 			set { batchParentPolicyWriteDefault = value; }
 		}
 
 		/// <summary>
 		/// Default write policy used in batch operate commands.
 		/// Write policy fields include generation, expiration, durableDelete, etc...
-		/// Get returns a copy of the batch detail write policy default to avoid problems if this shared instance is later modified.
+		/// Use when the policy will not be modified. Use <see cref="BatchWritePolicy.Clone()"/>
+		/// when the policy will be modified for use in a specific command.
 		/// </summary>
 		public BatchWritePolicy BatchWritePolicyDefault
 		{
-			get { return new BatchWritePolicy(batchWritePolicyDefault); }
+			get { return batchWritePolicyDefault; }
 			set { batchWritePolicyDefault = value; }
 		}
 
 		/// <summary>
 		/// Default delete policy used in batch delete commands.
-		/// Get returns a copy of the batch detail delete policy default to avoid problems if this shared instance is later modified.
+		/// Use when the policy will not be modified. Use <see cref="BatchDeletePolicy.Clone()"/>
+		/// when the policy will be modified for use in a specific command.
 		/// </summary>
 		public BatchDeletePolicy BatchDeletePolicyDefault
 		{
-			get { return new BatchDeletePolicy(batchDeletePolicyDefault); }
+			get { return batchDeletePolicyDefault; }
 			set { batchDeletePolicyDefault = value; }
 		}
 
 		/// <summary>
 		/// Default user defined function policy used in batch UDF excecute commands.
-		/// Get returns a copy of the batch detail UDF policy default to avoid problems if this shared instance is later modified.
+		/// Use when the policy will not be modified. Use <see cref="BatchUDFPolicy.Clone()"/>
+		/// when the policy will be modified for use in a specific command.er modified.
 		/// </summary>
 		public BatchUDFPolicy BatchUDFPolicyDefault
 		{
-			get { return new BatchUDFPolicy(batchUDFPolicyDefault); }
+			get { return batchUDFPolicyDefault; }
 			set { batchUDFPolicyDefault = value; }
 		}
 
 		/// <summary>
 		/// Default info policy that is used when info command policy is null.
-		/// Get returns a copy of the info command policy default to avoid problems if this shared instance is later modified.
+		/// Use when the policy will not be modified. Use <see cref="InfoPolicy.Clone()"/>
+		/// when the policy will be modified for use in a specific command.
 		/// </summary>
 		public InfoPolicy InfoPolicyDefault
 		{
-			get { return new InfoPolicy(infoPolicyDefault); }
+			get { return infoPolicyDefault; }
 			set { infoPolicyDefault = value; }
 		}
 
 		/// <summary>
 		/// Default multi-record transactions (MRT) policy when verifying record versions in a batch on a commit.
-		/// Get returns a copy of the txn verify policy default.
+		/// Use when the policy will not be modified. Use <see cref="TxnVerifyPolicy.Clone()"/>
+		/// when the policy will be modified for use in a specific command.
 		/// </summary>
 		public TxnVerifyPolicy TxnVerifyPolicyDefault
 		{
-			get { return new TxnVerifyPolicy(txnVerifyPolicyDefault); }
+			get { return txnVerifyPolicyDefault; }
 			set { txnVerifyPolicyDefault = value; }
 		}
 
 		/// <summary>
 		/// Default multi-record transactions (MRT) policy when rolling the transaction records forward (commit)
 		/// or back(abort) in a batch.
-		/// Get returns a copy of the txn roll policy default.
+		/// Use when the policy will not be modified. Use <see cref="TxnRollPolicy.Clone()"/>
+		/// when the policy will be modified for use in a specific command.
 		/// </summary>
 		public TxnRollPolicy TxnRollPolicyDefault
 		{
-			get { return new TxnRollPolicy(txnRollPolicyDefault); }
+			get { return txnRollPolicyDefault; }
 			set { txnRollPolicyDefault = value; }
 		}
 

@@ -43,7 +43,7 @@ namespace Aerospike.Test
 
 			Txn txn = new();
 
-			WritePolicy wp = client.WritePolicyDefault;
+			WritePolicy wp = client.WritePolicyDefault.Clone();
 			wp.Txn = txn;
 			client.Put(wp, key, new Bin(binName, "val2"));
 
@@ -60,7 +60,7 @@ namespace Aerospike.Test
 
 			Txn txn = new();
 
-			WritePolicy wp = client.WritePolicyDefault;
+			WritePolicy wp = client.WritePolicyDefault.Clone();
 			wp.Txn = txn;
 			client.Put(wp, key, new Bin(binName, "val1"));
 			client.Put(wp, key, new Bin(binName, "val2"));
@@ -79,8 +79,8 @@ namespace Aerospike.Test
 			Txn txn1 = new();
 			Txn txn2 = new();
 
-			WritePolicy wp1 = client.WritePolicyDefault;
-			WritePolicy wp2 = client.WritePolicyDefault;
+			WritePolicy wp1 = client.WritePolicyDefault.Clone();
+			WritePolicy wp2 = client.WritePolicyDefault.Clone();
 			wp1.Txn = txn1;
 			wp2.Txn = txn2;
 
@@ -115,7 +115,7 @@ namespace Aerospike.Test
 
 			Txn txn = new();
 
-			WritePolicy wp = client.WritePolicyDefault;
+			WritePolicy wp = client.WritePolicyDefault.Clone();
 			wp.Txn = txn;
 			client.Put(wp, key, new Bin(binName, "val2"));
 
@@ -145,7 +145,7 @@ namespace Aerospike.Test
 
 			Txn txn = new();
 
-			WritePolicy wp = client.WritePolicyDefault;
+			WritePolicy wp = client.WritePolicyDefault.Clone();
 			wp.Txn = txn;
 			client.Put(wp, key, new Bin(binName, "val2"));
 
@@ -169,11 +169,11 @@ namespace Aerospike.Test
 
 			Txn txn = new();
 
-			WritePolicy wp = client.WritePolicyDefault;
+			WritePolicy wp = client.WritePolicyDefault.Clone();
 			wp.Txn = txn;
 			client.Put(wp, key, new Bin(binName, "val2"));
 
-			Policy p = client.ReadPolicyDefault;
+			Policy p = client.ReadPolicyDefault.Clone();
 			p.Txn = txn;
 			Record record = client.Get(p, key);
 			AssertBinEqual(key, record, binName, "val2");
@@ -194,7 +194,7 @@ namespace Aerospike.Test
 
 			Txn txn = new();
 
-			WritePolicy wp = client.WritePolicyDefault;
+			WritePolicy wp = client.WritePolicyDefault.Clone();
 			wp.Txn = txn;
 			wp.durableDelete = true;
 			client.Delete(wp, key);
@@ -214,7 +214,7 @@ namespace Aerospike.Test
 
 			Txn txn = new();
 
-			WritePolicy wp = client.WritePolicyDefault;
+			WritePolicy wp = client.WritePolicyDefault.Clone();
 			wp.Txn = txn;
 			wp.durableDelete = true;
 			client.Delete(wp, key);
@@ -234,7 +234,7 @@ namespace Aerospike.Test
 
 			client.Put(null, key, new Bin(binName, "val1"));
 
-			WritePolicy wp = client.WritePolicyDefault;
+			WritePolicy wp = client.WritePolicyDefault.Clone();
 			wp.Txn = txn;
 			wp.durableDelete = true;
 			client.Delete(wp, key);
@@ -255,7 +255,7 @@ namespace Aerospike.Test
 
 			Txn txn = new();
 
-			WritePolicy wp = client.WritePolicyDefault;
+			WritePolicy wp = client.WritePolicyDefault.Clone();
 			wp.Txn = txn;
 			client.Touch(wp, key);
 
@@ -274,7 +274,7 @@ namespace Aerospike.Test
 
 			Txn txn = new();
 
-			WritePolicy wp = client.WritePolicyDefault;
+			WritePolicy wp = client.WritePolicyDefault.Clone();
 			wp.Txn = txn;
 			client.Touch(wp, key);
 
@@ -293,7 +293,7 @@ namespace Aerospike.Test
 
 			Txn txn = new();
 
-			WritePolicy wp = client.WritePolicyDefault;
+			WritePolicy wp = client.WritePolicyDefault.Clone();
 			wp.Txn = txn;
 			Record record = client.Operate(wp, key,
 				Operation.Put(new Bin(binName, "val2")),
@@ -316,7 +316,7 @@ namespace Aerospike.Test
 
 			Txn txn = new();
 
-			WritePolicy wp = client.WritePolicyDefault;
+			WritePolicy wp = client.WritePolicyDefault.Clone();
 			wp.Txn = txn;
 			Record record = client.Operate(wp, key,
 				Operation.Put(new Bin(binName, "val2")),
@@ -339,7 +339,7 @@ namespace Aerospike.Test
 
 			Txn txn = new();
 
-			WritePolicy wp = client.WritePolicyDefault;
+			WritePolicy wp = client.WritePolicyDefault.Clone();
 			wp.Txn = txn;
 			client.Execute(wp, key, "record_example", "writeBin", Value.Get(binName), Value.Get("val2"));
 
@@ -358,7 +358,7 @@ namespace Aerospike.Test
 
 			Txn txn = new();
 
-			WritePolicy wp = client.WritePolicyDefault;
+			WritePolicy wp = client.WritePolicyDefault.Clone();
 			wp.Txn = txn;
 			client.Execute(wp, key, "record_example", "writeBin", Value.Get(binName), Value.Get("val2"));
 
@@ -485,11 +485,11 @@ namespace Aerospike.Test
 
 			Txn txn = new();
 
-			WritePolicy wp = client.WritePolicyDefault;
+			WritePolicy wp = client.WritePolicyDefault.Clone();
 			wp.Txn = txn;
 			client.Put(wp, key, new Bin(binName, "val2"));
 
-			Policy p = client.ReadPolicyDefault;
+			Policy p = client.ReadPolicyDefault.Clone();
 			p.Txn = txn;
 			Record record = client.Get(p, key);
 			AssertBinEqual(key, record, binName, "val2");
@@ -512,12 +512,12 @@ namespace Aerospike.Test
 
 			client.Put(null, key, new Bin(binName, "val1"));
 
-			var rp1 = client.ReadPolicyDefault;
+			var rp1 = client.ReadPolicyDefault.Clone();
 			rp1.Txn = txn1;
 			var record = client.Get(rp1, key);
 			AssertBinEqual(key, record, binName, "val1");
 
-			var rp2 = client.ReadPolicyDefault;
+			var rp2 = client.ReadPolicyDefault.Clone();
 			rp2.Txn = txn2;
 			record = client.Get(rp2, key);
 			AssertBinEqual(key, record, binName, "val1");
@@ -542,11 +542,11 @@ namespace Aerospike.Test
 			client.Delete(null, key2);
 			client.Delete(null, key3);
 
-			var wp = client.WritePolicyDefault;
+			var wp = client.WritePolicyDefault.Clone();
 			wp.Txn = txn;
 			client.Put(wp, key1, new Bin(binName, "val1")); // T1
 
-			var p = client.ReadPolicyDefault;
+			var p = client.ReadPolicyDefault.Clone();
 			p.Txn = txn;
 			var record = client.Get(p, key1); // T2
 			Assert.AreEqual(1, record.generation);
@@ -598,7 +598,7 @@ namespace Aerospike.Test
 
 			client.Put(null, key1, new Bin(binName, "val1")); // T1
 
-			var p = client.ReadPolicyDefault;
+			var p = client.ReadPolicyDefault.Clone();
 			p.Txn = txn;
 			var record = client.Get(p, key1); // T2
 			Assert.AreEqual(1, record.generation);
@@ -608,7 +608,7 @@ namespace Aerospike.Test
 			record = client.Get(p, key2); // T4
 			Assert.AreEqual(1, record.generation);
 
-			var wp = client.WritePolicyDefault;
+			var wp = client.WritePolicyDefault.Clone();
 			wp.Txn = txn;
 			client.Put(wp, key2, new Bin(binName, "val11")); // T5
 
@@ -646,7 +646,7 @@ namespace Aerospike.Test
 			{
 				client.Commit(txn); // T10
 			}
-			catch (AerospikeException.Commit ae)
+			catch (AerospikeException.Commit)
 			{
 
 			}
@@ -671,7 +671,7 @@ namespace Aerospike.Test
 
 			Txn txn = new();
 
-			WritePolicy wp = client.WritePolicyDefault;
+			WritePolicy wp = client.WritePolicyDefault.Clone();
 			wp.Txn = txn;
 			client.Put(wp, key, new Bin(binName, "val1"));
 
@@ -699,7 +699,7 @@ namespace Aerospike.Test
 
 			Txn txn = new();
 
-			WritePolicy wp = client.WritePolicyDefault;
+			WritePolicy wp = client.WritePolicyDefault.Clone();
 			wp.Txn = txn;
 
 			try

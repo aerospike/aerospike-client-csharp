@@ -653,7 +653,7 @@ namespace Aerospike.Test
 				WritePolicy wp = null;
 				if (txn != null)
 				{
-					wp = client.WritePolicyDefault;
+					wp = client.WritePolicyDefault.Clone();
 					wp.Txn = txn;
 				}
 				client.Put(wp, new PutHandler(listener, expectedResult), key, bins);
@@ -718,7 +718,7 @@ namespace Aerospike.Test
 
 				if (txn != null) 
 				{
-					p = client.ReadPolicyDefault;
+					p = client.ReadPolicyDefault.Clone();
 					p.Txn = txn;
 				}
 				client.Get(p, new GetExpectHandler(parent, listener, expect, generation), key);
@@ -801,7 +801,7 @@ namespace Aerospike.Test
 
 				if (txn != null) 
 				{
-					wp = client.WritePolicyDefault;
+					wp = client.WritePolicyDefault.Clone();
 					wp.Txn = txn;
 				}
 				client.Operate(wp, new OperateExpectHandler(parent, listener, expect), key, ops);
@@ -882,7 +882,7 @@ namespace Aerospike.Test
 
 				if (txn != null) 
 				{
-					wp = client.WritePolicyDefault;
+					wp = client.WritePolicyDefault.Clone();
 					wp.Txn = txn;
 				}
 				client.Execute(wp, new UDFHandler(listener), key,  packageName, functionName, functionArgs);
@@ -927,7 +927,7 @@ namespace Aerospike.Test
 				BatchPolicy bp = null;
 
 				if (txn != null) {
-					bp = client.BatchPolicyDefault;
+					bp = client.BatchPolicyDefault.Clone();
 					bp.Txn = txn;
 				}
 				client.Get(bp, new BatchGetExpectHandler(parent, listener, expected), keys);
@@ -984,7 +984,7 @@ namespace Aerospike.Test
 
 				if (txn != null) 
 				{
-					bp = client.BatchParentPolicyWriteDefault;
+					bp = client.BatchParentPolicyWriteDefault.Clone();
 					bp.Txn = txn;
 				}
 				client.Operate(bp, null, new BatchOperateHandler(listener), keys, ops);
@@ -1050,7 +1050,7 @@ namespace Aerospike.Test
 				WritePolicy wp = null;
 
 				if (txn != null) {
-					wp = client.WritePolicyDefault;
+					wp = client.WritePolicyDefault.Clone();
 					wp.Txn = txn;
 				}
 				client.Touch(wp, new TouchHandler(listener), key);
@@ -1094,7 +1094,7 @@ namespace Aerospike.Test
 
 				if (txn != null) 
 				{
-					wp = client.WritePolicyDefault;
+					wp = client.WritePolicyDefault.Clone();
 					wp.Txn = txn;
 					wp.durableDelete = true;
 				}

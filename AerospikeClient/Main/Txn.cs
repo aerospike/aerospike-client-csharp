@@ -63,7 +63,7 @@ namespace Aerospike.Client
 		/// </summary>
 		public int Timeout { get; set; }
 
-		private bool monitorInDoubt;
+		private bool writeInDoubt;
 
 		public bool InDoubt { get; internal set; }
 
@@ -71,7 +71,7 @@ namespace Aerospike.Client
 		/// Create MRT, assign random transaction id and initialize reads/writes hashmaps with 
 		/// default capacities.
 		/// <para>
-		/// The default client MRT timeout is zero.This means use the server configuration mrt-duration
+		/// The default client MRT timeout is zero. This means use the server configuration mrt-duration
 		/// as the MRT timeout. The default mrt-duration is 10 seconds.
 		/// </para>
 		/// </summary>
@@ -87,7 +87,7 @@ namespace Aerospike.Client
 		/// Create MRT, assign random transaction id and initialize reads/writes hashmaps with 
 		/// given capacities.
 		/// <para>
-		/// The default client MRT timeout is zero.This means use the server configuration mrt-duration
+		/// The default client MRT timeout is zero. This means use the server configuration mrt-duration
 		/// as the MRT timeout. The default mrt-duration is 10 seconds.
 		/// </para>
 		/// </summary>
@@ -230,6 +230,7 @@ namespace Aerospike.Client
 		/// </summary>
 		internal void OnWriteInDoubt(Key key)
 		{
+			writeInDoubt = true;
 			Reads.Remove(key);
 			Writes.Add(key);
 		}
@@ -275,19 +276,12 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
-		/// Set that the MRT monitor existence is in doubt.
+		/// Return if the MRT monitor record should be closed/deleted
 		/// </summary>
-		internal void SetMonitorInDoubt()
+		/// <returns></returns>
+		internal bool CloseMonitor()
 		{
-			this.monitorInDoubt = true;
-		}
-
-		/// <summary>
-		/// Does MRT monitor record exist or is in doubt.
-		/// </summary>
-		public bool MonitorMightExist()
-		{
-			return Deadline != 0 || monitorInDoubt;
+			return Deadline != 0 && !writeInDoubt;
 		}
 
 		/// <summary>

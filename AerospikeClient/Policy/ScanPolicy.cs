@@ -123,6 +123,15 @@ namespace Aerospike.Client
 			base.totalTimeout = 0;
 			base.maxRetries = 5;
 		}
+
+		/// <summary>
+		/// Creates a deep copy of this scan policy.
+		/// </summary>
+		/// <returns></returns>
+		public new ScanPolicy Clone()
+		{
+			return new ScanPolicy(this);
+		}
 	}
 }
 #pragma warning restore 0618

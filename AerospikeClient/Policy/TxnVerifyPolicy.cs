@@ -43,5 +43,14 @@ namespace Aerospike.Client
 			totalTimeout = 10000;
 			sleepBetweenRetries = 1000;
 		}
+
+		/// <summary>
+		/// Creates a deep copy of this txn verify policy.
+		/// </summary>
+		/// <returns></returns>
+		public new TxnVerifyPolicy Clone()
+		{
+			return new TxnVerifyPolicy(this);
+		}
 	}
 }

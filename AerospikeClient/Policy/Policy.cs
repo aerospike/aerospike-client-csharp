@@ -334,6 +334,15 @@ namespace Aerospike.Client
 				this.socketTimeout = totalTimeout;
 			}
 		}
+
+		/// <summary>
+		/// Creates a deep copy of this policy.
+		/// </summary>
+		/// <returns></returns>
+		public Policy Clone()
+		{
+			return new Policy(this);
+		}
 	}
 }
 #pragma warning restore 0618

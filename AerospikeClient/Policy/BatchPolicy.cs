@@ -189,6 +189,15 @@ namespace Aerospike.Client
 			policy.maxRetries = 0;
 			return policy;
 		}
+
+		/// <summary>
+		/// Creates a deep copy of this batch policy.
+		/// </summary>
+		/// <returns></returns>
+		public new BatchPolicy Clone()
+		{
+			return new BatchPolicy(this);
+		}
 	}
 }
 
