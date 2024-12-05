@@ -133,10 +133,11 @@ namespace Aerospike.Client
 
 		private static void AddWriteKeys(Cluster cluster, Policy policy, Operation[] ops)
 		{
+			Txn txn = policy.Txn;
 			Key txnKey = GetTxnMonitorKey(policy.Txn);
 			WritePolicy wp = CopyTimeoutPolicy(policy);
 			OperateArgs args = new(wp, null, null, ops);
-			TxnAddKeys cmd = new(cluster, txnKey, args);
+			TxnAddKeys cmd = new(cluster, txnKey, args, txn);
 			cmd.Execute();
 		}
 

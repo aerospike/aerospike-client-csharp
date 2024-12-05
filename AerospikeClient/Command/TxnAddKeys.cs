@@ -20,11 +20,13 @@ namespace Aerospike.Client
 	public sealed class TxnAddKeys : SyncWriteCommand
 	{
 		private readonly OperateArgs args;
+		private readonly Txn txn;
 
-		public TxnAddKeys (Cluster cluster, Key key, OperateArgs args) 
+		public TxnAddKeys (Cluster cluster, Key key, OperateArgs args, Txn txn) 
 			: base(cluster, args.writePolicy, key)
 		{
 			this.args = args;
+			this.txn = txn;
 		}
 
 		protected internal override void WriteBuffer()
@@ -35,7 +37,7 @@ namespace Aerospike.Client
 		protected internal override void ParseResult(Connection conn)
 		{
 			ParseHeader(conn);
-			ParseTxnDeadline(policy.Txn);
+			ParseTxnDeadline(txn);
 
 			if (resultCode == ResultCode.OK)
 			{

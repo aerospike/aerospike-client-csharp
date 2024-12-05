@@ -21,17 +21,20 @@ namespace Aerospike.Client
 	{
 		private readonly RecordListener listener;
 		private readonly OperateArgs args;
+		private readonly Txn txn;
 
 		public AsyncTxnAddKeys
 		(
 			AsyncCluster cluster,
 			RecordListener listener,
 			Key key,
-			OperateArgs args
+			OperateArgs args,
+			Txn txn
 		) : base(cluster, args.writePolicy, key)
 		{
 			this.listener = listener;
 			this.args = args;
+			this.txn = txn;
 		}
 
 		public AsyncTxnAddKeys(AsyncTxnAddKeys other)
@@ -39,6 +42,7 @@ namespace Aerospike.Client
 		{
 			this.listener = other.listener;
 			this.args = other.args;
+			this.txn = other.txn;
 		}
 
 		protected internal override AsyncCommand CloneCommand()
@@ -54,7 +58,7 @@ namespace Aerospike.Client
 		protected internal override bool ParseResult()
 		{
 			ParseHeader();
-			ParseTxnDeadline(policy.Txn);
+			ParseTxnDeadline(txn);
 
 			if (resultCode == ResultCode.OK)
 			{

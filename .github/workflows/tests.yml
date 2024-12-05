@@ -32,7 +32,7 @@ jobs:
 
     - uses: ./.github/actions/run-ee-server
       with:
-        use-server-rc: true
+        use-server-rc: false
         docker-hub-username: ${{ secrets.DOCKER_HUB_BOT_USERNAME }}
         docker-hub-password: ${{ secrets.DOCKER_HUB_BOT_PW }}
     

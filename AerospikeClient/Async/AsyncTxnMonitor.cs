@@ -139,6 +139,7 @@ namespace Aerospike.Client
 
 		void Execute(AsyncCluster cluster, Policy policy, Operation[] ops)
 		{
+			Txn txn = policy.Txn;
 			Key txnKey = TxnMonitor.GetTxnMonitorKey(policy.Txn);
 			WritePolicy wp = TxnMonitor.CopyTimeoutPolicy(policy);
 
@@ -146,7 +147,7 @@ namespace Aerospike.Client
 
 			// Add write key(s) to MRT monitor.
 			OperateArgs args = new(wp, null, null, ops);
-			AsyncTxnAddKeys txnCommand = new(cluster, txnListener, txnKey, args);
+			AsyncTxnAddKeys txnCommand = new(cluster, txnListener, txnKey, args, txn);
 			txnCommand.Execute();
 		}
 
