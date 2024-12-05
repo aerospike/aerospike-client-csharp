@@ -33,7 +33,7 @@ jobs:
 
     - uses: ./.github/actions/run-ee-server
       with:
-        use-server-rc: use-server-rc: ${{ contains(github.event.pull_request.labels.*.name, 'new-server-features') }}
+        use-server-rc: ${{ contains(github.event.pull_request.labels.*.name, 'new-server-features') }}
         docker-hub-username: ${{ secrets.DOCKER_HUB_BOT_USERNAME }}
         docker-hub-password: ${{ secrets.DOCKER_HUB_BOT_PW }}
     
