@@ -265,7 +265,7 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Asynchronously reset record's time to expiration using the policy's expiration.
 		/// Create listener, call asynchronous touch and return task monitor.
-		/// Fail if the record does not exist.
+		/// If the record does not exist, it can't be created because the server deletes empty records.
 		/// </summary>
 		/// <param name="policy">write configuration parameters, pass in null for defaults</param>
 		/// <param name="token">cancellation token</param>
@@ -277,7 +277,7 @@ namespace Aerospike.Client
 		/// Asynchronously reset record's time to expiration using the policy's expiration.
 		/// Schedule the touch command with a channel selector and return.
 		/// Another thread will process the command and send the results to the listener.
-		/// Fail if the record does not exist.
+		/// If the record does not exist, it can't be created because the server deletes empty records.
 		/// </summary>
 		/// <param name="policy">write configuration parameters, pass in null for defaults</param>
 		/// <param name="listener">where to send results, pass in null for fire and forget</param>
@@ -288,7 +288,7 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Asynchronously reset record's time to expiration using the policy's expiration.
 		/// Create listener, call asynchronous touched and return task monitor.
-		/// Returns bool indicating if record was touched. Does not fail if the record does not exist.
+		/// If the record does not exist, it can't be created because the server deletes empty records.
 		/// </summary>
 		/// <param name="policy">write configuration parameters, pass in null for defaults</param>
 		/// <param name="token">cancellation token</param>
@@ -300,7 +300,11 @@ namespace Aerospike.Client
 		/// Asynchronously reset record's time to expiration using the policy's expiration.
 		/// Schedule the touched command with a channel selector and return.
 		/// Another thread will process the command and send the results to the listener.
-		/// Result is a bool indicating if record was touched. Does not fail if the record does not exist.
+		/// If the record does not exist, it can't be created because the server deletes empty records.
+		/// <para>
+		/// If the record does not exist, send a value of false to
+		/// <see cref="ExistsListener.OnSuccess(Key, bool)"/>
+		/// </para>
 		/// </summary>
 		/// <param name="policy">write configuration parameters, pass in null for defaults</param>
 		/// <param name="listener">where to send results, pass in null for fire and forget</param>

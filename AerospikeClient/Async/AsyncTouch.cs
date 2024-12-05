@@ -24,7 +24,6 @@ namespace Aerospike.Client
 		private readonly ExistsListener existsListener;
 		private readonly Key key;
 		private readonly Partition partition;
-		private readonly bool throwsKeyNotFoundError;
 		private bool touched;
 
 		public AsyncTouch(AsyncCluster cluster, WritePolicy writePolicy, WriteListener listener, Key key)
@@ -35,11 +34,10 @@ namespace Aerospike.Client
 			this.existsListener = null;
 			this.key = key;
 			this.partition = Partition.Write(cluster, policy, key);
-			this.throwsKeyNotFoundError = true;
 			cluster.AddTran();
 		}
 
-		public AsyncTouch(AsyncCluster cluster, WritePolicy writePolicy, ExistsListener listener, Key key, bool throwsKeyNotFoundError)
+		public AsyncTouch(AsyncCluster cluster, WritePolicy writePolicy, ExistsListener listener, Key key)
 			: base(cluster, writePolicy)
 		{
 			this.writePolicy = writePolicy;
@@ -47,7 +45,6 @@ namespace Aerospike.Client
 			this.existsListener = listener;
 			this.key = key;
 			this.partition = Partition.Write(cluster, policy, key);
-			this.throwsKeyNotFoundError = throwsKeyNotFoundError;
 			cluster.AddTran();
 		}
 
@@ -59,7 +56,6 @@ namespace Aerospike.Client
 			this.existsListener = other.existsListener;
 			this.key = other.key;
 			this.partition = other.partition;
-			this.throwsKeyNotFoundError = other.throwsKeyNotFoundError;
 		}
 
 		protected internal override AsyncCommand CloneCommand()
@@ -100,7 +96,7 @@ namespace Aerospike.Client
 			touched = false;
 			if (resultCode == ResultCode.KEY_NOT_FOUND_ERROR)
 			{
-				if (throwsKeyNotFoundError)
+				if (existsListener == null)
 				{
 					throw new AerospikeException(resultCode);
 				}

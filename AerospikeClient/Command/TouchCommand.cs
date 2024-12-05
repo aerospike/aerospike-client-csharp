@@ -22,7 +22,7 @@ namespace Aerospike.Client
 		private readonly WritePolicy writePolicy;
 		private readonly Key key;
 		private readonly Partition partition;
-		private readonly bool throwsKeyNotFoundError;
+		private readonly bool failOnNotFound;
 		internal bool Touched { get; private set; }
 
 		public TouchCommand(Cluster cluster, WritePolicy writePolicy, Key key)
@@ -31,17 +31,17 @@ namespace Aerospike.Client
 			this.writePolicy = writePolicy;
 			this.key = key;
 			this.partition = Partition.Write(cluster, writePolicy, key);
-			this.throwsKeyNotFoundError = true;
+			this.failOnNotFound = true;
 			cluster.AddTran();
 		}
 
-		public TouchCommand(Cluster cluster, WritePolicy writePolicy, Key key, bool throwsKeyNotFoundError)
+		public TouchCommand(Cluster cluster, WritePolicy writePolicy, Key key, bool failOnNotFound)
  			: base(cluster, writePolicy)
 		{
 			this.writePolicy = writePolicy;
 			this.key = key;
 			this.partition = Partition.Write(cluster, writePolicy, key);
-			this.throwsKeyNotFoundError = throwsKeyNotFoundError;
+			this.failOnNotFound = failOnNotFound;
 			cluster.AddTran();
 		}
 
@@ -78,7 +78,7 @@ namespace Aerospike.Client
 			Touched = false;
 			if (resultCode == ResultCode.KEY_NOT_FOUND_ERROR)
 			{
-				if (throwsKeyNotFoundError)
+				if (failOnNotFound)
 				{
 					throw new AerospikeException(resultCode);
 				}
