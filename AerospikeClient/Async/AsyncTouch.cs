@@ -21,14 +21,28 @@ namespace Aerospike.Client
 	{
 		private readonly WritePolicy writePolicy;
 		private readonly WriteListener listener;
+		private readonly ExistsListener existsListener;
 		private readonly Key key;
 		private readonly Partition partition;
+		private bool touched;
 
 		public AsyncTouch(AsyncCluster cluster, WritePolicy writePolicy, WriteListener listener, Key key)
 			: base(cluster, writePolicy)
 		{
 			this.writePolicy = writePolicy;
 			this.listener = listener;
+			this.existsListener = null;
+			this.key = key;
+			this.partition = Partition.Write(cluster, policy, key);
+			cluster.AddTran();
+		}
+
+		public AsyncTouch(AsyncCluster cluster, WritePolicy writePolicy, ExistsListener listener, Key key)
+			: base(cluster, writePolicy)
+		{
+			this.writePolicy = writePolicy;
+			this.listener = null;
+			this.existsListener = listener;
 			this.key = key;
 			this.partition = Partition.Write(cluster, policy, key);
 			cluster.AddTran();
@@ -39,6 +53,7 @@ namespace Aerospike.Client
 		{
 			this.writePolicy = other.writePolicy;
 			this.listener = other.listener;
+			this.existsListener = other.existsListener;
 			this.key = other.key;
 			this.partition = other.partition;
 		}
@@ -74,6 +89,17 @@ namespace Aerospike.Client
 
 			if (resultCode == 0)
 			{
+				touched = true;
+				return;
+			}
+
+			touched = false;
+			if (resultCode == ResultCode.KEY_NOT_FOUND_ERROR)
+			{
+				if (existsListener == null)
+				{
+					throw new AerospikeException(resultCode);
+				}
 				return;
 			}
 
@@ -101,6 +127,10 @@ namespace Aerospike.Client
 			{
 				listener.OnSuccess(key);
 			}
+			else if (existsListener != null)
+			{
+				existsListener.OnSuccess(key, touched);
+			}
 		}
 
 		protected internal override void OnFailure(AerospikeException e)
@@ -108,6 +138,10 @@ namespace Aerospike.Client
 			if (listener != null)
 			{
 				listener.OnFailure(e);
+			}
+			else if (existsListener != null)
+			{
+				existsListener.OnFailure(e);
 			}
 		}
 	}
