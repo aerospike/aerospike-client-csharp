@@ -1,12 +1,13 @@
 name: Run tests
 
 # Trigger test workflow whenever:
-# 1. Commits are pushed directly to the mrt branch
+# 1. A pull request is updated (e.g with new commits)
+# 2. Commits are pushed directly to the stage or master branch
 on:
   push:
-    branches: ["mrt"]
+    branches: ["stage*", "master*"]
   pull_request:
-    branches: ["mrt"]
+    branches: ["stage*", "master*"]
     types: [
       # Default triggers
       opened,
@@ -32,7 +33,7 @@ jobs:
 
     - uses: ./.github/actions/run-ee-server
       with:
-        use-server-rc: false
+        use-server-rc: use-server-rc: ${{ contains(github.event.pull_request.labels.*.name, 'new-server-features') }}
         docker-hub-username: ${{ secrets.DOCKER_HUB_BOT_USERNAME }}
         docker-hub-password: ${{ secrets.DOCKER_HUB_BOT_PW }}
     

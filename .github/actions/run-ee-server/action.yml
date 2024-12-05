@@ -5,7 +5,7 @@ description: 'Run EE server. Returns once server is ready. Only tested on Linux 
 inputs:
   # All inputs in composite actions are strings
   use-server-rc:
-    required: false
+    required: true
     description: Deploy server release candidate?
     default: 'false'
   server-tag:
