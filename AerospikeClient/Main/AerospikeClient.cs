@@ -821,7 +821,8 @@ namespace Aerospike.Client
 
 		/// <summary>
 		/// Reset record's time to expiration using the policy's expiration.
-		/// Fail if the record does not exist.
+		/// If the record does not exist, it can't be created because the server deletes empty records.
+		/// Throw an exception if the record does not exist.
 		/// </summary>
 		/// <param name="policy">write configuration parameters, pass in null for defaults</param>
 		/// <param name="key">unique record identifier</param>
@@ -840,6 +841,32 @@ namespace Aerospike.Client
 
 			TouchCommand command = new TouchCommand(cluster, policy, key);
 			command.Execute();
+		}
+
+		/// <summary>
+		/// Reset record's time to expiration using the policy's expiration.
+		/// If the record does not exist, it can't be created because the server deletes empty records.
+		/// Return true if the record exists and is touched.Return false if the record does not exist.
+		/// </summary>
+		/// <param name="policy">write configuration parameters, pass in null for defaults</param>
+		/// <param name="key">unique record identifier</param>
+		/// <returns>true if record was touched, false otherwise</returns>
+		/// <exception cref="AerospikeException">if touch fails</exception>
+		public bool Touched(WritePolicy policy, Key key)
+		{
+			if (policy == null)
+			{
+				policy = writePolicyDefault;
+			}
+			if (policy.Txn != null)
+			{
+				TxnMonitor.AddKey(cluster, policy, key);
+			}
+
+			TouchCommand command = new(cluster, policy, key, false);
+			command.Execute();
+
+			return command.Touched;
 		}
 
 		//-------------------------------------------------------

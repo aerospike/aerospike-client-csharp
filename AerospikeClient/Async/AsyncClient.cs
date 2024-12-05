@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2023 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -563,7 +563,7 @@ namespace Aerospike.Client
 			AsyncBatchOperateRecordSequenceExecutor executor = new(cluster, batchPolicy, listener, keys, null, attr);
 			AsyncTxnMonitor.ExecuteBatch(batchPolicy, executor, keys);
 		}
-	
+
 		//-------------------------------------------------------
 		// Touch Operations
 		//-------------------------------------------------------
@@ -571,7 +571,7 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Asynchronously reset record's time to expiration using the policy's expiration.
 		/// Create listener, call asynchronous touch and return task monitor.
-		/// Fail if the record does not exist.
+		/// If the record does not exist, it can't be created because the server deletes empty records.
 		/// </summary>
 		/// <param name="policy">write configuration parameters, pass in null for defaults</param>
 		/// <param name="token">cancellation token</param>
@@ -588,7 +588,7 @@ namespace Aerospike.Client
 		/// Asynchronously reset record's time to expiration using the policy's expiration.
 		/// Schedule the touch command with a channel selector and return.
 		/// Another thread will process the command and send the results to the listener.
-		/// Fail if the record does not exist.
+		/// If the record does not exist, it can't be created because the server deletes empty records.
 		/// </summary>
 		/// <param name="policy">write configuration parameters, pass in null for defaults</param>
 		/// <param name="listener">where to send results, pass in null for fire and forget</param>
@@ -601,6 +601,46 @@ namespace Aerospike.Client
 				policy = writePolicyDefault;
 			}
 			AsyncTouch async = new AsyncTouch(cluster, policy, listener, key);
+			AsyncTxnMonitor.Execute(cluster, policy, async);
+		}
+
+		/// <summary>
+		/// Asynchronously reset record's time to expiration using the policy's expiration.
+		/// Create listener, call asynchronous touched and return task monitor.
+		/// If the record does not exist, it can't be created because the server deletes empty records.
+		/// </summary>
+		/// <param name="policy">write configuration parameters, pass in null for defaults</param>
+		/// <param name="token">cancellation token</param>
+		/// <param name="key">unique record identifier</param>
+		/// <exception cref="AerospikeException">if queue is full</exception>
+		public Task<bool> Touched(WritePolicy policy, CancellationToken token, Key key)
+		{
+			ExistsListenerAdapter listener = new(token);
+			Touched(policy, listener, key);
+			return listener.Task;
+		}
+
+		/// <summary>
+		/// Asynchronously reset record's time to expiration using the policy's expiration.
+		/// Schedule the touched command with a channel selector and return.
+		/// Another thread will process the command and send the results to the listener.
+		/// If the record does not exist, it can't be created because the server deletes empty records.
+		/// <para>
+		/// If the record does not exist, send a value of false to
+		/// <see cref="ExistsListener.OnSuccess(Key, bool)"/>
+		/// </para>
+		/// </summary>
+		/// <param name="policy">write configuration parameters, pass in null for defaults</param>
+		/// <param name="listener">where to send results, pass in null for fire and forget</param>
+		/// <param name="key">unique record identifier</param>
+		/// <exception cref="AerospikeException">if queue is full</exception>
+		public void Touched(WritePolicy policy, ExistsListener listener, Key key)
+		{
+			if (policy == null)
+			{
+				policy = writePolicyDefault;
+			}
+			AsyncTouch async = new(cluster, policy, listener, key);
 			AsyncTxnMonitor.Execute(cluster, policy, async);
 		}
 

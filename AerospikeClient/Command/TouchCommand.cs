@@ -19,9 +19,18 @@ namespace Aerospike.Client
 {
 	public sealed class TouchCommand : SyncWriteCommand
 	{
+		private readonly bool failOnNotFound;
+		internal bool Touched { get; private set; }
 		public TouchCommand(Cluster cluster, WritePolicy writePolicy, Key key)
  			: base(cluster, writePolicy, key)
 		{
+			this.failOnNotFound = true;
+		}
+
+		public TouchCommand(Cluster cluster, WritePolicy writePolicy, Key key, bool failOnNotFound)
+ 			: base(cluster, writePolicy, key)
+		{
+			this.failOnNotFound = failOnNotFound;
 		}
 
 		protected internal override void WriteBuffer()
@@ -36,6 +45,17 @@ namespace Aerospike.Client
 
 			if (resultCode == ResultCode.OK)
 			{
+				Touched = true;
+				return;
+			}
+
+			Touched = false;
+			if (resultCode == ResultCode.KEY_NOT_FOUND_ERROR)
+			{
+				if (failOnNotFound)
+				{
+					throw new AerospikeException(resultCode);
+				}
 				return;
 			}
 

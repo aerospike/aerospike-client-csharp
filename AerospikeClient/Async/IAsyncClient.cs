@@ -311,7 +311,7 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Asynchronously reset record's time to expiration using the policy's expiration.
 		/// Create listener, call asynchronous touch and return task monitor.
-		/// Fail if the record does not exist.
+		/// If the record does not exist, it can't be created because the server deletes empty records.
 		/// </summary>
 		/// <param name="policy">write configuration parameters, pass in null for defaults</param>
 		/// <param name="token">cancellation token</param>
@@ -323,13 +323,40 @@ namespace Aerospike.Client
 		/// Asynchronously reset record's time to expiration using the policy's expiration.
 		/// Schedule the touch command with a channel selector and return.
 		/// Another thread will process the command and send the results to the listener.
-		/// Fail if the record does not exist.
+		/// If the record does not exist, it can't be created because the server deletes empty records.
 		/// </summary>
 		/// <param name="policy">write configuration parameters, pass in null for defaults</param>
 		/// <param name="listener">where to send results, pass in null for fire and forget</param>
 		/// <param name="key">unique record identifier</param>
 		/// <exception cref="AerospikeException">if queue is full</exception>
 		void Touch(WritePolicy policy, WriteListener listener, Key key);
+
+		/// <summary>
+		/// Asynchronously reset record's time to expiration using the policy's expiration.
+		/// Create listener, call asynchronous touched and return task monitor.
+		/// If the record does not exist, it can't be created because the server deletes empty records.
+		/// </summary>
+		/// <param name="policy">write configuration parameters, pass in null for defaults</param>
+		/// <param name="token">cancellation token</param>
+		/// <param name="key">unique record identifier</param>
+		/// <exception cref="AerospikeException">if queue is full</exception>
+		Task<bool> Touched(WritePolicy policy, CancellationToken token, Key key);
+
+		/// <summary>
+		/// Asynchronously reset record's time to expiration using the policy's expiration.
+		/// Schedule the touched command with a channel selector and return.
+		/// Another thread will process the command and send the results to the listener.
+		/// If the record does not exist, it can't be created because the server deletes empty records.
+		/// <para>
+		/// If the record does not exist, send a value of false to
+		/// <see cref="ExistsListener.OnSuccess(Key, bool)"/>
+		/// </para>
+		/// </summary>
+		/// <param name="policy">write configuration parameters, pass in null for defaults</param>
+		/// <param name="listener">where to send results, pass in null for fire and forget</param>
+		/// <param name="key">unique record identifier</param>
+		/// <exception cref="AerospikeException">if queue is full</exception>
+		void Touched(WritePolicy policy, ExistsListener listener, Key key);
 
 		//-------------------------------------------------------
 		// Existence-Check Operations

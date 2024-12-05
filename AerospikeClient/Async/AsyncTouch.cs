@@ -20,17 +20,28 @@ namespace Aerospike.Client
 	public sealed class AsyncTouch : AsyncWriteBase
 	{
 		private readonly WriteListener listener;
+		private readonly ExistsListener existsListener;
+		private bool touched;
 
 		public AsyncTouch(AsyncCluster cluster, WritePolicy writePolicy, WriteListener listener, Key key)
 			: base(cluster, writePolicy, key)
 		{
 			this.listener = listener;
+			this.existsListener = null;
+		}
+
+		public AsyncTouch(AsyncCluster cluster, WritePolicy writePolicy, ExistsListener listener, Key key)
+			: base(cluster, writePolicy, key)
+		{
+			this.listener = null;
+			this.existsListener = listener;
 		}
 
 		public AsyncTouch(AsyncTouch other)
 			: base(other)
 		{
 			this.listener = other.listener;
+			this.existsListener = other.existsListener;
 		}
 
 		protected internal override AsyncCommand CloneCommand()
@@ -50,6 +61,17 @@ namespace Aerospike.Client
 
 			if (resultCode == ResultCode.OK)
 			{
+				touched = true;
+				return true;
+			}
+
+			touched = false;
+			if (resultCode == ResultCode.KEY_NOT_FOUND_ERROR)
+			{
+				if (existsListener == null)
+				{
+					throw new AerospikeException(resultCode);
+				}
 				return true;
 			}
 
@@ -71,6 +93,10 @@ namespace Aerospike.Client
 			{
 				listener.OnSuccess(Key);
 			}
+			else if (existsListener != null)
+			{
+				existsListener.OnSuccess(Key, touched);
+			}
 		}
 
 		protected internal override void OnFailure(AerospikeException e)
@@ -78,6 +104,10 @@ namespace Aerospike.Client
 			if (listener != null)
 			{
 				listener.OnFailure(e);
+			}
+			else if (existsListener != null)
+			{
+				existsListener.OnFailure(e);
 			}
 		}
 	}
