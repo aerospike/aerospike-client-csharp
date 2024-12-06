@@ -26,9 +26,7 @@ namespace Aerospike.Test
 		public static Args Instance = new Args();
 
 		public IAerospikeClient client;
-		public AerospikeClient nativeClient;
 		public IAsyncClient asyncClient;
-		public AsyncClient nativeAsync;
 		public Host[] hosts;
 		public int port;
 		public string user;
@@ -37,6 +35,7 @@ namespace Aerospike.Test
 		public string clusterName;
 		public string ns;
 		public string set;
+		public bool useServicesAlternate;
 		public string tlsName;
 		public TlsPolicy tlsPolicy;
 		public AuthMode authMode;
@@ -58,6 +57,7 @@ namespace Aerospike.Test
 			ns = section.GetSection("Namespace").Value;
 			set = section.GetSection("Set").Value;
 			authMode = (AuthMode)Enum.Parse(typeof(AuthMode), section.GetSection("AuthMode").Value, true);
+			useServicesAlternate = bool.Parse(section.GetSection("UseServicesAlternate").Value);
 
 			bool tlsEnable = bool.Parse(section.GetSection("TlsEnable").Value);
 
@@ -96,6 +96,7 @@ namespace Aerospike.Test
 			policy.tlsPolicy = tlsPolicy;
 			policy.authMode = authMode;
 			policy.timeout = timeout;
+			policy.useServicesAlternate = useServicesAlternate;
 
 			if (user != null && user.Length > 0)
 			{
@@ -103,16 +104,7 @@ namespace Aerospike.Test
 				policy.password = password;
 			}
 
-			nativeClient = new AerospikeClient(policy, hosts);
-
-			nativeClient.readPolicyDefault.totalTimeout = timeout;
-			nativeClient.WritePolicyDefault.totalTimeout = timeout;
-			nativeClient.ScanPolicyDefault.totalTimeout = timeout;
-			nativeClient.QueryPolicyDefault.totalTimeout = timeout;
-			nativeClient.BatchPolicyDefault.totalTimeout = timeout;
-			nativeClient.BatchParentPolicyWriteDefault.totalTimeout = timeout;
-			nativeClient.InfoPolicyDefault.timeout = timeout;
-			client = nativeClient;
+			client = new AerospikeClient(policy, hosts);
 
 			//Example of how to enable metrics
 			//client.EnableMetrics(new MetricsPolicy());
@@ -137,6 +129,7 @@ namespace Aerospike.Test
 			policy.authMode = authMode;
 			policy.asyncMaxCommands = 300;
 			policy.timeout = timeout;
+			policy.useServicesAlternate = useServicesAlternate;
 
 			if (user != null && user.Length > 0)
 			{
@@ -144,17 +137,7 @@ namespace Aerospike.Test
 				policy.password = password;
 			}
 
-			nativeAsync = new AsyncClient(policy, hosts);
-
-			nativeAsync.readPolicyDefault.totalTimeout = timeout;
-			nativeAsync.WritePolicyDefault.totalTimeout = timeout;
-			nativeAsync.ScanPolicyDefault.totalTimeout = timeout;
-			nativeAsync.QueryPolicyDefault.totalTimeout = timeout;
-			nativeAsync.BatchPolicyDefault.totalTimeout = timeout;
-			nativeAsync.BatchParentPolicyWriteDefault.totalTimeout = timeout;
-			nativeAsync.InfoPolicyDefault.timeout = timeout;
-
-			asyncClient = nativeAsync;
+			asyncClient = new AsyncClient(policy, hosts);
 
 			// Example of how to enable metrics
 			//asyncClient.EnableMetrics(new MetricsPolicy());
@@ -162,7 +145,7 @@ namespace Aerospike.Test
 
 		private void SetServerSpecific()
 		{
-			Node node = nativeClient.Nodes[0];
+			Node node = client.Nodes[0];
 			string namespaceFilter = "namespace/" + ns;
 			Dictionary<string, string> map = Info.Request(null, node, "edition", namespaceFilter);
 

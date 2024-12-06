@@ -14,7 +14,6 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using System.Diagnostics.Metrics;
 using System.Reflection;
 
 namespace Aerospike.Client
@@ -27,56 +26,91 @@ namespace Aerospike.Client
 
 		/// <summary>
 		/// Default read policy that is used when read command policy is null.
+		/// Use when the policy will not be modified. Use <see cref="Policy.Clone()"/>
+		/// when the policy will be modified for use in a specific command.
 		/// </summary>
 		Policy ReadPolicyDefault { get; set; }
 
 		/// <summary>
 		/// Default write policy that is used when write command policy is null.
+		/// Use when the policy will not be modified. Use <see cref="WritePolicy.Clone()"/>
+		/// when the policy will be modified for use in a specific command.
 		/// </summary>
 		WritePolicy WritePolicyDefault { get; set; }
 
 		/// <summary>
 		/// Default scan policy that is used when scan command policy is null.
+		/// Use when the policy will not be modified. Use <see cref="ScanPolicy.Clone()"/>
+		/// when the policy will be modified for use in a specific command.
 		/// </summary>
 		ScanPolicy ScanPolicyDefault { get; set; }
 
 		/// <summary>
 		/// Default query policy that is used when query command policy is null.
+		/// Use when the policy will not be modified. Use <see cref="QueryPolicy.Clone()"/>
+		/// when the policy will be modified for use in a specific command.
 		/// </summary>
 		QueryPolicy QueryPolicyDefault { get; set; }
 
 		/// <summary>
 		/// Default parent policy used in batch read commands.Parent policy fields
 		/// include socketTimeout, totalTimeout, maxRetries, etc...
+		/// Use when the policy will not be modified. Use <see cref="BatchPolicy.Clone()"/>
+		/// when the policy will be modified for use in a specific command.
 		/// </summary>
 		BatchPolicy BatchPolicyDefault { get; set; }
 
 		/// <summary>
 		/// Default parent policy used in batch write commands. Parent policy fields
 		/// include socketTimeout, totalTimeout, maxRetries, etc...
+		/// Use when the policy will not be modified. Use <see cref="BatchPolicy.Clone()"/>
+		/// when the policy will be modified for use in a specific command.
 		/// </summary>
 		BatchPolicy BatchParentPolicyWriteDefault { get; set; }
 
 		/// <summary>
 		/// Default write policy used in batch operate commands.
 		/// Write policy fields include generation, expiration, durableDelete, etc...
+		/// Use when the policy will not be modified. Use <see cref="BatchWritePolicy.Clone()"/>
+		/// when the policy will be modified for use in a specific command.
 		/// </summary>
 		BatchWritePolicy BatchWritePolicyDefault { get; set; }
 
 		/// <summary>
 		/// Default delete policy used in batch delete commands.
+		/// Use when the policy will not be modified. Use <see cref="BatchDeletePolicy.Clone()"/>
+		/// when the policy will be modified for use in a specific command.
 		/// </summary>
 		BatchDeletePolicy BatchDeletePolicyDefault { get; set; }
 
 		/// <summary>
-		/// Default user defined function policy used in batch UDF excecute commands.
+		/// Default user defined function policy used in batch UDF execute commands.
+		/// Use when the policy will not be modified. Use <see cref="BatchUDFPolicy.Clone()"/>
+		/// when the policy will be modified for use in a specific command.
 		/// </summary>
 		BatchUDFPolicy BatchUDFPolicyDefault { get; set; }
 
 		/// <summary>
 		/// Default info policy that is used when info command policy is null.
+		/// Use when the policy will not be modified. Use <see cref="InfoPolicy.Clone()"/>
+		/// when the policy will be modified for use in a specific command.
 		/// </summary>
 		InfoPolicy InfoPolicyDefault { get; set; }
+
+		/// <summary>
+		/// Default multi-record transactions (MRT) policy when verifying record versions in a batch on a commit.
+		/// Use when the policy will not be modified. Use <see cref="TxnVerifyPolicy.Clone()"/>
+		/// when the policy will be modified for use in a specific command.
+		/// </summary>
+		TxnVerifyPolicy TxnVerifyPolicyDefault { get; set; }
+
+		/// <summary>
+		/// Default multi-record transactions (MRT) policy when rolling the transaction records forward (commit)
+		/// or back(abort) in a batch.
+		/// Use when the policy will not be modified. Use <see cref="TxnRollPolicy.Clone()"/>
+		/// when the policy will be modified for use in a specific command.
+		/// </summary>
+		TxnRollPolicy TxnRollPolicyDefault { get; set; }
 
 		//-------------------------------------------------------
 		// Cluster Connection Management
@@ -119,12 +153,39 @@ namespace Aerospike.Client
 		ClusterStats GetClusterStats();
 
 		//-------------------------------------------------------
+		// Multi-Record Transactions
+		//-------------------------------------------------------
+
+		/// <summary>
+		/// Attempt to commit the given multi-record transaction. First, the expected record versions are
+		/// sent to the server nodes for verification. If all nodes return success, the transaction is
+		/// committed. Otherwise, the transaction is aborted.
+		/// <para>
+		/// Requires server version 8.0+
+		/// </para>
+		/// </summary>
+		/// <param name="txn">multi-record transaction</param>
+		/// <returns>status of the commit on success</returns>
+		/// <exception cref="AerospikeException.Commit">if verify commit fails</exception>
+		CommitStatus.CommitStatusType Commit(Txn txn);
+
+		/// <summary>
+		/// Abort and rollback the given multi-record transaction.
+		/// <para>
+		/// Requires server version 8.0+
+		/// </para>
+		/// </summary>
+		/// <param name="txn">multi-record transaction</param>
+		/// <returns>statis of the abort</returns>
+		AbortStatus.AbortStatusType Abort(Txn txn);
+
+		//-------------------------------------------------------
 		// Write Record Operations
 		//-------------------------------------------------------
 
 		/// <summary>
 		/// Write record bin(s).
-		/// The policy specifies the transaction timeout, record expiration and how the transaction is
+		/// The policy specifies the command timeout, record expiration and how the command is
 		/// handled when the record already exists.
 		/// </summary>
 		/// <param name="policy">write configuration parameters, pass in null for defaults</param>
@@ -139,7 +200,7 @@ namespace Aerospike.Client
 
 		/// <summary>
 		/// Append bin string values to existing record bin values.
-		/// The policy specifies the transaction timeout, record expiration and how the transaction is
+		/// The policy specifies the command timeout, record expiration and how the command is
 		/// handled when the record already exists.
 		/// This call only works for string values. 
 		/// </summary>
@@ -151,7 +212,7 @@ namespace Aerospike.Client
 
 		/// <summary>
 		/// Prepend bin string values to existing record bin values.
-		/// The policy specifies the transaction timeout, record expiration and how the transaction is
+		/// The policy specifies the command timeout, record expiration and how the command is
 		/// handled when the record already exists.
 		/// This call works only for string values. 
 		/// </summary>
@@ -167,7 +228,7 @@ namespace Aerospike.Client
 
 		/// <summary>
 		/// Add integer bin values to existing record bin values.
-		/// The policy specifies the transaction timeout, record expiration and how the transaction is
+		/// The policy specifies the command timeout, record expiration and how the command is
 		/// handled when the record already exists.
 		/// This call only works for integer values. 
 		/// </summary>
@@ -184,7 +245,7 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Delete record for specified key.
 		/// Return whether record existed on server before deletion.
-		/// The policy specifies the transaction timeout.
+		/// The policy specifies the command timeout.
 		/// </summary>
 		/// <param name="policy">delete configuration parameters, pass in null for defaults</param>
 		/// <param name="key">unique record identifier</param>
@@ -607,7 +668,7 @@ namespace Aerospike.Client
 		/// <param name="packageName">server package name where user defined function resides</param>
 		/// <param name="functionName">user defined function</param>
 		/// <param name="args">arguments passed in to user defined function</param>
-		/// <exception cref="AerospikeException">if transaction fails</exception>
+		/// <exception cref="AerospikeException">if command fails</exception>
 		object Execute(WritePolicy policy, Key key, string packageName, string functionName, params Value[] args);
 
 		/// <summary>

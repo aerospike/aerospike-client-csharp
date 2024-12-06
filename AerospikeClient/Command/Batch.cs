@@ -52,9 +52,9 @@ namespace Aerospike.Client
 
 		protected internal override bool ParseRow()
 		{
-			SkipKey(fieldCount);
-
 			BatchRead record = records[batchIndex];
+
+			ParseFieldsRead(record.key);
 
 			if (resultCode == 0)
 			{
@@ -116,7 +116,7 @@ namespace Aerospike.Client
 		{
 			if (batch.node != null && batch.node.HasBatchAny)
 			{
-				BatchAttr attr = new BatchAttr(policy, readAttr, ops);
+				BatchAttr attr = new(policy, readAttr, ops);
 				SetBatchOperate(batchPolicy, keys, batch, binNames, ops, attr);
 			}
 			else
@@ -127,7 +127,7 @@ namespace Aerospike.Client
 
 		protected internal override bool ParseRow()
 		{
-			SkipKey(fieldCount);
+			ParseFieldsRead(keys[batchIndex]);
 
 			if (resultCode == 0)
 			{
@@ -174,7 +174,7 @@ namespace Aerospike.Client
 		{
 			if (batch.node != null && batch.node.HasBatchAny)
 			{
-				BatchAttr attr = new BatchAttr(policy, Command.INFO1_READ | Command.INFO1_NOBINDATA);
+				BatchAttr attr = new(policy, Command.INFO1_READ | Command.INFO1_NOBINDATA);
 				SetBatchOperate(batchPolicy, keys, batch, null, null, attr);
 			}
 			else
@@ -185,13 +185,7 @@ namespace Aerospike.Client
 
 		protected internal override bool ParseRow()
 		{
-			SkipKey(fieldCount);
-
-			if (opCount > 0)
-			{
-				throw new AerospikeException.Parse("Received bins that were not requested!");
-			}
-
+			ParseFieldsRead(keys[batchIndex]);
 			existsArray[batchIndex] = resultCode == 0;
 			return true;
 		}
@@ -241,9 +235,9 @@ namespace Aerospike.Client
 
 		protected internal override bool ParseRow()
 		{
-			SkipKey(fieldCount);
-
 			BatchRecord record = records[batchIndex];
+
+			ParseFields(record);
 
 			if (resultCode == 0)
 			{
@@ -272,13 +266,8 @@ namespace Aerospike.Client
 			return true;
 		}
 
-		protected internal override void SetInDoubt(bool inDoubt)
+		protected internal override void InDoubt()
 		{
-			if (!inDoubt)
-			{
-				return;
-			}
-
 			foreach (int index in batch.offsets)
 			{
 				BatchRecord record = records[index];
@@ -286,6 +275,10 @@ namespace Aerospike.Client
 				if (record.resultCode == ResultCode.NO_RESPONSE)
 				{
 					record.inDoubt = record.hasWrite;
+
+					if (record.inDoubt && policy.Txn != null) {
+						policy.Txn.OnWriteInDoubt(record.key);
+					}
 				}
 			}
 		}
@@ -342,9 +335,9 @@ namespace Aerospike.Client
 
 		protected internal override bool ParseRow()
 		{
-			SkipKey(fieldCount);
-
 			BatchRecord record = records[batchIndex];
+
+			ParseFields(record);
 
 			if (resultCode == 0)
 			{
@@ -358,9 +351,9 @@ namespace Aerospike.Client
 			return true;
 		}
 
-		protected internal override void SetInDoubt(bool inDoubt)
+		protected internal override void InDoubt()
 		{
-			if (!inDoubt || !attr.hasWrite)
+			if (!attr.hasWrite)
 			{
 				return;
 			}
@@ -371,7 +364,11 @@ namespace Aerospike.Client
 
 				if (record.resultCode == ResultCode.NO_RESPONSE)
 				{
-					record.inDoubt = inDoubt;
+					record.inDoubt = true;
+
+					if (policy.Txn != null) {
+						policy.Txn.OnWriteInDoubt(record.key);
+					}
 				}
 			}
 		}
@@ -434,9 +431,9 @@ namespace Aerospike.Client
 
 		protected internal override bool ParseRow()
 		{
-			SkipKey(fieldCount);
-
 			BatchRecord record = records[batchIndex];
+
+			ParseFields(record);
 
 			if (resultCode == 0)
 			{
@@ -465,9 +462,9 @@ namespace Aerospike.Client
 			return true;
 		}
 
-		protected internal override void SetInDoubt(bool inDoubt)
+		protected internal override void InDoubt()
 		{
-			if (!inDoubt || !attr.hasWrite)
+			if (!attr.hasWrite)
 			{
 				return;
 			}
@@ -478,7 +475,11 @@ namespace Aerospike.Client
 
 				if (record.resultCode == ResultCode.NO_RESPONSE)
 				{
-					record.inDoubt = inDoubt;
+					record.inDoubt = true;
+
+					if (policy.Txn != null) {
+						policy.Txn.OnWriteInDoubt(record.key);
+					}
 				}
 			}
 		}
@@ -486,6 +487,151 @@ namespace Aerospike.Client
 		protected internal override BatchCommand CreateCommand(BatchNode batchNode)
 		{
 			return new BatchUDFCommand(cluster, batchNode, batchPolicy, keys, packageName, functionName, argBytes, records, attr, status);
+		}
+
+		protected internal override List<BatchNode> GenerateBatchNodes()
+		{
+			return BatchNode.GenerateList(cluster, batchPolicy, keys, records, sequenceAP, sequenceSC, batch, attr.hasWrite, status);
+		}
+	}
+
+	//-------------------------------------------------------
+	// MRT
+	//-------------------------------------------------------
+
+	public sealed class BatchTxnVerify : BatchCommand
+	{
+		private readonly Key[] keys;
+		private readonly long?[] versions;
+		private readonly BatchRecord[] records;
+
+		public BatchTxnVerify(
+			Cluster cluster,
+			BatchNode batch,
+			BatchPolicy batchPolicy,
+			Key[] keys,
+			long?[] versions,
+			BatchRecord[] records,
+			BatchStatus status
+		) : base(cluster, batch, batchPolicy, status, false)
+		{
+			this.keys = keys;
+			this.versions = versions;
+			this.records = records;
+		}
+
+		protected internal override bool IsWrite()
+		{
+			return false;
+		}
+
+		protected internal override void WriteBuffer()
+		{
+			SetBatchTxnVerify(batchPolicy, keys, versions, batch);
+		}
+
+		protected internal override bool ParseRow()
+		{
+			SkipKey(fieldCount);
+
+			BatchRecord record = records[batchIndex];
+
+			if (resultCode == ResultCode.OK)
+			{
+				record.resultCode = resultCode;
+			}
+			else
+			{
+				record.SetError(resultCode, false);
+				status.SetRowError();
+			}
+			return true;
+		}
+
+		protected internal override BatchCommand CreateCommand(BatchNode batchNode)
+		{
+			return new BatchTxnVerify(cluster, batchNode, batchPolicy, keys, versions, records, status);
+		}
+
+		protected internal override List<BatchNode> GenerateBatchNodes()
+		{
+			return BatchNode.GenerateList(cluster, batchPolicy, keys, records, sequenceAP, sequenceSC, batch, false, status);
+		}
+	}
+
+	public sealed class BatchTxnRoll : BatchCommand
+	{
+		private readonly Txn txn;
+		private readonly Key[] keys;
+		private readonly BatchRecord[] records;
+		private readonly BatchAttr attr;
+
+		public  BatchTxnRoll(
+			Cluster cluster,
+			BatchNode batch,
+			BatchPolicy batchPolicy,
+			Txn txn,
+			Key[] keys,
+			BatchRecord[] records,
+			BatchAttr attr,
+			BatchStatus status
+		) : base(cluster, batch, batchPolicy, status, false)
+		{
+			this.txn = txn;
+			this.keys = keys;
+			this.records = records;
+			this.attr = attr;
+		}
+
+		protected internal override bool IsWrite()
+		{
+			return attr.hasWrite;
+		}
+
+		protected internal override void WriteBuffer()
+		{
+			SetBatchTxnRoll(batchPolicy, txn, keys, batch, attr);
+		}
+
+		protected internal override bool ParseRow()
+		{
+			SkipKey(fieldCount);
+
+			BatchRecord record = records[batchIndex];
+
+			if (resultCode == 0)
+			{
+				record.resultCode = resultCode;
+			}
+			else
+			{
+				record.SetError(resultCode, Command.BatchInDoubt(attr.hasWrite, commandSentCounter));
+				status.SetRowError();
+			}
+			return true;
+		}
+
+		protected internal override void InDoubt()
+		{
+			if (!attr.hasWrite)
+			{
+				return;
+			}
+
+			foreach (int index in batch.offsets) 
+			{
+				BatchRecord record = records[index];
+
+				if (record.resultCode == ResultCode.NO_RESPONSE)
+				{
+					record.inDoubt = true;
+				}
+			}
+		}
+
+		protected internal override BatchCommand CreateCommand(BatchNode batchNode)
+		{
+			return new BatchTxnRoll(cluster, batchNode, batchPolicy, txn, keys, records, attr, status);
 		}
 
 		protected internal override List<BatchNode> GenerateBatchNodes()
@@ -530,27 +676,54 @@ namespace Aerospike.Client
 			}
 			catch (AerospikeException ae)
 			{
-				// Set error/inDoubt for keys associated this batch command when
-				// the command was not retried and split. If a split retry occurred,
-				// those new subcommands have already set error/inDoubt on the affected
-				// subset of keys.
-				if (!splitRetry)
+				if (ae.InDoubt)
 				{
-					SetInDoubt(ae.InDoubt);
+					SetInDoubt();
 				}
 				status.SetException(ae);
 			}
 			catch (Exception e)
 			{
-				if (!splitRetry)
-				{
-					SetInDoubt(true);
-				}
+				SetInDoubt();
 				status.SetException(e);
 			}
 			finally
 			{
 				parent.OnComplete();
+			}
+		}
+
+		protected void ParseFieldsRead(Key key)
+		{
+			if (policy.Txn != null)
+			{
+				long? version = ParseVersion(fieldCount);
+				policy.Txn.OnRead(key, version);
+			}
+			else
+			{
+				SkipKey(fieldCount);
+			}
+		}
+
+		protected void ParseFields(BatchRecord br)
+		{
+			if (policy.Txn != null)
+			{
+				long? version = ParseVersion(fieldCount);
+
+				if (br.hasWrite)
+				{
+					policy.Txn.OnWrite(br.key, version, resultCode);
+				}
+				else
+				{
+					policy.Txn.OnRead(br.key, version);
+				}
+			}
+			else
+			{
+				SkipKey(fieldCount);
 			}
 		}
 
@@ -618,9 +791,9 @@ namespace Aerospike.Client
 				}
 				catch (AerospikeException ae)
 				{
-					if (!command.splitRetry)
+					if (ae.InDoubt)
 					{
-						command.SetInDoubt(ae.InDoubt);
+						SetInDoubt();
 					}
 					status.SetException(ae);
 
@@ -633,7 +806,7 @@ namespace Aerospike.Client
 				{
 					if (!command.splitRetry)
 					{
-						command.SetInDoubt(true);
+						SetInDoubt();
 					}
 					status.SetException(e);
 
@@ -646,7 +819,19 @@ namespace Aerospike.Client
 			return true;
 		}
 
-		protected internal virtual void SetInDoubt(bool inDoubt)
+		protected internal void SetInDoubt()
+		{
+			// Set error/inDoubt for keys associated this batch command when
+			// the command was not retried and split. If a split retry occurred,
+			// those new subcommands have already set inDoubt on the affected
+			// subset of keys.
+			if (!splitRetry)
+			{
+				InDoubt();
+			}
+		}
+
+		protected internal virtual void InDoubt()
 		{
 			// Do nothing by default. Batch writes will override this method.
 		}

@@ -22,33 +22,33 @@ namespace Aerospike.Client
 {
 	public abstract class Command
 	{
-		public static readonly int INFO1_READ              = (1 << 0); // Contains a read operation.
-		public static readonly int INFO1_GET_ALL           = (1 << 1); // Get all bins.
-		public static readonly int INFO1_SHORT_QUERY       = (1 << 2); // Short query.
-		public static readonly int INFO1_BATCH             = (1 << 3); // Batch read or exists.
-		public static readonly int INFO1_NOBINDATA         = (1 << 5); // Do not read the bins.
-		public static readonly int INFO1_READ_MODE_AP_ALL  = (1 << 6); // Involve all replicas in read operation.
+		public static readonly int INFO1_READ = (1 << 0); // Contains a read operation.
+		public static readonly int INFO1_GET_ALL = (1 << 1); // Get all bins.
+		public static readonly int INFO1_SHORT_QUERY = (1 << 2); // Short query.
+		public static readonly int INFO1_BATCH = (1 << 3); // Batch read or exists.
+		public static readonly int INFO1_NOBINDATA = (1 << 5); // Do not read the bins.
+		public static readonly int INFO1_READ_MODE_AP_ALL = (1 << 6); // Involve all replicas in read operation.
 		public static readonly int INFO1_COMPRESS_RESPONSE = (1 << 7); // Tell server to compress it's response.
 
-		public static readonly int INFO2_WRITE             = (1 << 0); // Create or update record
-		public static readonly int INFO2_DELETE            = (1 << 1); // Fling a record into the belly of Moloch.
-		public static readonly int INFO2_GENERATION        = (1 << 2); // Update if expected generation == old.
-		public static readonly int INFO2_GENERATION_GT     = (1 << 3); // Update if new generation >= old, good for restore.
-		public static readonly int INFO2_DURABLE_DELETE    = (1 << 4); // Transaction resulting in record deletion leaves tombstone (Enterprise only).
-		public static readonly int INFO2_CREATE_ONLY       = (1 << 5); // Create only. Fail if record already exists.
+		public static readonly int INFO2_WRITE = (1 << 0); // Create or update record
+		public static readonly int INFO2_DELETE = (1 << 1); // Fling a record into the belly of Moloch.
+		public static readonly int INFO2_GENERATION = (1 << 2); // Update if expected generation == old.
+		public static readonly int INFO2_GENERATION_GT = (1 << 3); // Update if new generation >= old, good for restore.
+		public static readonly int INFO2_DURABLE_DELETE = (1 << 4); // Command resulting in record deletion leaves tombstone (Enterprise only).
+		public static readonly int INFO2_CREATE_ONLY = (1 << 5); // Create only. Fail if record already exists.
 		public static readonly int INFO2_RELAX_AP_LONG_QUERY = (1 << 6); // Treat as long query, but relac read consistency
-		public static readonly int INFO2_RESPOND_ALL_OPS   = (1 << 7); // Return a result for every operation.
+		public static readonly int INFO2_RESPOND_ALL_OPS = (1 << 7); // Return a result for every operation.
 
-		public static readonly int INFO3_LAST              = (1 << 0); // This is the last of a multi-part message.
-		public static readonly int INFO3_COMMIT_MASTER     = (1 << 1); // Commit to master only before declaring success.
-		// On send: Do not return partition done in scan/query.
-		// On receive: Specified partition is done in scan/query.
-		public static readonly int INFO3_PARTITION_DONE    = (1 << 2);
-		public static readonly int INFO3_UPDATE_ONLY       = (1 << 3); // Update only. Merge bins.
+		public static readonly int INFO3_LAST = (1 << 0); // This is the last of a multi-part message.
+		public static readonly int INFO3_COMMIT_MASTER = (1 << 1); // Commit to master only before declaring success.
+																   // On send: Do not return partition done in scan/query.
+																   // On receive: Specified partition is done in scan/query.
+		public static readonly int INFO3_PARTITION_DONE = (1 << 2);
+		public static readonly int INFO3_UPDATE_ONLY = (1 << 3); // Update only. Merge bins.
 		public static readonly int INFO3_CREATE_OR_REPLACE = (1 << 4); // Create or completely replace record.
-		public static readonly int INFO3_REPLACE_ONLY      = (1 << 5); // Completely replace existing record only.
-		public static readonly int INFO3_SC_READ_TYPE      = (1 << 6); // See below.
-		public static readonly int INFO3_SC_READ_RELAX     = (1 << 7); // See below.
+		public static readonly int INFO3_REPLACE_ONLY = (1 << 5); // Completely replace existing record only.
+		public static readonly int INFO3_SC_READ_TYPE = (1 << 6); // See below.
+		public static readonly int INFO3_SC_READ_RELAX = (1 << 7); // See below.
 
 		// Interpret SC_READ bits in info3.
 		//
@@ -63,6 +63,10 @@ namespace Aerospike.Client
 		//   1      0     allow replica
 		//   1      1     allow unavailable
 
+		public static readonly int INFO4_MRT_VERIFY_READ = (1 << 0); // Send MRT version to the server to be verified.
+		public static readonly int INFO4_MRT_ROLL_FORWARD = (1 << 1); // Roll forward MRT.
+		public static readonly int INFO4_MRT_ROLL_BACK = (1 << 2); // Roll back MRT.
+
 		public const byte STATE_READ_AUTH_HEADER = 1;
 		public const byte STATE_READ_HEADER = 2;
 		public const byte STATE_READ_DETAIL = 3;
@@ -73,12 +77,12 @@ namespace Aerospike.Client
 		public const byte BATCH_MSG_INFO = 0x2;
 		public const byte BATCH_MSG_GEN = 0x4;
 		public const byte BATCH_MSG_TTL = 0x8;
+		public const byte BATCH_MSG_INFO4 = 0x10;
 
 		public const int MSG_TOTAL_HEADER_SIZE = 30;
 		public const int FIELD_HEADER_SIZE = 5;
 		public const int OPERATION_HEADER_SIZE = 8;
 		public const int MSG_REMAINING_HEADER_SIZE = 22;
-		public const int DIGEST_SIZE = 20;
 		public const int COMPRESS_THRESHOLD = 128;
 		public const ulong CL_MSG_VERSION = 2UL;
 		public const ulong AS_MSG_TYPE = 3UL;
@@ -90,6 +94,13 @@ namespace Aerospike.Client
 		internal readonly int serverTimeout;
 		internal int socketTimeout;
 		internal int totalTimeout;
+		internal long? Version;
+
+		protected int resultCode;
+		protected int generation;
+		protected int expiration;
+		protected int fieldCount;
+		protected int opCount;
 
 		public Command(int socketTimeout, int totalTimeout, int maxRetries)
 		{
@@ -106,6 +117,374 @@ namespace Aerospike.Client
 				this.socketTimeout = socketTimeout;
 				this.serverTimeout = 0;
 			}
+
+			resultCode = 0;
+			generation = 0;
+			expiration = 0;
+			fieldCount = 0;
+			opCount = 0;
+		}
+
+		//--------------------------------------------------
+		// Multi-record Transactions
+		//--------------------------------------------------
+
+		public void SetTxnAddKeys(WritePolicy policy, Key key, OperateArgs args)
+		{
+			Begin();
+			int fieldCount = EstimateKeySize(key);
+			dataOffset += args.size;
+
+			bool compress = SizeBuffer(policy);
+
+			dataOffset += 8;
+			dataBuffer[dataOffset++] = MSG_REMAINING_HEADER_SIZE;
+			dataBuffer[dataOffset++] = (byte)args.readAttr;
+			dataBuffer[dataOffset++] = (byte)args.writeAttr;
+			dataBuffer[dataOffset++] = (byte)0;
+			dataBuffer[dataOffset++] = 0;
+			dataBuffer[dataOffset++] = 0;
+			dataOffset += ByteUtil.IntToBytes(0, dataBuffer, dataOffset);
+			dataOffset += ByteUtil.IntToBytes((uint)policy.expiration, dataBuffer, dataOffset);
+			dataOffset += ByteUtil.IntToBytes((uint)serverTimeout, dataBuffer, dataOffset);
+			dataOffset += ByteUtil.ShortToBytes((ushort)fieldCount, dataBuffer, dataOffset);
+			dataOffset += ByteUtil.ShortToBytes((ushort)args.operations.Length, dataBuffer, dataOffset);
+
+			WriteKey(key);
+
+			foreach (Operation operation in args.operations)
+			{
+				WriteOperation(operation);
+			}
+
+			End(compress);
+		}
+
+		public void SetTxnVerify(Key key, long ver)
+		{
+			Begin();
+			int fieldCount = EstimateKeySize(key);
+
+			// Version field.
+			dataOffset += 7 + FIELD_HEADER_SIZE;
+			fieldCount++;
+
+			SizeBuffer();
+			dataOffset += 8;
+			dataBuffer[dataOffset++] = MSG_REMAINING_HEADER_SIZE;
+			dataBuffer[dataOffset++] = (byte)(Command.INFO1_READ | Command.INFO1_NOBINDATA);
+			dataBuffer[dataOffset++] = (byte)0;
+			dataBuffer[dataOffset++] = (byte)Command.INFO3_SC_READ_TYPE;
+			dataBuffer[dataOffset++] = (byte)Command.INFO4_MRT_VERIFY_READ;
+			dataBuffer[dataOffset++] = 0;
+			dataOffset += ByteUtil.IntToBytes(0, dataBuffer, dataOffset);
+			dataOffset += ByteUtil.IntToBytes(0, dataBuffer, dataOffset);
+			dataOffset += ByteUtil.IntToBytes((uint)serverTimeout, dataBuffer, dataOffset);
+			dataOffset += ByteUtil.ShortToBytes((ushort)fieldCount, dataBuffer, dataOffset);
+			dataOffset += ByteUtil.ShortToBytes(0, dataBuffer, dataOffset);
+
+			WriteKey(key);
+			WriteFieldVersion(ver);
+			End();
+		}
+
+		public void SetBatchTxnVerify(
+			BatchPolicy policy,
+			Key[] keys,
+			long?[] versions,
+			BatchNode batch
+		)
+		{
+			BatchOffsetsNative offsets = new(batch);
+			SetBatchTxnVerify(policy, keys, versions, offsets);
+		}
+
+		public void SetBatchTxnVerify(
+			BatchPolicy policy,
+			Key[] keys,
+			long?[] versions,
+			BatchOffsets offsets
+		)
+		{
+			// Estimate buffer size.
+			Begin();
+
+			// Batch field
+			dataOffset += FIELD_HEADER_SIZE + 5;
+
+			Key keyPrev = null;
+			long? verPrev = null;
+			int max = offsets.Size();
+
+			for (int i = 0; i < max; i++)
+			{
+				int offset = offsets.Get(i);
+				Key key = keys[offset];
+				long? ver = versions[offset];
+
+				dataOffset += key.digest.Length + 4;
+
+				if (CanRepeat(key, keyPrev, ver, verPrev))
+				{
+					// Can set repeat previous namespace/bin names to save space.
+					dataOffset++;
+				}
+				else
+				{
+					// Write full header and namespace/set/bin names.
+					dataOffset += 9; // header(4) + info4(1) + fieldCount(2) + opCount(2) = 9
+					dataOffset += ByteUtil.EstimateSizeUtf8(key.ns) + FIELD_HEADER_SIZE;
+					dataOffset += ByteUtil.EstimateSizeUtf8(key.setName) + FIELD_HEADER_SIZE;
+
+					if (ver.HasValue)
+					{
+						dataOffset += 7 + FIELD_HEADER_SIZE;
+					}
+					keyPrev = key;
+					verPrev = ver;
+				}
+			}
+
+			bool compress = SizeBuffer(policy);
+
+			WriteBatchHeader(policy, totalTimeout, 1);
+
+			int fieldSizeOffset = dataOffset;
+			WriteFieldHeader(0, FieldType.BATCH_INDEX);  // Need to update size at end
+
+			ByteUtil.IntToBytes((uint)max, dataBuffer, dataOffset);
+			dataOffset += 4;
+			dataBuffer[dataOffset++] = GetBatchFlags(policy);
+			keyPrev = null;
+			verPrev = null;
+
+			for (int i = 0; i < max; i++)
+			{
+				int offset = offsets.Get(i);
+				Key key = keys[offset];
+				long? ver = versions[offset];
+
+				ByteUtil.IntToBytes((uint)offset, dataBuffer, dataOffset);
+				dataOffset += 4;
+
+				byte[] digest = key.digest;
+				Array.Copy(digest, 0, dataBuffer, dataOffset, digest.Length);
+				dataOffset += digest.Length;
+
+				if (CanRepeat(key, keyPrev, ver, verPrev))
+				{
+					// Can set repeat previous namespace/bin names to save space.
+					dataBuffer[dataOffset++] = BATCH_MSG_REPEAT;
+				}
+				else
+				{
+					// Write full message.
+					dataBuffer[dataOffset++] = (byte)(BATCH_MSG_INFO | BATCH_MSG_INFO4);
+					dataBuffer[dataOffset++] = (byte)(Command.INFO1_READ | Command.INFO1_NOBINDATA);
+					dataBuffer[dataOffset++] = (byte)0;
+					dataBuffer[dataOffset++] = (byte)Command.INFO3_SC_READ_TYPE;
+					dataBuffer[dataOffset++] = (byte)Command.INFO4_MRT_VERIFY_READ;
+
+					int fieldCount = 0;
+
+					if (ver.HasValue)
+					{
+						fieldCount++;
+					}
+
+					WriteBatchFields(key, fieldCount, 0);
+
+					if (ver.HasValue)
+					{
+						WriteFieldVersion(ver.Value);
+					}
+
+					keyPrev = key;
+					verPrev = ver;
+				}
+			}
+
+			// Write real field size.
+			ByteUtil.IntToBytes((uint)dataOffset - MSG_TOTAL_HEADER_SIZE - 4, dataBuffer, fieldSizeOffset);
+			End(compress);
+		}
+
+		public void SetTxnMarkRollForward(Key key)
+		{
+			Bin bin = new("fwd", true);
+
+			Begin();
+			int fieldCount = EstimateKeySize(key);
+			EstimateOperationSize(bin);
+			//SizeBuffer();
+			WriteTxnMonitor(key, 0, Command.INFO2_WRITE, fieldCount, 1);
+			WriteOperation(bin, Operation.Type.WRITE);
+			End();
+		}
+
+		public void SetTxnRoll(Key key, Txn txn, int txnAttr)
+		{
+			Begin();
+			int fieldCount = EstimateKeySize(key);
+
+			fieldCount += SizeTxn(key, txn, false);
+
+			SizeBuffer();
+			dataOffset += 8;
+			dataBuffer[dataOffset++] = MSG_REMAINING_HEADER_SIZE;
+			dataBuffer[dataOffset++] = (byte)0;
+			dataBuffer[dataOffset++] = (byte)(Command.INFO2_WRITE | Command.INFO2_DURABLE_DELETE);
+			dataBuffer[dataOffset++] = (byte)0;
+			dataBuffer[dataOffset++] = (byte)txnAttr;
+			dataBuffer[dataOffset++] = 0; // clear the result code
+			dataOffset += ByteUtil.IntToBytes(0, dataBuffer, dataOffset);
+			dataOffset += ByteUtil.IntToBytes(0, dataBuffer, dataOffset);
+			dataOffset += ByteUtil.IntToBytes((uint)serverTimeout, dataBuffer, dataOffset);
+			dataOffset += ByteUtil.ShortToBytes((ushort)fieldCount, dataBuffer, dataOffset);
+			dataOffset += ByteUtil.ShortToBytes(0, dataBuffer, dataOffset);
+
+			WriteKey(key);
+			WriteTxn(txn, false);
+			End();
+		}
+
+		public void SetBatchTxnRoll(
+			BatchPolicy policy,
+			Txn txn,
+			Key[] keys,
+			BatchNode batch,
+			BatchAttr attr
+		)
+		{
+			BatchOffsetsNative offsets = new(batch);
+			SetBatchTxnRoll(policy, txn, keys, attr, offsets);
+		}
+
+		public void SetBatchTxnRoll(
+			BatchPolicy policy,
+			Txn txn,
+			Key[] keys,
+			BatchAttr attr,
+			BatchOffsets offsets
+		)
+		{
+			// Estimate buffer size.
+			Begin();
+			int fieldCount = 1;
+			int max = offsets.Size();
+			long?[] versions = new long?[max];
+
+			for (int i = 0; i < max; i++)
+			{
+				int offset = offsets.Get(i);
+				Key key = keys[offset];
+				versions[i] = txn.GetReadVersion(key);
+			}
+
+			// Batch field
+			dataOffset += FIELD_HEADER_SIZE + 5;
+
+			Key keyPrev = null;
+			long? verPrev = null;
+
+			for (int i = 0; i < max; i++)
+			{
+				int offset = offsets.Get(i);
+				Key key = keys[offset];
+				long? ver = versions[i];
+
+				dataOffset += key.digest.Length + 4;
+
+				if (CanRepeat(key, keyPrev, ver, verPrev))
+				{
+					// Can set repeat previous namespace/bin names to save space.
+					dataOffset++;
+				}
+				else
+				{
+					// Write full header and namespace/set/bin names.
+					dataOffset += 12; // header(4) + ttl(4) + fieldCount(2) + opCount(2) = 12
+					dataOffset += ByteUtil.EstimateSizeUtf8(key.ns) + FIELD_HEADER_SIZE;
+					dataOffset += ByteUtil.EstimateSizeUtf8(key.setName) + FIELD_HEADER_SIZE;
+					SizeTxnBatch(txn, ver, attr.hasWrite);
+					dataOffset += 2; // gen(2) = 2
+					keyPrev = key;
+					verPrev = ver;
+				}
+			}
+
+			bool compress = SizeBuffer(policy);
+
+			WriteBatchHeader(policy, totalTimeout, fieldCount);
+
+			int fieldSizeOffset = dataOffset;
+			WriteFieldHeader(0, FieldType.BATCH_INDEX);  // Need to update size at end
+
+			ByteUtil.IntToBytes((uint)max, dataBuffer, dataOffset);
+			dataOffset += 4;
+			dataBuffer[dataOffset++] = GetBatchFlags(policy);
+			keyPrev = null;
+			verPrev = null;
+
+			for (int i = 0; i < max; i++)
+			{
+				int offset = offsets.Get(i);
+				Key key = keys[offset];
+				long? ver = versions[i];
+
+				ByteUtil.IntToBytes((uint)offset, dataBuffer, dataOffset);
+				dataOffset += 4;
+
+				byte[] digest = key.digest;
+				Array.Copy(digest, 0, dataBuffer, dataOffset, digest.Length);
+				dataOffset += digest.Length;
+
+				if (CanRepeat(key, keyPrev, ver, verPrev))
+				{
+					// Can set repeat previous namespace/bin names to save space.
+					dataBuffer[dataOffset++] = BATCH_MSG_REPEAT;
+				}
+				else
+				{
+					// Write full message.
+					WriteBatchWrite(key, txn, ver, attr, null, 0, 0);
+					keyPrev = key;
+					verPrev = ver;
+				}
+			}
+
+			// Write real field size.
+			ByteUtil.IntToBytes((uint)dataOffset - MSG_TOTAL_HEADER_SIZE - 4, dataBuffer, fieldSizeOffset);
+			End(compress);
+		}
+
+		public void SetTxnClose(Txn txn, Key key)
+		{
+			Begin();
+			int fieldCount = EstimateKeySize(key);
+			//SizeBuffer();
+			WriteTxnMonitor(key, 0, Command.INFO2_WRITE | Command.INFO2_DELETE | Command.INFO2_DURABLE_DELETE,
+				fieldCount, 0);
+			End();
+		}
+
+		private void WriteTxnMonitor(Key key, int readAttr, int writeAttr, int fieldCount, int opCount)
+		{
+			SizeBuffer();
+			dataOffset += 8;
+			dataBuffer[dataOffset++] = MSG_REMAINING_HEADER_SIZE;
+			dataBuffer[dataOffset++] = (byte)readAttr;
+			dataBuffer[dataOffset++] = (byte)writeAttr;
+			dataBuffer[dataOffset++] = (byte)0;
+			dataBuffer[dataOffset++] = 0;
+			dataBuffer[dataOffset++] = 0;
+			dataOffset += ByteUtil.IntToBytes(0, dataBuffer, dataOffset);
+			dataOffset += ByteUtil.IntToBytes(0, dataBuffer, dataOffset);
+			dataOffset += ByteUtil.IntToBytes((uint)serverTimeout, dataBuffer, dataOffset);
+			dataOffset += ByteUtil.ShortToBytes((ushort)fieldCount, dataBuffer, dataOffset);
+			dataOffset += ByteUtil.ShortToBytes((ushort)opCount, dataBuffer, dataOffset);
+
+			WriteKey(key);
 		}
 
 		//--------------------------------------------------
@@ -115,7 +494,7 @@ namespace Aerospike.Client
 		public virtual void SetWrite(WritePolicy policy, Operation.Type operation, Key key, Bin[] bins)
 		{
 			Begin();
-			int fieldCount = EstimateKeySize(policy, key);
+			int fieldCount = EstimateKeySize(policy, key, true);
 
 			if (policy.filterExp != null)
 			{
@@ -127,16 +506,13 @@ namespace Aerospike.Client
 			{
 				EstimateOperationSize(bin);
 			}
-			
+
 			bool compress = SizeBuffer(policy);
 
 			WriteHeaderWrite(policy, Command.INFO2_WRITE, fieldCount, bins.Length);
-			WriteKey(policy, key);
+			WriteKey(policy, key, true);
 
-			if (policy.filterExp != null)
-			{
-				policy.filterExp.Write(this);
-			}
+			policy.filterExp?.Write(this);
 
 			foreach (Bin bin in bins)
 			{
@@ -148,7 +524,7 @@ namespace Aerospike.Client
 		public virtual void SetDelete(WritePolicy policy, Key key)
 		{
 			Begin();
-			int fieldCount = EstimateKeySize(policy, key);
+			int fieldCount = EstimateKeySize(policy, key, true);
 
 			if (policy.filterExp != null)
 			{
@@ -157,19 +533,26 @@ namespace Aerospike.Client
 			}
 			SizeBuffer();
 			WriteHeaderWrite(policy, Command.INFO2_WRITE | Command.INFO2_DELETE, fieldCount, 0);
-			WriteKey(policy, key);
+			WriteKey(policy, key, true);
 
-			if (policy.filterExp != null)
-			{
-				policy.filterExp.Write(this);
-			}
+			policy.filterExp?.Write(this);
+			End();
+		}
+
+		public void SetDelete(Policy policy, Key key, BatchAttr attr)
+		{
+			Begin();
+			Expression exp = GetBatchExpression(policy, attr);
+			int fieldCount = EstimateKeyAttrSize(policy, key, attr, exp);
+			SizeBuffer();
+			WriteKeyAttr(policy, key, attr, exp, fieldCount, 0);
 			End();
 		}
 
 		public virtual void SetTouch(WritePolicy policy, Key key)
 		{
 			Begin();
-			int fieldCount = EstimateKeySize(policy, key);
+			int fieldCount = EstimateKeySize(policy, key, true);
 
 			if (policy.filterExp != null)
 			{
@@ -179,12 +562,9 @@ namespace Aerospike.Client
 			EstimateOperationSize();
 			SizeBuffer();
 			WriteHeaderWrite(policy, Command.INFO2_WRITE, fieldCount, 1);
-			WriteKey(policy, key);
+			WriteKey(policy, key, true);
 
-			if (policy.filterExp != null)
-			{
-				policy.filterExp.Write(this);
-			}
+			policy.filterExp?.Write(this);
 			WriteOperation(Operation.Type.TOUCH);
 			End();
 		}
@@ -196,7 +576,7 @@ namespace Aerospike.Client
 		public virtual void SetExists(Policy policy, Key key)
 		{
 			Begin();
-			int fieldCount = EstimateKeySize(policy, key);
+			int fieldCount = EstimateKeySize(policy, key, false);
 
 			if (policy.filterExp != null)
 			{
@@ -205,93 +585,174 @@ namespace Aerospike.Client
 			}
 			SizeBuffer();
 			WriteHeaderReadHeader(policy, Command.INFO1_READ | Command.INFO1_NOBINDATA, fieldCount, 0);
-			WriteKey(policy, key);
+			WriteKey(policy, key, false);
 
-			if (policy.filterExp != null)
-			{
-				policy.filterExp.Write(this);
-			}
-			End();
-		}
-
-		public virtual void SetRead(Policy policy, Key key)
-		{
-			Begin();
-			int fieldCount = EstimateKeySize(policy, key);
-
-			if (policy.filterExp != null)
-			{
-				dataOffset += policy.filterExp.Size();
-				fieldCount++;
-			}
-			SizeBuffer();
-			WriteHeaderRead(policy, serverTimeout, Command.INFO1_READ | Command.INFO1_GET_ALL, 0, 0, fieldCount, 0);
-			WriteKey(policy, key);
-
-			if (policy.filterExp != null)
-			{
-				policy.filterExp.Write(this);
-			}
+			policy.filterExp?.Write(this);
 			End();
 		}
 
 		public virtual void SetRead(Policy policy, Key key, string[] binNames)
 		{
-			if (binNames != null)
+			int readAttr = Command.INFO1_READ;
+			int opCount = 0;
+
+			if (binNames != null && binNames.Length > 0)
 			{
-				Begin();
-				int fieldCount = EstimateKeySize(policy, key);
-
-				if (policy.filterExp != null)
-				{
-					dataOffset += policy.filterExp.Size();
-					fieldCount++;
-				}
-
-				foreach (string binName in binNames)
-				{
-					EstimateOperationSize(binName);
-				}
-				SizeBuffer();
-				WriteHeaderRead(policy, serverTimeout, Command.INFO1_READ, 0, 0, fieldCount, binNames.Length);
-				WriteKey(policy, key);
-
-				if (policy.filterExp != null)
-				{
-					policy.filterExp.Write(this);
-				}
-
-				foreach (string binName in binNames)
-				{
-					WriteOperation(binName, Operation.Type.READ);
-				}
-				End();
+				opCount = binNames.Length;
 			}
 			else
 			{
-				SetRead(policy, key);
+				readAttr |= Command.INFO1_GET_ALL;
 			}
-		}
 
-		public virtual void SetReadHeader(Policy policy, Key key)
-		{
 			Begin();
-			int fieldCount = EstimateKeySize(policy, key);
+			int fieldCount = EstimateKeySize(policy, key, false);
 
 			if (policy.filterExp != null)
 			{
 				dataOffset += policy.filterExp.Size();
 				fieldCount++;
 			}
-			EstimateOperationSize((string)null);
+
+			if (opCount != 0)
+			{
+				foreach (string binName in binNames)
+				{
+					EstimateOperationSize(binName);
+				}
+			}
+
 			SizeBuffer();
-			WriteHeaderReadHeader(policy, Command.INFO1_READ | Command.INFO1_NOBINDATA, fieldCount, 0);
-			WriteKey(policy, key);
+			WriteHeaderRead(policy, serverTimeout, readAttr, 0, 0, fieldCount, opCount);
+			WriteKey(policy, key, false);
+
+			policy.filterExp?.Write(this);
+
+			if (opCount != 0)
+			{
+				foreach (string binName in binNames)
+				{
+					WriteOperation(binName, Operation.Type.READ);
+				}
+			}
+			End();
+		}
+
+		public void SetRead(Policy policy, BatchRead br)
+		{
+			Begin();
+
+			BatchReadPolicy rp = br.policy;
+			BatchAttr attr = new();
+			Expression exp;
+			int opCount;
+
+			if (rp != null)
+			{
+				attr.SetRead(rp);
+				exp = rp.filterExp ?? policy.filterExp;
+			}
+			else
+			{
+				attr.SetRead(policy);
+				exp = policy.filterExp;
+			}
+
+			if (br.binNames != null)
+			{
+				opCount = br.binNames.Length;
+
+				foreach (string binName in br.binNames)
+				{
+					EstimateOperationSize(binName);
+				}
+			}
+			else if (br.ops != null)
+			{
+				attr.AdjustRead(br.ops);
+				opCount = br.ops.Length;
+
+				foreach (Operation op in br.ops)
+				{
+					if (Operation.IsWrite(op.type))
+					{
+						throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Write operations not allowed in read");
+					}
+					EstimateOperationSize(op);
+				}
+			}
+			else
+			{
+				attr.AdjustRead(br.readAllBins);
+				opCount = 0;
+			}
+
+			int fieldCount = EstimateKeyAttrSize(policy, br.key, attr, exp);
+
+			SizeBuffer();
+			WriteKeyAttr(policy, br.key, attr, exp, fieldCount, opCount);
+
+			if (br.binNames != null)
+			{
+				foreach (string binName in br.binNames)
+				{
+					WriteOperation(binName, Operation.Type.READ);
+				}
+			}
+			else if (br.ops != null)
+			{
+				foreach (Operation op in br.ops)
+				{
+					WriteOperation(op);
+				}
+			}
+			End();
+		}
+
+		public void SetRead(Policy policy, Key key, Operation[] ops)
+		{
+			Begin();
+
+			BatchAttr attr = new();
+			attr.SetRead(policy);
+			attr.AdjustRead(ops);
+
+			int fieldCount = EstimateKeyAttrSize(policy, key, attr, policy.filterExp);
+
+			foreach (Operation op in ops)
+			{
+				if (Operation.IsWrite(op.type))
+				{
+					throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Write operations not allowed in read");
+				}
+				EstimateOperationSize(op);
+			}
+
+			SizeBuffer();
+			WriteKeyAttr(policy, key, attr, policy.filterExp, fieldCount, ops.Length);
+
+			foreach (Operation op in ops)
+			{
+				WriteOperation(op);
+			}
+			End();
+		}
+
+		public virtual void SetReadHeader(Policy policy, Key key)
+		{
+			Begin();
+			int fieldCount = EstimateKeySize(policy, key, false);
 
 			if (policy.filterExp != null)
 			{
-				policy.filterExp.Write(this);
+				dataOffset += policy.filterExp.Size();
+				fieldCount++;
 			}
+			SizeBuffer();
+			WriteHeaderReadHeader(policy, Command.INFO1_READ | Command.INFO1_NOBINDATA, fieldCount, 0);
+			WriteKey(policy, key, false);
+
+			policy.filterExp?.Write(this);
 			End();
 		}
 
@@ -302,7 +763,7 @@ namespace Aerospike.Client
 		public virtual void SetOperate(WritePolicy policy, Key key, OperateArgs args)
 		{
 			Begin();
-			int fieldCount = EstimateKeySize(policy, key);
+			int fieldCount = EstimateKeySize(policy, key, args.hasWrite);
 
 			if (policy.filterExp != null)
 			{
@@ -314,12 +775,9 @@ namespace Aerospike.Client
 			bool compress = SizeBuffer(policy);
 
 			WriteHeaderReadWrite(policy, args, fieldCount);
-			WriteKey(policy, key);
+			WriteKey(policy, key, args.hasWrite);
 
-			if (policy.filterExp != null)
-			{
-				policy.filterExp.Write(this);
-			}
+			policy.filterExp?.Write(this);
 
 			foreach (Operation operation in args.operations)
 			{
@@ -328,6 +786,24 @@ namespace Aerospike.Client
 			End(compress);
 		}
 
+		public void SetOperate(Policy policy, BatchAttr attr, Key key, Operation[] ops)
+		{
+			Begin();
+			Expression exp = GetBatchExpression(policy, attr);
+			int fieldCount = EstimateKeyAttrSize(policy, key, attr, exp);
+
+			dataOffset += attr.opSize;
+			bool compress = SizeBuffer(policy);
+			WriteKeyAttr(policy, key, attr, exp, fieldCount, ops.Length);
+
+			foreach (Operation op in ops)
+			{
+				WriteOperation(op);
+			}
+			End(compress);
+		}
+
+
 		//--------------------------------------------------
 		// UDF
 		//--------------------------------------------------
@@ -335,7 +811,7 @@ namespace Aerospike.Client
 		public virtual void SetUdf(WritePolicy policy, Key key, string packageName, string functionName, Value[] args)
 		{
 			Begin();
-			int fieldCount = EstimateKeySize(policy, key);
+			int fieldCount = EstimateKeySize(policy, key, true);
 
 			if (policy.filterExp != null)
 			{
@@ -348,12 +824,30 @@ namespace Aerospike.Client
 			bool compress = SizeBuffer(policy);
 
 			WriteHeaderWrite(policy, Command.INFO2_WRITE, fieldCount, 0);
-			WriteKey(policy, key);
+			WriteKey(policy, key, true);
 
-			if (policy.filterExp != null)
-			{
-				policy.filterExp.Write(this);
-			}
+			policy.filterExp?.Write(this);
+			WriteField(packageName, FieldType.UDF_PACKAGE_NAME);
+			WriteField(functionName, FieldType.UDF_FUNCTION);
+			WriteField(argBytes, FieldType.UDF_ARGLIST);
+			End(compress);
+		}
+
+		public void SetUdf(Policy policy, BatchAttr attr, Key key, string packageName, string functionName, Value[] args)
+		{
+			byte[] argBytes = Packer.Pack(args);
+			SetUdf(policy, attr, key, packageName, functionName, argBytes);
+		}
+
+		public void SetUdf(Policy policy, BatchAttr attr, Key key, string packageName, string functionName, byte[] argBytes)
+		{
+			Begin();
+			Expression exp = GetBatchExpression(policy, attr);
+			int fieldCount = EstimateKeyAttrSize(policy, key, attr, exp);
+			fieldCount += EstimateUdfSize(packageName, functionName, argBytes);
+
+			bool compress = SizeBuffer(policy);
+			WriteKeyAttr(policy, key, attr, exp, fieldCount, 0);
 			WriteField(packageName, FieldType.UDF_PACKAGE_NAME);
 			WriteField(functionName, FieldType.UDF_FUNCTION);
 			WriteField(argBytes, FieldType.UDF_ARGLIST);
@@ -437,10 +931,7 @@ namespace Aerospike.Client
 
 			WriteHeaderRead(policy, totalTimeout, readAttr | Command.INFO1_BATCH, 0, 0, fieldCount, 0);
 
-			if (policy.filterExp != null)
-			{
-				policy.filterExp.Write(this);
-			}
+			policy.filterExp?.Write(this);
 
 			int fieldSizeOffset = dataOffset;
 			WriteFieldHeader(0, FieldType.BATCH_INDEX); // Need to update size at end
@@ -544,8 +1035,8 @@ namespace Aerospike.Client
 				dataOffset += key.digest.Length + 4;
 
 				// Try reference equality in hope that namespace for all keys is set from a fixed variable.
-				if (prev != null && prev.ns == key.ns && prev.setName == key.setName) 
-				{	
+				if (prev != null && prev.ns == key.ns && prev.setName == key.setName)
+				{
 					// Can set repeat previous namespace/bin names to save space.
 					dataOffset++;
 				}
@@ -582,10 +1073,7 @@ namespace Aerospike.Client
 
 			WriteHeaderRead(policy, totalTimeout, readAttr | Command.INFO1_BATCH, 0, 0, fieldCount, 0);
 
-			if (policy.filterExp != null)
-			{
-				policy.filterExp.Write(this);
-			}
+			policy.filterExp?.Write(this);
 
 			int fieldSizeOffset = dataOffset;
 			WriteFieldHeader(0, FieldType.BATCH_INDEX); // Need to update size at end
@@ -651,14 +1139,37 @@ namespace Aerospike.Client
 		// Batch Read/Write Operations
 		//--------------------------------------------------
 
-		public virtual void SetBatchOperate(BatchPolicy policy, IList records, BatchNode batch)
+		public virtual void SetBatchOperate(
+			BatchPolicy policy,
+			IList records,
+			BatchNode batch)
 		{
-			// Estimate full row size
-			int[] offsets = batch.offsets;
-			int max = batch.offsetsSize;
-			BatchRecord prev = null;
+			BatchOffsetsNative offsets = new(batch);
+			SetBatchOperate(policy, records, offsets);
+		}
 
+		public void SetBatchOperate(
+			BatchPolicy policy,
+			IList records,
+			BatchOffsets offsets)
+		{
 			Begin();
+			int max = offsets.Size();
+			Txn txn = policy.Txn;
+			long?[] versions = null;
+
+			if (txn != null)
+			{
+				versions = new long?[max];
+
+				for (int i = 0; i < max; i++)
+				{
+					int offset = offsets.Get(i);
+					BatchRecord record = (BatchRecord)records[offset];
+					versions[i] = txn.GetReadVersion(record.key);
+				}
+			}
+
 			int fieldCount = 1;
 
 			if (policy.filterExp != null)
@@ -669,19 +1180,19 @@ namespace Aerospike.Client
 
 			dataOffset += FIELD_HEADER_SIZE + 5;
 
+			BatchRecord prev = null;
+			long? verPrev = null;
+
 			for (int i = 0; i < max; i++)
 			{
-				BatchRecord record = (BatchRecord)records[offsets[i]];
+				int offset = offsets.Get(i);
+				BatchRecord record = (BatchRecord)records[offset];
 				Key key = record.key;
+				long? ver = versions?[i];
 
 				dataOffset += key.digest.Length + 4;
 
-				// Avoid relatively expensive full equality checks for performance reasons.
-				// Use reference equality only in hope that common namespaces/bin names are set from
-				// fixed variables.  It's fine if equality not determined correctly because it just
-				// results in more space used. The batch will still be correct.
-				if (!policy.sendKey && prev != null && prev.key.ns == key.ns && 
-					prev.key.setName == key.setName && record.Equals(prev))
+				if (CanRepeat(policy, key, record, prev, ver, verPrev))
 				{
 					// Can set repeat previous namespace/bin names to save space.
 					dataOffset++;
@@ -692,19 +1203,17 @@ namespace Aerospike.Client
 					dataOffset += 12;
 					dataOffset += ByteUtil.EstimateSizeUtf8(key.ns) + FIELD_HEADER_SIZE;
 					dataOffset += ByteUtil.EstimateSizeUtf8(key.setName) + FIELD_HEADER_SIZE;
+					SizeTxnBatch(txn, ver, record.hasWrite);
 					dataOffset += record.Size(policy);
 					prev = record;
+					verPrev = ver;
 				}
 			}
-
 			bool compress = SizeBuffer(policy);
 
 			WriteBatchHeader(policy, totalTimeout, fieldCount);
 
-			if (policy.filterExp != null)
-			{
-				policy.filterExp.Write(this);
-			}
+			policy.filterExp?.Write(this);
 
 			int fieldSizeOffset = dataOffset;
 			WriteFieldHeader(0, FieldType.BATCH_INDEX); // Need to update size at end
@@ -713,27 +1222,24 @@ namespace Aerospike.Client
 			dataOffset += 4;
 			dataBuffer[dataOffset++] = GetBatchFlags(policy);
 
-			BatchAttr attr = new BatchAttr();
+			BatchAttr attr = new();
 			prev = null;
+			verPrev = null;
 
 			for (int i = 0; i < max; i++)
 			{
-				int index = offsets[i];
-				ByteUtil.IntToBytes((uint)index, dataBuffer, dataOffset);
+				int offset = offsets.Get(i);
+				BatchRecord record = (BatchRecord)records[offset];
+				long? ver = versions?[i];
+				ByteUtil.IntToBytes((uint)offset, dataBuffer, dataOffset);
 				dataOffset += 4;
 
-				BatchRecord record = (BatchRecord)records[index];
 				Key key = record.key;
 				byte[] digest = key.digest;
 				Array.Copy(digest, 0, dataBuffer, dataOffset, digest.Length);
 				dataOffset += digest.Length;
 
-				// Avoid relatively expensive full equality checks for performance reasons.
-				// Use reference equality only in hope that common namespaces/bin names are set from
-				// fixed variables.  It's fine if equality not determined correctly because it just
-				// results in more space used. The batch will still be correct.
-				if (!policy.sendKey && prev != null && prev.key.ns == key.ns &&
-					prev.key.setName == key.setName && record.Equals(prev))
+				if (CanRepeat(policy, key, record, prev, ver, verPrev))
 				{
 					// Can set repeat previous namespace/bin names to save space.
 					dataBuffer[dataOffset++] = BATCH_MSG_REPEAT;
@@ -744,88 +1250,97 @@ namespace Aerospike.Client
 					switch (record.GetBatchType())
 					{
 						case BatchRecord.Type.BATCH_READ:
-						{
-							BatchRead br = (BatchRead)record;
+							{
+								BatchRead br = (BatchRead)record;
 
-							if (br.policy != null)
-							{
-								attr.SetRead(br.policy);
-							}
-							else
-							{
-								attr.SetRead(policy);
-							}
+								if (br.policy != null)
+								{
+									attr.SetRead(br.policy);
+								}
+								else
+								{
+									attr.SetRead(policy);
+								}
 
-							if (br.binNames != null)
-							{
-								WriteBatchBinNames(key, br.binNames, attr, attr.filterExp);
+								if (br.binNames != null)
+								{
+									if (br.binNames.Length > 0)
+									{
+										WriteBatchBinNames(key, txn, ver, br.binNames, attr, attr.filterExp);
+									}
+									else
+									{
+										attr.AdjustRead(true);
+										WriteBatchRead(key, txn, ver, attr, attr.filterExp, 0);
+									}
+								}
+								else if (br.ops != null)
+								{
+									attr.AdjustRead(br.ops);
+									WriteBatchOperations(key, txn, ver, br.ops, attr, attr.filterExp);
+								}
+								else
+								{
+									attr.AdjustRead(br.readAllBins);
+									WriteBatchRead(key, txn, ver, attr, attr.filterExp, 0);
+								}
+								break;
 							}
-							else if (br.ops != null)
-							{
-								attr.AdjustRead(br.ops);
-								WriteBatchOperations(key, br.ops, attr, attr.filterExp);
-							}
-							else
-							{
-								attr.AdjustRead(br.readAllBins);
-								WriteBatchRead(key, attr, attr.filterExp, 0);
-							}
-							break;
-						}
 
 						case BatchRecord.Type.BATCH_WRITE:
-						{
-							BatchWrite bw = (BatchWrite)record;
+							{
+								BatchWrite bw = (BatchWrite)record;
 
-							if (bw.policy != null)
-							{
-								attr.SetWrite(bw.policy);
+								if (bw.policy != null)
+								{
+									attr.SetWrite(bw.policy);
+								}
+								else
+								{
+									attr.SetWrite(policy);
+								}
+								attr.AdjustWrite(bw.ops);
+								WriteBatchOperations(key, txn, ver, bw.ops, attr, attr.filterExp);
+								break;
 							}
-							else
-							{
-								attr.SetWrite(policy);
-							}
-							attr.AdjustWrite(bw.ops);
-							WriteBatchOperations(key, bw.ops, attr, attr.filterExp);
-							break;
-						}
 
 						case BatchRecord.Type.BATCH_UDF:
-						{
-							BatchUDF bu = (BatchUDF)record;
+							{
+								BatchUDF bu = (BatchUDF)record;
 
-							if (bu.policy != null)
-							{
-								attr.SetUDF(bu.policy);
+								if (bu.policy != null)
+								{
+									attr.SetUDF(bu.policy);
+								}
+								else
+								{
+									attr.SetUDF(policy);
+								}
+								WriteBatchWrite(key, txn, ver, attr, attr.filterExp, 3, 0);
+								WriteField(bu.packageName, FieldType.UDF_PACKAGE_NAME);
+								WriteField(bu.functionName, FieldType.UDF_FUNCTION);
+								WriteField(bu.argBytes, FieldType.UDF_ARGLIST);
+								break;
 							}
-							else
-							{
-								attr.SetUDF(policy);
-							}
-							WriteBatchWrite(key, attr, attr.filterExp, 3, 0);
-							WriteField(bu.packageName, FieldType.UDF_PACKAGE_NAME);
-							WriteField(bu.functionName, FieldType.UDF_FUNCTION);
-							WriteField(bu.argBytes, FieldType.UDF_ARGLIST);
-							break;
-						}
 
 						case BatchRecord.Type.BATCH_DELETE:
-						{
-							BatchDelete bd = (BatchDelete)record;
+							{
+								BatchDelete bd = (BatchDelete)record;
 
-							if (bd.policy != null)
-							{
-								attr.SetDelete(bd.policy);
+								if (bd.policy != null)
+								{
+									attr.SetDelete(bd.policy);
+								}
+								else
+								{
+									attr.SetDelete(policy);
+								}
+								WriteBatchWrite(key, txn, ver, attr, attr.filterExp, 0, 0);
+								break;
 							}
-							else
-							{
-								attr.SetDelete(policy);
-							}
-							WriteBatchWrite(key, attr, attr.filterExp, 0, 0);
-							break;
-						}
 					}
 					prev = record;
+					verPrev = ver;
 				}
 			}
 
@@ -844,14 +1359,40 @@ namespace Aerospike.Client
 			BatchAttr attr
 		)
 		{
-			// Estimate full row size
-			int[] offsets = batch.offsets;
-			int max = batch.offsetsSize;
+			BatchOffsetsNative offsets = new(batch);
+			SetBatchOperate(policy, keys, binNames, ops, attr, offsets);
+		}
 
-			// Estimate dataBuffer size.
+		public void SetBatchOperate(
+			BatchPolicy policy,
+			Key[] keys,
+			string[] binNames,
+			Operation[] ops,
+			BatchAttr attr,
+			BatchOffsets offsets
+		)
+		{
+			// Estimate full row size
+			int max = offsets.Size();
+			Txn txn = policy.Txn;
+			long?[] versions = null;
+
 			Begin();
-			int fieldCount = 1;
+
+			if (txn != null)
+			{
+				versions = new long?[max];
+
+				for (int i = 0; i < max; i++)
+				{
+					int offset = offsets.Get(i);
+					Key key = keys[offset];
+					versions[i] = txn.GetReadVersion(key);
+				}
+			}
+
 			Expression exp = GetBatchExpression(policy, attr);
+			int fieldCount = 1;
 
 			if (exp != null)
 			{
@@ -861,17 +1402,18 @@ namespace Aerospike.Client
 
 			dataOffset += FIELD_HEADER_SIZE + 5;
 
-			Key prev = null;
+			Key keyPrev = null;
+			long? verPrev = null;
 
 			for (int i = 0; i < max; i++)
 			{
-				Key key = keys[offsets[i]];
+				int offset = offsets.Get(i);
+				Key key = keys[offset];
+				long? ver = versions?[i];
 
 				dataOffset += key.digest.Length + 4;
 
-				// Try reference equality in hope that namespace/set for all keys is set from fixed variables.
-				if (!attr.sendKey && prev != null && prev.ns == key.ns && 
-					prev.setName == key.setName)
+				if (CanRepeat(attr, key, keyPrev, ver, verPrev))
 				{
 					// Can set repeat previous namespace/bin names to save space.
 					dataOffset++;
@@ -879,9 +1421,10 @@ namespace Aerospike.Client
 				else
 				{
 					// Write full header and namespace/set/bin names.
-					dataOffset += 12; // header(4) + ttl(4) + fielCount(2) + opCount(2) = 12
+					dataOffset += 12; // header(4) + ttl(4) + fieldCount(2) + opCount(2) = 12
 					dataOffset += ByteUtil.EstimateSizeUtf8(key.ns) + FIELD_HEADER_SIZE;
 					dataOffset += ByteUtil.EstimateSizeUtf8(key.setName) + FIELD_HEADER_SIZE;
+					SizeTxnBatch(txn, ver, attr.hasWrite);
 
 					if (attr.sendKey)
 					{
@@ -914,7 +1457,8 @@ namespace Aerospike.Client
 					{
 						dataOffset += 2; // Extra write specific fields.
 					}
-					prev = key;
+					keyPrev = key;
+					verPrev = ver;
 				}
 			}
 
@@ -922,33 +1466,31 @@ namespace Aerospike.Client
 
 			WriteBatchHeader(policy, totalTimeout, fieldCount);
 
-			if (exp != null)
-			{
-				exp.Write(this);
-			}
+			exp?.Write(this);
 
 			int fieldSizeOffset = dataOffset;
-			WriteFieldHeader(0, FieldType.BATCH_INDEX); // Need to update size at end
+			WriteFieldHeader(0, FieldType.BATCH_INDEX);  // Need to update size at end
 
 			ByteUtil.IntToBytes((uint)max, dataBuffer, dataOffset);
 			dataOffset += 4;
 			dataBuffer[dataOffset++] = GetBatchFlags(policy);
-			prev = null;
+			keyPrev = null;
+			verPrev = null;
 
 			for (int i = 0; i < max; i++)
 			{
-				int index = offsets[i];
-				ByteUtil.IntToBytes((uint)index, dataBuffer, dataOffset);
+				int offset = offsets.Get(i);
+				Key key = keys[offset];
+				long? ver = versions?[i];
+
+				ByteUtil.IntToBytes((uint)offset, dataBuffer, dataOffset);
 				dataOffset += 4;
 
-				Key key = keys[index];
 				byte[] digest = key.digest;
 				Array.Copy(digest, 0, dataBuffer, dataOffset, digest.Length);
 				dataOffset += digest.Length;
 
-				// Try reference equality in hope that namespace/set for all keys is set from fixed variables.
-				if (!attr.sendKey && prev != null && prev.ns == key.ns && 
-					prev.setName == key.setName)
+				if (CanRepeat(attr, key, keyPrev, ver, verPrev))
 				{
 					// Can set repeat previous namespace/bin names to save space.
 					dataBuffer[dataOffset++] = BATCH_MSG_REPEAT;
@@ -958,31 +1500,31 @@ namespace Aerospike.Client
 					// Write full message.
 					if (binNames != null)
 					{
-						WriteBatchBinNames(key, binNames, attr, null);
+						WriteBatchBinNames(key, txn, ver, binNames, attr, null);
 					}
 					else if (ops != null)
 					{
-						WriteBatchOperations(key, ops, attr, null);
+						WriteBatchOperations(key, txn, ver, ops, attr, null);
 					}
 					else if ((attr.writeAttr & Command.INFO2_DELETE) != 0)
 					{
-						WriteBatchWrite(key, attr, null, 0, 0);
+						WriteBatchWrite(key, txn, ver, attr, null, 0, 0);
 					}
 					else
 					{
-						WriteBatchRead(key, attr, null, 0);
+						WriteBatchRead(key, txn, ver, attr, null, 0);
 					}
-					prev = key;
+					keyPrev = key;
+					verPrev = ver;
 				}
 			}
 
 			// Write real field size.
-			ByteUtil.IntToBytes((uint)(dataOffset - MSG_TOTAL_HEADER_SIZE - 4), dataBuffer, fieldSizeOffset);
+			ByteUtil.IntToBytes((uint)dataOffset - MSG_TOTAL_HEADER_SIZE - 4, dataBuffer, fieldSizeOffset);
 			End(compress);
 		}
 
-		public virtual void SetBatchUDF
-		(
+		public virtual void SetBatchUDF(
 			BatchPolicy policy,
 			Key[] keys,
 			BatchNode batch,
@@ -992,14 +1534,41 @@ namespace Aerospike.Client
 			BatchAttr attr
 		)
 		{
-			// Estimate full row size
-			int[] offsets = batch.offsets;
-			int max = batch.offsetsSize;
+			BatchOffsetsNative offsets = new(batch);
+			SetBatchUDF(policy, keys, packageName, functionName, argBytes, attr, offsets);
+		}
 
-			// Estimate dataBuffer size.
+		public virtual void SetBatchUDF
+		(
+			BatchPolicy policy,
+			Key[] keys,
+			string packageName,
+			string functionName,
+			byte[] argBytes,
+			BatchAttr attr,
+			BatchOffsets offsets
+		)
+		{
+			// Estimate buffer size.
 			Begin();
-			int fieldCount = 1;
+			int max = offsets.Size();
+			Txn txn = policy.Txn;
+			long?[] versions = null;
+
+			if (txn != null)
+			{
+				versions = new long?[max];
+
+				for (int i = 0; i < max; i++)
+				{
+					int offset = offsets.Get(i);
+					Key key = keys[offset];
+					versions[i] = txn.GetReadVersion(key);
+				}
+			}
+
 			Expression exp = GetBatchExpression(policy, attr);
+			int fieldCount = 1;
 
 			if (exp != null)
 			{
@@ -1009,17 +1578,18 @@ namespace Aerospike.Client
 
 			dataOffset += FIELD_HEADER_SIZE + 5;
 
-			Key prev = null;
+			Key keyPrev = null;
+			long? verPrev = null;
 
 			for (int i = 0; i < max; i++)
 			{
-				Key key = keys[offsets[i]];
+				int offset = offsets.Get(i);
+				Key key = keys[offset];
+				long? ver = versions?[i];
 
 				dataOffset += key.digest.Length + 4;
 
-				// Try reference equality in hope that namespace/set for all keys is set from fixed variables.
-				if (!attr.sendKey && prev != null && prev.ns == key.ns && 
-					prev.setName == key.setName)
+				if (CanRepeat(attr, key, keyPrev, ver, verPrev))
 				{
 					// Can set repeat previous namespace/bin names to save space.
 					dataOffset++;
@@ -1027,17 +1597,19 @@ namespace Aerospike.Client
 				else
 				{
 					// Write full header and namespace/set/bin names.
-					dataOffset += 12; // header(4) + ttl(4) + fielCount(2) + opCount(2) = 12
+					dataOffset += 12; // header(4) + ttl(4) + fieldCount(2) + opCount(2) = 12
 					dataOffset += ByteUtil.EstimateSizeUtf8(key.ns) + FIELD_HEADER_SIZE;
 					dataOffset += ByteUtil.EstimateSizeUtf8(key.setName) + FIELD_HEADER_SIZE;
+					SizeTxnBatch(txn, ver, attr.hasWrite);
 
 					if (attr.sendKey)
 					{
 						dataOffset += key.userKey.EstimateSize() + FIELD_HEADER_SIZE + 1;
 					}
-					dataOffset += 2; // gen(2) = 6
+					dataOffset += 2; // gen(2) = 2
 					EstimateUdfSize(packageName, functionName, argBytes);
-					prev = key;
+					keyPrev = key;
+					verPrev = ver;
 				}
 			}
 
@@ -1045,33 +1617,31 @@ namespace Aerospike.Client
 
 			WriteBatchHeader(policy, totalTimeout, fieldCount);
 
-			if (exp != null)
-			{
-				exp.Write(this);
-			}
+			exp?.Write(this);
 
 			int fieldSizeOffset = dataOffset;
-			WriteFieldHeader(0, FieldType.BATCH_INDEX); // Need to update size at end
+			WriteFieldHeader(0, FieldType.BATCH_INDEX);  // Need to update size at end
 
 			ByteUtil.IntToBytes((uint)max, dataBuffer, dataOffset);
 			dataOffset += 4;
 			dataBuffer[dataOffset++] = GetBatchFlags(policy);
-			prev = null;
+			keyPrev = null;
+			verPrev = null;
 
 			for (int i = 0; i < max; i++)
 			{
-				int index = offsets[i];
-				ByteUtil.IntToBytes((uint)index, dataBuffer, dataOffset);
+				int offset = offsets.Get(i);
+				Key key = keys[offset];
+				long? ver = versions?[i];
+
+				ByteUtil.IntToBytes((uint)offset, dataBuffer, dataOffset);
 				dataOffset += 4;
 
-				Key key = keys[index];
 				byte[] digest = key.digest;
 				Array.Copy(digest, 0, dataBuffer, dataOffset, digest.Length);
 				dataOffset += digest.Length;
 
-				// Try reference equality in hope that namespace/set for all keys is set from fixed variables.
-				if (!attr.sendKey && prev != null && prev.ns == key.ns && 
-					prev.setName == key.setName)
+				if (CanRepeat(attr, key, keyPrev, ver, verPrev))
 				{
 					// Can set repeat previous namespace/bin names to save space.
 					dataBuffer[dataOffset++] = BATCH_MSG_REPEAT;
@@ -1079,22 +1649,53 @@ namespace Aerospike.Client
 				else
 				{
 					// Write full message.
-					WriteBatchWrite(key, attr, null, 3, 0);
+					WriteBatchWrite(key, txn, ver, attr, null, 3, 0);
 					WriteField(packageName, FieldType.UDF_PACKAGE_NAME);
 					WriteField(functionName, FieldType.UDF_FUNCTION);
 					WriteField(argBytes, FieldType.UDF_ARGLIST);
-					prev = key;
+					keyPrev = key;
+					verPrev = ver;
 				}
 			}
 
 			// Write real field size.
-			ByteUtil.IntToBytes((uint)(dataOffset - MSG_TOTAL_HEADER_SIZE - 4), dataBuffer, fieldSizeOffset);
+			ByteUtil.IntToBytes((uint)dataOffset - MSG_TOTAL_HEADER_SIZE - 4, dataBuffer, fieldSizeOffset);
 			End(compress);
+		}
+
+		private static bool CanRepeat(
+			Policy policy,
+			Key key,
+			BatchRecord record,
+			BatchRecord prev,
+			long? ver,
+			long? verPrev
+		)
+		{
+			// Avoid relatively expensive full equality checks for performance reasons.
+			// Use reference equality only in hope that common namespaces/bin names are set from
+			// fixed variables.  It's fine if equality not determined correctly because it just
+			// results in more space used. The batch will still be correct.
+			// Same goes for ver reference equality check.
+			return !policy.sendKey && verPrev == ver && prev != null && prev.key.ns == key.ns &&
+				prev.key.setName == key.setName && record.Equals(prev);
+		}
+
+		private static bool CanRepeat(BatchAttr attr, Key key, Key keyPrev, long? ver, long? verPrev)
+		{
+			return !attr.sendKey && verPrev == ver && keyPrev != null && keyPrev.ns == key.ns &&
+					keyPrev.setName == key.setName;
+		}
+
+		private static bool CanRepeat(Key key, Key keyPrev, long? ver, long? verPrev)
+		{
+			return verPrev == ver && keyPrev != null && keyPrev.ns == key.ns &&
+					keyPrev.setName == key.setName;
 		}
 
 		private static Expression GetBatchExpression(Policy policy, BatchAttr attr)
 		{
-			return (attr.filterExp != null) ? attr.filterExp : policy.filterExp;
+			return attr.filterExp ?? policy.filterExp;
 		}
 
 		private static byte GetBatchFlags(BatchPolicy policy)
@@ -1118,6 +1719,25 @@ namespace Aerospike.Client
 			return flags;
 		}
 
+		private void SizeTxnBatch(Txn txn, long? ver, bool hasWrite)
+		{
+			if (txn != null)
+			{
+				dataOffset++; // Add info4 byte for MRT.
+				dataOffset += 8 + FIELD_HEADER_SIZE;
+
+				if (ver.HasValue)
+				{
+					dataOffset += 7 + FIELD_HEADER_SIZE;
+				}
+
+				if (hasWrite && txn.Deadline != 0)
+				{
+					dataOffset += 4 + FIELD_HEADER_SIZE;
+				}
+			}
+		}
+
 		private void WriteBatchHeader(Policy policy, int timeout, int fieldCount)
 		{
 			int readAttr = Command.INFO1_BATCH;
@@ -1131,18 +1751,20 @@ namespace Aerospike.Client
 			dataOffset += 8;
 			dataBuffer[dataOffset++] = MSG_REMAINING_HEADER_SIZE; // Message header length.
 			dataBuffer[dataOffset++] = (byte)readAttr;
+			dataBuffer[dataOffset++] = (byte)0;
+			dataBuffer[dataOffset++] = (byte)0;
 
-			Array.Clear(dataBuffer, dataOffset, 12);
-			dataOffset += 12;
+			Array.Clear(dataBuffer, dataOffset, 10);
+			dataOffset += 10;
 
 			dataOffset += ByteUtil.IntToBytes((uint)timeout, dataBuffer, dataOffset);
 			dataOffset += ByteUtil.ShortToBytes((ushort)fieldCount, dataBuffer, dataOffset);
 			dataOffset += ByteUtil.ShortToBytes(0, dataBuffer, dataOffset);
 		}
 
-		private void WriteBatchBinNames(Key key, string[] binNames, BatchAttr attr, Expression filter)
+		private void WriteBatchBinNames(Key key, Txn txn, long? ver, string[] binNames, BatchAttr attr, Expression filter)
 		{
-			WriteBatchRead(key, attr, filter, binNames.Length);
+			WriteBatchRead(key, txn, ver, attr, filter, binNames.Length);
 
 			foreach (string binName in binNames)
 			{
@@ -1150,15 +1772,15 @@ namespace Aerospike.Client
 			}
 		}
 
-		private void WriteBatchOperations(Key key, Operation[] ops, BatchAttr attr, Expression filter)
+		private void WriteBatchOperations(Key key, Txn txn, long? ver, Operation[] ops, BatchAttr attr, Expression filter)
 		{
 			if (attr.hasWrite)
 			{
-				WriteBatchWrite(key, attr, filter, 0, ops.Length);
+				WriteBatchWrite(key, txn, ver, attr, filter, 0, ops.Length);
 			}
 			else
 			{
-				WriteBatchRead(key, attr, filter, ops.Length);
+				WriteBatchRead(key, txn, ver, attr, filter, ops.Length);
 			}
 
 			foreach (Operation op in ops)
@@ -1167,56 +1789,141 @@ namespace Aerospike.Client
 			}
 		}
 
-		private void WriteBatchRead(Key key, BatchAttr attr, Expression filter, int opCount)
+		private void WriteBatchRead(Key key, Txn txn, long? ver, BatchAttr attr, Expression filter, int opCount)
 		{
-			dataBuffer[dataOffset++] = (byte)(BATCH_MSG_INFO | BATCH_MSG_TTL);
-			dataBuffer[dataOffset++] = (byte)attr.readAttr;
-			dataBuffer[dataOffset++] = (byte)attr.writeAttr;
-			dataBuffer[dataOffset++] = (byte)attr.infoAttr;
-			dataOffset += ByteUtil.IntToBytes((uint)attr.expiration, dataBuffer, dataOffset);
-			WriteBatchFields(key, filter, 0, opCount);
+			if (txn != null)
+			{
+				dataBuffer[dataOffset++] = (byte)(BATCH_MSG_INFO | BATCH_MSG_INFO4 | BATCH_MSG_TTL);
+				dataBuffer[dataOffset++] = (byte)attr.readAttr;
+				dataBuffer[dataOffset++] = (byte)attr.writeAttr;
+				dataBuffer[dataOffset++] = (byte)attr.infoAttr;
+				dataBuffer[dataOffset++] = (byte)attr.txnAttr;
+				ByteUtil.IntToBytes((uint)attr.expiration, dataBuffer, dataOffset);
+				dataOffset += 4;
+				WriteBatchFieldsTxn(key, txn, ver, attr, filter, 0, opCount);
+			}
+			else
+			{
+				dataBuffer[dataOffset++] = (byte)(BATCH_MSG_INFO | BATCH_MSG_TTL);
+				dataBuffer[dataOffset++] = (byte)attr.readAttr;
+				dataBuffer[dataOffset++] = (byte)attr.writeAttr;
+				dataBuffer[dataOffset++] = (byte)attr.infoAttr;
+				ByteUtil.IntToBytes((uint)attr.expiration, dataBuffer, dataOffset);
+				dataOffset += 4;
+				WriteBatchFieldsReg(key, attr, filter, 0, opCount);
+			}
 		}
 
-		private void WriteBatchWrite(Key key, BatchAttr attr, Expression filter, int fieldCount, int opCount)
+		private void WriteBatchWrite(Key key, Txn txn, long? ver, BatchAttr attr, Expression filter, int fieldCount, int opCount)
 		{
-			dataBuffer[dataOffset++] = (byte)(BATCH_MSG_INFO | BATCH_MSG_GEN | BATCH_MSG_TTL);
-			dataBuffer[dataOffset++] = (byte)attr.readAttr;
-			dataBuffer[dataOffset++] = (byte)attr.writeAttr;
-			dataBuffer[dataOffset++] = (byte)attr.infoAttr;
-			dataOffset += ByteUtil.ShortToBytes((ushort)attr.generation, dataBuffer, dataOffset);
-			dataOffset += ByteUtil.IntToBytes((uint)attr.expiration, dataBuffer, dataOffset);
+			if (txn != null)
+			{
+				dataBuffer[dataOffset++] = (byte)(BATCH_MSG_INFO | BATCH_MSG_INFO4 | BATCH_MSG_GEN | BATCH_MSG_TTL);
+				dataBuffer[dataOffset++] = (byte)attr.readAttr;
+				dataBuffer[dataOffset++] = (byte)attr.writeAttr;
+				dataBuffer[dataOffset++] = (byte)attr.infoAttr;
+				dataBuffer[dataOffset++] = (byte)attr.txnAttr;
+				ByteUtil.ShortToBytes((ushort)attr.generation, dataBuffer, dataOffset);
+				dataOffset += 2;
+				ByteUtil.IntToBytes((uint)attr.expiration, dataBuffer, dataOffset);
+				dataOffset += 4;
+				WriteBatchFieldsTxn(key, txn, ver, attr, filter, fieldCount, opCount);
+			}
+			else
+			{
+				dataBuffer[dataOffset++] = (byte)(BATCH_MSG_INFO | BATCH_MSG_GEN | BATCH_MSG_TTL);
+				dataBuffer[dataOffset++] = (byte)attr.readAttr;
+				dataBuffer[dataOffset++] = (byte)attr.writeAttr;
+				dataBuffer[dataOffset++] = (byte)attr.infoAttr;
+				ByteUtil.ShortToBytes((ushort)attr.generation, dataBuffer, dataOffset);
+				dataOffset += 2;
+				ByteUtil.IntToBytes((ushort)attr.expiration, dataBuffer, dataOffset);
+				dataOffset += 4;
+				WriteBatchFieldsReg(key, attr, filter, fieldCount, opCount);
+			}
+		}
+
+		private void WriteBatchFieldsTxn(Key key, Txn txn, long? ver, BatchAttr attr, Expression filter, int fieldCount, int opCount)
+		{
+			fieldCount++;
+
+			if (ver.HasValue)
+			{
+				fieldCount++;
+			}
+
+			if (attr.hasWrite && txn.Deadline != 0)
+			{
+				fieldCount++;
+			}
+
+			if (filter != null)
+			{
+				fieldCount++;
+			}
 
 			if (attr.sendKey)
 			{
 				fieldCount++;
-				WriteBatchFields(key, filter, fieldCount, opCount);
-				WriteField(key.userKey, FieldType.KEY);
 			}
-			else
+
+			WriteBatchFields(key, fieldCount, opCount);
+
+			WriteFieldLE(txn.Id, FieldType.MRT_ID);
+
+			if (ver.HasValue)
 			{
-				WriteBatchFields(key, filter, fieldCount, opCount);
+				WriteFieldVersion(ver.Value);
+			}
+
+			if (attr.hasWrite && txn.Deadline != 0)
+			{
+				WriteFieldLE(txn.Deadline, FieldType.MRT_DEADLINE);
+			}
+
+			filter?.Write(this);
+
+			if (attr.sendKey)
+			{
+				WriteField(key.userKey, FieldType.KEY);
 			}
 		}
 
-		private void WriteBatchFields(Key key, Expression filter, int fieldCount, int opCount)
+		private void WriteBatchFieldsReg(
+			Key key,
+			BatchAttr attr,
+			Expression filter,
+			int fieldCount,
+			int opCount
+		)
 		{
 			if (filter != null)
 			{
 				fieldCount++;
-				WriteBatchFields(key, fieldCount, opCount);
-				filter.Write(this);
 			}
-			else
+
+			if (attr.sendKey)
 			{
-				WriteBatchFields(key, fieldCount, opCount);
+				fieldCount++;
+			}
+
+			WriteBatchFields(key, fieldCount, opCount);
+
+			filter?.Write(this);
+
+			if (attr.sendKey)
+			{
+				WriteField(key.userKey, FieldType.KEY);
 			}
 		}
 
 		private void WriteBatchFields(Key key, int fieldCount, int opCount)
 		{
 			fieldCount += 2;
-			dataOffset += ByteUtil.ShortToBytes((ushort)fieldCount, dataBuffer, dataOffset);
-			dataOffset += ByteUtil.ShortToBytes((ushort)opCount, dataBuffer, dataOffset);
+			ByteUtil.ShortToBytes((ushort)fieldCount, dataBuffer, dataOffset);
+			dataOffset += 2;
+			ByteUtil.ShortToBytes((ushort)opCount, dataBuffer, dataOffset);
+			dataOffset += 2;
 			WriteField(key.ns, FieldType.NAMESPACE);
 			WriteField(key.setName, FieldType.TABLE);
 		}
@@ -1337,8 +2044,9 @@ namespace Aerospike.Client
 			{
 				WriteFieldHeader(partsPartialSize, FieldType.DIGEST_ARRAY);
 
-				foreach (PartitionStatus part in nodePartitions.partsPartial) {
-					Array.Copy(part.digest, 0, dataBuffer, dataOffset, 20); 
+				foreach (PartitionStatus part in nodePartitions.partsPartial)
+				{
+					Array.Copy(part.digest, 0, dataBuffer, dataOffset, 20);
 					dataOffset += 20;
 				}
 			}
@@ -1353,16 +2061,13 @@ namespace Aerospike.Client
 				WriteField(policy.recordsPerSecond, FieldType.RECORDS_PER_SECOND);
 			}
 
-			if (policy.filterExp != null)
-			{
-				policy.filterExp.Write(this);
-			}
+			policy.filterExp?.Write(this);
 
 			// Write scan timeout
 			WriteField(policy.socketTimeout, FieldType.SOCKET_TIMEOUT);
 
 			// Write taskId field
-			WriteField(taskId, FieldType.TRAN_ID);
+			WriteField(taskId, FieldType.QUERY_ID);
 
 			if (binNames != null)
 			{
@@ -1485,7 +2190,7 @@ namespace Aerospike.Client
 				}
 				else
 				{
-					functionArgBuffer = new byte[0];
+					functionArgBuffer = Array.Empty<byte>();
 				}
 				dataOffset += FIELD_HEADER_SIZE + functionArgBuffer.Length;
 				fieldCount += 4;
@@ -1622,7 +2327,7 @@ namespace Aerospike.Client
 			WriteField(policy.socketTimeout, FieldType.SOCKET_TIMEOUT);
 
 			// Write taskId field
-			WriteField(taskId, FieldType.TRAN_ID);
+			WriteField(taskId, FieldType.QUERY_ID);
 
 			if (statement.filter != null)
 			{
@@ -1673,10 +2378,7 @@ namespace Aerospike.Client
 				WriteField(functionArgBuffer, FieldType.UDF_ARGLIST);
 			}
 
-			if (policy.filterExp != null)
-			{
-				policy.filterExp.Write(this);
-			}
+			policy.filterExp?.Write(this);
 
 			if (partsFullSize > 0)
 			{
@@ -1737,7 +2439,33 @@ namespace Aerospike.Client
 		// Command Sizing
 		//--------------------------------------------------
 
-		private int EstimateKeySize(Policy policy, Key key)
+		private int EstimateKeyAttrSize(Policy policy, Key key, BatchAttr attr, Expression filterExp)
+		{
+			int fieldCount = EstimateKeySize(policy, key, attr.hasWrite);
+
+			if (filterExp != null)
+			{
+				dataOffset += filterExp.Size();
+				fieldCount++;
+			}
+			return fieldCount;
+		}
+
+		private int EstimateKeySize(Policy policy, Key key, bool hasWrite)
+		{
+			int fieldCount = EstimateKeySize(key);
+
+			fieldCount += SizeTxn(key, policy.Txn, hasWrite);
+
+			if (policy.sendKey)
+			{
+				dataOffset += key.userKey.EstimateSize() + FIELD_HEADER_SIZE + 1;
+				fieldCount++;
+			}
+			return fieldCount;
+		}
+
+		private int EstimateKeySize(Key key)
 		{
 			int fieldCount = 0;
 
@@ -1756,11 +2484,6 @@ namespace Aerospike.Client
 			dataOffset += key.digest.Length + FIELD_HEADER_SIZE;
 			fieldCount++;
 
-			if (policy.sendKey)
-			{
-				dataOffset += key.userKey.EstimateSize() + FIELD_HEADER_SIZE + 1;
-				fieldCount++;
-			}
 			return fieldCount;
 		}
 
@@ -1819,34 +2542,34 @@ namespace Aerospike.Client
 
 			switch (policy.recordExistsAction)
 			{
-			case RecordExistsAction.UPDATE:
-				break;
-			case RecordExistsAction.UPDATE_ONLY:
-				infoAttr |= Command.INFO3_UPDATE_ONLY;
-				break;
-			case RecordExistsAction.REPLACE:
-				infoAttr |= Command.INFO3_CREATE_OR_REPLACE;
-				break;
-			case RecordExistsAction.REPLACE_ONLY:
-				infoAttr |= Command.INFO3_REPLACE_ONLY;
-				break;
-			case RecordExistsAction.CREATE_ONLY:
-				writeAttr |= Command.INFO2_CREATE_ONLY;
-				break;
+				case RecordExistsAction.UPDATE:
+					break;
+				case RecordExistsAction.UPDATE_ONLY:
+					infoAttr |= Command.INFO3_UPDATE_ONLY;
+					break;
+				case RecordExistsAction.REPLACE:
+					infoAttr |= Command.INFO3_CREATE_OR_REPLACE;
+					break;
+				case RecordExistsAction.REPLACE_ONLY:
+					infoAttr |= Command.INFO3_REPLACE_ONLY;
+					break;
+				case RecordExistsAction.CREATE_ONLY:
+					writeAttr |= Command.INFO2_CREATE_ONLY;
+					break;
 			}
 
 			switch (policy.generationPolicy)
 			{
-			case GenerationPolicy.NONE:
-				break;
-			case GenerationPolicy.EXPECT_GEN_EQUAL:
-				generation = policy.generation;
-				writeAttr |= Command.INFO2_GENERATION;
-				break;
-			case GenerationPolicy.EXPECT_GEN_GT:
-				generation = policy.generation;
-				writeAttr |= Command.INFO2_GENERATION_GT;
-				break;
+				case GenerationPolicy.NONE:
+					break;
+				case GenerationPolicy.EXPECT_GEN_EQUAL:
+					generation = policy.generation;
+					writeAttr |= Command.INFO2_GENERATION;
+					break;
+				case GenerationPolicy.EXPECT_GEN_GT:
+					generation = policy.generation;
+					writeAttr |= Command.INFO2_GENERATION_GT;
+					break;
 			}
 
 			if (policy.commitLevel == CommitLevel.COMMIT_MASTER)
@@ -1866,7 +2589,7 @@ namespace Aerospike.Client
 			dataBuffer[dataOffset++] = (byte)0;
 			dataBuffer[dataOffset++] = (byte)writeAttr;
 			dataBuffer[dataOffset++] = (byte)infoAttr;
-			dataBuffer[dataOffset++] = 0; // unused
+			dataBuffer[dataOffset++] = 0;
 			dataBuffer[dataOffset++] = 0; // clear the result code
 			dataOffset += ByteUtil.IntToBytes((uint)generation, dataBuffer, dataOffset);
 			dataOffset += ByteUtil.IntToBytes((uint)policy.expiration, dataBuffer, dataOffset);
@@ -1934,7 +2657,6 @@ namespace Aerospike.Client
 			{
 				writeAttr |= Command.INFO2_DURABLE_DELETE;
 			}
-
 			switch (policy.readModeSC)
 			{
 				case ReadModeSC.SESSION:
@@ -2078,7 +2800,50 @@ namespace Aerospike.Client
 			dataOffset += ByteUtil.ShortToBytes((ushort)operationCount, dataBuffer, dataOffset);
 		}
 
-		private void WriteKey(Policy policy, Key key)
+		/// <summary>
+		/// Header write for batch single commands.
+		/// </summary>
+		private void WriteKeyAttr(
+			Policy policy,
+			Key key,
+			BatchAttr attr,
+			Expression filterExp,
+			int fieldCount,
+			int operationCount
+		)
+		{
+			dataOffset += 8;
+
+			// Write all header data except total size which must be written last.
+			dataBuffer[dataOffset++] = MSG_REMAINING_HEADER_SIZE; // Message header length.
+			dataBuffer[dataOffset++] = (byte)attr.readAttr;
+			dataBuffer[dataOffset++] = (byte)attr.writeAttr;
+			dataBuffer[dataOffset++] = (byte)attr.infoAttr;
+			dataBuffer[dataOffset++] = 0; // unused
+			dataBuffer[dataOffset++] = 0; // clear the result code
+			dataOffset += ByteUtil.IntToBytes((uint)attr.generation, dataBuffer, dataOffset);
+			dataOffset += ByteUtil.IntToBytes((uint)attr.expiration, dataBuffer, dataOffset);
+			dataOffset += ByteUtil.IntToBytes((uint)serverTimeout, dataBuffer, dataOffset);
+			dataOffset += ByteUtil.ShortToBytes((ushort)fieldCount, dataBuffer, dataOffset);
+			dataOffset += ByteUtil.ShortToBytes((ushort)operationCount, dataBuffer, dataOffset);
+
+			WriteKey(policy, key, attr.hasWrite);
+
+			filterExp?.Write(this);
+		}
+
+		private void WriteKey(Policy policy, Key key, bool sendDeadline)
+		{
+			WriteKey(key);
+			WriteTxn(policy.Txn, sendDeadline);
+
+			if (policy.sendKey)
+			{
+				WriteField(key.userKey, FieldType.KEY);
+			}
+		}
+
+		private void WriteKey(Key key)
 		{
 			// Write key into dataBuffer.
 			if (key.ns != null)
@@ -2092,11 +2857,6 @@ namespace Aerospike.Client
 			}
 
 			WriteField(key.digest, FieldType.DIGEST_RIPE);
-
-			if (policy.sendKey)
-			{
-				WriteField(key.userKey, FieldType.KEY);
-			}
 		}
 
 		private int WriteReadOnlyOperations(Operation[] ops, int readAttr)
@@ -2142,9 +2902,9 @@ namespace Aerospike.Client
 			ByteUtil.IntToBytes((uint)(nameLength + valueLength + 4), dataBuffer, dataOffset);
 			dataOffset += 4;
 			dataBuffer[dataOffset++] = Operation.GetProtocolType(operationType);
-			dataBuffer[dataOffset++] = (byte) bin.value.Type;
-			dataBuffer[dataOffset++] = (byte) 0;
-			dataBuffer[dataOffset++] = (byte) nameLength;
+			dataBuffer[dataOffset++] = (byte)bin.value.Type;
+			dataBuffer[dataOffset++] = (byte)0;
+			dataBuffer[dataOffset++] = (byte)nameLength;
 			dataOffset += nameLength + valueLength;
 		}
 
@@ -2156,9 +2916,9 @@ namespace Aerospike.Client
 			ByteUtil.IntToBytes((uint)(nameLength + valueLength + 4), dataBuffer, dataOffset);
 			dataOffset += 4;
 			dataBuffer[dataOffset++] = Operation.GetProtocolType(operation.type);
-			dataBuffer[dataOffset++] = (byte) operation.value.Type;
-			dataBuffer[dataOffset++] = (byte) 0;
-			dataBuffer[dataOffset++] = (byte) nameLength;
+			dataBuffer[dataOffset++] = (byte)operation.value.Type;
+			dataBuffer[dataOffset++] = (byte)0;
+			dataBuffer[dataOffset++] = (byte)nameLength;
 			dataOffset += nameLength + valueLength;
 		}
 
@@ -2169,9 +2929,9 @@ namespace Aerospike.Client
 			ByteUtil.IntToBytes((uint)(nameLength + 4), dataBuffer, dataOffset);
 			dataOffset += 4;
 			dataBuffer[dataOffset++] = Operation.GetProtocolType(operationType);
-			dataBuffer[dataOffset++] = (byte) 0;
-			dataBuffer[dataOffset++] = (byte) 0;
-			dataBuffer[dataOffset++] = (byte) nameLength;
+			dataBuffer[dataOffset++] = (byte)0;
+			dataBuffer[dataOffset++] = (byte)0;
+			dataBuffer[dataOffset++] = (byte)nameLength;
 			dataOffset += nameLength;
 		}
 
@@ -2183,6 +2943,57 @@ namespace Aerospike.Client
 			dataBuffer[dataOffset++] = 0;
 			dataBuffer[dataOffset++] = 0;
 			dataBuffer[dataOffset++] = 0;
+		}
+
+		private int SizeTxn(Key key, Txn txn, bool hasWrite)
+		{
+			int fieldCount = 0;
+
+			if (txn != null)
+			{
+				dataOffset += 8 + FIELD_HEADER_SIZE;
+				fieldCount++;
+
+				Version = txn.GetReadVersion(key);
+
+				if (Version.HasValue)
+				{
+					dataOffset += 7 + FIELD_HEADER_SIZE;
+					fieldCount++;
+				}
+
+				if (hasWrite && txn.Deadline != 0)
+				{
+					dataOffset += 4 + FIELD_HEADER_SIZE;
+					fieldCount++;
+				}
+			}
+			return fieldCount;
+		}
+
+		private void WriteTxn(Txn txn, bool sendDeadline)
+		{
+			if (txn != null)
+			{
+				WriteFieldLE(txn.Id, FieldType.MRT_ID);
+
+				if (Version.HasValue)
+				{
+					WriteFieldVersion(Version.Value);
+				}
+
+				if (sendDeadline && txn.Deadline != 0)
+				{
+					WriteFieldLE(txn.Deadline, FieldType.MRT_DEADLINE);
+				}
+			}
+		}
+
+		private void WriteFieldVersion(long ver)
+		{
+			WriteFieldHeader(7, FieldType.RECORD_VERSION);
+			ByteUtil.LongToVersionBytes(ver, dataBuffer, dataOffset);
+			dataOffset += 7;
 		}
 
 		private void WriteField(Value value, int type)
@@ -2211,18 +3022,35 @@ namespace Aerospike.Client
 		private void WriteField(int val, int type)
 		{
 			WriteFieldHeader(4, type);
-			dataOffset += ByteUtil.IntToBytes((uint)val, dataBuffer, dataOffset);
+			ByteUtil.IntToBytes((uint)val, dataBuffer, dataOffset);
+			dataOffset += 4;
+		}
+
+		private void WriteFieldLE(int val, int type)
+		{
+			WriteFieldHeader(4, type);
+			ByteUtil.IntToLittleBytes((uint)val, dataBuffer, dataOffset);
+			dataOffset += 4;
 		}
 
 		private void WriteField(ulong val, int type)
 		{
 			WriteFieldHeader(8, type);
-			dataOffset += ByteUtil.LongToBytes(val, dataBuffer, dataOffset);
+			ByteUtil.LongToBytes(val, dataBuffer, dataOffset);
+			dataOffset += 8;
+		}
+
+		private void WriteFieldLE(long val, int type)
+		{
+			WriteFieldHeader(8, type);
+			ByteUtil.LongToLittleBytes((ulong)val, dataBuffer, dataOffset);
+			dataOffset += 8;
 		}
 
 		private void WriteFieldHeader(int size, int type)
 		{
-			dataOffset += ByteUtil.IntToBytes((uint)size + 1, dataBuffer, dataOffset);
+			ByteUtil.IntToBytes((uint)size + 1, dataBuffer, dataOffset);
+			dataOffset += 4;
 			dataBuffer[dataOffset++] = (byte)type;
 		}
 
@@ -2353,9 +3181,130 @@ namespace Aerospike.Client
 			return new Key(ns, digest, setName, userKey);
 		}
 
+		public long? ParseVersion(int fieldCount)
+		{
+			long? version = null;
+
+			for (int i = 0; i < fieldCount; i++)
+			{
+				int len = ByteUtil.BytesToInt(dataBuffer, dataOffset);
+				dataOffset += 4;
+
+				int type = dataBuffer[dataOffset++];
+				int size = len - 1;
+
+				if (type == FieldType.RECORD_VERSION && size == 7)
+				{
+					version = ByteUtil.VersionBytesToLong(dataBuffer, dataOffset);
+				}
+				dataOffset += size;
+			}
+			return version;
+		}
+
+		protected void ParseFields(Txn txn, Key key, bool hasWrite)
+		{
+			if (txn == null)
+			{
+				SkipFields(fieldCount);
+				return;
+			}
+
+			long? version = null;
+
+			for (int i = 0; i < fieldCount; i++)
+			{
+				int len = ByteUtil.BytesToInt(dataBuffer, dataOffset);
+				dataOffset += 4;
+
+				int type = dataBuffer[dataOffset++];
+				int size = len - 1;
+
+				if (type == FieldType.RECORD_VERSION)
+				{
+					if (size == 7)
+					{
+						version = ByteUtil.VersionBytesToLong(dataBuffer, dataOffset);
+					}
+					else
+					{
+						throw new AerospikeException("Record version field has invalid size: " + size);
+					}
+				}
+				dataOffset += size;
+			}
+
+			if (hasWrite)
+			{
+				txn.OnWrite(key, version, resultCode);
+			}
+			else
+			{
+				txn.OnRead(key, version);
+			}
+		}
+
+		protected void ParseTxnDeadline(Txn txn)
+		{
+			for (int i = 0; i < fieldCount; i++)
+			{
+				int len = ByteUtil.BytesToInt(dataBuffer, dataOffset);
+				dataOffset += 4;
+
+				int type = dataBuffer[dataOffset++];
+				int size = len - 1;
+
+				if (type == FieldType.MRT_DEADLINE)
+				{
+					int deadline = ByteUtil.LittleBytesToInt(dataBuffer, dataOffset);
+					txn.Deadline = deadline;
+				}
+				dataOffset += size;
+			}
+		}
+
+		protected void SkipFields(int fieldCount)
+		{
+			// There can be fields in the response (setname etc).
+			// But for now, ignore them. Expose them to the API if needed in the future.
+			for (int i = 0; i < fieldCount; i++)
+			{
+				int fieldlen = ByteUtil.BytesToInt(dataBuffer, dataOffset);
+				dataOffset += 4 + fieldlen;
+			}
+		}
+
 		public static bool BatchInDoubt(bool isWrite, int commandSentCounter)
 		{
 			return isWrite && commandSentCounter > 1;
+		}
+
+		public interface BatchOffsets
+		{
+			int Size();
+			int Get(int i);
+		}
+
+		private class BatchOffsetsNative : BatchOffsets
+		{
+			private int size;
+			private int[] offsets;
+
+			public BatchOffsetsNative(BatchNode batch)
+			{
+				this.size = batch.offsetsSize;
+				this.offsets = batch.offsets;
+			}
+
+			public int Size()
+			{
+				return size;
+			}
+
+			public int Get(int i)
+			{
+				return offsets[i];
+			}
 		}
 	}
 }

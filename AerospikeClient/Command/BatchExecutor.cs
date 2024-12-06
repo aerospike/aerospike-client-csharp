@@ -23,7 +23,7 @@ namespace Aerospike.Client
 	{
 		public static void Execute(Cluster cluster, BatchPolicy policy, BatchCommand[] commands, BatchStatus status)
 		{
-			cluster.AddTran();
+			cluster.AddCommandCount();
 
 			if (policy.maxConcurrentThreads == 1 || commands.Length <= 1)
 			{
@@ -42,7 +42,10 @@ namespace Aerospike.Client
 						// subset of keys.
 						if (!command.splitRetry)
 						{
-							command.SetInDoubt(ae.InDoubt);
+							if (ae.InDoubt)
+							{
+								command.SetInDoubt();
+							}
 						}
 						status.SetException(ae);
 
@@ -55,7 +58,7 @@ namespace Aerospike.Client
 					{
 						if (!command.splitRetry)
 						{
-							command.SetInDoubt(true);
+							command.SetInDoubt();
 						}
 						status.SetException(e);
 

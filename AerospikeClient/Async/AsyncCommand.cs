@@ -180,14 +180,14 @@ namespace Aerospike.Client
 		{
 			if (totalTimeout > 0)
 			{
-				// Timeout already added in Execute(). Verify state.
+				// Timeout already added in Execute(). Verify State.
 				if (state != IN_PROGRESS)
 				{
 					// Total timeout might have occurred if command was in the delay queue.
 					// Socket timeout should not be possible for commands in the delay queue.
 					if (state != FAIL_TOTAL_TIMEOUT)
 					{
-						Log.Error(cluster.context, "Unexpected state at async command start: " + state);
+						Log.Error(cluster.context, "Unexpected State at async command start: " + state);
 					}
 					// User has already been notified of the total timeout. Release buffer and 
 					// return for all error states.
@@ -431,7 +431,7 @@ namespace Aerospike.Client
 					{
 						// Authentication failed. Session token probably expired.
 						// Signal tend thread to perform node login, so future
-						// transactions do not fail.
+						// commands do not fail.
 						node.SignalLogin();
 
 						// This is a rare event because the client tracks session
@@ -724,7 +724,7 @@ namespace Aerospike.Client
 					node?.AddTimeout();
 
 					// Notify user immediately in this timeout thread.
-					// Transaction thread will cleanup eventArgs.
+					// Command thread will cleanup eventArgs.
 					NotifyFailure(new AerospikeException.Timeout(policy, true));
 				}
 				return false;  // Do not put back on timeout queue.
@@ -746,7 +746,7 @@ namespace Aerospike.Client
 				// Socket timeout has occurred.
 				if (Interlocked.CompareExchange(ref state, FAIL_SOCKET_TIMEOUT, IN_PROGRESS) == IN_PROGRESS)
 				{
-					// User will be notified in transaction thread and this timeout thread.
+					// User will be notified in command thread and this timeout thread.
 					// Close connection. This will result in a socket error in the async callback thread
 					// and a possible retry.
 					if (node != null && conn != null)
@@ -775,14 +775,14 @@ namespace Aerospike.Client
 			}
 			else if (status == FAIL_TOTAL_TIMEOUT)
 			{
-				// Timeout thread closed connection, but transaction still completed.
+				// Timeout thread closed connection, but command still completed.
 				// User has already been notified with timeout. Release buffer and return.
 				ReleaseBuffer();
 				return;
 			}
 			else if (status == FAIL_SOCKET_TIMEOUT)
 			{
-				// Timeout thread closed connection, but transaction still completed.
+				// Timeout thread closed connection, but command still completed.
 				// User has not been notified of the timeout. Release buffer and let
 				// OnSuccess() be called.
 				ReleaseBuffer();
@@ -908,6 +908,12 @@ namespace Aerospike.Client
 				ae.Policy = policy;
 				ae.Iteration = iteration;
 				ae.SetInDoubt(IsWrite(), commandSentCounter);
+				
+				if (ae.InDoubt)
+				{
+					OnInDoubt();
+				}
+				
 				OnFailure(ae);
 			}
 			catch (Exception e)
@@ -941,6 +947,12 @@ namespace Aerospike.Client
 				cluster.ReleaseBuffer(segment);
 				segment = null;
 			}
+		}
+
+		// Do nothing by default. Write commands will override this method.
+		protected internal virtual void OnInDoubt()
+		{
+
 		}
 
 		protected internal virtual bool RetryBatch()

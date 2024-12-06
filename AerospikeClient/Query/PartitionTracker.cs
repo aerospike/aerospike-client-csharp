@@ -238,7 +238,7 @@ namespace Aerospike.Client
 					Node node = p.GetNodeQuery(cluster, parts, part);
 
 					// Use node name to check for single node equality because
-					// partition map may be in transitional state between
+					// partition map may be in transitional State between
 					// the old and new node with the same name.
 					if (nodeFilter != null && !nodeFilter.Name.Equals(node.Name))
 					{
@@ -249,7 +249,7 @@ namespace Aerospike.Client
 
 					if (np == null)
 					{
-						// If the partition map is in a transitional state, multiple
+						// If the partition map is in a transitional State, multiple
 						// NodePartitions instances (each with different partitions)
 						// may be created for a single node.
 						np = new NodePartitions(node, partitionsCapacity);
@@ -390,7 +390,7 @@ namespace Aerospike.Client
 					{
 						// If errors occurred on a node, only that node's partitions are retried in the
 						// next iteration. If that node finally succeeds, the other original nodes still
-						// need to be retried if partition state is reused in the next scan/query command.
+						// need to be retried if partition State is reused in the next scan/query command.
 						// Force retry on all node partitions.
 						partitionFilter.retry = true;
 						partitionFilter.done = false;

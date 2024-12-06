@@ -14,8 +14,6 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using System;
-using System.Collections.Generic;
 
 namespace Aerospike.Client
 {
@@ -46,7 +44,7 @@ namespace Aerospike.Client
 			this.binNames = binNames;
 			this.tracker = tracker;
 
-			cluster.AddTran();
+			cluster.AddCommandCount();
 			tracker.SleepBetweenRetries = 0;
 			ScanPartitions();
 		}

@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2022 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -14,6 +14,7 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
+using System;
 using System.Collections.Generic;
 
 namespace Aerospike.Client
@@ -79,7 +80,7 @@ namespace Aerospike.Client
 		public int minConnsPerNode;
 
 		/// <summary>
-		/// Maximum number of synchronous connections allowed per server node.  Transactions will go
+		/// Maximum number of synchronous connections allowed per server node.  Commands will go
 		/// through retry logic and potentially fail with "ResultCode.NO_MORE_CONNECTIONS" if the maximum
 		/// number of connections would be exceeded.
 		/// <para>
@@ -120,7 +121,7 @@ namespace Aerospike.Client
 		/// </para>
 		/// <para>
 		/// If server's proto-fd-idle-ms is zero (no reap), then maxSocketIdle should also be zero.
-		/// Connections retrieved from a pool in transactions will not be checked for maxSocketIdle
+		/// Connections retrieved from a pool in commands will not be checked for maxSocketIdle
 		/// when maxSocketIdle is zero.  Idle connections will still be trimmed down from peak
 		/// connections to min connections (minConnsPerNode and asyncMinConnsPerNode) using a
 		/// hard-coded 55 second limit in the cluster tend thread.
@@ -147,7 +148,7 @@ namespace Aerospike.Client
 		/// <summary>
 		/// The number of cluster tend iterations that defines the window for <see cref="maxErrorRate"/>.
 		/// One tend iteration is defined as <see cref="tendInterval"/> plus the time to tend all nodes.
-		/// At the end of the window, the error count is reset to zero and backoff state is removed
+		/// At the end of the window, the error count is reset to zero and backoff State is removed
 		/// on all nodes.
 		/// <para>
 		/// Default: 1
@@ -225,7 +226,18 @@ namespace Aerospike.Client
 		/// Default user defined function policy used in batch UDF excecute commands.
 		/// </summary>
 		public BatchUDFPolicy batchUDFPolicyDefault = new BatchUDFPolicy();
-		
+
+		/// <summary>
+		/// Default multi-record transactions (MRT) policy when verifying record versions in a batch on a commit.
+		/// </summary>
+		public TxnVerifyPolicy txnVerifyPolicyDefault = new TxnVerifyPolicy();
+
+		/// <summary>
+		/// Default multi-record transactions (MRT) policy when rolling the transaction records forward (commit)
+		/// or back(abort) in a batch.
+		/// </summary>
+		public TxnRollPolicy txnRollPolicyDefault = new TxnRollPolicy();
+
 		/// <summary>
 		/// Default info policy that is used when info command's policy is null.
 		/// </summary>
@@ -262,6 +274,15 @@ namespace Aerospike.Client
 		/// <para>Default: false (use original "services" info request)</para>
 		/// </summary>
 		public bool useServicesAlternate;
+
+		/// For testing purposes only.  Do not modify.
+		/// <para>
+		/// Should the AerospikeClient instance communicate with the first seed node only
+		/// instead of using the data partition map to determine which node to send the
+		/// database command.
+		/// </para>
+		/// Default: false
+		public bool forceSingleNode = false;
 
 		/// <summary>
 		/// Track server rack data.  This field is useful when directing read commands to the server node
@@ -326,10 +347,13 @@ namespace Aerospike.Client
 			this.batchWritePolicyDefault = new BatchWritePolicy(other.batchWritePolicyDefault);
 			this.batchDeletePolicyDefault = new BatchDeletePolicy(other.batchDeletePolicyDefault);
 			this.batchUDFPolicyDefault = new BatchUDFPolicy(other.batchUDFPolicyDefault);
+			this.txnVerifyPolicyDefault = new TxnVerifyPolicy(other.txnVerifyPolicyDefault);
+			this.txnRollPolicyDefault = new TxnRollPolicy(other.txnRollPolicyDefault);
 			this.infoPolicyDefault = new InfoPolicy(other.infoPolicyDefault);
 			this.tlsPolicy = (other.tlsPolicy != null) ? new TlsPolicy(other.tlsPolicy) : null;
 			this.ipMap = other.ipMap;
 			this.useServicesAlternate = other.useServicesAlternate;
+			this.forceSingleNode = other.forceSingleNode;
 			this.rackAware = other.rackAware;
 			this.rackId = other.rackId;
 			this.rackIds = (other.rackIds != null) ? new List<int>(other.rackIds) : null;
@@ -340,6 +364,15 @@ namespace Aerospike.Client
 		/// </summary>
 		public ClientPolicy()
 		{
+		}
+
+		/// <summary>
+		/// Creates a deep copy of this client policy.
+		/// </summary>
+		/// <returns></returns>
+		public ClientPolicy Clone()
+		{
+			return new ClientPolicy(this);
 		}
 	}
 }

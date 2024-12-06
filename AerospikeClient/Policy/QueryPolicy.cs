@@ -21,6 +21,10 @@ namespace Aerospike.Client
 {
 	/// <summary>
 	/// Container object for policy attributes used in query operations.
+	/// <para>
+	/// Inherited Policy fields <see cref="Policy.Txn"/> and 
+	/// <see cref="Policy.failOnFilteredOut"/> are ignored.
+	/// </para>
 	/// </summary>
 	public class QueryPolicy : Policy
 	{
@@ -76,7 +80,7 @@ namespace Aerospike.Client
 		public bool includeBinData = true;
 
 		/// <summary>
-		/// Terminate query if cluster is in migration state. If the server supports partition
+		/// Terminate query if cluster is in migration State. If the server supports partition
 		/// queries or the query filter is null (scan), this field is ignored.
 		/// <para>Default: false</para>
 		/// </summary>
@@ -141,6 +145,15 @@ namespace Aerospike.Client
 		{
 			base.totalTimeout = 0;
 			base.maxRetries = 5;
+		}
+
+		/// <summary>
+		/// Creates a deep copy of this query policy.
+		/// </summary>
+		/// <returns></returns>
+		public new QueryPolicy Clone()
+		{
+			return new QueryPolicy(this);
 		}
 	}
 }

@@ -45,7 +45,7 @@ namespace Aerospike.Client
 
 			// Initialize maximum number of nodes to query in parallel.
 			this.maxConcurrentNodes = (policy.maxConcurrentNodes == 0 || policy.maxConcurrentNodes >= threads.Length) ? threads.Length : policy.maxConcurrentNodes;
-			cluster.AddTran();
+			cluster.AddCommandCount();
 		}
 
 		protected internal void InitializeThreads()

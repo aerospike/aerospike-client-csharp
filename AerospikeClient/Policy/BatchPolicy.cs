@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2022 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -23,7 +23,7 @@ namespace Aerospike.Client
 	/// <summary>
 	/// Batch parent policy.
 	/// </summary>
-	public sealed class BatchPolicy : Policy
+	public class BatchPolicy : Policy
 	{
 		/// <summary>
 		/// Maximum number of concurrent synchronous batch node request threads to server nodes.
@@ -44,7 +44,7 @@ namespace Aerospike.Client
 		/// <ul>
 		/// <li>
 		/// 1 (default): Issue batch node requests sequentially. This mode has a performance advantage
-		/// for small batch sizes because requests can be issued in the main transaction thread without
+		/// for small batch sizes because requests can be issued in the main command thread without
 		/// using a thread pool. This mode is not optimal for batch requests spread out over many nodes
 		/// in a large cluster.
 		/// </li>
@@ -71,7 +71,7 @@ namespace Aerospike.Client
 		/// Allow batch to be processed immediately in the server's receiving thread for in-memory
 		/// namespaces. If false, the batch will always be processed in separate service threads.
 		/// <para>
-		/// For batch transactions with smaller sized records (&lt;= 1K per record), inline
+		/// For batch commands with smaller sized records (&lt;= 1K per record), inline
 		/// processing will be significantly faster on in-memory namespaces.
 		/// </para>
 		/// <para>
@@ -188,6 +188,15 @@ namespace Aerospike.Client
 			BatchPolicy policy = new BatchPolicy();
 			policy.maxRetries = 0;
 			return policy;
+		}
+
+		/// <summary>
+		/// Creates a deep copy of this batch policy.
+		/// </summary>
+		/// <returns></returns>
+		public new BatchPolicy Clone()
+		{
+			return new BatchPolicy(this);
 		}
 	}
 }

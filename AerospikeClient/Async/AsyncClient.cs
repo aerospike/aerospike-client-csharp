@@ -15,6 +15,8 @@
  * the License.
  */
 
+using static Aerospike.Client.AsyncQueryValidate;
+
 namespace Aerospike.Client
 {
 	/// <summary>
@@ -57,7 +59,7 @@ namespace Aerospike.Client
 		/// </list>
 		/// <para>
 		/// If the connection succeeds, the client is ready to process database requests.
-		/// If the connection fails, the cluster will remain in a disconnected state
+		/// If the connection fails, the cluster will remain in a disconnected State
 		/// until the server is activated.
 		/// </para>
 		/// </summary>
@@ -81,7 +83,7 @@ namespace Aerospike.Client
 		/// <para>
 		/// If the connection succeeds, the client is ready to process database requests.
 		/// If the connection fails and the policy's failOnInvalidHosts is true, a connection 
-		/// exception will be thrown. Otherwise, the cluster will remain in a disconnected state
+		/// exception will be thrown. Otherwise, the cluster will remain in a disconnected State
 		/// until the server is activated.
 		/// </para>
 		/// </summary>
@@ -110,7 +112,7 @@ namespace Aerospike.Client
 		/// <para>
 		/// If one connection succeeds, the client is ready to process database requests.
 		/// If all connections fail and the policy's failIfNotConnected is true, a connection 
-		/// exception will be thrown. Otherwise, the cluster will remain in a disconnected state
+		/// exception will be thrown. Otherwise, the cluster will remain in a disconnected State
 		/// until the server is activated.
 		/// </para>
 		/// </summary>
@@ -129,6 +131,112 @@ namespace Aerospike.Client
 		}
 
 		//-------------------------------------------------------
+		// Multi-Record Transactions
+		//-------------------------------------------------------
+
+		/// <summary>
+		/// Asynchronously attempt to commit the given multi-record transaction.
+		/// Create listener, call asynchronous commit and return task monitor.
+		/// </summary>
+		/// <param name="txn">multi-record transaction</param>
+		/// <param name="token">cancellation token</param>
+		public Task Commit(Txn txn, CancellationToken token)
+		{
+			var listener = new CommitListenerAdapter(token);
+			Commit(listener, txn);
+			return listener.Task;
+		}
+
+		/// <summary>
+		/// Asynchronously attempt to commit the given multi-record transaction. First, the expected
+		/// record versions are sent to the server nodes for verification. If all nodes return success,
+		/// the transaction is committed. Otherwise, the transaction is aborted.
+		/// <para>
+		/// Schedules the commit command with a channel selector and return.
+		/// Another thread will process the command and send the results to the listener.
+		/// </para>
+		/// <para>
+		/// Requires server version 8.0+
+		/// </para>
+		/// </summary>
+		/// <param name="listener">where to send results</param>
+		/// <param name="txn">multi-record transaction</param>
+		public void Commit(CommitListener listener, Txn txn)
+		{
+			AsyncTxnRoll atr = new(
+				cluster, txnVerifyPolicyDefault, txnRollPolicyDefault, txn
+				);
+
+			switch (txn.State)
+			{
+				default:
+				case Txn.TxnState.OPEN:
+					atr.Verify(listener);
+					break;
+
+				case Txn.TxnState.VERIFIED:
+					atr.Commit(listener);
+					break;
+
+				case Txn.TxnState.COMMITTED:
+					listener.OnSuccess(CommitStatus.CommitStatusType.ALREADY_COMMITTED);
+					break;
+
+				case Txn.TxnState.ABORTED:
+					listener.OnSuccess(CommitStatus.CommitStatusType.ALREADY_ABORTED);
+					break;
+
+			}
+		}
+
+		/// <summary>
+		/// Asynchronously attempt to abort and rollback the given multi-record transaction.
+		/// Create listener, call asynchronous commit and return task monitor.
+		/// </summary>
+		/// <param name="txn">multi-record transaction</param>
+		/// <param name="token">cancellation token</param>
+		public Task Abort(Txn txn, CancellationToken token)
+		{
+			var listener = new AbortListenerAdapter(token);
+			Abort(listener, txn);
+			return listener.Task;
+		}
+
+
+		/// <summary>
+		/// Asynchronously abort and rollback the given multi-record transaction.
+		/// <para>
+		/// Schedules the abort command with a channel selector and return.
+		/// Another thread will process the command and send the results to the listener.
+		/// </para><para>
+		/// Requires server version 8.0+
+		/// </para>
+		/// </summary>
+		/// <param name="listener">where to send results</param>
+		/// <param name="txn">multi-record transaction</param>
+		public void Abort(AbortListener listener, Txn txn)
+		{
+			AsyncTxnRoll atr = new(cluster, null, txnRollPolicyDefault, txn);
+			
+			switch (txn.State)
+			{
+				default:
+				case Txn.TxnState.OPEN:
+				case Txn.TxnState.VERIFIED:
+					atr.Abort(listener);
+					break;
+
+				case Txn.TxnState.COMMITTED:
+					listener.OnSuccess(AbortStatus.AbortStatusType.ALREADY_COMMITTED);
+					break;
+
+				case Txn.TxnState.ABORTED:
+					listener.OnSuccess(AbortStatus.AbortStatusType.ALREADY_ABORTED);
+					break;
+			}
+		}
+
+		//-------------------------------------------------------
 		// Write Record Operations
 		//-------------------------------------------------------
 
@@ -136,7 +244,7 @@ namespace Aerospike.Client
 		/// Asynchronously write record bin(s). 
 		/// Create listener, call asynchronous put and return task monitor.
 		/// <para>
-		/// The policy specifies the transaction timeout, record expiration and how the transaction is
+		/// The policy specifies the command timeout, record expiration and how the command is
 		/// handled when the record already exists.
 		/// </para>
 		/// </summary>
@@ -151,13 +259,13 @@ namespace Aerospike.Client
 			Put(policy, listener, key, bins);
 			return listener.Task;
 		}
-		
+
 		/// <summary>
 		/// Asynchronously write record bin(s). 
 		/// Schedules the put command with a channel selector and return.
 		/// Another thread will process the command and send the results to the listener.
 		/// <para>
-		/// The policy specifies the transaction timeout, record expiration and how the transaction is
+		/// The policy specifies the command timeout, record expiration and how the command is
 		/// handled when the record already exists.
 		/// </para>
 		/// </summary>
@@ -173,7 +281,7 @@ namespace Aerospike.Client
 				policy = writePolicyDefault;
 			}
 			AsyncWrite async = new AsyncWrite(cluster, policy, listener, key, bins, Operation.Type.WRITE);
-			async.Execute();
+			AsyncTxnMonitor.Execute(cluster, policy, async);
 		}
 
 		//-------------------------------------------------------
@@ -184,7 +292,7 @@ namespace Aerospike.Client
 		/// Asynchronously append bin string values to existing record bin values.
 		/// Create listener, call asynchronous append and return task monitor.
 		/// <para>
-		/// The policy specifies the transaction timeout, record expiration and how the transaction is
+		/// The policy specifies the command timeout, record expiration and how the command is
 		/// handled when the record already exists.
 		/// This call only works for string values. 
 		/// </para>
@@ -206,7 +314,7 @@ namespace Aerospike.Client
 		/// Schedule the append command with a channel selector and return.
 		/// Another thread will process the command and send the results to the listener.
 		/// <para>
-		/// The policy specifies the transaction timeout, record expiration and how the transaction is
+		/// The policy specifies the command timeout, record expiration and how the command is
 		/// handled when the record already exists.
 		/// This call only works for string values. 
 		/// </para>
@@ -223,14 +331,14 @@ namespace Aerospike.Client
 				policy = writePolicyDefault;
 			}
 			AsyncWrite async = new AsyncWrite(cluster, policy, listener, key, bins, Operation.Type.APPEND);
-			async.Execute();
+			AsyncTxnMonitor.Execute(cluster, policy, async);
 		}
 
 		/// <summary>
 		/// Asynchronously prepend bin string values to existing record bin values.
 		/// Create listener, call asynchronous prepend and return task monitor.
 		/// <para>
-		/// The policy specifies the transaction timeout, record expiration and how the transaction is
+		/// The policy specifies the command timeout, record expiration and how the command is
 		/// handled when the record already exists.
 		/// This call works only for string values. 
 		/// </para>
@@ -252,7 +360,7 @@ namespace Aerospike.Client
 		/// Schedule the prepend command with a channel selector and return.
 		/// Another thread will process the command and send the results to the listener.
 		/// <para>
-		/// The policy specifies the transaction timeout, record expiration and how the transaction is
+		/// The policy specifies the command timeout, record expiration and how the command is
 		/// handled when the record already exists.
 		/// This call works only for string values. 
 		/// </para>
@@ -269,7 +377,7 @@ namespace Aerospike.Client
 				policy = writePolicyDefault;
 			}
 			AsyncWrite async = new AsyncWrite(cluster, policy, listener, key, bins, Operation.Type.PREPEND);
-			async.Execute();
+			AsyncTxnMonitor.Execute(cluster, policy, async);
 		}
 
 		//-------------------------------------------------------
@@ -280,7 +388,7 @@ namespace Aerospike.Client
 		/// Asynchronously add integer/double bin values to existing record bin values.
 		/// Create listener, call asynchronous add and return task monitor.
 		/// <para>
-		/// The policy specifies the transaction timeout, record expiration and how the transaction is
+		/// The policy specifies the command timeout, record expiration and how the command is
 		/// handled when the record already exists.
 		/// </para>
 		/// </summary>
@@ -301,7 +409,7 @@ namespace Aerospike.Client
 		/// Schedule the add command with a channel selector and return.
 		/// Another thread will process the command and send the results to the listener.
 		/// <para>
-		/// The policy specifies the transaction timeout, record expiration and how the transaction is
+		/// The policy specifies the command timeout, record expiration and how the command is
 		/// handled when the record already exists.
 		/// </para>
 		/// </summary>
@@ -317,7 +425,7 @@ namespace Aerospike.Client
 				policy = writePolicyDefault;
 			}
 			AsyncWrite async = new AsyncWrite(cluster, policy, listener, key, bins, Operation.Type.ADD);
-			async.Execute();
+			AsyncTxnMonitor.Execute(cluster, policy, async);
 		}
 
 		//-------------------------------------------------------
@@ -355,7 +463,7 @@ namespace Aerospike.Client
 				policy = writePolicyDefault;
 			}
 			AsyncDelete async = new AsyncDelete(cluster, policy, key, listener);
-			async.Execute();
+			AsyncTxnMonitor.Execute(cluster, policy, async);
 		}
 
 		/// <summary>
@@ -411,7 +519,8 @@ namespace Aerospike.Client
 			BatchAttr attr = new BatchAttr();
 			attr.SetDelete(deletePolicy);
 
-			new AsyncBatchOperateRecordArrayExecutor(cluster, batchPolicy, listener, keys, null, attr);
+			AsyncBatchOperateRecordArrayExecutor executor = new(cluster, batchPolicy, listener, keys, null, attr);
+			AsyncTxnMonitor.ExecuteBatch(batchPolicy, executor, keys);
 		}
 
 		/// <summary>
@@ -451,7 +560,8 @@ namespace Aerospike.Client
 			BatchAttr attr = new BatchAttr();
 			attr.SetDelete(deletePolicy);
 
-			new AsyncBatchOperateRecordSequenceExecutor(cluster, batchPolicy, listener, keys, null, attr);
+			AsyncBatchOperateRecordSequenceExecutor executor = new(cluster, batchPolicy, listener, keys, null, attr);
+			AsyncTxnMonitor.ExecuteBatch(batchPolicy, executor, keys);
 		}
 
 		//-------------------------------------------------------
@@ -491,7 +601,7 @@ namespace Aerospike.Client
 				policy = writePolicyDefault;
 			}
 			AsyncTouch async = new AsyncTouch(cluster, policy, listener, key);
-			async.Execute();
+			AsyncTxnMonitor.Execute(cluster, policy, async);
 		}
 
 		/// <summary>
@@ -531,7 +641,7 @@ namespace Aerospike.Client
 				policy = writePolicyDefault;
 			}
 			AsyncTouch async = new(cluster, policy, listener, key);
-			async.Execute();
+			AsyncTxnMonitor.Execute(cluster, policy, async);
 		}
 
 		//-------------------------------------------------------
@@ -568,6 +678,9 @@ namespace Aerospike.Client
 			{
 				policy = readPolicyDefault;
 			}
+
+			policy.Txn?.PrepareRead(key.ns);
+
 			AsyncExists async = new AsyncExists(cluster, policy, key, listener);
 			async.Execute();
 		}
@@ -607,7 +720,10 @@ namespace Aerospike.Client
 			{
 				policy = batchPolicyDefault;
 			}
-			new AsyncBatchExistsArrayExecutor(cluster, policy, keys, listener);
+			policy.Txn?.PrepareRead(keys);
+
+			AsyncBatchExistsArrayExecutor executor = new(cluster, policy, keys, listener);
+			executor.Execute();
 		}
 
 		/// <summary>
@@ -630,7 +746,10 @@ namespace Aerospike.Client
 			{
 				policy = batchPolicyDefault;
 			}
-			new AsyncBatchExistsSequenceExecutor(cluster, policy, keys, listener);
+			policy.Txn?.PrepareRead(keys);
+
+			AsyncBatchExistsSequenceExecutor executor = new(cluster, policy, keys, listener);
+			executor.Execute();
 		}
 		
 		//-------------------------------------------------------
@@ -667,6 +786,9 @@ namespace Aerospike.Client
 			{
 				policy = readPolicyDefault;
 			}
+
+			policy.Txn?.PrepareRead(key.ns);
+
 			AsyncRead async = new AsyncRead(cluster, policy, listener, key, (string[])null);
 			async.Execute();
 		}
@@ -703,6 +825,9 @@ namespace Aerospike.Client
 			{
 				policy = readPolicyDefault;
 			}
+
+			policy.Txn?.PrepareRead(key.ns);
+
 			AsyncRead async = new AsyncRead(cluster, policy, listener, key, binNames);
 			async.Execute();
 		}
@@ -737,6 +862,9 @@ namespace Aerospike.Client
 			{
 				policy = readPolicyDefault;
 			}
+
+			policy.Txn?.PrepareRead(key.ns);
+
 			AsyncReadHeader async = new AsyncReadHeader(cluster, policy, listener, key);
 			async.Execute();
 		}
@@ -789,7 +917,10 @@ namespace Aerospike.Client
 			{
 				policy = batchPolicyDefault;
 			}
-			new AsyncBatchReadListExecutor(cluster, policy, listener, records);
+			policy.Txn?.PrepareRead(records);
+
+			AsyncBatchReadListExecutor executor = new(cluster, policy, listener, records);
+			executor.Execute();
 		}
 
 		/// <summary>
@@ -817,7 +948,10 @@ namespace Aerospike.Client
 			{
 				policy = batchPolicyDefault;
 			}
-			new AsyncBatchReadSequenceExecutor(cluster, policy, listener, records);
+			policy.Txn?.PrepareRead(records);
+
+			AsyncBatchReadSequenceExecutor executor = new(cluster, policy, listener, records);
+			executor.Execute();
 		}
 
 		/// <summary>
@@ -861,7 +995,10 @@ namespace Aerospike.Client
 			{
 				policy = batchPolicyDefault;
 			}
-			new AsyncBatchGetArrayExecutor(cluster, policy, listener, keys, null, null, Command.INFO1_READ | Command.INFO1_GET_ALL, false);
+			policy.Txn?.PrepareRead(keys);
+
+			AsyncBatchGetArrayExecutor executor = new(cluster, policy, listener, keys, null, null, Command.INFO1_READ | Command.INFO1_GET_ALL, false);
+			executor.Execute();
 		}
 
 		/// <summary>
@@ -887,7 +1024,10 @@ namespace Aerospike.Client
 			{
 				policy = batchPolicyDefault;
 			}
-			new AsyncBatchGetSequenceExecutor(cluster, policy, listener, keys, null, null, Command.INFO1_READ | Command.INFO1_GET_ALL, false);
+			policy.Txn?.PrepareRead(keys);
+
+			AsyncBatchGetSequenceExecutor executor = new(cluster, policy, listener, keys, null, null, Command.INFO1_READ | Command.INFO1_GET_ALL, false);
+			executor.Execute();
 		}
 
 		/// <summary>
@@ -933,7 +1073,10 @@ namespace Aerospike.Client
 			{
 				policy = batchPolicyDefault;
 			}
-			new AsyncBatchGetArrayExecutor(cluster, policy, listener, keys, binNames, null, Command.INFO1_READ, false);
+			policy.Txn?.PrepareRead(keys);
+
+			AsyncBatchGetArrayExecutor executor = new(cluster, policy, listener, keys, binNames, null, Command.INFO1_READ, false);
+			executor.Execute();
 		}
 
 		/// <summary>
@@ -960,7 +1103,13 @@ namespace Aerospike.Client
 			{
 				policy = batchPolicyDefault;
 			}
-			new AsyncBatchGetSequenceExecutor(cluster, policy, listener, keys, binNames, null, Command.INFO1_READ, false);
+			policy.Txn?.PrepareRead(keys);
+
+			int readAttr = (binNames == null || binNames.Length == 0)?
+			Command.INFO1_READ | Command.INFO1_GET_ALL : Command.INFO1_READ;
+
+			AsyncBatchGetSequenceExecutor executor = new(cluster, policy, listener, keys, binNames, null, readAttr, false);
+			executor.Execute();
 		}
 
 		/// <summary>
@@ -1008,7 +1157,11 @@ namespace Aerospike.Client
 			{
 				policy = batchPolicyDefault;
 			}
-			new AsyncBatchGetArrayExecutor(cluster, policy, listener, keys, null, ops, Command.INFO1_READ, true);
+
+			policy.Txn?.PrepareRead(keys);
+
+			AsyncBatchGetArrayExecutor executor = new(cluster, policy, listener, keys, null, ops, Command.INFO1_READ, true);
+			executor.Execute();
 		}
 
 		/// <summary>
@@ -1037,7 +1190,11 @@ namespace Aerospike.Client
 			{
 				policy = batchPolicyDefault;
 			}
-			new AsyncBatchGetSequenceExecutor(cluster, policy, listener, keys, null, ops, Command.INFO1_READ, true);
+
+			policy.Txn?.PrepareRead(keys);
+
+			AsyncBatchGetSequenceExecutor executor = new(cluster, policy, listener, keys, null, ops, Command.INFO1_READ, true);
+			executor.Execute();
 		}
 
 		/// <summary>
@@ -1081,7 +1238,10 @@ namespace Aerospike.Client
 			{
 				policy = batchPolicyDefault;
 			}
-			new AsyncBatchGetArrayExecutor(cluster, policy, listener, keys, null, null, Command.INFO1_READ | Command.INFO1_NOBINDATA, false);
+			policy.Txn?.PrepareRead(keys);
+
+			AsyncBatchGetArrayExecutor executor = new(cluster, policy, listener, keys, null, null, Command.INFO1_READ | Command.INFO1_NOBINDATA, false);
+			executor.Execute();
 		}
 
 		/// <summary>
@@ -1107,7 +1267,10 @@ namespace Aerospike.Client
 			{
 				policy = batchPolicyDefault;
 			}
-			new AsyncBatchGetSequenceExecutor(cluster, policy, listener, keys, null, null, Command.INFO1_READ | Command.INFO1_NOBINDATA, false);
+			policy.Txn?.PrepareRead(keys);
+
+			AsyncBatchGetSequenceExecutor executor = new(cluster, policy, listener, keys, null, null, Command.INFO1_READ | Command.INFO1_NOBINDATA, false);
+			executor.Execute();
 		}
 		
 		//-------------------------------------------------------
@@ -1155,9 +1318,21 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if queue is full</exception>
 		public void Operate(WritePolicy policy, RecordListener listener, Key key, params Operation[] ops)
 		{
-			OperateArgs args = new OperateArgs(policy, writePolicyDefault, operatePolicyReadDefault, key, ops);
-			AsyncOperate async = new AsyncOperate(cluster, listener, key, args);
-			async.Execute();
+			OperateArgs args = new OperateArgs(policy, writePolicyDefault, operatePolicyReadDefault, ops);
+			policy = args.writePolicy;
+
+			if (args.hasWrite)
+			{
+				AsyncOperateWrite async = new(cluster, listener, key, args);
+				AsyncTxnMonitor.Execute(cluster, policy, async);
+			}
+			else
+			{
+				policy.Txn?.PrepareRead(key.ns);
+
+				AsyncOperateRead async = new(cluster, listener, key, args);
+				async.Execute();
+			}
 		}
 
 		//-------------------------------------------------------
@@ -1211,7 +1386,8 @@ namespace Aerospike.Client
 			{
 				policy = batchParentPolicyWriteDefault;
 			}
-			new AsyncBatchOperateListExecutor(cluster, policy, listener, records);
+			AsyncBatchOperateListExecutor executor = new(cluster, policy, listener, records);
+			AsyncTxnMonitor.ExecuteBatch(policy, executor, records);
 		}
 
 		/// <summary>
@@ -1245,7 +1421,8 @@ namespace Aerospike.Client
 			{
 				policy = batchParentPolicyWriteDefault;
 			}
-			new AsyncBatchOperateSequenceExecutor(cluster, policy, listener, records);
+			AsyncBatchOperateSequenceExecutor executor = new(cluster, policy, listener, records);
+			AsyncTxnMonitor.ExecuteBatch(policy, executor, records);
 		}
 
 		/// <summary>
@@ -1309,7 +1486,8 @@ namespace Aerospike.Client
 			}
 
 			BatchAttr attr = new BatchAttr(batchPolicy, writePolicy, ops);
-			new AsyncBatchOperateRecordArrayExecutor(cluster, batchPolicy, listener, keys, ops, attr);
+			AsyncBatchOperateRecordArrayExecutor executor = new(cluster, batchPolicy, listener, keys, ops, attr);
+			AsyncTxnMonitor.ExecuteBatch(batchPolicy, executor, keys);
 		}
 
 		/// <summary>
@@ -1352,7 +1530,8 @@ namespace Aerospike.Client
 			}
 
 			BatchAttr attr = new BatchAttr(batchPolicy, writePolicy, ops);
-			new AsyncBatchOperateRecordSequenceExecutor(cluster, batchPolicy, listener, keys, ops, attr);
+			AsyncBatchOperateRecordSequenceExecutor executor = new(cluster, batchPolicy, listener, keys, ops, attr);
+			AsyncTxnMonitor.ExecuteBatch(batchPolicy, executor, keys);
 		}
 
 		//-------------------------------------------------------
@@ -1454,7 +1633,7 @@ namespace Aerospike.Client
 		/// <param name="packageName">server package name where user defined function resides</param>
 		/// <param name="functionName">user defined function</param>
 		/// <param name="functionArgs">arguments passed in to user defined function</param>
-		/// <exception cref="AerospikeException">if transaction fails</exception>
+		/// <exception cref="AerospikeException">if command fails</exception>
 		public void Execute(WritePolicy policy, ExecuteListener listener, Key key, string packageName, string functionName, params Value[] functionArgs)
 		{
 			if (policy == null)
@@ -1462,7 +1641,7 @@ namespace Aerospike.Client
 				policy = writePolicyDefault;
 			}
 			AsyncExecute command = new AsyncExecute(cluster, policy, listener, key, packageName, functionName, functionArgs);
-			command.Execute();
+			AsyncTxnMonitor.Execute(cluster, policy, command);
 		}
 
 		/// <summary>
@@ -1528,7 +1707,8 @@ namespace Aerospike.Client
 			BatchAttr attr = new BatchAttr();
 			attr.SetUDF(udfPolicy);
 
-			new AsyncBatchUDFArrayExecutor(cluster, batchPolicy, listener, keys, packageName, functionName, argBytes, attr);
+			AsyncBatchUDFArrayExecutor executor = new(cluster, batchPolicy, listener, keys, packageName, functionName, argBytes, attr);
+			AsyncTxnMonitor.ExecuteBatch(batchPolicy, executor, keys);
 		}
 
 		/// <summary>
@@ -1575,7 +1755,8 @@ namespace Aerospike.Client
 			BatchAttr attr = new BatchAttr();
 			attr.SetUDF(udfPolicy);
 
-			new AsyncBatchUDFSequenceExecutor(cluster, batchPolicy, listener, keys, packageName, functionName, argBytes, attr);
+			AsyncBatchUDFSequenceExecutor executor = new(cluster, batchPolicy, listener, keys, packageName, functionName, argBytes, attr);
+			AsyncTxnMonitor.ExecuteBatch(batchPolicy, executor, keys);
 		}
 
 		//-------------------------------------------------------

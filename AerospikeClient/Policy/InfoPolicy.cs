@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2019 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -49,6 +49,15 @@ namespace Aerospike.Client
 		public InfoPolicy()
 		{
 			timeout = 1000;
+		}
+
+		/// <summary>
+		/// Creates a deep copy of this info policy.
+		/// </summary>
+		/// <returns></returns>
+		public InfoPolicy Clone()
+		{
+			return new InfoPolicy(this);
 		}
 	}
 }

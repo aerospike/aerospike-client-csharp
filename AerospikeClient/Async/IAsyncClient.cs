@@ -14,9 +14,6 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using System.Collections.Generic;
-using System.Threading;
-using System.Threading.Tasks;
 
 namespace Aerospike.Client
 {
@@ -39,7 +36,56 @@ namespace Aerospike.Client
     /// </para>
     /// </summary>
     public interface IAsyncClient : IAerospikeClient
-    {
+	{
+		//-------------------------------------------------------
+		// Multi-Record Transactions
+		//-------------------------------------------------------
+
+		/// <summary>
+		/// Asynchronously attempt to commit the given multi-record transaction.
+		/// Create listener, call asynchronous commit and return task monitor.
+		/// </summary>
+		/// <param name="txn">multi-record transaction</param>
+		/// <param name="token">cancellation token</param>
+		public Task Commit(Txn txn, CancellationToken token);
+
+		/// <summary>
+		/// Asynchronously attempt to commit the given multi-record transaction. First, the expected
+		/// record versions are sent to the server nodes for verification. If all nodes return success,
+		/// the transaction is committed. Otherwise, the transaction is aborted.
+		/// <para>
+		/// Schedules the commit command with a channel selector and return.
+		/// Another thread will process the command and send the results to the listener.
+		/// </para>
+		/// <para>
+		/// Requires server version 8.0+
+		/// </para>
+		/// </summary>
+		/// <param name="listener">where to send results</param>
+		/// <param name="txn">multi-record transaction</param>
+		void Commit(CommitListener listener, Txn txn);
+
+		/// <summary>
+		/// Asynchronously attempt to abort and rollback the given multi-record transaction.
+		/// Create listener, call asynchronous commit and return task monitor.
+		/// </summary>
+		/// <param name="txn">multi-record transaction</param>
+		/// <param name="token">cancellation token</param>
+		public Task Abort(Txn txn, CancellationToken token);
+
+		/// <summary>
+		/// Asynchronously abort and rollback the given multi-record transaction.
+		/// <para>
+		/// Schedules the abort command with a channel selector and return.
+		/// Another thread will process the command and send the results to the listener.
+		/// </para><para>
+		/// Requires server version 8.0+
+		/// </para>
+		/// </summary>
+		/// <param name="listener">where to send results</param>
+		/// <param name="txn">multi-record transaction</param>
+		void Abort(AbortListener listener, Txn txn);
+
 		//-------------------------------------------------------
 		// Write Record Operations
 		//-------------------------------------------------------
@@ -48,7 +94,7 @@ namespace Aerospike.Client
 		/// Asynchronously write record bin(s). 
 		/// Create listener, call asynchronous put and return task monitor.
 		/// <para>
-		/// The policy specifies the transaction timeout, record expiration and how the transaction is
+		/// The policy specifies the command timeout, record expiration and how the command is
 		/// handled when the record already exists.
 		/// </para>
 		/// </summary>
@@ -64,7 +110,7 @@ namespace Aerospike.Client
 		/// Schedules the put command with a channel selector and return.
 		/// Another thread will process the command and send the results to the listener.
 		/// <para>
-		/// The policy specifies the transaction timeout, record expiration and how the transaction is
+		/// The policy specifies the command timeout, record expiration and how the command is
 		/// handled when the record already exists.
 		/// </para>
 		/// </summary>
@@ -83,7 +129,7 @@ namespace Aerospike.Client
 		/// Asynchronously append bin string values to existing record bin values.
 		/// Create listener, call asynchronous append and return task monitor.
 		/// <para>
-		/// The policy specifies the transaction timeout, record expiration and how the transaction is
+		/// The policy specifies the command timeout, record expiration and how the command is
 		/// handled when the record already exists.
 		/// This call only works for string values. 
 		/// </para>
@@ -100,7 +146,7 @@ namespace Aerospike.Client
 		/// Schedule the append command with a channel selector and return.
 		/// Another thread will process the command and send the results to the listener.
 		/// <para>
-		/// The policy specifies the transaction timeout, record expiration and how the transaction is
+		/// The policy specifies the command timeout, record expiration and how the command is
 		/// handled when the record already exists.
 		/// This call only works for string values. 
 		/// </para>
@@ -116,7 +162,7 @@ namespace Aerospike.Client
 		/// Asynchronously prepend bin string values to existing record bin values.
 		/// Create listener, call asynchronous prepend and return task monitor.
 		/// <para>
-		/// The policy specifies the transaction timeout, record expiration and how the transaction is
+		/// The policy specifies the command timeout, record expiration and how the command is
 		/// handled when the record already exists.
 		/// This call works only for string values. 
 		/// </para>
@@ -133,7 +179,7 @@ namespace Aerospike.Client
 		/// Schedule the prepend command with a channel selector and return.
 		/// Another thread will process the command and send the results to the listener.
 		/// <para>
-		/// The policy specifies the transaction timeout, record expiration and how the transaction is
+		/// The policy specifies the command timeout, record expiration and how the command is
 		/// handled when the record already exists.
 		/// This call works only for string values. 
 		/// </para>
@@ -153,7 +199,7 @@ namespace Aerospike.Client
 		/// Asynchronously add integer bin values to existing record bin values.
 		/// Create listener, call asynchronous add and return task monitor.
 		/// <para>
-		/// The policy specifies the transaction timeout, record expiration and how the transaction is
+		/// The policy specifies the command timeout, record expiration and how the command is
 		/// handled when the record already exists.
 		/// This call only works for integer values. 
 		/// </para>
@@ -170,7 +216,7 @@ namespace Aerospike.Client
 		/// Schedule the add command with a channel selector and return.
 		/// Another thread will process the command and send the results to the listener.
 		/// <para>
-		/// The policy specifies the transaction timeout, record expiration and how the transaction is
+		/// The policy specifies the command timeout, record expiration and how the command is
 		/// handled when the record already exists.
 		/// </para>
 		/// </summary>
@@ -189,7 +235,7 @@ namespace Aerospike.Client
 		/// Asynchronously delete record for specified key.
 		/// Create listener, call asynchronous delete and return task monitor.
 		/// <para>
-		/// The policy specifies the transaction timeout.
+		/// The policy specifies the command timeout.
 		/// </para>
 		/// </summary>
 		/// <param name="policy">delete configuration parameters, pass in null for defaults</param>
@@ -880,7 +926,7 @@ namespace Aerospike.Client
 		/// <param name="packageName">server package name where user defined function resides</param>
 		/// <param name="functionName">user defined function</param>
 		/// <param name="functionArgs">arguments passed in to user defined function</param>
-		/// <exception cref="AerospikeException">if transaction fails</exception>
+		/// <exception cref="AerospikeException">if command fails</exception>
 		void Execute(WritePolicy policy, ExecuteListener listener, Key key, string packageName, string functionName, params Value[] functionArgs);
 
 		/// <summary>

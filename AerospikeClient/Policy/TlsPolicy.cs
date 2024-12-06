@@ -151,5 +151,14 @@ namespace Aerospike.Client
 			clientCertificates = new X509CertificateCollection();
 			clientCertificates.Add(cert);
 		}
+
+		/// <summary>
+		/// Creates a deep copy of this TLS policy.
+		/// </summary>
+		/// <returns></returns>
+		public TlsPolicy Clone()
+		{
+			return new TlsPolicy(this);
+		}
 	}
 }

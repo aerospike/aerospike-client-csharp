@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2023 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -14,7 +14,9 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
+using System.Collections.ObjectModel;
 using System.Text;
+using static Aerospike.Client.CommitError;
 
 namespace Aerospike.Client
 {
@@ -37,6 +39,12 @@ namespace Aerospike.Client
 
 		public AerospikeException(int resultCode, Exception e)
 			: base(e?.Message ?? string.Empty, e)
+		{
+			this.resultCode = resultCode;
+		}
+
+		public AerospikeException(int resultCode, string message)
+			: base(message)
 		{
 			this.resultCode = resultCode;
 		}
@@ -76,7 +84,7 @@ namespace Aerospike.Client
 		{
 			get
 			{
-				StringBuilder sb = new StringBuilder(512);
+				StringBuilder sb = new(512);
 
 				sb.Append("Error ");
 				sb.Append(resultCode);
@@ -159,7 +167,7 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
-		/// Transaction policy.
+		/// Command policy.
 		/// </summary>
 		public Policy Policy
 		{
@@ -200,7 +208,7 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
-		/// Is it possible that write transaction may have completed.
+		/// Is it possible that write command may have completed.
 		/// </summary>
 		public bool InDoubt
 		{
@@ -211,7 +219,7 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
-		/// Set whether it is possible that the write transaction may have completed
+		/// Set whether it is possible that the write command may have completed
 		/// even though this exception was generated.  This may be the case when a 
 		/// client error occurs (like timeout) after the command was sent to the server.
 		/// </summary>
@@ -299,7 +307,7 @@ namespace Aerospike.Client
 						return "Client timeout: " + totalTimeout;
 					}
 
-					StringBuilder sb = new StringBuilder(512);
+					StringBuilder sb = new(512);
 
 					if (client)
 					{
@@ -487,6 +495,12 @@ namespace Aerospike.Client
 			{
 				this.records = records;
 			}
+
+			public BatchRecordArray(BatchRecord[] records, string message, Exception e)
+				: base(ResultCode.BATCH_FAILED, message, e)
+			{
+				this.records = records;
+			}
 		}
 
 		/// <summary>
@@ -558,6 +572,117 @@ namespace Aerospike.Client
 			/// </summary>
 			public Backoff(int resultCode) : base(resultCode)
 			{
+			}
+		}
+
+		/// <summary>
+		/// Exception thrown when a multi-record transaction commit fails.
+		/// Commit Exception has similar behavior to AggregateException. 
+		/// <see cref="InnerExceptions"/> might be populated if mutliple exceptions contribute to the failure. 
+		/// </summary>
+		public sealed class Commit : AerospikeException
+		{
+			/// <summary>
+			/// Error status of the attempted commit.
+			/// </summary>
+			public readonly CommitErrorType Error;
+
+			/// <summary>
+			/// Verify result for each read key in the MRT. May be null if failure occurred before verify.
+			/// </summary>
+			public readonly BatchRecord[] VerifyRecords;
+
+			/// <summary>
+			/// Roll forward/backward result for each write key in the MRT. May be null if failure occurred before
+			/// roll forward/backward.
+			/// </summary>
+			public readonly BatchRecord[] RollRecords;
+
+			private readonly Exception[] _innerExceptions; // Complete set of exceptions.
+
+			public Commit(CommitErrorType error, BatchRecord[] verifyRecords, BatchRecord[] rollRecords)
+				: base(ResultCode.TXN_FAILED, CommitErrorToString(error))
+			{
+				this.Error = error;
+				this.VerifyRecords = verifyRecords;
+				this.RollRecords = rollRecords;
+				_innerExceptions = Array.Empty<Exception>();
+			}
+
+			public Commit(CommitErrorType error, BatchRecord[] verifyRecords, BatchRecord[] rollRecords, Exception innerException)
+				: base(ResultCode.TXN_FAILED, CommitErrorToString(error), innerException)
+			{
+				this.Error = error;
+				this.VerifyRecords = verifyRecords;
+				this.RollRecords = rollRecords;
+				_innerExceptions = new[] { innerException };
+			}
+
+			public Commit(CommitErrorType error, BatchRecord[] verifyRecords, BatchRecord[] rollRecords, Exception[] innerExceptions)
+				: base(ResultCode.TXN_FAILED, CommitErrorToString(error), innerExceptions[0])
+			{
+				this.Error = error;
+				this.VerifyRecords = verifyRecords;
+				this.RollRecords = rollRecords;
+				_innerExceptions = innerExceptions;
+			}
+
+			/// <summary>
+			/// Get Commit message with records.
+			/// </summary>
+			public override string Message
+			{
+				get
+				{
+					StringBuilder sb = new(1024);
+					RecordsToString(sb, "verify errors:", VerifyRecords);
+					RecordsToString(sb, "roll errors:", RollRecords);
+					return BaseMessage + sb.ToString();
+				}
+			}
+
+			/// <summary>
+			/// Gets a read-only collection of the <see cref="System.Exception"/> instances that caused the
+			/// current exception.
+			/// </summary>
+			public ReadOnlyCollection<Exception> InnerExceptions => new ReadOnlyCollection<Exception>(_innerExceptions);
+		}
+
+		private static void RecordsToString(StringBuilder sb, String title, BatchRecord[] records)
+		{
+			if (records == null)
+			{
+				return;
+			}
+
+			int count = 0;
+
+			foreach (BatchRecord br in records) {
+				// Only show results with an error response.
+				if (!(br.resultCode == ResultCode.OK || br.resultCode == ResultCode.NO_RESPONSE)) 
+				{
+					// Only show first 3 errors.
+					if (count >= 3) 
+					{
+						sb.Append(System.Environment.NewLine);
+						sb.Append("...");
+						break;
+					}
+
+					if (count == 0)
+					{
+						sb.Append(System.Environment.NewLine);
+						sb.Append(title);
+					}
+
+					sb.Append(System.Environment.NewLine);
+					sb.Append(br.key);
+					sb.Append(',');
+					sb.Append(br.resultCode);
+					sb.Append(',');
+					sb.Append(br.inDoubt);
+					count++;
+				}
 			}
 		}
 	}

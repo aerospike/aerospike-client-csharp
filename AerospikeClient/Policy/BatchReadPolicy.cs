@@ -93,5 +93,14 @@ namespace Aerospike.Client
 		public BatchReadPolicy()
 		{
 		}
+
+		/// <summary>
+		/// Creates a deep copy of this batch read policy.
+		/// </summary>
+		/// <returns></returns>
+		public BatchReadPolicy Clone()
+		{
+			return new BatchReadPolicy(this);
+		}
 	}
 }
