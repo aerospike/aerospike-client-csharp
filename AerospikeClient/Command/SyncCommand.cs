@@ -14,7 +14,9 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
+using System;
 using System.Net.Sockets;
+using System.Runtime.InteropServices;
 using static Aerospike.Client.Latency;
 
 namespace Aerospike.Client
@@ -26,11 +28,6 @@ namespace Aerospike.Client
 		internal int iteration = 1;
 		internal int commandSentCounter;
 		internal DateTime deadline;
-		protected int resultCode;
-		protected int generation;
-		protected int expiration;
-		protected int fieldCount;
-		protected int opCount;
 
 		/// <summary>
 		/// Default constructor.
@@ -244,7 +241,7 @@ namespace Aerospike.Client
 				}
 				catch (AerospikeException.Backoff be)
 				{
-					// Node is in backoff state. Retry, hopefully on another node.
+					// Node is in backoff State. Retry, hopefully on another node.
 					exception = be;
 					isClientTimeout = false;
 					node.AddError();
@@ -351,7 +348,7 @@ namespace Aerospike.Client
 			ByteUtil.LongToBytes(size, dataBuffer, 0);
 		}
 
-		protected internal void ParseHeader(IConnection conn)
+		protected internal void ParseHeader(Connection conn)
 		{
 			// Read header.
 			conn.ReadFully(dataBuffer, 8, Command.STATE_READ_HEADER);
@@ -368,7 +365,7 @@ namespace Aerospike.Client
 			conn.ReadFully(dataBuffer, receiveSize, Command.STATE_READ_DETAIL);
 			conn.UpdateLastUsed();
 
-			ulong type = (ulong)((sz >> 48) & 0xff);
+			ulong type = (ulong)(sz >> 48) & 0xff;
 
 			if (type == Command.AS_MSG_TYPE)
 			{
@@ -388,7 +385,7 @@ namespace Aerospike.Client
 				throw new AerospikeException("Invalid proto type: " + type + " Expected: " + Command.AS_MSG_TYPE);
 			}
 
-			this.resultCode = dataBuffer[dataOffset];
+			this.resultCode = dataBuffer[dataOffset] & 0xFF;
 			dataOffset++;
 			this.generation = ByteUtil.BytesToInt(dataBuffer, dataOffset);
 			dataOffset += 4;
@@ -403,6 +400,12 @@ namespace Aerospike.Client
 		protected internal sealed override void SetLength(int length)
 		{
 			dataOffset = length;
+		}
+
+		// Do nothing by default. Write commands will override this method.
+		protected internal virtual void OnInDoubt()
+		{
+
 		}
 
 		protected internal virtual bool RetryBatch
@@ -433,7 +436,7 @@ namespace Aerospike.Client
 
 		protected abstract LatencyType GetLatencyType();
 		protected internal abstract void WriteBuffer();
-		protected internal abstract void ParseResult(IConnection conn);
+		protected internal abstract void ParseResult(Connection conn);
 		protected internal abstract bool PrepareRetry(bool timeout);
 	}
 }

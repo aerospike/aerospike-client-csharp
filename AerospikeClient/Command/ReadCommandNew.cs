@@ -42,6 +42,7 @@ namespace Aerospike.Client
 		public int FieldCount { get; set; }
 		public int OpCount { get; set; }
 		public bool IsOperation { get; set; }
+		public long? Version { get; set; }
 
 		protected readonly Key key;
 		protected readonly Partition partition;
@@ -56,7 +57,7 @@ namespace Aerospike.Client
 			this.binNames = null;
 			this.partition = Partition.Read(cluster, policy, key);
 			this.isOperation = false;
-			cluster.AddTran();
+			cluster.AddCommandCount();
 		}
 
 		public ReadCommandNew(ArrayPool<byte> bufferPool, Cluster cluster, Policy policy, Key key, String[] binNames)
@@ -66,17 +67,17 @@ namespace Aerospike.Client
 			this.binNames = binNames;
 			this.partition = Partition.Read(cluster, policy, key);
 			this.isOperation = false;
-			cluster.AddTran();
+			cluster.AddCommandCount();
 		}
 
-		public ReadCommandNew(ArrayPool<byte> bufferPool, Cluster cluster, Policy policy, Key key, Partition partition, bool isOperation)
+		public ReadCommandNew(ArrayPool<byte> bufferPool, Cluster cluster, Policy policy, Key key, bool isOperation)
 		{
 			this.SetCommonProperties(bufferPool, cluster, policy);
 			this.key = key;
 			this.binNames = null;
-			this.partition = partition;
 			this.isOperation = isOperation;
-			cluster.AddTran();
+			this.partition = Partition.Read(cluster, policy, key);
+			cluster.AddCommandCount();
 		}
 
 		public bool IsWrite()
@@ -104,88 +105,30 @@ namespace Aerospike.Client
 			token.ThrowIfCancellationRequested();
 
 			// Read header.		
-			await conn.ReadFully(DataBuffer, 8, token);
+			await this.ParseHeader(conn, token);
+			this.ParseFields(Policy.Txn, key, false);
 
-			long sz = ByteUtil.BytesToLong(DataBuffer, 0);
-			int receiveSize = (int)(sz & 0xFFFFFFFFFFFFL);
-
-			if (receiveSize <= 0)
+			if (ResultCode == Client.ResultCode.OK)
 			{
-				throw new AerospikeException("Invalid receive size: " + receiveSize);
-			}
-
-			this.SizeBuffer(receiveSize);
-			await conn.ReadFully(DataBuffer, receiveSize, token);
-			conn.UpdateLastUsed();
-
-			ulong type = (ulong)((sz >> 48) & 0xff);
-
-			if (type == Command.AS_MSG_TYPE)
-			{
-				DataOffset = 5;
-			}
-			else if (type == Command.MSG_TYPE_COMPRESSED)
-			{
-				int usize = (int)ByteUtil.BytesToLong(DataBuffer, 0);
-				byte[] ubuf = new byte[usize];
-
-				ByteUtil.Decompress(DataBuffer, 8, receiveSize, ubuf, usize);
-				DataBuffer = ubuf;
-				DataOffset = 13;
-			}
-			else
-			{
-				throw new AerospikeException("Invalid proto type: " + type + " Expected: " + Command.AS_MSG_TYPE);
-			}
-
-			int resultCode = DataBuffer[DataOffset];
-			DataOffset++;
-			int generation = ByteUtil.BytesToInt(DataBuffer, DataOffset);
-			DataOffset += 4;
-			int expiration = ByteUtil.BytesToInt(DataBuffer, DataOffset);
-			DataOffset += 8;
-			int fieldCount = ByteUtil.BytesToShort(DataBuffer, DataOffset);
-			DataOffset += 2;
-			int opCount = ByteUtil.BytesToShort(DataBuffer, DataOffset);
-			DataOffset += 2;
-
-			if (resultCode == 0)
-			{
-				if (opCount == 0)
-				{
-					// Bin data was not returned.
-					Record = new Record(null, generation, expiration);
-					return;
-				}
-				this.SkipKey(fieldCount);
-				(Record, DataOffset) = Policy.recordParser.ParseRecord(DataBuffer, DataOffset, opCount, generation, expiration, isOperation);
+				(Record, DataOffset) = Policy.recordParser.ParseRecord(DataBuffer, DataOffset, OpCount, Generation, Expiration, isOperation);
 				return;
 			}
 
-			if (resultCode == Client.ResultCode.KEY_NOT_FOUND_ERROR)
+			if (ResultCode == Client.ResultCode.KEY_NOT_FOUND_ERROR)
 			{
-				HandleNotFound(resultCode);
 				return;
 			}
 
-			if (resultCode == Client.ResultCode.FILTERED_OUT)
+			if (ResultCode == Client.ResultCode.FILTERED_OUT)
 			{
 				if (Policy.failOnFilteredOut)
 				{
-					throw new AerospikeException(resultCode);
+					throw new AerospikeException(ResultCode);
 				}
 				return;
 			}
 
-			if (resultCode == Client.ResultCode.UDF_BAD_RESPONSE)
-			{
-				this.SkipKey(fieldCount);
-				(Record, DataOffset) = Policy.recordParser.ParseRecord(DataBuffer, DataOffset, opCount, generation, expiration, isOperation);
-				HandleUdfError(resultCode);
-				return;
-			}
-
-			throw new AerospikeException(resultCode);
+			throw new AerospikeException(ResultCode);
 		}
 
 		public IAsyncEnumerable<KeyRecord> ParseMultipleResult(IConnection conn, CancellationToken token)

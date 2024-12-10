@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -17,7 +17,7 @@
 namespace Aerospike.Client
 {
 	/// <summary>
-	/// Desired consistency guarantee when committing a transaction on the server.
+	/// Desired consistency guarantee when committing a command on the server.
 	/// </summary>
 	public enum CommitLevel
 	{

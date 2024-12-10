@@ -17,12 +17,9 @@
 
 namespace Aerospike.Client
 {
-	public sealed class AsyncWrite : AsyncSingleCommand
+	public sealed class AsyncWrite : AsyncWriteBase
 	{
-		private readonly WritePolicy writePolicy;
 		private readonly WriteListener listener;
-		private readonly Key key;
-		private readonly Partition partition;
 		private readonly Bin[] bins;
 		private readonly Operation.Type operation;
 
@@ -34,24 +31,17 @@ namespace Aerospike.Client
 			Key key,
 			Bin[] bins,
 			Operation.Type operation
-		) : base(cluster, writePolicy)
+		) : base(cluster, writePolicy, key)
 		{
-			this.writePolicy = writePolicy;
 			this.listener = listener;
-			this.key = key;
-			this.partition = Partition.Write(cluster, policy, key);
 			this.bins = bins;
 			this.operation = operation;
-			cluster.AddTran();
 		}
 
 		public AsyncWrite(AsyncWrite other)
 			: base(other)
 		{
-			this.writePolicy = other.writePolicy;
 			this.listener = other.listener;
-			this.key = other.key;
-			this.partition = other.partition;
 			this.bins = other.bins;
 			this.operation = other.operation;
 		}
@@ -61,33 +51,19 @@ namespace Aerospike.Client
 			return new AsyncWrite(this);
 		}
 
-		protected internal override bool IsWrite()
-		{
-			return true;
-		}
-
-		protected internal override Node GetNode(Cluster cluster)
-		{
-			return partition.GetNodeWrite(cluster);
-		}
-
-		protected override Latency.LatencyType GetLatencyType()
-		{
-			return Latency.LatencyType.WRITE;
-		}
-
 		protected internal override void WriteBuffer()
 		{
-			SetWrite(writePolicy, operation, key, bins);
+			SetWrite(writePolicy, operation, Key, bins);
 		}
 
-		protected internal override void ParseResult()
+		protected internal override bool ParseResult()
 		{
-			int resultCode = dataBuffer[dataOffset + 5];
+			ParseHeader();
+			ParseFields(policy.Txn, Key, true);
 
-			if (resultCode == 0)
+			if (resultCode == ResultCode.OK)
 			{
-				return;
+				return true;
 			}
 
 			if (resultCode == ResultCode.FILTERED_OUT)
@@ -96,23 +72,17 @@ namespace Aerospike.Client
 				{
 					throw new AerospikeException(resultCode);
 				}
-				return;
+				return true;
 			}
 
 			throw new AerospikeException(resultCode);
-		}
-
-		protected internal override bool PrepareRetry(bool timeout)
-		{
-			partition.PrepareRetryWrite(timeout);
-			return true;
 		}
 
 		protected internal override void OnSuccess()
 		{
 			if (listener != null)
 			{
-				listener.OnSuccess(key);
+				listener.OnSuccess(Key);
 			}
 		}
 
@@ -125,3 +95,4 @@ namespace Aerospike.Client
 		}
 	}
 }
+

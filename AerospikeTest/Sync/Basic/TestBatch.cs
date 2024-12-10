@@ -1,4 +1,4 @@
-﻿/* 
+/* 
  * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
@@ -45,14 +45,7 @@ namespace Aerospike.Test
 		public static async Task WriteRecords(TestContext testContext)
 		{
 			WritePolicy policy = new WritePolicy();
-			if (!args.testProxy || (args.testProxy && nativeClient != null))
-			{
-				policy.expiration = 2592000;
-			}
-			if (args.testProxy)
-			{
-				policy.totalTimeout = args.proxyTotalTimeout;
-			}
+			policy.expiration = 2592000;
 
 			if (!args.testAsyncAwait)
 			{

@@ -15,15 +15,17 @@
  * the License.
  */
 
+using System;
+
 namespace Aerospike.Client
 {
-	public sealed class AsyncExecute : AsyncRead
+	public sealed class AsyncExecute : AsyncWriteBase
 	{
-		private readonly WritePolicy writePolicy;
 		private readonly ExecuteListener executeListener;
 		private readonly string packageName;
 		private readonly string functionName;
 		private readonly Value[] args;
+		private Record record;
 
 		public AsyncExecute
 		(
@@ -36,7 +38,6 @@ namespace Aerospike.Client
 			Value[] args
 		) : base(cluster, writePolicy, key)
 		{
-			this.writePolicy = writePolicy;
 			this.executeListener = listener;
 			this.packageName = packageName;
 			this.functionName = functionName;
@@ -46,7 +47,6 @@ namespace Aerospike.Client
 		public AsyncExecute(AsyncExecute other)
 			: base(other)
 		{
-			this.writePolicy = other.writePolicy;
 			this.executeListener = other.executeListener;
 			this.packageName = other.packageName;
 			this.functionName = other.functionName;
@@ -58,35 +58,66 @@ namespace Aerospike.Client
 			return new AsyncExecute(this);
 		}
 
-		protected internal override bool IsWrite()
-		{
-			return true;
-		}
-
-		protected internal override Node GetNode(Cluster cluster)
-		{
-			return partition.GetNodeWrite(cluster);
-		}
-
-		protected override Latency.LatencyType GetLatencyType()
-		{
-			return Latency.LatencyType.WRITE;
-		}
-
 		protected internal override void WriteBuffer()
 		{
-			SetUdf(writePolicy, key, packageName, functionName, args);
+			SetUdf(writePolicy, Key, packageName, functionName, args);
 		}
 
-		protected internal override void HandleNotFound(int resultCode)
+		protected internal override bool ParseResult()
 		{
+			ParseHeader();
+			ParseFields(policy.Txn, Key, true);
+
+			if (resultCode == ResultCode.OK)
+			{
+				(this.record, dataOffset) = policy.recordParser.ParseRecord(dataBuffer, dataOffset, opCount, generation, expiration, false);
+				return true;
+			}
+
+			if (resultCode == ResultCode.UDF_BAD_RESPONSE)
+			{
+				(this.record, dataOffset) = policy.recordParser.ParseRecord(dataBuffer, dataOffset, opCount, generation, expiration, false);
+				HandleUdfError(resultCode);
+				return true;
+			}
+
+			if (resultCode == ResultCode.FILTERED_OUT)
+			{
+				if (policy.failOnFilteredOut)
+				{
+					throw new AerospikeException(resultCode);
+				}
+				return true;
+			}
+
 			throw new AerospikeException(resultCode);
 		}
 
-		protected internal override bool PrepareRetry(bool timeout)
+		private void HandleUdfError(int resultCode)
 		{
-			partition.PrepareRetryWrite(timeout);
-			return true;
+			string ret = (string)record.bins["FAILURE"];
+
+			if (ret == null)
+			{
+				throw new AerospikeException(resultCode);
+			}
+
+			String message;
+			int code;
+
+			try
+			{
+				string[] list = ret.Split(":");
+				Int32.TryParse(list[2].Trim(), out code);
+				message = list[0] + ':' + list[1] + ' ' + list[3];
+			}
+			catch (Exception e)
+			{
+				// Use generic exception if parse error occurs.
+				throw new AerospikeException(resultCode, ret);
+			}
+
+			throw new AerospikeException(code, message);
 		}
 
 		protected internal override void OnSuccess()
@@ -94,7 +125,7 @@ namespace Aerospike.Client
 			if (executeListener != null)
 			{
 				object obj = ParseEndResult();
-				executeListener.OnSuccess(key, obj);
+				executeListener.OnSuccess(Key, obj);
 			}
 		}
 

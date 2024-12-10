@@ -14,6 +14,8 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
+using System.Transactions;
+
 namespace Aerospike.Client
 {
 	/// <summary>
@@ -21,6 +23,12 @@ namespace Aerospike.Client
 	/// </summary>
 	public sealed class ResultCode
 	{
+		/// <summary>
+		/// Multi-record transaction failed.
+		/// Value: -17
+		/// </summary>
+		public const int TXN_FAILED = -17;
+		
 		/// <summary>
 		/// One or more keys failed in a batch.
 		/// Value: -16
@@ -265,7 +273,7 @@ namespace Aerospike.Client
 		public const int OP_NOT_APPLICABLE = 26;
 
 		/// <summary>
-		/// The transaction was not performed because the filter was false.
+		/// The command was not performed because the filter was false.
 		/// Value: 27
 		/// </summary>
 		public const int FILTERED_OUT = 27;
@@ -433,6 +441,43 @@ namespace Aerospike.Client
 		public const int UDF_BAD_RESPONSE = 100;
 
 		/// <summary>
+		/// MRT record blocked by a different transaction.
+		/// Value: 120
+		/// </summary>
+		public const int MRT_BLOCKED = 120;
+
+		/// <summary>
+		/// MRT read version mismatch identified during commit.
+		/// Some other command changed the record outside of the transaction.
+		/// Value: 121
+		/// </summary>
+		public const int MRT_VERSION_MISMATCH = 121;
+
+		/// <summary>
+		/// MRT deadline reached without a successful commit or abort.
+		/// Value: 122
+		/// </summary>
+		public const int MRT_EXPIRED = 122;
+
+		/// <summary>
+		/// MRT write command limit (4096) exceeded.
+		/// Value: 123
+		/// </summary>
+		public const int MRT_TOO_MANY_WRITES = 123;
+
+		/// <summary>
+		/// MRT was already committed.
+		/// Value: 124
+		/// </summary>
+		public const int MRT_COMMITTED = 124;
+	
+		/// <summary>
+		/// MRT was already aborted.
+		/// Value: 125
+		/// </summary>
+		public const int MRT_ABORTED = 125;
+
+		/// <summary>
 		/// Batch functionality has been disabled.
 		/// Value: 150
 		/// </summary>
@@ -548,6 +593,9 @@ namespace Aerospike.Client
 		{
 			switch (resultCode)
 			{
+			case TXN_FAILED:
+				return "Multi-record transaction failed";
+
 			case BATCH_FAILED:
 				return "One or more keys failed in a batch";
 
@@ -669,10 +717,10 @@ namespace Aerospike.Client
 				return "Operation not applicable";
 
 			case FILTERED_OUT:
-				return "Transaction filtered out";
+				return "Command filtered out";
 
 			case LOST_CONFLICT:
-				return "Transaction failed due to conflict with XDR";
+				return "Command failed due to conflict with XDR";
 
 			case XDR_KEY_BUSY:
 				return "Write can't complete until XDR finishes shipping.";
@@ -696,7 +744,7 @@ namespace Aerospike.Client
 				return "Invalid field";
 
 			case ILLEGAL_STATE:
-				return "Illegal state";
+				return "Illegal State";
 
 			case INVALID_USER:
 				return "Invalid user";
@@ -751,6 +799,24 @@ namespace Aerospike.Client
 
 			case UDF_BAD_RESPONSE:
 				return "UDF returned error";
+
+			case MRT_BLOCKED:
+				return "MRT record blocked by a different transaction";
+
+			case MRT_VERSION_MISMATCH:
+				return "MRT version mismatch";
+
+			case MRT_EXPIRED:
+				return "MRT expired";
+
+			case MRT_TOO_MANY_WRITES:
+				return "MRT write command limit exceeded";
+
+			case MRT_COMMITTED:
+				return "MRT already committed";
+
+			case MRT_ABORTED:
+				return "MRT already aborted";
 
 			case BATCH_DISABLED:
 				return "Batch functionality has been disabled";

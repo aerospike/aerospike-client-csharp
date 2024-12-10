@@ -21,10 +21,19 @@ using System;
 namespace Aerospike.Client
 {
 	/// <summary>
-	/// Transaction policy attributes used in all database commands.
+	/// Command policy attributes used in all database commands.
 	/// </summary>
 	public class Policy
 	{
+		/// <summary>
+		/// Multi-record transaction identifier (MRT). If this field is populated, the corresponding
+		/// command will be included in the MRT. This field is ignored for scan/query.
+	    /// <para>
+	    /// Default: null
+		/// </para>
+		/// </summary>
+		public Txn Txn { get; set; }
+		
 		/// <summary>
 		/// Read policy for AP (availability) namespaces.
 		/// <para>
@@ -52,7 +61,7 @@ namespace Aerospike.Client
 
 		/// <summary>
 		/// Optional expression filter. If filterExp exists and evaluates to false, the
-		/// transaction is ignored.
+		/// command is ignored.
 		/// <para>
 		/// Default: null
 		/// </para>
@@ -76,7 +85,7 @@ namespace Aerospike.Client
 		/// <para>
 		/// If socketTimeout is not zero and the socket has been idle for at least socketTimeout,
 		/// both maxRetries and totalTimeout are checked.  If maxRetries and totalTimeout are not
-		/// exceeded, the transaction is retried.
+		/// exceeded, the command is retried.
 		/// </para>
 		/// <para>
 		/// For synchronous methods, socketTimeout is the socket SendTimeout and ReceiveTimeout.
@@ -90,15 +99,15 @@ namespace Aerospike.Client
 		public int socketTimeout = 30000;
 
 		/// <summary>
-		/// Total transaction timeout in milliseconds.
+		/// Total command timeout in milliseconds.
 		/// <para>
 		/// The totalTimeout is tracked on the client and sent to the server along with 
-		/// the transaction in the wire protocol.  The client will most likely timeout
-		/// first, but the server also has the capability to timeout the transaction.
+		/// the command in the wire protocol.  The client will most likely timeout
+		/// first, but the server also has the capability to timeout the command.
 		/// </para>
 		/// <para>
-		/// If totalTimeout is not zero and totalTimeout is reached before the transaction
-		/// completes, the transaction will abort with
+		/// If totalTimeout is not zero and totalTimeout is reached before the command
+		/// completes, the command will abort with
 		/// <see cref="Aerospike.Client.AerospikeException.Timeout"/>.
 		/// </para>
 		/// <para>
@@ -111,11 +120,11 @@ namespace Aerospike.Client
 
 		/// <summary>
 		/// Delay milliseconds after socket read timeout in an attempt to recover the socket
-		/// in the background.  Processing continues on the original transaction and the user
-		/// is still notified at the original transaction timeout.
+		/// in the background.  Processing continues on the original command and the user
+		/// is still notified at the original command timeout.
 		/// <para>
-		/// When a transaction is stopped prematurely, the socket must be drained of all incoming
-		/// data or closed to prevent unread socket data from corrupting the next transaction
+		/// When a command is stopped prematurely, the socket must be drained of all incoming
+		/// data or closed to prevent unread socket data from corrupting the next command
 		/// that would use that socket.
 		/// </para>
 		/// <para>
@@ -136,7 +145,7 @@ namespace Aerospike.Client
 		/// </para>
 		/// <para>
 		/// The disadvantage of enabling timeoutDelay is that extra memory/processing is required
-		/// to drain sockets and additional connections may still be needed for transaction retries.
+		/// to drain sockets and additional connections may still be needed for command retries.
 		/// </para>
 		/// <para>
 		/// If timeoutDelay were to be enabled, 3000ms would be a reasonable value.
@@ -148,16 +157,16 @@ namespace Aerospike.Client
 		public int TimeoutDelay = 0;
 
 		/// <summary>
-		/// Maximum number of retries before aborting the current transaction.
+		/// Maximum number of retries before aborting the current command.
 		/// The initial attempt is not counted as a retry.
 		/// <para>
-		/// If maxRetries is exceeded, the transaction will abort with
+		/// If maxRetries is exceeded, the command will abort with
 		/// <see cref="Aerospike.Client.AerospikeException.Timeout"/>.
 		/// </para>
 		/// <para>
 		/// WARNING: Database writes that are not idempotent (such as Add()) 
 		/// should not be retried because the write operation may be performed 
-		/// multiple times if the client timed out previous transaction attempts.
+		/// multiple times if the client timed out previous command attempts.
 		/// It's important to use a distinct WritePolicy for non-idempotent 
 		/// writes which sets maxRetries = 0;
 		/// </para>
@@ -201,7 +210,7 @@ namespace Aerospike.Client
 		/// Determine how record TTL (time to live) is affected on reads. When enabled, the server can
 		/// efficiently operate as a read-based LRU cache where the least recently used records are expired.
 		/// The value is expressed as a percentage of the TTL sent on the most recent write such that a read
-		/// within this interval of the record’s end of life will generate a touch.
+		/// within this interval of the recordï¿½s end of life will generate a touch.
 		/// <para>
 		/// For example, if the most recent write had a TTL of 10 hours and read_touch_ttl_percent is set to
 		/// 80, the next read within 8 hours of the record's end of life (equivalent to 2 hours after the most
@@ -251,7 +260,7 @@ namespace Aerospike.Client
 
 		/// <summary>
 		/// Throw exception if <see cref="filterExp"/> is defined and that filter evaluates
-		/// to false (transaction ignored).  The <see cref="Aerospike.Client.AerospikeException"/>
+		/// to false (command ignored).  The <see cref="Aerospike.Client.AerospikeException"/>
 		/// will contain result code <seealso cref="Aerospike.Client.ResultCode.FILTERED_OUT"/>.
 		/// <para>
 		/// This field is not applicable to batch, scan or query commands.
@@ -275,6 +284,7 @@ namespace Aerospike.Client
 		/// </summary>
 		public Policy(Policy other)
 		{
+			this.Txn = other.Txn;
 			this.readModeAP = other.readModeAP;
 			this.readModeSC = other.readModeSC;
 			this.replica = other.replica;
@@ -296,6 +306,7 @@ namespace Aerospike.Client
 		/// </summary>
 		public Policy()
 		{
+			Txn = null;
 		}
 
 		/// <summary>
@@ -322,6 +333,15 @@ namespace Aerospike.Client
 			{
 				this.socketTimeout = totalTimeout;
 			}
+		}
+
+		/// <summary>
+		/// Creates a deep copy of this policy.
+		/// </summary>
+		/// <returns></returns>
+		public Policy Clone()
+		{
+			return new Policy(this);
 		}
 	}
 }

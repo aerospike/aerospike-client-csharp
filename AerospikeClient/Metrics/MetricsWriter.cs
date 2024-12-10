@@ -148,7 +148,7 @@ namespace Aerospike.Client
 
 			sb.Append(now.ToString(timestampFormat));
 			sb.Append(" header(1)");
-			sb.Append(" cluster[name,cpu,mem,recoverQueueSize,invalidNodeCount,tranCount,retryCount,delayQueueTimeoutCount,asyncThreadsInUse,asyncCompletionPortsInUse,node[]]");
+			sb.Append(" cluster[name,cpu,mem,recoverQueueSize,invalidNodeCount,commandCount,retryCount,delayQueueTimeoutCount,asyncThreadsInUse,asyncCompletionPortsInUse,node[]]");
 			sb.Append(" node[name,address,port,syncConn,asyncConn,errors,timeouts,latency[]]");
 			sb.Append(" conn[inUse,inPool,opened,closed]");
 			sb.Append(" latency(");
@@ -180,7 +180,7 @@ namespace Aerospike.Client
 			sb.Append(',');
 			sb.Append(cluster.InvalidNodeCount); // Cumulative. Not reset on each interval.
 			sb.Append(',');
-			sb.Append(cluster.GetTranCount());  // Cumulative. Not reset on each interval.
+			sb.Append(cluster.GetCommandCount());  // Cumulative. Not reset on each interval.
 			sb.Append(',');
 			sb.Append(cluster.GetRetryCount()); // Cumulative. Not reset on each interval.
 			sb.Append(',');

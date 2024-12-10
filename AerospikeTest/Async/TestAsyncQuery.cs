@@ -37,9 +37,9 @@ namespace Aerospike.Test
 
 			try
 			{
-				if ((!args.testProxy && !args.testAsyncAwait) || (args.testProxy && nativeClient != null))
+				if (!args.testAsyncAwait)
 				{
-					IndexTask task = nativeClient.CreateIndex(policy, args.ns, args.set, indexName, binName, IndexType.NUMERIC);
+					IndexTask task = client.CreateIndex(policy, args.ns, args.set, indexName, binName, IndexType.NUMERIC);
 					task.Wait();
 				}
 				else if (args.testAsyncAwait) 
@@ -59,16 +59,13 @@ namespace Aerospike.Test
 		[ClassCleanup()]
 		public static void Destroy()
 		{
-			if (!args.testProxy || (args.testProxy && nativeClient != null))
-			{
-				nativeClient.DropIndex(null, args.ns, args.set, indexName);
-			}
+			client.DropIndex(null, args.ns, args.set, indexName);
 		}
 
 		[TestMethod]
 		public async Task AsyncQuery()
 		{
-			if (!args.testProxy && !args.testAsyncAwait)
+			if (!args.testAsyncAwait)
 			{
 				WriteHandler handler = new WriteHandler(this);
 
@@ -83,17 +80,6 @@ namespace Aerospike.Test
 			else if (args.testAsyncAwait)
 			{
 				throw new NotImplementedException();
-			}
-			else
-			{
-				int count = 0;
-				for (int i = 1; i <= size; i++)
-				{
-					Key key = new Key(args.ns, args.set, keyPrefix + i);
-					Bin bin = new Bin(binName, i);
-					await client.Put(null, tokenSource.Token, key, bin);
-					await WriteHandlerSuccess(key, count, this);
-				}
 			}
 		}
 
@@ -112,21 +98,9 @@ namespace Aerospike.Test
 				stmt.SetBinNames(binName);
 				stmt.SetFilter(Filter.Range(binName, begin, end));
 
-				if (!args.testProxy && !args.testAsyncAwait)
+				if (!args.testAsyncAwait)
 				{
 					client.Query(null, new RecordSequenceHandler(parent), stmt);
-				}
-				else
-				{
-					var result = await asyncProxy.Query(null, tokenSource.Token, stmt);
-					while (result.Next())
-					{
-						Record record = result.Record;
-						int integer = record.GetInt(binName);
-						parent.AssertBetween(26, 34, integer);
-						Interlocked.Increment(ref count);
-					}
-					parent.AssertEquals(9, count);
 				}
 			}
 		}

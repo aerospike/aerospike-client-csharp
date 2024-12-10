@@ -107,16 +107,5 @@ namespace Aerospike.Client
 			Array.Copy(bytes, 0, cmd.DataBuffer, cmd.DataOffset, bytes.Length);
 			cmd.DataOffset += bytes.Length;
 		}
-
-		/// <summary>
-		/// Write expression in wire protocol.
-		/// For internal use only.
-		/// </summary>
-		public void Write(Command cmd, Buffer buffer)
-		{
-			cmd.WriteExpHeader(bytes.Length);
-			Array.Copy(bytes, 0, buffer.DataBuffer, buffer.Offset, bytes.Length);
-			buffer.Offset += bytes.Length;
-		}
 	}
 }

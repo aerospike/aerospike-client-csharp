@@ -24,15 +24,16 @@ namespace Aerospike.Client
 	{
 		public void SetTimeout(int timeoutMillis);
 
-		public abstract void Write(byte[] buffer, int length);
-		public abstract Task Write(byte[] buffer, int length, CancellationToken token);
+		public void Write(byte[] buffer, int length);
+		public Task Write(byte[] buffer, int length, CancellationToken token);
 
-		public abstract void ReadFully(byte[] buffer, int length);
-		public abstract Task ReadFully(byte[] buffer, int length, CancellationToken token);
+		public void ReadFully(byte[] buffer, int length);
+		public Task ReadFully(byte[] buffer, int length, CancellationToken token);
 
-		public abstract void ReadFully(byte[] buffer, int length, byte state);
+		public void ReadFully(byte[] buffer, int length, byte state);
+		public Task ReadFully(byte[] buffer, int length, byte state, CancellationToken token);
 
-		public abstract Stream GetStream();
+		public Stream GetStream();
 
 		/// <summary>
 		/// Is socket closed from client perspective only.

@@ -30,10 +30,10 @@ namespace Aerospike.Test
 		[ClassInitialize()]
 		public static void Register(TestContext testContext)
 		{
-			if ((!args.testProxy && !args.testAsyncAwait) || (args.testProxy && nativeClient != null))
+			if (!args.testAsyncAwait)
 			{
 				Assembly assembly = Assembly.GetExecutingAssembly();
-				RegisterTask task = nativeClient.Register(null, assembly, "Aerospike.Test.LuaResources.record_example.lua", "record_example.lua", Language.LUA);
+				RegisterTask task = client.Register(null, assembly, "Aerospike.Test.LuaResources.record_example.lua", "record_example.lua", Language.LUA);
 				task.Wait();
 			}
 			else if (args.testAsyncAwait)
@@ -43,25 +43,16 @@ namespace Aerospike.Test
 		}
 
 		[TestMethod]
-		public async Task AsyncUDF()
+		public void AsyncUDF()
 		{
 			Key key = new Key(args.ns, args.set, "audfkey1");
 			Bin bin = new Bin(binName, binValue);
 
-			if (!args.testProxy || !args.testAsyncAwait)
+			if (!args.testAsyncAwait)
 			{
 				// Write bin
 				client.Execute(null, new WriteHandler(this, key), key, "record_example", "writeBin", Value.Get(bin.name), bin.value);
 				WaitTillComplete();
-			}
-			else
-			{
-				var result = await client.Execute(null, tokenSource.Token, key, "record_example", "writeBin", Value.Get(bin.name), bin.value);
-				var received = await client.Execute(null, tokenSource.Token, key, "record_example", "readBin", Value.Get(binName));
-				if (AssertNotNull(received))
-				{
-					AssertEquals(binValue, received);
-				}
 			}
 		}
 
@@ -117,7 +108,7 @@ namespace Aerospike.Test
 		}
 
 		[TestMethod]
-		public async Task AsyncBatchUDF()
+		public void AsyncBatchUDF()
 		{
 			Key[] keys = new Key[]
 			{
@@ -125,7 +116,7 @@ namespace Aerospike.Test
 				new Key(args.ns, args.set, 20001)
 			};
 
-			if (!args.testProxy || !args.testAsyncAwait)
+			if (!args.testAsyncAwait)
 			{
 				client.Delete(null, null, keys);
 
@@ -136,22 +127,6 @@ namespace Aerospike.Test
 			else if (args.testAsyncAwait)
 			{
 				throw new NotImplementedException();
-			}
-			else
-			{
-				client.Delete(null, null, keys);
-
-				var result = await client.Execute(null, null, tokenSource.Token, keys, "record_example", "writeBin", Value.Get("B5"), Value.Get("value5"));
-				if (AssertTrue(result.status))
-				{
-					foreach (BatchRecord r in result.records)
-					{
-						if (AssertNotNull(r))
-						{
-							AssertEquals(0, r.resultCode);
-						}
-					}
-				}
 			}
 		}
 
@@ -195,7 +170,7 @@ namespace Aerospike.Test
 		}
 
 		[TestMethod]
-		public async Task AsyncBatchUDFComplex()
+		public void AsyncBatchUDFComplex()
 		{
 			string bin = "B5";
 
@@ -208,7 +183,7 @@ namespace Aerospike.Test
 			records.Add(new BatchUDF(new Key(args.ns, args.set, 20015), "record_example", "writeWithValidation", a2));
 			records.Add(new BatchUDF(new Key(args.ns, args.set, 20015), "record_example", "writeWithValidation", a3));
 
-			if (!args.testProxy || !args.testAsyncAwait)
+			if (!args.testAsyncAwait)
 			{
 				client.Operate(null, new BatchSeqUDFHandler(this, bin), records);
 
@@ -218,31 +193,21 @@ namespace Aerospike.Test
 			{
 				throw new NotImplementedException();
 			}
-			else
-			{
-				await client.Operate(null, tokenSource.Token, records);
-				await BatchSeqUDFHandlerSuccess(this, bin);
-			}
 		}
 
-		static async Task BatchSeqUDFHandlerSuccess(TestAsyncUDF parent, string bin)
+		static void BatchSeqUDFHandlerSuccess(TestAsyncUDF parent, string bin)
 		{
 			List<BatchRecord> records = new List<BatchRecord>();
 			records.Add(new BatchRead(new Key(args.ns, args.set, 20014), true));
 			records.Add(new BatchRead(new Key(args.ns, args.set, 20015), true));
 
-			if (!args.testProxy && !args.testAsyncAwait)
+			if (!args.testAsyncAwait)
 			{
 				client.Operate(null, new BatchSeqReadHandler(parent, bin), records);
 			}
 			else if (args.testAsyncAwait)
 			{
 				throw new NotImplementedException();
-			}
-			else
-			{
-				var result = await client.Operate(null, tokenSource.Token, records);
-				Assert.IsTrue(result);
 			}
 		}
 
@@ -285,7 +250,7 @@ namespace Aerospike.Test
 
 			public void OnSuccess()
 			{
-				BatchSeqUDFHandlerSuccess(parent, bin).Wait();
+				BatchSeqUDFHandlerSuccess(parent, bin);
 			}
 
 			public void OnFailure(AerospikeException ae)

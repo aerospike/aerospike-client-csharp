@@ -32,10 +32,10 @@ namespace Aerospike.Test
 		[ClassInitialize()]
 		public static void Prepare(TestContext testContext)
 		{
-			if ((!args.testProxy && !args.testAsyncAwait) || (args.testProxy && nativeClient != null))
+			if (!args.testAsyncAwait)
 			{
 				Assembly assembly = Assembly.GetExecutingAssembly();
-				RegisterTask task = nativeClient.Register(null, assembly, "Aerospike.Test.LuaResources.average_example.lua", "average_example.lua", Language.LUA);
+				RegisterTask task = client.Register(null, assembly, "Aerospike.Test.LuaResources.average_example.lua", "average_example.lua", Language.LUA);
 				task.Wait();
 			}
 			else if (args.testAsyncAwait)
@@ -48,9 +48,9 @@ namespace Aerospike.Test
 
 			try
 			{
-				if ((!args.testProxy && !args.testAsyncAwait) || (args.testProxy && nativeClient != null))
+				if (!args.testAsyncAwait)
 				{
-					IndexTask itask = nativeClient.CreateIndex(policy, args.ns, args.set, indexName, binName, IndexType.NUMERIC);
+					IndexTask itask = client.CreateIndex(policy, args.ns, args.set, indexName, binName, IndexType.NUMERIC);
 					itask.Wait();
 				}
 				else if (args.testAsyncAwait)
@@ -77,9 +77,9 @@ namespace Aerospike.Test
 		[ClassCleanup()]
 		public static void Destroy()
 		{
-			if ((!args.testProxy && !args.testAsyncAwait) || (args.testProxy && nativeClient != null))
+			if (!args.testAsyncAwait)
 			{
-				nativeClient.DropIndex(null, args.ns, args.set, indexName);
+				client.DropIndex(null, args.ns, args.set, indexName);
 			}
 			else if (args.testAsyncAwait)
 			{ 
@@ -90,7 +90,7 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void QueryAverage()
 		{
-			if ((!args.testProxy && !args.testAsyncAwait) || (args.testProxy && nativeClient != null))
+			if (!args.testAsyncAwait)
 			{
 				Statement stmt = new Statement();
 				stmt.SetNamespace(args.ns);
@@ -98,13 +98,13 @@ namespace Aerospike.Test
 				stmt.SetFilter(Filter.Range(binName, 0, 1000));
 				stmt.SetAggregateFunction(Assembly.GetExecutingAssembly(), "Aerospike.Test.LuaResources.average_example.lua", "average_example", "average");
 
-				ResultSet rs = nativeClient.QueryAggregate(null, stmt);
+			ResultSet rs = client.QueryAggregate(null, stmt);
 
-				try
+			try
+			{
+				if (rs.Next())
 				{
-					if (rs.Next())
-					{
-						object obj = rs.Object;
+					object obj = rs.Object;
 
 						if (obj is IDictionary)
 						{

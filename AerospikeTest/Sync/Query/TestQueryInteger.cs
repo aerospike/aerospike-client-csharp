@@ -35,9 +35,9 @@ namespace Aerospike.Test
 
 			try
 			{
-				if ((!args.testProxy && !args.testAsyncAwait) || (args.testProxy && nativeClient != null))
+				if (!args.testAsyncAwait)
 				{
-					IndexTask task = nativeClient.CreateIndex(policy, args.ns, args.set, indexName, binName, IndexType.NUMERIC);
+					IndexTask task = client.CreateIndex(policy, args.ns, args.set, indexName, binName, IndexType.NUMERIC);
 					task.Wait();
 				}
 				else if (args.testAsyncAwait)
@@ -71,9 +71,9 @@ namespace Aerospike.Test
 		[ClassCleanup()]
 		public static void Destroy()
 		{
-			if ((!args.testProxy && !args.testAsyncAwait) || (args.testProxy && nativeClient != null))
+			if (!args.testAsyncAwait)
 			{
-				nativeClient.DropIndex(null, args.ns, args.set, indexName);
+				client.DropIndex(null, args.ns, args.set, indexName);
 			}
 			else if (args.testAsyncAwait)
 			{

@@ -15,7 +15,6 @@
  * the License.
  */
 using Aerospike.Client;
-using Microsoft.Extensions.Logging;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace Aerospike.Test
@@ -37,9 +36,9 @@ namespace Aerospike.Test
 
 			try
 			{
-				if ((!args.testProxy && !args.testAsyncAwait) || (args.testProxy && nativeClient != null))
+				if (!args.testAsyncAwait)
 				{
-					IndexTask itask = nativeClient.CreateIndex(policy, args.ns, setName, indexName, binName, IndexType.NUMERIC);
+					IndexTask itask = client.CreateIndex(policy, args.ns, setName, indexName, binName, IndexType.NUMERIC);
 					itask.Wait();
 				}
 				else if (args.testAsyncAwait)
@@ -107,13 +106,9 @@ namespace Aerospike.Test
 		[ClassCleanup()]
 		public static void Destroy()
 		{
-			if ((!args.testProxy && !args.testAsyncAwait) || (args.testProxy && nativeClient != null))
+			if (!args.testAsyncAwait)
 			{
-				nativeClient.DropIndex(null, args.ns, setName, indexName);
-			}
-			else if (args.testProxy)
-			{
-				throw new NotImplementedException();
+				client.DropIndex(null, args.ns, setName, indexName);
 			}
 		}
 
@@ -139,10 +134,6 @@ namespace Aerospike.Test
 						Exp.EQ(Exp.IntBin("bin2"), Exp.Val(22)),
 						Exp.EQ(Exp.IntBin("bin2"), Exp.Val(9))),
 					Exp.EQ(Exp.IntBin(binName), Exp.IntBin("bin2"))));
-			if (args.testProxy)
-			{
-				policy.totalTimeout = args.proxyTotalTimeout;
-			}
 
 			if (!args.testAsyncAwait)
 			{
@@ -189,10 +180,6 @@ namespace Aerospike.Test
 					Exp.And(
 						Exp.GE(Exp.IntBin("bin2"), Exp.Val(15)),
 						Exp.LE(Exp.IntBin("bin2"), Exp.Val(42)))));
-			if (args.testProxy)
-			{
-				policy.totalTimeout = args.proxyTotalTimeout;
-			}
 
 			if (!args.testAsyncAwait)
 			{
@@ -238,10 +225,6 @@ namespace Aerospike.Test
 				Exp.GT(
 					Exp.LastUpdate(),
 					Exp.Val(DateTime.UtcNow.Add(TimeSpan.FromSeconds(1.0)))));
-			if (args.testProxy)
-			{
-				policy.totalTimeout = args.proxyTotalTimeout;
-			}
 
 			if (!args.testAsyncAwait)
 			{
@@ -288,10 +271,6 @@ namespace Aerospike.Test
 				Exp.GT(
 					ListExp.GetByValue(ListReturnType.COUNT, Exp.Val(4), Exp.ListBin("listbin")),
 					Exp.Val(0)));
-			if (args.testProxy)
-			{
-				policy.totalTimeout = args.proxyTotalTimeout;
-			}
 
 			if (!args.testAsyncAwait)
 			{
@@ -336,10 +315,6 @@ namespace Aerospike.Test
 				Exp.EQ(
 					ListExp.GetByValue(ListReturnType.COUNT, Exp.Val(5), Exp.ListBin("listbin")),
 					Exp.Val(0)));
-			if (args.testProxy)
-			{
-				policy.totalTimeout = args.proxyTotalTimeout;
-			}
 
 			if (!args.testAsyncAwait)
 			{
@@ -384,10 +359,6 @@ namespace Aerospike.Test
 				Exp.EQ(
 					ListExp.GetByIndex(ListReturnType.VALUE, Exp.Type.INT, Exp.Val(4), Exp.ListBin("listbin")),
 					Exp.Val(20)));
-			if (args.testProxy)
-			{
-				policy.totalTimeout = args.proxyTotalTimeout;
-			}
 
 			if (!args.testAsyncAwait)
 			{
@@ -432,10 +403,6 @@ namespace Aerospike.Test
 				Exp.GT(
 					MapExp.GetByKey(MapReturnType.COUNT, Exp.Type.INT, Exp.Val("B"), Exp.MapBin("mapbin")),
 					Exp.Val(0)));
-			if (args.testProxy)
-			{
-				policy.totalTimeout = args.proxyTotalTimeout;
-			}
 
 			if (!args.testAsyncAwait)
 			{
@@ -478,10 +445,6 @@ namespace Aerospike.Test
 			QueryPolicy policy = new QueryPolicy();
 			policy.filterExp = Exp.Build(
 				MapExp.GetByValue(MapReturnType.EXISTS, Exp.Val("BBB"), Exp.MapBin("mapbin")));
-			if (args.testProxy)
-			{
-				policy.totalTimeout = args.proxyTotalTimeout;
-			}
 
 			if (!args.testAsyncAwait)
 			{
@@ -526,10 +489,6 @@ namespace Aerospike.Test
 				Exp.EQ(
 					MapExp.GetByKey(MapReturnType.COUNT, Exp.Type.INT, Exp.Val("D"), Exp.MapBin("mapbin")),
 					Exp.Val(0)));
-			if (args.testProxy)
-			{
-				policy.totalTimeout = args.proxyTotalTimeout;
-			}
 
 			if (!args.testAsyncAwait)
 			{
@@ -574,10 +533,6 @@ namespace Aerospike.Test
 				Exp.EQ(
 					MapExp.GetByValue(MapReturnType.COUNT, Exp.Val("AAA"), Exp.MapBin("mapbin")),
 					Exp.Val(0)));
-			if (args.testProxy)
-			{
-				policy.totalTimeout = args.proxyTotalTimeout;
-			}
 
 			if (!args.testAsyncAwait)
 			{
@@ -628,10 +583,6 @@ namespace Aerospike.Test
 					MapExp.Size(
 						MapExp.GetByKeyList(MapReturnType.KEY_VALUE, Exp.Val(list), Exp.MapBin("mapbin"))),
 					Exp.Val(2)));
-			if (args.testProxy)
-			{
-				policy.totalTimeout = args.proxyTotalTimeout;
-			}
 
 			if (!args.testAsyncAwait)
 			{
@@ -682,10 +633,6 @@ namespace Aerospike.Test
 					ListExp.Size( // return type VALUE returns a list
 						MapExp.GetByKeyList(MapReturnType.VALUE, Exp.Val(list), Exp.MapBin("mapbin"))),
 					Exp.Val(2)));
-			if (args.testProxy)
-			{
-				policy.totalTimeout = args.proxyTotalTimeout;
-			}
 
 			if (!args.testAsyncAwait)
 			{
@@ -727,10 +674,6 @@ namespace Aerospike.Test
 			// Record key digest % 3 == 1
 			QueryPolicy policy = new QueryPolicy();
 			policy.filterExp = Exp.Build(Exp.EQ(Exp.DigestModulo(3), Exp.Val(1)));
-			if (args.testProxy)
-			{
-				policy.totalTimeout = args.proxyTotalTimeout;
-			}
 
 			if (!args.testAsyncAwait)
 			{
@@ -771,10 +714,6 @@ namespace Aerospike.Test
 
 			QueryPolicy policy = new QueryPolicy();
 			policy.filterExp = Exp.Build(Exp.BinExists("bin2"));
-			if (args.testProxy)
-			{
-				policy.totalTimeout = args.proxyTotalTimeout;
-			}
 
 			if (!args.testAsyncAwait)
 			{
@@ -814,10 +753,6 @@ namespace Aerospike.Test
 
 			QueryPolicy policy = new QueryPolicy();
 			policy.filterExp = Exp.Build(Exp.EQ(Exp.BinType("listbin"), Exp.Val((int)ParticleType.LIST)));
-			if (args.testProxy)
-			{
-				policy.totalTimeout = args.proxyTotalTimeout;
-			}
 
 			if (!args.testAsyncAwait)
 			{
@@ -901,10 +836,6 @@ namespace Aerospike.Test
 			// because all device sizes are effectively allowed.
 			QueryPolicy policy = new QueryPolicy();
 			policy.filterExp = Exp.Build(Exp.GE(Exp.DeviceSize(), Exp.Val(0)));
-			if (args.testProxy)
-			{
-				policy.totalTimeout = args.proxyTotalTimeout;
-			}
 
 			if (!args.testAsyncAwait)
 			{
@@ -947,10 +878,6 @@ namespace Aerospike.Test
 			// because all memory sizes are effectively allowed.
 			QueryPolicy policy = new QueryPolicy();
 			policy.filterExp = Exp.Build(Exp.GE(Exp.MemorySize(), Exp.Val(0)));
-			if (args.testProxy)
-			{
-				policy.totalTimeout = args.proxyTotalTimeout;
-			}
 
 			if (!args.testAsyncAwait)
 			{

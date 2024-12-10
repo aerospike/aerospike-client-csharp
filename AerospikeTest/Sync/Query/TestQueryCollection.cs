@@ -34,10 +34,10 @@ namespace Aerospike.Test
 		[ClassInitialize()]
 		public static async Task Prepare(TestContext testContext)
 		{
-			if ((!args.testProxy && !args.testAsyncAwait) || (args.testProxy && nativeClient != null))
+			if (!args.testAsyncAwait)
 			{
 				Assembly assembly = Assembly.GetExecutingAssembly();
-				RegisterTask rtask = nativeClient.Register(null, assembly, "Aerospike.Test.LuaResources.record_example.lua", "record_example.lua", Language.LUA);
+				RegisterTask rtask = client.Register(null, assembly, "Aerospike.Test.LuaResources.record_example.lua", "record_example.lua", Language.LUA);
 				rtask.Wait();
 			}
 			else if (args.testAsyncAwait)
@@ -50,9 +50,9 @@ namespace Aerospike.Test
 
 			try
 			{
-				if ((!args.testProxy && !args.testAsyncAwait) || (args.testProxy && nativeClient != null))
+				if (!args.testAsyncAwait)
 				{
-					IndexTask task = nativeClient.CreateIndex(policy, args.ns, args.set, indexName, binName, IndexType.STRING, IndexCollectionType.MAPKEYS);
+					IndexTask task = client.CreateIndex(policy, args.ns, args.set, indexName, binName, IndexType.STRING, IndexCollectionType.MAPKEYS);
 					task.Wait();
 				}
 				else if (args.testAsyncAwait)
@@ -98,9 +98,9 @@ namespace Aerospike.Test
 		[ClassCleanup()]
 		public static void Destroy()
 		{
-			if ((!args.testProxy && !args.testAsyncAwait) || (args.testProxy && nativeClient != null))
+			if (!args.testAsyncAwait)
 			{
-				nativeClient.DropIndex(null, args.ns, args.set, indexName);
+				client.DropIndex(null, args.ns, args.set, indexName);
 			}
 			else if (args.testAsyncAwait)
 			{

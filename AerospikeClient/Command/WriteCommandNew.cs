@@ -43,10 +43,11 @@ namespace Aerospike.Client
 		public int FieldCount { get; set; }
 		public int OpCount { get; set; }
 		public bool IsOperation { get; set; }
+		public long? Version { get; set; }
 
 
 		private readonly WritePolicy writePolicy;
-		private readonly Key key;
+		protected readonly Key key;
 		private readonly Partition partition;
 		private readonly Bin[] bins;
 		private readonly Operation.Type operation;
@@ -59,7 +60,16 @@ namespace Aerospike.Client
 			this.partition = Partition.Write(cluster, writePolicy, key);
 			this.bins = bins;
 			this.operation = operation;
-			cluster.AddTran();
+			cluster.AddCommandCount();
+		}
+
+		public WriteCommandNew(ArrayPool<byte> bufferPool, Cluster cluster, WritePolicy writePolicy, Key key)
+		{
+			this.SetCommonProperties(bufferPool, cluster, writePolicy);
+			this.writePolicy = writePolicy;
+			this.key = key;
+			this.partition = Partition.Write(cluster, writePolicy, key);
+			cluster.AddCommandCount();
 		}
 
 		public bool IsWrite()
@@ -87,26 +97,24 @@ namespace Aerospike.Client
 			token.ThrowIfCancellationRequested();
 
 			// Read header.		
-			await conn.ReadFully(DataBuffer, CommandHelpers.MSG_TOTAL_HEADER_SIZE, token);
-			conn.UpdateLastUsed();
+			await this.ParseHeader(conn, token);
+			this.ParseFields(Policy.Txn, key, true);
 
-			int resultCode = DataBuffer[13];
-
-			if (resultCode == 0)
+			if (ResultCode == Client.ResultCode.OK)
 			{
 				return;
 			}
 
-			if (resultCode == Client.ResultCode.FILTERED_OUT)
+			if (ResultCode == Client.ResultCode.FILTERED_OUT)
 			{
 				if (writePolicy.failOnFilteredOut)
 				{
-					throw new AerospikeException(resultCode);
+					throw new AerospikeException(ResultCode);
 				}
 				return;
 			}
 
-			throw new AerospikeException(resultCode);
+			throw new AerospikeException(ResultCode);
 		}
 
 		public IAsyncEnumerable<KeyRecord> ParseMultipleResult(IConnection conn, CancellationToken token)

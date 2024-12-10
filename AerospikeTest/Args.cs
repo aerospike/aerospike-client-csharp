@@ -1,4 +1,4 @@
-﻿/* 
+/* 
  * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
@@ -15,7 +15,6 @@
  * the License.
  */
 using Aerospike.Client;
-using Aerospike.Client.Proxy;
 using Microsoft.Extensions.Configuration;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
@@ -28,16 +27,9 @@ namespace Aerospike.Test
 
 		public IAerospikeClient client;
 		public IAerospikeClientNew asyncAwaitClient;
-		public AerospikeClient nativeClient;
 		public IAsyncClient asyncClient;
-		public AsyncClient nativeAsync;
-		public AsyncClientProxy asyncProxy;
-		public AerospikeClientProxy proxyClient;
 		public Host[] hosts;
-		public Host proxyHost;
 		public int port;
-		public int proxyPort;
-		public bool testProxy;
 		public bool testAsyncAwait;
 		public string user;
 		public string password;
@@ -45,15 +37,12 @@ namespace Aerospike.Test
 		public string clusterName;
 		public string ns;
 		public string set;
+		public bool useServicesAlternate;
 		public string tlsName;
-		public string proxyTlsName;
 		public TlsPolicy tlsPolicy;
-		public TlsPolicy proxyTlsPolicy;
 		public AuthMode authMode;
 		public bool singleBin;
 		public bool enterprise;
-		public int proxyTotalTimeout;
-		public int proxySocketTimeout;
 
 		public Args()
 		{
@@ -63,8 +52,6 @@ namespace Aerospike.Test
 			IConfigurationRoot section = builder.Build();
 
 			port = int.Parse(section.GetSection("Port").Value);
-			proxyPort = int.Parse(section.GetSection("ProxyPort").Value);
-			testProxy = bool.Parse(section.GetSection("TestProxy").Value);
 			testAsyncAwait = bool.Parse(section.GetSection("TestAsyncAwait").Value);
 			clusterName = section.GetSection("ClusterName").Value;
 			user = section.GetSection("User").Value;
@@ -73,6 +60,7 @@ namespace Aerospike.Test
 			ns = section.GetSection("Namespace").Value;
 			set = section.GetSection("Set").Value;
 			authMode = (AuthMode)Enum.Parse(typeof(AuthMode), section.GetSection("AuthMode").Value, true);
+			useServicesAlternate = bool.Parse(section.GetSection("UseServicesAlternate").Value);
 
 			bool tlsEnable = bool.Parse(section.GetSection("TlsEnable").Value);
 
@@ -87,19 +75,6 @@ namespace Aerospike.Test
 					);
 			}
 
-			bool tlsEnableProxy = bool.Parse(section.GetSection("ProxyTlsEnable").Value);
-
-			if (tlsEnableProxy)
-			{
-				proxyTlsName = section.GetSection("ProxyTlsName").Value;
-				proxyTlsPolicy = new TlsPolicy(
-					section.GetSection("ProxyTlsProtocols").Value,
-					section.GetSection("ProxyTlsRevoke").Value,
-					section.GetSection("ProxyTlsClientCertFile").Value,
-					bool.Parse(section.GetSection("ProxyTlsLoginOnly").Value)
-					);
-			}
-
 			var hostName = section.GetSection("Host").Value;
 			if (hostName == null || hostName == String.Empty)
 			{
@@ -109,17 +84,11 @@ namespace Aerospike.Test
 			{
 				hosts = Host.ParseHosts(hostName, tlsName, port);
 			}
-			
-			proxyHost = Host.ParseHosts(section.GetSection("ProxyHost").Value, proxyTlsName, proxyPort)[0];
 		}
 
 		public void Connect()
 		{
-			if (testProxy)
-			{
-				ConnectProxy();
-			}
-			else if (testAsyncAwait)
+			if (testAsyncAwait)
 			{
 				ConnectAsyncAwait();
 			}
@@ -137,6 +106,7 @@ namespace Aerospike.Test
 			policy.tlsPolicy = tlsPolicy;
 			policy.authMode = authMode;
 			policy.timeout = timeout;
+			policy.useServicesAlternate = useServicesAlternate;
 
 			if (user != null && user.Length > 0)
 			{
@@ -144,16 +114,7 @@ namespace Aerospike.Test
 				policy.password = password;
 			}
 
-			nativeClient = new AerospikeClient(policy, hosts);
-
-			nativeClient.readPolicyDefault.totalTimeout = timeout;
-			nativeClient.WritePolicyDefault.totalTimeout = timeout;
-			nativeClient.ScanPolicyDefault.totalTimeout = timeout;
-			nativeClient.QueryPolicyDefault.totalTimeout = timeout;
-			nativeClient.BatchPolicyDefault.totalTimeout = timeout;
-			nativeClient.BatchParentPolicyWriteDefault.totalTimeout = timeout;
-			nativeClient.InfoPolicyDefault.timeout = timeout;
-			client = nativeClient;
+			client = new AerospikeClient(policy, hosts);
 
 			asyncAwaitClient = new AerospikeClientNew(policy, hosts);
 
@@ -196,15 +157,7 @@ namespace Aerospike.Test
 			asyncAwaitClient.BatchParentPolicyWriteDefault.totalTimeout = timeout;
 			asyncAwaitClient.InfoPolicyDefault.timeout = timeout;
 
-			nativeClient = new AerospikeClient(policy, hosts);
-
-			nativeClient.readPolicyDefault.totalTimeout = timeout;
-			nativeClient.WritePolicyDefault.totalTimeout = timeout;
-			nativeClient.ScanPolicyDefault.totalTimeout = timeout;
-			nativeClient.QueryPolicyDefault.totalTimeout = timeout;
-			nativeClient.BatchPolicyDefault.totalTimeout = timeout;
-			nativeClient.BatchParentPolicyWriteDefault.totalTimeout = timeout;
-			nativeClient.InfoPolicyDefault.timeout = timeout;
+			client = new AerospikeClient(policy, hosts);
 
 			//Example of how to enable metrics
 			//client.EnableMetrics(new MetricsPolicy());
@@ -221,121 +174,7 @@ namespace Aerospike.Test
 			}
 		}
 
-		private void ConnectProxy()
-		{
-			ClientPolicy policy = new ClientPolicy();
-			ClientPolicy proxyPolicy = new ClientPolicy();
-			AsyncClientPolicy asyncPolicy = new AsyncClientPolicy();
-			AsyncClientPolicy proxyAsyncPolicy = new AsyncClientPolicy();
-			policy.clusterName = clusterName;
-			proxyPolicy.clusterName = clusterName;
-			asyncPolicy.clusterName = clusterName;
-			proxyAsyncPolicy.clusterName = clusterName;
-			policy.tlsPolicy = tlsPolicy;
-			proxyPolicy.tlsPolicy = proxyTlsPolicy;
-			asyncPolicy.tlsPolicy = tlsPolicy;
-			proxyAsyncPolicy.tlsPolicy = proxyTlsPolicy;
-			policy.authMode = authMode;
-			proxyPolicy.authMode = authMode;
-			asyncPolicy.authMode = authMode;
-			proxyAsyncPolicy.authMode = authMode;
-			proxyPolicy.minConnsPerNode = 100;
-			proxyAsyncPolicy.minConnsPerNode = 100;
-			proxyPolicy.maxConnsPerNode = 100;
-			proxyAsyncPolicy.maxConnsPerNode = 100;
-			proxyPolicy.timeout = timeout;
-			proxyAsyncPolicy.timeout = timeout;
-
-			if (user != null && user.Length > 0)
-			{
-				policy.user = user;
-				policy.password = password;
-				proxyPolicy.user = user;
-				proxyPolicy.password = password;
-				asyncPolicy.user = user;
-				asyncPolicy.password = password;
-				proxyAsyncPolicy.user = user;
-				proxyAsyncPolicy.password = password;
-			}
-
-			asyncPolicy.asyncMaxCommands = 300;
-			proxyAsyncPolicy.asyncMaxCommands = 300;
-
-			proxyClient = new AerospikeClientProxy(proxyPolicy, proxyHost);
-			if (hosts != null)
-			{
-				nativeClient = new AerospikeClient(policy, hosts);
-				nativeAsync = new AsyncClient(asyncPolicy, hosts);
-			}
-			else
-			{
-				nativeClient = null;
-				nativeAsync = null;
-			}
-			
-			asyncProxy = new AsyncClientProxy(proxyAsyncPolicy, proxyHost);
-			asyncClient = asyncProxy;
-
-			proxyTotalTimeout = timeout;
-			proxySocketTimeout = 5000;
-
-			proxyClient.readPolicyDefault.totalTimeout = proxyTotalTimeout;
-			proxyClient.readPolicyDefault.socketTimeout = proxySocketTimeout;
-			proxyClient.WritePolicyDefault.totalTimeout = proxyTotalTimeout;
-			proxyClient.WritePolicyDefault.socketTimeout = proxySocketTimeout;
-			proxyClient.ScanPolicyDefault.totalTimeout = proxyTotalTimeout;
-			proxyClient.ScanPolicyDefault.socketTimeout = proxySocketTimeout;
-			proxyClient.QueryPolicyDefault.totalTimeout = proxyTotalTimeout;
-			proxyClient.QueryPolicyDefault.socketTimeout = proxySocketTimeout;
-			proxyClient.BatchPolicyDefault.totalTimeout = proxyTotalTimeout;
-			proxyClient.BatchPolicyDefault.socketTimeout = proxySocketTimeout;
-			proxyClient.BatchParentPolicyWriteDefault.totalTimeout = proxyTotalTimeout;
-			proxyClient.BatchParentPolicyWriteDefault.socketTimeout = proxySocketTimeout;
-			proxyClient.InfoPolicyDefault.timeout = proxyTotalTimeout;
-
-			asyncProxy.ReadPolicyDefault = proxyClient.ReadPolicyDefault;
-			asyncProxy.WritePolicyDefault = proxyClient.WritePolicyDefault;
-			asyncProxy.ScanPolicyDefault = proxyClient.ScanPolicyDefault;
-			asyncProxy.QueryPolicyDefault = proxyClient.QueryPolicyDefault;
-			asyncProxy.BatchPolicyDefault = proxyClient.BatchPolicyDefault;
-			asyncProxy.BatchParentPolicyWriteDefault = proxyClient.BatchParentPolicyWriteDefault;
-			asyncProxy.InfoPolicyDefault = proxyClient.InfoPolicyDefault;
-
-			if (nativeClient != null)
-			{
-				nativeClient.ReadPolicyDefault = proxyClient.ReadPolicyDefault;
-				nativeClient.WritePolicyDefault = proxyClient.WritePolicyDefault;
-				nativeClient.ScanPolicyDefault = proxyClient.ScanPolicyDefault;
-				nativeClient.QueryPolicyDefault = proxyClient.QueryPolicyDefault;
-				nativeClient.BatchPolicyDefault = proxyClient.BatchPolicyDefault;
-				nativeClient.BatchParentPolicyWriteDefault = proxyClient.BatchParentPolicyWriteDefault;
-				nativeClient.InfoPolicyDefault = proxyClient.InfoPolicyDefault;
-
-				asyncClient.ReadPolicyDefault = proxyClient.ReadPolicyDefault;
-				asyncClient.WritePolicyDefault = proxyClient.WritePolicyDefault;
-				asyncClient.ScanPolicyDefault = proxyClient.ScanPolicyDefault;
-				asyncClient.QueryPolicyDefault = proxyClient.QueryPolicyDefault;
-				asyncClient.BatchPolicyDefault = proxyClient.BatchPolicyDefault;
-				asyncClient.BatchParentPolicyWriteDefault = proxyClient.BatchParentPolicyWriteDefault;
-				asyncClient.InfoPolicyDefault = proxyClient.InfoPolicyDefault;
-			}
-
-			client = proxyClient;
-
-			try
-			{
-				if (nativeClient != null)
-				{
-					SetServerSpecific();
-				}
-			}
-			catch
-			{
-				client.Close();
-				client = null;
-				throw;
-			}
-		}
+		
 
 		private void ConnectAsync()
 		{
@@ -345,6 +184,7 @@ namespace Aerospike.Test
 			policy.authMode = authMode;
 			policy.asyncMaxCommands = 300;
 			policy.timeout = timeout;
+			policy.useServicesAlternate = useServicesAlternate;
 
 			if (user != null && user.Length > 0)
 			{
@@ -352,17 +192,7 @@ namespace Aerospike.Test
 				policy.password = password;
 			}
 
-			nativeAsync = new AsyncClient(policy, hosts);
-
-			nativeAsync.readPolicyDefault.totalTimeout = timeout;
-			nativeAsync.WritePolicyDefault.totalTimeout = timeout;
-			nativeAsync.ScanPolicyDefault.totalTimeout = timeout;
-			nativeAsync.QueryPolicyDefault.totalTimeout = timeout;
-			nativeAsync.BatchPolicyDefault.totalTimeout = timeout;
-			nativeAsync.BatchParentPolicyWriteDefault.totalTimeout = timeout;
-			nativeAsync.InfoPolicyDefault.timeout = timeout;
-
-			asyncClient = nativeAsync;
+			asyncClient = new AsyncClient(policy, hosts);
 
 			// Example of how to enable metrics
 			//asyncClient.EnableMetrics(new MetricsPolicy());
@@ -370,7 +200,7 @@ namespace Aerospike.Test
 
 		private void SetServerSpecific()
 		{
-			Node node = nativeClient.Nodes[0];
+			Node node = client.Nodes[0];
 			string namespaceFilter = "namespace/" + ns;
 			Dictionary<string, string> map = Info.Request(null, node, "edition", namespaceFilter);
 

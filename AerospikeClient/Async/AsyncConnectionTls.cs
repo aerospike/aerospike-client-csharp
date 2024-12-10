@@ -202,7 +202,7 @@ namespace Aerospike.Client
 			{
 				// Do not call command completed methods because that can result in a new 
 				// Send()/Receive() call before the current sync BeginRead() has completed.
-				// Instead, set the state which will be handled after BeginRead() is done.
+				// Instead, set the State which will be handled after BeginRead() is done.
 				try
 				{
 					int received = sslStream.EndRead(result);

@@ -1,0 +1,70 @@
+name: Build artifacts
+run-name: Build artifacts (run_tests=${{ inputs.run_tests }}, use-server-rc=${{ inputs.use-server-rc }}, server-tag=${{ inputs.server-tag }})
+
+on:
+  workflow_dispatch:
+    inputs:
+      run_tests:
+        description: "Run integration tests?"
+        required: true
+        type: boolean
+        default: false
+      use-server-rc:
+        type: boolean
+        required: true
+        default: false
+        description: 'Test against server release candidate? (e.g to test new server features)'
+      server-tag:
+        type: string
+        required: true
+        default: 'latest'
+        description: 'Server docker image tag (e.g to test a client backport version)'
+
+  workflow_call:
+    inputs:
+      # The "dev" tests test the artifacts against a server
+      run_tests:
+        required: false
+        type: boolean
+        default: false
+      # workflow_call hack
+      is_workflow_call:
+        type: boolean
+        default: true
+        required: false
+      # This input is only used in workflow_call events
+      sha-to-build-and-test:
+        description: A calling workflow may want to run this workflow on a different ref than the calling workflow's ref
+        type: string
+        # Make it required to make things simple
+        required: true
+      # A calling workflow doesn't actually set values to the inputs below
+      # But that workflow needs to have default values for these inputs
+      use-server-rc:
+        required: false
+        default: false
+        type: boolean
+      server-tag:
+        type: string
+        required: false
+        default: 'latest'
+    secrets:
+      DOCKER_HUB_BOT_USERNAME:
+        required: true
+      DOCKER_HUB_BOT_PW:
+        required: true
+      MAC_M1_SELF_HOSTED_RUNNER_PW:
+        required: true
+
+jobs:
+  dotnet:
+    strategy:
+      fail-fast: false
+    uses: ./.github/workflows/dotnet.yml
+    with:
+      # Can't use env context here, so just copy from build-sdist env var
+      sha-to-build-and-test: ${{ inputs.is_workflow_call == true && inputs.sha-to-build-and-test || github.sha }}
+      run_tests: ${{ inputs.run_tests }}
+      use-server-rc: ${{ inputs.use-server-rc }}
+      server-tag: ${{ inputs.server-tag }}
+    secrets: inherit

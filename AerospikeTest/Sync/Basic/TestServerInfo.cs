@@ -25,9 +25,9 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void ServerInfo()
 		{
-			if (!args.testProxy || (args.testProxy && nativeClient != null) && !args.testAsyncAwait)
+			if (!args.testAsyncAwait)
 			{
-				Node node = nativeClient.Nodes[0];
+				Node node = client.Nodes[0];
 				GetServerConfig(node);
 				GetNamespaceConfig(node);
 			}

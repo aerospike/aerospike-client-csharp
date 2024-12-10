@@ -1002,10 +1002,31 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if command fails</exception>
 		public async Task<Record> Operate(WritePolicy policy, Key key, Operation[] operations, CancellationToken token)
 		{
-			OperateArgs args = new(policy, WritePolicyDefault, OperatePolicyReadDefault, key, operations);
-			OperateCommandNew command = new(bufferPool, Cluster, key, args);
-			await command.Execute(token);
-			return command.Record;
+			OperateArgs args = new OperateArgs(policy, WritePolicyDefault, OperatePolicyReadDefault, operations);
+			policy = args.writePolicy;
+
+			if (args.hasWrite)
+			{
+				/*if (policy.Txn != null)
+				{
+					TxnMonitor.AddKey(cluster, policy, key);
+				}*/
+
+				OperateCommandWriteNew command = new(bufferPool, Cluster, key, args);
+				await command.Execute(token);
+				return command.Record;
+			}
+			else
+			{
+				if (policy?.Txn != null)
+				{
+					policy.Txn.PrepareRead(key.ns);
+				}
+
+				OperateCommandReadNew command = new(bufferPool, Cluster, key, args);
+				await command.Execute(token);
+				return command.Record;
+			}
 		}
 
 		//-------------------------------------------------------
@@ -1463,7 +1484,7 @@ namespace Aerospike.Client
 			statement.FunctionName = functionName;
 			statement.FunctionArgs = functionArgs;
 
-			Cluster.AddTran();
+			Cluster.AddCommandCount();
 
 			ulong taskId = statement.PrepareTaskId();
 			Node[] nodes = Cluster.ValidateNodes();
@@ -1497,7 +1518,7 @@ namespace Aerospike.Client
 
 			statement.Operations = operations;
 
-			Cluster.AddTran();
+			Cluster.AddCommandCount();
 
 			ulong taskId = statement.PrepareTaskId();
 			Node[] nodes = Cluster.ValidateNodes();
@@ -1577,7 +1598,7 @@ namespace Aerospike.Client
 		/// <param name="partitionFilter">filter on a subset of data partitions</param>
 		/// <param name="token">cancellation token</param>
 		/// <exception cref="AerospikeException">if query fails</exception>
-		public async IAsyncEnumerable<KeyRecord> QueryPartitions
+		public IAsyncEnumerable<KeyRecord> QueryPartitions
 		(
 			QueryPolicy policy,
 			Statement statement,
@@ -1585,7 +1606,9 @@ namespace Aerospike.Client
 			CancellationToken token
 		)
 		{
-			policy ??= QueryPolicyDefault;
+			throw new NotImplementedException();
+
+			/*policy ??= QueryPolicyDefault;
 
 			Node[] nodes = Cluster.ValidateNodes();
 
@@ -1621,7 +1644,7 @@ namespace Aerospike.Client
 				throw new AerospikeException(ResultCode.PARAMETER_ERROR, "QueryPartitions() not supported");
 			}
 
-			return null; // TODO: get results from channel. use select many
+			//return null; // TODO: get results from channel. use select many*/
 		}
 
 		private static async Task PrepareQueryPartition(
@@ -1635,7 +1658,7 @@ namespace Aerospike.Client
 			List<NodePartitions> list,
 			CancellationToken token)
 		{
-			cluster.AddTran();
+			cluster.AddCommandCount();
 			
 			ulong taskId = statement.PrepareTaskId();
 			// Produce query commands

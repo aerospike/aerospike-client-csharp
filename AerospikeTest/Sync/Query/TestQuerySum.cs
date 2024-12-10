@@ -31,10 +31,10 @@ namespace Aerospike.Test
 		[ClassInitialize()]
 		public static async Task Prepare(TestContext testContext)
 		{
-			if ((!args.testProxy && !args.testAsyncAwait) || (args.testProxy && nativeClient != null))
+			if (!args.testAsyncAwait)
 			{
 				Assembly assembly = Assembly.GetExecutingAssembly();
-				RegisterTask task = nativeClient.Register(null, assembly, "Aerospike.Test.LuaResources.sum_example.lua", "sum_example.lua", Language.LUA);
+				RegisterTask task = client.Register(null, assembly, "Aerospike.Test.LuaResources.sum_example.lua", "sum_example.lua", Language.LUA);
 				task.Wait();
 			}
 			else if (args.testAsyncAwait)
@@ -47,9 +47,9 @@ namespace Aerospike.Test
 
 			try
 			{
-				if ((!args.testProxy && !args.testAsyncAwait) || (args.testProxy && nativeClient != null))
+				if (!args.testAsyncAwait)
 				{
-					IndexTask itask = nativeClient.CreateIndex(policy, args.ns, args.set, indexName, binName, IndexType.NUMERIC);
+					IndexTask itask = client.CreateIndex(policy, args.ns, args.set, indexName, binName, IndexType.NUMERIC);
 					itask.Wait();
 				}
 				else if (args.testAsyncAwait)
@@ -83,9 +83,9 @@ namespace Aerospike.Test
 		[ClassCleanup()]
 		public static void Destroy()
 		{
-			if ((!args.testProxy && !args.testAsyncAwait) || (args.testProxy && nativeClient != null))
+			if (!args.testAsyncAwait)
 			{
-				nativeClient.DropIndex(null, args.ns, args.set, indexName);
+				client.DropIndex(null, args.ns, args.set, indexName);
 			}
 			else if (args.testAsyncAwait)
 			{
@@ -96,89 +96,83 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void QuerySum()
 		{
-			if (!args.testProxy || (args.testProxy && nativeClient != null))
+			int begin = 4;
+			int end = 7;
+
+			Statement stmt = new Statement();
+			stmt.SetNamespace(args.ns);
+			stmt.SetSetName(args.set);
+			stmt.SetBinNames(binName);
+			stmt.SetFilter(Filter.Range(binName, begin, end));
+			stmt.SetAggregateFunction(Assembly.GetExecutingAssembly(), "Aerospike.Test.LuaResources.sum_example.lua", "sum_example", "sum_single_bin", Value.Get(binName));
+
+			if (!args.testAsyncAwait)
 			{
-				int begin = 4;
-				int end = 7;
+				ResultSet rs = client.QueryAggregate(null, stmt);
 
-				Statement stmt = new Statement();
-				stmt.SetNamespace(args.ns);
-				stmt.SetSetName(args.set);
-				stmt.SetBinNames(binName);
-				stmt.SetFilter(Filter.Range(binName, begin, end));
-				stmt.SetAggregateFunction(Assembly.GetExecutingAssembly(), "Aerospike.Test.LuaResources.sum_example.lua", "sum_example", "sum_single_bin", Value.Get(binName));
-
-				if (!args.testAsyncAwait)
+				try
 				{
-					ResultSet rs = nativeClient.QueryAggregate(null, stmt);
+					int expected = 22; // 4 + 5 + 6 + 7
+					int count = 0;
 
-					try
+					while (rs.Next())
 					{
-						int expected = 22; // 4 + 5 + 6 + 7
-						int count = 0;
+						object obj = rs.Object;
+						long sum = 0;
 
-						while (rs.Next())
+						if (obj is long)
 						{
-							object obj = rs.Object;
-							long sum = 0;
-
-							if (obj is long)
-							{
-								sum = (long)rs.Object;
-							}
-							else
-							{
-								Assert.Fail("Return value not a long: " + obj);
-							}
-							Assert.AreEqual(expected, (int)sum);
-							count++;
+							sum = (long)rs.Object;
 						}
-						Assert.AreNotEqual(0, count);
+						else
+						{
+							Assert.Fail("Return value not a long: " + obj);
+						}
+						Assert.AreEqual(expected, (int)sum);
+						count++;
 					}
-					finally
-					{
-						rs.Close();
-					}
+					Assert.AreNotEqual(0, count);
 				}
-				else
+				finally
 				{
-					throw new NotImplementedException();
+					rs.Close();
 				}
+			}
+			else
+			{
+				throw new NotImplementedException();
 			}
 		}
 
 		[TestMethod]
 		public void QuerySetNotFound()
 		{
-			if (!args.testProxy || (args.testProxy && nativeClient != null))
+			Statement stmt = new Statement()
 			{
-				Statement stmt = new Statement()
-				{
-					Namespace = args.ns,
-					SetName = "notfound",
-					BinNames = new string[] { binName },
-					Filter = Filter.Range(binName, 4, 7)
-				};
-				stmt.SetAggregateFunction(Assembly.GetExecutingAssembly(), "Aerospike.Test.LuaResources.sum_example.lua", "sum_example", "sum_single_bin", Value.Get(binName));
+				Namespace = args.ns,
+				SetName = "notfound",
+				BinNames = new string[] { binName },
+				Filter = Filter.Range(binName, 4, 7)
+			};
+			stmt.SetAggregateFunction(Assembly.GetExecutingAssembly(), "Aerospike.Test.LuaResources.sum_example.lua", "sum_example", "sum_single_bin", Value.Get(binName));
 
-				QueryPolicy qp = new QueryPolicy()
-				{
-					socketTimeout = 5000
-				};
+			QueryPolicy qp = new QueryPolicy()
+			{
+				socketTimeout = 5000
+			};
 
-				ResultSet rs = nativeClient.QueryAggregate(qp, stmt);
+			ResultSet rs = client.QueryAggregate(qp, stmt);
 
-				try
+			try
+			{
+				while (rs.Next())
 				{
-					while (rs.Next())
-					{
-						Assert.Fail("No rows should have been returned");
-					}
+					Assert.Fail("No rows should have been returned");
 				}
-				finally
-				{
-					rs.Close();
-				}
+			}
+			finally
+			{
+				rs.Close();
 			}
 		}
 	}

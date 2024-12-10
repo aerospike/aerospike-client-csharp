@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2023 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -30,7 +30,6 @@ namespace Aerospike.Client
 			WritePolicy policy,
 			WritePolicy writeDefault,
 			WritePolicy readDefault,
-			Key key,
 			Operation[] operations
 		)
 		{
@@ -130,18 +129,6 @@ namespace Aerospike.Client
 				wattr |= Command.INFO2_RESPOND_ALL_OPS;
 			}
 			writeAttr = wattr;
-		}
-
-		public Partition GetPartition(Cluster cluster, Key key)
-		{
-			if (hasWrite)
-			{
-				return Partition.Write(cluster, writePolicy, key);
-			}
-			else
-			{
-				return Partition.Read(cluster, writePolicy, key);
-			}
 		}
 	}
 }

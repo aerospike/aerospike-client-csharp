@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2019 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -40,6 +40,15 @@ namespace Aerospike.Client
 		/// </summary>
 		public AdminPolicy()
 		{
+		}
+
+		/// <summary>
+		/// Creates a deep copy of this admin policy.
+		/// </summary>
+		/// <returns></returns>
+		public AdminPolicy Clone()
+		{
+			return new AdminPolicy(this);
 		}
 	}
 }

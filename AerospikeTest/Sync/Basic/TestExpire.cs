@@ -15,7 +15,6 @@
  * the License.
  */
 using Aerospike.Client;
-using Microsoft.AspNetCore.DataProtection.KeyManagement;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace Aerospike.Test
@@ -36,10 +35,6 @@ namespace Aerospike.Test
 			{
 				expiration = 2
 			};
-			if (args.testProxy)
-			{
-				writePolicy.totalTimeout = args.proxyTotalTimeout;
-			}
 
 			if (!args.testAsyncAwait)
 			{
@@ -79,10 +74,6 @@ namespace Aerospike.Test
 			// The "Never Expire" value is -1, or 0xFFFFFFFF.
 			WritePolicy writePolicy = new WritePolicy();
 			writePolicy.expiration = -1;
-			if (args.testProxy)
-			{
-				writePolicy.totalTimeout = args.proxyTotalTimeout;
-			}
 
 			if (!args.testAsyncAwait)
 			{

@@ -17,34 +17,20 @@
 
 namespace Aerospike.Client
 {
-	public sealed class TouchCommand : SyncCommand
+	public sealed class TouchCommand : SyncWriteCommand
 	{
-		private readonly WritePolicy writePolicy;
-		private readonly Key key;
-		private readonly Partition partition;
-
+		private readonly bool failOnNotFound;
+		internal bool Touched { get; private set; }
 		public TouchCommand(Cluster cluster, WritePolicy writePolicy, Key key)
- 			: base(cluster, writePolicy)
+ 			: base(cluster, writePolicy, key)
 		{
-			this.writePolicy = writePolicy;
-			this.key = key;
-			this.partition = Partition.Write(cluster, writePolicy, key);
-			cluster.AddTran();
+			this.failOnNotFound = true;
 		}
 
-		protected internal override bool IsWrite()
+		public TouchCommand(Cluster cluster, WritePolicy writePolicy, Key key, bool failOnNotFound)
+ 			: base(cluster, writePolicy, key)
 		{
-			return true;
-		}
-
-		protected internal override Node GetNode()
-		{
-			return partition.GetNodeWrite(cluster);
-		}
-
-		protected override Latency.LatencyType GetLatencyType()
-		{
-			return Latency.LatencyType.WRITE;
+			this.failOnNotFound = failOnNotFound;
 		}
 
 		protected internal override void WriteBuffer()
@@ -52,12 +38,24 @@ namespace Aerospike.Client
 			SetTouch(writePolicy, key);
 		}
 
-		protected internal override void ParseResult(IConnection conn)
+		protected internal override void ParseResult(Connection conn)
 		{
 			ParseHeader(conn);
+			ParseFields(policy.Txn, key, true);
 
-			if (resultCode == 0)
+			if (resultCode == ResultCode.OK)
 			{
+				Touched = true;
+				return;
+			}
+
+			Touched = false;
+			if (resultCode == ResultCode.KEY_NOT_FOUND_ERROR)
+			{
+				if (failOnNotFound)
+				{
+					throw new AerospikeException(resultCode);
+				}
 				return;
 			}
 
@@ -71,12 +69,6 @@ namespace Aerospike.Client
 			}
 
 			throw new AerospikeException(resultCode);
-		}
-
-		protected internal override bool PrepareRetry(bool timeout)
-		{
-			partition.PrepareRetryWrite(timeout);
-			return true;
 		}
 	}
 }

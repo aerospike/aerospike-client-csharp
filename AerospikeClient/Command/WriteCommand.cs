@@ -17,38 +17,16 @@
 
 namespace Aerospike.Client
 {
-	public sealed class WriteCommand : SyncCommand
+	public sealed class WriteCommand : SyncWriteCommand
 	{
-		private readonly WritePolicy writePolicy;
-		private readonly Key key;
-		private readonly Partition partition;
 		private readonly Bin[] bins;
 		private readonly Operation.Type operation;
 
 		public WriteCommand(Cluster cluster, WritePolicy writePolicy, Key key, Bin[] bins, Operation.Type operation)
-			: base(cluster, writePolicy)
+			: base(cluster, writePolicy, key)
 		{
-			this.writePolicy = writePolicy;
-			this.key = key;
-			this.partition = Partition.Write(cluster, writePolicy, key);
 			this.bins = bins;
 			this.operation = operation;
-			cluster.AddTran();
-		}
-
-		protected internal override bool IsWrite()
-		{
-			return true;
-		}
-
-		protected internal override Node GetNode()
-		{
-			return partition.GetNodeWrite(cluster);
-		}
-
-		protected override Latency.LatencyType GetLatencyType()
-		{
-			return Latency.LatencyType.WRITE;
 		}
 
 		protected internal override void WriteBuffer()
@@ -56,11 +34,12 @@ namespace Aerospike.Client
 			SetWrite(writePolicy, operation, key, bins);
 		}
 
-		protected internal override void ParseResult(IConnection conn)
+		protected internal override void ParseResult(Connection conn)
 		{
 			ParseHeader(conn);
+			ParseFields(policy.Txn, key, true);
 
-			if (resultCode == 0)
+			if (resultCode == ResultCode.OK)
 			{
 				return;
 			}
@@ -75,12 +54,6 @@ namespace Aerospike.Client
 			}
 
 			throw new AerospikeException(resultCode);
-		}
-
-		protected internal override bool PrepareRetry(bool timeout)
-		{
-			partition.PrepareRetryWrite(timeout);
-			return true;
 		}
 	}
 }

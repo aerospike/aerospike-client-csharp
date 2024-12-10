@@ -15,37 +15,17 @@
  * the License.
  */
 
+using System;
+
 namespace Aerospike.Client
 {
-	public sealed class DeleteCommand : SyncCommand
+	public sealed class DeleteCommand : SyncWriteCommand
 	{
-		private readonly WritePolicy writePolicy;
-		private readonly Key key;
-		private readonly Partition partition;
 		private bool existed;
 
 		public DeleteCommand(Cluster cluster, WritePolicy writePolicy, Key key)
-			: base(cluster, writePolicy)
+			: base(cluster, writePolicy, key)
 		{
-			this.writePolicy = writePolicy;
-			this.key = key;
-			this.partition = Partition.Write(cluster, writePolicy, key);
-			cluster.AddTran();
-		}
-
-		protected internal override bool IsWrite()
-		{
-			return true;
-		}
-
-		protected internal override Node GetNode()
-		{
-			return partition.GetNodeWrite(cluster);
-		}
-
-		protected override Latency.LatencyType GetLatencyType()
-		{
-			return Latency.LatencyType.WRITE;
 		}
 
 		protected internal override void WriteBuffer()
@@ -53,11 +33,12 @@ namespace Aerospike.Client
 			SetDelete(writePolicy, key);
 		}
 
-		protected internal override void ParseResult(IConnection conn)
+		protected internal override void ParseResult(Connection conn)
 		{
 			ParseHeader(conn);
+			ParseFields(policy.Txn, key, true);
 
-			if (resultCode == 0)
+			if (resultCode == ResultCode.OK)
 			{
 				existed = true;
 				return;
@@ -80,12 +61,6 @@ namespace Aerospike.Client
 			}
 
 			throw new AerospikeException(resultCode);
-		}
-
-		protected internal override bool PrepareRetry(bool timeout)
-		{
-			partition.PrepareRetryWrite(timeout);
-			return true;
 		}
 
 		public bool Existed()

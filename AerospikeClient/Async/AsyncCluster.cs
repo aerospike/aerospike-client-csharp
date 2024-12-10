@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2022 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -71,7 +71,7 @@ namespace Aerospike.Client
 					throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Unsupported MaxCommandAction value: " + policy.asyncMaxCommandAction.ToString());
 			}
 
-			InitTendThread(policy.failIfNotConnected);
+			StartTendThread(policy);
 		}
 
 		protected internal override Node CreateNode(NodeValidator nv, bool createMinConn)

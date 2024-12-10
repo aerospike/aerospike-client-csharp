@@ -17,28 +17,21 @@
 
 namespace Aerospike.Client
 {
-	public sealed class AsyncExists : AsyncSingleCommand
+	public sealed class AsyncExists : AsyncReadBase
 	{
 		private readonly ExistsListener listener;
-		private readonly Key key;
-		private readonly Partition partition;
 		private bool exists;
 
 		public AsyncExists(AsyncCluster cluster, Policy policy, Key key, ExistsListener listener) 
-			: base(cluster, policy)
+			: base(cluster, policy, key)
 		{
 			this.listener = listener;
-			this.key = key;
-			this.partition = Partition.Read(cluster, policy, key);
-			cluster.AddTran();
 		}
 
 		public AsyncExists(AsyncExists other)
 			: base(other)
 		{
 			this.listener = other.listener;
-			this.key = other.key;
-			this.partition = other.partition;
 		}
 
 		protected internal override AsyncCommand CloneCommand()
@@ -46,35 +39,26 @@ namespace Aerospike.Client
 			return new AsyncExists(this);
 		}
 
-		protected internal override Node GetNode(Cluster cluster)
-		{
-			return partition.GetNodeRead(cluster);
-		}
-
-		protected override Latency.LatencyType GetLatencyType()
-		{
-			return Latency.LatencyType.READ;
-		}
-
 		protected internal override void WriteBuffer()
 		{
 			SetExists(policy, key);
 		}
 
-		protected internal override void ParseResult()
+		protected internal override bool ParseResult()
 		{
-			int resultCode = dataBuffer[dataOffset + 5];
+			ParseHeader();
+			ParseFields(policy.Txn, key, false);
 
-			if (resultCode == 0)
+			if (resultCode == ResultCode.OK)
 			{
 				exists = true;
-				return;
+				return true;
 			}
 
 			if (resultCode == ResultCode.KEY_NOT_FOUND_ERROR)
 			{
 				exists = false;
-				return;
+				return true;
 			}
 
 			if (resultCode == ResultCode.FILTERED_OUT)
@@ -84,16 +68,10 @@ namespace Aerospike.Client
 					throw new AerospikeException(resultCode);
 				}
 				exists = true;
-				return;
+				return true;
 			}
 
 			throw new AerospikeException(resultCode);
-		}
-
-		protected internal override bool PrepareRetry(bool timeout)
-		{
-			partition.PrepareRetryRead(timeout);
-			return true;
 		}
 
 		protected internal override void OnSuccess()

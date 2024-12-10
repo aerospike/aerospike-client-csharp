@@ -29,7 +29,7 @@ namespace Aerospike.Client
 		public void OnSuccess(List<BatchRecord> records, bool status)
 		{
 			// records is an argument to the async call, so the user already has access to it.
-			// Set completion status: true if all batch sub-transactions were successful.
+			// Set completion status: true if all batch sub-commands were successful.
 			SetResult(status);
 		}
 	}

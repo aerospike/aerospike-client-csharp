@@ -22,7 +22,9 @@ namespace Aerospike.Client
 		public int readAttr;
 		public int writeAttr;
 		public int infoAttr;
+		public int txnAttr;
 		public int expiration;
+		public int opSize;
 		public short generation;
 		public bool hasWrite;
 		public bool sendKey;
@@ -393,6 +395,31 @@ namespace Aerospike.Client
 			{
 				infoAttr |= Command.INFO3_COMMIT_MASTER;
 			}
+		}
+
+		public void SetOpSize(Operation[] ops)
+		{
+			int dataOffset = 0;
+
+			foreach (Operation op in ops)
+			{
+				dataOffset += ByteUtil.EstimateSizeUtf8(op.binName) + Command.OPERATION_HEADER_SIZE;
+				dataOffset += op.value.EstimateSize();
+			}
+			opSize = dataOffset;
+		}
+
+		public void SetTxn(int attr)
+		{
+			filterExp = null;
+			readAttr = 0;
+			writeAttr = Command.INFO2_WRITE | Command.INFO2_RESPOND_ALL_OPS | Command.INFO2_DURABLE_DELETE;
+			infoAttr = 0;
+			txnAttr = attr;
+			expiration = 0;
+			generation = 0;
+			hasWrite = true;
+			sendKey = false;
 		}
 	}
 }

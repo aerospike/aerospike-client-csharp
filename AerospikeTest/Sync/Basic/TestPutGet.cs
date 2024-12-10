@@ -168,47 +168,37 @@ namespace Aerospike.Test
 		[TestMethod]
 		public async Task PutGetCompression()
 		{
-			if (!args.testProxy || (args.testProxy && nativeClient != null) || args.testAsyncAwait)
+			Node node = client.Nodes[0];
+			IDictionary<string, string> map = Info.Request(null, node);
+			Assert.IsNotNull(map);
+
+			foreach (KeyValuePair<string, string> entry in map)
 			{
-				Node node = nativeClient.Nodes[0];
-				IDictionary<string, string> map = Info.Request(null, node);
-				Assert.IsNotNull(map);
+				string kvp = entry.Key;
 
-				foreach (KeyValuePair<string, string> entry in map)
+				if (kvp.Equals("build_ee_sha")) // Compression only available in EE
 				{
-					string kvp = entry.Key;
-
-					if (kvp.Equals("build_ee_sha")) // Compression only available in EE
+					Client.WritePolicy writePolicy = new()
 					{
-						Client.WritePolicy writePolicy = new()
-						{
-							compress = true
-						};
-						if (args.testProxy)
-						{
-							writePolicy.totalTimeout = args.proxyTotalTimeout;
-						}
+						compress = true
+					};
 
-						Policy policy = new()
-						{
-							compress = true
-						};
-						if (args.testProxy)
-						{
-							policy.totalTimeout = args.proxyTotalTimeout;
-						}
+					Policy policy = new()
+					{
+						compress = true
+					};
 
-						Key key = new(args.ns, args.set, "putgetc");
-						Record record;
+					Key key = new(args.ns, args.set, "putgetc");
+					Record record;
 
-						List<string> list = new();
-						int[] iterator = Enumerable.Range(0, 2000).ToArray();
-						foreach (int i in iterator)
-						{
-							list.Add(i.ToString());
-						}
+					List<string> list = new();
+					int[] iterator = Enumerable.Range(0, 2000).ToArray();
+					foreach (int i in iterator)
+					{
+						list.Add(i.ToString());
+					}
 
-						Bin bin1 = new("bin", list);
+					Bin bin1 = new("bin", list);
 
 						if (!args.testAsyncAwait)
 						{
@@ -244,7 +234,6 @@ namespace Aerospike.Test
 								Assert.Fail("Invalid record header: generation=" + record.generation + " expiration=" + record.expiration);
 							}
 						}
-					}
 				}
 			}
 		}

@@ -14,10 +14,7 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using System;
-using System.Collections.Generic;
 using System.Text;
-using System.Threading;
 
 namespace Aerospike.Client
 {
@@ -97,7 +94,7 @@ namespace Aerospike.Client
 		// Login timeout.
 		protected internal readonly int loginTimeout;
 
-		// Maximum socket idle to validate connections in transactions.
+		// Maximum socket idle to validate connections in commands.
 		private readonly double maxSocketIdleMillisTran;
 
 		// Maximum socket idle to trim peak connections to min connections.
@@ -137,7 +134,7 @@ namespace Aerospike.Client
 		public MetricsPolicy MetricsPolicy;
 		private volatile IMetricsListener metricsListener;
 		private volatile int retryCount;
-		private volatile int tranCount;
+		private volatile int commandCount;
 		private volatile int delayQueueTimeoutCount;
 
 		public Cluster(ClientPolicy policy, Host[] hosts)
@@ -272,6 +269,74 @@ namespace Aerospike.Client
 			recoverQueue = new Pool<ConnectionRecover>(256, 10000);
 			cancel = new CancellationTokenSource();
 			cancelToken = cancel.Token;
+		}
+
+		public void StartTendThread(ClientPolicy policy)
+		{
+			if (policy.forceSingleNode)
+			{
+				// Communicate with the first seed node only.
+				// Do not run cluster tend thread.
+				try
+				{
+					ForceSingleNode();
+				}
+				catch (Exception)
+				{
+					Close();
+					throw;
+				}
+			}
+			else
+			{
+				InitTendThread(policy.failIfNotConnected);
+			}
+		}
+
+		public void ForceSingleNode()
+		{
+			// Initialize tendThread, but do not start it.
+			tendValid = true;
+			tendThread = new Thread(new ThreadStart(this.Run));
+
+			// Validate first seed.
+			Host seed = seeds[0];
+			NodeValidator nv = new();
+			Node node = null;
+
+			try
+			{
+				node = nv.SeedNode(this, seed, null);
+			}
+			catch (Exception e)
+			{
+				throw new AerospikeException("Seed " + seed + " failed: " + e.Message, e);
+			}
+
+			node.CreateMinConnections();
+
+			// Add seed node to nodes.
+			Dictionary<string, Node> nodesToAdd = new(1);
+			nodesToAdd[node.Name] = node;
+			AddNodes(nodesToAdd);
+
+			// Initialize partitionMaps.
+			Peers peers = new(nodes.Length + 16);
+			node.RefreshPartitions(peers);
+
+			// Set partition maps for all namespaces to point to same node.
+			foreach (Partitions partitions in partitionMap.Values)
+			{
+				foreach (Node[] nodeArray in partitions.replicas)
+				{
+					int max = nodeArray.Length;
+
+					for (int i = 0; i < max; i++)
+					{
+						nodeArray[i] = node;
+					}
+				}
+			}
 		}
 
 		public virtual void InitTendThread(bool failIfNotConnected)
@@ -1201,26 +1266,26 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
-		/// Increment transaction count when metrics are enabled.
+		/// Increment command count when metrics are enabled.
 		/// </summary>
-		public void AddTran()
+		public void AddCommandCount()
 		{
 			if (MetricsEnabled)
 			{
-				Interlocked.Increment(ref tranCount);
+				Interlocked.Increment(ref commandCount);
 			}
 		}
 
 		/// <summary>
-		/// Return transaction count. The value is cumulative and not reset per metrics interval.
+		/// Return command count. The value is cumulative and not reset per metrics interval.
 		/// </summary>
-		public int GetTranCount()
+		public int GetCommandCount()
 		{
-			return tranCount;
+			return commandCount;
 		}
 
 		/// <summary>
-		/// Increment transaction retry count. There can be multiple retries for a single transaction.
+		/// Increment command retry count. There can be multiple retries for a single command.
 		/// </summary>
 		public void AddRetry()
 		{
@@ -1228,7 +1293,7 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
-		/// Add transaction retry count. There can be multiple retries for a single transaction.
+		/// Add command retry count. There can be multiple retries for a single command.
 		/// </summary>
 		public void AddRetries(int count)
 		{
@@ -1236,7 +1301,7 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
-		/// Return transaction retry count. The value is cumulative and not reset per metrics interval.
+		/// Return command retry count. The value is cumulative and not reset per metrics interval.
 		/// </summary>
 		public int GetRetryCount()
 		{

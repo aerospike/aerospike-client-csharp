@@ -14,18 +14,10 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using Microsoft.VisualBasic;
 using System.Buffers;
 using System.Collections;
 using static Aerospike.Client.Latency;
 using System.Net.Sockets;
-using Neo.IronLua;
-using System.Threading.Tasks;
-using System.Threading;
-using System.Diagnostics;
-using System.Numerics;
-using System.Threading.Channels;
-using System;
 using System.Runtime.CompilerServices;
 
 namespace Aerospike.Client
@@ -44,7 +36,7 @@ namespace Aerospike.Client
 		public static readonly int INFO2_DELETE = (1 << 1); // Fling a record into the belly of Moloch.
 		public static readonly int INFO2_GENERATION = (1 << 2); // Update if expected generation == old.
 		public static readonly int INFO2_GENERATION_GT = (1 << 3); // Update if new generation >= old, good for restore.
-		public static readonly int INFO2_DURABLE_DELETE = (1 << 4); // Transaction resulting in record deletion leaves tombstone (Enterprise only).
+		public static readonly int INFO2_DURABLE_DELETE = (1 << 4); // Command resulting in record deletion leaves tombstone (Enterprise only).
 		public static readonly int INFO2_CREATE_ONLY = (1 << 5); // Create only. Fail if record already exists.
 		public static readonly int INFO2_RELAX_AP_LONG_QUERY = (1 << 6); // Treat as long query, but relac read consistency
 		public static readonly int INFO2_RESPOND_ALL_OPS = (1 << 7); // Return a result for every operation.
@@ -73,17 +65,26 @@ namespace Aerospike.Client
 		//   1      0     allow replica
 		//   1      1     allow unavailable
 
+		public static readonly int INFO4_MRT_VERIFY_READ = (1 << 0); // Send MRT version to the server to be verified.
+		public static readonly int INFO4_MRT_ROLL_FORWARD = (1 << 1); // Roll forward MRT.
+		public static readonly int INFO4_MRT_ROLL_BACK = (1 << 2); // Roll back MRT.
+
+		public const byte STATE_READ_AUTH_HEADER = 1;
+		public const byte STATE_READ_HEADER = 2;
+		public const byte STATE_READ_DETAIL = 3;
+		public const byte STATE_COMPLETE = 4;
+
 		public const byte BATCH_MSG_READ = 0x0;
 		public const byte BATCH_MSG_REPEAT = 0x1;
 		public const byte BATCH_MSG_INFO = 0x2;
 		public const byte BATCH_MSG_GEN = 0x4;
 		public const byte BATCH_MSG_TTL = 0x8;
+		public const byte BATCH_MSG_INFO4 = 0x10;
 
 		public const int MSG_TOTAL_HEADER_SIZE = 30;
 		public const int FIELD_HEADER_SIZE = 5;
 		public const int OPERATION_HEADER_SIZE = 8;
 		public const int MSG_REMAINING_HEADER_SIZE = 22;
-		public const int DIGEST_SIZE = 20;
 		public const int COMPRESS_THRESHOLD = 128;
 		public const ulong CL_MSG_VERSION = 2UL;
 		public const ulong AS_MSG_TYPE = 3UL;
@@ -147,7 +148,7 @@ namespace Aerospike.Client
 
 		public static async Task Execute(this ICommand command, Cluster cluster, BatchPolicy policy, BatchCommandNew[] commands, BatchStatus status, CancellationToken token)
 		{
-			cluster.AddTran();
+			cluster.AddCommandCount();
 
 			if (policy.maxConcurrentThreads == 1 || commands.Length <= 1)
 			{
@@ -442,14 +443,16 @@ namespace Aerospike.Client
 			throw exception;
 		}
 
-		private static async IAsyncEnumerable<KeyRecord> ExecuteMultipleCommand(ICommand command, [EnumeratorCancellation] CancellationToken token)
+		private static IAsyncEnumerable<KeyRecord> ExecuteMultipleCommand(ICommand command, [EnumeratorCancellation] CancellationToken token)
 		{
-			IAsyncEnumerable<KeyRecord> keyRecords = null;
+			throw new NotImplementedException();
+			
+			/*IAsyncEnumerable<KeyRecord> keyRecords = null;
 			Node node;
 			AerospikeException exception = null;
 			ValueStopwatch metricsWatch = new();
 			LatencyType latencyType = command.Cluster.MetricsEnabled ? command.GetLatencyType() : LatencyType.NONE;
-			bool isClientTimeout;
+			bool isClientTimeout = false;
 
 			// Execute command until successful, timed out or maximum iterations have been reached.
 			while (true)
@@ -499,7 +502,7 @@ namespace Aerospike.Client
 						}
 
 						// Command has completed successfully.  Exit method.
-						return keyRecords;
+						//return keyRecords;
 					}
 					catch (AerospikeException ae)
 					{
@@ -651,7 +654,7 @@ namespace Aerospike.Client
 						}
 					}
 				}
-
+				
 				if (!isClientTimeout && command.Policy.sleepBetweenRetries > 0)
 				{
 					// Sleep before trying again.
@@ -682,7 +685,7 @@ namespace Aerospike.Client
 			exception.Policy = command.Policy;
 			exception.Iteration = command.Iteration;
 			exception.SetInDoubt(command.IsWrite(), command.CommandSentCounter);
-			throw exception;
+			throw exception;*/
 		}
 
 		public static async IAsyncEnumerable<KeyRecord> ParseMultipleResult(this ICommand command, IConnection conn, [EnumeratorCancellation] CancellationToken token)
@@ -824,6 +827,108 @@ namespace Aerospike.Client
 			return record;
 		}
 
+		public static async Task ParseHeader(this ICommand command, IConnection conn, CancellationToken token)
+		{
+			// Read header.
+			await conn.ReadFully(command.DataBuffer, 8, Command.STATE_READ_HEADER, token);
+
+			long sz = ByteUtil.BytesToLong(command.DataBuffer, 0);
+			int receiveSize = (int)(sz & 0xFFFFFFFFFFFFL);
+
+			if (receiveSize <= 0)
+			{
+				throw new AerospikeException("Invalid receive size: " + receiveSize);
+			}
+
+			command.SizeBuffer(receiveSize);
+			conn.ReadFully(command.DataBuffer, receiveSize, Command.STATE_READ_DETAIL);
+			conn.UpdateLastUsed();
+
+			ulong type = (ulong)(sz >> 48) & 0xff;
+
+			if (type == Command.AS_MSG_TYPE)
+			{
+				command.DataOffset = 5;
+			}
+			else if (type == Command.MSG_TYPE_COMPRESSED)
+			{
+				int usize = (int)ByteUtil.BytesToLong(command.DataBuffer, 0);
+				byte[] ubuf = new byte[usize];
+
+				ByteUtil.Decompress(command.DataBuffer, 8, receiveSize, ubuf, usize);
+				command.DataBuffer = ubuf;
+				command.DataOffset = 13;
+			}
+			else
+			{
+				throw new AerospikeException("Invalid proto type: " + type + " Expected: " + Command.AS_MSG_TYPE);
+			}
+
+			command.ResultCode = command.DataBuffer[command.DataOffset] & 0xFF;
+			command.DataOffset++;
+			command.Generation = ByteUtil.BytesToInt(command.DataBuffer, command.DataOffset);
+			command.DataOffset += 4;
+			command.Expiration = ByteUtil.BytesToInt(command.DataBuffer, command.DataOffset);
+			command.DataOffset += 8;
+			command.FieldCount = ByteUtil.BytesToShort(command.DataBuffer, command.DataOffset);
+			command.DataOffset += 2;
+			command.OpCount = ByteUtil.BytesToShort(command.DataBuffer, command.DataOffset);
+			command.DataOffset += 2;
+		}
+
+		public static void ParseFields(this ICommand command, Txn txn, Key key, bool hasWrite)
+		{
+			if (txn == null)
+			{
+				command.SkipFields(command.FieldCount);
+				return;
+			}
+
+			long? version = null;
+
+			for (int i = 0; i < command.FieldCount; i++)
+			{
+				int len = ByteUtil.BytesToInt(command.DataBuffer, command.DataOffset);
+				command.DataOffset += 4;
+
+				int type = command.DataBuffer[command.DataOffset++];
+				int size = len - 1;
+
+				if (type == FieldType.RECORD_VERSION)
+				{
+					if (size == 7)
+					{
+						version = ByteUtil.VersionBytesToLong(command.DataBuffer, command.DataOffset);
+					}
+					else
+					{
+						throw new AerospikeException("Record version field has invalid size: " + size);
+					}
+				}
+				command.DataOffset += size;
+			}
+
+			if (hasWrite)
+			{
+				txn.OnWrite(key, version, command.ResultCode);
+			}
+			else
+			{
+				txn.OnRead(key, version);
+			}
+		}
+
+		public static void SkipFields(this ICommand command, int fieldCount)
+		{
+			// There can be fields in the response (setname etc).
+			// But for now, ignore them. Expose them to the API if needed in the future.
+			for (int i = 0; i < fieldCount; i++)
+			{
+				int fieldlen = ByteUtil.BytesToInt(command.DataBuffer, command.DataOffset);
+				command.DataOffset += 4 + fieldlen;
+			}
+		}
+
 		public static int SizeBuffer(this ICommand command)
 		{
 			if (command.DataBuffer == null || command.DataOffset > command.DataBuffer.Length)
@@ -861,7 +966,7 @@ namespace Aerospike.Client
 		public static void SetWrite(this ICommand command, WritePolicy policy, Operation.Type operation, Key key, Bin[] bins)
 		{
 			command.Begin();
-			int fieldCount = command.EstimateKeySize(policy, key);
+			int fieldCount = command.EstimateKeySize(policy, key, true);
 
 			if (policy.filterExp != null)
 			{
@@ -877,7 +982,7 @@ namespace Aerospike.Client
 			bool compress = command.SizeBuffer(policy);
 
 			command.WriteHeaderWrite(policy, INFO2_WRITE, fieldCount, bins.Length);
-			command.WriteKey(policy, key);
+			command.WriteKey(policy, key, true);
 
 			policy.filterExp?.Write(command);
 
@@ -891,7 +996,7 @@ namespace Aerospike.Client
 		public static void SetDelete(this ICommand command, WritePolicy policy, Key key)
 		{
 			command.Begin();
-			int fieldCount = command.EstimateKeySize(policy, key);
+			int fieldCount = command.EstimateKeySize(policy, key, true);
 
 			if (policy.filterExp != null)
 			{
@@ -900,7 +1005,7 @@ namespace Aerospike.Client
 			}
 			command.SizeBuffer();
 			command.WriteHeaderWrite(policy, INFO2_WRITE | INFO2_DELETE, fieldCount, 0);
-			command.WriteKey(policy, key);
+			command.WriteKey(policy, key, true);
 
 			policy.filterExp?.Write(command);
 			command.End();
@@ -909,7 +1014,7 @@ namespace Aerospike.Client
 		public static void SetTouch(this ICommand command, WritePolicy policy, Key key)
 		{
 			command.Begin();
-			int fieldCount = command.EstimateKeySize(policy, key);
+			int fieldCount = command.EstimateKeySize(policy, key, true);
 
 			if (policy.filterExp != null)
 			{
@@ -919,7 +1024,7 @@ namespace Aerospike.Client
 			command.EstimateOperationSize();
 			command.SizeBuffer();
 			command.WriteHeaderWrite(policy, INFO2_WRITE, fieldCount, 1);
-			command.WriteKey(policy, key);
+			command.WriteKey(policy, key, true);
 
 			policy.filterExp?.Write(command);
 			command.WriteOperation(Operation.Type.TOUCH);
@@ -933,7 +1038,7 @@ namespace Aerospike.Client
 		public static void SetExists(this ICommand command, Policy policy, Key key)
 		{
 			command.Begin();
-			int fieldCount = command.EstimateKeySize(policy, key);
+			int fieldCount = command.EstimateKeySize(policy, key, false);
 
 			if (policy.filterExp != null)
 			{
@@ -942,25 +1047,7 @@ namespace Aerospike.Client
 			}
 			command.SizeBuffer();
 			command.WriteHeaderReadHeader(policy, INFO1_READ | INFO1_NOBINDATA, fieldCount, 0);
-			command.WriteKey(policy, key);
-
-			policy.filterExp?.Write(command);
-			command.End();
-		}
-
-		public static void SetRead(this ICommand command, Policy policy, Key key)
-		{
-			command.Begin();
-			int fieldCount = command.EstimateKeySize(policy, key);
-
-			if (policy.filterExp != null)
-			{
-				command.DataOffset += policy.filterExp.Size();
-				fieldCount++;
-			}
-			command.SizeBuffer();
-			command.WriteHeaderRead(policy, command.ServerTimeout, INFO1_READ | INFO1_GET_ALL, 0, 0, fieldCount, 0);
-			command.WriteKey(policy, key);
+			command.WriteKey(policy, key, false);
 
 			policy.filterExp?.Write(command);
 			command.End();
@@ -968,53 +1055,64 @@ namespace Aerospike.Client
 
 		public static void SetRead(this ICommand command, Policy policy, Key key, string[] binNames)
 		{
-			if (binNames != null)
+			int readAttr = Command.INFO1_READ;
+			int opCount = 0;
+
+			if (binNames != null && binNames.Length > 0)
 			{
-				command.Begin();
-				int fieldCount = command.EstimateKeySize(policy, key);
-
-				if (policy.filterExp != null)
-				{
-					command.DataOffset += policy.filterExp.Size();
-					fieldCount++;
-				}
-
-				foreach (string binName in binNames)
-				{
-					command.EstimateOperationSize(binName);
-				}
-				command.SizeBuffer();
-				command.WriteHeaderRead(policy, command.ServerTimeout, INFO1_READ, 0, 0, fieldCount, binNames.Length);
-				command.WriteKey(policy, key);
-
-				policy.filterExp?.Write(command);
-
-				foreach (string binName in binNames)
-				{
-					command.WriteOperation(binName, Operation.Type.READ);
-				}
-				command.End();
+				opCount = binNames.Length;
 			}
 			else
 			{
-				command.SetRead(policy, key);
+				readAttr |= Command.INFO1_GET_ALL;
 			}
-		}
 
-		public static void SetReadHeader(this ICommand command, Policy policy, Key key)
-		{
 			command.Begin();
-			int fieldCount = command.EstimateKeySize(policy, key);
+			int fieldCount = command.EstimateKeySize(policy, key, false);
 
 			if (policy.filterExp != null)
 			{
 				command.DataOffset += policy.filterExp.Size();
 				fieldCount++;
 			}
-			command.EstimateOperationSize((string)null);
+
+			if (opCount != 0)
+			{
+				foreach (string binName in binNames)
+				{
+					EstimateOperationSize(command, binName);
+				}
+			}
+
+			command.SizeBuffer();
+			command.WriteHeaderRead(policy, command.ServerTimeout, readAttr, 0, 0, fieldCount, opCount);
+			command.WriteKey(policy, key, false);
+
+			policy.filterExp?.Write(command);
+
+			if (opCount != 0)
+			{
+				foreach (string binName in binNames)
+				{
+					command.WriteOperation(binName, Operation.Type.READ);
+				}
+			}
+			command.End();
+		}
+
+		public static void SetReadHeader(this ICommand command, Policy policy, Key key)
+		{
+			command.Begin();
+			int fieldCount = command.EstimateKeySize(policy, key, false);
+
+			if (policy.filterExp != null)
+			{
+				command.DataOffset += policy.filterExp.Size();
+				fieldCount++;
+			}
 			command.SizeBuffer();
 			command.WriteHeaderReadHeader(policy, INFO1_READ |	INFO1_NOBINDATA, fieldCount, 0);
-			command.WriteKey(policy, key);
+			command.WriteKey(policy, key, false);
 
 			policy.filterExp?.Write(command);
 			command.End();
@@ -1027,7 +1125,7 @@ namespace Aerospike.Client
 		public static void SetOperate(this ICommand command, WritePolicy policy, Key key, OperateArgs args)
 		{
 			command.Begin();
-			int fieldCount = command.EstimateKeySize(policy, key);
+			int fieldCount = command.EstimateKeySize(policy, key, args.hasWrite);
 
 			if (policy.filterExp != null)
 			{
@@ -1039,7 +1137,7 @@ namespace Aerospike.Client
 			bool compress = command.SizeBuffer(policy);
 
 			command.WriteHeaderReadWrite(policy, args, fieldCount);
-			command.WriteKey(policy, key);
+			command.WriteKey(policy, key, args.hasWrite);
 
 			policy.filterExp?.Write(command);
 
@@ -1057,7 +1155,7 @@ namespace Aerospike.Client
 		public static void SetUdf(this ICommand command, WritePolicy policy, Key key, string packageName, string functionName, Value[] args)
 		{
 			command.Begin();
-			int fieldCount = command.EstimateKeySize(policy, key);
+			int fieldCount = command.EstimateKeySize(policy, key, true);
 
 			if (policy.filterExp != null)
 			{
@@ -1070,7 +1168,7 @@ namespace Aerospike.Client
 			bool compress = command.SizeBuffer(policy);
 
 			command.WriteHeaderWrite(policy, INFO2_WRITE, fieldCount, 0);
-			command.WriteKey(policy, key);
+			command.WriteKey(policy, key, true);
 
 			policy.filterExp?.Write(command);
 			command.WriteField(packageName, FieldType.UDF_PACKAGE_NAME);
@@ -2068,7 +2166,7 @@ namespace Aerospike.Client
 			command.WriteField(policy.socketTimeout, FieldType.SOCKET_TIMEOUT);
 
 			// Write taskId field
-			command.WriteField(taskId, FieldType.TRAN_ID);
+			command.WriteField(taskId, FieldType.QUERY_ID);
 
 			if (binNames != null)
 			{
@@ -2329,7 +2427,7 @@ namespace Aerospike.Client
 			command.WriteField(policy.socketTimeout, FieldType.SOCKET_TIMEOUT);
 
 			// Write taskId field
-			command.WriteField(taskId, FieldType.TRAN_ID);
+			command.WriteField(taskId, FieldType.QUERY_ID);
 
 			if (statement.filter != null)
 			{
@@ -2441,7 +2539,21 @@ namespace Aerospike.Client
 		// ICommand Sizing
 		//--------------------------------------------------
 
-		private static int EstimateKeySize(this ICommand command, Policy policy, Key key)
+		private static int EstimateKeySize(this ICommand command, Policy policy, Key key, bool hasWrite)
+		{
+			int fieldCount = command.EstimateKeySize(key);
+
+			fieldCount += command.SizeTxn(key, policy.Txn, hasWrite);
+
+			if (policy.sendKey)
+			{
+				command.DataOffset += key.userKey.EstimateSize() + FIELD_HEADER_SIZE + 1;
+				fieldCount++;
+			}
+			return fieldCount;
+		}
+
+		private static int EstimateKeySize(this ICommand command, Key key)
 		{
 			int fieldCount = 0;
 
@@ -2460,11 +2572,6 @@ namespace Aerospike.Client
 			command.DataOffset += key.digest.Length + FIELD_HEADER_SIZE;
 			fieldCount++;
 
-			if (policy.sendKey)
-			{
-				command.DataOffset += key.userKey.EstimateSize() + FIELD_HEADER_SIZE + 1;
-				fieldCount++;
-			}
 			return fieldCount;
 		}
 
@@ -2570,7 +2677,7 @@ namespace Aerospike.Client
 			command.DataBuffer[command.DataOffset++] = (byte)0;
 			command.DataBuffer[command.DataOffset++] = (byte)writeAttr;
 			command.DataBuffer[command.DataOffset++] = (byte)infoAttr;
-			command.DataBuffer[command.DataOffset++] = 0; // unused
+			command.DataBuffer[command.DataOffset++] = 0;
 			command.DataBuffer[command.DataOffset++] = 0; // clear the result code
 			command.DataOffset += ByteUtil.IntToBytes((uint)generation, command.DataBuffer, command.DataOffset);
 			command.DataOffset += ByteUtil.IntToBytes((uint)policy.expiration, command.DataBuffer, command.DataOffset);
@@ -2784,9 +2891,20 @@ namespace Aerospike.Client
 			command.DataOffset += ByteUtil.ShortToBytes((ushort)operationCount, command.DataBuffer, command.DataOffset);
 		}
 
-		private static void WriteKey(this ICommand command, Policy policy, Key key)
+		private static void WriteKey(this ICommand command, Policy policy, Key key, bool sendDeadline)
 		{
-			// Write key into DataBuffer.
+			command.WriteKey(key);
+			command.WriteTxn(policy.Txn, sendDeadline);
+
+			if (policy.sendKey)
+			{
+				command.WriteField(key.userKey, FieldType.KEY);
+			}
+		}
+
+		private static void WriteKey(this ICommand command, Key key)
+		{
+			// Write key into dataBuffer.
 			if (key.ns != null)
 			{
 				command.WriteField(key.ns, FieldType.NAMESPACE);
@@ -2798,11 +2916,6 @@ namespace Aerospike.Client
 			}
 
 			command.WriteField(key.digest, FieldType.DIGEST_RIPE);
-
-			if (policy.sendKey)
-			{
-				command.WriteField(key.userKey, FieldType.KEY);
-			}
 		}
 
 		private static int WriteReadOnlyOperations(this ICommand command, Operation[] ops, int readAttr)
@@ -2891,6 +3004,57 @@ namespace Aerospike.Client
 			command.DataBuffer[command.DataOffset++] = 0;
 		}
 
+		private static int SizeTxn(this ICommand command, Key key, Txn txn, bool hasWrite)
+		{
+			int fieldCount = 0;
+
+			if (txn != null)
+			{
+				command.DataOffset += 8 + FIELD_HEADER_SIZE;
+				fieldCount++;
+
+				command.Version = txn.GetReadVersion(key);
+
+				if (command.Version.HasValue)
+				{
+					command.DataOffset += 7 + FIELD_HEADER_SIZE;
+					fieldCount++;
+				}
+
+				if (hasWrite && txn.Deadline != 0)
+				{
+					command.DataOffset += 4 + FIELD_HEADER_SIZE;
+					fieldCount++;
+				}
+			}
+			return fieldCount;
+		}
+
+		private static void WriteTxn(this ICommand command, Txn txn, bool sendDeadline)
+		{
+			if (txn != null)
+			{
+				command.WriteFieldLE(txn.Id, FieldType.MRT_ID);
+
+				if (command.Version.HasValue)
+				{
+					command.WriteFieldVersion(command.Version.Value);
+				}
+
+				if (sendDeadline && txn.Deadline != 0)
+				{
+					command.WriteFieldLE(txn.Deadline, FieldType.MRT_DEADLINE);
+				}
+			}
+		}
+
+		private static void WriteFieldVersion(this ICommand command, long ver)
+		{
+			command.WriteFieldHeader(7, FieldType.RECORD_VERSION);
+			ByteUtil.LongToVersionBytes(ver, command.DataBuffer, command.DataOffset);
+			command.DataOffset += 7;
+		}
+
 		private static void WriteField(this ICommand command, Value value, int type)
 		{
 			int offset = command.DataOffset + FIELD_HEADER_SIZE;
@@ -2926,6 +3090,12 @@ namespace Aerospike.Client
 			command.DataOffset += ByteUtil.LongToBytes(val, command.DataBuffer, command.DataOffset);
 		}
 
+		private static void WriteFieldLE(this ICommand command, long val, int type)
+		{
+			command.WriteFieldHeader(8, type);
+			ByteUtil.LongToLittleBytes((ulong)val, command.DataBuffer, command.DataOffset);
+			command.DataOffset += 8;
+		}
 		private static void WriteFieldHeader(this ICommand command, int size, int type)
 		{
 			command.DataOffset += ByteUtil.IntToBytes((uint)size + 1, command.DataBuffer, command.DataOffset);

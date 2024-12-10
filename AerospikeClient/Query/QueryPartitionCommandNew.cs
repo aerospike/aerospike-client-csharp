@@ -44,6 +44,7 @@ namespace Aerospike.Client
 		public int FieldCount { get; set; }
 		public int OpCount { get; set; }
 		public bool IsOperation { get; set; }
+		public long? Version { get; set; }
 
 		public Statement Statement { get; set; }
 		private readonly ulong taskId;
@@ -98,12 +99,14 @@ namespace Aerospike.Client
 
 		public async Task ParseResult(IConnection conn, CancellationToken token)
 		{
-			keyRecords = CommandHelpers.ParseMultipleResult(this, conn, token);
+			//keyRecords = CommandHelpers.ParseMultipleResult(this, conn, token);
+			throw new NotImplementedException();
 		}
 
-		public async IAsyncEnumerable<KeyRecord> ParseMultipleResult(IConnection conn, CancellationToken token)
+		public IAsyncEnumerable<KeyRecord> ParseMultipleResult(IConnection conn, CancellationToken token)
 		{
-			return await CommandHelpers.ParseMultipleResult(this, conn, token);
+			//return await CommandHelpers.ParseMultipleResult(this, conn, token);
+			throw new NotImplementedException();
 		}
 
 		public KeyRecord ParseGroup(int receiveSize)

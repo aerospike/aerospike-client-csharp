@@ -1,5 +1,5 @@
 ﻿/* 
- * Copyright 2012-2023 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -25,27 +25,17 @@ namespace Aerospike.Test
 		[TestMethod]
 		public async Task Touch()
 		{
-			Key key = new Key(args.ns, args.set, "touchkey");
+			Key key = new Key(args.ns, args.set, "TouchOperate");
 			Bin bin = new Bin(args.GetBinName("touchbin"), "touchvalue");
 
 			WritePolicy writePolicy = new WritePolicy();
-			if (!args.testProxy || (args.testProxy && nativeClient != null))
-			{
-				writePolicy.expiration = 2;
-			}
-			if (args.testProxy)
-			{
-				writePolicy.totalTimeout = args.proxyTotalTimeout;
-			}
+			writePolicy.expiration = 2;
 
 			if (!args.testAsyncAwait)
 			{
 				client.Put(writePolicy, key, bin);
 
-				if (!args.testProxy || (args.testProxy && nativeClient != null))
-				{
-					writePolicy.expiration = 5;
-				}
+				writePolicy.expiration = 5;
 				Record record = client.Operate(writePolicy, key, Operation.Touch(), Operation.GetHeader());
 				AssertRecordFound(key, record);
 				Assert.AreNotEqual(0, record.expiration);
@@ -64,10 +54,7 @@ namespace Aerospike.Test
 			{
 				await asyncAwaitClient.Put(writePolicy, key, new[] { bin }, CancellationToken.None);
 
-				if (!args.testProxy || (args.testProxy && nativeClient != null))
-				{
-					writePolicy.expiration = 5;
-				}
+				writePolicy.expiration = 5;
 				Record record = await asyncAwaitClient.Operate(writePolicy, key, new[] { Operation.Touch(), Operation.GetHeader() }, CancellationToken.None);
 				AssertRecordFound(key, record);
 				Assert.AreNotEqual(0, record.expiration);

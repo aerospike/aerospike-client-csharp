@@ -15,8 +15,8 @@
  * the License.
  */
 using Aerospike.Client;
-using Aerospike.Client.Proxy;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using System;
 
 namespace Aerospike.Test
 {
@@ -26,8 +26,6 @@ namespace Aerospike.Test
 		public static Args args = Args.Instance;
 		public static IAsyncClient client = args.asyncClient;
 		public static IAerospikeClientNew asyncAwaitClient = args.asyncAwaitClient;
-		public static AsyncClient nativeClient = args.nativeAsync;
-		public static AsyncClientProxy asyncProxy = args.asyncProxy;
 
 		private AsyncMonitor monitor = new AsyncMonitor();
 
@@ -83,11 +81,45 @@ namespace Aerospike.Test
 			return true;
 		}
 
+		public bool AssertBatchEqual(Key[] keys, Record[] recs, String binName, int expected)
+		{
+			for (int i = 0; i < keys.Length; i++)
+			{
+				Key key = keys[i];
+				Record rec = recs[i];
+
+				if (rec == null)
+				{
+					monitor.SetError(new Exception("recs[" + i + "] is null"));
+					return false;
+				}
+
+				int received = rec.GetInt(binName);
+
+				if (expected != received)
+				{
+					monitor.SetError(new Exception("Data mismatch: Expected " + expected + ". Received[" + i + "] " + received));
+					return false;
+				}
+			}
+			return true;
+		}
+
 		public bool AssertRecordFound(Key key, Record record)
 		{
 			if (record == null)
 			{
 				monitor.SetError("Failed to get: namespace=" + args.ns + " set=" + args.set + " key=" + key.userKey);
+				return false;
+			}
+			return true;
+		}
+
+		public bool AssertRecordNotFound(Key key, Record record)
+		{
+			if (record != null)
+			{
+				monitor.SetError(new Exception("Record should not exist: namespace=" + args.ns + " set=" + args.set + " key=" + key.userKey));
 				return false;
 			}
 			return true;
@@ -180,10 +212,7 @@ namespace Aerospike.Test
 
 		public void WaitTillComplete()
 		{
-			if (!args.testProxy)
-			{
-				monitor.WaitTillComplete();
-			}
+			monitor.WaitTillComplete();
 		}
 
 		public void NotifyCompleted()

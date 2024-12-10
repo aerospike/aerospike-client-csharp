@@ -73,6 +73,7 @@ namespace Aerospike.Demo
 #endif   
                     new ExampleTreeNode("Expire", new Expire(console)),
 					new ExampleTreeNode("Touch", new Touch(console)),
+					new ExampleTreeNode("Transaction", new Transaction(console)),
 					new ExampleTreeNode("Operate", new Operate(console)),
 					new ExampleTreeNode("OperateBit", new OperateBit(console)),
 					new ExampleTreeNode("OperateList", new OperateList(console)),
@@ -87,6 +88,8 @@ namespace Aerospike.Demo
 					new ExampleTreeNode("Async Batch", new AsyncBatch(console)),
 					new ExampleTreeNode("Async Scan", new AsyncScan(console)),
 					new ExampleTreeNode("Async Scan Page", new AsyncScanPage(console)),
+					new ExampleTreeNode("Async Transaction", new AsyncTransaction(console)),
+					new ExampleTreeNode("Async Transaction with Task", new AsyncTransactionWithTask(console)),
 					new ExampleTreeNode("Async Query", new AsyncQuery(console)),
 					new ExampleTreeNode("Async UDF", new AsyncUserDefinedFunction(console)),
 					new ExampleTreeNode("List/Map", new ListMap(console)),

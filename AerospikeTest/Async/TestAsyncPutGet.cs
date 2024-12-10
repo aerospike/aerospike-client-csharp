@@ -31,7 +31,7 @@ namespace Aerospike.Test
 			Key key = new Key(args.ns, args.set, "putgetkey1");
 			Bin bin = new Bin(binName, "value1");
 
-			if (!args.testProxy && !args.testAsyncAwait)
+			if (!args.testAsyncAwait)
 			{
 				client.Put(null, new WriteHandler(this, client, key, bin), key, bin);
 				WaitTillComplete();
@@ -39,11 +39,6 @@ namespace Aerospike.Test
 			else if (args.testAsyncAwait)
 			{
 				await asyncAwaitClient.Put(null, key, new[] { bin }, tokenSource.Token);
-				await WriteListenerSuccess(key, bin, this);
-			}
-			else
-			{
-				await client.Put(null, tokenSource.Token, key, bin);
 				await WriteListenerSuccess(key, bin, this);
 			}
 		}
@@ -80,7 +75,7 @@ namespace Aerospike.Test
 		{
 			try
 			{
-				if (!args.testProxy && !args.testAsyncAwait)
+				if (!args.testAsyncAwait)
 				{
 					// Write succeeded.  Now call read.
 					client.Get(null, new RecordHandler(parent, key, bin), key);
@@ -176,17 +171,6 @@ namespace Aerospike.Test
 			}
 			catch (TaskCanceledException) // expected exception for native client
 			{
-				if (args.testProxy || args.testAsyncAwait)
-				{
-					throw;
-				}
-			}
-			catch (OperationCanceledException) // expected exception for proxy client
-			{
-				if (!args.testProxy && !args.testAsyncAwait)
-				{
-					throw;
-				}
 			}
 		}
 	}

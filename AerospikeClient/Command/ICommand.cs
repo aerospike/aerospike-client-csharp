@@ -44,6 +44,7 @@ namespace Aerospike.Client
 		public int FieldCount { get; set; }
 		public int OpCount { get; set; }
 		public bool IsOperation { get; set; }
+		public long? Version { get; set; }
 
 		public void WriteBuffer();
 		public Task ParseResult(IConnection conn, CancellationToken token);

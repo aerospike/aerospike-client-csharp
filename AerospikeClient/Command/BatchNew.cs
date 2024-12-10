@@ -529,6 +529,7 @@ namespace Aerospike.Client
 		public int FieldCount { get; set; }
 		public int OpCount { get; set; }
 		public bool IsOperation { get; set; }
+		public long? Version { get; set; }
 
 		private readonly Node node;
 		protected internal readonly String ns;
@@ -648,20 +649,20 @@ namespace Aerospike.Client
 			// Run batch requests sequentially in same thread.
 			foreach (BatchNode batchNode in batchNodes)
 			{
-				BatchCommand command = CreateCommand(batchNode);
+				BatchCommandNew command = CreateCommand(batchNode);
 				command.parent = parent;
 				command.sequenceAP = sequenceAP;
 				command.sequenceSC = sequenceSC;
-				command.socketTimeout = socketTimeout;
-				command.totalTimeout = totalTimeout;
-				command.iteration = iteration;
-				command.commandSentCounter = commandSentCounter;
-				command.deadline = deadline;
+				command.SocketTimeout = socketTimeout;
+				command.TotalTimeout = totalTimeout;
+				command.Iteration = iteration;
+				command.CommandSentCounter = commandSentCounter;
+				command.Deadline = deadline;
 
 				try
 				{
 					cluster.AddRetry();
-					command.ExecuteCommand();
+					//command.ExecuteCommand();
 				}
 				catch (AerospikeException ae)
 				{
@@ -698,7 +699,7 @@ namespace Aerospike.Client
 			// Do nothing by default. Batch writes will override this method.
 		}
 
-		protected internal BatchCommand CreateCommand(BatchNode batchNode)
+		protected internal BatchCommandNew CreateCommand(BatchNode batchNode)
 		{
 			throw new NotImplementedException();
 		}

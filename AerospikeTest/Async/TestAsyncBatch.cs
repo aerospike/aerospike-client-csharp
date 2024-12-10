@@ -53,14 +53,7 @@ namespace Aerospike.Test
 			WriteHandler handler = new WriteHandler(monitor, Size + 3);
 
 			WritePolicy policy = new WritePolicy();
-			if (!args.testProxy || (args.testProxy && nativeClient != null))
-			{
-				policy.expiration = 2592000;
-			}
-			if (args.testProxy)
-			{
-				policy.totalTimeout = args.proxyTotalTimeout;
-			}
+			policy.expiration = 2592000;
 
 			for (int i = 1; i <= Size; i++)
 			{
@@ -94,7 +87,7 @@ namespace Aerospike.Test
 
 				if (i != 6)
 				{
-					if (!args.testProxy && !args.testAsyncAwait)
+					if (!args.testAsyncAwait)
 					{
 						client.Put(policy, handler, key, bin, listBin, listBin2, listBin3);
 					}
@@ -102,14 +95,10 @@ namespace Aerospike.Test
 					{
 						await asyncAwaitClient.Put(policy, key, new[] { listBin, listBin2, listBin3 }, CancellationToken.None);
 					}
-					else
-					{
-						await client.Put(policy, tokenSource.Token, key, listBin, listBin2, listBin3);
-					}
 				}
 				else
 				{
-					if (!args.testProxy && !args.testAsyncAwait)
+					if (!args.testAsyncAwait)
 					{
 						client.Put(policy, handler, key, new Bin(BinName, i), listBin, listBin2, listBin3);
 					}
@@ -117,14 +106,10 @@ namespace Aerospike.Test
 					{
 						await asyncAwaitClient.Put(policy, key, new[] { new Bin(BinName, i), listBin, listBin2, listBin3 }, CancellationToken.None);
 					}
-					else
-					{
-						await client.Put(policy, tokenSource.Token, key, new Bin(BinName, i), listBin, listBin2, listBin3);
-					}
 				}
 			}
 
-			if (!args.testProxy && !args.testAsyncAwait)
+			if (!args.testAsyncAwait)
 			{
 				// Add records that will eventually be deleted.
 				client.Put(policy, handler, deleteKeys[0], new Bin(BinName, 10000));
@@ -138,13 +123,6 @@ namespace Aerospike.Test
 				await asyncAwaitClient.Put(policy, deleteKeys[0], new[] { new Bin(BinName, 10000) }, tokenSource.Token);
 				await asyncAwaitClient.Put(policy, deleteKeys[1], new[] { new Bin(BinName, 10001) }, tokenSource.Token);
 				await asyncAwaitClient.Put(policy, new Key(args.ns, args.set, 10002), new[] { new Bin(BinName, 10002) }, tokenSource.Token);
-			}
-			else
-			{
-				// Add records that will eventually be deleted.
-				await client.Put(policy, tokenSource.Token, deleteKeys[0], new Bin(BinName, 10000));
-				await client.Put(policy, tokenSource.Token, deleteKeys[1], new Bin(BinName, 10001));
-				await client.Put(policy, tokenSource.Token, new Key(args.ns, args.set, 10002), new Bin(BinName, 10002));
 			}
 		}
 
@@ -181,7 +159,7 @@ namespace Aerospike.Test
 		public async Task AsyncBatchExistsArray()
 		{
 			await WriteRecords("AsyncBatchExistsArray");
-			if (!args.testProxy && !args.testAsyncAwait)
+			if (!args.testAsyncAwait)
 			{
 				client.Exists(null, new ExistsArrayHandler(this), sendKeys);
 				WaitTillComplete();
@@ -189,11 +167,6 @@ namespace Aerospike.Test
 			else if (args.testAsyncAwait)
 			{
 				var exists = await asyncAwaitClient.Exists(null, sendKeys, tokenSource.Token);
-				ExistsArrayHandlerSuccess(sendKeys, exists, this);
-			}
-			else
-			{
-				var exists = await client.Exists(null, tokenSource.Token, sendKeys);
 				ExistsArrayHandlerSuccess(sendKeys, exists, this);
 			}
 		}
@@ -235,7 +208,7 @@ namespace Aerospike.Test
 		public async Task AsyncBatchExistsSequence()
 		{
 			await WriteRecords("AsyncBatchExistsSequence");
-			if (!args.testProxy && !args.testAsyncAwait)
+			if (!args.testAsyncAwait)
 			{
 				client.Exists(null, new ExistsSequenceHandler(this), sendKeys);
 				WaitTillComplete();
@@ -243,14 +216,6 @@ namespace Aerospike.Test
 			else if (args.testAsyncAwait)
 			{
 				var exists = await asyncAwaitClient.Exists(null, sendKeys, tokenSource.Token);
-				foreach (bool exist in exists)
-				{
-					Assert.IsTrue(exist);
-				}
-			}
-			else
-			{
-				var exists = await client.Exists(null, tokenSource.Token, sendKeys);
 				foreach (bool exist in exists)
 				{
 					Assert.IsTrue(exist);
@@ -288,7 +253,7 @@ namespace Aerospike.Test
 		public async Task AsyncBatchGetArray()
 		{
 			await WriteRecords("AsyncBatchGetArray");
-			if (!args.testProxy && !args.testAsyncAwait)
+			if (!args.testAsyncAwait)
 			{
 				client.Get(null, new RecordArrayHandler(this), sendKeys);
 				WaitTillComplete();
@@ -296,11 +261,6 @@ namespace Aerospike.Test
 			else if (args.testAsyncAwait)
 			{
 				var records = await asyncAwaitClient.Get(null, sendKeys, tokenSource.Token);
-				RecordArrayHandlerSuccess(sendKeys, records, this);
-			}
-			else
-			{
-				var records = await client.Get(null, tokenSource.Token, sendKeys);
 				RecordArrayHandlerSuccess(sendKeys, records, this);
 			}
 		}
@@ -365,7 +325,7 @@ namespace Aerospike.Test
 		public async Task AsyncBatchGetSequence()
 		{
 			await WriteRecords("AsyncBatchGetSequence");
-			if (!args.testProxy && !args.testAsyncAwait)
+			if (!args.testAsyncAwait)
 			{
 				client.Get(null, new RecordSequenceHandler(this), sendKeys);
 				WaitTillComplete();
@@ -373,15 +333,6 @@ namespace Aerospike.Test
 			else if (args.testAsyncAwait)
 			{
 				var records = await asyncAwaitClient.Get(null, sendKeys, tokenSource.Token);
-				foreach (Record record in records)
-				{
-					Object value = record.GetValue(BinName);
-					AssertNotNull(value);
-				}
-			}
-			else
-			{
-				var records = await client.Get(null, tokenSource.Token, sendKeys);
 				foreach (Record record in records)
 				{
 					Object value = record.GetValue(BinName);
@@ -424,7 +375,7 @@ namespace Aerospike.Test
 		public async Task AsyncBatchGetHeaders()
 		{
 			await WriteRecords("AsyncBatchGetHeaders");
-			if (!args.testProxy && !args.testAsyncAwait)
+			if (!args.testAsyncAwait)
 			{
 				client.GetHeader(null, new RecordHeaderArrayHandler(this), sendKeys);
 				WaitTillComplete();
@@ -432,11 +383,6 @@ namespace Aerospike.Test
 			else if (args.testAsyncAwait)
 			{
 				var records = await asyncAwaitClient.GetHeader(null, sendKeys, tokenSource.Token);
-				RecordHeaderArrayHandlerSuccess(sendKeys, records, this);
-			}
-			else
-			{
-				var records = await client.GetHeader(null, tokenSource.Token, sendKeys);
 				RecordHeaderArrayHandlerSuccess(sendKeys, records, this);
 			}
 		}
@@ -518,7 +464,7 @@ namespace Aerospike.Test
 			records.Add(new BatchRead(new Key(args.ns, args.set, "keynotfound"), bins));
 
 			// Execute batch.
-			if (!args.testProxy && !args.testAsyncAwait)
+			if (!args.testAsyncAwait)
 			{
 				client.Get(null, new BatchListHandler(this), records);
 				WaitTillComplete();
@@ -528,11 +474,6 @@ namespace Aerospike.Test
 				throw new NotImplementedException();
 				//var recordsReturned = await asyncAwaitClient.Get(null, records, tokenSource.Token);
 				//BatchListHandlerSuccess(recordsReturned, this);
-			}
-			else
-			{
-				var recordsReturned = await client.Get(null, tokenSource.Token, records);
-				BatchListHandlerSuccess(recordsReturned, this);
 			}
 		}
 
@@ -616,7 +557,7 @@ namespace Aerospike.Test
 				ListOperation.GetByIndex(ListBin, -1, ListReturnType.VALUE)
 			};
 
-			if (!args.testProxy && !args.testAsyncAwait)
+			if (!args.testAsyncAwait)
 			{
 				client.Get(null, new BatchListReadOperateHandler(this), sendKeys, operations);
 
@@ -625,11 +566,6 @@ namespace Aerospike.Test
 			else if (args.testAsyncAwait)
 			{
 				var records = await asyncAwaitClient.Get(null, sendKeys, operations, tokenSource.Token);
-				BatchListReadOperateHeadlerSuccess(sendKeys, records, this);
-			}
-			else
-			{
-				var records = await client.Get(null, tokenSource.Token, sendKeys, operations);
 				BatchListReadOperateHeadlerSuccess(sendKeys, records, this);
 			}
 		}
@@ -691,7 +627,7 @@ namespace Aerospike.Test
 			};
 
 
-			if (!args.testProxy && !args.testAsyncAwait)
+			if (!args.testAsyncAwait)
 			{
 				client.Operate(null, null, new BatchListWriteOperateHandler(this), sendKeys,
 					operations);
@@ -701,11 +637,6 @@ namespace Aerospike.Test
 			else if (args.testAsyncAwait)
 			{
 				var results = await asyncAwaitClient.Operate(null, null, sendKeys, operations, tokenSource.Token);
-				BatchListWriteOperateHandlerSuccess(results.records, results.status, this);
-			}
-			else
-			{
-				var results = await client.Operate(null, null, tokenSource.Token, sendKeys, operations);
 				BatchListWriteOperateHandlerSuccess(results.records, results.status, this);
 			}
 		}
@@ -769,7 +700,7 @@ namespace Aerospike.Test
 				ListOperation.GetByIndex(ListBin3, -1, ListReturnType.VALUE)
 			};
 
-			if (!args.testProxy && !args.testAsyncAwait)
+			if (!args.testAsyncAwait)
 			{
 				client.Operate(null, null, new BatchSeqListWriteOperateHandler(this), sendKeys,
 					operations);
@@ -779,24 +710,6 @@ namespace Aerospike.Test
 			else if (args.testAsyncAwait)
 			{
 				var result = await asyncAwaitClient.Operate(null, null, sendKeys, operations, tokenSource.Token);
-				foreach (BatchRecord batchRecord in result.records)
-				{
-					var record = batchRecord.record;
-					if (AssertNotNull(record))
-					{
-						IList results = record.GetList(ListBin3);
-						long size = (long)results[1];
-						long val = (long)results[2];
-
-						AssertEquals(3, size);
-						AssertEquals(1, val);
-					}
-				}
-				AssertEquals(8, result.records.Length);
-			}
-			else
-			{
-				var result = await client.Operate(null, null, tokenSource.Token, sendKeys, operations);
 				foreach (BatchRecord batchRecord in result.records)
 				{
 					var record = batchRecord.record;
@@ -873,7 +786,7 @@ namespace Aerospike.Test
 			records.Add(new BatchWrite(new Key(args.ns, args.set, keyPrefix + 6), ops2));
 
 
-			if (!args.testProxy && !args.testAsyncAwait)
+			if (!args.testAsyncAwait)
 			{
 				client.Operate(null, new BatchWriteComplexHandler(this, records), records);
 
@@ -882,11 +795,6 @@ namespace Aerospike.Test
 			else if (args.testAsyncAwait)
 			{
 				var status = await asyncAwaitClient.Operate(null, records, tokenSource.Token);
-				BatchWriteComplexHanlderSuccess(records, status, this);
-			}
-			else
-			{
-				var status = await client.Operate(null, tokenSource.Token, records);
 				BatchWriteComplexHanlderSuccess(records, status, this);
 			}
 		}
@@ -947,7 +855,7 @@ namespace Aerospike.Test
 			records.Add(new BatchWrite(new Key(args.ns, args.set, keyPrefix + 6), ops2));
 			records.Add(new BatchDelete(new Key(args.ns, args.set, 10002)));
 
-			if (!args.testProxy && !args.testAsyncAwait)
+			if (!args.testAsyncAwait)
 			{
 				client.Operate(null, new BatchSeqWriteComplexHandler(this), records);
 
@@ -956,11 +864,6 @@ namespace Aerospike.Test
 			else if (args.testAsyncAwait)
 			{
 				var status = await asyncAwaitClient.Operate(null, records, tokenSource.Token);
-				AssertTrue(status);
-			}
-			else
-			{
-				var status = await client.Operate(null, tokenSource.Token, records);
 				AssertTrue(status);
 			}
 		}
@@ -1050,7 +953,7 @@ namespace Aerospike.Test
 		public async Task AsyncBatchDelete()
 		{
 			await WriteRecords("AsyncBatchDelete");
-			if (!args.testProxy && !args.testAsyncAwait)
+			if (!args.testAsyncAwait)
 			{
 				// Ensure keys exists
 				client.Exists(null, new BatchDeleteExistsArrayHandler(this), deleteKeys);
@@ -1060,11 +963,6 @@ namespace Aerospike.Test
 			else if (args.testAsyncAwait)
 			{
 				var exists = await asyncAwaitClient.Exists(null, deleteKeys, tokenSource.Token);
-				await BatchDeleteExistsArrayHandlerSuccess(sendKeys, exists, this);
-			}
-			else
-			{
-				var exists = await client.Exists(null, tokenSource.Token, deleteKeys);
 				await BatchDeleteExistsArrayHandlerSuccess(sendKeys, exists, this);
 			}
 		}
@@ -1084,18 +982,13 @@ namespace Aerospike.Test
 			}
 
 			// Delete keys
-			if (!args.testProxy && !args.testAsyncAwait)
+			if (!args.testAsyncAwait)
 			{
 				client.Delete(null, null, new BatchDeleteHandler(parent, keys, exists), keys);
 			}
 			else if (args.testAsyncAwait)
 			{
 				var result = await asyncAwaitClient.Delete(null, null, keys, tokenSource.Token);
-				await BatchDeleteHandlerSuccess(result.records, result.status, parent);
-			}
-			else
-			{
-				var result = await client.Delete(null, null, tokenSource.Token, keys);
 				await BatchDeleteHandlerSuccess(result.records, result.status, parent);
 			}
 		}
@@ -1129,20 +1022,14 @@ namespace Aerospike.Test
 				return;
 			}
 
-
 			// Ensure keys do not exist
-			if (!args.testProxy && !args.testAsyncAwait)
+			if (!args.testAsyncAwait)
 			{
 				client.Exists(null, new NotExistsHandler(parent), deleteKeys);
 			}
 			else if (args.testAsyncAwait)
 			{
 				var exists = await asyncAwaitClient.Exists(null, deleteKeys, tokenSource.Token);
-				NotExistsHandlerSuccess(deleteKeys, exists, parent);
-			}
-			else
-			{
-				var exists = await client.Exists(null, tokenSource.Token, deleteKeys);
 				NotExistsHandlerSuccess(deleteKeys, exists, parent);
 			}
 		}

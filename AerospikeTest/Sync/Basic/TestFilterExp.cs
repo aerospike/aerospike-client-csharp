@@ -14,12 +14,9 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using System.Collections.Generic;
 using System.Reflection;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Aerospike.Client;
-using Grpc.Core;
-using System.Runtime.ExceptionServices;
 
 namespace Aerospike.Test
 {
@@ -39,12 +36,9 @@ namespace Aerospike.Test
 		[ClassInitialize()]
 		public static void Register(TestContext testContext)
 		{
-			if (!args.testProxy || (args.testProxy && nativeClient != null))
-			{
-				Assembly assembly = Assembly.GetExecutingAssembly();
-				RegisterTask task = nativeClient.Register(null, assembly, "Aerospike.Test.LuaResources.record_example.lua", "record_example.lua", Language.LUA);
-				task.Wait();
-			}
+			Assembly assembly = Assembly.GetExecutingAssembly();
+			RegisterTask task = client.Register(null, assembly, "Aerospike.Test.LuaResources.record_example.lua", "record_example.lua", Language.LUA);
+			task.Wait();
 		}
 
 		[TestInitialize()]

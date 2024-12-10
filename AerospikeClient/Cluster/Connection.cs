@@ -220,6 +220,24 @@ namespace Aerospike.Client
 			}
 		}
 
+		public async Task ReadFully(byte[] buffer, int length, byte state, CancellationToken token)
+		{
+			token.ThrowIfCancellationRequested();
+
+			if (socket.ReceiveTimeout > 0)
+			{
+				// Check if data is available for reading.
+				// Poll is used because the timeout value is respected under 500ms.
+				// The Receive method does not timeout until after 500ms.
+				if (!socket.Poll(socket.ReceiveTimeout * 1000, SelectMode.SelectRead))
+				{
+					throw new ReadTimeout(buffer, 0, length, state);
+				}
+			}
+
+			await socket.ReceiveAsync(saw, buffer, 0, length);
+		}
+
 		public int Read(byte[] buffer, int pos, int length)
 		{
 			return socket.Receive(buffer, pos, length - pos, SocketFlags.None);

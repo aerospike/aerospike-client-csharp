@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2022 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -49,22 +49,22 @@ namespace Aerospike.Client
 		public const string SIndexAdmin = "sindex-admin";
 
 		/// <summary>
-		/// Allow read transactions.
+		/// Allow read commands.
 		/// </summary>
 		public const string Read = "read";
 
 		/// <summary>
-		/// Allow read and write transactions.
+		/// Allow read and write commands.
 		/// </summary>
 		public const string ReadWrite = "read-write";
 
 		/// <summary>
-		/// Allow read and write transactions within user defined functions.
+		/// Allow read and write commands within user defined functions.
 		/// </summary>
 		public const string ReadWriteUdf = "read-write-udf";
 
 		/// <summary>
-		/// Allow write transactions.
+		/// Allow write commands.
 		/// </summary>
 		public const string Write = "write";
 

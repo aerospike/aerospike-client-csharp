@@ -27,12 +27,7 @@ namespace Aerospike.Client
 		protected internal readonly String ns;
 		private readonly ulong clusterKey;
 		protected internal int info3;
-		protected internal int resultCode;
-		protected internal int generation;
-		protected internal int expiration;
 		protected internal int batchIndex;
-		protected internal int fieldCount;
-		protected internal int opCount;
 		protected internal readonly bool isOperation;
 		private readonly bool first;
 		protected internal volatile bool valid = true;
@@ -108,7 +103,7 @@ namespace Aerospike.Client
 			return true;
 		}
 
-		protected internal sealed override void ParseResult(IConnection conn)
+		protected internal sealed override void ParseResult(Connection conn)
 		{
 			// Read blocks of records.  Do not use thread local receive buffer because each
 			// block will likely be too big for a cache.  Also, scan callbacks can nest

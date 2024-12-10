@@ -17,59 +17,37 @@
 
 namespace Aerospike.Client
 {
-	public class AsyncRead : AsyncSingleCommand
+	public class AsyncRead : AsyncReadBase
 	{
 		private readonly RecordListener listener;
-		protected internal readonly Key key;
 		private readonly string[] binNames;
 		private readonly bool isOperation;
-		protected readonly Partition partition;
 		protected Record record;
 
 		// Read constructor.
 		public AsyncRead(AsyncCluster cluster, Policy policy, RecordListener listener, Key key, string[] binNames) 
-			: base(cluster, policy)
+			: base(cluster, policy, key)
 		{
 			this.listener = listener;
-			this.key = key;
 			this.binNames = binNames;
 			this.isOperation = false;
-			this.partition = Partition.Read(cluster, policy, key);
-			cluster.AddTran();
-		}
-
-		// UDF constructor.
-		public AsyncRead(AsyncCluster cluster, WritePolicy policy, Key key)
-			: base(cluster, policy)
-		{
-			this.listener = null;
-			this.key = key;
-			this.binNames = null;
-			this.isOperation = false;
-			this.partition = Partition.Write(cluster, policy, key);
-			cluster.AddTran();
 		}
 
 		// Operate constructor.
-		public AsyncRead(AsyncCluster cluster, Policy policy, RecordListener listener, Key key, Partition partition, bool isOperation)
-			: base(cluster, policy)
+		public AsyncRead(AsyncCluster cluster, Policy policy, RecordListener listener, Key key, bool isOperation)
+			: base(cluster, policy, key)
 		{
 			this.listener = listener;
-			this.key = key;
 			this.binNames = null;
 			this.isOperation = isOperation;
-			this.partition = partition;
-			cluster.AddTran();
 		}
 
 		public AsyncRead(AsyncRead other)
 			: base(other)
 		{
 			this.listener = other.listener;
-			this.key = other.key;
 			this.binNames = other.binNames;
 			this.isOperation = other.isOperation;
-			this.partition = other.partition;
 		}
 
 		protected internal override AsyncCommand CloneCommand()
@@ -77,47 +55,25 @@ namespace Aerospike.Client
 			return new AsyncRead(this);
 		}
 
-		protected internal override Node GetNode(Cluster cluster)
-		{
-			return partition.GetNodeRead(cluster);
-		}
-
-		protected override Latency.LatencyType GetLatencyType()
-		{
-			return Latency.LatencyType.READ;
-		}
-
 		protected internal override void WriteBuffer()
 		{
 			SetRead(policy, key, binNames);
 		}
 
-		protected internal sealed override void ParseResult()
+		protected internal sealed override bool ParseResult()
 		{
-			int resultCode = dataBuffer[dataOffset + 5];
-			int generation = ByteUtil.BytesToInt(dataBuffer, dataOffset + 6);
-			int expiration = ByteUtil.BytesToInt(dataBuffer, dataOffset + 10);
-			int fieldCount = ByteUtil.BytesToShort(dataBuffer, dataOffset + 18);
-			int opCount = ByteUtil.BytesToShort(dataBuffer, dataOffset + 20);
-			dataOffset += Command.MSG_REMAINING_HEADER_SIZE;
+			ParseHeader();
+			ParseFields(policy.Txn, key, false);
 
-			if (resultCode == 0)
+			if (resultCode == ResultCode.OK)
 			{
-				if (opCount == 0)
-				{
-					// Bin data was not returned.
-					record = new Record(null, generation, expiration);
-					return;
-				}
-				SkipKey(fieldCount);
-				(record, dataOffset) = policy.recordParser.ParseRecord(dataBuffer, dataOffset, opCount, generation, expiration, isOperation);
-				return;
+				(this.record, dataOffset) = policy.recordParser.ParseRecord(dataBuffer, dataOffset, opCount, generation, expiration, isOperation);
+				return true;
 			}
 
 			if (resultCode == ResultCode.KEY_NOT_FOUND_ERROR)
 			{
-				HandleNotFound(resultCode);
-				return;
+				return true;
 			}
 
 			if (resultCode == ResultCode.FILTERED_OUT)
@@ -126,57 +82,10 @@ namespace Aerospike.Client
 				{
 					throw new AerospikeException(resultCode);
 				}
-				return;
-			}
-
-			if (resultCode == ResultCode.UDF_BAD_RESPONSE)
-			{
-				SkipKey(fieldCount);
-				(record, dataOffset) = policy.recordParser.ParseRecord(dataBuffer, dataOffset, opCount, generation, expiration, isOperation);
-				HandleUdfError(resultCode);
-				return;
+				return true;
 			}
 
 			throw new AerospikeException(resultCode);
-		}
-
-		protected internal override bool PrepareRetry(bool timeout)
-		{
-			partition.PrepareRetryRead(timeout);
-			return true;
-		}
-
-		protected internal virtual void HandleNotFound(int resultCode)
-		{
-			// Do nothing in default case. Record will be null.
-		}
-
-		private void HandleUdfError(int resultCode)
-		{
-			object obj;
-
-			if (!record.bins.TryGetValue("FAILURE", out obj))
-			{
-				throw new AerospikeException(resultCode);
-			}
-
-			string ret = (string)obj;
-			string message;
-			int code;
-
-			try
-			{
-				string[] list = ret.Split(':');
-				code = Convert.ToInt32(list[2].Trim());
-				message = list[0] + ':' + list[1] + ' ' + list[3];
-			}
-			catch (Exception)
-			{
-				// Use generic exception if parse error occurs.
-				throw new AerospikeException(resultCode, ret);
-			}
-
-			throw new AerospikeException(code, message);
 		}
 
 		protected internal override void OnSuccess()

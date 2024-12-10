@@ -15,7 +15,6 @@
  * the License.
  */
 using Aerospike.Client;
-using Grpc.Core;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System.Collections;
 
@@ -31,7 +30,7 @@ namespace Aerospike.Test
 		public async Task AsyncOperateList()
 		{
 			Key key = new Key(args.ns, args.set, "aoplkey1");
-			if (!args.testProxy && !args.testAsyncAwait)
+			if (!args.testAsyncAwait)
 			{
 				client.Delete(null, new DeleteHandlerList(this, key), key);
 				WaitTillComplete();
@@ -39,11 +38,6 @@ namespace Aerospike.Test
 			else if (args.testAsyncAwait)
 			{
 				var existed = await asyncAwaitClient.Delete(null, key, tokenSource.Token);
-				await DeleteHandlerListSuccess(key, existed, this);
-			}
-			else
-			{
-				var existed = await client.Delete(null, tokenSource.Token, key);
 				await DeleteHandlerListSuccess(key, existed, this);
 			}
 		}
@@ -59,18 +53,13 @@ namespace Aerospike.Test
 				ListOperation.Size(binName)
 			};
 
-			if (!args.testProxy && !args.testAsyncAwait)
+			if (!args.testAsyncAwait)
 			{
 				client.Operate(null, new ReadHandler(parent), key, operations);
 			}
 			else if (args.testAsyncAwait)
 			{
 				var record = await asyncAwaitClient.Operate(null, key, operations, tokenSource.Token);
-				ReadListenerSuccess(key, record, parent);
-			}
-			else
-			{
-				var record = await client.Operate(null, tokenSource.Token, key, operations);
 				ReadListenerSuccess(key, record, parent);
 			}
 		}
@@ -152,7 +141,7 @@ namespace Aerospike.Test
 		public async Task AsyncOperateMap()
 		{
 			Key key = new Key(args.ns, args.set, "aopmkey1");
-			if (!args.testProxy && !args.testAsyncAwait)
+			if (!args.testAsyncAwait)
 			{
 				client.Delete(null, new DeleteHandlerMap(this, key), key);
 				WaitTillComplete();
@@ -160,11 +149,6 @@ namespace Aerospike.Test
 			else if (args.testAsyncAwait)
 			{
 				var existed = await asyncAwaitClient.Delete(null, key, tokenSource.Token);
-				await DeleteHandlerMapSuccess(key, existed, this);
-			}
-			else
-			{
-				var existed = await client.Delete(null, tokenSource.Token, key);
 				await DeleteHandlerMapSuccess(key, existed, this);
 			}
 		}
@@ -181,18 +165,13 @@ namespace Aerospike.Test
 				MapOperation.GetByRankRange(binName, -1, 1, MapReturnType.KEY_VALUE)
 			};
 
-			if (!args.testProxy && !args.testAsyncAwait)
+			if (!args.testAsyncAwait)
 			{
 				client.Operate(null, new MapHandler(parent), key, operations);
 			}
 			else if (args.testAsyncAwait)
 			{
 				var record = await asyncAwaitClient.Operate(null, key, operations, tokenSource.Token);
-				MapHandlerSuccess(key, record, parent);
-			}
-			else
-			{
-				var record = await client.Operate(null, tokenSource.Token, key, operations);
 				MapHandlerSuccess(key, record, parent);
 			}
 		}

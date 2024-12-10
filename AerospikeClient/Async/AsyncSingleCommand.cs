@@ -35,6 +35,17 @@ namespace Aerospike.Client
 			Finish();
 		}
 
-		protected internal abstract void ParseResult();
+		protected void ParseHeader()
+		{
+			resultCode = dataBuffer[dataOffset + 5];
+			generation = ByteUtil.BytesToInt(dataBuffer, dataOffset + 6);
+			expiration = ByteUtil.BytesToInt(dataBuffer, dataOffset + 10);
+			fieldCount = ByteUtil.BytesToShort(dataBuffer, dataOffset + 18);
+			opCount = ByteUtil.BytesToShort(dataBuffer, dataOffset + 20);
+			dataOffset += Command.MSG_REMAINING_HEADER_SIZE;
+		}
+
+		protected internal abstract bool ParseResult();
 	}
 }
+  

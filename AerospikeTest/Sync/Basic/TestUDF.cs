@@ -15,7 +15,6 @@
  * the License.
  */
 using Aerospike.Client;
-using Microsoft.AspNetCore.DataProtection.KeyManagement;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System.Collections;
 using System.Reflection;
@@ -28,10 +27,10 @@ namespace Aerospike.Test
 		[ClassInitialize()]
 		public static void Register(TestContext testContext)
 		{
-			if (!args.testProxy || (args.testProxy && nativeClient != null) && !args.testAsyncAwait)
+			if (!args.testAsyncAwait)
 			{
 				Assembly assembly = Assembly.GetExecutingAssembly();
-				RegisterTask task = nativeClient.Register(null, assembly, "Aerospike.Test.LuaResources.record_example.lua", "record_example.lua", Language.LUA);
+				RegisterTask task = client.Register(null, assembly, "Aerospike.Test.LuaResources.record_example.lua", "record_example.lua", Language.LUA);
 				task.Wait();
 			}
 			else if (args.testAsyncAwait)
