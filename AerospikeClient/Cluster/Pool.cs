@@ -154,7 +154,7 @@ namespace Aerospike.Client
 					return default;
 				}
 
-				return items[head];
+				return items[head == 0 ? items.Length - 1 : head - 1];
 			}
 			finally
 			{
