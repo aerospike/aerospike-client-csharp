@@ -230,7 +230,10 @@ namespace Aerospike.Client
 						// Disable load balancer detection for localhost.
 						detectLoadBalancer = false;
 					}
-					
+				}
+
+				if (detectLoadBalancer)
+				{
 					// Seed may be load balancer with changing address. Determine real address.
 					addressCommand = (cluster.tlsPolicy != null) ?
 						cluster.useServicesAlternate ? "service-tls-alt" : "service-tls-std" :
