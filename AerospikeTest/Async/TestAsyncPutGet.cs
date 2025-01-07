@@ -16,6 +16,7 @@
  */
 using Aerospike.Client;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using System.Collections.Generic;
 
 namespace Aerospike.Test
 {
