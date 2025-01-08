@@ -23,7 +23,7 @@ using static Aerospike.Client.AbortStatus;
 
 namespace Aerospike.Test
 {
-	[TestClass]
+	[TestClass, TestCategory("SCMode")]
 	public class TestAsyncTxn : TestAsync
 	{
 		private static readonly string binName = "bin";

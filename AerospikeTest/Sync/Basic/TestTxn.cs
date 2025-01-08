@@ -21,7 +21,7 @@ using System.Text;
 
 namespace Aerospike.Test
 {
-	[TestClass]
+	[TestClass, TestCategory("SCMode")]
 	public class TestTxn : TestSync
 	{
 		private static readonly string binName = "bin";

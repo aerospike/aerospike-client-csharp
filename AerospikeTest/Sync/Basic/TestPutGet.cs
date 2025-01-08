@@ -104,56 +104,44 @@ namespace Aerospike.Test
 			Assert.AreEqual(r.GetValue("geo").GetType(), geoBin.value.GetType());
 		}
 
-		[TestMethod]
+		[TestMethod, TestCategory("Enterprise")]
 		public void PutGetCompression()
 		{
-			Node node = client.Nodes[0];
-			IDictionary<string, string> map = Info.Request(null, node);
-			Assert.IsNotNull(map);
-
-			foreach (KeyValuePair<string, string> entry in map)
+			WritePolicy writePolicy = new()
 			{
-				string kvp = entry.Key;
+				compress = true
+			};
 
-				if (kvp.Equals("build_ee_sha")) // Compression only available in EE
-				{
-					Client.WritePolicy writePolicy = new()
-					{
-						compress = true
-					};
+			Policy policy = new()
+			{
+				compress = true
+			};
 
-					Policy policy = new()
-					{
-						compress = true
-					};
+			Key key = new(args.ns, args.set, "putgetc");
+			Record record;
 
-					Key key = new(args.ns, args.set, "putgetc");
-					Record record;
+			List<string> list = new();
+			int[] iterator = Enumerable.Range(0, 2000).ToArray();
+			foreach (int i in iterator)
+			{
+				list.Add(i.ToString());
+			}
 
-					List<string> list = new();
-					int[] iterator = Enumerable.Range(0, 2000).ToArray();
-					foreach (int i in iterator)
-					{
-						list.Add(i.ToString());
-					}
+			Bin bin1 = new("bin", list);
 
-					Bin bin1 = new("bin", list);
+			client.Put(writePolicy, key, bin1);
+			record = client.Get(policy, key);
+			var bin1List = bin1.value.Object;
+			record.bins.TryGetValue("bin", out object recordBin);
+			CollectionAssert.AreEquivalent((List<string>)bin1List, (List<object>)recordBin);
 
-					client.Put(writePolicy, key, bin1);
-					record = client.Get(policy, key);
-					var bin1List = bin1.value.Object;
-					record.bins.TryGetValue("bin", out object recordBin);
-					CollectionAssert.AreEquivalent((List<string>)bin1List, (List<object>)recordBin);
+			record = client.GetHeader(policy, key);
+			AssertRecordFound(key, record);
 
-					record = client.GetHeader(policy, key);
-					AssertRecordFound(key, record);
-
-					// Generation should be greater than zero.  Make sure it's populated.
-					if (record.generation == 0)
-					{
-						Assert.Fail("Invalid record header: generation=" + record.generation + " expiration=" + record.expiration);
-					}
-				}
+			// Generation should be greater than zero.  Make sure it's populated.
+			if (record.generation == 0)
+			{
+				Assert.Fail("Invalid record header: generation=" + record.generation + " expiration=" + record.expiration);
 			}
 		}
 	}
