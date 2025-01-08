@@ -1,5 +1,5 @@
 ﻿/* 
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2025 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -357,7 +357,7 @@ namespace Aerospike.Test
 				new Put(txn, key, "val2"),
 				new Commit(txn),
 				new GetExpect(null, key, "val2"),
-				new Abort(txn, AbortStatus.AbortStatusType.ALREADY_COMMITTED)
+				new Abort(txn, ResultCode.TXN_ALREADY_COMMITTED)
 			};
 
 			Execute(cmds);
@@ -578,6 +578,7 @@ namespace Aerospike.Test
 		{
 			private readonly Txn txn;
 			private readonly AbortStatusType status;
+			private readonly int resultCode = 0;
 
 			public Abort(Txn txn) 
 			{
@@ -591,9 +592,22 @@ namespace Aerospike.Test
 				this.status = abortStatus;
 			}
 
+			public Abort(Txn txn, int resultCode)
+			{
+				this.txn = txn;
+				this.resultCode = resultCode;
+			}
+
 			public void Run(TestAsyncTxn parent, Listener listener) 
 			{
-				client.Abort(new AbortHandler(listener, status), txn);
+				try
+				{
+					client.Abort(new AbortHandler(listener, status), txn);
+				}
+				catch (Exception e)
+				{
+					parent.OnError(e, resultCode);
+				}
 			}
 			
 			private class AbortHandler : AbortListener

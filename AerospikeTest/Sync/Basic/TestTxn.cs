@@ -1,5 +1,5 @@
 ﻿/* 
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2025 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -498,8 +498,17 @@ namespace Aerospike.Test
 			record = client.Get(null, key);
 			AssertBinEqual(key, record, binName, "val2");
 
-			var abortStatus = client.Abort(txn);
-			Assert.AreEqual(AbortStatus.AbortStatusType.ALREADY_COMMITTED, abortStatus);
+			try
+			{
+				var abortStatus = client.Abort(txn);
+			}
+			catch (AerospikeException ae)
+			{
+				if (ae.Result != ResultCode.TXN_ALREADY_COMMITTED)
+				{
+					throw;
+				}
+			}
 		}
 
 		[TestMethod]
