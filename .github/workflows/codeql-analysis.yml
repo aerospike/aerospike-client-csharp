@@ -75,10 +75,6 @@ jobs:
         cd AerospikeClient
         dotnet restore
         dotnet build -p:UseSharedCompilation=false --configuration Release
-        
-        cd ../AerospikeClientProxy
-        dotnet restore
-        dotnet build -p:UseSharedCompilation=false --configuration Release
 
     - name: Perform CodeQL Analysis     
       uses: github/codeql-action/analyze@v2
