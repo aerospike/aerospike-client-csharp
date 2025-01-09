@@ -1,5 +1,5 @@
 ﻿/* 
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2025 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -21,7 +21,7 @@ using System.Text;
 
 namespace Aerospike.Test
 {
-	[TestClass]
+	[TestClass, TestCategory("SCMode")]
 	public class TestTxn : TestSync
 	{
 		private static readonly string binName = "bin";
