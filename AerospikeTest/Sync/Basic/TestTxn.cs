@@ -498,8 +498,17 @@ namespace Aerospike.Test
 			record = client.Get(null, key);
 			AssertBinEqual(key, record, binName, "val2");
 
-			var abortStatus = client.Abort(txn);
-			Assert.AreEqual(AbortStatus.AbortStatusType.ALREADY_COMMITTED, abortStatus);
+			try
+			{
+				var abortStatus = client.Abort(txn);
+			}
+			catch (AerospikeException ae)
+			{
+				if (ae.Result != ResultCode.TXN_ALREADY_COMMITTED)
+				{
+					throw;
+				}
+			}
 		}
 
 		[TestMethod]

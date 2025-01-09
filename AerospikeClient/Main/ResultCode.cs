@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2024 Aerospike, Inc.
+ * Copyright 2012-2025 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -23,6 +23,18 @@ namespace Aerospike.Client
 	/// </summary>
 	public sealed class ResultCode
 	{
+		/// <summary>
+		/// Multi-record transaction commit called, but the transaction was already aborted.
+		/// Value: -19
+		/// </summary>
+		public const int TXN_ALREADY_ABORTED = -19;
+
+		/// <summary>
+		/// Multi-record transaction abort called, but the transaction was already committed.
+		/// Value: -18
+		/// </summary>
+		public const int TXN_ALREADY_COMMITTED = -18;
+
 		/// <summary>
 		/// Multi-record transaction failed.
 		/// Value: -17
@@ -593,6 +605,12 @@ namespace Aerospike.Client
 		{
 			switch (resultCode)
 			{
+			case TXN_ALREADY_ABORTED:
+				return "Multi-record transaction already aborted";
+
+			case TXN_ALREADY_COMMITTED:
+				return "Multi-record transaction already committed";
+
 			case TXN_FAILED:
 				return "Multi-record transaction failed";
 
