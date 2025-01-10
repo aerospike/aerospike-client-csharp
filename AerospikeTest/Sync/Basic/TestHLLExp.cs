@@ -28,7 +28,7 @@ namespace Aerospike.Test
 		private string bin1 = "hllbin_1";
 		private string bin2 = "hllbin_2";
 		private string bin3 = "hllbin_3";
-		private Policy policy = new Policy();
+		private Policy policy = new();
 		private Value.HLLValue hll1;
 		private Value.HLLValue hll2;
 		private Value.HLLValue hll3;
@@ -36,7 +36,7 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void HllExp()
 		{
-			Key key = new Key(args.ns, args.set, 5200);
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, 5200);
 			client.Delete(null, key);
 
 			List<Value> list1 = new List<Value>();

@@ -40,10 +40,10 @@ namespace Aerospike.Test
 
 			try
 			{
-				IndexTask task = client.CreateIndex(policy, args.ns, args.set, indexName, binName, IndexType.BLOB);
+				IndexTask task = client.CreateIndex(policy, SuiteHelpers.ns, SuiteHelpers.set, indexName, binName, IndexType.BLOB);
 				task.Wait();
 
-				task = client.CreateIndex(policy, args.ns, args.set, indexNameList, binNameList, IndexType.BLOB, IndexCollectionType.LIST);
+				task = client.CreateIndex(policy, SuiteHelpers.ns, SuiteHelpers.set, indexNameList, binNameList, IndexType.BLOB, IndexCollectionType.LIST);
 				task.Wait();
 			}
 			catch (AerospikeException ae)
@@ -64,8 +64,8 @@ namespace Aerospike.Test
 					bytes
 				};
 
-				Key key = new Key(args.ns, args.set, i);
-				Bin bin = new Bin(binName, bytes);
+				Key key = new(SuiteHelpers.ns, SuiteHelpers.set, i);
+				Bin bin = new(binName, bytes);
 				Bin binList = new Bin(binNameList, list);
 
 				client.Put(null, key, bin, binList);
@@ -75,8 +75,8 @@ namespace Aerospike.Test
 		[ClassCleanup()]
 		public static void Destroy()
 		{
-			client.DropIndex(null, args.ns, args.set, indexName);
-			client.DropIndex(null, args.ns, args.set, indexNameList);
+			client.DropIndex(null, SuiteHelpers.ns, SuiteHelpers.set, indexName);
+			client.DropIndex(null, SuiteHelpers.ns, SuiteHelpers.set, indexNameList);
 		}
 
 		[TestMethod]
@@ -86,8 +86,8 @@ namespace Aerospike.Test
 			ByteUtil.LongToBytes(50003, bytes, 0);
 
 			Statement stmt = new Statement();
-			stmt.SetNamespace(args.ns);
-			stmt.SetSetName(args.set);
+			stmt.SetNamespace(SuiteHelpers.ns);
+			stmt.SetSetName(SuiteHelpers.set);
 			stmt.SetBinNames(binName);
 			stmt.SetFilter(Filter.Equal(binName, bytes));
 
@@ -120,8 +120,8 @@ namespace Aerospike.Test
 			ByteUtil.LongToBytes(50003, bytes, 0);
 
 			Statement stmt = new Statement();
-			stmt.SetNamespace(args.ns);
-			stmt.SetSetName(args.set);
+			stmt.SetNamespace(SuiteHelpers.ns);
+			stmt.SetSetName(SuiteHelpers.set);
 			stmt.SetBinNames(binName, binNameList);
 			stmt.SetFilter(Filter.Contains(binNameList, IndexCollectionType.LIST, bytes));
 

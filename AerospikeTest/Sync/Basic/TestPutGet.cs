@@ -25,12 +25,12 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void PutGet()
 		{
-			Key key = new Key(args.ns, args.set, "putgetkey");
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "putgetkey");
 			Record record;
 
-			if (args.singleBin) 
+			if (SuiteHelpers.singleBin) 
 			{
-				Bin bin = new Bin("", "value");
+				Bin bin = new("", "value");
 			
 				client.Put(null, key, bin);
 				record = client.Get(null, key);
@@ -59,7 +59,7 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void PutGetHeader()
 		{
-			Key key = new(args.ns, args.set, "getHeader");
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "getHeader");
 			client.Put(null, key, new Bin("mybin", "myvalue"));
 
 			Record record = client.GetHeader(null, key);
@@ -75,7 +75,7 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void PutGetBool()
 		{
-			Key key = new Key(args.ns, args.set, "pgb");
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "pgb");
 			Bin bin1 = new Bin("bin1", false);
 			Bin bin2 = new Bin("bin2", true);
 			Bin bin3 = new Bin("bin3", 0);
@@ -97,7 +97,7 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void PutGetGeoJson()
 		{
-			Key key = new(args.ns, args.set, "geo");
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "geo");
 			Bin geoBin = new("geo", Value.GetAsGeoJSON("{\"type\": \"Point\", \"coordinates\": [42.34, 58.62]}"));
 			client.Put(null, key, geoBin);
 			Record r = client.Get(null, key);
@@ -127,7 +127,7 @@ namespace Aerospike.Test
 						compress = true
 					};
 
-					Key key = new(args.ns, args.set, "putgetc");
+					Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "putgetc");
 					Record record;
 
 					List<string> list = new();

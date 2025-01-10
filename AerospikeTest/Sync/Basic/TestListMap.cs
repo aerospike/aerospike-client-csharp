@@ -26,15 +26,12 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void ListStrings()
 		{
-			Key key = new Key(args.ns, args.set, "listkey1");
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "listkey1");
 			client.Delete(null, key);
 
-			List<string> list = new List<string>();
-			list.Add("string1");
-			list.Add("string2");
-			list.Add("string3");
+			List<string> list = ["string1", "string2", "string3"];
 
-			Bin bin = new Bin(args.GetBinName("listbin1"), list);
+			Bin bin = new(Suite.GetBinName("listbin1"), list);
 			client.Put(null, key, bin);
 
 			Record record = client.Get(null, key, bin.name);
@@ -49,19 +46,15 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void ListComplex()
 		{
-			Key key = new Key(args.ns, args.set, "listkey2");
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "listkey2");
 			client.Delete(null, key);
 
 			string geopoint = "{ \"type\": \"Point\", \"coordinates\": [0.00, 0.00] }";
 
-			byte[] blob = new byte[] {3, 52, 125};
-			List<object> list = new List<object>();
-			list.Add("string1");
-			list.Add(2);
-			list.Add(blob);
-			list.Add(Value.GetAsGeoJSON(geopoint));
+			byte[] blob = [3, 52, 125];
+			List<object> list = ["string1", 2, blob, Value.GetAsGeoJSON(geopoint)];
 
-			Bin bin = new Bin(args.GetBinName("listbin2"), list);
+			Bin bin = new(Suite.GetBinName("listbin2"), list);
 			client.Put(null, key, bin);
 
 			Record record = client.Get(null, key, bin.name);
@@ -78,15 +71,17 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void MapStrings()
 		{
-			Key key = new Key(args.ns, args.set, "mapkey1");
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "mapkey1");
 			client.Delete(null, key);
 
-			Dictionary<string, string> map = new Dictionary<string, string>();
-			map["key1"] = "string1";
-			map["key2"] = "loooooooooooooooooooooooooongerstring2";
-			map["key3"] = "string3";
+			Dictionary<string, string> map = new()
+			{
+				["key1"] = "string1",
+				["key2"] = "loooooooooooooooooooooooooongerstring2",
+				["key3"] = "string3"
+			};
 
-			Bin bin = new Bin(args.GetBinName("mapbin1"), map);
+			Bin bin = new(Suite.GetBinName("mapbin1"), map);
 			client.Put(null, key, bin);
 
 			Record record = client.Get(null, key, bin.name);
@@ -101,32 +96,30 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void MapComplex()
 		{
-			Key key = new Key(args.ns, args.set, "mapkey2");
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "mapkey2");
 			client.Delete(null, key);
 
-			byte[] blob = new byte[] {3, 52, 125};
-			IList<int> list = new List<int>();
-			list.Add(100034);
-			list.Add(12384955);
-			list.Add(3);
-			list.Add(512);
+			byte[] blob = [3, 52, 125];
+			IList<int> list = [100034, 12384955, 3, 512];
 
-			DateTime dt = new DateTime(2019, 9, 23, 11, 24, 1);
-			Decimal dc = new decimal(1.1);
+			DateTime dt = new(2019, 9, 23, 11, 24, 1);
+			Decimal dc = new(1.1);
 
-			Dictionary<object, object> map = new Dictionary<object, object>();
-			map["key1"] = "string1";
-			map["key2"] = 2;
-			map["key3"] = blob;
-			map["key4"] = list;
-			map["key5"] = true;
-			map["key6"] = false;
+			Dictionary<object, object> map = new()
+			{
+				["key1"] = "string1",
+				["key2"] = 2,
+				["key3"] = blob,
+				["key4"] = list,
+				["key5"] = true,
+				["key6"] = false
+			};
 #if BINARY_FORMATTER
 			map["key7"] = dt;
 			map["key8"] = dc;
 #endif
 
-            Bin bin = new Bin(args.GetBinName("mapbin2"), map);
+            Bin bin = new(Suite.GetBinName("mapbin2"), map);
 			client.Put(null, key, bin);
 
 			Record record = client.Get(null, key, bin.name);
@@ -149,8 +142,8 @@ namespace Aerospike.Test
 			Assert.AreEqual(3L, receivedInner[2]);
 			Assert.AreEqual(512L, receivedInner[3]);
 
-			Assert.AreEqual(true, receivedMap["key5"]);
-			Assert.AreEqual(false, receivedMap["key6"]);
+			Assert.IsTrue((bool?)receivedMap["key5"]);
+			Assert.IsFalse((bool?)receivedMap["key6"]);
 #if BINARY_FORMATTER
 			Assert.AreEqual(dt, receivedMap["key7"]);
 			Assert.AreEqual(dc, receivedMap["key8"]);
@@ -160,27 +153,23 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void ListMapCombined()
 		{
-			Key key = new Key(args.ns, args.set, "listmapkey");
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "listmapkey");
 			client.Delete(null, key);
 
-			byte[] blob = new byte[] {3, 52, 125};
-			List<object> inner = new List<object>();
-			inner.Add("string2");
-			inner.Add(5);
+			byte[] blob = [3, 52, 125];
+			List<object> inner = ["string2", 5];
 
-			Dictionary<object, object> innerMap = new Dictionary<object, object>();
-			innerMap["a"] = 1;
-			innerMap[2] = "b";
-			innerMap[3] = blob;
-			innerMap["list"] = inner;
+			Dictionary<object, object> innerMap = new()
+			{
+				["a"] = 1,
+				[2] = "b",
+				[3] = blob,
+				["list"] = inner
+			};
 
-			List<object> list = new List<object>();
-			list.Add("string1");
-			list.Add(8);
-			list.Add(inner);
-			list.Add(innerMap);
+			List<object> list = ["string1", 8, inner, innerMap];
 
-			Bin bin = new Bin(args.GetBinName("listmapbin"), list);
+			Bin bin = new(Suite.GetBinName("listmapbin"), list);
 			client.Put(null, key, bin);
 
 			Record record = client.Get(null, key, bin.name);

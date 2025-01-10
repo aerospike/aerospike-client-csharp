@@ -28,7 +28,7 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void OperateList1()
 		{
-			Key key = new Key(args.ns, args.set, "oplkey1");
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "oplkey1");
 
 			client.Delete(null, key);
 
@@ -62,7 +62,7 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void OperateList2()
 		{
-			Key key = new Key(args.ns, args.set, "oplkey2");
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "oplkey2");
 
 			client.Delete(null, key);
 
@@ -118,7 +118,7 @@ namespace Aerospike.Test
 		public void OperateList3()
 		{
 			// Test out of bounds conditions
-			Key key = new Key(args.ns, args.set, "oplkey3");
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "oplkey3");
 
 			client.Delete(null, key);
 
@@ -178,7 +178,7 @@ namespace Aerospike.Test
 		public void OperateList4()
 		{
 			// Test all value types.
-			Key key = new Key(args.ns, args.set, "oplkey4");
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "oplkey4");
 
 			client.Delete(null, key);
 
@@ -266,7 +266,7 @@ namespace Aerospike.Test
 		public void OperateList5()
 		{
 			// Test trim.
-			Key key = new Key(args.ns, args.set, "oplkey5");
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "oplkey5");
 
 			client.Delete(null, key);
 
@@ -306,7 +306,7 @@ namespace Aerospike.Test
 		public void OperateList6()
 		{
 			// Test clear.
-			Key key = new Key(args.ns, args.set, "oplkey6");
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "oplkey6");
 
 			client.Delete(null, key);
 
@@ -351,7 +351,7 @@ namespace Aerospike.Test
 		public void OperateList7()
 		{
 			// Test null values.
-			Key key = new Key(args.ns, args.set, "oplkey7");
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "oplkey7");
 
 			client.Delete(null, key);
 
@@ -392,7 +392,7 @@ namespace Aerospike.Test
 		public void OperateList8()
 		{
 			// Test null values.
-			Key key = new Key(args.ns, args.set, "oplkey8");
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "oplkey8");
 
 			client.Delete(null, key);
 
@@ -440,7 +440,7 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void OperateListSwitchSort()
 		{
-			Key key = new Key(args.ns, args.set, "oplkey9");
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "oplkey9");
 
 			client.Delete(null, key);
 
@@ -524,7 +524,7 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void OperateListSort()
 		{
-			Key key = new Key(args.ns, args.set, "oplkey10");
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "oplkey10");
 
 			client.Delete(null, key);
 
@@ -556,7 +556,7 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void OperateListRemove()
 		{
-			Key key = new Key(args.ns, args.set, "oplkey11");
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "oplkey11");
 
 			client.Delete(null, key);
 
@@ -625,7 +625,7 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void OperateListInverted()
 		{
-			Key key = new Key(args.ns, args.set, "oplkey12");
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "oplkey12");
 
 			client.Delete(null, key);
 
@@ -688,7 +688,7 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void OperateListGetRelative()
 		{
-			Key key = new Key(args.ns, args.set, "oplkey13");
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "oplkey13");
 
 			client.Delete(null, key);
 
@@ -797,7 +797,7 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void OperateListRemoveRelative()
 		{
-			Key key = new Key(args.ns, args.set, "oplkey14");
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "oplkey14");
 
 			client.Delete(null, key);
 
@@ -855,7 +855,7 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void OperateListPartial()
 		{
-			Key key = new Key(args.ns, args.set, "oplkey15");
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "oplkey15");
 
 			client.Delete(null, key);
 
@@ -903,7 +903,7 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void OperateListInfinity()
 		{
-			Key key = new Key(args.ns, args.set, "oplkey16");
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "oplkey16");
 
 			client.Delete(null, key);
 
@@ -947,7 +947,7 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void OperateListWildcard()
 		{
-			Key key = new Key(args.ns, args.set, "oplkey17");
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "oplkey17");
 
 			client.Delete(null, key);
 
@@ -1002,7 +1002,7 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void OperateNestedList()
 		{
-			Key key = new Key(args.ns, args.set, "oplkey18");
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "oplkey18");
 
 			client.Delete(null, key);
 
@@ -1060,7 +1060,7 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void OperateNestedListMap()
 		{
-			Key key = new Key(args.ns, args.set, "oplkey19");
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "oplkey19");
 
 			client.Delete(null, key);
 
@@ -1131,7 +1131,7 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void OperateListCreateContext()
 		{
-			Key key = new Key(args.ns, args.set, "oplkey20");
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "oplkey20");
 
 			client.Delete(null, key);
 
@@ -1190,7 +1190,7 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void OperateListBounded()
 		{
-			Key key = new Key(args.ns, args.set, "oplkey21");
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "oplkey21");
 
 			client.Delete(null, key);
 

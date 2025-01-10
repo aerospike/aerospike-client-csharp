@@ -14,9 +14,7 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using System.Collections.Generic;
 using System.Reflection;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Aerospike.Client;
 
 namespace Aerospike.Test
@@ -24,15 +22,15 @@ namespace Aerospike.Test
 	[TestClass]
 	public class TestFilterExp : TestSync
 	{
-		string binA = "A";
-		string binB = "B";
-		string binC = "C";
-		string binD = "D";
-		string binE = "E";
+		readonly string binA = "A";
+		readonly string binB = "B";
+		readonly string binC = "C";
+		readonly string binD = "D";
+		readonly string binE = "E";
 
-		Key keyA = new Key(args.ns, args.set, "A");
-		Key keyB = new Key(args.ns, args.set, new byte[] {(byte)'B'});
-		Key keyC = new Key(args.ns, args.set, "C");
+		readonly Key keyA = new(SuiteHelpers.ns, SuiteHelpers.set, "A");
+		readonly Key keyB = new(SuiteHelpers.ns, SuiteHelpers.set, [(byte)'B']);
+		readonly Key keyC = new(SuiteHelpers.ns, SuiteHelpers.set, "C");
 
 		[ClassInitialize()]
 		public static void Register(TestContext testContext)
@@ -57,10 +55,12 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void FilterExpPut()
 		{
-			WritePolicy policy = new WritePolicy();
-			policy.filterExp = Exp.Build(Exp.EQ(Exp.IntBin(binA), Exp.Val(1)));
+			WritePolicy policy = new()
+			{
+				filterExp = Exp.Build(Exp.EQ(Exp.IntBin(binA), Exp.Val(1)))
+			};
 
-			Bin bin = new Bin(binA, 3);
+			Bin bin = new(binA, 3);
 
 			client.Put(policy, keyA, bin);
 			Record r = client.Get(null, keyA);
@@ -76,11 +76,13 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void FilterExpPutExcept()
 		{
-			WritePolicy policy = new WritePolicy();
-			policy.filterExp = Exp.Build(Exp.EQ(Exp.IntBin(binA), Exp.Val(1)));
-			policy.failOnFilteredOut = true;
+			WritePolicy policy = new()
+			{
+				filterExp = Exp.Build(Exp.EQ(Exp.IntBin(binA), Exp.Val(1))),
+				failOnFilteredOut = true
+			};
 
-			Bin bin = new Bin(binA, 3);
+			Bin bin = new(binA, 3);
 
 			client.Put(policy, keyA, bin);
 
@@ -93,8 +95,10 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void FilterExpGet()
 		{
-			Policy policy = new Policy();
-			policy.filterExp = Exp.Build(Exp.EQ(Exp.IntBin(binA), Exp.Val(1)));
+			Policy policy = new()
+			{
+				filterExp = Exp.Build(Exp.EQ(Exp.IntBin(binA), Exp.Val(1)))
+			};
 
 			Record r = client.Get(policy, keyA);
 
@@ -102,15 +106,17 @@ namespace Aerospike.Test
 
 			r = client.Get(policy, keyB);
 
-			Assert.AreEqual(null, r);
+			Assert.IsNull(r);
 		}
 
 		[TestMethod]
 		public void FilterExpGetExcept()
 		{
-			Policy policy = new Policy();
-			policy.filterExp = Exp.Build(Exp.EQ(Exp.IntBin(binA), Exp.Val(1)));
-			policy.failOnFilteredOut = true;
+			Policy policy = new()
+			{
+				filterExp = Exp.Build(Exp.EQ(Exp.IntBin(binA), Exp.Val(1))),
+				failOnFilteredOut = true
+			};
 
 			client.Get(policy, keyA);
 
@@ -123,27 +129,31 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void FilterExpBatch()
 		{
-			BatchPolicy policy = new BatchPolicy();
-			policy.filterExp = Exp.Build(Exp.EQ(Exp.IntBin(binA), Exp.Val(1)));
+			BatchPolicy policy = new()
+			{
+				filterExp = Exp.Build(Exp.EQ(Exp.IntBin(binA), Exp.Val(1)))
+			};
 
-			Key[] keys = new Key[] { keyA, keyB };
+			Key[] keys = [keyA, keyB];
 
 			Record[] records = client.Get(policy, keys);
 
 			AssertBinEqual(keyA, records[0], binA, 1);
-			Assert.AreEqual(null, records[1]);
+			Assert.IsNull(records[1]);
 		}
 
 		[TestMethod]
 		public void FilterExpDelete()
 		{
-			WritePolicy policy = new WritePolicy();
-			policy.filterExp = Exp.Build(Exp.EQ(Exp.IntBin(binA), Exp.Val(1)));
+			WritePolicy policy = new()
+			{
+				filterExp = Exp.Build(Exp.EQ(Exp.IntBin(binA), Exp.Val(1)))
+			};
 
 			client.Delete(policy, keyA);
 			Record r = client.Get(null, keyA);
 
-			Assert.AreEqual(null, r);
+			Assert.IsNull(r);
 
 			client.Delete(policy, keyB);
 			r = client.Get(null, keyB);
@@ -154,9 +164,11 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void FilterExpDeleteExcept()
 		{
-			WritePolicy policy = new WritePolicy();
-			policy.filterExp = Exp.Build(Exp.EQ(Exp.IntBin(binA), Exp.Val(1)));
-			policy.failOnFilteredOut = true;
+			WritePolicy policy = new()
+			{
+				filterExp = Exp.Build(Exp.EQ(Exp.IntBin(binA), Exp.Val(1))),
+				failOnFilteredOut = true
+			};
 
 			client.Delete(policy, keyA);
 
@@ -169,19 +181,21 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void FilterExpDurableDelete()
 		{
-			if (!args.enterprise)
+			if (!SuiteHelpers.enterprise)
 			{
 				return;
 			}
 
-			WritePolicy policy = new WritePolicy();
-			policy.filterExp = Exp.Build(Exp.EQ(Exp.IntBin(binA), Exp.Val(1)));
-			policy.durableDelete = true;
+			WritePolicy policy = new()
+			{
+				filterExp = Exp.Build(Exp.EQ(Exp.IntBin(binA), Exp.Val(1))),
+				durableDelete = true
+			};
 
 			client.Delete(policy, keyA);
 			Record r = client.Get(null, keyA);
 
-			Assert.AreEqual(null, r);
+			Assert.IsNull(r);
 
 			client.Delete(policy, keyB);
 			r = client.Get(null, keyB);
@@ -192,15 +206,17 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void FilterExpDurableDeleteExcept()
 		{
-			if (!args.enterprise)
+			if (!SuiteHelpers.enterprise)
 			{
 				return;
 			}
 
-			WritePolicy policy = new WritePolicy();
-			policy.filterExp = Exp.Build(Exp.EQ(Exp.IntBin(binA), Exp.Val(1)));
-			policy.failOnFilteredOut = true;
-			policy.durableDelete = true;
+			WritePolicy policy = new()
+			{
+				filterExp = Exp.Build(Exp.EQ(Exp.IntBin(binA), Exp.Val(1))),
+				failOnFilteredOut = true,
+				durableDelete = true
+			};
 
 			client.Delete(policy, keyA);
 
@@ -213,8 +229,10 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void FilterExpOperateRead()
 		{
-			WritePolicy policy = new WritePolicy();
-			policy.filterExp = Exp.Build(Exp.EQ(Exp.IntBin(binA), Exp.Val(1)));
+			WritePolicy policy = new()
+			{
+				filterExp = Exp.Build(Exp.EQ(Exp.IntBin(binA), Exp.Val(1)))
+			};
 
 			Record r = client.Operate(policy, keyA, Operation.Get(binA));
 
@@ -222,15 +240,17 @@ namespace Aerospike.Test
 
 			r = client.Operate(policy, keyB, Operation.Get(binA));
 
-			Assert.AreEqual(null, r);
+			Assert.IsNull(r);
 		}
 
 		[TestMethod]
 		public void FilterExpOperateReadExcept()
 		{
-			WritePolicy policy = new WritePolicy();
-			policy.filterExp = Exp.Build(Exp.EQ(Exp.IntBin(binA), Exp.Val(1)));
-			policy.failOnFilteredOut = true;
+			WritePolicy policy = new()
+			{
+				filterExp = Exp.Build(Exp.EQ(Exp.IntBin(binA), Exp.Val(1))),
+				failOnFilteredOut = true
+			};
 
 			client.Operate(policy, keyA, Operation.Get(binA));
 
@@ -243,10 +263,12 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void FilterExpOperateWrite()
 		{
-			WritePolicy policy = new WritePolicy();
-			policy.filterExp = Exp.Build(Exp.EQ(Exp.IntBin(binA), Exp.Val(1)));
+			WritePolicy policy = new()
+			{
+				filterExp = Exp.Build(Exp.EQ(Exp.IntBin(binA), Exp.Val(1)))
+			};
 
-			Bin bin = new Bin(binA, 3);
+			Bin bin = new(binA, 3);
 
 			Record r = client.Operate(policy, keyA, Operation.Put(bin), Operation.Get(binA));
 
@@ -254,17 +276,19 @@ namespace Aerospike.Test
 
 			r = client.Operate(policy, keyB, Operation.Put(bin), Operation.Get(binA));
 
-			Assert.AreEqual(null, r);
+			Assert.IsNull(r);
 		}
 
 		[TestMethod]
 		public void FilterExpOperateWriteExcept()
 		{
-			WritePolicy policy = new WritePolicy();
-			policy.filterExp = Exp.Build(Exp.EQ(Exp.IntBin(binA), Exp.Val(1)));
-			policy.failOnFilteredOut = true;
+			WritePolicy policy = new()
+			{
+				filterExp = Exp.Build(Exp.EQ(Exp.IntBin(binA), Exp.Val(1))),
+				failOnFilteredOut = true
+			};
 
-			Bin bin = new Bin(binA, 3);
+			Bin bin = new(binA, 3);
 
 			client.Operate(policy, keyA, Operation.Put(bin), Operation.Get(binA));
 
@@ -277,8 +301,10 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void FilterExpUdf()
 		{
-			WritePolicy policy = new WritePolicy();
-			policy.filterExp = Exp.Build(Exp.EQ(Exp.IntBin(binA), Exp.Val(1)));
+			WritePolicy policy = new()
+			{
+				filterExp = Exp.Build(Exp.EQ(Exp.IntBin(binA), Exp.Val(1)))
+			};
 
 			client.Execute(policy, keyA, "record_example", "writeBin", Value.Get(binA), Value.Get(3));
 
@@ -296,9 +322,11 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void FilterExpUdfExcept()
 		{
-			WritePolicy policy = new WritePolicy();
-			policy.filterExp = Exp.Build(Exp.EQ(Exp.IntBin(binA), Exp.Val(1)));
-			policy.failOnFilteredOut = true;
+			WritePolicy policy = new()
+			{
+				filterExp = Exp.Build(Exp.EQ(Exp.IntBin(binA), Exp.Val(1))),
+				failOnFilteredOut = true
+			};
 
 			client.Execute(policy, keyA, "record_example", "writeBin", Value.Get(binA), Value.Get(3));
 
@@ -311,9 +339,11 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void FilterExpFilterExclusive()
 		{
-			Policy policy = new Policy();
-			policy.filterExp = Exp.Build(Exp.Exclusive(Exp.EQ(Exp.IntBin(binA), Exp.Val(1)), Exp.EQ(Exp.IntBin(binD), Exp.Val(1))));
-			policy.failOnFilteredOut = true;
+			Policy policy = new()
+			{
+				filterExp = Exp.Build(Exp.Exclusive(Exp.EQ(Exp.IntBin(binA), Exp.Val(1)), Exp.EQ(Exp.IntBin(binD), Exp.Val(1)))),
+				failOnFilteredOut = true
+			};
 
 			Test.TestException(() =>
 			{
@@ -327,12 +357,14 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void FilterExpFilterAddInt()
 		{
-			Policy policy = new Policy();
-			policy.filterExp = Exp.Build(
+			Policy policy = new()
+			{
+				filterExp = Exp.Build(
 				Exp.EQ(
 					Exp.Add(Exp.IntBin(binA), Exp.IntBin(binD), Exp.Val(1)),
-					Exp.Val(4)));
-			policy.failOnFilteredOut = true;
+					Exp.Val(4))),
+				failOnFilteredOut = true
+			};
 
 			Test.TestException(() =>
 			{
@@ -348,14 +380,16 @@ namespace Aerospike.Test
 		{
 			string name = "val";
 
-			Policy policy = new Policy();
-			policy.filterExp = Exp.Build(
+			Policy policy = new()
+			{
+				filterExp = Exp.Build(
 				Exp.Let(
-					Exp.Def(name, Exp.Add(Exp.FloatBin(binB), Exp.Val(1.1))), 
+					Exp.Def(name, Exp.Add(Exp.FloatBin(binB), Exp.Val(1.1))),
 					Exp.And(
-						Exp.GE(Exp.Var(name), Exp.Val(3.2999)), 
-						Exp.LE(Exp.Var(name), Exp.Val(3.3001)))));
-			policy.failOnFilteredOut = true;
+						Exp.GE(Exp.Var(name), Exp.Val(3.2999)),
+						Exp.LE(Exp.Var(name), Exp.Val(3.3001))))),
+				failOnFilteredOut = true
+			};
 
 			Test.TestException(() =>
 			{
@@ -369,12 +403,14 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void FilterExpFilterSub()
 		{
-			Policy policy = new Policy();
-			policy.filterExp = Exp.Build(
+			Policy policy = new()
+			{
+				filterExp = Exp.Build(
 				Exp.EQ(
 					Exp.Sub(Exp.Val(1), Exp.IntBin(binA), Exp.IntBin(binD)),
-					Exp.Val(-2)));
-			policy.failOnFilteredOut = true;
+					Exp.Val(-2))),
+				failOnFilteredOut = true
+			};
 
 			Test.TestException(() =>
 			{
@@ -388,12 +424,14 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void FilterExpFilterMul()
 		{
-			Policy policy = new Policy();
-			policy.filterExp = Exp.Build(
+			Policy policy = new()
+			{
+				filterExp = Exp.Build(
 				Exp.EQ(
 					Exp.Mul(Exp.Val(2), Exp.IntBin(binA), Exp.IntBin(binD)),
-					Exp.Val(4)));
-			policy.failOnFilteredOut = true;
+					Exp.Val(4))),
+				failOnFilteredOut = true
+			};
 
 			Test.TestException(() =>
 			{
@@ -407,12 +445,14 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void FilterExpFilterDiv()
 		{
-			Policy policy = new Policy();
-			policy.filterExp = Exp.Build(
+			Policy policy = new()
+			{
+				filterExp = Exp.Build(
 				Exp.EQ(
 					Exp.Div(Exp.Val(8), Exp.IntBin(binA), Exp.IntBin(binD)),
-					Exp.Val(4)));
-			policy.failOnFilteredOut = true;
+					Exp.Val(4))),
+				failOnFilteredOut = true
+			};
 
 			Test.TestException(() =>
 			{
@@ -428,14 +468,16 @@ namespace Aerospike.Test
 		{
 			string name = "x";
 
-			Policy policy = new Policy();
-			policy.filterExp = Exp.Build(
+			Policy policy = new()
+			{
+				filterExp = Exp.Build(
 				Exp.Let(
 					Exp.Def(name, Exp.Pow(Exp.FloatBin(binB), Exp.Val(2.0))),
 					Exp.And(
 						Exp.GE(Exp.Var(name), Exp.Val(4.8399)),
-						Exp.LE(Exp.Var(name), Exp.Val(4.8401)))));
-			policy.failOnFilteredOut = true;
+						Exp.LE(Exp.Var(name), Exp.Val(4.8401))))),
+				failOnFilteredOut = true
+			};
 
 			Test.TestException(() =>
 			{
@@ -451,14 +493,16 @@ namespace Aerospike.Test
 		{
 			string name = "x";
 
-			Policy policy = new Policy();
-			policy.filterExp = Exp.Build(
+			Policy policy = new()
+			{
+				filterExp = Exp.Build(
 				Exp.Let(
 					Exp.Def(name, Exp.Log(Exp.FloatBin(binB), Exp.Val(2.0))),
 					Exp.And(
 						Exp.GE(Exp.Var(name), Exp.Val(1.1374)),
-						Exp.LE(Exp.Var(name), Exp.Val(1.1376)))));
-			policy.failOnFilteredOut = true;
+						Exp.LE(Exp.Var(name), Exp.Val(1.1376))))),
+				failOnFilteredOut = true
+			};
 
 			Test.TestException(() =>
 			{
@@ -472,12 +516,14 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void FilterExpFilterMod()
 		{
-			Policy policy = new Policy();
-			policy.filterExp = Exp.Build(
+			Policy policy = new()
+			{
+				filterExp = Exp.Build(
 				Exp.EQ(
 					Exp.Mod(Exp.IntBin(binA), Exp.Val(2)),
-					Exp.Val(0)));
-			policy.failOnFilteredOut = true;
+					Exp.Val(0))),
+				failOnFilteredOut = true
+			};
 
 			Test.TestException(() =>
 			{
@@ -491,9 +537,11 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void FilterExpFilterAbs()
 		{
-			Policy policy = new Policy();
-			policy.filterExp = Exp.Build(Exp.EQ(Exp.Abs(Exp.IntBin(binE)), Exp.Val(2)));
-			policy.failOnFilteredOut = true;
+			Policy policy = new()
+			{
+				filterExp = Exp.Build(Exp.EQ(Exp.Abs(Exp.IntBin(binE)), Exp.Val(2))),
+				failOnFilteredOut = true
+			};
 
 			Test.TestException(() =>
 			{
@@ -507,9 +555,11 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void FilterExpFilterFloor()
 		{
-			Policy policy = new Policy();
-			policy.filterExp = Exp.Build(Exp.EQ(Exp.Floor(Exp.FloatBin(binB)), Exp.Val(2.0)));
-			policy.failOnFilteredOut = true;
+			Policy policy = new()
+			{
+				filterExp = Exp.Build(Exp.EQ(Exp.Floor(Exp.FloatBin(binB)), Exp.Val(2.0))),
+				failOnFilteredOut = true
+			};
 
 			Test.TestException(() =>
 			{
@@ -523,9 +573,11 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void FilterExpFilterCeil()
 		{
-			Policy policy = new Policy();
-			policy.filterExp = Exp.Build(Exp.EQ(Exp.Ceil(Exp.FloatBin(binB)), Exp.Val(3.0)));
-			policy.failOnFilteredOut = true;
+			Policy policy = new()
+			{
+				filterExp = Exp.Build(Exp.EQ(Exp.Ceil(Exp.FloatBin(binB)), Exp.Val(3.0))),
+				failOnFilteredOut = true
+			};
 
 			Test.TestException(() =>
 			{
@@ -539,9 +591,11 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void FilterExpFilterToInt()
 		{
-			Policy policy = new Policy();
-			policy.filterExp = Exp.Build(Exp.EQ(Exp.ToInt(Exp.FloatBin(binB)), Exp.Val(2)));
-			policy.failOnFilteredOut = true;
+			Policy policy = new()
+			{
+				filterExp = Exp.Build(Exp.EQ(Exp.ToInt(Exp.FloatBin(binB)), Exp.Val(2))),
+				failOnFilteredOut = true
+			};
 
 			Test.TestException(() =>
 			{
@@ -555,9 +609,11 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void FilterExpFilterToFloat()
 		{
-			Policy policy = new Policy();
-			policy.filterExp = Exp.Build(Exp.EQ(Exp.ToFloat(Exp.IntBin(binA)), Exp.Val(2.0)));
-			policy.failOnFilteredOut = true;
+			Policy policy = new()
+			{
+				filterExp = Exp.Build(Exp.EQ(Exp.ToFloat(Exp.IntBin(binA)), Exp.Val(2.0))),
+				failOnFilteredOut = true
+			};
 
 			Test.TestException(() =>
 			{
@@ -571,13 +627,15 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void FilterExpFilterIntAnd()
 		{
-			Policy policy = new Policy();
-			policy.filterExp = Exp.Build(
+			Policy policy = new()
+			{
+				filterExp = Exp.Build(
 				Exp.Not(
 					Exp.And(
 						Exp.EQ(Exp.IntAnd(Exp.IntBin(binA), Exp.Val(0)), Exp.Val(0)),
-						Exp.EQ(Exp.IntAnd(Exp.IntBin(binA), Exp.Val(0xFFFF)), Exp.Val(1)))));
-			policy.failOnFilteredOut = true;
+						Exp.EQ(Exp.IntAnd(Exp.IntBin(binA), Exp.Val(0xFFFF)), Exp.Val(1))))),
+				failOnFilteredOut = true
+			};
 
 			Test.TestException(() =>
 			{
@@ -596,13 +654,15 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void FilterExpFilterIntOr()
 		{
-			Policy policy = new Policy();
-			policy.filterExp = Exp.Build(
+			Policy policy = new()
+			{
+				filterExp = Exp.Build(
 				Exp.Not(
 					Exp.And(
 						Exp.EQ(Exp.IntOr(Exp.IntBin(binA), Exp.Val(0)), Exp.Val(1)),
-						Exp.EQ(Exp.IntOr(Exp.IntBin(binA), Exp.Val(0xFF)), Exp.Val(0xFF)))));
-			policy.failOnFilteredOut = true;
+						Exp.EQ(Exp.IntOr(Exp.IntBin(binA), Exp.Val(0xFF)), Exp.Val(0xFF))))),
+				failOnFilteredOut = true
+			};
 
 			Test.TestException(() =>
 			{
@@ -621,13 +681,15 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void FilterExpFilterIntXor()
 		{
-			Policy policy = new Policy();
-			policy.filterExp = Exp.Build(
+			Policy policy = new()
+			{
+				filterExp = Exp.Build(
 				Exp.Not(
 					Exp.And(
 						Exp.EQ(Exp.IntXor(Exp.IntBin(binA), Exp.Val(0)), Exp.Val(1)),
-						Exp.EQ(Exp.IntXor(Exp.IntBin(binA), Exp.Val(0xFF)), Exp.Val(0xFE)))));
-			policy.failOnFilteredOut = true;
+						Exp.EQ(Exp.IntXor(Exp.IntBin(binA), Exp.Val(0xFF)), Exp.Val(0xFE))))),
+				failOnFilteredOut = true
+			};
 
 			Test.TestException(() =>
 			{
@@ -646,11 +708,13 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void FilterExpFilterIntNot()
 		{
-			Policy policy = new Policy();
-			policy.filterExp = Exp.Build(
+			Policy policy = new()
+			{
+				filterExp = Exp.Build(
 				Exp.Not(
-					Exp.EQ(Exp.IntNot(Exp.IntBin(binA)), Exp.Val(-2))));
-			policy.failOnFilteredOut = true;
+					Exp.EQ(Exp.IntNot(Exp.IntBin(binA)), Exp.Val(-2)))),
+				failOnFilteredOut = true
+			};
 
 			Test.TestException(() =>
 			{
@@ -667,11 +731,13 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void FilterExpFilterLshift()
 		{
-			Policy policy = new Policy();
-			policy.filterExp = Exp.Build(
+			Policy policy = new()
+			{
+				filterExp = Exp.Build(
 				Exp.Not(
-					Exp.EQ(Exp.Lshift(Exp.IntBin(binA), Exp.Val(2)), Exp.Val(4))));
-			policy.failOnFilteredOut = true;
+					Exp.EQ(Exp.Lshift(Exp.IntBin(binA), Exp.Val(2)), Exp.Val(4)))),
+				failOnFilteredOut = true
+			};
 
 			Test.TestException(() =>
 			{
@@ -688,11 +754,13 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void FilterExpFilterRshift()
 		{
-			Policy policy = new Policy();
-			policy.filterExp = Exp.Build(
+			Policy policy = new()
+			{
+				filterExp = Exp.Build(
 				Exp.Not(
-					Exp.EQ(Exp.Rshift(Exp.IntBin(binE), Exp.Val(62)), Exp.Val(3))));
-			policy.failOnFilteredOut = true;
+					Exp.EQ(Exp.Rshift(Exp.IntBin(binE), Exp.Val(62)), Exp.Val(3)))),
+				failOnFilteredOut = true
+			};
 
 			Test.TestException(() =>
 			{
@@ -709,11 +777,13 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void FilterExpFilterARshift()
 		{
-			Policy policy = new Policy();
-			policy.filterExp = Exp.Build(
+			Policy policy = new()
+			{
+				filterExp = Exp.Build(
 				Exp.Not(
-					Exp.EQ(Exp.ARshift(Exp.IntBin(binE), Exp.Val(62)), Exp.Val(-1))));
-			policy.failOnFilteredOut = true;
+					Exp.EQ(Exp.ARshift(Exp.IntBin(binE), Exp.Val(62)), Exp.Val(-1)))),
+				failOnFilteredOut = true
+			};
 
 			Test.TestException(() =>
 			{
@@ -730,10 +800,12 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void FilterExpFilterBitCount()
 		{
-			Policy policy = new Policy();
-			policy.filterExp = Exp.Build(
-				Exp.Not(Exp.EQ(Exp.Count(Exp.IntBin(binA)), Exp.Val(1))));
-			policy.failOnFilteredOut = true;
+			Policy policy = new()
+			{
+				filterExp = Exp.Build(
+				Exp.Not(Exp.EQ(Exp.Count(Exp.IntBin(binA)), Exp.Val(1)))),
+				failOnFilteredOut = true
+			};
 
 			Test.TestException(() =>
 			{
@@ -750,11 +822,13 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void FilterExpFilterLscan()
 		{
-			Policy policy = new Policy();
-			policy.filterExp = Exp.Build(
+			Policy policy = new()
+			{
+				filterExp = Exp.Build(
 				Exp.Not(
-					Exp.EQ(Exp.Lscan(Exp.IntBin(binA), Exp.Val(true)), Exp.Val(63))));
-			policy.failOnFilteredOut = true;
+					Exp.EQ(Exp.Lscan(Exp.IntBin(binA), Exp.Val(true)), Exp.Val(63)))),
+				failOnFilteredOut = true
+			};
 
 			Test.TestException(() =>
 			{
@@ -771,11 +845,13 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void FilterExpFilterRscan()
 		{
-			Policy policy = new Policy();
-			policy.filterExp = Exp.Build(
+			Policy policy = new()
+			{
+				filterExp = Exp.Build(
 				Exp.Not(
-					Exp.EQ(Exp.Rscan(Exp.IntBin(binA), Exp.Val(true)), Exp.Val(63))));
-			policy.failOnFilteredOut = true;
+					Exp.EQ(Exp.Rscan(Exp.IntBin(binA), Exp.Val(true)), Exp.Val(63)))),
+				failOnFilteredOut = true
+			};
 
 			Test.TestException(() =>
 			{
@@ -792,13 +868,15 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void FilterExpFilterMin()
 		{
-			Policy policy = new Policy();
-			policy.filterExp = Exp.Build(
+			Policy policy = new()
+			{
+				filterExp = Exp.Build(
 				Exp.Not(
 					Exp.EQ(
 						Exp.Min(Exp.IntBin(binA), Exp.IntBin(binD), Exp.IntBin(binE)),
-						Exp.Val(-1))));
-			policy.failOnFilteredOut = true;
+						Exp.Val(-1)))),
+				failOnFilteredOut = true
+			};
 
 			Test.TestException(() =>
 			{
@@ -817,13 +895,15 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void FilterExpFilterMax()
 		{
-			Policy policy = new Policy();
-			policy.filterExp = Exp.Build(
+			Policy policy = new()
+			{
+				filterExp = Exp.Build(
 				Exp.Not(
 					Exp.EQ(
 						Exp.Max(Exp.IntBin(binA), Exp.IntBin(binD), Exp.IntBin(binE)),
-						Exp.Val(1))));
-			policy.failOnFilteredOut = true;
+						Exp.Val(1)))),
+				failOnFilteredOut = true
+			};
 
 			Test.TestException(() =>
 			{
@@ -842,8 +922,9 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void FilterExpFilterCond()
 		{
-			Policy policy = new Policy();
-			policy.filterExp = Exp.Build(
+			Policy policy = new()
+			{
+				filterExp = Exp.Build(
 				Exp.Not(
 					Exp.EQ(
 						Exp.Cond(
@@ -851,8 +932,9 @@ namespace Aerospike.Test
 							Exp.EQ(Exp.IntBin(binA), Exp.Val(1)), Exp.Sub(Exp.IntBin(binD), Exp.IntBin(binE)),
 							Exp.EQ(Exp.IntBin(binA), Exp.Val(2)), Exp.Mul(Exp.IntBin(binD), Exp.IntBin(binE)),
 							Exp.Val(-1)),
-						Exp.Val(2))));
-			policy.failOnFilteredOut = true;
+						Exp.Val(2)))),
+				failOnFilteredOut = true
+			};
 
 			Test.TestException(() =>
 			{
@@ -876,18 +958,19 @@ namespace Aerospike.Test
 		public void BatchKeyFilter()
 		{
 			// Write/Delete records with filter.
-			BatchWritePolicy wp = new BatchWritePolicy();
-			wp.filterExp = Exp.Build(Exp.EQ(Exp.IntBin(binA), Exp.Val(1)));
+			BatchWritePolicy wp = new()
+			{
+				filterExp = Exp.Build(Exp.EQ(Exp.IntBin(binA), Exp.Val(1)))
+			};
 
-			BatchDeletePolicy dp = new BatchDeletePolicy();
-			dp.filterExp = Exp.Build(Exp.EQ(Exp.IntBin(binA), Exp.Val(0)));
+			BatchDeletePolicy dp = new()
+			{
+				filterExp = Exp.Build(Exp.EQ(Exp.IntBin(binA), Exp.Val(0)))
+			};
 
 			Operation[] put = Operation.Array(Operation.Put(new Bin(binA, 3)));
 
-			List<BatchRecord> brecs = new List<BatchRecord>();
-			brecs.Add(new BatchWrite(wp, keyA, put));
-			brecs.Add(new BatchWrite(wp, keyB, put));
-			brecs.Add(new BatchDelete(dp, keyC));
+			List<BatchRecord> brecs = [new BatchWrite(wp, keyA, put), new BatchWrite(wp, keyB, put), new BatchDelete(dp, keyC)];
 
 			bool status = client.Operate(null, brecs);
 			Assert.IsFalse(status); // Filtered out result code causes status to be false.
@@ -902,7 +985,7 @@ namespace Aerospike.Test
 			Assert.AreEqual(ResultCode.OK, br.resultCode);
 
 			// Read records
-			Key[] keys = new Key[] { keyA, keyB, keyC };
+			Key[] keys = [keyA, keyB, keyC];
 			Record[] recs = client.Get(null, keys, binA);
 
 			Record r = recs[0];

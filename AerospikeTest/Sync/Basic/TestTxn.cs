@@ -37,7 +37,7 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void TxnWrite()
 		{
-			Key key = new(args.ns, args.set, "mrtkey1");
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "mrtkey1");
 
 			client.Put(null, key, new Bin(binName, "val1"));
 
@@ -56,7 +56,7 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void TxnWriteTwice()
 		{
-			Key key = new(args.ns, args.set, "mrtkey2");
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "mrtkey2");
 
 			Txn txn = new();
 
@@ -74,7 +74,7 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void TxnWriteConflict()
 		{
-			Key key = new(args.ns, args.set, "mrtkey021");
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "mrtkey021");
 
 			Txn txn1 = new();
 			Txn txn2 = new();
@@ -109,7 +109,7 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void TxnWriteBlock()
 		{
-			Key key = new(args.ns, args.set, "mrtkey3");
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "mrtkey3");
 
 			client.Put(null, key, new Bin(binName, "val1"));
 
@@ -139,7 +139,7 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void TxnWriteRead()
 		{
-			Key key = new(args.ns, args.set, "mrtkey4");
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "mrtkey4");
 
 			client.Put(null, key, new Bin(binName, "val1"));
 
@@ -161,7 +161,7 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void TxnWriteAbort()
 		{
-			Key key = new(args.ns, args.set, "mrtkey5");
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "mrtkey5");
 
 			client.Delete(null, key);
 
@@ -188,7 +188,7 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void TxnDelete()
 		{
-			Key key = new(args.ns, args.set, "mrtkey6");
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "mrtkey6");
 
 			client.Put(null, key, new Bin(binName, "val1"));
 
@@ -208,7 +208,7 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void TxnDeleteAbort()
 		{
-			Key key = new(args.ns, args.set, "mrtkey7");
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "mrtkey7");
 
 			client.Put(null, key, new Bin(binName, "val1"));
 
@@ -228,7 +228,7 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void TxnDeleteTwice()
 		{
-			Key key = new(args.ns, args.set, "mrtkey8");
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "mrtkey8");
 
 			Txn txn = new();
 
@@ -249,7 +249,7 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void TxnTouch()
 		{
-			Key key = new(args.ns, args.set, "mrtkey91");
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "mrtkey91");
 
 			client.Put(null, key, new Bin(binName, "val1"));
 
@@ -268,7 +268,7 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void TxnTouchAbort()
 		{
-			Key key = new(args.ns, args.set, "mrtkey10");
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "mrtkey10");
 
 			client.Put(null, key, new Bin(binName, "val1"));
 
@@ -287,7 +287,7 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void TxnOperateWrite()
 		{
-			Key key = new(args.ns, args.set, "mrtkey11");
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "mrtkey11");
 
 			client.Put(null, key, new Bin(binName, "val1"), new Bin("bin2", "bal1"));
 
@@ -310,7 +310,7 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void TxnOperateWriteAbort()
 		{
-			Key key = new(args.ns, args.set, "mrtkey12");
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "mrtkey12");
 
 			client.Put(null, key, new Bin(binName, "val1"), new Bin("bin2", "bal1"));
 
@@ -333,7 +333,7 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void TxnUDF()
 		{
-			Key key = new(args.ns, args.set, "mrtkey13");
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "mrtkey13");
 
 			client.Put(null, key, new Bin(binName, "val1"));
 
@@ -352,7 +352,7 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void TxnUDFAbort()
 		{
-			Key key = new(args.ns, args.set, "mrtkey14");
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "mrtkey14");
 
 			client.Put(null, key, new Bin(binName, "val1"));
 
@@ -376,7 +376,7 @@ namespace Aerospike.Test
 
 			for (int i = 0; i < keys.Length; i++)
 			{
-				Key key = new(args.ns, args.set, i);
+				Key key = new(SuiteHelpers.ns, SuiteHelpers.set, i);
 				keys[i] = key;
 
 				client.Put(null, key, bin);
@@ -430,7 +430,7 @@ namespace Aerospike.Test
 
 			for (int i = 0; i < keys.Length; i++)
 			{
-				Key key = new(args.ns, args.set, i);
+				Key key = new(SuiteHelpers.ns, SuiteHelpers.set, i);
 				keys[i] = key;
 
 				client.Put(null, key, bin);
@@ -479,7 +479,7 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void TxnWriteCommitAbort()
 		{
-			Key key = new(args.ns, args.set, "mrtkey15");
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "mrtkey15");
 
 			client.Put(null, key, new Bin(binName, "val1"));
 
@@ -508,7 +508,7 @@ namespace Aerospike.Test
 			Txn txn1 = new();
 			Txn txn2 = new();
 
-			Key key = new(args.ns, args.set, "mrtkey16");
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "mrtkey16");
 
 			client.Put(null, key, new Bin(binName, "val1"));
 
@@ -534,9 +534,9 @@ namespace Aerospike.Test
 		{
 			Txn txn = new(); // T0
 
-			Key key1 = new(args.ns, args.set, "mrtkey17");
-			Key key2 = new(args.ns, args.set, "mrtkey18");
-			Key key3 = new(args.ns, args.set, "mrtkey19");
+			Key key1 = new(SuiteHelpers.ns, SuiteHelpers.set, "mrtkey17");
+			Key key2 = new(SuiteHelpers.ns, SuiteHelpers.set, "mrtkey18");
+			Key key3 = new(SuiteHelpers.ns, SuiteHelpers.set, "mrtkey19");
 
 			client.Delete(null, key1);
 			client.Delete(null, key2);
@@ -584,13 +584,13 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void TxnLUTAbort() // Test Case 39
 		{
-			client.Truncate(null, args.ns, args.set, DateTime.Now);
+			client.Truncate(null, SuiteHelpers.ns, SuiteHelpers.set, DateTime.Now);
 			
 			Txn txn = new(); // T0
 
-			Key key1 = new(args.ns, args.set, "mrtkey20");
-			Key key2 = new(args.ns, args.set, "mrtkey21");
-			Key key3 = new(args.ns, args.set, "mrtkey22");
+			Key key1 = new(SuiteHelpers.ns, SuiteHelpers.set, "mrtkey20");
+			Key key2 = new(SuiteHelpers.ns, SuiteHelpers.set, "mrtkey21");
+			Key key3 = new(SuiteHelpers.ns, SuiteHelpers.set, "mrtkey22");
 
 			//client.Delete(null, key1);
 			//client.Delete(null, key2);
@@ -667,7 +667,7 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void TxnWriteAfterCommit()
 		{
-			Key key = new(args.ns, args.set, "mrtkey23");
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "mrtkey23");
 
 			Txn txn = new();
 
@@ -695,7 +695,7 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void TxnInvalidNamespace()
 		{
-			Key key = new("invalid", args.set, "mrtkey");
+			Key key = new("invalid", SuiteHelpers.set, "mrtkey");
 
 			Txn txn = new();
 

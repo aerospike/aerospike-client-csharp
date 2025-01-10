@@ -26,13 +26,13 @@ namespace Aerospike.Test
 	[TestClass]
 	public class TestSerialize : TestSync
 	{
-		private static readonly string binName = args.GetBinName("serialbin");
+		private static readonly string binName = Suite.GetBinName("serialbin");
 
 #if BINARY_FORMATTER
 		[TestMethod]
 		public void SerializeArray()
 		{
-			Key key = new Key(args.ns, args.set, "serialarraykey");
+			Key key = new(Suite.ns, Suite.set, "serialarraykey");
 
 			// Delete record if it already exists.
 			client.Delete(null, key);
@@ -44,7 +44,7 @@ namespace Aerospike.Test
 				array[i] = i * i;
 			}
 
-			Bin bin = new Bin(binName, new Value.BlobValue(array));
+			Bin bin = new(binName, new Value.BlobValue(array));
 
 			// Do a test that pushes this complex object through the serializer
 			client.Put(null, key, bin);
@@ -79,7 +79,7 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void SerializeList()
 		{
-			Key key = new Key(args.ns, args.set, "seriallistkey");
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "seriallistkey");
 
 			// Delete record if it already exists.
 			client.Delete(null, key);
@@ -89,7 +89,7 @@ namespace Aerospike.Test
 			list.Add("string2");
 			list.Add("string3");
 
-			Bin bin = new Bin(binName, list);
+			Bin bin = new(binName, list);
 
 			client.Put(null, key, bin);
 
@@ -126,7 +126,7 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void SerializeComplex()
 		{
-			Key key = new Key(args.ns, args.set, "serialcomplexkey");
+			Key key = new(Suite.ns, Suite.set, "serialcomplexkey");
 
 			// Delete record if it already exists.
 			client.Delete(null, key);
@@ -146,7 +146,7 @@ namespace Aerospike.Test
 			list.Add(inner);
 			list.Add(innerMap);
 
-			Bin bin = new Bin(args.GetBinName("complexbin"), new Value.BlobValue(list));
+			Bin bin = new(Suite.GetBinName("complexbin"), new Value.BlobValue(list));
 
 			client.Put(null, key, bin);
 

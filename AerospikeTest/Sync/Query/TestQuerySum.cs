@@ -25,7 +25,7 @@ namespace Aerospike.Test
 	{
 		private const string indexName = "aggindex";
 		private const string keyPrefix = "aggkey";
-		private static readonly string binName = args.GetBinName("aggbin");
+		private static readonly string binName = Suite.GetBinName("aggbin");
 		private const int size = 10;
 
 		[ClassInitialize()]
@@ -35,12 +35,12 @@ namespace Aerospike.Test
 			RegisterTask task = client.Register(null, assembly, "Aerospike.Test.LuaResources.sum_example.lua", "sum_example.lua", Language.LUA);
 			task.Wait();
 
-			Policy policy = new Policy();
+			Policy policy = new();
 			policy.totalTimeout = 0; // Do not timeout on index create.
 
 			try
 			{
-				IndexTask itask = client.CreateIndex(policy, args.ns, args.set, indexName, binName, IndexType.NUMERIC);
+				IndexTask itask = client.CreateIndex(policy, SuiteHelpers.ns, SuiteHelpers.set, indexName, binName, IndexType.NUMERIC);
 				itask.Wait();
 			}
 			catch (AerospikeException ae)
@@ -53,8 +53,8 @@ namespace Aerospike.Test
 
 			for (int i = 1; i <= size; i++)
 			{
-				Key key = new Key(args.ns, args.set, keyPrefix + i);
-				Bin bin = new Bin(binName, i);
+				Key key = new(SuiteHelpers.ns, SuiteHelpers.set, keyPrefix + i);
+				Bin bin = new(binName, i);
 				client.Put(null, key, bin);
 			}
 		}
@@ -62,7 +62,7 @@ namespace Aerospike.Test
 		[ClassCleanup()]
 		public static void Destroy()
 		{
-			client.DropIndex(null, args.ns, args.set, indexName);
+			client.DropIndex(null, SuiteHelpers.ns, SuiteHelpers.set, indexName);
 		}
 
 		[TestMethod]
@@ -72,8 +72,8 @@ namespace Aerospike.Test
 			int end = 7;
 
 			Statement stmt = new Statement();
-			stmt.SetNamespace(args.ns);
-			stmt.SetSetName(args.set);
+			stmt.SetNamespace(SuiteHelpers.ns);
+			stmt.SetSetName(SuiteHelpers.set);
 			stmt.SetBinNames(binName);
 			stmt.SetFilter(Filter.Range(binName, begin, end));
 			stmt.SetAggregateFunction(Assembly.GetExecutingAssembly(), "Aerospike.Test.LuaResources.sum_example.lua", "sum_example", "sum_single_bin", Value.Get(binName));
@@ -114,7 +114,7 @@ namespace Aerospike.Test
 		{
 			Statement stmt = new Statement()
 			{
-				Namespace = args.ns,
+				Namespace = SuiteHelpers.ns,
 				SetName = "notfound",
 				BinNames = new string[] { binName },
 				Filter = Filter.Range(binName, 4, 7)

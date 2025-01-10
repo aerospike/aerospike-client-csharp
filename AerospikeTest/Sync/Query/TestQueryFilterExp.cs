@@ -22,7 +22,7 @@ namespace Aerospike.Test
 	[TestClass]
 	public class TestQueryFilterExp : TestSync
 	{
-		private static readonly string setName = args.set + "flt";
+		private static readonly string setName = SuiteHelpers.set + "flt";
 		private const string indexName = "flt";
 		private const string keyPrefix = "flt";
 		private const string binName = "fltint";
@@ -31,12 +31,12 @@ namespace Aerospike.Test
 		[ClassInitialize()]
 		public static void Prepare(TestContext testContext)
 		{
-			Policy policy = new Policy();
+			Policy policy = new();
 			policy.totalTimeout = 0; // Do not timeout on index create.
 
 			try
 			{
-				IndexTask itask = client.CreateIndex(policy, args.ns, setName, indexName, binName, IndexType.NUMERIC);
+				IndexTask itask = client.CreateIndex(policy, SuiteHelpers.ns, setName, indexName, binName, IndexType.NUMERIC);
 				itask.Wait();
 			}
 			catch (AerospikeException ae)
@@ -50,7 +50,7 @@ namespace Aerospike.Test
 			// Write records with string keys
 			for (int i = 1; i <= size; i++)
 			{
-				Key key = new Key(args.ns, setName, keyPrefix + i);
+				Key key = new(SuiteHelpers.ns, setName, keyPrefix + i);
 				List<int> list = null;
 				Dictionary<string, string> map = null;
 
@@ -92,7 +92,7 @@ namespace Aerospike.Test
 		[ClassCleanup()]
 		public static void Destroy()
 		{
-			client.DropIndex(null, args.ns, setName, indexName);
+			client.DropIndex(null, SuiteHelpers.ns, setName, indexName);
 		}
 
 		[TestMethod]
@@ -102,7 +102,7 @@ namespace Aerospike.Test
 			int end = 45;
 
 			Statement stmt = new Statement();
-			stmt.SetNamespace(args.ns);
+			stmt.SetNamespace(SuiteHelpers.ns);
 			stmt.SetSetName(setName);
 			stmt.SetFilter(Filter.Range(binName, begin, end));
 
@@ -145,7 +145,7 @@ namespace Aerospike.Test
 			int end = 45;
 
 			Statement stmt = new Statement();
-			stmt.SetNamespace(args.ns);
+			stmt.SetNamespace(SuiteHelpers.ns);
 			stmt.SetSetName(setName);
 			stmt.SetFilter(Filter.Range(binName, begin, end));
 
@@ -184,7 +184,7 @@ namespace Aerospike.Test
 			int end = 45;
 
 			Statement stmt = new Statement();
-			stmt.SetNamespace(args.ns);
+			stmt.SetNamespace(SuiteHelpers.ns);
 			stmt.SetSetName(setName);
 			stmt.SetFilter(Filter.Range(binName, begin, end));
 
@@ -223,7 +223,7 @@ namespace Aerospike.Test
 			int end = 10;
 
 			Statement stmt = new Statement();
-			stmt.SetNamespace(args.ns);
+			stmt.SetNamespace(SuiteHelpers.ns);
 			stmt.SetSetName(setName);
 			stmt.SetFilter(Filter.Range(binName, begin, end));
 
@@ -260,7 +260,7 @@ namespace Aerospike.Test
 			int end = 10;
 
 			Statement stmt = new Statement();
-			stmt.SetNamespace(args.ns);
+			stmt.SetNamespace(SuiteHelpers.ns);
 			stmt.SetSetName(setName);
 			stmt.SetFilter(Filter.Range(binName, begin, end));
 
@@ -297,7 +297,7 @@ namespace Aerospike.Test
 			int end = 10;
 
 			Statement stmt = new Statement();
-			stmt.SetNamespace(args.ns);
+			stmt.SetNamespace(SuiteHelpers.ns);
 			stmt.SetSetName(setName);
 			stmt.SetFilter(Filter.Range(binName, begin, end));
 
@@ -334,7 +334,7 @@ namespace Aerospike.Test
 			int end = 10;
 
 			Statement stmt = new Statement();
-			stmt.SetNamespace(args.ns);
+			stmt.SetNamespace(SuiteHelpers.ns);
 			stmt.SetSetName(setName);
 			stmt.SetFilter(Filter.Range(binName, begin, end));
 
@@ -371,7 +371,7 @@ namespace Aerospike.Test
 			int end = 10;
 
 			Statement stmt = new Statement();
-			stmt.SetNamespace(args.ns);
+			stmt.SetNamespace(SuiteHelpers.ns);
 			stmt.SetSetName(setName);
 			stmt.SetFilter(Filter.Range(binName, begin, end));
 
@@ -406,7 +406,7 @@ namespace Aerospike.Test
 			int end = 10;
 
 			Statement stmt = new Statement();
-			stmt.SetNamespace(args.ns);
+			stmt.SetNamespace(SuiteHelpers.ns);
 			stmt.SetSetName(setName);
 			stmt.SetFilter(Filter.Range(binName, begin, end));
 
@@ -443,7 +443,7 @@ namespace Aerospike.Test
 			int end = 10;
 
 			Statement stmt = new Statement();
-			stmt.SetNamespace(args.ns);
+			stmt.SetNamespace(SuiteHelpers.ns);
 			stmt.SetSetName(setName);
 			stmt.SetFilter(Filter.Range(binName, begin, end));
 
@@ -480,7 +480,7 @@ namespace Aerospike.Test
 			int end = 10;
 
 			Statement stmt = new Statement();
-			stmt.SetNamespace(args.ns);
+			stmt.SetNamespace(SuiteHelpers.ns);
 			stmt.SetSetName(setName);
 			stmt.SetFilter(Filter.Range(binName, begin, end));
 
@@ -523,7 +523,7 @@ namespace Aerospike.Test
 			int end = 10;
 
 			Statement stmt = new Statement();
-			stmt.SetNamespace(args.ns);
+			stmt.SetNamespace(SuiteHelpers.ns);
 			stmt.SetSetName(setName);
 			stmt.SetFilter(Filter.Range(binName, begin, end));
 
@@ -566,7 +566,7 @@ namespace Aerospike.Test
 			int end = 10;
 
 			Statement stmt = new Statement();
-			stmt.SetNamespace(args.ns);
+			stmt.SetNamespace(SuiteHelpers.ns);
 			stmt.SetSetName(setName);
 			stmt.SetFilter(Filter.Range(binName, begin, end));
 
@@ -600,7 +600,7 @@ namespace Aerospike.Test
 			int end = 10;
 
 			Statement stmt = new Statement();
-			stmt.SetNamespace(args.ns);
+			stmt.SetNamespace(SuiteHelpers.ns);
 			stmt.SetSetName(setName);
 			stmt.SetFilter(Filter.Range(binName, begin, end));
 
@@ -632,7 +632,7 @@ namespace Aerospike.Test
 			int end = 10;
 
 			Statement stmt = new Statement();
-			stmt.SetNamespace(args.ns);
+			stmt.SetNamespace(SuiteHelpers.ns);
 			stmt.SetSetName(setName);
 			stmt.SetFilter(Filter.Range(binName, begin, end));
 
@@ -664,7 +664,7 @@ namespace Aerospike.Test
 			int end = 10;
 
 			Statement stmt = new Statement();
-			stmt.SetNamespace(args.ns);
+			stmt.SetNamespace(SuiteHelpers.ns);
 			stmt.SetSetName(setName);
 			stmt.SetFilter(Filter.Range(binName, begin, end));
 
@@ -698,7 +698,7 @@ namespace Aerospike.Test
 			int end = 10;
 
 			Statement stmt = new Statement();
-			stmt.SetNamespace(args.ns);
+			stmt.SetNamespace(SuiteHelpers.ns);
 			stmt.SetSetName(setName);
 			stmt.SetFilter(Filter.Range(binName, begin, end));
 
@@ -733,7 +733,7 @@ namespace Aerospike.Test
 			int end = 10;
 
 			Statement stmt = new Statement();
-			stmt.SetNamespace(args.ns);
+			stmt.SetNamespace(SuiteHelpers.ns);
 			stmt.SetSetName(setName);
 			stmt.SetFilter(Filter.Range(binName, begin, end));
 

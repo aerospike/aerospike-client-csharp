@@ -36,8 +36,8 @@ namespace Aerospike.Test
 
 		private void InitializeInstanceFields()
 		{
-			keyA = new Key(args.ns, args.set, binA);
-			keyB = new Key(args.ns, args.set, binB);
+			keyA = new Key(SuiteHelpers.ns, SuiteHelpers.set, binA);
+			keyB = new Key(SuiteHelpers.ns, SuiteHelpers.set, binB);
 		}
 
 		private string binA = "A";

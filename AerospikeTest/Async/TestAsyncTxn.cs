@@ -39,7 +39,7 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void AsyncTxnWrite()
 		{
-			Key key = new(args.ns, args.set, "asyncTxnWrite");
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "asyncTxnWrite");
 			Txn txn = new();
 
 			var cmds = new Runner[] 
@@ -56,7 +56,7 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void AsyncTxnWriteTwice()
 		{
-			Key key = new(args.ns, args.set, "asyncTxnWriteTwice");
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "asyncTxnWriteTwice");
 			Txn txn = new();
 
 			var cmds = new Runner[] 
@@ -73,7 +73,7 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void AsyncTxnWriteBlock()
 		{
-			Key key = new(args.ns, args.set, "asyncTxnWriteBlock");
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "asyncTxnWriteBlock");
 			Txn txn = new();
 			
 			var cmds = new Runner[] 
@@ -90,7 +90,7 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void AsyncTxnWriteRead()
 		{
-			Key key = new(args.ns, args.set, "asyncTxnWriteRead");
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "asyncTxnWriteRead");
 			Txn txn = new();
 
 			var cmds = new Runner[] 
@@ -108,7 +108,7 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void AsyncTxnWriteAbort()
 		{
-			Key key = new(args.ns, args.set, "asyncTxnWriteAbort");
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "asyncTxnWriteAbort");
 			Txn txn = new();
 
 			var cmds = new Runner[] 
@@ -126,7 +126,7 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void AsyncTxnDelete()
 		{
-			Key key = new(args.ns, args.set, "asyncTxnDelete");
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "asyncTxnDelete");
 			Txn txn = new();
 
 			var cmds = new Runner[] 
@@ -143,7 +143,7 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void AsyncTxnDeleteAbort()
 		{
-			Key key = new(args.ns, args.set, "asyncTxnDeleteAbort");
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "asyncTxnDeleteAbort");
 			Txn txn = new();
 			
 			var cmds = new Runner[] 
@@ -160,7 +160,7 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void AsyncTxnDeleteTwice()
 		{
-			Key key = new(args.ns, args.set, "asyncTxnDeleteTwice");
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "asyncTxnDeleteTwice");
 			Txn txn = new();
 
 			var cmds = new Runner[] 
@@ -178,7 +178,7 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void AsyncTxnTouch()
 		{
-			Key key = new(args.ns, args.set, "asyncTxnTouch");
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "asyncTxnTouch");
 			Txn txn = new();
 
 			var cmds = new Runner[] 
@@ -195,7 +195,7 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void AsyncTxnTouchAbort()
 		{
-			Key key = new(args.ns, args.set, "asyncTxnTouchAbort");
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "asyncTxnTouchAbort");
 			Txn txn = new();
 			
 			var cmds = new Runner[] 
@@ -212,7 +212,7 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void AsyncTxnOperateWrite()
 		{
-			Key key = new(args.ns, args.set, "asyncTxnOperateWrite3");
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "asyncTxnOperateWrite3");
 			Txn txn = new();
 			Bin bin2 = new("bin2", "bal1");
 
@@ -234,7 +234,7 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void AsyncTxnOperateWriteAbort()
 		{
-			Key key = new(args.ns, args.set, "asyncTxnOperateWriteAbort");
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "asyncTxnOperateWriteAbort");
 			Txn txn = new();
 			Bin bin2 = new("bin2", "bal1");
 			
@@ -256,7 +256,7 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void AsyncTxnUDF()
 		{
-			Key key = new(args.ns, args.set, "asyncTxnUDF");
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "asyncTxnUDF");
 			Txn txn = new();
 			Bin bin2 = new("bin2", "bal1");
 			
@@ -274,7 +274,7 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void AsyncTxnUDFAbort()
 		{
-			Key key = new(args.ns, args.set, "asyncTxnUDFAbort");
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "asyncTxnUDFAbort");
 			Txn txn = new();
 			Bin bin2 = new("bin2", "bal1");
 			
@@ -297,7 +297,7 @@ namespace Aerospike.Test
 			
 			for (int i = 0; i < keys.Length; i++)
 			{
-				Key key = new(args.ns, args.set, "asyncTxnBatch" + i);
+				Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "asyncTxnBatch" + i);
 				keys[i] = key;
 
 				client.Put(null, key, bin);
@@ -325,7 +325,7 @@ namespace Aerospike.Test
 
 			for (int i = 0; i < keys.Length; i++)
 			{
-				Key key = new(args.ns, args.set, "asyncTxnBatch" + i);
+				Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "asyncTxnBatch" + i);
 				keys[i] = key;
 
 				client.Put(null, key, bin);
@@ -348,7 +348,7 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void AsyncTxnWriteCommitAbort()
 		{
-			Key key = new(args.ns, args.set, "asyncTxnCommitAbort");
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "asyncTxnCommitAbort");
 			Txn txn = new();
 
 			var cmds = new Runner[]
@@ -366,7 +366,7 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void AsyncTxnWriteReadTwoTxn()
 		{
-			Key key = new(args.ns, args.set, "asyncTxnWriteReadTwoTxn");
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "asyncTxnWriteReadTwoTxn");
 			Txn txn1 = new();
 			Txn txn2 = new();
 
@@ -385,9 +385,9 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void AsyncTxnLUTCommit() // Test Case 38
 		{
-			Key key1 = new(args.ns, args.set, "asyncTxnLUTCommit1");
-			Key key2 = new(args.ns, args.set, "asyncTxnLUTCommit2");
-			Key key3 = new(args.ns, args.set, "asyncTxnLUTCommit3");
+			Key key1 = new(SuiteHelpers.ns, SuiteHelpers.set, "asyncTxnLUTCommit1");
+			Key key2 = new(SuiteHelpers.ns, SuiteHelpers.set, "asyncTxnLUTCommit2");
+			Key key3 = new(SuiteHelpers.ns, SuiteHelpers.set, "asyncTxnLUTCommit3");
 			Txn txn = new(); // T1
 
 			var cmds = new Runner[]
@@ -417,7 +417,7 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void AsyncTxnWriteAfterCommit()
 		{
-			Key key = new(args.ns, args.set, "asyncTxnWriteAfter");
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "asyncTxnWriteAfter");
 			Txn txn = new();
 
 			var cmds = new Runner[]

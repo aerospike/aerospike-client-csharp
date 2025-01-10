@@ -26,11 +26,11 @@ namespace Aerospike.Test
 	public class TestOperateHLL : TestSync
 	{
 		private const string binName = "ophbin";
-		private static readonly Key key = new Key(args.ns, args.set, "ophkey");
+		private static readonly Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "ophkey");
 		private static readonly Key[] keys = new Key[] {
-				new Key(args.ns, args.set, "ophkey0"),
-				new Key(args.ns, args.set, "ophkey1"),
-				new Key(args.ns, args.set, "ophkey2")};
+				new Key(SuiteHelpers.ns, SuiteHelpers.set, "ophkey0"),
+				new Key(SuiteHelpers.ns, SuiteHelpers.set, "ophkey1"),
+				new Key(SuiteHelpers.ns, SuiteHelpers.set, "ophkey2")};
 		private const int n_entries = 1 << 18;
 
 		private const int minIndexBits = 4;

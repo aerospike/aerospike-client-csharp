@@ -30,13 +30,13 @@ namespace Aerospike.Test
 		[ClassInitialize()]
 		public static void Prepare(TestContext testContext)
 		{
-			Policy policy = new Policy();
+			Policy policy = new();
 			policy.totalTimeout = 0; // Do not timeout on index create.
 
 			try
 			{
 				IndexTask task = client.CreateIndex(
-					policy, args.ns, args.set, indexName, binName,
+					policy, SuiteHelpers.ns, SuiteHelpers.set, indexName, binName,
 					IndexType.NUMERIC, IndexCollectionType.DEFAULT,
 					CTX.ListRank(-1)
 					);
@@ -52,7 +52,7 @@ namespace Aerospike.Test
 
 			for (int i = 1; i <= size; i++)
 			{
-				Key key = new Key(args.ns, args.set, i);
+				Key key = new(SuiteHelpers.ns, SuiteHelpers.set, i);
 
 				List<int> list = new List<int>(5);
 				list.Add(i);
@@ -61,7 +61,7 @@ namespace Aerospike.Test
 				list.Add(i + 3);
 				list.Add(i + 4);
 
-				Bin bin = new Bin(binName, list);
+				Bin bin = new(binName, list);
 				client.Put(null, key, bin);
 			}
 		}
@@ -69,7 +69,7 @@ namespace Aerospike.Test
 		[ClassCleanup()]
 		public static void Destroy()
 		{
-			client.DropIndex(null, args.ns, args.set, indexName);
+			client.DropIndex(null, SuiteHelpers.ns, SuiteHelpers.set, indexName);
 		}
 
 		[TestMethod]
@@ -79,8 +79,8 @@ namespace Aerospike.Test
 			int end = 18;
 
 			Statement stmt = new Statement();
-			stmt.SetNamespace(args.ns);
-			stmt.SetSetName(args.set);
+			stmt.SetNamespace(SuiteHelpers.ns);
+			stmt.SetSetName(SuiteHelpers.set);
 			stmt.SetBinNames(binName);
 			stmt.SetFilter(Filter.Range(binName, begin, end, CTX.ListRank(-1)));
 

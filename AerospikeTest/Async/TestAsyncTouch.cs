@@ -25,7 +25,7 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void AsyncTouched()
 		{
-			Key key = new(args.ns, args.set, "doesNotExistAsyncTouch");
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "doesNotExistAsyncTouch");
 
 			client.Touched(null, new TouchListener(this), key);
 			WaitTillComplete();

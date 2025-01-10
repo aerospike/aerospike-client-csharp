@@ -29,7 +29,7 @@ namespace Aerospike.Test
 		public void Operate()
 		{
 			// Write initial record.
-			Key key = new Key(args.ns, args.set, "opkey");
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "opkey");
 			Bin bin1 = new Bin("optintbin", 7);
 			Bin bin2 = new Bin("optstringbin", "string value");
 			client.Put(null, key, bin1, bin2);
@@ -46,7 +46,7 @@ namespace Aerospike.Test
 		public void OperateDelete()
 		{
 			// Write initial record.
-			Key key = new Key(args.ns, args.set, "opkey");
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "opkey");
 			Bin bin1 = new Bin("optintbin1", 1);
 
 			client.Put(null, key, bin1);

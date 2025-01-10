@@ -24,15 +24,15 @@ namespace Aerospike.Test
 	[TestClass]
 	public class TestExpOperation : TestSync
 	{
-		string binA = "A";
-		string binB = "B";
-		string binC = "C";
-		string binD = "D";
-		string binH = "H";
-		string expVar = "EV";
+		readonly string binA = "A";
+		readonly string binB = "B";
+		readonly string binC = "C";
+		readonly string binD = "D";
+		readonly string binH = "H";
+		readonly string expVar = "EV";
 
-		Key keyA = new Key(args.ns, args.set, "A");
-		Key keyB = new Key(args.ns, args.set, new byte[] {(byte)'B'});
+		readonly Key keyA = new(SuiteHelpers.ns, SuiteHelpers.set, "A");
+		readonly Key keyB = new(SuiteHelpers.ns, SuiteHelpers.set, "B"u8.ToArray());
 
 		[TestInitialize()]
 		public void SetUp()
@@ -169,9 +169,9 @@ namespace Aerospike.Test
 
 			IList results = record.GetList(binC);
 			object val = results[0];
-			Assert.AreEqual(null, val);
+			Assert.IsNull(val);
 			val = results[1];
-			Assert.AreEqual(null, val);
+			Assert.IsNull(val);
 		}
 
 		[TestMethod]
@@ -186,7 +186,7 @@ namespace Aerospike.Test
 			AssertRecordFound(keyA, record);
 
 			object val = record.GetValue(expVar);
-			Assert.AreEqual(null, val);
+			Assert.IsNull(val);
 		}
 
 		[TestMethod]
@@ -269,7 +269,7 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void ExpReturnsBlob()
 		{
-			byte[] bytes = new byte[] { 0x78, 0x78, 0x78 };
+			byte[] bytes = [0x78, 0x78, 0x78];
 			Expression exp = Exp.Build(Exp.Val(bytes));
 
 			Record record = client.Operate(null, keyA,
@@ -366,21 +366,23 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void ExpRowBatchRead()
 		{
-			List<BatchRecord> records = new();
+			List<BatchRecord> records = [];
 			Expression expr = Exp.Build(Exp.EQ(Exp.IntBin("count"), Exp.Val(0)));
 
 			for (int i = 0; i < 1; i++)
 			{
-				Key key = new Key(args.ns, args.set, i);
+				Key key = new(SuiteHelpers.ns, SuiteHelpers.set, i);
 				client.Put(null, key, new Bin("count", i));
 
-				BatchWritePolicy bwp = new();
-				bwp.filterExp = expr;
+				BatchWritePolicy bwp = new()
+				{
+					filterExp = expr
+				};
 				records.Add(
-					new BatchWrite(bwp, key, new Operation[] {
+					new BatchWrite(bwp, key, [
 				Operation.Put(new Bin("age", 10)),
 				Operation.Get("age"),
-					})
+					])
 				);
 			}
 

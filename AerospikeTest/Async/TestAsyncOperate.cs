@@ -23,13 +23,13 @@ namespace Aerospike.Test
 	[TestClass]
 	public class TestAsyncOperate : TestAsync
 	{
-		private static readonly string binName = args.GetBinName("putgetbin");
+		private static readonly string binName = Suite.GetBinName("putgetbin");
 		private static CancellationTokenSource tokenSource = new();
 
 		[TestMethod]
 		public void AsyncOperateList()
 		{
-			Key key = new Key(args.ns, args.set, "aoplkey1");
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "aoplkey1");
 			client.Delete(null, new DeleteHandlerList(this, key), key);
 			WaitTillComplete();
 		}
@@ -124,7 +124,7 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void AsyncOperateMap()
 		{
-			Key key = new Key(args.ns, args.set, "aopmkey1");
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "aopmkey1");
 			client.Delete(null, new DeleteHandlerMap(this, key), key);
 			WaitTillComplete();
 		}

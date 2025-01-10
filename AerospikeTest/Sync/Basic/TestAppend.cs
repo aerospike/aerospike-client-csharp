@@ -26,13 +26,13 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void Append()
 		{
-			Key key = new Key(args.ns, args.set, "appendkey");
-			string binName = args.GetBinName("appendbin");
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "appendkey");
+			string binName = Suite.GetBinName("appendbin");
 
 			// Delete record if it already exists.
 			client.Delete(null, key);
 
-			Bin bin = new Bin(binName, "Hello");
+			Bin bin = new(binName, "Hello");
 			client.Append(null, key, bin);
 
 			bin = new Bin(binName, " World");
@@ -45,13 +45,13 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void Prepend()
 		{
-			Key key = new Key(args.ns, args.set, "prependkey");
-			string binName = args.GetBinName("prependbin");
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "prependkey");
+			string binName = Suite.GetBinName("prependbin");
 
 			// Delete record if it already exists.
 			client.Delete(null, key);
 
-			Bin bin = new Bin(binName, "World");
+			Bin bin = new(binName, "World");
 			client.Prepend(null, key, bin);
 
 			bin = new Bin(binName, "Hello ");

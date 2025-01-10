@@ -39,7 +39,7 @@ namespace Aerospike.Test
 
 		private void InitializeInstanceFields()
 		{
-			key = new Key(args.ns, args.set, bin);
+			key = new Key(SuiteHelpers.ns, SuiteHelpers.set, bin);
 		}
 
 		private string bin = "m";
@@ -86,7 +86,7 @@ namespace Aerospike.Test
 				["d"] = 3
 			};
 
-			Key key = new(args.ns, args.set, "ime");
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "ime");
 			Bin bin = new("m", map);
 
 			client.Put(null, key, bin);

@@ -15,18 +15,14 @@
  * the License.
  */
 using Aerospike.Client;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
-using System;
 
 namespace Aerospike.Test
 {
-	[TestClass]
 	public class TestAsync
 	{
-		public static Args args = Args.Instance;
-		public static IAsyncClient client = args.asyncClient;
+		public readonly static IAsyncClient client = SuiteHelpers.asyncClient;
 
-		private AsyncMonitor monitor = new AsyncMonitor();
+		private readonly AsyncMonitor monitor = new();
 
 		public bool AssertBinEqual(Key key, Record record, Bin bin)
 		{
@@ -84,7 +80,7 @@ namespace Aerospike.Test
 		{
 			for (int i = 0; i < keys.Length; i++)
 			{
-				Key key = keys[i];
+				_ = keys[i];
 				Record rec = recs[i];
 
 				if (rec == null)
@@ -108,7 +104,7 @@ namespace Aerospike.Test
 		{
 			if (record == null)
 			{
-				monitor.SetError("Failed to get: namespace=" + args.ns + " set=" + args.set + " key=" + key.userKey);
+				monitor.SetError("Failed to get: namespace=" + SuiteHelpers.ns + " set=" + SuiteHelpers.set + " key=" + key.userKey);
 				return false;
 			}
 			return true;
@@ -118,7 +114,7 @@ namespace Aerospike.Test
 		{
 			if (record != null)
 			{
-				monitor.SetError(new Exception("Record should not exist: namespace=" + args.ns + " set=" + args.set + " key=" + key.userKey));
+				monitor.SetError(new Exception("Record should not exist: namespace=" + SuiteHelpers.ns + " set=" + SuiteHelpers.set + " key=" + key.userKey));
 				return false;
 			}
 			return true;

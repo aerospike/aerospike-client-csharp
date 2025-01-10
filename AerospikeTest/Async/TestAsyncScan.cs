@@ -31,7 +31,7 @@ namespace Aerospike.Test
 			recordCount = 0;
 
 			ScanPolicy policy = new ScanPolicy();
-			client.ScanAll(policy, new RecordSequenceHandler(this), args.ns, args.set);
+			client.ScanAll(policy, new RecordSequenceHandler(this), SuiteHelpers.ns, SuiteHelpers.set);
 			WaitTillComplete();
 		}
 

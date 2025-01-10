@@ -23,7 +23,7 @@ namespace Aerospike.Test
 	[TestClass]
 	public class TestAsyncUDF : TestAsync
 	{
-		private static readonly string binName = args.GetBinName("audfbin1");
+		private static readonly string binName = Suite.GetBinName("audfbin1");
 		private const string binValue = "string value";
 		private static CancellationTokenSource tokenSource = new();
 
@@ -38,8 +38,8 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void AsyncUDF()
 		{
-			Key key = new Key(args.ns, args.set, "audfkey1");
-			Bin bin = new Bin(binName, binValue);
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "audfkey1");
+			Bin bin = new(binName, binValue);
 
 			// Write bin
 			client.Execute(null, new WriteHandler(this, key), key, "record_example", "writeBin", Value.Get(bin.name), bin.value);
@@ -102,8 +102,8 @@ namespace Aerospike.Test
 		{
 			Key[] keys = new Key[]
 			{
-				new Key(args.ns, args.set, 20000),
-				new Key(args.ns, args.set, 20001)
+				new Key(SuiteHelpers.ns, SuiteHelpers.set, 20000),
+				new Key(SuiteHelpers.ns, SuiteHelpers.set, 20001)
 			};
 
 			client.Delete(null, null, keys);
@@ -162,9 +162,9 @@ namespace Aerospike.Test
 			Value[] a3 = new Value[] { Value.Get(bin), Value.Get(999) };
 
 			List<BatchRecord> records = new List<BatchRecord>();
-			records.Add(new BatchUDF(new Key(args.ns, args.set, 20014), "record_example", "writeBin", a1));
-			records.Add(new BatchUDF(new Key(args.ns, args.set, 20015), "record_example", "writeWithValidation", a2));
-			records.Add(new BatchUDF(new Key(args.ns, args.set, 20015), "record_example", "writeWithValidation", a3));
+			records.Add(new BatchUDF(new Key(SuiteHelpers.ns, SuiteHelpers.set, 20014), "record_example", "writeBin", a1));
+			records.Add(new BatchUDF(new Key(SuiteHelpers.ns, SuiteHelpers.set, 20015), "record_example", "writeWithValidation", a2));
+			records.Add(new BatchUDF(new Key(SuiteHelpers.ns, SuiteHelpers.set, 20015), "record_example", "writeWithValidation", a3));
 
 			client.Operate(null, new BatchSeqUDFHandler(this, bin), records);
 
@@ -174,8 +174,8 @@ namespace Aerospike.Test
 		static void BatchSeqUDFHandlerSuccess(TestAsyncUDF parent, string bin)
 		{
 			List<BatchRecord> records = new List<BatchRecord>();
-			records.Add(new BatchRead(new Key(args.ns, args.set, 20014), true));
-			records.Add(new BatchRead(new Key(args.ns, args.set, 20015), true));
+			records.Add(new BatchRead(new Key(SuiteHelpers.ns, SuiteHelpers.set, 20014), true));
+			records.Add(new BatchRead(new Key(SuiteHelpers.ns, SuiteHelpers.set, 20015), true));
 
 			client.Operate(null, new BatchSeqReadHandler(parent, bin), records);
 		}

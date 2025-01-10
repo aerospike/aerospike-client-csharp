@@ -38,14 +38,14 @@ namespace Aerospike.Test
 			{
 				policy.expiration = i * 60;
 
-				Key key = new Key(args.ns, set1, i);
+				Key key = new(SuiteHelpers.ns, set1, i);
 				client.Put(policy, key, new Bin(binA, i));
 			}
 
 			// Write records in set p2.
 			for (int i = 20; i <= 22; i++)
 			{
-				Key key = new Key(args.ns, set2, i);
+				Key key = new(SuiteHelpers.ns, set2, i);
 				client.Put(null, key, new Bin(binA, i), new Bin(binB, (double)i));
 			}
 
@@ -55,22 +55,22 @@ namespace Aerospike.Test
 
 			for (int i = 31; i <= 40; i++)
 			{
-				Key intKey = new Key(args.ns, set3, i);
+				Key intKey = new Key(SuiteHelpers.ns, set3, i);
 				client.Put(policy, intKey, new Bin(binA, i));
 
-				Key strKey = new Key(args.ns, set3, "key-p3-" + i);
+				Key strKey = new Key(SuiteHelpers.ns, set3, "key-p3-" + i);
 				client.Put(policy, strKey, new Bin(binA, i));
 			}
 
 			// Write one record in set p3 with send key not set.
-			client.Put(null, new Key(args.ns, set3, 25), new Bin(binA, 25));
+			client.Put(null, new Key(SuiteHelpers.ns, set3, 25), new Bin(binA, 25));
 		}
 
 		[TestMethod]
 		public void QuerySetName()
 		{
 			Statement stmt = new Statement();
-			stmt.SetNamespace(args.ns);
+			stmt.SetNamespace(SuiteHelpers.ns);
 
 			QueryPolicy policy = new QueryPolicy();
 			policy.filterExp = Exp.Build(Exp.EQ(Exp.SetName(), Exp.Val(set2)));
@@ -97,7 +97,7 @@ namespace Aerospike.Test
 		public void QueryDouble()
 		{
 			Statement stmt = new Statement();
-			stmt.SetNamespace(args.ns);
+			stmt.SetNamespace(SuiteHelpers.ns);
 			stmt.SetSetName(set2);
 
 			QueryPolicy policy = new QueryPolicy();
@@ -125,7 +125,7 @@ namespace Aerospike.Test
 		public void QueryKeyString()
 		{
 			Statement stmt = new Statement();
-			stmt.SetNamespace(args.ns);
+			stmt.SetNamespace(SuiteHelpers.ns);
 			stmt.SetSetName(set3);
 
 			QueryPolicy policy = new QueryPolicy();
@@ -153,7 +153,7 @@ namespace Aerospike.Test
 		public void QueryKeyInt()
 		{
 			Statement stmt = new Statement();
-			stmt.SetNamespace(args.ns);
+			stmt.SetNamespace(SuiteHelpers.ns);
 			stmt.SetSetName(set3);
 
 			QueryPolicy policy = new QueryPolicy();
@@ -182,7 +182,7 @@ namespace Aerospike.Test
 		public void QueryKeyExists()
 		{
 			Statement stmt = new Statement();
-			stmt.SetNamespace(args.ns);
+			stmt.SetNamespace(SuiteHelpers.ns);
 			stmt.SetSetName(set3);
 
 			QueryPolicy policy = new QueryPolicy();
@@ -210,7 +210,7 @@ namespace Aerospike.Test
 		public void QueryVoidTime()
 		{
 			Statement stmt = new Statement();
-			stmt.SetNamespace(args.ns);
+			stmt.SetNamespace(SuiteHelpers.ns);
 			stmt.SetSetName(set1);
 
 			DateTime now = DateTime.UtcNow;
@@ -244,7 +244,7 @@ namespace Aerospike.Test
 		public void QueryTTL()
 		{
 			Statement stmt = new Statement();
-			stmt.SetNamespace(args.ns);
+			stmt.SetNamespace(SuiteHelpers.ns);
 			stmt.SetSetName(set1);
 
 			QueryPolicy policy = new QueryPolicy();

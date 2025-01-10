@@ -23,7 +23,7 @@ namespace Aerospike.Test
 	public class TestQueryPage : TestSync
 	{
 		private const string keyPrefix = "pagekey";
-		private static readonly string binName = args.GetBinName("name");
+		private static readonly string binName = Suite.GetBinName("name");
 		private static readonly string indexName = "pqidx";
 
 		[ClassInitialize()]
@@ -36,7 +36,7 @@ namespace Aerospike.Test
 
 			try
 			{
-				IndexTask itask = client.CreateIndex(policy, args.ns, args.set, indexName, binName, IndexType.NUMERIC);
+				IndexTask itask = client.CreateIndex(policy, SuiteHelpers.ns, SuiteHelpers.set, indexName, binName, IndexType.NUMERIC);
 				itask.Wait();
 			}
 			catch (AerospikeException ae)
@@ -52,7 +52,7 @@ namespace Aerospike.Test
 		[ClassCleanup()]
 		public static void Destroy()
 		{
-			client.DropIndex(null, args.ns, args.set, indexName);
+			client.DropIndex(null, SuiteHelpers.ns, SuiteHelpers.set, indexName);
 		}
 
 		[TestMethod]
@@ -60,8 +60,8 @@ namespace Aerospike.Test
 		{
 			Statement stmt = new()
 			{
-				Namespace = args.ns,
-				SetName = args.set,
+				Namespace = SuiteHelpers.ns,
+				SetName = SuiteHelpers.set,
 				BinNames = new string[] { binName },
 				Filter = Filter.Range(binName, 1, 200),
 				MaxRecords = 100
@@ -100,7 +100,7 @@ namespace Aerospike.Test
 		{
 			for (int i = 1; i <= size; i++)
 			{
-				Key key = new(args.ns, args.set, keyPrefix + i);
+				Key key = new(SuiteHelpers.ns, SuiteHelpers.set, keyPrefix + i);
 				Bin bin = new(binName, i);
 				client.Put(null, key, bin);
 			}

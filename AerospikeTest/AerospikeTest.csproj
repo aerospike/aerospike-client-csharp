@@ -1,4 +1,4 @@
-﻿<Project Sdk="MSTest.Sdk/3.7.0">
+﻿<Project Sdk="MSTest.Sdk">
 
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
@@ -6,23 +6,12 @@
     <Nullable>disable</Nullable>
     <RootNamespace>Aerospike.Test</RootNamespace>
     <AssemblyName>AerospikeTest</AssemblyName>
+    <TestingExtensionsProfile>None</TestingExtensionsProfile>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="coverlet.collector" Version="3.2.0" />
-    <PackageReference Include="Microsoft.Extensions.Configuration" Version="9.0.0" />
-    <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="9.0.0" />
     <PackageReference Include="MSTest" Version="3.7.0" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Using Include="Microsoft.VisualStudio.TestTools.UnitTesting" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <None Update="settings.json">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
   </ItemGroup>
 
   <ItemGroup>
@@ -32,19 +21,8 @@
     <EmbeddedResource Include="LuaResources\sum_example.lua" />
   </ItemGroup>
 
-  <PropertyGroup>
-    <CollectCoverage>true</CollectCoverage>
-    <CoverletOutputFormat>lcov</CoverletOutputFormat>
-    <CoverletOutput>./coverage/lcov.info</CoverletOutput>
-  </PropertyGroup>
-  
   <ItemGroup>
     <ProjectReference Include="..\AerospikeClient\AerospikeClient.csproj" />
   </ItemGroup>
-
-  <Target Name="AnalyzeCoverage" AfterTargets="PostBuildEvent" Condition="'$(ConfigurationName)' == 'Coverage'">
-    <Exec Command="dotnet test" />
-    <Exec Command="dotnet reportgenerator &quot;-reports:coverage/lcov.info&quot; &quot;-targetdir:coverage&quot; -reporttypes:Html" />
-  </Target>
 
 </Project>

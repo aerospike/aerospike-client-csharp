@@ -30,7 +30,7 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void OperateMapPut()
 		{
-			Key key = new Key(args.ns, args.set, "opmkey1");		
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "opmkey1");		
 			client.Delete(null, key);
 		
 			MapPolicy putMode = MapPolicy.Default;
@@ -84,7 +84,7 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void OperateMapPutItems()
 		{
-			Key key = new Key(args.ns, args.set, "opmkey2");
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "opmkey2");
 			client.Delete(null, key);
 
 			Dictionary<Value, Value> addMap = new Dictionary<Value, Value>();
@@ -160,7 +160,7 @@ namespace Aerospike.Test
 		public void OperateMapMixed()
 		{
 			// Test normal operations with map operations.
-			Key key = new Key(args.ns, args.set, "opmkey2");
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "opmkey2");
 			client.Delete(null, key);
 
 			Dictionary<Value, Value> itemMap = new Dictionary<Value, Value>();
@@ -199,7 +199,7 @@ namespace Aerospike.Test
 		public void OperateMapSwitch()
 		{
 			// Switch from unordered map to a key ordered map.
-			Key key = new Key(args.ns, args.set, "opmkey4");
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "opmkey4");
 			client.Delete(null, key);
 
 			Record record = client.Operate(null, key,
@@ -256,7 +256,7 @@ namespace Aerospike.Test
 		public void OperateMapRank()
 		{
 			// Test rank.
-			Key key = new Key(args.ns, args.set, "opmkey6");
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "opmkey6");
 			client.Delete(null, key);
 
 			Dictionary<Value, Value> inputMap = new Dictionary<Value, Value>();
@@ -356,7 +356,7 @@ namespace Aerospike.Test
 		public void OperateMapRemove()
 		{
 			// Test remove.
-			Key key = new Key(args.ns, args.set, "opmkey7");
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "opmkey7");
 			client.Delete(null, key);
 
 			Dictionary<Value, Value> inputMap = new Dictionary<Value, Value>();
@@ -410,7 +410,7 @@ namespace Aerospike.Test
 		public void OperateMapRemoveRange()
 		{
 			// Test remove ranges.
-			Key key = new Key(args.ns, args.set, "opmkey8");
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "opmkey8");
 			client.Delete(null, key);
 
 			Dictionary<Value, Value> inputMap = new Dictionary<Value, Value>();
@@ -455,7 +455,7 @@ namespace Aerospike.Test
 		public void OperateMapClear()
 		{
 			// Test clear.
-			Key key = new Key(args.ns, args.set, "opmkey9");
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "opmkey9");
 			client.Delete(null, key);
 
 			Dictionary<Value, Value> inputMap = new Dictionary<Value, Value>();
@@ -483,7 +483,7 @@ namespace Aerospike.Test
 		public void OperateMapScore()
 		{
 			// Test score.
-			Key key = new Key(args.ns, args.set, "opmkey10");
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "opmkey10");
 			client.Delete(null, key);
 
 			MapPolicy mapPolicy = new MapPolicy(MapOrder.KEY_VALUE_ORDERED, MapWriteMode.UPDATE);
@@ -540,7 +540,7 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void OperateMapGetByList()
 		{
-			Key key = new Key(args.ns, args.set, "opmkey11");
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "opmkey11");
 			client.Delete(null, key);
 
 			Dictionary<Value, Value> inputMap = new Dictionary<Value, Value>();
@@ -590,7 +590,7 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void OperateMapInverted()
 		{
-			Key key = new Key(args.ns, args.set, "opmkey12");
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "opmkey12");
 			client.Delete(null, key);
 
 			Dictionary<Value, Value> inputMap = new Dictionary<Value, Value>();
@@ -665,7 +665,7 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void OperateMapGetRelative()
 		{
-			Key key = new Key(args.ns, args.set, "opmkey14");
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "opmkey14");
 			client.Delete(null, key);
 
 			Dictionary<Value, Value> inputMap = new Dictionary<Value, Value>();
@@ -767,7 +767,7 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void OperateMapRemoveRelative()
 		{
-			Key key = new Key(args.ns, args.set, "opmkey15");
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "opmkey15");
 			client.Delete(null, key);
 
 			Dictionary<Value, Value> inputMap = new Dictionary<Value, Value>();
@@ -832,7 +832,7 @@ namespace Aerospike.Test
 
 		[TestMethod]
 		public void OperateMapPartial() {
-			Key key = new Key(args.ns, args.set, "opmkey16");
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "opmkey16");
 			client.Delete(null, key);
 
 			Dictionary<Value, Value> inputMap = new Dictionary<Value, Value>();
@@ -869,7 +869,7 @@ namespace Aerospike.Test
 
 		[TestMethod]
 		public void OperateMapInfinity() {
-			Key key = new Key(args.ns, args.set, "opmkey17");
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "opmkey17");
 			client.Delete(null, key);
 		
 			Dictionary<Value,Value> inputMap = new Dictionary<Value,Value>();
@@ -903,7 +903,7 @@ namespace Aerospike.Test
 
 		[TestMethod]
 		public void OperateMapWildcard() {
-			Key key = new Key(args.ns, args.set, "opmkey18");
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "opmkey18");
 			client.Delete(null, key);
 		
 			List<Value> i1 = new List<Value>();
@@ -951,7 +951,7 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void OperateNestedMap()
 		{
-			Key key = new Key(args.ns, args.set, "opmkey19");
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "opmkey19");
 			client.Delete(null, key);
 
 			IDictionary<Value, Value> m1 = new Dictionary<Value, Value>();
@@ -997,7 +997,7 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void OperateDoubleNestedMap()
 		{
-			Key key = new Key(args.ns, args.set, "opmkey19");
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "opmkey19");
 			client.Delete(null, key);
 
 			IDictionary<Value, Value> m11 = new Dictionary<Value, Value>();
@@ -1054,7 +1054,7 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void OperateMapCreateContext()
 		{
-			Key key = new Key(args.ns, args.set, "opmkey20");
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "opmkey20");
 			client.Delete(null, key);
 
 			IDictionary<Value,Value> m1 = new Dictionary<Value,Value>();

@@ -13,6 +13,12 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AerospikeBenchmarks", "Aero
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AerospikeTest", "AerospikeTest\AerospikeTest.csproj", "{61870B1F-3036-44D3-B721-7BD21155EE09}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{DC847D20-5317-4D01-B503-C795AB0F0395}"
+	ProjectSection(SolutionItems) = preProject
+		global.json = global.json
+		test.runsettings = test.runsettings
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Coverage|Any CPU = Coverage|Any CPU

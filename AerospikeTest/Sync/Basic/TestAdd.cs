@@ -23,17 +23,19 @@ namespace Aerospike.Test
 	[TestClass]
 	public class TestAdd : TestSync
 	{
+		public TestContext TestContext { get; set; }
+		
 		[TestMethod]
 		public void Add()
 		{
-			Key key = new Key(args.ns, args.set, "addkey");
-			string binName = args.GetBinName("addbin");
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "addkey");
+			string binName = Suite.GetBinName("addbin");
 
 			// Delete record if it already exists.
 			client.Delete(null, key);
 
 			// Perform some adds and check results.
-			Bin bin = new Bin(binName, 10);
+			Bin bin = new(binName, 10);
 			client.Add(null, key, bin);
 
 			bin = new Bin(binName, 5);

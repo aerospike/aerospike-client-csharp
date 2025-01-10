@@ -32,26 +32,28 @@ namespace Aerospike.Test
 		[ClassInitialize()]
 		public static void Prepare(TestContext testContext)
 		{
-			Policy policy = new Policy();
-			policy.socketTimeout = 0; // Do not timeout on index create.
+			Policy policy = new()
+			{
+				socketTimeout = 0 // Do not timeout on index create.
+			};
 
 			try
 			{
-				IndexTask task = client.CreateIndex(policy, args.ns, setName, indexName, binName, IndexType.GEO2DSPHERE);
+				IndexTask task = client.CreateIndex(policy, SuiteHelpers.ns, setName, indexName, binName, IndexType.GEO2DSPHERE);
 				task.Wait();
 			}
 			catch (AerospikeException ae)
 			{
 				if (ae.Result != ResultCode.INDEX_ALREADY_EXISTS)
 				{
-					throw ae;
+					throw;
 				}
 			}
 
 			// Insert points
 			for (int i = 1; i <= size; i++)
 			{
-				Key key = new Key(args.ns, setNamePoints, i);
+				Key key = new(SuiteHelpers.ns, setNamePoints, i);
 				double lng = -122 + (0.1 * i);
 				double lat = 37.5 + (0.1 * i);
 				string loc = "{ \"type\": \"Point\", \"coordinates\": [" + lng + ", " + lat + "] }";
@@ -61,11 +63,11 @@ namespace Aerospike.Test
 			}
 
 			// Insert regions
-			double[][] starbucks = new double[][] { new double[] { -122.1708441, 37.4241193 }, new double[] { -122.1492040, 37.4273569 }, new double[] { -122.1441078, 37.4268202 }, new double[] { -122.1251714, 37.4130590 }, new double[] { -122.0964289, 37.4218102 }, new double[] { -122.0776641, 37.4158199 }, new double[] { -122.0943475, 37.4114654 }, new double[] { -122.1122861, 37.4028493 }, new double[] { -122.0947230, 37.3909250 }, new double[] { -122.0831037, 37.3876090 }, new double[] { -122.0707119, 37.3787855 }, new double[] { -122.0303178, 37.3882739 }, new double[] { -122.0464861, 37.3786236 }, new double[] { -122.0582128, 37.3726980 }, new double[] { -122.0365083, 37.3676930 } };
+			double[][] starbucks = [[-122.1708441, 37.4241193], [-122.1492040, 37.4273569], [-122.1441078, 37.4268202], [-122.1251714, 37.4130590], [-122.0964289, 37.4218102], [-122.0776641, 37.4158199], [-122.0943475, 37.4114654], [-122.1122861, 37.4028493], [-122.0947230, 37.3909250], [-122.0831037, 37.3876090], [-122.0707119, 37.3787855], [-122.0303178, 37.3882739], [-122.0464861, 37.3786236], [-122.0582128, 37.3726980], [-122.0365083, 37.3676930]];
 
 			for (int i = 0; i < starbucks.Length; i++)
 			{
-				Key key = new Key(args.ns, setNameRegions, i);
+				Key key = new(SuiteHelpers.ns, setNameRegions, i);
 				string loc = "{ \"type\": \"AeroCircle\", \"coordinates\": [[" + starbucks[i][0] + ", " + starbucks[i][1] + "], 3000.0 ] }";
 				Bin bin = Bin.AsGeoJSON("loc", loc);
 
@@ -76,7 +78,7 @@ namespace Aerospike.Test
 		[ClassCleanup()]
 		public static void Destroy()
 		{
-			client.DropIndex(null, args.ns, setName, indexName);
+			client.DropIndex(null, SuiteHelpers.ns, setName, indexName);
 		}
 
 		[TestMethod]
@@ -84,12 +86,14 @@ namespace Aerospike.Test
 		{
 			string region = "{ \"type\": \"Point\", \"coordinates\": [ -122.0986857, 37.4214209 ] }";
 
-			Statement stmt = new Statement();
-			stmt.SetNamespace(args.ns);
+			Statement stmt = new();
+			stmt.SetNamespace(SuiteHelpers.ns);
 			stmt.SetSetName(setNameRegions);
 
-			QueryPolicy policy = new QueryPolicy();
-			policy.filterExp = Exp.Build(Exp.GeoCompare(Exp.GeoBin("loc"), Exp.Geo(region)));
+			QueryPolicy policy = new()
+			{
+				filterExp = Exp.Build(Exp.GeoCompare(Exp.GeoBin("loc"), Exp.Geo(region)))
+			};
 
 			RecordSet rs = client.Query(policy, stmt);
 

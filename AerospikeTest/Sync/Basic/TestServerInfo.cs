@@ -85,7 +85,7 @@ namespace Aerospike.Test
 
 		private void GetNamespaceConfig(Node node)
 		{
-			string filter = "namespace/" + args.ns;
+			string filter = "namespace/" + SuiteHelpers.ns;
 			string tokens = Info.Request(null, node, filter);
 			Assert.IsNotNull(tokens);
 			LogNameValueTokens(tokens);

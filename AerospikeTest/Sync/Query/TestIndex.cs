@@ -28,7 +28,7 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void IndexCreateDrop()
 		{
-			Policy policy = new Policy();
+			Policy policy = new();
 			policy.SetTimeout(0);
 
 			IndexTask task;
@@ -36,44 +36,44 @@ namespace Aerospike.Test
 			// Drop index if it already exists.
 			try
 			{
-				task = client.DropIndex(policy, args.ns, args.set, indexName);
+				task = client.DropIndex(policy, SuiteHelpers.ns, SuiteHelpers.set, indexName);
 				task.Wait();
 			}
 			catch (AerospikeException ae)
 			{
 				if (ae.Result != ResultCode.INDEX_NOTFOUND)
 				{
-					throw ae;
+					throw;
 				}
 			}
 
-			task = client.CreateIndex(policy, args.ns, args.set, indexName, binName, IndexType.NUMERIC);
+			task = client.CreateIndex(policy, SuiteHelpers.ns, SuiteHelpers.set, indexName, binName, IndexType.NUMERIC);
 			task.Wait();
 
-			task = client.DropIndex(policy, args.ns, args.set, indexName);
+			task = client.DropIndex(policy, SuiteHelpers.ns, SuiteHelpers.set, indexName);
 			task.Wait();
 
 			// Ensure all nodes have dropped the index.
-			Node[] nodes = client.Nodes.ToArray();
-			string cmd = IndexTask.BuildStatusCommand(args.ns, indexName);
+			Node[] nodes = [.. client.Nodes];
+			string cmd = IndexTask.BuildStatusCommand(SuiteHelpers.ns, indexName);
 
 			foreach (Node node in nodes)
 			{
 				string response = Info.Request(node, cmd);
 				int code = Info.ParseResultCode(response);
-				Assert.AreEqual(code, 201);
+				Assert.AreEqual(201, code);
 			}
 		}
 
 		[TestMethod]
 		public void CtxRestore()
 		{
-			CTX[] ctx1 = new CTX[]
-			{
+			CTX[] ctx1 =
+			[
 				CTX.ListIndex(-1),
 				CTX.MapKey(Value.Get("key1")),
 				CTX.ListValue(Value.Get(937))
-			};
+			];
 
 			string base64 = CTX.ToBase64(ctx1);
 			CTX[] ctx2 = CTX.FromBase64(base64);
@@ -90,10 +90,10 @@ namespace Aerospike.Test
 				object obj1 = item1.value.Object;
 				object obj2 = item2.value.Object;
 
-				if (obj1 is int && obj2 is long)
+				if (obj1 is int v && obj2 is long v1)
 				{
 					// FromBase64() converts integers to long, so consider these equivalent.
-					Assert.AreEqual((long)(int)obj1, (long)obj2);
+					Assert.AreEqual((long)v, v1);
 				}
 				else
 				{

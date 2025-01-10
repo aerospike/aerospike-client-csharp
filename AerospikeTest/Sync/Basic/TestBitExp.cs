@@ -24,14 +24,14 @@ namespace Aerospike.Test
 	public class TestBitExp : TestSync
 	{
 		private string binA = "A";
-		private Policy policy = new Policy();
+		private Policy policy = new();
 
 		[TestMethod]
 		public void CallRead() {
-			Key key = new Key(args.ns, args.set, 5000);
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, 5000);
 			client.Delete(null, key);
 
-			Bin bin = new Bin(binA, new byte[] {0x01, 0x42, 0x03, 0x04, 0x05});
+			Bin bin = new(binA, new byte[] {0x01, 0x42, 0x03, 0x04, 0x05});
 			client.Put(null, key, bin);
 
 			Get(key);
@@ -43,10 +43,10 @@ namespace Aerospike.Test
 
 		[TestMethod]
 		public void CallModify() {
-			Key key = new Key(args.ns, args.set, 5001);
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, 5001);
 			client.Delete(null, key);
 
-			Bin bin = new Bin(binA, new byte[] {0x01, 0x42, 0x03, 0x04, 0x05});
+			Bin bin = new(binA, new byte[] {0x01, 0x42, 0x03, 0x04, 0x05});
 			client.Put(null, key, bin);
 
 			Resize(key);

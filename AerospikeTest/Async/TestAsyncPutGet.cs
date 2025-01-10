@@ -23,14 +23,14 @@ namespace Aerospike.Test
 	[TestClass]
 	public class TestAsyncPutGet : TestAsync
 	{
-		private static readonly string binName = args.GetBinName("putgetbin");
+		private static readonly string binName = Suite.GetBinName("putgetbin");
 		private static CancellationTokenSource tokenSource = new();
 
 		[TestMethod]
 		public void AsyncPutGet()
 		{
-			Key key = new Key(args.ns, args.set, "putgetkey1");
-			Bin bin = new Bin(binName, "value1");
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "putgetkey1");
+			Bin bin = new(binName, "value1");
 
 			client.Put(null, new WriteHandler(this, client, key, bin), key, bin);
 			WaitTillComplete();
@@ -39,8 +39,8 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void AsyncPutGetWithTask()
 		{
-			Key key = new Key(args.ns, args.set, "putgetkey2");
-			Bin bin = new Bin(binName, "value2");
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "putgetkey2");
+			Bin bin = new(binName, "value2");
 
 			Task taskput = client.Put(null, tokenSource.Token, key, bin);
 			taskput.Wait();
@@ -126,8 +126,8 @@ namespace Aerospike.Test
 		[TestMethod]
 		public async Task AsyncPutWithCanel()
 		{
-			Key key = new Key(args.ns, args.set, "putgetkey3");
-			Bin bin = new Bin(binName, "value3");
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "putgetkey3");
+			Bin bin = new(binName, "value3");
 
 			tokenSource.Cancel();
 			try

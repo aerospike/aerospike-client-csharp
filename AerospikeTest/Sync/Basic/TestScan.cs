@@ -30,7 +30,7 @@ namespace Aerospike.Test
 		{
 			ScanPolicy policy = new ScanPolicy();
 
-			client.ScanAll(policy, args.ns, args.set, ScanCallback);
+			client.ScanAll(policy, SuiteHelpers.ns, SuiteHelpers.set, ScanCallback);
 		}
 
 		[TestMethod]
@@ -40,7 +40,7 @@ namespace Aerospike.Test
 
 			foreach (Node node in nodes)
 			{
-				client.ScanNode(null, node, args.ns, args.set, ScanCallback);
+				client.ScanNode(null, node, SuiteHelpers.ns, SuiteHelpers.set, ScanCallback);
 
 				foreach (KeyValuePair<string, Metrics> entry in setMap)
 				{

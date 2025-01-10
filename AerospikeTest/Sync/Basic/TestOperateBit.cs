@@ -30,7 +30,7 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void OperateBitResize()
 		{
-			Key key = new Key(args.ns, args.set, "opbkey1");
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "opbkey1");
 
 			client.Delete(null, key);
 
@@ -55,7 +55,7 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void OperateBitInsert()
 		{
-			Key key = new Key(args.ns, args.set, "opbkey2");
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "opbkey2");
 
 			client.Delete(null, key);
 
@@ -79,7 +79,7 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void OperateBitRemove()
 		{
-			Key key = new Key(args.ns, args.set, "opbkey3");
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "opbkey3");
 
 			client.Delete(null, key);
 
@@ -103,7 +103,7 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void OperateBitSet()
 		{
-			Key key = new Key(args.ns, args.set, "opbkey1");
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "opbkey1");
 
 			client.Delete(null, key);
 
@@ -128,7 +128,7 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void OperateBitOr()
 		{
-			Key key = new Key(args.ns, args.set, "opbkey2");
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "opbkey2");
 
 			client.Delete(null, key);
 
@@ -152,7 +152,7 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void OperateBitXor()
 		{
-			Key key = new Key(args.ns, args.set, "opbkey3");
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "opbkey3");
 
 			client.Delete(null, key);
 
@@ -176,7 +176,7 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void OperateBitAnd()
 		{
-			Key key = new Key(args.ns, args.set, "opbkey4");
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "opbkey4");
 
 			client.Delete(null, key);
 
@@ -200,7 +200,7 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void OperateBitNot()
 		{
-			Key key = new Key(args.ns, args.set, "opbkey5");
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "opbkey5");
 
 			client.Delete(null, key);
 
@@ -224,7 +224,7 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void OperateBitLshift()
 		{
-			Key key = new Key(args.ns, args.set, "opbkey6");
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "opbkey6");
 
 			client.Delete(null, key);
 
@@ -248,7 +248,7 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void OperateBitRshift()
 		{
-			Key key = new Key(args.ns, args.set, "opbkey7");
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "opbkey7");
 
 			client.Delete(null, key);
 
@@ -272,7 +272,7 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void OperateBitAdd()
 		{
-			Key key = new Key(args.ns, args.set, "opbkey10");
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "opbkey10");
 
 			client.Delete(null, key);
 
@@ -296,7 +296,7 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void OperateBitSubtract()
 		{
-			Key key = new Key(args.ns, args.set, "opbkey11");
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "opbkey11");
 
 			client.Delete(null, key);
 
@@ -320,7 +320,7 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void OperateBitSetInt()
 		{
-			Key key = new Key(args.ns, args.set, "opbkey12");
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "opbkey12");
 
 			client.Delete(null, key);
 
@@ -344,7 +344,7 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void OperateBitGet()
 		{
-			Key key = new Key(args.ns, args.set, "opbkey13");
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "opbkey13");
 
 			client.Delete(null, key);
 
@@ -365,7 +365,7 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void OperateBitCount()
 		{
-			Key key = new Key(args.ns, args.set, "opbkey14");
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "opbkey14");
 
 			client.Delete(null, key);
 
@@ -386,7 +386,7 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void OperateBitLscan()
 		{
-			Key key = new Key(args.ns, args.set, "opbkey15");
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "opbkey15");
 
 			client.Delete(null, key);
 
@@ -407,7 +407,7 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void OperateBitRscan()
 		{
-			Key key = new Key(args.ns, args.set, "opbkey16");
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "opbkey16");
 
 			client.Delete(null, key);
 
@@ -428,7 +428,7 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void OperateBitGetInt()
 		{
-			Key key = new Key(args.ns, args.set, "opbkey17");
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "opbkey17");
 
 			client.Delete(null, key);
 
