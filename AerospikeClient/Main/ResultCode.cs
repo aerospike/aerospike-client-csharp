@@ -490,6 +490,18 @@ namespace Aerospike.Client
 		public const int MRT_ABORTED = 125;
 
 		/// <summary>
+		/// This record has been locked by a previous update in this transaction.
+		/// Value: 126
+		/// </summary>
+		public const int MRT_ALREADY_LOCKED = 126;
+
+		/// <summary>
+		/// This transaction has already started. Writing to the same transaction with independent threads is unsafe.
+		/// Value: 127
+		/// </summary>
+		public const int MRT_MONITOR_EXISTS = 127;
+
+		/// <summary>
 		/// Batch functionality has been disabled.
 		/// Value: 150
 		/// </summary>
@@ -835,6 +847,12 @@ namespace Aerospike.Client
 
 			case MRT_ABORTED:
 				return "MRT already aborted";
+
+			case MRT_ALREADY_LOCKED:
+				return "This record has been locked by a previous update in this transaction";
+
+			case MRT_MONITOR_EXISTS:
+				return "This transaction has already started. Writing to the same transaction with independent threads is unsafe";
 
 			case BATCH_DISABLED:
 				return "Batch functionality has been disabled";
