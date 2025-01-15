@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2024 Aerospike, Inc.
+ * Copyright 2012-2025 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -183,8 +183,7 @@ namespace Aerospike.Client
 					break;
 
 				case Txn.TxnState.ABORTED:
-					listener.OnSuccess(CommitStatus.CommitStatusType.ALREADY_ABORTED);
-					break;
+					throw new AerospikeException(ResultCode.TXN_ALREADY_ABORTED, "Transaction already aborted");
 
 			}
 		}
@@ -227,8 +226,7 @@ namespace Aerospike.Client
 					break;
 
 				case Txn.TxnState.COMMITTED:
-					listener.OnSuccess(AbortStatus.AbortStatusType.ALREADY_COMMITTED);
-					break;
+					throw new AerospikeException(ResultCode.TXN_ALREADY_COMMITTED, "Transaction already committed");
 
 				case Txn.TxnState.ABORTED:
 					listener.OnSuccess(AbortStatus.AbortStatusType.ALREADY_ABORTED);

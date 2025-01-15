@@ -35,6 +35,7 @@ namespace Aerospike.Client
 		public AsyncOperateWrite(AsyncOperateWrite other)
 			: base(other)
 		{
+			this.listener = other.listener;
 			this.args = other.args;
 		}
 

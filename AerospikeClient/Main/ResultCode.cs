@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2024 Aerospike, Inc.
+ * Copyright 2012-2025 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -23,6 +23,18 @@ namespace Aerospike.Client
 	/// </summary>
 	public sealed class ResultCode
 	{
+		/// <summary>
+		/// Multi-record transaction commit called, but the transaction was already aborted.
+		/// Value: -19
+		/// </summary>
+		public const int TXN_ALREADY_ABORTED = -19;
+
+		/// <summary>
+		/// Multi-record transaction abort called, but the transaction was already committed.
+		/// Value: -18
+		/// </summary>
+		public const int TXN_ALREADY_COMMITTED = -18;
+
 		/// <summary>
 		/// Multi-record transaction failed.
 		/// Value: -17
@@ -478,6 +490,18 @@ namespace Aerospike.Client
 		public const int MRT_ABORTED = 125;
 
 		/// <summary>
+		/// This record has been locked by a previous update in this transaction.
+		/// Value: 126
+		/// </summary>
+		public const int MRT_ALREADY_LOCKED = 126;
+
+		/// <summary>
+		/// This transaction has already started. Writing to the same transaction with independent threads is unsafe.
+		/// Value: 127
+		/// </summary>
+		public const int MRT_MONITOR_EXISTS = 127;
+
+		/// <summary>
 		/// Batch functionality has been disabled.
 		/// Value: 150
 		/// </summary>
@@ -593,6 +617,12 @@ namespace Aerospike.Client
 		{
 			switch (resultCode)
 			{
+			case TXN_ALREADY_ABORTED:
+				return "Multi-record transaction already aborted";
+
+			case TXN_ALREADY_COMMITTED:
+				return "Multi-record transaction already committed";
+
 			case TXN_FAILED:
 				return "Multi-record transaction failed";
 
@@ -817,6 +847,12 @@ namespace Aerospike.Client
 
 			case MRT_ABORTED:
 				return "MRT already aborted";
+
+			case MRT_ALREADY_LOCKED:
+				return "This record has been locked by a previous update in this transaction";
+
+			case MRT_MONITOR_EXISTS:
+				return "This transaction has already started. Writing to the same transaction with independent threads is unsafe";
 
 			case BATCH_DISABLED:
 				return "Batch functionality has been disabled";
