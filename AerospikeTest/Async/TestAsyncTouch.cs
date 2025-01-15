@@ -31,15 +31,8 @@ namespace Aerospike.Test
 			WaitTillComplete();
 		}
 
-		private class TouchListener : ExistsListener
+		private class TouchListener(TestAsyncTouch parent) : ExistsListener
 		{
-			private readonly TestAsyncTouch parent;
-
-			public TouchListener(TestAsyncTouch parent)
-			{
-				this.parent = parent;
-			}
-
 			public void OnSuccess(Key key, bool exists)
 			{
 				Assert.IsFalse(exists);

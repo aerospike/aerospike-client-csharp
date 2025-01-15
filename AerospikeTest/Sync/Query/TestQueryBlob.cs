@@ -30,13 +30,15 @@ namespace Aerospike.Test
 		private static readonly string binName = "bb";
 		private static readonly string indexNameList = "qblist";
 		private static readonly string binNameList = "bblist";
-		private static int size = 5;
+		private static readonly int size = 5;
 
 		[ClassInitialize()]
 		public static void Prepare(TestContext testContext)
 		{
-			Policy policy = new();
-			policy.totalTimeout = 5000;
+			Policy policy = new()
+			{
+				totalTimeout = 5000
+			};
 
 			try
 			{
@@ -59,20 +61,20 @@ namespace Aerospike.Test
 				var bytes = new byte[8];
 				ByteUtil.LongToBytes(50000 + (ulong)i, bytes, 0);
 
-				List<byte[]> list = new()
-				{
+				List<byte[]> list =
+				[
 					bytes
-				};
+				];
 
 				Key key = new(SuiteHelpers.ns, SuiteHelpers.set, i);
 				Bin bin = new(binName, bytes);
-				Bin binList = new Bin(binNameList, list);
+				Bin binList = new(binNameList, list);
 
 				client.Put(null, key, bin, binList);
 			}
 		}
 
-		[ClassCleanup()]
+		[ClassCleanup(ClassCleanupBehavior.EndOfClass)]
 		public static void Destroy()
 		{
 			client.DropIndex(null, SuiteHelpers.ns, SuiteHelpers.set, indexName);
@@ -85,7 +87,7 @@ namespace Aerospike.Test
 			var bytes = new byte[8];
 			ByteUtil.LongToBytes(50003, bytes, 0);
 
-			Statement stmt = new Statement();
+			Statement stmt = new();
 			stmt.SetNamespace(SuiteHelpers.ns);
 			stmt.SetSetName(SuiteHelpers.set);
 			stmt.SetBinNames(binName);
@@ -119,7 +121,7 @@ namespace Aerospike.Test
 			var bytes = new byte[8];
 			ByteUtil.LongToBytes(50003, bytes, 0);
 
-			Statement stmt = new Statement();
+			Statement stmt = new();
 			stmt.SetNamespace(SuiteHelpers.ns);
 			stmt.SetSetName(SuiteHelpers.set);
 			stmt.SetBinNames(binName, binNameList);

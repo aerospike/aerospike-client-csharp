@@ -34,5 +34,4 @@ internal static class SuiteHelpers
 	public static TlsPolicy tlsPolicy;
 	public static AuthMode authMode;
 	public static bool singleBin;
-	public static bool enterprise;
 }

@@ -25,10 +25,10 @@ namespace Aerospike.Test
 	[TestClass]
 	public class TestHLLExp : TestSync
 	{
-		private string bin1 = "hllbin_1";
-		private string bin2 = "hllbin_2";
-		private string bin3 = "hllbin_3";
-		private Policy policy = new();
+		private readonly string bin1 = "hllbin_1";
+		private readonly string bin2 = "hllbin_2";
+		private readonly string bin3 = "hllbin_3";
+		private readonly Policy policy = new();
 		private Value.HLLValue hll1;
 		private Value.HLLValue hll2;
 		private Value.HLLValue hll3;
@@ -39,23 +39,19 @@ namespace Aerospike.Test
 			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, 5200);
 			client.Delete(null, key);
 
-			List<Value> list1 = new List<Value>();
-			list1.Add(Value.Get("Akey1"));
-			list1.Add(Value.Get("Akey2"));
-			list1.Add(Value.Get("Akey3"));
+			List<Value> list1 = [Value.Get("Akey1"), Value.Get("Akey2"), Value.Get("Akey3")];
 
-			List<Value> list2 = new List<Value>();
-			list2.Add(Value.Get("Bkey1"));
-			list2.Add(Value.Get("Bkey2"));
-			list2.Add(Value.Get("Bkey3"));
+			List<Value> list2 = [Value.Get("Bkey1"), Value.Get("Bkey2"), Value.Get("Bkey3")];
 
-			List<Value> list3 = new List<Value>();
-			list3.Add(Value.Get("Akey1"));
-			list3.Add(Value.Get("Akey2"));
-			list3.Add(Value.Get("Bkey1"));
-			list3.Add(Value.Get("Bkey2"));
-			list3.Add(Value.Get("Ckey1"));
-			list3.Add(Value.Get("Ckey2"));
+			List<Value> list3 =
+			[
+				Value.Get("Akey1"),
+				Value.Get("Akey2"),
+				Value.Get("Bkey1"),
+				Value.Get("Bkey2"),
+				Value.Get("Ckey1"),
+				Value.Get("Ckey2"),
+			];
 
 			Record rec = client.Operate(null, key,
 				HLLOperation.Add(HLLPolicy.Default, bin1, list1, 8),
@@ -68,15 +64,15 @@ namespace Aerospike.Test
 
 			IList results = rec.GetList(bin1);
 			hll1 = (Value.HLLValue)results[1];
-			Assert.AreNotEqual(null, hll1);
+			Assert.IsNotNull(hll1);
 
 			results = rec.GetList(bin2);
 			hll2 = (Value.HLLValue)results[1];
-			Assert.AreNotEqual(null, hll2);
+			Assert.IsNotNull(hll2);
 
 			results = rec.GetList(bin3);
 			hll3 = (Value.HLLValue)results[1];
-			Assert.AreNotEqual(null, hll3);
+			Assert.IsNotNull(hll3);
 
 			Count(key);
 			Union(key);
@@ -91,7 +87,7 @@ namespace Aerospike.Test
 		{
 			policy.filterExp = Exp.Build(Exp.EQ(HLLExp.GetCount(Exp.HLLBin(bin1)), Exp.Val(0)));
 			Record r = client.Get(policy, key);
-			Assert.AreEqual(null, r);
+			Assert.IsNull(r);
 
 			policy.filterExp = Exp.Build(Exp.GT(HLLExp.GetCount(Exp.HLLBin(bin1)), Exp.Val(0)));
 			r = client.Get(policy, key);
@@ -100,10 +96,7 @@ namespace Aerospike.Test
 
 		private void Union(Key key)
 		{
-			List<Value.HLLValue> hlls = new List<Value.HLLValue>();
-			hlls.Add(hll1);
-			hlls.Add(hll2);
-			hlls.Add(hll3);
+			List<Value.HLLValue> hlls = [hll1, hll2, hll3];
 
 			policy.filterExp = Exp.Build(
 				Exp.NE(
@@ -111,7 +104,7 @@ namespace Aerospike.Test
 					HLLExp.GetUnionCount(Exp.Val(hlls), Exp.HLLBin(bin1))));
 
 			Record r = client.Get(policy, key);
-			Assert.AreEqual(null, r);
+			Assert.IsNull(r);
 
 			policy.filterExp = Exp.Build(
 				Exp.EQ(
@@ -124,11 +117,9 @@ namespace Aerospike.Test
 
 		private void Intersect(Key key)
 		{
-			List<Value.HLLValue> hlls2 = new List<Value.HLLValue>();
-			hlls2.Add(hll2);
+			List<Value.HLLValue> hlls2 = [hll2];
 
-			List<Value.HLLValue> hlls3 = new List<Value.HLLValue>();
-			hlls3.Add(hll3);
+			List<Value.HLLValue> hlls3 = [hll3];
 
 			policy.filterExp = Exp.Build(
 				Exp.GE(
@@ -136,7 +127,7 @@ namespace Aerospike.Test
 					HLLExp.GetIntersectCount(Exp.Val(hlls3), Exp.HLLBin(bin1))));
 
 			Record r = client.Get(policy, key);
-			Assert.AreEqual(null, r);
+			Assert.IsNull(r);
 
 			policy.filterExp = Exp.Build(
 				Exp.LE(
@@ -149,11 +140,9 @@ namespace Aerospike.Test
 
 		private void Similarity(Key key)
 		{
-			List<Value.HLLValue> hlls2 = new List<Value.HLLValue>();
-			hlls2.Add(hll2);
+			List<Value.HLLValue> hlls2 = [hll2];
 
-			List<Value.HLLValue> hlls3 = new List<Value.HLLValue>();
-			hlls3.Add(hll3);
+			List<Value.HLLValue> hlls3 = [hll3];
 
 			policy.filterExp = Exp.Build(
 				Exp.GE(
@@ -161,7 +150,7 @@ namespace Aerospike.Test
 					HLLExp.GetSimilarity(Exp.Val(hlls3), Exp.HLLBin(bin1))));
 
 			Record r = client.Get(policy, key);
-			Assert.AreEqual(null, r);
+			Assert.IsNull(r);
 
 			policy.filterExp = Exp.Build(
 				Exp.LE(
@@ -182,7 +171,7 @@ namespace Aerospike.Test
 					ListExp.GetByIndex(ListReturnType.VALUE, Exp.Type.INT, index, HLLExp.Describe(Exp.HLLBin(bin2)))));
 
 			Record r = client.Get(policy, key);
-			Assert.AreEqual(null, r);
+			Assert.IsNull(r);
 
 			policy.filterExp = Exp.Build(
 				Exp.EQ(
@@ -195,13 +184,12 @@ namespace Aerospike.Test
 
 		private void MayContain(Key key)
 		{
-			List<Value> values = new List<Value>();
-			values.Add(Value.Get("new_val"));
+			List<Value> values = [Value.Get("new_val")];
 
 			policy.filterExp = Exp.Build(Exp.EQ(HLLExp.MayContain(Exp.Val(values), Exp.HLLBin(bin2)), Exp.Val(1)));
 
 			Record r = client.Get(policy, key);
-			Assert.AreEqual(null, r);
+			Assert.IsNull(r);
 
 			policy.filterExp = Exp.Build(Exp.NE(HLLExp.MayContain(Exp.Val(values), Exp.HLLBin(bin2)), Exp.Val(1)));
 
@@ -211,8 +199,7 @@ namespace Aerospike.Test
 
 		private void Add(Key key)
 		{
-			List<Value> values = new List<Value>();
-			values.Add(Value.Get("new_val"));
+			List<Value> values = [Value.Get("new_val")];
 
 			policy.filterExp = Exp.Build(
 				Exp.EQ(
@@ -220,7 +207,7 @@ namespace Aerospike.Test
 					HLLExp.GetCount(HLLExp.Add(HLLPolicy.Default, Exp.Val(values), Exp.HLLBin(bin2)))));
 
 			Record r = client.Get(policy, key);
-			Assert.AreEqual(null, r);
+			Assert.IsNull(r);
 
 			policy.filterExp = Exp.Build(
 				Exp.LT(

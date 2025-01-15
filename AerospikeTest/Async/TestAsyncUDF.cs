@@ -25,7 +25,6 @@ namespace Aerospike.Test
 	{
 		private static readonly string binName = Suite.GetBinName("audfbin1");
 		private const string binValue = "string value";
-		private static CancellationTokenSource tokenSource = new();
 
 		[ClassInitialize()]
 		public static void Register(TestContext testContext)
@@ -42,25 +41,16 @@ namespace Aerospike.Test
 			Bin bin = new(binName, binValue);
 
 			// Write bin
-			client.Execute(null, new WriteHandler(this, key), key, "record_example", "writeBin", Value.Get(bin.name), bin.value);
+			client.Execute(null, new WriteHandler(this), key, "record_example", "writeBin", Value.Get(bin.name), bin.value);
 			WaitTillComplete();
 		}
 
-		private class WriteHandler : ExecuteListener
+		private class WriteHandler(TestAsyncUDF parent) : ExecuteListener
 		{
-			private readonly TestAsyncUDF parent;
-			private Key key;
-
-			public WriteHandler(TestAsyncUDF parent, Key key)
-			{
-				this.parent = parent;
-				this.key = key;
-			}
-
 			public void OnSuccess(Key key, object obj)
 			{
 				// Write succeeded.  Now call read using udf.
-				client.Execute(null, new ReadHandler(parent, key), key, "record_example", "readBin", Value.Get(binName));
+				client.Execute(null, new ReadHandler(parent), key, "record_example", "readBin", Value.Get(binName));
 			}
 
 			public void OnFailure(AerospikeException e)
@@ -70,17 +60,8 @@ namespace Aerospike.Test
 			}
 		}
 
-		private class ReadHandler : ExecuteListener
+		private class ReadHandler(TestAsyncUDF parent) : ExecuteListener
 		{
-			private readonly TestAsyncUDF parent;
-			private Key key;
-
-			public ReadHandler(TestAsyncUDF parent, Key key)
-			{
-				this.parent = parent;
-				this.key = key;
-			}
-
 			public void OnSuccess(Key key, object received)
 			{
 				if (parent.AssertNotNull(received))
@@ -100,11 +81,11 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void AsyncBatchUDF()
 		{
-			Key[] keys = new Key[]
-			{
+			Key[] keys =
+			[
 				new Key(SuiteHelpers.ns, SuiteHelpers.set, 20000),
 				new Key(SuiteHelpers.ns, SuiteHelpers.set, 20001)
-			};
+			];
 
 			client.Delete(null, null, keys);
 
@@ -113,15 +94,8 @@ namespace Aerospike.Test
 			WaitTillComplete();
 		}
 
-		private class BatchUDFHandler : BatchRecordArrayListener
+		private class BatchUDFHandler(TestAsyncUDF parent) : BatchRecordArrayListener
 		{
-			private readonly TestAsyncUDF parent;
-
-			public BatchUDFHandler(TestAsyncUDF parent)
-			{
-				this.parent = parent;
-			}
-
 			public void OnSuccess(BatchRecord[] records, bool status)
 			{
 				try
@@ -157,14 +131,16 @@ namespace Aerospike.Test
 		{
 			string bin = "B5";
 
-			Value[] a1 = new Value[] { Value.Get(bin), Value.Get("value1") };
-			Value[] a2 = new Value[] { Value.Get(bin), Value.Get(5) };
-			Value[] a3 = new Value[] { Value.Get(bin), Value.Get(999) };
+			Value[] a1 = [Value.Get(bin), Value.Get("value1")];
+			Value[] a2 = [Value.Get(bin), Value.Get(5)];
+			Value[] a3 = [Value.Get(bin), Value.Get(999)];
 
-			List<BatchRecord> records = new List<BatchRecord>();
-			records.Add(new BatchUDF(new Key(SuiteHelpers.ns, SuiteHelpers.set, 20014), "record_example", "writeBin", a1));
-			records.Add(new BatchUDF(new Key(SuiteHelpers.ns, SuiteHelpers.set, 20015), "record_example", "writeWithValidation", a2));
-			records.Add(new BatchUDF(new Key(SuiteHelpers.ns, SuiteHelpers.set, 20015), "record_example", "writeWithValidation", a3));
+			List<BatchRecord> records =
+			[
+				new BatchUDF(new Key(SuiteHelpers.ns, SuiteHelpers.set, 20014), "record_example", "writeBin", a1),
+				new BatchUDF(new Key(SuiteHelpers.ns, SuiteHelpers.set, 20015), "record_example", "writeWithValidation", a2),
+				new BatchUDF(new Key(SuiteHelpers.ns, SuiteHelpers.set, 20015), "record_example", "writeWithValidation", a3),
+			];
 
 			client.Operate(null, new BatchSeqUDFHandler(this, bin), records);
 
@@ -173,24 +149,17 @@ namespace Aerospike.Test
 
 		static void BatchSeqUDFHandlerSuccess(TestAsyncUDF parent, string bin)
 		{
-			List<BatchRecord> records = new List<BatchRecord>();
-			records.Add(new BatchRead(new Key(SuiteHelpers.ns, SuiteHelpers.set, 20014), true));
-			records.Add(new BatchRead(new Key(SuiteHelpers.ns, SuiteHelpers.set, 20015), true));
+			List<BatchRecord> records =
+			[
+				new BatchRead(new Key(SuiteHelpers.ns, SuiteHelpers.set, 20014), true),
+				new BatchRead(new Key(SuiteHelpers.ns, SuiteHelpers.set, 20015), true),
+			];
 
 			client.Operate(null, new BatchSeqReadHandler(parent, bin), records);
 		}
 
-		private class BatchSeqUDFHandler : BatchRecordSequenceListener
+		private class BatchSeqUDFHandler(TestAsyncUDF parent, string bin) : BatchRecordSequenceListener
 		{
-			private readonly TestAsyncUDF parent;
-			private string bin;
-
-			public BatchSeqUDFHandler(TestAsyncUDF parent, string bin)
-			{
-				this.parent = parent;
-				this.bin = bin;
-			}
-
 			public void OnRecord(BatchRecord br, int index)
 			{
 				try
@@ -230,17 +199,8 @@ namespace Aerospike.Test
 		}
 	}
 
-	class BatchSeqReadHandler : BatchRecordSequenceListener
+	class BatchSeqReadHandler(TestAsyncUDF parent, string bin) : BatchRecordSequenceListener
 	{
-		private readonly TestAsyncUDF parent;
-		private string bin;
-
-		public BatchSeqReadHandler(TestAsyncUDF parent, string bin)
-		{
-			this.parent = parent;
-			this.bin = bin;
-		}
-
 		public void OnRecord(BatchRecord br, int index)
 		{
 			try

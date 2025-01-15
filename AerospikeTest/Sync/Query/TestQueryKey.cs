@@ -30,8 +30,10 @@ namespace Aerospike.Test
 		[ClassInitialize()]
 		public static void Prepare(TestContext testContext)
 		{
-			Policy policy = new();
-			policy.totalTimeout = 0; // Do not timeout on index create.
+			Policy policy = new()
+			{
+				totalTimeout = 0 // Do not timeout on index create.
+			};
 
 			try
 			{
@@ -46,8 +48,10 @@ namespace Aerospike.Test
 				}
 			}
 
-			WritePolicy writePolicy = new();
-			writePolicy.sendKey = true;
+			WritePolicy writePolicy = new()
+			{
+				sendKey = true
+			};
 
 			for (int i = 1; i <= size; i++)
 			{
@@ -57,7 +61,7 @@ namespace Aerospike.Test
 			}
 		}
 
-		[ClassCleanup()]
+		[ClassCleanup(ClassCleanupBehavior.EndOfClass)]
 		public static void Destroy()
 		{
 			client.DropIndex(null, SuiteHelpers.ns, SuiteHelpers.set, indexName);
@@ -69,7 +73,7 @@ namespace Aerospike.Test
 			int begin = 2;
 			int end = 5;
 
-			Statement stmt = new Statement();
+			Statement stmt = new();
 			stmt.SetNamespace(SuiteHelpers.ns);
 			stmt.SetSetName(SuiteHelpers.set);
 			stmt.SetBinNames(binName);

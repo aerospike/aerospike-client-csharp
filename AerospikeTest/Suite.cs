@@ -119,8 +119,7 @@ namespace Aerospike.Test
 				policy.password = SuiteHelpers.password;
 			}
 
-			SuiteHelpers.
-						asyncClient = new AsyncClient(policy, SuiteHelpers.hosts);
+			SuiteHelpers.asyncClient = new AsyncClient(policy, SuiteHelpers.hosts);
 
 			// Example of how to enable metrics
 			//asyncClient.EnableMetrics(new MetricsPolicy());
@@ -131,9 +130,6 @@ namespace Aerospike.Test
 			Node node = SuiteHelpers.client.Nodes[0];
 			string namespaceFilter = "namespace/" + SuiteHelpers.ns;
 			Dictionary<string, string> map = Info.Request(null, node, "edition", namespaceFilter);
-
-			string edition = map["edition"];
-			SuiteHelpers.enterprise = edition.Equals("Aerospike Enterprise Edition");
 
 			string namespaceTokens = map[namespaceFilter] ?? throw new Exception(string.Format("Failed to get namespace info: host={0} namespace={1}", node, SuiteHelpers.ns));
 			SuiteHelpers.singleBin = ParseBoolean(namespaceTokens, "single-bin");

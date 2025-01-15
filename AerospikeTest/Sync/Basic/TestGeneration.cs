@@ -47,9 +47,11 @@ namespace Aerospike.Test
 			// Set record and fail if it's not the expected generation.
 			bin = new Bin(binName, "genvalue3");
 
-			WritePolicy writePolicy = new();
-			writePolicy.generationPolicy = GenerationPolicy.EXPECT_GEN_EQUAL;
-			writePolicy.generation = record.generation;
+			WritePolicy writePolicy = new()
+			{
+				generationPolicy = GenerationPolicy.EXPECT_GEN_EQUAL,
+				generation = record.generation
+			};
 			client.Put(writePolicy, key, bin);
 
 			// Set record with invalid generation and check results .

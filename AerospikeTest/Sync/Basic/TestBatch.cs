@@ -192,7 +192,7 @@ namespace Aerospike.Test
 			AssertBatchBinEqual(records, BinName, 0);
 			AssertBatchBinEqual(records, BinName, 1);
 			AssertBatchBinEqual(records, BinName, 2);
-			AssertBatchRecordExists(records, BinName, 3);
+			AssertBatchRecordExists(records, 3);
 			AssertBatchBinEqual(records, BinName, 4);
 
 			BatchRead batch = records[5];
@@ -481,7 +481,7 @@ namespace Aerospike.Test
 			AssertBinEqual(batch.key, batch.record, binName, ValuePrefix + (i + 1));
 		}
 
-		private static void AssertBatchRecordExists(List<BatchRead> list, string binName, int i)
+		private static void AssertBatchRecordExists(List<BatchRead> list, int i)
 		{
 			BatchRead batch = list[i];
 			AssertRecordFound(batch.key, batch.record);

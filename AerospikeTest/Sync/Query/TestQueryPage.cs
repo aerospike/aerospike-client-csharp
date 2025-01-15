@@ -49,7 +49,7 @@ namespace Aerospike.Test
 			WriteRecords(binName, 190);
 		}
 
-		[ClassCleanup()]
+		[ClassCleanup(ClassCleanupBehavior.EndOfClass)]
 		public static void Destroy()
 		{
 			client.DropIndex(null, SuiteHelpers.ns, SuiteHelpers.set, indexName);
@@ -62,7 +62,7 @@ namespace Aerospike.Test
 			{
 				Namespace = SuiteHelpers.ns,
 				SetName = SuiteHelpers.set,
-				BinNames = new string[] { binName },
+				BinNames = [binName],
 				Filter = Filter.Range(binName, 1, 200),
 				MaxRecords = 100
 			};

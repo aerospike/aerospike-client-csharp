@@ -31,8 +31,10 @@ namespace Aerospike.Test
 		[ClassInitialize()]
 		public static void Prepare(TestContext testContext)
 		{
-			Policy policy = new();
-			policy.totalTimeout = 0; // Do not timeout on index create.
+			Policy policy = new()
+			{
+				totalTimeout = 0 // Do not timeout on index create.
+			};
 
 			try
 			{
@@ -56,40 +58,34 @@ namespace Aerospike.Test
 
 				if (i == 1)
 				{
-					list = new List<int>(5);
-					list.Add(1);
-					list.Add(2);
-					list.Add(4);
-					list.Add(9);
-					list.Add(20);
+					list = [1, 2, 4, 9, 20];
 					// map will be null, which means mapbin will not exist in this record.
 				}
 				else if (i == 2)
 				{
-					list = new List<int>(3);
-					list.Add(5);
-					list.Add(9);
-					list.Add(100);
+					list = [5, 9, 100];
 					// map will be null, which means mapbin will not exist in this record.
 				}
 				else if (i == 3)
 				{
-					map = new Dictionary<string, string>();
-					map["A"] = "AAA";
-					map["B"] = "BBB";
-					map["C"] = "BBB";
+					map = new Dictionary<string, string>
+					{
+						["A"] = "AAA",
+						["B"] = "BBB",
+						["C"] = "BBB"
+					};
 					// list will be null, which means listbin will not exist in this record.
 				}
 				else
 				{
-					list = new List<int>(0);
-					map = new Dictionary<string, string>(0);
+					list = [];
+					map = [];
 				}
 				client.Put(null, key, new Bin(binName, i), new Bin("bin2", i), new Bin("listbin", list), new Bin("mapbin", map));
 			}
 		}
 
-		[ClassCleanup()]
+		[ClassCleanup(ClassCleanupBehavior.EndOfClass)]
 		public static void Destroy()
 		{
 			client.DropIndex(null, SuiteHelpers.ns, setName, indexName);
@@ -101,14 +97,15 @@ namespace Aerospike.Test
 			int begin = 10;
 			int end = 45;
 
-			Statement stmt = new Statement();
+			Statement stmt = new();
 			stmt.SetNamespace(SuiteHelpers.ns);
 			stmt.SetSetName(setName);
 			stmt.SetFilter(Filter.Range(binName, begin, end));
 
 			// ((bin2 > 40 && bin2 < 44) || bin2 == 22 || bin2 == 9) && (binName == bin2)
-			QueryPolicy policy = new QueryPolicy();
-			policy.filterExp = Exp.Build(
+			QueryPolicy policy = new()
+			{
+				filterExp = Exp.Build(
 				Exp.And(
 					Exp.Or(
 						Exp.And(
@@ -116,8 +113,9 @@ namespace Aerospike.Test
 							Exp.LT(Exp.IntBin("bin2"), Exp.Val(44))),
 						Exp.EQ(Exp.IntBin("bin2"), Exp.Val(22)),
 						Exp.EQ(Exp.IntBin("bin2"), Exp.Val(9))),
-					Exp.EQ(Exp.IntBin(binName), Exp.IntBin("bin2"))));
-			
+					Exp.EQ(Exp.IntBin(binName), Exp.IntBin("bin2"))))
+			};
+
 			RecordSet rs = client.Query(policy, stmt);
 
 			try
@@ -144,18 +142,20 @@ namespace Aerospike.Test
 			int begin = 10;
 			int end = 45;
 
-			Statement stmt = new Statement();
+			Statement stmt = new();
 			stmt.SetNamespace(SuiteHelpers.ns);
 			stmt.SetSetName(setName);
 			stmt.SetFilter(Filter.Range(binName, begin, end));
 
 			// ! (bin2 >= 15 && bin2 <= 42)
-			QueryPolicy policy = new QueryPolicy();
-			policy.filterExp = Exp.Build(
+			QueryPolicy policy = new()
+			{
+				filterExp = Exp.Build(
 				Exp.Not(
 					Exp.And(
 						Exp.GE(Exp.IntBin("bin2"), Exp.Val(15)),
-						Exp.LE(Exp.IntBin("bin2"), Exp.Val(42)))));
+						Exp.LE(Exp.IntBin("bin2"), Exp.Val(42)))))
+			};
 
 			RecordSet rs = client.Query(policy, stmt);
 
@@ -183,17 +183,19 @@ namespace Aerospike.Test
 			int begin = 10;
 			int end = 45;
 
-			Statement stmt = new Statement();
+			Statement stmt = new();
 			stmt.SetNamespace(SuiteHelpers.ns);
 			stmt.SetSetName(setName);
 			stmt.SetFilter(Filter.Range(binName, begin, end));
 
 			// record last update time > (currentTimeMillis() * 1000000L + 100)
-			QueryPolicy policy = new QueryPolicy();
-			policy.filterExp = Exp.Build(
+			QueryPolicy policy = new()
+			{
+				filterExp = Exp.Build(
 				Exp.GT(
 					Exp.LastUpdate(),
-					Exp.Val(DateTime.UtcNow.Add(TimeSpan.FromSeconds(1.0)))));
+					Exp.Val(DateTime.UtcNow.Add(TimeSpan.FromSeconds(1.0)))))
+			};
 
 			RecordSet rs = client.Query(policy, stmt);
 
@@ -222,17 +224,19 @@ namespace Aerospike.Test
 			int begin = 1;
 			int end = 10;
 
-			Statement stmt = new Statement();
+			Statement stmt = new();
 			stmt.SetNamespace(SuiteHelpers.ns);
 			stmt.SetSetName(setName);
 			stmt.SetFilter(Filter.Range(binName, begin, end));
 
 			// List bin contains at least one integer item == 4
-			QueryPolicy policy = new QueryPolicy();
-			policy.filterExp = Exp.Build(
+			QueryPolicy policy = new()
+			{
+				filterExp = Exp.Build(
 				Exp.GT(
 					ListExp.GetByValue(ListReturnType.COUNT, Exp.Val(4), Exp.ListBin("listbin")),
-					Exp.Val(0)));
+					Exp.Val(0)))
+			};
 
 			RecordSet rs = client.Query(policy, stmt);
 
@@ -259,17 +263,19 @@ namespace Aerospike.Test
 			int begin = 1;
 			int end = 10;
 
-			Statement stmt = new Statement();
+			Statement stmt = new();
 			stmt.SetNamespace(SuiteHelpers.ns);
 			stmt.SetSetName(setName);
 			stmt.SetFilter(Filter.Range(binName, begin, end));
 
 			// List bin does not contain integer item == 5
-			QueryPolicy policy = new QueryPolicy();
-			policy.filterExp = Exp.Build(
+			QueryPolicy policy = new()
+			{
+				filterExp = Exp.Build(
 				Exp.EQ(
 					ListExp.GetByValue(ListReturnType.COUNT, Exp.Val(5), Exp.ListBin("listbin")),
-					Exp.Val(0)));
+					Exp.Val(0)))
+			};
 
 			RecordSet rs = client.Query(policy, stmt);
 
@@ -296,17 +302,19 @@ namespace Aerospike.Test
 			int begin = 1;
 			int end = 10;
 
-			Statement stmt = new Statement();
+			Statement stmt = new();
 			stmt.SetNamespace(SuiteHelpers.ns);
 			stmt.SetSetName(setName);
 			stmt.SetFilter(Filter.Range(binName, begin, end));
 
 			// list[4] == 20
-			QueryPolicy policy = new QueryPolicy();
-			policy.filterExp = Exp.Build(
+			QueryPolicy policy = new()
+			{
+				filterExp = Exp.Build(
 				Exp.EQ(
 					ListExp.GetByIndex(ListReturnType.VALUE, Exp.Type.INT, Exp.Val(4), Exp.ListBin("listbin")),
-					Exp.Val(20)));
+					Exp.Val(20)))
+			};
 
 			RecordSet rs = client.Query(policy, stmt);
 
@@ -333,17 +341,19 @@ namespace Aerospike.Test
 			int begin = 1;
 			int end = 10;
 
-			Statement stmt = new Statement();
+			Statement stmt = new();
 			stmt.SetNamespace(SuiteHelpers.ns);
 			stmt.SetSetName(setName);
 			stmt.SetFilter(Filter.Range(binName, begin, end));
 
 			// Map bin contains key "B"
-			QueryPolicy policy = new QueryPolicy();
-			policy.filterExp = Exp.Build(
+			QueryPolicy policy = new()
+			{
+				filterExp = Exp.Build(
 				Exp.GT(
 					MapExp.GetByKey(MapReturnType.COUNT, Exp.Type.INT, Exp.Val("B"), Exp.MapBin("mapbin")),
-					Exp.Val(0)));
+					Exp.Val(0)))
+			};
 
 			RecordSet rs = client.Query(policy, stmt);
 
@@ -370,15 +380,17 @@ namespace Aerospike.Test
 			int begin = 1;
 			int end = 10;
 
-			Statement stmt = new Statement();
+			Statement stmt = new();
 			stmt.SetNamespace(SuiteHelpers.ns);
 			stmt.SetSetName(setName);
 			stmt.SetFilter(Filter.Range(binName, begin, end));
 
 			// Map bin contains value "BBB"
-			QueryPolicy policy = new QueryPolicy();
-			policy.filterExp = Exp.Build(
-				MapExp.GetByValue(MapReturnType.EXISTS, Exp.Val("BBB"), Exp.MapBin("mapbin")));
+			QueryPolicy policy = new()
+			{
+				filterExp = Exp.Build(
+				MapExp.GetByValue(MapReturnType.EXISTS, Exp.Val("BBB"), Exp.MapBin("mapbin")))
+			};
 
 			RecordSet rs = client.Query(policy, stmt);
 
@@ -405,17 +417,19 @@ namespace Aerospike.Test
 			int begin = 1;
 			int end = 10;
 
-			Statement stmt = new Statement();
+			Statement stmt = new();
 			stmt.SetNamespace(SuiteHelpers.ns);
 			stmt.SetSetName(setName);
 			stmt.SetFilter(Filter.Range(binName, begin, end));
 
 			// Map bin does not contains key "D"
-			QueryPolicy policy = new QueryPolicy();
-			policy.filterExp = Exp.Build(
+			QueryPolicy policy = new()
+			{
+				filterExp = Exp.Build(
 				Exp.EQ(
 					MapExp.GetByKey(MapReturnType.COUNT, Exp.Type.INT, Exp.Val("D"), Exp.MapBin("mapbin")),
-					Exp.Val(0)));
+					Exp.Val(0)))
+			};
 
 			RecordSet rs = client.Query(policy, stmt);
 
@@ -442,17 +456,19 @@ namespace Aerospike.Test
 			int begin = 1;
 			int end = 10;
 
-			Statement stmt = new Statement();
+			Statement stmt = new();
 			stmt.SetNamespace(SuiteHelpers.ns);
 			stmt.SetSetName(setName);
 			stmt.SetFilter(Filter.Range(binName, begin, end));
 
 			// Map bin does not contains value "AAA"
-			QueryPolicy policy = new QueryPolicy();
-			policy.filterExp = Exp.Build(
+			QueryPolicy policy = new()
+			{
+				filterExp = Exp.Build(
 				Exp.EQ(
 					MapExp.GetByValue(MapReturnType.COUNT, Exp.Val("AAA"), Exp.MapBin("mapbin")),
-					Exp.Val(0)));
+					Exp.Val(0)))
+			};
 
 			RecordSet rs = client.Query(policy, stmt);
 
@@ -479,17 +495,15 @@ namespace Aerospike.Test
 			int begin = 1;
 			int end = 10;
 
-			Statement stmt = new Statement();
+			Statement stmt = new();
 			stmt.SetNamespace(SuiteHelpers.ns);
 			stmt.SetSetName(setName);
 			stmt.SetFilter(Filter.Range(binName, begin, end));
 
 			// Map bin contains keys "A" and "C".
-			QueryPolicy policy = new QueryPolicy();
+			QueryPolicy policy = new();
 
-			List<string> list = new List<string>();
-			list.Add("A");
-			list.Add("C");
+			List<string> list = ["A", "C"];
 
 			policy.filterExp = Exp.Build(
 				Exp.EQ(
@@ -522,17 +536,15 @@ namespace Aerospike.Test
 			int begin = 1;
 			int end = 10;
 
-			Statement stmt = new Statement();
+			Statement stmt = new();
 			stmt.SetNamespace(SuiteHelpers.ns);
 			stmt.SetSetName(setName);
 			stmt.SetFilter(Filter.Range(binName, begin, end));
 
 			// Map bin contains keys "A" and "C".
-			QueryPolicy policy = new QueryPolicy();
+			QueryPolicy policy = new();
 
-			List<string> list = new List<string>();
-			list.Add("A");
-			list.Add("C");
+			List<string> list = ["A", "C"];
 
 			policy.filterExp = Exp.Build(
 				Exp.EQ(
@@ -565,14 +577,16 @@ namespace Aerospike.Test
 			int begin = 1;
 			int end = 10;
 
-			Statement stmt = new Statement();
+			Statement stmt = new();
 			stmt.SetNamespace(SuiteHelpers.ns);
 			stmt.SetSetName(setName);
 			stmt.SetFilter(Filter.Range(binName, begin, end));
 
 			// Record key digest % 3 == 1
-			QueryPolicy policy = new QueryPolicy();
-			policy.filterExp = Exp.Build(Exp.EQ(Exp.DigestModulo(3), Exp.Val(1)));
+			QueryPolicy policy = new()
+			{
+				filterExp = Exp.Build(Exp.EQ(Exp.DigestModulo(3), Exp.Val(1)))
+			};
 
 			RecordSet rs = client.Query(policy, stmt);
 
@@ -599,13 +613,15 @@ namespace Aerospike.Test
 			int begin = 1;
 			int end = 10;
 
-			Statement stmt = new Statement();
+			Statement stmt = new();
 			stmt.SetNamespace(SuiteHelpers.ns);
 			stmt.SetSetName(setName);
 			stmt.SetFilter(Filter.Range(binName, begin, end));
 
-			QueryPolicy policy = new QueryPolicy();
-			policy.filterExp = Exp.Build(Exp.BinExists("bin2"));
+			QueryPolicy policy = new()
+			{
+				filterExp = Exp.Build(Exp.BinExists("bin2"))
+			};
 
 			RecordSet rs = client.Query(policy, stmt);
 
@@ -631,13 +647,15 @@ namespace Aerospike.Test
 			int begin = 1;
 			int end = 10;
 
-			Statement stmt = new Statement();
+			Statement stmt = new();
 			stmt.SetNamespace(SuiteHelpers.ns);
 			stmt.SetSetName(setName);
 			stmt.SetFilter(Filter.Range(binName, begin, end));
 
-			QueryPolicy policy = new QueryPolicy();
-			policy.filterExp = Exp.Build(Exp.EQ(Exp.BinType("listbin"), Exp.Val((int)ParticleType.LIST)));
+			QueryPolicy policy = new()
+			{
+				filterExp = Exp.Build(Exp.EQ(Exp.BinType("listbin"), Exp.Val((int)ParticleType.LIST)))
+			};
 
 			RecordSet rs = client.Query(policy, stmt);
 
@@ -663,15 +681,17 @@ namespace Aerospike.Test
 			int begin = 1;
 			int end = 10;
 
-			Statement stmt = new Statement();
+			Statement stmt = new();
 			stmt.SetNamespace(SuiteHelpers.ns);
 			stmt.SetSetName(setName);
 			stmt.SetFilter(Filter.Range(binName, begin, end));
 
 			// This just tests that the expression was sent correctly
 			// because all record sizes are effectively allowed
-			QueryPolicy policy = new QueryPolicy();
-			policy.filterExp = Exp.Build(Exp.GE(Exp.RecordSize(), Exp.Val(0)));
+			QueryPolicy policy = new()
+			{
+				filterExp = Exp.Build(Exp.GE(Exp.RecordSize(), Exp.Val(0)))
+			};
 
 			RecordSet rs = client.Query(policy, stmt);
 
@@ -697,7 +717,7 @@ namespace Aerospike.Test
 			int begin = 1;
 			int end = 10;
 
-			Statement stmt = new Statement();
+			Statement stmt = new();
 			stmt.SetNamespace(SuiteHelpers.ns);
 			stmt.SetSetName(setName);
 			stmt.SetFilter(Filter.Range(binName, begin, end));
@@ -705,8 +725,10 @@ namespace Aerospike.Test
 			// storage-engine could be memory for which DeviceSize() returns zero.
 			// This just tests that the expression was sent correctly
 			// because all device sizes are effectively allowed.
-			QueryPolicy policy = new QueryPolicy();
-			policy.filterExp = Exp.Build(Exp.GE(Exp.DeviceSize(), Exp.Val(0)));
+			QueryPolicy policy = new()
+			{
+				filterExp = Exp.Build(Exp.GE(Exp.DeviceSize(), Exp.Val(0)))
+			};
 
 			RecordSet rs = client.Query(policy, stmt);
 
@@ -732,7 +754,7 @@ namespace Aerospike.Test
 			int begin = 1;
 			int end = 10;
 
-			Statement stmt = new Statement();
+			Statement stmt = new();
 			stmt.SetNamespace(SuiteHelpers.ns);
 			stmt.SetSetName(setName);
 			stmt.SetFilter(Filter.Range(binName, begin, end));
@@ -740,8 +762,10 @@ namespace Aerospike.Test
 			// storage-engine could be memory for which MemorySize() returns zero.
 			// This just tests that the expression was sent correctly
 			// because all memory sizes are effectively allowed.
-			QueryPolicy policy = new QueryPolicy();
-			policy.filterExp = Exp.Build(Exp.GE(Exp.MemorySize(), Exp.Val(0)));
+			QueryPolicy policy = new()
+			{
+				filterExp = Exp.Build(Exp.GE(Exp.MemorySize(), Exp.Val(0)))
+			};
 
 			RecordSet rs = client.Query(policy, stmt);
 

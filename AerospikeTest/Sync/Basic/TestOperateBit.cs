@@ -34,7 +34,7 @@ namespace Aerospike.Test
 
 			client.Delete(null, key);
 
-			byte[] bytes = new byte[] { 0x01, 0x42 };
+			byte[] bytes = [0x01, 0x42];
 
 			client.Put(null, key, new Bin(binName, bytes));
 
@@ -49,7 +49,7 @@ namespace Aerospike.Test
 
 			byte[] b = (byte[])list[1];
 			//Console.WriteLine(ByteUtil.BytesToHexString(b));
-			Assert.IsTrue(Util.ByteArrayEquals(new byte[] { 0x01, 0x42, 0x00, 0x00 }, b));
+			Assert.IsTrue(Util.ByteArrayEquals([0x01, 0x42, 0x00, 0x00], b));
 		}
 
 		[TestMethod]
@@ -59,12 +59,12 @@ namespace Aerospike.Test
 
 			client.Delete(null, key);
 
-			byte[] bytes = new byte[] { 0x01, 0x42, 0x03, 0x04, 0x05 };
+			byte[] bytes = [0x01, 0x42, 0x03, 0x04, 0x05];
 
 			client.Put(null, key, new Bin(binName, bytes));
 
 			Record record = client.Operate(null, key,
-				BitOperation.Insert(BitPolicy.Default, binName, 1, new byte[] { 0xFF, 0xC7 }),
+				BitOperation.Insert(BitPolicy.Default, binName, 1, [0xFF, 0xC7]),
 				Operation.Get(binName)
 				);
 
@@ -73,7 +73,7 @@ namespace Aerospike.Test
 			IList list = record.GetList(binName);
 
 			byte[] b = (byte[])list[1];
-			Assert.IsTrue(Util.ByteArrayEquals(new byte[] { 0x01, 0xFF, 0xC7, 0x42, 0x03, 0x04, 0x05 }, b));
+			Assert.IsTrue(Util.ByteArrayEquals([0x01, 0xFF, 0xC7, 0x42, 0x03, 0x04, 0x05], b));
 		}
 
 		[TestMethod]
@@ -83,7 +83,7 @@ namespace Aerospike.Test
 
 			client.Delete(null, key);
 
-			byte[] bytes = new byte[] { 0x01, 0x42, 0x03, 0x04, 0x05 };
+			byte[] bytes = [0x01, 0x42, 0x03, 0x04, 0x05];
 
 			client.Put(null, key, new Bin(binName, bytes));
 
@@ -97,7 +97,7 @@ namespace Aerospike.Test
 			IList list = record.GetList(binName);
 
 			byte[] b = (byte[])list[1];
-			Assert.IsTrue(Util.ByteArrayEquals(new byte[] { 0x01, 0x42 }, b));
+			Assert.IsTrue(Util.ByteArrayEquals([0x01, 0x42], b));
 		}
 
 		[TestMethod]
@@ -107,12 +107,12 @@ namespace Aerospike.Test
 
 			client.Delete(null, key);
 
-			byte[] bytes = new byte[] { 0x01, 0x42, 0x03, 0x04, 0x05 };
+			byte[] bytes = [0x01, 0x42, 0x03, 0x04, 0x05];
 
 			client.Put(null, key, new Bin(binName, bytes));
 
 			Record record = client.Operate(null, key,
-				BitOperation.Set(BitPolicy.Default, binName, 13, 3, new byte[] { 0xE0 }),
+				BitOperation.Set(BitPolicy.Default, binName, 13, 3, [0xE0]),
 				Operation.Get(binName)
 				);
 
@@ -122,7 +122,7 @@ namespace Aerospike.Test
 
 			byte[] b = (byte[])list[1];
 			//Console.WriteLine(ByteUtil.BytesToHexString(b));
-			Assert.IsTrue(Util.ByteArrayEquals(new byte[] { 0x01, 0x47, 0x03, 0x04, 0x05 }, b));
+			Assert.IsTrue(Util.ByteArrayEquals([0x01, 0x47, 0x03, 0x04, 0x05], b));
 		}
 
 		[TestMethod]
@@ -132,12 +132,12 @@ namespace Aerospike.Test
 
 			client.Delete(null, key);
 
-			byte[] bytes = new byte[] { 0x01, 0x42, 0x03, 0x04, 0x05 };
+			byte[] bytes = [0x01, 0x42, 0x03, 0x04, 0x05];
 
 			client.Put(null, key, new Bin(binName, bytes));
 
 			Record record = client.Operate(null, key,
-				BitOperation.Or(BitPolicy.Default, binName, 17, 6, new byte[] { 0xA8 }),
+				BitOperation.Or(BitPolicy.Default, binName, 17, 6, [0xA8]),
 				Operation.Get(binName)
 				);
 
@@ -146,7 +146,7 @@ namespace Aerospike.Test
 			IList list = record.GetList(binName);
 
 			byte[] b = (byte[])list[1];
-			Assert.IsTrue(Util.ByteArrayEquals(new byte[] { 0x01, 0x42, 0x57, 0x04, 0x05 }, b));
+			Assert.IsTrue(Util.ByteArrayEquals([0x01, 0x42, 0x57, 0x04, 0x05], b));
 		}
 
 		[TestMethod]
@@ -156,12 +156,12 @@ namespace Aerospike.Test
 
 			client.Delete(null, key);
 
-			byte[] bytes = new byte[] { 0x01, 0x42, 0x03, 0x04, 0x05 };
+			byte[] bytes = [0x01, 0x42, 0x03, 0x04, 0x05];
 
 			client.Put(null, key, new Bin(binName, bytes));
 
 			Record record = client.Operate(null, key,
-				BitOperation.Xor(BitPolicy.Default, binName, 17, 6, new byte[] { 0xAC }),
+				BitOperation.Xor(BitPolicy.Default, binName, 17, 6, [0xAC]),
 				Operation.Get(binName)
 				);
 
@@ -170,7 +170,7 @@ namespace Aerospike.Test
 			IList list = record.GetList(binName);
 
 			byte[] b = (byte[])list[1];
-			Assert.IsTrue(Util.ByteArrayEquals(new byte[] { 0x01, 0x42, 0x55, 0x04, 0x05 }, b));
+			Assert.IsTrue(Util.ByteArrayEquals([0x01, 0x42, 0x55, 0x04, 0x05], b));
 		}
 
 		[TestMethod]
@@ -180,12 +180,12 @@ namespace Aerospike.Test
 
 			client.Delete(null, key);
 
-			byte[] bytes = new byte[] { 0x01, 0x42, 0x03, 0x04, 0x05 };
+			byte[] bytes = [0x01, 0x42, 0x03, 0x04, 0x05];
 
 			client.Put(null, key, new Bin(binName, bytes));
 
 			Record record = client.Operate(null, key,
-				BitOperation.And(BitPolicy.Default, binName, 23, 9, new byte[] { 0x3C, 0x80 }),
+				BitOperation.And(BitPolicy.Default, binName, 23, 9, [0x3C, 0x80]),
 				Operation.Get(binName)
 				);
 
@@ -194,7 +194,7 @@ namespace Aerospike.Test
 			IList list = record.GetList(binName);
 
 			byte[] b = (byte[])list[1];
-			Assert.IsTrue(Util.ByteArrayEquals(new byte[] { 0x01, 0x42, 0x02, 0x00, 0x05 }, b));
+			Assert.IsTrue(Util.ByteArrayEquals([0x01, 0x42, 0x02, 0x00, 0x05], b));
 		}
 
 		[TestMethod]
@@ -204,7 +204,7 @@ namespace Aerospike.Test
 
 			client.Delete(null, key);
 
-			byte[] bytes = new byte[] { 0x01, 0x42, 0x03, 0x04, 0x05 };
+			byte[] bytes = [0x01, 0x42, 0x03, 0x04, 0x05];
 
 			client.Put(null, key, new Bin(binName, bytes));
 
@@ -218,7 +218,7 @@ namespace Aerospike.Test
 			IList list = record.GetList(binName);
 
 			byte[] b = (byte[])list[1];
-			Assert.IsTrue(Util.ByteArrayEquals(new byte[] { 0x01, 0x42, 0x03, 0x7A, 0x05 }, b));
+			Assert.IsTrue(Util.ByteArrayEquals([0x01, 0x42, 0x03, 0x7A, 0x05], b));
 		}
 
 		[TestMethod]
@@ -228,7 +228,7 @@ namespace Aerospike.Test
 
 			client.Delete(null, key);
 
-			byte[] bytes = new byte[] { 0x01, 0x42, 0x03, 0x04, 0x05 };
+			byte[] bytes = [0x01, 0x42, 0x03, 0x04, 0x05];
 
 			client.Put(null, key, new Bin(binName, bytes));
 
@@ -242,7 +242,7 @@ namespace Aerospike.Test
 			IList list = record.GetList(binName);
 
 			byte[] b = (byte[])list[1];
-			Assert.IsTrue(Util.ByteArrayEquals(new byte[] { 0x01, 0x42, 0x03, 0x04, 0x28 }, b));
+			Assert.IsTrue(Util.ByteArrayEquals([0x01, 0x42, 0x03, 0x04, 0x28], b));
 		}
 
 		[TestMethod]
@@ -252,7 +252,7 @@ namespace Aerospike.Test
 
 			client.Delete(null, key);
 
-			byte[] bytes = new byte[] { 0x01, 0x42, 0x03, 0x04, 0x05 };
+			byte[] bytes = [0x01, 0x42, 0x03, 0x04, 0x05];
 
 			client.Put(null, key, new Bin(binName, bytes));
 
@@ -266,7 +266,7 @@ namespace Aerospike.Test
 			IList list = record.GetList(binName);
 
 			byte[] b = (byte[])list[1];
-			Assert.IsTrue(Util.ByteArrayEquals(new byte[] { 0x00, 0xC2, 0x03, 0x04, 0x05 }, b));
+			Assert.IsTrue(Util.ByteArrayEquals([0x00, 0xC2, 0x03, 0x04, 0x05], b));
 		}
 
 		[TestMethod]
@@ -276,7 +276,7 @@ namespace Aerospike.Test
 
 			client.Delete(null, key);
 
-			byte[] bytes = new byte[] { 0x01, 0x42, 0x03, 0x04, 0x05 };
+			byte[] bytes = [0x01, 0x42, 0x03, 0x04, 0x05];
 
 			client.Put(null, key, new Bin(binName, bytes));
 
@@ -290,7 +290,7 @@ namespace Aerospike.Test
 			IList list = record.GetList(binName);
 
 			byte[] b = (byte[])list[1];
-			Assert.IsTrue(Util.ByteArrayEquals(new byte[] { 0x01, 0x42, 0x03, 0x04, 0x85 }, b));
+			Assert.IsTrue(Util.ByteArrayEquals([0x01, 0x42, 0x03, 0x04, 0x85], b));
 		}
 
 		[TestMethod]
@@ -300,7 +300,7 @@ namespace Aerospike.Test
 
 			client.Delete(null, key);
 
-			byte[] bytes = new byte[] { 0x01, 0x42, 0x03, 0x04, 0x05 };
+			byte[] bytes = [0x01, 0x42, 0x03, 0x04, 0x05];
 
 			client.Put(null, key, new Bin(binName, bytes));
 
@@ -314,7 +314,7 @@ namespace Aerospike.Test
 			IList list = record.GetList(binName);
 
 			byte[] b = (byte[])list[1];
-			Assert.IsTrue(Util.ByteArrayEquals(new byte[] { 0x01, 0x42, 0x03, 0x03, 0x85 }, b));
+			Assert.IsTrue(Util.ByteArrayEquals([0x01, 0x42, 0x03, 0x03, 0x85], b));
 		}
 
 		[TestMethod]
@@ -324,7 +324,7 @@ namespace Aerospike.Test
 
 			client.Delete(null, key);
 
-			byte[] bytes = new byte[] { 0x01, 0x42, 0x03, 0x04, 0x05 };
+			byte[] bytes = [0x01, 0x42, 0x03, 0x04, 0x05];
 
 			client.Put(null, key, new Bin(binName, bytes));
 
@@ -338,7 +338,7 @@ namespace Aerospike.Test
 			IList list = record.GetList(binName);
 
 			byte[] b = (byte[])list[1];
-			Assert.IsTrue(Util.ByteArrayEquals(new byte[] { 0x3F, 0xC2, 0x03, 0x04, 0x05 }, b));
+			Assert.IsTrue(Util.ByteArrayEquals([0x3F, 0xC2, 0x03, 0x04, 0x05], b));
 		}
 
 		[TestMethod]
@@ -348,7 +348,7 @@ namespace Aerospike.Test
 
 			client.Delete(null, key);
 
-			byte[] bytes = new byte[] { 0x01, 0x42, 0x03, 0x04, 0x05 };
+			byte[] bytes = [0x01, 0x42, 0x03, 0x04, 0x05];
 
 			client.Put(null, key, new Bin(binName, bytes));
 
@@ -359,7 +359,7 @@ namespace Aerospike.Test
 			AssertRecordFound(key, record);
 
 			byte[] b = (byte[])record.GetValue(binName);
-			Assert.IsTrue(Util.ByteArrayEquals(new byte[] { 0x80 }, b));
+			Assert.IsTrue(Util.ByteArrayEquals([0x80], b));
 		}
 
 		[TestMethod]
@@ -369,7 +369,7 @@ namespace Aerospike.Test
 
 			client.Delete(null, key);
 
-			byte[] bytes = new byte[] { 0x01, 0x42, 0x03, 0x04, 0x05 };
+			byte[] bytes = [0x01, 0x42, 0x03, 0x04, 0x05];
 
 			client.Put(null, key, new Bin(binName, bytes));
 
@@ -390,7 +390,7 @@ namespace Aerospike.Test
 
 			client.Delete(null, key);
 
-			byte[] bytes = new byte[] { 0x01, 0x42, 0x03, 0x04, 0x05 };
+			byte[] bytes = [0x01, 0x42, 0x03, 0x04, 0x05];
 
 			client.Put(null, key, new Bin(binName, bytes));
 
@@ -411,7 +411,7 @@ namespace Aerospike.Test
 
 			client.Delete(null, key);
 
-			byte[] bytes = new byte[] { 0x01, 0x42, 0x03, 0x04, 0x05 };
+			byte[] bytes = [0x01, 0x42, 0x03, 0x04, 0x05];
 
 			client.Put(null, key, new Bin(binName, bytes));
 
@@ -432,7 +432,7 @@ namespace Aerospike.Test
 
 			client.Delete(null, key);
 
-			byte[] bytes = new byte[] { 0x01, 0x42, 0x03, 0x04, 0x05 };
+			byte[] bytes = [0x01, 0x42, 0x03, 0x04, 0x05];
 
 			client.Put(null, key, new Bin(binName, bytes));
 

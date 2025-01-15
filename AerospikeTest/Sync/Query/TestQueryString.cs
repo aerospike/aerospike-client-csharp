@@ -26,13 +26,15 @@ namespace Aerospike.Test
 		private const string keyPrefix = "querykey";
 		private const string valuePrefix = "queryvalue";
 		private static readonly string binName = Suite.GetBinName("querybin");
-		private static int size = 5;
+		private static readonly int size = 5;
 
 		[ClassInitialize()]
 		public static void Prepare(TestContext testContext)
 		{
-			Policy policy = new();
-			policy.totalTimeout = 0; // Do not timeout on index create.
+			Policy policy = new()
+			{
+				totalTimeout = 0 // Do not timeout on index create.
+			};
 
 			try
 			{
@@ -55,7 +57,7 @@ namespace Aerospike.Test
 			}
 		}
 
-		[ClassCleanup()]
+		[ClassCleanup(ClassCleanupBehavior.EndOfClass)]
 		public static void Destroy()
 		{
 			client.DropIndex(null, SuiteHelpers.ns, SuiteHelpers.set, indexName);
@@ -66,7 +68,7 @@ namespace Aerospike.Test
 		{
 			string filter = valuePrefix + 3;
 
-			Statement stmt = new Statement();
+			Statement stmt = new();
 			stmt.SetNamespace(SuiteHelpers.ns);
 			stmt.SetSetName(SuiteHelpers.set);
 			stmt.SetBinNames(binName);

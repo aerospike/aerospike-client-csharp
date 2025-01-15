@@ -37,8 +37,8 @@ namespace Aerospike.Test
 				AssertBinEqual(key, record, bin);			
 			}
 			else {
-				Bin bin1 = new Bin("bin1", "value1");
-				Bin bin2 = new Bin("bin2", "value2");
+				Bin bin1 = new("bin1", "value1");
+				Bin bin2 = new("bin2", "value2");
 			
 				client.Put(null, key, bin1, bin2);
 				record = client.Get(null, key);
@@ -76,10 +76,10 @@ namespace Aerospike.Test
 		public void PutGetBool()
 		{
 			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "pgb");
-			Bin bin1 = new Bin("bin1", false);
-			Bin bin2 = new Bin("bin2", true);
-			Bin bin3 = new Bin("bin3", 0);
-			Bin bin4 = new Bin("bin4", 1);
+			Bin bin1 = new("bin1", false);
+			Bin bin2 = new("bin2", true);
+			Bin bin3 = new("bin3", 0);
+			Bin bin4 = new("bin4", 1);
 
 			client.Put(null, key, bin1, bin2, bin3, bin4);
 
@@ -120,7 +120,7 @@ namespace Aerospike.Test
 					Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "putgetc");
 					Record record;
 
-			List<string> list = new();
+			List<string> list = [];
 			int[] iterator = Enumerable.Range(0, 2000).ToArray();
 			foreach (int i in iterator)
 			{

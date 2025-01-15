@@ -24,7 +24,7 @@ namespace Aerospike.Test
 	public class TestAsyncPutGet : TestAsync
 	{
 		private static readonly string binName = Suite.GetBinName("putgetbin");
-		private static CancellationTokenSource tokenSource = new();
+		private static readonly CancellationTokenSource tokenSource = new();
 
 		[TestMethod]
 		public void AsyncPutGet()
@@ -32,7 +32,7 @@ namespace Aerospike.Test
 			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "putgetkey1");
 			Bin bin = new(binName, "value1");
 
-			client.Put(null, new WriteHandler(this, client, key, bin), key, bin);
+			client.Put(null, new WriteHandler(this, bin), key, bin);
 			WaitTillComplete();
 		}
 
@@ -56,7 +56,7 @@ namespace Aerospike.Test
 			try
 			{
 				// Write succeeded.  Now call read.
-				client.Get(null, new RecordHandler(parent, key, bin), key);
+				client.Get(null, new RecordHandler(parent, bin), key);
 			}
 			catch (Exception e)
 			{
@@ -71,21 +71,8 @@ namespace Aerospike.Test
 			parent.NotifyCompleted();
 		}
 
-		private class WriteHandler : WriteListener
+		private class WriteHandler(TestAsyncPutGet parent, Bin bin) : WriteListener
 		{
-			private readonly TestAsyncPutGet parent;
-			private IAsyncClient client;
-			private Key key;
-			private Bin bin;
-
-			public WriteHandler(TestAsyncPutGet parent, IAsyncClient client, Key key, Bin bin)
-			{
-				this.parent = parent;
-				this.client = client;
-				this.key = key;
-				this.bin = bin;
-			}
-
 			public void OnSuccess(Key key)
 			{
 				WriteListenerSuccess(key, bin, parent);
@@ -98,19 +85,8 @@ namespace Aerospike.Test
 			}
 		}
 
-		private class RecordHandler : RecordListener
+		private class RecordHandler(TestAsyncPutGet parent, Bin bin) : RecordListener
 		{
-			private readonly TestAsyncPutGet parent;
-			private Key key;
-			private Bin bin;
-
-			public RecordHandler(TestAsyncPutGet parent, Key key, Bin bin)
-			{
-				this.parent = parent;
-				this.key = key;
-				this.bin = bin;
-			}
-
 			public void OnSuccess(Key key, Record record)
 			{
 				RecordHandlerSuccess(key, record, bin, parent);

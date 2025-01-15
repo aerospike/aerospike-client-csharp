@@ -38,8 +38,10 @@ namespace Aerospike.Test
 			RegisterTask rtask = client.Register(null, assembly, "Aerospike.Test.LuaResources.record_example.lua", "record_example.lua", Language.LUA);
 			rtask.Wait();
 
-			Policy policy = new();
-			policy.totalTimeout = 0; // Do not timeout on index create.
+			Policy policy = new()
+			{
+				totalTimeout = 0 // Do not timeout on index create.
+			};
 
 			try
 			{
@@ -57,9 +59,10 @@ namespace Aerospike.Test
 			for (int i = 1; i <= size; i++)
 			{
 				Key key = new(SuiteHelpers.ns, SuiteHelpers.set, keyPrefix + i);
-				Dictionary<string, string> map = new Dictionary<string, string>();
-
-				map[mapKeyPrefix + 1] = mapValuePrefix + i;
+				Dictionary<string, string> map = new()
+				{
+					[mapKeyPrefix + 1] = mapValuePrefix + i
+				};
 				if (i % 2 == 0)
 				{
 					map[mapKeyPrefix + 2] = mapValuePrefix + i;
@@ -74,7 +77,7 @@ namespace Aerospike.Test
 			}
 		}
 
-		[ClassCleanup()]
+		[ClassCleanup(ClassCleanupBehavior.EndOfClass)]
 		public static void Destroy()
 		{
 			client.DropIndex(null, SuiteHelpers.ns, SuiteHelpers.set, indexName);
@@ -84,7 +87,7 @@ namespace Aerospike.Test
 		public void QueryCollection()
 		{
 			string queryMapKey = mapKeyPrefix + 2;
-			Statement stmt = new Statement();
+			Statement stmt = new();
 			stmt.SetNamespace(SuiteHelpers.ns);
 			stmt.SetSetName(SuiteHelpers.set);
 			stmt.SetBinNames(binName);

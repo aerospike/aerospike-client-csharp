@@ -730,7 +730,7 @@ namespace Aerospike.Test
 		{
 			for (int i = 0; i < keys.Length; i++)
 			{
-				Key key = keys[i];
+				_ = keys[i];
 				Record rec = recs[i];
 
 				Assert.IsNotNull(rec);

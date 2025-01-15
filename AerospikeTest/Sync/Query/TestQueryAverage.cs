@@ -36,8 +36,10 @@ namespace Aerospike.Test
 			RegisterTask task = client.Register(null, assembly, "Aerospike.Test.LuaResources.average_example.lua", "average_example.lua", Language.LUA);
 			task.Wait();
 
-			Policy policy = new();
-			policy.totalTimeout = 0; // Do not timeout on index create.
+			Policy policy = new()
+			{
+				totalTimeout = 0 // Do not timeout on index create.
+			};
 
 			try
 			{
@@ -60,7 +62,7 @@ namespace Aerospike.Test
 			}
 		}
 
-		[ClassCleanup()]
+		[ClassCleanup(ClassCleanupBehavior.EndOfClass)]
 		public static void Destroy()
 		{
 			client.DropIndex(null, SuiteHelpers.ns, SuiteHelpers.set, indexName);
@@ -69,7 +71,7 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void QueryAverage()
 		{
-			Statement stmt = new Statement();
+			Statement stmt = new();
 			stmt.SetNamespace(SuiteHelpers.ns);
 			stmt.SetSetName(SuiteHelpers.set);
 			stmt.SetFilter(Filter.Range(binName, 0, 1000));
@@ -83,9 +85,8 @@ namespace Aerospike.Test
 				{
 					object obj = rs.Object;
 
-					if (obj is IDictionary)
+					if (obj is IDictionary map)
 					{
-						IDictionary map = (IDictionary)obj;
 						long sum = (long)map["sum"];
 						long count = (long)map["count"];
 						double avg = (double)sum / count;

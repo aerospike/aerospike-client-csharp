@@ -35,9 +35,10 @@ namespace Aerospike.Test
 			RegisterTask rtask = client.Register(null, assembly, "Aerospike.Test.LuaResources.filter_example.lua", "filter_example.lua", Language.LUA);
 			rtask.Wait();
 
-
-			Policy policy = new();
-			policy.totalTimeout = 0; // Do not timeout on index create.
+			Policy policy = new()
+			{
+				totalTimeout = 0 // Do not timeout on index create.
+			};
 
 			try
 			{
@@ -60,12 +61,12 @@ namespace Aerospike.Test
 		private static void WriteRecord(string userKey, string name, string password)
 		{
 			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, userKey);
-			Bin bin1 = new Bin("name", name);
-			Bin bin2 = new Bin("password", password);
+			Bin bin1 = new("name", name);
+			Bin bin2 = new("password", password);
 			client.Put(null, key, bin1, bin2);
 		}
 
-		[ClassCleanup()]
+		[ClassCleanup(ClassCleanupBehavior.EndOfClass)]
 		public static void Destroy()
 		{
 			client.DropIndex(null, SuiteHelpers.ns, SuiteHelpers.set, indexName);
@@ -77,7 +78,7 @@ namespace Aerospike.Test
 			string nameFilter = "Bill";
 			string passFilter = "hknfpkj";
 
-			Statement stmt = new Statement();
+			Statement stmt = new();
 			stmt.SetNamespace(SuiteHelpers.ns);
 			stmt.SetSetName(SuiteHelpers.set);
 			stmt.SetFilter(Filter.Equal(binName, nameFilter));

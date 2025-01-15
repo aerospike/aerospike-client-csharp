@@ -23,27 +23,19 @@ namespace Aerospike.Test
 	public class TestAsyncScan : TestAsync
 	{
 		private int recordCount;
-		static CancellationTokenSource tokenSource = new();
 
 		[TestMethod]
 		public void AsyncScan()
 		{
 			recordCount = 0;
 
-			ScanPolicy policy = new ScanPolicy();
+			ScanPolicy policy = new();
 			client.ScanAll(policy, new RecordSequenceHandler(this), SuiteHelpers.ns, SuiteHelpers.set);
 			WaitTillComplete();
 		}
 
-		private class RecordSequenceHandler : RecordSequenceListener
+		private class RecordSequenceHandler(TestAsyncScan parent) : RecordSequenceListener
 		{
-			private readonly TestAsyncScan parent;
-
-			public RecordSequenceHandler(TestAsyncScan parent)
-			{
-				this.parent = parent;
-			}
-
 			public void OnRecord(Key key, Record record)
 			{
 				parent.recordCount++;

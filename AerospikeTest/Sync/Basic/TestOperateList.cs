@@ -66,10 +66,12 @@ namespace Aerospike.Test
 
 			client.Delete(null, key);
 
-			IList itemList = new List<Value>();
-			itemList.Add(Value.Get(12));
-			itemList.Add(Value.Get(-8734));
-			itemList.Add(Value.Get("my string"));
+			IList itemList = new List<Value>
+			{
+				Value.Get(12),
+				Value.Get(-8734),
+				Value.Get("my string")
+			};
 
 			Record record = client.Operate(null, key,
 				ListOperation.AppendItems(binName, itemList),
@@ -122,14 +124,16 @@ namespace Aerospike.Test
 
 			client.Delete(null, key);
 
-			IList itemList = new List<Value>();
-			itemList.Add(Value.Get("str1"));
-			itemList.Add(Value.Get("str2"));
-			itemList.Add(Value.Get("str3"));
-			itemList.Add(Value.Get("str4"));
-			itemList.Add(Value.Get("str5"));
-			itemList.Add(Value.Get("str6"));
-			itemList.Add(Value.Get("str7"));
+			IList itemList = new List<Value>
+			{
+				Value.Get("str1"),
+				Value.Get("str2"),
+				Value.Get("str3"),
+				Value.Get("str4"),
+				Value.Get("str5"),
+				Value.Get("str6"),
+				Value.Get("str7")
+			};
 
 			Record record = client.Operate(null, key,
 				ListOperation.AppendItems(binName, itemList),
@@ -182,25 +186,31 @@ namespace Aerospike.Test
 
 			client.Delete(null, key);
 
-			IList inputList = new List<Value>();
-			inputList.Add(Value.Get(12));
-			inputList.Add(Value.Get(-8734.81));
-			inputList.Add(Value.Get("my string"));
+			IList inputList = new List<Value>
+			{
+				Value.Get(12),
+				Value.Get(-8734.81),
+				Value.Get("my string")
+			};
 
-			IDictionary inputMap = new Dictionary<int, string>();
-			inputMap[9] = "data 9";
-			inputMap[-2] = "data -2";
+			IDictionary inputMap = new Dictionary<int, string>
+			{
+				[9] = "data 9",
+				[-2] = "data -2"
+			};
 
 			byte[] bytes = System.Text.Encoding.UTF8.GetBytes("string bytes");
 
-			IList itemList = new List<Value>();
-			itemList.Add(Value.Get(true));
-			itemList.Add(Value.Get(55));
-			itemList.Add(Value.Get("string value"));
-			itemList.Add(Value.Get(inputList));
-			itemList.Add(Value.Get(bytes));
-			itemList.Add(Value.Get(99.99));
-			itemList.Add(Value.Get(inputMap));
+			IList itemList = new List<Value>
+			{
+				Value.Get(true),
+				Value.Get(55),
+				Value.Get("string value"),
+				Value.Get(inputList),
+				Value.Get(bytes),
+				Value.Get(99.99),
+				Value.Get(inputMap)
+			};
 
 			Record record = client.Operate(null, key,
 				ListOperation.AppendItems(binName, itemList),
@@ -270,12 +280,14 @@ namespace Aerospike.Test
 
 			client.Delete(null, key);
 
-			IList itemList = new List<Value>();
-			itemList.Add(Value.Get("s11"));
-			itemList.Add(Value.Get("s22222"));
-			itemList.Add(Value.Get("s3333333"));
-			itemList.Add(Value.Get("s4444444444"));
-			itemList.Add(Value.Get("s5555555555555555"));
+			IList itemList = new List<Value>
+			{
+				Value.Get("s11"),
+				Value.Get("s22222"),
+				Value.Get("s3333333"),
+				Value.Get("s4444444444"),
+				Value.Get("s5555555555555555")
+			};
 
 			Record record = client.Operate(null, key,
 				ListOperation.InsertItems(binName, 0, itemList),
@@ -310,15 +322,19 @@ namespace Aerospike.Test
 
 			client.Delete(null, key);
 
-			WritePolicy policy = new WritePolicy();
-			policy.respondAllOps = true;
+			WritePolicy policy = new()
+			{
+				respondAllOps = true
+			};
 
-			IList itemList = new List<Value>();
-			itemList.Add(Value.Get("s11"));
-			itemList.Add(Value.Get("s22222"));
-			itemList.Add(Value.Get("s3333333"));
-			itemList.Add(Value.Get("s4444444444"));
-			itemList.Add(Value.Get("s5555555555555555"));
+			IList itemList = new List<Value>
+			{
+				Value.Get("s11"),
+				Value.Get("s22222"),
+				Value.Get("s3333333"),
+				Value.Get("s4444444444"),
+				Value.Get("s5555555555555555")
+			};
 
 			Record record = client.Operate(policy, key,
 				Operation.Put(new Bin("otherbin", 11)),
@@ -355,13 +371,12 @@ namespace Aerospike.Test
 
 			client.Delete(null, key);
 
-			WritePolicy policy = new WritePolicy();
-			policy.respondAllOps = true;
-
-			IList itemList = new List<Value>();
-			itemList.Add(Value.Get("s11"));
-			itemList.Add(Value.AsNull);
-			itemList.Add(Value.Get("s3333333"));
+			IList itemList = new List<Value>
+			{
+				Value.Get("s11"),
+				Value.AsNull,
+				Value.Get("s3333333")
+			};
 
 			Record record = client.Operate(null, key,
 				ListOperation.AppendItems(binName, itemList),
@@ -396,13 +411,12 @@ namespace Aerospike.Test
 
 			client.Delete(null, key);
 
-			WritePolicy policy = new WritePolicy();
-			policy.respondAllOps = true;
-
-			IList itemList = new List<Value>();
-			itemList.Add(Value.Get(1));
-			itemList.Add(Value.Get(2));
-			itemList.Add(Value.Get(3));
+			IList itemList = new List<Value>
+			{
+				Value.Get(1),
+				Value.Get(2),
+				Value.Get(3)
+			};
 
 			Record record = client.Operate(null, key,
 				ListOperation.AppendItems(binName, itemList),
@@ -444,12 +458,14 @@ namespace Aerospike.Test
 
 			client.Delete(null, key);
 
-			IList itemList = new List<Value>();
-			itemList.Add(Value.Get(4));
-			itemList.Add(Value.Get(3));
-			itemList.Add(Value.Get(1));
-			itemList.Add(Value.Get(5));
-			itemList.Add(Value.Get(2));
+			IList itemList = new List<Value>
+			{
+				Value.Get(4),
+				Value.Get(3),
+				Value.Get(1),
+				Value.Get(5),
+				Value.Get(2)
+			};
 
 			Record record = client.Operate(null, key,
 				ListOperation.AppendItems(ListPolicy.Default, binName, itemList),
@@ -467,9 +483,11 @@ namespace Aerospike.Test
 			long val = (long)results[i++];
 			Assert.AreEqual(5L, val);
 
-			IList valueList = new List<Value>();
-			valueList.Add(Value.Get(4));
-			valueList.Add(Value.Get(2));
+			IList valueList = new List<Value>
+			{
+				Value.Get(4),
+				Value.Get(2)
+			};
 
 			// Sort list.
 			record = client.Operate(null, key,
@@ -528,12 +546,14 @@ namespace Aerospike.Test
 
 			client.Delete(null, key);
 
-			IList itemList = new List<Value>();
-			itemList.Add(Value.Get(-44));
-			itemList.Add(Value.Get(33));
-			itemList.Add(Value.Get(-1));
-			itemList.Add(Value.Get(33));
-			itemList.Add(Value.Get(-2));
+			IList itemList = new List<Value>
+			{
+				Value.Get(-44),
+				Value.Get(33),
+				Value.Get(-1),
+				Value.Get(33),
+				Value.Get(-2)
+			};
 
 			Record record = client.Operate(null, key,
 				ListOperation.AppendItems(ListPolicy.Default, binName, itemList),
@@ -560,21 +580,25 @@ namespace Aerospike.Test
 
 			client.Delete(null, key);
 
-			IList itemList = new List<Value>();
-			itemList.Add(Value.Get(-44));
-			itemList.Add(Value.Get(33));
-			itemList.Add(Value.Get(-1));
-			itemList.Add(Value.Get(33));
-			itemList.Add(Value.Get(-2));
-			itemList.Add(Value.Get(0));
-			itemList.Add(Value.Get(22));
-			itemList.Add(Value.Get(11));
-			itemList.Add(Value.Get(14));
-			itemList.Add(Value.Get(6));
+			IList itemList = new List<Value>
+			{
+				Value.Get(-44),
+				Value.Get(33),
+				Value.Get(-1),
+				Value.Get(33),
+				Value.Get(-2),
+				Value.Get(0),
+				Value.Get(22),
+				Value.Get(11),
+				Value.Get(14),
+				Value.Get(6)
+			};
 
-			IList valueList = new List<Value>();
-			valueList.Add(Value.Get(-45));
-			valueList.Add(Value.Get(14));
+			IList valueList = new List<Value>
+			{
+				Value.Get(-45),
+				Value.Get(14)
+			};
 
 			Record record = client.Operate(null, key,
 				ListOperation.AppendItems(ListPolicy.Default, binName, itemList),
@@ -629,16 +653,20 @@ namespace Aerospike.Test
 
 			client.Delete(null, key);
 
-			IList itemList = new List<Value>();
-			itemList.Add(Value.Get(4));
-			itemList.Add(Value.Get(3));
-			itemList.Add(Value.Get(1));
-			itemList.Add(Value.Get(5));
-			itemList.Add(Value.Get(2));
+			IList itemList = new List<Value>
+			{
+				Value.Get(4),
+				Value.Get(3),
+				Value.Get(1),
+				Value.Get(5),
+				Value.Get(2)
+			};
 
-			IList valueList = new List<Value>();
-			valueList.Add(Value.Get(4));
-			valueList.Add(Value.Get(2));
+			IList valueList = new List<Value>
+			{
+				Value.Get(4),
+				Value.Get(2)
+			};
 
 			Record record = client.Operate(null, key,
 				ListOperation.AppendItems(ListPolicy.Default, binName, itemList),
@@ -692,13 +720,15 @@ namespace Aerospike.Test
 
 			client.Delete(null, key);
 
-			List<Value> itemList = new List<Value>();
-			itemList.Add(Value.Get(0));
-			itemList.Add(Value.Get(4));
-			itemList.Add(Value.Get(5));
-			itemList.Add(Value.Get(9));
-			itemList.Add(Value.Get(11));
-			itemList.Add(Value.Get(15));
+			List<Value> itemList =
+			[
+				Value.Get(0),
+				Value.Get(4),
+				Value.Get(5),
+				Value.Get(9),
+				Value.Get(11),
+				Value.Get(15),
+			];
 
 			Record record = client.Operate(null, key,
 				ListOperation.AppendItems(new ListPolicy(ListOrder.ORDERED, ListWriteFlags.DEFAULT), binName, itemList),
@@ -801,13 +831,15 @@ namespace Aerospike.Test
 
 			client.Delete(null, key);
 
-			List<Value> itemList = new List<Value>();
-			itemList.Add(Value.Get(0));
-			itemList.Add(Value.Get(4));
-			itemList.Add(Value.Get(5));
-			itemList.Add(Value.Get(9));
-			itemList.Add(Value.Get(11));
-			itemList.Add(Value.Get(15));
+			List<Value> itemList =
+			[
+				Value.Get(0),
+				Value.Get(4),
+				Value.Get(5),
+				Value.Get(9),
+				Value.Get(11),
+				Value.Get(15),
+			];
 
 			Record record = client.Operate(null, key,
 				ListOperation.AppendItems(new ListPolicy(ListOrder.ORDERED, ListWriteFlags.DEFAULT), binName, itemList),
@@ -859,15 +891,17 @@ namespace Aerospike.Test
 
 			client.Delete(null, key);
 
-			List<Value> itemList = new List<Value>();
-			itemList.Add(Value.Get(0));
-			itemList.Add(Value.Get(4));
-			itemList.Add(Value.Get(5));
-			itemList.Add(Value.Get(9));
-			itemList.Add(Value.Get(9));
-			itemList.Add(Value.Get(11));
-			itemList.Add(Value.Get(15));
-			itemList.Add(Value.Get(0));
+			List<Value> itemList =
+			[
+				Value.Get(0),
+				Value.Get(4),
+				Value.Get(5),
+				Value.Get(9),
+				Value.Get(9),
+				Value.Get(11),
+				Value.Get(15),
+				Value.Get(0),
+			];
 
 			Record record = client.Operate(null, key,
 					ListOperation.AppendItems(new ListPolicy(ListOrder.ORDERED, ListWriteFlags.ADD_UNIQUE | ListWriteFlags.PARTIAL | ListWriteFlags.NO_FAIL), binName, itemList),
@@ -882,9 +916,7 @@ namespace Aerospike.Test
 			size = record.GetLong("bin2");
 			Assert.AreEqual(0L, size);
 
-			itemList = new List<Value>();
-			itemList.Add(Value.Get(11));
-			itemList.Add(Value.Get(3));
+			itemList = [Value.Get(11), Value.Get(3)];
 
 			record = client.Operate(null, key,
 					ListOperation.AppendItems(new ListPolicy(ListOrder.ORDERED, ListWriteFlags.ADD_UNIQUE | ListWriteFlags.PARTIAL | ListWriteFlags.NO_FAIL), binName, itemList),
@@ -907,13 +939,15 @@ namespace Aerospike.Test
 
 			client.Delete(null, key);
 
-			List<Value> itemList = new List<Value>();
-			itemList.Add(Value.Get(0));
-			itemList.Add(Value.Get(4));
-			itemList.Add(Value.Get(5));
-			itemList.Add(Value.Get(9));
-			itemList.Add(Value.Get(11));
-			itemList.Add(Value.Get(15));
+			List<Value> itemList =
+			[
+				Value.Get(0),
+				Value.Get(4),
+				Value.Get(5),
+				Value.Get(9),
+				Value.Get(11),
+				Value.Get(15),
+			];
 
 			Record record = client.Operate(null, key,
 					ListOperation.AppendItems(new ListPolicy(ListOrder.ORDERED, ListWriteFlags.DEFAULT), binName, itemList)
@@ -923,10 +957,6 @@ namespace Aerospike.Test
 
 			long size = record.GetLong(binName);
 			Assert.AreEqual(6L, size);
-
-			itemList = new List<Value>();
-			itemList.Add(Value.Get(11));
-			itemList.Add(Value.Get(3));
 
 			record = client.Operate(null, key,
 					ListOperation.GetByValueRange(binName, Value.Get(10), Value.INFINITY, ListReturnType.VALUE)
@@ -951,23 +981,13 @@ namespace Aerospike.Test
 
 			client.Delete(null, key);
 
-			List<Value> i1 = new List<Value>();
-			i1.Add(Value.Get("John"));
-			i1.Add(Value.Get(55));
+			List<Value> i1 = [Value.Get("John"), Value.Get(55)];
 
-			List<Value> i2 = new List<Value>();
-			i2.Add(Value.Get("Jim"));
-			i2.Add(Value.Get(95));
+			List<Value> i2 = [Value.Get("Jim"), Value.Get(95)];
 
-			List<Value> i3 = new List<Value>();
-			i3.Add(Value.Get("Joe"));
-			i3.Add(Value.Get(80));
+			List<Value> i3 = [Value.Get("Joe"), Value.Get(80)];
 
-			List<Value> itemList = new List<Value>();
-
-			itemList.Add(Value.Get(i1));
-			itemList.Add(Value.Get(i2));
-			itemList.Add(Value.Get(i3));
+			List<Value> itemList = [Value.Get(i1), Value.Get(i2), Value.Get(i3)];
 
 			Record record = client.Operate(null, key,
 					ListOperation.AppendItems(binName, itemList)
@@ -978,9 +998,7 @@ namespace Aerospike.Test
 			long size = record.GetLong(binName);
 			Assert.AreEqual(3L, size);
 
-			itemList = new List<Value>();
-			itemList.Add(Value.Get("Jim"));
-			itemList.Add(Value.WILDCARD);
+			itemList = [Value.Get("Jim"), Value.WILDCARD];
 
 			record = client.Operate(null, key,
 					ListOperation.GetByValue(binName, Value.Get(itemList), ListReturnType.VALUE)
@@ -1006,26 +1024,13 @@ namespace Aerospike.Test
 
 			client.Delete(null, key);
 
-			IList<Value> l1 = new List<Value>();
-			l1.Add(Value.Get(7));
-			l1.Add(Value.Get(9));
-			l1.Add(Value.Get(5));
+			IList<Value> l1 = [Value.Get(7), Value.Get(9), Value.Get(5)];
 
-			IList<Value> l2 = new List<Value>();
-			l2.Add(Value.Get(1));
-			l2.Add(Value.Get(2));
-			l2.Add(Value.Get(3));
+			IList<Value> l2 = [Value.Get(1), Value.Get(2), Value.Get(3)];
 
-			IList<Value> l3 = new List<Value>();
-			l3.Add(Value.Get(6));
-			l3.Add(Value.Get(5));
-			l3.Add(Value.Get(4));
-			l3.Add(Value.Get(1));
+			IList<Value> l3 = [Value.Get(6), Value.Get(5), Value.Get(4), Value.Get(1)];
 
-			List<Value> inputList = new List<Value>();
-			inputList.Add(Value.Get(l1));
-			inputList.Add(Value.Get(l2));
-			inputList.Add(Value.Get(l3));
+			List<Value> inputList = [Value.Get(l1), Value.Get(l2), Value.Get(l3)];
 
 			// Create list.
 			client.Put(null, key, new Bin(binName, inputList));
@@ -1064,38 +1069,25 @@ namespace Aerospike.Test
 
 			client.Delete(null, key);
 
-			IList<Value> l11 = new List<Value>();
-			l11.Add(Value.Get(7));
-			l11.Add(Value.Get(9));
-			l11.Add(Value.Get(5));
+			IList<Value> l11 = [Value.Get(7), Value.Get(9), Value.Get(5)];
 
-			IList<Value> l12 = new List<Value>();
-			l12.Add(Value.Get(13));
+			IList<Value> l12 = [Value.Get(13)];
 
-			IList<Value> l1 = new List<Value>();
-			l1.Add(Value.Get(l11));
-			l1.Add(Value.Get(l12));
+			IList<Value> l1 = [Value.Get(l11), Value.Get(l12)];
 
-			IList<Value> l21 = new List<Value>();
-			l21.Add(Value.Get(9));
+			IList<Value> l21 = [Value.Get(9)];
 
-			IList<Value> l22 = new List<Value>();
-			l22.Add(Value.Get(2));
-			l22.Add(Value.Get(4));
+			IList<Value> l22 = [Value.Get(2), Value.Get(4)];
 
-			IList<Value> l23 = new List<Value>();
-			l23.Add(Value.Get(6));
-			l23.Add(Value.Get(1));
-			l23.Add(Value.Get(9));
+			IList<Value> l23 = [Value.Get(6), Value.Get(1), Value.Get(9)];
 
-			IList<Value> l2 = new List<Value>();
-			l2.Add(Value.Get(l21));
-			l2.Add(Value.Get(l22));
-			l2.Add(Value.Get(l23));
+			IList<Value> l2 = [Value.Get(l21), Value.Get(l22), Value.Get(l23)];
 
-			Dictionary<Value, Value> inputMap = new Dictionary<Value, Value>();
-			inputMap[Value.Get("key1")] = Value.Get(l1);
-			inputMap[Value.Get("key2")] = Value.Get(l2);
+			Dictionary<Value, Value> inputMap = new()
+			{
+				[Value.Get("key1")] = Value.Get(l1),
+				[Value.Get("key2")] = Value.Get(l2)
+			};
 
 			// Create list.
 			client.Put(null, key, new Bin(binName, inputMap));
@@ -1135,35 +1127,22 @@ namespace Aerospike.Test
 
 			client.Delete(null, key);
 
-			IList<Value> l1 = new List<Value>();
-			l1.Add(Value.Get(7));
-			l1.Add(Value.Get(9));
-			l1.Add(Value.Get(5));
+			IList<Value> l1 = [Value.Get(7), Value.Get(9), Value.Get(5)];
 
-			IList<Value> l2 = new List<Value>();
-			l2.Add(Value.Get(1));
-			l2.Add(Value.Get(2));
-			l2.Add(Value.Get(3));
+			IList<Value> l2 = [Value.Get(1), Value.Get(2), Value.Get(3)];
 
-			IList<Value> l3 = new List<Value>();
-			l3.Add(Value.Get(6));
-			l3.Add(Value.Get(5));
-			l3.Add(Value.Get(4));
-			l3.Add(Value.Get(1));
+			IList<Value> l3 = [Value.Get(6), Value.Get(5), Value.Get(4), Value.Get(1)];
 
-			List<Value> inputList = new List<Value>();
-			inputList.Add(Value.Get(l1));
-			inputList.Add(Value.Get(l2));
-			inputList.Add(Value.Get(l3));
+			List<Value> inputList = [Value.Get(l1), Value.Get(l2), Value.Get(l3)];
 
 			// Create list.
-			Record record = client.Operate(null, key,
+			_ = client.Operate(null, key,
 				ListOperation.AppendItems(new ListPolicy(ListOrder.ORDERED, 0), binName, inputList),
 				Operation.Get(binName)
 				);
 
 			// Append value to new list created after the original 3 lists.
-			record = client.Operate(null, key,
+			Record record = client.Operate(null, key,
 				ListOperation.Append(binName, Value.Get(2), CTX.ListIndexCreate(3, ListOrder.ORDERED, false)),
 				//ListOperation.Create(binName, ListOrder.ORDERED, false, CTX.ListIndex(3)),
 				//ListOperation.Append(binName, Value.Get(2), CTX.ListIndex(3)),
@@ -1194,21 +1173,18 @@ namespace Aerospike.Test
 
 			client.Delete(null, key);
 
-			List<Value> inputList = new List<Value>();
-			inputList.Add(Value.Get(55));
-			inputList.Add(Value.Get(11));
-			inputList.Add(Value.Get(33));
+			List<Value> inputList = [Value.Get(55), Value.Get(11), Value.Get(33)];
 
 			// Create list.
-			Record record = client.Operate(null, key,
+			_ = client.Operate(null, key,
 				ListOperation.AppendItems(binName, inputList)
 				);
 
 			// Define bounded list insertion policy.
-			ListPolicy listPolicy = new ListPolicy(ListOrder.UNORDERED, ListWriteFlags.INSERT_BOUNDED);
+			ListPolicy listPolicy = new(ListOrder.UNORDERED, ListWriteFlags.INSERT_BOUNDED);
 
 			// Insert values to new list that are in bounds.
-			record = client.Operate(null, key,
+			Record record = client.Operate(null, key,
 				ListOperation.Insert(listPolicy, binName, 1, Value.Get(22)),  // Insert at index 1.
 				ListOperation.Insert(listPolicy, binName, -1, Value.Get(44)), // Insert at last offset in list.
 				Operation.Get(binName)

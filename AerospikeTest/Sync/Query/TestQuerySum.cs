@@ -35,8 +35,10 @@ namespace Aerospike.Test
 			RegisterTask task = client.Register(null, assembly, "Aerospike.Test.LuaResources.sum_example.lua", "sum_example.lua", Language.LUA);
 			task.Wait();
 
-			Policy policy = new();
-			policy.totalTimeout = 0; // Do not timeout on index create.
+			Policy policy = new()
+			{
+				totalTimeout = 0 // Do not timeout on index create.
+			};
 
 			try
 			{
@@ -59,7 +61,7 @@ namespace Aerospike.Test
 			}
 		}
 
-		[ClassCleanup()]
+		[ClassCleanup(ClassCleanupBehavior.EndOfClass)]
 		public static void Destroy()
 		{
 			client.DropIndex(null, SuiteHelpers.ns, SuiteHelpers.set, indexName);
@@ -71,7 +73,7 @@ namespace Aerospike.Test
 			int begin = 4;
 			int end = 7;
 
-			Statement stmt = new Statement();
+			Statement stmt = new();
 			stmt.SetNamespace(SuiteHelpers.ns);
 			stmt.SetSetName(SuiteHelpers.set);
 			stmt.SetBinNames(binName);
@@ -112,16 +114,16 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void QuerySetNotFound()
 		{
-			Statement stmt = new Statement()
+			Statement stmt = new()
 			{
 				Namespace = SuiteHelpers.ns,
 				SetName = "notfound",
-				BinNames = new string[] { binName },
+				BinNames = [binName],
 				Filter = Filter.Range(binName, 4, 7)
 			};
 			stmt.SetAggregateFunction(Assembly.GetExecutingAssembly(), "Aerospike.Test.LuaResources.sum_example.lua", "sum_example", "sum_single_bin", Value.Get(binName));
 
-			QueryPolicy qp = new QueryPolicy()
+			QueryPolicy qp = new()
 			{
 				socketTimeout = 5000
 			};

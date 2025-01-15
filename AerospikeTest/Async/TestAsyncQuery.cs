@@ -26,14 +26,14 @@ namespace Aerospike.Test
 		private const string keyPrefix = "asqkey";
 		private static readonly string binName = Suite.GetBinName("asqbin");
 		private const int size = 50;
-		private static CancellationTokenSource tokenSource;
 
 		[ClassInitialize()]
 		public static void Prepare(TestContext testContext)
 		{
-			tokenSource = new CancellationTokenSource();
-			Policy policy = new();
-			policy.totalTimeout = 0; // Do not timeout on index create.
+			Policy policy = new()
+			{
+				totalTimeout = 0 // Do not timeout on index create.
+			};
 
 			try
 			{
@@ -49,7 +49,7 @@ namespace Aerospike.Test
 			}
 		}
 
-		[ClassCleanup()]
+		[ClassCleanup(ClassCleanupBehavior.EndOfClass)]
 		public static void Destroy()
 		{
 			client.DropIndex(null, SuiteHelpers.ns, SuiteHelpers.set, indexName);
@@ -58,7 +58,7 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void AsyncQuery()
 		{
-			WriteHandler handler = new WriteHandler(this);
+			WriteHandler handler = new(this);
 
 			for (int i = 1; i <= size; i++)
 			{
@@ -69,34 +69,9 @@ namespace Aerospike.Test
 			WaitTillComplete();
 		}
 
-		static void WriteHandlerSuccess(Key key, int count, TestAsyncQuery parent)
+		private class WriteHandler(TestAsyncQuery parent) : WriteListener
 		{
-			int rows = Interlocked.Increment(ref count);
-
-			if (rows == size)
-			{
-				int begin = 26;
-				int end = 34;
-
-				Statement stmt = new Statement();
-				stmt.SetNamespace(SuiteHelpers.ns);
-				stmt.SetSetName(SuiteHelpers.set);
-				stmt.SetBinNames(binName);
-				stmt.SetFilter(Filter.Range(binName, begin, end));
-
-				client.Query(null, new RecordSequenceHandler(parent), stmt);
-			}
-		}
-
-		private class WriteHandler : WriteListener
-		{
-			private readonly TestAsyncQuery parent;
 			internal int count;
-
-			public WriteHandler(TestAsyncQuery parent)
-			{
-				this.parent = parent;
-			}
 
 			public void OnSuccess(Key key)
 			{
@@ -107,7 +82,7 @@ namespace Aerospike.Test
 					int begin = 26;
 					int end = 34;
 
-					Statement stmt = new Statement();
+					Statement stmt = new();
 					stmt.SetNamespace(SuiteHelpers.ns);
 					stmt.SetSetName(SuiteHelpers.set);
 					stmt.SetBinNames(binName);
@@ -124,15 +99,9 @@ namespace Aerospike.Test
 			}
 		}
 
-		private class RecordSequenceHandler : RecordSequenceListener
+		private class RecordSequenceHandler(TestAsyncQuery parent) : RecordSequenceListener
 		{
-			private readonly TestAsyncQuery parent;
 			private int count;
-
-			public RecordSequenceHandler(TestAsyncQuery parent)
-			{
-				this.parent = parent;
-			}
 
 			public void OnRecord(Key key, Record record)
 			{

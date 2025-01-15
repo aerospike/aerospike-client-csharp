@@ -84,10 +84,7 @@ namespace Aerospike.Test
 			// Delete record if it already exists.
 			client.Delete(null, key);
 
-			List<string> list = new List<string>();
-			list.Add("string1");
-			list.Add("string2");
-			list.Add("string3");
+			List<string> list = ["string1", "string2", "string3"];
 
 			Bin bin = new(binName, list);
 

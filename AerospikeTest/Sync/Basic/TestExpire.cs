@@ -31,7 +31,7 @@ namespace Aerospike.Test
 			Bin bin = new(binName, "expirevalue");
 
 			// Specify that record expires 2 seconds after it's written.
-			WritePolicy writePolicy = new WritePolicy
+			WritePolicy writePolicy = new()
 			{
 				expiration = 2
 			};
@@ -55,8 +55,10 @@ namespace Aerospike.Test
 
 			// Specify that record NEVER expires. 
 			// The "Never Expire" value is -1, or 0xFFFFFFFF.
-			WritePolicy writePolicy = new();
-			writePolicy.expiration = -1;
+			WritePolicy writePolicy = new()
+			{
+				expiration = -1
+			};
 			client.Put(writePolicy, key, bin);
 
 			// Read the record, showing it is there.

@@ -178,14 +178,9 @@ namespace Aerospike.Test
 			}, ResultCode.FILTERED_OUT);
 		}
 
-		[TestMethod]
+		[TestMethod, TestCategory("Enterprise")]
 		public void FilterExpDurableDelete()
 		{
-			if (!SuiteHelpers.enterprise)
-			{
-				return;
-			}
-
 			WritePolicy policy = new()
 			{
 				filterExp = Exp.Build(Exp.EQ(Exp.IntBin(binA), Exp.Val(1))),
@@ -203,14 +198,9 @@ namespace Aerospike.Test
 			AssertBinEqual(keyB, r, binA, 2);
 		}
 
-		[TestMethod]
+		[TestMethod, TestCategory("Enterprise")]
 		public void FilterExpDurableDeleteExcept()
 		{
-			if (!SuiteHelpers.enterprise)
-			{
-				return;
-			}
-
 			WritePolicy policy = new()
 			{
 				filterExp = Exp.Build(Exp.EQ(Exp.IntBin(binA), Exp.Val(1))),
