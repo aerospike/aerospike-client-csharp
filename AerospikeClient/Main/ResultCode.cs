@@ -24,19 +24,19 @@ namespace Aerospike.Client
 	public sealed class ResultCode
 	{
 		/// <summary>
-		/// Multi-record transaction commit called, but the transaction was already aborted.
+		/// Transaction commit called, but the transaction was already aborted.
 		/// Value: -19
 		/// </summary>
 		public const int TXN_ALREADY_ABORTED = -19;
 
 		/// <summary>
-		/// Multi-record transaction abort called, but the transaction was already committed.
+		/// Transaction abort called, but the transaction was already committed.
 		/// Value: -18
 		/// </summary>
 		public const int TXN_ALREADY_COMMITTED = -18;
 
 		/// <summary>
-		/// Multi-record transaction failed.
+		/// Transaction failed.
 		/// Value: -17
 		/// </summary>
 		public const int TXN_FAILED = -17;
@@ -453,38 +453,38 @@ namespace Aerospike.Client
 		public const int UDF_BAD_RESPONSE = 100;
 
 		/// <summary>
-		/// MRT record blocked by a different transaction.
+		/// Transaction record blocked by a different transaction.
 		/// Value: 120
 		/// </summary>
 		public const int MRT_BLOCKED = 120;
 
 		/// <summary>
-		/// MRT read version mismatch identified during commit.
+		/// Transaction read version mismatch identified during commit.
 		/// Some other command changed the record outside of the transaction.
 		/// Value: 121
 		/// </summary>
 		public const int MRT_VERSION_MISMATCH = 121;
 
 		/// <summary>
-		/// MRT deadline reached without a successful commit or abort.
+		/// Transaction deadline reached without a successful commit or abort.
 		/// Value: 122
 		/// </summary>
 		public const int MRT_EXPIRED = 122;
 
 		/// <summary>
-		/// MRT write command limit (4096) exceeded.
+		/// Transaction write command limit (4096) exceeded.
 		/// Value: 123
 		/// </summary>
 		public const int MRT_TOO_MANY_WRITES = 123;
 
 		/// <summary>
-		/// MRT was already committed.
+		/// Transaction was already committed.
 		/// Value: 124
 		/// </summary>
 		public const int MRT_COMMITTED = 124;
-	
+
 		/// <summary>
-		/// MRT was already aborted.
+		/// Transaction was already aborted.
 		/// Value: 125
 		/// </summary>
 		public const int MRT_ABORTED = 125;
@@ -618,13 +618,13 @@ namespace Aerospike.Client
 			switch (resultCode)
 			{
 			case TXN_ALREADY_ABORTED:
-				return "Multi-record transaction already aborted";
+				return "Transaction already aborted";
 
 			case TXN_ALREADY_COMMITTED:
-				return "Multi-record transaction already committed";
+				return "Transaction already committed";
 
 			case TXN_FAILED:
-				return "Multi-record transaction failed";
+				return "Transaction failed";
 
 			case BATCH_FAILED:
 				return "One or more keys failed in a batch";
@@ -831,22 +831,22 @@ namespace Aerospike.Client
 				return "UDF returned error";
 
 			case MRT_BLOCKED:
-				return "MRT record blocked by a different transaction";
+				return "Transaction record blocked by a different transaction";
 
 			case MRT_VERSION_MISMATCH:
-				return "MRT version mismatch";
+				return "Transaction version mismatch";
 
 			case MRT_EXPIRED:
-				return "MRT expired";
+				return "Transaction expired";
 
 			case MRT_TOO_MANY_WRITES:
-				return "MRT write command limit exceeded";
+				return "Transaction write command limit exceeded";
 
 			case MRT_COMMITTED:
-				return "MRT already committed";
+				return "Transaction already committed";
 
 			case MRT_ABORTED:
-				return "MRT already aborted";
+				return "Transaction already aborted";
 
 			case MRT_ALREADY_LOCKED:
 				return "This record has been locked by a previous update in this transaction";

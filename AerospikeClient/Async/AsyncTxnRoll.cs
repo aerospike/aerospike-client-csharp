@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2024 Aerospike, Inc.
+ * Copyright 2012-2025 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -80,7 +80,7 @@ namespace Aerospike.Client
 			abortListener = listener;
 			txn.State = Txn.TxnState.ABORTED;
 
-			Roll(new RollListener(this), Command.INFO4_MRT_ROLL_BACK);
+			Roll(new RollListener(this), Command.INFO4_TXN_ROLL_BACK);
 		}
 
 		private void Verify(BatchRecordArrayListener verifyListener)
@@ -120,7 +120,7 @@ namespace Aerospike.Client
 
 		private void MarkRollForward()
 		{
-			// Tell MRT monitor that a roll-forward will commence.
+			// Tell transaction monitor that a roll-forward will commence.
 			try
 			{
 				MarkRollForwardListener writeListener = new(this);
@@ -138,7 +138,7 @@ namespace Aerospike.Client
 			try
 			{
 				RollForwardListener rollListener = new(this);
-				Roll(rollListener, Command.INFO4_MRT_ROLL_FORWARD);
+				Roll(rollListener, Command.INFO4_TXN_ROLL_FORWARD);
 			}
 			catch (Exception)
 			{
@@ -151,7 +151,7 @@ namespace Aerospike.Client
 			try
 			{
 				RollBackListener rollListener = new(this);
-				Roll(rollListener, Command.INFO4_MRT_ROLL_BACK);
+				Roll(rollListener, Command.INFO4_TXN_ROLL_BACK);
 			}
 			catch (Exception e)
 			{
@@ -229,7 +229,7 @@ namespace Aerospike.Client
 		{
 			if (!txn.CloseMonitor())
 			{
-				// There is no MRT monitor record to remove.
+				// There is no transaction monitor record to remove.
 				NotifyAbortSuccess(AbortStatusType.OK);
 				return;
 			}

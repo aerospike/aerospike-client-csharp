@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2024 Aerospike, Inc.
+ * Copyright 2012-2025 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -63,9 +63,9 @@ namespace Aerospike.Client
 		//   1      0     allow replica
 		//   1      1     allow unavailable
 
-		public static readonly int INFO4_MRT_VERIFY_READ = (1 << 0); // Send MRT version to the server to be verified.
-		public static readonly int INFO4_MRT_ROLL_FORWARD = (1 << 1); // Roll forward MRT.
-		public static readonly int INFO4_MRT_ROLL_BACK = (1 << 2); // Roll back MRT.
+		public static readonly int INFO4_TXN_VERIFY_READ = (1 << 0); // Send transaction version to the server to be verified.
+		public static readonly int INFO4_TXN_ROLL_FORWARD = (1 << 1); // Roll forward transaction.
+		public static readonly int INFO4_TXN_ROLL_BACK = (1 << 2); // Roll back transaction.
 
 		public const byte STATE_READ_AUTH_HEADER = 1;
 		public const byte STATE_READ_HEADER = 2;
@@ -126,7 +126,7 @@ namespace Aerospike.Client
 		}
 
 		//--------------------------------------------------
-		// Multi-record Transactions
+		// Transaction
 		//--------------------------------------------------
 
 		public void SetTxnAddKeys(WritePolicy policy, Key key, OperateArgs args)
@@ -175,7 +175,7 @@ namespace Aerospike.Client
 			dataBuffer[dataOffset++] = (byte)(Command.INFO1_READ | Command.INFO1_NOBINDATA);
 			dataBuffer[dataOffset++] = (byte)0;
 			dataBuffer[dataOffset++] = (byte)Command.INFO3_SC_READ_TYPE;
-			dataBuffer[dataOffset++] = (byte)Command.INFO4_MRT_VERIFY_READ;
+			dataBuffer[dataOffset++] = (byte)Command.INFO4_TXN_VERIFY_READ;
 			dataBuffer[dataOffset++] = 0;
 			dataOffset += ByteUtil.IntToBytes(0, dataBuffer, dataOffset);
 			dataOffset += ByteUtil.IntToBytes(0, dataBuffer, dataOffset);
@@ -283,7 +283,7 @@ namespace Aerospike.Client
 					dataBuffer[dataOffset++] = (byte)(Command.INFO1_READ | Command.INFO1_NOBINDATA);
 					dataBuffer[dataOffset++] = (byte)0;
 					dataBuffer[dataOffset++] = (byte)Command.INFO3_SC_READ_TYPE;
-					dataBuffer[dataOffset++] = (byte)Command.INFO4_MRT_VERIFY_READ;
+					dataBuffer[dataOffset++] = (byte)Command.INFO4_TXN_VERIFY_READ;
 
 					int fieldCount = 0;
 
@@ -1723,7 +1723,7 @@ namespace Aerospike.Client
 		{
 			if (txn != null)
 			{
-				dataOffset++; // Add info4 byte for MRT.
+				dataOffset++; // Add info4 byte for transaction.
 				dataOffset += 8 + FIELD_HEADER_SIZE;
 
 				if (ver.HasValue)
@@ -1869,7 +1869,7 @@ namespace Aerospike.Client
 
 			WriteBatchFields(key, fieldCount, opCount);
 
-			WriteFieldLE(txn.Id, FieldType.MRT_ID);
+			WriteFieldLE(txn.Id, FieldType.TXN_ID);
 
 			if (ver.HasValue)
 			{
@@ -1878,7 +1878,7 @@ namespace Aerospike.Client
 
 			if (attr.hasWrite && txn.Deadline != 0)
 			{
-				WriteFieldLE(txn.Deadline, FieldType.MRT_DEADLINE);
+				WriteFieldLE(txn.Deadline, FieldType.TXN_DEADLINE);
 			}
 
 			filter?.Write(this);
@@ -2975,7 +2975,7 @@ namespace Aerospike.Client
 		{
 			if (txn != null)
 			{
-				WriteFieldLE(txn.Id, FieldType.MRT_ID);
+				WriteFieldLE(txn.Id, FieldType.TXN_ID);
 
 				if (Version.HasValue)
 				{
@@ -2984,7 +2984,7 @@ namespace Aerospike.Client
 
 				if (sendDeadline && txn.Deadline != 0)
 				{
-					WriteFieldLE(txn.Deadline, FieldType.MRT_DEADLINE);
+					WriteFieldLE(txn.Deadline, FieldType.TXN_DEADLINE);
 				}
 			}
 		}
@@ -3254,7 +3254,7 @@ namespace Aerospike.Client
 				int type = dataBuffer[dataOffset++];
 				int size = len - 1;
 
-				if (type == FieldType.MRT_DEADLINE)
+				if (type == FieldType.TXN_DEADLINE)
 				{
 					int deadline = ByteUtil.LittleBytesToInt(dataBuffer, dataOffset);
 					txn.Deadline = deadline;

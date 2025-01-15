@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2024 Aerospike, Inc.
+ * Copyright 2012-2025 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -28,7 +28,7 @@ namespace Aerospike.Demo
 		}
 
 		/// <summary>
-		/// Multi-record transaction.
+		/// Transaction.
 		/// </summary>
 		public override void RunExample(AsyncClient client, Arguments args)
 		{
@@ -174,7 +174,7 @@ namespace Aerospike.Demo
 
 			var dp = client.WritePolicyDefault;
 			dp.Txn = txn;
-			dp.durableDelete = true;  // Required when running delete in a MRT.
+			dp.durableDelete = true;  // Required when running delete in a transaction.
 
 			Key key = new(args.ns, args.set, 3);
 

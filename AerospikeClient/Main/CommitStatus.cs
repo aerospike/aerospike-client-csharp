@@ -20,7 +20,7 @@ using static Aerospike.Client.AbortStatus;
 namespace Aerospike.Client
 {
 	/// <summary>
-	/// Multi-record transaction (MRT) commit status code.
+	/// Transaction commit status code.
 	/// </summary>
 	public static class CommitStatus
 	{
@@ -38,8 +38,8 @@ namespace Aerospike.Client
 			{
 				CommitStatusType.OK => "Commit succeeded.",
 				CommitStatusType.ALREADY_COMMITTED => "Already committed.",
-				CommitStatusType.ROLL_FORWARD_ABANDONED => "MRT client roll forward abandoned. Server will eventually commit the MRT.",
-				CommitStatusType.CLOSE_ABANDONED => "MRT has been rolled forward, but MRT client close was abandoned. Server will eventually close the MRT.",
+				CommitStatusType.ROLL_FORWARD_ABANDONED => "Transaction client roll forward abandoned. Server will eventually commit the transaction.",
+				CommitStatusType.CLOSE_ABANDONED => "Transaction has been rolled forward, but transaction client close was abandoned. Server will eventually close the transaction.",
 				_ => "Unexpected AbortStatusType."
 			};
 		}

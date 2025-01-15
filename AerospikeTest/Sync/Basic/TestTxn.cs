@@ -693,7 +693,7 @@ namespace Aerospike.Test
 			}
 			catch (AerospikeException ae)
 			{
-				if (!ae.Message.Contains("Command not allowed in current MRT state:"))
+				if (!ae.Message.Contains("Command not allowed in current transaction state:"))
 				{
 					throw;
 				}

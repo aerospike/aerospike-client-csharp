@@ -26,8 +26,8 @@ namespace Aerospike.Client
 	public class Policy
 	{
 		/// <summary>
-		/// Multi-record transaction identifier (MRT). If this field is populated, the corresponding
-		/// command will be included in the MRT. This field is ignored for scan/query.
+		/// Transaction identifier. If this field is populated, the corresponding
+		/// command will be included in the transaction. This field is ignored for scan/query.
 	    /// <para>
 	    /// Default: null
 		/// </para>
