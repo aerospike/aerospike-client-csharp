@@ -5,21 +5,25 @@ runs:
   using: "composite"
   steps:
     - name: Build
+      shell: pwsh
       run: dotnet build --configuration Release --no-restore /p:EnableWindowsTargeting=true
       
-    - name: Perform CodeQL Analysis     
+    - name: Perform CodeQL Analysis
       uses: github/codeql-action/analyze@v2
       
     - name: Create Code Signing Key
+      shell: pwsh
       run: |
         New-Item -ItemType directory -Path key
         Set-Content -Path key\key.txt -Value '${{ secrets.SG_KEY }}'
         certutil -decode key\key.txt key\key.snk
             
     - name: Delay Sign dll
+      shell: pwsh
       run: sn -R ./AerospikeClient/bin/Release/net6.0/AerospikeClient.dll key.snk
     
     - name: Create nuget packages
+      shell: pwsh
       run: dotnet pack --no-build
         
     #- name: Sign nuget packages
