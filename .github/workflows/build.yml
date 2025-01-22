@@ -37,6 +37,8 @@ jobs:
         
     - name: Build
       uses: ./.github/actions/build
+      with:
+        sgKey: ${{ secrets.SG_KEY }}
         
     #- name: Upload to JFrog
     #    if: ${{ !cancelled() && inputs.upload-artifacts == true }}

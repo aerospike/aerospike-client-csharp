@@ -1,6 +1,10 @@
 name: Build nuget package and test dll
 description: "Builds signed nuget package"
 
+inputs:
+  sgKey:
+    required: true
+
 runs:
   using: "composite"
   steps:
@@ -15,7 +19,7 @@ runs:
       shell: pwsh
       run: |
         New-Item -ItemType directory -Path key
-        Set-Content -Path key\key.txt -Value '${{ secrets.SG_KEY }}'
+        Set-Content -Path key\key.txt -Value '${{ inputs.sgKey }}'
         certutil -decode key\key.txt key\key.snk
             
     - name: Delay Sign dll
