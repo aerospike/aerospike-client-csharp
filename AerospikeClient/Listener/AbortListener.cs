@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2024 Aerospike, Inc.
+ * Copyright 2012-2025 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -19,7 +19,7 @@ using static Aerospike.Client.AbortStatus;
 namespace Aerospike.Client
 {
 	/// <summary>
-	/// Asynchronous result notifications for multi-record transaction (MRT) aborts.
+	/// Asynchronous result notifications for transaction aborts.
 	/// </summary>
 	public interface AbortListener
 	{

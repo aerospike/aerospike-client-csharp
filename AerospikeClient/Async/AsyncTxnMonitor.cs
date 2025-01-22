@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2024 Aerospike, Inc.
+ * Copyright 2012-2025 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -22,7 +22,7 @@ namespace Aerospike.Client
 		{
 			if (policy.Txn == null)
 			{
-				// Command is not run under a MRT monitor. Run original command.
+				// Command is not run under a transaction. Run original command.
 				command.Execute();
 				return;
 			}
@@ -32,12 +32,12 @@ namespace Aerospike.Client
 
 			if (txn.Writes.Contains(cmdKey))
 			{
-				// MRT monitor already contains this key. Run original command.
+				// Transaction already contains this key. Run original command.
 				command.Execute();
 				return;
 			}
 
-			// Add key to MRT monitor and then run original command.
+			// Add key to transaction and then run original command.
 			Operation[] ops = TxnMonitor.GetTxnOps(txn, cmdKey);
 			SingleTxnMonitor stm = new(cluster, command);
 			stm.Execute(cluster, policy, ops);
@@ -51,12 +51,12 @@ namespace Aerospike.Client
 		{
 			if (policy.Txn == null)
 			{
-				// Command is not run under a MRT monitor. Run original command.
+				// Command is not run under a transaction. Run original command.
 				executor.Execute(executor.commands);
 				return;
 			}
 
-			// Add write keys to MRT monitor and then run original command.
+			// Add write keys to transaction monitor and then run original command.
 			Operation[] ops = TxnMonitor.GetTxnOps(policy.Txn, keys);
 			BatchTxnMonitor ate = new(executor);
 			ate.Execute(executor.cluster, policy, ops);
@@ -70,12 +70,12 @@ namespace Aerospike.Client
 		{
 			if (policy.Txn == null)
 			{
-				// Command is not run under a MRT monitor. Run original command.
+				// Command is not run under a transaction. Run original command.
 				executor.Execute();
 				return;
 			}
 
-			// Add write keys to MRT monitor and then run original command.
+			// Add write keys to transaction monitor and then run original command.
 			Operation[] ops = TxnMonitor.GetTxnOps(policy.Txn, records);
 
 			if (ops == null)
@@ -145,7 +145,7 @@ namespace Aerospike.Client
 
 			ExecuteRecordListener txnListener = new(this);
 
-			// Add write key(s) to MRT monitor.
+			// Add write key(s) to transaction monitor.
 			OperateArgs args = new(wp, null, null, ops);
 			AsyncTxnAddKeys txnCommand = new(cluster, txnListener, txnKey, args, txn);
 			txnCommand.Execute();
@@ -194,7 +194,7 @@ namespace Aerospike.Client
 
 			public void OnFailure(AerospikeException ae)
 			{
-				monitor.NotifyFailure(new AerospikeException(ResultCode.TXN_FAILED, "Failed to add key(s) to MRT monitor", ae));
+				monitor.NotifyFailure(new AerospikeException(ResultCode.TXN_FAILED, "Failed to add key(s) to transaction monitor", ae));
 			}
 		}
 	}
