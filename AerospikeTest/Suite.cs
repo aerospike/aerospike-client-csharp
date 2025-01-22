@@ -25,6 +25,8 @@ namespace Aerospike.Test
 		public static void AssemblyInit(TestContext context)
 		{
 			SuiteHelpers.port = int.Parse(context.Properties["Port"].ToString());
+			Console.WriteLine($"Port {SuiteHelpers.port}");
+			Log.Info($"Port {SuiteHelpers.port}");
 			SuiteHelpers.clusterName = context.Properties["ClusterName"].ToString();
 			SuiteHelpers.user = context.Properties["User"].ToString();
 			SuiteHelpers.password = context.Properties["Password"].ToString();

@@ -1,0 +1,48 @@
+name: Run tests
+
+# Trigger test workflow whenever:
+# 1. A pull request is updated (e.g with new commits)
+# 2. Commits are pushed directly to the stage or master branch
+on:
+  push:
+    branches: ["stage*", "master*", "pipeline"]
+  pull_request:
+    branches: ["stage*", "master*"]
+    types: [
+      # Default triggers
+      opened,
+      synchronize,
+      reopened,
+      # Additional triggers
+      labeled,
+      unlabeled
+    ]
+  workflow_dispatch:
+    inputs:
+      test-server-rc:
+        type: boolean
+        default: false
+        required: true
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+    - uses: actions/checkout@v2
+    
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: 6.0.x
+        
+    - name: Build
+      uses: ./.github/actions/build
+        
+    #- name: Upload to JFrog
+    #    if: ${{ !cancelled() && inputs.upload-artifacts == true }}
+    #    uses: ./.github/actions/upload-to-jfrog
+    
+    - name: Test
+        uses: ./.github/actions/test
+        with:
+          use-server-rc: ${{ contains(github.event.pull_request.labels.*.name, 'new-server-features') }}

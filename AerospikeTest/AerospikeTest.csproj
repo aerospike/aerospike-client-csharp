@@ -6,7 +6,12 @@
     <Nullable>disable</Nullable>
     <RootNamespace>Aerospike.Test</RootNamespace>
     <AssemblyName>AerospikeTest</AssemblyName>
-    <TestingExtensionsProfile>None</TestingExtensionsProfile>
+    <TestingExtensionsProfile>Default</TestingExtensionsProfile>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+    <TestingPlatformDotnetTestSupport>true</TestingPlatformDotnetTestSupport>
+    <OutputType>Exe</OutputType>
+    <EnableMSTestRunner>true</EnableMSTestRunner>
   </PropertyGroup>
 
   <ItemGroup>

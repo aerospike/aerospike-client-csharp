@@ -1,0 +1,28 @@
+name: Build nuget package and test dll
+description: "Builds signed nuget package"
+
+inputs:
+
+
+runs:
+  using: "composite"
+  steps:
+    - name: Build
+      run: dotnet build --configuration Release --no-restore /p:EnableWindowsTargeting=true
+      
+    - name: Perform CodeQL Analysis     
+      uses: github/codeql-action/analyze@v2
+      
+    - name: Create Code Signing Key
+      run: |
+        New-Item -ItemType directory -Path key
+        Set-Content -Path key\key.txt -Value '${{ secrets.SG_KEY }}'
+        certutil -decode key\key.txt key\key.snk
+            
+    - name: Delay Sign dll
+      run: sn -R ./AerospikeClient/bin/Release/net6.0/AerospikeClient.dll key.snk
+    
+    - name: Create nuget packages
+      run: dotnet pack --no-build
+        
+    #- name: Sign nuget packages
