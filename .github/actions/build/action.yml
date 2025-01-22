@@ -1,9 +1,6 @@
 name: Build nuget package and test dll
 description: "Builds signed nuget package"
 
-inputs:
-
-
 runs:
   using: "composite"
   steps:

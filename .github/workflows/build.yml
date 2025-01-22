@@ -1,4 +1,4 @@
-name: Run tests
+name: Build and test code
 
 # Trigger test workflow whenever:
 # 1. A pull request is updated (e.g with new commits)
