@@ -8,9 +8,13 @@ inputs:
 runs:
   using: "composite"
   steps:
+    - name: Restore dependencies
+      shell: pwsh
+      run: dotnet restore
+    
     - name: Build
       shell: pwsh
-      run: dotnet build --configuration Release --no-restore /p:EnableWindowsTargeting=true
+      run: dotnet build --configuration Release --no-restore
       
     - name: Perform CodeQL Analysis
       uses: github/codeql-action/analyze@v2
