@@ -43,6 +43,6 @@ jobs:
     #    uses: ./.github/actions/upload-to-jfrog
     
     - name: Test
-        uses: ./.github/actions/test
-        with:
-          use-server-rc: ${{ contains(github.event.pull_request.labels.*.name, 'new-server-features') }}
+      uses: ./.github/actions/test
+      with:
+        use-server-rc: ${{ contains(github.event.pull_request.labels.*.name, 'new-server-features') }}
