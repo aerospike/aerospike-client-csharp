@@ -61,7 +61,7 @@
     <PackageIcon>icon.png</PackageIcon>
     <SignAssembly>True</SignAssembly>
     <DelaySign>True</DelaySign>
-    <AssemblyOriginatorKeyFile>C:\Users\sklaus\repos\aerospike-client-csharp-2\aerospike-client-csharp\AerospikePublicKey.snk</AssemblyOriginatorKeyFile>
+    <AssemblyOriginatorKeyFile>../AerospikePublicKey.snk</AssemblyOriginatorKeyFile>
     <GeneratePackageOnBuild>False</GeneratePackageOnBuild>
   </PropertyGroup>
 
