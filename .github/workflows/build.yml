@@ -54,7 +54,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - name: Download testing dll
-      uses: actions/download-artifact@v2
+      uses: actions/download-artifact@v4
       with:
         name: AerospikeTest.dll
     - uses: actions/checkout@v2
