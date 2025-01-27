@@ -24,10 +24,11 @@ runs:
         docker-hub-password: ${{ inputs.docker-hub-password }}
 
     - name: Test
-      shell: pwsh
+      shell: bash
       run: dotnet exec .\AerospikeTest\bin\Release\net8.0\AerospikeTest.dll --settings .\test.runsettings
     
     - name: Show logs if failed
+      shell: bash
       if: ${{ failure() }}
       run: |
         docker container logs aerospike
