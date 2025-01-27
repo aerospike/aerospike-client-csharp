@@ -4,8 +4,14 @@ description: "Test code base"
 inputs:
   use-server-rc:
     required: false
-    default: "false"
-    description: "Test against server release candidate?"
+    default: false
+    description: Test against server release candidate?
+  docker-hub-username:
+    description: Required for using release candidates
+    required: false
+  docker-hub-password:
+    description: Required for using release candidates
+    required: false
 
 runs:
   using: "composite"
@@ -14,10 +20,11 @@ runs:
       uses: ./.github/actions/run-ee-server
       with:
         use-server-rc: ${{ inputs.use-server-rc }}
-        docker-hub-username: ${{ secrets.DOCKER_HUB_BOT_USERNAME }}
-        docker-hub-password: ${{ secrets.DOCKER_HUB_BOT_PW }}
+        docker-hub-username: ${{ inputs.docker-hub-username }}
+        docker-hub-password: ${{ inputs.docker-hub-password }}
 
     - name: Test
+      shell: pwsh
       run: dotnet exec .\AerospikeTest\bin\Release\net8.0\AerospikeTest.dll --settings .\test.runsettings
     
     - name: Show logs if failed
