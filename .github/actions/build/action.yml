@@ -26,7 +26,7 @@ runs:
     - name: Delay Sign dll
       shell: pwsh
       run: |
-        & 'C:\Program Files (x86)\Microsoft SDKs\Windows\v10.0A\bin\NETFX 4.8.1 Tools\sn.exe' -R .\AerospikeClient\bin\Release\net6.0\AerospikeClient.dll key.snk
+        & 'C:\Program Files (x86)\Microsoft SDKs\Windows\v10.0A\bin\NETFX 4.8.1 Tools\sn.exe' -R .\AerospikeClient\bin\Release\net6.0\AerospikeClient.dll key\key.snk
     
     - name: Create nuget packages
       shell: pwsh
