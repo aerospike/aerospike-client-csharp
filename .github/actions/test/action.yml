@@ -25,7 +25,7 @@ runs:
 
     - name: Test
       shell: bash
-      run: dotnet exec .\AerospikeTest\bin\Release\net8.0\AerospikeTest.dll --settings .\test.runsettings
+      run: dotnet exec AerospikeTest.dll --settings .\test.runsettings
     
     - name: Show logs if failed
       shell: bash

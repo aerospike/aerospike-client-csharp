@@ -44,9 +44,25 @@ jobs:
     #    if: ${{ !cancelled() && inputs.upload-artifacts == true }}
     #    uses: ./.github/actions/upload-to-jfrog
     
+    - uses: actions/upload-artifact@v4
+      with:
+        name: AerospikeTest.dll
+        path: .\AerospikeTest\bin\Release\net8.0\AerospikeTest.dll
+  
+  test:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+    - name: Download testing dll
+      uses: actions/download-artifact@v2
+        with:
+          name: AerospikeTest.dll
+    - uses: actions/checkout@v2
+    
     - name: Test
       uses: ./.github/actions/test
       with:
         use-server-rc: ${{ contains(github.event.pull_request.labels.*.name, 'new-server-features') }}
         docker-hub-username: ${{ secrets.DOCKER_HUB_BOT_USERNAME }}
         docker-hub-password: ${{ secrets.DOCKER_HUB_BOT_PW }}
+    
