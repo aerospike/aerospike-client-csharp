@@ -55,8 +55,8 @@ jobs:
     steps:
     - name: Download testing dll
       uses: actions/download-artifact@v2
-        with:
-          name: AerospikeTest.dll
+      with:
+        name: AerospikeTest.dll
     - uses: actions/checkout@v2
     
     - name: Test
