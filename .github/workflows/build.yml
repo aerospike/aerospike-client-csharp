@@ -59,10 +59,28 @@ jobs:
         name: AerospikeTest.dll
     - uses: actions/checkout@v2
     
-    - name: Test
-      uses: ./.github/actions/test
+    - name: Run EE server
+      uses: ./.github/actions/run-ee-server
       with:
-        use-server-rc: ${{ contains(github.event.pull_request.labels.*.name, 'new-server-features') }}
-        docker-hub-username: ${{ secrets.DOCKER_HUB_BOT_USERNAME }}
-        docker-hub-password: ${{ secrets.DOCKER_HUB_BOT_PW }}
+        use-server-rc: ${{ inputs.use-server-rc }}
+        docker-hub-username: ${{ inputs.docker-hub-username }}
+        docker-hub-password: ${{ inputs.docker-hub-password }}
+
+    - name: Test
+      shell: bash
+      run: dotnet exec AerospikeTest.dll --settings .\test.runsettings
+    
+    - name: Show logs if failed
+      shell: bash
+      if: ${{ failure() }}
+      run: |
+        docker container logs aerospike
+        cat ./configs/aerospike.conf
+    
+    #- name: Test
+    #  uses: ./.github/actions/test
+    #  with:
+    #    use-server-rc: ${{ contains(github.event.pull_request.labels.*.name, 'new-server-features') }}
+    #    docker-hub-username: ${{ secrets.DOCKER_HUB_BOT_USERNAME }}
+    #    docker-hub-password: ${{ secrets.DOCKER_HUB_BOT_PW }}
     
