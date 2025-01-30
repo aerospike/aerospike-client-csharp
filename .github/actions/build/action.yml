@@ -41,24 +41,22 @@ runs:
         oidc-provider-name: gh-aerospike-clients
         oidc-audience: aerospike/clients
 
-    - name: setup nuget authentication with jfrog tokens
-      id: setup-nuget-auth-with-jfrog-tokens
+    - name: Configure NuGet repository
       shell: pwsh
-      env:
-        JFROG_OIDC_TOKEN: ${{ steps.setup-jfrog-cli.outputs.oidc-token }}
+      working-directory: AerospikeClient\bin\Release
       run: |
-        nuget setapikey ${{ env.JFROG_OIDC_TOKEN }} -Source https://aerospike.jfrog.io/artifactory/api/nuget/database-nuget-dev-local/
+        jf nuget-config --repo-resolve database-nuget-dev-local --repo-deploy database-nuget-dev-local
 
-    #- name: Sign nuget packages
+    # - name: Sign nuget packages
 
     - name: Deploy release
       shell: pwsh
       working-directory: AerospikeClient\bin\Release
       run: |
-        nuget push Aerospike.Client.* -Source https://aerospike.jfrog.io/artifactory/api/nuget/database-nuget-dev-local/
+        jf dotnet nuget push Aerospike.Client.* --build-name=${{ github.repository }} --build-number=${{ github.run_number }}
 
     - name: Deploy test
       shell: pwsh
       working-directory: AerospikeTest\bin\Release\net8.0
       run: |
-        curl -T AerospikeTest.dll "https://aerospike.jfrog.io/artifactory/database-generic-dev-local/"
+        jf rt upload AerospikeTest.dll database-generic-dev-local/
