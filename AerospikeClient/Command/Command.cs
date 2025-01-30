@@ -66,6 +66,7 @@ namespace Aerospike.Client
 		public static readonly int INFO4_TXN_VERIFY_READ = (1 << 0); // Send transaction version to the server to be verified.
 		public static readonly int INFO4_TXN_ROLL_FORWARD = (1 << 1); // Roll forward transaction.
 		public static readonly int INFO4_TXN_ROLL_BACK = (1 << 2); // Roll back transaction.
+		public static readonly int INFO4_TXN_ON_LOCKING_ONLY = (1 << 4); // Must be able to lock record in transaction.
 
 		public const byte STATE_READ_AUTH_HEADER = 1;
 		public const byte STATE_READ_HEADER = 2;
@@ -2539,6 +2540,7 @@ namespace Aerospike.Client
 			// Set flags.
 			int generation = 0;
 			int infoAttr = 0;
+			int txnAttr = 0;
 
 			switch (policy.recordExistsAction)
 			{
@@ -2582,6 +2584,11 @@ namespace Aerospike.Client
 				writeAttr |= Command.INFO2_DURABLE_DELETE;
 			}
 
+			if (policy.OnLockingOnly)
+			{
+				txnAttr |= Command.INFO4_TXN_ON_LOCKING_ONLY;
+			}
+
 			dataOffset += 8;
 
 			// Write all header data except total size which must be written last. 
@@ -2589,7 +2596,7 @@ namespace Aerospike.Client
 			dataBuffer[dataOffset++] = (byte)0;
 			dataBuffer[dataOffset++] = (byte)writeAttr;
 			dataBuffer[dataOffset++] = (byte)infoAttr;
-			dataBuffer[dataOffset++] = 0;
+			dataBuffer[dataOffset++] = (byte)txnAttr;
 			dataBuffer[dataOffset++] = 0; // clear the result code
 			dataOffset += ByteUtil.IntToBytes((uint)generation, dataBuffer, dataOffset);
 			dataOffset += ByteUtil.IntToBytes((uint)policy.expiration, dataBuffer, dataOffset);
@@ -2614,6 +2621,7 @@ namespace Aerospike.Client
 			int readAttr = args.readAttr;
 			int writeAttr = args.writeAttr;
 			int infoAttr = 0;
+			int txnAttr = 0;
 			int operationCount = args.operations.Length;
 
 			switch (policy.recordExistsAction)
@@ -2657,6 +2665,12 @@ namespace Aerospike.Client
 			{
 				writeAttr |= Command.INFO2_DURABLE_DELETE;
 			}
+
+			if (policy.OnLockingOnly)
+			{
+				txnAttr |= Command.INFO4_TXN_ON_LOCKING_ONLY;
+			}
+
 			switch (policy.readModeSC)
 			{
 				case ReadModeSC.SESSION:
@@ -2689,7 +2703,7 @@ namespace Aerospike.Client
 			dataBuffer[dataOffset++] = (byte)readAttr;
 			dataBuffer[dataOffset++] = (byte)writeAttr;
 			dataBuffer[dataOffset++] = (byte)infoAttr;
-			dataBuffer[dataOffset++] = 0; // unused
+			dataBuffer[dataOffset++] = (byte)txnAttr;
 			dataBuffer[dataOffset++] = 0; // clear the result code
 			dataOffset += ByteUtil.IntToBytes((uint)generation, dataBuffer, dataOffset);
 			dataOffset += ByteUtil.IntToBytes((uint)ttl, dataBuffer, dataOffset);
@@ -2819,7 +2833,7 @@ namespace Aerospike.Client
 			dataBuffer[dataOffset++] = (byte)attr.readAttr;
 			dataBuffer[dataOffset++] = (byte)attr.writeAttr;
 			dataBuffer[dataOffset++] = (byte)attr.infoAttr;
-			dataBuffer[dataOffset++] = 0; // unused
+			dataBuffer[dataOffset++] = (byte)attr.txnAttr;
 			dataBuffer[dataOffset++] = 0; // clear the result code
 			dataOffset += ByteUtil.IntToBytes((uint)attr.generation, dataBuffer, dataOffset);
 			dataOffset += ByteUtil.IntToBytes((uint)attr.expiration, dataBuffer, dataOffset);
