@@ -11,43 +11,52 @@ runs:
     - name: Restore dependencies
       shell: pwsh
       run: dotnet restore
-    
+
     - name: Build
       shell: pwsh
       run: dotnet build --configuration Release --no-restore
-      
+
     - name: Create Code Signing Key
       shell: pwsh
       run: |
         New-Item -ItemType directory -Path key
         Set-Content -Path key\key.txt -Value '${{ inputs.sgKey }}'
         certutil -decode key\key.txt key\key.snk
-            
+
     - name: Delay Sign dll
       shell: pwsh
       run: |
         & 'C:\Program Files (x86)\Microsoft SDKs\Windows\v10.0A\bin\NETFX 4.8.1 Tools\sn.exe' -R .\AerospikeClient\bin\Release\net6.0\AerospikeClient.dll key\key.snk
-    
+
     - name: Create nuget packages
       shell: pwsh
       run: dotnet pack --no-build
-      
+
     - name: Setup JFrog CLI
+      id: setup-jfrog-cli
       uses: jfrog/setup-jfrog-cli@v4.4.2
       env:
-        JF_URL: https://aerospike.jfrog.io 
+        JF_URL: https://aerospike.jfrog.io
       with:
         oidc-provider-name: gh-aerospike-clients
         oidc-audience: aerospike/clients
-        
+
+    - name: setup nuget authentication with jfrog tokens
+      id: setup-nuget-auth-with-jfrog-tokens
+      shell: pwsh
+      env:
+        JFROG_OIDC_TOKEN: ${{ steps.setup-jfrog-cli.outputs.oidc-token }}
+      run: |
+        nuget setapikey ${{ env.JFROG_OIDC_TOKEN }} -Source https://aerospike.jfrog.io/artifactory/api/nuget/database-nuget-dev-local/
+
     #- name: Sign nuget packages
-    
+
     - name: Deploy release
       shell: pwsh
       working-directory: AerospikeClient\bin\Release
       run: |
         nuget push Aerospike.Client.* -Source https://aerospike.jfrog.io/artifactory/api/nuget/database-nuget-dev-local/
-    
+
     - name: Deploy test
       shell: pwsh
       working-directory: AerospikeTest\bin\Release\net8.0
