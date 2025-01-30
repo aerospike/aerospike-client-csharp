@@ -52,10 +52,10 @@ runs:
       shell: pwsh
       working-directory: AerospikeClient\bin\Release
       run: |
-        jf rt u Aerospike.Client.* --build-name=${{ github.repository }} --build-number=${{ github.run_number }}
+        jf rt u Aerospike.Client.* database-nuget-dev-local --build-name=${{ github.repository }} --build-number=${{ github.run_number }}
 
     - name: Deploy test
       shell: pwsh
       working-directory: AerospikeTest\bin\Release\net8.0
       run: |
-        jf rt u AerospikeTest.dll database-generic-dev-local/
+        jf rt u AerospikeTest.dll database-generic-dev-local --build-name=${{ github.repository }} --build-number=${{ github.run_number }}
