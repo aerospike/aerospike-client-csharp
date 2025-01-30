@@ -35,52 +35,19 @@ jobs:
       with:
         dotnet-version: 6.0.x
         
-    - name: Build
+    - name: Build and Upload to JFrog
       uses: ./.github/actions/build
       with:
         sgKey: ${{ secrets.SG_KEY }}
-        
-    #- name: Upload to JFrog
-    #    if: ${{ !cancelled() && inputs.upload-artifacts == true }}
-    #    uses: ./.github/actions/upload-to-jfrog
-    
-    - uses: actions/upload-artifact@v4
-      with:
-        name: AerospikeTest.dll
-        path: .\AerospikeTest\bin\Release\net8.0\AerospikeTest.dll
   
   test:
     needs: build
     runs-on: ubuntu-latest
     steps:
-    - name: Download testing dll
-      uses: actions/download-artifact@v4
-      with:
-        name: AerospikeTest.dll
-    - uses: actions/checkout@v2
-    
-    - name: Run EE server
-      uses: ./.github/actions/run-ee-server
-      with:
-        use-server-rc: ${{ inputs.use-server-rc }}
-        docker-hub-username: ${{ inputs.docker-hub-username }}
-        docker-hub-password: ${{ inputs.docker-hub-password }}
-
     - name: Test
-      shell: bash
-      run: dotnet exec AerospikeTest.dll --settings .\test.runsettings
-    
-    - name: Show logs if failed
-      shell: bash
-      if: ${{ failure() }}
-      run: |
-        docker container logs aerospike
-        cat ./configs/aerospike.conf
-    
-    #- name: Test
-    #  uses: ./.github/actions/test
-    #  with:
-    #    use-server-rc: ${{ contains(github.event.pull_request.labels.*.name, 'new-server-features') }}
-    #    docker-hub-username: ${{ secrets.DOCKER_HUB_BOT_USERNAME }}
-    #    docker-hub-password: ${{ secrets.DOCKER_HUB_BOT_PW }}
+      uses: ./.github/actions/test
+      with:
+        use-server-rc: ${{ contains(github.event.pull_request.labels.*.name, 'new-server-features') }}
+        docker-hub-username: ${{ secrets.DOCKER_HUB_BOT_USERNAME }}
+        docker-hub-password: ${{ secrets.DOCKER_HUB_BOT_PW }}
     

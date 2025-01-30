@@ -33,3 +33,10 @@ runs:
       run: dotnet pack --no-build
         
     #- name: Sign nuget packages
+    
+    - name: Deploy release
+      shell: pwsh
+      working-directory: AerospikeClient\bin\Release
+      run: |
+        nuget push Aerospike.Client -Source https://aerospike.jfrog.io/artifactory/api/nuget/database-nuget-dev-local/
+        nuget push Aerospike.Test -Source https://aerospike.jfrog.io/artifactory/api/nuget/database-nuget-test-local/
