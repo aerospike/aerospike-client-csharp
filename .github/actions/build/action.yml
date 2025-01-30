@@ -31,6 +31,14 @@ runs:
     - name: Create nuget packages
       shell: pwsh
       run: dotnet pack --no-build
+      
+    - name: Setup JFrog CLI
+      uses: jfrog/setup-jfrog-cli@v4.4.2
+      env:
+        JF_URL: https://aerospike.jfrog.io 
+      with:
+        oidc-provider-name: gh-aerospike-clients
+        oidc-audience: aerospike/clients
         
     #- name: Sign nuget packages
     
@@ -39,4 +47,9 @@ runs:
       working-directory: AerospikeClient\bin\Release
       run: |
         nuget push Aerospike.Client.* -Source https://aerospike.jfrog.io/artifactory/api/nuget/database-nuget-dev-local/
-        nuget push Aerospike.Test.* -Source https://aerospike.jfrog.io/artifactory/api/nuget/database-nuget-test-local/
+    
+    - name: Deploy test
+      shell: pwsh
+      working-directory: AerospikeTest\bin\Release\net8.0
+      run: |
+        curl -T AerospikeTest.dll "https://aerospike.jfrog.io/artifactory/database-generic-dev-local/"
