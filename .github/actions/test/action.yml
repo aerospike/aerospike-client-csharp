@@ -23,6 +23,19 @@ runs:
         docker-hub-username: ${{ inputs.docker-hub-username }}
         docker-hub-password: ${{ inputs.docker-hub-password }}
 
+    - name: Setup JFrog CLI
+      id: setup-jfrog-cli
+      uses: jfrog/setup-jfrog-cli@v4.4.2
+      env:
+        JF_URL: https://aerospike.jfrog.io
+      with:
+        oidc-provider-name: gh-aerospike-clients
+        oidc-audience: aerospike/clients
+    
+    - name: Download Test dll
+      shell: bash
+      run: jf rt dl AerospikeTest.dll database-generic-dev-local --build-name=${{ github.repository }} --build-number=${{ github.run_number }}
+    
     - name: Test
       shell: bash
       run: dotnet exec AerospikeTest.dll --settings .\test.runsettings
