@@ -43,9 +43,8 @@ runs:
 
     - name: Configure NuGet repository
       shell: pwsh
-      working-directory: AerospikeClient\bin\Release
       run: |
-        jf nuget-config --repo-resolve database-nuget-dev-local --repo-deploy database-nuget-dev-local
+        jf nuget-config --repo-resolve database-nuget-dev-local
 
     # - name: Sign nuget packages
 
@@ -53,10 +52,10 @@ runs:
       shell: pwsh
       working-directory: AerospikeClient\bin\Release
       run: |
-        jf dotnet nuget push Aerospike.Client.* --build-name=${{ github.repository }} --build-number=${{ github.run_number }}
+        jf rt u Aerospike.Client.* --build-name=${{ github.repository }} --build-number=${{ github.run_number }}
 
     - name: Deploy test
       shell: pwsh
       working-directory: AerospikeTest\bin\Release\net8.0
       run: |
-        jf rt upload AerospikeTest.dll database-generic-dev-local/
+        jf rt u AerospikeTest.dll database-generic-dev-local/
