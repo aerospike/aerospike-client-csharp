@@ -35,8 +35,8 @@ runs:
     - name: Download Test dll
       shell: bash
       run: |
-        jf rt dl "AerospikeTest.dll" --build-name=${{ github.repository }} --build-number=${{ github.run_number }} --flat .
-        jf rt dl "AerospikeTest.runtimeconfig.json" --build-name=${{ github.repository }} --build-number=${{ github.run_number }} --flat .
+        jf rt dl "AerospikeTest.dll" --build-name=${{ github.repository }} --build-number=${{ github.run_number }} --flat database-generic-dev-local
+        jf rt dl "AerospikeTest.runtimeconfig.json" --build-name=${{ github.repository }} --build-number=${{ github.run_number }} --flat database-generic-dev-local
     
     - name: Test
       shell: bash
