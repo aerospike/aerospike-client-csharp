@@ -59,3 +59,4 @@ runs:
       working-directory: AerospikeTest\bin\Release\net8.0
       run: |
         jf rt u AerospikeTest.dll database-generic-dev-local --build-name=${{ github.repository }} --build-number=${{ github.run_number }}
+        jf rt u AerospikeTest.runtimeconfig.json database-generic-dev-local --build-name=${{ github.repository }} --build-number=${{ github.run_number }}
