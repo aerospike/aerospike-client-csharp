@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2024 Aerospike, Inc.
+ * Copyright 2012-2025 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -14,9 +14,7 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using System;
 using System.Net;
-using System.Collections.Generic;
 
 namespace Aerospike.Client
 {
@@ -24,7 +22,6 @@ namespace Aerospike.Client
 	{
 		internal Node fallback;
 		internal string name;
-		internal List<Host> aliases;
 		internal Host primaryHost;
 		internal IPEndPoint primaryAddress;
 		internal Connection primaryConn;
@@ -40,7 +37,6 @@ namespace Aerospike.Client
 		public Node SeedNode(Cluster cluster, Host host, Peers peers)
 		{
 			name = null;
-			aliases = null;
 			primaryHost = null;
 			primaryAddress = null;
 			primaryConn = null;
@@ -57,12 +53,6 @@ namespace Aerospike.Client
 				try
 				{
 					ValidateAddress(cluster, address, host.tlsName, host.port, true);
-
-					// Only set aliases when they were not set by load balancer detection logic.
-					if (this.aliases == null)
-					{
-						SetAliases(address, host.tlsName, host.port);
-					}
 
 					Node node = cluster.CreateNode(this, false);
 
@@ -156,7 +146,6 @@ namespace Aerospike.Client
 				try
 				{
 					ValidateAddress(cluster, address, host.tlsName, host.port, false);
-					SetAliases(address, host.tlsName, host.port);
 					return;
 				}
 				catch (Exception e)
@@ -425,7 +414,6 @@ namespace Aerospike.Client
 								}
 
 								// Authenticated connection.  Set real host.
-								SetAliases(address, tlsName, h.port);
 								this.primaryHost = new Host(address.ToString(), tlsName, h.port);
 								this.primaryAddress = socketAddress;
 								this.primaryConn.Close();
@@ -456,13 +444,6 @@ namespace Aerospike.Client
 			{
 				Log.Info(cluster.context, "Invalid address " + result + ". access-address is probably not configured on server.");
 			}
-		}
-		
-		private void SetAliases(IPAddress address, string tlsName, int port)
-		{
-			// Add capacity for current address plus IPV6 address and hostname.
-			this.aliases = new List<Host>(3);
-			this.aliases.Add(new Host(address.ToString(), tlsName, port));
 		}
 	}
 

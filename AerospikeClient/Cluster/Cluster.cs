@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2024 Aerospike, Inc.
+ * Copyright 2012-2025 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -25,10 +25,6 @@ namespace Aerospike.Client
 
 		// Initial host nodes specified by user.
 		private volatile Host[] seeds;
-
-		// All host aliases for all nodes in cluster.
-		// Only accessed within cluster tend thread.
-		protected internal readonly Dictionary<Host, Node> aliases;
 
 		// Map of active nodes in cluster.
 		// Only accessed within cluster tend thread.
@@ -261,7 +257,6 @@ namespace Aerospike.Client
 				rackIds = new int[] { policy.rackId };
 			}
 
-			aliases = new Dictionary<Host, Node>();
 			nodesMap = new Dictionary<string, Node>();
 			nodes = new Node[0];
 			partitionMap = new Dictionary<string, Partitions>();
@@ -526,9 +521,9 @@ namespace Aerospike.Client
 					FindNodesToRemove(peers);
 
 					// Remove nodes in a batch.
-					if (peers.removeList.Count > 0)
+					if (peers.removeNodes.Count > 0)
 					{
-						RemoveNodes(peers.removeList);
+						RemoveNodes(peers.removeNodes);
 					}
 				}
 
@@ -725,14 +720,14 @@ namespace Aerospike.Client
 		private void FindNodesToRemove(Peers peers)
 		{
 			int refreshCount = peers.refreshCount;
-			List<Node> removeList = peers.removeList;
+			HashSet<Node> removeNodes = peers.removeNodes;
 
 			foreach (Node node in nodes)
 			{
 				if (!node.Active)
 				{
 					// Inactive nodes must be removed.
-					removeList.Add(node);
+					removeNodes.Add(node);
 					continue;
 				}
 
@@ -741,7 +736,7 @@ namespace Aerospike.Client
 					// All node info requests failed and this node had 5 consecutive failures.
 					// Remove node.  If no nodes are left, seeds will be tried in next cluster
 					// tend iteration.
-					removeList.Add(node);
+					removeNodes.Add(node);
 					continue;
 				}
 
@@ -756,13 +751,13 @@ namespace Aerospike.Client
 						{
 							// Node doesn't have any partitions mapped to it.
 							// There is no point in keeping it in the cluster.
-							removeList.Add(node);
+							removeNodes.Add(node);
 						}
 					}
 					else
 					{
 						// Node not responding. Remove it.
-						removeList.Add(node);
+						removeNodes.Add(node);
 					}
 				}
 			}
@@ -846,16 +841,9 @@ namespace Aerospike.Client
 			}
 
 			nodesMap[node.Name] = node;
-
-			// Add node's aliases to global alias set.
-			// Aliases are only used in tend thread, so synchronization is not necessary.
-			foreach (Host alias in node.aliases)
-			{
-				aliases[alias] = node;
-			}
 		}
 
-		private void RemoveNodes(List<Node> nodesToRemove)
+		private void RemoveNodes(HashSet<Node> nodesToRemove)
 		{
 			// There is no need to delete nodes from partitionWriteMap because the nodes 
 			// have already been set to inactive. Further connection requests will result 
@@ -866,14 +854,6 @@ namespace Aerospike.Client
 			{
 				// Remove node from map.
 				nodesMap.Remove(node.Name);
-
-				// Remove node's aliases from cluster alias set.
-				// Aliases are only used in tend thread, so synchronization is not necessary.
-				foreach (Host alias in node.aliases)
-				{
-					// Log.debug("Remove alias " + alias);
-					aliases.Remove(alias);
-				}
 
 				if (MetricsEnabled)
 				{
@@ -905,7 +885,7 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Remove nodes using copy on write semantics.
 		/// </summary>
-		private void RemoveNodesCopy(List<Node> nodesToRemove)
+		private void RemoveNodesCopy(HashSet<Node> nodesToRemove)
 		{
 			// Create temporary nodes array.
 			// Since nodes are only marked for deletion using node references in the nodes array,
@@ -917,7 +897,7 @@ namespace Aerospike.Client
 			// Add nodes that are not in remove list.
 			foreach (Node node in nodes)
 			{
-				if (FindNode(node, nodesToRemove))
+				if (nodesToRemove.Contains(node))
 				{
 					if (tendValid && Log.InfoEnabled())
 					{
@@ -946,18 +926,6 @@ namespace Aerospike.Client
 
 			// Replace nodes with copy.
 			nodes = nodeArray;
-		}
-
-		private static bool FindNode(Node search, List<Node> nodeList)
-		{
-			foreach (Node node in nodeList)
-			{
-				if (node.Equals(search))
-				{
-					return true;
-				}
-			}
-			return false;
 		}
 
 		internal bool IsConnCurrentTran(DateTime lastUsed)
