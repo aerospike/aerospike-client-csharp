@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2024 Aerospike, Inc.
+ * Copyright 2012-2025 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -213,6 +213,48 @@ namespace Aerospike.Client
 			while (pos < length)
 			{
 				int count = sslStream.Read(buffer, pos, length - pos);
+
+				if (count <= 0)
+				{
+					throw new SocketException((int)SocketError.ConnectionReset);
+				}
+				pos += count;
+			}
+		}
+
+		public override void ReadFully(byte[] buffer, int length, byte state)
+		{
+			int count = 0;
+			
+			// The SSL stream may have already read the socket data into the stream,
+			// so do not poll when SSL stream is readable.
+			if (!sslStream.CanRead && socket.ReceiveTimeout > 0)
+			{
+				// Check if data is available for reading.
+				// Poll is used because the timeout value is respected under 500ms.
+				// The read method does not timeout until after 500ms.
+				if (!socket.Poll(socket.ReceiveTimeout * 1000, SelectMode.SelectRead))
+				{
+					throw new ReadTimeout(buffer, 0, length, state);
+				}
+			}
+
+			int pos = 0;
+
+			while (pos < length)
+			{
+				try
+				{
+					count = sslStream.Read(buffer, pos, length - pos);
+				}
+				catch (IOException io)
+				{
+					if (io.InnerException is SocketException ae && ae.SocketErrorCode == SocketError.TimedOut)
+					{
+						throw new ReadTimeout(buffer, pos, length, state);
+					}
+					throw;
+				}
 
 				if (count <= 0)
 				{
