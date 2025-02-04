@@ -161,9 +161,9 @@ namespace Aerospike.Client
 				respondAllOps = true
 			};
 
-			// Note that the server only accepts the timeout on MRT monitor record create.
-			// The server ignores the MRT timeout field on successive MRT monitor record
-			// updates.
+			// Note that the server only accepts the timeout on transaction monitor record create.
+			// The server ignores the transaction timeout field on successive transction monitor
+			// record updates.
 			wp.expiration = policy.Txn.Timeout;
 			return wp;
 		}

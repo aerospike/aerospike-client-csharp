@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2024 Aerospike, Inc.
+ * Copyright 2012-2025 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -18,14 +18,13 @@
 namespace Aerospike.Client
 {
 	/// <summary>
-	/// Multi-record transaction (MRT) abort error status code
+	/// Transaction abort error status code
 	/// </summary>
 	public static class AbortStatus
 	{
 		public enum AbortStatusType
 		{
 			OK,
-			ALREADY_COMMITTED,
 			ALREADY_ABORTED,
 			ROLL_BACK_ABANDONED,
 			CLOSE_ABANDONED
@@ -36,10 +35,9 @@ namespace Aerospike.Client
 			return status switch
 			{
 				AbortStatusType.OK => "Abort succeeded.",
-				AbortStatusType.ALREADY_COMMITTED => "Already committed.",
 				AbortStatusType.ALREADY_ABORTED => "Already aborted.",
-				AbortStatusType.ROLL_BACK_ABANDONED => "MRT client roll back abandoned. Server will eventually abort the MRT.",
-				AbortStatusType.CLOSE_ABANDONED => "MRT has been rolled back, but MRT client close was abandoned. Server will eventually close the MRT.",
+				AbortStatusType.ROLL_BACK_ABANDONED => "Transaction client roll back abandoned. Server will eventually abort the transaction.",
+				AbortStatusType.CLOSE_ABANDONED => "Transaction has been rolled back, but transaction client close was abandoned. Server will eventually close the transaction.",
 				_ => "Unexpected AbortStatusType."
 			};
 		}

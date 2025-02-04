@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2024 Aerospike, Inc.
+ * Copyright 2012-2025 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -23,8 +23,8 @@ namespace Aerospike.Client
 		public const int KEY = 2;
 		public const int RECORD_VERSION = 3;
 		public const int DIGEST_RIPE = 4;
-		public const int MRT_ID = 5;
-		public const int MRT_DEADLINE = 6;
+		public const int TXN_ID = 5;
+		public const int TXN_DEADLINE = 6;
 		public const int QUERY_ID = 7;
 		public const int SOCKET_TIMEOUT = 9;
 		public const int RECORDS_PER_SECOND = 10;

@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2024 Aerospike, Inc.
+ * Copyright 2012-2025 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -228,12 +228,12 @@ namespace Aerospike.Client
 		public BatchUDFPolicy batchUDFPolicyDefault = new BatchUDFPolicy();
 
 		/// <summary>
-		/// Default multi-record transactions (MRT) policy when verifying record versions in a batch on a commit.
+		/// Default transactions policy when verifying record versions in a batch on a commit.
 		/// </summary>
 		public TxnVerifyPolicy txnVerifyPolicyDefault = new TxnVerifyPolicy();
 
 		/// <summary>
-		/// Default multi-record transactions (MRT) policy when rolling the transaction records forward (commit)
+		/// Default transactions policy when rolling the transaction records forward (commit)
 		/// or back(abort) in a batch.
 		/// </summary>
 		public TxnRollPolicy txnRollPolicyDefault = new TxnRollPolicy();

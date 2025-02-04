@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2024 Aerospike, Inc.
+ * Copyright 2012-2025 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -26,8 +26,8 @@ namespace Aerospike.Client
 	public class Policy
 	{
 		/// <summary>
-		/// Multi-record transaction identifier (MRT). If this field is populated, the corresponding
-		/// command will be included in the MRT. This field is ignored for scan/query.
+		/// Transaction identifier. If this field is populated, the corresponding
+		/// command will be included in the transaction. This field is ignored for scan/query.
 	    /// <para>
 	    /// Default: null
 		/// </para>
@@ -247,10 +247,11 @@ namespace Aerospike.Client
 
 		/// <summary>
 		/// Use zlib compression on command buffers sent to the server and responses received
-		/// from the server when the buffer size is greater than 128 bytes.
+		/// from the server when the buffer size is greater than 128 bytes. This option will
+		/// increase cpu and memory usage(for extra compressed buffers), but decrease the size
+		/// of data sent over the network.
 		/// <para>
-		/// This option will increase cpu and memory usage (for extra compressed buffers), but
-		/// decrease the size of data sent over the network.
+		/// This compression feature requires the Enterprise Edition Server.
 		/// </para>
 		/// <para>
 		/// Default: false

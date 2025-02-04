@@ -1,5 +1,5 @@
 ﻿/* 
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2025 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -21,7 +21,7 @@ using System.Text;
 
 namespace Aerospike.Test
 {
-	[TestClass]
+	[TestClass, TestCategory("SCMode")]
 	public class TestTxn : TestSync
 	{
 		private static readonly string binName = "bin";
@@ -498,8 +498,17 @@ namespace Aerospike.Test
 			record = client.Get(null, key);
 			AssertBinEqual(key, record, binName, "val2");
 
-			var abortStatus = client.Abort(txn);
-			Assert.AreEqual(AbortStatus.AbortStatusType.ALREADY_COMMITTED, abortStatus);
+			try
+			{
+				var abortStatus = client.Abort(txn);
+			}
+			catch (AerospikeException ae)
+			{
+				if (ae.Result != ResultCode.TXN_ALREADY_COMMITTED)
+				{
+					throw;
+				}
+			}
 		}
 
 		[TestMethod]
@@ -684,7 +693,7 @@ namespace Aerospike.Test
 			}
 			catch (AerospikeException ae)
 			{
-				if (!ae.Message.Contains("Command not allowed in current MRT state:"))
+				if (!ae.Message.Contains("Command not allowed in current transaction state:"))
 				{
 					throw;
 				}

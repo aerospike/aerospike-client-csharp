@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2024 Aerospike, Inc.
+ * Copyright 2012-2025 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -26,7 +26,7 @@ namespace Aerospike.Demo
 		}
 
 		/// <summary>
-		/// Multi-record transaction.
+		/// Transaction.
 		/// </summary>
 		public override void RunExample(IAerospikeClient client, Arguments args)
 		{
@@ -61,12 +61,12 @@ namespace Aerospike.Demo
 				console.Info("Run delete");
 				var dp = client.WritePolicyDefault;
 				dp.Txn = txn;
-				dp.durableDelete = true;  // Required when running delete in a MRT.
+				dp.durableDelete = true;  // Required when running delete in a transaction.
 				client.Delete(dp, key3);
 			}
 			catch (Exception) 
 			{
-				// Abort and rollback MRT (multi-record transaction) if any errors occur.
+				// Abort and rollback transaction if any errors occur.
 				console.Info("Abort txn: " + txn.Id);
 				client.Abort(txn);
 				throw;

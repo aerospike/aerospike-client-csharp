@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2024 Aerospike, Inc.
+ * Copyright 2012-2025 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -14,8 +14,6 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-
-using static Aerospike.Client.AsyncQueryValidate;
 
 namespace Aerospike.Client
 {
@@ -131,14 +129,14 @@ namespace Aerospike.Client
 		}
 
 		//-------------------------------------------------------
-		// Multi-Record Transactions
+		// Transactions
 		//-------------------------------------------------------
 
 		/// <summary>
-		/// Asynchronously attempt to commit the given multi-record transaction.
+		/// Asynchronously attempt to commit the given transaction.
 		/// Create listener, call asynchronous commit and return task monitor.
 		/// </summary>
-		/// <param name="txn">multi-record transaction</param>
+		/// <param name="txn">transaction</param>
 		/// <param name="token">cancellation token</param>
 		public Task Commit(Txn txn, CancellationToken token)
 		{
@@ -148,7 +146,7 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
-		/// Asynchronously attempt to commit the given multi-record transaction. First, the expected
+		/// Asynchronously attempt to commit the given transaction. First, the expected
 		/// record versions are sent to the server nodes for verification. If all nodes return success,
 		/// the transaction is committed. Otherwise, the transaction is aborted.
 		/// <para>
@@ -160,7 +158,7 @@ namespace Aerospike.Client
 		/// </para>
 		/// </summary>
 		/// <param name="listener">where to send results</param>
-		/// <param name="txn">multi-record transaction</param>
+		/// <param name="txn">transaction</param>
 		public void Commit(CommitListener listener, Txn txn)
 		{
 			AsyncTxnRoll atr = new(
@@ -183,17 +181,16 @@ namespace Aerospike.Client
 					break;
 
 				case Txn.TxnState.ABORTED:
-					listener.OnSuccess(CommitStatus.CommitStatusType.ALREADY_ABORTED);
-					break;
+					throw new AerospikeException(ResultCode.TXN_ALREADY_ABORTED, "Transaction already aborted");
 
 			}
 		}
 
 		/// <summary>
-		/// Asynchronously attempt to abort and rollback the given multi-record transaction.
+		/// Asynchronously attempt to abort and rollback the given transaction.
 		/// Create listener, call asynchronous commit and return task monitor.
 		/// </summary>
-		/// <param name="txn">multi-record transaction</param>
+		/// <param name="txn">transaction</param>
 		/// <param name="token">cancellation token</param>
 		public Task Abort(Txn txn, CancellationToken token)
 		{
@@ -204,7 +201,7 @@ namespace Aerospike.Client
 
 
 		/// <summary>
-		/// Asynchronously abort and rollback the given multi-record transaction.
+		/// Asynchronously abort and rollback the given transaction.
 		/// <para>
 		/// Schedules the abort command with a channel selector and return.
 		/// Another thread will process the command and send the results to the listener.
@@ -213,7 +210,7 @@ namespace Aerospike.Client
 		/// </para>
 		/// </summary>
 		/// <param name="listener">where to send results</param>
-		/// <param name="txn">multi-record transaction</param>
+		/// <param name="txn">transaction</param>
 		public void Abort(AbortListener listener, Txn txn)
 		{
 			AsyncTxnRoll atr = new(cluster, null, txnRollPolicyDefault, txn);
@@ -227,8 +224,7 @@ namespace Aerospike.Client
 					break;
 
 				case Txn.TxnState.COMMITTED:
-					listener.OnSuccess(AbortStatus.AbortStatusType.ALREADY_COMMITTED);
-					break;
+					throw new AerospikeException(ResultCode.TXN_ALREADY_COMMITTED, "Transaction already committed");
 
 				case Txn.TxnState.ABORTED:
 					listener.OnSuccess(AbortStatus.AbortStatusType.ALREADY_ABORTED);
