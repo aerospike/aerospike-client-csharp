@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2024 Aerospike, Inc.
+ * Copyright 2012-2025 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -28,6 +28,8 @@ namespace Aerospike.Client
 			}
 
 			Txn txn = policy.Txn;
+			txn.VerifyCommand();
+
 			Key cmdKey = command.Key;
 
 			if (txn.Writes.Contains(cmdKey))
