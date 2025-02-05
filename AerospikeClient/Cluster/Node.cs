@@ -491,7 +491,8 @@ namespace Aerospike.Client
 							IPAddress[] addresses = Dns.GetHostAddresses(h.name);
 							foreach (IPAddress address in addresses)
 							{
-								if (address.Equals(node.address.Address))
+								if (address.Equals(node.address.Address) ||
+									IPAddress.IsLoopback(address))
 								{
 									// Set peer hostname for faster future lookups.
 									node.hostname = h.name;
