@@ -38,6 +38,10 @@ runs:
         jf rt dl "AerospikeTest.dll" --build-name=${{ github.repository }} --build-number=${{ github.run_number }} --flat database-generic-dev-local
         jf rt dl "AerospikeTest.runtimeconfig.json" --build-name=${{ github.repository }} --build-number=${{ github.run_number }} --flat database-generic-dev-local
     
+    - name: Convert runsettings file
+      shell: bash
+      run: dos2unix test.runsettings
+    
     - name: Test
       shell: bash
       run: dotnet exec AerospikeTest.dll --settings ./test.runsettings
