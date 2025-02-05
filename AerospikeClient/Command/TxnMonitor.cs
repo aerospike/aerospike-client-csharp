@@ -28,6 +28,7 @@ namespace Aerospike.Client
 		public static void AddKey(Cluster cluster, WritePolicy policy, Key cmdKey)
 		{
 			Txn txn = policy.Txn;
+			txn.VerifyCommand();
 
 			if (txn.Writes.Contains(cmdKey))
 			{
@@ -57,7 +58,6 @@ namespace Aerospike.Client
 
 		public static Operation[] GetTxnOps(Txn txn, Key cmdKey)
 		{
-			txn.VerifyCommand();
 			txn.SetNamespace(cmdKey.ns);
 
 			if (txn.MonitorExists()) 

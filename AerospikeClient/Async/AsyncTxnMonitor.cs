@@ -28,6 +28,8 @@ namespace Aerospike.Client
 			}
 
 			Txn txn = policy.Txn;
+			txn.VerifyCommand();
+
 			Key cmdKey = command.Key;
 
 			if (txn.Writes.Contains(cmdKey))
