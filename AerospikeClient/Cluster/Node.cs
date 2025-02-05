@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2024 Aerospike, Inc.
+ * Copyright 2012-2025 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -14,12 +14,8 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using System;
 using System.Net;
-using System.Threading;
-using System.Collections.Generic;
 using static Aerospike.Client.Latency;
-using System.Xml.Linq;
 using System.Net.Sockets;
 
 namespace Aerospike.Client
@@ -44,8 +40,8 @@ namespace Aerospike.Client
 
 		protected internal readonly Cluster cluster;
 		private readonly string name;
-		protected internal readonly Host host;
-		protected internal readonly List<Host> aliases;
+		protected string hostname; // Optional hostname
+		protected internal readonly Host host; // Host with IP address name
 		protected internal readonly IPEndPoint address;
 		private Connection tendConnection;
 		private byte[] sessionToken;
@@ -83,7 +79,6 @@ namespace Aerospike.Client
 		{
 			this.cluster = cluster;
 			this.name = nv.name;
-			this.aliases = nv.aliases;
 			this.host = nv.primaryHost;
 			this.address = nv.primaryAddress;
 			this.tendConnection = nv.primaryConn;
@@ -424,7 +419,11 @@ namespace Aerospike.Client
 
 							if (peer.replaceNode != null)
 							{
-								peers.removeList.Add(peer.replaceNode);
+								if (Log.InfoEnabled())
+								{
+									Log.Info("Replace node: " + peer.replaceNode);
+								}
+								peers.removeNodes.Add(peer.replaceNode);
 							}
 							break;
 						}
@@ -475,12 +474,39 @@ namespace Aerospike.Client
 				// Match peer hosts with the node host.
 				foreach (Host h in peer.hosts)
 				{
-					if (h.Equals(node.host))
+					if (h.port == node.host.port)
 					{
-						// Main node host is also the same as one of the peer hosts.
-						// Peer should not be added.
-						node.referenceCount++;
-						return true;
+						// Check for IP address (node.host.name is an IP address) or hostname if it exists.
+						if (h.name.Equals(node.host.name) || (node.hostname != null && h.name == node.hostname))
+						{
+							// Main node host is also the same as one of the peer hosts.
+							// Peer should not be added.
+							node.referenceCount++;
+							return true;
+						}
+
+						// Peer name might be a hostname. Get peer IP addresses and check with node IP address.
+						try
+						{
+							IPAddress[] addresses = Dns.GetHostAddresses(h.name);
+							foreach (IPAddress address in addresses)
+							{
+								if (address.Equals(node.address.Address) ||
+									IPAddress.IsLoopback(address))
+								{
+									// Set peer hostname for faster future lookups.
+									node.hostname = h.name;
+									node.referenceCount++;
+									return true;
+								}
+							}
+						}
+						catch (Exception)
+						{
+							// Peer name is invalid. replaceNode may be set, but that node will
+							// not be replaced because NodeValidator will reject it.
+							Log.Error("Invalid peer received by cluster tend: " + h.name);
+						}
 					}
 				}
 

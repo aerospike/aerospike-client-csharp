@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2024 Aerospike, Inc.
+ * Copyright 2012-2025 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -14,8 +14,6 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using System;
-using System.Collections.Generic;
 using System.Text;
 
 namespace Aerospike.Client
@@ -24,7 +22,7 @@ namespace Aerospike.Client
 	{
 		public readonly List<Peer> peers;
 		public readonly Dictionary<string, Node> nodes;
-		public readonly List<Node> removeList;
+		public readonly HashSet<Node> removeNodes;
 		private readonly HashSet<Host> invalidHosts;
 		public int refreshCount;
 		public bool genChanged;
@@ -34,7 +32,7 @@ namespace Aerospike.Client
 			peers = new List<Peer>(peerCapacity);
 			nodes = new Dictionary<string, Node>();
 			invalidHosts = new HashSet<Host>();
-			removeList = new List<Node>();
+			removeNodes = new HashSet<Node>();
 		}
 
 		public bool HasFailed(Host host)
