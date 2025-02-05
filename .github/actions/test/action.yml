@@ -32,19 +32,18 @@ runs:
         oidc-provider-name: gh-aerospike-clients
         oidc-audience: aerospike/clients
     
-    - name: Download Test dll
+    - name: Download Tests
       shell: bash
       run: |
-        jf rt dl "AerospikeTest.dll" --build-name=${{ github.repository }} --build-number=${{ github.run_number }} --flat database-generic-dev-local
-        jf rt dl "AerospikeTest.runtimeconfig.json" --build-name=${{ github.repository }} --build-number=${{ github.run_number }} --flat database-generic-dev-local
+        jf rt dl "AerospikeTest.zip" --build-name=${{ github.repository }} --build-number=${{ github.run_number }} --flat database-generic-dev-local
     
-    - name: Convert runsettings file
+    - name: Unzip tests
       shell: bash
-      run: dos2unix test.runsettings
+      run: unzip AerospikeTest.zip
     
     - name: Test
       shell: bash
-      run: dotnet exec AerospikeTest.dll --settings ./test.runsettings
+      run: dotnet exec ./AerospikeTest/AerospikeTest.dll --settings ./test.runsettings
     
     - name: Show logs if failed
       shell: bash

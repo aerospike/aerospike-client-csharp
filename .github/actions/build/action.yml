@@ -43,20 +43,26 @@ runs:
 
     - name: Configure NuGet repository
       shell: pwsh
-      run: |
-        jf nuget-config --repo-resolve database-nuget-dev-local
+      run: jf nuget-config --repo-resolve database-nuget-dev-local
 
     # - name: Sign nuget packages
 
     - name: Deploy release
       shell: pwsh
       working-directory: AerospikeClient\bin\Release
-      run: |
-        jf rt u Aerospike.Client.* database-nuget-dev-local --build-name=${{ github.repository }} --build-number=${{ github.run_number }}
+      run: jf rt u Aerospike.Client.* database-nuget-dev-local --build-name=${{ github.repository }} --build-number=${{ github.run_number }}
+
+    - name: Publish test project
+      shell: pwsh
+      working-directory: AerospikeTest
+      run: dotnet publish AerospikeTest.csproj --no-restore --no-build --self-contained
+        
+    - name: Zip it up
+      shell: pwsh
+      working-directory: AerospikeTest\bin\Release\net8.0
+      run: 7z a -tzip AerospikeTest.zip publish
 
     - name: Deploy test
       shell: pwsh
       working-directory: AerospikeTest\bin\Release\net8.0
-      run: |
-        jf rt u AerospikeTest.dll database-generic-dev-local --build-name=${{ github.repository }} --build-number=${{ github.run_number }}
-        jf rt u AerospikeTest.runtimeconfig.json database-generic-dev-local --build-name=${{ github.repository }} --build-number=${{ github.run_number }}
+      run: jf rt u AerospikeTest.zip database-generic-dev-local --build-name=${{ github.repository }} --build-number=${{ github.run_number }}

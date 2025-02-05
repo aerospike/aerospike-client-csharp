@@ -10,7 +10,6 @@
     <IsPackable>false</IsPackable>
     <IsTestProject>true</IsTestProject>
     <TestingPlatformDotnetTestSupport>true</TestingPlatformDotnetTestSupport>
-    <OutputType>Exe</OutputType>
     <EnableMSTestRunner>true</EnableMSTestRunner>
   </PropertyGroup>
 
