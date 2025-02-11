@@ -31,6 +31,10 @@ runs:
     - name: Create nuget packages
       shell: pwsh
       run: dotnet pack --no-build
+      
+    - name: Rename nuget packages
+      shell: pwsh
+      run : Get-ChildItem | Rename-Item -NewName { $_.Name -replace 'Aerospike\.Client\.([0-9]+)\.([0-9]+)\.([0-9]+).nupkg', 'Aerospike.Client.$1.$2.$3-${{ github.run_number }}.nupkg' }
 
     - name: Setup JFrog CLI
       id: setup-jfrog-cli
@@ -41,16 +45,16 @@ runs:
         oidc-provider-name: gh-aerospike-clients
         oidc-audience: aerospike/clients
 
-    - name: Configure NuGet repository
-      shell: pwsh
-      run: jf nuget-config --repo-resolve database-nuget-dev-local
+    #- name: Configure NuGet repository
+    #  shell: pwsh
+    #  run: jf nuget-config --repo-resolve database-nuget-dev-local
 
     # - name: Sign nuget packages
 
-    - name: Deploy release
-      shell: pwsh
-      working-directory: AerospikeClient\bin\Release
-      run: jf rt u Aerospike.Client.* database-nuget-dev-local --build-name=${{ github.repository }} --build-number=${{ github.run_number }}
+    #- name: Deploy release
+    #  shell: pwsh
+    #  working-directory: AerospikeClient\bin\Release
+    #  run: jf rt u Aerospike.Client.* database-nuget-dev-local --build-name=${{ github.repository }} --build-number=${{ github.run_number }}
 
     - name: Publish test project
       shell: pwsh
@@ -60,9 +64,9 @@ runs:
     - name: Zip it up
       shell: pwsh
       working-directory: AerospikeTest\bin\Release\net8.0
-      run: 7z a -tzip AerospikeTest.zip publish
+      run: 7z a -tzip AerospikeTest-${{ github.run_number }}.zip publish
 
-    - name: Deploy test
-      shell: pwsh
-      working-directory: AerospikeTest\bin\Release\net8.0
-      run: jf rt u AerospikeTest.zip database-generic-dev-local --build-name=${{ github.repository }} --build-number=${{ github.run_number }}
+    #- name: Deploy test
+    #  shell: pwsh
+    #  working-directory: AerospikeTest\bin\Release\net8.0
+    #  run: jf rt u AerospikeTest.zip database-generic-dev-local --build-name=${{ github.repository }} --build-number=${{ github.run_number }}

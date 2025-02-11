@@ -35,11 +35,11 @@ runs:
     - name: Download Tests
       shell: bash
       run: |
-        jf rt dl "AerospikeTest.zip" --build-name=${{ github.repository }} --build-number=${{ github.run_number }} --flat database-generic-dev-local
+        jf rt dl "AerospikeTest-${{ github.run_number }}.zip" --build-name=${{ github.repository }} --build-number=${{ github.run_number }} --flat database-generic-dev-local
     
     - name: Unzip tests
       shell: bash
-      run: unzip AerospikeTest.zip
+      run: unzip AerospikeTest*.zip
     
     - name: Test
       shell: bash

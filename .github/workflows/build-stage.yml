@@ -1,26 +1,14 @@
-name: Build and test code
+name: Build and test code from stage
 
 permissions:
   # This is required for requesting the OIDC token
   id-token: write
 
 # Trigger test workflow whenever:
-# 1. A pull request is updated (e.g with new commits)
-# 2. Commits are pushed directly to the stage or master branch
+# Pushes to stage branch
 on:
   push:
-    branches: ["stage*", "master*", "pipeline"]
-  pull_request:
-    branches: ["stage*", "master*"]
-    types: [
-      # Default triggers
-      opened,
-      synchronize,
-      reopened,
-      # Additional triggers
-      labeled,
-      unlabeled
-    ]
+    branches: ["stage"]
   workflow_dispatch:
     inputs:
       test-server-rc:
@@ -39,10 +27,17 @@ jobs:
       with:
         dotnet-version: 6.0.x
         
-    - name: Build and Upload to JFrog
+    - name: Build artifacts
       uses: ./.github/actions/build
       with:
         sgKey: ${{ secrets.SG_KEY }}
+        
+    - name: Upload to JFrog
+      uses: ./.github/actions/upload-to-jfrog
+      with:
+        jfrog-client-repo-name: database-nuget-stage-local
+        jfrog-tests-repo-name: database-nuget-stage-local
+      
   
   test:
     needs: build
@@ -53,7 +48,7 @@ jobs:
     - name: Test
       uses: ./.github/actions/test
       with:
-        use-server-rc: ${{ contains(github.event.pull_request.labels.*.name, 'new-server-features') }}
+        use-server-rc: false
         docker-hub-username: ${{ secrets.DOCKER_HUB_BOT_USERNAME }}
         docker-hub-password: ${{ secrets.DOCKER_HUB_BOT_PW }}
-    
+   
