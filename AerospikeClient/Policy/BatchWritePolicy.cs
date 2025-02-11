@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2024 Aerospike, Inc.
+ * Copyright 2012-2025 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -98,6 +98,21 @@ namespace Aerospike.Client
 		public bool durableDelete;
 
 		/// <summary>
+		/// Execute the write command only if the record is not already locked by this transaction.
+		/// If this field is true and the record is already locked by this transaction, the command
+		/// will throw an exception with the <see cref="ResultCode.MRT_ALREADY_LOCKED"/>
+		/// error code.
+		/// <para>
+		/// This field is useful for safely retrying non-idempotent writes as an alternative to simply
+		/// aborting the transaction. This field is not applicable to record delete commands.
+		/// </para>
+		/// <para>
+		/// Default: false.
+		/// </para>
+		/// </summary>
+		public bool OnLockingOnly;
+
+		/// <summary>
 		/// Send user defined key in addition to hash digest.
 		/// If true, the key will be stored with the record on the server.
 		/// <para>
@@ -118,6 +133,7 @@ namespace Aerospike.Client
 			this.generation = other.generation;
 			this.expiration = other.expiration;
 			this.durableDelete = other.durableDelete;
+			this.OnLockingOnly = other.OnLockingOnly;
 			this.sendKey = other.sendKey;
 		}
 

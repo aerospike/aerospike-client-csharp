@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2024 Aerospike, Inc.
+ * Copyright 2012-2025 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -18,7 +18,7 @@
 namespace Aerospike.Client
 {
 	/// <summary>
-	/// Multi-record transaction (MRT) policy fields used to batch roll forward/backward records on
+	/// Transaction policy fields used to batch roll forward/backward records on
     /// commit or abort.Used a placeholder for now as there are no additional fields beyond BatchPolicy.
 	/// </summary>
 	public sealed class TxnRollPolicy : BatchPolicy

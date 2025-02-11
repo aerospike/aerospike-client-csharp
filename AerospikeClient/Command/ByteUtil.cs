@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2024 Aerospike, Inc.
+ * Copyright 2012-2025 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -429,7 +429,7 @@ namespace Aerospike.Client
 		//-------------------------------------------------------
 
 		/// <summary>
-		/// Convert long to a 7 byte record version for MRT.
+		/// Convert long to a 7 byte record version for transaction.
 		/// </summary>
 		public static void LongToVersionBytes(long v, byte[] buf, int offset)
 		{
@@ -443,7 +443,7 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
-        /// Convert 7 byte record version to a long for MRT.
+        /// Convert 7 byte record version to a long for transaction.
         /// </summary>
         /// <param name="buf"></param>
         /// <param name="offset"></param>

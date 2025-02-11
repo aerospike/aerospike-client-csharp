@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2024 Aerospike, Inc.
+ * Copyright 2012-2025 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -576,7 +576,7 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
-		/// Exception thrown when a multi-record transaction commit fails.
+		/// Exception thrown when a transaction commit fails.
 		/// Commit Exception has similar behavior to AggregateException. 
 		/// <see cref="InnerExceptions"/> might be populated if mutliple exceptions contribute to the failure. 
 		/// </summary>
@@ -588,13 +588,13 @@ namespace Aerospike.Client
 			public readonly CommitErrorType Error;
 
 			/// <summary>
-			/// Verify result for each read key in the MRT. May be null if failure occurred before verify.
+			/// Verify result for each read key in the transaction. May be null if failure occurred before verify.
 			/// </summary>
 			public readonly BatchRecord[] VerifyRecords;
 
 			/// <summary>
-			/// Roll forward/backward result for each write key in the MRT. May be null if failure occurred before
-			/// roll forward/backward.
+			/// Roll forward/backward result for each write key in the transaction. May be null if 
+			/// failure occurred before roll forward/backward.
 			/// </summary>
 			public readonly BatchRecord[] RollRecords;
 

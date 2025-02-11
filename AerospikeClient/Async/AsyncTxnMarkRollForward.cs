@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2024 Aerospike, Inc.
+ * Copyright 2012-2025 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -54,7 +54,7 @@ namespace Aerospike.Client
 			ParseFields(policy.Txn, Key, true);
 
 			// MRT_COMMITTED is considered a success because it means a previous attempt already
-			// succeeded in notifying the server that the MRT will be rolled forward.
+			// succeeded in notifying the server that the transaction will be rolled forward.
 			if (resultCode == ResultCode.OK || resultCode == ResultCode.MRT_COMMITTED)
 			{
 				return true;

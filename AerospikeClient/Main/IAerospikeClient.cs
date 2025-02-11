@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2024 Aerospike, Inc.
+ * Copyright 2012-2025 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -98,14 +98,14 @@ namespace Aerospike.Client
 		InfoPolicy InfoPolicyDefault { get; set; }
 
 		/// <summary>
-		/// Default multi-record transactions (MRT) policy when verifying record versions in a batch on a commit.
+		/// Default transaction policy when verifying record versions in a batch on a commit.
 		/// Use when the policy will not be modified. Use <see cref="TxnVerifyPolicy.Clone()"/>
 		/// when the policy will be modified for use in a specific command.
 		/// </summary>
 		TxnVerifyPolicy TxnVerifyPolicyDefault { get; set; }
 
 		/// <summary>
-		/// Default multi-record transactions (MRT) policy when rolling the transaction records forward (commit)
+		/// Default transaction policy when rolling the transaction records forward (commit)
 		/// or back(abort) in a batch.
 		/// Use when the policy will not be modified. Use <see cref="TxnRollPolicy.Clone()"/>
 		/// when the policy will be modified for use in a specific command.
@@ -153,29 +153,29 @@ namespace Aerospike.Client
 		ClusterStats GetClusterStats();
 
 		//-------------------------------------------------------
-		// Multi-Record Transactions
+		// Transaction
 		//-------------------------------------------------------
 
 		/// <summary>
-		/// Attempt to commit the given multi-record transaction. First, the expected record versions are
+		/// Attempt to commit the given transaction. First, the expected record versions are
 		/// sent to the server nodes for verification. If all nodes return success, the transaction is
 		/// committed. Otherwise, the transaction is aborted.
 		/// <para>
 		/// Requires server version 8.0+
 		/// </para>
 		/// </summary>
-		/// <param name="txn">multi-record transaction</param>
+		/// <param name="txn">transaction</param>
 		/// <returns>status of the commit on success</returns>
 		/// <exception cref="AerospikeException.Commit">if verify commit fails</exception>
 		CommitStatus.CommitStatusType Commit(Txn txn);
 
 		/// <summary>
-		/// Abort and rollback the given multi-record transaction.
+		/// Abort and rollback the given transaction.
 		/// <para>
 		/// Requires server version 8.0+
 		/// </para>
 		/// </summary>
-		/// <param name="txn">multi-record transaction</param>
+		/// <param name="txn">transaction</param>
 		/// <returns>statis of the abort</returns>
 		AbortStatus.AbortStatusType Abort(Txn txn);
 

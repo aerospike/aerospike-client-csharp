@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2024 Aerospike, Inc.
+ * Copyright 2012-2025 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -50,7 +50,7 @@ namespace Aerospike.Client
 				txn.State = Txn.TxnState.ABORTED;
 				try
 				{
-					Roll(rollPolicy, Command.INFO4_MRT_ROLL_BACK);
+					Roll(rollPolicy, Command.INFO4_TXN_ROLL_BACK);
 				}
 				catch (Exception e2)
 				{
@@ -87,7 +87,7 @@ namespace Aerospike.Client
 
 			if (txn.MonitorExists())
 			{
-				// Tell MRT monitor that a roll-forward will commence.
+				// Tell transaction monitor that a roll-forward will commence.
 				try
 				{
 					MarkRollForward(writePolicy, txnKey);
@@ -134,7 +134,7 @@ namespace Aerospike.Client
 				// Roll-forward writes in batch.
 				try
 				{
-					Roll(rollPolicy, Command.INFO4_MRT_ROLL_FORWARD);
+					Roll(rollPolicy, Command.INFO4_TXN_ROLL_FORWARD);
 				}
 				catch (Exception)
 				{
@@ -144,7 +144,7 @@ namespace Aerospike.Client
 
 			if (txn.CloseMonitor())
 			{
-				// Remove MRT monitor.
+				// Remove transaction monitor.
 				try
 				{
 					Close(writePolicy, txnKey);
@@ -199,7 +199,7 @@ namespace Aerospike.Client
 			
 			try
 			{
-				Roll(rollPolicy, Command.INFO4_MRT_ROLL_BACK);
+				Roll(rollPolicy, Command.INFO4_TXN_ROLL_BACK);
 			}
 			catch (Exception)
 			{
@@ -274,7 +274,7 @@ namespace Aerospike.Client
 
 		private void MarkRollForward(WritePolicy writePolicy, Key txnKey)
 		{
-			// Tell MRT monitor that a roll-forward will commence.
+			// Tell transaction monitor that a roll-forward will commence.
 			TxnMarkRollForward cmd = new(cluster, txn, writePolicy, txnKey);
 			cmd.Execute();
 		}
@@ -324,18 +324,18 @@ namespace Aerospike.Client
 
 			if (!status.GetStatus())
 			{
-				string rollString = txnAttr == Command.INFO4_MRT_ROLL_FORWARD ? "commit" : "abort";
+				string rollString = txnAttr == Command.INFO4_TXN_ROLL_FORWARD ? "commit" : "abort";
 				throw new AerospikeException("Failed to " + rollString + " one or more records");
 			}
 		}
 
 		private void Close(WritePolicy writePolicy, Key txnKey)
 		{
-			// Delete MRT monitor on server.
+			// Delete transaction monitor on server.
 			TxnClose cmd = new(cluster, txn, writePolicy, txnKey);
 			cmd.Execute();
 
-			// Reset MRT on client.
+			// Reset transaction on client.
 			txn.Clear();
 		}
 	}

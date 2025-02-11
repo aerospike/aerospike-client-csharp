@@ -1,4 +1,4 @@
-﻿<Project Sdk="MSTest.Sdk">
+<Project Sdk="MSTest.Sdk">
 
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
@@ -8,6 +8,11 @@
     <AssemblyName>AerospikeTest</AssemblyName>
     <TestingExtensionsProfile>Default</TestingExtensionsProfile>
     <IsPackable>false</IsPackable>
+    <Version>8.0.1</Version>
+    <Company>Aerospike</Company>
+    <Authors>Aerospike</Authors>
+    <Configurations>Debug;Release;Coverage;Debug_Unix;Release_Unix</Configurations>
+    <Platforms>AnyCPU</Platforms>
     <IsTestProject>true</IsTestProject>
     <TestingPlatformDotnetTestSupport>true</TestingPlatformDotnetTestSupport>
     <EnableMSTestRunner>true</EnableMSTestRunner>

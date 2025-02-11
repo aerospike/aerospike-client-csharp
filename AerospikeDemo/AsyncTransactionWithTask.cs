@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2024 Aerospike, Inc.
+ * Copyright 2012-2025 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -33,7 +33,7 @@ namespace Aerospike.Demo
 		}
 
 		/// <summary>
-		/// Multi-record transaction.
+		/// Transaction.
 		/// </summary>
 		public override void RunExample(AsyncClient client, Arguments args)
 		{
@@ -70,7 +70,7 @@ namespace Aerospike.Demo
 						console.Info("Run delete");
 						var dp = client.WritePolicyDefault;
 						dp.Txn = txn;
-						dp.durableDelete = true;  // Required when running delete in a MRT.
+						dp.durableDelete = true;  // Required when running delete in a transaction.
 						client.Delete(dp, key3);
 
 						await client.Commit(txn, token);
@@ -80,7 +80,7 @@ namespace Aerospike.Demo
 					{
 						console.Error("Failed to write: namespace={0} set={1} key={2} exception={3}",
 										key.ns, key.setName, key.userKey, e.Message);
-						// Abort and rollback MRT (multi-record transaction) if any errors occur.
+						// Abort and rollback transaction if any errors occur.
 						await client.Abort(txn, token);
 						return false;
 					}
