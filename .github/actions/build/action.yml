@@ -32,35 +32,17 @@ runs:
       shell: pwsh
       run: dotnet pack --no-build
       
-    - name: Rename nuget packages
+    - name: Rename nuget package
       shell: pwsh
       working-directory: AerospikeClient\bin\Release
       run : Get-ChildItem -File | Rename-Item -NewName { $_.Name -replace 'Aerospike\.Client\.([0-9]+)\.([0-9]+)\.([0-9]+).nupkg', 'Aerospike.Client.$1.$2.$3-${{ github.run_number }}.nupkg' }
     
-    - name: Show me my file
+    - name: Rename snuget package
       shell: pwsh
       working-directory: AerospikeClient\bin\Release
-      run: ls Aerospike.Client.*
-
-    - name: Setup JFrog CLI
-      id: setup-jfrog-cli
-      uses: jfrog/setup-jfrog-cli@v4.4.2
-      env:
-        JF_URL: https://aerospike.jfrog.io
-      with:
-        oidc-provider-name: gh-aerospike-clients
-        oidc-audience: aerospike/clients
-
-    #- name: Configure NuGet repository
-    #  shell: pwsh
-    #  run: jf nuget-config --repo-resolve database-nuget-dev-local
+      run : Get-ChildItem -File | Rename-Item -NewName { $_.Name -replace 'Aerospike\.Client\.([0-9]+)\.([0-9]+)\.([0-9]+).snupkg', 'Aerospike.Client.$1.$2.$3-${{ github.run_number }}.snupkg' }
 
     # - name: Sign nuget packages
-
-    #- name: Deploy release
-    #  shell: pwsh
-    #  working-directory: AerospikeClient\bin\Release
-    #  run: jf rt u Aerospike.Client.* database-nuget-dev-local --build-name=${{ github.repository }} --build-number=${{ github.run_number }}
 
     - name: Publish test project
       shell: pwsh
@@ -72,7 +54,3 @@ runs:
       working-directory: AerospikeTest\bin\Release\net8.0
       run: 7z a -tzip AerospikeTest-${{ github.run_number }}.zip publish
 
-    #- name: Deploy test
-    #  shell: pwsh
-    #  working-directory: AerospikeTest\bin\Release\net8.0
-    #  run: jf rt u AerospikeTest.zip database-generic-dev-local --build-name=${{ github.repository }} --build-number=${{ github.run_number }}
