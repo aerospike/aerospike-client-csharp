@@ -1,4 +1,4 @@
-name: Build and test code from stage
+name: Build and test stage
 
 permissions:
   # This is required for requesting the OIDC token

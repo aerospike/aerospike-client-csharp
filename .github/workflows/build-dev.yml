@@ -1,4 +1,4 @@
-name: Build dev work (CLIENT branches, pull requests to stage)
+name: Build and test dev
 
 permissions:
   # This is required for requesting the OIDC token
