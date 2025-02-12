@@ -4,14 +4,21 @@
     <TargetFramework>net8.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>disable</Nullable>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>disable</Nullable>
     <RootNamespace>Aerospike.Test</RootNamespace>
     <AssemblyName>AerospikeTest</AssemblyName>
+    <TestingExtensionsProfile>Default</TestingExtensionsProfile>
     <TestingExtensionsProfile>Default</TestingExtensionsProfile>
     <IsPackable>false</IsPackable>
     <Version>8.0.1</Version>
     <Company>Aerospike</Company>
     <Authors>Aerospike</Authors>
     <Platforms>AnyCPU</Platforms>
+    <IsTestProject>true</IsTestProject>
+    <TestingPlatformDotnetTestSupport>true</TestingPlatformDotnetTestSupport>
+    <EnableMSTestRunner>true</EnableMSTestRunner>
     <IsTestProject>true</IsTestProject>
     <TestingPlatformDotnetTestSupport>true</TestingPlatformDotnetTestSupport>
     <EnableMSTestRunner>true</EnableMSTestRunner>
