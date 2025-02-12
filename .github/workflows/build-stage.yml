@@ -8,7 +8,7 @@ permissions:
 # Pushes to stage branch
 on:
   push:
-    branches: ["stage", "pipeline"]
+    branches: ["stage"]
   workflow_dispatch:
     inputs:
       test-server-rc:
