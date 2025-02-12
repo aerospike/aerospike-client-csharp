@@ -2,6 +2,10 @@ name: Test
 description: "Test code base"
 
 inputs:
+  jfrog-tests-repo-name:
+    description: Where to download the test program from
+    required: false
+    default: database-generic-dev-local
   use-server-rc:
     required: false
     default: false
@@ -35,7 +39,7 @@ runs:
     - name: Download Tests
       shell: bash
       run: |
-        jf rt dl "AerospikeTest-${{ github.run_number }}.zip" --build-name=${{ github.repository }} --build-number=${{ github.run_number }} --flat database-generic-dev-local
+        jf rt dl "AerospikeTest-${{ github.run_number }}.zip" --build-name=${{ github.repository }} --build-number=${{ github.run_number }} --flat ${{ inputs.jfrog-tests-repo-name }}
     
     - name: Unzip tests
       shell: bash
