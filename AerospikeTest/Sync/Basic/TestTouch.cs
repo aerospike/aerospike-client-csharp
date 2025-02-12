@@ -25,12 +25,14 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void TouchOperate()
 		{
-			Key key = new Key(args.ns, args.set, "TouchOperate");
-			Bin bin = new Bin(args.GetBinName("touchbin"), "touchvalue");
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "TouchOperate");
+			Bin bin = new(Suite.GetBinName("touchbin"), "touchvalue");
 
-			WritePolicy writePolicy = new WritePolicy();
-			writePolicy.expiration = 1;
-			
+			WritePolicy writePolicy = new()
+			{
+				expiration = 1
+			};
+
 			client.Put(writePolicy, key, bin);
 
 			writePolicy.expiration = 2;
@@ -53,11 +55,13 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void Touch()
 		{
-			Key key = new Key(args.ns, args.set, "touch");
-			Bin bin = new Bin(args.GetBinName("touchbin"), "touchvalue");
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "touch");
+			Bin bin = new(Suite.GetBinName("touchbin"), "touchvalue");
 
-			WritePolicy writePolicy = new WritePolicy();
-			writePolicy.expiration = 1;
+			WritePolicy writePolicy = new()
+			{
+				expiration = 1
+			};
 
 			client.Put(writePolicy, key, bin);
 
@@ -79,12 +83,15 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void Touched()
 		{
-			Key key = new(args.ns, args.set, "touched");
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "touched");
 
 			client.Delete(null, key);
 
-			WritePolicy writePolicy = new();
-			writePolicy.expiration = 10;
+			WritePolicy writePolicy1 = new()
+			{
+				expiration = 10
+			};
+			WritePolicy writePolicy = writePolicy1;
 
 			bool touched = client.Touched(writePolicy, key);
 			Assert.IsFalse(touched);

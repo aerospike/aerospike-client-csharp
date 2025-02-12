@@ -1,5 +1,5 @@
 ﻿/* 
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2025 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -14,25 +14,24 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using System;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
+
 using Aerospike.Client;
 
-namespace Aerospike.Test
+internal static class SuiteHelpers
 {
-	public class Test
-	{
-		public static void TestException(Action action, int expectedErrorCode)
-		{
-			try
-			{
-				action();
-				Assert.Fail("Expected AerospikeException");
-			}
-			catch (AerospikeException e)
-			{
-				Assert.AreEqual(expectedErrorCode, e.Result);
-			}
-		}
-	}
+	public static IAerospikeClient client;
+	public static IAsyncClient asyncClient;
+	public static Host[] hosts;
+	public static int port;
+	public static string user;
+	public static string password;
+	public static int timeout;
+	public static string clusterName;
+	public static string ns;
+	public static string set;
+	public static bool useServicesAlternate;
+	public static string tlsName;
+	public static TlsPolicy tlsPolicy;
+	public static AuthMode authMode;
+	public static bool singleBin;
 }

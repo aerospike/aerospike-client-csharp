@@ -28,7 +28,7 @@ namespace Aerospike.Test
 		private const string keyPrefix = "qkey";
 		private const string mapKeyPrefix = "mkey";
 		private const string mapValuePrefix = "qvalue";
-		private static readonly string binName = args.GetBinName("map_bin");
+		private static readonly string binName = Suite.GetBinName("map_bin");
 		private const int size = 20;
 
 		[ClassInitialize()]
@@ -38,12 +38,14 @@ namespace Aerospike.Test
 			RegisterTask rtask = client.Register(null, assembly, "Aerospike.Test.LuaResources.record_example.lua", "record_example.lua", Language.LUA);
 			rtask.Wait();
 
-			Policy policy = new Policy();
-			policy.totalTimeout = 0; // Do not timeout on index create.
+			Policy policy = new()
+			{
+				totalTimeout = 0 // Do not timeout on index create.
+			};
 
 			try
 			{
-				IndexTask task = client.CreateIndex(policy, args.ns, args.set, indexName, binName, IndexType.STRING, IndexCollectionType.MAPKEYS);
+				IndexTask task = client.CreateIndex(policy, SuiteHelpers.ns, SuiteHelpers.set, indexName, binName, IndexType.STRING, IndexCollectionType.MAPKEYS);
 				task.Wait();
 			}
 			catch (AerospikeException ae)
@@ -56,10 +58,11 @@ namespace Aerospike.Test
 
 			for (int i = 1; i <= size; i++)
 			{
-				Key key = new Key(args.ns, args.set, keyPrefix + i);
-				Dictionary<string, string> map = new Dictionary<string, string>();
-
-				map[mapKeyPrefix + 1] = mapValuePrefix + i;
+				Key key = new(SuiteHelpers.ns, SuiteHelpers.set, keyPrefix + i);
+				Dictionary<string, string> map = new()
+				{
+					[mapKeyPrefix + 1] = mapValuePrefix + i
+				};
 				if (i % 2 == 0)
 				{
 					map[mapKeyPrefix + 2] = mapValuePrefix + i;
@@ -69,24 +72,24 @@ namespace Aerospike.Test
 					map[mapKeyPrefix + 3] = mapValuePrefix + i;
 				}
 
-				Bin bin = new Bin(binName, map);
+				Bin bin = new(binName, map);
 				client.Put(null, key, bin);
 			}
 		}
 
-		[ClassCleanup()]
+		[ClassCleanup(ClassCleanupBehavior.EndOfClass)]
 		public static void Destroy()
 		{
-			client.DropIndex(null, args.ns, args.set, indexName);
+			client.DropIndex(null, SuiteHelpers.ns, SuiteHelpers.set, indexName);
 		}
 
 		[TestMethod]
 		public void QueryCollection()
 		{
 			string queryMapKey = mapKeyPrefix + 2;
-			Statement stmt = new Statement();
-			stmt.SetNamespace(args.ns);
-			stmt.SetSetName(args.set);
+			Statement stmt = new();
+			stmt.SetNamespace(SuiteHelpers.ns);
+			stmt.SetSetName(SuiteHelpers.set);
 			stmt.SetBinNames(binName);
 			stmt.SetFilter(Filter.Contains(binName, IndexCollectionType.MAPKEYS, queryMapKey));
 

@@ -1,0 +1,54 @@
+name: Build and test stage
+
+permissions:
+  # This is required for requesting the OIDC token
+  id-token: write
+
+# Trigger test workflow whenever:
+# Pushes to stage branch
+on:
+  push:
+    branches: ["stage"]
+  workflow_dispatch:
+    inputs:
+      test-server-rc:
+        type: boolean
+        default: false
+        required: true
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: 6.0.x
+        
+    - name: Build artifacts
+      uses: ./.github/actions/build
+      with:
+        sgKey: ${{ secrets.SG_KEY }}
+        
+    - name: Upload to JFrog
+      uses: ./.github/actions/upload-to-jfrog
+      with:
+        jfrog-client-repo-name: database-nuget-stage-local
+        jfrog-tests-repo-name: database-nuget-stage-local
+      
+  
+  test:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Test
+      uses: ./.github/actions/test
+      with:
+        use-server-rc: false
+        docker-hub-username: ${{ secrets.DOCKER_HUB_BOT_USERNAME }}
+        docker-hub-password: ${{ secrets.DOCKER_HUB_BOT_PW }}
+   

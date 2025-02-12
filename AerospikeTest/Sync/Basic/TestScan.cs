@@ -23,14 +23,14 @@ namespace Aerospike.Test
 	[TestClass]
 	public class TestScan : TestSync
 	{
-		private readonly ConcurrentDictionary<string, Metrics> setMap = new ConcurrentDictionary<string, Metrics>();
+		private readonly ConcurrentDictionary<string, Metrics> setMap = new();
 
 		[TestMethod]
 		public void ScanParallel()
 		{
-			ScanPolicy policy = new ScanPolicy();
+			ScanPolicy policy = new();
 
-			client.ScanAll(policy, args.ns, args.set, ScanCallback);
+			client.ScanAll(policy, SuiteHelpers.ns, SuiteHelpers.set, ScanCallback);
 		}
 
 		[TestMethod]
@@ -40,7 +40,7 @@ namespace Aerospike.Test
 
 			foreach (Node node in nodes)
 			{
-				client.ScanNode(null, node, args.ns, args.set, ScanCallback);
+				client.ScanNode(null, node, SuiteHelpers.ns, SuiteHelpers.set, ScanCallback);
 
 				foreach (KeyValuePair<string, Metrics> entry in setMap)
 				{
@@ -52,9 +52,7 @@ namespace Aerospike.Test
 
 		public void ScanCallback(Key key, Record record)
 		{
-			Metrics metrics;
-
-			if (setMap.TryGetValue(key.setName, out metrics))
+			if (setMap.TryGetValue(key.setName, out Metrics metrics))
 			{
 				Interlocked.Increment(ref metrics.count);
 				return;
@@ -70,8 +68,10 @@ namespace Aerospike.Test
 					return;
 				}
 
-				metrics = new Metrics();
-				metrics.count = 1;
+				metrics = new Metrics
+				{
+					count = 1
+				};
 				setMap[key.setName] = metrics;
 			}
 		}

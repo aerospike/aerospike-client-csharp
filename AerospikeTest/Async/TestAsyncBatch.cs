@@ -17,6 +17,7 @@
 using Aerospike.Client;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System.Collections;
+using System.Collections.Generic;
 
 namespace Aerospike.Test
 {
@@ -33,57 +34,58 @@ namespace Aerospike.Test
 		private const int Size = 8;
 		private static Key[] sendKeys;
 		private static Key[] deleteKeys;
-		private static CancellationTokenSource tokenSource;
+		private static readonly string[] binNames = ["binnotfound"];
 
 		public static void WriteRecords(string keyPrefix)
 		{
-			tokenSource = new CancellationTokenSource();
 			sendKeys = new Key[Size];
 
 			for (int i = 0; i < Size; i++)
 			{
-				sendKeys[i] = new Key(args.ns, args.set, keyPrefix + (i + 1));
+				sendKeys[i] = new Key(SuiteHelpers.ns, SuiteHelpers.set, keyPrefix + (i + 1));
 			}
 
 			deleteKeys = new Key[2];
-			deleteKeys[0] = new Key(args.ns, args.set, 10000);
-			deleteKeys[1] = new Key(args.ns, args.set, 10001);
+			deleteKeys[0] = new Key(SuiteHelpers.ns, SuiteHelpers.set, 10000);
+			deleteKeys[1] = new Key(SuiteHelpers.ns, SuiteHelpers.set, 10001);
 
-			AsyncMonitor monitor = new AsyncMonitor();
-			WriteHandler handler = new WriteHandler(monitor, Size + 3);
+			AsyncMonitor monitor = new();
+			WriteHandler handler = new(monitor, Size + 3);
 
-			WritePolicy policy = new WritePolicy();
-			policy.expiration = 2592000;
+			WritePolicy policy = new()
+			{
+				expiration = 2592000
+			};
 
 			for (int i = 1; i <= Size; i++)
 			{
 				Key key = sendKeys[i - 1];
-				Bin bin = new Bin(BinName, ValuePrefix + i);
+				Bin bin = new(BinName, ValuePrefix + i);
 
-				List<int> list = new List<int>();
+				List<int> list = [];
 
 				for (int j = 0; j < i; j++)
 				{
 					list.Add(j * i);
 				}
 
-				List<int> list2 = new List<int>();
+				List<int> list2 = [];
 
 				for (int j = 0; j < 2; j++)
 				{
 					list2.Add(j);
 				}
 
-				List<int> list3 = new List<int>();
+				List<int> list3 = [];
 
 				for (int j = 0; j < 2; j++)
 				{
 					list3.Add(j);
 				}
 
-				Bin listBin = new Bin(ListBin, list);
-				Bin listBin2 = new Bin(ListBin2, list2);
-				Bin listBin3 = new Bin(ListBin3, list3);
+				Bin listBin = new(ListBin, list);
+				Bin listBin2 = new(ListBin2, list2);
+				Bin listBin3 = new(ListBin3, list3);
 
 				if (i != 6)
 				{
@@ -98,22 +100,14 @@ namespace Aerospike.Test
 			// Add records that will eventually be deleted.
 			client.Put(policy, handler, deleteKeys[0], new Bin(BinName, 10000));
 			client.Put(policy, handler, deleteKeys[1], new Bin(BinName, 10001));
-			client.Put(policy, handler, new Key(args.ns, args.set, 10002), new Bin(BinName, 10002));
+			client.Put(policy, handler, new Key(SuiteHelpers.ns, SuiteHelpers.set, 10002), new Bin(BinName, 10002));
 
 			monitor.WaitTillComplete();
 		}
 
-		private class WriteHandler : WriteListener
+		private class WriteHandler(AsyncMonitor monitor, int max) : WriteListener
 		{
-			private readonly AsyncMonitor monitor;
-			private readonly int max;
 			private int count;
-
-			public WriteHandler(AsyncMonitor monitor, int max)
-			{
-				this.monitor = monitor;
-				this.max = max;
-			}
 
 			public void OnSuccess(Key key)
 			{
@@ -140,7 +134,7 @@ namespace Aerospike.Test
 			WaitTillComplete();
 		}
 
-		static void ExistsArrayHandlerSuccess(Key[] keys, bool[] existsArray, TestAsyncBatch parent)
+		static void ExistsArrayHandlerSuccess(bool[] existsArray, TestAsyncBatch parent)
 		{
 			for (int i = 0; i < existsArray.Length; i++)
 			{
@@ -152,18 +146,11 @@ namespace Aerospike.Test
 			parent.NotifyCompleted();
 		}
 
-		private class ExistsArrayHandler : ExistsArrayListener
+		private class ExistsArrayHandler(TestAsyncBatch parent) : ExistsArrayListener
 		{
-			private readonly TestAsyncBatch parent;
-
-			public ExistsArrayHandler(TestAsyncBatch parent)
-			{
-				this.parent = parent;
-			}
-
 			public void OnSuccess(Key[] keys, bool[] existsArray)
 			{
-				ExistsArrayHandlerSuccess(keys, existsArray, parent);
+				ExistsArrayHandlerSuccess(existsArray, parent);
 			}
 
 			public void OnFailure(AerospikeException e)
@@ -181,15 +168,8 @@ namespace Aerospike.Test
 			WaitTillComplete();
 		}
 
-		private class ExistsSequenceHandler : ExistsSequenceListener
+		private class ExistsSequenceHandler(TestAsyncBatch parent) : ExistsSequenceListener
 		{
-			private readonly TestAsyncBatch parent;
-
-			public ExistsSequenceHandler(TestAsyncBatch parent)
-			{
-				this.parent = parent;
-			}
-
 			public void OnExists(Key key, bool exists)
 			{
 				parent.AssertEquals(true, exists);
@@ -250,15 +230,8 @@ namespace Aerospike.Test
 			}
 		}
 
-		private class RecordArrayHandler : RecordArrayListener
+		private class RecordArrayHandler(TestAsyncBatch parent) : RecordArrayListener
 		{
-			private readonly TestAsyncBatch parent;
-
-			public RecordArrayHandler(TestAsyncBatch parent)
-			{
-				this.parent = parent;
-			}
-
 			public void OnSuccess(Key[] keys, Record[] records)
 			{
 				RecordArrayHandlerSuccess(keys, records, parent);
@@ -279,15 +252,8 @@ namespace Aerospike.Test
 			WaitTillComplete();
 		}
 
-		private class RecordSequenceHandler : RecordSequenceListener
+		private class RecordSequenceHandler(TestAsyncBatch parent) : RecordSequenceListener
 		{
-			private readonly TestAsyncBatch parent;
-
-			public RecordSequenceHandler(TestAsyncBatch parent)
-			{
-				this.parent = parent;
-			}
-
 			public void OnRecord(Key key, Record record)
 			{
 				if (parent.AssertRecordFound(key, record))
@@ -344,15 +310,8 @@ namespace Aerospike.Test
 			parent.NotifyCompleted();
 		}
 
-		private class RecordHeaderArrayHandler : RecordArrayListener
+		private class RecordHeaderArrayHandler(TestAsyncBatch parent) : RecordArrayListener
 		{
-			private readonly TestAsyncBatch parent;
-
-			public RecordHeaderArrayHandler(TestAsyncBatch parent)
-			{
-				this.parent = parent;
-			}
-
 			public void OnSuccess(Key[] keys, Record[] records)
 			{
 				RecordHeaderArrayHandlerSuccess(keys, records, parent);
@@ -377,21 +336,21 @@ namespace Aerospike.Test
 			Expression exp = Exp.Build(Exp.Mul(Exp.IntBin(BinName), Exp.Val(8)));
 			Operation[] ops = Operation.Array(ExpOperation.Read(BinName, exp, ExpReadFlags.DEFAULT));
 
-			string[] bins = new string[] { BinName };
-			List<BatchRead> records = new List<BatchRead>();
-			records.Add(new BatchRead(new Key(args.ns, args.set, keyPrefix + 1), bins));
-			records.Add(new BatchRead(new Key(args.ns, args.set, keyPrefix + 2), true));
-			records.Add(new BatchRead(new Key(args.ns, args.set, keyPrefix + 3), true));
-			records.Add(new BatchRead(new Key(args.ns, args.set, keyPrefix + 4), false));
-			records.Add(new BatchRead(new Key(args.ns, args.set, keyPrefix + 5), true));
-			records.Add(new BatchRead(new Key(args.ns, args.set, keyPrefix + 6), ops));
-			records.Add(new BatchRead(new Key(args.ns, args.set, keyPrefix + 7), bins));
-
-			// This record should be found, but the requested bin will not be found.
-			records.Add(new BatchRead(new Key(args.ns, args.set, keyPrefix + 8), new string[] { "binnotfound" }));
-
-			// This record should not be found.
-			records.Add(new BatchRead(new Key(args.ns, args.set, "keynotfound"), bins));
+			string[] bins = [BinName];
+			List<BatchRead> records =
+			[
+				new BatchRead(new Key(SuiteHelpers.ns, SuiteHelpers.set, keyPrefix + 1), bins),
+				new BatchRead(new Key(SuiteHelpers.ns, SuiteHelpers.set, keyPrefix + 2), true),
+				new BatchRead(new Key(SuiteHelpers.ns, SuiteHelpers.set, keyPrefix + 3), true),
+				new BatchRead(new Key(SuiteHelpers.ns, SuiteHelpers.set, keyPrefix + 4), false),
+				new BatchRead(new Key(SuiteHelpers.ns, SuiteHelpers.set, keyPrefix + 5), true),
+				new BatchRead(new Key(SuiteHelpers.ns, SuiteHelpers.set, keyPrefix + 6), ops),
+				new BatchRead(new Key(SuiteHelpers.ns, SuiteHelpers.set, keyPrefix + 7), bins),
+				// This record should be found, but the requested bin will not be found.
+				new BatchRead(new Key(SuiteHelpers.ns, SuiteHelpers.set, keyPrefix + 8), binNames),
+				// This record should not be found.
+				new BatchRead(new Key(SuiteHelpers.ns, SuiteHelpers.set, "keynotfound"), bins),
+			];
 
 			// Execute batch.
 			client.Get(null, new BatchListHandler(this), records);
@@ -447,15 +406,8 @@ namespace Aerospike.Test
 			parent.NotifyCompleted();
 		}
 
-		private class BatchListHandler : BatchListListener
+		private class BatchListHandler(TestAsyncBatch parent) : BatchListListener
 		{
-			private readonly TestAsyncBatch parent;
-
-			public BatchListHandler(TestAsyncBatch parent)
-			{
-				this.parent = parent;
-			}
-
 			public void OnSuccess(List<BatchRead> records)
 			{
 				BatchListHandlerSuccess(records, parent);
@@ -473,17 +425,17 @@ namespace Aerospike.Test
 		{
 			WriteRecords("AsyncBatchListReadOperate");
 			Operation[] operations =
-			{
+			[
 				ListOperation.Size(ListBin),
 				ListOperation.GetByIndex(ListBin, -1, ListReturnType.VALUE)
-			};
+			];
 
 			client.Get(null, new BatchListReadOperateHandler(this), sendKeys, operations);
 
 			WaitTillComplete();
 		}
 
-		static void BatchListReadOperateHeadlerSuccess(Key[] keys, Record[] records, TestAsyncBatch parent)
+		static void BatchListReadOperateHeadlerSuccess(Record[] records, TestAsyncBatch parent)
 		{
 			if (parent.AssertEquals(Size, records.Length))
 			{
@@ -508,18 +460,11 @@ namespace Aerospike.Test
 			parent.NotifyCompleted();
 		}
 
-		private class BatchListReadOperateHandler : RecordArrayListener
+		private class BatchListReadOperateHandler(TestAsyncBatch parent) : RecordArrayListener
 		{
-			private readonly TestAsyncBatch parent;
-
-			public BatchListReadOperateHandler(TestAsyncBatch parent)
-			{
-				this.parent = parent;
-			}
-
 			public void OnSuccess(Key[] keys, Record[] records)
 			{
-				BatchListReadOperateHeadlerSuccess(keys, records, parent);
+				BatchListReadOperateHeadlerSuccess(records, parent);
 			}
 
 			public void OnFailure(AerospikeException e)
@@ -533,11 +478,11 @@ namespace Aerospike.Test
 		public void AsyncBatchListWriteOperate()
 		{
 			WriteRecords("AsyncBatchListWriteOperate");
-			Operation[] operations = {
+			Operation[] operations = [
 				ListOperation.Insert(ListBin2, 0, Value.Get(1000)),
 				ListOperation.Size(ListBin2),
 				ListOperation.GetByIndex(ListBin2, -1, ListReturnType.VALUE)
-			};
+			];
 
 			client.Operate(null, null, new BatchListWriteOperateHandler(this), sendKeys,
 					operations);
@@ -572,15 +517,8 @@ namespace Aerospike.Test
 			parent.NotifyCompleted();
 		}
 
-		private class BatchListWriteOperateHandler : BatchRecordArrayListener
+		private class BatchListWriteOperateHandler(TestAsyncBatch parent) : BatchRecordArrayListener
 		{
-			private readonly TestAsyncBatch parent;
-
-			public BatchListWriteOperateHandler(TestAsyncBatch parent)
-			{
-				this.parent = parent;
-			}
-
 			public void OnSuccess(BatchRecord[] records, bool status)
 			{
 				BatchListWriteOperateHandlerSuccess(records, status, parent);
@@ -598,11 +536,11 @@ namespace Aerospike.Test
 		{
 			WriteRecords("AsyncBatchSeqListWriteOperate");
 			Operation[] operations =
-			{
+			[
 				ListOperation.Insert(ListBin3, 0, Value.Get(1000)),
 				ListOperation.Size(ListBin3),
 				ListOperation.GetByIndex(ListBin3, -1, ListReturnType.VALUE)
-			};
+			];
 
 			client.Operate(null, null, new BatchSeqListWriteOperateHandler(this), sendKeys,
 					operations);
@@ -610,15 +548,9 @@ namespace Aerospike.Test
 			WaitTillComplete();
 		}
 
-		private class BatchSeqListWriteOperateHandler : BatchRecordSequenceListener
+		private class BatchSeqListWriteOperateHandler(TestAsyncBatch parent) : BatchRecordSequenceListener
 		{
-			private readonly TestAsyncBatch parent;
 			private int count;
-
-			public BatchSeqListWriteOperateHandler(TestAsyncBatch parent)
-			{
-				this.parent = parent;
-			}
 
 			public void OnRecord(BatchRecord record, int index)
 			{
@@ -664,11 +596,13 @@ namespace Aerospike.Test
 				ExpOperation.Write(BinName3, wexp1, ExpWriteFlags.DEFAULT),
 				Operation.Get(BinName3));
 
-			List<BatchRecord> records = new List<BatchRecord>();
-			records.Add(new BatchWrite(new Key(args.ns, args.set, keyPrefix + 1), ops1));
-			records.Add(new BatchWrite(new Key(args.ns, args.set, keyPrefix + 6), ops2));
+			List<BatchRecord> records =
+			[
+				new BatchWrite(new Key(SuiteHelpers.ns, SuiteHelpers.set, keyPrefix + 1), ops1),
+				new BatchWrite(new Key(SuiteHelpers.ns, SuiteHelpers.set, keyPrefix + 6), ops2),
+			];
 
-			client.Operate(null, new BatchWriteComplexHandler(this, records), records);
+			client.Operate(null, new BatchWriteComplexHandler(this), records);
 
 			WaitTillComplete();
 		}
@@ -686,17 +620,8 @@ namespace Aerospike.Test
 			parent.NotifyCompleted();
 		}
 
-		private class BatchWriteComplexHandler : BatchOperateListListener
+		private class BatchWriteComplexHandler(TestAsyncBatch parent) : BatchOperateListListener
 		{
-			private readonly TestAsyncBatch parent;
-			private List<BatchRecord> records;
-
-			public BatchWriteComplexHandler(TestAsyncBatch parent, List<BatchRecord> records)
-			{
-				this.parent = parent;
-				this.records = records;
-			}
-
 			public void OnSuccess(List<BatchRecord> records, bool status)
 			{
 				BatchWriteComplexHanlderSuccess(records, status, parent);
@@ -724,25 +649,21 @@ namespace Aerospike.Test
 				ExpOperation.Write(BinName3, wexp1, ExpWriteFlags.DEFAULT),
 				Operation.Get(BinName3));
 
-			List<BatchRecord> records = new List<BatchRecord>();
-			records.Add(new BatchWrite(new Key(args.ns, args.set, keyPrefix + 1), ops1));
-			records.Add(new BatchWrite(new Key(args.ns, args.set, keyPrefix + 6), ops2));
-			records.Add(new BatchDelete(new Key(args.ns, args.set, 10002)));
+			List<BatchRecord> records =
+			[
+				new BatchWrite(new Key(SuiteHelpers.ns, SuiteHelpers.set, keyPrefix + 1), ops1),
+				new BatchWrite(new Key(SuiteHelpers.ns, SuiteHelpers.set, keyPrefix + 6), ops2),
+				new BatchDelete(new Key(SuiteHelpers.ns, SuiteHelpers.set, 10002)),
+			];
 
 			client.Operate(null, new BatchSeqWriteComplexHandler(this), records);
 
 			WaitTillComplete();
 		}
 
-		private class BatchSeqWriteComplexHandler : BatchRecordSequenceListener
+		private class BatchSeqWriteComplexHandler(TestAsyncBatch parent) : BatchRecordSequenceListener
 		{
-			private readonly TestAsyncBatch parent;
 			private int count;
-
-			public BatchSeqWriteComplexHandler(TestAsyncBatch parent)
-			{
-				this.parent = parent;
-			}
 
 			public void OnRecord(BatchRecord r, int index)
 			{
@@ -840,18 +761,11 @@ namespace Aerospike.Test
 			}
 
 			// Delete keys
-			client.Delete(null, null, new BatchDeleteHandler(parent, keys, exists), keys);
+			client.Delete(null, null, new BatchDeleteHandler(parent), keys);
 		}
 
-		private class BatchDeleteExistsArrayHandler : ExistsArrayListener
+		private class BatchDeleteExistsArrayHandler(TestAsyncBatch parent) : ExistsArrayListener
 		{
-			private readonly TestAsyncBatch parent;
-
-			public BatchDeleteExistsArrayHandler(TestAsyncBatch parent)
-			{
-				this.parent = parent;
-			}
-
 			public void OnSuccess(Key[] keys, bool[] exists)
 			{
 				BatchDeleteExistsArrayHandlerSuccess(keys, exists, parent);
@@ -864,7 +778,7 @@ namespace Aerospike.Test
 			}
 		}
 
-		static void BatchDeleteHandlerSuccess(BatchRecord[] records, bool status, TestAsyncBatch parent)
+		static void BatchDeleteHandlerSuccess(bool status, TestAsyncBatch parent)
 		{
 			if (!parent.AssertEquals(true, status))
 			{
@@ -876,22 +790,11 @@ namespace Aerospike.Test
 			client.Exists(null, new NotExistsHandler(parent), deleteKeys);
 		}
 
-		private class BatchDeleteHandler : BatchRecordArrayListener
+		private class BatchDeleteHandler(TestAsyncBatch parent) : BatchRecordArrayListener
 		{
-			private readonly TestAsyncBatch parent;
-			private Key[] keys;
-			private bool[] exists;
-
-			public BatchDeleteHandler(TestAsyncBatch parent, Key[] keys, bool[] exists)
-			{
-				this.parent = parent;
-				this.keys = keys;
-				this.exists = exists;
-			}
-
 			public void OnSuccess(BatchRecord[] records, bool status)
 			{
-				BatchDeleteHandlerSuccess(records, status, parent);
+				BatchDeleteHandlerSuccess(status, parent);
 			}
 
 			public void OnFailure(BatchRecord[] records, AerospikeException ae)
@@ -901,7 +804,7 @@ namespace Aerospike.Test
 			}
 		}
 
-		static void NotExistsHandlerSuccess(Key[] keys, bool[] exists, TestAsyncBatch parent)
+		static void NotExistsHandlerSuccess(bool[] exists, TestAsyncBatch parent)
 		{
 			if (!parent.AssertEquals(false, exists[0]))
 			{
@@ -913,18 +816,11 @@ namespace Aerospike.Test
 			parent.NotifyCompleted();
 		}
 
-		private class NotExistsHandler : ExistsArrayListener
+		private class NotExistsHandler(TestAsyncBatch parent) : ExistsArrayListener
 		{
-			private readonly TestAsyncBatch parent;
-
-			public NotExistsHandler(TestAsyncBatch parent)
-			{
-				this.parent = parent;
-			}
-
 			public void OnSuccess(Key[] keys, bool[] exists)
 			{
-				NotExistsHandlerSuccess(keys, exists, parent);
+				NotExistsHandlerSuccess(exists, parent);
 			}
 
 			public void OnFailure(AerospikeException ae)

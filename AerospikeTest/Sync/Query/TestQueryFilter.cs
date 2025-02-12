@@ -26,7 +26,7 @@ namespace Aerospike.Test
 	{
 		private const string indexName = "profileindex";
 		private const string keyPrefix = "profilekey";
-		private static readonly string binName = args.GetBinName("name");
+		private static readonly string binName = Suite.GetBinName("name");
 
 		[ClassInitialize()]
 		public static void Prepare(TestContext testContext)
@@ -35,13 +35,14 @@ namespace Aerospike.Test
 			RegisterTask rtask = client.Register(null, assembly, "Aerospike.Test.LuaResources.filter_example.lua", "filter_example.lua", Language.LUA);
 			rtask.Wait();
 
-
-			Policy policy = new Policy();
-			policy.totalTimeout = 0; // Do not timeout on index create.
+			Policy policy = new()
+			{
+				totalTimeout = 0 // Do not timeout on index create.
+			};
 
 			try
 			{
-				IndexTask itask = client.CreateIndex(policy, args.ns, args.set, indexName, binName, IndexType.STRING);
+				IndexTask itask = client.CreateIndex(policy, SuiteHelpers.ns, SuiteHelpers.set, indexName, binName, IndexType.STRING);
 				itask.Wait();
 			}
 			catch (AerospikeException ae)
@@ -59,16 +60,16 @@ namespace Aerospike.Test
 
 		private static void WriteRecord(string userKey, string name, string password)
 		{
-			Key key = new Key(args.ns, args.set, userKey);
-			Bin bin1 = new Bin("name", name);
-			Bin bin2 = new Bin("password", password);
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, userKey);
+			Bin bin1 = new("name", name);
+			Bin bin2 = new("password", password);
 			client.Put(null, key, bin1, bin2);
 		}
 
-		[ClassCleanup()]
+		[ClassCleanup(ClassCleanupBehavior.EndOfClass)]
 		public static void Destroy()
 		{
-			client.DropIndex(null, args.ns, args.set, indexName);
+			client.DropIndex(null, SuiteHelpers.ns, SuiteHelpers.set, indexName);
 		}
 
 		[TestMethod]
@@ -77,9 +78,9 @@ namespace Aerospike.Test
 			string nameFilter = "Bill";
 			string passFilter = "hknfpkj";
 
-			Statement stmt = new Statement();
-			stmt.SetNamespace(args.ns);
-			stmt.SetSetName(args.set);
+			Statement stmt = new();
+			stmt.SetNamespace(SuiteHelpers.ns);
+			stmt.SetSetName(SuiteHelpers.set);
 			stmt.SetFilter(Filter.Equal(binName, nameFilter));
 			stmt.SetAggregateFunction(Assembly.GetExecutingAssembly(), "Aerospike.Test.LuaResources.filter_example.lua", "filter_example", "profile_filter", Value.Get(passFilter));
 

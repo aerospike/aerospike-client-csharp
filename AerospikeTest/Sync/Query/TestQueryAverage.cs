@@ -26,7 +26,7 @@ namespace Aerospike.Test
 	{
 		private const string indexName = "avgindex";
 		private const string keyPrefix = "avgkey";
-		private static readonly string binName = args.GetBinName("l2");
+		private static readonly string binName = Suite.GetBinName("l2");
 		private const int size = 10;
 
 		[ClassInitialize()]
@@ -36,12 +36,14 @@ namespace Aerospike.Test
 			RegisterTask task = client.Register(null, assembly, "Aerospike.Test.LuaResources.average_example.lua", "average_example.lua", Language.LUA);
 			task.Wait();
 
-			Policy policy = new Policy();
-			policy.totalTimeout = 0; // Do not timeout on index create.
+			Policy policy = new()
+			{
+				totalTimeout = 0 // Do not timeout on index create.
+			};
 
 			try
 			{
-				IndexTask itask = client.CreateIndex(policy, args.ns, args.set, indexName, binName, IndexType.NUMERIC);
+				IndexTask itask = client.CreateIndex(policy, SuiteHelpers.ns, SuiteHelpers.set, indexName, binName, IndexType.NUMERIC);
 				itask.Wait();
 			}
 			catch (AerospikeException ae)
@@ -54,24 +56,24 @@ namespace Aerospike.Test
 
 			for (int i = 1; i <= size; i++)
 			{
-				Key key = new Key(args.ns, args.set, keyPrefix + i);
-				Bin bin = new Bin("l1", i);
+				Key key = new(SuiteHelpers.ns, SuiteHelpers.set, keyPrefix + i);
+				Bin bin = new("l1", i);
 				client.Put(null, key, bin, new Bin("l2", 1));
 			}
 		}
 
-		[ClassCleanup()]
+		[ClassCleanup(ClassCleanupBehavior.EndOfClass)]
 		public static void Destroy()
 		{
-			client.DropIndex(null, args.ns, args.set, indexName);
+			client.DropIndex(null, SuiteHelpers.ns, SuiteHelpers.set, indexName);
 		}
 
 		[TestMethod]
 		public void QueryAverage()
 		{
-			Statement stmt = new Statement();
-			stmt.SetNamespace(args.ns);
-			stmt.SetSetName(args.set);
+			Statement stmt = new();
+			stmt.SetNamespace(SuiteHelpers.ns);
+			stmt.SetSetName(SuiteHelpers.set);
 			stmt.SetFilter(Filter.Range(binName, 0, 1000));
 			stmt.SetAggregateFunction(Assembly.GetExecutingAssembly(), "Aerospike.Test.LuaResources.average_example.lua", "average_example", "average");
 
@@ -83,9 +85,8 @@ namespace Aerospike.Test
 				{
 					object obj = rs.Object;
 
-					if (obj is IDictionary)
+					if (obj is IDictionary map)
 					{
-						IDictionary map = (IDictionary)obj;
 						long sum = (long)map["sum"];
 						long count = (long)map["count"];
 						double avg = (double)sum / count;

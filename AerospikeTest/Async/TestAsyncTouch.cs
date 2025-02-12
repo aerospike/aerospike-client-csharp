@@ -25,21 +25,14 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void AsyncTouched()
 		{
-			Key key = new(args.ns, args.set, "doesNotExistAsyncTouch");
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "doesNotExistAsyncTouch");
 
 			client.Touched(null, new TouchListener(this), key);
 			WaitTillComplete();
 		}
 
-		private class TouchListener : ExistsListener
+		private class TouchListener(TestAsyncTouch parent) : ExistsListener
 		{
-			private readonly TestAsyncTouch parent;
-
-			public TouchListener(TestAsyncTouch parent)
-			{
-				this.parent = parent;
-			}
-
 			public void OnSuccess(Key key, bool exists)
 			{
 				Assert.IsFalse(exists);

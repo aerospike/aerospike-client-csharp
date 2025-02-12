@@ -30,13 +30,13 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void OperateMapPut()
 		{
-			Key key = new Key(args.ns, args.set, "opmkey1");		
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "opmkey1");		
 			client.Delete(null, key);
 		
 			MapPolicy putMode = MapPolicy.Default;
-			MapPolicy addMode = new MapPolicy(MapOrder.UNORDERED, MapWriteMode.CREATE_ONLY);
-			MapPolicy updateMode = new MapPolicy(MapOrder.UNORDERED, MapWriteMode.UPDATE_ONLY);
-			MapPolicy orderedUpdateMode = new MapPolicy(MapOrder.KEY_ORDERED, MapWriteMode.UPDATE_ONLY);
+			MapPolicy addMode = new(MapOrder.UNORDERED, MapWriteMode.CREATE_ONLY);
+			MapPolicy updateMode = new(MapOrder.UNORDERED, MapWriteMode.UPDATE_ONLY);
+			MapPolicy orderedUpdateMode = new(MapOrder.KEY_ORDERED, MapWriteMode.UPDATE_ONLY);
 		
 			// Calling put() multiple times performs poorly because the server makes
 			// a copy of the map for each call, but we still need to test it.
@@ -84,28 +84,36 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void OperateMapPutItems()
 		{
-			Key key = new Key(args.ns, args.set, "opmkey2");
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "opmkey2");
 			client.Delete(null, key);
 
-			Dictionary<Value, Value> addMap = new Dictionary<Value, Value>();
-			addMap[Value.Get(12)] = Value.Get("myval");
-			addMap[Value.Get(-8734)] = Value.Get("str2");
-			addMap[Value.Get(1)] = Value.Get("my default");
+			Dictionary<Value, Value> addMap = new()
+			{
+				[Value.Get(12)] = Value.Get("myval"),
+				[Value.Get(-8734)] = Value.Get("str2"),
+				[Value.Get(1)] = Value.Get("my default")
+			};
 
-			Dictionary<Value, Value> putMap = new Dictionary<Value, Value>();
-			putMap[Value.Get(12)] = Value.Get("myval12222");
-			putMap[Value.Get(13)] = Value.Get("str13");
+			Dictionary<Value, Value> putMap = new()
+			{
+				[Value.Get(12)] = Value.Get("myval12222"),
+				[Value.Get(13)] = Value.Get("str13")
+			};
 
-			Dictionary<Value, Value> updateMap = new Dictionary<Value, Value>();
-			updateMap[Value.Get(13)] = Value.Get("myval2");
+			Dictionary<Value, Value> updateMap = new()
+			{
+				[Value.Get(13)] = Value.Get("myval2")
+			};
 
-			Dictionary<Value, Value> replaceMap = new Dictionary<Value, Value>();
-			replaceMap[Value.Get(12)] = Value.Get(23);
-			replaceMap[Value.Get(-8734)] = Value.Get("changed");
+			Dictionary<Value, Value> replaceMap = new()
+			{
+				[Value.Get(12)] = Value.Get(23),
+				[Value.Get(-8734)] = Value.Get("changed")
+			};
 
 			MapPolicy putMode = MapPolicy.Default;
-			MapPolicy addMode = new MapPolicy(MapOrder.KEY_ORDERED, MapWriteMode.CREATE_ONLY);
-			MapPolicy updateMode = new MapPolicy(MapOrder.KEY_ORDERED, MapWriteMode.UPDATE_ONLY);
+			MapPolicy addMode = new(MapOrder.KEY_ORDERED, MapWriteMode.CREATE_ONLY);
+			MapPolicy updateMode = new(MapOrder.KEY_ORDERED, MapWriteMode.UPDATE_ONLY);
 
 			Record record = client.Operate(null, key,
 				MapOperation.PutItems(addMode, binName, addMap),
@@ -160,14 +168,16 @@ namespace Aerospike.Test
 		public void OperateMapMixed()
 		{
 			// Test normal operations with map operations.
-			Key key = new Key(args.ns, args.set, "opmkey2");
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "opmkey2");
 			client.Delete(null, key);
 
-			Dictionary<Value, Value> itemMap = new Dictionary<Value, Value>();
-			itemMap[Value.Get(12)] = Value.Get("myval");
-			itemMap[Value.Get(-8734)] = Value.Get("str2");
-			itemMap[Value.Get(1)] = Value.Get("my default");
-			itemMap[Value.Get(7)] = Value.Get(1);
+			Dictionary<Value, Value> itemMap = new()
+			{
+				[Value.Get(12)] = Value.Get("myval"),
+				[Value.Get(-8734)] = Value.Get("str2"),
+				[Value.Get(1)] = Value.Get("my default"),
+				[Value.Get(7)] = Value.Get(1)
+			};
 
 			Record record = client.Operate(null, key,
 				MapOperation.PutItems(new MapPolicy(MapOrder.KEY_VALUE_ORDERED, MapWriteMode.UPDATE), binName, itemMap),
@@ -199,7 +209,7 @@ namespace Aerospike.Test
 		public void OperateMapSwitch()
 		{
 			// Switch from unordered map to a key ordered map.
-			Key key = new Key(args.ns, args.set, "opmkey4");
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "opmkey4");
 			client.Delete(null, key);
 
 			Record record = client.Operate(null, key,
@@ -256,14 +266,16 @@ namespace Aerospike.Test
 		public void OperateMapRank()
 		{
 			// Test rank.
-			Key key = new Key(args.ns, args.set, "opmkey6");
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "opmkey6");
 			client.Delete(null, key);
 
-			Dictionary<Value, Value> inputMap = new Dictionary<Value, Value>();
-			inputMap[Value.Get("Charlie")] = Value.Get(55);
-			inputMap[Value.Get("Jim")] = Value.Get(98);
-			inputMap[Value.Get("John")] = Value.Get(76);
-			inputMap[Value.Get("Harry")] = Value.Get(82);
+			Dictionary<Value, Value> inputMap = new()
+			{
+				[Value.Get("Charlie")] = Value.Get(55),
+				[Value.Get("Jim")] = Value.Get(98),
+				[Value.Get("John")] = Value.Get(76),
+				[Value.Get("Harry")] = Value.Get(82)
+			};
 
 			// Write values to empty map.
 			Record record = client.Operate(null, key, MapOperation.PutItems(MapPolicy.Default, binName, inputMap));
@@ -356,22 +368,21 @@ namespace Aerospike.Test
 		public void OperateMapRemove()
 		{
 			// Test remove.
-			Key key = new Key(args.ns, args.set, "opmkey7");
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "opmkey7");
 			client.Delete(null, key);
 
-			Dictionary<Value, Value> inputMap = new Dictionary<Value, Value>();
-			inputMap[Value.Get("Charlie")] = Value.Get(55);
-			inputMap[Value.Get("Jim")] = Value.Get(98);
-			inputMap[Value.Get("John")] = Value.Get(76);
-			inputMap[Value.Get("Harry")] = Value.Get(82);
-			inputMap[Value.Get("Sally")] = Value.Get(79);
-			inputMap[Value.Get("Lenny")] = Value.Get(84);
-			inputMap[Value.Get("Abe")] = Value.Get(88);
+			Dictionary<Value, Value> inputMap = new()
+			{
+				[Value.Get("Charlie")] = Value.Get(55),
+				[Value.Get("Jim")] = Value.Get(98),
+				[Value.Get("John")] = Value.Get(76),
+				[Value.Get("Harry")] = Value.Get(82),
+				[Value.Get("Sally")] = Value.Get(79),
+				[Value.Get("Lenny")] = Value.Get(84),
+				[Value.Get("Abe")] = Value.Get(88)
+			};
 
-			List<Value> removeItems = new List<Value>();
-			removeItems.Add(Value.Get("Sally"));
-			removeItems.Add(Value.Get("UNKNOWN"));
-			removeItems.Add(Value.Get("Lenny"));
+			List<Value> removeItems = [Value.Get("Sally"), Value.Get("UNKNOWN"), Value.Get("Lenny")];
 
 			Record record = client.Operate(null, key,
 				MapOperation.PutItems(MapPolicy.Default, binName, inputMap),
@@ -410,17 +421,19 @@ namespace Aerospike.Test
 		public void OperateMapRemoveRange()
 		{
 			// Test remove ranges.
-			Key key = new Key(args.ns, args.set, "opmkey8");
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "opmkey8");
 			client.Delete(null, key);
 
-			Dictionary<Value, Value> inputMap = new Dictionary<Value, Value>();
-			inputMap[Value.Get("Charlie")] = Value.Get(55);
-			inputMap[Value.Get("Jim")] = Value.Get(98);
-			inputMap[Value.Get("John")] = Value.Get(76);
-			inputMap[Value.Get("Harry")] = Value.Get(82);
-			inputMap[Value.Get("Sally")] = Value.Get(79);
-			inputMap[Value.Get("Lenny")] = Value.Get(84);
-			inputMap[Value.Get("Abe")] = Value.Get(88);
+			Dictionary<Value, Value> inputMap = new()
+			{
+				[Value.Get("Charlie")] = Value.Get(55),
+				[Value.Get("Jim")] = Value.Get(98),
+				[Value.Get("John")] = Value.Get(76),
+				[Value.Get("Harry")] = Value.Get(82),
+				[Value.Get("Sally")] = Value.Get(79),
+				[Value.Get("Lenny")] = Value.Get(84),
+				[Value.Get("Abe")] = Value.Get(88)
+			};
 
 			Record record = client.Operate(null, key,
 				MapOperation.PutItems(MapPolicy.Default, binName, inputMap),
@@ -455,12 +468,14 @@ namespace Aerospike.Test
 		public void OperateMapClear()
 		{
 			// Test clear.
-			Key key = new Key(args.ns, args.set, "opmkey9");
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "opmkey9");
 			client.Delete(null, key);
 
-			Dictionary<Value, Value> inputMap = new Dictionary<Value, Value>();
-			inputMap[Value.Get("Charlie")] = Value.Get(55);
-			inputMap[Value.Get("Jim")] = Value.Get(98);
+			Dictionary<Value, Value> inputMap = new()
+			{
+				[Value.Get("Charlie")] = Value.Get(55),
+				[Value.Get("Jim")] = Value.Get(98)
+			};
 
 			Record record = client.Operate(null, key, MapOperation.PutItems(MapPolicy.Default, binName, inputMap));
 
@@ -483,16 +498,18 @@ namespace Aerospike.Test
 		public void OperateMapScore()
 		{
 			// Test score.
-			Key key = new Key(args.ns, args.set, "opmkey10");
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "opmkey10");
 			client.Delete(null, key);
 
-			MapPolicy mapPolicy = new MapPolicy(MapOrder.KEY_VALUE_ORDERED, MapWriteMode.UPDATE);
+			MapPolicy mapPolicy = new(MapOrder.KEY_VALUE_ORDERED, MapWriteMode.UPDATE);
 
-			Dictionary<Value, Value> inputMap = new Dictionary<Value, Value>();
-			inputMap[Value.Get("weiling")] = Value.Get(0);
-			inputMap[Value.Get("briann")] = Value.Get(0);
-			inputMap[Value.Get("brianb")] = Value.Get(0);
-			inputMap[Value.Get("meher")] = Value.Get(0);
+			Dictionary<Value, Value> inputMap = new()
+			{
+				[Value.Get("weiling")] = Value.Get(0),
+				[Value.Get("briann")] = Value.Get(0),
+				[Value.Get("brianb")] = Value.Get(0),
+				[Value.Get("meher")] = Value.Get(0)
+			};
 
 			// Create map.
 			Record record = client.Operate(null, key, MapOperation.PutItems(mapPolicy, binName, inputMap));
@@ -540,27 +557,25 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void OperateMapGetByList()
 		{
-			Key key = new Key(args.ns, args.set, "opmkey11");
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "opmkey11");
 			client.Delete(null, key);
 
-			Dictionary<Value, Value> inputMap = new Dictionary<Value, Value>();
-			inputMap[Value.Get("Charlie")] = Value.Get(55);
-			inputMap[Value.Get("Jim")] = Value.Get(98);
-			inputMap[Value.Get("John")] = Value.Get(76);
-			inputMap[Value.Get("Harry")] = Value.Get(82);
+			Dictionary<Value, Value> inputMap = new()
+			{
+				[Value.Get("Charlie")] = Value.Get(55),
+				[Value.Get("Jim")] = Value.Get(98),
+				[Value.Get("John")] = Value.Get(76),
+				[Value.Get("Harry")] = Value.Get(82)
+			};
 
 			// Write values to empty map.
 			Record record = client.Operate(null, key, MapOperation.PutItems(MapPolicy.Default, binName, inputMap));
 
 			AssertRecordFound(key, record);
 
-			List<string> keyList = new List<string>();
-			keyList.Add("Harry");
-			keyList.Add("Jim");
+			List<string> keyList = ["Harry", "Jim"];
 
-			List<int> valueList = new List<int>();
-			valueList.Add(76);
-			valueList.Add(50);
+			List<int> valueList = [76, 50];
 
 			record = client.Operate(null, key,
 					MapOperation.GetByKeyList(binName, keyList, MapReturnType.KEY_VALUE),
@@ -590,29 +605,23 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void OperateMapInverted()
 		{
-			Key key = new Key(args.ns, args.set, "opmkey12");
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "opmkey12");
 			client.Delete(null, key);
 
-			Dictionary<Value, Value> inputMap = new Dictionary<Value, Value>();
-			inputMap[Value.Get("Charlie")] = Value.Get(55);
-			inputMap[Value.Get("Jim")] = Value.Get(98);
-			inputMap[Value.Get("John")] = Value.Get(76);
-			inputMap[Value.Get("Harry")] = Value.Get(82);
+			Dictionary<Value, Value> inputMap = new()
+			{
+				[Value.Get("Charlie")] = Value.Get(55),
+				[Value.Get("Jim")] = Value.Get(98),
+				[Value.Get("John")] = Value.Get(76),
+				[Value.Get("Harry")] = Value.Get(82)
+			};
 
 			// Write values to empty map.
 			Record record = client.Operate(null, key, MapOperation.PutItems(MapPolicy.Default, binName, inputMap));
 
 			AssertRecordFound(key, record);
 
-			List<string> keyList = new List<string>();
-			keyList.Add("Harry");
-			keyList.Add("Jim");
-
-			List<int> valueList = new List<int>();
-			valueList.Add(76);
-			valueList.Add(55);
-			valueList.Add(98);
-			valueList.Add(50);
+			List<int> valueList = [76, 55, 98, 50];
 
 			record = client.Operate(null, key,
 					MapOperation.GetByValue(binName, Value.Get(81), MapReturnType.RANK | MapReturnType.INVERTED),
@@ -665,14 +674,16 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void OperateMapGetRelative()
 		{
-			Key key = new Key(args.ns, args.set, "opmkey14");
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "opmkey14");
 			client.Delete(null, key);
 
-			Dictionary<Value, Value> inputMap = new Dictionary<Value, Value>();
-			inputMap[Value.Get(0)] = Value.Get(17);
-			inputMap[Value.Get(4)] = Value.Get(2);
-			inputMap[Value.Get(5)] = Value.Get(15);
-			inputMap[Value.Get(9)] = Value.Get(10);
+			Dictionary<Value, Value> inputMap = new()
+			{
+				[Value.Get(0)] = Value.Get(17),
+				[Value.Get(4)] = Value.Get(2),
+				[Value.Get(5)] = Value.Get(15),
+				[Value.Get(9)] = Value.Get(10)
+			};
 
 			// Write values to empty map.
 			Record record = client.Operate(null, key, MapOperation.PutItems(MapPolicy.Default, binName, inputMap));
@@ -767,14 +778,16 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void OperateMapRemoveRelative()
 		{
-			Key key = new Key(args.ns, args.set, "opmkey15");
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "opmkey15");
 			client.Delete(null, key);
 
-			Dictionary<Value, Value> inputMap = new Dictionary<Value, Value>();
-			inputMap[Value.Get(0)] = Value.Get(17);
-			inputMap[Value.Get(4)] = Value.Get(2);
-			inputMap[Value.Get(5)] = Value.Get(15);
-			inputMap[Value.Get(9)] = Value.Get(10);
+			Dictionary<Value, Value> inputMap = new()
+			{
+				[Value.Get(0)] = Value.Get(17),
+				[Value.Get(4)] = Value.Get(2),
+				[Value.Get(5)] = Value.Get(15),
+				[Value.Get(9)] = Value.Get(10)
+			};
 
 			// Write values to empty map.
 			Record record = client.Operate(null, key, MapOperation.PutItems(MapPolicy.Default, binName, inputMap));
@@ -832,14 +845,16 @@ namespace Aerospike.Test
 
 		[TestMethod]
 		public void OperateMapPartial() {
-			Key key = new Key(args.ns, args.set, "opmkey16");
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "opmkey16");
 			client.Delete(null, key);
 
-			Dictionary<Value, Value> inputMap = new Dictionary<Value, Value>();
-			inputMap[Value.Get(0)] = Value.Get(17);
-			inputMap[Value.Get(4)] = Value.Get(2);
-			inputMap[Value.Get(5)] = Value.Get(15);
-			inputMap[Value.Get(9)] = Value.Get(10);
+			Dictionary<Value, Value> inputMap = new()
+			{
+				[Value.Get(0)] = Value.Get(17),
+				[Value.Get(4)] = Value.Get(2),
+				[Value.Get(5)] = Value.Get(15),
+				[Value.Get(9)] = Value.Get(10)
+			};
 		
 			// Write values to empty map.
 			Record record = client.Operate(null, key, 
@@ -849,9 +864,11 @@ namespace Aerospike.Test
 					
 			AssertRecordFound(key, record);
 
-			Dictionary<Value, Value> sourceMap = new Dictionary<Value, Value>();
-			sourceMap[Value.Get(3)] = Value.Get(3);
-			sourceMap[Value.Get(5)] = Value.Get(15);
+			Dictionary<Value, Value> sourceMap = new()
+			{
+				[Value.Get(3)] = Value.Get(3),
+				[Value.Get(5)] = Value.Get(15)
+			};
 
 			record = client.Operate(null, key,
 					MapOperation.PutItems(new MapPolicy(MapOrder.UNORDERED, MapWriteFlags.CREATE_ONLY | MapWriteFlags.PARTIAL | MapWriteFlags.NO_FAIL), binName, sourceMap),
@@ -869,14 +886,16 @@ namespace Aerospike.Test
 
 		[TestMethod]
 		public void OperateMapInfinity() {
-			Key key = new Key(args.ns, args.set, "opmkey17");
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "opmkey17");
 			client.Delete(null, key);
 		
-			Dictionary<Value,Value> inputMap = new Dictionary<Value,Value>();
-			inputMap[Value.Get(0)] = Value.Get(17);
-			inputMap[Value.Get(4)] = Value.Get(2);
-			inputMap[Value.Get(5)] = Value.Get(15);
-			inputMap[Value.Get(9)] = Value.Get(10);
+			Dictionary<Value,Value> inputMap = new()
+			{
+				[Value.Get(0)] = Value.Get(17),
+				[Value.Get(4)] = Value.Get(2),
+				[Value.Get(5)] = Value.Get(15),
+				[Value.Get(9)] = Value.Get(10)
+			};
 		
 			// Write values to empty map.
 			Record record = client.Operate(null, key, 
@@ -903,25 +922,21 @@ namespace Aerospike.Test
 
 		[TestMethod]
 		public void OperateMapWildcard() {
-			Key key = new Key(args.ns, args.set, "opmkey18");
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "opmkey18");
 			client.Delete(null, key);
 		
-			List<Value> i1 = new List<Value>();
-			i1.Add(Value.Get("John"));
-			i1.Add(Value.Get(55));
+			List<Value> i1 = [Value.Get("John"), Value.Get(55)];
 
-			List<Value> i2 = new List<Value>();
-			i2.Add(Value.Get("Jim"));
-			i2.Add(Value.Get(95));
+			List<Value> i2 = [Value.Get("Jim"), Value.Get(95)];
 		
-			List<Value> i3 = new List<Value>();
-			i3.Add(Value.Get("Joe"));
-			i3.Add(Value.Get(80));
+			List<Value> i3 = [Value.Get("Joe"), Value.Get(80)];
 
-			Dictionary<Value,Value> inputMap = new Dictionary<Value,Value>();
-			inputMap[Value.Get(4)] = Value.Get(i1);
-			inputMap[Value.Get(5)] = Value.Get(i2);
-			inputMap[Value.Get(9)] = Value.Get(i3);
+			Dictionary<Value,Value> inputMap = new()
+			{
+				[Value.Get(4)] = Value.Get(i1),
+				[Value.Get(5)] = Value.Get(i2),
+				[Value.Get(9)] = Value.Get(i3)
+			};
 		
 			// Write values to empty map.
 			Record record = client.Operate(null, key, 
@@ -930,9 +945,7 @@ namespace Aerospike.Test
 					
 			AssertRecordFound(key, record);
 
-			List<Value> filterList = new List<Value>();
-			filterList.Add(Value.Get("Joe"));
-			filterList.Add(Value.WILDCARD);
+			List<Value> filterList = [Value.Get("Joe"), Value.WILDCARD];
 
 			record = client.Operate(null, key,
 					MapOperation.GetByValue(binName, Value.Get(filterList), MapReturnType.KEY)
@@ -951,20 +964,26 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void OperateNestedMap()
 		{
-			Key key = new Key(args.ns, args.set, "opmkey19");
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "opmkey19");
 			client.Delete(null, key);
 
-			IDictionary<Value, Value> m1 = new Dictionary<Value, Value>();
-			m1[Value.Get("key11")] = Value.Get(9);
-			m1[Value.Get("key12")] = Value.Get(4);
+			IDictionary<Value, Value> m1 = new Dictionary<Value, Value>
+			{
+				[Value.Get("key11")] = Value.Get(9),
+				[Value.Get("key12")] = Value.Get(4)
+			};
 
-			IDictionary<Value, Value> m2 = new Dictionary<Value, Value>();
-			m2[Value.Get("key21")] = Value.Get(3);
-			m2[Value.Get("key22")] = Value.Get(5);
+			IDictionary<Value, Value> m2 = new Dictionary<Value, Value>
+			{
+				[Value.Get("key21")] = Value.Get(3),
+				[Value.Get("key22")] = Value.Get(5)
+			};
 
-			Dictionary<Value, Value> inputMap = new Dictionary<Value, Value>();
-			inputMap[Value.Get("key1")] = Value.Get(m1);
-			inputMap[Value.Get("key2")] = Value.Get(m2);
+			Dictionary<Value, Value> inputMap = new()
+			{
+				[Value.Get("key1")] = Value.Get(m1),
+				[Value.Get("key2")] = Value.Get(m2)
+			};
 
 			// Create maps.
 			client.Put(null, key, new Bin(binName, inputMap));
@@ -997,28 +1016,40 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void OperateDoubleNestedMap()
 		{
-			Key key = new Key(args.ns, args.set, "opmkey19");
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "opmkey19");
 			client.Delete(null, key);
 
-			IDictionary<Value, Value> m11 = new Dictionary<Value, Value>();
-			m11[Value.Get("key111")] = Value.Get(1);
+			IDictionary<Value, Value> m11 = new Dictionary<Value, Value>
+			{
+				[Value.Get("key111")] = Value.Get(1)
+			};
 
-			IDictionary<Value, Value> m12 = new Dictionary<Value, Value>();
-			m12[Value.Get("key121")] = Value.Get(5);
+			IDictionary<Value, Value> m12 = new Dictionary<Value, Value>
+			{
+				[Value.Get("key121")] = Value.Get(5)
+			};
 
-			IDictionary<Value, Value> m1 = new Dictionary<Value, Value>();
-			m1[Value.Get("key11")] = Value.Get(m11);
-			m1[Value.Get("key12")] = Value.Get(m12);
+			IDictionary<Value, Value> m1 = new Dictionary<Value, Value>
+			{
+				[Value.Get("key11")] = Value.Get(m11),
+				[Value.Get("key12")] = Value.Get(m12)
+			};
 
-			IDictionary<Value, Value> m21 = new Dictionary<Value, Value>();
-			m21[Value.Get("key211")] = Value.Get(7);
+			IDictionary<Value, Value> m21 = new Dictionary<Value, Value>
+			{
+				[Value.Get("key211")] = Value.Get(7)
+			};
 
-			IDictionary<Value, Value> m2 = new Dictionary<Value, Value>();
-			m2[Value.Get("key21")] = Value.Get(m21);
+			IDictionary<Value, Value> m2 = new Dictionary<Value, Value>
+			{
+				[Value.Get("key21")] = Value.Get(m21)
+			};
 
-			Dictionary<Value, Value> inputMap = new Dictionary<Value, Value>();
-			inputMap[Value.Get("key1")] = Value.Get(m1);
-			inputMap[Value.Get("key2")] = Value.Get(m2);
+			Dictionary<Value, Value> inputMap = new()
+			{
+				[Value.Get("key1")] = Value.Get(m1),
+				[Value.Get("key2")] = Value.Get(m2)
+			};
 
 			// Create maps.
 			client.Put(null, key, new Bin(binName, inputMap));
@@ -1054,20 +1085,26 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void OperateMapCreateContext()
 		{
-			Key key = new Key(args.ns, args.set, "opmkey20");
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "opmkey20");
 			client.Delete(null, key);
 
-			IDictionary<Value,Value> m1 = new Dictionary<Value,Value>();
-			m1[Value.Get("key11")] = Value.Get(9);
-			m1[Value.Get("key12")] = Value.Get(4);
+			IDictionary<Value,Value> m1 = new Dictionary<Value, Value>
+			{
+				[Value.Get("key11")] = Value.Get(9),
+				[Value.Get("key12")] = Value.Get(4)
+			};
 
-			IDictionary<Value,Value> m2 = new Dictionary<Value,Value>();
-			m2[Value.Get("key21")] = Value.Get(3);
-			m2[Value.Get("key22")] = Value.Get(5);
+			IDictionary<Value,Value> m2 = new Dictionary<Value, Value>
+			{
+				[Value.Get("key21")] = Value.Get(3),
+				[Value.Get("key22")] = Value.Get(5)
+			};
 
-			IDictionary inputMap = new Dictionary<Value, Value>();
-			inputMap[Value.Get("key1")] = Value.Get(m1);
-			inputMap[Value.Get("key2")] = Value.Get(m2);
+			IDictionary inputMap = new Dictionary<Value, Value>
+			{
+				[Value.Get("key1")] = Value.Get(m1),
+				[Value.Get("key2")] = Value.Get(m2)
+			};
 
 			// Create maps.
 			client.Put(null, key, new Bin(binName, inputMap));

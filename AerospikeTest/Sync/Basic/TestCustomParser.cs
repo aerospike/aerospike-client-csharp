@@ -28,36 +28,26 @@ namespace Aerospike.Test
 	{
 		private delegate void ParseBin(byte[] buffer);
 
-		private class BinParser : IRecordParser
+		private class BinParser(TestCustomParser.ParseBin parseBin) : IRecordParser
 		{
-			private ParseBin parseBin;
-
-			public BinParser(ParseBin parseBin)
-			{
-				this.parseBin = parseBin;
-			}
+			private readonly ParseBin parseBin = parseBin;
 
 			public Record ParseRecord(byte[] dataBuffer, ref int dataOffset, int opCount, int generation, int expiration, bool isOperation)
 			{
-				string binName;
-				byte valueType;
-				int valueOffset;
-				int valueSize;
-
 				dataOffset = RecordParser.ExtractBinValue(
 					dataBuffer,
 					dataOffset,
-					out binName,
-					out valueType,
-					out valueOffset,
-					out valueSize);
+					out string binName,
+					out byte valueType,
+					out int valueOffset,
+					out int valueSize);
 
 				this.parseBin(dataBuffer.Skip(valueOffset).Take(valueSize).ToArray());
 				return new Record(null, generation, expiration);
 			}
 		}
 
-		private Record Get(Key key, ParseBin parseBin)
+		private static Record Get(Key key, ParseBin parseBin)
 		{
 			var policy = new Policy() { recordParser = new BinParser(parseBin) };
 			return client.Get(policy, key);
@@ -66,27 +56,27 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void UnpackMap()
 		{
-			Key key = new Key(args.ns, args.set, "customparser");
-			var map = new Dictionary<object, object>();
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "customparser");
+			var map = new Dictionary<object, object>
+			{
+				{ "k0", null },
+				{ "k1", 50L },
+				{ "k2", 5000L },
+				{ "k3", 5000000L },
+				{ "k4", "test" },
+				{ "k5", "a loooooooooonger string" },
+				{ "k6", 123.45 },
+				{ "k7", -1234L }
+			};
 
-			map.Add("k0", null);
-			map.Add("k1", 50L);
-			map.Add("k2", 5000L);
-			map.Add("k3", 5000000L);
-			map.Add("k4", "test");
-			map.Add("k5", "a loooooooooonger string");
-			map.Add("k6", 123.45);
-			map.Add("k7", -1234L);
-
-			Bin bin = new Bin(args.GetBinName("listmapbin"), map);
+			Bin bin = new(Suite.GetBinName("listmapbin"), map);
 			client.Put(null, key, bin);
 
 			var received = new Dictionary<object, object>();
 			Record record = Get(key, buffer =>
 			{
 				var unpacker = new Unpacker(buffer, 0, buffer.Length, false);
-				MapOrder mapOrder;
-				int count = unpacker.UnpackMapItemCount(out mapOrder);
+				int count = unpacker.UnpackMapItemCount(out MapOrder mapOrder);
 				while (count-- > 0)
 				{
 					string k = unpacker.UnpackString();
@@ -137,22 +127,23 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void UnpackList()
 		{
-			Key key = new Key(args.ns, args.set, "customparser");
-			var list = new List<object>();
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "customparser");
+			var list = new List<object>
+			{
+				null,
+				50L,
+				5000L,
+				5000000L,
+				"test",
+				"a loooooooooonger string",
+				123.45,
+				-1234L,
+				234.56F,
+				true,
+				false
+			};
 
-			list.Add(null);
-			list.Add(50L);
-			list.Add(5000L);
-			list.Add(5000000L);
-			list.Add("test");
-			list.Add("a loooooooooonger string");
-			list.Add(123.45);
-			list.Add(-1234L);
-			list.Add(234.56F);
-			list.Add(true);
-			list.Add(false);
-
-			Bin bin = new Bin(args.GetBinName("listmapbin"), list);
+			Bin bin = new(Suite.GetBinName("listmapbin"), list);
 			client.Put(null, key, bin);
 
 			var received = new List<object>();
@@ -183,7 +174,7 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void UnpackComplex()
 		{
-			Key key = new Key(args.ns, args.set, "customparser");
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "customparser");
 			var list = new List<object>();
 			var m1 = new Dictionary<object, object>();
 			var m11 = new Dictionary<object, object>();
@@ -203,7 +194,7 @@ namespace Aerospike.Test
 			m13.Add("k131", 300L);
 			l2.Add("some more text");
 
-			Bin bin = new Bin(args.GetBinName("listmapbin"), list);
+			Bin bin = new(Suite.GetBinName("listmapbin"), list);
 			client.Put(null, key, bin);
 
 			Record record = Get(key, buffer =>
@@ -213,8 +204,7 @@ namespace Aerospike.Test
 				Assert.AreEqual(list.Count, listCount);
 				Assert.AreEqual(list[0], unpacker.UnpackInteger());
 
-				MapOrder m1Order;
-				int m1Count = unpacker.UnpackMapItemCount(out m1Order);
+				int m1Count = unpacker.UnpackMapItemCount(out MapOrder m1Order);
 				Assert.AreEqual(m1.Count, m1Count);
 				var m1Keys = new HashSet<string>();
 				for (int i = 0; i < m1Count; ++i)
@@ -230,8 +220,7 @@ namespace Aerospike.Test
 							break;
 						case "k1":
 						{
-							MapOrder k1Order;
-							Assert.AreEqual(m11.Count, unpacker.UnpackMapItemCount(out k1Order));
+							Assert.AreEqual(m11.Count, unpacker.UnpackMapItemCount(out MapOrder k1Order));
 							break;
 						}
 						case "k2":
@@ -241,8 +230,7 @@ namespace Aerospike.Test
 							break;
 						case "k3":
 						{
-							MapOrder k3Order;
-							Assert.AreEqual(m13.Count, unpacker.UnpackMapItemCount(out k3Order));
+							Assert.AreEqual(m13.Count, unpacker.UnpackMapItemCount(out MapOrder k3Order));
 							Assert.AreEqual("k131", unpacker.UnpackString());
 							Assert.AreEqual(m13["k131"], unpacker.UnpackInteger());
 							break;
@@ -263,7 +251,7 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void SkippingComplex()
 		{
-			Key key = new Key(args.ns, args.set, "customparser");
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "customparser");
 			var list = new List<object>();
 			var m1 = new Dictionary<object, object>();
 			var m11 = new Dictionary<object, object>();
@@ -288,7 +276,7 @@ namespace Aerospike.Test
 			m13.Add("k131", 300L);
 			l2.Add("some more text");
 
-			Bin bin = new Bin(args.GetBinName("listmapbin"), list);
+			Bin bin = new(Suite.GetBinName("listmapbin"), list);
 			client.Put(null, key, bin);
 
 			Record record = Get(key, buffer =>

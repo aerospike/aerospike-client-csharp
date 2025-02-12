@@ -16,30 +16,31 @@
  */
 using Aerospike.Client;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using System.Collections.Generic;
 
 namespace Aerospike.Test
 {
 	[TestClass]
 	public class TestAsyncPutGet : TestAsync
 	{
-		private static readonly string binName = args.GetBinName("putgetbin");
-		private static CancellationTokenSource tokenSource = new();
+		private static readonly string binName = Suite.GetBinName("putgetbin");
+		private static readonly CancellationTokenSource tokenSource = new();
 
 		[TestMethod]
 		public void AsyncPutGet()
 		{
-			Key key = new Key(args.ns, args.set, "putgetkey1");
-			Bin bin = new Bin(binName, "value1");
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "putgetkey1");
+			Bin bin = new(binName, "value1");
 
-			client.Put(null, new WriteHandler(this, client, key, bin), key, bin);
+			client.Put(null, new WriteHandler(this, bin), key, bin);
 			WaitTillComplete();
 		}
 
 		[TestMethod]
 		public void AsyncPutGetWithTask()
 		{
-			Key key = new Key(args.ns, args.set, "putgetkey2");
-			Bin bin = new Bin(binName, "value2");
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "putgetkey2");
+			Bin bin = new(binName, "value2");
 
 			Task taskput = client.Put(null, tokenSource.Token, key, bin);
 			taskput.Wait();
@@ -55,7 +56,7 @@ namespace Aerospike.Test
 			try
 			{
 				// Write succeeded.  Now call read.
-				client.Get(null, new RecordHandler(parent, key, bin), key);
+				client.Get(null, new RecordHandler(parent, bin), key);
 			}
 			catch (Exception e)
 			{
@@ -70,21 +71,8 @@ namespace Aerospike.Test
 			parent.NotifyCompleted();
 		}
 
-		private class WriteHandler : WriteListener
+		private class WriteHandler(TestAsyncPutGet parent, Bin bin) : WriteListener
 		{
-			private readonly TestAsyncPutGet parent;
-			private IAsyncClient client;
-			private Key key;
-			private Bin bin;
-
-			public WriteHandler(TestAsyncPutGet parent, IAsyncClient client, Key key, Bin bin)
-			{
-				this.parent = parent;
-				this.client = client;
-				this.key = key;
-				this.bin = bin;
-			}
-
 			public void OnSuccess(Key key)
 			{
 				WriteListenerSuccess(key, bin, parent);
@@ -97,19 +85,8 @@ namespace Aerospike.Test
 			}
 		}
 
-		private class RecordHandler : RecordListener
+		private class RecordHandler(TestAsyncPutGet parent, Bin bin) : RecordListener
 		{
-			private readonly TestAsyncPutGet parent;
-			private Key key;
-			private Bin bin;
-
-			public RecordHandler(TestAsyncPutGet parent, Key key, Bin bin)
-			{
-				this.parent = parent;
-				this.key = key;
-				this.bin = bin;
-			}
-
 			public void OnSuccess(Key key, Record record)
 			{
 				RecordHandlerSuccess(key, record, bin, parent);
@@ -125,8 +102,8 @@ namespace Aerospike.Test
 		[TestMethod]
 		public async Task AsyncPutWithCanel()
 		{
-			Key key = new Key(args.ns, args.set, "putgetkey3");
-			Bin bin = new Bin(binName, "value3");
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "putgetkey3");
+			Bin bin = new(binName, "value3");
 
 			tokenSource.Cancel();
 			try

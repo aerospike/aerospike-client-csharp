@@ -36,31 +36,31 @@ namespace Aerospike.Test
 			Info.Error error;
 
 			error = new Info.Error("FaIL:201:index not found");
-			Assert.AreEqual(error.Code, 201);
-			Assert.AreEqual(error.Message, "index not found");
+			Assert.AreEqual(201, error.Code);
+			Assert.AreEqual("index not found", error.Message);
 
 			error = new Info.Error("ERRor:201:index not found");
-			Assert.AreEqual(error.Code, 201);
-			Assert.AreEqual(error.Message, "index not found");
+			Assert.AreEqual(201, error.Code);
+			Assert.AreEqual("index not found", error.Message);
 
 			error = new Info.Error("error::index not found ");
-			Assert.AreEqual(error.Code, ResultCode.CLIENT_ERROR);
-			Assert.AreEqual(error.Message, "index not found");
+			Assert.AreEqual(ResultCode.CLIENT_ERROR, error.Code);
+			Assert.AreEqual("index not found", error.Message);
 
 			error = new Info.Error("error: index not found ");
-			Assert.AreEqual(error.Code, ResultCode.CLIENT_ERROR);
-			Assert.AreEqual(error.Message, "index not found");
+			Assert.AreEqual(ResultCode.CLIENT_ERROR, error.Code);
+			Assert.AreEqual("index not found", error.Message);
 
 			error = new Info.Error("error:99");
-			Assert.AreEqual(error.Code, 99);
-			Assert.AreEqual(error.Message, "error:99");
+			Assert.AreEqual(99, error.Code);
+			Assert.AreEqual("error:99", error.Message);
 
 			error = new Info.Error("generic message");
-			Assert.AreEqual(error.Code, ResultCode.CLIENT_ERROR);
-			Assert.AreEqual(error.Message, "generic message");
+			Assert.AreEqual(ResultCode.CLIENT_ERROR, error.Code);
+			Assert.AreEqual("generic message", error.Message);
 		}
 
-		private void GetServerConfig(Node node)
+		private static void GetServerConfig(Node node)
 		{
 			IDictionary<string, string> map = Info.Request(null, node);
 			Assert.IsNotNull(map);
@@ -83,15 +83,15 @@ namespace Aerospike.Test
 			}
 		}
 
-		private void GetNamespaceConfig(Node node)
+		private static void GetNamespaceConfig(Node node)
 		{
-			string filter = "namespace/" + args.ns;
+			string filter = "namespace/" + SuiteHelpers.ns;
 			string tokens = Info.Request(null, node, filter);
 			Assert.IsNotNull(tokens);
 			LogNameValueTokens(tokens);
 		}
 
-		private void LogNameValueTokens(string tokens)
+		private static void LogNameValueTokens(string tokens)
 		{
 			string[] values = tokens.Split(';');
 

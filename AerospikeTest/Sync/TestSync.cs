@@ -15,20 +15,12 @@
  * the License.
  */
 using Aerospike.Client;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace Aerospike.Test
 {
-	[TestClass]
-	// VS 2010 does not allow TestCategory here. Would need to require VS 2017 for
-	// Framework users.  Core already requires VS 2017.
-#if !NETFRAMEWORK
-	[TestCategory("Sync")]
-#endif
 	public class TestSync
 	{
-		public static Args args = Args.Instance;
-		public static IAerospikeClient client = args.client;
+		public static readonly IAerospikeClient client = SuiteHelpers.client;
 
 		public static void AssertBinEqual(Key key, Record record, Bin bin)
 		{
@@ -71,7 +63,7 @@ namespace Aerospike.Test
 		{
 			if (record == null)
 			{
-				Assert.Fail("Failed to get: namespace=" + args.ns + " set=" + args.set + " key=" + key.userKey);
+				Assert.Fail("Failed to get: namespace=" + SuiteHelpers.ns + " set=" + SuiteHelpers.set + " key=" + key.userKey);
 			}
 		}
 	}

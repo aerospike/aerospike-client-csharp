@@ -24,18 +24,20 @@ namespace Aerospike.Test
 	{
 		private const string indexName = "queryindexint";
 		private const string keyPrefix = "querykeyint";
-		private static readonly string binName = args.GetBinName("querybinint");
+		private static readonly string binName = Suite.GetBinName("querybinint");
 		private const int size = 50;
 
 		[ClassInitialize()]
 		public static void Prepare(TestContext testContext)
 		{
-			Policy policy = new Policy();
-			policy.totalTimeout = 0; // Do not timeout on index create.
+			Policy policy = new()
+			{
+				totalTimeout = 0 // Do not timeout on index create.
+			};
 
 			try
 			{
-				IndexTask task = client.CreateIndex(policy, args.ns, args.set, indexName, binName, IndexType.NUMERIC);
+				IndexTask task = client.CreateIndex(policy, SuiteHelpers.ns, SuiteHelpers.set, indexName, binName, IndexType.NUMERIC);
 				task.Wait();
 			}
 			catch (AerospikeException ae)
@@ -48,16 +50,16 @@ namespace Aerospike.Test
 
 			for (int i = 1; i <= size; i++)
 			{
-				Key key = new Key(args.ns, args.set, keyPrefix + i);
-				Bin bin = new Bin(binName, i);
+				Key key = new(SuiteHelpers.ns, SuiteHelpers.set, keyPrefix + i);
+				Bin bin = new(binName, i);
 				client.Put(null, key, bin);
 			}
 		}
 
-		[ClassCleanup()]
+		[ClassCleanup(ClassCleanupBehavior.EndOfClass)]
 		public static void Destroy()
 		{
-			client.DropIndex(null, args.ns, args.set, indexName);
+			client.DropIndex(null, SuiteHelpers.ns, SuiteHelpers.set, indexName);
 		}
 
 		[TestMethod]
@@ -66,9 +68,9 @@ namespace Aerospike.Test
 			int begin = 14;
 			int end = 18;
 
-			Statement stmt = new Statement();
-			stmt.SetNamespace(args.ns);
-			stmt.SetSetName(args.set);
+			Statement stmt = new();
+			stmt.SetNamespace(SuiteHelpers.ns);
+			stmt.SetSetName(SuiteHelpers.set);
 			stmt.SetBinNames(binName);
 			stmt.SetFilter(Filter.Range(binName, begin, end));
 

@@ -1,0 +1,56 @@
+name: Build nuget package and test dll
+description: "Builds signed nuget package"
+
+inputs:
+  sgKey:
+    required: true
+
+runs:
+  using: "composite"
+  steps:
+    - name: Restore dependencies
+      shell: pwsh
+      run: dotnet restore
+
+    - name: Build
+      shell: pwsh
+      run: dotnet build --configuration Release --no-restore
+
+    - name: Create Code Signing Key
+      shell: pwsh
+      run: |
+        New-Item -ItemType directory -Path key
+        Set-Content -Path key\key.txt -Value '${{ inputs.sgKey }}'
+        certutil -decode key\key.txt key\key.snk
+
+    - name: Delay Sign dll
+      shell: pwsh
+      run: |
+        & 'C:\Program Files (x86)\Microsoft SDKs\Windows\v10.0A\bin\NETFX 4.8.1 Tools\sn.exe' -R .\AerospikeClient\bin\Release\net6.0\AerospikeClient.dll key\key.snk
+
+    - name: Create nuget packages
+      shell: pwsh
+      run: dotnet pack --no-build
+      
+    - name: Rename nuget package
+      shell: pwsh
+      working-directory: AerospikeClient\bin\Release
+      run : Get-ChildItem -File | Rename-Item -NewName { $_.Name -replace 'Aerospike\.Client\.([0-9]+)\.([0-9]+)\.([0-9]+).nupkg', 'Aerospike.Client.$1.$2.$3-${{ github.run_number }}.nupkg' }
+    
+    - name: Rename snuget package
+      shell: pwsh
+      working-directory: AerospikeClient\bin\Release
+      run : Get-ChildItem -File | Rename-Item -NewName { $_.Name -replace 'Aerospike\.Client\.([0-9]+)\.([0-9]+)\.([0-9]+).snupkg', 'Aerospike.Client.$1.$2.$3-${{ github.run_number }}.snupkg' }
+
+    # - name: Sign nuget packages
+
+    - name: Publish test project
+      shell: pwsh
+      working-directory: AerospikeTest
+      run: dotnet publish AerospikeTest.csproj --no-restore --no-build --self-contained
+        
+    - name: Zip it up
+      shell: pwsh
+      working-directory: AerospikeTest\bin\Release\net8.0
+      run: 7z a -tzip AerospikeTest-${{ github.run_number }}.zip publish
+

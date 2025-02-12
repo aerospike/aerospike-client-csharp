@@ -22,16 +22,16 @@ namespace Aerospike.Test
 	[TestClass]
 	public class TestExpire : TestSync
 	{
-		private static readonly string binName = args.GetBinName("expirebin");
+		private static readonly string binName = Suite.GetBinName("expirebin");
 
 		[TestMethod]
 		public void Expire()
 		{
-			Key key = new Key(args.ns, args.set, "expirekey1");
-			Bin bin = new Bin(binName, "expirevalue");
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "expirekey1");
+			Bin bin = new(binName, "expirevalue");
 
 			// Specify that record expires 2 seconds after it's written.
-			WritePolicy writePolicy = new WritePolicy
+			WritePolicy writePolicy = new()
 			{
 				expiration = 2
 			};
@@ -50,13 +50,15 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void NoExpire()
 		{
-			Key key = new Key(args.ns, args.set, "expirekey2");
-			Bin bin = new Bin(binName, "noexpirevalue");
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "expirekey2");
+			Bin bin = new(binName, "noexpirevalue");
 
 			// Specify that record NEVER expires. 
 			// The "Never Expire" value is -1, or 0xFFFFFFFF.
-			WritePolicy writePolicy = new WritePolicy();
-			writePolicy.expiration = -1;
+			WritePolicy writePolicy = new()
+			{
+				expiration = -1
+			};
 			client.Put(writePolicy, key, bin);
 
 			// Read the record, showing it is there.
@@ -73,7 +75,7 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void ResetReadTtl()
 		{
-			Key key = new(args.ns, args.set, "expirekey3");
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "expirekey3");
 			Bin bin = new(binName, "expirevalue");
 
 			// Specify that record expires 2 seconds after it's written.

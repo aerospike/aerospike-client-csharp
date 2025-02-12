@@ -25,20 +25,20 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void PutGet()
 		{
-			Key key = new Key(args.ns, args.set, "putgetkey");
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "putgetkey");
 			Record record;
 
-			if (args.singleBin) 
+			if (SuiteHelpers.singleBin) 
 			{
-				Bin bin = new Bin("", "value");
+				Bin bin = new("", "value");
 			
 				client.Put(null, key, bin);
 				record = client.Get(null, key);
 				AssertBinEqual(key, record, bin);			
 			}
 			else {
-				Bin bin1 = new Bin("bin1", "value1");
-				Bin bin2 = new Bin("bin2", "value2");
+				Bin bin1 = new("bin1", "value1");
+				Bin bin2 = new("bin2", "value2");
 			
 				client.Put(null, key, bin1, bin2);
 				record = client.Get(null, key);
@@ -59,7 +59,7 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void PutGetHeader()
 		{
-			Key key = new(args.ns, args.set, "getHeader");
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "getHeader");
 			client.Put(null, key, new Bin("mybin", "myvalue"));
 
 			Record record = client.GetHeader(null, key);
@@ -75,11 +75,11 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void PutGetBool()
 		{
-			Key key = new Key(args.ns, args.set, "pgb");
-			Bin bin1 = new Bin("bin1", false);
-			Bin bin2 = new Bin("bin2", true);
-			Bin bin3 = new Bin("bin3", 0);
-			Bin bin4 = new Bin("bin4", 1);
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "pgb");
+			Bin bin1 = new("bin1", false);
+			Bin bin2 = new("bin2", true);
+			Bin bin3 = new("bin3", 0);
+			Bin bin4 = new("bin4", 1);
 
 			client.Put(null, key, bin1, bin2, bin3, bin4);
 
@@ -97,7 +97,7 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void PutGetGeoJson()
 		{
-			Key key = new(args.ns, args.set, "geo");
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "geo");
 			Bin geoBin = new("geo", Value.GetAsGeoJSON("{\"type\": \"Point\", \"coordinates\": [42.34, 58.62]}"));
 			client.Put(null, key, geoBin);
 			Record r = client.Get(null, key);
@@ -117,10 +117,10 @@ namespace Aerospike.Test
 				compress = true
 			};
 
-			Key key = new(args.ns, args.set, "putgetc");
-			Record record;
+					Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "putgetc");
+					Record record;
 
-			List<string> list = new();
+			List<string> list = [];
 			int[] iterator = Enumerable.Range(0, 2000).ToArray();
 			foreach (int i in iterator)
 			{

@@ -26,7 +26,7 @@ namespace Aerospike.Test
 	[TestClass]
 	public class TestMapExp : TestSync
 	{
-		private bool InstanceFieldsInitialized = false;
+		private readonly bool InstanceFieldsInitialized = false;
 
 		public TestMapExp()
 		{
@@ -39,10 +39,10 @@ namespace Aerospike.Test
 
 		private void InitializeInstanceFields()
 		{
-			key = new Key(args.ns, args.set, bin);
+			key = new Key(SuiteHelpers.ns, SuiteHelpers.set, bin);
 		}
 
-		private string bin = "m";
+		private readonly string bin = "m";
 
 		private Key key;
 
@@ -58,12 +58,14 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void PutSortedDictionary()
 		{
-			var map = new SortedDictionary<string, string>();
-			map["key1"] = "e";
-			map["key2"] = "d";
-			map["key3"] = "c";
-			map["key4"] = "b";
-			map["key5"] = "a";
+			var map = new SortedDictionary<string, string>
+			{
+				["key1"] = "e",
+				["key2"] = "d",
+				["key3"] = "c",
+				["key4"] = "b",
+				["key5"] = "a"
+			};
 
 			client.Operate(null, key,
 				MapOperation.PutItems(new MapPolicy(MapOrder.KEY_ORDERED, MapWriteFlags.DEFAULT), bin, map)
@@ -86,7 +88,7 @@ namespace Aerospike.Test
 				["d"] = 3
 			};
 
-			Key key = new(args.ns, args.set, "ime");
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "ime");
 			Bin bin = new("m", map);
 
 			client.Put(null, key, bin);

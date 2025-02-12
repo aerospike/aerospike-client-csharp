@@ -23,27 +23,28 @@ namespace Aerospike.Test
 	[TestClass]
 	public class TestAsyncOperate : TestAsync
 	{
-		private static readonly string binName = args.GetBinName("putgetbin");
-		private static CancellationTokenSource tokenSource = new();
+		private static readonly string binName = Suite.GetBinName("putgetbin");
 
 		[TestMethod]
 		public void AsyncOperateList()
 		{
-			Key key = new Key(args.ns, args.set, "aoplkey1");
-			client.Delete(null, new DeleteHandlerList(this, key), key);
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "aoplkey1");
+			client.Delete(null, new DeleteHandlerList(this), key);
 			WaitTillComplete();
 		}
 
-		static void DeleteHandlerListSuccess(Key key, bool existed, TestAsyncOperate parent)
+		static void DeleteHandlerListSuccess(Key key, TestAsyncOperate parent)
 		{
-			IList itemList = new List<Value>();
-			itemList.Add(Value.Get(55));
-			itemList.Add(Value.Get(77));
-			Operation[] operations = {
+			IList itemList = new List<Value>
+			{
+				Value.Get(55),
+				Value.Get(77)
+			};
+			Operation[] operations = [
 				ListOperation.AppendItems(binName, itemList),
 				ListOperation.Pop(binName, -1),
 				ListOperation.Size(binName)
-			};
+			];
 
 			client.Operate(null, new ReadHandler(parent), key, operations);
 		}
@@ -77,20 +78,11 @@ namespace Aerospike.Test
 			parent.NotifyCompleted();
 		}
 
-		private class DeleteHandlerList : DeleteListener
+		private class DeleteHandlerList(TestAsyncOperate parent) : DeleteListener
 		{
-			private readonly TestAsyncOperate parent;
-			private Key key;
-
-			public DeleteHandlerList(TestAsyncOperate parent, Key key)
-			{
-				this.parent = parent;
-				this.key = key;
-			}
-
 			public void OnSuccess(Key key, bool existed)
 			{
-				DeleteHandlerListSuccess(key, existed, parent);
+				DeleteHandlerListSuccess(key, parent);
 			}
 
 			public void OnFailure(AerospikeException e)
@@ -100,15 +92,8 @@ namespace Aerospike.Test
 			}
 		}
 
-		private class ReadHandler : RecordListener
+		private class ReadHandler(TestAsyncOperate parent) : RecordListener
 		{
-			private readonly TestAsyncOperate parent;
-
-			public ReadHandler(TestAsyncOperate parent)
-			{
-				this.parent = parent;
-			}
-
 			public void OnSuccess(Key key, Record record)
 			{
 				ReadListenerSuccess(key, record, parent);
@@ -124,22 +109,24 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void AsyncOperateMap()
 		{
-			Key key = new Key(args.ns, args.set, "aopmkey1");
-			client.Delete(null, new DeleteHandlerMap(this, key), key);
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "aopmkey1");
+			client.Delete(null, new DeleteHandlerMap(this), key);
 			WaitTillComplete();
 		}
 
-		static void DeleteHandlerMapSuccess(Key key, bool existed, TestAsyncOperate parent)
+		static void DeleteHandlerMapSuccess(Key key, TestAsyncOperate parent)
 		{
-			Dictionary<Value, Value> map = new Dictionary<Value, Value>();
-			map[Value.Get("a")] = Value.Get(1);
-			map[Value.Get("b")] = Value.Get(2);
-			map[Value.Get("c")] = Value.Get(3);
-			Operation[] operations =
+			Dictionary<Value, Value> map = new()
 			{
+				[Value.Get("a")] = Value.Get(1),
+				[Value.Get("b")] = Value.Get(2),
+				[Value.Get("c")] = Value.Get(3)
+			};
+			Operation[] operations =
+			[
 				MapOperation.PutItems(MapPolicy.Default, binName, map),
 				MapOperation.GetByRankRange(binName, -1, 1, MapReturnType.KEY_VALUE)
-			};
+			];
 
 			client.Operate(null, new MapHandler(parent), key, operations);
 		}
@@ -164,20 +151,11 @@ namespace Aerospike.Test
 			parent.NotifyCompleted();
 		}
 
-		private class DeleteHandlerMap : DeleteListener
+		private class DeleteHandlerMap(TestAsyncOperate parent) : DeleteListener
 		{
-			private readonly TestAsyncOperate parent;
-			private Key key;
-
-			public DeleteHandlerMap(TestAsyncOperate parent, Key key)
-			{
-				this.parent = parent;
-				this.key = key;
-			}
-
 			public void OnSuccess(Key key, bool existed)
 			{
-				DeleteHandlerMapSuccess(key, existed, parent);
+				DeleteHandlerMapSuccess(key, parent);
 			}
 
 			public void OnFailure(AerospikeException e)
@@ -187,15 +165,8 @@ namespace Aerospike.Test
 			}
 		}
 
-		private class MapHandler : RecordListener
+		private class MapHandler(TestAsyncOperate parent) : RecordListener
 		{
-			private readonly TestAsyncOperate parent;
-
-			public MapHandler(TestAsyncOperate parent)
-			{
-				this.parent = parent;
-			}
-
 			public void OnSuccess(Key key, Record record)
 			{
 				MapHandlerSuccess(key, record, parent);

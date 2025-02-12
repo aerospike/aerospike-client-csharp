@@ -1,0 +1,62 @@
+name: Build and test dev
+
+permissions:
+  # This is required for requesting the OIDC token
+  id-token: write
+
+# Trigger test workflow whenever:
+# 1. Commits are pushed directly to a CLIENT branch
+# 2. Pull requests to stage branch are updated
+on:
+  push:
+    branches: ["CLIENT*", "pipeline"]
+  pull_request:
+    branches: ["stage"]
+    types: [
+      # Default triggers
+      opened,
+      synchronize,
+      reopened,
+      # Additional triggers
+      labeled,
+      unlabeled
+    ]
+  workflow_dispatch:
+    inputs:
+      test-server-rc:
+        type: boolean
+        default: false
+        required: true
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: 6.0.x
+        
+    - name: Build artifacts
+      uses: ./.github/actions/build
+      with:
+        sgKey: ${{ secrets.SG_KEY }}
+        
+    - name: Upload to JFrog
+      uses: ./.github/actions/upload-to-jfrog
+  
+  test:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Test
+      uses: ./.github/actions/test
+      with:
+        use-server-rc: ${{ contains(github.event.pull_request.labels.*.name, 'new-server-features') }}
+        docker-hub-username: ${{ secrets.DOCKER_HUB_BOT_USERNAME }}
+        docker-hub-password: ${{ secrets.DOCKER_HUB_BOT_PW }}
+   

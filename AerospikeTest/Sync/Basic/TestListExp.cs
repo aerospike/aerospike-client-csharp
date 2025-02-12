@@ -23,7 +23,7 @@ namespace Aerospike.Test
 	[TestClass]
 	public class TestListExp : TestSync
 	{
-		private bool InstanceFieldsInitialized = false;
+		private readonly bool InstanceFieldsInitialized = false;
 
 		public TestListExp()
 		{
@@ -36,13 +36,13 @@ namespace Aerospike.Test
 
 		private void InitializeInstanceFields()
 		{
-			keyA = new Key(args.ns, args.set, binA);
-			keyB = new Key(args.ns, args.set, binB);
+			keyA = new Key(SuiteHelpers.ns, SuiteHelpers.set, binA);
+			keyB = new Key(SuiteHelpers.ns, SuiteHelpers.set, binB);
 		}
 
-		private string binA = "A";
-		private string binB = "B";
-		private string binC = "C";
+		private readonly string binA = "A";
+		private readonly string binB = "B";
+		private readonly string binC = "C";
 
 		private Key keyA;
 		private Key keyB;
@@ -60,24 +60,25 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void ModifyWithContext()
 		{
-			IList<Value> listSubA = new List<Value>();
-			listSubA.Add(Value.Get("e"));
-			listSubA.Add(Value.Get("d"));
-			listSubA.Add(Value.Get("c"));
-			listSubA.Add(Value.Get("b"));
-			listSubA.Add(Value.Get("a"));
+			IList<Value> listSubA =
+			[
+				Value.Get("e"),
+				Value.Get("d"),
+				Value.Get("c"),
+				Value.Get("b"),
+				Value.Get("a"),
+			];
 
-			IList<Value> listA = new List<Value>();
-			listA.Add(Value.Get("a"));
-			listA.Add(Value.Get("b"));
-			listA.Add(Value.Get("c"));
-			listA.Add(Value.Get("d"));
-			listA.Add(Value.Get(listSubA));
+			IList<Value> listA =
+			[
+				Value.Get("a"),
+				Value.Get("b"),
+				Value.Get("c"),
+				Value.Get("d"),
+				Value.Get(listSubA),
+			];
 
-			IList<Value> listB = new List<Value>();
-			listB.Add(Value.Get("x"));
-			listB.Add(Value.Get("y"));
-			listB.Add(Value.Get("z"));
+			IList<Value> listB = [Value.Get("x"), Value.Get("y"), Value.Get("z")];
 
 			client.Operate(null, keyA,
 				ListOperation.AppendItems(ListPolicy.Default, binA, (IList)listA),
@@ -125,11 +126,7 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void ExpReturnsList()
 		{
-			List<Value> list = new List<Value>();
-			list.Add(Value.Get("a"));
-			list.Add(Value.Get("b"));
-			list.Add(Value.Get("c"));
-			list.Add(Value.Get("d"));
+			List<Value> list = [Value.Get("a"), Value.Get("b"), Value.Get("c"), Value.Get("d")];
 
 			Expression exp = Exp.Build(Exp.Val(list));
 

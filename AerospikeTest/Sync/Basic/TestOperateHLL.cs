@@ -26,11 +26,11 @@ namespace Aerospike.Test
 	public class TestOperateHLL : TestSync
 	{
 		private const string binName = "ophbin";
-		private static readonly Key key = new Key(args.ns, args.set, "ophkey");
-		private static readonly Key[] keys = new Key[] {
-				new Key(args.ns, args.set, "ophkey0"),
-				new Key(args.ns, args.set, "ophkey1"),
-				new Key(args.ns, args.set, "ophkey2")};
+		private static readonly Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "ophkey");
+		private static readonly Key[] keys = [
+				new Key(SuiteHelpers.ns, SuiteHelpers.set, "ophkey0"),
+				new Key(SuiteHelpers.ns, SuiteHelpers.set, "ophkey1"),
+				new Key(SuiteHelpers.ns, SuiteHelpers.set, "ophkey2")];
 		private const int n_entries = 1 << 18;
 
 		private const int minIndexBits = 4;
@@ -38,10 +38,10 @@ namespace Aerospike.Test
 		private const int minMinhashBits = 4;
 		private const int maxMinhashBits = 51;
 
-		private static readonly List<Value> entries = new List<Value>();
-		private static readonly List<int> legalIndexBits = new List<int>();
-		private static readonly List<List<int>> legalDescriptions = new List<List<int>>();
-		private static readonly List<List<int>> illegalDescriptions = new List<List<int>>();
+		private static readonly List<Value> entries = [];
+		private static readonly List<int> legalIndexBits = [];
+		private static readonly List<List<int>> legalDescriptions = [];
+		private static readonly List<List<int>> illegalDescriptions = [];
 
 		[ClassInitialize()]
 		public static void CreateData(TestContext testContext)
@@ -62,10 +62,10 @@ namespace Aerospike.Test
 				}
 
 				int mid_minhash_bits = (max_allowed_minhash_bits + index_bits) / 2;
-				List<int> legal_zero = new List<int>();
-				List<int> legal_min = new List<int>();
-				List<int> legal_mid = new List<int>();
-				List<int> legal_max = new List<int>();
+				List<int> legal_zero = [];
+				List<int> legal_min = [];
+				List<int> legal_mid = [];
+				List<int> legal_max = [];
 
 				legalIndexBits.Add(index_bits);
 				legal_zero.Add(index_bits);
@@ -88,9 +88,9 @@ namespace Aerospike.Test
 			{
 				if (index_bits < minIndexBits || index_bits > maxIndexBits)
 				{
-					List<int> illegal_zero = new List<int>();
-					List<int> illegal_min = new List<int>();
-					List<int> illegal_max = new List<int>();
+					List<int> illegal_zero = [];
+					List<int> illegal_min = [];
+					List<int> illegal_max = [];
 
 					illegal_zero.Add(index_bits);
 					illegal_min.Add(index_bits);
@@ -106,9 +106,9 @@ namespace Aerospike.Test
 				}
 				else
 				{
-					List<int> illegal_min = new List<int>();
-					List<int> illegal_max = new List<int>();
-					List<int> illegal_max1 = new List<int>();
+					List<int> illegal_min = [];
+					List<int> illegal_max = [];
+					List<int> illegal_max1 = [];
 
 					illegal_min.Add(index_bits);
 					illegal_max.Add(index_bits);
@@ -129,12 +129,12 @@ namespace Aerospike.Test
 			}
 		}
 
-		public void AssertThrows(string msg, Key key, Type eclass, int eresult, params Operation[] ops)
+		public static void AssertThrows(string msg, Key key, Type eclass, int eresult, params Operation[] ops)
 		{
 			try
 			{
 				client.Operate(null, key, ops);
-				Assert.IsTrue(false, msg + " succeeded?");
+				Assert.Fail(msg + " succeeded?");
 			}
 			catch (AerospikeException e)
 			{
@@ -146,7 +146,7 @@ namespace Aerospike.Test
 			}
 		}
 
-		public Record AssertSuccess(string msg, Key key, params Operation[] ops)
+		public static Record AssertSuccess(string msg, Key key, params Operation[] ops)
 		{
 			Record record;
 
@@ -156,31 +156,31 @@ namespace Aerospike.Test
 			}
 			catch (Exception e)
 			{
-				Assert.AreEqual(null, e, msg + " " + e);
+				Assert.IsNull(e, msg + " " + e);
 				return null;
 			}
 			AssertRecordFound(key, record);
 			return record;
 		}
 
-		public bool CheckBits(int index_bits, int minhash_bits)
+		public static bool CheckBits(int index_bits, int minhash_bits)
 		{
 			return !(index_bits < minIndexBits || index_bits > maxIndexBits ||
 					(minhash_bits != 0 && minhash_bits < minMinhashBits) ||
 					minhash_bits > maxMinhashBits || index_bits + minhash_bits > 64);
 		}
 
-		public double RelativeCountError(int n_index_bits)
+		public static double RelativeCountError(int n_index_bits)
 		{
 			return 1.04 / Math.Sqrt(Math.Pow(2, n_index_bits));
 		}
 
-		public bool IsWithinRelativeError(long expected, long estimate, double relative_error)
+		public static bool IsWithinRelativeError(long expected, long estimate, double relative_error)
 		{
 			return expected * (1 - relative_error) <= estimate || estimate <= expected * (1 + relative_error);
 		}
 
-		public void AssertHLLCount(String msg, int index_bits, long hll_count, long expected)
+		public static void AssertHLLCount(String msg, int index_bits, long hll_count, long expected)
 		{
 			double countErr6sigma = RelativeCountError(index_bits) * 6;
 
@@ -189,21 +189,21 @@ namespace Aerospike.Test
 				);
 		}
 
-		public void AssertDescription(string msg, IList description, int index_bits, int minhash_bits)
+		public static void AssertDescription(string msg, IList description, int index_bits, int minhash_bits)
 		{
 			Assert.AreEqual(index_bits, (long)description[0], msg);
 			Assert.AreEqual(minhash_bits, (long)description[1], msg);
 		}
 
-		public void AssertInit(int index_bits, int minhash_bits, bool should_pass)
+		public static void AssertInit(int index_bits, int minhash_bits, bool should_pass)
 		{
 			string msg = "Fail - index_bits " + index_bits + " minhash_bits " + minhash_bits;
 			HLLPolicy p = HLLPolicy.Default;
-			Operation[] ops = new Operation[] {
+			Operation[] ops = [
 					HLLOperation.Init(p, binName, index_bits, minhash_bits),
 					HLLOperation.GetCount(binName),
 					HLLOperation.RefreshCount(binName),
-					HLLOperation.Describe(binName)};
+					HLLOperation.Describe(binName)];
 
 			if (! should_pass)
 			{
@@ -249,14 +249,14 @@ namespace Aerospike.Test
 				HLLOperation.Init(HLLPolicy.Default, binName + "other", index_bits));
 
 			// create_only
-			HLLPolicy c = new HLLPolicy(HLLWriteFlags.CREATE_ONLY);
+			HLLPolicy c = new(HLLWriteFlags.CREATE_ONLY);
 
 			AssertSuccess("create_only", key, HLLOperation.Init(c, binName, index_bits));
 			AssertThrows("create_only - error", key, typeof(AerospikeException), ResultCode.BIN_EXISTS_ERROR,
 				HLLOperation.Init(c, binName, index_bits));
 
 			// update_only
-			HLLPolicy u = new HLLPolicy(HLLWriteFlags.UPDATE_ONLY);
+			HLLPolicy u = new(HLLWriteFlags.UPDATE_ONLY);
 
 			AssertSuccess("update_only", key, HLLOperation.Init(u, binName, index_bits));
 			AssertSuccess("remove bin", key, Operation.Put(Bin.AsNull(binName)));
@@ -264,13 +264,13 @@ namespace Aerospike.Test
 				HLLOperation.Init(u, binName, index_bits));
 
 			// create_only no_fail
-			HLLPolicy cn = new HLLPolicy(HLLWriteFlags.CREATE_ONLY | HLLWriteFlags.NO_FAIL);
+			HLLPolicy cn = new(HLLWriteFlags.CREATE_ONLY | HLLWriteFlags.NO_FAIL);
 
 			AssertSuccess("create_only nofail", key, HLLOperation.Init(cn, binName, index_bits));
 			AssertSuccess("create_only nofail - no error", key, HLLOperation.Init(cn, binName, index_bits));
 
 			// update_only no_fail
-			HLLPolicy un = new HLLPolicy(HLLWriteFlags.UPDATE_ONLY | HLLWriteFlags.NO_FAIL);
+			HLLPolicy un = new(HLLWriteFlags.UPDATE_ONLY | HLLWriteFlags.NO_FAIL);
 
 			AssertSuccess("update_only nofail", key, HLLOperation.Init(un, binName, index_bits));
 			AssertSuccess("remove bin", key, Operation.Put(Bin.AsNull(binName)));
@@ -279,24 +279,24 @@ namespace Aerospike.Test
 			// fold
 			AssertSuccess("create_only", key, HLLOperation.Init(c, binName, index_bits));
 
-			HLLPolicy f = new HLLPolicy(HLLWriteFlags.ALLOW_FOLD);
+			HLLPolicy f = new(HLLWriteFlags.ALLOW_FOLD);
 
 			AssertThrows("fold", key, typeof(AerospikeException), ResultCode.PARAMETER_ERROR,
 				HLLOperation.Init(f, binName, index_bits));
 		}
 
-		public void AssertAddInit(int index_bits, int minhash_bits)
+		public static void AssertAddInit(int index_bits, int minhash_bits)
 		{
 			client.Delete(null, key);
 
 			string msg = "Fail - index_bits " + index_bits + " minhash_bits " + minhash_bits;
 			HLLPolicy p = HLLPolicy.Default;
-			Operation[] ops = new Operation[] {
+			Operation[] ops = [
 				HLLOperation.Add(p, binName, entries, index_bits, minhash_bits),
 				HLLOperation.GetCount(binName),
 				HLLOperation.RefreshCount(binName),
 				HLLOperation.Describe(binName),
-				HLLOperation.Add(p, binName, entries)};
+				HLLOperation.Add(p, binName, entries)];
 
 			if (!CheckBits(index_bits, minhash_bits))
 			{
@@ -314,7 +314,7 @@ namespace Aerospike.Test
 			AssertDescription(msg, description, index_bits, minhash_bits);
 			AssertHLLCount(msg, index_bits, count, entries.Count);
 			Assert.AreEqual(count, count1);
-			Assert.AreEqual(n_added, 0);
+			Assert.AreEqual(0, n_added);
 		}
 
 		[TestMethod]
@@ -335,20 +335,20 @@ namespace Aerospike.Test
 			AssertSuccess("other bin", key, Operation.Delete(), HLLOperation.Init(HLLPolicy.Default, binName + "other", index_bits));
 
 			// create_only
-			HLLPolicy c = new HLLPolicy(HLLWriteFlags.CREATE_ONLY);
+			HLLPolicy c = new(HLLWriteFlags.CREATE_ONLY);
 
 			AssertSuccess("create_only", key, HLLOperation.Add(c, binName, entries, index_bits));
 			AssertThrows("create_only - error", key, typeof(AerospikeException), ResultCode.BIN_EXISTS_ERROR,
 				HLLOperation.Add(c, binName, entries, index_bits));
 
 			// update_only
-			HLLPolicy u = new HLLPolicy(HLLWriteFlags.UPDATE_ONLY);
+			HLLPolicy u = new(HLLWriteFlags.UPDATE_ONLY);
 
 			AssertThrows("update_only - error", key, typeof(AerospikeException), ResultCode.PARAMETER_ERROR,
 				HLLOperation.Add(u, binName, entries, index_bits));
 
 			// create_only no_fail
-			HLLPolicy cn = new HLLPolicy(HLLWriteFlags.CREATE_ONLY | HLLWriteFlags.NO_FAIL);
+			HLLPolicy cn = new(HLLWriteFlags.CREATE_ONLY | HLLWriteFlags.NO_FAIL);
 
 			AssertSuccess("create_only nofail", key, HLLOperation.Add(cn, binName, entries, index_bits));
 			AssertSuccess("create_only nofail - no error", key, HLLOperation.Add(cn, binName, entries, index_bits));
@@ -356,13 +356,13 @@ namespace Aerospike.Test
 			// fold
 			AssertSuccess("init", key, HLLOperation.Init(HLLPolicy.Default, binName, index_bits));
 
-			HLLPolicy f = new HLLPolicy(HLLWriteFlags.ALLOW_FOLD);
+			HLLPolicy f = new(HLLWriteFlags.ALLOW_FOLD);
 
 			AssertThrows("fold", key, typeof(AerospikeException), ResultCode.PARAMETER_ERROR,
 				HLLOperation.Add(f, binName, entries, index_bits));
 		}
 
-		public void AssertFold(IList vals0, IList vals1, int index_bits)
+		public static void AssertFold(IList vals0, IList vals1, int index_bits)
 		{
 			string msg = "Fail - index_bits " + index_bits;
 			HLLPolicy p = HLLPolicy.Default;
@@ -371,7 +371,7 @@ namespace Aerospike.Test
 			{
 				if (!CheckBits(index_bits, 0) || !CheckBits(ix, 0))
 				{
-					Assert.IsTrue(false, "Expected valid inputs: " + msg);
+					Assert.Fail("Expected valid inputs: " + msg);
 				}
 
 				Record recorda = AssertSuccess(msg, key, 
@@ -454,7 +454,7 @@ namespace Aerospike.Test
 			AssertThrows("create_only - error", key, typeof(AerospikeException), ResultCode.BIN_NOT_FOUND, HLLOperation.Fold(binName, fold_down));
 		}
 
-		public void AssertSetUnion(IList<IList> vals, int index_bits, bool folding, bool allow_folding)
+		public static void AssertSetUnion(IList<IList> vals, int index_bits, bool folding, bool allow_folding)
 		{
 			string msg = "Fail - index_bits " + index_bits;
 			HLLPolicy p = HLLPolicy.Default;
@@ -499,7 +499,7 @@ namespace Aerospike.Test
 				AssertHLLCount(msg, ix, count, sub_vals.Count);
 			}
 
-			List<Value.HLLValue> hlls = new List<Value.HLLValue>();
+			List<Value.HLLValue> hlls = [];
 
 			for (int i = 0; i < keys.Length; i++)
 			{
@@ -507,11 +507,11 @@ namespace Aerospike.Test
 				IList result_list = record.GetList(binName);
 				Value.HLLValue hll = (Value.HLLValue)result_list[0];
 
-				Assert.AreNotEqual(null, hll);
+				Assert.IsNotNull(hll);
 				hlls.Add(hll);
 			}
 
-			Operation[] ops = new Operation[] {
+			Operation[] ops = [
 				Operation.Delete(),
 				HLLOperation.Init(p, binName, index_bits),
 				HLLOperation.SetUnion(u, binName, hlls),
@@ -519,7 +519,7 @@ namespace Aerospike.Test
 				Operation.Delete(),
 				HLLOperation.SetUnion(p, binName, hlls),
 				HLLOperation.GetCount(binName)
-			};
+			];
 
 			if (folded && !allow_folding)
 			{
@@ -555,11 +555,11 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void OperateSetUnion()
 		{
-			List<IList> vals = new List<IList>();
+			List<IList> vals = [];
 
 			for (int i = 0; i < keys.Length; i++)
 			{
-				List<Value> sub_vals = new List<Value>();
+				List<Value> sub_vals = [];
 
 				for (int j = 0; j < n_entries / 3; j++)
 				{
@@ -587,7 +587,7 @@ namespace Aerospike.Test
 			string otherName = binName + "o";
 
 			// Keep record around win binName is removed.
-			List<Value.HLLValue> hlls = new List<Value.HLLValue>();
+			List<Value.HLLValue> hlls = [];
 			Record record = AssertSuccess("other bin", key,
 				Operation.Delete(),
 				HLLOperation.Add(HLLPolicy.Default, otherName, entries, index_bits),
@@ -599,33 +599,33 @@ namespace Aerospike.Test
 			hlls.Add(hll);
 
 			// create_only
-			HLLPolicy c = new HLLPolicy(HLLWriteFlags.CREATE_ONLY);
+			HLLPolicy c = new(HLLWriteFlags.CREATE_ONLY);
 
 			AssertSuccess("create_only", key, HLLOperation.SetUnion(c, binName, hlls));
 			AssertThrows("create_only - error", key, typeof(AerospikeException), ResultCode.BIN_EXISTS_ERROR, HLLOperation.SetUnion(c, binName, hlls));
 
 			// update_only
-			HLLPolicy u = new HLLPolicy(HLLWriteFlags.UPDATE_ONLY);
+			HLLPolicy u = new(HLLWriteFlags.UPDATE_ONLY);
 
 			AssertSuccess("update_only", key, HLLOperation.SetUnion(u, binName, hlls));
 			AssertSuccess("remove bin", key, Operation.Put(Bin.AsNull(binName)));
 			AssertThrows("update_only - error", key, typeof(AerospikeException), ResultCode.BIN_NOT_FOUND, HLLOperation.SetUnion(u, binName, hlls));
 
 			// create_only no_fail
-			HLLPolicy cn = new HLLPolicy(HLLWriteFlags.CREATE_ONLY | HLLWriteFlags.NO_FAIL);
+			HLLPolicy cn = new(HLLWriteFlags.CREATE_ONLY | HLLWriteFlags.NO_FAIL);
 
 			AssertSuccess("create_only nofail", key, HLLOperation.SetUnion(cn, binName, hlls));
 			AssertSuccess("create_only nofail - no error", key, HLLOperation.SetUnion(cn, binName, hlls));
 
 			// update_only no_fail
-			HLLPolicy un = new HLLPolicy(HLLWriteFlags.UPDATE_ONLY | HLLWriteFlags.NO_FAIL);
+			HLLPolicy un = new(HLLWriteFlags.UPDATE_ONLY | HLLWriteFlags.NO_FAIL);
 
 			AssertSuccess("update_only nofail", key, HLLOperation.SetUnion(un, binName, hlls));
 			AssertSuccess("remove bin", key, Operation.Put(Bin.AsNull(binName)));
 			AssertSuccess("update_only nofail - no error", key, HLLOperation.SetUnion(un, binName, hlls));
 
 			// fold
-			HLLPolicy f = new HLLPolicy(HLLWriteFlags.ALLOW_FOLD);
+			HLLPolicy f = new(HLLWriteFlags.ALLOW_FOLD);
 
 			// fold down
 			AssertSuccess("size up", key, HLLOperation.Init(HLLPolicy.Default, binName, high_n_bits));
@@ -671,7 +671,7 @@ namespace Aerospike.Test
 			// Does not exist.
 			AssertSuccess("remove bin", key, Operation.Put(Bin.AsNull(binName)));
 			record = AssertSuccess("exists count", key, HLLOperation.GetCount(binName));
-			Assert.AreEqual(null, record.GetValue(binName));
+			Assert.IsNull(record.GetValue(binName));
 		}
 
 		[TestMethod]
@@ -679,12 +679,12 @@ namespace Aerospike.Test
 		{
 			int index_bits = 14;
 			long expected_union_count = 0;
-			List<IList> vals = new List<IList>();
-			IList<Value.HLLValue> hlls = new List<Value.HLLValue>();
+			List<IList> vals = [];
+			IList<Value.HLLValue> hlls = [];
 
 			for (int i = 0; i < keys.Length; i++)
 			{
-				List<Value> sub_vals = new List<Value>();
+				List<Value> sub_vals = [];
 
 				for (int j = 0; j < n_entries / 3; j++)
 				{
@@ -748,14 +748,14 @@ namespace Aerospike.Test
 			}
 		}
 
-		public double AbsoluteSimilarityError(int index_bits, int minhash_bits, double expected_similarity)
+		public static double AbsoluteSimilarityError(int index_bits, int minhash_bits, double expected_similarity)
 		{
 			double min_err_index = 1 / Math.Sqrt(1 << index_bits);
 			double min_err_minhash = 6 * Math.Pow(Math.E, minhash_bits * -1) / expected_similarity;
 			return Math.Max(min_err_index, min_err_minhash);
 		}
 
-		public void AssertHMHSimilarity(string msg, int index_bits, int minhash_bits, double similarity, double expected_similarity, long intersect_count, long expected_intersect_count)
+		public static void AssertHMHSimilarity(string msg, int index_bits, int minhash_bits, double similarity, double expected_similarity, long intersect_count, long expected_intersect_count)
 		{
 			double sim_err_6sigma = 0;
 
@@ -775,9 +775,9 @@ namespace Aerospike.Test
 			Assert.IsTrue(IsWithinRelativeError(expected_intersect_count, intersect_count, sim_err_6sigma), msg);
 		}
 
-		public void AssertSimilarityOp(double overlap, IList common, IList<IList> vals, int index_bits, int minhash_bits)
+		public static void AssertSimilarityOp(double overlap, IList common, IList<IList> vals, int index_bits, int minhash_bits)
 		{
-			IList<Value.HLLValue> hlls = new List<Value.HLLValue>();
+			IList<Value.HLLValue> hlls = [];
 
 			for (int i = 0; i < keys.Length; i++)
 			{
@@ -822,7 +822,7 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void OperateSimilarity()
 		{
-			double[] overlaps = new double[] { 0.0001, 0.001, 0.01, 0.1, 0.5 };
+			double[] overlaps = [0.0001, 0.001, 0.01, 0.1, 0.5];
 
 			foreach (double overlap in overlaps)
 			{
@@ -834,12 +834,12 @@ namespace Aerospike.Test
 					common.Add(new Value.StringValue("common" + i));
 				}
 
-				List<IList> vals = new List<IList>();
+				List<IList> vals = [];
 				long unique_entries_per_node = (n_entries - expected_intersect_count) / 3;
 
 				for (int i = 0; i < keys.Length; i++)
 				{
-					List<Value> sub_vals = new List<Value>();
+					List<Value> sub_vals = [];
 
 					for (int j = 0; j < unique_entries_per_node; j++)
 					{

@@ -25,8 +25,8 @@ namespace Aerospike.Test
 	{
 		private const string indexName = "tqeindex";
 		private const string keyPrefix = "tqekey";
-		private static readonly string binName1 = args.GetBinName("tqebin1");
-		private static readonly string binName2 = args.GetBinName("tqebin2");
+		private static readonly string binName1 = Suite.GetBinName("tqebin1");
+		private static readonly string binName2 = Suite.GetBinName("tqebin2");
 		private const int size = 10;
 
 		[ClassInitialize()]
@@ -36,12 +36,14 @@ namespace Aerospike.Test
 			RegisterTask rtask = client.Register(null, assembly, "Aerospike.Test.LuaResources.record_example.lua", "record_example.lua", Language.LUA);
 			rtask.Wait();
 
-			Policy policy = new Policy();
-			policy.totalTimeout = 0; // Do not timeout on index create.
+			Policy policy = new()
+			{
+				totalTimeout = 0 // Do not timeout on index create.
+			};
 
 			try
 			{
-				IndexTask itask = client.CreateIndex(policy, args.ns, args.set, indexName, binName1, IndexType.NUMERIC);
+				IndexTask itask = client.CreateIndex(policy, SuiteHelpers.ns, SuiteHelpers.set, indexName, binName1, IndexType.NUMERIC);
 				itask.Wait();
 			}
 			catch (AerospikeException ae)
@@ -53,10 +55,10 @@ namespace Aerospike.Test
 			}
 		}
 
-		[ClassCleanup()]
+		[ClassCleanup(ClassCleanupBehavior.EndOfClass)]
 		public static void Destroy()
 		{
-			client.DropIndex(null, args.ns, args.set, indexName);
+			client.DropIndex(null, SuiteHelpers.ns, SuiteHelpers.set, indexName);
 		}
 
 		[TestInitialize()]
@@ -64,7 +66,7 @@ namespace Aerospike.Test
 		{
 			for (int i = 1; i <= size; i++)
 			{
-				Key key = new Key(args.ns, args.set, keyPrefix + i);
+				Key key = new(SuiteHelpers.ns, SuiteHelpers.set, keyPrefix + i);
 				client.Put(null, key, new Bin(binName1, i), new Bin(binName2, i));
 			}
 		}
@@ -75,9 +77,9 @@ namespace Aerospike.Test
 			int begin = 3;
 			int end = 9;
 
-			Statement stmt = new Statement();
-			stmt.SetNamespace(args.ns);
-			stmt.SetSetName(args.set);
+			Statement stmt = new();
+			stmt.SetNamespace(SuiteHelpers.ns);
+			stmt.SetSetName(SuiteHelpers.set);
 			stmt.SetFilter(Filter.Range(binName1, begin, end));
 
 			ExecuteTask task = client.Execute(null, stmt, "record_example", "processRecord", Value.Get(binName1), Value.Get(binName2), Value.Get(100));
@@ -85,21 +87,21 @@ namespace Aerospike.Test
 			ValidateRecords();
 		}
 
-		private void ValidateRecords()
+		private static void ValidateRecords()
 		{
 			int begin = 1;
 			int end = size + 100;
 
-			Statement stmt = new Statement();
-			stmt.SetNamespace(args.ns);
-			stmt.SetSetName(args.set);
+			Statement stmt = new();
+			stmt.SetNamespace(SuiteHelpers.ns);
+			stmt.SetSetName(SuiteHelpers.set);
 			stmt.SetFilter(Filter.Range(binName1, begin, end));
 
 			RecordSet rs = client.Query(null, stmt);
 
 			try
 			{
-				int[] expectedList = new int[] { 1, 2, 3, 104, 5, 106, 7, 108, -1, 10 };
+				int[] expectedList = [1, 2, 3, 104, 5, 106, 7, 108, -1, 10];
 				int expectedSize = size - 1;
 				int count = 0;
 
@@ -143,12 +145,12 @@ namespace Aerospike.Test
 			int begin = 3;
 			int end = 9;
 
-			Statement stmt = new Statement();
-			stmt.SetNamespace(args.ns);
-			stmt.SetSetName(args.set);
+			Statement stmt = new();
+			stmt.SetNamespace(SuiteHelpers.ns);
+			stmt.SetSetName(SuiteHelpers.set);
 			stmt.SetFilter(Filter.Range(binName1, begin, end));
 
-			Bin bin = new Bin("foo", "bar");
+			Bin bin = new("foo", "bar");
 
 			ExecuteTask task = client.Execute(null, stmt, Operation.Put(bin));
 			task.Wait(3000, 3000);
@@ -156,8 +158,8 @@ namespace Aerospike.Test
 			string expected = bin.value.ToString();
 
 			stmt = new Statement();
-			stmt.SetNamespace(args.ns);
-			stmt.SetSetName(args.set);
+			stmt.SetNamespace(SuiteHelpers.ns);
+			stmt.SetSetName(SuiteHelpers.set);
 			stmt.SetFilter(Filter.Range(binName1, begin, end));
 
 			RecordSet rs = client.Query(null, stmt);
@@ -199,9 +201,9 @@ namespace Aerospike.Test
 			int begin = 3;
 			int end = 9;
 
-			Statement stmt = new Statement();
-			stmt.SetNamespace(args.ns);
-			stmt.SetSetName(args.set);
+			Statement stmt = new();
+			stmt.SetNamespace(SuiteHelpers.ns);
+			stmt.SetSetName(SuiteHelpers.set);
 			stmt.SetFilter(Filter.Range(binName1, begin, end));
 
 			ExecuteTask task = client.Execute(null, stmt,
@@ -211,8 +213,8 @@ namespace Aerospike.Test
 			task.Wait(3000, 3000);
 
 			stmt = new Statement();
-			stmt.SetNamespace(args.ns);
-			stmt.SetSetName(args.set);
+			stmt.SetNamespace(SuiteHelpers.ns);
+			stmt.SetSetName(SuiteHelpers.set);
 			stmt.SetFilter(Filter.Range(binName1, begin, end));
 
 			RecordSet rs = client.Query(null, stmt);
@@ -248,9 +250,9 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void QueryExecuteSetNotFound()
 		{
-			Statement stmt = new Statement
+			Statement stmt = new()
 			{
-				Namespace = args.ns,
+				Namespace = SuiteHelpers.ns,
 				SetName = "notfound",
 				Filter = Filter.Range(binName1, 1, 3)
 			};

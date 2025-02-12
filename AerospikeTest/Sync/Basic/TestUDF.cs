@@ -35,8 +35,8 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void WriteUsingUdf()
 		{
-			Key key = new Key(args.ns, args.set, "udfkey1");
-			Bin bin = new Bin(args.GetBinName("udfbin1"), "string value");
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "udfkey1");
+			Bin bin = new(Suite.GetBinName("udfbin1"), "string value");
 
 			client.Execute(null, key, "record_example", "writeBin", Value.Get(bin.name), bin.value);
 
@@ -47,8 +47,8 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void WriteIfGenerationNotChanged()
 		{
-			Key key = new Key(args.ns, args.set, "udfkey2");
-			Bin bin = new Bin(args.GetBinName("udfbin2"), "string value");
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "udfkey2");
+			Bin bin = new(Suite.GetBinName("udfbin2"), "string value");
 
 			// Seed record.
 			client.Put(null, key, bin);
@@ -63,7 +63,7 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void WriteIfNotExists()
 		{
-			Key key = new Key(args.ns, args.set, "udfkey3");
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "udfkey3");
 			string binName = "udfbin3";
 
 			// Delete record if it already exists.
@@ -87,7 +87,7 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void WriteWithValidation()
 		{
-			Key key = new Key(args.ns, args.set, "udfkey4");
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "udfkey4");
 			string binName = "udfbin4";
 
 			// Lua function writeWithValidation accepts number between 1 and 10.
@@ -108,24 +108,20 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void WriteListMapUsingUdf()
 		{
-			Key key = new Key(args.ns, args.set, "udfkey5");
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "udfkey5");
 
-			List<object> inner = new List<object>();
-			inner.Add("string2");
-			inner.Add(8L);
+			List<object> inner = ["string2", 8L];
 
-			Dictionary<object, object> innerMap = new Dictionary<object, object>();
-			innerMap["a"] = 1L;
-			innerMap[2L] = "b";
-			innerMap["list"] = inner;
+			Dictionary<object, object> innerMap = new()
+			{
+				["a"] = 1L,
+				[2L] = "b",
+				["list"] = inner
+			};
 
-			List<object> list = new List<object>();
-			list.Add("string1");
-			list.Add(4L);
-			list.Add(inner);
-			list.Add(innerMap);
+			List<object> list = ["string1", 4L, inner, innerMap];
 
-			string binName = args.GetBinName("udfbin5");
+			string binName = Suite.GetBinName("udfbin5");
 
 			client.Execute(null, key, "record_example", "writeBin", Value.Get(binName), Value.Get(list));
 
@@ -148,24 +144,20 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void AppendListUsingUdf()
 		{
-			Key key = new Key(args.ns, args.set, "udfkey6");
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "udfkey6");
 
-			List<object> inner = new List<object>();
-			inner.Add("string2");
-			inner.Add(8L);
+			List<object> inner = ["string2", 8L];
 
-			Dictionary<object, object> innerMap = new Dictionary<object, object>();
-			innerMap["a"] = 1L;
-			innerMap[2L] = "b";
-			innerMap["list"] = inner;
+			Dictionary<object, object> innerMap = new()
+			{
+				["a"] = 1L,
+				[2L] = "b",
+				["list"] = inner
+			};
 
-			List<object> list = new List<object>();
-			list.Add("string1");
-			list.Add(4L);
-			list.Add(inner);
-			list.Add(innerMap);
+			List<object> list = ["string1", 4L, inner, innerMap];
 
-			string binName = args.GetBinName("udfbin6");
+			string binName = Suite.GetBinName("udfbin6");
 
 			// Write list.
 			client.Execute(null, key, "record_example", "writeBin", Value.Get(binName), Value.Get(list));
@@ -191,8 +183,8 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void WriteBlobUsingUdf()
 		{
-			Key key = new Key(args.ns, args.set, "udfkey7");
-			string binName = args.GetBinName("udfbin7");
+			Key key = new(Suite.ns, Suite.set, "udfkey7");
+			string binName = Suite.GetBinName("udfbin7");
 			byte[] blob;
 
 			// Create packed blob using standard C# tools.
@@ -213,11 +205,11 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void BatchUDF()
 		{
-			Key[] keys = new Key[]
-			{
-				new Key(args.ns, args.set, 20000),
-				new Key(args.ns, args.set, 20001)
-			};
+			Key[] keys =
+			[
+				new(SuiteHelpers.ns, SuiteHelpers.set, 20000),
+				new(SuiteHelpers.ns, SuiteHelpers.set, 20001)
+			];
 
 			client.Delete(null, null, keys);
 
@@ -237,7 +229,7 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void BatchUDFError()
 		{
-			Key[] keys = new Key[] { new Key(args.ns, args.set, 20002), new Key(args.ns, args.set, 20003) };
+			Key[] keys = [new(SuiteHelpers.ns, SuiteHelpers.set, 20002), new(SuiteHelpers.ns, SuiteHelpers.set, 20003)];
 
 			client.Delete(null, null, keys);
 
@@ -260,18 +252,15 @@ namespace Aerospike.Test
 		{
 			string bin = "B5";
 
-			Value[] a1 = new Value[] { Value.Get(bin), Value.Get("value1") };
-			Value[] a2 = new Value[] { Value.Get(bin), Value.Get(5) };
-			Value[] a3 = new Value[] { Value.Get(bin), Value.Get(999) };
+			Value[] a1 = [Value.Get(bin), Value.Get("value1")];
+			Value[] a2 = [Value.Get(bin), Value.Get(5)];
+			Value[] a3 = [Value.Get(bin), Value.Get(999)];
 
-			BatchUDF b1 = new BatchUDF(new Key(args.ns, args.set, 20004), "record_example", "writeBin", a1);
-			BatchUDF b2 = new BatchUDF(new Key(args.ns, args.set, 20005), "record_example", "writeWithValidation", a2);
-			BatchUDF b3 = new BatchUDF(new Key(args.ns, args.set, 20005), "record_example", "writeWithValidation", a3);
+			BatchUDF b1 = new(new Key(SuiteHelpers.ns, SuiteHelpers.set, 20004), "record_example", "writeBin", a1);
+			BatchUDF b2 = new(new Key(SuiteHelpers.ns, SuiteHelpers.set, 20005), "record_example", "writeWithValidation", a2);
+			BatchUDF b3 = new(new Key(SuiteHelpers.ns, SuiteHelpers.set, 20005), "record_example", "writeWithValidation", a3);
 
-			List<BatchRecord> records = new List<BatchRecord>();
-			records.Add(b1);
-			records.Add(b2);
-			records.Add(b3);
+			List<BatchRecord> records = [b1, b2, b3];
 
 			bool status = client.Operate(null, records);
 
@@ -280,8 +269,8 @@ namespace Aerospike.Test
 			AssertBinEqual(b2.key, b2.record, bin, 0);
 			Assert.AreEqual(ResultCode.UDF_BAD_RESPONSE, b3.resultCode);
 
-			BatchRead b4 = new BatchRead(new Key(args.ns, args.set, 20004), true);
-			BatchRead b5 = new BatchRead(new Key(args.ns, args.set, 20005), true);
+			BatchRead b4 = new(new Key(SuiteHelpers.ns, SuiteHelpers.set, 20004), true);
+			BatchRead b5 = new(new Key(SuiteHelpers.ns, SuiteHelpers.set, 20005), true);
 
 			records.Clear();
 			records.Add(b4);

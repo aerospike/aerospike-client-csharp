@@ -26,11 +26,11 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void DeleteBin()
 		{
-			Key key = new Key(args.ns, args.set, "delbinkey");
-			string binName1 = args.GetBinName("bin1");
-			string binName2 = args.GetBinName("bin2");
-			Bin bin1 = new Bin(binName1, "value1");
-			Bin bin2 = new Bin(binName2, "value2");
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "delbinkey");
+			string binName1 = Suite.GetBinName("bin1");
+			string binName2 = Suite.GetBinName("bin2");
+			Bin bin1 = new(binName1, "value1");
+			Bin bin2 = new(binName2, "value2");
 			client.Put(null, key, bin1, bin2);
 
 			bin1 = Bin.AsNull(binName1); // Set bin value to null to drop bin.

@@ -30,11 +30,11 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void OperateBitResize()
 		{
-			Key key = new Key(args.ns, args.set, "opbkey1");
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "opbkey1");
 
 			client.Delete(null, key);
 
-			byte[] bytes = new byte[] { 0x01, 0x42 };
+			byte[] bytes = [0x01, 0x42];
 
 			client.Put(null, key, new Bin(binName, bytes));
 
@@ -49,22 +49,22 @@ namespace Aerospike.Test
 
 			byte[] b = (byte[])list[1];
 			//Console.WriteLine(ByteUtil.BytesToHexString(b));
-			Assert.IsTrue(Util.ByteArrayEquals(new byte[] { 0x01, 0x42, 0x00, 0x00 }, b));
+			Assert.IsTrue(Util.ByteArrayEquals([0x01, 0x42, 0x00, 0x00], b));
 		}
 
 		[TestMethod]
 		public void OperateBitInsert()
 		{
-			Key key = new Key(args.ns, args.set, "opbkey2");
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "opbkey2");
 
 			client.Delete(null, key);
 
-			byte[] bytes = new byte[] { 0x01, 0x42, 0x03, 0x04, 0x05 };
+			byte[] bytes = [0x01, 0x42, 0x03, 0x04, 0x05];
 
 			client.Put(null, key, new Bin(binName, bytes));
 
 			Record record = client.Operate(null, key,
-				BitOperation.Insert(BitPolicy.Default, binName, 1, new byte[] { 0xFF, 0xC7 }),
+				BitOperation.Insert(BitPolicy.Default, binName, 1, [0xFF, 0xC7]),
 				Operation.Get(binName)
 				);
 
@@ -73,17 +73,17 @@ namespace Aerospike.Test
 			IList list = record.GetList(binName);
 
 			byte[] b = (byte[])list[1];
-			Assert.IsTrue(Util.ByteArrayEquals(new byte[] { 0x01, 0xFF, 0xC7, 0x42, 0x03, 0x04, 0x05 }, b));
+			Assert.IsTrue(Util.ByteArrayEquals([0x01, 0xFF, 0xC7, 0x42, 0x03, 0x04, 0x05], b));
 		}
 
 		[TestMethod]
 		public void OperateBitRemove()
 		{
-			Key key = new Key(args.ns, args.set, "opbkey3");
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "opbkey3");
 
 			client.Delete(null, key);
 
-			byte[] bytes = new byte[] { 0x01, 0x42, 0x03, 0x04, 0x05 };
+			byte[] bytes = [0x01, 0x42, 0x03, 0x04, 0x05];
 
 			client.Put(null, key, new Bin(binName, bytes));
 
@@ -97,22 +97,22 @@ namespace Aerospike.Test
 			IList list = record.GetList(binName);
 
 			byte[] b = (byte[])list[1];
-			Assert.IsTrue(Util.ByteArrayEquals(new byte[] { 0x01, 0x42 }, b));
+			Assert.IsTrue(Util.ByteArrayEquals([0x01, 0x42], b));
 		}
 
 		[TestMethod]
 		public void OperateBitSet()
 		{
-			Key key = new Key(args.ns, args.set, "opbkey1");
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "opbkey1");
 
 			client.Delete(null, key);
 
-			byte[] bytes = new byte[] { 0x01, 0x42, 0x03, 0x04, 0x05 };
+			byte[] bytes = [0x01, 0x42, 0x03, 0x04, 0x05];
 
 			client.Put(null, key, new Bin(binName, bytes));
 
 			Record record = client.Operate(null, key,
-				BitOperation.Set(BitPolicy.Default, binName, 13, 3, new byte[] { 0xE0 }),
+				BitOperation.Set(BitPolicy.Default, binName, 13, 3, [0xE0]),
 				Operation.Get(binName)
 				);
 
@@ -122,22 +122,22 @@ namespace Aerospike.Test
 
 			byte[] b = (byte[])list[1];
 			//Console.WriteLine(ByteUtil.BytesToHexString(b));
-			Assert.IsTrue(Util.ByteArrayEquals(new byte[] { 0x01, 0x47, 0x03, 0x04, 0x05 }, b));
+			Assert.IsTrue(Util.ByteArrayEquals([0x01, 0x47, 0x03, 0x04, 0x05], b));
 		}
 
 		[TestMethod]
 		public void OperateBitOr()
 		{
-			Key key = new Key(args.ns, args.set, "opbkey2");
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "opbkey2");
 
 			client.Delete(null, key);
 
-			byte[] bytes = new byte[] { 0x01, 0x42, 0x03, 0x04, 0x05 };
+			byte[] bytes = [0x01, 0x42, 0x03, 0x04, 0x05];
 
 			client.Put(null, key, new Bin(binName, bytes));
 
 			Record record = client.Operate(null, key,
-				BitOperation.Or(BitPolicy.Default, binName, 17, 6, new byte[] { 0xA8 }),
+				BitOperation.Or(BitPolicy.Default, binName, 17, 6, [0xA8]),
 				Operation.Get(binName)
 				);
 
@@ -146,22 +146,22 @@ namespace Aerospike.Test
 			IList list = record.GetList(binName);
 
 			byte[] b = (byte[])list[1];
-			Assert.IsTrue(Util.ByteArrayEquals(new byte[] { 0x01, 0x42, 0x57, 0x04, 0x05 }, b));
+			Assert.IsTrue(Util.ByteArrayEquals([0x01, 0x42, 0x57, 0x04, 0x05], b));
 		}
 
 		[TestMethod]
 		public void OperateBitXor()
 		{
-			Key key = new Key(args.ns, args.set, "opbkey3");
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "opbkey3");
 
 			client.Delete(null, key);
 
-			byte[] bytes = new byte[] { 0x01, 0x42, 0x03, 0x04, 0x05 };
+			byte[] bytes = [0x01, 0x42, 0x03, 0x04, 0x05];
 
 			client.Put(null, key, new Bin(binName, bytes));
 
 			Record record = client.Operate(null, key,
-				BitOperation.Xor(BitPolicy.Default, binName, 17, 6, new byte[] { 0xAC }),
+				BitOperation.Xor(BitPolicy.Default, binName, 17, 6, [0xAC]),
 				Operation.Get(binName)
 				);
 
@@ -170,22 +170,22 @@ namespace Aerospike.Test
 			IList list = record.GetList(binName);
 
 			byte[] b = (byte[])list[1];
-			Assert.IsTrue(Util.ByteArrayEquals(new byte[] { 0x01, 0x42, 0x55, 0x04, 0x05 }, b));
+			Assert.IsTrue(Util.ByteArrayEquals([0x01, 0x42, 0x55, 0x04, 0x05], b));
 		}
 
 		[TestMethod]
 		public void OperateBitAnd()
 		{
-			Key key = new Key(args.ns, args.set, "opbkey4");
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "opbkey4");
 
 			client.Delete(null, key);
 
-			byte[] bytes = new byte[] { 0x01, 0x42, 0x03, 0x04, 0x05 };
+			byte[] bytes = [0x01, 0x42, 0x03, 0x04, 0x05];
 
 			client.Put(null, key, new Bin(binName, bytes));
 
 			Record record = client.Operate(null, key,
-				BitOperation.And(BitPolicy.Default, binName, 23, 9, new byte[] { 0x3C, 0x80 }),
+				BitOperation.And(BitPolicy.Default, binName, 23, 9, [0x3C, 0x80]),
 				Operation.Get(binName)
 				);
 
@@ -194,17 +194,17 @@ namespace Aerospike.Test
 			IList list = record.GetList(binName);
 
 			byte[] b = (byte[])list[1];
-			Assert.IsTrue(Util.ByteArrayEquals(new byte[] { 0x01, 0x42, 0x02, 0x00, 0x05 }, b));
+			Assert.IsTrue(Util.ByteArrayEquals([0x01, 0x42, 0x02, 0x00, 0x05], b));
 		}
 
 		[TestMethod]
 		public void OperateBitNot()
 		{
-			Key key = new Key(args.ns, args.set, "opbkey5");
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "opbkey5");
 
 			client.Delete(null, key);
 
-			byte[] bytes = new byte[] { 0x01, 0x42, 0x03, 0x04, 0x05 };
+			byte[] bytes = [0x01, 0x42, 0x03, 0x04, 0x05];
 
 			client.Put(null, key, new Bin(binName, bytes));
 
@@ -218,17 +218,17 @@ namespace Aerospike.Test
 			IList list = record.GetList(binName);
 
 			byte[] b = (byte[])list[1];
-			Assert.IsTrue(Util.ByteArrayEquals(new byte[] { 0x01, 0x42, 0x03, 0x7A, 0x05 }, b));
+			Assert.IsTrue(Util.ByteArrayEquals([0x01, 0x42, 0x03, 0x7A, 0x05], b));
 		}
 
 		[TestMethod]
 		public void OperateBitLshift()
 		{
-			Key key = new Key(args.ns, args.set, "opbkey6");
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "opbkey6");
 
 			client.Delete(null, key);
 
-			byte[] bytes = new byte[] { 0x01, 0x42, 0x03, 0x04, 0x05 };
+			byte[] bytes = [0x01, 0x42, 0x03, 0x04, 0x05];
 
 			client.Put(null, key, new Bin(binName, bytes));
 
@@ -242,17 +242,17 @@ namespace Aerospike.Test
 			IList list = record.GetList(binName);
 
 			byte[] b = (byte[])list[1];
-			Assert.IsTrue(Util.ByteArrayEquals(new byte[] { 0x01, 0x42, 0x03, 0x04, 0x28 }, b));
+			Assert.IsTrue(Util.ByteArrayEquals([0x01, 0x42, 0x03, 0x04, 0x28], b));
 		}
 
 		[TestMethod]
 		public void OperateBitRshift()
 		{
-			Key key = new Key(args.ns, args.set, "opbkey7");
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "opbkey7");
 
 			client.Delete(null, key);
 
-			byte[] bytes = new byte[] { 0x01, 0x42, 0x03, 0x04, 0x05 };
+			byte[] bytes = [0x01, 0x42, 0x03, 0x04, 0x05];
 
 			client.Put(null, key, new Bin(binName, bytes));
 
@@ -266,17 +266,17 @@ namespace Aerospike.Test
 			IList list = record.GetList(binName);
 
 			byte[] b = (byte[])list[1];
-			Assert.IsTrue(Util.ByteArrayEquals(new byte[] { 0x00, 0xC2, 0x03, 0x04, 0x05 }, b));
+			Assert.IsTrue(Util.ByteArrayEquals([0x00, 0xC2, 0x03, 0x04, 0x05], b));
 		}
 
 		[TestMethod]
 		public void OperateBitAdd()
 		{
-			Key key = new Key(args.ns, args.set, "opbkey10");
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "opbkey10");
 
 			client.Delete(null, key);
 
-			byte[] bytes = new byte[] { 0x01, 0x42, 0x03, 0x04, 0x05 };
+			byte[] bytes = [0x01, 0x42, 0x03, 0x04, 0x05];
 
 			client.Put(null, key, new Bin(binName, bytes));
 
@@ -290,17 +290,17 @@ namespace Aerospike.Test
 			IList list = record.GetList(binName);
 
 			byte[] b = (byte[])list[1];
-			Assert.IsTrue(Util.ByteArrayEquals(new byte[] { 0x01, 0x42, 0x03, 0x04, 0x85 }, b));
+			Assert.IsTrue(Util.ByteArrayEquals([0x01, 0x42, 0x03, 0x04, 0x85], b));
 		}
 
 		[TestMethod]
 		public void OperateBitSubtract()
 		{
-			Key key = new Key(args.ns, args.set, "opbkey11");
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "opbkey11");
 
 			client.Delete(null, key);
 
-			byte[] bytes = new byte[] { 0x01, 0x42, 0x03, 0x04, 0x05 };
+			byte[] bytes = [0x01, 0x42, 0x03, 0x04, 0x05];
 
 			client.Put(null, key, new Bin(binName, bytes));
 
@@ -314,17 +314,17 @@ namespace Aerospike.Test
 			IList list = record.GetList(binName);
 
 			byte[] b = (byte[])list[1];
-			Assert.IsTrue(Util.ByteArrayEquals(new byte[] { 0x01, 0x42, 0x03, 0x03, 0x85 }, b));
+			Assert.IsTrue(Util.ByteArrayEquals([0x01, 0x42, 0x03, 0x03, 0x85], b));
 		}
 
 		[TestMethod]
 		public void OperateBitSetInt()
 		{
-			Key key = new Key(args.ns, args.set, "opbkey12");
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "opbkey12");
 
 			client.Delete(null, key);
 
-			byte[] bytes = new byte[] { 0x01, 0x42, 0x03, 0x04, 0x05 };
+			byte[] bytes = [0x01, 0x42, 0x03, 0x04, 0x05];
 
 			client.Put(null, key, new Bin(binName, bytes));
 
@@ -338,17 +338,17 @@ namespace Aerospike.Test
 			IList list = record.GetList(binName);
 
 			byte[] b = (byte[])list[1];
-			Assert.IsTrue(Util.ByteArrayEquals(new byte[] { 0x3F, 0xC2, 0x03, 0x04, 0x05 }, b));
+			Assert.IsTrue(Util.ByteArrayEquals([0x3F, 0xC2, 0x03, 0x04, 0x05], b));
 		}
 
 		[TestMethod]
 		public void OperateBitGet()
 		{
-			Key key = new Key(args.ns, args.set, "opbkey13");
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "opbkey13");
 
 			client.Delete(null, key);
 
-			byte[] bytes = new byte[] { 0x01, 0x42, 0x03, 0x04, 0x05 };
+			byte[] bytes = [0x01, 0x42, 0x03, 0x04, 0x05];
 
 			client.Put(null, key, new Bin(binName, bytes));
 
@@ -359,17 +359,17 @@ namespace Aerospike.Test
 			AssertRecordFound(key, record);
 
 			byte[] b = (byte[])record.GetValue(binName);
-			Assert.IsTrue(Util.ByteArrayEquals(new byte[] { 0x80 }, b));
+			Assert.IsTrue(Util.ByteArrayEquals([0x80], b));
 		}
 
 		[TestMethod]
 		public void OperateBitCount()
 		{
-			Key key = new Key(args.ns, args.set, "opbkey14");
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "opbkey14");
 
 			client.Delete(null, key);
 
-			byte[] bytes = new byte[] { 0x01, 0x42, 0x03, 0x04, 0x05 };
+			byte[] bytes = [0x01, 0x42, 0x03, 0x04, 0x05];
 
 			client.Put(null, key, new Bin(binName, bytes));
 
@@ -386,11 +386,11 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void OperateBitLscan()
 		{
-			Key key = new Key(args.ns, args.set, "opbkey15");
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "opbkey15");
 
 			client.Delete(null, key);
 
-			byte[] bytes = new byte[] { 0x01, 0x42, 0x03, 0x04, 0x05 };
+			byte[] bytes = [0x01, 0x42, 0x03, 0x04, 0x05];
 
 			client.Put(null, key, new Bin(binName, bytes));
 
@@ -407,11 +407,11 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void OperateBitRscan()
 		{
-			Key key = new Key(args.ns, args.set, "opbkey16");
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "opbkey16");
 
 			client.Delete(null, key);
 
-			byte[] bytes = new byte[] { 0x01, 0x42, 0x03, 0x04, 0x05 };
+			byte[] bytes = [0x01, 0x42, 0x03, 0x04, 0x05];
 
 			client.Put(null, key, new Bin(binName, bytes));
 
@@ -428,11 +428,11 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void OperateBitGetInt()
 		{
-			Key key = new Key(args.ns, args.set, "opbkey17");
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "opbkey17");
 
 			client.Delete(null, key);
 
-			byte[] bytes = new byte[] { 0x01, 0x42, 0x03, 0x04, 0x05 };
+			byte[] bytes = [0x01, 0x42, 0x03, 0x04, 0x05];
 
 			client.Put(null, key, new Bin(binName, bytes));
 

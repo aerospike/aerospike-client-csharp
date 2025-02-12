@@ -7,11 +7,17 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AerospikeAdmin", "Aerospike
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AerospikeDemo", "AerospikeDemo\AerospikeDemo.csproj", "{3382B556-835E-4F0D-84B7-181639BA4414}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AerospikeTest", "AerospikeTest\AerospikeTest.csproj", "{C76109A1-1A6C-4F78-848B-DB049D5509E3}"
-EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AerospikeClient", "AerospikeClient\AerospikeClient.csproj", "{A1AA3444-EAED-4394-BCCA-96EA0E0A88D1}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AerospikeBenchmarks", "AerospikeBenchmarks\AerospikeBenchmarks.csproj", "{09C0B19A-41DD-4B47-A015-B7DFCA0072D3}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AerospikeTest", "AerospikeTest\AerospikeTest.csproj", "{61870B1F-3036-44D3-B721-7BD21155EE09}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{DC847D20-5317-4D01-B503-C795AB0F0395}"
+	ProjectSection(SolutionItems) = preProject
+		.runsettings = .runsettings
+		global.json = global.json
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -38,16 +44,6 @@ Global
 		{3382B556-835E-4F0D-84B7-181639BA4414}.Release_Unix|Any CPU.ActiveCfg = Release_Unix|Any CPU
 		{3382B556-835E-4F0D-84B7-181639BA4414}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{3382B556-835E-4F0D-84B7-181639BA4414}.Release|Any CPU.Build.0 = Release|Any CPU
-		{C76109A1-1A6C-4F78-848B-DB049D5509E3}.Coverage|Any CPU.ActiveCfg = Coverage|Any CPU
-		{C76109A1-1A6C-4F78-848B-DB049D5509E3}.Coverage|Any CPU.Build.0 = Coverage|Any CPU
-		{C76109A1-1A6C-4F78-848B-DB049D5509E3}.Debug_Unix|Any CPU.ActiveCfg = Debug_Unix|Any CPU
-		{C76109A1-1A6C-4F78-848B-DB049D5509E3}.Debug_Unix|Any CPU.Build.0 = Debug_Unix|Any CPU
-		{C76109A1-1A6C-4F78-848B-DB049D5509E3}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{C76109A1-1A6C-4F78-848B-DB049D5509E3}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{C76109A1-1A6C-4F78-848B-DB049D5509E3}.Release_Unix|Any CPU.ActiveCfg = Release_Unix|Any CPU
-		{C76109A1-1A6C-4F78-848B-DB049D5509E3}.Release_Unix|Any CPU.Build.0 = Release_Unix|Any CPU
-		{C76109A1-1A6C-4F78-848B-DB049D5509E3}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{C76109A1-1A6C-4F78-848B-DB049D5509E3}.Release|Any CPU.Build.0 = Release|Any CPU
 		{A1AA3444-EAED-4394-BCCA-96EA0E0A88D1}.Coverage|Any CPU.ActiveCfg = Release|Any CPU
 		{A1AA3444-EAED-4394-BCCA-96EA0E0A88D1}.Coverage|Any CPU.Build.0 = Release|Any CPU
 		{A1AA3444-EAED-4394-BCCA-96EA0E0A88D1}.Debug_Unix|Any CPU.ActiveCfg = Debug_Unix|Any CPU
@@ -68,6 +64,16 @@ Global
 		{09C0B19A-41DD-4B47-A015-B7DFCA0072D3}.Release_Unix|Any CPU.Build.0 = Release_Unix|Any CPU
 		{09C0B19A-41DD-4B47-A015-B7DFCA0072D3}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{09C0B19A-41DD-4B47-A015-B7DFCA0072D3}.Release|Any CPU.Build.0 = Release|Any CPU
+		{61870B1F-3036-44D3-B721-7BD21155EE09}.Coverage|Any CPU.ActiveCfg = Debug|Any CPU
+		{61870B1F-3036-44D3-B721-7BD21155EE09}.Coverage|Any CPU.Build.0 = Debug|Any CPU
+		{61870B1F-3036-44D3-B721-7BD21155EE09}.Debug_Unix|Any CPU.ActiveCfg = Debug|Any CPU
+		{61870B1F-3036-44D3-B721-7BD21155EE09}.Debug_Unix|Any CPU.Build.0 = Debug|Any CPU
+		{61870B1F-3036-44D3-B721-7BD21155EE09}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{61870B1F-3036-44D3-B721-7BD21155EE09}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{61870B1F-3036-44D3-B721-7BD21155EE09}.Release_Unix|Any CPU.ActiveCfg = Release|Any CPU
+		{61870B1F-3036-44D3-B721-7BD21155EE09}.Release_Unix|Any CPU.Build.0 = Release|Any CPU
+		{61870B1F-3036-44D3-B721-7BD21155EE09}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{61870B1F-3036-44D3-B721-7BD21155EE09}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

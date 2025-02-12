@@ -25,14 +25,14 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void Generation()
 		{
-			Key key = new Key(args.ns, args.set, "genkey");
-			string binName = args.GetBinName("genbin");
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "genkey");
+			string binName = Suite.GetBinName("genbin");
 
 			// Delete record if it already exists.
 			client.Delete(null, key);
 
 			// Set some values for the same record.
-			Bin bin = new Bin(binName, "genvalue1");
+			Bin bin = new(binName, "genvalue1");
 
 			client.Put(null, key, bin);
 
@@ -47,9 +47,11 @@ namespace Aerospike.Test
 			// Set record and fail if it's not the expected generation.
 			bin = new Bin(binName, "genvalue3");
 
-			WritePolicy writePolicy = new WritePolicy();
-			writePolicy.generationPolicy = GenerationPolicy.EXPECT_GEN_EQUAL;
-			writePolicy.generation = record.generation;
+			WritePolicy writePolicy = new()
+			{
+				generationPolicy = GenerationPolicy.EXPECT_GEN_EQUAL,
+				generation = record.generation
+			};
 			client.Put(writePolicy, key, bin);
 
 			// Set record with invalid generation and check results .

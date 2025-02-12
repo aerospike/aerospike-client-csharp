@@ -26,15 +26,17 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void Replace()
 		{
-			Key key = new Key(args.ns, args.set, "replacekey");
-			Bin bin1 = new Bin("bin1", "value1");
-			Bin bin2 = new Bin("bin2", "value2");
-			Bin bin3 = new Bin("bin3", "value3");
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "replacekey");
+			Bin bin1 = new("bin1", "value1");
+			Bin bin2 = new("bin2", "value2");
+			Bin bin3 = new("bin3", "value3");
 
 			client.Put(null, key, bin1, bin2);
 
-			WritePolicy policy = new WritePolicy();
-			policy.recordExistsAction = RecordExistsAction.REPLACE;
+			WritePolicy policy = new()
+			{
+				recordExistsAction = RecordExistsAction.REPLACE
+			};
 			client.Put(policy, key, bin3);
 
 			Record record = client.Get(null, key);
@@ -55,16 +57,18 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void ReplaceOnly()
 		{
-			Key key = new Key(args.ns, args.set, "replaceonlykey");
-			Bin bin = new Bin("bin", "value");
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "replaceonlykey");
+			Bin bin = new("bin", "value");
 
 			// Delete record if it already exists.
 			client.Delete(null, key);
 
 			try
 			{
-				WritePolicy policy = new WritePolicy();
-				policy.recordExistsAction = RecordExistsAction.REPLACE_ONLY;
+				WritePolicy policy = new()
+				{
+					recordExistsAction = RecordExistsAction.REPLACE_ONLY
+				};
 				client.Put(policy, key, bin);
 
 				Assert.Fail("Failure. This command should have resulted in an error.");
@@ -73,7 +77,7 @@ namespace Aerospike.Test
 			{
 				if (ae.Result != ResultCode.KEY_NOT_FOUND_ERROR)
 				{
-					throw ae;
+					throw;
 				}
 			}
 		}

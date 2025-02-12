@@ -30,20 +30,22 @@ namespace Aerospike.Test
 		private static readonly string binName = "bb";
 		private static readonly string indexNameList = "qblist";
 		private static readonly string binNameList = "bblist";
-		private static int size = 5;
+		private static readonly int size = 5;
 
 		[ClassInitialize()]
 		public static void Prepare(TestContext testContext)
 		{
-			Policy policy = new();
-			policy.totalTimeout = 5000;
+			Policy policy = new()
+			{
+				totalTimeout = 5000
+			};
 
 			try
 			{
-				IndexTask task = client.CreateIndex(policy, args.ns, args.set, indexName, binName, IndexType.BLOB);
+				IndexTask task = client.CreateIndex(policy, SuiteHelpers.ns, SuiteHelpers.set, indexName, binName, IndexType.BLOB);
 				task.Wait();
 
-				task = client.CreateIndex(policy, args.ns, args.set, indexNameList, binNameList, IndexType.BLOB, IndexCollectionType.LIST);
+				task = client.CreateIndex(policy, SuiteHelpers.ns, SuiteHelpers.set, indexNameList, binNameList, IndexType.BLOB, IndexCollectionType.LIST);
 				task.Wait();
 			}
 			catch (AerospikeException ae)
@@ -59,24 +61,24 @@ namespace Aerospike.Test
 				var bytes = new byte[8];
 				ByteUtil.LongToBytes(50000 + (ulong)i, bytes, 0);
 
-				List<byte[]> list = new()
-				{
+				List<byte[]> list =
+				[
 					bytes
-				};
+				];
 
-				Key key = new Key(args.ns, args.set, i);
-				Bin bin = new Bin(binName, bytes);
-				Bin binList = new Bin(binNameList, list);
+				Key key = new(SuiteHelpers.ns, SuiteHelpers.set, i);
+				Bin bin = new(binName, bytes);
+				Bin binList = new(binNameList, list);
 
 				client.Put(null, key, bin, binList);
 			}
 		}
 
-		[ClassCleanup()]
+		[ClassCleanup(ClassCleanupBehavior.EndOfClass)]
 		public static void Destroy()
 		{
-			client.DropIndex(null, args.ns, args.set, indexName);
-			client.DropIndex(null, args.ns, args.set, indexNameList);
+			client.DropIndex(null, SuiteHelpers.ns, SuiteHelpers.set, indexName);
+			client.DropIndex(null, SuiteHelpers.ns, SuiteHelpers.set, indexNameList);
 		}
 
 		[TestMethod]
@@ -85,9 +87,9 @@ namespace Aerospike.Test
 			var bytes = new byte[8];
 			ByteUtil.LongToBytes(50003, bytes, 0);
 
-			Statement stmt = new Statement();
-			stmt.SetNamespace(args.ns);
-			stmt.SetSetName(args.set);
+			Statement stmt = new();
+			stmt.SetNamespace(SuiteHelpers.ns);
+			stmt.SetSetName(SuiteHelpers.set);
 			stmt.SetBinNames(binName);
 			stmt.SetFilter(Filter.Equal(binName, bytes));
 
@@ -119,9 +121,9 @@ namespace Aerospike.Test
 			var bytes = new byte[8];
 			ByteUtil.LongToBytes(50003, bytes, 0);
 
-			Statement stmt = new Statement();
-			stmt.SetNamespace(args.ns);
-			stmt.SetSetName(args.set);
+			Statement stmt = new();
+			stmt.SetNamespace(SuiteHelpers.ns);
+			stmt.SetSetName(SuiteHelpers.set);
 			stmt.SetBinNames(binName, binNameList);
 			stmt.SetFilter(Filter.Contains(binNameList, IndexCollectionType.LIST, bytes));
 
