@@ -56,6 +56,7 @@ jobs:
     - name: Test
       uses: ./.github/actions/test
       with:
+        jfrog-tests-repo-name: database-generic-dev-local
         use-server-rc: ${{ contains(github.event.pull_request.labels.*.name, 'new-server-features') }}
         docker-hub-username: ${{ secrets.DOCKER_HUB_BOT_USERNAME }}
         docker-hub-password: ${{ secrets.DOCKER_HUB_BOT_PW }}
