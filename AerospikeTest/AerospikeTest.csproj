@@ -1,4 +1,4 @@
-<Project Sdk="MSTest.Sdk">
+﻿<Project Sdk="MSTest.Sdk">
 
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
@@ -8,7 +8,7 @@
     <AssemblyName>AerospikeTest</AssemblyName>
     <TestingExtensionsProfile>Default</TestingExtensionsProfile>
     <IsPackable>false</IsPackable>
-    <Version>8.0.1</Version>
+    <Version>8.0.2</Version>
     <Company>Aerospike</Company>
     <Authors>Aerospike</Authors>
     <Platforms>AnyCPU</Platforms>
