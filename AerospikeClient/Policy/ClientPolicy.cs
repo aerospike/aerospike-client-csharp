@@ -14,8 +14,6 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using System;
-using System.Collections.Generic;
 
 namespace Aerospike.Client
 {
@@ -318,6 +316,11 @@ namespace Aerospike.Client
 		/// <para>Default: null</para>
 		/// </summary>
 		public List<int> rackIds;
+
+		/// <summary>
+		/// Dynamic configuration provider.
+		/// </summary>
+		public AerospikeConfigProvider ConfigProvider;
 		
 		/// <summary>
 		/// Copy client policy from another client policy.
