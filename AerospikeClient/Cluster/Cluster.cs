@@ -132,6 +132,8 @@ namespace Aerospike.Client
 		private volatile int retryCount;
 		private volatile int commandCount;
 		private volatile int delayQueueTimeoutCount;
+		private IAerospikeConfigProvider configProvider;
+        private int configInterval;
 
 		public Cluster(ClientPolicy policy, Host[] hosts)
 		{
@@ -145,7 +147,7 @@ namespace Aerospike.Client
 			}
 			*/
 
-			this.clusterName = (policy.clusterName != null)? policy.clusterName : "";
+			this.clusterName = (policy.clusterName != null) ? policy.clusterName : "";
 			this.context = new Log.Context(this.clusterName);
 
 			if (Log.DebugEnabled())
@@ -263,7 +265,9 @@ namespace Aerospike.Client
 			recoverCount = 0;
 			recoverQueue = new Pool<ConnectionRecover>(256, 10000);
 			cancel = new CancellationTokenSource();
-			cancelToken = cancel.Token;
+            cancelToken = cancel.Token;
+            configProvider = policy.ConfigProvider;
+            configInterval = configProvider != null ? configProvider.Interval : -1;
 		}
 
 		public void StartTendThread(ClientPolicy policy)
@@ -575,6 +579,13 @@ namespace Aerospike.Client
 			{
 				metricsListener.OnSnapshot(this);
 			}
+
+			if (tendCount % configInterval == 0)
+			{
+                //check if file changed
+                //update config
+                //configProvider.UpdateConfig();
+            }
 
 			ProcessRecoverQueue();
 		}

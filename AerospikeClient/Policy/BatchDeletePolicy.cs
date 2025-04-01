@@ -110,5 +110,21 @@ namespace Aerospike.Client
 		{
 			return new BatchDeletePolicy(this);
 		}
-	}
+
+        public void ApplyConfigOverrides(IAerospikeConfigProvider config)
+        {
+            var batch = config.DynamicProperties.batch_delete;
+
+            if (batch.send_key.HasValue)
+            {
+                this.sendKey = batch.send_key.Value;
+            }
+            if (batch.durable_delete.HasValue)
+            {
+                this.durableDelete = batch.durable_delete.Value;
+            }
+
+            Log.Debug("BatchDeletePolicy has been aligned with config properties.");
+        }
+    }
 }

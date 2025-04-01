@@ -142,5 +142,20 @@ namespace Aerospike.Client
 		public AsyncClientPolicy()
 		{
 		}
-	}
+
+        public override void ApplyConfigOverrides()
+        {
+			base.ApplyConfigOverrides();
+			var staticClient = ConfigProvider.StaticProperties.client;
+
+            if (staticClient.async_max_connections_per_node.HasValue)
+            {
+                this.asyncMaxConnsPerNode = staticClient.async_max_connections_per_node.Value;
+            }
+            if (staticClient.async_min_connections_per_node.HasValue)
+			{
+				this.asyncMinConnsPerNode = staticClient.async_min_connections_per_node.Value;
+			}
+		}
+    }
 }

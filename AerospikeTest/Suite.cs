@@ -80,7 +80,7 @@ namespace Aerospike.Test
 				useServicesAlternate = SuiteHelpers.useServicesAlternate
 			};
 
-			policy.ConfigProvider = new AerospikeConfigProvider("C:\\Users\\sklaus\\repos\\aerospike-client-csharp\\aerospikeconfig.yaml");
+			policy.ConfigProvider = new AerospikeYamlConfigProvider("C:\\Users\\sklaus_aerospike\\repos\\aerospike-client-csharp\\aerospikeconfig.yaml");
 
 			if (SuiteHelpers.user != null && SuiteHelpers.user.Length > 0)
 			{

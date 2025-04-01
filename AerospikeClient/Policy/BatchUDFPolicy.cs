@@ -124,5 +124,21 @@ namespace Aerospike.Client
 		{
 			return new BatchUDFPolicy(this);
 		}
-	}
+
+        public void ApplyConfigOverrides(IAerospikeConfigProvider config)
+        {
+            var batch = config.DynamicProperties.batch_udf;
+
+            if (batch.send_key.HasValue)
+            {
+                this.sendKey = batch.send_key.Value;
+            }
+            if (batch.durable_delete.HasValue)
+            {
+                this.durableDelete = batch.durable_delete.Value;
+            }
+
+            Log.Debug("BatchUDFPolicy has been aligned with config properties.");
+        }
+    }
 }

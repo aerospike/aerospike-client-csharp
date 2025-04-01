@@ -24,9 +24,9 @@ namespace Aerospike.Client.Config
 
 		}
 		
-		public string schema_version { get; set; }
+		public string version { get; set; }
 		public string app_name { get; set; }
-		public int generation { get; set; }
+		public int? generation { get; set; }
 	}
 
 	public class StaticProperties
@@ -41,11 +41,11 @@ namespace Aerospike.Client.Config
 
 	public class StaticClient
 	{
-		public int config_tend_count { get; set; }
-		public int max_connections_per_node { get; set; }
-		public int min_connections_per_node { get; set; }
-		public int async_max_connections_per_node { get; set; }
-		public int async_min_connections_per_node { get; set; }
+		public int? config_tend_count { get; set; }
+		public int? max_connections_per_node { get; set; }
+		public int? min_connections_per_node { get; set; }
+		public int? async_max_connections_per_node { get; set; }
+		public int? async_min_connections_per_node { get; set; }
 	}
 
 	public class DynamicProperties
@@ -61,8 +61,8 @@ namespace Aerospike.Client.Config
 			batch_write = new BatchWriteProperties();
 			batch_udf = new BatchUDFDeleteProperties();
 			batch_delete = new BatchUDFDeleteProperties();
-			txn_roll = new TXNRollProperties();
-			txn_verify = new TXNVerifyProperties();
+			txn_roll = new TxnRollProperties();
+			txn_verify = new TxnVerifyProperties();
 		}
 
 		public DynamicClient client { get; set; }
@@ -74,151 +74,151 @@ namespace Aerospike.Client.Config
 		public BatchWriteProperties batch_write { get; set; }
 		public BatchUDFDeleteProperties batch_udf { get; set; }
 		public BatchUDFDeleteProperties batch_delete { get; set; }
-		public TXNRollProperties txn_roll { get; set; }
-		public TXNVerifyProperties txn_verify { get; set; }
+		public TxnRollProperties txn_roll { get; set; }
+		public TxnVerifyProperties txn_verify { get; set; }
 	}
 
 	public class DynamicClient
 	{
-		public int timeout { get; set; }
-		public int error_rate_window { get; set; }
-		public int max_error_rate { get; set; }
-		public bool fail_if_not_connected { get; set; }
-		public int login_timeout { get; set; }
-		public int max_socket_idle { get; set; }
-		public bool rack_aware { get; set; }
+		public int? timeout { get; set; }
+		public int? error_rate_window { get; set; }
+		public int? max_error_rate { get; set; }
+		public bool? fail_if_not_connected { get; set; }
+		public int? login_timeout { get; set; }
+		public int? max_socket_idle { get; set; }
+		public bool? rack_aware { get; set; }
 		public int[] rack_ids { get; set; }
-		public int tend_interval { get; set; }
-		public bool use_service_alternative { get; set; }
+		public int? tend_interval { get; set; }
+		public bool? use_service_alternative { get; set; }
 	}
 
 	public class ReadProperties
 	{
-		public ReadModeAP read_mode_ap { get; set; }
-		public ReadModeSC read_mode_sc { get; set; }
-		public int connect_timeout { get; set; }
-		public bool fail_on_filtered_out { get; set; }
-		public Replica replica { get; set; }
-		public int sleep_between_retries { get; set; }
-		public int socket_timeout { get; set; }
-		public int timeout_delay { get; set; }
-		public int max_retries { get; set; }
+		public ReadModeAP? read_mode_ap { get; set; }
+		public ReadModeSC? read_mode_sc { get; set; }
+		public int? connect_timeout { get; set; }
+		public bool? fail_on_filtered_out { get; set; }
+		public Replica? replica { get; set; }
+		public int? sleep_between_retries { get; set; }
+		public int? socket_timeout { get; set; }
+		public int? timeout_delay { get; set; }
+		public int? max_retries { get; set; }
 	}
 
 	public class WriteProperties
 	{
-		public int connect_timeout { get; set; }
-		public bool fail_on_filtered_out { get; set; }
-		public Replica replica { get; set; }
-		public bool send_key { get; set; }
-		public int sleep_between_retries { get; set; }
-		public int socket_timeout { get; set; }
-		public int timeout_delay { get; set; }
-		public int total_timeout { get; set; }
-		public int max_retries { get; set; }
-		public bool durable_delete { get; set; }
+		public int? connect_timeout { get; set; }
+		public bool? fail_on_filtered_out { get; set; }
+		public Replica? replica { get; set; }
+		public bool? send_key { get; set; }
+		public int? sleep_between_retries { get; set; }
+		public int? socket_timeout { get; set; }
+		public int? timeout_delay { get; set; }
+		public int? total_timeout { get; set; }
+		public int? max_retries { get; set; }
+		public bool? durable_delete { get; set; }
 	}
 
 	public class QueryProperties
 	{
-		public ReadModeAP read_mode_ap { get; set; }
-		public ReadModeSC read_mode_sc { get; set; }
-		public int connect_timeout { get; set; }
-		public Replica replica { get; set; }
-		public int sleep_between_retries { get; set; }
-		public int socket_timeout { get; set; }
-		public int timeout_delay { get; set; }
-		public int max_retries { get; set; }
-		public bool include_bin_data { get; set; }
-		public int info_timeout { get; set; }
-		public int record_queue_size { get; set; }
-		public QueryDuration expected_duration { get; set; }
+		public ReadModeAP? read_mode_ap { get; set; }
+		public ReadModeSC? read_mode_sc { get; set; }
+		public int? connect_timeout { get; set; }
+		public Replica? replica { get; set; }
+		public int? sleep_between_retries { get; set; }
+		public int? socket_timeout { get; set; }
+		public int? timeout_delay { get; set; }
+		public int? max_retries { get; set; }
+		public bool? include_bin_data { get; set; }
+		public int? info_timeout { get; set; }
+		public int? record_queue_size { get; set; }
+		public QueryDuration? expected_duration { get; set; }
 	}
 
 	public class ScanProperties
 	{
-		public ReadModeAP read_mode_ap { get; set; }
-		public ReadModeSC read_mode_sc { get; set; }
-		public int connect_timeout { get; set; }
-		public Replica replica { get; set; }
-		public int sleep_between_retries { get; set; }
-		public int socket_timeout { get; set; }
-		public int timeout_delay { get; set; }
-		public int max_retries { get; set; }
-		public bool concurrent_nodes { get; set; }
-		public int max_concurrent_nodes { get; set; }
+		public ReadModeAP? read_mode_ap { get; set; }
+		public ReadModeSC? read_mode_sc { get; set; }
+		public int? connect_timeout { get; set; }
+		public Replica? replica { get; set; }
+		public int? sleep_between_retries { get; set; }
+		public int? socket_timeout { get; set; }
+		public int? timeout_delay { get; set; }
+		public int? max_retries { get; set; }
+		public bool? concurrent_nodes { get; set; }
+		public int? max_concurrent_nodes { get; set; }
 	}
 
 	public class BatchReadProperties
 	{
-		public ReadModeAP read_mode_ap { get; set; }
-		public ReadModeSC read_mode_sc { get; set; }
-		public int connect_timeout { get; set; }
-		public Replica replica { get; set; }
-		public int sleep_between_retries { get; set; }
-		public int socket_timeout { get; set; }
-		public int timeout_delay { get; set; }
-		public int max_retries { get; set; }
-		public int max_concurrent_threads { get; set; }
-		public bool allow_inline { get; set; }
-		public bool allow_inline_ssd { get; set; }
-		public bool respond_all_keys { get; set; }
+		public ReadModeAP? read_mode_ap { get; set; }
+		public ReadModeSC? read_mode_sc { get; set; }
+		public int? connect_timeout { get; set; }
+		public Replica? replica { get; set; }
+		public int? sleep_between_retries { get; set; }
+		public int? socket_timeout { get; set; }
+		public int? timeout_delay { get; set; }
+		public int? max_retries { get; set; }
+		public int? max_concurrent_threads { get; set; }
+		public bool? allow_inline { get; set; }
+		public bool? allow_inline_ssd { get; set; }
+		public bool? respond_all_keys { get; set; }
 	}
 
 	public class BatchWriteProperties
 	{
-		public int connect_timeout { get; set; }
-		public bool fail_on_filtered_out { get; set; }
-		public Replica replica { get; set; }
-		public int sleep_between_retries { get; set; }
-		public int socket_timeout { get; set; }
-		public int timeout_delay { get; set; }
-		public int max_retries { get; set; }
-		public bool durable_delete { get; set; }
-		public bool send_key { get; set; }
-		public int max_concurrent_threads { get; set; }
-		public bool allow_inline { get; set; }
-		public bool allow_inline_ssd { get; set; }
-		public bool respond_all_keys { get; set; }
+		public int? connect_timeout { get; set; }
+		public bool? fail_on_filtered_out { get; set; }
+		public Replica? replica { get; set; }
+		public int? sleep_between_retries { get; set; }
+		public int? socket_timeout { get; set; }
+		public int? timeout_delay { get; set; }
+		public int? max_retries { get; set; }
+		public bool? durable_delete { get; set; }
+		public bool? send_key { get; set; }
+		public int? max_concurrent_threads { get; set; }
+		public bool? allow_inline { get; set; }
+		public bool? allow_inline_ssd { get; set; }
+		public bool? respond_all_keys { get; set; }
 	}
 
 	public class BatchUDFDeleteProperties
 	{
-		public bool durable_delete { get; set; }
-		public bool send_key { get; set; }
+		public bool? durable_delete { get; set; }
+		public bool? send_key { get; set; }
 	}
 
-	public class TXNRollProperties
+	public class TxnRollProperties
 	{
-		public ReadModeAP read_mode_ap { get; set; }
-		public ReadModeSC read_mode_sc { get; set; }
-		public int connect_timeout { get; set; }
-		public Replica replica { get; set; }
-		public int sleep_between_retries { get; set; }
-		public int socket_timeout { get; set; }
-		public int timeout_delay { get; set; }
-		public int total_timeout { get; set; }
-		public int max_retries { get; set; }
-		public int max_concurrent_threads { get; set; }
-		public bool allow_inline { get; set; }
-		public bool allow_inline_ssd { get; set; }
-		public bool respond_all_keys { get; set; }
+		public ReadModeAP? read_mode_ap { get; set; }
+		public ReadModeSC? read_mode_sc { get; set; }
+		public int? connect_timeout { get; set; }
+		public Replica? replica { get; set; }
+		public int? sleep_between_retries { get; set; }
+		public int? socket_timeout { get; set; }
+		public int? timeout_delay { get; set; }
+		public int? total_timeout { get; set; }
+		public int? max_retries { get; set; }
+		public int? max_concurrent_threads { get; set; }
+		public bool? allow_inline { get; set; }
+		public bool? allow_inline_ssd { get; set; }
+		public bool? respond_all_keys { get; set; }
 	}
 
-	public class TXNVerifyProperties
+	public class TxnVerifyProperties
 	{
-		public ReadModeAP read_mode_ap { get; set; }
-		public ReadModeSC read_mode_sc { get; set; }
-		public int connect_timeout { get; set; }
-		public Replica replica { get; set; }
-		public int sleep_between_retries { get; set; }
-		public int socket_timeout { get; set; }
-		public int timeout_delay { get; set; }
-		public int total_timeout { get; set; }
-		public int max_retries { get; set; }
-		public int max_concurrent_threads { get; set; }
-		public bool allow_inline { get; set; }
-		public bool allow_inline_ssd { get; set; }
-		public bool respond_all_keys { get; set; }
+		public ReadModeAP? read_mode_ap { get; set; }
+		public ReadModeSC? read_mode_sc { get; set; }
+		public int? connect_timeout { get; set; }
+		public Replica? replica { get; set; }
+		public int? sleep_between_retries { get; set; }
+		public int? socket_timeout { get; set; }
+		public int? timeout_delay { get; set; }
+		public int? total_timeout { get; set; }
+		public int? max_retries { get; set; }
+		public int? max_concurrent_threads { get; set; }
+		public bool? allow_inline { get; set; }
+		public bool? allow_inline_ssd { get; set; }
+		public bool? respond_all_keys { get; set; }
 	}
 }

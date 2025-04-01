@@ -17,6 +17,8 @@
 
 #pragma warning disable 0618
 
+using System.ComponentModel;
+
 namespace Aerospike.Client
 {
 	/// <summary>
@@ -155,6 +157,58 @@ namespace Aerospike.Client
 		{
 			return new QueryPolicy(this);
 		}
-	}
+
+        public override void ApplyConfigOverrides(IAerospikeConfigProvider config)
+        {
+            var query = config.DynamicProperties.query;
+
+            if (query.read_mode_ap.HasValue)
+            {
+                this.readModeAP = query.read_mode_ap.Value;
+            }
+            if (query.read_mode_sc.HasValue)
+            {
+                this.readModeSC = query.read_mode_sc.Value;
+            }
+            if (query.replica.HasValue)
+            {
+                this.replica = query.replica.Value;
+            }
+            if (query.sleep_between_retries.HasValue)
+            {
+                this.sleepBetweenRetries = query.sleep_between_retries.Value;
+            }
+            if (query.socket_timeout.HasValue)
+            {
+                this.socketTimeout = query.socket_timeout.Value;
+            }
+            if (query.timeout_delay.HasValue)
+            {
+                this.TimeoutDelay = query.timeout_delay.Value;
+            }
+            if (query.max_retries.HasValue)
+            {
+                this.maxRetries = query.max_retries.Value;
+            }
+            if (query.include_bin_data.HasValue)
+            {
+                this.includeBinData = query.include_bin_data.Value;
+            }
+			if (query.info_timeout.HasValue)
+			{
+				this.infoTimeout = (uint)query.info_timeout.Value;
+            }
+			if (query.record_queue_size.HasValue)
+			{
+				this.recordQueueSize = query.record_queue_size.Value;
+            }
+			if (query.expected_duration.HasValue)
+			{
+				this.expectedDuration = query.expected_duration.Value;
+            }
+
+            Log.Debug("QueryPolicy has been aligned with config properties.");
+        }
+    }
 }
 #pragma warning restore 0618

@@ -14,6 +14,8 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
+using System.ComponentModel;
+
 namespace Aerospike.Client
 {
 	/// <summary>
@@ -152,5 +154,21 @@ namespace Aerospike.Client
 		{
 			return new BatchWritePolicy(this);
 		}
-	}
+
+        public void ApplyConfigOverrides(IAerospikeConfigProvider config)
+        {
+            var batch = config.DynamicProperties.batch_write;
+			
+			if (batch.send_key.HasValue)
+			{
+				this.sendKey = batch.send_key.Value;
+            }
+			if (batch.durable_delete.HasValue)
+			{
+				this.durableDelete = batch.durable_delete.Value;
+            }
+
+            Log.Debug("BatchWritePolicy has been aligned with config properties.");
+        }
+    }
 }

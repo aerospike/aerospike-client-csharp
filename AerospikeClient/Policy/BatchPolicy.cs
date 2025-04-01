@@ -198,7 +198,59 @@ namespace Aerospike.Client
 		{
 			return new BatchPolicy(this);
 		}
-	}
+
+        public override void ApplyConfigOverrides(IAerospikeConfigProvider config)
+        {
+            var batch = config.DynamicProperties.batch_read;
+
+            if (batch.read_mode_ap.HasValue)
+            {
+                this.readModeAP = batch.read_mode_ap.Value;
+            }
+            if (batch.read_mode_sc.HasValue)
+            {
+                this.readModeSC = batch.read_mode_sc.Value;
+            }
+            if (batch.replica.HasValue)
+            {
+                this.replica = batch.replica.Value;
+            }
+            if (batch.sleep_between_retries.HasValue)
+            {
+                this.sleepBetweenRetries = batch.sleep_between_retries.Value;
+            }
+            if (batch.socket_timeout.HasValue)
+            {
+                this.socketTimeout = batch.socket_timeout.Value;
+            }
+            if (batch.timeout_delay.HasValue)
+            {
+                this.TimeoutDelay = batch.timeout_delay.Value;
+            }
+			if (batch.max_retries.HasValue)
+			{
+				this.maxRetries = batch.max_retries.Value;
+			}
+            if (batch.max_concurrent_threads.HasValue)
+            {
+                this.maxConcurrentThreads = batch.max_concurrent_threads.Value;
+            }
+			if (batch.allow_inline.HasValue)
+			{
+				this.allowInline = batch.allow_inline.Value;
+            }
+			if (batch.allow_inline_ssd.HasValue)
+			{
+				this.allowInlineSSD = batch.allow_inline_ssd.Value;
+			}
+			if (batch.respond_all_keys.HasValue)
+			{
+				this.respondAllKeys = batch.respond_all_keys.Value;
+            }
+
+            Log.Debug("BatchPolicy has been aligned with config properties.");
+        }
+    }
 }
 
 #pragma warning restore 0618
