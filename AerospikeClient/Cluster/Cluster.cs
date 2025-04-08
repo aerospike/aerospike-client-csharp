@@ -133,7 +133,7 @@ namespace Aerospike.Client
 		private volatile int commandCount;
 		private volatile int delayQueueTimeoutCount;
 		private IAerospikeConfigProvider configProvider;
-        private int configInterval;
+        private int? configInterval;
 
 		public Cluster(ClientPolicy policy, Host[] hosts)
 		{
@@ -267,7 +267,7 @@ namespace Aerospike.Client
 			cancel = new CancellationTokenSource();
             cancelToken = cancel.Token;
             configProvider = policy.ConfigProvider;
-            configInterval = configProvider != null ? configProvider.Interval : -1;
+            configInterval = configProvider.Interval;
 		}
 
 		public void StartTendThread(ClientPolicy policy)

@@ -131,35 +131,12 @@ namespace Aerospike.Client
 			this.OnLockingOnly = other.OnLockingOnly;
 		}
 
-		/// <summary>
-		/// Copy write policy from another policy.
-		/// </summary>
-		public WritePolicy(Policy other)
-			: base(other)
-		{
-		}
-
-		/// <summary>
-		/// Default constructor.
-		/// </summary>
-		public WritePolicy()
-		{
-			// Writes are not retried by default.
-			base.maxRetries = 0;
-		}
-
-		/// <summary>
-		/// Creates a deep copy of this write policy.
-		/// </summary>
-		/// <returns></returns>
-		public new WritePolicy Clone()
-		{
-			return new WritePolicy(this);
-		}
-
-        public override void ApplyConfigOverrides(IAerospikeConfigProvider config)
+        /// <summary>
+        /// Copy write policy from another policy and override according to the AerospikeConfigProvider.
+        /// </summary>
+        public WritePolicy(WritePolicy other, IAerospikeConfigProvider configProvider) : this(other)
         {
-            var write = config.DynamicProperties.write;
+            var write = configProvider.ConfigurationData.dynamicProperties.write;
 
             if (write.fail_on_filtered_out.HasValue)
             {
@@ -185,20 +162,46 @@ namespace Aerospike.Client
             {
                 this.TimeoutDelay = write.timeout_delay.Value;
             }
-			if (write.total_timeout.HasValue)
-			{
-				this.totalTimeout = write.total_timeout.Value;
+            if (write.total_timeout.HasValue)
+            {
+                this.totalTimeout = write.total_timeout.Value;
             }
             if (write.max_retries.HasValue)
             {
                 this.maxRetries = write.max_retries.Value;
             }
-			if (write.durable_delete.HasValue)
-			{
-				this.durableDelete = write.durable_delete.Value;
+            if (write.durable_delete.HasValue)
+            {
+                this.durableDelete = write.durable_delete.Value;
             }
 
             Log.Debug("WritePolicy has been aligned with config properties.");
         }
+
+        /// <summary>
+        /// Copy write policy from another policy.
+        /// </summary>
+        public WritePolicy(Policy other)
+			: base(other)
+		{
+		}
+
+		/// <summary>
+		/// Default constructor.
+		/// </summary>
+		public WritePolicy()
+		{
+			// Writes are not retried by default.
+			base.maxRetries = 0;
+		}
+
+		/// <summary>
+		/// Creates a deep copy of this write policy.
+		/// </summary>
+		/// <returns></returns>
+		public new WritePolicy Clone()
+		{
+			return new WritePolicy(this);
+		}
     }
 }

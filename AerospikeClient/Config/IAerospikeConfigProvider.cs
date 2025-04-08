@@ -21,13 +21,9 @@ namespace Aerospike.Client
 {
     public interface IAerospikeConfigProvider
     {
-        public int Interval { get; }
+        public int? Interval { get; }
 
-        public MetaData MetaData { get; }
-
-        public StaticProperties StaticProperties { get; }
-
-        public DynamicProperties DynamicProperties { get; }
+        public ConfigurationData ConfigurationData { get; }
 
         public void Watch();
 

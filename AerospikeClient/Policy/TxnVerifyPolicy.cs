@@ -53,57 +53,57 @@ namespace Aerospike.Client
 			return new TxnVerifyPolicy(this);
 		}
 
-        public override void ApplyConfigOverrides(IAerospikeConfigProvider config)
+        public void ApplyConfigOverrides(IAerospikeConfigProvider config)
         {
-            var txn = config.DynamicProperties.txn_verify;
+            var txn_verify = config.ConfigurationData.dynamicProperties.txn_verify;
 
-            if (txn.read_mode_ap.HasValue)
+            if (txn_verify.read_mode_ap.HasValue)
             {
-                this.readModeAP = txn.read_mode_ap.Value;
+                this.readModeAP = txn_verify.read_mode_ap.Value;
             }
-            if (txn.read_mode_sc.HasValue)
+            if (txn_verify.read_mode_sc.HasValue)
             {
-                this.readModeSC = txn.read_mode_sc.Value;
+                this.readModeSC = txn_verify.read_mode_sc.Value;
             }
-            if (txn.replica.HasValue)
+            if (txn_verify.replica.HasValue)
             {
-                this.replica = txn.replica.Value;
+                this.replica = txn_verify.replica.Value;
             }
-            if (txn.sleep_between_retries.HasValue)
+            if (txn_verify.sleep_between_retries.HasValue)
             {
-                this.sleepBetweenRetries = txn.sleep_between_retries.Value;
+                this.sleepBetweenRetries = txn_verify.sleep_between_retries.Value;
             }
-            if (txn.socket_timeout.HasValue)
+            if (txn_verify.socket_timeout.HasValue)
             {
-                this.socketTimeout = txn.socket_timeout.Value;
+                this.socketTimeout = txn_verify.socket_timeout.Value;
             }
-            if (txn.timeout_delay.HasValue)
+            if (txn_verify.timeout_delay.HasValue)
             {
-                this.TimeoutDelay = txn.timeout_delay.Value;
+                this.TimeoutDelay = txn_verify.timeout_delay.Value;
             }
-            if (txn.total_timeout.HasValue)
+            if (txn_verify.total_timeout.HasValue)
             {
-                this.totalTimeout = txn.total_timeout.Value;
+                this.totalTimeout = txn_verify.total_timeout.Value;
             }
-            if (txn.max_retries.HasValue)
+            if (txn_verify.max_retries.HasValue)
             {
-                this.maxRetries = txn.max_retries.Value;
+                this.maxRetries = txn_verify.max_retries.Value;
             }
-            if (txn.max_concurrent_threads.HasValue)
+            if (txn_verify.max_concurrent_threads.HasValue)
             {
-                this.maxConcurrentThreads = txn.max_concurrent_threads.Value;
+                this.maxConcurrentThreads = txn_verify.max_concurrent_threads.Value;
             }
-            if (txn.allow_inline.HasValue)
+            if (txn_verify.allow_inline.HasValue)
             {
-                this.allowInline = txn.allow_inline.Value;
+                this.allowInline = txn_verify.allow_inline.Value;
             }
-            if (txn.allow_inline_ssd.HasValue)
+            if (txn_verify.allow_inline_ssd.HasValue)
             {
-                this.allowInlineSSD = txn.allow_inline_ssd.Value;
+                this.allowInlineSSD = txn_verify.allow_inline_ssd.Value;
             }
-            if (txn.respond_all_keys.HasValue)
+            if (txn_verify.respond_all_keys.HasValue)
             {
-                this.respondAllKeys = txn.respond_all_keys.Value;
+                this.respondAllKeys = txn_verify.respond_all_keys.Value;
             }
 
             Log.Debug("TxnRollPolicy has been aligned with config properties.");

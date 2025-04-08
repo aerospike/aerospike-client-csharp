@@ -302,10 +302,57 @@ namespace Aerospike.Client
 			this.recordParser = other.recordParser;
 		}
 
-		/// <summary>
-		/// Default constructor.
-		/// </summary>
-		public Policy()
+        /// <summary>
+        /// Copy policy from another policy and override according to the AerospikeConfigProvider.
+        /// </summary>
+        public Policy(Policy other, IAerospikeConfigProvider configProvider) : this(other)
+        {
+			var read = configProvider.ConfigurationData.dynamicProperties.read;
+
+            if (read.read_mode_ap.HasValue)
+            {
+                this.readModeAP = read.read_mode_ap.Value;
+            }
+            if (read.read_mode_sc.HasValue)
+            {
+                this.readModeSC = read.read_mode_sc.Value;
+            }
+            if (read.fail_on_filtered_out.HasValue)
+            {
+                this.failOnFilteredOut = read.fail_on_filtered_out.Value;
+            }
+            if (read.replica.HasValue)
+            {
+                this.replica = read.replica.Value;
+            }
+            if (read.sleep_between_retries.HasValue)
+            {
+                this.sleepBetweenRetries = read.sleep_between_retries.Value;
+            }
+            if (read.socket_timeout.HasValue)
+            {
+                this.socketTimeout = read.socket_timeout.Value;
+            }
+            if (read.timeout_delay.HasValue)
+            {
+                this.TimeoutDelay = read.timeout_delay.Value;
+            }
+			if (read.total_timeout.HasValue)
+			{
+				this.totalTimeout = read.total_timeout.Value;
+			}
+            if (read.max_retries.HasValue)
+            {
+                this.maxRetries = read.max_retries.Value;
+            }
+
+            Log.Debug("(read) Policy has been aligned with config properties.");
+        }
+
+        /// <summary>
+        /// Default constructor.
+        /// </summary>
+        public Policy()
 		{
 			Txn = null;
 		}
@@ -344,46 +391,6 @@ namespace Aerospike.Client
 		{
 			return new Policy(this);
 		}
-
-		public virtual void ApplyConfigOverrides(IAerospikeConfigProvider config)
-		{
-			var read = config.DynamicProperties.read;
-
-			if (read.read_mode_ap.HasValue)
-			{
-				this.readModeAP = read.read_mode_ap.Value;
-			}
-			if (read.read_mode_sc.HasValue)
-			{
-				this.readModeSC = read.read_mode_sc.Value;
-            }
-			if (read.fail_on_filtered_out.HasValue)
-			{
-				this.failOnFilteredOut = read.fail_on_filtered_out.Value;
-			}
-			if (read.replica.HasValue)
-			{
-				this.replica = read.replica.Value;
-            }
-            if (read.sleep_between_retries.HasValue)
-            {
-                this.sleepBetweenRetries = read.sleep_between_retries.Value;
-            }
-            if (read.socket_timeout.HasValue)
-			{
-                this.socketTimeout = read.socket_timeout.Value;
-            }
-			if (read.timeout_delay.HasValue)
-			{
-				this.TimeoutDelay = read.timeout_delay.Value;
-            }
-			if (read.max_retries.HasValue)
-			{
-				this.maxRetries = read.max_retries.Value;
-			}
-
-            Log.Debug("(read) Policy has been aligned with config properties.");
-        }
 	}
 }
 #pragma warning restore 0618

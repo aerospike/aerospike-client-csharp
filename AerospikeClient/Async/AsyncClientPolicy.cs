@@ -146,7 +146,7 @@ namespace Aerospike.Client
         public override void ApplyConfigOverrides()
         {
 			base.ApplyConfigOverrides();
-			var staticClient = ConfigProvider.StaticProperties.client;
+			var staticClient = ConfigProvider.ConfigurationData.staticProperties.client;
 
             if (staticClient.async_max_connections_per_node.HasValue)
             {

@@ -96,9 +96,60 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
-		/// Copy scan policy from another policy.
+		/// Copy scan policy from another policy and override according to the AerospikeConfigProvider.
 		/// </summary>
-		public ScanPolicy(Policy other)
+		public ScanPolicy(ScanPolicy other, IAerospikeConfigProvider configProvider) : this(other)
+		{
+            var scan = configProvider.ConfigurationData.dynamicProperties.scan;
+
+            if (scan.read_mode_ap.HasValue)
+            {
+                this.readModeAP = scan.read_mode_ap.Value;
+            }
+            if (scan.read_mode_sc.HasValue)
+            {
+                this.readModeSC = scan.read_mode_sc.Value;
+            }
+            if (scan.replica.HasValue)
+            {
+                this.replica = scan.replica.Value;
+            }
+            if (scan.sleep_between_retries.HasValue)
+            {
+                this.sleepBetweenRetries = scan.sleep_between_retries.Value;
+            }
+            if (scan.socket_timeout.HasValue)
+            {
+                this.socketTimeout = scan.socket_timeout.Value;
+            }
+            if (scan.timeout_delay.HasValue)
+            {
+                this.TimeoutDelay = scan.timeout_delay.Value;
+            }
+			if (scan.total_timeout.HasValue)
+			{
+				this.totalTimeout = scan.total_timeout.Value;
+            }
+			if (scan.max_retries.HasValue)
+			{
+				this.maxRetries = scan.max_retries.Value;
+            }
+            if (scan.concurrent_nodes.HasValue)
+            {
+                this.concurrentNodes = scan.concurrent_nodes.Value;
+            }
+            if (scan.max_concurrent_nodes.HasValue)
+            {
+                this.maxConcurrentNodes = scan.max_concurrent_nodes.Value;
+            }
+
+            Log.Debug("ScanPolicy has been aligned with config properties.");
+        }
+
+        /// <summary>
+        /// Copy scan policy from another policy.
+        /// </summary>
+        public ScanPolicy(Policy other)
 			: base(other)
 		{
 		}
@@ -132,46 +183,6 @@ namespace Aerospike.Client
 		{
 			return new ScanPolicy(this);
 		}
-
-        public override void ApplyConfigOverrides(IAerospikeConfigProvider config)
-        {
-            var scan = config.DynamicProperties.scan;
-
-            if (scan.read_mode_ap.HasValue)
-            {
-                this.readModeAP = scan.read_mode_ap.Value;
-            }
-            if (scan.read_mode_sc.HasValue)
-            {
-                this.readModeSC = scan.read_mode_sc.Value;
-            }
-            if (scan.replica.HasValue)
-            {
-                this.replica = scan.replica.Value;
-            }
-            if (scan.sleep_between_retries.HasValue)
-            {
-                this.sleepBetweenRetries = scan.sleep_between_retries.Value;
-            }
-            if (scan.socket_timeout.HasValue)
-            {
-                this.socketTimeout = scan.socket_timeout.Value;
-            }
-            if (scan.timeout_delay.HasValue)
-            {
-                this.TimeoutDelay = scan.timeout_delay.Value;
-            }
-            if (scan.concurrent_nodes.HasValue)
-            {
-                this.concurrentNodes = scan.concurrent_nodes.Value;
-            }
-			if (scan.max_concurrent_nodes.HasValue)
-			{
-				this.maxConcurrentNodes = scan.max_concurrent_nodes.Value;
-            }
-
-            Log.Debug("ScanPolicy has been aligned with config properties.");
-        }
     }
 }
 #pragma warning restore 0618

@@ -41,49 +41,51 @@ namespace Aerospike.Client
 		const string TOTAL_TIMEOUT = "total_timeout";
         #endregion
 
-        public int Interval { get; private set; }
+        public int? Interval { get; private set; }
 
-        private IConfigurationRoot config;
+        private IConfigurationRoot configRoot;
 
-        public MetaData MetaData { get; private set; }
-
-        public StaticProperties StaticProperties { get; private set; }
-
-        public DynamicProperties DynamicProperties { get; private set; }
+		public ConfigurationData ConfigurationData { get; private set; }
 
         public string YamlFilePath;
 
 		public AerospikeYamlConfigProvider()
         {
             YamlFilePath = "." + Path.DirectorySeparatorChar + "aerospikeconfig.yaml";
-			config = new ConfigurationBuilder()
+            configRoot = new ConfigurationBuilder()
 				.AddYamlFile(YamlFilePath, optional: false, reloadOnChange: true)
                 .Build();
-            MetaData = new MetaData();
-            StaticProperties = new StaticProperties();
-            DynamicProperties = new DynamicProperties();
-			config.GetSection("metadata").Bind(MetaData);
-            config.GetSection("static").Bind(StaticProperties);
-            config.GetSection("dynamic").Bind(DynamicProperties);
+            ConfigurationData = new()
+            {
+                metaData = new MetaData(),
+                staticProperties = new StaticProperties(),
+                dynamicProperties = new DynamicProperties()
+            };
+            configRoot.GetSection("metadata").Bind(ConfigurationData.metaData);
+            configRoot.GetSection("static").Bind(ConfigurationData.staticProperties);
+            configRoot.GetSection("dynamic").Bind(ConfigurationData.dynamicProperties);
         }
 
 		public AerospikeYamlConfigProvider(string path)
         {
             YamlFilePath = path;
-			config = new ConfigurationBuilder()
+            configRoot = new ConfigurationBuilder()
 				.AddYamlFile(YamlFilePath, optional: false, reloadOnChange: true)
 				.Build();
-			MetaData = new MetaData();
-			StaticProperties = new StaticProperties();
-            DynamicProperties = new DynamicProperties();
-            config.GetSection("metadata").Bind(MetaData);
-            config.GetSection("static").Bind(StaticProperties);
-            config.GetSection("dynamic").Bind(DynamicProperties);
+            ConfigurationData = new()
+            {
+                metaData = new MetaData(),
+                staticProperties = new StaticProperties(),
+                dynamicProperties = new DynamicProperties()
+            };
+            configRoot.GetSection("metadata").Bind(ConfigurationData.metaData);
+            configRoot.GetSection("static").Bind(ConfigurationData.staticProperties);
+            configRoot.GetSection("dynamic").Bind(ConfigurationData.dynamicProperties);
         }
 
         public void Watch()
         {
-            _ = this.config.GetReloadToken().RegisterChangeCallback(_ => {
+            _ = this.configRoot.GetReloadToken().RegisterChangeCallback(_ => {
                 ProcessDynamicConfig();
                 Watch();
             }, null);
@@ -103,151 +105,150 @@ namespace Aerospike.Client
         private void ProcessStaticConfig()
         {
 			// at startup only
-            var staticSection = config.GetSection("static");
+            var staticSection = configRoot.GetSection("static");
             var clientSection = staticSection.GetSection("client");
-			StaticProperties.client.config_tend_count = GetInt(clientSection, "config_tend_count");
-			this.Interval = StaticProperties.client.config_tend_count;
-			StaticProperties.client.max_connections_per_node = GetInt(clientSection, "max_connections_per_node");
-			StaticProperties.client.min_connections_per_node = GetInt(clientSection, "min_connections_per_node");
-			StaticProperties.client.async_max_connections_per_node = GetInt(clientSection, "async_max_connections_per_node");
-			StaticProperties.client.async_min_connections_per_node = GetInt(clientSection, "async_min_connections_per_node");
+			ConfigurationData.staticProperties.client.config_tend_count = GetInt(clientSection, "config_tend_count");
+			this.Interval = ConfigurationData.staticProperties.client.config_tend_count;
+            ConfigurationData.staticProperties.client.max_connections_per_node = GetInt(clientSection, "max_connections_per_node");
+            ConfigurationData.staticProperties.client.min_connections_per_node = GetInt(clientSection, "min_connections_per_node");
+            ConfigurationData.staticProperties.client.async_max_connections_per_node = GetInt(clientSection, "async_max_connections_per_node");
+            ConfigurationData.staticProperties.client.async_min_connections_per_node = GetInt(clientSection, "async_min_connections_per_node");
 		}
 
         private void ProcessDynamicConfig()
         {
 			// if file changed
             
-            var metaDataSection = config.GetSection("metadata");
-			MetaData.version = metaDataSection.GetSection("version").Value;
-			MetaData.app_name = metaDataSection.GetSection("app_name").Value;
-			MetaData.generation = GetInt(metaDataSection, "generation");
+            var metaDataSection = configRoot.GetSection("metadata");
+			ConfigurationData.metaData.version = metaDataSection.GetSection("version").Value;
+            ConfigurationData.metaData.app_name = metaDataSection.GetSection("app_name").Value;
+            ConfigurationData.metaData.generation = GetInt(metaDataSection, "generation");
 
-			var dynamicSection = config.GetSection("dynamic");
+			var dynamicSection = configRoot.GetSection("dynamic");
             var clientSection = dynamicSection.GetSection("client");
-			DynamicProperties.client.timeout = GetInt(clientSection, "timeout");
-			DynamicProperties.client.error_rate_window = GetInt(clientSection, "error_rate_window");
-			DynamicProperties.client.max_error_rate = GetInt(clientSection, "max_error_rate");
-			DynamicProperties.client.fail_if_not_connected = GetBool(clientSection, "fail_if_not_connected");
-			DynamicProperties.client.login_timeout = GetInt(clientSection, "login_timeout");
-			DynamicProperties.client.max_socket_idle = GetInt(clientSection, "max_socket_idle");
-			DynamicProperties.client.rack_aware = GetBool(clientSection, "rack_aware");
-			DynamicProperties.client.rack_ids = GetIntArray(clientSection, "rack_ids");
-			DynamicProperties.client.tend_interval = GetInt(clientSection, "tend_interval");
-			DynamicProperties.client.use_service_alternative = GetBool(clientSection, "use_service_alternative");
+			ConfigurationData.dynamicProperties.client.timeout = GetInt(clientSection, "timeout");
+            ConfigurationData.dynamicProperties.client.error_rate_window = GetInt(clientSection, "error_rate_window");
+            ConfigurationData.dynamicProperties.client.max_error_rate = GetInt(clientSection, "max_error_rate");
+            ConfigurationData.dynamicProperties.client.fail_if_not_connected = GetBool(clientSection, "fail_if_not_connected");
+            ConfigurationData.dynamicProperties.client.login_timeout = GetInt(clientSection, "login_timeout");
+            ConfigurationData.dynamicProperties.client.max_socket_idle = GetInt(clientSection, "max_socket_idle");
+            ConfigurationData.dynamicProperties.client.rack_aware = GetBool(clientSection, "rack_aware");
+            ConfigurationData.dynamicProperties.client.rack_ids = GetIntArray(clientSection, "rack_ids");
+            ConfigurationData.dynamicProperties.client.tend_interval = GetInt(clientSection, "tend_interval");
+            ConfigurationData.dynamicProperties.client.use_service_alternative = GetBool(clientSection, "use_service_alternative");
 
 			var read = dynamicSection.GetSection("read");
-			DynamicProperties.read.read_mode_ap = GetReadModeAP(read);
-			DynamicProperties.read.read_mode_sc = GetReadModeSC(read);
-			DynamicProperties.read.connect_timeout = GetInt(read, CONNECT_TIMEOUT);
-			DynamicProperties.read.fail_on_filtered_out = GetBool(read, FAIL_ON_FILTERED_OUT);
-			DynamicProperties.read.replica = GetReplica(read);
-			DynamicProperties.read.sleep_between_retries = GetInt(read, SLEEP_BETWEEN_RETRIES);
-			DynamicProperties.read.socket_timeout = GetInt(read, SOCKET_TIMEOUT);
-			DynamicProperties.read.timeout_delay = GetInt(read, TIMEOUT_DLEAY);
-			DynamicProperties.read.max_retries = GetInt(read, MAX_RETRIES);
+            ConfigurationData.dynamicProperties.read.read_mode_ap = GetReadModeAP(read);
+            ConfigurationData.dynamicProperties.read.read_mode_sc = GetReadModeSC(read);
+            ConfigurationData.dynamicProperties.read.connect_timeout = GetInt(read, CONNECT_TIMEOUT);
+            ConfigurationData.dynamicProperties.read.fail_on_filtered_out = GetBool(read, FAIL_ON_FILTERED_OUT);
+            ConfigurationData.dynamicProperties.read.replica = GetReplica(read);
+            ConfigurationData.dynamicProperties.read.sleep_between_retries = GetInt(read, SLEEP_BETWEEN_RETRIES);
+            ConfigurationData.dynamicProperties.read.socket_timeout = GetInt(read, SOCKET_TIMEOUT);
+            ConfigurationData.dynamicProperties.read.timeout_delay = GetInt(read, TIMEOUT_DLEAY);
+            ConfigurationData.dynamicProperties.read.max_retries = GetInt(read, MAX_RETRIES);
 			
 
 			var write = dynamicSection.GetSection("write");
-			DynamicProperties.write.connect_timeout = GetInt(write, CONNECT_TIMEOUT);
-			DynamicProperties.write.fail_on_filtered_out = GetBool(write, FAIL_ON_FILTERED_OUT);
-			DynamicProperties.write.replica = GetReplica(write);
-			DynamicProperties.write.send_key = GetBool(write, SEND_KEY);
-			DynamicProperties.write.sleep_between_retries = GetInt(write, SLEEP_BETWEEN_RETRIES);
-			DynamicProperties.write.socket_timeout = GetInt(write, SOCKET_TIMEOUT);
-			DynamicProperties.write.timeout_delay = GetInt(write, TIMEOUT_DLEAY);
-			DynamicProperties.write.max_retries = GetInt(write, MAX_RETRIES);
-			DynamicProperties.write.durable_delete = GetBool(write, DURABLE_DELETE);
+            ConfigurationData.dynamicProperties.write.fail_on_filtered_out = GetBool(write, FAIL_ON_FILTERED_OUT);
+            ConfigurationData.dynamicProperties.write.replica = GetReplica(write);
+            ConfigurationData.dynamicProperties.write.send_key = GetBool(write, SEND_KEY);
+            ConfigurationData.dynamicProperties.write.sleep_between_retries = GetInt(write, SLEEP_BETWEEN_RETRIES);
+            ConfigurationData.dynamicProperties.write.socket_timeout = GetInt(write, SOCKET_TIMEOUT);
+            ConfigurationData.dynamicProperties.write.timeout_delay = GetInt(write, TIMEOUT_DLEAY);
+            ConfigurationData.dynamicProperties.write.max_retries = GetInt(write, MAX_RETRIES);
+            ConfigurationData.dynamicProperties.write.durable_delete = GetBool(write, DURABLE_DELETE);
 
 			var query = dynamicSection.GetSection("query");
-			DynamicProperties.query.read_mode_ap = GetReadModeAP(query);
-			DynamicProperties.query.read_mode_sc = GetReadModeSC(query);
-			DynamicProperties.query.connect_timeout = GetInt(query, CONNECT_TIMEOUT);
-			DynamicProperties.query.replica = GetReplica(query);
-			DynamicProperties.query.sleep_between_retries = GetInt(query, SLEEP_BETWEEN_RETRIES);
-			DynamicProperties.query.socket_timeout = GetInt(query, SOCKET_TIMEOUT);
-			DynamicProperties.query.timeout_delay = GetInt(query, TIMEOUT_DLEAY);
-			DynamicProperties.query.max_retries = GetInt(query, MAX_RETRIES);
-			DynamicProperties.query.include_bin_data = GetBool(query, "include_bin_data");
-			DynamicProperties.query.info_timeout = GetInt(query, "info_timeout");
-			DynamicProperties.query.expected_duration = GetQueryDuration(query);
+            ConfigurationData.dynamicProperties.query.read_mode_ap = GetReadModeAP(query);
+            ConfigurationData.dynamicProperties.query.read_mode_sc = GetReadModeSC(query);
+            ConfigurationData.dynamicProperties.query.connect_timeout = GetInt(query, CONNECT_TIMEOUT);
+            ConfigurationData.dynamicProperties.query.replica = GetReplica(query);
+            ConfigurationData.dynamicProperties.query.sleep_between_retries = GetInt(query, SLEEP_BETWEEN_RETRIES);
+            ConfigurationData.dynamicProperties.query.socket_timeout = GetInt(query, SOCKET_TIMEOUT);
+            ConfigurationData.dynamicProperties.query.timeout_delay = GetInt(query, TIMEOUT_DLEAY);
+            ConfigurationData.dynamicProperties.query.max_retries = GetInt(query, MAX_RETRIES);
+            ConfigurationData.dynamicProperties.query.include_bin_data = GetBool(query, "include_bin_data");
+            ConfigurationData.dynamicProperties.query.info_timeout = GetInt(query, "info_timeout");
+            ConfigurationData.dynamicProperties.query.expected_duration = GetQueryDuration(query);
 
             var scan = dynamicSection.GetSection("scan");
-			DynamicProperties.scan.read_mode_ap = GetReadModeAP(scan);
-			DynamicProperties.scan.read_mode_sc = GetReadModeSC(scan);
-			DynamicProperties.scan.connect_timeout = GetInt(scan, CONNECT_TIMEOUT);
-			DynamicProperties.scan.replica = GetReplica(scan);
-			DynamicProperties.scan.sleep_between_retries = GetInt(scan, SLEEP_BETWEEN_RETRIES);
-			DynamicProperties.scan.socket_timeout = GetInt(scan, SOCKET_TIMEOUT);
-			DynamicProperties.scan.timeout_delay = GetInt(scan, TIMEOUT_DLEAY);
-			DynamicProperties.scan.max_retries = GetInt(scan, MAX_RETRIES);
-			DynamicProperties.scan.concurrent_nodes = GetBool(scan, "concurrent_nodes");
-			DynamicProperties.scan.max_concurrent_nodes = GetInt(scan, "max_concurrent_nodes");
+            ConfigurationData.dynamicProperties.scan.read_mode_ap = GetReadModeAP(scan);
+            ConfigurationData.dynamicProperties.scan.read_mode_sc = GetReadModeSC(scan);
+            ConfigurationData.dynamicProperties.scan.connect_timeout = GetInt(scan, CONNECT_TIMEOUT);
+            ConfigurationData.dynamicProperties.scan.replica = GetReplica(scan);
+            ConfigurationData.dynamicProperties.scan.sleep_between_retries = GetInt(scan, SLEEP_BETWEEN_RETRIES);
+            ConfigurationData.dynamicProperties.scan.socket_timeout = GetInt(scan, SOCKET_TIMEOUT);
+            ConfigurationData.dynamicProperties.scan.timeout_delay = GetInt(scan, TIMEOUT_DLEAY);
+            ConfigurationData.dynamicProperties.scan.max_retries = GetInt(scan, MAX_RETRIES);
+            ConfigurationData.dynamicProperties.scan.concurrent_nodes = GetBool(scan, "concurrent_nodes");
+            ConfigurationData.dynamicProperties.scan.max_concurrent_nodes = GetInt(scan, "max_concurrent_nodes");
 
 			var batch_read = dynamicSection.GetSection("batch_read");
-			DynamicProperties.batch_read.read_mode_ap = GetReadModeAP(batch_read);
-			DynamicProperties.batch_read.read_mode_sc = GetReadModeSC(batch_read);
-			DynamicProperties.batch_read.connect_timeout = GetInt(batch_read, CONNECT_TIMEOUT);
-			DynamicProperties.batch_read.replica = GetReplica(batch_read);
-			DynamicProperties.batch_read.sleep_between_retries = GetInt(batch_read, SLEEP_BETWEEN_RETRIES);
-			DynamicProperties.batch_read.socket_timeout = GetInt(batch_read, SOCKET_TIMEOUT);
-			DynamicProperties.batch_read.timeout_delay = GetInt(batch_read, TIMEOUT_DLEAY);
-			DynamicProperties.batch_read.max_concurrent_threads = GetInt(batch_read, MAX_CONCURRENT_THREADS);
-			DynamicProperties.batch_read.allow_inline = GetBool(batch_read, ALLOW_INLINE);
-			DynamicProperties.batch_read.allow_inline_ssd = GetBool(batch_read, ALLOW_INLINE_SSD);
-			DynamicProperties.batch_read.respond_all_keys = GetBool(batch_read, RESPOND_ALL_KEYS);
+            ConfigurationData.dynamicProperties.batch_read.read_mode_ap = GetReadModeAP(batch_read);
+            ConfigurationData.dynamicProperties.batch_read.read_mode_sc = GetReadModeSC(batch_read);
+            ConfigurationData.dynamicProperties.batch_read.connect_timeout = GetInt(batch_read, CONNECT_TIMEOUT);
+            ConfigurationData.dynamicProperties.batch_read.replica = GetReplica(batch_read);
+            ConfigurationData.dynamicProperties.batch_read.sleep_between_retries = GetInt(batch_read, SLEEP_BETWEEN_RETRIES);
+            ConfigurationData.dynamicProperties.batch_read.socket_timeout = GetInt(batch_read, SOCKET_TIMEOUT);
+            ConfigurationData.dynamicProperties.batch_read.timeout_delay = GetInt(batch_read, TIMEOUT_DLEAY);
+            ConfigurationData.dynamicProperties.batch_read.max_concurrent_threads = GetInt(batch_read, MAX_CONCURRENT_THREADS);
+            ConfigurationData.dynamicProperties.batch_read.allow_inline = GetBool(batch_read, ALLOW_INLINE);
+            ConfigurationData.dynamicProperties.batch_read.allow_inline_ssd = GetBool(batch_read, ALLOW_INLINE_SSD);
+            ConfigurationData.dynamicProperties.batch_read.respond_all_keys = GetBool(batch_read, RESPOND_ALL_KEYS);
 			 
 			var batch_write = dynamicSection.GetSection("batch_write");
-			DynamicProperties.batch_write.connect_timeout = GetInt(batch_write, CONNECT_TIMEOUT);
-			DynamicProperties.batch_write.fail_on_filtered_out = GetBool(batch_write, FAIL_ON_FILTERED_OUT);
-			DynamicProperties.batch_write.replica = GetReplica(batch_write);
-			DynamicProperties.batch_write.sleep_between_retries = GetInt(batch_write, SLEEP_BETWEEN_RETRIES);
-			DynamicProperties.batch_write.socket_timeout = GetInt(batch_write, SOCKET_TIMEOUT);
-			DynamicProperties.batch_write.timeout_delay = GetInt(batch_write, TIMEOUT_DLEAY);
-			DynamicProperties.batch_write.max_retries = GetInt(batch_write, MAX_RETRIES);
-			DynamicProperties.batch_write.durable_delete = GetBool(batch_write, DURABLE_DELETE);
-			DynamicProperties.batch_write.send_key = GetBool(batch_write, SEND_KEY);
-			DynamicProperties.batch_write.max_concurrent_threads = GetInt(batch_write, MAX_CONCURRENT_THREADS);
-			DynamicProperties.batch_write.allow_inline = GetBool(batch_write, ALLOW_INLINE);
-			DynamicProperties.batch_write.allow_inline_ssd = GetBool(batch_write, ALLOW_INLINE_SSD);
-			DynamicProperties.batch_write.respond_all_keys = GetBool(batch_write, RESPOND_ALL_KEYS);
+            ConfigurationData.dynamicProperties.batch_write.connect_timeout = GetInt(batch_write, CONNECT_TIMEOUT);
+            ConfigurationData.dynamicProperties.batch_write.fail_on_filtered_out = GetBool(batch_write, FAIL_ON_FILTERED_OUT);
+            ConfigurationData.dynamicProperties.batch_write.replica = GetReplica(batch_write);
+            ConfigurationData.dynamicProperties.batch_write.sleep_between_retries = GetInt(batch_write, SLEEP_BETWEEN_RETRIES);
+            ConfigurationData.dynamicProperties.batch_write.socket_timeout = GetInt(batch_write, SOCKET_TIMEOUT);
+            ConfigurationData.dynamicProperties.batch_write.timeout_delay = GetInt(batch_write, TIMEOUT_DLEAY);
+            ConfigurationData.dynamicProperties.batch_write.max_retries = GetInt(batch_write, MAX_RETRIES);
+            ConfigurationData.dynamicProperties.batch_write.durable_delete = GetBool(batch_write, DURABLE_DELETE);
+            ConfigurationData.dynamicProperties.batch_write.send_key = GetBool(batch_write, SEND_KEY);
+            ConfigurationData.dynamicProperties.batch_write.max_concurrent_threads = GetInt(batch_write, MAX_CONCURRENT_THREADS);
+            ConfigurationData.dynamicProperties.batch_write.allow_inline = GetBool(batch_write, ALLOW_INLINE);
+            ConfigurationData.dynamicProperties.batch_write.allow_inline_ssd = GetBool(batch_write, ALLOW_INLINE_SSD);
+            ConfigurationData.dynamicProperties.batch_write.respond_all_keys = GetBool(batch_write, RESPOND_ALL_KEYS);
 
 			var batch_udf = dynamicSection.GetSection("batch_udf");
-			DynamicProperties.batch_udf.durable_delete = GetBool(batch_udf, DURABLE_DELETE);
-			DynamicProperties.batch_udf.send_key = GetBool(batch_udf, SEND_KEY);
+            ConfigurationData.dynamicProperties.batch_udf.durable_delete = GetBool(batch_udf, DURABLE_DELETE);
+            ConfigurationData.dynamicProperties.batch_udf.send_key = GetBool(batch_udf, SEND_KEY);
 
 			var batch_delete = dynamicSection.GetSection("batch_delete");
-			DynamicProperties.batch_delete.durable_delete = GetBool(batch_delete, DURABLE_DELETE);
-			DynamicProperties.batch_delete.send_key = GetBool(batch_delete, SEND_KEY);
+            ConfigurationData.dynamicProperties.batch_delete.durable_delete = GetBool(batch_delete, DURABLE_DELETE);
+            ConfigurationData.dynamicProperties.batch_delete.send_key = GetBool(batch_delete, SEND_KEY);
 
 			var txn_roll = dynamicSection.GetSection("txn_roll");
-			DynamicProperties.txn_roll.read_mode_ap = GetReadModeAP(txn_roll);
-			DynamicProperties.txn_roll.read_mode_sc = GetReadModeSC(txn_roll);
-			DynamicProperties.txn_roll.connect_timeout = GetInt(txn_roll, CONNECT_TIMEOUT);
-			DynamicProperties.txn_roll.replica = GetReplica(txn_roll);
-			DynamicProperties.txn_roll.sleep_between_retries = GetInt(txn_roll, SLEEP_BETWEEN_RETRIES);
-			DynamicProperties.txn_roll.socket_timeout = GetInt(txn_roll, SOCKET_TIMEOUT);
-			DynamicProperties.txn_roll.timeout_delay = GetInt(txn_roll, TIMEOUT_DLEAY);
-			DynamicProperties.txn_roll.total_timeout = GetInt(txn_roll, TOTAL_TIMEOUT);
-			DynamicProperties.txn_roll.max_retries = GetInt(txn_roll, MAX_RETRIES);
-			DynamicProperties.txn_roll.max_concurrent_threads = GetInt(txn_roll, MAX_CONCURRENT_THREADS);
-			DynamicProperties.txn_roll.allow_inline = GetBool(txn_roll, ALLOW_INLINE);
-			DynamicProperties.txn_roll.allow_inline_ssd = GetBool(txn_roll, ALLOW_INLINE_SSD);
-			DynamicProperties.txn_roll.respond_all_keys = GetBool(txn_roll, RESPOND_ALL_KEYS);
+            ConfigurationData.dynamicProperties.txn_roll.read_mode_ap = GetReadModeAP(txn_roll);
+            ConfigurationData.dynamicProperties.txn_roll.read_mode_sc = GetReadModeSC(txn_roll);
+            ConfigurationData.dynamicProperties.txn_roll.connect_timeout = GetInt(txn_roll, CONNECT_TIMEOUT);
+            ConfigurationData.dynamicProperties.txn_roll.replica = GetReplica(txn_roll);
+            ConfigurationData.dynamicProperties.txn_roll.sleep_between_retries = GetInt(txn_roll, SLEEP_BETWEEN_RETRIES);
+            ConfigurationData.dynamicProperties.txn_roll.socket_timeout = GetInt(txn_roll, SOCKET_TIMEOUT);
+            ConfigurationData.dynamicProperties.txn_roll.timeout_delay = GetInt(txn_roll, TIMEOUT_DLEAY);
+            ConfigurationData.dynamicProperties.txn_roll.total_timeout = GetInt(txn_roll, TOTAL_TIMEOUT);
+            ConfigurationData.dynamicProperties.txn_roll.max_retries = GetInt(txn_roll, MAX_RETRIES);
+            ConfigurationData.dynamicProperties.txn_roll.max_concurrent_threads = GetInt(txn_roll, MAX_CONCURRENT_THREADS);
+            ConfigurationData.dynamicProperties.txn_roll.allow_inline = GetBool(txn_roll, ALLOW_INLINE);
+            ConfigurationData.dynamicProperties.txn_roll.allow_inline_ssd = GetBool(txn_roll, ALLOW_INLINE_SSD);
+            ConfigurationData.dynamicProperties.txn_roll.respond_all_keys = GetBool(txn_roll, RESPOND_ALL_KEYS);
 
 			var txn_verify = dynamicSection.GetSection("txn_verify");
-			DynamicProperties.txn_verify.read_mode_ap = GetReadModeAP(txn_verify);
-			DynamicProperties.txn_verify.read_mode_sc = GetReadModeSC(txn_verify);
-			DynamicProperties.txn_verify.connect_timeout = GetInt(txn_verify, CONNECT_TIMEOUT);
-			DynamicProperties.txn_verify.replica = GetReplica(txn_verify);
-			DynamicProperties.txn_verify.sleep_between_retries = GetInt(txn_verify, SLEEP_BETWEEN_RETRIES);
-			DynamicProperties.txn_verify.socket_timeout = GetInt(txn_verify, SOCKET_TIMEOUT);
-			DynamicProperties.txn_verify.timeout_delay = GetInt(txn_verify, TIMEOUT_DLEAY);
-			DynamicProperties.txn_verify.total_timeout = GetInt(txn_verify, TOTAL_TIMEOUT);
-			DynamicProperties.txn_verify.max_retries = GetInt(txn_verify, MAX_RETRIES);
-			DynamicProperties.txn_verify.max_concurrent_threads = GetInt(txn_verify, MAX_CONCURRENT_THREADS);
-			DynamicProperties.txn_verify.allow_inline = GetBool(txn_verify, ALLOW_INLINE);
-			DynamicProperties.txn_verify.allow_inline_ssd = GetBool(txn_verify, ALLOW_INLINE_SSD);
-			DynamicProperties.txn_verify.respond_all_keys = GetBool(txn_verify, RESPOND_ALL_KEYS);
+            ConfigurationData.dynamicProperties.txn_verify.read_mode_ap = GetReadModeAP(txn_verify);
+            ConfigurationData.dynamicProperties.txn_verify.read_mode_sc = GetReadModeSC(txn_verify);
+            ConfigurationData.dynamicProperties.txn_verify.connect_timeout = GetInt(txn_verify, CONNECT_TIMEOUT);
+            ConfigurationData.dynamicProperties.txn_verify.replica = GetReplica(txn_verify);
+            ConfigurationData.dynamicProperties.txn_verify.sleep_between_retries = GetInt(txn_verify, SLEEP_BETWEEN_RETRIES);
+            ConfigurationData.dynamicProperties.txn_verify.socket_timeout = GetInt(txn_verify, SOCKET_TIMEOUT);
+            ConfigurationData.dynamicProperties.txn_verify.timeout_delay = GetInt(txn_verify, TIMEOUT_DLEAY);
+            ConfigurationData.dynamicProperties.txn_verify.total_timeout = GetInt(txn_verify, TOTAL_TIMEOUT);
+            ConfigurationData.dynamicProperties.txn_verify.max_retries = GetInt(txn_verify, MAX_RETRIES);
+            ConfigurationData.dynamicProperties.txn_verify.max_concurrent_threads = GetInt(txn_verify, MAX_CONCURRENT_THREADS);
+            ConfigurationData.dynamicProperties.txn_verify.allow_inline = GetBool(txn_verify, ALLOW_INLINE);
+            ConfigurationData.dynamicProperties.txn_verify.allow_inline_ssd = GetBool(txn_verify, ALLOW_INLINE_SSD);
+            ConfigurationData.dynamicProperties.txn_verify.respond_all_keys = GetBool(txn_verify, RESPOND_ALL_KEYS);
 		}
 
 		private static int GetInt(IConfigurationSection section, string propertyName)

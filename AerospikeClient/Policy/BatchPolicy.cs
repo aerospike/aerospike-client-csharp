@@ -166,9 +166,68 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
-		/// Default constructor.
+		/// Copy batch policy from another policy and override according to the AerospikeConfigProvider.
 		/// </summary>
-		public BatchPolicy()
+		public BatchPolicy(BatchPolicy other, IAerospikeConfigProvider configProvider) : this(other)
+		{
+            var batch_read = configProvider.ConfigurationData.dynamicProperties.batch_read;
+
+            if (batch_read.read_mode_ap.HasValue)
+            {
+                this.readModeAP = batch_read.read_mode_ap.Value;
+            }
+            if (batch_read.read_mode_sc.HasValue)
+            {
+                this.readModeSC = batch_read.read_mode_sc.Value;
+            }
+            if (batch_read.replica.HasValue)
+            {
+                this.replica = batch_read.replica.Value;
+            }
+            if (batch_read.sleep_between_retries.HasValue)
+            {
+                this.sleepBetweenRetries = batch_read.sleep_between_retries.Value;
+            }
+            if (batch_read.socket_timeout.HasValue)
+            {
+                this.socketTimeout = batch_read.socket_timeout.Value;
+            }
+            if (batch_read.timeout_delay.HasValue)
+            {
+                this.TimeoutDelay = batch_read.timeout_delay.Value;
+            }
+			if (batch_read.total_timeout.HasValue)
+			{
+				this.totalTimeout = batch_read.total_timeout.Value;
+            }
+            if (batch_read.max_retries.HasValue)
+            {
+                this.maxRetries = batch_read.max_retries.Value;
+            }
+            if (batch_read.max_concurrent_threads.HasValue)
+            {
+                this.maxConcurrentThreads = batch_read.max_concurrent_threads.Value;
+            }
+            if (batch_read.allow_inline.HasValue)
+            {
+                this.allowInline = batch_read.allow_inline.Value;
+            }
+            if (batch_read.allow_inline_ssd.HasValue)
+            {
+                this.allowInlineSSD = batch_read.allow_inline_ssd.Value;
+            }
+            if (batch_read.respond_all_keys.HasValue)
+            {
+                this.respondAllKeys = batch_read.respond_all_keys.Value;
+            }
+
+            Log.Debug("BatchPolicy has been aligned with config properties.");
+        }
+
+        /// <summary>
+        /// Default constructor.
+        /// </summary>
+        public BatchPolicy()
 		{
 		}
 
@@ -199,56 +258,60 @@ namespace Aerospike.Client
 			return new BatchPolicy(this);
 		}
 
-        public override void ApplyConfigOverrides(IAerospikeConfigProvider config)
-        {
-            var batch = config.DynamicProperties.batch_read;
+		public void GraftBatchWriteConfig(IAerospikeConfigProvider configProvider)
+		{
+			var batch_write = configProvider.ConfigurationData.dynamicProperties.batch_write;
 
-            if (batch.read_mode_ap.HasValue)
+            if (batch_write.fail_on_filtered_out.HasValue)
             {
-                this.readModeAP = batch.read_mode_ap.Value;
+                this.failOnFilteredOut = batch_write.fail_on_filtered_out.Value;
             }
-            if (batch.read_mode_sc.HasValue)
+            if (batch_write.replica.HasValue)
             {
-                this.readModeSC = batch.read_mode_sc.Value;
+                this.replica = batch_write.replica.Value;
             }
-            if (batch.replica.HasValue)
+            if (batch_write.sleep_between_retries.HasValue)
             {
-                this.replica = batch.replica.Value;
+                this.sleepBetweenRetries = batch_write.sleep_between_retries.Value;
             }
-            if (batch.sleep_between_retries.HasValue)
+            if (batch_write.socket_timeout.HasValue)
             {
-                this.sleepBetweenRetries = batch.sleep_between_retries.Value;
+                this.socketTimeout = batch_write.socket_timeout.Value;
             }
-            if (batch.socket_timeout.HasValue)
+            if (batch_write.timeout_delay.HasValue)
             {
-                this.socketTimeout = batch.socket_timeout.Value;
+                this.TimeoutDelay = batch_write.timeout_delay.Value;
             }
-            if (batch.timeout_delay.HasValue)
+            if (batch_write.total_timeout.HasValue)
             {
-                this.TimeoutDelay = batch.timeout_delay.Value;
+                this.totalTimeout = batch_write.total_timeout.Value;
             }
-			if (batch.max_retries.HasValue)
+            if (batch_write.max_retries.HasValue)
+            {
+                this.maxRetries = batch_write.max_retries.Value;
+            }
+			if (batch_write.send_key.HasValue)
 			{
-				this.maxRetries = batch.max_retries.Value;
-			}
-            if (batch.max_concurrent_threads.HasValue)
+				this.sendKey = batch_write.send_key.Value;
+            }
+            if (batch_write.max_concurrent_threads.HasValue)
             {
-                this.maxConcurrentThreads = batch.max_concurrent_threads.Value;
+                this.maxConcurrentThreads = batch_write.max_concurrent_threads.Value;
             }
-			if (batch.allow_inline.HasValue)
-			{
-				this.allowInline = batch.allow_inline.Value;
+            if (batch_write.allow_inline.HasValue)
+            {
+                this.allowInline = batch_write.allow_inline.Value;
             }
-			if (batch.allow_inline_ssd.HasValue)
-			{
-				this.allowInlineSSD = batch.allow_inline_ssd.Value;
-			}
-			if (batch.respond_all_keys.HasValue)
-			{
-				this.respondAllKeys = batch.respond_all_keys.Value;
+            if (batch_write.allow_inline_ssd.HasValue)
+            {
+                this.allowInlineSSD = batch_write.allow_inline_ssd.Value;
+            }
+            if (batch_write.respond_all_keys.HasValue)
+            {
+                this.respondAllKeys = batch_write.respond_all_keys.Value;
             }
 
-            Log.Debug("BatchPolicy has been aligned with config properties.");
+            Log.Debug("batch_write config has been grafted onto BatchPolicy.");
         }
     }
 }
