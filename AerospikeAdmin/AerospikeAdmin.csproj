@@ -22,7 +22,7 @@
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
     <UseWindowsForms>true</UseWindowsForms>
     <ImportWindowsDesktopTargets>true</ImportWindowsDesktopTargets>
-    <Version>8.0.2</Version>
+    <Version>8.0.3-alpha</Version>
     <Configurations>Debug;Release;Release_Unix;Debug_Unix</Configurations>
     <Platforms>AnyCPU</Platforms>
   </PropertyGroup>
