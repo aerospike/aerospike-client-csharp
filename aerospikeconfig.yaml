@@ -9,9 +9,11 @@ static:
 dynamic:
   client: 
     max_error_rate: 20
+    rack_ids: [2,4,6,8]
   read:
     connect_timeout: 2000
-    max_retries: 2
+    replica: PREFER_RACK
+    max_retries: 20
   batch_read:
     max_concurrent_threads: 10
     allow_inline: true

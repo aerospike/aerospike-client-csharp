@@ -136,26 +136,25 @@ namespace Aerospike.Client
 			this.asyncBufferSize = other.asyncBufferSize;
 		}
 
-		/// <summary>
-		/// Default constructor.
-		/// </summary>
-		public AsyncClientPolicy()
-		{
-		}
-
-        public override void ApplyConfigOverrides()
+        public AsyncClientPolicy(AsyncClientPolicy other, IAerospikeConfigProvider configProvider) : this(other)
         {
-			base.ApplyConfigOverrides();
-			var staticClient = ConfigProvider.ConfigurationData.staticProperties.client;
+            var staticClient = ConfigProvider.ConfigurationData.staticProperties.client;
 
             if (staticClient.async_max_connections_per_node.HasValue)
             {
                 this.asyncMaxConnsPerNode = staticClient.async_max_connections_per_node.Value;
             }
             if (staticClient.async_min_connections_per_node.HasValue)
-			{
-				this.asyncMinConnsPerNode = staticClient.async_min_connections_per_node.Value;
-			}
+            {
+                this.asyncMinConnsPerNode = staticClient.async_min_connections_per_node.Value;
+            }
+        }
+
+        /// <summary>
+        /// Default constructor.
+        /// </summary>
+        public AsyncClientPolicy()
+		{
 		}
     }
 }

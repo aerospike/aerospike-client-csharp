@@ -133,7 +133,6 @@ namespace Aerospike.Client
 		private volatile int commandCount;
 		private volatile int delayQueueTimeoutCount;
 		private IAerospikeConfigProvider configProvider;
-        private int? configInterval;
 
 		public Cluster(ClientPolicy policy, Host[] hosts)
 		{
@@ -267,7 +266,6 @@ namespace Aerospike.Client
 			cancel = new CancellationTokenSource();
             cancelToken = cancel.Token;
             configProvider = policy.ConfigProvider;
-            configInterval = configProvider.Interval;
 		}
 
 		public void StartTendThread(ClientPolicy policy)
@@ -579,13 +577,6 @@ namespace Aerospike.Client
 			{
 				metricsListener.OnSnapshot(this);
 			}
-
-			if (tendCount % configInterval == 0)
-			{
-                //check if file changed
-                //update config
-                //configProvider.UpdateConfig();
-            }
 
 			ProcessRecoverQueue();
 		}

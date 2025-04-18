@@ -21,14 +21,10 @@ namespace Aerospike.Client
 {
     public interface IAerospikeConfigProvider
     {
-        public int? Interval { get; }
-
         public ConfigurationData ConfigurationData { get; }
 
         public void Watch();
 
         public void InitalizeConfig();
-
-        public void UpdateConfig();
 	}
 }

@@ -118,10 +118,21 @@ namespace Aerospike.Client
 		/// <param name="hosts">array of potential hosts to seed the cluster</param>
 		/// <exception cref="AerospikeException">if all host connections fail</exception>
 		public AsyncClient(AsyncClientPolicy policy, params Host[] hosts)
-			: base (policy)
+			: base(policy)
 		{
 			policy ??= new AsyncClientPolicy();
-			this.cluster = new AsyncCluster(policy, hosts);
+            if (policy.ConfigProvider != null)
+            {
+                this.ConfigProvider = policy.ConfigProvider;
+                policy = new AsyncClientPolicy(policy, ConfigProvider);
+                cluster = new AsyncCluster(policy, hosts);
+                policy.ConfigProvider.InitalizeConfig();
+                policy.ConfigProvider.Watch();
+            }
+            else
+            {
+                cluster = new AsyncCluster(policy, hosts);
+            }
 			base.cluster = this.cluster;
 		}
 
