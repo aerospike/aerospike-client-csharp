@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2024 Aerospike, Inc.
+ * Copyright 2012-2025 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -98,26 +98,34 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Copy batch delete policy from another policy and override according to the AerospikeConfigProvider.
 		/// </summary>
-		public BatchDeletePolicy(BatchDeletePolicy other, IAerospikeConfigProvider configProvider) : this(other)
+		public BatchDeletePolicy(BatchDeletePolicy other, IConfigProvider configProvider) : this(other)
 		{
-            var batch_delete = configProvider.ConfigurationData.dynamicProperties.batch_delete;
+			if (configProvider == null)
+			{
+				return;
+			}
 
-            if (batch_delete.durable_delete.HasValue)
-            {
-                this.durableDelete = batch_delete.durable_delete.Value;
-            }
-            if (batch_delete.send_key.HasValue)
-            {
-                this.sendKey = batch_delete.send_key.Value;
-            }
-            
-            Log.Debug("BatchDeletePolicy has been aligned with config properties.");
-        }
+			if (configProvider.ConfigurationData == null)
+			{
+				return;
+			}
+			
+			var batch_delete = configProvider.ConfigurationData.dynamicProperties.batch_delete;
 
-        /// <summary>
-        /// Default constructor.
-        /// </summary>
-        public BatchDeletePolicy()
+			if (batch_delete.durable_delete.HasValue)
+			{
+				this.durableDelete = batch_delete.durable_delete.Value;
+			}
+			if (batch_delete.send_key.HasValue)
+			{
+				this.sendKey = batch_delete.send_key.Value;
+			}
+		}
+
+		/// <summary>
+		/// Default constructor.
+		/// </summary>
+		public BatchDeletePolicy()
 		{
 		}
 
@@ -129,5 +137,5 @@ namespace Aerospike.Client
 		{
 			return new BatchDeletePolicy(this);
 		}
-    }
+	}
 }

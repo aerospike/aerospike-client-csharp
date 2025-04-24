@@ -85,7 +85,7 @@ namespace Aerospike.Client
 		{
 			if (batch.node.HasBatchAny)
 			{
-				SetBatchOperate(batchPolicy, records, batch);
+				SetBatchOperate(batchPolicy, records, batch, null);
 			}
 			else
 			{
@@ -195,7 +195,7 @@ namespace Aerospike.Client
 		{
 			if (batch.node.HasBatchAny)
 			{
-				SetBatchOperate(batchPolicy, records, batch);
+				SetBatchOperate(batchPolicy, records, batch, null);
 			}
 			else
 			{
@@ -713,7 +713,8 @@ namespace Aerospike.Client
 			AsyncCluster cluster,
 			BatchPolicy policy,
 			BatchOperateListListener listener,
-			List<BatchRecord> records
+			List<BatchRecord> records,
+			IConfigProvider configProvider
 		) : base(cluster, true)
 		{
 			this.listener = listener;
@@ -726,7 +727,7 @@ namespace Aerospike.Client
 
 			foreach (BatchNode batchNode in batchNodes)
 			{
-				tasks[count++] = new AsyncBatchOperateListCommand(this, cluster, batchNode, policy, records);
+				tasks[count++] = new AsyncBatchOperateListCommand(this, cluster, batchNode, policy, records, configProvider);
 			}
 			this.commands = tasks;
 		}
@@ -745,6 +746,7 @@ namespace Aerospike.Client
 	sealed class AsyncBatchOperateListCommand : AsyncBatchCommand
 	{
 		internal readonly List<BatchRecord> records;
+		internal readonly IConfigProvider configProvider;
 
 		public AsyncBatchOperateListCommand
 		(
@@ -752,10 +754,12 @@ namespace Aerospike.Client
 			AsyncCluster cluster,
 			BatchNode batch,
 			BatchPolicy batchPolicy,
-			List<BatchRecord> records
+			List<BatchRecord> records,
+			IConfigProvider configProvider
 		) : base(parent, cluster, batch, batchPolicy, true)
 		{
 			this.records = records;
+			this.configProvider = configProvider;
 		}
 
 		public AsyncBatchOperateListCommand(AsyncBatchOperateListCommand other) : base(other)
@@ -772,7 +776,7 @@ namespace Aerospike.Client
 
 		protected internal override void WriteBuffer()
 		{
-			SetBatchOperate(batchPolicy, records, batch);
+			SetBatchOperate(batchPolicy, records, batch, configProvider);
 		}
 
 		protected internal override void ParseRow()
@@ -837,7 +841,7 @@ namespace Aerospike.Client
 
 		internal override AsyncBatchCommand CreateCommand(BatchNode batchNode)
 		{
-			return new AsyncBatchOperateListCommand(parent, cluster, batchNode, batchPolicy, records);
+			return new AsyncBatchOperateListCommand(parent, cluster, batchNode, batchPolicy, records, configProvider);
 		}
 
 		internal override List<BatchNode> GenerateBatchNodes()
@@ -859,7 +863,8 @@ namespace Aerospike.Client
 			AsyncCluster cluster,
 			BatchPolicy policy,
 			BatchRecordSequenceListener listener,
-			List<BatchRecord> records
+			List<BatchRecord> records,
+			IConfigProvider configProvider
 		) : base(cluster, true)
 		{
 			this.listener = listener;
@@ -871,7 +876,7 @@ namespace Aerospike.Client
 
 			foreach (BatchNode batchNode in batchNodes)
 			{
-				tasks[count++] = new AsyncBatchOperateSequenceCommand(this, cluster, batchNode, policy, listener, records);
+				tasks[count++] = new AsyncBatchOperateSequenceCommand(this, cluster, batchNode, policy, listener, records, configProvider);
 			}
 			this.commands = tasks;
 		}
@@ -891,6 +896,7 @@ namespace Aerospike.Client
 	{
 		internal readonly BatchRecordSequenceListener listener;
 		internal readonly List<BatchRecord> records;
+		internal readonly IConfigProvider configProvider;
 
 		public AsyncBatchOperateSequenceCommand
 		(
@@ -899,11 +905,13 @@ namespace Aerospike.Client
 			BatchNode batch,
 			BatchPolicy batchPolicy,
 			BatchRecordSequenceListener listener,
-			List<BatchRecord> records
+			List<BatchRecord> records,
+			IConfigProvider configProvider
 		) : base(parent, cluster, batch, batchPolicy, true)
 		{
 			this.listener = listener;
 			this.records = records;
+			this.configProvider = configProvider;
 		}
 
 		public AsyncBatchOperateSequenceCommand(AsyncBatchOperateSequenceCommand other) : base(other)
@@ -921,7 +929,7 @@ namespace Aerospike.Client
 
 		protected internal override void WriteBuffer()
 		{
-			SetBatchOperate(batchPolicy, records, batch);
+			SetBatchOperate(batchPolicy, records, batch, configProvider);
 		}
 
 		protected internal override void ParseRow()
@@ -990,7 +998,7 @@ namespace Aerospike.Client
 
 		internal override AsyncBatchCommand CreateCommand(BatchNode batchNode)
 		{
-			return new AsyncBatchOperateSequenceCommand(parent, cluster, batchNode, batchPolicy, listener, records);
+			return new AsyncBatchOperateSequenceCommand(parent, cluster, batchNode, batchPolicy, listener, records, configProvider);
 		}
 
 		internal override List<BatchNode> GenerateBatchNodes()

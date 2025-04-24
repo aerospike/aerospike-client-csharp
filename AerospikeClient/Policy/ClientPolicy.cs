@@ -322,7 +322,7 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Dynamic configuration provider.
 		/// </summary>
-		public IAerospikeConfigProvider ConfigProvider = null;
+		public IConfigProvider ConfigProvider = null;
 		
 		/// <summary>
 		/// Copy client policy from another client policy.
@@ -365,66 +365,71 @@ namespace Aerospike.Client
 			this.ConfigProvider = other.ConfigProvider;
 		}
 
-		public ClientPolicy(ClientPolicy other, IAerospikeConfigProvider configProvider) : this(other)
-        {
-            var staticClient = ConfigProvider.ConfigurationData.staticProperties.client;
-            var dynamicClient = ConfigProvider.ConfigurationData.dynamicProperties.client;
+		public ClientPolicy(ClientPolicy other, IConfigProvider configProvider) : this(other)
+		{
+			if (configProvider.ConfigurationData == null)
+			{
+				return;
+			}
 
-            if (staticClient.max_connections_per_node.HasValue)
-            {
-                this.maxConnsPerNode = staticClient.max_connections_per_node.Value;
-            }
-            if (staticClient.min_connections_per_node.HasValue)
-            {
-                this.minConnsPerNode = staticClient.min_connections_per_node.Value;
-            }
+			var staticClient = ConfigProvider.ConfigurationData.staticProperties.client;
+			var dynamicClient = ConfigProvider.ConfigurationData.dynamicProperties.client;
 
-            if (dynamicClient.timeout.HasValue)
-            {
-                this.timeout = dynamicClient.timeout.Value;
-            }
-            if (dynamicClient.error_rate_window.HasValue)
-            {
-                this.errorRateWindow = dynamicClient.error_rate_window.Value;
-            }
-            if (dynamicClient.max_error_rate.HasValue)
-            {
-                this.maxErrorRate = dynamicClient.max_error_rate.Value;
-            }
-            if (dynamicClient.fail_if_not_connected.HasValue)
-            {
-                this.failIfNotConnected = dynamicClient.fail_if_not_connected.Value;
-            }
-            if (dynamicClient.login_timeout.HasValue)
-            {
-                this.loginTimeout = dynamicClient.login_timeout.Value;
-            }
-            if (dynamicClient.max_socket_idle.HasValue)
-            {
-                this.maxSocketIdle = dynamicClient.max_socket_idle.Value;
-            }
-            if (dynamicClient.rack_aware.HasValue)
-            {
-                this.rackAware = dynamicClient.rack_aware.Value;
-            }
-            if (dynamicClient.rack_ids != null)
-            {
-                this.rackIds = dynamicClient.rack_ids.ToList();
-            }
-            if (dynamicClient.tend_interval.HasValue)
-            {
-                this.tendInterval = dynamicClient.tend_interval.Value;
-            }
-            if (dynamicClient.use_service_alternative.HasValue)
-            {
-                this.useServicesAlternate = dynamicClient.use_service_alternative.Value;
-            }
-        }
+			if (staticClient.max_connections_per_node.HasValue)
+			{
+				this.maxConnsPerNode = staticClient.max_connections_per_node.Value;
+			}
+			if (staticClient.min_connections_per_node.HasValue)
+			{
+				this.minConnsPerNode = staticClient.min_connections_per_node.Value;
+			}
 
-        /// <summary>
-        /// Default constructor.
-        /// </summary>
-        public ClientPolicy()
+			if (dynamicClient.timeout.HasValue)
+			{
+				this.timeout = dynamicClient.timeout.Value;
+			}
+			if (dynamicClient.error_rate_window.HasValue)
+			{
+				this.errorRateWindow = dynamicClient.error_rate_window.Value;
+			}
+			if (dynamicClient.max_error_rate.HasValue)
+			{
+				this.maxErrorRate = dynamicClient.max_error_rate.Value;
+			}
+			if (dynamicClient.fail_if_not_connected.HasValue)
+			{
+				this.failIfNotConnected = dynamicClient.fail_if_not_connected.Value;
+			}
+			if (dynamicClient.login_timeout.HasValue)
+			{
+				this.loginTimeout = dynamicClient.login_timeout.Value;
+			}
+			if (dynamicClient.max_socket_idle.HasValue)
+			{
+				this.maxSocketIdle = dynamicClient.max_socket_idle.Value;
+			}
+			if (dynamicClient.rack_aware.HasValue)
+			{
+				this.rackAware = dynamicClient.rack_aware.Value;
+			}
+			if (dynamicClient.rack_ids != null)
+			{
+				this.rackIds = dynamicClient.rack_ids.ToList();
+			}
+			if (dynamicClient.tend_interval.HasValue)
+			{
+				this.tendInterval = dynamicClient.tend_interval.Value;
+			}
+			if (dynamicClient.use_service_alternative.HasValue)
+			{
+				this.useServicesAlternate = dynamicClient.use_service_alternative.Value;
+			}
+		}
+
+		/// <summary>
+		/// Default constructor.
+		/// </summary>
+		public ClientPolicy()
 		{
 		}
 

@@ -305,9 +305,19 @@ namespace Aerospike.Client
         /// <summary>
         /// Copy policy from another policy and override according to the AerospikeConfigProvider.
         /// </summary>
-        public Policy(Policy other, IAerospikeConfigProvider configProvider) : this(other)
+        public Policy(Policy other, IConfigProvider configProvider) : this(other)
         {
-			var read = configProvider.ConfigurationData.dynamicProperties.read;
+            if (configProvider == null)
+            {
+                return;
+            }
+
+            if (configProvider.ConfigurationData == null)
+            {
+                return;
+            }
+
+            var read = configProvider.ConfigurationData.dynamicProperties.read;
 
             if (read.read_mode_ap.HasValue)
             {
@@ -345,8 +355,6 @@ namespace Aerospike.Client
             {
                 this.maxRetries = read.max_retries.Value;
             }
-
-            Log.Debug("(read) Policy has been aligned with config properties.");
         }
 
         /// <summary>

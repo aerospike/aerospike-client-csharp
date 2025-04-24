@@ -109,29 +109,37 @@ namespace Aerospike.Client
 			this.sendKey = other.sendKey;
 		}
 
-        /// <summary>
-        /// Copy batch UDF policy from another policy and override according to the AerospikeConfigProvider.
-        /// </summary>
-        public BatchUDFPolicy(BatchUDFPolicy other, IAerospikeConfigProvider configProvider) : this(other)
-        {
-            var batch_udf = configProvider.ConfigurationData.dynamicProperties.batch_udf;
+		/// <summary>
+		/// Copy batch UDF policy from another policy and override according to the AerospikeConfigProvider.
+		/// </summary>
+		public BatchUDFPolicy(BatchUDFPolicy other, IConfigProvider configProvider) : this(other)
+		{
+			if (configProvider == null)
+			{
+				return;
+			}
 
-            if (batch_udf.durable_delete.HasValue)
-            {
-                this.durableDelete = batch_udf.durable_delete.Value;
-            }
-            if (batch_udf.send_key.HasValue)
-            {
-                this.sendKey = batch_udf.send_key.Value;
-            }
+			if (configProvider.ConfigurationData == null)
+			{
+				return;
+			}
 
-            Log.Debug("BatchUDFPolicy has been aligned with config properties.");
-        }
+			var batch_udf = configProvider.ConfigurationData.dynamicProperties.batch_udf;
 
-        /// <summary>
-        /// Default constructor.
-        /// </summary>
-        public BatchUDFPolicy()
+			if (batch_udf.durable_delete.HasValue)
+			{
+				this.durableDelete = batch_udf.durable_delete.Value;
+			}
+			if (batch_udf.send_key.HasValue)
+			{
+				this.sendKey = batch_udf.send_key.Value;
+			}
+		}
+
+		/// <summary>
+		/// Default constructor.
+		/// </summary>
+		public BatchUDFPolicy()
 		{
 		}
 
@@ -143,5 +151,5 @@ namespace Aerospike.Client
 		{
 			return new BatchUDFPolicy(this);
 		}
-    }
+	}
 }

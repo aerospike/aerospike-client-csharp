@@ -19,7 +19,7 @@ namespace Aerospike.Client
 {
 	/// <summary>
 	/// Transaction policy fields used to batch roll forward/backward records on
-    /// commit or abort.Used a placeholder for now as there are no additional fields beyond BatchPolicy.
+	/// commit or abort.Used a placeholder for now as there are no additional fields beyond BatchPolicy.
 	/// </summary>
 	public sealed class TxnRollPolicy : BatchPolicy
 	{
@@ -31,10 +31,74 @@ namespace Aerospike.Client
 		{
 		}
 
-        /// <summary>
-        /// Default constructor.
-        /// </summary>
-        public TxnRollPolicy()
+		public TxnRollPolicy(TxnRollPolicy other, IConfigProvider configProvider) : this(other)
+		{
+			if (configProvider == null)
+			{
+				return;
+			}
+
+			if (configProvider.ConfigurationData == null)
+			{
+				return;
+			}
+
+			var txn_roll = configProvider.ConfigurationData.dynamicProperties.txn_roll;
+
+			if (txn_roll.read_mode_ap.HasValue)
+			{
+				this.readModeAP = txn_roll.read_mode_ap.Value;
+			}
+			if (txn_roll.read_mode_sc.HasValue)
+			{
+				this.readModeSC = txn_roll.read_mode_sc.Value;
+			}
+			if (txn_roll.replica.HasValue)
+			{
+				this.replica = txn_roll.replica.Value;
+			}
+			if (txn_roll.sleep_between_retries.HasValue)
+			{
+				this.sleepBetweenRetries = txn_roll.sleep_between_retries.Value;
+			}
+			if (txn_roll.socket_timeout.HasValue)
+			{
+				this.socketTimeout = txn_roll.socket_timeout.Value;
+			}
+			if (txn_roll.timeout_delay.HasValue)
+			{
+				this.TimeoutDelay = txn_roll.timeout_delay.Value;
+			}
+			if (txn_roll.total_timeout.HasValue)
+			{
+				this.totalTimeout = txn_roll.total_timeout.Value;
+			}
+			if (txn_roll.max_retries.HasValue)
+			{
+				this.maxRetries = txn_roll.max_retries.Value;
+			}
+			if (txn_roll.max_concurrent_threads.HasValue)
+			{
+				this.maxConcurrentThreads = txn_roll.max_concurrent_threads.Value;
+			}
+			if (txn_roll.allow_inline.HasValue)
+			{
+				this.allowInline = txn_roll.allow_inline.Value;
+			}
+			if (txn_roll.allow_inline_ssd.HasValue)
+			{
+				this.allowInlineSSD = txn_roll.allow_inline_ssd.Value;
+			}
+			if (txn_roll.respond_all_keys.HasValue)
+			{
+				this.respondAllKeys = txn_roll.respond_all_keys.Value;
+			}
+		}
+
+		/// <summary>
+		/// Default constructor.
+		/// </summary>
+		public TxnRollPolicy()
 		{
 			replica = Replica.MASTER;
 			maxRetries = 5;
@@ -51,61 +115,5 @@ namespace Aerospike.Client
 		{
 			return new TxnRollPolicy(this);
 		}
-
-        public void ApplyConfigOverrides(IAerospikeConfigProvider config)
-        {
-            var txn_roll = config.ConfigurationData.dynamicProperties.txn_roll;
-
-            if (txn_roll.read_mode_ap.HasValue)
-            {
-                this.readModeAP = txn_roll.read_mode_ap.Value;
-            }
-            if (txn_roll.read_mode_sc.HasValue)
-            {
-                this.readModeSC = txn_roll.read_mode_sc.Value;
-            }
-            if (txn_roll.replica.HasValue)
-            {
-                this.replica = txn_roll.replica.Value;
-            }
-            if (txn_roll.sleep_between_retries.HasValue)
-            {
-                this.sleepBetweenRetries = txn_roll.sleep_between_retries.Value;
-            }
-            if (txn_roll.socket_timeout.HasValue)
-            {
-                this.socketTimeout = txn_roll.socket_timeout.Value;
-            }
-            if (txn_roll.timeout_delay.HasValue)
-            {
-                this.TimeoutDelay = txn_roll.timeout_delay.Value;
-            }
-            if (txn_roll.total_timeout.HasValue)
-            {
-                this.totalTimeout = txn_roll.total_timeout.Value;
-            }  
-            if (txn_roll.max_retries.HasValue)
-            {
-                this.maxRetries = txn_roll.max_retries.Value;
-            }
-            if (txn_roll.max_concurrent_threads.HasValue)
-            {
-                this.maxConcurrentThreads = txn_roll.max_concurrent_threads.Value;
-            }
-            if (txn_roll.allow_inline.HasValue)
-            {
-                this.allowInline = txn_roll.allow_inline.Value;
-            }
-            if (txn_roll.allow_inline_ssd.HasValue)
-            {
-                this.allowInlineSSD = txn_roll.allow_inline_ssd.Value;
-            }
-            if (txn_roll.respond_all_keys.HasValue)
-            {
-                this.respondAllKeys = txn_roll.respond_all_keys.Value;
-            }
-
-            Log.Debug("TxnRollPolicy has been aligned with config properties.");
-        }
-    }
+	}
 }

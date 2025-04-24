@@ -139,29 +139,37 @@ namespace Aerospike.Client
 			this.sendKey = other.sendKey;
 		}
 
-        /// <summary>
-        /// Copy batch write policy from another policy and override according to the AerospikeConfigProvider.
-        /// </summary>
-        public BatchWritePolicy(BatchWritePolicy other, IAerospikeConfigProvider configProvider) : this(other)
+		/// <summary>
+		/// Copy batch write policy from another policy and override according to the AerospikeConfigProvider.
+		/// </summary>
+		public BatchWritePolicy(BatchWritePolicy other, IConfigProvider configProvider) : this(other)
 		{
-            var batch_write = configProvider.ConfigurationData.dynamicProperties.batch_write;
+			if (configProvider == null)
+			{
+				return;
+			}
 
-            if (batch_write.send_key.HasValue)
-            {
-                this.sendKey = batch_write.send_key.Value;
-            }
-            if (batch_write.durable_delete.HasValue)
-            {
-                this.durableDelete = batch_write.durable_delete.Value;
-            }
+			if (configProvider.ConfigurationData == null)
+			{
+				return;
+			}
 
-            Log.Debug("BatchWritePolicy has been aligned with config properties.");
-        }
+			var batch_write = configProvider.ConfigurationData.dynamicProperties.batch_write;
 
-        /// <summary>
-        /// Default constructor.
-        /// </summary>
-        public BatchWritePolicy()
+			if (batch_write.send_key.HasValue)
+			{
+				this.sendKey = batch_write.send_key.Value;
+			}
+			if (batch_write.durable_delete.HasValue)
+			{
+				this.durableDelete = batch_write.durable_delete.Value;
+			}
+		}
+
+		/// <summary>
+		/// Default constructor.
+		/// </summary>
+		public BatchWritePolicy()
 		{
 		}
 
@@ -173,5 +181,5 @@ namespace Aerospike.Client
 		{
 			return new BatchWritePolicy(this);
 		}
-    }
+	}
 }

@@ -19,12 +19,14 @@ using Aerospike.Client.Config;
 
 namespace Aerospike.Client
 {
-    public interface IAerospikeConfigProvider
-    {
-        public ConfigurationData ConfigurationData { get; }
+	public interface IConfigProvider
+	{
+		protected const int DEFAULT_INTERVAL = 60;
 
-        public void Watch();
+		public ConfigurationData ConfigurationData { get; }
 
-        public void InitalizeConfig();
+		public int Interval { get; }
+
+		public bool LoadConfig();
 	}
 }

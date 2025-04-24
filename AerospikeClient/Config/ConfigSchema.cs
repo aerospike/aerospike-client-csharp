@@ -22,9 +22,9 @@ namespace Aerospike.Client.Config
 		public ConfigurationData() { }
 
 		public MetaData metaData { get; set; }
-        public StaticProperties staticProperties { get; set; }
-        public DynamicProperties dynamicProperties { get; set; }
-    }
+		public StaticProperties staticProperties { get; set; }
+		public DynamicProperties dynamicProperties { get; set; }
+	}
 	
 	public class MetaData
 	{
@@ -39,14 +39,14 @@ namespace Aerospike.Client.Config
 	}
 
 	public class StaticProperties
-    {
+	{
 		public StaticProperties()
 		{
 			client = new StaticClient();
 		}
 
 		public StaticClient client { get; set; }
-    }
+	}
 
 	public class StaticClient
 	{
@@ -140,8 +140,8 @@ namespace Aerospike.Client.Config
 		public int? sleep_between_retries { get; set; }
 		public int? socket_timeout { get; set; }
 		public int? timeout_delay { get; set; }
-        public int? total_timeout { get; set; }
-        public int? max_retries { get; set; }
+		public int? total_timeout { get; set; }
+		public int? max_retries { get; set; }
 		public bool? include_bin_data { get; set; }
 		public int? info_timeout { get; set; }
 		public int? record_queue_size { get; set; }
@@ -157,8 +157,8 @@ namespace Aerospike.Client.Config
 		public int? sleep_between_retries { get; set; }
 		public int? socket_timeout { get; set; }
 		public int? timeout_delay { get; set; }
-        public int? total_timeout { get; set; }
-        public int? max_retries { get; set; }
+		public int? total_timeout { get; set; }
+		public int? max_retries { get; set; }
 		public bool? concurrent_nodes { get; set; }
 		public int? max_concurrent_nodes { get; set; }
 	}
@@ -172,8 +172,8 @@ namespace Aerospike.Client.Config
 		public int? sleep_between_retries { get; set; }
 		public int? socket_timeout { get; set; }
 		public int? timeout_delay { get; set; }
-        public int? total_timeout { get; set; }
-        public int? max_retries { get; set; }
+		public int? total_timeout { get; set; }
+		public int? max_retries { get; set; }
 		public int? max_concurrent_threads { get; set; }
 		public bool? allow_inline { get; set; }
 		public bool? allow_inline_ssd { get; set; }
@@ -188,8 +188,8 @@ namespace Aerospike.Client.Config
 		public int? sleep_between_retries { get; set; }
 		public int? socket_timeout { get; set; }
 		public int? timeout_delay { get; set; }
-        public int? total_timeout { get; set; }
-        public int? max_retries { get; set; }
+		public int? total_timeout { get; set; }
+		public int? max_retries { get; set; }
 		public bool? durable_delete { get; set; }
 		public bool? send_key { get; set; }
 		public int? max_concurrent_threads { get; set; }

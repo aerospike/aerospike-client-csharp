@@ -1143,16 +1143,18 @@ namespace Aerospike.Client
 		public virtual void SetBatchOperate(
 			BatchPolicy policy,
 			IList records,
-			BatchNode batch)
+			BatchNode batch,
+			IConfigProvider configProvider)
 		{
 			BatchOffsetsNative offsets = new(batch);
-			SetBatchOperate(policy, records, offsets);
+			SetBatchOperate(policy, records, offsets, configProvider);
 		}
 
 		public void SetBatchOperate(
 			BatchPolicy policy,
 			IList records,
-			BatchOffsets offsets)
+			BatchOffsets offsets,
+			IConfigProvider configProvider)
 		{
 			Begin();
 			int max = offsets.Size();
@@ -1294,10 +1296,30 @@ namespace Aerospike.Client
 
 								if (bw.policy != null)
 								{
+									if (configProvider != null && configProvider.ConfigurationData != null)
+									{
+										if (configProvider.ConfigurationData.dynamicProperties.batch_write.send_key.HasValue)
+										{
+											bw.policy.sendKey = configProvider.ConfigurationData.dynamicProperties.batch_write.send_key.Value;
+										}
+										if (configProvider.ConfigurationData.dynamicProperties.batch_write.durable_delete.HasValue)
+										{
+											bw.policy.durableDelete = configProvider.ConfigurationData.dynamicProperties.batch_write.durable_delete.Value;
+										}
+									}
+
 									attr.SetWrite(bw.policy);
 								}
 								else
 								{
+									if (configProvider != null && configProvider.ConfigurationData != null)
+									{
+										if (configProvider.ConfigurationData.dynamicProperties.batch_write.send_key.HasValue)
+										{
+											policy.sendKey = configProvider.ConfigurationData.dynamicProperties.batch_write.send_key.Value;
+										}
+									}
+
 									attr.SetWrite(policy);
 								}
 								attr.AdjustWrite(bw.ops);
@@ -1311,10 +1333,30 @@ namespace Aerospike.Client
 
 								if (bu.policy != null)
 								{
+									if (configProvider != null && configProvider.ConfigurationData != null)
+									{
+										if (configProvider.ConfigurationData.dynamicProperties.batch_udf.send_key.HasValue)
+										{
+											bu.policy.sendKey = configProvider.ConfigurationData.dynamicProperties.batch_udf.send_key.Value;
+										}
+										if (configProvider.ConfigurationData.dynamicProperties.batch_udf.durable_delete.HasValue)
+										{
+											bu.policy.durableDelete = configProvider.ConfigurationData.dynamicProperties.batch_udf.durable_delete.Value;
+										}
+									}
+
 									attr.SetUDF(bu.policy);
 								}
 								else
 								{
+									if (configProvider != null && configProvider.ConfigurationData != null)
+									{
+										if (configProvider.ConfigurationData.dynamicProperties.batch_udf.send_key.HasValue)
+										{
+											policy.sendKey = configProvider.ConfigurationData.dynamicProperties.batch_udf.send_key.Value;
+										}
+									}
+
 									attr.SetUDF(policy);
 								}
 								WriteBatchWrite(key, txn, ver, attr, attr.filterExp, 3, 0);
@@ -1330,10 +1372,30 @@ namespace Aerospike.Client
 
 								if (bd.policy != null)
 								{
+									if (configProvider != null && configProvider.ConfigurationData != null)
+									{
+										if (configProvider.ConfigurationData.dynamicProperties.batch_delete.send_key.HasValue)
+										{
+											bd.policy.sendKey = configProvider.ConfigurationData.dynamicProperties.batch_delete.send_key.Value;
+										}
+										if (configProvider.ConfigurationData.dynamicProperties.batch_delete.durable_delete.HasValue)
+										{
+											bd.policy.durableDelete = configProvider.ConfigurationData.dynamicProperties.batch_delete.durable_delete.Value;
+										}
+									}
+
 									attr.SetDelete(bd.policy);
 								}
 								else
 								{
+									if (configProvider != null && configProvider.ConfigurationData != null)
+									{
+										if (configProvider.ConfigurationData.dynamicProperties.batch_delete.send_key.HasValue)
+										{
+											policy.sendKey = configProvider.ConfigurationData.dynamicProperties.batch_delete.send_key.Value;
+										}
+									}
+
 									attr.SetDelete(policy);
 								}
 								WriteBatchWrite(key, txn, ver, attr, attr.filterExp, 0, 0);

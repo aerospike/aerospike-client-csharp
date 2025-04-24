@@ -136,25 +136,30 @@ namespace Aerospike.Client
 			this.asyncBufferSize = other.asyncBufferSize;
 		}
 
-        public AsyncClientPolicy(AsyncClientPolicy other, IAerospikeConfigProvider configProvider) : this(other)
-        {
-            var staticClient = ConfigProvider.ConfigurationData.staticProperties.client;
+		public AsyncClientPolicy(AsyncClientPolicy other, IConfigProvider configProvider) : this(other)
+		{
+			if (configProvider.ConfigurationData == null)
+			{
+				return;
+			}
 
-            if (staticClient.async_max_connections_per_node.HasValue)
-            {
-                this.asyncMaxConnsPerNode = staticClient.async_max_connections_per_node.Value;
-            }
-            if (staticClient.async_min_connections_per_node.HasValue)
-            {
-                this.asyncMinConnsPerNode = staticClient.async_min_connections_per_node.Value;
-            }
-        }
+			var staticClient = ConfigProvider.ConfigurationData.staticProperties.client;
 
-        /// <summary>
-        /// Default constructor.
-        /// </summary>
-        public AsyncClientPolicy()
+			if (staticClient.async_max_connections_per_node.HasValue)
+			{
+				this.asyncMaxConnsPerNode = staticClient.async_max_connections_per_node.Value;
+			}
+			if (staticClient.async_min_connections_per_node.HasValue)
+			{
+				this.asyncMinConnsPerNode = staticClient.async_min_connections_per_node.Value;
+			}
+		}
+
+		/// <summary>
+		/// Default constructor.
+		/// </summary>
+		public AsyncClientPolicy()
 		{
 		}
-    }
+	}
 }

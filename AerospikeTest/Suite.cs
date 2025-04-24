@@ -80,7 +80,7 @@ namespace Aerospike.Test
 				useServicesAlternate = SuiteHelpers.useServicesAlternate
 			};
 
-			policy.ConfigProvider = new AerospikeYamlConfigProvider("C:\\Users\\sklaus_aerospike\\repos\\aerospike-client-csharp\\aerospikeconfig.yaml");
+			policy.ConfigProvider = new YamlConfigProvider();
 
             if (SuiteHelpers.user != null && SuiteHelpers.user.Length > 0)
 			{
@@ -117,7 +117,7 @@ namespace Aerospike.Test
 				useServicesAlternate = SuiteHelpers.useServicesAlternate
 			};
 
-            policy.ConfigProvider = new AerospikeYamlConfigProvider("C:\\Users\\sklaus_aerospike\\repos\\aerospike-client-csharp\\aerospikeconfig.yaml");
+            policy.ConfigProvider = new YamlConfigProvider();
 
             if (SuiteHelpers.user != null && SuiteHelpers.user.Length > 0)
 			{
