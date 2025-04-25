@@ -35,6 +35,26 @@ namespace Aerospike.Test
 			}
 		}
 
+		public static void AssertBinBlobEqual(Key key, Record record, Bin bin)
+		{
+			AssertRecordFound(key, record);
+
+			byte[] received = (byte[])record.GetValue(bin.name);
+
+			byte[] expected = bin.value.Object switch
+			{
+				byte[] bytes => bytes,
+				Memory<byte> mem => mem.ToArray(),
+				ReadOnlyMemory<byte> roMem => roMem.ToArray(),
+				_ => throw new ArgumentException("Unexpected type"),
+			};
+
+			if (received == null || !received.SequenceEqual(expected))
+			{
+				Assert.Fail($"Data mismatch: Expected [{string.Join(", ", expected)}]. Received [{string.Join(", ", received ?? [])}]");
+			}
+		}
+
 		public static void AssertBinEqual(Key key, Record record, String binName, Object expected)
 		{
 			AssertRecordFound(key, record);
