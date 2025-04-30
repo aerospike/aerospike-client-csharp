@@ -1,21 +1,26 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <RunSettings>
+	<RunConfiguration>
+		<EnvironmentVariables>
+			<AEROSPIKE_CLIENT_CONFIG_URL>C:\Users\sklaus_aerospike\repos\aerospike-client-csharp\aerospikeconfig.yaml</AEROSPIKE_CLIENT_CONFIG_URL>
+		</EnvironmentVariables>
+	</RunConfiguration>
   <TestRunParameters>
-    <Parameter name="Host" value="localhost" />
-    <Parameter name="Port" value="3000" />
-    <Parameter name="ClusterName" value="" />
-    <Parameter name="Namespace" value="test" />
-    <Parameter name="Set" value="test" />
-    <Parameter name="User" value="" />
-    <Parameter name="Password" value="" />
-    <Parameter name="Timeout" value="25000" />
-    <Parameter name="UseServicesAlternate" value="false" />
-    <Parameter name="TlsEnable" value="false" />
-    <Parameter name="TlsName" value="" />
-    <Parameter name="TlsProtocols" value="" />
-    <Parameter name="TlsRevoke" value="" />
-    <Parameter name="TlsClientCertFile" value="" />
-    <Parameter name="TlsLoginOnly" value="false" />
-    <Parameter name="AuthMode" value="INTERNAL" />
+	<Parameter name="Host" value="localhost" />
+	<Parameter name="Port" value="3000" />
+	<Parameter name="ClusterName" value="" />
+	<Parameter name="Namespace" value="test" />
+	<Parameter name="Set" value="test" />
+	<Parameter name="User" value="" />
+	<Parameter name="Password" value="" />
+	<Parameter name="Timeout" value="25000" />
+	<Parameter name="UseServicesAlternate" value="false" />
+	<Parameter name="TlsEnable" value="false" />
+	<Parameter name="TlsName" value="" />
+	<Parameter name="TlsProtocols" value="" />
+	<Parameter name="TlsRevoke" value="" />
+	<Parameter name="TlsClientCertFile" value="" />
+	<Parameter name="TlsLoginOnly" value="false" />
+	<Parameter name="AuthMode" value="INTERNAL" />
   </TestRunParameters>
 </RunSettings>

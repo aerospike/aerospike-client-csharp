@@ -39,8 +39,8 @@ namespace Aerospike.Client
 		// Maximum async connections per node.
 		internal readonly int asyncMaxConnsPerNode;
 
-		public AsyncCluster(AsyncClientPolicy policy, Host[] hosts)
-			: base(policy, hosts)
+		public AsyncCluster(AsyncClient client, AsyncClientPolicy policy, Host[] hosts)
+			: base(client, policy, hosts)
 		{
 			maxCommands = policy.asyncMaxCommands;
 			asyncMinConnsPerNode = policy.asyncMinConnsPerNode;

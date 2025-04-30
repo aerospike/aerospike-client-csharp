@@ -1,0 +1,21 @@
+static:
+  client: 
+    config_interval: 10
+    min_connections_per_node: 5
+    max_connections_per_node: 50
+dynamic:
+  client: 
+    max_error_rate: 20
+    rack_ids: [2,4,6,8]
+  read:
+    replica: PREFER_RACK
+    max_retries: 20
+  batch_read:
+    max_concurrent_threads: 10
+    allow_inline: true
+  scan:
+    concurrent_nodes: true
+    max_concurrent_nodes: 5
+    max_retries: 5
+  write:
+    durable_delete: true

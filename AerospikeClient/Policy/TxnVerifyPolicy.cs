@@ -19,7 +19,7 @@ namespace Aerospike.Client
 {
 	/// <summary>
 	/// Transaction policy fields used to batch verify record versions on commit.
-    /// Used a placeholder for now as there are no additional fields beyond BatchPolicy.
+	/// Used a placeholder for now as there are no additional fields beyond BatchPolicy.
 	/// </summary>
 	public sealed class TxnVerifyPolicy : BatchPolicy
 	{
@@ -29,6 +29,70 @@ namespace Aerospike.Client
 		public TxnVerifyPolicy(TxnVerifyPolicy other) : 
 			base(other)
 		{
+		}
+
+		public TxnVerifyPolicy(TxnVerifyPolicy other, IConfigProvider configProvider) : this(other)
+		{
+			if (configProvider == null)
+			{
+				return;
+			}
+
+			if (configProvider.ConfigurationData == null)
+			{
+				return;
+			}
+
+			var txn_verify = configProvider.ConfigurationData.dynamicConfig.txn_verify;
+
+			if (txn_verify.read_mode_ap.HasValue)
+			{
+				this.readModeAP = txn_verify.read_mode_ap.Value;
+			}
+			if (txn_verify.read_mode_sc.HasValue)
+			{
+				this.readModeSC = txn_verify.read_mode_sc.Value;
+			}
+			if (txn_verify.replica.HasValue)
+			{
+				this.replica = txn_verify.replica.Value;
+			}
+			if (txn_verify.sleep_between_retries.HasValue)
+			{
+				this.sleepBetweenRetries = txn_verify.sleep_between_retries.Value;
+			}
+			if (txn_verify.socket_timeout.HasValue)
+			{
+				this.socketTimeout = txn_verify.socket_timeout.Value;
+			}
+			if (txn_verify.timeout_delay.HasValue)
+			{
+				this.TimeoutDelay = txn_verify.timeout_delay.Value;
+			}
+			if (txn_verify.total_timeout.HasValue)
+			{
+				this.totalTimeout = txn_verify.total_timeout.Value;
+			}
+			if (txn_verify.max_retries.HasValue)
+			{
+				this.maxRetries = txn_verify.max_retries.Value;
+			}
+			if (txn_verify.max_concurrent_threads.HasValue)
+			{
+				this.maxConcurrentThreads = txn_verify.max_concurrent_threads.Value;
+			}
+			if (txn_verify.allow_inline.HasValue)
+			{
+				this.allowInline = txn_verify.allow_inline.Value;
+			}
+			if (txn_verify.allow_inline_ssd.HasValue)
+			{
+				this.allowInlineSSD = txn_verify.allow_inline_ssd.Value;
+			}
+			if (txn_verify.respond_all_keys.HasValue)
+			{
+				this.respondAllKeys = txn_verify.respond_all_keys.Value;
+			}
 		}
 
 		/// <summary>

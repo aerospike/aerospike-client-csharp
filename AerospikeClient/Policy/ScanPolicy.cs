@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2024 Aerospike, Inc.
+ * Copyright 2012-2025 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -93,6 +93,65 @@ namespace Aerospike.Client
 			this.concurrentNodes = other.concurrentNodes;
 			this.includeBinData = other.includeBinData;
 			this.recordQueueSize = other.recordQueueSize;
+		}
+
+		/// <summary>
+		/// Copy scan policy from another policy and override according to the AerospikeConfigProvider.
+		/// </summary>
+		public ScanPolicy(ScanPolicy other, IConfigProvider configProvider) : this(other)
+		{
+			if (configProvider == null)
+			{
+				return;
+			}
+
+			if (configProvider.ConfigurationData == null)
+			{
+				return;
+			}
+
+			var scan = configProvider.ConfigurationData.dynamicConfig.scan;
+
+			if (scan.read_mode_ap.HasValue)
+			{
+				this.readModeAP = scan.read_mode_ap.Value;
+			}
+			if (scan.read_mode_sc.HasValue)
+			{
+				this.readModeSC = scan.read_mode_sc.Value;
+			}
+			if (scan.replica.HasValue)
+			{
+				this.replica = scan.replica.Value;
+			}
+			if (scan.sleep_between_retries.HasValue)
+			{
+				this.sleepBetweenRetries = scan.sleep_between_retries.Value;
+			}
+			if (scan.socket_timeout.HasValue)
+			{
+				this.socketTimeout = scan.socket_timeout.Value;
+			}
+			if (scan.timeout_delay.HasValue)
+			{
+				this.TimeoutDelay = scan.timeout_delay.Value;
+			}
+			if (scan.total_timeout.HasValue)
+			{
+				this.totalTimeout = scan.total_timeout.Value;
+			}
+			if (scan.max_retries.HasValue)
+			{
+				this.maxRetries = scan.max_retries.Value;
+			}
+			if (scan.concurrent_nodes.HasValue)
+			{
+				this.concurrentNodes = scan.concurrent_nodes.Value;
+			}
+			if (scan.max_concurrent_nodes.HasValue)
+			{
+				this.maxConcurrentNodes = scan.max_concurrent_nodes.Value;
+			}
 		}
 
 		/// <summary>

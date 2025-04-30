@@ -19,7 +19,10 @@ using System.Text;
 namespace Aerospike.Client
 {
 	public class Cluster
-	{		
+	{
+		// Pointer to client
+		private readonly AerospikeClient client;
+		
 		// Expected cluster name.
 		protected internal readonly String clusterName;
 
@@ -39,17 +42,17 @@ namespace Aerospike.Client
 		// IP translations.
 		protected internal readonly Dictionary<string, string> ipMap;
 
-        // TLS connection policy.
+		// TLS connection policy.
 		protected internal readonly TlsPolicy tlsPolicy;
 
 		// Log context.
 		internal readonly Log.Context context;
-            
+			
 		// Authentication mode.
 		protected internal readonly AuthMode authMode;
 
 		// User name in UTF-8 encoded bytes.
-        protected internal readonly byte[] user;
+		protected internal readonly byte[] user;
 
 		// Password in UTF-8 encoded bytes.
 		protected internal byte[] password;
@@ -132,8 +135,9 @@ namespace Aerospike.Client
 		private volatile int retryCount;
 		private volatile int commandCount;
 		private volatile int delayQueueTimeoutCount;
+		private int configInterval;
 
-		public Cluster(ClientPolicy policy, Host[] hosts)
+		public Cluster(AerospikeClient client, ClientPolicy policy, Host[] hosts)
 		{
 			// Disable log subscribe requirement to avoid a breaking change in a minor release.
 			// TODO: Reintroduce requirement in the next major client release.
@@ -145,7 +149,8 @@ namespace Aerospike.Client
 			}
 			*/
 
-			this.clusterName = (policy.clusterName != null)? policy.clusterName : "";
+			this.client = client;
+			this.clusterName = (policy.clusterName != null) ? policy.clusterName : "";
 			this.context = new Log.Context(this.clusterName);
 
 			if (Log.DebugEnabled())
@@ -155,6 +160,15 @@ namespace Aerospike.Client
 
 			tlsPolicy = policy.tlsPolicy;
 			this.authMode = policy.authMode;
+
+			if (client.configProvider != null)
+			{
+				configInterval = client.configProvider.Interval;
+			}
+			else
+			{
+				configInterval = -1;
+			}
 
 			// Default TLS names when TLS enabled.
 			if (tlsPolicy != null)
@@ -568,6 +582,14 @@ namespace Aerospike.Client
 				foreach (Node node in nodes)
 				{
 					node.ResetErrorRate();
+				}
+			}
+
+			if (configInterval > 0 && tendCount % configInterval == 0)
+			{
+				if (client.configProvider.LoadConfig())
+				{
+					client.MergeDefaultPoliciesWithConfig();
 				}
 			}
 
@@ -1090,7 +1112,7 @@ namespace Aerospike.Client
 		{
 			// Must copy array reference for copy on write semantics to work.
 			Node[] nodeArray = nodes;
-    
+	
 			for (int i = 0; i < nodeArray.Length; i++)
 			{
 				// Must handle concurrency with other non-tending threads, so nodeIndex is consistent.

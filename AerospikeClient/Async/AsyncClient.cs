@@ -118,13 +118,16 @@ namespace Aerospike.Client
 		/// <param name="hosts">array of potential hosts to seed the cluster</param>
 		/// <exception cref="AerospikeException">if all host connections fail</exception>
 		public AsyncClient(AsyncClientPolicy policy, params Host[] hosts)
-			: base (policy)
+			: base(policy)
 		{
-			if (policy == null)
+			policy ??= new AsyncClientPolicy();
+			if (policy.ConfigProvider != null)
 			{
-				policy = new AsyncClientPolicy();
+				this.configProvider = policy.ConfigProvider;
+				policy = new AsyncClientPolicy(policy, configProvider);
 			}
-			this.cluster = new AsyncCluster(policy, hosts);
+			MergeDefaultPoliciesWithConfig();
+			cluster = new AsyncCluster(this, policy, hosts);
 			base.cluster = this.cluster;
 		}
 
@@ -162,7 +165,7 @@ namespace Aerospike.Client
 		public void Commit(CommitListener listener, Txn txn)
 		{
 			AsyncTxnRoll atr = new(
-				cluster, txnVerifyPolicyDefault, txnRollPolicyDefault, txn
+				cluster, mergedTxnVerifyPolicyDefault, mergedTxnRollPolicyDefault, txn
 				);
 
 			switch (txn.State)
@@ -213,7 +216,7 @@ namespace Aerospike.Client
 		/// <param name="txn">transaction</param>
 		public void Abort(AbortListener listener, Txn txn)
 		{
-			AsyncTxnRoll atr = new(cluster, null, txnRollPolicyDefault, txn);
+			AsyncTxnRoll atr = new(cluster, null, mergedTxnRollPolicyDefault, txn);
 			
 			switch (txn.State)
 			{
@@ -274,8 +277,13 @@ namespace Aerospike.Client
 		{
 			if (policy == null)
 			{
-				policy = writePolicyDefault;
+				policy = mergedWritePolicyDefault;
 			}
+			else if(configProvider != null)
+			{
+				policy = new WritePolicy(policy, configProvider);
+			}
+
 			AsyncWrite async = new AsyncWrite(cluster, policy, listener, key, bins, Operation.Type.WRITE);
 			AsyncTxnMonitor.Execute(cluster, policy, async);
 		}
@@ -324,8 +332,13 @@ namespace Aerospike.Client
 		{
 			if (policy == null)
 			{
-				policy = writePolicyDefault;
+				policy = mergedWritePolicyDefault;
 			}
+			else if(configProvider != null)
+			{
+				policy = new WritePolicy(policy, configProvider);
+			}
+
 			AsyncWrite async = new AsyncWrite(cluster, policy, listener, key, bins, Operation.Type.APPEND);
 			AsyncTxnMonitor.Execute(cluster, policy, async);
 		}
@@ -370,8 +383,13 @@ namespace Aerospike.Client
 		{
 			if (policy == null)
 			{
-				policy = writePolicyDefault;
+				policy = mergedWritePolicyDefault;
 			}
+			else if(configProvider != null)
+			{
+				policy = new WritePolicy(policy, configProvider);
+			}
+
 			AsyncWrite async = new AsyncWrite(cluster, policy, listener, key, bins, Operation.Type.PREPEND);
 			AsyncTxnMonitor.Execute(cluster, policy, async);
 		}
@@ -418,8 +436,13 @@ namespace Aerospike.Client
 		{
 			if (policy == null)
 			{
-				policy = writePolicyDefault;
+				policy = mergedWritePolicyDefault;
 			}
+			else if(configProvider != null)
+			{
+				policy = new WritePolicy(policy, configProvider);
+			}
+
 			AsyncWrite async = new AsyncWrite(cluster, policy, listener, key, bins, Operation.Type.ADD);
 			AsyncTxnMonitor.Execute(cluster, policy, async);
 		}
@@ -456,8 +479,13 @@ namespace Aerospike.Client
 		{
 			if (policy == null)
 			{
-				policy = writePolicyDefault;
+				policy = mergedWritePolicyDefault;
 			}
+			else if(configProvider != null)
+			{
+				policy = new WritePolicy(policy, configProvider);
+			}
+
 			AsyncDelete async = new AsyncDelete(cluster, policy, key, listener);
 			AsyncTxnMonitor.Execute(cluster, policy, async);
 		}
@@ -504,12 +532,20 @@ namespace Aerospike.Client
 
 			if (batchPolicy == null)
 			{
-				batchPolicy = batchParentPolicyWriteDefault;
+				batchPolicy = mergedBatchParentPolicyWriteDefault;
+			}
+			else if (configProvider != null)
+			{
+				batchPolicy = new BatchPolicy(batchPolicy, configProvider);
 			}
 
 			if (deletePolicy == null)
 			{
-				deletePolicy = batchDeletePolicyDefault;
+				deletePolicy = mergedBatchDeletePolicyDefault;
+			}
+			else if (configProvider != null)
+			{
+				deletePolicy = new BatchDeletePolicy(deletePolicy, configProvider);
 			}
 
 			BatchAttr attr = new BatchAttr();
@@ -545,12 +581,20 @@ namespace Aerospike.Client
 
 			if (batchPolicy == null)
 			{
-				batchPolicy = batchParentPolicyWriteDefault;
+				batchPolicy = mergedBatchParentPolicyWriteDefault;
+			}
+			else if (configProvider != null)
+			{
+				batchPolicy = new BatchPolicy(batchPolicy, configProvider);
 			}
 
 			if (deletePolicy == null)
 			{
-				deletePolicy = batchDeletePolicyDefault;
+				deletePolicy = mergedBatchDeletePolicyDefault;
+			}
+			else if (configProvider != null)
+			{
+				deletePolicy = new BatchDeletePolicy(deletePolicy, configProvider);
 			}
 
 			BatchAttr attr = new BatchAttr();
@@ -594,8 +638,13 @@ namespace Aerospike.Client
 		{
 			if (policy == null)
 			{
-				policy = writePolicyDefault;
+				policy = mergedWritePolicyDefault;
 			}
+			if (configProvider != null)
+			{
+				policy = new WritePolicy(policy, configProvider);
+			}
+
 			AsyncTouch async = new AsyncTouch(cluster, policy, listener, key);
 			AsyncTxnMonitor.Execute(cluster, policy, async);
 		}
@@ -634,8 +683,13 @@ namespace Aerospike.Client
 		{
 			if (policy == null)
 			{
-				policy = writePolicyDefault;
+				policy = mergedWritePolicyDefault;
 			}
+			if (configProvider != null)
+			{
+				policy = new WritePolicy(policy, configProvider);
+			}
+
 			AsyncTouch async = new(cluster, policy, listener, key);
 			AsyncTxnMonitor.Execute(cluster, policy, async);
 		}
@@ -672,7 +726,11 @@ namespace Aerospike.Client
 		{
 			if (policy == null)
 			{
-				policy = readPolicyDefault;
+				policy = mergedReadPolicyDefault;
+			}
+			else if (configProvider != null)
+			{
+				policy = new Policy(policy, configProvider);
 			}
 
 			policy.Txn?.PrepareRead(key.ns);
@@ -709,13 +767,19 @@ namespace Aerospike.Client
 		{
 			if (keys.Length == 0)
 			{
-				listener.OnSuccess(keys, new bool[0]);
+				listener.OnSuccess(keys, []);
 				return;
 			}
+
 			if (policy == null)
 			{
-				policy = batchPolicyDefault;
+				policy = mergedBatchPolicyDefault;
 			}
+			else if (configProvider != null)
+			{
+				policy = new BatchPolicy(policy, configProvider);
+			}
+
 			policy.Txn?.PrepareRead(keys);
 
 			AsyncBatchExistsArrayExecutor executor = new(cluster, policy, keys, listener);
@@ -738,10 +802,16 @@ namespace Aerospike.Client
 				listener.OnSuccess();
 				return;
 			}
+
 			if (policy == null)
 			{
-				policy = batchPolicyDefault;
+				policy = mergedBatchPolicyDefault;
 			}
+			else if (configProvider != null)
+			{
+				policy = new BatchPolicy(policy, configProvider);
+			}
+
 			policy.Txn?.PrepareRead(keys);
 
 			AsyncBatchExistsSequenceExecutor executor = new(cluster, policy, keys, listener);
@@ -780,7 +850,11 @@ namespace Aerospike.Client
 		{
 			if (policy == null)
 			{
-				policy = readPolicyDefault;
+				policy = mergedReadPolicyDefault;
+			}
+			else if (configProvider != null)
+			{
+				policy = new Policy(policy, configProvider);
 			}
 
 			policy.Txn?.PrepareRead(key.ns);
@@ -819,7 +893,11 @@ namespace Aerospike.Client
 		{
 			if (policy == null)
 			{
-				policy = readPolicyDefault;
+				policy = mergedReadPolicyDefault;
+			}
+			else if (configProvider != null)
+			{
+				policy = new Policy(policy, configProvider);
 			}
 
 			policy.Txn?.PrepareRead(key.ns);
@@ -856,7 +934,11 @@ namespace Aerospike.Client
 		{
 			if (policy == null)
 			{
-				policy = readPolicyDefault;
+				policy = mergedReadPolicyDefault;
+			}
+			else if (configProvider != null)
+			{
+				policy = new Policy(policy, configProvider);
 			}
 
 			policy.Txn?.PrepareRead(key.ns);
@@ -909,10 +991,16 @@ namespace Aerospike.Client
 				listener.OnSuccess(records);
 				return;
 			}
+
 			if (policy == null)
 			{
-				policy = batchPolicyDefault;
+				policy = mergedBatchPolicyDefault;
 			}
+			else if (configProvider != null)
+			{
+				policy = new BatchPolicy(policy, configProvider);
+			}
+
 			policy.Txn?.PrepareRead(records);
 
 			AsyncBatchReadListExecutor executor = new(cluster, policy, listener, records);
@@ -940,10 +1028,16 @@ namespace Aerospike.Client
 				listener.OnSuccess();
 				return;
 			}
+
 			if (policy == null)
 			{
-				policy = batchPolicyDefault;
+				policy = mergedBatchPolicyDefault;
 			}
+			else if (configProvider != null)
+			{
+				policy = new BatchPolicy(policy, configProvider);
+			}
+
 			policy.Txn?.PrepareRead(records);
 
 			AsyncBatchReadSequenceExecutor executor = new(cluster, policy, listener, records);
@@ -984,13 +1078,19 @@ namespace Aerospike.Client
 		{
 			if (keys.Length == 0)
 			{
-				listener.OnSuccess(keys, new Record[0]);
+				listener.OnSuccess(keys, []);
 				return;
 			}
+
 			if (policy == null)
 			{
-				policy = batchPolicyDefault;
+				policy = mergedBatchPolicyDefault;
 			}
+			else if (configProvider != null)
+			{
+				policy = new BatchPolicy(policy, configProvider);
+			}
+
 			policy.Txn?.PrepareRead(keys);
 
 			AsyncBatchGetArrayExecutor executor = new(cluster, policy, listener, keys, null, null, Command.INFO1_READ | Command.INFO1_GET_ALL, false);
@@ -1016,10 +1116,16 @@ namespace Aerospike.Client
 				listener.OnSuccess();
 				return;
 			}
+
 			if (policy == null)
 			{
-				policy = batchPolicyDefault;
+				policy = mergedBatchPolicyDefault;
 			}
+			else if (configProvider != null)
+			{
+				policy = new BatchPolicy(policy, configProvider);
+			}
+
 			policy.Txn?.PrepareRead(keys);
 
 			AsyncBatchGetSequenceExecutor executor = new(cluster, policy, listener, keys, null, null, Command.INFO1_READ | Command.INFO1_GET_ALL, false);
@@ -1062,13 +1168,19 @@ namespace Aerospike.Client
 		{
 			if (keys.Length == 0)
 			{
-				listener.OnSuccess(keys, new Record[0]);
+				listener.OnSuccess(keys, []);
 				return;
 			}
+
 			if (policy == null)
 			{
-				policy = batchPolicyDefault;
+				policy = mergedBatchPolicyDefault;
 			}
+			else if (configProvider != null)
+			{
+				policy = new BatchPolicy(policy, configProvider);
+			}
+
 			policy.Txn?.PrepareRead(keys);
 
 			AsyncBatchGetArrayExecutor executor = new(cluster, policy, listener, keys, binNames, null, Command.INFO1_READ, false);
@@ -1095,10 +1207,16 @@ namespace Aerospike.Client
 				listener.OnSuccess();
 				return;
 			}
+
 			if (policy == null)
 			{
-				policy = batchPolicyDefault;
+				policy = mergedBatchPolicyDefault;
 			}
+			else if (configProvider != null)
+			{
+				policy = new BatchPolicy(policy, configProvider);
+			}
+
 			policy.Txn?.PrepareRead(keys);
 
 			int readAttr = (binNames == null || binNames.Length == 0)?
@@ -1145,13 +1263,17 @@ namespace Aerospike.Client
 		{
 			if (keys.Length == 0)
 			{
-				listener.OnSuccess(keys, new Record[0]);
+				listener.OnSuccess(keys, []);
 				return;
 			}
 
 			if (policy == null)
 			{
-				policy = batchPolicyDefault;
+				policy = mergedBatchPolicyDefault;
+			}
+			else if (configProvider != null)
+			{
+				policy = new BatchPolicy(policy, configProvider);
 			}
 
 			policy.Txn?.PrepareRead(keys);
@@ -1184,7 +1306,11 @@ namespace Aerospike.Client
 
 			if (policy == null)
 			{
-				policy = batchPolicyDefault;
+				policy = mergedBatchPolicyDefault;
+			}
+			else if (configProvider != null)
+			{
+				policy = new BatchPolicy(policy, configProvider);
 			}
 
 			policy.Txn?.PrepareRead(keys);
@@ -1227,13 +1353,19 @@ namespace Aerospike.Client
 		{
 			if (keys.Length == 0)
 			{
-				listener.OnSuccess(keys, new Record[0]);
+				listener.OnSuccess(keys, []);
 				return;
 			}
+
 			if (policy == null)
 			{
-				policy = batchPolicyDefault;
+				policy = mergedBatchPolicyDefault;
 			}
+			else if (configProvider != null)
+			{
+				policy = new BatchPolicy(policy, configProvider);
+			}
+
 			policy.Txn?.PrepareRead(keys);
 
 			AsyncBatchGetArrayExecutor executor = new(cluster, policy, listener, keys, null, null, Command.INFO1_READ | Command.INFO1_NOBINDATA, false);
@@ -1259,10 +1391,16 @@ namespace Aerospike.Client
 				listener.OnSuccess();
 				return;
 			}
+
 			if (policy == null)
 			{
-				policy = batchPolicyDefault;
+				policy = mergedBatchPolicyDefault;
 			}
+			else if (configProvider != null)
+			{
+				policy = new BatchPolicy(policy, configProvider);
+			}
+
 			policy.Txn?.PrepareRead(keys);
 
 			AsyncBatchGetSequenceExecutor executor = new(cluster, policy, listener, keys, null, null, Command.INFO1_READ | Command.INFO1_NOBINDATA, false);
@@ -1314,8 +1452,12 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if queue is full</exception>
 		public void Operate(WritePolicy policy, RecordListener listener, Key key, params Operation[] ops)
 		{
-			OperateArgs args = new OperateArgs(policy, writePolicyDefault, operatePolicyReadDefault, ops);
+			OperateArgs args = new OperateArgs(policy, mergedWritePolicyDefault, mergedOperatePolicyReadDefault, ops);
 			policy = args.writePolicy;
+			if (configProvider != null)
+			{
+				policy = new WritePolicy(policy, configProvider);
+			}
 
 			if (args.hasWrite)
 			{
@@ -1380,9 +1522,14 @@ namespace Aerospike.Client
 
 			if (policy == null)
 			{
-				policy = batchParentPolicyWriteDefault;
+				policy = mergedBatchPolicyDefault;
 			}
-			AsyncBatchOperateListExecutor executor = new(cluster, policy, listener, records);
+			else if (configProvider != null)
+			{
+				policy = new BatchPolicy(policy, configProvider);
+			}
+
+			AsyncBatchOperateListExecutor executor = new(cluster, policy, listener, records, configProvider);
 			AsyncTxnMonitor.ExecuteBatch(policy, executor, records);
 		}
 
@@ -1415,9 +1562,14 @@ namespace Aerospike.Client
 
 			if (policy == null)
 			{
-				policy = batchParentPolicyWriteDefault;
+				policy = mergedBatchPolicyDefault;
 			}
-			AsyncBatchOperateSequenceExecutor executor = new(cluster, policy, listener, records);
+			else if (configProvider != null)
+			{
+				policy = new BatchPolicy(policy, configProvider);
+			}
+
+			AsyncBatchOperateSequenceExecutor executor = new(cluster, policy, listener, records, configProvider);
 			AsyncTxnMonitor.ExecuteBatch(policy, executor, records);
 		}
 
@@ -1473,15 +1625,26 @@ namespace Aerospike.Client
 
 			if (batchPolicy == null)
 			{
-				batchPolicy = batchParentPolicyWriteDefault;
+				batchPolicy = mergedBatchParentPolicyWriteDefault;
 			}
-
+			else if (configProvider != null)
+			{
+				batchPolicy = new BatchPolicy(batchPolicy, configProvider);
+			}
 			if (writePolicy == null)
 			{
-				writePolicy = batchWritePolicyDefault;
+				writePolicy = mergedBatchWritePolicyDefault;
+			}
+			else if (configProvider != null)
+			{
+				writePolicy = new BatchWritePolicy(writePolicy, configProvider);
 			}
 
-			BatchAttr attr = new BatchAttr(batchPolicy, writePolicy, ops);
+			BatchAttr attr = new(batchPolicy, writePolicy, ops);
+			if (attr.hasWrite && configProvider != null)
+			{
+				batchPolicy.GraftBatchWriteConfig(configProvider);
+			}
 			AsyncBatchOperateRecordArrayExecutor executor = new(cluster, batchPolicy, listener, keys, ops, attr);
 			AsyncTxnMonitor.ExecuteBatch(batchPolicy, executor, keys);
 		}
@@ -1517,15 +1680,26 @@ namespace Aerospike.Client
 
 			if (batchPolicy == null)
 			{
-				batchPolicy = batchParentPolicyWriteDefault;
+				batchPolicy = mergedBatchParentPolicyWriteDefault;
 			}
-
+			else if (configProvider != null)
+			{
+				batchPolicy = new BatchPolicy(batchPolicy, configProvider);
+			}
 			if (writePolicy == null)
 			{
-				writePolicy = batchWritePolicyDefault;
+				writePolicy = mergedBatchWritePolicyDefault;
+			}
+			else if (configProvider != null)
+			{
+				writePolicy = new BatchWritePolicy(writePolicy, configProvider);
 			}
 
-			BatchAttr attr = new BatchAttr(batchPolicy, writePolicy, ops);
+			BatchAttr attr = new(batchPolicy, writePolicy, ops);
+			if (attr.hasWrite && configProvider != null)
+			{
+				batchPolicy.GraftBatchWriteConfig(configProvider);
+			}
 			AsyncBatchOperateRecordSequenceExecutor executor = new(cluster, batchPolicy, listener, keys, ops, attr);
 			AsyncTxnMonitor.ExecuteBatch(batchPolicy, executor, keys);
 		}
@@ -1553,7 +1727,11 @@ namespace Aerospike.Client
 		{
 			if (policy == null)
 			{
-				policy = scanPolicyDefault;
+				policy = mergedScanPolicyDefault;
+			}
+			else if (configProvider != null)
+			{
+				policy = new ScanPolicy(policy, configProvider);
 			}
 
 			Node[] nodes = cluster.ValidateNodes();
@@ -1581,7 +1759,11 @@ namespace Aerospike.Client
 		{
 			if (policy == null)
 			{
-				policy = scanPolicyDefault;
+				policy = mergedScanPolicyDefault;
+			}
+			else if (configProvider != null)
+			{
+				policy = new ScanPolicy(policy, configProvider);
 			}
 
 			Node[] nodes = cluster.ValidateNodes();
@@ -1634,8 +1816,13 @@ namespace Aerospike.Client
 		{
 			if (policy == null)
 			{
-				policy = writePolicyDefault;
+				policy = mergedWritePolicyDefault;
 			}
+			else if (configProvider != null)
+			{
+				policy = new WritePolicy(policy, configProvider);
+			}
+
 			AsyncExecute command = new AsyncExecute(cluster, policy, listener, key, packageName, functionName, functionArgs);
 			AsyncTxnMonitor.Execute(cluster, policy, command);
 		}
@@ -1690,12 +1877,19 @@ namespace Aerospike.Client
 
 			if (batchPolicy == null)
 			{
-				batchPolicy = batchParentPolicyWriteDefault;
+				batchPolicy = mergedBatchParentPolicyWriteDefault;
 			}
-
+			else if (configProvider != null)
+			{
+				batchPolicy = new BatchPolicy(batchPolicy, configProvider);
+			}
 			if (udfPolicy == null)
 			{
-				udfPolicy = batchUDFPolicyDefault;
+				udfPolicy = mergedBatchUDFPolicyDefault;
+			}
+			else if (configProvider != null)
+			{
+				udfPolicy = new BatchUDFPolicy(udfPolicy, configProvider);
 			}
 
 			byte[] argBytes = Packer.Pack(functionArgs);
@@ -1738,12 +1932,19 @@ namespace Aerospike.Client
 
 			if (batchPolicy == null)
 			{
-				batchPolicy = batchParentPolicyWriteDefault;
+				batchPolicy = mergedBatchParentPolicyWriteDefault;
 			}
-
+			else if (configProvider != null)
+			{
+				batchPolicy = new BatchPolicy(batchPolicy, configProvider);
+			}
 			if (udfPolicy == null)
 			{
-				udfPolicy = batchUDFPolicyDefault;
+				udfPolicy = mergedBatchUDFPolicyDefault;
+			}
+			else if (configProvider != null)
+			{
+				udfPolicy = new BatchUDFPolicy(udfPolicy, configProvider);
 			}
 
 			byte[] argBytes = Packer.Pack(functionArgs);
@@ -1779,7 +1980,11 @@ namespace Aerospike.Client
 		{
 			if (policy == null)
 			{
-				policy = queryPolicyDefault;
+				policy = mergedQueryPolicyDefault;
+			}
+			else if (configProvider != null)
+			{
+				policy = new QueryPolicy(policy, configProvider);
 			}
 
 			Node[] nodes = cluster.ValidateNodes();
@@ -1825,7 +2030,11 @@ namespace Aerospike.Client
 		{
 			if (policy == null)
 			{
-				policy = queryPolicyDefault;
+				policy = mergedQueryPolicyDefault;
+			}
+			else if (configProvider != null)
+			{
+				policy = new QueryPolicy(policy, configProvider);
 			}
 
 			Node[] nodes = cluster.ValidateNodes();

@@ -28,8 +28,8 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Transaction identifier. If this field is populated, the corresponding
 		/// command will be included in the transaction. This field is ignored for scan/query.
-	    /// <para>
-	    /// Default: null
+		/// <para>
+		/// Default: null
 		/// </para>
 		/// </summary>
 		public Txn Txn { get; set; }
@@ -300,6 +300,61 @@ namespace Aerospike.Client
 			this.compress = other.compress;
 			this.failOnFilteredOut = other.failOnFilteredOut;
 			this.recordParser = other.recordParser;
+		}
+
+		/// <summary>
+		/// Copy policy from another policy and override according to the AerospikeConfigProvider.
+		/// </summary>
+		public Policy(Policy other, IConfigProvider configProvider) : this(other)
+		{
+			if (configProvider == null)
+			{
+				return;
+			}
+
+			if (configProvider.ConfigurationData == null)
+			{
+				return;
+			}
+
+			var read = configProvider.ConfigurationData.dynamicConfig.read;
+
+			if (read.read_mode_ap.HasValue)
+			{
+				this.readModeAP = read.read_mode_ap.Value;
+			}
+			if (read.read_mode_sc.HasValue)
+			{
+				this.readModeSC = read.read_mode_sc.Value;
+			}
+			if (read.fail_on_filtered_out.HasValue)
+			{
+				this.failOnFilteredOut = read.fail_on_filtered_out.Value;
+			}
+			if (read.replica.HasValue)
+			{
+				this.replica = read.replica.Value;
+			}
+			if (read.sleep_between_retries.HasValue)
+			{
+				this.sleepBetweenRetries = read.sleep_between_retries.Value;
+			}
+			if (read.socket_timeout.HasValue)
+			{
+				this.socketTimeout = read.socket_timeout.Value;
+			}
+			if (read.timeout_delay.HasValue)
+			{
+				this.TimeoutDelay = read.timeout_delay.Value;
+			}
+			if (read.total_timeout.HasValue)
+			{
+				this.totalTimeout = read.total_timeout.Value;
+			}
+			if (read.max_retries.HasValue)
+			{
+				this.maxRetries = read.max_retries.Value;
+			}
 		}
 
 		/// <summary>

@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2024 Aerospike, Inc.
+ * Copyright 2012-2025 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -93,6 +93,33 @@ namespace Aerospike.Client
 			this.generation = other.generation;
 			this.durableDelete = other.durableDelete;
 			this.sendKey = other.sendKey;
+		}
+
+		/// <summary>
+		/// Copy batch delete policy from another policy and override according to the AerospikeConfigProvider.
+		/// </summary>
+		public BatchDeletePolicy(BatchDeletePolicy other, IConfigProvider configProvider) : this(other)
+		{
+			if (configProvider == null)
+			{
+				return;
+			}
+
+			if (configProvider.ConfigurationData == null)
+			{
+				return;
+			}
+			
+			var batch_delete = configProvider.ConfigurationData.dynamicConfig.batch_delete;
+
+			if (batch_delete.durable_delete.HasValue)
+			{
+				this.durableDelete = batch_delete.durable_delete.Value;
+			}
+			if (batch_delete.send_key.HasValue)
+			{
+				this.sendKey = batch_delete.send_key.Value;
+			}
 		}
 
 		/// <summary>

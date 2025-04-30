@@ -14,8 +14,6 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using System;
-using System.Collections.Generic;
 
 namespace Aerospike.Client
 {
@@ -318,6 +316,11 @@ namespace Aerospike.Client
 		/// <para>Default: null</para>
 		/// </summary>
 		public List<int> rackIds;
+
+		/// <summary>
+		/// Dynamic configuration provider.
+		/// </summary>
+		public IConfigProvider ConfigProvider = null;
 		
 		/// <summary>
 		/// Copy client policy from another client policy.
@@ -357,6 +360,68 @@ namespace Aerospike.Client
 			this.rackAware = other.rackAware;
 			this.rackId = other.rackId;
 			this.rackIds = (other.rackIds != null) ? new List<int>(other.rackIds) : null;
+			this.ConfigProvider = other.ConfigProvider;
+		}
+
+		public ClientPolicy(ClientPolicy other, IConfigProvider configProvider) : this(other)
+		{
+			if (configProvider.ConfigurationData == null)
+			{
+				return;
+			}
+
+			var staticClient = ConfigProvider.ConfigurationData.staticConfig.client;
+			var dynamicClient = ConfigProvider.ConfigurationData.dynamicConfig.client;
+
+			if (staticClient.max_connections_per_node.HasValue)
+			{
+				this.maxConnsPerNode = staticClient.max_connections_per_node.Value;
+			}
+			if (staticClient.min_connections_per_node.HasValue)
+			{
+				this.minConnsPerNode = staticClient.min_connections_per_node.Value;
+			}
+
+			if (dynamicClient.timeout.HasValue)
+			{
+				this.timeout = dynamicClient.timeout.Value;
+			}
+			if (dynamicClient.error_rate_window.HasValue)
+			{
+				this.errorRateWindow = dynamicClient.error_rate_window.Value;
+			}
+			if (dynamicClient.max_error_rate.HasValue)
+			{
+				this.maxErrorRate = dynamicClient.max_error_rate.Value;
+			}
+			if (dynamicClient.fail_if_not_connected.HasValue)
+			{
+				this.failIfNotConnected = dynamicClient.fail_if_not_connected.Value;
+			}
+			if (dynamicClient.login_timeout.HasValue)
+			{
+				this.loginTimeout = dynamicClient.login_timeout.Value;
+			}
+			if (dynamicClient.max_socket_idle.HasValue)
+			{
+				this.maxSocketIdle = dynamicClient.max_socket_idle.Value;
+			}
+			if (dynamicClient.rack_aware.HasValue)
+			{
+				this.rackAware = dynamicClient.rack_aware.Value;
+			}
+			if (dynamicClient.rack_ids != null)
+			{
+				this.rackIds = dynamicClient.rack_ids.ToList();
+			}
+			if (dynamicClient.tend_interval.HasValue)
+			{
+				this.tendInterval = dynamicClient.tend_interval.Value;
+			}
+			if (dynamicClient.use_service_alternative.HasValue)
+			{
+				this.useServicesAlternate = dynamicClient.use_service_alternative.Value;
+			}
 		}
 
 		/// <summary>
