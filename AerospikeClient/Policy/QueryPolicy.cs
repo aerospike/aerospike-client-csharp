@@ -17,8 +17,6 @@
 
 #pragma warning disable 0618
 
-using System.ComponentModel;
-
 namespace Aerospike.Client
 {
 	/// <summary>

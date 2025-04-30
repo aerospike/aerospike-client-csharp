@@ -15,8 +15,6 @@
  * the License.
  */
 
-using System.Diagnostics;
-
 namespace Aerospike.Client
 {
 	/// <summary>

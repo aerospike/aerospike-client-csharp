@@ -80,9 +80,10 @@ namespace Aerospike.Test
 				useServicesAlternate = SuiteHelpers.useServicesAlternate
 			};
 
-			policy.ConfigProvider = new YamlConfigProvider();
+			//Example of how to enable dynamic config
+			//policy.ConfigProvider = new YamlConfigProvider();
 
-            if (SuiteHelpers.user != null && SuiteHelpers.user.Length > 0)
+			if (SuiteHelpers.user != null && SuiteHelpers.user.Length > 0)
 			{
 				policy.user = SuiteHelpers.user;
 				policy.password = SuiteHelpers.password;
@@ -117,9 +118,10 @@ namespace Aerospike.Test
 				useServicesAlternate = SuiteHelpers.useServicesAlternate
 			};
 
-            policy.ConfigProvider = new YamlConfigProvider();
+			//Example of how to enable dynamic config
+			//policy.ConfigProvider = new YamlConfigProvider();
 
-            if (SuiteHelpers.user != null && SuiteHelpers.user.Length > 0)
+			if (SuiteHelpers.user != null && SuiteHelpers.user.Length > 0)
 			{
 				policy.user = SuiteHelpers.user;
 				policy.password = SuiteHelpers.password;
