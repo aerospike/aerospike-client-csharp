@@ -317,7 +317,7 @@ namespace Aerospike.Client
                 return;
             }
 
-            var read = configProvider.ConfigurationData.dynamicProperties.read;
+            var read = configProvider.ConfigurationData.dynamicConfig.read;
 
             if (read.read_mode_ap.HasValue)
             {

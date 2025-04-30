@@ -125,13 +125,9 @@ namespace Aerospike.Client
 			{
 				this.configProvider = policy.ConfigProvider;
 				policy = new AsyncClientPolicy(policy, configProvider);
-				MergeDefaultPoliciesWithConfig();
-				cluster = new AsyncCluster(this, policy, hosts);
 			}
-			else
-			{
-				cluster = new AsyncCluster(this, policy, hosts);
-			}
+			MergeDefaultPoliciesWithConfig();
+			cluster = new AsyncCluster(this, policy, hosts);
 			base.cluster = this.cluster;
 		}
 
@@ -1526,7 +1522,7 @@ namespace Aerospike.Client
 
 			if (policy == null)
 			{
-				policy = mergedBatchParentPolicyWriteDefault;
+				policy = mergedBatchPolicyDefault;
 			}
 			else if (configProvider != null)
 			{
@@ -1566,7 +1562,7 @@ namespace Aerospike.Client
 
 			if (policy == null)
 			{
-				policy = mergedBatchParentPolicyWriteDefault;
+				policy = mergedBatchPolicyDefault;
 			}
 			else if (configProvider != null)
 			{
@@ -1644,7 +1640,7 @@ namespace Aerospike.Client
 				writePolicy = new BatchWritePolicy(writePolicy, configProvider);
 			}
 
-			BatchAttr attr = new BatchAttr(batchPolicy, writePolicy, ops);
+			BatchAttr attr = new(batchPolicy, writePolicy, ops);
 			if (attr.hasWrite && configProvider != null)
 			{
 				batchPolicy.GraftBatchWriteConfig(configProvider);
@@ -1699,7 +1695,7 @@ namespace Aerospike.Client
 				writePolicy = new BatchWritePolicy(writePolicy, configProvider);
 			}
 
-			BatchAttr attr = new BatchAttr(batchPolicy, writePolicy, ops);
+			BatchAttr attr = new(batchPolicy, writePolicy, ops);
 			if (attr.hasWrite && configProvider != null)
 			{
 				batchPolicy.GraftBatchWriteConfig(configProvider);

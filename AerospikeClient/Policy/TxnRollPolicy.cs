@@ -43,7 +43,7 @@ namespace Aerospike.Client
 				return;
 			}
 
-			var txn_roll = configProvider.ConfigurationData.dynamicProperties.txn_roll;
+			var txn_roll = configProvider.ConfigurationData.dynamicConfig.txn_roll;
 
 			if (txn_roll.read_mode_ap.HasValue)
 			{

@@ -110,7 +110,7 @@ namespace Aerospike.Client
 				return;
 			}
 			
-			var batch_delete = configProvider.ConfigurationData.dynamicProperties.batch_delete;
+			var batch_delete = configProvider.ConfigurationData.dynamicConfig.batch_delete;
 
 			if (batch_delete.durable_delete.HasValue)
 			{

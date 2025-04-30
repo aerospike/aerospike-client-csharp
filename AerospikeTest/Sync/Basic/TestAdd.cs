@@ -38,8 +38,6 @@ namespace Aerospike.Test
 			Bin bin = new(binName, 10);
 			client.Add(null, key, bin);
 
-			Util.Sleep(30 * 1000);
-
 			bin = new Bin(binName, 5);
 			client.Add(null, key, bin);
 

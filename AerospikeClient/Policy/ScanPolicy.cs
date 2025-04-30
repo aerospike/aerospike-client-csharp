@@ -110,7 +110,7 @@ namespace Aerospike.Client
 				return;
 			}
 
-			var scan = configProvider.ConfigurationData.dynamicProperties.scan;
+			var scan = configProvider.ConfigurationData.dynamicConfig.scan;
 
 			if (scan.read_mode_ap.HasValue)
 			{

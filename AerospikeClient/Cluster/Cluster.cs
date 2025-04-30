@@ -589,7 +589,6 @@ namespace Aerospike.Client
 			{
 				if (client.configProvider.LoadConfig())
 				{
-					configInterval = client.configProvider.Interval;
 					client.MergeDefaultPoliciesWithConfig();
 				}
 			}

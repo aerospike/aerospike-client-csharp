@@ -154,7 +154,7 @@ namespace Aerospike.Client
 				return;
 			}
 
-			var batch_write = configProvider.ConfigurationData.dynamicProperties.batch_write;
+			var batch_write = configProvider.ConfigurationData.dynamicConfig.batch_write;
 
 			if (batch_write.send_key.HasValue)
 			{

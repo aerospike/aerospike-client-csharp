@@ -21,75 +21,60 @@ namespace Aerospike.Client.Config
 	{
 		public ConfigurationData() { }
 
-		public MetaData metaData { get; set; }
-		public StaticProperties staticProperties { get; set; }
-		public DynamicProperties dynamicProperties { get; set; }
-	}
-	
-	public class MetaData
-	{
-		public MetaData()
-		{
-
-		}
-		
-		public string version { get; set; }
-		public string app_name { get; set; }
-		public int? generation { get; set; }
+		public StaticConfig staticConfig { get; set; }
+		public DynamicConfig dynamicConfig { get; set; }
 	}
 
-	public class StaticProperties
+	public class StaticConfig
 	{
-		public StaticProperties()
+		public StaticConfig()
 		{
-			client = new StaticClient();
+			client = new StaticClientConfig();
 		}
 
-		public StaticClient client { get; set; }
+		public StaticClientConfig client { get; set; }
 	}
 
-	public class StaticClient
+	public class StaticClientConfig
 	{
-		public int? config_tend_count { get; set; }
+		public int? config_interval { get; set; }
 		public int? max_connections_per_node { get; set; }
 		public int? min_connections_per_node { get; set; }
 		public int? async_max_connections_per_node { get; set; }
 		public int? async_min_connections_per_node { get; set; }
 	}
 
-	public class DynamicProperties
+	public class DynamicConfig
 	{
-		public DynamicProperties()
+		public DynamicConfig()
 		{
-			client = new DynamicClient();
-			read = new ReadProperties();
-			write = new WriteProperties();
-			query = new QueryProperties();
-			scan = new ScanProperties();
-			batch_read = new BatchReadProperties();
-			batch_write = new BatchWriteProperties();
-			batch_udf = new BatchUDFDeleteProperties();
-			batch_delete = new BatchUDFDeleteProperties();
-			txn_roll = new TxnRollProperties();
-			txn_verify = new TxnVerifyProperties();
+			client = new DynamicClientConfig();
+			read = new ReadConfig();
+			write = new WriteConfig();
+			query = new QueryConfig();
+			scan = new ScanConfig();
+			batch_read = new BatchReadConfig();
+			batch_write = new BatchWriteConfig();
+			batch_udf = new BatchUDFDeleteConfig();
+			batch_delete = new BatchUDFDeleteConfig();
+			txn_roll = new TxnRollConfig();
+			txn_verify = new TxnVerifyConfig();
 		}
 
-		public DynamicClient client { get; set; }
-		public ReadProperties read { get; set; }
-		public WriteProperties write { get; set; }
-		public QueryProperties query { get; set; }
-		public ScanProperties scan { get; set; }
-		public BatchReadProperties batch_read { get; set; }
-		public BatchWriteProperties batch_write { get; set; }
-		public BatchUDFDeleteProperties batch_udf { get; set; }
-		public BatchUDFDeleteProperties batch_delete { get; set; }
-		public TxnRollProperties txn_roll { get; set; }
-		public TxnVerifyProperties txn_verify { get; set; }
-
-		public MetricsProperties metrics { get; set; }
+		public DynamicClientConfig client { get; set; }
+		public ReadConfig read { get; set; }
+		public WriteConfig write { get; set; }
+		public QueryConfig query { get; set; }
+		public ScanConfig scan { get; set; }
+		public BatchReadConfig batch_read { get; set; }
+		public BatchWriteConfig batch_write { get; set; }
+		public BatchUDFDeleteConfig batch_udf { get; set; }
+		public BatchUDFDeleteConfig batch_delete { get; set; }
+		public TxnRollConfig txn_roll { get; set; }
+		public TxnVerifyConfig txn_verify { get; set; }
 	}
 
-	public class DynamicClient
+	public class DynamicClientConfig
 	{
 		public int? timeout { get; set; }
 		public int? error_rate_window { get; set; }
@@ -103,7 +88,7 @@ namespace Aerospike.Client.Config
 		public bool? use_service_alternative { get; set; }
 	}
 
-	public class ReadProperties
+	public class ReadConfig
 	{
 		public ReadModeAP? read_mode_ap { get; set; }
 		public ReadModeSC? read_mode_sc { get; set; }
@@ -117,7 +102,7 @@ namespace Aerospike.Client.Config
 		public int? max_retries { get; set; }
 	}
 
-	public class WriteProperties
+	public class WriteConfig
 	{
 		public int? connect_timeout { get; set; }
 		public bool? fail_on_filtered_out { get; set; }
@@ -131,7 +116,7 @@ namespace Aerospike.Client.Config
 		public bool? durable_delete { get; set; }
 	}
 
-	public class QueryProperties
+	public class QueryConfig
 	{
 		public ReadModeAP? read_mode_ap { get; set; }
 		public ReadModeSC? read_mode_sc { get; set; }
@@ -148,7 +133,7 @@ namespace Aerospike.Client.Config
 		public QueryDuration? expected_duration { get; set; }
 	}
 
-	public class ScanProperties
+	public class ScanConfig
 	{
 		public ReadModeAP? read_mode_ap { get; set; }
 		public ReadModeSC? read_mode_sc { get; set; }
@@ -163,7 +148,7 @@ namespace Aerospike.Client.Config
 		public int? max_concurrent_nodes { get; set; }
 	}
 
-	public class BatchReadProperties
+	public class BatchReadConfig
 	{
 		public ReadModeAP? read_mode_ap { get; set; }
 		public ReadModeSC? read_mode_sc { get; set; }
@@ -180,7 +165,7 @@ namespace Aerospike.Client.Config
 		public bool? respond_all_keys { get; set; }
 	}
 
-	public class BatchWriteProperties
+	public class BatchWriteConfig
 	{
 		public int? connect_timeout { get; set; }
 		public bool? fail_on_filtered_out { get; set; }
@@ -198,13 +183,13 @@ namespace Aerospike.Client.Config
 		public bool? respond_all_keys { get; set; }
 	}
 
-	public class BatchUDFDeleteProperties
+	public class BatchUDFDeleteConfig
 	{
 		public bool? durable_delete { get; set; }
 		public bool? send_key { get; set; }
 	}
 
-	public class TxnRollProperties
+	public class TxnRollConfig
 	{
 		public ReadModeAP? read_mode_ap { get; set; }
 		public ReadModeSC? read_mode_sc { get; set; }
@@ -221,7 +206,7 @@ namespace Aerospike.Client.Config
 		public bool? respond_all_keys { get; set; }
 	}
 
-	public class TxnVerifyProperties
+	public class TxnVerifyConfig
 	{
 		public ReadModeAP? read_mode_ap { get; set; }
 		public ReadModeSC? read_mode_sc { get; set; }
@@ -236,12 +221,5 @@ namespace Aerospike.Client.Config
 		public bool? allow_inline { get; set; }
 		public bool? allow_inline_ssd { get; set; }
 		public bool? respond_all_keys { get; set; }
-	}
-
-	public class MetricsProperties
-	{
-		public bool? enable { get; set; }
-		public int? latency_shift { get; set; }
-		public int? latency_columns { get; set; }
 	}
 }

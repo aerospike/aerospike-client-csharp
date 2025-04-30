@@ -180,7 +180,7 @@ namespace Aerospike.Client
 				return;
 			}
 
-			var batch_read = configProvider.ConfigurationData.dynamicProperties.batch_read;
+			var batch_read = configProvider.ConfigurationData.dynamicConfig.batch_read;
 
 			if (batch_read.read_mode_ap.HasValue)
 			{
@@ -273,7 +273,7 @@ namespace Aerospike.Client
 				return;
 			}
 
-			var batch_write = configProvider.ConfigurationData.dynamicProperties.batch_write;
+			var batch_write = configProvider.ConfigurationData.dynamicConfig.batch_write;
 
 			if (batch_write.fail_on_filtered_out.HasValue)
 			{

@@ -224,13 +224,9 @@ namespace Aerospike.Client
 			{
 				this.configProvider = policy.ConfigProvider;
 				policy = new ClientPolicy(policy, configProvider);
-				MergeDefaultPoliciesWithConfig();
-				cluster = new Cluster(this, policy, hosts);
 			}
-			else
-			{
-				cluster = new Cluster(this, policy, hosts);
-			}
+			MergeDefaultPoliciesWithConfig();
+			cluster = new Cluster(this, policy, hosts);
 			cluster.StartTendThread(policy);
 		}
 
@@ -547,7 +543,7 @@ namespace Aerospike.Client
 				default:
 				case Txn.TxnState.OPEN:
 					tr.Verify(mergedTxnVerifyPolicyDefault, mergedTxnRollPolicyDefault);
-					return tr.Commit(mergedTxnVerifyPolicyDefault);
+					return tr.Commit(mergedTxnRollPolicyDefault);
 				
 				case Txn.TxnState.VERIFIED:
 					return tr.Commit(mergedTxnRollPolicyDefault);
@@ -1527,7 +1523,7 @@ namespace Aerospike.Client
 
 			if (policy == null)
 			{
-				policy = mergedBatchParentPolicyWriteDefault;
+				policy = mergedBatchPolicyDefault;
 			}
 			else if (configProvider != null)
 			{
@@ -1597,7 +1593,7 @@ namespace Aerospike.Client
 				TxnMonitor.AddKeys(cluster, batchPolicy, keys);
 			} 
 
-			BatchAttr attr = new BatchAttr(batchPolicy, writePolicy, ops);
+			BatchAttr attr = new(batchPolicy, writePolicy, ops);
 			if (attr.hasWrite && configProvider != null)
 			{
 				batchPolicy.GraftBatchWriteConfig(configProvider);

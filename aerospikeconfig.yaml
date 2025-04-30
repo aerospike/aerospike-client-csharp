@@ -1,9 +1,6 @@
-metadata:
-  app_name: configurationExample
-  generation: 1
-  version: 0.0.1
 static:
   client: 
+    config_interval: 10
     min_connections_per_node: 5
     max_connections_per_node: 50
 dynamic:
@@ -11,7 +8,6 @@ dynamic:
     max_error_rate: 20
     rack_ids: [2,4,6,8]
   read:
-    connect_timeout: 2000
     replica: PREFER_RACK
     max_retries: 20
   batch_read:

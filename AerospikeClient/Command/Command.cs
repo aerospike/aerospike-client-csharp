@@ -1195,7 +1195,7 @@ namespace Aerospike.Client
 
 				dataOffset += key.digest.Length + 4;
 
-				if (CanRepeat(policy, key, record, prev, ver, verPrev))
+				if (CanRepeat(policy, key, record, prev, ver, verPrev, configProvider))
 				{
 					// Can set repeat previous namespace/bin names to save space.
 					dataOffset++;
@@ -1207,7 +1207,7 @@ namespace Aerospike.Client
 					dataOffset += ByteUtil.EstimateSizeUtf8(key.ns) + FIELD_HEADER_SIZE;
 					dataOffset += ByteUtil.EstimateSizeUtf8(key.setName) + FIELD_HEADER_SIZE;
 					SizeTxnBatch(txn, ver, record.hasWrite);
-					dataOffset += record.Size(policy);
+					dataOffset += record.Size(policy, configProvider);
 					prev = record;
 					verPrev = ver;
 				}
@@ -1242,7 +1242,7 @@ namespace Aerospike.Client
 				Array.Copy(digest, 0, dataBuffer, dataOffset, digest.Length);
 				dataOffset += digest.Length;
 
-				if (CanRepeat(policy, key, record, prev, ver, verPrev))
+				if (CanRepeat(policy, key, record, prev, ver, verPrev, configProvider))
 				{
 					// Can set repeat previous namespace/bin names to save space.
 					dataBuffer[dataOffset++] = BATCH_MSG_REPEAT;
@@ -1298,13 +1298,13 @@ namespace Aerospike.Client
 								{
 									if (configProvider != null && configProvider.ConfigurationData != null)
 									{
-										if (configProvider.ConfigurationData.dynamicProperties.batch_write.send_key.HasValue)
+										if (configProvider.ConfigurationData.dynamicConfig.batch_write.send_key.HasValue)
 										{
-											bw.policy.sendKey = configProvider.ConfigurationData.dynamicProperties.batch_write.send_key.Value;
+											bw.policy.sendKey = configProvider.ConfigurationData.dynamicConfig.batch_write.send_key.Value;
 										}
-										if (configProvider.ConfigurationData.dynamicProperties.batch_write.durable_delete.HasValue)
+										if (configProvider.ConfigurationData.dynamicConfig.batch_write.durable_delete.HasValue)
 										{
-											bw.policy.durableDelete = configProvider.ConfigurationData.dynamicProperties.batch_write.durable_delete.Value;
+											bw.policy.durableDelete = configProvider.ConfigurationData.dynamicConfig.batch_write.durable_delete.Value;
 										}
 									}
 
@@ -1314,9 +1314,9 @@ namespace Aerospike.Client
 								{
 									if (configProvider != null && configProvider.ConfigurationData != null)
 									{
-										if (configProvider.ConfigurationData.dynamicProperties.batch_write.send_key.HasValue)
+										if (configProvider.ConfigurationData.dynamicConfig.batch_write.send_key.HasValue)
 										{
-											policy.sendKey = configProvider.ConfigurationData.dynamicProperties.batch_write.send_key.Value;
+											policy.sendKey = configProvider.ConfigurationData.dynamicConfig.batch_write.send_key.Value;
 										}
 									}
 
@@ -1335,13 +1335,13 @@ namespace Aerospike.Client
 								{
 									if (configProvider != null && configProvider.ConfigurationData != null)
 									{
-										if (configProvider.ConfigurationData.dynamicProperties.batch_udf.send_key.HasValue)
+										if (configProvider.ConfigurationData.dynamicConfig.batch_udf.send_key.HasValue)
 										{
-											bu.policy.sendKey = configProvider.ConfigurationData.dynamicProperties.batch_udf.send_key.Value;
+											bu.policy.sendKey = configProvider.ConfigurationData.dynamicConfig.batch_udf.send_key.Value;
 										}
-										if (configProvider.ConfigurationData.dynamicProperties.batch_udf.durable_delete.HasValue)
+										if (configProvider.ConfigurationData.dynamicConfig.batch_udf.durable_delete.HasValue)
 										{
-											bu.policy.durableDelete = configProvider.ConfigurationData.dynamicProperties.batch_udf.durable_delete.Value;
+											bu.policy.durableDelete = configProvider.ConfigurationData.dynamicConfig.batch_udf.durable_delete.Value;
 										}
 									}
 
@@ -1351,9 +1351,9 @@ namespace Aerospike.Client
 								{
 									if (configProvider != null && configProvider.ConfigurationData != null)
 									{
-										if (configProvider.ConfigurationData.dynamicProperties.batch_udf.send_key.HasValue)
+										if (configProvider.ConfigurationData.dynamicConfig.batch_udf.send_key.HasValue)
 										{
-											policy.sendKey = configProvider.ConfigurationData.dynamicProperties.batch_udf.send_key.Value;
+											policy.sendKey = configProvider.ConfigurationData.dynamicConfig.batch_udf.send_key.Value;
 										}
 									}
 
@@ -1374,13 +1374,13 @@ namespace Aerospike.Client
 								{
 									if (configProvider != null && configProvider.ConfigurationData != null)
 									{
-										if (configProvider.ConfigurationData.dynamicProperties.batch_delete.send_key.HasValue)
+										if (configProvider.ConfigurationData.dynamicConfig.batch_delete.send_key.HasValue)
 										{
-											bd.policy.sendKey = configProvider.ConfigurationData.dynamicProperties.batch_delete.send_key.Value;
+											bd.policy.sendKey = configProvider.ConfigurationData.dynamicConfig.batch_delete.send_key.Value;
 										}
-										if (configProvider.ConfigurationData.dynamicProperties.batch_delete.durable_delete.HasValue)
+										if (configProvider.ConfigurationData.dynamicConfig.batch_delete.durable_delete.HasValue)
 										{
-											bd.policy.durableDelete = configProvider.ConfigurationData.dynamicProperties.batch_delete.durable_delete.Value;
+											bd.policy.durableDelete = configProvider.ConfigurationData.dynamicConfig.batch_delete.durable_delete.Value;
 										}
 									}
 
@@ -1390,9 +1390,9 @@ namespace Aerospike.Client
 								{
 									if (configProvider != null && configProvider.ConfigurationData != null)
 									{
-										if (configProvider.ConfigurationData.dynamicProperties.batch_delete.send_key.HasValue)
+										if (configProvider.ConfigurationData.dynamicConfig.batch_delete.send_key.HasValue)
 										{
-											policy.sendKey = configProvider.ConfigurationData.dynamicProperties.batch_delete.send_key.Value;
+											policy.sendKey = configProvider.ConfigurationData.dynamicConfig.batch_delete.send_key.Value;
 										}
 									}
 
@@ -1732,7 +1732,8 @@ namespace Aerospike.Client
 			BatchRecord record,
 			BatchRecord prev,
 			long? ver,
-			long? verPrev
+			long? verPrev,
+			IConfigProvider configProvider
 		)
 		{
 			// Avoid relatively expensive full equality checks for performance reasons.
@@ -1740,8 +1741,27 @@ namespace Aerospike.Client
 			// fixed variables.  It's fine if equality not determined correctly because it just
 			// results in more space used. The batch will still be correct.
 			// Same goes for ver reference equality check.
-			return !policy.sendKey && verPrev == ver && prev != null && prev.key.ns == key.ns &&
-				prev.key.setName == key.setName && record.Equals(prev);
+			if (!(verPrev == ver && prev != null && prev.key.ns == key.ns &&
+				prev.key.setName == key.setName))
+			{
+				return false;
+			}
+
+			bool sendKey = policy.sendKey;
+			if (configProvider != null && configProvider.ConfigurationData != null)
+			{
+				if (configProvider.ConfigurationData.dynamicConfig.batch_write.send_key.HasValue)
+				{
+					sendKey = configProvider.ConfigurationData.dynamicConfig.batch_write.send_key.Value;
+				}
+			}
+
+			if (sendKey)
+			{
+				return false;
+			}
+
+			return record.Equals(prev);
 		}
 
 		private static bool CanRepeat(BatchAttr attr, Key key, Key keyPrev, long? ver, long? verPrev)

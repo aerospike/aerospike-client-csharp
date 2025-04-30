@@ -32,13 +32,14 @@ namespace Aerospike.Client
 
 		private string yamlFilePath;
 
+		private volatile bool modified = false;
+
 		public YamlConfigProvider()
 		{
 			ConfigurationData = new()
 			{
-				metaData = new MetaData(),
-				staticProperties = new StaticProperties(),
-				dynamicProperties = new DynamicProperties()
+				staticConfig = new StaticConfig(),
+				dynamicConfig = new DynamicConfig()
 			};
 
 			Interval = IConfigProvider.DEFAULT_INTERVAL;
@@ -47,7 +48,7 @@ namespace Aerospike.Client
 			LoadConfig(); 
 		}
 
-		public void Watch()
+		private void Watch()
 		{
 			_ = this.configRoot.GetReloadToken().RegisterChangeCallback(_ => {
 				ProcessDynamicConfig();
@@ -68,10 +69,12 @@ namespace Aerospike.Client
 				if (configRoot == null)
 				{
 					InitalizeConfig();
+					modified = false;
 					return true;
 				}
-				else
-				{                    
+				else if (modified) // Modified is set in the callback from the watch if file changes
+				{
+					modified = false;
 					return true;
 				}
 			}
@@ -91,7 +94,7 @@ namespace Aerospike.Client
 
 		}
 
-		public void InitalizeConfig()
+		private void InitalizeConfig()
 		{
 			configRoot = new ConfigurationBuilder()
 			   .AddYamlFile(yamlFilePath, optional: false, reloadOnChange: true)
@@ -100,22 +103,21 @@ namespace Aerospike.Client
 			ProcessStaticConfig();
 			ProcessDynamicConfig();
 
-			if (ConfigurationData.staticProperties.client.config_tend_count.HasValue)
-			{
-				Interval = ConfigurationData.staticProperties.client.config_tend_count.Value;
-			}
-			else
-			{
-				Interval = IConfigProvider.DEFAULT_INTERVAL;
-			}
-
 			Watch();
 		}
 
 		private void ProcessStaticConfig()
 		{
-			configRoot.GetSection("metadata").Bind(ConfigurationData.metaData);
-			configRoot.GetSection("static").Bind(ConfigurationData.staticProperties);
+			configRoot.GetSection("static").Bind(ConfigurationData.staticConfig);
+
+			if (ConfigurationData.staticConfig.client.config_interval.HasValue)
+			{
+				Interval = ConfigurationData.staticConfig.client.config_interval.Value;
+			}
+			else
+			{
+				Interval = IConfigProvider.DEFAULT_INTERVAL;
+			}
 		}
 
 		private void ProcessDynamicConfig()
@@ -128,8 +130,9 @@ namespace Aerospike.Client
 			}
 			else
 			{
-				dynamicSection.Bind(ConfigurationData.dynamicProperties);
+				dynamicSection.Bind(ConfigurationData.dynamicConfig);
 			}
+			modified = true;
 		}
 
 		private void SetYamlFilePath()
@@ -137,7 +140,7 @@ namespace Aerospike.Client
 			try
 			{
 				string configPath = Environment.GetEnvironmentVariable(CONFIG_PATH_ENV);
-				Uri envUri = new Uri(configPath);
+				Uri envUri = new(configPath);
 				if (envUri.IsFile)
 				{
 					yamlFilePath = envUri.AbsolutePath;

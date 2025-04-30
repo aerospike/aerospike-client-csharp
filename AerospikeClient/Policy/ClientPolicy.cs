@@ -372,8 +372,8 @@ namespace Aerospike.Client
 				return;
 			}
 
-			var staticClient = ConfigProvider.ConfigurationData.staticProperties.client;
-			var dynamicClient = ConfigProvider.ConfigurationData.dynamicProperties.client;
+			var staticClient = ConfigProvider.ConfigurationData.staticConfig.client;
+			var dynamicClient = ConfigProvider.ConfigurationData.dynamicConfig.client;
 
 			if (staticClient.max_connections_per_node.HasValue)
 			{
