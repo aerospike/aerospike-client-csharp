@@ -323,8 +323,6 @@ namespace Aerospike.Client
 			{
 				this.respondAllKeys = batch_write.respond_all_keys.Value;
 			}
-
-			Log.Debug("batch_write config has been grafted onto BatchPolicy.");
 		}
 	}
 }
