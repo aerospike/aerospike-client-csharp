@@ -22,7 +22,7 @@ partial class Value
 	/// <summary>
 	/// <see cref="ReadOnlyMemory{T}"/> value.
 	/// </summary>
-	internal sealed class ReadOnlyMemoryBytesValue : Value, IEquatable<ReadOnlyMemoryBytesValue>, IEquatable<ReadOnlyMemory<byte>>
+	public sealed class ReadOnlyMemoryBytesValue : Value, IEquatable<ReadOnlyMemoryBytesValue>, IEquatable<ReadOnlyMemory<byte>>
 	{
 		public ReadOnlyMemory<byte> Bytes { get; }
 
