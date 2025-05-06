@@ -55,8 +55,8 @@ runs:
           username: ${{ inputs.esigner-user }}
           password: ${{ inputs.esigner-password }}
           totp_secret: ${{ inputs.esigner-TOTP }}
-          file_path: *.nupkg
-          output_path: .
+          file_path: AerospikeClient\bin\Release\Aerospike.Client*.nupkg
+          output_path: AerospikeClient\bin\Release
 
     - name: Publish test project
       shell: pwsh
