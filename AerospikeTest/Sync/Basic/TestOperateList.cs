@@ -208,6 +208,7 @@ namespace Aerospike.Test
 				Value.Get("string value"),
 				Value.Get(inputList),
 				Value.Get(bytes),
+				Value.Get(bytes.AsMemory()),
 				Value.Get(99.99),
 				Value.Get(inputMap)
 			};
@@ -230,7 +231,7 @@ namespace Aerospike.Test
 			IList list = record.GetList(binName);
 
 			long size = (long)list[0];
-			Assert.AreEqual(7, size);
+			Assert.AreEqual(8, size);
 
 			IList rangeList = (IList)list[1];
 			Assert.IsTrue((bool)rangeList[0]);
@@ -243,12 +244,15 @@ namespace Aerospike.Test
 			Assert.AreEqual(-8734.81, (double)subList[1], 0.00001);
 			Assert.AreEqual("my string", (string)subList[2]);
 
-			byte[] bt = (byte[])rangeList[4];
-			CollectionAssert.AreEqual(bytes, bt, "bytes not equal");
+			byte[] bt1 = (byte[])rangeList[4];
+			CollectionAssert.AreEqual(bytes, bt1, "bytes not equal");
 
-			Assert.AreEqual(99.99, (double)rangeList[5], 0.00001);
+			byte[] bt2 = (byte[])rangeList[5];
+			CollectionAssert.AreEqual(bytes, bt2, "bytes not equal");
 
-			IDictionary subMap = (IDictionary)rangeList[6];
+			Assert.AreEqual(99.99, (double)rangeList[6], 0.00001);
+
+			IDictionary subMap = (IDictionary)rangeList[7];
 			Assert.AreEqual(2, subMap.Count);
 			Assert.AreEqual("data 9", (string)subMap[9L]);
 			Assert.AreEqual("data -2", (string)subMap[-2L]);
@@ -266,7 +270,7 @@ namespace Aerospike.Test
 
 			Assert.AreEqual(1, (long)list[5]);
 			Assert.AreEqual(1, (long)list[6]);
-			Assert.AreEqual(1, (long)list[7]);
+			Assert.AreEqual(2, (long)list[7]);
 
 			size = (long)list[8];
 			Assert.AreEqual(2, size);
