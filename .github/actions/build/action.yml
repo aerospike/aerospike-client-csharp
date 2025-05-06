@@ -42,7 +42,15 @@ runs:
       working-directory: AerospikeClient\bin\Release
       run : Get-ChildItem -File | Rename-Item -NewName { $_.Name -replace 'Aerospike\.Client\.([0-9]+)\.([0-9]+)\.([0-9]+).snupkg', 'Aerospike.Client.$1.$2.$3-${{ github.run_number }}.snupkg' }
 
-    # - name: Sign nuget packages
+    - name: Sign nuget package
+      uses: sslcom/actions-codesigner@develop
+      with:
+          command: sign
+          username: ${{ secrets.ES_USERNAME }}
+          password: ${{ secrets.ES_PASSWORD }}
+          totp_secret: ${{ secrets.ES_TOTP_SECRET }}
+          file_path: *.nupkg
+          output_path: .
 
     - name: Publish test project
       shell: pwsh
