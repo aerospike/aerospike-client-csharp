@@ -43,6 +43,9 @@ jobs:
       uses: ./.github/actions/build
       with:
         sgKey: ${{ secrets.SG_KEY }}
+        esigner-user: ${{ secrets.ES_USERNAME }}
+        esigner-password: ${{ secrets.ES_PASSWORD }}
+        esigner-TOTP: ${{ secrets.ES_TOTP_SECRET }}
         
     - name: Upload to JFrog
       uses: ./.github/actions/upload-to-jfrog

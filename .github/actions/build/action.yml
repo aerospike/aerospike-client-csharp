@@ -4,6 +4,12 @@ description: "Builds signed nuget package"
 inputs:
   sgKey:
     required: true
+  esigner-user:
+    required: true
+  esigner-password:
+    required: true
+  esigner-TOTP:
+    required: true
 
 runs:
   using: "composite"
@@ -46,9 +52,9 @@ runs:
       uses: sslcom/actions-codesigner@develop
       with:
           command: sign
-          username: ${{ secrets.ES_USERNAME }}
-          password: ${{ secrets.ES_PASSWORD }}
-          totp_secret: ${{ secrets.ES_TOTP_SECRET }}
+          username: ${{ inputs.esigner-user }}
+          password: ${{ inputs.esigner-password }}
+          totp_secret: ${{ inputs.esigner-TOTP }}
           file_path: *.nupkg
           output_path: .
 
