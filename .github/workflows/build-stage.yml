@@ -52,7 +52,7 @@ jobs:
           password: ${{ secrets.ES_PASSWORD }}
           totp_secret: ${{ secrets.ES_TOTP_SECRET }}
           file_path: Aerospike.Client*.nupkg
-          output_path: .
+          override: true
     - name: Upload to JFrog
       uses: ./.github/actions/upload-to-jfrog
       with:
