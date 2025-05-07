@@ -56,6 +56,8 @@ jobs:
       uses: actions/download-artifact@v4
       with:
         name: AerospikeTest-${{ github.run_number }}
+    - name: Display structure of downloaded files
+      run: ls -R
     - name: Sign nuget package
       uses: sslcom/esigner-codesign@develop
       with:
