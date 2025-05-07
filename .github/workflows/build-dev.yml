@@ -67,6 +67,7 @@ jobs:
           totp_secret: ${{ secrets.ES_TOTP_SECRET }}
           file_path: Aerospike.Client.8.0.3-alpha.nupkg
           override: true
+    - uses: actions/checkout@v4
     - name: Upload to JFrog
       uses: ./.github/actions/upload-to-jfrog
   
