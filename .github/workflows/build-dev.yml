@@ -9,7 +9,7 @@ permissions:
 # 2. Pull requests to stage branch are updated
 on:
   push:
-    branches: ["CLIENT*", "pipeline"]
+    branches: ["CLIENT*"]
   pull_request:
     branches: ["stage"]
     types: [
@@ -65,7 +65,7 @@ jobs:
           username: ${{ secrets.ES_USERNAME }}
           password: ${{ secrets.ES_PASSWORD }}
           totp_secret: ${{ secrets.ES_TOTP_SECRET }}
-          file_path: Aerospike.Client*.nupkg
+          file_path: Aerospike.Client.8.0.3-alpha.nupkg
           output_path: .
     - name: Upload to JFrog
       uses: ./.github/actions/upload-to-jfrog
