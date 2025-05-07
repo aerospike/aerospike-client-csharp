@@ -43,15 +43,33 @@ jobs:
       uses: ./.github/actions/build
       with:
         sgKey: ${{ secrets.SG_KEY }}
-        esigner-user: ${{ secrets.ES_USERNAME }}
-        esigner-password: ${{ secrets.ES_PASSWORD }}
-        esigner-TOTP: ${{ secrets.ES_TOTP_SECRET }}
-        
+
+  sign-and-upload:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+    - name: Download client artifacts
+      uses: actions/download-artifact@v4
+      with:
+        name: AerospikeClient-${{ github.run_number }}
+    - name: Download test artifacts
+      uses: actions/download-artifact@v4
+      with:
+        name: AerospikeTest-${{ github.run_number }}
+    - name: Sign nuget package
+      uses: sslcom/actions-codesigner@develop
+      with:
+          command: sign
+          username: ${{ inputs.esigner-user }}
+          password: ${{ inputs.esigner-password }}
+          totp_secret: ${{ inputs.esigner-TOTP }}
+          file_path: Aerospike.Client*.nupkg
+          output_path: AerospikeClient\bin\Release
     - name: Upload to JFrog
       uses: ./.github/actions/upload-to-jfrog
   
   test:
-    needs: build
+    needs: sign-and-upload
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4

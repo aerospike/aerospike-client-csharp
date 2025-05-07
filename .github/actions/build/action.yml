@@ -4,12 +4,6 @@ description: "Builds signed nuget package"
 inputs:
   sgKey:
     required: true
-  esigner-user:
-    required: true
-  esigner-password:
-    required: true
-  esigner-TOTP:
-    required: true
 
 runs:
   using: "composite"
@@ -48,16 +42,6 @@ runs:
       working-directory: AerospikeClient\bin\Release
       run : Get-ChildItem -File | Rename-Item -NewName { $_.Name -replace 'Aerospike\.Client\.([0-9]+)\.([0-9]+)\.([0-9]+).snupkg', 'Aerospike.Client.$1.$2.$3-${{ github.run_number }}.snupkg' }
 
-    - name: Sign nuget package
-      uses: sslcom/actions-codesigner@develop
-      with:
-          command: sign
-          username: ${{ inputs.esigner-user }}
-          password: ${{ inputs.esigner-password }}
-          totp_secret: ${{ inputs.esigner-TOTP }}
-          file_path: AerospikeClient\bin\Release\Aerospike.Client*.nupkg
-          output_path: AerospikeClient\bin\Release
-
     - name: Publish test project
       shell: pwsh
       working-directory: AerospikeTest
@@ -68,3 +52,16 @@ runs:
       working-directory: AerospikeTest\bin\Release\net8.0
       run: 7z a -tzip AerospikeTest-${{ github.run_number }}.zip publish
 
+    - name: Upload client artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: AerospikeClient-${{ github.run_number }}
+        path: AerospikeClient\bin\Release\Aerospike.Client.*nupkg
+        retention-days: 1
+
+    - name: Upload test artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: AerospikeTest-${{ github.run_number }}
+        path: AerospikeTest\bin\Release\net8.0\AerospikeTest-*
+        retention-days: 1

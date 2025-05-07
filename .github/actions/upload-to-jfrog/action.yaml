@@ -35,15 +35,13 @@ runs:
         oidc-audience: ${{ inputs.oidc-audience }}
 
     - name: Configure NuGet repository
-      shell: pwsh
+      shell: bash
       run: jf nuget-config --repo-resolve ${{ inputs.jfrog-client-repo-name }}
 
     - name: Deploy client
-      shell: pwsh
-      working-directory: AerospikeClient\bin\Release
+      shell: bash
       run: jf rt u Aerospike.Client.* ${{ inputs.jfrog-client-repo-name }} --build-name=${{ github.repository }} --build-number=${{ github.run_number }}
       
     - name: Deploy test
-      shell: pwsh
-      working-directory: AerospikeTest\bin\Release\net8.0
+      shell: bash
       run: jf rt u AerospikeTest*.zip ${{ inputs.jfrog-tests-repo-name }} --build-name=${{ github.repository }} --build-number=${{ github.run_number }}
