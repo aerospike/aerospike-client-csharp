@@ -57,7 +57,7 @@ jobs:
       with:
         name: AerospikeTest-${{ github.run_number }}
     - name: Sign nuget package
-      uses: sslcom/actions-codesigner@develop
+      uses: sslcom/esigner-codesign@develop
       with:
           command: sign
           username: ${{ secrets.ES_USERNAME }}
