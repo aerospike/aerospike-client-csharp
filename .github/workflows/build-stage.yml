@@ -48,11 +48,11 @@ jobs:
       uses: sslcom/actions-codesigner@develop
       with:
           command: sign
-          username: ${{ inputs.esigner-user }}
-          password: ${{ inputs.esigner-password }}
-          totp_secret: ${{ inputs.esigner-TOTP }}
+          username: ${{ secrets.ES_USERNAME }}
+          password: ${{ secrets.ES_PASSWORD }}
+          totp_secret: ${{ secrets.ES_TOTP_SECRET }}
           file_path: Aerospike.Client*.nupkg
-          output_path: AerospikeClient\bin\Release
+          output_path: .
     - name: Upload to JFrog
       uses: ./.github/actions/upload-to-jfrog
       with:
