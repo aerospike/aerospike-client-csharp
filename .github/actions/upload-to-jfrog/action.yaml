@@ -38,12 +38,14 @@ runs:
       shell: bash
       run: jf nuget-config --repo-resolve ${{ inputs.jfrog-client-repo-name }}
 
+    - name: Show the files
+      shell: bash
+      run: ls -R
+      
     - name: Deploy client
       shell: bash
       working-directory: artifacts
-      run: |
-        ls -R
-        jf rt u Aerospike.Client.* ${{ inputs.jfrog-client-repo-name }} --build-name=${{ github.repository }} --build-number=${{ github.run_number }}
+      run: jf rt u Aerospike.Client.* ${{ inputs.jfrog-client-repo-name }} --build-name=${{ github.repository }} --build-number=${{ github.run_number }}
       
     - name: Deploy test
       shell: bash
