@@ -62,8 +62,8 @@ jobs:
       run: ls -R
     - name: Move file to sign folder
       run: |
-        mkdir sign
-        mv ./artifacts/Aerospike.Client*.nupkg sign
+        mkdir ${GITHUB_WORKSPACE}/sign
+        mv ${GITHUB_WORKSPACE}/artifacts/Aerospike.Client*.nupkg ${GITHUB_WORKSPACE}/sign
     - name: Sign nuget package
       uses: sslcom/esigner-codesign@develop
       with:

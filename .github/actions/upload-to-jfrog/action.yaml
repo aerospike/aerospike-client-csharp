@@ -40,8 +40,8 @@ runs:
 
     - name: Deploy client
       shell: bash
-      run: jf rt u ./artifacts/Aerospike.Client.* ${{ inputs.jfrog-client-repo-name }} --build-name=${{ github.repository }} --build-number=${{ github.run_number }}
+      run: jf rt u ${GITHUB_WORKSPACE}/artifacts/Aerospike.Client.* ${{ inputs.jfrog-client-repo-name }} --build-name=${{ github.repository }} --build-number=${{ github.run_number }}
       
     - name: Deploy test
       shell: bash
-      run: jf rt u ./artifacts/AerospikeTest*.zip ${{ inputs.jfrog-tests-repo-name }} --build-name=${{ github.repository }} --build-number=${{ github.run_number }}
+      run: jf rt u ${GITHUB_WORKSPACE}/artifacts/AerospikeTest*.zip ${{ inputs.jfrog-tests-repo-name }} --build-name=${{ github.repository }} --build-number=${{ github.run_number }}
