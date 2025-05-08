@@ -41,13 +41,13 @@ runs:
     - name: Show the files
       shell: bash
       run: ls -R
-      
+
     - name: Deploy client
       shell: bash
       working-directory: artifacts
-      run: jf rt u Aerospike.Client.* ${{ inputs.jfrog-client-repo-name }} --build-name=${{ github.repository }} --build-number=${{ github.run_number }}
+      run: jf rt u "Aerospike.Client.*" ${{ inputs.jfrog-client-repo-name }} --build-name=${{ github.repository }} --build-number=${{ github.run_number }}
       
     - name: Deploy test
       shell: bash
       working-directory: artifacts
-      run: jf rt u AerospikeTest*.zip ${{ inputs.jfrog-tests-repo-name }} --build-name=${{ github.repository }} --build-number=${{ github.run_number }}
+      run: jf rt u "AerospikeTest*.zip" ${{ inputs.jfrog-tests-repo-name }} --build-name=${{ github.repository }} --build-number=${{ github.run_number }}
