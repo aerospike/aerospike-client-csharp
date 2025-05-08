@@ -36,6 +36,7 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     steps:
+    - uses: actions/checkout@v4
     - name: Download client artifacts
       uses: actions/download-artifact@v4
       with:
@@ -61,7 +62,6 @@ jobs:
           dir_path: ${GITHUB_WORKSPACE}/sign
           output_path: ${GITHUB_WORKSPACE}/artifacts
           malware_block: true
-    - uses: actions/checkout@v4
     - name: Upload to JFrog
       uses: ./.github/actions/upload-to-jfrog
       with:
