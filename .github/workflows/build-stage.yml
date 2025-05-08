@@ -40,12 +40,12 @@ jobs:
       uses: actions/download-artifact@v4
       with:
         name: AerospikeClient-${{ github.run_number }}
-        path: ${GITHUB_WORKSPACE}/artifacts
+        path: artifacts
     - name: Download test artifacts
       uses: actions/download-artifact@v4
       with:
         name: AerospikeTest-${{ github.run_number }}
-        path: ${GITHUB_WORKSPACE}/artifacts
+        path: artifacts
     - name: Display structure of downloaded files
       run: ls -R
     - name: Move file to sign folder
