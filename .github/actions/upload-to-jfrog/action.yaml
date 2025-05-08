@@ -41,7 +41,9 @@ runs:
     - name: Deploy client
       shell: bash
       working-directory: artifacts
-      run: jf rt u Aerospike.Client.* ${{ inputs.jfrog-client-repo-name }} --build-name=${{ github.repository }} --build-number=${{ github.run_number }}
+      run: |
+        ls -R
+        jf rt u Aerospike.Client.* ${{ inputs.jfrog-client-repo-name }} --build-name=${{ github.repository }} --build-number=${{ github.run_number }}
       
     - name: Deploy test
       shell: bash
