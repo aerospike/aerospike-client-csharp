@@ -58,8 +58,6 @@ jobs:
       with:
         name: AerospikeTest-${{ github.run_number }}
         path: artifacts
-    - name: Display structure of downloaded files
-      run: ls -R
     - name: Move file to sign folder
       run: |
         mkdir ${GITHUB_WORKSPACE}/sign
@@ -67,7 +65,7 @@ jobs:
     - name: Sign nuget package
       uses: sslcom/esigner-codesign@develop
       with:
-          command: batch-sign
+          command: batch_sign
           username: ${{ secrets.ES_USERNAME }}
           password: ${{ secrets.ES_PASSWORD }}
           totp_secret: ${{ secrets.ES_TOTP_SECRET }}
