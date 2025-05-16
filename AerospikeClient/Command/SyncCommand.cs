@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2024 Aerospike, Inc.
+ * Copyright 2012-2025 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -28,27 +28,30 @@ namespace Aerospike.Client
 		internal int iteration = 1;
 		internal int commandSentCounter;
 		internal DateTime deadline;
+		internal string ns;
 
 		/// <summary>
 		/// Default constructor.
 		/// </summary>
-		public SyncCommand(Cluster cluster, Policy policy)
+		public SyncCommand(Cluster cluster, Policy policy, string ns)
 			: base(policy.socketTimeout, policy.totalTimeout, policy.maxRetries)
 		{
 			this.cluster = cluster;
 			this.policy = policy;
 			this.deadline = DateTime.MinValue;
+			this.ns = ns;
 		}
 
 		/// <summary>
 		/// Scan/Query constructor.
 		/// </summary>
-		public SyncCommand(Cluster cluster, Policy policy, int socketTimeout, int totalTimeout)
+		public SyncCommand(Cluster cluster, Policy policy, int socketTimeout, int totalTimeout, string ns)
 			: base(socketTimeout, totalTimeout, 0)
 		{
 			this.cluster = cluster;
 			this.policy = policy;
 			this.deadline = DateTime.MinValue;
+			this.ns = ns;
 		}
 
 		public virtual void Execute()
@@ -102,14 +105,14 @@ namespace Aerospike.Client
 						commandSentCounter++;
 
 						// Parse results.
-						ParseResult(conn);
+						ParseResult(node, conn);
 
 						// Put connection back in pool.
 						node.PutConnection(conn);
 
 						if (latencyType != LatencyType.NONE)
 						{ 
-							node.AddLatency(latencyType, metricsWatch.Elapsed.TotalMilliseconds);
+							node.AddLatency(ns, latencyType, metricsWatch.Elapsed.TotalMilliseconds);
 						}
 
 						// Command has completed successfully.  Exit method.
@@ -134,7 +137,7 @@ namespace Aerospike.Client
 							exception = new AerospikeException.Timeout(policy, false);
 							isClientTimeout = false;
 							node.IncrErrorRate();
-							node.AddTimeout();
+							node.AddTimeout(ns);
 						}
 						else if (ae.Result == ResultCode.DEVICE_OVERLOAD)
 						{
@@ -142,11 +145,11 @@ namespace Aerospike.Client
 							exception = ae;
 							isClientTimeout = false;
 							node.IncrErrorRate();
-							node.AddError();
+							node.AddError(ns);
 						}
 						else
 						{
-							node.AddError();
+							node.AddError(ns);
 							throw;
 						}
 					}
@@ -163,7 +166,7 @@ namespace Aerospike.Client
 						}
 						exception = new AerospikeException.Timeout(policy, true);
 						isClientTimeout = true;
-						node.AddTimeout();
+						node.AddTimeout(ns);
 					}
 					catch (SocketException se)
 					{
@@ -174,13 +177,13 @@ namespace Aerospike.Client
 						if (se.SocketErrorCode == SocketError.TimedOut)
 						{
 							isClientTimeout = true;
-							node.AddTimeout();
+							node.AddTimeout(ns);
 						}
 						else
 						{
 							exception = new AerospikeException.Connection(se);
 							isClientTimeout = false;
-							node.AddError();
+							node.AddError(ns);
 						}
 					}
 					catch (IOException ioe)
@@ -190,14 +193,14 @@ namespace Aerospike.Client
 						node.CloseConnection(conn);
 						exception = new AerospikeException.Connection(ioe);
 						isClientTimeout = false;
-						node.AddError();
+						node.AddError(ns);
 					}
 					catch (Exception)
 					{
 						// All other exceptions are considered fatal.  Do not retry.
 						// Close socket to flush out possible garbage.  Do not put back in pool.
 						node.CloseConnectionOnError(conn);
-						node.AddError();
+						node.AddError(ns);
 						throw;
 					}
 				}
@@ -208,13 +211,13 @@ namespace Aerospike.Client
 					if (se.SocketErrorCode == SocketError.TimedOut)
 					{
 						isClientTimeout = true;
-						node.AddTimeout();
+						node.AddTimeout(ns);
 					}
 					else
 					{
 						exception = new AerospikeException.Connection(se);
 						isClientTimeout = false;
-						node.AddError();
+						node.AddError(ns);
 					}
 				}
 				catch (IOException ioe)
@@ -223,28 +226,28 @@ namespace Aerospike.Client
 					// Log.info("IOException: " + tranId + ',' + node + ',' + sequence + ',' + iteration);
 					exception = new AerospikeException.Connection(ioe);
 					isClientTimeout = false;
-					node.AddError();
+					node.AddError(ns);
 				}
 				catch (Connection.ReadTimeout)
 				{
 					// Connection already handled.
 					exception = new AerospikeException.Timeout(policy, true);
 					isClientTimeout = true;
-					node.AddTimeout();
+					node.AddTimeout(ns);
 				}
 				catch (AerospikeException.Connection ce)
 				{
 					// Socket connection error has occurred. Retry.
 					exception = ce;
 					isClientTimeout = false;
-					node.AddError();
+					node.AddError(ns);
 				}
 				catch (AerospikeException.Backoff be)
 				{
 					// Node is in backoff State. Retry, hopefully on another node.
 					exception = be;
 					isClientTimeout = false;
-					node.AddError();
+					node.AddError(ns);
 				}
 				catch (AerospikeException ae)
 				{
@@ -252,12 +255,12 @@ namespace Aerospike.Client
 					ae.Policy = policy;
 					ae.Iteration = iteration;
 					ae.SetInDoubt(IsWrite(), commandSentCounter);
-					node.AddError();
+					node.AddError(ns);
 					throw;
 				}
 				catch (Exception)
 				{
-					node.AddError();
+					node.AddError(ns);
 					throw;
 				}
 
@@ -436,7 +439,7 @@ namespace Aerospike.Client
 
 		protected abstract LatencyType GetLatencyType();
 		protected internal abstract void WriteBuffer();
-		protected internal abstract void ParseResult(Connection conn);
+		protected internal abstract void ParseResult(Node node, Connection conn);
 		protected internal abstract bool PrepareRetry(bool timeout);
 	}
 }

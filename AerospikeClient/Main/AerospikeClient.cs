@@ -46,6 +46,8 @@ namespace Aerospike.Client
 
 		protected internal Cluster cluster;
 
+		protected internal string version;
+
 		/// <summary>
 		/// Default read policy that is used when read command policy is null.
 		/// </summary>
@@ -226,6 +228,12 @@ namespace Aerospike.Client
 				policy = new ClientPolicy(policy, configProvider);
 			}
 			MergeDefaultPoliciesWithConfig();
+			version = Assembly.GetExecutingAssembly().GetName().Version.ToString();
+			if (version == null)
+			{
+				version = "development";
+			}
+
 			cluster = new Cluster(this, policy, hosts);
 			cluster.StartTendThread(policy);
 		}
@@ -2845,7 +2853,7 @@ namespace Aerospike.Client
 
 			try
 			{
-				info = new Info(conn, command);
+				info = new Info(node, conn, command);
 				node.PutConnection(conn);
 			}
 			catch (Exception)

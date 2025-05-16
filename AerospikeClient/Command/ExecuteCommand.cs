@@ -15,6 +15,7 @@
  * the License.
  */
 
+using System.Xml.Linq;
 using Aerospike.Client;
 
 namespace Aerospike.Client
@@ -46,10 +47,19 @@ namespace Aerospike.Client
 			SetUdf(writePolicy, key, packageName, functionName, args);
 		}
 
-		protected internal override void ParseResult(Connection conn)
+		protected internal override void ParseResult(Node node, Connection conn)
 		{
 			ParseHeader(conn);
 			ParseFields(policy.Txn, key, true);
+
+			if (node.AreMetricsEnabled())
+			{
+				node.AddBytesIn(ns, rp.bytesIn);
+				if (resultCode == ResultCode.KEY_BUSY) 
+				{	
+					node.AddKeyBusy(ns);
+				}
+			}
 
 			if (resultCode == ResultCode.OK)
 			{

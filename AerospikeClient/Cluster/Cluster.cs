@@ -15,14 +15,18 @@
  * the License.
  */
 using System.Text;
+using Aerospike.Client.Config;
 
 namespace Aerospike.Client
 {
 	public class Cluster
 	{
 		// Pointer to client
-		private readonly AerospikeClient client;
-		
+		internal readonly AerospikeClient Client;
+
+		// Config Data
+		private ConfigurationData configData;
+
 		// Expected cluster name.
 		protected internal readonly String clusterName;
 
@@ -149,7 +153,7 @@ namespace Aerospike.Client
 			}
 			*/
 
-			this.client = client;
+			this.Client = client;
 			this.clusterName = (policy.clusterName != null) ? policy.clusterName : "";
 			this.context = new Log.Context(this.clusterName);
 
@@ -164,6 +168,7 @@ namespace Aerospike.Client
 			if (client.configProvider != null)
 			{
 				configInterval = client.configProvider.Interval;
+				configData = client.configProvider.ConfigurationData;
 			}
 			else
 			{
@@ -587,9 +592,29 @@ namespace Aerospike.Client
 
 			if (configInterval > 0 && tendCount % configInterval == 0)
 			{
-				if (client.configProvider.LoadConfig())
+				if (Client.configProvider.LoadConfig())
 				{
-					client.MergeDefaultPoliciesWithConfig();
+					configData = Client.configProvider.ConfigurationData;
+					Client.MergeDefaultPoliciesWithConfig();
+					this.MetricsPolicy = MergeMetricsPolicyWithConfig(MetricsPolicy);
+
+					if (MetricsEnabled && MetricsPolicy.RestartRequired)
+					{
+						RestartMetrics();
+						return;
+					}
+
+					if (configData != null && configData.dynamicConfig.metrics.enable.HasValue)
+					{
+						if (!MetricsEnabled && configData.dynamicConfig.metrics.enable.Value)
+						{
+							EnableMetrics(this.MetricsPolicy);
+						}
+						else if (MetricsEnabled && !configData.dynamicConfig.metrics.enable.Value)
+						{
+							DisableMetrics();
+						}
+					}
 				}
 			}
 
@@ -1022,31 +1047,53 @@ namespace Aerospike.Client
 			}
 		}
 
+		private void RestartMetrics()
+		{
+			DisableMetrics();
+			EnableMetrics(MetricsPolicy);
+			MetricsPolicy.RestartRequired = false;
+		}
+
+		private MetricsPolicy MergeMetricsPolicyWithConfig(MetricsPolicy metricsPolicy)
+		{
+			return new MetricsPolicy(metricsPolicy, configData);
+		}
+
 		public void EnableMetrics(MetricsPolicy policy)
 		{
+			MetricsPolicy mergedMp = MergeMetricsPolicyWithConfig(policy);
+			IMetricsListener listener = mergedMp.Listener;
+
+			listener ??= new MetricsWriter(mergedMp.ReportDir);
+
+			this.metricsListener = listener;
+			this.MetricsPolicy = mergedMp;
+
+			if (configData != null)
+			{
+				if (configData.dynamicConfig.metrics.enable.HasValue)
+				{
+					if (!configData.dynamicConfig.metrics.enable.Value)
+					{
+						Log.Error("When a config exists, metrics can not be enabled via EnableMetrics unless they" +
+							" are enabled in the config provider.");
+						return;
+					}
+				}
+			}
+
 			if (MetricsEnabled)
 			{
 				this.metricsListener.OnDisable(this);
 			}
-
-			IMetricsListener listener = policy.Listener;
-
-			if (listener == null)
-			{
-				listener = new MetricsWriter(policy.ReportDir);
-			}
-
-			this.metricsListener = listener;
-			this.MetricsPolicy = policy;
-
 			Node[] nodeArray = nodes;
 
 			foreach (Node node in nodeArray)
 			{
-				node.EnableMetrics(policy);
+				node.EnableMetrics(MetricsPolicy);
 			}
 
-			listener.OnEnable(this, policy);
+			metricsListener.OnEnable(this, MetricsPolicy);
 			MetricsEnabled = true;
 		}
 

@@ -19,6 +19,7 @@ using System.Text;
 using System.Net;
 using System.Net.Sockets;
 using System.Collections.Generic;
+using System.Xml.Linq;
 
 namespace Aerospike.Client
 {
@@ -57,7 +58,8 @@ namespace Aerospike.Client
 
 			try
 			{
-				string response = Info.Request(conn, name);
+				Info info = new(node, conn, name);
+				string response = info.ParseSingleResponse(name);
 				node.PutConnection(conn);
 				return response;
 			}
@@ -82,7 +84,8 @@ namespace Aerospike.Client
 
 			try
 			{
-				string result = Request(conn, name);
+				Info info = new(node, conn, name);
+				string result = info.ParseSingleResponse(name);
 				node.PutConnection(conn);
 				return result;
 			}
@@ -108,7 +111,8 @@ namespace Aerospike.Client
 
 			try
 			{
-				Dictionary<string, string> result = Request(conn, names);
+				Info info = new(node, conn, names);
+				Dictionary<string, string> result = info.ParseMultiResponse();
 				node.PutConnection(conn);
 				return result;
 			}
@@ -133,7 +137,8 @@ namespace Aerospike.Client
 
 			try
 			{
-				Dictionary<string, string> result = Request(conn);
+				Info info = new(node, conn);
+				Dictionary<string, string> result = info.ParseMultiResponse();
 				node.PutConnection(conn);
 				return result;
 			}
@@ -266,7 +271,7 @@ namespace Aerospike.Client
 		/// <param name="name">name of value to retrieve</param>
 		public static string Request(Connection conn, string name)
 		{
-			Info info = new Info(conn, name);
+			Info info = new Info(null, conn, name);
 			return info.ParseSingleResponse(name);
 		}
 
@@ -277,7 +282,7 @@ namespace Aerospike.Client
 		/// <param name="names">names of values to retrieve</param>
 		public static Dictionary<string, string> Request(Connection conn, params string[] names)
 		{
-			Info info = new Info(conn, names);
+			Info info = new Info(null, conn, names);
 			return info.ParseMultiResponse();
 		}
 
@@ -367,7 +372,35 @@ namespace Aerospike.Client
 			offset += ByteUtil.StringToUtf8(command, buffer, offset);
 			buffer[offset++] = (byte)'\n';
 
-			SendCommand(conn);
+			SendCommand(null, conn);
+		}
+
+		/// <summary>
+		/// Send single command to server and store results.
+		/// This constructor is used internally.
+		/// The static request methods should be used instead.
+		/// </summary>
+		/// <param name="node">server node</param>
+		/// <param name="conn">connection to server node</param>
+		/// <param name="command">command sent to server</param>
+		internal Info(Node node, Connection conn, string command)
+		{
+			buffer = ThreadLocalData.GetBuffer();
+
+			// If conservative estimate may be exceeded, get exact estimate
+			// to preserve memory and resize buffer.
+			if ((command.Length * 2 + 9) > buffer.Length)
+			{
+				offset = ByteUtil.EstimateSizeUtf8(command) + 9;
+				ResizeBuffer(offset);
+			}
+			offset = 8; // Skip size field.
+
+			// The command format is: <name1>\n<name2>\n...
+			offset += ByteUtil.StringToUtf8(command, buffer, offset);
+			buffer[offset++] = (byte)'\n';
+
+			SendCommand(node, conn);
 		}
 
 		/// <summary>
@@ -409,7 +442,50 @@ namespace Aerospike.Client
 				offset += ByteUtil.StringToUtf8(command, buffer, offset);
 				buffer[offset++] = (byte)'\n';
 			}
-			SendCommand(conn);
+			SendCommand(null, conn);
+		}
+
+		/// <summary>
+		/// Send single command to server and store results.
+		/// This constructor is used internally.
+		/// The static request methods should be used instead.
+		/// </summary>
+		/// <param name="node">server node</param>
+		/// <param name="conn">connection to server node</param>
+		/// <param name="command">command sent to server</param>
+		internal Info(Node node, Connection conn, params string[] commands)
+		{
+			buffer = ThreadLocalData.GetBuffer();
+
+			// First, do quick conservative buffer size estimate.
+			offset = 8;
+
+			foreach (string command in commands)
+			{
+				offset += command.Length * 2 + 1;
+			}
+
+			// If conservative estimate may be exceeded, get exact estimate
+			// to preserve memory and resize buffer.
+			if (offset > buffer.Length)
+			{
+				offset = 8;
+
+				foreach (string command in commands)
+				{
+					offset += ByteUtil.EstimateSizeUtf8(command) + 1;
+				}
+				ResizeBuffer(offset);
+			}
+			offset = 8; // Skip size field.
+
+			// The command format is: <name1>\n<name2>\n...
+			foreach (string command in commands)
+			{
+				offset += ByteUtil.StringToUtf8(command, buffer, offset);
+				buffer[offset++] = (byte)'\n';
+			}
+			SendCommand(node, conn);
 		}
 
 		/// <summary>
@@ -451,7 +527,7 @@ namespace Aerospike.Client
 				offset += ByteUtil.StringToUtf8(command, buffer, offset);
 				buffer[offset++] = (byte)'\n';
 			}
-			SendCommand(conn);
+			SendCommand(null, conn);
 		}
 
 		/// <summary>
@@ -464,7 +540,20 @@ namespace Aerospike.Client
 		{
 			buffer = ThreadLocalData.GetBuffer();
 			offset = 8; // Skip size field.
-			SendCommand(conn);
+			SendCommand(null, conn);
+		}
+
+		/// <summary>
+		/// Send default empty command to server and store results. 
+		/// This constructor is used internally.
+		/// The static request methods should be used instead.
+		/// </summary>
+		/// <param name="conn">connection to server node</param>
+		public Info(Node node, Connection conn)
+		{
+			buffer = ThreadLocalData.GetBuffer();
+			offset = 8; // Skip size field.
+			SendCommand(node, conn);
 		}
 
 		/// <summary>
@@ -483,24 +572,36 @@ namespace Aerospike.Client
 		/// </summary>
 		/// <param name="conn">socket connection to server node</param>
 		/// <exception cref="AerospikeException">if socket send or receive fails</exception>
-		private void SendCommand(Connection conn)
+		private void SendCommand(Node node, Connection conn)
 		{
 			try
 			{
+				long bytesIn = 0;
+
 				// Write size field.
 				ulong size = ((ulong)offset - 8L) | (2L << 56) | (1L << 48);
 				ByteUtil.LongToBytes(size, buffer, 0);
 
 				// Write.
 				conn.Write(buffer, offset);
+				if (node != null && node.MetricsEnabled)
+				{
+					node.AddBytesOut(null, offset);
+				}
 
 				// Read - reuse input buffer.
 				conn.ReadFully(buffer, 8);
+				bytesIn += 8;
 
 				size = (ulong)ByteUtil.BytesToLong(buffer, 0);
 				length = (int)(size & 0xFFFFFFFFFFFFL);
 				ResizeBuffer(length);
 				conn.ReadFully(buffer, length);
+				bytesIn += length;
+				if (node != null && node.MetricsEnabled)
+				{
+					node.AddBytesIn(null, bytesIn);
+				}
 				conn.UpdateLastUsed();
 				offset = 0;
 			}

@@ -56,8 +56,8 @@ namespace Aerospike.Client
 		protected internal long bytesReceived;
 		protected internal long bytesSent;
 		private volatile int errorRateCount;
-		private volatile int errorCount;
-		private volatile int timeoutCount;
+		private readonly Counter errorCounter;
+		private readonly Counter timeoutCounter;
 		protected internal int peersGeneration = -1;
 		protected internal int partitionGeneration = -1;
 		protected internal int rebalanceGeneration = -1;
@@ -87,9 +87,9 @@ namespace Aerospike.Client
 			this.features = nv.features;
 			this.rebalanceChanged = cluster.rackAware;
 			this.racks = cluster.rackAware ? new Dictionary<string, int>() : null;
-			this.errorCount = 0;
+			this.errorCounter = new Counter();
 			this.errorRateCount = 0;
-			this.timeoutCount = 0;
+			this.timeoutCounter = new Counter();
 
 			this.metricsEnabled = cluster.MetricsEnabled;
 			if (cluster.MetricsEnabled)
@@ -185,7 +185,7 @@ namespace Aerospike.Client
 				}
 
 				string[] commands = cluster.rackAware ? INFO_PERIODIC_REB : INFO_PERIODIC;
-				Dictionary<string, string> infoMap = Info.Request(tendConnection, commands);
+				Dictionary<string, string> infoMap = InfoRequest(tendConnection, commands);
 
 				VerifyNodeName(infoMap);
 				VerifyPeersGeneration(infoMap, peers);
@@ -213,6 +213,11 @@ namespace Aerospike.Client
 			}
 		}
 
+		private Dictionary<string, string> InfoRequest(Connection conn, params string[] names)
+		{
+			Info info = new(this, conn, names);
+			return info.ParseMultiResponse();
+		}
 		private bool ShouldLogin()
 		{
 			return performLogin > 0 || (sessionExpiration.HasValue && 
@@ -374,7 +379,7 @@ namespace Aerospike.Client
 					Log.Debug(cluster.context, "Update peers for node " + this);
 				}
 
-				PeerParser parser = new PeerParser(cluster, tendConnection, peers.peers);
+				PeerParser parser = new PeerParser(cluster, this, tendConnection, peers.peers);
 				peersCount = peers.peers.Count;
 
 				bool peersValidated = true;
@@ -568,7 +573,7 @@ namespace Aerospike.Client
 				{
 					Log.Debug(cluster.context, "Update racks for node " + this);
 				}
-				RackParser parser = new RackParser(tendConnection);
+				RackParser parser = new(this, tendConnection);
 
 				rebalanceGeneration = parser.Generation;
 				racks = parser.Racks;
@@ -845,7 +850,7 @@ namespace Aerospike.Client
 					new TlsConnection(cluster, host.tlsName, address, timeout, this, pool) :
 					new Connection(address, timeout, this, pool);
 
-					metrics.AddLatency(LatencyType.CONN, metricsWatch.Elapsed.TotalMilliseconds);
+					metrics.AddLatency(null, LatencyType.CONN, metricsWatch.Elapsed.TotalMilliseconds);
 				}
 				else
 				{
@@ -985,11 +990,12 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Add elapsed time in nanoseconds to latency buckets corresponding to latency type.
 		/// </summary>
+		/// <param name="ns">namespace</param>
 		/// <param name="type"></param>
 		/// <param name="elapsedMs">elapsed time in milliseconds. The conversion to nanoseconds is done later</param>
-		public void AddLatency(LatencyType type, double elapsedMs)
+		public void AddLatency(string ns, LatencyType type, long elapsedMs)
 		{
-			metrics.AddLatency(type, elapsedMs);
+			metrics.AddLatency(ns, type, elapsedMs);
 		}
 
 		public void IncrErrorRate()
@@ -1023,34 +1029,107 @@ namespace Aerospike.Client
 		/// command may occur.
 		/// </summary>
 
-		public void AddError()
+		public void AddError(string ns)
 		{
-			Interlocked.Increment(ref errorCount);
+			errorCounter.Increment(ns);
 		}
 
 		/// <summary>
 		/// Increment command timeout count. If the timeout is retryable (ie socketTimeout),
 		/// multiple timeouts per command may occur.
 		/// </summary>
-		public void AddTimeout()
+		public void AddTimeout(string ns)
 		{
-			Interlocked.Increment(ref timeoutCount);
+			timeoutCounter.Increment(ns);
+		}
+
+		/// <summary>
+		/// Increment the key busy counter.
+		/// </summary>
+		public void AddKeyBusy(string ns) 
+		{
+			metrics.KeyBusyCounter.Increment(ns);
+		}
+
+		/**
+		 * Add to the count of bytes sent to the node.
+		 */
+		public void AddBytesOut(string ns, long count) 
+		{
+			metrics.BytesOutCounter.Increment(ns, count);
+		}
+
+		/**
+		 * Add to the count of bytes received from the node.
+		 */
+		public void AddBytesIn(string ns, long count) 
+		{
+			metrics.BytesInCounter.Increment(ns, count);
 		}
 
 		/// <summary>
 		/// Return command error count. The value is cumulative and not reset per metrics interval.
 		/// </summary>
-		public int GetErrorCount()
+		public long GetErrorCount()
 		{
-			return errorCount;
+			return errorCounter.GetTotal();
 		}
 
 		/// <summary>
 		/// Return command timeout count. The value is cumulative and not reset per metrics interval.
 		/// </summary>
-		public int GetTimeoutCount()
+		public long GetTimeoutCount()
 		{
-			return timeoutCount;
+			return timeoutCounter.GetTotal();
+		}
+
+		/// <summary>
+		/// Return transaction timeout count for a given namespace. The value is cumulative and not reset per metrics
+		/// interval.
+		/// </summary>
+		public long GetTimeoutCountbyNS(string ns) 
+		{
+			return timeoutCounter.GetCountByNS(ns);
+		}
+
+		/// <summary>
+		/// Return transaction error count by namespace. The value is cumulative and not reset per metrics interval.
+		/// </summary>
+		public long GetErrorCountByNS(string ns) 
+		{
+			return errorCounter.GetCountByNS(ns);
+		}
+
+		/// <summary>
+		/// Return count of bytes in by namespace. The value is cumulative and not reset per metrics interval.
+		/// </summary>
+		public long GetBytesInByNS(string ns) 
+		{
+			return metrics.BytesInCounter.GetCountByNS(ns);
+		}
+
+		/// <summary>
+		/// Return count of bytes out by namespace. The value is cumulative and not reset per metrics interval.
+		/// </summary>
+		public long GetBytesOutByNS(string ns) 
+		{
+			return metrics.BytesOutCounter.GetCountByNS(ns);
+		}
+
+		/// <summary>
+		/// Return key busy error count for a given namespace. The value is cumulative and not reset per metrics interval.
+		/// </summary>
+		public long GetKeyBusyCountByNS(string ns) 
+		{
+			return metrics.KeyBusyCounter.GetCountByNS(ns);
+		}
+
+		/// <summary>
+		/// Return metrics enablement status
+		/// </summary>
+		public bool AreMetricsEnabled() 
+		{ 
+			return cluster.MetricsEnabled; 
 		}
 
 		/// <summary>

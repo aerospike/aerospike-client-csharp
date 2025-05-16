@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2024 Aerospike, Inc.
+ * Copyright 2012-2025 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -24,8 +24,10 @@ namespace Aerospike.Client
 	/// </summary>
 	public sealed class NodeMetrics
 	{
-		private readonly LatencyBuckets[] latency;
-		private const long MS_TO_NS = 1000000;
+		public Histograms Histograms { get; private set; }
+		public readonly Counter KeyBusyCounter;
+		public readonly Counter BytesInCounter;
+		public readonly Counter BytesOutCounter;
 
 		/// <summary>
 		/// Initialize extended node metrics.
@@ -34,32 +36,21 @@ namespace Aerospike.Client
 		{
 			int latencyColumns = policy.LatencyColumns;
 			int latencyShift = policy.LatencyShift;
-			int max = Client.Latency.GetMax();
+			this.KeyBusyCounter = new Counter();
+			this.BytesInCounter = new Counter();
+			this.BytesOutCounter = new Counter();
 
-			latency = new LatencyBuckets[max];
-
-			for (int i = 0; i < max; i++)
-			{
-				latency[i] = new LatencyBuckets(latencyColumns, latencyShift);
-			}
+			Histograms = new Histograms(latencyColumns, latencyShift);
 		}
 
 		/// <summary>
 		/// Add elapsed time in nanoseconds to latency buckets corresponding to latency type.
 		/// </summary>
+		/// <param name="ns">namespace</param>
 		/// <param name="type"></param>
-		/// <param name="elapsedMs">elapsed time in milliseconds. The conversion to nanoseconds is done later</param>
-		public void AddLatency(LatencyType type, double elapsedMs)
-		{
-			latency[(int)type].Add((long)elapsedMs * MS_TO_NS);
-		}
-
-		/// <summary>
-		/// Return latency buckets given type.
-		/// </summary>
-		public LatencyBuckets GetLatencyBuckets(int type)
-		{
-			return latency[type];
+		/// <param name="elapsed">elapsed time</param>
+		public void AddLatency(string ns, LatencyType type, long elapsed) {
+			Histograms.AddLatency(ns, type, elapsed);
 		}
 	}
 }

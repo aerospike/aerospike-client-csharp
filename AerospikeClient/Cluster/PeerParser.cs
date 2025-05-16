@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2025 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -30,7 +30,7 @@ namespace Aerospike.Client
 		private readonly int portDefault;
 		public readonly int generation;
 
-		public PeerParser(Cluster cluster, Connection conn, List<Peer> peers)
+		public PeerParser(Cluster cluster, Node node, Connection conn, List<Peer> peers)
 		{
 			this.cluster = cluster;
 
@@ -38,7 +38,7 @@ namespace Aerospike.Client
 				cluster.useServicesAlternate ? "peers-tls-alt" : "peers-tls-std" : 
 				cluster.useServicesAlternate ? "peers-clear-alt" : "peers-clear-std";
 
-			parser = new Info(conn, command);
+			parser = new Info(node, conn, command);
 
 			if (parser.length == 0)
 			{

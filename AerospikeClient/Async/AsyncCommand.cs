@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2024 Aerospike, Inc.
+ * Copyright 2012-2025 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -56,27 +56,30 @@ namespace Aerospike.Client
 		private bool inHeader = true;
 		private ValueStopwatch metricsWatch;
 		private readonly bool metricsEnabled;
+		private string ns;
 
 		/// <summary>
 		/// Default Constructor.
 		/// </summary>
-		public AsyncCommand(AsyncCluster cluster, Policy policy)
+		public AsyncCommand(AsyncCluster cluster, Policy policy, string ns)
 			: base(policy.socketTimeout, policy.totalTimeout, policy.maxRetries)
 		{
 			this.cluster = cluster;
 			this.policy = policy;
 			this.metricsEnabled = cluster.MetricsEnabled;
+			this.ns = ns;
 		}
 
 		/// <summary>
 		/// Scan/Query Constructor.
 		/// </summary>
-		public AsyncCommand(AsyncCluster cluster, Policy policy, int socketTimeout, int totalTimeout)
+		public AsyncCommand(AsyncCluster cluster, Policy policy, int socketTimeout, int totalTimeout, string ns)
 			: base(socketTimeout, totalTimeout, 0)
 		{
 			this.cluster = cluster;
 			this.policy = policy;
 			this.metricsEnabled = cluster.MetricsEnabled;
+			this.ns = ns;
 		}
 
 		/// <summary>
@@ -240,38 +243,38 @@ namespace Aerospike.Client
 			catch (AerospikeException.Connection aec)
 			{
 				ErrorCount++;
-				node?.AddError();
+				node?.AddError(ns);
 				ConnectionFailed(aec);
 			}
 			catch (AerospikeException.Backoff aeb)
 			{
 				ErrorCount++;
-				node?.AddError();
+				node?.AddError(ns);
 				Backoff(aeb);
 			}
 			catch (AerospikeException ae)
 			{
 				ErrorCount++;
-				node?.AddError();
+				node?.AddError(ns);
 				FailOnApplicationError(ae);
 			}
 			catch (SocketException se)
 			{
 				ErrorCount++;
-				node?.AddError();
+				node?.AddError(ns);
 				OnSocketError(se.SocketErrorCode);
 			}
 			catch (IOException ioe)
 			{
 				// IO errors are considered temporary anomalies.  Retry.
 				ErrorCount++;
-				node?.AddError();
+				node?.AddError(ns);
 				ConnectionFailed(new AerospikeException.Connection(ioe));
 			}
 			catch (Exception e)
 			{
 				ErrorCount++;
-				node?.AddError();
+				node?.AddError(ns);
 				FailOnApplicationError(new AerospikeException(e));
 			}
 		}
@@ -280,7 +283,7 @@ namespace Aerospike.Client
 		{
 			if (metricsEnabled)
 			{
-				node.AddLatency(LatencyType.CONN, metricsWatch.Elapsed.TotalMilliseconds);
+				node.AddLatency(ns, LatencyType.CONN, metricsWatch.Elapsed.TotalMilliseconds);
 			}
 			
 			if (cluster.authEnabled)
@@ -475,7 +478,7 @@ namespace Aerospike.Client
 			{
 				if (e is AerospikeException.Connection ac)
 				{
-					node.AddError();
+					node.AddError(ns);
 					ConnectionFailed(ac);
 					return;
 				}
@@ -484,17 +487,17 @@ namespace Aerospike.Client
 				{
 					if (ae.Result == ResultCode.TIMEOUT)
 					{
-						node.AddTimeout();
+						node.AddTimeout(ns);
 						RetryServerError(new AerospikeException.Timeout(policy, false));
 					}
 					else if (ae.Result == ResultCode.DEVICE_OVERLOAD)
 					{
-						node.AddError();
+						node.AddError(ns);
 						RetryServerError(ae);
 					}
 					else
 					{
-						node.AddError();
+						node.AddError(ns);
 						FailOnApplicationError(ae);
 					}
 					return;
@@ -509,7 +512,7 @@ namespace Aerospike.Client
 				if (e is IOException ioe)
 				{
 					// IO errors are considered temporary anomalies.  Retry.
-					node.AddError();
+					node.AddError(ns);
 					ConnectionFailed(new AerospikeException.Connection(ioe));
 					return;
 				}
@@ -518,13 +521,13 @@ namespace Aerospike.Client
 				{
 					// This exception occurs because socket is being used after timeout thread closes socket.
 					// Retry when this happens.
-					node.AddError();
+					node.AddError(ns);
 					ConnectionFailed(new AerospikeException(ode));
 					return;
 				}
 
 				// Fail without retry on unknown errors.
-				node.AddError();
+				node.AddError(ns);
 				FailOnApplicationError(new AerospikeException(e));
 			}
 			catch (Exception e2)
@@ -541,12 +544,12 @@ namespace Aerospike.Client
 			if (se == SocketError.TimedOut)
 			{
 				ae = new AerospikeException.Timeout(policy, true);
-				node.AddTimeout();
+				node.AddTimeout(ns);
 			}
 			else
 			{
 				ae = new AerospikeException.Connection("Socket error: " + se);
-				node.AddError();
+				node.AddError(ns);
 			}
 			ConnectionFailed(ae);
 		}
@@ -721,7 +724,7 @@ namespace Aerospike.Client
 						node.CloseAsyncConnOnError(conn);
 					}
 
-					node?.AddTimeout();
+					node?.AddTimeout(ns);
 
 					// Notify user immediately in this timeout thread.
 					// Command thread will cleanup eventArgs.
@@ -754,7 +757,7 @@ namespace Aerospike.Client
 						node.CloseAsyncConnOnError(conn);
 					}
 
-					node?.AddTimeout();
+					node?.AddTimeout(ns);
 				}
 				return false;  // Do not put back on timeout queue.
 			}
@@ -799,7 +802,7 @@ namespace Aerospike.Client
 			LatencyType latencyType = cluster.MetricsEnabled ? GetLatencyType() : LatencyType.NONE;
 			if (latencyType != LatencyType.NONE)
 			{
-				node.AddLatency(latencyType, metricsWatch.Elapsed.TotalMilliseconds);
+				node.AddLatency(ns, latencyType, metricsWatch.Elapsed.TotalMilliseconds);
 			}
 
 			try

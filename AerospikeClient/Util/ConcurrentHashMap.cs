@@ -141,7 +141,7 @@ namespace Aerospike.Client
 			}
 		}
 
-		public bool PerformActionOnEachElement(Func<int, bool> initilaize, Action<TKey, TValue, int> action)
+		public bool PerformReadActionOnEachElement(Func<int, bool> initilaize, Action<TKey, TValue, int> action)
 		{
 			_lock.EnterReadLock();
 			try
@@ -159,6 +159,58 @@ namespace Aerospike.Client
 			finally
 			{
 				_lock.ExitReadLock();
+			}
+			return false;
+		}
+
+		public bool FindElementAndPerformWriteFunc(TKey key, Func<TKey, TValue, TValue> func)
+		{
+			try
+			{
+				_lock.EnterUpgradeableReadLock();
+				if (_dictionary.TryGetValue(key, out TValue value))
+				{
+					_lock.EnterWriteLock();
+					try
+					{
+						_dictionary[key] = func(key, value);
+					}
+					finally
+					{
+						_lock.ExitWriteLock();
+					}
+					return true;
+				}
+			}
+			finally
+			{
+				if (_lock.IsWriteLockHeld) _lock.ExitUpgradeableReadLock();
+			}
+			return false;
+		}
+
+		public bool SetValueIfNotNull(TKey key, TValue value)
+		{
+			try
+			{
+				_lock.EnterUpgradeableReadLock();
+				if (_dictionary[key] == null)
+				{
+					_lock.EnterWriteLock();
+					try
+					{
+						_dictionary[key] = value;
+					}
+					finally
+					{
+						_lock.ExitWriteLock();
+					}
+					return true;
+				}
+			}
+			finally
+			{
+				if (_lock.IsReadLockHeld) _lock.ExitUpgradeableReadLock();
 			}
 			return false;
 		}

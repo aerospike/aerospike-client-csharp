@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2024 Aerospike, Inc.
+ * Copyright 2012-2025 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -21,6 +21,8 @@ using System.IO;
 using System.Text;
 using System;
 using System.Diagnostics;
+using Microsoft.Extensions.Primitives;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace Aerospike.Client
 {
@@ -47,7 +49,7 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Initialize metrics writer.
 		/// </summary>
-		public MetricsWriter(String dir)
+		public MetricsWriter(string dir)
 		{
 			this.dir = dir;
 			this.sb = new StringBuilder(8192);
@@ -147,10 +149,12 @@ namespace Aerospike.Client
 			size = 0;
 
 			sb.Append(now.ToString(timestampFormat));
-			sb.Append(" header(1)");
-			sb.Append(" cluster[name,cpu,mem,recoverQueueSize,invalidNodeCount,commandCount,retryCount,delayQueueTimeoutCount,asyncThreadsInUse,asyncCompletionPortsInUse,node[]]");
-			sb.Append(" node[name,address,port,syncConn,asyncConn,errors,timeouts,latency[]]");
+			sb.Append(" header(2)");
+			sb.Append(" cluster[name,clientType,clientVersion,appId,label[],cpu,mem,recoverQueueSize,invalidNodeCount,commandCount,retryCount,delayQueueTimeoutCount,asyncThreadsInUse,asyncCompletionPortsInUse,node[]]");
+			sb.Append(" label[name,value]");
+			sb.Append(" node[name,address,port,syncConn,asyncConn,namespace[]]");
 			sb.Append(" conn[inUse,inPool,opened,closed]");
+			sb.Append(" namespace[name,errors,timeouts,keyBusy,bytesIn,bytesOut,latency[]]");
 			sb.Append(" latency(");
 			sb.Append(latencyColumns);
 			sb.Append(',');
@@ -162,7 +166,8 @@ namespace Aerospike.Client
 
 		private void WriteCluster(Cluster cluster)
 		{
-			String clusterName = cluster.clusterName;
+			MetricsPolicy policy = cluster.MetricsPolicy;
+			string clusterName = cluster.clusterName;
 
 			clusterName ??= "";
 
@@ -171,6 +176,35 @@ namespace Aerospike.Client
 			sb.Append(DateTime.Now.ToString(timestampFormat));
 			sb.Append(" cluster[");
 			sb.Append(clusterName);
+			sb.Append(',');
+			sb.Append("c#");
+			sb.Append(',');
+			sb.Append(cluster.Client.version);
+			sb.Append(',');
+			if (policy.AppId != null)
+			{
+				sb.Append(policy.AppId);
+			}
+			else
+			{
+				byte[] userBytes = cluster.user;
+				if (userBytes != null && userBytes.Length > 0)
+				{
+					string user = ByteUtil.Utf8ToString(userBytes, 0, userBytes.Length);
+					sb.Append(user);
+				}
+			}
+			sb.Append(',');
+			if (policy.labels != null)
+			{
+				sb.Append("[");
+				foreach (string key in policy.labels.Keys)
+				{
+					sb.Append("[").Append(key).Append(",").Append(policy.labels[key]).Append("],");
+				}
+				//sb.DeleteCharAt(sb.length() - 1); TODO
+				sb.Append("]");
+			}
 			sb.Append(',');
 			sb.Append((int)cpu);
 			sb.Append(',');
@@ -210,7 +244,7 @@ namespace Aerospike.Client
 				}
 				WriteNode(node);
 			}
-			sb.Append("]]");
+			sb.Append("]");
 			WriteLine();
 		}
 
@@ -235,38 +269,59 @@ namespace Aerospike.Client
 				asyncStats = ((AsyncNode)node).GetAsyncConnectionStats();
 			}
 			WriteConn(asyncStats);
-			sb.Append(',');
-
-			sb.Append(node.GetErrorCount());   // Cumulative. Not reset on each interval.
-			sb.Append(',');
-			sb.Append(node.GetTimeoutCount()); // Cumulative. Not reset on each interval.
 			sb.Append(",[");
 
-			NodeMetrics nm = node.GetMetrics();
+			Histograms hGrams = node.GetMetrics().Histograms;
+			ConcurrentHashMap<string, LatencyBuckets[]> hMap = hGrams.GetMap();
 			int max = Latency.GetMax();
 
-			for (int i = 0; i < max; i++)
+			Iterator<Dictionary.Enumerator<string, LatencyBuckets[]>> nsItr = hMap.entrySet().iterator(); // TODO: work on action for ConcurrentHashSet
+			while (nsItr.hasNext())
 			{
-				if (i > 0)
+				Map.Entry<string, LatencyBuckets[]> entry = nsItr.next();
+				string ns = entry.getKey();
+				sb.Append(ns).Append(',');
+				sb.Append(node.GetErrorCountByNS(ns));
+				sb.Append(',');
+				sb.Append(node.GetTimeoutCountbyNS(ns));
+				sb.Append(',');
+				sb.Append(node.GetKeyBusyCountByNS(ns));
+				sb.Append(',');
+				sb.Append(node.GetBytesInByNS(ns));
+				sb.Append(',');
+				sb.Append(node.GetBytesOutByNS(ns));
+				sb.Append(",[");
+				LatencyBuckets[] latencyBuckets = hGrams.GetBuckets(ns);
+				for (int i = 0; i < max; i++) 
 				{
-					sb.Append(',');
-				}
-
-				sb.Append(LatencyTypeToString((LatencyType)i));
-				sb.Append('[');
-
-				LatencyBuckets buckets = nm.GetLatencyBuckets(i);
-				int bucketMax = buckets.GetMax();
-
-				for (int j = 0; j < bucketMax; j++)
-				{
-					if (j > 0)
+					if (i > 0) 
 					{
 						sb.Append(',');
 					}
-					sb.Append(buckets.GetBucket(j)); // Cumulative. Not reset on each interval.
+
+					sb.Append(LatencyTypeToString((LatencyType)i));
+					sb.Append('[');
+
+					LatencyBuckets buckets = latencyBuckets[i];
+					int bucketMax = buckets.GetMax();
+					for (int j = 0; j<bucketMax; j++) 
+					{
+						if (j > 0) 
+						{
+							sb.Append(',');
+						}
+						sb.Append(buckets.GetBucket(j)); // Cumulative. Not reset on each interval.
+					}
+					sb.Append(']');
 				}
-				sb.Append(']');
+				if (nsItr.hasNext()) 
+				{
+					sb.Append("]],[");
+				} 
+				else 
+				{
+					sb.Append("]]");
+				}
 			}
 			sb.Append("]]");
 		}
