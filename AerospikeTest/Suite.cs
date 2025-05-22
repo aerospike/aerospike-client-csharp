@@ -116,7 +116,7 @@ namespace Aerospike.Test
 			};
 
 			//Example of how to enable dynamic config
-			policy.ConfigProvider = new YamlConfigProvider();
+			//policy.ConfigProvider = new YamlConfigProvider();
 
 			if (SuiteHelpers.user != null && SuiteHelpers.user.Length > 0)
 			{

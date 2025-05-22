@@ -268,7 +268,7 @@ namespace Aerospike.Client
 		/// <param name="name">name of value to retrieve</param>
 		public static string Request(Connection conn, string name)
 		{
-			Info info = new Info(null, conn, name);
+			Info info = new Info(conn, name);
 			return info.ParseSingleResponse(name);
 		}
 
@@ -279,7 +279,7 @@ namespace Aerospike.Client
 		/// <param name="names">names of values to retrieve</param>
 		public static Dictionary<string, string> Request(Connection conn, params string[] names)
 		{
-			Info info = new Info(null, conn, names);
+			Info info = new Info(conn, names);
 			return info.ParseMultiResponse();
 		}
 

@@ -26,7 +26,6 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void Replace()
 		{
-			Util.Sleep(5 * 30 * 1000);
 			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "replacekey");
 			Bin bin1 = new("bin1", "value1");
 			Bin bin2 = new("bin2", "value2");

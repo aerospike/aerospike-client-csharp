@@ -53,8 +53,6 @@ namespace Aerospike.Client
 		protected uint connectionIter;
 		protected internal int connsOpened = 1;
 		protected internal int connsClosed;
-		protected internal long bytesReceived;
-		protected internal long bytesSent;
 		private volatile int errorRateCount;
 		private readonly Counter errorCounter;
 		private readonly Counter timeoutCounter;
@@ -966,8 +964,6 @@ namespace Aerospike.Client
 		{
 			metrics = new NodeMetrics(policy);
 			this.metricsEnabled = true;
-			this.bytesReceived = 0;
-			this.bytesSent = 0;
 		}
 
 		public NodeMetrics GetMetrics()
@@ -978,8 +974,6 @@ namespace Aerospike.Client
 		public void DisableMetrics()
 		{
 			this.metricsEnabled = false;
-			this.bytesReceived = -1;
-			this.bytesSent = -1;
 		}
 
 		/// <summary>

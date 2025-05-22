@@ -92,7 +92,7 @@ namespace Aerospike.Client
 		/// </summary>
 		public Dictionary<string, string> labels;
 
-		internal bool RestartRequired = false;
+		internal bool restartRequired = false;
 
 		/// <summary>
 		/// Copy batch policy from another batch policy AND override certain policy attributes if they exist in the
@@ -119,7 +119,7 @@ namespace Aerospike.Client
 			{
 				if (metrics.latency_shift.Value != this.LatencyShift)
 				{
-					RestartRequired = true;
+					restartRequired = true;
 				}
 				this.LatencyShift = metrics.latency_shift.Value;
 			}
@@ -127,7 +127,7 @@ namespace Aerospike.Client
 			{
 				if (metrics.latency_columns.Value != this.LatencyColumns)
 				{
-					RestartRequired = true;
+					restartRequired = true;
 				}
 				this.LatencyColumns = metrics.latency_columns.Value;
 			}
@@ -151,7 +151,7 @@ namespace Aerospike.Client
 			this.LatencyShift = other.LatencyShift;
 			this.AppId = other.AppId;
 			this.labels = other.labels;
-			this.RestartRequired = other.RestartRequired;
+			this.restartRequired = other.restartRequired;
 		}
 
 		/// <summary>

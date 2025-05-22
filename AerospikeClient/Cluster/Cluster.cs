@@ -22,7 +22,7 @@ namespace Aerospike.Client
 	public class Cluster
 	{
 		// Pointer to client
-		internal readonly AerospikeClient Client;
+		internal readonly AerospikeClient client;
 
 		// Config Data
 		private ConfigurationData configData;
@@ -153,7 +153,7 @@ namespace Aerospike.Client
 			}
 			*/
 
-			this.Client = client;
+			this.client = client;
 			this.clusterName = (policy.clusterName != null) ? policy.clusterName : "";
 			this.context = new Log.Context(this.clusterName);
 
@@ -1043,17 +1043,17 @@ namespace Aerospike.Client
 
 		private void LoadConfiguration()
 		{
-			if (Client.configProvider.LoadConfig())
+			if (client.configProvider.LoadConfig())
 			{
-				configData = Client.configProvider.ConfigurationData;
-				Client.MergeDefaultPoliciesWithConfig();
+				configData = client.configProvider.ConfigurationData;
+				client.MergeDefaultPoliciesWithConfig();
 				this.MetricsPolicy = MergeMetricsPolicyWithConfig(MetricsPolicy);
 
-				if (MetricsEnabled && MetricsPolicy.RestartRequired)
+				if (MetricsEnabled && MetricsPolicy.restartRequired)
 				{
 					DisableMetricsInternal();
 					EnableMetrics(MetricsPolicy);
-					MetricsPolicy.RestartRequired = false;
+					MetricsPolicy.restartRequired = false;
 					return;
 				}
 

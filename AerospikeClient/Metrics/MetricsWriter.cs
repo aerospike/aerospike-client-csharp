@@ -174,7 +174,7 @@ namespace Aerospike.Client
 			sb.Append(',');
 			sb.Append("c#");
 			sb.Append(',');
-			sb.Append(cluster.Client.version);
+			sb.Append(cluster.client.version);
 			sb.Append(',');
 			if (policy.AppId != null)
 			{
