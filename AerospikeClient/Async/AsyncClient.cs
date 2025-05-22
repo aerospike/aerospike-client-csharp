@@ -15,6 +15,8 @@
  * the License.
  */
 
+using System.Reflection;
+
 namespace Aerospike.Client
 {
 	/// <summary>
@@ -127,6 +129,9 @@ namespace Aerospike.Client
 				policy = new AsyncClientPolicy(policy, configProvider);
 			}
 			MergeDefaultPoliciesWithConfig();
+			version = Assembly.GetExecutingAssembly().GetName().Version.ToString();
+			version ??= "development";
+
 			cluster = new AsyncCluster(this, policy, hosts);
 			base.cluster = this.cluster;
 		}

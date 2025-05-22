@@ -229,10 +229,7 @@ namespace Aerospike.Client
 			}
 			MergeDefaultPoliciesWithConfig();
 			version = Assembly.GetExecutingAssembly().GetName().Version.ToString();
-			if (version == null)
-			{
-				version = "development";
-			}
+			version ??= "development";
 
 			cluster = new Cluster(this, policy, hosts);
 			cluster.StartTendThread(policy);

@@ -15,8 +15,6 @@
  * the License.
  */
 
-using System;
-
 namespace Aerospike.Client
 {
 	public sealed class DeleteCommand : SyncWriteCommand
@@ -35,12 +33,7 @@ namespace Aerospike.Client
 
 		protected internal override void ParseResult(Node node, Connection conn)
 		{
-			ParseHeader(conn);
-			if (node.AreMetricsEnabled() && resultCode == ResultCode.KEY_BUSY)
-			{
-				node.AddKeyBusy(ns);
-			}
-
+			ParseHeader(node, conn);
 			ParseFields(policy.Txn, key, true);
 
 			if (resultCode == ResultCode.OK)

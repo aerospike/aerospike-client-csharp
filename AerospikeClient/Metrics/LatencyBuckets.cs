@@ -23,7 +23,7 @@ namespace Aerospike.Client
 	/// </summary>
 	public sealed class LatencyBuckets
 	{
-		private const long NS_TO_MS = 1000000;
+		internal const long NS_TO_MS = 1000000;
 
 		private volatile int[] buckets;
 		private readonly int latencyShift;

@@ -23,17 +23,20 @@ namespace Aerospike.Client
 	public class Counter
 	{
 		private readonly ConcurrentHashMap<string, long?> counterMap = new();
-		private long total = 0;
 		private readonly static string noNsLabel = "";
 
 		public Counter() { }
 
+		/// <summary>
+		/// Increment the counter by 1 for the given namespace
+		/// </summary>
+		/// <param name="ns">the namespace for the counter</param>
 		public void Increment(string ns)
 		{
 			string nsLabel = ns ?? noNsLabel;
-			counterMap.FindElementAndPerformWriteFunc(ns, (k, v) =>
+			counterMap.FindElementAndPerformWriteFunc(nsLabel, (k, found, v) =>
 			{
-				if (v == null)
+				if (!found) // key is not found, so add it
 				{
 					return 1;
 				}
@@ -42,15 +45,19 @@ namespace Aerospike.Client
 					return v + 1;
 				}
 			});
-			Interlocked.Increment(ref total);
 		}
 
+		/// <summary>
+		/// Increment the counter by the provided amount for the given namespace
+		/// </summary>
+		/// <param name="ns">the namespace for the counter</param>
+		/// <param name="count"></param>
 		public void Increment(string ns, long count)
 		{
 			string nsLabel = ns ?? noNsLabel;
-			counterMap.FindElementAndPerformWriteFunc(ns, (k, v) =>
+			counterMap.FindElementAndPerformWriteFunc(nsLabel, (k, found, v) =>
 			{
-				if (v == null)
+				if (!found) // key is not found, so add it
 				{
 					return count;
 				}
@@ -59,22 +66,44 @@ namespace Aerospike.Client
 					return v + count;
 				}
 			});
-			Interlocked.Add(ref total, count);
 		}
 
+		/// <summary>
+		/// Get the counter's total, which is the sum of the counter across all namespaces
+		/// </summary>
+		/// <returns>the total</returns>
 		public long GetTotal()
 		{
-			return Interlocked.Read(ref total);
+			long total = 0;
+			foreach (string ns in counterMap.Keys)
+			{
+				try
+				{
+					total += counterMap[ns] ?? 0;
+				}
+				catch (KeyNotFoundException)
+				{
+					total += 0;
+				}
+			}
+			return total;
 		}
 
+		/// <summary>
+		/// Get the counter's count for the provided namespace
+		/// </summary>
+		/// <param name="ns">the namespace for which to get the count</param>
+		/// <returns>the count for the namesapce</returns>
 		public long GetCountByNS(string ns)
 		{
-			long? count = counterMap[ns];
-			if (!count.HasValue)
+			if (counterMap.ContainsKey(ns))
+			{
+				return counterMap[ns].Value;
+			}
+			else
 			{
 				return 0;
 			}
-			return count.Value;
 		}
 	}
 }

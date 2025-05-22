@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2024 Aerospike, Inc.
+ * Copyright 2012-2025 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -43,7 +43,10 @@ namespace Aerospike.Client
 				}
 				finally
 				{
-					if (_lock.IsReadLockHeld) _lock.ExitReadLock();
+					if (_lock.IsReadLockHeld)
+					{
+						_lock.ExitReadLock();
+					}
 				}
 			}
 			set 
@@ -55,7 +58,10 @@ namespace Aerospike.Client
 				}
 				finally
 				{
-					if (_lock.IsWriteLockHeld) _lock.ExitWriteLock();
+					if (_lock.IsWriteLockHeld)
+					{
+						_lock.ExitWriteLock();
+					}
 				}
 			}
 		}
@@ -95,7 +101,10 @@ namespace Aerospike.Client
 			}
 			finally
 			{
-				if (_lock.IsWriteLockHeld) _lock.ExitWriteLock();
+				if (_lock.IsWriteLockHeld)
+				{
+					_lock.ExitWriteLock();
+				}
 			}
 		}
 
@@ -108,7 +117,10 @@ namespace Aerospike.Client
 			}
 			finally
 			{
-				if (_lock.IsReadLockHeld) _lock.ExitReadLock();
+				if (_lock.IsReadLockHeld)
+				{
+					_lock.ExitReadLock();
+				}
 			}
 		}
 
@@ -121,7 +133,10 @@ namespace Aerospike.Client
 			}
 			finally
 			{
-				if (_lock.IsWriteLockHeld) _lock.ExitWriteLock();
+				if (_lock.IsWriteLockHeld)
+				{
+					_lock.ExitWriteLock();
+				}
 			}
 		}
 
@@ -136,7 +151,10 @@ namespace Aerospike.Client
 				}
 				finally
 				{
-					if (_lock.IsReadLockHeld) _lock.ExitReadLock();
+					if (_lock.IsReadLockHeld)
+					{
+						_lock.ExitReadLock();
+					}
 				}
 			}
 		}
@@ -163,7 +181,7 @@ namespace Aerospike.Client
 			return false;
 		}
 
-		public bool FindElementAndPerformWriteFunc(TKey key, Func<TKey, TValue, TValue> func)
+		public void FindElementAndPerformWriteFunc(TKey key, Func<TKey, bool, TValue, TValue> func)
 		{
 			try
 			{
@@ -173,20 +191,34 @@ namespace Aerospike.Client
 					_lock.EnterWriteLock();
 					try
 					{
-						_dictionary[key] = func(key, value);
+						_dictionary[key] = func(key, true, value);
 					}
 					finally
 					{
 						_lock.ExitWriteLock();
 					}
-					return true;
+				}
+				else
+				{
+					_lock.EnterWriteLock();
+					try
+					{
+						_dictionary.Add(key, func(key, false, default));
+					}
+					finally
+					{
+						_lock.ExitWriteLock();
+					}
 				}
 			}
 			finally
 			{
-				if (_lock.IsWriteLockHeld) _lock.ExitUpgradeableReadLock();
+				if (_lock.IsUpgradeableReadLockHeld)
+				{
+					_lock.ExitUpgradeableReadLock();
+				}
 			}
-			return false;
+			
 		}
 
 		public bool SetValueIfNotNull(TKey key, TValue value)
@@ -194,7 +226,7 @@ namespace Aerospike.Client
 			try
 			{
 				_lock.EnterUpgradeableReadLock();
-				if (_dictionary[key] == null)
+				if (!_dictionary.ContainsKey(key))
 				{
 					_lock.EnterWriteLock();
 					try
@@ -210,9 +242,31 @@ namespace Aerospike.Client
 			}
 			finally
 			{
-				if (_lock.IsReadLockHeld) _lock.ExitUpgradeableReadLock();
+				if (_lock.IsUpgradeableReadLockHeld)
+				{
+					_lock.ExitUpgradeableReadLock();
+				}
 			}
 			return false;
+		}
+
+		public ICollection<TKey> Keys
+		{
+			get
+			{
+				try
+				{
+					_lock.EnterReadLock();
+					return _dictionary.Keys;
+				}
+				finally
+				{
+					if (_lock.IsReadLockHeld)
+					{
+						_lock.ExitReadLock();
+					}
+				}
+			}
 		}
 	}
 }

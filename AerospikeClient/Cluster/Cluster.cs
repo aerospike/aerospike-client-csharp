@@ -383,6 +383,12 @@ namespace Aerospike.Client
 				AddSeeds(seedsToAdd.ToArray());
 			}
 
+			if (configData != null && configData.dynamicConfig.metrics.enable.HasValue && 
+				configData.dynamicConfig.metrics.enable.Value)
+			{
+				EnableMetrics(MetricsPolicy);
+			}
+
 			// Run cluster tend thread.
 			tendValid = true;
 			tendThread = new Thread(new ThreadStart(this.Run));
@@ -590,37 +596,25 @@ namespace Aerospike.Client
 				}
 			}
 
-			if (configInterval > 0 && tendCount % configInterval == 0)
-			{
-				if (Client.configProvider.LoadConfig())
-				{
-					configData = Client.configProvider.ConfigurationData;
-					Client.MergeDefaultPoliciesWithConfig();
-					this.MetricsPolicy = MergeMetricsPolicyWithConfig(MetricsPolicy);
-
-					if (MetricsEnabled && MetricsPolicy.RestartRequired)
-					{
-						RestartMetrics();
-						return;
-					}
-
-					if (configData != null && configData.dynamicConfig.metrics.enable.HasValue)
-					{
-						if (!MetricsEnabled && configData.dynamicConfig.metrics.enable.Value)
-						{
-							EnableMetrics(this.MetricsPolicy);
-						}
-						else if (MetricsEnabled && !configData.dynamicConfig.metrics.enable.Value)
-						{
-							DisableMetrics();
-						}
-					}
-				}
-			}
-
+			// Perform metrics snapshot
 			if (MetricsEnabled && (tendCount % MetricsPolicy.Interval) == 0)
 			{
 				metricsListener.OnSnapshot(this);
+			}
+
+			if (configInterval > 0 && tendCount % configInterval == 0)
+			{
+				try
+				{
+					LoadConfiguration();
+				}
+				catch (Exception ex)
+				{
+					if (Log.WarnEnabled())
+					{
+						Log.Warn("Dynamic configuration failed: " + ex.Message);
+					}
+				}
 			}
 
 			ProcessRecoverQueue();
@@ -1047,28 +1041,49 @@ namespace Aerospike.Client
 			}
 		}
 
-		private void RestartMetrics()
+		private void LoadConfiguration()
 		{
-			DisableMetrics();
-			EnableMetrics(MetricsPolicy);
-			MetricsPolicy.RestartRequired = false;
+			if (Client.configProvider.LoadConfig())
+			{
+				configData = Client.configProvider.ConfigurationData;
+				Client.MergeDefaultPoliciesWithConfig();
+				this.MetricsPolicy = MergeMetricsPolicyWithConfig(MetricsPolicy);
+
+				if (MetricsEnabled && MetricsPolicy.RestartRequired)
+				{
+					DisableMetricsInternal();
+					EnableMetrics(MetricsPolicy);
+					MetricsPolicy.RestartRequired = false;
+					return;
+				}
+
+				if (configData != null && configData.dynamicConfig.metrics.enable.HasValue)
+				{
+					if (!MetricsEnabled && configData.dynamicConfig.metrics.enable.Value)
+					{
+						EnableMetrics(this.MetricsPolicy);
+
+					}
+					else if (MetricsEnabled && !configData.dynamicConfig.metrics.enable.Value)
+					{
+						DisableMetricsInternal();
+					}
+				}
+			}
 		}
 
 		private MetricsPolicy MergeMetricsPolicyWithConfig(MetricsPolicy metricsPolicy)
 		{
+			if (metricsPolicy == null)
+			{
+				metricsPolicy = new MetricsPolicy();
+			}
 			return new MetricsPolicy(metricsPolicy, configData);
 		}
 
 		public void EnableMetrics(MetricsPolicy policy)
 		{
 			MetricsPolicy mergedMp = MergeMetricsPolicyWithConfig(policy);
-			IMetricsListener listener = mergedMp.Listener;
-
-			listener ??= new MetricsWriter(mergedMp.ReportDir);
-
-			this.metricsListener = listener;
-			this.MetricsPolicy = mergedMp;
-
 			if (configData != null)
 			{
 				if (configData.dynamicConfig.metrics.enable.HasValue)
@@ -1081,6 +1096,13 @@ namespace Aerospike.Client
 					}
 				}
 			}
+
+			IMetricsListener listener = mergedMp.Listener;
+
+			listener ??= new MetricsWriter(mergedMp.ReportDir);
+
+			this.metricsListener = listener;
+			this.MetricsPolicy = mergedMp;
 
 			if (MetricsEnabled)
 			{
@@ -1101,15 +1123,26 @@ namespace Aerospike.Client
 		{
 			if (MetricsEnabled)
 			{
-				MetricsEnabled = false;
-				Node[] nodeArray = nodes;
-
-				foreach (Node node in nodeArray)
+				if (configData != null)
 				{
-					node.DisableMetrics();
+					if (configData.dynamicConfig.metrics.enable.HasValue)
+					{
+						if (configData.dynamicConfig.metrics.enable.Value)
+						{
+							Log.Error("Metrics can not be disabled via disableMetrics() when they are enabled via config.");
+							return;
+						}
+					}
 				}
-				metricsListener.OnDisable(this);
+
+				DisableMetricsInternal();
 			}
+		}
+
+		private void DisableMetricsInternal()
+		{
+			MetricsEnabled = false;
+			metricsListener.OnDisable(this);
 		}
 
 		public ClusterStats GetStats()
@@ -1401,7 +1434,7 @@ namespace Aerospike.Client
 
 			try
 			{
-				DisableMetrics();
+				DisableMetricsInternal();
 			}
 			catch (Exception e)
 			{

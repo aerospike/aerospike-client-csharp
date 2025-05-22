@@ -15,8 +15,10 @@
  * the License.
  */
 using System;
+using System.Diagnostics;
 using System.Net.Sockets;
 using System.Runtime.InteropServices;
+using System.Xml.Linq;
 using static Aerospike.Client.Latency;
 
 namespace Aerospike.Client
@@ -68,7 +70,8 @@ namespace Aerospike.Client
 			Node node;
 			AerospikeException exception = null;
 			ValueStopwatch metricsWatch = new();
-			LatencyType latencyType = cluster.MetricsEnabled ? GetLatencyType() : LatencyType.NONE;
+			bool metricsEnabled = cluster.MetricsEnabled;
+			LatencyType latencyType = metricsEnabled ? GetLatencyType() : LatencyType.NONE;
 			bool isClientTimeout;
 
 			// Execute command until successful, timed out or maximum iterations have been reached.
@@ -103,6 +106,11 @@ namespace Aerospike.Client
 						// Send command.
 						conn.Write(dataBuffer, dataOffset);
 						commandSentCounter++;
+
+						if (metricsEnabled)
+						{
+							node.AddBytesOut(ns, dataOffset);
+						}
 
 						// Parse results.
 						ParseResult(node, conn);
@@ -146,6 +154,13 @@ namespace Aerospike.Client
 							isClientTimeout = false;
 							node.IncrErrorRate();
 							node.AddError(ns);
+						}
+						else if (ae.Result == ResultCode.KEY_BUSY)
+						{
+							exception = ae;
+							isClientTimeout = false;
+							node.IncrErrorRate();
+							node.AddKeyBusy(ns);
 						}
 						else
 						{
@@ -351,10 +366,13 @@ namespace Aerospike.Client
 			ByteUtil.LongToBytes(size, dataBuffer, 0);
 		}
 
-		protected internal void ParseHeader(Connection conn)
+		protected internal void ParseHeader(Node node, Connection conn)
 		{
+			int bytesIn = 0;
+			
 			// Read header.
 			conn.ReadFully(dataBuffer, 8, Command.STATE_READ_HEADER);
+			bytesIn += 8;
 
 			long sz = ByteUtil.BytesToLong(dataBuffer, 0);
 			int receiveSize = (int)(sz & 0xFFFFFFFFFFFFL);
@@ -366,6 +384,11 @@ namespace Aerospike.Client
 
 			SizeBuffer(receiveSize);
 			conn.ReadFully(dataBuffer, receiveSize, Command.STATE_READ_DETAIL);
+			bytesIn += receiveSize;
+			if (node.AreMetricsEnabled())
+			{
+				node.AddBytesIn(ns, bytesIn);
+			}
 			conn.UpdateLastUsed();
 
 			ulong type = (ulong)(sz >> 48) & 0xff;

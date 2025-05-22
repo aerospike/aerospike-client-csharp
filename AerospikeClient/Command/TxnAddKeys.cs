@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2024 Aerospike, Inc.
+ * Copyright 2012-2025 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -22,7 +22,7 @@ namespace Aerospike.Client
 		private readonly OperateArgs args;
 		private readonly Txn txn;
 
-		public TxnAddKeys (Cluster cluster, Key key, OperateArgs args, Txn txn) 
+		public TxnAddKeys(Cluster cluster, Key key, OperateArgs args, Txn txn) 
 			: base(cluster, args.writePolicy, key)
 		{
 			this.args = args;
@@ -34,9 +34,9 @@ namespace Aerospike.Client
 			SetTxnAddKeys(args.writePolicy, key, args);
 		}
 
-		protected internal override void ParseResult(Connection conn)
+		protected internal override void ParseResult(Node node, Connection conn)
 		{
-			ParseHeader(conn);
+			ParseHeader(node, conn);
 			ParseTxnDeadline(txn);
 
 			if (resultCode == ResultCode.OK)

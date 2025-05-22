@@ -17,14 +17,24 @@
 
 namespace Aerospike.Client
 {
+	/// <summary>
+	/// A Histograms object is a container for a map of namespaces to histograms (as defined by their associated
+	/// LatencyBuckets) and their histogram properties
+	/// </summary>
 	public class Histograms
 	{
-		private readonly ConcurrentHashMap<string, LatencyBuckets[]> histoMap = new();
+		internal readonly ConcurrentHashMap<string, LatencyBuckets[]> histoMap = new();
 		private readonly int histoShift;
 		private readonly int columnCount;
 		private readonly static string noNsLabel = "";
 		private readonly int max;
 
+		/// <summary>
+		/// Create Histograms object
+		/// </summary>
+		/// <param name="columnCount">number of histogram columns or "buckets"</param>
+		/// <param name="shift"> power of 2 multiple between each range bucket in histogram starting at bucket 3.
+		/// The first 2 buckets are "&lt;=1ms" and "&gt;1ms".</param>
 		public Histograms(int columnCount, int shift)
 		{
 			this.columnCount = columnCount;
@@ -44,19 +54,26 @@ namespace Aerospike.Client
 			return buckets;
 		}
 
+		/// <summary>
+		/// Increment count of bucket corresponding to the namespace elapsed time in nanoseconds.
+		/// </summary>
+		/// <param name="ns"></param>
+		/// <param name="type"></param>
+		/// <param name="elapsed"></param>
 		public void AddLatency(string ns, Latency.LatencyType type, long elapsed)
 		{
-			if (ns == null)
-			{
-				ns = noNsLabel;
-			}
+			ns ??= noNsLabel;
 
-			LatencyBuckets[] buckets = histoMap[ns];
-			if (buckets == null)
+			LatencyBuckets[] buckets;
+			if (!histoMap.ContainsKey(ns))
 			{
 				buckets = CreateBuckets();
 				LatencyBuckets[] finalBuckets = buckets;
 				histoMap.SetValueIfNotNull(ns, finalBuckets);
+			}
+			else
+			{
+				buckets = histoMap[ns];
 			}
 
 			buckets[(int)type].Add(elapsed);

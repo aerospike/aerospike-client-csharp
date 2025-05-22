@@ -16,7 +16,6 @@
  */
 
 using Aerospike.Client.Config;
-using Microsoft.Extensions.Configuration;
 
 namespace Aerospike.Client
 {
@@ -114,7 +113,7 @@ namespace Aerospike.Client
 			}
 			if (metrics.labels != null)
 			{
-				this.labels = metrics.labels.ToDictionary();
+				this.labels = metrics.labels;
 			}
 			if (metrics.latency_shift.HasValue)
 			{
@@ -152,6 +151,7 @@ namespace Aerospike.Client
 			this.LatencyShift = other.LatencyShift;
 			this.AppId = other.AppId;
 			this.labels = other.labels;
+			this.RestartRequired = other.RestartRequired;
 		}
 
 		/// <summary>

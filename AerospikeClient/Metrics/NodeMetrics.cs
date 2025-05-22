@@ -25,7 +25,6 @@ namespace Aerospike.Client
 	public sealed class NodeMetrics
 	{
 		public Histograms Histograms { get; private set; }
-		public readonly Counter KeyBusyCounter;
 		public readonly Counter BytesInCounter;
 		public readonly Counter BytesOutCounter;
 
@@ -36,7 +35,6 @@ namespace Aerospike.Client
 		{
 			int latencyColumns = policy.LatencyColumns;
 			int latencyShift = policy.LatencyShift;
-			this.KeyBusyCounter = new Counter();
 			this.BytesInCounter = new Counter();
 			this.BytesOutCounter = new Counter();
 
@@ -45,12 +43,13 @@ namespace Aerospike.Client
 
 		/// <summary>
 		/// Add elapsed time in nanoseconds to latency buckets corresponding to latency type.
+		/// This is where the conversion to nanoseconds occurs.
 		/// </summary>
 		/// <param name="ns">namespace</param>
 		/// <param name="type"></param>
-		/// <param name="elapsed">elapsed time</param>
-		public void AddLatency(string ns, LatencyType type, long elapsed) {
-			Histograms.AddLatency(ns, type, elapsed);
+		/// <param name="elapsedMs">elapsed time, in milliseconds</param>
+		public void AddLatency(string ns, LatencyType type, double elapsedMs) {
+			Histograms.AddLatency(ns, type, (long)elapsedMs * LatencyBuckets.NS_TO_MS);
 		}
 	}
 }

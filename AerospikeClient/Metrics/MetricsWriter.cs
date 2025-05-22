@@ -16,13 +16,8 @@
  */
 
 using static Aerospike.Client.Latency;
-using System.Drawing;
-using System.IO;
 using System.Text;
-using System;
 using System.Diagnostics;
-using Microsoft.Extensions.Primitives;
-using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace Aerospike.Client
 {
@@ -197,13 +192,13 @@ namespace Aerospike.Client
 			sb.Append(',');
 			if (policy.labels != null)
 			{
-				sb.Append("[");
+				sb.Append('[');
 				foreach (string key in policy.labels.Keys)
 				{
-					sb.Append("[").Append(key).Append(",").Append(policy.labels[key]).Append("],");
+					sb.Append('[').Append(key).Append(',').Append(policy.labels[key]).Append("],");
 				}
-				//sb.DeleteCharAt(sb.length() - 1); TODO
-				sb.Append("]");
+				sb.Remove(sb.Length - 1, 1); // Remove last comma
+				sb.Append(']');
 			}
 			sb.Append(',');
 			sb.Append((int)cpu);
@@ -228,7 +223,7 @@ namespace Aerospike.Client
 			var completionPortsInUse = completionPortThreadsMax - completionPortThreads;
 
 			sb.Append(threadsInUse);
-			sb.Append(",");
+			sb.Append(',');
 			sb.Append(completionPortsInUse);
 			sb.Append(",[");
 
@@ -244,7 +239,7 @@ namespace Aerospike.Client
 				}
 				WriteNode(node);
 			}
-			sb.Append("]");
+			sb.Append(']');
 			WriteLine();
 		}
 
@@ -264,22 +259,19 @@ namespace Aerospike.Client
 			WriteConn(node.GetConnectionStats());
 			sb.Append(',');
 			var asyncStats = new ConnectionStats(0, 0, 0, 0);
-			if (node is AsyncNode)
+			if (node is AsyncNode async)
 			{
-				asyncStats = ((AsyncNode)node).GetAsyncConnectionStats();
+				asyncStats = async.GetAsyncConnectionStats();
 			}
 			WriteConn(asyncStats);
 			sb.Append(",[");
 
 			Histograms hGrams = node.GetMetrics().Histograms;
-			ConcurrentHashMap<string, LatencyBuckets[]> hMap = hGrams.GetMap();
+			ConcurrentHashMap<string, LatencyBuckets[]> hMap = hGrams.histoMap;
 			int max = Latency.GetMax();
 
-			Iterator<Dictionary.Enumerator<string, LatencyBuckets[]>> nsItr = hMap.entrySet().iterator(); // TODO: work on action for ConcurrentHashSet
-			while (nsItr.hasNext())
+			foreach (string ns in hMap.Keys)
 			{
-				Map.Entry<string, LatencyBuckets[]> entry = nsItr.next();
-				string ns = entry.getKey();
 				sb.Append(ns).Append(',');
 				sb.Append(node.GetErrorCountByNS(ns));
 				sb.Append(',');
@@ -292,9 +284,9 @@ namespace Aerospike.Client
 				sb.Append(node.GetBytesOutByNS(ns));
 				sb.Append(",[");
 				LatencyBuckets[] latencyBuckets = hGrams.GetBuckets(ns);
-				for (int i = 0; i < max; i++) 
+				for (int i = 0; i < max; i++)
 				{
-					if (i > 0) 
+					if (i > 0)
 					{
 						sb.Append(',');
 					}
@@ -304,9 +296,9 @@ namespace Aerospike.Client
 
 					LatencyBuckets buckets = latencyBuckets[i];
 					int bucketMax = buckets.GetMax();
-					for (int j = 0; j<bucketMax; j++) 
+					for (int j = 0; j < bucketMax; j++)
 					{
-						if (j > 0) 
+						if (j > 0)
 						{
 							sb.Append(',');
 						}
@@ -314,15 +306,10 @@ namespace Aerospike.Client
 					}
 					sb.Append(']');
 				}
-				if (nsItr.hasNext()) 
-				{
-					sb.Append("]],[");
-				} 
-				else 
-				{
-					sb.Append("]]");
-				}
+				sb.Append("]],[");
 			}
+			sb.Remove(sb.Length - 2, 2); // Remove ,[
+			sb.Append("]]");
 			sb.Append("]]");
 		}
 

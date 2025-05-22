@@ -17,6 +17,7 @@
 
 using Microsoft.Extensions.Configuration;
 using Aerospike.Client.Config;
+using System.Reflection.Emit;
 
 namespace Aerospike.Client
 {

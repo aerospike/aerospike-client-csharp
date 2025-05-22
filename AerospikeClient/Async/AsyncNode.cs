@@ -196,22 +196,6 @@ namespace Aerospike.Client
 			Interlocked.Increment(ref asyncConnsClosed);
 		}
 
-		public void IncrBytesReceived(long bytesReceived)
-		{
-			if (this.metricsEnabled)
-			{
-				Interlocked.Add(ref this.bytesReceived, bytesReceived);
-			}
-		}
-
-		public void IncrBytesSent(long bytesSent)
-		{
-			if (this.metricsEnabled)
-			{
-				Interlocked.Add(ref this.bytesSent, bytesSent);
-			}
-		}
-
 		public ConnectionStats GetAsyncConnectionStats()
 		{
 			int inPool = 0;
@@ -239,7 +223,7 @@ namespace Aerospike.Client
 			}
 			else
 			{
-				return new ConnectionStats(inPool, inUse, opened, closed, this.bytesReceived, this.bytesSent);
+				return new ConnectionStats(inPool, inUse, opened, closed, this.GetBytesInTotal(), this.GetBytesOutTotal());
 			}
 		}
 	}

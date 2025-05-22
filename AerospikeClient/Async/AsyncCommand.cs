@@ -16,6 +16,7 @@
  */
 using System;
 using System.Net.Sockets;
+using System.Runtime.ConstrainedExecution;
 using System.Timers;
 using static Aerospike.Client.Latency;
 
@@ -56,7 +57,9 @@ namespace Aerospike.Client
 		private bool inHeader = true;
 		private ValueStopwatch metricsWatch;
 		private readonly bool metricsEnabled;
-		private string ns;
+		private readonly string ns;
+		private long bytesIn;
+		private long bytesOut;
 
 		/// <summary>
 		/// Default Constructor.
@@ -215,6 +218,8 @@ namespace Aerospike.Client
 		private void ExecuteCommand()
 		{
 			iteration++;
+			bytesIn = 0;
+			bytesOut = 0;
 
 			try
 			{
@@ -300,6 +305,7 @@ namespace Aerospike.Client
 					AdminCommand command = new AdminCommand(dataBuffer, dataOffset);
 					dataLength = command.SetAuthenticate(cluster, token);
 					conn?.Send(dataBuffer, dataOffset, dataLength - dataOffset);
+					bytesOut += dataLength - dataOffset;
 					return;
 				}
 			}
@@ -310,6 +316,7 @@ namespace Aerospike.Client
 		{
 			WriteBuffer();
 			conn?.Send(dataBuffer, dataOffset, dataLength - dataOffset);
+			bytesOut += dataLength - dataOffset;
 		}
 
 		protected internal sealed override int SizeBuffer()
@@ -384,6 +391,7 @@ namespace Aerospike.Client
 			}
 
 			conn?.Receive(dataBuffer, segment.offset, 8);
+			bytesIn += 8;
 		}
 
 		public void ReceiveComplete()
@@ -405,6 +413,7 @@ namespace Aerospike.Client
 					// Some server versions returned zero length groups for batch/scan/query.
 					// Receive again to retrieve next group.
 					conn?.Receive(dataBuffer, dataOffset, 8);
+					bytesIn += 8;
 					return;
 				}
 
@@ -420,6 +429,7 @@ namespace Aerospike.Client
 
 				dataLength = dataOffset + length;
 				conn?.Receive(dataBuffer, dataOffset, length);
+				bytesIn += length - dataOffset;
 			}
 			else
 			{
@@ -470,6 +480,7 @@ namespace Aerospike.Client
 		{
 			inHeader = true;
 			conn?.Receive(dataBuffer, segment.offset, 8);
+			bytesIn += 8;
 		}
 
 		public void OnError(Exception e)
@@ -494,6 +505,11 @@ namespace Aerospike.Client
 					{
 						node.AddError(ns);
 						RetryServerError(ae);
+					}
+					else if (ae.Result == ResultCode.KEY_BUSY)
+					{
+						node.AddError(ns);
+						node.AddKeyBusy(ns);
 					}
 					else
 					{
@@ -622,6 +638,7 @@ namespace Aerospike.Client
 
 		private void Backoff(AerospikeException ae)
 		{
+			AddBytesInOut();
 			if (ShouldRetry())
 			{
 				int status = Interlocked.CompareExchange(ref state, RETRY, IN_PROGRESS);
@@ -773,6 +790,7 @@ namespace Aerospike.Client
 			{
 				// Command finished successfully.
 				// Put connection back into pool.
+				AddBytesInOut();
 				node.PutAsyncConnection(conn);
 				ReleaseBuffer();
 			}
@@ -832,6 +850,7 @@ namespace Aerospike.Client
 						if (ae.KeepConnection())
 						{
 							// Put connection back in pool.
+							AddBytesInOut();
 							node.PutAsyncConnection(conn);
 						}
 						else
@@ -932,9 +951,21 @@ namespace Aerospike.Client
 		{
 			if (conn != null)
 			{
+				AddBytesInOut();
 				node.CloseAsyncConnOnError(conn);
 				conn = null;
 			}
+		}
+
+		private void AddBytesInOut()
+		{
+			if (node.AreMetricsEnabled())
+			{
+				node.AddBytesIn(ns, bytesIn);
+				node.AddBytesOut(ns, bytesOut);
+			}
+			bytesIn = 0;
+			bytesOut = 0;
 		}
 
 		internal void ReleaseBuffer()

@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2024 Aerospike, Inc.
+ * Copyright 2012-2025 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -14,9 +14,6 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-
-using System.Xml.Linq;
-using Aerospike.Client;
 
 namespace Aerospike.Client
 {
@@ -49,17 +46,8 @@ namespace Aerospike.Client
 
 		protected internal override void ParseResult(Node node, Connection conn)
 		{
-			ParseHeader(conn);
+			ParseHeader(node, conn);
 			ParseFields(policy.Txn, key, true);
-
-			if (node.AreMetricsEnabled())
-			{
-				node.AddBytesIn(ns, rp.bytesIn);
-				if (resultCode == ResultCode.KEY_BUSY) 
-				{	
-					node.AddKeyBusy(ns);
-				}
-			}
 
 			if (resultCode == ResultCode.OK)
 			{

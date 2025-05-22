@@ -231,7 +231,7 @@ namespace Aerospike.Client.Config
 		public int? latency_shift { get; set; }
 		public int? latency_columns { get; set; }
 		public string app_id { get; set; }
-		public KeyValuePair<string, string>[] labels { get; set; }
+		public Dictionary<string, string> labels { get; set; }
 
 	}
 }

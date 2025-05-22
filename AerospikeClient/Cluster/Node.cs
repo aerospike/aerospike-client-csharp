@@ -58,6 +58,7 @@ namespace Aerospike.Client
 		private volatile int errorRateCount;
 		private readonly Counter errorCounter;
 		private readonly Counter timeoutCounter;
+		private readonly Counter keyBusyCounter;
 		protected internal int peersGeneration = -1;
 		protected internal int partitionGeneration = -1;
 		protected internal int rebalanceGeneration = -1;
@@ -90,18 +91,12 @@ namespace Aerospike.Client
 			this.errorCounter = new Counter();
 			this.errorRateCount = 0;
 			this.timeoutCounter = new Counter();
+			this.keyBusyCounter = new Counter();
 
 			this.metricsEnabled = cluster.MetricsEnabled;
 			if (cluster.MetricsEnabled)
 			{
 				this.metrics = new NodeMetrics(cluster.MetricsPolicy);
-				this.bytesReceived = 0;
-				this.bytesSent = 0;
-			}
-			else
-			{
-				this.bytesReceived = -1;
-				this.bytesSent = -1;
 			}
 
 			connectionPools = new Pool<Connection>[cluster.connPoolsPerNode];
@@ -379,7 +374,7 @@ namespace Aerospike.Client
 					Log.Debug(cluster.context, "Update peers for node " + this);
 				}
 
-				PeerParser parser = new PeerParser(cluster, this, tendConnection, peers.peers);
+				PeerParser parser = new(cluster, this, tendConnection, peers.peers);
 				peersCount = peers.peers.Count;
 
 				bool peersValidated = true;
@@ -993,7 +988,7 @@ namespace Aerospike.Client
 		/// <param name="ns">namespace</param>
 		/// <param name="type"></param>
 		/// <param name="elapsedMs">elapsed time in milliseconds. The conversion to nanoseconds is done later</param>
-		public void AddLatency(string ns, LatencyType type, long elapsedMs)
+		public void AddLatency(string ns, LatencyType type, double elapsedMs)
 		{
 			metrics.AddLatency(ns, type, elapsedMs);
 		}
@@ -1048,20 +1043,20 @@ namespace Aerospike.Client
 		/// </summary>
 		public void AddKeyBusy(string ns) 
 		{
-			metrics.KeyBusyCounter.Increment(ns);
+			keyBusyCounter.Increment(ns);
 		}
 
-		/**
-		 * Add to the count of bytes sent to the node.
-		 */
+		/// <summary>
+		/// Add to the count of bytes sent to the node.
+		/// </summary>
 		public void AddBytesOut(string ns, long count) 
 		{
 			metrics.BytesOutCounter.Increment(ns, count);
 		}
 
-		/**
-		 * Add to the count of bytes received from the node.
-		 */
+		/// <summary>
+		/// Add to the count of bytes received from the node.
+		/// </summary>
 		public void AddBytesIn(string ns, long count) 
 		{
 			metrics.BytesInCounter.Increment(ns, count);
@@ -1101,11 +1096,27 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
+		/// Return count of total bytes in. The value is cumulative and not reset per metrics interval.
+		/// </summary>
+		public long GetBytesInTotal() 
+		{
+			return metrics.BytesInCounter.GetTotal();
+		}
+
+		/// <summary>
 		/// Return count of bytes in by namespace. The value is cumulative and not reset per metrics interval.
 		/// </summary>
-		public long GetBytesInByNS(string ns) 
+		public long GetBytesInByNS(string ns)
 		{
 			return metrics.BytesInCounter.GetCountByNS(ns);
+		}
+
+		/// <summary>
+		/// Return count of total bytes out. The value is cumulative and not reset per metrics interval.
+		/// </summary>
+		public long GetBytesOutTotal()
+		{
+			return metrics.BytesOutCounter.GetTotal();
 		}
 
 		/// <summary>
@@ -1121,7 +1132,7 @@ namespace Aerospike.Client
 		/// </summary>
 		public long GetKeyBusyCountByNS(string ns) 
 		{
-			return metrics.KeyBusyCounter.GetCountByNS(ns);
+			return keyBusyCounter.GetCountByNS(ns);
 		}
 
 		/// <summary>

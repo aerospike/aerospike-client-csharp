@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2023 Aerospike, Inc.
+ * Copyright 2012-2025 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -90,11 +90,12 @@ namespace Aerospike.Client
 		/// Write expression in wire protocol.
 		/// For internal use only.
 		/// </summary>
-		public void Write(Command cmd)
+		public int Write(Command cmd)
 		{
 			cmd.WriteExpHeader(bytes.Length);
 			Array.Copy(bytes, 0, cmd.dataBuffer, cmd.dataOffset, bytes.Length);
 			cmd.dataOffset += bytes.Length;
+			return bytes.Length;
 		}
 	}
 }

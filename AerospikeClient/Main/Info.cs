@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2024 Aerospike, Inc.
+ * Copyright 2012-2025 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -14,12 +14,9 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using System;
 using System.Text;
 using System.Net;
 using System.Net.Sockets;
-using System.Collections.Generic;
-using System.Xml.Linq;
 
 namespace Aerospike.Client
 {
@@ -452,7 +449,7 @@ namespace Aerospike.Client
 		/// </summary>
 		/// <param name="node">server node</param>
 		/// <param name="conn">connection to server node</param>
-		/// <param name="command">command sent to server</param>
+		/// <param name="commands">command sent to server</param>
 		internal Info(Node node, Connection conn, params string[] commands)
 		{
 			buffer = ThreadLocalData.GetBuffer();
@@ -548,8 +545,9 @@ namespace Aerospike.Client
 		/// This constructor is used internally.
 		/// The static request methods should be used instead.
 		/// </summary>
+		/// <param name="node">server node</param>
 		/// <param name="conn">connection to server node</param>
-		public Info(Node node, Connection conn)
+		internal Info(Node node, Connection conn)
 		{
 			buffer = ThreadLocalData.GetBuffer();
 			offset = 8; // Skip size field.
@@ -570,6 +568,7 @@ namespace Aerospike.Client
 		/// Issue request and set results buffer. This method is used internally.
 		/// The static request methods should be used instead.
 		/// </summary>
+		/// <param name="node"></param>
 		/// <param name="conn">socket connection to server node</param>
 		/// <exception cref="AerospikeException">if socket send or receive fails</exception>
 		private void SendCommand(Node node, Connection conn)
@@ -584,7 +583,7 @@ namespace Aerospike.Client
 
 				// Write.
 				conn.Write(buffer, offset);
-				if (node != null && node.MetricsEnabled)
+				if (node != null && node.AreMetricsEnabled())
 				{
 					node.AddBytesOut(null, offset);
 				}
@@ -598,7 +597,7 @@ namespace Aerospike.Client
 				ResizeBuffer(length);
 				conn.ReadFully(buffer, length);
 				bytesIn += length;
-				if (node != null && node.MetricsEnabled)
+				if (node != null && node.AreMetricsEnabled())
 				{
 					node.AddBytesIn(null, bytesIn);
 				}
