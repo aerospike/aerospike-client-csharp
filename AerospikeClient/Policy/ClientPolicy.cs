@@ -266,10 +266,21 @@ namespace Aerospike.Client
 		public Dictionary<string, string> ipMap;
 
 		/// <summary>
-		/// Should use "services-alternate" instead of "services" in info request during cluster
-		/// tending.  "services-alternate" returns server configured external IP addresses that client
-		/// uses to talk to nodes.  "services-alternate" can be used in place of providing a client "ipMap".
-		/// <para>Default: false (use original "services" info request)</para>
+		/// Flag to signify if alternate IP address discovery info commands should be used.
+		/// 
+	    /// If false, use:
+	    /// IP address: service-clear-std
+	    /// TLS IP address: service-tls-std
+	    /// Peers addresses: peers-clear-std
+	    /// Peers TLS addresses: peers-tls-std
+	    /// 
+	    /// If true, use:
+	    /// IP address: service-clear-alt
+	    /// TLS IP address: service-tls-alt
+	    /// Peers addresses: peers-clear-alt
+	    /// Peers TLS addresses: peers-tls-alt
+	    /// 
+	    /// Default: false
 		/// </summary>
 		public bool useServicesAlternate;
 
