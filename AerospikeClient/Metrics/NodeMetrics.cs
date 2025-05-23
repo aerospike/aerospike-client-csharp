@@ -42,14 +42,13 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
-		/// Add elapsed time in nanoseconds to latency buckets corresponding to latency type.
-		/// This is where the conversion to nanoseconds occurs.
+		/// Add elapsed time in milliseconds to latency buckets corresponding to latency type.
 		/// </summary>
 		/// <param name="ns">namespace</param>
 		/// <param name="type"></param>
 		/// <param name="elapsedMs">elapsed time, in milliseconds</param>
 		public void AddLatency(string ns, LatencyType type, double elapsedMs) {
-			Histograms.AddLatency(ns, type, (long)elapsedMs * LatencyBuckets.NS_TO_MS);
+			Histograms.AddLatency(ns, type, elapsedMs);
 		}
 	}
 }

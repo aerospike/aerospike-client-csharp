@@ -55,12 +55,12 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
-		/// Increment count of bucket corresponding to the namespace elapsed time in nanoseconds.
+		/// Increment count of bucket corresponding to the namespace elapsed time in milliseconds.
 		/// </summary>
 		/// <param name="ns"></param>
 		/// <param name="type"></param>
 		/// <param name="elapsed"></param>
-		public void AddLatency(string ns, Latency.LatencyType type, long elapsed)
+		public void AddLatency(string ns, Latency.LatencyType type, double elapsed)
 		{
 			ns ??= noNsLabel;
 

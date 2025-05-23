@@ -23,7 +23,7 @@ namespace Aerospike.Client
 	/// </summary>
 	public sealed class LatencyBuckets
 	{
-		internal const long NS_TO_MS = 1000000;
+		private const long NS_TO_MS = 1000000;
 
 		private volatile int[] buckets;
 		private readonly int latencyShift;
@@ -57,31 +57,25 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
-		/// Increment count of bucket corresponding to the elapsed time in nanoseconds.
+		/// Increment count of bucket corresponding to the elapsed time in milliseconds.
 		/// </summary>
-		public void Add(long elapsed)
+		public void Add(double elapsed)
 		{
 			int index = GetIndex(elapsed);
 			Interlocked.Increment(ref buckets[index]);
 		}
 
-		private int GetIndex(long elapsedNanos)
+		private int GetIndex(double elapsed)
 		{
-			// Convert nanoseconds to milliseconds.
-			long elapsed = elapsedNanos / NS_TO_MS;
-
 			// Round up elapsed to nearest millisecond.
-			if ((elapsedNanos - (elapsed * NS_TO_MS)) > 0)
-			{
-				elapsed++;
-			}
+			long elapsedRounded = (long)Math.Ceiling(elapsed);
 
 			int lastBucket = buckets.Length - 1;
 			long limit = 1;
 
 			for (int i = 0; i < lastBucket; i++)
 			{
-				if (elapsed <= limit)
+				if (elapsedRounded <= limit)
 				{
 					return i;
 				}

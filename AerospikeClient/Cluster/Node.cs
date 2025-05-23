@@ -977,11 +977,11 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
-		/// Add elapsed time in nanoseconds to latency buckets corresponding to latency type.
+		/// Add elapsed time in milliseconds to latency buckets corresponding to latency type.
 		/// </summary>
 		/// <param name="ns">namespace</param>
 		/// <param name="type"></param>
-		/// <param name="elapsedMs">elapsed time in milliseconds. The conversion to nanoseconds is done later</param>
+		/// <param name="elapsedMs">elapsed time in milliseconds</param>
 		public void AddLatency(string ns, LatencyType type, double elapsedMs)
 		{
 			metrics.AddLatency(ns, type, elapsedMs);
