@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2024 Aerospike, Inc.
+ * Copyright 2012-2025 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -23,8 +23,6 @@ namespace Aerospike.Client
 	/// </summary>
 	public sealed class LatencyBuckets
 	{
-		private const long NS_TO_MS = 1000000;
-
 		private volatile int[] buckets;
 		private readonly int latencyShift;
 
