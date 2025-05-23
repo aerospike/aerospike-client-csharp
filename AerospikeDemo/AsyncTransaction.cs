@@ -34,7 +34,7 @@ namespace Aerospike.Demo
 		{
 			completed = false;
 
-			Txn txn = new();
+			using Txn txn = new();
 
 			console.Info("Begin txn: " + txn.Id);
 			Put(client, txn, args);

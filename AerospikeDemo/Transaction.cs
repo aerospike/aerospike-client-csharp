@@ -35,7 +35,7 @@ namespace Aerospike.Demo
 
 		private void TxnReadWrite(IAerospikeClient client, Arguments args)
 		{
-			Txn txn = new();
+			using Txn txn = new();
 			console.Info("Begin txn: " + txn.Id);
 
 			try

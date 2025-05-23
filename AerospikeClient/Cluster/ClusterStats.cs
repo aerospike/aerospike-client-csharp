@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2024 Aerospike, Inc.
+ * Copyright 2012-2025 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -138,6 +138,11 @@ namespace Aerospike.Client
 		public readonly long TimeoutCount;
 
 		/// <summary>
+		/// Key busy count since node was initialized.
+		/// </summary>
+		public readonly long KeyBusyCount;
+
+		/// <summary>
 		/// Node statistics constructor.
 		/// </summary>
 		public NodeStats(Node node)
@@ -146,6 +151,7 @@ namespace Aerospike.Client
 			this.syncStats = node.GetConnectionStats();
 			this.ErrorCount = node.GetErrorCount();
 			this.TimeoutCount = node.GetTimeoutCount();
+			this.KeyBusyCount = node.GetKeyBusyCount();
 
 			if (node is AsyncNode)
 			{
@@ -162,7 +168,8 @@ namespace Aerospike.Client
 		/// </summary>
 		public override string ToString()
 		{
-			return node + " sync(" + syncStats + ") async(" + asyncStats + ") " + ErrorCount + ',' + TimeoutCount;
+			return node + " sync(" + syncStats + ") async(" + asyncStats + 
+				") " + ErrorCount + ',' + TimeoutCount + ',' + KeyBusyCount;
 		}
 	}
 

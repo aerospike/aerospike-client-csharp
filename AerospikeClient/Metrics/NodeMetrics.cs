@@ -22,11 +22,12 @@ namespace Aerospike.Client
 	/// <summary>
 	/// Client metrics listener.
 	/// </summary>
-	public sealed class NodeMetrics
+	public sealed class NodeMetrics : IDisposable
 	{
 		public Histograms Histograms { get; private set; }
 		public readonly Counter BytesInCounter;
 		public readonly Counter BytesOutCounter;
+		private bool disposedValue;
 
 		/// <summary>
 		/// Initialize extended node metrics.
@@ -49,6 +50,28 @@ namespace Aerospike.Client
 		/// <param name="elapsedMs">elapsed time, in milliseconds</param>
 		public void AddLatency(string ns, LatencyType type, double elapsedMs) {
 			Histograms.AddLatency(ns, type, elapsedMs);
+		}
+
+		private void Dispose(bool disposing)
+		{
+			if (!disposedValue)
+			{
+				if (disposing)
+				{
+					BytesInCounter.Dispose();
+					BytesOutCounter.Dispose();
+					Histograms.Dispose();
+				}
+
+				disposedValue = true;
+			}
+		}
+
+		public void Dispose()
+		{
+			// Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
+			Dispose(disposing: true);
+			GC.SuppressFinalize(this);
 		}
 	}
 }

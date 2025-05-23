@@ -37,7 +37,7 @@ namespace Aerospike.Demo
 		/// </summary>
 		public override void RunExample(AsyncClient client, Arguments args)
 		{
-			Txn txn = new();
+			using Txn txn = new();
 			var token = CancellationToken.None;
 
 			console.Info("Begin txn: " + txn.Id);

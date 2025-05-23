@@ -21,26 +21,20 @@ namespace Aerospike.Client
 	/// A Histograms object is a container for a map of namespaces to histograms (as defined by their associated
 	/// LatencyBuckets) and their histogram properties
 	/// </summary>
-	public class Histograms
+	/// <remarks>
+	/// Create Histograms object
+	/// </remarks>
+	/// <param name="columnCount">number of histogram columns or "buckets"</param>
+	/// <param name="shift"> power of 2 multiple between each range bucket in histogram starting at bucket 3.
+	/// The first 2 buckets are "&lt;=1ms" and "&gt;1ms".</param>
+	public class Histograms(int columnCount, int shift) : IDisposable
 	{
 		internal readonly ConcurrentHashMap<string, LatencyBuckets[]> histoMap = new();
-		private readonly int histoShift;
-		private readonly int columnCount;
+		private readonly int histoShift = shift;
+		private readonly int columnCount = columnCount;
 		private readonly static string noNsLabel = "";
-		private readonly int max;
-
-		/// <summary>
-		/// Create Histograms object
-		/// </summary>
-		/// <param name="columnCount">number of histogram columns or "buckets"</param>
-		/// <param name="shift"> power of 2 multiple between each range bucket in histogram starting at bucket 3.
-		/// The first 2 buckets are "&lt;=1ms" and "&gt;1ms".</param>
-		public Histograms(int columnCount, int shift)
-		{
-			this.columnCount = columnCount;
-			this.histoShift = shift;
-			max = Latency.GetMax();
-		}
+		private readonly int max = Latency.GetMax();
+		private bool disposedValue;
 
 		private LatencyBuckets[] CreateBuckets()
 		{
@@ -82,6 +76,26 @@ namespace Aerospike.Client
 		public LatencyBuckets[] GetBuckets(string ns)
 		{
 			return histoMap[ns];
+		}
+
+		protected virtual void Dispose(bool disposing)
+		{
+			if (!disposedValue)
+			{
+				if (disposing)
+				{
+					histoMap.Dispose();
+				}
+
+				disposedValue = true;
+			}
+		}
+
+		public void Dispose()
+		{
+			// Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
+			Dispose(disposing: true);
+			GC.SuppressFinalize(this);
 		}
 	}	
 }

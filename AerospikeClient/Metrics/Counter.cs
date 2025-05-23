@@ -20,10 +20,11 @@ namespace Aerospike.Client
 	/// <summary>
 	/// A Counter is a container for a namespace-aggregate map of long counters
 	/// </summary>
-	public class Counter
+	public class Counter : IDisposable
 	{
 		private readonly ConcurrentHashMap<string, long?> counterMap = new();
 		private readonly static string noNsLabel = "";
+		private bool disposedValue;
 
 		public Counter() { }
 
@@ -104,6 +105,26 @@ namespace Aerospike.Client
 			{
 				return 0;
 			}
+		}
+
+		protected virtual void Dispose(bool disposing)
+		{
+			if (!disposedValue)
+			{
+				if (disposing)
+				{
+					counterMap.Dispose();
+				}
+
+				disposedValue = true;
+			}
+		}
+
+		public void Dispose()
+		{
+			// Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
+			Dispose(disposing: true);
+			GC.SuppressFinalize(this);
 		}
 	}
 }

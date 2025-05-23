@@ -17,14 +17,15 @@
 
 namespace Aerospike.Client
 {
-	public class ConcurrentHashMap<TKey, TValue>
+	public class ConcurrentHashMap<TKey, TValue> : IDisposable
 	{
-		private readonly ReaderWriterLockSlim _lock = new ReaderWriterLockSlim(LockRecursionPolicy.SupportsRecursion);
+		private readonly ReaderWriterLockSlim _lock = new(LockRecursionPolicy.SupportsRecursion);
 		private readonly Dictionary<TKey, TValue> _dictionary;
+		private bool disposedValue;
 
 		public ConcurrentHashMap()
 		{
-			_dictionary = new Dictionary<TKey, TValue>();
+			_dictionary = [];
 		}
 
 		public ConcurrentHashMap(int capacity) 
@@ -267,6 +268,27 @@ namespace Aerospike.Client
 					}
 				}
 			}
+		}
+
+		protected virtual void Dispose(bool disposing)
+		{
+			if (!disposedValue)
+			{
+				if (disposing)
+				{
+					// Dispose managed state (managed objects)
+					_lock?.Dispose();
+				}
+
+				disposedValue = true;
+			}
+		}
+
+		public void Dispose()
+		{
+			// Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
+			Dispose(disposing: true);
+			GC.SuppressFinalize(this);
 		}
 	}
 }

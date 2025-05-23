@@ -23,7 +23,7 @@ namespace Aerospike.Client
 	/// <summary>
 	/// Server node representation.  This class manages server node connections and health status.
 	/// </summary>
-	public class Node
+	public class Node : IDisposable
 	{
 		/// <summary>
 		/// Number of partitions for each namespace.
@@ -68,6 +68,7 @@ namespace Aerospike.Client
 		protected internal bool partitionChanged = true;
 		protected internal bool rebalanceChanged;
 		protected internal volatile bool active = true;
+		private bool disposedValue;
 
 		/// <summary>
 		/// Initialize server node with connection parameters.
@@ -974,6 +975,7 @@ namespace Aerospike.Client
 		public void DisableMetrics()
 		{
 			this.metricsEnabled = false;
+			metrics.Dispose();
 		}
 
 		/// <summary>
@@ -1122,6 +1124,14 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
+		/// Return key busy count. The value is cumulative and not reset per metrics interval.
+		/// </summary>
+		public long GetKeyBusyCount()
+		{
+			return keyBusyCounter.GetTotal();
+		}
+
+		/// <summary>
 		/// Return key busy error count for a given namespace. The value is cumulative and not reset per metrics interval.
 		/// </summary>
 		public long GetKeyBusyCountByNS(string ns) 
@@ -1246,7 +1256,7 @@ namespace Aerospike.Client
 		{
 			active = false;
 			CloseConnections();
-			GC.SuppressFinalize(this);
+			Dispose();
 		}
 
 		protected internal virtual void CloseConnections()
@@ -1286,6 +1296,32 @@ namespace Aerospike.Client
 			{
 				return address;
 			}
+		}
+
+		protected virtual void Dispose(bool disposing)
+		{
+			if (!disposedValue)
+			{
+				if (disposing)
+				{
+					errorCounter.Dispose();
+					timeoutCounter.Dispose();
+					keyBusyCounter.Dispose();
+					if (metricsEnabled)
+					{
+						metrics.Dispose();
+					}
+				}
+
+				disposedValue = true;
+			}
+		}
+
+		public void Dispose()
+		{
+			// Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
+			Dispose(disposing: true);
+			GC.SuppressFinalize(this);
 		}
 	}
 }

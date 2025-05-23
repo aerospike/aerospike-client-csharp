@@ -1142,7 +1142,7 @@ namespace Aerospike.Client
 		private void DisableMetricsInternal()
 		{
 			MetricsEnabled = false;
-			metricsListener.OnDisable(this);
+			metricsListener?.OnDisable(this);
 		}
 
 		public ClusterStats GetStats()
