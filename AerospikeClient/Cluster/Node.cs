@@ -963,6 +963,7 @@ namespace Aerospike.Client
 
 		public void EnableMetrics(MetricsPolicy policy)
 		{
+			metrics?.Dispose();
 			metrics = new NodeMetrics(policy);
 			this.metricsEnabled = true;
 		}
@@ -975,7 +976,8 @@ namespace Aerospike.Client
 		public void DisableMetrics()
 		{
 			this.metricsEnabled = false;
-			metrics.Dispose();
+			metrics?.Dispose();
+			metrics = null;
 		}
 
 		/// <summary>
