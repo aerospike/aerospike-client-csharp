@@ -17,7 +17,7 @@
 
 namespace Aerospike.Client
 {
-	public class ConcurrentHashSet<T> : IDisposable
+	public sealed class ConcurrentHashSet<T> : IDisposable
 	{
 		private readonly ReaderWriterLockSlim _lock = new(LockRecursionPolicy.SupportsRecursion);
 		private readonly HashSet<T> _hashSet;
@@ -136,7 +136,7 @@ namespace Aerospike.Client
 			return false;
 		}
 
-		protected virtual void Dispose(bool disposing)
+		private void Dispose(bool disposing)
 		{
 			if (!disposedValue)
 			{

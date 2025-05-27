@@ -17,7 +17,7 @@
 
 namespace Aerospike.Client
 {
-	public class ConcurrentHashMap<TKey, TValue> : IDisposable
+	public sealed class ConcurrentHashMap<TKey, TValue> : IDisposable
 	{
 		private readonly ReaderWriterLockSlim _lock = new(LockRecursionPolicy.SupportsRecursion);
 		private readonly Dictionary<TKey, TValue> _dictionary;
@@ -258,7 +258,7 @@ namespace Aerospike.Client
 				try
 				{
 					_lock.EnterReadLock();
-					return _dictionary.Keys;
+					return _dictionary.Keys.ToArray();
 				}
 				finally
 				{
@@ -270,7 +270,7 @@ namespace Aerospike.Client
 			}
 		}
 
-		protected virtual void Dispose(bool disposing)
+		private void Dispose(bool disposing)
 		{
 			if (!disposedValue)
 			{
