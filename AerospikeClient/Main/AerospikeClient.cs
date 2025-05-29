@@ -505,7 +505,10 @@ namespace Aerospike.Client
 		/// </summary>
 		public void EnableMetrics(MetricsPolicy metricsPolicy)
 		{
-			cluster.EnableMetrics(metricsPolicy);
+			lock (Cluster.metricsLock)
+			{
+				cluster.EnableMetrics(metricsPolicy);
+			}
 		}
 
 		/// <summary>

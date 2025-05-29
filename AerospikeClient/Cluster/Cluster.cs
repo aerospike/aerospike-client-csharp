@@ -136,6 +136,7 @@ namespace Aerospike.Client
 		public bool MetricsEnabled;
 		public MetricsPolicy MetricsPolicy;
 		private volatile IMetricsListener metricsListener;
+		internal static readonly object metricsLock = new();
 		private volatile int retryCount;
 		private volatile int commandCount;
 		private volatile int delayQueueTimeoutCount;
@@ -383,10 +384,13 @@ namespace Aerospike.Client
 				AddSeeds(seedsToAdd.ToArray());
 			}
 
-			if (configData != null && configData.dynamicConfig.metrics.enable.HasValue && 
-				configData.dynamicConfig.metrics.enable.Value)
+			lock (metricsLock)
 			{
-				EnableMetrics(MetricsPolicy);
+				if (configData != null && configData.dynamicConfig.metrics.enable.HasValue && 
+				configData.dynamicConfig.metrics.enable.Value)
+				{ 
+					EnableMetrics(MetricsPolicy);
+				}
 			}
 
 			// Run cluster tend thread.
@@ -597,9 +601,12 @@ namespace Aerospike.Client
 			}
 
 			// Perform metrics snapshot
-			if (MetricsEnabled && (tendCount % MetricsPolicy.Interval) == 0)
+			lock (metricsLock)
 			{
-				metricsListener.OnSnapshot(this);
+				if (MetricsEnabled && (tendCount % MetricsPolicy.Interval) == 0)
+				{
+					metricsListener.OnSnapshot(this);
+				}
 			}
 
 			if (configInterval > 0 && tendCount % configInterval == 0)
@@ -896,16 +903,19 @@ namespace Aerospike.Client
 				// Remove node from map.
 				nodesMap.Remove(node.Name);
 
-				if (MetricsEnabled)
+				lock (metricsLock)
 				{
-					// Flush node metrics before removal.
-					try
+					if (MetricsEnabled)
 					{
-						metricsListener.OnNodeClose(node);
-					}
-					catch (Exception e)
-					{
-						Log.Warn("Write metrics failed on " + node + ": " + Util.GetErrorMessage(e));
+						// Flush node metrics before removal.
+						try
+						{
+							metricsListener.OnNodeClose(node);
+						}
+						catch (Exception e)
+						{
+							Log.Warn("Write metrics failed on " + node + ": " + Util.GetErrorMessage(e));
+						}
 					}
 				}
 
@@ -1047,26 +1057,29 @@ namespace Aerospike.Client
 			{
 				configData = client.configProvider.ConfigurationData;
 				client.MergeDefaultPoliciesWithConfig();
-				this.MetricsPolicy = MergeMetricsPolicyWithConfig(MetricsPolicy);
-
-				if (MetricsEnabled && MetricsPolicy.restartRequired)
+				
+				lock (metricsLock)
 				{
-					DisableMetricsInternal();
-					EnableMetrics(MetricsPolicy);
-					MetricsPolicy.restartRequired = false;
-					return;
-				}
+					this.MetricsPolicy = MergeMetricsPolicyWithConfig(MetricsPolicy);
 
-				if (configData != null && configData.dynamicConfig.metrics.enable.HasValue)
-				{
-					if (!MetricsEnabled && configData.dynamicConfig.metrics.enable.Value)
-					{
-						EnableMetrics(this.MetricsPolicy);
-
-					}
-					else if (MetricsEnabled && !configData.dynamicConfig.metrics.enable.Value)
+					if (MetricsEnabled && MetricsPolicy.restartRequired)
 					{
 						DisableMetricsInternal();
+						EnableMetrics(MetricsPolicy);
+						MetricsPolicy.restartRequired = false;
+						return;
+					}
+
+					if (configData != null && configData.dynamicConfig.metrics.enable.HasValue)
+					{
+						if (!MetricsEnabled && configData.dynamicConfig.metrics.enable.Value)
+						{
+							EnableMetrics(this.MetricsPolicy);
+						}
+						else if (MetricsEnabled && !configData.dynamicConfig.metrics.enable.Value)
+						{
+							DisableMetricsInternal();
+						}
 					}
 				}
 			}
@@ -1074,13 +1087,14 @@ namespace Aerospike.Client
 
 		private MetricsPolicy MergeMetricsPolicyWithConfig(MetricsPolicy metricsPolicy)
 		{
-			if (metricsPolicy == null)
-			{
-				metricsPolicy = new MetricsPolicy();
-			}
+			metricsPolicy ??= new MetricsPolicy();
 			return new MetricsPolicy(metricsPolicy, configData);
 		}
 
+		/// <summary>
+		/// Enable metrics collection for the cluster. The metrics lock must be obtained before calling this method.
+		/// </summary>
+		/// <param name="policy"></param>
 		public void EnableMetrics(MetricsPolicy policy)
 		{
 			MetricsPolicy mergedMp = MergeMetricsPolicyWithConfig(policy);
@@ -1101,13 +1115,15 @@ namespace Aerospike.Client
 
 			listener ??= new MetricsWriter(mergedMp.ReportDir);
 
-			this.metricsListener = listener;
-			this.MetricsPolicy = mergedMp;
-
-			if (MetricsEnabled)
+			// In case metrics was enabled before this call, disable the previous metrics listener
+			if (MetricsEnabled) 
 			{
 				this.metricsListener.OnDisable(this);
 			}
+
+			this.metricsListener = listener;
+			this.MetricsPolicy = mergedMp;
+
 			Node[] nodeArray = nodes;
 
 			foreach (Node node in nodeArray)
@@ -1121,28 +1137,38 @@ namespace Aerospike.Client
 
 		public void DisableMetrics()
 		{
-			if (MetricsEnabled)
-			{
-				if (configData != null)
+			lock (metricsLock)
+			{ 
+				if (MetricsEnabled)
 				{
-					if (configData.dynamicConfig.metrics.enable.HasValue)
+					if (configData != null)
 					{
-						if (configData.dynamicConfig.metrics.enable.Value)
+						if (configData.dynamicConfig.metrics.enable.HasValue)
 						{
-							Log.Error("Metrics can not be disabled via disableMetrics() when they are enabled via config.");
-							return;
+							if (configData.dynamicConfig.metrics.enable.Value)
+							{
+								Log.Error("Metrics can not be disabled via DisableMetrics() when they are enabled via config.");
+								return;
+							}
 						}
 					}
-				}
 
-				DisableMetricsInternal();
+					DisableMetricsInternal();
+				}
 			}
 		}
 
+		/// <summary>
+		/// Disable metrics for internal use. The metrics lock needs to be obtained before calling this method.
+		/// </summary>
 		private void DisableMetricsInternal()
 		{
-			MetricsEnabled = false;
 			metricsListener?.OnDisable(this);
+			foreach (Node node in nodes)
+			{
+				node.DisableMetrics();
+			}
+			MetricsEnabled = false;
 		}
 
 		public ClusterStats GetStats()
@@ -1432,13 +1458,20 @@ namespace Aerospike.Client
 			tendValid = false;
 			cancel.Cancel();
 
-			try
+
+			lock (metricsLock)
 			{
-				DisableMetricsInternal();
-			}
-			catch (Exception e)
-			{
-				Log.Warn("DisableMetrics failed: " + Util.GetErrorMessage(e));
+				try
+				{
+					if (MetricsEnabled)
+					{
+						DisableMetricsInternal();
+					}
+				}
+				catch (Exception e)
+				{
+					Log.Warn("DisableMetrics failed: " + Util.GetErrorMessage(e));
+				}
 			}
 
 			// Must copy array reference for copy on write semantics to work.

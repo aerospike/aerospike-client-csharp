@@ -87,12 +87,9 @@ namespace Aerospike.Client
 		/// </summary>
 		public void OnSnapshot(Cluster cluster)
 		{
-			lock (this)
+			if (enabled)
 			{
-				if (enabled)
-				{
-					WriteCluster(cluster);
-				}
+				WriteCluster(cluster);
 			}
 		}
 
@@ -101,15 +98,12 @@ namespace Aerospike.Client
 		/// </summary>
 		public void OnNodeClose(Node node)
 		{
-			lock (this)
+			if (enabled)
 			{
-				if (enabled)
-				{
-					sb.Append(DateTime.Now.ToString(timestampFormat));
-					sb.Append(" node");
-					WriteNode(node);
-					WriteLine();
-				}
+				sb.Append(DateTime.Now.ToString(timestampFormat));
+				sb.Append(" node");
+				WriteNode(node);
+				WriteLine();
 			}
 		}
 
@@ -118,20 +112,17 @@ namespace Aerospike.Client
 		/// </summary>
 		public void OnDisable(Cluster cluster)
 		{
-			lock (this)
+			if (enabled)
 			{
-				if (enabled)
+				try
 				{
-					try
-					{
-						enabled = false;
-						WriteCluster(cluster);
-						writer.Close();
-					}
-					catch (Exception e)
-					{
-						Log.Error("Failed to close metrics writer: " + Util.GetErrorMessage(e));
-					}
+					enabled = false;
+					WriteCluster(cluster);
+					writer.Close();
+				}
+				catch (Exception e)
+				{
+					Log.Error("Failed to close metrics writer: " + Util.GetErrorMessage(e));
 				}
 			}
 		}
