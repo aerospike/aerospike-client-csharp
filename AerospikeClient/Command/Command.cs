@@ -1920,7 +1920,7 @@ namespace Aerospike.Client
 				dataBuffer[dataOffset++] = (byte)attr.infoAttr;
 				ByteUtil.ShortToBytes((ushort)attr.generation, dataBuffer, dataOffset);
 				dataOffset += 2;
-				ByteUtil.IntToBytes((ushort)attr.expiration, dataBuffer, dataOffset);
+				ByteUtil.IntToBytes((uint)attr.expiration, dataBuffer, dataOffset);
 				dataOffset += 4;
 				WriteBatchFieldsReg(key, attr, filter, fieldCount, opCount);
 			}
