@@ -316,11 +316,6 @@ namespace Aerospike.Client
 		/// <para>Default: null</para>
 		/// </summary>
 		public List<int> rackIds;
-
-		/// <summary>
-		/// Dynamic configuration provider.
-		/// </summary>
-		public IConfigProvider ConfigProvider = null;
 		
 		/// <summary>
 		/// Copy client policy from another client policy.
@@ -360,7 +355,6 @@ namespace Aerospike.Client
 			this.rackAware = other.rackAware;
 			this.rackId = other.rackId;
 			this.rackIds = (other.rackIds != null) ? new List<int>(other.rackIds) : null;
-			this.ConfigProvider = other.ConfigProvider;
 		}
 
 		public ClientPolicy(ClientPolicy other, IConfigProvider configProvider) : this(other)
@@ -370,8 +364,29 @@ namespace Aerospike.Client
 				return;
 			}
 
-			var staticClient = ConfigProvider.ConfigurationData.staticConfig.client;
-			var dynamicClient = ConfigProvider.ConfigurationData.dynamicConfig.client;
+			var staticConfig = configProvider.ConfigurationData.staticConfig;
+			if (staticConfig == null)
+			{
+				return;
+			}
+
+			var staticClient = configProvider.ConfigurationData.staticConfig.client;
+			if (staticClient == null)
+			{
+				return;
+			}
+
+			var dynamicConfig = configProvider.ConfigurationData.dynamicConfig;
+			if (dynamicConfig == null)
+			{
+				return;
+			}
+
+			var dynamicClient = configProvider.ConfigurationData.dynamicConfig.client;
+			if (dynamicClient == null)
+			{
+				return;
+			}
 
 			if (staticClient.max_connections_per_node.HasValue)
 			{

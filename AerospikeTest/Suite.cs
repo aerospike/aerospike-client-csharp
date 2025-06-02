@@ -80,9 +80,6 @@ namespace Aerospike.Test
 				useServicesAlternate = SuiteHelpers.useServicesAlternate
 			};
 
-			//Example of how to enable dynamic config
-			//policy.ConfigProvider = new YamlConfigProvider();
-
 			if (SuiteHelpers.user != null && SuiteHelpers.user.Length > 0)
 			{
 				policy.user = SuiteHelpers.user;
@@ -114,9 +111,6 @@ namespace Aerospike.Test
 				timeout = SuiteHelpers.timeout,
 				useServicesAlternate = SuiteHelpers.useServicesAlternate
 			};
-
-			//Example of how to enable dynamic config
-			//policy.ConfigProvider = new YamlConfigProvider();
 
 			if (SuiteHelpers.user != null && SuiteHelpers.user.Length > 0)
 			{

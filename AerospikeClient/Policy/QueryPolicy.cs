@@ -134,6 +134,10 @@ namespace Aerospike.Client
 			}
 
 			var query = configProvider.ConfigurationData.dynamicConfig.query;
+			if (query == null)
+			{
+				return;
+			}
 
 			if (query.read_mode_ap.HasValue)
 			{

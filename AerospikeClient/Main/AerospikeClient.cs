@@ -41,6 +41,12 @@ namespace Aerospike.Client
 	public class AerospikeClient : IDisposable, IAerospikeClient
 	{
 		//-------------------------------------------------------
+		// Constants.
+		//-------------------------------------------------------
+
+		protected const string CONFIG_PATH_ENV = "AEROSPIKE_CLIENT_CONFIG_URL";
+
+		//-------------------------------------------------------
 		// Member variables.
 		//-------------------------------------------------------
 
@@ -222,9 +228,11 @@ namespace Aerospike.Client
 			this.infoPolicyDefault = policy.infoPolicyDefault;
 			this.operatePolicyReadDefault = new WritePolicy(this.readPolicyDefault);
 
-			if (policy.ConfigProvider != null)
+
+			string configEnvValue = Environment.GetEnvironmentVariable(CONFIG_PATH_ENV);
+			if (configEnvValue != null)
 			{
-				this.configProvider = policy.ConfigProvider;
+				this.configProvider = new YamlConfigProvider(configEnvValue);
 				policy = new ClientPolicy(policy, configProvider);
 			}
 			MergeDefaultPoliciesWithConfig();
@@ -505,10 +513,7 @@ namespace Aerospike.Client
 		/// </summary>
 		public void EnableMetrics(MetricsPolicy metricsPolicy)
 		{
-			lock (Cluster.metricsLock)
-			{
-				cluster.EnableMetrics(metricsPolicy);
-			}
+			cluster.EnableMetrics(metricsPolicy);
 		}
 
 		/// <summary>

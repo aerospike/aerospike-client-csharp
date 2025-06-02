@@ -95,7 +95,7 @@ namespace Aerospike.Client
 		internal bool restartRequired = false;
 
 		/// <summary>
-		/// Copy batch policy from another batch policy AND override certain policy attributes if they exist in the
+		/// Copy metrics policy from another metrics policy AND override certain policy attributes if they exist in the
 		/// configProvider.
 		/// </summary>
 		public MetricsPolicy(MetricsPolicy other, ConfigurationData config) :
@@ -107,6 +107,11 @@ namespace Aerospike.Client
 			}
 
 			var metrics = config.dynamicConfig.metrics;
+			if (metrics == null)
+			{
+				return;
+			}
+
 			if (!String.IsNullOrEmpty(metrics.app_id))
 			{
 				this.AppId = metrics.app_id;

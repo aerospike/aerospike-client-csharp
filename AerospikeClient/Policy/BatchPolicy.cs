@@ -181,6 +181,10 @@ namespace Aerospike.Client
 			}
 
 			var batch_read = configProvider.ConfigurationData.dynamicConfig.batch_read;
+			if (batch_read == null)
+			{
+				return;
+			}
 
 			if (batch_read.read_mode_ap.HasValue)
 			{
@@ -274,6 +278,10 @@ namespace Aerospike.Client
 			}
 
 			var batch_write = configProvider.ConfigurationData.dynamicConfig.batch_write;
+			if (batch_write == null)
+			{
+				return;
+			}
 
 			if (batch_write.fail_on_filtered_out.HasValue)
 			{

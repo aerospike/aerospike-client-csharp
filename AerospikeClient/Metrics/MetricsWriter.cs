@@ -131,7 +131,7 @@ namespace Aerospike.Client
 		{
 			DateTime now = DateTime.Now;
 			string path = dir + Path.DirectorySeparatorChar + "metrics-" + now.ToString(filenameFormat) + ".log";
-			writer = new StreamWriter(path, true);
+			writer = new StreamWriter(path, false);
 			size = 0;
 
 			sb.Append(now.ToString(timestampFormat));

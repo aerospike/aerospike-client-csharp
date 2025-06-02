@@ -125,6 +125,10 @@ namespace Aerospike.Client
 			}
 
 			var batch_udf = configProvider.ConfigurationData.dynamicConfig.batch_udf;
+			if (batch_udf == null)
+			{
+				return;
+			}
 
 			if (batch_udf.durable_delete.HasValue)
 			{

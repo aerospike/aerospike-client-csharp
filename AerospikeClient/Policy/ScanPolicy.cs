@@ -111,6 +111,10 @@ namespace Aerospike.Client
 			}
 
 			var scan = configProvider.ConfigurationData.dynamicConfig.scan;
+			if (scan == null)
+			{
+				return;
+			}
 
 			if (scan.read_mode_ap.HasValue)
 			{

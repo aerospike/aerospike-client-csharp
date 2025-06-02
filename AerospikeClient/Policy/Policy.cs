@@ -318,6 +318,10 @@ namespace Aerospike.Client
 			}
 
 			var read = configProvider.ConfigurationData.dynamicConfig.read;
+			if (read == null)
+			{
+				return;
+			}
 
 			if (read.read_mode_ap.HasValue)
 			{

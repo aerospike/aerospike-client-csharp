@@ -123,9 +123,10 @@ namespace Aerospike.Client
 			: base(policy)
 		{
 			policy ??= new AsyncClientPolicy();
-			if (policy.ConfigProvider != null)
+			string configEnvValue = Environment.GetEnvironmentVariable(CONFIG_PATH_ENV);
+			if (configEnvValue != null)
 			{
-				this.configProvider = policy.ConfigProvider;
+				this.configProvider = new YamlConfigProvider(configEnvValue);
 				policy = new AsyncClientPolicy(policy, configProvider);
 			}
 			MergeDefaultPoliciesWithConfig();

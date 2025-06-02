@@ -143,7 +143,17 @@ namespace Aerospike.Client
 				return;
 			}
 
-			var staticClient = ConfigProvider.ConfigurationData.staticConfig.client;
+			var staticConfig = configProvider.ConfigurationData.staticConfig;
+			if (staticConfig == null)
+			{
+				return;
+			}
+
+			var staticClient = configProvider.ConfigurationData.staticConfig.client;
+			if (staticClient == null)
+			{
+				return;
+			}
 
 			if (staticClient.async_max_connections_per_node.HasValue)
 			{
