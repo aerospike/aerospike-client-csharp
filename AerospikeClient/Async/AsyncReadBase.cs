@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2024 Aerospike, Inc.
+ * Copyright 2012-2025 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -23,7 +23,7 @@ namespace Aerospike.Client
 		protected readonly Partition partition;
 
 		public AsyncReadBase(AsyncCluster cluster, Policy policy, Key key) 
-			: base(cluster, policy)
+			: base(cluster, policy, key.ns)
 		{
 			this.key = key;
 			this.partition = Partition.Read(cluster, policy, key);

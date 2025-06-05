@@ -41,10 +41,18 @@ namespace Aerospike.Client
 	public class AerospikeClient : IDisposable, IAerospikeClient
 	{
 		//-------------------------------------------------------
+		// Constants.
+		//-------------------------------------------------------
+
+		protected const string CONFIG_PATH_ENV = "AEROSPIKE_CLIENT_CONFIG_URL";
+
+		//-------------------------------------------------------
 		// Member variables.
 		//-------------------------------------------------------
 
 		protected internal Cluster cluster;
+
+		protected internal string version;
 
 		/// <summary>
 		/// Default read policy that is used when read command policy is null.
@@ -220,12 +228,17 @@ namespace Aerospike.Client
 			this.infoPolicyDefault = policy.infoPolicyDefault;
 			this.operatePolicyReadDefault = new WritePolicy(this.readPolicyDefault);
 
-			if (policy.ConfigProvider != null)
+
+			string configEnvValue = Environment.GetEnvironmentVariable(CONFIG_PATH_ENV);
+			if (configEnvValue != null)
 			{
-				this.configProvider = policy.ConfigProvider;
+				this.configProvider = new YamlConfigProvider(configEnvValue);
 				policy = new ClientPolicy(policy, configProvider);
 			}
 			MergeDefaultPoliciesWithConfig();
+			version = Assembly.GetExecutingAssembly().GetName().Version.ToString();
+			version ??= "development";
+
 			cluster = new Cluster(this, policy, hosts);
 			cluster.StartTendThread(policy);
 		}
@@ -2845,7 +2858,7 @@ namespace Aerospike.Client
 
 			try
 			{
-				info = new Info(conn, command);
+				info = new Info(node, conn, command);
 				node.PutConnection(conn);
 			}
 			catch (Exception)

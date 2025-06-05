@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2024 Aerospike, Inc.
+ * Copyright 2012-2025 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -14,7 +14,6 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using System.Collections.Generic;
 
 namespace Aerospike.Client
 {
@@ -26,7 +25,7 @@ namespace Aerospike.Client
 		private Dictionary<string,string> map;
 
 		public AsyncInfo(AsyncCluster cluster, InfoPolicy policy, InfoListener listener, AsyncNode node, params string[] commands)
-			: base(cluster, CreatePolicy(policy))
+			: base(cluster, CreatePolicy(policy), null)
 		{
 			this.listener = listener;
 			this.serverNode = node;

@@ -2,7 +2,7 @@
 <RunSettings>
 	<RunConfiguration>
 		<EnvironmentVariables>
-			<AEROSPIKE_CLIENT_CONFIG_URL>C:\Users\sklaus_aerospike\repos\aerospike-client-csharp\aerospikeconfig.yaml</AEROSPIKE_CLIENT_CONFIG_URL>
+			<!--<AEROSPIKE_CLIENT_CONFIG_URL>C:\Users\sklaus_aerospike\repos\aerospike-client-csharp\aerospikeconfig.yaml</AEROSPIKE_CLIENT_CONFIG_URL>-->
 		</EnvironmentVariables>
 	</RunConfiguration>
   <TestRunParameters>

@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2024 Aerospike, Inc.
+ * Copyright 2012-2025 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -24,7 +24,6 @@ namespace Aerospike.Client
 		private const int MAX_BUFFER_SIZE = 1024 * 1024 * 128;  // 128 MB
 
 		private readonly Node node;
-		protected internal readonly String ns;
 		private readonly ulong clusterKey;
 		protected internal int info3;
 		protected internal int batchIndex;
@@ -36,11 +35,10 @@ namespace Aerospike.Client
 		/// Batch and server execute constructor.
 		/// </summary>
 		protected internal MultiCommand(Cluster cluster, Policy policy, Node node, bool isOperation)
-			: base(cluster, policy)
+			: base(cluster, policy, null)
 		{
 			this.node = node;
 			this.isOperation = isOperation;
-			this.ns = null;
 			this.clusterKey = 0;
 			this.first = false;
 		}
@@ -49,11 +47,10 @@ namespace Aerospike.Client
 		/// Partition scan/query constructor.
 		/// </summary>
 		protected internal MultiCommand(Cluster cluster, Policy policy, Node node, String ns, int socketTimeout, int totalTimeout)
-			: base(cluster, policy, socketTimeout, totalTimeout)
+			: base(cluster, policy, socketTimeout, totalTimeout, ns)
 		{
 			this.node = node;
 			this.isOperation = false;
-			this.ns = ns;
 			this.clusterKey = 0;
 			this.first = false;
 		}
@@ -62,11 +59,10 @@ namespace Aerospike.Client
 		/// Legacy scan/query constructor.
 		/// </summary>
 		protected internal MultiCommand(Cluster cluster, Policy policy, Node node, String ns, ulong clusterKey, bool first)
-			: base(cluster, policy, policy.socketTimeout, policy.totalTimeout)
+			: base(cluster, policy, policy.socketTimeout, policy.totalTimeout, ns)
 		{
 			this.node = node;
 			this.isOperation = false;
-			this.ns = ns;
 			this.clusterKey = clusterKey;
 			this.first = first;
 		}
@@ -103,7 +99,7 @@ namespace Aerospike.Client
 			return true;
 		}
 
-		protected internal sealed override void ParseResult(Connection conn)
+		protected internal sealed override void ParseResult(Node node,Connection conn)
 		{
 			// Read blocks of records.  Do not use thread local receive buffer because each
 			// block will likely be too big for a cache.  Also, scan callbacks can nest
@@ -113,11 +109,13 @@ namespace Aerospike.Client
 			byte[] buf = null;
 			byte[] ubuf = null;
 			int receiveSize;
+			int bytesIn = 0;
 
 			while (true)
 			{
 				// Read header
 				conn.ReadFully(protoBuf, 8, Command.STATE_READ_HEADER);
+				bytesIn += 8;
 
 				long proto = ByteUtil.BytesToLong(protoBuf, 0);
 				int size = (int)(proto & 0xFFFFFFFFFFFFL);
@@ -145,6 +143,11 @@ namespace Aerospike.Client
 				{
 					// Read remaining message bytes in group.
 					conn.ReadFully(buf, size, Command.STATE_READ_DETAIL);
+					bytesIn += size;
+					if (node.AreMetricsEnabled())
+					{
+						node.AddBytesIn(ns, bytesIn);
+					}
 					conn.UpdateLastUsed();
 				}
 				catch (ReadTimeout rt)

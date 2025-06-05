@@ -1,5 +1,5 @@
 ﻿/* 
- * Copyright 2012-2022 Aerospike, Inc.
+ * Copyright 2012-2025 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -31,8 +31,8 @@ namespace Aerospike.Client
 		private readonly Dictionary<string,int> racks;
 		private readonly int generation;
 
-		public RackParser(Connection conn)
-			: base(conn, RebalanceGeneration, RackIds)
+		public RackParser(Node node, Connection conn)
+			: base(node, conn, RebalanceGeneration, RackIds)
 		{
 			// Send format: rebalance-generation\nrack-ids\n
 			if (length == 0)

@@ -147,6 +147,10 @@ namespace Aerospike.Client
 			}
 
 			var write = configProvider.ConfigurationData.dynamicConfig.write;
+			if (write == null)
+			{
+				return;
+			}
 
 			if (write.fail_on_filtered_out.HasValue)
 			{

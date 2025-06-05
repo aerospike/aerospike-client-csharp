@@ -22,8 +22,8 @@ namespace Aerospike.Client
 {
 	public class YamlConfigProvider : IConfigProvider
 	{
-		private const string CONFIG_PATH_ENV = "AEROSPIKE_CLIENT_CONFIG_URL";
-
+		private const string DEFAULT_CONFIG_URL_PREFIX = "file://";
+		
 		private IConfigurationRoot configRoot;
 
 		public ConfigurationData ConfigurationData { get; private set; }
@@ -34,7 +34,7 @@ namespace Aerospike.Client
 
 		private volatile bool modified = false;
 
-		public YamlConfigProvider()
+		public YamlConfigProvider(string configEnvValue)
 		{
 			ConfigurationData = new()
 			{
@@ -44,7 +44,7 @@ namespace Aerospike.Client
 
 			Interval = IConfigProvider.DEFAULT_INTERVAL;
 
-			SetYamlFilePath();
+			SetYamlFilePath(configEnvValue);
 			LoadConfig(); 
 		}
 
@@ -60,7 +60,7 @@ namespace Aerospike.Client
 		{
 			if (yamlFilePath == null)
 			{
-				Log.Error("The YAML config file path has not been set. Check the " + CONFIG_PATH_ENV + " env variable");
+				Log.Error("The YAML config file path has not been set. Check the config env variable");
 				return false;
 			}
 
@@ -135,19 +135,23 @@ namespace Aerospike.Client
 			modified = true;
 		}
 
-		private void SetYamlFilePath()
+		private void SetYamlFilePath(string configEnvValue)
 		{
 			try
 			{
-				string configPath = Environment.GetEnvironmentVariable(CONFIG_PATH_ENV);
-				Uri envUri = new(configPath);
+				if (!configEnvValue.StartsWith(DEFAULT_CONFIG_URL_PREFIX))
+				{
+					configEnvValue = DEFAULT_CONFIG_URL_PREFIX + configEnvValue;
+				}
+
+				Uri envUri = new(configEnvValue);
 				if (envUri.IsFile)
 				{
 					yamlFilePath = envUri.AbsolutePath;
 				}
 				else
 				{
-					Log.Error("Could not parse the " + CONFIG_PATH_ENV + " env var");
+					Log.Error("Could not parse the config env var");
 				}
 			}
 			catch (Exception e)

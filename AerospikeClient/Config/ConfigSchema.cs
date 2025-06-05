@@ -59,6 +59,7 @@ namespace Aerospike.Client.Config
 			batch_delete = new BatchUDFDeleteConfig();
 			txn_roll = new TxnRollConfig();
 			txn_verify = new TxnVerifyConfig();
+			metrics = new MetricsConfig();
 		}
 
 		public DynamicClientConfig client { get; set; }
@@ -72,6 +73,7 @@ namespace Aerospike.Client.Config
 		public BatchUDFDeleteConfig batch_delete { get; set; }
 		public TxnRollConfig txn_roll { get; set; }
 		public TxnVerifyConfig txn_verify { get; set; }
+		public MetricsConfig metrics { get; set; }
 	}
 
 	public class DynamicClientConfig
@@ -221,5 +223,15 @@ namespace Aerospike.Client.Config
 		public bool? allow_inline { get; set; }
 		public bool? allow_inline_ssd { get; set; }
 		public bool? respond_all_keys { get; set; }
+	}
+
+	public class MetricsConfig
+	{
+		public bool? enable { get; set; }
+		public int? latency_shift { get; set; }
+		public int? latency_columns { get; set; }
+		public string app_id { get; set; }
+		public Dictionary<string, string> labels { get; set; }
+
 	}
 }

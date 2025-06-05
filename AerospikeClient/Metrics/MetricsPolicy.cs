@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2024 Aerospike, Inc.
+ * Copyright 2012-2025 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -14,6 +14,8 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
+
+using Aerospike.Client.Config;
 
 namespace Aerospike.Client
 {
@@ -81,6 +83,67 @@ namespace Aerospike.Client
 		public int LatencyShift = 1;
 
 		/// <summary>
+		/// Application ID. Metrics are loosely tied to this. Changing the appId will not reset the metric counters.
+		/// </summary>
+		public string AppId;
+
+		/// <summary>
+		/// Labels that can be sent to the metrics output
+		/// </summary>
+		public Dictionary<string, string> labels;
+
+		internal bool restartRequired = false;
+
+		/// <summary>
+		/// Copy metrics policy from another metrics policy AND override certain policy attributes if they exist in the
+		/// configProvider.
+		/// </summary>
+		public MetricsPolicy(MetricsPolicy other, ConfigurationData config) :
+			this(other)
+		{
+			if (config == null)
+			{
+				return;
+			}
+
+			var metrics = config.dynamicConfig.metrics;
+			if (metrics == null)
+			{
+				return;
+			}
+
+			if (!String.IsNullOrEmpty(metrics.app_id))
+			{
+				this.AppId = metrics.app_id;
+			}
+			if (metrics.labels != null)
+			{
+				this.labels = metrics.labels;
+			}
+			if (metrics.latency_shift.HasValue)
+			{
+				if (metrics.latency_shift.Value != this.LatencyShift)
+				{
+					restartRequired = true;
+				}
+				this.LatencyShift = metrics.latency_shift.Value;
+			}
+			if (metrics.latency_columns.HasValue)
+			{
+				if (metrics.latency_columns.Value != this.LatencyColumns)
+				{
+					restartRequired = true;
+				}
+				this.LatencyColumns = metrics.latency_columns.Value;
+			}
+			if (LatencyColumns < 1)
+			{
+				Log.Error("An invalid # of latency columns was provided. Setting latency columns to default (7).");
+				LatencyColumns = 7;
+			}
+		}
+
+		/// <summary>
 		/// Copy constructor.
 		/// </summary>
 		public MetricsPolicy(MetricsPolicy other)
@@ -91,6 +154,9 @@ namespace Aerospike.Client
 			this.Interval = other.Interval;
 			this.LatencyColumns = other.LatencyColumns;
 			this.LatencyShift = other.LatencyShift;
+			this.AppId = other.AppId;
+			this.labels = other.labels;
+			this.restartRequired = other.restartRequired;
 		}
 
 		/// <summary>

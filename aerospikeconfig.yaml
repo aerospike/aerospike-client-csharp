@@ -19,3 +19,12 @@ dynamic:
     max_retries: 5
   write:
     durable_delete: true
+  metrics:
+    enable: true
+    latency_shift: 0
+    latency_columns: 0
+    app_id: unit_tester
+    labels:
+      region: us-west
+      zone: usw1-az3
+      rack-id: kjsdfj2k3k

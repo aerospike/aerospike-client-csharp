@@ -80,9 +80,6 @@ namespace Aerospike.Test
 				useServicesAlternate = SuiteHelpers.useServicesAlternate
 			};
 
-			//Example of how to enable dynamic config
-			//policy.ConfigProvider = new YamlConfigProvider();
-
 			if (SuiteHelpers.user != null && SuiteHelpers.user.Length > 0)
 			{
 				policy.user = SuiteHelpers.user;
@@ -90,9 +87,6 @@ namespace Aerospike.Test
 			}
 
 			SuiteHelpers.client = new AerospikeClient(policy, SuiteHelpers.hosts);
-
-			//Example of how to enable metrics
-			//client.EnableMetrics(new MetricsPolicy());
 
 			try
 			{
@@ -118,9 +112,6 @@ namespace Aerospike.Test
 				useServicesAlternate = SuiteHelpers.useServicesAlternate
 			};
 
-			//Example of how to enable dynamic config
-			//policy.ConfigProvider = new YamlConfigProvider();
-
 			if (SuiteHelpers.user != null && SuiteHelpers.user.Length > 0)
 			{
 				policy.user = SuiteHelpers.user;
@@ -128,9 +119,6 @@ namespace Aerospike.Test
 			}
 
 			SuiteHelpers.asyncClient = new AsyncClient(policy, SuiteHelpers.hosts);
-
-			// Example of how to enable metrics
-			//asyncClient.EnableMetrics(new MetricsPolicy());
 		}
 
 		private static void SetServerSpecific()

@@ -14,6 +14,8 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
+using Aerospike.Client.Config;
+
 namespace Aerospike.Client
 {
 	/// <summary>
@@ -92,12 +94,9 @@ namespace Aerospike.Client
 			{
 				sendKey = policy.sendKey;
 			}
-			if (configProvider != null && configProvider.ConfigurationData != null)
+			if (configProvider != null && configProvider.ConfigurationData.HasDBWCsendKey())
 			{
-				if (configProvider.ConfigurationData.dynamicConfig.batch_write.send_key.HasValue)
-				{
-					sendKey = configProvider.ConfigurationData.dynamicConfig.batch_write.send_key.Value;
-				}
+				sendKey = configProvider.ConfigurationData.dynamicConfig.batch_write.send_key.Value;
 			}
 
 			return !sendKey;
@@ -118,12 +117,9 @@ namespace Aerospike.Client
 				}
 
 				bool sendKey = policy.sendKey;
-				if (configProvider != null && configProvider.ConfigurationData != null)
+				if (configProvider != null && configProvider.ConfigurationData.HasDBWCsendKey())
 				{
-					if (configProvider.ConfigurationData.dynamicConfig.batch_write.send_key.HasValue)
-					{
-						sendKey = configProvider.ConfigurationData.dynamicConfig.batch_write.send_key.Value;
-					}
+					sendKey = configProvider.ConfigurationData.dynamicConfig.batch_write.send_key.Value;
 				}
 
 				if (sendKey || parentPolicy.sendKey)

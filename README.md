@@ -3,7 +3,7 @@ Aerospike C# Client Package
 
 **Prerequisites**
 
-* .NET 6+
+* .NET 8+
 * [Optional]Visual Studio 2022+
 
 **Contents**

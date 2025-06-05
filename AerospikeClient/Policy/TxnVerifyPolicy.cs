@@ -44,6 +44,10 @@ namespace Aerospike.Client
 			}
 
 			var txn_verify = configProvider.ConfigurationData.dynamicConfig.txn_verify;
+			if (txn_verify == null)
+			{
+				return;
+			}
 
 			if (txn_verify.read_mode_ap.HasValue)
 			{
