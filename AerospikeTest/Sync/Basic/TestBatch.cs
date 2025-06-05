@@ -1,5 +1,5 @@
 ﻿/* 
- * Copyright 2012-2024 Aerospike, Inc.
+ * Copyright 2012-2025 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -15,16 +15,7 @@
  * the License.
  */
 using Aerospike.Client;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
-using Neo.IronLua;
-using System;
 using System.Collections;
-using System.Collections.Generic;
-using System.Reflection;
-using System.Runtime.CompilerServices;
-using System.Runtime.Intrinsics.X86;
-using System.Security.Policy;
-using System.Text;
 
 namespace Aerospike.Test
 {
@@ -474,6 +465,23 @@ namespace Aerospike.Test
 			Assert.IsFalse(rv);
 		}
 
+		[TestMethod]
+		public void BatchWriteTTL()
+		{
+			// Define key
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, 88810);
+
+			// Write keys with ttl.
+			BatchWritePolicy bwp = new()
+			{
+				expiration = -1
+			};
+			Key[] keys = [key];
+			client.Operate(null, bwp, keys, Operation.Put(new Bin("a", 1)));
+
+			Record metaData = client.GetHeader(null, key);
+			Assert.AreEqual(-1, metaData.TimeToLive);
+		}
 
 		private static void AssertBatchBinEqual(List<BatchRead> list, string binName, int i)
 		{
