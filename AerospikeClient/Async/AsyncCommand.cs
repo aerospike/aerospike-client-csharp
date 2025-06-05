@@ -429,7 +429,7 @@ namespace Aerospike.Client
 
 				dataLength = dataOffset + length;
 				conn?.Receive(dataBuffer, dataOffset, length);
-				bytesIn += length - dataOffset;
+				bytesIn += dataLength;
 			}
 			else
 			{
