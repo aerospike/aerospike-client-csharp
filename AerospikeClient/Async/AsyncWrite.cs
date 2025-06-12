@@ -1,4 +1,4 @@
-/* 
+/*
  * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
@@ -45,6 +45,14 @@ namespace Aerospike.Client
 			this.bins = other.bins;
 			this.operation = other.operation;
 		}
+
+		private protected override string CommandName => operation switch
+		{
+			Operation.Type.ADD => "add",
+			Operation.Type.APPEND => "append",
+			Operation.Type.PREPEND => "prepend",
+			_ => "put",
+		};
 
 		protected internal override AsyncCommand CloneCommand()
 		{

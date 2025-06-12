@@ -1,4 +1,4 @@
-/* 
+/*
  * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
@@ -25,7 +25,7 @@ namespace Aerospike.Client
 		protected Record record;
 
 		// Read constructor.
-		public AsyncRead(AsyncCluster cluster, Policy policy, RecordListener listener, Key key, string[] binNames) 
+		public AsyncRead(AsyncCluster cluster, Policy policy, RecordListener listener, Key key, string[] binNames)
 			: base(cluster, policy, key)
 		{
 			this.listener = listener;
@@ -49,6 +49,8 @@ namespace Aerospike.Client
 			this.binNames = other.binNames;
 			this.isOperation = other.isOperation;
 		}
+
+		private protected override string CommandName => "get";
 
 		protected internal override AsyncCommand CloneCommand()
 		{

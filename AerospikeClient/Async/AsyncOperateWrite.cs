@@ -1,4 +1,4 @@
-/* 
+/*
  * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
@@ -38,6 +38,8 @@ namespace Aerospike.Client
 			this.listener = other.listener;
 			this.args = other.args;
 		}
+
+		private protected override string CommandName => "operate";
 
 		protected internal override AsyncCommand CloneCommand()
 		{

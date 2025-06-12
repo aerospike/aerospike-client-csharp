@@ -1,4 +1,4 @@
-/* 
+/*
  * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
@@ -43,6 +43,8 @@ namespace Aerospike.Client
 			this.listener = other.listener;
 			this.existsListener = other.existsListener;
 		}
+
+		private protected override string CommandName => "touch";
 
 		protected internal override AsyncCommand CloneCommand()
 		{
