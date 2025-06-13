@@ -2456,6 +2456,49 @@ namespace Aerospike.Client
 			params CTX[] ctx
 		)
 		{
+			return CreateIndex(policy, ns, setName, indexName, binName, indexType, indexCollectionType, null, ctx);
+		}
+
+		/// <summary>
+		/// Create complex secondary index on bins containing collections.
+		/// This asynchronous server call will return before command is complete.
+		/// The user can optionally wait for command completion by using the returned
+		/// IndexTask instance.
+		/// </summary>
+		/// <param name="policy">generic configuration parameters, pass in null for defaults</param>
+		/// <param name="ns">namespace - equivalent to database name</param>
+		/// <param name="setName">optional set name - equivalent to database table</param>
+		/// <param name="indexName">name of secondary index</param>
+		/// <param name="indexType">underlying data type of secondary index</param>
+		/// <param name="indexCollectionType">index collection type</param>
+		/// <param name="indexExpression">the expression to be indexed</param>
+		/// <exception cref="AerospikeException">if index create fails</exception>
+		public IndexTask CreateIndex
+		(
+			Policy policy,
+			string ns,
+			string setName,
+			string indexName,
+			IndexType indexType,
+			IndexCollectionType indexCollectionType,
+			Expression indexExpression
+		)
+		{
+			return CreateIndex(policy, ns, setName, indexName, null, indexType, indexCollectionType, indexExpression, null);
+		}
+
+		private IndexTask CreateIndex(
+			Policy policy,
+			string ns,
+			string setName,
+			string indexName,
+			string binName,
+			IndexType indexType,
+			IndexCollectionType indexCollectionType,
+			Expression indexExpression,
+			params CTX[] ctx
+		)
+		{
 			if (policy == null)
 			{
 				policy = mergedWritePolicyDefault;
@@ -2478,25 +2521,42 @@ namespace Aerospike.Client
 			sb.Append(";indexname=");
 			sb.Append(indexName);
 
-			if (ctx != null && ctx.Length > 0)
+			if (indexExpression != null)
 			{
-				byte[] bytes = PackUtil.Pack(ctx);
-				string base64 = Convert.ToBase64String(bytes);
+				sb.Append(";exp=");
+				sb.Append(indexExpression.GetBase64());
 
-				sb.Append(";context=");
-				sb.Append(base64);
+				if (indexCollectionType != IndexCollectionType.DEFAULT)
+				{
+					sb.Append(";indextype=");
+					sb.Append(indexCollectionType);
+				}
+
+				sb.Append(";type=");
+				sb.Append(indexType);
 			}
-
-			if (indexCollectionType != IndexCollectionType.DEFAULT)
+			else
 			{
-				sb.Append(";indextype=");
-				sb.Append(indexCollectionType);
-			}
+				if (ctx != null && ctx.Length > 0)
+				{
+					byte[] bytes = PackUtil.Pack(ctx);
+					string base64 = Convert.ToBase64String(bytes);
 
-			sb.Append(";indexdata=");
-			sb.Append(binName);
-			sb.Append(',');
-			sb.Append(indexType);
+					sb.Append(";context=");
+					sb.Append(base64);
+				}
+
+				if (indexCollectionType != IndexCollectionType.DEFAULT)
+				{
+					sb.Append(";indextype=");
+					sb.Append(indexCollectionType);
+				}
+
+				sb.Append(";indexdata=");
+				sb.Append(binName);
+				sb.Append(',');
+				sb.Append(indexType);
+			}
 
 			// Send index command to one node. That node will distribute the command to other nodes.
 			String response = SendInfoCommand(policy, sb.ToString());
