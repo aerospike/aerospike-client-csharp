@@ -415,7 +415,7 @@ namespace Aerospike.Client
 				this.minConnsPerNode = staticClient.min_connections_per_node.Value;
 			}
 
-			if (dynamicClient.app_id != null)
+			if (!String.IsNullOrEmpty(dynamicClient.app_id))
 			{
 				this.AppId = dynamicClient.app_id;
 			}

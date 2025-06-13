@@ -5,7 +5,7 @@ static:
     max_connections_per_node: 50
 dynamic:
   client:
-    app_id: unit_tester2
+    app_id: unit_tester
     max_error_rate: 22
     rack_ids: [2,4,6,8]
   read:
