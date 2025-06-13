@@ -60,6 +60,7 @@ namespace Aerospike.Test
 			}
 
 			ConnectSync();
+			Util.Sleep(1000); // Wait a little bit so if dynamic config with metrics is enabled, the async and sync clients don't use the same file
 			ConnectAsync();
 		}
 

@@ -167,9 +167,9 @@ namespace Aerospike.Client
 			sb.Append(',');
 			sb.Append(cluster.client.version);
 			sb.Append(',');
-			if (policy.AppId != null)
+			if (cluster.appId != null)
 			{
-				sb.Append(policy.AppId);
+				sb.Append(cluster.appId);
 			}
 			else
 			{

@@ -51,8 +51,15 @@ namespace Aerospike.Client
 		private void Watch()
 		{
 			_ = this.configRoot.GetReloadToken().RegisterChangeCallback(_ => {
-				ProcessDynamicConfig();
-				Watch();
+				try
+				{
+					ProcessDynamicConfig();
+					Watch();
+				}
+				catch (Exception ex)
+				{
+					Log.Error("Unable to parse YAML file: " + ex.Message);
+				}
 			}, null);
 		}
 
@@ -60,7 +67,7 @@ namespace Aerospike.Client
 		{
 			if (yamlFilePath == null)
 			{
-				Log.Error("The YAML config file path has not been set. Check the config env variable");
+				Log.Error("The YAML config file path has not been set. Check the config env variable.");
 				return false;
 			}
 
@@ -84,7 +91,7 @@ namespace Aerospike.Client
 			}
 			catch (IOException e)
 			{
-				Log.Error("YAML Configuration file could not be read from: " + yamlFilePath + ". " + e.Message);
+				Log.Error("YAML configuration file could not be read from: " + yamlFilePath + ". " + e.Message);
 			}
 			catch (Exception e)
 			{
@@ -127,10 +134,12 @@ namespace Aerospike.Client
 			{
 				// disable dynamic config
 				ConfigurationData = null;
+				Log.Info("Dynamic configuration has been disabled.");
 			}
 			else
 			{
 				dynamicSection.Bind(ConfigurationData.dynamicConfig);
+				Log.Info("YAML config file has been modified.");
 			}
 			modified = true;
 		}
@@ -151,7 +160,7 @@ namespace Aerospike.Client
 				}
 				else
 				{
-					Log.Error("Could not parse the config env var");
+					Log.Error("Could not parse the config env var.");
 				}
 			}
 			catch (Exception e)
