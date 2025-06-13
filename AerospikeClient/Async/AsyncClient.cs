@@ -123,13 +123,30 @@ namespace Aerospike.Client
 			: base(policy)
 		{
 			policy ??= new AsyncClientPolicy();
+			clientPolicy = policy;
 			string configEnvValue = Environment.GetEnvironmentVariable(CONFIG_PATH_ENV);
 			if (configEnvValue != null)
 			{
 				this.configProvider = new YamlConfigProvider(configEnvValue);
 				policy = new AsyncClientPolicy(policy, configProvider);
+				MergeDefaultPoliciesWithConfig();
 			}
-			MergeDefaultPoliciesWithConfig();
+			else
+			{
+				mergedReadPolicyDefault = this.readPolicyDefault;
+				mergedWritePolicyDefault = this.writePolicyDefault;
+				mergedScanPolicyDefault = this.scanPolicyDefault;
+				mergedQueryPolicyDefault = this.queryPolicyDefault;
+				mergedBatchPolicyDefault = this.batchPolicyDefault;
+				mergedBatchParentPolicyWriteDefault = this.batchParentPolicyWriteDefault;
+				mergedBatchWritePolicyDefault = this.batchWritePolicyDefault;
+				mergedBatchDeletePolicyDefault = this.batchDeletePolicyDefault;
+				mergedBatchUDFPolicyDefault = this.batchUDFPolicyDefault;
+				mergedTxnVerifyPolicyDefault = this.txnVerifyPolicyDefault;
+				mergedTxnRollPolicyDefault = this.txnRollPolicyDefault;
+				mergedOperatePolicyReadDefault = this.operatePolicyReadDefault;
+			}
+			
 			version = Assembly.GetExecutingAssembly().GetName().Version.ToString();
 			version ??= "development";
 

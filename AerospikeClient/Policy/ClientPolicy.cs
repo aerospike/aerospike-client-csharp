@@ -45,6 +45,12 @@ namespace Aerospike.Client
 		public string clusterName;
 
 		/// <summary>
+		/// Application identifier.
+		/// <para>Default: null</para>
+		/// </summary>
+		public string AppId;
+
+		/// <summary>
 		/// Authentication mode.
 		/// <para>Default: AuthMode.INTERNAL</para>
 		/// </summary>
@@ -336,6 +342,7 @@ namespace Aerospike.Client
 			this.user = other.user;
 			this.password = other.password;
 			this.clusterName = other.clusterName;
+			this.AppId = other.AppId;
 			this.authMode = other.authMode;
 			this.timeout = other.timeout;
 			this.loginTimeout = other.loginTimeout;
@@ -408,6 +415,10 @@ namespace Aerospike.Client
 				this.minConnsPerNode = staticClient.min_connections_per_node.Value;
 			}
 
+			if (dynamicClient.app_id != null)
+			{
+				this.AppId = dynamicClient.app_id;
+			}
 			if (dynamicClient.timeout.HasValue)
 			{
 				this.timeout = dynamicClient.timeout.Value;

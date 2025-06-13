@@ -78,6 +78,7 @@ namespace Aerospike.Client.Config
 
 	public class DynamicClientConfig
 	{
+		public string app_id { get; set; }
 		public int? timeout { get; set; }
 		public int? error_rate_window { get; set; }
 		public int? max_error_rate { get; set; }
@@ -230,7 +231,6 @@ namespace Aerospike.Client.Config
 		public bool? enable { get; set; }
 		public int? latency_shift { get; set; }
 		public int? latency_columns { get; set; }
-		public string app_id { get; set; }
 		public Dictionary<string, string> labels { get; set; }
 
 	}

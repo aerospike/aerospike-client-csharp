@@ -4,8 +4,9 @@ static:
     min_connections_per_node: 5
     max_connections_per_node: 50
 dynamic:
-  client: 
-    max_error_rate: 20
+  client:
+    app_id: unit_tester2
+    max_error_rate: 22
     rack_ids: [2,4,6,8]
   read:
     replica: PREFER_RACK
@@ -23,7 +24,6 @@ dynamic:
     enable: true
     latency_shift: 0
     latency_columns: 0
-    app_id: unit_tester
     labels:
       region: us-west
       zone: usw1-az3

@@ -83,11 +83,6 @@ namespace Aerospike.Client
 		public int LatencyShift = 1;
 
 		/// <summary>
-		/// Application ID. Metrics are loosely tied to this. Changing the appId will not reset the metric counters.
-		/// </summary>
-		public string AppId;
-
-		/// <summary>
 		/// Labels that can be sent to the metrics output
 		/// </summary>
 		public Dictionary<string, string> labels;
@@ -112,10 +107,6 @@ namespace Aerospike.Client
 				return;
 			}
 
-			if (!String.IsNullOrEmpty(metrics.app_id))
-			{
-				this.AppId = metrics.app_id;
-			}
 			if (metrics.labels != null)
 			{
 				this.labels = metrics.labels;
@@ -154,7 +145,6 @@ namespace Aerospike.Client
 			this.Interval = other.Interval;
 			this.LatencyColumns = other.LatencyColumns;
 			this.LatencyShift = other.LatencyShift;
-			this.AppId = other.AppId;
 			this.labels = other.labels;
 			this.restartRequired = other.restartRequired;
 		}

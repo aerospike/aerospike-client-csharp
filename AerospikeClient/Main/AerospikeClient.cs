@@ -54,6 +54,8 @@ namespace Aerospike.Client
 
 		protected internal string version;
 
+		protected internal ClientPolicy clientPolicy;
+
 		/// <summary>
 		/// Default read policy that is used when read command policy is null.
 		/// </summary>
@@ -210,10 +212,8 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if all host connections fail</exception>
 		public AerospikeClient(ClientPolicy policy, params Host[] hosts)
 		{
-			if (policy == null)
-			{
-				policy = new ClientPolicy();
-			}
+			policy ??= new ClientPolicy();
+			clientPolicy = policy;
 			this.readPolicyDefault = policy.readPolicyDefault;
 			this.writePolicyDefault = policy.writePolicyDefault;
 			this.scanPolicyDefault = policy.scanPolicyDefault;
@@ -228,14 +228,28 @@ namespace Aerospike.Client
 			this.infoPolicyDefault = policy.infoPolicyDefault;
 			this.operatePolicyReadDefault = new WritePolicy(this.readPolicyDefault);
 
-
 			string configEnvValue = Environment.GetEnvironmentVariable(CONFIG_PATH_ENV);
 			if (configEnvValue != null)
 			{
 				this.configProvider = new YamlConfigProvider(configEnvValue);
 				policy = new ClientPolicy(policy, configProvider);
+				MergeDefaultPoliciesWithConfig();
 			}
-			MergeDefaultPoliciesWithConfig();
+			else
+			{
+				mergedReadPolicyDefault = this.readPolicyDefault;
+				mergedWritePolicyDefault = this.writePolicyDefault;
+				mergedScanPolicyDefault = this.scanPolicyDefault;
+				mergedQueryPolicyDefault = this.queryPolicyDefault;
+				mergedBatchPolicyDefault = this.batchPolicyDefault;
+				mergedBatchParentPolicyWriteDefault = this.batchParentPolicyWriteDefault;
+				mergedBatchWritePolicyDefault = this.batchWritePolicyDefault;
+				mergedBatchDeletePolicyDefault = this.batchDeletePolicyDefault;
+				mergedBatchUDFPolicyDefault = this.batchUDFPolicyDefault;
+				mergedTxnVerifyPolicyDefault = this.txnVerifyPolicyDefault;
+				mergedTxnRollPolicyDefault = this.txnRollPolicyDefault;
+				mergedOperatePolicyReadDefault = this.operatePolicyReadDefault;
+			}
 			version = Assembly.GetExecutingAssembly().GetName().Version.ToString();
 			version ??= "development";
 
@@ -423,15 +437,19 @@ namespace Aerospike.Client
 			set { txnRollPolicyDefault = value; }
 		}
 
-		internal void MergeDefaultPoliciesWithConfig()
+		/// <summary>
+		/// Merge the default policies with the config properties.  This should be done at init and every time
+		/// the config is updated.
+		/// </summary>
+		public void MergeDefaultPoliciesWithConfig()
 		{
 			mergedReadPolicyDefault = new Policy(readPolicyDefault, configProvider);
 			mergedWritePolicyDefault = new WritePolicy(writePolicyDefault, configProvider);
-			mergedQueryPolicyDefault = new QueryPolicy(queryPolicyDefault, configProvider);
 			mergedScanPolicyDefault = new ScanPolicy(scanPolicyDefault, configProvider);
+			mergedQueryPolicyDefault = new QueryPolicy(queryPolicyDefault, configProvider);
 			mergedBatchPolicyDefault = new BatchPolicy(batchPolicyDefault, configProvider);
-			mergedBatchWritePolicyDefault = new BatchWritePolicy(batchWritePolicyDefault, configProvider);
 			mergedBatchParentPolicyWriteDefault = new BatchPolicy(batchParentPolicyWriteDefault, configProvider);
+			mergedBatchWritePolicyDefault = new BatchWritePolicy(batchWritePolicyDefault, configProvider);
 			mergedBatchDeletePolicyDefault = new BatchDeletePolicy(batchDeletePolicyDefault, configProvider);
 			mergedBatchUDFPolicyDefault = new BatchUDFPolicy(batchUDFPolicyDefault, configProvider);
 			mergedTxnVerifyPolicyDefault = new TxnVerifyPolicy(txnVerifyPolicyDefault, configProvider);

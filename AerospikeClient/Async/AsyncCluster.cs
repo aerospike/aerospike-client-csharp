@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2024 Aerospike, Inc.
+ * Copyright 2012-2025 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -24,6 +24,8 @@ namespace Aerospike.Client
 {
 	public sealed class AsyncCluster : Cluster
 	{
+		internal new readonly AsyncClient client;
+
 		// Command scheduler.
 		private readonly AsyncScheduler scheduler;
 
@@ -42,6 +44,7 @@ namespace Aerospike.Client
 		public AsyncCluster(AsyncClient client, AsyncClientPolicy policy, Host[] hosts)
 			: base(client, policy, hosts)
 		{
+			this.client = client;
 			maxCommands = policy.asyncMaxCommands;
 			asyncMinConnsPerNode = policy.asyncMinConnsPerNode;
 			asyncMaxConnsPerNode = (policy.asyncMaxConnsPerNode >= 0) ? policy.asyncMaxConnsPerNode : policy.maxConnsPerNode;
