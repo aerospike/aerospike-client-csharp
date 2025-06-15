@@ -222,14 +222,14 @@ namespace Aerospike.Client
 
 		private void ExecuteCommand()
 		{
-			span = StartSpan();
-
 			iteration++;
 
 			try
 			{
 				node = (AsyncNode)GetNode(cluster);
 				node.ValidateErrorCount();
+
+				span = StartSpan();
 
 				if (metricsEnabled)
 				{
@@ -278,9 +278,7 @@ namespace Aerospike.Client
 
 				if (span != null)
 				{
-					span.SetStatus(ActivityStatusCode.Error);
-					span.Dispose();
-					span = null;
+					EndSpan(ActivityStatusCode.Error);
 				}
 			}
 		}
@@ -779,16 +777,16 @@ namespace Aerospike.Client
 			{
 				// Command finished successfully.
 				// Put connection back into pool.
+				EndSpan(ActivityStatusCode.Ok);
 				node.PutAsyncConnection(conn);
 				ReleaseBuffer();
-				span?.SetStatus(ActivityStatusCode.Ok);
 			}
 			else if (status == FAIL_TOTAL_TIMEOUT)
 			{
 				// Timeout thread closed connection, but command still completed.
 				// User has already been notified with timeout. Release buffer and return.
+				EndSpan(ActivityStatusCode.Error, "timeout");
 				ReleaseBuffer();
-				span?.SetStatus(ActivityStatusCode.Error, "timeout");
 				return;
 			}
 			else if (status == FAIL_SOCKET_TIMEOUT)
@@ -796,8 +794,8 @@ namespace Aerospike.Client
 				// Timeout thread closed connection, but command still completed.
 				// User has not been notified of the timeout. Release buffer and let
 				// OnSuccess() be called.
+				EndSpan(ActivityStatusCode.Error, "timeout");
 				ReleaseBuffer();
-				span?.SetStatus(ActivityStatusCode.Error, "timeout");
 			}
 			else
 			{
@@ -984,7 +982,7 @@ namespace Aerospike.Client
 				// https://opentelemetry.io/docs/specs/semconv/database/database-spans
 
 				s.SetTag("network.peer.address", node.address.Address.ToString());
-				s.SetTag("network.peer.port", node.address.Port);
+				s.SetTag("network.peer.port", node.address.Port.ToString());
 				s.SetTag("db.system.name", "aerospike");
 				s.SetTag("db.operation.name", commandName);
 
@@ -1005,6 +1003,18 @@ namespace Aerospike.Client
 			}
 
 			return s;
+		}
+
+		private void EndSpan(ActivityStatusCode status, string description = null)
+		{
+			if (span == null)
+			{
+				return;
+			}
+
+			span.SetStatus(status, description);
+			span.Dispose();
+			span = null;
 		}
 
 		/// <summary>
