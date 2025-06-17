@@ -136,10 +136,9 @@ namespace Aerospike.Client
 		/// <param name="indexName">index name</param>
 		/// <param name="begin">filter begin value inclusive</param>
 		/// <param name="end">filter end value inclusive</param>
-		/// <param name="ctx">optional context for elements within a CDT</param>
-		public static Filter RangeByIndex(string indexName, long begin, long end, params CTX[] ctx)
+		public static Filter RangeByIndex(string indexName, long begin, long end)
 		{
-			return new Filter(null, IndexCollectionType.DEFAULT, ParticleType.INTEGER, Value.Get(begin), Value.Get(end), ctx, indexName);
+			return new Filter(null, IndexCollectionType.DEFAULT, ParticleType.INTEGER, Value.Get(begin), Value.Get(end), null, indexName);
 		}
 
 		/// <summary>
@@ -150,7 +149,6 @@ namespace Aerospike.Client
 		/// <param name="expression">expression to be indexed</param>
 		/// <param name="begin">filter begin value inclusive</param>
 		/// <param name="end">filter end value inclusive</param>
-		/// <param name="ctx">optional context for elements within a CDT</param>
 		public static Filter Range(Expression expression, long begin, long end)
 		{
 			return new Filter(expression, IndexCollectionType.DEFAULT, ParticleType.INTEGER, Value.Get(begin), Value.Get(end), null);
