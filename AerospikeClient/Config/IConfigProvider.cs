@@ -1,4 +1,4 @@
-/* 
+﻿/* 
  * Copyright 2012-2025 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
@@ -15,36 +15,18 @@
  * the License.
  */
 
+using Aerospike.Client.Config;
+
 namespace Aerospike.Client
 {
-	public sealed class TxnAddKeys : SyncWriteCommand
+	public interface IConfigProvider
 	{
-		private readonly OperateArgs args;
-		private readonly Txn txn;
+		protected const int DEFAULT_INTERVAL = 60;
 
-		public TxnAddKeys(Cluster cluster, Key key, OperateArgs args, Txn txn) 
-			: base(cluster, args.writePolicy, key)
-		{
-			this.args = args;
-			this.txn = txn;
-		}
+		public ConfigurationData ConfigurationData { get; }
 
-		protected internal override void WriteBuffer()
-		{
-			SetTxnAddKeys(args.writePolicy, key, args);
-		}
+		public int Interval { get; }
 
-		protected internal override void ParseResult(Node node, Connection conn)
-		{
-			ParseHeader(node, conn);
-			ParseTxnDeadline(txn);
-
-			if (resultCode == ResultCode.OK)
-			{
-				return;
-			}
-
-			throw new AerospikeException(resultCode);
-		}
+		public bool LoadConfig();
 	}
 }

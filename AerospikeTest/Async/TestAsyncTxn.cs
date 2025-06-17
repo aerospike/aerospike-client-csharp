@@ -40,7 +40,7 @@ namespace Aerospike.Test
 		public void AsyncTxnWrite()
 		{
 			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "asyncTxnWrite");
-			Txn txn = new();
+			using Txn txn = new();
 
 			var cmds = new IRunner[] 
 			{
@@ -57,7 +57,7 @@ namespace Aerospike.Test
 		public void AsyncTxnWriteTwice()
 		{
 			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "asyncTxnWriteTwice");
-			Txn txn = new();
+			using Txn txn = new();
 
 			var cmds = new IRunner[] 
 			{
@@ -74,7 +74,7 @@ namespace Aerospike.Test
 		public void AsyncTxnWriteBlock()
 		{
 			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "asyncTxnWriteBlock");
-			Txn txn = new();
+			using Txn txn = new();
 			
 			var cmds = new IRunner[] 
 			{
@@ -91,7 +91,7 @@ namespace Aerospike.Test
 		public void AsyncTxnWriteRead()
 		{
 			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "asyncTxnWriteRead");
-			Txn txn = new();
+			using Txn txn = new();
 
 			var cmds = new IRunner[] 
 			{
@@ -109,7 +109,7 @@ namespace Aerospike.Test
 		public void AsyncTxnWriteAbort()
 		{
 			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "asyncTxnWriteAbort");
-			Txn txn = new();
+			using Txn txn = new();
 
 			var cmds = new IRunner[] 
 			{
@@ -127,7 +127,7 @@ namespace Aerospike.Test
 		public void AsyncTxnDelete()
 		{
 			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "asyncTxnDelete");
-			Txn txn = new();
+			using Txn txn = new();
 
 			var cmds = new IRunner[] 
 			{
@@ -144,7 +144,7 @@ namespace Aerospike.Test
 		public void AsyncTxnDeleteAbort()
 		{
 			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "asyncTxnDeleteAbort");
-			Txn txn = new();
+			using Txn txn = new();
 			
 			var cmds = new IRunner[] 
 			{
@@ -161,7 +161,7 @@ namespace Aerospike.Test
 		public void AsyncTxnDeleteTwice()
 		{
 			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "asyncTxnDeleteTwice");
-			Txn txn = new();
+			using Txn txn = new();
 
 			var cmds = new IRunner[] 
 			{
@@ -179,7 +179,7 @@ namespace Aerospike.Test
 		public void AsyncTxnTouch()
 		{
 			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "asyncTxnTouch");
-			Txn txn = new();
+			using Txn txn = new();
 
 			var cmds = new IRunner[] 
 			{
@@ -196,7 +196,7 @@ namespace Aerospike.Test
 		public void AsyncTxnTouchAbort()
 		{
 			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "asyncTxnTouchAbort");
-			Txn txn = new();
+			using Txn txn = new();
 			
 			var cmds = new IRunner[] 
 			{
@@ -213,7 +213,7 @@ namespace Aerospike.Test
 		public void AsyncTxnOperateWrite()
 		{
 			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "asyncTxnOperateWrite3");
-			Txn txn = new();
+			using Txn txn = new();
 			Bin bin2 = new("bin2", "bal1");
 
 			var cmds = new IRunner[] 
@@ -235,7 +235,7 @@ namespace Aerospike.Test
 		public void AsyncTxnOperateWriteAbort()
 		{
 			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "asyncTxnOperateWriteAbort");
-			Txn txn = new();
+			using Txn txn = new();
 			Bin bin2 = new("bin2", "bal1");
 			
 			var cmds = new IRunner[] 
@@ -257,7 +257,7 @@ namespace Aerospike.Test
 		public void AsyncTxnUDF()
 		{
 			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "asyncTxnUDF");
-			Txn txn = new();
+			using Txn txn = new();
 			Bin bin2 = new("bin2", "bal1");
 			
 			var cmds = new IRunner[] 
@@ -275,7 +275,7 @@ namespace Aerospike.Test
 		public void AsyncTxnUDFAbort()
 		{
 			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "asyncTxnUDFAbort");
-			Txn txn = new();
+			using Txn txn = new();
 			Bin bin2 = new("bin2", "bal1");
 			
 			var cmds = new IRunner[] 
@@ -303,7 +303,7 @@ namespace Aerospike.Test
 				client.Put(null, key, bin);
 			}
 
-			Txn txn = new();
+			using Txn txn = new();
 			bin = new(binName, 2);
 
 			var cmds = new IRunner[] 
@@ -331,7 +331,7 @@ namespace Aerospike.Test
 				client.Put(null, key, bin);
 			}
 
-			Txn txn = new();
+			using Txn txn = new();
 			bin = new Bin(binName, 2);
 
 			var cmds = new IRunner[] 
@@ -349,7 +349,7 @@ namespace Aerospike.Test
 		public void AsyncTxnWriteCommitAbort()
 		{
 			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "asyncTxnCommitAbort");
-			Txn txn = new();
+			using Txn txn = new();
 
 			var cmds = new IRunner[]
 			{
@@ -367,8 +367,8 @@ namespace Aerospike.Test
 		public void AsyncTxnWriteReadTwoTxn()
 		{
 			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "asyncTxnWriteReadTwoTxn");
-			Txn txn1 = new();
-			Txn txn2 = new();
+			using Txn txn1 = new();
+			using Txn txn2 = new();
 
 			var cmds = new IRunner[]
 			{
@@ -388,7 +388,7 @@ namespace Aerospike.Test
 			Key key1 = new(SuiteHelpers.ns, SuiteHelpers.set, "asyncTxnLUTCommit1");
 			Key key2 = new(SuiteHelpers.ns, SuiteHelpers.set, "asyncTxnLUTCommit2");
 			Key key3 = new(SuiteHelpers.ns, SuiteHelpers.set, "asyncTxnLUTCommit3");
-			Txn txn = new(); // T1
+			using Txn txn = new(); // T1
 
 			var cmds = new IRunner[]
 			{
@@ -418,7 +418,7 @@ namespace Aerospike.Test
 		public void AsyncTxnWriteAfterCommit()
 		{
 			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "asyncTxnWriteAfter");
-			Txn txn = new();
+			using Txn txn = new();
 
 			var cmds = new IRunner[]
 			{

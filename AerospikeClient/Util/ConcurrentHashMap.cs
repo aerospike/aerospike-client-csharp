@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2024 Aerospike, Inc.
+ * Copyright 2012-2025 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -17,14 +17,15 @@
 
 namespace Aerospike.Client
 {
-	public class ConcurrentHashMap<TKey, TValue>
+	public sealed class ConcurrentHashMap<TKey, TValue> : IDisposable
 	{
-		private readonly ReaderWriterLockSlim _lock = new ReaderWriterLockSlim(LockRecursionPolicy.SupportsRecursion);
+		private readonly ReaderWriterLockSlim _lock = new(LockRecursionPolicy.SupportsRecursion);
 		private readonly Dictionary<TKey, TValue> _dictionary;
+		private bool disposedValue;
 
 		public ConcurrentHashMap()
 		{
-			_dictionary = new Dictionary<TKey, TValue>();
+			_dictionary = [];
 		}
 
 		public ConcurrentHashMap(int capacity) 
@@ -43,7 +44,10 @@ namespace Aerospike.Client
 				}
 				finally
 				{
-					if (_lock.IsReadLockHeld) _lock.ExitReadLock();
+					if (_lock.IsReadLockHeld)
+					{
+						_lock.ExitReadLock();
+					}
 				}
 			}
 			set 
@@ -55,7 +59,10 @@ namespace Aerospike.Client
 				}
 				finally
 				{
-					if (_lock.IsWriteLockHeld) _lock.ExitWriteLock();
+					if (_lock.IsWriteLockHeld)
+					{
+						_lock.ExitWriteLock();
+					}
 				}
 			}
 		}
@@ -95,7 +102,10 @@ namespace Aerospike.Client
 			}
 			finally
 			{
-				if (_lock.IsWriteLockHeld) _lock.ExitWriteLock();
+				if (_lock.IsWriteLockHeld)
+				{
+					_lock.ExitWriteLock();
+				}
 			}
 		}
 
@@ -108,7 +118,10 @@ namespace Aerospike.Client
 			}
 			finally
 			{
-				if (_lock.IsReadLockHeld) _lock.ExitReadLock();
+				if (_lock.IsReadLockHeld)
+				{
+					_lock.ExitReadLock();
+				}
 			}
 		}
 
@@ -121,7 +134,10 @@ namespace Aerospike.Client
 			}
 			finally
 			{
-				if (_lock.IsWriteLockHeld) _lock.ExitWriteLock();
+				if (_lock.IsWriteLockHeld)
+				{
+					_lock.ExitWriteLock();
+				}
 			}
 		}
 
@@ -136,12 +152,15 @@ namespace Aerospike.Client
 				}
 				finally
 				{
-					if (_lock.IsReadLockHeld) _lock.ExitReadLock();
+					if (_lock.IsReadLockHeld)
+					{
+						_lock.ExitReadLock();
+					}
 				}
 			}
 		}
 
-		public bool PerformActionOnEachElement(Func<int, bool> initilaize, Action<TKey, TValue, int> action)
+		public bool PerformReadActionOnEachElement(Func<int, bool> initilaize, Action<TKey, TValue, int> action)
 		{
 			_lock.EnterReadLock();
 			try
@@ -161,6 +180,115 @@ namespace Aerospike.Client
 				_lock.ExitReadLock();
 			}
 			return false;
+		}
+
+		public void FindElementAndPerformWriteFunc(TKey key, Func<TKey, bool, TValue, TValue> func)
+		{
+			try
+			{
+				_lock.EnterUpgradeableReadLock();
+				if (_dictionary.TryGetValue(key, out TValue value))
+				{
+					_lock.EnterWriteLock();
+					try
+					{
+						_dictionary[key] = func(key, true, value);
+					}
+					finally
+					{
+						_lock.ExitWriteLock();
+					}
+				}
+				else
+				{
+					_lock.EnterWriteLock();
+					try
+					{
+						_dictionary.Add(key, func(key, false, default));
+					}
+					finally
+					{
+						_lock.ExitWriteLock();
+					}
+				}
+			}
+			finally
+			{
+				if (_lock.IsUpgradeableReadLockHeld)
+				{
+					_lock.ExitUpgradeableReadLock();
+				}
+			}
+			
+		}
+
+		public bool SetValueIfNotNull(TKey key, TValue value)
+		{
+			try
+			{
+				_lock.EnterUpgradeableReadLock();
+				if (!_dictionary.ContainsKey(key))
+				{
+					_lock.EnterWriteLock();
+					try
+					{
+						_dictionary[key] = value;
+					}
+					finally
+					{
+						_lock.ExitWriteLock();
+					}
+					return true;
+				}
+			}
+			finally
+			{
+				if (_lock.IsUpgradeableReadLockHeld)
+				{
+					_lock.ExitUpgradeableReadLock();
+				}
+			}
+			return false;
+		}
+
+		public ICollection<TKey> Keys
+		{
+			get
+			{
+				try
+				{
+					_lock.EnterReadLock();
+					return _dictionary.Keys.ToArray();
+				}
+				finally
+				{
+					if (_lock.IsReadLockHeld)
+					{
+						_lock.ExitReadLock();
+					}
+				}
+			}
+		}
+
+		private void Dispose(bool disposing)
+		{
+			if (!disposedValue)
+			{
+				if (disposing)
+				{
+					// Dispose managed state (managed objects)
+					_lock?.Dispose();
+				}
+
+				disposedValue = true;
+			}
+		}
+
+		public void Dispose()
+		{
+			// Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
+			Dispose(disposing: true);
+			GC.SuppressFinalize(this);
 		}
 	}
 }

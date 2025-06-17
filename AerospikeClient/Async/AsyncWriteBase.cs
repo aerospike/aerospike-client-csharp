@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2024 Aerospike, Inc.
+ * Copyright 2012-2025 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -28,7 +28,7 @@ namespace Aerospike.Client
 			AsyncCluster cluster,
 			WritePolicy writePolicy,
 			Key key
-		) : base(cluster, writePolicy)
+		) : base(cluster, writePolicy, key.ns)
 		{
 			this.writePolicy = writePolicy;
 			this.Key = key;

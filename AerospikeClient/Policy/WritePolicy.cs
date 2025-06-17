@@ -132,6 +132,65 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
+		/// Copy write policy from another policy and override according to the AerospikeConfigProvider.
+		/// </summary>
+		public WritePolicy(WritePolicy other, IConfigProvider configProvider) : this(other)
+		{
+			if (configProvider == null)
+			{
+				return;
+			}
+
+			if (configProvider.ConfigurationData == null)
+			{
+				return;
+			}
+
+			var write = configProvider.ConfigurationData.dynamicConfig.write;
+			if (write == null)
+			{
+				return;
+			}
+
+			if (write.fail_on_filtered_out.HasValue)
+			{
+				this.failOnFilteredOut = write.fail_on_filtered_out.Value;
+			}
+			if (write.replica.HasValue)
+			{
+				this.replica = write.replica.Value;
+			}
+			if (write.send_key.HasValue)
+			{
+				this.sendKey = write.send_key.Value;
+			}
+			if (write.sleep_between_retries.HasValue)
+			{
+				this.sleepBetweenRetries = write.sleep_between_retries.Value;
+			}
+			if (write.socket_timeout.HasValue)
+			{
+				this.socketTimeout = write.socket_timeout.Value;
+			}
+			if (write.timeout_delay.HasValue)
+			{
+				this.TimeoutDelay = write.timeout_delay.Value;
+			}
+			if (write.total_timeout.HasValue)
+			{
+				this.totalTimeout = write.total_timeout.Value;
+			}
+			if (write.max_retries.HasValue)
+			{
+				this.maxRetries = write.max_retries.Value;
+			}
+			if (write.durable_delete.HasValue)
+			{
+				this.durableDelete = write.durable_delete.Value;
+			}
+		}
+
+		/// <summary>
 		/// Copy write policy from another policy.
 		/// </summary>
 		public WritePolicy(Policy other)

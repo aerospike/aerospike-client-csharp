@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2024 Aerospike, Inc.
+ * Copyright 2012-2025 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -116,6 +116,77 @@ namespace Aerospike.Client
 			this.includeBinData = other.includeBinData;
 			this.failOnClusterChange = other.failOnClusterChange;
 			this.shortQuery = other.shortQuery;
+		}
+
+		/// <summary>
+		/// Copy query policy from another policy and override according to the AerospikeConfigProvider.
+		/// </summary>
+		public QueryPolicy(QueryPolicy other, IConfigProvider configProvider) : this(other)
+		{
+			if (configProvider == null)
+			{
+				return;
+			}
+
+			if (configProvider.ConfigurationData == null)
+			{
+				return;
+			}
+
+			var query = configProvider.ConfigurationData.dynamicConfig.query;
+			if (query == null)
+			{
+				return;
+			}
+
+			if (query.read_mode_ap.HasValue)
+			{
+				this.readModeAP = query.read_mode_ap.Value;
+			}
+			if (query.read_mode_sc.HasValue)
+			{
+				this.readModeSC = query.read_mode_sc.Value;
+			}
+			if (query.replica.HasValue)
+			{
+				this.replica = query.replica.Value;
+			}
+			if (query.sleep_between_retries.HasValue)
+			{
+				this.sleepBetweenRetries = query.sleep_between_retries.Value;
+			}
+			if (query.socket_timeout.HasValue)
+			{
+				this.socketTimeout = query.socket_timeout.Value;
+			}
+			if (query.timeout_delay.HasValue)
+			{
+				this.TimeoutDelay = query.timeout_delay.Value;
+			}
+			if (query.total_timeout.HasValue)
+			{
+				this.totalTimeout = query.total_timeout.Value;
+			}
+			if (query.max_retries.HasValue)
+			{
+				this.maxRetries = query.max_retries.Value;
+			}
+			if (query.include_bin_data.HasValue)
+			{
+				this.includeBinData = query.include_bin_data.Value;
+			}
+			if (query.info_timeout.HasValue)
+			{
+				this.infoTimeout = (uint)query.info_timeout.Value;
+			}
+			if (query.record_queue_size.HasValue)
+			{
+				this.recordQueueSize = query.record_queue_size.Value;
+			}
+			if (query.expected_duration.HasValue)
+			{
+				this.expectedDuration = query.expected_duration.Value;
+			}
 		}
 
 		/// <summary>

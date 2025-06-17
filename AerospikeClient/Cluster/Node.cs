@@ -23,7 +23,7 @@ namespace Aerospike.Client
 	/// <summary>
 	/// Server node representation.  This class manages server node connections and health status.
 	/// </summary>
-	public class Node
+	public class Node : IDisposable
 	{
 		/// <summary>
 		/// Number of partitions for each namespace.
@@ -53,11 +53,10 @@ namespace Aerospike.Client
 		protected uint connectionIter;
 		protected internal int connsOpened = 1;
 		protected internal int connsClosed;
-		protected internal long bytesReceived;
-		protected internal long bytesSent;
 		private volatile int errorRateCount;
-		private volatile int errorCount;
-		private volatile int timeoutCount;
+		private readonly Counter errorCounter;
+		private readonly Counter timeoutCounter;
+		private readonly Counter keyBusyCounter;
 		protected internal int peersGeneration = -1;
 		protected internal int partitionGeneration = -1;
 		protected internal int rebalanceGeneration = -1;
@@ -69,6 +68,7 @@ namespace Aerospike.Client
 		protected internal bool partitionChanged = true;
 		protected internal bool rebalanceChanged;
 		protected internal volatile bool active = true;
+		private bool disposedValue;
 
 		/// <summary>
 		/// Initialize server node with connection parameters.
@@ -87,21 +87,15 @@ namespace Aerospike.Client
 			this.features = nv.features;
 			this.rebalanceChanged = cluster.rackAware;
 			this.racks = cluster.rackAware ? new Dictionary<string, int>() : null;
-			this.errorCount = 0;
+			this.errorCounter = new Counter();
 			this.errorRateCount = 0;
-			this.timeoutCount = 0;
+			this.timeoutCounter = new Counter();
+			this.keyBusyCounter = new Counter();
 
 			this.metricsEnabled = cluster.MetricsEnabled;
 			if (cluster.MetricsEnabled)
 			{
 				this.metrics = new NodeMetrics(cluster.MetricsPolicy);
-				this.bytesReceived = 0;
-				this.bytesSent = 0;
-			}
-			else
-			{
-				this.bytesReceived = -1;
-				this.bytesSent = -1;
 			}
 
 			connectionPools = new Pool<Connection>[cluster.connPoolsPerNode];
@@ -185,7 +179,7 @@ namespace Aerospike.Client
 				}
 
 				string[] commands = cluster.rackAware ? INFO_PERIODIC_REB : INFO_PERIODIC;
-				Dictionary<string, string> infoMap = Info.Request(tendConnection, commands);
+				Dictionary<string, string> infoMap = InfoRequest(tendConnection, commands);
 
 				VerifyNodeName(infoMap);
 				VerifyPeersGeneration(infoMap, peers);
@@ -213,6 +207,11 @@ namespace Aerospike.Client
 			}
 		}
 
+		private Dictionary<string, string> InfoRequest(Connection conn, params string[] names)
+		{
+			Info info = new(this, conn, names);
+			return info.ParseMultiResponse();
+		}
 		private bool ShouldLogin()
 		{
 			return performLogin > 0 || (sessionExpiration.HasValue && 
@@ -374,7 +373,7 @@ namespace Aerospike.Client
 					Log.Debug(cluster.context, "Update peers for node " + this);
 				}
 
-				PeerParser parser = new PeerParser(cluster, tendConnection, peers.peers);
+				PeerParser parser = new(cluster, this, tendConnection, peers.peers);
 				peersCount = peers.peers.Count;
 
 				bool peersValidated = true;
@@ -568,7 +567,7 @@ namespace Aerospike.Client
 				{
 					Log.Debug(cluster.context, "Update racks for node " + this);
 				}
-				RackParser parser = new RackParser(tendConnection);
+				RackParser parser = new(this, tendConnection);
 
 				rebalanceGeneration = parser.Generation;
 				racks = parser.Racks;
@@ -845,7 +844,7 @@ namespace Aerospike.Client
 					new TlsConnection(cluster, host.tlsName, address, timeout, this, pool) :
 					new Connection(address, timeout, this, pool);
 
-					metrics.AddLatency(LatencyType.CONN, metricsWatch.Elapsed.TotalMilliseconds);
+					metrics.AddLatency(null, LatencyType.CONN, metricsWatch.Elapsed.TotalMilliseconds);
 				}
 				else
 				{
@@ -964,10 +963,9 @@ namespace Aerospike.Client
 
 		public void EnableMetrics(MetricsPolicy policy)
 		{
+			metrics?.Dispose();
 			metrics = new NodeMetrics(policy);
 			this.metricsEnabled = true;
-			this.bytesReceived = 0;
-			this.bytesSent = 0;
 		}
 
 		public NodeMetrics GetMetrics()
@@ -978,18 +976,19 @@ namespace Aerospike.Client
 		public void DisableMetrics()
 		{
 			this.metricsEnabled = false;
-			this.bytesReceived = -1;
-			this.bytesSent = -1;
+			metrics?.Dispose();
+			metrics = null;
 		}
 
 		/// <summary>
-		/// Add elapsed time in nanoseconds to latency buckets corresponding to latency type.
+		/// Add elapsed time in milliseconds to latency buckets corresponding to latency type.
 		/// </summary>
+		/// <param name="ns">namespace</param>
 		/// <param name="type"></param>
-		/// <param name="elapsedMs">elapsed time in milliseconds. The conversion to nanoseconds is done later</param>
-		public void AddLatency(LatencyType type, double elapsedMs)
+		/// <param name="elapsedMs">elapsed time in milliseconds</param>
+		public void AddLatency(string ns, LatencyType type, double elapsedMs)
 		{
-			metrics.AddLatency(type, elapsedMs);
+			metrics.AddLatency(ns, type, elapsedMs);
 		}
 
 		public void IncrErrorRate()
@@ -1023,34 +1022,131 @@ namespace Aerospike.Client
 		/// command may occur.
 		/// </summary>
 
-		public void AddError()
+		public void AddError(string ns)
 		{
-			Interlocked.Increment(ref errorCount);
+			errorCounter.Increment(ns);
 		}
 
 		/// <summary>
 		/// Increment command timeout count. If the timeout is retryable (ie socketTimeout),
 		/// multiple timeouts per command may occur.
 		/// </summary>
-		public void AddTimeout()
+		public void AddTimeout(string ns)
 		{
-			Interlocked.Increment(ref timeoutCount);
+			timeoutCounter.Increment(ns);
+		}
+
+		/// <summary>
+		/// Increment the key busy counter.
+		/// </summary>
+		public void AddKeyBusy(string ns) 
+		{
+			keyBusyCounter.Increment(ns);
+		}
+
+		/// <summary>
+		/// Add to the count of bytes sent to the node.
+		/// </summary>
+		public void AddBytesOut(string ns, long count) 
+		{
+			metrics.BytesOutCounter.Increment(ns, count);
+		}
+
+		/// <summary>
+		/// Add to the count of bytes received from the node.
+		/// </summary>
+		public void AddBytesIn(string ns, long count) 
+		{
+			metrics.BytesInCounter.Increment(ns, count);
 		}
 
 		/// <summary>
 		/// Return command error count. The value is cumulative and not reset per metrics interval.
 		/// </summary>
-		public int GetErrorCount()
+		public long GetErrorCount()
 		{
-			return errorCount;
+			return errorCounter.GetTotal();
 		}
 
 		/// <summary>
 		/// Return command timeout count. The value is cumulative and not reset per metrics interval.
 		/// </summary>
-		public int GetTimeoutCount()
+		public long GetTimeoutCount()
 		{
-			return timeoutCount;
+			return timeoutCounter.GetTotal();
+		}
+
+		/// <summary>
+		/// Return transaction timeout count for a given namespace. The value is cumulative and not reset per metrics
+		/// interval.
+		/// </summary>
+		public long GetTimeoutCountbyNS(string ns) 
+		{
+			return timeoutCounter.GetCountByNS(ns);
+		}
+
+		/// <summary>
+		/// Return transaction error count by namespace. The value is cumulative and not reset per metrics interval.
+		/// </summary>
+		public long GetErrorCountByNS(string ns) 
+		{
+			return errorCounter.GetCountByNS(ns);
+		}
+
+		/// <summary>
+		/// Return count of total bytes in. The value is cumulative and not reset per metrics interval.
+		/// </summary>
+		public long GetBytesInTotal() 
+		{
+			return metrics.BytesInCounter.GetTotal();
+		}
+
+		/// <summary>
+		/// Return count of bytes in by namespace. The value is cumulative and not reset per metrics interval.
+		/// </summary>
+		public long GetBytesInByNS(string ns)
+		{
+			return metrics.BytesInCounter.GetCountByNS(ns);
+		}
+
+		/// <summary>
+		/// Return count of total bytes out. The value is cumulative and not reset per metrics interval.
+		/// </summary>
+		public long GetBytesOutTotal()
+		{
+			return metrics.BytesOutCounter.GetTotal();
+		}
+
+		/// <summary>
+		/// Return count of bytes out by namespace. The value is cumulative and not reset per metrics interval.
+		/// </summary>
+		public long GetBytesOutByNS(string ns) 
+		{
+			return metrics.BytesOutCounter.GetCountByNS(ns);
+		}
+
+		/// <summary>
+		/// Return key busy count. The value is cumulative and not reset per metrics interval.
+		/// </summary>
+		public long GetKeyBusyCount()
+		{
+			return keyBusyCounter.GetTotal();
+		}
+
+		/// <summary>
+		/// Return key busy error count for a given namespace. The value is cumulative and not reset per metrics interval.
+		/// </summary>
+		public long GetKeyBusyCountByNS(string ns) 
+		{
+			return keyBusyCounter.GetCountByNS(ns);
+		}
+
+		/// <summary>
+		/// Return metrics enablement status
+		/// </summary>
+		public bool AreMetricsEnabled() 
+		{ 
+			return cluster.MetricsEnabled; 
 		}
 
 		/// <summary>
@@ -1162,7 +1258,7 @@ namespace Aerospike.Client
 		{
 			active = false;
 			CloseConnections();
-			GC.SuppressFinalize(this);
+			Dispose();
 		}
 
 		protected internal virtual void CloseConnections()
@@ -1202,6 +1298,32 @@ namespace Aerospike.Client
 			{
 				return address;
 			}
+		}
+
+		protected virtual void Dispose(bool disposing)
+		{
+			if (!disposedValue)
+			{
+				if (disposing)
+				{
+					errorCounter.Dispose();
+					timeoutCounter.Dispose();
+					keyBusyCounter.Dispose();
+					if (metricsEnabled)
+					{
+						metrics.Dispose();
+					}
+				}
+
+				disposedValue = true;
+			}
+		}
+
+		public void Dispose()
+		{
+			// Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
+			Dispose(disposing: true);
+			GC.SuppressFinalize(this);
 		}
 	}
 }

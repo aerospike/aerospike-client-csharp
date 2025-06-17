@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2022 Aerospike, Inc.
+ * Copyright 2012-2025 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -30,7 +30,7 @@ namespace Aerospike.Client
 		/// Batch constructor.
 		/// </summary>
 		public AsyncMultiCommand(AsyncCluster cluster, Policy policy, AsyncNode node, bool isOperation)
-			: base(cluster, policy)
+			: base(cluster, policy, null)
 		{
 			this.serverNode = node;
 			this.isOperation = isOperation;
@@ -39,8 +39,8 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Scan/Query constructor.
 		/// </summary>
-		public AsyncMultiCommand(AsyncCluster cluster, Policy policy, AsyncNode node, int socketTimeout, int totalTimeout)
-			: base(cluster, policy, socketTimeout, totalTimeout)
+		public AsyncMultiCommand(AsyncCluster cluster, Policy policy, AsyncNode node, int socketTimeout, int totalTimeout, string ns)
+			: base(cluster, policy, socketTimeout, totalTimeout, ns)
 		{
 			this.serverNode = node;
 			this.isOperation = false;

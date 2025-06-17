@@ -15,13 +15,23 @@
  * the License.
  */
 using System.Text;
+using Aerospike.Client.Config;
 
 namespace Aerospike.Client
 {
 	public class Cluster
-	{		
+	{
+		// Pointer to client
+		protected internal readonly AerospikeClient client;
+
+		// Config Data
+		private ConfigurationData configData;
+
 		// Expected cluster name.
 		protected internal readonly String clusterName;
+
+		// Application identifier. May be null.
+		protected internal string appId;
 
 		// Initial host nodes specified by user.
 		private volatile Host[] seeds;
@@ -39,17 +49,17 @@ namespace Aerospike.Client
 		// IP translations.
 		protected internal readonly Dictionary<string, string> ipMap;
 
-        // TLS connection policy.
+		// TLS connection policy.
 		protected internal readonly TlsPolicy tlsPolicy;
 
 		// Log context.
 		internal readonly Log.Context context;
-            
+			
 		// Authentication mode.
 		protected internal readonly AuthMode authMode;
 
 		// User name in UTF-8 encoded bytes.
-        protected internal readonly byte[] user;
+		protected internal readonly byte[] user;
 
 		// Password in UTF-8 encoded bytes.
 		protected internal byte[] password;
@@ -85,25 +95,27 @@ namespace Aerospike.Client
 		internal int errorRateWindow;
 
 		// Initial connection timeout.
-		protected internal readonly int connectionTimeout;
+		protected internal int connectionTimeout;
 
 		// Login timeout.
-		protected internal readonly int loginTimeout;
+		protected internal int loginTimeout;
 
 		// Maximum socket idle to validate connections in commands.
-		private readonly double maxSocketIdleMillisTran;
+		private double maxSocketIdleMillisTran;
 
 		// Maximum socket idle to trim peak connections to min connections.
-		private readonly double maxSocketIdleMillisTrim;
+		private double maxSocketIdleMillisTrim;
 
 		// Rack ids.
-		public readonly int[] rackIds;
+		public int[] rackIds;
 
 		// Count of add node failures in the most recent cluster tend iteration.
 		private int invalidNodeCount;
 
 		// Interval in milliseconds between cluster tends.
-		private readonly int tendInterval;
+		private int tendInterval;
+
+		private bool failIfNotConnected;
 
 		// Cluster tend counter
 		private int tendCount;
@@ -115,10 +127,10 @@ namespace Aerospike.Client
 		internal volatile bool tendValid;
 
 		// Should use "services-alternate" instead of "services" in info request?
-		protected internal readonly bool useServicesAlternate;
+		protected internal bool useServicesAlternate;
 
 		// Request server rack ids.
-		internal readonly bool rackAware;
+		internal bool rackAware;
 
 		// Is authentication enabled
 		public readonly bool authEnabled;
@@ -129,11 +141,13 @@ namespace Aerospike.Client
 		public bool MetricsEnabled;
 		public MetricsPolicy MetricsPolicy;
 		private volatile IMetricsListener metricsListener;
+		private readonly object metricsLock = new();
 		private volatile int retryCount;
 		private volatile int commandCount;
 		private volatile int delayQueueTimeoutCount;
+		private readonly int configInterval;
 
-		public Cluster(ClientPolicy policy, Host[] hosts)
+		public Cluster(AerospikeClient client, ClientPolicy policy, Host[] hosts)
 		{
 			// Disable log subscribe requirement to avoid a breaking change in a minor release.
 			// TODO: Reintroduce requirement in the next major client release.
@@ -145,7 +159,9 @@ namespace Aerospike.Client
 			}
 			*/
 
-			this.clusterName = (policy.clusterName != null)? policy.clusterName : "";
+			this.client = client;
+			this.clusterName = (policy.clusterName != null) ? policy.clusterName : "";
+			this.appId = policy.AppId;
 			this.context = new Log.Context(this.clusterName);
 
 			if (Log.DebugEnabled())
@@ -155,6 +171,16 @@ namespace Aerospike.Client
 
 			tlsPolicy = policy.tlsPolicy;
 			this.authMode = policy.authMode;
+
+			configInterval = -1;
+			if (client.configProvider != null)
+			{
+				configData = client.configProvider.ConfigurationData;
+				if (configData != null)
+				{
+					configInterval = client.configProvider.Interval;
+				}
+			}
 
 			// Default TLS names when TLS enabled.
 			if (tlsPolicy != null)
@@ -244,6 +270,7 @@ namespace Aerospike.Client
 			connectionTimeout = policy.timeout;
 			loginTimeout = policy.loginTimeout;
 			tendInterval = policy.tendInterval;
+			failIfNotConnected = policy.failIfNotConnected;
 			ipMap = policy.ipMap;
 			useServicesAlternate = policy.useServicesAlternate;
 			rackAware = policy.rackAware;
@@ -284,7 +311,7 @@ namespace Aerospike.Client
 			}
 			else
 			{
-				InitTendThread(policy.failIfNotConnected);
+				InitTendThread();
 			}
 		}
 
@@ -334,10 +361,10 @@ namespace Aerospike.Client
 			}
 		}
 
-		public virtual void InitTendThread(bool failIfNotConnected)
+		public virtual void InitTendThread()
 		{
 			// Tend cluster until all nodes identified.
-			WaitTillStabilized(failIfNotConnected);
+			WaitTillStabilized();
 
 			if (Log.DebugEnabled())
 			{
@@ -362,6 +389,15 @@ namespace Aerospike.Client
 			if (seedsToAdd.Count > 0)
 			{
 				AddSeeds(seedsToAdd.ToArray());
+			}
+
+			if (configData != null && configData.dynamicConfig.metrics.enable.HasValue && 
+				configData.dynamicConfig.metrics.enable.Value)
+			{
+				lock (metricsLock)
+				{
+					EnableMetricsInternal(MetricsPolicy);
+				}
 			}
 
 			// Run cluster tend thread.
@@ -415,11 +451,11 @@ namespace Aerospike.Client
 		/// This helps avoid initial database request timeout issues when
 		/// a large number of threads are initiated at client startup.
 		/// </summary>
-		private void WaitTillStabilized(bool failIfNotConnected)
+		private void WaitTillStabilized()
 		{
 			// Tend now requests partition maps in same iteration as the nodes
 			// are added, so there is no need to call tend twice anymore.
-			Tend(failIfNotConnected, true);
+			Tend(true);
 
 			if (nodes.Length == 0)
 			{
@@ -443,7 +479,7 @@ namespace Aerospike.Client
 				// Tend cluster.
 				try
 				{
-					Tend(false, false);
+					Tend(false);
 				}
 				catch (Exception e)
 				{
@@ -473,7 +509,7 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Check health of all nodes in the cluster.
 		/// </summary>
-		private void Tend(bool failIfNotConnected, bool isInit)
+		private void Tend(bool isInit)
 		{
 			// Initialize tend iteration node statistics.
 			Peers peers = new Peers(nodes.Length + 16);
@@ -490,7 +526,7 @@ namespace Aerospike.Client
 			// If active nodes don't exist, seed cluster.
 			if (nodes.Length == 0)
 			{
-				SeedNode(peers, failIfNotConnected);
+				SeedNode(peers);
 
 				// Abort cluster init if all peers of the seed are not reachable and failIfNotConnected is true.
 				if (isInit && failIfNotConnected && nodes.Length == 1 && peers.InvalidCount > 0)
@@ -571,15 +607,34 @@ namespace Aerospike.Client
 				}
 			}
 
-			if (MetricsEnabled && (tendCount % MetricsPolicy.Interval) == 0)
+			// Perform metrics snapshot
+			lock (metricsLock)
 			{
-				metricsListener.OnSnapshot(this);
+				if (MetricsEnabled && (tendCount % MetricsPolicy.Interval) == 0)
+				{
+					metricsListener.OnSnapshot(this);
+				}
+			}
+
+			if (configInterval > 0 && tendCount % configInterval == 0)
+			{
+				try
+				{
+					LoadConfiguration();
+				}
+				catch (Exception ex)
+				{
+					if (Log.WarnEnabled())
+					{
+						Log.Warn("Dynamic configuration failed: " + ex.Message);
+					}
+				}
 			}
 
 			ProcessRecoverQueue();
 		}
 
-		private bool SeedNode(Peers peers, bool failIfNotConnected)
+		private bool SeedNode(Peers peers)
 		{
 			// Must copy array reference for copy on write semantics to work.
 			Host[] seedArray = seeds;
@@ -855,16 +910,19 @@ namespace Aerospike.Client
 				// Remove node from map.
 				nodesMap.Remove(node.Name);
 
-				if (MetricsEnabled)
+				lock (metricsLock)
 				{
-					// Flush node metrics before removal.
-					try
+					if (MetricsEnabled)
 					{
-						metricsListener.OnNodeClose(node);
-					}
-					catch (Exception e)
-					{
-						Log.Warn("Write metrics failed on " + node + ": " + Util.GetErrorMessage(e));
+						// Flush node metrics before removal.
+						try
+						{
+							metricsListener.OnNodeClose(node);
+						}
+						catch (Exception e)
+						{
+							Log.Warn("Write metrics failed on " + node + ": " + Util.GetErrorMessage(e));
+						}
 					}
 				}
 
@@ -1000,47 +1058,183 @@ namespace Aerospike.Client
 			}
 		}
 
+		private void LoadConfiguration()
+		{
+			if (client.configProvider.LoadConfig())
+			{
+				configData = client.configProvider.ConfigurationData;
+				client.MergeDefaultPoliciesWithConfig();
+				
+				lock (metricsLock)
+				{
+					UpdateClusterConfig();
+					this.MetricsPolicy = MergeMetricsPolicyWithConfig(MetricsPolicy);
+
+					if (MetricsEnabled && MetricsPolicy.restartRequired)
+					{
+						DisableMetricsInternal();
+						EnableMetricsInternal(MetricsPolicy);
+						MetricsPolicy.restartRequired = false;
+						return;
+					}
+
+					if (configData != null && configData.dynamicConfig.metrics.enable.HasValue)
+					{
+						if (!MetricsEnabled && configData.dynamicConfig.metrics.enable.Value)
+						{
+							EnableMetricsInternal(MetricsPolicy);
+						}
+						else if (MetricsEnabled && !configData.dynamicConfig.metrics.enable.Value)
+						{
+							DisableMetricsInternal();
+						}
+					}
+				}
+			}
+		}
+
+		private MetricsPolicy MergeMetricsPolicyWithConfig(MetricsPolicy metricsPolicy)
+		{
+			metricsPolicy ??= new MetricsPolicy();
+			return new MetricsPolicy(metricsPolicy, configData);
+		}
+
+		/// <summary>
+		/// Enable metrics collection for the cluster.
+		/// </summary>
+		/// <param name="policy"></param>
 		public void EnableMetrics(MetricsPolicy policy)
 		{
+			if (configData != null)
+			{
+				if (configData.dynamicConfig.metrics.enable.HasValue)
+				{
+					if (!configData.dynamicConfig.metrics.enable.Value)
+					{
+						Log.Error("When a config exists, metrics can not be enabled via EnableMetrics unless they" +
+							" are enabled in the config provider.");
+						return;
+					}
+				}
+			}
+
+			lock (metricsLock)
+			{
+				EnableMetricsInternal(policy);
+			}
+		}
+
+		/// <summary>
+		/// Enable metrics for internal use. The metrics lock needs to be obtained before calling this method.
+		/// </summary>
+		private void EnableMetricsInternal(MetricsPolicy policy)
+		{
+			MetricsPolicy mergedMp = MergeMetricsPolicyWithConfig(policy);
+			IMetricsListener listener = mergedMp.Listener;
+
+			listener ??= new MetricsWriter(mergedMp.ReportDir);
+
+			// In case metrics was enabled before this call, disable the previous metrics listener
 			if (MetricsEnabled)
 			{
 				this.metricsListener.OnDisable(this);
 			}
 
-			IMetricsListener listener = policy.Listener;
-
-			if (listener == null)
-			{
-				listener = new MetricsWriter(policy.ReportDir);
-			}
-
 			this.metricsListener = listener;
-			this.MetricsPolicy = policy;
+			this.MetricsPolicy = mergedMp;
 
 			Node[] nodeArray = nodes;
 
 			foreach (Node node in nodeArray)
 			{
-				node.EnableMetrics(policy);
+				node.EnableMetrics(MetricsPolicy);
 			}
 
-			listener.OnEnable(this, policy);
+			metricsListener.OnEnable(this, MetricsPolicy);
 			MetricsEnabled = true;
 		}
 
 		public void DisableMetrics()
 		{
+			if (configData != null)
+			{
+				if (configData.dynamicConfig.metrics.enable.HasValue)
+				{
+					if (configData.dynamicConfig.metrics.enable.Value)
+					{
+						Log.Error("Metrics can not be disabled via DisableMetrics() when they are enabled via config.");
+						return;
+					}
+				}
+			}
+
+			lock (metricsLock)
+			{
+				DisableMetricsInternal();
+			}
+		}
+
+		/// <summary>
+		/// Disable metrics for internal use. The metrics lock needs to be obtained before calling this method.
+		/// </summary>
+		private void DisableMetricsInternal()
+		{
 			if (MetricsEnabled)
 			{
 				MetricsEnabled = false;
-				Node[] nodeArray = nodes;
-
-				foreach (Node node in nodeArray)
+				metricsListener?.OnDisable(this);
+				foreach (Node node in nodes)
 				{
 					node.DisableMetrics();
 				}
-				metricsListener.OnDisable(this);
 			}
+		}
+
+		protected void UpdateClientPolicy()
+		{
+			client.clientPolicy = new ClientPolicy(client.clientPolicy, client.configProvider);
+		}
+
+		/// <summary>
+		/// Update dynamic configuration values in the cluster. Since appId is used in metrics, 
+		/// the metrics lock must be obtained before calling this method.
+		/// </summary>
+		/// <exception cref="AerospikeException"></exception>
+		protected void UpdateClusterConfig()
+		{
+			UpdateClientPolicy();
+			appId = client.clientPolicy.AppId;
+			connectionTimeout = client.clientPolicy.timeout;
+			errorRateWindow = client.clientPolicy.errorRateWindow;
+			maxErrorRate = client.clientPolicy.maxErrorRate;
+			failIfNotConnected = client.clientPolicy.failIfNotConnected;
+			loginTimeout = client.clientPolicy.loginTimeout;
+			if (client.clientPolicy.maxSocketIdle < 0)
+			{
+				throw new AerospikeException("Invalid maxSocketIdle: " + client.clientPolicy.maxSocketIdle);
+			}
+
+			if (client.clientPolicy.maxSocketIdle == 0)
+			{
+				maxSocketIdleMillisTran = 0.0;
+				maxSocketIdleMillisTrim = 55000.0;
+			}
+			else
+			{
+				maxSocketIdleMillisTran = (double)(client.clientPolicy.maxSocketIdle * 1000);
+				maxSocketIdleMillisTrim = maxSocketIdleMillisTran;
+			}
+			rackAware = client.clientPolicy.rackAware;
+			if (client.clientPolicy.rackIds != null && client.clientPolicy.rackIds.Count > 0)
+			{
+				rackIds = [.. client.clientPolicy.rackIds];
+			}
+			else
+			{
+				rackIds = [client.clientPolicy.rackId];
+			}
+			tendInterval = client.clientPolicy.tendInterval;
+			useServicesAlternate = client.clientPolicy.useServicesAlternate;
 		}
 
 		public ClusterStats GetStats()
@@ -1090,7 +1284,7 @@ namespace Aerospike.Client
 		{
 			// Must copy array reference for copy on write semantics to work.
 			Node[] nodeArray = nodes;
-    
+	
 			for (int i = 0; i < nodeArray.Length; i++)
 			{
 				// Must handle concurrency with other non-tending threads, so nodeIndex is consistent.
@@ -1330,13 +1524,19 @@ namespace Aerospike.Client
 			tendValid = false;
 			cancel.Cancel();
 
-			try
+			lock (metricsLock)
 			{
-				DisableMetrics();
-			}
-			catch (Exception e)
-			{
-				Log.Warn("DisableMetrics failed: " + Util.GetErrorMessage(e));
+				try
+				{
+					if (MetricsEnabled)
+					{
+						DisableMetricsInternal();
+					}
+				}
+				catch (Exception e)
+				{
+					Log.Warn("DisableMetrics failed: " + Util.GetErrorMessage(e));
+				}
 			}
 
 			// Must copy array reference for copy on write semantics to work.

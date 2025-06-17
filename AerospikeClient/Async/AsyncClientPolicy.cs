@@ -136,6 +136,35 @@ namespace Aerospike.Client
 			this.asyncBufferSize = other.asyncBufferSize;
 		}
 
+		public AsyncClientPolicy(AsyncClientPolicy other, IConfigProvider configProvider) : base(other, configProvider)
+		{
+			if (configProvider.ConfigurationData == null)
+			{
+				return;
+			}
+
+			var staticConfig = configProvider.ConfigurationData.staticConfig;
+			if (staticConfig == null)
+			{
+				return;
+			}
+
+			var staticClient = configProvider.ConfigurationData.staticConfig.client;
+			if (staticClient == null)
+			{
+				return;
+			}
+
+			if (staticClient.async_max_connections_per_node.HasValue)
+			{
+				this.asyncMaxConnsPerNode = staticClient.async_max_connections_per_node.Value;
+			}
+			if (staticClient.async_min_connections_per_node.HasValue)
+			{
+				this.asyncMinConnsPerNode = staticClient.async_min_connections_per_node.Value;
+			}
+		}
+
 		/// <summary>
 		/// Default constructor.
 		/// </summary>

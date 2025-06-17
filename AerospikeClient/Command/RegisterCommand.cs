@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2024 Aerospike, Inc.
+ * Copyright 2012-2025 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -41,7 +41,7 @@ namespace Aerospike.Client
 
 			try
 			{
-				Info info = new Info(conn, command);
+				Info info = new(node, conn, command);
 				Info.NameValueParser parser = info.GetNameValueParser();
 				string error = null;
 				string file = null;
