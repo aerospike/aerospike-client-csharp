@@ -135,10 +135,4 @@ public class TestTracing : TestSync
 		Assert.AreEqual("put test", Spans[0].DisplayName);
 		Assert.AreEqual(ActivityStatusCode.Error, Spans[0].Status);
 	}
-
-	[TestMethod]
-	public async Task Retry()
-	{
-		// TODO: Not sure if the span is correctly disposed in case of retry.
-	}
 }
