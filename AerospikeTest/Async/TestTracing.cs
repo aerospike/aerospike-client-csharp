@@ -84,10 +84,11 @@ public class TestTracing : TestSync
 		{
 			_ = await Client.Get(new Policy
 			{
-				// TODO: the command can complete before the timeout. How to force a timeout?
 				socketTimeout = 1,
 				totalTimeout = 1,
 			}, CancellationToken.None, key);
+
+			Assert.Inconclusive("No timeout");
 		}
 		catch (AerospikeException.Timeout)
 		{
@@ -99,7 +100,7 @@ public class TestTracing : TestSync
 		for (; i < 10 && Spans.Count == 0; i += 1)
 		{
 			_tracerProvider.ForceFlush();
-			await Task.Delay(TimeSpan.FromMilliseconds(500));
+			await Task.Delay(TimeSpan.FromMilliseconds(200));
 		}
 
 		if (i == 10)
@@ -114,6 +115,30 @@ public class TestTracing : TestSync
 	[TestMethod]
 	public async Task CommandSpecificError()
 	{
-		// TODO: I think the span is not completed if AsyncSingleCommand.ParseResult throws. How to force this kind of error?
+		Key key = new(SuiteHelpers.ns, SuiteHelpers.set, nameof(CommandSpecificError));
+
+		try
+		{
+			await Client.Put(new WritePolicy
+			{
+				generation = int.MaxValue,
+				generationPolicy = GenerationPolicy.EXPECT_GEN_EQUAL,
+			}, CancellationToken.None, key);
+		}
+		catch (AerospikeException)
+		{
+		}
+
+		_tracerProvider.ForceFlush();
+
+		Assert.AreEqual(1, Spans.Count);
+		Assert.AreEqual("put test", Spans[0].DisplayName);
+		Assert.AreEqual(ActivityStatusCode.Error, Spans[0].Status);
+	}
+
+	[TestMethod]
+	public async Task Retry()
+	{
+		// TODO: Not sure if the span is correctly disposed in case of retry.
 	}
 }

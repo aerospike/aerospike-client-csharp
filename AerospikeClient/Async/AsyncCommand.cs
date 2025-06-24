@@ -28,7 +28,7 @@ namespace Aerospike.Client
 	public abstract class AsyncCommand : Command, IAsyncCommand, ITimeout
 	{
 		private static readonly ActivitySource ActivitySource;
-		private static readonly ConcurrentDictionary<(string cmd, string set), string> SpanNameCache = new();
+		private static readonly ConcurrentDictionary<(string cmd, string set), string> SpanNames = new();
 		private static int ErrorCount = 0;
 
 		static AsyncCommand()
@@ -478,6 +478,8 @@ namespace Aerospike.Client
 
 		public void OnError(Exception e)
 		{
+			EndSpan(ActivityStatusCode.Error);
+
 			try
 			{
 				if (e is AerospikeException.Connection ac)
@@ -974,7 +976,7 @@ namespace Aerospike.Client
 			}
 
 			// Use a cache to avoid a string allocation in the hot path.
-			string spanName = SpanNameCache.GetOrAdd((commandName, key?.setName), static k => $"{k.cmd} {k.set}");
+			string spanName = SpanNames.GetOrAdd((commandName, key?.setName), static k => $"{k.cmd} {k.set}");
 
 			var s = ActivitySource.StartActivity(spanName, ActivityKind.Client);
 			if (s is { IsAllDataRequested: true })
@@ -985,6 +987,12 @@ namespace Aerospike.Client
 				s.SetTag("network.peer.port", node.address.Port.ToString());
 				s.SetTag("db.system.name", "aerospike");
 				s.SetTag("db.operation.name", commandName);
+
+				if (!string.IsNullOrEmpty(cluster.clusterName))
+				{
+					// OTEL does not define an attribute for cluster name so a custom one is used.
+					s.SetTag("aerospike.cluster.name", cluster.clusterName);
+				}
 
 				if (key?.ns != null)
 				{
@@ -1018,7 +1026,7 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
-		/// Return the name of the command (e.g. "put") of null.
+		/// Return the name of the command (e.g. "put") or null.
 		/// </summary>
 		private protected virtual string CommandName => null;
 
