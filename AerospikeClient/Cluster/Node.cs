@@ -46,7 +46,7 @@ namespace Aerospike.Client
 		private Connection tendConnection;
 		private byte[] sessionToken;
 		private DateTime? sessionExpiration;
-		private volatile Dictionary<string,int> racks;
+		internal volatile Dictionary<string,int> racks;
 		private volatile NodeMetrics metrics;
 		protected bool metricsEnabled;
 		private readonly Pool<Connection>[] connectionPools;
