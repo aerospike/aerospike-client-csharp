@@ -6,16 +6,16 @@ inputs:
     description: Where to download the test program from
     required: false
     default: database-generic-dev-local
-  use-server-rc:
+  registry-name:
+    type: string
     required: false
-    default: false
-    description: Test against server release candidate?
-  docker-hub-username:
-    description: Required for using release candidates
+    description: Registry name
+    default: 'docker.io'
+  image-name:
+    type: string
     required: false
-  docker-hub-password:
-    description: Required for using release candidates
-    required: false
+    description: Image name
+    default: 'aerospike/aerospike-server-enterprise'
 
 runs:
   using: "composite"
@@ -23,10 +23,10 @@ runs:
     - name: Run EE server
       uses: ./.github/actions/run-ee-server
       with:
-        use-server-rc: ${{ inputs.use-server-rc }}
-        docker-hub-username: ${{ inputs.docker-hub-username }}
-        docker-hub-password: ${{ inputs.docker-hub-password }}
-
+        registry-name: ${{ inputs.registry-name }}
+        registry-username: ${{ secrets.DOCKER_HUB_BOT_USERNAME}}
+        registry-password: ${{ secrets.DOCKER_HUB_BOT_PW}}
+        image-name: ${{ inputs.image-name }}
     - name: Setup JFrog CLI
       id: setup-jfrog-cli
       uses: jfrog/setup-jfrog-cli@v4.4.2
