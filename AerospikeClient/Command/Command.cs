@@ -2256,6 +2256,18 @@ namespace Aerospike.Client
 					dataOffset += FIELD_HEADER_SIZE + packedCtx.Length;
 					fieldCount++;
 				}
+
+				if (statement.filter.IndexName != null)
+				{
+					dataOffset += ByteUtil.EstimateSizeUtf8(statement.filter.IndexName) + 1;
+					fieldCount++;
+				}
+
+				if (statement.filter.Exp != null)
+				{
+					dataOffset += statement.Filter.Exp.Size();
+					fieldCount++;
+				}
 			}
 
 			// Estimate aggregation/background function size.
@@ -2448,6 +2460,13 @@ namespace Aerospike.Client
 					Array.Copy(packedCtx, 0, dataBuffer, dataOffset, packedCtx.Length);
 					dataOffset += packedCtx.Length;
 				}
+
+				if (statement.filter.IndexName != null)
+				{
+					WriteField(statement.filter.IndexName, FieldType.INDEX_NAME);
+				}
+
+				statement.filter.Exp?.WriteIndex(this);
 			}
 
 			if (statement.functionName != null)
@@ -3148,9 +3167,9 @@ namespace Aerospike.Client
 			dataBuffer[dataOffset++] = (byte)type;
 		}
 
-		internal virtual void WriteExpHeader(int size)
+		internal void WriteExpHeader(int size, int type)
 		{
-			WriteFieldHeader(size, FieldType.FILTER_EXP);
+			WriteFieldHeader(size, type);
 		}
 
 		private void Begin()
