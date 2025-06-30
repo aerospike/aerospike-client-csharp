@@ -20,6 +20,12 @@ inputs:
     required: false
     default: 'latest'
     description: 'Server docker image tag'
+  registry-username:
+    description: Required for using release candidates
+    required: false
+  registry-password:
+    description: Required for using release candidates
+    required: false
 
 runs:
   using: "composite"
@@ -28,8 +34,8 @@ runs:
       uses: ./.github/actions/run-ee-server
       with:
         registry-name: ${{ inputs.registry-name }}
-        registry-username: ${{ inputs.DOCKER_HUB_BOT_USERNAME}}
-        registry-password: ${{ inputs.DOCKER_HUB_BOT_PW}}
+        registry-username: ${{ inputs.registry-username}}
+        registry-password: ${{ inputs.registry-password}}
         image-name: ${{ inputs.image-name }}
         server-tag: ${{ inputs.server-tag }}
     - name: Setup JFrog CLI
