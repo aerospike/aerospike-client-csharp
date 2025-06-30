@@ -1,5 +1,4 @@
 name: Test
-description: "Test code base"
 
 inputs:
   jfrog-tests-repo-name:
@@ -16,6 +15,11 @@ inputs:
     required: false
     description: Image name
     default: 'aerospike/aerospike-server-enterprise'
+  server-tag:
+    type: string
+    required: false
+    default: 'latest'
+    description: 'Server docker image tag'
 
 runs:
   using: "composite"
@@ -24,9 +28,10 @@ runs:
       uses: ./.github/actions/run-ee-server
       with:
         registry-name: ${{ inputs.registry-name }}
-        registry-username: ${{ secrets.DOCKER_HUB_BOT_USERNAME}}
-        registry-password: ${{ secrets.DOCKER_HUB_BOT_PW}}
+        registry-username: ${{ inputs.DOCKER_HUB_BOT_USERNAME}}
+        registry-password: ${{ inputs.DOCKER_HUB_BOT_PW}}
         image-name: ${{ inputs.image-name }}
+        server-tag: ${{ inputs.server-tag }}
     - name: Setup JFrog CLI
       id: setup-jfrog-cli
       uses: jfrog/setup-jfrog-cli@v4.4.2
