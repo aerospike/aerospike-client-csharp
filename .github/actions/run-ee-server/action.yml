@@ -39,21 +39,18 @@ runs:
   - run: echo IMAGE_FULL_NAME=${{ inputs.registry-name }}/${{ inputs.image-name }}:${{ inputs.server-tag }} >> $GITHUB_ENV
     shell: bash
 
-  - run: echo NEW_IMAGE_FULL_NAME=${{ env.IMAGE_FULL_NAME }}-python-client-testing >> $GITHUB_ENV
-    shell: bash
-
   # macOS Github runners and Windows self-hosted runners don't have buildx installed by default
   - if: ${{ runner.os == 'Windows' || runner.os == 'macOS' }}
     uses: docker/setup-buildx-action@v3
 
   - name: Build and push
+    id: docker-build
     uses: docker/build-push-action@v6
     with:
       # Don't want to use default Git context or else it will clone the whole client repo again
       context: .github/workflows/docker-build-context
       build-args: |
         server_image=${{ env.IMAGE_FULL_NAME }}
-      tags: ${{ env.NEW_IMAGE_FULL_NAME }}
       # setup-buildx-action configures Docker to use the docker-container build driver
       # This driver doesn't publish an image locally by default
       # so we have to manually enable it
@@ -62,7 +59,7 @@ runs:
   - run: echo SERVER_CONTAINER_NAME="aerospike" >> $GITHUB_ENV
     shell: bash
 
-  - run: docker run -d --name ${{ env.SERVER_CONTAINER_NAME }} -e DEFAULT_TTL=2592000 -p 3000:3000 ${{ env.NEW_IMAGE_FULL_NAME }}
+  - run: docker run -d --name ${{ env.SERVER_CONTAINER_NAME }} -e DEFAULT_TTL=2592000 -p 3000:3000 ${{ docker-build.outputs.digest }}
     shell: bash
 
   - uses: ./.github/actions/wait-for-as-server-to-start
