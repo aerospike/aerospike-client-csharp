@@ -60,9 +60,9 @@ jobs:
       uses: ./.github/actions/test
       with:
         jfrog-tests-repo-name: database-generic-stage-local
-        registry-name: ${{ inputs.registry-name }}
-        image-name: ${{ inputs.image-name }}
-        server-tag: ${{ inputs.server-tag }}
+        registry-name: ${{ inputs.registry-name || 'docker.io' }}
+        image-name: ${{ inputs.image-name || 'aerospike/aerospike-server-enterprise' }}
+        server-tag: ${{ inputs.server-tag || 'latest' }}
         registry-username: ${{ secrets.DOCKER_HUB_BOT_USERNAME }}
         registry-password: ${{ secrets.DOCKER_HUB_BOT_PW }}
    
