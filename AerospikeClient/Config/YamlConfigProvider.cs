@@ -107,7 +107,12 @@ namespace Aerospike.Client
 			this.client = client;
 			ConfigurationData = null;
 			Interval = IConfigProvider.DEFAULT_CONFIG_INTERVAL;
-			
+
+			if (Log.DebugEnabled())
+			{
+				Log.Debug("Supported YAML schema config versions: " + String.Join(", ", supportedVersions.Keys));
+			}
+
 			try
 			{
 				if (!configEnvValue.StartsWith(DEFAULT_CONFIG_URL_PREFIX))
@@ -155,22 +160,23 @@ namespace Aerospike.Client
 					   .Build();
 
 					Version version = new(configRoot.GetSection("version").Value);
+
 					if (!supportedVersions.TryGetValue(version, out IConfigurationData value))
 					{
-						throw new AerospikeException("Yaml schema version " + version + 
-							" is not supported. Schema versions supported by this client are: " + String.Join(",", supportedVersions));
+						Log.Warn("YAML config must contain a valid version field.");
+						ConfigurationData = supportedVersions[new Version("1.0.0")]; // Default to the first supported version
 					}
 					else
 					{
 						ConfigurationData = value;
-
-						ProcessStaticConfig();
-						ProcessDynamicConfig();
-						LogConfigChanges(true);
-
-						Watch();
-						return true;
 					}
+
+					ProcessStaticConfig();
+					ProcessDynamicConfig();
+					LogConfigChanges(true);
+
+					Watch();
+					return true;
 				}
 				catch (Exception e)
 				{
