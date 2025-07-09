@@ -1213,7 +1213,7 @@ namespace Aerospike.Client
 			UpdateClientPolicy();
 			if (init)
 			{
-				configData = client.configProvider.ConfigurationData; // Needed to turn on metrics at init
+				configData = client?.configProvider?.ConfigurationData ?? null; // Needed to turn on metrics at init
 			}
 			var clientPolicy = client.GetClientPolicy();
 			if (clientPolicy.tendInterval < TEND_INTERVAL_MIN_MS)
