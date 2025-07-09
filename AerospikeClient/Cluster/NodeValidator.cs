@@ -300,7 +300,8 @@ namespace Aerospike.Client
 		{
 			try
 			{
-				string versionString = map["build"];	
+				string versionString = map["build"];
+				versionString = versionString.Split("-")[0];
 				this.serverVersion = new Version(versionString);
 			}
 			catch (Exception)
