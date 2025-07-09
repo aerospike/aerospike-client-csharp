@@ -24,7 +24,7 @@ namespace Aerospike.Client
 {
 	public sealed class AsyncCluster : Cluster
 	{
-		internal new readonly AsyncClient client;
+		private readonly AsyncClient asyncClient;
 
 		// Command scheduler.
 		private readonly AsyncScheduler scheduler;
@@ -41,10 +41,10 @@ namespace Aerospike.Client
 		// Maximum async connections per node.
 		internal readonly int asyncMaxConnsPerNode;
 
-		public AsyncCluster(AsyncClient client, AsyncClientPolicy policy, Host[] hosts)
-			: base(client, policy, hosts)
+		public AsyncCluster(AsyncClient client, AsyncClientPolicy policy, string configPath, Host[] hosts)
+			: base(client, policy, configPath, hosts)
 		{
-			this.client = client;
+			this.asyncClient = client;
 			maxCommands = policy.asyncMaxCommands;
 			asyncMinConnsPerNode = policy.asyncMinConnsPerNode;
 			asyncMaxConnsPerNode = (policy.asyncMaxConnsPerNode >= 0) ? policy.asyncMaxConnsPerNode : policy.maxConnsPerNode;
@@ -74,6 +74,7 @@ namespace Aerospike.Client
 					throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Unsupported MaxCommandAction value: " + policy.asyncMaxCommandAction.ToString());
 			}
 
+			UpdateClusterConfig(true);
 			StartTendThread(policy);
 		}
 
@@ -96,6 +97,17 @@ namespace Aerospike.Client
 		public void ReleaseBuffer(BufferSegment segment)
 		{
 			scheduler.Release(segment);
+		}
+
+		protected override AsyncClient GetAerospikeClient()
+		{
+			return asyncClient;
+		}
+
+		protected override void UpdateClientPolicy()
+		{
+			var client = GetAerospikeClient();
+			client.clientPolicy = new AsyncClientPolicy((AsyncClientPolicy)client.GetClientPolicy(), client.configProvider);
 		}
 	}
 }

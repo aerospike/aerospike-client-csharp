@@ -45,6 +45,8 @@ namespace Aerospike.Client
 
 		private readonly new AsyncCluster cluster;
 
+		protected internal new AsyncClientPolicy clientPolicy;
+
 		//-------------------------------------------------------
 		// Constructors
 		//-------------------------------------------------------
@@ -124,34 +126,34 @@ namespace Aerospike.Client
 		{
 			policy ??= new AsyncClientPolicy();
 			clientPolicy = policy;
-			string configEnvValue = Environment.GetEnvironmentVariable(CONFIG_PATH_ENV);
-			if (configEnvValue != null)
+
+			string configPath = YamlConfigProvider.GetConfigPath();
+			if (configPath != null)
 			{
-				this.configProvider = new YamlConfigProvider(configEnvValue);
-				policy = new AsyncClientPolicy(policy, configProvider);
-				MergeDefaultPoliciesWithConfig();
+				configProvider = YamlConfigProvider.CreateConfigProvider(configPath, this);
 			}
 			else
 			{
-				mergedReadPolicyDefault = this.readPolicyDefault;
-				mergedWritePolicyDefault = this.writePolicyDefault;
-				mergedScanPolicyDefault = this.scanPolicyDefault;
-				mergedQueryPolicyDefault = this.queryPolicyDefault;
-				mergedBatchPolicyDefault = this.batchPolicyDefault;
-				mergedBatchParentPolicyWriteDefault = this.batchParentPolicyWriteDefault;
-				mergedBatchWritePolicyDefault = this.batchWritePolicyDefault;
-				mergedBatchDeletePolicyDefault = this.batchDeletePolicyDefault;
-				mergedBatchUDFPolicyDefault = this.batchUDFPolicyDefault;
-				mergedTxnVerifyPolicyDefault = this.txnVerifyPolicyDefault;
-				mergedTxnRollPolicyDefault = this.txnRollPolicyDefault;
-				mergedOperatePolicyReadDefault = this.operatePolicyReadDefault;
+				configProvider = null;
+			}
+
+			if (configProvider != null)
+			{
+				policy = new AsyncClientPolicy(policy, configProvider);
+				MergeDefaultPoliciesWithConfig();
 			}
 			
 			version = Assembly.GetExecutingAssembly().GetName().Version.ToString();
 			version ??= "development";
 
-			cluster = new AsyncCluster(this, policy, hosts);
+			cluster = new AsyncCluster(this, policy, configPath, hosts);
 			base.cluster = this.cluster;
+			base.clientPolicy = this.clientPolicy;
+		}
+
+		protected internal override AsyncClientPolicy GetClientPolicy()
+		{
+			return clientPolicy;
 		}
 
 		//-------------------------------------------------------

@@ -154,7 +154,6 @@ namespace Aerospike.Client
 		{
 			MetricsPolicy policy = cluster.MetricsPolicy;
 			string clusterName = cluster.clusterName;
-
 			clusterName ??= "";
 
 			GetCpuMemoryUsage(out double cpu, out long mem);

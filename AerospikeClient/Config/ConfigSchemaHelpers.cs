@@ -19,25 +19,34 @@ namespace Aerospike.Client.Config
 {
 	public static class ConfigurationDataHelpers
 	{
-		public static bool HasDBWCsendKey(this ConfigurationData configData)
+		public static bool HasMetrics(this IConfigurationData configData)
+		{
+			return configData != null && configData.dynamicConfig != null &&
+				configData.dynamicConfig.metrics != null &&
+				configData.dynamicConfig.metrics.enable != null;
+		}
+
+		public static bool HasDBWCsendKey(this IConfigurationData configData)
 		{
 			return configData != null && configData.dynamicConfig != null && 
 				configData.dynamicConfig.batch_write != null && 
 				configData.dynamicConfig.batch_write.send_key != null;
 		}
 
-		public static bool HasDBUDFCsendKey(this ConfigurationData configData)
+		public static bool HasDBUDFCsendKey(this IConfigurationData configData)
 		{
 			return configData != null && configData.dynamicConfig != null &&
 				configData.dynamicConfig.batch_udf != null &&
 				configData.dynamicConfig.batch_udf.send_key != null;
 		}
 
-		public static bool HasDBDCsendKey(this ConfigurationData configData)
+		public static bool HasDBDCsendKey(this IConfigurationData configData)
 		{
 			return configData != null && configData.dynamicConfig != null &&
 				configData.dynamicConfig.batch_delete != null &&
 				configData.dynamicConfig.batch_delete.send_key != null;
 		}
+
+		
 	}
 }
