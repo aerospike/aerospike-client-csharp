@@ -93,7 +93,7 @@ namespace Aerospike.Client
 		/// Copy metrics policy from another metrics policy AND override certain policy attributes if they exist in the
 		/// configProvider.
 		/// </summary>
-		public MetricsPolicy(MetricsPolicy other, ConfigurationData config) :
+		public MetricsPolicy(MetricsPolicy other, IConfigurationData config) :
 			this(other)
 		{
 			if (config == null)
@@ -109,7 +109,7 @@ namespace Aerospike.Client
 
 			if (metrics.labels != null)
 			{
-				this.labels = metrics.labels;
+				this.labels = new Dictionary<string, string>(metrics.labels);
 			}
 			if (metrics.latency_shift.HasValue)
 			{

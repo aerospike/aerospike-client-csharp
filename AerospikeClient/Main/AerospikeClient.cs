@@ -41,12 +41,6 @@ namespace Aerospike.Client
 	public class AerospikeClient : IDisposable, IAerospikeClient
 	{
 		//-------------------------------------------------------
-		// Constants.
-		//-------------------------------------------------------
-
-		protected const string CONFIG_PATH_ENV = "AEROSPIKE_CLIENT_CONFIG_URL";
-
-		//-------------------------------------------------------
 		// Member variables.
 		//-------------------------------------------------------
 
@@ -60,71 +54,71 @@ namespace Aerospike.Client
 		/// Default read policy that is used when read command policy is null.
 		/// </summary>
 		protected Policy readPolicyDefault;
-		protected Policy mergedReadPolicyDefault;
+		internal Policy mergedReadPolicyDefault;
 
 		/// <summary>
 		/// Default write policy that is used when write command policy is null.
 		/// </summary>
 		protected WritePolicy writePolicyDefault;
-		protected WritePolicy mergedWritePolicyDefault;
+		internal WritePolicy mergedWritePolicyDefault;
 
 		/// <summary>
 		/// Default scan policy that is used when scan command policy is null.
 		/// </summary>
 		protected ScanPolicy scanPolicyDefault;
-		protected ScanPolicy mergedScanPolicyDefault;
+		internal ScanPolicy mergedScanPolicyDefault;
 
 		/// <summary>
 		/// Default query policy that is used when query command policy is null.
 		/// </summary>
 		protected QueryPolicy queryPolicyDefault;
-		protected QueryPolicy mergedQueryPolicyDefault;
+		internal QueryPolicy mergedQueryPolicyDefault;
 
 		/// <summary>
 		/// Default parent policy used in batch read commands. Parent policy fields
 		/// include socketTimeout, totalTimeout, maxRetries, etc...
 		/// </summary>
 		protected BatchPolicy batchPolicyDefault;
-		protected BatchPolicy mergedBatchPolicyDefault;
+		internal BatchPolicy mergedBatchPolicyDefault;
 
 		/// <summary>
 		/// Default parent policy used in batch write commands. Parent policy fields
 		/// include socketTimeout, totalTimeout, maxRetries, etc...
 		/// </summary>
 		protected BatchPolicy batchParentPolicyWriteDefault;
-		protected BatchPolicy mergedBatchParentPolicyWriteDefault;
+		internal BatchPolicy mergedBatchParentPolicyWriteDefault;
 
 		/// <summary>
 		/// Default write policy used in batch operate commands.
 		/// Write policy fields include generation, expiration, durableDelete, etc...
 		/// </summary>
 		protected BatchWritePolicy batchWritePolicyDefault;
-		protected BatchWritePolicy mergedBatchWritePolicyDefault;
+		internal BatchWritePolicy mergedBatchWritePolicyDefault;
 
 		/// <summary>
 		/// Default delete policy used in batch delete commands.
 		/// </summary>
 		protected BatchDeletePolicy batchDeletePolicyDefault;
-		protected BatchDeletePolicy mergedBatchDeletePolicyDefault;
+		internal BatchDeletePolicy mergedBatchDeletePolicyDefault;
 
 		/// <summary>
 		/// Default user defined function policy used in batch UDF execute commands.
 		/// </summary>
 		protected BatchUDFPolicy batchUDFPolicyDefault;
-		protected BatchUDFPolicy mergedBatchUDFPolicyDefault;
+		internal BatchUDFPolicy mergedBatchUDFPolicyDefault;
 
 		/// <summary>
 		/// Default transaction policy when verifying record versions in a batch on a commit.
 		/// </summary>
 		protected TxnVerifyPolicy txnVerifyPolicyDefault;
-		protected TxnVerifyPolicy mergedTxnVerifyPolicyDefault;
+		internal TxnVerifyPolicy mergedTxnVerifyPolicyDefault;
 
 		/// <summary>
 		/// Default transaction policy when rolling the transaction records forward (commit)
 		/// or back(abort) in a batch.
 		/// </summary>
 		protected TxnRollPolicy txnRollPolicyDefault;
-		protected TxnRollPolicy mergedTxnRollPolicyDefault;
+		internal TxnRollPolicy mergedTxnRollPolicyDefault;
 
 		/// <summary>
 		/// Default info policy that is used when info command policy is null.
@@ -132,7 +126,7 @@ namespace Aerospike.Client
 		protected InfoPolicy infoPolicyDefault;
 
 		protected WritePolicy operatePolicyReadDefault;
-		protected WritePolicy mergedOperatePolicyReadDefault;
+		internal WritePolicy mergedOperatePolicyReadDefault;
 
 		internal protected IConfigProvider configProvider;
 
@@ -228,32 +222,40 @@ namespace Aerospike.Client
 			this.infoPolicyDefault = policy.infoPolicyDefault;
 			this.operatePolicyReadDefault = new WritePolicy(this.readPolicyDefault);
 
-			string configEnvValue = Environment.GetEnvironmentVariable(CONFIG_PATH_ENV);
-			if (configEnvValue != null)
+			mergedReadPolicyDefault = this.readPolicyDefault;
+			mergedWritePolicyDefault = this.writePolicyDefault;
+			mergedScanPolicyDefault = this.scanPolicyDefault;
+			mergedQueryPolicyDefault = this.queryPolicyDefault;
+			mergedBatchPolicyDefault = this.batchPolicyDefault;
+			mergedBatchParentPolicyWriteDefault = this.batchParentPolicyWriteDefault;
+			mergedBatchWritePolicyDefault = this.batchWritePolicyDefault;
+			mergedBatchDeletePolicyDefault = this.batchDeletePolicyDefault;
+			mergedBatchUDFPolicyDefault = this.batchUDFPolicyDefault;
+			mergedTxnVerifyPolicyDefault = this.txnVerifyPolicyDefault;
+			mergedTxnRollPolicyDefault = this.txnRollPolicyDefault;
+			mergedOperatePolicyReadDefault = this.operatePolicyReadDefault;
+
+			string configPath = YamlConfigProvider.GetConfigPath();
+			if (configPath != null)
 			{
-				this.configProvider = new YamlConfigProvider(configEnvValue);
-				policy = new ClientPolicy(policy, configProvider);
-				MergeDefaultPoliciesWithConfig();
+				configProvider = YamlConfigProvider.CreateConfigProvider(configPath, this);
 			}
 			else
 			{
-				mergedReadPolicyDefault = this.readPolicyDefault;
-				mergedWritePolicyDefault = this.writePolicyDefault;
-				mergedScanPolicyDefault = this.scanPolicyDefault;
-				mergedQueryPolicyDefault = this.queryPolicyDefault;
-				mergedBatchPolicyDefault = this.batchPolicyDefault;
-				mergedBatchParentPolicyWriteDefault = this.batchParentPolicyWriteDefault;
-				mergedBatchWritePolicyDefault = this.batchWritePolicyDefault;
-				mergedBatchDeletePolicyDefault = this.batchDeletePolicyDefault;
-				mergedBatchUDFPolicyDefault = this.batchUDFPolicyDefault;
-				mergedTxnVerifyPolicyDefault = this.txnVerifyPolicyDefault;
-				mergedTxnRollPolicyDefault = this.txnRollPolicyDefault;
-				mergedOperatePolicyReadDefault = this.operatePolicyReadDefault;
+				configProvider = null;
 			}
+
+			if (configProvider != null)
+			{
+				policy = new ClientPolicy(policy, configProvider);
+				MergeDefaultPoliciesWithConfig();
+			}
+
 			version = Assembly.GetExecutingAssembly().GetName().Version.ToString();
 			version ??= "development";
 
-			cluster = new Cluster(this, policy, hosts);
+			cluster = new Cluster(this, policy, configPath, hosts);
+			cluster.UpdateClusterConfig(true);
 			cluster.StartTendThread(policy);
 		}
 
@@ -295,6 +297,24 @@ namespace Aerospike.Client
 				this.infoPolicyDefault = new InfoPolicy();
 			}
 			this.operatePolicyReadDefault = new WritePolicy(this.readPolicyDefault);
+
+			mergedReadPolicyDefault = this.readPolicyDefault;
+			mergedWritePolicyDefault = this.writePolicyDefault;
+			mergedScanPolicyDefault = this.scanPolicyDefault;
+			mergedQueryPolicyDefault = this.queryPolicyDefault;
+			mergedBatchPolicyDefault = this.batchPolicyDefault;
+			mergedBatchParentPolicyWriteDefault = this.batchParentPolicyWriteDefault;
+			mergedBatchWritePolicyDefault = this.batchWritePolicyDefault;
+			mergedBatchDeletePolicyDefault = this.batchDeletePolicyDefault;
+			mergedBatchUDFPolicyDefault = this.batchUDFPolicyDefault;
+			mergedTxnVerifyPolicyDefault = this.txnVerifyPolicyDefault;
+			mergedTxnRollPolicyDefault = this.txnRollPolicyDefault;
+			mergedOperatePolicyReadDefault = this.operatePolicyReadDefault;
+		}
+
+		protected virtual internal ClientPolicy GetClientPolicy()
+		{
+			return clientPolicy;
 		}
 
 		//-------------------------------------------------------
@@ -449,6 +469,7 @@ namespace Aerospike.Client
 			mergedQueryPolicyDefault = new QueryPolicy(queryPolicyDefault, configProvider);
 			mergedBatchPolicyDefault = new BatchPolicy(batchPolicyDefault, configProvider);
 			mergedBatchParentPolicyWriteDefault = new BatchPolicy(batchParentPolicyWriteDefault, configProvider);
+			mergedBatchParentPolicyWriteDefault.GraftBatchWriteConfig(configProvider);
 			mergedBatchWritePolicyDefault = new BatchWritePolicy(batchWritePolicyDefault, configProvider);
 			mergedBatchDeletePolicyDefault = new BatchDeletePolicy(batchDeletePolicyDefault, configProvider);
 			mergedBatchUDFPolicyDefault = new BatchUDFPolicy(batchUDFPolicyDefault, configProvider);

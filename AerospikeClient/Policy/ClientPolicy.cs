@@ -377,6 +377,11 @@ namespace Aerospike.Client
 
 		public ClientPolicy(ClientPolicy other, IConfigProvider configProvider) : this(other)
 		{
+			if (configProvider == null)
+			{
+				return;
+			}
+			
 			if (configProvider.ConfigurationData == null)
 			{
 				return;
@@ -449,7 +454,7 @@ namespace Aerospike.Client
 			}
 			if (dynamicClient.rack_ids != null)
 			{
-				this.rackIds = dynamicClient.rack_ids.ToList();
+				this.rackIds = [.. dynamicClient.rack_ids];
 			}
 			if (dynamicClient.tend_interval.HasValue)
 			{

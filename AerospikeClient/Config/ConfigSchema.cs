@@ -17,10 +17,22 @@
 
 namespace Aerospike.Client.Config
 {
-	public class ConfigurationData
+	public interface IConfigurationData
 	{
-		public ConfigurationData() { }
+		public string version { get; set; }
+		public StaticConfig staticConfig { get; set; }
+		public DynamicConfig dynamicConfig { get; set; }
+	}
 
+	public class ConfigurationDatav1_0_0 : IConfigurationData
+	{
+		public ConfigurationDatav1_0_0()
+		{
+			staticConfig = new StaticConfig();
+			dynamicConfig = new DynamicConfig();
+		}
+
+		public string version { get; set; }
 		public StaticConfig staticConfig { get; set; }
 		public DynamicConfig dynamicConfig { get; set; }
 	}

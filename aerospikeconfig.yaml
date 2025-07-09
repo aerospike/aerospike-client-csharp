@@ -1,13 +1,17 @@
+version: 1.0.0
 static:
   client: 
-    config_interval: 10
+    config_interval: 5000
     min_connections_per_node: 5
     max_connections_per_node: 50
+    async_min_connections_per_node: 100
+    async_max_connections_per_node: 500
 dynamic:
   client:
     app_id: unit_tester
     max_error_rate: 22
     rack_ids: [2,4,6,8]
+    tend_interval: 500
   read:
     replica: PREFER_RACK
     max_retries: 20
@@ -22,8 +26,8 @@ dynamic:
     durable_delete: true
   metrics:
     enable: true
-    latency_shift: 0
-    latency_columns: 0
+    latency_shift: 2
+    latency_columns: 7
     labels:
       region: us-west
       zone: usw1-az3
