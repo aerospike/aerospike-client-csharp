@@ -1,4 +1,5 @@
 name: Build and test stage
+run-name: Build artifacts and run stage tests (registry-name=${{ inputs.registry-name }}, server-tag=${{ inputs.server-tag }})
 
 permissions:
   # This is required for requesting the OIDC token
@@ -11,10 +12,21 @@ on:
     branches: ["stage"]
   workflow_dispatch:
     inputs:
-      test-server-rc:
-        type: boolean
-        default: false
+      registry-name:
+        type: string
+        required: false
+        description: Registry name
+        default: 'docker.io'
+      image-name:
+        type: string
+        required: false
+        description: Image name
+        default: 'aerospike/aerospike-server-enterprise'
+      server-tag:
+        type: string
         required: true
+        default: 'latest'
+        description: 'Server docker image tag'
 
 jobs:
   build:
@@ -48,7 +60,9 @@ jobs:
       uses: ./.github/actions/test
       with:
         jfrog-tests-repo-name: database-generic-stage-local
-        use-server-rc: false
-        docker-hub-username: ${{ secrets.DOCKER_HUB_BOT_USERNAME }}
-        docker-hub-password: ${{ secrets.DOCKER_HUB_BOT_PW }}
+        registry-name: ${{ inputs.registry-name || 'docker.io' }}
+        image-name: ${{ inputs.image-name || 'aerospike/aerospike-server-enterprise' }}
+        server-tag: ${{ inputs.server-tag || 'latest' }}
+        registry-username: ${{ secrets.DOCKER_HUB_BOT_USERNAME }}
+        registry-password: ${{ secrets.DOCKER_HUB_BOT_PW }}
    
