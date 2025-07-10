@@ -2706,6 +2706,20 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
+		/// Create PKI user with roles. PKI users are authenticated via TLS and a certificate instead of a password.
+		/// WARNING: This function should only be called for server versions 8.1+. If this function is called for older server versions,
+		/// an error will be returned.
+		/// </summary>
+		/// <param name="policy">admin configuration parameters, pass in null for defaults</param>
+		/// <param name="user">user name</param>
+		/// <param name="roles">variable arguments array of role names.  Predefined roles are listed in Role.cs</param>		
+		public void CreatePKIUser(AdminPolicy policy, string user, IList<string> roles)
+		{
+			AdminCommand command = new();
+			command.CreatePKIUser(cluster, policy, user, roles);
+		}
+
+		/// <summary>
 		/// Remove user from cluster.
 		/// </summary>
 		/// <param name="policy">admin configuration parameters, pass in null for defaults</param>
@@ -2737,15 +2751,29 @@ namespace Aerospike.Client
 
 			AdminCommand command = new AdminCommand();
 
-			if (Util.ByteArrayEquals(userBytes, cluster.user))
+			try
 			{
-				// Change own password.
-				command.ChangePassword(cluster, policy, userBytes, hash);
+				if (Util.ByteArrayEquals(userBytes, cluster.user))
+				{
+					// Change own password.
+					command.ChangePassword(cluster, policy, userBytes, hash);
+				}
+				else
+				{
+					// Change other user's password by user admin.
+					command.SetPassword(cluster, policy, userBytes, hash);
+				}
 			}
-			else
+			catch (AerospikeException ae)
 			{
-				// Change other user's password by user admin.
-				command.SetPassword(cluster, policy, userBytes, hash);
+				if (ae.Result == ResultCode.FORBIDDEN_PASSWORD)
+				{
+					throw new AerospikeException(ResultCode.FORBIDDEN_PASSWORD, "PKI user password not changeable");
+				}
+				else
+				{
+					throw;
+				}
 			}
 			cluster.ChangePassword(userBytes, passwordBytes, hashBytes);
 		}

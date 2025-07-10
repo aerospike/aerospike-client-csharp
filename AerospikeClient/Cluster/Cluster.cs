@@ -213,7 +213,11 @@ namespace Aerospike.Client
 			if (policy.authMode == AuthMode.PKI)
 			{
 				this.authEnabled = true;
-				this.user = null;
+				if (!string.IsNullOrEmpty(policy.password))
+				{
+					throw new AerospikeException(ResultCode.FORBIDDEN_PASSWORD, "Password authentication is disabled for PKI-only users");
+				}
+				this.user = ByteUtil.StringToUtf8(policy.user);
 			}
 			else if (policy.user != null && policy.user.Length > 0)
 			{

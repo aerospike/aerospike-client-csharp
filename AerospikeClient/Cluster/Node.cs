@@ -69,6 +69,7 @@ namespace Aerospike.Client
 		protected internal bool rebalanceChanged;
 		protected internal volatile bool active = true;
 		private bool disposedValue;
+		internal Version verison;
 
 		/// <summary>
 		/// Initialize server node with connection parameters.
@@ -91,6 +92,7 @@ namespace Aerospike.Client
 			this.errorRateCount = 0;
 			this.timeoutCounter = new Counter();
 			this.keyBusyCounter = new Counter();
+			this.verison = nv.serverVersion;
 
 			this.metricsEnabled = cluster.MetricsEnabled;
 			if (cluster.MetricsEnabled)
