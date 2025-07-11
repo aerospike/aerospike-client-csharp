@@ -545,6 +545,8 @@ namespace Aerospike.Client
 
 		public void OnSocketError(SocketError se)
 		{
+			EndSpan(ActivityStatusCode.Error);
+
 			AerospikeException ae;
 
 			if (se == SocketError.TimedOut)
