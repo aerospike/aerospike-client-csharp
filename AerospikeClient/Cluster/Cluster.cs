@@ -1081,7 +1081,6 @@ namespace Aerospike.Client
 				{
 					DisableMetricsInternal();
 					EnableMetricsInternal(MetricsPolicy);
-					MetricsPolicy.restartRequired = false;
 					return;
 				}
 
@@ -1158,6 +1157,7 @@ namespace Aerospike.Client
 
 			metricsListener.OnEnable(this, MetricsPolicy);
 			MetricsEnabled = true;
+			MetricsPolicy.restartRequired = false;
 		}
 
 		public void DisableMetrics()
