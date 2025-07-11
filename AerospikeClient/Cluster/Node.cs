@@ -54,9 +54,9 @@ namespace Aerospike.Client
 		protected internal int connsOpened = 1;
 		protected internal int connsClosed;
 		private volatile int errorRateCount;
-		private readonly Counter errorCounter;
-		private readonly Counter timeoutCounter;
-		private readonly Counter keyBusyCounter;
+		private Counter errorCounter;
+		private Counter timeoutCounter;
+		private Counter keyBusyCounter;
 		protected internal int peersGeneration = -1;
 		protected internal int partitionGeneration = -1;
 		protected internal int rebalanceGeneration = -1;
@@ -1026,7 +1026,7 @@ namespace Aerospike.Client
 
 		public void AddError(string ns)
 		{
-			errorCounter.Increment(ns);
+			errorCounter?.Increment(ns);
 		}
 
 		/// <summary>
@@ -1035,7 +1035,7 @@ namespace Aerospike.Client
 		/// </summary>
 		public void AddTimeout(string ns)
 		{
-			timeoutCounter.Increment(ns);
+			timeoutCounter?.Increment(ns);
 		}
 
 		/// <summary>
@@ -1043,7 +1043,7 @@ namespace Aerospike.Client
 		/// </summary>
 		public void AddKeyBusy(string ns) 
 		{
-			keyBusyCounter.Increment(ns);
+			keyBusyCounter?.Increment(ns);
 		}
 
 		/// <summary>
@@ -1051,7 +1051,7 @@ namespace Aerospike.Client
 		/// </summary>
 		public void AddBytesOut(string ns, long count) 
 		{
-			metrics.BytesOutCounter.Increment(ns, count);
+			metrics?.BytesOutCounter?.Increment(ns, count);
 		}
 
 		/// <summary>
@@ -1059,7 +1059,7 @@ namespace Aerospike.Client
 		/// </summary>
 		public void AddBytesIn(string ns, long count) 
 		{
-			metrics.BytesInCounter.Increment(ns, count);
+			metrics?.BytesInCounter?.Increment(ns, count);
 		}
 
 		/// <summary>
@@ -1067,7 +1067,7 @@ namespace Aerospike.Client
 		/// </summary>
 		public long GetErrorCount()
 		{
-			return errorCounter.GetTotal();
+			return errorCounter == null ? 0 : errorCounter.GetTotal();
 		}
 
 		/// <summary>
@@ -1075,7 +1075,7 @@ namespace Aerospike.Client
 		/// </summary>
 		public long GetTimeoutCount()
 		{
-			return timeoutCounter.GetTotal();
+			return timeoutCounter == null ? 0 : timeoutCounter.GetTotal();
 		}
 
 		/// <summary>
@@ -1084,7 +1084,7 @@ namespace Aerospike.Client
 		/// </summary>
 		public long GetTimeoutCountbyNS(string ns) 
 		{
-			return timeoutCounter.GetCountByNS(ns);
+			return timeoutCounter == null ? 0 : timeoutCounter.GetCountByNS(ns);
 		}
 
 		/// <summary>
@@ -1092,7 +1092,7 @@ namespace Aerospike.Client
 		/// </summary>
 		public long GetErrorCountByNS(string ns) 
 		{
-			return errorCounter.GetCountByNS(ns);
+			return errorCounter == null ? 0 : errorCounter.GetCountByNS(ns);
 		}
 
 		/// <summary>
@@ -1100,7 +1100,7 @@ namespace Aerospike.Client
 		/// </summary>
 		public long GetBytesInTotal() 
 		{
-			return metrics.BytesInCounter.GetTotal();
+			return metrics?.BytesInCounter == null ? 0 : metrics.BytesInCounter.GetTotal();
 		}
 
 		/// <summary>
@@ -1108,7 +1108,7 @@ namespace Aerospike.Client
 		/// </summary>
 		public long GetBytesInByNS(string ns)
 		{
-			return metrics.BytesInCounter.GetCountByNS(ns);
+			return metrics?.BytesInCounter == null ? 0 : metrics.BytesInCounter.GetCountByNS(ns);
 		}
 
 		/// <summary>
@@ -1116,7 +1116,7 @@ namespace Aerospike.Client
 		/// </summary>
 		public long GetBytesOutTotal()
 		{
-			return metrics.BytesOutCounter.GetTotal();
+			return metrics?.BytesOutCounter == null ? 0 : metrics.BytesOutCounter.GetTotal();
 		}
 
 		/// <summary>
@@ -1124,7 +1124,7 @@ namespace Aerospike.Client
 		/// </summary>
 		public long GetBytesOutByNS(string ns) 
 		{
-			return metrics.BytesOutCounter.GetCountByNS(ns);
+			return metrics?.BytesOutCounter == null ? 0 : metrics.BytesOutCounter.GetCountByNS(ns);
 		}
 
 		/// <summary>
@@ -1132,7 +1132,7 @@ namespace Aerospike.Client
 		/// </summary>
 		public long GetKeyBusyCount()
 		{
-			return keyBusyCounter.GetTotal();
+			return keyBusyCounter == null ? 0 : keyBusyCounter.GetTotal();
 		}
 
 		/// <summary>
@@ -1140,7 +1140,7 @@ namespace Aerospike.Client
 		/// </summary>
 		public long GetKeyBusyCountByNS(string ns) 
 		{
-			return keyBusyCounter.GetCountByNS(ns);
+			return keyBusyCounter == null ? 0 : keyBusyCounter.GetCountByNS(ns);
 		}
 
 		/// <summary>
@@ -1308,12 +1308,16 @@ namespace Aerospike.Client
 			{
 				if (disposing)
 				{
-					errorCounter.Dispose();
-					timeoutCounter.Dispose();
-					keyBusyCounter.Dispose();
+					errorCounter?.Dispose();
+					errorCounter = null;
+					timeoutCounter?.Dispose();
+					timeoutCounter = null;
+					keyBusyCounter?.Dispose();
+					keyBusyCounter = null;
 					if (metricsEnabled)
 					{
-						metrics.Dispose();
+						metrics?.Dispose();
+						metrics = null;
 					}
 				}
 

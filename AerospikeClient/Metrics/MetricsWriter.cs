@@ -256,8 +256,8 @@ namespace Aerospike.Client
 			WriteConn(asyncStats);
 			sb.Append(",[");
 
-			Histograms hGrams = node.GetMetrics().Histograms;
-			ConcurrentHashMap<string, LatencyBuckets[]> hMap = hGrams.histoMap;
+			Histograms hGrams = node.GetMetrics()?.Histograms;
+			ConcurrentHashMap<string, LatencyBuckets[]> hMap = hGrams?.histoMap;
 			int max = Latency.GetMax();
 
 			foreach (string ns in hMap.Keys)
