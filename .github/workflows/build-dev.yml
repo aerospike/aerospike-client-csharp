@@ -1,0 +1,93 @@
+name: Build and test dev
+
+permissions:
+  # This is required for requesting the OIDC token
+  id-token: write
+
+# Trigger test workflow whenever:
+# 1. Commits are pushed directly to a CLIENT branch
+# 2. Pull requests to stage branch are updated
+on:
+  push:
+    branches: ["CLIENT*"]
+  pull_request:
+    branches: ["stage"]
+    types: [
+      # Default triggers
+      opened,
+      synchronize,
+      reopened,
+      # Additional triggers
+      labeled,
+      unlabeled
+    ]
+  workflow_dispatch:
+    inputs:
+      test-server-rc:
+        type: boolean
+        default: false
+        required: true
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: 6.0.x
+        
+    - name: Build artifacts
+      uses: ./.github/actions/build
+      with:
+        sgKey: ${{ secrets.SG_KEY }}
+
+  sign-and-upload:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Download client artifacts
+      uses: actions/download-artifact@v4
+      with:
+        name: AerospikeClient-${{ github.run_number }}
+        path: artifacts
+    - name: Download test artifacts
+      uses: actions/download-artifact@v4
+      with:
+        name: AerospikeTest-${{ github.run_number }}
+        path: artifacts
+    - name: Move file to sign folder
+      run: |
+        mkdir ${GITHUB_WORKSPACE}/sign
+        mv ${GITHUB_WORKSPACE}/artifacts/Aerospike.Client*.nupkg ${GITHUB_WORKSPACE}/sign
+    - name: Sign nuget package
+      uses: sslcom/esigner-codesign@develop
+      with:
+          command: batch_sign
+          username: ${{ secrets.ES_USERNAME }}
+          password: ${{ secrets.ES_PASSWORD }}
+          totp_secret: ${{ secrets.ES_TOTP_SECRET }}
+          credential_id: ${{ secrets.CREDENTIAL_ID }}
+          dir_path: ${GITHUB_WORKSPACE}/sign
+          output_path: ${GITHUB_WORKSPACE}/artifacts
+          malware_block: true
+    - name: Upload to JFrog
+      uses: ./.github/actions/upload-to-jfrog
+  
+  test:
+    needs: sign-and-upload
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Test
+      uses: ./.github/actions/test
+      with:
+        jfrog-tests-repo-name: database-generic-dev-local
+        use-server-rc: ${{ contains(github.event.pull_request.labels.*.name, 'new-server-features') }}
+        docker-hub-username: ${{ secrets.DOCKER_HUB_BOT_USERNAME }}
+        docker-hub-password: ${{ secrets.DOCKER_HUB_BOT_PW }}
+   

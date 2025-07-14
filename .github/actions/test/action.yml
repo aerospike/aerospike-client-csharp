@@ -1,0 +1,57 @@
+name: Test
+description: "Test code base"
+
+inputs:
+  jfrog-tests-repo-name:
+    description: Where to download the test program from
+    required: false
+    default: database-generic-dev-local
+  use-server-rc:
+    required: false
+    default: false
+    description: Test against server release candidate?
+  docker-hub-username:
+    description: Required for using release candidates
+    required: false
+  docker-hub-password:
+    description: Required for using release candidates
+    required: false
+
+runs:
+  using: "composite"
+  steps:
+    - name: Run EE server
+      uses: ./.github/actions/run-ee-server
+      with:
+        use-server-rc: ${{ inputs.use-server-rc }}
+        docker-hub-username: ${{ inputs.docker-hub-username }}
+        docker-hub-password: ${{ inputs.docker-hub-password }}
+
+    - name: Setup JFrog CLI
+      id: setup-jfrog-cli
+      uses: jfrog/setup-jfrog-cli@v4.4.2
+      env:
+        JF_URL: https://aerospike.jfrog.io
+      with:
+        oidc-provider-name: gh-aerospike-clients
+        oidc-audience: aerospike/clients
+    
+    - name: Download Tests
+      shell: bash
+      run: |
+        jf rt dl "AerospikeTest-${{ github.run_number }}.zip" --build-name=${{ github.repository }} --build-number=${{ github.run_number }} --flat ${{ inputs.jfrog-tests-repo-name }}
+    
+    - name: Unzip tests
+      shell: bash
+      run: unzip AerospikeTest*.zip
+    
+    - name: Test
+      shell: bash
+      run: dotnet exec ./publish/AerospikeTest.dll --settings ./.runsettings
+    
+    - name: Show logs if failed
+      shell: bash
+      if: ${{ failure() }}
+      run: |
+        docker container logs aerospike
+        cat ./configs/aerospike.conf

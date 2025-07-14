@@ -1874,6 +1874,7 @@ namespace Aerospike.Client
 			// Set flags.
 			int generation = 0;
 			int infoAttr = 0;
+			int ttl = IsWrite() ? policy.expiration : 0;
 
 			switch (policy.recordExistsAction)
 			{
@@ -1952,7 +1953,7 @@ namespace Aerospike.Client
 			dataBuffer[dataOffset++] = 0; // unused
 			dataBuffer[dataOffset++] = 0; // clear the result code
 			dataOffset += ByteUtil.IntToBytes((uint)generation, dataBuffer, dataOffset);
-			dataOffset += ByteUtil.IntToBytes((uint)policy.expiration, dataBuffer, dataOffset);
+			dataOffset += ByteUtil.IntToBytes((uint)ttl, dataBuffer, dataOffset);
 			dataOffset += ByteUtil.IntToBytes((uint)serverTimeout, dataBuffer, dataOffset);
 			dataOffset += ByteUtil.ShortToBytes((ushort)fieldCount, dataBuffer, dataOffset);
 			dataOffset += ByteUtil.ShortToBytes((ushort)operationCount, dataBuffer, dataOffset);
@@ -2335,6 +2336,11 @@ namespace Aerospike.Client
 		public static bool BatchInDoubt(bool isWrite, int commandSentCounter)
 		{
 			return isWrite && commandSentCounter > 1;
+		}
+
+		protected internal virtual bool IsWrite()
+		{
+			return false;
 		}
 	}
 }

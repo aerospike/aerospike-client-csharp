@@ -1,0 +1,84 @@
+name: Build and test stage
+
+permissions:
+  # This is required for requesting the OIDC token
+  id-token: write
+
+# Trigger test workflow whenever:
+# Pushes to stage branch
+on:
+  push:
+    branches: ["stage", "5.3.X"]
+  workflow_dispatch:
+    inputs:
+      test-server-rc:
+        type: boolean
+        default: false
+        required: true
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: 2.0.X
+        
+    - name: Build artifacts
+      uses: ./.github/actions/build
+      with:
+        sgKey: ${{ secrets.SG_KEY }}
+
+  sign-and-upload:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Download client artifacts
+      uses: actions/download-artifact@v4
+      with:
+        name: AerospikeClient-${{ github.run_number }}
+        path: artifacts
+    - name: Download test artifacts
+      uses: actions/download-artifact@v4
+      with:
+        name: AerospikeTest-${{ github.run_number }}
+        path: artifacts
+    - name: Move file to sign folder
+      run: |
+        mkdir ${GITHUB_WORKSPACE}/sign
+        mv ${GITHUB_WORKSPACE}/artifacts/Aerospike.Client*.nupkg ${GITHUB_WORKSPACE}/sign
+    - name: Sign nuget package
+      uses: sslcom/esigner-codesign@develop
+      with:
+          command: batch_sign
+          username: ${{ secrets.ES_USERNAME }}
+          password: ${{ secrets.ES_PASSWORD }}
+          totp_secret: ${{ secrets.ES_TOTP_SECRET }}
+          credential_id: ${{ secrets.CREDENTIAL_ID }}
+          dir_path: ${GITHUB_WORKSPACE}/sign
+          output_path: ${GITHUB_WORKSPACE}/artifacts
+          malware_block: true
+    - name: Upload to JFrog
+      uses: ./.github/actions/upload-to-jfrog
+      with:
+        jfrog-client-repo-name: database-nuget-stage-local
+        jfrog-tests-repo-name: database-generic-stage-local
+      
+  test:
+    needs: sign-and-upload
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Test
+      uses: ./.github/actions/test
+      with:
+        jfrog-tests-repo-name: database-generic-stage-local
+        use-server-rc: false
+        docker-hub-username: ${{ secrets.DOCKER_HUB_BOT_USERNAME }}
+        docker-hub-password: ${{ secrets.DOCKER_HUB_BOT_PW }}
+   
