@@ -15,8 +15,9 @@
  * the License.
  */
 using System;
+using System.Collections.Concurrent;
+using System.Diagnostics;
 using System.Net.Sockets;
-using System.Timers;
 using static Aerospike.Client.Latency;
 
 namespace Aerospike.Client
@@ -26,7 +27,16 @@ namespace Aerospike.Client
 	/// </summary>
 	public abstract class AsyncCommand : Command, IAsyncCommand, ITimeout
 	{
+		private static readonly ActivitySource ActivitySource;
+		private static readonly ConcurrentDictionary<(string cmd, string set), string> SpanNames = new();
 		private static int ErrorCount = 0;
+
+		static AsyncCommand()
+		{
+            var assemblyName = typeof(AsyncCommand).Assembly.GetName();
+            ActivitySource = new ActivitySource(assemblyName.Name!, assemblyName.Version!.ToString());
+		}
+
 		private const int IN_PROGRESS = 0;
 		private const int SUCCESS = 1;
 		private const int RETRY = 2;
@@ -56,6 +66,7 @@ namespace Aerospike.Client
 		private bool inHeader = true;
 		private ValueStopwatch metricsWatch;
 		private readonly bool metricsEnabled;
+		private Activity span;
 
 		/// <summary>
 		/// Default Constructor.
@@ -189,7 +200,7 @@ namespace Aerospike.Client
 					{
 						Log.Error(cluster.context, "Unexpected State at async command start: " + state);
 					}
-					// User has already been notified of the total timeout. Release buffer and 
+					// User has already been notified of the total timeout. Release buffer and
 					// return for all error states.
 					ReleaseBuffer();
 					return;
@@ -218,6 +229,8 @@ namespace Aerospike.Client
 				node = (AsyncNode)GetNode(cluster);
 				node.ValidateErrorCount();
 
+				span = StartSpan();
+
 				if (metricsEnabled)
 				{
 					metricsWatch = ValueStopwatch.StartNew();
@@ -237,42 +250,33 @@ namespace Aerospike.Client
 				}
 				ErrorCount = 0;
 			}
-			catch (AerospikeException.Connection aec)
-			{
-				ErrorCount++;
-				node?.AddError();
-				ConnectionFailed(aec);
-			}
-			catch (AerospikeException.Backoff aeb)
-			{
-				ErrorCount++;
-				node?.AddError();
-				Backoff(aeb);
-			}
-			catch (AerospikeException ae)
-			{
-				ErrorCount++;
-				node?.AddError();
-				FailOnApplicationError(ae);
-			}
-			catch (SocketException se)
-			{
-				ErrorCount++;
-				node?.AddError();
-				OnSocketError(se.SocketErrorCode);
-			}
-			catch (IOException ioe)
-			{
-				// IO errors are considered temporary anomalies.  Retry.
-				ErrorCount++;
-				node?.AddError();
-				ConnectionFailed(new AerospikeException.Connection(ioe));
-			}
 			catch (Exception e)
 			{
+				EndSpan(ActivityStatusCode.Error);
+
 				ErrorCount++;
 				node?.AddError();
-				FailOnApplicationError(new AerospikeException(e));
+				switch (e)
+				{
+					case AerospikeException.Connection aec:
+						ConnectionFailed(aec);
+						break;
+					case AerospikeException.Backoff aeb:
+						Backoff(aeb);
+						break;
+					case AerospikeException ae:
+						FailOnApplicationError(ae);
+						break;
+					case SocketException se:
+						OnSocketError(se.SocketErrorCode);
+						break;
+					case IOException ioe:
+						ConnectionFailed(new AerospikeException.Connection(ioe));
+						break;
+					default:
+						FailOnApplicationError(new AerospikeException(e));
+						break;
+				}
 			}
 		}
 
@@ -282,7 +286,7 @@ namespace Aerospike.Client
 			{
 				node.AddLatency(LatencyType.CONN, metricsWatch.Elapsed.TotalMilliseconds);
 			}
-			
+
 			if (cluster.authEnabled)
 			{
 				byte[] token = node.SessionToken;
@@ -471,6 +475,8 @@ namespace Aerospike.Client
 
 		public void OnError(Exception e)
 		{
+			EndSpan(ActivityStatusCode.Error);
+
 			try
 			{
 				if (e is AerospikeException.Connection ac)
@@ -536,6 +542,8 @@ namespace Aerospike.Client
 
 		public void OnSocketError(SocketError se)
 		{
+			EndSpan(ActivityStatusCode.Error);
+
 			AerospikeException ae;
 
 			if (se == SocketError.TimedOut)
@@ -770,6 +778,7 @@ namespace Aerospike.Client
 			{
 				// Command finished successfully.
 				// Put connection back into pool.
+				EndSpan(ActivityStatusCode.Ok);
 				node.PutAsyncConnection(conn);
 				ReleaseBuffer();
 			}
@@ -777,6 +786,7 @@ namespace Aerospike.Client
 			{
 				// Timeout thread closed connection, but command still completed.
 				// User has already been notified with timeout. Release buffer and return.
+				EndSpan(ActivityStatusCode.Error, "timeout");
 				ReleaseBuffer();
 				return;
 			}
@@ -785,6 +795,7 @@ namespace Aerospike.Client
 				// Timeout thread closed connection, but command still completed.
 				// User has not been notified of the timeout. Release buffer and let
 				// OnSuccess() be called.
+				EndSpan(ActivityStatusCode.Error, "timeout");
 				ReleaseBuffer();
 			}
 			else
@@ -908,12 +919,12 @@ namespace Aerospike.Client
 				ae.Policy = policy;
 				ae.Iteration = iteration;
 				ae.SetInDoubt(IsWrite(), commandSentCounter);
-				
+
 				if (ae.InDoubt)
 				{
 					OnInDoubt();
 				}
-				
+
 				OnFailure(ae);
 			}
 			catch (Exception e)
@@ -948,6 +959,75 @@ namespace Aerospike.Client
 				segment = null;
 			}
 		}
+
+		private Activity StartSpan()
+		{
+			Key key = null;
+			string commandName = CommandName ?? GetType().Name;
+
+			if (this is AsyncReadBase read)
+			{
+				key = read.key;
+			}
+			else if (this is AsyncWriteBase write)
+			{
+				key = write.Key;
+			}
+
+			// Use a cache to avoid a string allocation in the hot path.
+			string spanName = SpanNames.GetOrAdd((commandName, key?.setName), static k => $"{k.cmd} {k.set}");
+
+			var s = ActivitySource.StartActivity(spanName, ActivityKind.Client);
+			if (s is { IsAllDataRequested: true })
+			{
+				// https://opentelemetry.io/docs/specs/semconv/database/database-spans
+
+				s.SetTag("network.peer.address", node.address.Address.ToString());
+				s.SetTag("network.peer.port", node.address.Port.ToString());
+				s.SetTag("db.system.name", "aerospike");
+				s.SetTag("db.operation.name", commandName);
+
+				if (!string.IsNullOrEmpty(cluster.clusterName))
+				{
+					// OTEL does not define an attribute for cluster name so a custom one is used.
+					s.SetTag("aerospike.cluster.name", cluster.clusterName);
+				}
+
+				if (key?.ns != null)
+				{
+					s.SetTag("db.namespace", key.ns);
+				}
+
+				if (key?.setName != null)
+				{
+					s.SetTag("db.collection.name", key.setName);
+				}
+
+				if (key?.userKey != null)
+				{
+					s.SetTag("db.query.text", $"{commandName} {key.userKey}");
+				}
+			}
+
+			return s;
+		}
+
+		private void EndSpan(ActivityStatusCode status, string description = null)
+		{
+			if (span == null)
+			{
+				return;
+			}
+
+			span.SetStatus(status, description);
+			span.Dispose();
+			span = null;
+		}
+
+		/// <summary>
+		/// Return the name of the command (e.g. "put") or null.
+		/// </summary>
+		private protected virtual string CommandName => null;
 
 		// Do nothing by default. Write commands will override this method.
 		protected internal virtual void OnInDoubt()

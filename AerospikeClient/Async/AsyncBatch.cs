@@ -1,4 +1,4 @@
-/* 
+/*
  * Copyright 2012-2025 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
@@ -76,6 +76,8 @@ namespace Aerospike.Client
 			this.records = records;
 		}
 
+		private protected override string CommandName => "batch-read";
+
 		public AsyncBatchReadListCommand(AsyncBatchReadListCommand other) : base(other)
 		{
 			this.records = other.records;
@@ -128,7 +130,7 @@ namespace Aerospike.Client
 	//-------------------------------------------------------
 	// ReadSequence
 	//-------------------------------------------------------
-	
+
 	public sealed class AsyncBatchReadSequenceExecutor : AsyncBatchExecutor
 	{
 		private readonly BatchSequenceListener listener;
@@ -190,6 +192,8 @@ namespace Aerospike.Client
 			this.listener = other.listener;
 			this.records = other.records;
 		}
+
+		private protected override string CommandName => "batch-read";
 
 		protected internal override void WriteBuffer()
 		{
@@ -323,6 +327,8 @@ namespace Aerospike.Client
 			this.readAttr = other.readAttr;
 		}
 
+		private protected override string CommandName => "batch-get";
+
 		protected internal override void WriteBuffer()
 		{
 			if (batch.node.HasBatchAny)
@@ -445,6 +451,8 @@ namespace Aerospike.Client
 			this.readAttr = other.readAttr;
 		}
 
+		private protected override string CommandName => "batch-get";
+
 		protected internal override void WriteBuffer()
 		{
 			if (batch.node.HasBatchAny)
@@ -494,7 +502,7 @@ namespace Aerospike.Client
 	//-------------------------------------------------------
 	// ExistsArray
 	//-------------------------------------------------------
-	
+
 	public sealed class AsyncBatchExistsArrayExecutor : AsyncBatchExecutor
 	{
 		private readonly Key[] keys;
@@ -560,6 +568,8 @@ namespace Aerospike.Client
 			this.keys = other.keys;
 			this.existsArray = other.existsArray;
 		}
+
+		private protected override string CommandName => "batch-get";
 
 		protected internal override void WriteBuffer()
 		{
@@ -663,6 +673,8 @@ namespace Aerospike.Client
 			this.listener = other.listener;
 		}
 
+		private protected override string CommandName => "batch-get";
+
 		protected internal override void WriteBuffer()
 		{
 			if (batch.node.HasBatchAny)
@@ -762,6 +774,8 @@ namespace Aerospike.Client
 		{
 			this.records = other.records;
 		}
+
+		private protected override string CommandName => "batch-operate";
 
 		protected internal override bool IsWrite()
 		{
@@ -912,6 +926,8 @@ namespace Aerospike.Client
 			this.records = other.records;
 		}
 
+		private protected override string CommandName => "batch-operate";
+
 		protected internal override bool IsWrite()
 		{
 			// This method is only called to set inDoubt on node level errors.
@@ -1058,7 +1074,7 @@ namespace Aerospike.Client
 
 		public AsyncBatchOperateRecordArrayCommand
 		(
-			AsyncBatchExecutor parent, 
+			AsyncBatchExecutor parent,
 			AsyncCluster cluster,
 			BatchNode batch,
 			BatchPolicy batchPolicy,
@@ -1081,6 +1097,8 @@ namespace Aerospike.Client
 			this.records = other.records;
 			this.attr = other.attr;
 		}
+
+		private protected override string CommandName => "batch-operate";
 
 		protected internal override bool IsWrite()
 		{
@@ -1207,7 +1225,7 @@ namespace Aerospike.Client
 
 		public AsyncBatchOperateRecordSequenceCommand
 		(
-			AsyncBatchExecutor parent, 
+			AsyncBatchExecutor parent,
 			AsyncCluster cluster,
 			BatchNode batch,
 			BatchPolicy batchPolicy,
@@ -1233,6 +1251,8 @@ namespace Aerospike.Client
 			this.listener = other.listener;
 			this.attr = other.attr;
 		}
+
+		private protected override string CommandName => "batch-operate";
 
 		protected internal override bool IsWrite()
 		{
@@ -2100,7 +2120,7 @@ namespace Aerospike.Client
 				// Retry requires keys for this node to be split among other nodes.
 				// This can cause an exponential number of commands.
 				batchNodes = GenerateBatchNodes();
-				
+
 				if (batchNodes.Count == 1 && batchNodes[0].node == batch.node)
 				{
 					// Batch node is the same.  Go through normal retry.
@@ -2120,7 +2140,7 @@ namespace Aerospike.Client
 
 			// Close original command.
 			base.ReleaseBuffer();
-			
+
 			// Execute new commands.
 			AsyncBatchCommand[] cmds = new AsyncBatchCommand[batchNodes.Count];
 			int count = 0;

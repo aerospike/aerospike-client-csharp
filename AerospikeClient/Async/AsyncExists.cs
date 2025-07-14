@@ -1,4 +1,4 @@
-/* 
+/*
  * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
@@ -22,7 +22,7 @@ namespace Aerospike.Client
 		private readonly ExistsListener listener;
 		private bool exists;
 
-		public AsyncExists(AsyncCluster cluster, Policy policy, Key key, ExistsListener listener) 
+		public AsyncExists(AsyncCluster cluster, Policy policy, Key key, ExistsListener listener)
 			: base(cluster, policy, key)
 		{
 			this.listener = listener;
@@ -33,6 +33,8 @@ namespace Aerospike.Client
 		{
 			this.listener = other.listener;
 		}
+
+		private protected override string CommandName => "get";
 
 		protected internal override AsyncCommand CloneCommand()
 		{

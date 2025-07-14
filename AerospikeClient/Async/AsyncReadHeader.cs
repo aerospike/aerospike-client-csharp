@@ -1,4 +1,4 @@
-/* 
+/*
  * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
@@ -22,7 +22,7 @@ namespace Aerospike.Client
 		private readonly RecordListener listener;
 		private Record record;
 
-		public AsyncReadHeader(AsyncCluster cluster, Policy policy, RecordListener listener, Key key) 
+		public AsyncReadHeader(AsyncCluster cluster, Policy policy, RecordListener listener, Key key)
 			: base(cluster, policy, key)
 		{
 			this.listener = listener;
@@ -34,6 +34,8 @@ namespace Aerospike.Client
 		{
 			this.listener = other.listener;
 		}
+
+		private protected override string CommandName => "get";
 
 		protected internal override AsyncCommand CloneCommand()
 		{
@@ -70,7 +72,7 @@ namespace Aerospike.Client
 				return true;
 			}
 
-			throw new AerospikeException(resultCode);			
+			throw new AerospikeException(resultCode);
 		}
 
 		protected internal override void OnSuccess()
