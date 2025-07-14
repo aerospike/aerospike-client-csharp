@@ -252,6 +252,8 @@ namespace Aerospike.Client
 			}
 			catch (Exception e)
 			{
+				EndSpan(ActivityStatusCode.Error);
+
 				ErrorCount++;
 				node?.AddError();
 				switch (e)
@@ -274,11 +276,6 @@ namespace Aerospike.Client
 					default:
 						FailOnApplicationError(new AerospikeException(e));
 						break;
-				}
-
-				if (span != null)
-				{
-					EndSpan(ActivityStatusCode.Error);
 				}
 			}
 		}
