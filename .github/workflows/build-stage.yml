@@ -42,11 +42,6 @@ jobs:
       with:
         name: AerospikeClient-${{ github.run_number }}
         path: artifacts
-    - name: Download test artifacts
-      uses: actions/download-artifact@v4
-      with:
-        name: AerospikeTest-${{ github.run_number }}
-        path: artifacts
     - name: Move file to sign folder
       run: |
         mkdir ${GITHUB_WORKSPACE}/sign
