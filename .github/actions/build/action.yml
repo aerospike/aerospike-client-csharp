@@ -53,7 +53,7 @@ runs:
     - name: Publish test project
       shell: pwsh
       working-directory: Core\AerospikeTest
-      run: dotnet publish AerospikeTest.csproj --no-restore --no-build --self-contained -r linux-x64
+      run: dotnet publish AerospikeTest.csproj -c Release --no-restore --no-build --self-contained -r linux-x64
 
     - name: Zip it up
       shell: pwsh
