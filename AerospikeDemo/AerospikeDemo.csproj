@@ -3,6 +3,7 @@
     <TargetFramework>net6.0-windows</TargetFramework>
     <Platform Condition=" '$(Platform)' == '' ">x86</Platform>
     <OutputType>WinExe</OutputType>
+	<EnableWindowsTargeting>true</EnableWindowsTargeting>
     <RootNamespace>Aerospike.Demo</RootNamespace>
     <IsWebBootstrapper>false</IsWebBootstrapper>
     <PublishUrl>publish\</PublishUrl>
