@@ -28,14 +28,14 @@ runs:
         docker-hub-password: ${{ inputs.docker-hub-password }}
 
     - name: Build Core
-      shell: pwsh
+      shell: bash
       working-directory: Core
       run: |
         dotnet restore
         dotnet build --configuration Release --no-restore
     
     - name: Test
-      shell: pwsh
+      shell: bash
       working-directory: Core
       run: dotnet test
     
