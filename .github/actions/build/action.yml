@@ -12,8 +12,14 @@ runs:
       shell: pwsh
       run: dotnet restore
 
-    - name: Build
+    - name: Build Core
       shell: pwsh
+      working-directory: Core
+      run: dotnet build --configuration Release --no-restore
+
+    - name: Build Framework
+      shell: pwsh
+      working-directory: Framework
       run: dotnet build --configuration Release --no-restore
 
     - name: Create Code Signing Key
@@ -23,33 +29,33 @@ runs:
         Set-Content -Path key\key.txt -Value '${{ inputs.sgKey }}'
         certutil -decode key\key.txt key\key.snk
 
-    - name: Delay Sign dll
+    - name: Delay Sign dlls
       shell: pwsh
       run: |
-        & 'C:\Program Files (x86)\Microsoft SDKs\Windows\v10.0A\bin\NETFX 4.8.1 Tools\sn.exe' -R .\AerospikeClient\bin\Release\net6.0\AerospikeClient.dll key\key.snk
+        & 'C:\Program Files (x86)\Microsoft SDKs\Windows\v10.0A\bin\NETFX 4.8.1 Tools\sn.exe' -R .\Core\AerospikeClient\bin\Release\netstandard2.0\AerospikeClient.dll key\key.snk
+        & 'C:\Program Files (x86)\Microsoft SDKs\Windows\v10.0A\bin\NETFX 4.8.1 Tools\sn.exe' -R .Framework\AerospikeClient\bin\Release\AerospikeClient.dll key\key.snk
 
     - name: Create nuget packages
       shell: pwsh
-      run: dotnet pack --no-build
+      run: nuget pack .\AerospikeClient.nuspec
       
     - name: Rename nuget package
       shell: pwsh
-      working-directory: AerospikeClient\bin\Release
       run : Get-ChildItem -File | Rename-Item -NewName { $_.Name -replace 'Aerospike\.Client\.([0-9]+)\.([0-9]+)\.([0-9]+)([a-zA-Z-]*).nupkg', 'Aerospike.Client.$1.$2.$3$4-${{ github.run_number }}.nupkg' }
     
-    - name: Rename snuget package
-      shell: pwsh
-      working-directory: AerospikeClient\bin\Release
-      run : Get-ChildItem -File | Rename-Item -NewName { $_.Name -replace 'Aerospike\.Client\.([0-9]+)\.([0-9]+)\.([0-9]+)([a-zA-Z-]*).snupkg', 'Aerospike.Client.$1.$2.$3$4-${{ github.run_number }}.snupkg' }
+    #- name: Rename snuget package
+    #  shell: pwsh
+    #  working-directory: AerospikeClient\bin\Release
+    #  run : Get-ChildItem -File | Rename-Item -NewName { $_.Name -replace 'Aerospike\.Client\.([0-9]+)\.([0-9]+)\.([0-9]+)([a-zA-Z-]*).snupkg', 'Aerospike.Client.$1.$2.$3$4-${{ github.run_number }}.snupkg' }
 
     - name: Publish test project
       shell: pwsh
-      working-directory: AerospikeTest
+      working-directory: Core\AerospikeTest
       run: dotnet publish AerospikeTest.csproj --no-restore --no-build --self-contained
-        
+      
     - name: Zip it up
       shell: pwsh
-      working-directory: AerospikeTest\bin\Release\net8.0
+      working-directory: Core\AerospikeTest\bin\Release\netcoreapp2.0
       run: 7z a -tzip AerospikeTest-${{ github.run_number }}.zip publish
 
     - name: Upload client artifacts

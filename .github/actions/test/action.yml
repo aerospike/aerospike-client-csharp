@@ -39,7 +39,7 @@ runs:
     - name: Download Tests
       shell: bash
       run: |
-        jf rt dl "AerospikeTest-${{ github.run_number }}.zip" --build-name=${{ github.repository }} --build-number=${{ github.run_number }} --flat ${{ inputs.jfrog-tests-repo-name }}
+        jf rt dl ${{ inputs.jfrog-tests-repo-name }}/AerospikeTest-${{ github.run_number }}.zip --build-name=${{ github.repository }} --build-number=${{ github.run_number }} --flat 
     
     - name: Unzip tests
       shell: bash
