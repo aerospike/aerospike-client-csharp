@@ -33,12 +33,8 @@ runs:
       run: |
         dotnet restore
         dotnet build --configuration Release --no-restore
-    
-    - name: Test
-      shell: bash
-      working-directory: Core
-      run: dotnet test
-    
+        dotnet test -c Release --no-restore
+
     - name: Show logs if failed
       shell: bash
       if: ${{ failure() }}
