@@ -50,15 +50,15 @@ runs:
     #  working-directory: AerospikeClient\bin\Release
     #  run : Get-ChildItem -File | Rename-Item -NewName { $_.Name -replace 'Aerospike\.Client\.([0-9]+)\.([0-9]+)\.([0-9]+)([a-zA-Z-]*).snupkg', 'Aerospike.Client.$1.$2.$3$4-${{ github.run_number }}.snupkg' }
 
-    - name: Publish test project
-      shell: pwsh
-      working-directory: Core\AerospikeTest
-      run: dotnet publish AerospikeTest.csproj -c Release --no-restore --no-build --self-contained -r linux-x64
+    #- name: Publish test project
+    #  shell: pwsh
+    #  working-directory: Core\AerospikeTest
+    #  run: dotnet publish AerospikeTest.csproj -c Release --no-restore --no-build --self-contained -r linux-x64
 
-    - name: Zip it up
-      shell: pwsh
-      working-directory: Core\AerospikeTest\bin\Release\netcoreapp2.0\linux-x64
-      run: 7z a -tzip AerospikeTest-${{ github.run_number }}.zip publish
+    #- name: Zip it up
+    #  shell: pwsh
+    #  working-directory: Core\AerospikeTest\bin\Release\netcoreapp2.0\linux-x64
+    #  run: 7z a -tzip AerospikeTest-${{ github.run_number }}.zip publish
 
     - name: Upload client artifacts
       uses: actions/upload-artifact@v4
@@ -67,9 +67,9 @@ runs:
         path: Aerospike.Client.*nupkg
         retention-days: 1
 
-    - name: Upload test artifacts
-      uses: actions/upload-artifact@v4
-      with:
-        name: AerospikeTest-${{ github.run_number }}
-        path: Core\AerospikeTest\bin\Release\netcoreapp2.0\linux-x64\AerospikeTest-*
-        retention-days: 1
+    #- name: Upload test artifacts
+    #  uses: actions/upload-artifact@v4
+    #  with:
+    #    name: AerospikeTest-${{ github.run_number }}
+    #    path: Core\AerospikeTest\bin\Release\netcoreapp2.0\linux-x64\AerospikeTest-*
+    #    retention-days: 1

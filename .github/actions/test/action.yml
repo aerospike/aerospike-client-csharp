@@ -27,27 +27,17 @@ runs:
         docker-hub-username: ${{ inputs.docker-hub-username }}
         docker-hub-password: ${{ inputs.docker-hub-password }}
 
-    - name: Setup JFrog CLI
-      id: setup-jfrog-cli
-      uses: jfrog/setup-jfrog-cli@v4.4.2
-      env:
-        JF_URL: https://aerospike.jfrog.io
-      with:
-        oidc-provider-name: gh-aerospike-clients
-        oidc-audience: aerospike/clients
-    
-    - name: Download Tests
-      shell: bash
+    - name: Build Core
+      shell: pwsh
+      working-directory: Core
       run: |
-        jf rt dl ${{ inputs.jfrog-tests-repo-name }}/AerospikeTest-${{ github.run_number }}.zip --build-name=${{ github.repository }} --build-number=${{ github.run_number }} --flat 
-    
-    - name: Unzip tests
-      shell: bash
-      run: unzip AerospikeTest*.zip
+        dotnet restore
+        dotnet build --configuration Release --no-restore
     
     - name: Test
-      shell: bash
-      run: dotnet ./publish/AerospikeTest.dll
+      shell: pwsh
+      working-directory: Core
+      run: dotnet test
     
     - name: Show logs if failed
       shell: bash
