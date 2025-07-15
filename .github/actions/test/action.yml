@@ -30,7 +30,7 @@ runs:
     - name: Build
       shell: bash
       run: |
-        dotnet restore
+        dotnet restore -r linux-x86
         dotnet build --configuration Release --no-restore
         dotnet test -c Release --no-restore
     
