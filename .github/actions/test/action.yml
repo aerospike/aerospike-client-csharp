@@ -47,7 +47,7 @@ runs:
     
     - name: Test
       shell: bash
-      run: dotnet exec ./publish/AerospikeTest.dll --settings ./.runsettings
+      run: dotnet exec ./publish/AerospikeTest.dll
     
     - name: Show logs if failed
       shell: bash
