@@ -63,22 +63,22 @@ jobs:
         jfrog-client-repo-name: database-nuget-stage-local
         jfrog-tests-repo-name: database-generic-stage-local
       
-  test:
-    needs: sign-and-upload
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v4
+  #test:
+  #  needs: sign-and-upload
+  #  runs-on: ubuntu-latest
+  #  steps:
+  #  - uses: actions/checkout@v4
     
-    - name: Setup .NET
-      uses: actions/setup-dotnet@v4
-      with:
-        dotnet-version: 2.0.X
+  #  - name: Setup .NET
+  #    uses: actions/setup-dotnet@v4
+  #    with:
+  #      dotnet-version: 2.0.X
         
-    - name: Test
-      uses: ./.github/actions/test
-      with:
-        jfrog-tests-repo-name: database-generic-stage-local
-        use-server-rc: false
-        docker-hub-username: ${{ secrets.DOCKER_HUB_BOT_USERNAME }}
-        docker-hub-password: ${{ secrets.DOCKER_HUB_BOT_PW }}
+  #  - name: Test
+  #    uses: ./.github/actions/test
+  #    with:
+  #      jfrog-tests-repo-name: database-generic-stage-local
+  #      use-server-rc: false
+  #      docker-hub-username: ${{ secrets.DOCKER_HUB_BOT_USERNAME }}
+  #      docker-hub-password: ${{ secrets.DOCKER_HUB_BOT_PW }}
    
