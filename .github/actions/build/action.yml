@@ -53,11 +53,11 @@ runs:
     - name: Publish test project
       shell: pwsh
       working-directory: Core\AerospikeTest
-      run: dotnet publish AerospikeTest.csproj --no-restore --no-build --self-contained
+      run: dotnet publish AerospikeTest.csproj --no-restore --no-build --self-contained -r linux-x64
 
     - name: Zip it up
       shell: pwsh
-      working-directory: Core\AerospikeTest\bin\Release\netcoreapp2.0
+      working-directory: Core\AerospikeTest\bin\Release\netcoreapp2.0\linux-x64
       run: 7z a -tzip AerospikeTest-${{ github.run_number }}.zip publish
 
     - name: Upload client artifacts
@@ -71,5 +71,5 @@ runs:
       uses: actions/upload-artifact@v4
       with:
         name: AerospikeTest-${{ github.run_number }}
-        path: AerospikeTest\bin\Release\net8.0\AerospikeTest-*
+        path: Core\AerospikeTest\bin\Release\netcoreapp2.0\linux-x64\AerospikeTest-*
         retention-days: 1
