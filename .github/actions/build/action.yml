@@ -35,7 +35,7 @@ runs:
       shell: pwsh
       run: |
         & 'C:\Program Files (x86)\Microsoft SDKs\Windows\v10.0A\bin\NETFX 4.8.1 Tools\sn.exe' -R .\Core\AerospikeClient\bin\Release\netstandard2.0\AerospikeClient.dll key\key.snk
-        & 'C:\Program Files (x86)\Microsoft SDKs\Windows\v10.0A\bin\NETFX 4.8.1 Tools\sn.exe' -R .Framework\AerospikeClient\bin\Release\AerospikeClient.dll key\key.snk
+        & 'C:\Program Files (x86)\Microsoft SDKs\Windows\v10.0A\bin\NETFX 4.8.1 Tools\sn.exe' -R .\Framework\AerospikeClient\bin\Release\AerospikeClient.dll key\key.snk
 
     - name: Create nuget packages
       shell: pwsh
