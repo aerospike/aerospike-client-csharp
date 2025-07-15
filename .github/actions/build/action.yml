@@ -19,6 +19,7 @@ runs:
       shell: pwsh
       working-directory: Framework
       run: |
+        nuget restore
         dotnet restore
         dotnet build --configuration Release --no-restore
 
