@@ -17,7 +17,7 @@
     <RootNamespace>Aerospike.Client</RootNamespace>
     <SignAssembly>True</SignAssembly>
     <DelaySign>True</DelaySign>
-    <AssemblyOriginatorKeyFile>C:\Users\sklaus_aerospike\repos\aerospike-client-csharp\AerospikePublicKey.snk</AssemblyOriginatorKeyFile>
+    <AssemblyOriginatorKeyFile>../../AerospikePublicKey.snk</AssemblyOriginatorKeyFile>
   </PropertyGroup>
 
   <ItemGroup>
