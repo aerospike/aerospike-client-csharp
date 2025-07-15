@@ -80,5 +80,24 @@ namespace Aerospike.Test
 			AssertBinEqual(key, record, bin2.name, 2);
 			Assert.IsTrue(record.bins.Count == 1);
 		}
+
+		[TestMethod]
+		public void OperateRead()
+		{
+			// Write initial record.
+			Key key = new Key(args.ns, args.set, "opkeyr");
+			Bin bin1 = new Bin("optintread", 1);
+
+			client.Put(null, key, bin1);
+
+			var writePolicy = new WritePolicy
+			{
+				expiration = 86400
+			};
+
+			// Read bin1
+			Record record = client.Operate(writePolicy, key,
+				Operation.Get(bin1.name));
+		}
 	}
 }

@@ -1,0 +1,49 @@
+name: Publish artifacts to JFrog
+description: "Publishes artifacts to JFrog"
+
+inputs:
+  jfrog-client-repo-name:
+    description: ""
+    required: false
+    default: database-nuget-dev-local
+  jfrog-tests-repo-name:
+    description: ""
+    required: false
+    default: database-generic-dev-local
+  jfrog-platform-url:
+    description: ""
+    required: false
+    default: https://aerospike.jfrog.io/
+  oidc-provider:
+    description: ""
+    required: false
+    default: gh-aerospike-clients
+  oidc-audience:
+    description: ""
+    required: false
+    default: aerospike/clients
+
+runs:
+  using: "composite"
+  steps:
+    - name: Set up JFrog credentials
+      uses: jfrog/setup-jfrog-cli@v4.4.2
+      env:
+        JF_URL: ${{ inputs.jfrog-platform-url }}
+      with:
+        oidc-provider-name: ${{ inputs.oidc-provider }}
+        oidc-audience: ${{ inputs.oidc-audience }}
+
+    - name: Configure NuGet repository
+      shell: bash
+      run: jf nuget-config --repo-resolve ${{ inputs.jfrog-client-repo-name }}
+
+    - name: Deploy client
+      shell: bash
+      working-directory: artifacts
+      run: jf rt u "Aerospike.Client.*" ${{ inputs.jfrog-client-repo-name }} --build-name=${{ github.repository }} --build-number=${{ github.run_number }}
+      
+    - name: Deploy test
+      shell: bash
+      working-directory: artifacts
+      run: jf rt u "AerospikeTest*.zip" ${{ inputs.jfrog-tests-repo-name }} --build-name=${{ github.repository }} --build-number=${{ github.run_number }}

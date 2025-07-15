@@ -298,11 +298,6 @@ namespace Aerospike.Client
 			return false;
 		}
 
-		protected internal virtual bool IsWrite()
-		{
-			return false;
-		}
-
 		protected internal abstract Node GetNode();
 		protected internal abstract void WriteBuffer();
 		protected internal abstract void ParseResult(Connection conn);

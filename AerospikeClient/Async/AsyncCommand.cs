@@ -893,11 +893,6 @@ namespace Aerospike.Client
 			return false;
 		}
 
-		protected internal virtual bool IsWrite()
-		{
-			return false;
-		}
-
 		protected internal abstract Node GetNode(Cluster cluster);
 		protected internal abstract void WriteBuffer();
 		protected internal abstract AsyncCommand CloneCommand();

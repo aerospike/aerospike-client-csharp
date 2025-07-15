@@ -1,0 +1,42 @@
+name: Test
+description: "Test code base"
+
+inputs:
+  jfrog-tests-repo-name:
+    description: Where to download the test program from
+    required: false
+    default: database-generic-dev-local
+  use-server-rc:
+    required: false
+    default: false
+    description: Test against server release candidate?
+  docker-hub-username:
+    description: Required for using release candidates
+    required: false
+  docker-hub-password:
+    description: Required for using release candidates
+    required: false
+
+runs:
+  using: "composite"
+  steps:
+    - name: Run EE server
+      uses: ./.github/actions/run-ee-server
+      with:
+        use-server-rc: ${{ inputs.use-server-rc }}
+        docker-hub-username: ${{ inputs.docker-hub-username }}
+        docker-hub-password: ${{ inputs.docker-hub-password }}
+
+    - name: Build
+      shell: bash
+      run: |
+        dotnet restore
+        dotnet build --configuration Release --no-restore
+        dotnet test -c Release --no-restore
+    
+    - name: Show logs if failed
+      shell: bash
+      if: ${{ failure() }}
+      run: |
+        docker container logs aerospike
+        cat ./configs/aerospike.conf
