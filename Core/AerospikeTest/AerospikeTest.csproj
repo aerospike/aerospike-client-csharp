@@ -22,6 +22,10 @@
     <DefineConstants>TRACE;NETCORE</DefineConstants>
   </PropertyGroup>
 
+	<PropertyGroup>
+		<TargetLatestRuntimePatch>true</TargetLatestRuntimePatch>
+	</PropertyGroup>
+
   <ItemGroup>
     <None Remove="Resources\average_example.lua" />
     <None Remove="Resources\filter_example.lua" />
