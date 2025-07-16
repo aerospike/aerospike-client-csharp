@@ -34,7 +34,6 @@ runs:
       
     - name: Rename nuget package
       shell: pwsh
-      working-directory: AerospikeClient\bin\Release
       run : Get-ChildItem -File | Rename-Item -NewName { $_.Name -replace 'Aerospike\.Client\.([0-9]+)\.([0-9]+)\.([0-9]+)(\.*[0-9]*)([a-zA-Z-]*).nupkg', 'Aerospike.Client.$1.$2.$3$4$5-${{ github.run_number }}.nupkg' }
     
     #- name: Rename snuget package
