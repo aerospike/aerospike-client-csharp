@@ -1,5 +1,5 @@
 ﻿/* 
- * Copyright 2012-2022 Aerospike, Inc.
+ * Copyright 2012-2025 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -37,7 +37,7 @@ namespace Aerospike.Client
 		private bool regimeError;
 
 		public PartitionParser(Connection conn, Node node, Dictionary<string, Partitions> map, int partitionCount)
-			: base(conn, PartitionGeneration, Replicas)
+			: base(node, conn, PartitionGeneration, Replicas)
 		{
 			// Send format: partition-generation\nreplicas\n
 			this.partitionCount = partitionCount;

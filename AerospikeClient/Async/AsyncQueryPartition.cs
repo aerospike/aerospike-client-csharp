@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2024 Aerospike, Inc.
+ * Copyright 2012-2025 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -35,7 +35,7 @@ namespace Aerospike.Client
 			ulong taskId,
 			PartitionTracker tracker,
 			NodePartitions nodePartitions
-		) : base(cluster, policy, (AsyncNode)nodePartitions.node, tracker.socketTimeout, tracker.totalTimeout)
+		) : base(cluster, policy, (AsyncNode)nodePartitions.node, tracker.socketTimeout, tracker.totalTimeout, statement.Namespace)
 		{
 			this.parent = parent;
 			this.listener = listener;

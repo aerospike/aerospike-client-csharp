@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2024 Aerospike, Inc.
+ * Copyright 2012-2025 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -22,10 +22,12 @@ namespace Aerospike.Client
 	/// <summary>
 	/// Client metrics listener.
 	/// </summary>
-	public sealed class NodeMetrics
+	public sealed class NodeMetrics : IDisposable
 	{
-		private readonly LatencyBuckets[] latency;
-		private const long MS_TO_NS = 1000000;
+		public Histograms Histograms { get; private set; }
+		public Counter BytesInCounter;
+		public Counter BytesOutCounter;
+		private bool disposedValue;
 
 		/// <summary>
 		/// Initialize extended node metrics.
@@ -34,32 +36,45 @@ namespace Aerospike.Client
 		{
 			int latencyColumns = policy.LatencyColumns;
 			int latencyShift = policy.LatencyShift;
-			int max = Client.Latency.GetMax();
+			this.BytesInCounter = new Counter();
+			this.BytesOutCounter = new Counter();
 
-			latency = new LatencyBuckets[max];
+			Histograms = new Histograms(latencyColumns, latencyShift);
+		}
 
-			for (int i = 0; i < max; i++)
+		/// <summary>
+		/// Add elapsed time in milliseconds to latency buckets corresponding to latency type.
+		/// </summary>
+		/// <param name="ns">namespace</param>
+		/// <param name="type"></param>
+		/// <param name="elapsedMs">elapsed time, in milliseconds</param>
+		public void AddLatency(string ns, LatencyType type, double elapsedMs) {
+			Histograms?.AddLatency(ns, type, elapsedMs);
+		}
+
+		private void Dispose(bool disposing)
+		{
+			if (!disposedValue)
 			{
-				latency[i] = new LatencyBuckets(latencyColumns, latencyShift);
+				if (disposing)
+				{
+					BytesInCounter?.Dispose();
+					BytesInCounter = null;
+					BytesOutCounter?.Dispose();
+					BytesOutCounter = null;
+					Histograms?.Dispose();
+					Histograms = null;
+				}
+
+				disposedValue = true;
 			}
 		}
 
-		/// <summary>
-		/// Add elapsed time in nanoseconds to latency buckets corresponding to latency type.
-		/// </summary>
-		/// <param name="type"></param>
-		/// <param name="elapsedMs">elapsed time in milliseconds. The conversion to nanoseconds is done later</param>
-		public void AddLatency(LatencyType type, double elapsedMs)
+		public void Dispose()
 		{
-			latency[(int)type].Add((long)elapsedMs * MS_TO_NS);
-		}
-
-		/// <summary>
-		/// Return latency buckets given type.
-		/// </summary>
-		public LatencyBuckets GetLatencyBuckets(int type)
-		{
-			return latency[type];
+			// Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
+			Dispose(disposing: true);
+			GC.SuppressFinalize(this);
 		}
 	}
 }

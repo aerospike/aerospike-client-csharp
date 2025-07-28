@@ -14,8 +14,6 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using System;
-using System.Collections.Generic;
 
 namespace Aerospike.Client
 {
@@ -45,6 +43,12 @@ namespace Aerospike.Client
 		/// <para>Default: null</para>
 		/// </summary>
 		public string clusterName;
+
+		/// <summary>
+		/// Application identifier.
+		/// <para>Default: null</para>
+		/// </summary>
+		public string AppId;
 
 		/// <summary>
 		/// Authentication mode.
@@ -268,10 +272,21 @@ namespace Aerospike.Client
 		public Dictionary<string, string> ipMap;
 
 		/// <summary>
-		/// Should use "services-alternate" instead of "services" in info request during cluster
-		/// tending.  "services-alternate" returns server configured external IP addresses that client
-		/// uses to talk to nodes.  "services-alternate" can be used in place of providing a client "ipMap".
-		/// <para>Default: false (use original "services" info request)</para>
+		/// Flag to signify if alternate IP address discovery info commands should be used.
+		/// 
+		/// If false, use:
+		/// IP address: service-clear-std
+		/// TLS IP address: service-tls-std
+		/// Peers addresses: peers-clear-std
+		/// Peers TLS addresses: peers-tls-std
+		/// 
+		/// If true, use:
+		/// IP address: service-clear-alt
+		/// TLS IP address: service-tls-alt
+		/// Peers addresses: peers-clear-alt
+		/// Peers TLS addresses: peers-tls-alt
+		/// 
+		/// Default: false
 		/// </summary>
 		public bool useServicesAlternate;
 
@@ -327,6 +342,7 @@ namespace Aerospike.Client
 			this.user = other.user;
 			this.password = other.password;
 			this.clusterName = other.clusterName;
+			this.AppId = other.AppId;
 			this.authMode = other.authMode;
 			this.timeout = other.timeout;
 			this.loginTimeout = other.loginTimeout;
@@ -357,6 +373,97 @@ namespace Aerospike.Client
 			this.rackAware = other.rackAware;
 			this.rackId = other.rackId;
 			this.rackIds = (other.rackIds != null) ? new List<int>(other.rackIds) : null;
+		}
+
+		public ClientPolicy(ClientPolicy other, IConfigProvider configProvider) : this(other)
+		{
+			if (configProvider == null)
+			{
+				return;
+			}
+			
+			if (configProvider.ConfigurationData == null)
+			{
+				return;
+			}
+
+			var staticConfig = configProvider.ConfigurationData.staticConfig;
+			if (staticConfig == null)
+			{
+				return;
+			}
+
+			var staticClient = configProvider.ConfigurationData.staticConfig.client;
+			if (staticClient == null)
+			{
+				return;
+			}
+
+			var dynamicConfig = configProvider.ConfigurationData.dynamicConfig;
+			if (dynamicConfig == null)
+			{
+				return;
+			}
+
+			var dynamicClient = configProvider.ConfigurationData.dynamicConfig.client;
+			if (dynamicClient == null)
+			{
+				return;
+			}
+
+			if (staticClient.max_connections_per_node.HasValue)
+			{
+				this.maxConnsPerNode = staticClient.max_connections_per_node.Value;
+			}
+			if (staticClient.min_connections_per_node.HasValue)
+			{
+				this.minConnsPerNode = staticClient.min_connections_per_node.Value;
+			}
+
+			if (!String.IsNullOrEmpty(dynamicClient.app_id))
+			{
+				this.AppId = dynamicClient.app_id;
+			}
+			if (dynamicClient.timeout.HasValue)
+			{
+				this.timeout = dynamicClient.timeout.Value;
+			}
+			if (dynamicClient.error_rate_window.HasValue)
+			{
+				this.errorRateWindow = dynamicClient.error_rate_window.Value;
+			}
+			if (dynamicClient.max_error_rate.HasValue)
+			{
+				this.maxErrorRate = dynamicClient.max_error_rate.Value;
+			}
+			if (dynamicClient.fail_if_not_connected.HasValue)
+			{
+				this.failIfNotConnected = dynamicClient.fail_if_not_connected.Value;
+			}
+			if (dynamicClient.login_timeout.HasValue)
+			{
+				this.loginTimeout = dynamicClient.login_timeout.Value;
+			}
+			if (dynamicClient.max_socket_idle.HasValue)
+			{
+				this.maxSocketIdle = dynamicClient.max_socket_idle.Value;
+			}
+			if (dynamicClient.rack_aware.HasValue)
+			{
+				this.rackAware = dynamicClient.rack_aware.Value;
+			}
+			if (dynamicClient.rack_ids != null)
+			{
+				this.rackIds = [.. dynamicClient.rack_ids];
+			}
+			if (dynamicClient.tend_interval.HasValue)
+			{
+				this.tendInterval = dynamicClient.tend_interval.Value;
+			}
+			if (dynamicClient.use_service_alternative.HasValue)
+			{
+				this.useServicesAlternate = dynamicClient.use_service_alternative.Value;
+			}
 		}
 
 		/// <summary>

@@ -20,7 +20,7 @@ namespace Aerospike.Client
 	/// <summary>
 	/// Transaction. Each command in the transaction must use the same namespace.
 	/// </summary>
-	public class Txn
+	public class Txn : IDisposable
 	{
 		/// <summary>
 		/// Transaction State.
@@ -64,6 +64,7 @@ namespace Aerospike.Client
 		public int Timeout { get; set; }
 
 		private bool writeInDoubt;
+		private bool disposedValue;
 
 		public bool InDoubt { get; internal set; }
 
@@ -298,6 +299,27 @@ namespace Aerospike.Client
 			Deadline = 0;
 			Reads.Clear();
 			Writes.Clear();
+		}
+
+		protected virtual void Dispose(bool disposing)
+		{
+			if (!disposedValue)
+			{
+				if (disposing)
+				{
+					Reads.Dispose();
+					Writes.Dispose();
+				}
+
+				disposedValue = true;
+			}
+		}
+
+		public void Dispose()
+		{
+			// Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
+			Dispose(disposing: true);
+			GC.SuppressFinalize(this);
 		}
 	}
 }

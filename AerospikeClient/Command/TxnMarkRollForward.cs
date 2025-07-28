@@ -29,9 +29,9 @@ namespace Aerospike.Client
 			SetTxnMarkRollForward(key);
 		}
 
-		protected internal override void ParseResult(Connection conn)
+		protected internal override void ParseResult(Node node, Connection conn)
 		{
-			ParseHeader(conn);
+			ParseHeader(node,conn);
 			ParseFields(policy.Txn, key, true);
 
 			// MRT_COMMITTED is considered a success because it means a previous attempt already

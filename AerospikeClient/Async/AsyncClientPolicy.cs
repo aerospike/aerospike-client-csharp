@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2023 Aerospike, Inc.
+ * Copyright 2012-2025 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -134,6 +134,40 @@ namespace Aerospike.Client
 			this.asyncMinConnsPerNode = other.asyncMinConnsPerNode;
 			this.asyncMaxConnsPerNode = other.asyncMaxConnsPerNode;
 			this.asyncBufferSize = other.asyncBufferSize;
+		}
+
+		public AsyncClientPolicy(AsyncClientPolicy other, IConfigProvider configProvider) : base(other, configProvider)
+		{
+			if (configProvider == null)
+			{
+				return;
+			}
+
+			if (configProvider.ConfigurationData == null)
+			{
+				return;
+			}
+
+			var staticConfig = configProvider.ConfigurationData.staticConfig;
+			if (staticConfig == null)
+			{
+				return;
+			}
+
+			var staticClient = configProvider.ConfigurationData.staticConfig.client;
+			if (staticClient == null)
+			{
+				return;
+			}
+
+			if (staticClient.async_max_connections_per_node.HasValue)
+			{
+				this.asyncMaxConnsPerNode = staticClient.async_max_connections_per_node.Value;
+			}
+			if (staticClient.async_min_connections_per_node.HasValue)
+			{
+				this.asyncMinConnsPerNode = staticClient.async_min_connections_per_node.Value;
+			}
 		}
 
 		/// <summary>

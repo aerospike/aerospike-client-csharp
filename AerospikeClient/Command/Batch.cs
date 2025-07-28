@@ -42,7 +42,7 @@ namespace Aerospike.Client
 		{
 			if (batch.node != null && batch.node.HasBatchAny)
 			{
-				SetBatchOperate(batchPolicy, records, batch);
+				SetBatchOperate(batchPolicy, records, batch, null);
 			}
 			else
 			{
@@ -208,6 +208,7 @@ namespace Aerospike.Client
 	public sealed class BatchOperateListCommand : BatchCommand
 	{
 		private readonly IList<BatchRecord> records;
+		private readonly IConfigProvider configProvider;
 
 		public BatchOperateListCommand
 		(
@@ -215,10 +216,12 @@ namespace Aerospike.Client
 			BatchNode batch,
 			BatchPolicy policy,
 			IList<BatchRecord> records,
-			BatchStatus status
+			BatchStatus status,
+			IConfigProvider configProvider
 		) : base(cluster, batch, policy, status, true)
 		{
 			this.records = records;
+			this.configProvider = configProvider;
 		}
 
 		protected internal override bool IsWrite()
@@ -230,7 +233,7 @@ namespace Aerospike.Client
 
 		protected internal override void WriteBuffer()
 		{
-			SetBatchOperate(batchPolicy, (IList)records, batch);
+			SetBatchOperate(batchPolicy, (IList)records, batch, configProvider);
 		}
 
 		protected internal override bool ParseRow()
@@ -285,7 +288,7 @@ namespace Aerospike.Client
 
 		protected internal override BatchCommand CreateCommand(BatchNode batchNode)
 		{
-			return new BatchOperateListCommand(cluster, batchNode, batchPolicy, records, status);
+			return new BatchOperateListCommand(cluster, batchNode, batchPolicy, records, status, configProvider);
 		}
 
 		protected internal override List<BatchNode> GenerateBatchNodes()

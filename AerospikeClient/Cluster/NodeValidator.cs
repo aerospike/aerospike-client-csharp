@@ -28,6 +28,7 @@ namespace Aerospike.Client
 		internal byte[] sessionToken;
 		internal DateTime? sessionExpiration;
 		internal uint features;
+		internal Version serverVersion;
 
 		/// <summary>
 		/// Return first valid node referenced by seed host aliases. In most cases, aliases
@@ -201,6 +202,7 @@ namespace Aerospike.Client
 				List<string> commands = new List<string>(5);
 				commands.Add("node");
 				commands.Add("partition-generation");
+				commands.Add("build");
 				commands.Add("features");
 
 				bool hasClusterName = cluster.HasClusterName;
@@ -241,6 +243,7 @@ namespace Aerospike.Client
 
 				ValidateNode(map);
 				ValidatePartitionGeneration(map);
+				SetServerBuildVersion(map);
 				SetFeatures(map);
 
 				if (hasClusterName)
@@ -293,6 +296,20 @@ namespace Aerospike.Client
 			}
 		}
 				
+		private void SetServerBuildVersion(Dictionary<string, string> map)
+		{
+			try
+			{
+				string versionString = map["build"];
+				versionString = versionString.Split("-")[0];
+				this.serverVersion = new Version(versionString);
+			}
+			catch (Exception)
+			{
+				// Unexpected exception. Use defaults.
+			}
+		}
+
 		private void SetFeatures(Dictionary<string, string> map)
 		{
 			try

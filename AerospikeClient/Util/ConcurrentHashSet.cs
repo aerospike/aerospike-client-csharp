@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2024 Aerospike, Inc.
+ * Copyright 2012-2025 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -17,14 +17,15 @@
 
 namespace Aerospike.Client
 {
-	public class ConcurrentHashSet<T>
+	public sealed class ConcurrentHashSet<T> : IDisposable
 	{
-		private readonly ReaderWriterLockSlim _lock = new ReaderWriterLockSlim(LockRecursionPolicy.SupportsRecursion);
+		private readonly ReaderWriterLockSlim _lock = new(LockRecursionPolicy.SupportsRecursion);
 		private readonly HashSet<T> _hashSet;
+		private bool disposedValue;
 
 		public ConcurrentHashSet()
 		{
-			_hashSet = new HashSet<T>();
+			_hashSet = [];
 		}
 
 		public ConcurrentHashSet(int capacity) 
@@ -133,6 +134,27 @@ namespace Aerospike.Client
 				_lock.ExitReadLock();
 			}
 			return false;
+		}
+
+		private void Dispose(bool disposing)
+		{
+			if (!disposedValue)
+			{
+				if (disposing)
+				{
+					// Dispose managed state (managed objects)
+					_lock.Dispose();
+				}
+
+				disposedValue = true;
+			}
+		}
+
+		public void Dispose()
+		{
+			// Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
+			Dispose(disposing: true);
+			GC.SuppressFinalize(this);
 		}
 	}
 }
