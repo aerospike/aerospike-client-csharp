@@ -46,7 +46,7 @@ namespace Aerospike.Client
 
 		protected internal Cluster cluster;
 
-		protected internal string version;
+		protected internal string clientVersion;
 
 		protected internal ClientPolicy clientPolicy;
 
@@ -251,8 +251,8 @@ namespace Aerospike.Client
 				MergeDefaultPoliciesWithConfig();
 			}
 
-			version = Assembly.GetExecutingAssembly().GetName().Version.ToString();
-			version ??= "development";
+			clientVersion = Assembly.GetExecutingAssembly().GetName().Version.ToString();
+			clientVersion ??= "development";
 
 			cluster = new Cluster(this, policy, configPath, hosts);
 			cluster.UpdateClusterConfig(true);

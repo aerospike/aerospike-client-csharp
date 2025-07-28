@@ -232,9 +232,9 @@ namespace Aerospike.Client
 			// check server version
 			Version min = new("8.1.0");
 			Node node = cluster.GetRandomNode();
-			if (node.verison < min)
+			if (node.serverVerison < min)
 			{
-				throw new AerospikeException($"Node version {node.verison} is less than required minimum version {min}");
+				throw new AerospikeException($"Node version {node.serverVerison} is less than required minimum version {min}");
 			}
 			
 			// nopassword is a special keyword used by server versions 8.1+ to indicate that password

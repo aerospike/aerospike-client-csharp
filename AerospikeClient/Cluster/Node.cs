@@ -67,9 +67,11 @@ namespace Aerospike.Client
 		private volatile int performLogin;
 		protected internal bool partitionChanged = true;
 		protected internal bool rebalanceChanged;
+		protected internal bool retryUserAgent;
 		protected internal volatile bool active = true;
 		private bool disposedValue;
-		internal Version verison;
+		internal Version serverVerison;
+		internal Version clientVersion;
 
 		/// <summary>
 		/// Initialize server node with connection parameters.
@@ -92,13 +94,16 @@ namespace Aerospike.Client
 			this.errorRateCount = 0;
 			this.timeoutCounter = new Counter();
 			this.keyBusyCounter = new Counter();
-			this.verison = nv.serverVersion;
+			this.serverVerison = nv.serverVersion;
+			this.clientVersion = new Version(cluster.client.clientVersion);
 
 			this.metricsEnabled = cluster.MetricsEnabled;
 			if (cluster.MetricsEnabled)
 			{
 				this.metrics = new NodeMetrics(cluster.MetricsPolicy);
 			}
+
+			SendUserAgent();
 
 			connectionPools = new Pool<Connection>[cluster.connPoolsPerNode];
 			int min = cluster.minConnsPerNode / cluster.connPoolsPerNode;
@@ -120,6 +125,27 @@ namespace Aerospike.Client
 		{
 			// Close connections that slipped through the cracks on race conditions.
 			CloseConnections();
+		}
+
+		private bool SendUserAgent()
+		{
+			Version min = new("8.1.0");
+			if (clientVersion < min)
+			{
+				retryUserAgent = false;
+				return true;
+			}
+
+			byte[] appId = ByteUtil.StringToUtf8(cluster.appId);
+			if (appId.Length <= 0)
+			{
+				appId = cluster.user.ToString();
+
+				if (appId.Length <= 0)
+				{
+					appId = ByteUtil.StringToUtf8("not-set");
+				}
+			}
 		}
 
 		public virtual void CreateMinConnections()
