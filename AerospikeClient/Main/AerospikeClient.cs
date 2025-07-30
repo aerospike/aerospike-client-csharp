@@ -2768,7 +2768,7 @@ namespace Aerospike.Client
 			{
 				if (ae.Result == ResultCode.FORBIDDEN_PASSWORD)
 				{
-					throw new AerospikeException(ResultCode.FORBIDDEN_PASSWORD, "PKI user password not changeable");
+					throw new AerospikeException(ResultCode.FORBIDDEN_PASSWORD, "FORBIDDEN_PASSWORD (64): PKI user password not changeable");
 				}
 				else
 				{
