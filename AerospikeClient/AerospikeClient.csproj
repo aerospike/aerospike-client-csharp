@@ -20,7 +20,7 @@
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <Icon>icon.png</Icon>
     <Copyright>Copyright 2012-2025 Aerospike, Inc.</Copyright>
-    <Version>8.0.3-alpha</Version>
+    <Version>8.0.2</Version>
     <ApplicationIcon />
     <OutputType>Library</OutputType>
     <StartupObject />

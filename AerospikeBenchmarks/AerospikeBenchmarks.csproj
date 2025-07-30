@@ -5,7 +5,7 @@
     <TargetFramework>net6.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>disable</Nullable>
-    <Version>8.0.3-alpha</Version>
+    <Version>8.0.2</Version>
     <Configurations>Debug;Release;Debug_Unix;Release_Unix</Configurations>
     <Platforms>AnyCPU</Platforms>
   </PropertyGroup>
