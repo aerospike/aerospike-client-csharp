@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2022 Aerospike, Inc.
+ * Copyright 2012-2025 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -191,6 +191,10 @@ namespace Aerospike.Client
 				AdminCommand command = new AdminCommand(dataBuffer, 0);
 				int dataLength = command.SetAuthenticate(cluster, sessionToken);
 				conn.Send(dataBuffer, 0, dataLength);
+				if (node.AreMetricsEnabled())
+				{
+					node.AddBytesOut(null, dataLength);
+				}
 				return;
 			}
 			ConnectionReady();
@@ -199,6 +203,10 @@ namespace Aerospike.Client
 		public void SendComplete()
 		{
 			conn.Receive(dataBuffer, 0, 8);
+			if (node.AreMetricsEnabled())
+			{
+				node.AddBytesIn(null, 8);
+			}
 		}
 
 		public void ReceiveComplete()
@@ -216,6 +224,10 @@ namespace Aerospike.Client
 
 				inHeader = false;
 				conn.Receive(dataBuffer, 0, length);
+				if (node.AreMetricsEnabled())
+				{
+					node.AddBytesIn(null, length);
+				}
 			}
 			else
 			{

@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2024 Aerospike, Inc.
+ * Copyright 2012-2025 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -15,8 +15,6 @@
  * the License.
  */
 
-using System.Runtime.InteropServices;
-
 namespace Aerospike.Client
 {
 	public abstract class SyncWriteCommand : SyncCommand
@@ -26,7 +24,7 @@ namespace Aerospike.Client
 		private readonly Partition partition;
 
 		public SyncWriteCommand(Cluster cluster, WritePolicy writePolicy, Key key)
-			: base(cluster, writePolicy)
+			: base(cluster, writePolicy, key.ns)
 		{
 			this.writePolicy = writePolicy;
 			this.key = key;
@@ -65,6 +63,6 @@ namespace Aerospike.Client
 
 		protected internal abstract override void WriteBuffer();
 
-		protected internal abstract override void ParseResult(Connection conn);
+		protected internal abstract override void ParseResult(Node node, Connection conn);
 	}
 }

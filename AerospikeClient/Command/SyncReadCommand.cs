@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2024 Aerospike, Inc.
+ * Copyright 2012-2025 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -23,7 +23,7 @@ namespace Aerospike.Client
 		private readonly Partition partition;
 
 		public SyncReadCommand(Cluster cluster, Policy policy, Key key)
-			: base(cluster, policy)
+			: base(cluster, policy, key.ns)
 		{
 			this.key = key;
 			this.partition = Partition.Read(cluster, policy, key);
@@ -48,6 +48,6 @@ namespace Aerospike.Client
 
 		protected internal abstract override void WriteBuffer();
 
-		protected internal abstract override void ParseResult(Connection conn);
+		protected internal abstract override void ParseResult(Node node, Connection conn);
 	}
 }

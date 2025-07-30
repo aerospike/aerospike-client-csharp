@@ -165,7 +165,10 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Limit returned records per second (rps) rate for each server.
 		/// Do not apply rps limit if recordsPerSecond is zero (default).
-		/// Currently only applicable to a query without a defined filter.
+		/// 
+		/// RecordsPerSecond is supported in all primary and secondary index
+		/// queries in server versions 6.0+. For background queries, RecordsPerSecond
+		/// is bounded by the server config background-query-max-rps.
 		/// </summary>
 		public int RecordsPerSecond
 		{

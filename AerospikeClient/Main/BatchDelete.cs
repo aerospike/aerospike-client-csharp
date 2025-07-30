@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2024 Aerospike, Inc.
+ * Copyright 2012-2025 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -14,6 +14,8 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
+using Aerospike.Client.Config;
+
 namespace Aerospike.Client
 {
 	/// <summary>
@@ -56,7 +58,7 @@ namespace Aerospike.Client
 		/// Optimized reference equality check to determine batch wire protocol repeat flag.
 		/// For internal use only.
 		/// </summary>
-		public override bool Equals(BatchRecord obj)
+		public override bool Equals(BatchRecord obj, IConfigProvider configProvider)
 		{
 			if (this.GetType() != obj.GetType())
 			{
@@ -64,13 +66,28 @@ namespace Aerospike.Client
 			}
 
 			BatchDelete other = (BatchDelete)obj;
-			return policy == other.policy && (policy == null || !policy.sendKey);
+
+			if (policy != other.policy)
+			{
+				return false;
+			}
+
+			bool sendKey = false;
+			if (policy != null)
+			{
+				sendKey = policy.sendKey;
+			}
+			if (configProvider != null && configProvider.ConfigurationData.HasDBDCsendKey())
+			{
+				sendKey = configProvider.ConfigurationData.dynamicConfig.batch_delete.send_key.Value;
+			}
+			return !sendKey;
 		}
 
 		/// <summary>
 		/// Return wire protocol size. For internal use only.
 		/// </summary>
-		public override int Size(Policy parentPolicy)
+		public override int Size(Policy parentPolicy, IConfigProvider configProvider)
 		{
 			int size = 2; // gen(2) = 2
 
@@ -81,7 +98,14 @@ namespace Aerospike.Client
 					size += policy.filterExp.Size();
 				}
 
-				if (policy.sendKey || parentPolicy.sendKey)
+				bool sendKey = policy.sendKey;
+
+				if (configProvider != null && configProvider.ConfigurationData.HasDBDCsendKey())
+				{
+					sendKey = configProvider.ConfigurationData.dynamicConfig.batch_delete.send_key.Value;
+				}
+
+				if (sendKey || parentPolicy.sendKey)
 				{
 					size += key.userKey.EstimateSize() + Command.FIELD_HEADER_SIZE + 1;
 				}

@@ -110,6 +110,37 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
+		/// Copy batch UDF policy from another policy and override according to the AerospikeConfigProvider.
+		/// </summary>
+		public BatchUDFPolicy(BatchUDFPolicy other, IConfigProvider configProvider) : this(other)
+		{
+			if (configProvider == null)
+			{
+				return;
+			}
+
+			if (configProvider.ConfigurationData == null)
+			{
+				return;
+			}
+
+			var batch_udf = configProvider.ConfigurationData.dynamicConfig.batch_udf;
+			if (batch_udf == null)
+			{
+				return;
+			}
+
+			if (batch_udf.durable_delete.HasValue)
+			{
+				this.durableDelete = batch_udf.durable_delete.Value;
+			}
+			if (batch_udf.send_key.HasValue)
+			{
+				this.sendKey = batch_udf.send_key.Value;
+			}
+		}
+
+		/// <summary>
 		/// Default constructor.
 		/// </summary>
 		public BatchUDFPolicy()

@@ -229,7 +229,7 @@ namespace Aerospike.Client
 			Key[] keys = null;
 			long?[] versions = null;
 
-			bool actionPerformed = txn.Reads.PerformActionOnEachElement(max =>
+			bool actionPerformed = txn.Reads.PerformReadActionOnEachElement(max =>
 			{
 				if (max == 0) return false;
 

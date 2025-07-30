@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2023 Aerospike, Inc.
+ * Copyright 2012-2025 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -129,6 +129,32 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
+		/// Create range filter for query by index name.
+		/// Range arguments must be longs or integers which can be cast to longs.
+		/// String ranges are not supported.
+		/// </summary>
+		/// <param name="indexName">index name</param>
+		/// <param name="begin">filter begin value inclusive</param>
+		/// <param name="end">filter end value inclusive</param>
+		public static Filter RangeByIndex(string indexName, long begin, long end)
+		{
+			return new Filter(null, IndexCollectionType.DEFAULT, ParticleType.INTEGER, Value.Get(begin), Value.Get(end), null, indexName);
+		}
+
+		/// <summary>
+		/// Create range filter for query by expression.
+		/// Range arguments must be longs or integers which can be cast to longs.
+		/// String ranges are not supported.
+		/// </summary>
+		/// <param name="expression">expression to be indexed</param>
+		/// <param name="begin">filter begin value inclusive</param>
+		/// <param name="end">filter end value inclusive</param>
+		public static Filter Range(Expression expression, long begin, long end)
+		{
+			return new Filter(expression, IndexCollectionType.DEFAULT, ParticleType.INTEGER, Value.Get(begin), Value.Get(end), null);
+		}
+
+		/// <summary>
 		/// Create geospatial "within region" filter for query.
 		/// </summary>
 		/// <param name="name">bin name</param>
@@ -203,37 +229,49 @@ namespace Aerospike.Client
 			return new Filter(name, type, ParticleType.GEOJSON, Value.Get(point), Value.Get(point), ctx);
 		}
 
-		private readonly string name;
+		private readonly string binName;
 		private readonly IndexCollectionType colType;
 		private readonly byte[] packedCtx;
 		private readonly ParticleType valType;
 		private readonly Value begin;
 		private readonly Value end;
+		public string IndexName { get; private set; }
+		public Expression Exp { get; private set; }
 
-		Filter(string name, IndexCollectionType colType, int valType, Value begin, Value end, byte[] packedCtx)
+		Filter(string binName, IndexCollectionType colType, int valType, Value begin, Value end, byte[] packedCtx, string indexName, Expression exp)
 		{
-			this.name = name;
+			this.binName = binName;
 			this.colType = colType;
 			this.valType = (ParticleType)valType;
 			this.begin = begin;
 			this.end = end;
 			this.packedCtx = packedCtx;
+			this.IndexName = indexName;
+			this.Exp = exp;
 		}
 
-		private Filter(string name, IndexCollectionType colType, ParticleType valType, Value begin, Value end, CTX[] ctx) :
-			this(name, colType, (int)valType, begin, end, (ctx != null && ctx.Length > 0) ? PackUtil.Pack(ctx) : null)
+		private Filter(string binName, IndexCollectionType colType, ParticleType valType, Value begin, Value end, CTX[] ctx) :
+			this(binName, colType, (int)valType, begin, end, (ctx != null && ctx.Length > 0) ? PackUtil.Pack(ctx) : null, null, null)
+		{ }
+
+		private Filter(string binName, IndexCollectionType colType, ParticleType valType, Value begin, Value end, CTX[] ctx, string indexName) :
+			this(binName, colType, (int)valType, begin, end, (ctx != null && ctx.Length > 0) ? PackUtil.Pack(ctx) : null, indexName, null)
+		{ }
+
+		private Filter(Expression exp, IndexCollectionType colType, ParticleType valType, Value begin, Value end, CTX[] ctx) :
+			this(null, colType, (int)valType, begin, end, (ctx != null && ctx.Length > 0) ? PackUtil.Pack(ctx) : null, null, exp)
 		{ }
 
 		internal int EstimateSize()
 		{
 			// bin name size(1) + particle type size(1) + begin particle size(4) + end particle size(4) = 10
-			return ByteUtil.EstimateSizeUtf8(name) + begin.EstimateSize() + end.EstimateSize() + 10;
+			return ByteUtil.EstimateSizeUtf8(binName) + begin.EstimateSize() + end.EstimateSize() + 10;
 		}
 
 		internal int Write(byte[] buf, int offset)
 		{
 			// Write name.
-			int len = ByteUtil.StringToUtf8(name, buf, offset + 1);
+			int len = ByteUtil.StringToUtf8(binName, buf, offset + 1);
 			buf[offset] = (byte)len;
 			offset += len + 1;
 
@@ -255,7 +293,7 @@ namespace Aerospike.Client
 
 		public string Name
 		{
-			get { return name; }
+			get { return binName; }
 		}
 
 		public IndexCollectionType ColType

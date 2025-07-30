@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2023 Aerospike, Inc.
+ * Copyright 2012-2025 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -270,8 +270,9 @@ namespace Aerospike.Client
 			uint seq2 = 0;
 			Node fallback1 = null;
 			Node fallback2 = null;
+			int[] rackIds = cluster.rackIds;
 
-			foreach (int rackId in cluster.rackIds)
+			foreach (int rackId in rackIds)
 			{
 				uint seq = sequence;
 
