@@ -64,6 +64,7 @@
     <DelaySign>True</DelaySign>
     <AssemblyOriginatorKeyFile>../AerospikePublicKey.snk</AssemblyOriginatorKeyFile>
     <GeneratePackageOnBuild>False</GeneratePackageOnBuild>
+	<ContinuousIntegrationBuild>true</ContinuousIntegrationBuild>
   </PropertyGroup>
 
   <ItemGroup>
