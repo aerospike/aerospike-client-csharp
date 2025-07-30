@@ -215,7 +215,7 @@ namespace Aerospike.Client
 				this.authEnabled = true;
 				if (!string.IsNullOrEmpty(policy.password))
 				{
-					throw new AerospikeException(ResultCode.FORBIDDEN_PASSWORD, "Password authentication is disabled for PKI-only users");
+					throw new AerospikeException(ResultCode.INVALID_CREDENTIAL, "Authentication failed (65): Password authentication is disabled for PKI-only users. Please authenticate using your certificate.");
 				}
 				this.user = ByteUtil.StringToUtf8(policy.user);
 			}

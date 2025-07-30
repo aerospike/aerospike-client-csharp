@@ -124,7 +124,13 @@ namespace Aerospike.Client
 						sessionExpiration = null;
 						return;
 					}
-					throw new AerospikeException(result, "Login failed");
+
+					string msg = "Login failed";
+					if (result == ResultCode.INVALID_CREDENTIAL)
+					{
+						msg = "Authentication failed (65): Password authentication is disabled for PKI-only users. Please authenticate using your certificate.";
+					}
+					throw new AerospikeException(result, msg);
 				}
 
 				// Read session token.
