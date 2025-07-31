@@ -83,8 +83,8 @@ jobs:
           password: ${{ secrets.ES_PASSWORD }}
           totp_secret: ${{ secrets.ES_TOTP_SECRET }}
           credential_id: ${{ secrets.CREDENTIAL_ID }}
-          dir_path: ${GITHUB_WORKSPACE}/sign
-          output_path: ${GITHUB_WORKSPACE}/artifacts
+          dir_path: "${GITHUB_WORKSPACE}/sign"
+          output_path: "${GITHUB_WORKSPACE}/artifacts"
           malware_block: true
     - name: Upload to JFrog
       uses: ./.github/actions/upload-to-jfrog
