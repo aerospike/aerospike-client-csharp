@@ -2212,7 +2212,9 @@ namespace Aerospike.Client
 			fieldCount++;
 
 			byte[] packedCtx = null;
-
+			string indexName = null;
+			Expression statementExp = null;
+			
 			if (statement.filter != null)
 			{
 				IndexCollectionType type = statement.filter.CollectionType;
@@ -2257,15 +2259,17 @@ namespace Aerospike.Client
 					fieldCount++;
 				}
 
-				if (statement.filter.IndexName != null)
+				indexName = statement.filter.IndexName;
+				if (indexName != null)
 				{
-					dataOffset += ByteUtil.EstimateSizeUtf8(statement.filter.IndexName) + 1;
+					dataOffset += FIELD_HEADER_SIZE + ByteUtil.EstimateSizeUtf8(indexName);
 					fieldCount++;
 				}
 
-				if (statement.filter.Exp != null)
+				statementExp = statement.filter.Exp;
+				if (statementExp != null)
 				{
-					dataOffset += statement.Filter.Exp.Size();
+					dataOffset += statementExp.Size();
 					fieldCount++;
 				}
 			}
@@ -2461,12 +2465,12 @@ namespace Aerospike.Client
 					dataOffset += packedCtx.Length;
 				}
 
-				if (statement.filter.IndexName != null)
+				if (indexName != null)
 				{
-					WriteField(statement.filter.IndexName, FieldType.INDEX_NAME);
+					WriteField(indexName, FieldType.INDEX_NAME);
 				}
 
-				statement.filter.Exp?.WriteIndex(this);
+				statementExp?.WriteIndex(this);
 			}
 
 			if (statement.functionName != null)
