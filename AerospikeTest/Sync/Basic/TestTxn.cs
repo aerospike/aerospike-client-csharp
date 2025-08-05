@@ -41,7 +41,7 @@ namespace Aerospike.Test
 
 			client.Put(null, key, new Bin(binName, "val1"));
 
-			Txn txn = new();
+			using Txn txn = new();
 
 			WritePolicy wp = client.WritePolicyDefault.Clone();
 			wp.Txn = txn;
@@ -58,7 +58,7 @@ namespace Aerospike.Test
 		{
 			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "mrtkey2");
 
-			Txn txn = new();
+			using Txn txn = new();
 
 			WritePolicy wp = client.WritePolicyDefault.Clone();
 			wp.Txn = txn;
@@ -76,8 +76,8 @@ namespace Aerospike.Test
 		{
 			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "mrtkey021");
 
-			Txn txn1 = new();
-			Txn txn2 = new();
+			using Txn txn1 = new();
+			using Txn txn2 = new();
 
 			WritePolicy wp1 = client.WritePolicyDefault.Clone();
 			WritePolicy wp2 = client.WritePolicyDefault.Clone();
@@ -113,7 +113,7 @@ namespace Aerospike.Test
 
 			client.Put(null, key, new Bin(binName, "val1"));
 
-			Txn txn = new();
+			using Txn txn = new();
 
 			WritePolicy wp = client.WritePolicyDefault.Clone();
 			wp.Txn = txn;
@@ -143,7 +143,7 @@ namespace Aerospike.Test
 
 			client.Put(null, key, new Bin(binName, "val1"));
 
-			Txn txn = new();
+			using Txn txn = new();
 
 			WritePolicy wp = client.WritePolicyDefault.Clone();
 			wp.Txn = txn;
@@ -167,7 +167,7 @@ namespace Aerospike.Test
 
 			client.Put(null, key, new Bin(binName, "val1"));
 
-			Txn txn = new();
+			using Txn txn = new();
 
 			WritePolicy wp = client.WritePolicyDefault.Clone();
 			wp.Txn = txn;
@@ -192,7 +192,7 @@ namespace Aerospike.Test
 
 			client.Put(null, key, new Bin(binName, "val1"));
 
-			Txn txn = new();
+			using Txn txn = new();
 
 			WritePolicy wp = client.WritePolicyDefault.Clone();
 			wp.Txn = txn;
@@ -212,7 +212,7 @@ namespace Aerospike.Test
 
 			client.Put(null, key, new Bin(binName, "val1"));
 
-			Txn txn = new();
+			using Txn txn = new();
 
 			WritePolicy wp = client.WritePolicyDefault.Clone();
 			wp.Txn = txn;
@@ -230,7 +230,7 @@ namespace Aerospike.Test
 		{
 			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "mrtkey8");
 
-			Txn txn = new();
+			using Txn txn = new();
 
 			client.Put(null, key, new Bin(binName, "val1"));
 
@@ -253,7 +253,7 @@ namespace Aerospike.Test
 
 			client.Put(null, key, new Bin(binName, "val1"));
 
-			Txn txn = new();
+			using Txn txn = new();
 
 			WritePolicy wp = client.WritePolicyDefault.Clone();
 			wp.Txn = txn;
@@ -272,7 +272,7 @@ namespace Aerospike.Test
 
 			client.Put(null, key, new Bin(binName, "val1"));
 
-			Txn txn = new();
+			using Txn txn = new();
 
 			WritePolicy wp = client.WritePolicyDefault.Clone();
 			wp.Txn = txn;
@@ -291,7 +291,7 @@ namespace Aerospike.Test
 
 			client.Put(null, key, new Bin(binName, "val1"), new Bin("bin2", "bal1"));
 
-			Txn txn = new();
+			using Txn txn = new();
 
 			WritePolicy wp = client.WritePolicyDefault.Clone();
 			wp.Txn = txn;
@@ -314,7 +314,7 @@ namespace Aerospike.Test
 
 			client.Put(null, key, new Bin(binName, "val1"), new Bin("bin2", "bal1"));
 
-			Txn txn = new();
+			using Txn txn = new();
 
 			WritePolicy wp = client.WritePolicyDefault.Clone();
 			wp.Txn = txn;
@@ -337,7 +337,7 @@ namespace Aerospike.Test
 
 			client.Put(null, key, new Bin(binName, "val1"));
 
-			Txn txn = new();
+			using Txn txn = new();
 
 			WritePolicy wp = client.WritePolicyDefault.Clone();
 			wp.Txn = txn;
@@ -356,7 +356,7 @@ namespace Aerospike.Test
 
 			client.Put(null, key, new Bin(binName, "val1"));
 
-			Txn txn = new();
+			using Txn txn = new();
 
 			WritePolicy wp = client.WritePolicyDefault.Clone();
 			wp.Txn = txn;
@@ -385,7 +385,7 @@ namespace Aerospike.Test
 			Record[] recs = client.Get(null, keys);
 			AssertBatchEqual(keys, recs, 1);
 
-			Txn txn = new();
+			using Txn txn = new();
 
 			bin = new(binName, 2);
 
@@ -439,7 +439,7 @@ namespace Aerospike.Test
 			Record[] recs = client.Get(null, keys);
 			AssertBatchEqual(keys, recs, 1);
 
-			Txn txn = new();
+			using Txn txn = new();
 
 			bin = new Bin(binName, 2);
 
@@ -483,7 +483,7 @@ namespace Aerospike.Test
 
 			client.Put(null, key, new Bin(binName, "val1"));
 
-			Txn txn = new();
+			using Txn txn = new();
 
 			WritePolicy wp = client.WritePolicyDefault.Clone();
 			wp.Txn = txn;
@@ -514,8 +514,8 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void TxnWriteReadTwoTxn()
 		{
-			Txn txn1 = new();
-			Txn txn2 = new();
+			using Txn txn1 = new();
+			using Txn txn2 = new();
 
 			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "mrtkey16");
 
@@ -541,7 +541,7 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void TxnLUTCommit() // Test Case 38
 		{
-			Txn txn = new(); // T0
+			using Txn txn = new(); // T0
 
 			Key key1 = new(SuiteHelpers.ns, SuiteHelpers.set, "mrtkey17");
 			Key key2 = new(SuiteHelpers.ns, SuiteHelpers.set, "mrtkey18");
@@ -595,7 +595,7 @@ namespace Aerospike.Test
 		{
 			client.Truncate(null, SuiteHelpers.ns, SuiteHelpers.set, DateTime.Now);
 			
-			Txn txn = new(); // T0
+			using Txn txn = new(); // T0
 
 			Key key1 = new(SuiteHelpers.ns, SuiteHelpers.set, "mrtkey20");
 			Key key2 = new(SuiteHelpers.ns, SuiteHelpers.set, "mrtkey21");
@@ -678,7 +678,7 @@ namespace Aerospike.Test
 		{
 			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "mrtkey23");
 
-			Txn txn = new();
+			using Txn txn = new();
 
 			WritePolicy wp = client.WritePolicyDefault.Clone();
 			wp.Txn = txn;
@@ -706,7 +706,7 @@ namespace Aerospike.Test
 		{
 			Key key = new("invalid", SuiteHelpers.set, "mrtkey");
 
-			Txn txn = new();
+			using Txn txn = new();
 
 			WritePolicy wp = client.WritePolicyDefault.Clone();
 			wp.Txn = txn;

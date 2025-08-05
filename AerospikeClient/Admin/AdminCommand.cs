@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2024 Aerospike, Inc.
+ * Copyright 2012-2025 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -124,7 +124,13 @@ namespace Aerospike.Client
 						sessionExpiration = null;
 						return;
 					}
-					throw new AerospikeException(result, "Login failed");
+
+					string msg = "Login failed";
+					if (result == ResultCode.INVALID_CREDENTIAL)
+					{
+						msg = "Authentication failed (65): Password authentication is disabled for PKI-only users. Please authenticate using your certificate.";
+					}
+					throw new AerospikeException(result, msg);
 				}
 
 				// Read session token.
@@ -225,6 +231,27 @@ namespace Aerospike.Client
 			WriteField(PASSWORD, password);
 			WriteRoles(roles);
 			ExecuteCommand(cluster, policy);
+		}
+
+		public void CreatePKIUser(Cluster cluster, AdminPolicy policy, string user, IList<string> roles)
+		{
+			// check server version
+			Version min = new("8.1.0");
+			Node node = cluster.GetRandomNode();
+			if (node.verison < min)
+			{
+				throw new AerospikeException($"Node version {node.verison} is less than required minimum version {min}");
+			}
+			
+			// nopassword is a special keyword used by server versions 8.1+ to indicate that password
+			// authentication is not allowed.
+			var hash = AdminCommand.HashPassword("nopassword");
+
+			WriteHeader(CREATE_USER, 3);
+			WriteField(USER, user);
+			WriteField(PASSWORD, hash);
+			WriteRoles(roles);
+			ExecuteCommand(node, cluster, policy);
 		}
 
 		public void DropUser(Cluster cluster, AdminPolicy policy, string user)
@@ -508,8 +535,13 @@ namespace Aerospike.Client
 
 		private void ExecuteCommand(Cluster cluster, AdminPolicy policy)
 		{
-			WriteSize();
 			Node node = cluster.GetRandomNode();
+			ExecuteCommand(node, cluster, policy);
+		}
+
+		private void ExecuteCommand(Node node, Cluster cluster, AdminPolicy policy)
+		{
+			WriteSize();
 			int timeout = (policy == null) ? 1000 : policy.timeout;
 			Connection conn = node.GetConnection(timeout);
 

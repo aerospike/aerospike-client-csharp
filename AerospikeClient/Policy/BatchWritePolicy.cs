@@ -14,6 +14,8 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
+using System.ComponentModel;
+
 namespace Aerospike.Client
 {
 	/// <summary>
@@ -135,6 +137,37 @@ namespace Aerospike.Client
 			this.durableDelete = other.durableDelete;
 			this.OnLockingOnly = other.OnLockingOnly;
 			this.sendKey = other.sendKey;
+		}
+
+		/// <summary>
+		/// Copy batch write policy from another policy and override according to the AerospikeConfigProvider.
+		/// </summary>
+		public BatchWritePolicy(BatchWritePolicy other, IConfigProvider configProvider) : this(other)
+		{
+			if (configProvider == null)
+			{
+				return;
+			}
+
+			if (configProvider.ConfigurationData == null)
+			{
+				return;
+			}
+
+			var batch_write = configProvider.ConfigurationData.dynamicConfig.batch_write;
+			if (batch_write == null)
+			{
+				return;
+			}
+
+			if (batch_write.send_key.HasValue)
+			{
+				this.sendKey = batch_write.send_key.Value;
+			}
+			if (batch_write.durable_delete.HasValue)
+			{
+				this.durableDelete = batch_write.durable_delete.Value;
+			}
 		}
 
 		/// <summary>

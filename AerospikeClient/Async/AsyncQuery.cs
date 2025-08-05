@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2024 Aerospike, Inc.
+ * Copyright 2012-2025 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -32,7 +32,7 @@ namespace Aerospike.Client
 			RecordSequenceListener listener,
 			Statement statement,
 			ulong taskId
-		) : base(cluster, policy, node, policy.socketTimeout, policy.totalTimeout)
+		) : base(cluster, policy, node, policy.socketTimeout, policy.totalTimeout, statement.Namespace)
 		{
 			this.parent = parent;
 			this.listener = listener;

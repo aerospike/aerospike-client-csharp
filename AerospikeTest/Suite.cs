@@ -60,6 +60,7 @@ namespace Aerospike.Test
 			}
 
 			ConnectSync();
+			Util.Sleep(1000); // Wait a little bit so if dynamic config with metrics is enabled, the async and sync clients don't use the same file
 			ConnectAsync();
 		}
 
@@ -87,9 +88,6 @@ namespace Aerospike.Test
 			}
 
 			SuiteHelpers.client = new AerospikeClient(policy, SuiteHelpers.hosts);
-
-			//Example of how to enable metrics
-			//client.EnableMetrics(new MetricsPolicy());
 
 			try
 			{
@@ -122,9 +120,6 @@ namespace Aerospike.Test
 			}
 
 			SuiteHelpers.asyncClient = new AsyncClient(policy, SuiteHelpers.hosts);
-
-			// Example of how to enable metrics
-			//asyncClient.EnableMetrics(new MetricsPolicy());
 		}
 
 		private static void SetServerSpecific()

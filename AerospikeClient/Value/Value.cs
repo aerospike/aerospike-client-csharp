@@ -138,6 +138,11 @@ namespace Aerospike.Client
 		static public Value Get(byte[] value, int offset, int length) => value is null ? NullValue.Instance : new ByteSegmentValue(value, offset, length);
 
 		/// <summary>
+		/// Get memory bytes instance.
+		/// </summary>
+		static public Value Get(ReadOnlyMemory<byte> value) => new ReadOnlyMemoryBytesValue(value);
+
+		/// <summary>
 		/// Get double value instance.
 		/// </summary>
 		static public DoubleValue Get(double value) => new(value);
@@ -240,6 +245,8 @@ namespace Aerospike.Client
 			{
 				Value value => value,
 				byte[] bValue => new BytesValue(bValue),
+				Memory<byte> memValue => new ReadOnlyMemoryBytesValue(memValue),
+				ReadOnlyMemory<byte> roMemValue => new ReadOnlyMemoryBytesValue(roMemValue),
 				IList lValue => new ListValue(lValue),
 				IDictionary dValue => new MapValue(dValue),
 				string sValue => new StringValue(sValue),

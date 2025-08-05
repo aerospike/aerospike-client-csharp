@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2024 Aerospike, Inc.
+ * Copyright 2012-2025 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -49,9 +49,9 @@ namespace Aerospike.Client
 			SetRead(policy, key, binNames);
 		}
 
-		protected internal override void ParseResult(Connection conn)
+		protected internal override void ParseResult(Node node, Connection conn)
 		{
-			ParseHeader(conn);
+			ParseHeader(node, conn);
 			ParseFields(policy.Txn, key, false);
 
 			if (resultCode == ResultCode.OK)

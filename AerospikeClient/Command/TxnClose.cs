@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2024 Aerospike, Inc.
+ * Copyright 2012-2025 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -32,9 +32,9 @@ namespace Aerospike.Client
 			SetTxnClose(txn, key);
 		}
 
-		protected internal override void ParseResult(Connection conn)
+		protected internal override void ParseResult(Node node, Connection conn)
 		{
-			ParseHeader(conn);
+			ParseHeader(node, conn);
 			ParseFields(policy.Txn, key, true);
 
 			if (resultCode == ResultCode.OK || resultCode == ResultCode.KEY_NOT_FOUND_ERROR)

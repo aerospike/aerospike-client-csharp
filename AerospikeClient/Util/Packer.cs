@@ -147,16 +147,19 @@ namespace Aerospike.Client
 
 		public void PackParticleBytes(byte[] b)
 		{
-			PackByteArrayBegin(b.Length + 1);
-			PackByte((int)ParticleType.BLOB);
-			PackByteArray(b, 0, b.Length);
+			PackParticleBytes(b.AsMemory());
 		}
 
 		public void PackParticleBytes(byte[] b, int offset, int length)
 		{
-			PackByteArrayBegin(length + 1);
+			PackParticleBytes(b.AsMemory(offset, length));
+		}
+
+		public void PackParticleBytes(ReadOnlyMemory<byte> b)
+		{
+			PackByteArrayBegin(b.Length + 1);
 			PackByte((int)ParticleType.BLOB);
-			PackByteArray(b, offset, length);
+			PackByteArray(b);
 		}
 
 		public void PackBlob(object val)
@@ -436,15 +439,21 @@ namespace Aerospike.Client
 				PackInt(0xdb, (uint)size);
 			}
 		}
-		
+
 		public void PackByteArray(byte[] src, int srcOffset, int srcLength)
 		{
-			if (offset + srcLength > buffer.Length)
+			PackByteArray(src.AsMemory(srcOffset, srcLength));
+		}
+
+		public void PackByteArray(ReadOnlyMemory<byte> src)
+		{
+			if (offset + src.Length > buffer.Length)
 			{
-				Resize(srcLength);
+				Resize(src.Length);
 			}
-			Array.Copy(src, srcOffset, buffer, offset, srcLength);
-			offset += srcLength;
+
+			src.CopyTo(buffer.AsMemory(offset));
+			offset += src.Length;
 		}
 
 		public void PackDouble(double val)

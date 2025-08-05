@@ -922,6 +922,31 @@ namespace Aerospike.Client
 		);
 
 		/// <summary>
+		/// Create complex secondary index on bins containing collections.
+		/// This asynchronous server call will return before command is complete.
+		/// The user can optionally wait for command completion by using the returned
+		/// IndexTask instance.
+		/// </summary>
+		/// <param name="policy">generic configuration parameters, pass in null for defaults</param>
+		/// <param name="ns">namespace - equivalent to database name</param>
+		/// <param name="setName">optional set name - equivalent to database table</param>
+		/// <param name="indexName">name of secondary index</param>
+		/// <param name="indexType">underlying data type of secondary index</param>
+		/// <param name="indexCollectionType">index collection type</param>
+		/// <param name="indexExpression">the expression to be indexed</param>
+		/// <exception cref="AerospikeException">if index create fails</exception>
+		IndexTask CreateIndex
+		(
+			Policy policy,
+			string ns,
+			string setName,
+			string indexName,
+			IndexType indexType,
+			IndexCollectionType indexCollectionType,
+			Expression indexExpression
+		);
+
+		/// <summary>
 		/// Delete secondary index.
 		/// This asynchronous server call will return before command is complete.
 		/// The user can optionally wait for command completion by using the returned

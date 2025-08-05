@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net6.0</TargetFramework>
+    <TargetFramework>net8.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>disable</Nullable>
     <DefineConstants>$(DefineConstants);NETCORE</DefineConstants>
@@ -20,13 +20,14 @@
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <Icon>icon.png</Icon>
     <Copyright>Copyright 2012-2025 Aerospike, Inc.</Copyright>
-    <Version>8.0.2</Version>
+    <Version>8.1.0</Version>
     <ApplicationIcon />
     <OutputType>Library</OutputType>
     <StartupObject />
     <RootNamespace>Aerospike.Client</RootNamespace>
     <Configurations>Debug;Release;Debug_Unix;Release_Unix</Configurations>
     <Platforms>AnyCPU</Platforms>
+	<EnableConfigurationBindingGenerator>true</EnableConfigurationBindingGenerator>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
@@ -63,6 +64,7 @@
     <DelaySign>True</DelaySign>
     <AssemblyOriginatorKeyFile>../AerospikePublicKey.snk</AssemblyOriginatorKeyFile>
     <GeneratePackageOnBuild>False</GeneratePackageOnBuild>
+	<ContinuousIntegrationBuild>true</ContinuousIntegrationBuild>
   </PropertyGroup>
 
   <ItemGroup>
@@ -83,7 +85,9 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Configuration.Binder" Version="9.0.3" />
     <PackageReference Include="NeoLua" Version="1.3.14" />
+    <PackageReference Include="NetEscapades.Configuration.Yaml" Version="3.1.0" />
   </ItemGroup>
 
 </Project>

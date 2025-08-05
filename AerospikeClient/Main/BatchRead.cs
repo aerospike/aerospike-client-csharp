@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2022 Aerospike, Inc.
+ * Copyright 2012-2025 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -131,7 +131,7 @@ namespace Aerospike.Client
 		/// Optimized reference equality check to determine batch wire protocol repeat flag.
 		/// For internal use only.
 		/// </summary>
-		public override bool Equals(BatchRecord obj)
+		public override bool Equals(BatchRecord obj, IConfigProvider configProvider)
 		{
 			if (this.GetType() != obj.GetType())
 			{
@@ -145,7 +145,7 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Return wire protocol size. For internal use only.
 		/// </summary>
-		public override int Size(Policy parentPolicy)
+		public override int Size(Policy parentPolicy, IConfigProvider configProvider)
 		{
 			int size = 0;
 

@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2022 Aerospike, Inc.
+ * Copyright 2012-2025 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -131,8 +131,6 @@ namespace Aerospike.Client
 					return;
 				}
 
-				node.IncrBytesSent(sent);
-
 				if (sent < args.Count)
 				{
 					args.SetBuffer(args.Offset + sent, args.Count - sent);
@@ -173,8 +171,6 @@ namespace Aerospike.Client
 					command.OnError(new AerospikeException.Connection("Connection closed"));
 					return;
 				}
-
-				node.IncrBytesReceived(received);
 
 				if (received < args.Count)
 				{
