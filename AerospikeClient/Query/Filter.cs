@@ -34,6 +34,32 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
+		/// Create long equality filter for query by expression.
+		/// Requires server version 8.1+
+		/// </summary>
+		/// <param name="exp">expression to be indexed</param>
+		/// <param name="value">filter value</param>
+		/// <returns>filter instance</returns>
+		public static Filter Equal(Expression exp, long value)
+		{
+			Value val = Value.Get(value);
+			return new Filter(null, exp, IndexCollectionType.DEFAULT, val.Type, val, val);
+		}
+
+		/// <summary>
+		/// Create long equality filter for query by index name.
+		/// Requires server version 8.1+
+		/// </summary>
+		/// <param name="indexName">index name</param>
+		/// <param name="value">filter value</param>
+		/// <returns>filter instance</returns>
+		public static Filter EqualByIndex(string indexName, long value)
+		{
+			Value val = Value.Get(value);
+			return new Filter(indexName, null, IndexCollectionType.DEFAULT, val.Type, val, val);
+		}
+
+		/// <summary>
 		/// Create string equality filter for query.
 		/// </summary>
 		/// <param name="name">bin name</param>
@@ -43,6 +69,32 @@ namespace Aerospike.Client
 		{
 			Value val = Value.Get(value);
 			return new Filter(name, IndexCollectionType.DEFAULT, val.Type, val, val, ctx);
+		}
+
+		/// <summary>
+		/// Create string equality filter for query by expression.
+		/// Requires server version 8.1+
+		/// </summary>
+		/// <param name="exp">expression to be indexed</param>
+		/// <param name="value">filter value</param>
+		/// <returns>filter instance</returns>
+		public static Filter Equal(Expression exp, string value)
+		{
+			Value val = Value.Get(value);
+			return new Filter(null, exp, IndexCollectionType.DEFAULT, val.Type, val, val);
+		}
+
+		/// <summary>
+		/// Create string equality filter for query by index name.
+		/// Requires server version 8.1+
+		/// </summary>
+		/// <param name="indexName">index name</param>
+		/// <param name="value">filter value</param>
+		/// <returns>filter instance</returns>
+		public static Filter EqualByIndex(string indexName, string value)
+		{
+			Value val = Value.Get(value);
+			return new Filter(indexName, null, IndexCollectionType.DEFAULT, val.Type, val, val);
 		}
 
 		/// <summary>
@@ -59,6 +111,33 @@ namespace Aerospike.Client
 			return new Filter(name, IndexCollectionType.DEFAULT, val.Type, val, val, ctx);
 		}
 
+
+		/// <summary>
+		/// Create blob equality filter for query by expression.
+		/// Requires server version 8.1+
+		/// </summary>
+		/// <param name="exp">expression to be indexed</param>
+		/// <param name="value">filter value</param>
+		/// <returns>filter instance</returns>
+		public static Filter Equal(Expression exp, byte[] value)
+		{
+			Value val = Value.Get(value);
+			return new Filter(null, exp, IndexCollectionType.DEFAULT, val.Type, val, val);
+		}
+
+		/// <summary>
+		/// Create blob equality filter for query by index name.
+		/// Requires server version 8.1+
+		/// </summary>
+		/// <param name="indexName">index name</param>
+		/// <param name="value">filter value</param>
+		/// <returns>filter instance</returns>
+		public static Filter EqualByIndex(string indexName, byte[] value)
+		{
+			Value val = Value.Get(value);
+			return new Filter(indexName, null, IndexCollectionType.DEFAULT, val.Type, val, val);
+		}
+
 		/// <summary>
 		/// Create contains number filter for query on collection index.
 		/// </summary>
@@ -73,6 +152,32 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
+		/// Create contains number filter for query on collection index by expression.
+		/// Requires server version 8.1+
+		/// </summary>
+		/// <param name="exp">expression to be indexed</param>
+		/// <param name="type">index collection type</param>
+		/// <param name="value">filter value</param>
+		public static Filter Contains(Expression exp, IndexCollectionType type, long value)
+		{
+			Value val = Value.Get(value);
+			return new Filter(null, exp, type, val.Type, val, val);
+		}
+
+		/// <summary>
+		/// Create contains number filter for query on collection index by index name.
+		/// Requires server version 8.1+
+		/// </summary>
+		/// <param name="indexName">index name</param>
+		/// <param name="type">index collection type</param>
+		/// <param name="value">filter value</param>
+		public static Filter ContainsByIndex(string indexName, IndexCollectionType type, long value)
+		{
+			Value val = Value.Get(value);
+			return new Filter(indexName, null, type, val.Type, val, val);
+		}
+
+		/// <summary>
 		/// Create contains string filter for query on collection index.
 		/// </summary>
 		/// <param name="name">bin name</param>
@@ -83,6 +188,32 @@ namespace Aerospike.Client
 		{
 			Value val = Value.Get(value);
 			return new Filter(name, type, val.Type, val, val, ctx);
+		}
+
+		/// <summary>
+		/// Create contains string filter for query on collection index by expression.
+		/// Requires server version 8.1+
+		/// </summary>
+		/// <param name="exp">expression to be indexed</param>
+		/// <param name="type">index collection type</param>
+		/// <param name="value">filter value</param>
+		public static Filter Contains(Expression exp, IndexCollectionType type, string value)
+		{
+			Value val = Value.Get(value);
+			return new Filter(null, exp, type, val.Type, val, val);
+		}
+
+		/// <summary>
+		/// Create contains string filter for query on collection index by index name.
+		/// Requires server version 8.1+
+		/// </summary>
+		/// <param name="indexName">bin name</param>
+		/// <param name="type">index collection type</param>
+		/// <param name="value">filter value</param>
+		public static Filter ContainsByIndex(string indexName, IndexCollectionType type, string value)
+		{
+			Value val = Value.Get(value);
+			return new Filter(indexName, null, type, val.Type, val, val);
 		}
 
 		/// <summary>
@@ -100,6 +231,34 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
+		/// Create contains byte[] filter for query on collection index by expression.
+		/// Requires server version 8.1+
+		/// </summary>
+		/// <param name="exp">expression to be indexed</param>
+		/// <param name="type">index collection type</param>
+		/// <param name="value">filter value</param>
+		/// <returns>filter instance</returns>
+		public static Filter Contains(Expression exp, IndexCollectionType type, byte[] value)
+		{
+			Value val = Value.Get(value);
+			return new Filter(null, exp, type, val.Type, val, val);
+		}
+
+		/// <summary>
+		/// Create contains byte[] filter for query on collection index by index name.
+		/// Requires server version 8.1+
+		/// </summary>
+		/// <param name="indexName">index name</param>
+		/// <param name="type">index collection type</param>
+		/// <param name="value">filter value</param>
+		/// <returns>filter instance</returns>
+		public static Filter ContainsByIndex(string indexName, IndexCollectionType type, byte[] value)
+		{
+			Value val = Value.Get(value);
+			return new Filter(indexName, null, type, val.Type, val, val);
+		}
+
+		/// <summary>
 		/// Create range filter for query.
 		/// Range arguments must be longs or integers which can be cast to longs.
 		/// String ranges are not supported.
@@ -111,6 +270,34 @@ namespace Aerospike.Client
 		public static Filter Range(string name, long begin, long end, params CTX[] ctx)
 		{
 			return new Filter(name, IndexCollectionType.DEFAULT, ParticleType.INTEGER, Value.Get(begin), Value.Get(end), ctx);
+		}
+
+		/// <summary>
+		/// Create range filter for query by expression.
+		/// Range arguments must be longs or integers which can be cast to longs.
+		/// String ranges are not supported.
+		/// Requires server version 8.1+
+		/// </summary>
+		/// <param name="exp">expression to be indexed</param>
+		/// <param name="begin">filter begin value inclusive</param>
+		/// <param name="end">filter end value inclusive</param>
+		public static Filter Range(Expression exp, long begin, long end)
+		{
+			return new Filter(null, exp, IndexCollectionType.DEFAULT, ParticleType.INTEGER, Value.Get(begin), Value.Get(end));
+		}
+
+		/// <summary>
+		/// Create range filter for query by index name.
+		/// Range arguments must be longs or integers which can be cast to longs.
+		/// String ranges are not supported.
+		/// Requires server version 8.1+
+		/// </summary>
+		/// <param name="indexName">index name</param>
+		/// <param name="begin">filter begin value inclusive</param>
+		/// <param name="end">filter end value inclusive</param>
+		public static Filter RangeByIndex(string indexName, long begin, long end)
+		{
+			return new Filter(indexName, null, IndexCollectionType.DEFAULT, ParticleType.INTEGER, Value.Get(begin), Value.Get(end));
 		}
 
 		/// <summary>
@@ -129,29 +316,33 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
-		/// Create range filter for query by index name.
+		/// Create range filter for query on collection index by expression.
 		/// Range arguments must be longs or integers which can be cast to longs.
 		/// String ranges are not supported.
+		/// Requires server version 8.1+
 		/// </summary>
-		/// <param name="indexName">index name</param>
+		/// <param name="exp">expression to be indexed</param>
+		/// <param name="type">index collection type inclusive</param>
 		/// <param name="begin">filter begin value inclusive</param>
 		/// <param name="end">filter end value inclusive</param>
-		public static Filter RangeByIndex(string indexName, long begin, long end)
+		public static Filter Range(Expression exp, IndexCollectionType type, long begin, long end)
 		{
-			return new Filter(null, IndexCollectionType.DEFAULT, ParticleType.INTEGER, Value.Get(begin), Value.Get(end), null, indexName);
+			return new Filter(null, exp, type, ParticleType.INTEGER, Value.Get(begin), Value.Get(end));
 		}
 
 		/// <summary>
-		/// Create range filter for query by expression.
+		/// Create range filter for query on collection index by index name.
 		/// Range arguments must be longs or integers which can be cast to longs.
 		/// String ranges are not supported.
+		/// Requires server version 8.1+
 		/// </summary>
-		/// <param name="expression">expression to be indexed</param>
+		/// <param name="indexName">index name</param>
+		/// <param name="type">index collection type inclusive</param>
 		/// <param name="begin">filter begin value inclusive</param>
 		/// <param name="end">filter end value inclusive</param>
-		public static Filter Range(Expression expression, long begin, long end)
+		public static Filter RangeByIndex(string indexName, IndexCollectionType type, long begin, long end)
 		{
-			return new Filter(expression, IndexCollectionType.DEFAULT, ParticleType.INTEGER, Value.Get(begin), Value.Get(end), null);
+			return new Filter(indexName, null, type, ParticleType.INTEGER, Value.Get(begin), Value.Get(end));
 		}
 
 		/// <summary>
@@ -163,6 +354,28 @@ namespace Aerospike.Client
 		public static Filter GeoWithinRegion(string name, string region, params CTX[] ctx)
 		{
 			return new Filter(name, IndexCollectionType.DEFAULT, ParticleType.GEOJSON, Value.Get(region), Value.Get(region), ctx);
+		}
+
+		/// <summary>
+		/// Create geospatial "within region" filter for query by expression.
+		/// Requires server version 8.1+
+		/// </summary>
+		/// <param name="exp">expression to be indexed</param>
+		/// <param name="region">GeoJSON region</param>
+		public static Filter GeoWithinRegion(Expression exp, string region)
+		{
+			return new Filter(null, exp, IndexCollectionType.DEFAULT, ParticleType.GEOJSON, Value.Get(region), Value.Get(region));
+		}
+
+		/// <summary>
+		/// Create geospatial "within region" filter for query by index name.
+		/// Requires server version 8.1+
+		/// </summary>
+		/// <param name="indexName">index name</param>
+		/// <param name="region">GeoJSON region</param>
+		public static Filter GeoWithinRegionByIndex(string indexName, string region)
+		{
+			return new Filter(indexName, null, IndexCollectionType.DEFAULT, ParticleType.GEOJSON, Value.Get(region), Value.Get(region));
 		}
 
 		/// <summary>
@@ -178,6 +391,30 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
+		/// Create geospatial "within region" filter for query on collection index by expression.
+		/// Requires server version 8.1+
+		/// </summary>
+		/// <param name="exp">expression to be indexed</param>
+		/// <param name="type">index collection type</param>
+		/// <param name="region">GeoJSON region</param>
+		public static Filter GeoWithinRegion(Expression exp, IndexCollectionType type, string region)
+		{
+			return new Filter(null, exp, type, ParticleType.GEOJSON, Value.Get(region), Value.Get(region));
+		}
+
+		/// <summary>
+		/// Create geospatial "within region" filter for query on collection index by index name.
+		/// Requires server version 8.1+
+		/// </summary>
+		/// <param name="indexName">index name</param>
+		/// <param name="type">index collection type</param>
+		/// <param name="region">GeoJSON region</param>
+		public static Filter GeoWithinRegionByIndex(string indexName, IndexCollectionType type, string region)
+		{
+			return new Filter(indexName, null, type, ParticleType.GEOJSON, Value.Get(region), Value.Get(region));
+		}
+
+		/// <summary>
 		/// Create geospatial "within radius" filter for query.
 		/// </summary>
 		/// <param name="name">bin name</param>
@@ -189,6 +426,34 @@ namespace Aerospike.Client
 		{
 			string rgnstr = string.Format("{{ \"type\": \"AeroCircle\", " + "\"coordinates\": [[{0:F8}, {1:F8}], {2:F}] }}", lng, lat, radius);
 			return new Filter(name, IndexCollectionType.DEFAULT, ParticleType.GEOJSON, Value.Get(rgnstr), Value.Get(rgnstr), ctx);
+		}
+
+		/// <summary>
+		/// Create geospatial "within radius" filter for query by expression.
+		/// Requires server version 8.1+
+		/// </summary>
+		/// <param name="exp">expression to be indexed</param>
+		/// <param name="lng">longitude</param>
+		/// <param name="lat">latitude</param>
+		/// <param name="radius">radius (meters)</param>
+		public static Filter GeoWithinRadius(Expression exp, double lng, double lat, double radius)
+		{
+			string rgnstr = string.Format("{{ \"type\": \"AeroCircle\", " + "\"coordinates\": [[{0:F8}, {1:F8}], {2:F}] }}", lng, lat, radius);
+			return new Filter(null, exp, IndexCollectionType.DEFAULT, ParticleType.GEOJSON, Value.Get(rgnstr), Value.Get(rgnstr));
+		}
+
+		/// <summary>
+		/// Create geospatial "within radius" filter for query by index name.
+		/// Requires server version 8.1+
+		/// </summary>
+		/// <param name="indexName">index name</param>
+		/// <param name="lng">longitude</param>
+		/// <param name="lat">latitude</param>
+		/// <param name="radius">radius (meters)</param>
+		public static Filter GeoWithinRadiusByIndex(string indexName, double lng, double lat, double radius)
+		{
+			string rgnstr = string.Format("{{ \"type\": \"AeroCircle\", " + "\"coordinates\": [[{0:F8}, {1:F8}], {2:F}] }}", lng, lat, radius);
+			return new Filter(indexName, null, IndexCollectionType.DEFAULT, ParticleType.GEOJSON, Value.Get(rgnstr), Value.Get(rgnstr));
 		}
 
 		/// <summary>
@@ -207,6 +472,36 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
+		/// Create geospatial "within radius" filter for query on collection index by expression.
+		/// Requires server version 8.1+
+		/// </summary>
+		/// <param name="exp">expression to be indexed</param>
+		/// <param name="type">index collection type</param>
+		/// <param name="lng">longitude</param>
+		/// <param name="lat">latitude</param>
+		/// <param name="radius">radius (meters)</param>
+		public static Filter GeoWithinRadius(Expression exp, IndexCollectionType type, double lng, double lat, double radius)
+		{
+			string rgnstr = string.Format("{{ \"type\": \"AeroCircle\", " + "\"coordinates\": [[{0:F8}, {1:F8}], {2:F}] }}", lng, lat, radius);
+			return new Filter(null, exp, type, ParticleType.GEOJSON, Value.Get(rgnstr), Value.Get(rgnstr));
+		}
+
+		/// <summary>
+		/// Create geospatial "within radius" filter for query on collection index by index name.
+		/// Requires server version 8.1+
+		/// </summary>
+		/// <param name="indexName">index name</param>
+		/// <param name="type">index collection type</param>
+		/// <param name="lng">longitude</param>
+		/// <param name="lat">latitude</param>
+		/// <param name="radius">radius (meters)</param>
+		public static Filter GeoWithinRadiusByIndex(string indexName, IndexCollectionType type, double lng, double lat, double radius)
+		{
+			string rgnstr = string.Format("{{ \"type\": \"AeroCircle\", " + "\"coordinates\": [[{0:F8}, {1:F8}], {2:F}] }}", lng, lat, radius);
+			return new Filter(indexName, null, type, ParticleType.GEOJSON, Value.Get(rgnstr), Value.Get(rgnstr));
+		}
+
+		/// <summary>
 		/// Create geospatial "containing point" filter for query.
 		/// </summary>
 		/// <param name="name">bin name</param>
@@ -215,6 +510,28 @@ namespace Aerospike.Client
 		public static Filter GeoContains(string name, string point, params CTX[] ctx)
 		{
 			return new Filter(name, IndexCollectionType.DEFAULT, ParticleType.GEOJSON, Value.Get(point), Value.Get(point), ctx);
+		}
+
+		/// <summary>
+		/// Create geospatial "containing point" filter for query by expression.
+		/// Requires server version 8.1+
+		/// </summary>
+		/// <param name="exp">expression to be indexed</param>
+		/// <param name="point">GeoJSON point</param>
+		public static Filter GeoContains(Expression exp, string point)
+		{
+			return new Filter(null, exp, IndexCollectionType.DEFAULT, ParticleType.GEOJSON, Value.Get(point), Value.Get(point));
+		}
+
+		/// <summary>
+		/// Create geospatial "containing point" filter for query by index name.
+		/// Requires server version 8.1+
+		/// </summary>
+		/// <param name="indexName">index name</param>
+		/// <param name="point">GeoJSON point</param>
+		public static Filter GeoContainsByIndex(string indexName, string point)
+		{
+			return new Filter(indexName, null, IndexCollectionType.DEFAULT, ParticleType.GEOJSON, Value.Get(point), Value.Get(point));
 		}
 
 		/// <summary>
@@ -227,6 +544,30 @@ namespace Aerospike.Client
 		public static Filter GeoContains(string name, IndexCollectionType type, string point, params CTX[] ctx)
 		{
 			return new Filter(name, type, ParticleType.GEOJSON, Value.Get(point), Value.Get(point), ctx);
+		}
+
+		/// <summary>
+		/// Create geospatial "containing point" filter for query on collection index by expression.
+		/// Requires server version 8.1+
+		/// </summary>
+		/// <param name="exp">expression to be indexed</param>
+		/// <param name="type">index collection type</param>
+		/// <param name="point">GeoJSON point</param>
+		public static Filter GeoContains(Expression exp, IndexCollectionType type, string point)
+		{
+			return new Filter(null, exp, type, ParticleType.GEOJSON, Value.Get(point), Value.Get(point));
+		}
+
+		/// <summary>
+		/// Create geospatial "containing point" filter for query on collection index by index name.
+		/// Requires server version 8.1+
+		/// </summary>
+		/// <param name="indexName">index name</param>
+		/// <param name="type">index collection type</param>
+		/// <param name="point">GeoJSON point</param>
+		public static Filter GeoContainsByIndex(string indexName, IndexCollectionType type, string point)
+		{
+			return new Filter(indexName, null, type, ParticleType.GEOJSON, Value.Get(point), Value.Get(point));
 		}
 
 		private readonly string binName;
@@ -254,12 +595,8 @@ namespace Aerospike.Client
 			this(binName, colType, (int)valType, begin, end, (ctx != null && ctx.Length > 0) ? PackUtil.Pack(ctx) : null, null, null)
 		{ }
 
-		private Filter(string binName, IndexCollectionType colType, ParticleType valType, Value begin, Value end, CTX[] ctx, string indexName) :
-			this(binName, colType, (int)valType, begin, end, (ctx != null && ctx.Length > 0) ? PackUtil.Pack(ctx) : null, indexName, null)
-		{ }
-
-		private Filter(Expression exp, IndexCollectionType colType, ParticleType valType, Value begin, Value end, CTX[] ctx) :
-			this(null, colType, (int)valType, begin, end, (ctx != null && ctx.Length > 0) ? PackUtil.Pack(ctx) : null, null, exp)
+		private Filter(string indexName, Expression exp, IndexCollectionType colType, ParticleType valType, Value begin, Value end) :
+			this(null, colType, (int)valType, begin, end, null, indexName, exp)
 		{ }
 
 		internal int EstimateSize()
