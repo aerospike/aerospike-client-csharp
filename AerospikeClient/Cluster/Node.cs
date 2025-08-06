@@ -17,6 +17,7 @@
 using System.Net;
 using static Aerospike.Client.Latency;
 using System.Net.Sockets;
+using System.Text;
 
 namespace Aerospike.Client
 {
@@ -103,8 +104,6 @@ namespace Aerospike.Client
 				this.metrics = new NodeMetrics(cluster.MetricsPolicy);
 			}
 
-			SendUserAgent();
-
 			connectionPools = new Pool<Connection>[cluster.connPoolsPerNode];
 			int min = cluster.minConnsPerNode / cluster.connPoolsPerNode;
 			int remMin = cluster.minConnsPerNode - (min * cluster.connPoolsPerNode);
@@ -119,6 +118,8 @@ namespace Aerospike.Client
 				Pool<Connection> pool = new Pool<Connection>(minSize, maxSize);
 				connectionPools[i] = pool;
 			}
+
+			SendUserAgent();
 		}
 
 		~Node()
@@ -127,25 +128,43 @@ namespace Aerospike.Client
 			CloseConnections();
 		}
 
-		private bool SendUserAgent()
+		private void SendUserAgent()
 		{
-			Version min = new("8.1.0");
+			Version min = new(8, 1, 0);
 			if (clientVersion < min)
 			{
 				retryUserAgent = false;
-				return true;
+				return;
 			}
 
-			byte[] appId = ByteUtil.StringToUtf8(cluster.appId);
-			if (appId.Length <= 0)
+			var appId = cluster.appId;
+			if (string.IsNullOrEmpty(appId))
 			{
-				appId = cluster.user.ToString();
-
-				if (appId.Length <= 0)
+				if (cluster.user?.Length > 0)
 				{
-					appId = ByteUtil.StringToUtf8("not-set");
+					appId = ByteUtil.Utf8ToString(cluster.user, 0, cluster.user.Length);
+				}
+				else
+				{
+					appId = "not-set";
 				}
 			}
+
+			string agentValue = $"1,csharp-{clientVersion},{appId}";
+			string b64 = Convert.ToBase64String(ByteUtil.StringToUtf8(agentValue));
+			string agentCommand = "user-agent-set:value=" + b64;
+
+			string response = Info.Request(this, agentCommand);
+			int code = Info.ParseResultCode(response);
+			if (code != ResultCode.OK)
+			{
+				retryUserAgent = true;
+				Log.Warn("Failed to set user agent: " + code);
+				return;
+			}
+
+			retryUserAgent = false;
+			return;
 		}
 
 		public virtual void CreateMinConnections()
@@ -197,12 +216,19 @@ namespace Aerospike.Client
 							}
 						}
 					}
+
+					SendUserAgent();
 				}
 				else
 				{
 					if (cluster.authEnabled && ShouldLogin())
 					{
 						Login();
+					}
+
+					if (retryUserAgent)
+					{
+						SendUserAgent();
 					}
 				}
 
