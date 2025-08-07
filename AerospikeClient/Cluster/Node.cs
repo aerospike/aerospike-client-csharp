@@ -17,6 +17,7 @@
 using System.Net;
 using static Aerospike.Client.Latency;
 using System.Net.Sockets;
+using System.Text;
 
 namespace Aerospike.Client
 {
@@ -25,6 +26,8 @@ namespace Aerospike.Client
 	/// </summary>
 	public class Node : IDisposable
 	{
+		public static Version SERVER_VERSION_8_1 = new(8, 1, 0, 0);
+
 		/// <summary>
 		/// Number of partitions for each namespace.
 		/// </summary>
@@ -67,9 +70,11 @@ namespace Aerospike.Client
 		private volatile int performLogin;
 		protected internal bool partitionChanged = true;
 		protected internal bool rebalanceChanged;
+		protected internal bool retryUserAgent;
 		protected internal volatile bool active = true;
 		private bool disposedValue;
-		internal Version verison;
+		internal Version serverVerison;
+		internal Version clientVersion;
 
 		/// <summary>
 		/// Initialize server node with connection parameters.
@@ -92,7 +97,8 @@ namespace Aerospike.Client
 			this.errorRateCount = 0;
 			this.timeoutCounter = new Counter();
 			this.keyBusyCounter = new Counter();
-			this.verison = nv.serverVersion;
+			this.serverVerison = nv.serverVersion;
+			this.clientVersion = new Version(cluster.client.clientVersion);
 
 			this.metricsEnabled = cluster.MetricsEnabled;
 			if (cluster.MetricsEnabled)
@@ -114,12 +120,53 @@ namespace Aerospike.Client
 				Pool<Connection> pool = new Pool<Connection>(minSize, maxSize);
 				connectionPools[i] = pool;
 			}
+
+			SendUserAgent();
 		}
 
 		~Node()
 		{
 			// Close connections that slipped through the cracks on race conditions.
 			CloseConnections();
+		}
+
+		private void SendUserAgent()
+		{
+			if (serverVerison < SERVER_VERSION_8_1)
+			{
+				retryUserAgent = false;
+				return;
+			}
+
+			string appId = cluster.appId;
+
+			if (string.IsNullOrEmpty(appId))
+			{
+				if (cluster.user?.Length > 0)
+				{
+					appId = ByteUtil.Utf8ToString(cluster.user, 0, cluster.user.Length);
+				}
+				else
+				{
+					appId = "not-set";
+				}
+			}
+
+			string agentValue = $"1,csharp-{clientVersion},{appId}";
+			string b64 = Convert.ToBase64String(ByteUtil.StringToUtf8(agentValue));
+			string agentCommand = "user-agent-set:value=" + b64;
+
+			string response = Info.Request(this, agentCommand);
+			int code = Info.ParseResultCode(response);
+			if (code != ResultCode.OK)
+			{
+				retryUserAgent = true;
+				Log.Warn("Failed to set user agent: " + code);
+				return;
+			}
+
+			retryUserAgent = false;
+			return;
 		}
 
 		public virtual void CreateMinConnections()
@@ -171,12 +218,19 @@ namespace Aerospike.Client
 							}
 						}
 					}
+
+					SendUserAgent();
 				}
 				else
 				{
 					if (cluster.authEnabled && ShouldLogin())
 					{
 						Login();
+					}
+
+					if (retryUserAgent)
+					{
+						SendUserAgent();
 					}
 				}
 

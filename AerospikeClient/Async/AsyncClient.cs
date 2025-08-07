@@ -143,8 +143,8 @@ namespace Aerospike.Client
 				MergeDefaultPoliciesWithConfig();
 			}
 			
-			version = Assembly.GetExecutingAssembly().GetName().Version.ToString();
-			version ??= "development";
+			clientVersion = Assembly.GetExecutingAssembly().GetName().Version.ToString();
+			clientVersion ??= "development";
 
 			cluster = new AsyncCluster(this, policy, configPath, hosts);
 			base.cluster = this.cluster;
