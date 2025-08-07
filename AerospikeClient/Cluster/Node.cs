@@ -26,6 +26,8 @@ namespace Aerospike.Client
 	/// </summary>
 	public class Node : IDisposable
 	{
+		public static Version SERVER_VERSION_8_1 = new(8, 1, 0, 0);
+
 		/// <summary>
 		/// Number of partitions for each namespace.
 		/// </summary>
@@ -130,14 +132,14 @@ namespace Aerospike.Client
 
 		private void SendUserAgent()
 		{
-			Version min = new(8, 1, 0);
-			if (clientVersion < min)
+			if (serverVerison < SERVER_VERSION_8_1)
 			{
 				retryUserAgent = false;
 				return;
 			}
 
-			var appId = cluster.appId;
+			string appId = cluster.appId;
+
 			if (string.IsNullOrEmpty(appId))
 			{
 				if (cluster.user?.Length > 0)
