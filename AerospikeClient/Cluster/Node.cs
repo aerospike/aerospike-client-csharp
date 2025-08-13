@@ -57,6 +57,7 @@ namespace Aerospike.Client
 		protected internal int connsOpened = 1;
 		protected internal int connsClosed;
 		private volatile int errorRateCount;
+		private volatile int nodeMaxErrorRate;
 		private Counter errorCounter;
 		private Counter timeoutCounter;
 		private Counter keyBusyCounter;
@@ -95,6 +96,7 @@ namespace Aerospike.Client
 			this.racks = cluster.rackAware ? new Dictionary<string, int>() : null;
 			this.errorCounter = new Counter();
 			this.errorRateCount = 0;
+			this.nodeMaxErrorRate = cluster.maxErrorRate;
 			this.timeoutCounter = new Counter();
 			this.keyBusyCounter = new Counter();
 			this.serverVerison = nv.serverVersion;
@@ -1057,7 +1059,18 @@ namespace Aerospike.Client
 
 		public void ResetErrorRate()
 		{
-			errorRateCount = 0;
+			if (errorRateCount <= nodeMaxErrorRate)
+			{
+				// Double maxErrorRate until cluster maxErrorRate is reached.
+				errorRateCount = 0;
+				nodeMaxErrorRate = Math.Min(nodeMaxErrorRate * 2, cluster.maxErrorRate);
+			}
+			else
+			{
+				// Error rate was breached. Next error rate trigger is half.
+				errorRateCount = 0;
+				nodeMaxErrorRate = Math.Max(nodeMaxErrorRate / 2, 1);
+			}
 		}
 
 		public bool ErrorRateWithinLimit()
