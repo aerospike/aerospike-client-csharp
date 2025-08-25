@@ -42,7 +42,7 @@ namespace Aerospike.Client
 		{
 			if (batch.node != null && batch.node.HasBatchAny)
 			{
-				SetBatchOperate(batchPolicy, records, batch, null);
+				SetBatchOperate(batchPolicy, null, null, null, records, batch, null);
 			}
 			else
 			{
@@ -207,7 +207,7 @@ namespace Aerospike.Client
 
 	public sealed class BatchOperateListCommand : BatchCommand
 	{
-		private readonly IList<BatchRecord> records;
+		private readonly List<BatchRecord> records;
 		private readonly IConfigProvider configProvider;
 
 		public BatchOperateListCommand
@@ -215,7 +215,7 @@ namespace Aerospike.Client
 			Cluster cluster,
 			BatchNode batch,
 			BatchPolicy policy,
-			IList<BatchRecord> records,
+			List<BatchRecord> records,
 			BatchStatus status,
 			IConfigProvider configProvider
 		) : base(cluster, batch, policy, status, true)
@@ -233,7 +233,8 @@ namespace Aerospike.Client
 
 		protected internal override void WriteBuffer()
 		{
-			SetBatchOperate(batchPolicy, (IList)records, batch, configProvider);
+			SetBatchOperate(batchPolicy, cluster.client.BatchWritePolicyDefault, cluster.client.BatchUDFPolicyDefault,
+				cluster.client.BatchDeletePolicyDefault, records, batch, configProvider);
 		}
 
 		protected internal override bool ParseRow()
@@ -569,7 +570,7 @@ namespace Aerospike.Client
 		private readonly BatchRecord[] records;
 		private readonly BatchAttr attr;
 
-		public  BatchTxnRoll(
+		public BatchTxnRoll(
 			Cluster cluster,
 			BatchNode batch,
 			BatchPolicy batchPolicy,
@@ -647,12 +648,13 @@ namespace Aerospike.Client
 	// Batch Base Command
 	//-------------------------------------------------------
 
-	public abstract class BatchCommand : MultiCommand
+	public abstract class BatchCommand : MultiCommand, IBatchCommand
 	{
+		public BatchExecutor Parent { get; set; }
+
 		internal readonly BatchNode batch;
 		internal readonly BatchPolicy batchPolicy;
 		internal readonly BatchStatus status;
-		internal BatchExecutor parent;
 		internal uint sequenceAP;
 		internal uint sequenceSC;
 		internal bool splitRetry;
@@ -675,7 +677,14 @@ namespace Aerospike.Client
 		{
 			try
 			{
-				Execute();
+				if (!splitRetry)
+				{
+					Execute();
+				}
+				else
+				{
+					ExecuteCommand();
+				}
 			}
 			catch (AerospikeException ae)
 			{
@@ -688,11 +697,11 @@ namespace Aerospike.Client
 			catch (Exception e)
 			{
 				SetInDoubt();
-				status.SetException(e);
+				status.SetException(new AerospikeException(e));
 			}
 			finally
 			{
-				parent.OnComplete();
+				Parent.OnComplete();
 			}
 		}
 
@@ -738,7 +747,7 @@ namespace Aerospike.Client
 		protected internal override bool PrepareRetry(bool timeout)
 		{
 			if (!((batchPolicy.replica == Replica.SEQUENCE || batchPolicy.replica == Replica.PREFER_RACK) &&
-				  (parent == null || !parent.IsDone())))
+				  (Parent == null || !Parent.IsDone())))
 			{
 				// Perform regular retry to same node.
 				return true;
@@ -778,7 +787,7 @@ namespace Aerospike.Client
 			foreach (BatchNode batchNode in batchNodes)
 			{
 				BatchCommand command = CreateCommand(batchNode);
-				command.parent = parent;
+				command.Parent = Parent;
 				command.sequenceAP = sequenceAP;
 				command.sequenceSC = sequenceSC;
 				command.socketTimeout = socketTimeout;
@@ -799,30 +808,17 @@ namespace Aerospike.Client
 						SetInDoubt();
 					}
 					status.SetException(ae);
-
-					if (!batchPolicy.respondAllKeys)
-					{
-						throw;
-					}
 				}
 				catch (Exception e)
 				{
-					if (!command.splitRetry)
-					{
-						SetInDoubt();
-					}
-					status.SetException(e);
-
-					if (!batchPolicy.respondAllKeys)
-					{
-						throw;
-					}
+					SetInDoubt();
+					status.SetException(new AerospikeException(e));
 				}
 			}
 			return true;
 		}
 
-		protected internal void SetInDoubt()
+		public void SetInDoubt()
 		{
 			// Set error/inDoubt for keys associated this batch command when
 			// the command was not retried and split. If a split retry occurred,
@@ -841,5 +837,16 @@ namespace Aerospike.Client
 
 		protected internal abstract BatchCommand CreateCommand(BatchNode batchNode);
 		protected internal abstract List<BatchNode> GenerateBatchNodes();
+	}
+
+	public interface IBatchCommand
+	{
+		BatchExecutor Parent { get; set; }
+
+		void Execute();
+
+		void SetInDoubt();
+
+		void Run(object obj);
 	}
 }

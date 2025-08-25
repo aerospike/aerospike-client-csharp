@@ -983,6 +983,16 @@ namespace Aerospike.Client
 			}
 		}
 
+		protected void ParseHeader()
+		{
+			resultCode = dataBuffer[dataOffset + 5];
+			generation = ByteUtil.BytesToInt(dataBuffer, dataOffset + 6);
+			expiration = ByteUtil.BytesToInt(dataBuffer, dataOffset + 10);
+			fieldCount = ByteUtil.BytesToShort(dataBuffer, dataOffset + 18);
+			opCount = ByteUtil.BytesToShort(dataBuffer, dataOffset + 20);
+			dataOffset += Command.MSG_REMAINING_HEADER_SIZE;
+		}
+
 		// Do nothing by default. Write commands will override this method.
 		protected internal virtual void OnInDoubt()
 		{

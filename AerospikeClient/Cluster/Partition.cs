@@ -144,10 +144,10 @@ namespace Aerospike.Client
 
 		private Partitions partitions;
 		private readonly string ns;
-		private Node prevNode;
+		internal Node prevNode;
 		private readonly Replica replica;
 		public uint partitionId;
-		private uint sequence;
+		internal uint sequence;
 		private readonly bool linearize;
 
 		private Partition(Partitions partitions, Key key, Replica replica, Node prevNode, bool linearize)

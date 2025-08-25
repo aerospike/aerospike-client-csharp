@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2024 Aerospike, Inc.
+ * Copyright 2012-2025 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -14,21 +14,19 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using System;
-using System.Threading;
 
 namespace Aerospike.Client
 {
 	public sealed class BatchExecutor
 	{
-		public static void Execute(Cluster cluster, BatchPolicy policy, BatchCommand[] commands, BatchStatus status)
+		public static void Execute(Cluster cluster, BatchPolicy policy, IBatchCommand[] commands, BatchStatus status)
 		{
 			cluster.AddCommandCount();
 
 			if (policy.maxConcurrentThreads == 1 || commands.Length <= 1)
 			{
 				// Run batch requests sequentially in same thread.
-				foreach (BatchCommand command in commands)
+				foreach (IBatchCommand command in commands)
 				{
 					try
 					{
@@ -36,36 +34,16 @@ namespace Aerospike.Client
 					}
 					catch (AerospikeException ae)
 					{
-						// Set error/inDoubt for keys associated this batch command when
-						// the command was not retried and split. If a split retry occurred,
-						// those new subcommands have already set error/inDoubt on the affected
-						// subset of keys.
-						if (!command.splitRetry)
-						{
-							if (ae.InDoubt)
-							{
-								command.SetInDoubt();
-							}
-						}
-						status.SetException(ae);
-
-						if (!policy.respondAllKeys)
-						{
-							throw;
-						}
-					}
-					catch (Exception e)
-					{
-						if (!command.splitRetry)
+						if (ae.InDoubt)
 						{
 							command.SetInDoubt();
 						}
+						status.SetException(ae);
+					}
+					catch (Exception e)
+					{
+						command.SetInDoubt();
 						status.SetException(e);
-
-						if (!policy.respondAllKeys)
-						{
-							throw;
-						}
 					}
 				}
 				status.CheckException();
@@ -77,7 +55,7 @@ namespace Aerospike.Client
 			executor.Execute();
 		}
 
-		public static void Execute(BatchCommand command, BatchStatus status)
+		public static void Execute(IBatchCommand command, BatchStatus status)
 		{
 			command.Execute();
 			status.CheckException();
@@ -85,12 +63,12 @@ namespace Aerospike.Client
 
 		private readonly BatchStatus status;
 		private readonly int maxConcurrentThreads;
-		private readonly BatchCommand[] commands;
+		private readonly IBatchCommand[] commands;
 		private int completedCount;
 		private volatile int done;
 		private bool completed;
 
-		private BatchExecutor(BatchPolicy policy, BatchCommand[] commands, BatchStatus status)
+		private BatchExecutor(BatchPolicy policy, IBatchCommand[] commands, BatchStatus status)
 		{
 			this.commands = commands;
 			this.status = status;
@@ -102,8 +80,8 @@ namespace Aerospike.Client
 			// Start threads.
 			for (int i = 0; i < maxConcurrentThreads; i++)
 			{
-				BatchCommand cmd = commands[i];
-				cmd.parent = this;
+				IBatchCommand cmd = commands[i];
+				cmd.Parent = this;
 				ThreadPool.UnsafeQueueUserWorkItem(cmd.Run, null);
 			}
 
@@ -127,8 +105,8 @@ namespace Aerospike.Client
 				if (nextThread < commands.Length && done == 0)
 				{
 					// Start new thread.
-					BatchCommand cmd = commands[nextThread];
-					cmd.parent = this;
+					IBatchCommand cmd = commands[nextThread];
+					cmd.Parent = this;
 					ThreadPool.UnsafeQueueUserWorkItem(cmd.Run, null);
 				}
 			}

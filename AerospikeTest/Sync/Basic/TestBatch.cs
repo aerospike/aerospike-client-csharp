@@ -27,7 +27,7 @@ namespace Aerospike.Test
 		private const string BinName3 = "bbin3";
 		private const string ListBin = "lbin";
 		private const string ListBin2 = "lbin2";
-		private const string KeyPrefix = "tbatkey";
+		private const string KeyPrefix = "batchkey";
 		private const string ValuePrefix = "batchvalue";
 		private const int Size = 8;
 		private static readonly string[] binNames = ["binnotfound"];
@@ -117,6 +117,34 @@ namespace Aerospike.Test
 				Key key = keys[i];
 				Record record = records[i];
 
+				if (i != 5)
+				{
+					AssertBinEqual(key, record, BinName, ValuePrefix + (i + 1));
+				}
+				else
+				{
+					AssertBinEqual(key, record, BinName, i + 1);
+				}
+			}
+		}
+
+		[TestMethod]
+		public void BatchReadsEmptyBinName()
+		{
+			Key[] keys = new Key[Size];
+			for (int i = 0; i < Size; i++)
+			{
+				keys[i] = new Key(SuiteHelpers.ns, SuiteHelpers.set, KeyPrefix + (i + 1));
+			}
+
+			string[] binNames = [];
+			Record[] records = client.Get(null, keys, binNames);
+			Assert.AreEqual(Size, records.Length);
+
+			for (int i = 0; i < records.Length; i++)
+			{
+				Key key = keys[i];
+				Record record = records[i];
 				if (i != 5)
 				{
 					AssertBinEqual(key, record, BinName, ValuePrefix + (i + 1));
@@ -393,6 +421,19 @@ namespace Aerospike.Test
 			exists = client.Exists(null, keys);
 			Assert.IsFalse(exists[0]);
 			Assert.IsFalse(exists[1]);
+		}
+
+		[TestMethod]
+		public void BatchDeleteSingleNotFound()
+		{
+			Key[] keys = 
+			[
+				new(SuiteHelpers.ns, SuiteHelpers.set, 989299023) // Should be not found
+			];
+
+			BatchResults br = client.Delete(null, null, keys);
+			Assert.IsFalse(br.status);
+			Assert.AreEqual(ResultCode.KEY_NOT_FOUND_ERROR, br.records[0].resultCode);
 		}
 
 		[TestMethod]

@@ -114,8 +114,27 @@ namespace Aerospike.Client
 
 			this.verifyRecords = records;
 
-			AsyncBatchTxnVerifyExecutor executor = new(cluster, verifyPolicy, verifyListener, keys, versions, records);
-			executor.Execute();
+			AsyncBatchRecordArrayExecutor executor = new(cluster, verifyListener, records);
+			List<BatchNode> batchNodes = BatchNode.GenerateList(cluster, verifyPolicy, keys, records, false, executor);
+			AsyncCommand[] commands = new AsyncCommand[batchNodes.Count];
+
+			int count = 0;
+
+			foreach (BatchNode bn in batchNodes)
+			{
+				if (bn.offsetsSize == 1)
+				{
+					int i = bn.offsets[0];
+					commands[count++] = new AsyncBatchSingleTxnVerify(
+						executor, cluster, verifyPolicy, versions[i].Value, records[i], bn.node);
+				}
+				else
+				{
+					commands[count++] = new AsyncBatchTxnVerifyCommand(
+						executor, cluster, bn, verifyPolicy, keys, versions, records);
+				}
+			}
+			executor.Execute(commands);
 		}
 
 		private void MarkRollForward()
@@ -188,8 +207,26 @@ namespace Aerospike.Client
 			BatchAttr attr = new();
 			attr.SetTxn(txnAttr);
 
-			AsyncBatchTxnRollExecutor executor = new(cluster, rollPolicy, rollListener, txn, keys, records, attr);
-			executor.Execute();
+			AsyncBatchRecordArrayExecutor executor = new(cluster, rollListener, records);
+			List<BatchNode> batchNodes = BatchNode.GenerateList(cluster, rollPolicy, keys, records, true, executor);
+			AsyncCommand[] commands = new AsyncCommand[batchNodes.Count];
+			int count = 0;
+
+			foreach (BatchNode bn in batchNodes)
+			{
+				if (bn.offsetsSize == 1)
+				{
+					int i = bn.offsets[0];
+					commands[count++] = new AsyncBatchSingleTxnRoll(
+						executor, cluster, rollPolicy, txn, records[i], bn.node, txnAttr);
+				}
+				else
+				{
+					commands[count++] = new AsyncBatchTxnRollCommand(
+						executor, cluster, bn, rollPolicy, txn, keys, records, attr);
+				}
+			}
+			executor.Execute(commands);
 		}
 
 		private void CloseOnCommit(bool verified)

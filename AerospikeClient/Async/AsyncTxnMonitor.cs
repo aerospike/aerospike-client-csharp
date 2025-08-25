@@ -48,32 +48,34 @@ namespace Aerospike.Client
 		public static void ExecuteBatch(
 			BatchPolicy policy,
 			AsyncBatchExecutor executor,
+			AsyncCommand[] commands,
 			Key[] keys
 		)
 		{
 			if (policy.Txn == null)
 			{
 				// Command is not run under a transaction. Run original command.
-				executor.Execute(executor.commands);
+				executor.Execute(commands);
 				return;
 			}
 
 			// Add write keys to transaction monitor and then run original command.
 			Operation[] ops = TxnMonitor.GetTxnOps(policy.Txn, keys);
-			BatchTxnMonitor ate = new(executor);
+			BatchTxnMonitor ate = new(executor, commands);
 			ate.Execute(executor.cluster, policy, ops);
 		}
 
 		public static void ExecuteBatch(
 			BatchPolicy policy,
 			AsyncBatchExecutor executor,
+			AsyncCommand[] commands,
 			List<BatchRecord> records
 		)
 		{
 			if (policy.Txn == null)
 			{
 				// Command is not run under a transaction. Run original command.
-				executor.Execute();
+				executor.Execute(commands);
 				return;
 			}
 
@@ -83,11 +85,11 @@ namespace Aerospike.Client
 			if (ops == null)
 			{
 				// Readonly batch does not need to add key digests. Run original command.
-				executor.Execute();
+				executor.Execute(commands);
 				return;
 			}
 
-			BatchTxnMonitor ate = new(executor);
+			BatchTxnMonitor ate = new(executor, commands);
 			ate.Execute(executor.cluster, policy, ops);
 		}
 
@@ -112,16 +114,18 @@ namespace Aerospike.Client
 		public sealed class BatchTxnMonitor : AsyncTxnMonitor
 		{
 			private readonly AsyncBatchExecutor executor;
+			private readonly AsyncCommand[] commands;
 
-			public BatchTxnMonitor(AsyncBatchExecutor executor)
+			public BatchTxnMonitor(AsyncBatchExecutor executor, AsyncCommand[] commands)
 				: base(null, null)
 			{
 				this.executor = executor;
+				this.commands = commands;
 			}
 
 			public override void RunCommand()
 			{
-				executor.Execute();
+				executor.Execute(commands);
 			}
 
 			public override void OnFailure(AerospikeException ae)

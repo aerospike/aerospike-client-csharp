@@ -1,5 +1,5 @@
 ﻿/* 
- * Copyright 2012-2024 Aerospike, Inc.
+ * Copyright 2012-2025 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -169,6 +169,17 @@ namespace Aerospike.Test
 			}
 			return true;
 		}
+
+		public bool AssertValidExpiration(long value)
+		{
+			if (value < 0)
+			{
+				monitor.SetError("Invalid expiration");
+				return false;
+			}
+			return true;
+		}
+
 
 		public bool AssertNotNull(object obj)
 		{
