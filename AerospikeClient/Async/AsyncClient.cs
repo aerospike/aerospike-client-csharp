@@ -576,8 +576,35 @@ namespace Aerospike.Client
 			BatchAttr attr = new BatchAttr();
 			attr.SetDelete(deletePolicy);
 
-			AsyncBatchOperateRecordArrayExecutor executor = new(cluster, batchPolicy, listener, keys, null, attr);
-			AsyncTxnMonitor.ExecuteBatch(batchPolicy, executor, keys);
+			BatchRecord[] records = new BatchRecord[keys.Length];
+
+			for (int i = 0; i < keys.Length; i++)
+			{
+				records[i] = new BatchRecord(keys[i], attr.hasWrite);
+			}
+
+			AsyncBatchRecordArrayExecutor executor = new(cluster, listener, records);
+			List<BatchNode> batchNodes = BatchNode.GenerateList(
+				cluster, batchPolicy, keys, records, attr.hasWrite, executor);
+			AsyncCommand[] commands = new AsyncCommand[batchNodes.Count];
+			int count = 0;
+
+			foreach (BatchNode bn in batchNodes)
+			{
+				if (bn.offsetsSize == 1)
+				{
+					int i = bn.offsets[0];
+					commands[count++] = new AsyncBatchSingleDelete(
+						executor, cluster, batchPolicy, attr, records[i], bn.node);
+				}
+				else
+				{
+					commands[count++] = new AsyncBatchOperateRecordArrayCommand(
+						executor, cluster, bn, batchPolicy, keys, null, records, attr);
+				}
+			}
+			
+			AsyncTxnMonitor.ExecuteBatch(batchPolicy, executor, commands, keys);
 		}
 
 		/// <summary>
@@ -625,8 +652,28 @@ namespace Aerospike.Client
 			BatchAttr attr = new BatchAttr();
 			attr.SetDelete(deletePolicy);
 
-			AsyncBatchOperateRecordSequenceExecutor executor = new(cluster, batchPolicy, listener, keys, null, attr);
-			AsyncTxnMonitor.ExecuteBatch(batchPolicy, executor, keys);
+			bool[] sent = new bool[keys.Length];
+			AsyncBatchRecordSequenceExecutor executor = new(cluster, listener, sent);
+			List<BatchNode> batchNodes = BatchNode.GenerateList(
+				cluster, batchPolicy, keys, null, attr.hasWrite, executor);
+			AsyncCommand[] commands = new AsyncCommand[batchNodes.Count];
+			int count = 0;
+
+			foreach (BatchNode bn in batchNodes)
+			{
+				if (bn.offsetsSize == 1)
+				{
+					int i = bn.offsets[0];
+					commands[count++] = new AsyncBatchSingleDeleteSequenceSent(
+						executor, cluster, batchPolicy, keys[i], attr, bn.node, listener, i);
+				}
+				else
+				{
+					commands[count++] = new AsyncBatchOperateRecordSequenceCommand(
+						executor, cluster, bn, batchPolicy, keys, null, sent, listener, attr);
+				}
+			}
+			AsyncTxnMonitor.ExecuteBatch(batchPolicy, executor, commands, keys);
 		}
 
 		//-------------------------------------------------------
@@ -807,8 +854,28 @@ namespace Aerospike.Client
 
 			policy.Txn?.PrepareRead(keys);
 
-			AsyncBatchExistsArrayExecutor executor = new(cluster, policy, keys, listener);
-			executor.Execute();
+			bool[] existsArray = new bool[keys.Length];
+			AsyncBatchExistsArrayExecutor executor = new(cluster, listener, keys, existsArray);
+			List<BatchNode> batchNodes = BatchNode.GenerateList(cluster, policy, keys, null, false, executor);
+			AsyncCommand[] commands = new AsyncCommand[batchNodes.Count];
+			int count = 0;
+
+			foreach (BatchNode bn in batchNodes)
+			{
+				if (bn.offsetsSize == 1)
+				{
+					int i = bn.offsets[0];
+					commands[count++] = new AsyncBatchSingleExists(
+						executor, cluster, policy, keys[i], bn.node, existsArray, i);
+				}
+				else
+				{
+					commands[count++] = new AsyncBatchExistsArrayCommand(
+						executor, cluster, bn, policy, keys, existsArray);
+				}
+			}
+
+			executor.Execute(commands);
 		}
 
 		/// <summary>
@@ -839,8 +906,27 @@ namespace Aerospike.Client
 
 			policy.Txn?.PrepareRead(keys);
 
-			AsyncBatchExistsSequenceExecutor executor = new(cluster, policy, keys, listener);
-			executor.Execute();
+			AsyncBatchExistsSequenceExecutor executor = new(cluster, listener);
+			List<BatchNode> batchNodes = BatchNode.GenerateList(cluster, policy, keys, null, false, executor);
+			AsyncCommand[] commands = new AsyncCommand[batchNodes.Count];
+			int count = 0;
+
+			foreach (BatchNode bn in batchNodes)
+			{
+				if (bn.offsetsSize == 1)
+				{
+					int i = bn.offsets[0];
+					commands[count++] = new AsyncBatchSingleExistsSequence(
+						executor, cluster, policy, keys[i], bn.node, listener);
+				}
+				else
+				{
+					commands[count++] = new AsyncBatchExistsSequenceCommand(
+						executor, cluster, bn, policy, keys, listener);
+				}
+			}
+
+			executor.Execute(commands);
 		}
 		
 		//-------------------------------------------------------
@@ -1028,8 +1114,25 @@ namespace Aerospike.Client
 
 			policy.Txn?.PrepareRead(records);
 
-			AsyncBatchReadListExecutor executor = new(cluster, policy, listener, records);
-			executor.Execute();
+			AsyncBatchReadListExecutor executor = new(cluster, listener, records);
+			List<BatchNode> batchNodes = BatchNode.GenerateList(cluster, policy, records, executor);
+			AsyncCommand[] commands = new AsyncCommand[batchNodes.Count];
+			int count = 0;
+
+			foreach (BatchNode bn in batchNodes)
+			{
+				if (bn.offsetsSize == 1)
+				{
+					int i = bn.offsets[0];
+					commands[count++] = new AsyncBatchSingleRead(executor, cluster, policy, records[i], bn.node);
+				}
+				else
+				{
+					commands[count++] = new AsyncBatchReadListCommand(executor, cluster, bn, policy, records);
+				}
+			}
+			
+			executor.Execute(commands);
 		}
 
 		/// <summary>
@@ -1065,8 +1168,27 @@ namespace Aerospike.Client
 
 			policy.Txn?.PrepareRead(records);
 
-			AsyncBatchReadSequenceExecutor executor = new(cluster, policy, listener, records);
-			executor.Execute();
+			AsyncBatchReadSequenceExecutor executor = new(cluster, listener);
+			List<BatchNode> batchNodes = BatchNode.GenerateList(cluster, policy, records, executor);
+			AsyncCommand[] commands = new AsyncCommand[batchNodes.Count];
+			int count = 0;
+
+			foreach (BatchNode bn in batchNodes)
+			{
+				if (bn.offsetsSize == 1)
+				{
+					int i = bn.offsets[0];
+					commands[count++] = new AsyncBatchSingleReadGetSequence(
+						executor, cluster, policy, records[i], bn.node, listener);
+				}
+				else
+				{
+					commands[count++] = new AsyncBatchReadSequenceCommand(
+						executor, cluster, bn, policy, listener, records);
+				}
+			}
+
+			executor.Execute(commands);
 		}
 
 		/// <summary>
@@ -1118,8 +1240,29 @@ namespace Aerospike.Client
 
 			policy.Txn?.PrepareRead(keys);
 
-			AsyncBatchGetArrayExecutor executor = new(cluster, policy, listener, keys, null, null, Command.INFO1_READ | Command.INFO1_GET_ALL, false);
-			executor.Execute();
+			Record[] records = new Record[keys.Length];
+			AsyncBatchGetArrayExecutor executor = new(cluster, listener, keys, records);
+			List<BatchNode> batchNodes = BatchNode.GenerateList(cluster, policy, keys, null, false, executor);
+			AsyncCommand[] commands = new AsyncCommand[batchNodes.Count];
+			int count = 0;
+
+			foreach (BatchNode bn in batchNodes)
+			{
+				if (bn.offsetsSize == 1)
+				{
+					int i = bn.offsets[0];
+					commands[count++] = new AsyncBatchSingleGet(
+						executor, cluster, policy, keys[i], null, records, bn.node, i, false);
+				}
+				else
+				{
+					commands[count++] = new AsyncBatchGetArrayCommand(
+						executor, cluster, bn, policy, keys, null, null, records,
+						Command.INFO1_READ | Command.INFO1_GET_ALL, false);
+				}
+			}
+
+			executor.Execute(commands);
 		}
 
 		/// <summary>
@@ -1153,8 +1296,28 @@ namespace Aerospike.Client
 
 			policy.Txn?.PrepareRead(keys);
 
-			AsyncBatchGetSequenceExecutor executor = new(cluster, policy, listener, keys, null, null, Command.INFO1_READ | Command.INFO1_GET_ALL, false);
-			executor.Execute();
+			AsyncBatchGetSequenceExecutor executor = new(cluster, listener);
+			List<BatchNode> batchNodes = BatchNode.GenerateList(cluster, policy, keys, null, false, executor);
+			AsyncCommand[] commands = new AsyncCommand[batchNodes.Count];
+			int count = 0;
+
+			foreach (BatchNode bn in batchNodes)
+			{
+				if (bn.offsetsSize == 1)
+				{
+					int i = bn.offsets[0];
+					commands[count++] = new AsyncBatchSingleGetSequence(
+						executor, cluster, policy, listener, keys[i], null, bn.node, false);
+				}
+				else
+				{
+					commands[count++] = new AsyncBatchGetSequenceCommand(
+						executor, cluster, bn, policy, keys, null, null, listener, 
+						Command.INFO1_READ | Command.INFO1_GET_ALL,false);
+				}
+			}
+
+			executor.Execute(commands);
 		}
 
 		/// <summary>
@@ -1208,8 +1371,31 @@ namespace Aerospike.Client
 
 			policy.Txn?.PrepareRead(keys);
 
-			AsyncBatchGetArrayExecutor executor = new(cluster, policy, listener, keys, binNames, null, Command.INFO1_READ, false);
-			executor.Execute();
+			int readAttr = (binNames == null || binNames.Length == 0) ?
+				Command.INFO1_READ | Command.INFO1_GET_ALL : Command.INFO1_READ;
+
+			Record[] records = new Record[keys.Length];
+			AsyncBatchGetArrayExecutor executor = new(cluster, listener, keys, records);
+			List<BatchNode> batchNodes = BatchNode.GenerateList(cluster, policy, keys, null, false, executor);
+			AsyncCommand[] commands = new AsyncCommand[batchNodes.Count];
+			int count = 0;
+
+			foreach (BatchNode bn in batchNodes)
+			{
+				if (bn.offsetsSize == 1)
+				{
+					int i = bn.offsets[0];
+					commands[count++] = new AsyncBatchSingleGet(
+						executor, cluster, policy, keys[i], binNames, records, bn.node, i, false);
+				}
+				else
+				{
+					commands[count++] = new AsyncBatchGetArrayCommand(
+						executor, cluster, bn, policy, keys, binNames, null, records, readAttr, false);
+				}
+			}
+
+			executor.Execute(commands);
 		}
 
 		/// <summary>
@@ -1247,8 +1433,28 @@ namespace Aerospike.Client
 			int readAttr = (binNames == null || binNames.Length == 0)?
 			Command.INFO1_READ | Command.INFO1_GET_ALL : Command.INFO1_READ;
 
-			AsyncBatchGetSequenceExecutor executor = new(cluster, policy, listener, keys, binNames, null, readAttr, false);
-			executor.Execute();
+			AsyncBatchGetSequenceExecutor executor = new(cluster, listener);
+			List<BatchNode> batchNodes = BatchNode.GenerateList(cluster, policy, keys, null, false, executor);
+			AsyncCommand[] commands = new AsyncCommand[batchNodes.Count];
+			int count = 0;
+
+			foreach (BatchNode bn in batchNodes)
+			{
+				if (bn.offsetsSize == 1)
+				{
+					int i = bn.offsets[0];
+					commands[count++] = new AsyncBatchSingleGetSequence(
+						executor, cluster, policy, listener, keys[i], binNames, bn.node, false);
+				}
+				else
+				{
+					commands[count++] = new AsyncBatchGetSequenceCommand(
+						executor, cluster, bn, policy, keys, binNames, null, listener,
+						readAttr, false);
+				}
+			}
+
+			executor.Execute(commands);
 		}
 
 		/// <summary>
@@ -1303,8 +1509,28 @@ namespace Aerospike.Client
 
 			policy.Txn?.PrepareRead(keys);
 
-			AsyncBatchGetArrayExecutor executor = new(cluster, policy, listener, keys, null, ops, Command.INFO1_READ, true);
-			executor.Execute();
+			Record[] records = new Record[keys.Length];
+			AsyncBatchGetArrayExecutor executor = new(cluster, listener, keys, records);
+			List<BatchNode> batchNodes = BatchNode.GenerateList(cluster, policy, keys, null, false, executor);
+			AsyncCommand[] commands = new AsyncCommand[batchNodes.Count];
+			int count = 0;
+
+			foreach (BatchNode bn in batchNodes)
+			{
+				if (bn.offsetsSize == 1)
+				{
+					int i = bn.offsets[0];
+					commands[count++] = new AsyncBatchSingleOperateGet(
+						executor, cluster, policy, keys[i], ops, records, bn.node, i);
+				}
+				else
+				{
+					commands[count++] = new AsyncBatchGetArrayCommand(
+						executor, cluster, bn, policy, keys, null, ops, records, Command.INFO1_READ, true);
+				}
+			}
+
+			executor.Execute(commands);
 		}
 
 		/// <summary>
@@ -1340,8 +1566,27 @@ namespace Aerospike.Client
 
 			policy.Txn?.PrepareRead(keys);
 
-			AsyncBatchGetSequenceExecutor executor = new(cluster, policy, listener, keys, null, ops, Command.INFO1_READ, true);
-			executor.Execute();
+			AsyncBatchGetSequenceExecutor executor = new(cluster, listener);
+			List<BatchNode> batchNodes = BatchNode.GenerateList(cluster, policy, keys, null, false, executor);
+			AsyncCommand[] commands = new AsyncCommand[batchNodes.Count];
+			int count = 0;
+
+			foreach (BatchNode bn in batchNodes)
+			{
+				if (bn.offsetsSize == 1)
+				{
+					int i = bn.offsets[0];
+					commands[count++] = new AsyncBatchSingleOperateGetSequence(
+						executor, cluster, policy, listener, keys[i], ops, bn.node);
+				}
+				else
+				{
+					commands[count++] = new AsyncBatchGetSequenceCommand(
+						executor, cluster, bn, policy, keys, null, ops, listener, Command.INFO1_READ, true);
+				}
+			}
+
+			executor.Execute(commands);
 		}
 
 		/// <summary>
@@ -1393,8 +1638,29 @@ namespace Aerospike.Client
 
 			policy.Txn?.PrepareRead(keys);
 
-			AsyncBatchGetArrayExecutor executor = new(cluster, policy, listener, keys, null, null, Command.INFO1_READ | Command.INFO1_NOBINDATA, false);
-			executor.Execute();
+			Record[] records = new Record[keys.Length];
+			AsyncBatchGetArrayExecutor executor = new(cluster, listener, keys, records);
+			List<BatchNode> batchNodes = BatchNode.GenerateList(cluster, policy, keys, null, false, executor);
+			AsyncCommand[] commands = new AsyncCommand[batchNodes.Count];
+			int count = 0;
+
+			foreach (BatchNode bn in batchNodes)
+			{
+				if (bn.offsetsSize == 1)
+				{
+					int i = bn.offsets[0];
+					commands[count++] = new AsyncBatchSingleReadHeader(
+						executor, cluster, policy, keys[i], records, bn.node, i);
+				}
+				else
+				{
+					commands[count++] = new AsyncBatchGetArrayCommand(
+						executor, cluster, bn, policy, keys, null, null, records, 
+						Command.INFO1_READ | Command.INFO1_NOBINDATA, false);
+				}
+			}
+
+			executor.Execute(commands);
 		}
 
 		/// <summary>
@@ -1428,8 +1694,28 @@ namespace Aerospike.Client
 
 			policy.Txn?.PrepareRead(keys);
 
-			AsyncBatchGetSequenceExecutor executor = new(cluster, policy, listener, keys, null, null, Command.INFO1_READ | Command.INFO1_NOBINDATA, false);
-			executor.Execute();
+			AsyncBatchGetSequenceExecutor executor = new(cluster, listener);
+			List<BatchNode> batchNodes = BatchNode.GenerateList(cluster, policy, keys, null, false, executor);
+			AsyncCommand[] commands = new AsyncCommand[batchNodes.Count];
+			int count = 0;
+
+			foreach (BatchNode bn in batchNodes)
+			{
+				if (bn.offsetsSize == 1)
+				{
+					int i = bn.offsets[0];
+					commands[count++] = new AsyncBatchSingleReadHeaderSequence(
+						executor, cluster, policy, keys[i], bn.node, listener);
+				}
+				else
+				{
+					commands[count++] = new AsyncBatchGetSequenceCommand(
+						executor, cluster, bn, policy, keys, null, null, listener,
+						Command.INFO1_READ | Command.INFO1_NOBINDATA, false);
+				}
+			}
+
+			executor.Execute(commands);
 		}
 		
 		//-------------------------------------------------------
@@ -1554,8 +1840,112 @@ namespace Aerospike.Client
 				policy = new BatchPolicy(policy, configProvider);
 			}
 
-			AsyncBatchOperateListExecutor executor = new(cluster, policy, listener, records, configProvider);
-			AsyncTxnMonitor.ExecuteBatch(policy, executor, records);
+			AsyncBatchOperateListExecutor executor = new(cluster, listener, records);
+			List<BatchNode> batchNodes = BatchNode.GenerateList(cluster, policy, records, executor);
+			AsyncCommand[] commands = new AsyncCommand[batchNodes.Count];
+
+			BatchPolicy origBatchPolicy = new(policy);
+			int count = 0;
+
+			foreach (BatchNode bn in batchNodes)
+			{
+				if (bn.offsetsSize == 1)
+				{
+					int i = bn.offsets[0];
+					BatchRecord record = records[i];
+					policy = origBatchPolicy;
+
+					switch (record.GetBatchType())
+					{
+						case BatchRecord.Type.BATCH_READ:
+							{
+								BatchRead br = (BatchRead)record;
+								commands[count++] = new AsyncBatchSingleRead(executor, cluster, policy, br, bn.node);
+								break;
+							}
+						case BatchRecord.Type.BATCH_WRITE:
+							{
+								BatchWrite bw = (BatchWrite)record;
+								BatchAttr attr = new();
+								BatchWritePolicy bwp;
+								if (bw.policy == null)
+								{
+									bwp = mergedBatchWritePolicyDefault;
+								}
+								else if (configProvider != null)
+								{
+									bwp = new BatchWritePolicy(bw.policy, configProvider);
+									policy.GraftBatchWriteConfig(configProvider);
+								}
+								else
+								{
+									bwp = bw.policy;
+								}
+								attr.SetWrite(bwp);
+								attr.AdjustWrite(bw.ops);
+								attr.SetOpSize(bw.ops);
+								commands[count++] = new AsyncBatchSingleWrite(
+									executor, cluster, policy, attr, bw, bn.node);
+								break;
+							}
+						case BatchRecord.Type.BATCH_UDF:
+							{
+								BatchUDF bu = (BatchUDF)record;
+								BatchAttr attr = new();
+								BatchUDFPolicy bup;
+								if (bu.policy == null)
+								{
+									bup = mergedBatchUDFPolicyDefault;
+								}
+								else if (configProvider != null)
+								{
+									bup = new BatchUDFPolicy(bu.policy, configProvider);
+								}
+								else
+								{
+									bup = bu.policy;
+								}
+								attr.SetUDF(bup);
+								commands[count++] = new AsyncBatchSingleUDF(
+									executor, cluster, policy, attr, bu, bn.node);
+								break;
+							}
+						case BatchRecord.Type.BATCH_DELETE:
+							{
+								BatchDelete bd = (BatchDelete)record;
+								BatchAttr attr = new();
+								BatchDeletePolicy bdp;
+								if (bd.policy == null)
+								{
+									bdp = mergedBatchDeletePolicyDefault;
+								}
+								else if (configProvider != null)
+								{
+									bdp = new BatchDeletePolicy(bd.policy, configProvider);
+								}
+								else
+								{
+									bdp = bd.policy;
+								}
+								attr.SetDelete(bdp);
+								commands[count++] = new AsyncBatchSingleDelete(
+									executor, cluster, policy, attr, record, bn.node);
+								break;
+							}
+						default:
+							{
+								throw new AerospikeException("Invalid batch type: " + record.GetBatchType());
+							}
+					}
+				}
+				else
+				{
+					commands[count++] = new AsyncBatchOperateListCommand(
+						executor, cluster, bn, policy, records, configProvider);
+				}
+			}
+
+			AsyncTxnMonitor.ExecuteBatch(policy, executor, commands, records);
 		}
 
 		/// <summary>
@@ -1594,8 +1984,112 @@ namespace Aerospike.Client
 				policy = new BatchPolicy(policy, configProvider);
 			}
 
-			AsyncBatchOperateSequenceExecutor executor = new(cluster, policy, listener, records, configProvider);
-			AsyncTxnMonitor.ExecuteBatch(policy, executor, records);
+			AsyncBatchOperateSequenceExecutor executor = new(cluster, listener);
+			List<BatchNode> batchNodes = BatchNode.GenerateList(cluster, policy, records, executor);
+			AsyncCommand[] commands = new AsyncCommand[batchNodes.Count];
+
+			BatchPolicy origBatchPolicy = new(policy);
+			int count = 0;
+
+			foreach (BatchNode bn in batchNodes)
+			{
+				if (bn.offsetsSize == 1)
+				{
+					int i = bn.offsets[0];
+					BatchRecord record = records[i];
+					policy = origBatchPolicy;
+
+					switch (record.GetBatchType())
+					{
+						case BatchRecord.Type.BATCH_READ:
+							{
+								BatchRead br = (BatchRead)record;
+								commands[count++] = new AsyncBatchSingleReadSequence(
+									executor, cluster, policy, br, bn.node, listener, i);
+								break;
+							}
+						case BatchRecord.Type.BATCH_WRITE:
+							{
+								BatchWrite bw = (BatchWrite)record;
+								BatchAttr attr = new();
+								BatchWritePolicy bwp;
+								if (bw.policy == null)
+								{
+									bwp = mergedBatchWritePolicyDefault;
+								}
+								else if (configProvider != null)
+								{
+									bwp = new BatchWritePolicy(bw.policy, configProvider);
+									policy.GraftBatchWriteConfig(configProvider);
+								}
+								else
+								{
+									bwp = bw.policy;
+								}
+								attr.SetWrite(bwp);
+								attr.AdjustWrite(bw.ops);
+								attr.SetOpSize(bw.ops);
+								commands[count++] = new AsyncBatchSingleWriteSequence(
+									executor, cluster, policy, attr, bw, bn.node, listener, i);
+								break;
+							}
+						case BatchRecord.Type.BATCH_UDF:
+							{
+								BatchUDF bu = (BatchUDF)record;
+								BatchAttr attr = new();
+								BatchUDFPolicy bup;
+								if (bu.policy == null)
+								{
+									bup = mergedBatchUDFPolicyDefault;
+								}
+								else if (configProvider != null)
+								{
+									bup = new BatchUDFPolicy(bu.policy, configProvider);
+								}
+								else
+								{
+									bup = bu.policy;
+								}
+								attr.SetUDF(bup);
+								commands[count++] = new AsyncBatchSingleUDFSequence(
+									executor, cluster, policy, attr, bu, bn.node, listener, i);
+								break;
+							}
+						case BatchRecord.Type.BATCH_DELETE:
+							{
+								BatchDelete bd = (BatchDelete)record;
+								BatchAttr attr = new();
+								BatchDeletePolicy bdp;
+								if (bd.policy == null)
+								{
+									bdp = mergedBatchDeletePolicyDefault;
+								}
+								else if (configProvider != null)
+								{
+									bdp = new BatchDeletePolicy(bd.policy, configProvider);
+								}
+								else
+								{
+									bdp = bd.policy;
+								}
+								attr.SetDelete(bdp);
+								commands[count++] = new AsyncBatchSingleDeleteSequence(
+									executor, cluster, policy, attr, bd, bn.node, listener, i);
+								break;
+							}
+						default:
+							{
+								throw new AerospikeException("Invalid batch type: " + record.GetBatchType());
+							}
+					}
+				}
+				else
+				{
+					commands[count++] = new AsyncBatchOperateSequenceCommand(
+						executor, cluster, bn, policy, listener, records, configProvider);
+				}
+			}
+			AsyncTxnMonitor.ExecuteBatch(policy, executor, commands, records);
 		}
 
 		/// <summary>
@@ -1670,8 +2164,35 @@ namespace Aerospike.Client
 			{
 				batchPolicy.GraftBatchWriteConfig(configProvider);
 			}
-			AsyncBatchOperateRecordArrayExecutor executor = new(cluster, batchPolicy, listener, keys, ops, attr);
-			AsyncTxnMonitor.ExecuteBatch(batchPolicy, executor, keys);
+
+			BatchRecord[] records = new BatchRecord[keys.Length];
+
+			for (int i = 0; i < keys.Length; i++)
+			{
+				records[i] = new BatchRecord(keys[i], attr.hasWrite);
+			}
+
+			AsyncBatchRecordArrayExecutor executor = new(cluster, listener, records);
+			List<BatchNode> batchNodes = BatchNode.GenerateList(
+				cluster, batchPolicy, keys, records, attr.hasWrite, executor);
+			AsyncCommand[] commands = new AsyncCommand[batchNodes.Count];
+			int count = 0;
+
+			foreach (BatchNode bn in batchNodes)
+			{
+				if (bn.offsetsSize == 1)
+				{
+					int i = bn.offsets[0];
+					commands[count++] = new AsyncBatchSingleOperate(
+						executor, cluster, batchPolicy, attr, records[i], ops, bn.node);
+				}
+				else
+				{
+					commands[count++] = new AsyncBatchOperateRecordArrayCommand(
+						executor, cluster, bn, batchPolicy, keys, ops, records, attr);
+				}
+			}
+			AsyncTxnMonitor.ExecuteBatch(batchPolicy, executor, commands, keys);
 		}
 
 		/// <summary>
@@ -1695,7 +2216,14 @@ namespace Aerospike.Client
 		/// results. Instead, use <see cref="Operation.Get(string)"/> for each bin name.
 		/// </param>
 		/// <exception cref="AerospikeException">if queue is full</exception>
-		public void Operate(BatchPolicy batchPolicy, BatchWritePolicy writePolicy, BatchRecordSequenceListener listener, Key[] keys, params Operation[] ops)
+		public void Operate
+		(
+			BatchPolicy batchPolicy, 
+			BatchWritePolicy writePolicy, 
+			BatchRecordSequenceListener listener, 
+			Key[] keys, 
+			params Operation[] ops
+		)
 		{
 			if (keys.Length == 0)
 			{
@@ -1725,8 +2253,29 @@ namespace Aerospike.Client
 			{
 				batchPolicy.GraftBatchWriteConfig(configProvider);
 			}
-			AsyncBatchOperateRecordSequenceExecutor executor = new(cluster, batchPolicy, listener, keys, ops, attr);
-			AsyncTxnMonitor.ExecuteBatch(batchPolicy, executor, keys);
+
+			bool[] sent = new bool[keys.Length];
+			AsyncBatchRecordSequenceExecutor executor = new(cluster, listener, sent);
+			List<BatchNode> batchNodes = BatchNode.GenerateList(
+				cluster, batchPolicy, keys, null, attr.hasWrite, executor);
+			AsyncCommand[] commands = new AsyncCommand[batchNodes.Count];
+			int count = 0;
+
+			foreach (BatchNode bn in batchNodes)
+			{
+				if (bn.offsetsSize == 1)
+				{
+					int i = bn.offsets[0];
+					commands[count++] = new AsyncBatchSingleOperateSequence(
+						executor, cluster, batchPolicy, keys[i], attr, ops, bn.node, listener, i);
+				}
+				else
+				{
+					commands[count++] = new AsyncBatchOperateRecordSequenceCommand(
+						executor, cluster, bn, batchPolicy, keys, ops, sent, listener, attr);
+				}
+			}
+			AsyncTxnMonitor.ExecuteBatch(batchPolicy, executor, commands, keys);
 		}
 
 		//-------------------------------------------------------
@@ -1892,7 +2441,14 @@ namespace Aerospike.Client
 		/// <param name="functionName">user defined function</param>
 		/// <param name="functionArgs">arguments passed in to user defined function</param>
 		/// <exception cref="AerospikeException">if queue is full</exception>
-		public void Execute(BatchPolicy batchPolicy, BatchUDFPolicy udfPolicy, BatchRecordArrayListener listener, Key[] keys, string packageName, string functionName, params Value[] functionArgs)
+		public void Execute(
+			BatchPolicy batchPolicy, 
+			BatchUDFPolicy udfPolicy, 
+			BatchRecordArrayListener listener, 
+			Key[] keys, 
+			string packageName, 
+			string functionName, 
+			params Value[] functionArgs)
 		{
 			if (keys.Length == 0)
 			{
@@ -1908,6 +2464,7 @@ namespace Aerospike.Client
 			{
 				batchPolicy = new BatchPolicy(batchPolicy, configProvider);
 			}
+
 			if (udfPolicy == null)
 			{
 				udfPolicy = mergedBatchUDFPolicyDefault;
@@ -1922,8 +2479,34 @@ namespace Aerospike.Client
 			BatchAttr attr = new BatchAttr();
 			attr.SetUDF(udfPolicy);
 
-			AsyncBatchUDFArrayExecutor executor = new(cluster, batchPolicy, listener, keys, packageName, functionName, argBytes, attr);
-			AsyncTxnMonitor.ExecuteBatch(batchPolicy, executor, keys);
+			BatchRecord[] records = new BatchRecord[keys.Length];
+
+			for (int i = 0; i < keys.Length; i++)
+			{
+				records[i] = new BatchRecord(keys[i], attr.hasWrite);
+			}
+
+			AsyncBatchRecordArrayExecutor executor = new(cluster, listener, records);
+			List<BatchNode> batchNodes = BatchNode.GenerateList(cluster, batchPolicy, keys, records, attr.hasWrite, executor);
+			AsyncCommand[] commands = new AsyncCommand[batchNodes.Count];
+			int count = 0;
+
+			foreach (BatchNode bn in batchNodes)
+			{
+				if (bn.offsetsSize == 1)
+				{
+					int i = bn.offsets[0];
+					commands[count++] = new AsyncBatchSingleUDFCommand(
+						executor, cluster, batchPolicy, attr, records[i], packageName, functionName, argBytes, bn.node);
+				}
+				else
+				{
+					commands[count++] = new AsyncBatchUDFArrayCommand(
+						executor, cluster, bn, batchPolicy, keys, packageName, functionName, argBytes, records, attr);
+				}
+			}
+
+			AsyncTxnMonitor.ExecuteBatch(batchPolicy, executor, commands, keys);
 		}
 
 		/// <summary>
@@ -1947,7 +2530,13 @@ namespace Aerospike.Client
 		/// <param name="functionName">user defined function</param>
 		/// <param name="functionArgs">arguments passed in to user defined function</param>
 		/// <exception cref="AerospikeException">if queue is full</exception>
-		public void Execute(BatchPolicy batchPolicy, BatchUDFPolicy udfPolicy, BatchRecordSequenceListener listener, Key[] keys, string packageName, string functionName, params Value[] functionArgs)
+		public void Execute(
+			BatchPolicy batchPolicy, 
+			BatchUDFPolicy udfPolicy, 
+			BatchRecordSequenceListener listener, 
+			Key[] keys, string packageName, 
+			string functionName, 
+			params Value[] functionArgs)
 		{
 			if (keys.Length == 0)
 			{
@@ -1974,11 +2563,34 @@ namespace Aerospike.Client
 
 			byte[] argBytes = Packer.Pack(functionArgs);
 
-			BatchAttr attr = new BatchAttr();
+			BatchAttr attr = new();
 			attr.SetUDF(udfPolicy);
 
-			AsyncBatchUDFSequenceExecutor executor = new(cluster, batchPolicy, listener, keys, packageName, functionName, argBytes, attr);
-			AsyncTxnMonitor.ExecuteBatch(batchPolicy, executor, keys);
+			bool[] sent = new bool[keys.Length];
+			AsyncBatchRecordSequenceExecutor executor = new(cluster, listener, sent);
+			List<BatchNode> batchNodes = BatchNode.GenerateList(
+				cluster, batchPolicy, keys, null, attr.hasWrite, executor);
+			AsyncCommand[] commands = new AsyncCommand[batchNodes.Count];
+			int count = 0;
+
+			foreach (BatchNode batchNode in batchNodes)
+			{
+				if (batchNode.offsetsSize == 1)
+				{
+					int i = batchNode.offsets[0];
+					commands[count++] = new AsyncBatchSingleUDFSequenceCommand(
+						executor, cluster, batchPolicy, keys[i], attr, packageName, functionName, argBytes, 
+						batchNode.node, listener, i);
+				}
+				else
+				{
+					commands[count++] = new AsyncBatchUDFSequenceCommand(
+						executor, cluster, batchNode, batchPolicy, keys, packageName, functionName, argBytes, sent, 
+						listener, attr);
+				}
+			}
+
+			AsyncTxnMonitor.ExecuteBatch(batchPolicy, executor, commands, keys);
 		}
 
 		//-------------------------------------------------------

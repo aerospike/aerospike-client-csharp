@@ -14,8 +14,8 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using System.Collections;
 using Aerospike.Client.Config;
+using System.Collections;
 
 #pragma warning disable 0618
 
@@ -196,18 +196,7 @@ namespace Aerospike.Client
 			long?[] versions,
 			BatchNode batch
 		)
-		{
-			BatchOffsetsNative offsets = new(batch);
-			SetBatchTxnVerify(policy, keys, versions, offsets);
-		}
-
-		public void SetBatchTxnVerify(
-			BatchPolicy policy,
-			Key[] keys,
-			long?[] versions,
-			BatchOffsets offsets
-		)
-		{
+		{ 
 			// Estimate buffer size.
 			Begin();
 
@@ -216,11 +205,11 @@ namespace Aerospike.Client
 
 			Key keyPrev = null;
 			long? verPrev = null;
-			int max = offsets.Size();
+			int max = batch.offsetsSize;
 
 			for (int i = 0; i < max; i++)
 			{
-				int offset = offsets.Get(i);
+				int offset = batch.offsets[i];
 				Key key = keys[offset];
 				long? ver = versions[offset];
 
@@ -262,7 +251,7 @@ namespace Aerospike.Client
 
 			for (int i = 0; i < max; i++)
 			{
-				int offset = offsets.Get(i);
+				int offset = batch.offsets[i];
 				Key key = keys[offset];
 				long? ver = versions[offset];
 
@@ -358,27 +347,15 @@ namespace Aerospike.Client
 			BatchAttr attr
 		)
 		{
-			BatchOffsetsNative offsets = new(batch);
-			SetBatchTxnRoll(policy, txn, keys, attr, offsets);
-		}
-
-		public void SetBatchTxnRoll(
-			BatchPolicy policy,
-			Txn txn,
-			Key[] keys,
-			BatchAttr attr,
-			BatchOffsets offsets
-		)
-		{
-			// Estimate buffer size.
+		// Estimate buffer size.
 			Begin();
 			int fieldCount = 1;
-			int max = offsets.Size();
+			int max = batch.offsetsSize;
 			long?[] versions = new long?[max];
 
 			for (int i = 0; i < max; i++)
 			{
-				int offset = offsets.Get(i);
+				int offset = batch.offsets[i];
 				Key key = keys[offset];
 				versions[i] = txn.GetReadVersion(key);
 			}
@@ -391,7 +368,7 @@ namespace Aerospike.Client
 
 			for (int i = 0; i < max; i++)
 			{
-				int offset = offsets.Get(i);
+				int offset = batch.offsets[i];
 				Key key = keys[offset];
 				long? ver = versions[i];
 
@@ -430,7 +407,7 @@ namespace Aerospike.Client
 
 			for (int i = 0; i < max; i++)
 			{
-				int offset = offsets.Get(i);
+				int offset = batch.offsets[i];
 				Key key = keys[offset];
 				long? ver = versions[i];
 
@@ -1143,22 +1120,15 @@ namespace Aerospike.Client
 
 		public virtual void SetBatchOperate(
 			BatchPolicy policy,
+			BatchWritePolicy writePolicy,
+			BatchUDFPolicy udfPolicy,
+			BatchDeletePolicy deletePolicy,
 			IList records,
 			BatchNode batch,
 			IConfigProvider configProvider)
 		{
-			BatchOffsetsNative offsets = new(batch);
-			SetBatchOperate(policy, records, offsets, configProvider);
-		}
-
-		public void SetBatchOperate(
-			BatchPolicy policy,
-			IList records,
-			BatchOffsets offsets,
-			IConfigProvider configProvider)
-		{
 			Begin();
-			int max = offsets.Size();
+			int max = batch.offsetsSize;
 			Txn txn = policy.Txn;
 			long?[] versions = null;
 
@@ -1168,7 +1138,7 @@ namespace Aerospike.Client
 
 				for (int i = 0; i < max; i++)
 				{
-					int offset = offsets.Get(i);
+					int offset = batch.offsets[i];
 					BatchRecord record = (BatchRecord)records[offset];
 					versions[i] = txn.GetReadVersion(record.key);
 				}
@@ -1189,7 +1159,7 @@ namespace Aerospike.Client
 
 			for (int i = 0; i < max; i++)
 			{
-				int offset = offsets.Get(i);
+				int offset = batch.offsets[i];
 				BatchRecord record = (BatchRecord)records[offset];
 				Key key = record.key;
 				long? ver = versions?[i];
@@ -1232,7 +1202,7 @@ namespace Aerospike.Client
 
 			for (int i = 0; i < max; i++)
 			{
-				int offset = offsets.Get(i);
+				int offset = batch.offsets[i];
 				BatchRecord record = (BatchRecord)records[offset];
 				long? ver = versions?[i];
 				ByteUtil.IntToBytes((uint)offset, dataBuffer, dataOffset);
@@ -1294,35 +1264,16 @@ namespace Aerospike.Client
 						case BatchRecord.Type.BATCH_WRITE:
 							{
 								BatchWrite bw = (BatchWrite)record;
+								BatchWritePolicy bwp = bw.policy ?? writePolicy;
 
-								if (bw.policy != null)
+								if (configProvider != null && configProvider.ConfigurationData != null)
 								{
-									if (configProvider != null && configProvider.ConfigurationData != null)
-									{
-										if (configProvider.ConfigurationData.dynamicConfig.batch_write.send_key.HasValue)
-										{
-											bw.policy.sendKey = configProvider.ConfigurationData.dynamicConfig.batch_write.send_key.Value;
-										}
-										if (configProvider.ConfigurationData.dynamicConfig.batch_write.durable_delete.HasValue)
-										{
-											bw.policy.durableDelete = configProvider.ConfigurationData.dynamicConfig.batch_write.durable_delete.Value;
-										}
-									}
-
-									attr.SetWrite(bw.policy);
+									var batchWriteConfig = configProvider.ConfigurationData.dynamicConfig.batch_write;
+									bwp.sendKey = batchWriteConfig.send_key ?? bwp.sendKey;
+									bwp.durableDelete = batchWriteConfig.durable_delete ?? bwp.durableDelete;
 								}
-								else
-								{
-									if (configProvider != null && configProvider.ConfigurationData != null)
-									{
-										if (configProvider.ConfigurationData.dynamicConfig.batch_write.send_key.HasValue)
-										{
-											policy.sendKey = configProvider.ConfigurationData.dynamicConfig.batch_write.send_key.Value;
-										}
-									}
 
-									attr.SetWrite(policy);
-								}
+								attr.SetWrite(bwp);
 								attr.AdjustWrite(bw.ops);
 								WriteBatchOperations(key, txn, ver, bw.ops, attr, attr.filterExp);
 								break;
@@ -1331,35 +1282,16 @@ namespace Aerospike.Client
 						case BatchRecord.Type.BATCH_UDF:
 							{
 								BatchUDF bu = (BatchUDF)record;
+								BatchUDFPolicy bup = bu.policy ?? udfPolicy;
 
-								if (bu.policy != null)
+								if (configProvider != null && configProvider.ConfigurationData != null)
 								{
-									if (configProvider != null && configProvider.ConfigurationData != null)
-									{
-										if (configProvider.ConfigurationData.dynamicConfig.batch_udf.send_key.HasValue)
-										{
-											bu.policy.sendKey = configProvider.ConfigurationData.dynamicConfig.batch_udf.send_key.Value;
-										}
-										if (configProvider.ConfigurationData.dynamicConfig.batch_udf.durable_delete.HasValue)
-										{
-											bu.policy.durableDelete = configProvider.ConfigurationData.dynamicConfig.batch_udf.durable_delete.Value;
-										}
-									}
-
-									attr.SetUDF(bu.policy);
+									var batchUdfConfig = configProvider.ConfigurationData.dynamicConfig.batch_udf;
+									bup.sendKey = batchUdfConfig.send_key ?? bup.sendKey;
+									bup.durableDelete = batchUdfConfig.durable_delete ?? bup.durableDelete;
 								}
-								else
-								{
-									if (configProvider != null && configProvider.ConfigurationData != null)
-									{
-										if (configProvider.ConfigurationData.dynamicConfig.batch_udf.send_key.HasValue)
-										{
-											policy.sendKey = configProvider.ConfigurationData.dynamicConfig.batch_udf.send_key.Value;
-										}
-									}
 
-									attr.SetUDF(policy);
-								}
+								attr.SetUDF(bup);
 								WriteBatchWrite(key, txn, ver, attr, attr.filterExp, 3, 0);
 								WriteField(bu.packageName, FieldType.UDF_PACKAGE_NAME);
 								WriteField(bu.functionName, FieldType.UDF_FUNCTION);
@@ -1370,35 +1302,16 @@ namespace Aerospike.Client
 						case BatchRecord.Type.BATCH_DELETE:
 							{
 								BatchDelete bd = (BatchDelete)record;
+								BatchDeletePolicy bdp = bd.policy ?? deletePolicy;
 
-								if (bd.policy != null)
+								if (configProvider != null && configProvider.ConfigurationData != null)
 								{
-									if (configProvider != null && configProvider.ConfigurationData != null)
-									{
-										if (configProvider.ConfigurationData.dynamicConfig.batch_delete.send_key.HasValue)
-										{
-											bd.policy.sendKey = configProvider.ConfigurationData.dynamicConfig.batch_delete.send_key.Value;
-										}
-										if (configProvider.ConfigurationData.dynamicConfig.batch_delete.durable_delete.HasValue)
-										{
-											bd.policy.durableDelete = configProvider.ConfigurationData.dynamicConfig.batch_delete.durable_delete.Value;
-										}
-									}
-
-									attr.SetDelete(bd.policy);
+									var batchDeleteConfig = configProvider.ConfigurationData.dynamicConfig.batch_delete;
+									bdp.sendKey = batchDeleteConfig.send_key ?? bdp.sendKey;
+									bdp.durableDelete = batchDeleteConfig.durable_delete ?? bdp.durableDelete;
 								}
-								else
-								{
-									if (configProvider != null && configProvider.ConfigurationData != null)
-									{
-										if (configProvider.ConfigurationData.dynamicConfig.batch_delete.send_key.HasValue)
-										{
-											policy.sendKey = configProvider.ConfigurationData.dynamicConfig.batch_delete.send_key.Value;
-										}
-									}
 
-									attr.SetDelete(policy);
-								}
+								attr.SetDelete(bdp);
 								WriteBatchWrite(key, txn, ver, attr, attr.filterExp, 0, 0);
 								break;
 							}
@@ -1423,21 +1336,8 @@ namespace Aerospike.Client
 			BatchAttr attr
 		)
 		{
-			BatchOffsetsNative offsets = new(batch);
-			SetBatchOperate(policy, keys, binNames, ops, attr, offsets);
-		}
-
-		public void SetBatchOperate(
-			BatchPolicy policy,
-			Key[] keys,
-			string[] binNames,
-			Operation[] ops,
-			BatchAttr attr,
-			BatchOffsets offsets
-		)
-		{
 			// Estimate full row size
-			int max = offsets.Size();
+			int max = batch.offsetsSize;
 			Txn txn = policy.Txn;
 			long?[] versions = null;
 
@@ -1449,7 +1349,7 @@ namespace Aerospike.Client
 
 				for (int i = 0; i < max; i++)
 				{
-					int offset = offsets.Get(i);
+					int offset = batch.offsets[i];
 					Key key = keys[offset];
 					versions[i] = txn.GetReadVersion(key);
 				}
@@ -1471,7 +1371,7 @@ namespace Aerospike.Client
 
 			for (int i = 0; i < max; i++)
 			{
-				int offset = offsets.Get(i);
+				int offset = batch.offsets[i];
 				Key key = keys[offset];
 				long? ver = versions?[i];
 
@@ -1543,7 +1443,7 @@ namespace Aerospike.Client
 
 			for (int i = 0; i < max; i++)
 			{
-				int offset = offsets.Get(i);
+				int offset = batch.offsets[i];
 				Key key = keys[offset];
 				long? ver = versions?[i];
 
@@ -1598,24 +1498,9 @@ namespace Aerospike.Client
 			BatchAttr attr
 		)
 		{
-			BatchOffsetsNative offsets = new(batch);
-			SetBatchUDF(policy, keys, packageName, functionName, argBytes, attr, offsets);
-		}
-
-		public virtual void SetBatchUDF
-		(
-			BatchPolicy policy,
-			Key[] keys,
-			string packageName,
-			string functionName,
-			byte[] argBytes,
-			BatchAttr attr,
-			BatchOffsets offsets
-		)
-		{
 			// Estimate buffer size.
 			Begin();
-			int max = offsets.Size();
+			int max = batch.offsetsSize;
 			Txn txn = policy.Txn;
 			long?[] versions = null;
 
@@ -1625,7 +1510,7 @@ namespace Aerospike.Client
 
 				for (int i = 0; i < max; i++)
 				{
-					int offset = offsets.Get(i);
+					int offset = batch.offsets[i];
 					Key key = keys[offset];
 					versions[i] = txn.GetReadVersion(key);
 				}
@@ -1647,7 +1532,7 @@ namespace Aerospike.Client
 
 			for (int i = 0; i < max; i++)
 			{
-				int offset = offsets.Get(i);
+				int offset = batch.offsets[i];
 				Key key = keys[offset];
 				long? ver = versions?[i];
 
@@ -1694,7 +1579,7 @@ namespace Aerospike.Client
 
 			for (int i = 0; i < max; i++)
 			{
-				int offset = offsets.Get(i);
+				int offset = batch.offsets[i];
 				Key key = keys[offset];
 				long? ver = versions?[i];
 
@@ -3394,34 +3279,6 @@ namespace Aerospike.Client
 		public static bool BatchInDoubt(bool isWrite, int commandSentCounter)
 		{
 			return isWrite && commandSentCounter > 1;
-		}
-
-		public interface BatchOffsets
-		{
-			int Size();
-			int Get(int i);
-		}
-
-		private class BatchOffsetsNative : BatchOffsets
-		{
-			private int size;
-			private int[] offsets;
-
-			public BatchOffsetsNative(BatchNode batch)
-			{
-				this.size = batch.offsetsSize;
-				this.offsets = batch.offsets;
-			}
-
-			public int Size()
-			{
-				return size;
-			}
-
-			public int Get(int i)
-			{
-				return offsets[i];
-			}
 		}
 	}
 }

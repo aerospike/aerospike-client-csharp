@@ -21,45 +21,6 @@ namespace Aerospike.Client
 	// ReadList
 	//-------------------------------------------------------
 
-	public sealed class AsyncBatchReadListExecutor : AsyncBatchExecutor
-	{
-		private readonly BatchListListener listener;
-		private readonly List<BatchRead> records;
-
-		public AsyncBatchReadListExecutor
-		(
-			AsyncCluster cluster,
-			BatchPolicy policy,
-			BatchListListener listener,
-			List<BatchRead> records
-		) : base(cluster, true)
-		{
-			this.listener = listener;
-			this.records = records;
-
-			// Create commands.
-			List<BatchNode> batchNodes = BatchNode.GenerateList(cluster, policy, records, this);
-			AsyncBatchCommand[] commands = new AsyncBatchCommand[batchNodes.Count];
-			int count = 0;
-
-			foreach (BatchNode batchNode in batchNodes)
-			{
-				commands[count++] = new AsyncBatchReadListCommand(this, cluster, batchNode, policy, records);
-			}
-			this.commands = commands;
-		}
-
-		protected internal override void OnSuccess()
-		{
-			listener.OnSuccess(records);
-		}
-
-		protected internal override void OnFailure(AerospikeException ae)
-		{
-			listener.OnFailure(ae);
-		}
-	}
-
 	sealed class AsyncBatchReadListCommand : AsyncBatchCommand
 	{
 		private readonly List<BatchRead> records;
@@ -85,7 +46,7 @@ namespace Aerospike.Client
 		{
 			if (batch.node.HasBatchAny)
 			{
-				SetBatchOperate(batchPolicy, records, batch, null);
+				SetBatchOperate(batchPolicy, null, null, null, records, batch, null);
 			}
 			else
 			{
@@ -128,43 +89,6 @@ namespace Aerospike.Client
 	//-------------------------------------------------------
 	// ReadSequence
 	//-------------------------------------------------------
-	
-	public sealed class AsyncBatchReadSequenceExecutor : AsyncBatchExecutor
-	{
-		private readonly BatchSequenceListener listener;
-
-		public AsyncBatchReadSequenceExecutor
-		(
-			AsyncCluster cluster,
-			BatchPolicy policy,
-			BatchSequenceListener listener,
-			List<BatchRead> records
-		) : base(cluster, true)
-		{
-			this.listener = listener;
-
-			// Create commands.
-			List<BatchNode> batchNodes = BatchNode.GenerateList(cluster, policy, records, this);
-			AsyncBatchCommand[] commands = new AsyncBatchCommand[batchNodes.Count];
-			int count = 0;
-
-			foreach (BatchNode batchNode in batchNodes)
-			{
-				commands[count++] = new AsyncBatchReadSequenceCommand(this, cluster, batchNode, policy, listener, records);
-			}
-			this.commands = commands;
-		}
-
-		protected internal override void OnSuccess()
-		{
-			listener.OnSuccess();
-		}
-
-		protected internal override void OnFailure(AerospikeException ae)
-		{
-			listener.OnFailure(ae);
-		}
-	}
 
 	sealed class AsyncBatchReadSequenceCommand : AsyncBatchCommand
 	{
@@ -195,7 +119,7 @@ namespace Aerospike.Client
 		{
 			if (batch.node.HasBatchAny)
 			{
-				SetBatchOperate(batchPolicy, records, batch, null);
+				SetBatchOperate(batchPolicy, null, null, null, records, batch, null);
 			}
 			else
 			{
@@ -239,52 +163,6 @@ namespace Aerospike.Client
 	//-------------------------------------------------------
 	// GetArray
 	//-------------------------------------------------------
-
-	public sealed class AsyncBatchGetArrayExecutor : AsyncBatchExecutor
-	{
-		private readonly Key[] keys;
-		private readonly Record[] records;
-		private readonly RecordArrayListener listener;
-
-		public AsyncBatchGetArrayExecutor
-		(
-			AsyncCluster cluster,
-			BatchPolicy policy,
-			RecordArrayListener listener,
-			Key[] keys,
-			string[] binNames,
-			Operation[] ops,
-			int readAttr,
-			bool isOperation
-		) : base(cluster, false)
-		{
-			this.keys = keys;
-			this.records = new Record[keys.Length];
-			this.listener = listener;
-
-			// Create commands.
-			List<BatchNode> batchNodes = BatchNode.GenerateList(cluster, policy, keys, null, false, this);
-			AsyncBatchCommand[] commands = new AsyncBatchCommand[batchNodes.Count];
-			int count = 0;
-
-			foreach (BatchNode batchNode in batchNodes)
-			{
-				commands[count++] = new AsyncBatchGetArrayCommand(this, cluster, batchNode, policy, keys, binNames, ops, records, readAttr, isOperation);
-			}
-			this.commands = commands;
-		}
-
-		protected internal override void OnSuccess()
-		{
-			listener.OnSuccess(keys, records);
-		}
-
-		protected internal override void OnFailure(AerospikeException ae)
-		{
-			listener.OnFailure(new AerospikeException.BatchRecords(records, ae));
-		}
-	}
-
 	sealed class AsyncBatchGetArrayCommand : AsyncBatchCommand
 	{
 		private readonly Key[] keys;
@@ -365,48 +243,6 @@ namespace Aerospike.Client
 	//-------------------------------------------------------
 	// GetSequence
 	//-------------------------------------------------------
-
-	public sealed class AsyncBatchGetSequenceExecutor : AsyncBatchExecutor
-	{
-		private readonly RecordSequenceListener listener;
-
-		public AsyncBatchGetSequenceExecutor
-		(
-			AsyncCluster cluster,
-			BatchPolicy policy,
-			RecordSequenceListener listener,
-			Key[] keys,
-			string[] binNames,
-			Operation[] ops,
-			int readAttr,
-			bool isOperation
-		) : base(cluster, false)
-		{
-			this.listener = listener;
-
-			// Create commands.
-			List<BatchNode> batchNodes = BatchNode.GenerateList(cluster, policy, keys, null, false, this);
-			AsyncBatchCommand[] commands = new AsyncBatchCommand[batchNodes.Count];
-			int count = 0;
-
-			foreach (BatchNode batchNode in batchNodes)
-			{
-				commands[count++] = new AsyncBatchGetSequenceCommand(this, cluster, batchNode, policy, keys, binNames, ops, listener, readAttr, isOperation);
-			}
-			this.commands = commands;
-		}
-
-		protected internal override void OnSuccess()
-		{
-			listener.OnSuccess();
-		}
-
-		protected internal override void OnFailure(AerospikeException ae)
-		{
-			listener.OnFailure(ae);
-		}
-	}
-
 	sealed class AsyncBatchGetSequenceCommand : AsyncBatchCommand
 	{
 		private readonly Key[] keys;
@@ -494,47 +330,6 @@ namespace Aerospike.Client
 	//-------------------------------------------------------
 	// ExistsArray
 	//-------------------------------------------------------
-	
-	public sealed class AsyncBatchExistsArrayExecutor : AsyncBatchExecutor
-	{
-		private readonly Key[] keys;
-		private readonly bool[] existsArray;
-		private readonly ExistsArrayListener listener;
-
-		public AsyncBatchExistsArrayExecutor
-		(
-			AsyncCluster cluster,
-			BatchPolicy policy,
-			Key[] keys,
-			ExistsArrayListener listener
-		) : base(cluster,false)
-		{
-			this.keys = keys;
-			this.existsArray = new bool[keys.Length];
-			this.listener = listener;
-
-			// Create commands.
-			List<BatchNode> batchNodes = BatchNode.GenerateList(cluster, policy, keys, null, false, this);
-			AsyncBatchCommand[] commands = new AsyncBatchCommand[batchNodes.Count];
-			int count = 0;
-
-			foreach (BatchNode batchNode in batchNodes)
-			{
-				commands[count++] = new AsyncBatchExistsArrayCommand(this, cluster, batchNode, policy, keys, existsArray);
-			}
-			this.commands = commands;
-		}
-
-		protected internal override void OnSuccess()
-		{
-			listener.OnSuccess(keys, existsArray);
-		}
-
-		protected internal override void OnFailure(AerospikeException ae)
-		{
-			listener.OnFailure(new AerospikeException.BatchExists(existsArray, ae));
-		}
-	}
 
 	sealed class AsyncBatchExistsArrayCommand : AsyncBatchCommand
 	{
@@ -599,45 +394,6 @@ namespace Aerospike.Client
 	//-------------------------------------------------------
 	// ExistsSequence
 	//-------------------------------------------------------
-
-	public sealed class AsyncBatchExistsSequenceExecutor : AsyncBatchExecutor
-	{
-		private readonly ExistsSequenceListener listener;
-
-		public AsyncBatchExistsSequenceExecutor
-		(
-			AsyncCluster cluster,
-			BatchPolicy policy,
-			Key[] keys,
-			ExistsSequenceListener listener
-		) : base(cluster, false)
-		{
-			this.listener = listener;
-
-			// Create commands.
-			List<BatchNode> batchNodes = BatchNode.GenerateList(cluster, policy, keys, null, false, this);
-			AsyncBatchCommand[] commands = new AsyncBatchCommand[batchNodes.Count];
-			int count = 0;
-
-			foreach (BatchNode batchNode in batchNodes)
-			{
-				commands[count++] = new AsyncBatchExistsSequenceCommand(this, cluster, batchNode, policy, keys, listener);
-			}
-			this.commands = commands;
-		}
-
-		protected internal override void OnSuccess()
-		{
-			listener.OnSuccess();
-		}
-
-		protected internal override void OnFailure(AerospikeException ae)
-		{
-			listener.OnFailure(ae);
-		}
-
-	}
-
 	sealed class AsyncBatchExistsSequenceCommand : AsyncBatchCommand
 	{
 		private readonly Key[] keys;
@@ -702,47 +458,6 @@ namespace Aerospike.Client
 	//-------------------------------------------------------
 	// OperateList
 	//-------------------------------------------------------
-
-	public sealed class AsyncBatchOperateListExecutor : AsyncBatchExecutor
-	{
-		internal readonly BatchOperateListListener listener;
-		internal readonly List<BatchRecord> records;
-
-		public AsyncBatchOperateListExecutor
-		(
-			AsyncCluster cluster,
-			BatchPolicy policy,
-			BatchOperateListListener listener,
-			List<BatchRecord> records,
-			IConfigProvider configProvider
-		) : base(cluster, true)
-		{
-			this.listener = listener;
-			this.records = records;
-
-			// Create commands.
-			List<BatchNode> batchNodes = BatchNode.GenerateList(cluster, policy, records, this);
-			AsyncBatchCommand[] tasks = new AsyncBatchCommand[batchNodes.Count];
-			int count = 0;
-
-			foreach (BatchNode batchNode in batchNodes)
-			{
-				tasks[count++] = new AsyncBatchOperateListCommand(this, cluster, batchNode, policy, records, configProvider);
-			}
-			this.commands = tasks;
-		}
-
-		protected internal override void OnSuccess()
-		{
-			listener.OnSuccess(records, GetStatus());
-		}
-
-		protected internal override void OnFailure(AerospikeException ae)
-		{
-			listener.OnFailure(ae);
-		}
-	}
-
 	sealed class AsyncBatchOperateListCommand : AsyncBatchCommand
 	{
 		internal readonly List<BatchRecord> records;
@@ -776,7 +491,8 @@ namespace Aerospike.Client
 
 		protected internal override void WriteBuffer()
 		{
-			SetBatchOperate(batchPolicy, records, batch, configProvider);
+			SetBatchOperate(batchPolicy, cluster.client.BatchWritePolicyDefault, cluster.client.BatchUDFPolicyDefault, 
+				cluster.client.BatchDeletePolicyDefault, records, batch, configProvider);
 		}
 
 		protected internal override void ParseRow()
@@ -854,44 +570,6 @@ namespace Aerospike.Client
 	// OperateSequence
 	//-------------------------------------------------------
 
-	public sealed class AsyncBatchOperateSequenceExecutor : AsyncBatchExecutor
-	{
-		internal readonly BatchRecordSequenceListener listener;
-
-		public AsyncBatchOperateSequenceExecutor
-		(
-			AsyncCluster cluster,
-			BatchPolicy policy,
-			BatchRecordSequenceListener listener,
-			List<BatchRecord> records,
-			IConfigProvider configProvider
-		) : base(cluster, true)
-		{
-			this.listener = listener;
-
-			// Create commands.
-			List<BatchNode> batchNodes = BatchNode.GenerateList(cluster, policy, records, this);
-			AsyncBatchCommand[] tasks = new AsyncBatchCommand[batchNodes.Count];
-			int count = 0;
-
-			foreach (BatchNode batchNode in batchNodes)
-			{
-				tasks[count++] = new AsyncBatchOperateSequenceCommand(this, cluster, batchNode, policy, listener, records, configProvider);
-			}
-			this.commands = tasks;
-		}
-
-		protected internal override void OnSuccess()
-		{
-			listener.OnSuccess();
-		}
-
-		protected internal override void OnFailure(AerospikeException ae)
-		{
-			listener.OnFailure(ae);
-		}
-	}
-
 	sealed class AsyncBatchOperateSequenceCommand : AsyncBatchCommand
 	{
 		internal readonly BatchRecordSequenceListener listener;
@@ -929,7 +607,8 @@ namespace Aerospike.Client
 
 		protected internal override void WriteBuffer()
 		{
-			SetBatchOperate(batchPolicy, records, batch, configProvider);
+			SetBatchOperate(batchPolicy, cluster.client.BatchWritePolicyDefault, cluster.client.BatchUDFPolicyDefault,
+				cluster.client.BatchDeletePolicyDefault, records, batch, configProvider);
 		}
 
 		protected internal override void ParseRow()
@@ -1010,52 +689,6 @@ namespace Aerospike.Client
 	//-------------------------------------------------------
 	// OperateRecordArray
 	//-------------------------------------------------------
-
-	public sealed class AsyncBatchOperateRecordArrayExecutor : AsyncBatchExecutor
-	{
-		internal readonly BatchRecordArrayListener listener;
-		internal readonly BatchRecord[] records;
-
-		public AsyncBatchOperateRecordArrayExecutor
-		(
-			AsyncCluster cluster,
-			BatchPolicy policy,
-			BatchRecordArrayListener listener,
-			Key[] keys,
-			Operation[] ops,
-			BatchAttr attr
-		) : base(cluster, true)
-		{
-			this.listener = listener;
-			this.records = new BatchRecord[keys.Length];
-
-			for (int i = 0; i < keys.Length; i++)
-			{
-				this.records[i] = new BatchRecord(keys[i], attr.hasWrite);
-			}
-
-			// Create commands.
-			List<BatchNode> batchNodes = BatchNode.GenerateList(cluster, policy, keys, records, attr.hasWrite, this);
-			AsyncBatchCommand[] tasks = new AsyncBatchCommand[batchNodes.Count];
-			int count = 0;
-
-			foreach (BatchNode batchNode in batchNodes)
-			{
-				tasks[count++] = new AsyncBatchOperateRecordArrayCommand(this, cluster, batchNode, policy, keys, ops, records, attr);
-			}
-			this.commands = tasks;
-		}
-
-		protected internal override void OnSuccess()
-		{
-			listener.OnSuccess(records, GetStatus());
-		}
-
-		protected internal override void OnFailure(AerospikeException ae)
-		{
-			listener.OnFailure(records, ae);
-		}
-	}
 
 	sealed class AsyncBatchOperateRecordArrayCommand : AsyncBatchCommand
 	{
@@ -1156,55 +789,6 @@ namespace Aerospike.Client
 	//-------------------------------------------------------
 	// OperateRecordSequence
 	//-------------------------------------------------------
-
-	public sealed class AsyncBatchOperateRecordSequenceExecutor : AsyncBatchExecutor
-	{
-		internal readonly BatchRecordSequenceListener listener;
-		private readonly bool[] sent;
-
-		public AsyncBatchOperateRecordSequenceExecutor
-		(
-			AsyncCluster cluster,
-			BatchPolicy policy,
-			BatchRecordSequenceListener listener,
-			Key[] keys,
-			Operation[] ops,
-			BatchAttr attr
-		) : base(cluster, true)
-		{
-			this.listener = listener;
-			this.sent = new bool[keys.Length];
-
-			// Create commands.
-			List<BatchNode> batchNodes = BatchNode.GenerateList(cluster, policy, keys, null, attr.hasWrite, this);
-			AsyncBatchCommand[] tasks = new AsyncBatchCommand[batchNodes.Count];
-			int count = 0;
-
-			foreach (BatchNode batchNode in batchNodes)
-			{
-				tasks[count++] = new AsyncBatchOperateRecordSequenceCommand(this, cluster, batchNode, policy, keys, ops, sent, listener, attr);
-			}
-			this.commands = tasks;
-		}
-
-		public override void BatchKeyError(Cluster cluster, Key key, int index, AerospikeException ae, bool inDoubt, bool hasWrite)
-		{
-			BatchRecord record = new(key, null, ae.Result, inDoubt, hasWrite);
-			sent[index] = true;
-			AsyncBatch.OnRecord(cluster, listener, record, index);
-		}
-
-		protected internal override void OnSuccess()
-		{
-			listener.OnSuccess();
-		}
-
-		protected internal override void OnFailure(AerospikeException ae)
-		{
-			listener.OnFailure(ae);
-		}
-	}
-
 	sealed class AsyncBatchOperateRecordSequenceCommand : AsyncBatchCommand
 	{
 		internal readonly Key[] keys;
@@ -1312,55 +896,6 @@ namespace Aerospike.Client
 	//-------------------------------------------------------
 	// UDFArray
 	//-------------------------------------------------------
-
-	public sealed class AsyncBatchUDFArrayExecutor : AsyncBatchExecutor
-	{
-		internal readonly BatchRecordArrayListener listener;
-		internal readonly BatchRecord[] recordArray;
-
-		public AsyncBatchUDFArrayExecutor
-		(
-			AsyncCluster cluster,
-			BatchPolicy policy,
-			BatchRecordArrayListener listener,
-			Key[] keys,
-			string packageName,
-			string functionName,
-			byte[] argBytes,
-			BatchAttr attr
-		) : base(cluster, true)
-		{
-			this.listener = listener;
-			this.recordArray = new BatchRecord[keys.Length];
-
-			for (int i = 0; i < keys.Length; i++)
-			{
-				this.recordArray[i] = new BatchRecord(keys[i], attr.hasWrite);
-			}
-
-			// Create commands.
-			List<BatchNode> batchNodes = BatchNode.GenerateList(cluster, policy, keys, recordArray, attr.hasWrite, this);
-			AsyncBatchCommand[] tasks = new AsyncBatchCommand[batchNodes.Count];
-			int count = 0;
-
-			foreach (BatchNode batchNode in batchNodes)
-			{
-				tasks[count++] = new AsyncBatchUDFArrayCommand(this, cluster, batchNode, policy, keys, packageName, functionName, argBytes, recordArray, attr);
-			}
-			this.commands = tasks;
-		}
-
-		protected internal override void OnSuccess()
-		{
-			listener.OnSuccess(recordArray, GetStatus());
-		}
-
-		protected internal override void OnFailure(AerospikeException ae)
-		{
-			listener.OnFailure(recordArray, ae);
-		}
-	}
-
 	public sealed class AsyncBatchUDFArrayCommand : AsyncBatchCommand
 	{
 		internal readonly Key[] keys;
@@ -1483,57 +1018,6 @@ namespace Aerospike.Client
 	//-------------------------------------------------------
 	// UDFSequence
 	//-------------------------------------------------------
-
-	public sealed class AsyncBatchUDFSequenceExecutor : AsyncBatchExecutor
-	{
-		internal readonly BatchRecordSequenceListener listener;
-		private readonly bool[] sent;
-
-		public AsyncBatchUDFSequenceExecutor
-		(
-			AsyncCluster cluster,
-			BatchPolicy policy,
-			BatchRecordSequenceListener listener,
-			Key[] keys,
-			string packageName,
-			string functionName,
-			byte[] argBytes,
-			BatchAttr attr
-		) : base(cluster, true)
-		{
-			this.listener = listener;
-			this.sent = new bool[keys.Length];
-
-			// Create commands.
-			List<BatchNode> batchNodes = BatchNode.GenerateList(cluster, policy, keys, null, attr.hasWrite, this);
-			AsyncBatchCommand[] tasks = new AsyncBatchCommand[batchNodes.Count];
-			int count = 0;
-
-			foreach (BatchNode batchNode in batchNodes)
-			{
-				tasks[count++] = new AsyncBatchUDFSequenceCommand(this, cluster, batchNode, policy, keys, packageName, functionName, argBytes, sent, listener, attr);
-			}
-			this.commands = tasks;
-		}
-
-		public override void BatchKeyError(Cluster cluster, Key key, int index, AerospikeException ae, bool inDoubt, bool hasWrite)
-		{
-			BatchRecord record = new(key, null, ae.Result, inDoubt, hasWrite);
-			sent[index] = true;
-			AsyncBatch.OnRecord(cluster, listener, record, index);
-		}
-
-		protected internal override void OnSuccess()
-		{
-			listener.OnSuccess();
-		}
-
-		protected internal override void OnFailure(AerospikeException ae)
-		{
-			listener.OnFailure(ae);
-		}
-	}
-
 	sealed class AsyncBatchUDFSequenceCommand : AsyncBatchCommand
 	{
 		internal readonly Key[] keys;
@@ -1664,48 +1148,6 @@ namespace Aerospike.Client
 	//-------------------------------------------------------
 	// Transaction
 	//-------------------------------------------------------
-
-	public sealed class AsyncBatchTxnVerifyExecutor : AsyncBatchExecutor
-	{
-		internal readonly BatchRecordArrayListener listener;
-		private readonly BatchRecord[] records;
-
-		public AsyncBatchTxnVerifyExecutor
-		(
-			AsyncCluster cluster,
-			BatchPolicy policy,
-			BatchRecordArrayListener listener,
-			Key[] keys,
-			long?[] versions,
-			BatchRecord[] records
-		) : base(cluster, true)
-		{
-			this.listener = listener;
-			this.records = records;
-
-			// Create commands.
-			List<BatchNode> batchNodes = BatchNode.GenerateList(cluster, policy, keys, records, false, this);
-			AsyncBatchCommand[] tasks = new AsyncBatchCommand[batchNodes.Count];
-			int count = 0;
-
-			foreach (BatchNode batchNode in batchNodes)
-			{
-				tasks[count++] = new AsyncBatchTxnVerifyCommand(this, cluster, batchNode, policy, keys, versions, records);
-			}
-			this.commands = tasks;
-		}
-
-		protected internal override void OnSuccess()
-		{
-			listener.OnSuccess(records, GetStatus());
-		}
-
-		protected internal override void OnFailure(AerospikeException ae)
-		{
-			listener.OnFailure(records, ae);
-		}
-	}
-
 	sealed class AsyncBatchTxnVerifyCommand : AsyncBatchCommand
 	{
 		private readonly Key[] keys;
@@ -1769,48 +1211,6 @@ namespace Aerospike.Client
 		internal override List<BatchNode> GenerateBatchNodes()
 		{
 			return BatchNode.GenerateList(cluster, batchPolicy, keys, sequenceAP, sequenceSC, batch, false, parent);
-		}
-	}
-
-	public sealed class AsyncBatchTxnRollExecutor : AsyncBatchExecutor
-	{
-		internal readonly BatchRecordArrayListener listener;
-		private readonly BatchRecord[] records;
-
-		public AsyncBatchTxnRollExecutor
-		(
-			AsyncCluster cluster,
-			BatchPolicy policy,
-			BatchRecordArrayListener listener,
-			Txn txn,
-			Key[] keys,
-			BatchRecord[] records,
-			BatchAttr attr
-		) : base(cluster, true)
-		{
-			this.listener = listener;
-			this.records = records;
-
-			// Create commands.
-			List<BatchNode> batchNodes = BatchNode.GenerateList(cluster, policy, keys, records, true, this);
-			AsyncBatchCommand[] tasks = new AsyncBatchCommand[batchNodes.Count];
-			int count = 0;
-
-			foreach (BatchNode batchNode in batchNodes)
-			{
-				tasks[count++] = new AsyncBatchTxnRollCommand(this, cluster, batchNode, policy, txn, keys, records, attr);
-			}
-			this.commands = tasks;
-		}
-
-		protected internal override void OnSuccess()
-		{
-			listener.OnSuccess(records, GetStatus());
-		}
-
-		protected internal override void OnFailure(AerospikeException ae)
-		{
-			listener.OnFailure(records, ae);
 		}
 	}
 
@@ -1881,138 +1281,6 @@ namespace Aerospike.Client
 		{
 			return BatchNode.GenerateList(cluster, batchPolicy, keys, sequenceAP, sequenceSC, batch, true, parent);
 		}
-	}
-
-	//-------------------------------------------------------
-	// Batch Base Executor
-	//-------------------------------------------------------
-
-	public abstract class AsyncBatchExecutor : IBatchStatus
-	{
-		private AerospikeException exception;
-		private int max;
-		private int count;
-		private readonly bool hasResultCode;
-		private bool error;
-		public AsyncBatchCommand[] commands;
-		public AsyncCluster cluster;
-
-		public AsyncBatchExecutor(AsyncCluster cluster, bool hasResultCode)
-		{
-			this.hasResultCode = hasResultCode;
-			this.cluster = cluster;
-			cluster.AddCommandCount();
-		}
-
-		public void Execute()
-		{
-			Execute(commands);
-		}
-
-		public void Execute(AsyncBatchCommand[] commands)
-		{
-			max = commands.Length;
-
-			foreach (AsyncBatchCommand command in commands)
-			{
-				command.Execute();
-			}
-		}
-
-		public void Retry(AsyncMultiCommand[] commands)
-		{
-			lock (this)
-			{
-				// Adjust max for new commands minus failed command.
-				max += commands.Length - 1;
-			}
-
-			foreach (AsyncBatchCommand command in commands.Cast<AsyncBatchCommand>())
-			{
-				command.ExecuteBatchRetry();
-			}
-		}
-
-		public void ChildSuccess(AsyncNode node)
-		{
-			bool complete;
-
-			lock (this)
-			{
-				complete = ++count == max;
-			}
-
-			if (complete)
-			{
-				Finish();
-			}
-		}
-
-		public void ChildFailure(AerospikeException ae)
-		{
-			bool complete;
-
-			lock (this)
-			{
-				if (exception == null)
-				{
-					exception = ae;
-				}
-				complete = ++count == max;
-			}
-
-			if (complete)
-			{
-				Finish();
-			}
-		}
-
-		private void Finish()
-		{
-			if (exception == null)
-			{
-				OnSuccess();
-			}
-			else
-			{
-				OnFailure(exception);
-			}
-		}
-
-		public virtual void BatchKeyError(Cluster cluster, Key key, int index, AerospikeException ae, bool inDoubt, bool hasWrite)
-		{
-			// Only used in executors with sequence listeners.
-			// These executors will override this method.
-		}
-
-		public void BatchKeyError(AerospikeException ae)
-		{
-			error = true;
-
-			if (!hasResultCode)
-			{
-				// Legacy batch read commands that do not store a key specific resultCode.
-				// Store exception which will be passed to the listener on batch completion.
-				if (exception == null)
-				{
-					exception = ae;
-				}
-			}
-		}
-
-		public void SetRowError()
-		{
-			// Indicate that a key specific error occurred.
-			error = true;
-		}
-
-		public bool GetStatus()
-		{
-			return !error;
-		}
-
-		protected internal abstract void OnSuccess();
-		protected internal abstract void OnFailure(AerospikeException ae);
 	}
 
 	//-------------------------------------------------------
@@ -2128,7 +1396,7 @@ namespace Aerospike.Client
 
 			// Close original command.
 			base.ReleaseBuffer();
-			
+
 			// Execute new commands.
 			AsyncBatchCommand[] cmds = new AsyncBatchCommand[batchNodes.Count];
 			int count = 0;
@@ -2176,6 +1444,18 @@ namespace Aerospike.Client
 			try
 			{
 				listener.OnRecord(record, index);
+			}
+			catch (Exception e)
+			{
+				Log.Error(cluster.context, "Unexpected exception from OnRecord(): " + Util.GetErrorMessage(e));
+			}
+		}
+
+		internal static void OnRecord(Cluster cluster, RecordSequenceListener listener, Key key, Record record)
+		{
+			try
+			{
+				listener.OnRecord(key, record);
 			}
 			catch (Exception e)
 			{

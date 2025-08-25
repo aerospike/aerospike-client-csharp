@@ -254,14 +254,24 @@ namespace Aerospike.Client
 
 			BatchStatus status = new(true);
 			List<BatchNode> bns = BatchNode.GenerateList(cluster, verifyPolicy, keys, records, false, status);
-			BatchCommand[] commands = new BatchCommand[bns.Count];
+			IBatchCommand[] commands = new IBatchCommand[bns.Count];
 
 			int count = 0;
 
 			foreach (BatchNode bn in bns)
 			{
-				commands[count++] = new BatchTxnVerify(
-					cluster, bn, verifyPolicy, keys, versions, records, status);
+				if (bn.offsetsSize == 1)
+				{
+					int i = bn.offsets[0];
+					commands[count++] = new BatchSingleTxnVerify(
+						cluster, verifyPolicy, versions[i].Value, records[i], status, bn.node);
+				}
+				else
+				{
+					commands[count++] = new BatchTxnVerify(
+						cluster, bn, verifyPolicy, keys, versions, records, status);
+
+				}
 			}
 
 			BatchExecutor.Execute(cluster, verifyPolicy, commands, status);
@@ -311,14 +321,23 @@ namespace Aerospike.Client
 
 			// generate() requires a null transaction instance.
 			List<BatchNode> bns = BatchNode.GenerateList(cluster, rollPolicy, keys, records, true, status);
-			BatchCommand[] commands = new BatchCommand[bns.Count];
+			IBatchCommand[] commands = new IBatchCommand[bns.Count];
 
 			int count = 0;
 
 			foreach (BatchNode bn in bns)
 			{
-				commands[count++] = new BatchTxnRoll(
-					cluster, bn, rollPolicy, txn, keys, records, attr, status);
+				if (bn.offsetsSize == 1)
+				{
+					int i = bn.offsets[0];
+					commands[count++] = new BatchSingleTxnRoll(
+						cluster, rollPolicy, txn, records[i], status, bn.node, txnAttr);
+				}
+				else
+				{
+					commands[count++] = new BatchTxnRoll(
+						cluster, bn, rollPolicy, txn, keys, records, attr, status);
+				}
 			}
 			BatchExecutor.Execute(cluster, rollPolicy, commands, status);
 
