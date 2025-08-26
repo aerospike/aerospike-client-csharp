@@ -221,8 +221,10 @@ namespace Aerospike.Client
 
 				case Replica.MASTER:
 				case Replica.MASTER_PROLES:
-				case Replica.RANDOM:
 					return GetMasterNode(cluster);
+
+				case Replica.RANDOM:
+					return cluster.GetRandomNode();
 			}
 		}
 
