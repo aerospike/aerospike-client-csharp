@@ -455,6 +455,10 @@ namespace Aerospike.Client
 				SetInDoubt();
 				status.SetException(e);
 			}
+			finally
+			{
+				Parent.OnComplete();
+			}
 		}
 
 		protected internal override bool IsWrite()
