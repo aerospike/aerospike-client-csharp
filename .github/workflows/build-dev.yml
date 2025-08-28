@@ -56,7 +56,7 @@ jobs:
       with:
         sgKey: ${{ secrets.SG_KEY }}
 
-  sign-and-upload:
+  prep-for-sign:
     needs: build
     runs-on: ubuntu-latest
     steps:
@@ -75,33 +75,28 @@ jobs:
       run: |
         mkdir ${GITHUB_WORKSPACE}/sign
         mv ${GITHUB_WORKSPACE}/artifacts/Aerospike.Client*.nupkg ${GITHUB_WORKSPACE}/sign
-    - name: Sign nuget package
-      uses: aerospike/shared-workflows/.github/workflows/reusable_sign-artifacts.yaml@main
-      with:
-        artifact-glob: ${GITHUB_WORKSPACE}/sign/*.nupkg
-        output_dir: "${GITHUB_WORKSPACE}/artifacts"
-        enable-nuget-signing: true
-      secrets:
-        es-username: ${{ secrets.ES_USERNAME }}
-        es-password: ${{ secrets.ES_PASSWORD }}
-        credential-id: ${{ secrets.CREDENTIAL_ID }}
-        es-totp-secret: ${{ secrets.ES_TOTP_SECRET }}
-    #- name: Sign nuget package
-    #  uses: sslcom/esigner-codesign@develop
-    # with:
-    #      command: batch_sign
-    #      username: ${{ secrets.ES_USERNAME }}
-    #      password: ${{ secrets.ES_PASSWORD }}
-    #      totp_secret: ${{ secrets.ES_TOTP_SECRET }}
-    #      credential_id: ${{ secrets.CREDENTIAL_ID }}
-    #      dir_path: "${GITHUB_WORKSPACE}/sign"
-    #     output_path: "${GITHUB_WORKSPACE}/artifacts"
-    #      malware_block: true
+  
+  sign:
+    needs: prep-for-sign
+    uses: aerospike/shared-workflows/.github/workflows/reusable_sign-artifacts.yaml@main
+    with:
+      artifact-glob: ${GITHUB_WORKSPACE}/sign/*.nupkg
+      output_dir: "${GITHUB_WORKSPACE}/artifacts"
+      enable-nuget-signing: true
+    secrets:
+      es-username: ${{ secrets.ES_USERNAME }}
+      es-password: ${{ secrets.ES_PASSWORD }}
+      credential-id: ${{ secrets.CREDENTIAL_ID }}
+      es-totp-secret: ${{ secrets.ES_TOTP_SECRET }}
+
+  upload:
+    runs-on: ubuntu-latest
+    steps:
     - name: Upload to JFrog
       uses: ./.github/actions/upload-to-jfrog
-  
+
   test:
-    needs: sign-and-upload
+    needs: upload
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
