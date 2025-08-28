@@ -87,7 +87,7 @@ jobs:
       artifact-name: artifacts
       enable-nuget-signing: true
     secrets:
-      gpg-private-key: ${{ secrets.GPG_PRIVATE_KEY }}
+      gpg-private-key: ${{ secrets.GPG_SECRET_KEY }}
       gpg-public-key: ${{ secrets.GPG_PUBLIC_KEY }}
       gpg-key-pass: ${{ secrets.GPG_KEY_PASS }}
       es-username: ${{ secrets.ES_USERNAME }}
