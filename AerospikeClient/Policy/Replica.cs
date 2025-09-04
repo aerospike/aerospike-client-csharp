@@ -1,5 +1,5 @@
 ﻿/* 
- * Copyright 2012-2020 Aerospike, Inc.
+ * Copyright 2012-2025 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -52,10 +52,10 @@ namespace Aerospike.Client
 		PREFER_RACK,
 
 		/// <summary>
-		/// Distribute reads across all nodes in cluster in round-robin fashion.
+		/// Distribute reads and writes across all nodes in cluster in round-robin fashion.
 		/// Writes always use node containing key's master partition.
 		/// <para>
-		/// This option is useful when the replication factor equals the number
+		/// This option is useful on reads when the replication factor equals the number
 		/// of nodes in the cluster and the overhead of requesting proles is not desired.
 		/// </para>
 		/// </summary>

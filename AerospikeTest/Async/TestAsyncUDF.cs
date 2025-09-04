@@ -1,5 +1,5 @@
 ﻿/* 
- * Copyright 2012-2023 Aerospike, Inc.
+ * Copyright 2012-2025 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -15,7 +15,6 @@
  * the License.
  */
 using Aerospike.Client;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System.Reflection;
 
 namespace Aerospike.Test
@@ -84,7 +83,7 @@ namespace Aerospike.Test
 			Key[] keys =
 			[
 				new Key(SuiteHelpers.ns, SuiteHelpers.set, 20000),
-				new Key(SuiteHelpers.ns, SuiteHelpers.set, 20001)
+				new Key(SuiteHelpers.ns, SuiteHelpers.set, 20003)
 			];
 
 			client.Delete(null, null, keys);
@@ -120,6 +119,61 @@ namespace Aerospike.Test
 			}
 
 			public void OnFailure(BatchRecord[] records, AerospikeException ae)
+			{
+				parent.SetError(ae);
+				parent.NotifyCompleted();
+			}
+		}
+
+		[TestMethod]
+		public void AsyncBatchUDFSeq()
+		{
+			Key[] keys =
+			[
+				new Key(SuiteHelpers.ns, SuiteHelpers.set, 20000),
+				new Key(SuiteHelpers.ns, SuiteHelpers.set, 20003)
+			];
+
+			client.Delete(null, null, keys);
+
+			client.Execute(null, null, new BatchUDFSeqHandler(this), keys, "record_example", "writeBin", Value.Get("B5"), Value.Get("value5"));
+			WaitTillComplete();
+		}
+
+		private class BatchUDFSeqHandler(TestAsyncUDF parent) : BatchRecordSequenceListener
+		{
+			int count;
+
+			public void OnRecord(BatchRecord record, int index)
+			{
+				count++;
+
+				if (!parent.AssertTrue(index >= 0 && index <= 1))
+				{
+					parent.NotifyCompleted();
+					return;
+				}
+
+				if (!parent.AssertTrue(record.resultCode == ResultCode.OK))
+				{
+					parent.NotifyCompleted();
+					return;
+				}
+
+				if (!parent.AssertNotNull(record.record))
+				{
+					parent.NotifyCompleted();
+					return;
+				}
+			}
+
+			public void OnSuccess()
+			{
+				parent.AssertEquals(2, count);
+				parent.NotifyCompleted();
+			}
+
+			public void OnFailure(AerospikeException ae)
 			{
 				parent.SetError(ae);
 				parent.NotifyCompleted();

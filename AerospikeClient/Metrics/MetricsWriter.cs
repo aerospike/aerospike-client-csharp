@@ -164,7 +164,7 @@ namespace Aerospike.Client
 			sb.Append(',');
 			sb.Append("c#");
 			sb.Append(',');
-			sb.Append(cluster.client.version);
+			sb.Append(cluster.client.clientVersion);
 			sb.Append(',');
 			if (cluster.appId != null)
 			{

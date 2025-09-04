@@ -46,7 +46,7 @@ namespace Aerospike.Client
 
 		protected internal Cluster cluster;
 
-		protected internal string version;
+		protected internal string clientVersion;
 
 		protected internal ClientPolicy clientPolicy;
 
@@ -251,8 +251,8 @@ namespace Aerospike.Client
 				MergeDefaultPoliciesWithConfig();
 			}
 
-			version = Assembly.GetExecutingAssembly().GetName().Version.ToString();
-			version ??= "development";
+			clientVersion = Assembly.GetExecutingAssembly().GetName().Version.ToString();
+			clientVersion ??= "development";
 
 			cluster = new Cluster(this, policy, configPath, hosts);
 			cluster.UpdateClusterConfig(true);
@@ -853,12 +853,22 @@ namespace Aerospike.Client
 			{
 				BatchStatus status = new BatchStatus(true);
 				List<BatchNode> batchNodes = BatchNode.GenerateList(cluster, batchPolicy, keys, records, attr.hasWrite, status);
-				BatchCommand[] commands = new BatchCommand[batchNodes.Count];
+				IBatchCommand[] commands = new IBatchCommand[batchNodes.Count];
 				int count = 0;
 
-				foreach (BatchNode batchNode in batchNodes)
+				foreach (BatchNode bn in batchNodes)
 				{
-					commands[count++] = new BatchOperateArrayCommand(cluster, batchNode, batchPolicy, keys, null, records, attr, status);
+					if (bn.offsetsSize == 1)
+					{
+						int i = bn.offsets[0];
+						commands[count++] = new BatchSingleDelete(
+							cluster, batchPolicy, attr, records[i], status, bn.node);
+					}
+					else
+					{
+						commands[count++] = new BatchOperateArrayCommand(
+							cluster, bn, batchPolicy, keys, null, records, attr, status);
+					}
 				}
 
 				BatchExecutor.Execute(cluster, batchPolicy, commands, status);
@@ -1057,18 +1067,29 @@ namespace Aerospike.Client
 					// Send all requests to a single random node.
 					Node node = cluster.GetRandomNode();
 					BatchNode batchNode = new BatchNode(node, keys);
-					BatchCommand command = new BatchExistsArrayCommand(cluster, batchNode, policy, keys, existsArray, status);
+					IBatchCommand command = new BatchExistsArrayCommand(
+						cluster, batchNode, policy, keys, existsArray, status);
 					BatchExecutor.Execute(command, status);
 					return existsArray;
 				}
 
 				List<BatchNode> batchNodes = BatchNode.GenerateList(cluster, policy, keys, null, false, status);
-				BatchCommand[] commands = new BatchCommand[batchNodes.Count];
+				IBatchCommand[] commands = new IBatchCommand[batchNodes.Count];
 				int count = 0;
 
-				foreach (BatchNode batchNode in batchNodes)
+				foreach (BatchNode bn in batchNodes)
 				{
-					commands[count++] = new BatchExistsArrayCommand(cluster, batchNode, policy, keys, existsArray, status);
+					if (bn.offsetsSize == 1)
+					{
+						int i = bn.offsets[0];
+						commands[count++] = new BatchSingleExists(
+							cluster, policy, keys[i], existsArray, i, status, bn.node);
+					}
+					else
+					{
+						commands[count++] = new BatchExistsArrayCommand(
+							cluster, bn, policy, keys, existsArray, status);
+					}
 				}
 				BatchExecutor.Execute(cluster, policy, commands, status);
 				return existsArray;
@@ -1197,12 +1218,20 @@ namespace Aerospike.Client
 
 			BatchStatus status = new BatchStatus(true);
 			List<BatchNode> batchNodes = BatchNode.GenerateList(cluster, policy, records, status);
-			BatchCommand[] commands = new BatchCommand[batchNodes.Count];
+			IBatchCommand[] commands = new IBatchCommand[batchNodes.Count];
 			int count = 0;
 
-			foreach (BatchNode batchNode in batchNodes)
+			foreach (BatchNode bn in batchNodes)
 			{
-				commands[count++] = new BatchReadListCommand(cluster, batchNode, policy, records, status);
+				if (bn.offsetsSize == 1)
+				{
+					int i = bn.offsets[0];
+					commands[count++] = new BatchSingleReadRecord(cluster, policy, records[i], status, bn.node);
+				}
+				else
+				{
+					commands[count++] = new BatchReadListCommand(cluster, bn, policy, records, status);
+				}
 			}
 			BatchExecutor.Execute(cluster, policy, commands, status);
 			return status.GetStatus();
@@ -1245,18 +1274,31 @@ namespace Aerospike.Client
 					// Send all requests to a single random node.
 					Node node = cluster.GetRandomNode();
 					BatchNode batchNode = new BatchNode(node, keys);
-					BatchCommand command = new BatchGetArrayCommand(cluster, batchNode, policy, keys, null, null, records, Command.INFO1_READ | Command.INFO1_GET_ALL, false, status);
+					IBatchCommand command = new BatchGetArrayCommand(
+						cluster, batchNode, policy, keys, null, null, records, 
+						Command.INFO1_READ | Command.INFO1_GET_ALL, false, status);
 					BatchExecutor.Execute(command, status);
 					return records;
 				}
 
 				List<BatchNode> batchNodes = BatchNode.GenerateList(cluster, policy, keys, null, false, status);
-				BatchCommand[] commands = new BatchCommand[batchNodes.Count];
+				IBatchCommand[] commands = new IBatchCommand[batchNodes.Count];
 				int count = 0;
 
-				foreach (BatchNode batchNode in batchNodes)
+				foreach (BatchNode bn in batchNodes)
 				{
-					commands[count++] = new BatchGetArrayCommand(cluster, batchNode, policy, keys, null, null, records, Command.INFO1_READ | Command.INFO1_GET_ALL, false, status);
+					if (bn.offsetsSize == 1)
+					{
+						int i = bn.offsets[0];
+						commands[count++] = new BatchSingleRead(
+							cluster, policy, keys[i], null, records, i, status, bn.node, false);
+					}
+					else
+					{
+						commands[count++] = new BatchGetArrayCommand(
+							cluster, bn, policy, keys, null, null, records, Command.INFO1_READ | Command.INFO1_GET_ALL, 
+							false, status);
+					}
 				}
 				BatchExecutor.Execute(cluster, policy, commands, status);
 				return records;
@@ -1296,6 +1338,9 @@ namespace Aerospike.Client
 
 			Record[] records = new Record[keys.Length];
 
+			int readAttr = (binNames == null || binNames.Length == 0) ?
+				Command.INFO1_READ | Command.INFO1_GET_ALL : Command.INFO1_READ;
+
 			try
 			{
 				BatchStatus status = new BatchStatus(false);
@@ -1305,18 +1350,29 @@ namespace Aerospike.Client
 					// Send all requests to a single random node.
 					Node node = cluster.GetRandomNode();
 					BatchNode batchNode = new BatchNode(node, keys);
-					BatchCommand command = new BatchGetArrayCommand(cluster, batchNode, policy, keys, binNames, null, records, Command.INFO1_READ, false, status);
+					IBatchCommand command = new BatchGetArrayCommand(
+						cluster, batchNode, policy, keys, binNames, null, records, readAttr, false, status);
 					BatchExecutor.Execute(command, status);
 					return records;
 				}
 
 				List<BatchNode> batchNodes = BatchNode.GenerateList(cluster, policy, keys, null, false, status);
-				BatchCommand[] commands = new BatchCommand[batchNodes.Count];
+				IBatchCommand[] commands = new IBatchCommand[batchNodes.Count];
 				int count = 0;
 
-				foreach (BatchNode batchNode in batchNodes)
+				foreach (BatchNode bn in batchNodes)
 				{
-					commands[count++] = new BatchGetArrayCommand(cluster, batchNode, policy, keys, binNames, null, records, Command.INFO1_READ, false, status);
+					if (bn.offsetsSize == 1)
+					{
+						int i = bn.offsets[0];
+						commands[count++] = new BatchSingleRead(
+							cluster, policy, keys[i], binNames, records, i, status, bn.node, false);
+					}
+					else
+					{
+						commands[count++] = new BatchGetArrayCommand(
+							cluster, bn, policy, keys, binNames, null, records, readAttr, false, status);
+					}
 				}
 				BatchExecutor.Execute(cluster, policy, commands, status);
 				return records;
@@ -1365,18 +1421,29 @@ namespace Aerospike.Client
 					// Send all requests to a single random node.
 					Node node = cluster.GetRandomNode();
 					BatchNode batchNode = new BatchNode(node, keys);
-					BatchCommand command = new BatchGetArrayCommand(cluster, batchNode, policy, keys, null, ops, records, Command.INFO1_READ, true, status);
+					IBatchCommand command = new BatchGetArrayCommand(
+						cluster, batchNode, policy, keys, null, ops, records, Command.INFO1_READ, true, status);
 					BatchExecutor.Execute(command, status);
 					return records;
 				}
 
 				List<BatchNode> batchNodes = BatchNode.GenerateList(cluster, policy, keys, null, false, status);
-				BatchCommand[] commands = new BatchCommand[batchNodes.Count];
+				IBatchCommand[] commands = new IBatchCommand[batchNodes.Count];
 				int count = 0;
 
-				foreach (BatchNode batchNode in batchNodes)
+				foreach (BatchNode bn in batchNodes)
 				{
-					commands[count++] = new BatchGetArrayCommand(cluster, batchNode, policy, keys, null, ops, records, Command.INFO1_READ, true, status);
+					if (bn.offsetsSize == 1)
+					{
+						int i = bn.offsets[0];
+						commands[count++] = new BatchSingleOperateRead(
+							cluster, policy, keys[i], ops, records, i, status, bn.node);
+					}
+					else
+					{
+						commands[count++] = new BatchGetArrayCommand(
+							cluster, bn, policy, keys, null, ops, records, Command.INFO1_READ, true, status);
+					}
 				}
 				BatchExecutor.Execute(cluster, policy, commands, status);
 				return records;
@@ -1424,18 +1491,30 @@ namespace Aerospike.Client
 					// Send all requests to a single random node.
 					Node node = cluster.GetRandomNode();
 					BatchNode batchNode = new BatchNode(node, keys);
-					BatchCommand command = new BatchGetArrayCommand(cluster, batchNode, policy, keys, null, null, records, Command.INFO1_READ | Command.INFO1_NOBINDATA, false, status);
+					IBatchCommand command = new BatchGetArrayCommand(
+						cluster, batchNode, policy, keys, null, null, records, 
+						Command.INFO1_READ | Command.INFO1_NOBINDATA, false, status);
 					BatchExecutor.Execute(command, status);
 					return records;
 				}
 
 				List<BatchNode> batchNodes = BatchNode.GenerateList(cluster, policy, keys, null, false, status);
-				BatchCommand[] commands = new BatchCommand[batchNodes.Count];
+				IBatchCommand[] commands = new IBatchCommand[batchNodes.Count];
 				int count = 0;
 
-				foreach (BatchNode batchNode in batchNodes)
+				foreach (BatchNode bn in batchNodes)
 				{
-					commands[count++] = new BatchGetArrayCommand(cluster, batchNode, policy, keys, null, null, records, Command.INFO1_READ | Command.INFO1_NOBINDATA, false, status);
+					if (bn.offsetsSize == 1)
+					{
+						int i = bn.offsets[0];
+						commands[count++] = new BatchSingleReadHeader(
+							cluster, policy, keys[i], records, i, status, bn.node);
+					}
+					else
+					{
+						commands[count++] = new BatchGetArrayCommand(cluster, bn, policy, keys, null, null, records, 
+							Command.INFO1_READ | Command.INFO1_NOBINDATA, false, status);
+					}
 				}
 				BatchExecutor.Execute(cluster, policy, commands, status);
 				return records;
@@ -1589,12 +1668,107 @@ namespace Aerospike.Client
 
 			BatchStatus status = new BatchStatus(true);
 			List<BatchNode> batchNodes = BatchNode.GenerateList(cluster, policy, records, status);
-			BatchCommand[] commands = new BatchCommand[batchNodes.Count];
+			IBatchCommand[] commands = new IBatchCommand[batchNodes.Count];
+
+			BatchPolicy origBatchPolicy = new BatchPolicy(policy);
 			int count = 0;
 
-			foreach (BatchNode batchNode in batchNodes)
+			foreach (BatchNode bn in batchNodes)
 			{
-				commands[count++] = new BatchOperateListCommand(cluster, batchNode, policy, records, status, configProvider);
+				if (bn.offsetsSize == 1)
+				{
+					int i = bn.offsets[0];
+					BatchRecord record = records[i];
+					policy = origBatchPolicy;
+
+					switch (record.GetBatchType())
+					{
+						case BatchRecord.Type.BATCH_READ:
+							{
+								BatchRead br = (BatchRead)record;
+								commands[count++] = new BatchSingleReadRecord(cluster, policy, br, status, bn.node);
+								break;
+							}
+						case BatchRecord.Type.BATCH_WRITE:
+							{
+								BatchWrite bw = (BatchWrite)record;
+								BatchAttr attr = new();
+								BatchWritePolicy bwp;
+								if (bw.policy == null)
+								{
+									bwp = mergedBatchWritePolicyDefault;
+								}
+								else if (configProvider != null)
+								{
+									bwp = new BatchWritePolicy(bw.policy, configProvider);
+									policy.GraftBatchWriteConfig(configProvider);
+								}
+								else
+								{
+									bwp = bw.policy;
+								}
+								attr.SetWrite(bwp);
+								attr.AdjustWrite(bw.ops);
+								attr.SetOpSize(bw.ops);
+								commands[count++] = new BatchSingleOperateBatchRecord(
+									cluster, policy, bw.ops, attr, record, status, bn.node);
+								break;
+							}
+						case BatchRecord.Type.BATCH_UDF:
+							{
+								BatchUDF bu = (BatchUDF)record;
+								BatchAttr attr = new();
+								BatchUDFPolicy bup;
+								if (bu.policy == null)
+								{
+									bup = this.mergedBatchUDFPolicyDefault;
+								}
+								else if (configProvider != null)
+								{
+									bup = new BatchUDFPolicy(bu.policy, configProvider);
+								}
+								else
+								{
+									bup = bu.policy;
+								}
+								attr.SetUDF(bup);
+								commands[count++] = new BatchSingleUDF(
+									cluster, policy, bu.packageName, bu.functionName, bu.functionArgs, attr, record, 
+									status, bn.node);
+								break;
+							}
+						case BatchRecord.Type.BATCH_DELETE:
+							{
+								BatchDelete bd = (BatchDelete)record;
+								BatchAttr attr = new();
+								BatchDeletePolicy bdp;
+								if (bd.policy == null)
+								{
+									bdp = this.mergedBatchDeletePolicyDefault;
+								}
+								else if (configProvider != null)
+								{
+									bdp = new BatchDeletePolicy(bd.policy, configProvider);
+								}
+								else
+								{
+									bdp = bd.policy;
+								}
+								attr.SetDelete(bdp);
+								commands[count++] = new BatchSingleDelete(
+									cluster, policy, attr, record, status, bn.node);
+								break;
+							}
+						default:
+							{
+								throw new AerospikeException("Invalid batch type: " + record.GetBatchType());
+							}
+					}
+				}
+				else
+				{
+					commands[count++] = new BatchOperateListCommand(cluster, bn, policy, records, status, configProvider);
+				}
 			}
 			BatchExecutor.Execute(cluster, policy, commands, status);
 			return status.GetStatus();
@@ -1661,12 +1835,29 @@ namespace Aerospike.Client
 			{
 				BatchStatus status = new BatchStatus(true);
 				List<BatchNode> batchNodes = BatchNode.GenerateList(cluster, batchPolicy, keys, records, attr.hasWrite, status);
-				BatchCommand[] commands = new BatchCommand[batchNodes.Count];
+				IBatchCommand[] commands = new IBatchCommand[batchNodes.Count];
 				int count = 0;
+				bool opSizeSet = false;
 
-				foreach (BatchNode batchNode in batchNodes)
+				foreach (BatchNode bn in batchNodes)
 				{
-					commands[count++] = new BatchOperateArrayCommand(cluster, batchNode, batchPolicy, keys, ops, records, attr, status);
+					if (bn.offsetsSize == 1)
+					{
+						if (!opSizeSet)
+						{
+							attr.SetOpSize(ops);
+							opSizeSet = true;
+						}
+
+						int i = bn.offsets[0];
+						commands[count++] = new BatchSingleOperateBatchRecord(
+							cluster, batchPolicy, ops, attr, records[i], status, bn.node);
+					}
+					else
+					{
+						commands[count++] = new BatchOperateArrayCommand(
+							cluster, bn, batchPolicy, keys, ops, records, attr, status);
+					}
 				}
 
 				BatchExecutor.Execute(cluster, batchPolicy, commands, status);
@@ -2007,7 +2198,15 @@ namespace Aerospike.Client
 		/// <param name="functionName">user defined function</param>
 		/// <param name="functionArgs">arguments passed in to user defined function</param>
 		/// <exception cref="AerospikeException.BatchRecordArray">which contains results for keys that did complete</exception>
-		public BatchResults Execute(BatchPolicy batchPolicy, BatchUDFPolicy udfPolicy, Key[] keys, string packageName, string functionName, params Value[] functionArgs)
+		public BatchResults Execute
+		(
+			BatchPolicy batchPolicy, 
+			BatchUDFPolicy udfPolicy, 
+			Key[] keys, 
+			string packageName, 
+			string functionName, 
+			params Value[] functionArgs
+		)
 		{
 			if (keys.Length == 0)
 			{
@@ -2022,6 +2221,7 @@ namespace Aerospike.Client
 			{
 				batchPolicy = new BatchPolicy(batchPolicy, configProvider);
 			}
+
 			if (udfPolicy == null)
 			{
 				udfPolicy = mergedBatchUDFPolicyDefault;
@@ -2052,14 +2252,24 @@ namespace Aerospike.Client
 			{
 				BatchStatus status = new BatchStatus(true);
 				List<BatchNode> batchNodes = BatchNode.GenerateList(cluster, batchPolicy, keys, records, attr.hasWrite, status);
-				BatchCommand[] commands = new BatchCommand[batchNodes.Count];
+				IBatchCommand[] commands = new IBatchCommand[batchNodes.Count];
 				int count = 0;
 
-				foreach (BatchNode batchNode in batchNodes)
+				foreach (BatchNode bn in batchNodes)
 				{
-					commands[count++] = new BatchUDFCommand(cluster, batchNode, batchPolicy, keys, packageName, functionName, argBytes, records, attr, status);
+					if (bn.offsetsSize == 1)
+					{
+						int i = bn.offsets[0];
+						commands[count++] = new BatchSingleUDF(
+							cluster, batchPolicy, packageName, functionName, functionArgs, attr, records[i], status, 
+							bn.node);
+					}
+					else
+					{
+						commands[count++] = new BatchUDFCommand(
+							cluster, bn, batchPolicy, keys, packageName, functionName, argBytes, records, attr, status);
+					}
 				}
-
 				BatchExecutor.Execute(cluster, batchPolicy, commands, status);
 				return new BatchResults(records, status.GetStatus());
 			}

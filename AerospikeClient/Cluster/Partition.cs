@@ -144,10 +144,10 @@ namespace Aerospike.Client
 
 		private Partitions partitions;
 		private readonly string ns;
-		private Node prevNode;
+		internal Node prevNode;
 		private readonly Replica replica;
 		public uint partitionId;
-		private uint sequence;
+		internal uint sequence;
 		private readonly bool linearize;
 
 		private Partition(Partitions partitions, Key key, Replica replica, Node prevNode, bool linearize)
@@ -221,8 +221,10 @@ namespace Aerospike.Client
 
 				case Replica.MASTER:
 				case Replica.MASTER_PROLES:
-				case Replica.RANDOM:
 					return GetMasterNode(cluster);
+
+				case Replica.RANDOM:
+					return cluster.GetRandomNode();
 			}
 		}
 

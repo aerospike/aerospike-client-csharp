@@ -79,7 +79,7 @@ namespace Aerospike.Client
 
 		private volatile bool modified = false;
 
-		private readonly Dictionary<Version, IConfigurationData> supportedVersions = new() { { new Version("1.0.0"), new ConfigurationDatav1_0_0() } };
+		private readonly Dictionary<Version, IConfigurationData> supportedVersions = new() { { new Version(1, 0, 0), new ConfigurationDatav1_0_0() } };
 
 		public static string GetConfigPath()
 		{
@@ -164,7 +164,7 @@ namespace Aerospike.Client
 					if (!supportedVersions.TryGetValue(version, out IConfigurationData value))
 					{
 						Log.Warn("YAML config must contain a valid version field.");
-						ConfigurationData = supportedVersions[new Version("1.0.0")]; // Default to the first supported version
+						ConfigurationData = supportedVersions[new Version(1, 0, 0)]; // Default to the first supported version
 					}
 					else
 					{

@@ -726,6 +726,130 @@ namespace Aerospike.Test
 			}
 		}
 
+		[TestMethod]
+		public void TxnDeleteAgainWithDiffMRT()
+		{
+			for (int i = 0; i < 10; i++)
+			{
+				Key k = new(SuiteHelpers.ns, SuiteHelpers.set, i);
+				client.Put(null, k, new Bin("bin", i));
+			}
+
+			Txn txn1 = new();
+			Txn txn2 = new();
+
+			for (int i = 0; i < 10; i++)
+			{
+				WritePolicy wp = new()
+				{
+					Txn = txn1,
+					durableDelete = true,
+				};
+				Key k = new(SuiteHelpers.ns, SuiteHelpers.set, i);
+				client.Delete(wp, k);
+			}
+
+			var cs1 = client.Commit(txn1);
+
+			for (int i = 0; i < 10; i++)
+			{
+				BatchPolicy bp = new()
+				{
+					Txn = txn2,
+				};
+				Key k = new(SuiteHelpers.ns, SuiteHelpers.set, i);
+				BatchDeletePolicy bdp = new()
+				{
+					durableDelete = true,
+				};
+				List<BatchRecord> brs = new()
+				{
+					new BatchDelete(bdp, k),
+				};
+				bool result = client.Operate(bp, brs);
+			}
+
+			var cs2 = client.Commit(txn2);
+
+			Assert.AreEqual(CommitStatus.CommitStatusType.OK, cs1);
+			Assert.AreEqual(CommitStatus.CommitStatusType.OK, cs2);
+		}
+
+		[TestMethod]
+		public void TxnDeleteRecordsWithExistingTomb()
+		{
+			for (int i = 0; i < 10; i++)
+			{
+				Key k = new(SuiteHelpers.ns, SuiteHelpers.set, i);
+				client.Put(null, k, new Bin("bin", i));
+			}
+
+			Key key0 = new(SuiteHelpers.ns, SuiteHelpers.set, 0);
+			WritePolicy wp = new()
+			{
+				durableDelete = true,
+			};
+			client.Delete(wp, key0);
+
+			Txn txn = new();
+
+			wp = new() {
+			    Txn = txn,
+			    durableDelete = true,
+			};
+			bool isDeleted = client.Delete(wp, key0);
+			Assert.IsFalse(isDeleted);
+
+			Policy p = new()
+			{
+				Txn = txn,
+			};
+			Record r = client.Get(p, key0);
+			Assert.IsNull(r);
+		}
+
+		[TestMethod]
+		public void TxnDeleteRecordsWithExistingTombBatchSingle()
+		{
+			for (int i = 0; i < 10; i++)
+			{
+				Key k = new(SuiteHelpers.ns, SuiteHelpers.set, i);
+				client.Put(null, k, new Bin("bin", i));
+			}
+
+			Key key0 = new(SuiteHelpers.ns, SuiteHelpers.set, 0);
+			WritePolicy wp = new()
+			{
+				durableDelete = true,
+			};
+			client.Delete(wp, key0);
+
+			Txn txn = new();
+
+			BatchPolicy bp = new()
+			{
+				Txn = txn,
+			};
+			BatchDeletePolicy bdp = new()
+			{
+				durableDelete = true,
+			};
+			List<BatchRecord> brs =
+			[
+				new BatchDelete(bdp, key0),
+			];
+			bool isSucceeded = client.Operate(bp, brs);
+			Assert.IsFalse(isSucceeded);
+			Assert.AreEqual(ResultCode.KEY_NOT_FOUND_ERROR, brs[0].resultCode);
+
+			Policy p = new()
+			{
+				Txn = txn,
+			};
+			Record r = client.Get(p, key0);
+			Assert.IsNull(r);
+		}
+
 		private static void AssertBatchEqual(Key[] keys, Record[] recs, int expected)
 		{
 			for (int i = 0; i < keys.Length; i++)
