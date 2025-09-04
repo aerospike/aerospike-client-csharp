@@ -2758,7 +2758,10 @@ namespace Aerospike.Client
 			}
 
 			StringBuilder sb = new StringBuilder(1024);
-			sb.Append("sindex-create:ns=");
+			Node node = cluster.GetRandomNode();
+			string createIndexCommand = node.serverVerison >= Node.SERVER_VERSION_8_1 ? "sindex-create:namespace=" : "sindex-create:ns=";
+
+			sb.Append(createIndexCommand);
 			sb.Append(ns);
 
 			if (setName != null && setName.Length > 0)
@@ -2801,14 +2804,24 @@ namespace Aerospike.Client
 					sb.Append(indexCollectionType);
 				}
 
-				sb.Append(";indexdata=");
-				sb.Append(binName);
-				sb.Append(',');
-				sb.Append(indexType);
+				if (node.serverVerison >= Node.SERVER_VERSION_8_1)
+				{
+					sb.Append(";bin=");
+					sb.Append(binName);
+					sb.Append(";type=");
+					sb.Append(indexType);
+				}
+				else
+				{
+					sb.Append(";indexdata=");
+					sb.Append(binName);
+					sb.Append(',');
+					sb.Append(indexType);
+				}
 			}
 
 			// Send index command to one node. That node will distribute the command to other nodes.
-			String response = SendInfoCommand(policy, sb.ToString());
+			String response = SendInfoCommand(policy, node, sb.ToString());
 
 			if (response.Equals("OK", StringComparison.CurrentCultureIgnoreCase))
 			{
@@ -2843,7 +2856,10 @@ namespace Aerospike.Client
 			}
 
 			StringBuilder sb = new StringBuilder(500);
-			sb.Append("sindex-delete:ns=");
+			Node node = cluster.GetRandomNode();
+			string deleteIndexCommand = node.serverVerison >= Node.SERVER_VERSION_8_1 ? "sindex-delete:namespace=" : "sindex-delete:ns=";
+
+			sb.Append(deleteIndexCommand);
 			sb.Append(ns);
 
 			if (setName != null && setName.Length > 0)
@@ -2855,7 +2871,7 @@ namespace Aerospike.Client
 			sb.Append(indexName);
 
 			// Send index command to one node. That node will distribute the command to other nodes.
-			String response = SendInfoCommand(policy, sb.ToString());
+			String response = SendInfoCommand(policy, node, sb.ToString());
 
 			if (response.Equals("OK", StringComparison.CurrentCultureIgnoreCase))
 			{
@@ -3187,9 +3203,8 @@ namespace Aerospike.Client
 		// Internal Methods
 		//-------------------------------------------------------
 
-		private string SendInfoCommand(Policy policy, string command)
+		private string SendInfoCommand(Policy policy, Node node, string command)
 		{
-			Node node = cluster.GetRandomNode();
 			Connection conn = node.GetConnection(policy.socketTimeout);
 			Info info;
 

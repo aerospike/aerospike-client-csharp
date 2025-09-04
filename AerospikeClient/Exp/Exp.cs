@@ -318,6 +318,7 @@ namespace Aerospike.Client
 		/// Exp.GE(Exp.DeviceSize(), Exp.Val(100 * 1024))
 		/// </code>
 		/// </example>
+		[Obsolete("Deprecated as of server 8.1+")]
 		public static Exp DeviceSize()
 		{
 			return new Cmd(DEVICE_SIZE);
@@ -338,6 +339,7 @@ namespace Aerospike.Client
 		/// Exp.GE(Exp.MemorySize(), Exp.Val(100 * 1024))
 		/// </code>
 		/// </example>
+		[Obsolete("Deprecated as of server 8.1+")]
 		public static Exp MemorySize()
 		{
 			return new Cmd(MEMORY_SIZE);

@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2024 Aerospike, Inc.
+ * Copyright 2012-2025 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -15,6 +15,7 @@
  * the License.
  */
 using System;
+using System.Reflection;
 
 namespace Aerospike.Client
 {
@@ -55,7 +56,7 @@ namespace Aerospike.Client
 					// Check index status.
 					if (statusCommand == null)
 					{
-						statusCommand = BuildStatusCommand(ns, indexName);
+						statusCommand = BuildStatusCommand(ns, indexName, node.serverVerison);
 					}
 
 					string response = Info.Request(policy, node, statusCommand);
@@ -71,7 +72,7 @@ namespace Aerospike.Client
 					// Check if index exists.
 					if (existsCommand == null)
 					{
-						existsCommand = BuildExistsCommand(ns, indexName);
+						existsCommand = BuildExistsCommand(ns, indexName, node.serverVerison);
 					}
 
 					string response = Info.Request(policy, node, existsCommand);
@@ -86,9 +87,16 @@ namespace Aerospike.Client
 			return BaseTask.COMPLETE;
 		}
 
-		public static string BuildStatusCommand(string ns, string indexName)
+		public static string BuildStatusCommand(string ns, string indexName, Version serverVersion)
 		{
-			return "sindex/" + ns + '/' + indexName;
+			if (serverVersion >= Node.SERVER_VERSION_8_1)
+			{
+				return $"sindex-stat:namespace={ns};indexname={indexName}";
+			}
+			else
+			{
+				return "sindex/" + ns + '/' + indexName;
+			}
 		}
 
 		public static int ParseStatusResponse(string command, string response, bool isCreate)
@@ -138,9 +146,16 @@ namespace Aerospike.Client
 			return BaseTask.COMPLETE;
 		}
 
-		public static string BuildExistsCommand(string ns, string indexName)
+		public static string BuildExistsCommand(string ns, string indexName, Version serverVersion)
 		{
-			return "sindex-exists:ns=" + ns + ";indexname=" + indexName;
+			if (serverVersion >= Node.SERVER_VERSION_8_1)
+			{
+				return $"sindex-exists:namespace={ns};indexname={indexName}";
+			}
+			else
+			{
+				return "sindex-exists:ns=" + ns + ";indexname=" + indexName;
+			}
 		}
 
 		public static int ParseExistsResponse(string command, string response)
