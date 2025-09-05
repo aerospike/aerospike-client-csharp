@@ -16,6 +16,7 @@
  */
 using System.Net;
 using System.Net.Sockets;
+using static Aerospike.Client.Latency;
 
 namespace Aerospike.Client
 {
