@@ -1,2 +1,10 @@
-# Enforce LF line endings for C# source files
-*.cs text eol=lf
+# Set default behavior to automatically normalize line endings.
+* text=auto
+
+*.png binary
+*.snk binary
+
+*.cs text diff=csharp
+
+*.csproj text
+*.sln text eol=crlf
