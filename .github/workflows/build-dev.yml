@@ -81,15 +81,11 @@ jobs:
   
   sign:
     needs: prep-for-sign
-    uses: aerospike/shared-workflows/.github/workflows/reusable_sign-artifacts.yaml@nuget_signing
+    uses: aerospike/shared-workflows/.github/workflows/nuget-sign-artifacts.yaml@nuget_signing
     with:
-      artifact-glob: ${GITHUB_WORKSPACE}/sign/*.nupkg
-      artifact-name: artifacts
-      enable-nuget-signing: true
+      artifact-glob: ${GITHUB_WORKSPACE}/sign
+      output-path: artifacts
     secrets:
-      gpg-private-key: ${{ secrets.GPG_SECRET_KEY }}
-      gpg-public-key: ${{ secrets.GPG_PUBLIC_KEY }}
-      gpg-key-pass: ${{ secrets.GPG_PASS }}
       es-username: ${{ secrets.ES_USERNAME }}
       es-password: ${{ secrets.ES_PASSWORD }}
       credential-id: ${{ secrets.CREDENTIAL_ID }}
