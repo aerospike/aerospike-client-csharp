@@ -14,10 +14,10 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
+using Aerospike.Client;
 using System;
 using System.Collections.Generic;
 using System.Threading;
-using Aerospike.Client;
 
 namespace Aerospike.Demo
 {
@@ -78,7 +78,7 @@ namespace Aerospike.Demo
 				Key key = sendKeys[i - 1];
 				Bin bin = new Bin(binName, ValuePrefix + i);
 
-				console.Info("Put: namespace={0} set={1} key={2} bin={3} value={4}", 
+				console.Info("Put: namespace={0} set={1} key={2} bin={3} value={4}",
 					key.ns, key.setName, key.userKey, bin.name, bin.value);
 
 				client.Put(args.writePolicy, handler, key, bin);
@@ -152,7 +152,7 @@ namespace Aerospike.Demo
 				{
 					Key key = keys[i];
 					bool exists = existsArray[i];
-					parent.console.Info("Record: namespace={0} set={1} key={2} exists={3}", 
+					parent.console.Info("Record: namespace={0} set={1} key={2} exists={3}",
 						key.ns, key.setName, key.userKey, exists);
 				}
 				parent.TaskComplete();
@@ -184,7 +184,7 @@ namespace Aerospike.Demo
 
 			public virtual void OnExists(Key key, bool exists)
 			{
-				parent.console.Info("Record: namespace={0} set={1} key={2} exists={3}", 
+				parent.console.Info("Record: namespace={0} set={1} key={2} exists={3}",
 					key.ns, key.setName, ByteUtil.BytesToHexString(key.digest), exists);
 			}
 
@@ -231,13 +231,13 @@ namespace Aerospike.Demo
 						level = Log.Level.INFO;
 						value = record.GetValue(parent.binName);
 					}
-					parent.console.Write(level, "Record: namespace={0} set={1} key={2} bin={3} value={4}", 
+					parent.console.Write(level, "Record: namespace={0} set={1} key={2} bin={3} value={4}",
 						key.ns, key.setName, key.userKey, parent.binName, value);
 				}
 
 				if (records.Length != BatchSize)
 				{
-					parent.console.Error("Record size mismatch. Expected {0}. Received {1}.", 
+					parent.console.Error("Record size mismatch. Expected {0}. Received {1}.",
 						BatchSize, records.Length);
 				}
 				parent.TaskComplete();
@@ -301,7 +301,7 @@ namespace Aerospike.Demo
 			client.GetHeader(null, new RecordHeaderArrayHandler(this), sendKeys);
 		}
 
-		private class RecordHeaderArrayHandler: RecordArrayListener
+		private class RecordHeaderArrayHandler : RecordArrayListener
 		{
 			private readonly AsyncBatch parent;
 
@@ -326,7 +326,7 @@ namespace Aerospike.Demo
 						generation = record.generation;
 						expiration = record.expiration;
 					}
-					parent.console.Write(level, "Record: namespace={0} set={1} key={2} generation={3} expiration={4}", 
+					parent.console.Write(level, "Record: namespace={0} set={1} key={2} generation={3} expiration={4}",
 						key.ns, key.setName, key.userKey, generation, expiration);
 				}
 
@@ -412,7 +412,7 @@ namespace Aerospike.Demo
 				parent.TaskComplete();
 			}
 		}
-		
+
 		private void WaitTillComplete()
 		{
 			lock (this)

@@ -26,7 +26,7 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Copy policy from another policy.
 		/// </summary>
-		public TxnVerifyPolicy(TxnVerifyPolicy other) : 
+		public TxnVerifyPolicy(TxnVerifyPolicy other) :
 			base(other)
 		{
 		}

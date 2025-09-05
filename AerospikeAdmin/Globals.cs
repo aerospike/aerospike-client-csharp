@@ -14,9 +14,8 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using System;
-using System.Collections.Generic;
 using Aerospike.Client;
+using System.Collections.Generic;
 
 namespace Aerospike.Admin
 {
@@ -56,7 +55,7 @@ namespace Aerospike.Admin
 
 			foreach (Role role in allRoles)
 			{
-				if (! role.isPredefined())
+				if (!role.isPredefined())
 				{
 					roles.Add(role);
 				}

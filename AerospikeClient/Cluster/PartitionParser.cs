@@ -54,17 +54,17 @@ namespace Aerospike.Client
 
 		public int Generation
 		{
-			get {return generation;}
+			get { return generation; }
 		}
 
 		public bool IsPartitionMapCopied
 		{
-			get {return copied;}
+			get { return copied; }
 		}
 
 		public Dictionary<string, Partitions> PartitionMap
 		{
-			get {return map;}
+			get { return map; }
 		}
 
 		public int ParseGeneration()

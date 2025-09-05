@@ -137,7 +137,7 @@ namespace Aerospike.Client
 			}
 
 			if (dict1.Count != dict2.Count)
-			{ 
+			{
 				return false;
 			}
 

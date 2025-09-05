@@ -20,7 +20,7 @@ namespace Aerospike.Client
 	{
 		private readonly RecordSet recordSet;
 
-		public QueryRecordExecutor(Cluster cluster, QueryPolicy policy, Statement statement, Node[] nodes) 
+		public QueryRecordExecutor(Cluster cluster, QueryPolicy policy, Statement statement, Node[] nodes)
 			: base(cluster, policy, statement, nodes)
 		{
 			this.recordSet = new RecordSet(this, policy.recordQueueSize, cancel.Token);
@@ -41,7 +41,7 @@ namespace Aerospike.Client
 		{
 			recordSet.Abort();
 		}
-		
+
 		protected internal override void SendCompleted()
 		{
 			recordSet.Put(RecordSet.END);

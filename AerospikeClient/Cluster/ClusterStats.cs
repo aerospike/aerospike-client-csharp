@@ -14,9 +14,7 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using System.Runtime.ConstrainedExecution;
 using System.Text;
-using System.Threading;
 
 namespace Aerospike.Client
 {
@@ -75,7 +73,7 @@ namespace Aerospike.Client
 			this.threadsInUse = workerThreadsMax - workerThreads;
 			this.RecoverQueueSize = cluster.GetRecoverQueueSize();
 			this.completionPortsInUse = completionPortThreadsMax - completionPortThreads;
-        }
+		}
 
 		/// <summary>
 		/// Convert statistics to string.
@@ -168,7 +166,7 @@ namespace Aerospike.Client
 		/// </summary>
 		public override string ToString()
 		{
-			return node + " sync(" + syncStats + ") async(" + asyncStats + 
+			return node + " sync(" + syncStats + ") async(" + asyncStats +
 				") " + ErrorCount + ',' + TimeoutCount + ',' + KeyBusyCount;
 		}
 	}

@@ -14,8 +14,6 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using System;
-
 namespace Aerospike.Client
 {
 	public class LuaBytes : LuaData
@@ -371,7 +369,7 @@ namespace Aerospike.Client
 			bytes.type = type;
 			return true;
 		}
-		
+
 		public static string get_string(LuaBytes bytes, int offset, int len)
 		{
 			return bytes.GetString(offset - 1, len);
@@ -385,7 +383,7 @@ namespace Aerospike.Client
 
 		public static byte get_byte(LuaBytes bytes, int offset)
 		{
-			return bytes.GetByte(offset-1);
+			return bytes.GetByte(offset - 1);
 		}
 
 		public static int get_int16(LuaBytes bytes, int offset)

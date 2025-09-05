@@ -14,8 +14,6 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using System;
-
 namespace Aerospike.Client
 {
 	/// <summary>
@@ -25,7 +23,7 @@ namespace Aerospike.Client
 	{
 		public const int NOT_FOUND = 0;
 		public const int IN_PROGRESS = 1;
-		public const int COMPLETE = 2; 
+		public const int COMPLETE = 2;
 
 		protected internal readonly Cluster cluster;
 		protected internal InfoPolicy policy;
@@ -160,7 +158,7 @@ namespace Aerospike.Client
 			// (especially for background query execute), so we must assume a 
 			// "not found" status means the task is complete.
 			done = status != IN_PROGRESS;
-			return done; 			
+			return done;
 		}
 
 		/// <summary>

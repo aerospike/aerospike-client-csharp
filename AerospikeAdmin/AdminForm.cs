@@ -14,14 +14,9 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using System;
-using System.Collections.Generic;
-using System.ComponentModel;
-using System.Drawing;
-using System.Linq;
-using System.Text;
-using System.Windows.Forms;
 using Aerospike.Client;
+using System;
+using System.Windows.Forms;
 
 namespace Aerospike.Admin
 {
@@ -41,9 +36,9 @@ namespace Aerospike.Admin
 			TreeNode usersNode = new TreeNode("Users");
 
 			TreeNode rootNode = new TreeNode("Manage", new TreeNode[] {
-                    usersNode,
-                    new TreeNode("Roles"),
-                });
+					usersNode,
+					new TreeNode("Roles"),
+				});
 
 			sideView.Nodes.Add(rootNode);
 			sideView.ExpandAll();

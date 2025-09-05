@@ -33,8 +33,8 @@ namespace Aerospike.Client
 		/// </summary>
 		public Connection(IPEndPoint address, int timeoutMillis, Pool<Connection> pool)
 			: this(address, timeoutMillis, null, pool)
-		{ 
-		
+		{
+
 		}
 
 		/// <summary>

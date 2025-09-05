@@ -15,8 +15,8 @@
  * the License.
  */
 
-using Microsoft.Extensions.Configuration;
 using Aerospike.Client.Config;
+using Microsoft.Extensions.Configuration;
 
 namespace Aerospike.Client
 {
@@ -68,7 +68,7 @@ namespace Aerospike.Client
 		//-------------------------------------------------------
 
 		private AerospikeClient client;
-		
+
 		private IConfigurationRoot configRoot;
 
 		public IConfigurationData ConfigurationData { get; private set; }
@@ -139,7 +139,8 @@ namespace Aerospike.Client
 
 		private void Watch()
 		{
-			_ = this.configRoot.GetReloadToken().RegisterChangeCallback(_ => {
+			_ = this.configRoot.GetReloadToken().RegisterChangeCallback(_ =>
+			{
 				modified = true;
 				Watch();
 			}, null);
@@ -256,158 +257,158 @@ namespace Aerospike.Client
 			// dynamic
 			// client policy
 			var dynamicClient = ConfigurationData.dynamicConfig.client;
-			IConfigProvider.LogStringChange(dynamicClient.app_id, clientPolicy.AppId, 
+			IConfigProvider.LogStringChange(dynamicClient.app_id, clientPolicy.AppId,
 				dynamicClientName, "app_id");
-			IConfigProvider.LogIntChange(dynamicClient.timeout, clientPolicy.timeout, 
+			IConfigProvider.LogIntChange(dynamicClient.timeout, clientPolicy.timeout,
 				dynamicClientName, "timeout");
-			IConfigProvider.LogIntChange(dynamicClient.error_rate_window, clientPolicy.errorRateWindow, 
+			IConfigProvider.LogIntChange(dynamicClient.error_rate_window, clientPolicy.errorRateWindow,
 				dynamicClientName, "error_rate_window");
-			IConfigProvider.LogIntChange(dynamicClient.max_error_rate, clientPolicy.maxErrorRate, 
+			IConfigProvider.LogIntChange(dynamicClient.max_error_rate, clientPolicy.maxErrorRate,
 				dynamicClientName, "max_error_rate");
-			IConfigProvider.LogBoolChange(dynamicClient.fail_if_not_connected, clientPolicy.failIfNotConnected, 
+			IConfigProvider.LogBoolChange(dynamicClient.fail_if_not_connected, clientPolicy.failIfNotConnected,
 				dynamicClientName, "fail_if_not_connected");
-			IConfigProvider.LogIntChange(dynamicClient.login_timeout, clientPolicy.loginTimeout, 
+			IConfigProvider.LogIntChange(dynamicClient.login_timeout, clientPolicy.loginTimeout,
 				dynamicClientName, "login_timeout");
-			IConfigProvider.LogIntChange(dynamicClient.max_socket_idle, clientPolicy.maxSocketIdle, 
+			IConfigProvider.LogIntChange(dynamicClient.max_socket_idle, clientPolicy.maxSocketIdle,
 				dynamicClientName, "max_socket_idle");
-			IConfigProvider.LogBoolChange(dynamicClient.rack_aware, clientPolicy.rackAware, 
+			IConfigProvider.LogBoolChange(dynamicClient.rack_aware, clientPolicy.rackAware,
 				dynamicClientName, "rack_aware");
-			IConfigProvider.LogRackIdsChange(dynamicClient.rack_ids, clientPolicy.rackIds, 
+			IConfigProvider.LogRackIdsChange(dynamicClient.rack_ids, clientPolicy.rackIds,
 				dynamicClientName, "rack_ids");
-			IConfigProvider.LogIntChange(dynamicClient.tend_interval, clientPolicy.tendInterval, 
+			IConfigProvider.LogIntChange(dynamicClient.tend_interval, clientPolicy.tendInterval,
 				dynamicClientName, "tend_interval");
-			IConfigProvider.LogBoolChange(dynamicClient.use_service_alternative, clientPolicy.useServicesAlternate, 
+			IConfigProvider.LogBoolChange(dynamicClient.use_service_alternative, clientPolicy.useServicesAlternate,
 				dynamicClientName, "use_service_alternative");
 
 			// read policy
 			var readPolicy = client.mergedReadPolicyDefault.Clone();
 			var dynamicRead = ConfigurationData.dynamicConfig.read;
-			IConfigProvider.LogReadModeAPChange(dynamicRead.read_mode_ap, readPolicy.readModeAP, 
+			IConfigProvider.LogReadModeAPChange(dynamicRead.read_mode_ap, readPolicy.readModeAP,
 				dynamicReadName, readModeAP);
-			IConfigProvider.LogReadModeSCChange(dynamicRead.read_mode_sc, readPolicy.readModeSC, 
+			IConfigProvider.LogReadModeSCChange(dynamicRead.read_mode_sc, readPolicy.readModeSC,
 				dynamicReadName, readModeSC);
-			IConfigProvider.LogBoolChange(dynamicRead.fail_on_filtered_out, readPolicy.failOnFilteredOut, 
+			IConfigProvider.LogBoolChange(dynamicRead.fail_on_filtered_out, readPolicy.failOnFilteredOut,
 				dynamicReadName, failOnFilteredOut);
-			IConfigProvider.LogReplicaChange(dynamicRead.replica, readPolicy.replica, 
+			IConfigProvider.LogReplicaChange(dynamicRead.replica, readPolicy.replica,
 				dynamicReadName, replica);
-			IConfigProvider.LogIntChange(dynamicRead.sleep_between_retries, readPolicy.sleepBetweenRetries, 
+			IConfigProvider.LogIntChange(dynamicRead.sleep_between_retries, readPolicy.sleepBetweenRetries,
 				dynamicReadName, sleepBetweenRetries);
-			IConfigProvider.LogIntChange(dynamicRead.socket_timeout, readPolicy.socketTimeout, 
+			IConfigProvider.LogIntChange(dynamicRead.socket_timeout, readPolicy.socketTimeout,
 				dynamicReadName, socketTimeout);
-			IConfigProvider.LogIntChange(dynamicRead.timeout_delay, readPolicy.TimeoutDelay, 
+			IConfigProvider.LogIntChange(dynamicRead.timeout_delay, readPolicy.TimeoutDelay,
 				dynamicReadName, timeoutDelay);
 			IConfigProvider.LogIntChange(dynamicRead.total_timeout, readPolicy.totalTimeout,
 				dynamicReadName, totalTimeout);
-			IConfigProvider.LogIntChange(dynamicRead.max_retries, readPolicy.maxRetries, 
+			IConfigProvider.LogIntChange(dynamicRead.max_retries, readPolicy.maxRetries,
 				dynamicReadName, maxRetries);
 
 			// write policy
 			var writePolicy = client.mergedWritePolicyDefault.Clone();
 			var dynamicWrite = ConfigurationData.dynamicConfig.write;
-			IConfigProvider.LogBoolChange(dynamicWrite.fail_on_filtered_out, writePolicy.failOnFilteredOut, 
+			IConfigProvider.LogBoolChange(dynamicWrite.fail_on_filtered_out, writePolicy.failOnFilteredOut,
 				dynamicWriteName, failOnFilteredOut);
-			IConfigProvider.LogReplicaChange(dynamicWrite.replica, writePolicy.replica, 
+			IConfigProvider.LogReplicaChange(dynamicWrite.replica, writePolicy.replica,
 				dynamicWriteName, replica);
-			IConfigProvider.LogBoolChange(dynamicWrite.send_key, writePolicy.sendKey, 
+			IConfigProvider.LogBoolChange(dynamicWrite.send_key, writePolicy.sendKey,
 				dynamicWriteName, sendKey);
-			IConfigProvider.LogIntChange(dynamicWrite.sleep_between_retries, writePolicy.sleepBetweenRetries, 
+			IConfigProvider.LogIntChange(dynamicWrite.sleep_between_retries, writePolicy.sleepBetweenRetries,
 				dynamicWriteName, sleepBetweenRetries);
 			IConfigProvider.LogIntChange(dynamicWrite.socket_timeout, writePolicy.socketTimeout,
 				dynamicWriteName, socketTimeout);
-			IConfigProvider.LogIntChange(dynamicWrite.timeout_delay, writePolicy.TimeoutDelay, 
+			IConfigProvider.LogIntChange(dynamicWrite.timeout_delay, writePolicy.TimeoutDelay,
 				dynamicWriteName, timeoutDelay);
-			IConfigProvider.LogIntChange(dynamicWrite.total_timeout, writePolicy.totalTimeout, 
+			IConfigProvider.LogIntChange(dynamicWrite.total_timeout, writePolicy.totalTimeout,
 				dynamicWriteName, totalTimeout);
-			IConfigProvider.LogIntChange(dynamicWrite.max_retries, writePolicy.maxRetries, 
+			IConfigProvider.LogIntChange(dynamicWrite.max_retries, writePolicy.maxRetries,
 				dynamicWriteName, maxRetries);
-			IConfigProvider.LogBoolChange(dynamicWrite.durable_delete, writePolicy.durableDelete, 
+			IConfigProvider.LogBoolChange(dynamicWrite.durable_delete, writePolicy.durableDelete,
 				dynamicWriteName, durableDelete);
 
 			// query policy
 			var queryPolicy = client.mergedQueryPolicyDefault.Clone();
 			var dynamicQuery = ConfigurationData.dynamicConfig.query;
-			IConfigProvider.LogReadModeAPChange(dynamicQuery.read_mode_ap, queryPolicy.readModeAP, 
+			IConfigProvider.LogReadModeAPChange(dynamicQuery.read_mode_ap, queryPolicy.readModeAP,
 				dynamicQueryName, readModeAP);
-			IConfigProvider.LogReadModeSCChange(dynamicQuery.read_mode_sc, queryPolicy.readModeSC, 
+			IConfigProvider.LogReadModeSCChange(dynamicQuery.read_mode_sc, queryPolicy.readModeSC,
 				dynamicQueryName, readModeSC);
-			IConfigProvider.LogReplicaChange(dynamicQuery.replica, queryPolicy.replica, 
+			IConfigProvider.LogReplicaChange(dynamicQuery.replica, queryPolicy.replica,
 				dynamicQueryName, replica);
-			IConfigProvider.LogIntChange(dynamicQuery.sleep_between_retries, queryPolicy.sleepBetweenRetries, 
+			IConfigProvider.LogIntChange(dynamicQuery.sleep_between_retries, queryPolicy.sleepBetweenRetries,
 				dynamicQueryName, sleepBetweenRetries);
-			IConfigProvider.LogIntChange(dynamicQuery.socket_timeout, queryPolicy.socketTimeout, 
+			IConfigProvider.LogIntChange(dynamicQuery.socket_timeout, queryPolicy.socketTimeout,
 				dynamicQueryName, socketTimeout);
-			IConfigProvider.LogIntChange(dynamicQuery.timeout_delay, queryPolicy.TimeoutDelay, 
+			IConfigProvider.LogIntChange(dynamicQuery.timeout_delay, queryPolicy.TimeoutDelay,
 				dynamicQueryName, timeoutDelay);
-			IConfigProvider.LogIntChange(dynamicQuery.total_timeout, queryPolicy.totalTimeout, 
+			IConfigProvider.LogIntChange(dynamicQuery.total_timeout, queryPolicy.totalTimeout,
 				dynamicQueryName, totalTimeout);
-			IConfigProvider.LogIntChange(dynamicQuery.max_retries, queryPolicy.maxRetries, 
+			IConfigProvider.LogIntChange(dynamicQuery.max_retries, queryPolicy.maxRetries,
 				dynamicQueryName, maxRetries);
-			IConfigProvider.LogBoolChange(dynamicQuery.include_bin_data, queryPolicy.includeBinData, 
+			IConfigProvider.LogBoolChange(dynamicQuery.include_bin_data, queryPolicy.includeBinData,
 				dynamicQueryName, "include_bin_data");
-			IConfigProvider.LogIntChange(dynamicQuery.info_timeout, (int)queryPolicy.infoTimeout, 
+			IConfigProvider.LogIntChange(dynamicQuery.info_timeout, (int)queryPolicy.infoTimeout,
 				dynamicQueryName, "info_timeout");
 			IConfigProvider.LogIntChange(dynamicQuery.record_queue_size, queryPolicy.recordQueueSize,
 				dynamicQueryName, "record_queue_size");
-			IConfigProvider.LogQueryDurationChange(dynamicQuery.expected_duration, queryPolicy.expectedDuration, 
+			IConfigProvider.LogQueryDurationChange(dynamicQuery.expected_duration, queryPolicy.expectedDuration,
 				dynamicQueryName, "expected_duration");
 
 			// scan policy
 			var scanPolicy = client.mergedScanPolicyDefault.Clone();
 			var dynamicScan = ConfigurationData.dynamicConfig.scan;
-			IConfigProvider.LogReadModeAPChange(dynamicScan.read_mode_ap, scanPolicy.readModeAP, 
+			IConfigProvider.LogReadModeAPChange(dynamicScan.read_mode_ap, scanPolicy.readModeAP,
 				dynamicScanName, readModeAP);
-			IConfigProvider.LogReadModeSCChange(dynamicScan.read_mode_sc, scanPolicy.readModeSC, 
+			IConfigProvider.LogReadModeSCChange(dynamicScan.read_mode_sc, scanPolicy.readModeSC,
 				dynamicScanName, readModeSC);
-			IConfigProvider.LogReplicaChange(dynamicScan.replica, scanPolicy.replica, 
+			IConfigProvider.LogReplicaChange(dynamicScan.replica, scanPolicy.replica,
 				dynamicScanName, replica);
-			IConfigProvider.LogIntChange(dynamicScan.sleep_between_retries, scanPolicy.sleepBetweenRetries, 
+			IConfigProvider.LogIntChange(dynamicScan.sleep_between_retries, scanPolicy.sleepBetweenRetries,
 				dynamicScanName, sleepBetweenRetries);
-			IConfigProvider.LogIntChange(dynamicScan.socket_timeout, scanPolicy.socketTimeout, 
+			IConfigProvider.LogIntChange(dynamicScan.socket_timeout, scanPolicy.socketTimeout,
 				dynamicScanName, socketTimeout);
-			IConfigProvider.LogIntChange(dynamicScan.timeout_delay, scanPolicy.TimeoutDelay, 
+			IConfigProvider.LogIntChange(dynamicScan.timeout_delay, scanPolicy.TimeoutDelay,
 				dynamicScanName, timeoutDelay);
-			IConfigProvider.LogIntChange(dynamicScan.total_timeout, scanPolicy.totalTimeout, 
+			IConfigProvider.LogIntChange(dynamicScan.total_timeout, scanPolicy.totalTimeout,
 				dynamicScanName, totalTimeout);
-			IConfigProvider.LogIntChange(dynamicScan.max_retries, scanPolicy.maxRetries, 
+			IConfigProvider.LogIntChange(dynamicScan.max_retries, scanPolicy.maxRetries,
 				dynamicScanName, maxRetries);
-			IConfigProvider.LogBoolChange(dynamicScan.concurrent_nodes, scanPolicy.concurrentNodes, 
+			IConfigProvider.LogBoolChange(dynamicScan.concurrent_nodes, scanPolicy.concurrentNodes,
 				dynamicScanName, "concurrent_nodes");
-			IConfigProvider.LogIntChange(dynamicScan.max_concurrent_nodes, scanPolicy.maxConcurrentNodes, 
+			IConfigProvider.LogIntChange(dynamicScan.max_concurrent_nodes, scanPolicy.maxConcurrentNodes,
 				dynamicScanName, "max_concurrent_nodes");
 
 			// batch read policy
 			var batchReadPolicy = client.mergedBatchPolicyDefault.Clone();
 			var dynamicBatchRead = ConfigurationData.dynamicConfig.batch_read;
-			IConfigProvider.LogReadModeAPChange(dynamicBatchRead.read_mode_ap, batchReadPolicy.readModeAP, 
+			IConfigProvider.LogReadModeAPChange(dynamicBatchRead.read_mode_ap, batchReadPolicy.readModeAP,
 				dynamicBatchReadName, readModeAP);
 			IConfigProvider.LogReadModeSCChange(dynamicBatchRead.read_mode_sc, batchReadPolicy.readModeSC,
 				dynamicBatchReadName, readModeSC);
-			IConfigProvider.LogReplicaChange(dynamicBatchRead.replica, batchReadPolicy.replica, 
+			IConfigProvider.LogReplicaChange(dynamicBatchRead.replica, batchReadPolicy.replica,
 				dynamicBatchReadName, replica);
-			IConfigProvider.LogIntChange(dynamicBatchRead.sleep_between_retries, batchReadPolicy.sleepBetweenRetries, 
+			IConfigProvider.LogIntChange(dynamicBatchRead.sleep_between_retries, batchReadPolicy.sleepBetweenRetries,
 				dynamicBatchReadName, sleepBetweenRetries);
-			IConfigProvider.LogIntChange(dynamicBatchRead.socket_timeout, batchReadPolicy.socketTimeout, 
+			IConfigProvider.LogIntChange(dynamicBatchRead.socket_timeout, batchReadPolicy.socketTimeout,
 				dynamicBatchReadName, socketTimeout);
-			IConfigProvider.LogIntChange(dynamicBatchRead.timeout_delay, batchReadPolicy.TimeoutDelay, 
+			IConfigProvider.LogIntChange(dynamicBatchRead.timeout_delay, batchReadPolicy.TimeoutDelay,
 				dynamicBatchReadName, timeoutDelay);
-			IConfigProvider.LogIntChange(dynamicBatchRead.total_timeout, batchReadPolicy.totalTimeout, 
+			IConfigProvider.LogIntChange(dynamicBatchRead.total_timeout, batchReadPolicy.totalTimeout,
 				dynamicBatchReadName, totalTimeout);
-			IConfigProvider.LogIntChange(dynamicBatchRead.max_retries, batchReadPolicy.maxRetries, 
+			IConfigProvider.LogIntChange(dynamicBatchRead.max_retries, batchReadPolicy.maxRetries,
 				dynamicBatchReadName, maxRetries);
-			IConfigProvider.LogIntChange(dynamicBatchRead.max_concurrent_threads, batchReadPolicy.maxConcurrentThreads, 
+			IConfigProvider.LogIntChange(dynamicBatchRead.max_concurrent_threads, batchReadPolicy.maxConcurrentThreads,
 				dynamicBatchReadName, maxConcurrentThreads);
-			IConfigProvider.LogBoolChange(dynamicBatchRead.allow_inline, batchReadPolicy.allowInline, 
+			IConfigProvider.LogBoolChange(dynamicBatchRead.allow_inline, batchReadPolicy.allowInline,
 				dynamicBatchReadName, allowInline);
-			IConfigProvider.LogBoolChange(dynamicBatchRead.allow_inline_ssd, batchReadPolicy.allowInlineSSD, 
+			IConfigProvider.LogBoolChange(dynamicBatchRead.allow_inline_ssd, batchReadPolicy.allowInlineSSD,
 				dynamicBatchReadName, allowInlineSSD);
-			IConfigProvider.LogBoolChange(dynamicBatchRead.respond_all_keys, batchReadPolicy.respondAllKeys, 
+			IConfigProvider.LogBoolChange(dynamicBatchRead.respond_all_keys, batchReadPolicy.respondAllKeys,
 				dynamicBatchReadName, respondAllKeys);
 
 			// batch write policy
 			var batchWritePolicy = client.mergedBatchWritePolicyDefault.Clone();
 			var batchParentWritePolicy = client.mergedBatchParentPolicyWriteDefault.Clone();
 			var dynamicBatchWrite = ConfigurationData.dynamicConfig.batch_write;
-			
+
 			IConfigProvider.LogBoolChange(dynamicBatchWrite.durable_delete, batchWritePolicy.durableDelete,
 				dynamicBatchWriteName, durableDelete);
 			IConfigProvider.LogBoolChange(dynamicBatchWrite.send_key, batchWritePolicy.sendKey,
@@ -438,7 +439,7 @@ namespace Aerospike.Client
 			// batch delete policy
 			var batchDeletePolicy = client.mergedBatchDeletePolicyDefault.Clone();
 			var dynamicBatchDelete = ConfigurationData.dynamicConfig.batch_delete;
-			IConfigProvider.LogBoolChange(dynamicBatchDelete.durable_delete, batchDeletePolicy.durableDelete, 
+			IConfigProvider.LogBoolChange(dynamicBatchDelete.durable_delete, batchDeletePolicy.durableDelete,
 				dynamicBatchDeleteName, durableDelete);
 			IConfigProvider.LogBoolChange(dynamicBatchDelete.send_key, batchDeletePolicy.sendKey,
 				dynamicBatchDeleteName, sendKey);
@@ -446,7 +447,7 @@ namespace Aerospike.Client
 			// batch udf policy
 			var batchUdfPolicy = client.mergedBatchUDFPolicyDefault.Clone();
 			var dynamicBatchUdf = ConfigurationData.dynamicConfig.batch_udf;
-			IConfigProvider.LogBoolChange(dynamicBatchUdf.durable_delete, batchUdfPolicy.durableDelete, 
+			IConfigProvider.LogBoolChange(dynamicBatchUdf.durable_delete, batchUdfPolicy.durableDelete,
 				dynamicBatchUdfName, durableDelete);
 			IConfigProvider.LogBoolChange(dynamicBatchUdf.send_key, batchUdfPolicy.sendKey,
 				dynamicBatchUdfName, sendKey);
@@ -454,7 +455,7 @@ namespace Aerospike.Client
 			// txn roll policy
 			var txnRollPolicy = client.mergedTxnRollPolicyDefault.Clone();
 			var dynamicTxnRoll = ConfigurationData.dynamicConfig.txn_roll;
-			IConfigProvider.LogReadModeAPChange(dynamicTxnRoll.read_mode_ap, txnRollPolicy.readModeAP, 
+			IConfigProvider.LogReadModeAPChange(dynamicTxnRoll.read_mode_ap, txnRollPolicy.readModeAP,
 				dynamicTxnRollName, readModeAP);
 			IConfigProvider.LogReadModeSCChange(dynamicTxnRoll.read_mode_sc, txnRollPolicy.readModeSC,
 				dynamicTxnRollName, readModeSC);
@@ -466,11 +467,11 @@ namespace Aerospike.Client
 				dynamicTxnRollName, socketTimeout);
 			IConfigProvider.LogIntChange(dynamicTxnRoll.timeout_delay, txnRollPolicy.TimeoutDelay,
 				dynamicTxnRollName, timeoutDelay);
-			IConfigProvider.LogIntChange(dynamicTxnRoll.total_timeout, txnRollPolicy.totalTimeout, 
+			IConfigProvider.LogIntChange(dynamicTxnRoll.total_timeout, txnRollPolicy.totalTimeout,
 				dynamicTxnRollName, totalTimeout);
-			IConfigProvider.LogIntChange(dynamicTxnRoll.max_retries, txnRollPolicy.maxRetries, 
+			IConfigProvider.LogIntChange(dynamicTxnRoll.max_retries, txnRollPolicy.maxRetries,
 				dynamicTxnRollName, maxRetries);
-			IConfigProvider.LogIntChange(dynamicTxnRoll.max_concurrent_threads, txnRollPolicy.maxConcurrentThreads, 
+			IConfigProvider.LogIntChange(dynamicTxnRoll.max_concurrent_threads, txnRollPolicy.maxConcurrentThreads,
 				dynamicTxnRollName, maxConcurrentThreads);
 			IConfigProvider.LogBoolChange(dynamicTxnRoll.allow_inline, txnRollPolicy.allowInline,
 				dynamicTxnRollName, allowInline);
@@ -482,7 +483,7 @@ namespace Aerospike.Client
 			// txn verify policy
 			var txnVerifyPolicy = client.mergedTxnVerifyPolicyDefault.Clone();
 			var dynamicTxnVerify = ConfigurationData.dynamicConfig.txn_verify;
-			IConfigProvider.LogReadModeAPChange(dynamicTxnVerify.read_mode_ap, txnVerifyPolicy.readModeAP, 
+			IConfigProvider.LogReadModeAPChange(dynamicTxnVerify.read_mode_ap, txnVerifyPolicy.readModeAP,
 				dynamicTxnVerifyName, readModeAP);
 			IConfigProvider.LogReadModeSCChange(dynamicTxnVerify.read_mode_sc, txnVerifyPolicy.readModeSC,
 				dynamicTxnVerifyName, readModeSC);
@@ -502,9 +503,9 @@ namespace Aerospike.Client
 				dynamicTxnVerifyName, maxConcurrentThreads);
 			IConfigProvider.LogBoolChange(dynamicTxnVerify.allow_inline, txnVerifyPolicy.allowInline,
 				dynamicTxnVerifyName, allowInline);
-			IConfigProvider.LogBoolChange(dynamicTxnVerify.allow_inline_ssd, txnVerifyPolicy.allowInlineSSD, 
+			IConfigProvider.LogBoolChange(dynamicTxnVerify.allow_inline_ssd, txnVerifyPolicy.allowInlineSSD,
 				dynamicTxnVerifyName, allowInlineSSD);
-			IConfigProvider.LogBoolChange(dynamicTxnVerify.respond_all_keys, txnVerifyPolicy.respondAllKeys, 
+			IConfigProvider.LogBoolChange(dynamicTxnVerify.respond_all_keys, txnVerifyPolicy.respondAllKeys,
 				dynamicTxnVerifyName, respondAllKeys);
 
 			// metrics policy
@@ -542,7 +543,7 @@ namespace Aerospike.Client
 				IConfigProvider.LogStringDictionaryChange(dynamicMetrics.labels, metricsPolicy.labels,
 					dynamicMetricsName, "labels");
 			}
-			
+
 		}
 	}
 }

@@ -318,7 +318,7 @@ namespace Aerospike.Test
 			{
 				sendKey = true
 			};
-			
+
 			client.Put(wp, myKey, new Bin("name", "Andrew"));
 		}
 
@@ -426,7 +426,7 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void BatchDeleteSingleNotFound()
 		{
-			Key[] keys = 
+			Key[] keys =
 			[
 				new(SuiteHelpers.ns, SuiteHelpers.set, 989299023) // Should be not found
 			];

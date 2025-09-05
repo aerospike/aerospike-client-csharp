@@ -50,7 +50,7 @@ namespace Aerospike.Demo
 			wp.Txn = txn;
 
 			Key key = new(args.ns, args.set, 1);
-		
+
 			client.Put(wp, new PutHandler(this, client, key, txn, args), key, new Bin("a", "val1"));
 		}
 
@@ -62,15 +62,15 @@ namespace Aerospike.Demo
 			private readonly Txn txn;
 			private readonly Arguments args;
 
-			public PutHandler(AsyncTransaction parent, AsyncClient client, Key key, Txn txn, Arguments args) 
-			{ 
+			public PutHandler(AsyncTransaction parent, AsyncClient client, Key key, Txn txn, Arguments args)
+			{
 				this.parent = parent;
 				this.client = client;
 				this.key = key;
 				this.txn = txn;
 				this.args = args;
 			}
-			
+
 			public void OnSuccess(Key key)
 			{
 				parent.PutAnother(client, txn, args);
@@ -93,7 +93,7 @@ namespace Aerospike.Demo
 
 			Key key = new(args.ns, args.set, 2);
 
-			client.Put(wp, new PutAnotherHandler(this, client, key, txn, args), key, new Bin("b", "val2"));		
+			client.Put(wp, new PutAnotherHandler(this, client, key, txn, args), key, new Bin("b", "val2"));
 		}
 
 		class PutAnotherHandler : WriteListener
@@ -101,7 +101,7 @@ namespace Aerospike.Demo
 			private readonly AsyncTransaction parent;
 			private readonly AsyncClient client;
 			private readonly Key key;
-			private	readonly Txn txn;
+			private readonly Txn txn;
 			private readonly Arguments args;
 
 			public PutAnotherHandler(AsyncTransaction parent, AsyncClient client, Key key, Txn txn, Arguments args)
@@ -125,7 +125,7 @@ namespace Aerospike.Demo
 				parent.Abort(client, txn);
 			}
 		}
-	
+
 		public void Get(AsyncClient client, Txn txn, Arguments args)
 		{
 			console.Info("Run get");
@@ -167,7 +167,7 @@ namespace Aerospike.Demo
 				parent.Abort(client, txn);
 			}
 		}
-	
+
 		public void Delete(AsyncClient client, Txn txn, Arguments args)
 		{
 			console.Info("Run delete");
@@ -180,7 +180,7 @@ namespace Aerospike.Demo
 
 			client.Delete(dp, new DeleteHandler(this, client, key, txn), key);
 		}
-		
+
 		class DeleteHandler : DeleteListener
 		{
 			private readonly AsyncTransaction parent;
@@ -209,7 +209,7 @@ namespace Aerospike.Demo
 			}
 
 		}
-	
+
 		public void Commit(AsyncClient client, Txn txn)
 		{
 			console.Info("Run commit");
@@ -245,9 +245,9 @@ namespace Aerospike.Demo
 		{
 			console.Info("Run abort");
 
-			client.Abort(new AbortHandler(this, txn), txn);		
+			client.Abort(new AbortHandler(this, txn), txn);
 		}
-		
+
 		class AbortHandler : AbortListener
 		{
 			private readonly AsyncTransaction parent;

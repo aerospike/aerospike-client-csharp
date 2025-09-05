@@ -113,7 +113,7 @@ namespace Aerospike.Client
 		BatchStatus status,
 		Node node
 	) : BatchSingleCommand(cluster, policy, status, record.key, node, false)
-	{ 
+	{
 		private readonly BatchRead record = record;
 
 		protected internal override void WriteBuffer()
@@ -427,7 +427,7 @@ namespace Aerospike.Client
 		Key key,
 		Node node,
 		bool hasWrite
-	) : SyncCommand(cluster, policy, key.ns), IBatchCommand 
+	) : SyncCommand(cluster, policy, key.ns), IBatchCommand
 	{
 		public BatchExecutor Parent { get; set; }
 		internal readonly BatchStatus status = status;

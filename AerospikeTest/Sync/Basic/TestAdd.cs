@@ -14,8 +14,6 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using System;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Aerospike.Client;
 
 namespace Aerospike.Test
@@ -24,7 +22,7 @@ namespace Aerospike.Test
 	public class TestAdd : TestSync
 	{
 		public TestContext TestContext { get; set; }
-		
+
 		[TestMethod]
 		public void Add()
 		{

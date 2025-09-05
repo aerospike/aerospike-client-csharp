@@ -15,9 +15,6 @@
  * the License.
  */
 
-using System.Collections;
-using System.Collections.Generic;
-
 namespace Aerospike.Client
 {
 	partial class Value

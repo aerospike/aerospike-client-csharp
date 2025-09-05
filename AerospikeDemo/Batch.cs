@@ -14,9 +14,8 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using System;
-using System.Collections.Generic;
 using Aerospike.Client;
+using System.Collections.Generic;
 
 namespace Aerospike.Demo
 {
@@ -53,7 +52,7 @@ namespace Aerospike.Demo
 				Key key = new Key(args.ns, args.set, keyPrefix + i);
 				Bin bin = new Bin(binName, valuePrefix + i);
 
-				console.Info("Put: namespace={0} set={1} key={2} bin={3} value={4}", 
+				console.Info("Put: namespace={0} set={1} key={2} bin={3} value={4}",
 					key.ns, key.setName, key.userKey, bin.name, bin.value);
 
 				client.Put(args.writePolicy, key, bin);
@@ -78,7 +77,7 @@ namespace Aerospike.Demo
 			{
 				Key key = keys[i];
 				bool exists = existsArray[i];
-				console.Info("Record: namespace={0} set={1} key={2} exists={3}", 
+				console.Info("Record: namespace={0} set={1} key={2} exists={3}",
 					key.ns, key.setName, key.userKey, exists);
 			}
 		}
@@ -109,7 +108,7 @@ namespace Aerospike.Demo
 					level = Log.Level.INFO;
 					value = record.GetValue(binName);
 				}
-				console.Write(level, "Record: namespace={0} set={1} key={2} bin={3} value={4}", 
+				console.Write(level, "Record: namespace={0} set={1} key={2} bin={3} value={4}",
 					key.ns, key.setName, key.userKey, binName, value);
 			}
 
@@ -147,7 +146,7 @@ namespace Aerospike.Demo
 					generation = record.generation;
 					expiration = record.expiration;
 				}
-				console.Write(level, "Record: namespace={0} set={1} key={2} generation={3} expiration={4}", 
+				console.Write(level, "Record: namespace={0} set={1} key={2} generation={3} expiration={4}",
 					key.ns, key.setName, key.userKey, generation, expiration);
 			}
 
@@ -165,7 +164,7 @@ namespace Aerospike.Demo
 		{
 			// Batch gets into one call.
 			// Batch allows multiple namespaces in one call, but example test environment may only have one namespace.
-			string[] bins = new string[] {binName};
+			string[] bins = new string[] { binName };
 			List<BatchRead> records = new List<BatchRead>();
 			records.Add(new BatchRead(new Key(args.ns, args.set, keyPrefix + 1), bins));
 			records.Add(new BatchRead(new Key(args.ns, args.set, keyPrefix + 2), true));
@@ -194,7 +193,7 @@ namespace Aerospike.Demo
 				if (rec != null)
 				{
 					found++;
-					console.Info("Record: ns={0} set={1} key={2} bin={3} value={4}", 
+					console.Info("Record: ns={0} set={1} key={2} bin={3} value={4}",
 						key.ns, key.setName, key.userKey, binName, rec.GetValue(binName));
 				}
 				else

@@ -14,8 +14,8 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using System.Text;
 using Aerospike.Client;
+using System.Text;
 
 namespace Aerospike.Benchmarks
 {

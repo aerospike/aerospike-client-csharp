@@ -15,22 +15,21 @@
  * the License.
  */
 using System;
-using System.Collections.Generic;
 using System.Text;
 using System.Threading;
 
 namespace Aerospike.Demo
 {
 	public sealed class LatencyManagerAlt : ILatencyManager
-    {
+	{
 		private readonly Bucket[] buckets;
-        private readonly int lastBucket;
-        private readonly int bitShift;
+		private readonly int lastBucket;
+		private readonly int bitShift;
 
-        public LatencyManagerAlt(int columns, int bitShift)
-        {
-            this.lastBucket = columns - 1;
-            this.bitShift = bitShift;
+		public LatencyManagerAlt(int columns, int bitShift)
+		{
+			this.lastBucket = columns - 1;
+			this.bitShift = bitShift;
 			buckets = new Bucket[columns];
 
 			for (int i = 0; i < buckets.Length; i++)
@@ -57,85 +56,85 @@ namespace Aerospike.Demo
 		}
 
 		public void Add(double elapsed)
-        {
-            int index = GetIndex(elapsed);
+		{
+			int index = GetIndex(elapsed);
 			buckets[index].Increment();
-        }
+		}
 
-        private int GetIndex(double elapsed)
-        {
-            int e = (int)Math.Ceiling(elapsed);
-            int limit = 1;
+		private int GetIndex(double elapsed)
+		{
+			int e = (int)Math.Ceiling(elapsed);
+			int limit = 1;
 
-            for (int i = 0; i < lastBucket; i++)
-            {
-                if (e <= limit)
-                {
-                    return i;
-                }
-                limit <<= bitShift;
-            }
-            return lastBucket;
-        }
+			for (int i = 0; i < lastBucket; i++)
+			{
+				if (e <= limit)
+				{
+					return i;
+				}
+				limit <<= bitShift;
+			}
+			return lastBucket;
+		}
 
-        public string PrintHeader()
-        {
+		public string PrintHeader()
+		{
 			return null;
-        }
+		}
 
-        /// <summary>
-        /// Print latency percents for specified cumulative ranges.
-        /// This function is not absolutely accurate for a given time slice because this method 
-        /// is not synchronized with the Add() method.  Some values will slip into the next iteration.  
-        /// It is not a good idea to add extra locks just to measure performance since that actually 
-        /// affects performance.  Fortunately, the values will even out over time
-        /// (ie. no double counting).
-        /// </summary>
-        public string PrintResults(StringBuilder sb, string prefix)
-        {
-            // Capture snapshot and make buckets cumulative.
-            int[] array = new int[buckets.Length];
-            int sum = 0;
-            int count;
+		/// <summary>
+		/// Print latency percents for specified cumulative ranges.
+		/// This function is not absolutely accurate for a given time slice because this method 
+		/// is not synchronized with the Add() method.  Some values will slip into the next iteration.  
+		/// It is not a good idea to add extra locks just to measure performance since that actually 
+		/// affects performance.  Fortunately, the values will even out over time
+		/// (ie. no double counting).
+		/// </summary>
+		public string PrintResults(StringBuilder sb, string prefix)
+		{
+			// Capture snapshot and make buckets cumulative.
+			int[] array = new int[buckets.Length];
+			int sum = 0;
+			int count;
 
-            for (int i = buckets.Length - 1; i >= 1; i--)
-            {
+			for (int i = buckets.Length - 1; i >= 1; i--)
+			{
 				count = buckets[i].Reset();
-                array[i] = count + sum;
-                sum += count;
-            }
-            // The first bucket (<=1ms) does not need a cumulative adjustment.
+				array[i] = count + sum;
+				sum += count;
+			}
+			// The first bucket (<=1ms) does not need a cumulative adjustment.
 			count = buckets[0].Reset();
-            array[0] = count;
-            sum += count;
+			array[0] = count;
+			sum += count;
 
-            // Print cumulative results.
-            sb.Length = 0;
+			// Print cumulative results.
+			sb.Length = 0;
 			sb.Append("  ");
-            sb.Append(prefix);
-            int spaces = 5 - prefix.Length;
+			sb.Append(prefix);
+			int spaces = 5 - prefix.Length;
 
-            for (int j = 0; j < spaces; j++)
-            {
-                sb.Append(' ');
-            }
+			for (int j = 0; j < spaces; j++)
+			{
+				sb.Append(' ');
+			}
 
-            double sumDouble = (double)sum;
-            int limit = 1;
+			double sumDouble = (double)sum;
+			int limit = 1;
 
 			PrintColumn(sb, limit, sumDouble, buckets[0].header, array[0]);
 			PrintColumn(sb, limit, sumDouble, buckets[1].header, array[1]);
 
-            for (int i = 2; i < array.Length; i++)
-            {
-                limit <<= bitShift;
+			for (int i = 2; i < array.Length; i++)
+			{
+				limit <<= bitShift;
 				PrintColumn(sb, limit, sumDouble, buckets[i].header, array[i]);
-            }
+			}
 			sb.Append(" total(");
 			sb.Append(sum);
 			sb.Append(')');
 			return sb.ToString();
-        }
+		}
 
 		public string PrintSummary(StringBuilder sb, string prefix)
 		{
@@ -183,7 +182,7 @@ namespace Aerospike.Demo
 		}
 
 		private void PrintColumn(StringBuilder sb, int limit, double sum, string header, int count)
-        {
+		{
 			sb.Append(' ');
 			sb.Append(header);
 			sb.Append('(');
@@ -194,9 +193,9 @@ namespace Aerospike.Demo
 
 			sb.Append(percent.ToString("0.####"));
 			sb.Append('%');
-			sb.Append(')');			
-        }
-		
+			sb.Append(')');
+		}
+
 		private sealed class Bucket
 		{
 			int count = 0;
@@ -215,5 +214,5 @@ namespace Aerospike.Demo
 				return c;
 			}
 		}
-    }
+	}
 }

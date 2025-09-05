@@ -28,7 +28,7 @@ namespace Aerospike.Client
 			_hashSet = [];
 		}
 
-		public ConcurrentHashSet(int capacity) 
+		public ConcurrentHashSet(int capacity)
 		{
 			_hashSet = new HashSet<T>(capacity);
 		}

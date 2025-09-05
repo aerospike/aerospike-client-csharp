@@ -14,9 +14,7 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using System;
 using System.Collections;
-using System.Collections.Generic;
 using System.Text;
 
 namespace Aerospike.Client
@@ -31,7 +29,7 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Map of requested name/value bins.
 		/// </summary>
-		public readonly Dictionary<string,object> bins;
+		public readonly Dictionary<string, object> bins;
 
 		/// <summary>
 		/// Record modification count.
@@ -46,7 +44,7 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Initialize record.
 		/// </summary>
-		public Record(Dictionary<string,object> bins, int generation, int expiration)
+		public Record(Dictionary<string, object> bins, int generation, int expiration)
 		{
 			this.bins = bins;
 			this.generation = generation;
@@ -85,7 +83,7 @@ namespace Aerospike.Client
 			// The server may return number as double or long.
 			// Convert bits if returned as long.
 			object result = GetValue(name);
-			return (result is double) ? (double)result : (result != null) ? BitConverter.Int64BitsToDouble((long)result) : 0.0; 
+			return (result is double) ? (double)result : (result != null) ? BitConverter.Int64BitsToDouble((long)result) : 0.0;
 		}
 
 		/// <summary>
@@ -177,7 +175,8 @@ namespace Aerospike.Client
 			// The server may return boolean as boolean or long (created by older clients).
 			object result = GetValue(name);
 
-			if (result is bool) {
+			if (result is bool)
+			{
 				return (bool)result;
 			}
 
@@ -222,7 +221,7 @@ namespace Aerospike.Client
 		{
 			return GetString("FAILURE");
 		}
-		
+
 		/// <summary>
 		/// Get bin value as GeoJSON.
 		/// </summary>

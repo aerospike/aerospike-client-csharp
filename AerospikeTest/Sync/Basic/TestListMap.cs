@@ -15,7 +15,6 @@
  * the License.
  */
 using Aerospike.Client;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System.Collections;
 
 namespace Aerospike.Test
@@ -35,7 +34,7 @@ namespace Aerospike.Test
 			client.Put(null, key, bin);
 
 			Record record = client.Get(null, key, bin.name);
-			IList receivedList = (IList) record.GetValue(bin.name);
+			IList receivedList = (IList)record.GetValue(bin.name);
 
 			Assert.AreEqual(3, receivedList.Count);
 			Assert.AreEqual("string1", receivedList[0]);
@@ -85,7 +84,7 @@ namespace Aerospike.Test
 			client.Put(null, key, bin);
 
 			Record record = client.Get(null, key, bin.name);
-			IDictionary receivedMap = (IDictionary) record.GetValue(bin.name);
+			IDictionary receivedMap = (IDictionary)record.GetValue(bin.name);
 
 			Assert.AreEqual(3, receivedMap.Count);
 			Assert.AreEqual("string1", receivedMap["key1"]);
@@ -119,16 +118,16 @@ namespace Aerospike.Test
 			map["key8"] = dc;
 #endif
 
-            Bin bin = new(Suite.GetBinName("mapbin2"), map);
+			Bin bin = new(Suite.GetBinName("mapbin2"), map);
 			client.Put(null, key, bin);
 
 			Record record = client.Get(null, key, bin.name);
-			IDictionary receivedMap = (IDictionary) record.GetValue(bin.name);
+			IDictionary receivedMap = (IDictionary)record.GetValue(bin.name);
 
 #if BINARY_FORMATTER
 			Assert.AreEqual(8, receivedMap.Count);
 #else
-            Assert.AreEqual(6, receivedMap.Count);
+			Assert.AreEqual(6, receivedMap.Count);
 #endif
 			Assert.AreEqual("string1", receivedMap["key1"]);
 			// Server convert numbers to long, so must expect long.
@@ -173,7 +172,7 @@ namespace Aerospike.Test
 			client.Put(null, key, bin);
 
 			Record record = client.Get(null, key, bin.name);
-			IList received = (IList) record.GetValue(bin.name);
+			IList received = (IList)record.GetValue(bin.name);
 
 			Assert.AreEqual(4, received.Count);
 			Assert.AreEqual("string1", received[0]);
