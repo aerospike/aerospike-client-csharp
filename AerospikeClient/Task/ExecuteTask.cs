@@ -50,7 +50,7 @@ namespace Aerospike.Client
 		{
 			// All nodes must respond with complete to be considered done.
 			Node[] nodes = cluster.ValidateNodes();
-			
+
 			string module = (scan) ? "scan" : "query";
 
 			foreach (Node node in nodes)

@@ -95,7 +95,7 @@ namespace Aerospike.Client
 			{
 				return true;
 			}
-			
+
 			try
 			{
 				peers.refreshCount = 0;
@@ -266,11 +266,11 @@ namespace Aerospike.Client
 
 		private void ValidateNode(Dictionary<string, string> map)
 		{
-			if (! map.TryGetValue("node", out this.name))
+			if (!map.TryGetValue("node", out this.name))
 			{
 				throw new AerospikeException.InvalidNode("Node name is null");
 			}
-		}				
+		}
 
 		private void ValidatePartitionGeneration(Dictionary<string, string> map)
 		{
@@ -296,7 +296,7 @@ namespace Aerospike.Client
 				throw new AerospikeException.InvalidNode("Node " + this.name + ' ' + this.primaryHost + " is not yet fully initialized");
 			}
 		}
-				
+
 		private void SetServerBuildVersion(Dictionary<string, string> map)
 		{
 			try

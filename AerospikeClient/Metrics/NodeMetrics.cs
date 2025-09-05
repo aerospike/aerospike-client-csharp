@@ -48,7 +48,8 @@ namespace Aerospike.Client
 		/// <param name="ns">namespace</param>
 		/// <param name="type"></param>
 		/// <param name="elapsedMs">elapsed time, in milliseconds</param>
-		public void AddLatency(string ns, LatencyType type, double elapsedMs) {
+		public void AddLatency(string ns, LatencyType type, double elapsedMs)
+		{
 			Histograms?.AddLatency(ns, type, elapsedMs);
 		}
 

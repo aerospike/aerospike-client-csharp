@@ -113,6 +113,6 @@ namespace Aerospike.Client
 		/// </code>
 		/// With the INVERTED flag enabled, the keys outside of the specified key range will be removed and returned.
 		/// </summary>
-        INVERTED = 0x10000
+		INVERTED = 0x10000
 	}
 }

@@ -341,7 +341,7 @@ namespace Aerospike.Client
 		/// <para>Default: null</para>
 		/// </summary>
 		public List<int> rackIds;
-		
+
 		/// <summary>
 		/// Copy client policy from another client policy.
 		/// </summary>
@@ -389,7 +389,7 @@ namespace Aerospike.Client
 			{
 				return;
 			}
-			
+
 			if (configProvider.ConfigurationData == null)
 			{
 				return;

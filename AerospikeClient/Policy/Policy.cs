@@ -14,8 +14,6 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using System;
-
 #pragma warning disable 0618
 
 namespace Aerospike.Client
@@ -33,7 +31,7 @@ namespace Aerospike.Client
 		/// </para>
 		/// </summary>
 		public Txn Txn { get; set; }
-		
+
 		/// <summary>
 		/// Read policy for AP (availability) namespaces.
 		/// <para>
@@ -49,7 +47,7 @@ namespace Aerospike.Client
 		/// </para>
 		/// </summary>
 		public ReadModeSC readModeSC = ReadModeSC.SESSION;
-	
+
 		/// <summary>
 		/// Replica algorithm used to determine the target node for a partition derived from a key
 		/// or requested in a scan/query.

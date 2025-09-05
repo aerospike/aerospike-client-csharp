@@ -14,6 +14,7 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
+using System;
 
 namespace Aerospike.Client
 {
@@ -103,7 +104,7 @@ namespace Aerospike.Client
 				if (index < 0)
 				{
 					Info.Error error = new(response);
-					
+
 					if (error.Code == ResultCode.INDEX_NOTFOUND || error.Code == ResultCode.INDEX_NOTREADABLE)
 					{
 						// Index not found or not readable.

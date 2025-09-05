@@ -14,8 +14,8 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using System;
 using Aerospike.Client;
+using System;
 
 namespace Aerospike.Demo
 {
@@ -38,13 +38,13 @@ namespace Aerospike.Demo
 
 			// Set some values for the same record.
 			Bin bin = new Bin(binName, "genvalue1");
-			console.Info("Put: namespace={0} set={1} key={2} bin={3} value={4}", 
+			console.Info("Put: namespace={0} set={1} key={2} bin={3} value={4}",
 				key.ns, key.setName, key.userKey, bin.name, bin.value);
 
 			client.Put(args.writePolicy, key, bin);
 
 			bin = new Bin(binName, "genvalue2");
-			console.Info("Put: namespace={0} set={1} key={2} bin={3} value={4}", 
+			console.Info("Put: namespace={0} set={1} key={2} bin={3} value={4}",
 				key.ns, key.setName, key.userKey, bin.name, bin.value);
 
 			client.Put(args.writePolicy, key, bin);
@@ -54,7 +54,7 @@ namespace Aerospike.Demo
 
 			if (record == null)
 			{
-				throw new Exception(string.Format("Failed to get: namespace={0} set={1} key={2}", 
+				throw new Exception(string.Format("Failed to get: namespace={0} set={1} key={2}",
 					key.ns, key.setName, key.userKey));
 			}
 
@@ -63,7 +63,7 @@ namespace Aerospike.Demo
 
 			if (received.Equals(expected))
 			{
-				console.Info("Get successful: namespace={0} set={1} key={2} bin={3} value={4} generation={5}", 
+				console.Info("Get successful: namespace={0} set={1} key={2} bin={3} value={4} generation={5}",
 					key.ns, key.setName, key.userKey, bin.name, received, record.generation);
 			}
 			else
@@ -73,7 +73,7 @@ namespace Aerospike.Demo
 
 			// Set record and fail if it's not the expected generation.
 			bin = new Bin(binName, "genvalue3");
-			console.Info("Put: namespace={0} set={1} key={2} bin={3} value={4} expected generation={5}", 
+			console.Info("Put: namespace={0} set={1} key={2} bin={3} value={4} expected generation={5}",
 				key.ns, key.setName, key.userKey, bin.name, bin.value, record.generation);
 
 			WritePolicy writePolicy = new WritePolicy();
@@ -84,7 +84,7 @@ namespace Aerospike.Demo
 			// Set record with invalid generation and check results .
 			bin = new Bin(binName, "genvalue4");
 			writePolicy.generation = 9999;
-			console.Info("Put: namespace={0} set={1} key={2} bin={3} value={4} expected generation={5}", 
+			console.Info("Put: namespace={0} set={1} key={2} bin={3} value={4} expected generation={5}",
 				key.ns, key.setName, key.userKey, bin.name, bin.value, writePolicy.generation);
 
 			try
@@ -100,7 +100,7 @@ namespace Aerospike.Demo
 				}
 				else
 				{
-					throw new Exception(string.Format("Unexpected set return code: namespace={0} set={1} key={2} bin={3} value={4} code={5}", 
+					throw new Exception(string.Format("Unexpected set return code: namespace={0} set={1} key={2} bin={3} value={4} code={5}",
 						key.ns, key.setName, key.userKey, bin.name, bin.value, ae.Result));
 				}
 			}
@@ -110,7 +110,7 @@ namespace Aerospike.Demo
 
 			if (record == null)
 			{
-				throw new Exception(string.Format("Failed to get: namespace={0} set={1} key={2}", 
+				throw new Exception(string.Format("Failed to get: namespace={0} set={1} key={2}",
 					key.ns, key.setName, key.userKey));
 			}
 
@@ -119,7 +119,7 @@ namespace Aerospike.Demo
 
 			if (received.Equals(expected))
 			{
-				console.Info("Get successful: namespace={0} set={1} key={2} bin={3} value={4} generation={5}", 
+				console.Info("Get successful: namespace={0} set={1} key={2} bin={3} value={4} generation={5}",
 					key.ns, key.setName, key.userKey, bin.name, received, record.generation);
 			}
 			else

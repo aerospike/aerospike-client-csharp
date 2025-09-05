@@ -15,8 +15,6 @@
  * the License.
  */
 
-using System;
-
 namespace Aerospike.Client
 {
 	public sealed class AsyncOperateWrite : AsyncWriteBase

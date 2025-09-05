@@ -14,11 +14,9 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
+using Aerospike.Client;
 using System;
 using System.Collections;
-using System.Collections.Generic;
-using System.Threading;
-using Aerospike.Client;
 
 namespace Aerospike.Demo
 {
@@ -48,13 +46,13 @@ namespace Aerospike.Demo
 			// Delete record if it already exists.
 			client.Delete(args.writePolicy, key);
 
-			byte[] bytes = new byte[] {0x01, 0x02, 0x03, 0x04, 0x05};
+			byte[] bytes = new byte[] { 0x01, 0x02, 0x03, 0x04, 0x05 };
 
 			client.Put(args.writePolicy, key, new Bin(binName, bytes));
 
 			// Set last 3 bits of bitmap to true.
 			Record record = client.Operate(args.writePolicy, key,
-				BitOperation.Set(BitPolicy.Default, binName, -3, 3, new byte[] {0xE0}),
+				BitOperation.Set(BitPolicy.Default, binName, -3, 3, new byte[] { 0xE0 }),
 				Operation.Get(binName)
 				);
 
@@ -65,7 +63,7 @@ namespace Aerospike.Demo
 			foreach (byte b in val)
 			{
 				console.Info(Convert.ToString(b));
-			}	
+			}
 		}
 	}
 }

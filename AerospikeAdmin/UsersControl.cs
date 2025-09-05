@@ -14,13 +14,12 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
+using Aerospike.Client;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Drawing;
-using System.Text;
 using System.Windows.Forms;
-using Aerospike.Client;
 
 namespace Aerospike.Admin
 {
@@ -29,7 +28,7 @@ namespace Aerospike.Admin
 		private AerospikeClient client;
 		private BindingList<UserRow> users;
 		private BindingSource bindingSourceUsers;
-		private 
+		private
 			ContextMenuStrip rightClickMenuUsers;
 		private string userNameFilter;
 
@@ -84,13 +83,13 @@ namespace Aerospike.Admin
 				rightClickMenuUsers.Items.Add(drop);
 			}
 
-            ToolStripMenuItem editPass = new ToolStripMenuItem("Change Password");
+			ToolStripMenuItem editPass = new ToolStripMenuItem("Change Password");
 			editPass.Click += new System.EventHandler(this.ChangePasswordClicked);
 			rightClickMenuUsers.Items.Add(editPass);
 
 			if (admin)
 			{
-                ToolStripMenuItem editRole = new ToolStripMenuItem("Edit Roles");
+				ToolStripMenuItem editRole = new ToolStripMenuItem("Edit Roles");
 				editRole.Click += new System.EventHandler(this.EditRolesClicked);
 				rightClickMenuUsers.Items.Add(editRole);
 			}

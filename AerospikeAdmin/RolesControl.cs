@@ -14,14 +14,12 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
+using Aerospike.Client;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Drawing;
-using System.Linq;
-using System.Text;
 using System.Windows.Forms;
-using Aerospike.Client;
 
 namespace Aerospike.Admin
 {
@@ -94,7 +92,7 @@ namespace Aerospike.Admin
 				drop.Click += new System.EventHandler(this.DropClicked);
 				rightClickMenuRoles.Items.Add(drop);
 
-                ToolStripMenuItem edit = new ToolStripMenuItem("Edit Role");
+				ToolStripMenuItem edit = new ToolStripMenuItem("Edit Role");
 				edit.Click += new System.EventHandler(this.EditClicked);
 				rightClickMenuRoles.Items.Add(edit);
 			}

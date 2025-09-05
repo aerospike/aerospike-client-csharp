@@ -56,7 +56,7 @@ namespace Aerospike.Demo
 				console.Info("Scan terminated as expected");
 			}
 			console.Info("Records returned: " + recordCount);
-			
+
 			// PartitionFilter could be serialized at this point.
 			// Resume scan now.
 			recordCount = 0;

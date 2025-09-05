@@ -14,7 +14,6 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using System;
 using System.Text;
 
 namespace Aerospike.Client
@@ -54,8 +53,8 @@ namespace Aerospike.Client
 		/// </summary>
 		public PrivilegeCode Code
 		{
-			get {return code;}
-			set {code = value;}
+			get { return code; }
+			set { code = value; }
 		}
 
 		/// <summary>

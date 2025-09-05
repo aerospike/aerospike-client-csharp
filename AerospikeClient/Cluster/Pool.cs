@@ -14,9 +14,6 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using System.Collections.Concurrent;
-using System.Threading;
-
 namespace Aerospike.Client
 {
 	/// <summary>
@@ -249,7 +246,7 @@ namespace Aerospike.Client
 		{
 			return total - minSize;
 		}
-	
+
 		/// <summary>
 		/// Increment total connections.
 		/// </summary>

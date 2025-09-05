@@ -14,9 +14,6 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using System;
-using System.Threading;
-
 namespace Aerospike.Client
 {
 	public abstract class QueryExecutor : IQueryExecutor
@@ -51,7 +48,7 @@ namespace Aerospike.Client
 		protected internal void InitializeThreads()
 		{
 			// Detect cluster migrations when performing scan.
-			ulong clusterKey = policy.failOnClusterChange ? QueryValidate.ValidateBegin(nodes[0], statement.ns) : 0;	
+			ulong clusterKey = policy.failOnClusterChange ? QueryValidate.ValidateBegin(nodes[0], statement.ns) : 0;
 			bool first = true;
 
 			// Initialize threads.

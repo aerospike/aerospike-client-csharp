@@ -491,7 +491,7 @@ namespace Aerospike.Client
 
 		protected internal override void WriteBuffer()
 		{
-			SetBatchOperate(batchPolicy, cluster.client.BatchWritePolicyDefault, cluster.client.BatchUDFPolicyDefault, 
+			SetBatchOperate(batchPolicy, cluster.client.BatchWritePolicyDefault, cluster.client.BatchUDFPolicyDefault,
 				cluster.client.BatchDeletePolicyDefault, records, batch, configProvider);
 		}
 
@@ -699,7 +699,7 @@ namespace Aerospike.Client
 
 		public AsyncBatchOperateRecordArrayCommand
 		(
-			AsyncBatchExecutor parent, 
+			AsyncBatchExecutor parent,
 			AsyncCluster cluster,
 			BatchNode batch,
 			BatchPolicy batchPolicy,
@@ -799,7 +799,7 @@ namespace Aerospike.Client
 
 		public AsyncBatchOperateRecordSequenceCommand
 		(
-			AsyncBatchExecutor parent, 
+			AsyncBatchExecutor parent,
 			AsyncCluster cluster,
 			BatchNode batch,
 			BatchPolicy batchPolicy,
@@ -1361,7 +1361,8 @@ namespace Aerospike.Client
 
 			sequenceAP++;
 
-			if (! timeout || policy.readModeSC != ReadModeSC.LINEARIZE) {
+			if (!timeout || policy.readModeSC != ReadModeSC.LINEARIZE)
+			{
 				sequenceSC++;
 			}
 			return false;
@@ -1376,7 +1377,7 @@ namespace Aerospike.Client
 				// Retry requires keys for this node to be split among other nodes.
 				// This can cause an exponential number of commands.
 				batchNodes = GenerateBatchNodes();
-				
+
 				if (batchNodes.Count == 1 && batchNodes[0].node == batch.node)
 				{
 					// Batch node is the same.  Go through normal retry.

@@ -140,7 +140,7 @@ namespace Aerospike.Client
 			listener.OnFailure(ae);
 		}
 	}
-	
+
 	public sealed class AsyncBatchReadSequenceExecutor
 	(
 		AsyncCluster cluster,

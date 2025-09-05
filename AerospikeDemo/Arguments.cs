@@ -14,7 +14,9 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
+using Aerospike.Client;
 using System;
+using System.Collections.Generic;
 using Aerospike.Client;
 
 namespace Aerospike.Demo
@@ -31,14 +33,14 @@ namespace Aerospike.Demo
 		internal string clusterName;
 		internal string ns;
 		internal string set;
-        internal string binName;
+		internal string binName;
 		internal TlsPolicy tlsPolicy;
 		internal AuthMode authMode;
 		internal WritePolicy writePolicy;
 		internal Policy policy;
 		internal BatchPolicy batchPolicy;
 		internal int commandMax;
-        internal bool singleBin;
+		internal bool singleBin;
 
 		protected internal Arguments()
 		{

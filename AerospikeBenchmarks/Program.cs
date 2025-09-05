@@ -18,97 +18,97 @@ using Aerospike.Client;
 
 namespace Aerospike.Benchmarks
 {
-    class Program
-    {
-        static void Main(string[] args)
-        {
-            try
-            {
-                RunBenchmarks();
-            }
-            catch (Exception e)
-            {
-                Console.WriteLine("Error: " + e.Message);
-                Console.WriteLine(e.StackTrace);
-            }
-        }
-        private static void RunBenchmarks()
-        {
-            Log.SetCallback(LogCallback);
+	class Program
+	{
+		static void Main(string[] args)
+		{
+			try
+			{
+				RunBenchmarks();
+			}
+			catch (Exception e)
+			{
+				Console.WriteLine("Error: " + e.Message);
+				Console.WriteLine(e.StackTrace);
+			}
+		}
+		private static void RunBenchmarks()
+		{
+			Log.SetCallback(LogCallback);
 
-            Args args = new Args();
-            args.Print();
+			Args args = new Args();
+			args.Print();
 
-            Log.Level level = args.debug ? Log.Level.DEBUG : Log.Level.INFO;
-            Log.SetLevel(level);
+			Log.Level level = args.debug ? Log.Level.DEBUG : Log.Level.INFO;
+			Log.SetLevel(level);
 
-            Metrics metrics = new Metrics(args);
+			Metrics metrics = new Metrics(args);
 
-            if (args.sync)
-            {
-                ClientPolicy policy = new ClientPolicy();
-                policy.user = args.user;
-                policy.password = args.password;
-                policy.tlsPolicy = args.tlsPolicy;
-                policy.authMode = args.authMode;
-                AerospikeClient client = new AerospikeClient(policy, args.hosts);
+			if (args.sync)
+			{
+				ClientPolicy policy = new ClientPolicy();
+				policy.user = args.user;
+				policy.password = args.password;
+				policy.tlsPolicy = args.tlsPolicy;
+				policy.authMode = args.authMode;
+				AerospikeClient client = new AerospikeClient(policy, args.hosts);
 
-                try
-                {
-                    args.SetServerSpecific(client);
+				try
+				{
+					args.SetServerSpecific(client);
 
-                    if (args.initialize)
-                    {
-                        Initialize prog = new Initialize(args, metrics);
-                        prog.RunSync(client);
-                    }
-                    else
-                    {
-                        ReadWrite prog = new ReadWrite(args, metrics);
-                        prog.RunSync(client);
-                    }
-                }
-                finally
-                {
-                    client.Close();
-                }
-            }
-            else
-            {
-                AsyncClientPolicy policy = new AsyncClientPolicy();
-                policy.user = args.user;
-                policy.password = args.password;
-                policy.tlsPolicy = args.tlsPolicy;
-                policy.authMode = args.authMode;
-                policy.asyncMaxCommands = args.commandMax;
+					if (args.initialize)
+					{
+						Initialize prog = new Initialize(args, metrics);
+						prog.RunSync(client);
+					}
+					else
+					{
+						ReadWrite prog = new ReadWrite(args, metrics);
+						prog.RunSync(client);
+					}
+				}
+				finally
+				{
+					client.Close();
+				}
+			}
+			else
+			{
+				AsyncClientPolicy policy = new AsyncClientPolicy();
+				policy.user = args.user;
+				policy.password = args.password;
+				policy.tlsPolicy = args.tlsPolicy;
+				policy.authMode = args.authMode;
+				policy.asyncMaxCommands = args.commandMax;
 
-                AsyncClient client = new AsyncClient(policy, args.hosts);
+				AsyncClient client = new AsyncClient(policy, args.hosts);
 
-                try
-                {
-                    args.SetServerSpecific(client);
+				try
+				{
+					args.SetServerSpecific(client);
 
-                    if (args.initialize)
-                    {
-                        Initialize prog = new Initialize(args, metrics);
-                        prog.RunAsync(client);
-                    }
-                    else
-                    {
-                        ReadWrite prog = new ReadWrite(args, metrics);
-                        prog.RunAsync(client);
-                    }
-                }
-                finally
-                {
-                    client.Close();
-                }
-            }
-        }
+					if (args.initialize)
+					{
+						Initialize prog = new Initialize(args, metrics);
+						prog.RunAsync(client);
+					}
+					else
+					{
+						ReadWrite prog = new ReadWrite(args, metrics);
+						prog.RunAsync(client);
+					}
+				}
+				finally
+				{
+					client.Close();
+				}
+			}
+		}
 
-        private static void LogCallback(Log.Level level, string message)
-        {
-            Console.WriteLine(level.ToString() + ' ' + message);
-        }
-    }
+		private static void LogCallback(Log.Level level, string message)
+		{
+			Console.WriteLine(level.ToString() + ' ' + message);
+		}
+	}
 }

@@ -14,9 +14,7 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using System;
 using System.Collections.Concurrent;
-using System.Threading;
 
 namespace Aerospike.Client
 {
@@ -25,7 +23,7 @@ namespace Aerospike.Client
 		private readonly BlockingCollection<object> inputQueue;
 		private readonly ResultSet resultSet;
 
-		public QueryAggregateExecutor(Cluster cluster, QueryPolicy policy, Statement statement, Node[] nodes) 
+		public QueryAggregateExecutor(Cluster cluster, QueryPolicy policy, Statement statement, Node[] nodes)
 			: base(cluster, policy, statement, nodes)
 		{
 			inputQueue = new BlockingCollection<object>(500);

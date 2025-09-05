@@ -645,7 +645,7 @@ namespace Aerospike.Client
 		{
 			return new CmdExp(EXCLUSIVE, exps);
 		}
-		
+
 		/// <summary>
 		/// Create "equals" expression.
 		/// </summary>

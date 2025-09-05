@@ -14,12 +14,8 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using System;
-using System.Collections;
-using System.Collections.Generic;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Aerospike.Client;
-using System.Linq;
+using System.Collections;
 
 namespace Aerospike.Test
 {
@@ -97,7 +93,7 @@ namespace Aerospike.Test
 
 			try
 			{
-				received = (IList) record.GetValue(bin.name);
+				received = (IList)record.GetValue(bin.name);
 			}
 			catch (Exception)
 			{

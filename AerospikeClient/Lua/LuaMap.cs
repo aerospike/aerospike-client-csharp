@@ -14,18 +14,16 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using System;
-using System.Collections;
-using System.Collections.Generic;
 using Neo.IronLua;
+using System.Collections;
 
 namespace Aerospike.Client
 {
 	public class LuaMap : LuaTable, LuaData
 	{
-		protected internal readonly IDictionary<object,object> map;
+		protected internal readonly IDictionary<object, object> map;
 
-		public LuaMap(IDictionary<object,object> map)
+		public LuaMap(IDictionary<object, object> map)
 		{
 			this.map = map;
 		}
@@ -61,7 +59,7 @@ namespace Aerospike.Client
 
 		public static LuaMap clone(LuaMap map)
 		{
-			return new LuaMap(new Dictionary<object,object>(map.map));
+			return new LuaMap(new Dictionary<object, object>(map.map));
 		}
 
 		public static LuaMap merge(LuaMap map1, LuaMap map2, Func<object, object, LuaResult> func)
@@ -105,7 +103,7 @@ namespace Aerospike.Client
 			}
 			return new LuaMap(map);
 		}
-		
+
 		public static Func<object[]> pairs(LuaMap map)
 		{
 			LuaMapIterator iter = new LuaMapIterator(map.map.GetEnumerator());
@@ -173,7 +171,7 @@ namespace Aerospike.Client
 		{
 			if (iter.MoveNext())
 			{
-				KeyValuePair<object,object> pair = (KeyValuePair<object,object>)iter.Current;
+				KeyValuePair<object, object> pair = (KeyValuePair<object, object>)iter.Current;
 				return new object[] { pair.Key, pair.Value };
 			}
 			return null;

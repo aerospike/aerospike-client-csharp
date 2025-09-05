@@ -32,7 +32,7 @@ namespace Aerospike.Client
 		/// </summary>
 		/// <param name="cluster">collection of active server nodes</param>
 		/// <param name="nv">connection parameters</param>
-		public AsyncNode(AsyncCluster cluster, NodeValidator nv) 
+		public AsyncNode(AsyncCluster cluster, NodeValidator nv)
 			: base(cluster, nv)
 		{
 			this.cluster = cluster;
@@ -72,13 +72,13 @@ namespace Aerospike.Client
 
 			while (asyncConnQueue.TryDequeue(out conn))
 			{
-				if (! cluster.IsConnCurrentTran(conn.LastUsed))
+				if (!cluster.IsConnCurrentTran(conn.LastUsed))
 				{
 					CloseAsyncConn(conn);
 					continue;
 				}
 
-				if (! conn.IsValid())
+				if (!conn.IsValid())
 				{
 					CloseAsyncConnOnError(conn);
 					continue;
@@ -96,7 +96,7 @@ namespace Aerospike.Client
 		{
 			conn.Reset();
 
-			if (! (active && asyncConnQueue.Enqueue(conn)))
+			if (!(active && asyncConnQueue.Enqueue(conn)))
 			{
 				CloseAsyncConn(conn);
 			}
@@ -129,8 +129,8 @@ namespace Aerospike.Client
 				if (!asyncConnQueue.TryDequeueLast(out conn))
 				{
 					break;
-				} 
-				
+				}
+
 				if (cluster.IsConnCurrentTrim(conn.LastUsed))
 				{
 					if (!asyncConnQueue.EnqueueLast(conn))
