@@ -14,8 +14,6 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using System.Transactions;
-
 namespace Aerospike.Client
 {
 	/// <summary>
@@ -40,7 +38,7 @@ namespace Aerospike.Client
 		/// Value: -17
 		/// </summary>
 		public const int TXN_FAILED = -17;
-		
+
 		/// <summary>
 		/// One or more keys failed in a batch.
 		/// Value: -16
@@ -325,7 +323,7 @@ namespace Aerospike.Client
 		/// Value: 53
 		/// </summary>
 		public const int SECURITY_SCHEME_NOT_SUPPORTED = 53;
-		
+
 		/// <summary>
 		/// Administration command is invalid.
 		/// Value: 54
@@ -349,7 +347,7 @@ namespace Aerospike.Client
 		/// Value: 60
 		/// </summary>
 		public const int INVALID_USER = 60;
-		
+
 		/// <summary>
 		/// User was previously created.
 		/// Value: 61
@@ -397,7 +395,7 @@ namespace Aerospike.Client
 		/// Value: 71
 		/// </summary>
 		public const int ROLE_ALREADY_EXISTS = 71;
-	
+
 		/// <summary>
 		/// Specified Privilege is not valid.
 		/// Value: 72
@@ -445,7 +443,7 @@ namespace Aerospike.Client
 		/// Value: 83
 		/// </summary>
 		public const int QUOTA_EXCEEDED = 83;
-		
+
 		/// <summary>
 		/// A user defined function returned an error code.
 		/// Value: 100
@@ -518,7 +516,7 @@ namespace Aerospike.Client
 		/// Value: 152
 		/// </summary>
 		public const int BATCH_QUEUES_FULL = 152;
-	
+
 		/// <summary>
 		/// Secondary index already exists.
 		/// Value: 200
@@ -561,7 +559,7 @@ namespace Aerospike.Client
 		/// Value: 206
 		/// </summary>
 		public const int INDEX_MAXCOUNT = 206;
-	
+
 		/// <summary>
 		/// Secondary index query aborted.
 		/// Value: 210
@@ -609,7 +607,7 @@ namespace Aerospike.Client
 					return true;
 			}
 		}
-	
+
 		/// <summary>
 		/// Return result code as a string.
 		/// </summary>
@@ -617,287 +615,287 @@ namespace Aerospike.Client
 		{
 			switch (resultCode)
 			{
-			case TXN_ALREADY_ABORTED:
-				return "Transaction already aborted";
+				case TXN_ALREADY_ABORTED:
+					return "Transaction already aborted";
 
-			case TXN_ALREADY_COMMITTED:
-				return "Transaction already committed";
+				case TXN_ALREADY_COMMITTED:
+					return "Transaction already committed";
 
-			case TXN_FAILED:
-				return "Transaction failed";
+				case TXN_FAILED:
+					return "Transaction failed";
 
-			case BATCH_FAILED:
-				return "One or more keys failed in a batch";
+				case BATCH_FAILED:
+					return "One or more keys failed in a batch";
 
-			case NO_RESPONSE:
-				return "No response received from server";
+				case NO_RESPONSE:
+					return "No response received from server";
 
-			case MAX_ERROR_RATE:
-				return "Max error rate exceeded";
+				case MAX_ERROR_RATE:
+					return "Max error rate exceeded";
 
-			case MAX_RETRIES_EXCEEDED:
-				return "Max retries exceeded";
-				
-			case SERIALIZE_ERROR:
-				return "Serialize error";
+				case MAX_RETRIES_EXCEEDED:
+					return "Max retries exceeded";
 
-			case SERVER_NOT_AVAILABLE:
-				return "Server not available";
+				case SERIALIZE_ERROR:
+					return "Serialize error";
 
-			case NO_MORE_CONNECTIONS:
-				return "No more available connections";
+				case SERVER_NOT_AVAILABLE:
+					return "Server not available";
 
-			case COMMAND_REJECTED:
-				return "Command rejected";
+				case NO_MORE_CONNECTIONS:
+					return "No more available connections";
 
-			case QUERY_TERMINATED:
-				return "Query terminated";
+				case COMMAND_REJECTED:
+					return "Command rejected";
 
-			case SCAN_TERMINATED:
-				return "Scan terminated";
+				case QUERY_TERMINATED:
+					return "Query terminated";
 
-			case INVALID_NODE_ERROR:
-				return "Invalid node";
+				case SCAN_TERMINATED:
+					return "Scan terminated";
 
-			case PARSE_ERROR:
-				return "Parse error";
+				case INVALID_NODE_ERROR:
+					return "Invalid node";
 
-			case CLIENT_ERROR:
-				return "Client error";
+				case PARSE_ERROR:
+					return "Parse error";
 
-			case OK:
-				return "ok";
+				case CLIENT_ERROR:
+					return "Client error";
 
-			case SERVER_ERROR:
-				return "Server error";
+				case OK:
+					return "ok";
 
-			case KEY_NOT_FOUND_ERROR:
-				return "Key not found";
+				case SERVER_ERROR:
+					return "Server error";
 
-			case GENERATION_ERROR:
-				return "Generation error";
+				case KEY_NOT_FOUND_ERROR:
+					return "Key not found";
 
-			case PARAMETER_ERROR:
-				return "Parameter error";
+				case GENERATION_ERROR:
+					return "Generation error";
 
-			case KEY_EXISTS_ERROR:
-				return "Key already exists";
+				case PARAMETER_ERROR:
+					return "Parameter error";
 
-			case BIN_EXISTS_ERROR:
-				return "Bin already exists";
+				case KEY_EXISTS_ERROR:
+					return "Key already exists";
 
-			case CLUSTER_KEY_MISMATCH:
-				return "Cluster key mismatch";
+				case BIN_EXISTS_ERROR:
+					return "Bin already exists";
 
-			case SERVER_MEM_ERROR:
-				return "Server memory error";
+				case CLUSTER_KEY_MISMATCH:
+					return "Cluster key mismatch";
 
-			case TIMEOUT:
-				return "Timeout";
+				case SERVER_MEM_ERROR:
+					return "Server memory error";
 
-			case ALWAYS_FORBIDDEN:
-				return "Operation not allowed";
+				case TIMEOUT:
+					return "Timeout";
 
-			case PARTITION_UNAVAILABLE:
-				return "Partition unavailable";
+				case ALWAYS_FORBIDDEN:
+					return "Operation not allowed";
 
-			case BIN_TYPE_ERROR:
-				return "Bin type error";
+				case PARTITION_UNAVAILABLE:
+					return "Partition unavailable";
 
-			case RECORD_TOO_BIG:
-				return "Record too big";
+				case BIN_TYPE_ERROR:
+					return "Bin type error";
 
-			case KEY_BUSY:
-				return "Hot key";
+				case RECORD_TOO_BIG:
+					return "Record too big";
 
-			case SCAN_ABORT:
-				return "Scan aborted";
+				case KEY_BUSY:
+					return "Hot key";
 
-			case UNSUPPORTED_FEATURE:
-				return "Unsupported server feature";
+				case SCAN_ABORT:
+					return "Scan aborted";
 
-			case BIN_NOT_FOUND:
-				return "Bin not found";
+				case UNSUPPORTED_FEATURE:
+					return "Unsupported server feature";
 
-			case DEVICE_OVERLOAD:
-				return "Device overload";
+				case BIN_NOT_FOUND:
+					return "Bin not found";
 
-			case KEY_MISMATCH:
-				return "Key mismatch";
+				case DEVICE_OVERLOAD:
+					return "Device overload";
 
-			case INVALID_NAMESPACE:
-				return "Namespace not found";
+				case KEY_MISMATCH:
+					return "Key mismatch";
 
-			case BIN_NAME_TOO_LONG:
-				return "Bin name length greater than 15 characters or maximum bins exceeded";
+				case INVALID_NAMESPACE:
+					return "Namespace not found";
 
-			case FAIL_FORBIDDEN:
-				return "Operation not allowed at this time";
+				case BIN_NAME_TOO_LONG:
+					return "Bin name length greater than 15 characters or maximum bins exceeded";
 
-			case ELEMENT_NOT_FOUND:
-				return "Map key not found";
+				case FAIL_FORBIDDEN:
+					return "Operation not allowed at this time";
 
-			case ELEMENT_EXISTS:
-				return "Map key exists";
+				case ELEMENT_NOT_FOUND:
+					return "Map key not found";
 
-			case ENTERPRISE_ONLY:
-				return "Enterprise only";
+				case ELEMENT_EXISTS:
+					return "Map key exists";
 
-			case OP_NOT_APPLICABLE:
-				return "Operation not applicable";
+				case ENTERPRISE_ONLY:
+					return "Enterprise only";
 
-			case FILTERED_OUT:
-				return "Command filtered out";
+				case OP_NOT_APPLICABLE:
+					return "Operation not applicable";
 
-			case LOST_CONFLICT:
-				return "Command failed due to conflict with XDR";
+				case FILTERED_OUT:
+					return "Command filtered out";
 
-			case XDR_KEY_BUSY:
-				return "Write can't complete until XDR finishes shipping.";
+				case LOST_CONFLICT:
+					return "Command failed due to conflict with XDR";
 
-			case QUERY_END:
-				return "Query end";
+				case XDR_KEY_BUSY:
+					return "Write can't complete until XDR finishes shipping.";
 
-			case SECURITY_NOT_SUPPORTED:
-				return "Security not supported";
+				case QUERY_END:
+					return "Query end";
 
-			case SECURITY_NOT_ENABLED:
-				return "Security not enabled";
+				case SECURITY_NOT_SUPPORTED:
+					return "Security not supported";
 
-			case SECURITY_SCHEME_NOT_SUPPORTED:
-				return "Security scheme not supported";
+				case SECURITY_NOT_ENABLED:
+					return "Security not enabled";
 
-			case INVALID_COMMAND:
-				return "Invalid command";
+				case SECURITY_SCHEME_NOT_SUPPORTED:
+					return "Security scheme not supported";
 
-			case INVALID_FIELD:
-				return "Invalid field";
+				case INVALID_COMMAND:
+					return "Invalid command";
 
-			case ILLEGAL_STATE:
-				return "Illegal State";
+				case INVALID_FIELD:
+					return "Invalid field";
 
-			case INVALID_USER:
-				return "Invalid user";
+				case ILLEGAL_STATE:
+					return "Illegal State";
 
-			case USER_ALREADY_EXISTS:
-				return "User already exists";
+				case INVALID_USER:
+					return "Invalid user";
 
-			case INVALID_PASSWORD:
-				return "Invalid password";
+				case USER_ALREADY_EXISTS:
+					return "User already exists";
 
-			case EXPIRED_PASSWORD:
-				return "Password expired";
+				case INVALID_PASSWORD:
+					return "Invalid password";
 
-			case FORBIDDEN_PASSWORD:
-				return "Password can't be reused";
+				case EXPIRED_PASSWORD:
+					return "Password expired";
 
-			case INVALID_CREDENTIAL:
-				return "Invalid credential";
+				case FORBIDDEN_PASSWORD:
+					return "Password can't be reused";
 
-			case EXPIRED_SESSION:
-				return "Login session expired";
+				case INVALID_CREDENTIAL:
+					return "Invalid credential";
 
-			case INVALID_ROLE:
-				return "Invalid role";
+				case EXPIRED_SESSION:
+					return "Login session expired";
 
-			case ROLE_ALREADY_EXISTS:
-				return "Role already exists";
+				case INVALID_ROLE:
+					return "Invalid role";
 
-			case INVALID_PRIVILEGE:
-				return "Invalid privilege";
+				case ROLE_ALREADY_EXISTS:
+					return "Role already exists";
 
-			case INVALID_WHITELIST:
-				return "Invalid whitelist";
+				case INVALID_PRIVILEGE:
+					return "Invalid privilege";
 
-			case QUOTAS_NOT_ENABLED:
-				return "Quotas not enabled";
+				case INVALID_WHITELIST:
+					return "Invalid whitelist";
 
-			case INVALID_QUOTA:
-				return "Invalid quota";
+				case QUOTAS_NOT_ENABLED:
+					return "Quotas not enabled";
 
-			case NOT_AUTHENTICATED:
-				return "Not authenticated";
+				case INVALID_QUOTA:
+					return "Invalid quota";
 
-			case ROLE_VIOLATION:
-				return "Role violation";
+				case NOT_AUTHENTICATED:
+					return "Not authenticated";
 
-			case NOT_WHITELISTED:
-				return "Command not whitelisted";
+				case ROLE_VIOLATION:
+					return "Role violation";
 
-			case QUOTA_EXCEEDED:
-				return "Quota exceeded";
+				case NOT_WHITELISTED:
+					return "Command not whitelisted";
 
-			case UDF_BAD_RESPONSE:
-				return "UDF returned error";
+				case QUOTA_EXCEEDED:
+					return "Quota exceeded";
 
-			case MRT_BLOCKED:
-				return "Transaction record blocked by a different transaction";
+				case UDF_BAD_RESPONSE:
+					return "UDF returned error";
 
-			case MRT_VERSION_MISMATCH:
-				return "Transaction version mismatch";
+				case MRT_BLOCKED:
+					return "Transaction record blocked by a different transaction";
 
-			case MRT_EXPIRED:
-				return "Transaction expired";
+				case MRT_VERSION_MISMATCH:
+					return "Transaction version mismatch";
 
-			case MRT_TOO_MANY_WRITES:
-				return "Transaction write command limit exceeded";
+				case MRT_EXPIRED:
+					return "Transaction expired";
 
-			case MRT_COMMITTED:
-				return "Transaction already committed";
+				case MRT_TOO_MANY_WRITES:
+					return "Transaction write command limit exceeded";
 
-			case MRT_ABORTED:
-				return "Transaction already aborted";
+				case MRT_COMMITTED:
+					return "Transaction already committed";
 
-			case MRT_ALREADY_LOCKED:
-				return "This record has been locked by a previous update in this transaction";
+				case MRT_ABORTED:
+					return "Transaction already aborted";
 
-			case MRT_MONITOR_EXISTS:
-				return "This transaction has already started. Writing to the same transaction with independent threads is unsafe";
+				case MRT_ALREADY_LOCKED:
+					return "This record has been locked by a previous update in this transaction";
 
-			case BATCH_DISABLED:
-				return "Batch functionality has been disabled";
+				case MRT_MONITOR_EXISTS:
+					return "This transaction has already started. Writing to the same transaction with independent threads is unsafe";
 
-			case BATCH_MAX_REQUESTS_EXCEEDED:
-				return "Batch max requests have been exceeded";
+				case BATCH_DISABLED:
+					return "Batch functionality has been disabled";
 
-			case BATCH_QUEUES_FULL:
-				return "All batch queues are full";
+				case BATCH_MAX_REQUESTS_EXCEEDED:
+					return "Batch max requests have been exceeded";
 
-			case INDEX_ALREADY_EXISTS:
-				return "Index already exists";
+				case BATCH_QUEUES_FULL:
+					return "All batch queues are full";
 
-			case INDEX_NOTFOUND:
-				return "Index not found";
+				case INDEX_ALREADY_EXISTS:
+					return "Index already exists";
 
-			case INDEX_OOM:
-				return "Index out of memory";
+				case INDEX_NOTFOUND:
+					return "Index not found";
 
-			case INDEX_NOTREADABLE:
-				return "Index not readable";
+				case INDEX_OOM:
+					return "Index out of memory";
 
-			case INDEX_GENERIC:
-				return "Index error";
+				case INDEX_NOTREADABLE:
+					return "Index not readable";
 
-			case INDEX_NAME_MAXLEN:
-				return "Index name max length exceeded";
+				case INDEX_GENERIC:
+					return "Index error";
 
-			case INDEX_MAXCOUNT:
-				return "Index count exceeds max";
-			
-			case QUERY_ABORTED:
-				return "Query aborted";
+				case INDEX_NAME_MAXLEN:
+					return "Index name max length exceeded";
 
-			case QUERY_QUEUEFULL:
-				return "Query queue full";
+				case INDEX_MAXCOUNT:
+					return "Index count exceeds max";
 
-			case QUERY_TIMEOUT:
-				return "Query timeout";
+				case QUERY_ABORTED:
+					return "Query aborted";
 
-			case QUERY_GENERIC:
-				return "Query error";
+				case QUERY_QUEUEFULL:
+					return "Query queue full";
 
-			default:
-				return "";
+				case QUERY_TIMEOUT:
+					return "Query timeout";
+
+				case QUERY_GENERIC:
+					return "Query error";
+
+				default:
+					return "";
 			}
 		}
 	}

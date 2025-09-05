@@ -15,9 +15,9 @@
  * the License.
  */
 
-using static Aerospike.Client.CommitStatus;
-using static Aerospike.Client.CommitError;
 using static Aerospike.Client.AbortStatus;
+using static Aerospike.Client.CommitError;
+using static Aerospike.Client.CommitStatus;
 
 namespace Aerospike.Client
 {
@@ -119,7 +119,7 @@ namespace Aerospike.Client
 				catch (Exception e)
 				{
 					AerospikeException.Commit aec = CreateCommitException(CommitErrorType.MARK_ROLL_FORWARD_ABANDONED, e);
-					
+
 					if (txn.InDoubt)
 					{
 						aec.SetInDoubt(true);
@@ -158,7 +158,7 @@ namespace Aerospike.Client
 			return CommitStatusType.OK;
 		}
 
-		private AerospikeException.Commit CreateCommitException(CommitErrorType error, Exception cause, Exception innerException = null) 
+		private AerospikeException.Commit CreateCommitException(CommitErrorType error, Exception cause, Exception innerException = null)
 		{
 			AerospikeException.Commit aec;
 
@@ -196,7 +196,7 @@ namespace Aerospike.Client
 		public AbortStatusType Abort(BatchPolicy rollPolicy)
 		{
 			txn.State = Txn.TxnState.ABORTED;
-			
+
 			try
 			{
 				Roll(rollPolicy, Command.INFO4_TXN_ROLL_BACK);

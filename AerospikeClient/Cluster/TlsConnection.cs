@@ -14,13 +14,10 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using System;
-using System.IO;
 using System.Net;
-using System.Net.Sockets;
 using System.Net.Security;
+using System.Net.Sockets;
 using System.Security.Cryptography.X509Certificates;
-using System.Xml.Linq;
 
 namespace Aerospike.Client
 {
@@ -40,7 +37,7 @@ namespace Aerospike.Client
 			: this(cluster, tlsName, address, timeoutMillis, null, pool)
 		{
 		}
-		
+
 		/// <summary>
 		/// Create TLS socket.
 		/// </summary>
@@ -55,7 +52,7 @@ namespace Aerospike.Client
 				sslStream = new SslStream(new NetworkStream(socket, true), false, ValidateServerCertificate);
 				sslStream.AuthenticateAsClient(tlsName, cluster.tlsPolicy.clientCertificates, cluster.tlsPolicy.protocols, false);
 			}
-            catch (Exception)
+			catch (Exception)
 			{
 				Close();
 
@@ -202,7 +199,7 @@ namespace Aerospike.Client
 				// Check if data is available for reading.
 				// Poll is used because the timeout value is respected under 500ms.
 				// The read method does not timeout until after 500ms.
-				if (! socket.Poll(socket.ReceiveTimeout * 1000, SelectMode.SelectRead))
+				if (!socket.Poll(socket.ReceiveTimeout * 1000, SelectMode.SelectRead))
 				{
 					throw new SocketException((int)SocketError.TimedOut);
 				}
@@ -225,7 +222,7 @@ namespace Aerospike.Client
 		public override void ReadFully(byte[] buffer, int length, byte state)
 		{
 			int count = 0;
-			
+
 			// The SSL stream may have already read the socket data into the stream,
 			// so do not poll when SSL stream is readable.
 			if (!sslStream.CanRead && socket.ReceiveTimeout > 0)

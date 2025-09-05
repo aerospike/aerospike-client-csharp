@@ -60,7 +60,7 @@ namespace Aerospike.Client
 		{
 			txn.SetNamespace(cmdKey.ns);
 
-			if (txn.MonitorExists()) 
+			if (txn.MonitorExists())
 			{
 				// No existing monitor record.
 				return new Operation[] {
@@ -82,7 +82,7 @@ namespace Aerospike.Client
 
 			List<Value> list = new(keys.Length);
 
-			foreach (Key key in keys) 
+			foreach (Key key in keys)
 			{
 				txn.SetNamespace(key.ns);
 				list.Add(Value.Get(key.digest));
@@ -96,10 +96,11 @@ namespace Aerospike.Client
 
 			List<Value> list = new(records.Count);
 
-			foreach (BatchRecord br in records) {
+			foreach (BatchRecord br in records)
+			{
 				txn.SetNamespace(br.key.ns);
 
-				if (br.hasWrite) 
+				if (br.hasWrite)
 				{
 					list.Add(Value.Get(br.key.digest));
 				}

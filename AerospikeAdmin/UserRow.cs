@@ -14,11 +14,9 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using System;
-using System.Collections.Generic;
-using System.ComponentModel;
-using System.Text;
 using Aerospike.Client;
+using System.Collections.Generic;
+using System.Text;
 
 namespace Aerospike.Admin
 {

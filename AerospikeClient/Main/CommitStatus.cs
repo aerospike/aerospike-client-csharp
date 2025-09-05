@@ -15,8 +15,6 @@
  * the License.
  */
 
-using static Aerospike.Client.AbortStatus;
-
 namespace Aerospike.Client
 {
 	/// <summary>

@@ -14,10 +14,7 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using System;
 using System.Net.Sockets;
-using System.Runtime.ConstrainedExecution;
-using System.Timers;
 using static Aerospike.Client.Latency;
 
 namespace Aerospike.Client
@@ -109,12 +106,12 @@ namespace Aerospike.Client
 			this.totalWatch = other.totalWatch;
 		}
 
-        // Simply ask the cluster object to schedule the command for execution.
-        // It may or may not be immediate, depending on the number of executing commands.
-        // If immediate, the command will start its execution on the current thread.
-        // Otherwise, the command will start its execution from the thread pool.
-        public void Execute()
-        {
+		// Simply ask the cluster object to schedule the command for execution.
+		// It may or may not be immediate, depending on the number of executing commands.
+		// If immediate, the command will start its execution on the current thread.
+		// Otherwise, the command will start its execution from the thread pool.
+		public void Execute()
+		{
 			if (totalTimeout > 0)
 			{
 				// totalTimeout is a fixed timeout. Stopwatch is started once on first
@@ -123,7 +120,7 @@ namespace Aerospike.Client
 				AsyncTimeoutQueue.Instance.Add(this, totalTimeout);
 			}
 			cluster.ScheduleCommandExecution(this);
-        }
+		}
 
 		public void ExecuteBatchRetry()
 		{
@@ -290,7 +287,7 @@ namespace Aerospike.Client
 			{
 				node.AddLatency(ns, LatencyType.CONN, metricsWatch.Elapsed.TotalMilliseconds);
 			}
-			
+
 			if (cluster.authEnabled)
 			{
 				byte[] token = node.SessionToken;
@@ -930,12 +927,12 @@ namespace Aerospike.Client
 				ae.Policy = policy;
 				ae.Iteration = iteration;
 				ae.SetInDoubt(IsWrite(), commandSentCounter);
-				
+
 				if (ae.InDoubt)
 				{
 					OnInDoubt();
 				}
-				
+
 				OnFailure(ae);
 			}
 			catch (Exception e)

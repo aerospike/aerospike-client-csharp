@@ -14,13 +14,11 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using System.Threading;
-
 namespace Aerospike.Client
 {
 	public abstract class AsyncMultiExecutor
 	{
-		internal readonly AsyncCluster cluster; 
+		internal readonly AsyncCluster cluster;
 		private AsyncMultiCommand[] commands;
 		private string ns;
 		private ulong clusterKey;
@@ -147,7 +145,7 @@ namespace Aerospike.Client
 				parent.ChildFailure(ae);
 			}
 		}
-		
+
 		private void QueryComplete()
 		{
 			int finished = Interlocked.Increment(ref completedCount);
@@ -203,7 +201,7 @@ namespace Aerospike.Client
 			this.completedCount = 0;
 			this.done = 0;
 		}
-		
+
 		protected internal abstract void OnSuccess();
 		protected internal abstract void OnFailure(AerospikeException ae);
 	}

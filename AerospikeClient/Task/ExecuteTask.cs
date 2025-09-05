@@ -49,7 +49,7 @@ namespace Aerospike.Client
 		{
 			// All nodes must respond with complete to be considered done.
 			Node[] nodes = cluster.ValidateNodes();
-			
+
 			string module = (scan) ? "scan" : "query";
 			string cmd1 = "query-show:trid=" + taskId;
 			string cmd2 = module + "-show:trid=" + taskId;

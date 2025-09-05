@@ -14,9 +14,6 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using System;
-using System.Collections.Generic;
-
 namespace Aerospike.Client
 {
 	/// <summary>
@@ -35,7 +32,7 @@ namespace Aerospike.Client
 			this.cluster = cluster;
 
 			string command = (cluster.tlsPolicy != null) ?
-				cluster.useServicesAlternate ? "peers-tls-alt" : "peers-tls-std" : 
+				cluster.useServicesAlternate ? "peers-tls-alt" : "peers-tls-std" :
 				cluster.useServicesAlternate ? "peers-clear-alt" : "peers-clear-std";
 
 			parser = new Info(node, conn, command);
@@ -73,7 +70,7 @@ namespace Aerospike.Client
 				{
 					break;
 				}
-			} 
+			}
 		}
 
 		private Peer ParsePeer()
@@ -132,7 +129,7 @@ namespace Aerospike.Client
 			if (cluster.ipMap != null)
 			{
 				string alternativeHost;
-				
+
 				if (cluster.ipMap.TryGetValue(host, out alternativeHost))
 				{
 					host = alternativeHost;

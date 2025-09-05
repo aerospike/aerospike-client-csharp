@@ -14,9 +14,9 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
+using Aerospike.Client;
 using System;
 using System.Threading;
-using Aerospike.Client;
 
 namespace Aerospike.Demo
 {
@@ -34,7 +34,7 @@ namespace Aerospike.Demo
 			Key key = new Key(args.ns, args.set, "expirekey");
 			Bin bin = new Bin(args.GetBinName("expirebin"), "expirevalue");
 
-			console.Info("Put: namespace={0} set={1} key={2} bin={3} value={4} expiration=2", 
+			console.Info("Put: namespace={0} set={1} key={2} bin={3} value={4} expiration=2",
 				key.ns, key.setName, key.userKey, bin.name, bin.value);
 
 			// Specify that record expires 2 seconds after it's written.
@@ -49,7 +49,7 @@ namespace Aerospike.Demo
 
 			if (record == null)
 			{
-				throw new Exception(string.Format("Failed to get: namespace={0} set={1} key={2}", 
+				throw new Exception(string.Format("Failed to get: namespace={0} set={1} key={2}",
 					key.ns, key.setName, key.userKey));
 			}
 
@@ -58,7 +58,7 @@ namespace Aerospike.Demo
 
 			if (received.Equals(expected))
 			{
-				console.Info("Get successful: namespace={0} set={1} key={2} bin={3} value={4}", 
+				console.Info("Get successful: namespace={0} set={1} key={2} bin={3} value={4}",
 					key.ns, key.setName, key.userKey, bin.name, received);
 			}
 			else

@@ -287,7 +287,7 @@ namespace Aerospike.Client
 		{
 			foreach (Operation op in ops)
 			{
-				if (! Operation.IsWrite(op.type))
+				if (!Operation.IsWrite(op.type))
 				{
 					readAttr |= Command.INFO1_READ;
 

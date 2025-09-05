@@ -657,12 +657,13 @@ namespace Aerospike.Client
 
 			int count = 0;
 
-			foreach (BatchRecord br in records) {
+			foreach (BatchRecord br in records)
+			{
 				// Only show results with an error response.
-				if (!(br.resultCode == ResultCode.OK || br.resultCode == ResultCode.NO_RESPONSE)) 
+				if (!(br.resultCode == ResultCode.OK || br.resultCode == ResultCode.NO_RESPONSE))
 				{
 					// Only show first 3 errors.
-					if (count >= 3) 
+					if (count >= 3)
 					{
 						sb.Append(System.Environment.NewLine);
 						sb.Append("...");

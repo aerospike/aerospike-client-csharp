@@ -14,13 +14,9 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using System;
 using System.Collections;
-using System.Collections.Generic;
-using System.IO;
 using System.Net.Sockets;
 using System.Text;
-using System.Threading;
 
 namespace Aerospike.Client
 {
@@ -83,7 +79,7 @@ namespace Aerospike.Client
 			}
 		}
 
-		public static string MapToString(IDictionary<object,object> map)
+		public static string MapToString(IDictionary<object, object> map)
 		{
 			StringBuilder sb = new StringBuilder(200);
 			MapToString(sb, map);
@@ -281,7 +277,7 @@ namespace Aerospike.Client
 			}
 			return bytes;
 		}
-	
+
 		public static int HexVal(char hex)
 		{
 			int val = (int)hex;

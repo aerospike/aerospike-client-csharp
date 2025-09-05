@@ -14,10 +14,8 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using System;
 using System.Diagnostics;
 using System.Net.Sockets;
-using System.Threading;
 
 namespace Aerospike.Client
 {
@@ -135,7 +133,7 @@ namespace Aerospike.Client
 	}
 
 	public sealed class AsyncConnector : IAsyncCommand, ITimeout
-	{		
+	{
 		private readonly AsyncCluster cluster;
 		private readonly AsyncNode node;
 		private readonly ConnectorListener listener;

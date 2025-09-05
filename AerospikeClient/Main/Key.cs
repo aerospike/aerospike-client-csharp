@@ -51,7 +51,7 @@ namespace Aerospike.Client
 		/// </list>
 		/// </summary>
 		public readonly Value userKey;
-	
+
 		/// <summary>
 		/// Initialize key from namespace, optional set name and user key.
 		/// The set name and user defined key are converted to a digest before sending to the server.
@@ -75,7 +75,7 @@ namespace Aerospike.Client
 
 			// Some value types can't be used as keys (csblob, list, map, null).  Verify key type.
 			key.ValidateKeyType();
-			
+
 			digest = ComputeDigest(setName, key);
 		}
 
@@ -389,7 +389,7 @@ namespace Aerospike.Client
 		/// </summary>
 		public override bool Equals(object obj)
 		{
-			Key other = (Key) obj;
+			Key other = (Key)obj;
 
 			if (digest.Length != other.digest.Length)
 			{
@@ -413,7 +413,7 @@ namespace Aerospike.Client
 		{
 			return this.ns + ":" + this.setName + ":" + this.userKey + ":" + ByteUtil.BytesToHexString(this.digest);
 		}
-	
+
 		/// <summary>
 		/// Generate unique server hash value from set name, key type and user defined key.  
 		/// The hash function is RIPEMD-160 (a 160 bit hash).

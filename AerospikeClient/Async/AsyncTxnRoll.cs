@@ -146,7 +146,7 @@ namespace Aerospike.Client
 				AsyncTxnMarkRollForward command = new(cluster, writeListener, writePolicy, txnKey);
 				command.Execute();
 			}
-			catch (Exception e) 
+			catch (Exception e)
 			{
 				NotifyMarkRollForwardFailure(CommitErrorType.MARK_ROLL_FORWARD_ABANDONED, e);
 			}
@@ -249,13 +249,13 @@ namespace Aerospike.Client
 				AsyncTxnClose command = new(cluster, txn, new CloseOnCommitListener(this, verified), writePolicy, txnKey);
 				command.Execute();
 			}
-			catch (Exception e) 
+			catch (Exception e)
 			{
-				if (verified) 
+				if (verified)
 				{
 					NotifyCommitSuccess(CommitStatusType.CLOSE_ABANDONED);
 				}
-				else 
+				else
 				{
 					NotifyCommitFailure(CommitErrorType.VERIFY_FAIL_CLOSE_ABANDONED, e);
 				}
@@ -277,7 +277,7 @@ namespace Aerospike.Client
 				AsyncTxnClose command = new(cluster, txn, deleteListener, writePolicy, txnKey);
 				command.Execute();
 			}
-			catch (Exception) 
+			catch (Exception)
 			{
 				NotifyAbortSuccess(AbortStatusType.CLOSE_ABANDONED);
 			}
@@ -413,12 +413,12 @@ namespace Aerospike.Client
 		private sealed class VerifyListener : BatchRecordArrayListener
 		{
 			private readonly AsyncTxnRoll command;
-			
-			public VerifyListener(AsyncTxnRoll command) 
-			{ 
+
+			public VerifyListener(AsyncTxnRoll command)
+			{
 				this.command = command;
 			}
-			
+
 			public void OnSuccess(BatchRecord[] records, bool status)
 			{
 				command.verifyRecords = records;
@@ -444,7 +444,7 @@ namespace Aerospike.Client
 			}
 		};
 
-		private sealed class RollListener : BatchRecordArrayListener 
+		private sealed class RollListener : BatchRecordArrayListener
 		{
 			private readonly AsyncTxnRoll command;
 
@@ -466,7 +466,7 @@ namespace Aerospike.Client
 					command.NotifyAbortSuccess(AbortStatusType.ROLL_BACK_ABANDONED);
 				}
 			}
-		
+
 			public void OnFailure(BatchRecord[] records, AerospikeException ae)
 			{
 				command.rollRecords = records;

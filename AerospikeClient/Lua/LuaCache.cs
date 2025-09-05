@@ -15,8 +15,6 @@
  * the License.
  */
 using System.Collections.Concurrent;
-using System.IO;
-using System.Threading;
 
 namespace Aerospike.Client
 {
@@ -28,7 +26,7 @@ namespace Aerospike.Client
 		public static LuaInstance GetInstance()
 		{
 			LuaInstance instance;
-				
+
 			if (InstanceQueue.TryDequeue(out instance))
 			{
 				return instance;

@@ -17,25 +17,25 @@
 
 namespace Aerospike.Client
 {
-    /// <summary>
-    /// Asynchronous Aerospike client.
-    /// <para>
-    /// Your application uses this interface to perform asynchronous database operations 
-    /// such as writing and reading records, and selecting sets of records. Write 
-    /// operations include specialized functionality such as append/prepend and arithmetic
-    /// addition.
-    /// </para>
-    /// <para>
-    /// Clients implementing this interface must be thread-safe. One client instance should be used per cluster.
-    /// Multiple threads should share same cluster instance.
-    /// </para>
-    /// <para>
-    /// Each record may have multiple bins, unless the Aerospike server nodes are
-    /// configured as "single-bin". In "multi-bin" mode, partial records may be
-    /// written or read by specifying the relevant subset of bins.
-    /// </para>
-    /// </summary>
-    public interface IAsyncClient : IAerospikeClient
+	/// <summary>
+	/// Asynchronous Aerospike client.
+	/// <para>
+	/// Your application uses this interface to perform asynchronous database operations 
+	/// such as writing and reading records, and selecting sets of records. Write 
+	/// operations include specialized functionality such as append/prepend and arithmetic
+	/// addition.
+	/// </para>
+	/// <para>
+	/// Clients implementing this interface must be thread-safe. One client instance should be used per cluster.
+	/// Multiple threads should share same cluster instance.
+	/// </para>
+	/// <para>
+	/// Each record may have multiple bins, unless the Aerospike server nodes are
+	/// configured as "single-bin". In "multi-bin" mode, partial records may be
+	/// written or read by specifying the relevant subset of bins.
+	/// </para>
+	/// </summary>
+	public interface IAsyncClient : IAerospikeClient
 	{
 		//-------------------------------------------------------
 		// Transaction
@@ -226,7 +226,7 @@ namespace Aerospike.Client
 		/// <param name="bins">array of bin name/value pairs</param>
 		/// <exception cref="AerospikeException">if queue is full</exception>
 		void Add(WritePolicy policy, WriteListener listener, Key key, params Bin[] bins);
-		
+
 		//-------------------------------------------------------
 		// Delete Operations
 		//-------------------------------------------------------
@@ -664,7 +664,7 @@ namespace Aerospike.Client
 		/// <param name="ops">array of read operations on record</param>
 		/// <exception cref="AerospikeException">if queue is full</exception>
 		void Get(BatchPolicy policy, RecordSequenceListener listener, Key[] keys, params Operation[] ops);
-		
+
 		/// <summary>
 		/// Asynchronously read multiple record header data for specified keys in one batch call.
 		/// Create listener, call asynchronous batch header get and return task monitor.
@@ -872,7 +872,7 @@ namespace Aerospike.Client
 		/// <param name="binNames">optional bin to retrieve. All bins will be returned if not specified.</param>
 		/// <exception cref="AerospikeException">if queue is full</exception>
 		void ScanAll(ScanPolicy policy, RecordSequenceListener listener, string ns, string setName, params string[] binNames);
-        
+
 		/// <summary>
 		/// Asynchronously read records in specified namespace, set and partition filter.
 		/// If the policy's concurrentNodes is specified, each server node will be read in
@@ -892,21 +892,21 @@ namespace Aerospike.Client
 		void ScanPartitions(ScanPolicy policy, RecordSequenceListener listener, PartitionFilter partitionFilter, string ns, string setName, params string[] binNames);
 
 		//---------------------------------------------------------------
-        // User defined functions
-        //---------------------------------------------------------------
+		// User defined functions
+		//---------------------------------------------------------------
 
-        /// <summary>
-        /// Asynchronously execute user defined function on server for a single record and return result.
-        /// Create listener, call asynchronous execute and return task monitor.
-        /// </summary>
-        /// <param name="policy">write configuration parameters, pass in null for defaults</param>
-        /// <param name="token">cancellation token</param>
-        /// <param name="key">unique record identifier</param>
-        /// <param name="packageName">server package name where user defined function resides</param>
-        /// <param name="functionName">user defined function</param>
-        /// <param name="functionArgs">arguments passed in to user defined function</param>
-        /// <returns>task monitor</returns>
-        Task<object> Execute(WritePolicy policy, CancellationToken token, Key key, string packageName, string functionName, params Value[] functionArgs);
+		/// <summary>
+		/// Asynchronously execute user defined function on server for a single record and return result.
+		/// Create listener, call asynchronous execute and return task monitor.
+		/// </summary>
+		/// <param name="policy">write configuration parameters, pass in null for defaults</param>
+		/// <param name="token">cancellation token</param>
+		/// <param name="key">unique record identifier</param>
+		/// <param name="packageName">server package name where user defined function resides</param>
+		/// <param name="functionName">user defined function</param>
+		/// <param name="functionArgs">arguments passed in to user defined function</param>
+		/// <returns>task monitor</returns>
+		Task<object> Execute(WritePolicy policy, CancellationToken token, Key key, string packageName, string functionName, params Value[] functionArgs);
 
 		/// <summary>
 		/// Asynchronously execute user defined function on server and return result.

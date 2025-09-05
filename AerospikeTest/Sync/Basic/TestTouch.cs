@@ -15,7 +15,6 @@
  * the License.
  */
 using Aerospike.Client;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace Aerospike.Test
 {
@@ -36,7 +35,7 @@ namespace Aerospike.Test
 			client.Put(writePolicy, key, bin);
 
 			writePolicy.expiration = 2;
-			
+
 			Record record = client.Operate(writePolicy, key, Operation.Touch(), Operation.GetHeader());
 			AssertRecordFound(key, record);
 			Assert.AreNotEqual(0, record.expiration);

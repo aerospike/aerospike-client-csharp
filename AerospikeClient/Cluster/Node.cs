@@ -15,9 +15,8 @@
  * the License.
  */
 using System.Net;
-using static Aerospike.Client.Latency;
 using System.Net.Sockets;
-using System.Text;
+using static Aerospike.Client.Latency;
 
 namespace Aerospike.Client
 {
@@ -39,7 +38,7 @@ namespace Aerospike.Client
 		public const int HAS_PARTITION_QUERY = (1 << 3);
 
 		private static readonly string[] INFO_PERIODIC = new string[] { "node", "peers-generation", "partition-generation" };
-		private static readonly string[] INFO_PERIODIC_REB = new string[] { "node", "peers-generation", "partition-generation", "rebalance-generation" }; 
+		private static readonly string[] INFO_PERIODIC_REB = new string[] { "node", "peers-generation", "partition-generation", "rebalance-generation" };
 
 		protected internal readonly Cluster cluster;
 		private readonly string name;
@@ -49,7 +48,7 @@ namespace Aerospike.Client
 		private Connection tendConnection;
 		private byte[] sessionToken;
 		private DateTime? sessionExpiration;
-		internal volatile Dictionary<string,int> racks;
+		internal volatile Dictionary<string, int> racks;
 		private volatile NodeMetrics metrics;
 		protected bool metricsEnabled;
 		private readonly Pool<Connection>[] connectionPools;
@@ -272,7 +271,7 @@ namespace Aerospike.Client
 		}
 		private bool ShouldLogin()
 		{
-			return performLogin > 0 || (sessionExpiration.HasValue && 
+			return performLogin > 0 || (sessionExpiration.HasValue &&
 				DateTime.Compare(DateTime.UtcNow, sessionExpiration.Value) >= 0);
 		}
 
@@ -297,7 +296,7 @@ namespace Aerospike.Client
 				throw;
 			}
 		}
-	
+
 		public void SignalLogin()
 		{
 			// Only login when sessionToken is supported
@@ -495,7 +494,7 @@ namespace Aerospike.Client
 						}
 					}
 
-					if (! nodeValidated)
+					if (!nodeValidated)
 					{
 						peersValidated = false;
 					}
@@ -586,7 +585,7 @@ namespace Aerospike.Client
 			// Also, avoid "split cluster" case where this node thinks it's a 1-node cluster.
 			// Unchecked, such a node can dominate the partition map and cause all other
 			// nodes to be dropped.
-			if (failures > 0 || ! active || (peersCount == 0 && peers.refreshCount > 1))
+			if (failures > 0 || !active || (peersCount == 0 && peers.refreshCount > 1))
 			{
 				return;
 			}
@@ -640,7 +639,7 @@ namespace Aerospike.Client
 		{
 			failures++;
 
-			if (! tendConnection.IsClosed())
+			if (!tendConnection.IsClosed())
 			{
 				IncrErrorRate();
 				Interlocked.Increment(ref connsClosed);
@@ -676,7 +675,7 @@ namespace Aerospike.Client
 					return;
 				}
 
-				if (! pool.Enqueue(conn))
+				if (!pool.Enqueue(conn))
 				{
 					CloseConnection(conn);
 					break;
@@ -1108,7 +1107,7 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Increment the key busy counter.
 		/// </summary>
-		public void AddKeyBusy(string ns) 
+		public void AddKeyBusy(string ns)
 		{
 			keyBusyCounter?.Increment(ns);
 		}
@@ -1116,7 +1115,7 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Add to the count of bytes sent to the node.
 		/// </summary>
-		public void AddBytesOut(string ns, long count) 
+		public void AddBytesOut(string ns, long count)
 		{
 			metrics?.BytesOutCounter?.Increment(ns, count);
 		}
@@ -1124,7 +1123,7 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Add to the count of bytes received from the node.
 		/// </summary>
-		public void AddBytesIn(string ns, long count) 
+		public void AddBytesIn(string ns, long count)
 		{
 			metrics?.BytesInCounter?.Increment(ns, count);
 		}
@@ -1149,7 +1148,7 @@ namespace Aerospike.Client
 		/// Return transaction timeout count for a given namespace. The value is cumulative and not reset per metrics
 		/// interval.
 		/// </summary>
-		public long GetTimeoutCountbyNS(string ns) 
+		public long GetTimeoutCountbyNS(string ns)
 		{
 			return timeoutCounter == null ? 0 : timeoutCounter.GetCountByNS(ns);
 		}
@@ -1157,7 +1156,7 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Return transaction error count by namespace. The value is cumulative and not reset per metrics interval.
 		/// </summary>
-		public long GetErrorCountByNS(string ns) 
+		public long GetErrorCountByNS(string ns)
 		{
 			return errorCounter == null ? 0 : errorCounter.GetCountByNS(ns);
 		}
@@ -1165,7 +1164,7 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Return count of total bytes in. The value is cumulative and not reset per metrics interval.
 		/// </summary>
-		public long GetBytesInTotal() 
+		public long GetBytesInTotal()
 		{
 			return metrics?.BytesInCounter == null ? 0 : metrics.BytesInCounter.GetTotal();
 		}
@@ -1189,7 +1188,7 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Return count of bytes out by namespace. The value is cumulative and not reset per metrics interval.
 		/// </summary>
-		public long GetBytesOutByNS(string ns) 
+		public long GetBytesOutByNS(string ns)
 		{
 			return metrics?.BytesOutCounter == null ? 0 : metrics.BytesOutCounter.GetCountByNS(ns);
 		}
@@ -1205,7 +1204,7 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Return key busy error count for a given namespace. The value is cumulative and not reset per metrics interval.
 		/// </summary>
-		public long GetKeyBusyCountByNS(string ns) 
+		public long GetKeyBusyCountByNS(string ns)
 		{
 			return keyBusyCounter == null ? 0 : keyBusyCounter.GetCountByNS(ns);
 		}
@@ -1213,9 +1212,9 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Return metrics enablement status
 		/// </summary>
-		public bool AreMetricsEnabled() 
-		{ 
-			return cluster.MetricsEnabled; 
+		public bool AreMetricsEnabled()
+		{
+			return cluster.MetricsEnabled;
 		}
 
 		/// <summary>
@@ -1225,7 +1224,7 @@ namespace Aerospike.Client
 		public bool HasRack(string ns, int rackId)
 		{
 			// Must copy map reference for copy on write semantics to work.
-			Dictionary<string,int> map = this.racks;
+			Dictionary<string, int> map = this.racks;
 
 			if (map == null)
 			{
@@ -1234,7 +1233,7 @@ namespace Aerospike.Client
 
 			int r;
 
-			if (! map.TryGetValue(ns, out r))
+			if (!map.TryGetValue(ns, out r))
 			{
 				return false;
 			}
@@ -1316,7 +1315,7 @@ namespace Aerospike.Client
 		/// </summary>
 		public override sealed bool Equals(object obj)
 		{
-			Node other = (Node) obj;
+			Node other = (Node)obj;
 			return this.name.Equals(other.name);
 		}
 
@@ -1346,7 +1345,7 @@ namespace Aerospike.Client
 				}
 			}
 		}
-		
+
 		/// <summary>
 		/// Aerospike cluster which contains this node
 		/// </summary>

@@ -14,9 +14,7 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using System;
 using System.Collections;
-using System.Collections.Generic;
 
 namespace Aerospike.Client
 {
@@ -127,7 +125,7 @@ namespace Aerospike.Client
 		{
 			if (size < 16)
 			{
-				PackByte((byte) (0x80 | size));
+				PackByte((byte)(0x80 | size));
 			}
 			else if (size < 65536)
 			{
@@ -177,7 +175,7 @@ namespace Aerospike.Client
 			PackByte((int)ParticleType.GEOJSON);
 			PackByteArray(buffer, 0, buffer.Length);
 		}
-		
+
 		private void PackByteArrayBegin(int size)
 		{
 			// Use string header codes for byte arrays.
@@ -475,7 +473,7 @@ namespace Aerospike.Client
 			buffer[offset++] = (byte)0xca;
 			offset += ByteUtil.FloatToBytes(val, buffer, offset);
 		}
-		
+
 		private void PackLong(int type, ulong val)
 		{
 			if (offset + 9 > buffer.Length)
@@ -560,7 +558,7 @@ namespace Aerospike.Client
 			buffer[offset++] = (byte)0xff;
 			buffer[offset++] = (byte)0x00;
 		}
-		
+
 		private void PackByte(byte val)
 		{
 			if (offset >= buffer.Length)

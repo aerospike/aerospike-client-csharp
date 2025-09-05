@@ -14,10 +14,6 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using System;
-using System.Collections.Generic;
-using System.Threading;
-
 namespace Aerospike.Client
 {
 	public sealed class QueryPartitionExecutor : IQueryExecutor
@@ -191,7 +187,7 @@ namespace Aerospike.Client
 				{
 					NotifyCompleted();
 				}
-			}	
+			}
 		}
 
 		public bool StopThreads(Exception cause)

@@ -26,7 +26,7 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Copy policy from another policy.
 		/// </summary>
-		public TxnRollPolicy(TxnRollPolicy other) : 
+		public TxnRollPolicy(TxnRollPolicy other) :
 			base(other)
 		{
 		}

@@ -14,10 +14,6 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using System;
-using System.Collections.Generic;
-using System.Text;
-
 namespace Aerospike.Client
 {
 	/// <summary>
@@ -142,7 +138,7 @@ namespace Aerospike.Client
 				throw new AerospikeException("Invalid service hosts string: " + str, e);
 			}
 		}
-		
+
 		internal class HostParser
 		{
 			private readonly string str;

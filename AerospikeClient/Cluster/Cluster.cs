@@ -14,8 +14,8 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using System.Text;
 using Aerospike.Client.Config;
+using System.Text;
 
 namespace Aerospike.Client
 {
@@ -1327,7 +1327,7 @@ namespace Aerospike.Client
 			}
 			return new ClusterStats(this, nodeStats);
 		}
-		
+
 		public bool Connected
 		{
 			get
@@ -1348,7 +1348,7 @@ namespace Aerospike.Client
 						}
 					}
 				}
-				return false; 
+				return false;
 			}
 		}
 
@@ -1361,7 +1361,7 @@ namespace Aerospike.Client
 		{
 			// Must copy array reference for copy on write semantics to work.
 			Node[] nodeArray = nodes;
-	
+
 			for (int i = 0; i < nodeArray.Length; i++)
 			{
 				// Must handle concurrency with other non-tending threads, so nodeIndex is consistent.
@@ -1398,7 +1398,7 @@ namespace Aerospike.Client
 			}
 			return nodeArray;
 		}
-		
+
 		public Node GetNode(string nodeName)
 		{
 			Node node = FindNode(nodeName);

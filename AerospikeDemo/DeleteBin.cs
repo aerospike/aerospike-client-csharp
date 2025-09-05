@@ -14,9 +14,9 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
+using Aerospike.Client;
 using System;
 using System.Collections.Generic;
-using Aerospike.Client;
 
 namespace Aerospike.Demo
 {
@@ -54,13 +54,13 @@ namespace Aerospike.Demo
 
 			if (record == null)
 			{
-				throw new Exception(string.Format("Failed to get: namespace={0} set={1} key={2}", 
+				throw new Exception(string.Format("Failed to get: namespace={0} set={1} key={2}",
 					key.ns, key.setName, key.userKey));
 			}
 
 			foreach (KeyValuePair<string, object> entry in record.bins)
 			{
-				console.Info("Received: namespace={0} set={1} key={2} bin={3} value={4}", 
+				console.Info("Received: namespace={0} set={1} key={2} bin={3} value={4}",
 					key.ns, key.setName, key.userKey, entry.Key, entry.Value);
 			}
 
