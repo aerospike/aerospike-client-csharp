@@ -78,6 +78,7 @@ jobs:
       run: |
         mkdir ${GITHUB_WORKSPACE}/sign
         mv ${GITHUB_WORKSPACE}/artifacts/Aerospike.Client*.nupkg ${GITHUB_WORKSPACE}/sign
+        ls ${GITHUB_WORKSPACE}/sign
   
   sign:
     needs: prep-for-sign
