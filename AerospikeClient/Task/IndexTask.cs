@@ -14,8 +14,6 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using System;
-using System.Reflection;
 
 namespace Aerospike.Client
 {
@@ -89,14 +87,9 @@ namespace Aerospike.Client
 
 		public static string BuildStatusCommand(string ns, string indexName, Version serverVersion)
 		{
-			if (serverVersion >= Node.SERVER_VERSION_8_1)
-			{
-				return $"sindex-stat:namespace={ns};indexname={indexName}";
-			}
-			else
-			{
-				return "sindex/" + ns + '/' + indexName;
-			}
+			return serverVersion >= Node.SERVER_VERSION_8_1 ?
+				$"sindex-stat:namespace={ns};indexname={indexName}" :
+				$"sindex/{ns}/{indexName}";
 		}
 
 		public static int ParseStatusResponse(string command, string response, bool isCreate)
@@ -148,14 +141,9 @@ namespace Aerospike.Client
 
 		public static string BuildExistsCommand(string ns, string indexName, Version serverVersion)
 		{
-			if (serverVersion >= Node.SERVER_VERSION_8_1)
-			{
-				return $"sindex-exists:namespace={ns};indexname={indexName}";
-			}
-			else
-			{
-				return "sindex-exists:ns=" + ns + ";indexname=" + indexName;
-			}
+			return serverVersion >= Node.SERVER_VERSION_8_1 ?
+				$"sindex-exists:namespace={ns};indexname={indexName}" :
+				$"sindex-exists:ns={ns};indexname={indexName}";
 		}
 
 		public static int ParseExistsResponse(string command, string response)
