@@ -86,10 +86,10 @@ jobs:
       artifact-glob: ${GITHUB_WORKSPACE}/sign
       output-path: artifacts
     secrets:
-      es-username: ${{ secrets.ES_USERNAME }}
-      es-password: ${{ secrets.ES_PASSWORD }}
-      credential-id: ${{ secrets.CREDENTIAL_ID }}
-      es-totp-secret: ${{ secrets.ES_TOTP_SECRET }}
+      ES_USERNAME: ${{ secrets.ES_USERNAME }}
+      ES_PASSWORD: ${{ secrets.ES_PASSWORD }}
+      CREDENTIAL_ID: ${{ secrets.CREDENTIAL_ID }}
+      ES_TOTP_SECRET: ${{ secrets.ES_TOTP_SECRET }}
 
   upload:
     needs: sign
