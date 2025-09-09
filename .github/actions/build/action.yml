@@ -62,7 +62,7 @@ runs:
       uses: actions/upload-artifact@v4
       with:
         name: AerospikeSign-${{ github.run_number }}
-        path: ${GITHUB_WORKSPACE}\sign\Aerospike.Client.*.nupkg
+        path: '${GITHUB_WORKSPACE}\sign\Aerospike.Client*.nupkg'
         retention-days: 1
 
     - name: Upload client artifacts
