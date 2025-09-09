@@ -126,7 +126,8 @@ namespace Aerospike.Test
 		{
 			Node node = SuiteHelpers.client.Nodes[0];
 			string namespaceFilter = "namespace/" + SuiteHelpers.ns;
-			Dictionary<string, string> map = Info.Request(null, node, "edition", namespaceFilter);
+			string edition = node.serverVersion >= Node.SERVER_VERSION_8_1_1 ? "release" : "edition";
+			Dictionary<string, string> map = Info.Request(null, node, edition, namespaceFilter);
 
 			string namespaceTokens = map[namespaceFilter] ?? throw new Exception(string.Format("Failed to get namespace info: host={0} namespace={1}", node, SuiteHelpers.ns));
 			SuiteHelpers.singleBin = ParseBoolean(namespaceTokens, "single-bin");
