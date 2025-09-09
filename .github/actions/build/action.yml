@@ -56,6 +56,7 @@ runs:
       run: |
         mkdir -p ${GITHUB_WORKSPACE}\sign
         cp AerospikeClient\bin\Release\Aerospike.Client*.nupkg ${GITHUB_WORKSPACE}\sign
+        ls ${GITHUB_WORKSPACE}\sign
 
     - name: Upload client artifacts
       uses: actions/upload-artifact@v4
