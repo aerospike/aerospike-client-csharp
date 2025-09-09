@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2023 Aerospike, Inc.
+ * Copyright 2012-2025 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -16,7 +16,6 @@
  */
 using Aerospike.Client;
 using System;
-using System.Collections.Generic;
 
 namespace Aerospike.Demo
 {
@@ -54,39 +53,8 @@ namespace Aerospike.Demo
 		protected internal void SetServerSpecific(IAerospikeClient client)
 		{
 			Node node = client.Nodes[0];
-			string featuresFilter = "features";
 			string namespaceFilter = "namespace/" + ns;
-			Dictionary<string, string> tokens = Info.Request(null, node, featuresFilter, namespaceFilter);
-
-			/* Client requires server 4.9+, so all these features are supported.
-			string features = tokens[featuresFilter];
-
-			if (features != null)
-			{
-				string[] list = features.Split(';');
-
-				foreach (string s in list)
-				{
-					if (s.Equals("geo"))
-					{
-						hasGeo = true;
-					}
-					else if (s.Equals("udf"))
-					{
-						hasUdf = true;
-					}
-					else if (s.Equals("cdt-list"))
-					{
-						hasCDTList = true;
-					}
-					else if (s.Equals("cdt-map"))
-					{
-						hasCDTMap = true;
-					}
-				}
-			}*/
-
-			string namespaceTokens = tokens[namespaceFilter];
+			string namespaceTokens = Info.Request(null, node, namespaceFilter);
 
 			if (namespaceTokens == null)
 			{

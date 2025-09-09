@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2024 Aerospike, Inc.
+ * Copyright 2012-2025 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -14,6 +14,7 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
+
 namespace Aerospike.Client
 {
 	/// <summary>
@@ -51,12 +52,17 @@ namespace Aerospike.Client
 			Node[] nodes = cluster.ValidateNodes();
 
 			string module = (scan) ? "scan" : "query";
-			string cmd1 = "query-show:trid=" + taskId;
-			string cmd2 = module + "-show:trid=" + taskId;
-			string cmd3 = "jobs:module=" + module + ";cmd=get-job;trid=" + taskId;
 
 			foreach (Node node in nodes)
 			{
+				string cmd1 = node.serverVerison >= Node.SERVER_VERSION_8_1 ?
+					"query-show:id=" + taskId : "query-show:trid=" + taskId;
+				string cmd2 = node.serverVerison >= Node.SERVER_VERSION_8_1 ?
+					module + "-show:id=" + taskId : module + "-show:trid=" + taskId;
+				string cmd3 = node.serverVerison >= Node.SERVER_VERSION_8_1 ?
+					"jobs:module=" + module + ";cmd=get-job;id=" + taskId :
+					"jobs:module=" + module + ";cmd=get-job;trid=" + taskId;
+
 				string command;
 
 				if (node.HasPartitionQuery)

@@ -199,11 +199,12 @@ namespace Aerospike.Client
 					}
 				}
 
-				List<string> commands = new List<string>(5);
-				commands.Add("node");
-				commands.Add("partition-generation");
-				commands.Add("build");
-				commands.Add("features");
+				List<string> commands = new(5)
+				{
+					"node",
+					"partition-generation",
+					"build"
+				};
 
 				bool hasClusterName = cluster.HasClusterName;
 
@@ -244,7 +245,7 @@ namespace Aerospike.Client
 				ValidateNode(map);
 				ValidatePartitionGeneration(map);
 				SetServerBuildVersion(map);
-				SetFeatures(map);
+				SetFeatures(serverVersion);
 
 				if (hasClusterName)
 				{
@@ -310,45 +311,33 @@ namespace Aerospike.Client
 			}
 		}
 
-		private void SetFeatures(Dictionary<string, string> map)
+		private void SetFeatures(Version serverVersion)
 		{
-			try
+			if (serverVersion >= Node.SERVER_VERSION_PSCAN)
 			{
-				string featuresString = map["features"];
-				string[] list = featuresString.Split(';');
-
-				foreach (string feature in list)
+				features |= Node.HAS_PARTITION_SCAN;
+			}
+			else
+			{
+				// This client requires partition scan support. Partition scans were first
+				// supported in server version 4.9. Do not allow any server node into the
+				// cluster that is running server version < 4.9.
+				if ((this.features & Node.HAS_PARTITION_SCAN) == 0)
 				{
-					if (feature.Equals("pscans"))
-					{
-						this.features |= Node.HAS_PARTITION_SCAN;
-					}
-					else if (feature.Equals("query-show"))
-					{
-						this.features |= Node.HAS_QUERY_SHOW;
-					}
-					else if (feature.Equals("batch-any"))
-					{
-						this.features |= Node.HAS_BATCH_ANY;
-					}
-					else if (feature.Equals("pquery"))
-					{
-						this.features |= Node.HAS_PARTITION_QUERY;
-					}
+					throw new AerospikeException("Node " + this.name + ' ' + this.primaryHost +
+						" version < 4.9. This client requires server version >= 4.9");
 				}
 			}
-			catch (Exception)
+
+			if (serverVersion >= Node.SERVER_VERSION_QUERY_SHOW)
 			{
-				// Unexpected exception. Use defaults.
+				features |= Node.HAS_QUERY_SHOW;
 			}
 
-			// This client requires partition scan support. Partition scans were first
-			// supported in server version 4.9. Do not allow any server node into the
-			// cluster that is running server version < 4.9.
-			if ((this.features & Node.HAS_PARTITION_SCAN) == 0)
+			if (serverVersion >= Node.SERVER_VERSION_PQUERY_BATCH_ANY)
 			{
-				throw new AerospikeException("Node " + this.name + ' ' + this.primaryHost +
-					" version < 4.9. This client requires server version >= 4.9");
+				features |= Node.HAS_BATCH_ANY;
+				features |= Node.HAS_PARTITION_QUERY;
 			}
 		}
 

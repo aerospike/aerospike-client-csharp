@@ -25,8 +25,11 @@ namespace Aerospike.Client
 	/// </summary>
 	public class Node : IDisposable
 	{
-		public static Version SERVER_VERSION_8_1 = new(8, 1, 0, 0);
 		public static Version SERVER_VERSION_8_1_1 = new(8, 1, 1, 0);
+		public static Version SERVER_VERSION_8_1 = new(8, 1, 0, 0);
+		public static Version SERVER_VERSION_PSCAN = new(4, 9, 0, 3);
+		public static Version SERVER_VERSION_QUERY_SHOW = new(5, 7, 0, 0);
+		public static Version SERVER_VERSION_PQUERY_BATCH_ANY = new(6, 0, 0, 0);
 
 		/// <summary>
 		/// Number of partitions for each namespace.
@@ -74,7 +77,7 @@ namespace Aerospike.Client
 		protected internal bool retryUserAgent;
 		protected internal volatile bool active = true;
 		private bool disposedValue;
-		public Version serverVersion;
+		internal Version serverVerison;
 		internal Version clientVersion;
 
 		/// <summary>
