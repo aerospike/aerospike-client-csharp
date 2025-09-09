@@ -101,7 +101,7 @@ namespace Aerospike.Client
 				readsCapacity = 16; // TODO ask Richard and Brian about this
 			}
 
-            if (writesCapacity < 16)
+			if (writesCapacity < 16)
 			{
 				writesCapacity = 16;
 			}
@@ -242,11 +242,12 @@ namespace Aerospike.Client
 		/// </summary>
 		internal void SetNamespace(string ns)
 		{
-			if (Ns == null) 
+			if (Ns == null)
 			{
 				Ns = ns;
 			}
-			else if (!Ns.Equals(ns)) {
+			else if (!Ns.Equals(ns))
+			{
 				throw new AerospikeException("Namespace must be the same for all commands in the transaction. orig: " +
 					Ns + " new: " + ns);
 			}

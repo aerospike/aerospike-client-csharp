@@ -19,7 +19,7 @@ namespace Aerospike.Client
 {
 	public abstract class AsyncSingleCommand : AsyncCommand
 	{
-		public AsyncSingleCommand(AsyncCluster cluster, Policy policy, string ns) 
+		public AsyncSingleCommand(AsyncCluster cluster, Policy policy, string ns)
 			: base(cluster, policy, ns)
 		{
 		}
@@ -28,7 +28,7 @@ namespace Aerospike.Client
 			: base(other)
 		{
 		}
-		
+
 		protected internal sealed override void ParseCommand()
 		{
 			ParseResult();
@@ -38,4 +38,3 @@ namespace Aerospike.Client
 		protected internal abstract bool ParseResult();
 	}
 }
-  

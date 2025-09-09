@@ -14,8 +14,6 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using System;
-
 #pragma warning disable 0618
 
 namespace Aerospike.Client
@@ -97,7 +95,7 @@ namespace Aerospike.Client
 		/// </para>
 		/// </summary>
 		public bool allowInlineSSD = false;
-	
+
 		/// <summary>
 		/// Allow read operations to use replicated data partitions instead of master
 		/// partition. By default, both read and write operations are directed to the
@@ -135,7 +133,7 @@ namespace Aerospike.Client
 		/// <para>Default: true</para>
 		/// </summary>
 		public bool respondAllKeys = true;
-		
+
 		/// <summary>
 		/// This field is deprecated and will eventually be removed.
 		/// The set name is now always sent for every distinct namespace/set in the batch.

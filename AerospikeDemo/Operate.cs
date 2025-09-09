@@ -14,9 +14,8 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using System;
-using System.Threading;
 using Aerospike.Client;
+using System;
 
 namespace Aerospike.Demo
 {
@@ -50,7 +49,7 @@ namespace Aerospike.Demo
 
 			if (record == null)
 			{
-				throw new Exception(string.Format("Failed to get: namespace={0} set={1} key={2}", 
+				throw new Exception(string.Format("Failed to get: namespace={0} set={1} key={2}",
 					key.ns, key.setName, key.userKey));
 			}
 

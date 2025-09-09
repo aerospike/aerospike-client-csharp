@@ -14,8 +14,6 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using System.Collections.Generic;
-
 namespace Aerospike.Client
 {
 	/// <summary>
@@ -108,7 +106,7 @@ namespace Aerospike.Client
 				|| name.Equals(UDFAdmin) || name.Equals(SIndexAdmin)
 				|| name.Equals(Write) || name.Equals(Truncate);
 		}
-		
+
 		public override string ToString()
 		{
 			return "Role [name=" + name + ", privileges=" + privileges + ", whitelist=" + whitelist + ", readQuota=" + readQuota + ", writeQuota=" + writeQuota + "]";

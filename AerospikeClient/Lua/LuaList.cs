@@ -14,9 +14,6 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using System;
-using System.Collections;
-using System.Collections.Generic;
 using Neo.IronLua;
 
 namespace Aerospike.Client
@@ -100,9 +97,9 @@ namespace Aerospike.Client
 
 		public static void trim(LuaList list, int index)
 		{
-			list.list.RemoveRange(index-1, list.list.Count - index + 1);
+			list.list.RemoveRange(index - 1, list.list.Count - index + 1);
 		}
-		
+
 		public static LuaList clone(LuaList list)
 		{
 			return new LuaList(new List<object>(list.list));
@@ -122,8 +119,8 @@ namespace Aerospike.Client
 
 		public object this[int index]
 		{
-			get { return list[index-1]; }
-			set { list[index-1] = value; }
+			get { return list[index - 1]; }
+			set { list[index - 1] = value; }
 		}
 
 		public override string ToString()

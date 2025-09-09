@@ -14,8 +14,6 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using System;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Aerospike.Client;
 
 namespace Aerospike.Test
@@ -27,7 +25,8 @@ namespace Aerospike.Test
 		private readonly Policy policy = new();
 
 		[TestMethod]
-		public void CallRead() {
+		public void CallRead()
+		{
 			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, 5000);
 			client.Delete(null, key);
 
@@ -42,7 +41,8 @@ namespace Aerospike.Test
 		}
 
 		[TestMethod]
-		public void CallModify() {
+		public void CallModify()
+		{
 			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, 5001);
 			client.Delete(null, key);
 
@@ -64,7 +64,8 @@ namespace Aerospike.Test
 			SetInt(key);
 		}
 
-		private void Get(Key key) {
+		private void Get(Key key)
+		{
 			policy.filterExp = Exp.Build(
 				Exp.NE(
 					BitExp.Get(Exp.Val(16), Exp.Val(8), Exp.BlobBin(binA)),
@@ -90,7 +91,8 @@ namespace Aerospike.Test
 			AssertRecordFound(key, r);
 		}
 
-		private void Count(Key key) {
+		private void Count(Key key)
+		{
 			policy.filterExp = Exp.Build(
 				Exp.NE(
 					BitExp.Count(Exp.Val(16), Exp.Val(8), Exp.BlobBin(binA)),
@@ -108,7 +110,8 @@ namespace Aerospike.Test
 			AssertRecordFound(key, r);
 		}
 
-		private void Lscan(Key key) {
+		private void Lscan(Key key)
+		{
 			policy.filterExp = Exp.Build(
 				Exp.NE(
 					BitExp.Lscan(Exp.Val(32), Exp.Val(8), Exp.Val(true), Exp.BlobBin(binA)),
@@ -144,7 +147,8 @@ namespace Aerospike.Test
 			AssertRecordFound(key, r);
 		}
 
-		private void Rscan(Key key) {
+		private void Rscan(Key key)
+		{
 			policy.filterExp = Exp.Build(
 				Exp.NE(
 					BitExp.Rscan(Exp.Val(32), Exp.Val(8), Exp.Val(true), Exp.BlobBin(binA)),
@@ -162,7 +166,8 @@ namespace Aerospike.Test
 			AssertRecordFound(key, r);
 		}
 
-		private void GetInt(Key key) {
+		private void GetInt(Key key)
+		{
 			policy.filterExp = Exp.Build(
 				Exp.NE(
 					BitExp.GetInt(Exp.Val(32), Exp.Val(8), true, Exp.BlobBin(binA)),
@@ -180,7 +185,8 @@ namespace Aerospike.Test
 			AssertRecordFound(key, r);
 		}
 
-		private void Resize(Key key) {
+		private void Resize(Key key)
+		{
 			Exp size = Exp.Val(6);
 
 			policy.filterExp = Exp.Build(
@@ -200,7 +206,8 @@ namespace Aerospike.Test
 			AssertRecordFound(key, r);
 		}
 
-		private void Insert(Key key) {
+		private void Insert(Key key)
+		{
 			byte[] bytes = [(byte)0xff];
 			int expected = 0xff;
 
@@ -223,7 +230,8 @@ namespace Aerospike.Test
 			AssertRecordFound(key, r);
 		}
 
-		private void Remove(Key key) {
+		private void Remove(Key key)
+		{
 			int expected = 0x42;
 
 			policy.filterExp = Exp.Build(
@@ -245,7 +253,8 @@ namespace Aerospike.Test
 			AssertRecordFound(key, r);
 		}
 
-		private void Set(Key key) {
+		private void Set(Key key)
+		{
 			byte[] bytes = [(byte)0x80];
 
 			policy.filterExp = Exp.Build(
@@ -267,7 +276,8 @@ namespace Aerospike.Test
 			AssertRecordFound(key, r);
 		}
 
-		private void Or(Key key) {
+		private void Or(Key key)
+		{
 			byte[] bytes = [(byte)0x01];
 
 			policy.filterExp = Exp.Build(
@@ -289,7 +299,8 @@ namespace Aerospike.Test
 			AssertRecordFound(key, r);
 		}
 
-		private void Xor(Key key) {
+		private void Xor(Key key)
+		{
 			byte[] bytes = [(byte)0x02];
 
 			policy.filterExp = Exp.Build(
@@ -311,7 +322,8 @@ namespace Aerospike.Test
 			AssertRecordFound(key, r);
 		}
 
-		private void And(Key key) {
+		private void And(Key key)
+		{
 			byte[] bytes = [(byte)0x01];
 
 			policy.filterExp = Exp.Build(
@@ -333,7 +345,8 @@ namespace Aerospike.Test
 			AssertRecordFound(key, r);
 		}
 
-		private void Not(Key key) {
+		private void Not(Key key)
+		{
 			policy.filterExp = Exp.Build(
 				Exp.NE(
 					BitExp.Get(Exp.Val(0), Exp.Val(8),
@@ -353,7 +366,8 @@ namespace Aerospike.Test
 			AssertRecordFound(key, r);
 		}
 
-		private void Lshift(Key key) {
+		private void Lshift(Key key)
+		{
 			policy.filterExp = Exp.Build(
 				Exp.NE(
 					BitExp.Get(Exp.Val(0), Exp.Val(6),
@@ -373,7 +387,8 @@ namespace Aerospike.Test
 			AssertRecordFound(key, r);
 		}
 
-		private void Rshift(Key key) {
+		private void Rshift(Key key)
+		{
 			policy.filterExp = Exp.Build(
 				Exp.NE(
 					BitExp.Get(Exp.Val(26), Exp.Val(6),
@@ -393,7 +408,8 @@ namespace Aerospike.Test
 			AssertRecordFound(key, r);
 		}
 
-		private void Add(Key key) {
+		private void Add(Key key)
+		{
 			policy.filterExp = Exp.Build(
 				Exp.NE(
 					BitExp.Get(Exp.Val(16), Exp.Val(8),
@@ -413,7 +429,8 @@ namespace Aerospike.Test
 			AssertRecordFound(key, r);
 		}
 
-		private void Subtract(Key key) {
+		private void Subtract(Key key)
+		{
 			policy.filterExp = Exp.Build(
 				Exp.NE(
 					BitExp.Get(Exp.Val(24), Exp.Val(8),
@@ -433,7 +450,8 @@ namespace Aerospike.Test
 			AssertRecordFound(key, r);
 		}
 
-		private void SetInt(Key key) {
+		private void SetInt(Key key)
+		{
 			policy.filterExp = Exp.Build(
 				Exp.NE(
 					BitExp.Get(Exp.Val(24), Exp.Val(8),

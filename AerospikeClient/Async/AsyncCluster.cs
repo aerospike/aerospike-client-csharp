@@ -14,12 +14,6 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using System;
-using System.Collections.Generic;
-using System.Collections.Concurrent;
-using System.Threading;
-using System.Net.Sockets;
-
 namespace Aerospike.Client
 {
 	public sealed class AsyncCluster : Cluster

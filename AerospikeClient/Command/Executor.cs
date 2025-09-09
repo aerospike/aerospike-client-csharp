@@ -14,10 +14,6 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using System;
-using System.Collections.Generic;
-using System.Threading;
-
 namespace Aerospike.Client
 {
 	public sealed class Executor
@@ -43,7 +39,7 @@ namespace Aerospike.Client
 		{
 			// Initialize maximum number of threads to run in parallel.
 			this.maxConcurrentThreads = (maxConcurrent == 0 || maxConcurrent >= threads.Count) ? threads.Count : maxConcurrent;
-			
+
 			// Start threads.
 			for (int i = 0; i < maxConcurrentThreads; i++)
 			{

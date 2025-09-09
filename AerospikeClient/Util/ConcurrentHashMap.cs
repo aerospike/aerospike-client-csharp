@@ -28,14 +28,14 @@ namespace Aerospike.Client
 			_dictionary = [];
 		}
 
-		public ConcurrentHashMap(int capacity) 
+		public ConcurrentHashMap(int capacity)
 		{
 			_dictionary = new Dictionary<TKey, TValue>(capacity);
 		}
 
 		public TValue this[TKey key]
 		{
-			get 
+			get
 			{
 				try
 				{
@@ -50,7 +50,7 @@ namespace Aerospike.Client
 					}
 				}
 			}
-			set 
+			set
 			{
 				try
 				{
@@ -219,7 +219,7 @@ namespace Aerospike.Client
 					_lock.ExitUpgradeableReadLock();
 				}
 			}
-			
+
 		}
 
 		public bool SetValueIfNotNull(TKey key, TValue value)

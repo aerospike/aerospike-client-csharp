@@ -14,7 +14,6 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Aerospike.Client;
 using System.Reflection;
 using System.Text;
@@ -594,7 +593,7 @@ namespace Aerospike.Test
 		public void TxnLUTAbort() // Test Case 39
 		{
 			client.Truncate(null, SuiteHelpers.ns, SuiteHelpers.set, DateTime.Now);
-			
+
 			using Txn txn = new(); // T0
 
 			Key key1 = new(SuiteHelpers.ns, SuiteHelpers.set, "mrtkey20");
@@ -793,9 +792,10 @@ namespace Aerospike.Test
 
 			Txn txn = new();
 
-			wp = new() {
-			    Txn = txn,
-			    durableDelete = true,
+			wp = new()
+			{
+				Txn = txn,
+				durableDelete = true,
 			};
 			bool isDeleted = client.Delete(wp, key0);
 			Assert.IsFalse(isDeleted);

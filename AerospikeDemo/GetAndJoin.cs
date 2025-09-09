@@ -14,10 +14,10 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
+using Aerospike.Client;
 using System;
 using System.Collections.Generic;
 using System.IO;
-using Aerospike.Client;
 
 namespace Aerospike.Demo
 {
@@ -169,7 +169,7 @@ namespace Aerospike.Demo
 		public Position(BinaryReader reader, Record record)
 		{
 			// Read ticker and discard, because the joined record also contains the ticker.
-			reader.ReadString();  
+			reader.ReadString();
 			qty = reader.ReadDouble();
 			security = new Security(record);
 		}
@@ -188,7 +188,7 @@ namespace Aerospike.Demo
 		public void Validate(Position other)
 		{
 			this.security.Validate(other.security);
-			
+
 			if (this.qty != other.qty)
 			{
 				throw new Exception("qty mismatch. Expected " + this.qty + " Received " + other.qty);

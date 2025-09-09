@@ -22,7 +22,7 @@ namespace Aerospike.Client
 		protected internal readonly Key key;
 		protected readonly Partition partition;
 
-		public AsyncReadBase(AsyncCluster cluster, Policy policy, Key key) 
+		public AsyncReadBase(AsyncCluster cluster, Policy policy, Key key)
 			: base(cluster, policy, key.ns)
 		{
 			this.key = key;

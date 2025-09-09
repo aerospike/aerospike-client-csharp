@@ -15,8 +15,6 @@
  * the License.
  */
 
-using Aerospike.Client;
-
 namespace Aerospike.Client
 {
 	public sealed class OperateCommandWrite : SyncWriteCommand
@@ -40,7 +38,8 @@ namespace Aerospike.Client
 			ParseHeader(node, conn);
 			ParseFields(policy.Txn, key, true);
 
-			if (resultCode == ResultCode.OK) {
+			if (resultCode == ResultCode.OK)
+			{
 				Record = policy.recordParser.ParseRecord(dataBuffer, ref dataOffset, opCount, generation, expiration, true);
 				return;
 			}
@@ -56,6 +55,6 @@ namespace Aerospike.Client
 
 			throw new AerospikeException(resultCode);
 		}
-		
+
 	}
 }

@@ -1,5 +1,5 @@
 ﻿/* 
- * Copyright 2012-2023 Aerospike, Inc.
+ * Copyright 2012-2025 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -15,7 +15,6 @@
  * the License.
  */
 using Aerospike.Client;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace Aerospike.Test
 {
@@ -691,80 +690,6 @@ namespace Aerospike.Test
 			QueryPolicy policy = new()
 			{
 				filterExp = Exp.Build(Exp.GE(Exp.RecordSize(), Exp.Val(0)))
-			};
-
-			RecordSet rs = client.Query(policy, stmt);
-
-			try
-			{
-				int count = 0;
-
-				while (rs.Next())
-				{
-					count++;
-				}
-				Assert.AreEqual(10, count);
-			}
-			finally
-			{
-				rs.Close();
-			}
-		}
-
-		[TestMethod]
-		public void QueryDeviceSize()
-		{
-			int begin = 1;
-			int end = 10;
-
-			Statement stmt = new();
-			stmt.SetNamespace(SuiteHelpers.ns);
-			stmt.SetSetName(setName);
-			stmt.SetFilter(Filter.Range(binName, begin, end));
-
-			// storage-engine could be memory for which DeviceSize() returns zero.
-			// This just tests that the expression was sent correctly
-			// because all device sizes are effectively allowed.
-			QueryPolicy policy = new()
-			{
-				filterExp = Exp.Build(Exp.GE(Exp.DeviceSize(), Exp.Val(0)))
-			};
-
-			RecordSet rs = client.Query(policy, stmt);
-
-			try
-			{
-				int count = 0;
-
-				while (rs.Next())
-				{
-					count++;
-				}
-				Assert.AreEqual(10, count);
-			}
-			finally
-			{
-				rs.Close();
-			}
-		}
-
-		[TestMethod]
-		public void QueryMemorySize()
-		{
-			int begin = 1;
-			int end = 10;
-
-			Statement stmt = new();
-			stmt.SetNamespace(SuiteHelpers.ns);
-			stmt.SetSetName(setName);
-			stmt.SetFilter(Filter.Range(binName, begin, end));
-
-			// storage-engine could be memory for which MemorySize() returns zero.
-			// This just tests that the expression was sent correctly
-			// because all memory sizes are effectively allowed.
-			QueryPolicy policy = new()
-			{
-				filterExp = Exp.Build(Exp.GE(Exp.MemorySize(), Exp.Val(0)))
 			};
 
 			RecordSet rs = client.Query(policy, stmt);

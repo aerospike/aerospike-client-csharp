@@ -22,7 +22,7 @@ namespace Aerospike.Client
 		private readonly RecordListener listener;
 		private Record record;
 
-		public AsyncReadHeader(AsyncCluster cluster, Policy policy, RecordListener listener, Key key) 
+		public AsyncReadHeader(AsyncCluster cluster, Policy policy, RecordListener listener, Key key)
 			: base(cluster, policy, key)
 		{
 			this.listener = listener;
@@ -70,7 +70,7 @@ namespace Aerospike.Client
 				return true;
 			}
 
-			throw new AerospikeException(resultCode);			
+			throw new AerospikeException(resultCode);
 		}
 
 		protected internal override void OnSuccess()

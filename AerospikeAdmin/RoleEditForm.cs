@@ -14,14 +14,12 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
+using Aerospike.Client;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
-using System.Drawing;
-using System.Linq;
 using System.Text;
 using System.Windows.Forms;
-using Aerospike.Client;
 
 namespace Aerospike.Admin
 {
@@ -133,7 +131,7 @@ namespace Aerospike.Admin
 		{
 			BindingSource bindingSource = grid.DataSource as BindingSource;
 			BindingList<Privilege> privileges = bindingSource.DataSource as BindingList<Privilege>;
-			string name	= nameBox.Text.Trim();
+			string name = nameBox.Text.Trim();
 			string[] whitelistArray = whiteListBox.Text.Trim().Split(',');
 			List<string> whitelist = new List<string>(whitelistArray.Length);
 
@@ -268,7 +266,7 @@ namespace Aerospike.Admin
 
 			for (int i = 0; i < whitelist.Count; i++)
 			{
-				if (! whitelist[i].Equals(oldWhitelist[i]))
+				if (!whitelist[i].Equals(oldWhitelist[i]))
 				{
 					return false;
 				}
@@ -323,7 +321,7 @@ namespace Aerospike.Admin
 			}
 			PrivilegeType other = obj as PrivilegeType;
 
-            if (other == null)
+			if (other == null)
 			{
 				return false;
 			}

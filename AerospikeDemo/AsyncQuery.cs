@@ -14,9 +14,8 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using System;
-using System.Threading;
 using Aerospike.Client;
+using System.Threading;
 
 namespace Aerospike.Demo
 {
@@ -157,7 +156,7 @@ namespace Aerospike.Demo
 				parent.NotifyCompleted();
 			}
 		}
-		
+
 		private void WaitTillComplete()
 		{
 			lock (this)

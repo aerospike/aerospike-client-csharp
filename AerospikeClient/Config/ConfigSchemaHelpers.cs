@@ -28,8 +28,8 @@ namespace Aerospike.Client.Config
 
 		public static bool HasDBWCsendKey(this IConfigurationData configData)
 		{
-			return configData != null && configData.dynamicConfig != null && 
-				configData.dynamicConfig.batch_write != null && 
+			return configData != null && configData.dynamicConfig != null &&
+				configData.dynamicConfig.batch_write != null &&
 				configData.dynamicConfig.batch_write.send_key != null;
 		}
 
@@ -47,6 +47,6 @@ namespace Aerospike.Client.Config
 				configData.dynamicConfig.batch_delete.send_key != null;
 		}
 
-		
+
 	}
 }

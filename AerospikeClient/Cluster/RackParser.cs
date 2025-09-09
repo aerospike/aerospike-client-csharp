@@ -14,8 +14,6 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using System;
-using System.Collections.Generic;
 using System.Text;
 
 namespace Aerospike.Client
@@ -28,7 +26,7 @@ namespace Aerospike.Client
 		internal const string RebalanceGeneration = "rebalance-generation";
 		internal const string RackIds = "rack-ids";
 
-		private readonly Dictionary<string,int> racks;
+		private readonly Dictionary<string, int> racks;
 		private readonly int generation;
 
 		public RackParser(Node node, Connection conn)
@@ -47,12 +45,12 @@ namespace Aerospike.Client
 
 		public int Generation
 		{
-			get {return generation;}
+			get { return generation; }
 		}
 
-		public Dictionary<string,int> Racks
+		public Dictionary<string, int> Racks
 		{
-			get {return racks;}
+			get { return racks; }
 		}
 
 		private int ParseGeneration()

@@ -14,7 +14,6 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using System;
 using System.Diagnostics;
 
 namespace Aerospike.Client
@@ -38,5 +37,5 @@ namespace Aerospike.Client
 		public long ElapsedMilliseconds => (long)((Stopwatch.GetTimestamp() - startTimestamp) * MillisecondsPerStopwatchTick);
 
 		private ValueStopwatch(long startTimestamp) => this.startTimestamp = startTimestamp;
-    }
+	}
 }

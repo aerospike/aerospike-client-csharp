@@ -14,10 +14,6 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using System;
-using System.Collections.Generic;
-using System.Threading;
-
 namespace Aerospike.Client
 {
 	public sealed class ScanExecutor
@@ -25,7 +21,7 @@ namespace Aerospike.Client
 		public static void ScanPartitions(Cluster cluster, ScanPolicy policy, string ns, string setName, string[] binNames, ScanCallback callback, PartitionTracker tracker)
 		{
 			cluster.AddCommandCount();
-			
+
 			while (true)
 			{
 				ulong taskId = RandomShift.ThreadLocalInstance.NextLong();

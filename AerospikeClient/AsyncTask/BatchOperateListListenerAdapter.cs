@@ -14,9 +14,6 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using System.Collections.Generic;
-using System.Threading;
-
 namespace Aerospike.Client
 {
 	internal sealed class BatchOperateListListenerAdapter : ListenerAdapter<bool>, BatchOperateListListener

@@ -14,11 +14,9 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using System;
-using System.Collections.Generic;
-using System.Text;
-using System.Windows.Forms;
 using Aerospike.Client;
+using System;
+using System.Windows.Forms;
 
 namespace Aerospike.Demo
 {
@@ -89,44 +87,44 @@ namespace Aerospike.Demo
 		public abstract void WriteBox(string message);
 		public abstract void Clear();
 	}
-	
+
 	/// <summary>
-    /// Console logger with RichTextBox GUI target.
-    /// </summary>
-    public class ConsoleBox : Console
-    {
+	/// Console logger with RichTextBox GUI target.
+	/// </summary>
+	public class ConsoleBox : Console
+	{
 		private delegate void WriteLogDelegate(string message);
 		private delegate void ClearLogDelegate();
 		private TextBox box;
 
-        /// <summary>
-        /// Constructor.
-        /// </summary>
-        /// <param name="box">Target GUI control.</param>
-        public ConsoleBox(TextBox box)
-        {
-            this.box = box;
-        }
+		/// <summary>
+		/// Constructor.
+		/// </summary>
+		/// <param name="box">Target GUI control.</param>
+		public ConsoleBox(TextBox box)
+		{
+			this.box = box;
+		}
 
-        public override void WriteBox(string message)
-        {
+		public override void WriteBox(string message)
+		{
 			box.Invoke(new WriteLogDelegate(WriteLog), message);
-        }
+		}
 
-        private void WriteLog(string message)
-        {
+		private void WriteLog(string message)
+		{
 			box.AppendText(message);
-        }
+		}
 
-        public override void Clear()
-        {
+		public override void Clear()
+		{
 			box.Invoke(new ClearLogDelegate(ClearLog));
-        }
+		}
 
-        private void ClearLog()
-        {
-            box.Clear();
-            box.Refresh();
-        }
-    }
+		private void ClearLog()
+		{
+			box.Clear();
+			box.Refresh();
+		}
+	}
 }

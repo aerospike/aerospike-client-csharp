@@ -14,16 +14,14 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using System.Collections.Generic;
-
 namespace Aerospike.Client
 {
-    public sealed class RecordParser : IRecordParser
-    {
-        public static readonly RecordParser Instance = new RecordParser();
+	public sealed class RecordParser : IRecordParser
+	{
+		public static readonly RecordParser Instance = new RecordParser();
 
-        public Record ParseRecord(byte[] dataBuffer, ref int dataOffsetRef, int opCount, int generation, int expiration, bool isOperation)
-        {
+		public Record ParseRecord(byte[] dataBuffer, ref int dataOffsetRef, int opCount, int generation, int expiration, bool isOperation)
+		{
 			Dictionary<string, object> bins = new Dictionary<string, object>();
 			int dataOffset = dataOffsetRef;
 
@@ -66,36 +64,36 @@ namespace Aerospike.Client
 						bins[name] = value;
 					}
 				}
-				else 
+				else
 				{
 					bins[name] = value;
 				}
 			}
 			dataOffsetRef = dataOffset;
 			return new Record(bins, generation, expiration);
-        }
+		}
 
 		/// <summary>
 		/// Bin parsing that might be useful for custom record parsers.
 		/// </summary>
 		public static int ExtractBinValue(byte[] dataBuffer, int dataOffset, out string binName, out byte valueType,
-	        out int valueOffset, out int valueSize)
-        {
-	        int opSize = ByteUtil.BytesToInt(dataBuffer, dataOffset);
-	        valueType = dataBuffer[dataOffset + 5];
-	        byte nameSize = dataBuffer[dataOffset + 7];
-	        binName = ByteUtil.Utf8ToString(dataBuffer, dataOffset + 8, nameSize);
-	        valueOffset = dataOffset + 4 + 4 + nameSize;
-	        valueSize = opSize - (4 + nameSize);
-	        return valueOffset + valueSize;
-        }
+			out int valueOffset, out int valueSize)
+		{
+			int opSize = ByteUtil.BytesToInt(dataBuffer, dataOffset);
+			valueType = dataBuffer[dataOffset + 5];
+			byte nameSize = dataBuffer[dataOffset + 7];
+			binName = ByteUtil.Utf8ToString(dataBuffer, dataOffset + 8, nameSize);
+			valueOffset = dataOffset + 4 + 4 + nameSize;
+			valueSize = opSize - (4 + nameSize);
+			return valueOffset + valueSize;
+		}
 
-        private class OpResults : List<object>
-        {
-	        public override string ToString()
-	        {
-		        return string.Join(",", base.ToArray());
-	        }
-        }
-    }
+		private class OpResults : List<object>
+		{
+			public override string ToString()
+			{
+				return string.Join(",", base.ToArray());
+			}
+		}
+	}
 }

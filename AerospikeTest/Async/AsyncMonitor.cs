@@ -14,12 +14,6 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using System;
-using System.Threading;
-using System.Threading.Tasks;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
-using Aerospike.Client;
-
 namespace Aerospike.Test
 {
 	public sealed class AsyncMonitor

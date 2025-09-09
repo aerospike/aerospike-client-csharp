@@ -14,9 +14,9 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using System.Text;
 using System.Net;
 using System.Net.Sockets;
+using System.Text;
 
 namespace Aerospike.Client
 {
@@ -1004,7 +1004,7 @@ namespace Aerospike.Client
 			public string GetValue()
 			{
 				int len = valueEnd - valueBegin;
-    
+
 				if (len <= 0)
 				{
 					return null;
@@ -1045,7 +1045,7 @@ namespace Aerospike.Client
 			{
 				int rc = ResultCode.CLIENT_ERROR;
 				string msg = response;
-				
+
 				// Error format: ERROR|FAIL[:<code>][:<message>]
 				try
 				{

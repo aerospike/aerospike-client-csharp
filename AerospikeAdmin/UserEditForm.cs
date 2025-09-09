@@ -14,14 +14,10 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
+using Aerospike.Client;
 using System;
 using System.Collections.Generic;
-using System.ComponentModel;
-using System.Drawing;
-using System.Linq;
-using System.Text;
 using System.Windows.Forms;
-using Aerospike.Client;
 
 namespace Aerospike.Admin
 {
@@ -109,7 +105,7 @@ namespace Aerospike.Admin
 				throw new Exception("Password must be between 5 and 30 characters in length.");
 			}
 
-			if (! password.Equals(passwordVerify))
+			if (!password.Equals(passwordVerify))
 			{
 				throw new Exception("Passwords do not match.");
 			}

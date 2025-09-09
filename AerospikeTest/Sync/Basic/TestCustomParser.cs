@@ -15,10 +15,6 @@
  * the License.
  */
 
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Aerospike.Client;
 
 namespace Aerospike.Test
@@ -88,26 +84,26 @@ namespace Aerospike.Test
 						case "k2":
 						case "k3":
 						case "k7":
-						{
-							long? value = unpacker.UnpackInteger();
-							received.Add(k, value);
-							break;
-						}
+							{
+								long? value = unpacker.UnpackInteger();
+								received.Add(k, value);
+								break;
+							}
 
 						case "k4":
 						case "k5":
-						{
-							string value = unpacker.UnpackString();
-							received.Add(k, value);
-							break;
-						}
+							{
+								string value = unpacker.UnpackString();
+								received.Add(k, value);
+								break;
+							}
 
 						case "k6":
-						{
-							double? value = unpacker.UnpackDouble();
-							received.Add(k, value);
-							break;
-						}
+							{
+								double? value = unpacker.UnpackDouble();
+								received.Add(k, value);
+								break;
+							}
 
 						default:
 							Assert.Fail();
@@ -219,22 +215,22 @@ namespace Aerospike.Test
 							Assert.AreEqual(m1[k], unpacker.UnpackString());
 							break;
 						case "k1":
-						{
-							Assert.AreEqual(m11.Count, unpacker.UnpackMapItemCount(out MapOrder k1Order));
-							break;
-						}
+							{
+								Assert.AreEqual(m11.Count, unpacker.UnpackMapItemCount(out MapOrder k1Order));
+								break;
+							}
 						case "k2":
 							Assert.AreEqual(l12.Count, unpacker.UnpackListItemCount());
 							Assert.AreEqual(l12[0], unpacker.UnpackInteger());
 							Assert.AreEqual(l12[1], unpacker.UnpackInteger());
 							break;
 						case "k3":
-						{
-							Assert.AreEqual(m13.Count, unpacker.UnpackMapItemCount(out MapOrder k3Order));
-							Assert.AreEqual("k131", unpacker.UnpackString());
-							Assert.AreEqual(m13["k131"], unpacker.UnpackInteger());
-							break;
-						}
+							{
+								Assert.AreEqual(m13.Count, unpacker.UnpackMapItemCount(out MapOrder k3Order));
+								Assert.AreEqual("k131", unpacker.UnpackString());
+								Assert.AreEqual(m13["k131"], unpacker.UnpackInteger());
+								break;
+							}
 						default:
 							Assert.Fail("unexpected m1 key: " + k);
 							break;

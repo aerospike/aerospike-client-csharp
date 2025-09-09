@@ -14,10 +14,8 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using System;
-using System.Diagnostics;
-using System.Threading;
 using Aerospike.Client;
+using System.Diagnostics;
 
 namespace Aerospike.Benchmarks
 {

@@ -112,7 +112,7 @@ namespace Aerospike.Client
 
 		/// <summary>
 		/// Drain connection.
-	    /// </summary>
+		/// </summary>
 		/// <returns>true if draining is complete.</returns>
 		public bool Drain(byte[] buf)
 		{
@@ -199,18 +199,19 @@ namespace Aerospike.Client
 		{
 			byte[] b = (offset == 0) ? buf : headerBuf;
 
-			while (true) 
+			while (true)
 			{
 				int count = conn.Read(b, offset, length - offset);
 
-				if (count < 0) 
+				if (count < 0)
 				{
 					// Connection closed by server.
 					throw new EndOfStreamException();
 				}
 				offset += count;
 
-				if (offset >= length) {
+				if (offset >= length)
+				{
 					break;
 				}
 
@@ -238,7 +239,7 @@ namespace Aerospike.Client
 
 		private void DrainDetail(byte[] buf)
 		{
-			while (offset < length) 
+			while (offset < length)
 			{
 				int rem = length - offset;
 				int len = (rem <= buf.Length) ? rem : buf.Length;

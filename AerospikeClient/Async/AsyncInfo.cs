@@ -22,7 +22,7 @@ namespace Aerospike.Client
 		private readonly InfoListener listener;
 		private readonly Node serverNode;
 		private readonly string[] commands;
-		private Dictionary<string,string> map;
+		private Dictionary<string, string> map;
 
 		public AsyncInfo(AsyncCluster cluster, InfoPolicy policy, InfoListener listener, AsyncNode node, params string[] commands)
 			: base(cluster, CreatePolicy(policy), null)
@@ -44,10 +44,12 @@ namespace Aerospike.Client
 		{
 			Policy p = new Policy();
 
-			if (policy == null) {
+			if (policy == null)
+			{
 				p.SetTimeout(1000);
 			}
-			else {
+			else
+			{
 				p.SetTimeout(policy.timeout);
 			}
 			return p;
@@ -76,12 +78,12 @@ namespace Aerospike.Client
 		protected internal override void WriteBuffer()
 		{
 			dataOffset = 8;
-		
+
 			foreach (string command in commands)
 			{
 				dataOffset += ByteUtil.EstimateSizeUtf8(command) + 1;
 			}
-		
+
 			SizeBuffer();
 			dataOffset += 8; // Skip size field.
 

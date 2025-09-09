@@ -64,7 +64,7 @@ namespace Aerospike.Demo
 				dp.durableDelete = true;  // Required when running delete in a transaction.
 				client.Delete(dp, key3);
 			}
-			catch (Exception) 
+			catch (Exception)
 			{
 				// Abort and rollback transaction if any errors occur.
 				console.Info("Abort txn: " + txn.Id);

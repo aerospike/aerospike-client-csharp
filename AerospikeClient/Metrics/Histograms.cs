@@ -97,5 +97,5 @@ namespace Aerospike.Client
 			Dispose(disposing: true);
 			GC.SuppressFinalize(this);
 		}
-	}	
+	}
 }

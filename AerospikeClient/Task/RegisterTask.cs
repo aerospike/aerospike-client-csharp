@@ -14,8 +14,6 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using System;
-
 namespace Aerospike.Client
 {
 	/// <summary>
@@ -46,7 +44,7 @@ namespace Aerospike.Client
 
 			foreach (Node node in nodes)
 			{
-				string response = Info.Request(policy,  node, command);
+				string response = Info.Request(policy, node, command);
 				string find = "filename=" + packageName;
 				int index = response.IndexOf(find);
 

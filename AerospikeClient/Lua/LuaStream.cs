@@ -14,10 +14,8 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using System;
-using System.Collections.Concurrent;
-using System.Threading;
 using Neo.IronLua;
+using System.Collections.Concurrent;
 
 namespace Aerospike.Client
 {

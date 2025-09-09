@@ -80,6 +80,10 @@ namespace Aerospike.Client
 		/// can defeat the purpose of keeping connections in reserve for a future burst of activity.
 		/// </para>
 		/// <para>
+		/// Servers 8.1+ have deprecated proto-fd-idle-ms. When proto-fd-idle-ms is ultimately removed,
+		/// the server will stop automatically reaping based on socket idle timeouts.
+		/// </para>
+		/// <para>
 		/// Default: 0
 		/// </para>
 		/// </summary>

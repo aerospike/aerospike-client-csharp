@@ -68,7 +68,7 @@ namespace Aerospike.Client
 		/// <param name="hostname">host name</param>
 		/// <param name="port">host port</param>
 		/// <exception cref="AerospikeException">if host connection fails</exception>
-		public AsyncClient(string hostname, int port) 
+		public AsyncClient(string hostname, int port)
 			: this(new AsyncClientPolicy(), new Host(hostname, port))
 		{
 		}
@@ -93,7 +93,7 @@ namespace Aerospike.Client
 		/// <param name="hostname">host name</param>
 		/// <param name="port">host port</param>
 		/// <exception cref="AerospikeException">if host connection fails</exception>
-		public AsyncClient(AsyncClientPolicy policy, string hostname, int port) 
+		public AsyncClient(AsyncClientPolicy policy, string hostname, int port)
 			: this(policy, new Host(hostname, port))
 		{
 		}
@@ -142,7 +142,7 @@ namespace Aerospike.Client
 				policy = new AsyncClientPolicy(policy, configProvider);
 				MergeDefaultPoliciesWithConfig();
 			}
-			
+
 			clientVersion = Assembly.GetExecutingAssembly().GetName().Version.ToString();
 			clientVersion ??= "development";
 
@@ -242,7 +242,7 @@ namespace Aerospike.Client
 		public void Abort(AbortListener listener, Txn txn)
 		{
 			AsyncTxnRoll atr = new(cluster, null, mergedTxnRollPolicyDefault, txn);
-			
+
 			switch (txn.State)
 			{
 				default:
@@ -304,7 +304,7 @@ namespace Aerospike.Client
 			{
 				policy = mergedWritePolicyDefault;
 			}
-			else if(configProvider != null)
+			else if (configProvider != null)
 			{
 				policy = new WritePolicy(policy, configProvider);
 			}
@@ -359,7 +359,7 @@ namespace Aerospike.Client
 			{
 				policy = mergedWritePolicyDefault;
 			}
-			else if(configProvider != null)
+			else if (configProvider != null)
 			{
 				policy = new WritePolicy(policy, configProvider);
 			}
@@ -410,7 +410,7 @@ namespace Aerospike.Client
 			{
 				policy = mergedWritePolicyDefault;
 			}
-			else if(configProvider != null)
+			else if (configProvider != null)
 			{
 				policy = new WritePolicy(policy, configProvider);
 			}
@@ -463,7 +463,7 @@ namespace Aerospike.Client
 			{
 				policy = mergedWritePolicyDefault;
 			}
-			else if(configProvider != null)
+			else if (configProvider != null)
 			{
 				policy = new WritePolicy(policy, configProvider);
 			}
@@ -506,7 +506,7 @@ namespace Aerospike.Client
 			{
 				policy = mergedWritePolicyDefault;
 			}
-			else if(configProvider != null)
+			else if (configProvider != null)
 			{
 				policy = new WritePolicy(policy, configProvider);
 			}
@@ -603,7 +603,7 @@ namespace Aerospike.Client
 						executor, cluster, bn, batchPolicy, keys, null, records, attr);
 				}
 			}
-			
+
 			AsyncTxnMonitor.ExecuteBatch(batchPolicy, executor, commands, keys);
 		}
 
@@ -928,7 +928,7 @@ namespace Aerospike.Client
 
 			executor.Execute(commands);
 		}
-		
+
 		//-------------------------------------------------------
 		// Read Record Operations
 		//-------------------------------------------------------
@@ -1131,7 +1131,7 @@ namespace Aerospike.Client
 					commands[count++] = new AsyncBatchReadListCommand(executor, cluster, bn, policy, records);
 				}
 			}
-			
+
 			executor.Execute(commands);
 		}
 
@@ -1312,8 +1312,8 @@ namespace Aerospike.Client
 				else
 				{
 					commands[count++] = new AsyncBatchGetSequenceCommand(
-						executor, cluster, bn, policy, keys, null, null, listener, 
-						Command.INFO1_READ | Command.INFO1_GET_ALL,false);
+						executor, cluster, bn, policy, keys, null, null, listener,
+						Command.INFO1_READ | Command.INFO1_GET_ALL, false);
 				}
 			}
 
@@ -1430,7 +1430,7 @@ namespace Aerospike.Client
 
 			policy.Txn?.PrepareRead(keys);
 
-			int readAttr = (binNames == null || binNames.Length == 0)?
+			int readAttr = (binNames == null || binNames.Length == 0) ?
 			Command.INFO1_READ | Command.INFO1_GET_ALL : Command.INFO1_READ;
 
 			AsyncBatchGetSequenceExecutor executor = new(cluster, listener);
@@ -1655,7 +1655,7 @@ namespace Aerospike.Client
 				else
 				{
 					commands[count++] = new AsyncBatchGetArrayCommand(
-						executor, cluster, bn, policy, keys, null, null, records, 
+						executor, cluster, bn, policy, keys, null, null, records,
 						Command.INFO1_READ | Command.INFO1_NOBINDATA, false);
 				}
 			}
@@ -1717,7 +1717,7 @@ namespace Aerospike.Client
 
 			executor.Execute(commands);
 		}
-		
+
 		//-------------------------------------------------------
 		// Generic Database Operations
 		//-------------------------------------------------------
@@ -2218,10 +2218,10 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if queue is full</exception>
 		public void Operate
 		(
-			BatchPolicy batchPolicy, 
-			BatchWritePolicy writePolicy, 
-			BatchRecordSequenceListener listener, 
-			Key[] keys, 
+			BatchPolicy batchPolicy,
+			BatchWritePolicy writePolicy,
+			BatchRecordSequenceListener listener,
+			Key[] keys,
 			params Operation[] ops
 		)
 		{
@@ -2344,7 +2344,7 @@ namespace Aerospike.Client
 			PartitionTracker tracker = new PartitionTracker(policy, nodes, partitionFilter);
 			new AsyncScanPartitionExecutor(cluster, policy, listener, ns, setName, binNames, tracker);
 		}
-	
+
 		//---------------------------------------------------------------
 		// User defined functions
 		//---------------------------------------------------------------
@@ -2442,12 +2442,12 @@ namespace Aerospike.Client
 		/// <param name="functionArgs">arguments passed in to user defined function</param>
 		/// <exception cref="AerospikeException">if queue is full</exception>
 		public void Execute(
-			BatchPolicy batchPolicy, 
-			BatchUDFPolicy udfPolicy, 
-			BatchRecordArrayListener listener, 
-			Key[] keys, 
-			string packageName, 
-			string functionName, 
+			BatchPolicy batchPolicy,
+			BatchUDFPolicy udfPolicy,
+			BatchRecordArrayListener listener,
+			Key[] keys,
+			string packageName,
+			string functionName,
 			params Value[] functionArgs)
 		{
 			if (keys.Length == 0)
@@ -2531,11 +2531,11 @@ namespace Aerospike.Client
 		/// <param name="functionArgs">arguments passed in to user defined function</param>
 		/// <exception cref="AerospikeException">if queue is full</exception>
 		public void Execute(
-			BatchPolicy batchPolicy, 
-			BatchUDFPolicy udfPolicy, 
-			BatchRecordSequenceListener listener, 
-			Key[] keys, string packageName, 
-			string functionName, 
+			BatchPolicy batchPolicy,
+			BatchUDFPolicy udfPolicy,
+			BatchRecordSequenceListener listener,
+			Key[] keys, string packageName,
+			string functionName,
 			params Value[] functionArgs)
 		{
 			if (keys.Length == 0)
@@ -2579,13 +2579,13 @@ namespace Aerospike.Client
 				{
 					int i = batchNode.offsets[0];
 					commands[count++] = new AsyncBatchSingleUDFSequenceCommand(
-						executor, cluster, batchPolicy, keys[i], attr, packageName, functionName, argBytes, 
+						executor, cluster, batchPolicy, keys[i], attr, packageName, functionName, argBytes,
 						batchNode.node, listener, i);
 				}
 				else
 				{
 					commands[count++] = new AsyncBatchUDFSequenceCommand(
-						executor, cluster, batchNode, batchPolicy, keys, packageName, functionName, argBytes, sent, 
+						executor, cluster, batchNode, batchPolicy, keys, packageName, functionName, argBytes, sent,
 						listener, attr);
 				}
 			}

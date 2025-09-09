@@ -413,13 +413,13 @@ namespace Aerospike.Test
 		private class GetHeadersSeqHandler(Key[] keys, TestAsyncBatch parent) : RecordSequenceListener
 		{
 			int count;
-			
+
 			public void OnRecord(Key key, Record record)
 			{
 				count++;
 
 				int index = GetKeyIndex(key);
-				
+
 				if (!parent.AssertTrue(index >= 0))
 				{
 					parent.NotifyCompleted();
@@ -574,10 +574,10 @@ namespace Aerospike.Test
 
 			Expression exp = Exp.Build(Exp.Mul(Exp.IntBin(BinName), Exp.Val(8)));
 			Operation[] ops = Operation.Array(ExpOperation.Read(BinName, exp, ExpReadFlags.DEFAULT));
-			
+
 			string[] bins = [BinName];
 
-			Key[] keys = 			[
+			Key[] keys = [
 				new Key(SuiteHelpers.ns, SuiteHelpers.set, keyPrefix + 1),
 				new Key(SuiteHelpers.ns, SuiteHelpers.set, keyPrefix + 2),
 				new Key(SuiteHelpers.ns, SuiteHelpers.set, keyPrefix + 3),

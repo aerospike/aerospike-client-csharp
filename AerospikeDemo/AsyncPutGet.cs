@@ -14,10 +14,10 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
+using Aerospike.Client;
 using System;
 using System.Threading;
 using System.Threading.Tasks;
-using Aerospike.Client;
 
 namespace Aerospike.Demo
 {
@@ -46,7 +46,7 @@ namespace Aerospike.Demo
 
 		private void RunPutGet(AsyncClient client, Arguments args, Key key, Bin bin)
 		{
-			console.Info("Put: namespace={0} set={1} key={2} value={3}", 
+			console.Info("Put: namespace={0} set={1} key={2} value={3}",
 				key.ns, key.setName, key.userKey, bin.value);
 
 			client.Put(args.writePolicy, new WriteHandler(this, client, args.writePolicy, key, bin), key, bin);
@@ -74,21 +74,21 @@ namespace Aerospike.Demo
 				try
 				{
 					// Write succeeded.  Now call read.
-					parent.console.Info("Get: namespace={0} set={1} key={2}", 
+					parent.console.Info("Get: namespace={0} set={1} key={2}",
 						key.ns, key.setName, key.userKey);
 
 					client.Get(policy, new RecordHandler(parent, key, bin), key);
 				}
 				catch (Exception e)
 				{
-					parent.console.Error("Failed to get: namespace={0} set={1} key={2} exception={3}", 
+					parent.console.Error("Failed to get: namespace={0} set={1} key={2} exception={3}",
 						key.ns, key.setName, key.userKey, e.Message);
 				}
 			}
 
 			public void OnFailure(AerospikeException e)
 			{
-				parent.console.Error("Failed to put: namespace={0} set={1} key={2} exception={3}", 
+				parent.console.Error("Failed to put: namespace={0} set={1} key={2} exception={3}",
 					key.ns, key.setName, key.userKey, e.Message);
 
 				parent.NotifyCompleted();
@@ -125,12 +125,12 @@ namespace Aerospike.Demo
 
 		private void ValidateBin(Key key, Bin bin, Record record)
 		{
-			object received = (record == null)? null : record.GetValue(bin.name);
+			object received = (record == null) ? null : record.GetValue(bin.name);
 			string expected = bin.value.ToString();
 
 			if (received != null && received.Equals(expected))
 			{
-				console.Info("Bin matched: namespace={0} set={1} key={2} bin={3} value={4}", 
+				console.Info("Bin matched: namespace={0} set={1} key={2} bin={3} value={4}",
 					key.ns, key.setName, key.userKey, bin.name, received);
 			}
 			else

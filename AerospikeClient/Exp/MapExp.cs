@@ -665,7 +665,7 @@ namespace Aerospike.Client
 			return t switch
 			{
 				// This method only called from expressions that can return multiple integers (ie list).
-				MapReturnType.INDEX or MapReturnType.REVERSE_INDEX or MapReturnType.RANK or MapReturnType.REVERSE_RANK => Exp.Type.LIST, 
+				MapReturnType.INDEX or MapReturnType.REVERSE_INDEX or MapReturnType.RANK or MapReturnType.REVERSE_RANK => Exp.Type.LIST,
 				MapReturnType.COUNT => Exp.Type.INT,
 				// This method only called from expressions that can return multiple objects (ie list).
 				MapReturnType.KEY or MapReturnType.VALUE => Exp.Type.LIST,

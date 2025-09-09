@@ -14,10 +14,10 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
+using Aerospike.Client;
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using Aerospike.Client;
 
 namespace Aerospike.Demo
 {
@@ -62,7 +62,7 @@ namespace Aerospike.Demo
 			client.Put(args.writePolicy, key, bin);
 
 			Record record = client.Get(args.policy, key, bin.name);
-			List<object> receivedList = (List<object>) record.GetValue(bin.name);
+			List<object> receivedList = (List<object>)record.GetValue(bin.name);
 
 			ValidateSize(3, receivedList.Count);
 			Validate("string1", receivedList[0]);
@@ -81,7 +81,7 @@ namespace Aerospike.Demo
 			Key key = new Key(args.ns, args.set, "listkey2");
 			client.Delete(args.writePolicy, key);
 
-			byte[] blob = new byte[] {3, 52, 125};
+			byte[] blob = new byte[] { 3, 52, 125 };
 			List<object> list = new List<object>();
 			list.Add("string1");
 			list.Add(2);
@@ -91,7 +91,7 @@ namespace Aerospike.Demo
 			client.Put(args.writePolicy, key, bin);
 
 			Record record = client.Get(args.policy, key, bin.name);
-			List<object> receivedList = (List<object>) record.GetValue(bin.name);
+			List<object> receivedList = (List<object>)record.GetValue(bin.name);
 
 			ValidateSize(3, receivedList.Count);
 			Validate("string1", receivedList[0]);
@@ -139,7 +139,7 @@ namespace Aerospike.Demo
 			Key key = new Key(args.ns, args.set, "mapkey2");
 			client.Delete(args.writePolicy, key);
 
-			byte[] blob = new byte[] {3, 52, 125};
+			byte[] blob = new byte[] { 3, 52, 125 };
 			List<int> list = new List<int>();
 			list.Add(100034);
 			list.Add(12384955);
@@ -183,7 +183,7 @@ namespace Aerospike.Demo
 			Key key = new Key(args.ns, args.set, "listmapkey");
 			client.Delete(args.writePolicy, key);
 
-			byte[] blob = new byte[] {3, 52, 125};
+			byte[] blob = new byte[] { 3, 52, 125 };
 			List<object> inner = new List<object>();
 			inner.Add("string2");
 			inner.Add(5);
@@ -204,7 +204,7 @@ namespace Aerospike.Demo
 			client.Put(args.writePolicy, key, bin);
 
 			Record record = client.Get(args.policy, key, bin.name);
-			List<object> received = (List<object>) record.GetValue(bin.name);
+			List<object> received = (List<object>)record.GetValue(bin.name);
 
 			ValidateSize(4, received.Count);
 			Validate("string1", received[0]);

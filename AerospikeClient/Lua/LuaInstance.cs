@@ -14,12 +14,9 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using System;
-using System.Collections.Generic;
-using System.Reflection;
-using System.IO;
-using System.Text;
 using Neo.IronLua;
+using System.Reflection;
+using System.Text;
 
 namespace Aerospike.Client
 {
@@ -197,55 +194,57 @@ namespace Aerospike.Client
 			global[name] = value;
 		}
 
-		public static object BytesToLua(ParticleType type, byte[] buf, int offset, int len) 
+		public static object BytesToLua(ParticleType type, byte[] buf, int offset, int len)
 		{
-			if (len <= 0) {
+			if (len <= 0)
+			{
 				return null;
 			}
-		
-			switch (type) {
-			case ParticleType.STRING:
-				return ByteUtil.Utf8ToString(buf, offset, len);
-			
-			case ParticleType.INTEGER:
-				return ByteUtil.BytesToNumber(buf, offset, len);
 
-			case ParticleType.BOOL:
-				return ByteUtil.BytesToBool(buf, offset, len);
-
-			case ParticleType.DOUBLE:
-				return ByteUtil.BytesToDouble(buf, offset);
-
-			case ParticleType.BLOB:
-				byte[] dest = new byte[len];
-				Array.Copy(buf, offset, dest, 0, len);
-				return new LuaBytes(dest);
-
-			case ParticleType.CSHARP_BLOB:
-				return ByteUtil.BytesToObject(buf, offset, len);
-			
-			case ParticleType.LIST:
+			switch (type)
 			{
-				Unpacker unpacker = new Unpacker(buf, offset, len, true);
-				return unpacker.UnpackList();
-			}
+				case ParticleType.STRING:
+					return ByteUtil.Utf8ToString(buf, offset, len);
 
-			case ParticleType.MAP: 
-			{
-				Unpacker unpacker = new Unpacker(buf, offset, len, true);
-				return unpacker.UnpackMap();
-			}
+				case ParticleType.INTEGER:
+					return ByteUtil.BytesToNumber(buf, offset, len);
 
-			case ParticleType.GEOJSON:
-			{
-				// skip the flags
-				int ncells = ByteUtil.BytesToShort(buf, offset + 1);
-				int hdrsz = 1 + 2 + (ncells * 8);
-				return new LuaGeoJSON(ByteUtil.Utf8ToString(buf, offset + hdrsz, len - hdrsz));
-			}
+				case ParticleType.BOOL:
+					return ByteUtil.BytesToBool(buf, offset, len);
 
-			default:
-				return null;
+				case ParticleType.DOUBLE:
+					return ByteUtil.BytesToDouble(buf, offset);
+
+				case ParticleType.BLOB:
+					byte[] dest = new byte[len];
+					Array.Copy(buf, offset, dest, 0, len);
+					return new LuaBytes(dest);
+
+				case ParticleType.CSHARP_BLOB:
+					return ByteUtil.BytesToObject(buf, offset, len);
+
+				case ParticleType.LIST:
+					{
+						Unpacker unpacker = new Unpacker(buf, offset, len, true);
+						return unpacker.UnpackList();
+					}
+
+				case ParticleType.MAP:
+					{
+						Unpacker unpacker = new Unpacker(buf, offset, len, true);
+						return unpacker.UnpackMap();
+					}
+
+				case ParticleType.GEOJSON:
+					{
+						// skip the flags
+						int ncells = ByteUtil.BytesToShort(buf, offset + 1);
+						int hdrsz = 1 + 2 + (ncells * 8);
+						return new LuaGeoJSON(ByteUtil.Utf8ToString(buf, offset + hdrsz, len - hdrsz));
+					}
+
+				default:
+					return null;
 			}
 		}
 

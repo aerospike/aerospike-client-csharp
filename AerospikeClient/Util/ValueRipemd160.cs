@@ -33,8 +33,6 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-using System;
-
 namespace Aerospike.Client
 {
 	/// <summary>
@@ -200,9 +198,9 @@ namespace Aerospike.Client
 		private void ProcessWord(ReadOnlySpan<byte> input, int inOff)
 		{
 			X[xOff++] = ((uint)input[inOff]) |
-			            (((uint)input[inOff + 1]) << 8) |
-			            (((uint)input[inOff + 2]) << 16) |
-			            (((uint)input[inOff + 3]) << 24);
+						(((uint)input[inOff + 1]) << 8) |
+						(((uint)input[inOff + 2]) << 16) |
+						(((uint)input[inOff + 3]) << 24);
 
 			if (xOff == 16)
 			{

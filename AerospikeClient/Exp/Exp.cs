@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2023 Aerospike, Inc.
+ * Copyright 2012-2025 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -14,9 +14,7 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using System;
 using System.Collections;
-using System.Collections.Generic;
 
 namespace Aerospike.Client
 {
@@ -318,6 +316,7 @@ namespace Aerospike.Client
 		/// Exp.GE(Exp.DeviceSize(), Exp.Val(100 * 1024))
 		/// </code>
 		/// </example>
+		[Obsolete("Deprecated as of server 8.1+, use RecordSize() instead")]
 		public static Exp DeviceSize()
 		{
 			return new Cmd(DEVICE_SIZE);
@@ -338,6 +337,7 @@ namespace Aerospike.Client
 		/// Exp.GE(Exp.MemorySize(), Exp.Val(100 * 1024))
 		/// </code>
 		/// </example>
+		[Obsolete("Deprecated as of server 8.1+, use RecordSize() instead")]
 		public static Exp MemorySize()
 		{
 			return new Cmd(MEMORY_SIZE);
@@ -645,7 +645,7 @@ namespace Aerospike.Client
 		{
 			return new CmdExp(EXCLUSIVE, exps);
 		}
-		
+
 		/// <summary>
 		/// Create "equals" expression.
 		/// </summary>

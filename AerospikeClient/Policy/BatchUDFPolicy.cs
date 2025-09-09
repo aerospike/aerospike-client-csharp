@@ -45,7 +45,7 @@ namespace Aerospike.Client
 		/// </para>
 		/// </summary>
 		public CommitLevel commitLevel = CommitLevel.COMMIT_ALL;
-	
+
 		/// <summary>
 		/// Record expiration. Also known as ttl (time to live).
 		/// Seconds record will live before being removed by the server.

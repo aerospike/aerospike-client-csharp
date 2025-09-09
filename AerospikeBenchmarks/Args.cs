@@ -14,9 +14,9 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using System.Text;
 using Aerospike.Client;
 using Microsoft.Extensions.Configuration;
+using System.Text;
 
 namespace Aerospike.Benchmarks
 {
@@ -61,12 +61,12 @@ namespace Aerospike.Benchmarks
 			var builder = new ConfigurationBuilder()
 				.AddJsonFile("settings.json", optional: true, reloadOnChange: true);
 			IConfigurationRoot section = builder.Build();
-			
+
 			IConfigurationSection cs = section.GetSection("Port");
-            port = int.Parse(cs.Value);
+			port = int.Parse(cs.Value);
 
 
-            port = int.Parse(section.GetSection("Port").Value);
+			port = int.Parse(section.GetSection("Port").Value);
 			authMode = (AuthMode)Enum.Parse(typeof(AuthMode), section.GetSection("AuthMode").Value, true);
 			user = section.GetSection("User").Value;
 			password = section.GetSection("Password").Value;
@@ -277,13 +277,13 @@ namespace Aerospike.Benchmarks
 				Console.WriteLine("Read/write using " + records + " records");
 			}
 
-			Console.WriteLine("hosts: " + Util.ArrayToString(hosts) + ", namespace: " + ns + 
+			Console.WriteLine("hosts: " + Util.ArrayToString(hosts) + ", namespace: " + ns +
 				", set: " + set);
 
-			string throughputStr = (throughput == 0)? "unlimited" : throughput.ToString() + " tps";
+			string throughputStr = (throughput == 0) ? "unlimited" : throughput.ToString() + " tps";
 			string transactionStr = (transactionMax == 0) ? "unlimited" : transactionMax.ToString();
 
-			Console.WriteLine("threads: " + threadMax + ", transactions: " + transactionStr + 
+			Console.WriteLine("threads: " + threadMax + ", transactions: " + transactionStr +
 				", throughput: " + throughputStr + ", debug: " + debug);
 
 			Console.Write("write policy:");
@@ -310,7 +310,7 @@ namespace Aerospike.Benchmarks
 			string randStr = fixedValue != null ? "false" : "true";
 			Console.WriteLine(", random values: " + randStr);
 
-			if (! sync)
+			if (!sync)
 			{
 				Console.WriteLine("Async max concurrent commands: " + commandMax);
 			}

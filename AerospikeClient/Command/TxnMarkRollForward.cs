@@ -19,7 +19,7 @@ namespace Aerospike.Client
 {
 	public sealed class TxnMarkRollForward : SyncWriteCommand
 	{
-		public TxnMarkRollForward(Cluster cluster, Txn txn, WritePolicy writePolicy, Key key) 
+		public TxnMarkRollForward(Cluster cluster, Txn txn, WritePolicy writePolicy, Key key)
 			: base(cluster, writePolicy, key)
 		{
 		}
@@ -31,7 +31,7 @@ namespace Aerospike.Client
 
 		protected internal override void ParseResult(Node node, Connection conn)
 		{
-			ParseHeader(node,conn);
+			ParseHeader(node, conn);
 			ParseFields(policy.Txn, key, true);
 
 			// MRT_COMMITTED is considered a success because it means a previous attempt already

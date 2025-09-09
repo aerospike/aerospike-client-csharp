@@ -60,5 +60,5 @@ namespace Aerospike.Client
 		/// </para>
 		/// </summary>
 		RANDOM
-	}	
+	}
 }

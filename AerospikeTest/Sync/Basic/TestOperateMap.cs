@@ -14,11 +14,8 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using System;
-using System.Collections;
-using System.Collections.Generic;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Aerospike.Client;
+using System.Collections;
 
 namespace Aerospike.Test
 {
@@ -30,14 +27,14 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void OperateMapPut()
 		{
-			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "opmkey1");		
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "opmkey1");
 			client.Delete(null, key);
-		
+
 			MapPolicy putMode = MapPolicy.Default;
 			MapPolicy addMode = new(MapOrder.UNORDERED, MapWriteMode.CREATE_ONLY);
 			MapPolicy updateMode = new(MapOrder.UNORDERED, MapWriteMode.UPDATE_ONLY);
 			MapPolicy orderedUpdateMode = new(MapOrder.KEY_ORDERED, MapWriteMode.UPDATE_ONLY);
-		
+
 			// Calling put() multiple times performs poorly because the server makes
 			// a copy of the map for each call, but we still need to test it.
 			// putItems() should be used instead for best performance.
@@ -50,33 +47,33 @@ namespace Aerospike.Test
 					MapOperation.Put(orderedUpdateMode, binName, Value.Get(10), Value.Get(1)),
 					MapOperation.Put(updateMode, binName, Value.Get(15), Value.Get(5))
 					);
-		
+
 			AssertRecordFound(key, record);
-				
+
 			IList results = record.GetList(binName);
 			int i = 0;
 
-			long size = (long)results[i++];	
+			long size = (long)results[i++];
 			Assert.AreEqual(1, size);
-		
-			size = (long)results[i++];	
+
+			size = (long)results[i++];
 			Assert.AreEqual(2, size);
-		
-			size = (long)results[i++];	
+
+			size = (long)results[i++];
 			Assert.AreEqual(3, size);
-		
-			size = (long)results[i++];	
+
+			size = (long)results[i++];
 			Assert.AreEqual(4, size);
-		
-			size = (long)results[i++];	
+
+			size = (long)results[i++];
 			Assert.AreEqual(4, size);
-		
-			size = (long)results[i++];	
+
+			size = (long)results[i++];
 			Assert.AreEqual(4, size);
 
 			record = client.Get(null, key, binName);
-		
-			IDictionary map = record.GetMap(binName);	
+
+			IDictionary map = record.GetMap(binName);
 			Assert.AreEqual(4, map.Count);
 			Assert.AreEqual(1L, map[10L]);
 		}
@@ -125,7 +122,7 @@ namespace Aerospike.Test
 				MapOperation.GetByKeyRange(binName, Value.Get(12), Value.Get(15), MapReturnType.KEY_VALUE),
 				MapOperation.GetByKeyRange(binName, Value.Get(12), Value.Get(15), MapReturnType.UNORDERED_MAP),
 				MapOperation.GetByKeyRange(binName, Value.Get(12), Value.Get(15), MapReturnType.ORDERED_MAP)
-				
+
 				);
 
 			AssertRecordFound(key, record);
@@ -161,7 +158,7 @@ namespace Aerospike.Test
 			dict = (IDictionary)results[i++];
 			Assert.AreEqual(2, dict.Count);
 			Assert.IsTrue(dict is SortedDictionary<object, object>);
-			
+
 		}
 
 		[TestMethod]
@@ -258,7 +255,7 @@ namespace Aerospike.Test
 			Assert.AreEqual(1L, entry.Value);
 
 			list = (IList)results[i++];
-			entry = (KeyValuePair<object,object>)list[3];
+			entry = (KeyValuePair<object, object>)list[3];
 			Assert.AreEqual(4L, entry.Key);
 		}
 
@@ -321,10 +318,10 @@ namespace Aerospike.Test
 			Assert.AreEqual("Jim", str);
 
 			list = (IList)results[i++];
-			KeyValuePair<object,object> entry = (KeyValuePair<object,object>)list[0];
+			KeyValuePair<object, object> entry = (KeyValuePair<object, object>)list[0];
 			Assert.AreEqual("Charlie", entry.Key);
 			Assert.AreEqual(55L, entry.Value);
-			entry = (KeyValuePair<object,object>)list[1];
+			entry = (KeyValuePair<object, object>)list[1];
 			Assert.AreEqual("John", entry.Key);
 			Assert.AreEqual(81L, entry.Value);
 
@@ -342,7 +339,7 @@ namespace Aerospike.Test
 			Assert.AreEqual(1, val);
 
 			list = (IList)results[i++];
-			entry = (KeyValuePair<object,object>)list[0];
+			entry = (KeyValuePair<object, object>)list[0];
 			Assert.AreEqual("Jim", entry.Key);
 			Assert.AreEqual(94L, entry.Value);
 
@@ -585,7 +582,7 @@ namespace Aerospike.Test
 			AssertRecordFound(key, record);
 
 			IList results = record.GetList(binName);
-		
+
 			IList list = (IList)results[0];
 			Assert.AreEqual(2, list.Count);
 			KeyValuePair<object, object> entry = (KeyValuePair<object, object>)list[0];
@@ -654,7 +651,7 @@ namespace Aerospike.Test
 			Assert.AreEqual(2L, list[2]);
 
 			list = (IList)results[i++];
-			Assert.AreEqual(1, list.Count);		
+			Assert.AreEqual(1, list.Count);
 			KeyValuePair<object, object> entry = (KeyValuePair<object, object>)list[0];
 			Assert.AreEqual("Harry", entry.Key);
 			Assert.AreEqual(82L, entry.Value);
@@ -665,7 +662,7 @@ namespace Aerospike.Test
 			Assert.AreEqual("John", list[1]);
 
 			list = (IList)results[i++];
-			Assert.AreEqual(1, list.Count);		
+			Assert.AreEqual(1, list.Count);
 			entry = (KeyValuePair<object, object>)list[0];
 			Assert.AreEqual("Jim", entry.Key);
 			Assert.AreEqual(98L, entry.Value);
@@ -844,7 +841,8 @@ namespace Aerospike.Test
 		}
 
 		[TestMethod]
-		public void OperateMapPartial() {
+		public void OperateMapPartial()
+		{
 			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "opmkey16");
 			client.Delete(null, key);
 
@@ -855,13 +853,13 @@ namespace Aerospike.Test
 				[Value.Get(5)] = Value.Get(15),
 				[Value.Get(9)] = Value.Get(10)
 			};
-		
+
 			// Write values to empty map.
-			Record record = client.Operate(null, key, 
+			Record record = client.Operate(null, key,
 					MapOperation.PutItems(MapPolicy.Default, binName, inputMap),
 					MapOperation.PutItems(MapPolicy.Default, "bin2", inputMap)
 					);
-					
+
 			AssertRecordFound(key, record);
 
 			Dictionary<Value, Value> sourceMap = new()
@@ -874,75 +872,77 @@ namespace Aerospike.Test
 					MapOperation.PutItems(new MapPolicy(MapOrder.UNORDERED, MapWriteFlags.CREATE_ONLY | MapWriteFlags.PARTIAL | MapWriteFlags.NO_FAIL), binName, sourceMap),
 					MapOperation.PutItems(new MapPolicy(MapOrder.UNORDERED, MapWriteFlags.CREATE_ONLY | MapWriteFlags.NO_FAIL), "bin2", sourceMap)
 					);
-		
+
 			AssertRecordFound(key, record);
 
 			long size = record.GetLong(binName);
 			Assert.AreEqual(5L, size);
-		
+
 			size = record.GetLong("bin2");
-			Assert.AreEqual(4L, size);	
+			Assert.AreEqual(4L, size);
 		}
 
 		[TestMethod]
-		public void OperateMapInfinity() {
+		public void OperateMapInfinity()
+		{
 			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "opmkey17");
 			client.Delete(null, key);
-		
-			Dictionary<Value,Value> inputMap = new()
+
+			Dictionary<Value, Value> inputMap = new()
 			{
 				[Value.Get(0)] = Value.Get(17),
 				[Value.Get(4)] = Value.Get(2),
 				[Value.Get(5)] = Value.Get(15),
 				[Value.Get(9)] = Value.Get(10)
 			};
-		
+
 			// Write values to empty map.
-			Record record = client.Operate(null, key, 
+			Record record = client.Operate(null, key,
 					MapOperation.PutItems(MapPolicy.Default, binName, inputMap)
 					);
-					
+
 			AssertRecordFound(key, record);
 
 			record = client.Operate(null, key,
 					MapOperation.GetByKeyRange(binName, Value.Get(5), Value.INFINITY, MapReturnType.KEY)
 					);
-		
+
 			AssertRecordFound(key, record);
-		
+
 			IList results = record.GetList(binName);
 			int i = 0;
-		
+
 			long v = (long)results[i++];
 			Assert.AreEqual(5L, v);
-		
+
 			v = (long)results[i++];
 			Assert.AreEqual(9L, v);
 		}
 
 		[TestMethod]
-		public void OperateMapWildcard() {
+		public void OperateMapWildcard()
+		{
 			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "opmkey18");
 			client.Delete(null, key);
-		
+
 			List<Value> i1 = [Value.Get("John"), Value.Get(55)];
 
 			List<Value> i2 = [Value.Get("Jim"), Value.Get(95)];
-		
+
 			List<Value> i3 = [Value.Get("Joe"), Value.Get(80)];
 
-			Dictionary<Value,Value> inputMap = new()
+			Dictionary<Value, Value> inputMap = new()
 			{
 				[Value.Get(4)] = Value.Get(i1),
 				[Value.Get(5)] = Value.Get(i2),
 				[Value.Get(9)] = Value.Get(i3)
 			};
-		
+
 			// Write values to empty map.
-			Record record = client.Operate(null, key, 
+			Record record = client.Operate(null, key,
 					MapOperation.PutItems(MapPolicy.Default, binName, inputMap)
 					);
-					
+
 			AssertRecordFound(key, record);
 
 			List<Value> filterList = [Value.Get("Joe"), Value.WILDCARD];
@@ -950,17 +950,17 @@ namespace Aerospike.Test
 			record = client.Operate(null, key,
 					MapOperation.GetByValue(binName, Value.Get(filterList), MapReturnType.KEY)
 					);
-		
+
 			AssertRecordFound(key, record);
 			//System.out.println("Record: " + record);
-		
+
 			IList results = record.GetList(binName);
 			int i = 0;
-		
+
 			long v = (long)results[i++];
-			Assert.AreEqual(9L, v);		
+			Assert.AreEqual(9L, v);
 		}
-		
+
 		[TestMethod]
 		public void OperateNestedMap()
 		{
@@ -1010,7 +1010,7 @@ namespace Aerospike.Test
 			long v = (long)map["key21"];
 			Assert.AreEqual(11, v);
 			v = (long)map["key22"];
-			Assert.AreEqual(5, v);			
+			Assert.AreEqual(5, v);
 		}
 
 		[TestMethod]
@@ -1088,13 +1088,13 @@ namespace Aerospike.Test
 			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "opmkey20");
 			client.Delete(null, key);
 
-			IDictionary<Value,Value> m1 = new Dictionary<Value, Value>
+			IDictionary<Value, Value> m1 = new Dictionary<Value, Value>
 			{
 				[Value.Get("key11")] = Value.Get(9),
 				[Value.Get("key12")] = Value.Get(4)
 			};
 
-			IDictionary<Value,Value> m2 = new Dictionary<Value, Value>
+			IDictionary<Value, Value> m2 = new Dictionary<Value, Value>
 			{
 				[Value.Get("key21")] = Value.Get(3),
 				[Value.Get("key22")] = Value.Get(5)
@@ -1132,7 +1132,7 @@ namespace Aerospike.Test
 
 			map = (IDictionary)map["key3"];
 			Assert.AreEqual(1, map.Count);
-	
+
 			long v = (long)map["key31"];
 			Assert.AreEqual(99, v);
 		}

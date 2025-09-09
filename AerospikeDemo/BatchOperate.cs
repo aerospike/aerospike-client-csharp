@@ -14,10 +14,9 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using System;
-using System.Collections.Generic;
 using Aerospike.Client;
 using System.Collections;
+using System.Collections.Generic;
 
 namespace Aerospike.Demo
 {
@@ -270,11 +269,11 @@ namespace Aerospike.Demo
 					{
 						v1 = "null";
 					}
-					
+
 					if (v2 == null)
 					{
 						v2 = "null";
-					}			
+					}
 					console.Info("Result[{0}]: {1}, {2}", i, v1, v2);
 				}
 				else

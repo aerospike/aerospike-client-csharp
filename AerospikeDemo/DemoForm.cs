@@ -14,14 +14,13 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
+using Aerospike.Client;
 using System;
 using System.Drawing;
-using System.Text;
-using System.Windows.Forms;
 using System.IO;
 using System.Text.RegularExpressions;
 using System.Threading;
-using Aerospike.Client;
+using System.Windows.Forms;
 
 namespace Aerospike.Demo
 {

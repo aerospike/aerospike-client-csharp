@@ -14,10 +14,8 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using System;
-using System.Collections;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Aerospike.Client;
+using System.Collections;
 
 namespace Aerospike.Test
 {
@@ -52,7 +50,7 @@ namespace Aerospike.Test
 			Record record = client.Operate(null, keyA, ExpOperation.Read(expVar, exp, ExpReadFlags.DEFAULT));
 			AssertRecordFound(keyA, record);
 
-			Test.TestException(() => 
+			Test.TestException(() =>
 			{
 				client.Operate(null, keyB, ExpOperation.Read(expVar, exp, ExpReadFlags.DEFAULT));
 			}, ResultCode.OP_NOT_APPLICABLE);
@@ -67,15 +65,15 @@ namespace Aerospike.Test
 			Expression wexp = Exp.Build(Exp.IntBin(binD));
 			Expression rexp = Exp.Build(Exp.IntBin(binA));
 
-			Record record = client.Operate(null, keyA, 
-				ExpOperation.Write(binD, wexp, ExpWriteFlags.DEFAULT), 
+			Record record = client.Operate(null, keyA,
+				ExpOperation.Write(binD, wexp, ExpWriteFlags.DEFAULT),
 				ExpOperation.Read(expVar, rexp, ExpReadFlags.DEFAULT)
 				);
 			AssertRecordFound(keyA, record);
 
 			Test.TestException(() =>
 			{
-				client.Operate(null, keyB, 
+				client.Operate(null, keyB,
 					ExpOperation.Write(binD, wexp, ExpWriteFlags.DEFAULT),
 					ExpOperation.Read(expVar, rexp, ExpReadFlags.DEFAULT));
 			}, ResultCode.OP_NOT_APPLICABLE);
@@ -91,13 +89,14 @@ namespace Aerospike.Test
 			Expression wexp = Exp.Build(Exp.Add(Exp.IntBin(binA), Exp.Val(4)));
 			Expression rexp = Exp.Build(Exp.IntBin(binC));
 
-			Record record = client.Operate(null, keyA, 
+			Record record = client.Operate(null, keyA,
 				ExpOperation.Write(binC, wexp, ExpWriteFlags.DEFAULT),
 				ExpOperation.Read(expVar, rexp, ExpReadFlags.DEFAULT)
 				);
 			AssertRecordFound(keyA, record);
 
-			Test.TestException(() => {
+			Test.TestException(() =>
+			{
 				client.Operate(null, keyB,
 					ExpOperation.Write(binC, wexp, ExpWriteFlags.DEFAULT),
 					ExpOperation.Read(expVar, rexp, ExpReadFlags.DEFAULT));
@@ -114,7 +113,8 @@ namespace Aerospike.Test
 		{
 			Expression wexp = Exp.Build(Exp.Add(Exp.IntBin(binA), Exp.Val(4)));
 
-			Test.TestException(() => {
+			Test.TestException(() =>
+			{
 				client.Operate(null, keyA, ExpOperation.Write(binC, wexp, ExpWriteFlags.UPDATE_ONLY));
 			}, ResultCode.BIN_NOT_FOUND);
 
@@ -124,7 +124,8 @@ namespace Aerospike.Test
 			record = client.Operate(null, keyA, ExpOperation.Write(binC, wexp, ExpWriteFlags.CREATE_ONLY));
 			AssertRecordFound(keyA, record);
 
-			Test.TestException(() => {
+			Test.TestException(() =>
+			{
 				client.Operate(null, keyA, ExpOperation.Write(binC, wexp, ExpWriteFlags.CREATE_ONLY));
 			}, ResultCode.BIN_EXISTS_ERROR);
 
@@ -133,7 +134,8 @@ namespace Aerospike.Test
 
 			Expression dexp = Exp.Build(Exp.Nil());
 
-			Test.TestException(() => {
+			Test.TestException(() =>
+			{
 				client.Operate(null, keyA, ExpOperation.Write(binC, dexp, ExpWriteFlags.DEFAULT));
 			}, ResultCode.OP_NOT_APPLICABLE);
 
@@ -155,7 +157,8 @@ namespace Aerospike.Test
 					Exp.EQ(Exp.IntBin(binC), Exp.Val(5)), Exp.Unknown(),
 					Exp.BinExists(binA), Exp.Val(5), Exp.Unknown()));
 
-			Test.TestException(() => {
+			Test.TestException(() =>
+			{
 				client.Operate(null, keyA,
 					ExpOperation.Write(binC, exp, ExpWriteFlags.DEFAULT),
 					Operation.Get(binC));
@@ -196,7 +199,7 @@ namespace Aerospike.Test
 
 			Record record = client.Operate(null, keyA,
 				ExpOperation.Write(binC, exp, ExpWriteFlags.DEFAULT),
-				Operation.Get(binC), 
+				Operation.Get(binC),
 				ExpOperation.Read(expVar, exp, ExpReadFlags.DEFAULT));
 
 			AssertRecordFound(keyA, record);

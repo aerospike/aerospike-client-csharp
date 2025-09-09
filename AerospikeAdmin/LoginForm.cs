@@ -14,14 +14,9 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using System;
-using System.Collections.Generic;
-using System.ComponentModel;
-using System.Drawing;
-using System.Security.Authentication;
-using System.Text;
-using System.Windows.Forms;
 using Aerospike.Client;
+using System;
+using System.Windows.Forms;
 
 namespace Aerospike.Admin
 {
@@ -133,7 +128,7 @@ namespace Aerospike.Admin
 				}
 
 				// Query own user.
-				User user = client.QueryUser(null, userName);				
+				User user = client.QueryUser(null, userName);
 
 				if (user != null)
 				{
@@ -141,7 +136,7 @@ namespace Aerospike.Admin
 
 					// Initialize Global Data
 					Globals.RefreshRoles(client, user, admin);
-					
+
 					Form form = new AdminForm(client, user, admin);
 					form.Show();
 				}

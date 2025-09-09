@@ -98,7 +98,7 @@ namespace Aerospike.Client
 	public class AsyncBatchSingleRead : AsyncBatchSingleCommand
 	{
 		protected BatchRead record;
-		
+
 		public AsyncBatchSingleRead
 		(
 			AsyncBatchExecutor executor,
@@ -237,7 +237,7 @@ namespace Aerospike.Client
 			return new AsyncBatchSingleGet(this);
 		}
 	}
-	
+
 	public sealed class AsyncBatchSingleOperateGetSequence : AsyncBatchSingleGetSequence
 	{
 		private readonly Operation[] ops;
@@ -271,7 +271,7 @@ namespace Aerospike.Client
 			return new AsyncBatchSingleOperateGetSequence(this);
 		}
 	}
-	
+
 	public class AsyncBatchSingleGetSequence : AsyncBatchSingleCommand
 	{
 		private readonly RecordSequenceListener listener;
@@ -582,7 +582,7 @@ namespace Aerospike.Client
 			}
 			else
 			{
-				record = new BatchRecord(key, null, resultCode, 
+				record = new BatchRecord(key, null, resultCode,
 					Command.BatchInDoubt(attr.hasWrite, commandSentCounter), attr.hasWrite);
 				executor.SetRowError();
 			}
@@ -1082,7 +1082,7 @@ namespace Aerospike.Client
 
 	public sealed class AsyncBatchSingleDeleteSequenceSent : AsyncBatchSingleCommand
 	{
-		private readonly  AsyncBatchRecordSequenceExecutor parent;
+		private readonly AsyncBatchRecordSequenceExecutor parent;
 		private readonly BatchRecordSequenceListener listener;
 		private readonly BatchAttr attr;
 		private readonly int index;

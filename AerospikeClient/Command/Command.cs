@@ -196,7 +196,7 @@ namespace Aerospike.Client
 			long?[] versions,
 			BatchNode batch
 		)
-		{ 
+		{
 			// Estimate buffer size.
 			Begin();
 
@@ -347,7 +347,7 @@ namespace Aerospike.Client
 			BatchAttr attr
 		)
 		{
-		// Estimate buffer size.
+			// Estimate buffer size.
 			Begin();
 			int fieldCount = 1;
 			int max = batch.offsetsSize;
@@ -2099,7 +2099,7 @@ namespace Aerospike.Client
 			byte[] packedCtx = null;
 			string indexName = null;
 			Expression statementExp = null;
-			
+
 			if (statement.filter != null)
 			{
 				IndexCollectionType type = statement.filter.CollectionType;

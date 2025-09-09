@@ -25,7 +25,7 @@ namespace Aerospike.Client
 		protected Record record;
 
 		// Read constructor.
-		public AsyncRead(AsyncCluster cluster, Policy policy, RecordListener listener, Key key, string[] binNames) 
+		public AsyncRead(AsyncCluster cluster, Policy policy, RecordListener listener, Key key, string[] binNames)
 			: base(cluster, policy, key)
 		{
 			this.listener = listener;

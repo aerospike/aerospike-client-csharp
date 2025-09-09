@@ -14,8 +14,6 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using System.Collections.Generic;
-
 namespace Aerospike.Client
 {
 	/// <summary>
@@ -27,7 +25,7 @@ namespace Aerospike.Client
 		/// This method is called when an asynchronous info command completes successfully.
 		/// </summary>
 		/// <param name="map">map of info command keys and result values.</param>
-		void OnSuccess(Dictionary<string,string> map);
+		void OnSuccess(Dictionary<string, string> map);
 
 		/// <summary>
 		/// This method is called when an asynchronous info command fails.

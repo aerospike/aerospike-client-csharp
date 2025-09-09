@@ -14,26 +14,25 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using System;
-using System.IO;
 using Aerospike.Client;
+using System.IO;
 
 namespace Aerospike.Demo
 {
-    public class LuaExample
-    {
+	public class LuaExample
+	{
 		private static readonly string LuaDirectory = DemoForm.RelativeDirectory + "udf" + Path.DirectorySeparatorChar;
 
-        static LuaExample()
-        {
-            LuaConfig.PackagePath = LuaDirectory + "?.lua";
-        }
+		static LuaExample()
+		{
+			LuaConfig.PackagePath = LuaDirectory + "?.lua";
+		}
 
-        public static void Register(IAerospikeClient client, Policy policy, string packageName)
-        {
-            string path = LuaDirectory + packageName;
-            RegisterTask task = client.Register(policy, path, packageName, Language.LUA);
-            task.Wait();
-        }
-    }
+		public static void Register(IAerospikeClient client, Policy policy, string packageName)
+		{
+			string path = LuaDirectory + packageName;
+			RegisterTask task = client.Register(policy, path, packageName, Language.LUA);
+			task.Wait();
+		}
+	}
 }

@@ -14,9 +14,6 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using System;
-using System.Threading;
-
 #if (IIS)
 using System.Web;
 #endif
@@ -30,7 +27,7 @@ namespace Aerospike.Client
 		[ThreadStatic]
 		private static byte[] BufferThreadLocal;
 
-		#if (! IIS)
+#if (!IIS)
 		//--------------------------------------------------------------------------------
 		// Regular client applications always use thread static to store reusable buffers.
 		//--------------------------------------------------------------------------------
@@ -64,7 +61,7 @@ namespace Aerospike.Client
 			return BufferThreadLocal;
 		}
 
-		#else
+#else
 		//----------------------------------------------------------------------
 		// IIS web server applications use HttpContext to store reusable buffers
 		// when a http context is defined in the current thread.
@@ -156,6 +153,6 @@ namespace Aerospike.Client
 			Buffer = new byte[size];
 			return Buffer;
 		}
-		#endif
+#endif
 	}
 }

@@ -22,7 +22,7 @@ namespace Aerospike.Client
 		private readonly ExistsListener listener;
 		private bool exists;
 
-		public AsyncExists(AsyncCluster cluster, Policy policy, Key key, ExistsListener listener) 
+		public AsyncExists(AsyncCluster cluster, Policy policy, Key key, ExistsListener listener)
 			: base(cluster, policy, key)
 		{
 			this.listener = listener;

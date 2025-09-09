@@ -14,8 +14,6 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using System;
-using System.Threading;
 using System.Collections.Concurrent;
 
 namespace Aerospike.Client
@@ -88,7 +86,7 @@ namespace Aerospike.Client
 
 			int particleBytesSize = (int)(opSize - (4 + nameSize));
 
-			if (! name.Equals("SUCCESS"))
+			if (!name.Equals("SUCCESS"))
 			{
 				if (name.Equals("FAILURE"))
 				{

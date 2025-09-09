@@ -14,7 +14,6 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using System;
 using System.Net;
 using System.Net.Sockets;
 
@@ -88,8 +87,8 @@ namespace Aerospike.Client
 
 		public IAsyncCommand Command
 		{
-			get {return command;}
-			set {command = value;}
+			get { return command; }
+			set { command = value; }
 		}
 
 		public abstract void Connect(IPEndPoint address);

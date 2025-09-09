@@ -280,7 +280,8 @@ namespace Aerospike.Client
 				{
 					record.inDoubt = record.hasWrite;
 
-					if (record.inDoubt && policy.Txn != null) {
+					if (record.inDoubt && policy.Txn != null)
+					{
 						policy.Txn.OnWriteInDoubt(record.key);
 					}
 				}
@@ -370,7 +371,8 @@ namespace Aerospike.Client
 				{
 					record.inDoubt = true;
 
-					if (policy.Txn != null) {
+					if (policy.Txn != null)
+					{
 						policy.Txn.OnWriteInDoubt(record.key);
 					}
 				}
@@ -481,7 +483,8 @@ namespace Aerospike.Client
 				{
 					record.inDoubt = true;
 
-					if (policy.Txn != null) {
+					if (policy.Txn != null)
+					{
 						policy.Txn.OnWriteInDoubt(record.key);
 					}
 				}
@@ -622,7 +625,7 @@ namespace Aerospike.Client
 				return;
 			}
 
-			foreach (int index in batch.offsets) 
+			foreach (int index in batch.offsets)
 			{
 				BatchRecord record = records[index];
 

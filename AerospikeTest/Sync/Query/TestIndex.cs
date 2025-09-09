@@ -1,5 +1,5 @@
 ﻿/* 
- * Copyright 2012-2024 Aerospike, Inc.
+ * Copyright 2012-2025 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -15,7 +15,6 @@
  * the License.
  */
 using Aerospike.Client;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace Aerospike.Test
 {
@@ -55,10 +54,10 @@ namespace Aerospike.Test
 
 			// Ensure all nodes have dropped the index.
 			Node[] nodes = [.. client.Nodes];
-			string cmd = IndexTask.BuildStatusCommand(SuiteHelpers.ns, indexName);
 
 			foreach (Node node in nodes)
 			{
+				string cmd = IndexTask.BuildStatusCommand(SuiteHelpers.ns, indexName, node.serverVerison);
 				string response = Info.Request(node, cmd);
 				int code = Info.ParseResultCode(response);
 				Assert.AreEqual(201, code);

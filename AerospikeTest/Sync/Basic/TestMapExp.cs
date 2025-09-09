@@ -14,12 +14,7 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using System;
-using System.Collections;
-using System.Collections.Generic;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Aerospike.Client;
-using System.Diagnostics;
 
 namespace Aerospike.Test
 {
@@ -73,7 +68,7 @@ namespace Aerospike.Test
 
 			policy.filterExp = Exp.Build(Exp.EQ(Exp.MapBin("m"), Exp.Val(map, MapOrder.KEY_ORDERED)));
 
-		    Record record = client.Get(policy, key, bin);
+			Record record = client.Get(policy, key, bin);
 			AssertRecordFound(key, record);
 		}
 

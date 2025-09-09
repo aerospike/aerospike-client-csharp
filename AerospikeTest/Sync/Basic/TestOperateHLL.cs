@@ -14,11 +14,8 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using System;
-using System.Collections;
-using System.Collections.Generic;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Aerospike.Client;
+using System.Collections;
 
 namespace Aerospike.Test
 {
@@ -184,7 +181,7 @@ namespace Aerospike.Test
 		{
 			double countErr6sigma = RelativeCountError(index_bits) * 6;
 
-			Assert.IsTrue(countErr6sigma > Math.Abs(1 - (hll_count / (double)expected)), 
+			Assert.IsTrue(countErr6sigma > Math.Abs(1 - (hll_count / (double)expected)),
 				msg + " - err " + countErr6sigma + " count " + hll_count + " expected " + expected + " index_bits " + index_bits
 				);
 		}
@@ -205,7 +202,7 @@ namespace Aerospike.Test
 					HLLOperation.RefreshCount(binName),
 					HLLOperation.Describe(binName)];
 
-			if (! should_pass)
+			if (!should_pass)
 			{
 				AssertThrows(msg, key, typeof(AerospikeException), ResultCode.PARAMETER_ERROR, ops);
 				return;
@@ -306,10 +303,10 @@ namespace Aerospike.Test
 
 			Record record = AssertSuccess(msg, key, ops);
 			IList result_list = record.GetList(binName);
-			long count = (long) result_list[1];
-			long count1 = (long) result_list[2];
-			IList description = (IList) result_list[3];
-			long n_added = (long) result_list[4];
+			long count = (long)result_list[1];
+			long count1 = (long)result_list[2];
+			IList description = (IList)result_list[3];
+			long n_added = (long)result_list[4];
 
 			AssertDescription(msg, description, index_bits, minhash_bits);
 			AssertHLLCount(msg, index_bits, count, entries.Count);
@@ -374,17 +371,17 @@ namespace Aerospike.Test
 					Assert.Fail("Expected valid inputs: " + msg);
 				}
 
-				Record recorda = AssertSuccess(msg, key, 
-					Operation.Delete(), 
-					HLLOperation.Add(p, binName, vals0, index_bits), 
-					HLLOperation.GetCount(binName), 
+				Record recorda = AssertSuccess(msg, key,
+					Operation.Delete(),
+					HLLOperation.Add(p, binName, vals0, index_bits),
+					HLLOperation.GetCount(binName),
 					HLLOperation.RefreshCount(binName),
 					HLLOperation.Describe(binName));
 
 				IList resulta_list = recorda.GetList(binName);
-				long counta = (long) resulta_list[1];
-				long counta1 = (long) resulta_list[2];
-				IList descriptiona = (IList) resulta_list[3];
+				long counta = (long)resulta_list[1];
+				long counta1 = (long)resulta_list[2];
+				IList descriptiona = (IList)resulta_list[3];
 
 				AssertDescription(msg, descriptiona, index_bits, 0);
 				AssertHLLCount(msg, index_bits, counta, vals0.Count);
@@ -400,10 +397,10 @@ namespace Aerospike.Test
 					);
 
 				IList resultb_list = recordb.GetList(binName);
-				long countb = (long) resultb_list[1];
-				long n_added0 = (long) resultb_list[2];
-				long countb1 = (long) resultb_list[4];
-				IList descriptionb = (IList) resultb_list[5];
+				long countb = (long)resultb_list[1];
+				long n_added0 = (long)resultb_list[2];
+				long countb1 = (long)resultb_list[4];
+				IList descriptionb = (IList)resultb_list[5];
 
 				Assert.AreEqual(0, n_added0);
 				AssertDescription(msg, descriptionb, ix, 0);
@@ -494,7 +491,7 @@ namespace Aerospike.Test
 				Record record = AssertSuccess(msg, keys[i], Operation.Delete(),
 				HLLOperation.Add(p, binName, sub_vals, ix), HLLOperation.GetCount(binName));
 				IList result_list = record.GetList(binName);
-				long count = (long) result_list[1];
+				long count = (long)result_list[1];
 
 				AssertHLLCount(msg, ix, count, sub_vals.Count);
 			}
@@ -529,8 +526,8 @@ namespace Aerospike.Test
 
 			Record record_union = AssertSuccess(msg, key, ops);
 			IList union_result_list = record_union.GetList(binName);
-			long union_count = (long) union_result_list[2];
-			long union_count2 = (long) union_result_list[4];
+			long union_count = (long)union_result_list[2];
+			long union_count2 = (long)union_result_list[4];
 
 			AssertHLLCount(msg, index_bits, union_count, union_expected);
 			Assert.AreEqual(union_count, union_count2, msg);
@@ -543,8 +540,8 @@ namespace Aerospike.Test
 					HLLOperation.GetCount(binName));
 
 				IList result_list = record.GetList(binName);
-				long n_added = (long) result_list[0];
-				long count = (long) result_list[1];
+				long n_added = (long)result_list[0];
+				long count = (long)result_list[1];
 
 				Assert.AreEqual(0, n_added, msg);
 				Assert.AreEqual(union_count, count, msg);
@@ -594,7 +591,7 @@ namespace Aerospike.Test
 				Operation.Get(otherName)
 				);
 			IList result_list = record.GetList(otherName);
-			Value.HLLValue hll = (Value.HLLValue) result_list[1];
+			Value.HLLValue hll = (Value.HLLValue)result_list[1];
 
 			hlls.Add(hll);
 
@@ -700,9 +697,9 @@ namespace Aerospike.Test
 			}
 
 			// Keep record around win binName is removed.
-			AssertSuccess("other bin", key, 
+			AssertSuccess("other bin", key,
 				Operation.Delete(),
-				HLLOperation.Init(HLLPolicy.Default, binName + "other", index_bits), 
+				HLLOperation.Init(HLLPolicy.Default, binName + "other", index_bits),
 				HLLOperation.Add(HLLPolicy.Default, binName, vals[0], index_bits)
 				);
 

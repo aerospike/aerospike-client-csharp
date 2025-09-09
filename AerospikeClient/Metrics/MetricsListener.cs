@@ -35,7 +35,7 @@ namespace Aerospike.Client
 		/// <summary>
 		/// A node is being dropped from the cluster.
 		/// </summary>
-		
+
 		public void OnNodeClose(Node node);
 
 		/// <summary>

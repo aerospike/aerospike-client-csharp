@@ -14,9 +14,9 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
+using Aerospike.Client;
 using System;
 using System.Threading;
-using Aerospike.Client;
 
 namespace Aerospike.Demo
 {

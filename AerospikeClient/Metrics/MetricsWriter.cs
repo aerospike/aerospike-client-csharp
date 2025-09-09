@@ -15,9 +15,9 @@
  * the License.
  */
 
-using static Aerospike.Client.Latency;
-using System.Text;
 using System.Diagnostics;
+using System.Text;
+using static Aerospike.Client.Latency;
 
 namespace Aerospike.Client
 {

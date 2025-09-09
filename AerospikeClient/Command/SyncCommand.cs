@@ -115,7 +115,7 @@ namespace Aerospike.Client
 						node.PutConnection(conn);
 
 						if (latencyType != LatencyType.NONE)
-						{ 
+						{
 							node.AddLatency(ns, latencyType, metricsWatch.Elapsed.TotalMilliseconds);
 						}
 
@@ -365,7 +365,7 @@ namespace Aerospike.Client
 		protected internal void ParseHeader(Node node, Connection conn)
 		{
 			int bytesIn = 0;
-			
+
 			// Read header.
 			conn.ReadFully(dataBuffer, 8, Command.STATE_READ_HEADER);
 			bytesIn += 8;

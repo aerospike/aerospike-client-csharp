@@ -14,7 +14,6 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using System;
 using static Aerospike.Client.Connection;
 
 namespace Aerospike.Client
@@ -99,7 +98,7 @@ namespace Aerospike.Client
 			return true;
 		}
 
-		protected internal sealed override void ParseResult(Node node,Connection conn)
+		protected internal sealed override void ParseResult(Node node, Connection conn)
 		{
 			// Read blocks of records.  Do not use thread local receive buffer because each
 			// block will likely be too big for a cache.  Also, scan callbacks can nest
@@ -209,7 +208,7 @@ namespace Aerospike.Client
 					throw new AerospikeException("Invalid proto type: " + type + " Expected: " + Command.AS_MSG_TYPE);
 				}
 
-				if (! ParseGroup(receiveSize))
+				if (!ParseGroup(receiveSize))
 				{
 					break;
 				}
@@ -249,7 +248,7 @@ namespace Aerospike.Client
 				dataOffset += 2;
 
 				// Note: ParseRow() also handles sync error responses.
-				if (! ParseRow())
+				if (!ParseRow())
 				{
 					return false;
 				}

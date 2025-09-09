@@ -14,7 +14,6 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Aerospike.Client;
 
 namespace Aerospike.Test
@@ -36,7 +35,8 @@ namespace Aerospike.Test
 				record = client.Get(null, key);
 				AssertBinEqual(key, record, bin);
 			}
-			else {
+			else
+			{
 				Bin bin1 = new("bin1", "value1");
 				Bin bin2 = new("bin2", "value2");
 
@@ -101,7 +101,7 @@ namespace Aerospike.Test
 			AssertRecordFound(key, record);
 
 			// Generation should be greater than zero.  Make sure it's populated.
-			if (record.generation == 0) 
+			if (record.generation == 0)
 			{
 				Assert.Fail("Invalid record header: generation=" + record.generation + " expiration=" + record.expiration);
 			}
@@ -152,8 +152,8 @@ namespace Aerospike.Test
 				compress = true
 			};
 
-					Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "putgetc");
-					Record record;
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "putgetc");
+			Record record;
 
 			List<string> list = [];
 			int[] iterator = Enumerable.Range(0, 2000).ToArray();
