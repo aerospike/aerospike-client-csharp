@@ -65,3 +65,13 @@ runs:
         name: AerospikeTest-${{ github.run_number }}
         path: AerospikeTest\bin\Release\net8.0\AerospikeTest-*
         retention-days: 1
+    
+    - run: |
+        mkdir -p ${GITHUB_WORKSPACE}\sign
+        cp AerospikeClient\bin\Release\Aerospike.Client*.nupkg ${GITHUB_WORKSPACE}\sign
+
+    - name: Upload to sign folder
+      uses: actions/upload-artifact@v4
+      with:
+        name: AerospikeSign-${{ github.run_number }}
+        path: ${GITHUB_WORKSPACE}\sign
