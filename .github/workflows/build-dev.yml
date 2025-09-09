@@ -63,7 +63,7 @@ jobs:
     needs: build
     uses: aerospike/shared-workflows/.github/workflows/nuget-sign-artifacts.yaml@nuget_signing
     with:
-      artifact-glob: ${GITHUB_WORKSPACE}/sign
+      artifact-glob: ${{github.workspace}}/sign
       output-path: artifacts
     secrets:
       ES_USERNAME: ${{ secrets.ES_USERNAME }}
