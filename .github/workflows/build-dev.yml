@@ -84,17 +84,6 @@ jobs:
     steps:
     - uses: actions/checkout@v5
     - name: Download test artifacts
-      uses: actions/download-artifact@v5
-      with:
-        name: AerospikeTest-${{ github.run_number }}
-        path: artifacts
-  
-  test:
-    needs: sign-and-upload
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v5
-    - name: Download test artifacts
       uses: actions/download-artifact@v4
       with:
         name: AerospikeTest-${{ github.run_number }}
