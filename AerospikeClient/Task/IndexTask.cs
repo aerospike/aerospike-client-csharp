@@ -53,7 +53,7 @@ namespace Aerospike.Client
 					// Check index status.
 					if (statusCommand == null)
 					{
-						statusCommand = BuildStatusCommand(ns, indexName, node.serverVerison);
+						statusCommand = BuildStatusCommand(ns, indexName, node.serverVersion);
 					}
 
 					string response = Info.Request(policy, node, statusCommand);
@@ -69,7 +69,7 @@ namespace Aerospike.Client
 					// Check if index exists.
 					if (existsCommand == null)
 					{
-						existsCommand = BuildExistsCommand(ns, indexName, node.serverVerison);
+						existsCommand = BuildExistsCommand(ns, indexName, node.serverVersion);
 					}
 
 					string response = Info.Request(policy, node, existsCommand);

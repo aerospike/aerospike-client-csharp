@@ -2759,7 +2759,7 @@ namespace Aerospike.Client
 
 			StringBuilder sb = new StringBuilder(1024);
 			Node node = cluster.GetRandomNode();
-			string createIndexCommand = node.serverVerison >= Node.SERVER_VERSION_8_1 ? "sindex-create:namespace=" : "sindex-create:ns=";
+			string createIndexCommand = node.serverVersion >= Node.SERVER_VERSION_8_1 ? "sindex-create:namespace=" : "sindex-create:ns=";
 
 			sb.Append(createIndexCommand);
 			sb.Append(ns);
@@ -2804,7 +2804,7 @@ namespace Aerospike.Client
 					sb.Append(indexCollectionType);
 				}
 
-				if (node.serverVerison >= Node.SERVER_VERSION_8_1)
+				if (node.serverVersion >= Node.SERVER_VERSION_8_1)
 				{
 					sb.Append(";bin=");
 					sb.Append(binName);
@@ -2857,7 +2857,7 @@ namespace Aerospike.Client
 
 			StringBuilder sb = new StringBuilder(500);
 			Node node = cluster.GetRandomNode();
-			string deleteIndexCommand = node.serverVerison >= Node.SERVER_VERSION_8_1 ? "sindex-delete:namespace=" : "sindex-delete:ns=";
+			string deleteIndexCommand = node.serverVersion >= Node.SERVER_VERSION_8_1 ? "sindex-delete:namespace=" : "sindex-delete:ns=";
 
 			sb.Append(deleteIndexCommand);
 			sb.Append(ns);

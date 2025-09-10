@@ -77,7 +77,7 @@ namespace Aerospike.Client
 		protected internal bool retryUserAgent;
 		protected internal volatile bool active = true;
 		private bool disposedValue;
-		internal Version serverVerison;
+		public Version serverVersion;
 		internal Version clientVersion;
 
 		/// <summary>

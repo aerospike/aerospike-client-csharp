@@ -57,7 +57,7 @@ namespace Aerospike.Test
 
 			foreach (Node node in nodes)
 			{
-				string cmd = IndexTask.BuildStatusCommand(SuiteHelpers.ns, indexName, node.serverVerison);
+				string cmd = IndexTask.BuildStatusCommand(SuiteHelpers.ns, indexName, node.serverVersion);
 				string response = Info.Request(node, cmd);
 				int code = Info.ParseResultCode(response);
 				Assert.AreEqual(201, code);
