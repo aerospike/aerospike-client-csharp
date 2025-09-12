@@ -44,6 +44,11 @@ namespace Aerospike.Test
 		[ClassInitialize()]
 		public static void Prepare(TestContext testContext)
 		{
+			if (client.Cluster.GetRandomNode().serverVersion < Node.SERVER_VERSION_8_1)
+			{
+				return;
+			}
+
 			Policy policy = new()
 			{
 				totalTimeout = 0 // Do not timeout on index create.
@@ -75,6 +80,11 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void QueryExpressionComplexExpression()
 		{
+			if (client.Cluster.GetRandomNode().serverVersion < Node.SERVER_VERSION_8_1)
+			{
+				return;
+			}
+
 			Statement stmt = new();
 			stmt.SetNamespace(SuiteHelpers.ns);
 			stmt.SetSetName(setName);
@@ -102,6 +112,11 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void QueryExpressionComplexIndexName()
 		{
+			if (client.Cluster.GetRandomNode().serverVersion < Node.SERVER_VERSION_8_1)
+			{
+				return;
+			}
+
 			Statement stmt = new();
 			stmt.SetNamespace(SuiteHelpers.ns);
 			stmt.SetSetName(setName);
