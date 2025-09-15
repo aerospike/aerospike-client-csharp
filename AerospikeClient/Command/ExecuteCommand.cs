@@ -92,7 +92,7 @@ namespace Aerospike.Client
 				Int32.TryParse(list[2].Trim(), out code);
 				message = list[0] + ':' + list[1] + ' ' + list[3];
 			}
-			catch (Exception e)
+			catch (Exception)
 			{
 				// Use generic exception if parse error occurs.
 				throw new AerospikeException(resultCode, ret);

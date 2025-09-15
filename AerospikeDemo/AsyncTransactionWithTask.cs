@@ -23,8 +23,6 @@ namespace Aerospike.Demo
 {
 	public class AsyncTransactionWithTask : AsyncExample
 	{
-		private bool completed;
-
 		public AsyncTransactionWithTask(Console console) : base(console)
 		{
 		}
