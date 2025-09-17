@@ -65,6 +65,7 @@ jobs:
     with:
       artifact-glob: sign
       output-path: artifacts
+      download-artifact-name: AerospikeSign-${{ github.run_number }}
     secrets:
       ES_USERNAME: ${{ secrets.ES_USERNAME }}
       ES_PASSWORD: ${{ secrets.ES_PASSWORD }}
