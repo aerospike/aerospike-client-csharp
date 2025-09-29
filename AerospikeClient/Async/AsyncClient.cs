@@ -2177,11 +2177,18 @@ namespace Aerospike.Client
 				cluster, batchPolicy, keys, records, attr.hasWrite, executor);
 			AsyncCommand[] commands = new AsyncCommand[batchNodes.Count];
 			int count = 0;
+			bool opSizeSet = false;
 
 			foreach (BatchNode bn in batchNodes)
 			{
 				if (bn.offsetsSize == 1)
 				{
+					if (!opSizeSet)
+					{
+						attr.SetOpSize(ops);
+						opSizeSet = true;
+					}
+
 					int i = bn.offsets[0];
 					commands[count++] = new AsyncBatchSingleOperate(
 						executor, cluster, batchPolicy, attr, records[i], ops, bn.node);
@@ -2260,11 +2267,18 @@ namespace Aerospike.Client
 				cluster, batchPolicy, keys, null, attr.hasWrite, executor);
 			AsyncCommand[] commands = new AsyncCommand[batchNodes.Count];
 			int count = 0;
+			bool opSizeSet = false;
 
 			foreach (BatchNode bn in batchNodes)
 			{
 				if (bn.offsetsSize == 1)
 				{
+					if (!opSizeSet)
+					{
+						attr.SetOpSize(ops);
+						opSizeSet = true;
+					}
+
 					int i = bn.offsets[0];
 					commands[count++] = new AsyncBatchSingleOperateSequence(
 						executor, cluster, batchPolicy, keys[i], attr, ops, bn.node, listener, i);

@@ -53,7 +53,7 @@ namespace Aerospike.Test
 			deleteKeysSequence[1] = new Key(SuiteHelpers.ns, SuiteHelpers.set, 11001);
 
 			AsyncMonitor monitor = new();
-			WriteHandler handler = new(monitor, Size + 3);
+			WriteHandler handler = new(monitor, Size + 5);
 
 			WritePolicy policy = new()
 			{
