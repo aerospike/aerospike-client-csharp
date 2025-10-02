@@ -83,7 +83,7 @@ jobs:
       uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
       with:
         name: AerospikeClient-${{ github.run_number }}
-        path: AerospikeClient/artifacts/.*nupkg
+        path: artifacts/.*nupkg
         retention-days: 1
   
   test:
@@ -102,7 +102,7 @@ jobs:
         registry-password: ${{ secrets.DOCKER_HUB_BOT_PW }}
    
   upload:
-    needs: test
+    needs: [sign, test]
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
