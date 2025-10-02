@@ -39,8 +39,15 @@ runs:
         image-name: ${{ inputs.image-name }}
         server-tag: ${{ inputs.server-tag }}
    
+    - name: Download test artifacts
+      uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0
+      with:
+        name: AerospikeTest-${{ github.run_number }}
+        path: artifacts
+
     - name: Unzip tests
       shell: bash
+      working-directory: artifacts
       run: unzip AerospikeTest*.zip
     
     - name: Test
