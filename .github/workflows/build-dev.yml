@@ -80,7 +80,7 @@ jobs:
           output_path: artifacts
           malware_block: true
     - name: List files in long format
-      run: ls -l
+      run: ls -l artifacts
     - name: Upload client artifacts
       uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
       with:
