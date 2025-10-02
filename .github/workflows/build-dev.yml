@@ -83,7 +83,7 @@ jobs:
       uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
       with:
         name: AerospikeClient-${{ github.run_number }}
-        path: artifacts/.*nupkg
+        path: ${GITHUB_WORKSPACE}/artifacts/.*nupkg
         retention-days: 1
   
   test:
