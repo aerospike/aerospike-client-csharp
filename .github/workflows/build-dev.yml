@@ -45,12 +45,10 @@ jobs:
     runs-on: windows-latest
     steps:
     - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
-    
     - name: Setup .NET
       uses: actions/setup-dotnet@d4c94342e560b34958eacfc5d055d21461ed1c5d
       with:
         dotnet-version: 8.0.x
-        
     - name: Build artifacts
       uses: ./.github/actions/build
       with:
@@ -81,9 +79,15 @@ jobs:
           dir_path: "${GITHUB_WORKSPACE}/sign"
           output_path: "${GITHUB_WORKSPACE}/artifacts"
           malware_block: true
+    - name: Upload client artifacts
+      uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+      with:
+        name: AerospikeClient-${{ github.run_number }}
+        path: AerospikeClient/artifacts/.*nupkg
+        retention-days: 1
   
   test:
-    needs: sign
+    needs: build
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8

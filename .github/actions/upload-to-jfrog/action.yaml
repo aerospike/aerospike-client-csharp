@@ -26,6 +26,16 @@ inputs:
 runs:
   using: "composite"
   steps:
+    - name: Download client artifacts
+      uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0
+      with:
+        name: AerospikeClient-${{ github.run_number }}
+        path: artifacts
+    - name: Download test artifacts
+      uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0
+      with:
+        name: AerospikeTest-${{ github.run_number }}
+        path: artifacts
     - name: Set up JFrog credentials
       uses: jfrog/setup-jfrog-cli@2bc6e55719cd37dfb2f655a1e4f16c3440182a9f
       env:
