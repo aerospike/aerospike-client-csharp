@@ -52,6 +52,7 @@ runs:
     
     - name: Test
       shell: bash
+      working-directory: artifacts
       run: dotnet exec ./publish/AerospikeTest.dll --settings ./.runsettings
     
     - name: Show logs if failed
