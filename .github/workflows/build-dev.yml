@@ -77,7 +77,7 @@ jobs:
           totp_secret: ${{ secrets.ES_TOTP_SECRET }}
           credential_id: ${{ secrets.CREDENTIAL_ID }}
           dir_path: "${GITHUB_WORKSPACE}/sign"
-          output_path: "${GITHUB_WORKSPACE}/artifacts"
+          output_path: artifacts
           malware_block: true
     - name: Upload client artifacts
       uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
