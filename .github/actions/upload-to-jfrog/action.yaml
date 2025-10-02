@@ -27,7 +27,7 @@ runs:
   using: "composite"
   steps:
     - name: Set up JFrog credentials
-      uses: jfrog/setup-jfrog-cli@v4.4.2
+      uses: jfrog/setup-jfrog-cli@2bc6e55719cd37dfb2f655a1e4f16c3440182a9f
       env:
         JF_URL: ${{ inputs.jfrog-platform-url }}
       with:

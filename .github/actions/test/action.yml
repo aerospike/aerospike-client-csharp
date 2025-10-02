@@ -38,20 +38,7 @@ runs:
         registry-password: ${{ inputs.registry-password}}
         image-name: ${{ inputs.image-name }}
         server-tag: ${{ inputs.server-tag }}
-    - name: Setup JFrog CLI
-      id: setup-jfrog-cli
-      uses: jfrog/setup-jfrog-cli@v4.4.2
-      env:
-        JF_URL: https://aerospike.jfrog.io
-      with:
-        oidc-provider-name: gh-aerospike-clients
-        oidc-audience: aerospike/clients
-    
-    - name: Download Tests
-      shell: bash
-      run: |
-        jf rt dl ${{ inputs.jfrog-tests-repo-name }}/AerospikeTest-${{ github.run_number }}.zip --build-name=${{ github.repository }} --build-number=${{ github.run_number }} --flat 
-    
+   
     - name: Unzip tests
       shell: bash
       run: unzip AerospikeTest*.zip
