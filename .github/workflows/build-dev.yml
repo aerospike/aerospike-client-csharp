@@ -24,21 +24,22 @@ on:
     ]
   workflow_dispatch:
     inputs:
-      registry-name:
-        type: string
-        required: false
-        description: Registry name
-        default: 'docker.io'
-      image-name:
-        type: string
-        required: false
-        description: Image name
-        default: 'aerospike/aerospike-server-enterprise'
       server-tag:
         type: string
+        required: false
+        default: "latest"
+        description: "Server docker image tag"
+      run-tests:
+        type: boolean
+        required: false
+        default: false
+        description: Spin up aerospike enterprise server and run tests
+      crypto-type:
+        type: string
         required: true
-        default: 'latest'
-        description: 'Server docker image tag'
+      server-type:
+        type: string
+        required: true
 
 jobs:
   build:
@@ -79,8 +80,6 @@ jobs:
           dir_path: "${GITHUB_WORKSPACE}/sign"
           output_path: artifacts
           malware_block: true
-    - name: List files in long format
-      run: ls -l artifacts
     - name: Upload client artifacts
       uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
       with:
@@ -98,11 +97,10 @@ jobs:
       uses: ./.github/actions/test
       with:
         jfrog-tests-repo-name: database-generic-dev-local
-        registry-name: ${{ inputs.registry-name || 'docker.io' }}
-        image-name: ${{ inputs.image-name || 'aerospike/aerospike-server-enterprise' }}
-        server-tag: ${{ inputs.server-tag || 'latest' }}
-        registry-username: ${{ secrets.DOCKER_HUB_BOT_USERNAME }}
-        registry-password: ${{ secrets.DOCKER_HUB_BOT_PW }}
+        server-tag: ${{ inputs.server-tag }}
+        server-type: ${{ inputs.server-type }}
+        oidc-provider: database-gh-aerospike
+        oidc-audience: database-gh-aerospike
    
   upload:
     needs: [sign, test]

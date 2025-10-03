@@ -5,27 +5,19 @@ inputs:
     description: Where to download the test program from
     required: false
     default: database-generic-dev-local
-  registry-name:
-    type: string
-    required: false
-    description: Registry name
-    default: 'docker.io'
-  image-name:
-    type: string
-    required: false
-    description: Image name
-    default: 'aerospike/aerospike-server-enterprise'
   server-tag:
-    type: string
     required: false
-    default: 'latest'
-    description: 'Server docker image tag'
-  registry-username:
-    description: Required for using release candidates
-    required: false
-  registry-password:
-    description: Required for using release candidates
-    required: false
+    default: "latest"
+    description: "Server docker image tag"
+  oidc-provider:
+    required: true
+    description: "OIDC provider"
+  oidc-audience:
+    required: true
+    description: "OIDC audience"
+  server-type:
+    required: true
+    description: Server type `aerospike-server` or `aerospike-enterprise-server` 
 
 runs:
   using: "composite"
@@ -33,11 +25,10 @@ runs:
     - name: Run EE server
       uses: ./.github/actions/run-ee-server
       with:
-        registry-name: ${{ inputs.registry-name }}
-        registry-username: ${{ inputs.registry-username}}
-        registry-password: ${{ inputs.registry-password}}
-        image-name: ${{ inputs.image-name }}
         server-tag: ${{ inputs.server-tag }}
+        server-type: ${{ inputs.server-type }}
+        oidc-provider: ${{ inputs.oidc-provider }}
+        oidc-audience: ${{ inputs.oidc-audience }}
    
     - name: Download test artifacts
       uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0
