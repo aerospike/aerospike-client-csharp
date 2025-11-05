@@ -17,11 +17,11 @@ inputs:
   oidc-provider:
     description: ""
     required: false
-    default: gh-aerospike-clients
+    default: database-gh-aerospike
   oidc-audience:
     description: ""
     required: false
-    default: aerospike/clients
+    default: database-gh-aerospike
 
 runs:
   using: "composite"
