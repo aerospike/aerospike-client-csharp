@@ -28,8 +28,8 @@ inputs:
     description: Name for test container
   server-type:
     required: true
-    default: aerospike-enterprise-server
-    description: Server type `aerospike-server` or `aerospike-enterprise-server`
+    default: aerospike-server-enterprise
+    description: Server type `aerospike-server` or `aerospike-server-enterprise`
 
 runs:
   using: "composite"
