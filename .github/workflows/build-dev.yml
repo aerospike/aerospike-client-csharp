@@ -98,7 +98,7 @@ jobs:
       with:
         jfrog-tests-repo-name: database-generic-dev-local
         server-tag: ${{ inputs.server-tag }}
-        server-type: ${{ inputs.server-type }}
+        server-type: ${{ inputs.server-type || 'aerospike-enterprise-server' }}
         oidc-provider: database-gh-aerospike
         oidc-audience: database-gh-aerospike
    
