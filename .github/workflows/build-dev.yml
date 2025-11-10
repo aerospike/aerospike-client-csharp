@@ -4,6 +4,7 @@ run-name: Build artifacts and run dev branch tests (registry-name=${{ inputs.reg
 permissions:
   # This is required for requesting the OIDC token
   id-token: write
+  contents: read
 
 # Trigger test workflow whenever:
 # 1. Commits are pushed directly to a CLIENT branch
