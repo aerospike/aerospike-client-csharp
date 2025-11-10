@@ -45,9 +45,9 @@ jobs:
   build:
     runs-on: windows-latest
     steps:
-    - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
+    - uses: actions/checkout@v5
     - name: Setup .NET
-      uses: actions/setup-dotnet@d4c94342e560b34958eacfc5d055d21461ed1c5d
+      uses: actions/setup-dotnet@v5
       with:
         dotnet-version: 8.0.x
     - name: Build artifacts
@@ -59,9 +59,9 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
+    - uses: actions/checkout@v5
     - name: Download client artifacts
-      uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0
+      uses: actions/download-artifact@v4
       with:
         name: AerospikeClient-${{ github.run_number }}
         path: artifacts
@@ -81,7 +81,7 @@ jobs:
           output_path: artifacts
           malware_block: true
     - name: Upload client artifacts
-      uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+      uses: actions/upload-artifact@v4
       with:
         name: AerospikeClient-${{ github.run_number }}
         path: artifacts/Aerospike.Client.*nupkg
@@ -92,7 +92,7 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
+    - uses: actions/checkout@v5
     - name: Test
       uses: ./.github/actions/test
       with:
@@ -106,6 +106,6 @@ jobs:
     needs: [sign, test]
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
+    - uses: actions/checkout@v5
     - name: Upload to JFrog
       uses: ./.github/actions/upload-to-jfrog
