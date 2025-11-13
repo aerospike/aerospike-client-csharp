@@ -40,6 +40,8 @@ namespace Aerospike.Client
 			HLL = 9
 		}
 
+		public const int CTX_EXP = 0x04;
+
 		//--------------------------------------------------
 		// Build
 		//--------------------------------------------------
@@ -50,6 +52,62 @@ namespace Aerospike.Client
 		public static Expression Build(Exp exp)
 		{
 			return new Expression(exp);
+		}
+
+		/// <summary>
+		/// Helper method to create Exp objects from unpacked objects.
+		/// </summary>
+		/// <param name="obj"></param>
+		/// <returns></returns>
+		public static Exp Get(object obj)
+		{
+			if (obj == null)
+			{
+				return Nil();
+			}
+
+			if (obj is byte[] bytes)
+			{
+				return new Blob(bytes);
+			}
+
+			Packer packer = new();
+			if (obj is IList list)
+			{
+				if (list.Count != 0)
+				{
+					if (list[0] is int || list[0] is long)
+					{
+						// This might be a command array, try to reconstruct it
+						// For complex expressions, return as ExpBytes
+						packer.PackObject(obj);
+						return new ExpBytes(new Expression(packer.ToByteArray()));
+					}
+				}
+				return new ListVal(list);
+			}
+
+			if (obj is IDictionary dict)
+			{
+				return new MapVal(dict);
+			}
+
+			TypeCode code = System.Type.GetTypeCode(obj.GetType());
+			switch (code)
+			{
+				case TypeCode.Boolean:
+					return new Bool((bool)obj);
+				case TypeCode.Int64:
+					return new Int((long)obj);
+				case TypeCode.Double:
+					return new Float((double)obj);
+				case TypeCode.String:
+					return new Str((string)obj);
+			}
+
+			// For unknown types, wrap as ExpBytes
+			packer.PackObject(obj);
+			return new ExpBytes(new Expression(packer.ToByteArray()));
 		}
 
 		//--------------------------------------------------
@@ -1253,6 +1311,76 @@ namespace Aerospike.Client
 			return new CmdStr(VAR, name);
 		}
 
+		/// <summary>
+		/// Create expression that references a built-in variable.
+		/// Requires server version 8.1.1
+		/// <example>
+		/// <code>
+		/// Exp.LoopVarString(LoopVarPart.MAP_KEY)
+		/// </code>
+		/// </example>
+		/// </summary>
+		public static Exp LoopVarString(LoopVarPart part)
+		{
+			return new VarExp(Type.STRING, part);
+		}
+
+		/// <summary>
+		/// Create expression that references a built-in variable.
+		/// Requires server version 8.1.1
+		/// <example>
+		/// <code>
+		/// Exp.LoopVarInt(LoopVarPart.MAP_KEY)
+		/// </code>
+		/// </example>
+		/// </summary>
+		public static Exp LoopVarInt(LoopVarPart part)
+		{
+			return new VarExp(Type.INT, part);
+		}
+
+		/// <summary>
+		/// Create expression that references a built-in variable.
+		/// Requires server version 8.1.1
+		/// <example>
+		/// <code>
+		/// Exp.LoopVarFloat(LoopVarPart.MAP_KEY)
+		/// </code>
+		/// </example>
+		/// </summary>
+		public static Exp LoopVarFloat(LoopVarPart part)
+		{
+			return new VarExp(Type.FLOAT, part);
+		}
+
+		/// <summary>
+		/// Create expression that references a built-in variable.
+		/// Requires server version 8.1.1
+		/// <example>
+		/// <code>
+		/// Exp.LoopVarList(LoopVarPart.MAP_KEY)
+		/// </code>
+		/// </example>
+		/// </summary>
+		public static Exp LoopVarList(LoopVarPart part)
+		{
+			return new VarExp(Type.LIST, part);
+		}
+
+		/// <summary>
+		/// Create expression that references a built-in variable.
+		/// Requires server version 8.1.1
+		/// <example>
+		/// <code>
+		/// Exp.LoopVarMap(LoopVarPart.MAP_KEY)
+		/// </code>
+		/// </example>
+		/// </summary>
+		public static Exp LoopVarMap(LoopVarPart part)
+		{
+			return new VarExp(Type.MAP, part);
+		}
+
 		//--------------------------------------------------
 		// Miscellaneous
 		//--------------------------------------------------
@@ -1350,6 +1478,7 @@ namespace Aerospike.Client
 		private const int KEY = 80;
 		private const int BIN = 81;
 		private const int BIN_TYPE = 82;
+		private const int VAR_BUILTIN = 122;
 		private const int COND = 123;
 		private const int VAR = 124;
 		private const int LET = 125;
@@ -1703,6 +1832,26 @@ namespace Aerospike.Client
 			public override void Pack(Packer packer)
 			{
 				packer.PackNil();
+			}
+		}
+
+		private sealed class VarExp : Exp
+		{
+			private readonly int type;
+			private readonly int varId;
+
+			internal VarExp(Exp.Type type, LoopVarPart varId)
+			{
+				this.type = (int)type;
+				this.varId = (int)varId;
+			}
+
+			public override void Pack(Packer packer)
+			{
+				packer.PackArrayBegin(3);
+				packer.PackNumber(Exp.VAR_BUILTIN);
+				packer.PackNumber(type);
+				packer.PackNumber(varId);
 			}
 		}
 
