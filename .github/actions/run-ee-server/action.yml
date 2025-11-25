@@ -55,16 +55,16 @@ runs:
 
   - uses: ./.github/actions/wait-for-as-server-to-start
     with:
-      container-name: ${{ env.SERVER_CONTAINER_NAME }}
+      container-name: ${{ inputs.container-name }}
       is-security-enabled: false
       is-strong-consistency-enabled: true
 
   # All the partitions are assumed to be dead when reusing a roster file
-  - run: docker exec ${{ env.SERVER_CONTAINER_NAME }} asadm --enable --execute "manage revive ns test"
+  - run: docker exec ${{ inputs.container-name }} asadm --enable --execute "manage revive ns test"
     shell: bash
 
   # Apply changes
-  - run: docker exec ${{ env.SERVER_CONTAINER_NAME }} asadm --enable --execute "manage recluster"
+  - run: docker exec ${{ inputs.container-name }} asadm --enable --execute "manage recluster"
     shell: bash
 
   # For debugging
