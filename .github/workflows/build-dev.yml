@@ -35,9 +35,6 @@ on:
         required: false
         default: false
         description: Spin up aerospike enterprise server and run tests
-      crypto-type:
-        type: string
-        required: true
       server-type:
         type: string
         required: true
