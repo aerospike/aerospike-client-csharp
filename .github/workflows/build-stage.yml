@@ -32,10 +32,15 @@ jobs:
   build:
     runs-on: windows-latest
     steps:
-    - uses: actions/checkout@v5
+    - name: Harden the runner (Audit all outbound calls)
+      uses: step-security/harden-runner@df199fb7be9f65074067a9eb93f12bb4c5547cf2 # v2.13.3
+      with:
+        egress-policy: audit
+
+    - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
     
     - name: Setup .NET
-      uses: actions/setup-dotnet@v5
+      uses: actions/setup-dotnet@2016bd2012dba4e32de620c46fe006a3ac9f0602 # v5.0.1
       with:
         dotnet-version: 8.0.x
         
@@ -48,14 +53,19 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v5
+    - name: Harden the runner (Audit all outbound calls)
+      uses: step-security/harden-runner@df199fb7be9f65074067a9eb93f12bb4c5547cf2 # v2.13.3
+      with:
+        egress-policy: audit
+
+    - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
     - name: Download client artifacts
-      uses: actions/download-artifact@v5
+      uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5.0.0
       with:
         name: AerospikeClient-${{ github.run_number }}
         path: artifacts
     - name: Download test artifacts
-      uses: actions/download-artifact@v5
+      uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5.0.0
       with:
         name: AerospikeTest-${{ github.run_number }}
         path: artifacts
@@ -64,7 +74,7 @@ jobs:
         mkdir ${GITHUB_WORKSPACE}/sign
         mv ${GITHUB_WORKSPACE}/artifacts/Aerospike.Client*.nupkg ${GITHUB_WORKSPACE}/sign
     - name: Sign nuget package
-      uses: sslcom/esigner-codesign@develop
+      uses: sslcom/esigner-codesign@b7f8ff36fc0de8690fbbab8e5b4421d29802f747 # develop
       with:
           command: batch_sign
           username: ${{ secrets.ES_USERNAME }}
@@ -84,7 +94,12 @@ jobs:
     needs: sign-and-upload
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v5
+    - name: Harden the runner (Audit all outbound calls)
+      uses: step-security/harden-runner@df199fb7be9f65074067a9eb93f12bb4c5547cf2 # v2.13.3
+      with:
+        egress-policy: audit
+
+    - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
     
     - name: Test
       uses: ./.github/actions/test
