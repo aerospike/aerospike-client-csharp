@@ -55,6 +55,9 @@ jobs:
       run: docker run -d --name aerospike -p 3000:3000 ${{ env.IMAGE_NAME }}
       shell: bash
 
+    - name: Watch server logs
+      run: timeout 30 docker logs -f aerospike || true
+
     - name: Wait for server to start
       run: timeout 30 bash ./.github/workflows/wait-for-as-server-to-start.bash aerospike false true || true
       shell: bash
