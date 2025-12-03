@@ -42,7 +42,7 @@ jobs:
         cat /home/runner/.docker/config.json
         echo ""
         echo "Testing Docker pull (capturing all output):"
-        docker pull artifact.aerospike.io/oci/aerospike-server-enterprise:latest 2>&1 || true
+        docker pull artifact.aerospike.io/database-container-dev-local/aerospike-server-enterprise:latest 2>&1 || true
       shell: bash
 
     - name: Check JFrog permissions
