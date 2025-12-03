@@ -52,12 +52,13 @@ jobs:
       shell: bash
 
     - name: Run Docker container
-      run: docker run -d --name aerospike -p 3000:3000 ${{ env.IMAGE_NAME }}
+      run: |
+        docker run -d --name aerospike -p 3000:3000 ${{ env.IMAGE_NAME }}
+        docker logs -f aerospike 2>&1 | grep -m 1 "cake"
+        docker logs aerospike
       shell: bash
 
-    - name: Watch server logs
-      run: timeout 30 docker logs -f aerospike || true
-
+    # not sure about this step here but included since the original tests have it.
     - name: Wait for server to start
       run: timeout 30 bash ./.github/workflows/wait-for-as-server-to-start.bash aerospike false true || true
       shell: bash
