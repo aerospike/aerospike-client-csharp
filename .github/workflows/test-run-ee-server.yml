@@ -54,6 +54,7 @@ jobs:
     - name: Run Docker container and wait for cake
       run: |
         docker run -d --name aerospike -p 3000:3000 ${{ env.IMAGE_NAME }}
+
         echo "Waiting for 'cake' to appear in server logs (timeout: 30 seconds)..."
         echo "Reference: https://aerospike.com/docs/database/install/upgrade/standard/#monitor-the-cluster-state"
         set +o pipefail
