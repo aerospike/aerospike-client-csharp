@@ -54,7 +54,7 @@ jobs:
     - name: Run Docker container
       run: |
         docker run -d --name aerospike -p 3000:3000 ${{ env.IMAGE_NAME }}
-        docker logs -f aerospike 2>&1 | grep -m 1 "cake"
+        docker logs -f aerospike 2>&1 | grep -m 1 "cake" || true
         docker logs aerospike
       shell: bash
 
