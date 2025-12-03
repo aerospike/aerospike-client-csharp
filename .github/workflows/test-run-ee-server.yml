@@ -56,7 +56,7 @@ jobs:
         docker run -d --name aerospike -p 3000:3000 ${{ env.IMAGE_NAME }}
         echo "Waiting for 'cake' to appear in server logs (timeout: 30 seconds)..."
         echo "Reference: https://aerospike.com/docs/database/install/upgrade/standard/#monitor-the-cluster-state"
-        if timeout 30 docker logs -f aerospike 2>&1 | grep -m 1 "cake"; then
+        if timeout 300 docker logs -f aerospike 2>&1 | grep -m 1 "cake"; then
           echo " Found 'cake' in logs - server is ready"
         else
           echo " ERROR: 'cake' did not appear in server logs within 30 seconds"
