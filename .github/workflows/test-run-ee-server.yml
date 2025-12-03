@@ -1,0 +1,21 @@
+name: Test Run EE Server
+
+permissions:
+  id-token: write
+  contents: read
+
+on:
+  push:
+    branches: [chore/investigate-docker-permission-jfrog]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v5
+    - name: Run EE server
+      uses: ./.github/actions/run-ee-server
+      with:
+        oidc-provider: database-gh-aerospike
+        oidc-audience: database-gh-aerospike
+
