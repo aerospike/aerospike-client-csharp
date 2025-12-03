@@ -1,5 +1,5 @@
 name: Build and test dev
-run-name: Build artifacts and run dev branch tests (registry-name=${{ inputs.registry-name }}, server-tag=${{ inputs.server-tag }})
+run-name: Build artifacts and run dev branch tests (server-tag=${{ inputs.server-tag }})
 
 permissions:
   # This is required for requesting the OIDC token
@@ -11,9 +11,9 @@ permissions:
 # 2. Pull requests to stage branch are updated
 on:
   push:
-    branches: ["CLIENT*"]
+    branches: [CLIENT*, chore/investigate-docker-permissions-jfrog]
   pull_request:
-    branches: ["stage"]
+    branches: [stage]
     types: [
       # Default triggers
       opened,
@@ -28,8 +28,8 @@ on:
       server-tag:
         type: string
         required: false
-        default: "latest"
-        description: "Server docker image tag"
+        default: latest
+        description: Server docker image tag
       run-tests:
         type: boolean
         required: false
@@ -38,6 +38,7 @@ on:
       server-type:
         type: string
         required: true
+        description: Server type aerospike-server or aerospike-server-enterprise
 
 jobs:
   build:

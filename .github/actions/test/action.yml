@@ -1,4 +1,5 @@
 name: Test
+description: Run Aerospike client tests against Enterprise Server
 
 inputs:
   jfrog-tests-repo-name:
@@ -7,20 +8,20 @@ inputs:
     default: database-generic-dev-local
   server-tag:
     required: false
-    default: "latest"
-    description: "Server docker image tag"
+    default: latest
+    description: Server docker image tag
   oidc-provider:
     required: true
-    description: "OIDC provider"
+    description: OIDC provider
   oidc-audience:
     required: true
-    description: "OIDC audience"
+    description: OIDC audience
   server-type:
     required: true
-    description: Server type `aerospike-server` or `aerospike-enterprise-server` 
+    description: Server type aerospike-server or aerospike-server-enterprise
 
 runs:
-  using: "composite"
+  using: composite
   steps:
     - name: Run EE server
       uses: ./.github/actions/run-ee-server
