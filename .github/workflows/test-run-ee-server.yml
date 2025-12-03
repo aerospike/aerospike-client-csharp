@@ -43,12 +43,12 @@ jobs:
         jf rt curl -XGET /api/security/permissions 2>&1 || echo "Permission check failed"
         echo ""
         echo "Checking Docker registry access:"
-        jf docker pull artifact.aerospike.io/database-container-prod-public-local/aerospike-server-enterprise:latest --build-name=test --build-number=1 2>&1 || echo "Docker pull via JFrog CLI failed"
+        jf docker pull artifact.aerospike.io/oci/aerospike-server-enterprise:latest --build-name=test --build-number=1 2>&1 || echo "Docker pull via JFrog CLI failed"
       shell: bash
       continue-on-error: true
 
     - name: Set image name
-      run: echo IMAGE_NAME=artifact.aerospike.io/database-container-prod-public-local/aerospike-server-enterprise:latest >> $GITHUB_ENV
+      run: echo IMAGE_NAME=artifact.aerospike.io/oci/aerospike-server-enterprise:latest >> $GITHUB_ENV
       shell: bash
 
     - name: Run Docker container
