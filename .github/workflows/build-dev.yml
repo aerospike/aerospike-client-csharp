@@ -11,7 +11,7 @@ permissions:
 # 2. Pull requests to stage branch are updated
 on:
   push:
-    branches: [CLIENT*, chore/investigate-docker-permissions-jfrog]
+    branches: [CLIENT*, chore/investigate-docker-permission-jfrog]
   pull_request:
     branches: [stage]
     types: [
