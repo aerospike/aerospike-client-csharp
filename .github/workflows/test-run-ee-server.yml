@@ -36,26 +36,34 @@ jobs:
       run: docker login artifact.aerospike.io --username ${{ steps.setup-jfrog-cli.outputs.oidc-user }} --password ${{ steps.setup-jfrog-cli.outputs.oidc-token }}
       shell: bash
 
-
-    - name: Check JFrog permissions
-      run: |
-        echo "Checking JFrog access token permissions:"
-        jf rt curl -XGET /api/security/permissions 2>&1 || echo "Permission check failed"
-        echo ""
-        echo "Checking Docker registry access:"
-        jf docker pull artifact.aerospike.io/oci/aerospike-server-enterprise:latest --build-name=test --build-number=1 2>&1 || echo "Docker pull via JFrog CLI failed"
-      shell: bash
-      continue-on-error: true
+    # to do the check it needs admin :/
+    # - name: Check JFrog permissions
+    #   run: |
+    #     echo "Checking JFrog access token permissions:"
+    #     jf rt curl -XGET /api/security/permissions 2>&1 || echo "Permission check failed"
+    #     echo ""
+    #     echo "Checking Docker registry access:"
+    #     jf docker pull artifact.aerospike.io/database-container-prod-public-local/aerospike-server-enterprise:latest --build-name=test --build-number=1 2>&1 || echo "Docker pull via JFrog CLI failed"
+    #   shell: bash
+    #   continue-on-error: true
 
     - name: Set image name
-      run: echo IMAGE_NAME=artifact.aerospike.io/oci/aerospike-server-enterprise:latest >> $GITHUB_ENV
+      run: echo IMAGE_NAME=artifact.aerospike.io/database-container-prod-public-local/aerospike-server-enterprise:latest >> $GITHUB_ENV
       shell: bash
 
-    - name: Run Docker container
+    - name: Run Docker container and wait for cake
       run: |
         docker run -d --name aerospike -p 3000:3000 ${{ env.IMAGE_NAME }}
-        docker logs -f aerospike 2>&1 | grep -m 1 "cake" || true
-        docker logs aerospike
+        echo "Waiting for 'cake' to appear in server logs (timeout: 30 seconds)..."
+        echo "Reference: https://aerospike.com/docs/database/install/upgrade/standard/#monitor-the-cluster-state"
+        if timeout 30 docker logs -f aerospike 2>&1 | grep -m 1 "cake"; then
+          echo " Found 'cake' in logs - server is ready"
+        else
+          echo " ERROR: 'cake' did not appear in server logs within 30 seconds"
+          echo "Current server logs:"
+          docker logs aerospike
+          exit 1
+        fi
       shell: bash
 
     # not sure about this step here but included since the original tests have it.
