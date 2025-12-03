@@ -56,14 +56,19 @@ jobs:
         docker run -d --name aerospike -p 3000:3000 ${{ env.IMAGE_NAME }}
         echo "Waiting for 'cake' to appear in server logs (timeout: 30 seconds)..."
         echo "Reference: https://aerospike.com/docs/database/install/upgrade/standard/#monitor-the-cluster-state"
-        if timeout 300 docker logs -f aerospike 2>&1 | grep -m 1 "cake"; then
-          echo " Found 'cake' in logs - server is ready"
+        set +o pipefail
+        timeout 30 docker logs -f aerospike 2>&1 | grep -m 1 "cake" > /dev/null
+        GREP_EXIT=${PIPESTATUS[1]}
+        TIMEOUT_EXIT=${PIPESTATUS[0]}
+        if [ $GREP_EXIT -eq 0 ]; then
+          echo "Found 'cake' in logs - server is ready"
         else
-          echo " ERROR: 'cake' did not appear in server logs within 30 seconds"
+          echo "ERROR: 'cake' did not appear in server logs (grep exit: $GREP_EXIT, timeout exit: $TIMEOUT_EXIT)"
           echo "Current server logs:"
           docker logs aerospike
           exit 1
         fi
+        set -o pipefail
       shell: bash
 
     # not sure about this step here but included since the original tests have it.
