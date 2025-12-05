@@ -48,7 +48,8 @@ runs:
     shell: bash
 
   - run: echo IMAGE_NAME=artifact.aerospike.io/oci/${{ inputs.server-type }}:${{ inputs.server-tag }} >> $GITHUB_ENV
-
+    shell: bash
+    
   - run: docker run -d --name ${{ inputs.container-name }} -p 3000:3000 ${{ env.IMAGE_NAME }}
     shell: bash
 
