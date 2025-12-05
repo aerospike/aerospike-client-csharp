@@ -45,7 +45,7 @@ runs:
     - name: Publish test project
       shell: pwsh
       working-directory: AerospikeTest
-      run: dotnet publish AerospikeTest.csproj --no-build --self-contained
+      run: dotnet publish AerospikeTest.csproj -r linux-x64
         
     - name: Zip it up
       shell: pwsh
