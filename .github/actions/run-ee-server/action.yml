@@ -59,14 +59,15 @@ runs:
       is-security-enabled: false
       is-strong-consistency-enabled: true
 
-  # All the partitions are assumed to be dead when reusing a roster file
-  - run: docker exec ${{ inputs.container-name }} asadm --enable --execute "manage revive ns test"
+  # Steps performed after server is ready. We should move this ideally to a file which can be read in the configure/stage database before running tests.
+  - run: docker exec ${{ inputs.container-name }} asadm --enable -e 'asinfo -v "roster-set:namespace=test;nodes=A1"'
     shell: bash
 
-  # Apply changes
-  - run: docker exec ${{ inputs.container-name }} asadm --enable --execute "manage recluster"
+  - run: docker exec ${{ inputs.container-name }} asadm --enable -e 'asinfo -v revive:'
     shell: bash
 
-  # For debugging
-  - run: docker logs aerospike
+  - run: docker exec ${{ inputs.container-name }} asadm --enable -e 'asinfo -v recluster:'
+    shell: bash
+
+  - run: docker logs ${{ inputs.container-name }}
     shell: bash
