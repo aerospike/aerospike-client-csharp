@@ -87,20 +87,8 @@ jobs:
         oidc-provider: database-gh-aerospike
         oidc-audience: database-gh-aerospike
 
-  create-release-bundle:
-    needs: [build, sign, test]
-    uses: aerospike/shared-workflows/.github/workflows/reusable_create-release-bundle.yaml@v3.0.0
-    with:
-      jf-project: database
-      jf-build-names: "aerospike-client-csharp:${{ github.run_id }}"
-      jf-bundle-name: aerospike-client-csharp
-      version: ${{ needs.build.outputs.version }}
-      gh-workflows-ref: v3.0.0
-      oidc-provider-name: database-gh-aerospike
-      oidc-audience: database-gh-aerospike
-
   deploy:
-    needs: [build, create-release-bundle]
+    needs: [build, sign, test]
     uses: aerospike/shared-workflows/.github/workflows/reusable_deploy-artifacts.yaml@v3.0.0
     with:
       jf-project: database
@@ -112,3 +100,31 @@ jobs:
       gh-workflows-ref: v3.0.0
       oidc-provider-name: database-gh-aerospike
       oidc-audience: database-gh-aerospike
+
+  deploy-test-artifact:
+    needs: [build, test]
+    uses: aerospike/shared-workflows/.github/workflows/reusable_deploy-artifacts.yaml@v3.0.0
+    with:
+      jf-project: database
+      jf-build-name: aerospike-client-csharp-tests
+      jf-build-id: ${{ github.run_id }}-tests
+      jf-metadata-build-id: ${{ github.run_id }}-tests-metadata
+      version: ${{ needs.build.outputs.version }}
+      gh-artifact-name: AerospikeTest-${{ github.run_number }}
+      gh-workflows-ref: v3.0.0
+      oidc-provider-name: database-gh-aerospike
+      oidc-audience: database-gh-aerospike
+
+  create-release-bundle:
+    needs: [build, deploy]
+    uses: aerospike/shared-workflows/.github/workflows/reusable_create-release-bundle.yaml@v3.0.0
+    with:
+      jf-project: database
+      jf-build-names: "aerospike-client-csharp:${{ github.run_id }}"
+      jf-bundle-name: aerospike-client-csharp
+      version: ${{ needs.build.outputs.version }}
+      gh-workflows-ref: v3.0.0
+      oidc-provider-name: database-gh-aerospike
+      oidc-audience: database-gh-aerospike
+
+ 
