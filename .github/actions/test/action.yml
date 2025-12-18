@@ -1,10 +1,6 @@
 name: Test
 
 inputs:
-  jfrog-tests-repo-name:
-    description: Where to download the test program from
-    required: false
-    default: database-generic-dev-local
   server-tag:
     required: false
     default: latest
@@ -30,7 +26,7 @@ runs:
         oidc-provider: ${{ inputs.oidc-provider }}
         oidc-audience: ${{ inputs.oidc-audience }}
         strong-consistency: 1
-   
+
     - name: Download test artifacts
       uses: actions/download-artifact@v4
       with:
@@ -41,14 +37,13 @@ runs:
       shell: bash
       working-directory: artifacts
       run: unzip AerospikeTest*.zip
-    
+
     - name: Test
       shell: bash
       run: dotnet exec ./artifacts/publish/AerospikeTest.dll --settings ./.runsettings
-    
+
     - name: Show logs if failed
       shell: bash
       if: ${{ failure() }}
       run: |
         docker container logs aerospike
-        cat ./configs/aerospike.conf
