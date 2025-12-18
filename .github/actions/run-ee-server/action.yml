@@ -44,7 +44,7 @@ runs:
   steps:
   - name: Set up JFrog credentials
     id: setup-jfrog-cli
-    uses: jfrog/setup-jfrog-cli@v4
+    uses: jfrog/setup-jfrog-cli@5b06f730cc5a6f55d78b30753f8583454b08c0aa # v4.8.1
     env:
       JF_URL: ${{ inputs.jfrog-platform-url }}
       JF_PROJECT: database

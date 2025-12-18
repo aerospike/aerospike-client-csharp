@@ -53,14 +53,14 @@ runs:
       run: 7z a -tzip AerospikeTest-${{ github.run_number }}.zip publish
 
     - name: Upload client artifacts
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
       with:
         name: AerospikeClient-${{ github.run_number }}
         path: AerospikeClient\bin\Release\Aerospike.Client.*nupkg
         retention-days: 1
 
     - name: Upload test artifacts
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
       with:
         name: AerospikeTest-${{ github.run_number }}
         path: AerospikeTest\bin\Release\net8.0\linux-x64\AerospikeTest-*
