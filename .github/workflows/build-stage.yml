@@ -46,8 +46,17 @@ jobs:
       id: get-version
       shell: pwsh
       run: |
-        $nupkg = Get-ChildItem -Path AerospikeClient\bin\Release -Filter "Aerospike.Client.*.nupkg" | Select-Object -First 1
+        Write-Host "Listing all files in AerospikeClient\bin\Release:"
+        Get-ChildItem -Path AerospikeClient\bin\Release | ForEach-Object { Write-Host $_.Name }
+        Write-Host ""
+        Write-Host "Looking for nupkg files:"
+        $nupkgs = Get-ChildItem -Path AerospikeClient\bin\Release -Filter "*.nupkg"
+        $nupkgs | ForEach-Object { Write-Host $_.Name }
+        $nupkg = $nupkgs | Where-Object { $_.Name -notlike "*.snupkg" } | Select-Object -First 1
+        Write-Host ""
+        Write-Host "Selected nupkg: $($nupkg.Name)"
         $version = $nupkg.Name -replace 'Aerospike\.Client\.(.*)\.nupkg', '$1'
+        Write-Host "Extracted version: $version"
         echo "version=$version" >> $env:GITHUB_OUTPUT
 
   sign:
@@ -90,7 +99,7 @@ jobs:
       oidc-provider-name: database-gh-aerospike
       oidc-audience: database-gh-aerospike
 
-      deploy:
+  deploy:
     needs: create-release-bundle
     uses: aerospike/shared-workflows/.github/workflows/reusable_deploy-artifacts.yaml@v3.0.0
     with:
