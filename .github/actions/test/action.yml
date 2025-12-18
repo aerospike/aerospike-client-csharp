@@ -29,6 +29,7 @@ runs:
         server-type: ${{ inputs.server-type }}
         oidc-provider: ${{ inputs.oidc-provider }}
         oidc-audience: ${{ inputs.oidc-audience }}
+        strong-consistency: 1
    
     - name: Download test artifacts
       uses: actions/download-artifact@v4
