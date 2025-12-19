@@ -279,6 +279,16 @@ namespace Aerospike.Client
 			return packer.ToByteArray();
 		}
 
+		public static byte[] Pack(int command, int v1, Expression expression)
+		{
+			Packer packer = new Packer();
+			packer.PackArrayBegin(3);
+			packer.PackNumber(command);
+			packer.PackNumber(v1);
+			packer.PackByteArray(expression.Bytes, 0, expression.Bytes.Length);
+			return packer.ToByteArray();
+		}
+
 		public static byte[] Pack(int command, Exp v1)
 		{
 			Packer packer = new Packer();

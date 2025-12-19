@@ -21,7 +21,7 @@ namespace Aerospike.Client
 	/// These flags can be combined using bitwise OR operations.
 	/// </summary>
 	[Flags]
-	public enum SelectFlags
+	public enum SelectFlag
 	{
 		/// <summary>
 		/// Return the matching data tree structure.
@@ -30,26 +30,43 @@ namespace Aerospike.Client
 		MATCHING_TREE = 0,
 
 		/// <summary>
-		/// Return only the values from list operations.
-		/// When used with list or map operations, returns a list of matching values instead of list items or key-value pairs.
+		/// Return the list of the values of the nodes finally selected by the context.
+		/// For maps, this returns the value of each (key, value) pair.
 		/// </summary>
-		LEAF_VALUE = 1,
+		VALUE = 1,
+
+		/// <summary>
+		/// Return the list of the values of the nodes finally selected by the context.
+		/// This is a synonym for VALUE to make it clear in your
+		/// source code that you're expecting a list.
+		/// </summary>
+		LIST_VALUE = VALUE,
+
+		/// <summary>
+		/// Return the list of map values of the nodes finally selected by the context.
+		/// This is a synonym for VALUE to make it clear in your
+		/// source code that you're expecting a map.  See also MAP_KEY_VALUE.
+		/// </summary>
+		MAP_VALUE = VALUE,
 
 		/// <summary>
 		/// Return only the keys from map operations.
 		/// When used with map operations, returns a list of matching keys instead of key-value pairs.
 		/// </summary>
-		MAP_KEYS = 2,
+		MAP_KEY = 2,
 
 		/// <summary>
-		/// Apply the operation to the matching data.
+		/// Returns the list of map (key, value) pairs of the nodes finally selected
+		///  by the context.  This is a synonym for setting both
+		/// MAP_KEY and MAP_VALUE bits together.
 		/// </summary>
-		APPLY = 4,
+		MAP_KEY_VALUE = MAP_KEY | MAP_VALUE,
 
 		/// <summary>
-		/// Do not fail the operation if no matches are found.
-		/// Returns empty result instead of failing when no data matches the criteria.
+		/// If the expression in the context hits an invalid type (e.g., selects
+		/// as an integer when the value is a string), do not fail the operation;
+		/// just ignore those elements.  Interpret UNKNOWN as false instead.
 		/// </summary>
-		NO_FAIL = 0x10
+		NO_FAIL = 0x10,
 	}
 }

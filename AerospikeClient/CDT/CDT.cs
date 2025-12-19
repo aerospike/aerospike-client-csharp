@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2020 Aerospike, Inc.
+ * Copyright 2012-2025 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -18,6 +18,22 @@ namespace Aerospike.Client
 {
 	public sealed class CDT
 	{
+		[Flags]
+		public enum Type
+		{
+			/// <summary>
+			/// Opcode used encode a CDT select and apply operation.
+			/// If flag bit 2 is clear, the operation will be interpreted as a select
+			/// operation; otherwise, as an apply operation.
+			/// </summary>
+			SELECT = 0xfe,
+
+			/// <summary>
+			/// Opcode used to encode the calling of a virtual operation.
+			/// </summary>
+			CONTEXT_EVAL = 0xff
+		}
+
 		internal static byte[] PackRangeOperation(int command, int returnType, Value begin, Value end, CTX[] ctx)
 		{
 			Packer packer = new Packer();
@@ -45,7 +61,7 @@ namespace Aerospike.Client
 		internal static void Init(Packer packer, CTX[] ctx, int command, int count, int flag)
 		{
 			packer.PackArrayBegin(3);
-			packer.PackNumber(0xff);
+			packer.PackNumber((int)Type.CONTEXT_EVAL);
 			packer.PackArrayBegin(ctx.Length * 2);
 
 			CTX c;

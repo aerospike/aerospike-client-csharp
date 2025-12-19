@@ -95,10 +95,18 @@ namespace Aerospike.Client
 			TypeCode code = System.Type.GetTypeCode(obj.GetType());
 			switch (code)
 			{
+				case TypeCode.Empty:
+					return Nil();
 				case TypeCode.Boolean:
 					return new Bool((bool)obj);
+				case TypeCode.Int16:
+					return new Int((short)obj);
+				case TypeCode.Int32:
+					return new Int((int)obj);
 				case TypeCode.Int64:
 					return new Int((long)obj);
+				case TypeCode.Single:
+					return new Float((float)obj);
 				case TypeCode.Double:
 					return new Float((double)obj);
 				case TypeCode.String:
@@ -1381,6 +1389,63 @@ namespace Aerospike.Client
 			return new VarExp(Type.MAP, part);
 		}
 
+		/// <summary>
+		/// Create expression that references a built-in variable.
+		/// Requires server version 8.1.1
+		/// <example>
+		/// <code>
+		/// Exp.LoopVarBlob(LoopVarPart.MAP_KEY)
+		/// </code>
+		/// </example>
+		/// </summary>
+		public static Exp LoopVarBlob(LoopVarPart part)
+		{
+			return new VarExp(Type.BLOB, part);
+		}
+
+
+		/// <summary>
+		/// Create expression that references a built-in variable.
+		/// Requires server version 8.1.1
+		/// <example>
+		/// <code>
+		/// Exp.LoopVarNil(LoopVarPart.MAP_KEY)
+		/// </code>
+		/// </example>
+		/// </summary>
+		public static Exp LoopVarNil(LoopVarPart part)
+		{
+			return new VarExp(Type.NIL, part);
+		}
+
+		/// <summary>
+		/// Create expression that references a built-in variable.
+		/// Requires server version 8.1.1
+		/// <example>
+		/// <code>
+		/// Exp.LoopVarGeoJSON(LoopVarPart.MAP_KEY)
+		/// </code>
+		/// </example>
+		/// </summary>
+		public static Exp LoopVarGeoJSON(LoopVarPart part)
+		{
+			return new VarExp(Type.GEO, part);
+		}
+
+		/// <summary>
+		/// Creates a result remove expression.
+		/// Requires server version 8.1.1
+		/// <example>
+		/// <code>
+		/// Exp.RemoveResults()
+		/// </code>
+		/// </example>
+		/// </summary>
+		public static Exp RemoveResults()
+		{
+			return new Cmd(RESULT_REMOVE);
+		}
+
 		//--------------------------------------------------
 		// Miscellaneous
 		//--------------------------------------------------
@@ -1478,6 +1543,7 @@ namespace Aerospike.Client
 		private const int KEY = 80;
 		private const int BIN = 81;
 		private const int BIN_TYPE = 82;
+		private const int RESULT_REMOVE = 100;
 		private const int VAR_BUILTIN = 122;
 		private const int COND = 123;
 		private const int VAR = 124;

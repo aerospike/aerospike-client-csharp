@@ -21,29 +21,27 @@ namespace Aerospike.Client
 	/// for the current level.  An array of CTX identifies location of the list/map on multiple
 	/// levels on nesting.
 	/// </summary>
-	public sealed class CDTOperation
+	public sealed class CdtOperation
 	{
-		public enum Type
-		{
-			SELECT = 0xfe,
-			MODIFY = 0xff
-		}
-
 		/// <summary>
 		/// Create CDT select operation with context.
 		/// Equivalent to as_operations_cdt_select in C client.
 		/// </summary>
 		/// <param name="binName">bin name</param>
 		/// <param name="flags">select flags</param>
-		/// <param name="ctx">optional path to nested CDT. If not defined, the top-level CDT is used.</param>
-		public static Operation SelectByPath(string binName, int flags, params CTX[] ctx)
+		/// <param name="ctx">optional path to nested CDT.</param>
+		public static Operation SelectByPath(string binName, SelectFlag flags, params CTX[] ctx)
 		{
-			if (ctx == null)
+			byte[] packedBytes;
+			if (ctx == null || ctx.Length == 0)
 			{
-				return null;
+				packedBytes = PackUtil.Pack((int)CDT.Type.SELECT, (int)flags);
+			}
+			else
+			{
+				packedBytes = PackCdtSelect(flags, CDT.Type.SELECT, ctx);
 			}
 
-			byte[] packedBytes = PackCdtSelect(flags, Type.SELECT, ctx);
 			return new Operation(Operation.Type.CDT_READ, binName, Value.Get(packedBytes));
 		}
 
@@ -54,23 +52,28 @@ namespace Aerospike.Client
 		/// <param name="binName">bin name</param>
 		/// <param name="flags">apply flags</param>
 		/// <param name="modifyExp">modify expression</param>
-		public static Operation ModifyByPath(string binName, int flags, Expression modifyExp, params CTX[] ctx)
+		/// <param name="ctx">optional path to nested CDT.</param>
+		public static Operation ModifyByPath(string binName, ModifyFlag flags, Expression modifyExp, params CTX[] ctx)
 		{
-			if (ctx == null)
+			byte[] packedBytes;
+			if (ctx == null || ctx.Length == 0)
 			{
-				return null;
+				packedBytes = PackUtil.Pack((int)CDT.Type.SELECT, (int)flags, modifyExp);
+			}
+			else
+			{
+				packedBytes = PackCdtModify(flags, CDT.Type.SELECT, modifyExp, ctx);
 			}
 
-			byte[] packedBytes = PackCdtApply(flags | 4, Type.SELECT, modifyExp, ctx);
 			return new Operation(Operation.Type.CDT_MODIFY, binName, Value.Get(packedBytes));
 		}
 
-		private static byte[] PackCdtSelect(int flags, CDTOperation.Type type, params CTX[] ctx)
+		private static byte[] PackCdtSelect(SelectFlag flags, CDT.Type typeSelect, params CTX[] ctx)
 		{
 			Packer packer = new Packer();
 
 			packer.PackArrayBegin(3);
-			packer.PackNumber((int)type);
+			packer.PackNumber((int)typeSelect);
 			packer.PackArrayBegin(ctx.Length * 2);
 
 			foreach (CTX c in ctx)
@@ -86,12 +89,12 @@ namespace Aerospike.Client
 				}
 			}
 
-			packer.PackNumber(flags);
+			packer.PackNumber((int)flags);
 
 			return packer.ToByteArray();
 		}
 
-		private static byte[] PackCdtApply(int flags, CDTOperation.Type type, Expression modifyExp, params CTX[] ctx)
+		private static byte[] PackCdtModify(ModifyFlag flags, CDT.Type type, Expression modifyExp, params CTX[] ctx)
 		{
 			Packer packer = new Packer();
 
@@ -112,7 +115,7 @@ namespace Aerospike.Client
 				}
 			}
 
-			packer.PackNumber(flags);
+			packer.PackNumber((int)flags | 4);
 			packer.PackByteArray(modifyExp.Bytes, 0, modifyExp.Bytes.Length);
 
 			return packer.ToByteArray();
