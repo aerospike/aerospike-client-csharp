@@ -1,5 +1,5 @@
 ﻿/* 
- * Copyright 2012-2025 Aerospike, Inc.
+ * Copyright 2012-2026 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -132,7 +132,7 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void AllChildrenWithFilterBase()
 		{
-			Exp filter1 = Exp.GT(Exp.LoopVarMap(LoopVarPart.VALUE), Exp.Val(10));
+			Exp filter1 = Exp.GT(Exp.MapLoopVar(LoopVarPart.VALUE), Exp.Val(10));
 			CTX[] ctxOne =
 			[
 				CTX.AllChildrenWithFilter(filter1)
@@ -148,7 +148,7 @@ namespace Aerospike.Test
 			Assert.AreEqual(expression.Bytes.Length, restoredExpression.Bytes.Length);
 
 			// Test 2: String key filter
-			Exp filterTwo = Exp.EQ(Exp.LoopVarMap(LoopVarPart.MAP_KEY), Exp.Val("target_key"));
+			Exp filterTwo = Exp.EQ(Exp.MapLoopVar(LoopVarPart.MAP_KEY), Exp.Val("target_key"));
 			CTX[] contextTwo = [
 				CTX.AllChildrenWithFilter(filterTwo)
 			];
@@ -165,8 +165,8 @@ namespace Aerospike.Test
 
 			// Test 3: Complex filter with AND/OR operations
 			Exp filterThree = Exp.And(
-				Exp.GT(Exp.LoopVarMap(LoopVarPart.VALUE), Exp.Val(5)),
-				Exp.LT(Exp.LoopVarMap(LoopVarPart.VALUE), Exp.Val(50))
+				Exp.GT(Exp.MapLoopVar(LoopVarPart.VALUE), Exp.Val(5)),
+				Exp.LT(Exp.MapLoopVar(LoopVarPart.VALUE), Exp.Val(50))
 			);
 			CTX[] contextThree =
 			[
@@ -186,8 +186,8 @@ namespace Aerospike.Test
 
 			// Test 4: Complex nested CTX with allChildrenWithFilter
 			Exp filterFour = Exp.Or(
-				Exp.EQ(Exp.LoopVarMap(LoopVarPart.MAP_KEY), Exp.Val("key1")),
-				Exp.EQ(Exp.LoopVarMap(LoopVarPart.MAP_KEY), Exp.Val("key2"))
+				Exp.EQ(Exp.MapLoopVar(LoopVarPart.MAP_KEY), Exp.Val("key1")),
+				Exp.EQ(Exp.MapLoopVar(LoopVarPart.MAP_KEY), Exp.Val("key2"))
 			);
 			CTX[] contextFour = [
 				CTX.MapKey(Value.Get("parent")),
@@ -233,7 +233,7 @@ namespace Aerospike.Test
 				CTX.MapKey(Value.Get("root")),
 				CTX.AllChildren(),
 				CTX.ListIndex(-1),
-				CTX.AllChildrenWithFilter(Exp.GT(Exp.LoopVarMap(LoopVarPart.VALUE), Exp.Val(0))),
+				CTX.AllChildrenWithFilter(Exp.GT(Exp.MapLoopVar(LoopVarPart.VALUE), Exp.Val(0))),
 				CTX.MapValue(Value.Get("test"))
 			];
 

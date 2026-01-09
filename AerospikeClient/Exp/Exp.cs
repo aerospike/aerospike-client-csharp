@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2025 Aerospike, Inc.
+ * Copyright 2012-2026 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -1324,11 +1324,11 @@ namespace Aerospike.Client
 		/// Requires server version 8.1.1
 		/// <example>
 		/// <code>
-		/// Exp.LoopVarString(LoopVarPart.MAP_KEY)
+		/// Exp.StringLoopVar(LoopVarPart.MAP_KEY)
 		/// </code>
 		/// </example>
 		/// </summary>
-		public static Exp LoopVarString(LoopVarPart part)
+		public static Exp StringLoopVar(LoopVarPart part)
 		{
 			return new VarExp(Type.STRING, part);
 		}
@@ -1338,11 +1338,11 @@ namespace Aerospike.Client
 		/// Requires server version 8.1.1
 		/// <example>
 		/// <code>
-		/// Exp.LoopVarInt(LoopVarPart.MAP_KEY)
+		/// Exp.IntLoopVar(LoopVarPart.MAP_KEY)
 		/// </code>
 		/// </example>
 		/// </summary>
-		public static Exp LoopVarInt(LoopVarPart part)
+		public static Exp IntLoopVar(LoopVarPart part)
 		{
 			return new VarExp(Type.INT, part);
 		}
@@ -1352,11 +1352,11 @@ namespace Aerospike.Client
 		/// Requires server version 8.1.1
 		/// <example>
 		/// <code>
-		/// Exp.LoopVarFloat(LoopVarPart.MAP_KEY)
+		/// Exp.FloatLoopVar(LoopVarPart.MAP_KEY)
 		/// </code>
 		/// </example>
 		/// </summary>
-		public static Exp LoopVarFloat(LoopVarPart part)
+		public static Exp FloatLoopVar(LoopVarPart part)
 		{
 			return new VarExp(Type.FLOAT, part);
 		}
@@ -1366,11 +1366,11 @@ namespace Aerospike.Client
 		/// Requires server version 8.1.1
 		/// <example>
 		/// <code>
-		/// Exp.LoopVarList(LoopVarPart.MAP_KEY)
+		/// Exp.ListLoopVar(LoopVarPart.MAP_KEY)
 		/// </code>
 		/// </example>
 		/// </summary>
-		public static Exp LoopVarList(LoopVarPart part)
+		public static Exp ListLoopVar(LoopVarPart part)
 		{
 			return new VarExp(Type.LIST, part);
 		}
@@ -1380,11 +1380,11 @@ namespace Aerospike.Client
 		/// Requires server version 8.1.1
 		/// <example>
 		/// <code>
-		/// Exp.LoopVarMap(LoopVarPart.MAP_KEY)
+		/// Exp.MapLoopVar(LoopVarPart.MAP_KEY)
 		/// </code>
 		/// </example>
 		/// </summary>
-		public static Exp LoopVarMap(LoopVarPart part)
+		public static Exp MapLoopVar(LoopVarPart part)
 		{
 			return new VarExp(Type.MAP, part);
 		}
@@ -1394,11 +1394,11 @@ namespace Aerospike.Client
 		/// Requires server version 8.1.1
 		/// <example>
 		/// <code>
-		/// Exp.LoopVarBlob(LoopVarPart.MAP_KEY)
+		/// Exp.BlobLoopVar(LoopVarPart.MAP_KEY)
 		/// </code>
 		/// </example>
 		/// </summary>
-		public static Exp LoopVarBlob(LoopVarPart part)
+		public static Exp BlobLoopVar(LoopVarPart part)
 		{
 			return new VarExp(Type.BLOB, part);
 		}
@@ -1409,11 +1409,11 @@ namespace Aerospike.Client
 		/// Requires server version 8.1.1
 		/// <example>
 		/// <code>
-		/// Exp.LoopVarNil(LoopVarPart.MAP_KEY)
+		/// Exp.NilLoopVar(LoopVarPart.MAP_KEY)
 		/// </code>
 		/// </example>
 		/// </summary>
-		public static Exp LoopVarNil(LoopVarPart part)
+		public static Exp NilLoopVar(LoopVarPart part)
 		{
 			return new VarExp(Type.NIL, part);
 		}
@@ -1423,11 +1423,11 @@ namespace Aerospike.Client
 		/// Requires server version 8.1.1
 		/// <example>
 		/// <code>
-		/// Exp.LoopVarGeoJSON(LoopVarPart.MAP_KEY)
+		/// Exp.GeoJSONLoopVar(LoopVarPart.MAP_KEY)
 		/// </code>
 		/// </example>
 		/// </summary>
-		public static Exp LoopVarGeoJSON(LoopVarPart part)
+		public static Exp GeoJSONLoopVar(LoopVarPart part)
 		{
 			return new VarExp(Type.GEO, part);
 		}

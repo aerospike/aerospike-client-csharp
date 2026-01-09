@@ -1,5 +1,5 @@
 ﻿/* 
- * Copyright 2012-2025 Aerospike, Inc.
+ * Copyright 2012-2026 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -19,9 +19,485 @@ using Aerospike.Client;
 namespace Aerospike.Test
 {
 	[TestClass]
-	public class TestCdtOperate : TestSync
+	public class TestCDTOperate : TestSync
 	{
 		private const string binName = "testbin";
+		private const string inventoryBinName = "inventory";
+
+		[TestMethod]
+		public void TestCDTOperateCodeSample()
+		{
+			var rkey = new Key(SuiteHelpers.ns, SuiteHelpers.set, "inventory1");
+			SetupInventorySample(rkey);
+
+			// Product-level: featured == true
+			Exp filterOnFeatured = Exp.EQ(
+				MapExp.GetByKey(
+					MapReturnType.VALUE, Exp.Type.BOOL,
+					Exp.Val("featured"),
+					Exp.MapLoopVar(LoopVarPart.VALUE) // loop variable points to each product map
+				),
+				Exp.Val(true)
+			);
+
+			// Variant-level: quantity > 0
+			Exp filterOnVariantInventory = Exp.GT(
+				MapExp.GetByKey(
+					MapReturnType.VALUE, Exp.Type.INT,
+					Exp.Val("quantity"),
+					Exp.MapLoopVar(LoopVarPart.VALUE) // loop variable points to each variant object
+				),
+				Exp.Val(0)
+			);
+
+			// Operation
+			Record record = client.Operate(null, rkey,
+				CDTOperation.SelectByPath(inventoryBinName, SelectFlag.MATCHING_TREE,
+					CTX.AllChildren(), // dive into all products
+					CTX.AllChildrenWithFilter(filterOnFeatured), // only featured products
+					CTX.MapKey(Value.Get("variants")), // dive into variants
+					CTX.AllChildrenWithFilter(filterOnVariantInventory) // only in-stock variants
+				)
+			);
+			//Console.WriteLine(System.Text.Json.JsonSerializer.Serialize((Dictionary<object, object>)record.GetMap(inventoryBinName), new System.Text.Json.JsonSerializerOptions { WriteIndented = true }));
+			Assert.IsNotNull(record);
+
+			// Verify the result
+			Dictionary<object, object> resultMap = (Dictionary<object, object>)record.GetMap(inventoryBinName);
+			Assert.IsNotNull(resultMap);
+			Assert.IsTrue(resultMap.ContainsKey("inventory"));
+
+			// Verify the featured products
+			Dictionary<object, object> featuredProducts = (Dictionary<object, object>)resultMap["inventory"];
+			Assert.IsNotNull(featuredProducts);
+			Assert.AreEqual(3, featuredProducts.Count);
+			Assert.IsTrue(featuredProducts.ContainsKey("10000001"));
+			Assert.IsTrue(featuredProducts.ContainsKey("50000009"));
+			Assert.IsTrue(featuredProducts.ContainsKey("50000006"));
+
+			// Verify the variants for product 10000001
+			Dictionary<object, object> product1 = (Dictionary<object, object>)featuredProducts["10000001"];
+			Assert.IsNotNull(product1);
+			Dictionary<object, object> product1Variants = (Dictionary<object, object>)product1["variants"];
+			Assert.IsNotNull(product1Variants);
+			Assert.AreEqual(2, product1Variants.Count);
+			Assert.IsTrue(product1Variants.ContainsKey("2001"));
+			Assert.IsTrue(product1Variants.ContainsKey("2003"));
+
+			// Verify the variants for product 50000009
+			Dictionary<object, object> product4 = (Dictionary<object, object>)featuredProducts["50000009"];
+			Assert.IsNotNull(product4);
+			List<object> product4Variants = (List<object>)product4["variants"];
+			Assert.IsNotNull(product4Variants);
+			Assert.AreEqual(2, product4Variants.Count);
+			Dictionary<object, object> variant1 = (Dictionary<object, object>)product4Variants[0];
+			Assert.AreEqual((long)3007, variant1["sku"]);
+			Dictionary<object, object> variant2 = (Dictionary<object, object>)product4Variants[1];
+			Assert.AreEqual((long)3008, variant2["sku"]);
+
+			// Verify the variants for product 50000006
+			Dictionary<object, object> product3 = (Dictionary<object, object>)featuredProducts["50000006"];
+			Assert.IsNotNull(product3);
+			Dictionary<object, object> product3Variants = (Dictionary<object, object>)product3["variants"];
+			Assert.IsNotNull(product3Variants);
+			Assert.AreEqual(0, product3Variants.Count);
+		}
+
+		[TestMethod]
+		public void TestCDTOperateCodeSampleAdvanced()
+		{
+			var rkey = new Key(SuiteHelpers.ns, SuiteHelpers.set, "inventory2");
+			SetupInventorySample(rkey);
+
+			Exp filterOnKey =
+				Exp.RegexCompare("10000.*", 0, Exp.StringLoopVar(LoopVarPart.MAP_KEY)
+			);
+
+			// Operation
+			Record record = client.Operate(null, rkey,
+				CDTOperation.SelectByPath(inventoryBinName, SelectFlag.MATCHING_TREE,
+					CTX.AllChildren(),
+					CTX.AllChildrenWithFilter(filterOnKey)
+				)
+			);
+			//Console.WriteLine(System.Text.Json.JsonSerializer.Serialize((Dictionary<object, object>)record.GetMap(inventoryBinName), new System.Text.Json.JsonSerializerOptions { WriteIndented = true }));
+			Assert.IsNotNull(record);
+
+			// Verify the result
+			Dictionary<object, object> resultMap = (Dictionary<object, object>)record.GetMap(inventoryBinName);
+			Assert.IsNotNull(resultMap);
+			Assert.IsTrue(resultMap.ContainsKey("inventory"));
+
+			// Verify only products with key starting with 100000 are included
+			Dictionary<object, object> products = (Dictionary<object, object>)resultMap["inventory"];
+			Assert.IsNotNull(products);
+			Assert.AreEqual(2, products.Count);
+			Assert.IsTrue(products.ContainsKey("10000001"));
+			Assert.IsTrue(products.ContainsKey("10000002"));
+		}
+
+		[TestMethod]
+		public void TestCDTOperateCodeSampleAdvancedAltReturn()
+		{
+			var rkey = new Key(SuiteHelpers.ns, SuiteHelpers.set, "inventory3");
+			SetupInventorySample(rkey);
+
+			Exp filterOnKey =
+				Exp.RegexCompare("10000.*", RegexFlag.NONE, Exp.StringLoopVar(LoopVarPart.MAP_KEY)
+			);
+
+			// Operation
+			Record record = client.Operate(null, rkey,
+				CDTOperation.SelectByPath(inventoryBinName, SelectFlag.MATCHING_TREE,
+					CTX.AllChildren(),
+					CTX.AllChildrenWithFilter(filterOnKey)
+				)
+			);
+			//Console.WriteLine(System.Text.Json.JsonSerializer.Serialize((Dictionary<object, object>)record.GetMap(inventoryBinName), new System.Text.Json.JsonSerializerOptions { WriteIndented = true }));
+			Assert.IsNotNull(record);
+
+			// Verify the results contain the expected products
+			Dictionary<object, object> resultMap = (Dictionary<object, object>)record.GetMap(inventoryBinName);
+			Assert.IsNotNull(resultMap);
+			Dictionary<object, object> products = (Dictionary<object, object>)resultMap["inventory"];
+			Assert.IsNotNull(products);
+			Assert.AreEqual(2, products.Count);
+			Assert.IsTrue(products.ContainsKey("10000001"));
+			Assert.IsTrue(products.ContainsKey("10000002"));
+		}
+
+		[TestMethod]
+		public void TestCDTOperateCodeSampleAdvancedMultipleFilters()
+		{
+			var rkey = new Key(SuiteHelpers.ns, SuiteHelpers.set, "inventory4");
+			SetupInventorySample(rkey);
+
+			Exp filterOnCheapInStock = Exp.And(
+				Exp.GT(
+					MapExp.GetByKey(MapReturnType.VALUE, Exp.Type.INT,
+						Exp.Val("quantity"),
+						Exp.MapLoopVar(LoopVarPart.VALUE)
+					),
+					Exp.Val(0)
+				),
+				Exp.LT(
+					MapExp.GetByKey(MapReturnType.VALUE, Exp.Type.INT,
+						Exp.Val("price"),
+						Exp.MapLoopVar(LoopVarPart.VALUE)
+					),
+					Exp.Val(50)
+				)
+			);
+
+			// Operation
+			Record record = client.Operate(null, rkey,
+				CDTOperation.SelectByPath(inventoryBinName, SelectFlag.MATCHING_TREE,
+					CTX.AllChildren(), // navigate into all products
+					CTX.AllChildren(), // navigate deeper into product structure
+					CTX.MapKey(Value.Get("variants")), // navigate into variants map/list
+					CTX.AllChildrenWithFilter(filterOnCheapInStock) // filter variants bt price and quantity
+				)
+			);
+			//Console.WriteLine(System.Text.Json.JsonSerializer.Serialize((Dictionary<object, object>)record.GetMap(inventoryBinName), new System.Text.Json.JsonSerializerOptions { WriteIndented = true }));
+			Assert.IsNotNull(record);
+
+			// Verify the results contain the expected products
+			Dictionary<object, object> resultMap = (Dictionary<object, object>)record.GetMap(inventoryBinName);
+			Assert.IsNotNull(resultMap);
+			Assert.IsTrue(resultMap.ContainsKey("inventory"));
+			Dictionary<object, object> products = (Dictionary<object, object>)resultMap["inventory"];
+			Assert.IsNotNull(products);
+			Assert.AreEqual(4, products.Count);
+			Assert.IsTrue(products.ContainsKey("10000001"));
+			Assert.IsTrue(products.ContainsKey("10000002"));
+			Assert.IsTrue(products.ContainsKey("50000006"));
+			Assert.IsTrue(products.ContainsKey("50000009"));
+
+			// Verify the variants for product 10000001
+			Dictionary<object, object> product1 = (Dictionary<object, object>)products["10000001"];
+			Assert.IsNotNull(product1);
+			Dictionary<object, object> product1Variants = (Dictionary<object, object>)product1["variants"];
+			Assert.IsNotNull(product1Variants);
+			Assert.AreEqual(2, product1Variants.Count);
+			Assert.IsTrue(product1Variants.ContainsKey("2001"));
+			Assert.IsTrue(product1Variants.ContainsKey("2003"));
+
+			// Verify the variants for product 10000002
+			Dictionary<object, object> product2 = (Dictionary<object, object>)products["10000002"];
+			Assert.IsNotNull(product2);
+			Dictionary<object, object> product2Variants = (Dictionary<object, object>)product2["variants"];
+			Assert.IsNotNull(product2Variants);
+			Assert.AreEqual(2, product2Variants.Count);
+			Assert.IsTrue(product2Variants.ContainsKey("2004"));
+			Assert.IsTrue(product2Variants.ContainsKey("2005"));
+
+			// Verify the variants for product 50000006
+			Dictionary<object, object> product3 = (Dictionary<object, object>)products["50000006"];
+			Assert.IsNotNull(product3);
+			Dictionary<object, object> product3Variants = (Dictionary<object, object>)product3["variants"];
+			Assert.IsNotNull(product3Variants);
+			Assert.AreEqual(0, product3Variants.Count);
+
+			// Verify the variants for product 50000009
+			Dictionary<object, object> product4 = (Dictionary<object, object>)products["50000009"];
+			Assert.IsNotNull(product4);
+			List<object> product4Variants = (List<object>)product4["variants"];
+			Assert.IsNotNull(product4Variants);
+			Assert.AreEqual(0, product4Variants.Count);
+		}
+
+		[TestMethod]
+		public void TestCDTOperateCodeSampleAdvancedModifyCDT()
+		{
+			var rkey = new Key(SuiteHelpers.ns, SuiteHelpers.set, "inventory5");
+			SetupInventorySample(rkey);
+			string updatedBin = "updatedBinName";
+
+			// Increment quantity by 10 and return the modified map
+			Exp incrementExp = MapExp.Put(
+				MapPolicy.Default,
+				Exp.Val("quantity"),  // key to update
+				Exp.Add(  // new value: current quantity + 10
+					MapExp.GetByKey(MapReturnType.VALUE, Exp.Type.INT,
+						Exp.Val("quantity"),
+						Exp.MapLoopVar(LoopVarPart.VALUE)),
+					Exp.Val(10)
+				),
+				Exp.MapLoopVar(LoopVarPart.VALUE)
+			);
+
+			// Product-level: featured == true
+			Exp filterOnFeatured = Exp.EQ(
+				MapExp.GetByKey(
+					MapReturnType.VALUE, Exp.Type.BOOL,
+					Exp.Val("featured"),
+					Exp.MapLoopVar(LoopVarPart.VALUE) // loop variable points to each product map
+				),
+				Exp.Val(true)
+			);
+
+			// Variant-level: quantity > 0
+			Exp filterOnVariantInventory = Exp.GT(
+				MapExp.GetByKey(
+					MapReturnType.VALUE, Exp.Type.INT,
+					Exp.Val("quantity"),
+					Exp.MapLoopVar(LoopVarPart.VALUE) // loop variable points to each variant object
+				),
+				Exp.Val(0)
+			);
+
+			Expression modifyExpression = Exp.Build(
+				CDTExp.ModifyByPath(
+					Exp.Type.MAP,
+					ModifyFlag.DEFAULT,
+					incrementExp,
+					Exp.MapBin("inventory"),
+					CTX.AllChildren(),
+					CTX.AllChildrenWithFilter(filterOnFeatured),
+					CTX.MapKey(Value.Get("variants")),
+					CTX.AllChildrenWithFilter(filterOnVariantInventory)
+				)
+			);
+
+			// Write the modified map to a new bin
+			client.Operate(null, rkey,
+				ExpOperation.Write(updatedBin, modifyExpression, ExpWriteFlags.DEFAULT));
+
+			// Read back the updated record
+			Record updatedRecord = client.Get(null, rkey);
+			//Console.WriteLine(System.Text.Json.JsonSerializer.Serialize((Dictionary<object, object>)updatedRecord.GetMap(updatedBin), new System.Text.Json.JsonSerializerOptions { WriteIndented = true }));
+			Assert.IsNotNull(updatedRecord);
+
+			// Verify the results incremented the specified quantity by 10
+			Dictionary<object, object> resultMap = (Dictionary<object, object>)updatedRecord.GetMap(updatedBin);
+			Assert.IsNotNull(resultMap);
+			Assert.IsTrue(resultMap.ContainsKey("inventory"));
+			Dictionary<object, object> products = (Dictionary<object, object>)resultMap["inventory"];
+
+			// Verify the results for product 10000001
+			Dictionary<object, object> product1 = (Dictionary<object, object>)products["10000001"];
+			Assert.IsNotNull(product1);
+			Dictionary<object, object> product1Variants = (Dictionary<object, object>)product1["variants"];
+			Assert.IsNotNull(product1Variants);
+			Dictionary<object, object> p1variant2001 = (Dictionary<object, object>)product1Variants["2001"];
+			Assert.IsNotNull(p1variant2001);
+			Assert.AreEqual((long)110, p1variant2001["quantity"]);
+			Dictionary<object, object> p1variant2003 = (Dictionary<object, object>)product1Variants["2003"];
+			Assert.IsNotNull(p1variant2003);
+			Assert.AreEqual((long)60, p1variant2003["quantity"]);
+
+			// Verify the results for product 50000009
+			Dictionary<object, object> product4 = (Dictionary<object, object>)products["50000009"];
+			Assert.IsNotNull(product4);
+			List<object> product4Variants = (List<object>)product4["variants"];
+			Assert.IsNotNull(product4Variants);
+			Assert.AreEqual(2, product4Variants.Count);
+			Dictionary<object, object> variant1 = (Dictionary<object, object>)product4Variants[0];
+			Assert.IsNotNull(variant1);
+			Assert.AreEqual((long)3007, variant1["sku"]);
+			Assert.AreEqual((long)70, variant1["quantity"]);
+			Dictionary<object, object> variant2 = (Dictionary<object, object>)product4Variants[1];
+			Assert.IsNotNull(variant2);
+			Assert.AreEqual((long)3008, variant2["sku"]);
+			Assert.AreEqual((long)40, variant2["quantity"]);
+
+		}
+
+		[TestMethod]
+		public void TestCDTOperateCodeSampleAdvancedNoFail()
+		{
+			var rkey = new Key(SuiteHelpers.ns, SuiteHelpers.set, "inventory6");
+			SetupInventorySample(rkey, true);
+
+			// Product-level: featured == true
+			Exp filterOnFeatured = Exp.EQ(
+				MapExp.GetByKey(
+					MapReturnType.VALUE, Exp.Type.BOOL,
+					Exp.Val("featured"),
+					Exp.MapLoopVar(LoopVarPart.VALUE) // loop variable points to each product map
+				),
+				Exp.Val(true)
+			);
+
+			// Variant-level: quantity > 0
+			Exp filterOnVariantInventory = Exp.GT(
+				MapExp.GetByKey(
+					MapReturnType.VALUE, Exp.Type.INT,
+					Exp.Val("quantity"),
+					Exp.MapLoopVar(LoopVarPart.VALUE) // loop variable points to each variant object
+				),
+				Exp.Val(0)
+			);
+
+			Record noFailResponse = client.Operate(null, rkey,
+				CDTOperation.SelectByPath(inventoryBinName, SelectFlag.MATCHING_TREE | SelectFlag.NO_FAIL,
+					CTX.AllChildren(),
+					CTX.AllChildrenWithFilter(filterOnFeatured),
+					CTX.MapKey(Value.Get("variants")),
+					CTX.AllChildrenWithFilter(filterOnVariantInventory)
+				)
+			);
+			//Console.WriteLine(System.Text.Json.JsonSerializer.Serialize((Dictionary<object, object>)noFailResponse.GetMap(inventoryBinName), new System.Text.Json.JsonSerializerOptions { WriteIndented = true }));
+			Assert.IsNotNull(noFailResponse);
+
+			// Verify the results
+			Dictionary<object, object> resultMap = (Dictionary<object, object>)noFailResponse.GetMap(inventoryBinName);
+			Assert.IsNotNull(resultMap);
+			Assert.IsTrue(resultMap.ContainsKey("inventory"));
+			Dictionary<object, object> products = (Dictionary<object, object>)resultMap["inventory"];
+			Assert.IsNotNull(products);
+			Assert.IsTrue(products.ContainsKey("10000003"));
+			Dictionary<object, object> product5 = (Dictionary<object, object>)products["10000003"];
+			Assert.IsNotNull(product5);
+			Dictionary<object, object> product5Variants = (Dictionary<object, object>)product5["variants"];
+			Assert.IsNotNull(product5Variants);
+			Assert.AreEqual(0, product5Variants.Count);
+		}
+
+		private static void SetupInventorySample(Key key, bool extraProduct = false)
+		{
+			try
+			{
+				client.Delete(null, key);
+			}
+			catch (Exception)
+			{
+			}
+
+			// Build the inventory data structure
+			Dictionary<string, object> inventory = [];
+
+			// Product 10000001: Classic T-Shirt
+			Dictionary<string, object> product1 = new()
+			{
+				{ "category", "clothing" },
+				{ "featured", true },
+				{ "name", "Classic T-Shirt" },
+				{ "description", "A lightweight cotton T-shirt perfect for everyday wear." }
+			};
+			Dictionary<string, object> product1Variants = new()
+			{
+				{ "2001", new Dictionary<string, object> { { "size", "S" }, { "price", 25 }, { "quantity", 100 } } },
+				{ "2002", new Dictionary<string, object> { { "size", "M" }, { "price", 25 }, { "quantity", 0 } } },
+				{ "2003", new Dictionary<string, object> { { "size", "L" }, { "price", 27 }, { "quantity", 50 } } }
+			};
+			product1.Add("variants", product1Variants);
+			inventory.Add("10000001", product1);
+
+			// Product 10000002: Casual Polo Shirt
+			Dictionary<string, object> product2 = new()
+			{
+				{ "category", "clothing" },
+				{ "featured", false },
+				{ "name", "Casual Polo Shirt" },
+				{ "description", "A soft polo shirt suitable for work or leisure." }
+			};
+			Dictionary<string, object> product2Variants = new()
+			{
+				{ "2004", new Dictionary<string, object> { { "size", "M" }, { "price", 30 }, { "quantity", 20 } } },
+				{ "2005", new Dictionary<string, object> { { "size", "XL" }, { "price", 32 }, { "quantity", 10 } } }
+			};
+			product2.Add("variants", product2Variants);
+			inventory.Add("10000002", product2);
+
+			// Product 50000006: Laptop Pro 14
+			Dictionary<string, object> product3 = new()
+			{
+				{ "category", "electronics" },
+				{ "featured", true },
+				{ "name", "Laptop Pro 14" },
+				{ "description", "High-performance laptop designed for professionals." }
+			};
+			Dictionary<string, object> product3Variants = new()
+			{
+				{ "3001", new Dictionary<string, object> { { "spec", "8GB RAM" }, { "price", 599 }, { "quantity", 0 } } }
+			};
+			product3.Add("variants", product3Variants);
+			inventory.Add("50000006", product3);
+
+			// Product 50000009: Smart TV
+			Dictionary<string, object> product4 = new()
+			{
+				{ "category", "electronics" },
+				{ "featured", true },
+				{ "name", "Smart TV" },
+				{ "description", "Ultra HD smart television with built-in streaming apps." }
+			};
+			List<Dictionary<string, object>> product4Variants =
+			[
+				new() { { "sku", 3007 }, { "spec", "1080p" }, { "price", 199 }, { "quantity", 60 } },
+				new() { { "sku", 3008 }, { "spec", "4K" }, { "price", 399 }, { "quantity", 30 } }
+			];
+			product4.Add("variants", product4Variants);
+			inventory.Add("50000009", product4);
+
+			if (extraProduct)
+			{
+				// Product 10000003: Hooded Sweatshirt
+				Dictionary<string, object> product5 = new()
+				{
+					{ "category", "clothing" },
+					{ "featured", true },
+					{ "name", "Hooded Sweatshirt" },
+					{ "description", "Hooded Sweatshirt" }
+				};
+				Dictionary<string, object> product5Variants = new()
+				{
+					{ "quantity", 10 }
+				};
+				product5.Add("variants", product5Variants);
+				inventory.Add("10000003", product5);
+			}
+
+			// Create the root data structure
+			Dictionary<string, object> data = new()
+			{
+				{ "inventory", inventory }
+			};
+
+			var bin = new Bin(inventoryBinName, data);
+			client.Put(null, key, bin);
+		}
 
 		[TestMethod]
 		public void TestCDTOperateWithExpressions()
@@ -82,15 +558,15 @@ namespace Aerospike.Test
 			CTX ctx2 = CTX.AllChildrenWithFilter(
 				Exp.LE(
 					MapExp.GetByKey(MapReturnType.VALUE, Exp.Type.FLOAT,
-						Exp.Val("price"), Exp.LoopVarMap(LoopVarPart.VALUE)),
+						Exp.Val("price"), Exp.MapLoopVar(LoopVarPart.VALUE)),
 					Exp.Val(10.0)
 				)
 			);
 			CTX ctx3 = CTX.AllChildrenWithFilter(
-				Exp.EQ(Exp.LoopVarString(LoopVarPart.MAP_KEY), Exp.Val("title"))
+				Exp.EQ(Exp.StringLoopVar(LoopVarPart.MAP_KEY), Exp.Val("title"))
 			);
 
-			Operation selectOp = CdtOperation.SelectByPath(binName, SelectFlag.VALUE, ctx1, ctx2, ctx3);
+			Operation selectOp = CDTOperation.SelectByPath(binName, SelectFlag.VALUE, ctx1, ctx2, ctx3);
 
 			Record result = client.Operate(null, rkey, selectOp);
 			// CDT select operation should succeed
@@ -176,12 +652,12 @@ namespace Aerospike.Test
 
 			Expression modifyExp = Exp.Build(
 				Exp.Mul(
-					Exp.LoopVarFloat(LoopVarPart.VALUE),  // Current price value
+					Exp.FloatLoopVar(LoopVarPart.VALUE),  // Current price value
 					Exp.Val(1.10)                         // Multiply by 1.10
 				)
 			);
 
-			Operation applyOp = CdtOperation.ModifyByPath(binName, ModifyFlag.DEFAULT, modifyExp, bookKey, allChildren, priceKey);
+			Operation applyOp = CDTOperation.ModifyByPath(binName, ModifyFlag.DEFAULT, modifyExp, bookKey, allChildren, priceKey);
 
 			// CDT apply operation should succeed
 			Record result = client.Operate(null, rkey, applyOp);
@@ -288,21 +764,21 @@ namespace Aerospike.Test
 				Exp.And(
 					Exp.EQ(
 						MapExp.GetByKey(MapReturnType.VALUE, Exp.Type.STRING,
-							Exp.Val("category"), Exp.LoopVarMap(LoopVarPart.VALUE)),
+							Exp.Val("category"), Exp.MapLoopVar(LoopVarPart.VALUE)),
 						Exp.Val("fiction")
 					),
 					Exp.LT(
 						MapExp.GetByKey(MapReturnType.VALUE, Exp.Type.FLOAT,
-							Exp.Val("price"), Exp.LoopVarMap(LoopVarPart.VALUE)),
+							Exp.Val("price"), Exp.MapLoopVar(LoopVarPart.VALUE)),
 						Exp.Val(10.0)
 					)
 				)
 			);
 			CTX ctx4 = CTX.AllChildrenWithFilter(
-				Exp.EQ(Exp.LoopVarString(LoopVarPart.MAP_KEY), Exp.Val("title"))
+				Exp.EQ(Exp.StringLoopVar(LoopVarPart.MAP_KEY), Exp.Val("title"))
 			);
 
-			Operation selectOp = CdtOperation.SelectByPath(binName, SelectFlag.VALUE, ctx1, ctx2, ctx3, ctx4);
+			Operation selectOp = CDTOperation.SelectByPath(binName, SelectFlag.VALUE, ctx1, ctx2, ctx3, ctx4);
 
 			// CDT select operation should succeed
 			Record result = client.Operate(null, rkey, selectOp);
@@ -359,15 +835,15 @@ namespace Aerospike.Test
 			CTX ctx2 = CTX.AllChildrenWithFilter(
 				Exp.LE(
 					MapExp.GetByKey(MapReturnType.VALUE, Exp.Type.FLOAT,
-						Exp.Val("price"), Exp.LoopVarMap(LoopVarPart.VALUE)),
+						Exp.Val("price"), Exp.MapLoopVar(LoopVarPart.VALUE)),
 					Exp.Val(10.0)
 				)
 			);
 			CTX ctx3 = CTX.AllChildrenWithFilter(
-				Exp.EQ(Exp.LoopVarString(LoopVarPart.MAP_KEY), Exp.Val("title"))
+				Exp.EQ(Exp.StringLoopVar(LoopVarPart.MAP_KEY), Exp.Val("title"))
 			);
 
-			Operation selectOp = CdtOperation.SelectByPath(binName, SelectFlag.VALUE, ctx1, ctx2, ctx3);
+			Operation selectOp = CDTOperation.SelectByPath(binName, SelectFlag.VALUE, ctx1, ctx2, ctx3);
 
 			// CDT select operation should succeed
 			Record result = client.Operate(null, rkey, selectOp);
@@ -423,12 +899,12 @@ namespace Aerospike.Test
 			CTX ctx2 = CTX.AllChildrenWithFilter(
 				Exp.LE(
 					MapExp.GetByKey(MapReturnType.VALUE, Exp.Type.FLOAT,
-						Exp.Val("price"), Exp.LoopVarMap(LoopVarPart.VALUE)),
+						Exp.Val("price"), Exp.MapLoopVar(LoopVarPart.VALUE)),
 					Exp.Val(10.0)
 				)
 			);
 
-			Operation selectOp = CdtOperation.SelectByPath(binName, SelectFlag.MATCHING_TREE, ctx1, ctx2);
+			Operation selectOp = CDTOperation.SelectByPath(binName, SelectFlag.MATCHING_TREE, ctx1, ctx2);
 
 			// CDT select operation should succeed
 			Record result = client.Operate(null, rkey, selectOp);
@@ -467,10 +943,10 @@ namespace Aerospike.Test
 			// Select with MapKeys flag - should return only keys, not values
 			CTX ctx1 = CTX.MapKey(Value.Get("items"));
 			CTX ctx2 = CTX.AllChildrenWithFilter(
-				Exp.GT(Exp.LoopVarInt(LoopVarPart.VALUE), Exp.Val(75))
+				Exp.GT(Exp.IntLoopVar(LoopVarPart.VALUE), Exp.Val(75))
 			);
 
-			Operation selectOp = CdtOperation.SelectByPath(binName, SelectFlag.MAP_KEY, ctx1, ctx2);
+			Operation selectOp = CDTOperation.SelectByPath(binName, SelectFlag.MAP_KEY, ctx1, ctx2);
 
 			// CDT select operation should succeed
 			Record result = client.Operate(null, rkey, selectOp);
@@ -510,7 +986,7 @@ namespace Aerospike.Test
 			CTX ctx1 = CTX.MapKey(Value.Get("existing"));
 			CTX ctx2 = CTX.AllChildren();
 
-			Operation selectOp = CdtOperation.SelectByPath(binName, SelectFlag.NO_FAIL, ctx1, ctx2);
+			Operation selectOp = CDTOperation.SelectByPath(binName, SelectFlag.NO_FAIL, ctx1, ctx2);
 
 			// CDT select operation should succeed
 			Record result = client.Operate(null, rkey, selectOp);
@@ -547,10 +1023,10 @@ namespace Aerospike.Test
 			// Select items where index < 3
 			CTX ctx1 = CTX.MapKey(Value.Get("numbers"));
 			CTX ctx2 = CTX.AllChildrenWithFilter(
-				Exp.LT(Exp.LoopVarInt(LoopVarPart.INDEX), Exp.Val(3))
+				Exp.LT(Exp.IntLoopVar(LoopVarPart.INDEX), Exp.Val(3))
 			);
 
-			Operation selectOp = CdtOperation.SelectByPath(binName, SelectFlag.VALUE, ctx1, ctx2);
+			Operation selectOp = CDTOperation.SelectByPath(binName, SelectFlag.VALUE, ctx1, ctx2);
 
 			// CDT select operation should succeed
 			Record result = client.Operate(null, rkey, selectOp);
@@ -592,10 +1068,10 @@ namespace Aerospike.Test
 			// Select items where key starts with 'a' or 'b' (lexicographically < "c")
 			CTX ctx1 = CTX.MapKey(Value.Get("products"));
 			CTX ctx2 = CTX.AllChildrenWithFilter(
-				Exp.LT(Exp.LoopVarString(LoopVarPart.MAP_KEY), Exp.Val("c"))
+				Exp.LT(Exp.StringLoopVar(LoopVarPart.MAP_KEY), Exp.Val("c"))
 			);
 
-			Operation selectOp = CdtOperation.SelectByPath(binName, SelectFlag.VALUE, ctx1, ctx2);
+			Operation selectOp = CDTOperation.SelectByPath(binName, SelectFlag.VALUE, ctx1, ctx2);
 
 			// CDT select operation should succeed
 			Record result = client.Operate(null, rkey, selectOp);
@@ -641,10 +1117,10 @@ namespace Aerospike.Test
 			CTX ctx2 = CTX.AllChildrenWithFilter(Exp.Val(true));
 
 			Expression modifyExp = Exp.Build(
-				Exp.Add(Exp.LoopVarInt(LoopVarPart.VALUE), Exp.Val(5))
+				Exp.Add(Exp.IntLoopVar(LoopVarPart.VALUE), Exp.Val(5))
 			);
 
-			Operation applyOp = CdtOperation.ModifyByPath(binName, ModifyFlag.DEFAULT, modifyExp, ctx1, ctx2);
+			Operation applyOp = CDTOperation.ModifyByPath(binName, ModifyFlag.DEFAULT, modifyExp, ctx1, ctx2);
 
 			// CDT modify operation should succeed
 			Record result = client.Operate(null, rkey, applyOp);
@@ -699,10 +1175,10 @@ namespace Aerospike.Test
 			CTX ctx2 = CTX.AllChildrenWithFilter(Exp.Val(true));
 
 			Expression modifyExp = Exp.Build(
-				Exp.Sub(Exp.LoopVarInt(LoopVarPart.VALUE), Exp.Val(100))
+				Exp.Sub(Exp.IntLoopVar(LoopVarPart.VALUE), Exp.Val(100))
 			);
 
-			Operation applyOp = CdtOperation.ModifyByPath(binName, ModifyFlag.DEFAULT, modifyExp, ctx1, ctx2);
+			Operation applyOp = CDTOperation.ModifyByPath(binName, ModifyFlag.DEFAULT, modifyExp, ctx1, ctx2);
 
 			// CDT apply operation should succeed
 			Record result = client.Operate(null, rkey, applyOp);
@@ -754,7 +1230,7 @@ namespace Aerospike.Test
 			CTX ctx1 = CTX.MapKey(Value.Get("matrix"));
 			CTX ctx2 = CTX.AllChildren();
 
-			Operation selectOp = CdtOperation.SelectByPath(binName, SelectFlag.VALUE, ctx1, ctx2);
+			Operation selectOp = CDTOperation.SelectByPath(binName, SelectFlag.VALUE, ctx1, ctx2);
 
 			// CDT select operation should succeed
 			Record result = client.Operate(null, rkey, selectOp);
@@ -818,15 +1294,15 @@ namespace Aerospike.Test
 			CTX ctx2 = CTX.AllChildrenWithFilter(
 				Exp.EQ(
 					MapExp.GetByKey(MapReturnType.VALUE, Exp.Type.BOOL,
-						Exp.Val("active"), Exp.LoopVarMap(LoopVarPart.VALUE)),
+						Exp.Val("active"), Exp.MapLoopVar(LoopVarPart.VALUE)),
 					Exp.Val(true)
 				)
 			);
 			CTX ctx3 = CTX.AllChildrenWithFilter(
-				Exp.EQ(Exp.LoopVarString(LoopVarPart.MAP_KEY), Exp.Val("name"))
+				Exp.EQ(Exp.StringLoopVar(LoopVarPart.MAP_KEY), Exp.Val("name"))
 			);
 
-			Operation selectOp = CdtOperation.SelectByPath(binName, SelectFlag.VALUE, ctx1, ctx2, ctx3);
+			Operation selectOp = CDTOperation.SelectByPath(binName, SelectFlag.VALUE, ctx1, ctx2, ctx3);
 
 			// CDT select operation should succeed
 			Record result = client.Operate(null, rkey, selectOp);
@@ -902,27 +1378,27 @@ namespace Aerospike.Test
 					Exp.And(
 						Exp.EQ(
 							MapExp.GetByKey(MapReturnType.VALUE, Exp.Type.BOOL,
-								Exp.Val("inStock"), Exp.LoopVarMap(LoopVarPart.VALUE)),
+								Exp.Val("inStock"), Exp.MapLoopVar(LoopVarPart.VALUE)),
 							Exp.Val(true)
 						),
 						Exp.LT(
 							MapExp.GetByKey(MapReturnType.VALUE, Exp.Type.FLOAT,
-								Exp.Val("price"), Exp.LoopVarMap(LoopVarPart.VALUE)),
+								Exp.Val("price"), Exp.MapLoopVar(LoopVarPart.VALUE)),
 							Exp.Val(20.0)
 						)
 					),
 					Exp.GT(
 						MapExp.GetByKey(MapReturnType.VALUE, Exp.Type.FLOAT,
-							Exp.Val("price"), Exp.LoopVarMap(LoopVarPart.VALUE)),
+							Exp.Val("price"), Exp.MapLoopVar(LoopVarPart.VALUE)),
 						Exp.Val(25.0)
 					)
 				)
 			);
 			CTX ctx3 = CTX.AllChildrenWithFilter(
-				Exp.EQ(Exp.LoopVarString(LoopVarPart.MAP_KEY), Exp.Val("name"))
+				Exp.EQ(Exp.StringLoopVar(LoopVarPart.MAP_KEY), Exp.Val("name"))
 			);
 
-			Operation selectOp = CdtOperation.SelectByPath(binName, SelectFlag.VALUE, ctx1, ctx2, ctx3);
+			Operation selectOp = CDTOperation.SelectByPath(binName, SelectFlag.VALUE, ctx1, ctx2, ctx3);
 
 			// CDT select operation should succeed
 			Record result = client.Operate(null, rkey, selectOp);
@@ -987,15 +1463,15 @@ namespace Aerospike.Test
 			CTX ctx4 = CTX.AllChildrenWithFilter(
 				Exp.GT(
 					MapExp.GetByKey(MapReturnType.VALUE, Exp.Type.INT,
-						Exp.Val("value"), Exp.LoopVarMap(LoopVarPart.VALUE)),
+						Exp.Val("value"), Exp.MapLoopVar(LoopVarPart.VALUE)),
 					Exp.Val(150)
 				)
 			);
 			CTX ctx5 = CTX.AllChildrenWithFilter(
-				Exp.EQ(Exp.LoopVarString(LoopVarPart.MAP_KEY), Exp.Val("value"))
+				Exp.EQ(Exp.StringLoopVar(LoopVarPart.MAP_KEY), Exp.Val("value"))
 			);
 
-			Operation selectOp = CdtOperation.SelectByPath(binName, SelectFlag.VALUE, ctx1, ctx2, ctx3, ctx4, ctx5);
+			Operation selectOp = CDTOperation.SelectByPath(binName, SelectFlag.VALUE, ctx1, ctx2, ctx3, ctx4, ctx5);
 
 			// CDT select operation should succeed
 			Record result = client.Operate(null, rkey, selectOp);
@@ -1034,7 +1510,7 @@ namespace Aerospike.Test
 			// Select with single context
 			CTX ctx1 = CTX.MapKey(Value.Get("value"));
 
-			Operation selectOp = CdtOperation.SelectByPath(binName, SelectFlag.VALUE, ctx1);
+			Operation selectOp = CDTOperation.SelectByPath(binName, SelectFlag.VALUE, ctx1);
 
 			// CDT select operation should succeed
 			Record result = client.Operate(null, rkey, selectOp);
@@ -1076,7 +1552,7 @@ namespace Aerospike.Test
 			CTX ctx1 = CTX.MapKey(Value.Get("emptyList"));
 			CTX ctx2 = CTX.AllChildren();
 
-			Operation selectOp = CdtOperation.SelectByPath(binName, SelectFlag.NO_FAIL, ctx1, ctx2);
+			Operation selectOp = CDTOperation.SelectByPath(binName, SelectFlag.NO_FAIL, ctx1, ctx2);
 
 			// CDT select operation should succeed
 			Record result = client.Operate(null, rkey, selectOp);
@@ -1113,7 +1589,7 @@ namespace Aerospike.Test
 			CTX ctx1 = CTX.MapKey(Value.Get("emptyMap"));
 			CTX ctx2 = CTX.AllChildren();
 
-			Operation selectOp = CdtOperation.SelectByPath(binName, SelectFlag.NO_FAIL, ctx1, ctx2);
+			Operation selectOp = CDTOperation.SelectByPath(binName, SelectFlag.NO_FAIL, ctx1, ctx2);
 
 			// CDT select operation should succeed
 			Record result = client.Operate(null, rkey, selectOp);
@@ -1167,7 +1643,7 @@ namespace Aerospike.Test
 			CTX ctx2 = CTX.ListIndex(1); // Select second item (index 1)
 			CTX ctx3 = CTX.MapKey(Value.Get("value"));
 
-			Operation selectOp = CdtOperation.SelectByPath(binName, SelectFlag.VALUE, ctx1, ctx2, ctx3);
+			Operation selectOp = CDTOperation.SelectByPath(binName, SelectFlag.VALUE, ctx1, ctx2, ctx3);
 
 			// CDT select operation should succeed
 			Record result = client.Operate(null, rkey, selectOp);
@@ -1216,12 +1692,12 @@ namespace Aerospike.Test
 
 			Expression modifyExp = Exp.Build(
 				Exp.Mul(
-					Exp.LoopVarInt(LoopVarPart.VALUE),
-					Exp.Add(Exp.LoopVarInt(LoopVarPart.INDEX), Exp.Val(1))
+					Exp.IntLoopVar(LoopVarPart.VALUE),
+					Exp.Add(Exp.IntLoopVar(LoopVarPart.INDEX), Exp.Val(1))
 				)
 			);
 
-			Operation applyOp = CdtOperation.ModifyByPath(binName, ModifyFlag.DEFAULT, modifyExp, ctx1, ctx2);
+			Operation applyOp = CDTOperation.ModifyByPath(binName, ModifyFlag.DEFAULT, modifyExp, ctx1, ctx2);
 
 			// CDT apply operation should succeed
 			Record result = client.Operate(null, rkey, applyOp);
@@ -1292,14 +1768,14 @@ namespace Aerospike.Test
 			CTX ctx1 = CTX.MapKey(Value.Get("metrics"));
 			CTX ctx2 = CTX.AllChildrenWithFilter(Exp.Val(true));
 			CTX ctx3 = CTX.AllChildrenWithFilter(
-				Exp.EQ(Exp.LoopVarString(LoopVarPart.MAP_KEY), Exp.Val("value"))
+				Exp.EQ(Exp.StringLoopVar(LoopVarPart.MAP_KEY), Exp.Val("value"))
 			);
 
 			Expression modifyExp = Exp.Build(
-				Exp.Add(Exp.LoopVarInt(LoopVarPart.VALUE), Exp.Val(100))
+				Exp.Add(Exp.IntLoopVar(LoopVarPart.VALUE), Exp.Val(100))
 			);
 
-			Operation applyOp = CdtOperation.ModifyByPath(binName, ModifyFlag.DEFAULT, modifyExp, ctx1, ctx2, ctx3);
+			Operation applyOp = CDTOperation.ModifyByPath(binName, ModifyFlag.DEFAULT, modifyExp, ctx1, ctx2, ctx3);
 
 			// CDT apply operation should succeed
 			Record result = client.Operate(null, rkey, applyOp);
@@ -1357,7 +1833,7 @@ namespace Aerospike.Test
 			CTX ctx2 = CTX.AllChildrenWithFilter(Exp.Val(true));
 
 			Expression removeExp = Exp.Build(Exp.RemoveResults());
-			Operation applyOp = CdtOperation.ModifyByPath(binName, ModifyFlag.DEFAULT, removeExp, ctx1, ctx2);
+			Operation applyOp = CDTOperation.ModifyByPath(binName, ModifyFlag.DEFAULT, removeExp, ctx1, ctx2);
 
 			// CDT apply operation should succeed
 			Record result = client.Operate(null, rkey, applyOp);
@@ -1409,11 +1885,11 @@ namespace Aerospike.Test
 
 			CTX ctx1 = CTX.MapKey(Value.Get("numbers"));
 			CTX ctx2 = CTX.AllChildrenWithFilter(
-				Exp.GT(Exp.LoopVarInt(LoopVarPart.VALUE), Exp.Val(10))
+				Exp.GT(Exp.IntLoopVar(LoopVarPart.VALUE), Exp.Val(10))
 			);
 
 			Expression removeExp = Exp.Build(Exp.RemoveResults());
-			Operation applyOp = CdtOperation.ModifyByPath(binName, ModifyFlag.DEFAULT, removeExp, ctx1, ctx2);
+			Operation applyOp = CDTOperation.ModifyByPath(binName, ModifyFlag.DEFAULT, removeExp, ctx1, ctx2);
 
 			// CDT remove operation should succeed
 			Record result = client.Operate(null, rkey, applyOp);
@@ -1469,7 +1945,7 @@ namespace Aerospike.Test
 			CTX ctx2 = CTX.AllChildrenWithFilter(Exp.Val(true));
 
 			Expression removeExp = Exp.Build(Exp.RemoveResults());
-			Operation applyOp = CdtOperation.ModifyByPath(binName, ModifyFlag.DEFAULT, removeExp, ctx1, ctx2);
+			Operation applyOp = CDTOperation.ModifyByPath(binName, ModifyFlag.DEFAULT, removeExp, ctx1, ctx2);
 
 			// CDT remove operation should succeed
 			Record result = client.Operate(null, rkey, applyOp);
@@ -1518,11 +1994,11 @@ namespace Aerospike.Test
 
 			CTX ctx1 = CTX.MapKey(Value.Get("scores"));
 			CTX ctx2 = CTX.AllChildrenWithFilter(
-				Exp.LT(Exp.LoopVarInt(LoopVarPart.VALUE), Exp.Val(50))
+				Exp.LT(Exp.IntLoopVar(LoopVarPart.VALUE), Exp.Val(50))
 			);
 
 			Expression removeExp = Exp.Build(Exp.RemoveResults());
-			Operation applyOp = CdtOperation.ModifyByPath(binName, ModifyFlag.DEFAULT, removeExp, ctx1, ctx2);
+			Operation applyOp = CDTOperation.ModifyByPath(binName, ModifyFlag.DEFAULT, removeExp, ctx1, ctx2);
 
 			// CDT remove operation should succeed
 			Record result = client.Operate(null, rkey, applyOp);
@@ -1608,13 +2084,13 @@ namespace Aerospike.Test
 			CTX ctx2 = CTX.AllChildrenWithFilter(
 				Exp.LE(
 					MapExp.GetByKey(MapReturnType.VALUE, Exp.Type.FLOAT,
-						Exp.Val("price"), Exp.LoopVarMap(LoopVarPart.VALUE)),
+						Exp.Val("price"), Exp.MapLoopVar(LoopVarPart.VALUE)),
 					Exp.Val(10.0)
 				)
 			);
 
 			Expression removeExp = Exp.Build(Exp.RemoveResults());
-			Operation applyOp = CdtOperation.ModifyByPath(binName, ModifyFlag.DEFAULT, removeExp, ctx1, ctx2);
+			Operation applyOp = CDTOperation.ModifyByPath(binName, ModifyFlag.DEFAULT, removeExp, ctx1, ctx2);
 
 			// CDT remove operation should succeed
 			Record result = client.Operate(null, rkey, applyOp);
@@ -1680,11 +2156,11 @@ namespace Aerospike.Test
 
 			CTX ctx1 = CTX.MapKey(Value.Get("values"));
 			CTX ctx2 = CTX.AllChildrenWithFilter(
-				Exp.GE(Exp.LoopVarInt(LoopVarPart.INDEX), Exp.Val(3))
+				Exp.GE(Exp.IntLoopVar(LoopVarPart.INDEX), Exp.Val(3))
 			);
 
 			Expression removeExp = Exp.Build(Exp.RemoveResults());
-			Operation applyOp = CdtOperation.ModifyByPath(binName, ModifyFlag.DEFAULT, removeExp, ctx1, ctx2);
+			Operation applyOp = CDTOperation.ModifyByPath(binName, ModifyFlag.DEFAULT, removeExp, ctx1, ctx2);
 
 			// CDT remove operation should succeed
 			Record result = client.Operate(null, rkey, applyOp);
@@ -1739,11 +2215,11 @@ namespace Aerospike.Test
 
 			CTX ctx1 = CTX.MapKey(Value.Get("inventory"));
 			CTX ctx2 = CTX.AllChildrenWithFilter(
-				Exp.GE(Exp.LoopVarString(LoopVarPart.MAP_KEY), Exp.Val("c"))
+				Exp.GE(Exp.StringLoopVar(LoopVarPart.MAP_KEY), Exp.Val("c"))
 			);
 
 			Expression removeExp = Exp.Build(Exp.RemoveResults());
-			Operation applyOp = CdtOperation.ModifyByPath(binName, ModifyFlag.DEFAULT, removeExp, ctx1, ctx2);
+			Operation applyOp = CDTOperation.ModifyByPath(binName, ModifyFlag.DEFAULT, removeExp, ctx1, ctx2);
 
 			// CDT remove operation should succeeed
 			Record result = client.Operate(null, rkey, applyOp);
@@ -1825,13 +2301,13 @@ namespace Aerospike.Test
 			CTX ctx3 = CTX.AllChildrenWithFilter(
 				Exp.LT(
 					MapExp.GetByKey(MapReturnType.VALUE, Exp.Type.INT,
-						Exp.Val("sales"), Exp.LoopVarMap(LoopVarPart.VALUE)),
+						Exp.Val("sales"), Exp.MapLoopVar(LoopVarPart.VALUE)),
 					Exp.Val(2000)
 				)
 			);
 
 			Expression removeExp = Exp.Build(Exp.RemoveResults());
-			Operation applyOp = CdtOperation.ModifyByPath(binName, ModifyFlag.DEFAULT, removeExp, ctx1, ctx2, ctx3);
+			Operation applyOp = CDTOperation.ModifyByPath(binName, ModifyFlag.DEFAULT, removeExp, ctx1, ctx2, ctx3);
 
 			// CDT remove operation should succeed
 			Record result = client.Operate(null, rkey, applyOp);
@@ -1926,7 +2402,7 @@ namespace Aerospike.Test
 			Record record = client.Get(null, rkey);
 			Assert.IsNotNull(record);
 
-			Operation selectOp = CdtOperation.SelectByPath(binName, SelectFlag.VALUE, null);
+			Operation selectOp = CDTOperation.SelectByPath(binName, SelectFlag.VALUE, null);
 
 			try
 			{
@@ -1966,7 +2442,7 @@ namespace Aerospike.Test
 			Record record = client.Get(null, rkey);
 			Assert.IsNotNull(record);
 
-			Operation selectOp = CdtOperation.SelectByPath(binName, SelectFlag.VALUE);
+			Operation selectOp = CDTOperation.SelectByPath(binName, SelectFlag.VALUE);
 
 			try
 			{
@@ -2007,7 +2483,7 @@ namespace Aerospike.Test
 			Assert.IsNotNull(record);
 
 			CTX[] emptyCtx = [];
-			Operation selectOp = CdtOperation.SelectByPath(binName, SelectFlag.VALUE, emptyCtx);
+			Operation selectOp = CDTOperation.SelectByPath(binName, SelectFlag.VALUE, emptyCtx);
 
 			try
 			{
@@ -2048,7 +2524,7 @@ namespace Aerospike.Test
 			Assert.IsNotNull(record);
 
 			Expression modifyExp = Exp.Build(Exp.Val(100));
-			Operation modifyOp = CdtOperation.ModifyByPath(binName, ModifyFlag.DEFAULT, modifyExp, null);
+			Operation modifyOp = CDTOperation.ModifyByPath(binName, ModifyFlag.DEFAULT, modifyExp, null);
 
 			try
 			{
@@ -2089,7 +2565,7 @@ namespace Aerospike.Test
 			Assert.IsNotNull(record);
 
 			Expression modifyExp = Exp.Build(Exp.Val(100));
-			Operation modifyOp = CdtOperation.ModifyByPath(binName, ModifyFlag.DEFAULT, modifyExp);
+			Operation modifyOp = CDTOperation.ModifyByPath(binName, ModifyFlag.DEFAULT, modifyExp);
 
 			try
 			{
@@ -2129,7 +2605,7 @@ namespace Aerospike.Test
 
 			CTX[] emptyCtx = [];
 			Expression modifyExp = Exp.Build(Exp.Val(200));
-			Operation modifyOp = CdtOperation.ModifyByPath(binName, ModifyFlag.DEFAULT, modifyExp, emptyCtx);
+			Operation modifyOp = CDTOperation.ModifyByPath(binName, ModifyFlag.DEFAULT, modifyExp, emptyCtx);
 
 			try
 			{
@@ -2173,7 +2649,7 @@ namespace Aerospike.Test
 			CTX ctx1 = CTX.MapKey(Value.Get("matrix"));
 			CTX ctx2 = CTX.AllChildren();
 
-			Operation selectOp = CdtOperation.SelectByPath(binName, SelectFlag.VALUE, ctx1, ctx2);
+			Operation selectOp = CDTOperation.SelectByPath(binName, SelectFlag.VALUE, ctx1, ctx2);
 
 			// CDT select operation should succeed
 			Record result = client.Operate(null, rkey, selectOp);
@@ -2211,10 +2687,10 @@ namespace Aerospike.Test
 			CTX ctx2 = CTX.AllChildrenWithFilter(Exp.Val(true));
 
 			Expression modifyExp = Exp.Build(
-				Exp.Div(Exp.LoopVarInt(LoopVarPart.VALUE), Exp.Val(10))
+				Exp.Div(Exp.IntLoopVar(LoopVarPart.VALUE), Exp.Val(10))
 			);
 
-			Operation applyOp = CdtOperation.ModifyByPath(binName, ModifyFlag.DEFAULT, modifyExp, ctx1, ctx2);
+			Operation applyOp = CDTOperation.ModifyByPath(binName, ModifyFlag.DEFAULT, modifyExp, ctx1, ctx2);
 
 			// CDT modify operation should succeed
 			Record result = client.Operate(null, rkey, applyOp);
@@ -2269,12 +2745,12 @@ namespace Aerospike.Test
 			CTX ctx1 = CTX.MapKey(Value.Get("matrix"));
 			CTX ctx2 = CTX.AllChildrenWithFilter(
 				Exp.EQ(
-					ListExp.Size(Exp.LoopVarList(LoopVarPart.VALUE)),
+					ListExp.Size(Exp.ListLoopVar(LoopVarPart.VALUE)),
 					Exp.Val(3)
 				)
 			);
 
-			Operation selectOp = CdtOperation.SelectByPath(binName, SelectFlag.VALUE, ctx1, ctx2);
+			Operation selectOp = CDTOperation.SelectByPath(binName, SelectFlag.VALUE, ctx1, ctx2);
 
 			// CDT select operation should succeed
 			Record result = client.Operate(null, rkey, selectOp);
@@ -2317,12 +2793,12 @@ namespace Aerospike.Test
 			CTX ctx1 = CTX.MapKey(Value.Get("blobs"));
 			CTX ctx2 = CTX.AllChildrenWithFilter(
 				Exp.EQ(
-					Exp.LoopVarBlob(LoopVarPart.VALUE),
+					Exp.BlobLoopVar(LoopVarPart.VALUE),
 					Exp.Val(System.Text.Encoding.UTF8.GetBytes("Target blob"))
 				)
 			);
 
-			Operation selectOp = CdtOperation.SelectByPath(binName, SelectFlag.VALUE, ctx1, ctx2);
+			Operation selectOp = CDTOperation.SelectByPath(binName, SelectFlag.VALUE, ctx1, ctx2);
 
 			// CDT select operation should succeed
 			Record result = client.Operate(null, rkey, selectOp);
@@ -2366,12 +2842,12 @@ namespace Aerospike.Test
 
 			CTX ctx1 = CTX.AllChildrenWithFilter(
 				Exp.EQ(
-					Exp.LoopVarNil(LoopVarPart.VALUE),
+					Exp.NilLoopVar(LoopVarPart.VALUE),
 					Exp.Nil()
 				)
 			);
 
-			Operation selectOp = CdtOperation.SelectByPath(binName, SelectFlag.VALUE | SelectFlag.NO_FAIL, ctx1);
+			Operation selectOp = CDTOperation.SelectByPath(binName, SelectFlag.VALUE | SelectFlag.NO_FAIL, ctx1);
 
 			// CDT select operation should succeed
 			Record result = client.Operate(null, rkey, selectOp);
@@ -2415,12 +2891,12 @@ namespace Aerospike.Test
 			CTX ctx1 = CTX.MapKey(Value.Get("locations"));
 			CTX ctx2 = CTX.AllChildrenWithFilter(
 				Exp.GeoCompare(
-					Exp.LoopVarGeoJSON(LoopVarPart.VALUE),
+					Exp.GeoJSONLoopVar(LoopVarPart.VALUE),
 					Exp.Geo(californiaRegion)
 				)
 			);
 
-			Operation selectOp = CdtOperation.SelectByPath(binName, SelectFlag.VALUE, ctx1, ctx2);
+			Operation selectOp = CDTOperation.SelectByPath(binName, SelectFlag.VALUE, ctx1, ctx2);
 
 			// CDT select operation should succeed
 			Record result = client.Operate(null, rkey, selectOp);

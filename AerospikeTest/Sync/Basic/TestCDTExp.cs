@@ -1,5 +1,5 @@
 ﻿/* 
- * Copyright 2012-2025 Aerospike, Inc.
+ * Copyright 2012-2026 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -19,7 +19,7 @@ using Aerospike.Client;
 namespace Aerospike.Test
 {
 	[TestClass]
-	public class TestCdtExp : TestSync
+	public class TestCDTExp : TestSync
 	{
 		[TestMethod]
 		public void TestCDTExpSelect()
@@ -73,7 +73,7 @@ namespace Aerospike.Test
 			CTX priceKey = CTX.MapKey(Value.Get("price"));
 
 			Expression selectExp = Exp.Build(
-				CdtExp.SelectByPath(
+				CDTExp.SelectByPath(
 					Exp.Type.LIST,                   // Return type: list
 					SelectFlag.VALUE,                // AS_CDT_SELECT_LEAF_MAP_VALUE equivalent
 					Exp.MapBin("res1"),              // Source bin
@@ -154,12 +154,12 @@ namespace Aerospike.Test
 			CTX priceKey = CTX.MapKey(Value.Get("price"));
 
 			Exp modifyExp = Exp.Mul(
-				Exp.LoopVarFloat(LoopVarPart.VALUE),  // Current price value
+				Exp.FloatLoopVar(LoopVarPart.VALUE),  // Current price value
 				Exp.Val(1.50)                         // Multiply by 1.50
 			);
 
 			Expression applyExp = Exp.Build(
-				CdtExp.ModifyByPath(
+				CDTExp.ModifyByPath(
 					Exp.Type.MAP,                    // Return type: map
 					ModifyFlag.DEFAULT,              // Flags
 					modifyExp,                       // Modify expression
@@ -253,7 +253,7 @@ namespace Aerospike.Test
 						MapReturnType.VALUE,
 						Exp.Type.FLOAT,
 						Exp.Val("price"),
-						Exp.LoopVarMap(LoopVarPart.VALUE)
+						Exp.MapLoopVar(LoopVarPart.VALUE)
 					),
 					Exp.Val(10.0)
 				)
@@ -261,13 +261,13 @@ namespace Aerospike.Test
 
 			CTX ctx3 = CTX.AllChildrenWithFilter(
 				Exp.EQ(
-					Exp.LoopVarString(LoopVarPart.MAP_KEY),
+					Exp.StringLoopVar(LoopVarPart.MAP_KEY),
 					Exp.Val("title")
 				)
 			);
 
 			Expression selectExp = Exp.Build(
-				CdtExp.SelectByPath(
+				CDTExp.SelectByPath(
 					Exp.Type.LIST,
 					SelectFlag.VALUE,
 					Exp.MapBin("res1"),
@@ -325,7 +325,7 @@ namespace Aerospike.Test
 			CTX ctx2 = CTX.AllChildren();
 
 			Expression selectExp = Exp.Build(
-				CdtExp.SelectByPath(
+				CDTExp.SelectByPath(
 					Exp.Type.LIST,
 					SelectFlag.VALUE,
 					Exp.MapBin("data"),
@@ -389,12 +389,12 @@ namespace Aerospike.Test
 			CTX ctx3 = CTX.MapKey(Value.Get("price"));
 
 			Exp modifyExp = Exp.Add(
-				Exp.LoopVarFloat(LoopVarPart.VALUE),
+				Exp.FloatLoopVar(LoopVarPart.VALUE),
 				Exp.Val(5.0)
 			);
 
 			Expression applyExp = Exp.Build(
-				CdtExp.ModifyByPath(
+				CDTExp.ModifyByPath(
 					Exp.Type.MAP,
 					ModifyFlag.DEFAULT,
 					modifyExp,
@@ -462,12 +462,12 @@ namespace Aerospike.Test
 			CTX ctx2 = CTX.AllChildren();
 
 			Exp modifyExp = Exp.Sub(
-				Exp.LoopVarInt(LoopVarPart.VALUE),
+				Exp.IntLoopVar(LoopVarPart.VALUE),
 				Exp.Val(100)
 			);
 
 			Expression applyExp = Exp.Build(
-				CdtExp.ModifyByPath(
+				CDTExp.ModifyByPath(
 					Exp.Type.MAP,
 					ModifyFlag.DEFAULT,
 					modifyExp,
@@ -530,7 +530,7 @@ namespace Aerospike.Test
 			CTX ctx2 = CTX.AllChildren();
 
 			Expression selectExp = Exp.Build(
-				CdtExp.SelectByPath(
+				CDTExp.SelectByPath(
 					Exp.Type.LIST,
 					SelectFlag.VALUE,
 					Exp.MapBin("data"),
@@ -608,7 +608,7 @@ namespace Aerospike.Test
 			CTX selectCtx3 = CTX.MapKey(Value.Get("value"));
 
 			Expression selectExp = Exp.Build(
-				CdtExp.SelectByPath(
+				CDTExp.SelectByPath(
 					Exp.Type.LIST,
 					SelectFlag.VALUE,
 					Exp.MapBin("data"),
@@ -627,12 +627,12 @@ namespace Aerospike.Test
 			CTX modifyCtx3 = CTX.MapKey(Value.Get("value"));
 
 			Exp modifyExp = Exp.Mul(
-				Exp.LoopVarInt(LoopVarPart.VALUE),
+				Exp.IntLoopVar(LoopVarPart.VALUE),
 				Exp.Val(2)
 			);
 
 			Expression applyExp = Exp.Build(
-				CdtExp.ModifyByPath(
+				CDTExp.ModifyByPath(
 					Exp.Type.MAP,
 					ModifyFlag.DEFAULT,
 					modifyExp,
@@ -710,7 +710,7 @@ namespace Aerospike.Test
 			CTX ctx2 = CTX.AllChildren();
 
 			Expression selectExp = Exp.Build(
-				CdtExp.SelectByPath(
+				CDTExp.SelectByPath(
 					Exp.Type.LIST,
 					SelectFlag.VALUE,
 					Exp.MapBin("data"),
@@ -777,18 +777,18 @@ namespace Aerospike.Test
 			CTX ctx2 = CTX.AllChildrenWithFilter(Exp.Val(true));
 			CTX ctx3 = CTX.AllChildrenWithFilter(
 				Exp.EQ(
-					Exp.LoopVarString(LoopVarPart.MAP_KEY),
+					Exp.StringLoopVar(LoopVarPart.MAP_KEY),
 					Exp.Val("revenue")
 				)
 			);
 
 			Exp modifyExp = Exp.Mul(
-				Exp.LoopVarInt(LoopVarPart.VALUE),
+				Exp.IntLoopVar(LoopVarPart.VALUE),
 				Exp.Val(2)
 			);
 
 			Expression applyExp = Exp.Build(
-				CdtExp.ModifyByPath(
+				CDTExp.ModifyByPath(
 					Exp.Type.MAP,
 					ModifyFlag.DEFAULT,
 					modifyExp,
@@ -858,7 +858,7 @@ namespace Aerospike.Test
 			CTX ctx2 = CTX.AllChildren();
 
 			Expression selectExp = Exp.Build(
-				CdtExp.SelectByPath(
+				CDTExp.SelectByPath(
 					Exp.Type.LIST,
 					SelectFlag.VALUE,
 					Exp.MapBin("data"),
@@ -911,12 +911,12 @@ namespace Aerospike.Test
 			CTX ctx2 = CTX.AllChildren();
 
 			Exp modifyExp = Exp.Div(
-				Exp.LoopVarInt(LoopVarPart.VALUE),
+				Exp.IntLoopVar(LoopVarPart.VALUE),
 				Exp.Val(10)
 			);
 
 			Expression applyExp = Exp.Build(
-				CdtExp.ModifyByPath(
+				CDTExp.ModifyByPath(
 					Exp.Type.MAP,
 					ModifyFlag.DEFAULT,
 					modifyExp,
@@ -979,7 +979,7 @@ namespace Aerospike.Test
 			CTX ctx2 = CTX.AllChildren();
 
 			Expression selectExp = Exp.Build(
-				CdtExp.SelectByPath(
+				CDTExp.SelectByPath(
 					Exp.Type.LIST,
 					SelectFlag.MAP_KEY,
 					Exp.MapBin("data"),
@@ -1057,20 +1057,20 @@ namespace Aerospike.Test
 						MapReturnType.VALUE,
 						Exp.Type.BOOL,
 						Exp.Val("active"),
-						Exp.LoopVarMap(LoopVarPart.VALUE)
+						Exp.MapLoopVar(LoopVarPart.VALUE)
 					),
 					Exp.Val(true)
 				)
 			);
 			CTX ctx3 = CTX.AllChildrenWithFilter(
 				Exp.EQ(
-					Exp.LoopVarString(LoopVarPart.MAP_KEY),
+					Exp.StringLoopVar(LoopVarPart.MAP_KEY),
 					Exp.Val("name")
 				)
 			);
 
 			Expression selectExp = Exp.Build(
-				CdtExp.SelectByPath(
+				CDTExp.SelectByPath(
 					Exp.Type.LIST,
 					SelectFlag.VALUE,
 					Exp.MapBin("data"),
@@ -1123,7 +1123,7 @@ namespace Aerospike.Test
 			CTX ctx2 = CTX.AllChildren();
 
 			Expression selectExp = Exp.Build(
-				CdtExp.SelectByPath(
+				CDTExp.SelectByPath(
 					Exp.Type.LIST,
 					SelectFlag.VALUE,
 					Exp.MapBin("nonexistent"),
@@ -1170,7 +1170,7 @@ namespace Aerospike.Test
 			CTX ctx2 = CTX.AllChildren();
 
 			Expression selectExp = Exp.Build(
-				CdtExp.SelectByPath(
+				CDTExp.SelectByPath(
 					Exp.Type.LIST,
 					SelectFlag.VALUE,
 					Exp.MapBin("data"),
@@ -1180,12 +1180,12 @@ namespace Aerospike.Test
 
 			// Modify values (double them)
 			Exp modifyExp = Exp.Mul(
-				Exp.LoopVarInt(LoopVarPart.VALUE),
+				Exp.IntLoopVar(LoopVarPart.VALUE),
 				Exp.Val(2)
 			);
 
 			Expression applyExp = Exp.Build(
-				CdtExp.ModifyByPath(
+				CDTExp.ModifyByPath(
 					Exp.Type.MAP,
 					ModifyFlag.DEFAULT,
 					modifyExp,

@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2025 Aerospike, Inc.
+ * Copyright 2012-2026 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -17,7 +17,7 @@
 
 namespace Aerospike.Client
 {
-	public abstract class CdtExp
+	public abstract class CDTExp
 	{
 		/// <summary>
 		/// The module identifier for CDT expressions.
@@ -49,7 +49,7 @@ namespace Aerospike.Client
 		/// <param name="ctx"></param>
 		public static Exp SelectByPath(Exp.Type returnType, SelectFlag flags, Exp bin, params CTX[] ctx)
 		{
-			byte[] bytes = PackCdtSelect(Type.SELECT, flags, ctx);
+			byte[] bytes = PackCDTSelect(Type.SELECT, flags, ctx);
 
 			return new Exp.Module(bin, bytes, (int)returnType, MODULE);
 		}
@@ -64,12 +64,12 @@ namespace Aerospike.Client
 		/// <param name="ctx"></param>
 		public static Exp ModifyByPath(Exp.Type returnType, ModifyFlag modifyFlag, Exp modifyExp, Exp bin, params CTX[] ctx)
 		{
-			byte[] bytes = PackCdtModify(Type.SELECT, modifyFlag, modifyExp, ctx);
+			byte[] bytes = PackCDTModify(Type.SELECT, modifyFlag, modifyExp, ctx);
 
 			return new Exp.Module(bin, bytes, (int)returnType, MODULE | MODIFY);
 		}
 
-		private static byte[] PackCdtModify(Type type, ModifyFlag modifyFlags, Exp modifyExp, params CTX[] ctx)
+		private static byte[] PackCDTModify(Type type, ModifyFlag modifyFlags, Exp modifyExp, params CTX[] ctx)
 		{
 			Packer packer = new Packer();
 
@@ -96,7 +96,7 @@ namespace Aerospike.Client
 			return packer.ToByteArray();
 		}
 
-		private static byte[] PackCdtSelect(Type type, SelectFlag selectFlag, params CTX[] ctx)
+		private static byte[] PackCDTSelect(Type type, SelectFlag selectFlag, params CTX[] ctx)
 		{
 			Packer packer = new Packer();
 
