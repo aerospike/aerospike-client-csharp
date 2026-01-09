@@ -46,7 +46,7 @@ runs:
       shell: pwsh
       working-directory: AerospikeTest
       # Framework-dependent deployment - test runner uses 'dotnet exec' with .NET installed
-      run: dotnet publish AerospikeTest.csproj -r linux-x64 --no-restore --no-build --self-contained false
+      run: dotnet publish AerospikeTest.csproj -r linux-x64
         
     - name: Zip it up
       shell: pwsh
