@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2025 Aerospike, Inc.
+ * Copyright 2012-2026 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -40,6 +40,8 @@ namespace Aerospike.Client
 			HLL = 9
 		}
 
+		public const int CTX_EXP = 0x04;
+
 		//--------------------------------------------------
 		// Build
 		//--------------------------------------------------
@@ -50,6 +52,70 @@ namespace Aerospike.Client
 		public static Expression Build(Exp exp)
 		{
 			return new Expression(exp);
+		}
+
+		/// <summary>
+		/// Helper method to create Exp objects from unpacked objects.
+		/// </summary>
+		/// <param name="obj"></param>
+		/// <returns></returns>
+		public static Exp Get(object obj)
+		{
+			if (obj == null)
+			{
+				return Nil();
+			}
+
+			if (obj is byte[] bytes)
+			{
+				return new Blob(bytes);
+			}
+
+			Packer packer = new();
+			if (obj is IList list)
+			{
+				if (list.Count != 0)
+				{
+					if (list[0] is int || list[0] is long)
+					{
+						// This might be a command array, try to reconstruct it
+						// For complex expressions, return as ExpBytes
+						packer.PackObject(obj);
+						return new ExpBytes(new Expression(packer.ToByteArray()));
+					}
+				}
+				return new ListVal(list);
+			}
+
+			if (obj is IDictionary dict)
+			{
+				return new MapVal(dict);
+			}
+
+			TypeCode code = System.Type.GetTypeCode(obj.GetType());
+			switch (code)
+			{
+				case TypeCode.Empty:
+					return Nil();
+				case TypeCode.Boolean:
+					return new Bool((bool)obj);
+				case TypeCode.Int16:
+					return new Int((short)obj);
+				case TypeCode.Int32:
+					return new Int((int)obj);
+				case TypeCode.Int64:
+					return new Int((long)obj);
+				case TypeCode.Single:
+					return new Float((float)obj);
+				case TypeCode.Double:
+					return new Float((double)obj);
+				case TypeCode.String:
+					return new Str((string)obj);
+			}
+
+			// For unknown types, wrap as ExpBytes
+			packer.PackObject(obj);
+			return new ExpBytes(new Expression(packer.ToByteArray()));
 		}
 
 		//--------------------------------------------------
@@ -1253,6 +1319,133 @@ namespace Aerospike.Client
 			return new CmdStr(VAR, name);
 		}
 
+		/// <summary>
+		/// Create expression that references a built-in variable.
+		/// Requires server version 8.1.1
+		/// <example>
+		/// <code>
+		/// Exp.StringLoopVar(LoopVarPart.MAP_KEY)
+		/// </code>
+		/// </example>
+		/// </summary>
+		public static Exp StringLoopVar(LoopVarPart part)
+		{
+			return new VarExp(Type.STRING, part);
+		}
+
+		/// <summary>
+		/// Create expression that references a built-in variable.
+		/// Requires server version 8.1.1
+		/// <example>
+		/// <code>
+		/// Exp.IntLoopVar(LoopVarPart.MAP_KEY)
+		/// </code>
+		/// </example>
+		/// </summary>
+		public static Exp IntLoopVar(LoopVarPart part)
+		{
+			return new VarExp(Type.INT, part);
+		}
+
+		/// <summary>
+		/// Create expression that references a built-in variable.
+		/// Requires server version 8.1.1
+		/// <example>
+		/// <code>
+		/// Exp.FloatLoopVar(LoopVarPart.MAP_KEY)
+		/// </code>
+		/// </example>
+		/// </summary>
+		public static Exp FloatLoopVar(LoopVarPart part)
+		{
+			return new VarExp(Type.FLOAT, part);
+		}
+
+		/// <summary>
+		/// Create expression that references a built-in variable.
+		/// Requires server version 8.1.1
+		/// <example>
+		/// <code>
+		/// Exp.ListLoopVar(LoopVarPart.MAP_KEY)
+		/// </code>
+		/// </example>
+		/// </summary>
+		public static Exp ListLoopVar(LoopVarPart part)
+		{
+			return new VarExp(Type.LIST, part);
+		}
+
+		/// <summary>
+		/// Create expression that references a built-in variable.
+		/// Requires server version 8.1.1
+		/// <example>
+		/// <code>
+		/// Exp.MapLoopVar(LoopVarPart.MAP_KEY)
+		/// </code>
+		/// </example>
+		/// </summary>
+		public static Exp MapLoopVar(LoopVarPart part)
+		{
+			return new VarExp(Type.MAP, part);
+		}
+
+		/// <summary>
+		/// Create expression that references a built-in variable.
+		/// Requires server version 8.1.1
+		/// <example>
+		/// <code>
+		/// Exp.BlobLoopVar(LoopVarPart.MAP_KEY)
+		/// </code>
+		/// </example>
+		/// </summary>
+		public static Exp BlobLoopVar(LoopVarPart part)
+		{
+			return new VarExp(Type.BLOB, part);
+		}
+
+
+		/// <summary>
+		/// Create expression that references a built-in variable.
+		/// Requires server version 8.1.1
+		/// <example>
+		/// <code>
+		/// Exp.NilLoopVar(LoopVarPart.MAP_KEY)
+		/// </code>
+		/// </example>
+		/// </summary>
+		public static Exp NilLoopVar(LoopVarPart part)
+		{
+			return new VarExp(Type.NIL, part);
+		}
+
+		/// <summary>
+		/// Create expression that references a built-in variable.
+		/// Requires server version 8.1.1
+		/// <example>
+		/// <code>
+		/// Exp.GeoJSONLoopVar(LoopVarPart.MAP_KEY)
+		/// </code>
+		/// </example>
+		/// </summary>
+		public static Exp GeoJSONLoopVar(LoopVarPart part)
+		{
+			return new VarExp(Type.GEO, part);
+		}
+
+		/// <summary>
+		/// Creates a result remove expression.
+		/// Requires server version 8.1.1
+		/// <example>
+		/// <code>
+		/// Exp.RemoveResults()
+		/// </code>
+		/// </example>
+		/// </summary>
+		public static Exp RemoveResults()
+		{
+			return new Cmd(RESULT_REMOVE);
+		}
+
 		//--------------------------------------------------
 		// Miscellaneous
 		//--------------------------------------------------
@@ -1350,6 +1543,8 @@ namespace Aerospike.Client
 		private const int KEY = 80;
 		private const int BIN = 81;
 		private const int BIN_TYPE = 82;
+		private const int RESULT_REMOVE = 100;
+		private const int VAR_BUILTIN = 122;
 		private const int COND = 123;
 		private const int VAR = 124;
 		private const int LET = 125;
@@ -1703,6 +1898,26 @@ namespace Aerospike.Client
 			public override void Pack(Packer packer)
 			{
 				packer.PackNil();
+			}
+		}
+
+		private sealed class VarExp : Exp
+		{
+			private readonly int type;
+			private readonly int varId;
+
+			internal VarExp(Exp.Type type, LoopVarPart varId)
+			{
+				this.type = (int)type;
+				this.varId = (int)varId;
+			}
+
+			public override void Pack(Packer packer)
+			{
+				packer.PackArrayBegin(3);
+				packer.PackNumber(Exp.VAR_BUILTIN);
+				packer.PackNumber(type);
+				packer.PackNumber(varId);
 			}
 		}
 

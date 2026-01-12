@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2026 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -48,15 +48,32 @@ namespace Aerospike.Client
 			return CreateOperation(Operation.Type.EXP_READ, name, exp, (int)flags);
 		}
 
+		public static Operation Read(string name, byte[] b, int flags)
+		{
+			return CreateOperation(Operation.Type.EXP_READ, name, b, flags);
+		}
+
 		private static Operation CreateOperation(Operation.Type type, string name, Expression exp, int flags)
 		{
-			Packer packer = new Packer();
+			byte[] packedBytes = PackOperation(type, name, exp.Bytes, flags);
+			return new Operation(type, name, Value.Get(packedBytes));
+		}
+
+		private static Operation CreateOperation(Operation.Type type, string name, byte[] b, int flags)
+		{
+			byte[] packedBytes = PackOperation(type, name, b, flags);
+			return new Operation(type, name, Value.Get(packedBytes));
+		}
+
+		private static byte[] PackOperation(Operation.Type type, string name, byte[] b, int flags)
+		{
+			Packer packer = new();
 			packer.PackArrayBegin(2);
-			byte[] b = exp.Bytes;
 			packer.PackByteArray(b, 0, b.Length);
 			packer.PackNumber(flags);
 
-			return new Operation(type, name, Value.Get(packer.ToByteArray()));
+			return packer.ToByteArray();
 		}
+
 	}
 }

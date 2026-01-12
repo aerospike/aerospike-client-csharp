@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2022 Aerospike, Inc.
+ * Copyright 2012-2026 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -279,6 +279,16 @@ namespace Aerospike.Client
 			return packer.ToByteArray();
 		}
 
+		public static byte[] Pack(int command, int v1, Expression expression)
+		{
+			Packer packer = new Packer();
+			packer.PackArrayBegin(3);
+			packer.PackNumber(command);
+			packer.PackNumber(v1);
+			packer.PackByteArray(expression.Bytes, 0, expression.Bytes.Length);
+			return packer.ToByteArray();
+		}
+
 		public static byte[] Pack(int command, Exp v1)
 		{
 			Packer packer = new Packer();
@@ -372,7 +382,14 @@ namespace Aerospike.Client
 				foreach (CTX c in ctx)
 				{
 					packer.PackNumber(c.id);
-					c.value.Pack(packer);
+					if (c.value != null)
+					{
+						c.value.Pack(packer);
+					}
+					else
+					{
+						packer.PackByteArray(c.exp.Bytes, 0, c.exp.Bytes.Length);
+					}
 				}
 			}
 		}
@@ -385,7 +402,14 @@ namespace Aerospike.Client
 			foreach (CTX c in ctx)
 			{
 				packer.PackNumber(c.id);
-				c.value.Pack(packer);
+				if (c.value != null)
+				{
+					c.value.Pack(packer);
+				}
+				else
+				{
+					packer.PackByteArray(c.exp.Bytes, 0, c.exp.Bytes.Length);
+				}
 			}
 			return packer.ToByteArray();
 		}

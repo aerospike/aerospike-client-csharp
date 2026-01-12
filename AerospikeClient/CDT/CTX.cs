@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2023 Aerospike, Inc.
+ * Copyright 2012-2026 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -25,6 +25,22 @@ namespace Aerospike.Client
 	/// </summary>
 	public sealed class CTX
 	{
+		/// <summary>
+		/// Apply operation to all children of the current context.
+		/// This allows traversing all items in a collection without filtering.
+		/// </summary>
+		public static CTX AllChildren()
+		{
+			Expression expression = Exp.Build(Exp.Val(true));
+			return new CTX(Exp.CTX_EXP, expression);
+		}
+
+		public static CTX AllChildrenWithFilter(Exp exp)
+		{
+			Expression expression = Exp.Build(exp);
+			return new CTX(Exp.CTX_EXP, expression);
+		}
+
 		/// <summary>
 		/// Lookup list by index offset.
 		/// <para>
@@ -161,9 +177,18 @@ namespace Aerospike.Client
 				}
 
 				var obj = list[i];
-				Value val = Value.Get(obj);
-
-				ctx[count++] = new CTX(id, val);
+				// Check if this is an expression context based on the id
+				if (id == Exp.CTX_EXP)
+				{
+					Expression exp = Exp.Build(Exp.Get(obj));
+					ctx[count++] = new CTX(id, exp);
+				}
+				else
+				{
+					// This is a value context
+					Value val = Value.Get(obj);
+					ctx[count++] = new CTX(id, val);
+				}
 				i++;
 			}
 			return ctx;
@@ -208,11 +233,20 @@ namespace Aerospike.Client
 
 		public readonly int id;
 		public readonly Value value;
+		public readonly Expression exp;
 
 		private CTX(int id, Value value)
 		{
 			this.id = id;
 			this.value = value;
+			this.exp = null;
+		}
+
+		private CTX(int id, Expression exp)
+		{
+			this.id = id;
+			this.value = null;
+			this.exp = exp;
 		}
 	}
 }
