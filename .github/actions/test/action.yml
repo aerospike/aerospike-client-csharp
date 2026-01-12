@@ -13,7 +13,11 @@ inputs:
     description: OIDC audience
   server-type:
     required: true
-    description: Server type aerospike-server or aerospike-server-enterprise
+    description: Server type `aerospike-server` or `aerospike-server-enterprise`
+  strong-consistency:
+    required: false
+    default: "1"
+    description: Enable strong consistency (`1` or `0`)
 
 runs:
   using: composite
@@ -25,7 +29,7 @@ runs:
         server-type: ${{ inputs.server-type }}
         oidc-provider: ${{ inputs.oidc-provider }}
         oidc-audience: ${{ inputs.oidc-audience }}
-        strong-consistency: 1
+        strong-consistency: ${{ inputs.strong-consistency }}
 
     - name: Download test artifacts
       uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0

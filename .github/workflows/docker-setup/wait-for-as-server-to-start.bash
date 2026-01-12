@@ -18,7 +18,7 @@ while true; do
     # grep doesn't have a way to print all lines passed as input.
     # ack does have an option but it doesn't come installed by default
     echo "Checking if we can reach the server via the service port..."
-    # shellcheck disable=SC2086
+    # shellcheck disable=SC2086 -- SECURITY_FLAGS contains multiple arguments (-U admin -P admin) that must be word split
     if call_from_tools_container asinfo $SECURITY_FLAGS -v status | tee >(cat) | grep -qE "^ok"
     then
         # Server is ready when asinfo returns ok
@@ -35,7 +35,7 @@ while true; do
     # We assume that when an ERROR is returned, the cluster is not stable yet (i.e not fully initialized)
     # When we use strong consistency, the server assumes all of its partitions are dead because it's running on a new
     # storage device. That is why we ignore-migrations here
-    # shellcheck disable=SC2086
+    # shellcheck disable=SC2086 -- SECURITY_FLAGS contains multiple arguments (-U admin -P admin) that must be word split
     if call_from_tools_container asinfo $SECURITY_FLAGS -v "cluster-stable:ignore-migrations=true" 2>&1 | (! grep -qE "^ERROR")
     then
         echo "Server is in a stable state."

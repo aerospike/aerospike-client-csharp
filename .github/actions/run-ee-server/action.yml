@@ -27,7 +27,7 @@ inputs:
     required: false
     description: Name for test container
   server-type:
-    required: true
+    required: false
     default: aerospike-server-enterprise
     description: Server type `aerospike-server` or `aerospike-server-enterprise`
   strong-consistency:
@@ -55,7 +55,7 @@ runs:
   - run: docker login ${{ inputs.container-repo-url }} --username ${{ steps.setup-jfrog-cli.outputs.oidc-user }} --password ${{ steps.setup-jfrog-cli.outputs.oidc-token }}
     shell: bash
 
-  - run: echo IMAGE_FULL_NAME=artifact.aerospike.io/oci/${{ inputs.server-type }}:${{ inputs.server-tag }} >> $GITHUB_ENV
+  - run: run: echo IMAGE_FULL_NAME=artifact.aerospike.io/docker/${{ inputs.server-type }}:${{ inputs.server-tag }} >> $GITHUB_ENV
     shell: bash
 
   - name: Run EE server setup script

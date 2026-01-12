@@ -76,9 +76,9 @@ fi
 # Strong consistency setup
 # Set up roster
 if [[ "$STRONG_CONSISTENCY" == "1" ]]; then
-    # shellcheck disable=SC2086
+    # shellcheck disable=SC2086 -- SECURITY_FLAGS contains multiple arguments (-U admin -P admin) that must be word split
     call_from_tools_container asadm $SECURITY_FLAGS --enable --execute "manage roster stage observed ns test"
-    # shellcheck disable=SC2086
+    # shellcheck disable=SC2086 -- SECURITY_FLAGS contains multiple arguments (-U admin -P admin) that must be word split
     call_from_tools_container asadm $SECURITY_FLAGS --enable --execute "manage recluster"
 fi
 
