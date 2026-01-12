@@ -45,8 +45,9 @@ runs:
     - name: Publish test project
       shell: pwsh
       working-directory: AerospikeTest
-      # Framework-dependent deployment - test runner uses 'dotnet exec' with .NET installed
-      run: dotnet publish AerospikeTest.csproj -r linux-x64 --no-restore --no-build --self-contained false
+      # Framework-dependent deployment for linux-x64 - test runner uses 'dotnet exec' with .NET installed
+      # Note: Cannot use --no-restore --no-build because the initial restore/build didn't include linux-x64 RID
+      run: dotnet publish AerospikeTest.csproj -r linux-x64 --self-contained false
         
     - name: Zip it up
       shell: pwsh
