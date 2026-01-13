@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2025 Aerospike, Inc.
+ * Copyright 2012-2026 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -166,9 +166,26 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException"></exception>
 		public void VerifyCommand()
 		{
-			if (State != TxnState.OPEN)
+			switch (State)
 			{
-				throw new AerospikeException("Command not allowed in current transaction state: " + State);
+				case TxnState.OPEN:
+					return;
+
+				case TxnState.COMMITTED:
+					throw new AerospikeException(ResultCode.TXN_ALREADY_COMMITTED,
+						"Issuing commands to this transaction is forbidden because it has been committed.");
+
+				case TxnState.ABORTED:
+					throw new AerospikeException(ResultCode.TXN_ALREADY_ABORTED,
+						"Issuing commands to this transaction is forbidden because it has been aborted.");
+
+				case TxnState.VERIFIED:
+					throw new AerospikeException(ResultCode.TXN_FAILED,
+						"Issuing commands to this transaction is forbidden because it is currently being committed.");
+
+				default:
+					throw new AerospikeException(ResultCode.TXN_FAILED,
+						"Issuing commands to this transaction is forbidden because it is in an invalid state.");
 			}
 		}
 

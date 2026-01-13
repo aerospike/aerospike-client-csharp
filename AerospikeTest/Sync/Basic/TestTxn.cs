@@ -1,5 +1,5 @@
 ﻿/* 
- * Copyright 2012-2025 Aerospike, Inc.
+ * Copyright 2012-2026 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -692,7 +692,7 @@ namespace Aerospike.Test
 			}
 			catch (AerospikeException ae)
 			{
-				if (!ae.Message.Contains("Command not allowed in current transaction state:"))
+				if (!ae.Message.Contains("Issuing commands to this transaction is forbidden"))
 				{
 					throw;
 				}
