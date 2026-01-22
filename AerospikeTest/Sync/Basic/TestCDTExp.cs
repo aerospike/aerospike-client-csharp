@@ -1,4 +1,4 @@
-﻿/* 
+/* 
  * Copyright 2012-2026 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
@@ -1226,6 +1226,250 @@ namespace Aerospike.Test
 
 			long firstValue = (long)finalValues[0];
 			Assert.AreEqual(2, firstValue);
+		}
+
+		[TestMethod]
+		public void TestBoolLoopVarSelect()
+		{
+			var key = new Key(SuiteHelpers.ns, SuiteHelpers.set, "boolLoopVarSelectKey");
+
+			try
+			{
+				client.Delete(null, key);
+			}
+			catch (Exception)
+			{
+			}
+
+			Dictionary<string, object> data = [];
+			List<Dictionary<string, object>> items = [];
+
+			Dictionary<string, object> item1 = new()
+			{
+				{ "name", "Item1" },
+				{ "active", true }
+			};
+			items.Add(item1);
+
+			Dictionary<string, object> item2 = new()
+			{
+				{ "name", "Item2" },
+				{ "active", false }
+			};
+			items.Add(item2);
+
+			Dictionary<string, object> item3 = new()
+			{
+				{ "name", "Item3" },
+				{ "active", true }
+			};
+			items.Add(item3);
+
+			data.Add("items", items);
+
+			var bin = new Bin("data", data);
+			client.Put(null, key, bin);
+
+			// Select names where active field is true using BoolLoopVar
+			CTX ctx1 = CTX.MapKey(Value.Get("items"));
+			CTX ctx2 = CTX.AllChildrenWithFilter(
+				Exp.EQ(
+					MapExp.GetByKey(
+						MapReturnType.VALUE,
+						Exp.Type.BOOL,
+						Exp.Val("active"),
+						Exp.MapLoopVar(LoopVarPart.VALUE)
+					),
+					Exp.Val(true)
+				)
+			);
+			CTX ctx3 = CTX.AllChildrenWithFilter(
+				Exp.EQ(
+					Exp.StringLoopVar(LoopVarPart.MAP_KEY),
+					Exp.Val("name")
+				)
+			);
+
+			Expression selectExp = Exp.Build(
+				CDTExp.SelectByPath(
+					Exp.Type.LIST,
+					SelectFlag.VALUE,
+					Exp.MapBin("data"),
+					ctx1, ctx2, ctx3
+				)
+			);
+
+			Record result = client.Operate(null, key,
+				ExpOperation.Write("activeNames", selectExp, ExpWriteFlags.DEFAULT)
+			);
+
+			// Operation should succeed
+			Assert.IsNotNull(result);
+
+			Record finalRecord = client.Get(null, key);
+			// Final record should exist
+			Assert.IsNotNull(finalRecord);
+
+			List<object> activeNames = (List<object>)finalRecord.GetList("activeNames");
+			// Active names should exist
+			Assert.IsNotNull(activeNames);
+			// Should have 2 active items
+			Assert.AreEqual(2, activeNames.Count);
+			// Should contain Item1
+			Assert.IsTrue(activeNames.Contains("Item1"));
+			// Should contain Item3
+			Assert.IsTrue(activeNames.Contains("Item3"));
+		}
+
+		[TestMethod]
+		public void TestBoolLoopVarModify()
+		{
+			var key = new Key(SuiteHelpers.ns, SuiteHelpers.set, "boolLoopVarModifyKey");
+
+			try
+			{
+				client.Delete(null, key);
+			}
+			catch (Exception)
+			{
+			}
+
+			Dictionary<string, object> data = [];
+			Dictionary<string, object> flags = new()
+			{
+				{ "flag1", true },
+				{ "flag2", false },
+				{ "flag3", true }
+			};
+			data.Add("flags", flags);
+
+			var bin = new Bin("data", data);
+			client.Put(null, key, bin);
+
+			// Negate all boolean flags using BoolLoopVar
+			CTX ctx1 = CTX.MapKey(Value.Get("flags"));
+			CTX ctx2 = CTX.AllChildren();
+
+			Exp modifyExp = Exp.Not(Exp.BoolLoopVar(LoopVarPart.VALUE));
+
+			Expression applyExp = Exp.Build(
+				CDTExp.ModifyByPath(
+					Exp.Type.MAP,
+					ModifyFlag.DEFAULT,
+					modifyExp,
+					Exp.MapBin("data"),
+					ctx1, ctx2
+				)
+			);
+
+			Record result = client.Operate(null, key,
+				ExpOperation.Write("data", applyExp, ExpWriteFlags.UPDATE_ONLY)
+			);
+
+			// Operation should succeed
+			Assert.IsNotNull(result);
+
+			Record finalRecord = client.Get(null, key);
+			// Final record should exist
+			Assert.IsNotNull(finalRecord);
+
+			Dictionary<object, object> finalData = (Dictionary<object, object>)finalRecord.GetValue("data");
+			// Data map should exist
+			Assert.IsNotNull(finalData);
+
+			Dictionary<object, object> finalFlags = (Dictionary<object, object>)finalData["flags"];
+			// Flags map should exist
+			Assert.IsNotNull(finalFlags);
+
+			// flag1 should be false (was true)
+			Assert.IsFalse((bool?)finalFlags["flag1"]);
+			// flag2 should be true (was false)
+			Assert.IsTrue((bool?)finalFlags["flag2"]);
+			// flag3 should be false (was true)
+			Assert.IsFalse((bool?)finalFlags["flag3"]);
+		}
+
+		[TestMethod]
+		public void TestHLLLoopVarWithHLLBins()
+		{
+			// Note: HLL operations on HLL items nested in lists/maps are not currently
+			// supported by the server. This test demonstrates HLLLoopVar usage with
+			// HLL expressions in a filtering context.
+			var key = new Key(SuiteHelpers.ns, SuiteHelpers.set, "hllLoopVarKey");
+
+			try
+			{
+				client.Delete(null, key);
+			}
+			catch (Exception)
+			{
+			}
+
+			// Create HLL values with different counts in separate bins
+			List<Value> entries1 = [];
+			for (int i = 0; i < 10; i++)
+			{
+				entries1.Add(Value.Get("item" + i));
+			}
+
+			List<Value> entries2 = [];
+			for (int i = 0; i < 50; i++)
+			{
+				entries2.Add(Value.Get("item" + i));
+			}
+
+			List<Value> entries3 = [];
+			for (int i = 0; i < 5; i++)
+			{
+				entries3.Add(Value.Get("item" + i));
+			}
+
+			// Create HLLs in separate bins and get them back
+			Record rec = client.Operate(null, key,
+				HLLOperation.Add(HLLPolicy.Default, "hll1", entries1, 8),
+				HLLOperation.Add(HLLPolicy.Default, "hll2", entries2, 8),
+				HLLOperation.Add(HLLPolicy.Default, "hll3", entries3, 8),
+				Operation.Get("hll1"),
+				Operation.Get("hll2"),
+				Operation.Get("hll3")
+			);
+
+			// Verify HLL bins were created
+			Assert.IsNotNull(rec);
+
+			// Extract HLLValue objects for use in expressions
+			List<object> results1 = (List<object>)rec.GetList("hll1");
+			Value.HLLValue hll1 = (Value.HLLValue)results1[1];
+			// HLL1 should exist
+			Assert.IsNotNull(hll1);
+
+			List<object> results2 = (List<object>)rec.GetList("hll2");
+			Value.HLLValue hll2 = (Value.HLLValue)results2[1];
+			// HLL2 should exist
+			Assert.IsNotNull(hll2);
+
+			List<object> results3 = (List<object>)rec.GetList("hll3");
+			Value.HLLValue hll3 = (Value.HLLValue)results3[1];
+			// HLL3 should exist
+			Assert.IsNotNull(hll3);
+
+			// Test that HLLLoopVar can be used in expressions with HLL union operations
+			List<Value.HLLValue> hllList = [hll1, hll2];
+
+			// Use expression to get HLL union count
+			Record checkRec = client.Operate(null, key,
+				ExpOperation.Read("unionCount",
+					Exp.Build(HLLExp.GetUnionCount(Exp.Val(hllList), Exp.HLLBin("hll3"))),
+					ExpReadFlags.DEFAULT)
+			);
+
+			// Check record should exist
+			Assert.IsNotNull(checkRec);
+			object unionCount = checkRec.GetValue("unionCount");
+			// Union count should exist
+			Assert.IsNotNull(unionCount);
+			// Union count should be positive
+			Assert.IsTrue((long)unionCount >= 3);
 		}
 	}
 }

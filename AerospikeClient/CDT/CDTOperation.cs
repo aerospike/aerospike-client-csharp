@@ -89,7 +89,9 @@ namespace Aerospike.Client
 				}
 			}
 
-			packer.PackNumber((int)flags);
+			// Ensure the apply flag is cleared, since no expression is provided.
+			// This avoids problems if the caller accidentally sets bit 2 in the flags field.
+			packer.PackNumber((int)flags & ~4);
 
 			return packer.ToByteArray();
 		}
