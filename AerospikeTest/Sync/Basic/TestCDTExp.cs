@@ -1,4 +1,4 @@
-﻿/* 
+/* 
  * Copyright 2012-2026 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
@@ -21,6 +21,15 @@ namespace Aerospike.Test
 	[TestClass]
 	public class TestCDTExp : TestSync
 	{
+		[TestInitialize()]
+		public void CheckServerVersion()
+		{
+			if (client.Cluster.GetRandomNode().serverVersion < Node.SERVER_VERSION_8_1_1)
+			{
+				Assert.Inconclusive("Path expression tests require server version 8.1.1 or later");
+			}
+		}
+
 		[TestMethod]
 		public void TestCDTExpSelect()
 		{
