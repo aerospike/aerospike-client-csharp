@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2025 Aerospike, Inc.
+ * Copyright 2012-2026 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -801,7 +801,13 @@ namespace Aerospike.Client
 								break;
 
 							case PRIVILEGES:
+								int startOffset = base.dataOffset;
 								ParsePrivileges(role);
+								int bytesRead = base.dataOffset - startOffset;
+								if (bytesRead < len)
+								{
+									base.dataOffset += len - bytesRead;
+								}
 								break;
 
 							case WHITELIST:
@@ -851,7 +857,22 @@ namespace Aerospike.Client
 				for (int i = 0; i < size; i++)
 				{
 					Privilege priv = new Privilege();
-					priv.code = (PrivilegeCode)base.dataBuffer[base.dataOffset++];
+					int codeValue = base.dataBuffer[base.dataOffset++];
+
+					if (Enum.IsDefined(typeof(PrivilegeCode), codeValue))
+					{
+						priv.code = (PrivilegeCode)codeValue;
+					}
+					else
+					{
+						// Use UNKNOWN for forward compatibility with new privilege codes
+						// from future server versions.
+						if (Log.WarnEnabled())
+						{
+							Log.Warn("Unknown privilege code received from server: " + codeValue + ". Using UNKNOWN.");
+						}
+						priv.code = PrivilegeCode.UNKNOWN;
+					}
 
 					if (priv.CanScope())
 					{

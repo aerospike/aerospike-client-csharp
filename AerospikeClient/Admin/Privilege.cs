@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2022 Aerospike, Inc.
+ * Copyright 2012-2026 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -45,7 +45,11 @@ namespace Aerospike.Client
 		/// </summary>
 		public bool CanScope()
 		{
-			return code >= PrivilegeCode.READ;
+			// Unknown privileges cannot be scoped since we don't know their characteristics
+			// MASKING_ADMIN (15) is global only
+			// Data privileges (id >= 10) can be scoped except MASKING_ADMIN
+			int id = (int)code;
+			return id >= 10 && id != 15;
 		}
 
 		/// <summary>
@@ -209,8 +213,20 @@ namespace Aerospike.Client
 				case PrivilegeCode.TRUNCATE:
 					return Role.Truncate;
 
+				case PrivilegeCode.MASKING_ADMIN:
+					return Role.MaskingAdmin;
+
+				case PrivilegeCode.READ_MASKED:
+					return Role.ReadMasked;
+
+				case PrivilegeCode.WRITE_MASKED:
+					return Role.WriteMasked;
+
+				case PrivilegeCode.UNKNOWN:
+					return Role.Unknown;
+
 				default:
-					throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Invalid privilege code: " + code);
+					return Role.Unknown;
 			}
 		}
 	}
