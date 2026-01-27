@@ -1,5 +1,5 @@
-﻿/* 
- * Copyright 2012-2025 Aerospike, Inc.
+/* 
+ * Copyright 2012-2026 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -125,12 +125,17 @@ namespace Aerospike.Test
 		private static void SetServerSpecific()
 		{
 			Node node = SuiteHelpers.client.Nodes[0];
+			string editionFilter = node.serverVersion >= Node.SERVER_VERSION_8_1_1 ? "release" : "edition";
 			string namespaceFilter = "namespace/" + SuiteHelpers.ns;
-			string edition = node.serverVersion >= Node.SERVER_VERSION_8_1_1 ? "release" : "edition";
-			Dictionary<string, string> map = Info.Request(null, node, edition, namespaceFilter);
+			Dictionary<string, string> map = Info.Request(null, node, editionFilter, namespaceFilter);
 
-			string namespaceTokens = map[namespaceFilter] ?? throw new Exception(string.Format("Failed to get namespace info: host={0} namespace={1}", node, SuiteHelpers.ns));
+			// Check for enterprise edition
+			string editionToken = map[editionFilter] ?? throw new Exception(string.Format("Failed to get edition: host={0} port={1}", SuiteHelpers.hosts[0].name, SuiteHelpers.port));
+			SuiteHelpers.enterprise = editionToken != null && editionToken.Contains("Enterprise");
+
+			string namespaceTokens = map[namespaceFilter] ?? throw new Exception(string.Format("Failed to get namespace info: host={0} namespace={1}", SuiteHelpers.hosts[0].name, SuiteHelpers.ns));
 			SuiteHelpers.singleBin = ParseBoolean(namespaceTokens, "single-bin");
+			SuiteHelpers.scMode = ParseBoolean(namespaceTokens, "strong-consistency");
 		}
 
 		private static bool ParseBoolean(String namespaceTokens, String name)

@@ -1,5 +1,5 @@
-﻿/* 
- * Copyright 2012-2025 Aerospike, Inc.
+/* 
+ * Copyright 2012-2026 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -22,10 +22,19 @@ using static Aerospike.Client.CommitStatus;
 
 namespace Aerospike.Test
 {
-	[TestClass, TestCategory("SCMode")]
+	[TestClass]
 	public class TestAsyncTxn : TestAsync
 	{
 		private static readonly string binName = "bin";
+
+		[TestInitialize()]
+		public void CheckSCMode()
+		{
+			if (!SuiteHelpers.scMode)
+			{
+				Assert.Inconclusive("Strong consistency mode is required for transaction tests");
+			}
+		}
 
 		[ClassInitialize()]
 		public static void Prepare(TestContext testContext)

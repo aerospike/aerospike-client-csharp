@@ -1,5 +1,5 @@
-﻿/* 
- * Copyright 2012-2025 Aerospike, Inc.
+/* 
+ * Copyright 2012-2026 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -139,9 +139,14 @@ namespace Aerospike.Test
 			Assert.AreEqual(r.GetValue("geo").GetType(), geoBin.value.GetType());
 		}
 
-		[TestMethod, TestCategory("Enterprise")]
+		[TestMethod]
 		public void PutGetCompression()
 		{
+			if (!SuiteHelpers.enterprise)
+			{
+				Assert.Inconclusive("Compression requires enterprise edition");
+			}
+
 			WritePolicy writePolicy = new()
 			{
 				compress = true

@@ -1,5 +1,5 @@
-﻿/* 
- * Copyright 2012-2022 Aerospike, Inc.
+/* 
+ * Copyright 2012-2026 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -178,9 +178,14 @@ namespace Aerospike.Test
 			}, ResultCode.FILTERED_OUT);
 		}
 
-		[TestMethod, TestCategory("Enterprise")]
+		[TestMethod]
 		public void FilterExpDurableDelete()
 		{
+			if (!SuiteHelpers.enterprise)
+			{
+				Assert.Inconclusive("Durable delete requires enterprise edition");
+			}
+
 			WritePolicy policy = new()
 			{
 				filterExp = Exp.Build(Exp.EQ(Exp.IntBin(binA), Exp.Val(1))),
@@ -198,9 +203,14 @@ namespace Aerospike.Test
 			AssertBinEqual(keyB, r, binA, 2);
 		}
 
-		[TestMethod, TestCategory("Enterprise")]
+		[TestMethod]
 		public void FilterExpDurableDeleteExcept()
 		{
+			if (!SuiteHelpers.enterprise)
+			{
+				Assert.Inconclusive("Durable delete requires enterprise edition");
+			}
+
 			WritePolicy policy = new()
 			{
 				filterExp = Exp.Build(Exp.EQ(Exp.IntBin(binA), Exp.Val(1))),
