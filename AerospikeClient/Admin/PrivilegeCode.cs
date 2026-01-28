@@ -23,13 +23,6 @@ namespace Aerospike.Client
 	public enum PrivilegeCode
 	{
 		/// <summary>
-		/// Unknown privilege code from server.
-		/// This is used for forward compatibility when the server sends
-		/// privilege codes that are not yet known to this client version.
-		/// </summary>
-		UNKNOWN = -1,
-
-		/// <summary>
 		/// User can edit/remove other users.  Global scope only.
 		/// </summary>
 		USER_ADMIN = 0,
@@ -96,10 +89,5 @@ namespace Aerospike.Client
 		/// User can read masked data only.
 		/// </summary>
 		READ_MASKED = 16,
-
-		/// <summary>
-		/// User can write masked data only.
-		/// </summary>
-		WRITE_MASKED = 17
 	}
 }

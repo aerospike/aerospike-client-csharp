@@ -801,13 +801,7 @@ namespace Aerospike.Client
 								break;
 
 							case PRIVILEGES:
-								int startOffset = base.dataOffset;
 								ParsePrivileges(role);
-								int bytesRead = base.dataOffset - startOffset;
-								if (bytesRead < len)
-								{
-									base.dataOffset += len - bytesRead;
-								}
 								break;
 
 							case WHITELIST:
@@ -857,22 +851,7 @@ namespace Aerospike.Client
 				for (int i = 0; i < size; i++)
 				{
 					Privilege priv = new Privilege();
-					int codeValue = base.dataBuffer[base.dataOffset++];
-
-					if (Enum.IsDefined(typeof(PrivilegeCode), codeValue))
-					{
-						priv.code = (PrivilegeCode)codeValue;
-					}
-					else
-					{
-						// Use UNKNOWN for forward compatibility with new privilege codes
-						// from future server versions.
-						if (Log.WarnEnabled())
-						{
-							Log.Warn("Unknown privilege code received from server: " + codeValue + ". Using UNKNOWN.");
-						}
-						priv.code = PrivilegeCode.UNKNOWN;
-					}
+					priv.code = (PrivilegeCode)base.dataBuffer[base.dataOffset++];
 
 					if (priv.CanScope())
 					{

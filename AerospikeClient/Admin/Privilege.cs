@@ -45,11 +45,7 @@ namespace Aerospike.Client
 		/// </summary>
 		public bool CanScope()
 		{
-			// Unknown privileges cannot be scoped since we don't know their characteristics
-			// MASKING_ADMIN (15) is global only
-			// Data privileges (id >= 10) can be scoped except MASKING_ADMIN
-			int id = (int)code;
-			return id >= 10 && id != 15;
+			return code >= PrivilegeCode.READ;
 		}
 
 		/// <summary>
@@ -218,12 +214,6 @@ namespace Aerospike.Client
 
 				case PrivilegeCode.READ_MASKED:
 					return Role.ReadMasked;
-
-				case PrivilegeCode.WRITE_MASKED:
-					return Role.WriteMasked;
-
-				case PrivilegeCode.UNKNOWN:
-					return Role.Unknown;
 
 				default:
 					return Role.Unknown;
