@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2025 Aerospike, Inc.
+ * Copyright 2012-2026 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -303,7 +303,14 @@ namespace Aerospike.Client
 			{
 				string versionString = map["build"];
 				versionString = versionString.Split("-")[0];
-				this.serverVersion = new Version(versionString);
+				Version parsed = new(versionString);
+				// Normalize to 4 components to ensure consistent comparisons.
+				// Use Math.Max(0, ...) to handle versions with fewer than 4 components.
+				this.serverVersion = new Version(
+					parsed.Major,
+					parsed.Minor,
+					Math.Max(0, parsed.Build),
+					Math.Max(0, parsed.Revision));
 			}
 			catch (Exception)
 			{
