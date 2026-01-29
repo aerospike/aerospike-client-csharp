@@ -38,6 +38,10 @@ inputs:
     required: false
     default: "0"
     description: Enable security (1 or 0)
+  server-image:
+    required: false
+    default: ""
+    description: Custom full docker image name (e.g., aerospike.jfrog.io/database-docker-virtual/aerospike-server-enterprise:8.1.1.0-rc27_1). Overrides container-repo-url, server-type, and server-tag if provided.
 
 runs:
   using: composite
@@ -52,10 +56,22 @@ runs:
       oidc-provider-name: ${{ inputs.oidc-provider }}
       oidc-audience: ${{ inputs.oidc-audience }}
 
-  - run: docker login ${{ inputs.container-repo-url }} --username ${{ steps.setup-jfrog-cli.outputs.oidc-user }} --password ${{ steps.setup-jfrog-cli.outputs.oidc-token }}
+  - name: Docker login to container repo
+    run: docker login ${{ inputs.container-repo-url }} --username ${{ steps.setup-jfrog-cli.outputs.oidc-user }} --password ${{ steps.setup-jfrog-cli.outputs.oidc-token }}
     shell: bash
 
-  - run: echo IMAGE_FULL_NAME=${{ inputs.container-repo-url }}/docker/${{ inputs.server-type }}:${{ inputs.server-tag }} >> $GITHUB_ENV
+  - name: Docker login to JFrog (for custom images)
+    if: ${{ inputs.server-image != '' }}
+    run: docker login aerospike.jfrog.io --username ${{ steps.setup-jfrog-cli.outputs.oidc-user }} --password ${{ steps.setup-jfrog-cli.outputs.oidc-token }}
+    shell: bash
+
+  - name: Set image name
+    run: |
+      if [ -n "${{ inputs.server-image }}" ]; then
+        echo IMAGE_FULL_NAME=${{ inputs.server-image }} >> $GITHUB_ENV
+      else
+        echo IMAGE_FULL_NAME=${{ inputs.container-repo-url }}/docker/${{ inputs.server-type }}:${{ inputs.server-tag }} >> $GITHUB_ENV
+      fi
     shell: bash
 
   - name: Run EE server setup script

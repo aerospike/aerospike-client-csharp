@@ -18,6 +18,10 @@ inputs:
     required: false
     default: "1"
     description: Enable strong consistency (`1` or `0`)
+  server-image:
+    required: false
+    default: ""
+    description: Custom full docker image name (overrides server-tag and server-type)
 
 runs:
   using: composite
@@ -27,6 +31,7 @@ runs:
       with:
         server-tag: ${{ inputs.server-tag }}
         server-type: ${{ inputs.server-type }}
+        server-image: ${{ inputs.server-image }}
         oidc-provider: ${{ inputs.oidc-provider }}
         oidc-audience: ${{ inputs.oidc-audience }}
         strong-consistency: ${{ inputs.strong-consistency }}
