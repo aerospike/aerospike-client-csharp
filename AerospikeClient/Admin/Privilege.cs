@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2022 Aerospike, Inc.
+ * Copyright 2012-2026 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -209,8 +209,14 @@ namespace Aerospike.Client
 				case PrivilegeCode.TRUNCATE:
 					return Role.Truncate;
 
+				case PrivilegeCode.MASKING_ADMIN:
+					return Role.MaskingAdmin;
+
+				case PrivilegeCode.READ_MASKED:
+					return Role.ReadMasked;
+
 				default:
-					throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Invalid privilege code: " + code);
+					return Role.Unknown;
 			}
 		}
 	}

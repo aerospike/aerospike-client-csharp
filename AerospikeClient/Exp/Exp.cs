@@ -1433,6 +1433,34 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
+		/// Create expression that references a built-in variable.
+		/// Requires server version 8.1.1
+		/// <example>
+		/// <code>
+		/// Exp.BoolLoopVar(LoopVarPart.MAP_KEY)
+		/// </code>
+		/// </example>
+		/// </summary>
+		public static Exp BoolLoopVar(LoopVarPart part)
+		{
+			return new VarExp(Type.BOOL, part);
+		}
+
+		/// <summary>
+		/// Create expression that references a built-in variable.
+		/// Requires server version 8.1.1
+		/// <example>
+		/// <code>
+		/// Exp.HLLLoopVar(LoopVarPart.MAP_KEY)
+		/// </code>
+		/// </example>
+		/// </summary>
+		public static Exp HLLLoopVar(LoopVarPart part)
+		{
+			return new VarExp(Type.HLL, part);
+		}
+
+		/// <summary>
 		/// Creates a result remove expression.
 		/// Requires server version 8.1.1
 		/// <example>

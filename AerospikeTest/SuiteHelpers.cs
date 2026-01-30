@@ -1,5 +1,5 @@
-﻿/* 
- * Copyright 2012-2025 Aerospike, Inc.
+/* 
+ * Copyright 2012-2026 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -34,4 +34,6 @@ internal static class SuiteHelpers
 	public static TlsPolicy tlsPolicy;
 	public static AuthMode authMode;
 	public static bool singleBin;
+	public static bool enterprise;
+	public static bool scMode;
 }

@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2022 Aerospike, Inc.
+ * Copyright 2012-2026 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -77,6 +77,17 @@ namespace Aerospike.Client
 		/// User can truncate data.
 		/// Requires server version 6.0+
 		/// </summary>
-		TRUNCATE = 14
+		TRUNCATE = 14,
+
+		/// <summary>
+		/// User can perform data masking administration actions.
+		/// Global scope only.
+		/// </summary>
+		MASKING_ADMIN = 15,
+
+		/// <summary>
+		/// User can read masked data only.
+		/// </summary>
+		READ_MASKED = 16,
 	}
 }
