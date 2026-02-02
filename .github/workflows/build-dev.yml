@@ -1,5 +1,5 @@
 name: Build and test dev
-run-name: Build artifacts and run dev branch tests (server-tag=${{ inputs.server-tag }})
+run-name: Build artifacts and run dev branch tests (${{ inputs.server-image && format('server-image={0}', inputs.server-image) || format('server-tag={0}', inputs.server-tag || 'latest') }})
 
 permissions:
   # This is required for requesting the OIDC token
