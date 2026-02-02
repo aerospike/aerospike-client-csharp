@@ -60,11 +60,6 @@ runs:
     run: docker login ${{ inputs.container-repo-url }} --username ${{ steps.setup-jfrog-cli.outputs.oidc-user }} --password ${{ steps.setup-jfrog-cli.outputs.oidc-token }}
     shell: bash
 
-  - name: Docker login to JFrog (for custom images)
-    if: ${{ inputs.server-image != '' }}
-    run: docker login aerospike.jfrog.io --username ${{ steps.setup-jfrog-cli.outputs.oidc-user }} --password ${{ steps.setup-jfrog-cli.outputs.oidc-token }}
-    shell: bash
-
   - name: Set image name
     run: |
       if [ -n "${{ inputs.server-image }}" ]; then
