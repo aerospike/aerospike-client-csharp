@@ -2923,6 +2923,113 @@ namespace Aerospike.Test
 				}
 			}
 		}
+
+		[TestMethod]
+		public void TestSelectByPathWithNullBinName()
+		{
+			CTX ctx1 = CTX.MapKey(Value.Get("test"));
+
+			try
+			{
+				CDTOperation.SelectByPath(null, SelectFlag.VALUE, ctx1);
+				Assert.Fail("Should throw AerospikeException with PARAMETER_ERROR");
+			}
+			catch (AerospikeException e)
+			{
+				Assert.AreEqual(ResultCode.PARAMETER_ERROR, e.Result);
+				Assert.IsTrue(e.Message.Contains("binName"));
+			}
+		}
+
+		[TestMethod]
+		public void TestSelectByPathWithEmptyBinName()
+		{
+			CTX ctx1 = CTX.MapKey(Value.Get("test"));
+
+			try
+			{
+				CDTOperation.SelectByPath("", SelectFlag.VALUE, ctx1);
+				Assert.Fail("Should throw AerospikeException with PARAMETER_ERROR");
+			}
+			catch (AerospikeException e)
+			{
+				Assert.AreEqual(ResultCode.PARAMETER_ERROR, e.Result);
+				Assert.IsTrue(e.Message.Contains("binName"));
+			}
+		}
+
+		[TestMethod]
+		public void TestModifyByPathWithNullBinName()
+		{
+			CTX ctx1 = CTX.MapKey(Value.Get("test"));
+			Expression modifyExp = Exp.Build(Exp.Val(100));
+
+			try
+			{
+				CDTOperation.ModifyByPath(null, ModifyFlag.DEFAULT, modifyExp, ctx1);
+				Assert.Fail("Should throw AerospikeException with PARAMETER_ERROR");
+			}
+			catch (AerospikeException e)
+			{
+				Assert.AreEqual(ResultCode.PARAMETER_ERROR, e.Result);
+				Assert.IsTrue(e.Message.Contains("binName"));
+			}
+		}
+
+		[TestMethod]
+		public void TestModifyByPathWithEmptyBinName()
+		{
+			CTX ctx1 = CTX.MapKey(Value.Get("test"));
+			Expression modifyExp = Exp.Build(Exp.Val(100));
+
+			try
+			{
+				CDTOperation.ModifyByPath("", ModifyFlag.DEFAULT, modifyExp, ctx1);
+				Assert.Fail("Should throw AerospikeException with PARAMETER_ERROR");
+			}
+			catch (AerospikeException e)
+			{
+				Assert.AreEqual(ResultCode.PARAMETER_ERROR, e.Result);
+				Assert.IsTrue(e.Message.Contains("binName"));
+			}
+		}
+
+		[TestMethod]
+		public void TestSelectByPathWithBinNameTooLong()
+		{
+			CTX ctx1 = CTX.MapKey(Value.Get("test"));
+			string longBinName = "1234567890123456"; // 16 characters, exceeds limit of 15
+
+			try
+			{
+				CDTOperation.SelectByPath(longBinName, SelectFlag.VALUE, ctx1);
+				Assert.Fail("Should throw AerospikeException with PARAMETER_ERROR");
+			}
+			catch (AerospikeException e)
+			{
+				Assert.AreEqual(ResultCode.PARAMETER_ERROR, e.Result);
+				Assert.IsTrue(e.Message.Contains("15") || e.Message.Contains("exceed"));
+			}
+		}
+
+		[TestMethod]
+		public void TestModifyByPathWithBinNameTooLong()
+		{
+			CTX ctx1 = CTX.MapKey(Value.Get("test"));
+			Expression modifyExp = Exp.Build(Exp.Val(100));
+			string longBinName = "1234567890123456"; // 16 characters, exceeds limit of 15
+
+			try
+			{
+				CDTOperation.ModifyByPath(longBinName, ModifyFlag.DEFAULT, modifyExp, ctx1);
+				Assert.Fail("Should throw AerospikeException with PARAMETER_ERROR");
+			}
+			catch (AerospikeException e)
+			{
+				Assert.AreEqual(ResultCode.PARAMETER_ERROR, e.Result);
+				Assert.IsTrue(e.Message.Contains("15") || e.Message.Contains("exceed"));
+			}
+		}
 	}
 }
 

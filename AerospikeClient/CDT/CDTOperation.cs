@@ -32,6 +32,12 @@ namespace Aerospike.Client
 		/// <param name="ctx">optional path to nested CDT.</param>
 		public static Operation SelectByPath(string binName, SelectFlag flags, params CTX[] ctx)
 		{
+			if (string.IsNullOrEmpty(binName) || binName.Length > Bin.MaxBinNameLength)
+			{
+				throw new AerospikeException(ResultCode.PARAMETER_ERROR,
+					$"binName cannot be null, empty, or exceed {Bin.MaxBinNameLength} characters");
+			}
+
 			byte[] packedBytes;
 			if (ctx == null || ctx.Length == 0)
 			{
@@ -55,6 +61,12 @@ namespace Aerospike.Client
 		/// <param name="ctx">optional path to nested CDT.</param>
 		public static Operation ModifyByPath(string binName, ModifyFlag flags, Expression modifyExp, params CTX[] ctx)
 		{
+			if (string.IsNullOrEmpty(binName) || binName.Length > Bin.MaxBinNameLength)
+			{
+				throw new AerospikeException(ResultCode.PARAMETER_ERROR,
+					$"binName cannot be null, empty, or exceed {Bin.MaxBinNameLength} characters");
+			}
+
 			byte[] packedBytes;
 			if (ctx == null || ctx.Length == 0)
 			{
