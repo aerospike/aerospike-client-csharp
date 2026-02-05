@@ -510,6 +510,7 @@ namespace Aerospike.Client
 					{
 						node.AddError(ns);
 						node.AddKeyBusy(ns);
+						RetryServerError(ae);
 					}
 					else
 					{
