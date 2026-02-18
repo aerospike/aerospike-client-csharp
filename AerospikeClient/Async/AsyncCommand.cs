@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2025 Aerospike, Inc.
+ * Copyright 2012-2026 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -507,6 +507,7 @@ namespace Aerospike.Client
 					{
 						node.AddError(ns);
 						node.AddKeyBusy(ns);
+						RetryServerError(ae);
 					}
 					else
 					{
@@ -642,6 +643,17 @@ namespace Aerospike.Client
 
 				if (status == IN_PROGRESS)
 				{
+					if (node != null && conn != null)
+					{
+						if (ae.KeepConnection())
+						{
+							node.PutAsyncConnection(conn);
+						}
+						else
+						{
+							CloseConnection();
+						}
+					}
 					Retry(ae);
 				}
 				else
@@ -655,6 +667,17 @@ namespace Aerospike.Client
 
 				if (status == IN_PROGRESS)
 				{
+					if (node != null && conn != null)
+					{
+						if (ae.KeepConnection())
+						{
+							node.PutAsyncConnection(conn);
+						}
+						else
+						{
+							CloseConnection();
+						}
+					}
 					FailCommand(ae);
 				}
 				else
@@ -685,6 +708,9 @@ namespace Aerospike.Client
 				}
 				catch (Exception e)
 				{
+					// Ensure buffer is released if RetryBatch() did not release it before throwing.
+					// ReleaseBuffer() is idempotent, so this is safe if already released.
+					ReleaseBuffer();
 					NotifyFailure(new AerospikeException("Batch split retry failed", e));
 					return;
 				}
