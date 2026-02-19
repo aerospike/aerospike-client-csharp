@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2025 Aerospike, Inc.
+ * Copyright 2012-2026 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -32,12 +32,25 @@ namespace Aerospike.Client
 		/// The listener could be overridden to send the metrics snapshot directly to OpenTelemetry.
 		/// </para>
 		/// </summary>
+		[Obsolete("Use Exporters instead. This property is maintained for backward compatibility.")]
 		public IMetricsListener Listener;
+
+		/// <summary>
+		/// List of metrics exporters that will receive metrics data periodically.
+		/// Each exporter can send metrics to different destinations (files, OpenTelemetry, Prometheus, etc.).
+		/// If no exporters are configured and Listener is also null, a default MetricsWriter will be used.
+		/// </summary>
+		public List<IMetricsExporter> Exporters { get; set; } = new List<IMetricsExporter>();
 
 		/// <summary>
 		/// Directory path to write metrics log files for listeners that write logs.
 		/// Default: current directory
 		/// </summary>
+		/// <remarks>
+		/// When using the new IMetricsExporter API, configure this setting directly on MetricsWriter instead.
+		/// This property is only used by the legacy IMetricsListener API.
+		/// </remarks>
+		[Obsolete("When using IMetricsExporter, configure the directory directly on MetricsWriter constructor instead.")]
 		public string ReportDir = ".";
 
 		/// <summary>
@@ -51,6 +64,11 @@ namespace Aerospike.Client
 		/// </para>
 		/// Default: 0
 		/// </summary>
+		/// <remarks>
+		/// When using the new IMetricsExporter API, configure this setting directly on MetricsWriter instead.
+		/// This property is only used by the legacy IMetricsListener API.
+		/// </remarks>
+		[Obsolete("When using IMetricsExporter, configure the size limit directly on MetricsWriter constructor instead.")]
 		public long ReportSizeLimit = 0;
 
 		/// <summary>
@@ -139,9 +157,12 @@ namespace Aerospike.Client
 		/// </summary>
 		public MetricsPolicy(MetricsPolicy other)
 		{
+			#pragma warning disable CS0618 // Type or member is obsolete
 			this.Listener = other.Listener;
 			this.ReportDir = other.ReportDir;
 			this.ReportSizeLimit = other.ReportSizeLimit;
+			#pragma warning restore CS0618
+			this.Exporters = new List<IMetricsExporter>(other.Exporters);
 			this.Interval = other.Interval;
 			this.LatencyColumns = other.LatencyColumns;
 			this.LatencyShift = other.LatencyShift;
@@ -156,19 +177,64 @@ namespace Aerospike.Client
 		{
 		}
 
+		/// <summary>
+		/// Set the legacy listener. Deprecated - use AddExporter instead.
+		/// </summary>
+		[Obsolete("Use AddExporter instead")]
 		public void SetListener(IMetricsListener listener)
 		{
+			#pragma warning disable CS0618 // Type or member is obsolete
 			this.Listener = listener;
+			#pragma warning restore CS0618
 		}
 
+		/// <summary>
+		/// Add a metrics exporter to the list of exporters.
+		/// </summary>
+		/// <param name="exporter">The exporter to add</param>
+		public void AddExporter(IMetricsExporter exporter)
+		{
+			Exporters.Add(exporter);
+		}
+
+		/// <summary>
+		/// Remove a metrics exporter from the list of exporters.
+		/// </summary>
+		/// <param name="exporter">The exporter to remove</param>
+		/// <returns>True if the exporter was found and removed</returns>
+		public bool RemoveExporter(IMetricsExporter exporter)
+		{
+			return Exporters.Remove(exporter);
+		}
+
+		/// <summary>
+		/// Clear all exporters.
+		/// </summary>
+		public void ClearExporters()
+		{
+			Exporters.Clear();
+		}
+
+		/// <summary>
+		/// Set the directory path for metrics log files.
+		/// </summary>
+		[Obsolete("When using IMetricsExporter, configure the directory directly on MetricsWriter constructor instead.")]
 		public void SetReportDir(String reportDir)
 		{
+			#pragma warning disable CS0618 // Type or member is obsolete
 			this.ReportDir = reportDir;
+			#pragma warning restore CS0618
 		}
 
+		/// <summary>
+		/// Set the metrics file size limit.
+		/// </summary>
+		[Obsolete("When using IMetricsExporter, configure the size limit directly on MetricsWriter constructor instead.")]
 		public void SetReportSizeLimit(long reportSizeLimit)
 		{
+			#pragma warning disable CS0618 // Type or member is obsolete
 			this.ReportSizeLimit = reportSizeLimit;
+			#pragma warning restore CS0618
 		}
 
 		public void SetInterval(int interval)

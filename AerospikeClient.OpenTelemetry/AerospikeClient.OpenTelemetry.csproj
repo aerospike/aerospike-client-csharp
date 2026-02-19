@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>disable</Nullable>
+    <LangVersion>latest</LangVersion>
+    
+    <!-- Package metadata -->
+    <PackageId>Aerospike.Client.OpenTelemetry</PackageId>
+    <Version>1.0.0</Version>
+    <Authors>Aerospike</Authors>
+    <Company>Aerospike, Inc.</Company>
+    <Description>OpenTelemetry metrics exporter for Aerospike .NET Client</Description>
+    <PackageTags>aerospike;database;nosql;opentelemetry;otel;metrics;observability</PackageTags>
+    <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Reference the main Aerospike client -->
+    <ProjectReference Include="..\AerospikeClient\AerospikeClient.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- OpenTelemetry dependencies -->
+    <PackageReference Include="OpenTelemetry" Version="1.9.0" />
+    <PackageReference Include="OpenTelemetry.Api" Version="1.9.0" />
+  </ItemGroup>
+
+</Project>

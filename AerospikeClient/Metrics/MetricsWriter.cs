@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2025 Aerospike, Inc.
+ * Copyright 2012-2026 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -15,20 +15,21 @@
  * the License.
  */
 
-using System.Diagnostics;
 using System.Text;
 using static Aerospike.Client.Latency;
 
 namespace Aerospike.Client
 {
 	/// <summary>
-	/// Client metrics listener.
+	/// Client metrics exporter that writes metrics to log files.
+	/// Also implements IMetricsListener for backward compatibility.
 	/// </summary>
-	public sealed class MetricsWriter : IMetricsListener
+	public sealed class MetricsWriter : IMetricsExporter, IMetricsListener, IDisposable
 	{
 		private static readonly string filenameFormat = "yyyyMMddHHmmss";
 		private static readonly string timestampFormat = "yyyy-MM-dd HH:mm:ss";
 		private static readonly int minFileSize = 1000000;
+		private static readonly string[] MetricTypeNames = { "counter", "gauge", "histogram" };
 
 		private readonly string dir;
 		private readonly StringBuilder sb;
@@ -37,9 +38,8 @@ namespace Aerospike.Client
 		private long maxSize;
 		private int latencyColumns;
 		private int latencyShift;
-		private bool enabled;
-		private DateTime prevTime;
-		private TimeSpan prevCpuUsage;
+		private volatile bool enabled;
+		private bool disposed;
 
 		/// <summary>
 		/// Initialize metrics writer.
@@ -48,17 +48,97 @@ namespace Aerospike.Client
 		{
 			this.dir = dir;
 			this.sb = new StringBuilder(8192);
-			this.prevTime = DateTime.UtcNow;
-			this.prevCpuUsage = Process.GetCurrentProcess().TotalProcessorTime;
 		}
+
+		/// <summary>
+		/// Initialize metrics writer with policy settings.
+		/// Call this constructor when using as IMetricsExporter.
+		/// </summary>
+		public MetricsWriter(string dir, int latencyColumns, int latencyShift, long reportSizeLimit = 0)
+			: this(dir)
+		{
+			if (reportSizeLimit != 0 && reportSizeLimit < minFileSize)
+			{
+				throw new AerospikeException("reportSizeLimit " + reportSizeLimit +
+					" must be at least " + minFileSize);
+			}
+
+			this.maxSize = reportSizeLimit;
+			this.latencyColumns = latencyColumns;
+			this.latencyShift = latencyShift;
+
+			try
+			{
+				Directory.CreateDirectory(dir);
+				OpenGenericFormat();
+			}
+			catch (IOException ioe)
+			{
+				throw new AerospikeException(ioe);
+			}
+
+			enabled = true;
+		}
+
+		#region IMetricsExporter Implementation
+
+		/// <summary>
+		/// Export metrics to file in a generic format.
+		/// </summary>
+		public void Export(IReadOnlyList<Metric> metrics)
+		{
+			if (!enabled || metrics.Count == 0)
+			{
+				return;
+			}
+
+			var timestamp = metrics[0].Timestamp;
+			sb.Append(timestamp.ToString(timestampFormat));
+			sb.Append(" metrics[");
+			sb.Append(metrics.Count);
+			sb.AppendLine("]");
+
+			foreach (var metric in metrics)
+			{
+				sb.Append("  ");
+				sb.Append(metric.Name);
+				
+				if (metric.Labels.Length > 0)
+				{
+					sb.Append('{');
+					for (int i = 0; i < metric.Labels.Length; i++)
+					{
+						if (i > 0) sb.Append(',');
+						sb.Append(metric.Labels[i].Key);
+						sb.Append('=');
+						sb.Append('"');
+						sb.Append(metric.Labels[i].Value);
+						sb.Append('"');
+					}
+					sb.Append('}');
+				}
+				
+				sb.Append(' ');
+				sb.Append(metric.Value.ToString("G"));
+				sb.Append(' ');
+				sb.Append(MetricTypeNames[(int)metric.Type]);
+				sb.AppendLine();
+			}
+
+			WriteLineGeneric();
+		}
+
+		#endregion
+
+		#region IMetricsListener Implementation (Backward Compatibility)
 
 		/// <summary>
 		/// Open timestamped metrics file in Append mode and write header indicating what metrics will
 		/// be stored.
 		/// </summary>
-
 		public void OnEnable(Cluster cluster, MetricsPolicy policy)
 		{
+			#pragma warning disable CS0618 // Using obsolete ReportSizeLimit for legacy IMetricsListener support
 			if (policy.ReportSizeLimit != 0 && policy.ReportSizeLimit < minFileSize)
 			{
 				throw new AerospikeException("MetricsPolicy.reportSizeLimit " + policy.ReportSizeLimit +
@@ -66,6 +146,7 @@ namespace Aerospike.Client
 			}
 
 			this.maxSize = policy.ReportSizeLimit;
+			#pragma warning restore CS0618
 			this.latencyColumns = policy.LatencyColumns;
 			this.latencyShift = policy.LatencyShift;
 
@@ -127,6 +208,59 @@ namespace Aerospike.Client
 			}
 		}
 
+		#endregion
+
+		#region Private Methods - Generic Format
+
+		private void OpenGenericFormat()
+		{
+			DateTime now = DateTime.UtcNow;
+			string path = dir + Path.DirectorySeparatorChar + "metrics-" + now.ToString(filenameFormat) + ".log";
+			writer = new StreamWriter(path, false);
+			size = 0;
+
+			sb.Append(now.ToString(timestampFormat));
+			sb.AppendLine(" # Aerospike Client Metrics");
+			sb.AppendLine("# Format: metric_name{label=\"value\",...} value type");
+			sb.AppendLine("# Types: counter, gauge, histogram");
+			WriteLineGeneric();
+		}
+
+		private void WriteLineGeneric()
+		{
+			try
+			{
+				writer.Write(sb.ToString());
+				writer.Flush();
+				size += sb.Length;
+				sb.Clear();
+
+				if (maxSize > 0 && size >= maxSize)
+				{
+					writer.Close();
+					OpenGenericFormat();
+				}
+			}
+			catch (IOException ioe)
+			{
+				enabled = false;
+
+				try
+				{
+					writer.Close();
+				}
+				catch (Exception)
+				{
+				}
+
+				throw new AerospikeException(ioe);
+			}
+		}
+
+		#endregion
+
+		#region Private Methods - Legacy Format
+
 		private void Open()
 		{
 			DateTime now = DateTime.Now;
@@ -156,7 +290,7 @@ namespace Aerospike.Client
 			string clusterName = cluster.clusterName;
 			clusterName ??= "";
 
-			GetCpuMemoryUsage(out double cpu, out long mem);
+			cluster.GetCpuMemoryUsage(out double cpu, out long mem);
 
 			sb.Append(DateTime.Now.ToString(timestampFormat));
 			sb.Append(" cluster[");
@@ -348,21 +482,30 @@ namespace Aerospike.Client
 			}
 		}
 
-		private void GetCpuMemoryUsage(out double cpu, out long memory)
+		#endregion
+
+		#region IDisposable Implementation
+
+		public void Dispose()
 		{
-			Process currentProcess = System.Diagnostics.Process.GetCurrentProcess();
-			memory = currentProcess.WorkingSet64 + currentProcess.VirtualMemorySize64 + currentProcess.PagedMemorySize64;
-
-			var currentTime = DateTime.UtcNow;
-			var currentCpuUsage = Process.GetCurrentProcess().TotalProcessorTime;
-
-			var cpuUsedMs = (currentCpuUsage - prevCpuUsage).TotalMilliseconds;
-			var totalMsPassed = (currentTime - prevTime).TotalMilliseconds;
-
-			cpu = cpuUsedMs / (Environment.ProcessorCount * totalMsPassed) * 100;
-
-			prevTime = currentTime;
-			prevCpuUsage = currentCpuUsage;
+			if (!disposed)
+			{
+				if (enabled)
+				{
+					try
+					{
+						enabled = false;
+						writer?.Close();
+					}
+					catch (Exception e)
+					{
+						Log.Error("Failed to close metrics writer: " + Util.GetErrorMessage(e));
+					}
+				}
+				disposed = true;
+			}
 		}
+
+		#endregion
 	}
 }
