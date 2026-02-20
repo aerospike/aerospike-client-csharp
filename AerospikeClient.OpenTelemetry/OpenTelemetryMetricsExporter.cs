@@ -175,15 +175,10 @@ namespace Aerospike.Client.OpenTelemetry
 
 		/// <summary>
 		/// Convert Aerospike metric name to OTel-friendly name.
-		/// Removes _total suffix (OTel adds it for counters automatically in some backends).
+		/// Metric names already follow the aerospike_client_* naming convention.
 		/// </summary>
 		private static string ToOtelName(string metricName)
 		{
-			// Remove _total suffix as OTel conventions handle this
-			if (metricName.EndsWith("_total"))
-			{
-				return metricName[..^6]; // Remove "_total"
-			}
 			return metricName;
 		}
 

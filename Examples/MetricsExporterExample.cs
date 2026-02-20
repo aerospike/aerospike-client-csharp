@@ -143,18 +143,18 @@ class MetricsExporterExample
 				Console.WriteLine($"  {exp}");
 			}
 
-			Console.WriteLine("\nSample metrics:");
-			var commands = lines.FirstOrDefault(l => l.Contains("commands_total"));
-			if (commands != null) Console.WriteLine($"  {commands.Trim()}");
-
-			var connections = lines.FirstOrDefault(l => l.Contains("connections.in_pool"));
-			if (connections != null) Console.WriteLine($"  {connections.Trim()}");
-
-			var latency = lines.FirstOrDefault(l => l.Contains("latency.bucket") && l.Contains("write") && l.Contains("le=\"1ms\""));
-			if (latency != null) Console.WriteLine($"  {latency.Trim()}");
-
-			var bytesIn = lines.FirstOrDefault(l => l.Contains("bytes_in_total"));
-			if (bytesIn != null) Console.WriteLine($"  {bytesIn.Trim()}");
+            Console.WriteLine("\nSample metrics:");
+            var commands = lines.FirstOrDefault(l => l.Contains("command_count"));
+            if (commands != null) Console.WriteLine($"  {commands.Trim()}");
+            
+            var connections = lines.FirstOrDefault(l => l.Contains("connections_in_pool"));
+            if (connections != null) Console.WriteLine($"  {connections.Trim()}");
+            
+            var latency = lines.FirstOrDefault(l => l.Contains("latency_bucket") && l.Contains("write") && l.Contains("le=\"1ms\""));
+            if (latency != null) Console.WriteLine($"  {latency.Trim()}");
+            
+            var bytesIn = lines.FirstOrDefault(l => l.Contains("bytes_in"));
+            if (bytesIn != null) Console.WriteLine($"  {bytesIn.Trim()}");
 		}
 		else
 		{

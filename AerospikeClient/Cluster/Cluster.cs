@@ -1437,17 +1437,17 @@ namespace Aerospike.Client
 			var clusterLabels = cachedBaseLabels;
 
 			// Cluster-level gauges (all share same labels array)
-			metrics.Add(new Metric("aerospike.client.cpu_percent", cpu, MetricType.Gauge, timestamp, clusterLabels));
-			metrics.Add(new Metric("aerospike.client.memory_bytes", memory, MetricType.Gauge, timestamp, clusterLabels));
-			metrics.Add(new Metric("aerospike.client.recover_queue_size", GetRecoverQueueSize(), MetricType.Gauge, timestamp, clusterLabels));
-			metrics.Add(new Metric("aerospike.client.async_threads_in_use", asyncThreadsInUse, MetricType.Gauge, timestamp, clusterLabels));
-			metrics.Add(new Metric("aerospike.client.async_completion_ports_in_use", asyncCompletionPortsInUse, MetricType.Gauge, timestamp, clusterLabels));
+			metrics.Add(new Metric("aerospike_client_cpu_percent", cpu, MetricType.Gauge, timestamp, clusterLabels));
+			metrics.Add(new Metric("aerospike_client_memory_bytes", memory, MetricType.Gauge, timestamp, clusterLabels));
+			metrics.Add(new Metric("aerospike_client_recover_queue_size", GetRecoverQueueSize(), MetricType.Gauge, timestamp, clusterLabels));
+			metrics.Add(new Metric("aerospike_client_async_threads_in_use", asyncThreadsInUse, MetricType.Gauge, timestamp, clusterLabels));
+			metrics.Add(new Metric("aerospike_client_async_completion_ports_in_use", asyncCompletionPortsInUse, MetricType.Gauge, timestamp, clusterLabels));
 
 			// Cluster-level counters (all share same labels array)
-			metrics.Add(new Metric("aerospike.client.commands_total", GetCommandCount(), MetricType.Counter, timestamp, clusterLabels));
-			metrics.Add(new Metric("aerospike.client.retries_total", GetRetryCount(), MetricType.Counter, timestamp, clusterLabels));
-			metrics.Add(new Metric("aerospike.client.delay_queue_timeouts_total", GetDelayQueueTimeoutCount(), MetricType.Counter, timestamp, clusterLabels));
-			metrics.Add(new Metric("aerospike.client.invalid_nodes_total", InvalidNodeCount, MetricType.Counter, timestamp, clusterLabels));
+			metrics.Add(new Metric("aerospike_client_command_count", GetCommandCount(), MetricType.Counter, timestamp, clusterLabels));
+			metrics.Add(new Metric("aerospike_client_retry_count", GetRetryCount(), MetricType.Counter, timestamp, clusterLabels));
+			metrics.Add(new Metric("aerospike_client_delay_queue_timeout_count", GetDelayQueueTimeoutCount(), MetricType.Counter, timestamp, clusterLabels));
+			metrics.Add(new Metric("aerospike_client_invalid_node_count", InvalidNodeCount, MetricType.Counter, timestamp, clusterLabels));
 
 			// Node-level metrics
 			Node[] nodeArray = nodes;
@@ -1475,20 +1475,20 @@ namespace Aerospike.Client
 			// Sync connection metrics - reuse same labels array with conn_type appended
 			var syncStats = node.GetConnectionStats();
 			var syncLabels = AppendLabel(nodeLabels, "conn_type", "sync");
-			metrics.Add(new Metric("aerospike.node.connections.in_use", syncStats.inUse, MetricType.Gauge, timestamp, syncLabels));
-			metrics.Add(new Metric("aerospike.node.connections.in_pool", syncStats.inPool, MetricType.Gauge, timestamp, syncLabels));
-			metrics.Add(new Metric("aerospike.node.connections.opened_total", syncStats.opened, MetricType.Counter, timestamp, syncLabels));
-			metrics.Add(new Metric("aerospike.node.connections.closed_total", syncStats.closed, MetricType.Counter, timestamp, syncLabels));
+			metrics.Add(new Metric("aerospike_client_node_connections_in_use", syncStats.inUse, MetricType.Gauge, timestamp, syncLabels));
+			metrics.Add(new Metric("aerospike_client_node_connections_in_pool", syncStats.inPool, MetricType.Gauge, timestamp, syncLabels));
+			metrics.Add(new Metric("aerospike_client_node_connections_opened", syncStats.opened, MetricType.Counter, timestamp, syncLabels));
+			metrics.Add(new Metric("aerospike_client_node_connections_closed", syncStats.closed, MetricType.Counter, timestamp, syncLabels));
 
 			// Async connection metrics
 			if (node is AsyncNode asyncNode)
 			{
 				var asyncStats = asyncNode.GetAsyncConnectionStats();
 				var asyncLabels = AppendLabel(nodeLabels, "conn_type", "async");
-				metrics.Add(new Metric("aerospike.node.connections.in_use", asyncStats.inUse, MetricType.Gauge, timestamp, asyncLabels));
-				metrics.Add(new Metric("aerospike.node.connections.in_pool", asyncStats.inPool, MetricType.Gauge, timestamp, asyncLabels));
-				metrics.Add(new Metric("aerospike.node.connections.opened_total", asyncStats.opened, MetricType.Counter, timestamp, asyncLabels));
-				metrics.Add(new Metric("aerospike.node.connections.closed_total", asyncStats.closed, MetricType.Counter, timestamp, asyncLabels));
+				metrics.Add(new Metric("aerospike_client_node_connections_in_use", asyncStats.inUse, MetricType.Gauge, timestamp, asyncLabels));
+				metrics.Add(new Metric("aerospike_client_node_connections_in_pool", asyncStats.inPool, MetricType.Gauge, timestamp, asyncLabels));
+				metrics.Add(new Metric("aerospike_client_node_connections_opened", asyncStats.opened, MetricType.Counter, timestamp, asyncLabels));
+				metrics.Add(new Metric("aerospike_client_node_connections_closed", asyncStats.closed, MetricType.Counter, timestamp, asyncLabels));
 			}
 
 			// Namespace metrics
@@ -1504,11 +1504,11 @@ namespace Aerospike.Client
 					var nsLabels = AppendLabel(nodeLabels, "namespace", ns);
 
 					// Namespace counters (all share same nsLabels array)
-					metrics.Add(new Metric("aerospike.namespace.errors_total", node.GetErrorCountByNS(ns), MetricType.Counter, timestamp, nsLabels));
-					metrics.Add(new Metric("aerospike.namespace.timeouts_total", node.GetTimeoutCountbyNS(ns), MetricType.Counter, timestamp, nsLabels));
-					metrics.Add(new Metric("aerospike.namespace.key_busy_total", node.GetKeyBusyCountByNS(ns), MetricType.Counter, timestamp, nsLabels));
-					metrics.Add(new Metric("aerospike.namespace.bytes_in_total", node.GetBytesInByNS(ns), MetricType.Counter, timestamp, nsLabels));
-					metrics.Add(new Metric("aerospike.namespace.bytes_out_total", node.GetBytesOutByNS(ns), MetricType.Counter, timestamp, nsLabels));
+					metrics.Add(new Metric("aerospike_client_namespace_errors", node.GetErrorCountByNS(ns), MetricType.Counter, timestamp, nsLabels));
+					metrics.Add(new Metric("aerospike_client_namespace_timeouts", node.GetTimeoutCountbyNS(ns), MetricType.Counter, timestamp, nsLabels));
+					metrics.Add(new Metric("aerospike_client_namespace_key_busy", node.GetKeyBusyCountByNS(ns), MetricType.Counter, timestamp, nsLabels));
+					metrics.Add(new Metric("aerospike_client_namespace_bytes_in", node.GetBytesInByNS(ns), MetricType.Counter, timestamp, nsLabels));
+					metrics.Add(new Metric("aerospike_client_namespace_bytes_out", node.GetBytesOutByNS(ns), MetricType.Counter, timestamp, nsLabels));
 
 					// Latency histograms - use cached labels per (node, namespace, operation, bucket)
 					LatencyBuckets[] latencyBuckets = nodeMetrics.Histograms.GetBuckets(ns);
@@ -1533,7 +1533,7 @@ namespace Aerospike.Client
 								histogramLabelCache[cacheKey] = histLabels;
 							}
 							
-							metrics.Add(new Metric("aerospike.latency.bucket", buckets.GetBucket(j), MetricType.Histogram, timestamp, histLabels));
+							metrics.Add(new Metric("aerospike_client_latency_bucket", buckets.GetBucket(j), MetricType.Histogram, timestamp, histLabels));
 						}
 					}
 				}
