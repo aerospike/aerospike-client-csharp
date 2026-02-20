@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2025 Aerospike, Inc.
+ * Copyright 2012-2026 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -2227,24 +2227,41 @@ namespace Aerospike.Client
 				fieldCount++;
 			}
 
-			// Operations (used in query execute) and bin names (used in scan/query) are mutually exclusive.
+			// Operations and bin names are mutually exclusive. Operations take precedence.
 			int operationCount = 0;
 
 			if (statement.operations != null)
 			{
-				// Estimate size for background operations.
-				if (!background)
+				if (background)
 				{
-					throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Operations not allowed in foreground query");
-				}
+					bool hasWrite = false;
 
-				foreach (Operation operation in statement.operations)
-				{
-					if (!Operation.IsWrite(operation.type))
+					foreach (Operation operation in statement.operations)
 					{
-						throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Read operations not allowed in background query");
+						if (Operation.IsWrite(operation.type))
+						{
+							hasWrite = true;
+						}
+						EstimateOperationSize(operation);
 					}
-					EstimateOperationSize(operation);
+
+					if (!hasWrite)
+					{
+						throw new AerospikeException(ResultCode.PARAMETER_ERROR,
+							"Execute operations must include a write. Use Query() for read-only operations.");
+					}
+				}
+				else
+				{
+					foreach (Operation operation in statement.operations)
+					{
+						if (Operation.IsWrite(operation.type))
+						{
+							throw new AerospikeException(ResultCode.PARAMETER_ERROR,
+								"Query operations must be read-only. Use Execute() for write operations.");
+						}
+						EstimateOperationSize(operation);
+					}
 				}
 				operationCount = statement.operations.Length;
 			}
