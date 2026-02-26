@@ -23,7 +23,7 @@ namespace Aerospike.Client
 	public readonly struct Metric
 	{
 		/// <summary>
-		/// Metric name (e.g., "aerospike.client.commands", "aerospike.node.connections.in_use").
+		/// Metric name (e.g., "aerospike_client_command_count", "aerospike_client_node_connections_in_use").
 		/// </summary>
 		public string Name { get; }
 
@@ -49,22 +49,37 @@ namespace Aerospike.Client
 		public KeyValuePair<string, string>[] Labels { get; }
 
 		/// <summary>
+		/// Human-readable description of this metric, suitable for rendering in dashboards.
+		/// </summary>
+		public string Description { get; }
+
+		/// <summary>
+		/// Unit of the metric value (e.g., "By" for bytes, "%" for percentage, "{connection}" for dimensionless counts).
+		/// Follows OpenTelemetry/UCUM conventions.
+		/// </summary>
+		public string Unit { get; }
+
+		/// <summary>
 		/// Create a new metric.
 		/// </summary>
-		public Metric(string name, double value, MetricType type, DateTime timestamp, KeyValuePair<string, string>[] labels)
+		public Metric(string name, double value, MetricType type, DateTime timestamp,
+			KeyValuePair<string, string>[] labels, string description = null, string unit = null)
 		{
 			Name = name;
 			Value = value;
 			Type = type;
 			Timestamp = timestamp;
 			Labels = labels ?? EmptyLabels;
+			Description = description;
+			Unit = unit;
 		}
 
 		/// <summary>
 		/// Create a new metric with current timestamp.
 		/// </summary>
-		public Metric(string name, double value, MetricType type, KeyValuePair<string, string>[] labels = null)
-			: this(name, value, type, DateTime.UtcNow, labels)
+		public Metric(string name, double value, MetricType type, KeyValuePair<string, string>[] labels = null,
+			string description = null, string unit = null)
+			: this(name, value, type, DateTime.UtcNow, labels, description, unit)
 		{
 		}
 

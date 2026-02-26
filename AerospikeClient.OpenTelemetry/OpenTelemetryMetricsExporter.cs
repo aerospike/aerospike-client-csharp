@@ -27,24 +27,31 @@ namespace Aerospike.Client.OpenTelemetry
 	/// When new metrics are added to the Aerospike client, they are automatically
 	/// exported without any changes to this exporter.
 	/// </summary>
+	/// <remarks>
+	/// The Meter lifecycle is owned by the application via MeterProvider.
+	/// This exporter does not dispose the Meter; call MeterProvider.Dispose() when done.
+	/// </remarks>
 	/// <example>
 	/// <code>
-	/// // Option 1: Let exporter create its own meter (simple)
-	/// var exporter = new OpenTelemetryMetricsExporter();
-	/// 
-	/// // Option 2: Pass your own meter (for integration with existing infrastructure)
-	/// var meter = new Meter("MyApp.Aerospike", "1.0.0");
-	/// var exporter = new OpenTelemetryMetricsExporter(meter);
-	/// 
-	/// // Configure OpenTelemetry to collect from the meter
-	/// var meterProvider = Sdk.CreateMeterProviderBuilder()
-	///     .AddMeter("Aerospike.Client")  // or your custom meter name
+	/// // Setup MeterProvider first - it owns the Meter lifecycle
+	/// using var meterProvider = Sdk.CreateMeterProviderBuilder()
+	///     .AddMeter("Aerospike.Client")
 	///     .AddOtlpExporter()
 	///     .Build();
+	/// 
+	/// // Option 1: Use the default meter name
+	/// var exporter = new OpenTelemetryMetricsExporter();
+	/// 
+	/// // Option 2: Pass your own meter
+	/// var meter = new Meter("MyApp.Aerospike", "1.0.0");
+	/// var exporter = new OpenTelemetryMetricsExporter(meter);
 	/// 
 	/// var policy = new MetricsPolicy { Interval = 30 };
 	/// policy.AddExporter(exporter);
 	/// client.EnableMetrics(policy);
+	/// 
+	/// // On shutdown: client.Close() flushes final metrics automatically.
+	/// // MeterProvider.Dispose() cleans up the Meter.
 	/// </code>
 	/// </example>
 	public class OpenTelemetryMetricsExporter : IMetricsExporter, IDisposable
@@ -56,7 +63,6 @@ namespace Aerospike.Client.OpenTelemetry
 		public const string DefaultMeterName = "Aerospike.Client";
 
 		private readonly Meter meter;
-		private readonly bool ownsMeter;
 
 		// Track which instruments have been created
 		private readonly HashSet<string> registeredInstruments = new();
@@ -68,36 +74,32 @@ namespace Aerospike.Client.OpenTelemetry
 
 		/// <summary>
 		/// Create a new OpenTelemetry metrics exporter with the default meter name.
+		/// The caller is responsible for disposing the underlying Meter via MeterProvider.
 		/// </summary>
 		public OpenTelemetryMetricsExporter() 
-			: this(new Meter(DefaultMeterName), true)
+			: this(new Meter(DefaultMeterName))
 		{
 		}
 
 		/// <summary>
 		/// Create a new OpenTelemetry metrics exporter with a custom meter name.
+		/// The caller is responsible for disposing the underlying Meter via MeterProvider.
 		/// </summary>
 		/// <param name="meterName">Custom meter name.</param>
 		/// <param name="version">Optional meter version.</param>
 		public OpenTelemetryMetricsExporter(string meterName, string version = null)
-			: this(new Meter(meterName, version), true)
+			: this(new Meter(meterName, version))
 		{
 		}
 
 		/// <summary>
 		/// Create a new OpenTelemetry metrics exporter using an existing meter.
-		/// Use this to integrate with your application's existing observability infrastructure.
+		/// The caller is responsible for disposing the Meter via MeterProvider.
 		/// </summary>
-		/// <param name="meter">The meter to use for creating instruments. The exporter does not own this meter.</param>
+		/// <param name="meter">The meter to use for creating instruments.</param>
 		public OpenTelemetryMetricsExporter(Meter meter)
-			: this(meter, false)
-		{
-		}
-
-		private OpenTelemetryMetricsExporter(Meter meter, bool ownsMeter)
 		{
 			this.meter = meter ?? throw new ArgumentNullException(nameof(meter));
-			this.ownsMeter = ownsMeter;
 		}
 
 		/// <summary>
@@ -119,13 +121,19 @@ namespace Aerospike.Client.OpenTelemetry
 		}
 
 		/// <summary>
-		/// Dispose of the exporter. Only disposes the meter if it was created by this exporter.
+		/// Dispose of the exporter. Clears internal state but does not dispose the Meter;
+		/// the Meter lifecycle is owned by the application via MeterProvider.
 		/// </summary>
 		public void Dispose()
 		{
-			if (ownsMeter)
+			lock (metricsLock)
 			{
-				meter?.Dispose();
+				latestMetrics = Array.Empty<Metric>();
+			}
+
+			lock (registrationLock)
+			{
+				registeredInstruments.Clear();
 			}
 		}
 
@@ -136,15 +144,15 @@ namespace Aerospike.Client.OpenTelemetry
 		{
 			lock (registrationLock)
 			{
-				// Already registered - nothing to do
 				if (!registeredInstruments.Add(metric.Name))
 				{
 					return;
 				}
 
-				// First time seeing this metric name - create instrument
 				string otelName = ToOtelName(metric.Name);
-				string metricName = metric.Name; // Capture for closure
+				string metricName = metric.Name;
+				string description = metric.Description ?? $"Aerospike metric: {metricName}";
+				string unit = metric.Unit;
 
 				switch (metric.Type)
 				{
@@ -152,22 +160,24 @@ namespace Aerospike.Client.OpenTelemetry
 						meter.CreateObservableCounter(
 							otelName,
 							() => GetMeasurementsLong(metricName),
-							description: $"Aerospike metric: {metricName}");
+							unit: unit,
+							description: description);
 						break;
 
 					case MetricType.Gauge:
 						meter.CreateObservableGauge(
 							otelName,
 							() => GetMeasurementsDouble(metricName),
-							description: $"Aerospike metric: {metricName}");
+							unit: unit,
+							description: description);
 						break;
 
 					case MetricType.Histogram:
-						// Histogram buckets are exported as counters (cumulative bucket counts)
 						meter.CreateObservableCounter(
 							otelName,
 							() => GetMeasurementsLong(metricName),
-							description: $"Aerospike histogram bucket: {metricName}");
+							unit: unit,
+							description: description);
 						break;
 				}
 			}

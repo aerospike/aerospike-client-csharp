@@ -97,7 +97,8 @@ class MetricsExporterExample
 			Thread.Sleep(5000);
 
 			// Step 8: Disable metrics and cleanup
-			// Important: Disable metrics BEFORE disposing exporters
+			// client.Close() performs a final metrics export flush automatically.
+			// The MeterProvider (via `using`) owns the Meter lifecycle.
 			Console.WriteLine("\n7. Disabling metrics...");
 			client.DisableMetrics();
 
