@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2025 Aerospike, Inc.
+ * Copyright 2012-2026 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -15,6 +15,7 @@
  * the License.
  */
 
+using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Diagnostics.Metrics;
 
@@ -28,22 +29,18 @@ namespace Aerospike.Client.OpenTelemetry
 	/// exported without any changes to this exporter.
 	/// </summary>
 	/// <remarks>
-	/// The Meter lifecycle is owned by the application via MeterProvider.
+	/// The Meter lifecycle is always owned by the application via MeterProvider.
 	/// This exporter does not dispose the Meter; call MeterProvider.Dispose() when done.
 	/// </remarks>
 	/// <example>
 	/// <code>
-	/// // Setup MeterProvider first - it owns the Meter lifecycle
+	/// // Setup MeterProvider - it owns the Meter lifecycle
+	/// var meter = new Meter("Aerospike.Client", "1.0.0");
 	/// using var meterProvider = Sdk.CreateMeterProviderBuilder()
-	///     .AddMeter("Aerospike.Client")
+	///     .AddMeter(meter.Name)
 	///     .AddOtlpExporter()
 	///     .Build();
 	/// 
-	/// // Option 1: Use the default meter name
-	/// var exporter = new OpenTelemetryMetricsExporter();
-	/// 
-	/// // Option 2: Pass your own meter
-	/// var meter = new Meter("MyApp.Aerospike", "1.0.0");
 	/// var exporter = new OpenTelemetryMetricsExporter(meter);
 	/// 
 	/// var policy = new MetricsPolicy { Interval = 30 };
@@ -64,37 +61,18 @@ namespace Aerospike.Client.OpenTelemetry
 
 		private readonly Meter meter;
 
-		// Track which instruments have been created
-		private readonly HashSet<string> registeredInstruments = new();
+		// Lock-free instrument registration tracking
+		private readonly ConcurrentDictionary<string, byte> registeredInstruments = new();
 		private readonly object registrationLock = new();
 
-		// Latest metrics snapshot for observable instruments
-		private IReadOnlyList<Metric> latestMetrics = Array.Empty<Metric>();
-		private readonly object metricsLock = new();
+		// Latest metrics grouped by name for O(1) callback lookup.
+		// Volatile reference swap: the dictionary is fully built before publishing,
+		// so readers see a consistent snapshot without locking.
+		private volatile Dictionary<string, List<Metric>> latestMetricsByName = new();
 
 		/// <summary>
-		/// Create a new OpenTelemetry metrics exporter with the default meter name.
-		/// The caller is responsible for disposing the underlying Meter via MeterProvider.
-		/// </summary>
-		public OpenTelemetryMetricsExporter() 
-			: this(new Meter(DefaultMeterName))
-		{
-		}
-
-		/// <summary>
-		/// Create a new OpenTelemetry metrics exporter with a custom meter name.
-		/// The caller is responsible for disposing the underlying Meter via MeterProvider.
-		/// </summary>
-		/// <param name="meterName">Custom meter name.</param>
-		/// <param name="version">Optional meter version.</param>
-		public OpenTelemetryMetricsExporter(string meterName, string version = null)
-			: this(new Meter(meterName, version))
-		{
-		}
-
-		/// <summary>
-		/// Create a new OpenTelemetry metrics exporter using an existing meter.
-		/// The caller is responsible for disposing the Meter via MeterProvider.
+		/// Create a new OpenTelemetry metrics exporter using the provided meter.
+		/// The caller is responsible for the Meter lifecycle via MeterProvider.
 		/// </summary>
 		/// <param name="meter">The meter to use for creating instruments.</param>
 		public OpenTelemetryMetricsExporter(Meter meter)
@@ -107,17 +85,23 @@ namespace Aerospike.Client.OpenTelemetry
 		/// </summary>
 		public void Export(IReadOnlyList<Metric> metrics)
 		{
-			// Ensure instruments exist for all metric names (creates on first encounter)
+			// Group metrics by name for O(1) lookup in observable callbacks
+			var grouped = new Dictionary<string, List<Metric>>();
+
 			foreach (var metric in metrics)
 			{
 				EnsureInstrumentExists(metric);
+
+				if (!grouped.TryGetValue(metric.Name, out var list))
+				{
+					list = new List<Metric>();
+					grouped[metric.Name] = list;
+				}
+				list.Add(metric);
 			}
 
-			// Store for callbacks to read
-			lock (metricsLock)
-			{
-				latestMetrics = metrics;
-			}
+			// Atomic reference swap - readers see a fully-constructed snapshot
+			latestMetricsByName = grouped;
 		}
 
 		/// <summary>
@@ -126,30 +110,28 @@ namespace Aerospike.Client.OpenTelemetry
 		/// </summary>
 		public void Dispose()
 		{
-			lock (metricsLock)
-			{
-				latestMetrics = Array.Empty<Metric>();
-			}
-
-			lock (registrationLock)
-			{
-				registeredInstruments.Clear();
-			}
+			latestMetricsByName = new Dictionary<string, List<Metric>>();
+			registeredInstruments.Clear();
 		}
 
 		/// <summary>
 		/// Ensures an OTel instrument exists for this metric. Creates it on first encounter.
+		/// Uses a lock-free fast path for the common case (instrument already registered).
 		/// </summary>
 		private void EnsureInstrumentExists(Metric metric)
 		{
+			if (registeredInstruments.ContainsKey(metric.Name))
+			{
+				return;
+			}
+
 			lock (registrationLock)
 			{
-				if (!registeredInstruments.Add(metric.Name))
+				if (!registeredInstruments.TryAdd(metric.Name, 0))
 				{
 					return;
 				}
 
-				string otelName = ToOtelName(metric.Name);
 				string metricName = metric.Name;
 				string description = metric.Description ?? $"Aerospike metric: {metricName}";
 				string unit = metric.Unit;
@@ -158,7 +140,7 @@ namespace Aerospike.Client.OpenTelemetry
 				{
 					case MetricType.Counter:
 						meter.CreateObservableCounter(
-							otelName,
+							metricName,
 							() => GetMeasurementsLong(metricName),
 							unit: unit,
 							description: description);
@@ -166,7 +148,7 @@ namespace Aerospike.Client.OpenTelemetry
 
 					case MetricType.Gauge:
 						meter.CreateObservableGauge(
-							otelName,
+							metricName,
 							() => GetMeasurementsDouble(metricName),
 							unit: unit,
 							description: description);
@@ -174,7 +156,7 @@ namespace Aerospike.Client.OpenTelemetry
 
 					case MetricType.Histogram:
 						meter.CreateObservableCounter(
-							otelName,
+							metricName,
 							() => GetMeasurementsLong(metricName),
 							unit: unit,
 							description: description);
@@ -183,26 +165,12 @@ namespace Aerospike.Client.OpenTelemetry
 			}
 		}
 
-		/// <summary>
-		/// Convert Aerospike metric name to OTel-friendly name.
-		/// Metric names already follow the aerospike_client_* naming convention.
-		/// </summary>
-		private static string ToOtelName(string metricName)
-		{
-			return metricName;
-		}
-
 		private IEnumerable<Measurement<double>> GetMeasurementsDouble(string metricName)
 		{
-			IReadOnlyList<Metric> metrics;
-			lock (metricsLock)
+			var byName = latestMetricsByName;
+			if (byName.TryGetValue(metricName, out var list))
 			{
-				metrics = latestMetrics;
-			}
-
-			foreach (var m in metrics)
-			{
-				if (m.Name == metricName)
+				foreach (var m in list)
 				{
 					yield return new Measurement<double>(m.Value, ToTagList(m.Labels));
 				}
@@ -211,15 +179,10 @@ namespace Aerospike.Client.OpenTelemetry
 
 		private IEnumerable<Measurement<long>> GetMeasurementsLong(string metricName)
 		{
-			IReadOnlyList<Metric> metrics;
-			lock (metricsLock)
+			var byName = latestMetricsByName;
+			if (byName.TryGetValue(metricName, out var list))
 			{
-				metrics = latestMetrics;
-			}
-
-			foreach (var m in metrics)
-			{
-				if (m.Name == metricName)
+				foreach (var m in list)
 				{
 					yield return new Measurement<long>((long)m.Value, ToTagList(m.Labels));
 				}

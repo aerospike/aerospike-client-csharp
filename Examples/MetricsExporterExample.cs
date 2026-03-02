@@ -15,6 +15,7 @@
  * the License.
  */
 
+using System.Diagnostics.Metrics;
 using Aerospike.Client;
 using Aerospike.Client.OpenTelemetry;
 using OpenTelemetry;
@@ -44,11 +45,11 @@ class MetricsExporterExample
 
 		try
 		{
-			// Step 1: Setup OpenTelemetry MeterProvider
-			// The MeterProvider must be configured to listen for the Aerospike meter
+			// Step 1: Setup OpenTelemetry Meter and MeterProvider
 			Console.WriteLine("1. Setting up OpenTelemetry MeterProvider...");
+			var meter = new Meter(OpenTelemetryMetricsExporter.DefaultMeterName, "1.0.0");
 			using var meterProvider = Sdk.CreateMeterProviderBuilder()
-				.AddMeter(OpenTelemetryMetricsExporter.DefaultMeterName)
+				.AddMeter(meter.Name)
 				.AddConsoleExporter((options, readerOptions) =>
 				{
 					readerOptions.PeriodicExportingMetricReaderOptions.ExportIntervalMilliseconds = 5000;
@@ -56,11 +57,9 @@ class MetricsExporterExample
 				.Build();
 
 			// Step 2: Create exporters
-			// MetricsWriter: Built-in file exporter (included in AerospikeClient)
-			// OpenTelemetryMetricsExporter: OTel exporter (from AerospikeClient.OpenTelemetry package)
 			Console.WriteLine("2. Creating exporters...");
 			var fileExporter = new MetricsWriter(metricsDir, latencyColumns: 7, latencyShift: 1);
-			var otelExporter = new OpenTelemetryMetricsExporter();
+			var otelExporter = new OpenTelemetryMetricsExporter(meter);
 
 			// Step 3: Connect to Aerospike
 			Console.WriteLine($"3. Connecting to Aerospike at {host}:{port}...");

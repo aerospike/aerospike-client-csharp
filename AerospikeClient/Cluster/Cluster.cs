@@ -15,6 +15,7 @@
  * the License.
  */
 using Aerospike.Client.Config;
+using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Text;
 
@@ -156,34 +157,41 @@ namespace Aerospike.Client
 		public MetricsPolicy MetricsPolicy;
 		private volatile IMetricsListener metricsListener;
 		private readonly List<IMetricsExporter> activeExporters = new();
-		private readonly List<IMetricsExporter> ownedExporters = new(); // Exporters created internally (client owns these)
 		internal readonly object metricsLock = new();
 		private volatile int retryCount;
 		private volatile int commandCount;
 		private volatile int delayQueueTimeoutCount;
-		
-		// CPU/Memory tracking for metrics snapshots
+
+		// CPU/Memory tracking for metrics snapshots, guarded by cpuLock
+		private readonly object cpuLock = new();
 		private DateTime prevCpuTime;
 		private TimeSpan prevCpuUsage;
-		
-		// Metrics export thread
+
+		// Metrics export thread, guarded by metricsThreadControlLock
+		private readonly object metricsThreadControlLock = new();
 		private Thread metricsThread;
 		private CancellationTokenSource metricsCancellation;
 		private volatile bool metricsThreadRunning;
-		
+
 		// Cached base labels for metrics (rebuilt when metrics enabled)
-		private KeyValuePair<string, string>[] cachedBaseLabels;
-		
+		private volatile KeyValuePair<string, string>[] cachedBaseLabels;
+
 		// Cached latency bucket bound strings (e.g., "1ms", "2ms", "4ms", ...)
-		private string[] cachedLatencyBucketBounds;
-		
-		// Cached latency type names (lowercase) indexed by LatencyType enum
+		private volatile string[] cachedLatencyBucketBounds;
+
 		private static readonly string[] LatencyTypeNames = BuildLatencyTypeNames();
-		
-		// Cached histogram labels per (nodeName, namespace, operationIndex, bucketIndex)
-		// Avoids allocating ~50 arrays per namespace per node per export
-		private Dictionary<(string nodeName, string ns, int opIndex, int bucketIndex), KeyValuePair<string, string>[]> histogramLabelCache;
-		
+
+		// Label caches - ConcurrentDictionary for thread-safe access between
+		// the metrics thread (BuildNodeMetrics) and tend thread (InvalidateCachesForNode)
+		private ConcurrentDictionary<string, KeyValuePair<string, string>[]> nodeLabelCache;
+		private ConcurrentDictionary<(string nodeName, string connType), KeyValuePair<string, string>[]> connectionLabelCache;
+		private ConcurrentDictionary<(string nodeName, string ns), KeyValuePair<string, string>[]> namespaceLabelCache;
+		private ConcurrentDictionary<(string nodeName, string ns, int opIndex, int bucketIndex), KeyValuePair<string, string>[]> histogramLabelCache;
+
+		// Exporter failure tracking for retry budget
+		private const int MaxExporterConsecutiveFailures = 3;
+		private readonly Dictionary<IMetricsExporter, int> exporterFailureCounts = new();
+
 		private static string[] BuildLatencyTypeNames()
 		{
 			int max = Latency.GetMax();
@@ -300,10 +308,12 @@ namespace Aerospike.Client
 			cancelToken = cancel.Token;
 
 			configInterval = client.configProvider != null ? client.configProvider.Interval : IConfigProvider.DEFAULT_CONFIG_INTERVAL;
-			
-			// Initialize CPU tracking for metrics
+
 			prevCpuTime = DateTime.UtcNow;
-			prevCpuUsage = Process.GetCurrentProcess().TotalProcessorTime;
+			using (var proc = Process.GetCurrentProcess())
+			{
+				prevCpuUsage = proc.TotalProcessorTime;
+			}
 		}
 
 		public void StartTendThread(ClientPolicy policy)
@@ -932,9 +942,8 @@ namespace Aerospike.Client
 				{
 					if (MetricsEnabled)
 					{
-						// Clear histogram label cache entries for this node
-						InvalidateHistogramCacheForNode(node.Name);
-						
+						InvalidateCachesForNode(node.Name);
+
 						// Flush node metrics before removal via legacy listener.
 						try
 						{
@@ -1178,19 +1187,17 @@ namespace Aerospike.Client
 		private void EnableMetricsInternal(MetricsPolicy policy)
 		{
 			MetricsPolicy mergedMp = MergeMetricsPolicyWithConfig(policy);
-			
-			#pragma warning disable CS0618 // Type or member is obsolete
+
+#pragma warning disable CS0618 // Type or member is obsolete
 			IMetricsListener listener = mergedMp.Listener;
-			#pragma warning restore CS0618
+#pragma warning restore CS0618
 
 			// In case metrics was enabled before this call, disable the previous
 			if (MetricsEnabled)
 			{
 				StopMetricsThread();
 				this.metricsListener?.OnDisable(this);
-				
-				// Only dispose internally-created exporters (user-provided exporters are owned by user)
-				DisposeOwnedExporters();
+
 				activeExporters.Clear();
 			}
 
@@ -1212,15 +1219,14 @@ namespace Aerospike.Client
 			// If no exporters configured and no legacy listener, use default MetricsWriter as exporter
 			else if (mergedMp.Exporters.Count == 0)
 			{
-				#pragma warning disable CS0618 // Using obsolete ReportDir/ReportSizeLimit for default exporter backward compatibility
+#pragma warning disable CS0618 // Using obsolete ReportDir/ReportSizeLimit for default exporter backward compatibility
 				var defaultExporter = new MetricsWriter(
-					mergedMp.ReportDir, 
-					mergedMp.LatencyColumns, 
-					mergedMp.LatencyShift, 
+					mergedMp.ReportDir,
+					mergedMp.LatencyColumns,
+					mergedMp.LatencyShift,
 					mergedMp.ReportSizeLimit);
-				#pragma warning restore CS0618
+#pragma warning restore CS0618
 				mergedMp.Exporters.Add(defaultExporter);
-				ownedExporters.Add(defaultExporter); // Client owns this, will dispose it
 			}
 
 			// Add all configured exporters to active list
@@ -1231,10 +1237,10 @@ namespace Aerospike.Client
 
 			// Build cached base labels BEFORE enabling metrics (prevents race with metrics thread)
 			BuildCachedBaseLabels();
-			
+
 			MetricsEnabled = true;
 			MetricsPolicy.restartRequired = false;
-			
+
 			// Start the metrics export thread if we have exporters
 			if (activeExporters.Count > 0)
 			{
@@ -1253,13 +1259,12 @@ namespace Aerospike.Client
 				new("client_type", "csharp"),
 				new("client_version", client.clientVersion)
 			};
-			
+
 			if (appId != null)
 			{
 				labels.Add(new("app_id", appId));
 			}
 
-			// Add custom labels from policy
 			if (MetricsPolicy.labels != null)
 			{
 				foreach (var kvp in MetricsPolicy.labels)
@@ -1269,44 +1274,56 @@ namespace Aerospike.Client
 			}
 
 			cachedBaseLabels = labels.ToArray();
-			
-			// Build cached latency bucket bound strings based on policy
+
 			int latencyColumns = MetricsPolicy.LatencyColumns;
 			int latencyShift = MetricsPolicy.LatencyShift;
 			cachedLatencyBucketBounds = new string[latencyColumns];
-			
+
 			for (int i = 0; i < latencyColumns; i++)
 			{
 				cachedLatencyBucketBounds[i] = ComputeLatencyBucketBound(i, latencyShift);
 			}
-			
-			// Initialize histogram label cache
-			// Estimate: nodes * namespaces * operations * buckets
-			histogramLabelCache = new Dictionary<(string, string, int, int), KeyValuePair<string, string>[]>(1000);
+
+			nodeLabelCache = new ConcurrentDictionary<string, KeyValuePair<string, string>[]>();
+			connectionLabelCache = new ConcurrentDictionary<(string, string), KeyValuePair<string, string>[]>();
+			namespaceLabelCache = new ConcurrentDictionary<(string, string), KeyValuePair<string, string>[]>();
+			histogramLabelCache = new ConcurrentDictionary<(string, string, int, int), KeyValuePair<string, string>[]>();
 		}
-		
+
 		/// <summary>
-		/// Remove histogram label cache entries for a specific node.
+		/// Remove all cached label arrays for a specific node.
 		/// Called when a node is removed from the cluster.
+		/// Safe to call concurrently with BuildNodeMetrics (uses ConcurrentDictionary).
 		/// </summary>
-		private void InvalidateHistogramCacheForNode(string nodeName)
+		private void InvalidateCachesForNode(string nodeName)
 		{
-			if (histogramLabelCache == null)
+			nodeLabelCache?.TryRemove(nodeName, out _);
+
+			if (connectionLabelCache != null)
 			{
-				return;
+				foreach (var key in connectionLabelCache.Keys)
+				{
+					if (key.nodeName == nodeName) connectionLabelCache.TryRemove(key, out _);
+				}
 			}
-			
-			// Find and remove all entries for this node
-			var keysToRemove = histogramLabelCache.Keys
-				.Where(k => k.nodeName == nodeName)
-				.ToList();
-			
-			foreach (var key in keysToRemove)
+
+			if (namespaceLabelCache != null)
 			{
-				histogramLabelCache.Remove(key);
+				foreach (var key in namespaceLabelCache.Keys)
+				{
+					if (key.nodeName == nodeName) namespaceLabelCache.TryRemove(key, out _);
+				}
+			}
+
+			if (histogramLabelCache != null)
+			{
+				foreach (var key in histogramLabelCache.Keys)
+				{
+					if (key.nodeName == nodeName) histogramLabelCache.TryRemove(key, out _);
+				}
 			}
 		}
-		
+
 		/// <summary>
 		/// Compute the upper bound label for a latency bucket.
 		/// Based on LatencyBuckets.GetIndex() logic:
@@ -1320,10 +1337,10 @@ namespace Aerospike.Client
 			{
 				return "1ms";
 			}
-			
+
 			// Bucket n (n > 0): bound = 1 << (n * latencyShift)
 			int boundMs = 1 << (bucketIndex * latencyShift);
-			
+
 			if (boundMs >= 1000)
 			{
 				return $"{boundMs / 1000}s";
@@ -1361,16 +1378,17 @@ namespace Aerospike.Client
 				MetricsEnabled = false;
 				StopMetricsThread();
 				metricsListener?.OnDisable(this);
-				
-				// Only dispose internally-created exporters (user-provided exporters are owned by user)
-				DisposeOwnedExporters();
+
 				activeExporters.Clear();
-				
-				// Clear cached labels
+				exporterFailureCounts.Clear();
+
 				cachedBaseLabels = null;
 				cachedLatencyBucketBounds = null;
+				nodeLabelCache?.Clear();
+				connectionLabelCache?.Clear();
+				namespaceLabelCache?.Clear();
 				histogramLabelCache?.Clear();
-				
+
 				foreach (Node node in nodes)
 				{
 					node.DisableMetrics();
@@ -1379,34 +1397,8 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
-		/// Dispose exporters that were created internally by the client.
-		/// User-provided exporters are NOT disposed - the user is responsible for their lifecycle.
-		/// </summary>
-		private void DisposeOwnedExporters()
-		{
-			foreach (var exporter in ownedExporters)
-			{
-				if (exporter is IDisposable disposable)
-				{
-					try
-					{
-						disposable.Dispose();
-					}
-					catch (Exception e)
-					{
-						if (Log.WarnEnabled())
-						{
-							Log.Warn(context, "Failed to dispose exporter: " + Util.GetErrorMessage(e));
-						}
-					}
-				}
-			}
-			ownedExporters.Clear();
-		}
-
-		/// <summary>
 		/// Build a list of metrics for export.
-		/// Must be called within metricsLock.
+		/// Safe to call without holding metricsLock - uses volatile fields and ConcurrentDictionary caches.
 		/// </summary>
 		private List<Metric> BuildMetrics()
 		{
@@ -1419,15 +1411,15 @@ namespace Aerospike.Client
 				}
 				return new List<Metric>();
 			}
-			
+
 			// Pre-allocate list capacity to reduce resizing
 			// Estimate: 9 cluster metrics + nodes * ~100 metrics each (connections + namespace metrics + latency buckets)
 			int estimatedCapacity = 9 + nodes.Length * 100;
 			var metrics = new List<Metric>(estimatedCapacity);
 			var timestamp = DateTime.UtcNow;
-			
+
 			GetCpuMemoryUsage(out double cpu, out long memory);
-			
+
 			ThreadPool.GetMaxThreads(out int workerThreadsMax, out int completionPortThreadsMax);
 			ThreadPool.GetAvailableThreads(out int workerThreads, out int completionPortThreads);
 			int asyncThreadsInUse = workerThreadsMax - workerThreads;
@@ -1460,38 +1452,46 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
-		/// Build metrics for a single node.
+		/// Build metrics for a single node. Uses ConcurrentDictionary caches at every label level
+		/// to avoid per-cycle allocations.
 		/// </summary>
 		private void BuildNodeMetrics(List<Metric> metrics, Node node, KeyValuePair<string, string>[] baseLabels, DateTime timestamp)
 		{
-			// Build node labels array - extends base labels
-			var nodeLabels = new KeyValuePair<string, string>[baseLabels.Length + 3];
-			Array.Copy(baseLabels, nodeLabels, baseLabels.Length);
-			int nodeBaseIndex = baseLabels.Length;
-			nodeLabels[nodeBaseIndex] = new("node", node.Name);
-			nodeLabels[nodeBaseIndex + 1] = new("node_address", node.Host.name);
-			nodeLabels[nodeBaseIndex + 2] = new("node_port", node.Host.port.ToString());
+			string nodeName = node.Name;
+			string[] bucketBounds = cachedLatencyBucketBounds;
 
-			// Sync connection metrics
+			var nodeLabels = nodeLabelCache.GetOrAdd(nodeName, _ =>
+			{
+				var labels = new KeyValuePair<string, string>[baseLabels.Length + 3];
+				Array.Copy(baseLabels, labels, baseLabels.Length);
+				int idx = baseLabels.Length;
+				labels[idx] = new("node", nodeName);
+				labels[idx + 1] = new("node_address", node.Host.name);
+				labels[idx + 2] = new("node_port", node.Host.port.ToString());
+				return labels;
+			});
+
+			var syncLabels = connectionLabelCache.GetOrAdd((nodeName, "sync"), _ =>
+				AppendLabel(nodeLabels, "conn_type", "sync"));
+
 			var syncStats = node.GetConnectionStats();
-			var syncLabels = AppendLabel(nodeLabels, "conn_type", "sync");
 			metrics.Add(MetricDescriptors.ConnectionsInUse.Create(syncStats.inUse, timestamp, syncLabels));
 			metrics.Add(MetricDescriptors.ConnectionsInPool.Create(syncStats.inPool, timestamp, syncLabels));
 			metrics.Add(MetricDescriptors.ConnectionsOpened.Create(syncStats.opened, timestamp, syncLabels));
 			metrics.Add(MetricDescriptors.ConnectionsClosed.Create(syncStats.closed, timestamp, syncLabels));
 
-			// Async connection metrics
 			if (node is AsyncNode asyncNode)
 			{
+				var asyncLabels = connectionLabelCache.GetOrAdd((nodeName, "async"), _ =>
+					AppendLabel(nodeLabels, "conn_type", "async"));
+
 				var asyncStats = asyncNode.GetAsyncConnectionStats();
-				var asyncLabels = AppendLabel(nodeLabels, "conn_type", "async");
 				metrics.Add(MetricDescriptors.ConnectionsInUse.Create(asyncStats.inUse, timestamp, asyncLabels));
 				metrics.Add(MetricDescriptors.ConnectionsInPool.Create(asyncStats.inPool, timestamp, asyncLabels));
 				metrics.Add(MetricDescriptors.ConnectionsOpened.Create(asyncStats.opened, timestamp, asyncLabels));
 				metrics.Add(MetricDescriptors.ConnectionsClosed.Create(asyncStats.closed, timestamp, asyncLabels));
 			}
 
-			// Namespace metrics
 			NodeMetrics nodeMetrics = node.GetMetrics();
 			if (nodeMetrics?.Histograms != null)
 			{
@@ -1500,39 +1500,33 @@ namespace Aerospike.Client
 
 				foreach (string ns in histoMap.Keys)
 				{
-					// Namespace labels - extends node labels
-					var nsLabels = AppendLabel(nodeLabels, "namespace", ns);
+					var nsLabels = namespaceLabelCache.GetOrAdd((nodeName, ns), _ =>
+						AppendLabel(nodeLabels, "namespace", ns));
 
-					// Namespace counters
 					metrics.Add(MetricDescriptors.NamespaceErrors.Create(node.GetErrorCountByNS(ns), timestamp, nsLabels));
 					metrics.Add(MetricDescriptors.NamespaceTimeouts.Create(node.GetTimeoutCountbyNS(ns), timestamp, nsLabels));
 					metrics.Add(MetricDescriptors.NamespaceKeyBusy.Create(node.GetKeyBusyCountByNS(ns), timestamp, nsLabels));
 					metrics.Add(MetricDescriptors.NamespaceBytesIn.Create(node.GetBytesInByNS(ns), timestamp, nsLabels));
 					metrics.Add(MetricDescriptors.NamespaceBytesOut.Create(node.GetBytesOutByNS(ns), timestamp, nsLabels));
 
-					// Latency histograms - use cached labels per (node, namespace, operation, bucket)
 					LatencyBuckets[] latencyBuckets = nodeMetrics.Histograms.GetBuckets(ns);
-					string nodeName = node.Name;
-					
+
 					for (int i = 0; i < latencyTypeMax; i++)
 					{
 						LatencyBuckets buckets = latencyBuckets[i];
-						int bucketMax = buckets.GetMax();
+						int bucketMax = Math.Min(buckets.GetMax(), bucketBounds.Length);
 
 						for (int j = 0; j < bucketMax; j++)
 						{
-							// Try to get cached labels for this (node, namespace, operation, bucket) tuple
-							var cacheKey = (nodeName, ns, i, j);
-							if (!histogramLabelCache.TryGetValue(cacheKey, out var histLabels))
+							var histLabels = histogramLabelCache.GetOrAdd((nodeName, ns, i, j), _ =>
 							{
-								// Build and cache the labels
-								histLabels = new KeyValuePair<string, string>[nsLabels.Length + 2];
-								nsLabels.CopyTo(histLabels, 0);
-								histLabels[nsLabels.Length] = new("operation", LatencyTypeNames[i]);
-								histLabels[nsLabels.Length + 1] = new("le", cachedLatencyBucketBounds[j]);
-								histogramLabelCache[cacheKey] = histLabels;
-							}
-							
+								var labels = new KeyValuePair<string, string>[nsLabels.Length + 2];
+								nsLabels.CopyTo(labels, 0);
+								labels[nsLabels.Length] = new("operation", LatencyTypeNames[i]);
+								labels[nsLabels.Length + 1] = new("le", bucketBounds[j]);
+								return labels;
+							});
+
 							metrics.Add(MetricDescriptors.LatencyBucket.Create(buckets.GetBucket(j), timestamp, histLabels));
 						}
 					}
@@ -1540,9 +1534,6 @@ namespace Aerospike.Client
 			}
 		}
 
-		/// <summary>
-		/// Create a new labels array with one additional label appended.
-		/// </summary>
 		private static KeyValuePair<string, string>[] AppendLabel(KeyValuePair<string, string>[] baseLabels, string key, string value)
 		{
 			var result = new KeyValuePair<string, string>[baseLabels.Length + 1];
@@ -1551,49 +1542,48 @@ namespace Aerospike.Client
 			return result;
 		}
 
-		/// <summary>
-		/// Start the dedicated metrics export thread.
-		/// </summary>
 		private void StartMetricsThread()
 		{
-			if (metricsThreadRunning)
+			lock (metricsThreadControlLock)
 			{
-				return;
-			}
+				if (metricsThreadRunning)
+				{
+					return;
+				}
 
-			metricsCancellation = new CancellationTokenSource();
-			metricsThreadRunning = true;
-			
-			metricsThread = new Thread(MetricsThreadRun)
-			{
-				Name = "aerospike-metrics",
-				IsBackground = true
-			};
-			metricsThread.Start();
+				metricsCancellation = new CancellationTokenSource();
+				metricsThreadRunning = true;
+
+				metricsThread = new Thread(MetricsThreadRun)
+				{
+					Name = "aerospike-metrics",
+					IsBackground = true
+				};
+				metricsThread.Start();
+			}
 		}
 
-		/// <summary>
-		/// Stop the dedicated metrics export thread.
-		/// </summary>
 		private void StopMetricsThread()
 		{
-			if (!metricsThreadRunning)
+			lock (metricsThreadControlLock)
 			{
-				return;
+				if (!metricsThreadRunning)
+				{
+					return;
+				}
+
+				metricsThreadRunning = false;
+				metricsCancellation?.Cancel();
+
+				if (metricsThread != null && metricsThread.IsAlive)
+				{
+					metricsThread.Join(TimeSpan.FromSeconds(5));
+				}
+
+				metricsCancellation?.Dispose();
+				metricsCancellation = null;
+				metricsThread = null;
 			}
-
-			metricsThreadRunning = false;
-			metricsCancellation?.Cancel();
-
-			// Give the thread a chance to exit gracefully
-			if (metricsThread != null && metricsThread.IsAlive)
-			{
-				metricsThread.Join(TimeSpan.FromSeconds(5));
-			}
-
-			metricsCancellation?.Dispose();
-			metricsCancellation = null;
-			metricsThread = null;
 		}
 
 		/// <summary>
@@ -1604,7 +1594,7 @@ namespace Aerospike.Client
 			// Calculate interval in milliseconds
 			// MetricsPolicy.Interval is in "tend iterations", so multiply by tendInterval
 			int intervalMs = MetricsPolicy.Interval * tendInterval;
-			
+
 			// Minimum interval of 1 second
 			if (intervalMs < 1000)
 			{
@@ -1656,7 +1646,7 @@ namespace Aerospike.Client
 		private void ExportMetrics()
 		{
 			List<IMetricsExporter> exporters;
-			List<Metric> metrics;
+			CancellationToken token;
 
 			lock (metricsLock)
 			{
@@ -1665,14 +1655,20 @@ namespace Aerospike.Client
 					return;
 				}
 
-				// Copy exporter list to avoid holding lock during export
 				exporters = new List<IMetricsExporter>(activeExporters);
-				metrics = BuildMetrics();
+				token = metricsCancellation?.Token ?? CancellationToken.None;
 			}
 
-			// Export outside the lock to avoid blocking other operations
-			var asyncExporters = new List<(IAsyncMetricsExporter exporter, Task task)>();
+			// Build metrics outside the lock - uses thread-safe caches
+			var metrics = BuildMetrics();
+			if (metrics.Count == 0)
+			{
+				return;
+			}
+
+			List<IMetricsExporter> succeededExporters = null;
 			List<IMetricsExporter> failedExporters = null;
+			var asyncTasks = new List<(IAsyncMetricsExporter exporter, Task task)>();
 
 			foreach (IMetricsExporter exporter in exporters)
 			{
@@ -1680,50 +1676,86 @@ namespace Aerospike.Client
 				{
 					if (exporter is IAsyncMetricsExporter asyncExporter)
 					{
-						var task = asyncExporter.ExportAsync(metrics, metricsCancellation?.Token ?? CancellationToken.None);
-						asyncExporters.Add((asyncExporter, task));
+						asyncTasks.Add((asyncExporter, asyncExporter.ExportAsync(metrics, token)));
 					}
 					else
 					{
 						exporter.Export(metrics);
+						(succeededExporters ??= new List<IMetricsExporter>()).Add(exporter);
 					}
 				}
 				catch (Exception e)
 				{
 					if (Log.WarnEnabled())
 					{
-						Log.Warn(context, "Exporter failed, unregistering: " + Util.GetErrorMessage(e));
+						Log.Warn(context, "Exporter failed: " + Util.GetErrorMessage(e));
 					}
-					failedExporters ??= new List<IMetricsExporter>();
-					failedExporters.Add(exporter);
+					(failedExporters ??= new List<IMetricsExporter>()).Add(exporter);
 				}
 			}
 
-			foreach (var (asyncExporter, task) in asyncExporters)
+			// Wait for all async exports concurrently
+			if (asyncTasks.Count > 0)
 			{
 				try
 				{
-					task.GetAwaiter().GetResult();
-				}
-				catch (Exception e)
-				{
-					if (Log.WarnEnabled())
+					Task.WhenAll(asyncTasks.Select(x => x.task)).GetAwaiter().GetResult();
+					foreach (var (exp, _) in asyncTasks)
 					{
-						Log.Warn(context, "Async exporter failed, unregistering: " + Util.GetErrorMessage(e));
+						(succeededExporters ??= new List<IMetricsExporter>()).Add(exp);
 					}
-					failedExporters ??= new List<IMetricsExporter>();
-					failedExporters.Add(asyncExporter);
+				}
+				catch
+				{
+					foreach (var (exp, task) in asyncTasks)
+					{
+						if (task.IsFaulted)
+						{
+							if (Log.WarnEnabled())
+							{
+								Log.Warn(context, "Async exporter failed: " + Util.GetErrorMessage(task.Exception));
+							}
+							(failedExporters ??= new List<IMetricsExporter>()).Add(exp);
+						}
+						else
+						{
+							(succeededExporters ??= new List<IMetricsExporter>()).Add(exp);
+						}
+					}
 				}
 			}
 
-			// Remove failed exporters so they aren't called again
-			if (failedExporters != null)
+			// Update failure counts under lock
+			lock (metricsLock)
 			{
-				lock (metricsLock)
+				if (succeededExporters != null)
 				{
-					foreach (var failed in failedExporters)
+					foreach (var exp in succeededExporters)
 					{
-						activeExporters.Remove(failed);
+						exporterFailureCounts.Remove(exp);
+					}
+				}
+
+				if (failedExporters != null)
+				{
+					foreach (var exp in failedExporters)
+					{
+						exporterFailureCounts.TryGetValue(exp, out int count);
+						count++;
+
+						if (count >= MaxExporterConsecutiveFailures)
+						{
+							if (Log.WarnEnabled())
+							{
+								Log.Warn(context, $"Exporter exceeded {MaxExporterConsecutiveFailures} consecutive failures, removing");
+							}
+							activeExporters.Remove(exp);
+							exporterFailureCounts.Remove(exp);
+						}
+						else
+						{
+							exporterFailureCounts[exp] = count;
+						}
 					}
 				}
 			}
@@ -1731,29 +1763,28 @@ namespace Aerospike.Client
 
 		/// <summary>
 		/// Get CPU and memory usage for metrics.
+		/// Thread-safe: guards prevCpuTime/prevCpuUsage updates with cpuLock.
 		/// </summary>
 		internal void GetCpuMemoryUsage(out double cpu, out long memory)
 		{
-			Process currentProcess = Process.GetCurrentProcess();
+			using var currentProcess = Process.GetCurrentProcess();
 			memory = currentProcess.WorkingSet64 + currentProcess.VirtualMemorySize64 + currentProcess.PagedMemorySize64;
 
 			var currentTime = DateTime.UtcNow;
 			var currentCpuUsage = currentProcess.TotalProcessorTime;
 
-			var cpuUsedMs = (currentCpuUsage - prevCpuUsage).TotalMilliseconds;
-			var totalMsPassed = (currentTime - prevCpuTime).TotalMilliseconds;
-
-			if (totalMsPassed > 0)
+			lock (cpuLock)
 			{
-				cpu = cpuUsedMs / (Environment.ProcessorCount * totalMsPassed) * 100;
-			}
-			else
-			{
-				cpu = 0;
-			}
+				var cpuUsedMs = (currentCpuUsage - prevCpuUsage).TotalMilliseconds;
+				var totalMsPassed = (currentTime - prevCpuTime).TotalMilliseconds;
 
-			prevCpuTime = currentTime;
-			prevCpuUsage = currentCpuUsage;
+				cpu = totalMsPassed > 0
+					? cpuUsedMs / (Environment.ProcessorCount * totalMsPassed) * 100
+					: 0;
+
+				prevCpuTime = currentTime;
+				prevCpuUsage = currentCpuUsage;
+			}
 		}
 
 		protected virtual AerospikeClient GetAerospikeClient()
@@ -2161,21 +2192,8 @@ namespace Aerospike.Client
 			tendValid = false;
 			cancel.Cancel();
 
-			// Stop metrics thread first (outside of lock to avoid deadlock)
+			// Stop metrics thread before final flush (outside lock to avoid deadlock)
 			StopMetricsThread();
-
-			// Final flush: export one last snapshot before shutting down
-			try
-			{
-				ExportMetrics();
-			}
-			catch (Exception e)
-			{
-				if (Log.WarnEnabled())
-				{
-					Log.Warn(context, "Final metrics export failed: " + Util.GetErrorMessage(e));
-				}
-			}
 
 			lock (metricsLock)
 			{
@@ -2183,11 +2201,24 @@ namespace Aerospike.Client
 				{
 					if (MetricsEnabled)
 					{
+						// Final flush while MetricsEnabled is still true
+						try
+						{
+							ExportMetrics();
+						}
+						catch (Exception e)
+						{
+							if (Log.WarnEnabled())
+							{
+								Log.Warn(context, "Final metrics export failed: " + Util.GetErrorMessage(e));
+							}
+						}
+
 						MetricsEnabled = false;
 						metricsListener?.OnDisable(this);
-						DisposeOwnedExporters();
 						activeExporters.Clear();
-						
+						exporterFailureCounts.Clear();
+
 						foreach (Node node in nodes)
 						{
 							node.DisableMetrics();

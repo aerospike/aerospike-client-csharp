@@ -29,7 +29,16 @@ namespace Aerospike.Client
 		private static readonly string filenameFormat = "yyyyMMddHHmmss";
 		private static readonly string timestampFormat = "yyyy-MM-dd HH:mm:ss";
 		private static readonly int minFileSize = 1000000;
-		private static readonly string[] MetricTypeNames = { "counter", "gauge", "histogram" };
+		private static string GetMetricTypeName(MetricType type)
+		{
+			return type switch
+			{
+				MetricType.Counter => "counter",
+				MetricType.Gauge => "gauge",
+				MetricType.Histogram => "histogram",
+				_ => "unknown"
+			};
+		}
 
 		private readonly string dir;
 		private readonly StringBuilder sb;
@@ -121,7 +130,7 @@ namespace Aerospike.Client
 				sb.Append(' ');
 				sb.Append(metric.Value.ToString("G"));
 				sb.Append(' ');
-				sb.Append(MetricTypeNames[(int)metric.Type]);
+				sb.Append(GetMetricTypeName(metric.Type));
 				sb.AppendLine();
 			}
 
@@ -230,7 +239,10 @@ namespace Aerospike.Client
 		{
 			try
 			{
-				writer.Write(sb.ToString());
+				foreach (var chunk in sb.GetChunks())
+				{
+					writer.Write(chunk.Span);
+				}
 				writer.Flush();
 				size += sb.Length;
 				sb.Clear();
@@ -453,7 +465,10 @@ namespace Aerospike.Client
 			try
 			{
 				sb.Append(System.Environment.NewLine);
-				writer.Write(sb.ToString());
+				foreach (var chunk in sb.GetChunks())
+				{
+					writer.Write(chunk.Span);
+				}
 				writer.Flush();
 				size += sb.Length;
 				sb.Clear();

@@ -40,7 +40,7 @@ namespace Aerospike.Client
 		/// Each exporter can send metrics to different destinations (files, OpenTelemetry, Prometheus, etc.).
 		/// If no exporters are configured and Listener is also null, a default MetricsWriter will be used.
 		/// </summary>
-		public List<IMetricsExporter> Exporters { get; set; } = new List<IMetricsExporter>();
+		public List<IMetricsExporter> Exporters { get; } = new List<IMetricsExporter>();
 
 		/// <summary>
 		/// Directory path to write metrics log files for listeners that write logs.
@@ -162,7 +162,7 @@ namespace Aerospike.Client
 			this.ReportDir = other.ReportDir;
 			this.ReportSizeLimit = other.ReportSizeLimit;
 			#pragma warning restore CS0618
-			this.Exporters = new List<IMetricsExporter>(other.Exporters);
+			this.Exporters.AddRange(other.Exporters);
 			this.Interval = other.Interval;
 			this.LatencyColumns = other.LatencyColumns;
 			this.LatencyShift = other.LatencyShift;
