@@ -11,30 +11,31 @@ inputs:
   oidc-audience:
     required: true
     description: OIDC audience
-  server-type:
-    required: true
-    description: Server type `aerospike-server` or `aerospike-server-enterprise`
-  strong-consistency:
+  server-container-repo:
     required: false
-    default: "1"
-    description: Enable strong consistency (`1` or `0`)
-  server-image:
+    default: database-docker-virtual/aerospike-server-enterprise
+    description: Server container repository path (e.g., database-docker-virtual/aerospike-server-enterprise)
+  enable-strong-consistency:
+    required: false
+    default: "true"
+    description: Enable strong consistency (`true` or `false`)
+  features-content:
     required: false
     default: ""
-    description: Custom full docker image name (overrides server-tag and server-type)
+    description: Raw features.conf content (e.g., from a secret)
 
 runs:
   using: composite
   steps:
-    - name: Run EE server
-      uses: ./.github/actions/run-ee-server
+    - name: Setup Aerospike server
+      uses: aerospike/shared-workflows/.github/actions/setup-aerospike-server@CLIENT-4213
       with:
         server-tag: ${{ inputs.server-tag }}
-        server-type: ${{ inputs.server-type }}
-        server-image: ${{ inputs.server-image }}
+        server-container-repo: ${{ inputs.server-container-repo }}
         oidc-provider: ${{ inputs.oidc-provider }}
         oidc-audience: ${{ inputs.oidc-audience }}
-        strong-consistency: ${{ inputs.strong-consistency }}
+        enable-strong-consistency: ${{ inputs.enable-strong-consistency }}
+        features-content: ${{ inputs.features-content }}
 
     - name: Download test artifacts
       uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
@@ -55,4 +56,4 @@ runs:
       shell: bash
       if: ${{ failure() }}
       run: |
-        docker container logs aerospike
+        docker container logs aerospike-1
