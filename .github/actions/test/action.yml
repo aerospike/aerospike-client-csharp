@@ -36,6 +36,45 @@ runs:
         oidc-audience: ${{ inputs.oidc-audience }}
         enable-strong-consistency: ${{ inputs.enable-strong-consistency }}
         features-content: ${{ inputs.features-content }}
+        config-content: |
+          service {
+              feature-key-file /etc/aerospike/features.conf
+              cluster-name docker
+              proto-fd-max 15000
+          }
+
+          logging {
+              console {
+                  context any debug
+              }
+          }
+
+          network {
+              service {
+                  address any
+                  port 3000
+              }
+              heartbeat {
+                  mode mesh
+                  port 3002
+              }
+              fabric {
+                  port 3001
+              }
+          }
+
+          namespace test {
+              default-ttl 2592000
+              nsup-period 120
+              replication-factor 1
+              strong-consistency true
+              strong-consistency-allow-expunge true
+              storage-engine device {
+                  file /opt/aerospike/data/test.dat
+                  filesize 4G
+                  read-page-cache true
+              }
+          }
 
     - name: Download test artifacts
       uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
