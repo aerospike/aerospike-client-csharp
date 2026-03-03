@@ -2227,28 +2227,27 @@ namespace Aerospike.Client
 				fieldCount++;
 			}
 
-			// Operations and bin names are mutually exclusive. Operations take precedence.
+			// Operations and bin names are mutually exclusive.
 			int operationCount = 0;
 
 			if (statement.operations != null)
 			{
+				if (statement.binNames != null)
+				{
+					throw new AerospikeException(ResultCode.PARAMETER_ERROR,
+						"Operations and bin names are mutually exclusive.");
+				}
+
 				if (background)
 				{
-					bool hasWrite = false;
-
 					foreach (Operation operation in statement.operations)
 					{
-						if (Operation.IsWrite(operation.type))
+						if (!Operation.IsWrite(operation.type))
 						{
-							hasWrite = true;
+							throw new AerospikeException(ResultCode.PARAMETER_ERROR,
+								"Execute() operations must be write-only. Use Query() for read-only operations.");
 						}
 						EstimateOperationSize(operation);
-					}
-
-					if (!hasWrite)
-					{
-						throw new AerospikeException(ResultCode.PARAMETER_ERROR,
-							"Execute operations must include a write. Use Query() for read-only operations.");
 					}
 				}
 				else
@@ -2258,7 +2257,7 @@ namespace Aerospike.Client
 						if (Operation.IsWrite(operation.type))
 						{
 							throw new AerospikeException(ResultCode.PARAMETER_ERROR,
-								"Query operations must be read-only. Use Execute() for write operations.");
+								"Query() operations must be read-only. Use Execute() for write operations.");
 						}
 						EstimateOperationSize(operation);
 					}
