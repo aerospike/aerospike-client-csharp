@@ -78,10 +78,13 @@ jobs:
       run: dotnet tool install -g docfx
     - name: Build project (for XML docs)
       run: dotnet build AerospikeClient/AerospikeClient.csproj --configuration Release
-    - name: Generate API documentation
+    - name: Set doc footer with version and commit
       run: |
         SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-8)
-        docfx docfx.json --globalMetadata "{\"_appFooter\": \"Aerospike C# Client v${{ needs.build.outputs.version }} &bull; ${SHORT_SHA} &bull; Copyright 2012-2025 Aerospike, Inc.\"}"
+        FOOTER="Aerospike C# Client v${{ needs.build.outputs.version }} &#8226; ${SHORT_SHA} &#8226; Copyright 2012-2025 Aerospike, Inc."
+        jq --arg footer "$FOOTER" '.build.globalMetadata._appFooter = $footer' docfx.json > docfx.tmp && mv docfx.tmp docfx.json
+    - name: Generate API documentation
+      run: docfx docfx.json
     - name: Upload API docs artifact
       uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
       with:
