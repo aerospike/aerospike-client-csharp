@@ -1,5 +1,5 @@
 name: Release
-run-name: Build release artifacts and generate API docs (v${{ needs.build.outputs.version || 'pending' }})
+run-name: Build release artifacts and generate API docs
 
 permissions:
   id-token: write
