@@ -79,13 +79,9 @@ jobs:
     - name: Build project (for XML docs)
       run: dotnet build AerospikeClient/AerospikeClient.csproj --configuration Release
     - name: Generate API documentation
-      run: docfx docfx.json
-    - name: Write build info
       run: |
-        echo "version: ${{ needs.build.outputs.version }}" > _site/BUILD_INFO
-        echo "commit: ${{ github.sha }}" >> _site/BUILD_INFO
-        echo "ref: ${{ github.ref }}" >> _site/BUILD_INFO
-        echo "run: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}" >> _site/BUILD_INFO
+        SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-8)
+        docfx docfx.json --globalMetadata "{\"_appFooter\": \"Aerospike C# Client v${{ needs.build.outputs.version }} &bull; ${SHORT_SHA} &bull; Copyright 2012-2025 Aerospike, Inc.\"}"
     - name: Upload API docs artifact
       uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
       with:
