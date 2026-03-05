@@ -80,8 +80,8 @@ jobs:
       run: dotnet build AerospikeClient/AerospikeClient.csproj --configuration Release
     - name: Set doc footer with version and commit
       run: |
-        SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-8)
-        FOOTER="Aerospike C# Client v${{ needs.build.outputs.version }} &#8226; ${SHORT_SHA} &#8226; Copyright 2012-2025 Aerospike, Inc."
+        VERSION=$(echo "${{ needs.build.outputs.version }}" | sed 's/-[0-9]*$//')
+        FOOTER="Aerospike C# Client v${VERSION} &#8226; ${{ github.sha }} &#8226; Copyright 2012-2025 Aerospike, Inc."
         jq --arg footer "$FOOTER" '.build.globalMetadata._appFooter = $footer' docfx.json > docfx.tmp && mv docfx.tmp docfx.json
     - name: Generate API documentation
       run: docfx docfx.json
