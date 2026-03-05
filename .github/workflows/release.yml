@@ -80,6 +80,12 @@ jobs:
       run: dotnet build AerospikeClient/AerospikeClient.csproj --configuration Release
     - name: Generate API documentation
       run: docfx docfx.json
+    - name: Write build info
+      run: |
+        echo "version: ${{ needs.build.outputs.version }}" > _site/BUILD_INFO
+        echo "commit: ${{ github.sha }}" >> _site/BUILD_INFO
+        echo "ref: ${{ github.ref }}" >> _site/BUILD_INFO
+        echo "run: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}" >> _site/BUILD_INFO
     - name: Upload API docs artifact
       uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
       with:
