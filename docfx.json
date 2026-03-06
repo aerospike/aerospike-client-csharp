@@ -1,0 +1,38 @@
+{
+  "metadata": [
+    {
+      "src": [
+        {
+          "files": ["AerospikeClient/AerospikeClient.csproj"]
+        }
+      ],
+      "dest": "api",
+      "properties": {
+        "TargetFramework": "net8.0"
+      }
+    }
+  ],
+  "build": {
+    "content": [
+      {
+        "files": ["api/**.yml", "api/index.md"]
+      },
+      {
+        "files": [
+          "docs/toc.yml",
+          "docs/*.md"
+        ]
+      },
+      {
+        "files": ["toc.yml", "*.md"]
+      }
+    ],
+    "output": "_site",
+    "template": ["default", "modern"],
+    "globalMetadata": {
+      "_appTitle": "Aerospike C# Client",
+      "_appFooter": "Copyright 2012-2026 Aerospike, Inc.",
+      "_enableSearch": true
+    }
+  }
+}

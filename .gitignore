@@ -16,3 +16,7 @@ tools/
 
 # Rider related files
 .idea/
+
+# DocFX generated output
+_site/
+api/
