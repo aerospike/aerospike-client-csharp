@@ -55,6 +55,16 @@ runs:
       shell: bash
       run: dotnet test AerospikeTest/AerospikeTest.csproj --no-build --configuration Release --settings ./.runsettings --collect:"XPlat Code Coverage" --results-directory ./coverage
 
+    - name: Show test logs if failed
+      if: ${{ failure() }}
+      shell: bash
+      run: |
+        echo "=== Test Results Log ==="
+        find . -name "*.log" -path "*/TestResults/*" -exec echo "--- {} ---" \; -exec cat {} \;
+        echo ""
+        echo "=== Coverage files ==="
+        find ./coverage -type f 2>/dev/null || echo "No coverage directory found"
+
     - name: Generate coverage report
       if: ${{ !cancelled() }}
       uses: danielpalme/ReportGenerator-GitHub-Action@v5
