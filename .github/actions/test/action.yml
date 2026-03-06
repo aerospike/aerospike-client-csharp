@@ -43,7 +43,7 @@ runs:
 
     - name: Restore dependencies
       shell: bash
-      run: dotnet restore
+      run: dotnet restore AerospikeTest/AerospikeTest.csproj
 
     - name: Download build output
       uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
