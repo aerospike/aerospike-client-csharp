@@ -71,6 +71,7 @@ runs:
         reports: 'coverage/coverage.cobertura.xml'
         targetdir: 'coverage/report'
         reporttypes: 'HtmlInline_AzurePipelines;Cobertura;MarkdownSummaryGithub'
+        assemblyfilters: '-AerospikeTest'
 
     - name: Publish coverage summary
       if: ${{ !cancelled() }}
