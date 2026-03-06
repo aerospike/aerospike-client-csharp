@@ -59,12 +59,11 @@ runs:
     - name: Test with coverage
       shell: bash
       run: |
-        coverlet ./artifacts/publish/AerospikeTest.dll \
+        coverlet ./artifacts/publish/AerospikeClient.dll \
           --target dotnet \
           --targetargs "exec ./artifacts/publish/AerospikeTest.dll --settings ./.runsettings" \
           --format cobertura \
-          --output ./coverage/coverage.cobertura.xml \
-          --exclude "[AerospikeTest]*"
+          --output ./coverage/coverage.cobertura.xml
 
     - name: Generate coverage report
       if: ${{ !cancelled() }}
