@@ -31,9 +31,9 @@ runs:
       with:
         dotnet-version: 8.0.x
 
-    - name: Install coverlet CLI
+    - name: Install dotnet-coverage
       shell: bash
-      run: dotnet tool install --global coverlet.console
+      run: dotnet tool install --global dotnet-coverage
 
     - name: Run EE server
       uses: ./.github/actions/run-ee-server
@@ -56,36 +56,19 @@ runs:
       working-directory: artifacts
       run: unzip AerospikeTest*.zip
 
-    - name: List publish directory
-      shell: bash
-      run: |
-        echo "=== DLLs ==="
-        ls -la ./artifacts/publish/*.dll
-        echo "=== PDBs ==="
-        ls -la ./artifacts/publish/*.pdb 2>/dev/null || echo "No PDB files found"
-
     - name: Test with coverage
       shell: bash
       run: |
-        coverlet ./artifacts/publish/AerospikeClient.dll \
-          --target dotnet \
-          --targetargs "exec ./artifacts/publish/AerospikeTest.dll --settings ./.runsettings" \
-          --format cobertura \
-          --output ./coverage/ \
-          --verbosity detailed
-
-    - name: List coverage output
-      if: ${{ !cancelled() }}
-      shell: bash
-      run: |
-        echo "=== Coverage files ==="
-        find ./coverage -type f 2>/dev/null || echo "No coverage directory"
+        dotnet-coverage collect \
+          -f cobertura \
+          -o ./coverage/coverage.cobertura.xml \
+          "dotnet exec ./artifacts/publish/AerospikeTest.dll --settings ./.runsettings"
 
     - name: Generate coverage report
       if: ${{ !cancelled() }}
       uses: danielpalme/ReportGenerator-GitHub-Action@v5
       with:
-        reports: 'coverage/*.cobertura.xml'
+        reports: 'coverage/coverage.cobertura.xml'
         targetdir: 'coverage/report'
         reporttypes: 'HtmlInline_AzurePipelines;Cobertura;MarkdownSummaryGithub'
 
