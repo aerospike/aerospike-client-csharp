@@ -56,6 +56,14 @@ runs:
       working-directory: artifacts
       run: unzip AerospikeTest*.zip
 
+    - name: List publish directory
+      shell: bash
+      run: |
+        echo "=== DLLs ==="
+        ls -la ./artifacts/publish/*.dll
+        echo "=== PDBs ==="
+        ls -la ./artifacts/publish/*.pdb 2>/dev/null || echo "No PDB files found"
+
     - name: Test with coverage
       shell: bash
       run: |
@@ -63,13 +71,21 @@ runs:
           --target dotnet \
           --targetargs "exec ./artifacts/publish/AerospikeTest.dll --settings ./.runsettings" \
           --format cobertura \
-          --output ./coverage/coverage.cobertura.xml
+          --output ./coverage/ \
+          --verbosity detailed
+
+    - name: List coverage output
+      if: ${{ !cancelled() }}
+      shell: bash
+      run: |
+        echo "=== Coverage files ==="
+        find ./coverage -type f 2>/dev/null || echo "No coverage directory"
 
     - name: Generate coverage report
       if: ${{ !cancelled() }}
       uses: danielpalme/ReportGenerator-GitHub-Action@v5
       with:
-        reports: 'coverage/coverage.cobertura.xml'
+        reports: 'coverage/*.cobertura.xml'
         targetdir: 'coverage/report'
         reporttypes: 'HtmlInline_AzurePipelines;Cobertura;MarkdownSummaryGithub'
 
