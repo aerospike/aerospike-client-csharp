@@ -26,6 +26,11 @@ inputs:
 runs:
   using: composite
   steps:
+    - name: Setup .NET
+      uses: actions/setup-dotnet@baa11fbfe1d6520db94683bd5c7a3818018e4309 # v5.1.0
+      with:
+        dotnet-version: 8.0.x
+
     - name: Run EE server
       uses: ./.github/actions/run-ee-server
       with:
@@ -36,20 +41,43 @@ runs:
         oidc-audience: ${{ inputs.oidc-audience }}
         strong-consistency: ${{ inputs.strong-consistency }}
 
-    - name: Download test artifacts
+    - name: Restore dependencies
+      shell: bash
+      run: dotnet restore
+
+    - name: Download build output
       uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
       with:
-        name: AerospikeTest-${{ github.run_number }}
-        path: artifacts
+        name: AerospikeBuildOutput-${{ github.run_number }}
+        path: .
 
-    - name: Unzip tests
+    - name: Test with coverage
       shell: bash
-      working-directory: artifacts
-      run: unzip AerospikeTest*.zip
+      run: dotnet test AerospikeTest/AerospikeTest.csproj --no-build --configuration Release --settings ./.runsettings --collect:"XPlat Code Coverage" --results-directory ./coverage
 
-    - name: Test
+    - name: Generate coverage report
+      if: ${{ !cancelled() }}
+      uses: danielpalme/ReportGenerator-GitHub-Action@v5
+      with:
+        reports: 'coverage/**/coverage.cobertura.xml'
+        targetdir: 'coverage/report'
+        reporttypes: 'HtmlInline_AzurePipelines;Cobertura;MarkdownSummaryGithub'
+
+    - name: Publish coverage summary
+      if: ${{ !cancelled() }}
       shell: bash
-      run: dotnet exec ./artifacts/publish/AerospikeTest.dll --settings ./.runsettings
+      run: |
+        if [ -f coverage/report/SummaryGithub.md ]; then
+          cat coverage/report/SummaryGithub.md >> $GITHUB_STEP_SUMMARY
+        fi
+
+    - name: Upload coverage report
+      if: ${{ !cancelled() }}
+      uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+      with:
+        name: coverage-report-${{ github.run_number }}
+        path: coverage/report/
+        retention-days: 30
 
     - name: Show logs if failed
       shell: bash
