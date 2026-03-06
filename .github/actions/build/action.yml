@@ -28,15 +28,6 @@ runs:
       run: |
         & 'C:\Program Files (x86)\Microsoft SDKs\Windows\v10.0A\bin\NETFX 4.8.1 Tools\sn.exe' -R .\AerospikeClient\bin\Release\net8.0\AerospikeClient.dll key\key.snk
 
-    - name: Upload build output for testing
-      uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
-      with:
-        name: AerospikeBuildOutput-${{ github.run_number }}
-        path: |
-          AerospikeClient/bin/Release/net8.0/
-          AerospikeTest/bin/Release/net8.0/
-        retention-days: 1
-
     - name: Create nuget packages
       shell: pwsh
       run: dotnet pack --no-build

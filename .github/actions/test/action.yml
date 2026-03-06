@@ -31,6 +31,10 @@ runs:
       with:
         dotnet-version: 8.0.x
 
+    - name: Install coverlet CLI
+      shell: bash
+      run: dotnet tool install --global coverlet.console
+
     - name: Run EE server
       uses: ./.github/actions/run-ee-server
       with:
@@ -41,35 +45,32 @@ runs:
         oidc-audience: ${{ inputs.oidc-audience }}
         strong-consistency: ${{ inputs.strong-consistency }}
 
-    - name: Restore dependencies
-      shell: bash
-      run: dotnet restore AerospikeTest/AerospikeTest.csproj
-
-    - name: Download build output
+    - name: Download test artifacts
       uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
       with:
-        name: AerospikeBuildOutput-${{ github.run_number }}
-        path: .
+        name: AerospikeTest-${{ github.run_number }}
+        path: artifacts
+
+    - name: Unzip tests
+      shell: bash
+      working-directory: artifacts
+      run: unzip AerospikeTest*.zip
 
     - name: Test with coverage
       shell: bash
-      run: dotnet test AerospikeTest/AerospikeTest.csproj --no-build --configuration Release --settings ./.runsettings --collect:"XPlat Code Coverage" --results-directory ./coverage
-
-    - name: Show test logs if failed
-      if: ${{ failure() }}
-      shell: bash
       run: |
-        echo "=== Test Results Log ==="
-        find . -name "*.log" -path "*/TestResults/*" -exec echo "--- {} ---" \; -exec cat {} \;
-        echo ""
-        echo "=== Coverage files ==="
-        find ./coverage -type f 2>/dev/null || echo "No coverage directory found"
+        coverlet ./artifacts/publish/AerospikeTest.dll \
+          --target dotnet \
+          --targetargs "exec ./artifacts/publish/AerospikeTest.dll --settings ./.runsettings" \
+          --format cobertura \
+          --output ./coverage/coverage.cobertura.xml \
+          --exclude "[AerospikeTest]*"
 
     - name: Generate coverage report
       if: ${{ !cancelled() }}
       uses: danielpalme/ReportGenerator-GitHub-Action@v5
       with:
-        reports: 'coverage/**/coverage.cobertura.xml'
+        reports: 'coverage/coverage.cobertura.xml'
         targetdir: 'coverage/report'
         reporttypes: 'HtmlInline_AzurePipelines;Cobertura;MarkdownSummaryGithub'
 
