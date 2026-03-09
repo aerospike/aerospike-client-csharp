@@ -1,32 +1,20 @@
-name: Build and test stage
-run-name: Build artifacts and run stage tests (${{ inputs.server-image && format('server-image={0}', inputs.server-image) || format('server-tag={0}', inputs.server-tag || 'latest') }})
+name: Release
+run-name: Build release artifacts and generate API docs
 
 permissions:
-  # This is required for requesting the OIDC token
   id-token: write
   contents: read
 
-# Trigger test workflow whenever:
-# Pushes to stage branch
 on:
   push:
-    branches: ["stage"]
+    branches: ["master"]
   workflow_dispatch:
     inputs:
-      server-tag:
-        type: string
+      dry-run:
+        type: boolean
         required: false
-        default: 'latest'
-        description: 'Server docker image tag'
-      server-type:
-        type: string
-        required: false
-        default: 'aerospike-server-enterprise'
-      server-image:
-        type: string
-        required: false
-        default: ''
-        description: 'Custom full docker image name (e.g., aerospike.jfrog.io/database-docker-virtual/aerospike-server-enterprise:8.1.1.0-rc27_1). Overrides server-tag and server-type if provided.'
+        default: false
+        description: 'Dry run: only build and generate API docs (skip sign, deploy, and release)'
 
 jobs:
   build:
@@ -57,6 +45,7 @@ jobs:
         echo "version=$version" >> $env:GITHUB_OUTPUT
 
   sign:
+    if: ${{ !inputs.dry-run }}
     needs: build
     uses: aerospike/shared-workflows/.github/workflows/reusable_sign-artifacts.yaml@v3.0.0
     with:
@@ -71,7 +60,7 @@ jobs:
       credential_id: ${{ secrets.CREDENTIAL_ID }}
       es-totp_secret: ${{ secrets.ES_TOTP_SECRET }}
 
-  test:
+  generate-api-docs:
     needs: build
     runs-on: ubuntu-latest
     steps:
@@ -81,17 +70,31 @@ jobs:
         egress-policy: audit
 
     - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-    - name: Test
-      uses: ./.github/actions/test
+    - name: Setup .NET
+      uses: actions/setup-dotnet@baa11fbfe1d6520db94683bd5c7a3818018e4309 # v5.1.0
       with:
-        server-tag: ${{ inputs.server-tag || 'latest' }}
-        server-type: ${{ inputs.server-type || 'aerospike-server-enterprise' }}
-        server-image: ${{ inputs.server-image || '' }}
-        oidc-provider: database-gh-aerospike
-        oidc-audience: database-gh-aerospike
+        dotnet-version: 8.0.x
+    - name: Install DocFX
+      run: dotnet tool install -g docfx
+    - name: Build project (for XML docs)
+      run: dotnet build AerospikeClient/AerospikeClient.csproj --configuration Release
+    - name: Set doc footer with version and commit
+      run: |
+        VERSION=$(echo "${{ needs.build.outputs.version }}" | sed 's/-[0-9]*$//')
+        FOOTER="Aerospike C# Client v${VERSION} &#8226; ${{ github.sha }} &#8226; Copyright 2012-2026 Aerospike, Inc."
+        jq --arg footer "$FOOTER" '.build.globalMetadata._appFooter = $footer' docfx.json > docfx.tmp && mv docfx.tmp docfx.json
+    - name: Generate API documentation
+      run: docfx docfx.json
+    - name: Upload API docs artifact
+      uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+      with:
+        name: api-docs-${{ needs.build.outputs.version }}
+        path: _site
+        retention-days: 90
 
   deploy:
-    needs: [build, sign, test]
+    if: ${{ !inputs.dry-run }}
+    needs: [build, sign]
     uses: aerospike/shared-workflows/.github/workflows/reusable_deploy-artifacts.yaml@v3.0.0
     with:
       jf-project: database
@@ -104,21 +107,8 @@ jobs:
       oidc-provider-name: database-gh-aerospike
       oidc-audience: database-gh-aerospike
 
-  deploy-test:
-    needs: [build, test]
-    uses: aerospike/shared-workflows/.github/workflows/reusable_deploy-artifacts.yaml@v3.0.0
-    with:
-      jf-project: database
-      jf-build-name: aerospike-client-csharp-tests
-      jf-build-id: ${{ github.run_id }}-tests
-      jf-metadata-build-id: ${{ github.run_id }}-tests-metadata
-      version: ${{ needs.build.outputs.version }}
-      gh-artifact-name: AerospikeTest-${{ github.run_number }}
-      gh-workflows-ref: v3.0.0
-      oidc-provider-name: database-gh-aerospike
-      oidc-audience: database-gh-aerospike
-
   create-release-bundle:
+    if: ${{ !inputs.dry-run }}
     needs: [build, deploy]
     uses: aerospike/shared-workflows/.github/workflows/reusable_create-release-bundle.yaml@v3.0.0
     with:
