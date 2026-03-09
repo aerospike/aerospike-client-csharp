@@ -32,5 +32,14 @@ namespace Aerospike.Test
 				Assert.AreEqual(expectedErrorCode, e.Result);
 			}
 		}
+
+		public static void AssertParameterError(AerospikeException ae, string expectedSubstring)
+		{
+			AerospikeException exception = ae.InnerException == null ? ae : ae.InnerException as AerospikeException;
+			Assert.IsNotNull(exception, "Expected an inner AerospikeException");
+			Assert.AreEqual(ResultCode.PARAMETER_ERROR, exception.Result);
+			Assert.IsTrue(exception.Message.Contains(expectedSubstring),
+				$"Expected message containing \"{expectedSubstring}\", got \"{exception.Message}\"");
+		}
 	}
 }

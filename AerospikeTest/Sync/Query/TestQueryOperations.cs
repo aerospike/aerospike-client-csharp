@@ -15,6 +15,7 @@
  * the License.
  */
 using Aerospike.Client;
+using Microsoft.DiaSymReader;
 
 namespace Aerospike.Test
 {
@@ -85,33 +86,26 @@ namespace Aerospike.Test
 				MapOperation.GetByKey(mapBin, Value.Get("a"), MapReturnType.VALUE)
 			];
 
-			RecordSet rs = client.Query(null, stmt);
+			using RecordSet rs = client.Query(null, stmt);
 
-			try
+			int count = 0;
+
+			while (rs.Next())
 			{
-				int count = 0;
+				Record record = rs.Record;
+				Assert.IsNotNull(record.GetValue(binName1));
+				Assert.IsNotNull(record.GetValue(binName2));
+				Assert.IsNotNull(record.GetValue(mapBin));
 
-				while (rs.Next())
-				{
-					Record record = rs.Record;
-					Assert.IsNotNull(record.GetValue(binName1));
-					Assert.IsNotNull(record.GetValue(binName2));
-					Assert.IsNotNull(record.GetValue(mapBin));
-
-					long val1 = record.GetLong(binName1);
-					long val2 = record.GetLong(binName2);
-					long mapVal = record.GetLong(mapBin);
-					Assert.AreEqual(val1 * 10, val2);
-					Assert.AreEqual(val1, mapVal);
-					Assert.IsNull(record.GetValue(binName3));
-					count++;
-				}
-				Assert.IsTrue(count >= size);
+				long val1 = record.GetLong(binName1);
+				long val2 = record.GetLong(binName2);
+				long mapVal = record.GetLong(mapBin);
+				Assert.AreEqual(val1 * 10, val2);
+				Assert.AreEqual(val1, mapVal);
+				Assert.IsNull(record.GetValue(binName3));
+				count++;
 			}
-			finally
-			{
-				rs.Close();
-			}
+			Assert.IsTrue(count >= size);
 		}
 
 		[TestMethod]
@@ -130,28 +124,21 @@ namespace Aerospike.Test
 				Operation.Get(binName3)
 			];
 
-			RecordSet rs = client.Query(null, stmt);
+			using RecordSet rs = client.Query(null, stmt);
 
-			try
-			{
-				int count = 0;
+			int count = 0;
 
-				while (rs.Next())
-				{
-					Record record = rs.Record;
-					long val1 = record.GetLong(binName1);
-					long val3 = record.GetLong(binName3);
-					Assert.IsTrue(val1 >= begin && val1 <= end);
-					Assert.AreEqual(val1 * 100, val3);
-					Assert.IsNull(record.GetValue(binName2));
-					count++;
-				}
-				Assert.AreEqual(end - begin + 1, count);
-			}
-			finally
+			while (rs.Next())
 			{
-				rs.Close();
+				Record record = rs.Record;
+				long val1 = record.GetLong(binName1);
+				long val3 = record.GetLong(binName3);
+				Assert.IsTrue(val1 >= begin && val1 <= end);
+				Assert.AreEqual(val1 * 100, val3);
+				Assert.IsNull(record.GetValue(binName2));
+				count++;
 			}
+			Assert.AreEqual(end - begin + 1, count);
 		}
 
 		[TestMethod]
@@ -171,28 +158,21 @@ namespace Aerospike.Test
 				ExpOperation.Read("result3", exp3, ExpReadFlags.DEFAULT)
 			];
 
-			RecordSet rs = client.Query(null, stmt);
+			using RecordSet rs = client.Query(null, stmt);
 
-			try
-			{
-				int count = 0;
+			int count = 0;
 
-				while (rs.Next())
-				{
-					Record record = rs.Record;
-					long r1 = record.GetLong("result1");
-					long r2 = record.GetLong("result2");
-					long r3 = record.GetLong("result3");
-					Assert.AreEqual(r1 * 10, r2);
-					Assert.AreEqual(r1 * 100, r3);
-					count++;
-				}
-				Assert.IsTrue(count >= size);
-			}
-			finally
+			while (rs.Next())
 			{
-				rs.Close();
+				Record record = rs.Record;
+				long r1 = record.GetLong("result1");
+				long r2 = record.GetLong("result2");
+				long r3 = record.GetLong("result3");
+				Assert.AreEqual(r1 * 10, r2);
+				Assert.AreEqual(r1 * 100, r3);
+				count++;
 			}
+			Assert.IsTrue(count >= size);
 		}
 
 		[TestMethod]
@@ -216,29 +196,22 @@ namespace Aerospike.Test
 				ExpOperation.Read("result3", exp3, ExpReadFlags.DEFAULT)
 			];
 
-			RecordSet rs = client.Query(null, stmt);
+			using RecordSet rs = client.Query(null, stmt);
 
-			try
-			{
-				int count = 0;
+			int count = 0;
 
-				while (rs.Next())
-				{
-					Record record = rs.Record;
-					long r1 = record.GetLong("result1");
-					long r2 = record.GetLong("result2");
-					long r3 = record.GetLong("result3");
-					Assert.IsTrue(r1 >= begin && r1 <= end);
-					Assert.AreEqual(r1 * 10, r2);
-					Assert.AreEqual(r1 * 100, r3);
-					count++;
-				}
-				Assert.AreEqual(end - begin + 1, count);
-			}
-			finally
+			while (rs.Next())
 			{
-				rs.Close();
+				Record record = rs.Record;
+				long r1 = record.GetLong("result1");
+				long r2 = record.GetLong("result2");
+				long r3 = record.GetLong("result3");
+				Assert.IsTrue(r1 >= begin && r1 <= end);
+				Assert.AreEqual(r1 * 10, r2);
+				Assert.AreEqual(r1 * 100, r3);
+				count++;
 			}
+			Assert.AreEqual(end - begin + 1, count);
 		}
 
 		[TestMethod]
@@ -261,29 +234,22 @@ namespace Aerospike.Test
 				ExpOperation.Read("sum", computedExp, ExpReadFlags.DEFAULT)
 			];
 
-			RecordSet rs = client.Query(null, stmt);
+			using RecordSet rs = client.Query(null, stmt);
 
-			try
-			{
-				int count = 0;
+			int count = 0;
 
-				while (rs.Next())
-				{
-					Record record = rs.Record;
-					long val1 = record.GetLong(binName1);
-					long sum = record.GetLong("sum");
-					Assert.IsTrue(val1 >= begin && val1 <= end);
-					Assert.AreEqual(val1 + val1 * 10, sum);
-					Assert.IsNull(record.GetValue(binName2));
-					Assert.IsNull(record.GetValue(binName3));
-					count++;
-				}
-				Assert.AreEqual(end - begin + 1, count);
-			}
-			finally
+			while (rs.Next())
 			{
-				rs.Close();
+				Record record = rs.Record;
+				long val1 = record.GetLong(binName1);
+				long sum = record.GetLong("sum");
+				Assert.IsTrue(val1 >= begin && val1 <= end);
+				Assert.AreEqual(val1 + val1 * 10, sum);
+				Assert.IsNull(record.GetValue(binName2));
+				Assert.IsNull(record.GetValue(binName3));
+				count++;
 			}
+			Assert.AreEqual(end - begin + 1, count);
 		}
 
 		[TestMethod]
@@ -306,26 +272,19 @@ namespace Aerospike.Test
 				ExpOperation.Read("computed", exp, ExpReadFlags.DEFAULT)
 			];
 
-			RecordSet rs = client.Query(null, stmt);
+			using RecordSet rs = client.Query(null, stmt);
 
-			try
-			{
-				int count = 0;
+			int count = 0;
 
-				while (rs.Next())
-				{
-					Record record = rs.Record;
-					long computed = record.GetLong("computed");
-					long original = record.GetLong(binName1);
-					Assert.AreEqual(original * 100, computed);
-					count++;
-				}
-				Assert.AreEqual(end - begin + 1, count);
-			}
-			finally
+			while (rs.Next())
 			{
-				rs.Close();
+				Record record = rs.Record;
+				long computed = record.GetLong("computed");
+				long original = record.GetLong(binName1);
+				Assert.AreEqual(original * 100, computed);
+				count++;
 			}
+			Assert.AreEqual(end - begin + 1, count);
 		}
 
 		[TestMethod]
@@ -353,29 +312,22 @@ namespace Aerospike.Test
 				ExpOperation.Read("diff", diffExp, ExpReadFlags.DEFAULT)
 			];
 
-			RecordSet rs = client.Query(null, stmt);
+			using RecordSet rs = client.Query(null, stmt);
 
-			try
-			{
-				int count = 0;
+			int count = 0;
 
-				while (rs.Next())
-				{
-					Record record = rs.Record;
-					long val1 = record.GetLong(binName1);
-					long val2 = record.GetLong(binName2);
-					long sum = record.GetLong("sum");
-					long diff = record.GetLong("diff");
-					Assert.AreEqual(val1 + val2, sum);
-					Assert.AreEqual(val2 - val1, diff);
-					count++;
-				}
-				Assert.AreEqual(end - begin + 1, count);
-			}
-			finally
+			while (rs.Next())
 			{
-				rs.Close();
+				Record record = rs.Record;
+				long val1 = record.GetLong(binName1);
+				long val2 = record.GetLong(binName2);
+				long sum = record.GetLong("sum");
+				long diff = record.GetLong("diff");
+				Assert.AreEqual(val1 + val2, sum);
+				Assert.AreEqual(val2 - val1, diff);
+				count++;
 			}
+			Assert.AreEqual(end - begin + 1, count);
 		}
 
 		[TestMethod]
@@ -405,27 +357,20 @@ namespace Aerospike.Test
 				)
 			};
 
-			RecordSet rs = client.Query(policy, stmt);
+			using RecordSet rs = client.Query(policy, stmt);
 
-			try
-			{
-				int count = 0;
+			int count = 0;
 
-				while (rs.Next())
-				{
-					Record record = rs.Record;
-					long doubled = record.GetLong("doubled");
-					long original = record.GetLong(binName1);
-					Assert.AreEqual(original * 2, doubled);
-					Assert.IsTrue(original < 6);
-					count++;
-				}
-				Assert.AreEqual(5, count);
-			}
-			finally
+			while (rs.Next())
 			{
-				rs.Close();
+				Record record = rs.Record;
+				long doubled = record.GetLong("doubled");
+				long original = record.GetLong(binName1);
+				Assert.AreEqual(original * 2, doubled);
+				Assert.IsTrue(original < 6);
+				count++;
 			}
+			Assert.AreEqual(5, count);
 		}
 
 		[TestMethod]
@@ -441,26 +386,19 @@ namespace Aerospike.Test
 
 			stmt.Operations = [Operation.Get(binName1)];
 
-			RecordSet rs = client.Query(null, stmt);
+			using RecordSet rs = client.Query(null, stmt);
 
-			try
-			{
-				int count = 0;
+			int count = 0;
 
-				while (rs.Next())
-				{
-					Record record = rs.Record;
-					long val1 = record.GetLong(binName1);
-					Assert.IsTrue(val1 >= begin && val1 <= end);
-					Assert.IsNull(record.GetValue(binName2));
-					count++;
-				}
-				Assert.AreEqual(end - begin + 1, count);
-			}
-			finally
+			while (rs.Next())
 			{
-				rs.Close();
+				Record record = rs.Record;
+				long val1 = record.GetLong(binName1);
+				Assert.IsTrue(val1 >= begin && val1 <= end);
+				Assert.IsNull(record.GetValue(binName2));
+				count++;
 			}
+			Assert.AreEqual(end - begin + 1, count);
 		}
 
 		[TestMethod]
@@ -476,7 +414,7 @@ namespace Aerospike.Test
 
 			try
 			{
-				RecordSet rs = client.Query(null, stmt);
+				using RecordSet rs = client.Query(null, stmt);
 
 				while (rs.Next())
 				{
@@ -485,10 +423,7 @@ namespace Aerospike.Test
 			}
 			catch (AerospikeException ae)
 			{
-				AerospikeException inner = ae.InnerException as AerospikeException;
-				Assert.IsNotNull(inner);
-				Assert.AreEqual(ResultCode.PARAMETER_ERROR, inner.Result);
-				Assert.IsTrue(inner.Message.Contains("read-only"));
+				Test.AssertParameterError(ae, "read-only");
 			}
 		}
 
@@ -505,7 +440,7 @@ namespace Aerospike.Test
 
 			try
 			{
-				RecordSet rs = client.Query(null, stmt);
+				using RecordSet rs = client.Query(null, stmt);
 
 				while (rs.Next())
 				{
@@ -514,10 +449,7 @@ namespace Aerospike.Test
 			}
 			catch (AerospikeException ae)
 			{
-				AerospikeException inner = ae.InnerException as AerospikeException;
-				Assert.IsNotNull(inner);
-				Assert.AreEqual(ResultCode.PARAMETER_ERROR, inner.Result);
-				Assert.IsTrue(inner.Message.Contains("read-only"));
+				Test.AssertParameterError(ae, "read-only");
 			}
 		}
 
@@ -539,7 +471,7 @@ namespace Aerospike.Test
 
 			try
 			{
-				RecordSet rs = client.Query(null, stmt);
+				using RecordSet rs = client.Query(null, stmt);
 
 				while (rs.Next())
 				{
@@ -548,10 +480,7 @@ namespace Aerospike.Test
 			}
 			catch (AerospikeException ae)
 			{
-				AerospikeException inner = ae.InnerException as AerospikeException;
-				Assert.IsNotNull(inner);
-				Assert.AreEqual(ResultCode.PARAMETER_ERROR, inner.Result);
-				Assert.IsTrue(inner.Message.Contains("read-only"));
+				Test.AssertParameterError(ae, "read-only");
 			}
 		}
 
@@ -572,10 +501,7 @@ namespace Aerospike.Test
 			}
 			catch (AerospikeException ae)
 			{
-				AerospikeException inner = ae.InnerException as AerospikeException;
-				Assert.IsNotNull(inner);
-				Assert.AreEqual(ResultCode.PARAMETER_ERROR, inner.Result);
-				Assert.IsTrue(inner.Message.Contains("write"));
+				Test.AssertParameterError(ae, "write");
 			}
 		}
 
@@ -626,10 +552,7 @@ namespace Aerospike.Test
 			}
 			catch (AerospikeException ae)
 			{
-				AerospikeException inner = ae.InnerException as AerospikeException;
-				Assert.IsNotNull(inner);
-				Assert.AreEqual(ResultCode.PARAMETER_ERROR, inner.Result);
-				Assert.IsTrue(inner.Message.Contains("write-only"));
+				Test.AssertParameterError(ae, "write-only");
 			}
 		}
 
@@ -646,25 +569,18 @@ namespace Aerospike.Test
 
 			stmt.Operations = [ExpOperation.Read("offset", exp, ExpReadFlags.DEFAULT)];
 
-			RecordSet rs = client.Query(null, stmt);
+			using RecordSet rs = client.Query(null, stmt);
 
-			try
-			{
-				int count = 0;
+			int count = 0;
 
-				while (rs.Next())
-				{
-					Record record = rs.Record;
-					object offsetVal = record.GetValue("offset");
-					Assert.IsNotNull(offsetVal);
-					count++;
-				}
-				Assert.IsTrue(count >= size);
-			}
-			finally
+			while (rs.Next())
 			{
-				rs.Close();
+				Record record = rs.Record;
+				object offsetVal = record.GetValue("offset");
+				Assert.IsNotNull(offsetVal);
+				count++;
 			}
+			Assert.IsTrue(count >= size);
 		}
 
 		[TestMethod]
@@ -690,38 +606,31 @@ namespace Aerospike.Test
 				ExpOperation.Read("category", exp, ExpReadFlags.DEFAULT)
 			];
 
-			RecordSet rs = client.Query(null, stmt);
+			using RecordSet rs = client.Query(null, stmt);
 
-			try
+			int highCount = 0;
+			int lowCount = 0;
+
+			while (rs.Next())
 			{
-				int highCount = 0;
-				int lowCount = 0;
+				Record record = rs.Record;
+				string category = record.GetString("category");
+				long val = record.GetLong(binName1);
+				Assert.IsNotNull(category);
 
-				while (rs.Next())
+				if (val > 10)
 				{
-					Record record = rs.Record;
-					string category = record.GetString("category");
-					long val = record.GetLong(binName1);
-					Assert.IsNotNull(category);
-
-					if (val > 10)
-					{
-						Assert.AreEqual("high", category);
-						highCount++;
-					}
-					else
-					{
-						Assert.AreEqual("low", category);
-						lowCount++;
-					}
+					Assert.AreEqual("high", category);
+					highCount++;
 				}
-				Assert.AreEqual(10, highCount);
-				Assert.AreEqual(10, lowCount);
+				else
+				{
+					Assert.AreEqual("low", category);
+					lowCount++;
+				}
 			}
-			finally
-			{
-				rs.Close();
-			}
+			Assert.AreEqual(10, highCount);
+			Assert.AreEqual(10, lowCount);
 		}
 
 		[TestMethod]
@@ -736,7 +645,7 @@ namespace Aerospike.Test
 
 			try
 			{
-				RecordSet rs = client.Query(null, stmt);
+				using RecordSet rs = client.Query(null, stmt);
 
 				while (rs.Next())
 				{
@@ -745,10 +654,7 @@ namespace Aerospike.Test
 			}
 			catch (AerospikeException ae)
 			{
-				AerospikeException inner = ae.InnerException as AerospikeException;
-				Assert.IsNotNull(inner);
-				Assert.AreEqual(ResultCode.PARAMETER_ERROR, inner.Result);
-				Assert.IsTrue(inner.Message.Contains("read-only"));
+				Test.AssertParameterError(ae, "read-only");
 			}
 		}
 
@@ -764,7 +670,7 @@ namespace Aerospike.Test
 
 			try
 			{
-				RecordSet rs = client.Query(null, stmt);
+				using RecordSet rs = client.Query(null, stmt);
 
 				while (rs.Next())
 				{
@@ -773,10 +679,7 @@ namespace Aerospike.Test
 			}
 			catch (AerospikeException ae)
 			{
-				AerospikeException inner = ae.InnerException as AerospikeException;
-				Assert.IsNotNull(inner);
-				Assert.AreEqual(ResultCode.PARAMETER_ERROR, inner.Result);
-				Assert.IsTrue(inner.Message.Contains("read-only"));
+				Test.AssertParameterError(ae, "read-only");
 			}
 		}
 
@@ -792,24 +695,22 @@ namespace Aerospike.Test
 			stmt.SetFilter(Filter.Range(binName1, begin, end));
 
 			Expression exp = Exp.Build(Exp.IntBin("nonexistent"));
-			stmt.Operations = [ExpOperation.Read("result", exp, ExpReadFlags.EVAL_NO_FAIL)];
+			stmt.Operations = [
+				Operation.Get(binName1),
+				ExpOperation.Read("result", exp, ExpReadFlags.EVAL_NO_FAIL)
+			];
 
-			RecordSet rs = client.Query(null, stmt);
+			using RecordSet rs = client.Query(null, stmt);
 
-			try
+			int count = 0;
+
+			while (rs.Next())
 			{
-				int count = 0;
-
-				while (rs.Next())
-				{
-					count++;
-				}
-				Assert.AreEqual(end - begin + 1, count);
+				Record record = rs.Record;
+				Assert.IsNotNull(record.GetValue(binName1));
+				count++;
 			}
-			finally
-			{
-				rs.Close();
-			}
+			Assert.AreEqual(end - begin + 1, count);
 		}
 
 		[TestMethod]
@@ -827,10 +728,7 @@ namespace Aerospike.Test
 			}
 			catch (AerospikeException ae)
 			{
-				AerospikeException inner = ae.InnerException as AerospikeException;
-				Assert.IsNotNull(inner);
-				Assert.AreEqual(ResultCode.PARAMETER_ERROR, inner.Result);
-				Assert.IsTrue(inner.Message.Contains("write"));
+				Test.AssertParameterError(ae, "write");
 			}
 		}
 
@@ -846,7 +744,7 @@ namespace Aerospike.Test
 
 			try
 			{
-				RecordSet rs = client.Query(null, stmt);
+				using RecordSet rs = client.Query(null, stmt);
 
 				while (rs.Next())
 				{
@@ -856,9 +754,7 @@ namespace Aerospike.Test
 			catch (AerospikeException ae)
 			{
 				AerospikeException inner = ae.InnerException as AerospikeException;
-				Assert.IsNotNull(inner);
-				Assert.AreEqual(ResultCode.PARAMETER_ERROR, inner.Result);
-				Assert.IsTrue(inner.Message.Contains("bin names"));
+				Test.AssertParameterError(inner, "bin names");
 			}
 		}
 
@@ -881,10 +777,7 @@ namespace Aerospike.Test
 			}
 			catch (AerospikeException ae)
 			{
-				AerospikeException inner = ae.InnerException as AerospikeException;
-				Assert.IsNotNull(inner);
-				Assert.AreEqual(ResultCode.PARAMETER_ERROR, inner.Result);
-				Assert.IsTrue(inner.Message.Contains("bin names"));
+				Test.AssertParameterError(ae, "bin names");
 			}
 		}
 	}

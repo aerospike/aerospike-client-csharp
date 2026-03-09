@@ -154,6 +154,12 @@ namespace Aerospike.Client
 			return ProtocolTypes[(int)type];
 		}
 
+
+		/// <summary>
+		/// Return whether the given operation type is a write operation.
+		/// </summary>
+		/// <param name="type">Operation type to check.</param>
+		/// <returns>True if the operation type modifies data.</returns>/// <summary>
 		public static bool IsWrite(Type type)
 		{
 			return IsWrites[(int)type];
