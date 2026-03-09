@@ -86,5 +86,13 @@ namespace Aerospike.Test
 				Assert.Fail("Failed to get: namespace=" + SuiteHelpers.ns + " set=" + SuiteHelpers.set + " key=" + key.userKey);
 			}
 		}
+
+		public static void CheckServerVersion(Version version, string testType)
+		{
+			if (client.Cluster.GetRandomNode().serverVersion < version)
+			{
+				Assert.Inconclusive($"{testType} tests require server version {version} or later");
+			}
+		}
 	}
 }

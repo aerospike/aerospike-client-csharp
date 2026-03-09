@@ -15,7 +15,6 @@
  * the License.
  */
 using Aerospike.Client;
-using Microsoft.DiaSymReader;
 
 namespace Aerospike.Test
 {
@@ -33,6 +32,8 @@ namespace Aerospike.Test
 		[ClassInitialize()]
 		public static void Prepare(TestContext testContext)
 		{
+			CheckServerVersion(new Version(8, 1, 2), "Bin projection");
+
 			Policy policy = new()
 			{
 				totalTimeout = 0
