@@ -159,7 +159,7 @@ namespace Aerospike.Client
 		/// Return whether the given operation type is a write operation.
 		/// </summary>
 		/// <param name="type">Operation type to check.</param>
-		/// <returns>True if the operation type modifies data.</returns>/// <summary>
+		/// <returns>True if the operation type modifies data.</returns>
 		public static bool IsWrite(Type type)
 		{
 			return IsWrites[(int)type];

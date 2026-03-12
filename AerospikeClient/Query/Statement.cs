@@ -296,12 +296,12 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Operations to be performed on query/execute.
 		/// <para>
-		/// For foreground queries (<see cref="IAerospikeClient.Query"/>), only read operations
-		/// are allowed (e.g., <see cref="Operation.Get(string)"/>, <see cref="ExpOperation.Read"/>).
+		/// For foreground queries (<see cref="IAerospikeClient.Query(QueryPolicy, Statement)"/>), only read operations
+		/// are allowed (e.g., <see cref="Operation.Get(string)"/>, <see cref="ExpOperation.Read(string, Expression, ExpReadFlags)"/>).
 		/// Read operations act as bin projections, limiting which bins are returned.
 		/// </para>
 		/// <para>
-		/// For background execute (<see cref="IAerospikeClient.Execute"/>), only write operations
+		/// For background execute (<see cref="IAerospikeClient.Execute(WritePolicy, Statement, Operation[])"/>), only write operations
 		/// are allowed (e.g., <see cref="ExpOperation.Write"/>).
 		/// </para>
 		/// <para>
