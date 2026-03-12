@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2025 Aerospike, Inc.
+ * Copyright 2012-2026 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -27,11 +27,6 @@ namespace Aerospike.Client
 		/// will fail.  This is the default behavior.
 		/// </summary>
 		DEFAULT = 0x00,
-
-		/// <summary>
-		/// This flag is set when leaf values are to be modified.
-		/// </summary>
-		APPLY = 0x04,
 
 		/// <summary>
 		/// If the expression in the context hits an invalid type (e.g., selects
