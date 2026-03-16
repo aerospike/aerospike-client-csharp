@@ -2245,7 +2245,7 @@ namespace Aerospike.Client
 						if (!Operation.IsWrite(operation.type))
 						{
 							throw new AerospikeException(ResultCode.PARAMETER_ERROR,
-								"Execute() operations must be write-only. Use Query() for read-only operations.");
+								"Background query operations must be write-only. Use query for read-only operations.");
 						}
 						EstimateOperationSize(operation);
 					}
@@ -2257,7 +2257,7 @@ namespace Aerospike.Client
 						if (Operation.IsWrite(operation.type))
 						{
 							throw new AerospikeException(ResultCode.PARAMETER_ERROR,
-								"Query() operations must be read-only. Use Execute() for write operations.");
+								"Query operations must be read-only. Use background query for write-only operations.");
 						}
 						EstimateOperationSize(operation);
 					}
