@@ -1,5 +1,5 @@
 ﻿/* 
- * Copyright 2012-2025 Aerospike, Inc.
+ * Copyright 2012-2026 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -32,7 +32,7 @@ namespace Aerospike.Test
 		{
 			if (client.Cluster.GetRandomNode().serverVersion < Node.SERVER_VERSION_8_1)
 			{
-				return;
+				Assert.Inconclusive("Secondary index with expression tests require server version 8.1.0 or later.");
 			}
 
 			Policy policy = new()
@@ -42,7 +42,7 @@ namespace Aerospike.Test
 
 			try
 			{
-				IndexTask itask = client.CreateIndex(policy, SuiteHelpers.ns, setName, indexName, IndexType.NUMERIC, IndexCollectionType.DEFAULT, exp);
+				IndexTask itask = client.CreateIndex(policy, SuiteHelpers.ns, setName, indexName, IndexType.INTEGER, IndexCollectionType.DEFAULT, exp);
 				itask.Wait();
 			}
 			catch (AerospikeException ae)
@@ -73,7 +73,7 @@ namespace Aerospike.Test
 		{
 			if (client.Cluster.GetRandomNode().serverVersion < Node.SERVER_VERSION_8_1)
 			{
-				return;
+				Assert.Inconclusive("Secondary index with expression tests require server version 8.1.0 or later.");
 			}
 
 			int begin = 220;

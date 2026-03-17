@@ -22,11 +22,11 @@ namespace Aerospike.Client
 	public enum IndexType
 	{
 		/// <summary>
-		/// Number index.
-		/// For use with server versions prior to 8.1.2.
-		/// For server versions 8.1.2+, use INTEGER.
+		/// Integer index.
+		/// For use with server versions 8.1.2+.
+		/// For server versions prior to 8.1.2, use NUMERIC.
 		/// </summary>
-		NUMERIC,
+		INTEGER,
 
 		/// <summary>
 		/// String index.
@@ -44,10 +44,10 @@ namespace Aerospike.Client
 		GEO2DSPHERE,
 
 		/// <summary>
-		/// Integer index.
-		/// For use with server versions 8.1.2+.
-		/// For server versions prior to 8.1.2, use NUMERIC.
+		/// Number index.
+		/// For use with server versions prior to 8.1.2.
+		/// For server versions 8.1.2+, use INTEGER.
 		/// </summary>
-		INTEGER
+		NUMERIC
 	}
 }
