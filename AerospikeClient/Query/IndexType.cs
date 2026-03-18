@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2023 Aerospike, Inc.
+ * Copyright 2012-2026 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -22,9 +22,11 @@ namespace Aerospike.Client
 	public enum IndexType
 	{
 		/// <summary>
-		/// Number index.
+		/// Integer index.
+		/// For use with server versions 8.1.2+.
+		/// For server versions prior to 8.1.2, use NUMERIC.
 		/// </summary>
-		NUMERIC,
+		INTEGER,
 
 		/// <summary>
 		/// String index.
@@ -39,6 +41,13 @@ namespace Aerospike.Client
 		/// <summary>
 		/// 2-dimensional spherical geospatial index.
 		/// </summary>
-		GEO2DSPHERE
+		GEO2DSPHERE,
+
+		/// <summary>
+		/// Number index.
+		/// For use with server versions prior to 8.1.2.
+		/// For server versions 8.1.2+, use INTEGER.
+		/// </summary>
+		NUMERIC
 	}
 }

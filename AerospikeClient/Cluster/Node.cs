@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2025 Aerospike, Inc.
+ * Copyright 2012-2026 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -25,6 +25,7 @@ namespace Aerospike.Client
 	/// </summary>
 	public class Node : IDisposable
 	{
+		public static Version SERVER_VERSION_8_1_2 = new(8, 1, 2, 0);
 		public static Version SERVER_VERSION_8_1_1 = new(8, 1, 1, 0);
 		public static Version SERVER_VERSION_8_1 = new(8, 1, 0, 0);
 		public static Version SERVER_VERSION_PSCAN = new(4, 9, 0, 3);
