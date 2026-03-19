@@ -46,7 +46,7 @@ namespace Aerospike.Test
 				}
 			}
 
-			task = client.CreateIndex(policy, SuiteHelpers.ns, SuiteHelpers.set, indexName, binName, IndexType.NUMERIC);
+			task = client.CreateIndex(policy, SuiteHelpers.ns, SuiteHelpers.set, indexName, binName, IndexType.INTEGER);
 			task.Wait();
 
 			task = client.DropIndex(policy, SuiteHelpers.ns, SuiteHelpers.set, indexName);

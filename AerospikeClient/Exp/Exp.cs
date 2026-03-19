@@ -1465,11 +1465,11 @@ namespace Aerospike.Client
 		/// Requires server version 8.1.1
 		/// <example>
 		/// <code>
-		/// Exp.RemoveResults()
+		/// Exp.RemoveResult()
 		/// </code>
 		/// </example>
 		/// </summary>
-		public static Exp RemoveResults()
+		public static Exp RemoveResult()
 		{
 			return new Cmd(RESULT_REMOVE);
 		}

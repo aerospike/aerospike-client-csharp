@@ -18,7 +18,11 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 		.editorconfig = .editorconfig
 		.runsettings = .runsettings
 		aerospikeconfig.yaml = aerospikeconfig.yaml
+		docfx.json = docfx.json
 		global.json = global.json
+		docs\intro.md = docs\intro.md
+		toc.yml = toc.yml
+		docs\toc.yml = docs\toc.yml
 	EndProjectSection
 EndProject
 Global

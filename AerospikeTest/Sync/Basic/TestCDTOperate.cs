@@ -1838,7 +1838,7 @@ namespace Aerospike.Test
 			CTX ctx1 = CTX.MapKey(Value.Get("items"));
 			CTX ctx2 = CTX.AllChildrenWithFilter(Exp.Val(true));
 
-			Expression removeExp = Exp.Build(Exp.RemoveResults());
+			Expression removeExp = Exp.Build(Exp.RemoveResult());
 			Operation applyOp = CDTOperation.ModifyByPath(binName, ModifyFlag.DEFAULT, removeExp, ctx1, ctx2);
 
 			// CDT apply operation should succeed
@@ -1894,7 +1894,7 @@ namespace Aerospike.Test
 				Exp.GT(Exp.IntLoopVar(LoopVarPart.VALUE), Exp.Val(10))
 			);
 
-			Expression removeExp = Exp.Build(Exp.RemoveResults());
+			Expression removeExp = Exp.Build(Exp.RemoveResult());
 			Operation applyOp = CDTOperation.ModifyByPath(binName, ModifyFlag.DEFAULT, removeExp, ctx1, ctx2);
 
 			// CDT remove operation should succeed
@@ -1950,7 +1950,7 @@ namespace Aerospike.Test
 			CTX ctx1 = CTX.MapKey(Value.Get("config"));
 			CTX ctx2 = CTX.AllChildrenWithFilter(Exp.Val(true));
 
-			Expression removeExp = Exp.Build(Exp.RemoveResults());
+			Expression removeExp = Exp.Build(Exp.RemoveResult());
 			Operation applyOp = CDTOperation.ModifyByPath(binName, ModifyFlag.DEFAULT, removeExp, ctx1, ctx2);
 
 			// CDT remove operation should succeed
@@ -2003,7 +2003,7 @@ namespace Aerospike.Test
 				Exp.LT(Exp.IntLoopVar(LoopVarPart.VALUE), Exp.Val(50))
 			);
 
-			Expression removeExp = Exp.Build(Exp.RemoveResults());
+			Expression removeExp = Exp.Build(Exp.RemoveResult());
 			Operation applyOp = CDTOperation.ModifyByPath(binName, ModifyFlag.DEFAULT, removeExp, ctx1, ctx2);
 
 			// CDT remove operation should succeed
@@ -2095,7 +2095,7 @@ namespace Aerospike.Test
 				)
 			);
 
-			Expression removeExp = Exp.Build(Exp.RemoveResults());
+			Expression removeExp = Exp.Build(Exp.RemoveResult());
 			Operation applyOp = CDTOperation.ModifyByPath(binName, ModifyFlag.DEFAULT, removeExp, ctx1, ctx2);
 
 			// CDT remove operation should succeed
@@ -2165,7 +2165,7 @@ namespace Aerospike.Test
 				Exp.GE(Exp.IntLoopVar(LoopVarPart.INDEX), Exp.Val(3))
 			);
 
-			Expression removeExp = Exp.Build(Exp.RemoveResults());
+			Expression removeExp = Exp.Build(Exp.RemoveResult());
 			Operation applyOp = CDTOperation.ModifyByPath(binName, ModifyFlag.DEFAULT, removeExp, ctx1, ctx2);
 
 			// CDT remove operation should succeed
@@ -2224,7 +2224,7 @@ namespace Aerospike.Test
 				Exp.GE(Exp.StringLoopVar(LoopVarPart.MAP_KEY), Exp.Val("c"))
 			);
 
-			Expression removeExp = Exp.Build(Exp.RemoveResults());
+			Expression removeExp = Exp.Build(Exp.RemoveResult());
 			Operation applyOp = CDTOperation.ModifyByPath(binName, ModifyFlag.DEFAULT, removeExp, ctx1, ctx2);
 
 			// CDT remove operation should succeeed
@@ -2312,7 +2312,7 @@ namespace Aerospike.Test
 				)
 			);
 
-			Expression removeExp = Exp.Build(Exp.RemoveResults());
+			Expression removeExp = Exp.Build(Exp.RemoveResult());
 			Operation applyOp = CDTOperation.ModifyByPath(binName, ModifyFlag.DEFAULT, removeExp, ctx1, ctx2, ctx3);
 
 			// CDT remove operation should succeed

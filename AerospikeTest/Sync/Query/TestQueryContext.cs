@@ -1,5 +1,5 @@
 ﻿/* 
- * Copyright 2012-2023 Aerospike, Inc.
+ * Copyright 2012-2026 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -38,7 +38,7 @@ namespace Aerospike.Test
 			{
 				IndexTask task = client.CreateIndex(
 					policy, SuiteHelpers.ns, SuiteHelpers.set, indexName, binName,
-					IndexType.NUMERIC, IndexCollectionType.DEFAULT,
+					IndexType.INTEGER, IndexCollectionType.DEFAULT,
 					CTX.ListRank(-1)
 					);
 				task.Wait();

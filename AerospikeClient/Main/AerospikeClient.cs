@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2025 Aerospike, Inc.
+ * Copyright 2012-2026 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -2772,6 +2772,15 @@ namespace Aerospike.Client
 
 			sb.Append(";indexname=");
 			sb.Append(indexName);
+
+			if (indexType == IndexType.NUMERIC && node.serverVersion >= Node.SERVER_VERSION_8_1_2)
+			{
+				indexType = IndexType.INTEGER;
+			}
+			else if (indexType == IndexType.INTEGER && node.serverVersion < Node.SERVER_VERSION_8_1_2)
+			{
+				indexType = IndexType.NUMERIC;
+			}
 
 			if (indexExpression != null)
 			{
