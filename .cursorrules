@@ -1,0 +1,51 @@
+# Cursor Rules for Aerospike C# Client
+
+## Project Context
+This is the Aerospike C# Client library, a .NET 8.0 solution with multiple projects:
+- **AerospikeClient**: Main client library (net8.0)
+- **AerospikeTest**: Test project using MSTest
+- **AerospikeDemo**: Demo/example project
+- **AerospikeBenchmarks**: Performance benchmarking project
+- **AerospikeAdmin**: Admin tool (Windows Forms)
+
+## Code Style & Conventions
+- Follow the `.editorconfig` file strictly
+- Use tabs (not spaces) with tab width of 4
+- End of line: LF
+- Namespace declarations: block-scoped
+- Prefer explicit types over `var` for built-in types
+- Use expression-bodied members where appropriate (properties, accessors, lambdas)
+- Prefer pattern matching over type checks
+- Use nullable reference types carefully (currently disabled in most projects)
+
+## .NET Version
+- Target Framework: .NET 8.0
+- Use modern C# features (primary constructors, collection expressions when appropriate)
+- Implicit usings are enabled
+
+## Architecture Guidelines
+- This is a client library for Aerospike database
+- Maintain backward compatibility when possible
+- Follow async/await patterns for I/O operations
+- Use proper error handling and exception types
+- Consider performance implications (this is a database client library)
+
+## Testing
+- Tests are in AerospikeTest project using MSTest
+- Test files are organized in Sync/ and Async/ folders
+- Maintain test coverage for critical paths
+
+## When Making Changes
+1. Ensure code compiles without warnings (except documented suppressions)
+2. Run tests before committing
+3. Update XML documentation comments if changing public APIs
+4. Consider cross-platform compatibility (Debug_Unix, Release_Unix configurations)
+5. Follow existing patterns in the codebase
+
+## Common Patterns
+- Async operations use `Async` suffix or are in `Async/` namespace
+- Policy classes for configuration
+- Value types for data representation
+- Command pattern for operations
+
+
