@@ -2773,11 +2773,11 @@ namespace Aerospike.Client
 			sb.Append(";indexname=");
 			sb.Append(indexName);
 
-			if (indexType == IndexType.NUMERIC && node.serverVersion >= Node.SERVER_VERSION_8_1_2)
+			if (indexType == IndexType.NUMERIC && node.serverVersion >= Node.SERVER_VERSION_8_1_3)
 			{
 				indexType = IndexType.INTEGER;
 			}
-			else if (indexType == IndexType.INTEGER && node.serverVersion < Node.SERVER_VERSION_8_1_2)
+			else if (indexType == IndexType.INTEGER && node.serverVersion < Node.SERVER_VERSION_8_1_3)
 			{
 				indexType = IndexType.NUMERIC;
 			}
