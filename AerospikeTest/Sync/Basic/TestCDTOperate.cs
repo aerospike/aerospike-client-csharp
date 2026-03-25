@@ -3027,7 +3027,216 @@ namespace Aerospike.Test
 				Assert.IsTrue(e.Message.Contains("15") || e.Message.Contains("exceed"));
 			}
 		}
+
+		[TestMethod]
+		public void HllNestedInMap()
+		{
+			var rkey = new Key(SuiteHelpers.ns, SuiteHelpers.set, "hllNestedMapKey");
+			client.Delete(null, rkey);
+
+			var values = new List<Value>();
+			for (int i = 0; i < 5000; i++)
+			{
+				values.Add(Value.Get(i));
+			}
+
+			client.Operate(null, rkey,
+				HLLOperation.Add(HLLPolicy.Default, "hll_temp", values, 4, 4));
+
+			Record rec = client.Get(null, rkey, "hll_temp");
+			Assert.IsNotNull(rec);
+			var hllVal = (Value.HLLValue)rec.GetValue("hll_temp");
+			Assert.IsNotNull(hllVal);
+
+			// Store HLL inside a map
+			var mapData = new Dictionary<string, object> { { "a", hllVal } };
+			client.Put(null, rkey, new Bin("mapbin", mapData));
+
+			// Read back and verify nested value is HLLValue
+			rec = client.Get(null, rkey, "mapbin");
+			Assert.IsNotNull(rec);
+
+			var resultMap = (Dictionary<object, object>)rec.GetValue("mapbin");
+			Assert.IsNotNull(resultMap);
+
+			object nested = resultMap["a"];
+			Assert.IsInstanceOfType(nested, typeof(Value.HLLValue),
+				$"Nested value should be HLLValue, got: {nested?.GetType().Name ?? "null"}");
+			Assert.IsTrue(((Value.HLLValue)nested).Bytes.Length > 0);
+		}
+
+		[TestMethod]
+		public void HllNestedInList()
+		{
+			var rkey = new Key(SuiteHelpers.ns, SuiteHelpers.set, "hllNestedListKey");
+			client.Delete(null, rkey);
+
+			var smallData = new List<Value> { Value.Get("a"), Value.Get("b") };
+			var largeData = new List<Value>();
+			for (int i = 0; i < 5; i++)
+			{
+				largeData.Add(Value.Get("item" + i));
+			}
+
+			client.Operate(null, rkey,
+				HLLOperation.Add(HLLPolicy.Default, "hll1", smallData, 8),
+				HLLOperation.Add(HLLPolicy.Default, "hll2", largeData, 8));
+
+			Record rec = client.Get(null, rkey, "hll1", "hll2");
+			var hll1 = (Value.HLLValue)rec.GetValue("hll1");
+			var hll2 = (Value.HLLValue)rec.GetValue("hll2");
+
+			// Store HLLs in a list inside a map
+			var data = new Dictionary<string, object>
+			{
+				{ "hlls", new List<object> { hll1, hll2 } }
+			};
+			client.Put(null, rkey, new Bin("listbin", data));
+
+			// Read back and verify both preserve type
+			rec = client.Get(null, rkey, "listbin");
+			Assert.IsNotNull(rec);
+
+			var resultMap = (Dictionary<object, object>)rec.GetValue("listbin");
+			Assert.IsNotNull(resultMap);
+
+			var resultList = (List<object>)resultMap["hlls"];
+			Assert.IsNotNull(resultList);
+			Assert.AreEqual(2, resultList.Count);
+			Assert.IsInstanceOfType(resultList[0], typeof(Value.HLLValue));
+			Assert.IsInstanceOfType(resultList[1], typeof(Value.HLLValue));
+		}
+
+		[TestMethod]
+		public void HllNestedInMapInsideMap()
+		{
+			var rkey = new Key(SuiteHelpers.ns, SuiteHelpers.set, "hllDeepMapKey");
+			client.Delete(null, rkey);
+
+			var entries = new List<Value>();
+			for (int i = 0; i < 256; i++)
+			{
+				entries.Add(Value.Get(i));
+			}
+
+			client.Operate(null, rkey,
+				HLLOperation.Add(HLLPolicy.Default, "hll_temp", entries, 8));
+
+			Record rec = client.Get(null, rkey, "hll_temp");
+			var hllVal = (Value.HLLValue)rec.GetValue("hll_temp");
+			Assert.IsNotNull(hllVal);
+
+			// Store HLL 2 levels deep: map -> map -> HLL
+			var inner = new Dictionary<string, object> { { "level2", hllVal } };
+			var outer = new Dictionary<string, object> { { "level1", inner } };
+			client.Put(null, rkey, new Bin("deepmap", outer));
+
+			// Read back and verify
+			rec = client.Get(null, rkey, "deepmap");
+			Assert.IsNotNull(rec);
+
+			var outerResult = (Dictionary<object, object>)rec.GetValue("deepmap");
+			Assert.IsNotNull(outerResult);
+			var innerResult = (Dictionary<object, object>)outerResult["level1"];
+			Assert.IsNotNull(innerResult);
+
+			object nested = innerResult["level2"];
+			Assert.IsInstanceOfType(nested, typeof(Value.HLLValue),
+				$"HLL nested 2 levels deep should be HLLValue, got: {nested?.GetType().Name ?? "null"}");
+		}
+
+		[TestMethod]
+		public void HllNestedInListInsideListInsideMap()
+		{
+			var rkey = new Key(SuiteHelpers.ns, SuiteHelpers.set, "hllDeepListKey");
+			client.Delete(null, rkey);
+
+			var entries = new List<Value>();
+			for (int i = 0; i < 256; i++)
+			{
+				entries.Add(Value.Get(i));
+			}
+
+			client.Operate(null, rkey,
+				HLLOperation.Add(HLLPolicy.Default, "hll_temp", entries, 8));
+
+			Record rec = client.Get(null, rkey, "hll_temp");
+			var hllVal = (Value.HLLValue)rec.GetValue("hll_temp");
+			Assert.IsNotNull(hllVal);
+
+			// Store HLL 3 levels deep: map -> list -> list -> HLL
+			var innerList = new List<object> { hllVal };
+			var outerList = new List<object> { innerList };
+			var data = new Dictionary<string, object> { { "level1", outerList } };
+			client.Put(null, rkey, new Bin("deeplist", data));
+
+			// Read back and verify
+			rec = client.Get(null, rkey, "deeplist");
+			Assert.IsNotNull(rec);
+
+			var resultMap = (Dictionary<object, object>)rec.GetValue("deeplist");
+			Assert.IsNotNull(resultMap);
+			var outerResult = (List<object>)resultMap["level1"];
+			Assert.IsNotNull(outerResult);
+			var innerResult = (List<object>)outerResult[0];
+			Assert.IsNotNull(innerResult);
+
+			object nested = innerResult[0];
+			Assert.IsInstanceOfType(nested, typeof(Value.HLLValue),
+				$"HLL nested 3 levels deep (map->list->list) should be HLLValue, got: {nested?.GetType().Name ?? "null"}");
+		}
+
+		[TestMethod]
+		public void HllLoopVarFilterOnNestedHLLs()
+		{
+			var rkey = new Key(SuiteHelpers.ns, SuiteHelpers.set, "hllLoopVarFilterKey");
+			client.Delete(null, rkey);
+
+			var smallData = new List<Value> { Value.Get("a"), Value.Get("b") };
+			var largeData = new List<Value>();
+			for (int i = 0; i < 5; i++)
+			{
+				largeData.Add(Value.Get("item" + i));
+			}
+
+			client.Operate(null, rkey,
+				HLLOperation.Add(HLLPolicy.Default, "hll1", smallData, 8),
+				HLLOperation.Add(HLLPolicy.Default, "hll2", largeData, 8));
+
+			Record rec = client.Get(null, rkey, "hll1", "hll2");
+			var hll1 = (Value.HLLValue)rec.GetValue("hll1");
+			var hll2 = (Value.HLLValue)rec.GetValue("hll2");
+
+			// Store in nested map->list structure
+			var hllList = new List<object> { hll1, hll2 };
+			var data = new Dictionary<string, object> { { "hlls", hllList } };
+			client.Put(null, rkey, new Bin("data", data));
+
+			// Use hllLoopVar to filter HLL values with count > 3
+			CTX ctx1 = CTX.MapKey(Value.Get("hlls"));
+			CTX ctx2 = CTX.AllChildrenWithFilter(
+				Exp.GT(
+					HLLExp.GetCount(Exp.HLLLoopVar(LoopVarPart.VALUE)),
+					Exp.Val(3)
+				)
+			);
+
+			Expression selectExp = Exp.Build(
+				CDTExp.SelectByPath(
+					Exp.Type.LIST,
+					SelectFlag.VALUE,
+					Exp.MapBin("data"),
+					ctx1, ctx2
+				)
+			);
+
+			Record result = client.Operate(null, rkey,
+				ExpOperation.Read("filtered", selectExp, ExpReadFlags.DEFAULT));
+
+			Assert.IsNotNull(result);
+			var filtered = result.GetList("filtered");
+			Assert.IsNotNull(filtered);
+			Assert.AreEqual(1, filtered.Count);
+		}
 	}
 }
-
-
