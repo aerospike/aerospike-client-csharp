@@ -746,26 +746,18 @@ namespace Aerospike.Test
 			stmt.SetBinNames(binName1, binName2);
 			stmt.Operations = [Operation.Get(binName1)];
 
-			RecordSet rs = client.Query(null, stmt);
+			using RecordSet rs = client.Query(null, stmt);
+			int count = 0;
 
-			try
+			while (rs.Next())
 			{
-				int count = 0;
-
-				while (rs.Next())
-				{
-					Record record = rs.Record;
-					Assert.IsNotNull(record.GetValue(binName1), "binName1 should be returned via operations");
-					Assert.IsNull(record.GetValue(binName2), "binName2 should not be returned");
-					Assert.IsNull(record.GetValue(binName3), "binName3 should not be returned");
-					count++;
-				}
-				Assert.AreEqual(end - begin + 1, count);
+				Record record = rs.Record;
+				Assert.IsNotNull(record.GetValue(binName1), "binName1 should be returned via operations");
+				Assert.IsNull(record.GetValue(binName2), "binName2 should not be returned");
+				Assert.IsNull(record.GetValue(binName3), "binName3 should not be returned");
+				count++;
 			}
-			finally
-			{
-				rs.Close();
-			}
+			Assert.AreEqual(end - begin + 1, count);
 		}
 
 		[TestMethod]

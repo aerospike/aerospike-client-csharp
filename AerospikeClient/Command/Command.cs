@@ -2227,6 +2227,7 @@ namespace Aerospike.Client
 				fieldCount++;
 			}
 
+			// Operations and bin names are mutually exclusive.
 			int operationCount = 0;
 
 			if (statement.operations != null)
