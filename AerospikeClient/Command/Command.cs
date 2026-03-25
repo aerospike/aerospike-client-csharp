@@ -2227,15 +2227,13 @@ namespace Aerospike.Client
 				fieldCount++;
 			}
 
-			// Operations and bin names are mutually exclusive.
 			int operationCount = 0;
 
 			if (statement.operations != null)
 			{
 				if (statement.binNames != null)
 				{
-					throw new AerospikeException(ResultCode.PARAMETER_ERROR,
-						"Operations and bin names are mutually exclusive.");
+					Log.Warn("Operations and bin names are mutually exclusive. Setting both will become an error in a future release.");
 				}
 
 				if (background)
