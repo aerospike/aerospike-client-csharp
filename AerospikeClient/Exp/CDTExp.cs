@@ -27,7 +27,7 @@ namespace Aerospike.Client
 		/// <summary>
 		/// The modify flag for CDT expressions.
 		/// </summary>
-		public const int MODIFY = 0x40;
+		private const int MODIFY = 0x40;
 
 		/// <summary>
 		/// The type of CDT expression.
