@@ -32,7 +32,7 @@ namespace Aerospike.Test
 		[ClassInitialize()]
 		public static void Prepare(TestContext testContext)
 		{
-			CheckServerVersion(new Version(8, 1, 2), "Bin projection");
+			CheckServerVersion(new Version(8, 1, 2), "Ops projection");
 
 			Policy policy = new()
 			{
@@ -734,51 +734,56 @@ namespace Aerospike.Test
 		}
 
 		[TestMethod]
-		public void QueryRejectsBinNamesWithOperations()
+		public void QueryIgnoresBinNamesWhenOperationsAlsoSet()
 		{
+			int begin = 1;
+			int end = 5;
+
 			Statement stmt = new();
 			stmt.SetNamespace(SuiteHelpers.ns);
 			stmt.SetSetName(SuiteHelpers.set);
-			stmt.SetFilter(Filter.Range(binName1, 1, 5));
+			stmt.SetFilter(Filter.Range(binName1, begin, end));
 			stmt.SetBinNames(binName1, binName2);
 			stmt.Operations = [Operation.Get(binName1)];
 
-			try
-			{
-				using RecordSet rs = client.Query(null, stmt);
+			using RecordSet rs = client.Query(null, stmt);
+			int count = 0;
 
-				while (rs.Next())
-				{
-				}
-				Assert.Fail("Expected AerospikeException when both binNames and operations are set");
-			}
-			catch (AerospikeException ae)
+			while (rs.Next())
 			{
-				AerospikeException inner = ae.InnerException as AerospikeException;
-				Test.AssertParameterError(inner, "bin names");
+				Record record = rs.Record;
+				Assert.IsNotNull(record.GetValue(binName1), "binName1 should be returned via operations");
+				Assert.IsNull(record.GetValue(binName2), "binName2 should not be returned");
+				Assert.IsNull(record.GetValue(binName3), "binName3 should not be returned");
+				count++;
 			}
+			Assert.AreEqual(end - begin + 1, count);
 		}
 
 		[TestMethod]
-		public void ExecuteRejectsBinNamesWithOperations()
+		public void ExecuteIgnoresBinNamesWhenOperationsAlsoSet()
 		{
+			int begin = 1;
+			int end = 3;
+
 			Statement stmt = new();
 			stmt.SetNamespace(SuiteHelpers.ns);
 			stmt.SetSetName(SuiteHelpers.set);
-			stmt.SetFilter(Filter.Range(binName1, 1, 5));
+			stmt.SetFilter(Filter.Range(binName1, begin, end));
 			stmt.SetBinNames(binName1, binName2);
 
 			Expression writeExp = Exp.Build(Exp.Val("tagged"));
+			ExecuteTask task = client.Execute(null, stmt,
+				ExpOperation.Write("tag", writeExp, ExpWriteFlags.DEFAULT));
+			task.Wait(3000, 3000);
 
-			try
+			for (int i = begin; i <= end; i++)
 			{
-				client.Execute(null, stmt,
-					ExpOperation.Write("tag", writeExp, ExpWriteFlags.DEFAULT));
-				Assert.Fail("Expected AerospikeException when both binNames and operations are set");
-			}
-			catch (AerospikeException ae)
-			{
-				Test.AssertParameterError(ae, "bin names");
+				Key key = new(SuiteHelpers.ns, SuiteHelpers.set, keyPrefix + i);
+				Record record = client.Get(null, key);
+				Assert.IsNotNull(record);
+				Assert.AreEqual("tagged", record.GetString("tag"),
+					"Write operation should have been applied despite binNames being set");
 			}
 		}
 	}
