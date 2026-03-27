@@ -93,8 +93,8 @@ jobs:
         server-type: ${{ inputs.server-type || 'aerospike-server-enterprise' }}
         server-image: ${{ inputs.server-image || '' }}
         jfrog-platform-url: ${{ inputs.jfrog-platform-url || '' }}
-        oidc-provider: gh-aerospike
-        oidc-audience: aerospike
+        oidc-provider: database-gh-aerospike
+        oidc-audience: database-gh-aerospike
 
   deploy:
     needs: [build, sign, test]
