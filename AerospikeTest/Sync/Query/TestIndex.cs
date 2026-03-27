@@ -1,4 +1,4 @@
-﻿/* 
+/* 
  * Copyright 2012-2026 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
@@ -23,6 +23,7 @@ namespace Aerospike.Test
 	{
 		private const string indexName = "testindex";
 		private const string binName = "testbin";
+		private const string setIndexName = "testsetindex";
 
 		[TestMethod]
 		public void IndexCreateDrop()
@@ -58,6 +59,56 @@ namespace Aerospike.Test
 			foreach (Node node in nodes)
 			{
 				string cmd = IndexTask.BuildStatusCommand(SuiteHelpers.ns, indexName, node.serverVersion);
+				string response = Info.Request(node, cmd);
+				int code = Info.ParseResultCode(response);
+				Assert.AreEqual(201, code);
+			}
+		}
+
+		[TestMethod]
+		public void SetIndexCreateDrop()
+		{
+			CheckServerVersion(Node.SERVER_VERSION_8_1_2, "Set index");
+
+			Policy policy = new();
+			policy.SetTimeout(0);
+
+			IndexTask task;
+
+			// Drop set index if it already exists.
+			try
+			{
+				task = client.DropIndex(policy, SuiteHelpers.ns, SuiteHelpers.set, setIndexName);
+				task.Wait();
+			}
+			catch (AerospikeException ae)
+			{
+				if (ae.Result != ResultCode.INDEX_NOTFOUND)
+				{
+					throw;
+				}
+			}
+
+			task = client.CreateIndex(policy, SuiteHelpers.ns, SuiteHelpers.set, setIndexName);
+			task.Wait();
+
+			// Verify the set index exists on all nodes.
+			Node[] nodes = [.. client.Nodes];
+
+			foreach (Node node in nodes)
+			{
+				string cmd = IndexTask.BuildExistsCommand(SuiteHelpers.ns, setIndexName, node.serverVersion);
+				string response = Info.Request(node, cmd);
+				Assert.AreEqual("true", response, $"Set index should exist on node {node.Name}");
+			}
+
+			task = client.DropIndex(policy, SuiteHelpers.ns, SuiteHelpers.set, setIndexName);
+			task.Wait();
+
+			// Ensure all nodes have dropped the set index.
+			foreach (Node node in nodes)
+			{
+				string cmd = IndexTask.BuildStatusCommand(SuiteHelpers.ns, setIndexName, node.serverVersion);
 				string response = Info.Request(node, cmd);
 				int code = Info.ParseResultCode(response);
 				Assert.AreEqual(201, code);

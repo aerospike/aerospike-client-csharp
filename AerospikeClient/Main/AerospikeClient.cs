@@ -2653,6 +2653,31 @@ namespace Aerospike.Client
 		//--------------------------------------------------------
 
 		/// <summary>
+		/// Create a set index for the given namespace and set.
+		/// A set index is a secondary index specialized for record presence per set;
+		/// no bin, type, context, or expression parameters are used.
+		/// This asynchronous server call will return before command is complete.
+		/// The user can optionally wait for command completion by using the returned
+		/// IndexTask instance.
+		/// Requires server version 8.1.2+.
+		/// </summary>
+		/// <param name="policy">generic configuration parameters, pass in null for defaults</param>
+		/// <param name="ns">namespace - equivalent to database name</param>
+		/// <param name="setName">set name (required for set indexes)</param>
+		/// <param name="indexName">name of set index</param>
+		/// <exception cref="AerospikeException">if index create fails</exception>
+		public IndexTask CreateIndex
+		(
+			Policy policy,
+			string ns,
+			string setName,
+			string indexName
+		)
+		{
+			return CreateIndex(policy, ns, setName, indexName, null, default, IndexCollectionType.SET, (Expression)null, null);
+		}
+
+		/// <summary>
 		/// Create scalar secondary index.
 		/// This asynchronous server call will return before command is complete.
 		/// The user can optionally wait for command completion by using the returned
@@ -2773,59 +2798,66 @@ namespace Aerospike.Client
 			sb.Append(";indexname=");
 			sb.Append(indexName);
 
-			if (indexType == IndexType.NUMERIC && node.serverVersion >= Node.SERVER_VERSION_8_1_2)
+			if (indexCollectionType == IndexCollectionType.SET)
 			{
-				indexType = IndexType.INTEGER;
-			}
-			else if (indexType == IndexType.INTEGER && node.serverVersion < Node.SERVER_VERSION_8_1_2)
-			{
-				indexType = IndexType.NUMERIC;
-			}
-
-			if (indexExpression != null)
-			{
-				sb.Append(";exp=");
-				sb.Append(indexExpression.GetBase64());
-
-				if (indexCollectionType != IndexCollectionType.DEFAULT)
-				{
-					sb.Append(";indextype=");
-					sb.Append(indexCollectionType);
-				}
-
-				sb.Append(";type=");
-				sb.Append(indexType);
+				sb.Append(";indextype=set");
 			}
 			else
 			{
-				if (ctx != null && ctx.Length > 0)
+				if (indexType == IndexType.NUMERIC && node.serverVersion >= Node.SERVER_VERSION_8_1_3)
 				{
-					byte[] bytes = PackUtil.Pack(ctx);
-					string base64 = Convert.ToBase64String(bytes);
-
-					sb.Append(";context=");
-					sb.Append(base64);
+					indexType = IndexType.INTEGER;
+				}
+				else if (indexType == IndexType.INTEGER && node.serverVersion < Node.SERVER_VERSION_8_1_3)
+				{
+					indexType = IndexType.NUMERIC;
 				}
 
-				if (indexCollectionType != IndexCollectionType.DEFAULT)
+				if (indexExpression != null)
 				{
-					sb.Append(";indextype=");
-					sb.Append(indexCollectionType);
-				}
+					sb.Append(";exp=");
+					sb.Append(indexExpression.GetBase64());
 
-				if (node.serverVersion >= Node.SERVER_VERSION_8_1)
-				{
-					sb.Append(";bin=");
-					sb.Append(binName);
+					if (indexCollectionType != IndexCollectionType.DEFAULT)
+					{
+						sb.Append(";indextype=");
+						sb.Append(indexCollectionType);
+					}
+
 					sb.Append(";type=");
 					sb.Append(indexType);
 				}
 				else
 				{
-					sb.Append(";indexdata=");
-					sb.Append(binName);
-					sb.Append(',');
-					sb.Append(indexType);
+					if (ctx != null && ctx.Length > 0)
+					{
+						byte[] bytes = PackUtil.Pack(ctx);
+						string base64 = Convert.ToBase64String(bytes);
+
+						sb.Append(";context=");
+						sb.Append(base64);
+					}
+
+					if (indexCollectionType != IndexCollectionType.DEFAULT)
+					{
+						sb.Append(";indextype=");
+						sb.Append(indexCollectionType);
+					}
+
+					if (node.serverVersion >= Node.SERVER_VERSION_8_1)
+					{
+						sb.Append(";bin=");
+						sb.Append(binName);
+						sb.Append(";type=");
+						sb.Append(indexType);
+					}
+					else
+					{
+						sb.Append(";indexdata=");
+						sb.Append(binName);
+						sb.Append(',');
+						sb.Append(indexType);
+					}
 				}
 			}
 
