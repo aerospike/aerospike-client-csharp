@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2025 Aerospike, Inc.
+ * Copyright 2012-2026 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -257,12 +257,7 @@ namespace Aerospike.Client
 
 		/// <summary>
 		/// Secure connection policy for servers that require TLS connections.
-		/// Secure connections are only supported for AerospikeClient synchronous commands.
-		/// <para>
-		/// Secure connections are not supported for asynchronous commands because AsyncClient 
-		/// uses the best performing SocketAsyncEventArgs.  Unfortunately, SocketAsyncEventArgs is
-		/// not supported by the provided SslStream.
-		/// </para>
+		/// Secure connections are supported for both synchronous and asynchronous commands.
 		/// <para>Default: null (Use normal sockets)</para>
 		/// </summary>
 		public TlsPolicy tlsPolicy;
