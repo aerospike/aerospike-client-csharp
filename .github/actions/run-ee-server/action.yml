@@ -13,9 +13,9 @@ inputs:
     description: Container repo url
     default: artifact.aerospike.io
   jfrog-platform-url:
-    description: JFrog platform url
+    description: JFrog platform url. If empty and server-image is provided, parsed from server-image hostname. Otherwise defaults to https://aerospike.jfrog.io
     required: false
-    default: https://aerospike.jfrog.io
+    default: ""
   oidc-provider:
     description: OIDC provider name
     required: true
@@ -46,11 +46,24 @@ inputs:
 runs:
   using: composite
   steps:
+  - name: Resolve JFrog platform URL
+    id: resolve-jfrog-url
+    run: |
+      if [ -n "${{ inputs.jfrog-platform-url }}" ]; then
+        echo "jfrog-platform-url=${{ inputs.jfrog-platform-url }}" >> $GITHUB_OUTPUT
+      elif [ -n "${{ inputs.server-image }}" ]; then
+        HOSTNAME=$(echo "${{ inputs.server-image }}" | cut -d'/' -f1)
+        echo "jfrog-platform-url=https://${HOSTNAME}" >> $GITHUB_OUTPUT
+      else
+        echo "jfrog-platform-url=https://aerospike.jfrog.io" >> $GITHUB_OUTPUT
+      fi
+    shell: bash
+
   - name: Set up JFrog credentials
     id: setup-jfrog-cli
     uses: step-security/setup-jfrog-cli@a6b41f8338bea0983ddff6bd4ede7d2dcd81e1fa # v4.8.1
     env:
-      JF_URL: ${{ inputs.jfrog-platform-url }}
+      JF_URL: ${{ steps.resolve-jfrog-url.outputs.jfrog-platform-url }}
       JF_PROJECT: database
     with:
       oidc-provider-name: ${{ inputs.oidc-provider }}

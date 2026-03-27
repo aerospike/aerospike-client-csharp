@@ -27,6 +27,11 @@ on:
         required: false
         default: ''
         description: 'Custom full docker image name (e.g., aerospike.jfrog.io/database-docker-virtual/aerospike-server-enterprise:8.1.1.0-rc27_1). Overrides server-tag and server-type if provided.'
+      jfrog-platform-url:
+        type: string
+        required: false
+        default: ''
+        description: 'JFrog platform url (e.g., https://aerospike.jfrog.io). If empty, parsed from server-image or defaults to https://aerospike.jfrog.io.'
 
 jobs:
   build:
@@ -87,6 +92,7 @@ jobs:
         server-tag: ${{ inputs.server-tag || 'latest' }}
         server-type: ${{ inputs.server-type || 'aerospike-server-enterprise' }}
         server-image: ${{ inputs.server-image || '' }}
+        jfrog-platform-url: ${{ inputs.jfrog-platform-url || '' }}
         oidc-provider: gh-aerospike
         oidc-audience: aerospike
 
