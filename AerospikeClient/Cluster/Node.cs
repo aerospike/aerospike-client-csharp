@@ -25,6 +25,7 @@ namespace Aerospike.Client
 	/// </summary>
 	public class Node : IDisposable
 	{
+		public static Version SERVER_VERSION_8_1_3 = new(8, 1, 3, 0);
 		public static Version SERVER_VERSION_8_1_2 = new(8, 1, 2, 0);
 		public static Version SERVER_VERSION_8_1_1 = new(8, 1, 1, 0);
 		public static Version SERVER_VERSION_8_1 = new(8, 1, 0, 0);
