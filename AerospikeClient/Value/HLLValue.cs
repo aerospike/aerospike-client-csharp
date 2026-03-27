@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2023 Aerospike, Inc.
+ * Copyright 2012-2026 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -43,7 +43,7 @@ namespace Aerospike.Client
 				return Bytes.Length;
 			}
 
-			public override void Pack(Packer packer) => packer.PackParticleBytes(Bytes);
+			public override void Pack(Packer packer) => packer.PackParticleBytes(Bytes, ParticleType.HLL);
 
 			public override void ValidateKeyType() => throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Invalid key type: HLL");
 
