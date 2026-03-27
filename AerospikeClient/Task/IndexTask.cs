@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2025 Aerospike, Inc.
+ * Copyright 2012-2026 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -117,6 +117,12 @@ namespace Aerospike.Client
 
 				int begin = index + find.Length;
 				int end = response.IndexOf(';', begin);
+
+				if (end < 0)
+				{
+					end = response.Length;
+				}
+
 				string str = response.Substring(begin, end - begin);
 				int pct = Convert.ToInt32(str);
 

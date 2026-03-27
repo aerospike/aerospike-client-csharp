@@ -105,7 +105,8 @@ namespace Aerospike.Demo
 					new ExampleTreeNode("Query Sum", new QuerySum(console)),
 					new ExampleTreeNode("Query Average", new QueryAverage(console)),
 					new ExampleTreeNode("Query Execute", new QueryExecute(console)),
-					new ExampleTreeNode("Query Geo Collection", new QueryGeoCollection(console))
+					new ExampleTreeNode("Query Geo Collection", new QueryGeoCollection(console)),
+					new ExampleTreeNode("Path Expression", new PathExpression(console))
 				});
 
 				examplesView.Nodes.Add(examples);

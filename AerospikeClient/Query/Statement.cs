@@ -104,7 +104,7 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
-		/// Set query bin names for bin projection in queries.
+		/// Set query bin names for ops projection in queries.
 		/// Mutually exclusive with <see cref="Operations"/>.
 		/// </summary>
 		public void SetBinNames(params string[] binNames)
@@ -298,15 +298,16 @@ namespace Aerospike.Client
 		/// <para>
 		/// For foreground queries (<see cref="IAerospikeClient.Query(QueryPolicy, Statement)"/>), only read operations
 		/// are allowed (e.g., <see cref="Operation.Get(string)"/>, <see cref="ExpOperation.Read(string, Expression, ExpReadFlags)"/>).
-		/// Read operations act as bin projections, limiting which bins are returned.
+		/// Read operations act as ops projections, limiting which bins are returned.
 		/// </para>
 		/// <para>
 		/// For background execute (<see cref="IAerospikeClient.Execute(WritePolicy, Statement, Operation[])"/>), only write operations
 		/// are allowed (e.g., <see cref="ExpOperation.Write"/>).
 		/// </para>
 		/// <para>
-		/// Operations and <see cref="SetBinNames"/> are mutually exclusive. Setting both will
-		/// result in a <see cref="ResultCode.PARAMETER_ERROR"/>.
+		/// Operations and <see cref="SetBinNames"/> are mutually exclusive. If both are set,
+		/// the client will log a warning and ignore operations for foreground queries or ignore
+		/// bin names for background execute. Setting both will become an error in a future release.
 		/// </para>
 		/// </summary>
 		public Operation[] Operations
