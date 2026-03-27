@@ -46,16 +46,25 @@ inputs:
 runs:
   using: composite
   steps:
-  - name: Resolve JFrog platform URL
-    id: resolve-jfrog-url
+  - name: Resolve JFrog platform URL and container repo URL
+    id: resolve-urls
     run: |
+      if [ -n "${{ inputs.server-image }}" ]; then
+        IMAGE_HOSTNAME=$(echo "${{ inputs.server-image }}" | cut -d'/' -f1)
+      fi
+
       if [ -n "${{ inputs.jfrog-platform-url }}" ]; then
         echo "jfrog-platform-url=${{ inputs.jfrog-platform-url }}" >> $GITHUB_OUTPUT
-      elif [ -n "${{ inputs.server-image }}" ]; then
-        HOSTNAME=$(echo "${{ inputs.server-image }}" | cut -d'/' -f1)
-        echo "jfrog-platform-url=https://${HOSTNAME}" >> $GITHUB_OUTPUT
+      elif [ -n "${IMAGE_HOSTNAME}" ]; then
+        echo "jfrog-platform-url=https://${IMAGE_HOSTNAME}" >> $GITHUB_OUTPUT
       else
         echo "jfrog-platform-url=https://aerospike.jfrog.io" >> $GITHUB_OUTPUT
+      fi
+
+      if [ -n "${IMAGE_HOSTNAME}" ]; then
+        echo "container-repo-url=${IMAGE_HOSTNAME}" >> $GITHUB_OUTPUT
+      else
+        echo "container-repo-url=${{ inputs.container-repo-url }}" >> $GITHUB_OUTPUT
       fi
     shell: bash
 
@@ -63,14 +72,14 @@ runs:
     id: setup-jfrog-cli
     uses: step-security/setup-jfrog-cli@a6b41f8338bea0983ddff6bd4ede7d2dcd81e1fa # v4.8.1
     env:
-      JF_URL: ${{ steps.resolve-jfrog-url.outputs.jfrog-platform-url }}
+      JF_URL: ${{ steps.resolve-urls.outputs.jfrog-platform-url }}
       JF_PROJECT: database
     with:
       oidc-provider-name: ${{ inputs.oidc-provider }}
       oidc-audience: ${{ inputs.oidc-audience }}
 
   - name: Docker login to container repo
-    run: docker login ${{ inputs.container-repo-url }} --username ${{ steps.setup-jfrog-cli.outputs.oidc-user }} --password ${{ steps.setup-jfrog-cli.outputs.oidc-token }}
+    run: docker login ${{ steps.resolve-urls.outputs.container-repo-url }} --username ${{ steps.setup-jfrog-cli.outputs.oidc-user }} --password ${{ steps.setup-jfrog-cli.outputs.oidc-token }}
     shell: bash
 
   - name: Set image name
