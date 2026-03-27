@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2025 Aerospike, Inc.
+ * Copyright 2012-2026 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -870,6 +870,28 @@ namespace Aerospike.Client
 		/// </param>
 		/// <exception cref="AerospikeException">if query fails</exception>
 		ResultSet QueryAggregate(QueryPolicy policy, Statement statement);
+
+		/// <summary>
+		/// Create a set index for the given namespace and set.
+		/// A set index is a secondary index specialized for record presence per set;
+		/// no bin, type, context, or expression parameters are used.
+		/// This asynchronous server call will return before command is complete.
+		/// The user can optionally wait for command completion by using the returned
+		/// IndexTask instance.
+		/// Requires server version 8.1.2+.
+		/// </summary>
+		/// <param name="policy">generic configuration parameters, pass in null for defaults</param>
+		/// <param name="ns">namespace - equivalent to database name</param>
+		/// <param name="setName">set name (required for set indexes)</param>
+		/// <param name="indexName">name of set index</param>
+		/// <exception cref="AerospikeException">if index create fails</exception>
+		IndexTask CreateIndex
+		(
+			Policy policy,
+			string ns,
+			string setName,
+			string indexName
+		);
 
 		/// <summary>
 		/// Create scalar secondary index.
