@@ -5,3 +5,33 @@ updates:
       - /
     schedule:
       interval: daily
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: daily
+
+  - package-ecosystem: nuget
+    directory: /AerospikeAdmin
+    schedule:
+      interval: daily
+
+  - package-ecosystem: nuget
+    directory: /AerospikeBenchmarks
+    schedule:
+      interval: daily
+
+  - package-ecosystem: nuget
+    directory: /AerospikeClient
+    schedule:
+      interval: daily
+
+  - package-ecosystem: nuget
+    directory: /AerospikeDemo
+    schedule:
+      interval: daily
+
+  - package-ecosystem: nuget
+    directory: /AerospikeTest
+    schedule:
+      interval: daily
