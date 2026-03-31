@@ -22,19 +22,52 @@ inputs:
     required: false
     default: ""
     description: Custom full docker image name (overrides server-tag and server-type)
+  features-content:
+    required: false
+    default: ""
+    description: Raw features.conf content (e.g. from a GitHub secret)
 
 runs:
   using: composite
   steps:
-    - name: Run EE server
-      uses: ./.github/actions/run-ee-server
+    - name: Resolve server settings
+      id: resolve
+      shell: bash
+      run: |
+        if [ -n "${{ inputs.server-image }}" ]; then
+          # Extract tag (everything after the last colon)
+          IMAGE="${{ inputs.server-image }}"
+          TAG="${IMAGE##*:}"
+          # Extract repo path (between registry host and tag)
+          REPO="${IMAGE%:*}"
+          REPO="${REPO#*/}"
+          echo "server-tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "server-container-repo=$REPO" >> "$GITHUB_OUTPUT"
+        else
+          echo "server-tag=${{ inputs.server-tag }}" >> "$GITHUB_OUTPUT"
+          echo "server-container-repo=database-docker-virtual/${{ inputs.server-type }}" >> "$GITHUB_OUTPUT"
+        fi
+
+        # Map strong-consistency from 1/0 to true/false
+        if [ "${{ inputs.strong-consistency }}" == "1" ]; then
+          echo "enable-sc=true" >> "$GITHUB_OUTPUT"
+          echo "config-file=.github/workflows/docker-setup/aerospike-sc.conf" >> "$GITHUB_OUTPUT"
+        else
+          echo "enable-sc=false" >> "$GITHUB_OUTPUT"
+          echo "config-file=.github/workflows/docker-setup/aerospike.conf" >> "$GITHUB_OUTPUT"
+        fi
+
+    - name: Setup Aerospike Server
+      id: setup-server
+      uses: aerospike/shared-workflows/.github/actions/setup-aerospike-server@334ad55b790658d549747b0d154407dfc730acca
       with:
-        server-tag: ${{ inputs.server-tag }}
-        server-type: ${{ inputs.server-type }}
-        server-image: ${{ inputs.server-image }}
+        server-tag: ${{ steps.resolve.outputs.server-tag }}
+        server-container-repo: ${{ steps.resolve.outputs.server-container-repo }}
         oidc-provider: ${{ inputs.oidc-provider }}
         oidc-audience: ${{ inputs.oidc-audience }}
-        strong-consistency: ${{ inputs.strong-consistency }}
+        config-file: ${{ steps.resolve.outputs.config-file }}
+        features-content: ${{ inputs.features-content }}
+        enable-strong-consistency: ${{ steps.resolve.outputs.enable-sc }}
 
     - name: Download test artifacts
       uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
@@ -55,4 +88,4 @@ runs:
       shell: bash
       if: ${{ failure() }}
       run: |
-        docker container logs aerospike
+        docker container logs aerospike-1
