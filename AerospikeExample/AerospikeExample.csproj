@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <OutputType>Exe</OutputType>
+    <RootNamespace>Aerospike.Example</RootNamespace>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <Version>8.3.1</Version>
+    <Configurations>Debug;Release;Debug_Unix;Release_Unix</Configurations>
+    <Platforms>AnyCPU</Platforms>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)' == 'Debug_Unix' ">
+    <DebugSymbols Condition=" '$(DebugSymbols)' == '' ">true</DebugSymbols>
+    <Optimize Condition=" '$(Optimize)' == '' ">false</Optimize>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)' == 'Release_Unix' ">
+    <Optimize Condition=" '$(Optimize)' == '' ">true</Optimize>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\AerospikeClient\AerospikeClient.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Update="udf\*.lua">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+</Project>

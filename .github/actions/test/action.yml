@@ -51,6 +51,21 @@ runs:
       shell: bash
       run: dotnet exec ./artifacts/publish/AerospikeTest.dll --settings ./.runsettings
 
+    - name: Download example artifacts
+      uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+      with:
+        name: AerospikeExample-${{ github.run_number }}
+        path: artifacts-example
+
+    - name: Unzip examples
+      shell: bash
+      working-directory: artifacts-example
+      run: unzip AerospikeExample*.zip
+
+    - name: Run examples
+      shell: bash
+      run: dotnet exec ./artifacts-example/publish/AerospikeExample.dll --settings ./.runsettings all
+
     - name: Show logs if failed
       shell: bash
       if: ${{ failure() }}

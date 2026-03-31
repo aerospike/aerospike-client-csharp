@@ -1495,7 +1495,6 @@ namespace Aerospike.Test
 			var bin = new Bin("color", "blue");
 			client.Put(null, key, bin);
 
-			// Check if bin "color" is in the list ["red", "blue", "green"]
 			Expression exp = Exp.Build(
 				Exp.InList(
 					Exp.StringBin("color"),
@@ -1510,7 +1509,6 @@ namespace Aerospike.Test
 			Assert.IsNotNull(result);
 			Assert.IsTrue(result.GetBool("inList"));
 
-			// Negative case: value not in list
 			Expression expNot = Exp.Build(
 				Exp.InList(
 					Exp.StringBin("color"),

@@ -67,3 +67,20 @@ runs:
         name: AerospikeTest-${{ github.run_number }}
         path: AerospikeTest\bin\Release\net8.0\linux-x64\AerospikeTest-*
         retention-days: 1
+
+    - name: Publish example project
+      shell: pwsh
+      working-directory: AerospikeExample
+      run: dotnet publish AerospikeExample.csproj -r linux-x64 --self-contained false
+
+    - name: Zip example project
+      shell: pwsh
+      working-directory: AerospikeExample\bin\Release\net8.0\linux-x64
+      run: 7z a -tzip AerospikeExample-${{ github.run_number }}.zip publish
+
+    - name: Upload example artifacts
+      uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+      with:
+        name: AerospikeExample-${{ github.run_number }}
+        path: AerospikeExample\bin\Release\net8.0\linux-x64\AerospikeExample-*
+        retention-days: 1
