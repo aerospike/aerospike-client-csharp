@@ -22,6 +22,10 @@ inputs:
     required: false
     default: ""
     description: Custom full docker image name (overrides server-tag and server-type)
+  features-content:
+    required: false
+    default: ""
+    description: Raw features.conf content (e.g. from a GitHub secret)
 
 runs:
   using: composite
@@ -62,6 +66,7 @@ runs:
         oidc-provider: ${{ inputs.oidc-provider }}
         oidc-audience: ${{ inputs.oidc-audience }}
         config-file: ${{ steps.resolve.outputs.config-file }}
+        features-content: ${{ inputs.features-content }}
         enable-strong-consistency: ${{ steps.resolve.outputs.enable-sc }}
 
     - name: Download test artifacts
