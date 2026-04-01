@@ -62,6 +62,7 @@ public class Program
 		"QueryAverage",
 		"QueryExecute",
 		"QueryGeoCollection",
+		"QueryOpsProjection",
 		"PathExpression",
 		"PathExpressionEnhanced",
 		"AsyncPutGet",
