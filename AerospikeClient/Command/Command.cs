@@ -2064,6 +2064,7 @@ namespace Aerospike.Client
 			int filterSize = 0;
 			int binNameSize = 0;
 			bool isNew = cluster.hasPartitionQuery;
+			bool hasQueryOpsProjectionExt = cluster.hasQueryOpsProjectionExt;
 
 			Begin();
 
@@ -2257,6 +2258,11 @@ namespace Aerospike.Client
 						{
 							throw new AerospikeException(ResultCode.PARAMETER_ERROR,
 								"Query operations must be read-only. Use background query for write-only operations.");
+						}
+						if (!hasQueryOpsProjectionExt && !Operation.IsBasicRead(operation.type))
+						{
+							throw new AerospikeException(ResultCode.PARAMETER_ERROR,
+								"Only basic read operations are supported for query operations projection in server versions prior to 8.1.2.");
 						}
 						EstimateOperationSize(operation);
 					}
