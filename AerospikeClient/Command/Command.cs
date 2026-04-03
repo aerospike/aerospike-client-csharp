@@ -2056,7 +2056,8 @@ namespace Aerospike.Client
 			Statement statement,
 			ulong taskId,
 			bool background,
-			NodePartitions nodePartitions
+			NodePartitions nodePartitions,
+			Node node
 		)
 		{
 			byte[] functionArgBuffer = null;
@@ -2064,7 +2065,7 @@ namespace Aerospike.Client
 			int filterSize = 0;
 			int binNameSize = 0;
 			bool isNew = cluster.hasPartitionQuery;
-			bool hasQueryOpsProjectionExt = cluster.hasQueryOpsProjectionExt;
+			bool hasQueryOpsProjectionExt = node.HasQueryOpsProjectionExt;
 
 			Begin();
 
