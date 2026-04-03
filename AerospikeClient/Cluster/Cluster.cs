@@ -150,7 +150,6 @@ namespace Aerospike.Client
 
 		// Does cluster support query by partition.
 		internal bool hasPartitionQuery;
-
 		public bool MetricsEnabled;
 		public MetricsPolicy MetricsPolicy;
 		private volatile IMetricsListener metricsListener;
