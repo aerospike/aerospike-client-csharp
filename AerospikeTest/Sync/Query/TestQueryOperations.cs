@@ -32,8 +32,6 @@ namespace Aerospike.Test
 		[ClassInitialize()]
 		public static void Prepare(TestContext testContext)
 		{
-			CheckServerVersion(new Version(8, 1, 2), "Ops projection");
-
 			Policy policy = new()
 			{
 				totalTimeout = 0
@@ -77,6 +75,8 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void QueryProjectMultipleBins()
 		{
+			CheckServerVersion(new Version(8, 1, 2), "Ops projection extended");
+
 			Statement stmt = new();
 			stmt.SetNamespace(SuiteHelpers.ns);
 			stmt.SetSetName(SuiteHelpers.set);
@@ -145,6 +145,8 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void QueryProjectBinsViaExpressionRead()
 		{
+			CheckServerVersion(new Version(8, 1, 2), "Ops projection extended");
+
 			Statement stmt = new();
 			stmt.SetNamespace(SuiteHelpers.ns);
 			stmt.SetSetName(SuiteHelpers.set);
@@ -179,6 +181,8 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void QueryProjectBinsViaExpressionReadWithFilter()
 		{
+			CheckServerVersion(new Version(8, 1, 2), "Ops projection extended");
+
 			int begin = 1;
 			int end = 10;
 
@@ -218,6 +222,8 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void QueryProjectMixedGetAndExpressionRead()
 		{
+			CheckServerVersion(new Version(8, 1, 2), "Ops projection extended");
+
 			int begin = 1;
 			int end = 10;
 
@@ -256,6 +262,8 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void QueryWithExpReadOperation()
 		{
+			CheckServerVersion(new Version(8, 1, 2), "Ops projection extended");
+
 			int begin = 1;
 			int end = 10;
 
@@ -291,6 +299,8 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void QueryWithMultipleExpReadOperations()
 		{
+			CheckServerVersion(new Version(8, 1, 2), "Ops projection extended");
+
 			int begin = 5;
 			int end = 15;
 
@@ -334,6 +344,8 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void QueryWithExpReadAndFilterExp()
 		{
+			CheckServerVersion(new Version(8, 1, 2), "Ops projection extended");
+
 			int begin = 1;
 			int end = 20;
 
@@ -481,7 +493,14 @@ namespace Aerospike.Test
 			}
 			catch (AerospikeException ae)
 			{
-				Test.AssertParameterError(ae, "read-only");
+				if (client.Cluster.GetRandomNode().serverVersion >= Node.SERVER_VERSION_8_1_2)
+				{
+					Test.AssertParameterError(ae, "read-only");
+				}
+				else
+				{
+					Test.AssertParameterError(ae, "basic read operations");
+				}
 			}
 		}
 
@@ -560,6 +579,8 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void QueryWithExpReadNoFilter()
 		{
+			CheckServerVersion(new Version(8, 1, 2), "Ops projection extended");
+
 			Statement stmt = new();
 			stmt.SetNamespace(SuiteHelpers.ns);
 			stmt.SetSetName(SuiteHelpers.set);
@@ -587,6 +608,8 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void QueryWithExpReadConditional()
 		{
+			CheckServerVersion(new Version(8, 1, 2), "Ops projection extended");
+
 			int begin = 1;
 			int end = 20;
 
@@ -687,6 +710,8 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void QueryWithExpReadEvalNoFail()
 		{
+			CheckServerVersion(new Version(8, 1, 2), "Ops projection extended");
+
 			int begin = 1;
 			int end = 5;
 

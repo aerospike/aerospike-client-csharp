@@ -297,8 +297,13 @@ namespace Aerospike.Client
 		/// Operations to be performed on query/execute.
 		/// <para>
 		/// For foreground queries (<see cref="IAerospikeClient.Query(QueryPolicy, Statement)"/>), only read operations
-		/// are allowed (e.g., <see cref="Operation.Get(string)"/>, <see cref="ExpOperation.Read(string, Expression, ExpReadFlags)"/>).
-		/// Read operations act as ops projections, limiting which bins are returned.
+		/// are allowed. Read operations act as ops projections, limiting which bins are returned.
+		/// </para>
+		/// <para>
+		/// Basic read operations (<see cref="Operation.Get(string)"/>, <see cref="Operation.Get()"/>,
+		/// <see cref="Operation.GetHeader()"/>) are supported on server versions prior to 8.1.2.
+		/// Extended read operations (e.g., <see cref="ExpOperation.Read(string, Expression, ExpReadFlags)"/>,
+		/// CDT read operations, bit read operations, HLL read operations) require server version 8.1.2+.
 		/// </para>
 		/// <para>
 		/// For background execute (<see cref="IAerospikeClient.Execute(WritePolicy, Statement, Operation[])"/>), only write operations
