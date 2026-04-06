@@ -267,6 +267,17 @@ namespace Aerospike.Client
 		/// to be included in the result. Typically used after <see cref="MapKeysIn(string[])"/>
 		/// or other selection contexts to further narrow the results.
 		/// </para>
+		/// <para>
+		/// Restrictions:
+		/// <list type="bullet">
+		/// <item>Only one <see cref="AndFilter(Exp)"/> is allowed per context level. Multiple <see cref="AndFilter(Exp)"/>
+		///       calls cannot be chained. To combine multiple conditions, use <see cref="Exp.And(Exp[])"/>
+		///       within a single <see cref="AndFilter(Exp)"/>.</item>
+		/// <item>The preceding context entry must not be an expression type (i.e. <see cref="AndFilter(Exp)"/>
+		///       cannot follow <see cref="AllChildrenWithFilter(Exp)"/> or <see cref="AllChildren"/>).</item>
+		/// <item><see cref="AndFilter(Exp)"/> cannot be the first entry in the context chain.</item>
+		/// </list>
+		/// </para>
 		/// <example>
 		/// <code>
 		/// // Given map: {a: 5, b: 15, c: 25, d: 35}
