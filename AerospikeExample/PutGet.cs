@@ -74,6 +74,9 @@ public class PutGet(Console console) : SyncExample(console)
 		console.Info("Put: namespace={0} set={1} key={2} bin1={3} value1={4} bin2={5} value2={6}",
 			key.ns, key.setName, key.userKey, bin1.name, bin1.value, bin2.name, bin2.value);
 
+		// test comment
+		var test = 12345;
+
 		client.Put(args.writePolicy, key, bin1, bin2);
 
 		console.Info("Get: namespace={0} set={1} key={2}", key.ns, key.setName, key.userKey);

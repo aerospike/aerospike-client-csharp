@@ -2777,6 +2777,7 @@ namespace Aerospike.Test
 			{
 			}
 
+			// Create a map with several keys
 			Dictionary<string, object> map = new()
 			{
 				{ "alpha", 10 },
@@ -2788,6 +2789,7 @@ namespace Aerospike.Test
 			var bin = new Bin(binName, map);
 			client.Put(null, rkey, bin);
 
+			// Select only keys "alpha" and "gamma" using mapKeysIn via CDTOperation
 			CTX ctx = CTX.MapKeysIn("alpha", "gamma");
 			var selectOp = CDTOperation.SelectByPath(binName, SelectFlag.VALUE, ctx);
 
@@ -2826,6 +2828,7 @@ namespace Aerospike.Test
 			var bin = new Bin(binName, map);
 			client.Put(null, rkey, bin);
 
+			// Select keys "a", "b", "c" via MapKeysIn, then AND-filter to keep values > 10
 			CTX keyInList = CTX.MapKeysIn("a", "b", "c");
 			CTX andFilter = CTX.AndFilter(
 				Exp.GT(Exp.IntLoopVar(LoopVarPart.VALUE), Exp.Val(10))
@@ -2838,6 +2841,7 @@ namespace Aerospike.Test
 
 			List<object> resultList = (List<object>)result.GetList(binName);
 			Assert.IsNotNull(resultList);
+			// MAP_KEY_VALUE returns a flat list [key, value, key, value, ...]
 			Assert.AreEqual(4, resultList.Count);
 
 			Dictionary<object, object> resultMap = [];
