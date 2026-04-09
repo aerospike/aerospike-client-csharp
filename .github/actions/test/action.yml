@@ -18,10 +18,6 @@ inputs:
     required: false
     default: "1"
     description: Enable strong consistency (`1` or `0`)
-  server-image:
-    required: false
-    default: ""
-    description: Custom full docker image name (overrides server-tag and server-type)
   features-content:
     required: false
     default: ""
@@ -34,19 +30,8 @@ runs:
       id: resolve
       shell: bash
       run: |
-        if [ -n "${{ inputs.server-image }}" ]; then
-          # Extract tag (everything after the last colon)
-          IMAGE="${{ inputs.server-image }}"
-          TAG="${IMAGE##*:}"
-          # Extract repo path (between registry host and tag)
-          REPO="${IMAGE%:*}"
-          REPO="${REPO#*/}"
-          echo "server-tag=$TAG" >> "$GITHUB_OUTPUT"
-          echo "server-container-repo=$REPO" >> "$GITHUB_OUTPUT"
-        else
-          echo "server-tag=${{ inputs.server-tag }}" >> "$GITHUB_OUTPUT"
-          echo "server-container-repo=database-docker-virtual/${{ inputs.server-type }}" >> "$GITHUB_OUTPUT"
-        fi
+        echo "server-tag=${{ inputs.server-tag }}" >> "$GITHUB_OUTPUT"
+        echo "server-container-repo=database-docker-virtual/${{ inputs.server-type }}" >> "$GITHUB_OUTPUT"
 
         # Map strong-consistency from 1/0 to true/false
         if [ "${{ inputs.strong-consistency }}" == "1" ]; then
