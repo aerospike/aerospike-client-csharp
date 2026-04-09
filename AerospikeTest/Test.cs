@@ -1,5 +1,5 @@
 ﻿/* 
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2026 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -31,6 +31,14 @@ namespace Aerospike.Test
 			{
 				Assert.AreEqual(expectedErrorCode, e.Result);
 			}
+		}
+
+		public static void AssertParameterError(AerospikeException ae, string expectedSubstring)
+		{
+			AerospikeException exception = ae.InnerException == null ? ae : ae.InnerException as AerospikeException;
+			Assert.AreEqual(ResultCode.PARAMETER_ERROR, exception.Result);
+			Assert.IsTrue(exception.Message.Contains(expectedSubstring),
+				$"Expected message containing \"{expectedSubstring}\", got \"{exception.Message}\"");
 		}
 	}
 }

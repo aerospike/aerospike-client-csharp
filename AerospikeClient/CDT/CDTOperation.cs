@@ -45,7 +45,7 @@ namespace Aerospike.Client
 			}
 			else
 			{
-				packedBytes = PackCDTSelect(flags, CDT.Type.SELECT, ctx);
+				packedBytes = PackCDTSelect(CDT.Type.SELECT, flags, ctx);
 			}
 
 			return new Operation(Operation.Type.CDT_READ, binName, Value.Get(packedBytes));
@@ -74,13 +74,13 @@ namespace Aerospike.Client
 			}
 			else
 			{
-				packedBytes = PackCDTModify(flags, CDT.Type.SELECT, modifyExp, ctx);
+				packedBytes = PackCDTModify(CDT.Type.SELECT, flags, modifyExp, ctx);
 			}
 
 			return new Operation(Operation.Type.CDT_MODIFY, binName, Value.Get(packedBytes));
 		}
 
-		private static byte[] PackCDTSelect(SelectFlag flags, CDT.Type typeSelect, params CTX[] ctx)
+		private static byte[] PackCDTSelect(CDT.Type typeSelect, SelectFlag flags, params CTX[] ctx)
 		{
 			Packer packer = new Packer();
 
@@ -108,7 +108,7 @@ namespace Aerospike.Client
 			return packer.ToByteArray();
 		}
 
-		private static byte[] PackCDTModify(ModifyFlag flags, CDT.Type type, Expression modifyExp, params CTX[] ctx)
+		private static byte[] PackCDTModify(CDT.Type type, ModifyFlag flags, Expression modifyExp, params CTX[] ctx)
 		{
 			Packer packer = new Packer();
 

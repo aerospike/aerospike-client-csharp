@@ -148,6 +148,177 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
+		/// Select map entries whose keys are contained in the provided string keys.
+		/// <para>
+		/// This context selects a subset of a map by matching its keys against
+		/// the given <paramref name="keys"/>. Only entries with keys present in
+		/// <paramref name="keys"/> are included. Can be combined with
+		/// <see cref="AndFilter(Exp)"/> to apply additional filtering on the
+		/// selected entries.
+		/// </para>
+		/// <example>
+		/// <code>
+		/// // Given map: {alpha: 10, beta: 20, gamma: 30, delta: 40}
+		/// // Select only the "alpha" and "gamma" entries.
+		/// CTX ctx = CTX.MapKeysIn("alpha", "gamma");
+		/// Operation op = CDTOperation.SelectByPath("myBin", SelectFlag.VALUE, ctx);
+		/// Record result = client.Operate(null, key, op);
+		/// // result: [10, 30]
+		/// </code>
+		/// </example>
+		/// </summary>
+		/// <param name="keys">String map keys to select.</param>
+		/// <returns>A map key-list context.</returns>
+		/// <see cref="AndFilter(Exp)"/>
+		/// <see cref="CDTOperation.SelectByPath(string, SelectFlag, CTX[])"/>
+		public static CTX MapKeysIn(params string[] keys)
+		{
+			return new CTX(0x2a, Value.Get(keys));
+		}
+
+		/// <summary>
+		/// Select map entries whose keys are contained in the provided integer keys.
+		/// <example>
+		/// <code>
+		/// CTX ctx = CTX.MapKeysIn(1, 2, 3);
+		/// </code>
+		/// </example>
+		/// </summary>
+		/// <param name="keys">Integer map keys to select</param>
+		/// <returns>A map key-list context.</returns>
+		/// <see cref="MapKeysIn(string[])"/>
+		public static CTX MapKeysIn(params int[] keys)
+		{
+			return new CTX(0x2a, Value.Get(keys));
+		}
+
+		/// <summary>
+		/// Select map entries whose keys are contained in the provided long keys.
+		/// <example>
+		/// <code>
+		/// CTX ctx = CTX.MapKeysIn(1L, 2L, 3L);
+		/// </code>
+		/// </example>
+		/// </summary>
+		/// <param name="keys">Long map keys to select</param>
+		/// <returns>A map key-list context.</returns>
+		/// <see cref="MapKeysIn(string[])"/>
+		public static CTX MapKeysIn(params long[] keys)
+		{
+			return new CTX(0x2a, Value.Get(keys));
+		}
+
+		/// <summary>
+		/// Select map entries whose keys are contained in the provided byte keys.
+		/// </summary>
+		/// <param name="keys">Byte map keys to select</param>
+		/// <returns>A map key-list context.</returns>
+		/// <see cref="MapKeysIn(string[])"/>
+		public static CTX MapKeysIn(params byte[] keys)
+		{
+			// Value.Get(byte[]) returns BytesValue (a blob), so convert to a
+			// list of individual byte values for correct list serialization.
+			IList list = new List<object>(keys.Length);
+			foreach (byte k in keys)
+			{
+				list.Add(k);
+			}
+			return new CTX(0x2a, Value.Get(list));
+		}
+
+		/// <summary>
+		/// Select map entries whose keys are contained in the provided short keys.
+		/// </summary>
+		/// <param name="keys">Short map keys to select</param>
+		/// <returns>A map key-list context.</returns>
+		/// <see cref="MapKeysIn(string[])"/>
+		public static CTX MapKeysIn(params short[] keys)
+		{
+			return new CTX(0x2a, Value.Get(keys));
+		}
+
+		/// <summary>
+		/// Select map entries whose keys are contained in the provided double keys.
+		/// </summary>
+		/// <param name="keys">Double map keys to select.</param>
+		/// <returns>A map key-list context.</returns>
+		/// <see cref="MapKeysIn(string[])"/>
+		public static CTX MapKeysIn(params double[] keys)
+		{
+			return new CTX(0x2a, Value.Get(keys));
+		}
+
+		/// <summary>
+		/// Select map entries whose keys are contained in the provided float keys.
+		/// </summary>
+		/// <param name="keys">Float map keys to select.</param>
+		/// <returns>A map key-list context.</returns>
+		/// <see cref="MapKeysIn(string[])"/>
+		public static CTX MapKeysIn(params float[] keys)
+		{
+			return new CTX(0x2a, Value.Get(keys));
+		}
+
+		/// <summary>
+		/// Apply an additional expression filter at the current context level.
+		/// <para>
+		/// This creates an AND filter that combines with the preceding context.
+		/// Entries must satisfy both the preceding context and this filter expression
+		/// to be included in the result. Typically used after <see cref="MapKeysIn(string[])"/>
+		/// or other selection contexts to further narrow the results.
+		/// </para>
+		/// <para>
+		/// Restrictions:
+		/// <list type="bullet">
+		/// <item>Only one <see cref="AndFilter(Exp)"/> is allowed per context level. Multiple <see cref="AndFilter(Exp)"/>
+		///       calls cannot be chained. To combine multiple conditions, use <see cref="Exp.And(Exp[])"/>
+		///       within a single <see cref="AndFilter(Exp)"/>.</item>
+		/// <item>The preceding context entry must not be an expression type (i.e. <see cref="AndFilter(Exp)"/>
+		///       cannot follow <see cref="AllChildrenWithFilter(Exp)"/> or <see cref="AllChildren"/>).</item>
+		/// <item><see cref="AndFilter(Exp)"/> cannot be the first entry in the context chain.</item>
+		/// </list>
+		/// </para>
+		/// <example>
+		/// <code>
+		/// // Given map: {a: 5, b: 15, c: 25, d: 35}
+		/// // Select keys "a", "b", "c" AND keep only entries where value > 10.
+		/// CTX keys = CTX.MapKeysIn("a", "b", "c");
+		/// CTX filter = CTX.AndFilter(Exp.GT(Exp.IntLoopVar(LoopVarPart.VALUE), Exp.Val(10)));
+		/// Operation op = CDTOperation.SelectByPath("myBin", SelectFlag.MAP_KEY_VALUE, keys, filter);
+		/// Record result = client.Operate(null, key, op);
+		/// // result: {b: 15, c: 25}
+		/// </code>
+		/// </example>
+		/// </summary>
+		/// <param name="exp">filter expression; entries that evaluate to false are excluded</param>
+		/// <returns>An AND filter context.</returns>
+		/// <see cref="MapKeysIn(string[])"/>
+		/// <see cref="CDTOperation.SelectByPath(string, SelectFlag, CTX[])"/>
+		public static CTX AndFilter(Exp exp)
+		{
+			Expression expression = Exp.Build(exp);
+			return new CTX(Exp.CTX_AND | Exp.CTX_EXP, expression);
+		}
+
+		/// <summary>
+		/// Apply an additional expression filter at the current context level.
+		/// <para>
+		/// This creates an AND filter that combines with the preceding context.
+		/// Entries must satisfy both the preceding context and this filter expression
+		/// to be included in the result. Typically used after <see cref="MapKeysIn(string[])"/>
+		/// or other selection contexts to further narrow the results.
+		/// </para>
+		/// </summary>
+		/// <param name="exp">compiled filter expression; entries that evaluate to false are excluded</param>
+		/// <returns>An AND filter context.</returns>
+		/// <see cref="MapKeysIn(string[])"/>
+		/// <see cref="CDTOperation.SelectByPath(string, SelectFlag, CTX[])"/>
+		public static CTX AndFilter(Expression exp)
+		{
+			return new CTX(Exp.CTX_AND | Exp.CTX_EXP, exp);
+		}
+
+		/// <summary>
 		/// Serialize context array to bytes.
 		/// </summary>
 		public static byte[] ToBytes(CTX[] ctx)
@@ -177,8 +348,9 @@ namespace Aerospike.Client
 				}
 
 				var obj = list[i];
-				// Check if this is an expression context based on the id
-				if (id == Exp.CTX_EXP)
+				// Check if this is an expression context based on the low nibble of the id.
+				// Mask with 0x0f so AND|EXP contexts (0x204) are correctly detected.
+				if ((id & 0x0f) == Exp.CTX_EXP)
 				{
 					Expression exp = Exp.Build(Exp.Get(obj));
 					ctx[count++] = new CTX(id, exp);

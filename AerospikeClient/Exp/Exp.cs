@@ -40,7 +40,15 @@ namespace Aerospike.Client
 			HLL = 9
 		}
 
-		public const int CTX_EXP = 0x04;
+		/// <summary>
+		/// Internal context type flag for expression-based contexts.
+		/// </summary>
+		internal const int CTX_EXP = 0x04;
+
+		/// <summary>
+		/// Internal context type flag for AND filter contexts.
+		/// </summary>
+		internal const int CTX_AND = 0x200;
 
 		//--------------------------------------------------
 		// Build
@@ -1403,7 +1411,6 @@ namespace Aerospike.Client
 			return new VarExp(Type.BLOB, part);
 		}
 
-
 		/// <summary>
 		/// Create expression that references a built-in variable.
 		/// Requires server version 8.1.1
@@ -1461,15 +1468,58 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
+		/// Create expression that checks if a value is in a list.
+		/// Requires server version 8.1.2+
+		/// <example>
+		/// <code>
+		/// // Check if bin "color" value is in the list ["red", "blue", "green"]
+		/// Exp.InList(Exp.StringBin("color"), Exp.Val(new List&lt;string&gt; { "red", "blue", "green" })))
+		/// </code>
+		/// </example>
+		/// </summary>
+		public static Exp InList(Exp value, Exp list)
+		{
+			return new CmdExp(IN_LIST, value, list);
+		}
+
+		/// <summary>
+		/// Create expression that returns the keys of a map as a list.
+		/// Requires server version 8.1.2+
+		/// <example>
+		/// <code>
+		/// Exp.MapKeysIn(Exp.MapBin("myMap"))
+		/// </code>
+		/// </example>
+		/// </summary>
+		public static Exp MapKeysIn(Exp map)
+		{
+			return new CmdExp(MAP_KEYS, map);
+		}
+
+		/// <summary>
+		/// Create expression that returns the values of a map as a list.
+		/// Requires server version 8.1.2+
+		/// <example>
+		/// <code>
+		/// Exp.MapValuesIn(Exp.MapBin("myMap"))
+		/// </code>
+		/// </example>
+		/// </summary>
+		public static Exp MapValuesIn(Exp map)
+		{
+			return new CmdExp(MAP_VALUES, map);
+		}
+
+		/// <summary>
 		/// Creates a result remove expression.
 		/// Requires server version 8.1.1
 		/// <example>
 		/// <code>
-		/// Exp.RemoveResults()
+		/// Exp.RemoveResult()
 		/// </code>
 		/// </example>
 		/// </summary>
-		public static Exp RemoveResults()
+		public static Exp RemoveResult()
 		{
 			return new Cmd(RESULT_REMOVE);
 		}
@@ -1529,6 +1579,7 @@ namespace Aerospike.Client
 		private const int CMD_LE = 6;
 		private const int REGEX = 7;
 		private const int GEO = 8;
+		private const int IN_LIST = 9;
 		private const int AND = 16;
 		private const int OR = 17;
 		private const int NOT = 18;
@@ -1572,6 +1623,8 @@ namespace Aerospike.Client
 		private const int BIN = 81;
 		private const int BIN_TYPE = 82;
 		private const int RESULT_REMOVE = 100;
+		private const int MAP_KEYS = 101;
+		private const int MAP_VALUES = 102;
 		private const int VAR_BUILTIN = 122;
 		private const int COND = 123;
 		private const int VAR = 124;

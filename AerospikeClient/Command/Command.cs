@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2025 Aerospike, Inc.
+ * Copyright 2012-2026 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -2056,7 +2056,8 @@ namespace Aerospike.Client
 			Statement statement,
 			ulong taskId,
 			bool background,
-			NodePartitions nodePartitions
+			NodePartitions nodePartitions,
+			Node node
 		)
 		{
 			byte[] functionArgBuffer = null;
@@ -2064,6 +2065,7 @@ namespace Aerospike.Client
 			int filterSize = 0;
 			int binNameSize = 0;
 			bool isNew = cluster.hasPartitionQuery;
+			bool hasQueryOpsProjectionExt = node.HasQueryOpsProjectionExt;
 
 			Begin();
 
@@ -2227,24 +2229,44 @@ namespace Aerospike.Client
 				fieldCount++;
 			}
 
-			// Operations (used in query execute) and bin names (used in scan/query) are mutually exclusive.
+			// Operations and bin names are mutually exclusive.
 			int operationCount = 0;
 
 			if (statement.operations != null)
 			{
-				// Estimate size for background operations.
-				if (!background)
+				if (statement.binNames != null)
 				{
-					throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Operations not allowed in foreground query");
+					Log.Warn("Operations and bin names are mutually exclusive. Setting both will become an error in a future release.");
 				}
 
-				foreach (Operation operation in statement.operations)
+				if (background)
 				{
-					if (!Operation.IsWrite(operation.type))
+					foreach (Operation operation in statement.operations)
 					{
-						throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Read operations not allowed in background query");
+						if (!Operation.IsWrite(operation.type))
+						{
+							throw new AerospikeException(ResultCode.PARAMETER_ERROR,
+								"Background query operations must be write-only. Use query for read-only operations.");
+						}
+						EstimateOperationSize(operation);
 					}
-					EstimateOperationSize(operation);
+				}
+				else
+				{
+					foreach (Operation operation in statement.operations)
+					{
+						if (Operation.IsWrite(operation.type))
+						{
+							throw new AerospikeException(ResultCode.PARAMETER_ERROR,
+								"Query operations must be read-only. Use background query for write-only operations.");
+						}
+						if (!hasQueryOpsProjectionExt && !Operation.IsBasicRead(operation.type))
+						{
+							throw new AerospikeException(ResultCode.PARAMETER_ERROR,
+								"Only basic read operations are supported for query operations projection in server versions prior to 8.1.2.");
+						}
+						EstimateOperationSize(operation);
+					}
 				}
 				operationCount = statement.operations.Length;
 			}

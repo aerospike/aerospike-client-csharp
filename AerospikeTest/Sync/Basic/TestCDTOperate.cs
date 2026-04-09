@@ -27,10 +27,7 @@ namespace Aerospike.Test
 		[TestInitialize()]
 		public void CheckServerVersion()
 		{
-			if (client.Cluster.GetRandomNode().serverVersion < Node.SERVER_VERSION_8_1_1)
-			{
-				Assert.Inconclusive("Path expression tests require server version 8.1.1 or later");
-			}
+			CheckServerVersion(Node.SERVER_VERSION_8_1_1, "Path expression");
 		}
 
 		[TestMethod]
@@ -1841,7 +1838,7 @@ namespace Aerospike.Test
 			CTX ctx1 = CTX.MapKey(Value.Get("items"));
 			CTX ctx2 = CTX.AllChildrenWithFilter(Exp.Val(true));
 
-			Expression removeExp = Exp.Build(Exp.RemoveResults());
+			Expression removeExp = Exp.Build(Exp.RemoveResult());
 			Operation applyOp = CDTOperation.ModifyByPath(binName, ModifyFlag.DEFAULT, removeExp, ctx1, ctx2);
 
 			// CDT apply operation should succeed
@@ -1897,7 +1894,7 @@ namespace Aerospike.Test
 				Exp.GT(Exp.IntLoopVar(LoopVarPart.VALUE), Exp.Val(10))
 			);
 
-			Expression removeExp = Exp.Build(Exp.RemoveResults());
+			Expression removeExp = Exp.Build(Exp.RemoveResult());
 			Operation applyOp = CDTOperation.ModifyByPath(binName, ModifyFlag.DEFAULT, removeExp, ctx1, ctx2);
 
 			// CDT remove operation should succeed
@@ -1953,7 +1950,7 @@ namespace Aerospike.Test
 			CTX ctx1 = CTX.MapKey(Value.Get("config"));
 			CTX ctx2 = CTX.AllChildrenWithFilter(Exp.Val(true));
 
-			Expression removeExp = Exp.Build(Exp.RemoveResults());
+			Expression removeExp = Exp.Build(Exp.RemoveResult());
 			Operation applyOp = CDTOperation.ModifyByPath(binName, ModifyFlag.DEFAULT, removeExp, ctx1, ctx2);
 
 			// CDT remove operation should succeed
@@ -2006,7 +2003,7 @@ namespace Aerospike.Test
 				Exp.LT(Exp.IntLoopVar(LoopVarPart.VALUE), Exp.Val(50))
 			);
 
-			Expression removeExp = Exp.Build(Exp.RemoveResults());
+			Expression removeExp = Exp.Build(Exp.RemoveResult());
 			Operation applyOp = CDTOperation.ModifyByPath(binName, ModifyFlag.DEFAULT, removeExp, ctx1, ctx2);
 
 			// CDT remove operation should succeed
@@ -2098,7 +2095,7 @@ namespace Aerospike.Test
 				)
 			);
 
-			Expression removeExp = Exp.Build(Exp.RemoveResults());
+			Expression removeExp = Exp.Build(Exp.RemoveResult());
 			Operation applyOp = CDTOperation.ModifyByPath(binName, ModifyFlag.DEFAULT, removeExp, ctx1, ctx2);
 
 			// CDT remove operation should succeed
@@ -2168,7 +2165,7 @@ namespace Aerospike.Test
 				Exp.GE(Exp.IntLoopVar(LoopVarPart.INDEX), Exp.Val(3))
 			);
 
-			Expression removeExp = Exp.Build(Exp.RemoveResults());
+			Expression removeExp = Exp.Build(Exp.RemoveResult());
 			Operation applyOp = CDTOperation.ModifyByPath(binName, ModifyFlag.DEFAULT, removeExp, ctx1, ctx2);
 
 			// CDT remove operation should succeed
@@ -2227,7 +2224,7 @@ namespace Aerospike.Test
 				Exp.GE(Exp.StringLoopVar(LoopVarPart.MAP_KEY), Exp.Val("c"))
 			);
 
-			Expression removeExp = Exp.Build(Exp.RemoveResults());
+			Expression removeExp = Exp.Build(Exp.RemoveResult());
 			Operation applyOp = CDTOperation.ModifyByPath(binName, ModifyFlag.DEFAULT, removeExp, ctx1, ctx2);
 
 			// CDT remove operation should succeeed
@@ -2315,7 +2312,7 @@ namespace Aerospike.Test
 				)
 			);
 
-			Expression removeExp = Exp.Build(Exp.RemoveResults());
+			Expression removeExp = Exp.Build(Exp.RemoveResult());
 			Operation applyOp = CDTOperation.ModifyByPath(binName, ModifyFlag.DEFAULT, removeExp, ctx1, ctx2, ctx3);
 
 			// CDT remove operation should succeed
@@ -3030,7 +3027,1174 @@ namespace Aerospike.Test
 				Assert.IsTrue(e.Message.Contains("15") || e.Message.Contains("exceed"));
 			}
 		}
+
+		[TestMethod]
+		public void HllNestedInMap()
+		{
+			var rkey = new Key(SuiteHelpers.ns, SuiteHelpers.set, "hllNestedMapKey");
+			client.Delete(null, rkey);
+
+			var values = new List<Value>();
+			for (int i = 0; i < 5000; i++)
+			{
+				values.Add(Value.Get(i));
+			}
+
+			client.Operate(null, rkey,
+				HLLOperation.Add(HLLPolicy.Default, "hll_temp", values, 4, 4));
+
+			Record rec = client.Get(null, rkey, "hll_temp");
+			Assert.IsNotNull(rec);
+			var hllVal = (Value.HLLValue)rec.GetValue("hll_temp");
+			Assert.IsNotNull(hllVal);
+
+			// Store HLL inside a map
+			var mapData = new Dictionary<string, object> { { "a", hllVal } };
+			client.Put(null, rkey, new Bin("mapbin", mapData));
+
+			// Read back and verify nested value is HLLValue
+			rec = client.Get(null, rkey, "mapbin");
+			Assert.IsNotNull(rec);
+
+			var resultMap = (Dictionary<object, object>)rec.GetValue("mapbin");
+			Assert.IsNotNull(resultMap);
+
+			object nested = resultMap["a"];
+			Assert.IsInstanceOfType(nested, typeof(Value.HLLValue),
+				$"Nested value should be HLLValue, got: {nested?.GetType().Name ?? "null"}");
+			Assert.IsTrue(((Value.HLLValue)nested).Bytes.Length > 0);
+		}
+
+		[TestMethod]
+		public void HllNestedInList()
+		{
+			var rkey = new Key(SuiteHelpers.ns, SuiteHelpers.set, "hllNestedListKey");
+			client.Delete(null, rkey);
+
+			var smallData = new List<Value> { Value.Get("a"), Value.Get("b") };
+			var largeData = new List<Value>();
+			for (int i = 0; i < 5; i++)
+			{
+				largeData.Add(Value.Get("item" + i));
+			}
+
+			client.Operate(null, rkey,
+				HLLOperation.Add(HLLPolicy.Default, "hll1", smallData, 8),
+				HLLOperation.Add(HLLPolicy.Default, "hll2", largeData, 8));
+
+			Record rec = client.Get(null, rkey, "hll1", "hll2");
+			var hll1 = (Value.HLLValue)rec.GetValue("hll1");
+			var hll2 = (Value.HLLValue)rec.GetValue("hll2");
+
+			// Store HLLs in a list inside a map
+			var data = new Dictionary<string, object>
+			{
+				{ "hlls", new List<object> { hll1, hll2 } }
+			};
+			client.Put(null, rkey, new Bin("listbin", data));
+
+			// Read back and verify both preserve type
+			rec = client.Get(null, rkey, "listbin");
+			Assert.IsNotNull(rec);
+
+			var resultMap = (Dictionary<object, object>)rec.GetValue("listbin");
+			Assert.IsNotNull(resultMap);
+
+			var resultList = (List<object>)resultMap["hlls"];
+			Assert.IsNotNull(resultList);
+			Assert.AreEqual(2, resultList.Count);
+			Assert.IsInstanceOfType(resultList[0], typeof(Value.HLLValue));
+			Assert.IsInstanceOfType(resultList[1], typeof(Value.HLLValue));
+		}
+
+		[TestMethod]
+		public void HllNestedInMapInsideMap()
+		{
+			var rkey = new Key(SuiteHelpers.ns, SuiteHelpers.set, "hllDeepMapKey");
+			client.Delete(null, rkey);
+
+			var entries = new List<Value>();
+			for (int i = 0; i < 256; i++)
+			{
+				entries.Add(Value.Get(i));
+			}
+
+			client.Operate(null, rkey,
+				HLLOperation.Add(HLLPolicy.Default, "hll_temp", entries, 8));
+
+			Record rec = client.Get(null, rkey, "hll_temp");
+			var hllVal = (Value.HLLValue)rec.GetValue("hll_temp");
+			Assert.IsNotNull(hllVal);
+
+			// Store HLL 2 levels deep: map -> map -> HLL
+			var inner = new Dictionary<string, object> { { "level2", hllVal } };
+			var outer = new Dictionary<string, object> { { "level1", inner } };
+			client.Put(null, rkey, new Bin("deepmap", outer));
+
+			// Read back and verify
+			rec = client.Get(null, rkey, "deepmap");
+			Assert.IsNotNull(rec);
+
+			var outerResult = (Dictionary<object, object>)rec.GetValue("deepmap");
+			Assert.IsNotNull(outerResult);
+			var innerResult = (Dictionary<object, object>)outerResult["level1"];
+			Assert.IsNotNull(innerResult);
+
+			object nested = innerResult["level2"];
+			Assert.IsInstanceOfType(nested, typeof(Value.HLLValue),
+				$"HLL nested 2 levels deep should be HLLValue, got: {nested?.GetType().Name ?? "null"}");
+		}
+
+		[TestMethod]
+		public void HllNestedInListInsideListInsideMap()
+		{
+			var rkey = new Key(SuiteHelpers.ns, SuiteHelpers.set, "hllDeepListKey");
+			client.Delete(null, rkey);
+
+			var entries = new List<Value>();
+			for (int i = 0; i < 256; i++)
+			{
+				entries.Add(Value.Get(i));
+			}
+
+			client.Operate(null, rkey,
+				HLLOperation.Add(HLLPolicy.Default, "hll_temp", entries, 8));
+
+			Record rec = client.Get(null, rkey, "hll_temp");
+			var hllVal = (Value.HLLValue)rec.GetValue("hll_temp");
+			Assert.IsNotNull(hllVal);
+
+			// Store HLL 3 levels deep: map -> list -> list -> HLL
+			var innerList = new List<object> { hllVal };
+			var outerList = new List<object> { innerList };
+			var data = new Dictionary<string, object> { { "level1", outerList } };
+			client.Put(null, rkey, new Bin("deeplist", data));
+
+			// Read back and verify
+			rec = client.Get(null, rkey, "deeplist");
+			Assert.IsNotNull(rec);
+
+			var resultMap = (Dictionary<object, object>)rec.GetValue("deeplist");
+			Assert.IsNotNull(resultMap);
+			var outerResult = (List<object>)resultMap["level1"];
+			Assert.IsNotNull(outerResult);
+			var innerResult = (List<object>)outerResult[0];
+			Assert.IsNotNull(innerResult);
+
+			object nested = innerResult[0];
+			Assert.IsInstanceOfType(nested, typeof(Value.HLLValue),
+				$"HLL nested 3 levels deep (map->list->list) should be HLLValue, got: {nested?.GetType().Name ?? "null"}");
+		}
+
+		[TestMethod]
+		public void HllLoopVarFilterOnNestedHLLs()
+		{
+			var rkey = new Key(SuiteHelpers.ns, SuiteHelpers.set, "hllLoopVarFilterKey");
+			client.Delete(null, rkey);
+
+			var smallData = new List<Value> { Value.Get("a"), Value.Get("b") };
+			var largeData = new List<Value>();
+			for (int i = 0; i < 5; i++)
+			{
+				largeData.Add(Value.Get("item" + i));
+			}
+
+			client.Operate(null, rkey,
+				HLLOperation.Add(HLLPolicy.Default, "hll1", smallData, 8),
+				HLLOperation.Add(HLLPolicy.Default, "hll2", largeData, 8));
+
+			Record rec = client.Get(null, rkey, "hll1", "hll2");
+			var hll1 = (Value.HLLValue)rec.GetValue("hll1");
+			var hll2 = (Value.HLLValue)rec.GetValue("hll2");
+
+			// Store in nested map->list structure
+			var hllList = new List<object> { hll1, hll2 };
+			var data = new Dictionary<string, object> { { "hlls", hllList } };
+			client.Put(null, rkey, new Bin("data", data));
+
+			// Use hllLoopVar to filter HLL values with count > 3
+			CTX ctx1 = CTX.MapKey(Value.Get("hlls"));
+			CTX ctx2 = CTX.AllChildrenWithFilter(
+				Exp.GT(
+					HLLExp.GetCount(Exp.HLLLoopVar(LoopVarPart.VALUE)),
+					Exp.Val(3)
+				)
+			);
+
+			Expression selectExp = Exp.Build(
+				CDTExp.SelectByPath(
+					Exp.Type.LIST,
+					SelectFlag.VALUE,
+					Exp.MapBin("data"),
+					ctx1, ctx2
+				)
+			);
+
+			Record result = client.Operate(null, rkey,
+				ExpOperation.Read("filtered", selectExp, ExpReadFlags.DEFAULT));
+
+			Assert.IsNotNull(result);
+			var filtered = result.GetList("filtered");
+			Assert.IsNotNull(filtered);
+			Assert.AreEqual(1, filtered.Count);
+		}
+
+		[TestMethod]
+		public void TestCDTOperateMapKeyInList()
+		{
+			CheckPathExpressionEnhancements();
+			var rkey = new Key(SuiteHelpers.ns, SuiteHelpers.set, "cdtOpMapKeyInList");
+
+			try
+			{
+				client.Delete(null, rkey);
+			}
+			catch (Exception)
+			{
+			}
+
+			// Create a map with several keys
+			Dictionary<string, object> map = new()
+			{
+				{ "alpha", 10 },
+				{ "beta", 20 },
+				{ "gamma", 30 },
+				{ "delta", 40 }
+			};
+
+			var bin = new Bin(binName, map);
+			client.Put(null, rkey, bin);
+
+			// Select only keys "alpha" and "gamma" using mapKeysIn via CDTOperation
+			CTX ctx = CTX.MapKeysIn("alpha", "gamma");
+			var selectOp = CDTOperation.SelectByPath(binName, SelectFlag.VALUE, ctx);
+
+			Record result = client.Operate(null, rkey, selectOp);
+			Assert.IsNotNull(result);
+
+			List<object> values = (List<object>)result.GetList(binName);
+			Assert.IsNotNull(values);
+			Assert.AreEqual(2, values.Count);
+			Assert.IsTrue(values.Contains(10L));
+			Assert.IsTrue(values.Contains(30L));
+		}
+
+		[TestMethod]
+		public void TestCDTOperateSameLevelFilter()
+		{
+			CheckPathExpressionEnhancements();
+			var rkey = new Key(SuiteHelpers.ns, SuiteHelpers.set, "cdtOpSameLevelFilter");
+
+			try
+			{
+				client.Delete(null, rkey);
+			}
+			catch (Exception)
+			{
+			}
+
+			Dictionary<string, object> map = new()
+			{
+				{ "a", 5 },
+				{ "b", 15 },
+				{ "c", 25 },
+				{ "d", 35 }
+			};
+
+			var bin = new Bin(binName, map);
+			client.Put(null, rkey, bin);
+
+			// Select keys "a", "b", "c" via MapKeysIn, then AND-filter to keep values > 10
+			CTX keyInList = CTX.MapKeysIn("a", "b", "c");
+			CTX andFilter = CTX.AndFilter(
+				Exp.GT(Exp.IntLoopVar(LoopVarPart.VALUE), Exp.Val(10))
+			);
+
+			Operation selectOp = CDTOperation.SelectByPath(binName, SelectFlag.MAP_KEY_VALUE, keyInList, andFilter);
+
+			Record result = client.Operate(null, rkey, selectOp);
+			Assert.IsNotNull(result);
+
+			List<object> resultList = (List<object>)result.GetList(binName);
+			Assert.IsNotNull(resultList);
+			// MAP_KEY_VALUE returns a flat list [key, value, key, value, ...]
+			Assert.AreEqual(4, resultList.Count);
+
+			Dictionary<object, object> resultMap = [];
+			for (int i = 0; i < resultList.Count; i += 2)
+			{
+				resultMap.Add(resultList[i], resultList[i + 1]);
+			}
+			Assert.AreEqual(15L, resultMap["b"]);
+			Assert.AreEqual(25L, resultMap["c"]);
+		}
+
+		// ---- AndFilter restriction tests ----
+
+		[TestMethod]
+		public void TestAndFilterAsFirstContext()
+		{
+			CheckPathExpressionEnhancements();
+			Key rkey = new Key(SuiteHelpers.ns, SuiteHelpers.set, "andFilterFirst");
+
+			try
+			{
+				client.Delete(null, rkey);
+			}
+			catch (Exception)
+			{
+			}
+
+			Dictionary<string, object> map = new()
+			{
+				{"a", 1 }
+			};
+
+			client.Put(null, rkey, new Bin(binName, map));
+
+			// AndFilter with no preceding context is invalid
+			CTX andFilterCtx = CTX.AndFilter(
+				Exp.GT(Exp.IntLoopVar(LoopVarPart.VALUE), Exp.Val(0))
+			);
+
+			Operation selectOp = CDTOperation.SelectByPath(binName, SelectFlag.VALUE, andFilterCtx);
+
+			try
+			{
+				client.Operate(null, rkey, selectOp);
+				Assert.Fail("Expected AerospikeException for AndFilter as first context");
+			}
+			catch (AerospikeException)
+			{
+				// Expected: AndFilter cannot be the first entry
+			}
+		}
+
+		[TestMethod]
+		public void TestChainedAndFilters()
+		{
+			CheckPathExpressionEnhancements();
+			Key rkey = new Key(SuiteHelpers.ns, SuiteHelpers.set, "chainedAndFilters");
+
+			try
+			{
+				client.Delete(null, rkey);
+			}
+			catch (Exception e)
+			{
+			}
+
+			Dictionary<string, object> map = new()
+			{
+				{ "a", 1 },
+				{ "b", 2 },
+				{ "c", 3 }
+			};
+
+			client.Put(null, rkey, new Bin(binName, map));
+
+			// Two AndFilters in a row is invalid - use Exp.And to combine instead
+			CTX keyInCtx = CTX.MapKeysIn("a", "b", "c");
+			CTX andFilter1 = CTX.AndFilter(
+				Exp.GE(Exp.IntLoopVar(LoopVarPart.VALUE), Exp.Val(2))
+			);
+			CTX andFilter2 = CTX.AndFilter(
+				Exp.LE(Exp.IntLoopVar(LoopVarPart.VALUE), Exp.Val(3))
+			);
+
+			Operation selectOp = CDTOperation.SelectByPath(binName, SelectFlag.VALUE, keyInCtx, andFilter1, andFilter2);
+
+			try
+			{
+				client.Operate(null, rkey, selectOp);
+				Assert.Fail("Expected AerospikeException for chained AndFilters");
+			}
+			catch (AerospikeException)
+			{
+				// Expected: multiple AndFilters cannot be chained
+			}
+		}
+
+		[TestMethod]
+		public void TestAndFilterAfterAllChildrenWithFilter()
+		{
+			CheckPathExpressionEnhancements();
+			Key rkey = new Key(SuiteHelpers.ns, SuiteHelpers.set, "andFilterAfterExpr");
+
+			try
+			{
+				client.Delete(null, rkey);
+			}
+			catch (Exception)
+			{
+			}
+
+			Dictionary<string, object> map = new()
+			{
+				{ "a", 1 },
+				{ "b", 2 },
+				{ "c", 3 }
+			};
+
+			client.Put(null, rkey, new Bin(binName, map));
+
+			// andFilter cannot follow an expression-type context like allChildrenWithFilter
+			CTX baseFilter = CTX.AllChildrenWithFilter(
+				Exp.GT(Exp.IntLoopVar(LoopVarPart.VALUE), Exp.Val(0))
+			);
+			CTX andFilterCtx = CTX.AndFilter(
+				Exp.LT(Exp.IntLoopVar(LoopVarPart.VALUE), Exp.Val(3))
+			);
+
+			Operation selectOp = CDTOperation.SelectByPath(binName, SelectFlag.VALUE, baseFilter, andFilterCtx);
+
+			try
+			{
+				client.Operate(null, rkey, selectOp);
+				Assert.Fail("Expected AerospikeException for AndFilter following expression-type");
+			}
+			catch (AerospikeException)
+			{
+				// Expected: andFilter cannot follow expression-type context
+			}
+		}
+
+		[TestMethod]
+		public void TestAndFilterWithMapIndex()
+		{
+			CheckPathExpressionEnhancements();
+			Key rkey = new Key(SuiteHelpers.ns, SuiteHelpers.set, "andFilterMapIndex");
+
+			try
+			{
+				client.Delete(null, rkey);
+			}
+			catch (Exception)
+			{
+			}
+
+			Dictionary<string, object> map = new()
+			{
+				{ "x", 10 },
+				{ "y", 20 },
+				{ "z", 30 }
+			};
+
+			client.Put(null, rkey, new Bin(binName, map));
+
+			// Select map index 0, then AND-filter to keep only entries with key >= "y"
+			CTX indexCtx = CTX.MapIndex(0);
+			CTX andFilterCtx = CTX.AndFilter(
+				Exp.GE(Exp.StringLoopVar(LoopVarPart.MAP_KEY), Exp.Val("y"))
+			);
+
+			Operation selectOp = CDTOperation.SelectByPath(binName, SelectFlag.MAP_KEY_VALUE, indexCtx, andFilterCtx);
+
+			Record result = client.Operate(null, rkey, selectOp);
+			Assert.IsNotNull(result);
+
+			var resultList = result.GetList(binName);
+			Assert.IsNotNull(resultList);
+			// Index 0 selects a single entry; AND filter further narrows it.
+			// The result depends on which entry is at index 0 and whether it passes the filter.
+			// If it passes, we get 2 elements (key+value); if not, 0 elements.
+			Assert.IsTrue(resultList.Count == 0 || resultList.Count == 2);
+		}
+
+		[TestMethod]
+		public void TestModifyByPathViaMapKeysIn()
+		{
+			CheckPathExpressionEnhancements();
+			Key rkey = new Key(SuiteHelpers.ns, SuiteHelpers.set, "modifyMapKeysIn");
+
+			try
+			{
+				client.Delete(null, rkey);
+			}
+			catch (Exception)
+			{
+			}
+
+			// Nested structure matching C client test pattern:
+			// {inventory: {w1: {item_a: {count: 100}, item_b: {count: 200}},
+			//              w2: {item_a: {count: 50},  item_b: {count: 75}},
+			//              w3: {item_a: {count: 10},  item_b: {count: 20}}}}
+			Dictionary<string, object> w1_a = new()
+			{
+				{ "count", 100 }
+			};
+			Dictionary<string, object> w1_b = new()
+			{
+				{ "count", 200 }
+			};
+			Dictionary<string, object> w1 = new()
+			{
+				{ "item_a", w1_a },
+				{ "item_b", w1_b }
+			};
+
+			Dictionary<string, object> w2_a = new()
+			{
+				{ "count", 50 }
+			};
+			Dictionary<string, object> w2_b = new()
+			{
+				{ "count", 75 }
+			};
+			Dictionary<string, object> w2 = new()
+			{
+				{ "item_a", w2_a },
+				{ "item_b", w2_b }
+			};
+
+			Dictionary<string, object> w3_a = new()
+			{
+				{ "count", 10 }
+			};
+			Dictionary<string, object> w3_b = new()
+			{
+				{ "count", 20 }
+			};
+			Dictionary<string, object> w3 = new()
+			{
+				{ "item_a", w3_a },
+				{ "item_b", w3_b }
+			};
+
+			Dictionary<string, object> inventory = new()
+			{
+				{ "w1", w1 },
+				{ "w2", w2 },
+				{ "w3", w3 }
+			};
+
+			Dictionary<string, object> top = new()
+			{
+				{ "inventory", inventory }
+			};
+
+			client.Put(null, rkey, new Bin(binName, top));
+
+			// Add 1000 to count in all items of w1 and w2 via ModifyByPath
+			// Context: MapKey("inventory") -> MapKeysIn("w1","w2") -> AllChildren() -> MapKey("count")
+			CTX invKey = CTX.MapKey(Value.Get("inventory"));
+			CTX keysCtx = CTX.MapKeysIn("w1", "w2");
+			CTX childCtx = CTX.AllChildren();
+			CTX countKey = CTX.MapKey(Value.Get("count"));
+
+			Expression modifyExp = Exp.Build(
+				Exp.Add(
+					Exp.IntLoopVar(LoopVarPart.VALUE),
+					Exp.Val(1000)
+				)
+			);
+
+			Operation modifyOp = CDTOperation.ModifyByPath(binName, ModifyFlag.DEFAULT, modifyExp, invKey, keysCtx, childCtx, countKey);
+
+			Record result = client.Operate(null, rkey, modifyOp);
+			Assert.IsNotNull(result);
+
+			// Verify the modified values
+			Record record = client.Get(null, rkey);
+			Assert.IsNotNull(record);
+
+			Dictionary<object, object> resultMap = (Dictionary<object, object>)record.bins[binName];
+			Dictionary<object, object> resultInv = (Dictionary<object, object>)resultMap["inventory"];
+			Dictionary<object, object> resultW1 = (Dictionary<object, object>)resultInv["w1"];
+			Dictionary<object, object> resultW1A = (Dictionary<object, object>)resultW1["item_a"];
+			// w1.item_a.count should be 1100
+			Assert.AreEqual(1100L, resultW1A["count"]);
+
+			Dictionary<object, object> resultW1B = (Dictionary<object, object>)resultW1["item_b"];
+			// w1.item_b.count should be 1200
+			Assert.AreEqual(1200L, resultW1B["count"]);
+
+			Dictionary<object, object> resultW3 = (Dictionary<object, object>)resultInv["w3"];
+			Dictionary<object, object> resultW3A = (Dictionary<object, object>)resultW3["item_a"];
+			// w3.item_a.count should be unchanged at 10
+			Assert.AreEqual(10L, resultW3A["count"]);
+		}
+
+		// ---- MK-002: Select subset - some keys missing ----
+		[TestMethod]
+		public void TestMapKeysSomeMissing()
+		{
+			CheckPathExpressionEnhancements();
+			var rkey = new Key(SuiteHelpers.ns, SuiteHelpers.set, "mkSomeMissing");
+
+			try
+			{
+				client.Delete(null, rkey);
+			}
+			catch (Exception)
+			{
+			}
+
+			Dictionary<string, object> map = new()
+			{
+				{ "a", 1 },
+				{ "b", 2 }
+			};
+
+			client.Put(null, rkey, new Bin(binName, map));
+
+			CTX ctx = CTX.MapKeysIn("a", "x");
+			Record result = client.Operate(null, rkey,
+				CDTOperation.SelectByPath(binName, SelectFlag.VALUE, ctx)
+			);
+
+			Assert.IsNotNull(result);
+			List<object> values = (List<object>)result.GetList(binName);
+			Assert.IsNotNull(values);
+			Assert.AreEqual(1, values.Count);
+			Assert.IsTrue(values.Contains(1L));
+		}
+
+		// ---- MK-003: Empty key list ----
+		[TestMethod]
+		public void TestMapKeysEmptyKeyList()
+		{
+			CheckPathExpressionEnhancements();
+			var rkey = new Key(SuiteHelpers.ns, SuiteHelpers.set, "mkEmptyKeys");
+
+			try
+			{
+				client.Delete(null, rkey);
+			}
+			catch (Exception)
+			{
+			}
+
+			Dictionary<string, object> map = new()
+			{
+				{ "a", 1 },
+				{ "b", 2 }
+			};
+
+			client.Put(null, rkey, new Bin(binName, map));
+
+			CTX ctx = CTX.MapKeysIn(Array.Empty<string>());
+			Record result = client.Operate(null, rkey,
+				CDTOperation.SelectByPath(binName, SelectFlag.VALUE, ctx)
+			);
+
+			Assert.IsNotNull(result);
+			List<object> values = (List<object>)result.GetList(binName);
+			Assert.IsNotNull(values);
+			Assert.AreEqual(0, values.Count);
+		}
+
+		// ---- MK-004: Empty map ----
+		[TestMethod]
+		public void TestMapKeysEmptyMap()
+		{
+			CheckPathExpressionEnhancements();
+			var rkey = new Key(SuiteHelpers.ns, SuiteHelpers.set, "mkEmptyMap");
+
+			try
+			{
+				client.Delete(null, rkey);
+			}
+			catch (Exception)
+			{
+			}
+
+			Dictionary<string, object> map = [];
+			client.Put(null, rkey, new Bin(binName, map));
+
+			CTX ctx = CTX.MapKeysIn("a", "b");
+			Record result = client.Operate(null, rkey,
+				CDTOperation.SelectByPath(binName, SelectFlag.VALUE, ctx)
+			);
+
+			Assert.IsNotNull(result);
+			List<object> values = (List<object>)result.GetList(binName);
+			Assert.IsNotNull(values);
+			Assert.AreEqual(0, values.Count);
+		}
+
+		// ---- MK-005: Single key selection ----
+		[TestMethod]
+		public void TestMapKeysSingleKey()
+		{
+			CheckPathExpressionEnhancements();
+			var rkey = new Key(SuiteHelpers.ns, SuiteHelpers.set, "mkSingleKey");
+
+			try
+			{
+				client.Delete(null, rkey);
+			}
+			catch (Exception)
+			{
+			}
+
+			Dictionary<string, object> map = new()
+			{
+				{ "x", 1 },
+				{ "y", 2 },
+				{ "z", 3 }
+			};
+
+			client.Put(null, rkey, new Bin(binName, map));
+
+			CTX ctx = CTX.MapKeysIn("y");
+			Record result = client.Operate(null, rkey,
+				CDTOperation.SelectByPath(binName, SelectFlag.VALUE, ctx)
+			);
+
+			Assert.IsNotNull(result);
+			List<object> values = (List<object>)result.GetList(binName);
+			Assert.IsNotNull(values);
+			Assert.AreEqual(1, values.Count);
+			Assert.AreEqual(2L, values[0]);
+		}
+
+		// ---- MK-006: All keys selected ----
+		[TestMethod]
+		public void TestMapKeysAllKeys()
+		{
+			CheckPathExpressionEnhancements();
+			var rkey = new Key(SuiteHelpers.ns, SuiteHelpers.set, "mkAllKeys");
+
+			try
+			{
+				client.Delete(null, rkey);
+			}
+			catch (Exception)
+			{
+			}
+
+			Dictionary<string, object> map = new()
+			{
+				{ "a", 1 },
+				{ "b", 2 }
+			};
+
+			client.Put(null, rkey, new Bin(binName, map));
+
+			CTX ctx = CTX.MapKeysIn("a", "b");
+			Record result = client.Operate(null, rkey,
+				CDTOperation.SelectByPath(binName, SelectFlag.VALUE, ctx)
+			);
+
+			Assert.IsNotNull(result);
+			List<object> values = (List<object>)result.GetList(binName);
+			Assert.IsNotNull(values);
+			Assert.AreEqual(2, values.Count);
+			Assert.IsTrue(values.Contains(1L));
+			Assert.IsTrue(values.Contains(2L));
+		}
+
+		// ---- MK-007: Key order - results follow map key order, not input list order ----
+		[TestMethod]
+		public void TestMapKeysOrder()
+		{
+			CheckPathExpressionEnhancements();
+			var rkey = new Key(SuiteHelpers.ns, SuiteHelpers.set, "mkOrder");
+
+			try
+			{
+				client.Delete(null, rkey);
+			}
+			catch (Exception)
+			{
+			}
+
+			Dictionary<string, object> map = new()
+			{
+				{ "z", 3 },
+				{ "a", 1 },
+				{ "m", 2 }
+			};
+
+			client.Put(null, rkey, new Bin(binName, map));
+
+			// Request in order [a, z, m] but expect results in key-sorted order [a, m, z]
+			CTX ctx = CTX.MapKeysIn("a", "z", "m");
+			Record result = client.Operate(null, rkey,
+				CDTOperation.SelectByPath(binName, SelectFlag.VALUE, ctx)
+			);
+
+			Assert.IsNotNull(result);
+			List<object> values = (List<object>)result.GetList(binName);
+			Assert.IsNotNull(values);
+			Assert.AreEqual(3, values.Count);
+			// Aerospike maps are key-ordered, so results come back in sorted key order: a=1, m=2, z=3
+			Assert.AreEqual(1L, values[0]);
+			Assert.AreEqual(2L, values[1]);
+			Assert.AreEqual(3L, values[2]);
+		}
+
+		// ---- MK-008: Non-string keys (integer keys) ----
+		[TestMethod]
+		public void TestMapKeysIntegerKeys()
+		{
+			CheckPathExpressionEnhancements();
+			var rkey = new Key(SuiteHelpers.ns, SuiteHelpers.set, "mkIntKeys");
+
+			try
+			{
+				client.Delete(null, rkey);
+			}
+			catch (Exception)
+			{
+			}
+
+			Dictionary<long, string> map = new()
+			{
+				{ 1L, "one" },
+				{ 2L, "two" },
+				{ 3L, "three" }
+			};
+
+			client.Put(null, rkey, new Bin(binName, map));
+
+			CTX ctx = CTX.MapKeysIn(1L, 2L);
+			Record result = client.Operate(null, rkey,
+				CDTOperation.SelectByPath(binName, SelectFlag.VALUE, ctx)
+			);
+
+			Assert.IsNotNull(result);
+			List<object> values = (List<object>)result.GetList(binName);
+			Assert.IsNotNull(values);
+			Assert.AreEqual(2, values.Count);
+			Assert.IsTrue(values.Contains("one"));
+			Assert.IsTrue(values.Contains("two"));
+		}
+
+		// ---- MK-009: Nested map with mapKeysIn context ----
+		[TestMethod]
+		public void TestMapKeysNested()
+		{
+			CheckPathExpressionEnhancements();
+			var rkey = new Key(SuiteHelpers.ns, SuiteHelpers.set, "mkNested");
+
+			try
+			{
+				client.Delete(null, rkey);
+			}
+			catch (Exception)
+			{
+			}
+
+			Dictionary<string, object> inner = new()
+			{
+				{ "a", 1 },
+				{ "b", 2 },
+				{ "c", 3 }
+			};
+
+			Dictionary<string, object> outer = new()
+			{
+				{ "outer", inner }
+			};
+
+			client.Put(null, rkey, new Bin(binName, outer));
+
+			// Navigate into "outer" key, then select keys "a" and "c" from the inner map
+			CTX outerCtx = CTX.MapKey(Value.Get("outer"));
+			CTX keysCtx = CTX.MapKeysIn("a", "c");
+
+			Record result = client.Operate(null, rkey,
+				CDTOperation.SelectByPath(binName, SelectFlag.VALUE, outerCtx, keysCtx)
+			);
+
+			Assert.IsNotNull(result);
+			List<object> values = (List<object>)result.GetList(binName);
+			Assert.IsNotNull(values);
+			Assert.AreEqual(2, values.Count);
+			Assert.IsTrue(values.Contains(1L));
+			Assert.IsTrue(values.Contains(3L));
+		}
+
+		// ---- MV-001: Basic mapValues - extract all values from a map ----
+		[TestMethod]
+		public void TestMapValuesBasic()
+		{
+			CheckPathExpressionEnhancements();
+			var rkey = new Key(SuiteHelpers.ns, SuiteHelpers.set, "mvBasic");
+
+			try
+			{
+				client.Delete(null, rkey);
+			}
+			catch (Exception)
+			{
+			}
+
+			Dictionary<string, object> map = new()
+			{
+				{ "a", 1 },
+				{ "b", 2 },
+				{ "c", 3 }
+			};
+
+			client.Put(null, rkey, new Bin(binName, map));
+
+			Expression exp = Exp.Build(
+				Exp.MapValuesIn(Exp.MapBin(binName))
+			);
+
+			Record result = client.Operate(null, rkey,
+				ExpOperation.Read("values", exp, ExpReadFlags.DEFAULT)
+			);
+
+			Assert.IsNotNull(result);
+			List<object> values = (List<object>)result.GetList("values");
+			Assert.IsNotNull(values);
+			Assert.AreEqual(3, values.Count);
+			Assert.IsTrue(values.Contains(1L));
+			Assert.IsTrue(values.Contains(2L));
+			Assert.IsTrue(values.Contains(3L));
+		}
+
+		// ---- MV-002: mapValues on empty map ----
+		[TestMethod]
+		public void TestMapValuesEmptyMap()
+		{
+			CheckPathExpressionEnhancements();
+			var rkey = new Key(SuiteHelpers.ns, SuiteHelpers.set, "mvEmptyMap");
+
+			try
+			{
+				client.Delete(null, rkey);
+			}
+			catch (Exception)
+			{
+			}
+
+			Dictionary<string, object> map = new();
+			client.Put(null, rkey, new Bin(binName, map));
+
+			Expression exp = Exp.Build(
+				Exp.MapValuesIn(Exp.MapBin(binName))
+			);
+
+			Record result = client.Operate(null, rkey,
+				ExpOperation.Read("values", exp, ExpReadFlags.DEFAULT)
+			);
+
+			Assert.IsNotNull(result);
+			List<object> values = (List<object>)result.GetList("values");
+			Assert.IsNotNull(values);
+			Assert.AreEqual(0, values.Count);
+		}
+
+		// ---- MV-003: mapValues on single-entry map ----
+		[TestMethod]
+		public void TestMapValuesSingleEntry()
+		{
+			CheckPathExpressionEnhancements();
+			var rkey = new Key(SuiteHelpers.ns, SuiteHelpers.set, "mvSingleEntry");
+
+			try
+			{
+				client.Delete(null, rkey);
+			}
+			catch (Exception)
+			{
+			}
+
+			Dictionary<string, object> map = new()
+			{
+				{ "x", 42 }
+			};
+
+			client.Put(null, rkey, new Bin(binName, map));
+
+			Expression exp = Exp.Build(
+				Exp.MapValuesIn(Exp.MapBin(binName))
+			);
+
+			Record result = client.Operate(null, rkey,
+				ExpOperation.Read("values", exp, ExpReadFlags.DEFAULT)
+			);
+
+			Assert.IsNotNull(result);
+			List<object> values = (List<object>)result.GetList("values");
+			Assert.IsNotNull(values);
+			Assert.AreEqual(1, values.Count);
+			Assert.AreEqual(42L, values[0]);
+		}
+
+		// ---- MV-004: mapValues with integer keys ----
+		[TestMethod]
+		public void TestMapValuesIntegerKeys()
+		{
+			CheckPathExpressionEnhancements();
+			var rkey = new Key(SuiteHelpers.ns, SuiteHelpers.set, "mvIntKeys");
+
+			try
+			{
+				client.Delete(null, rkey);
+			}
+			catch (Exception)
+			{
+			}
+
+			Dictionary<long, string> map = new()
+			{
+				{ 1L, "one" },
+				{ 2L, "two" },
+				{ 3L, "three" }
+			};
+
+			client.Put(null, rkey, new Bin(binName, map));
+
+			Expression exp = Exp.Build(
+				Exp.MapValuesIn(Exp.MapBin(binName))
+			);
+
+			Record result = client.Operate(null, rkey,
+				ExpOperation.Read("values", exp, ExpReadFlags.DEFAULT)
+			);
+
+			Assert.IsNotNull(result);
+			List<object> values = (List<object>)result.GetList("values");
+			Assert.IsNotNull(values);
+			Assert.AreEqual(3, values.Count);
+			Assert.IsTrue(values.Contains("one"));
+			Assert.IsTrue(values.Contains("two"));
+			Assert.IsTrue(values.Contains("three"));
+		}
+
+		// ---- MV-005: mapValues combined with inList filter ----
+		[TestMethod]
+		public void TestMapValuesWithInList()
+		{
+			CheckPathExpressionEnhancements();
+			var rkey = new Key(SuiteHelpers.ns, SuiteHelpers.set, "mvInList");
+
+			try
+			{
+				client.Delete(null, rkey);
+			}
+			catch (Exception)
+			{
+			}
+
+			Dictionary<string, object> map = new()
+			{
+				{ "a", 10 },
+				{ "b", 20 },
+				{ "c", 30 }
+			};
+
+			client.Put(null, rkey, new Bin(binName, map));
+
+			// Check if 20 is in the map values
+			Expression exp = Exp.Build(
+				Exp.InList(
+					Exp.Val(20),
+					Exp.MapValuesIn(Exp.MapBin(binName))
+				)
+			);
+
+			Record result = client.Operate(null, rkey,
+				ExpOperation.Read("found", exp, ExpReadFlags.DEFAULT)
+			);
+
+			Assert.IsNotNull(result);
+			Assert.IsTrue(result.GetBool("found"));
+
+			// Check if 99 is NOT in the map values
+			Expression expNot = Exp.Build(
+				Exp.InList(
+					Exp.Val(99),
+					Exp.MapValuesIn(Exp.MapBin(binName))
+				)
+			);
+
+			Record resultNot = client.Operate(null, rkey,
+				ExpOperation.Read("notFound", expNot, ExpReadFlags.DEFAULT)
+			);
+
+			Assert.IsNotNull(resultNot);
+			Assert.IsFalse(resultNot.GetBool("notFound"));
+		}
+
+		// ---- MV-006: mapValues with string values ----
+		[TestMethod]
+		public void TestMapValuesStringValues()
+		{
+			CheckPathExpressionEnhancements();
+			var rkey = new Key(SuiteHelpers.ns, SuiteHelpers.set, "mvStringVals");
+
+			try
+			{
+				client.Delete(null, rkey);
+			}
+			catch (Exception)
+			{
+			}
+
+			Dictionary<string, object> map = new()
+			{
+				{ "name", "Charlie" },
+				{ "city", "London" }
+			};
+
+			client.Put(null, rkey, new Bin(binName, map));
+
+			Expression exp = Exp.Build(
+				Exp.MapValuesIn(Exp.MapBin(binName))
+			);
+
+			Record result = client.Operate(null, rkey,
+				ExpOperation.Read("values", exp, ExpReadFlags.DEFAULT)
+			);
+
+			Assert.IsNotNull(result);
+			List<object> values = (List<object>)result.GetList("values");
+			Assert.IsNotNull(values);
+			Assert.AreEqual(2, values.Count);
+			Assert.IsTrue(values.Contains("Charlie"));
+			Assert.IsTrue(values.Contains("London"));
+		}
+
+		// ---- MV-007: mapValues list size check ----
+		[TestMethod]
+		public void TestMapValuesListSize()
+		{
+			CheckPathExpressionEnhancements();
+			var rkey = new Key(SuiteHelpers.ns, SuiteHelpers.set, "mvListSize");
+
+			try
+			{
+				client.Delete(null, rkey);
+			}
+			catch (Exception)
+			{
+			}
+
+			Dictionary<string, object> map = new()
+			{
+				{ "x", 1 },
+				{ "y", 2 },
+				{ "z", 3 }
+			};
+
+			client.Put(null, rkey, new Bin(binName, map));
+
+			// Use mapValues inside a list size expression
+			Expression exp = Exp.Build(
+				Exp.EQ(
+					ListExp.Size(Exp.MapValuesIn(Exp.MapBin(binName))),
+					Exp.Val(3)
+				)
+			);
+
+			Record result = client.Operate(null, rkey,
+				ExpOperation.Read("sizeCheck", exp, ExpReadFlags.DEFAULT)
+			);
+
+			Assert.IsNotNull(result);
+			Assert.IsTrue(result.GetBool("sizeCheck"));
+		}
+
+		private static void CheckPathExpressionEnhancements()
+		{
+			CheckServerVersion(Node.SERVER_VERSION_8_1_2, "Path expression Enhancement");
+		}
 	}
 }
-
-

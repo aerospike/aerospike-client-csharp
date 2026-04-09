@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2026 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -39,6 +39,13 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Index map values.
 		/// </summary>
-		MAPVALUES
+		MAPVALUES,
+
+		/// <summary>
+		/// Set index.
+		/// No bin, type, context, or expression parameters are used.
+		/// Requires server version 8.1.2+.
+		/// </summary>
+		SET
 	}
 }

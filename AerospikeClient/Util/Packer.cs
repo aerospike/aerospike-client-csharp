@@ -155,8 +155,18 @@ namespace Aerospike.Client
 
 		public void PackParticleBytes(ReadOnlyMemory<byte> b)
 		{
+			PackParticleBytes(b, ParticleType.BLOB);
+		}
+
+		public void PackParticleBytes(byte[] b, ParticleType type)
+		{
+			PackParticleBytes(b.AsMemory(), type);
+		}
+
+		public void PackParticleBytes(ReadOnlyMemory<byte> b, ParticleType type)
+		{
 			PackByteArrayBegin(b.Length + 1);
-			PackByte((int)ParticleType.BLOB);
+			PackByte((byte)type);
 			PackByteArray(b);
 		}
 

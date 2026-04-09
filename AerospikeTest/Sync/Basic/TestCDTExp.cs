@@ -24,10 +24,7 @@ namespace Aerospike.Test
 		[TestInitialize()]
 		public void CheckServerVersion()
 		{
-			if (client.Cluster.GetRandomNode().serverVersion < Node.SERVER_VERSION_8_1_1)
-			{
-				Assert.Inconclusive("Path expression tests require server version 8.1.1 or later");
-			}
+			CheckServerVersion(Node.SERVER_VERSION_8_1_1, "Path expression");
 		}
 
 		[TestMethod]
@@ -1479,6 +1476,141 @@ namespace Aerospike.Test
 			Assert.IsNotNull(unionCount);
 			// Union count should be positive
 			Assert.IsTrue((long)unionCount >= 3);
+		}
+
+		[TestMethod]
+		public void TestInList()
+		{
+			CheckPathExpressionEnhancements();
+			var key = new Key(SuiteHelpers.ns, SuiteHelpers.set, "cdtExpInList");
+
+			try
+			{
+				client.Delete(null, key);
+			}
+			catch (Exception)
+			{
+			}
+
+			var bin = new Bin("color", "blue");
+			client.Put(null, key, bin);
+
+			// Check if bin "color" is in the list ["red", "blue", "green"]
+			Expression exp = Exp.Build(
+				Exp.InList(
+					Exp.StringBin("color"),
+					Exp.Val(new List<string> { "red", "blue", "green" })
+				)
+			);
+
+			Record result = client.Operate(null, key,
+				ExpOperation.Read("inList", exp, ExpReadFlags.DEFAULT)
+			);
+
+			Assert.IsNotNull(result);
+			Assert.IsTrue(result.GetBool("inList"));
+
+			// Negative case: value not in list
+			Expression expNot = Exp.Build(
+				Exp.InList(
+					Exp.StringBin("color"),
+					Exp.Val(new List<string> { "red", "yellow", "green" })
+				)
+			);
+
+			Record resultNot = client.Operate(null, key,
+				ExpOperation.Read("notInList", expNot, ExpReadFlags.DEFAULT)
+			);
+
+			Assert.IsNotNull(resultNot);
+			Assert.IsTrue(!resultNot.GetBool("notInList"));
+		}
+
+		[TestMethod]
+		public void TestMapKeys()
+		{
+			CheckPathExpressionEnhancements();
+			var key = new Key(SuiteHelpers.ns, SuiteHelpers.set, "cdtExpMapKeys");
+
+			try
+			{
+				client.Delete(null, key);
+			}
+			catch (Exception)
+			{
+			}
+
+			Dictionary<string, object> map = new()
+			{
+				{ "x", 1 },
+				{ "y", 2 },
+				{ "z", 3 }
+			};
+
+			var bin = new Bin("myMap", map);
+			client.Put(null, key, bin);
+
+			Expression exp = Exp.Build(
+				Exp.MapKeysIn(Exp.MapBin("myMap"))
+			);
+
+			Record result = client.Operate(null, key,
+				ExpOperation.Read("keys", exp, ExpReadFlags.DEFAULT)
+			);
+
+			Assert.IsNotNull(result);
+			List<object> keys = (List<object>)result.GetList("keys");
+			Assert.IsNotNull(keys);
+			Assert.AreEqual(3, keys.Count);
+			Assert.IsTrue(keys.Contains("x"));
+			Assert.IsTrue(keys.Contains("y"));
+			Assert.IsTrue(keys.Contains("z"));
+		}
+
+		[TestMethod]
+		public void TestMapValues()
+		{
+			CheckPathExpressionEnhancements();
+			var key = new Key(SuiteHelpers.ns, SuiteHelpers.set, "cdtExpMapValues");
+
+			try
+			{
+				client.Delete(null, key);
+			}
+			catch (Exception)
+			{
+			}
+
+			Dictionary<string, object> map = new()
+			{
+				{ "a", 100 },
+				{ "b", 200 },
+				{ "c", 300 }
+			};
+
+			var bin = new Bin("myMap", map);
+			client.Put(null, key, bin);
+
+			Expression exp = Exp.Build(
+				Exp.MapValuesIn(Exp.MapBin("myMap"))
+			);
+
+			Record result = client.Operate(null, key,
+				ExpOperation.Read("values", exp, ExpReadFlags.DEFAULT)
+			);
+
+			Assert.IsNotNull(result);
+			List<object> values2 = (List<object>)result.GetList("values");
+			Assert.IsNotNull(values2);
+			Assert.AreEqual(3, values2.Count);
+			Assert.IsTrue(values2.Contains(100L));
+			Assert.IsTrue(values2.Contains(200L));
+			Assert.IsTrue(values2.Contains(300L));
+		}
+
+		private static void CheckPathExpressionEnhancements()
+		{
+			CheckServerVersion(Node.SERVER_VERSION_8_1_2, "Path expression Enhancement");
 		}
 	}
 }

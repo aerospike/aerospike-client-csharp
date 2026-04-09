@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2022 Aerospike, Inc.
+ * Copyright 2012-2026 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -245,6 +245,12 @@ namespace Aerospike.Client
 
 				case ParticleType.GEOJSON:
 					val = new Value.GeoJSONValue(ByteUtil.Utf8ToString(buffer, offset, count));
+					break;
+
+				case ParticleType.HLL:
+					byte[] hllBytes = new byte[count];
+					Array.Copy(buffer, offset, hllBytes, 0, count);
+					val = new Value.HLLValue(hllBytes);
 					break;
 
 				default:

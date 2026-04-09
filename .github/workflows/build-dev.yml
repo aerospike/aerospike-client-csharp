@@ -1,5 +1,5 @@
 name: Build and test dev
-run-name: Build artifacts and run dev branch tests (${{ inputs.server-image && format('server-image={0}', inputs.server-image) || format('server-tag={0}', inputs.server-tag || 'latest') }})
+run-name: Build artifacts and run dev branch tests (server-tag=${{ inputs.server-tag || 'latest' }})
 
 permissions:
   # This is required for requesting the OIDC token
@@ -31,11 +31,6 @@ on:
         type: string
         required: false
         default: "aerospike-server-enterprise"
-      server-image:
-        type: string
-        required: false
-        default: ""
-        description: "Custom full docker image name (e.g., aerospike.jfrog.io/database-docker-virtual/aerospike-server-enterprise:8.1.1.0-rc27_1). Overrides server-tag and server-type if provided."
 
 jobs:
   build:
@@ -44,13 +39,13 @@ jobs:
       version: ${{ steps.get-version.outputs.version }}
     steps:
     - name: Harden the runner (Audit all outbound calls)
-      uses: step-security/harden-runner@a90bcbc6539c36a85cdfeb73f7e2f433735f215b # v2.15.0
+      uses: step-security/harden-runner@58077d3c7e43986b6b15fba718e8ea69e387dfcc # v2.15.1
       with:
         egress-policy: audit
 
     - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
     - name: Setup .NET
-      uses: actions/setup-dotnet@baa11fbfe1d6520db94683bd5c7a3818018e4309 # v5.1.0
+      uses: actions/setup-dotnet@c2fa09f4bde5ebb9d1777cf28262a3eb3db3ced7 # v5.2.0
       with:
         dotnet-version: 8.0.x
     - name: Build artifacts
@@ -85,7 +80,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - name: Harden the runner (Audit all outbound calls)
-      uses: step-security/harden-runner@a90bcbc6539c36a85cdfeb73f7e2f433735f215b # v2.15.0
+      uses: step-security/harden-runner@58077d3c7e43986b6b15fba718e8ea69e387dfcc # v2.15.1
       with:
         egress-policy: audit
 
@@ -95,7 +90,7 @@ jobs:
       with:
         server-tag: ${{ inputs.server-tag || 'latest' }}
         server-type: ${{ inputs.server-type || 'aerospike-server-enterprise' }}
-        server-image: ${{ inputs.server-image || '' }}
+        features-content: ${{ secrets.AES_FEATURES_CONF }}
         oidc-provider: database-gh-aerospike
         oidc-audience: database-gh-aerospike
 
@@ -129,7 +124,7 @@ jobs:
 
   create-release-bundle:
     needs: [build, deploy]
-    uses: aerospike/shared-workflows/.github/workflows/reusable_create-release-bundle.yaml@v3.0.0
+    uses: aerospike/shared-workflows/.github/workflows/reusable_create-release-bundle.yaml@v3.1.1
     with:
       jf-project: database
       jf-build-names: "aerospike-client-csharp:${{ github.run_id }}"

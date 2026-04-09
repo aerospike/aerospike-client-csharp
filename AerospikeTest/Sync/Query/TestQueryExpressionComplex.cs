@@ -1,5 +1,5 @@
-﻿/* 
- * Copyright 2012-2025 Aerospike, Inc.
+/* 
+ * Copyright 2012-2026 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -44,10 +44,7 @@ namespace Aerospike.Test
 		[ClassInitialize()]
 		public static void Prepare(TestContext testContext)
 		{
-			if (client.Cluster.GetRandomNode().serverVersion < Node.SERVER_VERSION_8_1)
-			{
-				return;
-			}
+			CheckServerVersion(Node.SERVER_VERSION_8_1, "Secondary index with expression");
 
 			Policy policy = new()
 			{
@@ -56,7 +53,7 @@ namespace Aerospike.Test
 
 			try
 			{
-				IndexTask itask = client.CreateIndex(policy, SuiteHelpers.ns, setName, indexName, IndexType.NUMERIC, IndexCollectionType.DEFAULT, exp);
+				IndexTask itask = client.CreateIndex(policy, SuiteHelpers.ns, setName, indexName, IndexType.INTEGER, IndexCollectionType.DEFAULT, exp);
 				itask.Wait();
 			}
 			catch (AerospikeException ae)
@@ -80,10 +77,7 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void QueryExpressionComplexExpression()
 		{
-			if (client.Cluster.GetRandomNode().serverVersion < Node.SERVER_VERSION_8_1)
-			{
-				return;
-			}
+			CheckServerVersion(Node.SERVER_VERSION_8_1, "Secondary index with expression");
 
 			Statement stmt = new();
 			stmt.SetNamespace(SuiteHelpers.ns);
@@ -112,10 +106,7 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void QueryExpressionComplexIndexName()
 		{
-			if (client.Cluster.GetRandomNode().serverVersion < Node.SERVER_VERSION_8_1)
-			{
-				return;
-			}
+			CheckServerVersion(Node.SERVER_VERSION_8_1, "Secondary index with expression");
 
 			Statement stmt = new();
 			stmt.SetNamespace(SuiteHelpers.ns);

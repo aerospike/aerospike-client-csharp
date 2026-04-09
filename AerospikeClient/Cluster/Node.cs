@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2025 Aerospike, Inc.
+ * Copyright 2012-2026 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -25,6 +25,8 @@ namespace Aerospike.Client
 	/// </summary>
 	public class Node : IDisposable
 	{
+		public static Version SERVER_VERSION_8_1_3 = new(8, 1, 3, 0);
+		public static Version SERVER_VERSION_8_1_2 = new(8, 1, 2, 0);
 		public static Version SERVER_VERSION_8_1_1 = new(8, 1, 1, 0);
 		public static Version SERVER_VERSION_8_1 = new(8, 1, 0, 0);
 		public static Version SERVER_VERSION_PSCAN = new(4, 9, 0, 3);
@@ -40,6 +42,7 @@ namespace Aerospike.Client
 		public const int HAS_QUERY_SHOW = (1 << 1);
 		public const int HAS_BATCH_ANY = (1 << 2);
 		public const int HAS_PARTITION_QUERY = (1 << 3);
+		public const int HAS_QUERY_OPS_PROJECTION_EXT = (1 << 4);
 
 		private static readonly string[] INFO_PERIODIC = new string[] { "node", "peers-generation", "partition-generation" };
 		private static readonly string[] INFO_PERIODIC_REB = new string[] { "node", "peers-generation", "partition-generation", "rebalance-generation" };
@@ -1296,6 +1299,15 @@ namespace Aerospike.Client
 		public bool HasPartitionQuery
 		{
 			get { return (features & HAS_PARTITION_QUERY) != 0; }
+		}
+
+		/// <summary>
+		/// Does this node support extended read operations (CDT, expression, bit, HLL reads) in
+		/// query operations projection? Requires server version 8.1.2+.
+		/// </summary>
+		public bool HasQueryOpsProjectionExt
+		{
+			get { return (features & HAS_QUERY_OPS_PROJECTION_EXT) != 0; }
 		}
 
 		/// <summary>

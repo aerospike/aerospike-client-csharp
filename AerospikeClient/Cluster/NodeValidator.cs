@@ -346,6 +346,11 @@ namespace Aerospike.Client
 				features |= Node.HAS_BATCH_ANY;
 				features |= Node.HAS_PARTITION_QUERY;
 			}
+
+			if (serverVersion >= Node.SERVER_VERSION_8_1_2)
+			{
+				features |= Node.HAS_QUERY_OPS_PROJECTION_EXT;
+			}
 		}
 
 		private void ValidateClusterName(Cluster cluster, Dictionary<string, string> map)

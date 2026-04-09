@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2026 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -154,9 +154,29 @@ namespace Aerospike.Client
 			return ProtocolTypes[(int)type];
 		}
 
+
+		/// <summary>
+		/// Return whether the given operation type is a write operation.
+		/// </summary>
+		/// <param name="type">Operation type to check.</param>
+		/// <returns>True if the operation type modifies data.</returns>
 		public static bool IsWrite(Type type)
 		{
 			return IsWrites[(int)type];
+		}
+
+		/// <summary>
+		/// Return whether the given operation type is a basic read operation
+		/// (<see cref="Type.READ"/> or <see cref="Type.READ_HEADER"/>).
+		/// Basic reads are supported for query operations projection on server versions prior to 8.1.2.
+		/// Extended read operations (e.g., <see cref="Type.CDT_READ"/>, <see cref="Type.EXP_READ"/>)
+		/// require server version 8.1.2+.
+		/// </summary>
+		/// <param name="type">Operation type to check.</param>
+		/// <returns>True if the operation type is READ or READ_HEADER.</returns>
+		public static bool IsBasicRead(Type type)
+		{
+			return type == Type.READ || type == Type.READ_HEADER;
 		}
 
 		/// <summary>

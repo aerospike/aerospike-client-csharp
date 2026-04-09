@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2022 Aerospike, Inc.
+ * Copyright 2012-2026 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -104,7 +104,8 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
-		/// Set query bin names.
+		/// Set query bin names for ops projection in queries.
+		/// Mutually exclusive with <see cref="Operations"/>.
 		/// </summary>
 		public void SetBinNames(params string[] binNames)
 		{
@@ -294,6 +295,25 @@ namespace Aerospike.Client
 
 		/// <summary>
 		/// Operations to be performed on query/execute.
+		/// <para>
+		/// For foreground queries (<see cref="IAerospikeClient.Query(QueryPolicy, Statement)"/>), only read operations
+		/// are allowed. Read operations act as ops projections, limiting which bins are returned.
+		/// </para>
+		/// <para>
+		/// Basic read operations (<see cref="Operation.Get(string)"/>, <see cref="Operation.Get()"/>,
+		/// <see cref="Operation.GetHeader()"/>) are supported on server versions prior to 8.1.2.
+		/// Extended read operations (e.g., <see cref="ExpOperation.Read(string, Expression, ExpReadFlags)"/>,
+		/// CDT read operations, bit read operations, HLL read operations) require server version 8.1.2+.
+		/// </para>
+		/// <para>
+		/// For background execute (<see cref="IAerospikeClient.Execute(WritePolicy, Statement, Operation[])"/>), only write operations
+		/// are allowed (e.g., <see cref="ExpOperation.Write"/>).
+		/// </para>
+		/// <para>
+		/// Operations and <see cref="SetBinNames"/> are mutually exclusive. If both are set,
+		/// the client will log a warning and ignore operations for foreground queries or ignore
+		/// bin names for background execute. Setting both will become an error in a future release.
+		/// </para>
 		/// </summary>
 		public Operation[] Operations
 		{
