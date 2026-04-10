@@ -1,5 +1,5 @@
 name: Build and test stage
-run-name: Build artifacts and run stage tests (${{ inputs.server-image && format('server-image={0}', inputs.server-image) || format('server-tag={0}', inputs.server-tag || 'latest') }})
+run-name: Build artifacts and run stage tests (server-tag=${{ inputs.server-tag || 'latest' }})
 
 permissions:
   # This is required for requesting the OIDC token
@@ -22,11 +22,6 @@ on:
         type: string
         required: false
         default: 'aerospike-server-enterprise'
-      server-image:
-        type: string
-        required: false
-        default: ''
-        description: 'Custom full docker image name (e.g., aerospike.jfrog.io/database-docker-virtual/aerospike-server-enterprise:8.1.1.0-rc27_1). Overrides server-tag and server-type if provided.'
 
 jobs:
   build:
@@ -86,7 +81,7 @@ jobs:
       with:
         server-tag: ${{ inputs.server-tag || 'latest' }}
         server-type: ${{ inputs.server-type || 'aerospike-server-enterprise' }}
-        server-image: ${{ inputs.server-image || '' }}
+        features-content: ${{ secrets.AES_FEATURES_CONF }}
         oidc-provider: database-gh-aerospike
         oidc-audience: database-gh-aerospike
 
