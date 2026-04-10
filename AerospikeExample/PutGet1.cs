@@ -18,7 +18,7 @@ using Aerospike.Client;
 
 namespace Aerospike.Example;
 
-public class PutGet(Console console) : SyncExample(console)
+public class PutGet1(Console console) : SyncExample(console)
 {
 
 	/// <summary>
