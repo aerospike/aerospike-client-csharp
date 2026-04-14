@@ -130,7 +130,7 @@ public class Get(Console console) : SyncExample(console)
 		Record record = client.Get(policy, key, "report", "location");
 
 		// Do something
-		System.Console.WriteLine("Record: {0}", record.ToString().Split("bins:")[1])
+		System.Console.WriteLine("Record: {0}", record.ToString().Split("bins:")[1]);
 		// @@@SNIPEND
 
 		if (record == null)
