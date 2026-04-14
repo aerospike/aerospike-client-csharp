@@ -23,6 +23,7 @@ public class Program
 {
 	private static readonly string[] ExampleNames =
 	{
+		"Connect",
 		"ServerInfo",
 		"PutGet",
 		"Exists",
@@ -72,7 +73,8 @@ public class Program
 		"AsyncTransaction",
 		"AsyncTransactionWithTask",
 		"AsyncQuery",
-		"AsyncUserDefinedFunction"
+		"AsyncUserDefinedFunction",
+		"Get"
 	};
 
 	static int Main(string[] args)

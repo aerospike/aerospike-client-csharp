@@ -36,11 +36,11 @@ namespace Aerospike.Example
 				useServicesAlternate = args.useServicesAlternate
 			};
 
+			AerospikeClient client = new(policy, args.hosts);
+
 			args.writePolicy = policy.writePolicyDefault;
 			args.policy = policy.readPolicyDefault;
 			args.batchPolicy = policy.batchPolicyDefault;
-
-			AerospikeClient client = new(policy, args.hosts);
 			List<ExampleResultInfo> results = [];
 
 			try

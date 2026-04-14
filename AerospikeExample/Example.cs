@@ -92,4 +92,27 @@ public abstract class Example(Console console)
 	{
 		SkipUnless(args.scMode, "requires strong consistency mode");
 	}
+
+	// Used in Connect examples
+	protected static void RequireBasic(Arguments args)
+	{
+		SkipUnless(!args.useServicesAlternate, "requires basic mode");
+		SkipUnless(args.user == null, "requires no authentication");
+		SkipUnless(args.tlsPolicy == null, "requires TLS disabled");
+	}
+
+	protected static void RequireAuth(Arguments args)
+	{
+		SkipUnless(args.user != null, "requires authentication");
+	}
+
+	protected static void RequireTls(Arguments args)
+	{
+		SkipUnless(args.tlsPolicy != null, "requires TLS");
+	}
+
+	protected static void RequirePki(Arguments args)
+	{
+		SkipUnless(args.authMode == Aerospike.Client.AuthMode.PKI, "requires PKI authentication");
+	}
 }
