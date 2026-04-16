@@ -71,6 +71,12 @@ public class Get(Console console) : SyncExample(console)
 		// @@@SNIPSTART csharp-client-read-exists
 		// Returns true if exists, false if not
 		bool exists = client.Exists(policy, key);
+
+		// Do something
+		System.Console.WriteLine("Exists: {0}", exists);
+
+		// Close the connection to the server
+		client.Close();
 		// @@@SNIPEND
 
 		if (!exists)
