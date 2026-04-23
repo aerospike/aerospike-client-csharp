@@ -164,17 +164,25 @@ namespace Aerospike.Client
 			string b64 = Convert.ToBase64String(ByteUtil.StringToUtf8(agentValue));
 			string agentCommand = "user-agent-set:value=" + b64;
 
-			string response = Info.Request(this, agentCommand);
-			int code = Info.ParseResultCode(response);
-			if (code != ResultCode.OK)
+			try
+			{
+				string response = Info.Request(this, agentCommand);
+				int code = Info.ParseResultCode(response);
+				if (code != ResultCode.OK)
+				{
+					retryUserAgent = true;
+					Log.Warn("Failed to set user agent: " + code);
+					return;
+				}
+			}
+			catch (Exception e)
 			{
 				retryUserAgent = true;
-				Log.Warn("Failed to set user agent: " + code);
+				Log.Warn("Failed to set user agent: " + Util.GetErrorMessage(e));
 				return;
 			}
 
 			retryUserAgent = false;
-			return;
 		}
 
 		public virtual void CreateMinConnections()
@@ -1052,7 +1060,7 @@ namespace Aerospike.Client
 		/// <param name="elapsedMs">elapsed time in milliseconds</param>
 		public void AddLatency(string ns, LatencyType type, double elapsedMs)
 		{
-			metrics.AddLatency(ns, type, elapsedMs);
+			metrics?.AddLatency(ns, type, elapsedMs);
 		}
 
 		public void IncrErrorRate()
@@ -1349,7 +1357,7 @@ namespace Aerospike.Client
 		{
 			// Close tend connection after making reference copy.
 			Connection conn = tendConnection;
-			conn.Close();
+			conn?.Close();
 
 			// Empty connection pools.
 			foreach (Pool<Connection> pool in connectionPools)
