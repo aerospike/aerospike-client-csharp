@@ -53,10 +53,10 @@ jobs:
 
   sign:
     needs: build
-    uses: aerospike/shared-workflows/.github/workflows/reusable_sign-artifacts.yaml@489212b8911ea431131ed468599db705f0767274 # v3.0.0
+    uses: aerospike/shared-workflows/.github/workflows/reusable_sign-artifacts.yaml@07c958ca4c5cea494dc8790949c08e3fb28c55e1 # v3.3.0
     with:
       gh-unsigned-artifacts: AerospikeClient-${{ github.run_number }}
-      gh-workflows-ref: v3.0.0
+      gh-workflows-ref: v3.3.0
     secrets:
       gpg-private-key: ${{ secrets.GPG_SECRET_KEY }}
       gpg-public-key: ${{ secrets.GPG_PUBLIC_KEY }}
@@ -87,41 +87,41 @@ jobs:
 
   deploy:
     needs: [build, sign, test]
-    uses: aerospike/shared-workflows/.github/workflows/reusable_deploy-artifacts.yaml@489212b8911ea431131ed468599db705f0767274 # v3.0.0
+    uses: aerospike/shared-workflows/.github/workflows/reusable_deploy-artifacts.yaml@07c958ca4c5cea494dc8790949c08e3fb28c55e1 # v3.3.0
     with:
       jf-project: database
       jf-build-name: aerospike-client-csharp
-      jf-build-id: ${{ github.run_id }}
-      jf-metadata-build-id: ${{ github.run_id }}-metadata
+      jf-build-id: ${{ github.run_id }}-${{ github.run_attempt }}
+      jf-metadata-build-id: ${{ github.run_id }}-${{ github.run_attempt }}-metadata
       version: ${{ needs.build.outputs.version }}
       gh-artifact-name: signed-artifacts
-      gh-workflows-ref: v3.0.0
+      gh-workflows-ref: v3.3.0
       oidc-provider-name: database-gh-aerospike
       oidc-audience: database-gh-aerospike
 
   deploy-test:
     needs: [build, test]
-    uses: aerospike/shared-workflows/.github/workflows/reusable_deploy-artifacts.yaml@489212b8911ea431131ed468599db705f0767274 # v3.0.0
+    uses: aerospike/shared-workflows/.github/workflows/reusable_deploy-artifacts.yaml@07c958ca4c5cea494dc8790949c08e3fb28c55e1 # v3.3.0
     with:
       jf-project: database
       jf-build-name: aerospike-client-csharp-tests
-      jf-build-id: ${{ github.run_id }}-tests
-      jf-metadata-build-id: ${{ github.run_id }}-tests-metadata
+      jf-build-id: ${{ github.run_id }}-${{ github.run_attempt }}-tests
+      jf-metadata-build-id: ${{ github.run_id }}-${{ github.run_attempt }}-tests-metadata
       version: ${{ needs.build.outputs.version }}
       gh-artifact-name: AerospikeTest-${{ github.run_number }}
-      gh-workflows-ref: v3.0.0
+      gh-workflows-ref: v3.3.0
       oidc-provider-name: database-gh-aerospike
       oidc-audience: database-gh-aerospike
 
   create-release-bundle:
     needs: [build, deploy]
-    uses: aerospike/shared-workflows/.github/workflows/reusable_create-release-bundle.yaml@7f633569d89f706899e6b8f2151a3b200576c1fd # v3.1.1
+    uses: aerospike/shared-workflows/.github/workflows/reusable_create-release-bundle.yaml@07c958ca4c5cea494dc8790949c08e3fb28c55e1 # v3.3.0
     with:
       jf-project: database
-      jf-build-names: "aerospike-client-csharp:${{ github.run_id }}"
+      jf-build-names: "aerospike-client-csharp:${{ github.run_id }}-${{ github.run_attempt }}"
       jf-bundle-name: aerospike-client-csharp
       version: ${{ needs.build.outputs.version }}
-      gh-workflows-ref: v3.1.1
+      gh-workflows-ref: v3.3.0
       oidc-provider-name: database-gh-aerospike
       oidc-audience: database-gh-aerospike
 
@@ -134,15 +134,6 @@ jobs:
       with:
         egress-policy: audit
 
-    - name: Checkout shared-workflows (actions)
-      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-      with:
-        repository: aerospike/shared-workflows
-        ref: 07c958ca4c5cea494dc8790949c08e3fb28c55e1 # v3.3.0
-        sparse-checkout: .github/actions
-        sparse-checkout-cone-mode: false
-        path: shared-workflows
-
     - name: Setup JFrog CLI
       uses: step-security/setup-jfrog-cli@893a92f96c7727242adf0e603c77b1f2a22390e1 # v4.9.1
       env:
@@ -153,7 +144,7 @@ jobs:
         oidc-audience: database-gh-aerospike
 
     - name: Promote release bundle to DEV
-      uses: ./shared-workflows/.github/actions/promote-release-bundle
+      uses: aerospike/shared-workflows/.github/actions/promote-release-bundle@07c958ca4c5cea494dc8790949c08e3fb28c55e1 # v3.3.0
       with:
         bundle-name: aerospike-client-csharp
         version: ${{ needs.build.outputs.version }}

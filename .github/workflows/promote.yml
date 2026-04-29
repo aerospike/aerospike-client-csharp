@@ -32,15 +32,6 @@ jobs:
       with:
         egress-policy: audit
 
-    - name: Checkout shared-workflows (actions)
-      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-      with:
-        repository: aerospike/shared-workflows
-        ref: 07c958ca4c5cea494dc8790949c08e3fb28c55e1 # v3.3.0
-        sparse-checkout: .github/actions
-        sparse-checkout-cone-mode: false
-        path: shared-workflows
-
     - name: Setup JFrog CLI
       uses: step-security/setup-jfrog-cli@893a92f96c7727242adf0e603c77b1f2a22390e1 # v4.9.1
       env:
@@ -51,7 +42,7 @@ jobs:
         oidc-audience: database-gh-aerospike
 
     - name: Promote release bundle
-      uses: ./shared-workflows/.github/actions/promote-release-bundle
+      uses: aerospike/shared-workflows/.github/actions/promote-release-bundle@07c958ca4c5cea494dc8790949c08e3fb28c55e1 # v3.3.0
       with:
         bundle-name: aerospike-client-csharp
         version: ${{ inputs.version }}
