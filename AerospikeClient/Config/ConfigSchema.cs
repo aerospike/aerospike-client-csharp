@@ -1,4 +1,4 @@
-﻿/* 
+/* 
  * Copyright 2012-2025 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
@@ -241,9 +241,9 @@ namespace Aerospike.Client.Config
 	public class MetricsConfig
 	{
 		public bool? enable { get; set; }
+		public bool? enable_extended_metrics { get; set; }
 		public int? latency_shift { get; set; }
 		public int? latency_columns { get; set; }
 		public Dictionary<string, string> labels { get; set; }
-
 	}
 }

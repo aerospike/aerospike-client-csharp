@@ -29,16 +29,6 @@ namespace Aerospike.Client
 		private static readonly string filenameFormat = "yyyyMMddHHmmss";
 		private static readonly string timestampFormat = "yyyy-MM-dd HH:mm:ss";
 		private static readonly int minFileSize = 1000000;
-		private static string GetMetricTypeName(MetricType type)
-		{
-			return type switch
-			{
-				MetricType.Counter => "counter",
-				MetricType.Gauge => "gauge",
-				MetricType.Histogram => "histogram",
-				_ => "unknown"
-			};
-		}
 
 		private readonly string dir;
 		private readonly StringBuilder sb;
@@ -92,49 +82,146 @@ namespace Aerospike.Client
 		#region IMetricsExporter Implementation
 
 		/// <summary>
-		/// Export metrics to file in a generic format.
+		/// Export a metrics snapshot to file.
+		/// Not thread-safe — assumes the caller serializes calls (e.g., via a single metrics thread).
 		/// </summary>
-		public void Export(IReadOnlyList<Metric> metrics)
+		public void Export(MetricsSnapshot snapshot)
 		{
-			if (!enabled || metrics.Count == 0)
+			if (!enabled || disposed)
 			{
 				return;
 			}
 
-			var timestamp = metrics[0].Timestamp;
-			sb.Append(timestamp.ToString(timestampFormat));
-			sb.Append(" metrics[");
-			sb.Append(metrics.Count);
-			sb.AppendLine("]");
+			sb.Append(snapshot.Timestamp.ToString(timestampFormat));
+			sb.Append(" cluster[");
+			sb.Append(snapshot.ClusterName);
+			sb.Append(',');
+			sb.Append(snapshot.ClientType);
+			sb.Append(',');
+			sb.Append(snapshot.ClientVersion);
+			sb.Append(',');
+			if (snapshot.AppId != null) sb.Append(snapshot.AppId);
+			sb.Append(',');
 
-			foreach (var metric in metrics)
+			if (snapshot.Labels != null && snapshot.Labels.Count > 0)
 			{
-				sb.Append("  ");
-				sb.Append(metric.Name);
-				
-				if (metric.Labels.Length > 0)
+				sb.Append('[');
+				bool first = true;
+				foreach (var kvp in snapshot.Labels)
 				{
-					sb.Append('{');
-					for (int i = 0; i < metric.Labels.Length; i++)
-					{
-						if (i > 0) sb.Append(',');
-						sb.Append(metric.Labels[i].Key);
-						sb.Append('=');
-						sb.Append('"');
-						sb.Append(metric.Labels[i].Value);
-						sb.Append('"');
-					}
-					sb.Append('}');
+					if (!first) sb.Append(',');
+					sb.Append('[').Append(kvp.Key).Append(',').Append(kvp.Value).Append(']');
+					first = false;
 				}
-				
-				sb.Append(' ');
-				sb.Append(metric.Value.ToString("G"));
-				sb.Append(' ');
-				sb.Append(GetMetricTypeName(metric.Type));
-				sb.AppendLine();
+				sb.Append(']');
 			}
 
+			sb.Append(',');
+			sb.Append((int)snapshot.CpuPercent);
+			sb.Append(',');
+			sb.Append(snapshot.MemoryBytes);
+			sb.Append(',');
+			sb.Append(snapshot.RecoverQueueSize);
+			sb.Append(',');
+			sb.Append(snapshot.InvalidNodeCount);
+			sb.Append(',');
+			sb.Append(snapshot.CommandCount);
+			sb.Append(',');
+			sb.Append(snapshot.RetryCount);
+			sb.Append(',');
+			sb.Append(snapshot.DelayQueueTimeoutCount);
+			sb.Append(',');
+			sb.Append(snapshot.AsyncThreadsInUse);
+			sb.Append(',');
+			sb.Append(snapshot.AsyncCompletionPortsInUse);
+			sb.Append(",[");
+
+			for (int i = 0; i < snapshot.Nodes.Length; i++)
+			{
+				if (i > 0) sb.Append(',');
+				WriteNodeSnapshot(snapshot.Nodes[i]);
+			}
+
+			sb.Append("]]");
 			WriteLineGeneric();
+		}
+
+		private void WriteNodeSnapshot(NodeMetricsSnapshot node)
+		{
+			sb.Append('[');
+			sb.Append(node.NodeName);
+			sb.Append(',');
+			sb.Append(node.NodeAddress);
+			sb.Append(',');
+			sb.Append(node.NodePort);
+			sb.Append(',');
+
+			WriteConn(node.SyncConnections);
+			sb.Append(',');
+			WriteConn(node.AsyncConnections);
+
+			if (node.Namespaces.Length > 0)
+			{
+				sb.Append(",[");
+
+				for (int n = 0; n < node.Namespaces.Length; n++)
+				{
+					if (n > 0) sb.Append(',');
+					WriteNamespaceSnapshot(node.Namespaces[n]);
+				}
+
+				sb.Append(']');
+			}
+
+			sb.Append(']');
+		}
+
+		private void WriteNamespaceSnapshot(NamespaceMetricsSnapshot ns)
+		{
+			sb.Append('[');
+			sb.Append(ns.Namespace);
+			sb.Append(',');
+			sb.Append(ns.Errors);
+			sb.Append(',');
+			sb.Append(ns.Timeouts);
+			sb.Append(',');
+			sb.Append(ns.KeyBusy);
+			sb.Append(',');
+			sb.Append(ns.BytesIn);
+			sb.Append(',');
+			sb.Append(ns.BytesOut);
+
+			if (ns.Latencies != null)
+			{
+				sb.Append(",[");
+				for (int i = 0; i < ns.Latencies.Length; i++)
+				{
+					if (i > 0) sb.Append(',');
+					var lat = ns.Latencies[i];
+					sb.Append(LatencyTypeToString(lat.Type));
+					sb.Append('[');
+					for (int j = 0; j < lat.BucketCounts.Length; j++)
+					{
+						if (j > 0) sb.Append(',');
+						sb.Append(lat.BucketCounts[j]);
+					}
+					sb.Append(']');
+				}
+				sb.Append(']');
+			}
+
+			sb.Append(']');
+		}
+
+		private void WriteConn(ConnectionMetricsSnapshot cs)
+		{
+			sb.Append(cs.InUse);
+			sb.Append(',');
+			sb.Append(cs.InPool);
+			sb.Append(',');
+			sb.Append(cs.Opened);
+			sb.Append(',');
+			sb.Append(cs.Closed);
 		}
 
 		#endregion
@@ -230,8 +317,14 @@ namespace Aerospike.Client
 
 			sb.Append(now.ToString(timestampFormat));
 			sb.AppendLine(" # Aerospike Client Metrics");
-			sb.AppendLine("# Format: metric_name{label=\"value\",...} value type");
-			sb.AppendLine("# Types: counter, gauge, histogram");
+			sb.AppendLine("# Format: cluster[name,clientType,clientVersion,appId,labels,cpu,mem,recoverQueueSize,invalidNodeCount,commandCount,retryCount,delayQueueTimeoutCount,asyncThreadsInUse,asyncCompletionPortsInUse,[node,...]]");
+			sb.AppendLine("# Node: [name,address,port,syncConn,asyncConn,[namespace,...]]");
+			sb.AppendLine("# Namespace: [name,errors,timeouts,keyBusy,bytesIn,bytesOut,[latency,...]]");
+			sb.Append("# Latency(");
+			sb.Append(latencyColumns);
+			sb.Append(',');
+			sb.Append(latencyShift);
+			sb.AppendLine("): type[bucket1,bucket2,...]");
 			WriteLineGeneric();
 		}
 
@@ -239,6 +332,7 @@ namespace Aerospike.Client
 		{
 			try
 			{
+				sb.Append(System.Environment.NewLine);
 				foreach (var chunk in sb.GetChunks())
 				{
 					writer.Write(chunk.Span);
@@ -326,12 +420,12 @@ namespace Aerospike.Client
 				}
 			}
 			sb.Append(',');
-			if (policy.labels != null)
+			if (policy.Labels != null)
 			{
 				sb.Append('[');
-				foreach (string key in policy.labels.Keys)
+				foreach (string key in policy.Labels.Keys)
 				{
-					sb.Append('[').Append(key).Append(',').Append(policy.labels[key]).Append("],");
+					sb.Append('[').Append(key).Append(',').Append(policy.Labels[key]).Append("],");
 				}
 				sb.Remove(sb.Length - 1, 1); // Remove last comma
 				sb.Append(']');

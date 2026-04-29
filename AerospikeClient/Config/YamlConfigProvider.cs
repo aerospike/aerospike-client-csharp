@@ -1,4 +1,4 @@
-﻿/* 
+/* 
  * Copyright 2012-2025 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
@@ -523,24 +523,28 @@ namespace Aerospike.Client
 
 					IConfigProvider.LogBoolChange(dynamicMetrics.enable, client.cluster.MetricsEnabled,
 						dynamicMetricsName, "enabled");
+					IConfigProvider.LogBoolChange(dynamicMetrics.enable_extended_metrics, metricsPolicy.EnableExtendedMetrics,
+						dynamicMetricsName, "enable_extended_metrics");
 					IConfigProvider.LogIntChange(dynamicMetrics.latency_shift, metricsPolicy.LatencyShift,
 						dynamicMetricsName, "latency_shift");
 					IConfigProvider.LogIntChange(dynamicMetrics.latency_columns, metricsPolicy.LatencyColumns,
 						dynamicMetricsName, "latency_columns");
-					IConfigProvider.LogStringDictionaryChange(dynamicMetrics.labels, metricsPolicy.labels,
+					IConfigProvider.LogStringDictionaryChange(dynamicMetrics.labels, metricsPolicy.Labels,
 						dynamicMetricsName, "labels");
 				}
 			}
 			else
-			{
+				{
 				// Client hasn't initialized the cluster yet. Use disabled as the default for metrics.
 				IConfigProvider.LogBoolChange(dynamicMetrics.enable, false,
 					dynamicMetricsName, "enabled");
+				IConfigProvider.LogBoolChange(dynamicMetrics.enable_extended_metrics, metricsPolicy.EnableExtendedMetrics,
+					dynamicMetricsName, "enable_extended_metrics");
 				IConfigProvider.LogIntChange(dynamicMetrics.latency_shift, metricsPolicy.LatencyShift,
 					dynamicMetricsName, "latency_shift");
 				IConfigProvider.LogIntChange(dynamicMetrics.latency_columns, metricsPolicy.LatencyColumns,
 					dynamicMetricsName, "latency_columns");
-				IConfigProvider.LogStringDictionaryChange(dynamicMetrics.labels, metricsPolicy.labels,
+				IConfigProvider.LogStringDictionaryChange(dynamicMetrics.labels, metricsPolicy.Labels,
 					dynamicMetricsName, "labels");
 			}
 

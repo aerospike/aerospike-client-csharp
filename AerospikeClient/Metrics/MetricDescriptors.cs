@@ -18,134 +18,148 @@
 namespace Aerospike.Client
 {
 	/// <summary>
-	/// Pre-defined metric descriptors for all Aerospike client metrics.
-	/// Each descriptor holds the static metadata (name, description, unit, type) for a metric,
-	/// and provides a factory method to create <see cref="Metric"/> instances with that metadata.
+	/// Canonical metric names, descriptions, units, and tier classification for all
+	/// Aerospike client metrics.
+	///
+	/// Metrics are classified as either <b>Standard</b> (always collected, negligible
+	/// overhead) or <b>Extended</b> (detailed diagnostics, must be explicitly enabled
+	/// via <see cref="MetricsPolicy.EnableExtendedMetrics"/>).
 	/// </summary>
 	public static class MetricDescriptors
 	{
 		/// <summary>
-		/// Holds static metadata for a single metric and creates instances with that metadata.
+		/// Static metadata for a single metric.
 		/// </summary>
 		public readonly struct Descriptor
 		{
 			public string Name { get; }
 			public string Description { get; }
 			public string Unit { get; }
-			public MetricType Type { get; }
 
-			public Descriptor(string name, string description, string unit, MetricType type)
+			/// <summary>
+			/// True when this metric is only collected when extended metrics are enabled.
+			/// </summary>
+			public bool IsExtended { get; }
+
+			public Descriptor(string name, string description, string unit, bool isExtended = false)
 			{
 				Name = name;
 				Description = description;
 				Unit = unit;
-				Type = type;
-			}
-
-			public Metric Create(double value, DateTime timestamp, KeyValuePair<string, string>[] labels)
-			{
-				return new Metric(Name, value, Type, timestamp, labels, Description, Unit);
+				IsExtended = isExtended;
 			}
 		}
 
-		// Cluster-level gauges
-		public static readonly Descriptor CpuPercent = new(
-			"aerospike_client_cpu_percent",
-			"Client process CPU usage percentage",
-			"%", MetricType.Gauge);
-
-		public static readonly Descriptor MemoryBytes = new(
-			"aerospike_client_memory_bytes",
-			"Client process memory usage",
-			"By", MetricType.Gauge);
-
-		public static readonly Descriptor RecoverQueueSize = new(
-			"aerospike_client_recover_queue_size",
-			"Number of commands in the recover queue",
-			"{item}", MetricType.Gauge);
+		// ── Standard cluster-level metrics ─────────────────────────────────
 
 		public static readonly Descriptor AsyncThreadsInUse = new(
 			"aerospike_client_async_threads_in_use",
 			"Async worker threads currently in use",
-			"{thread}", MetricType.Gauge);
+			"thread");
 
 		public static readonly Descriptor AsyncCompletionPortsInUse = new(
 			"aerospike_client_async_completion_ports_in_use",
 			"Async I/O completion port threads currently in use",
-			"{thread}", MetricType.Gauge);
+			"thread");
 
-		// Cluster-level counters
-		public static readonly Descriptor CommandCount = new(
-			"aerospike_client_command_count",
-			"Total number of commands executed",
-			"{command}", MetricType.Counter);
-
-		public static readonly Descriptor RetryCount = new(
-			"aerospike_client_retry_count",
-			"Total number of command retries",
-			"{retry}", MetricType.Counter);
-
-		public static readonly Descriptor DelayQueueTimeoutCount = new(
-			"aerospike_client_delay_queue_timeout_count",
-			"Total number of delay queue timeouts",
-			"{timeout}", MetricType.Counter);
+		public static readonly Descriptor RecoverQueueSize = new(
+			"aerospike_client_recover_queue_size",
+			"Number of connections in the sync connection recover queue",
+			"connection");
 
 		public static readonly Descriptor InvalidNodeCount = new(
 			"aerospike_client_invalid_node_count",
-			"Total number of invalid nodes encountered",
-			"{node}", MetricType.Counter);
+			"Count of failed node additions",
+			"node");
 
-		// Node connection metrics
+		public static readonly Descriptor RetryCount = new(
+			"aerospike_client_retry_count",
+			"Total command retries",
+			"retry");
+
+		public static readonly Descriptor DelayQueueTimeoutCount = new(
+			"aerospike_client_delay_queue_timeout_count",
+			"Async commands that timed out in the delay queue",
+			"timeout");
+
+		// ── Extended cluster-level metrics ─────────────────────────────────
+
+		public static readonly Descriptor CpuPercent = new(
+			"aerospike_client_cpu_percent",
+			"Client process CPU usage percentage",
+			"%",
+			isExtended: true);
+
+		public static readonly Descriptor MemoryBytes = new(
+			"aerospike_client_memory_bytes",
+			"Client process memory usage",
+			"bytes",
+			isExtended: true);
+
+		public static readonly Descriptor CommandCount = new(
+			"aerospike_client_command_count",
+			"Total commands issued by the client",
+			"command",
+			isExtended: true);
+
+		// ── Standard node connection metrics ───────────────────────────────
+
 		public static readonly Descriptor ConnectionsInUse = new(
 			"aerospike_client_node_connections_in_use",
-			"Number of active connections to a node",
-			"{connection}", MetricType.Gauge);
+			"Active connections from the pool",
+			"connection");
 
 		public static readonly Descriptor ConnectionsInPool = new(
 			"aerospike_client_node_connections_in_pool",
-			"Number of idle connections in the pool for a node",
-			"{connection}", MetricType.Gauge);
+			"Idle connections in the pool",
+			"connection");
 
 		public static readonly Descriptor ConnectionsOpened = new(
 			"aerospike_client_node_connections_opened",
 			"Total connections opened to a node",
-			"{connection}", MetricType.Counter);
+			"connection");
 
 		public static readonly Descriptor ConnectionsClosed = new(
 			"aerospike_client_node_connections_closed",
 			"Total connections closed to a node",
-			"{connection}", MetricType.Counter);
+			"connection");
 
-		// Namespace metrics
+		// ── Extended namespace metrics ─────────────────────────────────────
+
 		public static readonly Descriptor NamespaceErrors = new(
 			"aerospike_client_namespace_errors",
-			"Total errors for a namespace",
-			"{error}", MetricType.Counter);
+			"Command error count per namespace",
+			"error",
+			isExtended: true);
 
 		public static readonly Descriptor NamespaceTimeouts = new(
 			"aerospike_client_namespace_timeouts",
-			"Total timeouts for a namespace",
-			"{timeout}", MetricType.Counter);
+			"Command timeout count per namespace",
+			"timeout",
+			isExtended: true);
 
 		public static readonly Descriptor NamespaceKeyBusy = new(
 			"aerospike_client_namespace_key_busy",
-			"Total key busy errors for a namespace",
-			"{error}", MetricType.Counter);
+			"Key busy error count per namespace",
+			"error",
+			isExtended: true);
 
 		public static readonly Descriptor NamespaceBytesIn = new(
 			"aerospike_client_namespace_bytes_in",
-			"Total bytes received from a namespace",
-			"By", MetricType.Counter);
+			"Total bytes read from a namespace",
+			"bytes",
+			isExtended: true);
 
 		public static readonly Descriptor NamespaceBytesOut = new(
 			"aerospike_client_namespace_bytes_out",
-			"Total bytes sent to a namespace",
-			"By", MetricType.Counter);
+			"Total bytes written to a namespace",
+			"bytes",
+			isExtended: true);
 
-		// Latency histogram
 		public static readonly Descriptor LatencyBucket = new(
 			"aerospike_client_latency_bucket",
 			"Latency distribution bucket count",
-			"{count}", MetricType.Histogram);
+			"count",
+			isExtended: true);
 	}
 }

@@ -77,13 +77,13 @@ namespace Aerospike.Client
 		/// nodes.
 		/// Default: 30
 		/// </summary>
-		public int Interval = 30;
+		public int Interval { get; set; } = 30;
 
 		/// <summary>
 		/// Number of elapsed time range buckets in latency histograms.
 		/// Default: 7
 		/// </summary>
-		public int LatencyColumns = 7;
+		public int LatencyColumns { get; set; } = 7;
 
 		/// <summary>
 		/// Power of 2 multiple between each range bucket in latency histograms starting at column 3. The bucket units
@@ -98,14 +98,22 @@ namespace Aerospike.Client
 		/// }</pre>
 		/// Default: 1
 		/// </summary>
-		public int LatencyShift = 1;
+		public int LatencyShift { get; set; } = 1;
 
 		/// <summary>
-		/// Labels that can be sent to the metrics output
+		/// When true, export extended metrics including latency histograms.
+		/// When false, only basic metrics (cluster gauges/counters, connections,
+		/// namespace counters) are exported.
+		/// Default: true
 		/// </summary>
-		public Dictionary<string, string> labels;
+		public bool EnableExtendedMetrics { get; set; } = true;
 
-		internal bool restartRequired = false;
+		/// <summary>
+		/// User-defined labels included in every metrics export.
+		/// </summary>
+		public Dictionary<string, string> Labels { get; set; }
+
+		internal bool restartRequired;
 
 		/// <summary>
 		/// Copy metrics policy from another metrics policy AND override certain policy attributes if they exist in the
@@ -127,7 +135,11 @@ namespace Aerospike.Client
 
 			if (metrics.labels != null)
 			{
-				this.labels = new Dictionary<string, string>(metrics.labels);
+				this.Labels = new Dictionary<string, string>(metrics.labels);
+			}
+			if (metrics.enable_extended_metrics.HasValue)
+			{
+				this.EnableExtendedMetrics = metrics.enable_extended_metrics.Value;
 			}
 			if (metrics.latency_shift.HasValue)
 			{
@@ -166,7 +178,8 @@ namespace Aerospike.Client
 			this.Interval = other.Interval;
 			this.LatencyColumns = other.LatencyColumns;
 			this.LatencyShift = other.LatencyShift;
-			this.labels = other.labels;
+			this.EnableExtendedMetrics = other.EnableExtendedMetrics;
+			this.Labels = other.Labels;
 			this.restartRequired = other.restartRequired;
 		}
 
@@ -237,16 +250,22 @@ namespace Aerospike.Client
 			#pragma warning restore CS0618
 		}
 
+		/// <summary>Set the metrics interval. Deprecated — set the <see cref="Interval"/> property directly.</summary>
+		[Obsolete("Set the Interval property directly.")]
 		public void SetInterval(int interval)
 		{
 			this.Interval = interval;
 		}
 
+		/// <summary>Set latency columns. Deprecated — set the <see cref="LatencyColumns"/> property directly.</summary>
+		[Obsolete("Set the LatencyColumns property directly.")]
 		public void SetLatencyColumns(int latencyColumns)
 		{
 			this.LatencyColumns = latencyColumns;
 		}
 
+		/// <summary>Set latency shift. Deprecated — set the <see cref="LatencyShift"/> property directly.</summary>
+		[Obsolete("Set the LatencyShift property directly.")]
 		public void SetLatencyShift(int latencyShift)
 		{
 			this.LatencyShift = latencyShift;

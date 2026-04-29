@@ -25,43 +25,9 @@ namespace Aerospike.Client
 	public interface IMetricsExporter
 	{
 		/// <summary>
-		/// Export a batch of metrics. Called periodically based on the configured interval.
+		/// Export a point-in-time metrics snapshot. Called periodically based on the configured interval.
 		/// </summary>
-		/// <param name="metrics">Collection of metrics to export</param>
-		void Export(IReadOnlyList<Metric> metrics);
-	}
-
-	/// <summary>
-	/// Optional async interface for metrics exporters that perform I/O operations.
-	/// If an exporter implements this interface, the async method will be preferred
-	/// over the synchronous Export method for better scalability.
-	/// </summary>
-	/// <example>
-	/// <code>
-	/// public class HttpMetricsExporter : IMetricsExporter, IAsyncMetricsExporter
-	/// {
-	///     public void Export(IReadOnlyList&lt;Metric&gt; metrics)
-	///     {
-	///         // Fallback sync implementation
-	///         ExportAsync(metrics, CancellationToken.None).GetAwaiter().GetResult();
-	///     }
-	///     
-	///     public async Task ExportAsync(IReadOnlyList&lt;Metric&gt; metrics, CancellationToken cancellationToken)
-	///     {
-	///         // Non-blocking HTTP call
-	///         await httpClient.PostAsync(endpoint, CreatePayload(metrics), cancellationToken);
-	///     }
-	/// }
-	/// </code>
-	/// </example>
-	public interface IAsyncMetricsExporter : IMetricsExporter
-	{
-		/// <summary>
-		/// Asynchronously export a batch of metrics. Preferred over Export() when available.
-		/// </summary>
-		/// <param name="metrics">Collection of metrics to export</param>
-		/// <param name="cancellationToken">Cancellation token for the export operation</param>
-		/// <returns>Task representing the async export operation</returns>
-		Task ExportAsync(IReadOnlyList<Metric> metrics, CancellationToken cancellationToken);
+		/// <param name="snapshot">Structured snapshot of all client metrics</param>
+		void Export(MetricsSnapshot snapshot);
 	}
 }
