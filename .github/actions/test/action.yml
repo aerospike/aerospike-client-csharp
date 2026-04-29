@@ -70,7 +70,7 @@ runs:
     - name: Download test artifacts
       uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
       with:
-        name: AerospikeTest-${{ github.run_number }}
+        name: AerospikeTest-${{ github.run_id }}
         path: artifacts
 
     - name: Unzip tests

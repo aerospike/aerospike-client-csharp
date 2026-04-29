@@ -32,6 +32,20 @@ runs:
       shell: pwsh
       run: dotnet pack --no-build
 
+    # Append -run_id to nupkg filenames so each pipeline run deploys to a unique
+    # JFrog path. Without this, promoted release bundles lock the artifact path and
+    # re-runs of the same version fail with 409. The internal NuGet package version
+    # (in the .nuspec) remains unchanged — only the filename/path differs.
+    - name: Rename nuget package
+      shell: pwsh
+      working-directory: AerospikeClient\bin\Release
+      run: Get-ChildItem -Filter "*.nupkg" | Rename-Item -NewName { $_.Name -replace '\.nupkg$', "-${{ github.run_id }}.nupkg" }
+
+    - name: Rename snuget package
+      shell: pwsh
+      working-directory: AerospikeClient\bin\Release
+      run: Get-ChildItem -Filter "*.snupkg" | Rename-Item -NewName { $_.Name -replace '\.snupkg$', "-${{ github.run_id }}.snupkg" }
+
     - name: Publish test project
       shell: pwsh
       working-directory: AerospikeTest
@@ -42,18 +56,18 @@ runs:
     - name: Zip it up
       shell: pwsh
       working-directory: AerospikeTest\bin\Release\net8.0\linux-x64
-      run: 7z a -tzip AerospikeTest-${{ github.run_number }}.zip publish
+      run: 7z a -tzip AerospikeTest-${{ github.run_id }}.zip publish
 
     - name: Upload client artifacts
       uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
       with:
-        name: AerospikeClient-${{ github.run_number }}
+        name: AerospikeClient-${{ github.run_id }}
         path: AerospikeClient\bin\Release\Aerospike.Client.*nupkg
         retention-days: 1
 
     - name: Upload test artifacts
       uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
       with:
-        name: AerospikeTest-${{ github.run_number }}
+        name: AerospikeTest-${{ github.run_id }}
         path: AerospikeTest\bin\Release\net8.0\linux-x64\AerospikeTest-*
         retention-days: 1
