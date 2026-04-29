@@ -87,11 +87,9 @@ jobs:
         IS_DRY_RUN: ${{ inputs.dry-run }}
         COMMIT_SHA: ${{ steps.commit.outputs.sha }}
       run: |
-        $summary = @"
-## Version Bump
-- **Version:** $env:TARGET_VERSION
-- **Dry run:** $env:IS_DRY_RUN
-"@
+        $summary = "## Version Bump`n"
+        $summary += "- **Version:** $env:TARGET_VERSION`n"
+        $summary += "- **Dry run:** $env:IS_DRY_RUN"
         if ($env:IS_DRY_RUN -ne 'true' -and $env:COMMIT_SHA) {
           $summary += "`n- **Commit:** ``$env:COMMIT_SHA``"
         }
