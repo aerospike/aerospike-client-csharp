@@ -36,7 +36,7 @@ jobs:
       uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       with:
         repository: aerospike/shared-workflows
-        ref: v3.1.1
+        ref: 07c958ca4c5cea494dc8790949c08e3fb28c55e1 # v3.3.0
         sparse-checkout: .github/actions
         sparse-checkout-cone-mode: false
         path: shared-workflows

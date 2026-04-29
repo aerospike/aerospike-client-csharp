@@ -48,7 +48,7 @@ runs:
 
     - name: Setup Aerospike Server
       id: setup-server
-      uses: aerospike/shared-workflows/.github/actions/setup-aerospike-server@334ad55b790658d549747b0d154407dfc730acca
+      uses: aerospike/shared-workflows/.github/actions/setup-aerospike-server@07c958ca4c5cea494dc8790949c08e3fb28c55e1 # v3.3.0
       with:
         server-tag: ${{ steps.resolve.outputs.server-tag }}
         server-container-repo: ${{ steps.resolve.outputs.server-container-repo }}
