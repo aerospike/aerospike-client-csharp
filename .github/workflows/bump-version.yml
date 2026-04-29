@@ -16,6 +16,11 @@ on:
         required: false
         default: false
         description: 'Show what would change without committing'
+      create-tag:
+        type: boolean
+        required: false
+        default: true
+        description: 'Create a git tag ({version}) on the version bump commit'
   workflow_call:
     inputs:
       version:
@@ -30,6 +35,11 @@ on:
         type: boolean
         required: false
         default: false
+      create-tag:
+        type: boolean
+        required: false
+        default: true
+        description: 'Create a git tag ({version}) on the version bump commit'
     outputs:
       commit-sha:
         description: 'SHA of the version bump commit'
@@ -80,17 +90,32 @@ jobs:
           Write-Host "No changes to commit — version already at $env:TARGET_VERSION"
         }
 
+    - name: Create git tag
+      if: ${{ !inputs.dry-run && inputs.create-tag && steps.commit.outputs.sha }}
+      shell: pwsh
+      env:
+        TARGET_VERSION: ${{ inputs.version }}
+      run: |
+        $tag = "$env:TARGET_VERSION"
+        git tag $tag
+        git push origin $tag
+        Write-Host "Created and pushed tag: $tag"
+
     - name: Summary
       shell: pwsh
       env:
         TARGET_VERSION: ${{ inputs.version }}
         IS_DRY_RUN: ${{ inputs.dry-run }}
         COMMIT_SHA: ${{ steps.commit.outputs.sha }}
+        CREATE_TAG: ${{ inputs.create-tag }}
       run: |
         $summary = "## Version Bump`n"
         $summary += "- **Version:** $env:TARGET_VERSION`n"
         $summary += "- **Dry run:** $env:IS_DRY_RUN"
         if ($env:IS_DRY_RUN -ne 'true' -and $env:COMMIT_SHA) {
           $summary += "`n- **Commit:** ``$env:COMMIT_SHA``"
+          if ($env:CREATE_TAG -eq 'true') {
+            $summary += "`n- **Tag:** ``$env:TARGET_VERSION``"
+          }
         }
         $summary | Out-File -Append -FilePath $env:GITHUB_STEP_SUMMARY
