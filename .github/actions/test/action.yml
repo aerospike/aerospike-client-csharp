@@ -87,7 +87,7 @@ runs:
           "dotnet exec ./artifacts/publish/AerospikeTest.dll \
             --settings ./.runsettings \
             --results-directory ./test-results \
-            --logger trx;LogFileName=results.trx"
+            --report-trx --report-trx-filename results.trx"
 
     - name: Generate coverage report
       if: ${{ !cancelled() }}
