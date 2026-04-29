@@ -3,5 +3,16 @@ updates:
   - package-ecosystem: github-actions
     directories:
       - /
+    target-branch: stage
     schedule:
-      interval: daily
+      interval: weekly
+    groups:
+      github-actions:
+        patterns:
+          - "*"
+    open-pull-requests-limit: 5
+  - package-ecosystem: nuget
+    directory: /
+    schedule:
+      interval: weekly
+    target-branch: stage

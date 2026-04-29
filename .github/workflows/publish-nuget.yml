@@ -1,0 +1,89 @@
+name: Publish to NuGet
+run-name: "Publish to NuGet (build-id=${{ inputs.build-id }}, dry-run=${{ inputs.dry-run }})"
+
+permissions:
+  id-token: write
+  contents: read
+
+on:
+  workflow_dispatch:
+    inputs:
+      build-id:
+        type: string
+        required: true
+        description: 'GitHub Actions run ID of the release workflow (visible in the workflow run URL)'
+      dry-run:
+        type: boolean
+        required: false
+        default: true
+        description: 'Dry run: validate the package without publishing to NuGet.org'
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Harden the runner (Audit all outbound calls)
+      uses: step-security/harden-runner@58077d3c7e43986b6b15fba718e8ea69e387dfcc # v2.15.1
+      with:
+        egress-policy: audit
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@c2fa09f4bde5ebb9d1777cf28262a3eb3db3ced7 # v5.2.0
+      with:
+        dotnet-version: 8.0.x
+
+    - name: Set up JFrog credentials
+      uses: step-security/setup-jfrog-cli@893a92f96c7727242adf0e603c77b1f2a22390e1 # v4.9.1
+      env:
+        JF_URL: https://aerospike.jfrog.io
+        JF_PROJECT: database
+      with:
+        oidc-provider-name: database-gh-aerospike
+        oidc-audience: database-gh-aerospike
+
+    - name: Download signed packages from JFrog
+      run: |
+        jf rt dl \
+          --build "aerospike-client-csharp/${{ inputs.build-id }}" \
+          --flat \
+          --fail-no-op \
+          "*.nupkg" \
+          packages/
+
+    - name: List downloaded packages
+      run: |
+        echo "Downloaded packages:"
+        ls -la packages/
+        for pkg in packages/*.nupkg; do
+          echo "=== $(basename "$pkg") ==="
+          unzip -l "$pkg" | tail -5
+        done
+
+    - name: Validate packages
+      run: |
+        for pkg in packages/*.nupkg; do
+          echo "Validating $(basename "$pkg")..."
+          dotnet nuget verify "$pkg" --all || echo "Warning: package signature verification returned non-zero (expected for packages not yet on nuget.org)"
+        done
+
+    - name: Push to NuGet.org
+      if: ${{ !inputs.dry-run }}
+      run: |
+        dotnet nuget push "packages/*.nupkg" \
+          --api-key "${{ secrets.NUGET_API_KEY }}" \
+          --source https://api.nuget.org/v3/index.json \
+          --skip-duplicate
+
+    - name: Dry run summary
+      if: ${{ inputs.dry-run }}
+      run: |
+        echo "::notice::DRY RUN - No packages were published to NuGet.org"
+        echo "## Dry Run Summary" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "The following packages would be published to NuGet.org:" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        for pkg in packages/*.nupkg; do
+          echo "- \`$(basename "$pkg")\`" >> $GITHUB_STEP_SUMMARY
+        done
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "To publish for real, re-run this workflow with **dry-run** unchecked." >> $GITHUB_STEP_SUMMARY

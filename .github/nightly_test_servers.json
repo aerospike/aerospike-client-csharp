@@ -1,0 +1,10 @@
+[
+  {
+    "server-tag": "latest",
+    "server-type": "aerospike-server-enterprise"
+  },
+  {
+    "server-tag": "latest",
+    "server-type": "aerospike-server"
+  }
+]

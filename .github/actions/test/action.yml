@@ -22,6 +22,10 @@ inputs:
     required: false
     default: ""
     description: Raw features.conf content (e.g. from a GitHub secret)
+  artifact-suffix:
+    required: false
+    default: ""
+    description: Suffix appended to artifact names to avoid collisions in matrix jobs
 
 runs:
   using: composite
@@ -54,6 +58,15 @@ runs:
         features-content: ${{ inputs.features-content }}
         enable-strong-consistency: ${{ steps.resolve.outputs.enable-sc }}
 
+    - name: Setup .NET
+      uses: actions/setup-dotnet@c2fa09f4bde5ebb9d1777cf28262a3eb3db3ced7 # v5.2.0
+      with:
+        dotnet-version: 8.0.x
+
+    - name: Install dotnet-coverage
+      shell: bash
+      run: dotnet tool install --global dotnet-coverage
+
     - name: Download test artifacts
       uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
       with:
@@ -65,9 +78,49 @@ runs:
       working-directory: artifacts
       run: unzip AerospikeTest*.zip
 
-    - name: Test
+    - name: Test with coverage
       shell: bash
-      run: dotnet exec ./artifacts/publish/AerospikeTest.dll --settings ./.runsettings
+      run: |
+        dotnet-coverage collect \
+          -f cobertura \
+          -o ./coverage/coverage.cobertura.xml \
+          "dotnet exec ./artifacts/publish/AerospikeTest.dll \
+            --settings ./.runsettings \
+            --results-directory ./test-results \
+            --logger trx;LogFileName=results.trx"
+
+    - name: Generate coverage report
+      if: ${{ !cancelled() }}
+      uses: danielpalme/ReportGenerator-GitHub-Action@a003c8fb9ac008fd0fffd5faa4f7d3ecb52e0675 # v5.5.7
+      with:
+        reports: 'coverage/coverage.cobertura.xml'
+        targetdir: 'coverage/report'
+        reporttypes: 'HtmlInline_AzurePipelines;Cobertura;MarkdownSummaryGithub'
+        assemblyfilters: '-AerospikeTest'
+
+    - name: Publish coverage summary
+      if: ${{ !cancelled() }}
+      shell: bash
+      run: |
+        if [ -f coverage/report/SummaryGithub.md ]; then
+          cat coverage/report/SummaryGithub.md >> $GITHUB_STEP_SUMMARY
+        fi
+
+    - name: Upload test results
+      if: ${{ !cancelled() }}
+      uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+      with:
+        name: test-results-${{ github.sha }}${{ inputs.artifact-suffix && format('-{0}', inputs.artifact-suffix) || '' }}
+        path: test-results/
+        retention-days: 7
+
+    - name: Upload coverage report
+      if: ${{ !cancelled() }}
+      uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+      with:
+        name: coverage-report-${{ github.sha }}${{ inputs.artifact-suffix && format('-{0}', inputs.artifact-suffix) || '' }}
+        path: coverage/report/
+        retention-days: 30
 
     - name: Show logs if failed
       shell: bash
