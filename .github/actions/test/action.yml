@@ -105,7 +105,7 @@ runs:
       run: |
         sed -e 's|name="Port" value="3000"|name="Port" value="4333"|' \
             -e 's|name="TlsEnable" value="false"|name="TlsEnable" value="true"|' \
-            -e 's|name="TlsName" value=""|name="TlsName" value="aerospike-tls"|' \
+            -e 's|name="TlsName" value=""|name="TlsName" value="localhost"|' \
             .runsettings > .runsettings-tls
 
     - name: Test with coverage
