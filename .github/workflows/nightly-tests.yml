@@ -46,11 +46,15 @@ jobs:
       matrix:
         server: ${{ fromJson(vars.NIGHTLY_TEST_SERVERS || '[{"server-tag":"latest","server-type":"aerospike-server-enterprise"}]') }}
         strong-consistency: ["1", "0"]
+        tls: ["true", "false"]
         exclude:
           - server:
               server-type: aerospike-server
             strong-consistency: "1"
-    name: test-${{ matrix.server.server-tag }}-${{ matrix.server.server-type }}-sc${{ matrix.strong-consistency }}
+          - server:
+              server-type: aerospike-server
+            tls: "true"
+    name: test-${{ matrix.server.server-tag }}-${{ matrix.server.server-type }}-sc${{ matrix.strong-consistency }}-tls${{ matrix.tls }}
     runs-on: ubuntu-latest
     steps:
     - name: Harden the runner (Audit all outbound calls)
@@ -65,14 +69,15 @@ jobs:
         server-tag: ${{ matrix.server.server-tag }}
         server-type: ${{ matrix.server.server-type }}
         strong-consistency: ${{ matrix.strong-consistency }}
+        enable-tls: ${{ matrix.tls }}
         features-content: ${{ secrets.AES_FEATURES_CONF }}
         oidc-provider: database-gh-aerospike
         oidc-audience: database-gh-aerospike
-        artifact-suffix: ${{ matrix.server.server-tag }}-${{ matrix.server.server-type }}-sc${{ matrix.strong-consistency }}
+        artifact-suffix: ${{ matrix.server.server-tag }}-${{ matrix.server.server-type }}-sc${{ matrix.strong-consistency }}-tls${{ matrix.tls }}
 
     - name: Publish test results
       if: ${{ !cancelled() }}
       uses: EnricoMi/publish-unit-test-result-action@3a74b2957438d0b6e2e61d67b05318aa25c9e6c6 # v2.20.0
       with:
         files: test-results/**/*.trx
-        check_name: "Nightly - ${{ matrix.server.server-tag }} (${{ matrix.server.server-type }}, SC=${{ matrix.strong-consistency }})"
+        check_name: "Nightly - ${{ matrix.server.server-tag }} (${{ matrix.server.server-type }}, SC=${{ matrix.strong-consistency }}, TLS=${{ matrix.tls }})"

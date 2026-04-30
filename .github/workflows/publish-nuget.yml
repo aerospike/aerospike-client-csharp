@@ -50,6 +50,9 @@ jobs:
           "*.nupkg" \
           packages/
 
+        # Remove non-NuGet files (.asc signatures) that may have been downloaded
+        find packages/ -type f ! -name "*.nupkg" ! -name "*.snupkg" -delete 2>/dev/null || true
+
     - name: List downloaded packages
       run: |
         echo "Downloaded packages:"
@@ -57,13 +60,6 @@ jobs:
         for pkg in packages/*.nupkg; do
           echo "=== $(basename "$pkg") ==="
           unzip -l "$pkg" | tail -5
-        done
-
-    - name: Validate packages
-      run: |
-        for pkg in packages/*.nupkg; do
-          echo "Validating $(basename "$pkg")..."
-          dotnet nuget verify "$pkg" --all || echo "Warning: package signature verification returned non-zero (expected for packages not yet on nuget.org)"
         done
 
     - name: Push to NuGet.org
@@ -74,16 +70,22 @@ jobs:
           --source https://api.nuget.org/v3/index.json \
           --skip-duplicate
 
-    - name: Dry run summary
-      if: ${{ inputs.dry-run }}
+    - name: Summary
       run: |
-        echo "::notice::DRY RUN - No packages were published to NuGet.org"
-        echo "## Dry Run Summary" >> $GITHUB_STEP_SUMMARY
+        if [ "${{ inputs.dry-run }}" = "true" ]; then
+          echo "::notice::DRY RUN — No packages were published to NuGet.org"
+          echo "## Dry Run Summary" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "## Publish Summary" >> $GITHUB_STEP_SUMMARY
+        fi
         echo "" >> $GITHUB_STEP_SUMMARY
-        echo "The following packages would be published to NuGet.org:" >> $GITHUB_STEP_SUMMARY
+        echo "**Build ID:** \`${{ inputs.build-id }}\`" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### Packages" >> $GITHUB_STEP_SUMMARY
         for pkg in packages/*.nupkg; do
           echo "- \`$(basename "$pkg")\`" >> $GITHUB_STEP_SUMMARY
         done
-        echo "" >> $GITHUB_STEP_SUMMARY
-        echo "To publish for real, re-run this workflow with **dry-run** unchecked." >> $GITHUB_STEP_SUMMARY
+        if [ "${{ inputs.dry-run }}" = "true" ]; then
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "To publish for real, re-run this workflow with **dry-run** unchecked." >> $GITHUB_STEP_SUMMARY
+        fi

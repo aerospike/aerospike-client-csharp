@@ -22,6 +22,10 @@ inputs:
     required: false
     default: ""
     description: Raw features.conf content (e.g. from a GitHub secret)
+  enable-tls:
+    required: false
+    default: "false"
+    description: Enable TLS for server and test connections (`true` or `false`)
   artifact-suffix:
     required: false
     default: ""
@@ -48,7 +52,7 @@ runs:
 
     - name: Setup Aerospike Server
       id: setup-server
-      uses: aerospike/shared-workflows/.github/actions/setup-aerospike-server@07c958ca4c5cea494dc8790949c08e3fb28c55e1 # v3.3.0
+      uses: aerospike/shared-workflows/.github/actions/setup-aerospike-server@f6bb565e7d31fa3013a1a75c5f80aed44c3bde5c # v3.4.1
       with:
         server-tag: ${{ steps.resolve.outputs.server-tag }}
         server-container-repo: ${{ steps.resolve.outputs.server-container-repo }}
@@ -57,6 +61,14 @@ runs:
         config-file: ${{ steps.resolve.outputs.config-file }}
         features-content: ${{ inputs.features-content }}
         enable-strong-consistency: ${{ steps.resolve.outputs.enable-sc }}
+        enable-tls: ${{ inputs.enable-tls }}
+
+    - name: Trust TLS CA certificate
+      if: inputs.enable-tls == 'true'
+      shell: bash
+      run: |
+        sudo cp "${{ steps.setup-server.outputs.tls-cert-dir }}/ca.crt" /usr/local/share/ca-certificates/aerospike-ca.crt
+        sudo update-ca-certificates
 
     - name: Setup .NET
       uses: actions/setup-dotnet@c2fa09f4bde5ebb9d1777cf28262a3eb3db3ced7 # v5.2.0
@@ -78,14 +90,28 @@ runs:
       working-directory: artifacts
       run: unzip AerospikeTest*.zip
 
+    - name: Prepare TLS runsettings
+      if: inputs.enable-tls == 'true'
+      shell: bash
+      run: |
+        sed -e 's|name="Port" value="3000"|name="Port" value="4333"|' \
+            -e 's|name="TlsEnable" value="false"|name="TlsEnable" value="true"|' \
+            -e 's|name="TlsName" value=""|name="TlsName" value="aerospike-tls"|' \
+            .runsettings > .runsettings-tls
+
     - name: Test with coverage
       shell: bash
       run: |
+        settings_file=".runsettings"
+        if [ "${{ inputs.enable-tls }}" == "true" ]; then
+          settings_file=".runsettings-tls"
+        fi
+
         dotnet-coverage collect \
           -f cobertura \
           -o ./coverage/coverage.cobertura.xml \
           "dotnet exec ./artifacts/publish/AerospikeTest.dll \
-            --settings ./.runsettings \
+            --settings ./${settings_file} \
             --results-directory ./test-results \
             --report-trx --report-trx-filename results.trx"
 

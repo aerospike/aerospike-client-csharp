@@ -42,7 +42,7 @@ jobs:
         oidc-audience: database-gh-aerospike
 
     - name: Promote release bundle
-      uses: aerospike/shared-workflows/.github/actions/promote-release-bundle@07c958ca4c5cea494dc8790949c08e3fb28c55e1 # v3.3.0
+      uses: aerospike/shared-workflows/.github/actions/promote-release-bundle@f6bb565e7d31fa3013a1a75c5f80aed44c3bde5c # v3.4.1
       with:
         bundle-name: aerospike-client-csharp
         version: ${{ inputs.version }}
