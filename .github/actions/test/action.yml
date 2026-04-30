@@ -79,6 +79,22 @@ runs:
         sudo cp "${{ steps.setup-server.outputs.tls-cert-dir }}/ca.crt" /usr/local/share/ca-certificates/aerospike-ca.crt
         sudo update-ca-certificates
 
+    - name: Write test configuration summary
+      shell: bash
+      run: |
+        {
+          echo "## Test Configuration"
+          echo ""
+          echo "| Setting | Value |"
+          echo "|---------|-------|"
+          echo "| Server tag | \`${{ inputs.server-tag }}\` |"
+          echo "| Server type | \`${{ inputs.server-type }}\` |"
+          echo "| Strong consistency | ${{ inputs.strong-consistency == '1' && '**Enabled**' || 'Disabled' }} |"
+          echo "| TLS | ${{ inputs.enable-tls == 'true' && '**Enabled**' || 'Disabled' }} |"
+          echo "| Config file | \`${{ steps.resolve.outputs.config-file }}\` |"
+          echo ""
+        } >> $GITHUB_STEP_SUMMARY
+
     - name: Setup .NET
       uses: actions/setup-dotnet@c2fa09f4bde5ebb9d1777cf28262a3eb3db3ced7 # v5.2.0
       with:
