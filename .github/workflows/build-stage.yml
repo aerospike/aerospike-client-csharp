@@ -1,5 +1,5 @@
 name: Build and test stage
-run-name: "Stage tests (${{ inputs.server-tag || 'latest' }}${{ inputs.strong-consistency && ', SC' || '' }}${{ inputs.enable-tls && ', TLS' || '' }})"
+run-name: "Stage tests (${{ inputs.server-tag || 'latest' }}${{ inputs.strong-consistency == false && '' || ', SC' }}${{ inputs.enable-tls && ', TLS' || '' }})"
 
 permissions:
   # This is required for requesting the OIDC token
@@ -92,7 +92,7 @@ jobs:
         server-tag: ${{ inputs.server-tag || 'latest' }}
         server-type: ${{ inputs.server-type || 'aerospike-server-enterprise' }}
         enable-tls: ${{ inputs.enable-tls && 'true' || 'false' }}
-        strong-consistency: ${{ inputs.strong-consistency && '1' || '0' }}
+        strong-consistency: ${{ inputs.strong-consistency == false && '0' || '1' }}
         features-content: ${{ secrets.AES_FEATURES_CONF }}
         oidc-provider: database-gh-aerospike
         oidc-audience: database-gh-aerospike
