@@ -186,7 +186,6 @@ public class Get(Console console) : SyncExample(console)
 
 		// Close the connection to the server
 		client.Close();
-		//testing 123
 		// @@@SNIPEND
 	}
 }
