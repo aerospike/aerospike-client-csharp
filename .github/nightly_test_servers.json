@@ -1,10 +1,22 @@
 [
   {
     "server-tag": "latest",
-    "server-type": "aerospike-server-enterprise"
+    "server-type": "aerospike-server-enterprise",
+    "tls": false
   },
   {
     "server-tag": "latest",
-    "server-type": "aerospike-server"
+    "server-type": "aerospike-server-enterprise",
+    "tls": true
+  },
+  {
+    "server-tag": "latest",
+    "server-type": "aerospike-server",
+    "tls": false
+  },
+  {
+    "server-tag": "latest",
+    "server-type": "aerospike-server",
+    "tls": true
   }
 ]

@@ -82,7 +82,7 @@ jobs:
         git add -A
         $status = git status --porcelain
         if ($status) {
-          git commit -m "Bump version to $env:TARGET_VERSION [skip ci]"
+          git commit -m "Update version $env:TARGET_VERSION [skip ci]"
           $sha = git rev-parse HEAD
           echo "sha=$sha" >> $env:GITHUB_OUTPUT
           git push
