@@ -64,6 +64,7 @@ jobs:
       with:
         server-tag: ${{ matrix.server.server-tag }}
         server-type: ${{ matrix.server.server-type }}
+        server-container-repo: ${{ matrix.server.server-container-repo }}
         strong-consistency: ${{ matrix.strong-consistency }}
         enable-tls: ${{ matrix.server.tls }}
         features-content: ${{ secrets.AES_FEATURES_CONF }}

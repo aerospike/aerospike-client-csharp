@@ -1,5 +1,5 @@
 name: Build and test dev
-run-name: "Dev tests (${{ inputs.server-tag || 'latest' }}${{ inputs.strong-consistency == false && '' || ', SC' }}${{ inputs.enable-tls && ', TLS' || '' }})"
+run-name: "Dev tests (${{ inputs.server-tag || 'latest' }}, ${{ contains(inputs.server-type || 'enterprise', 'enterprise') && 'enterprise' || 'community' }}, ${{ format('{0}', inputs.strong-consistency) == 'false' && 'AP' || 'SC' }}${{ inputs.enable-tls && ', TLS' || '' }})"
 
 permissions:
   # This is required for requesting the OIDC token
@@ -105,8 +105,8 @@ jobs:
         enable-tls: ${{ inputs.enable-tls && 'true' || 'false' }}
         strong-consistency: ${{ inputs.strong-consistency == false && '0' || '1' }}
         features-content: ${{ secrets.AES_FEATURES_CONF }}
-        oidc-provider: database-gh-aerospike
-        oidc-audience: database-gh-aerospike
+        oidc-provider: gh-aerospike
+        oidc-audience: gh-aerospike
 
     - name: Publish test results
       if: ${{ !cancelled() }}
@@ -126,8 +126,8 @@ jobs:
       version: ${{ needs.build.outputs.version }}
       gh-artifact-name: signed-artifacts
       gh-workflows-ref: v3.4.1
-      oidc-provider-name: database-gh-aerospike
-      oidc-audience: database-gh-aerospike
+      oidc-provider-name: gh-aerospike
+      oidc-audience: gh-aerospike
 
   deploy-test:
     needs: [build, test]
@@ -140,8 +140,8 @@ jobs:
       version: ${{ needs.build.outputs.version }}
       gh-artifact-name: AerospikeTest-${{ github.run_id }}
       gh-workflows-ref: v3.4.1
-      oidc-provider-name: database-gh-aerospike
-      oidc-audience: database-gh-aerospike
+      oidc-provider-name: gh-aerospike
+      oidc-audience: gh-aerospike
 
   create-release-bundle:
     needs: [build, deploy]
@@ -152,8 +152,8 @@ jobs:
       jf-bundle-name: aerospike-client-csharp
       version: ${{ needs.build.outputs.version }}
       gh-workflows-ref: v3.4.1
-      oidc-provider-name: database-gh-aerospike
-      oidc-audience: database-gh-aerospike
+      oidc-provider-name: gh-aerospike
+      oidc-audience: gh-aerospike
 
   promote-release-bundle:
     needs: [build, create-release-bundle]
@@ -170,8 +170,8 @@ jobs:
         JF_URL: https://aerospike.jfrog.io
         JF_PROJECT: database
       with:
-        oidc-provider-name: database-gh-aerospike
-        oidc-audience: database-gh-aerospike
+        oidc-provider-name: gh-aerospike
+        oidc-audience: gh-aerospike
 
     - name: Promote release bundle to DEV
       uses: aerospike/shared-workflows/.github/actions/promote-release-bundle@f6bb565e7d31fa3013a1a75c5f80aed44c3bde5c # v3.4.1

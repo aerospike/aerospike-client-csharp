@@ -104,8 +104,8 @@ jobs:
       version: ${{ needs.build.outputs.version }}
       gh-artifact-name: signed-artifacts
       gh-workflows-ref: v3.4.1
-      oidc-provider-name: database-gh-aerospike
-      oidc-audience: database-gh-aerospike
+      oidc-provider-name: gh-aerospike
+      oidc-audience: gh-aerospike
 
   create-release-bundle:
     if: ${{ !inputs.dry-run }}
@@ -117,8 +117,8 @@ jobs:
       jf-bundle-name: aerospike-client-csharp
       version: ${{ needs.build.outputs.version }}
       gh-workflows-ref: v3.4.1
-      oidc-provider-name: database-gh-aerospike
-      oidc-audience: database-gh-aerospike
+      oidc-provider-name: gh-aerospike
+      oidc-audience: gh-aerospike
 
   promote-release-bundle:
     if: ${{ !inputs.dry-run }}
@@ -136,8 +136,8 @@ jobs:
         JF_URL: https://aerospike.jfrog.io
         JF_PROJECT: database
       with:
-        oidc-provider-name: database-gh-aerospike
-        oidc-audience: database-gh-aerospike
+        oidc-provider-name: gh-aerospike
+        oidc-audience: gh-aerospike
 
     - name: Promote release bundle to DEV
       uses: aerospike/shared-workflows/.github/actions/promote-release-bundle@f6bb565e7d31fa3013a1a75c5f80aed44c3bde5c # v3.4.1

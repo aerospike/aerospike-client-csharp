@@ -22,6 +22,12 @@ inputs:
     required: false
     default: ""
     description: Raw features.conf content (e.g. from a GitHub secret)
+  server-container-repo:
+    required: false
+    default: ""
+    description: >
+      Full Docker image repo path (e.g. database-docker-virtual/aerospike-server-enterprise).
+      When empty, defaults to the setup-aerospike-server action's built-in default.
   enable-tls:
     required: false
     default: "false"
@@ -39,7 +45,12 @@ runs:
       shell: bash
       run: |
         echo "server-tag=${{ inputs.server-tag }}" >> "$GITHUB_OUTPUT"
-        echo "server-container-repo=database-docker-virtual/${{ inputs.server-type }}" >> "$GITHUB_OUTPUT"
+
+        CONTAINER_REPO="${{ inputs.server-container-repo }}"
+        if [ -z "$CONTAINER_REPO" ]; then
+          CONTAINER_REPO="database-docker-virtual/${{ inputs.server-type }}"
+        fi
+        echo "server-container-repo=$CONTAINER_REPO" >> "$GITHUB_OUTPUT"
 
         # Map strong-consistency from 1/0 to true/false
         if [ "${{ inputs.strong-consistency }}" == "1" ]; then

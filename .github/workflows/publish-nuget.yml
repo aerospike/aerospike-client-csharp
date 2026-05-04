@@ -38,8 +38,8 @@ jobs:
         JF_URL: https://aerospike.jfrog.io
         JF_PROJECT: database
       with:
-        oidc-provider-name: database-gh-aerospike
-        oidc-audience: database-gh-aerospike
+        oidc-provider-name: gh-aerospike
+        oidc-audience: gh-aerospike
 
     - name: Download signed packages from JFrog
       run: |
