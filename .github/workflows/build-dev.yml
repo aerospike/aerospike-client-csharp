@@ -106,7 +106,7 @@ jobs:
         strong-consistency: ${{ inputs.strong-consistency == false && '0' || '1' }}
         features-content: ${{ secrets.AES_FEATURES_CONF }}
         oidc-provider: gh-aerospike
-        oidc-audience: gh-aerospike
+        oidc-audience: aerospike
 
     - name: Publish test results
       if: ${{ !cancelled() }}
@@ -127,7 +127,7 @@ jobs:
       gh-artifact-name: signed-artifacts
       gh-workflows-ref: v3.4.1
       oidc-provider-name: gh-aerospike
-      oidc-audience: gh-aerospike
+      oidc-audience: aerospike
 
   deploy-test:
     needs: [build, test]
@@ -141,7 +141,7 @@ jobs:
       gh-artifact-name: AerospikeTest-${{ github.run_id }}
       gh-workflows-ref: v3.4.1
       oidc-provider-name: gh-aerospike
-      oidc-audience: gh-aerospike
+      oidc-audience: aerospike
 
   create-release-bundle:
     needs: [build, deploy]
@@ -153,7 +153,7 @@ jobs:
       version: ${{ needs.build.outputs.version }}
       gh-workflows-ref: v3.4.1
       oidc-provider-name: gh-aerospike
-      oidc-audience: gh-aerospike
+      oidc-audience: aerospike
 
   promote-release-bundle:
     needs: [build, create-release-bundle]
@@ -171,7 +171,7 @@ jobs:
         JF_PROJECT: database
       with:
         oidc-provider-name: gh-aerospike
-        oidc-audience: gh-aerospike
+        oidc-audience: aerospike
 
     - name: Promote release bundle to DEV
       uses: aerospike/shared-workflows/.github/actions/promote-release-bundle@f6bb565e7d31fa3013a1a75c5f80aed44c3bde5c # v3.4.1
