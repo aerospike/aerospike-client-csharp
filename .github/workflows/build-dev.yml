@@ -104,7 +104,7 @@ jobs:
         server-type: ${{ inputs.server-type || 'aerospike-server-enterprise' }}
         enable-tls: ${{ inputs.enable-tls && 'true' || 'false' }}
         strong-consistency: ${{ inputs.strong-consistency == false && '0' || '1' }}
-        features-content: ${{ secrets.AES_FEATURES_CONF }}
+        features-content: ${{ inputs.server-type == 'aerospike-server-enterprise' && secrets.AES_FEATURES_CONF || '' }}
         oidc-provider: gh-aerospike
         oidc-audience: aerospike
 
