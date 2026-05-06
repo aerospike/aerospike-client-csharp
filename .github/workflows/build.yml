@@ -1,14 +1,31 @@
-name: Build and test stage
-run-name: "Stage tests (${{ inputs.server-tag || 'latest' }}, ${{ contains(inputs.server-type || 'enterprise', 'enterprise') && 'enterprise' || 'community' }}, ${{ format('{0}', inputs.strong-consistency) == 'false' && 'AP' || 'SC' }}${{ inputs.enable-tls && ', TLS' || '' }})"
+name: Build and test
+run-name: "${{ github.event_name == 'pull_request' && format('PR #{0}', github.event.pull_request.number) || (github.event_name == 'push' && 'Stage') || 'Dev' }} build (${{ inputs.server-tag || 'latest' }}, ${{ contains(inputs.server-type || 'enterprise', 'enterprise') && 'enterprise' || 'community' }}, ${{ format('{0}', inputs.strong-consistency) == 'false' && 'AP' || 'SC' }}${{ inputs.enable-tls && ', TLS' || '' }})"
 
 permissions:
-  # This is required for requesting the OIDC token
+  # Required for OIDC token requests (used by JFrog/sign jobs)
   id-token: write
   contents: read
+  # Required so the PR-validation path can publish test results back to the PR
+  checks: write
+  pull-requests: write
 
-# Trigger test workflow whenever:
-# Pushes to stage branch
+# Single workflow that covers both PR validation against `stage` and the
+# post-merge build that publishes RC artifacts to JFrog.
+#
+# Trigger matrix:
+#   pull_request      → PR validation (build/sign/test, deploy to JFrog)
+#   push to stage     → post-merge build (build/sign/test, deploy to JFrog)
+#   workflow_dispatch → ad-hoc dev build with custom server settings
+#
+# JFrog requires a unique version per build, so the .csproj <Version> must be
+# bumped for each change merged to stage (use the `Bump version` workflow or
+# `scripts/update-version.ps1`). The build action reads the version straight
+# from .csproj and we surface it as a job output via the produced .nupkg
+# filename.
 on:
+  pull_request:
+    branches: ["stage"]
+    types: [opened, synchronize, reopened]
   push:
     branches: ["stage"]
   workflow_dispatch:
@@ -16,22 +33,22 @@ on:
       server-tag:
         type: string
         required: false
-        default: 'latest'
-        description: 'Server docker image tag'
+        default: "latest"
+        description: "Server docker image tag"
       server-type:
         type: string
         required: false
-        default: 'aerospike-server-enterprise'
+        default: "aerospike-server-enterprise"
       strong-consistency:
         type: boolean
         required: false
         default: true
-        description: 'Enable strong consistency'
+        description: "Enable strong consistency"
       enable-tls:
         type: boolean
         required: false
         default: false
-        description: 'Enable TLS for server and test connections'
+        description: "Enable TLS for server and test connections"
 
 jobs:
   build:
@@ -49,10 +66,12 @@ jobs:
       uses: actions/setup-dotnet@c2fa09f4bde5ebb9d1777cf28262a3eb3db3ced7 # v5.2.0
       with:
         dotnet-version: 8.0.x
+
     - name: Build artifacts
       uses: ./.github/actions/build
       with:
         sgKey: ${{ secrets.SG_KEY }}
+
     - name: Get version from nupkg
       id: get-version
       shell: pwsh
@@ -86,16 +105,61 @@ jobs:
         egress-policy: audit
 
     - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+    # Resolve test inputs once so PR/push runs (which have no `inputs.*`)
+    # behave the same as a workflow_dispatch run that accepts all defaults.
+    # Notes on the tricky cases:
+    #   • `format('{0}', inputs.X)` coerces null → '' for safe string compare,
+    #     avoiding GitHub's loose equality where `null == false` is true.
+    #   • For server-type we compare *after* applying the `|| default` fallback
+    #     so PR/push runs get the enterprise features.conf, not an empty string.
+    - name: Resolve test inputs
+      id: cfg
+      shell: bash
+      env:
+        IN_SERVER_TAG: ${{ inputs.server-tag }}
+        IN_SERVER_TYPE: ${{ inputs.server-type }}
+        IN_ENABLE_TLS: ${{ format('{0}', inputs.enable-tls) }}
+        IN_STRONG_CONSISTENCY: ${{ format('{0}', inputs.strong-consistency) }}
+      run: |
+        SERVER_TAG="${IN_SERVER_TAG:-latest}"
+        SERVER_TYPE="${IN_SERVER_TYPE:-aerospike-server-enterprise}"
+        ENABLE_TLS="${IN_ENABLE_TLS:-false}"
+        # Default SC to '1' (enabled). Only flip to '0' when the dispatch input
+        # is explicitly false; null/empty (PR/push) keeps the default.
+        if [ "$IN_STRONG_CONSISTENCY" = "false" ]; then
+          SC="0"
+        else
+          SC="1"
+        fi
+        if [ "$ENABLE_TLS" = "true" ]; then ENABLE_TLS="true"; else ENABLE_TLS="false"; fi
+        {
+          echo "server-tag=$SERVER_TAG"
+          echo "server-type=$SERVER_TYPE"
+          echo "enable-tls=$ENABLE_TLS"
+          echo "strong-consistency=$SC"
+          echo "is-enterprise=$([ "$SERVER_TYPE" = "aerospike-server-enterprise" ] && echo true || echo false)"
+        } >> "$GITHUB_OUTPUT"
+
     - name: Test
       uses: ./.github/actions/test
       with:
-        server-tag: ${{ inputs.server-tag || 'latest' }}
-        server-type: ${{ inputs.server-type || 'aerospike-server-enterprise' }}
-        enable-tls: ${{ inputs.enable-tls && 'true' || 'false' }}
-        strong-consistency: ${{ inputs.strong-consistency == false && '0' || '1' }}
-        features-content: ${{ inputs.server-type == 'aerospike-server-enterprise' && secrets.AES_FEATURES_CONF || '' }}
+        server-tag: ${{ steps.cfg.outputs.server-tag }}
+        server-type: ${{ steps.cfg.outputs.server-type }}
+        enable-tls: ${{ steps.cfg.outputs.enable-tls }}
+        strong-consistency: ${{ steps.cfg.outputs.strong-consistency }}
+        features-content: ${{ steps.cfg.outputs.is-enterprise == 'true' && secrets.AES_FEATURES_CONF || '' }}
         oidc-provider: gh-aerospike
         oidc-audience: aerospike
+
+    # PR-only: surface test results as a check + comment on the pull request.
+    # On `push` and `workflow_dispatch` runs there's no PR to attach to.
+    - name: Publish test results
+      if: ${{ !cancelled() && github.event_name == 'pull_request' }}
+      uses: EnricoMi/publish-unit-test-result-action@3a74b2957438d0b6e2e61d67b05318aa25c9e6c6 # v2.20.0
+      with:
+        files: test-results/**/*.trx
+        check_name: "Test Results (${{ steps.cfg.outputs.server-tag }})"
 
   deploy:
     needs: [build, sign, test]

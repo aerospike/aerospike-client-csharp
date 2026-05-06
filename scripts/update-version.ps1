@@ -32,25 +32,22 @@ $ErrorActionPreference = 'Stop'
 
 $repoRoot = Split-Path -Parent $PSScriptRoot
 
-$projects = @(
-    'AerospikeClient',
-    'AerospikeTest',
-    'AerospikeBenchmarks',
-    'AerospikeDemo',
-    'AerospikeAdmin'
-)
+$csprojFiles = Get-ChildItem -Path $repoRoot -Recurse -Filter '*.csproj' -File |
+    Where-Object { $_.FullName -notmatch '[\\/](bin|obj)[\\/]' } |
+    Sort-Object FullName
+
+if ($csprojFiles.Count -eq 0) {
+    Write-Warning "No .csproj files found under $repoRoot"
+    return
+}
 
 $pattern = '<Version>[^<]+</Version>'
 $replacement = "<Version>$Version</Version>"
 $changed = 0
 
-foreach ($project in $projects) {
-    $csprojPath = Join-Path $repoRoot "$project/$project.csproj"
-
-    if (-not (Test-Path $csprojPath)) {
-        Write-Warning "Not found: $csprojPath"
-        continue
-    }
+foreach ($csproj in $csprojFiles) {
+    $csprojPath = $csproj.FullName
+    $relativePath = [System.IO.Path]::GetRelativePath($repoRoot, $csprojPath)
 
     $bytes = [System.IO.File]::ReadAllBytes($csprojPath)
     $hasBom = $bytes.Length -ge 3 -and $bytes[0] -eq 0xEF -and $bytes[1] -eq 0xBB -and $bytes[2] -eq 0xBF
@@ -65,24 +62,24 @@ foreach ($project in $projects) {
         $oldVersion = $Matches[1]
 
         if ($oldVersion -eq $Version) {
-            Write-Host "  $project.csproj — already at $Version"
+            Write-Host "  $relativePath — already at $Version"
             continue
         }
 
         $newContent = $content -replace $pattern, $replacement
 
         if ($DryRun) {
-            Write-Host "  $project.csproj — $oldVersion -> $Version (dry run)"
+            Write-Host "  $relativePath — $oldVersion -> $Version (dry run)"
         }
         else {
             $outBytes = $encoding.GetPreamble() + $encoding.GetBytes($newContent)
             [System.IO.File]::WriteAllBytes($csprojPath, $outBytes)
-            Write-Host "  $project.csproj — $oldVersion -> $Version"
+            Write-Host "  $relativePath — $oldVersion -> $Version"
         }
         $changed++
     }
     else {
-        Write-Warning "  $project.csproj — no <Version> tag found"
+        Write-Verbose "  $relativePath — no <Version> tag found, skipping"
     }
 }
 

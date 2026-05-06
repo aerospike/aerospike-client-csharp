@@ -1,6 +1,10 @@
 name: Release
 run-name: Build release artifacts and generate API docs
 
+# Triggered when stage merges to master. Builds and publishes artifacts using
+# the version from .csproj (set by the bump-version workflow), then tags the
+# corresponding commit. The tag is created on the commit shared by master
+# and stage so it's reachable from both branches.
 permissions:
   id-token: write
   contents: read
@@ -14,7 +18,7 @@ on:
         type: boolean
         required: false
         default: false
-        description: 'Dry run: only build and generate API docs (skip sign, deploy, and release)'
+        description: 'Dry run: only build and generate API docs (skip sign, deploy, release, and tag)'
 
 jobs:
   build:
@@ -32,10 +36,12 @@ jobs:
       uses: actions/setup-dotnet@c2fa09f4bde5ebb9d1777cf28262a3eb3db3ced7 # v5.2.0
       with:
         dotnet-version: 8.0.x
+
     - name: Build artifacts
       uses: ./.github/actions/build
       with:
         sgKey: ${{ secrets.SG_KEY }}
+
     - name: Get version from nupkg
       id: get-version
       shell: pwsh
@@ -119,3 +125,67 @@ jobs:
       gh-workflows-ref: v3.4.1
       oidc-provider-name: gh-aerospike
       oidc-audience: aerospike
+
+  # After the release bundle is created, tag the commit that's shared between
+  # master and stage so the tag is reachable from both branches. We use
+  # `git merge-base origin/master origin/stage` rather than tagging master's
+  # tip directly: if stage→master was a merge commit, the merge commit itself
+  # is only on master, but the merge-base (stage's tip at merge time) is on
+  # both. If the merge was a fast-forward, merge-base == HEAD, which still
+  # works.
+  tag:
+    if: ${{ !inputs.dry-run }}
+    needs: [build, create-release-bundle]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+    - name: Harden the runner (Audit all outbound calls)
+      uses: step-security/harden-runner@58077d3c7e43986b6b15fba718e8ea69e387dfcc # v2.15.1
+      with:
+        egress-policy: audit
+
+    - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      with:
+        fetch-depth: 0
+        ref: master
+
+    - name: Resolve tag target (commit shared by master and stage)
+      id: target
+      shell: bash
+      run: |
+        set -euo pipefail
+        git fetch --no-tags --depth=0 origin stage
+        target=$(git merge-base HEAD origin/stage)
+        echo "Tag target SHA: $target"
+        echo "sha=$target" >> "$GITHUB_OUTPUT"
+
+    - name: Create and push release tag
+      env:
+        VERSION: ${{ needs.build.outputs.version }}
+        TARGET_SHA: ${{ steps.target.outputs.sha }}
+      run: |
+        set -euo pipefail
+        tag="v${VERSION}"
+        git config user.name "github-actions[bot]"
+        git config user.email "github-actions[bot]@users.noreply.github.com"
+        if git rev-parse -q --verify "refs/tags/${tag}" >/dev/null; then
+          echo "::error::Tag ${tag} already exists. Did you forget to bump the version?"
+          exit 1
+        fi
+        git tag -a "${tag}" -m "Release ${tag}" "${TARGET_SHA}"
+        git push origin "${tag}"
+        echo "Tagged ${TARGET_SHA} as ${tag}"
+
+    - name: Summary
+      env:
+        VERSION: ${{ needs.build.outputs.version }}
+        TARGET_SHA: ${{ steps.target.outputs.sha }}
+      run: |
+        {
+          echo "## Release Tag";
+          echo "";
+          echo "- **Tag:** \`v${VERSION}\`";
+          echo "- **Commit:** \`${TARGET_SHA}\`";
+          echo "- **Reachable from:** \`master\`, \`stage\`";
+        } >> "$GITHUB_STEP_SUMMARY"
