@@ -47,7 +47,7 @@ on:
 
 jobs:
   bump:
-    runs-on: windows-latest
+    runs-on: ubuntu-latest
     outputs:
       commit-sha: ${{ steps.commit.outputs.sha }}
     steps:

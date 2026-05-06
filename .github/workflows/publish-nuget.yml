@@ -1,5 +1,5 @@
 name: Publish to NuGet
-run-name: "Publish to NuGet (build-id=${{ inputs.build-id }}, dry-run=${{ inputs.dry-run }})"
+run-name: "Publish to NuGet (version=${{ inputs.version }}, dry-run=${{ inputs.dry-run }})"
 
 permissions:
   id-token: write
@@ -8,10 +8,10 @@ permissions:
 on:
   workflow_dispatch:
     inputs:
-      build-id:
+      version:
         type: string
         required: true
-        description: 'GitHub Actions run ID of the release workflow (visible in the workflow run URL)'
+        description: 'Release bundle version to publish (must already be promoted to PROD in JFrog)'
       dry-run:
         type: boolean
         required: false
@@ -21,6 +21,9 @@ on:
 jobs:
   publish:
     runs-on: ubuntu-latest
+    # Approval gate before any push to NuGet.org. Configure the PROD environment
+    # in repo Settings → Environments with required reviewers.
+    environment: ${{ inputs.dry-run && 'PROD-dryrun' || 'PROD' }}
     steps:
     - name: Harden the runner (Audit all outbound calls)
       uses: step-security/harden-runner@58077d3c7e43986b6b15fba718e8ea69e387dfcc # v2.15.1
@@ -41,10 +44,49 @@ jobs:
         oidc-provider-name: gh-aerospike
         oidc-audience: aerospike
 
-    - name: Download signed packages from JFrog
+    # Maturity gate: refuse to publish anything that has not been promoted to PROD.
+    # Queries the JFrog Lifecycle promotion records and asserts that PROD is the
+    # highest stage the bundle has reached. This prevents an operator from
+    # accidentally shipping a DEV/TEST/STAGE/PREVIEW build to NuGet.org.
+    - name: Verify release bundle is at PROD maturity
+      env:
+        BUNDLE_NAME: aerospike-client-csharp
+        BUNDLE_VERSION: ${{ inputs.version }}
+        JF_PROJECT: database
       run: |
+        set -euo pipefail
+
+        echo "Fetching promotion records for ${BUNDLE_NAME}/${BUNDLE_VERSION}..."
+        records_json=$(jf rt curl -X GET \
+          "/lifecycle/api/v2/promotion/records/${BUNDLE_NAME}/${BUNDLE_VERSION}?project=${JF_PROJECT}" \
+          -H "Accept: application/json")
+
+        echo "$records_json" | jq '.'
+
+        envs=$(echo "$records_json" | jq -r '[(.promotions // [])[] | .environment] | unique | join(",")')
+        echo "Bundle has been promoted to: ${envs:-<none>}"
+
+        has_prod=$(echo "$records_json" | jq '
+          any((.promotions // [])[]; .environment == "PROD")
+        ')
+
+        if [ "$has_prod" != "true" ]; then
+          echo "::error::Release bundle ${BUNDLE_NAME}/${BUNDLE_VERSION} has not been promoted to PROD. Refusing to publish to NuGet.org."
+          exit 1
+        fi
+
+        echo "Maturity check passed: bundle is at PROD."
+
+    - name: Download signed packages from JFrog release bundle
+      env:
+        BUNDLE_NAME: aerospike-client-csharp
+        BUNDLE_VERSION: ${{ inputs.version }}
+      run: |
+        # Download only artifacts contained in the PROD-promoted release bundle.
+        # Using --bundle (not --build) ensures we never publish a build that wasn't
+        # part of a promoted bundle.
         jf rt dl \
-          --build "aerospike-client-csharp/${{ inputs.build-id }}" \
+          --bundle "${BUNDLE_NAME}/${BUNDLE_VERSION}" \
           --flat \
           --fail-no-op \
           "*.nupkg" \
@@ -79,7 +121,7 @@ jobs:
           echo "## Publish Summary" >> $GITHUB_STEP_SUMMARY
         fi
         echo "" >> $GITHUB_STEP_SUMMARY
-        echo "**Build ID:** \`${{ inputs.build-id }}\`" >> $GITHUB_STEP_SUMMARY
+        echo "**Version:** \`${{ inputs.version }}\`" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
         echo "### Packages" >> $GITHUB_STEP_SUMMARY
         for pkg in packages/*.nupkg; do

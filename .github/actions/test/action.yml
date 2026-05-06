@@ -111,9 +111,24 @@ runs:
       with:
         dotnet-version: 8.0.x
 
+    # Cache the global tools store so we don't pay the ~10s install + network
+    # round-trip on every matrix job (especially in nightly-tests.yml).
+    # Pin the dotnet-coverage version so the cache key only changes intentionally.
+    - name: Cache dotnet global tools
+      id: cache-dotnet-tools
+      uses: actions/cache@9fcad95d03062fb8399cdbd79ae6041c7692b6c8 # v4.3.0
+      with:
+        path: ~/.dotnet/tools
+        key: dotnet-tools-${{ runner.os }}-coverage-18.5.2
+
     - name: Install dotnet-coverage
+      if: steps.cache-dotnet-tools.outputs.cache-hit != 'true'
       shell: bash
-      run: dotnet tool install --global dotnet-coverage
+      run: dotnet tool install --global dotnet-coverage --version 18.5.2
+
+    - name: Ensure dotnet tools on PATH
+      shell: bash
+      run: echo "$HOME/.dotnet/tools" >> "$GITHUB_PATH"
 
     - name: Download test artifacts
       uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0

@@ -32,20 +32,6 @@ runs:
       shell: pwsh
       run: dotnet pack --no-build
 
-    # Append -run_id to nupkg filenames so each pipeline run deploys to a unique
-    # JFrog path. Without this, promoted release bundles lock the artifact path and
-    # re-runs of the same version fail with 409. The internal NuGet package version
-    # (in the .nuspec) remains unchanged — only the filename/path differs.
-    - name: Rename nuget package
-      shell: pwsh
-      working-directory: AerospikeClient\bin\Release
-      run: Get-ChildItem -Filter "*.nupkg" | Rename-Item -NewName { $_.Name -replace '\.nupkg$', "-${{ github.run_id }}.nupkg" }
-
-    - name: Rename snuget package
-      shell: pwsh
-      working-directory: AerospikeClient\bin\Release
-      run: Get-ChildItem -Filter "*.snupkg" | Rename-Item -NewName { $_.Name -replace '\.snupkg$', "-${{ github.run_id }}.snupkg" }
-
     - name: Publish test project
       shell: pwsh
       working-directory: AerospikeTest

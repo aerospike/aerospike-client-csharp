@@ -5,6 +5,20 @@ permissions:
   id-token: write
   contents: read
 
+# NOTE on workflow_dispatch + GitHub Environments:
+# The Aerospike `trunk` policy flags `workflow_dispatch` with inputs as a
+# potential security concern unless the privileged steps are gated by an
+# approval. The `promote` job below sets `environment: ${{ inputs.environment }}`,
+# which requires the corresponding GitHub Environment in repo settings to
+# define required reviewers. This makes every promotion an auditable,
+# human-approved event regardless of who triggers the workflow.
+#
+# Required GitHub Environments (configure in repo Settings → Environments):
+#   DEV, TEST, STAGE, PREVIEW, PROD
+# Each one should have:
+#   - Required reviewers (DevOps + a release approver for STAGE/PREVIEW/PROD)
+#   - Deployment branch policy: only `master` and `stage`
+#   - The OIDC + JFrog secrets/vars scoped to that environment
 on:
   workflow_dispatch:
     inputs:
@@ -26,6 +40,9 @@ on:
 jobs:
   promote:
     runs-on: ubuntu-latest
+    # Approval gate: maps to the GitHub Environment named DEV/TEST/STAGE/PREVIEW/PROD.
+    # The job will not start until the configured reviewers approve it.
+    environment: ${{ inputs.environment }}
     steps:
     - name: Harden the runner (Audit all outbound calls)
       uses: step-security/harden-runner@58077d3c7e43986b6b15fba718e8ea69e387dfcc # v2.15.1
@@ -40,6 +57,74 @@ jobs:
       with:
         oidc-provider-name: gh-aerospike
         oidc-audience: aerospike
+
+    # Adjacency guard: refuse to skip stages.
+    # Reads the bundle's existing promotion records from the JFrog Lifecycle API
+    # and only allows promotion to an immediate neighbour of the current highest
+    # stage (DEV ↔ TEST ↔ STAGE ↔ PREVIEW ↔ PROD). The very first promotion of a
+    # bundle must target DEV.
+    - name: Validate adjacent-stage promotion
+      env:
+        BUNDLE_NAME: aerospike-client-csharp
+        BUNDLE_VERSION: ${{ inputs.version }}
+        TARGET_ENV: ${{ inputs.environment }}
+        JF_PROJECT: database
+      run: |
+        set -euo pipefail
+
+        stages=(DEV TEST STAGE PREVIEW PROD)
+        target_idx=-1
+        for i in "${!stages[@]}"; do
+          if [ "${stages[$i]}" = "$TARGET_ENV" ]; then target_idx=$i; fi
+        done
+        if [ "$target_idx" -lt 0 ]; then
+          echo "::error::Unknown target environment: $TARGET_ENV"
+          exit 1
+        fi
+
+        # Query promotion records for this bundle/version.
+        # Endpoint: GET /lifecycle/api/v2/promotion/records/{name}/{version}?project={project}
+        # Response shape: { "promotions": [ { "environment": "DEV", "created": "...", ... }, ... ] }
+        echo "Fetching promotion records for ${BUNDLE_NAME}/${BUNDLE_VERSION}..."
+        records_json=$(jf rt curl -X GET \
+          "/lifecycle/api/v2/promotion/records/${BUNDLE_NAME}/${BUNDLE_VERSION}?project=${JF_PROJECT}" \
+          -H "Accept: application/json" || echo '{"promotions":[]}')
+
+        echo "$records_json" | jq '.' || true
+
+        # Compute current highest stage index reached. -1 means "not yet promoted".
+        current_idx=$(echo "$records_json" | jq --argjson stages '["DEV","TEST","STAGE","PREVIEW","PROD"]' '
+          [(.promotions // [])[] | .environment // empty] as $envs
+          | [ $envs[] | (. as $e | $stages | index($e)) | select(. != null) ]
+          | (max // -1)
+        ')
+
+        echo "Current highest stage index: $current_idx (-1 = none)"
+        echo "Target stage index: $target_idx ($TARGET_ENV)"
+
+        if [ "$current_idx" -lt 0 ]; then
+          if [ "$target_idx" -ne 0 ]; then
+            echo "::error::Bundle has no prior promotions; the first promotion must target DEV (got: $TARGET_ENV)."
+            exit 1
+          fi
+        else
+          diff=$(( target_idx - current_idx ))
+          abs_diff=${diff#-}
+          if [ "$abs_diff" -gt 1 ]; then
+            current_name="${stages[$current_idx]}"
+            prev_idx=$(( current_idx - 1 ))
+            next_idx=$(( current_idx + 1 ))
+            allowed=""
+            if [ "$prev_idx" -ge 0 ]; then allowed="${stages[$prev_idx]}"; fi
+            if [ "$next_idx" -lt "${#stages[@]}" ]; then
+              if [ -n "$allowed" ]; then allowed="$allowed or ${stages[$next_idx]}"; else allowed="${stages[$next_idx]}"; fi
+            fi
+            echo "::error::Refusing to skip stages. Bundle is at ${current_name}; only ${allowed} are allowed (got: $TARGET_ENV)."
+            exit 1
+          fi
+        fi
+
+        echo "Adjacency check passed."
 
     - name: Promote release bundle
       uses: aerospike/shared-workflows/.github/actions/promote-release-bundle@f6bb565e7d31fa3013a1a75c5f80aed44c3bde5c # v3.4.1
