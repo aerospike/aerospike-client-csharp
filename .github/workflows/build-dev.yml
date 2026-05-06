@@ -27,7 +27,7 @@ on:
     branches: ["stage"]
     types: [opened, synchronize, reopened]
   push:
-    branches: ["stage", "CLIENT*"]
+    branches: ["stage"]
   workflow_dispatch:
     inputs:
       server-tag:
