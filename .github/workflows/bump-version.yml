@@ -66,9 +66,56 @@ jobs:
         TARGET_VERSION: ${{ inputs.version }}
         IS_DRY_RUN: ${{ inputs.dry-run }}
       run: |
-        $params = @{ Version = $env:TARGET_VERSION }
-        if ($env:IS_DRY_RUN -eq 'true') { $params['DryRun'] = $true }
-        & ./scripts/update-version.ps1 @params
+        $targetVersion = $env:TARGET_VERSION
+        $isDryRun = $env:IS_DRY_RUN -eq 'true'
+        $projectFiles = Get-ChildItem -Path . -Recurse -Filter *.csproj -File | Sort-Object FullName
+
+        if (-not $projectFiles) {
+          Write-Host "No .csproj files found."
+          exit 0
+        }
+
+        foreach ($projectFile in $projectFiles) {
+          [xml]$xml = Get-Content -Path $projectFile.FullName
+          $projectNode = $xml.Project
+          $versionNodes = @(
+            @($projectNode.SelectNodes('//Project/PropertyGroup/Version'))
+            @($projectNode.SelectNodes('//Project/PropertyGroup/VersionPrefix'))
+            @($projectNode.SelectNodes('//Project/PropertyGroup/PackageVersion'))
+          ) | Where-Object { $_ }
+
+          $changed = $false
+
+          foreach ($node in $versionNodes) {
+            if ($node.InnerText -ne $targetVersion) {
+              Write-Host "$($projectFile.FullName): $($node.Name) '$($node.InnerText)' -> '$targetVersion'"
+              if (-not $isDryRun) {
+                $node.InnerText = $targetVersion
+              }
+              $changed = $true
+            }
+          }
+
+          if (-not $versionNodes) {
+            $propertyGroup = $projectNode.PropertyGroup | Select-Object -First 1
+            if (-not $propertyGroup) {
+              $propertyGroup = $xml.CreateElement('PropertyGroup', $projectNode.NamespaceURI)
+              [void]$projectNode.AppendChild($propertyGroup)
+            }
+
+            Write-Host "$($projectFile.FullName): add Version '$targetVersion'"
+            if (-not $isDryRun) {
+              $versionElement = $xml.CreateElement('Version', $projectNode.NamespaceURI)
+              $versionElement.InnerText = $targetVersion
+              [void]$propertyGroup.AppendChild($versionElement)
+            }
+            $changed = $true
+          }
+
+          if ($changed -and -not $isDryRun) {
+            $xml.Save($projectFile.FullName)
+          }
+        }
 
     - name: Commit version bump
       if: ${{ !inputs.dry-run }}
