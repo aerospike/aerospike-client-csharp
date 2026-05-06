@@ -77,22 +77,20 @@ jobs:
 
         echo "Maturity check passed: bundle is at PROD."
 
-    - name: Download signed packages from JFrog release bundle
+        - name: Download signed packages from JFrog release bundle
       env:
         BUNDLE_NAME: aerospike-client-csharp
         BUNDLE_VERSION: ${{ inputs.version }}
       run: |
-        # Download only artifacts contained in the PROD-promoted release bundle.
-        # Using --bundle (not --build) ensures we never publish a build that wasn't
-        # part of a promoted bundle.
-        jf rt dl \
-          --bundle "${BUNDLE_NAME}/${BUNDLE_VERSION}" \
-          --flat \
-          --fail-no-op \
-          "*.nupkg" \
-          packages/
+        for pattern in "*.nupkg" "*.snupkg"; do
+          jf rt dl \
+            --bundle "${BUNDLE_NAME}/${BUNDLE_VERSION}" \
+            --flat \
+            --fail-no-op \
+            "$pattern" \
+            packages/
+        done
 
-        # Remove non-NuGet files (.asc signatures) that may have been downloaded
         find packages/ -type f ! -name "*.nupkg" ! -name "*.snupkg" -delete 2>/dev/null || true
 
     - name: List downloaded packages
