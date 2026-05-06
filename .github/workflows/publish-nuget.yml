@@ -77,7 +77,7 @@ jobs:
 
         echo "Maturity check passed: bundle is at PROD."
 
-        - name: Download signed packages from JFrog release bundle
+    - name: Download signed packages from JFrog release bundle
       env:
         BUNDLE_NAME: aerospike-client-csharp
         BUNDLE_VERSION: ${{ inputs.version }}
