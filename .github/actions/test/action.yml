@@ -1,4 +1,5 @@
 name: Test
+description: "Runs the Aerospike .NET client test suite against a server container"
 
 inputs:
   server-tag:
