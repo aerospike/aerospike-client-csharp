@@ -1,12 +1,12 @@
 name: Build nuget package and test dll
-description: "Builds signed nuget package"
+description: Builds signed nuget package
 
 inputs:
   sgKey:
     required: true
 
 runs:
-  using: "composite"
+  using: composite
   steps:
     - name: Restore dependencies
       shell: pwsh

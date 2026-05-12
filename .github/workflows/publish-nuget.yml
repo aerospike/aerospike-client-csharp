@@ -11,16 +11,16 @@ on:
       run-id:
         type: string
         required: true
-        description: 'GitHub Actions run ID containing the signed-artifacts artifact'
+        description: GitHub Actions run ID containing the signed-artifacts artifact
       dry-run:
         type: boolean
         required: false
         default: true
-        description: 'Dry run: validate the package without publishing to NuGet.org'
+        description: Dry run: validate the package without publishing to NuGet.org
       confirm-prod-publish:
         type: string
         required: false
-        description: 'Required when dry-run is false: type PUBLISH_TO_NUGET'
+        description: Required when dry-run is false: type PUBLISH_TO_NUGET
 
 jobs:
   publish:

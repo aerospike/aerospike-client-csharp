@@ -13,11 +13,11 @@ on:
       version:
         type: string
         required: true
-        description: 'Release bundle version to promote'
+        description: Release bundle version to promote
       environment:
         type: choice
         required: true
-        description: 'Target environment'
+        description: Target environment
         options:
           - DEV
           - TEST

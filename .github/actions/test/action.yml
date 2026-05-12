@@ -1,5 +1,5 @@
 name: Test
-description: "Runs the Aerospike .NET client test suite against a server container"
+description: Runs the Aerospike .NET client test suite against a server container
 
 inputs:
   server-tag:
@@ -73,7 +73,7 @@ runs:
 
     - name: Setup Aerospike Server
       id: setup-server
-      uses: aerospike/shared-workflows/.github/actions/setup-aerospike-server@f6bb565e7d31fa3013a1a75c5f80aed44c3bde5c # v3.4.1
+      uses: aerospike/shared-workflows/.github/actions/setup-aerospike-server@c17b4ae85ab9a74a475b1363fc518fade850c462  #f6bb565e7d31fa3013a1a75c5f80aed44c3bde5c # v3.4.1
       with:
         server-tag: ${{ steps.resolve.outputs.server-tag }}
         server-container-repo: ${{ steps.resolve.outputs.server-container-repo }}
@@ -171,10 +171,10 @@ runs:
       if: ${{ !cancelled() }}
       uses: danielpalme/ReportGenerator-GitHub-Action@a003c8fb9ac008fd0fffd5faa4f7d3ecb52e0675 # v5.5.7
       with:
-        reports: 'coverage/coverage.cobertura.xml'
-        targetdir: 'coverage/report'
-        reporttypes: 'HtmlInline_AzurePipelines;Cobertura;MarkdownSummaryGithub'
-        assemblyfilters: '-AerospikeTest'
+        reports: coverage/coverage.cobertura.xml
+        targetdir: coverage/report
+        reporttypes: HtmlInline_AzurePipelines;Cobertura;MarkdownSummaryGithub
+        assemblyfilters: -AerospikeTest
 
     - name: Publish coverage summary
       if: ${{ !cancelled() }}

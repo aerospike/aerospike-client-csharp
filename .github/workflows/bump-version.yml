@@ -18,29 +18,29 @@ on:
       version:
         type: string
         required: true
-        description: 'Base version to set (e.g. 8.4.0, 9.0.0-beta1)'
+        description: Base version to set (e.g. 8.4.0, 9.0.0-beta1)
       dry-run:
         type: boolean
         required: false
         default: false
-        description: 'Show what would change without committing'
+        description: Show what would change without committing
   workflow_call:
     inputs:
       version:
         type: string
         required: true
-        description: 'Base version to set (e.g. 8.4.0, 9.0.0-beta1)'
+        description: Base version to set (e.g. 8.4.0, 9.0.0-beta1)
       ref:
         type: string
         required: false
-        description: 'Branch or ref to bump version on'
+        description: Branch or ref to bump version on
       dry-run:
         type: boolean
         required: false
         default: false
     outputs:
       commit-sha:
-        description: 'SHA of the version bump commit'
+        description: SHA of the version bump commit
         value: ${{ jobs.bump.outputs.commit-sha }}
 
 jobs:

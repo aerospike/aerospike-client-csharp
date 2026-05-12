@@ -24,31 +24,31 @@ permissions:
 # filename.
 on:
   pull_request:
-    branches: ["stage"]
+    branches: [stage]
     types: [opened, synchronize, reopened]
   push:
-    branches: ["stage"]
+    branches: [stage]
   workflow_dispatch:
     inputs:
       server-tag:
         type: string
         required: false
-        default: "latest"
-        description: "Server docker image tag"
+        default: latest"
+        description: Server docker image tag
       server-type:
         type: string
         required: false
-        default: "aerospike-server-enterprise"
+        default: aerospike-server-enterprise
       strong-consistency:
         type: boolean
         required: false
         default: true
-        description: "Enable strong consistency"
+        description: Enable strong consistency
       enable-tls:
         type: boolean
         required: false
         default: false
-        description: "Enable TLS for server and test connections"
+        description: Enable TLS for server and test connections
 
 jobs:
   build:
