@@ -1,29 +1,33 @@
 name: Publish to NuGet
-run-name: "Publish to NuGet (version=${{ inputs.version }}, dry-run=${{ inputs.dry-run }})"
+run-name: "Break-glass NuGet publish (run=${{ inputs.run-id }}, dry-run=${{ inputs.dry-run }})"
 
 permissions:
-  id-token: write
+  actions: read
   contents: read
 
 on:
   workflow_dispatch:
     inputs:
-      version:
+      run-id:
         type: string
         required: true
-        description: 'Release bundle version to publish (must already be promoted to PROD in JFrog)'
+        description: 'GitHub Actions run ID containing the signed-artifacts artifact'
       dry-run:
         type: boolean
         required: false
         default: true
         description: 'Dry run: validate the package without publishing to NuGet.org'
+      confirm-prod-publish:
+        type: string
+        required: false
+        description: 'Required when dry-run is false: type PUBLISH_TO_NUGET'
 
 jobs:
   publish:
     runs-on: ubuntu-latest
-    # Approval gate before any push to NuGet.org. Configure the PROD environment
-    # in repo Settings → Environments with required reviewers.
-    environment: ${{ inputs.dry-run && 'PROD-dryrun' || 'PROD' }}
+    # Break-glass fallback for rare cases where the normal JFrog/artifact-publisher
+    # path cannot be used. Normal NuGet publishing should go through
+    # artifact-publisher once INFRA-480 is available.
     steps:
     - name: Harden the runner (Audit all outbound calls)
       uses: step-security/harden-runner@58077d3c7e43986b6b15fba718e8ea69e387dfcc # v2.15.1
@@ -35,61 +39,60 @@ jobs:
       with:
         dotnet-version: 8.0.x
 
-    - name: Set up JFrog credentials
-      uses: step-security/setup-jfrog-cli@893a92f96c7727242adf0e603c77b1f2a22390e1 # v4.9.1
+    - name: Verify actor has admin permission
+      if: ${{ !inputs.dry-run }}
       env:
-        JF_URL: https://aerospike.jfrog.io
-        JF_PROJECT: database
-      with:
-        oidc-provider-name: gh-aerospike
-        oidc-audience: aerospike
-
-    # Maturity gate: refuse to publish anything that has not been promoted to PROD.
-    # Queries the JFrog Lifecycle promotion records and asserts that PROD is the
-    # highest stage the bundle has reached. This prevents an operator from
-    # accidentally shipping a DEV/TEST/STAGE/PREVIEW build to NuGet.org.
-    - name: Verify release bundle is at PROD maturity
-      env:
-        BUNDLE_NAME: aerospike-client-csharp
-        BUNDLE_VERSION: ${{ inputs.version }}
-        JF_PROJECT: database
+        GH_TOKEN: ${{ github.token }}
       run: |
         set -euo pipefail
 
-        echo "Fetching promotion records for ${BUNDLE_NAME}/${BUNDLE_VERSION}..."
-        records_json=$(jf rt curl -X GET \
-          "/lifecycle/api/v2/promotion/records/${BUNDLE_NAME}/${BUNDLE_VERSION}?project=${JF_PROJECT}" \
-          -H "Accept: application/json")
+        permission=$(gh api \
+          "repos/${GITHUB_REPOSITORY}/collaborators/${GITHUB_ACTOR}/permission" \
+          --jq '.permission')
 
-        echo "$records_json" | jq '.'
-
-        envs=$(echo "$records_json" | jq -r '[(.promotions // [])[] | .environment] | unique | join(",")')
-        echo "Bundle has been promoted to: ${envs:-<none>}"
-
-        has_prod=$(echo "$records_json" | jq '
-          any((.promotions // [])[]; .environment == "PROD")
-        ')
-
-        if [ "$has_prod" != "true" ]; then
-          echo "::error::Release bundle ${BUNDLE_NAME}/${BUNDLE_VERSION} has not been promoted to PROD. Refusing to publish to NuGet.org."
+        if [ "$permission" != "admin" ]; then
+          echo "::error::Break-glass NuGet publishing requires repo admin permission. ${GITHUB_ACTOR} has '${permission}'."
           exit 1
         fi
 
-        echo "Maturity check passed: bundle is at PROD."
+        echo "Admin permission confirmed for ${GITHUB_ACTOR}."
 
-    - name: Download signed packages from JFrog release bundle
+    - name: Confirm manual publish
+      if: ${{ !inputs.dry-run }}
       env:
-        BUNDLE_NAME: aerospike-client-csharp
-        BUNDLE_VERSION: ${{ inputs.version }}
+        CONFIRM_PROD_PUBLISH: ${{ inputs.confirm-prod-publish }}
       run: |
-        for pattern in "*.nupkg" "*.snupkg"; do
-          jf rt dl \
-            --bundle "${BUNDLE_NAME}/${BUNDLE_VERSION}" \
-            --flat \
-            --fail-no-op \
-            "$pattern" \
-            packages/
-        done
+        set -euo pipefail
+
+        if [ "$CONFIRM_PROD_PUBLISH" != "PUBLISH_TO_NUGET" ]; then
+          echo "::error::Real NuGet publishing is manual fallback only. Re-run with confirm-prod-publish set to PUBLISH_TO_NUGET."
+          exit 1
+        fi
+
+        echo "::warning::Break-glass NuGet publish approved. This bypasses the normal JFrog PROD promotion/artifact-publisher path."
+        {
+          echo "## Break-Glass Publish Confirmation"
+          echo ""
+          echo "A real NuGet.org publish was explicitly confirmed."
+          echo ""
+          echo "- **Required confirmation:** \`PUBLISH_TO_NUGET\`"
+          echo "- **Required permission:** repo admin"
+          echo "- **Package source:** signed GitHub Actions artifact from run \`${{ inputs.run-id }}\`"
+          echo "- **Expected normal path:** artifact-publisher after JFrog PROD promotion"
+        } >> "$GITHUB_STEP_SUMMARY"
+
+    - name: Download signed packages from GitHub Actions run
+      env:
+        GH_TOKEN: ${{ github.token }}
+        RUN_ID: ${{ inputs.run-id }}
+      run: |
+        set -euo pipefail
+
+        mkdir -p packages
+        gh run download "$RUN_ID" \
+          --repo "$GITHUB_REPOSITORY" \
+          --name signed-artifacts \
+          --dir packages
 
         find packages/ -type f ! -name "*.nupkg" ! -name "*.snupkg" -delete 2>/dev/null || true
 
@@ -119,7 +122,7 @@ jobs:
           echo "## Publish Summary" >> $GITHUB_STEP_SUMMARY
         fi
         echo "" >> $GITHUB_STEP_SUMMARY
-        echo "**Version:** \`${{ inputs.version }}\`" >> $GITHUB_STEP_SUMMARY
+        echo "**Source run ID:** \`${{ inputs.run-id }}\`" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
         echo "### Packages" >> $GITHUB_STEP_SUMMARY
         for pkg in packages/*.nupkg; do

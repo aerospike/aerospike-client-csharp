@@ -12,6 +12,24 @@ on:
   workflow_dispatch:
 
 jobs:
+  load-test-matrix:
+    runs-on: ubuntu-latest
+    outputs:
+      servers: ${{ steps.servers.outputs.servers }}
+    steps:
+    - name: Harden the runner (Audit all outbound calls)
+      uses: step-security/harden-runner@58077d3c7e43986b6b15fba718e8ea69e387dfcc # v2.15.1
+      with:
+        egress-policy: audit
+
+    - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+    - name: Load nightly server matrix
+      id: servers
+      run: |
+        servers=$(jq -c . .github/nightly_test_servers.json)
+        echo "servers=$servers" >> "$GITHUB_OUTPUT"
+
   build:
     runs-on: windows-latest
     outputs:
@@ -42,11 +60,11 @@ jobs:
         echo "version=$version" >> $env:GITHUB_OUTPUT
 
   test:
-    needs: build
+    needs: [build, load-test-matrix]
     strategy:
       fail-fast: false
       matrix:
-        server: ${{ fromJson(vars.NIGHTLY_TEST_SERVERS || '[{"server-tag":"latest","server-type":"aerospike-server-enterprise","tls":false},{"server-tag":"latest","server-type":"aerospike-server-enterprise","tls":true}]') }}
+        server: ${{ fromJson(needs.load-test-matrix.outputs.servers) }}
         strong-consistency: ["1", "0"]
         exclude:
           - server:

@@ -5,20 +5,8 @@ permissions:
   id-token: write
   contents: read
 
-# NOTE on workflow_dispatch + GitHub Environments:
-# The Aerospike `trunk` policy flags `workflow_dispatch` with inputs as a
-# potential security concern unless the privileged steps are gated by an
-# approval. The `promote` job below sets `environment: ${{ inputs.environment }}`,
-# which requires the corresponding GitHub Environment in repo settings to
-# define required reviewers. This makes every promotion an auditable,
-# human-approved event regardless of who triggers the workflow.
-#
-# Required GitHub Environments (configure in repo Settings → Environments):
-#   DEV, TEST, STAGE, PREVIEW, PROD
-# Each one should have:
-#   - Required reviewers (DevOps + a release approver for STAGE/PREVIEW/PROD)
-#   - Deployment branch policy: only `master` and `stage`
-#   - The OIDC + JFrog secrets/vars scoped to that environment
+# Manual promotion wrapper. Promotion approval and maturity policy live in the
+# JFrog/shared-workflow path; this workflow only prevents accidental stage skips.
 on:
   workflow_dispatch:
     inputs:
@@ -40,9 +28,6 @@ on:
 jobs:
   promote:
     runs-on: ubuntu-latest
-    # Approval gate: maps to the GitHub Environment named DEV/TEST/STAGE/PREVIEW/PROD.
-    # The job will not start until the configured reviewers approve it.
-    environment: ${{ inputs.environment }}
     steps:
     - name: Harden the runner (Audit all outbound calls)
       uses: step-security/harden-runner@58077d3c7e43986b6b15fba718e8ea69e387dfcc # v2.15.1
@@ -60,7 +45,7 @@ jobs:
 
     # Adjacency guard: refuse to skip stages.
     # Reads the bundle's existing promotion records from the JFrog Lifecycle API
-    # and only allows promotion to an immediate neighbour of the current highest
+    # and only allows promotion to an immediate neighbour of the current
     # stage (DEV ↔ TEST ↔ STAGE ↔ PREVIEW ↔ PROD). The very first promotion of a
     # bundle must target DEV.
     - name: Validate adjacent-stage promotion
@@ -88,18 +73,22 @@ jobs:
         echo "Fetching promotion records for ${BUNDLE_NAME}/${BUNDLE_VERSION}..."
         records_json=$(jf rt curl -X GET \
           "/lifecycle/api/v2/promotion/records/${BUNDLE_NAME}/${BUNDLE_VERSION}?project=${JF_PROJECT}" \
-          -H "Accept: application/json" || echo '{"promotions":[]}')
+          -H "Accept: application/json")
 
-        echo "$records_json" | jq '.' || true
+        echo "$records_json" | jq '.'
 
-        # Compute current highest stage index reached. -1 means "not yet promoted".
+        # Compute the current stage from the latest promotion record.
+        # -1 means "not yet promoted".
         current_idx=$(echo "$records_json" | jq --argjson stages '["DEV","TEST","STAGE","PREVIEW","PROD"]' '
-          [(.promotions // [])[] | .environment // empty] as $envs
-          | [ $envs[] | (. as $e | $stages | index($e)) | select(. != null) ]
-          | (max // -1)
+          [(.promotions // [])
+            | sort_by(.created // .createdAt // .created_at // "")
+            | .[]
+            | .environment // empty] as $envs
+          | ($envs[-1] // null) as $current
+          | if $current == null then -1 else ($stages | index($current) // -1) end
         ')
 
-        echo "Current highest stage index: $current_idx (-1 = none)"
+        echo "Current stage index: $current_idx (-1 = none)"
         echo "Target stage index: $target_idx ($TARGET_ENV)"
 
         if [ "$current_idx" -lt 0 ]; then
