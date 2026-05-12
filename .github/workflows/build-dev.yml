@@ -33,7 +33,7 @@ on:
       server-tag:
         type: string
         required: false
-        default: latest"
+        default: latest
         description: Server docker image tag
       server-type:
         type: string
