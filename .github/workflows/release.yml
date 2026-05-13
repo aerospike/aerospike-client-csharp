@@ -18,7 +18,7 @@ on:
         type: boolean
         required: false
         default: false
-        description: Dry run: only build and generate API docs (skip sign, deploy, release, and tag)
+        description: "Dry run: only build and generate API docs (skip sign, deploy, release, and tag)"
 
 jobs:
   build:
