@@ -83,12 +83,19 @@ public abstract class AsyncExample(Console console) : Example(console)
 	{
 		string name = GetType().Name;
 		valid = true;
+		int errorCount = console.ErrorCount;
 
 		try
 		{
 			console.Info($"{name} Begin");
 			RunExample(client, args);
 			console.Info($"{name} End");
+
+			if (console.ErrorCount > errorCount)
+			{
+				return new ExampleResultInfo(name, ExampleResult.Failed, "example logged one or more errors");
+			}
+
 			return new ExampleResultInfo(name, ExampleResult.Passed);
 		}
 		catch (ExampleSkipException ex)

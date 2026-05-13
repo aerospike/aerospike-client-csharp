@@ -17,7 +17,7 @@ Aerospike C# Client Package
         C# client unit tests.
     * **AerospikeBenchmarks**    
         C# client benchmarks command line application.
-    * **AerospikeExamples**    
+    * **AerospikeExample**    
         C# client examples console application.
     * **AerospikeAdmin**    
         Aerospike user administration WinForms application. Windows only. This application is only valid for enterprise servers that are configured for user authentication.

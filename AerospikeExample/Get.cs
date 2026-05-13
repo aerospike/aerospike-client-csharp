@@ -58,7 +58,6 @@ public class Get(Console console) : SyncExample(console)
 		{
 			socketTimeout = 300
 		};
-		// hello from demo
 		// @@@SNIPEND
 
 		console.Info("Read policy created: socketTimeout={0}", policy.socketTimeout);

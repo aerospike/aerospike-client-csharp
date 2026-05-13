@@ -20,10 +20,14 @@ namespace Aerospike.Example;
 
 public class Console
 {
+	private int errorCount;
+
 	public Console()
 	{
 		Log.SetCallback(LogCallback);
 	}
+
+	public int ErrorCount => System.Threading.Volatile.Read(ref errorCount);
 
 	public void Info(string format, params object[] args)
 	{
@@ -47,11 +51,13 @@ public class Console
 
 	public void Error(string format, params object[] args)
 	{
+		System.Threading.Interlocked.Increment(ref errorCount);
 		Write(Log.Level.ERROR, format, args);
 	}
 
 	public void Error(string message)
 	{
+		System.Threading.Interlocked.Increment(ref errorCount);
 		Write(Log.Level.ERROR, message);
 	}
 
