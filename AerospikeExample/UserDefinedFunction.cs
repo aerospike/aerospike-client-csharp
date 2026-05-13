@@ -186,17 +186,58 @@ public class UserDefinedFunction(Console console) : SyncExample(console)
 		string receivedString = Util.ListToString((List<object>)received);
 		string expectedString = Util.ListToString(list);
 
-		if (receivedString.Equals(expectedString))
+		if (CdtEquals(received, list))
 		{
 			console.Info("UDF data matched: namespace={0} set={1} key={2} bin={3} value={4}",
-				key.ns, key.setName, key.userKey, binName, received);
+				key.ns, key.setName, key.userKey, binName, receivedString);
 		}
 		else
 		{
 			console.Error("UDF data mismatch");
-			console.Error("Expected " + list);
-			console.Error("Received " + received);
+			console.Error("Expected " + expectedString);
+			console.Error("Received " + receivedString);
 		}
+	}
+
+	private static bool CdtEquals(object left, object right)
+	{
+		if (left is IList<object> leftList && right is IList<object> rightList)
+		{
+			if (leftList.Count != rightList.Count)
+			{
+				return false;
+			}
+
+			for (int i = 0; i < leftList.Count; i++)
+			{
+				if (!CdtEquals(leftList[i], rightList[i]))
+				{
+					return false;
+				}
+			}
+
+			return true;
+		}
+
+		if (left is IDictionary<object, object> leftMap && right is IDictionary<object, object> rightMap)
+		{
+			if (leftMap.Count != rightMap.Count)
+			{
+				return false;
+			}
+
+			foreach (KeyValuePair<object, object> pair in leftMap)
+			{
+				if (!rightMap.TryGetValue(pair.Key, out object value) || !CdtEquals(pair.Value, value))
+				{
+					return false;
+				}
+			}
+
+			return true;
+		}
+
+		return Equals(left, right);
 	}
 
 	private void ServerSideExists(IAerospikeClient client, Arguments args)
