@@ -1,0 +1,165 @@
+/* 
+ * Copyright 2012-2026 Aerospike, Inc.
+ *
+ * Portions may be licensed to Aerospike, Inc. under one or more contributor
+ * license agreements.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not
+ * use this file except in compliance with the License. You may obtain a copy of
+ * the License at http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations under
+ * the License.
+ */
+using Aerospike.Client;
+using System.Text;
+
+namespace Aerospike.Example;
+
+public class QueryRegion(Console console) : SyncExample(console)
+{
+
+	/// <summary>
+	/// Geospatial query examples.
+	/// </summary>
+	public override void RunExample(IAerospikeClient client, Arguments args)
+	{
+		string indexName = "queryindexloc";
+		string keyPrefix = "querykeyloc";
+		string binName = args.GetBinName("querybinloc");
+		int size = 20;
+
+		CreateIndex(client, args, indexName, binName);
+		WriteRecords(client, args, keyPrefix, binName, size);
+		RunQuery(client, args, indexName, binName);
+		RunRadiusQuery(client, args, indexName, binName);
+		client.DropIndex(args.policy, args.ns, args.set, indexName);
+
+		var verifyKey = new Key(args.ns, args.set, "querykeyloc0");
+		Record verifyRec = client.Get(null, verifyKey) ?? throw new Exception("QueryRegion verification: record querykeyloc0 not found.");
+		string locBin = args.GetBinName("querybinloc");
+		if (verifyRec.GetValue(locBin) == null)
+		{
+			throw new Exception("QueryRegion verification: location bin is null.");
+		}
+		console.Info("QueryRegion verified successfully.");
+	}
+
+	private void CreateIndex(IAerospikeClient client, Arguments args, string indexName, string binName)
+	{
+		console.Info($"Create index: ns={args.ns} set={args.set} index={indexName} bin={binName}");
+
+		Policy policy = new()
+		{
+			totalTimeout = 0 // Do not timeout on index create.
+		};
+
+		try
+		{
+			client.DropIndex(policy, args.ns, args.set, indexName);
+		}
+		catch (AerospikeException)
+		{
+		}
+
+		var task = client.CreateIndex(policy, args.ns, args.set, indexName, binName, IndexType.GEO2DSPHERE);
+		task.Wait();
+	}
+
+	private void WriteRecords(IAerospikeClient client, Arguments args, string keyPrefix, string binName, int size)
+	{
+		console.Info("Write " + size + " records.");
+
+		for (int i = 0; i < size; i++)
+		{
+			double lng = -122 + (0.1 * i);
+			double lat = 37.5 + (0.1 * i);
+			StringBuilder ptsb = new();
+			ptsb.Append("{ \"type\": \"Point\", \"coordinates\": [");
+			ptsb.Append(lng);
+			ptsb.Append(", ");
+			ptsb.Append(lat);
+			ptsb.Append("] }");
+			var key = new Key(args.ns, args.set, keyPrefix + i);
+			Bin bin = Bin.AsGeoJSON(binName, ptsb.ToString());
+			client.Put(args.writePolicy, key, bin);
+		}
+	}
+
+	private void RunQuery(IAerospikeClient client, Arguments args, string indexName, string binName)
+	{
+		StringBuilder rgnsb = new();
+
+		rgnsb.Append("{ ");
+		rgnsb.Append("    \"type\": \"Polygon\", ");
+		rgnsb.Append("    \"coordinates\": [ ");
+		rgnsb.Append("        [[-122.500000, 37.000000],[-121.000000, 37.000000], ");
+		rgnsb.Append("         [-121.000000, 38.080000],[-122.500000, 38.080000], ");
+		rgnsb.Append("         [-122.500000, 37.000000]] ");
+		rgnsb.Append("    ] ");
+		rgnsb.Append(" } ");
+
+		console.Info("QueryRegion: " + rgnsb);
+
+		Statement stmt = new();
+		stmt.SetNamespace(args.ns);
+		stmt.SetSetName(args.set);
+		stmt.SetBinNames(binName);
+		stmt.SetFilter(Filter.GeoWithinRegion(binName, rgnsb.ToString()));
+
+		using var rs = client.Query(null, stmt);
+
+		int count = 0;
+
+		while (rs.Next())
+		{
+			var key = rs.Key;
+			var record = rs.Record;
+			string result = record.GetGeoJSON(binName);
+
+			console.Info("Record found: " + result);
+			count++;
+		}
+
+		if (count != 6)
+		{
+			console.Error("Query count mismatch. Expected 6. Received " + count);
+		}
+	}
+
+	private void RunRadiusQuery(IAerospikeClient client, Arguments args, string indexName, string binName)
+	{
+		double lon = -122.0;
+		double lat = 37.5;
+		double radius = 50000.0;
+		console.Info("QueryRadius long=" + lon + " lat= " + lat + " radius=" + radius);
+
+		Statement stmt = new();
+		stmt.SetNamespace(args.ns);
+		stmt.SetSetName(args.set);
+		stmt.SetBinNames(binName);
+		stmt.SetFilter(Filter.GeoWithinRadius(binName, lon, lat, radius));
+
+		using var rs = client.Query(null, stmt);
+
+		int count = 0;
+
+		while (rs.Next())
+		{
+			var key = rs.Key;
+			var record = rs.Record;
+			string result = record.GetGeoJSON(binName);
+
+			console.Info("Record found: " + result);
+			count++;
+		}
+
+		if (count != 4)
+		{
+			console.Error("Query count mismatch. Expected 4. Received " + count);
+		}
+	}
+}

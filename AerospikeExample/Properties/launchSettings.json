@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "AerospikeExample": {
+      "commandName": "Project",
+      "commandLineArgs": "--settings ../../../../.runsettings all"
+    }
+  }
+}
