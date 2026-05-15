@@ -79,6 +79,10 @@ jobs:
         echo "$records_json" | jq '.'
 
         if echo "$records_json" | jq -e '.errors? | length > 0' >/dev/null; then
+          if echo "$records_json" | jq -e '.errors[]? | (.status | tostring) == "404"' >/dev/null; then
+            echo "::warning::Promotion records endpoint returned 404. Skipping local adjacency guard and letting the JFrog promotion action validate ${TARGET_ENV}."
+            exit 0
+          fi
           echo "::error::Failed to fetch promotion records for ${BUNDLE_NAME}/${BUNDLE_VERSION}."
           exit 1
         fi
