@@ -98,9 +98,18 @@ jobs:
 
     - name: List downloaded packages
       run: |
+        set -euo pipefail
+
         echo "Downloaded packages:"
-        ls -la packages/
-        for pkg in packages/*.nupkg; do
+        find packages/ -type f | sort
+
+        mapfile -t packages_to_publish < <(find packages/ -type f -name "*.nupkg" | sort)
+        if [ "${#packages_to_publish[@]}" -eq 0 ]; then
+          echo "::error::No .nupkg files found in downloaded artifact from run ${{ inputs.run-id }}."
+          exit 1
+        fi
+
+        for pkg in "${packages_to_publish[@]}"; do
           echo "=== $(basename "$pkg") ==="
           unzip -l "$pkg" | tail -5
         done
@@ -108,13 +117,25 @@ jobs:
     - name: Push to NuGet.org
       if: ${{ !inputs.dry-run }}
       run: |
-        dotnet nuget push "packages/*.nupkg" \
-          --api-key "${{ secrets.NUGET_API_KEY }}" \
-          --source https://api.nuget.org/v3/index.json \
-          --skip-duplicate
+        set -euo pipefail
+
+        mapfile -t packages_to_publish < <(find packages/ -type f -name "*.nupkg" | sort)
+        if [ "${#packages_to_publish[@]}" -eq 0 ]; then
+          echo "::error::No .nupkg files found in downloaded artifact from run ${{ inputs.run-id }}."
+          exit 1
+        fi
+
+        for pkg in "${packages_to_publish[@]}"; do
+          dotnet nuget push "$pkg" \
+            --api-key "${{ secrets.NUGET_API_KEY }}" \
+            --source https://api.nuget.org/v3/index.json \
+            --skip-duplicate
+        done
 
     - name: Summary
       run: |
+        set -euo pipefail
+
         if [ "${{ inputs.dry-run }}" = "true" ]; then
           echo "::notice::DRY RUN — No packages were published to NuGet.org"
           echo "## Dry Run Summary" >> $GITHUB_STEP_SUMMARY
@@ -125,9 +146,9 @@ jobs:
         echo "**Source run ID:** \`${{ inputs.run-id }}\`" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
         echo "### Packages" >> $GITHUB_STEP_SUMMARY
-        for pkg in packages/*.nupkg; do
+        while IFS= read -r pkg; do
           echo "- \`$(basename "$pkg")\`" >> $GITHUB_STEP_SUMMARY
-        done
+        done < <(find packages/ -type f -name "*.nupkg" | sort)
         if [ "${{ inputs.dry-run }}" = "true" ]; then
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "To publish for real, re-run this workflow with **dry-run** unchecked." >> $GITHUB_STEP_SUMMARY
