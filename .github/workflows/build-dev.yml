@@ -163,7 +163,7 @@ jobs:
         check_name: "Test Results (${{ steps.cfg.outputs.server-tag }})"
 
   deploy:
-    #if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/stage' }}
+    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/stage' }}
     needs: [build, sign, test]
     uses: aerospike/shared-workflows/.github/workflows/reusable_deploy-artifacts.yaml@8ec712eafbec26c8db8d1183688a5fd806560a95 # v3.5.0
     with:
@@ -178,7 +178,7 @@ jobs:
       oidc-audience: aerospike
 
   prepare-test-artifacts:
-    #if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/stage' }}
+    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/stage' }}
     needs: [build, test]
     runs-on: ubuntu-latest
     steps:
@@ -209,7 +209,7 @@ jobs:
         jf rt delete "${test_artifacts_path}*" --quiet
 
   deploy-test:
-    #if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/stage' }}
+    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/stage' }}
     needs: [build, test, prepare-test-artifacts]
     uses: aerospike/shared-workflows/.github/workflows/reusable_deploy-artifacts.yaml@8ec712eafbec26c8db8d1183688a5fd806560a95 # v3.5.0
     with:
@@ -224,7 +224,7 @@ jobs:
       oidc-audience: aerospike
 
   prepare-release-bundle:
-    #if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/stage' }}
+    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/stage' }}
     needs: [build, deploy]
     runs-on: ubuntu-latest
     steps:
@@ -317,7 +317,7 @@ jobs:
         fi
 
   create-release-bundle:
-    #if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/stage' }}
+    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/stage' }}
     needs: [build, deploy, prepare-release-bundle]
     uses: aerospike/shared-workflows/.github/workflows/reusable_create-release-bundle.yaml@8ec712eafbec26c8db8d1183688a5fd806560a95 # v3.5.0
     with:
@@ -330,7 +330,7 @@ jobs:
       oidc-audience: aerospike
 
   promote-release-bundle-to-test:
-    #if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/stage' }}
+    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/stage' }}
     needs: [build, create-release-bundle]
     runs-on: ubuntu-latest
     steps:
