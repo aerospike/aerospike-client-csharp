@@ -44,8 +44,8 @@ jobs:
       shell: pwsh
       run: |
         $projectXml = (git show "${{ steps.target.outputs.sha }}:AerospikeClient/AerospikeClient.csproj") -join "`n"
-        [xml]$project = $projectXml
-        $version = $project.Project.PropertyGroup.Version | Select-Object -First 1
+        $versionMatch = [regex]::Match($projectXml, '<Version>\s*([^<]+?)\s*</Version>')
+        $version = $versionMatch.Groups[1].Value
         if (-not $version) {
           Write-Error "Could not read <Version> from AerospikeClient/AerospikeClient.csproj at ${{ steps.target.outputs.sha }}"
           exit 1
