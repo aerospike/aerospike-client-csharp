@@ -10,6 +10,7 @@ permissions:
 on:
   push:
     branches: [master]
+  workflow_dispatch:
 
 jobs:
   resolve-release:
@@ -33,7 +34,7 @@ jobs:
       shell: bash
       run: |
         set -euo pipefail
-        git fetch --no-tags --depth=0 origin stage
+        git fetch --no-tags origin stage:refs/remotes/origin/stage
         target=$(git merge-base HEAD origin/stage)
         echo "Release target SHA: $target"
         echo "sha=$target" >> "$GITHUB_OUTPUT"

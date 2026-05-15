@@ -67,21 +67,33 @@ jobs:
           exit 1
         fi
 
-        # Query promotion records for this bundle/version.
-        # Endpoint: GET /lifecycle/api/v2/promotion/records/{name}/{version}?project={project}
-        # Response shape: { "promotions": [ { "environment": "DEV", "created": "...", ... }, ... ] }
+        # Query promotion records for this bundle, then filter to this exact
+        # version. The Lifecycle API does not include the version in the path.
+        # Endpoint: GET /lifecycle/api/v2/promotion/records/{name}?project={project}
+        # Response shape: { "promotions": [ { "release_bundle_version": "...", "environment": "DEV", "status": "COMPLETED", ... }, ... ] }
         echo "Fetching promotion records for ${BUNDLE_NAME}/${BUNDLE_VERSION}..."
         records_json=$(jf rt curl -X GET \
-          "/lifecycle/api/v2/promotion/records/${BUNDLE_NAME}/${BUNDLE_VERSION}?project=${JF_PROJECT}" \
+          "/lifecycle/api/v2/promotion/records/${BUNDLE_NAME}?project=${JF_PROJECT}&filter_by=${BUNDLE_VERSION}&order_by=created_millis&order_asc=true" \
           -H "Accept: application/json")
 
         echo "$records_json" | jq '.'
 
-        # Compute the current stage from the latest promotion record.
+        if echo "$records_json" | jq -e '.errors? | length > 0' >/dev/null; then
+          echo "::error::Failed to fetch promotion records for ${BUNDLE_NAME}/${BUNDLE_VERSION}."
+          exit 1
+        fi
+
+        # Compute the current stage from the latest completed promotion record.
         # -1 means "not yet promoted".
-        current_idx=$(echo "$records_json" | jq --argjson stages '["DEV","TEST","STAGE","PREVIEW","PROD"]' '
+        current_idx=$(echo "$records_json" | jq \
+          --arg version "$BUNDLE_VERSION" \
+          --argjson stages '["DEV","TEST","STAGE","PREVIEW","PROD"]' '
           [(.promotions // [])
-            | sort_by(.created // .createdAt // .created_at // "")
+            | map(select(
+                (.release_bundle_version // .releaseBundleVersion // .version // "") == $version
+                and ((.status // "COMPLETED") == "COMPLETED")
+              ))
+            | sort_by(.created_millis // .createdMillis // .created // .createdAt // .created_at // "")
             | .[]
             | .environment // empty] as $envs
           | ($envs[-1] // null) as $current

@@ -250,7 +250,7 @@ jobs:
       run: |
         set -euo pipefail
 
-        records_path="/lifecycle/api/v2/promotion/records/${BUNDLE_NAME}/${BUNDLE_VERSION}?project=${JF_PROJECT}"
+        records_path="/lifecycle/api/v2/promotion/records/${BUNDLE_NAME}?project=${JF_PROJECT}&filter_by=${BUNDLE_VERSION}&order_by=created_millis&order_asc=true"
         echo "Checking promotion records for ${BUNDLE_NAME}/${BUNDLE_VERSION}..."
         records_json='{"promotions":[]}'
         set +e
@@ -273,8 +273,15 @@ jobs:
 
         echo "$records_json" | jq '.'
 
-        higher_envs=$(echo "$records_json" | jq -r '
+        if echo "$records_json" | jq -e '.errors? | length > 0' >/dev/null; then
+          echo "::error::Failed to fetch promotion records for ${BUNDLE_NAME}/${BUNDLE_VERSION}."
+          exit 1
+        fi
+
+        higher_envs=$(echo "$records_json" | jq -r --arg version "$BUNDLE_VERSION" '
           [(.promotions // [])[]?
+            | select((.release_bundle_version // .releaseBundleVersion // .version // "") == $version)
+            | select((.status // "COMPLETED") == "COMPLETED")
             | (.environment // .target_environment // .targetEnvironment // empty)
             | select(. == "STAGE" or . == "PREVIEW" or . == "PROD")]
           | unique
@@ -285,8 +292,10 @@ jobs:
           exit 1
         fi
 
-        existing_envs=$(echo "$records_json" | jq -r '
+        existing_envs=$(echo "$records_json" | jq -r --arg version "$BUNDLE_VERSION" '
           [(.promotions // [])[]?
+            | select((.release_bundle_version // .releaseBundleVersion // .version // "") == $version)
+            | select((.status // "COMPLETED") == "COMPLETED")
             | (.environment // .target_environment // .targetEnvironment // empty)]
           | unique
           | join(", ")
