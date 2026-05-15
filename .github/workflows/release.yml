@@ -43,7 +43,7 @@ jobs:
       id: get-version
       shell: pwsh
       run: |
-        $projectXml = git show "${{ steps.target.outputs.sha }}:AerospikeClient/AerospikeClient.csproj"
+        $projectXml = (git show "${{ steps.target.outputs.sha }}:AerospikeClient/AerospikeClient.csproj") -join "`n"
         [xml]$project = $projectXml
         $version = $project.Project.PropertyGroup.Version | Select-Object -First 1
         if (-not $version) {
