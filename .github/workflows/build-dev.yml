@@ -211,7 +211,7 @@ jobs:
         oidc-provider-name: gh-aerospike
         oidc-audience: aerospike
 
-    - name: Remove existing TEST release bundle
+    - name: Remove existing lower-environment release bundle
       env:
         BUNDLE_NAME: aerospike-client-csharp
         BUNDLE_VERSION: ${{ needs.build.outputs.version }}
@@ -223,21 +223,23 @@ jobs:
         delete_path="/lifecycle/api/v2/release_bundle/records/${BUNDLE_NAME}/${BUNDLE_VERSION}?project=${JF_PROJECT}&async=false"
 
         echo "Checking promotion records for ${BUNDLE_NAME}/${BUNDLE_VERSION}..."
+        records_json='{"promotions":[]}'
         set +e
-        records_json=$(jf rt curl -X GET "$records_path" -H "Accept: application/json" 2>jfrog-error.log)
+        fetched_records=$(jf rt curl -X GET "$records_path" -H "Accept: application/json" 2>jfrog-error.log)
         status=$?
         set -e
 
         if [ "$status" -ne 0 ]; then
           error_text="$(<jfrog-error.log)"
-          if [[ "$error_text" == *"404"* || "$error_text" == *"not found"* || "$records_json" == *"404"* ]]; then
+          if [[ "$error_text" == *"404"* || "$error_text" == *"not found"* || "$fetched_records" == *"404"* ]]; then
             echo "No existing release bundle promotion records found."
-            exit 0
+          else
+            echo "::error::Failed to fetch promotion records for ${BUNDLE_NAME}/${BUNDLE_VERSION}."
+            echo "$error_text"
+            exit "$status"
           fi
-
-          echo "::error::Failed to fetch promotion records for ${BUNDLE_NAME}/${BUNDLE_VERSION}."
-          echo "$error_text"
-          exit "$status"
+        else
+          records_json="$fetched_records"
         fi
 
         echo "$records_json" | jq '.'
@@ -254,18 +256,36 @@ jobs:
           exit 1
         fi
 
-        has_test=$(echo "$records_json" | jq -r '
+        existing_envs=$(echo "$records_json" | jq -r '
           [(.promotions // [])[]?
             | (.environment // .target_environment // .targetEnvironment // empty)]
-          | any(. == "TEST")
+          | unique
+          | join(", ")
         ')
-        if [ "$has_test" != "true" ]; then
-          echo "No existing TEST release bundle promotion found."
-          exit 0
+        if [ -n "$existing_envs" ]; then
+          echo "Existing release bundle promotions: ${existing_envs}."
+        else
+          echo "No existing release bundle promotions found."
         fi
 
-        echo "Deleting existing TEST release bundle ${BUNDLE_NAME}/${BUNDLE_VERSION}..."
-        jf rt curl -X DELETE "$delete_path" -H "Accept: application/json"
+        echo "Deleting existing release bundle ${BUNDLE_NAME}/${BUNDLE_VERSION} if it exists..."
+        set +e
+        delete_output=$(jf rt curl -X DELETE "$delete_path" -H "Accept: application/json" 2>jfrog-error.log)
+        status=$?
+        set -e
+
+        if [ "$status" -ne 0 ]; then
+          error_text="$(<jfrog-error.log)"
+          if [[ "$error_text" == *"404"* || "$error_text" == *"not found"* || "$delete_output" == *"404"* ]]; then
+            echo "No existing release bundle record found."
+          else
+            echo "::error::Failed to delete release bundle ${BUNDLE_NAME}/${BUNDLE_VERSION}."
+            echo "$error_text"
+            exit "$status"
+          fi
+        else
+          echo "$delete_output"
+        fi
 
   create-release-bundle:
     if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/stage' }}
