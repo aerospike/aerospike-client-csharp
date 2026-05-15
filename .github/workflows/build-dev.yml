@@ -220,8 +220,6 @@ jobs:
         set -euo pipefail
 
         records_path="/lifecycle/api/v2/promotion/records/${BUNDLE_NAME}/${BUNDLE_VERSION}?project=${JF_PROJECT}"
-        delete_path="/lifecycle/api/v2/release_bundle/records/${BUNDLE_NAME}/${BUNDLE_VERSION}?project=${JF_PROJECT}&async=false"
-
         echo "Checking promotion records for ${BUNDLE_NAME}/${BUNDLE_VERSION}..."
         records_json='{"promotions":[]}'
         set +e
@@ -270,7 +268,7 @@ jobs:
 
         echo "Deleting existing release bundle ${BUNDLE_NAME}/${BUNDLE_VERSION} if it exists..."
         set +e
-        delete_output=$(jf rt curl -X DELETE "$delete_path" -H "Accept: application/json" 2>jfrog-error.log)
+        delete_output=$(jf rbdell --project="${JF_PROJECT}" --quiet --sync "${BUNDLE_NAME}" "${BUNDLE_VERSION}" 2>jfrog-error.log)
         status=$?
         set -e
 
