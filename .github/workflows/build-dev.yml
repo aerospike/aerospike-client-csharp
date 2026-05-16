@@ -162,7 +162,7 @@ jobs:
     # On `push` and `workflow_dispatch` runs there's no PR to attach to.
     - name: Publish test results
       if: ${{ !cancelled() && github.event_name == 'pull_request' }}
-      uses: EnricoMi/publish-unit-test-result-action@c950f6fb443cb5af20a377fd0dfaa78838901040 # v2.23.0
+      uses: step-security/publish-unit-test-result-action@681100d67b09305624c089873f12c545ee7cbc24 # v2.23.0
       with:
         files: test-results/**/*.trx
         check_name: "Test Results (${{ steps.cfg.outputs.server-tag }})"
@@ -170,7 +170,7 @@ jobs:
     # PR-only: publish example smoke tests as their own result check.
     - name: Publish example run results
       if: ${{ !cancelled() && github.event_name == 'pull_request' && hashFiles('example-results/**/*.trx') != '' }}
-      uses: EnricoMi/publish-unit-test-result-action@c950f6fb443cb5af20a377fd0dfaa78838901040 # v2.23.0
+      uses: step-security/publish-unit-test-result-action@681100d67b09305624c089873f12c545ee7cbc24 # v2.23.0
       with:
         files: example-results/**/*.trx
         check_name: "Example Run (${{ steps.cfg.outputs.server-tag }})"
