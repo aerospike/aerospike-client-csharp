@@ -16,3 +16,28 @@ updates:
     schedule:
       interval: weekly
     target-branch: stage
+
+  - package-ecosystem: nuget
+    directory: /AerospikeAdmin
+    schedule:
+      interval: weekly
+
+  - package-ecosystem: nuget
+    directory: /AerospikeBenchmarks
+    schedule:
+      interval: weekly
+
+  - package-ecosystem: nuget
+    directory: /AerospikeClient
+    schedule:
+      interval: weekly
+
+  - package-ecosystem: nuget
+    directory: /AerospikeExample
+    schedule:
+      interval: weekly
+
+  - package-ecosystem: nuget
+    directory: /AerospikeTest
+    schedule:
+      interval: weekly
