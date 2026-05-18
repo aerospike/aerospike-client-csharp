@@ -16,11 +16,5 @@
     "server-type": "aerospike-server",
     "server-container-repo": "database-docker-virtual/aerospike-server",
     "tls": false
-  },
-  {
-    "server-tag": "latest",
-    "server-type": "aerospike-server",
-    "server-container-repo": "database-docker-virtual/aerospike-server",
-    "tls": true
   }
 ]

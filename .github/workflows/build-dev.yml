@@ -1,5 +1,5 @@
 name: Build and test
-run-name: "${{ github.event_name == 'pull_request' && format('PR #{0}', github.event.pull_request.number) || (github.event_name == 'push' && 'Stage') || 'Dev' }} build (${{ inputs.server-tag || 'latest' }}, ${{ contains(inputs.server-type || 'enterprise', 'enterprise') && 'enterprise' || 'community' }}, ${{ format('{0}', inputs.strong-consistency) == 'false' && 'AP' || 'SC' }}${{ inputs.enable-tls && ', TLS' || '' }})"
+run-name: "${{ github.event_name == 'pull_request' && format('PR #{0}', github.event.pull_request.number) || (github.event_name == 'push' && 'Stage') || 'Dev' }} build (${{ inputs.server-tag || 'latest' }}, ${{ (inputs.server-type || 'aerospike-server-enterprise') == 'aerospike-server-enterprise' && 'enterprise' || 'community' }}, ${{ (inputs.server-type || 'aerospike-server-enterprise') == 'aerospike-server-enterprise' && (format('{0}', inputs.strong-consistency) == 'false' && 'AP' || 'SC') || 'AP' }}${{ (inputs.server-type || 'aerospike-server-enterprise') == 'aerospike-server-enterprise' && inputs.enable-tls && ', TLS' || '' }})"
 
 permissions:
   # Required for OIDC token requests (used by JFrog/sign jobs)
@@ -44,12 +44,12 @@ on:
         type: boolean
         required: false
         default: true
-        description: Enable strong consistency
+        description: Enable strong consistency. Enterprise edition required.
       enable-tls:
         type: boolean
         required: false
         default: false
-        description: Enable TLS for server and test connections
+        description: Enable TLS for server and test connections. Enterprise edition required.
 
 jobs:
   build:
@@ -114,6 +114,7 @@ jobs:
     #     avoiding GitHub's loose equality where `null == false` is true.
     #   • For server-type we compare *after* applying the `|| default` fallback
     #     so PR/push runs get the enterprise features.conf, not an empty string.
+    #   • Community server runs are always AP and non-TLS.
     - name: Resolve test inputs
       id: cfg
       shell: bash
@@ -134,6 +135,10 @@ jobs:
           SC="1"
         fi
         if [ "$ENABLE_TLS" = "true" ]; then ENABLE_TLS="true"; else ENABLE_TLS="false"; fi
+        if [ "$SERVER_TYPE" != "aerospike-server-enterprise" ]; then
+          ENABLE_TLS="false"
+          SC="0"
+        fi
         {
           echo "server-tag=$SERVER_TAG"
           echo "server-type=$SERVER_TYPE"

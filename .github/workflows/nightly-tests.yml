@@ -23,6 +23,8 @@ jobs:
         egress-policy: audit
 
     - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      with:
+        ref: stage
 
     - name: Load nightly server matrix
       id: servers
@@ -41,6 +43,8 @@ jobs:
         egress-policy: audit
 
     - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      with:
+        ref: stage
     - name: Setup .NET
       uses: actions/setup-dotnet@c2fa09f4bde5ebb9d1777cf28262a3eb3db3ced7 # v5.2.0
       with:
@@ -70,6 +74,9 @@ jobs:
           - server:
               server-type: aerospike-server
             strong-consistency: "1"
+          - server:
+              server-type: aerospike-server
+              tls: true
     name: test-${{ matrix.server.server-tag }}-${{ matrix.server.server-type }}-sc${{ matrix.strong-consistency }}-tls${{ matrix.server.tls }}
     runs-on: ubuntu-latest
     steps:
@@ -79,6 +86,8 @@ jobs:
         egress-policy: audit
 
     - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      with:
+        ref: stage
     - name: Test
       uses: ./.github/actions/test
       with:
@@ -87,7 +96,7 @@ jobs:
         server-container-repo: ${{ matrix.server.server-container-repo }}
         strong-consistency: ${{ matrix.strong-consistency }}
         enable-tls: ${{ matrix.server.tls }}
-        features-content: ${{ secrets.AES_FEATURES_CONF }}
+        features-content: ${{ matrix.server.server-type == 'aerospike-server-enterprise' && secrets.AES_FEATURES_CONF || '' }}
         oidc-provider: gh-aerospike
         oidc-audience: aerospike
         artifact-suffix: ${{ matrix.server.server-tag }}-${{ matrix.server.server-type }}-sc${{ matrix.strong-consistency }}-tls${{ matrix.server.tls }}
