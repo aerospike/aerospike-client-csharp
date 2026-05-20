@@ -35,9 +35,26 @@ namespace Aerospike.Client
 			return new CTX(Exp.CTX_EXP, expression);
 		}
 
+		/// <summary>
+		/// Apply operation to all children of the current context that match the filter expression.
+		/// This allows traversing all items in a collection with filtering.
+		/// </summary>
+		/// <param name="exp"></param>
+		/// <returns></returns>
 		public static CTX AllChildrenWithFilter(Exp exp)
 		{
 			Expression expression = Exp.Build(exp);
+			return new CTX(Exp.CTX_EXP, expression);
+		}
+
+		/// <summary>
+		/// Apply operation to all children of the current context that match the filter expression.
+		/// This allows traversing all items in a collection with filtering.
+		/// </summary>
+		/// <param name="expression"></param>
+		/// <returns></returns>
+		public static CTX AllChildrenWithFilter(Expression expression)
+		{
 			return new CTX(Exp.CTX_EXP, expression);
 		}
 
