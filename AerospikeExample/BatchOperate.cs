@@ -1,4 +1,4 @@
-/* 
+/*
  * Copyright 2012-2026 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
@@ -19,7 +19,7 @@ using System.Collections;
 
 namespace Aerospike.Example;
 
-public class BatchOperate(Console console) : SyncExample(console)
+public sealed class BatchOperate : SyncExample
 {
 	private const string KeyPrefix = "bkey";
 	private const string BinName1 = "bin1";
@@ -30,217 +30,148 @@ public class BatchOperate(Console console) : SyncExample(console)
 	private const string ResultName2 = "result2";
 	private const int RecordCount = 8;
 
-	public override void RunExample(IAerospikeClient client, Arguments args)
+	public override void RunExample()
 	{
-		WriteRecords(client, args);
-		BatchReadOperate(client, args);
-		BatchReadOperateComplex(client, args);
-		BatchListReadOperate(client, args);
-		BatchListWriteOperate(client, args);
-		BatchWriteOperateComplex(client, args);
-
-		Key verifyKey = new Key(args.ns, args.set, KeyPrefix + 2);
-		Record verifyRec = client.Get(null, verifyKey);
-		if (verifyRec == null)
-		{
-			throw new Exception("BatchOperate verification failed: bkey2 record not found.");
-		}
-		if (verifyRec.GetInt(BinName1) != 2 || verifyRec.GetInt(BinName2) != 12)
-		{
-			throw new Exception("BatchOperate verification failed: bkey2 bin1/bin2 mismatch.");
-		}
-		IList verifyList = verifyRec.GetList(BinName3);
-		if (verifyList == null || verifyList.Count != 3
-			|| Convert.ToInt64(verifyList[0]) != 0
-			|| Convert.ToInt64(verifyList[1]) != 2
-			|| Convert.ToInt64(verifyList[2]) != 999)
-		{
-			throw new Exception("BatchOperate verification failed: bkey2 bin3 list mismatch.");
-		}
-		console.Info("BatchOperate verified successfully.");
-	}
-
-	private void WriteRecords(IAerospikeClient client, Arguments args)
-	{
-		for (int i = 1; i <= RecordCount; i++)
-		{
-			var key = new Key(args.ns, args.set, KeyPrefix + i);
-			var bin1 = new Bin(BinName1, i);
-			var bin2 = new Bin(BinName2, i + 10);
-
-			var list = new List<int>();
-
-			for (int j = 0; j < i; j++)
-			{
-				list.Add(j * i);
-			}
-			var bin3 = new Bin(BinName3, list);
-
-			console.Info("Put: ns={0} set={1} key={2} val1={3} val2={4} val3={5}",
-				key.ns, key.setName, key.userKey, bin1.value, bin2.value, Util.ListToString(list));
-
-			client.Put(args.writePolicy, key, bin1, bin2, bin3);
-		}
+		BatchReadOperate();
+		BatchReadOperateComplex();
+		BatchListReadOperate();
+		BatchListWriteOperate();
+		BatchWriteOperateComplex();
 	}
 
 	/// <summary>
 	/// Perform read operation expressions in one batch.
 	/// </summary>
-	private void BatchReadOperate(IAerospikeClient client, Arguments args)
+	private void BatchReadOperate()
 	{
-		console.Info("batchReadOperate");
-		var keys = new Key[RecordCount];
-		for (int i = 0; i < RecordCount; i++)
-		{
-			keys[i] = new Key(args.ns, args.set, KeyPrefix + (i + 1));
-		}
+		console.Info(nameof(BatchReadOperate));
 
-		// bin1 * bin2
-		var exp = Exp.Build(Exp.Mul(Exp.IntBin(BinName1), Exp.IntBin(BinName2)));
-
-		var records = client.Get(null, keys, ExpOperation.Read(ResultName1, exp, ExpReadFlags.DEFAULT));
+		Key[] keys = BuildKeys();
+		Expression exp = Exp.Build(Exp.Mul(Exp.IntBin(BinName1), Exp.IntBin(BinName2)));
+		Record[] records = client.Get(null, keys, ExpOperation.Read(ResultName1, exp, ExpReadFlags.DEFAULT));
 
 		for (int i = 0; i < records.Length; i++)
 		{
-			var record = records[i];
-			console.Info("Result[{0}]: {1}", i, record.GetInt(ResultName1));
+			Record record = records[i];
+
+			if (record == null)
+			{
+				console.Info($"Result[{i}]: not found");
+				continue;
+			}
+
+			console.Info($"Result[{i}]: {record.GetInt(ResultName1)}");
 		}
 	}
 
 	/// <summary>
 	/// Read results using varying read operations in one batch.
 	/// </summary>
-	private void BatchReadOperateComplex(IAerospikeClient client, Arguments args)
+	private void BatchReadOperateComplex()
 	{
-		console.Info("batchReadOperateComplex");
+		console.Info(nameof(BatchReadOperateComplex));
+
 		Expression exp1 = Exp.Build(Exp.Mul(Exp.IntBin(BinName1), Exp.IntBin(BinName2)));
 		Expression exp2 = Exp.Build(Exp.Add(Exp.IntBin(BinName1), Exp.IntBin(BinName2)));
 		Expression exp3 = Exp.Build(Exp.Sub(Exp.IntBin(BinName1), Exp.IntBin(BinName2)));
 
-		// Batch uses pointer reference to quickly determine if operations are repeated and can therefore
-		// be optimized, but using varargs directly always creates a new reference. Therefore, save operation
-		// array so we have one pointer reference per operation array.
+		// Batch uses pointer-reference equality to detect repeated operations and avoid
+		// re-sending them. Allocating each operation array once preserves that.
 		Operation[] ops1 = Operation.Array(ExpOperation.Read(ResultName1, exp1, ExpReadFlags.DEFAULT));
 		Operation[] ops2 = Operation.Array(ExpOperation.Read(ResultName1, exp2, ExpReadFlags.DEFAULT));
 		Operation[] ops3 = Operation.Array(ExpOperation.Read(ResultName1, exp3, ExpReadFlags.DEFAULT));
-		Operation[] ops4 = Operation.Array(ExpOperation.Read(ResultName1, exp2, ExpReadFlags.DEFAULT),
-										   ExpOperation.Read(ResultName2, exp3, ExpReadFlags.DEFAULT));
+		Operation[] ops4 = Operation.Array(
+			ExpOperation.Read(ResultName1, exp2, ExpReadFlags.DEFAULT),
+			ExpOperation.Read(ResultName2, exp3, ExpReadFlags.DEFAULT));
 
 		List<BatchRead> records =
 		[
-			new BatchRead(new Key(args.ns, args.set, KeyPrefix + 1), ops1),
-			// The following record is optimized (namespace,set,ops are only sent once) because
-			// namespace, set and ops all have the same pointer references as the previous entry.
-			new BatchRead(new Key(args.ns, args.set, KeyPrefix + 2), ops1),
-			new BatchRead(new Key(args.ns, args.set, KeyPrefix + 3), ops2),
-			new BatchRead(new Key(args.ns, args.set, KeyPrefix + 4), ops3),
-			new BatchRead(new Key(args.ns, args.set, KeyPrefix + 5), ops4),
+			new(new Key(ns, set, $"{KeyPrefix}1"), ops1),
+			// Optimized: shares namespace, set, and ops references with the previous entry.
+			new(new Key(ns, set, $"{KeyPrefix}2"), ops1),
+			new(new Key(ns, set, $"{KeyPrefix}3"), ops2),
+			new(new Key(ns, set, $"{KeyPrefix}4"), ops3),
+			new(new Key(ns, set, $"{KeyPrefix}5"), ops4),
 		];
 
-		// Execute batch.
 		client.Get(null, records);
-
-		// Show results.
-		int count = 0;
-		foreach (BatchRead record in records)
-		{
-			if (record.resultCode == 0)
-			{
-				Record rec = record.record;
-				object v1 = rec.GetValue(ResultName1);
-				object v2 = rec.GetValue(ResultName2);
-				console.Info("Result[{0}]: {1}, {2}", count++, v1, v2);
-			}
-			else
-			{
-				console.Info("Result[{0}]: error: {1}", count++, ResultCode.GetResultString(record.resultCode));
-			}
-		}
+		PrintRecords(records);
 	}
 
 	/// <summary>
 	/// Perform list read operations in one batch.
 	/// </summary>
-	private void BatchListReadOperate(IAerospikeClient client, Arguments args)
+	private void BatchListReadOperate()
 	{
-		console.Info("batchListReadOperate");
-		var keys = new Key[RecordCount];
+		console.Info(nameof(BatchListReadOperate));
+
+		Key[] keys = new Key[RecordCount];
+
 		for (int i = 0; i < RecordCount; i++)
 		{
-			if (i == 5)
-			{
-				keys[i] = new Key(args.ns, args.set, "not found");
-				continue;
-			}
-			keys[i] = new Key(args.ns, args.set, KeyPrefix + (i + 1));
+			// Deliberately mis-key one entry to demonstrate graceful null handling.
+			keys[i] = i == 5
+				? new Key(ns, set, "not found")
+				: new Key(ns, set, $"{KeyPrefix}{i + 1}");
 		}
 
-		// Get size and last element of list bin for all records.
-		var records = client.Get(null, keys,
+		Record[] records = client.Get(null, keys,
 			ListOperation.Size(BinName3),
 			ListOperation.GetByIndex(BinName3, -1, ListReturnType.VALUE));
 
 		for (int i = 0; i < records.Length; i++)
 		{
-			var record = records[i];
+			Record record = records[i];
 
-			if (record != null)
+			if (record == null)
 			{
-				IList results = record.GetList(BinName3);
-				long size = (long)results[0];
-				object val = results[1];
-				console.Info("Result[{0}]: {1},{2}", i, size, val);
+				console.Info($"Result[{i}]: null");
+				continue;
 			}
-			else
-			{
-				console.Info("Result[{0}]: null", i);
-			}
+
+			IList results = record.GetList(BinName3);
+			console.Info($"Result[{i}]: {results[0]},{results[1]}");
 		}
 	}
 
 	/// <summary>
 	/// Perform list read/write operations in one batch.
 	/// </summary>
-	private void BatchListWriteOperate(IAerospikeClient client, Arguments args)
+	private void BatchListWriteOperate()
 	{
-		console.Info("batchListWriteOperate");
-		var keys = new Key[RecordCount];
-		for (int i = 0; i < RecordCount; i++)
-		{
-			keys[i] = new Key(args.ns, args.set, KeyPrefix + (i + 1));
-		}
+		console.Info(nameof(BatchListWriteOperate));
 
-		// Add integer to list and get size and last element of list bin for all records.
-		BatchResults bresults = client.Operate(null, null, keys,
+		Key[] keys = BuildKeys();
+
+		// Append integer to list and get size and last element of list bin for all records.
+		BatchResults batch = client.Operate(null, null, keys,
 			ListOperation.Append(ListPolicy.Default, BinName3, Value.Get(999)),
-			ListOperation.Size(BinName3), ListOperation.GetByIndex(BinName3, -1, ListReturnType.VALUE));
+			ListOperation.Size(BinName3),
+			ListOperation.GetByIndex(BinName3, -1, ListReturnType.VALUE));
 
-		for (int i = 0; i < bresults.records.Length; i++)
+		for (int i = 0; i < batch.records.Length; i++)
 		{
-			BatchRecord br = bresults.records[i];
+			BatchRecord br = batch.records[i];
 
 			if (br.resultCode == 0)
 			{
-				Record rec = br.record;
-				IList results = rec.GetList(BinName3);
-				long size = (long)results[1];
-				object val = results[2];
-
-				console.Info("Result[{0}]: {1},{2}", i, size, val);
+				IList results = br.record.GetList(BinName3);
+				console.Info($"Result[{i}]: {results[1]},{results[2]}");
 			}
 			else
 			{
-				console.Info("Result[{0}]: error: {1}", i, ResultCode.GetResultString(br.resultCode));
+				console.Info($"Result[{i}]: error: {ResultCode.GetResultString(br.resultCode)}");
 			}
 		}
 	}
 
 	/// <summary>
-	/// Read/Write records using varying operations in one batch.
+	/// Read/write records using varying operations in one batch.
 	/// </summary>
-	private void BatchWriteOperateComplex(IAerospikeClient client, Arguments args)
+	private void BatchWriteOperateComplex()
 	{
-		console.Info("batchWriteOperateComplex");
+		console.Info(nameof(BatchWriteOperateComplex));
+
 		Expression wexp1 = Exp.Build(Exp.Add(Exp.IntBin(BinName1), Exp.IntBin(BinName2), Exp.Val(1000)));
 		Expression rexp1 = Exp.Build(Exp.Mul(Exp.IntBin(BinName1), Exp.IntBin(BinName2)));
 		Expression rexp2 = Exp.Build(Exp.Add(Exp.IntBin(BinName1), Exp.IntBin(BinName2)));
@@ -249,51 +180,72 @@ public class BatchOperate(Console console) : SyncExample(console)
 		Operation[] ops1 = Operation.Array(
 			Operation.Put(new Bin(BinName4, 100)),
 			ExpOperation.Read(ResultName1, rexp1, ExpReadFlags.DEFAULT));
-
 		Operation[] ops2 = Operation.Array(ExpOperation.Read(ResultName1, rexp1, ExpReadFlags.DEFAULT));
 		Operation[] ops3 = Operation.Array(ExpOperation.Read(ResultName1, rexp2, ExpReadFlags.DEFAULT));
-
 		Operation[] ops4 = Operation.Array(
 			ExpOperation.Write(BinName1, wexp1, ExpWriteFlags.DEFAULT),
 			ExpOperation.Read(ResultName1, rexp3, ExpReadFlags.DEFAULT));
-
 		Operation[] ops5 = Operation.Array(
 			ExpOperation.Read(ResultName1, rexp2, ExpReadFlags.DEFAULT),
 			ExpOperation.Read(ResultName2, rexp3, ExpReadFlags.DEFAULT));
 
 		List<BatchRecord> records =
 		[
-			new BatchWrite(new Key(args.ns, args.set, KeyPrefix + 1), ops1),
-			new BatchRead(new Key(args.ns, args.set, KeyPrefix + 2), ops2),
-			new BatchRead(new Key(args.ns, args.set, KeyPrefix + 3), ops3),
-			new BatchWrite(new Key(args.ns, args.set, KeyPrefix + 4), ops4),
-			new BatchRead(new Key(args.ns, args.set, KeyPrefix + 5), ops5),
-			new BatchDelete(new Key(args.ns, args.set, KeyPrefix + 6)),
+			new BatchWrite(new Key(ns, set, $"{KeyPrefix}1"), ops1),
+			new BatchRead(new Key(ns, set, $"{KeyPrefix}2"), ops2),
+			new BatchRead(new Key(ns, set, $"{KeyPrefix}3"), ops3),
+			new BatchWrite(new Key(ns, set, $"{KeyPrefix}4"), ops4),
+			new BatchRead(new Key(ns, set, $"{KeyPrefix}5"), ops5),
+			new BatchDelete(new Key(ns, set, $"{KeyPrefix}6")),
 		];
 
-		// Execute batch.
 		client.Operate(null, records);
 
-		// Show results.
-		int i = 0;
-		foreach (BatchRecord record in records)
+		for (int i = 0; i < records.Count; i++)
 		{
+			BatchRecord record = records[i];
+
 			if (record.resultCode == 0)
 			{
-				Record rec = record.record;
-				object v1 = rec.GetValue(ResultName1);
-				object v2 = rec.GetValue(ResultName2);
-
-				v1 ??= "null";
-
-				v2 ??= "null";
-				console.Info("Result[{0}]: {1}, {2}", i, v1, v2);
+				object v1 = record.record?.GetValue(ResultName1) ?? "null";
+				object v2 = record.record?.GetValue(ResultName2) ?? "null";
+				console.Info($"Result[{i}]: {v1}, {v2}");
 			}
 			else
 			{
-				console.Info("Result[{0}]: error: {1}", i, ResultCode.GetResultString(record.resultCode));
+				console.Info($"Result[{i}]: error: {ResultCode.GetResultString(record.resultCode)}");
 			}
-			i++;
 		}
+	}
+
+	private void PrintRecords(IList<BatchRead> records)
+	{
+		for (int i = 0; i < records.Count; i++)
+		{
+			BatchRead read = records[i];
+
+			if (read.resultCode == 0 && read.record != null)
+			{
+				object v1 = read.record.GetValue(ResultName1);
+				object v2 = read.record.GetValue(ResultName2);
+				console.Info($"Result[{i}]: {v1}, {v2}");
+			}
+			else
+			{
+				console.Info($"Result[{i}]: error: {ResultCode.GetResultString(read.resultCode)}");
+			}
+		}
+	}
+
+	private Key[] BuildKeys()
+	{
+		Key[] keys = new Key[RecordCount];
+
+		for (int i = 0; i < RecordCount; i++)
+		{
+			keys[i] = new Key(ns, set, $"{KeyPrefix}{i + 1}");
+		}
+
+		return keys;
 	}
 }

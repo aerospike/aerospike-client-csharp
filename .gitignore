@@ -20,3 +20,6 @@ tools/
 # DocFX generated output
 _site/
 api/
+
+# Metrics logs emitted by examples and tests
+metrics-*.log

@@ -1,4 +1,4 @@
-/* 
+/*
  * Copyright 2012-2026 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
@@ -15,73 +15,18 @@
  * the License.
  */
 using Aerospike.Client;
+using System.Globalization;
 using System.Xml.Linq;
 
 namespace Aerospike.Example;
 
-public class Program
+public static class Program
 {
-	private static readonly string[] ExampleNames =
-	{
-		"Connect",
-		"ServerInfo",
-		"PutGet",
-		"Exists",
-		"Delete",
-		"Replace",
-		"Add",
-		"Append",
-		"Prepend",
-		"Batch",
-		"BatchOperate",
-		"Generation",
-		"Expire",
-		"Touch",
-		"Transaction",
-		"Operate",
-		"OperateBit",
-		"OperateList",
-		"OperateMap",
-		"DeleteBin",
-		"GetAndJoin",
-		"ScanParallel",
-		"ScanSeries",
-		"ScanPage",
-		"ScanResume",
-		"ListMap",
-		"UserDefinedFunction",
-		"QueryInteger",
-		"QueryString",
-		"QueryList",
-		"QueryRegion",
-		"QueryRegionFilter",
-		"QueryFilter",
-		"QueryExp",
-		"QueryPage",
-		"QueryResume",
-		"QuerySum",
-		"QueryAverage",
-		"QueryExecute",
-		"QueryGeoCollection",
-		"QueryOpsProjection",
-		"PathExpression",
-		"PathExpressionEnhanced",
-		"AsyncPutGet",
-		"AsyncBatch",
-		"AsyncScan",
-		"AsyncScanPage",
-		"AsyncTransaction",
-		"AsyncTransactionWithTask",
-		"AsyncQuery",
-		"AsyncUserDefinedFunction",
-		"Get"
-	};
-
-	static int Main(string[] args)
+	public static int Main(string[] args)
 	{
 		try
 		{
-			var arguments = ParseArguments(args);
+			Arguments arguments = ParseArguments(args);
 
 			if (arguments == null)
 			{
@@ -94,8 +39,13 @@ public class Program
 				return 1;
 			}
 
-			var console = new Console();
-			var results = RunExamples(console, arguments);
+			Console console = new();
+			List<ExampleResultInfo> results = RunExamples(console, arguments);
+			if (!string.IsNullOrEmpty(arguments.reportTrxPath))
+			{
+				WriteTrxReport(arguments.reportTrxPath, results);
+			}
+
 			return PrintSummary(results);
 		}
 		catch (Exception ex)
@@ -114,7 +64,7 @@ public class Program
 			return null;
 		}
 
-		// Defaults
+		// Defaults.
 		string host = "127.0.0.1";
 		int port = 3000;
 		string ns = "test";
@@ -133,14 +83,11 @@ public class Program
 		bool debug = false;
 		int commandMax = 40;
 		string settingsPath = null;
+		string reportTrxPath = null;
 		List<string> exampleNames = [];
+		HashSet<string> cliOverrides = new(StringComparer.OrdinalIgnoreCase);
 
-		// Track which values were explicitly set on the command line
-		HashSet<string> cliOverrides = [];
-
-		int i = 0;
-
-		while (i < args.Length)
+		for (int i = 0; i < args.Length; i++)
 		{
 			string arg = args[i];
 
@@ -148,54 +95,50 @@ public class Program
 			{
 				case "-h":
 				case "--host":
-					if (++i >= args.Length) { PrintUsage(); return null; }
-					host = args[i];
+					if (!TryNext(args, ref i, out host)) { PrintUsage(); return null; }
 					cliOverrides.Add("Host");
 					break;
 
 				case "-p":
 				case "--port":
-					if (++i >= args.Length) { PrintUsage(); return null; }
-					port = int.Parse(args[i]);
+					if (!TryNext(args, ref i, out string portText) || !int.TryParse(portText, NumberStyles.Integer, CultureInfo.InvariantCulture, out port))
+					{
+						PrintUsage(); return null;
+					}
 					cliOverrides.Add("Port");
 					break;
 
 				case "-U":
 				case "--user":
-					if (++i >= args.Length) { PrintUsage(); return null; }
-					user = args[i];
+					if (!TryNext(args, ref i, out user)) { PrintUsage(); return null; }
 					cliOverrides.Add("User");
 					break;
 
 				case "-P":
 				case "--password":
-					if (++i >= args.Length) { PrintUsage(); return null; }
-					password = args[i];
+					if (!TryNext(args, ref i, out password)) { PrintUsage(); return null; }
 					cliOverrides.Add("Password");
 					break;
 
 				case "-n":
 				case "--namespace":
-					if (++i >= args.Length) { PrintUsage(); return null; }
-					ns = args[i];
+					if (!TryNext(args, ref i, out ns)) { PrintUsage(); return null; }
 					cliOverrides.Add("Namespace");
 					break;
 
 				case "-s":
 				case "--set":
-					if (++i >= args.Length) { PrintUsage(); return null; }
-					set = args[i];
+					if (!TryNext(args, ref i, out set)) { PrintUsage(); return null; }
 					if (set.Equals("empty", StringComparison.OrdinalIgnoreCase))
 					{
-						set = "";
+						set = string.Empty;
 					}
 					cliOverrides.Add("Set");
 					break;
 
 				case "-c":
 				case "--clusterName":
-					if (++i >= args.Length) { PrintUsage(); return null; }
-					clusterName = args[i];
+					if (!TryNext(args, ref i, out clusterName)) { PrintUsage(); return null; }
 					cliOverrides.Add("ClusterName");
 					break;
 
@@ -206,26 +149,22 @@ public class Program
 					break;
 
 				case "--tlsName":
-					if (++i >= args.Length) { PrintUsage(); return null; }
-					tlsName = args[i];
+					if (!TryNext(args, ref i, out tlsName)) { PrintUsage(); return null; }
 					cliOverrides.Add("TlsName");
 					break;
 
 				case "--tlsProtocols":
-					if (++i >= args.Length) { PrintUsage(); return null; }
-					tlsProtocols = args[i];
+					if (!TryNext(args, ref i, out tlsProtocols)) { PrintUsage(); return null; }
 					cliOverrides.Add("TlsProtocols");
 					break;
 
 				case "--tlsRevoke":
-					if (++i >= args.Length) { PrintUsage(); return null; }
-					tlsRevoke = args[i];
+					if (!TryNext(args, ref i, out tlsRevoke)) { PrintUsage(); return null; }
 					cliOverrides.Add("TlsRevoke");
 					break;
 
 				case "--tlsClientCertFile":
-					if (++i >= args.Length) { PrintUsage(); return null; }
-					tlsClientCertFile = args[i];
+					if (!TryNext(args, ref i, out tlsClientCertFile)) { PrintUsage(); return null; }
 					cliOverrides.Add("TlsClientCertFile");
 					break;
 
@@ -235,8 +174,10 @@ public class Program
 					break;
 
 				case "--auth":
-					if (++i >= args.Length) { PrintUsage(); return null; }
-					authMode = (AuthMode)Enum.Parse(typeof(AuthMode), args[i], true);
+					if (!TryNext(args, ref i, out string authText) || !Enum.TryParse(authText, ignoreCase: true, out authMode))
+					{
+						PrintUsage(); return null;
+					}
 					cliOverrides.Add("AuthMode");
 					break;
 
@@ -246,13 +187,18 @@ public class Program
 					break;
 
 				case "--commandMax":
-					if (++i >= args.Length) { PrintUsage(); return null; }
-					commandMax = int.Parse(args[i]);
+					if (!TryNext(args, ref i, out string commandMaxText) || !int.TryParse(commandMaxText, NumberStyles.Integer, CultureInfo.InvariantCulture, out commandMax))
+					{
+						PrintUsage(); return null;
+					}
 					break;
 
 				case "--settings":
-					if (++i >= args.Length) { PrintUsage(); return null; }
-					settingsPath = args[i];
+					if (!TryNext(args, ref i, out settingsPath)) { PrintUsage(); return null; }
+					break;
+
+				case "--report-trx":
+					if (!TryNext(args, ref i, out reportTrxPath)) { PrintUsage(); return null; }
 					break;
 
 				case "-d":
@@ -270,73 +216,53 @@ public class Program
 					exampleNames.Add(arg);
 					break;
 			}
-			i++;
 		}
 
-		// Load .runsettings if specified -- values are used as defaults
-		// that CLI args override.
+		// .runsettings values fill in anything the CLI didn't override.
 		if (settingsPath != null)
 		{
-			var settings = LoadRunSettings(settingsPath);
+			Dictionary<string, string> settings = LoadRunSettings(settingsPath);
 
-			if (!cliOverrides.Contains("Host") && settings.TryGetValue("Host", out string h) && !string.IsNullOrEmpty(h))
-				host = h;
-			if (!cliOverrides.Contains("Port") && settings.TryGetValue("Port", out string p))
-				port = int.Parse(p);
-			if (!cliOverrides.Contains("Namespace") && settings.TryGetValue("Namespace", out string n))
-				ns = n;
-			if (!cliOverrides.Contains("Set") && settings.TryGetValue("Set", out string s))
-				set = s;
-			if (!cliOverrides.Contains("User") && settings.TryGetValue("User", out string u) && !string.IsNullOrEmpty(u))
-				user = u;
-			if (!cliOverrides.Contains("Password") && settings.TryGetValue("Password", out string pw) && !string.IsNullOrEmpty(pw))
-				password = pw;
-			if (!cliOverrides.Contains("ClusterName") && settings.TryGetValue("ClusterName", out string cn) && !string.IsNullOrEmpty(cn))
-				clusterName = cn;
-			if (!cliOverrides.Contains("AuthMode") && settings.TryGetValue("AuthMode", out string am) && !string.IsNullOrEmpty(am))
-				authMode = (AuthMode)Enum.Parse(typeof(AuthMode), am, true);
-			if (!cliOverrides.Contains("UseServicesAlternate") && settings.TryGetValue("UseServicesAlternate", out string usa))
-				useServicesAlternate = bool.Parse(usa);
-
-			if (!cliOverrides.Contains("TlsEnable") && settings.TryGetValue("TlsEnable", out string te))
-				tlsEnable = bool.Parse(te);
-			if (!cliOverrides.Contains("TlsName") && settings.TryGetValue("TlsName", out string tn) && !string.IsNullOrEmpty(tn))
-				tlsName = tn;
-			if (!cliOverrides.Contains("TlsProtocols") && settings.TryGetValue("TlsProtocols", out string tp) && !string.IsNullOrEmpty(tp))
-				tlsProtocols = tp;
-			if (!cliOverrides.Contains("TlsRevoke") && settings.TryGetValue("TlsRevoke", out string tr) && !string.IsNullOrEmpty(tr))
-				tlsRevoke = tr;
-			if (!cliOverrides.Contains("TlsClientCertFile") && settings.TryGetValue("TlsClientCertFile", out string tcf) && !string.IsNullOrEmpty(tcf))
-				tlsClientCertFile = tcf;
-			if (!cliOverrides.Contains("TlsLoginOnly") && settings.TryGetValue("TlsLoginOnly", out string tlo))
-				tlsLoginOnly = bool.Parse(tlo);
-		}
-
-		// Expand "all"
-		for (int j = 0; j < exampleNames.Count; j++)
-		{
-			if (exampleNames[j].Equals("all", StringComparison.OrdinalIgnoreCase))
+			void Apply(string key, Action<string> setter)
 			{
-				exampleNames = new List<string>(ExampleNames);
-				break;
+				if (!cliOverrides.Contains(key) &&
+					settings.TryGetValue(key, out string value) &&
+					!string.IsNullOrEmpty(value))
+				{
+					setter(value);
+				}
 			}
+
+			Apply("Host", v => host = v);
+			Apply("Port", v => port = int.Parse(v, CultureInfo.InvariantCulture));
+			Apply("Namespace", v => ns = v);
+			Apply("Set", v => set = v);
+			Apply("User", v => user = v);
+			Apply("Password", v => password = v);
+			Apply("ClusterName", v => clusterName = v);
+			Apply("AuthMode", v => authMode = Enum.Parse<AuthMode>(v, ignoreCase: true));
+			Apply("UseServicesAlternate", v => useServicesAlternate = bool.Parse(v));
+			Apply("TlsEnable", v => tlsEnable = bool.Parse(v));
+			Apply("TlsName", v => tlsName = v);
+			Apply("TlsProtocols", v => tlsProtocols = v);
+			Apply("TlsRevoke", v => tlsRevoke = v);
+			Apply("TlsClientCertFile", v => tlsClientCertFile = v);
+			Apply("TlsLoginOnly", v => tlsLoginOnly = bool.Parse(v));
 		}
 
-		TlsPolicy tlsPolicy = null;
-
-		if (tlsEnable)
+		// Expand "all".
+		if (exampleNames.Any(name => name.Equals("all", StringComparison.OrdinalIgnoreCase)))
 		{
-			tlsPolicy = new TlsPolicy(
-				tlsProtocols,
-				tlsRevoke,
-				tlsClientCertFile,
-				tlsLoginOnly
-			);
+			exampleNames = [.. ExampleRegistry.Names];
 		}
+
+		TlsPolicy tlsPolicy = tlsEnable
+			? new TlsPolicy(tlsProtocols, tlsRevoke, tlsClientCertFile, tlsLoginOnly)
+			: null;
 
 		Log.SetLevel(debug ? Log.Level.DEBUG : Log.Level.INFO);
 
-		var arguments = new Arguments()
+		Arguments arguments = new()
 		{
 			hosts = Host.ParseHosts(host, tlsName, port),
 			port = port,
@@ -348,23 +274,44 @@ public class Program
 			tlsPolicy = tlsPolicy,
 			authMode = authMode,
 			useServicesAlternate = useServicesAlternate,
-			commandMax = commandMax
+			commandMax = commandMax,
+			reportTrxPath = reportTrxPath
 		};
 
-		// Split examples into sync and async lists
+		// Route each requested example to the correct runner based on registry metadata.
 		foreach (string name in exampleNames)
 		{
-			if (name.StartsWith("Async", StringComparison.OrdinalIgnoreCase))
+			if (ExampleRegistry.TryGet(name, out ExampleDefinition definition))
 			{
-				arguments.asyncExamples.Add(name);
+				if (definition.IsAsync)
+				{
+					arguments.asyncExamples.Add(definition.Name);
+				}
+				else
+				{
+					arguments.syncExamples.Add(definition.Name);
+				}
 			}
 			else
 			{
-				arguments.syncExamples.Add(name);
+				System.Console.Error.WriteLine($"Unknown example: {name}");
+				return null;
 			}
 		}
 
 		return arguments;
+	}
+
+	private static bool TryNext(string[] args, ref int i, out string value)
+	{
+		if (++i >= args.Length)
+		{
+			value = null;
+			return false;
+		}
+
+		value = args[i];
+		return true;
 	}
 
 	/// <summary>
@@ -372,29 +319,28 @@ public class Program
 	/// </summary>
 	private static Dictionary<string, string> LoadRunSettings(string path)
 	{
-		var settings = new Dictionary<string, string>();
-
 		if (!File.Exists(path))
 		{
 			throw new FileNotFoundException($"Settings file not found: {path}");
 		}
 
-		var doc = XDocument.Load(path);
-		var testRunParams = doc.Descendants("TestRunParameters").FirstOrDefault();
+		Dictionary<string, string> settings = new(StringComparer.OrdinalIgnoreCase);
+		XDocument doc = XDocument.Load(path);
+		XElement testRunParams = doc.Descendants("TestRunParameters").FirstOrDefault();
 
 		if (testRunParams == null)
 		{
 			return settings;
 		}
 
-		foreach (var param in testRunParams.Elements("Parameter"))
+		foreach (XElement param in testRunParams.Elements("Parameter"))
 		{
 			string name = param.Attribute("name")?.Value;
 			string value = param.Attribute("value")?.Value;
 
 			if (name != null)
 			{
-				settings[name] = value ?? "";
+				settings[name] = value ?? string.Empty;
 			}
 		}
 
@@ -403,7 +349,7 @@ public class Program
 
 	private static List<ExampleResultInfo> RunExamples(Console console, Arguments args)
 	{
-		var results = new List<ExampleResultInfo>();
+		List<ExampleResultInfo> results = [];
 
 		if (args.syncExamples.Count > 0)
 		{
@@ -423,7 +369,7 @@ public class Program
 		int passed = 0;
 		int skipped = 0;
 		int failed = 0;
-		var nonPassed = new List<ExampleResultInfo>();
+		List<ExampleResultInfo> nonPassed = [];
 
 		foreach (ExampleResultInfo result in results)
 		{
@@ -453,9 +399,134 @@ public class Program
 		}
 
 		System.Console.WriteLine();
-
 		return failed > 0 ? 1 : 0;
 	}
+
+	private static void WriteTrxReport(string path, List<ExampleResultInfo> results)
+	{
+		string fullPath = Path.GetFullPath(path);
+		string directory = Path.GetDirectoryName(fullPath);
+		if (!string.IsNullOrEmpty(directory))
+		{
+			Directory.CreateDirectory(directory);
+		}
+
+		XNamespace ns = "http://microsoft.com/schemas/VisualStudio/TeamTest/2010";
+		DateTimeOffset finish = DateTimeOffset.UtcNow;
+		TimeSpan totalDuration = TimeSpan.FromTicks(results.Sum(result => result.Duration.Ticks));
+		DateTimeOffset start = finish - totalDuration;
+		Guid runId = Guid.NewGuid();
+		Guid resultsListId = Guid.Parse("19431567-8539-422a-85d7-44ee4e166bda");
+		Guid allResultsListId = Guid.Parse("8c43106b-9dc1-4907-a29f-aa66a61bf5b6");
+		var testCases = results.Select(result => new
+		{
+			Result = result,
+			TestId = Guid.NewGuid(),
+			ExecutionId = Guid.NewGuid()
+		}).ToList();
+
+		XElement testRun = new(ns + "TestRun",
+			new XAttribute("id", runId),
+			new XAttribute("name", $"AerospikeExample {finish:yyyy-MM-dd HH:mm:ss}"),
+			new XAttribute("runUser", Environment.UserName),
+			new XElement(ns + "Times",
+				new XAttribute("creation", ToTrxDate(start)),
+				new XAttribute("queuing", ToTrxDate(start)),
+				new XAttribute("start", ToTrxDate(start)),
+				new XAttribute("finish", ToTrxDate(finish))),
+			new XElement(ns + "Results",
+				testCases.Select(testCase => CreateUnitTestResult(ns, testCase.Result, testCase.TestId, testCase.ExecutionId, finish))),
+			new XElement(ns + "TestDefinitions",
+				testCases.Select(testCase => new XElement(ns + "UnitTest",
+					new XAttribute("name", testCase.Result.Name),
+					new XAttribute("storage", "AerospikeExample.dll"),
+					new XAttribute("id", testCase.TestId),
+					new XElement(ns + "Execution", new XAttribute("id", testCase.ExecutionId)),
+					new XElement(ns + "TestMethod",
+						new XAttribute("codeBase", "AerospikeExample.dll"),
+						new XAttribute("adapterTypeName", "executor://aerospike.example"),
+						new XAttribute("className", "Aerospike.Example"),
+						new XAttribute("name", testCase.Result.Name))))),
+			new XElement(ns + "TestLists",
+				new XElement(ns + "TestList",
+					new XAttribute("name", "Results Not in a List"),
+					new XAttribute("id", resultsListId)),
+				new XElement(ns + "TestList",
+					new XAttribute("name", "All Loaded Results"),
+					new XAttribute("id", allResultsListId))),
+			new XElement(ns + "TestEntries",
+				testCases.Select(testCase => new XElement(ns + "TestEntry",
+					new XAttribute("testId", testCase.TestId),
+					new XAttribute("executionId", testCase.ExecutionId),
+					new XAttribute("testListId", resultsListId)))),
+			new XElement(ns + "ResultSummary",
+				new XAttribute("outcome", results.Any(result => result.Result == ExampleResult.Failed) ? "Failed" : "Completed"),
+				CreateCounters(ns, results)));
+
+		new XDocument(new XDeclaration("1.0", "utf-8", "no"), testRun)
+			.Save(fullPath, SaveOptions.None);
+
+		System.Console.WriteLine($"TRX report written to {fullPath}");
+	}
+
+	private static XElement CreateUnitTestResult(XNamespace ns, ExampleResultInfo result, Guid testId, Guid executionId, DateTimeOffset finish)
+	{
+		DateTimeOffset start = finish - result.Duration;
+		XElement element = new(ns + "UnitTestResult",
+			new XAttribute("executionId", executionId),
+			new XAttribute("testId", testId),
+			new XAttribute("testName", result.Name),
+			new XAttribute("computerName", Environment.MachineName),
+			new XAttribute("duration", result.Duration.ToString(@"hh\:mm\:ss\.fffffff", CultureInfo.InvariantCulture)),
+			new XAttribute("startTime", ToTrxDate(start)),
+			new XAttribute("endTime", ToTrxDate(finish)),
+			new XAttribute("outcome", ToTrxOutcome(result.Result)));
+
+		if (!string.IsNullOrEmpty(result.Message))
+		{
+			element.Add(new XElement(ns + "Output",
+				new XElement(ns + "ErrorInfo",
+					new XElement(ns + "Message", result.Message))));
+		}
+
+		return element;
+	}
+
+	private static XElement CreateCounters(XNamespace ns, List<ExampleResultInfo> results)
+	{
+		int passed = results.Count(result => result.Result == ExampleResult.Passed);
+		int failed = results.Count(result => result.Result == ExampleResult.Failed);
+		int skipped = results.Count(result => result.Result == ExampleResult.Skipped);
+
+		return new XElement(ns + "Counters",
+			new XAttribute("total", results.Count),
+			new XAttribute("executed", passed + failed),
+			new XAttribute("passed", passed),
+			new XAttribute("failed", failed),
+			new XAttribute("error", 0),
+			new XAttribute("timeout", 0),
+			new XAttribute("aborted", 0),
+			new XAttribute("inconclusive", 0),
+			new XAttribute("passedButRunAborted", 0),
+			new XAttribute("notRunnable", 0),
+			new XAttribute("notExecuted", skipped),
+			new XAttribute("disconnected", 0),
+			new XAttribute("warning", 0),
+			new XAttribute("completed", passed + failed),
+			new XAttribute("inProgress", 0),
+			new XAttribute("pending", 0));
+	}
+
+	private static string ToTrxOutcome(ExampleResult result) => result switch
+	{
+		ExampleResult.Passed => "Passed",
+		ExampleResult.Skipped => "NotExecuted",
+		ExampleResult.Failed => "Failed",
+		_ => "Error"
+	};
+
+	private static string ToTrxDate(DateTimeOffset value)
+		=> value.UtcDateTime.ToString("o", CultureInfo.InvariantCulture);
 
 	private static void PrintUsage()
 	{
@@ -477,18 +548,18 @@ public class Program
 			"       --tlsRevoke <list>       Revoke certificates by serial number\n" +
 			"       --tlsClientCertFile <f>  TLS client certificate file\n" +
 			"       --tlsLoginOnly           Use TLS on login only\n" +
-			"       --auth <mode>            Authentication mode: " + string.Join(", ", Enum.GetNames(typeof(AuthMode))) + "\n" +
+			$"       --auth <mode>            Authentication mode: {string.Join(", ", Enum.GetNames<AuthMode>())}\n" +
 			"       --useServicesAlternate   Use services-alternate for cluster discovery\n" +
 			"       --commandMax <n>         Max async commands in process (default: 40)\n" +
 			"       --settings <path>        Load configuration from a .runsettings file\n" +
+			"       --report-trx <path>      Write example results to a TRX report\n" +
 			"  -d,  --debug                  Run in debug mode\n" +
 			"  -u,  --usage, --help          Print usage\n\n" +
-			"Examples:\n"
-		);
+			"Examples:\n");
 
-		foreach (string name in ExampleNames)
+		foreach (string name in ExampleRegistry.Names)
 		{
-			System.Console.WriteLine("  " + name);
+			System.Console.WriteLine($"  {name}");
 		}
 
 		System.Console.WriteLine();

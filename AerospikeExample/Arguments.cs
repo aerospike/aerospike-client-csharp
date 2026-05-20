@@ -1,4 +1,4 @@
-/* 
+/*
  * Copyright 2012-2026 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
@@ -15,108 +15,91 @@
  * the License.
  */
 using Aerospike.Client;
-using System;
-using System.Collections.Generic;
 
-namespace Aerospike.Example
+namespace Aerospike.Example;
+
+/// <summary>
+/// Configuration data populated from command-line arguments and/or .runsettings,
+/// then enriched with server-specific information after connecting.
+/// </summary>
+/// <remarks>
+/// Field naming mirrors the Aerospike client's public field convention so the
+/// snippets in this project read naturally next to client API surface.
+/// </remarks>
+public sealed class Arguments
 {
+	// Connection parameters (populated by Program.cs).
+	public Host[] hosts;
+	public int port;
+	public string user;
+	public string password;
+	public string clusterName;
+	public string ns;
+	public string set;
+	public TlsPolicy tlsPolicy;
+	public AuthMode authMode;
+	public bool useServicesAlternate;
+	public int commandMax;
+
+	// Example lists (populated by Program.cs).
+	public List<string> syncExamples = [];
+	public List<string> asyncExamples = [];
+	public string reportTrxPath;
+
+	// Policies (populated after client connection).
+	public WritePolicy writePolicy;
+	public Policy policy;
+	public BatchPolicy batchPolicy;
+
+	// Server capabilities (populated by SetServerSpecific).
+	public bool enterprise;
+	public bool scMode;
+	public Version serverVersion;
+
 	/// <summary>
-	/// Configuration data populated from command-line arguments and/or .runsettings,
-	/// then enriched with server-specific information after connecting.
+	/// Query the server after connecting to discover edition, namespace
+	/// configuration, and server version.
 	/// </summary>
-	public class Arguments
+	public void SetServerSpecific(IAerospikeClient client)
 	{
-		// Connection parameters (populated by Program.cs)
-		public Host[] hosts;
-		public int port;
-		public string user;
-		public string password;
-		public string clusterName;
-		public string ns;
-		public string set;
-		public TlsPolicy tlsPolicy;
-		public AuthMode authMode;
-		public bool useServicesAlternate;
-		public int commandMax;
+		Node node = client.Nodes[0];
+		serverVersion = node.serverVersion;
 
-		// Example lists (populated by Program.cs)
-		public List<string> syncExamples = [];
-		public List<string> asyncExamples = [];
+		string editionFilter = serverVersion >= Node.SERVER_VERSION_8_1_1 ? "release" : "edition";
+		string namespaceFilter = $"namespace/{ns}";
+		Dictionary<string, string> map = Info.Request(null, node, editionFilter, namespaceFilter);
 
-		// Policies (populated after client connection)
-		public WritePolicy writePolicy;
-		public Policy policy;
-		public BatchPolicy batchPolicy;
+		string editionToken = map[editionFilter]
+			?? throw new Exception($"Failed to get edition: host={node}");
+		enterprise = editionToken.Contains("Enterprise");
 
-		// Server capabilities (populated by SetServerSpecific)
-		public string binName;
-		public bool singleBin;
-		public bool enterprise;
-		public bool scMode;
-		public Version serverVersion;
-
-		public Arguments()
-		{
-			writePolicy = new WritePolicy();
-			policy = new Policy();
-			batchPolicy = new BatchPolicy();
-		}
-
-		/// <summary>
-		/// Query the server after connecting to discover edition, namespace
-		/// configuration, and server version.
-		/// </summary>
-		public void SetServerSpecific(IAerospikeClient client)
-		{
-			Node node = client.Nodes[0];
-			serverVersion = node.serverVersion;
-
-			string editionFilter = serverVersion >= Node.SERVER_VERSION_8_1_1 ? "release" : "edition";
-			string namespaceFilter = "namespace/" + ns;
-			Dictionary<string, string> map = Info.Request(null, node, editionFilter, namespaceFilter);
-
-			string editionToken = map[editionFilter]
-				?? throw new Exception($"Failed to get edition: host={node}");
-			enterprise = editionToken.Contains("Enterprise");
-
-			string namespaceTokens = map[namespaceFilter]
-				?? throw new Exception($"Failed to get namespace info: host={node} namespace={ns}");
-			singleBin = ParseBoolean(namespaceTokens, "single-bin");
-			scMode = ParseBoolean(namespaceTokens, "strong-consistency");
-
-			binName = singleBin ? "" : "demobin";
-		}
-
-		private static bool ParseBoolean(string namespaceTokens, string name)
-		{
-			string search = name + '=';
-			int begin = namespaceTokens.IndexOf(search);
-
-			if (begin < 0)
-			{
-				return false;
-			}
-
-			begin += search.Length;
-			int end = namespaceTokens.IndexOf(';', begin);
-
-			if (end < 0)
-			{
-				end = namespaceTokens.Length;
-			}
-
-			string value = namespaceTokens[begin..end];
-			return Convert.ToBoolean(value);
-		}
-
-		public override string ToString()
-		{
-			return $"Arguments: hosts={Util.ArrayToString(hosts)} port={port} ns={ns} set={set} single-bin={singleBin}";
-		}
-
-		public string GetBinName(string name)
-		{
-			return singleBin ? "" : name;
-		}
+		string namespaceTokens = map[namespaceFilter]
+			?? throw new Exception($"Failed to get namespace info: host={node} namespace={ns}");
+		scMode = ParseFlag(namespaceTokens, "strong-consistency");
 	}
+
+	private static bool ParseFlag(string namespaceTokens, string name)
+	{
+		string search = $"{name}=";
+		int begin = namespaceTokens.IndexOf(search, StringComparison.Ordinal);
+
+		if (begin < 0)
+		{
+			return false;
+		}
+
+		begin += search.Length;
+		int end = namespaceTokens.IndexOf(';', begin);
+
+		if (end < 0)
+		{
+			end = namespaceTokens.Length;
+		}
+
+		ReadOnlySpan<char> value = namespaceTokens.AsSpan(begin, end - begin);
+		return bool.TryParse(value, out bool result) && result;
+	}
+
+	public override string ToString()
+		=> $"Arguments: hosts={Util.ArrayToString(hosts)} port={port} ns={ns} set={set}";
 }

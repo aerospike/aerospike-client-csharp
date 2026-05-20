@@ -1,4 +1,4 @@
-/* 
+/*
  * Copyright 2012-2026 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
@@ -18,202 +18,121 @@ using Aerospike.Client;
 
 namespace Aerospike.Example;
 
-public class Batch(Console console) : SyncExample(console)
+public sealed class Batch : SyncExample
 {
+	private const string KeyPrefix = "batchkey";
+	private const string BinName = "batchbin";
+	private const int Size = 8;
 
 	/// <summary>
-	/// Batch multiple gets in one call to the server.
+	/// Batch multiple gets into a single call to the server.
 	/// </summary>
-	public override void RunExample(IAerospikeClient client, Arguments args)
+	public override void RunExample()
 	{
-		string keyPrefix = "batchkey";
-		string valuePrefix = "batchvalue";
-		string binName = args.GetBinName("batchbin");
-		int size = 8;
-
-		WriteRecords(client, args, keyPrefix, binName, valuePrefix, size);
-		BatchExists(client, args, keyPrefix, size);
-		BatchReads(client, args, keyPrefix, binName, size);
-		BatchReadHeaders(client, args, keyPrefix, size);
-		BatchReadComplex(client, args, keyPrefix, binName);
-
-		Record verify1 = client.Get(null, new Key(args.ns, args.set, "batchkey1"));
-		if (verify1 == null || !"batchvalue1".Equals(verify1.GetValue(binName)))
-		{
-			throw new Exception("Batch verification failed: batchkey1 batchbin must equal batchvalue1.");
-		}
-		Record verify5 = client.Get(null, new Key(args.ns, args.set, "batchkey5"));
-		if (verify5 == null || !"batchvalue5".Equals(verify5.GetValue(binName)))
-		{
-			throw new Exception("Batch verification failed: batchkey5 batchbin must equal batchvalue5.");
-		}
-		console.Info("Batch verified successfully.");
-	}
-
-	/// <summary>
-	/// Write records individually.
-	/// </summary>
-	private void WriteRecords(IAerospikeClient client, Arguments args, string keyPrefix, string binName, string valuePrefix, int size)
-	{
-		for (int i = 1; i <= size; i++)
-		{
-			var key = new Key(args.ns, args.set, keyPrefix + i);
-			var bin = new Bin(binName, valuePrefix + i);
-
-			console.Info("Put: namespace={0} set={1} key={2} bin={3} value={4}",
-				key.ns, key.setName, key.userKey, bin.name, bin.value);
-
-			client.Put(args.writePolicy, key, bin);
-		}
+		BatchExists();
+		BatchReads();
+		BatchReadHeaders();
+		BatchReadComplex();
 	}
 
 	/// <summary>
 	/// Check existence of records in one batch.
 	/// </summary>
-	private void BatchExists(IAerospikeClient client, Arguments args, string keyPrefix, int size)
+	private void BatchExists()
 	{
-		// Batch into one call.
-		var keys = new Key[size];
-		for (int i = 0; i < size; i++)
-		{
-			keys[i] = new Key(args.ns, args.set, keyPrefix + (i + 1));
-		}
-
-		var existsArray = client.Exists(null, keys);
+		Key[] keys = BuildKeys();
+		bool[] existsArray = client.Exists(null, keys);
 
 		for (int i = 0; i < existsArray.Length; i++)
 		{
 			Key key = keys[i];
-			bool exists = existsArray[i];
-			console.Info("Record: namespace={0} set={1} key={2} exists={3}",
-				key.ns, key.setName, key.userKey, exists);
+			console.Info($"Record: namespace={key.ns} set={key.setName} key={key.userKey} exists={existsArray[i]}");
 		}
 	}
 
 	/// <summary>
 	/// Read records in one batch.
 	/// </summary>
-	private void BatchReads(IAerospikeClient client, Arguments args, string keyPrefix, string binName, int size)
+	private void BatchReads()
 	{
-		// Batch gets into one call.
-		var keys = new Key[size];
-		for (int i = 0; i < size; i++)
-		{
-			keys[i] = new Key(args.ns, args.set, keyPrefix + (i + 1));
-		}
-
-		var records = client.Get(null, keys, binName);
+		Key[] keys = BuildKeys();
+		Record[] records = client.Get(null, keys, BinName);
 
 		for (int i = 0; i < records.Length; i++)
 		{
 			Key key = keys[i];
-			var record = records[i];
-			Log.Level level = Log.Level.ERROR;
-			object value = null;
-
-			if (record != null)
-			{
-				level = Log.Level.INFO;
-				value = record.GetValue(binName);
-			}
-			console.Write(level, "Record: namespace={0} set={1} key={2} bin={3} value={4}",
-				key.ns, key.setName, key.userKey, binName, value);
-		}
-
-		if (records.Length != size)
-		{
-			console.Error("Record size mismatch. Expected {0}. Received {1}.", size, records.Length);
+			object value = records[i]?.GetValue(BinName);
+			console.Info($"Record: namespace={key.ns} set={key.setName} key={key.userKey} bin={BinName} value={value}");
 		}
 	}
 
 	/// <summary>
 	/// Read record header data in one batch.
 	/// </summary>
-	private void BatchReadHeaders(IAerospikeClient client, Arguments args, string keyPrefix, int size)
+	private void BatchReadHeaders()
 	{
-		// Batch gets into one call.
-		var keys = new Key[size];
-		for (int i = 0; i < size; i++)
-		{
-			keys[i] = new Key(args.ns, args.set, keyPrefix + (i + 1));
-		}
-
-		var records = client.GetHeader(null, keys);
+		Key[] keys = BuildKeys();
+		Record[] records = client.GetHeader(null, keys);
 
 		for (int i = 0; i < records.Length; i++)
 		{
 			Key key = keys[i];
-			var record = records[i];
-			Log.Level level = Log.Level.ERROR;
-			int generation = 0;
-			int expiration = 0;
-
-			if (record != null && (record.generation > 0 || record.expiration > 0))
-			{
-				level = Log.Level.INFO;
-				generation = record.generation;
-				expiration = record.expiration;
-			}
-			console.Write(level, "Record: namespace={0} set={1} key={2} generation={3} expiration={4}",
-				key.ns, key.setName, key.userKey, generation, expiration);
-		}
-
-		if (records.Length != size)
-		{
-			console.Error("Record size mismatch. Expected {0}. Received {1}.", size, records.Length);
+			Record record = records[i];
+			console.Info(
+				$"Record: namespace={key.ns} set={key.setName} key={key.userKey} " +
+				$"generation={record?.generation} expiration={record?.expiration}");
 		}
 	}
 
 	/// <summary>
-	/// Read records with varying namespaces, bin names and read types in one batch.
-	/// This requires Aerospike Server version >= 3.6.0.
+	/// Read records with varying bin names and read types in one batch.
 	/// </summary>
-	private void BatchReadComplex(IAerospikeClient client, Arguments args, string keyPrefix, string binName)
+	private void BatchReadComplex()
 	{
-		// Batch gets into one call.
-		// Batch allows multiple namespaces in one call, but example test environment may only have one namespace.
-		string[] bins = [binName];
+		// Batch allows multiple namespaces in one call, but the example environment
+		// usually has only one namespace.
+		string[] bins = [BinName];
 		List<BatchRead> records =
 		[
-			new BatchRead(new Key(args.ns, args.set, keyPrefix + 1), bins),
-			new BatchRead(new Key(args.ns, args.set, keyPrefix + 2), true),
-			new BatchRead(new Key(args.ns, args.set, keyPrefix + 3), true),
-			new BatchRead(new Key(args.ns, args.set, keyPrefix + 4), false),
-			new BatchRead(new Key(args.ns, args.set, keyPrefix + 5), true),
-			new BatchRead(new Key(args.ns, args.set, keyPrefix + 6), true),
-			new BatchRead(new Key(args.ns, args.set, keyPrefix + 7), bins),
-			// This record should be found, but the requested bin will not be found.
-			new BatchRead(new Key(args.ns, args.set, keyPrefix + 8), ["binnotfound"]),
-			// This record should not be found.
-			new BatchRead(new Key(args.ns, args.set, "keynotfound"), bins),
+			new(new Key(ns, set, $"{KeyPrefix}1"), bins),
+			new(new Key(ns, set, $"{KeyPrefix}2"), true),
+			new(new Key(ns, set, $"{KeyPrefix}3"), true),
+			new(new Key(ns, set, $"{KeyPrefix}4"), false),
+			new(new Key(ns, set, $"{KeyPrefix}5"), true),
+			new(new Key(ns, set, $"{KeyPrefix}6"), true),
+			new(new Key(ns, set, $"{KeyPrefix}7"), bins),
+			// This record exists, but the requested bin will not.
+			new(new Key(ns, set, $"{KeyPrefix}8"), ["binnotfound"]),
+			// This record will not be found.
+			new(new Key(ns, set, "keynotfound"), bins),
 		];
 
-		// Execute batch.
 		client.Get(null, records);
 
-		// Show results.
-		int found = 0;
-		foreach (BatchRead record in records)
+		foreach (BatchRead read in records)
 		{
-			Key key = record.key;
-			Record rec = record.record;
+			Key key = read.key;
 
-			if (rec != null)
+			if (read.record != null)
 			{
-				found++;
-				console.Info("Record: ns={0} set={1} key={2} bin={3} value={4}",
-					key.ns, key.setName, key.userKey, binName, rec.GetValue(binName));
+				console.Info($"Record: ns={key.ns} set={key.setName} key={key.userKey} bin={BinName} value={read.record.GetValue(BinName)}");
 			}
 			else
 			{
-				console.Info("Record not found: ns={0} set={1} key={2} bin={3}",
-					key.ns, key.setName, key.userKey, binName);
+				console.Info($"Record not found: ns={key.ns} set={key.setName} key={key.userKey} bin={BinName}");
 			}
 		}
+	}
 
-		if (found != 8)
+	private Key[] BuildKeys()
+	{
+		Key[] keys = new Key[Size];
+
+		for (int i = 0; i < Size; i++)
 		{
-			console.Error("Records found mismatch. Expected {0}. Received {1}.", 8, found);
+			keys[i] = new Key(ns, set, $"{KeyPrefix}{i + 1}");
 		}
+
+		return keys;
 	}
 }

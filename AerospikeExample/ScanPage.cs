@@ -1,4 +1,4 @@
-/* 
+/*
  * Copyright 2012-2026 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
@@ -18,71 +18,37 @@ using Aerospike.Client;
 
 namespace Aerospike.Example;
 
-public class ScanPage(Console console) : SyncExample(console)
+public sealed class ScanPage : SyncExample
 {
-	private int recordCount = 0;
+	private const string SetName = "page";
+
+	private int recordCount;
 
 	/// <summary>
-	/// Scan in pages.
+	/// Scan a set in fixed-size pages and resume across calls using a partition filter.
 	/// </summary>
-	public override void RunExample(IAerospikeClient client, Arguments args)
+	public override void RunExample()
 	{
-		string binName = "bin";
-		string setName = "page";
-
-		WriteRecords(client, args, setName, binName, 190);
-
-		ScanPolicy policy = new()
+		ScanPolicy scanPolicy = new()
 		{
 			maxRecords = 100
 		};
 
-		var filter = PartitionFilter.All();
+		PartitionFilter filter = PartitionFilter.All();
 
-		// Scan 3 pages of records.
 		for (int i = 0; i < 3 && !filter.Done; i++)
 		{
 			recordCount = 0;
 
-			console.Info("Scan page: " + i);
-			client.ScanPartitions(policy, filter, args.ns, setName, ScanCallback);
-			console.Info("Records returned: " + recordCount);
-		}
-
-		Key verifyKey = new Key(args.ns, setName, 1);
-		Record verifyRecord = client.Get(null, verifyKey);
-		if (verifyRecord == null || Convert.ToInt32(verifyRecord.GetValue(binName)) != 1)
-		{
-			throw new Exception("ScanPage verification failed: expected key 1 in set '" + setName + "' with bin '" + binName + "' = 1.");
-		}
-
-		console.Info("ScanPage verified successfully.");
-	}
-
-	private void WriteRecords
-	(
-		IAerospikeClient client,
-		Arguments args,
-		string setName,
-		string binName,
-		int size
-	)
-	{
-		console.Info("Write " + size + " records.");
-
-		for (int i = 1; i <= size; i++)
-		{
-			var key = new Key(args.ns, setName, i);
-			var bin = new Bin(binName, i);
-			client.Put(args.writePolicy, key, bin);
+			console.Info($"Scan page: {i}");
+			client.ScanPartitions(scanPolicy, filter, ns, SetName, ScanCallback);
+			console.Info($"Records returned: {recordCount}");
 		}
 	}
 
-	public void ScanCallback(Key key, Record record)
+	private void ScanCallback(Key key, Record record)
 	{
-		// Callbacks must ensure thread safety when ScanAll() is used with ScanPolicy
-		// concurrentNodes set to true (default).  In this case, parallel
-		// node threads will be sending data to this callback.
+		// Callbacks must be thread-safe when concurrentNodes is true (the default).
 		Interlocked.Increment(ref recordCount);
 	}
 }

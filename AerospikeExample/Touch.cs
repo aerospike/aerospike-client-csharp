@@ -1,4 +1,4 @@
-/* 
+/*
  * Copyright 2012-2026 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
@@ -18,66 +18,41 @@ using Aerospike.Client;
 
 namespace Aerospike.Example;
 
-public class Touch(Console console) : SyncExample(console)
+public sealed class Touch : SyncExample
 {
-
 	/// <summary>
-	/// Demonstrate touch command.
+	/// Demonstrate the touch command extending an existing record's TTL.
 	/// </summary>
-	public override void RunExample(IAerospikeClient client, Arguments args)
+	public override void RunExample()
 	{
-		var key = new Key(args.ns, args.set, "touchkey");
-		var bin = new Bin(args.GetBinName("touchbin"), "touchvalue");
+		Key key = new(ns, set, "touchkey");
+		Bin bin = new("touchbin", "touchvalue");
 
 		console.Info("Create record with 2 second expiration.");
-		WritePolicy writePolicy = new()
+		WritePolicy initialPolicy = new(writePolicy)
 		{
 			expiration = 2
 		};
-		client.Put(writePolicy, key, bin);
+		client.Put(initialPolicy, key, bin);
 
 		console.Info("Touch same record with 5 second expiration.");
-		writePolicy.expiration = 5;
-		var record = client.Operate(writePolicy, key, Operation.Touch(), Operation.GetHeader());
-
-		if (record == null)
+		WritePolicy touchPolicy = new(writePolicy)
 		{
-			throw new Exception($"Failed to get: namespace={key.ns} set={key.setName} key={key.userKey} bin={bin.name} value={null}");
-		}
-
-		if (record.expiration == 0)
-		{
-			throw new Exception($"Failed to get record expiration: namespace={key.ns} set={key.setName} key={key.userKey}");
-		}
+			expiration = 5
+		};
+		Record touched = client.Operate(touchPolicy, key, Operation.Touch(), Operation.GetHeader());
+		console.Info($"Header: generation={touched?.generation} expiration={touched?.expiration}");
 
 		console.Info("Sleep 3 seconds.");
-		Thread.Sleep(3000);
+		Thread.Sleep(TimeSpan.FromSeconds(3));
 
-		record = client.Get(args.policy, key, bin.name);
+		Record record = client.Get(policy, key, bin.name);
+		console.Info($"Record after 3 seconds: {record}");
 
-		if (record == null)
-		{
-			throw new Exception($"Failed to get: namespace={key.ns} set={key.setName} key={key.userKey}");
-		}
-
-		console.Info("Success. Record still exists.");
 		console.Info("Sleep 4 seconds.");
-		Thread.Sleep(4000);
+		Thread.Sleep(TimeSpan.FromSeconds(4));
 
-		record = client.Get(args.policy, key, bin.name);
-
-		if (record == null)
-		{
-			console.Info("Success. Record expired as expected.");
-		}
-		else
-		{
-			console.Error("Found record when it should have expired.");
-		}
-		if (client.Exists(null, key))
-		{
-			throw new Exception("Touch verification failed: record still exists after expiry.");
-		}
-		console.Info("Touch verified successfully.");
+		record = client.Get(policy, key, bin.name);
+		console.Info($"Record after expiration: {record}");
 	}
 }

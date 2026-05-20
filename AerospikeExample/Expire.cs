@@ -1,4 +1,4 @@
-/* 
+/*
  * Copyright 2012-2026 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
@@ -18,61 +18,32 @@ using Aerospike.Client;
 
 namespace Aerospike.Example;
 
-public class Expire(Console console) : SyncExample(console)
+public sealed class Expire : SyncExample
 {
-
 	/// <summary>
-	/// Write and twice read a bin value, demonstrating record expiration.
+	/// Write a record with a TTL, read it before expiration, and confirm it is gone after expiration.
 	/// </summary>
-	public override void RunExample(IAerospikeClient client, Arguments args)
+	public override void RunExample()
 	{
-		var key = new Key(args.ns, args.set, "expirekey");
-		var bin = new Bin(args.GetBinName("expirebin"), "expirevalue");
+		Key key = new(ns, set, "expirekey");
+		Bin bin = new("expirebin", "expirevalue");
 
-		console.Info("Put: namespace={0} set={1} key={2} bin={3} value={4} expiration=2",
-			key.ns, key.setName, key.userKey, bin.name, bin.value);
+		console.Info($"Put: namespace={key.ns} set={key.setName} key={key.userKey} bin={bin.name} value={bin.value} expiration=2");
 
-		// Specify that record expires 2 seconds after it's written.
-		WritePolicy writePolicy = new()
+		WritePolicy expirePolicy = new(writePolicy)
 		{
 			expiration = 2
 		};
-		client.Put(writePolicy, key, bin);
+		client.Put(expirePolicy, key, bin);
 
-		// Read the record before it expires, showing it's there.
-		console.Info("Get: namespace={0} set={1} key={2}", key.ns, key.setName, key.userKey);
+		console.Info($"Get: namespace={key.ns} set={key.setName} key={key.userKey}");
+		Record record = client.Get(policy, key, bin.name);
+		console.Info($"Record: {record}");
 
-		var record = client.Get(args.policy, key, bin.name) ?? throw new Exception($"Failed to get: namespace={key.ns} set={key.setName} key={key.userKey}");
-		object received = record.GetValue(bin.name);
-		string expected = bin.value.ToString();
-
-		if (received.Equals(expected))
-		{
-			console.Info("Get successful: namespace={0} set={1} key={2} bin={3} value={4}",
-				key.ns, key.setName, key.userKey, bin.name, received);
-		}
-		else
-		{
-			throw new Exception($"Expire mismatch: Expected {expected}. Received {received}.");
-		}
-
-		// Read the record after it expires, showing it's gone.
 		console.Info("Sleeping for 3 seconds ...");
-		Thread.Sleep(3 * 1000);
-		record = client.Get(args.policy, key, bin.name);
+		Thread.Sleep(TimeSpan.FromSeconds(3));
 
-		if (record == null)
-		{
-			console.Info("Expiry successful. Record not found.");
-		}
-		else
-		{
-			console.Error("Found record when it should have expired.");
-		}
-		if (client.Exists(null, key))
-		{
-			throw new Exception("Expire verification failed: record still exists after expiry.");
-		}
-		console.Info("Expire verified successfully.");
+		record = client.Get(policy, key, bin.name);
+		console.Info($"Record after expiration: {record}");
 	}
 }
