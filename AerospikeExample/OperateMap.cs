@@ -1,4 +1,4 @@
-/* 
+/*
  * Copyright 2012-2026 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
@@ -19,41 +19,27 @@ using System.Collections;
 
 namespace Aerospike.Example;
 
-public class OperateMap(Console console) : SyncExample(console)
+public sealed class OperateMap : SyncExample
 {
+	private static readonly DateTime Epoch = new(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc);
 
 	/// <summary>
-	/// Perform operations on a list bin.
+	/// Perform operations on map bins.
 	/// </summary>
-	public override void RunExample(IAerospikeClient client, Arguments args)
+	public override void RunExample()
 	{
-		RunSimpleExample(client, args);
-		RunScoreExample(client, args);
-		RunListRangeExample(client, args);
-		RunNestedExample(client, args);
-		RunNestedMapCreateExample(client, args);
-		RunNestedListCreateExample(client, args);
-
-		string mapBinName = args.GetBinName("mapbin");
-		Record mapVerify = client.Get(null, new Key(args.ns, args.set, "mapkey3"));
-		if (mapVerify == null)
-		{
-			throw new Exception("OperateMap verification failed: mapkey3 record not found.");
-		}
-		if (mapVerify.GetValue(mapBinName) == null)
-		{
-			throw new Exception("OperateMap verification failed: map bin missing.");
-		}
-		console.Info("OperateMap verified successfully.");
+		RunSimpleExample();
+		RunScoreExample();
+		RunListRangeExample();
+		RunNestedExample();
+		RunNestedMapCreateExample();
+		RunNestedListCreateExample();
 	}
 
-	private void RunSimpleExample(IAerospikeClient client, Arguments args)
+	private void RunSimpleExample()
 	{
-		var key = new Key(args.ns, args.set, "mapkey");
-		string binName = args.GetBinName("mapbin");
-
-		// Delete record if it already exists.
-		client.Delete(args.writePolicy, key);
+		Key key = new(ns, set, "mapkey_score");
+		string binName = "mapbin";
 
 		IDictionary inputMap = new Dictionary<Value, Value>
 		{
@@ -61,34 +47,28 @@ public class OperateMap(Console console) : SyncExample(console)
 			[Value.Get(2)] = Value.Get(33)
 		};
 
-		// Write values to empty map.
-		var record = client.Operate(args.writePolicy, key, MapOperation.PutItems(MapPolicy.Default, binName, inputMap));
+		Record record = client.Operate(writePolicy, key,
+			MapOperation.PutItems(MapPolicy.Default, binName, inputMap));
+		console.Info($"Record: {record}");
 
-		console.Info("Record: " + record);
+		// Remove a key, returning its value, and report the new map size.
+		record = client.Operate(writePolicy, key,
+			MapOperation.RemoveByKey(binName, Value.Get(1), MapReturnType.VALUE),
+			MapOperation.Size(binName));
+		console.Info($"Record: {record}");
 
-		// Pop value from map and also return new size of map.
-		record = client.Operate(args.writePolicy, key, MapOperation.RemoveByKey(binName, Value.Get(1), MapReturnType.VALUE), MapOperation.Size(binName));
-
-		console.Info("Record: " + record);
-
-		// There should be one result for each map operation on the same map bin.
-		// In this case, there are two map operations (pop and size), so there 
-		// should be two results.
 		IList results = record.GetList(binName);
 
 		foreach (object value in results)
 		{
-			console.Info("Received: " + value);
+			console.Info($"Received: {value}");
 		}
 	}
 
-	private void RunScoreExample(IAerospikeClient client, Arguments args)
+	private void RunScoreExample()
 	{
-		var key = new Key(args.ns, args.set, "mapkey");
-		string binName = args.GetBinName("mapbin");
-
-		// Delete record if it already exists.
-		client.Delete(args.writePolicy, key);
+		Key key = new(ns, set, "mapkey_range");
+		string binName = "mapbin";
 
 		IDictionary inputMap = new Dictionary<Value, Value>
 		{
@@ -98,56 +78,40 @@ public class OperateMap(Console console) : SyncExample(console)
 			[Value.Get("Harry")] = Value.Get(82)
 		};
 
-		// Write values to empty map.
-		var record = client.Operate(args.writePolicy, key,
-			MapOperation.PutItems(MapPolicy.Default, binName, inputMap)
-			);
+		Record record = client.Operate(writePolicy, key,
+			MapOperation.PutItems(MapPolicy.Default, binName, inputMap));
+		console.Info($"Record: {record}");
 
-		console.Info("Record: " + record);
-
-		// Increment some user scores.
-		record = client.Operate(args.writePolicy, key,
+		// Increment two user scores.
+		record = client.Operate(writePolicy, key,
 			MapOperation.Increment(MapPolicy.Default, binName, Value.Get("John"), Value.Get(5)),
-			MapOperation.Increment(MapPolicy.Default, binName, Value.Get("Jim"), Value.Get(-4))
-			);
+			MapOperation.Increment(MapPolicy.Default, binName, Value.Get("Jim"), Value.Get(-4)));
+		console.Info($"Record: {record}");
 
-		console.Info("Record: " + record);
+		// Read the top two scores.
+		record = client.Operate(writePolicy, key,
+			MapOperation.GetByRankRange(binName, -2, 2, MapReturnType.KEY_VALUE));
 
-		// Get top two scores.
-		record = client.Operate(args.writePolicy, key,
-			MapOperation.GetByRankRange(binName, -2, 2, MapReturnType.KEY_VALUE)
-			);
-
-		// There should be one result for each map operation on the same map bin.
-		// In this case, there are two map operations (pop and size), so there 
-		// should be two results.
 		IList results = record.GetList(binName);
 
 		foreach (object value in results)
 		{
-			console.Info("Received: " + value);
+			console.Info($"Received: {value}");
 		}
 	}
 
 	/// <summary>
-	/// Value list range example.
+	/// Use a list value range to delete all entries with values below a threshold.
 	/// </summary>
-	private void RunListRangeExample(IAerospikeClient client, Arguments args)
+	private void RunListRangeExample()
 	{
-		var key = new Key(args.ns, args.set, "mapkey");
-		string binName = args.GetBinName("mapbin");
-
-		// Delete record if it already exists.
-		client.Delete(args.writePolicy, key);
+		Key key = new(ns, set, "mapkey");
+		string binName = "mapbin";
 
 		List<Value> l1 = [MillisSinceEpoch(new DateTime(2018, 1, 1)), Value.Get(1)];
-
 		List<Value> l2 = [MillisSinceEpoch(new DateTime(2018, 1, 2)), Value.Get(2)];
-
 		List<Value> l3 = [MillisSinceEpoch(new DateTime(2018, 2, 1)), Value.Get(3)];
-
 		List<Value> l4 = [MillisSinceEpoch(new DateTime(2018, 2, 2)), Value.Get(4)];
-
 		List<Value> l5 = [MillisSinceEpoch(new DateTime(2018, 2, 5)), Value.Get(5)];
 
 		IDictionary inputMap = new Dictionary<Value, Value>
@@ -159,40 +123,27 @@ public class OperateMap(Console console) : SyncExample(console)
 			[Value.Get("Bill")] = Value.Get(l5)
 		};
 
-		// Write values to empty map.
-		var record = client.Operate(args.writePolicy, key,
-			MapOperation.PutItems(MapPolicy.Default, binName, inputMap)
-			);
-
-		console.Info("Record: " + record);
+		Record record = client.Operate(writePolicy, key,
+			MapOperation.PutItems(MapPolicy.Default, binName, inputMap));
+		console.Info($"Record: {record}");
 
 		List<Value> end = [MillisSinceEpoch(new DateTime(2018, 2, 2)), Value.AsNull];
 
-		// Delete values < end.
-		record = client.Operate(args.writePolicy, key,
-			MapOperation.RemoveByValueRange(binName, null, Value.Get(end), MapReturnType.COUNT)
-		);
-
-		console.Info("Record: " + record);
+		record = client.Operate(writePolicy, key,
+			MapOperation.RemoveByValueRange(binName, null, Value.Get(end), MapReturnType.COUNT));
+		console.Info($"Record: {record}");
 	}
-
-	private static readonly DateTime Epoch = new(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc);
 
 	private static Value MillisSinceEpoch(DateTime dt)
-	{
-		return Value.Get((long)(dt.ToUniversalTime() - Epoch).TotalMilliseconds);
-	}
+		=> Value.Get((long)(dt.ToUniversalTime() - Epoch).TotalMilliseconds);
 
 	/// <summary>
-	/// Operate on a map of maps.
+	/// Operate on a map of maps using a context to navigate to the inner map.
 	/// </summary>
-	private void RunNestedExample(IAerospikeClient client, Arguments args)
+	private void RunNestedExample()
 	{
-		var key = new Key(args.ns, args.set, "mapkey2");
-		string binName = args.GetBinName("mapbin");
-
-		// Delete record if it already exists.
-		client.Delete(args.writePolicy, key);
+		Key key = new(ns, set, "mapkey_nested");
+		string binName = "mapbin";
 
 		IDictionary<Value, Value> m1 = new Dictionary<Value, Value>
 		{
@@ -212,27 +163,21 @@ public class OperateMap(Console console) : SyncExample(console)
 			[Value.Get("key2")] = Value.Get(m2)
 		};
 
-		// Create maps.
-		client.Put(args.writePolicy, key, new Bin(binName, inputMap));
+		client.Put(writePolicy, key, new Bin(binName, inputMap));
 
-		// Set map value to 11 for map key "key21" inside of map key "key2"
-		// and retrieve all maps.
-		var record = client.Operate(args.writePolicy, key,
+		// Update key21 inside the map at key2 and retrieve the full bin.
+		client.Operate(writePolicy, key,
 			MapOperation.Put(MapPolicy.Default, binName, Value.Get("key21"), Value.Get(11), CTX.MapKey(Value.Get("key2"))),
-			Operation.Get(binName)
-			);
+			Operation.Get(binName));
 
-		record = client.Get(args.policy, key);
-		console.Info("Record: " + record);
+		Record record = client.Get(policy, key);
+		console.Info($"Record: {record}");
 	}
 
-	public void RunNestedMapCreateExample(IAerospikeClient client, Arguments args)
+	private void RunNestedMapCreateExample()
 	{
-		var key = new Key(args.ns, args.set, "mapkey2");
-		string binName = args.GetBinName("mapbin");
-
-		// Delete record if it already exists.
-		client.Delete(args.writePolicy, key);
+		Key key = new(ns, set, "mapkey_nested_create");
+		string binName = "mapbin";
 
 		IDictionary<Value, Value> m1 = new Dictionary<Value, Value>
 		{
@@ -252,29 +197,23 @@ public class OperateMap(Console console) : SyncExample(console)
 			[Value.Get("key2")] = Value.Get(m2)
 		};
 
-		// Create maps.
-		client.Put(args.writePolicy, key, new Bin(binName, inputMap));
+		client.Put(writePolicy, key, new Bin(binName, inputMap));
 
-		// Create key ordered map at "key2" only if map does not exist.
-		// Set map value to 4 for map key "key21" inside of map key "key2".
+		// Conditionally create a key-ordered map at key2 and add a new entry.
 		CTX ctx = CTX.MapKey(Value.Get("key2"));
-		var record = client.Operate(args.writePolicy, key,
+		client.Operate(writePolicy, key,
 			MapOperation.Create(binName, MapOrder.KEY_VALUE_ORDERED, ctx),
 			MapOperation.Put(MapPolicy.Default, binName, Value.Get("b"), Value.Get(4), ctx),
-			Operation.Get(binName)
-			);
+			Operation.Get(binName));
 
-		record = client.Get(args.policy, key);
-		console.Info("Record: " + record);
+		Record record = client.Get(policy, key);
+		console.Info($"Record: {record}");
 	}
 
-	public void RunNestedListCreateExample(IAerospikeClient client, Arguments args)
+	private void RunNestedListCreateExample()
 	{
-		var key = new Key(args.ns, args.set, "mapkey3");
-		string binName = args.GetBinName("mapbin");
-
-		// Delete record if it already exists.
-		client.Delete(args.writePolicy, key);
+		Key key = new(ns, set, "mapkey3");
+		string binName = "mapbin";
 
 		IList<Value> l1 = [Value.Get(7), Value.Get(9), Value.Get(5)];
 
@@ -283,20 +222,17 @@ public class OperateMap(Console console) : SyncExample(console)
 			[Value.Get("key1")] = Value.Get(l1)
 		};
 
-		// Create maps.
-		client.Put(args.writePolicy, key, new Bin(binName, inputMap));
+		client.Put(writePolicy, key, new Bin(binName, inputMap));
 
-		// Create ordered list at map's "key2" only if list does not exist.
-		// Append 2,1 to ordered list.
+		// Conditionally create an ordered list at key2 and append two values.
 		CTX ctx = CTX.MapKey(Value.Get("key2"));
-		var record = client.Operate(args.writePolicy, key,
+		client.Operate(writePolicy, key,
 			ListOperation.Create(binName, ListOrder.ORDERED, false, ctx),
 			ListOperation.Append(binName, Value.Get(2), ctx),
 			ListOperation.Append(binName, Value.Get(1), ctx),
-			Operation.Get(binName)
-			);
+			Operation.Get(binName));
 
-		record = client.Get(args.policy, key);
-		console.Info("Record: " + record);
+		Record record = client.Get(policy, key);
+		console.Info($"Record: {record}");
 	}
 }

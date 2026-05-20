@@ -1,4 +1,4 @@
-/* 
+/*
  * Copyright 2012-2026 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
@@ -18,101 +18,64 @@ using Aerospike.Client;
 
 namespace Aerospike.Example;
 
-public class AsyncTransactionWithTask(Console console) : AsyncExample(console)
+public sealed class AsyncTransactionWithTask : AsyncExample
 {
-
 	/// <summary>
-	/// Transaction.
+	/// Run a read/write/delete transaction asynchronously using Task-based async/await.
 	/// </summary>
-	public override void RunExample(AsyncClient client, Arguments args)
+	public override void RunExample()
 	{
-		RequireEnterprise(args);
-		RequireStrongConsistency(args);
+		RequireEnterprise();
+		RequireStrongConsistency();
 
+		RunTransaction().GetAwaiter().GetResult();
+	}
+
+	private async Task RunTransaction()
+	{
 		using Txn txn = new();
-		var token = CancellationToken.None;
+		CancellationToken token = CancellationToken.None;
+		console.Info($"Begin txn: {txn.Id}");
 
-		console.Info("Begin txn: " + txn.Id);
+		WritePolicy wp = new(client.WritePolicyDefault)
+		{
+			Txn = txn
+		};
 
 		try
 		{
-			Key key = null;
+			console.Info("Run put with task");
+			Key key1 = new(ns, set, 1);
+			await client.Put(wp, token, key1, new Bin("a", "val1"));
 
-			var result = Task.Run(async () =>
+			console.Info("Run another put");
+			Key key2 = new(ns, set, 2);
+			await client.Put(wp, token, key2, new Bin("b", "val2"));
+
+			console.Info("Run get");
+			Policy p = new(policy)
 			{
-				try
-				{
-					WritePolicy wp = new(client.WritePolicyDefault)
-					{
-						Txn = txn
-					};
+				Txn = txn
+			};
+			Key key3 = new(ns, set, 3);
+			Record rec = await client.Get(p, token, key3);
 
-					console.Info("Run put with task");
-					key = new(args.ns, args.set, 1);
-					await client.Put(wp, token, key, new Bin("a", "val1"));
-
-					console.Info("Run another put");
-					key = new(args.ns, args.set, 2);
-					await client.Put(wp, token, key, new Bin("b", "val2"));
-
-					console.Info("Run get");
-					Policy p = new(client.ReadPolicyDefault)
-					{
-						Txn = txn
-					};
-					Key key3 = new(args.ns, args.set, 3);
-					Record rec = await client.Get(p, token, key3);
-
-					console.Info("Run delete");
-					WritePolicy dp = new(client.WritePolicyDefault)
-					{
-						Txn = txn,
-						durableDelete = true  // Required when running delete in a transaction.
-					};
-					client.Delete(dp, key3);
-
-					await client.Commit(txn, token);
-					return true;
-				}
-				catch (Exception e)
-				{
-					console.Error("Failed to write: namespace={0} set={1} key={2} exception={3}",
-									key.ns, key.setName, key.userKey, e.Message);
-					// Abort and rollback transaction if any errors occur.
-					await client.Abort(txn, token);
-					return false;
-				}
-			}).Result;
-
-			if (result)
+			console.Info("Run delete");
+			WritePolicy dp = new(writePolicy)
 			{
-				console.Info("Txn committed: " + txn.Id);
+				Txn = txn,
+				durableDelete = true // Required when running delete inside a transaction.
+			};
+			await client.Delete(dp, token, key3);
 
-				// Verify the committed data persisted.
-				Key verifyKey1 = new(args.ns, args.set, 1);
-				Record r1 = client.Get(null, verifyKey1);
-				if (r1 == null || !"val1".Equals(r1.GetValue("a")))
-				{
-					throw new Exception("Transaction verify failed: key 1 bin 'a' expected 'val1'");
-				}
-
-				Key verifyKey2 = new(args.ns, args.set, 2);
-				Record r2 = client.Get(null, verifyKey2);
-				if (r2 == null || !"val2".Equals(r2.GetValue("b")))
-				{
-					throw new Exception("Transaction verify failed: key 2 bin 'b' expected 'val2'");
-				}
-
-				console.Info("Transaction verified: writes persisted and commit confirmed.");
-			}
-			else
-			{
-				console.Error("Txn aborted: " + txn.Id);
-			}
+			await client.Commit(txn, token);
+			console.Info($"Txn committed: {txn.Id}");
 		}
 		catch (Exception e)
 		{
-			console.Error($"Txn {txn.Id} Exception: {e}");
+			console.Error($"Txn {txn.Id} failed: {e.Message}");
+			await client.Abort(txn, token);
+			console.Error($"Txn aborted: {txn.Id}");
 		}
 	}
 }

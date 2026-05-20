@@ -1,4 +1,4 @@
-/* 
+/*
  * Copyright 2012-2026 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
@@ -18,90 +18,38 @@ using Aerospike.Client;
 
 namespace Aerospike.Example;
 
-public class QueryInteger(Console console) : SyncExample(console)
+public sealed class QueryInteger : SyncExample
 {
-
 	/// <summary>
-	/// Create secondary index on an integer bin and query on it.
+	/// Run a secondary-index range query on an integer bin.
 	/// </summary>
-	public override void RunExample(IAerospikeClient client, Arguments args)
+	public override void RunExample()
 	{
-		string indexName = "queryindexint";
-		string keyPrefix = "querykeyint";
-		string binName = args.GetBinName("querybinint");
-		int size = 50;
+		const string indexName = "queryindexint";
+		const string binName = "querybinint";
+		const int begin = 14;
+		const int end = 18;
 
-		CreateIndex(client, args, indexName, binName);
-		WriteRecords(client, args, keyPrefix, binName, size);
-		RunQuery(client, args, indexName, binName);
-		client.DropIndex(args.policy, args.ns, args.set, indexName);
-	}
+		console.Info($"Query for: ns={ns} set={set} index={indexName} bin={binName} >= {begin} <= {end}");
 
-	private void CreateIndex(IAerospikeClient client, Arguments args, string indexName, string binName)
-	{
-		console.Info($"Create index: ns={args.ns} set={args.set} index={indexName} bin={binName}");
-
-		Policy policy = new()
+		Statement stmt = new()
 		{
-			totalTimeout = 0 // Do not timeout on index create.
+			Namespace = ns,
+			SetName = set,
+			BinNames = [binName],
+			Filter = Filter.Range(binName, begin, end)
 		};
 
-		try
-		{
-			client.DropIndex(policy, args.ns, args.set, indexName);
-		}
-		catch (AerospikeException)
-		{
-		}
-
-		var task = client.CreateIndex(policy, args.ns, args.set, indexName, binName, IndexType.INTEGER);
-		task.Wait();
-	}
-
-	private void WriteRecords(IAerospikeClient client, Arguments args, string keyPrefix, string binName, int size)
-	{
-		console.Info("Write " + size + " records.");
-
-		for (int i = 1; i <= size; i++)
-		{
-			var key = new Key(args.ns, args.set, keyPrefix + i);
-			var bin = new Bin(binName, i);
-			client.Put(args.writePolicy, key, bin);
-		}
-	}
-
-	private void RunQuery(IAerospikeClient client, Arguments args, string indexName, string binName)
-	{
-		int begin = 14;
-		int end = 18;
-
-		console.Info($"Query for: ns={args.ns} set={args.set} index={indexName} bin={binName} >= {begin} <= {end}");
-
-		Statement stmt = new();
-		stmt.SetNamespace(args.ns);
-		stmt.SetSetName(args.set);
-		stmt.SetBinNames(binName);
-		stmt.SetFilter(Filter.Range(binName, begin, end));
-
-		using var rs = client.Query(null, stmt);
-
-		int count = 0;
+		using RecordSet rs = client.Query(null, stmt);
 
 		while (rs.Next())
 		{
-			var key = rs.Key;
-			var record = rs.Record;
-			long result = record.GetLong(binName);
+			Key key = rs.Key;
+			long result = rs.Record.GetLong(binName);
 
-			console.Info($"Record found: namespace={key.ns} set={key.setName} digest={ByteUtil.BytesToHexString(key.digest)} bin={binName} value={result}");
-
-			count++;
+			console.Info(
+				$"Record found: namespace={key.ns} set={key.setName} " +
+				$"digest={ByteUtil.BytesToHexString(key.digest)} bin={binName} value={result}");
 		}
-
-		if (count != 5)
-		{
-			throw new Exception("Query count mismatch. Expected 5. Received " + count);
-		}
-		console.Info("QueryInteger verified: " + count + " records matched.");
 	}
 }

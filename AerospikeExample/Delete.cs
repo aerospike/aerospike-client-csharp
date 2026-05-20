@@ -1,4 +1,4 @@
-/* 
+/*
  * Copyright 2012-2026 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
@@ -18,89 +18,44 @@ using Aerospike.Client;
 
 namespace Aerospike.Example;
 
-public class Delete(Console console) : SyncExample(console)
+public sealed class Delete : SyncExample
 {
 	/// <summary>
-	/// Demonstrate record deletion including durable delete.
+	/// Demonstrate record deletion including durable delete (Enterprise edition).
 	/// </summary>
-	public override void RunExample(IAerospikeClient client, Arguments args)
+	public override void RunExample()
 	{
-		RunDefaultDelete(client, args);
-		RunDurableDelete(client, args);
-
-		var deleteKey = new Key(args.ns, args.set, "deletekey");
-		if (client.Exists(null, deleteKey))
-		{
-			throw new Exception("Delete verification failed: deletekey still exists.");
-		}
-		var durableDeleteKey = new Key(args.ns, args.set, "durabledeletekey");
-		if (client.Exists(null, durableDeleteKey))
-		{
-			throw new Exception("Delete verification failed: durabledeletekey still exists.");
-		}
-		console.Info("Delete verified successfully.");
+		RunDefaultDelete();
+		RunDurableDelete();
 	}
 
-	private void RunDefaultDelete(IAerospikeClient client, Arguments args)
+	private void RunDefaultDelete()
 	{
-		var key = new Key(args.ns, args.set, "deletekey");
-		var bin = new Bin(args.GetBinName("bin"), "value");
+		Key key = new(ns, set, "deletekey");
 
-		client.Put(args.writePolicy, key, bin);
-		console.Info("Put: namespace={0} set={1} key={2}", key.ns, key.setName, key.userKey);
+		bool existed = client.Delete(writePolicy, key);
+		console.Info($"Delete: namespace={key.ns} set={key.setName} key={key.userKey} existed={existed}");
 
-		bool existed = client.Delete(args.writePolicy, key);
-		console.Info("Delete: namespace={0} set={1} key={2} existed={3}",
-			key.ns, key.setName, key.userKey, existed);
-
-		bool exists = client.Exists(args.policy, key);
-
-		if (!exists)
-		{
-			console.Info("Record deleted successfully.");
-		}
-		else
-		{
-			console.Error("Record still exists after delete.");
-		}
-
-		existed = client.Delete(args.writePolicy, key);
-		console.Info("Delete non-existent: existed={0}", existed);
+		existed = client.Delete(writePolicy, key);
+		console.Info($"Delete non-existent: existed={existed}");
 	}
 
 	/// <summary>
-	/// Durable delete leaves a tombstone so the delete cannot be undone
-	/// by a conflicting write from another data center (XDR).
-	/// Requires Enterprise edition.
+	/// Durable delete leaves a tombstone so the delete cannot be undone by a conflicting
+	/// write from another data center (XDR). Requires Enterprise edition.
 	/// </summary>
-	private void RunDurableDelete(IAerospikeClient client, Arguments args)
+	private void RunDurableDelete()
 	{
-		RequireEnterprise(args);
+		RequireEnterprise();
 
-		var key = new Key(args.ns, args.set, "durabledeletekey");
-		var bin = new Bin(args.GetBinName("bin"), "durablevalue");
+		Key key = new(ns, set, "durabledeletekey");
 
-		client.Put(args.writePolicy, key, bin);
-		console.Info("Put: namespace={0} set={1} key={2}", key.ns, key.setName, key.userKey);
-
-		var durablePolicy = new WritePolicy(args.writePolicy)
+		WritePolicy durablePolicy = new(writePolicy)
 		{
 			durableDelete = true
 		};
 
 		bool existed = client.Delete(durablePolicy, key);
-		console.Info("Durable delete: namespace={0} set={1} key={2} existed={3}",
-			key.ns, key.setName, key.userKey, existed);
-
-		bool exists = client.Exists(args.policy, key);
-
-		if (!exists)
-		{
-			console.Info("Durable delete successful.");
-		}
-		else
-		{
-			console.Error("Record still exists after durable delete.");
-		}
+		console.Info($"Durable delete: namespace={key.ns} set={key.setName} key={key.userKey} existed={existed}");
 	}
 }

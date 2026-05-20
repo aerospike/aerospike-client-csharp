@@ -1,4 +1,4 @@
-/* 
+/*
  * Copyright 2012-2026 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
@@ -16,155 +16,104 @@
  */
 using Aerospike.Client;
 
-namespace Aerospike.Example
+namespace Aerospike.Example;
+
+public sealed class AsyncPutGet : AsyncExample
 {
-	public class AsyncPutGet(Console console) : AsyncExample(console)
+	private readonly ManualResetEventSlim completed = new();
+
+	/// <summary>
+	/// Asynchronously write and read a record, first using listener callbacks
+	/// and then using Task-based async/await.
+	/// </summary>
+	public override void RunExample()
 	{
-		private bool completed;
+		completed.Reset();
 
-		/// <summary>
-		/// Asynchronously write and read a bin using alternate methods.
-		/// </summary>
-		public override void RunExample(AsyncClient client, Arguments args)
+		Key key = new(ns, set, "putgetkey");
+		Bin bin = new("bin1", "value");
+
+		RunPutGetListener(key, bin);
+		RunPutGetWithTask(key, bin).GetAwaiter().GetResult();
+	}
+
+	private void RunPutGetListener(Key key, Bin bin)
+	{
+		console.Info($"Put inline: namespace={key.ns} set={key.setName} key={key.userKey} value={bin.value}");
+
+		client.Put(writePolicy, new WriteHandler(this, client, policy, bin), key, bin);
+		completed.Wait();
+	}
+
+	private async Task RunPutGetWithTask(Key key, Bin bin)
+	{
+		console.Info($"Put with task: namespace={key.ns} set={key.setName} key={key.userKey} value={bin.value}");
+
+		CancellationToken token = CancellationToken.None;
+		await client.Put(writePolicy, token, key, bin);
+
+		Record record = await client.Get(policy, token, key);
+		ValidateBin(key, bin, record);
+	}
+
+	private void ValidateBin(Key key, Bin bin, Record record)
+	{
+		object received = record?.GetValue(bin.name);
+		string expected = bin.value.ToString();
+
+		if (received != null && received.Equals(expected))
 		{
-			completed = false;
-			Key key = new Key(args.ns, args.set, "putgetkey");
-			Bin bin = new Bin(args.GetBinName("putgetbin"), "value");
-
-			RunPutGet(client, args, key, bin);
-			WaitTillComplete();
-
-			RunPutGetWithTask(client, args, key, bin);
-
-			Record verifyPutGetRecord = client.Get(null, key, bin.name);
-			if (verifyPutGetRecord == null)
-			{
-				throw new Exception("AsyncPutGet verification failed: record not found.");
-			}
-			object verifyPutGetReceived = verifyPutGetRecord.GetValue(bin.name);
-			string verifyPutGetExpected = bin.value.ToString();
-			if (verifyPutGetReceived == null || !verifyPutGetReceived.Equals(verifyPutGetExpected))
-			{
-				throw new Exception("AsyncPutGet verification failed: expected " + verifyPutGetExpected + ", received " + verifyPutGetReceived + ".");
-			}
-			console.Info("AsyncPutGet verified successfully.");
+			console.Info(
+				$"Bin matched: namespace={key.ns} set={key.setName} key={key.userKey} " +
+				$"bin={bin.name} value={received} generation={record.generation} expiration={record.expiration}");
 		}
-
-		private void RunPutGet(AsyncClient client, Arguments args, Key key, Bin bin)
+		else
 		{
-			console.Info("Put: namespace={0} set={1} key={2} value={3}",
-				key.ns, key.setName, key.userKey, bin.value);
-
-			client.Put(args.writePolicy, new WriteHandler(this, client, args.writePolicy, key, bin), key, bin);
+			console.Error($"Put/Get mismatch: expected {expected}, received {received}");
 		}
+	}
 
-		private class WriteHandler(AsyncPutGet parent, AsyncClient client, WritePolicy policy, Key key, Bin bin) : WriteListener
+	private void Complete()
+	{
+		completed.Set();
+	}
+
+	private sealed class WriteHandler(AsyncPutGet parent, IAsyncClient client, Policy policy, Bin bin)
+		: WriteListener
+	{
+		public void OnSuccess(Key key)
 		{
-			private readonly AsyncPutGet parent = parent;
-			private readonly AsyncClient client = client;
-			private readonly WritePolicy policy = policy;
-			private readonly Key key = key;
-			private readonly Bin bin = bin;
-
-			public void OnSuccess(Key key)
+			try
 			{
-				try
-				{
-					// Write succeeded.  Now call read.
-					parent.console.Info("Get: namespace={0} set={1} key={2}",
-						key.ns, key.setName, key.userKey);
-
-					client.Get(policy, new RecordHandler(parent, key, bin), key);
-				}
-				catch (Exception e)
-				{
-					parent.console.Error("Failed to get: namespace={0} set={1} key={2} exception={3}",
-						key.ns, key.setName, key.userKey, e.Message);
-				}
+				parent.console.Info($"Get: namespace={key.ns} set={key.setName} key={key.userKey}");
+				client.Get(policy, new RecordHandler(parent, bin), key);
 			}
-
-			public void OnFailure(AerospikeException e)
+			catch (Exception ex)
 			{
-				parent.console.Error("Failed to put: namespace={0} set={1} key={2} exception={3}",
-					key.ns, key.setName, key.userKey, e.Message);
-
-				parent.NotifyCompleted();
+				parent.console.Error("Failed to read", ex);
+				parent.Complete();
 			}
 		}
 
-		private class RecordHandler(AsyncPutGet parent, Key key, Bin bin) : RecordListener
+		public void OnFailure(AerospikeException e)
 		{
-			private readonly AsyncPutGet parent = parent;
-			private readonly Key key = key;
-			private readonly Bin bin = bin;
+			parent.console.Error("Failed to put", e);
+			parent.Complete();
+		}
+	}
 
-			public virtual void OnSuccess(Key key, Record record)
-			{
-				parent.ValidateBin(key, bin, record);
-				parent.NotifyCompleted();
-			}
-
-			public virtual void OnFailure(AerospikeException e)
-			{
-				parent.console.Error("Failed to get: namespace={0} set={1} key={2} exception={3}",
-					key.ns, key.setName, key.userKey, e.Message);
-
-				parent.NotifyCompleted();
-			}
+	private sealed class RecordHandler(AsyncPutGet parent, Bin bin) : RecordListener
+	{
+		public void OnSuccess(Key key, Record record)
+		{
+			parent.ValidateBin(key, bin, record);
+			parent.Complete();
 		}
 
-		private void ValidateBin(Key key, Bin bin, Record record)
+		public void OnFailure(AerospikeException e)
 		{
-			object received = record?.GetValue(bin.name);
-			string expected = bin.value.ToString();
-
-			if (received != null && received.Equals(expected))
-			{
-				console.Info("Bin matched: namespace={0} set={1} key={2} bin={3} value={4}",
-					key.ns, key.setName, key.userKey, bin.name, received);
-			}
-			else
-			{
-				console.Error("Put/Get mismatch: Expected {0}. Received {1}.", expected, received);
-			}
-		}
-
-		private void WaitTillComplete()
-		{
-			lock (this)
-			{
-				while (!completed)
-				{
-					Monitor.Wait(this);
-				}
-			}
-		}
-
-		private void NotifyCompleted()
-		{
-			lock (this)
-			{
-				completed = true;
-				Monitor.Pulse(this);
-			}
-		}
-
-		private void RunPutGetWithTask(AsyncClient client, Arguments args, Key key, Bin bin)
-		{
-			console.Info("Put with task: namespace={0} set={1} key={2} value={3}",
-				key.ns, key.setName, key.userKey, bin.value);
-
-			CancellationTokenSource cancel = new CancellationTokenSource();
-			Task taskput = client.Put(args.writePolicy, cancel.Token, key, bin);
-			taskput.Wait();
-
-			console.Info("Get with task: namespace={0} set={1} key={2}",
-				key.ns, key.setName, key.userKey);
-
-			Task<Record> taskget = client.Get(args.policy, cancel.Token, key);
-			taskget.Wait();
-
-			ValidateBin(key, bin, taskget.Result);
+			parent.console.Error("Failed to get", e);
+			parent.Complete();
 		}
 	}
 }

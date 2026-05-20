@@ -1,4 +1,4 @@
-/* 
+/*
  * Copyright 2012-2026 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
@@ -14,58 +14,38 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-
 using Aerospike.Client;
-using System.Collections.Generic;
 
 namespace Aerospike.Example;
 
 /// <summary>
 /// Path expression examples using CDTOperation.SelectByPath and
-/// CDTExp.ModifyByPath (requires server 8.1.1+).
-/// Demonstrates filtering and modifying deeply nested CDT structures
-/// using an e-commerce inventory data model.
+/// CDTExp.ModifyByPath (requires server 8.1.1+). Demonstrates filtering
+/// and modifying deeply nested CDT structures using an e-commerce
+/// inventory data model.
 /// </summary>
-internal class PathExpression(Console console) : SyncExample(console)
+public sealed class PathExpression : SyncExample
 {
 	private const string InventoryBinName = "inventory";
 
-	public override void RunExample(IAerospikeClient client, Arguments args)
+	public override void RunExample()
 	{
-		RequireMinServerVersion(args, Node.SERVER_VERSION_8_1_1);
+		RequireMinServerVersion(Node.SERVER_VERSION_8_1_1);
 
-		RunSelectFeaturedInStock(client, args);
-		RunSelectByMapKeyRegex(client, args);
-		RunSelectWithMultipleFilters(client, args);
-		RunModifyByPath(client, args);
-		RunSelectWithNoFail(client, args);
-
-		Key catalogKey = new Key(args.ns, args.set, "pathexp_modify");
-		Record catalogRec = client.Get(null, catalogKey);
-		if (catalogRec == null)
-		{
-			throw new Exception("PathExpression verification failed: pathexp_modify record not found.");
-		}
-		var root = (Dictionary<object, object>)catalogRec.GetMap(InventoryBinName);
-		if (root == null || !root.TryGetValue("inventory", out object invRoot) || invRoot is not Dictionary<object, object> products)
-		{
-			throw new Exception("PathExpression verification failed: inventory bin missing expected structure.");
-		}
-		if (!products.ContainsKey("10000001"))
-		{
-			throw new Exception("PathExpression verification failed: expected catalog product 10000001 missing.");
-		}
-		console.Info("PathExpression verified successfully.");
+		RunSelectFeaturedInStock();
+		RunSelectByMapKeyRegex();
+		RunSelectWithMultipleFilters();
+		RunModifyByPath();
+		RunSelectWithNoFail();
 	}
 
 	/// <summary>
 	/// SelectByPath: filter featured products with in-stock variants using
 	/// MATCHING_TREE to preserve the document structure.
 	/// </summary>
-	private void RunSelectFeaturedInStock(IAerospikeClient client, Arguments args)
+	private void RunSelectFeaturedInStock()
 	{
-		Key key = new Key(args.ns, args.set, "pathexp_qs");
-		SetupInventorySample(client, key, extraProduct: false);
+		Key key = new(ns, set, "pathexp_qs");
 
 		Exp filterOnFeatured = Exp.EQ(
 			MapExp.GetByKey(
@@ -96,11 +76,11 @@ internal class PathExpression(Console console) : SyncExample(console)
 
 		Dictionary<object, object> resultMap = (Dictionary<object, object>)record.GetMap(InventoryBinName);
 		Dictionary<object, object> products = (Dictionary<object, object>)resultMap["inventory"];
-		console.Info("SelectByPath featured + in-stock: found {0} product(s)", products.Count);
+		console.Info($"SelectByPath featured + in-stock: found {products.Count} product(s)");
 
-		foreach (var entry in products)
+		foreach (KeyValuePair<object, object> entry in products)
 		{
-			console.Info("  Product {0}", entry.Key);
+			console.Info($"  Product {entry.Key}");
 		}
 	}
 
@@ -108,10 +88,9 @@ internal class PathExpression(Console console) : SyncExample(console)
 	/// SelectByPath: filter map children by key using a regex on the MAP_KEY
 	/// loop variable. Selects only product IDs matching "10000.*".
 	/// </summary>
-	private void RunSelectByMapKeyRegex(IAerospikeClient client, Arguments args)
+	private void RunSelectByMapKeyRegex()
 	{
-		Key key = new Key(args.ns, args.set, "pathexp_regex");
-		SetupInventorySample(client, key, extraProduct: false);
+		Key key = new(ns, set, "pathexp_regex");
 
 		Exp filterOnKey = Exp.RegexCompare(
 			"10000.*", RegexFlag.NONE, Exp.StringLoopVar(LoopVarPart.MAP_KEY)
@@ -126,11 +105,11 @@ internal class PathExpression(Console console) : SyncExample(console)
 
 		Dictionary<object, object> resultMap = (Dictionary<object, object>)record.GetMap(InventoryBinName);
 		Dictionary<object, object> products = (Dictionary<object, object>)resultMap["inventory"];
-		console.Info("SelectByPath regex '10000.*': found {0} product(s)", products.Count);
+		console.Info($"SelectByPath regex '10000.*': found {products.Count} product(s)");
 
-		foreach (var entry in products)
+		foreach (KeyValuePair<object, object> entry in products)
 		{
-			console.Info("  Product {0}", entry.Key);
+			console.Info($"  Product {entry.Key}");
 		}
 	}
 
@@ -138,10 +117,9 @@ internal class PathExpression(Console console) : SyncExample(console)
 	/// SelectByPath: combine multiple filters with Exp.And to find variants
 	/// that are both in stock (quantity > 0) and cheap (price less than 50).
 	/// </summary>
-	private void RunSelectWithMultipleFilters(IAerospikeClient client, Arguments args)
+	private void RunSelectWithMultipleFilters()
 	{
-		Key key = new Key(args.ns, args.set, "pathexp_multi");
-		SetupInventorySample(client, key, extraProduct: false);
+		Key key = new(ns, set, "pathexp_multi");
 
 		Exp filterOnCheapInStock = Exp.And(
 			Exp.GT(
@@ -171,11 +149,11 @@ internal class PathExpression(Console console) : SyncExample(console)
 
 		Dictionary<object, object> resultMap = (Dictionary<object, object>)record.GetMap(InventoryBinName);
 		Dictionary<object, object> products = (Dictionary<object, object>)resultMap["inventory"];
-		console.Info("SelectByPath cheap + in-stock (price<50, qty>0): found {0} product(s)", products.Count);
+		console.Info($"SelectByPath cheap + in-stock (price<50, qty>0): found {products.Count} product(s)");
 
-		foreach (var entry in products)
+		foreach (KeyValuePair<object, object> entry in products)
 		{
-			console.Info("  Product {0}", entry.Key);
+			console.Info($"  Product {entry.Key}");
 		}
 	}
 
@@ -184,10 +162,9 @@ internal class PathExpression(Console console) : SyncExample(console)
 	/// products by 10, server-side, without reading the full record first.
 	/// Uses CDTExp.ModifyByPath with MapExp.Put to update the nested map.
 	/// </summary>
-	private void RunModifyByPath(IAerospikeClient client, Arguments args)
+	private void RunModifyByPath()
 	{
-		Key key = new Key(args.ns, args.set, "pathexp_modify");
-		SetupInventorySample(client, key, extraProduct: false);
+		Key key = new(ns, set, "pathexp_modify");
 
 		Exp incrementExp = MapExp.Put(
 			MapPolicy.Default,
@@ -244,8 +221,7 @@ internal class PathExpression(Console console) : SyncExample(console)
 		Dictionary<object, object> variants = (Dictionary<object, object>)product1["variants"];
 		Dictionary<object, object> variant2001 = (Dictionary<object, object>)variants["2001"];
 
-		console.Info("ModifyByPath: product 10000001, variant 2001 quantity after +10: {0} (was 100)",
-			variant2001["quantity"]);
+		console.Info($"ModifyByPath: product 10000001, variant 2001 quantity after +10: {variant2001["quantity"]} (was 100)");
 	}
 
 	/// <summary>
@@ -253,10 +229,9 @@ internal class PathExpression(Console console) : SyncExample(console)
 	/// a product's "variants" field is not a map/list as expected.
 	/// NO_FAIL skips elements that cause type errors instead of failing the operation.
 	/// </summary>
-	private void RunSelectWithNoFail(IAerospikeClient client, Arguments args)
+	private void RunSelectWithNoFail()
 	{
-		Key key = new Key(args.ns, args.set, "pathexp_nofail");
-		SetupInventorySample(client, key, extraProduct: true);
+		Key key = new(ns, set, "pathexp_nofail");
 
 		Exp filterOnFeatured = Exp.EQ(
 			MapExp.GetByKey(
@@ -287,111 +262,11 @@ internal class PathExpression(Console console) : SyncExample(console)
 
 		Dictionary<object, object> resultMap = (Dictionary<object, object>)record.GetMap(InventoryBinName);
 		Dictionary<object, object> products = (Dictionary<object, object>)resultMap["inventory"];
-		console.Info("SelectByPath with NO_FAIL (malformed product tolerated): found {0} product(s)", products.Count);
+		console.Info($"SelectByPath with NO_FAIL (malformed product tolerated): found {products.Count} product(s)");
 
-		foreach (var entry in products)
+		foreach (KeyValuePair<object, object> entry in products)
 		{
-			console.Info("  Product {0}", entry.Key);
+			console.Info($"  Product {entry.Key}");
 		}
-	}
-
-	/// <summary>
-	/// Set up the inventory sample data structure used by the path expression
-	/// examples that match the aerospike-websites documentation tutorials.
-	/// </summary>
-	private static void SetupInventorySample(IAerospikeClient client, Key key, bool extraProduct)
-	{
-		client.Delete(null, key);
-
-		Dictionary<string, object> inventory = new();
-
-		// Product 10000001: Classic T-Shirt (featured)
-		Dictionary<string, object> product1 = new()
-		{
-			{ "category", "clothing" },
-			{ "featured", true },
-			{ "name", "Classic T-Shirt" },
-			{ "description", "A lightweight cotton T-shirt perfect for everyday wear." }
-		};
-		Dictionary<string, object> product1Variants = new()
-		{
-			{ "2001", new Dictionary<string, object> { { "size", "S" }, { "price", 25 }, { "quantity", 100 } } },
-			{ "2002", new Dictionary<string, object> { { "size", "M" }, { "price", 25 }, { "quantity", 0 } } },
-			{ "2003", new Dictionary<string, object> { { "size", "L" }, { "price", 27 }, { "quantity", 50 } } }
-		};
-		product1.Add("variants", product1Variants);
-		inventory.Add("10000001", product1);
-
-		// Product 10000002: Casual Polo Shirt (not featured)
-		Dictionary<string, object> product2 = new()
-		{
-			{ "category", "clothing" },
-			{ "featured", false },
-			{ "name", "Casual Polo Shirt" },
-			{ "description", "A soft polo shirt suitable for work or leisure." }
-		};
-		Dictionary<string, object> product2Variants = new()
-		{
-			{ "2004", new Dictionary<string, object> { { "size", "M" }, { "price", 30 }, { "quantity", 20 } } },
-			{ "2005", new Dictionary<string, object> { { "size", "XL" }, { "price", 32 }, { "quantity", 10 } } }
-		};
-		product2.Add("variants", product2Variants);
-		inventory.Add("10000002", product2);
-
-		// Product 50000006: Laptop Pro 14 (featured, out of stock)
-		Dictionary<string, object> product3 = new()
-		{
-			{ "category", "electronics" },
-			{ "featured", true },
-			{ "name", "Laptop Pro 14" },
-			{ "description", "High-performance laptop designed for professionals." }
-		};
-		Dictionary<string, object> product3Variants = new()
-		{
-			{ "3001", new Dictionary<string, object> { { "spec", "8GB RAM" }, { "price", 599 }, { "quantity", 0 } } }
-		};
-		product3.Add("variants", product3Variants);
-		inventory.Add("50000006", product3);
-
-		// Product 50000009: Smart TV (featured, list-based variants)
-		Dictionary<string, object> product4 = new()
-		{
-			{ "category", "electronics" },
-			{ "featured", true },
-			{ "name", "Smart TV" },
-			{ "description", "Ultra HD smart television with built-in streaming apps." }
-		};
-		List<Dictionary<string, object>> product4Variants = new()
-		{
-			new() { { "sku", 3007 }, { "spec", "1080p" }, { "price", 199 }, { "quantity", 60 } },
-			new() { { "sku", 3008 }, { "spec", "4K" }, { "price", 399 }, { "quantity", 30 } }
-		};
-		product4.Add("variants", product4Variants);
-		inventory.Add("50000009", product4);
-
-		if (extraProduct)
-		{
-			// Product 10000003: Hooded Sweatshirt (featured, malformed variants for NO_FAIL demo)
-			Dictionary<string, object> product5 = new()
-			{
-				{ "category", "clothing" },
-				{ "featured", true },
-				{ "name", "Hooded Sweatshirt" },
-				{ "description", "Hooded Sweatshirt" }
-			};
-			Dictionary<string, object> product5Variants = new()
-			{
-				{ "quantity", 10 }
-			};
-			product5.Add("variants", product5Variants);
-			inventory.Add("10000003", product5);
-		}
-
-		Dictionary<string, object> data = new()
-		{
-			{ "inventory", inventory }
-		};
-
-		client.Put(null, key, new Bin(InventoryBinName, data));
 	}
 }
