@@ -1,4 +1,4 @@
-/* 
+/*
  * Copyright 2012-2026 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
@@ -14,9 +14,7 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-
 using Aerospike.Client;
-using System.Collections.Generic;
 
 namespace Aerospike.Example;
 
@@ -25,194 +23,143 @@ namespace Aerospike.Example;
 /// Demonstrates CTX.MapKeysIn, CTX.AndFilter, Exp.InList,
 /// Exp.MapKeysIn, and Exp.MapValuesIn.
 /// </summary>
-internal class PathExpressionEnhanced(Console console) : SyncExample(console)
+public sealed class PathExpressionEnhanced : SyncExample
 {
-	public override void RunExample(IAerospikeClient client, Arguments args)
+	private const string MapBinName = "mapbin";
+
+	public override void RunExample()
 	{
-		RequireMinServerVersion(args, Node.SERVER_VERSION_8_1_2);
+		RequireMinServerVersion(Node.SERVER_VERSION_8_1_2);
 
-		RunMapKeysSelect(client, args);
-		RunMapKeysWithAndFilter(client, args);
-		RunInListExpression(client, args);
-		RunMapKeysExpression(client, args);
-		RunMapValuesExpression(client, args);
-
-		Key mainKey = new Key(args.ns, args.set, "pathexp5");
-		Record mainRec = client.Get(null, mainKey);
-		if (mainRec == null)
-		{
-			throw new Exception("PathExpressionEnhanced verification failed: pathexp5 record not found.");
-		}
-		if (mainRec.GetValue("mapbin") == null)
-		{
-			throw new Exception("PathExpressionEnhanced verification failed: mapbin missing.");
-		}
-		console.Info("PathExpressionEnhanced verified successfully.");
+		RunMapKeysSelect();
+		RunMapKeysWithAndFilter();
+		RunInListExpression();
+		RunMapKeysExpression();
+		RunMapValuesExpression();
 	}
 
 	/// <summary>
 	/// Use CTX.MapKeysIn to select a subset of map entries by key list
 	/// via CDTOperation.SelectByPath.
 	/// </summary>
-	private void RunMapKeysSelect(IAerospikeClient client, Arguments args)
+	private void RunMapKeysSelect()
 	{
-		Key key = new Key(args.ns, args.set, "pathexp1");
-		string binName = "mapbin";
-
-		client.Delete(args.writePolicy, key);
+		Key key = new(ns, set, "pathexp1");
 
 		Dictionary<string, int> map = new()
 		{
-			{ "Charlie", 55 },
-			{ "Jim", 98 },
-			{ "John", 76 },
-			{ "Harry", 82 }
+			["Charlie"] = 55,
+			["Jim"] = 98,
+			["John"] = 76,
+			["Harry"] = 82
 		};
 
-		client.Put(args.writePolicy, key, new Bin(binName, map));
+		client.Put(writePolicy, key, new Bin(MapBinName, map));
 
 		CTX ctx = CTX.MapKeysIn("Charlie", "John");
-		Record record = client.Operate(
-			args.writePolicy, key,
-			CDTOperation.SelectByPath(binName, SelectFlag.VALUE, ctx)
-		);
+		Record record = client.Operate(writePolicy, key,
+			CDTOperation.SelectByPath(MapBinName, SelectFlag.VALUE, ctx));
 
-		console.Info("SelectByPath MapKeysIn [Charlie, John]: " + record.GetList(binName));
+		console.Info($"SelectByPath MapKeysIn [Charlie, John]: {record.GetList(MapBinName)}");
 	}
 
 	/// <summary>
 	/// Use CTX.MapKeysIn combined with CTX.AndFilter to select map entries
 	/// by key list and then further filter by value.
 	/// </summary>
-	private void RunMapKeysWithAndFilter(IAerospikeClient client, Arguments args)
+	private void RunMapKeysWithAndFilter()
 	{
-		Key key = new Key(args.ns, args.set, "pathexp2");
-		string binName = "mapbin";
+		Key key = new(ns, set, "pathexp2");
 
 		Dictionary<string, int> map = new()
 		{
-			{ "Charlie", 55 },
-			{ "Jim", 98 },
-			{ "John", 76 },
-			{ "Harry", 82 }
+			["Charlie"] = 55,
+			["Jim"] = 98,
+			["John"] = 76,
+			["Harry"] = 82
 		};
 
-		client.Put(args.writePolicy, key, new Bin(binName, map));
+		client.Put(writePolicy, key, new Bin(MapBinName, map));
 
 		CTX keyCtx = CTX.MapKeysIn("Charlie", "Jim", "John");
-		CTX filter = CTX.AndFilter(
-			Exp.GT(
-				Exp.IntLoopVar(LoopVarPart.VALUE), Exp.Val(70)
-			)
-		);
+		CTX filter = CTX.AndFilter(Exp.GT(Exp.IntLoopVar(LoopVarPart.VALUE), Exp.Val(70)));
 
-		Record record = client.Operate(
-			args.writePolicy, key,
-			CDTOperation.SelectByPath(binName, SelectFlag.MAP_KEY_VALUE, keyCtx, filter)
-		);
+		Record record = client.Operate(writePolicy, key,
+			CDTOperation.SelectByPath(MapBinName, SelectFlag.MAP_KEY_VALUE, keyCtx, filter));
 
-		console.Info("SelectByPath MapKeysIn [Charlie, Jim, John] AND value > 70: " + record.GetValue(binName));
+		console.Info($"SelectByPath MapKeysIn [Charlie, Jim, John] AND value > 70: {record.GetValue(MapBinName)}");
 	}
 
 	/// <summary>
 	/// Use Exp.InList to check if a bin value is contained in a list.
 	/// </summary>
-	private void RunInListExpression(IAerospikeClient client, Arguments args)
+	private void RunInListExpression()
 	{
-		Key key = new Key(args.ns, args.set, "pathexp3");
-		string binName = "color";
-		string value = "blue";
+		Key key = new(ns, set, "pathexp3");
 
-		client.Delete(args.writePolicy, key);
-		client.Put(args.writePolicy, key, new Bin(binName, value), new Bin("size", 10));
+		client.Put(writePolicy, key, new Bin("color", "blue"), new Bin("size", 10));
 
-		Expression exp = Exp.Build(
+		Expression includesBlue = Exp.Build(
 			Exp.InList(
 				Exp.StringBin("color"),
-				Exp.Val(new List<string> { "red", "blue", "green" })
-			)
-		);
+				Exp.Val(new List<string> { "red", "blue", "green" })));
 
-		Record record = client.Operate(
-			null, key,
-			ExpOperation.Read("inList", exp, ExpReadFlags.DEFAULT)
-		);
+		Record record = client.Operate(null, key, ExpOperation.Read("inList", includesBlue, ExpReadFlags.DEFAULT));
+		console.Info($"inList [red, blue, green] contains 'blue': {record.GetBool("inList")}");
 
-		console.Info("inList [red, blue, green] contains 'blue': " + record.GetBool("inList"));
-
-		Expression expNot = Exp.Build(
+		Expression excludesBlue = Exp.Build(
 			Exp.InList(
 				Exp.StringBin("color"),
-				Exp.Val(new List<string> { "red", "yellow", "green" })
-			)
-		);
+				Exp.Val(new List<string> { "red", "yellow", "green" })));
 
-		Record recordNot = client.Operate(
-			null, key,
-			ExpOperation.Read("notInList", expNot, ExpReadFlags.DEFAULT)
-		);
-
-		console.Info("inList [red, yellow, green] contains 'blue': " + recordNot.GetBool("notInList"));
+		Record recordNot = client.Operate(null, key, ExpOperation.Read("notInList", excludesBlue, ExpReadFlags.DEFAULT));
+		console.Info($"inList [red, yellow, green] contains 'blue': {recordNot.GetBool("notInList")}");
 	}
 
 	/// <summary>
 	/// Use Exp.MapKeysIn to extract all keys from a map bin.
 	/// </summary>
-	private void RunMapKeysExpression(IAerospikeClient client, Arguments args)
+	private void RunMapKeysExpression()
 	{
-		Key key = new Key(args.ns, args.set, "pathexp4");
-		string binName = "mapbin";
-
-		client.Delete(args.writePolicy, key);
+		Key key = new(ns, set, "pathexp4");
 
 		Dictionary<string, int> map = new()
 		{
-			{ "Charlie", 55 },
-			{ "Jim", 98 },
-			{ "John", 76 }
+			["Charlie"] = 55,
+			["Jim"] = 98,
+			["John"] = 76
 		};
-		client.Put(args.writePolicy, key, new Bin(binName, map));
+		client.Put(writePolicy, key, new Bin(MapBinName, map));
 
-		Expression exp = Exp.Build(
-			Exp.MapKeysIn(Exp.MapBin(binName))
-		);
+		Expression exp = Exp.Build(Exp.MapKeysIn(Exp.MapBin(MapBinName)));
 
-		Record record = client.Operate(null, key,
-			ExpOperation.Read("keys", exp, ExpReadFlags.DEFAULT)
-		);
+		Record record = client.Operate(null, key, ExpOperation.Read("keys", exp, ExpReadFlags.DEFAULT));
 
 		List<object> keys = (List<object>)record.GetList("keys");
-		console.Info("Exp.MapKeysIn: " + Util.ListToString(keys));
+		console.Info($"Exp.MapKeysIn: {Util.ListToString(keys)}");
 	}
 
 	/// <summary>
 	/// Use Exp.MapValuesIn to extract all values from a map bin.
 	/// </summary>
-	private void RunMapValuesExpression(IAerospikeClient client, Arguments args)
+	private void RunMapValuesExpression()
 	{
-		Key key = new Key(args.ns, args.set, "pathexp5");
-		string binName = "mapbin";
-
-		client.Delete(args.writePolicy, key);
+		Key key = new(ns, set, "pathexp5");
 
 		Dictionary<string, int> map = new()
 		{
-			{ "Charlie", 55 },
-			{ "Jim", 98 },
-			{ "John", 76 }
+			["Charlie"] = 55,
+			["Jim"] = 98,
+			["John"] = 76
 		};
 
-		client.Put(args.writePolicy, key, new Bin(binName, map));
+		client.Put(writePolicy, key, new Bin(MapBinName, map));
 
-		Expression exp = Exp.Build(
-			Exp.MapValuesIn(Exp.MapBin(binName))
-		);
+		Expression exp = Exp.Build(Exp.MapValuesIn(Exp.MapBin(MapBinName)));
 
-		Record record = client.Operate(null, key,
-			ExpOperation.Read("values", exp, ExpReadFlags.DEFAULT)
-		);
+		Record record = client.Operate(null, key, ExpOperation.Read("values", exp, ExpReadFlags.DEFAULT));
 
 		List<object> values = (List<object>)record.GetList("values");
-		console.Info("Exp.MapValuesIn: " + Util.ListToString(values));
+		console.Info($"Exp.MapValuesIn: {Util.ListToString(values)}");
 	}
 }

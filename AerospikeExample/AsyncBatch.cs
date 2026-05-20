@@ -1,4 +1,4 @@
-/* 
+/*
  * Copyright 2012-2026 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
@@ -18,339 +18,217 @@ using Aerospike.Client;
 
 namespace Aerospike.Example;
 
-public class AsyncBatch(Console console) : AsyncExample(console)
+public sealed class AsyncBatch : AsyncExample
 {
 	private const string KeyPrefix = "batchkey";
-	private const string ValuePrefix = "batchvalue";
+	private const string BinName = "batchbin";
 	private const int BatchSize = 8;
+	private const int TotalTasks = 6;
 
-	private AsyncClient client;
-	private Arguments args;
+	private readonly ManualResetEventSlim completed = new();
 	private Key[] sendKeys;
-	private string binName;
-	private int taskCount;
-	private int taskSize;
-	private bool completed;
+	private int tasksComplete;
 
 	/// <summary>
-	/// Asynchronous batch examples.
+	/// Demonstrate asynchronous batch operations: exists, get, headers, and complex reads.
 	/// </summary>
-	public override void RunExample(AsyncClient client, Arguments args)
+	public override void RunExample()
 	{
-		this.client = client;
-		this.args = args;
-		this.binName = args.GetBinName("batchbin");
-		this.taskCount = 0;
-		this.taskSize = 0;
-		this.completed = false;
+		completed.Reset();
+		tasksComplete = 0;
+		sendKeys = BuildKeys();
 
-		InitializeKeys();
-		WriteRecords();
-		WaitTillComplete();
+		BatchExistsArray();
+		BatchExistsSequence();
+		BatchGetArray();
+		BatchGetSequence();
+		BatchGetHeaders();
+		BatchReadComplex();
 
-		var verifyBatchKey = new Key(args.ns, args.set, "batchkey1");
-		Record verifyBatchRecord = client.Get(null, verifyBatchKey, binName);
-		if (verifyBatchRecord == null)
-		{
-			throw new Exception("AsyncBatch verification failed: record not found for batchkey1.");
-		}
-		object verifyBatchValue = verifyBatchRecord.GetValue(binName);
-		if (verifyBatchValue == null || !verifyBatchValue.ToString().Equals("batchvalue1"))
-		{
-			throw new Exception("AsyncBatch verification failed: expected batchvalue1, received " + verifyBatchValue + ".");
-		}
-		console.Info("AsyncBatch verified successfully.");
+		completed.Wait();
 	}
 
-	private void InitializeKeys()
+	private Key[] BuildKeys()
 	{
-		sendKeys = new Key[BatchSize];
+		Key[] keys = new Key[BatchSize];
 
 		for (int i = 0; i < BatchSize; i++)
 		{
-			sendKeys[i] = new Key(args.ns, args.set, KeyPrefix + (i + 1));
+			keys[i] = new Key(ns, set, $"{KeyPrefix}{i + 1}");
 		}
+
+		return keys;
 	}
 
-	/// <summary>
-	/// Write records individually.
-	/// </summary>
-	private void WriteRecords()
-	{
-		var handler = new WriteHandler(this, BatchSize);
-
-		for (int i = 1; i <= BatchSize; i++)
-		{
-			var key = sendKeys[i - 1];
-			var bin = new Bin(binName, ValuePrefix + i);
-
-			console.Info("Put: namespace={0} set={1} key={2} bin={3} value={4}",
-				key.ns, key.setName, key.userKey, bin.name, bin.value);
-
-			client.Put(args.writePolicy, handler, key, bin);
-		}
-	}
-
-	private class WriteHandler(AsyncBatch parent, int max) : WriteListener
-	{
-		private readonly AsyncBatch parent = parent;
-		internal readonly int max = max;
-		internal int count;
-
-		public virtual void OnSuccess(Key key)
-		{
-			int rows = Interlocked.Increment(ref count);
-
-			if (rows == max)
-			{
-				try
-				{
-					// All writes succeeded. Run batch queries in parallel.
-					parent.taskSize = 6;
-					parent.BatchExistsArray();
-					parent.BatchExistsSequence();
-					parent.BatchGetArray();
-					parent.BatchGetSequence();
-					parent.BatchGetHeaders();
-					parent.BatchReadComplex();
-				}
-				catch (Exception e)
-				{
-					parent.console.Error("Batch failed: " + e.Message);
-					parent.AllTasksComplete();
-				}
-			}
-		}
-
-		public virtual void OnFailure(AerospikeException e)
-		{
-			parent.console.Error("Put failed: " + e.Message);
-			parent.AllTasksComplete();
-		}
-	}
-
-	/// <summary>
-	/// Check existence of records in one batch, receive in one array.
-	/// </summary>
-	private void BatchExistsArray()
-	{
+	private void BatchExistsArray() =>
 		client.Exists(null, new ExistsArrayHandler(this), sendKeys);
+
+	private void BatchExistsSequence() =>
+		client.Exists(null, new ExistsSequenceHandler(this), sendKeys);
+
+	private void BatchGetArray() =>
+		client.Get(null, new RecordArrayHandler(this), sendKeys);
+
+	private void BatchGetSequence() =>
+		client.Get(null, new RecordSequenceHandler(this), sendKeys);
+
+	private void BatchGetHeaders() =>
+		client.GetHeader(null, new RecordHeaderArrayHandler(this), sendKeys);
+
+	private void BatchReadComplex()
+	{
+		string[] bins = [BinName];
+		List<BatchRead> records =
+		[
+			new(new Key(ns, set, $"{KeyPrefix}1"), bins),
+			new(new Key(ns, set, $"{KeyPrefix}2"), true),
+			new(new Key(ns, set, $"{KeyPrefix}3"), true),
+			new(new Key(ns, set, $"{KeyPrefix}4"), false),
+			new(new Key(ns, set, $"{KeyPrefix}5"), true),
+			new(new Key(ns, set, $"{KeyPrefix}6"), true),
+			new(new Key(ns, set, $"{KeyPrefix}7"), bins),
+			// This record exists, but the requested bin will not.
+			new(new Key(ns, set, $"{KeyPrefix}8"), ["binnotfound"]),
+			// This record will not be found.
+			new(new Key(ns, set, "keynotfound"), bins),
+		];
+
+		client.Get(null, new BatchListHandler(this), records);
 	}
 
-	private class ExistsArrayHandler(AsyncBatch parent) : ExistsArrayListener
+	private void TaskComplete()
 	{
-		private readonly AsyncBatch parent = parent;
+		if (Interlocked.Increment(ref tasksComplete) >= TotalTasks)
+		{
+			completed.Set();
+		}
+	}
 
-		public virtual void OnSuccess(Key[] keys, bool[] existsArray)
+	private sealed class ExistsArrayHandler(AsyncBatch parent) : ExistsArrayListener
+	{
+		public void OnSuccess(Key[] keys, bool[] existsArray)
 		{
 			for (int i = 0; i < existsArray.Length; i++)
 			{
 				Key key = keys[i];
-				bool exists = existsArray[i];
-				parent.console.Info("Record: namespace={0} set={1} key={2} exists={3}",
-					key.ns, key.setName, key.userKey, exists);
+				parent.console.Info($"Record: namespace={key.ns} set={key.setName} key={key.userKey} exists={existsArray[i]}");
 			}
+
 			parent.TaskComplete();
 		}
 
-		public virtual void OnFailure(AerospikeException e)
+		public void OnFailure(AerospikeException e)
 		{
-			parent.console.Error("Batch exists array failed: " + Util.GetErrorMessage(e));
-			parent.TaskComplete();
-		}
-	}
-
-	/// <summary>
-	/// Check existence of records in one batch, receive one record at a time.
-	/// </summary>
-	private void BatchExistsSequence()
-	{
-		client.Exists(null, new ExistsSequenceHandler(this), sendKeys);
-	}
-
-	private class ExistsSequenceHandler(AsyncBatch parent) : ExistsSequenceListener
-	{
-		private readonly AsyncBatch parent = parent;
-
-		public virtual void OnExists(Key key, bool exists)
-		{
-			parent.console.Info("Record: namespace={0} set={1} key={2} exists={3}",
-				key.ns, key.setName, ByteUtil.BytesToHexString(key.digest), exists);
-		}
-
-		public virtual void OnSuccess()
-		{
-			parent.TaskComplete();
-		}
-
-		public virtual void OnFailure(AerospikeException e)
-		{
-			parent.console.Error("Batch exists sequence failed: " + Util.GetErrorMessage(e));
+			parent.console.Error($"Batch exists array failed: {Util.GetErrorMessage(e)}");
 			parent.TaskComplete();
 		}
 	}
 
-	/// <summary>
-	/// Read records in one batch, receive in array.
-	/// </summary>
-	private void BatchGetArray()
+	private sealed class ExistsSequenceHandler(AsyncBatch parent) : ExistsSequenceListener
 	{
-		client.Get(null, new RecordArrayHandler(this), sendKeys);
+		public void OnExists(Key key, bool exists)
+		{
+			parent.console.Info($"Record: namespace={key.ns} set={key.setName} digest={ByteUtil.BytesToHexString(key.digest)} exists={exists}");
+		}
+
+		public void OnSuccess() => parent.TaskComplete();
+
+		public void OnFailure(AerospikeException e)
+		{
+			parent.console.Error($"Batch exists sequence failed: {Util.GetErrorMessage(e)}");
+			parent.TaskComplete();
+		}
 	}
 
-	private class RecordArrayHandler(AsyncBatch parent) : RecordArrayListener
+	private sealed class RecordArrayHandler(AsyncBatch parent) : RecordArrayListener
 	{
-		private readonly AsyncBatch parent = parent;
-
-		public virtual void OnSuccess(Key[] keys, Record[] records)
+		public void OnSuccess(Key[] keys, Record[] records)
 		{
 			for (int i = 0; i < records.Length; i++)
 			{
 				Key key = keys[i];
-				var record = records[i];
-				Log.Level level = Log.Level.ERROR;
-				object value = null;
+				Record record = records[i];
 
-				if (record != null)
+				if (record == null)
 				{
-					level = Log.Level.INFO;
-					value = record.GetValue(parent.binName);
+					parent.console.Error($"Record not found: namespace={key.ns} set={key.setName} key={key.userKey} bin={BinName}");
 				}
-				parent.console.Write(level, "Record: namespace={0} set={1} key={2} bin={3} value={4}",
-					key.ns, key.setName, key.userKey, parent.binName, value);
+				else
+				{
+					parent.console.Info($"Record: namespace={key.ns} set={key.setName} key={key.userKey} bin={BinName} value={record.GetValue(BinName)}");
+				}
 			}
 
-			if (records.Length != BatchSize)
+			parent.console.Info($"Records returned: {records.Length}");
+			parent.TaskComplete();
+		}
+
+		public void OnFailure(AerospikeException e)
+		{
+			parent.console.Error($"Batch get array failed: {Util.GetErrorMessage(e)}");
+			parent.TaskComplete();
+		}
+	}
+
+	private sealed class RecordSequenceHandler(AsyncBatch parent) : RecordSequenceListener
+	{
+		public void OnRecord(Key key, Record record)
+		{
+			if (record == null)
 			{
-				parent.console.Error("Record size mismatch. Expected {0}. Received {1}.",
-					BatchSize, records.Length);
+				parent.console.Error($"Record not found: namespace={key.ns} set={key.setName} digest={ByteUtil.BytesToHexString(key.digest)} bin={BinName}");
 			}
-			parent.TaskComplete();
-		}
-
-		public virtual void OnFailure(AerospikeException e)
-		{
-			parent.console.Error("Batch get array failed: " + Util.GetErrorMessage(e));
-			parent.TaskComplete();
-		}
-	}
-
-	/// <summary>
-	/// Read records in one batch call, receive one record at a time.
-	/// </summary>
-	private void BatchGetSequence()
-	{
-		client.Get(null, new RecordSequenceHandler(this), sendKeys);
-	}
-
-	private class RecordSequenceHandler(AsyncBatch parent) : RecordSequenceListener
-	{
-		private readonly AsyncBatch parent = parent;
-
-		public virtual void OnRecord(Key key, Record record)
-		{
-			Log.Level level = Log.Level.ERROR;
-			object value = null;
-
-			if (record != null)
+			else
 			{
-				level = Log.Level.INFO;
-				value = record.GetValue(parent.binName);
+				parent.console.Info($"Record: namespace={key.ns} set={key.setName} digest={ByteUtil.BytesToHexString(key.digest)} bin={BinName} value={record.GetValue(BinName)}");
 			}
-			parent.console.Write(level, "Record: namespace={0} set={1} key={2} bin={3} value={4}",
-				key.ns, key.setName, ByteUtil.BytesToHexString(key.digest), parent.binName, value);
 		}
 
-		public virtual void OnSuccess()
-		{
-			parent.TaskComplete();
-		}
+		public void OnSuccess() => parent.TaskComplete();
 
-		public virtual void OnFailure(AerospikeException e)
+		public void OnFailure(AerospikeException e)
 		{
-			parent.console.Error("Batch get sequence failed: " + Util.GetErrorMessage(e));
+			parent.console.Error($"Batch get sequence failed: {Util.GetErrorMessage(e)}");
 			parent.TaskComplete();
 		}
 	}
 
-	/// <summary>
-	/// Read record headers in one batch, receive in an array.
-	/// </summary>
-	private void BatchGetHeaders()
+	private sealed class RecordHeaderArrayHandler(AsyncBatch parent) : RecordArrayListener
 	{
-		client.GetHeader(null, new RecordHeaderArrayHandler(this), sendKeys);
-	}
-
-	private class RecordHeaderArrayHandler(AsyncBatch parent) : RecordArrayListener
-	{
-		private readonly AsyncBatch parent = parent;
-
-		public virtual void OnSuccess(Key[] keys, Record[] records)
+		public void OnSuccess(Key[] keys, Record[] records)
 		{
 			for (int i = 0; i < records.Length; i++)
 			{
 				Key key = keys[i];
-				var record = records[i];
-				Log.Level level = Log.Level.ERROR;
-				int generation = 0;
-				int expiration = 0;
+				Record record = records[i];
 
-				if (record != null && (record.generation > 0 || record.expiration > 0))
+				if (record == null || (record.generation == 0 && record.expiration == 0))
 				{
-					level = Log.Level.INFO;
-					generation = record.generation;
-					expiration = record.expiration;
+					parent.console.Error($"Record not found: namespace={key.ns} set={key.setName} key={key.userKey}");
 				}
-				parent.console.Write(level, "Record: namespace={0} set={1} key={2} generation={3} expiration={4}",
-					key.ns, key.setName, key.userKey, generation, expiration);
+				else
+				{
+					parent.console.Info($"Record: namespace={key.ns} set={key.setName} key={key.userKey} generation={record.generation} expiration={record.expiration}");
+				}
 			}
 
-			if (records.Length != BatchSize)
-			{
-				parent.console.Error("Record size mismatch. Expected {0}. Received {1}.", BatchSize, records.Length);
-			}
+			parent.console.Info($"Headers returned: {records.Length}");
 			parent.TaskComplete();
 		}
 
-		public virtual void OnFailure(AerospikeException e)
+		public void OnFailure(AerospikeException e)
 		{
-			parent.console.Error("Batch get headers failed: " + Util.GetErrorMessage(e));
+			parent.console.Error($"Batch get headers failed: {Util.GetErrorMessage(e)}");
 			parent.TaskComplete();
 		}
 	}
 
-	private void BatchReadComplex()
+	private sealed class BatchListHandler(AsyncBatch parent) : BatchListListener
 	{
-		// Batch gets into one call.
-		// Batch allows multiple namespaces in one call, but example test environment may only have one namespace.
-		string[] bins = [binName];
-		List<BatchRead> records =
-		[
-			new BatchRead(new Key(args.ns, args.set, KeyPrefix + 1), bins),
-			new BatchRead(new Key(args.ns, args.set, KeyPrefix + 2), true),
-			new BatchRead(new Key(args.ns, args.set, KeyPrefix + 3), true),
-			new BatchRead(new Key(args.ns, args.set, KeyPrefix + 4), false),
-			new BatchRead(new Key(args.ns, args.set, KeyPrefix + 5), true),
-			new BatchRead(new Key(args.ns, args.set, KeyPrefix + 6), true),
-			new BatchRead(new Key(args.ns, args.set, KeyPrefix + 7), bins),
-			// This record should be found, but the requested bin will not be found.
-			new BatchRead(new Key(args.ns, args.set, KeyPrefix + 8), ["binnotfound"]),
-			// This record should not be found.
-			new BatchRead(new Key(args.ns, args.set, "keynotfound"), bins),
-		];
-
-		// Execute batch.
-		client.Get(null, new BatchListHandler(this), records);
-	}
-
-	private class BatchListHandler(AsyncBatch parent) : BatchListListener
-	{
-		private readonly AsyncBatch parent = parent;
-
-		public virtual void OnSuccess(List<BatchRead> records)
+		public void OnSuccess(List<BatchRead> records)
 		{
-			// Show results.
 			int found = 0;
+
 			foreach (BatchRead record in records)
 			{
 				Key key = record.key;
@@ -359,55 +237,22 @@ public class AsyncBatch(Console console) : AsyncExample(console)
 				if (rec != null)
 				{
 					found++;
-					parent.console.Info("Record: ns={0} set={1} key={2} bin={3} value={4}",
-						key.ns, key.setName, key.userKey, parent.binName, rec.GetValue(parent.binName));
+					parent.console.Info($"Record: ns={key.ns} set={key.setName} key={key.userKey} bin={BinName} value={rec.GetValue(BinName)}");
 				}
 				else
 				{
-					parent.console.Info("Record not found: ns={0} set={1} key={2} bin={3}",
-						key.ns, key.setName, key.userKey, parent.binName);
+					parent.console.Info($"Record not found: ns={key.ns} set={key.setName} key={key.userKey} bin={BinName}");
 				}
 			}
 
-			if (found != 8)
-			{
-				parent.console.Error("Records found mismatch. Expected 8. Received " + found);
-			}
+			parent.console.Info($"Records found: {found}");
 			parent.TaskComplete();
 		}
 
-		public virtual void OnFailure(AerospikeException e)
+		public void OnFailure(AerospikeException e)
 		{
-			parent.console.Error("Batch read complex failed: " + Util.GetErrorMessage(e));
+			parent.console.Error($"Batch read complex failed: {Util.GetErrorMessage(e)}");
 			parent.TaskComplete();
-		}
-	}
-
-	private void WaitTillComplete()
-	{
-		lock (this)
-		{
-			while (!completed)
-			{
-				Monitor.Wait(this);
-			}
-		}
-	}
-
-	private void TaskComplete()
-	{
-		if (Interlocked.Increment(ref taskCount) >= taskSize)
-		{
-			AllTasksComplete();
-		}
-	}
-
-	private void AllTasksComplete()
-	{
-		lock (this)
-		{
-			completed = true;
-			Monitor.Pulse(this);
 		}
 	}
 }

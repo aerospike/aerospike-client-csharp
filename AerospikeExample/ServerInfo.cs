@@ -1,4 +1,4 @@
-/* 
+/*
  * Copyright 2012-2026 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
@@ -18,60 +18,52 @@ using Aerospike.Client;
 
 namespace Aerospike.Example;
 
-public class ServerInfo(Console console) : SyncExample(console)
+public sealed class ServerInfo : SyncExample
 {
-
 	/// <summary>
 	/// Query server configuration, cluster status and namespace configuration.
 	/// </summary>
-	public override void RunExample(IAerospikeClient client, Arguments args)
+	public override void RunExample()
 	{
 		Node node = client.Nodes[0];
-		GetServerConfig(node, args);
-		Console.Write("");
-		GetNamespaceConfig(node, args);
+		PrintServerConfig(node);
+		Console.WriteLine("");
+		PrintNamespaceConfig(node);
 	}
 
-	/// <summary>
-	/// Query server configuration and cluster status.
-	/// </summary>
-	private static void GetServerConfig(Node node, Arguments args)
+	private static void PrintServerConfig(Node node)
 	{
-		Console.Write("Server Configuration");
-		var map = Info.Request(null, node) ?? throw new Exception("Failed to get server info: host=" + node);
+		Console.WriteLine("Server Configuration");
+		Dictionary<string, string> map = Info.Request(null, node)
+			?? throw new Exception($"Failed to get server info: host={node}");
+
 		foreach (KeyValuePair<string, string> entry in map)
 		{
-			string key = entry.Key;
-
-			if (key.Equals("statistics") || key.Equals("query-stat"))
+			if (entry.Key is "statistics" or "query-stat")
 			{
-				LogNameValueTokens(entry.Value);
+				PrintNameValueTokens(entry.Value);
 			}
 			else
 			{
-				Console.Write(key + '=' + entry.Value);
+				Console.WriteLine($"{entry.Key}={entry.Value}");
 			}
 		}
 	}
 
-	/// <summary>
-	/// Query namespace configuration.
-	/// </summary>
-	private static void GetNamespaceConfig(Node node, Arguments args)
+	private void PrintNamespaceConfig(Node node)
 	{
-		Console.Write("Namespace Configuration");
-		string filter = "namespace/" + args.ns;
-		string tokens = Info.Request(node, filter) ?? throw new Exception($"Failed to get namespace info: host={node} namespace={args.ns}");
-		LogNameValueTokens(tokens);
+		Console.WriteLine("Namespace Configuration");
+		string filter = $"namespace/{ns}";
+		string tokens = Info.Request(node, filter)
+			?? throw new Exception($"Failed to get namespace info: host={node} namespace={ns}");
+		PrintNameValueTokens(tokens);
 	}
 
-	private static void LogNameValueTokens(string tokens)
+	private static void PrintNameValueTokens(string tokens)
 	{
-		string[] values = tokens.Split(';');
-
-		foreach (string value in values)
+		foreach (string value in tokens.Split(';'))
 		{
-			Console.Write(value);
+			Console.WriteLine(value);
 		}
 	}
 }

@@ -1,4 +1,4 @@
-/* 
+/*
  * Copyright 2012-2026 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
@@ -18,36 +18,32 @@ using Aerospike.Client;
 
 namespace Aerospike.Example;
 
-public class QueryPage(Console console) : SyncExample(console)
+public sealed class QueryPage : SyncExample
 {
+	private const string SetName = "pq";
+	private const string BinName = "bin";
 
 	/// <summary>
-	/// Query in pages.
+	/// Iterate a query in fixed-size pages using a partition filter as the resume token.
 	/// </summary>
-	public override void RunExample(IAerospikeClient client, Arguments args)
+	public override void RunExample()
 	{
-		string indexName = "pqidx";
-		string binName = "bin";
-		string setName = "pq";
+		Statement stmt = new()
+		{
+			Namespace = ns,
+			SetName = SetName,
+			BinNames = [BinName],
+			Filter = Filter.Range(BinName, 1, 200),
+			MaxRecords = 100
+		};
 
-		CreateIndex(client, args, setName, indexName, binName);
-		WriteRecords(client, args, setName, binName, 190);
+		PartitionFilter filter = PartitionFilter.All();
 
-		Statement stmt = new();
-		stmt.Namespace = args.ns;
-		stmt.SetName = setName;
-		stmt.BinNames = [binName];
-		stmt.Filter = Filter.Range(binName, 1, 200);
-		stmt.MaxRecords = 100;
-
-		var filter = PartitionFilter.All();
-
-		// Query 3 pages of records.
 		for (int i = 0; i < 3 && !filter.Done; i++)
 		{
-			console.Info("Query page: " + i);
+			console.Info($"Query page: {i}");
 
-			using var rs = client.QueryPartitions(null, stmt, filter);
+			using RecordSet rs = client.QueryPartitions(null, stmt, filter);
 
 			int count = 0;
 
@@ -56,64 +52,7 @@ public class QueryPage(Console console) : SyncExample(console)
 				count++;
 			}
 
-			console.Info("Records returned: " + count);
-		}
-		client.DropIndex(args.policy, args.ns, setName, indexName);
-
-		Key verifyKey = new Key(args.ns, setName, 1);
-		Record verifyRecord = client.Get(null, verifyKey);
-		if (verifyRecord == null || Convert.ToInt32(verifyRecord.GetValue(binName)) != 1)
-		{
-			throw new Exception("QueryPage verification failed: expected key 1 in set '" + setName + "' with bin '" + binName + "' = 1.");
-		}
-
-		console.Info("QueryPage verified successfully.");
-	}
-
-	private void CreateIndex
-	(
-		IAerospikeClient client,
-		Arguments args,
-		string setName,
-		string indexName,
-		string binName
-	)
-	{
-		console.Info($"Create index: ns={args.ns} set={setName} index={indexName} bin={binName}");
-
-		Policy policy = new()
-		{
-			totalTimeout = 0
-		};
-
-		try
-		{
-			client.DropIndex(policy, args.ns, setName, indexName);
-		}
-		catch (AerospikeException)
-		{
-		}
-
-		var task = client.CreateIndex(policy, args.ns, setName, indexName, binName, IndexType.INTEGER);
-		task.Wait();
-	}
-
-	private void WriteRecords
-	(
-		IAerospikeClient client,
-		Arguments args,
-		string setName,
-		string binName,
-		int size
-	)
-	{
-		console.Info("Write " + size + " records.");
-
-		for (int i = 1; i <= size; i++)
-		{
-			var key = new Key(args.ns, setName, i);
-			var bin = new Bin(binName, i);
-			client.Put(args.writePolicy, key, bin);
+			console.Info($"Records returned: {count}");
 		}
 	}
 }

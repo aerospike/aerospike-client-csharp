@@ -107,3 +107,10 @@ jobs:
       with:
         files: test-results/**/*.trx
         check_name: "Nightly - ${{ matrix.server.server-tag }} (${{ matrix.server.server-type }}, SC=${{ matrix.strong-consistency }}, TLS=${{ matrix.server.tls }})"
+
+    - name: Publish example run results
+      if: ${{ !cancelled() && hashFiles('example-results/**/*.trx') != '' }}
+      uses: EnricoMi/publish-unit-test-result-action@3a74b2957438d0b6e2e61d67b05318aa25c9e6c6 # v2.20.0
+      with:
+        files: example-results/**/*.trx
+        check_name: "Nightly Examples - ${{ matrix.server.server-tag }} (${{ matrix.server.server-type }}, SC=${{ matrix.strong-consistency }}, TLS=${{ matrix.server.tls }})"

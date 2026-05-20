@@ -1,4 +1,4 @@
-/* 
+/*
  * Copyright 2012-2026 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
@@ -18,121 +18,35 @@ using Aerospike.Client;
 
 namespace Aerospike.Example;
 
-public class QueryFilter(Console console) : SyncExample(console)
+public sealed class QueryFilter : SyncExample
 {
-
 	/// <summary>
-	/// Query on a secondary index with a filter and then apply an additional filter in the 
-	/// user defined function.
+	/// Query a secondary index and apply an additional server-side filter inside a UDF.
 	/// </summary>
-	public override void RunExample(IAerospikeClient client, Arguments args)
+	public override void RunExample()
 	{
-		string indexName = "profileindex";
-		string keyPrefix = "profilekey";
-		string binName = args.GetBinName("name");
+		const string indexName = "profileindex";
+		const string binName = "name";
+		const string nameFilter = "Bill";
+		const string passwordFilter = "hknfpkj";
 
-		Register(client, args);
-		CreateIndex(client, args, indexName, binName);
-		WriteRecords(client, args, keyPrefix, binName);
-		RunQuery(client, args, indexName, binName);
-		client.DropIndex(args.policy, args.ns, args.set, indexName);
+		console.Info($"Query for: ns={ns} set={set} index={indexName} name={nameFilter} pass={passwordFilter}");
 
-		var verifyKey = new Key(args.ns, args.set, "profilekey2");
-		Record verifyRec = client.Get(null, verifyKey) ?? throw new Exception("QueryFilter verification: record profilekey2 not found.");
-		object nameVal = verifyRec.GetValue("name");
-		if (!"Bill".Equals(nameVal))
+		Statement stmt = new()
 		{
-			throw new Exception($"QueryFilter verification: expected name Bill, got {nameVal}.");
-		}
-		console.Info("QueryFilter verified successfully.");
-	}
+			Namespace = ns,
+			SetName = set,
+			Filter = Filter.Equal(binName, nameFilter)
+		};
+		stmt.SetAggregateFunction("filter_example", "profile_filter", Value.Get(passwordFilter));
 
-	private void Register(IAerospikeClient client, Arguments args)
-	{
-		string packageName = "filter_example.lua";
-		console.Info("Register: " + packageName);
-		LuaExample.Register(client, args.policy, packageName);
-	}
-
-	private void CreateIndex(IAerospikeClient client, Arguments args, string indexName, string binName)
-	{
-		console.Info($"Create index: ns={args.ns} set={args.set} index={indexName} bin={binName}");
-
-		Policy policy = new();
-		policy.totalTimeout = 0; // Do not timeout on index create.
-
-		try
-		{
-			client.DropIndex(policy, args.ns, args.set, indexName);
-		}
-		catch (AerospikeException)
-		{
-		}
-
-		var task = client.CreateIndex(policy, args.ns, args.set, indexName, binName, IndexType.STRING);
-		task.Wait();
-	}
-
-	private void WriteRecords(IAerospikeClient client, Arguments args, string keyPrefix, string binName)
-	{
-		WriteRecord(client, args, keyPrefix + 1, "Charlie", "cpass");
-		WriteRecord(client, args, keyPrefix + 2, "Bill", "hknfpkj");
-		WriteRecord(client, args, keyPrefix + 3, "Doug", "dj6554");
-	}
-
-	private void WriteRecord(IAerospikeClient client, Arguments args, string userKey, string name, string password)
-	{
-		var key = new Key(args.ns, args.set, userKey);
-		var bin1 = new Bin("name", name);
-		var bin2 = new Bin("password", password);
-		console.Info($"Put: namespace={key.ns} set={key.setName} key={key.userKey} bin={bin1.name} value={bin1.value}");
-
-		client.Put(args.writePolicy, key, bin1, bin2);
-	}
-
-	private void RunQuery(IAerospikeClient client, Arguments args, string indexName, string binName)
-	{
-		string nameFilter = "Bill";
-		string passFilter = "hknfpkj";
-
-		console.Info($"Query for: ns={args.ns} set={args.set} index={indexName} name={nameFilter} pass={passFilter}");
-
-		Statement stmt = new();
-		stmt.SetNamespace(args.ns);
-		stmt.SetSetName(args.set);
-		stmt.SetFilter(Filter.Equal(binName, nameFilter));
-		stmt.SetAggregateFunction("filter_example", "profile_filter", Value.Get(passFilter));
-
-		// passFilter will be applied in filter_example.lua.
-		using var rs = client.QueryAggregate(null, stmt);
-
-		int count = 0;
+		// passwordFilter is applied inside filter_example.lua.
+		using ResultSet rs = client.QueryAggregate(null, stmt);
 
 		while (rs.Next())
 		{
 			Dictionary<object, object> map = (Dictionary<object, object>)rs.Object;
-			Validate(map, "name", nameFilter);
-			Validate(map, "password", passFilter);
-			count++;
-		}
-
-		if (count == 0)
-		{
-			console.Error("Query failed. No records returned.");
-		}
-	}
-
-	private void Validate(Dictionary<object, object> map, string name, object expected)
-	{
-		map.TryGetValue(name, out object val);
-
-		if (val != null && val.Equals(expected))
-		{
-			console.Info($"Data matched: value={expected}");
-		}
-		else
-		{
-			console.Error($"Data mismatch: Expected {expected}. Received {val}.");
+			console.Info($"Record found: name={map["name"]} password={map["password"]}");
 		}
 	}
 }

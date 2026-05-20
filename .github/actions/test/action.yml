@@ -213,7 +213,25 @@ runs:
 
     - name: Run examples
       shell: bash
-      run: dotnet exec ./artifacts-example/publish/AerospikeExample.dll --settings ./.runsettings all
+      run: |
+        settings_file=".runsettings"
+        if [ "${{ inputs.enable-tls }}" == "true" ]; then
+          settings_file=".runsettings-tls"
+        fi
+
+        mkdir -p example-results
+        dotnet exec ./artifacts-example/publish/AerospikeExample.dll \
+          --settings ./${settings_file} \
+          --report-trx ./example-results/results.trx \
+          all
+
+    - name: Upload example run results
+      if: ${{ !cancelled() }}
+      uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+      with:
+        name: example-results-${{ github.sha }}${{ inputs.artifact-suffix && format('-{0}', inputs.artifact-suffix) || '' }}
+        path: example-results/
+        retention-days: 7
 
     - name: Show logs if failed
       shell: bash
