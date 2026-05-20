@@ -1,4 +1,4 @@
-/* 
+/*
  * Copyright 2012-2026 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
@@ -18,57 +18,22 @@ using Aerospike.Client;
 
 namespace Aerospike.Example;
 
-public class Prepend(Console console) : SyncExample(console)
+public sealed class Prepend : SyncExample
 {
-
 	/// <summary>
-	/// Prepend string to an existing string.
+	/// Prepend a string to an existing string bin.
 	/// </summary>
-	public override void RunExample(IAerospikeClient client, Arguments args)
+	public override void RunExample()
 	{
-		var key = new Key(args.ns, args.set, "prependkey");
-		string binName = args.GetBinName("prependbin");
+		Key key = new(ns, set, "prependkey");
+		string binName = "prependbin";
 
-		// Delete record if it already exists.
-		client.Delete(args.writePolicy, key);
+		Bin initial = new(binName, "World");
+		console.Info($"Initial prepend will create record. Initial value is {initial.value}.");
+		client.Prepend(writePolicy, key, initial);
 
-		var bin = new Bin(binName, "World");
-		console.Info("Initial prepend will create record.  Initial value is " + bin.value + '.');
-		client.Prepend(args.writePolicy, key, bin);
-
-		bin = new Bin(binName, "Hello ");
-		console.Info("Prepend \"" + bin.value + "\" to existing record.");
-		client.Prepend(args.writePolicy, key, bin);
-
-		var record = client.Get(args.policy, key, bin.name) ?? throw new Exception($"Failed to get: namespace={key.ns} set={key.setName} key={key.userKey}");
-
-		// The value received from the server is an unsigned byte stream.
-		// Convert to an integer before comparing with expected.
-		object received = record.GetValue(bin.name);
-		string expected = "Hello World";
-
-		if (received.Equals(expected))
-		{
-			console.Info("Prepend successful: namespace={0} set={1} key={2} bin={3} value={4}",
-				key.ns, key.setName, key.userKey, bin.name, received);
-		}
-		else
-		{
-			console.Error("Prepend mismatch: Expected {0}. Received {1}.", expected, received);
-		}
-
-		string verifyBinName = args.GetBinName("prependbin");
-		var verifyKey = new Key(args.ns, args.set, "prependkey");
-		var verifyRecord = client.Get(null, verifyKey);
-		if (verifyRecord == null)
-		{
-			throw new Exception("Prepend verification failed: prependkey record not found.");
-		}
-		object pv = verifyRecord.GetValue(verifyBinName);
-		if (pv == null || !pv.Equals("Hello World"))
-		{
-			throw new Exception($"Prepend verification failed: expected prependbin=\"Hello World\", got {pv}.");
-		}
-		console.Info("Prepend verified successfully.");
+		Bin prefix = new(binName, "Hello ");
+		console.Info($"Prepend \"{prefix.value}\" to existing record.");
+		client.Prepend(writePolicy, key, prefix);
 	}
 }

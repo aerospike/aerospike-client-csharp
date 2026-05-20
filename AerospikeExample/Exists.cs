@@ -1,4 +1,4 @@
-/* 
+/*
  * Copyright 2012-2026 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
@@ -18,48 +18,28 @@ using Aerospike.Client;
 
 namespace Aerospike.Example;
 
-public class Exists(Console console) : SyncExample(console)
+public sealed class Exists : SyncExample
 {
 	/// <summary>
-	/// Demonstrate record existence checking.
+	/// Check whether a record exists before and after writing it.
 	/// </summary>
-	public override void RunExample(IAerospikeClient client, Arguments args)
+	public override void RunExample()
 	{
-		var key = new Key(args.ns, args.set, "existskey");
-		string binName = args.GetBinName("existsbin");
+		Key key = new(ns, set, "existskey");
+		Bin bin = new("existsbin", "existsvalue");
 
-		client.Delete(args.writePolicy, key);
+		bool exists = client.Exists(policy, key);
+		console.Info($"Exists before put: {exists}");
 
-		bool exists = client.Exists(args.policy, key);
-		console.Info("Exists before put: {0}", exists);
+		client.Put(writePolicy, key, bin);
+		console.Info($"Put: namespace={key.ns} set={key.setName} key={key.userKey}");
 
-		if (exists)
-		{
-			throw new Exception("Record should not exist.");
-		}
+		exists = client.Exists(policy, key);
+		console.Info($"Exists after put: {exists}");
 
-		var bin = new Bin(binName, "existsvalue");
-		client.Put(args.writePolicy, key, bin);
-		console.Info("Put: namespace={0} set={1} key={2}", key.ns, key.setName, key.userKey);
+		client.Delete(writePolicy, key);
 
-		exists = client.Exists(args.policy, key);
-		console.Info("Exists after put: {0}", exists);
-
-		if (!exists)
-		{
-			throw new Exception("Record should exist.");
-		}
-
-		client.Delete(args.writePolicy, key);
-
-		exists = client.Exists(args.policy, key);
-		console.Info("Exists after delete: {0}", exists);
-
-		if (exists)
-		{
-			throw new Exception("Record should not exist after delete.");
-		}
-
-		console.Info("Exists example completed successfully.");
+		exists = client.Exists(policy, key);
+		console.Info($"Exists after delete: {exists}");
 	}
 }

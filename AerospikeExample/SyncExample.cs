@@ -1,4 +1,4 @@
-/* 
+/*
  * Copyright 2012-2026 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
@@ -16,105 +16,98 @@
  */
 using Aerospike.Client;
 
-namespace Aerospike.Example
+namespace Aerospike.Example;
+
+public abstract class SyncExample : Example
 {
-	public abstract class SyncExample(Console console) : Example(console)
+	protected IAerospikeClient client { get; private set; }
+
+	/// <summary>
+	/// Connect and run one or more synchronous client examples, sharing a single client connection.
+	/// </summary>
+	public static List<ExampleResultInfo> RunExamples(Console console, Arguments args)
 	{
-
-		/// <summary>
-		/// Connect and run one or more synchronous client examples, sharing a single client connection.
-		/// </summary>
-		public static List<ExampleResultInfo> RunExamples(Console console, Arguments args)
+		ClientPolicy policy = new()
 		{
-			ClientPolicy policy = new()
-			{
-				user = args.user,
-				password = args.password,
-				clusterName = args.clusterName,
-				tlsPolicy = args.tlsPolicy,
-				authMode = args.authMode,
-				useServicesAlternate = args.useServicesAlternate
-			};
+			user = args.user,
+			password = args.password,
+			clusterName = args.clusterName,
+			tlsPolicy = args.tlsPolicy,
+			authMode = args.authMode,
+			useServicesAlternate = args.useServicesAlternate
+		};
 
-			AerospikeClient client = new(policy, args.hosts);
+		using AerospikeClient client = new(policy, args.hosts);
 
-			args.writePolicy = policy.writePolicyDefault;
-			args.policy = policy.readPolicyDefault;
-			args.batchPolicy = policy.batchPolicyDefault;
-			List<ExampleResultInfo> results = [];
+		args.writePolicy = policy.writePolicyDefault;
+		args.policy = policy.readPolicyDefault;
+		args.batchPolicy = policy.batchPolicyDefault;
+		args.SetServerSpecific(client);
 
+		List<ExampleResultInfo> results = [];
+
+		foreach (string exampleName in args.syncExamples)
+		{
+			results.Add(RunExample(exampleName, client, args, console));
+		}
+
+		return results;
+	}
+
+	private static ExampleResultInfo RunExample(string exampleName, IAerospikeClient client, Arguments args, Console console)
+	{
+		if (!ExampleRegistry.TryGetSync(exampleName, out ExampleDefinition definition))
+		{
+			console.Error($"Invalid sync example: {exampleName}");
+			return new ExampleResultInfo(exampleName, ExampleResult.Failed, "example class not found");
+		}
+
+		SyncExample example = (SyncExample)Activator.CreateInstance(definition.Type);
+		example.SetConsole(console);
+
+		try
+		{
+			return example.Run(client, args, definition.Fixture);
+		}
+		catch (Exception ex)
+		{
+			console.Error($"{exampleName} FAILED: {ex.Message}");
+			return new ExampleResultInfo(exampleName, ExampleResult.Failed, ex.Message);
+		}
+	}
+
+	internal ExampleResultInfo Run(IAerospikeClient client, Arguments args, ExampleFixture fixture)
+	{
+		this.client = client;
+		this.args = args;
+
+		return RunWithResult(() =>
+		{
 			try
 			{
-				args.SetServerSpecific(client);
-
-				foreach (string exampleName in args.syncExamples)
-				{
-					results.Add(RunExample(exampleName, client, args, console));
-				}
+				fixture?.Setup?.Invoke(client, args);
+				RunExample(client, args);
+				fixture?.Validate?.Invoke(client, args);
 			}
 			finally
 			{
-				client.Close();
+				fixture?.Cleanup?.Invoke(client, args);
 			}
+		});
+	}
 
-			return results;
-		}
+	public override void RunExample(Arguments args)
+	{
+		throw new NotSupportedException("Use RunExamples() to run sync examples via the console runner.");
+	}
 
-		private static ExampleResultInfo RunExample(string exampleName, IAerospikeClient client, Arguments args, Console console)
-		{
-			string fullName = "Aerospike.Example." + exampleName;
-			Type type = Type.GetType(fullName);
+	public virtual void RunExample(IAerospikeClient client, Arguments args)
+	{
+		RunExample();
+	}
 
-			if (type == null || !typeof(SyncExample).IsAssignableFrom(type))
-			{
-				console.Error($"Invalid sync example: {exampleName}");
-				return new ExampleResultInfo(exampleName, ExampleResult.Failed, "example class not found");
-			}
-
-			SyncExample example = (SyncExample)Activator.CreateInstance(type, console);
-
-			try
-			{
-				return example.Run(client, args);
-			}
-			catch (Exception ex)
-			{
-				console.Error($"{exampleName} FAILED: {ex.Message}");
-				return new ExampleResultInfo(exampleName, ExampleResult.Failed, ex.Message);
-			}
-		}
-
-		public ExampleResultInfo Run(IAerospikeClient client, Arguments args)
-		{
-			string name = GetType().Name;
-			valid = true;
-			int errorCount = console.ErrorCount;
-
-			try
-			{
-				console.Info($"{name} Begin");
-				RunExample(client, args);
-				console.Info($"{name} End");
-
-				if (console.ErrorCount > errorCount)
-				{
-					return new ExampleResultInfo(name, ExampleResult.Failed, "example logged one or more errors");
-				}
-
-				return new ExampleResultInfo(name, ExampleResult.Passed);
-			}
-			catch (ExampleSkipException ex)
-			{
-				console.Warn($"{name} SKIPPED: {ex.Message}");
-				return new ExampleResultInfo(name, ExampleResult.Skipped, ex.Message);
-			}
-		}
-
-		public override void RunExample(Arguments args)
-		{
-			throw new NotSupportedException("Use RunExamples() to run sync examples via the console runner.");
-		}
-
-		public abstract void RunExample(IAerospikeClient client, Arguments args);
+	public virtual void RunExample()
+	{
+		throw new NotSupportedException("Override RunExample() or RunExample(client, args).");
 	}
 }

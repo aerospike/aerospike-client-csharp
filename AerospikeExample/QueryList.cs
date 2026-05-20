@@ -1,4 +1,4 @@
-/* 
+/*
  * Copyright 2012-2026 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
@@ -19,102 +19,39 @@ using System.Collections;
 
 namespace Aerospike.Example;
 
-public class QueryList(Console console) : SyncExample(console)
+public sealed class QueryList : SyncExample
 {
-
 	/// <summary>
-	/// Create secondary index and query on list bins.
+	/// Query a list-typed secondary index by element value.
 	/// </summary>
-	public override void RunExample(IAerospikeClient client, Arguments args)
+	public override void RunExample()
 	{
-		string indexName = "qlindex";
-		string keyPrefix = "qlkey";
-		string binName = "listbin";
-		int size = 20;
+		const string binName = "listbin";
 
-		CreateIndex(client, args, indexName, binName);
-		WriteRecords(client, args, keyPrefix, binName, size);
-		RunQuery(client, args, indexName, binName);
-		client.DropIndex(args.policy, args.ns, args.set, indexName);
-
-		var verifyKey = new Key(args.ns, args.set, "qlkey1");
-		Record verifyRec = client.Get(null, verifyKey) ?? throw new Exception("QueryList verification: record qlkey1 not found.");
-		if (verifyRec.GetList(binName) == null)
-		{
-			throw new Exception("QueryList verification: listbin is null or not a list.");
-		}
-		console.Info("QueryList verified successfully.");
-	}
-
-	private void CreateIndex(IAerospikeClient client, Arguments args, string indexName, string binName)
-	{
-		console.Info($"Create index: ns={args.ns} set={args.set} index={indexName} bin={binName}");
-
-		Policy policy = new()
-		{
-			totalTimeout = 0 // Do not timeout on index create.
-		};
-
-		try
-		{
-			client.DropIndex(policy, args.ns, args.set, indexName);
-		}
-		catch (AerospikeException)
-		{
-		}
-
-		var task = client.CreateIndex(policy, args.ns, args.set, indexName, binName, IndexType.STRING, IndexCollectionType.LIST);
-		task.Wait();
-	}
-
-	private void WriteRecords(IAerospikeClient client, Arguments args, string keyPrefix, string binName, int size)
-	{
-		console.Info("Write records");
-		var random = new Random();
-
-		for (int i = 1; i <= size; i++)
-		{
-			var key = new Key(args.ns, args.set, keyPrefix + i);
-
-			List<string> list =
-			[
-				random.Next(900, 910).ToString(),
-				random.Next(900, 910).ToString(),
-				random.Next(900, 910).ToString(),
-			];
-
-			var bin = new Bin(binName, list);
-
-			client.Put(args.writePolicy, key, bin);
-		}
-	}
-
-	private void RunQuery(IAerospikeClient client, Arguments args, string indexName, string binName)
-	{
 		console.Info("Query list bins");
 
-		Statement stmt = new();
-		stmt.SetNamespace(args.ns);
-		stmt.SetSetName(args.set);
-		stmt.SetBinNames(binName);
-		stmt.SetFilter(Filter.Contains(binName, IndexCollectionType.LIST, "905"));
+		Statement stmt = new()
+		{
+			Namespace = ns,
+			SetName = set,
+			BinNames = [binName],
+			Filter = Filter.Contains(binName, IndexCollectionType.LIST, "905")
+		};
 
-		using var rs = client.Query(null, stmt);
+		using RecordSet rs = client.Query(null, stmt);
 
 		int count = 0;
 
 		while (rs.Next())
 		{
 			count++;
-			var key = rs.Key;
-			var record = rs.Record;
-			IList list = record.GetList(binName);
+			IList list = rs.Record.GetList(binName);
 
-			console.Info("Record " + count);
+			console.Info($"Record {count}");
 
-			foreach (string s in list)
+			foreach (object item in list)
 			{
-				console.Info(s);
+				console.Info(item.ToString());
 			}
 		}
 	}

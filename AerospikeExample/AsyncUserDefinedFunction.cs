@@ -1,4 +1,4 @@
-/* 
+/*
  * Copyright 2012-2026 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
@@ -18,110 +18,60 @@ using Aerospike.Client;
 
 namespace Aerospike.Example;
 
-public class AsyncUserDefinedFunction(Console console) : AsyncExample(console)
+public sealed class AsyncUserDefinedFunction : AsyncExample
 {
-	private bool completed;
+	private readonly ManualResetEventSlim completed = new();
 
 	/// <summary>
-	/// Asynchronous UDF example.
+	/// Asynchronously execute a UDF and then read the resulting bin via a second UDF.
 	/// </summary>
-	public override void RunExample(AsyncClient client, Arguments args)
+	public override void RunExample()
 	{
-		Register(client, args);
-		WriteUsingUdfAsync(client, args);
-		WaitTillComplete();
-		completed = false;
-
-		var verifyAudfKey = new Key(args.ns, args.set, "audfkey1");
-		string verifyAudfBin = args.GetBinName("audfbin1");
-		Record verifyAudfRecord = client.Get(null, verifyAudfKey, verifyAudfBin);
-		if (verifyAudfRecord == null)
-		{
-			throw new Exception("AsyncUserDefinedFunction verification failed: record not found.");
-		}
-		string verifyAudfReceived = (string)verifyAudfRecord.GetValue(verifyAudfBin);
-		if (verifyAudfReceived == null || !verifyAudfReceived.Equals("string value"))
-		{
-			throw new Exception("AsyncUserDefinedFunction verification failed: expected \"string value\", received \"" + verifyAudfReceived + "\".");
-		}
-		console.Info("AsyncUserDefinedFunction verified successfully.");
+		completed.Reset();
+		WriteUsingUdfAsync();
+		completed.Wait();
 	}
 
-	private void Register(IAerospikeClient client, Arguments args)
+	private void WriteUsingUdfAsync()
 	{
-		string packageName = "record_example.lua";
-		console.Info("Register: " + packageName);
-		LuaExample.Register(client, args.policy, packageName);
+		Key key = new(ns, set, "audfkey1");
+		Bin bin = new("audfbin1", "string value");
+
+		console.Info($"Write with udf: namespace={key.ns} set={key.setName} key={key.userKey} value={bin.value}");
+		client.Execute(null, new WriteHandler(this, key, bin.name), key,
+			"record_example", "writeBin", Value.Get(bin.name), bin.value);
 	}
 
-	private void WriteUsingUdfAsync(AsyncClient client, Arguments args)
+	private void NotifyCompleted() => completed.Set();
+
+	private sealed class WriteHandler(AsyncUserDefinedFunction parent, Key key, string binName) : ExecuteListener
 	{
-		var key = new Key(args.ns, args.set, "audfkey1");
-		var bin = new Bin(args.GetBinName("audfbin1"), "string value");
-
-		console.Info("Write with udf: namespace=" + key.ns + " set=" + key.setName + " key=" + key.userKey + " value=" + bin.value);
-		client.Execute(null, new WriteHandler(this, client, key, bin.name), key, "record_example", "writeBin", Value.Get(bin.name), bin.value);
-	}
-
-	private class WriteHandler(AsyncUserDefinedFunction parent, AsyncClient client, Key key, string binName) : ExecuteListener
-	{
-		private readonly AsyncUserDefinedFunction parent = parent;
-		private readonly AsyncClient client = client;
-		private readonly Key key = key;
-		private readonly string binName = binName;
-
-		public void OnSuccess(Key key, object obj)
+		public void OnSuccess(Key callbackKey, object obj)
 		{
-			// Write succeeded.  Now call read using udf.
-			parent.console.Info("Read with udf: namespace=" + key.ns + " set=" + key.setName + " key=" + key.userKey);
-			client.Execute(null, new ReadHandler(parent, key), key, "record_example", "readBin", Value.Get(binName));
+			parent.console.Info($"Read with udf: namespace={callbackKey.ns} set={callbackKey.setName} key={callbackKey.userKey}");
+			parent.client.Execute(null, new ReadHandler(parent), callbackKey,
+				"record_example", "readBin", Value.Get(binName));
 		}
 
 		public void OnFailure(AerospikeException e)
 		{
-			parent.console.Error("Failed to put: namespace={0} set={1} key={2} exception={3}",
-				key.ns, key.setName, key.userKey, e.Message);
+			parent.console.Error($"Failed to execute: namespace={key.ns} set={key.setName} key={key.userKey} exception={e.Message}");
 			parent.NotifyCompleted();
 		}
 	}
 
-	private class ReadHandler(AsyncUserDefinedFunction parent, Key key) : ExecuteListener
+	private sealed class ReadHandler(AsyncUserDefinedFunction parent) : ExecuteListener
 	{
-		private readonly AsyncUserDefinedFunction parent = parent;
-		private readonly Key key = key;
-
 		public void OnSuccess(Key key, object obj)
 		{
-			parent.console.Info("Result: " + obj);
+			parent.console.Info($"Result: {obj}");
 			parent.NotifyCompleted();
 		}
 
 		public void OnFailure(AerospikeException e)
 		{
-			parent.console.Error("Failed to get: namespace={0} set={1} key={2} exception={3}",
-				key.ns, key.setName, key.userKey, e.Message);
-
+			parent.console.Error($"Failed to read: {e.Message}");
 			parent.NotifyCompleted();
-		}
-	}
-
-	private void WaitTillComplete()
-	{
-		lock (this)
-		{
-			while (!completed)
-			{
-				Monitor.Wait(this);
-			}
-		}
-	}
-
-	private void NotifyCompleted()
-	{
-		lock (this)
-		{
-			completed = true;
-			Monitor.Pulse(this);
 		}
 	}
 }

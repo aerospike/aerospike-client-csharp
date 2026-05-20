@@ -1,4 +1,4 @@
-/* 
+/*
  * Copyright 2012-2026 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
@@ -18,7 +18,7 @@ using Aerospike.Client;
 
 namespace Aerospike.Example;
 
-public class Console
+public sealed class Console
 {
 	private int errorCount;
 
@@ -27,63 +27,59 @@ public class Console
 		Log.SetCallback(LogCallback);
 	}
 
-	public int ErrorCount => System.Threading.Volatile.Read(ref errorCount);
+	public int ErrorCount => Volatile.Read(ref errorCount);
 
-	public void Info(string format, params object[] args)
-	{
-		Write(Log.Level.INFO, format, args);
-	}
+	public void Info(string format, params object[] args) => Write(Log.Level.INFO, format, args);
 
-	public void Info(string message)
-	{
-		Write(Log.Level.INFO, message);
-	}
+	public void Info(string message) => Write(Log.Level.INFO, message);
 
-	public void Warn(string format, params object[] args)
-	{
-		Write(Log.Level.WARN, format, args);
-	}
+	public void Warn(string format, params object[] args) => Write(Log.Level.WARN, format, args);
 
-	public void Warn(string message)
-	{
-		Write(Log.Level.WARN, message);
-	}
+	public void Warn(string message) => Write(Log.Level.WARN, message);
 
 	public void Error(string format, params object[] args)
 	{
-		System.Threading.Interlocked.Increment(ref errorCount);
+		Interlocked.Increment(ref errorCount);
 		Write(Log.Level.ERROR, format, args);
 	}
 
 	public void Error(string message)
 	{
-		System.Threading.Interlocked.Increment(ref errorCount);
+		Interlocked.Increment(ref errorCount);
 		Write(Log.Level.ERROR, message);
+	}
+
+	public void Error(string message, Exception exception)
+	{
+		Interlocked.Increment(ref errorCount);
+		Write(Log.Level.ERROR, $"{message}: {exception}");
 	}
 
 	public void Write(Log.Level level, string format, params object[] args)
 	{
-		string message = args.Length > 0 ? string.Format(format, args) : format;
+		string message = args.Length > 0
+			? string.Format(format, ExampleValueFormatter.FormatArgs(args))
+			: format;
 		Write(level, message);
 	}
 
-	public void Write(Log.Level level, string message)
+	public static void Write(Log.Level level, string message)
 	{
-		Write(DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss") + " " + level + " " + message);
+		WriteLine($"{DateTime.Now:yyyy-MM-dd HH:mm:ss} {level} {message}");
 	}
 
-	public void Write(string format, params object[] args)
-	{
-		Write(string.Format(format, args));
-	}
-
-	public static void Write(string message)
+	public static void WriteLine(string message)
 	{
 		System.Console.WriteLine(message);
 	}
 
 	private void LogCallback(Log.Level level, string message)
 	{
+		if (level == Log.Level.ERROR)
+		{
+			Interlocked.Increment(ref errorCount);
+		}
+
 		Write(level, message);
 	}
 }

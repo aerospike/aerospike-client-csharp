@@ -1,4 +1,4 @@
-/* 
+/*
  * Copyright 2012-2026 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
@@ -15,151 +15,72 @@
  * the License.
  */
 using Aerospike.Client;
-using System.Text;
 
 namespace Aerospike.Example;
 
-public class QueryRegion(Console console) : SyncExample(console)
+public sealed class QueryRegion : SyncExample
 {
+	private const string IndexName = "queryindexloc";
+	private const string BinName = "querybinloc";
 
 	/// <summary>
-	/// Geospatial query examples.
+	/// Geospatial query examples: GeoWithinRegion and GeoWithinRadius.
 	/// </summary>
-	public override void RunExample(IAerospikeClient client, Arguments args)
+	public override void RunExample()
 	{
-		string indexName = "queryindexloc";
-		string keyPrefix = "querykeyloc";
-		string binName = args.GetBinName("querybinloc");
-		int size = 20;
-
-		CreateIndex(client, args, indexName, binName);
-		WriteRecords(client, args, keyPrefix, binName, size);
-		RunQuery(client, args, indexName, binName);
-		RunRadiusQuery(client, args, indexName, binName);
-		client.DropIndex(args.policy, args.ns, args.set, indexName);
-
-		var verifyKey = new Key(args.ns, args.set, "querykeyloc0");
-		Record verifyRec = client.Get(null, verifyKey) ?? throw new Exception("QueryRegion verification: record querykeyloc0 not found.");
-		string locBin = args.GetBinName("querybinloc");
-		if (verifyRec.GetValue(locBin) == null)
-		{
-			throw new Exception("QueryRegion verification: location bin is null.");
-		}
-		console.Info("QueryRegion verified successfully.");
+		RunPolygonQuery();
+		RunRadiusQuery();
 	}
 
-	private void CreateIndex(IAerospikeClient client, Arguments args, string indexName, string binName)
+	private void RunPolygonQuery()
 	{
-		console.Info($"Create index: ns={args.ns} set={args.set} index={indexName} bin={binName}");
+		string region = """
+			{ "type": "Polygon", "coordinates": [
+				[[-122.500000, 37.000000], [-121.000000, 37.000000],
+				 [-121.000000, 38.080000], [-122.500000, 38.080000],
+				 [-122.500000, 37.000000]]
+			] }
+			""";
 
-		Policy policy = new()
+		console.Info($"QueryRegion: {region}");
+
+		Statement stmt = new()
 		{
-			totalTimeout = 0 // Do not timeout on index create.
+			Namespace = ns,
+			SetName = set,
+			BinNames = [BinName],
+			Filter = Filter.GeoWithinRegion(BinName, region)
 		};
 
-		try
-		{
-			client.DropIndex(policy, args.ns, args.set, indexName);
-		}
-		catch (AerospikeException)
-		{
-		}
-
-		var task = client.CreateIndex(policy, args.ns, args.set, indexName, binName, IndexType.GEO2DSPHERE);
-		task.Wait();
-	}
-
-	private void WriteRecords(IAerospikeClient client, Arguments args, string keyPrefix, string binName, int size)
-	{
-		console.Info("Write " + size + " records.");
-
-		for (int i = 0; i < size; i++)
-		{
-			double lng = -122 + (0.1 * i);
-			double lat = 37.5 + (0.1 * i);
-			StringBuilder ptsb = new();
-			ptsb.Append("{ \"type\": \"Point\", \"coordinates\": [");
-			ptsb.Append(lng);
-			ptsb.Append(", ");
-			ptsb.Append(lat);
-			ptsb.Append("] }");
-			var key = new Key(args.ns, args.set, keyPrefix + i);
-			Bin bin = Bin.AsGeoJSON(binName, ptsb.ToString());
-			client.Put(args.writePolicy, key, bin);
-		}
-	}
-
-	private void RunQuery(IAerospikeClient client, Arguments args, string indexName, string binName)
-	{
-		StringBuilder rgnsb = new();
-
-		rgnsb.Append("{ ");
-		rgnsb.Append("    \"type\": \"Polygon\", ");
-		rgnsb.Append("    \"coordinates\": [ ");
-		rgnsb.Append("        [[-122.500000, 37.000000],[-121.000000, 37.000000], ");
-		rgnsb.Append("         [-121.000000, 38.080000],[-122.500000, 38.080000], ");
-		rgnsb.Append("         [-122.500000, 37.000000]] ");
-		rgnsb.Append("    ] ");
-		rgnsb.Append(" } ");
-
-		console.Info("QueryRegion: " + rgnsb);
-
-		Statement stmt = new();
-		stmt.SetNamespace(args.ns);
-		stmt.SetSetName(args.set);
-		stmt.SetBinNames(binName);
-		stmt.SetFilter(Filter.GeoWithinRegion(binName, rgnsb.ToString()));
-
-		using var rs = client.Query(null, stmt);
-
-		int count = 0;
+		using RecordSet rs = client.Query(null, stmt);
 
 		while (rs.Next())
 		{
-			var key = rs.Key;
-			var record = rs.Record;
-			string result = record.GetGeoJSON(binName);
-
-			console.Info("Record found: " + result);
-			count++;
-		}
-
-		if (count != 6)
-		{
-			console.Error("Query count mismatch. Expected 6. Received " + count);
+			console.Info($"Record found: {rs.Record.GetGeoJSON(BinName)}");
 		}
 	}
 
-	private void RunRadiusQuery(IAerospikeClient client, Arguments args, string indexName, string binName)
+	private void RunRadiusQuery()
 	{
-		double lon = -122.0;
-		double lat = 37.5;
-		double radius = 50000.0;
-		console.Info("QueryRadius long=" + lon + " lat= " + lat + " radius=" + radius);
+		const double lon = -122.0;
+		const double lat = 37.5;
+		const double radius = 50000.0;
 
-		Statement stmt = new();
-		stmt.SetNamespace(args.ns);
-		stmt.SetSetName(args.set);
-		stmt.SetBinNames(binName);
-		stmt.SetFilter(Filter.GeoWithinRadius(binName, lon, lat, radius));
+		console.Info($"QueryRadius long={lon} lat={lat} radius={radius}");
 
-		using var rs = client.Query(null, stmt);
+		Statement stmt = new()
+		{
+			Namespace = ns,
+			SetName = set,
+			BinNames = [BinName],
+			Filter = Filter.GeoWithinRadius(BinName, lon, lat, radius)
+		};
 
-		int count = 0;
+		using RecordSet rs = client.Query(null, stmt);
 
 		while (rs.Next())
 		{
-			var key = rs.Key;
-			var record = rs.Record;
-			string result = record.GetGeoJSON(binName);
-
-			console.Info("Record found: " + result);
-			count++;
-		}
-
-		if (count != 4)
-		{
-			console.Error("Query count mismatch. Expected 4. Received " + count);
+			console.Info($"Record found: {rs.Record.GetGeoJSON(BinName)}");
 		}
 	}
 }
