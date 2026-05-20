@@ -15,6 +15,7 @@
  * the License.
  */
 using Aerospike.Client;
+using System.Diagnostics;
 
 namespace Aerospike.Example;
 
@@ -31,7 +32,7 @@ public enum ExampleResult
 	Failed
 }
 
-public sealed record ExampleResultInfo(string Name, ExampleResult Result, string Message = null);
+public sealed record ExampleResultInfo(string Name, ExampleResult Result, string Message = null, TimeSpan Duration = default);
 
 public abstract class Example
 {
@@ -59,6 +60,7 @@ public abstract class Example
 	{
 		string name = GetType().Name;
 		int errorCount = console.ErrorCount;
+		Stopwatch stopwatch = Stopwatch.StartNew();
 
 		try
 		{
@@ -68,15 +70,20 @@ public abstract class Example
 
 			if (console.ErrorCount > errorCount)
 			{
-				return new ExampleResultInfo(name, ExampleResult.Failed, "example logged one or more errors");
+				return new ExampleResultInfo(name, ExampleResult.Failed, "example logged one or more errors", stopwatch.Elapsed);
 			}
 
-			return new ExampleResultInfo(name, ExampleResult.Passed);
+			return new ExampleResultInfo(name, ExampleResult.Passed, Duration: stopwatch.Elapsed);
 		}
 		catch (ExampleSkipException ex)
 		{
 			console.Warn($"{name} SKIPPED: {ex.Message}");
-			return new ExampleResultInfo(name, ExampleResult.Skipped, ex.Message);
+			return new ExampleResultInfo(name, ExampleResult.Skipped, ex.Message, stopwatch.Elapsed);
+		}
+		catch (Exception ex)
+		{
+			console.Error($"{name} FAILED: {ex.Message}");
+			return new ExampleResultInfo(name, ExampleResult.Failed, ex.Message, stopwatch.Elapsed);
 		}
 	}
 

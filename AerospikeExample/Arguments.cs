@@ -44,6 +44,7 @@ public sealed class Arguments
 	// Example lists (populated by Program.cs).
 	public List<string> syncExamples = [];
 	public List<string> asyncExamples = [];
+	public string reportTrxPath;
 
 	// Policies (populated after client connection).
 	public WritePolicy writePolicy;

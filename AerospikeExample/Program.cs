@@ -41,6 +41,11 @@ public static class Program
 
 			Console console = new();
 			List<ExampleResultInfo> results = RunExamples(console, arguments);
+			if (!string.IsNullOrEmpty(arguments.reportTrxPath))
+			{
+				WriteTrxReport(arguments.reportTrxPath, results);
+			}
+
 			return PrintSummary(results);
 		}
 		catch (Exception ex)
@@ -78,6 +83,7 @@ public static class Program
 		bool debug = false;
 		int commandMax = 40;
 		string settingsPath = null;
+		string reportTrxPath = null;
 		List<string> exampleNames = [];
 		HashSet<string> cliOverrides = new(StringComparer.OrdinalIgnoreCase);
 
@@ -191,6 +197,10 @@ public static class Program
 					if (!TryNext(args, ref i, out settingsPath)) { PrintUsage(); return null; }
 					break;
 
+				case "--report-trx":
+					if (!TryNext(args, ref i, out reportTrxPath)) { PrintUsage(); return null; }
+					break;
+
 				case "-d":
 				case "--debug":
 					debug = true;
@@ -264,7 +274,8 @@ public static class Program
 			tlsPolicy = tlsPolicy,
 			authMode = authMode,
 			useServicesAlternate = useServicesAlternate,
-			commandMax = commandMax
+			commandMax = commandMax,
+			reportTrxPath = reportTrxPath
 		};
 
 		// Route each requested example to the correct runner based on registry metadata.
@@ -391,6 +402,132 @@ public static class Program
 		return failed > 0 ? 1 : 0;
 	}
 
+	private static void WriteTrxReport(string path, List<ExampleResultInfo> results)
+	{
+		string fullPath = Path.GetFullPath(path);
+		string directory = Path.GetDirectoryName(fullPath);
+		if (!string.IsNullOrEmpty(directory))
+		{
+			Directory.CreateDirectory(directory);
+		}
+
+		XNamespace ns = "http://microsoft.com/schemas/VisualStudio/TeamTest/2010";
+		DateTimeOffset finish = DateTimeOffset.UtcNow;
+		TimeSpan totalDuration = TimeSpan.FromTicks(results.Sum(result => result.Duration.Ticks));
+		DateTimeOffset start = finish - totalDuration;
+		Guid runId = Guid.NewGuid();
+		Guid resultsListId = Guid.Parse("19431567-8539-422a-85d7-44ee4e166bda");
+		Guid allResultsListId = Guid.Parse("8c43106b-9dc1-4907-a29f-aa66a61bf5b6");
+		var testCases = results.Select(result => new
+		{
+			Result = result,
+			TestId = Guid.NewGuid(),
+			ExecutionId = Guid.NewGuid()
+		}).ToList();
+
+		XElement testRun = new(ns + "TestRun",
+			new XAttribute("id", runId),
+			new XAttribute("name", $"AerospikeExample {finish:yyyy-MM-dd HH:mm:ss}"),
+			new XAttribute("runUser", Environment.UserName),
+			new XElement(ns + "Times",
+				new XAttribute("creation", ToTrxDate(start)),
+				new XAttribute("queuing", ToTrxDate(start)),
+				new XAttribute("start", ToTrxDate(start)),
+				new XAttribute("finish", ToTrxDate(finish))),
+			new XElement(ns + "Results",
+				testCases.Select(testCase => CreateUnitTestResult(ns, testCase.Result, testCase.TestId, testCase.ExecutionId, finish))),
+			new XElement(ns + "TestDefinitions",
+				testCases.Select(testCase => new XElement(ns + "UnitTest",
+					new XAttribute("name", testCase.Result.Name),
+					new XAttribute("storage", "AerospikeExample.dll"),
+					new XAttribute("id", testCase.TestId),
+					new XElement(ns + "Execution", new XAttribute("id", testCase.ExecutionId)),
+					new XElement(ns + "TestMethod",
+						new XAttribute("codeBase", "AerospikeExample.dll"),
+						new XAttribute("adapterTypeName", "executor://aerospike.example"),
+						new XAttribute("className", "Aerospike.Example"),
+						new XAttribute("name", testCase.Result.Name))))),
+			new XElement(ns + "TestLists",
+				new XElement(ns + "TestList",
+					new XAttribute("name", "Results Not in a List"),
+					new XAttribute("id", resultsListId)),
+				new XElement(ns + "TestList",
+					new XAttribute("name", "All Loaded Results"),
+					new XAttribute("id", allResultsListId))),
+			new XElement(ns + "TestEntries",
+				testCases.Select(testCase => new XElement(ns + "TestEntry",
+					new XAttribute("testId", testCase.TestId),
+					new XAttribute("executionId", testCase.ExecutionId),
+					new XAttribute("testListId", resultsListId)))),
+			new XElement(ns + "ResultSummary",
+				new XAttribute("outcome", results.Any(result => result.Result == ExampleResult.Failed) ? "Failed" : "Completed"),
+				CreateCounters(ns, results)));
+
+		new XDocument(new XDeclaration("1.0", "utf-8", "no"), testRun)
+			.Save(fullPath, SaveOptions.None);
+
+		System.Console.WriteLine($"TRX report written to {fullPath}");
+	}
+
+	private static XElement CreateUnitTestResult(XNamespace ns, ExampleResultInfo result, Guid testId, Guid executionId, DateTimeOffset finish)
+	{
+		DateTimeOffset start = finish - result.Duration;
+		XElement element = new(ns + "UnitTestResult",
+			new XAttribute("executionId", executionId),
+			new XAttribute("testId", testId),
+			new XAttribute("testName", result.Name),
+			new XAttribute("computerName", Environment.MachineName),
+			new XAttribute("duration", result.Duration.ToString(@"hh\:mm\:ss\.fffffff", CultureInfo.InvariantCulture)),
+			new XAttribute("startTime", ToTrxDate(start)),
+			new XAttribute("endTime", ToTrxDate(finish)),
+			new XAttribute("outcome", ToTrxOutcome(result.Result)));
+
+		if (!string.IsNullOrEmpty(result.Message))
+		{
+			element.Add(new XElement(ns + "Output",
+				new XElement(ns + "ErrorInfo",
+					new XElement(ns + "Message", result.Message))));
+		}
+
+		return element;
+	}
+
+	private static XElement CreateCounters(XNamespace ns, List<ExampleResultInfo> results)
+	{
+		int passed = results.Count(result => result.Result == ExampleResult.Passed);
+		int failed = results.Count(result => result.Result == ExampleResult.Failed);
+		int skipped = results.Count(result => result.Result == ExampleResult.Skipped);
+
+		return new XElement(ns + "Counters",
+			new XAttribute("total", results.Count),
+			new XAttribute("executed", passed + failed),
+			new XAttribute("passed", passed),
+			new XAttribute("failed", failed),
+			new XAttribute("error", 0),
+			new XAttribute("timeout", 0),
+			new XAttribute("aborted", 0),
+			new XAttribute("inconclusive", 0),
+			new XAttribute("passedButRunAborted", 0),
+			new XAttribute("notRunnable", 0),
+			new XAttribute("notExecuted", skipped),
+			new XAttribute("disconnected", 0),
+			new XAttribute("warning", 0),
+			new XAttribute("completed", passed + failed),
+			new XAttribute("inProgress", 0),
+			new XAttribute("pending", 0));
+	}
+
+	private static string ToTrxOutcome(ExampleResult result) => result switch
+	{
+		ExampleResult.Passed => "Passed",
+		ExampleResult.Skipped => "NotExecuted",
+		ExampleResult.Failed => "Failed",
+		_ => "Error"
+	};
+
+	private static string ToTrxDate(DateTimeOffset value)
+		=> value.UtcDateTime.ToString("o", CultureInfo.InvariantCulture);
+
 	private static void PrintUsage()
 	{
 		System.Console.WriteLine(
@@ -415,6 +552,7 @@ public static class Program
 			"       --useServicesAlternate   Use services-alternate for cluster discovery\n" +
 			"       --commandMax <n>         Max async commands in process (default: 40)\n" +
 			"       --settings <path>        Load configuration from a .runsettings file\n" +
+			"       --report-trx <path>      Write example results to a TRX report\n" +
 			"  -d,  --debug                  Run in debug mode\n" +
 			"  -u,  --usage, --help          Print usage\n\n" +
 			"Examples:\n");
