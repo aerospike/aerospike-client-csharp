@@ -16,7 +16,7 @@
     <EnableMSTestRunner>true</EnableMSTestRunner>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="MSTest" Version="3.7.0" />
+    <PackageReference Include="MSTest" Version="4.2.3" />
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="LuaResources\average_example.lua" />
