@@ -1,4 +1,4 @@
-/* 
+/*
  * Copyright 2012-2026 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
@@ -18,8 +18,9 @@ using Aerospike.Client;
 
 namespace Aerospike.Example;
 
-public abstract class AsyncExample(Console console) : Example(console)
+public abstract class AsyncExample : Example
 {
+	protected AsyncClient client { get; private set; }
 
 	/// <summary>
 	/// Connect and run one or more asynchronous client examples, sharing a single client connection.
@@ -38,14 +39,14 @@ public abstract class AsyncExample(Console console) : Example(console)
 			failIfNotConnected = true
 		};
 
+		using AsyncClient client = new(policy, args.hosts);
+
 		args.writePolicy = policy.writePolicyDefault;
 		args.policy = policy.readPolicyDefault;
 		args.batchPolicy = policy.batchPolicyDefault;
-
-		using var client = new AsyncClient(policy, args.hosts);
-		var results = new List<ExampleResultInfo>();
-
 		args.SetServerSpecific(client);
+
+		List<ExampleResultInfo> results = [];
 
 		foreach (string exampleName in args.asyncExamples)
 		{
@@ -57,20 +58,18 @@ public abstract class AsyncExample(Console console) : Example(console)
 
 	private static ExampleResultInfo RunExample(string exampleName, AsyncClient client, Arguments args, Console console)
 	{
-		string fullName = "Aerospike.Example." + exampleName;
-		Type type = Type.GetType(fullName);
-
-		if (type == null || !typeof(AsyncExample).IsAssignableFrom(type))
+		if (!ExampleRegistry.TryGetAsync(exampleName, out ExampleDefinition definition))
 		{
 			console.Error($"Invalid async example: {exampleName}");
 			return new ExampleResultInfo(exampleName, ExampleResult.Failed, "example class not found");
 		}
 
-		AsyncExample example = (AsyncExample)Activator.CreateInstance(type, console);
+		AsyncExample example = (AsyncExample)Activator.CreateInstance(definition.Type);
+		example.SetConsole(console);
 
 		try
 		{
-			return example.Run(client, args);
+			return example.Run(client, args, definition.Fixture);
 		}
 		catch (Exception ex)
 		{
@@ -79,50 +78,38 @@ public abstract class AsyncExample(Console console) : Example(console)
 		}
 	}
 
-	public ExampleResultInfo Run(AsyncClient client, Arguments args)
+	internal ExampleResultInfo Run(AsyncClient client, Arguments args, ExampleFixture fixture)
 	{
-		string name = GetType().Name;
-		valid = true;
-		int errorCount = console.ErrorCount;
+		this.client = client;
+		this.args = args;
 
-		try
+		return RunWithResult(() =>
 		{
-			console.Info($"{name} Begin");
-			RunExample(client, args);
-			console.Info($"{name} End");
-
-			if (console.ErrorCount > errorCount)
+			try
 			{
-				return new ExampleResultInfo(name, ExampleResult.Failed, "example logged one or more errors");
+				fixture?.Setup?.Invoke(client, args);
+				RunExample(client, args);
+				fixture?.Validate?.Invoke(client, args);
 			}
-
-			return new ExampleResultInfo(name, ExampleResult.Passed);
-		}
-		catch (ExampleSkipException ex)
-		{
-			console.Warn($"{name} SKIPPED: {ex.Message}");
-			return new ExampleResultInfo(name, ExampleResult.Skipped, ex.Message);
-		}
+			finally
+			{
+				fixture?.Cleanup?.Invoke(client, args);
+			}
+		});
 	}
 
 	public override void RunExample(Arguments args)
 	{
-		AsyncClientPolicy policy = new()
-		{
-			user = args.user,
-			password = args.password,
-			clusterName = args.clusterName,
-			tlsPolicy = args.tlsPolicy,
-			authMode = args.authMode,
-			asyncMaxCommands = args.commandMax,
-			failIfNotConnected = true
-		};
-
-		using var client = new AsyncClient(policy, args.hosts);
-
-		args.SetServerSpecific(client);
-		RunExample(client, args);
+		throw new NotSupportedException("Use RunExamples() to run async examples via the console runner.");
 	}
 
-	public abstract void RunExample(AsyncClient client, Arguments args);
+	public virtual void RunExample(AsyncClient client, Arguments args)
+	{
+		RunExample();
+	}
+
+	public virtual void RunExample()
+	{
+		throw new NotSupportedException("Override RunExample() or RunExample(client, args).");
+	}
 }

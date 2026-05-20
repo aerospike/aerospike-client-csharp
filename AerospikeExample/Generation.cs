@@ -1,4 +1,4 @@
-/* 
+/*
  * Copyright 2012-2026 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
@@ -18,102 +18,53 @@ using Aerospike.Client;
 
 namespace Aerospike.Example;
 
-public class Generation(Console console) : SyncExample(console)
+public sealed class Generation : SyncExample
 {
-
 	/// <summary>
-	/// Exercise record generation functionality.
+	/// Demonstrate optimistic concurrency control using record generations.
 	/// </summary>
-	public override void RunExample(IAerospikeClient client, Arguments args)
+	public override void RunExample()
 	{
-		var key = new Key(args.ns, args.set, "genkey");
-		string binName = args.GetBinName("genbin");
+		Key key = new(ns, set, "genkey");
+		string binName = "genbin";
 
-		// Delete record if it already exists.
-		client.Delete(args.writePolicy, key);
+		Bin first = new(binName, "genvalue1");
+		console.Info($"Put: namespace={key.ns} set={key.setName} key={key.userKey} bin={binName} value={first.value}");
+		client.Put(writePolicy, key, first);
 
-		// Set some values for the same record.
-		var bin = new Bin(binName, "genvalue1");
-		console.Info("Put: namespace={0} set={1} key={2} bin={3} value={4}",
-			key.ns, key.setName, key.userKey, bin.name, bin.value);
+		Bin second = new(binName, "genvalue2");
+		console.Info($"Put: namespace={key.ns} set={key.setName} key={key.userKey} bin={binName} value={second.value}");
+		client.Put(writePolicy, key, second);
 
-		client.Put(args.writePolicy, key, bin);
+		Record record = client.Get(policy, key, binName);
+		console.Info($"Get: namespace={key.ns} set={key.setName} key={key.userKey} bin={binName} value={record?.GetValue(binName)} generation={record?.generation}");
 
-		bin = new Bin(binName, "genvalue2");
-		console.Info("Put: namespace={0} set={1} key={2} bin={3} value={4}",
-			key.ns, key.setName, key.userKey, bin.name, bin.value);
+		Bin third = new(binName, "genvalue3");
+		int expectedGeneration = record?.generation ?? 0;
+		console.Info($"Put: namespace={key.ns} set={key.setName} key={key.userKey} bin={binName} value={third.value} expected generation={expectedGeneration}");
 
-		client.Put(args.writePolicy, key, bin);
-
-		// Retrieve record and its generation count.
-		var record = client.Get(args.policy, key, bin.name) ?? throw new Exception($"Failed to get: namespace={key.ns} set={key.setName} key={key.userKey}");
-		object received = record.GetValue(bin.name);
-		string expected = bin.value.ToString();
-
-		if (received.Equals(expected))
-		{
-			console.Info("Get successful: namespace={0} set={1} key={2} bin={3} value={4} generation={5}",
-				key.ns, key.setName, key.userKey, bin.name, received, record.generation);
-		}
-		else
-		{
-			throw new Exception($"Get mismatch: Expected {expected}. Received {received}.");
-		}
-
-		// Set record and fail if it's not the expected generation.
-		bin = new Bin(binName, "genvalue3");
-		console.Info("Put: namespace={0} set={1} key={2} bin={3} value={4} expected generation={5}",
-			key.ns, key.setName, key.userKey, bin.name, bin.value, record.generation);
-
-		WritePolicy writePolicy = new()
+		WritePolicy expectGenPolicy = new(writePolicy)
 		{
 			generationPolicy = GenerationPolicy.EXPECT_GEN_EQUAL,
-			generation = record.generation
+			generation = expectedGeneration
 		};
-		client.Put(writePolicy, key, bin);
+		client.Put(expectGenPolicy, key, third);
 
-		// Set record with invalid generation and check results .
-		bin = new Bin(binName, "genvalue4");
-		writePolicy.generation = 9999;
-		console.Info("Put: namespace={0} set={1} key={2} bin={3} value={4} expected generation={5}",
-			key.ns, key.setName, key.userKey, bin.name, bin.value, writePolicy.generation);
+		Bin fourth = new(binName, "genvalue4");
+		WritePolicy invalidGenPolicy = new(expectGenPolicy)
+		{
+			generation = 9999
+		};
+		console.Info($"Put: namespace={key.ns} set={key.setName} key={key.userKey} bin={binName} value={fourth.value} expected generation={invalidGenPolicy.generation}");
 
 		try
 		{
-			client.Put(writePolicy, key, bin);
-			throw new Exception("Should have received generation error instead of success.");
+			client.Put(invalidGenPolicy, key, fourth);
+			console.Info("Put with invalid generation completed unexpectedly.");
 		}
-		catch (AerospikeException ae)
+		catch (AerospikeException ae) when (ae.Result == ResultCode.GENERATION_ERROR)
 		{
-			if (ae.Result == ResultCode.GENERATION_ERROR)
-			{
-				console.Info("Success: Generation error returned as expected.");
-			}
-			else
-			{
-				throw new Exception($"Unexpected set return code: namespace={key.ns} set={key.setName} key={key.userKey} bin={bin.name} value={bin.value} code={ae.Result}");
-			}
-		}
-
-		// Verify results.
-		record = client.Get(args.policy, key, bin.name);
-
-		if (record == null)
-		{
-			throw new Exception($"Failed to get: namespace={key.ns} set={key.setName} key={key.userKey}");
-		}
-
-		received = record.GetValue(bin.name);
-		expected = "genvalue3";
-
-		if (received.Equals(expected))
-		{
-			console.Info("Get successful: namespace={0} set={1} key={2} bin={3} value={4} generation={5}",
-				key.ns, key.setName, key.userKey, bin.name, received, record.generation);
-		}
-		else
-		{
-			throw new Exception($"Get mismatch: Expected {expected}. Received {received}.");
+			console.Info("Success: Generation error returned as expected.");
 		}
 	}
 }

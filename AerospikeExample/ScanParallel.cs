@@ -1,4 +1,4 @@
-/* 
+/*
  * Copyright 2012-2026 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
@@ -18,46 +18,37 @@ using Aerospike.Client;
 
 namespace Aerospike.Example;
 
-public class ScanParallel(Console console) : SyncExample(console)
+public sealed class ScanParallel : SyncExample
 {
-	private int recordCount = 0;
+	private int recordCount;
 
 	/// <summary>
-	/// Scan all nodes in parallel and read all records in a set.
+	/// Scan all nodes in parallel and read every record in a set.
 	/// </summary>
-	public override void RunExample(IAerospikeClient client, Arguments args)
+	public override void RunExample()
 	{
-		console.Info("Scan parallel: namespace=" + args.ns + " set=" + args.set);
+		console.Info($"Scan parallel: namespace={ns} set={set}");
 		recordCount = 0;
-		var begin = DateTime.Now;
-		ScanPolicy policy = new();
-		client.ScanAll(policy, args.ns, args.set, ScanCallback);
 
-		DateTime end = DateTime.Now;
-		double seconds = end.Subtract(begin).TotalSeconds;
-		console.Info("Total records returned: " + recordCount);
-		console.Info("Elapsed time: " + seconds + " seconds");
-		double performance = Math.Round((double)recordCount / seconds);
-		console.Info("Records/second: " + performance);
+		DateTime begin = DateTime.Now;
+		ScanPolicy scanPolicy = new();
+		client.ScanAll(scanPolicy, ns, set, ScanCallback);
 
-		if (recordCount == 0)
-		{
-			throw new Exception("ScanParallel verification failed: no records scanned.");
-		}
-
-		console.Info("ScanParallel verified: " + recordCount + " records scanned.");
+		double seconds = (DateTime.Now - begin).TotalSeconds;
+		console.Info($"Total records returned: {recordCount}");
+		console.Info($"Elapsed time: {seconds} seconds");
+		console.Info($"Records/second: {Math.Round(recordCount / seconds)}");
 	}
 
-	public void ScanCallback(Key key, Record record)
+	private void ScanCallback(Key key, Record record)
 	{
-		// Callbacks must ensure thread safety when ScanAll() is used with ScanPolicy
-		// concurrentNodes set to true (default).  In this case, parallel
-		// node threads will be sending data to this callback.
+		// Callbacks must be thread-safe when concurrentNodes is true (the default),
+		// because parallel node threads can invoke this concurrently.
 		int count = Interlocked.Increment(ref recordCount);
 
-		if ((count % 10000) == 0)
+		if (count % 10000 == 0)
 		{
-			console.Info("Records " + count);
+			console.Info($"Records {count}");
 		}
 	}
 }

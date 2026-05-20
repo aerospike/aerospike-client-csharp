@@ -1,4 +1,4 @@
-/* 
+/*
  * Copyright 2012-2026 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
@@ -19,23 +19,23 @@ using Aerospike.Client;
 namespace Aerospike.Example;
 
 /// <summary>
-/// Demonstrate connection patterns used in documentation snippets.
+/// Demonstrate connection patterns referenced from documentation snippets.
 /// Each method exercises a progressively more complex connection scenario.
 /// </summary>
-public class Connect(Console console) : SyncExample(console)
+public sealed class Connect : SyncExample
 {
-	public override void RunExample(IAerospikeClient client, Arguments args)
+	public override void RunExample()
 	{
-		RunBasicConnect(args);
-		RunAuthConnect(args);
-		RunTlsConnect(args);
-		RunTlsPkiConnect(args);
+		RunBasicConnect();
+		RunAuthConnect();
+		RunTlsConnect();
+		RunTlsPkiConnect();
 		console.Info("Connect completed successfully.");
 	}
 
-	private void RunBasicConnect(Arguments args)
+	private void RunBasicConnect()
 	{
-		RequireBasic(args);
+		RequireBasic();
 		string host = args.hosts[0].name;
 		int port = args.port;
 
@@ -43,16 +43,16 @@ public class Connect(Console console) : SyncExample(console)
 		AerospikeClient client = new(host, port);
 		// @@@SNIPEND
 
-		console.Info("Basic connect: host={0} port={1}", host, port);
+		console.Info($"Basic connect: host={host} port={port}");
 
 		// @@@SNIPSTART csharp-client-connect-close
 		client.Close();
 		// @@@SNIPEND
 	}
 
-	private void RunAuthConnect(Arguments args)
+	private void RunAuthConnect()
 	{
-		RequireAuth(args);
+		RequireAuth();
 		string host = args.hosts[0].name;
 		int port = args.port;
 		string user = args.user;
@@ -68,13 +68,13 @@ public class Connect(Console console) : SyncExample(console)
 		AerospikeClient client = new(policy, host, port);
 		// @@@SNIPEND
 
-		console.Info("Auth connect: host={0} port={1} user={2}", host, port, user);
+		console.Info($"Auth connect: host={host} port={port} user={user}");
 		client.Close();
 	}
 
-	private void RunTlsConnect(Arguments args)
+	private void RunTlsConnect()
 	{
-		RequireTls(args);
+		RequireTls();
 		string host = args.hosts[0].name;
 		string tlsName = args.hosts[0].tlsName;
 		int port = args.port;
@@ -92,14 +92,14 @@ public class Connect(Console console) : SyncExample(console)
 		AerospikeClient client = new(policy, tlsHost);
 		// @@@SNIPEND
 
-		console.Info("TLS connect: host={0} tlsName={1} port={2}", host, tlsName, port);
+		console.Info($"TLS connect: host={host} tlsName={tlsName} port={port}");
 		client.Close();
 	}
 
-	private void RunTlsPkiConnect(Arguments args)
+	private void RunTlsPkiConnect()
 	{
-		RequireTls(args);
-		RequirePki(args);
+		RequireTls();
+		RequirePki();
 		string host = args.hosts[0].name;
 		string tlsName = args.hosts[0].tlsName;
 		int port = args.port;
@@ -118,7 +118,7 @@ public class Connect(Console console) : SyncExample(console)
 		AerospikeClient client = new(policy, tlsHost);
 		// @@@SNIPEND
 
-		console.Info("TLS+PKI connect: host={0} tlsName={1} port={2}", host, tlsName, port);
+		console.Info($"TLS+PKI connect: host={host} tlsName={tlsName} port={port}");
 		client.Close();
 	}
 }

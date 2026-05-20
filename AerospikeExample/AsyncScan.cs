@@ -1,4 +1,4 @@
-/* 
+/*
  * Copyright 2012-2026 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
@@ -18,83 +18,56 @@ using Aerospike.Client;
 
 namespace Aerospike.Example;
 
-public class AsyncScan(Console console) : AsyncExample(console)
+public sealed class AsyncScan : AsyncExample
 {
+	private readonly ManualResetEventSlim completed = new();
 	private int recordCount;
-	private bool completed;
 
 	/// <summary>
-	/// Asynchronous scan example.
+	/// Scan all records asynchronously across all nodes, streaming each record to a listener.
 	/// </summary>
-	public override void RunExample(AsyncClient client, Arguments args)
+	public override void RunExample()
 	{
-		console.Info("Asynchronous scan: namespace=" + args.ns + " set=" + args.set);
+		console.Info($"Asynchronous scan: namespace={ns} set={set}");
+
 		recordCount = 0;
-		completed = false;
+		completed.Reset();
 
-		var begin = DateTime.Now;
-		ScanPolicy policy = new();
-		client.ScanAll(policy, new RecordSequenceHandler(this, begin), args.ns, args.set);
+		ScanPolicy scanPolicy = new();
+		client.ScanAll(scanPolicy, new RecordSequenceHandler(this), ns, set);
 
-		WaitTillComplete();
-		if (recordCount == 0)
-		{
-			throw new Exception("AsyncScan verification failed: no records scanned.");
-		}
-		console.Info("AsyncScan verified: " + recordCount + " records.");
+		completed.Wait();
 	}
 
-	private class RecordSequenceHandler(AsyncScan parent, DateTime begin) : RecordSequenceListener
+	private void NotifyComplete() => completed.Set();
+
+	private sealed class RecordSequenceHandler(AsyncScan parent) : RecordSequenceListener
 	{
-		private readonly AsyncScan parent = parent;
-		private readonly DateTime begin = begin;
+		private readonly DateTime begin = DateTime.Now;
 
 		public void OnRecord(Key key, Record record)
 		{
 			int count = Interlocked.Increment(ref parent.recordCount);
 
-			if ((count % 10000) == 0)
+			if (count % 10000 == 0)
 			{
-				parent.console.Info("Records " + count);
+				parent.console.Info($"Records {count}");
 			}
 		}
 
 		public void OnSuccess()
 		{
-			DateTime end = DateTime.Now;
-			double seconds = end.Subtract(begin).TotalSeconds;
-			parent.console.Info("Total records returned: " + parent.recordCount);
-			parent.console.Info("Elapsed time: " + seconds + " seconds");
-			double performance = Math.Round((double)parent.recordCount / seconds);
-			parent.console.Info("Records/second: " + performance);
-
+			double seconds = (DateTime.Now - begin).TotalSeconds;
+			parent.console.Info($"Total records returned: {parent.recordCount}");
+			parent.console.Info($"Elapsed time: {seconds} seconds");
+			parent.console.Info($"Records/second: {Math.Round(parent.recordCount / seconds)}");
 			parent.NotifyComplete();
 		}
 
 		public void OnFailure(AerospikeException e)
 		{
-			parent.console.Error("Scan failed: " + Util.GetErrorMessage(e));
+			parent.console.Error($"Scan failed: {Util.GetErrorMessage(e)}");
 			parent.NotifyComplete();
-		}
-	}
-
-	private void WaitTillComplete()
-	{
-		lock (this)
-		{
-			while (!completed)
-			{
-				Monitor.Wait(this);
-			}
-		}
-	}
-
-	private void NotifyComplete()
-	{
-		lock (this)
-		{
-			completed = true;
-			Monitor.Pulse(this);
 		}
 	}
 }

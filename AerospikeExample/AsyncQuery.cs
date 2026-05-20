@@ -1,4 +1,4 @@
-/* 
+/*
  * Copyright 2012-2026 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
@@ -18,151 +18,55 @@ using Aerospike.Client;
 
 namespace Aerospike.Example;
 
-public class AsyncQuery(Console console) : AsyncExample(console)
+public sealed class AsyncQuery : AsyncExample
 {
-	private bool completed;
+	private readonly ManualResetEventSlim completed = new();
 
 	/// <summary>
-	/// Asynchronous Query example.
+	/// Run a secondary-index range query asynchronously and stream results to a listener.
 	/// </summary>
-	public override void RunExample(AsyncClient client, Arguments args)
+	public override void RunExample()
 	{
-		completed = false;
-		string indexName = "asqindex";
-		string keyPrefix = "asqkey";
-		string binName = args.GetBinName("asqbin");
-		int size = 50;
+		const string binName = "asqbin";
+		const int begin = 26;
+		const int end = 34;
 
-		CreateIndex(client, args, indexName, binName);
-		RunQueryExample(client, args, keyPrefix, binName, size);
-		WaitTillComplete();
+		completed.Reset();
 
-		var verifyAsyncQueryKey = new Key(args.ns, args.set, keyPrefix + 1);
-		Record verifyAsyncQueryRecord = client.Get(null, verifyAsyncQueryKey);
-		if (verifyAsyncQueryRecord == null)
+		console.Info($"Query for: ns={ns} set={set} bin={binName} >= {begin} <= {end}");
+
+		Statement stmt = new()
 		{
-			throw new Exception("AsyncQuery verification failed: record not found for written key.");
-		}
-		console.Info("AsyncQuery verified successfully.");
-		client.DropIndex(args.policy, args.ns, args.set, indexName);
-	}
-
-	private void CreateIndex(AsyncClient client, Arguments args, string indexName, string binName)
-	{
-		console.Info("Create index: ns=" + args.ns + " set=" + args.set + " index=" + indexName + " bin=" + binName);
-
-		Policy policy = new()
-		{
-			totalTimeout = 0 // Do not timeout on index create.
+			Namespace = ns,
+			SetName = set,
+			BinNames = [binName],
+			Filter = Filter.Range(binName, begin, end)
 		};
 
-		try
+		QueryPolicy qp = new()
 		{
-			client.DropIndex(policy, args.ns, args.set, indexName);
-		}
-		catch (AerospikeException)
-		{
-		}
+			failOnClusterChange = true
+		};
 
-		IndexTask task = client.CreateIndex(policy, args.ns, args.set, indexName, binName, IndexType.INTEGER);
-		task.Wait();
+		client.Query(qp, new RecordSequenceHandler(this, binName), stmt);
+		completed.Wait();
 	}
 
-	private void RunQueryExample(AsyncClient client, Arguments args, string keyPrefix, string binName, int size)
+	private void NotifyCompleted() => completed.Set();
+
+	private sealed class RecordSequenceHandler(AsyncQuery parent, string binName) : RecordSequenceListener
 	{
-		console.Info("Write " + size + " records.");
-		var handler = new WriteHandler(this, client, args, binName, size);
-
-		for (int i = 1; i <= size; i++)
-		{
-			var key = new Key(args.ns, args.set, keyPrefix + i);
-			var bin = new Bin(binName, i);
-			client.Put(args.writePolicy, handler, key, bin);
-		}
-	}
-
-	private class WriteHandler(AsyncQuery parent, AsyncClient client, Arguments args, string binName, int max) : WriteListener
-	{
-		private readonly AsyncClient client = client;
-		private readonly Arguments args = args;
-		private readonly AsyncQuery parent = parent;
-		private readonly string binName = binName;
-		internal readonly int max = max;
-		internal int count;
-
-		public void OnSuccess(Key key)
-		{
-			int rows = Interlocked.Increment(ref count);
-
-			if (rows == max)
-			{
-				int begin = 26;
-				int end = 34;
-
-				parent.console.Info("Query for: ns=" + args.ns + " set=" + args.set + " bin=" + binName + " >= " + begin + " <= " + end);
-
-				Statement stmt = new();
-				stmt.SetNamespace(args.ns);
-				stmt.SetSetName(args.set);
-				stmt.SetBinNames(binName);
-				stmt.SetFilter(Filter.Range(binName, begin, end));
-
-				QueryPolicy qp = new()
-				{
-					failOnClusterChange = true
-				};
-
-				client.Query(qp, new RecordSequenceHandler(parent, binName), stmt);
-			}
-		}
-
-		public void OnFailure(AerospikeException e)
-		{
-			parent.console.Error("Put failed: " + e.Message);
-			parent.NotifyCompleted();
-		}
-	}
-
-	private class RecordSequenceHandler(AsyncQuery parent, string binName) : RecordSequenceListener
-	{
-		private readonly AsyncQuery parent = parent;
-		private readonly string binName = binName;
-
 		public void OnRecord(Key key, Record record)
 		{
-			int result = record.GetInt(binName);
-			parent.console.Info("Result: " + result);
+			parent.console.Info($"Result: {record.GetInt(binName)}");
 		}
 
-		public void OnSuccess()
-		{
-			parent.NotifyCompleted();
-		}
+		public void OnSuccess() => parent.NotifyCompleted();
 
 		public void OnFailure(AerospikeException e)
 		{
-			parent.console.Error("Query failed: " + Util.GetErrorMessage(e));
+			parent.console.Error($"Query failed: {Util.GetErrorMessage(e)}");
 			parent.NotifyCompleted();
-		}
-	}
-
-	private void WaitTillComplete()
-	{
-		lock (this)
-		{
-			while (!completed)
-			{
-				Monitor.Wait(this);
-			}
-		}
-	}
-
-	private void NotifyCompleted()
-	{
-		lock (this)
-		{
-			completed = true;
-			Monitor.Pulse(this);
 		}
 	}
 }

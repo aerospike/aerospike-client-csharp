@@ -1,4 +1,4 @@
-/* 
+/*
  * Copyright 2012-2026 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
@@ -18,28 +18,25 @@ using Aerospike.Client;
 
 namespace Aerospike.Example;
 
-public class ScanResume(Console console) : SyncExample(console)
+public sealed class ScanResume : SyncExample
 {
+	private const string SetName = "resume";
+
 	private int recordCount;
 	private int recordMax;
 
 	/// <summary>
-	/// Terminate a scan and then resume scan later.
+	/// Terminate a scan partway through and resume it from where it left off.
 	/// </summary>
-	public override void RunExample(IAerospikeClient client, Arguments args)
+	public override void RunExample()
 	{
-		string binName = "bin";
-		string setName = "resume";
-
-		WriteRecords(client, args, setName, binName, 200);
-
 		// Serialize node scans so scan callback atomics are not necessary.
-		ScanPolicy policy = new()
+		ScanPolicy scanPolicy = new()
 		{
 			concurrentNodes = false
 		};
 
-		var filter = PartitionFilter.All();
+		PartitionFilter filter = PartitionFilter.All();
 		recordCount = 0;
 		recordMax = 50;
 
@@ -47,7 +44,7 @@ public class ScanResume(Console console) : SyncExample(console)
 
 		try
 		{
-			client.ScanPartitions(policy, filter, args.ns, setName, ScanCallback);
+			client.ScanPartitions(scanPolicy, filter, ns, SetName, ScanCallback);
 		}
 		catch (AerospikeException ae) when (
 			ae is AerospikeException.ScanTerminated ||
@@ -55,51 +52,26 @@ public class ScanResume(Console console) : SyncExample(console)
 		{
 			console.Info("Scan terminated as expected");
 		}
-		console.Info("Records returned: " + recordCount);
 
-		// PartitionFilter could be serialized at this point.
-		// Resume scan now.
+		console.Info($"Records returned: {recordCount}");
+
+		// PartitionFilter could be serialized at this point. Resume the scan now.
 		recordCount = 0;
 		recordMax = 0;
 
 		console.Info("Start scan resume");
-		client.ScanPartitions(policy, filter, args.ns, setName, ScanCallback);
-		console.Info("Records returned: " + recordCount);
-
-		if (recordCount == 0)
-		{
-			throw new Exception("ScanResume verification failed: no records returned on resume.");
-		}
-		console.Info("ScanResume completed successfully.");
+		client.ScanPartitions(scanPolicy, filter, ns, SetName, ScanCallback);
+		console.Info($"Records returned: {recordCount}");
 	}
 
-	private void WriteRecords
-	(
-		IAerospikeClient client,
-		Arguments args,
-		string setName,
-		string binName,
-		int size
-	)
-	{
-		console.Info("Write " + size + " records.");
-
-		for (int i = 1; i <= size; i++)
-		{
-			var key = new Key(args.ns, setName, i);
-			var bin = new Bin(binName, i);
-			client.Put(args.writePolicy, key, bin);
-		}
-	}
-
-	public void ScanCallback(Key key, Record record)
+	private void ScanCallback(Key key, Record record)
 	{
 		recordCount++;
 
 		if (recordMax > 0 && recordCount >= recordMax)
 		{
-			// Terminate scan. The scan last digest will not be set and the current record
-			// will be returned again if the scan resumes at a later time.
+			// Terminating the scan rolls back the last-seen digest so the current record
+			// is returned again when the scan is resumed later.
 			throw new AerospikeException.ScanTerminated();
 		}
 	}

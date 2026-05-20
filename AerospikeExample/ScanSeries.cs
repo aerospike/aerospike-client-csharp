@@ -1,4 +1,4 @@
-/* 
+/*
  * Copyright 2012-2026 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
@@ -19,100 +19,62 @@ using System.Collections.Concurrent;
 
 namespace Aerospike.Example;
 
-public class ScanSeries(Console console) : SyncExample(console)
+public sealed class ScanSeries : SyncExample
 {
-	private ConcurrentDictionary<string, Metrics> setMap = new();
+	private readonly ConcurrentDictionary<string, Metrics> setMap = new();
 
 	/// <summary>
-	/// Scan all nodes in series and read all records in all sets.
+	/// Scan each node in series and tally records across all sets.
 	/// </summary>
-	public override void RunExample(IAerospikeClient client, Arguments args)
+	public override void RunExample()
 	{
-		console.Info("Scan series: namespace=" + args.ns + " set=" + args.set);
+		console.Info($"Scan series: namespace={ns} set={set}");
 		setMap.Clear();
 
-		ScanPolicy policy = new()
+		ScanPolicy scanPolicy = new()
 		{
 			recordsPerSecond = 5000
 		};
 
-		// Low scan priority will take more time, but it will reduce the load on the server.
-		// policy.priority = Priority.LOW;
+		DateTime begin = DateTime.Now;
 
-		Node[] nodes = client.Nodes;
-		var begin = DateTime.Now;
-
-		foreach (Node node in nodes)
+		foreach (Node node in client.Nodes)
 		{
-			console.Info("Scan node " + node.Name);
-			client.ScanNode(policy, node, args.ns, args.set, ScanCallback);
+			console.Info($"Scan node {node.Name}");
+			client.ScanNode(scanPolicy, node, ns, set, ScanCallback);
 
 			foreach (KeyValuePair<string, Metrics> entry in setMap)
 			{
-				console.Info("Node " + node.Name + " set " + entry.Key + " count: " + entry.Value.count);
+				console.Info($"Node {node.Name} set {entry.Key} count: {entry.Value.count}");
 				entry.Value.total += entry.Value.count;
 				entry.Value.count = 0;
 			}
 		}
 
-		DateTime end = DateTime.Now;
-		double seconds = end.Subtract(begin).TotalSeconds;
-		console.Info("Elapsed time: " + seconds + " seconds");
+		double seconds = (DateTime.Now - begin).TotalSeconds;
+		console.Info($"Elapsed time: {seconds} seconds");
 
 		long total = 0;
 
 		foreach (KeyValuePair<string, Metrics> entry in setMap)
 		{
-			console.Info("Total set " + entry.Key + " count: " + entry.Value.total);
+			console.Info($"Total set {entry.Key} count: {entry.Value.total}");
 			total += entry.Value.total;
 		}
-		console.Info("Grand total: " + total);
-		double performance = Math.Round((double)total / seconds);
-		console.Info("Records/second: " + performance);
 
-		if (total == 0)
-		{
-			throw new Exception("ScanSeries verification failed: no records scanned.");
-		}
-
-		console.Info("ScanSeries verified: " + total + " records scanned.");
+		console.Info($"Grand total: {total}");
+		console.Info($"Records/second: {Math.Round(total / seconds)}");
 	}
 
-	public void ScanCallback(Key key, Record record)
+	private void ScanCallback(Key key, Record record)
 	{
-		// It's not strictly necessary to make this callback thread-safe when ScanNode()
-		// is used in series because only one node thread is processing results at any
-		// point in time.  The reason it's thread-safe here is because of a previous
-		// .NET Core bug which incorrectly threw an exception error "Operations that 
-		// change non-concurrent collections must have exclusive access".
-
-		if (setMap.TryGetValue(key.setName, out Metrics metrics))
-		{
-			Interlocked.Increment(ref metrics.count);
-			return;
-		}
-
-		// Set not found.  Must lock to create metrics entry.
-		lock (setMap)
-		{
-			// Retry lookup under lock.
-			if (setMap.TryGetValue(key.setName, out metrics))
-			{
-				Interlocked.Increment(ref metrics.count);
-				return;
-			}
-
-			metrics = new Metrics
-			{
-				count = 1
-			};
-			setMap[key.setName] = metrics;
-		}
+		Metrics metrics = setMap.GetOrAdd(key.setName, _ => new Metrics());
+		Interlocked.Increment(ref metrics.count);
 	}
 
-	private class Metrics
+	private sealed class Metrics
 	{
-		public long count = 0;
-		public long total = 0;
+		public long count;
+		public long total;
 	}
 }

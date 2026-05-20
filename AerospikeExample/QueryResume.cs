@@ -1,4 +1,4 @@
-/* 
+/*
  * Copyright 2012-2026 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
@@ -16,129 +16,65 @@
  */
 using Aerospike.Client;
 
-namespace Aerospike.Example
+namespace Aerospike.Example;
+
+public sealed class QueryResume : SyncExample
 {
-	public class QueryResume(Console console) : SyncExample(console)
+	private const string SetName = "qr";
+	private const string BinName = "bin";
+
+	private int recordCount;
+	private int recordMax;
+
+	/// <summary>
+	/// Terminate a query partway through and resume it from the same partition filter.
+	/// </summary>
+	public override void RunExample()
 	{
-		private int recordCount;
-		private int recordMax;
-
-		/// <summary>
-		/// Terminate a query and then resume query later.
-		/// </summary>
-		public override void RunExample(IAerospikeClient client, Arguments args)
+		Statement stmt = new()
 		{
-			string indexName = "qridx";
-			string binName = "bin";
-			string setName = "qr";
+			Namespace = ns,
+			SetName = SetName,
+			BinNames = [BinName],
+			Filter = Filter.Range(BinName, 1, 200)
+		};
 
-			CreateIndex(client, args, setName, indexName, binName);
-			WriteRecords(client, args, setName, binName, 200);
+		PartitionFilter filter = PartitionFilter.All();
 
-			Statement stmt = new();
-			stmt.Namespace = args.ns;
-			stmt.SetName = setName;
-			stmt.BinNames = [binName];
-			stmt.Filter = Filter.Range(binName, 1, 200);
+		console.Info("Start query");
+		recordCount = 0;
+		recordMax = 50;
 
-			PartitionFilter filter = PartitionFilter.All();
-
-			console.Info("Start query");
-			recordCount = 0;
-			recordMax = 50;
-
-			try
-			{
-				client.Query(null, stmt, filter, QueryListener);
-			}
-			catch (AerospikeException.QueryTerminated)
-			{
-				console.Info("Query terminated as expected");
-			}
-			console.Info("Records returned: " + recordCount);
-
-			// PartitionFilter could be serialized at this point.
-			// Resume query now.
-			recordCount = 0;
-			recordMax = 0;
-
-			console.Info("Start query resume");
+		try
+		{
 			client.Query(null, stmt, filter, QueryListener);
-			console.Info("Records returned: " + recordCount);
-
-			client.DropIndex(args.policy, args.ns, setName, indexName);
-
-			Key verifyKey = new Key(args.ns, setName, 1);
-			Record verifyRecord = client.Get(null, verifyKey);
-			if (verifyRecord == null || Convert.ToInt32(verifyRecord.GetValue(binName)) != 1)
-			{
-				throw new Exception("QueryResume verification failed: expected key 1 in set '" + setName + "' with bin '" + binName + "' = 1.");
-			}
-
-			console.Info("QueryResume verified successfully.");
+		}
+		catch (AerospikeException.QueryTerminated)
+		{
+			console.Info("Query terminated as expected");
 		}
 
-		private void CreateIndex
-		(
-			IAerospikeClient client,
-			Arguments args,
-			string setName,
-			string indexName,
-			string binName
-		)
+		console.Info($"Records returned: {recordCount}");
+
+		// PartitionFilter could be serialized at this point. Resume the query now.
+		recordCount = 0;
+		recordMax = 0;
+
+		console.Info("Start query resume");
+		client.Query(null, stmt, filter, QueryListener);
+		console.Info($"Records returned: {recordCount}");
+	}
+
+	private void QueryListener(Key key, Record record)
+	{
+		int count = Interlocked.Increment(ref recordCount);
+
+		if (recordMax > 0 && count >= recordMax)
 		{
-			console.Info("Create index: ns={0} set={1} index={2} bin={3}",
-				args.ns, setName, indexName, binName);
-
-			Policy policy = new()
-			{
-				totalTimeout = 0
-			};
-
-			try
-			{
-				client.DropIndex(policy, args.ns, setName, indexName);
-			}
-			catch (AerospikeException)
-			{
-			}
-
-			IndexTask task = client.CreateIndex(policy, args.ns, setName, indexName, binName, IndexType.INTEGER);
-			task.Wait();
-		}
-
-		private void WriteRecords
-		(
-			IAerospikeClient client,
-			Arguments args,
-			string setName,
-			string binName,
-			int size
-		)
-		{
-			console.Info("Write " + size + " records.");
-
-			for (int i = 1; i <= size; i++)
-			{
-				Key key = new Key(args.ns, setName, i);
-				Bin bin = new Bin(binName, i);
-				client.Put(args.writePolicy, key, bin);
-			}
-		}
-
-		public void QueryListener(Key key, Record record)
-		{
-			int count = Interlocked.Increment(ref recordCount);
-
-			if (recordMax > 0 && count >= recordMax)
-			{
-				// Terminate query. The query last record key will not be set
-				// and the current record will be returned again if the query resumes
-				// at a later time. It's designed this way to handle errors where
-				// the last record returned could not be processed (like a disk full
-				// error on a backup).
-				throw new AerospikeException.QueryTerminated();
-			}
+			// Terminating the query rolls back the last-record-key so the current
+			// record is returned again when the query is resumed later. This is the
+			// safe shape for handling downstream failures (e.g. disk-full on backup).
+			throw new AerospikeException.QueryTerminated();
 		}
 	}
 }

@@ -1,4 +1,4 @@
-/* 
+/*
  * Copyright 2012-2026 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
@@ -14,6 +14,8 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
+using Aerospike.Client;
+using System.Diagnostics;
 
 namespace Aerospike.Example;
 
@@ -21,9 +23,7 @@ namespace Aerospike.Example;
 /// Thrown by examples that cannot run against the current server configuration.
 /// Analogous to Assert.Inconclusive in the test suite.
 /// </summary>
-public class ExampleSkipException(string reason) : Exception(reason)
-{
-}
+public sealed class ExampleSkipException(string reason) : Exception(reason);
 
 public enum ExampleResult
 {
@@ -32,50 +32,60 @@ public enum ExampleResult
 	Failed
 }
 
-public class ExampleResultInfo(string name, ExampleResult result, string message = null)
-{
-	public string Name { get; } = name;
-	public ExampleResult Result { get; } = result;
-	public string Message { get; } = message;
-}
+public sealed record ExampleResultInfo(string Name, ExampleResult Result, string Message = null, TimeSpan Duration = default);
 
-public abstract class Example(Console console)
+public abstract class Example
 {
-	protected internal Console console = console;
-	public volatile bool valid;
+	protected internal Console console;
 
-	public void Stop()
+	/// <summary>
+	/// Connection and policy configuration injected by the harness.
+	/// </summary>
+	protected internal Arguments args { get; internal set; }
+
+	protected string ns => args.ns;
+	protected string set => args.set;
+	protected Policy policy => args.policy;
+	protected WritePolicy writePolicy => args.writePolicy;
+	protected BatchPolicy batchPolicy => args.batchPolicy;
+
+	internal void SetConsole(Console console)
 	{
-		valid = false;
+		this.console = console;
 	}
 
-	public ExampleResultInfo Run(Arguments args)
+	public abstract void RunExample(Arguments args);
+
+	protected ExampleResultInfo RunWithResult(Action run)
 	{
 		string name = GetType().Name;
-		valid = true;
 		int errorCount = console.ErrorCount;
+		Stopwatch stopwatch = Stopwatch.StartNew();
 
 		try
 		{
 			console.Info($"{name} Begin");
-			RunExample(args);
+			run();
 			console.Info($"{name} End");
 
 			if (console.ErrorCount > errorCount)
 			{
-				return new ExampleResultInfo(name, ExampleResult.Failed, "example logged one or more errors");
+				return new ExampleResultInfo(name, ExampleResult.Failed, "example logged one or more errors", stopwatch.Elapsed);
 			}
 
-			return new ExampleResultInfo(name, ExampleResult.Passed);
+			return new ExampleResultInfo(name, ExampleResult.Passed, Duration: stopwatch.Elapsed);
 		}
 		catch (ExampleSkipException ex)
 		{
 			console.Warn($"{name} SKIPPED: {ex.Message}");
-			return new ExampleResultInfo(name, ExampleResult.Skipped, ex.Message);
+			return new ExampleResultInfo(name, ExampleResult.Skipped, ex.Message, stopwatch.Elapsed);
+		}
+		catch (Exception ex)
+		{
+			console.Error($"{name} FAILED: {ex.Message}");
+			return new ExampleResultInfo(name, ExampleResult.Failed, ex.Message, stopwatch.Elapsed);
 		}
 	}
-
-	public abstract void RunExample(Arguments args);
 
 	protected static void SkipUnless(bool condition, string reason)
 	{
@@ -85,41 +95,41 @@ public abstract class Example(Console console)
 		}
 	}
 
-	protected static void RequireEnterprise(Arguments args)
+	protected void RequireEnterprise()
 	{
 		SkipUnless(args.enterprise, "requires Enterprise edition");
 	}
 
-	protected static void RequireMinServerVersion(Arguments args, Version version)
+	protected void RequireMinServerVersion(Version version)
 	{
 		SkipUnless(args.serverVersion >= version, $"requires server version {version} or later");
 	}
 
-	protected static void RequireStrongConsistency(Arguments args)
+	protected void RequireStrongConsistency()
 	{
 		SkipUnless(args.scMode, "requires strong consistency mode");
 	}
 
-	// Used in Connect examples
-	protected static void RequireBasic(Arguments args)
+	// Used in Connect examples that build their own client.
+	protected void RequireBasic()
 	{
 		SkipUnless(!args.useServicesAlternate, "requires basic mode");
 		SkipUnless(args.user == null, "requires no authentication");
 		SkipUnless(args.tlsPolicy == null, "requires TLS disabled");
 	}
 
-	protected static void RequireAuth(Arguments args)
+	protected void RequireAuth()
 	{
 		SkipUnless(args.user != null, "requires authentication");
 	}
 
-	protected static void RequireTls(Arguments args)
+	protected void RequireTls()
 	{
 		SkipUnless(args.tlsPolicy != null, "requires TLS");
 	}
 
-	protected static void RequirePki(Arguments args)
+	protected void RequirePki()
 	{
-		SkipUnless(args.authMode == Aerospike.Client.AuthMode.PKI, "requires PKI authentication");
+		SkipUnless(args.authMode == AuthMode.PKI, "requires PKI authentication");
 	}
 }
