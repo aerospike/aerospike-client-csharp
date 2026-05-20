@@ -1,36 +1,55 @@
-name: Build and test dev
-run-name: Build artifacts and run dev branch tests (server-tag=${{ inputs.server-tag || 'latest' }})
+name: Build and test
+run-name: "${{ github.event_name == 'pull_request' && format('PR #{0}', github.event.pull_request.number) || (github.event_name == 'push' && 'Stage') || 'Dev' }} build (${{ inputs.server-tag || 'latest' }}, ${{ (inputs.server-type || 'aerospike-server-enterprise') == 'aerospike-server-enterprise' && 'enterprise' || 'community' }}, ${{ (inputs.server-type || 'aerospike-server-enterprise') == 'aerospike-server-enterprise' && (format('{0}', inputs.strong-consistency) == 'false' && 'AP' || 'SC') || 'AP' }}${{ (inputs.server-type || 'aerospike-server-enterprise') == 'aerospike-server-enterprise' && inputs.enable-tls && ', TLS' || '' }})"
 
 permissions:
-  # This is required for requesting the OIDC token
+  # Required for OIDC token requests (used by JFrog/sign jobs)
   id-token: write
   contents: read
+  # Required so the PR-validation path can publish test results back to the PR
+  checks: write
+  pull-requests: write
 
-# Trigger test workflow whenever:
-# 1. Commits are pushed directly to a CLIENT branch
-# 2. Pull requests to stage branch are updated
+# Single workflow that covers both PR validation against `stage` and the
+# post-merge build that publishes RC artifacts to JFrog.
+#
+# Trigger matrix:
+#   pull_request      → PR validation (build/sign/test, deploy to JFrog)
+#   push to stage     → post-merge build (build/sign/test, deploy to JFrog,
+#                       create release bundle, promote to TEST)
+#   workflow_dispatch → ad-hoc dev build with custom server settings
+#
+# JFrog requires a unique version per build, so the .csproj <Version> must be
+# bumped for each change merged to stage (use the `Bump version` workflow or
+# `scripts/update-version.ps1`). The build action reads the version straight
+# from .csproj and we surface it as a job output via the produced .nupkg
+# filename.
 on:
-  push:
-    branches: ["CLIENT*"]
   pull_request:
-    branches: ["stage"]
-    types: [
-      # Default triggers
-      opened,
-      synchronize,
-      reopened
-    ]
+    branches: [stage]
+    types: [opened, synchronize, reopened]
+  push:
+    branches: [stage]
   workflow_dispatch:
     inputs:
       server-tag:
         type: string
         required: false
-        default: "latest"
-        description: "Server docker image tag"
+        default: latest
+        description: Server docker image tag
       server-type:
         type: string
         required: false
-        default: "aerospike-server-enterprise"
+        default: aerospike-server-enterprise
+      strong-consistency:
+        type: boolean
+        required: false
+        default: true
+        description: Enable strong consistency. Enterprise edition required.
+      enable-tls:
+        type: boolean
+        required: false
+        default: false
+        description: Enable TLS for server and test connections. Enterprise edition required.
 
 jobs:
   build:
@@ -48,10 +67,12 @@ jobs:
       uses: actions/setup-dotnet@c2fa09f4bde5ebb9d1777cf28262a3eb3db3ced7 # v5.2.0
       with:
         dotnet-version: 8.0.x
+
     - name: Build artifacts
       uses: ./.github/actions/build
       with:
         sgKey: ${{ secrets.SG_KEY }}
+
     - name: Get version from nupkg
       id: get-version
       shell: pwsh
@@ -62,10 +83,10 @@ jobs:
 
   sign:
     needs: build
-    uses: aerospike/shared-workflows/.github/workflows/reusable_sign-artifacts.yaml@v3.0.0
+    uses: aerospike/shared-workflows/.github/workflows/reusable_sign-artifacts.yaml@8ec712eafbec26c8db8d1183688a5fd806560a95 # v3.5.0
     with:
-      gh-unsigned-artifacts: AerospikeClient-${{ github.run_number }}
-      gh-workflows-ref: v3.0.0
+      gh-unsigned-artifacts: AerospikeClient-${{ github.run_id }}
+      gh-workflows-ref: v3.5.0
     secrets:
       gpg-private-key: ${{ secrets.GPG_SECRET_KEY }}
       gpg-public-key: ${{ secrets.GPG_PUBLIC_KEY }}
@@ -85,51 +106,279 @@ jobs:
         egress-policy: audit
 
     - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+    # Resolve test inputs once so PR/push runs (which have no `inputs.*`)
+    # behave the same as a workflow_dispatch run that accepts all defaults.
+    # Notes on the tricky cases:
+    #   • `format('{0}', inputs.X)` coerces null → '' for safe string compare,
+    #     avoiding GitHub's loose equality where `null == false` is true.
+    #   • For server-type we compare *after* applying the `|| default` fallback
+    #     so PR/push runs get the enterprise features.conf, not an empty string.
+    #   • Community server runs are always AP and non-TLS.
+    - name: Resolve test inputs
+      id: cfg
+      shell: bash
+      env:
+        IN_SERVER_TAG: ${{ inputs.server-tag }}
+        IN_SERVER_TYPE: ${{ inputs.server-type }}
+        IN_ENABLE_TLS: ${{ format('{0}', inputs.enable-tls) }}
+        IN_STRONG_CONSISTENCY: ${{ format('{0}', inputs.strong-consistency) }}
+      run: |
+        SERVER_TAG="${IN_SERVER_TAG:-latest}"
+        SERVER_TYPE="${IN_SERVER_TYPE:-aerospike-server-enterprise}"
+        ENABLE_TLS="${IN_ENABLE_TLS:-false}"
+        # Default SC to '1' (enabled). Only flip to '0' when the dispatch input
+        # is explicitly false; null/empty (PR/push) keeps the default.
+        if [ "$IN_STRONG_CONSISTENCY" = "false" ]; then
+          SC="0"
+        else
+          SC="1"
+        fi
+        if [ "$ENABLE_TLS" = "true" ]; then ENABLE_TLS="true"; else ENABLE_TLS="false"; fi
+        if [ "$SERVER_TYPE" != "aerospike-server-enterprise" ]; then
+          ENABLE_TLS="false"
+          SC="0"
+        fi
+        {
+          echo "server-tag=$SERVER_TAG"
+          echo "server-type=$SERVER_TYPE"
+          echo "enable-tls=$ENABLE_TLS"
+          echo "strong-consistency=$SC"
+          echo "is-enterprise=$([ "$SERVER_TYPE" = "aerospike-server-enterprise" ] && echo true || echo false)"
+        } >> "$GITHUB_OUTPUT"
+
     - name: Test
       uses: ./.github/actions/test
       with:
-        server-tag: ${{ inputs.server-tag || 'latest' }}
-        server-type: ${{ inputs.server-type || 'aerospike-server-enterprise' }}
-        features-content: ${{ secrets.AES_FEATURES_CONF }}
-        oidc-provider: database-gh-aerospike
-        oidc-audience: database-gh-aerospike
+        server-tag: ${{ steps.cfg.outputs.server-tag }}
+        server-type: ${{ steps.cfg.outputs.server-type }}
+        enable-tls: ${{ steps.cfg.outputs.enable-tls }}
+        strong-consistency: ${{ steps.cfg.outputs.strong-consistency }}
+        features-content: ${{ steps.cfg.outputs.is-enterprise == 'true' && secrets.AES_FEATURES_CONF || '' }}
+        oidc-provider: gh-aerospike
+        oidc-audience: aerospike
+
+    # PR-only: surface test results as a check + comment on the pull request.
+    # On `push` and `workflow_dispatch` runs there's no PR to attach to.
+    - name: Publish test results
+      if: ${{ !cancelled() && github.event_name == 'pull_request' }}
+      uses: EnricoMi/publish-unit-test-result-action@3a74b2957438d0b6e2e61d67b05318aa25c9e6c6 # v2.20.0
+      with:
+        files: test-results/**/*.trx
+        check_name: "Test Results (${{ steps.cfg.outputs.server-tag }})"
 
   deploy:
+    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/stage' }}
     needs: [build, sign, test]
-    uses: aerospike/shared-workflows/.github/workflows/reusable_deploy-artifacts.yaml@v3.0.0
+    uses: aerospike/shared-workflows/.github/workflows/reusable_deploy-artifacts.yaml@8ec712eafbec26c8db8d1183688a5fd806560a95 # v3.5.0
     with:
       jf-project: database
       jf-build-name: aerospike-client-csharp
-      jf-build-id: ${{ github.run_id }}
-      jf-metadata-build-id: ${{ github.run_id }}-metadata
+      jf-build-id: ${{ github.run_id }}-${{ github.run_attempt }}
+      jf-metadata-build-id: ${{ github.run_id }}-${{ github.run_attempt }}-metadata
       version: ${{ needs.build.outputs.version }}
       gh-artifact-name: signed-artifacts
-      gh-workflows-ref: v3.0.0
-      oidc-provider-name: database-gh-aerospike
-      oidc-audience: database-gh-aerospike
+      gh-workflows-ref: v3.5.0
+      oidc-provider-name: gh-aerospike
+      oidc-audience: aerospike
+
+  prepare-test-artifacts:
+    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/stage' }}
+    needs: [build, test]
+    runs-on: ubuntu-latest
+    steps:
+    - name: Harden the runner (Audit all outbound calls)
+      uses: step-security/harden-runner@58077d3c7e43986b6b15fba718e8ea69e387dfcc # v2.15.1
+      with:
+        egress-policy: audit
+
+    - name: Setup JFrog CLI
+      uses: step-security/setup-jfrog-cli@893a92f96c7727242adf0e603c77b1f2a22390e1 # v4.9.1
+      env:
+        JF_URL: https://aerospike.jfrog.io
+        JF_PROJECT: database
+      with:
+        oidc-provider-name: gh-aerospike
+        oidc-audience: aerospike
+
+    - name: Remove existing test artifacts
+      env:
+        JF_PROJECT: database
+        TEST_BUILD_NAME: aerospike-client-csharp-tests
+        VERSION: ${{ needs.build.outputs.version }}
+      run: |
+        set -euo pipefail
+
+        test_artifacts_path="${JF_PROJECT}-generic-dev-local/${TEST_BUILD_NAME}/${VERSION}/"
+        echo "Removing existing test artifacts from ${test_artifacts_path}..."
+        jf rt delete "${test_artifacts_path}*" --quiet
 
   deploy-test:
-    needs: [build, test]
-    uses: aerospike/shared-workflows/.github/workflows/reusable_deploy-artifacts.yaml@v3.0.0
+    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/stage' }}
+    needs: [build, test, prepare-test-artifacts]
+    uses: aerospike/shared-workflows/.github/workflows/reusable_deploy-artifacts.yaml@8ec712eafbec26c8db8d1183688a5fd806560a95 # v3.5.0
     with:
       jf-project: database
       jf-build-name: aerospike-client-csharp-tests
-      jf-build-id: ${{ github.run_id }}-tests
-      jf-metadata-build-id: ${{ github.run_id }}-tests-metadata
+      jf-build-id: ${{ github.run_id }}-${{ github.run_attempt }}-tests
+      jf-metadata-build-id: ${{ github.run_id }}-${{ github.run_attempt }}-tests-metadata
       version: ${{ needs.build.outputs.version }}
-      gh-artifact-name: AerospikeTest-${{ github.run_number }}
-      gh-workflows-ref: v3.0.0
-      oidc-provider-name: database-gh-aerospike
-      oidc-audience: database-gh-aerospike
+      gh-artifact-name: AerospikeTest-${{ github.run_id }}
+      gh-workflows-ref: v3.5.0
+      oidc-provider-name: gh-aerospike
+      oidc-audience: aerospike
+
+  prepare-release-bundle:
+    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/stage' }}
+    needs: [build, deploy]
+    runs-on: ubuntu-latest
+    steps:
+    - name: Harden the runner (Audit all outbound calls)
+      uses: step-security/harden-runner@58077d3c7e43986b6b15fba718e8ea69e387dfcc # v2.15.1
+      with:
+        egress-policy: audit
+
+    - name: Setup JFrog CLI
+      uses: step-security/setup-jfrog-cli@893a92f96c7727242adf0e603c77b1f2a22390e1 # v4.9.1
+      env:
+        JF_URL: https://aerospike.jfrog.io
+        JF_PROJECT: database
+      with:
+        oidc-provider-name: gh-aerospike
+        oidc-audience: aerospike
+
+    - name: Remove existing lower-environment release bundle
+      env:
+        BUNDLE_NAME: aerospike-client-csharp
+        BUNDLE_VERSION: ${{ needs.build.outputs.version }}
+        JF_PROJECT: database
+      run: |
+        set -euo pipefail
+
+        records_path="/lifecycle/api/v2/promotion/records/${BUNDLE_NAME}?project=${JF_PROJECT}&filter_by=${BUNDLE_VERSION}&order_by=created_millis&order_asc=true"
+        echo "Checking promotion records for ${BUNDLE_NAME}/${BUNDLE_VERSION}..."
+        records_json='{"promotions":[]}'
+        set +e
+        fetched_records=$(jf rt curl -X GET "$records_path" -H "Accept: application/json" 2>jfrog-error.log)
+        status=$?
+        set -e
+
+        if [ "$status" -ne 0 ]; then
+          error_text="$(<jfrog-error.log)"
+          if [[ "$error_text" == *"404"* || "$error_text" == *"not found"* || "$fetched_records" == *"404"* ]]; then
+            echo "No existing release bundle promotion records found."
+          else
+            echo "::error::Failed to fetch promotion records for ${BUNDLE_NAME}/${BUNDLE_VERSION}."
+            echo "$error_text"
+            exit "$status"
+          fi
+        else
+          records_json="$fetched_records"
+        fi
+
+        echo "$records_json" | jq '.'
+
+        if echo "$records_json" | jq -e '.errors? | length > 0' >/dev/null; then
+          if echo "$records_json" | jq -e '.errors[]? | (.status | tostring) == "404"' >/dev/null; then
+            echo "::warning::Promotion records endpoint returned 404; treating this as no existing promotion records."
+            records_json='{"promotions":[]}'
+          else
+            echo "::error::Failed to fetch promotion records for ${BUNDLE_NAME}/${BUNDLE_VERSION}."
+            exit 1
+          fi
+        fi
+
+        higher_envs=$(echo "$records_json" | jq -r --arg version "$BUNDLE_VERSION" '
+          [(.promotions // [])[]?
+            | select((.release_bundle_version // .releaseBundleVersion // .version // "") == $version)
+            | select((.status // "COMPLETED") == "COMPLETED")
+            | (.environment // .target_environment // .targetEnvironment // empty)
+            | select(. == "STAGE" or . == "PREVIEW" or . == "PROD")]
+          | unique
+          | join(", ")
+        ')
+        if [ -n "$higher_envs" ]; then
+          echo "::error::Release bundle ${BUNDLE_NAME}/${BUNDLE_VERSION} already exists in higher stage(s): ${higher_envs}. Refusing to replace it."
+          exit 1
+        fi
+
+        existing_envs=$(echo "$records_json" | jq -r --arg version "$BUNDLE_VERSION" '
+          [(.promotions // [])[]?
+            | select((.release_bundle_version // .releaseBundleVersion // .version // "") == $version)
+            | select((.status // "COMPLETED") == "COMPLETED")
+            | (.environment // .target_environment // .targetEnvironment // empty)]
+          | unique
+          | join(", ")
+        ')
+        if [ -n "$existing_envs" ]; then
+          echo "Existing release bundle promotions: ${existing_envs}."
+        else
+          echo "No existing release bundle promotions found."
+        fi
+
+        echo "Deleting existing release bundle ${BUNDLE_NAME}/${BUNDLE_VERSION} if it exists..."
+        set +e
+        delete_output=$(jf rbdell --project="${JF_PROJECT}" --quiet --sync "${BUNDLE_NAME}" "${BUNDLE_VERSION}" 2>jfrog-error.log)
+        status=$?
+        set -e
+
+        if [ "$status" -ne 0 ]; then
+          error_text="$(<jfrog-error.log)"
+          if [[ "$error_text" == *"404"* || "$error_text" == *"not found"* || "$delete_output" == *"404"* ]]; then
+            echo "No existing release bundle record found."
+          else
+            echo "::error::Failed to delete release bundle ${BUNDLE_NAME}/${BUNDLE_VERSION}."
+            echo "$error_text"
+            exit "$status"
+          fi
+        else
+          echo "$delete_output"
+        fi
 
   create-release-bundle:
-    needs: [build, deploy]
-    uses: aerospike/shared-workflows/.github/workflows/reusable_create-release-bundle.yaml@v3.1.1
+    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/stage' }}
+    needs: [build, deploy, prepare-release-bundle]
+    uses: aerospike/shared-workflows/.github/workflows/reusable_create-release-bundle.yaml@8ec712eafbec26c8db8d1183688a5fd806560a95 # v3.5.0
     with:
       jf-project: database
-      jf-build-names: "aerospike-client-csharp:${{ github.run_id }}"
+      jf-build-names: "aerospike-client-csharp:${{ github.run_id }}-${{ github.run_attempt }}"
       jf-bundle-name: aerospike-client-csharp
       version: ${{ needs.build.outputs.version }}
-      gh-workflows-ref: v3.0.0
-      oidc-provider-name: database-gh-aerospike
-      oidc-audience: database-gh-aerospike
+      gh-workflows-ref: v3.5.0
+      oidc-provider-name: gh-aerospike
+      oidc-audience: aerospike
+
+  promote-release-bundle-to-test:
+    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/stage' }}
+    needs: [build, create-release-bundle]
+    runs-on: ubuntu-latest
+    steps:
+    - name: Harden the runner (Audit all outbound calls)
+      uses: step-security/harden-runner@58077d3c7e43986b6b15fba718e8ea69e387dfcc # v2.15.1
+      with:
+        egress-policy: audit
+
+    - name: Setup JFrog CLI
+      uses: step-security/setup-jfrog-cli@893a92f96c7727242adf0e603c77b1f2a22390e1 # v4.9.1
+      env:
+        JF_URL: https://aerospike.jfrog.io
+        JF_PROJECT: database
+      with:
+        oidc-provider-name: gh-aerospike
+        oidc-audience: aerospike
+
+    - name: Promote release bundle to TEST
+      uses: aerospike/shared-workflows/.github/actions/promote-release-bundle@8ec712eafbec26c8db8d1183688a5fd806560a95 # v3.5.0
+      with:
+        bundle-name: aerospike-client-csharp
+        version: ${{ needs.build.outputs.version }}
+        environment: TEST
+        jf-project: database
+
+    - name: Summary
+      run: |
+        echo "## Release Bundle Promoted" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "- **Bundle:** aerospike-client-csharp" >> $GITHUB_STEP_SUMMARY
+        echo "- **Version:** ${{ needs.build.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+        echo "- **Environment:** TEST" >> $GITHUB_STEP_SUMMARY

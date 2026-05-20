@@ -1,0 +1,109 @@
+name: Nightly Extended Tests
+run-name: "Nightly tests (${{ github.event_name }})"
+
+permissions:
+  id-token: write
+  contents: read
+  checks: write
+
+on:
+  schedule:
+    - cron: 0 2 * * *
+  workflow_dispatch:
+
+jobs:
+  load-test-matrix:
+    runs-on: ubuntu-latest
+    outputs:
+      servers: ${{ steps.servers.outputs.servers }}
+    steps:
+    - name: Harden the runner (Audit all outbound calls)
+      uses: step-security/harden-runner@58077d3c7e43986b6b15fba718e8ea69e387dfcc # v2.15.1
+      with:
+        egress-policy: audit
+
+    - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      with:
+        ref: stage
+
+    - name: Load nightly server matrix
+      id: servers
+      run: |
+        servers=$(jq -c . .github/nightly_test_servers.json)
+        echo "servers=$servers" >> "$GITHUB_OUTPUT"
+
+  build:
+    runs-on: windows-latest
+    outputs:
+      version: ${{ steps.get-version.outputs.version }}
+    steps:
+    - name: Harden the runner (Audit all outbound calls)
+      uses: step-security/harden-runner@58077d3c7e43986b6b15fba718e8ea69e387dfcc # v2.15.1
+      with:
+        egress-policy: audit
+
+    - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      with:
+        ref: stage
+    - name: Setup .NET
+      uses: actions/setup-dotnet@c2fa09f4bde5ebb9d1777cf28262a3eb3db3ced7 # v5.2.0
+      with:
+        dotnet-version: 8.0.x
+
+    - name: Build artifacts
+      uses: ./.github/actions/build
+      with:
+        sgKey: ${{ secrets.SG_KEY }}
+
+    - name: Get version from nupkg
+      id: get-version
+      shell: pwsh
+      run: |
+        $nupkg = Get-ChildItem -Path AerospikeClient\bin\Release -Filter "Aerospike.Client.*.nupkg" | Where-Object { $_.Extension -eq ".nupkg" } | Select-Object -First 1
+        $version = $nupkg.BaseName -replace '^Aerospike\.Client\.', ''
+        echo "version=$version" >> $env:GITHUB_OUTPUT
+
+  test:
+    needs: [build, load-test-matrix]
+    strategy:
+      fail-fast: false
+      matrix:
+        server: ${{ fromJson(needs.load-test-matrix.outputs.servers) }}
+        strong-consistency: ["1", "0"]
+        exclude:
+          - server:
+              server-type: aerospike-server
+            strong-consistency: "1"
+          - server:
+              server-type: aerospike-server
+              tls: true
+    name: test-${{ matrix.server.server-tag }}-${{ matrix.server.server-type }}-sc${{ matrix.strong-consistency }}-tls${{ matrix.server.tls }}
+    runs-on: ubuntu-latest
+    steps:
+    - name: Harden the runner (Audit all outbound calls)
+      uses: step-security/harden-runner@58077d3c7e43986b6b15fba718e8ea69e387dfcc # v2.15.1
+      with:
+        egress-policy: audit
+
+    - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      with:
+        ref: stage
+    - name: Test
+      uses: ./.github/actions/test
+      with:
+        server-tag: ${{ matrix.server.server-tag }}
+        server-type: ${{ matrix.server.server-type }}
+        server-container-repo: ${{ matrix.server.server-container-repo }}
+        strong-consistency: ${{ matrix.strong-consistency }}
+        enable-tls: ${{ matrix.server.tls }}
+        features-content: ${{ matrix.server.server-type == 'aerospike-server-enterprise' && secrets.AES_FEATURES_CONF || '' }}
+        oidc-provider: gh-aerospike
+        oidc-audience: aerospike
+        artifact-suffix: ${{ matrix.server.server-tag }}-${{ matrix.server.server-type }}-sc${{ matrix.strong-consistency }}-tls${{ matrix.server.tls }}
+
+    - name: Publish test results
+      if: ${{ !cancelled() }}
+      uses: EnricoMi/publish-unit-test-result-action@3a74b2957438d0b6e2e61d67b05318aa25c9e6c6 # v2.20.0
+      with:
+        files: test-results/**/*.trx
+        check_name: "Nightly - ${{ matrix.server.server-tag }} (${{ matrix.server.server-type }}, SC=${{ matrix.strong-consistency }}, TLS=${{ matrix.server.tls }})"

@@ -1,4 +1,5 @@
 name: Test
+description: Runs the Aerospike .NET client test suite against a server container
 
 inputs:
   server-tag:
@@ -22,6 +23,20 @@ inputs:
     required: false
     default: ""
     description: Raw features.conf content (e.g. from a GitHub secret)
+  server-container-repo:
+    required: false
+    default: ""
+    description: >
+      Full Docker image repo path (e.g. database-docker-virtual/aerospike-server-enterprise).
+      When empty, defaults to the setup-aerospike-server action's built-in default.
+  enable-tls:
+    required: false
+    default: "false"
+    description: Enable TLS for server and test connections (`true` or `false`)
+  artifact-suffix:
+    required: false
+    default: ""
+    description: Suffix appended to artifact names to avoid collisions in matrix jobs
 
 runs:
   using: composite
@@ -31,20 +46,34 @@ runs:
       shell: bash
       run: |
         echo "server-tag=${{ inputs.server-tag }}" >> "$GITHUB_OUTPUT"
-        echo "server-container-repo=database-docker-virtual/${{ inputs.server-type }}" >> "$GITHUB_OUTPUT"
+
+        CONTAINER_REPO="${{ inputs.server-container-repo }}"
+        if [ -z "$CONTAINER_REPO" ]; then
+          CONTAINER_REPO="database-docker-virtual/${{ inputs.server-type }}"
+        fi
+        echo "server-container-repo=$CONTAINER_REPO" >> "$GITHUB_OUTPUT"
 
         # Map strong-consistency from 1/0 to true/false
         if [ "${{ inputs.strong-consistency }}" == "1" ]; then
           echo "enable-sc=true" >> "$GITHUB_OUTPUT"
-          echo "config-file=.github/workflows/docker-setup/aerospike-sc.conf" >> "$GITHUB_OUTPUT"
         else
           echo "enable-sc=false" >> "$GITHUB_OUTPUT"
+        fi
+
+        # Select config based on TLS and SC flags
+        if [ "${{ inputs.enable-tls }}" == "true" ] && [ "${{ inputs.strong-consistency }}" == "1" ]; then
+          echo "config-file=.github/workflows/docker-setup/aerospike-tls-sc.conf" >> "$GITHUB_OUTPUT"
+        elif [ "${{ inputs.enable-tls }}" == "true" ]; then
+          echo "config-file=.github/workflows/docker-setup/aerospike-tls.conf" >> "$GITHUB_OUTPUT"
+        elif [ "${{ inputs.strong-consistency }}" == "1" ]; then
+          echo "config-file=.github/workflows/docker-setup/aerospike-sc.conf" >> "$GITHUB_OUTPUT"
+        else
           echo "config-file=.github/workflows/docker-setup/aerospike.conf" >> "$GITHUB_OUTPUT"
         fi
 
     - name: Setup Aerospike Server
       id: setup-server
-      uses: aerospike/shared-workflows/.github/actions/setup-aerospike-server@334ad55b790658d549747b0d154407dfc730acca
+      uses: aerospike/shared-workflows/.github/actions/setup-aerospike-server@8ec712eafbec26c8db8d1183688a5fd806560a95  #v3.5.0
       with:
         server-tag: ${{ steps.resolve.outputs.server-tag }}
         server-container-repo: ${{ steps.resolve.outputs.server-container-repo }}
@@ -53,11 +82,59 @@ runs:
         config-file: ${{ steps.resolve.outputs.config-file }}
         features-content: ${{ inputs.features-content }}
         enable-strong-consistency: ${{ steps.resolve.outputs.enable-sc }}
+        enable-tls: ${{ inputs.enable-tls }}
+
+    - name: Trust TLS CA certificate
+      if: inputs.enable-tls == 'true'
+      shell: bash
+      run: |
+        sudo cp "${{ steps.setup-server.outputs.tls-cert-dir }}/ca.crt" /usr/local/share/ca-certificates/aerospike-ca.crt
+        sudo update-ca-certificates
+
+    - name: Write test configuration summary
+      shell: bash
+      run: |
+        {
+          echo "## Test Configuration"
+          echo ""
+          echo "| Setting | Value |"
+          echo "|---------|-------|"
+          echo "| Server tag | \`${{ inputs.server-tag }}\` |"
+          echo "| Server type | \`${{ inputs.server-type }}\` |"
+          echo "| Strong consistency | ${{ inputs.strong-consistency == '1' && '**Enabled**' || 'Disabled' }} |"
+          echo "| TLS | ${{ inputs.enable-tls == 'true' && '**Enabled**' || 'Disabled' }} |"
+          echo "| Config file | \`${{ steps.resolve.outputs.config-file }}\` |"
+          echo ""
+        } >> $GITHUB_STEP_SUMMARY
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@c2fa09f4bde5ebb9d1777cf28262a3eb3db3ced7 # v5.2.0
+      with:
+        dotnet-version: 8.0.x
+
+    # Cache the global tools store so we don't pay the ~10s install + network
+    # round-trip on every matrix job (especially in nightly-tests.yml).
+    # Pin the dotnet-coverage version so the cache key only changes intentionally.
+    - name: Cache dotnet global tools
+      id: cache-dotnet-tools
+      uses: actions/cache@9fcad95d03062fb8399cdbd79ae6041c7692b6c8 # v4.3.0
+      with:
+        path: ~/.dotnet/tools
+        key: dotnet-tools-${{ runner.os }}-coverage-18.5.2
+
+    - name: Install dotnet-coverage
+      if: steps.cache-dotnet-tools.outputs.cache-hit != 'true'
+      shell: bash
+      run: dotnet tool install --global dotnet-coverage --version 18.5.2
+
+    - name: Ensure dotnet tools on PATH
+      shell: bash
+      run: echo "$HOME/.dotnet/tools" >> "$GITHUB_PATH"
 
     - name: Download test artifacts
       uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
       with:
-        name: AerospikeTest-${{ github.run_number }}
+        name: AerospikeTest-${{ github.run_id }}
         path: artifacts
 
     - name: Unzip tests
@@ -65,9 +142,63 @@ runs:
       working-directory: artifacts
       run: unzip AerospikeTest*.zip
 
-    - name: Test
+    - name: Prepare TLS runsettings
+      if: inputs.enable-tls == 'true'
       shell: bash
-      run: dotnet exec ./artifacts/publish/AerospikeTest.dll --settings ./.runsettings
+      run: |
+        sed -e 's|name="Port" value="3000"|name="Port" value="4333"|' \
+            -e 's|name="TlsEnable" value="false"|name="TlsEnable" value="true"|' \
+            -e 's|name="TlsName" value=""|name="TlsName" value="localhost"|' \
+            .runsettings > .runsettings-tls
+
+    - name: Test with coverage
+      shell: bash
+      run: |
+        settings_file=".runsettings"
+        if [ "${{ inputs.enable-tls }}" == "true" ]; then
+          settings_file=".runsettings-tls"
+        fi
+
+        dotnet-coverage collect \
+          -f cobertura \
+          -o ./coverage/coverage.cobertura.xml \
+          "dotnet exec ./artifacts/publish/AerospikeTest.dll \
+            --settings ./${settings_file} \
+            --results-directory ./test-results \
+            --report-trx --report-trx-filename results.trx"
+
+    - name: Generate coverage report
+      if: ${{ !cancelled() }}
+      uses: danielpalme/ReportGenerator-GitHub-Action@a003c8fb9ac008fd0fffd5faa4f7d3ecb52e0675 # v5.5.7
+      with:
+        reports: coverage/coverage.cobertura.xml
+        targetdir: coverage/report
+        reporttypes: HtmlInline_AzurePipelines;Cobertura;MarkdownSummaryGithub
+        assemblyfilters: -AerospikeTest
+
+    - name: Publish coverage summary
+      if: ${{ !cancelled() }}
+      shell: bash
+      run: |
+        if [ -f coverage/report/SummaryGithub.md ]; then
+          cat coverage/report/SummaryGithub.md >> $GITHUB_STEP_SUMMARY
+        fi
+
+    - name: Upload test results
+      if: ${{ !cancelled() }}
+      uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+      with:
+        name: test-results-${{ github.sha }}${{ inputs.artifact-suffix && format('-{0}', inputs.artifact-suffix) || '' }}
+        path: test-results/
+        retention-days: 7
+
+    - name: Upload coverage report
+      if: ${{ !cancelled() }}
+      uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+      with:
+        name: coverage-report-${{ github.sha }}${{ inputs.artifact-suffix && format('-{0}', inputs.artifact-suffix) || '' }}
+        path: coverage/report/
+        retention-days: 30
 
     - name: Download example artifacts
       uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0

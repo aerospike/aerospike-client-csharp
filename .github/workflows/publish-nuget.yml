@@ -1,0 +1,155 @@
+name: Publish to NuGet
+run-name: "Break-glass NuGet publish (run=${{ inputs.run-id }}, dry-run=${{ inputs.dry-run }})"
+
+permissions:
+  actions: read
+  contents: read
+
+on:
+  workflow_dispatch:
+    inputs:
+      run-id:
+        type: string
+        required: true
+        description: GitHub Actions run ID containing the signed-artifacts artifact
+      dry-run:
+        type: boolean
+        required: false
+        default: true
+        description: "Dry run: validate the package without publishing to NuGet.org"
+      confirm-prod-publish:
+        type: string
+        required: false
+        description: "Required when dry-run is false: type PUBLISH_TO_NUGET"
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    # Break-glass fallback for rare cases where the normal JFrog/artifact-publisher
+    # path cannot be used. Normal NuGet publishing should go through
+    # artifact-publisher once INFRA-480 is available.
+    steps:
+    - name: Harden the runner (Audit all outbound calls)
+      uses: step-security/harden-runner@58077d3c7e43986b6b15fba718e8ea69e387dfcc # v2.15.1
+      with:
+        egress-policy: audit
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@c2fa09f4bde5ebb9d1777cf28262a3eb3db3ced7 # v5.2.0
+      with:
+        dotnet-version: 8.0.x
+
+    - name: Verify actor has admin permission
+      if: ${{ !inputs.dry-run }}
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: |
+        set -euo pipefail
+
+        permission=$(gh api \
+          "repos/${GITHUB_REPOSITORY}/collaborators/${GITHUB_ACTOR}/permission" \
+          --jq '.permission')
+
+        if [ "$permission" != "admin" ]; then
+          echo "::error::Break-glass NuGet publishing requires repo admin permission. ${GITHUB_ACTOR} has '${permission}'."
+          exit 1
+        fi
+
+        echo "Admin permission confirmed for ${GITHUB_ACTOR}."
+
+    - name: Confirm manual publish
+      if: ${{ !inputs.dry-run }}
+      env:
+        CONFIRM_PROD_PUBLISH: ${{ inputs.confirm-prod-publish }}
+      run: |
+        set -euo pipefail
+
+        if [ "$CONFIRM_PROD_PUBLISH" != "PUBLISH_TO_NUGET" ]; then
+          echo "::error::Real NuGet publishing is manual fallback only. Re-run with confirm-prod-publish set to PUBLISH_TO_NUGET."
+          exit 1
+        fi
+
+        echo "::warning::Break-glass NuGet publish approved. This bypasses the normal JFrog PROD promotion/artifact-publisher path."
+        {
+          echo "## Break-Glass Publish Confirmation"
+          echo ""
+          echo "A real NuGet.org publish was explicitly confirmed."
+          echo ""
+          echo "- **Required confirmation:** \`PUBLISH_TO_NUGET\`"
+          echo "- **Required permission:** repo admin"
+          echo "- **Package source:** signed GitHub Actions artifact from run \`${{ inputs.run-id }}\`"
+          echo "- **Expected normal path:** artifact-publisher after JFrog PROD promotion"
+        } >> "$GITHUB_STEP_SUMMARY"
+
+    - name: Download signed packages from GitHub Actions run
+      env:
+        GH_TOKEN: ${{ github.token }}
+        RUN_ID: ${{ inputs.run-id }}
+      run: |
+        set -euo pipefail
+
+        mkdir -p packages
+        gh run download "$RUN_ID" \
+          --repo "$GITHUB_REPOSITORY" \
+          --name signed-artifacts \
+          --dir packages
+
+        find packages/ -type f ! -name "*.nupkg" ! -name "*.snupkg" -delete 2>/dev/null || true
+
+    - name: List downloaded packages
+      run: |
+        set -euo pipefail
+
+        echo "Downloaded packages:"
+        find packages/ -type f | sort
+
+        mapfile -t packages_to_publish < <(find packages/ -type f -name "*.nupkg" | sort)
+        if [ "${#packages_to_publish[@]}" -eq 0 ]; then
+          echo "::error::No .nupkg files found in downloaded artifact from run ${{ inputs.run-id }}."
+          exit 1
+        fi
+
+        for pkg in "${packages_to_publish[@]}"; do
+          echo "=== $(basename "$pkg") ==="
+          unzip -l "$pkg" | tail -5
+        done
+
+    - name: Push to NuGet.org
+      if: ${{ !inputs.dry-run }}
+      run: |
+        set -euo pipefail
+
+        mapfile -t packages_to_publish < <(find packages/ -type f -name "*.nupkg" | sort)
+        if [ "${#packages_to_publish[@]}" -eq 0 ]; then
+          echo "::error::No .nupkg files found in downloaded artifact from run ${{ inputs.run-id }}."
+          exit 1
+        fi
+
+        for pkg in "${packages_to_publish[@]}"; do
+          dotnet nuget push "$pkg" \
+            --api-key "${{ secrets.NUGET_API_KEY }}" \
+            --source https://api.nuget.org/v3/index.json \
+            --skip-duplicate
+        done
+
+    - name: Summary
+      run: |
+        set -euo pipefail
+
+        if [ "${{ inputs.dry-run }}" = "true" ]; then
+          echo "::notice::DRY RUN — No packages were published to NuGet.org"
+          echo "## Dry Run Summary" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "## Publish Summary" >> $GITHUB_STEP_SUMMARY
+        fi
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "**Source run ID:** \`${{ inputs.run-id }}\`" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### Packages" >> $GITHUB_STEP_SUMMARY
+        while IFS= read -r pkg; do
+          echo "- \`$(basename "$pkg")\`" >> $GITHUB_STEP_SUMMARY
+        done < <(find packages/ -type f -name "*.nupkg" | sort)
+        if [ "${{ inputs.dry-run }}" = "true" ]; then
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "To publish for real, re-run this workflow with **dry-run** unchecked." >> $GITHUB_STEP_SUMMARY
+        fi

@@ -1,0 +1,152 @@
+name: Bump version
+run-name: "Bump version to ${{ inputs.version }}${{ inputs.dry-run && ' (dry run)' || '' }}"
+
+# Advances the *base* version in .csproj. Run this when starting a new
+# release line (e.g. 8.4.0 -> 8.5.0, or 8.5.0 -> 9.0.0-beta1). It does NOT
+# create release tags — that happens automatically in release.yml when a
+# build is shipped to PROD.
+#
+# Per-build JFrog versions (the suffixed ones used by build.yml: -pr.*,
+# -rc.*, -dev.*) are computed at build time and don't need a commit here.
+
+permissions:
+  contents: write
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        type: string
+        required: true
+        description: Base version to set (e.g. 8.4.0, 9.0.0-beta1)
+      dry-run:
+        type: boolean
+        required: false
+        default: false
+        description: Show what would change without committing
+  workflow_call:
+    inputs:
+      version:
+        type: string
+        required: true
+        description: Base version to set (e.g. 8.4.0, 9.0.0-beta1)
+      ref:
+        type: string
+        required: false
+        description: Branch or ref to bump version on
+      dry-run:
+        type: boolean
+        required: false
+        default: false
+    outputs:
+      commit-sha:
+        description: SHA of the version bump commit
+        value: ${{ jobs.bump.outputs.commit-sha }}
+
+jobs:
+  bump:
+    runs-on: ubuntu-latest
+    outputs:
+      commit-sha: ${{ steps.commit.outputs.sha }}
+    steps:
+    - name: Harden the runner (Audit all outbound calls)
+      uses: step-security/harden-runner@58077d3c7e43986b6b15fba718e8ea69e387dfcc # v2.15.1
+      with:
+        egress-policy: audit
+
+    - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      with:
+        ref: ${{ inputs.ref || github.ref }}
+
+    - name: Update version in .csproj files
+      shell: pwsh
+      env:
+        TARGET_VERSION: ${{ inputs.version }}
+        IS_DRY_RUN: ${{ inputs.dry-run }}
+      run: |
+        $targetVersion = $env:TARGET_VERSION
+        $isDryRun = $env:IS_DRY_RUN -eq 'true'
+        $projectFiles = Get-ChildItem -Path . -Recurse -Filter *.csproj -File | Sort-Object FullName
+
+        if (-not $projectFiles) {
+          Write-Host "No .csproj files found."
+          exit 0
+        }
+
+        foreach ($projectFile in $projectFiles) {
+          [xml]$xml = Get-Content -Path $projectFile.FullName
+          $projectNode = $xml.Project
+          $versionNodes = @(
+            @($projectNode.SelectNodes('//Project/PropertyGroup/Version'))
+            @($projectNode.SelectNodes('//Project/PropertyGroup/VersionPrefix'))
+            @($projectNode.SelectNodes('//Project/PropertyGroup/PackageVersion'))
+          ) | Where-Object { $_ }
+
+          $changed = $false
+
+          foreach ($node in $versionNodes) {
+            if ($node.InnerText -ne $targetVersion) {
+              Write-Host "$($projectFile.FullName): $($node.Name) '$($node.InnerText)' -> '$targetVersion'"
+              if (-not $isDryRun) {
+                $node.InnerText = $targetVersion
+              }
+              $changed = $true
+            }
+          }
+
+          if (-not $versionNodes) {
+            $propertyGroup = $projectNode.PropertyGroup | Select-Object -First 1
+            if (-not $propertyGroup) {
+              $propertyGroup = $xml.CreateElement('PropertyGroup', $projectNode.NamespaceURI)
+              [void]$projectNode.AppendChild($propertyGroup)
+            }
+
+            Write-Host "$($projectFile.FullName): add Version '$targetVersion'"
+            if (-not $isDryRun) {
+              $versionElement = $xml.CreateElement('Version', $projectNode.NamespaceURI)
+              $versionElement.InnerText = $targetVersion
+              [void]$propertyGroup.AppendChild($versionElement)
+            }
+            $changed = $true
+          }
+
+          if ($changed -and -not $isDryRun) {
+            $xml.Save($projectFile.FullName)
+          }
+        }
+
+    - name: Commit version bump
+      if: ${{ !inputs.dry-run }}
+      id: commit
+      shell: pwsh
+      env:
+        TARGET_VERSION: ${{ inputs.version }}
+      run: |
+        git config user.name "github-actions[bot]"
+        git config user.email "github-actions[bot]@users.noreply.github.com"
+        git add -A
+        $status = git status --porcelain
+        if ($status) {
+          git commit -m "Update version $env:TARGET_VERSION [skip ci]"
+          $sha = git rev-parse HEAD
+          echo "sha=$sha" >> $env:GITHUB_OUTPUT
+          git push
+        } else {
+          Write-Host "No changes to commit — version already at $env:TARGET_VERSION"
+        }
+
+    - name: Summary
+      shell: pwsh
+      env:
+        TARGET_VERSION: ${{ inputs.version }}
+        IS_DRY_RUN: ${{ inputs.dry-run }}
+        COMMIT_SHA: ${{ steps.commit.outputs.sha }}
+      run: |
+        $summary = "## Version Bump`n"
+        $summary += "- **Base version:** $env:TARGET_VERSION`n"
+        $summary += "- **Dry run:** $env:IS_DRY_RUN"
+        if ($env:IS_DRY_RUN -ne 'true' -and $env:COMMIT_SHA) {
+          $summary += "`n- **Commit:** ``$env:COMMIT_SHA``"
+        }
+        $summary += "`n`n_Release tags (e.g. ``v$env:TARGET_VERSION``) are created automatically by ``release.yml`` when a build is published to PROD._"
+        $summary | Out-File -Append -FilePath $env:GITHUB_STEP_SUMMARY

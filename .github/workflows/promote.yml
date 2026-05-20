@@ -1,0 +1,148 @@
+name: Promote release bundle
+run-name: "Promote aerospike-client-csharp ${{ inputs.version }} to ${{ inputs.environment }}"
+
+permissions:
+  id-token: write
+  contents: read
+
+# Manual promotion wrapper. Promotion approval and maturity policy live in the
+# JFrog/shared-workflow path; this workflow only prevents accidental stage skips.
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        type: string
+        required: true
+        description: Release bundle version to promote
+      environment:
+        type: choice
+        required: true
+        description: Target environment
+        options:
+          - DEV
+          - TEST
+          - STAGE
+          - PREVIEW
+          - PROD
+
+jobs:
+  promote:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Harden the runner (Audit all outbound calls)
+      uses: step-security/harden-runner@58077d3c7e43986b6b15fba718e8ea69e387dfcc # v2.15.1
+      with:
+        egress-policy: audit
+
+    - name: Setup JFrog CLI
+      uses: step-security/setup-jfrog-cli@893a92f96c7727242adf0e603c77b1f2a22390e1 # v4.9.1
+      env:
+        JF_URL: https://aerospike.jfrog.io
+        JF_PROJECT: database
+      with:
+        oidc-provider-name: gh-aerospike
+        oidc-audience: aerospike
+
+    # Adjacency guard: refuse to skip stages.
+    # Reads the bundle's existing promotion records from the JFrog Lifecycle API
+    # and only allows promotion to an immediate neighbour of the current
+    # stage (DEV ↔ TEST ↔ STAGE ↔ PREVIEW ↔ PROD). The very first promotion of a
+    # bundle must target DEV.
+    - name: Validate adjacent-stage promotion
+      env:
+        BUNDLE_NAME: aerospike-client-csharp
+        BUNDLE_VERSION: ${{ inputs.version }}
+        TARGET_ENV: ${{ inputs.environment }}
+        JF_PROJECT: database
+      run: |
+        set -euo pipefail
+
+        stages=(DEV TEST STAGE PREVIEW PROD)
+        target_idx=-1
+        for i in "${!stages[@]}"; do
+          if [ "${stages[$i]}" = "$TARGET_ENV" ]; then target_idx=$i; fi
+        done
+        if [ "$target_idx" -lt 0 ]; then
+          echo "::error::Unknown target environment: $TARGET_ENV"
+          exit 1
+        fi
+
+        # Query promotion records for this bundle, then filter to this exact
+        # version. The Lifecycle API does not include the version in the path.
+        # Endpoint: GET /lifecycle/api/v2/promotion/records/{name}?project={project}
+        # Response shape: { "promotions": [ { "release_bundle_version": "...", "environment": "DEV", "status": "COMPLETED", ... }, ... ] }
+        echo "Fetching promotion records for ${BUNDLE_NAME}/${BUNDLE_VERSION}..."
+        records_json=$(jf rt curl -X GET \
+          "/lifecycle/api/v2/promotion/records/${BUNDLE_NAME}?project=${JF_PROJECT}&filter_by=${BUNDLE_VERSION}&order_by=created_millis&order_asc=true" \
+          -H "Accept: application/json")
+
+        echo "$records_json" | jq '.'
+
+        if echo "$records_json" | jq -e '.errors? | length > 0' >/dev/null; then
+          if echo "$records_json" | jq -e '.errors[]? | (.status | tostring) == "404"' >/dev/null; then
+            echo "::warning::Promotion records endpoint returned 404. Skipping local adjacency guard and letting the JFrog promotion action validate ${TARGET_ENV}."
+            exit 0
+          fi
+          echo "::error::Failed to fetch promotion records for ${BUNDLE_NAME}/${BUNDLE_VERSION}."
+          exit 1
+        fi
+
+        # Compute the current stage from the latest completed promotion record.
+        # -1 means "not yet promoted".
+        current_idx=$(echo "$records_json" | jq \
+          --arg version "$BUNDLE_VERSION" \
+          --argjson stages '["DEV","TEST","STAGE","PREVIEW","PROD"]' '
+          [(.promotions // [])
+            | map(select(
+                (.release_bundle_version // .releaseBundleVersion // .version // "") == $version
+                and ((.status // "COMPLETED") == "COMPLETED")
+              ))
+            | sort_by(.created_millis // .createdMillis // .created // .createdAt // .created_at // "")
+            | .[]
+            | .environment // empty] as $envs
+          | ($envs[-1] // null) as $current
+          | if $current == null then -1 else ($stages | index($current) // -1) end
+        ')
+
+        echo "Current stage index: $current_idx (-1 = none)"
+        echo "Target stage index: $target_idx ($TARGET_ENV)"
+
+        if [ "$current_idx" -lt 0 ]; then
+          if [ "$target_idx" -ne 0 ]; then
+            echo "::error::Bundle has no prior promotions; the first promotion must target DEV (got: $TARGET_ENV)."
+            exit 1
+          fi
+        else
+          diff=$(( target_idx - current_idx ))
+          abs_diff=${diff#-}
+          if [ "$abs_diff" -gt 1 ]; then
+            current_name="${stages[$current_idx]}"
+            prev_idx=$(( current_idx - 1 ))
+            next_idx=$(( current_idx + 1 ))
+            allowed=""
+            if [ "$prev_idx" -ge 0 ]; then allowed="${stages[$prev_idx]}"; fi
+            if [ "$next_idx" -lt "${#stages[@]}" ]; then
+              if [ -n "$allowed" ]; then allowed="$allowed or ${stages[$next_idx]}"; else allowed="${stages[$next_idx]}"; fi
+            fi
+            echo "::error::Refusing to skip stages. Bundle is at ${current_name}; only ${allowed} are allowed (got: $TARGET_ENV)."
+            exit 1
+          fi
+        fi
+
+        echo "Adjacency check passed."
+
+    - name: Promote release bundle
+      uses: aerospike/shared-workflows/.github/actions/promote-release-bundle@8ec712eafbec26c8db8d1183688a5fd806560a95 # v3.5.0
+      with:
+        bundle-name: aerospike-client-csharp
+        version: ${{ inputs.version }}
+        environment: ${{ inputs.environment }}
+        jf-project: database
+
+    - name: Summary
+      run: |
+        echo "## Release Bundle Promoted" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "- **Bundle:** aerospike-client-csharp" >> $GITHUB_STEP_SUMMARY
+        echo "- **Version:** ${{ inputs.version }}" >> $GITHUB_STEP_SUMMARY
+        echo "- **Environment:** ${{ inputs.environment }}" >> $GITHUB_STEP_SUMMARY

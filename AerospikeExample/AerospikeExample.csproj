@@ -5,7 +5,7 @@
     <OutputType>Exe</OutputType>
     <RootNamespace>Aerospike.Example</RootNamespace>
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
-    <Version>8.3.1</Version>
+    <Version>8.4.1</Version>
     <Configurations>Debug;Release;Debug_Unix;Release_Unix</Configurations>
     <Platforms>AnyCPU</Platforms>
   </PropertyGroup>

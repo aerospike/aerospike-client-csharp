@@ -1,25 +1,22 @@
 name: Release
-run-name: Build release artifacts and generate API docs
+run-name: Tag release and generate API docs
 
+# Triggered when stage merges to master. Uses the version from .csproj on the
+# commit shared by master and stage, then tags that same commit. Release
+# artifacts are created by the stage build and are not recreated here.
 permissions:
-  id-token: write
   contents: read
 
 on:
   push:
-    branches: ["master"]
+    branches: [master]
   workflow_dispatch:
-    inputs:
-      dry-run:
-        type: boolean
-        required: false
-        default: false
-        description: 'Dry run: only build and generate API docs (skip sign, deploy, and release)'
 
 jobs:
-  build:
-    runs-on: windows-latest
+  resolve-release:
+    runs-on: ubuntu-latest
     outputs:
+      target-sha: ${{ steps.target.outputs.sha }}
       version: ${{ steps.get-version.outputs.version }}
     steps:
     - name: Harden the runner (Audit all outbound calls)
@@ -28,40 +25,36 @@ jobs:
         egress-policy: audit
 
     - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-    - name: Setup .NET
-      uses: actions/setup-dotnet@c2fa09f4bde5ebb9d1777cf28262a3eb3db3ced7 # v5.2.0
       with:
-        dotnet-version: 8.0.x
-    - name: Build artifacts
-      uses: ./.github/actions/build
-      with:
-        sgKey: ${{ secrets.SG_KEY }}
-    - name: Get version from nupkg
+        fetch-depth: 0
+        ref: master
+
+    - name: Resolve release target
+      id: target
+      shell: bash
+      run: |
+        set -euo pipefail
+        git fetch --no-tags origin stage:refs/remotes/origin/stage
+        target=$(git merge-base HEAD origin/stage)
+        echo "Release target SHA: $target"
+        echo "sha=$target" >> "$GITHUB_OUTPUT"
+
+    - name: Get version from release target
       id: get-version
       shell: pwsh
       run: |
-        $nupkg = Get-ChildItem -Path AerospikeClient\bin\Release -Filter "Aerospike.Client.*.nupkg" | Where-Object { $_.Extension -eq ".nupkg" } | Select-Object -First 1
-        $version = $nupkg.BaseName -replace '^Aerospike\.Client\.', ''
-        echo "version=$version" >> $env:GITHUB_OUTPUT
-
-  sign:
-    if: ${{ !inputs.dry-run }}
-    needs: build
-    uses: aerospike/shared-workflows/.github/workflows/reusable_sign-artifacts.yaml@v3.0.0
-    with:
-      gh-unsigned-artifacts: AerospikeClient-${{ github.run_number }}
-      gh-workflows-ref: v3.0.0
-    secrets:
-      gpg-private-key: ${{ secrets.GPG_SECRET_KEY }}
-      gpg-public-key: ${{ secrets.GPG_PUBLIC_KEY }}
-      gpg-key-pass: ${{ secrets.GPG_PASS }}
-      es-username: ${{ secrets.ES_USERNAME }}
-      es-password: ${{ secrets.ES_PASSWORD }}
-      credential_id: ${{ secrets.CREDENTIAL_ID }}
-      es-totp_secret: ${{ secrets.ES_TOTP_SECRET }}
+        $projectXml = (git show "${{ steps.target.outputs.sha }}:AerospikeClient/AerospikeClient.csproj") -join "`n"
+        $versionMatch = [regex]::Match($projectXml, '<Version>\s*([^<]+?)\s*</Version>')
+        $version = $versionMatch.Groups[1].Value
+        if (-not $version) {
+          Write-Error "Could not read <Version> from AerospikeClient/AerospikeClient.csproj at ${{ steps.target.outputs.sha }}"
+          exit 1
+        }
+        Write-Host "Release version: $version"
+        "version=$version" >> $env:GITHUB_OUTPUT
 
   generate-api-docs:
-    needs: build
+    needs: resolve-release
     runs-on: ubuntu-latest
     steps:
     - name: Harden the runner (Audit all outbound calls)
@@ -70,6 +63,8 @@ jobs:
         egress-policy: audit
 
     - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      with:
+        ref: ${{ needs.resolve-release.outputs.target-sha }}
     - name: Setup .NET
       uses: actions/setup-dotnet@c2fa09f4bde5ebb9d1777cf28262a3eb3db3ced7 # v5.2.0
       with:
@@ -80,42 +75,67 @@ jobs:
       run: dotnet build AerospikeClient/AerospikeClient.csproj --configuration Release
     - name: Set doc footer with version and commit
       run: |
-        VERSION=$(echo "${{ needs.build.outputs.version }}" | sed 's/-[0-9]*$//')
-        FOOTER="Aerospike C# Client v${VERSION} &#8226; ${{ github.sha }} &#8226; Copyright 2012-2026 Aerospike, Inc."
+        VERSION=$(echo "${{ needs.resolve-release.outputs.version }}" | sed 's/-[0-9]*$//')
+        FOOTER="Aerospike C# Client v${VERSION} &#8226; ${{ needs.resolve-release.outputs.target-sha }} &#8226; Copyright 2012-2026 Aerospike, Inc."
         jq --arg footer "$FOOTER" '.build.globalMetadata._appFooter = $footer' docfx.json > docfx.tmp && mv docfx.tmp docfx.json
     - name: Generate API documentation
       run: docfx docfx.json
     - name: Upload API docs artifact
       uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
       with:
-        name: api-docs-${{ needs.build.outputs.version }}
+        name: api-docs-${{ needs.resolve-release.outputs.version }}
         path: _site
         retention-days: 90
 
-  deploy:
-    if: ${{ !inputs.dry-run }}
-    needs: [build, sign]
-    uses: aerospike/shared-workflows/.github/workflows/reusable_deploy-artifacts.yaml@v3.0.0
-    with:
-      jf-project: database
-      jf-build-name: aerospike-client-csharp
-      jf-build-id: ${{ github.run_id }}
-      jf-metadata-build-id: ${{ github.run_id }}-metadata
-      version: ${{ needs.build.outputs.version }}
-      gh-artifact-name: signed-artifacts
-      gh-workflows-ref: v3.0.0
-      oidc-provider-name: database-gh-aerospike
-      oidc-audience: database-gh-aerospike
+  # Tag the commit that's shared between
+  # master and stage so the tag is reachable from both branches. We use
+  # `git merge-base origin/master origin/stage` rather than tagging master's
+  # tip directly: if stage→master was a merge commit, the merge commit itself
+  # is only on master, but the merge-base (stage's tip at merge time) is on
+  # both. If the merge was a fast-forward, merge-base == HEAD, which still
+  # works.
+  tag:
+    needs: [resolve-release]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+    - name: Harden the runner (Audit all outbound calls)
+      uses: step-security/harden-runner@58077d3c7e43986b6b15fba718e8ea69e387dfcc # v2.15.1
+      with:
+        egress-policy: audit
 
-  create-release-bundle:
-    if: ${{ !inputs.dry-run }}
-    needs: [build, deploy]
-    uses: aerospike/shared-workflows/.github/workflows/reusable_create-release-bundle.yaml@v3.1.1
-    with:
-      jf-project: database
-      jf-build-names: "aerospike-client-csharp:${{ github.run_id }}"
-      jf-bundle-name: aerospike-client-csharp
-      version: ${{ needs.build.outputs.version }}
-      gh-workflows-ref: v3.0.0
-      oidc-provider-name: database-gh-aerospike
-      oidc-audience: database-gh-aerospike
+    - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      with:
+        fetch-depth: 0
+        ref: master
+
+    - name: Create and push release tag
+      env:
+        VERSION: ${{ needs.resolve-release.outputs.version }}
+        TARGET_SHA: ${{ needs.resolve-release.outputs.target-sha }}
+      run: |
+        set -euo pipefail
+        tag="v${VERSION}"
+        git config user.name "github-actions[bot]"
+        git config user.email "github-actions[bot]@users.noreply.github.com"
+        if git rev-parse -q --verify "refs/tags/${tag}" >/dev/null; then
+          echo "::error::Tag ${tag} already exists. Did you forget to bump the version?"
+          exit 1
+        fi
+        git tag -a "${tag}" -m "Release ${tag}" "${TARGET_SHA}"
+        git push origin "${tag}"
+        echo "Tagged ${TARGET_SHA} as ${tag}"
+
+    - name: Summary
+      env:
+        VERSION: ${{ needs.resolve-release.outputs.version }}
+        TARGET_SHA: ${{ needs.resolve-release.outputs.target-sha }}
+      run: |
+        {
+          echo "## Release Tag";
+          echo "";
+          echo "- **Tag:** \`v${VERSION}\`";
+          echo "- **Commit:** \`${TARGET_SHA}\`";
+          echo "- **Reachable from:** \`master\`, \`stage\`";
+        } >> "$GITHUB_STEP_SUMMARY"
