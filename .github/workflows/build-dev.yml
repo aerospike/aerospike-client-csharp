@@ -167,6 +167,14 @@ jobs:
         files: test-results/**/*.trx
         check_name: "Test Results (${{ steps.cfg.outputs.server-tag }})"
 
+    # PR-only: publish example smoke tests as their own result check.
+    - name: Publish example run results
+      if: ${{ !cancelled() && github.event_name == 'pull_request' && hashFiles('example-results/**/*.trx') != '' }}
+      uses: EnricoMi/publish-unit-test-result-action@3a74b2957438d0b6e2e61d67b05318aa25c9e6c6 # v2.20.0
+      with:
+        files: example-results/**/*.trx
+        check_name: "Example Run (${{ steps.cfg.outputs.server-tag }})"
+
   deploy:
     if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/stage' }}
     needs: [build, sign, test]

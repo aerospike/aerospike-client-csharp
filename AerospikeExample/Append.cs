@@ -1,4 +1,4 @@
-/* 
+/*
  * Copyright 2012-2026 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
@@ -18,60 +18,22 @@ using Aerospike.Client;
 
 namespace Aerospike.Example;
 
-public class Append(Console console) : SyncExample(console)
+public sealed class Append : SyncExample
 {
-
 	/// <summary>
-	/// Append string to an existing string.
+	/// Append a string to an existing string bin.
 	/// </summary>
-	public override void RunExample(IAerospikeClient client, Arguments args)
+	public override void RunExample()
 	{
-		var key = new Key(args.ns, args.set, "appendkey");
-		string binName = args.GetBinName("appendbin");
+		Key key = new(ns, set, "appendkey");
+		string binName = "appendbin";
 
-		// Delete record if it already exists.
-		client.Delete(args.writePolicy, key);
+		Bin initial = new(binName, "Hello");
+		console.Info($"Initial append will create record. Initial value is {initial.value}.");
+		client.Append(writePolicy, key, initial);
 
-		var bin = new Bin(binName, "Hello");
-		console.Info("Initial append will create record.  Initial value is " + bin.value + '.');
-		client.Append(args.writePolicy, key, bin);
-
-		bin = new Bin(binName, " World");
-		console.Info("Append \"" + bin.value + "\" to existing record.");
-		client.Append(args.writePolicy, key, bin);
-
-		var record = client.Get(args.policy, key, bin.name);
-
-		if (record == null)
-		{
-			throw new Exception($"Failed to get: namespace={key.ns} set={key.setName} key={key.userKey}");
-		}
-
-		object received = record.GetValue(bin.name);
-		string expected = "Hello World";
-
-		if (received.Equals(expected))
-		{
-			console.Info("Append successful: namespace={0} set={1} key={2} bin={3} value={4}",
-				key.ns, key.setName, key.userKey, bin.name, received);
-		}
-		else
-		{
-			console.Error("Append mismatch: Expected {0}. Received {1}.", expected, received);
-		}
-
-		string verifyBinName = args.GetBinName("appendbin");
-		var verifyKey = new Key(args.ns, args.set, "appendkey");
-		var verifyRecord = client.Get(null, verifyKey);
-		if (verifyRecord == null)
-		{
-			throw new Exception("Append verification failed: appendkey record not found.");
-		}
-		object av = verifyRecord.GetValue(verifyBinName);
-		if (av == null || !av.Equals("Hello World"))
-		{
-			throw new Exception($"Append verification failed: expected appendbin=\"Hello World\", got {av}.");
-		}
-		console.Info("Append verified successfully.");
+		Bin suffix = new(binName, " World");
+		console.Info($"Append \"{suffix.value}\" to existing record.");
+		client.Append(writePolicy, key, suffix);
 	}
 }

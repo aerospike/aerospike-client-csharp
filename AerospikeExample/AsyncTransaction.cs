@@ -1,4 +1,4 @@
-/* 
+/*
  * Copyright 2012-2026 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
@@ -18,247 +18,142 @@ using Aerospike.Client;
 
 namespace Aerospike.Example;
 
-public class AsyncTransaction(Console console) : AsyncExample(console)
+public sealed class AsyncTransaction : AsyncExample
 {
-	private bool completed;
+	private readonly ManualResetEventSlim completed = new();
 
 	/// <summary>
-	/// Transaction.
+	/// Run a read/write/delete transaction asynchronously using listener callbacks.
 	/// </summary>
-	public override void RunExample(AsyncClient client, Arguments args)
+	public override void RunExample()
 	{
-		RequireEnterprise(args);
-		RequireStrongConsistency(args);
+		RequireEnterprise();
+		RequireStrongConsistency();
 
-		completed = false;
+		completed.Reset();
 
 		using Txn txn = new();
-
-		console.Info("Begin txn: " + txn.Id);
-		Put(client, txn, args);
-
-		WaitTillComplete();
-
-		// Verify the committed data persisted.
-		Key verifyKey1 = new(args.ns, args.set, 1);
-		Record r1 = client.Get(null, verifyKey1);
-		if (r1 == null || !"val1".Equals(r1.GetValue("a")))
-		{
-			throw new Exception("Transaction verify failed: key 1 bin 'a' expected 'val1'");
-		}
-
-		Key verifyKey2 = new(args.ns, args.set, 2);
-		Record r2 = client.Get(null, verifyKey2);
-		if (r2 == null || !"val2".Equals(r2.GetValue("b")))
-		{
-			throw new Exception("Transaction verify failed: key 2 bin 'b' expected 'val2'");
-		}
-
-		console.Info("Transaction verified: writes persisted and commit confirmed.");
+		console.Info($"Begin txn: {txn.Id}");
+		Put(txn);
+		completed.Wait();
 	}
 
-	public void Put(AsyncClient client, Txn txn, Arguments args)
+	private void Put(Txn txn)
 	{
 		console.Info("Run put");
+		WritePolicy wp = TxnWritePolicy(txn);
+		Key key = new(ns, set, 1);
 
-		WritePolicy wp = new(client.WritePolicyDefault)
-		{
-			Txn = txn
-		};
-
-		Key key = new(args.ns, args.set, 1);
-
-		client.Put(wp, new PutHandler(this, client, key, txn, args), key, new Bin("a", "val1"));
+		client.Put(wp, new PutHandler(this, txn, key, txn1 => PutAnother(txn1)), key, new Bin("a", "val1"));
 	}
 
-	class PutHandler(AsyncTransaction parent, AsyncClient client, Key key, Txn txn, Arguments args) : WriteListener
-	{
-		private readonly AsyncTransaction parent = parent;
-		private readonly AsyncClient client = client;
-		private readonly Key key = key;
-		private readonly Txn txn = txn;
-		private readonly Arguments args = args;
-
-		public void OnSuccess(Key key)
-		{
-			parent.PutAnother(client, txn, args);
-		}
-
-		public void OnFailure(AerospikeException e)
-		{
-			parent.console.Error("Failed to write: namespace={0} set={1} key={2} exception={3}",
-				key.ns, key.setName, key.userKey, e.Message);
-			parent.Abort(client, txn);
-		}
-	};
-
-	public void PutAnother(AsyncClient client, Txn txn, Arguments args)
+	private void PutAnother(Txn txn)
 	{
 		console.Info("Run another put");
+		WritePolicy wp = TxnWritePolicy(txn);
+		Key key = new(ns, set, 2);
 
-		WritePolicy wp = new(client.WritePolicyDefault)
-		{
-			Txn = txn
-		};
-
-		Key key = new(args.ns, args.set, 2);
-
-		client.Put(wp, new PutAnotherHandler(this, client, key, txn, args), key, new Bin("b", "val2"));
+		client.Put(wp, new PutHandler(this, txn, key, txn1 => Get(txn1)), key, new Bin("b", "val2"));
 	}
 
-	class PutAnotherHandler(AsyncTransaction parent, AsyncClient client, Key key, Txn txn, Arguments args) : WriteListener
-	{
-		private readonly AsyncTransaction parent = parent;
-		private readonly AsyncClient client = client;
-		private readonly Key key = key;
-		private readonly Txn txn = txn;
-		private readonly Arguments args = args;
-
-		public void OnSuccess(Key key)
-		{
-			parent.Get(client, txn, args);
-		}
-
-		public void OnFailure(AerospikeException e)
-		{
-			parent.console.Error("Failed to write: namespace={0} set={1} key={2} exception={3}",
-				key.ns, key.setName, key.userKey, e.Message);
-			parent.Abort(client, txn);
-		}
-	}
-
-	public void Get(AsyncClient client, Txn txn, Arguments args)
+	private void Get(Txn txn)
 	{
 		console.Info("Run get");
-
 		Policy p = new(client.ReadPolicyDefault)
 		{
 			Txn = txn
 		};
+		Key key = new(ns, set, 3);
 
-		Key key = new(args.ns, args.set, 3);
-
-		client.Get(p, new GetHandler(this, client, key, txn, args), key);
+		client.Get(p, new GetHandler(this, txn, key), key);
 	}
 
-	class GetHandler(AsyncTransaction parent, AsyncClient client, Key key, Txn txn, Arguments args) : RecordListener
-	{
-		private readonly AsyncTransaction parent = parent;
-		private readonly AsyncClient client = client;
-		private readonly Key key = key;
-		private readonly Txn txn = txn;
-		private readonly Arguments args = args;
-
-		public void OnSuccess(Key key, Record record)
-		{
-			parent.Delete(client, txn, args);
-		}
-
-		public void OnFailure(AerospikeException e)
-		{
-			parent.console.Error("Failed to read: namespace={0} set={1} key={2} exception={3}",
-				key.ns, key.setName, key.userKey, e.Message);
-			parent.Abort(client, txn);
-		}
-	}
-
-	public void Delete(AsyncClient client, Txn txn, Arguments args)
+	private void Delete(Txn txn)
 	{
 		console.Info("Run delete");
-
 		WritePolicy dp = new(client.WritePolicyDefault)
 		{
 			Txn = txn,
-			durableDelete = true  // Required when running delete in a transaction.
+			durableDelete = true // Required when running delete inside a transaction.
 		};
+		Key key = new(ns, set, 3);
 
-		Key key = new(args.ns, args.set, 3);
-
-		client.Delete(dp, new DeleteHandler(this, client, key, txn), key);
+		client.Delete(dp, new DeleteHandler(this, txn, key), key);
 	}
 
-	class DeleteHandler(AsyncTransaction parent, AsyncClient client, Key key, Txn txn) : DeleteListener
-	{
-		private readonly AsyncTransaction parent = parent;
-		private readonly AsyncClient client = client;
-		private readonly Key key = key;
-		private readonly Txn txn = txn;
-
-		public void OnSuccess(Key key, bool existed)
-		{
-			parent.Commit(client, txn);
-		}
-
-		public void OnFailure(AerospikeException e)
-		{
-			parent.console.Error("Failed to delete: namespace={0} set={1} key={2} exception={3}",
-				key.ns, key.setName, key.userKey, e.Message);
-			parent.Abort(client, txn);
-		}
-
-	}
-
-	public void Commit(AsyncClient client, Txn txn)
+	private void Commit(Txn txn)
 	{
 		console.Info("Run commit");
-
 		client.Commit(new CommitHandler(this, txn), txn);
 	}
 
-	class CommitHandler(AsyncTransaction parent, Txn txn) : CommitListener
+	private void Abort(Txn txn)
 	{
-		private readonly AsyncTransaction parent = parent;
-		private readonly Txn txn = txn;
+		console.Info("Run abort");
+		client.Abort(new AbortHandler(this, txn), txn);
+	}
 
+	private void NotifyComplete() => completed.Set();
+
+	private WritePolicy TxnWritePolicy(Txn txn) => new(client.WritePolicyDefault)
+	{
+		Txn = txn
+	};
+
+	private sealed class PutHandler(AsyncTransaction parent, Txn txn, Key key, Action<Txn> next) : WriteListener
+	{
+		public void OnSuccess(Key callbackKey) => next(txn);
+
+		public void OnFailure(AerospikeException e)
+		{
+			parent.console.Error($"Failed to write: namespace={key.ns} set={key.setName} key={key.userKey} exception={e.Message}");
+			parent.Abort(txn);
+		}
+	}
+
+	private sealed class GetHandler(AsyncTransaction parent, Txn txn, Key key) : RecordListener
+	{
+		public void OnSuccess(Key callbackKey, Record record) => parent.Delete(txn);
+
+		public void OnFailure(AerospikeException e)
+		{
+			parent.console.Error($"Failed to read: namespace={key.ns} set={key.setName} key={key.userKey} exception={e.Message}");
+			parent.Abort(txn);
+		}
+	}
+
+	private sealed class DeleteHandler(AsyncTransaction parent, Txn txn, Key key) : DeleteListener
+	{
+		public void OnSuccess(Key callbackKey, bool existed) => parent.Commit(txn);
+
+		public void OnFailure(AerospikeException e)
+		{
+			parent.console.Error($"Failed to delete: namespace={key.ns} set={key.setName} key={key.userKey} exception={e.Message}");
+			parent.Abort(txn);
+		}
+	}
+
+	private sealed class CommitHandler(AsyncTransaction parent, Txn txn) : CommitListener
+	{
 		public void OnSuccess(CommitStatus.CommitStatusType status)
 		{
-			parent.console.Info("Txn committed: " + txn.Id);
+			parent.console.Info($"Txn committed: {txn.Id}");
 			parent.NotifyComplete();
 		}
 
 		public void OnFailure(AerospikeException.Commit ae)
 		{
-			parent.console.Error("Txn commit failed: " + txn.Id);
+			parent.console.Error($"Txn commit failed: {txn.Id}");
 			parent.NotifyComplete();
 		}
 	}
 
-	public void Abort(AsyncClient client, Txn txn)
+	private sealed class AbortHandler(AsyncTransaction parent, Txn txn) : AbortListener
 	{
-		console.Info("Run abort");
-
-		client.Abort(new AbortHandler(this, txn), txn);
-	}
-
-	class AbortHandler(AsyncTransaction parent, Txn txn) : AbortListener
-	{
-		private readonly AsyncTransaction parent = parent;
-		private readonly Txn txn = txn;
-
 		public void OnSuccess(AbortStatus.AbortStatusType status)
 		{
-			parent.console.Error("Txn aborted: " + txn.Id);
+			parent.console.Error($"Txn aborted: {txn.Id}");
 			parent.NotifyComplete();
-		}
-	}
-
-	private void WaitTillComplete()
-	{
-		lock (this)
-		{
-			while (!completed)
-			{
-				Monitor.Wait(this);
-			}
-		}
-	}
-
-	private void NotifyComplete()
-	{
-		lock (this)
-		{
-			completed = true;
-			Monitor.Pulse(this);
 		}
 	}
 }

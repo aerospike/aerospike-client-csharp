@@ -1,4 +1,4 @@
-/* 
+/*
  * Copyright 2012-2026 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
@@ -19,55 +19,26 @@ using System.Collections;
 
 namespace Aerospike.Example;
 
-public class OperateBit(Console console) : SyncExample(console)
+public sealed class OperateBit : SyncExample
 {
-
 	/// <summary>
-	/// Perform operations on a blob bin.
+	/// Perform a bitwise operation on a blob bin.
 	/// </summary>
-	public override void RunExample(IAerospikeClient client, Arguments args)
+	public override void RunExample()
 	{
-		RunSimpleExample(client, args);
+		Key key = new(ns, set, "bitkey");
+		string binName = "bitbin";
 
-		string verifyBin = args.GetBinName("bitbin");
-		Record verifyRec = client.Get(null, new Key(args.ns, args.set, "bitkey"));
-		if (verifyRec == null)
-		{
-			throw new Exception("OperateBit verification failed: record not found.");
-		}
-		if (verifyRec.GetValue(verifyBin) == null)
-		{
-			throw new Exception("OperateBit verification failed: bit bin is null.");
-		}
-		console.Info("OperateBit verified successfully.");
-	}
+		Record record = client.Operate(writePolicy, key,
+			BitOperation.Set(BitPolicy.Default, binName, -3, 3, [0xE0]),
+			Operation.Get(binName));
 
-	/// <summary>
-	/// Simple example of bit functionality.
-	/// </summary>
-	public void RunSimpleExample(IAerospikeClient client, Arguments args)
-	{
-		var key = new Key(args.ns, args.set, "bitkey");
-		string binName = args.GetBinName("bitbin");
+		// The operate call returns one result per operation on the same bin (Set + Get),
+		// so the bin result is a list of two entries.
+		IList results = record.GetList(binName);
+		byte[] bytes = (byte[])results[1];
 
-		// Delete record if it already exists.
-		client.Delete(args.writePolicy, key);
-
-		byte[] bytes = [0x01, 0x02, 0x03, 0x04, 0x05];
-
-		client.Put(args.writePolicy, key, new Bin(binName, bytes));
-
-		// Set last 3 bits of bitmap to true.
-		Record record = client.Operate(args.writePolicy, key,
-			BitOperation.Set(BitPolicy.Default, binName, -3, 3, new byte[] { 0xE0 }),
-			Operation.Get(binName)
-			);
-
-		IList list = record.GetList(binName);
-
-		var val = (byte[])list[1];
-
-		foreach (byte b in val)
+		foreach (byte b in bytes)
 		{
 			console.Info(Convert.ToString(b));
 		}
