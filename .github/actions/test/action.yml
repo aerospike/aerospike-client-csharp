@@ -212,8 +212,104 @@ runs:
       run: unzip AerospikeExample*.zip
 
     - name: Run examples
+      id: run-examples
       shell: bash
-      run: dotnet exec ./artifacts-example/publish/AerospikeExample.dll --settings ./.runsettings all
+      run: |
+        set +e
+        settings_file=".runsettings"
+        if [ "${{ inputs.enable-tls }}" == "true" ]; then
+          settings_file=".runsettings-tls"
+        fi
+
+        start_time=$(date +%s)
+        dotnet exec ./artifacts-example/publish/AerospikeExample.dll --settings ./${settings_file} all 2>&1 | tee example-run.log
+        exit_code=${PIPESTATUS[0]}
+        end_time=$(date +%s)
+
+        {
+          echo "exit-code=${exit_code}"
+          echo "duration=$((end_time - start_time))"
+        } >> "$GITHUB_OUTPUT"
+
+        exit 0
+
+    - name: Write example run results
+      if: ${{ !cancelled() && steps.run-examples.outputs.exit-code != '' }}
+      shell: bash
+      env:
+        EXAMPLE_EXIT_CODE: ${{ steps.run-examples.outputs.exit-code }}
+        EXAMPLE_DURATION: ${{ steps.run-examples.outputs.duration }}
+      run: |
+        mkdir -p example-results
+
+        python3 - <<'PY'
+        import os
+        import xml.etree.ElementTree as ET
+
+        exit_code = int(os.environ["EXAMPLE_EXIT_CODE"])
+        duration = os.environ.get("EXAMPLE_DURATION", "0")
+        with open("example-run.log", encoding="utf-8", errors="replace") as log:
+            output = log.read()
+
+        suite = ET.Element(
+            "testsuite",
+            name="AerospikeExample",
+            tests="1",
+            failures="1" if exit_code else "0",
+            errors="0",
+            skipped="0",
+            time=duration,
+        )
+        case = ET.SubElement(suite, "testcase", classname="AerospikeExample", name="all", time=duration)
+        ET.SubElement(case, "system-out").text = output
+        if exit_code:
+            failure = ET.SubElement(case, "failure", message=f"Example run failed with exit code {exit_code}")
+            failure.text = output
+
+        ET.ElementTree(suite).write("example-results/results.xml", encoding="utf-8", xml_declaration=True)
+        PY
+
+        status="Passed"
+        if [ "$EXAMPLE_EXIT_CODE" -ne 0 ]; then
+          status="Failed"
+        fi
+
+        {
+          echo "## Example Run"
+          echo ""
+          echo "| Setting | Value |"
+          echo "|---------|-------|"
+          echo "| Status | ${status} |"
+          echo "| Exit code | \`${EXAMPLE_EXIT_CODE}\` |"
+          echo "| Duration | ${EXAMPLE_DURATION}s |"
+          echo "| Server tag | \`${{ inputs.server-tag }}\` |"
+          echo "| Server type | \`${{ inputs.server-type }}\` |"
+          echo "| Strong consistency | ${{ inputs.strong-consistency == '1' && '**Enabled**' || 'Disabled' }} |"
+          echo "| TLS | ${{ inputs.enable-tls == 'true' && '**Enabled**' || 'Disabled' }} |"
+          echo ""
+          echo "<details>"
+          echo "<summary>Last 100 log lines</summary>"
+          echo ""
+          echo '```text'
+          tail -n 100 example-run.log
+          echo '```'
+          echo ""
+          echo "</details>"
+          echo ""
+        } >> "$GITHUB_STEP_SUMMARY"
+
+    - name: Upload example run results
+      if: ${{ !cancelled() && steps.run-examples.outputs.exit-code != '' }}
+      uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+      with:
+        name: example-results-${{ github.sha }}${{ inputs.artifact-suffix && format('-{0}', inputs.artifact-suffix) || '' }}
+        path: example-results/
+        retention-days: 7
+
+    - name: Fail if examples failed
+      if: ${{ steps.run-examples.outputs.exit-code != '' && steps.run-examples.outputs.exit-code != '0' }}
+      shell: bash
+      run: exit "${{ steps.run-examples.outputs.exit-code }}"
 
     - name: Show logs if failed
       shell: bash
