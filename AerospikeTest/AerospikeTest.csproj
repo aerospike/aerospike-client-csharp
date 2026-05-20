@@ -1,5 +1,4 @@
-﻿<Project Sdk="MSTest.Sdk">
-
+<Project Sdk="MSTest.Sdk">
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
@@ -8,7 +7,7 @@
     <AssemblyName>AerospikeTest</AssemblyName>
     <TestingExtensionsProfile>Default</TestingExtensionsProfile>
     <IsPackable>false</IsPackable>
-    <Version>8.4.1</Version>
+    <Version>8.5.0</Version>
     <Company>Aerospike</Company>
     <Authors>Aerospike</Authors>
     <Platforms>AnyCPU</Platforms>
@@ -16,20 +15,16 @@
     <TestingPlatformDotnetTestSupport>true</TestingPlatformDotnetTestSupport>
     <EnableMSTestRunner>true</EnableMSTestRunner>
   </PropertyGroup>
-
   <ItemGroup>
     <PackageReference Include="MSTest" Version="3.7.0" />
   </ItemGroup>
-
   <ItemGroup>
     <EmbeddedResource Include="LuaResources\average_example.lua" />
     <EmbeddedResource Include="LuaResources\filter_example.lua" />
     <EmbeddedResource Include="LuaResources\record_example.lua" />
     <EmbeddedResource Include="LuaResources\sum_example.lua" />
   </ItemGroup>
-
   <ItemGroup>
     <ProjectReference Include="..\AerospikeClient\AerospikeClient.csproj" />
   </ItemGroup>
-
 </Project>

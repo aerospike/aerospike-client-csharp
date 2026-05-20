@@ -1608,6 +1608,324 @@ namespace Aerospike.Test
 			Assert.IsTrue(values2.Contains(300L));
 		}
 
+		[TestMethod]
+		public void TestSelectByPathWithExpressionVariant()
+		{
+			var key = new Key(SuiteHelpers.ns, SuiteHelpers.set, "expressionVariantKey");
+
+			try
+			{
+				client.Delete(null, key);
+			}
+			catch (Exception)
+			{
+			}
+
+			List<Dictionary<string, object>> itemsList = [];
+
+			Dictionary<string, object> item1 = new()
+			{
+				{ "name", "Item1" },
+				{ "quantity", 5 }
+			};
+			itemsList.Add(item1);
+
+			Dictionary<string, object> item2 = new()
+			{
+				{ "name", "Item2" },
+				{ "quantity", 15 }
+			};
+			itemsList.Add(item2);
+
+			Dictionary<string, object> item3 = new()
+			{
+				{ "name", "Item3" },
+				{ "quantity", 25 }
+			};
+			itemsList.Add(item3);
+
+			Dictionary<string, object> rootMap = new()
+			{
+				{ "items", itemsList }
+			};
+
+			client.Put(null, key, new Bin("data", rootMap));
+
+			// Build expression first for filter
+			Expression filterExpression = Exp.Build(
+				Exp.GT(
+					MapExp.GetByKey(MapReturnType.VALUE, Exp.Type.INT,
+						Exp.Val("quantity"), Exp.MapLoopVar(LoopVarPart.VALUE)),
+					Exp.Val(10)
+				)
+			);
+
+			// Use the expression variant of AllChildrenWithFilter
+			CTX ctx1 = CTX.MapKey(Value.Get("items"));
+			CTX ctx2 = CTX.AllChildrenWithFilter(filterExpression);
+			CTX ctx3 = CTX.AllChildrenWithFilter(
+				Exp.EQ(Exp.StringLoopVar(LoopVarPart.MAP_KEY), Exp.Val("name"))
+			);
+
+			Expression selectExp = Exp.Build(
+				CDTExp.SelectByPath(
+					Exp.Type.LIST,
+					SelectFlag.VALUE,
+					Exp.MapBin("data"),
+					ctx1, ctx2, ctx3
+				)
+			);
+
+			Record result = client.Operate(null, key,
+				ExpOperation.Write("filteredNames", selectExp, ExpWriteFlags.DEFAULT)
+			);
+
+			Assert.IsNotNull(result);
+
+			Record finalRecord = client.Get(null, key);
+			Assert.IsNotNull(finalRecord);
+
+			List<object> names = (List<object>)finalRecord.GetList("filteredNames");
+			Assert.IsNotNull(names);
+			Assert.AreEqual(2, names.Count);
+			Assert.IsTrue(names.Contains("Item2"));
+			Assert.IsTrue(names.Contains("Item3"));
+		}
+
+		[TestMethod]
+		public void TestModifyByPathWithExpressionVariant()
+		{
+			var key = new Key(SuiteHelpers.ns, SuiteHelpers.set, "modifyExpressionVariantKey");
+
+			try
+			{
+				client.Delete(null, key);
+			}
+			catch (Exception)
+			{
+			}
+
+			Dictionary<string, object> data = [];
+			List<Dictionary<string, object>> products = [];
+
+			Dictionary<string, object> p1 = new()
+			{
+				{ "name", "Product1" },
+				{ "stock", 10 }
+			};
+			products.Add(p1);
+
+			Dictionary<string, object> p2 = new()
+			{
+				{ "name", "Product2" },
+				{ "stock", 20 }
+			};
+			products.Add(p2);
+
+			data.Add("products", products);
+			client.Put(null, key, new Bin("data", data));
+
+			// Build filter expression for items to modify
+			Expression filterExpression = Exp.Build(
+				Exp.GT(
+					MapExp.GetByKey(MapReturnType.VALUE, Exp.Type.INT,
+						Exp.Val("stock"), Exp.MapLoopVar(LoopVarPart.VALUE)),
+					Exp.Val(15)
+				)
+			);
+
+			// Modify stock for products with stock > 15
+			CTX ctx1 = CTX.MapKey(Value.Get("products"));
+			CTX ctx2 = CTX.AllChildrenWithFilter(filterExpression);
+			CTX ctx3 = CTX.MapKey(Value.Get("stock"));
+
+			Exp modifyExp = Exp.Add(
+				Exp.IntLoopVar(LoopVarPart.VALUE),
+				Exp.Val(50)
+			);
+
+			Expression applyExp = Exp.Build(
+				CDTExp.ModifyByPath(
+					Exp.Type.MAP,
+					ModifyFlag.DEFAULT,
+					modifyExp,
+					Exp.MapBin("data"),
+					ctx1, ctx2, ctx3
+				)
+			);
+
+			Record result = client.Operate(null, key,
+				ExpOperation.Write("data", applyExp, ExpWriteFlags.UPDATE_ONLY)
+			);
+
+			Assert.IsNotNull(result);
+
+			// Verify modification
+			Record finalRecord = client.Get(null, key);
+			Assert.IsNotNull(finalRecord);
+
+			Dictionary<object, object> finalData = (Dictionary<object, object>)finalRecord.GetValue("data");
+			Assert.IsNotNull(finalData);
+
+			List<object> finalProducts = (List<object>)finalData["products"];
+			Assert.IsNotNull(finalProducts);
+
+			Dictionary<object, object> product1 = (Dictionary<object, object>)finalProducts[0];
+			Assert.AreEqual(10L, product1["stock"]);
+
+			Dictionary<object, object> product2 = (Dictionary<object, object>)finalProducts[1];
+			Assert.AreEqual(70L, product2["stock"]);
+		}
+
+		[TestMethod]
+		public void TestAllChildrenWithFilterNullExp()
+		{
+			try
+			{
+				Exp nullExp = null;
+				CTX.AllChildrenWithFilter(nullExp);
+				Assert.Fail("Should throw NullReferenceException when Exp is null");
+			}
+			catch (NullReferenceException)
+			{
+				// Expected - Exp.Build() will throw NRE when trying to pack a null expression
+			}
+		}
+
+		[TestMethod]
+		public void TestAllChildrenWithFilterNullExpression()
+		{
+			var key = new Key(SuiteHelpers.ns, SuiteHelpers.set, "nullExpressionKey");
+
+			try
+			{
+				client.Delete(null, key);
+			}
+			catch (Exception)
+			{
+			}
+
+			Dictionary<string, object> data = new()
+			{
+				{ "items", new List<int> { 1, 2, 3 } }
+			};
+			client.Put(null, key, new Bin("data", data));
+
+			try
+			{
+				Expression nullExpression = null;
+				CTX ctx1 = CTX.MapKey(Value.Get("items"));
+				CTX ctx2 = CTX.AllChildrenWithFilter(nullExpression);
+
+				Expression selectExp = Exp.Build(
+					CDTExp.SelectByPath(
+						Exp.Type.LIST,
+						SelectFlag.VALUE,
+						Exp.MapBin("data"),
+						ctx1, ctx2
+					)
+				);
+
+				client.Operate(null, key,
+					ExpOperation.Write("result", selectExp, ExpWriteFlags.DEFAULT)
+				);
+
+				// The operation construction should fail or the server should reject it
+				Assert.Fail("Should handle null Expression with an error");
+			}
+			catch (NullReferenceException)
+			{
+			}
+			catch (AerospikeException)
+			{
+				// Expected - null expression should cause error
+			}
+		}
+
+		[TestMethod]
+		public void TestCombineExpAndExpressionVariants()
+		{
+			var key = new Key(SuiteHelpers.ns, SuiteHelpers.set, "combineVariantsKey");
+
+			try
+			{
+				client.Delete(null, key);
+			}
+			catch (Exception)
+			{
+			}
+
+			Dictionary<string, object> data = [];
+			List<Dictionary<string, object>> records = [];
+
+			Dictionary<string, object> rec1 = new()
+			{
+				{ "id", 1 },
+				{ "value", 100 },
+				{ "active", true }
+			};
+			records.Add(rec1);
+
+			Dictionary<string, object> rec2 = new()
+			{
+				{ "id", 2 },
+				{ "value", 50 },
+				{ "active", false }
+			};
+			records.Add(rec2);
+
+			Dictionary<string, object> rec3 = new()
+			{
+				{ "id", 3 },
+				{ "value", 150 },
+				{ "active", true }
+			};
+			records.Add(rec3);
+
+			data.Add("records", records);
+			client.Put(null, key, new Bin("data", data));
+
+			// Use pre-built Expression for first filter
+			Expression activeFilterExpression = Exp.Build(
+				Exp.EQ(
+					MapExp.GetByKey(MapReturnType.VALUE, Exp.Type.BOOL,
+						Exp.Val("active"), Exp.MapLoopVar(LoopVarPart.VALUE)),
+					Exp.Val(true)
+				)
+			);
+
+			// Mix expression variant with exp variant
+			CTX ctx1 = CTX.MapKey(Value.Get("records"));
+			CTX ctx2 = CTX.AllChildrenWithFilter(activeFilterExpression); // using expression
+			CTX ctx3 = CTX.AllChildrenWithFilter(
+				Exp.EQ(Exp.StringLoopVar(LoopVarPart.MAP_KEY), Exp.Val("value")) // using exp directly
+			);
+
+			Expression selectExp = Exp.Build(
+				CDTExp.SelectByPath(
+					Exp.Type.LIST,
+					SelectFlag.VALUE,
+					Exp.MapBin("data"),
+					ctx1, ctx2, ctx3
+				)
+			);
+
+			Record result = client.Operate(null, key,
+				ExpOperation.Write("activeValues", selectExp, ExpWriteFlags.DEFAULT)
+			);
+
+			Assert.IsNotNull(result);
+
+			Record finalRecord = client.Get(null, key);
+			Assert.IsNotNull(finalRecord);
+
+			List<object> values = (List<object>)finalRecord.GetList("activeValues");
+			Assert.IsNotNull(values);
+			Assert.AreEqual(2, values.Count);
+			Assert.IsTrue(values.Contains(100L));
+			Assert.IsTrue(values.Contains(150L));
+		}
+
 		private static void CheckPathExpressionEnhancements()
 		{
 			CheckServerVersion(Node.SERVER_VERSION_8_1_2, "Path expression Enhancement");
