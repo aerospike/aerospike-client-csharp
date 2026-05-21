@@ -507,6 +507,7 @@ internal static class ExampleStateValidation
 		ExampleFixtureSupport.AssertBin(client, args, "pathexp3", "size", 10L);
 		AssertMapValue(client, args, "pathexp4", "mapbin", "John", 76L);
 		AssertMapValue(client, args, "pathexp5", "mapbin", "Charlie", 55L);
+		ExampleFixtureSupport.AssertBinExists(client, args, "pathexp6", "mapBin");
 	}
 
 	public static void AsyncPutGet(IAerospikeClient client, Arguments args)

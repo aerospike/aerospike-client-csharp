@@ -3026,6 +3026,24 @@ namespace Aerospike.Test
 		}
 
 		[TestMethod]
+		public void TestPutNullSlotInValueArrayThrowsSerialize()
+		{
+			Key rkey = new Key(SuiteHelpers.ns, SuiteHelpers.set, "nullValueArraySlot");
+			try
+			{
+				client.Delete(null, rkey);
+			}
+			catch (Exception)
+			{
+			}
+
+			Value[] arr = [Value.Get("a"), null];
+
+			Assert.ThrowsException<NullReferenceException>(
+				() => client.Put(null, rkey, new Bin(binName, Value.Get(arr))));
+		}
+
+		[TestMethod]
 		public void TestModifyByPathViaMapKeysIn()
 		{
 			CheckPathExpressionEnhancements();
@@ -3207,6 +3225,41 @@ namespace Aerospike.Test
 			List<object> values = (List<object>)result.GetList(binName);
 			Assert.IsNotNull(values);
 			Assert.AreEqual(0, values.Count);
+		}
+
+		[TestMethod]
+		public void TestMapKeysInValueVarargsNullArrayUsesNullValueAndServerRejects()
+		{
+			CheckPathExpressionEnhancements();
+
+			CTX ctx = CTX.MapKeysIn((Value[])null);
+			Assert.AreEqual(Value.NullValue.Instance, ctx.value);
+
+			Key rkey = new Key(SuiteHelpers.ns, SuiteHelpers.set, "mkNullValueKeysArray");
+			try
+			{
+				client.Delete(null, rkey);
+			}
+			catch (Exception)
+			{
+			}
+
+			Dictionary<string, object> map = new()
+			{
+				{ "a", 1 }
+			};
+			client.Put(null, rkey, new Bin(binName, map));
+
+			try
+			{
+				client.Operate(null, rkey,
+					CDTOperation.SelectByPath(binName, SelectFlag.VALUE, ctx));
+				Assert.Fail("operate should fail: nil is not a valid mapKeysIn key list");
+			}
+			catch (AerospikeException e)
+			{
+				Assert.AreEqual(ResultCode.PARAMETER_ERROR, e.Result);
+			}
 		}
 
 		// ---- MK-004: Empty map ----
@@ -3430,6 +3483,154 @@ namespace Aerospike.Test
 			Assert.AreEqual(2, values.Count);
 			Assert.IsTrue(values.Contains(1L));
 			Assert.IsTrue(values.Contains(3L));
+		}
+
+		[TestMethod]
+		public void TestMapKeysInIntVarargsSelectsLongKeys()
+		{
+			CheckPathExpressionEnhancements();
+
+			Key rkey = new Key(SuiteHelpers.ns, SuiteHelpers.set, "mk4752IntAsInt");
+
+			try
+			{
+				client.Delete(null, rkey);
+			}
+			catch (Exception)
+			{
+			}
+
+			Dictionary<long, string> map = new()
+			{
+				{ 1L, "one" },
+				{ 2L, "two" },
+				{ 3L, "three" }
+			};
+			client.Put(null, rkey, new Bin(binName, map));
+
+			CTX ctxInt = CTX.MapKeysIn(1, 2);
+			Record intResult = client.Operate(null, rkey,
+				CDTOperation.SelectByPath(binName, SelectFlag.VALUE, ctxInt));
+
+			Assert.IsNotNull(intResult);
+			List<object> intValues = (List<object>)intResult.GetList(binName);
+			Assert.IsNotNull(intValues);
+			Assert.AreEqual(2, intValues.Count);
+			Assert.IsTrue(intValues.Contains("one"));
+			Assert.IsTrue(intValues.Contains("two"));
+		}
+
+		[TestMethod]
+		public void TestMapKeysInShortVarargsMatchesIntegerKeys()
+		{
+			CheckPathExpressionEnhancements();
+
+			Key rkey = new Key(SuiteHelpers.ns, SuiteHelpers.set, "mk4752ShortAsInt");
+
+			try
+			{
+				client.Delete(null, rkey);
+			}
+			catch (Exception)
+			{
+			}
+
+			Dictionary<long, string> map = new()
+			{
+				{ 1L, "one" },
+				{ 2L, "two" },
+				{ 3L, "three" }
+			};
+			client.Put(null, rkey, new Bin(binName, map));
+
+			CTX ctx = CTX.MapKeysIn((short)1, (short)2);
+			Record result = client.Operate(null, rkey,
+				CDTOperation.SelectByPath(binName, SelectFlag.VALUE, ctx));
+
+			Assert.IsNotNull(result);
+			List<object> values = (List<object>)result.GetList(binName);
+			Assert.IsNotNull(values);
+			Assert.AreEqual(2, values.Count);
+			Assert.IsTrue(values.Contains("one"));
+			Assert.IsTrue(values.Contains("two"));
+		}
+
+		[TestMethod]
+		public void TestMapKeysInByteVarargsDoesNotSelectBlobKeyedEntries()
+		{
+			CheckPathExpressionEnhancements();
+
+			Key rkey = new Key(SuiteHelpers.ns, SuiteHelpers.set, "mk4752BlobKeys");
+
+			try
+			{
+				client.Delete(null, rkey);
+			}
+			catch (Exception)
+			{
+			}
+
+			byte[] blobKey1 = [0x10, 0x20];
+			byte[] blobKey2 = [0x30, 0x40];
+
+			Dictionary<Value, Value> map = new()
+			{
+				{ Value.Get(blobKey1), Value.Get("blobValA") },
+				{ Value.Get(blobKey2), Value.Get("blobValB") }
+			};
+			client.Put(null, rkey, new Bin(binName, map));
+
+			client.Operate(null, rkey,
+				MapOperation.PutItems(MapPolicy.Default, binName, map));
+
+			CTX ctx = CTX.MapKeysIn((byte)0x10, (byte)0x30);
+			Record result = client.Operate(null, rkey,
+				CDTOperation.SelectByPath(binName, SelectFlag.VALUE, ctx));
+
+			Assert.IsNotNull(result);
+			List<object> values = (List<object>)result.GetList(binName);
+			Assert.IsNotNull(values);
+			Assert.AreEqual(0, values.Count);
+		}
+
+		[TestMethod]
+		public void TestMapKeysInValueVarargsMixedKeys()
+		{
+			CheckPathExpressionEnhancements();
+
+			Key rkey = new Key(SuiteHelpers.ns, SuiteHelpers.set, "mk4752ValueMixed");
+
+			try
+			{
+				client.Delete(null, rkey);
+			}
+			catch (Exception)
+			{
+			}
+
+			byte[] blobKey = new byte[] { 7, 8, 9 };
+			Dictionary<Value, Value> map = new()
+			{
+				{ Value.Get("sk"), Value.Get("vStr") },
+				{ Value.Get(42L), Value.Get("vInt") },
+				{ Value.Get(blobKey), Value.Get("vBlob") }
+			};
+			client.Put(null, rkey, new Bin(binName, map));
+
+			client.Operate(null, rkey,
+				MapOperation.PutItems(MapPolicy.Default, binName, map));
+
+			CTX ctx = CTX.MapKeysIn(Value.Get("sk"), Value.Get(42L), Value.Get(blobKey));
+			Record result = client.Operate(null, rkey,
+				CDTOperation.SelectByPath(binName, SelectFlag.VALUE, ctx));
+
+			Assert.IsNotNull(result);
+			List<object> values = (List<object>)result.GetList(binName);
+			Assert.IsNotNull(values);
+			Assert.AreEqual(3, values.Count);
+			Assert.IsTrue(values.Contains("vStr"));
+			Assert.IsTrue(values.Contains("vInt"));
+			Assert.IsTrue(values.Contains("vBlob"));
 		}
 
 		// ---- MV-001: Basic mapValues - extract all values from a map ----
