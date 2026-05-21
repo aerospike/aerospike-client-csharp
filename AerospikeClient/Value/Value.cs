@@ -268,9 +268,7 @@ namespace Aerospike.Client
 
 		private static Value GetEnum(Enum value)
 		{
-			TypeCode code = System.Type.GetTypeCode(Enum.GetUnderlyingType(value.GetType()));
-
-			return code switch
+			return value.GetTypeCode() switch
 			{
 				TypeCode.Int64 => new LongValue(Convert.ToInt64(value)),
 				TypeCode.Int32 => new IntegerValue(Convert.ToInt32(value)),
@@ -280,7 +278,7 @@ namespace Aerospike.Client
 				TypeCode.UInt16 => new UnsignedShortValue(Convert.ToUInt16(value)),
 				TypeCode.Byte => new ByteValue(Convert.ToByte(value)),
 				TypeCode.SByte => new SignedByteValue(Convert.ToSByte(value)),
-				_ => throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Invalid enum underlying type: " + code),
+				_ => new BlobValue(value),
 			};
 		}
 		#endregion
