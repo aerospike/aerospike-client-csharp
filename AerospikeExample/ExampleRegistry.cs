@@ -139,7 +139,7 @@ internal static class ExampleRegistry
 			cleanup: (client, args) => ExampleFixtureSupport.DeleteKeys(client, args, PathExpressionKeys))),
 		Sync<PathExpressionEnhanced>(ValidateAndCleanup<PathExpressionEnhanced>(
 			ExampleStateValidation.PathExpressionEnhanced,
-			"pathexp1", "pathexp2", "pathexp3", "pathexp4", "pathexp5")),
+			"pathexp1", "pathexp2", "pathexp3", "pathexp4", "pathexp5", "pathexp6")),
 		Async<AsyncPutGet>(ValidateAndCleanup<AsyncPutGet>(ExampleStateValidation.AsyncPutGet, "putgetkey")),
 		Async<AsyncBatch>(Fixture<AsyncBatch>(
 			setup: (client, args) =>

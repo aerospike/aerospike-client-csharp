@@ -65,7 +65,7 @@ namespace Aerospike.Test
 			client.Put(null, key, bin1, bin2);
 		}
 
-		[ClassCleanup(ClassCleanupBehavior.EndOfClass)]
+		[ClassCleanup]
 		public static void Destroy()
 		{
 			client.DropIndex(null, SuiteHelpers.ns, SuiteHelpers.set, indexName);

@@ -11,8 +11,14 @@ updates:
         patterns:
           - "*"
     open-pull-requests-limit: 5
+
   - package-ecosystem: nuget
-    directory: /
+    directory: "/"
+    target-branch: stage
     schedule:
       interval: weekly
-    target-branch: stage
+    groups:
+      dependencies:
+          patterns:
+            - "*"
+    open-pull-requests-limit: 5
