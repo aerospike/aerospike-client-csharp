@@ -267,7 +267,7 @@ namespace Aerospike.Client
 		/// blob via <see cref="Value.Get(byte[])"/>). Aerospike map keys are restricted to integer, string,
 		/// and blob types; mixed key types are allowed in one invocation when the map stores them.
 		/// </summary>
-		/// <param name="keys"/>Map keys to select as <see cref="Value"/> elements.</param>
+		/// <param name="keys">Map keys to select as <see cref="Value"/> elements.</param>
 		/// <returns>A map key-list context.</returns>
 		/// <see cref="MapKeysIn(string[])"/>
 		/// <see cref="CDTOperation.SelectByPath(string, SelectFlag, CTX[])"/>
