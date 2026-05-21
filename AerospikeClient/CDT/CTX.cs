@@ -226,11 +226,27 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
+		/// Select map entries whose keys are contained in the provided short keys.
+		/// </summary>
+		/// <param name="keys">Short map keys to select</param>
+		/// <returns>A map key-list context.</returns>
+		/// <see cref="MapKeysIn(string[])"/>
+		public static CTX MapKeysIn(params short[] keys)
+		{
+			return new CTX(0x2a, Value.Get(keys));
+		}
+
+		/// <summary>
 		/// Select map entries whose keys are contained in the provided byte keys.
+		/// Each argument is encoded as a small integer map key, not as a blob key, so this overload does
+		/// not select entries keyed by byte arrays. Use <see cref="MapKeysIn(int[])"/> or <see cref="MapKeysIn(long[])"/>
+		/// for integer keys, or <see cref="MapKeysIn(Value[])"/> with <see cref="Value.Get(byte[])"/> for blob keys.
+		/// This method will be removed in a future release.
 		/// </summary>
 		/// <param name="keys">Byte map keys to select</param>
 		/// <returns>A map key-list context.</returns>
 		/// <see cref="MapKeysIn(string[])"/>
+		[Obsolete("Use MapKeysIn(params Value[] keys) instead")]
 		public static CTX MapKeysIn(params byte[] keys)
 		{
 			// Value.Get(byte[]) returns BytesValue (a blob), so convert to a
@@ -243,35 +259,19 @@ namespace Aerospike.Client
 			return new CTX(0x2a, Value.Get(list));
 		}
 
-		/// <summary>
-		/// Select map entries whose keys are contained in the provided short keys.
-		/// </summary>
-		/// <param name="keys">Short map keys to select</param>
-		/// <returns>A map key-list context.</returns>
-		/// <see cref="MapKeysIn(string[])"/>
-		public static CTX MapKeysIn(params short[] keys)
-		{
-			return new CTX(0x2a, Value.Get(keys));
-		}
+
 
 		/// <summary>
-		/// Select map entries whose keys are contained in the provided double keys.
+		/// Select map entries whose keys are contained in the provided key list.
+		/// Each element is one CDT map key as a <see cref="Value"/> (for example string, integer, or
+		/// blob via <see cref="Value.Get(byte[])"/>). Aerospike map keys are restricted to integer, string,
+		/// and blob types; mixed key types are allowed in one invocation when the map stores them.
 		/// </summary>
-		/// <param name="keys">Double map keys to select.</param>
+		/// <param name="keys">Map keys to select as <see cref="Value"/> elements.</param>
 		/// <returns>A map key-list context.</returns>
 		/// <see cref="MapKeysIn(string[])"/>
-		public static CTX MapKeysIn(params double[] keys)
-		{
-			return new CTX(0x2a, Value.Get(keys));
-		}
-
-		/// <summary>
-		/// Select map entries whose keys are contained in the provided float keys.
-		/// </summary>
-		/// <param name="keys">Float map keys to select.</param>
-		/// <returns>A map key-list context.</returns>
-		/// <see cref="MapKeysIn(string[])"/>
-		public static CTX MapKeysIn(params float[] keys)
+		/// <see cref="CDTOperation.SelectByPath(string, SelectFlag, CTX[])"/>
+		public static CTX MapKeysIn(params Value[] keys)
 		{
 			return new CTX(0x2a, Value.Get(keys));
 		}

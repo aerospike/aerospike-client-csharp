@@ -32,6 +32,7 @@ public sealed class PathExpressionEnhanced : SyncExample
 		RequireMinServerVersion(Node.SERVER_VERSION_8_1_2);
 
 		RunMapKeysSelect();
+		RunMapKeysInValueMixedSelect();
 		RunMapKeysWithAndFilter();
 		RunInListExpression();
 		RunMapKeysExpression();
@@ -61,6 +62,35 @@ public sealed class PathExpressionEnhanced : SyncExample
 			CDTOperation.SelectByPath(MapBinName, SelectFlag.VALUE, ctx));
 
 		console.Info($"SelectByPath MapKeysIn [Charlie, John]: {record.GetList(MapBinName)}");
+	}
+
+	/// <summary>
+	/// Use <see cref="CTX.MapKeysIn(Value[])"> to select map entries when keys use more than one
+	/// CDT type (here: string, integer, and blob) in a single path context. Requires server 8.1.2+.
+	/// </summary>
+	private void RunMapKeysInValueMixedSelect()
+	{
+		Key key = new(ns, set, "pathexp6");
+		string binName = "mapBin";
+
+		byte[] regionKey = "us-east"u8.ToArray();
+		Dictionary<Value, Value> map = new Dictionary<Value, Value>
+		{
+			{ Value.Get("sku"), Value.Get("standard") },
+			{ Value.Get(1001L), Value.Get("express") },
+			{ Value.Get(regionKey), Value.Get("regional-offer") }
+		};
+
+		client.Operate(null, key,
+			MapOperation.PutItems(MapPolicy.Default, binName, map));
+
+		console.Info("Mixed-key map stored (string sku, long 1001, blob region key).");
+
+		CTX ctx = CTX.MapKeysIn(Value.Get("sku"), Value.Get(1001L), Value.Get(regionKey));
+		Record record = client.Operate(null, key,
+			CDTOperation.SelectByPath(binName, SelectFlag.VALUE, ctx));
+
+		console.Info("selectByPath mapKeysIn(Value...) [sku, 1001, region]: " + record.GetList(binName));
 	}
 
 	/// <summary>
