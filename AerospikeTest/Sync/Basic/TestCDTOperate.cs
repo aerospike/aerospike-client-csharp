@@ -3039,7 +3039,7 @@ namespace Aerospike.Test
 
 			Value[] arr = [Value.Get("a"), null];
 
-			Assert.ThrowsException<NullReferenceException>(
+			Assert.Throws<NullReferenceException>(
 				() => client.Put(null, rkey, new Bin(binName, Value.Get(arr))));
 		}
 
