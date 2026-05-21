@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2023 Aerospike, Inc.
+ * Copyright 2012-2026 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -46,7 +46,7 @@ namespace Aerospike.Client
 				return false;
 			}
 
-			public bool Equals(BoolIntValue other) => this.value.Equals(other);
+			public bool Equals(BoolIntValue other) => other is not null && value.Equals(other.value);
 
 			public override int GetHashCode() => value ? 1231 : 1237;
 
@@ -58,11 +58,11 @@ namespace Aerospike.Client
 
 			public override ulong ToUnsignedLong() => value ? 1 : (ulong)0;
 
-			public static bool operator ==(BoolIntValue o1, BoolIntValue o2) => o1?.Equals(o2) ?? false;
-			public static bool operator !=(BoolIntValue o1, BoolIntValue o2) => o1 == o2 ? false : true;
+			public static bool operator ==(BoolIntValue o1, BoolIntValue o2) => ReferenceEquals(o1, o2) || (o1 is not null && o1.Equals(o2));
+			public static bool operator !=(BoolIntValue o1, BoolIntValue o2) => !(o1 == o2);
 
 			public static bool operator ==(BoolIntValue o1, bool o2) => o1?.Equals(o2) ?? false;
-			public static bool operator !=(BoolIntValue o1, bool o2) => o1 == o2 ? false : true;
+			public static bool operator !=(BoolIntValue o1, bool o2) => !(o1 == o2);
 		}
 	}
 }

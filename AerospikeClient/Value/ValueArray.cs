@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2023 Aerospike, Inc.
+ * Copyright 2012-2026 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -62,7 +62,7 @@ namespace Aerospike.Client
 				return false;
 			}
 
-			public bool Equals(ValueArray other) => other is null || other.Array is null ? false : Array.Equals(other.Array);
+			public bool Equals(ValueArray other) => other is not null && Equals(other.Array);
 
 			public bool Equals(Value[] other)
 			{
@@ -96,11 +96,11 @@ namespace Aerospike.Client
 				return result;
 			}
 
-			public static bool operator ==(ValueArray o1, ValueArray o2) => o1?.Equals(o2) ?? false;
-			public static bool operator !=(ValueArray o1, ValueArray o2) => o1 == o2 ? false : true;
+			public static bool operator ==(ValueArray o1, ValueArray o2) => ReferenceEquals(o1, o2) || (o1 is not null && o1.Equals(o2));
+			public static bool operator !=(ValueArray o1, ValueArray o2) => !(o1 == o2);
 
 			public static bool operator ==(ValueArray o1, Value[] o2) => o1?.Equals(o2) ?? false;
-			public static bool operator !=(ValueArray o1, Value[] o2) => o1 == o2 ? false : true;
+			public static bool operator !=(ValueArray o1, Value[] o2) => !(o1 == o2);
 		}
 	}
 }

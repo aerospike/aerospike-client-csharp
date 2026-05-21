@@ -78,6 +78,38 @@ namespace Aerospike.Test
 		}
 
 		[TestMethod]
+		public void AsyncUdfErrorPreservesColonMessage()
+		{
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "audfkey-colon-error");
+
+			client.Execute(null, new UdfErrorHandler(this), key, "record_example", "failWithColon");
+			WaitTillComplete();
+		}
+
+		private class UdfErrorHandler(TestAsyncUDF parent) : ExecuteListener
+		{
+			public void OnSuccess(Key key, object obj)
+			{
+				parent.SetError(new Exception("Expected UDF to return an error."));
+				parent.NotifyCompleted();
+			}
+
+			public void OnFailure(AerospikeException e)
+			{
+				try
+				{
+					parent.AssertEquals(ResultCode.UDF_BAD_RESPONSE, e.Result);
+					StringAssert.Contains(e.BaseMessage, "Error: detail: more");
+				}
+				catch (Exception exception)
+				{
+					parent.SetError(exception);
+				}
+				parent.NotifyCompleted();
+			}
+		}
+
+		[TestMethod]
 		public void AsyncBatchUDF()
 		{
 			Key[] keys =

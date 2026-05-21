@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2023 Aerospike, Inc.
+ * Copyright 2012-2026 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -73,7 +73,7 @@ namespace Aerospike.Client
 				return false;
 			}
 
-			public bool Equals(MapValue other) => other is null || other.Map is null ? false : Map.Equals(other.Map);
+			public bool Equals(MapValue other) => other is not null && Equals(other.Map);
 
 			public bool Equals(IDictionary other)
 			{
@@ -115,11 +115,11 @@ namespace Aerospike.Client
 				return result;
 			}
 
-			public static bool operator ==(MapValue o1, MapValue o2) => o1?.Equals(o2) ?? false;
-			public static bool operator !=(MapValue o1, MapValue o2) => o1 == o2 ? false : true;
+			public static bool operator ==(MapValue o1, MapValue o2) => ReferenceEquals(o1, o2) || (o1 is not null && o1.Equals(o2));
+			public static bool operator !=(MapValue o1, MapValue o2) => !(o1 == o2);
 
 			public static bool operator ==(MapValue o1, IDictionary o2) => o1?.Equals(o2) ?? false;
-			public static bool operator !=(MapValue o1, IDictionary o2) => o1 == o2 ? false : true;
+			public static bool operator !=(MapValue o1, IDictionary o2) => !(o1 == o2);
 		}
 	}
 }

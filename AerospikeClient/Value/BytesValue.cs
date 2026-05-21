@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2023 Aerospike, Inc.
+ * Copyright 2012-2026 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -69,11 +69,11 @@ namespace Aerospike.Client
 
 			public bool Equals(byte[] other) => other is null ? false : Util.ByteArrayEquals(Bytes, other);
 
-			public static bool operator ==(BytesValue o1, BytesValue o2) => o1?.Equals(o2) ?? false;
-			public static bool operator !=(BytesValue o1, BytesValue o2) => o1 == o2 ? false : true;
+			public static bool operator ==(BytesValue o1, BytesValue o2) => ReferenceEquals(o1, o2) || (o1 is not null && o1.Equals(o2));
+			public static bool operator !=(BytesValue o1, BytesValue o2) => !(o1 == o2);
 
-			public static bool operator ==(BytesValue o1, string o2) => o1?.Equals(o2) ?? false;
-			public static bool operator !=(BytesValue o1, string o2) => o1 == o2 ? false : true;
+			public static bool operator ==(BytesValue o1, byte[] o2) => o1?.Equals(o2) ?? false;
+			public static bool operator !=(BytesValue o1, byte[] o2) => !(o1 == o2);
 		}
 	}
 }
