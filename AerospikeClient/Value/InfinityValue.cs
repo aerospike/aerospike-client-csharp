@@ -27,6 +27,7 @@ namespace Aerospike.Client
 			public override ParticleType Type
 			{
 				get => throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Invalid particle type: INF");
+				protected set => Type = value;
 			}
 
 			public override object Object { get => null; }

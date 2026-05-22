@@ -26,7 +26,7 @@ namespace Aerospike.Client
 		{
 			public static readonly NullValue Instance = new NullValue();
 
-			public override ParticleType Type { get => ParticleType.NULL; }
+			public override ParticleType Type { get => ParticleType.NULL; protected set => Type = value; }
 
 			public override object Object { get => null; }
 

@@ -26,7 +26,7 @@ partial class Value
 	{
 		public ReadOnlyMemory<byte> Bytes { get; }
 
-		public override ParticleType Type => ParticleType.BLOB;
+		public override ParticleType Type { get => ParticleType.BLOB; protected set => Type = value; }
 
 		public override object Object => Bytes;
 

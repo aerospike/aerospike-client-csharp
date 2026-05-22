@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2024 Aerospike, Inc.
+ * Copyright 2012-2026 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -65,6 +65,8 @@ namespace Aerospike.Client
 
 					case Operation.Type.CDT_READ:
 					case Operation.Type.READ:
+					case Operation.Type.STRING_READ:
+					case Operation.Type.TO_STRING:
 						rattr |= Command.INFO1_READ;
 
 						// Read all bins if no bin is specified.
