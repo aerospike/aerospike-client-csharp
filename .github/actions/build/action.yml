@@ -3,7 +3,12 @@ description: Builds signed nuget package
 
 inputs:
   sgKey:
-    required: true
+    required: false
+    default: ""
+  sign-client:
+    required: false
+    default: "true"
+    description: Re-sign AerospikeClient.dll with the private strong-name key.
 
 runs:
   using: composite
@@ -17,13 +22,18 @@ runs:
       run: dotnet build --configuration Release --no-restore
 
     - name: Create Code Signing Key
+      if: inputs.sign-client == 'true'
       shell: pwsh
       run: |
+        if ([string]::IsNullOrWhiteSpace('${{ inputs.sgKey }}')) {
+          throw "sgKey is required when sign-client is true."
+        }
         New-Item -ItemType directory -Path key
         Set-Content -Path key\key.txt -Value '${{ inputs.sgKey }}'
         certutil -decode key\key.txt key\key.snk
 
     - name: Delay Sign dll
+      if: inputs.sign-client == 'true'
       shell: pwsh
       run: |
         & 'C:\Program Files (x86)\Microsoft SDKs\Windows\v10.0A\bin\NETFX 4.8.1 Tools\sn.exe' -R .\AerospikeClient\bin\Release\net8.0\AerospikeClient.dll key\key.snk
