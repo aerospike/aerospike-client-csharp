@@ -53,7 +53,7 @@ namespace Aerospike.Test
 		[ClassInitialize]
 		public static void SetupUsersAndRule(TestContext testContext)
 		{
-			//CheckServerVersion(new Version(8, 1, 3, 0), "string operations");
+			CheckServerVersion(new Version(8, 1, 3, 0), "string operations");
 			if (SuiteHelpers.user == null || string.IsNullOrEmpty(SuiteHelpers.user)
 				|| SuiteHelpers.password == null || string.IsNullOrEmpty(SuiteHelpers.password))
 			{
