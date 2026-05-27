@@ -17,11 +17,13 @@
 namespace Aerospike.Client
 {
 	/// <summary>
-	/// String operation policy write bit flags. Use BITWISE OR to combine flags. Example:
+	/// String operation policy write bit flags. Use BITWISE OR to combine flags.
+	/// </summary>
+	/// <example>
 	/// <code>
 	/// int flags = StringWriteFlags.NO_FAIL;
 	/// </code>
-	/// </summary>
+	/// </example>
 	[Flags]
 	public enum StringWriteFlags
 	{

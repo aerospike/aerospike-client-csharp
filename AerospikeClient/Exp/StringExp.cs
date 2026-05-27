@@ -54,6 +54,7 @@ namespace Aerospike.Client
 	/// <para>
 	/// String expressions require server version 8.1.3 or later.
 	/// </para>
+	/// </summary>
 	/// <example>
 	/// <code>
 	/// // Filter records whose "name" bin starts with "hello".
@@ -61,7 +62,6 @@ namespace Aerospike.Client
 	///     StringExp.StartsWith(Exp.Val("hello"), Exp.StringBin("name")));
 	/// </code>
 	/// </example>
-	/// </summary>
 	public sealed class StringExp
 	{
 		private const int MODULE = 3; // CALL_STRING
@@ -121,13 +121,13 @@ namespace Aerospike.Client
 		/// <para>
 		/// For UTF-8 byte length, use <see cref="StringExp.ByteLength(Exp)"/>.
 		/// </para>
+		/// </summary>
 		/// <example>
 		/// <code>
 		/// // "hello world" -> 11
 		/// Exp len = StringExp.Strlen(Exp.StringBin("text"));
 		/// </code>
 		/// </example>
-		/// </summary>
 		/// <param name="src">source string expression</param>
 		/// <returns>integer-typed expression yielding the codepoint count</returns>
 		public static Exp Strlen(Exp src)
@@ -140,13 +140,13 @@ namespace Aerospike.Client
 		/// Create expression that returns the substring of <paramref name="src"/> from codepoint
 		/// <see cref="Exp"/> start to the end. Negative <see cref="Exp"/> start counts from the end of the
 		/// string.
+		/// </summary>
 		/// <example>
 		/// <code>
 		/// // "hello world" from 6 -> "world"
 		/// Exp tail = StringExp.Substr(Exp.Val(6), Exp.StringBin("text"));
 		/// </code>
 		/// </example>
-		/// </summary>
 		/// <param name="start">starting codepoint index (negative counts from end)</param>
 		/// <param name="src">source string expression</param>
 		/// <returns>string-typed expression yielding the substring</returns>
@@ -159,13 +159,13 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Create expression that returns <see cref="Exp"/> length codepoints of <see cref="Exp"/> src starting
 		/// at codepoint <see cref="Exp"/> start. Negative indexes count from the end.
+		/// </summary>
 		/// <example>
 		/// <code>
 		/// // "hello world" from 0, length 5 -> "hello"
 		/// Exp head = StringExp.Substr(Exp.Val(0), Exp.Val(5), Exp.StringBin("text"));
 		/// </code>
 		/// </example>
-		/// </summary>
 		/// <param name="start">starting codepoint index (negative counts from end)</param>
 		/// <param name="length">number of codepoints to read (clamped to remaining length)</param>
 		/// <param name="src">source string expression</param>
@@ -179,13 +179,13 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Create expression that returns the codepoint at <see cref="Exp"/> index of <see cref="Exp"/> src
 		/// as a one-codepoint string. Negative indexes count from the end.
+		/// </summary>
 		/// <example>
 		/// <code>
 		/// // "Hello123World" at 5 -> "1"
 		/// Exp c = StringExp.CharAt(Exp.Val(5), Exp.StringBin("text"));
 		/// </code>
 		/// </example>
-		/// </summary>
 		/// <param name="index">codepoint index (negative counts from end)</param>
 		/// <param name="src">source string expression</param>
 		/// <returns>string-typed expression yielding a single-codepoint string</returns>
@@ -198,13 +198,13 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Create expression that returns the codepoint index of the first occurrence of
 		/// <see cref="Exp"/> needle in <see cref="Exp"/> src, or <code>Exp.Val(-1)</code> if not found.
+		/// </summary>
 		/// <example>
 		/// <code>
 		/// // "hello world" find "world" -> 6
 		/// Exp idx = StringExp.Find(Exp.Val("world"), Exp.StringBin("text"));
 		/// </code>
 		/// </example>
-		/// </summary>
 		/// <param name="needle">substring to search for (any expression yielding a string)</param>
 		/// <param name="src">source string expression</param>
 		/// <returns>integer-typed expression: codepoint index, or -1 if absent</returns>
@@ -218,13 +218,13 @@ namespace Aerospike.Client
 		/// Create expression that returns the codepoint index of the <see cref="Exp"/> occurrence-th
 		/// match of <see cref="Exp"/> needle (<code>Exp.Val(1)</code> = first, <code>Exp.Val(-1)</code> = last), or <code>Exp.Val(-1)</code>
 		/// if not found.
+		/// </summary>
 		/// <example>
 		/// <code>
 		/// // "ababab" 2nd occurrence of "ab" -> 2
 		/// Exp idx = StringExp.Find(Exp.Val("ab"), Exp.Val(2), Exp.StringBin("text"));
 		/// </code>
 		/// </example>
-		/// </summary>
 		/// <param name="needle">substring to search for (any expression yielding a string)</param>
 		/// <param name="occurrence">1-based occurrence to return (negative counts from the last)</param>
 		/// <param name="src">source string expression</param>
@@ -238,13 +238,13 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Create expression that tests whether <see cref="Exp"/> src contains <see cref="Exp"/> needle as a
 		/// substring. Returns <c>true</c> on match, <c>false</c> otherwise.
+		/// </summary>
 		/// <example>
 		/// <code>
 		/// Expression filter = Exp.Build(
 		///     StringExp.Contains(Exp.Val("hello"), Exp.StringBin("text")));
 		/// </code>
 		/// </example>
-		/// </summary>
 		/// <param name="needle">substring to test for</param>
 		/// <param name="src">source string expression</param>
 		/// <returns>boolean-typed expression indicating whether the substring matched</returns>
@@ -257,12 +257,12 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Create expression that tests whether <see cref="Exp"/> src begins with <see cref="Exp"/> prefix.
 		/// Returns <c>true</c> on match, <c>false</c> otherwise.
+		/// </summary>
 		/// <example>
 		/// <code>
 		/// Exp matched = StringExp.StartsWith(Exp.Val("Hello"), Exp.StringBin("text"));
 		/// </code>
 		/// </example>
-		/// </summary>
 		/// <param name="prefix">prefix to test for</param>
 		/// <param name="src">source string expression</param>
 		/// <returns>boolean-typed expression indicating whether the prefix matched</returns>
@@ -275,12 +275,12 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Create expression that tests whether <see cref="Exp"/> src ends with <see cref="Exp"/> suffix.
 		/// Returns <c>true</c> on match, <c>false</c> otherwise.
+		/// </summary>
 		/// <example>
 		/// <code>
 		/// Exp matched = StringExp.EndsWith(Exp.Val("World"), Exp.StringBin("text"));
 		/// </code>
 		/// </example>
-		/// </summary>
 		/// <param name="suffix">suffix to test for</param>
 		/// <param name="src">source string expression</param>
 		/// <returns>boolean-typed expression indicating whether the suffix matched</returns>
@@ -293,12 +293,12 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Create expression that parses <see cref="Exp"/> src as an int64. The expression returns
 		/// an error <code>Exp.Val(0)</code> if the source cannot be parsed as an integer.
+		/// </summary>
 		/// <example>
 		/// <code>
 		/// Exp n = StringExp.ToInteger(Exp.StringBin("text"));
 		/// </code>
 		/// </example>
-		/// </summary>
 		/// <param name="src">source string expression</param>
 		/// <returns>integer-typed expression yielding the parsed int64</returns>
 		public static Exp ToInteger(Exp src)
@@ -310,12 +310,12 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Create expression that parses <see cref="Exp"/> src as a 64-bit float. The expression
 		/// returns an error <code>Exp.Val(0)</code> if the source cannot be parsed as a double.
+		/// </summary>
 		/// <example>
 		/// <code>
 		/// Exp v = StringExp.ToDouble(Exp.StringBin("text"));
 		/// </code>
 		/// </example>
-		/// </summary>
 		/// <param name="src">source string expression</param>
 		/// <returns>float-typed expression yielding the parsed double</returns>
 		public static Exp ToDouble(Exp src)
@@ -328,12 +328,12 @@ namespace Aerospike.Client
 		/// Create expression that returns the UTF-8 byte length of <see cref="Exp"/> src as an int64.
 		/// Differs from <see cref="StringExp.Strlen(Exp)"/> for non-ASCII content where one codepoint can encode
 		/// to multiple bytes.
+		/// </summary>
 		/// <example>
 		/// <code>
 		/// Exp len = StringExp.ByteLength(Exp.StringBin("text"));
 		/// </code>
 		/// </example>
-		/// </summary>
 		/// <param name="src">source string expression</param>
 		/// <returns>integer-typed expression yielding the UTF-8 byte length</returns>
 		public static Exp ByteLength(Exp src)
@@ -345,12 +345,12 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Create expression that tests whether <see cref="Exp"/> src contains a valid integer or
 		/// float literal. Returns <c>true</c> on match, <c>false</c> otherwise.
+		/// </summary>
 		/// <example>
 		/// <code>
 		/// Exp numeric = StringExp.IsNumeric(Exp.StringBin("text"));
 		/// </code>
 		/// </example>
-		/// </summary>
 		/// <param name="src">source string expression</param>
 		/// <returns>boolean-typed expression indicating whether the source is numeric</returns>
 		public static Exp IsNumeric(Exp src)
@@ -362,13 +362,13 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Create expression that tests whether <see cref="Exp"/> src parses as a number of the
 		/// requested <see cref="StringNumericType"/>. Returns <c>true</c> on match, <c>false</c> otherwise.
+		/// </summary>
 		/// <example>
 		/// <code>
 		/// // restrict to integer-only validation
 		/// Exp isInt = StringExp.IsNumeric(StringNumericType.INT, Exp.StringBin("text"));
 		/// </code>
 		/// </example>
-		/// </summary>
 		/// <param name="numericType">one of the <see cref="StringNumericType"/> constants</param>
 		/// <param name="src">source string expression</param>
 		/// <returns>boolean-typed expression indicating whether the source is numeric of the given type</returns>
@@ -381,12 +381,12 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Create expression that tests whether every cased codepoint in <see cref="Exp"/> src is
 		/// uppercase. Returns <c>true</c> on match, <c>false</c> otherwise.
+		/// </summary>
 		/// <example>
 		/// <code>
 		/// Exp upper = StringExp.IsUpper(Exp.StringBin("text"));
 		/// </code>
 		/// </example>
-		/// </summary>
 		/// <param name="src">source string expression</param>
 		/// <returns>boolean-typed expression indicating whether the source is uppercase</returns>
 		public static Exp IsUpper(Exp src)
@@ -398,12 +398,12 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Create expression that tests whether every cased codepoint in <see cref="Exp"/> src is
 		/// lowercase. Returns <c>true</c> on match, <c>false</c> otherwise.
+		/// </summary>
 		/// <example>
 		/// <code>	
 		/// Exp lower = StringExp.IsLower(Exp.StringBin("text"));
 		/// </code>
 		/// </example>
-		/// </summary>
 		/// <param name="src">source string expression</param>
 		/// <returns>boolean-typed expression indicating whether the source is lowercase</returns>
 		public static Exp IsLower(Exp src)
@@ -414,12 +414,12 @@ namespace Aerospike.Client
 
 		/// <summary>
 		/// Create expression that returns the UTF-8 bytes of <see cref="Exp"/> src as a blob.
+		/// </summary>
 		/// <example>
 		/// <code>
 		/// Exp blob = StringExp.ToBlob(Exp.StringBin("text"));
 		/// </code>
 		/// </example>
-		/// </summary>
 		/// <param name="src">source string expression</param>
 		/// <returns>blob-typed expression yielding the UTF-8 byte array</returns>
 		public static Exp ToBlob(Exp src)
@@ -431,13 +431,13 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Create expression that splits <see cref="Exp"/> src by Unicode codepoint — each codepoint
 		/// becomes its own list element.
+		/// </summary>
 		/// <example>
 		/// <code>
 		/// // "abc" -> ["a", "b", "c"]
 		/// Exp parts = StringExp.Split(Exp.StringBin("text"));
 		/// </code>
 		/// </example>
-		/// </summary>
 		/// <param name="src">source string expression</param>
 		/// <returns>list-typed expression yielding a list of single-codepoint strings</returns>
 		public static Exp Split(Exp src)
@@ -467,13 +467,13 @@ namespace Aerospike.Client
 
 		/// <summary>
 		/// Create expression that base64-decodes <see cref="Exp"/> src and returns the decoded bytes as a blob.
+		/// </summary>
 		/// <example>
 		/// <code>
 		/// // "aGVsbG8=" -> System.Text.Encoding.UTF8.GetBytes("hello")
 		/// Exp decoded = StringExp.B64Decode(Exp.StringBin("text"));
 		/// </code>
 		/// </example>
-		/// </summary>
 		/// <param name="src">source string expression holding base64 text</param>
 		/// <returns>blob-typed expression yielding the decoded bytes</returns>
 		public static Exp B64Decode(Exp src)
@@ -485,13 +485,13 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Create expression that tests whether <see cref="Exp"/> pattern (ICU regex syntax) matches <see cref="Exp"/> src.
 		/// Returns <c>true</c> on match, <c>false</c> otherwise.
+		/// </summary>
 		/// <example>
 		/// <code>
 		/// // matches if "text" contains any digit run
 		/// Exp matched = StringExp.RegexCompare(Exp.Val("[0-9]+"), Exp.StringBin("text"));
 		/// </code>
 		/// </example>
-		/// </summary>
 		/// <param name="pattern">ICU-syntax regex pattern (must be valid UTF-8)</param>
 		/// <param name="src">source string expression</param>
 		/// <returns>boolean-typed expression indicating whether the pattern matched</returns>
@@ -505,6 +505,7 @@ namespace Aerospike.Client
 		/// Create expression that tests whether <see cref="Exp"/> pattern matches <see cref="Exp"/> src under
 		/// the supplied <see cref="StringRegexFlags"/>. Flags can be combined with bitwise OR.
 		/// Returns <c>true</c> on match, <c>false</c> otherwise.
+		/// </summary>
 		/// <example>
 		/// <code>
 		/// Exp matched = StringExp.RegexCompare(
@@ -512,7 +513,6 @@ namespace Aerospike.Client
 		///     Exp.StringBin("text"));
 		/// </code>
 		/// </example>
-		/// </summary>
 		/// <param name="pattern">ICU-syntax regex pattern (must be valid UTF-8)</param>
 		/// <param name="regexFlags">bitwise-OR of <see cref="StringRegexFlags"/> constants</param>
 		/// <param name="src">source string expression</param>
@@ -531,6 +531,7 @@ namespace Aerospike.Client
 		///	Create expression that splices <see cref="Exp"/> value into <see cref="Exp"/> src at codepoint
 		/// <see cref="Exp"/> index and returns the resulting string. Negative indexes count from the
 		/// end. Does not modify the underlying bin.
+		/// </summary>
 		/// <example>
 		/// <code>
 		/// // "hello world" insert " beautiful" at 5 -> "hello beautiful world"
@@ -538,7 +539,6 @@ namespace Aerospike.Client
 		///     Exp.Val(5), Exp.Val(" beautiful"), Exp.StringBin("text"));
 		/// </code>
 		/// </example>
-		/// </summary>
 		/// <param name="policy">write policy controlling NO_FAIL semantics</param>
 		/// <param name="index">codepoint index at which to insert (negative counts from end)</param>
 		/// <param name="value">text to insert</param>
@@ -555,6 +555,7 @@ namespace Aerospike.Client
 		/// <see cref="Exp"/> index with <see cref="Exp"/> value, returning the resulting string. The result may
 		/// grow beyond the original length when <see cref="Exp"/> value extends past the end. Does not
 		/// modify the underlying bin.
+		/// </summary>
 		/// <example>
 		/// <code>
 		/// // "hello world" overwrite "earth" at 6 -> "hello earth"
@@ -562,7 +563,6 @@ namespace Aerospike.Client
 		///     Exp.Val(6), Exp.Val("earth"), Exp.StringBin("text"));
 		/// </code>
 		/// </example>
-		/// </summary>
 		/// <param name="policy">write policy controlling NO_FAIL semantics</param>
 		/// <param name="index">codepoint index at which to start overwriting</param>
 		/// <param name="value">text to write</param>
@@ -601,6 +601,7 @@ namespace Aerospike.Client
 		/// Create expression that removes codepoints from <see cref="Exp"/> src starting at codepoint
 		/// <see cref="Exp"/> start through the end, returning the resulting string. Does not modify
 		/// the underlying bin.
+		/// </summary>
 		/// <example>
 		/// <code>
 		/// // "hello world" snip from 5 -> "hello"
@@ -608,7 +609,6 @@ namespace Aerospike.Client
 		///     Exp.Val(5), Exp.StringBin("text"));
 		/// </code>
 		/// </example>
-		/// </summary>
 		/// <param name="policy">write policy controlling NO_FAIL semantics</param>
 		/// <param name="start">first codepoint to remove (inclusive)</param>
 		/// <param name="src">source string expression</param>
@@ -623,6 +623,7 @@ namespace Aerospike.Client
 		/// Create expression that removes the half-open codepoint range <see cref="Exp"/> [start, end)
 		/// from <see cref="Exp"/> src and returns the resulting string. Does not modify the underlying
 		/// bin.
+		/// </summary>
 		/// <example>
 		/// <code>
 		/// // "hello beautiful world" snip [5, 15) -> "hello world"
@@ -630,7 +631,6 @@ namespace Aerospike.Client
 		///     Exp.Val(5), Exp.Val(15), Exp.StringBin("text"));
 		/// </code>
 		/// </example>
-		/// </summary>
 		/// <param name="policy">write policy controlling NO_FAIL semantics</param>
 		/// <param name="start">first codepoint to remove (inclusive)</param>
 		/// <param name="end">one past the last codepoint to remove (exclusive)</param>
@@ -646,6 +646,7 @@ namespace Aerospike.Client
 		/// Create expression that replaces the first occurrence of <see cref="Exp"/> needle in
 		/// <see cref="Exp"/> src with <see cref="Exp"/> replacement and returns the resulting string. Does not
 		/// modify the underlying bin.
+		/// </summary>
 		/// <example>
 		/// <code>
 		/// // "hello world world" replace "world"->"earth" -> "hello earth world"
@@ -653,7 +654,6 @@ namespace Aerospike.Client
 		///     Exp.Val("world"), Exp.Val("earth"), Exp.StringBin("text"));
 		/// </code>
 		/// </example>
-		/// </summary>
 		/// <param name="policy">write policy controlling NO_FAIL semantics</param>
 		/// <param name="needle">substring to find</param>
 		/// <param name="replacement">text to substitute (may be empty to delete the match)</param>
@@ -669,6 +669,7 @@ namespace Aerospike.Client
 		/// Create expression that replaces every occurrence of <see cref="Exp"/> needle in
 		/// <see cref="Exp"/> src with <see cref="Exp"/> replacement and returns the resulting string. Does not
 		/// modify the underlying bin.
+		/// </summary>
 		/// <example>
 		/// <code>
 		/// // "aabaa" replaceAll "a"->"x" -> "xxbxx"
@@ -676,7 +677,6 @@ namespace Aerospike.Client
 		///     Exp.Val("a"), Exp.Val("x"), Exp.StringBin("text"));
 		/// </code>
 		/// </example>
-		/// </summary>
 		/// <param name="policy">write policy controlling NO_FAIL semantics</param>
 		/// <param name="needle">substring to find</param>
 		/// <param name="replacement">text to substitute (may be empty to delete each match)</param>
@@ -691,12 +691,12 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Create expression that returns <see cref="Exp"/> src uppercased. Does not modify the
 		/// underlying bin.
+		/// </summary>
 		/// <example>
 		/// <code>
 		/// Exp out = StringExp.Upper(StringPolicy.Default, Exp.StringBin("text"));
 		/// </code>
 		/// </example>
-		/// </summary>
 		/// <param name="policy">write policy controlling NO_FAIL semantics</param>
 		/// <param name="src">source string expression</param>
 		/// <returns>string-typed expression yielding the uppercased string</returns>
@@ -709,12 +709,12 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Create expression that returns <see cref="Exp"/> src lowercased. Does not modify the
 		/// underlying bin.
+		/// </summary>
 		/// <example>
 		/// <code>
 		/// Exp out = StringExp.Lower(StringPolicy.Default, Exp.StringBin("text"));
 		/// </code>
 		/// </example>
-		/// </summary>
 		/// <param name="policy">write policy controlling NO_FAIL semantics</param>
 		/// <param name="src">source string expression</param>
 		/// <returns>string-typed expression yielding the lowercased string</returns>
@@ -728,12 +728,12 @@ namespace Aerospike.Client
 		/// Create expression that returns <see cref="Exp"/> src case-folded (locale-independent
 		/// lowercase). Useful for normalized comparison keys. Does not modify the underlying
 		/// bin.
+		/// </summary>
 		/// <example>
 		/// <code>
 		/// Exp out = StringExp.CaseFold(StringPolicy.Default, Exp.StringBin("text"));
 		/// </code>
 		/// </example>
-		/// </summary>
 		/// <param name="policy">write policy controlling NO_FAIL semantics</param>
 		/// <param name="src">source string expression</param>
 		/// <returns>string-typed expression yielding the case-folded string</returns>
@@ -746,12 +746,12 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Create expression that returns <see cref="Exp"/> src normalized to Unicode NFC form.
 		/// Already-normalized strings are unchanged. Does not modify the underlying bin.
+		/// </summary>
 		/// <example>
 		/// <code>
 		/// Exp out = StringExp.NormalizeNFC(StringPolicy.Default, Exp.StringBin("text"));
 		/// </code>
 		/// </example>
-		/// </summary>
 		/// <param name="policy">write policy controlling NO_FAIL semantics</param>
 		/// <param name="src">source string expression</param>
 		/// <returns>string-typed expression yielding the NFC-normalized string</returns>
@@ -764,13 +764,13 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Create expression that returns <see cref="Exp"/> src with whitespace removed from the start.
 		/// Does not modify the underlying bin.
+		/// </summary>
 		/// <example>
 		/// <code>
 		/// // "  hello  " -> "hello  "
 		/// Exp out = StringExp.TrimStart(StringPolicy.Default, Exp.StringBin("text"));
 		/// </code>
 		/// </example>
-		/// </summary>
 		/// <param name="policy">write policy controlling NO_FAIL semantics</param>
 		/// <param name="src">source string expression</param>
 		/// <returns>string-typed expression yielding the left-trimmed string</returns>
@@ -783,13 +783,13 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Create expression that returns <see cref="Exp"/> src with whitespace removed from the end.
 		/// Does not modify the underlying bin.
+		/// </summary>
 		/// <example>
 		/// <code>
 		/// // "  hello  " -> "  hello"
 		/// Exp out = StringExp.TrimEnd(StringPolicy.Default, Exp.StringBin("text"));
 		/// </code>
 		/// </example>
-		/// </summary>
 		/// <param name="policy">write policy controlling NO_FAIL semantics</param>
 		/// <param name="src">source string expression</param>
 		/// <returns>string-typed expression yielding the right-trimmed string</returns>
@@ -802,13 +802,13 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Create expression that returns <see cref="Exp"/> src with whitespace removed from both
 		/// ends. Does not modify the underlying bin.
+		/// </summary>
 		/// <example>
 		/// <code>
 		/// // "  hello world  " -> "hello world"
 		/// Exp out = StringExp.Trim(StringPolicy.Default, Exp.StringBin("text"));
 		/// </code>
 		/// </example>
-		/// </summary>
 		/// <param name="policy">write policy controlling NO_FAIL semantics</param>
 		/// <param name="src">source string expression</param>
 		/// <returns>string-typed expression yielding the trimmed string</returns>
@@ -822,6 +822,7 @@ namespace Aerospike.Client
 		/// Create expression that prepends <see cref="Exp"/> padString to <see cref="Exp"/> src repeatedly until
 		/// the result reaches <see cref="Exp"/> targetLength codepoints. No-op when the source is
 		/// already at or above the target length. Does not modify the underlying bin.
+		/// </summary>
 		/// <example>
 		/// <code>
 		/// // "hello" pad to 10 with "*" -> "*****hello"
@@ -829,7 +830,6 @@ namespace Aerospike.Client
 		///     Exp.Val(10), Exp.Val("*"), Exp.StringBin("text"));
 		/// </code>
 		/// </example>
-		/// </summary>
 		/// <param name="policy">write policy controlling NO_FAIL semantics</param>
 		/// <param name="targetLength">codepoint length to pad up to</param>
 		/// <param name="padString">text used to fill (repeated as needed)</param>
@@ -845,6 +845,7 @@ namespace Aerospike.Client
 		/// Create expression that appends <see cref="Exp"/> padString to <see cref="Exp"/> src repeatedly until
 		/// the result reaches <see cref="Exp"/> targetLength codepoints. No-op when the source is
 		/// already at or above the target length. Does not modify the underlying bin.
+		/// </summary>
 		/// <example>
 		/// <code>
 		/// // "hello" pad to 10 with "." -> "hello....."
@@ -852,7 +853,6 @@ namespace Aerospike.Client
 		///     Exp.Val(10), Exp.Val("."), Exp.StringBin("text"));
 		/// </code>
 		/// </example>
-		/// </summary>
 		/// <param name="policy">write policy controlling NO_FAIL semantics</param>
 		/// <param name="targetLength">codepoint length to pad up to</param>
 		/// <param name="padString">text used to fill (repeated as needed)</param>
@@ -867,6 +867,7 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Create expression that returns <see cref="Exp"/> src repeated <see cref="Exp"/> count times. Does
 		/// not modify the underlying bin.
+		/// </summary>
 		/// <example>
 		/// <code>
 		/// // "ab" repeat 3 -> "ababab"
@@ -874,7 +875,6 @@ namespace Aerospike.Client
 		///     Exp.Val(3), Exp.StringBin("text"));
 		/// </code>
 		/// </example>
-		/// </summary>
 		/// <param name="policy">write policy controlling NO_FAIL semantics</param>
 		/// <param name="count">number of repetitions (must be non-negative)</param>
 		/// <param name="src">source string expression</param>
@@ -890,6 +890,7 @@ namespace Aerospike.Client
 		/// <see cref="Exp"/> src with <see cref="Exp"/> replacement and returns the resulting string. Pass
 		/// <see cref="StringRegexFlags.GLOBAL"/> to replace every match. Flag values may be
 		/// combined with bitwise OR. Does not modify the underlying bin.
+		/// </summary>
 		/// <example>
 		/// <code>
 		/// // "abc123def456" regexReplace "[0-9]+"->"NUM" with GLOBAL -> "abcNUMdefNUM"
@@ -898,7 +899,6 @@ namespace Aerospike.Client
 		///     Exp.StringBin("text"));
 		/// </code>
 		/// </example>
-		/// </summary>
 		/// <param name="policy">	kept for API symmetry with the other modify ops; unused — the
 		///						regex_replace server op does not accept policy flags
 		///						(see implementation note)</param>
@@ -922,13 +922,13 @@ namespace Aerospike.Client
 		/// Create expression that returns the string representation of <see cref="Exp"/> src, where
 		/// <see cref="Exp"/> src may be any expression yielding an integer, float, string, or blob
 		/// value. Returns an error for any other source type.
+		/// </summary>
 		/// <example>
 		/// <code>
 		/// // integer bin "n" = 42 -> "42"
 		/// Exp s = StringExp.ToString(Exp.IntBin("n"));
 		/// </code>
 		/// </example>
-		/// </summary>
 		/// <param name="src">source expression (integer, float, string, or blob)</param>
 		/// <returns>string-typed expression yielding the string representation</returns>
 		public static Exp ToString(Exp src)
