@@ -51,7 +51,7 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Get wire protocol value type.
 		/// </summary>
-		public abstract ParticleType Type { get; protected set; }
+		public abstract ParticleType Type { get; }
 
 		/// <summary>
 		/// Return original value as an Object.
@@ -284,7 +284,7 @@ namespace Aerospike.Client
 
 		public T value { get; }
 
-		public override ParticleType Type { get; protected set; }
+		public override ParticleType Type { get; }
 
 		public override object Object { get => value; }
 

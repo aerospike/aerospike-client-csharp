@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2023 Aerospike, Inc.
+ * Copyright 2012-2026 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -26,19 +26,22 @@ namespace Aerospike.Client
 		{
 			public byte[] Bytes { get; }
 
-			public override ParticleType Type { get => ParticleType.BLOB; protected set => Type = value; }
+			private readonly ParticleType type;
+
+			public override ParticleType Type => type;
 
 			public override object Object { get => Bytes; }
 
 			public BytesValue(byte[] bytes)
 			{
 				Bytes = bytes;
+				type = ParticleType.BLOB;
 			}
 
 			public BytesValue(byte[] bytes, ParticleType type)
 			{
 				Bytes = bytes;
-				Type = type;
+				this.type = type;
 			}
 
 			public override int EstimateSize() => Bytes.Length;

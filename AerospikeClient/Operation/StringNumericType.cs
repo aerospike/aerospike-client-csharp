@@ -17,7 +17,7 @@
 namespace Aerospike.Client
 {
 	/// <summary>
-	/// Numeric type filter for {@link StringOperation#isNumeric}.
+	/// Numeric type filter for <see cref="StringOperation.IsNumeric(string, StringNumericType, CTX[])"/>.
 	/// </summary>
 	public enum StringNumericType
 	{

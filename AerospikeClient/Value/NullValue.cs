@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2023 Aerospike, Inc.
+ * Copyright 2012-2026 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -26,7 +26,7 @@ namespace Aerospike.Client
 		{
 			public static readonly NullValue Instance = new NullValue();
 
-			public override ParticleType Type { get => ParticleType.NULL; protected set => Type = value; }
+			public override ParticleType Type => ParticleType.NULL;
 
 			public override object Object { get => null; }
 

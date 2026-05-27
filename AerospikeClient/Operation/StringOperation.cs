@@ -17,7 +17,7 @@
 namespace Aerospike.Client
 {
 	/// <summary>
-	/// String operations. Create operations to be passed to the client <see cref="Operate"/>
+	/// String operations. Create operations to be passed to the client <c>Operate</c>
 	/// command for inspecting and modifying string bins.
 	/// <para>
 	/// Index orientation is left-to-right with codepoint addressing. Negative indexes
@@ -28,20 +28,21 @@ namespace Aerospike.Client
 	/// argument navigates into a string nested inside a list or map bin; with no CTX
 	/// the operation targets the bin itself. The CTX-navigated leaf must already be an
 	/// Aerospike string — operations on non-string leaves return
-	/// <see cref="AerospikeError.AEROSPIKE_ERR_INCOMPATIBLE_TYPE"/>.
+	/// <c>AEROSPIKE_ERR_INCOMPATIBLE_TYPE</c>.
 	/// <example>
 	/// <code>
 	/// // Read: bin "text" = "hello world"
-	/// Record r = client.Operate(null, key, StringOperation.strlen("text"));
+	/// Record r = client.Operate(null, key, StringOperation.Strlen("text"));
 	/// long len = r.GetLong("text");        // 11
 	///
 	/// // Modify: uppercase a string nested in a list bin "items" at index 0.
 	/// client.Operate(null, key,
-	///     StringOperation.upper(StringPolicy.Default, "items", CTX.listIndex(0)));
+	///     StringOperation.Upper(StringPolicy.Default, "items", CTX.ListIndex(0)));
 	/// </code>
 	/// </example>
 	/// </summary>
-	public static class StringOperation {
+	public static class StringOperation
+	{
 		// Read ops
 		private const int STRLEN = 0;
 		private const int SUBSTR = 1;
@@ -86,28 +87,27 @@ namespace Aerospike.Client
 
 		/// <summary>
 		/// Create string Strlen operation. Returns the number of Unicode codepoints
-		/// in the string bin as an int64. This matches <see cref="String.CodePointCount(int, int)"/>
-		/// called on the string's full range.
+		/// in the string bin as an int64.
 		/// <para>
 		/// The returned value is the codepoint count — <strong>not</strong> the count of
 		/// user-perceived characters (grapheme clusters). Codepoints and visible characters
 		/// agree for ASCII and simple Latin text, but diverge for combining marks, emoji
 		/// modifiers, and zero-width-joiner sequences:
 		/// <ul>
-		/// <li>{@code "é"} encoded as one precomposed codepoint U+00E9 → 1.</li>
-		/// <li>{@code "é"} encoded as {@code 'e' + U+0301} (combining acute) → 2, though
+		/// <li><c>"é"</c> encoded as one precomposed codepoint U+00E9 → 1.</li>
+		/// <li><c>"é"</c> encoded as <c>'e' + U+0301</c> (combining acute) → 2, though
 		///     it renders as one visible character.</li>
-		/// <li>{@code "👍🏽"} (thumbs up + skin-tone modifier) → 2, though it renders as
+		/// <li><c>"👍🏽"</c> (thumbs up + skin-tone modifier) → 2, though it renders as
 		///     one emoji.</li>
-		/// <li>{@code "👨‍👩‍👧‍👦"} (ZWJ family emoji) → 7, though it renders as one emoji.</li>
+		/// <li><c>"👨‍👩‍👧‍👦"</c> (ZWJ family emoji) → 7, though it renders as one emoji.</li>
 		/// </ul>
 		/// </para>
 		/// <para>
 		/// Two related counts that this op does <strong>not</strong> return:
 		/// <ul>
-		/// <li>String.Length() — counts UTF-16 code units, so a non-BMP codepoint
-		///     (e.g. {@code "😀"}) counts as 2 there but 1 here.</li>
-		/// <li>UTF-8 byte length — use ByteLength(String, CTX...).</li>
+		/// <li><see cref="string.Length"/> — counts UTF-16 code units, so a non-BMP codepoint
+		///     (e.g. <c>"😀"</c>) counts as 2 there but 1 here.</li>
+		/// <li>UTF-8 byte length — use <see cref="ByteLength(string, CTX[])"/>.</li>
 		/// </ul>
 		/// </para>
 		/// </summary>
@@ -123,11 +123,12 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Create string Substr operation that reads from <see cref="int"/> start to the end of
 		/// the string. Negative indexes count from the end.
+		/// </summary>
 		/// <example>
 		/// <code>
 		/// // "hello world" -> "world"
-		/// Record r = client.Operate(null, key, StringOperation.substr("text", 6));
-		/// String tail = r.GetString("text");
+		/// Record r = client.Operate(null, key, StringOperation.Substr("text", 6));
+		/// string tail = r.GetString("text");
 		/// </code>
 		/// </example>
 		/// <param name="binName">name of the string bin</param>
@@ -143,10 +144,11 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Create string Substr operation that reads <see cref="int"/> length codepoints
 		/// starting at <see cref="int"/> start. Negative indexes count from the end of the string.
+		/// </summary>
 		/// <example>
 		/// <code>
 		/// // "hello world" -> "hello"
-		/// Record r = client.Operate(null, key, StringOperation.substr("text", 0, 5));
+		/// Record r = client.Operate(null, key, StringOperation.Substr("text", 0, 5));
 		/// </code>
 		/// </example>
 		/// <param name="binName">name of the string bin</param>
@@ -163,12 +165,13 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Create string CharAt operation that returns the codepoint at <see cref="int"/> index
 		/// as a one-codepoint string. Negative indexes count from the end.
+		/// </summary>
 		/// <example>
 		/// <code>
 		/// // "Hello123World" at index 5 -> "1"
-		/// Record r = client.Operate(null, key, StringOperation.charAt("text", 5));
-		/// String c = r.GetString("text");
-		/// }</code>
+		/// Record r = client.Operate(null, key, StringOperation.CharAt("text", 5));
+		/// string c = r.GetString("text");
+		/// </code>
 		/// </example>
 		/// <param name="binName">name of the string bin</param>
 		/// <param name="index">codepoint index (negative counts from end)</param>
@@ -186,7 +189,7 @@ namespace Aerospike.Client
 		/// <example>
 		/// <code>
 		/// // "hello world" -> 6
-		/// Record r = client.Operate(null, key, StringOperation.find("text", "world"));
+		/// Record r = client.Operate(null, key, StringOperation.Find("text", "world"));
 		/// long idx = r.GetLong("text");
 		/// </code>
 		/// </example>
@@ -207,7 +210,7 @@ namespace Aerospike.Client
 		/// <example>
 		/// <code>
 		/// // "hello world" -> 6
-		/// Record r = client.Operate(null, key, StringOperation.find("text", "world"));
+		/// Record r = client.Operate(null, key, StringOperation.Find("text", "world"));
 		/// long idx = r.GetLong("text");
 		/// </code>
 		/// </example>
@@ -244,7 +247,7 @@ namespace Aerospike.Client
 			return new Operation(Operation.Type.STRING_READ, binName, new Value.BytesValue(bytes, ParticleType.STRING));
 		}
 
-		///<summary>
+		/// <summary>
 		/// Create string StartsWith operation that returns <see cref="bool"/> true if the bin begins
 		/// with <see cref="string"/> prefix, <see cref="bool"/> false otherwise.
 		/// <example>
@@ -259,12 +262,12 @@ namespace Aerospike.Client
 		/// <param name="ctx">optional path into a string nested inside a list or map</param>
 		/// <returns>read operation returning a boolean match flag</returns>
 		public static Operation StartsWith(string binName, string prefix, params CTX[] ctx)
-{
+		{
 			byte[] bytes = PackStringOp(STARTS_WITH, Value.Get(prefix), ctx);
 			return new Operation(Operation.Type.STRING_READ, binName, new Value.BytesValue(bytes, ParticleType.STRING));
 		}
 
-		///<summary>
+		/// <summary>
 		/// Create string EndsWith operation that returns <see cref="bool"/> true if the bin ends
 		/// with <see cref="string"/> suffix, <see cref="bool"/> false otherwise.
 		/// <example>
@@ -284,9 +287,9 @@ namespace Aerospike.Client
 			return new Operation(Operation.Type.STRING_READ, binName, new Value.BytesValue(bytes, ParticleType.STRING));
 		}
 
-		///<summary>
+		/// <summary>
 		/// Create string ToInteger operation that parses the string as an <see cref="int"/> and returns the parsed value.
-		/// Returns <see cref="AerospikeError.AEROSPIKE_ERR_PARAMETER"/> if the bin cannot be parsed as an integer.
+		/// Returns <see cref="AerospikeException"/> if the bin cannot be parsed as an integer.
 		/// <example>
 		/// <code>
 		/// // "12345" -> 12345
@@ -306,7 +309,7 @@ namespace Aerospike.Client
 
 		/// <summary>
 		/// Create string ToDouble operation that parses the string as a <see cref="double"/> and returns the parsed value.
-		/// Returns <see cref="AerospikeError.AEROSPIKE_ERR_PARAMETER"/> if the bin cannot be parsed as a double.
+		/// Returns <see cref="AerospikeException"/> if the bin cannot be parsed as a double.
 		/// <example>
 		/// <code>
 		/// // "3.14" -> 3.14
@@ -344,7 +347,7 @@ namespace Aerospike.Client
 			return new Operation(Operation.Type.STRING_READ, binName, new Value.BytesValue(bytes, ParticleType.STRING));
 		}
 
-		///<summary>
+		/// <summary>
 		/// Create string IsNumeric operation that returns <see cref="bool"/> true if the bin
 		/// contains a valid integer or float, <see cref="bool"/> false otherwise.
 		/// <example>
@@ -378,9 +381,9 @@ namespace Aerospike.Client
 		/// <param name="numericType">one of the <see cref="StringNumericType"/> constants</param>
 		/// <param name="ctx">optional path into a string nested inside a list or map</param>
 		/// <returns>read operation returning a boolean match flag</returns>
-		public static Operation IsNumeric(string binName, int numericType, params CTX[] ctx)
+		public static Operation IsNumeric(string binName, StringNumericType numericType, params CTX[] ctx)
 		{
-			byte[] bytes = PackStringOp(IS_NUMERIC, numericType, ctx);
+			byte[] bytes = PackStringOp(IS_NUMERIC, (int)numericType, ctx);
 			return new Operation(Operation.Type.STRING_READ, binName, new Value.BytesValue(bytes, ParticleType.STRING));
 		}
 
@@ -429,7 +432,7 @@ namespace Aerospike.Client
 		/// <code>
 		/// // "hello" -> [0x68, 0x65, 0x6c, 0x6c, 0x6f]
 		/// Record r = client.Operate(null, key, StringOperation.ToBlob("text"));
-		/// byte[] bytes = (byte[]) r.getValue("text");
+		/// byte[] bytes = (byte[])r.GetValue("text");
 		/// </code>
 		/// </example>
 		/// </summary>
@@ -445,14 +448,14 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Create string Split operation that splits by Unicode codepoint — each
 		/// codepoint becomes its own element of the returned list.
+		/// </summary>
 		/// <example>
 		/// <code>
 		/// // "abc" -> ["a", "b", "c"]
 		/// Record r = client.Operate(null, key, StringOperation.Split("text"));
-		/// List<string> chars = r.GetList<string>("text");
+		/// List&lt;string&gt; chars = (List&lt;string&gt;)r.GetList("text");
 		/// </code>
 		/// </example>
-		/// </summary>
 		/// <param name="binName">name of the string bin</param>
 		/// <param name="ctx">optional path into a string nested inside a list or map</param>
 		/// <returns>read operation returning a list of single-codepoint strings</returns>
@@ -488,7 +491,7 @@ namespace Aerospike.Client
 		/// and returns the decoded bytes as a blob.
 		/// <example>
 		/// <code>
-		/// // "aGVsbG8=" -> "hello".getBytes()
+		/// // "aGVsbG8=" -> System.Text.Encoding.UTF8.GetBytes("hello")
 		/// Record r = client.Operate(null, key, StringOperation.B64Decode("text"));
 		/// byte[] decoded = (byte[]) r.GetBytes("text");
 		/// </code>
@@ -528,6 +531,7 @@ namespace Aerospike.Client
 		/// Create string RegexCompare operation that honors <see cref="StringRegexFlags"/>
 		/// (e.g. <see cref="StringRegexFlags.CASE_INSENSITIVE"/>). Flag values may be combined
 		/// with bitwise OR.
+		/// </summary>
 		/// <example>
 		/// <code>
 		/// // "HELLO" matches "hello" with CASE_INSENSITIVE -> true
@@ -540,7 +544,7 @@ namespace Aerospike.Client
 		/// <param name="regexFlags">bitwise-OR of <see cref="StringRegexFlags"/> constants</param>
 		/// <param name="ctx">optional path into a string nested inside a list or map</param>
 		/// <returns>read operation returning a boolean match flag</returns>
-		public static Operation RegexCompare(string binName, string pattern, StringRegexFlags regexFlags, params CTX[] ctx) 
+		public static Operation RegexCompare(string binName, string pattern, StringRegexFlags regexFlags, params CTX[] ctx)
 		{
 			byte[] bytes = PackStringOp(REGEX_COMPARE, Value.Get(pattern), (int)regexFlags, ctx);
 			return new Operation(Operation.Type.STRING_READ, binName, new Value.BytesValue(bytes, ParticleType.STRING));
@@ -557,8 +561,8 @@ namespace Aerospike.Client
 		/// <code>
 		/// // "hello world" + insert " beautiful" at 5 -> "hello beautiful world"
 		/// client.Operate(null, key,
-		///     StringOperation.insert(StringPolicy.Default, "text", 5, " beautiful"));
-		/// }</code>
+		///     StringOperation.Insert(StringPolicy.Default, "text", 5, " beautiful"));
+		/// </code>
 		/// </example>
 		/// </summary>
 		/// <param name="policy">write policy controlling NO_FAIL semantics</param>
@@ -567,7 +571,7 @@ namespace Aerospike.Client
 		/// <param name="value">text to insert</param>
 		/// <param name="ctx">optional path into a string nested inside a list or map</param>
 		/// <returns>modify operation</returns>
-		public static Operation Insert(StringPolicy policy, string binName, int index, string value, params CTX[] ctx) 
+		public static Operation Insert(StringPolicy policy, string binName, int index, string value, params CTX[] ctx)
 		{
 			byte[] bytes = PackStringOp(INSERT, index, Value.Get(value), (int)policy.flags, ctx);
 			return new Operation(Operation.Type.STRING_MODIFY, binName, new Value.BytesValue(bytes, ParticleType.STRING));
@@ -581,8 +585,8 @@ namespace Aerospike.Client
 		/// <code>
 		/// // "hello world" overwrite "earth" at 6 -> "hello earth"
 		/// client.Operate(null, key,
-		///     StringOperation.overwrite(StringPolicy.Default, "text", 6, "earth"));
-		/// }</code>
+		///     StringOperation.Overwrite(StringPolicy.Default, "text", 6, "earth"));
+		/// </code>
 		/// </example>
 		/// </summary>
 		/// <param name="policy">write policy controlling NO_FAIL semantics</param>
@@ -591,7 +595,7 @@ namespace Aerospike.Client
 		/// <param name="value">text to write</param>
 		/// <param name="ctx">optional path into a string nested inside a list or map</param>
 		/// <returns>modify operation</returns>
-		public static Operation Overwrite(StringPolicy policy, string binName, int index, string value, params CTX[] ctx) 
+		public static Operation Overwrite(StringPolicy policy, string binName, int index, string value, params CTX[] ctx)
 		{
 			byte[] bytes = PackStringOp(OVERWRITE, index, Value.Get(value), (int)policy.flags, ctx);
 			return new Operation(Operation.Type.STRING_MODIFY, binName, new Value.BytesValue(bytes, ParticleType.STRING));
@@ -612,7 +616,7 @@ namespace Aerospike.Client
 		/// <param name="value">text to append</param>
 		/// <param name="ctx">optional path into a string nested inside a list or map</param>
 		/// <returns>modify operation</returns>
-		public static Operation Concat(StringPolicy policy, string binName, string value, params CTX[] ctx) 
+		public static Operation Concat(StringPolicy policy, string binName, string value, params CTX[] ctx)
 		{
 			List<Value> list = [Value.Get(value)];
 			byte[] bytes = PackStringOp(CONCAT, list, (int)policy.flags, ctx);
@@ -626,7 +630,7 @@ namespace Aerospike.Client
 		/// <code>
 		/// // "hello" + concat [" ", "big", " world"] -> "hello big world"
 		/// client.Operate(null, key, StringOperation.Concat(StringPolicy.Default, "text",
-		///     Arrays.asList(" ", "big", " world")));
+		///     new List&lt;string&gt; { " ", "big", " world" }));
 		/// </code>
 		/// </example>
 		/// </summary>
@@ -713,6 +717,7 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Create string ReplaceAll operation that replaces every occurrence of
 		/// <see cref="string"/> needle with <see cref="string"/> replacement.
+		/// </summary>
 		/// <example>
 		/// <code>
 		/// // "aabaa" replaceAll "a"->"x" -> "xxbxx"
@@ -774,6 +779,7 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Create string CaseFold operation that applies a locale-independent case
 		/// fold (lowercase) to the bin. Useful for normalized comparison keys.
+		/// </summary>
 		/// <example>
 		/// <code>
 		/// // "HELLO World" -> "hello world"
@@ -793,9 +799,10 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Create string NormalizeNFC operation that normalizes the bin to Unicode
 		/// NFC form. Already-normalized strings are unchanged.
+		/// </summary>
 		/// <example>
 		/// <code>
-		/// // "HELLO World" -> "hello world"
+		/// // "e" + combining acute accent -> precomposed "é"
 		/// client.Operate(null, key, StringOperation.NormalizeNFC(StringPolicy.Default, "text"));
 		/// </code>
 		/// </example>
@@ -812,6 +819,7 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Create string TrimStart operation that removes whitespace from the start
 		/// of the bin.
+		/// </summary>
 		/// <example>
 		/// <code>
 		/// // "  hello  " -> "hello  "
@@ -831,6 +839,7 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Create string TrimEnd operation that removes whitespace from the end of
 		/// the bin.
+		/// </summary>
 		/// <example>
 		/// <code>
 		/// // "  hello  " -> "  hello"
@@ -850,6 +859,7 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Create string Trim operation that removes whitespace from both ends of
 		/// the bin.
+		/// </summary>
 		/// <example>
 		/// <code>
 		/// // "  hello world  " -> "hello world"
@@ -870,6 +880,7 @@ namespace Aerospike.Client
 		/// Create string PadStart operation that prepends <see cref="string"/> padString
 		/// repeatedly until the bin reaches <see cref="int"/> targetLength codepoints. No-op when the
 		/// bin is already at or above the target length.
+		/// </summary>
 		/// <example>
 		/// <code>
 		/// // "hello" pad to 10 with "*" -> "*****hello"
@@ -892,6 +903,7 @@ namespace Aerospike.Client
 		/// Create string PadEnd operation that appends <see cref="string"/> padString
 		/// repeatedly until the bin reaches <see cref="int"/> targetLength codepoints. No-op when the
 		/// bin is already at or above the target length.
+		/// </summary>
 		/// <example>
 		/// <code>
 		/// // "hello" pad to 10 with "." -> "hello....."
@@ -913,6 +925,7 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Create string Repeat operation that repeats the bin contents <see cref="int"/> count
 		/// times.
+		/// </summary>
 		/// <example>
 		/// <code>
 		/// // "ab" repeat 3 -> "ababab"
@@ -935,6 +948,7 @@ namespace Aerospike.Client
 		/// <see cref="string"/> pattern with <see cref="string"/> replacement. Pass <see cref="StringRegexFlags.GLOBAL"/>
 		/// to replace every match. Flag values from <see cref="StringRegexFlags"/> may be combined
 		/// with bitwise OR.
+		/// </summary>
 		/// <example>
 		/// <code>
 		/// // "abc123def456" regexReplace "[0-9]+"->"NUM" with GLOBAL -> "abcNUMdefNUM"
@@ -970,7 +984,7 @@ namespace Aerospike.Client
 
 		/// <summary>
 		/// Create ToString operation that converts an integer, float, string, or
-		/// blob bin to its string representation. Returns <see cref="AerospikeError.AEROSPIKE_ERR_INCOMPATIBLE_TYPE"/> for any other bin type.
+		/// blob bin to its string representation. Returns <c>AEROSPIKE_ERR_INCOMPATIBLE_TYPE</c> for any other bin type.
 		/// <para>
 		/// Unlike the other builders in this class, <see cref="ToString"/> does not accept a
 		/// <see cref="CTX"/>. The other string operations are sent as <see cref="Operation.Type.STRING_READ"/> /
@@ -986,9 +1000,9 @@ namespace Aerospike.Client
 		/// <example>
 		/// <code>
 		/// // Bin "n" = 42 (integer) -> "42"
-		/// Record r = client.operate(null, key, StringOperation.ToString("n"));
-		/// String s = r.getString("n");
-		/// }</code>
+		/// Record r = client.Operate(null, key, StringOperation.ToString("n"));
+		/// string s = r.GetString("n");
+		/// </code>
 		/// </example>
 		/// </summary>
 		/// <param name="binName">name of the bin to convert</param>
@@ -1010,7 +1024,8 @@ namespace Aerospike.Client
 		private static List<Value> ToValueList(List<string> strings)
 		{
 			List<Value> list = new List<Value>(strings.Count);
-			foreach (string s in strings) {
+			foreach (string s in strings)
+			{
 				list.Add(Value.Get(s));
 			}
 			return list;
@@ -1042,13 +1057,14 @@ namespace Aerospike.Client
 			{
 				p.PackNumber(0xFF);
 				p.PackArrayBegin(ctx.Length * 2);
-				foreach (CTX c in ctx) {
+				foreach (CTX c in ctx)
+				{
 					p.PackNumber(c.id);
 					if (c.value != null)
 					{
 						c.value.Pack(p);
 					}
-					else 
+					else
 					{
 						p.PackByteArray(c.exp.Bytes, 0, c.exp.Bytes.Length);
 					}

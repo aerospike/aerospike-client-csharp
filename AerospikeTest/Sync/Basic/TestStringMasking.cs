@@ -43,7 +43,7 @@ namespace Aerospike.Test
 		private static readonly string UNPRIV_USER = "stringops_user";
 		private static readonly string USER_PASSWORD = "stringops_pw1!";
 
-		private static readonly Key key = new Key(SuiteHelpers.ns, SuiteHelpers.set, "stringmask-key");
+		private static readonly Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "stringmask-key");
 		private static readonly StringPolicy policy = StringPolicy.Default;
 
 		private static bool enabled;
@@ -349,7 +349,7 @@ namespace Aerospike.Test
 			}
 		}
 
-		private static IAerospikeClient NewClient(string user)
+		private static AerospikeClient NewClient(string user)
 		{
 			ClientPolicy p = new()
 			{
@@ -391,10 +391,8 @@ namespace Aerospike.Test
 			}
 		}
 
-		/**
-		* Apply a masking rule via info command. Format:
-		* {@code masking:namespace=NS;set=SET;bin=BIN;type=string;function=FN[;extra]}
-		*/
+		// Apply a masking rule via info command.
+		// Format: masking:namespace=NS;set=SET;bin=BIN;type=string;function=FN[;extra]
 		private static void ApplyMaskRule(String bin, String function, String extra)
 		{
 			string cmd = "masking:namespace=" + SuiteHelpers.ns

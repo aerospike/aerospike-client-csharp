@@ -128,10 +128,10 @@ namespace Aerospike.Client
 			TO_STRING
 		}
 
-		private static readonly byte[] ProtocolTypes = new byte[] { 1, 1, 2, 3, 4, 3, 4, 5, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19 };
+		private static readonly byte[] ProtocolTypes = [1, 1, 2, 3, 4, 3, 4, 5, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19];
 
-		private static readonly bool[] IsWrites = new bool[]
-		{
+		private static readonly bool[] IsWrites =
+		[
 			false,
 			false,
 			true,
@@ -153,7 +153,7 @@ namespace Aerospike.Client
 			false,
 			true,
 			false
-		};
+		];
 
 		public static byte GetProtocolType(Type type)
 		{

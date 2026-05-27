@@ -58,9 +58,7 @@ namespace Aerospike.Client
 	/// <code>
 	/// // Filter records whose "name" bin starts with "hello".
 	/// Expression filter = Exp.Build(
-	///     Exp.EQ(
-	///         StringExp.StartsWith(Exp.Val("hello"), Exp.StringBin("name")),
-	///         Exp.Val(1)));
+	///     StringExp.StartsWith(Exp.Val("hello"), Exp.StringBin("name")));
 	/// </code>
 	/// </example>
 	/// </summary>
@@ -113,7 +111,7 @@ namespace Aerospike.Client
 
 		/// <summary>
 		/// Create expression that returns the number of Unicode codepoints in <see cref="Exp"/> src
-		/// as an int64. Equivalent to <see cref="String.CodePointCount(int, int)"/> on the source.
+		/// as an int64.
 		/// <para>
 		/// The returned value is the codepoint count — <strong>not</strong> the count of
 		/// user-perceived characters (grapheme clusters). They agree for ASCII / simple
@@ -139,13 +137,13 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
-		/// Create expression that returns the substring of {@code src} from codepoint
+		/// Create expression that returns the substring of <paramref name="src"/> from codepoint
 		/// <see cref="Exp"/> start to the end. Negative <see cref="Exp"/> start counts from the end of the
 		/// string.
 		/// <example>
 		/// <code>
 		/// // "hello world" from 6 -> "world"
-		/// Exp tail = StringExp.substr(Exp.val(6), Exp.stringBin("text"));
+		/// Exp tail = StringExp.Substr(Exp.Val(6), Exp.StringBin("text"));
 		/// </code>
 		/// </example>
 		/// </summary>
@@ -239,27 +237,26 @@ namespace Aerospike.Client
 
 		/// <summary>
 		/// Create expression that tests whether <see cref="Exp"/> src contains <see cref="Exp"/> needle as a
-		/// substring. Returns an integer flag: <code>Exp.Val(1)</code> on match, <code>Exp.Val(0)</code> otherwise.
+		/// substring. Returns <c>true</c> on match, <c>false</c> otherwise.
 		/// <example>
 		/// <code>
-		/// Expression filter = Exp.Build(Exp.EQ(
-		///     StringExp.Contains(Exp.Val("hello"), Exp.StringBin("text")),
-		///     Exp.Val(1)));
+		/// Expression filter = Exp.Build(
+		///     StringExp.Contains(Exp.Val("hello"), Exp.StringBin("text")));
 		/// </code>
 		/// </example>
 		/// </summary>
 		/// <param name="needle">substring to test for</param>
 		/// <param name="src">source string expression</param>
-		/// <returns>integer-typed expression: 1 on match, 0 otherwise</returns>
+		/// <returns>boolean-typed expression indicating whether the substring matched</returns>
 		public static Exp Contains(Exp needle, Exp src)
 		{
 			byte[] bytes = PackUtil.Pack(CONTAINS, needle);
-			return AddRead(src, bytes, Exp.Type.INT);
+			return AddRead(src, bytes, Exp.Type.BOOL);
 		}
 
 		/// <summary>
 		/// Create expression that tests whether <see cref="Exp"/> src begins with <see cref="Exp"/> prefix.
-		/// Returns an integer flag: <code>Exp.Val(1)</code> on match, <code>Exp.Val(0)</code> otherwise.
+		/// Returns <c>true</c> on match, <c>false</c> otherwise.
 		/// <example>
 		/// <code>
 		/// Exp matched = StringExp.StartsWith(Exp.Val("Hello"), Exp.StringBin("text"));
@@ -268,16 +265,16 @@ namespace Aerospike.Client
 		/// </summary>
 		/// <param name="prefix">prefix to test for</param>
 		/// <param name="src">source string expression</param>
-		/// <returns>integer-typed expression: 1 on match, 0 otherwise</returns>
+		/// <returns>boolean-typed expression indicating whether the prefix matched</returns>
 		public static Exp StartsWith(Exp prefix, Exp src)
 		{
 			byte[] bytes = PackUtil.Pack(STARTS_WITH, prefix);
-			return AddRead(src, bytes, Exp.Type.INT);
+			return AddRead(src, bytes, Exp.Type.BOOL);
 		}
 
 		/// <summary>
 		/// Create expression that tests whether <see cref="Exp"/> src ends with <see cref="Exp"/> suffix.
-		/// Returns an integer flag: <code>Exp.Val(1)</code> on match, <code>Exp.Val(0)</code> otherwise.
+		/// Returns <c>true</c> on match, <c>false</c> otherwise.
 		/// <example>
 		/// <code>
 		/// Exp matched = StringExp.EndsWith(Exp.Val("World"), Exp.StringBin("text"));
@@ -286,11 +283,11 @@ namespace Aerospike.Client
 		/// </summary>
 		/// <param name="suffix">suffix to test for</param>
 		/// <param name="src">source string expression</param>
-		/// <returns>integer-typed expression: 1 on match, 0 otherwise</returns>
+		/// <returns>boolean-typed expression indicating whether the suffix matched</returns>
 		public static Exp EndsWith(Exp suffix, Exp src)
 		{
 			byte[] bytes = PackUtil.Pack(ENDS_WITH, suffix);
-			return AddRead(src, bytes, Exp.Type.INT);
+			return AddRead(src, bytes, Exp.Type.BOOL);
 		}
 
 		/// <summary>
@@ -347,7 +344,7 @@ namespace Aerospike.Client
 
 		/// <summary>
 		/// Create expression that tests whether <see cref="Exp"/> src contains a valid integer or
-		/// float literal. Returns an integer flag: <code>Exp.Val(1)</code> on match, <code>Exp.Val(0)</code> otherwise.
+		/// float literal. Returns <c>true</c> on match, <c>false</c> otherwise.
 		/// <example>
 		/// <code>
 		/// Exp numeric = StringExp.IsNumeric(Exp.StringBin("text"));
@@ -355,16 +352,16 @@ namespace Aerospike.Client
 		/// </example>
 		/// </summary>
 		/// <param name="src">source string expression</param>
-		/// <returns>integer-typed expression: 1 if numeric, 0 otherwise</returns>
+		/// <returns>boolean-typed expression indicating whether the source is numeric</returns>
 		public static Exp IsNumeric(Exp src)
 		{
 			byte[] bytes = PackUtil.Pack(IS_NUMERIC);
-			return AddRead(src, bytes, Exp.Type.INT);
+			return AddRead(src, bytes, Exp.Type.BOOL);
 		}
 
 		/// <summary>
 		/// Create expression that tests whether <see cref="Exp"/> src parses as a number of the
-		/// requested <see cref="StringExp.StringNumericType"/>. Returns an integer flag: <code>Exp.Val(1)</code> on match, <code>Exp.Val(0)</code> otherwise.
+		/// requested <see cref="StringNumericType"/>. Returns <c>true</c> on match, <c>false</c> otherwise.
 		/// <example>
 		/// <code>
 		/// // restrict to integer-only validation
@@ -374,16 +371,16 @@ namespace Aerospike.Client
 		/// </summary>
 		/// <param name="numericType">one of the <see cref="StringNumericType"/> constants</param>
 		/// <param name="src">source string expression</param>
-		/// <returns>integer-typed expression: 1 if numeric of the given type, 0 otherwise</returns>
+		/// <returns>boolean-typed expression indicating whether the source is numeric of the given type</returns>
 		public static Exp IsNumeric(StringNumericType numericType, Exp src)
 		{
 			byte[] bytes = PackUtil.Pack(IS_NUMERIC, (int)numericType);
-			return AddRead(src, bytes, Exp.Type.INT);
+			return AddRead(src, bytes, Exp.Type.BOOL);
 		}
 
 		/// <summary>
 		/// Create expression that tests whether every cased codepoint in <see cref="Exp"/> src is
-		/// uppercase. Returns an integer flag: <code>Exp.Val(1)</code> on match, <code>Exp.Val(0)</code> otherwise.
+		/// uppercase. Returns <c>true</c> on match, <c>false</c> otherwise.
 		/// <example>
 		/// <code>
 		/// Exp upper = StringExp.IsUpper(Exp.StringBin("text"));
@@ -391,16 +388,16 @@ namespace Aerospike.Client
 		/// </example>
 		/// </summary>
 		/// <param name="src">source string expression</param>
-		/// <returns>integer-typed expression: 1 if all-uppercase, 0 otherwise</returns>
+		/// <returns>boolean-typed expression indicating whether the source is uppercase</returns>
 		public static Exp IsUpper(Exp src)
 		{
 			byte[] bytes = PackUtil.Pack(IS_UPPER);
-			return AddRead(src, bytes, Exp.Type.INT);
+			return AddRead(src, bytes, Exp.Type.BOOL);
 		}
 
 		/// <summary>
 		/// Create expression that tests whether every cased codepoint in <see cref="Exp"/> src is
-		/// lowercase. Returns an integer flag: <code>Exp.Val(1)</code> on match, <code>Exp.Val(0)</code> otherwise.
+		/// lowercase. Returns <c>true</c> on match, <c>false</c> otherwise.
 		/// <example>
 		/// <code>	
 		/// Exp lower = StringExp.IsLower(Exp.StringBin("text"));
@@ -408,11 +405,11 @@ namespace Aerospike.Client
 		/// </example>
 		/// </summary>
 		/// <param name="src">source string expression</param>
-		/// <returns>integer-typed expression: 1 if all-lowercase, 0 otherwise</returns>
+		/// <returns>boolean-typed expression indicating whether the source is lowercase</returns>
 		public static Exp IsLower(Exp src)
 		{
 			byte[] bytes = PackUtil.Pack(IS_LOWER);
-			return AddRead(src, bytes, Exp.Type.INT);
+			return AddRead(src, bytes, Exp.Type.BOOL);
 		}
 
 		/// <summary>
@@ -452,6 +449,7 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Create expression that splits <see cref="Exp"/> src by the <see cref="Exp"/> separator substring.
 		/// If the separator is absent, the result is a singleton list containing the whole source.
+		/// </summary>
 		/// <example>
 		/// <code>
 		/// // "one,two,three" with "," -> ["one", "two", "three"]
@@ -471,7 +469,7 @@ namespace Aerospike.Client
 		/// Create expression that base64-decodes <see cref="Exp"/> src and returns the decoded bytes as a blob.
 		/// <example>
 		/// <code>
-		/// // "aGVsbG8=" -> "hello".getBytes()
+		/// // "aGVsbG8=" -> System.Text.Encoding.UTF8.GetBytes("hello")
 		/// Exp decoded = StringExp.B64Decode(Exp.StringBin("text"));
 		/// </code>
 		/// </example>
@@ -486,7 +484,7 @@ namespace Aerospike.Client
 
 		/// <summary>
 		/// Create expression that tests whether <see cref="Exp"/> pattern (ICU regex syntax) matches <see cref="Exp"/> src.
-		/// Returns an integer flag: <code>Exp.Val(1)</code> on match, <code>Exp.Val(0)</code> otherwise.
+		/// Returns <c>true</c> on match, <c>false</c> otherwise.
 		/// <example>
 		/// <code>
 		/// // matches if "text" contains any digit run
@@ -496,17 +494,17 @@ namespace Aerospike.Client
 		/// </summary>
 		/// <param name="pattern">ICU-syntax regex pattern (must be valid UTF-8)</param>
 		/// <param name="src">source string expression</param>
-		/// <returns>integer-typed expression: 1 on match, 0 otherwise</returns>
+		/// <returns>boolean-typed expression indicating whether the pattern matched</returns>
 		public static Exp RegexCompare(Exp pattern, Exp src)
 		{
 			byte[] bytes = PackUtil.Pack(REGEX_COMPARE, pattern);
-			return AddRead(src, bytes, Exp.Type.INT);
+			return AddRead(src, bytes, Exp.Type.BOOL);
 		}
 
 		/// <summary>	
 		/// Create expression that tests whether <see cref="Exp"/> pattern matches <see cref="Exp"/> src under
 		/// the supplied <see cref="StringRegexFlags"/>. Flags can be combined with bitwise OR.
-		/// Returns an integer flag: <code>Exp.Val(1)</code> on match, <code>Exp.Val(0)</code> otherwise.
+		/// Returns <c>true</c> on match, <c>false</c> otherwise.
 		/// <example>
 		/// <code>
 		/// Exp matched = StringExp.RegexCompare(
@@ -518,11 +516,11 @@ namespace Aerospike.Client
 		/// <param name="pattern">ICU-syntax regex pattern (must be valid UTF-8)</param>
 		/// <param name="regexFlags">bitwise-OR of <see cref="StringRegexFlags"/> constants</param>
 		/// <param name="src">source string expression</param>
-		/// <returns>integer-typed expression: 1 on match, 0 otherwise</returns>
+		/// <returns>boolean-typed expression indicating whether the pattern matched</returns>
 		public static Exp RegexCompare(Exp pattern, StringRegexFlags regexFlags, Exp src)
 		{
 			byte[] bytes = PackUtil.Pack(REGEX_COMPARE, pattern, (int)regexFlags);
-			return AddRead(src, bytes, Exp.Type.INT);
+			return AddRead(src, bytes, Exp.Type.BOOL);
 		}
 
 		//-----------------------------------------------------------------
@@ -580,15 +578,15 @@ namespace Aerospike.Client
 		/// Create expression that concatenates <see cref="Exp"/> values (a list of strings) onto
 		/// <see cref="Exp"/> src in order, returning the resulting string. Does not modify the
 		/// underlying bin.
+		/// </summary>
 		/// <example>
 		/// <code>
 		/// // "hello" + [" ", "big", " world"] -> "hello big world"
 		/// Exp out = StringExp.Concat(StringPolicy.Default,
-		///     Exp.ListVal(new List<string> { " ", "big", " world" }),
+		///     Exp.ListVal(new List&lt;string&gt; { " ", "big", " world" }),
 		///     Exp.StringBin("text"));
 		/// </code>
 		/// </example>
-		/// </summary>
 		/// <param name="policy">write policy controlling NO_FAIL semantics</param>
 		/// <param name="values">expression yielding a list of strings to append</param>
 		/// <param name="src">source string expression</param>
@@ -663,12 +661,12 @@ namespace Aerospike.Client
 		/// <returns>string-typed expression yielding the modified string</returns>
 		public static Exp Replace(StringPolicy policy, Exp needle, Exp replacement, Exp src)
 		{
-			byte[] bytes = PackUtil.Pack(REPLACE, needle, replacement, (int)policy.flags);
+			byte[] bytes = PackReplace(REPLACE, needle, replacement, (int)policy.flags);
 			return AddModify(src, bytes);
 		}
 
 		/// <summary>
-		/// Create expression that replaces every occurrence of <see cref="Exp"/> needle in <see cref="Exp"/> src with <see cref="Exp"/> replacement and returns the resulting string. Does not
+		/// Create expression that replaces every occurrence of <see cref="Exp"/> needle in
 		/// <see cref="Exp"/> src with <see cref="Exp"/> replacement and returns the resulting string. Does not
 		/// modify the underlying bin.
 		/// <example>
@@ -686,7 +684,7 @@ namespace Aerospike.Client
 		/// <returns>string-typed expression yielding the modified string</returns>
 		public static Exp ReplaceAll(StringPolicy policy, Exp needle, Exp replacement, Exp src)
 		{
-			byte[] bytes = PackUtil.Pack(REPLACE_ALL, needle, replacement, (int)policy.flags);
+			byte[] bytes = PackReplace(REPLACE_ALL, needle, replacement, (int)policy.flags);
 			return AddModify(src, bytes);
 		}
 
@@ -911,7 +909,7 @@ namespace Aerospike.Client
 		/// <returns>string-typed expression yielding the modified string</returns>
 		public static Exp RegexReplace(StringPolicy policy, Exp pattern, Exp replacement, StringRegexFlags regexFlags, Exp src)
 		{
-			byte[] bytes = PackUtil.Pack(REGEX_REPLACE, pattern, replacement, (int)regexFlags);
+			byte[] bytes = PackRegexReplace(pattern, replacement, (int)regexFlags);
 			return AddModify(src, bytes);
 		}
 
@@ -935,7 +933,7 @@ namespace Aerospike.Client
 		/// <returns>string-typed expression yielding the string representation</returns>
 		public static Exp ToString(Exp src)
 		{
-			byte[] bytes = [];
+			byte[] bytes = ReprPayload();
 			return new Exp.Module(src, bytes, (int)Exp.Type.STRING, MODULE_REPR);
 		}
 
@@ -943,15 +941,22 @@ namespace Aerospike.Client
 		// Private helpers
 		//-----------------------------------------------------------------
 
-		private static Exp AddRead(Exp src, byte[] bytes, Exp.Type retType)
+		private static Exp.Module AddRead(Exp src, byte[] bytes, Exp.Type retType)
 		{
 			return new Exp.Module(src, bytes, (int)retType, MODULE);
 		}
 
-		private static Exp AddModify(Exp src, byte[] bytes)
+		private static Exp.Module AddModify(Exp src, byte[] bytes)
 		{
 			return new Exp.Module(src, bytes, (int)Exp.Type.STRING, MODULE | Exp.MODIFY);
 		}
+
+		// QUOTED opcode (mirrors Exp.QUOTED = 126).
+		// Used to mark an inner msgpack list as a literal — without it, the server's
+		// expression compiler at exp.c:3289 treats any bare nested list inside a CALL
+		// payload as a sub-expression and recursively compiles its first element as an
+		// opcode, which fails with PARAMETER_ERROR for our string-pair lists.
+		private const int QUOTED = 126;
 
 		// [cmd, [needle, repl], flags] — needle/replacement nested inside a 2-element list.
 		// Specialized packing method. Leaving in StringExp instead of moving to Pack since the 
@@ -962,6 +967,8 @@ namespace Aerospike.Client
 			Packer packer = new Packer();
 			packer.PackArrayBegin(3);
 			packer.PackNumber(command);
+			packer.PackArrayBegin(2);
+			packer.PackNumber(QUOTED);
 			packer.PackArrayBegin(2);
 			needle.Pack(packer);
 			replacement.Pack(packer);
@@ -981,16 +988,25 @@ namespace Aerospike.Client
 			packer.PackArrayBegin(3);
 			packer.PackNumber(REGEX_REPLACE);
 			packer.PackArrayBegin(2);
+			packer.PackNumber(QUOTED);
+			packer.PackArrayBegin(2);
 			pattern.Pack(packer);
 			replacement.Pack(packer);
 			packer.PackNumber(regexFlags);
 			return packer.ToByteArray();
 		}
 
-		private static byte[] EmptyArray()
+		// Single-zero payload [0] for CALL_REPR (StringExp.toString). The server's
+		// parse_op_call at exp.c:3244 rejects an empty list (ele_count == 0), so the
+		// payload must contain at least one element. The CALL_REPR dispatcher at
+		// exp.c:5019 ignores the sub-op id and goes straight to as_bin_to_string, so
+		// the value carried here is unused. The spec previously documented this as `[]`;
+		// the server is the source of truth — see §2.7 in the cross-client spec.
+		private static byte[] ReprPayload()
 		{
 			Packer packer = new Packer();
-			packer.PackArrayBegin(0);
+			packer.PackArrayBegin(1);
+			packer.PackNumber(0);
 			return packer.ToByteArray();
 		}
 	}

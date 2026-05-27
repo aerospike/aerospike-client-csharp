@@ -17,7 +17,7 @@
 namespace Aerospike.Client
 {
 	/// <summary>
-	/// Regex flags for <see cref="StringOperation.RegexCompare(string, string, CTX[])/> and
+	/// Regex flags for <see cref="StringOperation.RegexCompare(string, string, CTX[])"/> and
 	/// <see cref="StringOperation.RegexReplace"/>. Combine with bitwise OR.
 	/// </summary>
 	[Flags]
@@ -34,18 +34,18 @@ namespace Aerospike.Client
 		CASE_INSENSITIVE = 1 << 0,
 
 		/// <summary>
-		/// Treat input as a multi-line string. {@code ^} and {@code $} match
+		/// Treat input as a multi-line string. <c>^</c> and <c>$</c> match
 		/// the start and end of any line, not just the start and end of the input.
 		/// </summary>
 		MULTILINE = 1 << 1,
 
 		/// <summary>
-		/// The {@code .} metacharacter matches any character including line terminators.
+		/// The <c>.</c> metacharacter matches any character including line terminators.
 		/// </summary>
 		DOTALL = 1 << 2,
 
 		/// <summary>
-		/// Treat only {@code \n} as a line terminator (Unix-style line endings).
+		/// Treat only <c>\n</c> as a line terminator (Unix-style line endings).
 		/// </summary>
 		UNIX_LINES = 1 << 3,
 

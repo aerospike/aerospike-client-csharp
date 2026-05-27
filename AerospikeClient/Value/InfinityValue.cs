@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2023 Aerospike, Inc.
+ * Copyright 2012-2026 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -24,11 +24,7 @@ namespace Aerospike.Client
 		/// </summary>
 		public sealed class InfinityValue : Value
 		{
-			public override ParticleType Type
-			{
-				get => throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Invalid particle type: INF");
-				protected set => Type = value;
-			}
+			public override ParticleType Type => throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Invalid particle type: INF");
 
 			public override object Object { get => null; }
 

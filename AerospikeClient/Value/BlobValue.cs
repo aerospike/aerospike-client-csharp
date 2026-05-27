@@ -24,13 +24,11 @@ namespace Aerospike.Client
 		/// </summary>
 		public sealed class BlobValue : Value, IEquatable<BlobValue>, IEquatable<byte[]>
 		{
-			private ParticleType type;
-
 			public override object Object { get; }
 
 			public byte[] Bytes { get; set; }
 
-			public override ParticleType Type { get => ParticleType.CSHARP_BLOB; protected set => type = value; }
+			public override ParticleType Type => ParticleType.CSHARP_BLOB;
 
 			public BlobValue(object obj)
 			{

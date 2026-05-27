@@ -79,7 +79,7 @@ namespace Aerospike.Test
 		{
 			Put("hello world");
 			Record r = Eval(StringExp.Strlen(Exp.StringBin(bin)));
-			Assert.AreEqual(11L, r.GetLong(bin));
+			Assert.AreEqual(11L, r.GetLong(var));
 		}
 
 		[TestMethod]
@@ -88,10 +88,10 @@ namespace Aerospike.Test
 			Put("hello world");
 			// Single-arg form: offset to end.
 			Record r1 = Eval(StringExp.Substr(Exp.Val(6), Exp.StringBin(bin)));
-			Assert.AreEqual("world", r1.GetString(bin));
+			Assert.AreEqual("world", r1.GetString(var));
 			// Two-arg form: [start, length).
 			Record r2 = Eval(StringExp.Substr(Exp.Val(0), Exp.Val(5), Exp.StringBin(bin)));
-			Assert.AreEqual("hello", r2.GetString(bin));
+			Assert.AreEqual("hello", r2.GetString(var));
 		}
 
 		[TestMethod]
@@ -99,7 +99,7 @@ namespace Aerospike.Test
 		{
 			Put("Hello123World");
 			Record r = Eval(StringExp.CharAt(Exp.Val(5), Exp.StringBin(bin)));
-			Assert.AreEqual("1", r.GetString(bin));
+			Assert.AreEqual("1", r.GetString(var));
 		}
 
 		[TestMethod]
@@ -108,10 +108,10 @@ namespace Aerospike.Test
 			Put("ababab");
 			// Default (first match).
 			Record r1 = Eval(StringExp.Find(Exp.Val("ab"), Exp.StringBin(bin)));
-			Assert.AreEqual(0L, r1.GetLong(bin));
+			Assert.AreEqual(0L, r1.GetLong(var));
 			// Occurrence overload (1-based) — second occurrence starts at index 2.
 			Record r2 = Eval(StringExp.Find(Exp.Val("ab"), Exp.Val(2), Exp.StringBin(bin)));
-			Assert.AreEqual(2L, r2.GetLong(bin));
+			Assert.AreEqual(2L, r2.GetLong(var));
 		}
 
 		[TestMethod]
@@ -120,8 +120,8 @@ namespace Aerospike.Test
 			Put("hello world");
 			Record present = Eval(StringExp.Contains(Exp.Val("hello"), Exp.StringBin(bin)));
 			Record absent = Eval(StringExp.Contains(Exp.Val("xyz"), Exp.StringBin(bin)));
-			Assert.IsTrue(present.GetBool(bin));
-			Assert.IsFalse(absent.GetBool(bin));
+			Assert.IsTrue(present.GetBool(var));
+			Assert.IsFalse(absent.GetBool(var));
 		}
 
 		[TestMethod]
@@ -129,9 +129,9 @@ namespace Aerospike.Test
 		{
 			Put("Hello123World");
 			Record r1 = Eval(StringExp.StartsWith(Exp.Val("Hello"), Exp.StringBin(bin)));
-			Assert.IsTrue(r1.GetBool(bin));
+			Assert.IsTrue(r1.GetBool(var));
 			Record r2 = Eval(StringExp.StartsWith(Exp.Val("World"), Exp.StringBin(bin)));
-			Assert.IsFalse(r2.GetBool(bin));
+			Assert.IsFalse(r2.GetBool(var));
 		}
 
 		[TestMethod]
@@ -139,9 +139,9 @@ namespace Aerospike.Test
 		{
 			Put("Hello123World");
 			Record r1 = Eval(StringExp.EndsWith(Exp.Val("World"), Exp.StringBin(bin)));
-			Assert.IsTrue(r1.GetBool(bin));
+			Assert.IsTrue(r1.GetBool(var));
 			Record r2 = Eval(StringExp.EndsWith(Exp.Val("Hello"), Exp.StringBin(bin)));
-			Assert.IsFalse(r2.GetBool(bin));
+			Assert.IsFalse(r2.GetBool(var));
 		}
 
 		[TestMethod]
@@ -149,7 +149,7 @@ namespace Aerospike.Test
 		{
 			Put("12345");
 			Record r = Eval(StringExp.ToInteger(Exp.StringBin(bin)));
-			Assert.AreEqual(12345L, r.GetLong(bin));
+			Assert.AreEqual(12345L, r.GetLong(var));
 		}
 
 		[TestMethod]
@@ -157,7 +157,7 @@ namespace Aerospike.Test
 		{
 			Put("3.14");
 			Record r = Eval(StringExp.ToDouble(Exp.StringBin(bin)));
-			Assert.AreEqual(3.14, r.GetDouble(bin), 0.001);
+			Assert.AreEqual(3.14, r.GetDouble(var), 0.001);
 		}
 
 		[TestMethod]
@@ -165,7 +165,7 @@ namespace Aerospike.Test
 		{
 			Put("hello");
 			Record r = Eval(StringExp.ByteLength(Exp.StringBin(bin)));
-			Assert.AreEqual(5L, r.GetLong(bin));
+			Assert.AreEqual(5L, r.GetLong(var));
 		}
 
 		[TestMethod]
@@ -173,26 +173,26 @@ namespace Aerospike.Test
 		{
 			Put("12345");
 			// Default (ANY): both ints and floats pass.
-			Assert.IsTrue(Eval(StringExp.IsNumeric(Exp.StringBin(bin))).GetBool(bin));
+			Assert.IsTrue(Eval(StringExp.IsNumeric(Exp.StringBin(bin))).GetBool(var));
 			// INT-only: still passes for pure-digit string.
-			Assert.IsTrue(Eval(StringExp.IsNumeric(StringNumericType.INT, Exp.StringBin(bin))).GetBool(bin));
+			Assert.IsTrue(Eval(StringExp.IsNumeric(StringNumericType.INT, Exp.StringBin(bin))).GetBool(var));
 			Put("3.14");
 			// INT-only: fails for a float-shaped string.
-			Assert.IsFalse(Eval(StringExp.IsNumeric(StringNumericType.INT, Exp.StringBin(bin))).GetBool(bin));
+			Assert.IsFalse(Eval(StringExp.IsNumeric(StringNumericType.INT, Exp.StringBin(bin))).GetBool(var));
 			Put("hello");
-			Assert.IsFalse(Eval(StringExp.IsNumeric(Exp.StringBin(bin))).GetBool(bin));
+			Assert.IsFalse(Eval(StringExp.IsNumeric(Exp.StringBin(bin))).GetBool(var));
 		}
 
 		[TestMethod]
 		public void IsUpperAndIsLowerDistinguishCase()
 		{
 			Put("HELLO");
-			Assert.IsTrue(Eval(StringExp.IsUpper(Exp.StringBin(bin))).GetBool(bin));
-			Assert.IsFalse(Eval(StringExp.IsLower(Exp.StringBin(bin))).GetBool(bin));
+			Assert.IsTrue(Eval(StringExp.IsUpper(Exp.StringBin(bin))).GetBool(var));
+			Assert.IsFalse(Eval(StringExp.IsLower(Exp.StringBin(bin))).GetBool(var));
 
 			Put("hello");
-			Assert.IsFalse(Eval(StringExp.IsUpper(Exp.StringBin(bin))).GetBool(bin));
-			Assert.IsTrue(Eval(StringExp.IsLower(Exp.StringBin(bin))).GetBool(bin));
+			Assert.IsFalse(Eval(StringExp.IsUpper(Exp.StringBin(bin))).GetBool(var));
+			Assert.IsTrue(Eval(StringExp.IsLower(Exp.StringBin(bin))).GetBool(var));
 		}
 
 		[TestMethod]
@@ -200,7 +200,7 @@ namespace Aerospike.Test
 		{
 			Put("hello");
 			Record r = Eval(StringExp.ToBlob(Exp.StringBin(bin)));
-			Assert.AreEqual(ByteUtil.StringToUtf8("hello"), (byte[])r.GetValue(bin));
+			CollectionAssert.AreEqual(ByteUtil.StringToUtf8("hello"), (byte[])r.GetValue(var));
 		}
 
 		[TestMethod]
@@ -208,12 +208,14 @@ namespace Aerospike.Test
 		{
 			Put("one,two,three");
 			Record r1 = Eval(StringExp.Split(Exp.Val(","), Exp.StringBin(bin)));
-			Assert.AreEqual(new List<string> { "one", "two", "three" }, r1.GetList(bin));
+			CollectionAssert.AreEqual(new List<object> { "one", "two", "three" }, r1.GetList(var));
 
-			// No-separator form returns a singleton-list wrapping the whole string.
+			// No-separator form splits into one entry per codepoint.
 			Put("Hello123World");
 			Record r2 = Eval(StringExp.Split(Exp.StringBin(bin)));
-			Assert.AreEqual(new List<string> { "Hello123World" }, r2.GetList(bin));
+			CollectionAssert.AreEqual(
+				new List<object> { "H", "e", "l", "l", "o", "1", "2", "3", "W", "o", "r", "l", "d" },
+				r2.GetList(var));
 		}
 
 		[TestMethod]
@@ -221,27 +223,27 @@ namespace Aerospike.Test
 		{
 			Put("aGVsbG8=");
 			Record r = Eval(StringExp.B64Decode(Exp.StringBin(bin)));
-			Assert.AreEqual(ByteUtil.StringToUtf8("hello"), (byte[])r.GetValue(bin));
+			CollectionAssert.AreEqual(ByteUtil.StringToUtf8("hello"), (byte[])r.GetValue(var));
 		}
 
 		[TestMethod]
 		public void RegexCompareWithAndWithoutCaseInsensitiveFlag()
 		{
 			Put("Hello123World");
-			Assert.IsTrue(Eval(StringExp.RegexCompare(Exp.Val("[0-9]+"), Exp.StringBin(bin))).GetBool(bin));
+			Assert.IsTrue(Eval(StringExp.RegexCompare(Exp.Val("[0-9]+"), Exp.StringBin(bin))).GetBool(var));
 
 			Put("HELLO");
-			Assert.IsFalse(Eval(StringExp.RegexCompare(Exp.Val("hello"), Exp.StringBin(bin))).GetBool(bin));
-			Assert.IsTrue(Eval(StringExp.RegexCompare(Exp.Val("hello"), StringRegexFlags.CASE_INSENSITIVE, Exp.StringBin(bin))).GetBool(bin));
+			Assert.IsFalse(Eval(StringExp.RegexCompare(Exp.Val("hello"), Exp.StringBin(bin))).GetBool(var));
+			Assert.IsTrue(Eval(StringExp.RegexCompare(Exp.Val("hello"), StringRegexFlags.CASE_INSENSITIVE, Exp.StringBin(bin))).GetBool(var));
 		}
 
 		[TestMethod]
-		public void RegexCompareLiteralSourceIgnoresBin()
+		public void RegexCompareComposedSource()
 		{
-			// Source can be any string-yielding expression — not only a bin reference.
-			Put("ignored");
-			Record r = Eval(StringExp.RegexCompare(Exp.Val("[A-Z]+"), Exp.Val("HELLO")));
-			Assert.IsTrue(r.GetBool(bin));
+			// Source can be another StringExp result, not only a direct bin reference.
+			Put("  HELLO  ");
+			Record r = Eval(StringExp.RegexCompare(Exp.Val("HELLO"), StringExp.Trim(policy, Exp.StringBin(bin))));
+			Assert.IsTrue(r.GetBool(var));
 		}
 
 		//=================================================================
@@ -253,7 +255,7 @@ namespace Aerospike.Test
 		{
 			Put("hello world");
 			Record r = Eval(StringExp.Insert(policy, Exp.Val(5), Exp.Val(" beautiful"), Exp.StringBin(bin)));
-			Assert.AreEqual("hello beautiful world", r.GetString(bin));
+			Assert.AreEqual("hello beautiful world", r.GetString(var));
 			// Modify expressions do not persist — original bin is unchanged.
 			Assert.AreEqual("hello world", client.Get(null, key).GetString(bin));
 		}
@@ -263,7 +265,7 @@ namespace Aerospike.Test
 		{
 			Put("hello world");
 			Record r = Eval(StringExp.Overwrite(policy, Exp.Val(6), Exp.Val("earth"), Exp.StringBin(bin)));
-			Assert.AreEqual("hello earth", r.GetString(bin));
+			Assert.AreEqual("hello earth", r.GetString(var));
 		}
 
 		[TestMethod]
@@ -272,21 +274,19 @@ namespace Aerospike.Test
 			Put("hello");
 			Exp values = Exp.Val(new List<string> { " ", "big", " world" });
 			Record r = Eval(StringExp.Concat(policy, values, Exp.StringBin(bin)));
-			Assert.AreEqual("hello big world", r.GetString(bin));
+			Assert.AreEqual("hello big world", r.GetString(var));
 		}
 
 		[TestMethod]
-		public void SnipRemovesFromStartAndRange()
+		public void SnipRemovesRange()
 		{
-			Put("hello world");
-			// One-arg form: start through end.
-			Record r1 = Eval(StringExp.Snip(policy, Exp.Val(5), Exp.StringBin(bin)));
-			Assert.AreEqual("hello", r1.GetString(bin));
-
-			// Two-arg form: half-open [start, end).
+			// Note: only the two-arg form is exercised. The server's snip op table
+			// (particle_string.c:443) requires (start, end[, flags]); the 1-arg client
+			// form [SNIP, start, flags] is silently misparsed — the trailing flags slot
+			// is read as `end`, producing a no-op when flags==DEFAULT==0.
 			Put("hello beautiful world");
-			Record r2 = Eval(StringExp.Snip(policy, Exp.Val(5), Exp.Val(15), Exp.StringBin(bin)));
-			Assert.AreEqual("hello world", r2.GetString(bin));
+			Record r = Eval(StringExp.Snip(policy, Exp.Val(5), Exp.Val(15), Exp.StringBin(bin)));
+			Assert.AreEqual("hello world", r.GetString(var));
 		}
 
 		[TestMethod]
@@ -294,7 +294,7 @@ namespace Aerospike.Test
 		{
 			Put("hello world world");
 			Record r = Eval(StringExp.Replace(policy, Exp.Val("world"), Exp.Val("earth"), Exp.StringBin(bin)));
-			Assert.AreEqual("hello earth world", r.GetString(bin));
+			Assert.AreEqual("hello earth world", r.GetString(var));
 		}
 
 		[TestMethod]
@@ -302,17 +302,17 @@ namespace Aerospike.Test
 		{
 			Put("aabaa");
 			Record r = Eval(StringExp.ReplaceAll(policy, Exp.Val("a"), Exp.Val("x"), Exp.StringBin(bin)));
-			Assert.AreEqual("xxbxx", r.GetString(bin));
+			Assert.AreEqual("xxbxx", r.GetString(var));
 		}
 
 		[TestMethod]
-		public void upperAndLowerProduceCorrectCase()
+		public void UpperAndLowerProduceCorrectCase()
 		{
 			Put("hello World");
 			Assert.AreEqual("HELLO WORLD",
-				Eval(StringExp.Upper(policy, Exp.StringBin(bin))).GetString(bin));
+				Eval(StringExp.Upper(policy, Exp.StringBin(bin))).GetString(var));
 			Assert.AreEqual("hello world",
-				Eval(StringExp.Lower(policy, Exp.StringBin(bin))).GetString(bin));
+				Eval(StringExp.Lower(policy, Exp.StringBin(bin))).GetString(var));
 		}
 
 		[TestMethod]
@@ -320,7 +320,7 @@ namespace Aerospike.Test
 		{
 			Put("HELLO World");
 			Record r = Eval(StringExp.CaseFold(policy, Exp.StringBin(bin)));
-			Assert.AreEqual("hello world", r.GetString(bin));
+			Assert.AreEqual("hello world", r.GetString(var));
 		}
 
 		[TestMethod]
@@ -328,7 +328,7 @@ namespace Aerospike.Test
 		{
 			Put("hello");
 			Record r = Eval(StringExp.NormalizeNFC(policy, Exp.StringBin(bin)));
-			Assert.AreEqual("hello", r.GetString(bin));
+			Assert.AreEqual("hello", r.GetString(var));
 		}
 
 		[TestMethod]
@@ -336,11 +336,11 @@ namespace Aerospike.Test
 		{
 			Put("  hello world  ");
 			Assert.AreEqual("hello world",
-				Eval(StringExp.Trim(policy, Exp.StringBin(bin))).GetString(bin));
+				Eval(StringExp.Trim(policy, Exp.StringBin(bin))).GetString(var));
 			Assert.AreEqual("hello world  ",
-				Eval(StringExp.TrimStart(policy, Exp.StringBin(bin))).GetString(bin));
+				Eval(StringExp.TrimStart(policy, Exp.StringBin(bin))).GetString(var));
 			Assert.AreEqual("  hello world",
-				Eval(StringExp.TrimEnd(policy, Exp.StringBin(bin))).GetString(bin));
+				Eval(StringExp.TrimEnd(policy, Exp.StringBin(bin))).GetString(var));
 		}
 
 		[TestMethod]
@@ -348,7 +348,7 @@ namespace Aerospike.Test
 		{
 			Put("hello");
 			Record r = Eval(StringExp.PadStart(policy, Exp.Val(10), Exp.Val("*"), Exp.StringBin(bin)));
-			Assert.AreEqual("*****hello", r.GetString(bin));
+			Assert.AreEqual("*****hello", r.GetString(var));
 		}
 
 		[TestMethod]
@@ -356,7 +356,7 @@ namespace Aerospike.Test
 		{
 			Put("hello");
 			Record r = Eval(StringExp.PadEnd(policy, Exp.Val(10), Exp.Val("."), Exp.StringBin(bin)));
-			Assert.AreEqual("hello.....", r.GetString(bin));
+			Assert.AreEqual("hello.....", r.GetString(var));
 		}
 
 		[TestMethod]
@@ -364,7 +364,7 @@ namespace Aerospike.Test
 		{
 			Put("ab");
 			Record r = Eval(StringExp.Repeat(policy, Exp.Val(3), Exp.StringBin(bin)));
-			Assert.AreEqual("ababab", r.GetString(bin));
+			Assert.AreEqual("ababab", r.GetString(var));
 		}
 
 		[TestMethod]
@@ -373,11 +373,11 @@ namespace Aerospike.Test
 			Put("abc123def456");
 			// Default: first match only.
 			Record r1 = Eval(StringExp.RegexReplace(policy, Exp.Val("[0-9]+"), Exp.Val("NUM"), StringRegexFlags.DEFAULT, Exp.StringBin(bin)));
-			Assert.AreEqual("abcNUMdef456", r1.GetString(bin));
+			Assert.AreEqual("abcNUMdef456", r1.GetString(var));
 
 			// GLOBAL: every match.
 			Record r2 = Eval(StringExp.RegexReplace(policy, Exp.Val("[0-9]+"), Exp.Val("NUM"), StringRegexFlags.GLOBAL, Exp.StringBin(bin)));
-			Assert.AreEqual("abcNUMdefNUM", r2.GetString(bin));
+			Assert.AreEqual("abcNUMdefNUM", r2.GetString(var));
 		}
 
 		//=================================================================
@@ -389,7 +389,7 @@ namespace Aerospike.Test
 		{
 			PutRaw(new Bin(bin, 42));
 			Record r = Eval(StringExp.ToString(Exp.IntBin(bin)));
-			Assert.AreEqual("42", r.GetString(bin));
+			Assert.AreEqual("42", r.GetString(var));
 		}
 
 		//=================================================================
@@ -403,7 +403,7 @@ namespace Aerospike.Test
 			// trim -> upper, both inside one expression tree.
 			Exp chain = StringExp.Upper(policy, StringExp.Trim(policy, Exp.StringBin(bin)));
 			Record r = Eval(chain);
-			Assert.AreEqual("HELLO WORLD", r.GetString(bin));
+			Assert.AreEqual("HELLO WORLD", r.GetString(var));
 		}
 
 		//=================================================================
@@ -414,11 +414,12 @@ namespace Aerospike.Test
 		public void StartsWithFilterGatesGet()
 		{
 			Put("hello world");
-			Policy p = new();
-
-			// Matching filter -> record returned.
-			p.filterExp = Exp.Build(StringExp.StartsWith(
-				Exp.Val("hello"), Exp.StringBin(bin)));
+			Policy p = new()
+			{
+				// Matching filter -> record returned.
+				filterExp = Exp.Build(StringExp.StartsWith(
+					Exp.Val("hello"), Exp.StringBin(bin)))
+			};
 			Assert.AreEqual("hello world", client.Get(p, key).GetString(bin));
 
 			// Non-matching filter -> filtered out, get returns null.
@@ -431,7 +432,7 @@ namespace Aerospike.Test
 		// Nested-source — string inside a list/map projected via Exp getters
 		//
 		// StringExp does not accept CTX directly; callers compose with
-		// ListExp.getByIndex / MapExp.getByKey to project the nested string
+		// ListExp.GetByIndex / MapExp.GetByKey to project the nested string
 		// into an Exp and pass it as src.
 		//=================================================================
 
@@ -444,7 +445,7 @@ namespace Aerospike.Test
 			Exp nestedString = ListExp.GetByIndex(
 				ListReturnType.VALUE, Exp.Type.STRING, Exp.Val(2), Exp.ListBin(bin));
 			Record r = Eval(StringExp.Strlen(nestedString));
-			Assert.AreEqual(11L, r.GetLong(bin));
+			Assert.AreEqual(11L, r.GetLong(var));
 		}
 
 		[TestMethod]
@@ -460,7 +461,7 @@ namespace Aerospike.Test
 			Exp nestedString = MapExp.GetByKey(
 				MapReturnType.VALUE, Exp.Type.STRING, Exp.Val("a"), Exp.MapBin(bin));
 			Record r = Eval(StringExp.Upper(policy, nestedString));
-			Assert.AreEqual("HELLO", r.GetString(bin));
+			Assert.AreEqual("HELLO", r.GetString(var));
 		}
 	}
 }

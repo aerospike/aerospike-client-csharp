@@ -14,6 +14,7 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
+using System.Collections;
 using Aerospike.Client;
 
 namespace Aerospike.Test
@@ -181,6 +182,7 @@ namespace Aerospike.Test
 			Put("HELLO");
 			Record r = Operate(StringOperation.IsUpper(bin));
 			Assert.IsTrue(r.GetBool(bin));
+			Put("Hello");
 			r = Operate(StringOperation.IsUpper(bin));
 			Assert.IsFalse(r.GetBool(bin));
 		}
@@ -191,6 +193,7 @@ namespace Aerospike.Test
 			Put("hello");
 			Record r = Operate(StringOperation.IsLower(bin));
 			Assert.IsTrue(r.GetBool(bin));
+			Put("Hello");
 			r = Operate(StringOperation.IsLower(bin));
 			Assert.IsFalse(r.GetBool(bin));
 		}
@@ -201,6 +204,7 @@ namespace Aerospike.Test
 			Put("12345");
 			Record r = Operate(StringOperation.IsNumeric(bin));
 			Assert.IsTrue(r.GetBool(bin));
+			Put("hello");
 			r = Operate(StringOperation.IsNumeric(bin));
 			Assert.IsFalse(r.GetBool(bin));
 		}
@@ -226,7 +230,7 @@ namespace Aerospike.Test
 		{
 			Put("one,two,three");
 			Record r = Operate(StringOperation.Split(bin, ","));
-			Assert.AreEqual(new List<string> { "one", "two", "three" }, r.GetList(bin));
+			CollectionAssert.AreEqual(new List<object> { "one", "two", "three" }, r.GetList(bin));
 		}
 
 		[TestMethod]
@@ -234,7 +238,7 @@ namespace Aerospike.Test
 		{
 			Put("Hello123World");
 			Record r = Operate(StringOperation.Split(bin, "|"));
-			Assert.AreEqual(new List<string> { "Hello123World" }, r.GetList(bin));
+			CollectionAssert.AreEqual(new List<object> { "Hello123World" }, r.GetList(bin));
 		}
 
 		[TestMethod]
@@ -261,7 +265,7 @@ namespace Aerospike.Test
 		{
 			Put("hello");
 			Record r = Operate(StringOperation.ToBlob(bin));
-			Assert.AreEqual(ByteUtil.StringToUtf8("hello"), (byte[])r.GetValue(bin));
+			CollectionAssert.AreEqual(ByteUtil.StringToUtf8("hello"), (byte[])r.GetValue(bin));
 		}
 
 		[TestMethod]
@@ -269,7 +273,7 @@ namespace Aerospike.Test
 		{
 			Put("aGVsbG8=");
 			Record r = Operate(StringOperation.B64Decode(bin));
-			Assert.AreEqual(ByteUtil.StringToUtf8("hello"), (byte[])r.GetValue(bin));
+			CollectionAssert.AreEqual(ByteUtil.StringToUtf8("hello"), (byte[])r.GetValue(bin));
 		}
 
 		//=================================================================
@@ -612,10 +616,10 @@ namespace Aerospike.Test
 			Put("one,two,three");
 			Record r = Operate(StringOperation.Split(bin, ","));
 
-			List<string> tokens = (List<string>)r.GetList(bin);
+			IList tokens = r.GetList(bin);
 			Assert.HasCount(3, tokens);
 			// Each entry should round-trip as a String regardless of internal encoding.
-			foreach (string t in tokens)
+			foreach (object t in tokens)
 			{
 				Assert.IsInstanceOfType(t, typeof(string));
 			}
@@ -678,8 +682,8 @@ namespace Aerospike.Test
 
 			Operate(StringOperation.Upper(policy, bin, CTX.ListIndex(1)));
 
-			List<string> after = (List<string>)client.Get(null, key).GetList(bin);
-			Assert.AreEqual(new List<string> { "alpha", "BETA", "gamma" }, after);
+			IList after = client.Get(null, key).GetList(bin);
+			CollectionAssert.AreEqual(new List<object> { "alpha", "BETA", "gamma" }, after);
 		}
 
 		[TestMethod]
