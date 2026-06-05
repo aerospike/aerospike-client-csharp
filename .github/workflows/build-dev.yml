@@ -13,7 +13,7 @@ permissions:
 # post-merge build that publishes RC artifacts to JFrog.
 #
 # Trigger matrix:
-#   pull_request      → PR validation (build/sign/test, deploy to JFrog)
+#   pull_request      → PR validation (build/test; signing only for trusted PRs)
 #   push to stage     → post-merge build (build/sign/test, deploy to JFrog,
 #                       create release bundle, promote to TEST)
 #   workflow_dispatch → ad-hoc dev build with custom server settings
@@ -72,6 +72,7 @@ jobs:
       uses: ./.github/actions/build
       with:
         sgKey: ${{ secrets.SG_KEY }}
+        sign-client: ${{ github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]') }}
 
     - name: Get version from nupkg
       id: get-version
@@ -82,6 +83,7 @@ jobs:
         echo "version=$version" >> $env:GITHUB_OUTPUT
 
   sign:
+    if: ${{ github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]') }}
     needs: build
     uses: aerospike/shared-workflows/.github/workflows/reusable_sign-artifacts.yaml@8ec712eafbec26c8db8d1183688a5fd806560a95 # v3.5.0
     with:
@@ -107,13 +109,13 @@ jobs:
 
     - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
-    # Resolve test inputs once so PR/push runs (which have no `inputs.*`)
+    # Resolve test inputs once so trusted PR/push runs (which have no `inputs.*`)
     # behave the same as a workflow_dispatch run that accepts all defaults.
     # Notes on the tricky cases:
     #   • `format('{0}', inputs.X)` coerces null → '' for safe string compare,
     #     avoiding GitHub's loose equality where `null == false` is true.
-    #   • For server-type we compare *after* applying the `|| default` fallback
-    #     so PR/push runs get the enterprise features.conf, not an empty string.
+    #   • Untrusted PRs (Dependabot/forks) use the community server so they do
+    #     not need private signing or enterprise features.conf secrets.
     #   • Community server runs are always AP and non-TLS.
     - name: Resolve test inputs
       id: cfg
@@ -123,9 +125,14 @@ jobs:
         IN_SERVER_TYPE: ${{ inputs.server-type }}
         IN_ENABLE_TLS: ${{ format('{0}', inputs.enable-tls) }}
         IN_STRONG_CONSISTENCY: ${{ format('{0}', inputs.strong-consistency) }}
+        IN_TRUSTED_SECRETS: ${{ github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]') }}
       run: |
         SERVER_TAG="${IN_SERVER_TAG:-latest}"
-        SERVER_TYPE="${IN_SERVER_TYPE:-aerospike-server-enterprise}"
+        if [ "$IN_TRUSTED_SECRETS" = "true" ]; then
+          SERVER_TYPE="${IN_SERVER_TYPE:-aerospike-server-enterprise}"
+        else
+          SERVER_TYPE="${IN_SERVER_TYPE:-aerospike-server}"
+        fi
         ENABLE_TLS="${IN_ENABLE_TLS:-false}"
         # Default SC to '1' (enabled). Only flip to '0' when the dispatch input
         # is explicitly false; null/empty (PR/push) keeps the default.
@@ -154,22 +161,22 @@ jobs:
         server-type: ${{ steps.cfg.outputs.server-type }}
         enable-tls: ${{ steps.cfg.outputs.enable-tls }}
         strong-consistency: ${{ steps.cfg.outputs.strong-consistency }}
-        features-content: ${{ steps.cfg.outputs.is-enterprise == 'true' && secrets.AES_FEATURES_CONF || '' }}
+        features-content: ${{ steps.cfg.outputs.is-enterprise == 'true' && (github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]')) && secrets.AES_FEATURES_CONF || '' }}
         oidc-provider: gh-aerospike
         oidc-audience: aerospike
 
-    # PR-only: surface test results as a check + comment on the pull request.
-    # On `push` and `workflow_dispatch` runs there's no PR to attach to.
+    # Trusted PR-only: surface test results as a check + comment on the pull request.
+    # Dependabot/fork PR tokens cannot write checks/comments.
     - name: Publish test results
-      if: ${{ !cancelled() && github.event_name == 'pull_request' }}
+      if: ${{ !cancelled() && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]' }}
       uses: step-security/publish-unit-test-result-action@681100d67b09305624c089873f12c545ee7cbc24 # v2.23.0
       with:
         files: test-results/**/*.trx
         check_name: "Test Results (${{ steps.cfg.outputs.server-tag }})"
 
-    # PR-only: publish example smoke tests as their own result check.
+    # Trusted PR-only: publish example smoke tests as their own result check.
     - name: Publish example run results
-      if: ${{ !cancelled() && github.event_name == 'pull_request' && hashFiles('example-results/**/*.trx') != '' }}
+      if: ${{ !cancelled() && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]' && hashFiles('example-results/**/*.trx') != '' }}
       uses: step-security/publish-unit-test-result-action@681100d67b09305624c089873f12c545ee7cbc24 # v2.23.0
       with:
         files: example-results/**/*.trx

@@ -1,5 +1,5 @@
 ﻿/* 
- * Copyright 2012-2023 Aerospike, Inc.
+ * Copyright 2012-2026 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -101,6 +101,23 @@ namespace Aerospike.Test
 			}
 			catch (Exception)
 			{
+			}
+		}
+
+		[TestMethod]
+		public void UdfErrorPreservesColonMessage()
+		{
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "udfkey-colon-error");
+
+			try
+			{
+				client.Execute(null, key, "record_example", "failWithColon");
+				Assert.Fail("Expected UDF to return an error.");
+			}
+			catch (AerospikeException exception)
+			{
+				Assert.AreEqual(ResultCode.UDF_BAD_RESPONSE, exception.Result);
+				StringAssert.Contains(exception.BaseMessage, "Error: detail: more");
 			}
 		}
 

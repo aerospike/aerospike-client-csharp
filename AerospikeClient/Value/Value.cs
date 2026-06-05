@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2023 Aerospike, Inc.
+ * Copyright 2012-2026 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -200,7 +200,7 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Get blob value instance.
 		/// </summary>
-		static public Value Get(BlobValue value) => value is null ? NullValue.Instance : new BlobValue(value);
+		static public Value Get(BlobValue value) => value is null ? NullValue.Instance : value;
 
 		/// <summary>
 		/// Get GeoJSON value instance.
@@ -261,7 +261,24 @@ namespace Aerospike.Client
 				bool bValue => UseBoolBin ? new BooleanValue(bValue) : new BoolIntValue(bValue),
 				byte byValue => new ByteValue(byValue),
 				sbyte sbValue => new SignedByteValue(sbValue),
+				Enum enumValue => GetEnum(enumValue),
 				_ => new BlobValue(obj),
+			};
+		}
+
+		private static Value GetEnum(Enum value)
+		{
+			return value.GetTypeCode() switch
+			{
+				TypeCode.Int64 => new LongValue(Convert.ToInt64(value)),
+				TypeCode.Int32 => new IntegerValue(Convert.ToInt32(value)),
+				TypeCode.Int16 => new ShortValue(Convert.ToInt16(value)),
+				TypeCode.UInt64 => new UnsignedLongValue(Convert.ToUInt64(value)),
+				TypeCode.UInt32 => new UnsignedIntegerValue(Convert.ToUInt32(value)),
+				TypeCode.UInt16 => new UnsignedShortValue(Convert.ToUInt16(value)),
+				TypeCode.Byte => new ByteValue(Convert.ToByte(value)),
+				TypeCode.SByte => new SignedByteValue(Convert.ToSByte(value)),
+				_ => new BlobValue(value),
 			};
 		}
 		#endregion
@@ -302,6 +319,7 @@ namespace Aerospike.Client
 
 		public bool Equals(Value<T> other)
 		{
+			if (other is null) return false;
 			if (IsNull || other.IsNull) return IsNull && other.IsNull;
 
 			return value.Equals(other.value);
@@ -314,10 +332,10 @@ namespace Aerospike.Client
 			return value.GetHashCode();
 		}
 
-		public static bool operator ==(Value<T> o1, Value<T> o2) => o1?.Equals(o2) ?? false;
-		public static bool operator !=(Value<T> o1, Value<T> o2) => o1 == o2 ? false : true;
+		public static bool operator ==(Value<T> o1, Value<T> o2) => ReferenceEquals(o1, o2) || (o1 is not null && o1.Equals(o2));
+		public static bool operator !=(Value<T> o1, Value<T> o2) => !(o1 == o2);
 
 		public static bool operator ==(Value<T> o1, T o2) => o1?.Equals(o2) ?? false;
-		public static bool operator !=(Value<T> o1, T o2) => o1 == o2 ? false : true;
+		public static bool operator !=(Value<T> o1, T o2) => !(o1 == o2);
 	}
 }

@@ -45,6 +45,11 @@ function writeWithValidation(r,name,value)
     end
 end
 
+-- Raise a Lua error whose message contains colons.
+function failWithColon(r)
+    error("Error: detail: more")
+end
+
 -- Record contains two integer bins, name1 and name2.
 -- For name1 even integers, add value to existing name1 bin.
 -- For name1 integers with a multiple of 5, delete name2 bin.

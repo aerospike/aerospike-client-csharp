@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2025 Aerospike, Inc.
+ * Copyright 2012-2026 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -76,29 +76,27 @@ namespace Aerospike.Client
 
 		private void HandleUdfError(int resultCode)
 		{
-			string ret = (string)Record.bins["FAILURE"];
+			if (Record.bins == null || !Record.bins.TryGetValue("FAILURE", out object obj) || obj == null)
+			{
+				throw new AerospikeException(resultCode);
+			}
+
+			string ret = obj.ToString();
 
 			if (ret == null)
 			{
 				throw new AerospikeException(resultCode);
 			}
 
-			string message;
-			int code;
+			string[] list = ret.Split(':', 4);
 
-			try
+			if (list.Length == 4 && int.TryParse(list[2].Trim(), out int code))
 			{
-				string[] list = ret.Split(":");
-				Int32.TryParse(list[2].Trim(), out code);
-				message = list[0] + ':' + list[1] + ' ' + list[3];
-			}
-			catch (Exception)
-			{
-				// Use generic exception if parse error occurs.
-				throw new AerospikeException(resultCode, ret);
+				string message = list[0] + ':' + list[1] + ' ' + list[3];
+				throw new AerospikeException(code, message);
 			}
 
-			throw new AerospikeException(code, message);
+			throw new AerospikeException(resultCode, ret);
 		}
 	}
 }
