@@ -67,44 +67,6 @@ namespace Aerospike.Client
 		private const int MODULE = 3; // CALL_STRING
 		private const int MODULE_REPR = 4; // CALL_REPR
 
-		// Read ops
-		private const int STRLEN = 0;
-		private const int SUBSTR = 1;
-		private const int CHAR_AT = 2;
-		private const int FIND = 3;
-		private const int CONTAINS = 4;
-		private const int STARTS_WITH = 5;
-		private const int ENDS_WITH = 6;
-		private const int TO_INTEGER = 7;
-		private const int TO_DOUBLE = 8;
-		private const int BYTE_LENGTH = 9;
-		private const int IS_NUMERIC = 10;
-		private const int IS_UPPER = 11;
-		private const int IS_LOWER = 12;
-		private const int TO_BLOB = 13;
-		private const int SPLIT = 14;
-		private const int B64_DECODE = 15;
-		private const int REGEX_COMPARE = 16;
-
-		// Modify ops
-		private const int INSERT = 50;
-		private const int OVERWRITE = 51;
-		private const int CONCAT = 52;
-		private const int SNIP = 53;
-		private const int REPLACE = 54;
-		private const int REPLACE_ALL = 55;
-		private const int UPPER = 56;
-		private const int LOWER = 57;
-		private const int CASE_FOLD = 58;
-		private const int NORMALIZE_NFC = 59;
-		private const int TRIM_START = 60;
-		private const int TRIM_END = 61;
-		private const int TRIM = 62;
-		private const int PAD_START = 63;
-		private const int PAD_END = 64;
-		private const int REPEAT = 65;
-		private const int REGEX_REPLACE = 66;
-
 		//-----------------------------------------------------------------
 		// Read expressions
 		//-----------------------------------------------------------------
@@ -132,7 +94,7 @@ namespace Aerospike.Client
 		/// <returns>integer-typed expression yielding the codepoint count</returns>
 		public static Exp Strlen(Exp src)
 		{
-			byte[] bytes = PackUtil.Pack(STRLEN);
+			byte[] bytes = PackUtil.Pack(StringOperation.STRLEN);
 			return AddRead(src, bytes, Exp.Type.INT);
 		}
 
@@ -152,7 +114,7 @@ namespace Aerospike.Client
 		/// <returns>string-typed expression yielding the substring</returns>
 		public static Exp Substr(Exp start, Exp src)
 		{
-			byte[] bytes = PackUtil.Pack(SUBSTR, start);
+			byte[] bytes = PackUtil.Pack(StringOperation.SUBSTR, start);
 			return AddRead(src, bytes, Exp.Type.STRING);
 		}
 
@@ -172,7 +134,7 @@ namespace Aerospike.Client
 		/// <returns>string-typed expression yielding the substring</returns>
 		public static Exp Substr(Exp start, Exp length, Exp src)
 		{
-			byte[] bytes = PackUtil.Pack(SUBSTR, start, length);
+			byte[] bytes = PackUtil.Pack(StringOperation.SUBSTR, start, length);
 			return AddRead(src, bytes, Exp.Type.STRING);
 		}
 
@@ -191,7 +153,7 @@ namespace Aerospike.Client
 		/// <returns>string-typed expression yielding a single-codepoint string</returns>
 		public static Exp CharAt(Exp index, Exp src)
 		{
-			byte[] bytes = PackUtil.Pack(CHAR_AT, index);
+			byte[] bytes = PackUtil.Pack(StringOperation.CHAR_AT, index);
 			return AddRead(src, bytes, Exp.Type.STRING);
 		}
 
@@ -210,7 +172,7 @@ namespace Aerospike.Client
 		/// <returns>integer-typed expression: codepoint index, or -1 if absent</returns>
 		public static Exp Find(Exp needle, Exp src)
 		{
-			byte[] bytes = PackUtil.Pack(FIND, needle);
+			byte[] bytes = PackUtil.Pack(StringOperation.FIND, needle);
 			return AddRead(src, bytes, Exp.Type.INT);
 		}
 
@@ -231,7 +193,7 @@ namespace Aerospike.Client
 		/// <returns>integer-typed expression: codepoint index, or -1 if absent</returns>
 		public static Exp Find(Exp needle, Exp occurrence, Exp src)
 		{
-			byte[] bytes = PackUtil.Pack(FIND, needle, occurrence);
+			byte[] bytes = PackUtil.Pack(StringOperation.FIND, needle, occurrence);
 			return AddRead(src, bytes, Exp.Type.INT);
 		}
 
@@ -250,7 +212,7 @@ namespace Aerospike.Client
 		/// <returns>boolean-typed expression indicating whether the substring matched</returns>
 		public static Exp Contains(Exp needle, Exp src)
 		{
-			byte[] bytes = PackUtil.Pack(CONTAINS, needle);
+			byte[] bytes = PackUtil.Pack(StringOperation.CONTAINS, needle);
 			return AddRead(src, bytes, Exp.Type.BOOL);
 		}
 
@@ -268,7 +230,7 @@ namespace Aerospike.Client
 		/// <returns>boolean-typed expression indicating whether the prefix matched</returns>
 		public static Exp StartsWith(Exp prefix, Exp src)
 		{
-			byte[] bytes = PackUtil.Pack(STARTS_WITH, prefix);
+			byte[] bytes = PackUtil.Pack(StringOperation.STARTS_WITH, prefix);
 			return AddRead(src, bytes, Exp.Type.BOOL);
 		}
 
@@ -286,7 +248,7 @@ namespace Aerospike.Client
 		/// <returns>boolean-typed expression indicating whether the suffix matched</returns>
 		public static Exp EndsWith(Exp suffix, Exp src)
 		{
-			byte[] bytes = PackUtil.Pack(ENDS_WITH, suffix);
+			byte[] bytes = PackUtil.Pack(StringOperation.ENDS_WITH, suffix);
 			return AddRead(src, bytes, Exp.Type.BOOL);
 		}
 
@@ -303,7 +265,7 @@ namespace Aerospike.Client
 		/// <returns>integer-typed expression yielding the parsed int64</returns>
 		public static Exp ToInteger(Exp src)
 		{
-			byte[] bytes = PackUtil.Pack(TO_INTEGER);
+			byte[] bytes = PackUtil.Pack(StringOperation.TO_INTEGER);
 			return AddRead(src, bytes, Exp.Type.INT);
 		}
 
@@ -320,7 +282,7 @@ namespace Aerospike.Client
 		/// <returns>float-typed expression yielding the parsed double</returns>
 		public static Exp ToDouble(Exp src)
 		{
-			byte[] bytes = PackUtil.Pack(TO_DOUBLE);
+			byte[] bytes = PackUtil.Pack(StringOperation.TO_DOUBLE);
 			return AddRead(src, bytes, Exp.Type.FLOAT);
 		}
 
@@ -338,7 +300,7 @@ namespace Aerospike.Client
 		/// <returns>integer-typed expression yielding the UTF-8 byte length</returns>
 		public static Exp ByteLength(Exp src)
 		{
-			byte[] bytes = PackUtil.Pack(BYTE_LENGTH);
+			byte[] bytes = PackUtil.Pack(StringOperation.BYTE_LENGTH);
 			return AddRead(src, bytes, Exp.Type.INT);
 		}
 
@@ -355,7 +317,7 @@ namespace Aerospike.Client
 		/// <returns>boolean-typed expression indicating whether the source is numeric</returns>
 		public static Exp IsNumeric(Exp src)
 		{
-			byte[] bytes = PackUtil.Pack(IS_NUMERIC);
+			byte[] bytes = PackUtil.Pack(StringOperation.IS_NUMERIC);
 			return AddRead(src, bytes, Exp.Type.BOOL);
 		}
 
@@ -374,7 +336,7 @@ namespace Aerospike.Client
 		/// <returns>boolean-typed expression indicating whether the source is numeric of the given type</returns>
 		public static Exp IsNumeric(StringNumericType numericType, Exp src)
 		{
-			byte[] bytes = PackUtil.Pack(IS_NUMERIC, (int)numericType);
+			byte[] bytes = PackUtil.Pack(StringOperation.IS_NUMERIC, (int)numericType);
 			return AddRead(src, bytes, Exp.Type.BOOL);
 		}
 
@@ -391,7 +353,7 @@ namespace Aerospike.Client
 		/// <returns>boolean-typed expression indicating whether the source is uppercase</returns>
 		public static Exp IsUpper(Exp src)
 		{
-			byte[] bytes = PackUtil.Pack(IS_UPPER);
+			byte[] bytes = PackUtil.Pack(StringOperation.IS_UPPER);
 			return AddRead(src, bytes, Exp.Type.BOOL);
 		}
 
@@ -408,7 +370,7 @@ namespace Aerospike.Client
 		/// <returns>boolean-typed expression indicating whether the source is lowercase</returns>
 		public static Exp IsLower(Exp src)
 		{
-			byte[] bytes = PackUtil.Pack(IS_LOWER);
+			byte[] bytes = PackUtil.Pack(StringOperation.IS_LOWER);
 			return AddRead(src, bytes, Exp.Type.BOOL);
 		}
 
@@ -424,7 +386,7 @@ namespace Aerospike.Client
 		/// <returns>blob-typed expression yielding the UTF-8 byte array</returns>
 		public static Exp ToBlob(Exp src)
 		{
-			byte[] bytes = PackUtil.Pack(TO_BLOB);
+			byte[] bytes = PackUtil.Pack(StringOperation.TO_BLOB);
 			return AddRead(src, bytes, Exp.Type.BLOB);
 		}
 
@@ -442,7 +404,7 @@ namespace Aerospike.Client
 		/// <returns>list-typed expression yielding a list of single-codepoint strings</returns>
 		public static Exp Split(Exp src)
 		{
-			byte[] bytes = PackUtil.Pack(SPLIT);
+			byte[] bytes = PackUtil.Pack(StringOperation.SPLIT);
 			return AddRead(src, bytes, Exp.Type.LIST);
 		}
 
@@ -461,7 +423,7 @@ namespace Aerospike.Client
 		/// <returns>list-typed expression yielding the token list</returns>
 		public static Exp Split(Exp separator, Exp src)
 		{
-			byte[] bytes = PackUtil.Pack(SPLIT, separator);
+			byte[] bytes = PackUtil.Pack(StringOperation.SPLIT, separator);
 			return AddRead(src, bytes, Exp.Type.LIST);
 		}
 
@@ -478,7 +440,7 @@ namespace Aerospike.Client
 		/// <returns>blob-typed expression yielding the decoded bytes</returns>
 		public static Exp B64Decode(Exp src)
 		{
-			byte[] bytes = PackUtil.Pack(B64_DECODE);
+			byte[] bytes = PackUtil.Pack(StringOperation.B64_DECODE);
 			return AddRead(src, bytes, Exp.Type.BLOB);
 		}
 
@@ -497,7 +459,7 @@ namespace Aerospike.Client
 		/// <returns>boolean-typed expression indicating whether the pattern matched</returns>
 		public static Exp RegexCompare(Exp pattern, Exp src)
 		{
-			byte[] bytes = PackUtil.Pack(REGEX_COMPARE, pattern);
+			byte[] bytes = PackUtil.Pack(StringOperation.REGEX_COMPARE, pattern);
 			return AddRead(src, bytes, Exp.Type.BOOL);
 		}
 
@@ -519,7 +481,7 @@ namespace Aerospike.Client
 		/// <returns>boolean-typed expression indicating whether the pattern matched</returns>
 		public static Exp RegexCompare(Exp pattern, StringRegexFlags regexFlags, Exp src)
 		{
-			byte[] bytes = PackUtil.Pack(REGEX_COMPARE, pattern, (int)regexFlags);
+			byte[] bytes = PackUtil.Pack(StringOperation.REGEX_COMPARE, pattern, (int)regexFlags);
 			return AddRead(src, bytes, Exp.Type.BOOL);
 		}
 
@@ -546,7 +508,7 @@ namespace Aerospike.Client
 		/// <returns>string-typed expression yielding the modified string</returns>
 		public static Exp Insert(StringPolicy policy, Exp index, Exp value, Exp src)
 		{
-			byte[] bytes = PackUtil.Pack(INSERT, index, value, (int)policy.flags);
+			byte[] bytes = PackUtil.Pack(StringOperation.INSERT, index, value, (int)policy.flags);
 			return AddModify(src, bytes);
 		}
 
@@ -570,7 +532,7 @@ namespace Aerospike.Client
 		/// <returns>string-typed expression yielding the modified string</returns>
 		public static Exp Overwrite(StringPolicy policy, Exp index, Exp value, Exp src)
 		{
-			byte[] bytes = PackUtil.Pack(OVERWRITE, index, value, (int)policy.flags);
+			byte[] bytes = PackUtil.Pack(StringOperation.OVERWRITE, index, value, (int)policy.flags);
 			return AddModify(src, bytes);
 		}
 
@@ -593,7 +555,7 @@ namespace Aerospike.Client
 		/// <returns>string-typed expression yielding the modified string</returns>
 		public static Exp Concat(StringPolicy policy, Exp values, Exp src)
 		{
-			byte[] bytes = PackUtil.Pack(CONCAT, values, (int)policy.flags);
+			byte[] bytes = PackUtil.Pack(StringOperation.CONCAT, values, (int)policy.flags);
 			return AddModify(src, bytes);
 		}
 
@@ -615,7 +577,7 @@ namespace Aerospike.Client
 		/// <returns>string-typed expression yielding the modified string</returns>
 		public static Exp Snip(StringPolicy policy, Exp start, Exp src)
 		{
-			byte[] bytes = PackUtil.Pack(SNIP, start, (int)policy.flags);
+			byte[] bytes = PackUtil.Pack(StringOperation.SNIP, start, (int)policy.flags);
 			return AddModify(src, bytes);
 		}
 
@@ -638,7 +600,7 @@ namespace Aerospike.Client
 		/// <returns>string-typed expression yielding the modified string</returns>
 		public static Exp Snip(StringPolicy policy, Exp start, Exp end, Exp src)
 		{
-			byte[] bytes = PackUtil.Pack(SNIP, start, end, (int)policy.flags);
+			byte[] bytes = PackUtil.Pack(StringOperation.SNIP, start, end, (int)policy.flags);
 			return AddModify(src, bytes);
 		}
 
@@ -661,7 +623,7 @@ namespace Aerospike.Client
 		/// <returns>string-typed expression yielding the modified string</returns>
 		public static Exp Replace(StringPolicy policy, Exp needle, Exp replacement, Exp src)
 		{
-			byte[] bytes = PackReplace(REPLACE, needle, replacement, (int)policy.flags);
+			byte[] bytes = PackReplace(StringOperation.REPLACE, needle, replacement, (int)policy.flags);
 			return AddModify(src, bytes);
 		}
 
@@ -684,7 +646,7 @@ namespace Aerospike.Client
 		/// <returns>string-typed expression yielding the modified string</returns>
 		public static Exp ReplaceAll(StringPolicy policy, Exp needle, Exp replacement, Exp src)
 		{
-			byte[] bytes = PackReplace(REPLACE_ALL, needle, replacement, (int)policy.flags);
+			byte[] bytes = PackReplace(StringOperation.REPLACE_ALL, needle, replacement, (int)policy.flags);
 			return AddModify(src, bytes);
 		}
 
@@ -702,7 +664,7 @@ namespace Aerospike.Client
 		/// <returns>string-typed expression yielding the uppercased string</returns>
 		public static Exp Upper(StringPolicy policy, Exp src)
 		{
-			byte[] bytes = PackUtil.Pack(UPPER, (int)policy.flags);
+			byte[] bytes = PackUtil.Pack(StringOperation.UPPER, (int)policy.flags);
 			return AddModify(src, bytes);
 		}
 
@@ -720,7 +682,7 @@ namespace Aerospike.Client
 		/// <returns>string-typed expression yielding the lowercased string</returns>
 		public static Exp Lower(StringPolicy policy, Exp src)
 		{
-			byte[] bytes = PackUtil.Pack(LOWER, (int)policy.flags);
+			byte[] bytes = PackUtil.Pack(StringOperation.LOWER, (int)policy.flags);
 			return AddModify(src, bytes);
 		}
 
@@ -739,7 +701,7 @@ namespace Aerospike.Client
 		/// <returns>string-typed expression yielding the case-folded string</returns>
 		public static Exp CaseFold(StringPolicy policy, Exp src)
 		{
-			byte[] bytes = PackUtil.Pack(CASE_FOLD, (int)policy.flags);
+			byte[] bytes = PackUtil.Pack(StringOperation.CASE_FOLD, (int)policy.flags);
 			return AddModify(src, bytes);
 		}
 
@@ -757,7 +719,7 @@ namespace Aerospike.Client
 		/// <returns>string-typed expression yielding the NFC-normalized string</returns>
 		public static Exp NormalizeNFC(StringPolicy policy, Exp src)
 		{
-			byte[] bytes = PackUtil.Pack(NORMALIZE_NFC, (int)policy.flags);
+			byte[] bytes = PackUtil.Pack(StringOperation.NORMALIZE_NFC, (int)policy.flags);
 			return AddModify(src, bytes);
 		}
 
@@ -776,7 +738,7 @@ namespace Aerospike.Client
 		/// <returns>string-typed expression yielding the left-trimmed string</returns>
 		public static Exp TrimStart(StringPolicy policy, Exp src)
 		{
-			byte[] bytes = PackUtil.Pack(TRIM_START, (int)policy.flags);
+			byte[] bytes = PackUtil.Pack(StringOperation.TRIM_START, (int)policy.flags);
 			return AddModify(src, bytes);
 		}
 
@@ -795,7 +757,7 @@ namespace Aerospike.Client
 		/// <returns>string-typed expression yielding the right-trimmed string</returns>
 		public static Exp TrimEnd(StringPolicy policy, Exp src)
 		{
-			byte[] bytes = PackUtil.Pack(TRIM_END, (int)policy.flags);
+			byte[] bytes = PackUtil.Pack(StringOperation.TRIM_END, (int)policy.flags);
 			return AddModify(src, bytes);
 		}
 
@@ -814,7 +776,7 @@ namespace Aerospike.Client
 		/// <returns>string-typed expression yielding the trimmed string</returns>
 		public static Exp Trim(StringPolicy policy, Exp src)
 		{
-			byte[] bytes = PackUtil.Pack(TRIM, (int)policy.flags);
+			byte[] bytes = PackUtil.Pack(StringOperation.TRIM, (int)policy.flags);
 			return AddModify(src, bytes);
 		}
 
@@ -837,7 +799,7 @@ namespace Aerospike.Client
 		/// <returns>string-typed expression yielding the padded string</returns>
 		public static Exp PadStart(StringPolicy policy, Exp targetLength, Exp padString, Exp src)
 		{
-			byte[] bytes = PackUtil.Pack(PAD_START, targetLength, padString, (int)policy.flags);
+			byte[] bytes = PackUtil.Pack(StringOperation.PAD_START, targetLength, padString, (int)policy.flags);
 			return AddModify(src, bytes);
 		}
 
@@ -860,7 +822,7 @@ namespace Aerospike.Client
 		/// <returns>string-typed expression yielding the padded string</returns>
 		public static Exp PadEnd(StringPolicy policy, Exp targetLength, Exp padString, Exp src)
 		{
-			byte[] bytes = PackUtil.Pack(PAD_END, targetLength, padString, (int)policy.flags);
+			byte[] bytes = PackUtil.Pack(StringOperation.PAD_END, targetLength, padString, (int)policy.flags);
 			return AddModify(src, bytes);
 		}
 
@@ -881,7 +843,7 @@ namespace Aerospike.Client
 		/// <returns>string-typed expression yielding the repeated string</returns>
 		public static Exp Repeat(StringPolicy policy, Exp count, Exp src)
 		{
-			byte[] bytes = PackUtil.Pack(REPEAT, count, (int)policy.flags);
+			byte[] bytes = PackUtil.Pack(StringOperation.REPEAT, count, (int)policy.flags);
 			return AddModify(src, bytes);
 		}
 
@@ -986,7 +948,7 @@ namespace Aerospike.Client
 		{
 			Packer packer = new Packer();
 			packer.PackArrayBegin(3);
-			packer.PackNumber(REGEX_REPLACE);
+			packer.PackNumber(StringOperation.REGEX_REPLACE);
 			packer.PackArrayBegin(2);
 			packer.PackNumber(QUOTED);
 			packer.PackArrayBegin(2);

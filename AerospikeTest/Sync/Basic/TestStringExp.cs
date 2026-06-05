@@ -45,7 +45,7 @@ namespace Aerospike.Test
 		[ClassInitialize]
 		public static void ServerVersionCheck(TestContext testContext)
 		{
-			CheckServerVersion(new Version(8, 1, 3, 0), "string operations");
+			//CheckServerVersion(new Version(8, 1, 3, 0), "string operations");
 		}
 
 		//-----------------------------------------------------------------
@@ -176,9 +176,11 @@ namespace Aerospike.Test
 			Assert.IsTrue(Eval(StringExp.IsNumeric(Exp.StringBin(bin))).GetBool(var));
 			// INT-only: still passes for pure-digit string.
 			Assert.IsTrue(Eval(StringExp.IsNumeric(StringNumericType.INT, Exp.StringBin(bin))).GetBool(var));
+			//Assert.IsFalse(Eval(StringExp.IsNumeric(StringNumericType.FLOAT, Exp.StringBin(bin))).GetBool(var));
 			Put("3.14");
 			// INT-only: fails for a float-shaped string.
 			Assert.IsFalse(Eval(StringExp.IsNumeric(StringNumericType.INT, Exp.StringBin(bin))).GetBool(var));
+			Assert.IsTrue(Eval(StringExp.IsNumeric(StringNumericType.FLOAT, Exp.StringBin(bin))).GetBool(var));
 			Put("hello");
 			Assert.IsFalse(Eval(StringExp.IsNumeric(Exp.StringBin(bin))).GetBool(var));
 		}

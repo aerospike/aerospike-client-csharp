@@ -44,42 +44,42 @@ namespace Aerospike.Client
 	public static class StringOperation
 	{
 		// Read ops
-		private const int STRLEN = 0;
-		private const int SUBSTR = 1;
-		private const int CHAR_AT = 2;
-		private const int FIND = 3;
-		private const int CONTAINS = 4;
-		private const int STARTS_WITH = 5;
-		private const int ENDS_WITH = 6;
-		private const int TO_INTEGER = 7;
-		private const int TO_DOUBLE = 8;
-		private const int BYTE_LENGTH = 9;
-		private const int IS_NUMERIC = 10;
-		private const int IS_UPPER = 11;
-		private const int IS_LOWER = 12;
-		private const int TO_BLOB = 13;
-		private const int SPLIT = 14;
-		private const int B64_DECODE = 15;
-		private const int REGEX_COMPARE = 16;
+		internal const int STRLEN = 0;
+		internal const int SUBSTR = 1;
+		internal const int CHAR_AT = 2;
+		internal const int FIND = 3;
+		internal const int CONTAINS = 4;
+		internal const int STARTS_WITH = 5;
+		internal const int ENDS_WITH = 6;
+		internal const int TO_INTEGER = 7;
+		internal const int TO_DOUBLE = 8;
+		internal const int BYTE_LENGTH = 9;
+		internal const int IS_NUMERIC = 10;
+		internal const int IS_UPPER = 11;
+		internal const int IS_LOWER = 12;
+		internal const int TO_BLOB = 13;
+		internal const int SPLIT = 14;
+		internal const int B64_DECODE = 15;
+		internal const int REGEX_COMPARE = 16;
 
 		// Modify ops
-		private const int INSERT = 50;
-		private const int OVERWRITE = 51;
-		private const int CONCAT = 52;
-		private const int SNIP = 53;
-		private const int REPLACE = 54;
-		private const int REPLACE_ALL = 55;
-		private const int UPPER = 56;
-		private const int LOWER = 57;
-		private const int CASE_FOLD = 58;
-		private const int NORMALIZE_NFC = 59;
-		private const int TRIM_START = 60;
-		private const int TRIM_END = 61;
-		private const int TRIM = 62;
-		private const int PAD_START = 63;
-		private const int PAD_END = 64;
-		private const int REPEAT = 65;
-		private const int REGEX_REPLACE = 66;
+		internal const int INSERT = 50;
+		internal const int OVERWRITE = 51;
+		internal const int CONCAT = 52;
+		internal const int SNIP = 53;
+		internal const int REPLACE = 54;
+		internal const int REPLACE_ALL = 55;
+		internal const int UPPER = 56;
+		internal const int LOWER = 57;
+		internal const int CASE_FOLD = 58;
+		internal const int NORMALIZE_NFC = 59;
+		internal const int TRIM_START = 60;
+		internal const int TRIM_END = 61;
+		internal const int TRIM = 62;
+		internal const int PAD_START = 63;
+		internal const int PAD_END = 64;
+		internal const int REPEAT = 65;
+		internal const int REGEX_REPLACE = 66;
 
 		//-----------------------------------------------------------------
 		// Read operations
