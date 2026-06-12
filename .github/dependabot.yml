@@ -22,3 +22,28 @@ updates:
           patterns:
             - "*"
     open-pull-requests-limit: 5
+
+  - package-ecosystem: nuget
+    directory: /AerospikeAdmin
+    schedule:
+      interval: weekly
+
+  - package-ecosystem: nuget
+    directory: /AerospikeBenchmarks
+    schedule:
+      interval: weekly
+
+  - package-ecosystem: nuget
+    directory: /AerospikeClient
+    schedule:
+      interval: weekly
+
+  - package-ecosystem: nuget
+    directory: /AerospikeExample
+    schedule:
+      interval: weekly
+
+  - package-ecosystem: nuget
+    directory: /AerospikeTest
+    schedule:
+      interval: weekly
