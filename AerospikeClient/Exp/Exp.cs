@@ -521,9 +521,14 @@ namespace Aerospike.Client
 		/// Exp.RegexCompare("prefix.*suffix", RegexFlag.ICASE | RegexFlag.NEWLINE, Exp.StringBin("a"))
 		/// </code>
 		/// </example>
+		/// <para>
+		/// This legacy comparison uses POSIX regex and is not Unicode/DBCS-aware; the string-package
+		/// equivalent uses ICU regex and provides consistent Unicode handling across the string ops.
+		/// </para>
 		/// <param name="regex">regular expression string</param>
 		/// <param name="flags">regular expression bit flags. See <see cref="Aerospike.Client.RegexFlag"/></param>
 		/// <param name="bin">string bin or string value expression</param>
+		[Obsolete("Deprecated as of client 8.5+, use RegexCompare(Exp pattern, StringRegexFlags regexFlags, Exp src) instead")]
 		public static Exp RegexCompare(string regex, uint flags, Exp bin)
 		{
 			return new Regex(bin, regex, flags);

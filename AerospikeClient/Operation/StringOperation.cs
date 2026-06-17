@@ -80,6 +80,8 @@ namespace Aerospike.Client
 		internal const int PAD_END = 64;
 		internal const int REPEAT = 65;
 		internal const int REGEX_REPLACE = 66;
+		internal const int APPEND = 67;
+		internal const int PREPEND = 68;
 
 		//-----------------------------------------------------------------
 		// Read operations
@@ -142,23 +144,25 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
-		/// Create string Substr operation that reads <see cref="int"/> length codepoints
-		/// starting at <see cref="int"/> start. Negative indexes count from the end of the string.
+		/// Create string Substr operation that returns the codepoints of the bin
+		/// from <see cref="int"/> start (inclusive) to <see cref="int"/> end (exclusive). Negative indexes
+		/// count from the end of the string. If, after negative-index normalization,
+		/// <see cref="int"/> start >= <see cref="int"/> end, the result is the empty string.
 		/// </summary>
 		/// <example>
 		/// <code>
-		/// // "hello world" -> "hello"
+		/// // "hello world" [0, 5) -> "hello"
 		/// Record r = client.Operate(null, key, StringOperation.Substr("text", 0, 5));
 		/// </code>
 		/// </example>
 		/// <param name="binName">name of the string bin</param>
-		/// <param name="start">starting codepoint index (negative counts from end)</param>
-		/// <param name="length">number of codepoints to read (clamped to remaining length)</param>
+		/// <param name="start">starting codepoint index, inclusive (negative counts from end)</param>
+		/// <param name="end">end codepoint index, exclusive (negative counts from end)</param>
 		/// <param name="ctx">optional path into a string nested inside a list or map</param>
 		/// <returns>read operation returning the substring</returns>
-		public static Operation Substr(string binName, int start, int length, params CTX[] ctx)
+		public static Operation Substr(string binName, int start, int end, params CTX[] ctx)
 		{
-			byte[] bytes = PackStringOp(SUBSTR, start, length, ctx);
+			byte[] bytes = PackStringOp(SUBSTR, start, end, ctx);
 			return new Operation(Operation.Type.STRING_READ, binName, new Value.BytesValue(bytes, ParticleType.STRING));
 		}
 
@@ -300,7 +304,7 @@ namespace Aerospike.Client
 		/// </example>
 		/// <param name="binName">name of the string bin</param>
 		/// <param name="ctx">optional path into a string nested inside a list or map</param>
-		/// <returns>read operation returning the parsed integer value</returns>
+		/// <returns>read operation returning the parsed int</returns>
 		public static Operation ToInteger(string binName, params CTX[] ctx)
 		{
 			byte[] bytes = PackStringOp(TO_INTEGER, ctx);
@@ -647,24 +651,54 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
-		/// Create string Snip operation that removes codepoints starting at
-		/// codepoint <see cref="int"/> start through the end of the string.
+		/// Create string Append operation that appends <see cref="string"/> value to the end of the bin.
 		/// </summary>
+		/// <para>
+		/// Unlike the legacy <see cref="Operation.Append(Bin)"/>, this
+		/// operation is Unicode/DBCS-aware and shares the consistent <see cref="StringPolicy"/> / <see cref="CTX"/> interface of
+		/// the rest of the string package.
+		/// </para>
 		/// <example>
 		/// <code>
-		/// // "hello world" snip from 5 -> "hello"
+		/// // "hello" + append "!" -> "hello!"
 		/// client.Operate(null, key,
-		///     StringOperation.Snip(StringPolicy.Default, "text", 5));
+		///     StringOperation.Append(StringPolicy.Default, "text", "!"));
 		/// </code>
 		/// </example>
 		/// <param name="policy">write policy controlling NO_FAIL semantics</param>
 		/// <param name="binName">name of the string bin</param>
-		/// <param name="start">first codepoint to remove (inclusive)</param>
+		/// <param name="value">text to append to the end of the string</param>
 		/// <param name="ctx">optional path into a string nested inside a list or map</param>
 		/// <returns>modify operation</returns>
-		public static Operation Snip(StringPolicy policy, string binName, int start, params CTX[] ctx)
+		public static Operation Append(StringPolicy policy, string binName, string value, params CTX[] ctx)
 		{
-			byte[] bytes = PackStringOp(SNIP, start, (int)policy.flags, ctx);
+			byte[] bytes = PackStringOp(APPEND, Value.Get(value), (int)policy.flags, ctx);
+			return new Operation(Operation.Type.STRING_MODIFY, binName, new Value.BytesValue(bytes, ParticleType.STRING));
+		}
+
+		/// <summary>
+		/// Create string Prepend operation that prepends <see cref="string"/> value to the start of the bin.
+		/// </summary>
+	    /// <para>
+		/// Unlike the legacy <see cref="Operation.Prepend(Bin)"/>, this
+		/// operation is Unicode/DBCS-aware and shares the consistent <see cref="StringPolicy"/> / <see cref="CTX"/> interface of
+		/// the rest of the string package.
+		/// </para>
+		/// <example>
+		/// <code>
+		/// // "world" prepend "hello " -> "hello world"
+		/// client.Operate(null, key,
+		///     StringOperation.Prepend(StringPolicy.Default, "text", "hello "));
+		/// </code>
+		/// </example>
+		/// <param name="policy">write policy controlling NO_FAIL semantics</param>
+		/// <param name="binName">name of the string bin</param>
+		/// <param name="value">text to prepend to the start of the string</param>
+		/// <param name="ctx">optional path into a string nested inside a list or map</param>
+		/// <returns>modify operation</returns>
+		public static Operation Prepend(StringPolicy policy, string binName, string value, params CTX[] ctx)
+		{
+			byte[] bytes = PackStringOp(PREPEND, Value.Get(value), (int)policy.flags, ctx);
 			return new Operation(Operation.Type.STRING_MODIFY, binName, new Value.BytesValue(bytes, ParticleType.STRING));
 		}
 
@@ -955,7 +989,7 @@ namespace Aerospike.Client
 		/// client.Operate(null, key, StringOperation.RegexReplace(StringPolicy.Default, "text", "[0-9]+", "NUM", StringRegexFlags.GLOBAL));
 		/// </code>
 		/// </example>
-		/// <param name="policy">write policy controlling NO_FAIL semantics</param>
+		/// <param name="policy">kept for API symmetry with other modify ops; unused because the server's regex_replace op does not accept policy flags</param>
 		/// <param name="binName">name of the string bin</param>
 		/// <param name="pattern">ICU-syntax regex pattern (must be valid UTF-8)</param>
 		/// <param name="replacement">replacement text (must be valid UTF-8)</param>
@@ -989,7 +1023,7 @@ namespace Aerospike.Client
 		/// Unlike the other builders in this class, <see cref="ToString"/> does not accept a
 		/// <see cref="CTX"/>. The other string operations are sent as <see cref="Operation.Type.STRING_READ"/> /
 		/// <see cref="Operation.Type.STRING_MODIFY"/> wire ops whose msgpack payload carries the sub-op code,
-		/// arguments, and (when <see cref="CTX"/> is non-empty) a <see cref="Operation.Type.TO_STRING"/> wrapper that the server's <see cref="CTX"/>-aware dispatcher unwraps to descend into a list
+		/// arguments, and (when <see cref="CTX"/> is non-empty) a <c>[0xFF, ctx_list, inner_op]</c> wrapper that the server's <see cref="CTX"/>-aware dispatcher unwraps to descend into a list
 		/// or map. <see cref="ToString"/> is a separate top-level wire op
 		/// (<see cref="Operation.Type.TO_STRING"/>) that carries no payload at all — the bin is
 		/// referenced solely by the operation header — and the server-side handler for it

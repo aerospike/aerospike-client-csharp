@@ -119,22 +119,24 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
-		/// Create expression that returns <see cref="Exp"/> length codepoints of <see cref="Exp"/> src starting
-		/// at codepoint <see cref="Exp"/> start. Negative indexes count from the end.
+		/// Create expression that returns the codepoints of <see cref="Exp"/> src from <see cref="Exp"/> start
+		/// (inclusive) to <see cref="Exp"/> end (exclusive). Negative indexes count from the end.
+		/// If, after negative-index normalization, <see cref="Exp"/> start >= <see cref="Exp"/> end, the result is the
+		/// empty string.
 		/// </summary>
 		/// <example>
 		/// <code>
-		/// // "hello world" from 0, length 5 -> "hello"
+		/// // "hello world" [0, 5) -> "hello"
 		/// Exp head = StringExp.Substr(Exp.Val(0), Exp.Val(5), Exp.StringBin("text"));
 		/// </code>
 		/// </example>
-		/// <param name="start">starting codepoint index (negative counts from end)</param>
-		/// <param name="length">number of codepoints to read (clamped to remaining length)</param>
+		/// <param name="start">starting codepoint index, inclusive (negative counts from end)</param>
+		/// <param name="end">end codepoint index, exclusive (negative counts from end)</param>
 		/// <param name="src">source string expression</param>
 		/// <returns>string-typed expression yielding the substring</returns>
-		public static Exp Substr(Exp start, Exp length, Exp src)
+		public static Exp Substr(Exp start, Exp end, Exp src)
 		{
-			byte[] bytes = PackUtil.Pack(StringOperation.SUBSTR, start, length);
+			byte[] bytes = PackUtil.Pack(StringOperation.SUBSTR, start, end);
 			return AddRead(src, bytes, Exp.Type.STRING);
 		}
 
@@ -560,24 +562,48 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
-		/// Create expression that removes codepoints from <see cref="Exp"/> src starting at codepoint
-		/// <see cref="Exp"/> start through the end, returning the resulting string. Does not modify
-		/// the underlying bin.
+		/// Create expression that appends <see cref="Exp"/> value to the end of <see cref="Exp"/> src, returning the resulting string. Does not modify the underlying bin.
 		/// </summary>
+		/// <para>
+		/// Unicode/DBCS-aware counterpart to the legacy byte-level append; provides a consistent
+		/// string-package interface alongside <see cref="Exp"/>.
+		/// </para>
 		/// <example>
 		/// <code>
-		/// // "hello world" snip from 5 -> "hello"
-		/// Exp out = StringExp.Snip(StringPolicy.Default,
-		///     Exp.Val(5), Exp.StringBin("text"));
+		/// // "hello" + append "!" -> "hello!"
+		/// Exp out = StringExp.Append(StringPolicy.Default, Exp.Val("!"), Exp.StringBin("text"));
 		/// </code>
 		/// </example>
 		/// <param name="policy">write policy controlling NO_FAIL semantics</param>
-		/// <param name="start">first codepoint to remove (inclusive)</param>
+		/// <param name="value">expression yielding the string to append to the end</param>
 		/// <param name="src">source string expression</param>
 		/// <returns>string-typed expression yielding the modified string</returns>
-		public static Exp Snip(StringPolicy policy, Exp start, Exp src)
+		public static Exp Append(StringPolicy policy, Exp value, Exp src)
 		{
-			byte[] bytes = PackUtil.Pack(StringOperation.SNIP, start, (int)policy.flags);
+			byte[] bytes = PackUtil.Pack(StringOperation.APPEND, value, (int)policy.flags);
+			return AddModify(src, bytes);
+		}
+
+		/// <summary>
+		/// Create expression that prepends <see cref="Exp"/> value to the start of <see cref="Exp"/> src, returning the resulting string. Does not modify the underlying bin.
+		/// </summary>
+		/// <para>
+		/// Unicode/DBCS-aware counterpart to the legacy byte-level prepend; provides a consistent
+		/// string-package interface alongside <see cref="Exp"/>.
+		/// </para>
+		/// <example>
+		/// <code>
+		/// // "world" prepend "hello " -> "hello world"
+		/// Exp out = StringExp.Prepend(StringPolicy.Default, Exp.Val("hello "), Exp.StringBin("text"));
+		/// </code>
+		/// </example>
+		/// <param name="policy">write policy controlling NO_FAIL semantics</param>
+		/// <param name="value">expression yielding the string to prepend to the start</param>
+		/// <param name="src">source string expression</param>
+		/// <returns>string-typed expression yielding the modified string</returns>
+		public static Exp Prepend(StringPolicy policy, Exp value, Exp src)
+		{
+			byte[] bytes = PackUtil.Pack(StringOperation.PREPEND, value, (int)policy.flags);
 			return AddModify(src, bytes);
 		}
 

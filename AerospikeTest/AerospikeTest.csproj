@@ -12,7 +12,6 @@
     <Authors>Aerospike</Authors>
     <Platforms>AnyCPU</Platforms>
     <IsTestProject>true</IsTestProject>
-    <TestingPlatformDotnetTestSupport>true</TestingPlatformDotnetTestSupport>
     <EnableMSTestRunner>true</EnableMSTestRunner>
   </PropertyGroup>
   <ItemGroup>

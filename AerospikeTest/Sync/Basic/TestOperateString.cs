@@ -98,6 +98,113 @@ namespace Aerospike.Test
 			Assert.AreEqual(5L, r.GetLong(bin));
 		}
 
+		//-----------------------------------------------------------------
+		// Multi-byte / codepoint-vs-byte tests
+		//
+		// Server-side indices and strlen are in Unicode code points, not bytes
+		// and not Csharp UTF-16 chars. These tests anchor the contract for Csharp
+		// callers whose String.length() intuition is UTF-16 code-unit count.
+		//-----------------------------------------------------------------
+
+		[TestMethod]
+		public void StrlenCountsCodepointsNotCSharpChars()
+		{
+			// "café" = 4 codepoints; UTF-8 = 5 bytes; Csharp .length() = 4.
+			Put("café");
+			Record r = Operate(StringOperation.Strlen(bin));
+			Assert.AreEqual(4L, r.GetLong(bin));
+
+			// "日本語" = 3 codepoints; UTF-8 = 9 bytes; Csharp .length() = 3.
+			Put("日本語");
+			r = Operate(StringOperation.Strlen(bin));
+			Assert.AreEqual(3L, r.GetLong(bin));
+
+			// "👋hi" — emoji is U+1F44B, a supplementary codepoint encoded as
+			// a UTF-16 surrogate pair in Csharp. Codepoints = 3; Csharp .length() = 4.
+			Put("👋hi");
+			r = Operate(StringOperation.Strlen(bin));
+			Assert.AreEqual(3L, r.GetLong(bin));
+		}
+
+		[TestMethod]
+		public void ByteLengthCountsBytesNotCodepoints()
+		{
+			Put("café");
+			Record r = Operate(StringOperation.ByteLength(bin));
+			Assert.AreEqual(5L, r.GetLong(bin));
+			Put("日本語");
+			r = Operate(StringOperation.ByteLength(bin));
+			Assert.AreEqual(9L, r.GetLong(bin));
+			Put("👋hi");
+			r = Operate(StringOperation.ByteLength(bin));
+			Assert.AreEqual(6L, r.GetLong(bin));
+		}
+
+		[TestMethod]
+		public void SubstrIndexesCodepointsNotBytes()
+		{
+			// "日本語hi" — substr(start=3, end=5) returns codepoints 3..4 = "hi".
+			// A byte-indexed substr would land mid-way through "日" (each CJK char
+			// occupies 3 UTF-8 bytes).
+			Put("日本語hi");
+			Record r = Operate(StringOperation.Substr(bin, 3, 5));
+			Assert.AreEqual("hi", r.GetString(bin));
+		}
+
+		[TestMethod]
+		public void CharAtReturnsWholeCodepoint()
+		{
+			// charAt at the emoji position should return the full 4-byte codepoint,
+			// not a half-surrogate.
+			Put("a👋b");
+			Record r = Operate(StringOperation.CharAt(bin, 1));
+			Assert.AreEqual("👋", r.GetString(bin));
+		}
+
+		[TestMethod]
+		public void FindReturnsCodepointIndex()
+		{
+			// "café-world": "world" starts at codepoint 5 (UTF-16 .indexOf would
+			// also return 5 here because "é" is a single Csharp char, but the contract
+			// is codepoint-indexed).
+			Put("café-world");
+			Record r = Operate(StringOperation.Find(bin, "world"));
+			Assert.AreEqual(5L, r.GetLong(bin));
+
+			// "👋-world": "world" starts at codepoint index 2 (after emoji and dash).
+			// Csharp's .IndexOf would return 3 (UTF-16 code-unit index), so this
+			// test catches a regression that returned UTF-16 indices.
+			Put("👋-world");
+			r = Operate(StringOperation.Find(bin, "world"));
+			Assert.AreEqual(2L, r.GetLong(bin));
+		}
+
+		[TestMethod]
+		public void FindAndContainsRequireMatchingNormalizationForm()
+		{
+			// "café" can be stored as NFC (U+00E9, 1 codepoint, 2 UTF-8 bytes) or NFD
+			// (U+0065 U+0301, 2 codepoints, 3 UTF-8 bytes). They render identically but
+			// are distinct byte sequences. The server's find / contains uses ICU binary
+			// string search — NFC and NFD are NOT considered equal. Callers who need
+			// normalization-insensitive search must normalizeNFC the bin (and the needle)
+			// first. This test anchors the contract so a future change to ICU comparison
+			// mode does not silently flip the behavior.
+			string NFC = "caf\u00E9";       // "café" composed
+			string NFD = "cafe\u0301";      // "café" decomposed
+
+			Put(NFC);
+			// NFC haystack vs NFC needle — match.
+			Record r = Operate(StringOperation.Find(bin, NFC));
+			Assert.AreEqual(0L, r.GetLong(bin));
+			r = Operate(StringOperation.Contains(bin, NFC));
+			Assert.IsTrue(r.GetBool(bin));
+			// NFC haystack vs NFD needle — no match (byte sequences differ).
+			r = Operate(StringOperation.Find(bin, NFD));
+			Assert.AreEqual(-1L, r.GetLong(bin));
+			r = Operate(StringOperation.Contains(bin, NFD));
+			Assert.IsFalse(r.GetBool(bin));
+		}
+
 		[TestMethod]
 		public void SubstrFromOffsetToEnd()
 		{
@@ -311,6 +418,22 @@ namespace Aerospike.Test
 			Operate(StringOperation.NormalizeNFC(policy, bin));
 			Assert.AreEqual("hello", StringValue());
 		}
+
+		[TestMethod]
+		public void NormalizeNFCComposesDecomposedSequence()
+		{
+			// "e\u0301" is the NFD ("decomposed") form of "é": Latin small "e"
+			// followed by combining acute accent. normalizeNFC must compose it to
+			// U+00E9 (NFC, single codepoint) — proving the op actually transforms
+			// non-normalized input, not just the no-op case.
+			Put("e\u0301");
+			Operate(StringOperation.NormalizeNFC(policy, bin));
+			Assert.AreEqual("\u00E9", StringValue());
+			// Composed form is 1 codepoint; the decomposed input would be 2.
+			Record r = Operate(StringOperation.Strlen(bin));
+			Assert.AreEqual(1L, r.GetLong(bin));
+		}
+
 
 		[TestMethod]
 		public void InsertAtMiddleSplicesValue()
@@ -529,11 +652,76 @@ namespace Aerospike.Test
 		}
 
 		[TestMethod]
+		public void SnipThenConcatInOneOperate()
+		{
+			Put("hello beautiful world");
+
+			Operate(
+				StringOperation.Snip(policy, bin, 5, 15),
+				StringOperation.Concat(policy, bin, "!"));
+
+			Assert.AreEqual("hello world!", StringValue());
+		}
+
+		[TestMethod]
 		public void ConcatAppendsListOfValues()
 		{
 			Put("hello");
 			Operate(StringOperation.Concat(policy, bin, [" ", "big", " world"]));
 			Assert.AreEqual("hello big world", StringValue());
+		}
+
+		[TestMethod]
+		public void AppendAddsValueToEnd()
+		{
+			Put("hello");
+			Operate(StringOperation.Append(policy, bin, " world"));
+			Assert.AreEqual("hello world", StringValue());
+		}
+
+		[TestMethod]
+		public void AppendPreservesMultibyteCodepoints()
+		{
+			// Unicode/DBCS-aware: appending a multi-byte string must not corrupt
+			// either side. "日本" + "語" -> "日本語" (3 codepoints, 9 UTF-8 bytes).
+			Put("日本");
+			Operate(StringOperation.Append(policy, bin, "語"));
+			Assert.AreEqual("日本語", StringValue());
+			Assert.AreEqual(3L, Operate(StringOperation.Strlen(bin)).GetLong(bin));
+		}
+
+		[TestMethod]
+		public void PrependAddsValueToStart()
+		{
+			Put("world");
+			Operate(StringOperation.Prepend(policy, bin, "hello "));
+			Assert.AreEqual("hello world", StringValue());
+		}
+
+		[TestMethod]
+		public void PrependPreservesMultibyteCodepoints()
+		{
+		// Unicode/DBCS-aware: prepending a multi-byte string must not corrupt
+		// either side. "語" prepended with "日本" -> "日本語".
+			Put("語");
+			Operate(StringOperation.Prepend(policy, bin, "日本"));
+			Assert.AreEqual("日本語", StringValue());
+			Assert.AreEqual(3L, Operate(StringOperation.Strlen(bin)).GetLong(bin));
+		}
+
+		[TestMethod]
+		public void AppendOnMissingBinWithNoFailIsNoOp()
+		{
+		// Mirrors the upper() missing-bin NO_FAIL test for the append op.
+			client.Delete(null, key);
+			client.Put(null, key, new Bin("other", "untouched"));
+
+			StringPolicy noFail = new StringPolicy(StringWriteFlags.NO_FAIL);
+			Operate(StringOperation.Append(noFail, bin, "x"));
+
+			Record r = client.Get(null, key);
+			Assert.AreEqual(null, r.GetValue(bin));
+			Assert.AreEqual("untouched", r.GetString("other"));
 		}
 
 		[TestMethod]
@@ -594,7 +782,12 @@ namespace Aerospike.Test
 				StringOperation.Strlen(bin));
 
 			// strlen runs after trim+upper so it sees the post-modification length.
-			Assert.AreEqual(11L, r.GetLong(bin));
+			// String ops set RESPOND_ALL_OPS (like BIT/EXP/HLL/MAP), so the three ops
+			// targeting the same bin come back as an ordered per-op result list rather
+			// than a single collapsed value. strlen runs last and therefore observes the
+			// post-trim+upper length.
+			IList results = r.GetList(bin);
+			Assert.AreEqual(11L, results[results.Count - 1]);
 			Assert.AreEqual("HELLO WORLD", StringValue());
 		}
 
@@ -724,6 +917,38 @@ namespace Aerospike.Test
 			CollectionAssert.AreEqual(new List<object> { "one", "TWO", "three" }, items);
 		}
 
+		[TestMethod]
+		public void AppendOnStringNestedInList()
+		{
+			// list = ["alpha", "beta", "gamma"]; append "!" at index 1 -> "beta!"
+			List<Value> list = [Value.Get("alpha"), Value.Get("beta"), Value.Get("gamma")];
+			PutList(list);
+
+			Operate(StringOperation.Append(policy, bin, "!", CTX.ListIndex(1)));
+
+			IList after = client.Get(null, key).GetList(bin);
+			CollectionAssert.AreEqual(new List<object> { "alpha", "beta!", "gamma" }, after);
+		}
+
+		[TestMethod]
+		public void PrependOnStringNestedInMap()
+		{
+			// map = {"a": "world", "b": "foo"}; prepend "hello " at key "a"
+			Dictionary<Value, Value> map = new()
+			{
+				[Value.Get("a")] = Value.Get("world"),
+				[Value.Get("b")] = Value.Get("foo")
+			};
+			PutMap(map);
+
+			Operate(StringOperation.Prepend(policy, bin, "hello ",
+				CTX.MapKey(Value.Get("a"))));
+
+			var after = client.Get(null, key).GetMap(bin);
+			Assert.AreEqual("hello world", after["a"]);
+			Assert.AreEqual("foo", after["b"]);
+		}
+
 		//=================================================================
 		// toString op — op-type 19, no payload, no sub-op id, no CTX
 		//
@@ -767,6 +992,22 @@ namespace Aerospike.Test
 			Record r = Operate(StringOperation.ToString(bin));
 			// Server's blob-to-string representation is well-defined for ASCII bytes.
 			Assert.AreEqual("hi", r.GetString(bin));
+		}
+
+		[TestMethod]
+		public void ToStringOnBlobWithInvalidUtf8RaisesOpNotApplicable()
+		{
+			// {0xED, 0xA0, 0x80} is the UTF-8 encoding of U+D800 (ill-formed
+			// surrogate). The server's blob→string conversion validates the bytes
+			// via cf_str_is_valid_utf8 and rejects non-well-formed input with
+			// OP_NOT_APPLICABLE (mirrors the server's ToStringTest.Blob_InvalidUtf8
+			// unit test). Companion to TestStringInvalidUtf8 which exercises the
+			// same fixture on the read/modify ops via a STRING-typed bin.
+			client.Delete(null, key);
+			client.Put(null, key, new Bin(bin,
+				new byte[] { (byte)0xED, (byte)0xA0, (byte)0x80 }));
+			AerospikeException ae = Assert.Throws<AerospikeException>(() => Operate(StringOperation.ToString(bin)));
+			Assert.AreEqual(ResultCode.OP_NOT_APPLICABLE, ae.Result);
 		}
 
 		[TestMethod]
@@ -816,6 +1057,69 @@ namespace Aerospike.Test
 
 			AerospikeException ae = Assert.Throws<AerospikeException>(() => Operate(StringOperation.Upper(policy, bin)));
 			Assert.AreEqual(ResultCode.BIN_NOT_FOUND, ae.Result);
+		}
+
+		//=================================================================
+		// Prepare / parameter errors
+		//
+		// These exercise the server's prepare-phase validation
+		// (particle_string.c: find occurrence != 0, empty/negative pad
+		// arguments, repeat count >= 0, regex_replace pattern compile).
+		// All should surface as PARAMETER_ERROR; an invalid regex surfaces
+		// as OP_NOT_APPLICABLE per the server's ICU integration.
+		//=================================================================
+
+		private static void AssertParamError(Operation op)
+		{
+			AerospikeException ae = Assert.Throws<AerospikeException>(() => Operate(op));
+			Assert.AreEqual(ResultCode.PARAMETER_ERROR, ae.Result);
+		}
+
+		[TestMethod]
+		public void FindWithZeroOccurrenceRaisesParameter()
+		{
+			Put("hello");
+			// 0 is reserved as "no occurrence"; the server's find prepare rejects it.
+			AssertParamError(StringOperation.Find(bin, "x", 0));
+		}
+
+		[TestMethod]
+		public void PadStartWithEmptyPadStringRaisesParameter()
+		{
+			Put("hello");
+			AssertParamError(StringOperation.PadStart(policy, bin, 10, ""));
+		}
+
+		[TestMethod]
+		public void PadEndWithEmptyPadStringRaisesParameter()
+		{
+			Put("hello");
+			AssertParamError(StringOperation.PadEnd(policy, bin, 10, ""));
+		}
+
+		[TestMethod]
+		public void PadStartWithNegativeTargetRaisesParameter()
+		{
+			Put("hello");
+			AssertParamError(StringOperation.PadStart(policy, bin, -1, "*"));
+		}
+
+		[TestMethod]
+		public void RepeatWithNegativeCountRaisesParameter()
+		{
+			Put("hello");
+			AssertParamError(StringOperation.Repeat(policy, bin, -1));
+		}
+
+		[TestMethod]
+		public void RegexReplaceWithInvalidPatternRaisesParameterError()
+		{
+			Put("hello");
+			// Unclosed character class — PCRE2 compile fails inside the op.
+			// Server returns PARAMETER_ERROR (the server doc table lists this row as
+			// "OP_NOT_APPLICABLE / error"; observed behavior on 8.1.3 is PARAMETER).
+			AssertParamError(StringOperation.RegexReplace(
+				policy, bin, "[unclosed", "NUM", StringRegexFlags.DEFAULT));
 		}
 	}
 }

@@ -56,6 +56,7 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Create string append database operation.
 		/// </summary>
+		[Obsolete("Use StringOperation.Append instead")]
 		public static Operation Append(Bin bin)
 		{
 			return new Operation(Type.APPEND, bin.name, bin.value);
@@ -64,6 +65,7 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Create string prepend database operation.
 		/// </summary>
+		[Obsolete("Use StringOperation.Prepend instead")]
 		public static Operation Prepend(Bin bin)
 		{
 			return new Operation(Type.PREPEND, bin.name, bin.value);

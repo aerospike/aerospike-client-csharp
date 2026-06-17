@@ -22,6 +22,8 @@ namespace Aerospike.Client
 {
 	public sealed class ByteUtil
 	{
+		private static readonly UTF8Encoding utf8 = new(false, true);
+
 		public static Value BytesToKeyValue(ParticleType type, byte[] buf, int offset, int len)
 		{
 			switch (type)
@@ -101,8 +103,14 @@ namespace Aerospike.Client
 			{
 				return 0;
 			}
-			// The system library encoding is optimized, so there is no need to write a custom implementation.
-			return Encoding.UTF8.GetByteCount(s);
+			try
+			{
+				return utf8.GetByteCount(s);
+			}
+			catch (EncoderFallbackException e)
+			{
+				throw new AerospikeException(ResultCode.CLIENT_ERROR, "Invalid UTF-16 surrogate in string", e);
+			}
 		}
 
 		/// <summary>
@@ -114,7 +122,14 @@ namespace Aerospike.Client
 			{
 				return new byte[0];
 			}
-			return Encoding.UTF8.GetBytes(s);
+			try
+			{
+				return utf8.GetBytes(s);
+			}
+			catch (EncoderFallbackException e)
+			{
+				throw new AerospikeException(ResultCode.CLIENT_ERROR, "Invalid UTF-16 surrogate in string", e);
+			}
 		}
 
 		/// <summary>
@@ -128,8 +143,14 @@ namespace Aerospike.Client
 				return 0;
 			}
 
-			// The system library encoding is optimized, so there is no need to write a custom implementation.
-			return Encoding.UTF8.GetBytes(s, 0, s.Length, buf, offset);
+			try
+			{
+				return utf8.GetBytes(s, 0, s.Length, buf, offset);
+			}
+			catch (EncoderFallbackException e)
+			{
+				throw new AerospikeException(ResultCode.CLIENT_ERROR, "Invalid UTF-16 surrogate in string", e);
+			}
 		}
 
 		/// <summary>

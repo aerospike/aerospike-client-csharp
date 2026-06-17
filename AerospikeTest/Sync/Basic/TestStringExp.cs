@@ -1,5 +1,5 @@
 ﻿/* 
- * Copyright 2012-2023 Aerospike, Inc.
+ * Copyright 2012-2026 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -168,6 +168,37 @@ namespace Aerospike.Test
 			Assert.AreEqual(5L, r.GetLong(var));
 		}
 
+		//-----------------------------------------------------------------
+		// Codepoint-vs-byte anchors (mirror of TestOperateString)
+		//-----------------------------------------------------------------
+
+		[TestMethod]
+		public void StrlenCountsCodepointsAndByteLengthCountsBytes()
+		{
+			// "café" = 4 codepoints, 5 UTF-8 bytes; "日本語" = 3 codepoints, 9 bytes.
+			Put("café");
+			Record r = Eval(StringExp.Strlen(Exp.StringBin(bin)));
+			Assert.AreEqual(4L, r.GetLong(var));
+			r = Eval(StringExp.ByteLength(Exp.StringBin(bin)));
+			Assert.AreEqual(5L, r.GetLong(var));
+
+			Put("日本語");
+			r = Eval(StringExp.Strlen(Exp.StringBin(bin)));
+			Assert.AreEqual(3L, r.GetLong(var));
+			r = Eval(StringExp.ByteLength(Exp.StringBin(bin)));
+			Assert.AreEqual(9L, r.GetLong(var));
+		}
+
+		[TestMethod]
+		public void CharAtReturnsWholeSupplementaryCodepoint()
+		{
+			// 👋 is U+1F44B (4 UTF-8 bytes, a surrogate pair in Java UTF-16).
+			// charAt must return the whole codepoint, not a half-surrogate.
+			Put("a👋b");
+			Record r = Eval(StringExp.CharAt(Exp.Val(1), Exp.StringBin(bin)));
+			Assert.AreEqual("👋", r.GetString(var));
+		}
+
 		[TestMethod]
 		public void IsNumericMatchesIntegerStringsByDefaultAndByType()
 		{
@@ -277,6 +308,40 @@ namespace Aerospike.Test
 			Exp values = Exp.Val(new List<string> { " ", "big", " world" });
 			Record r = Eval(StringExp.Concat(policy, values, Exp.StringBin(bin)));
 			Assert.AreEqual("hello big world", r.GetString(var));
+		}
+
+		[TestMethod]
+		public void AppendAddsValueToEnd()
+		{
+			Put("hello");
+			Record r = Eval(StringExp.Append(policy, Exp.Val(" world"), Exp.StringBin(bin)));
+			Assert.AreEqual("hello world", r.GetString(var));
+		}
+
+		[TestMethod]
+		public void AppendPreservesMultibyteCodepoints()
+		{
+			// Unicode/DBCS-aware: "日本" + "語" -> "日本語".
+			Put("日本");
+			Record r = Eval(StringExp.Append(policy, Exp.Val("語"), Exp.StringBin(bin)));
+			Assert.AreEqual("日本語", r.GetString(var));
+		}
+
+		[TestMethod]
+		public void PrependAddsValueToStart()
+		{
+			Put("world");
+			Record r = Eval(StringExp.Prepend(policy, Exp.Val("hello "), Exp.StringBin(bin)));
+			Assert.AreEqual("hello world", r.GetString(var));
+		}
+
+		[TestMethod]
+		public void PrependPreservesMultibyteCodepoints()
+		{
+			// Unicode/DBCS-aware: "語" prepended with "日本" -> "日本語".
+			Put("語");
+			Record r = Eval(StringExp.Prepend(policy, Exp.Val("日本"), Exp.StringBin(bin)));
+			Assert.AreEqual("日本語", r.GetString(var));
 		}
 
 		[TestMethod]

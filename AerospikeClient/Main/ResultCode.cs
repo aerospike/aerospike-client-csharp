@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2025 Aerospike, Inc.
+ * Copyright 2012-2026 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -293,6 +293,14 @@ namespace Aerospike.Client
 		/// Value: 28
 		/// </summary>
 		public const int LOST_CONFLICT = 28;
+
+		/// <summary>
+		/// String bin or string argument contains invalid UTF-8.
+		/// Returned by server 8.1.3+ string operations when the bin value or a
+		/// string argument fails the UTF-8 well-formedness gate.
+		/// Value: 29
+		/// </summary>
+		public const int INVALID_ENCODING = 29;
 
 		/// <summary>
 		/// Write can't complete until XDR finishes shipping.
@@ -749,6 +757,9 @@ namespace Aerospike.Client
 
 				case LOST_CONFLICT:
 					return "Command failed due to conflict with XDR";
+
+				case INVALID_ENCODING:
+					return "Invalid UTF-8 encoding";
 
 				case XDR_KEY_BUSY:
 					return "Write can't complete until XDR finishes shipping.";
