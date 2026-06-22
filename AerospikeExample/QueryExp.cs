@@ -95,7 +95,10 @@ public sealed class QueryExp : SyncExample
 		QueryPolicy queryPolicy = new(client.QueryPolicyDefault)
 		{
 			filterExp = Exp.Build(
-				Exp.RegexCompare("prefix.*suffix", RegexFlag.ICASE | RegexFlag.NEWLINE, Exp.StringBin("bin3")))
+				StringExp.RegexCompare(
+					Exp.Val("prefix.*suffix"),
+					StringRegexFlags.CASE_INSENSITIVE | StringRegexFlags.MULTILINE,
+					Exp.StringBin("bin3")))
 		};
 
 		PrintRecords(queryPolicy, stmt);

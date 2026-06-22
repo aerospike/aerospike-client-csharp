@@ -41,7 +41,7 @@ namespace Aerospike.Test
 		[ClassInitialize]
 		public static void ServerVersionCheck(TestContext testContext)
 		{
-			CheckServerVersion(new Version(8, 1, 3, 0), "string operations");
+			//CheckServerVersion(new Version(8, 1, 3, 0), "string operations");
 		}
 
 		//-----------------------------------------------------------------
@@ -250,6 +250,36 @@ namespace Aerospike.Test
 		{
 			Put("hello world");
 			Record r = Operate(StringOperation.Find(bin, "xyz"));
+			Assert.AreEqual(-1L, r.GetLong(bin));
+		}
+
+		[TestMethod]
+		public void FindSkipsOverlappingMatchesAscii()
+		{
+			// "aa" is a self-overlapping needle (prefix "a" == suffix "a"). After
+			// matching at index 0 the search resumes *after* the match (index 2),
+			// so the 2nd occurrence is at 2 — not 1. This matches replace() and
+			// the ICU usearch path used for non-ASCII haystacks.
+			Put("aaaa");
+			Record r = Operate(StringOperation.Find(bin, "aa", 1));
+			Assert.AreEqual(0L, r.GetLong(bin));
+			r = Operate(StringOperation.Find(bin, "aa", 2));
+			Assert.AreEqual(2L, r.GetLong(bin));
+			r = Operate(StringOperation.Find(bin, "aa", 3));
+			Assert.AreEqual(-1L, r.GetLong(bin));
+		}
+
+		[TestMethod]
+		public void findSkipsOverlappingMatchesUnicode()
+		{
+			// Same overlap-skip rule on the ICU path. "👋👋" is self-overlapping in
+			// codepoints; matches land at codepoint indices 0 and 2, not 0 and 1.
+			Put("👋👋👋👋");
+			Record r = Operate(StringOperation.Find(bin, "👋👋", 1));
+			Assert.AreEqual(0L, r.GetLong(bin));
+			r = Operate(StringOperation.Find(bin, "👋👋", 2));
+			Assert.AreEqual(2L, r.GetLong(bin));
+			r = Operate(StringOperation.Find(bin, "👋👋", 3));
 			Assert.AreEqual(-1L, r.GetLong(bin));
 		}
 
@@ -561,6 +591,18 @@ namespace Aerospike.Test
 			Put("hello");
 			Operate(StringOperation.ReplaceAll(policy, bin, "z", "!"));
 			Assert.AreEqual("hello", StringValue());
+		}
+
+		[TestMethod]
+		public void ReplaceAllSkipsOverlappingMatches()
+		{
+			// Self-overlapping needle "aa" in "aaaa": replacement resumes after each
+			// match, yielding "XX" — not "XaX" (which would require allowing the
+			// 2nd match to start at index 1). Anchors the contract that find() now
+			// mirrors.
+			Put("aaaa");
+			Operate(StringOperation.ReplaceAll(policy, bin, "aa", "X"));
+			Assert.AreEqual("XX", StringValue());
 		}
 
 		[TestMethod]

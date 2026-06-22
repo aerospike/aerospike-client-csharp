@@ -247,6 +247,21 @@ internal static class ExampleStateValidation
 		ExampleFixtureSupport.AssertBinExists(client, args, "mapkey", "mapbin");
 	}
 
+	public static void OperateString(IAerospikeClient client, Arguments args)
+	{
+		ExampleFixtureSupport.AssertBin(client, args, "opstr_read", "text", "HELLO");
+		ExampleFixtureSupport.AssertBin(client, args, "opstr_modify", "text", "abcNUMdefNUM");
+		ExampleFixtureSupport.AssertBin(client, args, "opstr_tostring", "n", 42L);
+	}
+
+	public static void StringExpression(IAerospikeClient client, Arguments args)
+	{
+		ExampleFixtureSupport.AssertBin(client, args, "stringexp_read", "text", "HELLO");
+		// StringExp modify builders return transformed values through ExpOperation.Read; they do not mutate the bin.
+		ExampleFixtureSupport.AssertBin(client, args, "stringexp_modify", "text", "abc123def456");
+		ExampleFixtureSupport.AssertBin(client, args, "stringexp_tostring", "n", 42L);
+	}
+
 	public static void ListMap(IAerospikeClient client, Arguments args)
 	{
 		ExampleFixtureSupport.AssertBin(client, args, "listkey1", "listbin1", new List<object> { "string1", "string2", "string3" });

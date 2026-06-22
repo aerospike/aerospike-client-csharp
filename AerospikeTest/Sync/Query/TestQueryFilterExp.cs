@@ -48,10 +48,20 @@ namespace Aerospike.Test
 				}
 			}
 
+			// sendKey=true so Exp.Key() can be evaluated server-side.
+			// The stored-key flag is set at record-create time; updates with sendKey=true
+			// will NOT retroactively store the key on records created without it. Delete
+			// any pre-existing records first so the puts below create fresh records.
+			WritePolicy wp = new()
+			{
+				sendKey = true
+			};
+
 			// Write records with string keys
 			for (int i = 1; i <= size; i++)
 			{
 				Key key = new(SuiteHelpers.ns, setName, keyPrefix + i);
+				client.Delete(null, key);
 				List<int> list = null;
 				Dictionary<string, string> map = null;
 
@@ -80,7 +90,17 @@ namespace Aerospike.Test
 					list = [];
 					map = [];
 				}
-				client.Put(null, key, new Bin(binName, i), new Bin("bin2", i), new Bin("listbin", list), new Bin("mapbin", map));
+				// Rotate prefixes so StringExp predicates pick deterministic subsets:
+				// i % 3 == 0 -> "alpha-i", == 1 -> "beta-i", == 2 -> "gamma-i".
+				string prefix = (i % 3) switch
+				{
+					0 => "alpha",
+					1 => "beta",
+					_ => "gamma",
+				};
+				string str = prefix + "-" + i;
+
+				client.Put(wp, key, new Bin(binName, i), new Bin("bin2", i), new Bin("listbin", list), new Bin("mapbin", map), new Bin("strbin", str));
 			}
 		}
 
@@ -703,6 +723,237 @@ namespace Aerospike.Test
 					count++;
 				}
 				Assert.AreEqual(10, count);
+			}
+			finally
+			{
+				rs.Close();
+			}
+		}
+
+		[TestMethod]
+		public void QueryStringStartsWith()
+		{
+			//CheckServerVersion(new Version(8, 1, 3, 0), "string operations");
+
+			int begin = 1;
+			int end = 10;
+
+			Statement stmt = new();
+			stmt.SetNamespace(SuiteHelpers.ns);
+			stmt.SetSetName(setName);
+			stmt.SetFilter(Filter.Range(binName, begin, end));
+
+			// strbin starts with "alpha" -> records 3, 6, and 9
+			QueryPolicy policy = new()
+			{
+				filterExp = Exp.Build(StringExp.StartsWith(Exp.Val("alpha"), Exp.StringBin("strbin")))
+			};
+
+			RecordSet rs = client.Query(policy, stmt);
+
+			try
+			{
+				int count = 0;
+
+				while (rs.Next())
+				{
+					count++;
+				}
+				Assert.AreEqual(3, count);
+			}
+			finally
+			{
+				rs.Close();
+			}
+		}
+
+		[TestMethod]
+		public void QueryStringContains()
+		{
+			//CheckServerVersion(new Version(8, 1, 3, 0), "string operations");
+
+			int begin = 1;
+			int end = 10;
+
+			Statement stmt = new()
+			{
+				Namespace = SuiteHelpers.ns,
+				SetName = setName,
+				Filter = Filter.Range(binName, begin, end),
+			};
+
+			// strbin contains "amma" -> records 2, 5, and 8
+			QueryPolicy policy = new()
+			{
+				filterExp = Exp.Build(StringExp.Contains(Exp.Val("amma"), Exp.StringBin("strbin")))
+			};
+
+			RecordSet rs = client.Query(policy, stmt);
+
+			try
+			{
+				int count = 0;
+				while (rs.Next())
+				{
+					count++;
+				}
+				Assert.AreEqual(3, count);
+			}
+			finally
+			{
+				rs.Close();
+			}
+		}
+
+		[TestMethod]
+		public void QueryStringEndsWith()
+		{
+			//CheckServerVersion(new Version(8, 1, 3, 0), "string operations");
+
+			int begin = 1;
+			int end = 10;
+
+			Statement stmt = new()
+			{
+				Namespace = SuiteHelpers.ns,
+				SetName = setName,
+				Filter = Filter.Range(binName, begin, end)
+			};
+
+			// strbin ends with "-10" -> only record 10.
+			QueryPolicy policy = new()
+			{
+				filterExp = Exp.Build(StringExp.EndsWith(Exp.Val("-10"), Exp.StringBin("strbin")))
+			};
+
+			RecordSet rs = client.Query(policy, stmt);
+
+			try
+			{
+				int count = 0;
+				while (rs.Next())
+				{
+					count++;
+				}
+				Assert.AreEqual(1, count);
+			}
+			finally 
+			{
+				rs.Close();
+			}
+		}
+
+		[TestMethod]
+		public void QueryStringRegexCompare()
+		{
+			//CheckServerVersion(new Version(8, 1, 3, 0), "string operations");
+
+			int begin = 1;
+			int end = 10;
+
+			Statement stmt = new()
+			{
+				Namespace = SuiteHelpers.ns,
+				SetName = setName,
+				Filter = Filter.Range(binName, begin, end)
+			};
+
+			// strbin matches /^beta-/ -> records 1, 4, 7, 10.
+			QueryPolicy policy = new()
+			{
+				filterExp = Exp.Build(StringExp.RegexCompare(Exp.Val("^beta-"), Exp.StringBin("strbin")))
+			};
+
+			RecordSet rs = client.Query(policy, stmt);
+
+			try
+			{
+				int count = 0;
+
+				while (rs.Next())
+				{
+					count++;
+				}
+				Assert.AreEqual(4, count);
+			}
+			finally
+			{
+				rs.Close();
+			}
+		}
+
+		[TestMethod]
+		public void QueryStringContainsOnSetName()
+		{
+			//CheckServerVersion(new Version(8, 1, 3, 0), "string operations");
+
+			int begin = 1;
+			int end = 10;
+
+			Statement stmt = new()
+			{
+				Namespace = SuiteHelpers.ns,
+				SetName = setName,
+				Filter = Filter.Range(binName, begin, end)
+			};
+
+			// setName ends with "flt" -> every record's set name contains "flt".
+			// Probe to determine whether the new string-ops family supports source
+			// expressions other than bin/CDT projections (e.g. Exp.setName(), Exp.key()).
+			QueryPolicy policy = new()
+			{
+				filterExp = Exp.Build(StringExp.Contains(Exp.Val("flt"), Exp.SetName()))
+			};
+
+			RecordSet rs = client.Query(policy, stmt);
+
+			try
+			{
+				int count = 0;
+				while (rs.Next())
+				{
+					count++;
+				}
+				Assert.AreEqual(10, count);
+			}
+			finally
+			{
+				rs.Close();
+			}
+		}
+
+		[TestMethod]
+		public void QueryKeyStringRegexCompare()
+		{
+			//CheckServerVersion(new Version(8, 1, 3, 0), "string operations");
+
+			int begin = 1;
+			int end = 10;
+
+			Statement stmt = new()
+			{
+				Namespace = SuiteHelpers.ns,
+				SetName = setName,
+				Filter = Filter.Range(binName, begin, end)
+			};
+
+			// User keys are "flt1".."flt50". Within range 1..10, /^flt3$/ matches "flt3".
+			QueryPolicy policy = new()
+			{
+				filterExp = Exp.Build(
+					StringExp.RegexCompare(Exp.Val("^flt3$"), StringRegexFlags.DEFAULT, Exp.Key(Exp.Type.STRING)))
+			};
+
+			RecordSet rs = client.Query(policy, stmt);
+
+			try
+			{
+				int count = 0;
+				while (rs.Next())
+				{
+					count++;
+				}
+				Assert.AreEqual(1, count);
 			}
 			finally
 			{

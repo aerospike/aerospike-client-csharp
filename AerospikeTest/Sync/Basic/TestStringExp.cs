@@ -45,7 +45,7 @@ namespace Aerospike.Test
 		[ClassInitialize]
 		public static void ServerVersionCheck(TestContext testContext)
 		{
-			CheckServerVersion(new Version(8, 1, 3, 0), "string operations");
+			//CheckServerVersion(new Version(8, 1, 3, 0), "string operations");
 		}
 
 		//-----------------------------------------------------------------
@@ -112,6 +112,21 @@ namespace Aerospike.Test
 			// Occurrence overload (1-based) — second occurrence starts at index 2.
 			Record r2 = Eval(StringExp.Find(Exp.Val("ab"), Exp.Val(2), Exp.StringBin(bin)));
 			Assert.AreEqual(2L, r2.GetLong(var));
+		}
+
+		[TestMethod]
+		public void FindSkipsOverlappingMatches()
+		{
+			// Self-overlapping needle "aa" in "aaaa": after match at 0, search
+			// resumes at 2 — so the 2nd occurrence is at 2, not 1. Mirrors the
+			// StringOperation.find contract and ICU usearch behavior.
+			Put("aaaa");
+			Assert.AreEqual(0L,
+				Eval(StringExp.Find(Exp.Val("aa"), Exp.Val(1), Exp.StringBin(bin))).GetLong(var));
+			Record r2 = Eval(StringExp.Find(Exp.Val("aa"), Exp.Val(2), Exp.StringBin(bin)));
+			Assert.AreEqual(2L, r2.GetLong(var));
+			Record r3 = Eval(StringExp.Find(Exp.Val("aa"), Exp.Val(3), Exp.StringBin(bin)));
+			Assert.AreEqual(-1L, r3.GetLong(var));
 		}
 
 		[TestMethod]

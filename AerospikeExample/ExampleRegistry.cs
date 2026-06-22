@@ -77,6 +77,16 @@ internal static class ExampleRegistry
 			"mapkey_nested",
 			"mapkey_nested_create",
 			"mapkey3")),
+		Sync<OperateString>(ValidateAndCleanup<OperateString>(
+			ExampleStateValidation.OperateString,
+			"opstr_read",
+			"opstr_modify",
+			"opstr_tostring")),
+		Sync<StringExpression>(ValidateAndCleanup<StringExpression>(
+			ExampleStateValidation.StringExpression,
+			"stringexp_read",
+			"stringexp_modify",
+			"stringexp_tostring")),
 		Sync<DeleteBin>(Fixture<DeleteBin>(
 			setup: ExampleStateValidation.SetupDeleteBin,
 			validate: ExampleStateValidation.DeleteBin,

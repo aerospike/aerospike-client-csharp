@@ -52,7 +52,7 @@ namespace Aerospike.Test
 		[ClassInitialize]
 		public static void ServerVersionCheck(TestContext testContext)
 		{
-			CheckServerVersion(new Version(8, 1, 3, 0), "string operations");
+			//CheckServerVersion(new Version(8, 1, 3, 0), "string operations");
 		}
 
 		[TestInitialize]
