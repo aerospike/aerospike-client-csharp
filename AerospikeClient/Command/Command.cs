@@ -68,6 +68,8 @@ namespace Aerospike.Client
 		public static readonly int INFO4_TXN_ROLL_FORWARD = (1 << 1); // Roll forward transaction.
 		public static readonly int INFO4_TXN_ROLL_BACK = (1 << 2); // Roll back transaction.
 		public static readonly int INFO4_TXN_ON_LOCKING_ONLY = (1 << 4); // Must be able to lock record in transaction.
+		public static readonly int INFO4_ERROR_VERBOSITY_SHIFT = 5; // info4 bits 5-6: error detail verbosity level
+		public static readonly int INFO4_ERROR_VERBOSITY_MASK = 0x60; // 0b0110_0000: bits 5-6 only
 
 		public const byte STATE_READ_AUTH_HEADER = 1;
 		public const byte STATE_READ_HEADER = 2;
@@ -103,6 +105,8 @@ namespace Aerospike.Client
 		protected int expiration;
 		protected int fieldCount;
 		protected int opCount;
+		protected string serverMessage;
+		protected int serverSubCode;
 
 		public Command(int socketTimeout, int totalTimeout, int maxRetries)
 		{
@@ -2599,6 +2603,8 @@ namespace Aerospike.Client
 				txnAttr |= Command.INFO4_TXN_ON_LOCKING_ONLY;
 			}
 
+			txnAttr |= (policy.ErrorDetailVerbosity << Command.INFO4_ERROR_VERBOSITY_SHIFT) & Command.INFO4_ERROR_VERBOSITY_MASK;
+
 			dataOffset += 8;
 
 			// Write all header data except total size which must be written last. 
@@ -2680,6 +2686,8 @@ namespace Aerospike.Client
 			{
 				txnAttr |= Command.INFO4_TXN_ON_LOCKING_ONLY;
 			}
+
+			txnAttr |= (policy.ErrorDetailVerbosity << Command.INFO4_ERROR_VERBOSITY_SHIFT) & Command.INFO4_ERROR_VERBOSITY_MASK;
 
 			switch (policy.readModeSC)
 			{
@@ -2768,8 +2776,10 @@ namespace Aerospike.Client
 			dataBuffer[dataOffset++] = (byte)readAttr;
 			dataBuffer[dataOffset++] = (byte)writeAttr;
 			dataBuffer[dataOffset++] = (byte)infoAttr;
+			dataBuffer[dataOffset++] = (byte)((policy.ErrorDetailVerbosity <<
+				Command.INFO4_ERROR_VERBOSITY_SHIFT) & Command.INFO4_ERROR_VERBOSITY_MASK); // error detail verbosity
 
-			for (int i = 0; i < 6; i++)
+			for (int i = 0; i < 5; i++)
 			{
 				dataBuffer[dataOffset++] = 0;
 			}
@@ -2813,8 +2823,10 @@ namespace Aerospike.Client
 			dataBuffer[dataOffset++] = (byte)readAttr;
 			dataBuffer[dataOffset++] = (byte)0;
 			dataBuffer[dataOffset++] = (byte)infoAttr;
+			dataBuffer[dataOffset++] = (byte)((policy.ErrorDetailVerbosity <<
+				Command.INFO4_ERROR_VERBOSITY_SHIFT) & Command.INFO4_ERROR_VERBOSITY_MASK); // error detail verbosity
 
-			for (int i = 0; i < 6; i++)
+			for (int i = 0; i < 5; i++)
 			{
 				dataBuffer[dataOffset++] = 0;
 			}
@@ -3228,9 +3240,12 @@ namespace Aerospike.Client
 
 		protected void ParseFields(Txn txn, Key key, bool hasWrite)
 		{
+			serverMessage = null;
+			serverSubCode = SubCode.NONE;
+
 			if (txn == null)
 			{
-				SkipFields(fieldCount);
+				ParseFieldsError();
 				return;
 			}
 
@@ -3254,6 +3269,10 @@ namespace Aerospike.Client
 					{
 						throw new AerospikeException("Record version field has invalid size: " + size);
 					}
+				}
+				else if (type == FieldType.ERROR_MESSAGE && size > 0)
+				{
+					serverMessage = ParseErrorDetails(dataOffset, size);
 				}
 				dataOffset += size;
 			}
@@ -3287,14 +3306,343 @@ namespace Aerospike.Client
 			}
 		}
 
-		protected void SkipFields(int fieldCount)
+		private void ParseFieldsError()
 		{
-			// There can be fields in the response (setname etc).
-			// But for now, ignore them. Expose them to the API if needed in the future.
 			for (int i = 0; i < fieldCount; i++)
 			{
-				int fieldlen = ByteUtil.BytesToInt(dataBuffer, dataOffset);
-				dataOffset += 4 + fieldlen;
+				int len = ByteUtil.BytesToInt(dataBuffer, dataOffset);
+				dataOffset += 4;
+
+				int type = dataBuffer[dataOffset++];
+				int size = len - 1;
+
+				if (type == FieldType.ERROR_MESSAGE && size > 0)
+				{
+					serverMessage = ParseErrorDetails(dataOffset, size);
+				}
+				dataOffset += size;
+			}
+		}
+
+		/// <summary>
+		/// Build a failure exception carrying any server-supplied extended-error detail
+		/// (message and numeric subcode) parsed for this command. Route every non-OK
+		/// throw through here so the detail is never dropped on special-case result
+		/// codes such as FILTERED_OUT or KEY_NOT_FOUND_ERROR.
+		/// </summary>
+		protected AerospikeException CreateException(int resultCode)
+		{
+			return new AerospikeException(resultCode, serverMessage, serverSubCode);
+		}
+
+		/// <summary>
+		/// Parse error detail msgpack map from server response.
+		/// Map keys: 1 = subcode (uint), 2 = message (string).
+		/// Returns formatted error message string.
+		/// </summary>
+		private string ParseErrorDetails(int offset, int size)
+		{
+			int end = offset + size;
+
+			if (offset >= end)
+			{
+				return null;
+			}
+
+			// Read map header (fixmap, map16, map32).
+			int b = dataBuffer[offset++] & 0xFF;
+			int count;
+
+			if ((b & 0xF0) == 0x80)
+			{
+				count = b & 0x0F;
+			}
+			else if (b == 0xDE && offset + 2 <= end)
+			{
+				count = ByteUtil.BytesToShort(dataBuffer, offset) & 0xFFFF;
+				offset += 2;
+			}
+			else if (b == 0xDF && offset + 4 <= end)
+			{
+				count = ByteUtil.BytesToInt(dataBuffer, offset);
+				offset += 4;
+			}
+			else
+			{
+				return null;
+			}
+
+			if (count <= 0)
+			{
+				return null;
+			}
+
+			string message = null;
+			long subcode = -1;
+
+			for (int i = 0; i < count && offset < end; i++)
+			{
+				// Read key (positive fixint or uint8).
+				int key;
+				b = dataBuffer[offset++] & 0xFF;
+
+				if (b <= 0x7F)
+				{
+					key = b;
+				}
+				else if (b == 0xCC && offset < end)
+				{
+					key = dataBuffer[offset++] & 0xFF;
+				}
+				else
+				{
+					break;
+				}
+
+				switch (key)
+				{
+					case 1: // AS_ERROR_DETAIL_KEY_SUBCODE
+						subcode = UnpackUint(offset, end);
+						offset = SkipMsgpackValue(offset, end);
+						break;
+
+					case 2: // AS_ERROR_DETAIL_KEY_MESSAGE
+						int[] strResult = UnpackStr(offset, end);
+						if (strResult != null)
+						{
+							message = ByteUtil.Utf8ToString(dataBuffer, strResult[0], strResult[1]);
+							offset = strResult[0] + strResult[1];
+						}
+						else
+						{
+							offset = SkipMsgpackValue(offset, end);
+						}
+						break;
+
+					default:
+						offset = SkipMsgpackValue(offset, end);
+						break;
+				}
+			}
+
+			// Retain the numeric subcode as a first-class value. The server only
+			// serializes subcodes >= 1 (SubCode.NONE = 0 is never sent), so a parsed
+			// subcode always overrides the SubCode.NONE default.
+			if (subcode >= 0)
+			{
+				serverSubCode = (int)subcode;
+			}
+
+			if (message != null && subcode >= 0)
+			{
+				return message + " (subcode=" + subcode + ")";
+			}
+			else if (subcode >= 0)
+			{
+				return "error subcode=" + subcode;
+			}
+			else if (message != null)
+			{
+				return message;
+			}
+			return null;
+		}
+
+		/// <summary>
+		/// Unpack a msgpack unsigned integer value. Returns -1 on failure.
+		/// </summary>
+		private long UnpackUint(int offset, int end)
+		{
+			if (offset >= end)
+			{
+				return -1;
+			}
+
+			int b = dataBuffer[offset] & 0xFF;
+
+			if (b <= 0x7F)
+			{
+				return b;
+			}
+			else if (b == 0xCC && offset + 1 < end)
+			{
+				return dataBuffer[offset + 1] & 0xFF;
+			}
+			else if (b == 0xCD && offset + 2 < end)
+			{
+				return ByteUtil.BytesToShort(dataBuffer, offset + 1) & 0xFFFF;
+			}
+			else if (b == 0xCE && offset + 4 < end)
+			{
+				return ByteUtil.BytesToInt(dataBuffer, offset + 1) & 0xFFFFFFFFL;
+			}
+			else if (b == 0xCF && offset + 8 < end)
+			{
+				return ByteUtil.BytesToLong(dataBuffer, offset + 1);
+			}
+			return -1;
+		}
+
+		/// <summary>
+		/// Unpack a msgpack string. Returns [offset, length] or null on failure.
+		/// </summary>
+		private int[] UnpackStr(int offset, int end)
+		{
+			if (offset >= end)
+			{
+				return null;
+			}
+
+			int b = dataBuffer[offset++] & 0xFF;
+			int len;
+
+			if ((b & 0xE0) == 0xA0)
+			{
+				len = b & 0x1F;
+			}
+			else if (b == 0xD9 && offset < end)
+			{
+				len = dataBuffer[offset++] & 0xFF;
+			}
+			else if (b == 0xDA && offset + 1 < end)
+			{
+				len = ByteUtil.BytesToShort(dataBuffer, offset) & 0xFFFF;
+				offset += 2;
+			}
+			else if (b == 0xDB && offset + 3 < end)
+			{
+				len = ByteUtil.BytesToInt(dataBuffer, offset);
+				offset += 4;
+			}
+			else
+			{
+				return null;
+			}
+
+			if (len < 0 || offset + len > end)
+			{
+				return null;
+			}
+
+			return new int[] { offset, len };
+		}
+
+		/// <summary>
+		/// Skip a single msgpack value, returning the new offset.
+		/// </summary>
+		private int SkipMsgpackValue(int offset, int end)
+		{
+			if (offset >= end)
+			{
+				return end;
+			}
+
+			int b = dataBuffer[offset++] & 0xFF;
+
+			// Positive fixint / negative fixint
+			if (b <= 0x7F || b >= 0xE0)
+			{
+				return offset;
+			}
+			// fixstr
+			if ((b & 0xE0) == 0xA0)
+			{
+				return offset + (b & 0x1F);
+			}
+			// fixmap
+			if ((b & 0xF0) == 0x80)
+			{
+				int count = (b & 0x0F) * 2;
+				for (int i = 0; i < count && offset < end; i++)
+				{
+					offset = SkipMsgpackValue(offset, end);
+				}
+				return offset;
+			}
+			// fixarray
+			if ((b & 0xF0) == 0x90)
+			{
+				int count = b & 0x0F;
+				for (int i = 0; i < count && offset < end; i++)
+				{
+					offset = SkipMsgpackValue(offset, end);
+				}
+				return offset;
+			}
+
+			switch (b)
+			{
+				case 0xC0: // nil
+				case 0xC2: // false
+				case 0xC3: // true
+					return offset;
+				case 0xCC: // uint8
+				case 0xD0: // int8
+					return offset + 1;
+				case 0xCD: // uint16
+				case 0xD1: // int16
+					return offset + 2;
+				case 0xCE: // uint32
+				case 0xD2: // int32
+				case 0xCA: // float32
+					return offset + 4;
+				case 0xCF: // uint64
+				case 0xD3: // int64
+				case 0xCB: // float64
+					return offset + 8;
+				case 0xD9: // str8
+				case 0xC4: // bin8
+					if (offset < end)
+					{
+						return offset + 1 + (dataBuffer[offset] & 0xFF);
+					}
+					return end;
+				case 0xDA: // str16
+				case 0xC5: // bin16
+					if (offset + 1 < end)
+					{
+						return offset + 2 + (ByteUtil.BytesToShort(dataBuffer, offset) & 0xFFFF);
+					}
+					return end;
+				case 0xDB: // str32
+				case 0xC6: // bin32
+					if (offset + 3 < end)
+					{
+						return offset + 4 + ByteUtil.BytesToInt(dataBuffer, offset);
+					}
+					return end;
+				case 0xDC: // array16
+				case 0xDE:
+					{ // map16
+						if (offset + 1 >= end)
+						{
+							return end;
+						}
+						int count = (ByteUtil.BytesToShort(dataBuffer, offset) & 0xFFFF) * ((b == 0xDE) ? 2 : 1);
+						offset += 2;
+						for (int i = 0; i < count && offset < end; i++)
+						{
+							offset = SkipMsgpackValue(offset, end);
+						}
+						return offset;
+					}
+				case 0xDD: // array32
+				case 0xDF:
+					{ // map32
+						if (offset + 3 >= end)
+						{
+							return end;
+						}
+						int count = ByteUtil.BytesToInt(dataBuffer, offset) * ((b == 0xDF) ? 2 : 1);
+						offset += 4;
+						for (int i = 0; i < count && offset < end; i++)
+						{
+							offset = SkipMsgpackValue(offset, end);
+						}
+						return offset;
+					}
+				default:
+					return end;
 			}
 		}
 

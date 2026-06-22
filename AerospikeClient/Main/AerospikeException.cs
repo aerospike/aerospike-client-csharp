@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2025 Aerospike, Inc.
+ * Copyright 2012-2026 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -28,13 +28,21 @@ namespace Aerospike.Client
 		protected Node node;
 		protected Policy policy;
 		protected int resultCode = ResultCode.CLIENT_ERROR;
+		protected int subCode = Aerospike.Client.SubCode.NONE;
 		protected int iteration = -1;
 		protected bool inDoubt;
 
 		public AerospikeException(int resultCode, string message, Exception inner = null)
-			: base(message, inner)
+			: base(message ?? string.Empty, inner)
 		{
 			this.resultCode = resultCode;
+		}
+
+		public AerospikeException(int resultCode, string message, int subCode, Exception inner = null)
+			: base(message ?? string.Empty, inner)
+		{
+			this.resultCode = resultCode;
+			this.subCode = subCode;
 		}
 
 		public AerospikeException(int resultCode, Exception e)
@@ -44,7 +52,7 @@ namespace Aerospike.Client
 		}
 
 		public AerospikeException(int resultCode, string message)
-			: base(message)
+			: base(message ?? string.Empty)
 		{
 			this.resultCode = resultCode;
 		}
@@ -189,6 +197,18 @@ namespace Aerospike.Client
 			get
 			{
 				return resultCode;
+			}
+		}
+
+		/// <summary>
+		/// Server-supplied error subcode, or <see cref="Aerospike.Client.SubCode.NONE"/>
+		/// when the server did not return one.
+		/// </summary>
+		public int SubCode
+		{
+			get
+			{
+				return subCode;
 			}
 		}
 

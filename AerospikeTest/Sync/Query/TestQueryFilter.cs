@@ -1,5 +1,5 @@
 ﻿/* 
- * Copyright 2012-2023 Aerospike, Inc.
+ * Copyright 2012-2026 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -25,7 +25,7 @@ namespace Aerospike.Test
 	{
 		private const string indexName = "profileindex";
 		private const string keyPrefix = "profilekey";
-		private static readonly string binName = Suite.GetBinName("name");
+		private static readonly string binName = "name";
 
 		[ClassInitialize()]
 		public static void Prepare(TestContext testContext)

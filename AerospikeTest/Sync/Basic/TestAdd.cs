@@ -1,5 +1,5 @@
 ﻿/* 
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2026 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -27,7 +27,7 @@ namespace Aerospike.Test
 		public void Add()
 		{
 			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "addkey");
-			string binName = Suite.GetBinName("addbin");
+			string binName = "addbin";
 
 			// Delete record if it already exists.
 			client.Delete(null, key);

@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2025 Aerospike, Inc.
+ * Copyright 2012-2026 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -270,6 +270,20 @@ namespace Aerospike.Client
 		/// </summary>
 		public bool failOnFilteredOut;
 
+
+		/// <summary>
+		/// Request server error detail fields in responses.
+		/// <para>
+		/// <ul>
+		/// <li>0 - disabled (no error details).</li>
+		/// <li>1 - subcode only.</li>
+		/// <li>2 - subcode + message.</li>
+		/// </ul>
+		/// </para>
+		/// Default: 0
+		/// </summary>
+		public int ErrorDetailVerbosity;
+
 		/// <summary>
 		/// Alternate record parser.
 		/// <para>
@@ -297,6 +311,7 @@ namespace Aerospike.Client
 			this.sendKey = other.sendKey;
 			this.compress = other.compress;
 			this.failOnFilteredOut = other.failOnFilteredOut;
+			this.ErrorDetailVerbosity = other.ErrorDetailVerbosity;
 			this.recordParser = other.recordParser;
 		}
 
@@ -356,6 +371,10 @@ namespace Aerospike.Client
 			if (read.max_retries.HasValue)
 			{
 				this.maxRetries = read.max_retries.Value;
+			}
+			if (read.error_detail_verbosity.HasValue)
+			{
+				this.ErrorDetailVerbosity = read.error_detail_verbosity.Value;
 			}
 		}
 

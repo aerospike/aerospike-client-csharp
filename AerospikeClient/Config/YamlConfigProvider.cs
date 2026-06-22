@@ -17,6 +17,7 @@
 
 using Aerospike.Client.Config;
 using Microsoft.Extensions.Configuration;
+using System.Reflection;
 
 namespace Aerospike.Client
 {
@@ -56,6 +57,7 @@ namespace Aerospike.Client
 		private const string maxRetries = "max_retries";
 		private const string durableDelete = "durable_delete";
 		private const string sendKey = "send_key";
+		private const string errorDetailVerbosity = "error_detail_verbosity";
 		private const string maxConcurrentThreads = "max_concurrent_threads";
 		private const string allowInline = "allow_inline";
 		private const string allowInlineSSD = "allow_inline_ssd";
@@ -79,7 +81,17 @@ namespace Aerospike.Client
 
 		private volatile bool modified = false;
 
-		private readonly Dictionary<Version, IConfigurationData> supportedVersions = new() { { new Version(1, 0, 0), new ConfigurationDatav1_0_0() } };
+		private static readonly Version DefaultVersion = new(1, 0, 0);
+
+		private static readonly Dictionary<Type, SchemaProperty[]> schemaPropertyCache = new();
+
+		private readonly Dictionary<Version, IConfigurationData> supportedVersions = new()
+		{
+			{ new Version(1, 0, 0), new ConfigurationDatav1_0_0() },
+			{ new Version(1, 1, 0), new ConfigurationDatav1_1_0() }
+		};
+
+		private Version schemaVersion = DefaultVersion;
 
 		public static string GetConfigPath()
 		{
@@ -160,18 +172,8 @@ namespace Aerospike.Client
 					   .AddYamlFile(filePath, optional: false, reloadOnChange: true)
 					   .Build();
 
-					Version version = new(configRoot.GetSection("version").Value);
-
-					if (!supportedVersions.TryGetValue(version, out IConfigurationData value))
-					{
-						Log.Warn("YAML config must contain a valid version field.");
-						ConfigurationData = supportedVersions[new Version(1, 0, 0)]; // Default to the first supported version
-					}
-					else
-					{
-						ConfigurationData = value;
-					}
-
+					ConfigurationData = ResolveConfigurationData();
+					ValidateSchemaVersion(configRoot, schemaVersion);
 					ProcessStaticConfig();
 					ProcessDynamicConfig();
 					LogConfigChanges(true);
@@ -187,6 +189,8 @@ namespace Aerospike.Client
 
 			if (modified) // Modified is set in the callback from the watch if file changes
 			{
+				ConfigurationData = ResolveConfigurationData();
+				ValidateSchemaVersion(configRoot, schemaVersion);
 				ProcessDynamicConfig();
 				LogConfigChanges(false);
 				modified = false;
@@ -194,6 +198,92 @@ namespace Aerospike.Client
 			}
 			return false;
 		}
+
+		private IConfigurationData ResolveConfigurationData()
+		{
+			Version version = new(configRoot.GetSection("version").Value);
+
+			if (!supportedVersions.TryGetValue(version, out IConfigurationData value))
+			{
+				Log.Warn("YAML config must contain a valid version field.");
+				schemaVersion = DefaultVersion;
+				return supportedVersions[DefaultVersion]; // Default to the first supported version
+			}
+
+			schemaVersion = version;
+			return value;
+		}
+
+		private static void ValidateSchemaVersion(IConfiguration config, Version declaredVersion)
+		{
+			ValidateSchemaVersion(config.GetSection("static"), typeof(StaticConfig), declaredVersion, "static");
+			ValidateSchemaVersion(config.GetSection("dynamic"), typeof(DynamicConfig), declaredVersion, "dynamic");
+		}
+
+		private static void ValidateSchemaVersion(IConfigurationSection section, Type schemaType, Version declaredVersion, string path)
+		{
+			if (!section.Exists())
+			{
+				return;
+			}
+
+			foreach (SchemaProperty property in GetSchemaProperties(schemaType))
+			{
+				IConfigurationSection child = section.GetSection(property.Name);
+
+				if (!child.Exists())
+				{
+					continue;
+				}
+
+				if (property.IntroducedIn != null && declaredVersion < property.IntroducedIn)
+				{
+					throw new AerospikeException(
+						$"YAML config field '{path}.{property.Name}' requires schema version {property.IntroducedIn} or later. " +
+						$"The file declares version {declaredVersion}.");
+				}
+
+				if (property.IsLeaf)
+				{
+					continue;
+				}
+
+				ValidateSchemaVersion(child, property.PropertyType, declaredVersion, path + "." + property.Name);
+			}
+		}
+
+		private static SchemaProperty[] GetSchemaProperties(Type schemaType)
+		{
+			lock (schemaPropertyCache)
+			{
+				if (schemaPropertyCache.TryGetValue(schemaType, out SchemaProperty[] properties))
+				{
+					return properties;
+				}
+
+				properties = schemaType
+					.GetProperties(BindingFlags.Instance | BindingFlags.Public)
+					.Select(property =>
+					{
+						Type propertyType = Nullable.GetUnderlyingType(property.PropertyType) ?? property.PropertyType;
+						ConfigIntroducedInAttribute introduced = property.GetCustomAttribute<ConfigIntroducedInAttribute>();
+						bool isLeaf =
+							propertyType == typeof(string) ||
+							propertyType.IsPrimitive ||
+							propertyType.IsEnum ||
+							propertyType == typeof(decimal) ||
+							typeof(System.Collections.IEnumerable).IsAssignableFrom(propertyType);
+
+						return new SchemaProperty(property.Name, propertyType, introduced?.Version, isLeaf);
+					})
+					.ToArray();
+
+				schemaPropertyCache[schemaType] = properties;
+				return properties;
+			}
+		}
+
+		private sealed record SchemaProperty(string Name, Type PropertyType, Version IntroducedIn, bool IsLeaf);
 
 		private void ProcessStaticConfig()
 		{
@@ -301,6 +391,8 @@ namespace Aerospike.Client
 				dynamicReadName, totalTimeout);
 			IConfigProvider.LogIntChange(dynamicRead.max_retries, readPolicy.maxRetries,
 				dynamicReadName, maxRetries);
+			IConfigProvider.LogIntChange(dynamicRead.error_detail_verbosity, readPolicy.ErrorDetailVerbosity,
+				dynamicReadName, errorDetailVerbosity);
 
 			// write policy
 			var writePolicy = client.mergedWritePolicyDefault.Clone();
@@ -323,6 +415,8 @@ namespace Aerospike.Client
 				dynamicWriteName, maxRetries);
 			IConfigProvider.LogBoolChange(dynamicWrite.durable_delete, writePolicy.durableDelete,
 				dynamicWriteName, durableDelete);
+			IConfigProvider.LogIntChange(dynamicWrite.error_detail_verbosity, writePolicy.ErrorDetailVerbosity,
+				dynamicWriteName, errorDetailVerbosity);
 
 			// query policy
 			var queryPolicy = client.mergedQueryPolicyDefault.Clone();

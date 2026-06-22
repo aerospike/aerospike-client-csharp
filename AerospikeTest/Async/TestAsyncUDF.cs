@@ -1,5 +1,5 @@
 ﻿/* 
- * Copyright 2012-2025 Aerospike, Inc.
+ * Copyright 2012-2026 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -22,7 +22,7 @@ namespace Aerospike.Test
 	[TestClass]
 	public class TestAsyncUDF : TestAsync
 	{
-		private static readonly string binName = Suite.GetBinName("audfbin1");
+		private static readonly string binName = "audfbin1";
 		private const string binValue = "string value";
 
 		[ClassInitialize()]

@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2025 Aerospike, Inc.
+ * Copyright 2012-2026 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -187,6 +187,10 @@ namespace Aerospike.Client
 			if (write.durable_delete.HasValue)
 			{
 				this.durableDelete = write.durable_delete.Value;
+			}
+			if (write.error_detail_verbosity.HasValue)
+			{
+				this.ErrorDetailVerbosity = write.error_detail_verbosity.Value;
 			}
 		}
 

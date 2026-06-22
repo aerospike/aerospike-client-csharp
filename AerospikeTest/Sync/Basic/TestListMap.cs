@@ -1,5 +1,5 @@
 ﻿/* 
- * Copyright 2012-2023 Aerospike, Inc.
+ * Copyright 2012-2026 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -30,7 +30,7 @@ namespace Aerospike.Test
 
 			List<string> list = ["string1", "string2", "string3"];
 
-			Bin bin = new(Suite.GetBinName("listbin1"), list);
+			Bin bin = new("listbin1", list);
 			client.Put(null, key, bin);
 
 			Record record = client.Get(null, key, bin.name);
@@ -53,7 +53,7 @@ namespace Aerospike.Test
 			byte[] blob = [3, 52, 125];
 			List<object> list = ["string1", 2, blob, Value.GetAsGeoJSON(geopoint)];
 
-			Bin bin = new(Suite.GetBinName("listbin2"), list);
+			Bin bin = new("listbin2", list);
 			client.Put(null, key, bin);
 
 			Record record = client.Get(null, key, bin.name);
@@ -80,7 +80,7 @@ namespace Aerospike.Test
 				["key3"] = "string3"
 			};
 
-			Bin bin = new(Suite.GetBinName("mapbin1"), map);
+			Bin bin = new("mapbin1", map);
 			client.Put(null, key, bin);
 
 			Record record = client.Get(null, key, bin.name);
@@ -118,7 +118,7 @@ namespace Aerospike.Test
 			map["key8"] = dc;
 #endif
 
-			Bin bin = new(Suite.GetBinName("mapbin2"), map);
+			Bin bin = new("mapbin2", map);
 			client.Put(null, key, bin);
 
 			Record record = client.Get(null, key, bin.name);
@@ -168,7 +168,7 @@ namespace Aerospike.Test
 
 			List<object> list = ["string1", 8, inner, innerMap];
 
-			Bin bin = new(Suite.GetBinName("listmapbin"), list);
+			Bin bin = new("listmapbin", list);
 			client.Put(null, key, bin);
 
 			Record record = client.Get(null, key, bin.name);
