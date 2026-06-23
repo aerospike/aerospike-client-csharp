@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2025 Aerospike, Inc.
+ * Copyright 2012-2026 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -351,6 +351,362 @@ namespace Aerospike.Test
 				object obj = r.GetValue(BinName);
 				Assert.IsNotNull(obj);
 			}
+		}
+
+		[TestMethod]
+		public void BatchWriteWithClusterSendKey()
+		{
+			string prefix = "sendKeyCluster";
+			String set = "sendKeyCluster";
+			int size = 2;
+			Key[] keys = new Key[size];
+
+			for (int i = 0; i < size; i++)
+			{
+				keys[i] = new Key(SuiteHelpers.ns, set, prefix + (i + 1));
+			}
+
+			client.Truncate(null, SuiteHelpers.ns, set, null);
+
+			var bin = new Bin("bin5", "NewValue");
+
+			// Change global batch write sendKey.
+			BatchPolicy bp = client.BatchParentPolicyWriteDefault;
+			bool origSendKey = bp.sendKey;
+			bp.sendKey = true;
+
+			BatchResults bresults = client.Operate(null, null, keys,
+				Operation.Put(bin)
+				);
+
+			for (int i = 0; i < bresults.records.Length; i++)
+			{
+				BatchRecord br = bresults.records[i];
+				Assert.AreEqual(ResultCode.OK, br.resultCode);
+			}
+
+			// Reset global batch write sendKey.
+			bp.sendKey = origSendKey;
+
+			Statement stmt = new()
+			{
+				Namespace = SuiteHelpers.ns,
+				SetName = set
+			};
+
+			int count = 0;
+
+			using (RecordSet rs = client.Query(null, stmt))
+			{
+				while (rs.Next())
+				{
+					Value val = rs.Key.userKey;
+					Assert.IsNotNull(val);
+
+					string key = val.ToString();
+					Assert.StartsWith(prefix, key);
+					count++;
+				}
+			}
+			Assert.AreEqual(size, count);
+		}
+
+		[TestMethod]
+		public void BatchWriteWithBatchPolicySendKey()
+		{
+			String prefix = "sendKeyBP";
+			String set = "sendKeyBP";
+			int size = 2;
+			Key[] keys = new Key[size];
+
+			for (int i = 0; i < size; i++)
+			{
+				keys[i] = new Key(SuiteHelpers.ns, set, prefix + (i + 1));
+			}
+
+			client.Truncate(null, SuiteHelpers.ns, set, null);
+
+			var bin = new Bin("bin5", "NewValue");
+
+			BatchPolicy bp = client.BatchParentPolicyWriteDefault.Clone();
+			bp.sendKey = true;
+
+			BatchResults bresults = client.Operate(bp, null, keys,
+				Operation.Put(bin)
+				);
+
+			for (int i = 0; i < bresults.records.Length; i++)
+			{
+				BatchRecord br = bresults.records[i];
+				Assert.AreEqual(ResultCode.OK, br.resultCode);
+			}
+
+			Statement stmt = new()
+			{
+				Namespace = SuiteHelpers.ns,
+				SetName = set
+			};
+
+			int count = 0;
+
+			using (RecordSet rs = client.Query(null, stmt))
+			{
+				while (rs.Next())
+				{
+					Value val = rs.Key.userKey;
+					Assert.IsNotNull(val);
+
+					string key = val.ToString();
+					Assert.StartsWith(prefix, key);
+					count++;
+				}
+			}
+			Assert.AreEqual(size, count);
+		}
+
+		[TestMethod]
+		public void BatchWriteWithBatchWritePolicySendKey()
+		{
+			string prefix = "sendKeyBWP";
+			string set = "sendKeyBWP";
+			int size = 2;
+			Key[] keys = new Key[size];
+
+			for (int i = 0; i < size; i++)
+			{
+				keys[i] = new Key(SuiteHelpers.ns, set, prefix + (i + 1));
+			}
+
+			client.Truncate(null, SuiteHelpers.ns, set, null);
+
+			Bin bin = new Bin("bin5", "NewValue");
+
+			BatchWritePolicy bwp = client.BatchWritePolicyDefault.Clone();
+			bwp.sendKey = true;
+
+			BatchResults bresults = client.Operate(null, bwp, keys,
+				Operation.Put(bin)
+				);
+
+			for (int i = 0; i < bresults.records.Length; i++)
+			{
+				BatchRecord br = bresults.records[i];
+				Assert.AreEqual(ResultCode.OK, br.resultCode);
+			}
+
+			Statement stmt = new()
+			{
+				Namespace = SuiteHelpers.ns,
+				SetName = set
+			};
+
+			int count = 0;
+
+			using (RecordSet rs = client.Query(null, stmt))
+			{
+				while (rs.Next())
+				{
+					Value val = rs.Key.userKey;
+					Assert.IsNotNull(val);
+
+					string key = val.ToString();
+					Assert.StartsWith(prefix, key);
+					count++;
+				}
+			}
+			Assert.AreEqual(size, count);
+		}
+
+		[TestMethod]
+		public void BatchWriteComplexGlobalSendKey()
+		{
+			string prefix = "sendKeyCG";
+			string set = "sendKeyCG";
+			int size = 2;
+
+			client.Truncate(null, SuiteHelpers.ns, set, null);
+
+			// Change global batch write sendKey.
+			BatchPolicy bp = client.BatchParentPolicyWriteDefault;
+			bool origSendKey = bp.sendKey;
+			bp.sendKey = true;
+
+			List<BatchRecord> records = new List<BatchRecord>();
+			Operation[] ops = [Operation.Put(new Bin("bin", "val"))];
+
+			for (int i = 0; i < size; i++)
+			{
+				Key key = new Key(SuiteHelpers.ns, set, prefix + (i + 1));
+				records.Add(new BatchWrite(null, key, ops));
+			}
+
+			bool status = client.Operate(null, records);
+			Assert.IsTrue(status);
+
+			for (int i = 0; i < records.Count; i++)
+			{
+				BatchRecord rec = records[i];
+				Assert.AreEqual(ResultCode.OK, rec.resultCode);
+			}
+
+			// Reset global batch write sendKey.
+			bp.sendKey = origSendKey;
+
+			Statement stmt = new()
+			{
+				Namespace = SuiteHelpers.ns,
+				SetName = set
+			};
+
+			int count = 0;
+
+			using (RecordSet rs = client.Query(null, stmt))
+			{
+				while (rs.Next())
+				{
+					Value val = rs.Key.userKey;
+					Assert.IsNotNull(val);
+
+					string key = val.ToString();
+					Assert.StartsWith(prefix, key);
+					count++;
+				}
+			}
+			Assert.AreEqual(size, count);
+		}
+
+		[TestMethod]
+		public void BatchWriteComplexSendKey()
+		{
+			string prefix = "sendKeyC";
+			string set = "sendKeyC";
+			int size = 2;
+
+			client.Truncate(null, SuiteHelpers.ns, set, null);
+
+			BatchWritePolicy wp = new BatchWritePolicy
+			{
+				sendKey = true
+			};
+
+			List<BatchRecord> records = [];
+			Operation[] ops = [Operation.Put(new Bin("bin", "val"))];
+
+			for (int i = 0; i < size; i++)
+			{
+				Key key = new Key(SuiteHelpers.ns, set, prefix + (i + 1));
+				records.Add(new BatchWrite(wp, key, ops));
+			}
+
+			bool status = client.Operate(null, records);
+			Assert.IsTrue(status);
+
+			for (int i = 0; i < records.Count; i++)
+			{
+				BatchRecord rec = records[i];
+				Assert.AreEqual(ResultCode.OK, rec.resultCode);
+			}
+
+			Statement stmt = new()
+			{
+				Namespace = SuiteHelpers.ns,
+				SetName = set
+			};
+
+			int count = 0;
+
+			using (RecordSet rs = client.Query(null, stmt))
+			{
+				while (rs.Next())
+				{
+					Value val = rs.Key.userKey;
+					Assert.IsNotNull(val);
+
+					string key = val.ToString();
+					Assert.StartsWith(prefix, key);
+					count++;
+				}
+			}
+			Assert.AreEqual(size, count);
+		}
+
+		[TestMethod]
+		public void BatchReadWriteSendKey()
+		{
+			string prefix = "sendKeyRW";
+			string set = "sendKeyRW";
+			Bin bin = new("a", 35);
+			int size = 20;
+
+			client.Truncate(null, SuiteHelpers.ns, set, null);
+
+			client.Put(null, new Key(SuiteHelpers.ns, set, prefix + 9), bin);
+			client.Put(null, new Key(SuiteHelpers.ns, set, prefix + 10), bin);
+			client.Put(null, new Key(SuiteHelpers.ns, set, prefix + 11), bin);
+
+			List<BatchRecord> records = [];
+			Operation[] writeOps = [Operation.Put(new Bin("bin", "val"))];
+
+			for (int i = 0; i < size; i++)
+			{
+				Key key = new Key(SuiteHelpers.ns, set, prefix + (i + 1));
+
+				if (i >= 8 && i <= 10)
+				{
+					records.Add(new BatchRead(key, true));
+				}
+				else
+				{
+					records.Add(new BatchWrite(key, writeOps));
+				}
+			}
+
+			BatchPolicy bp = client.BatchParentPolicyWriteDefault.Clone();
+			bp.sendKey = true;
+
+			bool status = client.Operate(bp, records);
+			Assert.IsTrue(status);
+
+			foreach (BatchRecord rec in records)
+			{
+				Assert.AreEqual(ResultCode.OK, rec.resultCode);
+			}
+
+			Statement stmt = new()
+			{
+				Namespace = SuiteHelpers.ns,
+				SetName = set
+			};
+
+			int sendKeyCount = 0;
+			int otherCount = 0;
+
+			using (RecordSet rs = client.Query(null, stmt))
+			{
+				while (rs.Next())
+				{
+					Value val = rs.Key.userKey;
+
+					if (val != null)
+					{
+						// Writes.
+						string key = val.ToString();
+						Assert.IsTrue(key.StartsWith(prefix));
+						sendKeyCount++;
+					}
+					else
+					{
+						// Reads
+						Record rec = rs.Record;
+						int ival = rec.GetInt(bin.name);
+
+						Assert.AreEqual(35, ival);
+						otherCount++;
+					}
+				}
+			}
+			Assert.AreEqual(size - 3, sendKeyCount);
+			Assert.AreEqual(3, otherCount);
 		}
 
 		[TestMethod]

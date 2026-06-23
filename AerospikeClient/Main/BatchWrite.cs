@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2025 Aerospike, Inc.
+ * Copyright 2012-2026 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -71,11 +71,38 @@ namespace Aerospike.Client
 			return Type.BATCH_WRITE;
 		}
 
+		public override bool ResolveSendKey(
+			Policy parentPolicy,
+			IConfigProvider configProvider,
+			BatchWritePolicy writePolicyDefault,
+			BatchUDFPolicy udfPolicyDefault,
+			BatchDeletePolicy deletePolicyDefault
+		)
+		{
+			if (parentPolicy.sendKey || writePolicyDefault.sendKey || (policy != null && policy.sendKey))
+			{
+				return true;
+			}
+
+			if (configProvider != null)
+			{
+				IConfigurationData config = configProvider.ConfigurationData;
+
+				if (config != null && config.HasDBWCsendKey() &&
+					config.dynamicConfig.batch_write.send_key.Value)
+				{
+					return true;
+				}
+			}
+
+			return false;
+		}
+
 		/// <summary>
 		/// Optimized reference equality check to determine batch wire protocol repeat flag.
 		/// For internal use only.
 		/// </summary>
-		public override bool Equals(BatchRecord obj, IConfigProvider configProvider)
+		public override bool Equals(BatchRecord obj)
 		{
 			if (this.GetType() != obj.GetType())
 			{
@@ -89,23 +116,13 @@ namespace Aerospike.Client
 				return false;
 			}
 
-			bool sendKey = false;
-			if (policy != null)
-			{
-				sendKey = policy.sendKey;
-			}
-			if (configProvider != null && configProvider.ConfigurationData.HasDBWCsendKey())
-			{
-				sendKey = configProvider.ConfigurationData.dynamicConfig.batch_write.send_key.Value;
-			}
-
-			return !sendKey;
+			return true;
 		}
 
 		/// <summary>
 		/// Return wire protocol size. For internal use only.
 		/// </summary>
-		public override int Size(Policy parentPolicy, IConfigProvider configProvider)
+		public override int Size(bool sendKey)
 		{
 			int size = 2; // gen(2) = 2
 
@@ -115,19 +132,9 @@ namespace Aerospike.Client
 				{
 					size += policy.filterExp.Size();
 				}
-
-				bool sendKey = policy.sendKey;
-				if (configProvider != null && configProvider.ConfigurationData.HasDBWCsendKey())
-				{
-					sendKey = configProvider.ConfigurationData.dynamicConfig.batch_write.send_key.Value;
-				}
-
-				if (sendKey || parentPolicy.sendKey)
-				{
-					size += key.userKey.EstimateSize() + Command.FIELD_HEADER_SIZE + 1;
-				}
 			}
-			else if (parentPolicy.sendKey)
+
+			if (sendKey)
 			{
 				size += key.userKey.EstimateSize() + Command.FIELD_HEADER_SIZE + 1;
 			}
