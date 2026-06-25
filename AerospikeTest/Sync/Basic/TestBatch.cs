@@ -16,6 +16,8 @@
  */
 using Aerospike.Client;
 using System.Collections;
+using System.Reflection;
+using System.Runtime.ExceptionServices;
 
 namespace Aerospike.Test
 {
@@ -759,6 +761,38 @@ namespace Aerospike.Test
 		}
 
 		[TestMethod]
+		public void BatchSingleReadPrepareRetry()
+		{
+			BatchPolicy policy = new()
+			{
+				replica = Replica.SEQUENCE
+			};
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, KeyPrefix + 1);
+			BatchStatus status = new(false);
+			Node node = client.Cluster.GetRandomNode();
+			Record[] records = new Record[1];
+			BatchSingleRead command = new(client.Cluster, policy, key, null, records, 0, status, node, false);
+
+			AssertPrepareRetry(command);
+		}
+
+		[TestMethod]
+		public void BatchSingleWritePrepareRetry()
+		{
+			BatchPolicy policy = new()
+			{
+				replica = Replica.SEQUENCE
+			};
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, KeyPrefix + 1);
+			BatchStatus status = new(false);
+			Node node = client.Cluster.GetRandomNode();
+			BatchRecord record = new BatchWrite(key, [Operation.Put(new Bin(BinName2, 200))]);
+			BatchSingleTxnVerify command = new(client.Cluster, policy, 0, record, status, node);
+
+			AssertPrepareRetry(command);
+		}
+
+		[TestMethod]
 		public void BatchDelete()
 		{
 			// Define keys
@@ -893,6 +927,26 @@ namespace Aerospike.Test
 			Assert.AreNotEqual(0, batch.record.generation);
 			// ttl can be zero if server default-ttl = 0.
 			// Assert.AreNotEqual(0, batch.record.expiration);
+		}
+
+		private static void AssertPrepareRetry(BatchSingleCommand command)
+		{
+			MethodInfo method = typeof(BatchSingleCommand).GetMethod(
+				"PrepareRetry",
+				BindingFlags.Instance | BindingFlags.NonPublic);
+
+			Assert.IsNotNull(method);
+
+			try
+			{
+				object result = method.Invoke(command, [false]);
+				Assert.IsTrue((bool)result);
+			}
+			catch (TargetInvocationException tie) when (tie.InnerException != null)
+			{
+				ExceptionDispatchInfo.Capture(tie.InnerException).Throw();
+				throw;
+			}
 		}
 	}
 }

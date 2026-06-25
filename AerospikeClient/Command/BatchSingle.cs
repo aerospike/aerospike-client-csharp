@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2025 Aerospike, Inc.
+ * Copyright 2012-2026 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -484,7 +484,7 @@ namespace Aerospike.Client
 				p.sequence = sequence;
 				p.prevNode = node;
 				p.PrepareRetryWrite(timeout);
-				node = (AsyncNode)p.GetNodeWrite(cluster);
+				node = p.GetNodeWrite(cluster);
 				sequence = p.sequence;
 			}
 			else
@@ -493,7 +493,7 @@ namespace Aerospike.Client
 				p.sequence = sequence;
 				p.prevNode = node;
 				p.PrepareRetryRead(timeout);
-				node = (AsyncNode)p.GetNodeRead(cluster);
+				node = p.GetNodeRead(cluster);
 				sequence = p.sequence;
 			}
 			return true;
